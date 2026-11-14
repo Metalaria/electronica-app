@@ -1,0 +1,228 @@
+# Lección 1.2 de la sección 8.7 «Referencias de Tensión de Precisión» (cap08). Formato: contenido/lecciones11/GUIA.md.
+# Bandgap ilustrativo con los datos del libro: V_BE baja 2 mV/°C y extrapola a 1,205 V en el cero absoluto; el término
+# PTAT es K·V_T·ln N con V_T = 25,85 mV a 300 K y N = 8 (ejemplo). Modelo lineal: no reproduce la curvatura de segundo
+# orden que el libro menciona (se pregunta por ella aparte).
+leccion: cap08/sec-8.7
+
+libro:
+  146: "La resolución la da el convertidor; la exactitud, la referencia."
+  150: "La tensión base-emisor de un transistor a corriente constante baja unos 2 mV/°C"
+  151: "queda muy cerca de 1,205 V, la extrapolación a cero kelvin de la anchura de la banda prohibida del silicio"
+  152: "la cancelación es exacta solo a una temperatura"
+  154: "alcanza derivas de 1 a 5 ppm/°C"
+  155: "necesita alimentación de al menos 8 o 10 V"
+  157: "Es la que puede corregirse por calibración del sistema"
+  158: "Con 10 ppm/°C sobre 5 V y 50 °C de excursión, 2,5 mV"
+  159: "Es la que obliga a recalibrar periódicamente un instrumento"
+  160: "tras un ciclo de calentamiento y enfriamiento, la referencia no vuelve exactamente al mismo valor"
+  162: "funciona como un regulador de precisión de baja corriente"
+  163: "se comporta como un Zener de precisión de dos terminales, con una resistencia desde la alimentación"
+  165: "cualquier variación afecta por igual al numerador y al denominador y se cancela"
+
+modelo:
+  valores:
+    T_c: { sim: "T", nombre: "temperatura", unidad: "°C", valor: 25 }
+    K_p: { sim: "K", nombre: "múltiplo del término PTAT", unidad: "", valor: 6 }
+    l_N: { sim: "ln N", nombre: "logaritmo de la relación de densidades", unidad: "", valor: 2.0794 }
+    tc_r: { sim: "TC", nombre: "coeficiente de temperatura", unidad: "ppm/°C", valor: 10 }
+    V_r: { sim: "V_{ref}", nombre: "tensión de referencia", unidad: V, valor: 5 }
+    dT: { sim: "ΔT", nombre: "excursión de temperatura", unidad: "°C", valor: 50 }
+  calculos:
+    V_be: { expr: "1.205 - 0.002*(T_c + 273.15)", sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V }
+    V_pt: { expr: "K_p*0.02585*(T_c + 273.15)/300*l_N", sim: "K · V_{T} · ln N", nombre: "término PTAT", unidad: V }
+    V_bg: { expr: "V_be + V_pt", sim: "V_{ref}", nombre: "tensión del bandgap", unidad: V }
+    d_bg: { expr: "1000000*(-0.002 + K_p*0.02585/300*l_N)/V_bg", sim: "TC", nombre: "deriva de la referencia", unidad: "ppm/°C", cifras: 2 }
+    e_tc: { expr: "tc_r/1000000*V_r*dT", sim: "error", nombre: "error por la deriva", unidad: V }
+
+tarjetas:
+  - id: explore-bandgap
+    tipo: explorar
+    titulo: "Dos derivas opuestas"
+    texto: "V_{BE} baja con la temperatura; el término PTAT sube. Cambie su múltiplo y mire la suma."
+    nota: "Valores de ejemplo."
+    libro: [150, 151]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "1.205 - 0.002*(tx + 273.15)", color: azul, rotulo: "V_{BE}" }
+        - { expr: "K_p*0.02585*(tx + 273.15)/300*l_N", color: naranja, rotulo: "PTAT" }
+        - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "suma" }
+      lectura: { valor: d_bg, rotulo: "Deriva de la suma" }
+      datos:
+        - { valor: V_bg, rotulo: "Suma a 25 °C: {{V_bg}}" }
+      mandos:
+        - { valor: K_p, min: 4, max: 16, paso: 0.05, rotulo: "Múltiplo K" }
+
+  - id: prediga-bandgap
+    tipo: predecir
+    titulo: "¿A qué tensión se cancela?"
+    texto: "Cuando las dos derivas se cancelan, ¿qué tensión queda?"
+    libro: [151]
+    fijar: { K_p: 11.15 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "1.205 - 0.002*(tx + 273.15)", color: azul, rotulo: "V_{BE}" }
+        - { expr: "K_p*0.02585*(tx + 273.15)/300*l_N", color: naranja, rotulo: "PTAT" }
+      lectura: { valor: V_bg, rotulo: "Tensión de la referencia" }
+      ocultar: true
+    opciones:
+      - texto: "Unos 1,2 V"
+        bien: true
+        porque: "Muy cerca de 1,205 V, la anchura de la banda prohibida del silicio extrapolada a cero kelvin."
+      - texto: "Unos 0,6 V, la V_{BE}"
+        porque: "La V_{BE} sola deriva 2 mV/°C. Al sumarle el término PTAT, la suma sube hasta la banda prohibida."
+      - texto: "Cero: las derivas se anulan"
+        porque: "Se anulan las derivas, no las tensiones: queda una tensión fija."
+    escalera:
+      - "¿De dónde viene el nombre «bandgap»?"
+    solucion: "Unos 1,2 V: la banda prohibida del silicio."
+    comprobar:
+      - { V_bg: 1.205, tol: 0.003 }
+      - { V_be: 0.609, tol: 0.01 }
+
+  - id: ajuste-deriva
+    tipo: ajuste
+    titulo: "Cancele la deriva"
+    texto: "Ajuste el múltiplo del término PTAT hasta que la deriva de la referencia quede en ±10 ppm/°C."
+    libro: [150, 152]
+    inicio: { K_p: 6 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "V_{ref}" }
+      lectura: { valor: d_bg, rotulo: "Deriva" }
+      mandos:
+        - { valor: K_p, min: 4, max: 16, paso: 0.05, rotulo: "Múltiplo K" }
+    ajuste:
+      valor: d_bg
+      min: -10
+      max: 10
+      rotulo: "Deriva"
+      escala: { min: -800, max: 800 }
+      bajo: "Deriva negativa: domina V_{BE}; suba K."
+      alto: "Deriva positiva: domina el término PTAT; baje K."
+      dentro: "Recta plana. En un bandgap real queda una curvatura de segundo orden."
+
+  - id: estime-deriva
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lo que cuesta la deriva"
+    texto: "Una referencia de 5 V con 10 ppm/°C, en un equipo que recorre 50 °C. ¿Cuánto se mueve?"
+    libro: [158]
+    estimar:
+      objetivo: "e_tc"
+      unidad: V
+      min: 0
+      max: 0.01
+      paso: 0.0001
+      inicio: 0.008
+      tol: 0.05
+      rotulo: "Desplazamiento"
+    exito: "2,5 mV, un 0,05 %: ya limita a un convertidor de 12 bits. Y no se puede calibrar."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00263 }, texto: "Se ha pasado: un ppm es una millonésima." }
+      - { texto: "Se ha quedado corto: multiplique por la excursión completa, 50 °C." }
+    escalera:
+      - "10 · 10⁻⁶ · 5 V por cada grado."
+    solucion: "10 · 10⁻⁶ · 5 · 50 = 2,5 mV."
+    comprobar:
+      - { e_tc: 0.0025 }
+
+  - id: exactitud
+    tipo: pregunta
+    titulo: "Resolución y exactitud"
+    texto: "Un convertidor de 16 bits usa una referencia con un 1 % de error. ¿Con qué exactitud mide?"
+    libro: [146]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "V_{ref}" }
+    opciones:
+      - texto: "Con la de su referencia: menos de 7 bits útiles"
+        bien: true
+        porque: "La resolución la da el convertidor; la exactitud, la referencia."
+      - texto: "Con 16 bits"
+        porque: "Esa es su resolución. En términos absolutos, manda el error de la referencia."
+      - texto: "Con un bit menos de los 16"
+        porque: "Un 1 % es una parte en cien: mucho más que un bit de 16."
+    escalera:
+      - "Todo convertidor compara la entrada con su referencia."
+    solucion: "Con la exactitud de su referencia: menos de 7 bits."
+
+  - id: tecnologias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Bandgap, Zener enterrado, serie y shunt"
+    texto: "Una cada referencia con lo que la caracteriza."
+    libro: [151, 154, 155, 162, 163]
+    emparejar:
+      - ["Bandgap", "Unos 1,2 V, baja alimentación y barata"]
+      - ["Zener enterrado", "De 1 a 5 ppm/°C, pero pide 8 o 10 V"]
+      - ["Referencia serie", "Un regulador de precisión de baja corriente"]
+      - ["Referencia shunt", "Un Zener de precisión con su resistencia"]
+    exito: "El Zener enterrado es la de los patrones de laboratorio; la serie, la elección habitual."
+    pistas:
+      - { texto: "La shunt tiene solo dos terminales." }
+    escalera:
+      - "La de más precisión es la que más alimentación necesita."
+    solucion: "Bandgap–1,2 V, enterrado–ppm, serie–regulador, shunt–Zener."
+
+  - id: parametros
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que se calibra y lo que no"
+    texto: "Una cada parámetro de una referencia con lo que implica."
+    libro: [157, 158, 159, 160]
+    emparejar:
+      - ["Exactitud inicial", "Se corrige calibrando el sistema"]
+      - ["Coeficiente de temperatura", "No se calibra, salvo midiendo la temperatura"]
+      - ["Estabilidad a largo plazo", "Obliga a recalibrar periódicamente"]
+      - ["Histéresis térmica", "Tras un ciclo no vuelve al mismo valor"]
+    exito: "La exactitud inicial, la de la portada, es la menos importante de las tres."
+    pistas:
+      - { texto: "Lo que se mueve con la temperatura no lo arregla una calibración única." }
+    escalera:
+      - "Solo una de ellas desaparece con una calibración."
+    solucion: "Inicial–calibrar, TC–medir temperatura, largo plazo–recalibrar, histéresis–no vuelve."
+
+  - id: ratiometrica
+    tipo: porque
+    titulo: "Cuando la referencia no importa"
+    texto: "Un puente de galgas se alimenta desde la misma referencia que el ADC. ¿Por qué deja de importar su exactitud?"
+    libro: [165]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "V_{ref}" }
+    opciones:
+      - texto: "Cualquier variación afecta igual al numerador y al denominador"
+        bien: true
+        porque: "El ADC mide la relación entre la salida del puente y su referencia: si ambas suben, la relación no cambia."
+      - texto: "Porque el puente no consume corriente"
+        porque: "Consume; lo que importa es que sensor y ADC comparten la misma tensión."
+      - texto: "Porque la galga compensa la temperatura"
+        porque: "La cancelación es eléctrica: medida y referencia varían juntas."
+    escalera:
+      - "El ADC da la entrada dividida por su referencia."
+    solucion: "Es una medida ratiométrica: la variación se cancela."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [146, 151, 157, 165]
+    ideas:
+      - { titulo: "La exactitud.", texto: "La fija la referencia, no la resolución del convertidor." }
+      - { titulo: "Bandgap.", texto: "Dos derivas opuestas se cancelan en unos 1,2 V." }
+      - { titulo: "Lo que manda.", texto: "La deriva térmica no se calibra; la exactitud inicial, sí." }
+      - { titulo: "Ratiométrica.", texto: "Sensor y ADC con la misma referencia: su error se cancela." }

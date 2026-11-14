@@ -1,0 +1,313 @@
+# Lección 1.2 de la sección 36.7 «El Amplificador de Instrumentación» (cap35, sec-35.7). Formato: GUIA.md.
+# - El amplificador de tres operacionales vivo (esquema «ao-instrumentacion», operacionales lineales): G = (1 + 2R/R_G)
+#   ·R₄/R₃. R = 25 kΩ y R₃ = R₄ = 10 kΩ son de ejemplo (rotulados); la señal, la del puente de galgas: 10 mV sobre
+#   2,5 V (bloque 194), y la ganancia de «unas 500 veces» del bloque 84 de la sección 36.3: R_G = 100 Ω da 501.
+# - El diferencial de cuatro resistencias con ganancia unidad (R_G muy grande, la etapa de entrada no amplifica): el
+#   esquema desajusta solo R₄ de la referencia, ε, y su ganancia de modo común es ε/(2 + ε). Con ε = 4 veces la
+#   tolerancia (el peor caso con las cuatro resistencias en sus extremos) salen los 34, 54 y 74 dB del bloque 197:
+#   20 mV por voltio con el 1 %.
+# - Ejercicio 36.6 (bloque 345): con el 1 % y los 48 V de un shunt en el lado alto, unos 0,96 V de error (el modelo da
+#   0,94 V con ε/(2 + ε); dentro de la tolerancia del 3 % del paso «simular»).
+# Paso práctico: «simular» el error de modo común de los 48 V (errores: el del 0,1 %, el de un solo voltio).
+leccion: cap35/sec-35.7
+
+libro:
+  194: "un puente de galgas con 10 mV sobre 2,5 V"
+  197: "Con resistencias del 1 % y ganancia unidad, el CMRR en el peor caso es de apenas 34 dB"
+  200: "dos operacionales en configuración no inversora que comparten una resistencia de ganancia"
+  203: "CMRR excelente, de 100 a 130 dB a ganancias medias y altas"
+  204: "cambiar la ganancia no altera el apareamiento ni el CMRR"
+  207: "Las corrientes de polarización necesitan camino a masa"
+  209: "una impedancia en ese pin degrada el CMRR directamente"
+  212: "Amplificador de dos operacionales: más barato"
+  213: "cuyas entradas admiten decenas de voltios con una alimentación de 5 V"
+  214: "Amplificador aislado: incorpora una barrera galvánica"
+  217: "Con 20, 100 o 200 ms de integración, la red desaparece por completo"
+  219: "un voltio a 50 Hz"
+  220: "el rechazo a 50 Hz es mucho mejor que a 50 kHz"
+  221: "CMRR de un diferencial discreto según la tolerancia de sus resistencias"
+  "cap35#84": "hace falta una ganancia de unas 500 veces"
+  "cap35#345": "los 48 V de modo común de un shunt en el lado alto"
+
+modelo:
+  valores:
+    v_1: { sim: "v₁", nombre: "entrada −", unidad: V, valor: 2.5 }
+    v_2: { sim: "v₂", nombre: "entrada +", unidad: V, valor: 2.51 }
+    R_a: { sim: "R", nombre: "resistencia de realimentación de la entrada", unidad: Ω, valor: 25000 }
+    R_G: { sim: "R_{G}", nombre: "resistencia de ganancia", unidad: Ω, valor: 1000 }
+    R_3: { sim: "R₃", nombre: "entrada del diferencial", unidad: Ω, valor: 10000 }
+    R_4: { sim: "R₄", nombre: "realimentación del diferencial", unidad: Ω, valor: 10000 }
+    V_r: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 0 }
+    a_c: { sim: "v_{cm}", nombre: "modo común", unidad: V, valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
+    e_d: { sim: "ε", nombre: "desajuste de R₄", unidad: "", valor: 0.04 }
+  calculos:
+    G_d: { expr: "(1 + 2*R_a/R_G)*R_4/R_3", sim: "G", nombre: "ganancia diferencial", unidad: "" }
+    V_o: { expr: "G_d*(v_2 - v_1) + V_r", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    A_c: { expr: "R_4*(1 + e_d)*(R_3 + R_4)/(R_3*(R_3 + R_4*(1 + e_d))) - R_4/R_3", sim: "A_{cm}", nombre: "ganancia de modo común", unidad: "" }
+    V_c: { expr: "abs(A_c)*a_c", sim: "v_{o,cm}", nombre: "salida de modo común", unidad: V }
+    C_R: { expr: "20*log10(G_d/abs(A_c))", sim: "CMRR", nombre: "rechazo del modo común", unidad: dB }
+    V_m: { expr: "abs(A_c)", sim: "error", nombre: "error por voltio de modo común", unidad: V }
+
+tarjetas:
+  - id: explore-ganancia
+    tipo: explorar
+    titulo: "Una diferencia pequeña"
+    texto: "Un puente de galgas da 10 mV sobre 2,5 V de modo común. Cambie la resistencia de ganancia y mire la salida."
+    nota: "R = 25 kΩ y los 10 kΩ del diferencial son de ejemplo."
+    libro: [194, 200]
+    fijar: { v_1: 2.5, v_2: 2.51, R_a: 25000, R_3: 10000, R_4: 10000, V_r: 0 }
+    widget:
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: v_1, v2: v_2, r: R_a, rg: R_G, r3: R_3, r4: R_4, ref: V_r }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: G_d, rotulo: "G = {{G_d}}" }
+      mide: { vo: V_o }
+      mandos:
+        - { valor: R_G, lista: [100, 1000, 10000], rotulo: "R_{G}" }
+    requiere: { mover: [R_G] }
+
+  - id: reto-quinientas
+    tipo: reto
+    titulo: "Unas 500 veces"
+    texto: "Para llevar los 10 mV del puente a un convertidor de 5 V hacen falta unas 500 veces. Elija R_{G} en la E24."
+    libro: [194, "cap35#84"]
+    fijar: { v_1: 2.5, v_2: 2.51, R_a: 25000, R_3: 10000, R_4: 10000, V_r: 0 }
+    inicio: { R_G: 1000 }
+    widget:
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: v_1, v2: v_2, r: R_a, rg: R_G, r3: R_3, r4: R_4, ref: V_r }
+      lectura: { valor: G_d, rotulo: "Ganancia" }
+      datos:
+        - { valor: V_o, rotulo: "Salida: {{V_o}}" }
+      mide: { vo: V_o }
+      mandos:
+        - { valor: R_G, serie: E24, min: 10, max: 10000, rotulo: "R_{G} (E24)" }
+    condiciones:
+      - { valor: G_d, min: 480, max: 520, rotulo: "Ganancia: {{G_d}}" }
+    exito: "100 Ω: G = 501, y los 10 mV llegan a unos 5 V. Una sola resistencia fija la ganancia."
+    pistas:
+      - { cuando: { valor: G_d, menor: 480 }, texto: "Poca ganancia: baje R_{G}." }
+      - { texto: "Demasiada ganancia: suba R_{G}." }
+    escalera:
+      - "G = 1 + 2R/R_{G}: despeje R_{G} para G = 500."
+    solucion: "R_{G} = 2R/(G − 1) ≈ 100 Ω."
+    comprobar:
+      - { con: { R_G: 100 }, G_d: 501, V_o: 5.01 }
+
+  - id: explore-cmrr
+    tipo: explorar
+    titulo: "Cuatro resistencias, mal apareadas"
+    texto: "Un diferencial de cuatro resistencias con ganancia unidad y un voltio de modo común a 50 Hz. Cambie la tolerancia."
+    nota: "El desajuste es el peor caso de esa tolerancia."
+    libro: [197, 219, 221]
+    fijar: { v_1: 2.5, v_2: 2.5, a_c: 1, f_r: 50, R_a: 25000, R_G: 1e9, R_3: 10000, R_4: 10000 }
+    widget:
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: v_1, v2: v_2, acm: a_c, f: f_r, r: R_a, rg: R_G, r3: R_3, r4: R_4, desajuste: e_d }
+      lectura: { valor: V_c, rotulo: "Salida de modo común" }
+      datos:
+        - { valor: C_R, rotulo: "CMRR: {{C_R}}" }
+      mide: { salida_amp: V_c }
+      mandos:
+        - { valor: e_d, lista: [0.0004, 0.004, 0.04], nombres: ["0,01 %", "0,1 %", "1 %"], rotulo: "Tolerancia" }
+    requiere: { mover: [e_d] }
+    comprobar:
+      - { con: { e_d: 0.04 }, C_R: 34, V_c: 0.02, tol: 0.02 }
+      - { con: { e_d: 0.0004 }, C_R: 74, tol: 0.01 }
+
+  - id: sorpresa-ganancia
+    tipo: sorpresa
+    titulo: "Más ganancia, mismo desajuste"
+    texto: "Con resistencias del 1 %, suba la ganancia de la etapa de entrada con R_{G}. Mire el rechazo."
+    libro: [203, 204]
+    fijar: { v_1: 2.5, v_2: 2.5, a_c: 1, f_r: 50, R_a: 25000, R_3: 10000, R_4: 10000, e_d: 0.04 }
+    inicio: { R_G: 1e9 }
+    widget:
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: v_1, v2: v_2, acm: a_c, f: f_r, r: R_a, rg: R_G, r3: R_3, r4: R_4, desajuste: e_d }
+      lectura: { valor: C_R, rotulo: "CMRR" }
+      datos:
+        - { valor: G_d, rotulo: "G = {{G_d}}" }
+      mide: { salida_amp: V_c }
+      mandos:
+        - { valor: R_G, lista: [1e9, 5556, 100], nombres: ["sin R_G", "G de unas 10", "G de unas 500"], rotulo: "R_{G}" }
+    requiere: { mover: [R_G] }
+
+  - id: porque-una-resistencia
+    tipo: porque
+    titulo: "Una sola resistencia externa"
+    texto: "¿Por qué es tan valioso que la ganancia se fije con una sola resistencia externa?"
+    libro: [204]
+    widget:
+      tipo: figura
+      figura: fig-35.13
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [30, 15, 210, 170] }
+    opciones:
+      - texto: "Cambiar la ganancia no toca el apareamiento ni el CMRR"
+        bien: true
+        porque: "Las resistencias del diferencial siguen apareadas por láser en el chip."
+      - texto: "Porque así la ganancia es exacta"
+        porque: "La exactitud depende de R_{G}; la clave es que no altera el rechazo."
+      - texto: "Porque ahorra una resistencia"
+        porque: "La ventaja es de rechazo: en un diferencial discreto, cambiar la ganancia desaparea."
+    escalera:
+      - "En un diferencial discreto, ¿qué hay que cambiar para cambiar la ganancia?"
+    solucion: "La ganancia se ajusta sin tocar nada que afecte al rechazo."
+
+  - id: simule-shunt
+    tipo: simular
+    titulo: "48 V de modo común"
+    texto: "Un diferencial de ganancia unidad con resistencias del 1 % mide un shunt en el lado alto, a 48 V de modo común. ¿Cuánto error da?"
+    libro: [197, "cap35#345"]
+    fijar: { v_1: 2.5, v_2: 2.5, a_c: 48, f_r: 50, R_a: 25000, R_G: 1e9, R_3: 10000, R_4: 10000, e_d: 0.04 }
+    widget:
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: v_1, v2: v_2, acm: a_c, f: f_r, r: R_a, rg: R_G, r3: R_3, r4: R_4, desajuste: e_d }
+      lectura: { valor: V_c, rotulo: "Salida de modo común" }
+      mide: { salida_amp: V_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_c
+      unidad: V
+      tol: 0.03
+      rotulo: "Error a la salida"
+      medida: salida_amp
+      errores:
+        - { expr: "V_m", texto: "Ese es el error por voltio: hay que multiplicarlo por los 48 V." }
+        - { expr: "48*0.002", texto: "Eso sería con resistencias del 0,1 %, diez veces mejores." }
+    exito: "Casi un voltio: del orden de la propia señal del shunt. Por eso se usan amplificadores de sensado de corriente."
+    escalera:
+      - "Con el 1 %, 20 mV por voltio de modo común."
+    solucion: "48 · 20 mV ≈ 0,96 V."
+    comprobar:
+      - { V_c: 0.96, tol: 0.03 }
+      - { V_m: 0.0196, tol: 0.01 }
+
+  - id: pregunta-polarizacion
+    tipo: pregunta
+    titulo: "Satura sin razón"
+    texto: "Un amplificador de instrumentación mide un termopar aislado y su salida se va al raíl. ¿Qué falta?"
+    libro: [207]
+    widget:
+      tipo: figura
+      figura: fig-35.13
+      zonas:
+        - { id: masa, rotulo: "Recuadro rojo", rect: [262, 26, 173, 42] }
+    opciones:
+      - texto: "Un camino de continua a masa para las corrientes de polarización"
+        bien: true
+        porque: "Con fuente flotante, unas resistencias a masa en las entradas lo resuelven."
+      - texto: "Más ganancia"
+        porque: "Satura; no le falta ganancia, le falta camino a masa."
+      - texto: "Un filtro paso bajo"
+        porque: "El filtro no da camino de continua: el amplificador seguiría derivando."
+    escalera:
+      - "¿Por dónde vuelven las corrientes de polarización si la fuente flota?"
+    solucion: "Resistencias a masa en las entradas."
+
+  - id: pregunta-referencia
+    tipo: pregunta
+    titulo: "El pin de referencia"
+    texto: "El pin de referencia fija la salida en reposo. ¿Cómo se alimenta?"
+    libro: [209]
+    widget:
+      tipo: figura
+      figura: fig-35.13
+      zonas:
+        - { id: ref, rotulo: "Recuadro azul", rect: [262, 120, 173, 42] }
+    opciones:
+      - texto: "Desde una fuente de baja impedancia, como un seguidor"
+        bien: true
+        porque: "Una impedancia en ese pin degrada el CMRR directamente."
+      - texto: "Con un divisor de dos resistencias"
+        porque: "Es el error de diseño frecuente: el divisor tiene impedancia y desaparea."
+      - texto: "Se deja al aire"
+        porque: "Fija la salida en reposo: hay que llevarlo a una tensión de baja impedancia."
+    escalera:
+      - "Ese pin es el extremo de una de las resistencias apareadas."
+    solucion: "Un seguidor, no un divisor."
+
+  - id: empareje-alternativas
+    tipo: pregunta
+    titulo: "Las alternativas"
+    texto: "Empareje cada alternativa con su rasgo."
+    libro: [212, 213, 214]
+    widget:
+      tipo: figura
+      figura: fig-35.13
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [30, 15, 210, 170] }
+    emparejar:
+      - ["De dos operacionales", "Más barato; menos modo común"]
+      - ["De realimentación de corriente indirecta", "Entradas hasta los raíles"]
+      - ["De sensado de corriente", "Decenas de voltios con 5 V de alimentación"]
+      - ["Aislado", "Barrera galvánica"]
+    exito: "Para un shunt en el lado alto, el de sensado de corriente."
+    pistas:
+      - { texto: "El que mide puntos a potencial peligroso lleva una barrera." }
+    escalera:
+      - "El shunt en el lado alto tiene el modo común fuera de la alimentación."
+    solucion: "Dos operacionales, barato; corriente indirecta, raíles; sensado, decenas de voltios; aislado, barrera."
+
+  - id: pregunta-red
+    tipo: pregunta
+    titulo: "El zumbido de la red"
+    texto: "Más eficaz que un filtro contra los 50 Hz de la red: integrar durante un tiempo. ¿Cuál?"
+    libro: [217]
+    widget:
+      tipo: figura
+      figura: fig-35.13
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [30, 15, 210, 170] }
+    opciones:
+      - texto: "Un múltiplo del periodo de red: 20, 100 o 200 ms"
+        bien: true
+        porque: "El zumbido se promedia a cero y la red desaparece por completo."
+      - texto: "Lo más corto posible"
+        porque: "Integrar poco no promedia el zumbido: hace falta un periodo entero o varios."
+      - texto: "Cualquier tiempo largo"
+        porque: "Debe ser un múltiplo exacto del periodo para que el zumbido sume cero."
+    escalera:
+      - "¿Cuánto vale el promedio de una senoide en un periodo entero?"
+    solucion: "Un múltiplo de 20 ms."
+
+  - id: pregunta-cmrr-banco
+    tipo: predecir
+    titulo: "Medir el CMRR"
+    texto: "Se mide el CMRR uniendo las entradas, a 50 Hz y a 50 kHz. ¿Qué se espera?"
+    libro: [219, 220]
+    widget:
+      tipo: figura
+      figura: fig-35.13
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [30, 15, 210, 170] }
+    opciones:
+      - texto: "Mucho mejor rechazo a 50 Hz que a 50 kHz"
+        bien: true
+        porque: "El CMRR se degrada con la frecuencia: lo que la cifra de portada oculta."
+      - texto: "El mismo en las dos"
+        porque: "La cifra de portada es a baja frecuencia: a 50 kHz es bastante peor."
+      - texto: "Mejor a 50 kHz"
+        porque: "Al revés: el rechazo empeora al subir la frecuencia."
+    escalera:
+      - "El apareamiento de las capacidades parásitas pesa más al subir la frecuencia."
+    solucion: "Mejor a 50 Hz: el CMRR cae con la frecuencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [197, 203, 204, 207]
+    ideas:
+      - { titulo: "El problema.", texto: "Una diferencia pequeña sobre mucho modo común; el discreto, 34 dB con el 1 %." }
+      - { titulo: "Tres operacionales.", texto: "Entrada altísima y simétrica, CMRR de 100 a 130 dB." }
+      - { titulo: "Una resistencia.", texto: "R_{G} fija la ganancia sin tocar el rechazo." }
+      - { titulo: "Cuidado.", texto: "Camino a masa, referencia desde un seguidor, modo común permitido." }

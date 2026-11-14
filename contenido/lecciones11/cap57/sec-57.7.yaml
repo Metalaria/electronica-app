@@ -1,0 +1,274 @@
+# Lección 1.2 de la sección 54.7 «Programar un Robot Industrial» (cap57; etiquetas sec-57.N = impresas 54.N).
+# - Los sistemas de coordenadas (bloques 126 a 128), los movimientos articular, lineal y circular (131) y las zonas de
+#   aproximación con el ejemplo en RAPID (132).
+# - Programar con la consola (repetibilidad) y fuera de línea (exactitud) (134, 135); los modos (137).
+# - La gráfica compara, en el brazo plano de la sección 54.2 (L1 = 120 mm, L2 = 100 mm, cinemática directa del
+#   bloque 16), el camino de la punta con un movimiento articular (los dos ángulos interpolados en recta) y con uno
+#   lineal (la recta entre los dos puntos). Las dos posturas son de ejemplo (rotulado): θ2 = 20°, θ3 = −40° y
+#   θ2 = 90°, θ3 = −90° (100, 120) mm.
+# - El ejercicio 54.10 (cap57#176): 300 mm a 250 mm/s con 1 000 mm/s², 1,45 s y 362 puntos cada 4 ms.
+# Pasos prácticos: «ordenar» la programación fuera de línea y «simular» la duración del movimiento lineal del ejercicio
+# 54.10 (1,45 s; errores: sin la aceleración, 1,2 s, o con dos rampas enteras de más, 1,7 s).
+leccion: cap57/sec-57.7
+
+libro:
+  126: "Un robot industrial se programa con posiciones de la herramienta, no con ángulos"
+  127: "Es el punto que el robot lleva a las posiciones programadas y el que se mueve en línea recta"
+  128: "en el de la herramienta, «adelante» es siempre hacia donde apunta la herramienta"
+  131: "el camino de la herramienta entre los dos puntos no es una recta ni se puede predecir a simple vista"
+  132: "con una parada exacta (fine), llega al punto y se detiene, lo que hace falta para coger o dejar una pieza"
+  134: "Una posición enseñada tiene la repetibilidad del robot"
+  135: "Su límite es la exactitud del robot, lo que se aparta del punto pedido en coordenadas cartesianas, que es mucho peor que su repetibilidad"
+  137: "cambiar de modo no puede poner el robot en marcha, y en manual la consola, con su parada de emergencia y su dispositivo de validación, es el único mando que mueve el robot"
+  "cap57#16": 'r = L_("1") dot.op cos θ_("2") + L_("2") dot.op cos (θ_("2") + θ_("3"))'
+  "cap57#176": "Un robot debe llevar una ventosa 300 mm en línea recta a 250 mm/s, con 1 000 mm/s² de aceleración"
+
+modelo:
+  valores:
+    L_1: { sim: "L₁", nombre: "longitud del primer segmento", unidad: m, valor: 0.12 }
+    L_2: { sim: "L₂", nombre: "longitud del segundo segmento", unidad: m, valor: 0.1 }
+    a2: { sim: "θ₂ₐ", nombre: "hombro al empezar", unidad: "°", valor: 20 }
+    a3: { sim: "θ₃ₐ", nombre: "codo al empezar", unidad: "°", valor: -40 }
+    b2: { sim: "θ₂ᵦ", nombre: "hombro al acabar", unidad: "°", valor: 90 }
+    b3: { sim: "θ₃ᵦ", nombre: "codo al acabar", unidad: "°", valor: -90 }
+    p_m: { sim: "p", nombre: "avance del movimiento", unidad: "", valor: 0 }
+    L_m: { sim: "s", nombre: "recorrido en línea recta", unidad: m, valor: 0.3 }
+    v_m: { sim: "v", nombre: "velocidad programada", unidad: "m/s", valor: 0.25 }
+    a_m: { sim: "a", nombre: "aceleración", unidad: "m/s²", valor: 1 }
+    T_p: { sim: "T_{punto}", nombre: "periodo de la trayectoria", unidad: s, valor: 0.004 }
+  calculos:
+    xa: { expr: "L_1*cos(a2*pi/180) + L_2*cos((a2 + a3)*pi/180)", sim: "rₐ", nombre: "punto de partida, r", unidad: m }
+    za: { expr: "L_1*sin(a2*pi/180) + L_2*sin((a2 + a3)*pi/180)", sim: "zₐ", nombre: "punto de partida, z", unidad: m }
+    xb: { expr: "L_1*cos(b2*pi/180) + L_2*cos((b2 + b3)*pi/180)", sim: "rᵦ", nombre: "punto de llegada, r", unidad: m }
+    zb: { expr: "L_1*sin(b2*pi/180) + L_2*sin((b2 + b3)*pi/180)", sim: "zᵦ", nombre: "punto de llegada, z", unidad: m }
+    t2: { expr: "(a2 + p_m*(b2 - a2))*pi/180", sim: "θ₂", nombre: "hombro en el movimiento articular", unidad: rad }
+    t3: { expr: "(a3 + p_m*(b3 - a3))*pi/180", sim: "θ₃", nombre: "codo en el movimiento articular", unidad: rad }
+    xc: { expr: "L_1*cos(t2)", sim: "r_{codo}", nombre: "codo, r", unidad: m }
+    zc: { expr: "L_1*sin(t2)", sim: "z_{codo}", nombre: "codo, z", unidad: m }
+    xj: { expr: "xc + L_2*cos(t2 + t3)", sim: "r_{J}", nombre: "punta con el articular, r", unidad: m }
+    zj: { expr: "zc + L_2*sin(t2 + t3)", sim: "z_{J}", nombre: "punta con el articular, z", unidad: m }
+    xl: { expr: "xa + p_m*(xb - xa)", sim: "r_{L}", nombre: "punta con el lineal, r", unidad: m }
+    zl: { expr: "za + p_m*(zb - za)", sim: "z_{L}", nombre: "punta con el lineal, z", unidad: m }
+    sep: { expr: "sqrt((xj - xl)^2 + (zj - zl)^2)", sim: "Δ", nombre: "separación entre los dos caminos", unidad: m }
+    T_m: { expr: "L_m/v_m + v_m/a_m", sim: "T", nombre: "duración del movimiento", unidad: s }
+    T_0: { expr: "L_m/v_m", sim: "s/v", nombre: "duración sin aceleración", unidad: s }
+    T_2: { expr: "L_m/v_m + 2*v_m/a_m", sim: "T", nombre: "duración con dos rampas de más", unidad: s }
+    s_u: { expr: "v_m^2/a_m", sim: "v²/a", nombre: "umbral del triángulo", unidad: m }
+    N_p: { expr: "floor(T_m/T_p)", sim: "N", nombre: "puntos de la trayectoria", unidad: "" }
+
+tarjetas:
+  - id: prediga-articular
+    tipo: predecir
+    titulo: "El camino de un movimiento articular"
+    texto: "Un movimiento articular lleva cada eje de su ángulo inicial al final, y todos acaban a la vez. ¿Por dónde va la herramienta?"
+    libro: [131]
+    widget:
+      tipo: figura
+      figura: fig-57.2
+      zonas:
+        - { id: lado, rotulo: "El brazo visto de lado", rect: [30, 15, 160, 145] }
+    opciones:
+      - texto: "Por una curva que no se predice a simple vista"
+        bien: true
+        porque: "Los ángulos van en recta, pero la punta depende de ellos con senos y cosenos."
+      - texto: "En línea recta"
+        porque: "Eso es el movimiento lineal, que resuelve la cinemática inversa en cada punto."
+      - texto: "Por un arco de circunferencia"
+        porque: "Ese es el circular, por tres puntos."
+    escalera:
+      - "La posición de la punta es r = L₁·cos θ₂ + L₂·cos(θ₂ + θ₃). ¿Es lineal en los ángulos?"
+    solucion: "Por una curva que depende de la postura: no es una recta."
+
+  - id: explore-movimientos
+    tipo: explorar
+    titulo: "Articular frente a lineal"
+    texto: "Avance el movimiento y compare la punta con el articular y con el lineal, entre las mismas dos posturas."
+    nota: "Las dos posturas son de ejemplo."
+    libro: [131, "cap57#16"]
+    inicio: { p_m: 0 }
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: rx, min: -0.05, max: 0.25, unidad: m, rotulo: "r" }
+      y: { min: -0.05, max: 0.2, unidad: m, rotulo: "z" }
+      curvas:
+        - { param: { id: q, min: 0, max: 1 }, x: "L_1*cos((a2 + q*(b2 - a2))*pi/180) + L_2*cos((a2 + a3 + q*(b2 + b3 - a2 - a3))*pi/180)", y: "L_1*sin((a2 + q*(b2 - a2))*pi/180) + L_2*sin((a2 + a3 + q*(b2 + b3 - a2 - a3))*pi/180)", color: naranja, rotulo: "articular" }
+        - { param: { id: u, min: 0, max: 1 }, x: "xa + u*(xb - xa)", y: "za + u*(zb - za)", color: verde, rotulo: "lineal", discontinua: true }
+        - { param: { id: s1, min: 0, max: 1 }, x: "s1*xc", y: "s1*zc", color: azul, rotulo: "brazo" }
+        - { param: { id: s2, min: 0, max: 1 }, x: "xc + s2*(xj - xc)", y: "zc + s2*(zj - zc)", color: azul, rotulo: "antebrazo" }
+      marcas:
+        - { x: "xl", y: "zl", rotulo: "lineal", guias: false }
+      lectura: { valor: sep, rotulo: "Separación entre los caminos" }
+      mandos:
+        - { valor: p_m, min: 0, max: 1, paso: 0.05, rotulo: "Avance del movimiento" }
+    requiere: { mover: [p_m] }
+
+  - id: empareje-movimientos
+    tipo: pregunta
+    titulo: "Tres órdenes de movimiento"
+    texto: "Los lenguajes de todos los fabricantes tienen las mismas tres. Empareje cada una con su rasgo."
+    libro: [131]
+    widget:
+      tipo: figura
+      figura: fig-57.2
+      zonas:
+        - { id: lado, rotulo: "El brazo visto de lado", rect: [30, 15, 160, 145] }
+    emparejar:
+      - ["Articular (PTP, MoveJ)", "El más rápido; nunca pasa por una singularidad"]
+      - ["Lineal (LIN, MoveL)", "Cinemática inversa cada pocos milisegundos; frena cerca de una singularidad"]
+      - ["Circular (CIRC, MoveC)", "Por tres puntos"]
+    exito: "El articular se usa para desplazarse por espacio libre; el lineal, cuando importa el camino."
+    pistas:
+      - { texto: "Solo el lineal resuelve la cinemática inversa en cada punto intermedio." }
+    escalera:
+      - "¿Cuál interpola ángulos y cuál posiciones de la herramienta?"
+    solucion: "Articular: rápido, sin singularidades. Lineal: recta con cinemática inversa. Circular: tres puntos."
+
+  - id: empareje-sistemas
+    tipo: pregunta
+    titulo: "Los sistemas de coordenadas"
+    texto: "Se programa con posiciones de la herramienta. Empareje cada sistema con su rasgo."
+    libro: [126, 127, 128]
+    widget:
+      tipo: figura
+      figura: fig-57.3
+      zonas:
+        - { id: brazo, rotulo: "El brazo con sus sistemas", rect: [20, 20, 200, 160] }
+    emparejar:
+      - ["De la base", "Fijo en el pie del robot"]
+      - ["De la herramienta", "Origen en el TCP; «adelante», hacia donde apunta"]
+      - ["De la pieza", "Tres puntos tocados; si la mesa se mueve, basta medirlos otra vez"]
+    exito: "El controlador los encadena con las transformaciones homogéneas de la sección 54.2."
+    pistas:
+      - { texto: "El TCP es la punta de la pistola, el centro de la ventosa o el punto entre los dedos." }
+    escalera:
+      - "¿Cuál cambia si se mueve la mesa, y cuál si se cambia la pinza?"
+    solucion: "Base: el pie. Herramienta: el TCP. Pieza: tres puntos de la mesa."
+
+  - id: prediga-fine
+    tipo: predecir
+    titulo: "Coger una pieza"
+    texto: "MoveJ aprox, v1000, z50 lleva la pinza deprisa cerca de la pieza. ¿Qué zona hace falta en el MoveL que la coge?"
+    libro: [132]
+    widget:
+      tipo: figura
+      figura: fig-57.2
+      zonas:
+        - { id: lado, rotulo: "El brazo visto de lado", rect: [30, 15, 160, 145] }
+    opciones:
+      - texto: "Una parada exacta, fine"
+        bien: true
+        porque: "Llega al punto y se detiene: lo que hace falta para coger o dejar una pieza."
+      - texto: "z50, como el anterior"
+        porque: "Con z50 empieza a ir al punto siguiente a 50 mm del programado: redondea la esquina sin llegar."
+      - texto: "Da igual la zona"
+        porque: "La zona decide si llega al punto o lo redondea."
+    escalera:
+      - "¿Hay que llegar exactamente al punto, o basta con pasar cerca?"
+    solucion: "fine: MoveL coger, v200, fine, pinza."
+
+  - id: porque-repetibilidad
+    tipo: porque
+    titulo: "Enseñar o calcular"
+    texto: "Una posición enseñada con la consola es mucho más precisa que una calculada fuera de línea. ¿Por qué?"
+    libro: [134, 135]
+    widget:
+      tipo: figura
+      figura: fig-57.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla, arriba a la derecha", rect: [215, 8, 107, 80] }
+    opciones:
+      - texto: "La enseñada se guarda con los mismos ángulos que se pedirán: vale la repetibilidad"
+        bien: true
+        porque: "La calculada pasa por el modelo cinemático, y vale la exactitud, mucho peor."
+      - texto: "Porque la consola mide mejor que el ordenador"
+        porque: "No es cosa de medir: la calculada depende de un modelo con tolerancias, holguras y flexión."
+      - texto: "Porque fuera de línea no hay cinemática inversa"
+        porque: "La hay: es justo lo que la hace depender de la exactitud del modelo."
+    escalera:
+      - "¿Qué se guarda al enseñar un punto: coordenadas o ángulos?"
+    solucion: "La enseñada repite los mismos ángulos; la calculada depende de la exactitud del modelo."
+
+  - id: ordene-fuera
+    tipo: pregunta
+    titulo: "Programar fuera de línea"
+    texto: "Ordene los pasos de un programa hecho fuera de línea hasta que funciona en la célula."
+    libro: [135]
+    widget:
+      tipo: figura
+      figura: fig-57.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla, arriba a la derecha", rect: [215, 8, 107, 80] }
+    ordenar:
+      - "Escribir el programa sobre un modelo de la célula"
+      - "Simularlo: choques y alcances"
+      - "Calibrar el robot y medir herramienta y pieza en la célula real"
+      - "Retocar con la consola los puntos críticos"
+    exito: "Fuera de línea no se para la producción; la calibración y los retoques compensan la exactitud."
+    pistas:
+      - { texto: "Los puntos críticos se retocan al final, con el robot real." }
+    escalera:
+      - "Del ordenador a la célula: modelo, simulación, medidas reales y retoques."
+    solucion: "Programa, simulación, calibración y medida en la célula, retoques con la consola."
+
+  - id: simule-ventosa
+    tipo: simular
+    titulo: "Una ventosa en línea recta"
+    texto: "Una ventosa recorre 300 mm en línea recta a 250 mm/s, con 1 000 mm/s² de aceleración. ¿Cuánto dura el movimiento?"
+    libro: ["cap57#176"]
+    fijar: { L_m: 0.3, v_m: 0.25, a_m: 1 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.3, unidad: "m/s", rotulo: "v" }
+      curvas:
+        - { expr: "max(0, min(a_m*tt, v_m, a_m*(T_m - tt)))", color: azul, rotulo: "velocidad de la ventosa" }
+      lectura: { valor: T_m, rotulo: "Duración" }
+      ocultar: curvas
+    simular:
+      objetivo: T_m
+      unidad: s
+      tol: 0.02
+      rotulo: "Duración del movimiento"
+      errores:
+        - { expr: "T_0", texto: "1,2 s sería sin acelerar: el perfil trapezoidal añade v/a = 0,25 s." }
+        - { expr: "T_2", texto: "Ha sumado las dos rampas enteras: cada una recorre la mitad que a velocidad constante, y en total añaden v/a." }
+    exito: "1,45 s; con un punto cada 4 ms, 362 cinemáticas inversas. Un articular no garantiza ni el camino ni la velocidad."
+    escalera:
+      - "v²/a = 62,5 mm < 300 mm: es un trapecio."
+      - "T = s/v + v/a."
+    solucion: "300/250 + 250/1 000 = 1,45 s."
+    comprobar:
+      - { T_m: 1.45, T_0: 1.2, T_2: 1.7, s_u: 0.0625, N_p: 362 }
+
+  - id: prediga-modo
+    tipo: predecir
+    titulo: "El selector de modo"
+    texto: "El operario pasa el robot de manual a automático con el selector. ¿Qué debe ocurrir?"
+    libro: [137]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: cadena, rotulo: "La cadena, a la izquierda", rect: [5, 37, 215, 132] }
+    opciones:
+      - texto: "Nada se mueve: cambiar de modo no pone el robot en marcha"
+        bien: true
+        porque: "El selector es parte del sistema de seguridad; cada condición es una función con su nivel de prestaciones."
+      - texto: "El programa arranca a la velocidad programada"
+        porque: "Cambiar de modo nunca puede poner el robot en marcha."
+      - texto: "Sigue en velocidad reducida"
+        porque: "La velocidad reducida es del manual; pero ni así el cambio arranca nada."
+    escalera:
+      - "¿Puede un selector, por sí solo, poner en marcha una máquina?"
+    solucion: "No arranca nada: el selector es parte del sistema de seguridad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [126, 131, 135, 137]
+    ideas:
+      - { titulo: "Coordenadas.", texto: "Base, herramienta con su TCP y pieza, encadenadas con matrices." }
+      - { titulo: "Movimientos.", texto: "Articular rápido y sin singularidades; lineal en recta, con cinemática inversa." }
+      - { titulo: "Enseñar o calcular.", texto: "La enseñada repite; la calculada depende de la exactitud." }
+      - { titulo: "Modos.", texto: "Cambiar de modo no pone el robot en marcha." }

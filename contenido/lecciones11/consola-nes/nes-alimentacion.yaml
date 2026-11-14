@@ -1,0 +1,165 @@
+# «Consolas por dentro» · NES 2: la alimentación. La placa de la CPU no regula: le llegan +9 V y +5 V por P6 desde la
+# placa de alimentación; los +9 V solo van al modulador y a la expansión, los +5 V (VCC) a todos los chips, con su
+# desacoplo. Búsqueda de una avería en las dos vías. Fuentes: nes#n (explorador y redes del esquema OpenTendo) y el libro
+# (desacoplo, 3.6; reparación, capítulo 55).
+leccion: consola-nes/nes-alimentacion
+
+libro:
+  "nes#25": "Entrada de +9 V y +5 V desde la placa de alimentación"
+  "nes#26": "FC1 filtra la alimentación del modulador"
+  "nes#27": "convierte el vídeo compuesto y el audio en señal de antena"
+  "nes#63": "Red +9V del esquema (alimentación): llega a C12, C15, P2, P3, P6"
+  "nes#64": "Red VCC del esquema (alimentación): llega a BC1"
+  "cap03#95": "Cada circuito integrado debe llevar un condensador de desacoplamiento"
+  "cap53#30": "cortocircuitos entre raíles y masa"
+
+modelo:
+  valores:
+    V9: { sim: "V_{+9}", nombre: "vía de +9 V", unidad: V, valor: 9 }
+    V5: { sim: "V_{CC}", nombre: "vía de +5 V", unidad: V, valor: 5 }
+    c15: { tipo: interruptor, nombre: "C15 sano", valor: 1 }
+    c16: { tipo: interruptor, nombre: "C16 sano", valor: 1 }
+  calculos:
+    V_mod: { expr: "V9*c15", sim: "V_{modulador}", nombre: "+9 V en el modulador", unidad: V, cifras: 3 }
+    V_cpu: { expr: "V5*c16", sim: "V_{CPU}", nombre: "VCC en la CPU", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-p6
+    tipo: explorar
+    titulo: "Por dónde entra"
+    texto: "Toque el conector azul P6, el modulador y la CPU."
+    libro: ["nes#25", "nes#27"]
+    requiere: { mover: [p6, mod] }
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: p6, hotspot: P6, rotulo: "Conector P6", texto: "Entran +9 V y +5 V desde la placa de alimentación, y el reset y el LED." }
+        - { id: mod, hotspot: P3, rotulo: "Modulador", texto: "Convierte el vídeo y el audio en señal de antena." }
+        - { id: cpu, hotspot: U6, rotulo: "CPU", texto: "Como todos los chips, va con los +5 V." }
+
+  - id: prediga-regulador
+    tipo: predecir
+    titulo: "¿Y el regulador?"
+    texto: "En esta placa no hay regulador de 5 V. ¿De dónde salen los 5 V de los chips?"
+    libro: ["nes#25"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: p6, hotspot: P6, rotulo: "Conector P6" }
+    opciones:
+      - texto: "Llegan ya hechos por P6, desde la placa de alimentación."
+        bien: true
+        porque: "P6 trae +9 V y +5 V de la placa de alimentación: la placa de la CPU no regula."
+      - texto: "Los da la CPU, que tiene un regulador dentro."
+        porque: "La CPU recibe VCC como los demás chips; los +5 V entran por P6."
+      - texto: "Del cartucho, por su conector."
+        porque: "Es al revés: la consola alimenta al cartucho. Los +5 V llegan por P6."
+    escalera:
+      - "Lea la ficha del conector azul."
+    solucion: "Por P6, desde la placa de alimentación: +9 V y +5 V ya hechos."
+
+  - id: empareje-vias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "A dónde va cada vía"
+    texto: "Empareje cada pieza de la alimentación con su papel, según el esquema."
+    libro: ["nes#63", "nes#64", "nes#25", "nes#26"]
+    emparejar:
+      - ["+9 V", "Al modulador (P3) y a la expansión (P2)"]
+      - ["VCC, +5 V", "A todos los chips"]
+      - ["C14–C18", "Desacoplan cada vía de P6"]
+      - ["FC1", "Filtra la alimentación del modulador"]
+    exito: "Dos vías: los +9 V solo para el modulador y la expansión; los +5 V para la lógica."
+    pistas:
+      - { texto: "La red +9V del esquema solo llega a C12, C15, P2, P3 y P6." }
+    escalera:
+      - "Los chips (U1–U10) están todos en la red VCC."
+    solucion: "+9 V: modulador y expansión. VCC: los chips. C14–C18: desacoplo de P6. FC1: filtro del modulador."
+
+  - id: por-que-desacoplo
+    tipo: porque
+    titulo: "Un condensador por chip"
+    texto: "La red VCC llega a cada chip y a muchos condensadores pequeños. ¿Para qué?"
+    libro: ["cap03#95", "nes#64"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cpu, hotspot: U6, rotulo: "CPU" }
+        - { id: ppu, hotspot: U5, rotulo: "PPU" }
+    opciones:
+      - texto: "Desacoplan: dan junto a cada chip la corriente de sus picos."
+        bien: true
+        porque: "Cada integrado debe llevar su condensador de desacoplamiento entre alimentación y masa, lo más cerca posible."
+      - texto: "Suben la tensión para los chips que necesitan más."
+        porque: "Un condensador no sube la tensión: guarda carga junto al chip para sus picos de corriente."
+      - texto: "Forman el oscilador de cada chip."
+        porque: "El oscilador es el del cristal X1. Los condensadores entre VCC y masa son de desacoplo."
+    escalera:
+      - "Están entre VCC y masa, junto a cada integrado."
+    solucion: "Son de desacoplo: cada integrado lleva el suyo entre alimentación y masa, cerca."
+
+  - id: averia-vias
+    tipo: averia
+    titulo: "Un condensador en corto"
+    texto: "Un condensador de desacoplo se ha puesto en corto. Mida las dos vías y señale cuál."
+    libro: ["nes#63", "nes#64", "nes#25", "cap53#30"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: p6, hotspot: P6, rotulo: "Conector P6" }
+        - { id: mod, hotspot: P3, rotulo: "Modulador" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: c15, rotulo: "C15 (vía de +9 V)" }
+        - { id: c16, rotulo: "C16 (vía de +5 V)" }
+      sondas:
+        - { id: modulador, rotulo: "+9 V en el modulador", valor: V_mod }
+        - { id: cpu, rotulo: "VCC en la CPU", valor: V_cpu }
+      fallos:
+        - { id: c15-corto, pieza: c15, tipo: corto, con: { c15: 0 }, texto: "C15 en corto lleva a masa la vía de +9 V: el modulador se queda sin alimentación." }
+        - { id: c16-corto, pieza: c16, tipo: corto, con: { c16: 0 }, texto: "C16 en corto lleva a masa los +5 V: ningún chip tiene VCC." }
+    exito: "Cada vía alimenta lo suyo: la que cae a 0 V señala su condensador."
+    escalera:
+      - "Mida las dos vías: una sigue bien."
+      - "C15 está en la red +9V; C16, en la red VCC."
+    solucion: "Si cae el +9 V del modulador, C15; si cae el VCC de la CPU, C16."
+    comprobar:
+      - { V_mod: 9, V_cpu: 5 }
+
+  - id: toque-entrada
+    tipo: tocar
+    titulo: "Dónde medir primero"
+    texto: "La consola no da señales de vida. Toque el conector donde comprobaría primero que llegan las dos tensiones."
+    libro: ["nes#25"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: p6, hotspot: P6, rotulo: "Conector a la derecha" }
+        - { id: cart, hotspot: P1, rotulo: "Conector largo, abajo" }
+        - { id: exp, hotspot: P2, rotulo: "Conector largo, arriba" }
+    tocar:
+      bien: [p6]
+      porque:
+        cart: "Es el conector del cartucho: por él no entra la alimentación de la consola."
+        exp: "Es el puerto de expansión: recibe los +9 V, no los trae."
+    exito: "P6: si ahí no están los +9 V y los +5 V, el problema es la placa de alimentación."
+    escalera:
+      - "Busque el conector por el que llegan las tensiones desde la otra placa."
+    solucion: "El conector azul P6, a la derecha."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["nes#25", "nes#63", "nes#64", "cap03#95"]
+    ideas:
+      - { titulo: "Sin regulador.", texto: "Los +9 V y los +5 V llegan hechos por P6." }
+      - { titulo: "Dos vías.", texto: "+9 V para el modulador y la expansión; +5 V para los chips." }
+      - { titulo: "Desacoplo.", texto: "Un condensador junto a cada chip, entre VCC y masa." }
+      - { titulo: "Medir por vías.", texto: "La vía que cae a 0 V señala dónde está el corto." }

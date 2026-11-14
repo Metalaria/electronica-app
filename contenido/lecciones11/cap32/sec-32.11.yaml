@@ -1,0 +1,244 @@
+# Lección 1.2 de la sección 32.11 «Filtros y Ferritas contra la Interferencia Conducida» (cap32). Formato: GUIA.md.
+# La regla de los divisores (bloque 346) con el esquema filtro-rl: una ferrita como L = 10 µH en serie (ejemplo) y la
+# carga como R, ruido de 10 MHz (ωL ≈ 628 Ω). La salida es v_R: con carga de 10 Ω atenúa unos 36 dB; con 100 kΩ, nada.
+# Zonas de la figura 32.13 (svg_vista 450,72 × 229,71) y de la foto 32.14 (1600 × 619 px).
+leccion: cap32/sec-32.11
+
+libro:
+  334: "Es lo que produce una fuente conmutada en su entrada"
+  335: "Es el más difícil de eliminar y el que domina a frecuencias altas"
+  338: "si fallan en cortocircuito entre fase y neutro lo que ocurre es que salta el fusible"
+  339: "su valor está limitado por norma, porque conducen corriente de fuga a tierra"
+  341: "dos bobinados sobre el mismo núcleo"
+  342: "puede tener una inductancia enorme para el modo común sin saturar con la corriente de trabajo"
+  344: "sin ella, el filtro queda cargado al desenchufar y las clavijas dan una descarga"
+  346: "solo atenúa si lo que tiene detrás es una impedancia baja"
+  347: "C, L, C"
+  348: "es el que conviene entre dos impedancias bajas"
+  350: "Si el cable de red recorre la placa hasta llegar al filtro, ya ha recogido y radiado todo por el camino"
+  351: "un cable largo la anula por su inductancia"
+  352: "el ruido salta por encima del filtro"
+  355: "Contener localmente: filtrado en la propia fuente conmutada"
+  356: "el filtro está tapando el síntoma a un coste mucho mayor"
+  359: "esa discrepancia casi siempre se debe al montaje y no al componente"
+  "cap32#361": "con un condensador X2 añadido en sus terminales"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud del ruido", unidad: V, valor: 1 }
+    f_n: { sim: "f", nombre: "frecuencia del ruido", unidad: Hz, valor: 10000000 }
+    L_f: { sim: "L", nombre: "ferrita en serie", unidad: H, valor: 10e-6 }
+    R_c: { sim: "R_{carga}", nombre: "impedancia de la carga", unidad: Ω, valor: 10 }
+  calculos:
+    x_l: { expr: "2*pi*f_n*L_f/R_c", sim: "ωL/R", nombre: "ωL/R", unidad: "" }
+    A_r: { expr: "V_p/sqrt(1 + x_l^2)", sim: "v_{carga}", nombre: "ruido en la carga", unidad: V }
+    d_r: { expr: "20*log10(A_r/V_p)", sim: "atenuación", nombre: "atenuación", unidad: dB, cifras: 3 }
+
+tarjetas:
+  - id: prediga-ferrita
+    tipo: predecir
+    titulo: "Una ferrita en serie"
+    texto: "Pone una ferrita en serie delante de una entrada de alta impedancia para frenar un ruido de 10 MHz. ¿Atenúa?"
+    libro: [346]
+    fijar: { R_c: 100000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rl
+      piezas: { fuente: V_p, f: f_n, r: R_c, l: L_f }
+      lectura: { valor: d_r, rotulo: "Atenuación" }
+      mide: { vr_db: d_r }
+      ocultar: true
+    opciones:
+      - texto: "Casi nada: un elemento en serie solo atenúa si detrás hay impedancia baja"
+        bien: true
+        porque: "Es un divisor: con una carga enorme detrás, la ferrita se lleva una parte mínima del ruido."
+      - texto: "Mucho: la ferrita siempre frena la alta frecuencia"
+        porque: "Frena la corriente, pero la tensión sobre una carga alta apenas cambia: es un divisor."
+      - texto: "Lo amplifica"
+        porque: "Una ferrita sola no amplifica; aquí sencillamente no divide."
+    escalera:
+      - "Trátelo como un divisor: ferrita arriba, carga abajo."
+    solucion: "Casi nada: con 100 kΩ detrás, la ferrita de unos cientos de ohmios no divide."
+    comprobar:
+      - { f_n: 10000000 }
+
+  - id: explore-ferrita
+    tipo: explorar
+    titulo: "Depende de lo que hay detrás"
+    texto: "La misma ferrita frente a cargas distintas. Cambie la impedancia de la carga y mire la atenuación del ruido."
+    nota: "Ferrita de ejemplo, 10 µH."
+    libro: [346]
+    widget:
+      tipo: circuito
+      esquema: filtro-rl
+      piezas: { fuente: V_p, f: f_n, r: R_c, l: L_f }
+      lectura: { valor: d_r, rotulo: "Atenuación a 10 MHz" }
+      mide: { vr_db: d_r, vr_amp: A_r }
+      grafica:
+        x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -60, max: 5, unidad: dB, rotulo: "ruido en la carga" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*L_f/R_c)^2)", color: azul, rotulo: "v_{carga}", mide: vr_db }
+      mandos:
+        - { valor: R_c, lista: [10, 1000, 100000], rotulo: "Carga" }
+    requiere: { mover: [R_c] }
+    comprobar:
+      - { L_f: 10e-6 }
+
+  - id: empareje-formas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La forma del filtro"
+    texto: "Una cada par de impedancias, de la fuente y de la carga, con la forma de filtro que conviene."
+    libro: [347, 348]
+    emparejar:
+      - ["Fuente alta, carga alta", "C o π: C, L, C"]
+      - ["Fuente alta, carga baja", "L: C, L"]
+      - ["Fuente baja, carga alta", "L: L, C"]
+      - ["Fuente baja, carga baja", "T: L, C, L"]
+    exito: "El condensador va del lado de la impedancia alta; la bobina, del de la baja."
+    pistas:
+      - { texto: "Entre dos impedancias bajas hacen falta elementos en serie a los dos lados." }
+    escalera:
+      - "Un condensador en paralelo solo atenúa si delante hay una impedancia alta."
+    solucion: "Alta-alta: π. Alta-baja: C, L. Baja-alta: L, C. Baja-baja: T."
+
+  - id: toque-choke
+    tipo: tocar
+    titulo: "El componente clave"
+    texto: "Toque el componente que puede tener una inductancia enorme para el modo común sin saturar con la corriente de trabajo."
+    libro: [334, 335, 341, 342]
+    widget:
+      tipo: figura
+      figura: fig-32.12
+      zonas:
+        - { id: rd, rotulo: "Resistencia de la izquierda", rect: [85, 45, 35, 70] }
+        - { id: cx1, rotulo: "Condensador de la izquierda", rect: [125, 45, 35, 70] }
+        - { id: choke, rotulo: "Bobinados del centro", rect: [180, 15, 60, 115] }
+        - { id: cx2, rotulo: "Condensador del centro-derecha", rect: [254, 40, 42, 78] }
+        - { id: cy, rotulo: "Condensadores de la derecha", rect: [300, 38, 42, 70] }
+    tocar:
+      bien: [choke]
+      porque:
+        rd: "Es la resistencia de descarga: vacía los X al desenchufar."
+        cx1: "Un condensador X entre líneas: cortocircuita el modo diferencial."
+        cx2: "Otro condensador X entre líneas, para el modo diferencial."
+        cy: "Los condensadores Y derivan el modo común, pero su valor lo limita la fuga a tierra."
+    exito: "El choke: sus flujos útiles se cancelan y el modo común encuentra una impedancia alta."
+    escalera:
+      - "Dos bobinados sobre el mismo núcleo."
+    solucion: "Los bobinados del centro: el choke de modo común."
+
+  - id: descarga
+    tipo: porque
+    titulo: "La resistencia de descarga"
+    texto: "Un filtro de red lleva una resistencia en paralelo con los condensadores X. ¿Para qué?"
+    libro: [338, 344]
+    widget:
+      tipo: figura
+      figura: fig-32.12
+      zonas:
+        - { id: rd, rotulo: "Resistencia de la izquierda", rect: [85, 45, 35, 70] }
+    opciones:
+      - texto: "Para que al desenchufar las clavijas no den una descarga"
+        bien: true
+        porque: "Sin ella, el filtro queda cargado. Es un requisito normativo y una cortesía elemental."
+      - texto: "Para filtrar el modo común"
+        porque: "Va entre líneas y no filtra nada: solo descarga los X."
+      - texto: "Para limitar la corriente si el X falla"
+        porque: "Si un X falla en cortocircuito, lo que actúa es el fusible."
+    escalera:
+      - "¿Qué queda en un condensador al quitarle la tensión de golpe?"
+    solucion: "Descarga los X al desenchufar: sin ella, las clavijas pican."
+
+  - id: empareje-montaje
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que arruina un filtro"
+    texto: "Una cada error de montaje con su consecuencia."
+    libro: [350, 351, 352]
+    emparejar:
+      - ["Filtro lejos de la entrada", "El cable ya ha recogido y radiado por el camino"]
+      - ["Tierra de los Y con un cable largo", "Su inductancia la anula"]
+      - ["Entrada y salida juntas o en paralelo", "El ruido salta por encima del filtro"]
+    exito: "Los filtros integrados en el conector de red lo resuelven por construcción."
+    pistas:
+      - { texto: "Un cable largo a frecuencias altas es, sobre todo, una inductancia." }
+    escalera:
+      - "¿Dónde debe ir el filtro de red?"
+    solucion: "Lejos–recoge y radia; tierra larga–inductancia; juntas–salta por encima."
+
+  - id: toque-x2
+    tipo: tocar
+    titulo: "Un filtro real"
+    texto: "Una toma IEC con filtro integrado, sacada de la fuente de un ordenador. Toque el condensador X2 que le añadieron en los terminales."
+    libro: ["cap32#361"]
+    widget:
+      tipo: figura
+      imagen: img/foto_filtro_red.jpg
+      zonas:
+        - { id: toma, rotulo: "Plástico negro de la izquierda", rect: [65, 100, 155, 420] }
+        - { id: cuerpo, rotulo: "Caja metálica de la izquierda", rect: [225, 90, 410, 380] }
+        - { id: azul, rotulo: "Pieza azul", rect: [750, 90, 220, 300] }
+        - { id: otro, rotulo: "Foto de la derecha", rect: [1080, 70, 500, 440] }
+    tocar:
+      bien: [azul]
+      porque:
+        toma: "Es la toma IEC donde entra el cable de red."
+        cuerpo: "Es la caja metálica del filtro integrado, que se atornilla al chasis."
+        otro: "Es otro filtro con toma IEC, con LINE hacia la red y LOAD hacia el equipo."
+    exito: "El condensador azul, entre los dos terminales: un X2 que refuerza el rechazo diferencial."
+    escalera:
+      - "Busque lo que está soldado a los terminales, fuera de la caja."
+    solucion: "La pieza azul soldada a los terminales."
+
+  - id: ordene-actuacion
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El filtro es el último recurso"
+    texto: "Ordene las actuaciones contra la interferencia conducida."
+    libro: [355, 356]
+    ordenar:
+      - "Reducir la emisión en origen"
+      - "Contener localmente, en la propia fuente conmutada"
+      - "Filtrar en la entrada"
+      - "Apantallar"
+    exito: "Un equipo que necesita un filtro enorme suele tener un problema en el primer paso."
+    pistas:
+      - { texto: "Lo más barato es no generar el ruido." }
+    escalera:
+      - "Del origen hacia fuera."
+    solucion: "Origen, contener, filtrar y apantallar."
+
+  - id: banco-filtro
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Mide el espectro del cable de red con y sin el filtro, y atenúa bastante menos que en su hoja de datos. ¿Por qué?"
+    libro: [359]
+    widget:
+      tipo: circuito
+      esquema: filtro-rl
+      piezas: { fuente: V_p, f: f_n, r: R_c, l: L_f }
+      lectura: { valor: d_r, rotulo: "Atenuación" }
+      mide: { vr_db: d_r }
+    opciones:
+      - texto: "Casi siempre por el montaje, no por el componente"
+        bien: true
+        porque: "Cables largos, tierra deficiente o entrada y salida juntas le quitan eficacia."
+      - texto: "Porque la hoja de datos miente"
+        porque: "La hoja da el filtro bien montado; la diferencia la pone su montaje."
+      - texto: "Porque el filtro está estropeado"
+        porque: "Es posible, pero lo habitual es que falle el montaje."
+    escalera:
+      - "¿Qué ha cambiado entre la hoja de datos y su placa?"
+    solucion: "El montaje: la discrepancia casi siempre es suya."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [338, 339, 342, 346, 350]
+    ideas:
+      - { titulo: "Cada componente, su modo.", texto: "X entre líneas para el diferencial; Y a tierra y choke para el común." }
+      - { titulo: "Divisores.", texto: "Serie si detrás hay impedancia baja; paralelo si delante hay alta: L, π o T." }
+      - { titulo: "El montaje.", texto: "En la entrada, tierra corta, entrada y salida separadas." }
+      - { titulo: "El último recurso.", texto: "Antes, reducir en origen y contener." }

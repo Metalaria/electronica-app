@@ -1,0 +1,179 @@
+# Lección 1.2 de la sección K.4 «Máquinas de Estados y Búferes Circulares» (apK). Formato: contenido/lecciones11/GUIA.md
+# (§5.2, §11). La máquina es la del referenciado del brazo (bloque 39) y el búfer el del bloque 43, los dos probados en
+# Complementos/codigo/apK (estados, bufer). El número de datos guardados es (uint8_t)(cabeza − cola): la gráfica lo
+# dibuja frente a la cabeza con la cola fija, con la vuelta de 255 a 0; figura K.1b (cola 254, cabeza 3: 5 datos) y
+# ejercicio K.5 (cabeza 3, cola 250: 9 datos).
+leccion: apK/sec-K.4
+
+libro:
+  38: "un enum con los estados y un switch que, en cada uno, decide la salida y cuándo cambiar"
+  39: "fast to the switch, back off"
+  40: "Los tiempos se comparan restando, ahora - r->inicio, que funciona aunque el contador de milisegundos se desborde"
+  42: "la cabeza, donde escribe el que produce los datos"
+  43: "static volatile uint8_t cabeza;"
+  44: "cabeza - cola es siempre el número de datos guardados, incluso cuando el contador ha dado la vuelta"
+  45: "24 263 bytes llegan en orden y sin errores"
+  "apK#69": "la cabeza va 5 posiciones por delante de la cola"
+  "apK#70": "(uint8_t)(3 − 250) = 9 datos"
+
+modelo:
+  valores:
+    cab: { sim: "cabeza", nombre: "índice de la cabeza", unidad: "", valor: 3 }
+    col: { sim: "cola", nombre: "índice de la cola", unidad: "", valor: 254 }
+  calculos:
+    n_dat: { expr: "cab - col - 256*floor((cab - col)/256)", sim: "datos", nombre: "datos guardados", unidad: "" }
+
+tarjetas:
+  - id: explore-bufer
+    tipo: explorar
+    titulo: "Cabeza menos cola"
+    texto: "Índices de 8 bits que cuentan libremente de 0 a 255. Mueva la cabeza y la cola: (uint8_t)(cabeza − cola) cuenta los datos aunque dé la vuelta."
+    libro: [42, 44, "apK#69"]
+    widget:
+      tipo: grafica
+      x: { id: hh, min: 0, max: 255, unidad: "", rotulo: "cabeza" }
+      y: { min: 0, max: 260, unidad: "", rotulo: "datos guardados" }
+      curvas:
+        - { expr: "hh - col - 256*floor((hh - col)/256)", color: azul, rotulo: "cabeza − cola" }
+      marcas:
+        - { x: "cab", y: "n_dat", rotulo: "{{n_dat}}" }
+      lectura: { valor: n_dat, rotulo: "Datos guardados" }
+      mandos:
+        - { valor: cab, min: 0, max: 255, paso: 1, rotulo: "Cabeza" }
+        - { valor: col, lista: [250, 254], rotulo: "Cola" }
+    requiere: { mover: [cab] }
+
+  - id: estime-datos
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un búfer que ha dado la vuelta"
+    texto: "Índices uint8_t que cuentan libremente: la cabeza está en 3 y la cola en 250. ¿Cuántos datos guarda?"
+    libro: ["apK#70"]
+    fijar: { cab: 3, col: 250 }
+    widget:
+      tipo: grafica
+      x: { id: hh, min: 0, max: 255, unidad: "", rotulo: "cabeza" }
+      y: { min: 0, max: 260, unidad: "", rotulo: "datos guardados" }
+      curvas:
+        - { expr: "hh - col - 256*floor((hh - col)/256)", color: azul, rotulo: "cabeza − cola" }
+    estimar:
+      objetivo: "n_dat"
+      unidad: ""
+      min: 0
+      max: 64
+      paso: 1
+      inicio: 40
+      tol: 0.01
+      rotulo: "Datos guardados"
+    exito: "9 datos: la resta en uint8_t da la vuelta igual que los índices."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9 }, texto: "Se ha pasado: cuente solo de 250 hasta 255 y de 0 hasta 3." }
+      - { texto: "Se ha quedado corto: cuente de 250 hasta 255 y siga desde 0 hasta 3." }
+    escalera: ["(uint8_t)(3 − 250): sume 256 a la resta."]
+    solucion: "(uint8_t)(3 − 250) = 9 datos."
+    comprobar:
+      - { n_dat: 9 }
+      - { con: { col: 254 }, n_dat: 5 }
+
+  - id: porque-potencia
+    tipo: porque
+    titulo: "Potencia de dos"
+    texto: "¿Por qué el búfer debe medir una potencia de dos que divida a 256, y no, por ejemplo, 48 bytes?"
+    libro: [44, "apK#70"]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "La posición es el índice enmascarado." }
+    opciones:
+      - { texto: "Para que el índice enmascarado siga la vuelta de 255 a 0 sin saltos", bien: true, porque: "Con 48, al pasar el índice de 255 a 0 la posición saltaría; con 64, siguen siendo vecinas, y lleno y vacío no se confunden." }
+      - { texto: "Porque el compilador no admite otros tamaños", porque: "Los admite: el #error lo pone el propio código para evitar el fallo." }
+      - { texto: "Para ahorrar memoria", porque: "No ahorra nada: es para que la cuenta libre de los índices funcione." }
+    escalera: ["El índice cuenta hasta 255 y vuelve a 0; la posición es el índice enmascarado."]
+    solucion: "La vuelta del índice debe coincidir con una vuelta del búfer: tamaño potencia de dos que divida a 256."
+
+  - id: ordene-referenciado
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Referenciar la base del brazo"
+    texto: "Ponga en orden las fases de la máquina de estados, cuando todo va bien."
+    libro: [38, 39]
+    ordenar:
+      - "BUSCA_RAPIDO: hacia el final de carrera, deprisa."
+      - "RETROCEDE: un poco, durante un tiempo."
+      - "BUSCA_LENTO: otra vez hacia el final, despacio."
+      - "HECHO: parado."
+    exito: "Un enum con los estados y un switch: la función se llama cada milisegundo y nunca espera."
+    pistas:
+      - { texto: "Se busca dos veces: primero deprisa y después despacio." }
+    escalera: ["Para buscar despacio, antes hay que separarse del final de carrera."]
+    solucion: "Rápido, retroceder, lento y hecho."
+
+  - id: prediga-fallo
+    tipo: predecir
+    titulo: "Un final de carrera roto"
+    texto: "En BUSCA_RAPIDO, el final de carrera no llega nunca porque está roto. ¿Qué hace la función?"
+    libro: [39, 40]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          int16_t referencia(referencia_t *r, bool final_carrera, uint32_t ahora)
+          {
+              switch (r->fase) {
+              case BUSCA_RAPIDO:
+                  if (final_carrera) { r->fase = RETROCEDE; r->inicio = ahora; }
+                  else if (ahora - r->inicio > 15000u) r->fase = FALLO;
+                  else return -800;
+                  return 0;
+      resaltar: [6]
+    opciones:
+      - { texto: "Pasado su tiempo máximo, va a FALLO y devuelve velocidad 0", bien: true, porque: "Cada estado tiene un tiempo máximo: un final de carrera roto no deja el motor girando para siempre." }
+      - { texto: "Sigue devolviendo -800 para siempre", porque: "Eso haría sin tiempo máximo; la comprobación con ahora - r->inicio lo impide." }
+      - { texto: "Pasa a RETROCEDE", porque: "Solo pasa a RETROCEDE si el final de carrera se activa." }
+    escalera: ["Mire qué comprueba BUSCA_RAPIDO además del final de carrera."]
+    solucion: "Agota su tiempo, pasa a FALLO y para el motor."
+
+  - id: pregunta-restar
+    tipo: pregunta
+    titulo: "Comparar tiempos"
+    texto: "¿Por qué la máquina compara ahora - r->inicio con el intervalo, y no ahora con inicio + intervalo?"
+    libro: [40]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "Un contador sin signo da la vuelta, como estos índices." }
+    opciones:
+      - { texto: "Restando funciona aunque el contador de milisegundos se desborde", bien: true, porque: "La resta sin signo da la vuelta igual que el contador: el intervalo sale bien." }
+      - { texto: "Es más rápido de calcular", porque: "Cuestan lo mismo: la diferencia está en el desbordamiento." }
+      - { texto: "Da igual una que otra", porque: "inicio + intervalo puede desbordarse y hacer la comparación cierta antes de tiempo." }
+    escalera: ["¿Qué pasa cuando el contador pasa de su máximo a cero?"]
+    solucion: "La resta funciona a través del desbordamiento; la suma, no."
+
+  - id: porque-sin-seccion
+    tipo: porque
+    titulo: "Sin sección crítica"
+    texto: "La interrupción de la UART mete bytes y el bucle los saca, sin deshabilitar interrupciones. ¿Por qué es seguro?"
+    libro: [43, 44, 45]
+    widget:
+      tipo: figura
+      codigo: "apK#43"
+      resaltar: [10, 11, 18, 27]
+    opciones:
+      - { texto: "Cada índice lo escribe un solo lado, es de un byte y se actualiza tras el dato", bien: true, porque: "En simavr, 24 263 bytes llegan en orden y sin errores. Con varios productores harían falta secciones críticas." }
+      - { texto: "Porque los índices son volatile", porque: "volatile hace falta, pero no basta: la clave es que cada índice tiene un solo escritor." }
+      - { texto: "Porque la UART es lenta", porque: "No depende de la velocidad: la estructura es segura por construcción." }
+    escalera: ["¿Quién escribe la cabeza y quién la cola?"]
+    solucion: "Un escritor por índice, índices de un byte y actualizados después del dato."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [38, 40, 44]
+    ideas:
+      - { titulo: "Máquina de estados.", texto: "Un enum y un switch, que no espera y no toca el hardware." }
+      - { titulo: "Tiempos.", texto: "Cada estado con su máximo; se compara restando." }
+      - { titulo: "Búfer circular.", texto: "Índices que cuentan libremente: cabeza − cola son los datos." }
+      - { titulo: "Sin cerrojos.", texto: "Un productor, un consumidor y un escritor por índice." }

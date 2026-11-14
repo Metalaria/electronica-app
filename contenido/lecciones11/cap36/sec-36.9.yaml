@@ -1,0 +1,231 @@
+# Lección 1.2 de la sección 37.10 «El Front-End del FM7303, Revisitado» (cap36, sec-36.9). Formato: GUIA.md.
+# - Q necesario = f/BW (bloques 355 y 358): 500 a 100 MHz y unos 53 a 10,7 MHz para 200 kHz.
+# - Imagen: oscilador por encima, f_OL = f + FI, imagen = f + 2·FI (bloque 363: 121,4 MHz con 100 MHz y FI de
+#   10,7 MHz). Con el ejercicio 37.3 (98,1 MHz y OL en 108,8 MHz) la imagen cae en 119,5 MHz (cálculo del modelo).
+# - El circuito de entrada como un tanque sintonizado a 100 MHz: |H| = 1/√(1 + Q²·(f/f₀ − f₀/f)²). Los Q de 10 y 30
+#   son de ejemplo («unas decenas», bloque 348); 100 es el máximo realizable del bloque 356. Con Q = 30 la imagen baja
+#   21,4 dB y la emisora vecina a 200 kHz apenas nada: el tanque rechaza la imagen, no separa emisoras.
+# Paso práctico: «simular» la frecuencia imagen del ejercicio 37.3 (errores: el oscilador, f − FI).
+leccion: cap36/sec-36.9
+
+libro:
+  347: "un latiguillo de unos 75 cm es aproximadamente λ/4 a 100 MHz"
+  348: "en la práctica es modesto —unas decenas—, suficiente para separar bandas pero no emisoras"
+  349: "El LNA, cuya figura de ruido fija la del receptor"
+  350: "El mezclador y el oscilador local, que trasladan la señal a la frecuencia intermedia"
+  351: "a 10,7 MHz, un filtro cerámico consigue el ancho de banda que a 100 MHz sería imposible"
+  355: '"500"'
+  356: "Un tanque LC realizable llega a 100 o 200 como mucho"
+  358: '"53"'
+  360: "la selectividad se hace a una frecuencia fija donde es fácil, y la sintonía se traslada al oscilador local"
+  362: "dos frecuencias de entrada producen la misma FI, la deseada y la imagen, separada de ella por el doble de la FI"
+  363: "Con FI de 10,7 MHz y sintonía en 100 MHz, la imagen está en 121,4 MHz"
+  364: "no separa emisoras —para eso está la FI— sino que rechaza la imagen"
+  367: "Desajustarla reduce la sensibilidad y empeora el rechazo de imagen"
+  368: "fija la correspondencia entre la escala y la frecuencia real"
+  369: "ajustar con una avería presente estropea el ajuste sin arreglar nada"
+  371: "sintonizar una emisora conocida y después buscar en la frecuencia imagen"
+  "cap36#542": "Un receptor de FM sintoniza una emisora a 98,1 MHz con un oscilador local a 108,8 MHz"
+
+modelo:
+  valores:
+    Q_t: { sim: "Q", nombre: "Q del tanque de entrada", unidad: "", valor: 30 }
+    f_0: { sim: "f₀", nombre: "sintonía", unidad: Hz, valor: 100000000 }
+    F_I: { sim: "FI", nombre: "frecuencia intermedia", unidad: Hz, valor: 10700000 }
+    f_x: { sim: "f", nombre: "frecuencia a la que se selecciona", unidad: Hz, valor: 100000000 }
+    f_o: { sim: "f_{OL}", nombre: "oscilador local", unidad: Hz, valor: 108800000 }
+    f_r: { sim: "f_{RF}", nombre: "emisora sintonizada", unidad: Hz, valor: 98100000 }
+  calculos:
+    f_im: { expr: "f_0 + 2*F_I", sim: "f_{imagen}", nombre: "frecuencia imagen", unidad: Hz }
+    A_im: { expr: "-10*log10(1 + Q_t^2*(f_im/f_0 - f_0/f_im)^2)", sim: "rechazo", nombre: "atenuación de la imagen", unidad: dB }
+    A_v: { expr: "-10*log10(1 + Q_t^2*((f_0 + 200000)/f_0 - f_0/(f_0 + 200000))^2)", sim: "vecina", nombre: "atenuación de la emisora vecina", unidad: dB }
+    Q_r: { expr: "f_x/200000", sim: "Q", nombre: "Q necesario para 200 kHz", unidad: "" }
+    f_ie: { expr: "f_o + (f_o - f_r)", sim: "f_{imagen}", nombre: "imagen del ejercicio", unidad: Hz }
+    F_ie: { expr: "f_o - f_r", sim: "FI", nombre: "FI del ejercicio", unidad: Hz }
+    f_bajo: { expr: "f_r - (f_o - f_r)", sim: "f", nombre: "imagen al otro lado", unidad: Hz }
+
+tarjetas:
+  - id: explore-tanque
+    tipo: explorar
+    titulo: "El circuito de entrada"
+    texto: "Un tanque sintonizado a 100 MHz, de Q modesto. Cambie el Q y mire cuánto baja la imagen, a 121,4 MHz."
+    nota: "Q de 10 y 30, de ejemplo; 100 es el máximo realizable."
+    libro: [348, 356, 363]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 80000000, max: 130000000, unidad: Hz, rotulo: "f" }
+      y: { min: -40, max: 2, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10(1 + Q_t^2*(nu/f_0 - f_0/nu)^2)", color: naranja, rotulo: "tanque de entrada" }
+      marcas:
+        - { x: "f_0", y: "0", rotulo: "deseada" }
+        - { x: "f_im", y: "A_im", rotulo: "imagen: {{A_im}}" }
+      lectura: { valor: A_im, rotulo: "Atenuación de la imagen" }
+      datos:
+        - { valor: A_v, rotulo: "Emisora a 200 kHz: {{A_v}}" }
+      mandos:
+        - { valor: Q_t, lista: [10, 30, 100], rotulo: "Q del tanque" }
+    requiere: { mover: [Q_t] }
+    comprobar:
+      - { f_im: 121400000, A_im: -21.4, tol: 0.01 }
+
+  - id: formula-q
+    tipo: formula
+    titulo: "El Q que haría falta"
+    texto: "Separar emisoras a 200 kHz pide Q = f/200 kHz. Compare a 100 MHz y a la FI."
+    libro: [355, 358]
+    ec: 355
+    sustitucion: "{{f_x}} / 200 kHz = {{Q_r}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 200000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1, max: 2000, unidad: "", rotulo: "Q", escala: log }
+      curvas:
+        - { expr: "nu/200000", color: azul, rotulo: "Q necesario" }
+      marcas:
+        - { x: "f_x", y: "Q_r", rotulo: "Q = {{Q_r}}" }
+      lectura: { valor: Q_r, rotulo: "Q necesario" }
+      mandos:
+        - { valor: f_x, lista: [100000000, 10700000], nombres: [en la antena, en la FI], rotulo: "Dónde se selecciona" }
+
+  - id: predecir-q500
+    tipo: predecir
+    titulo: "Separar emisoras a 100 MHz"
+    texto: "Separar emisoras a 200 kHz en 100 MHz pide un Q de 500. ¿Lo consigue un tanque LC?"
+    libro: [355, 356]
+    widget:
+      tipo: figura
+      figura: fig-36.11
+      zonas:
+        - { id: q, rotulo: "Q necesario, a la izquierda", rect: [0, 0, 220, 187] }
+    opciones:
+      - texto: "No: un LC realizable llega a 100 o 200 como mucho"
+        bien: true
+        porque: "Por eso se traslada la señal a 10,7 MHz, donde basta un Q de unos 53."
+      - texto: "Sí, con una bobina buena"
+        porque: "Ni las mejores bobinas pasan de 100 o 200: el Q de 500 queda fuera."
+      - texto: "Sí, con dos tanques en serie"
+        porque: "No es la solución del libro: la selectividad se hace a una frecuencia fija y más baja."
+    escalera:
+      - "Compare 500 con lo que da un LC."
+    solucion: "No llega: 100 o 200 como mucho. De ahí la frecuencia intermedia."
+
+  - id: simule-imagen
+    tipo: simular
+    titulo: "La imagen del ejercicio"
+    texto: "Emisora en 98,1 MHz, oscilador local en 108,8 MHz. ¿En qué frecuencia está la imagen?"
+    libro: [362, "cap36#542"]
+    fijar: { f_o: 108800000, f_r: 98100000 }
+    simular:
+      objetivo: f_ie
+      unidad: Hz
+      tol: 0.003
+      rotulo: "Frecuencia imagen"
+      errores:
+        - { expr: "f_o", texto: "Ese es el oscilador local: la imagen está al otro lado de él, otra FI más allá." }
+        - { expr: "f_bajo", texto: "Esa está al otro lado de la emisora: a esa distancia no sale la FI con este oscilador." }
+    exito: "119,5 MHz: separada de la emisora el doble de la FI, 21,4 MHz."
+    escalera:
+      - "FI = 108,8 − 98,1 = 10,7 MHz."
+      - "La imagen está a la misma distancia del oscilador, por el otro lado."
+    solucion: "108,8 + 10,7 = 119,5 MHz."
+    comprobar:
+      - { F_ie: 10700000, f_ie: 119500000, f_bajo: 87400000 }
+
+  - id: porque-entrada
+    tipo: porque
+    titulo: "Para qué sirve el circuito de entrada"
+    texto: "Si la FI separa las emisoras, ¿para qué está el circuito sintonizado de la entrada?"
+    libro: [348, 364]
+    widget:
+      tipo: figura
+      figura: fig-36.11
+      zonas:
+        - { id: imagen, rotulo: "Rechazo de imagen, a la derecha", rect: [220, 0, 221, 187] }
+    opciones:
+      - texto: "Para rechazar la imagen, que está a 21,4 MHz: le basta un Q modesto"
+        bien: true
+        porque: "Cada filtro hace lo que puede hacer bien: la entrada, la imagen; la FI, las emisoras."
+      - texto: "Para separar las emisoras vecinas"
+        porque: "Con unas decenas de Q no puede: para eso está la FI."
+      - texto: "Para amplificar"
+        porque: "Un tanque pasivo no amplifica: amplifica el LNA."
+    escalera:
+      - "¿A qué distancia está la imagen? ¿Y la emisora vecina?"
+    solucion: "Rechaza la imagen, a 21,4 MHz; las emisoras las separa la FI."
+
+  - id: pregunta-antena
+    tipo: pregunta
+    titulo: "El latiguillo"
+    texto: "¿Por qué la antena de un receptor de FM mide unos 75 cm?"
+    libro: [347]
+    widget:
+      tipo: figura
+      figura: fig-36.11
+      zonas:
+        - { id: q, rotulo: "Q necesario, a la izquierda", rect: [0, 0, 220, 187] }
+    opciones:
+      - texto: "Es aproximadamente λ/4 a 100 MHz, y el aparato hace de plano de masa"
+        bien: true
+        porque: "El plano de masa del propio receptor forma la otra mitad del dipolo."
+      - texto: "Es λ entera a 100 MHz"
+        porque: "λ a 100 MHz son 3 m; 75 cm es la cuarta parte."
+      - texto: "Por comodidad: la longitud no importa"
+        porque: "Importa: resuena en la banda y por eso acopla bien."
+    escalera:
+      - "λ a 100 MHz son 3 m."
+    solucion: "Un cuarto de onda a 100 MHz."
+
+  - id: ordene-front-end
+    tipo: pregunta
+    titulo: "El camino de la señal"
+    texto: "Ordene los bloques del front-end desde la antena."
+    libro: [347, 348, 349, 350, 351]
+    widget:
+      tipo: figura
+      figura: fig-36.11
+      zonas:
+        - { id: todo, rotulo: "Q con y sin FI, e imagen", rect: [0, 0, 441, 187] }
+    ordenar:
+      - "La antena, un latiguillo de λ/4."
+      - "El circuito de entrada sintonizado."
+      - "El LNA."
+      - "El mezclador con el oscilador local."
+      - "El filtro cerámico de FI."
+    exito: "La selectividad real está al final, en la FI de 10,7 MHz."
+    pistas:
+      - { texto: "El LNA va justo detrás del primer filtro." }
+    escalera:
+      - "Primero se recoge y se preselecciona; luego se amplifica y se traslada."
+    solucion: "Antena, entrada, LNA, mezclador y oscilador, filtro de FI."
+
+  - id: empareje-ajustes
+    tipo: pregunta
+    titulo: "Los ajustes y qué significan"
+    texto: "Empareje cada ajuste con su efecto."
+    libro: [367, 368, 369, 371]
+    widget:
+      tipo: figura
+      figura: fig-36.11
+      zonas:
+        - { id: imagen, rotulo: "Rechazo de imagen, a la derecha", rect: [220, 0, 221, 187] }
+    emparejar:
+      - ["Bobina de entrada", "Sensibilidad y rechazo de imagen"]
+      - ["Oscilador local", "La escala frente a la frecuencia real"]
+      - ["Ajustar con una avería presente", "Estropea el ajuste sin arreglar nada"]
+    exito: "Primero se repara; después se ajusta."
+    pistas:
+      - { texto: "El oscilador fija qué frecuencia se recibe con cada posición del dial." }
+    escalera:
+      - "La bobina de entrada sintoniza el tanque."
+    solucion: "Entrada, sensibilidad e imagen; oscilador, escala; con avería, nunca."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [356, 358, 360, 363, 364]
+    ideas:
+      - { titulo: "Por qué FI.", texto: "500 de Q a 100 MHz es imposible; 53 a 10,7 MHz, fácil." }
+      - { titulo: "La imagen.", texto: "A dos FI de la emisora: 121,4 MHz si se sintoniza 100 MHz." }
+      - { titulo: "Reparto.", texto: "La entrada rechaza la imagen; la FI separa emisoras." }
+      - { titulo: "Ajustes.", texto: "Bobina de entrada y oscilador, y nunca con una avería." }

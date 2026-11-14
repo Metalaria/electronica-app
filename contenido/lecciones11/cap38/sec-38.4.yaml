@@ -1,0 +1,231 @@
+# Lección 1.2 de la sección 39.4 «Interrupciones: Atender al Mundo sin Esperarlo» (cap38; etiqueta interna sec-38.4).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.5 (svg_vista 407,52 × 191,52): evento, latencia, ISR y
+# retorno. El ejercicio 39.2 (una ISR de 2 ms frente a una interrupción cada 1 ms) cierra la lección.
+leccion: cap38/sec-38.4
+
+libro:
+  103: "suspenda lo que el núcleo esté haciendo y ejecute una rutina de atención"
+  105: "Permite dormir entre eventos"
+  106: "sondeo cuando el bucle es rápido y el evento frecuente"
+  110: "cada instrucción dentro de una rutina de interrupción es latencia para todas las demás"
+  113: "Leer o escribir el registro del periférico que la provocó."
+  114: "la interrupción captura, el bucle procesa"
+  115: "imprimir por el puerto serie"
+  118: "el bucle nunca ve los cambios que hace la interrupción"
+  119: "se lee la mitad antigua y la mitad nueva, dando un valor que nunca existió"
+  120: "La solución es la sección crítica"
+  121: "un contador++ es lectura-modificación-escritura y sigue necesitando la sección crítica"
+  124: "prioridad alta a lo que pierde información si no se atiende"
+  126: "Rutina demasiado larga"
+  127: "Olvidar volatile"
+  128: "Acceso no atómico"
+  129: "No borrar la bandera del periférico"
+  130: "Bloquear dentro de la rutina"
+  132: "la anchura del pulso es la duración de la rutina y el retardo respecto al evento es la latencia"
+  134: "Atención a una interrupción"
+  "cap38#548": "una ISR que tarda 2 ms en ejecutarse"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-interrupcion
+    tipo: explorar
+    titulo: "Una interrupción"
+    texto: "Un evento suspende el programa, se ejecuta la rutina y se vuelve donde estaba. Toque cada parte."
+    libro: [103, 134]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: evento, rotulo: "Arriba en el centro", rect: [81, 4, 115, 40], texto: "El evento: un flanco, un byte recibido, un temporizador." }
+        - { id: latencia, rotulo: "Corchete de abajo a la izquierda", rect: [130, 128, 42, 32], texto: "Latencia: desde el evento hasta la primera instrucción de la rutina." }
+        - { id: isr, rotulo: "Barra roja del centro", rect: [165, 95, 105, 35], texto: "La rutina (ISR): lee, guarda el dato, pone una bandera." }
+        - { id: retorno, rotulo: "A la derecha", rect: [285, 57, 118, 35], texto: "Retorno: restaura el contexto y sigue en la instrucción interrumpida." }
+    requiere: { mover: [latencia, isr] }
+
+  - id: prediga-sondeo
+    tipo: predecir
+    titulo: "Interrupción o sondeo"
+    texto: "Un evento muy frecuente y un bucle principal rápido. ¿Qué conviene?"
+    libro: [105, 106, 134]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: retorno, rotulo: "A la derecha", rect: [285, 57, 118, 35], texto: "Cada interrupción guarda y restaura el contexto." }
+    opciones:
+      - { texto: "Sondeo", bien: true, porque: "Si el bucle es rápido y el evento frecuente, comprobarlo en el bucle es sencillo y fácil de depurar." }
+      - { texto: "Interrupción", porque: "Conviene cuando el evento es urgente, raro o debe despertar al sistema." }
+      - { texto: "Las dos a la vez", porque: "Duplicaría el trabajo: el criterio elige una según el evento." }
+    escalera: ["La interrupción es para lo urgente, lo raro o lo que despierta."]
+    solucion: "Sondeo: bucle rápido, evento frecuente."
+
+  - id: ordene-dentro
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Lo que se hace dentro"
+    texto: "Ponga en orden lo que hace una rutina de interrupción bien escrita."
+    libro: [113, 114]
+    ordenar:
+      - "Leer o escribir el registro del periférico que la provocó."
+      - "Guardar el dato en un buffer."
+      - "Poner una bandera y salir."
+    exito: "La interrupción captura y el bucle procesa: ese reparto evita la mayoría de los problemas."
+    pistas:
+      - { texto: "Salir es lo último." }
+    escalera: ["Primero, atender al periférico que la provocó."]
+    solucion: "Leer el periférico, guardar el dato y poner una bandera."
+
+  - id: pregunta-nunca
+    tipo: pregunta
+    titulo: "Lo que nunca va dentro"
+    texto: "¿Cuál de estas cosas no debe hacerse nunca en una rutina de interrupción?"
+    libro: [110, 113, 115, 134]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: isr, rotulo: "Barra roja del centro", rect: [165, 95, 105, 35], texto: "La duración de la ISR: lo más breve posible." }
+    opciones:
+      - { texto: "Imprimir por el puerto serie", bien: true, porque: "Es lenta: cada instrucción dentro de la rutina es latencia para todas las demás." }
+      - { texto: "Leer el registro del periférico", porque: "Es justo lo que debe hacer: atender al periférico que la provocó." }
+      - { texto: "Guardar el dato en un buffer", porque: "Es parte de lo que se hace dentro; el proceso va al bucle." }
+      - { texto: "Poner una bandera", porque: "Es la forma de avisar al bucle principal y salir." }
+    escalera: ["¿Cuál de ellas tarda un tiempo largo o desconocido?"]
+    solucion: "Imprimir por el puerto serie: nada de esperas ni operaciones largas."
+
+  - id: prediga-sin-volatile
+    tipo: predecir
+    titulo: "Una bandera compartida"
+    texto: "La interrupción pone a 1 una bandera, no volatile, que el bucle principal espera. ¿Qué pasa al optimizar?"
+    libro: [118, 127]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: isr, rotulo: "Barra roja del centro", rect: [165, 95, 105, 35], texto: "La ISR pone una bandera." }
+    opciones:
+      - { texto: "El bucle puede no ver nunca el cambio", bien: true, porque: "El compilador la lee una vez y la guarda en un registro: no sabe que la interrupción la cambia." }
+      - { texto: "Funciona igual, solo que más rápido", porque: "Ese es el síntoma engañoso: funciona sin optimizar y falla optimizado." }
+      - { texto: "El compilador da un error", porque: "Compila sin quejarse: no puede saber que una interrupción toca la variable." }
+    escalera: ["¿Ve el compilador alguna escritura de la bandera dentro del bucle?"]
+    solucion: "Sin volatile, la lee una sola vez y el bucle no ve los cambios."
+
+  - id: pregunta-atomico
+    tipo: pregunta
+    titulo: "Un valor que nunca existió"
+    texto: "En un microcontrolador de 8 bits, el bucle lee una variable de 16 bits que cambia una interrupción. ¿Qué puede leer?"
+    libro: [119, 120]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: evento, rotulo: "Arriba en el centro", rect: [81, 4, 115, 40], texto: "El evento puede llegar en cualquier instrucción." }
+    opciones:
+      - { texto: "Media antigua y media nueva: un valor que nunca existió", bien: true, porque: "La lectura son varias instrucciones; la interrupción puede caer en medio. Se arregla con una sección crítica." }
+      - { texto: "Siempre el valor antiguo", porque: "Si la interrupción cae entre los dos bytes, mezcla el antiguo y el nuevo." }
+      - { texto: "Nada: volatile lo resuelve", porque: "volatile obliga a leer de memoria, pero no hace atómica una lectura de dos bytes." }
+    escalera: ["¿Cuántas instrucciones necesita un núcleo de 8 bits para leer 16 bits?"]
+    solucion: "Puede mezclar mitades: hace falta deshabilitar las interrupciones durante la lectura."
+
+  - id: porque-contador
+    tipo: porque
+    titulo: "Ya es atómico, pero…"
+    texto: "En un núcleo de 32 bits, leer un contador de 32 bits es atómico. ¿Por qué contador++ necesita aun así la sección crítica?"
+    libro: [121]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: isr, rotulo: "Barra roja del centro", rect: [165, 95, 105, 35], texto: "La interrupción también cambia el contador." }
+    opciones:
+      - { texto: "Porque es lectura-modificación-escritura", bien: true, porque: "Si la interrupción lo cambia entre la lectura y la escritura, su cambio se pierde." }
+      - { texto: "Porque los contadores siempre van en la pila", porque: "No es cuestión de dónde está: son tres pasos que se pueden interrumpir." }
+      - { texto: "No la necesita: con volatile basta", porque: "volatile basta para leer o escribir; no para modificar." }
+    escalera: ["¿Cuántos pasos hay en contador++?"]
+    solucion: "Leer, sumar y escribir: la interrupción puede colarse entre ellos."
+
+  - id: pregunta-prioridad
+    tipo: pregunta
+    titulo: "Repartir prioridades"
+    texto: "¿Qué interrupción merece la prioridad más alta?"
+    libro: [124]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: latencia, rotulo: "Corchete de abajo a la izquierda", rect: [130, 128, 42, 32], texto: "La prioridad alta reduce la latencia de lo urgente." }
+    opciones:
+      - { texto: "La de un byte de comunicación que se sobrescribe si no se lee", bien: true, porque: "Pierde información si no se atiende: va arriba." }
+      - { texto: "La que refresca una pantalla", porque: "Solo pierde puntualidad: prioridad baja." }
+      - { texto: "La que más instrucciones tiene", porque: "La prioridad la decide lo que se pierde, no la longitud." }
+    escalera: ["¿Qué se pierde si cada una se atiende tarde?"]
+    solucion: "Prioridad alta a lo que pierde información: el byte que se sobrescribe."
+
+  - id: empareje-errores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los errores característicos"
+    texto: "Una cada error con su síntoma."
+    libro: [126, 127, 128, 129, 130]
+    emparejar:
+      - ["Rutina demasiado larga", "Se pierden eventos de otras interrupciones"]
+      - ["Olvidar volatile", "Funciona sin optimizar y falla optimizado"]
+      - ["Acceso no atómico", "Valores imposibles muy de vez en cuando"]
+      - ["No borrar la bandera del periférico", "La interrupción se vuelve a disparar sin parar"]
+      - ["Bloquear dentro de la rutina", "Un bloqueo garantizado"]
+    exito: "Cinco errores, cinco síntomas reconocibles: el síntoma lleva a la causa."
+    pistas:
+      - { texto: "El que depende de la optimización es el de volatile." }
+    escalera: ["Si la bandera sigue puesta, ¿qué hace el controlador al salir?"]
+    solucion: "Larga, eventos perdidos; volatile, falla optimizado; no atómico, valores imposibles; bandera, se repite; bloquear, bloqueo."
+
+  - id: toque-banco
+    tipo: tocar
+    titulo: "Medir con un pin"
+    texto: "Pone una salida en alto al entrar en la rutina y en bajo al salir. Toque lo que mide la anchura de ese pulso."
+    libro: [132, 134]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: latencia, rotulo: "Corchete de abajo a la izquierda", rect: [130, 128, 42, 32] }
+        - { id: duracion, rotulo: "Corchete de abajo en el centro", rect: [172, 128, 96, 32] }
+        - { id: evento, rotulo: "Arriba en el centro", rect: [81, 4, 115, 40] }
+    tocar:
+      bien: [duracion]
+      porque:
+        latencia: "La latencia es el retardo del pulso respecto al evento, no su anchura."
+        evento: "El evento es lo que dispara la rutina; el pulso empieza después."
+    exito: "La anchura es la duración de la rutina; su retardo respecto al evento, la latencia."
+    escalera: ["El pulso empieza al entrar en la rutina y acaba al salir."]
+    solucion: "La duración de la ISR, abajo en el centro."
+
+  - id: pregunta-ejercicio
+    tipo: pregunta
+    titulo: "Una ISR de 2 ms"
+    texto: "Una ISR tarda 2 ms y otra interrupción llega cada 1 ms, con un núcleo rapidísimo. ¿Qué pasa?"
+    libro: ["cap38#548", 110]
+    widget:
+      tipo: figura
+      figura: fig-38.5
+      zonas:
+        - { id: isr, rotulo: "Barra roja del centro", rect: [165, 95, 105, 35], texto: "Mientras dura, retrasa a las demás." }
+    opciones:
+      - { texto: "Se pierde al menos un evento de la otra", bien: true, porque: "Mientras dura la de 2 ms, la otra no se atiende: la velocidad media no ayuda." }
+      - { texto: "Nada: el núcleo rápido lo compensa", porque: "Una ISR que monopoliza la CPU bloquea a las demás, sea cual sea la velocidad." }
+      - { texto: "Las dos se ejecutan a la vez", porque: "El núcleo ejecuta una cosa cada vez: la otra espera." }
+    escalera: ["¿Cuántas veces llega la otra mientras dura la primera?"]
+    solucion: "Se pierde al menos un evento: el trabajo largo, al bucle principal."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [110, 114, 118, 120]
+    ideas:
+      - { titulo: "Breve.", texto: "Cada instrucción de la rutina es latencia para las demás." }
+      - { titulo: "Captura y procesa.", texto: "La interrupción guarda el dato; el bucle lo procesa." }
+      - { titulo: "Compartir.", texto: "volatile para que se vea el cambio; sección crítica para que sea atómico." }
+      - { titulo: "Medir.", texto: "Un pin en alto dentro de la rutina da duración y latencia." }

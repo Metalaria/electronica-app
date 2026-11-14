@@ -296,8 +296,8 @@ test.describe('copia de seguridad (puro)', () => {
       ['{"formato":', /dañado o incompleto/],
       ['null', /no contiene una copia/],
       [JSON.stringify({ formato: 'x' }), /no es una copia/],
-      // (1.0: format 2 is this version's; a newer one is 3)
-      [JSON.stringify({ ...JSON.parse(buena), version: 3 }), /versión más nueva.*Actualice/],
+      // (1.0: format 2 is this version's; 1.2: 3, so a newer one is 4 — esquemas.ts FORMATO_DATOS)
+      [JSON.stringify({ ...JSON.parse(buena), version: 4 }), /versión más nueva.*Actualice/],
       [JSON.stringify({ ...JSON.parse(buena), version: 0 }), /versión de formato válida/],
     ];
     for (const [t, e] of casos) {
@@ -500,8 +500,8 @@ test.describe('copia de seguridad · página de Sincronización', () => {
     expect(f.nombre).toMatch(/^electronica-copia-\d{4}-\d{2}-\d{2}-\d{4}\.json$/);
     const o = JSON.parse(f.texto) as Copia;
     expect(o.formato).toBe('epa-copia-seguridad');
-    // (1.0: format 2)
-    expect(o.version).toBe(2);
+    // (1.0: format 2; 1.2: 3)
+    expect(o.version).toBe(3);
     expect(o.dispositivo).toContain('navegador');
     expect(Object.keys(o.almacenes).length).toBeGreaterThanOrEqual(22);
     expect((o.almacenes.notas!['fig:1'] as { v: { texto: string } }).v.texto).toBe('nota exportada');

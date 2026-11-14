@@ -1,0 +1,398 @@
+# Lección 1.2 de la sección 33.2 «El Reductor (Buck) en Detalle» (cap33). Formato: GUIA.md.
+# - No hay esquema de reductor (pedido en peticiones-motor12.md): las formas de onda son gráficas del modelo ideal del
+#   libro con sus números: 12 V, D = 0,417, 47 µH, 300 kHz, 2 A de salida (bloques 49, 54, 57).
+#   Nodo de conmutación: V_in mientras f·t − ⌊f·t⌋ < D, 0 después. Corriente de la bobina: triángulo de ΔI alrededor
+#   de I_out. En el modo discontinuo la gráfica solo recorta la corriente en cero (con diodo) o la deja negativa (con
+#   síncrono), como dicen los bloques 60 y 62; no recalcula la nueva V_out del modo discontinuo.
+# Pasos prácticos: «ajuste» de L hasta un rizado del 20–40 % de 2 A (bloques 55–57) y «dibujar» la corriente.
+# - 1.2 (esquemas12d): el esquema `reductor` vivo (rectificador síncrono ideal, la carga R = V_out/I_out) en
+#   explore-nodo, prediga-carga, explore-corriente, ajuste-bobina, pico-saturacion y rizado-salida (la parábola de C
+#   más la ESR: 207 mA; 0,9 mV por los 100 µF y unos 10 mV por los 50 mΩ). El modo discontinuo sigue en gráficas: el
+#   esquema arranca del régimen continuo y la curva recortada de esas tarjetas no es la del circuito.
+leccion: cap33/sec-33.2
+
+libro:
+  35: "Un convertidor conmutado no regula: transfiere energía en paquetes"
+  38: "La bobina ve la diferencia V"
+  41: "La bobina ve ahora"
+  45: "el producto tensión por tiempo sea igual en ambas fases"
+  46: 'V_("out") dot.op t_("off")'
+  48: "V"
+  49: "Con 12 V de entrada y 5 de salida, D = 0,417"
+  52: "sube y baja en triángulo alrededor de su valor medio"
+  53: '(V_("out") dot.op lr(( "1" - D )))/(L dot.op f_("s"))'
+  54: "L = 47 µH y f"
+  55: "entre el 20 y el 40 % de la corriente de salida"
+  56: "Menos rizado exige más inductancia"
+  57: "Con 2 A de salida, esos 207 mA son solo el 10 %"
+  58: "es ese valor, no el medio, el que no debe alcanzar la saturación del núcleo"
+  60: "es el modo discontinuo"
+  61: "la salida pasa a depender también de la carga, de L y de la frecuencia"
+  62: "el transistor sí permite corriente negativa"
+  65: "Por la ESR"
+  66: "El rizado lo fija la ESR, no la capacidad"
+  71: "El bucle formado por el condensador de entrada, el interruptor y el diodo"
+  72: "debe ser lo más pequeño posible"
+  75: "Las dos fases del reductor"
+  76: "Convertidor reductor (buck)"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.25 }
+    L: { sim: "L", nombre: "inductancia", unidad: H, valor: 4.7e-5 }
+    f_s: { sim: "f_{s}", nombre: "frecuencia de conmutación", unidad: Hz, valor: 300000 }
+    I_o: { sim: "I_{out}", nombre: "corriente de salida", unidad: A, valor: 2 }
+    V_set: { sim: "V_{out}", nombre: "salida pedida", unidad: V, valor: 5 }
+    ESR: { sim: "ESR", nombre: "resistencia serie del condensador", unidad: Ω, valor: 0.05 }
+    C_o: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 1e-4 }
+    sinc: { tipo: interruptor, nombre: "rectificación síncrona", valor: 0 }
+  calculos:
+    V_out: { expr: "D*V_in", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    T_s: { expr: "1/f_s", sim: "T", nombre: "periodo", unidad: s }
+    t_on: { expr: "D/f_s", sim: "t_{on}", nombre: "tiempo cerrado", unidad: s }
+    t_off: { expr: "(1 - D)/f_s", sim: "t_{off}", nombre: "tiempo abierto", unidad: s }
+    dI: { expr: "V_out*(1 - D)/(L*f_s)", sim: "ΔI", nombre: "rizado de corriente pico a pico", unidad: A }
+    I_pk: { expr: "I_o + dI/2", sim: "I_{pico}", nombre: "corriente de pico de la bobina", unidad: A }
+    I_mn: { expr: "I_o - dI/2", sim: "I_{mín}", nombre: "corriente mínima de la bobina", unidad: A }
+    frac: { expr: "dI/I_o*100", sim: "ΔI/I_{out}", nombre: "rizado relativo", unidad: "%", cifras: 2 }
+    D_obj: { expr: "V_set/V_in", sim: "D", nombre: "ciclo de trabajo para la salida pedida", unidad: "" }
+    dV_esr: { expr: "dI*ESR", sim: "ΔV_{ESR}", nombre: "rizado por la ESR", unidad: V }
+    dV_c: { expr: "dI/(8*C_o*f_s)", sim: "ΔV_{C}", nombre: "rizado por la capacidad", unidad: V }
+    R_cg: { expr: "V_out/I_o", sim: "R", nombre: "carga", unidad: Ω }
+    I_ent: { expr: "D*I_o", sim: "I_{in}", nombre: "corriente media de entrada", unidad: A }
+    V_c0: { expr: "V_out - dI*(1 - 2*D)/(12*f_s*C_o)", sim: "v_{C}(0)", nombre: "tensión del condensador al empezar el periodo", unidad: V }
+
+tarjetas:
+  - id: explore-nodo
+    tipo: explorar
+    titulo: "El nodo de conmutación"
+    texto: "El interruptor pone la entrada en el nodo durante t_{on} y lo deja a cero el resto. Mueva D y mire la salida."
+    libro: [35, 48, 75]
+    fijar: { I_o: 2 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
+      lectura: { valor: V_out, rotulo: "Salida, V_{out}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 13, unidad: V, rotulo: "nodo" }
+        curvas:
+          - { expr: "V_in*(1 - ceil(f_s*t - floor(f_s*t) - D))", color: naranja, rotulo: "nodo de conmutación", mide: nodo }
+          - { expr: "V_out", color: verde, rotulo: "V_{out}", discontinua: true }
+      mandos:
+        - { valor: D, min: 0.05, max: 0.95, paso: 0.01, rotulo: "Ciclo de trabajo, D" }
+    requiere: { mover: [D] }
+
+  - id: formula-balance
+    tipo: formula
+    titulo: "Voltios-segundo"
+    texto: "En régimen permanente la corriente de la bobina acaba cada ciclo donde empezó: las dos áreas son iguales."
+    libro: [45, 46, 48]
+    ec: 46
+    sustitucion: "({{V_in}} − {{V_out}}) · {{t_on}} = {{V_out}} · {{t_off}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: 0, max: 13, unidad: V, rotulo: "nodo" }
+      curvas:
+        - { expr: "V_in*(1 - ceil(f_s*t - floor(f_s*t) - D))", color: naranja, rotulo: "nodo de conmutación" }
+        - { expr: "V_out", color: verde, rotulo: "V_{out} = D·V_{in}", discontinua: true }
+      mandos:
+        - { valor: D, min: 0.05, max: 0.95, paso: 0.01, rotulo: "Ciclo de trabajo, D" }
+
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Si cambia la carga"
+    texto: "Mismo D, y la corriente de salida baja de 2 A a la mitad, sin salir del modo continuo. ¿Qué hace V_{out}?"
+    libro: [49, 57]
+    fijar: { D: 0.41667 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
+      lectura: { valor: V_out, rotulo: "Salida, V_{out}" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+      mandos:
+        - { valor: I_o, lista: [1, 2], rotulo: "Corriente de salida" }
+    opciones:
+      - texto: "No cambia: solo depende de D"
+        bien: true
+        porque: "Del balance voltios-segundo sale V_{out} = D·V_{in}: ni la carga, ni la bobina, ni la frecuencia."
+      - texto: "Sube, porque la carga pide menos"
+        porque: "Eso haría un divisor. Aquí el triángulo solo baja entero; sus pendientes, y el balance, no cambian."
+      - texto: "Baja a la mitad"
+        porque: "Baja la corriente media, no la tensión: las áreas del nodo siguen iguales con el mismo D."
+    escalera:
+      - "¿Aparece la corriente en el balance (V_{in} − V_{out})·t_{on} = V_{out}·t_{off}?"
+    solucion: "No cambia: V_{out} = D·V_{in} en modo continuo."
+
+  - id: estime-d
+    tipo: pregunta
+    titulo: "De 12 V a 5 V"
+    texto: "¿Qué ciclo de trabajo necesita un reductor para sacar 5 V de 12 V?"
+    libro: [48, 49]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: 0, max: 13, unidad: V, rotulo: "nodo" }
+      curvas:
+        - { expr: "V_set", color: verde, rotulo: "5 V pedidos", discontinua: true }
+    estimar:
+      objetivo: "D_obj"
+      unidad: ""
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.03
+      rotulo: "Ciclo de trabajo, D"
+    exito: "D = 0,417: el interruptor cerrado algo menos de la mitad del periodo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.43 }, texto: "Se ha pasado: D es la fracción de V_{in} que llega a la salida." }
+      - { texto: "Se ha quedado corto: con ese D la media del nodo no llega a 5 V." }
+    escalera:
+      - "Despeje D de V_{out} = D·V_{in}."
+    solucion: "D = 5/12 = 0,417."
+    comprobar:
+      - { D_obj: 0.417 }
+
+  - id: explore-corriente
+    tipo: explorar
+    titulo: "El triángulo de la bobina"
+    texto: "La corriente sube con (V_{in} − V_{out})/L y baja con V_{out}/L. Cambie la bobina y mire el rizado."
+    libro: [38, 41, 52]
+    fijar: { D: 0.41667, I_o: 2 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
+      lectura: { valor: dI, rotulo: "Rizado, ΔI" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+          - { expr: "I_o", color: tinta, rotulo: "I_{out}", discontinua: true }
+      mandos:
+        - { valor: L, lista: [1e-5, 2.2e-5, 4.7e-5, 1e-4], rotulo: "Bobina, L" }
+    requiere: { mover: [L] }
+
+  - id: formula-rizado
+    tipo: formula
+    titulo: "El rizado de corriente"
+    texto: "Con 5 V, D = 0,417, 47 µH y 300 kHz el libro obtiene 207 mA. Cambie L y vea la sustitución."
+    libro: [53, 54]
+    fijar: { D: 0.41667, I_o: 2 }
+    ec: 53
+    sustitucion: "{{V_out}} · (1 − {{D}}) / ({{L}} · {{f_s}}) = {{dI}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+      curvas:
+        - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina" }
+      mandos:
+        - { valor: L, lista: [1e-5, 2.2e-5, 4.7e-5, 1e-4], rotulo: "Bobina, L" }
+
+  - id: ajuste-bobina
+    tipo: ajuste
+    titulo: "Ajuste la bobina"
+    texto: "Con 2 A de salida, 47 µH dan solo un 10 % de rizado. Baje L hasta el 20–40 % del criterio de diseño."
+    libro: [55, 56, 57]
+    fijar: { D: 0.41667, I_o: 2 }
+    inicio: { L: 4.7e-5 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
+      lectura: { valor: frac, rotulo: "ΔI / I_{out}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+      mandos:
+        - { valor: L, min: 5e-6, max: 6e-5, paso: 1e-6, rotulo: "Bobina, L" }
+    ajuste:
+      valor: frac
+      min: 20
+      max: 40
+      rotulo: "Rizado relativo"
+      escala: { min: 0, max: 100 }
+      bajo: "Poco rizado: la bobina sobra. Bájela."
+      alto: "Demasiado rizado: picos mayores en bobina y condensadores. Suba L."
+      dentro: "Dentro del 20–40 %: una bobina menor y más barata que la de 47 µH."
+
+  - id: pico-saturacion
+    tipo: pregunta
+    titulo: "La corriente que satura"
+    texto: "¿Qué corriente de la bobina no debe alcanzar la saturación del núcleo?"
+    libro: [58]
+    fijar: { D: 0.41667, I_o: 2 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+          - { expr: "I_o", color: tinta, rotulo: "media", discontinua: true }
+      mandos: []
+    opciones:
+      - texto: "La de pico, I_{out} + ΔI/2"
+        bien: true
+        porque: "El núcleo se satura en el punto más alto del triángulo, no en su media."
+      - texto: "La media, I_{out}"
+        porque: "La media no es la mayor: en cada ciclo la corriente sube ΔI/2 por encima."
+      - texto: "La mínima, I_{out} − ΔI/2"
+        porque: "En el mínimo el núcleo está más lejos de saturar que nunca."
+    escalera:
+      - "¿En qué punto del triángulo hay más campo en el núcleo?"
+    solucion: "La de pico: I_{out} + ΔI/2."
+
+  - id: dibuje-corriente
+    tipo: dibujar
+    titulo: "Dibuje la corriente"
+    texto: "Reductor de 12 V a 5 V, 47 µH, 300 kHz y 2 A. Dibuje la corriente de la bobina durante dos periodos, empezando con el interruptor recién cerrado."
+    libro: [52, 54, 57]
+    fijar: { D: 0.41667, I_o: 2, L: 4.7e-5 }
+    dibujar:
+      x: { id: t, min: 0, max: 0.0000066667, unidad: s, rotulo: "t" }
+      y: { min: 1.8, max: 2.2, unidad: A, rotulo: "i_{L}" }
+      curva: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))"
+      puntos: 41
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Corriente de la bobina"
+    exito: "Un triángulo de 207 mA alrededor de 2 A: sube mientras t_{on} y baja, más despacio, el resto."
+    pistas:
+      - { cuando: { valor: amplitud, menor: 0.6 }, texto: "Demasiado plano: el rizado es de 207 mA de pico a pico." }
+      - { cuando: { valor: media, mayor: 0.1 }, texto: "La media del triángulo es la corriente de salida, 2 A." }
+      - { texto: "Sube en línea recta durante algo menos de la mitad del periodo y baja el resto." }
+    escalera:
+      - "Empiece abajo, en I_{out} − ΔI/2: el interruptor acaba de cerrar."
+    solucion: "Sube de 1,90 A a 2,10 A durante t_{on} y baja durante t_{off}; se repite."
+    comprobar:
+      - { dI: 0.207, I_mn: 1.896, I_pk: 2.103, tol: 0.003 }
+
+  - id: explore-discontinuo
+    tipo: explorar
+    titulo: "Modo discontinuo"
+    texto: "Baje la carga hasta que el triángulo toque cero: con un diodo, la corriente se queda en cero un tramo. Pruebe luego la rectificación síncrona."
+    libro: [60, 62]
+    fijar: { D: 0.41667, L: 4.7e-5 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -0.3, max: 2.5, unidad: A, rotulo: "i_{L}" }
+      curvas:
+        - { expr: "sinc*(I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))) + (1 - sinc)*max(0, I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D)))", color: naranja, rotulo: "corriente de la bobina" }
+      lectura: { valor: I_mn, rotulo: "Mínimo del triángulo" }
+      mandos:
+        - { valor: I_o, min: 0.05, max: 2, paso: 0.05, rotulo: "Corriente de salida" }
+        - { valor: sinc, tipo: interruptor, rotulo: "Rectificación síncrona" }
+    requiere: { mover: [I_o, sinc] }
+
+  - id: discontinuo-salida
+    tipo: porque
+    titulo: "Lo que deja de valer"
+    texto: "Con el tramo en cero, la salida ya no es D·V_{in}. ¿Por qué?"
+    libro: [61]
+    fijar: { D: 0.41667, L: 4.7e-5, I_o: 0.05, sinc: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -0.3, max: 2.5, unidad: A, rotulo: "i_{L}" }
+      curvas:
+        - { expr: "max(0, I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D)))", color: naranja, rotulo: "corriente de la bobina" }
+    opciones:
+      - texto: "El tramo en cero rompe el balance: entran la carga, L y la frecuencia"
+        bien: true
+        porque: "El tramo en cero rompe el balance simple; el lazo lo nota como un cambio brusco de comportamiento."
+      - texto: "Porque la tensión de entrada cambia"
+        porque: "La entrada no cambia. Lo nuevo es el tramo sin corriente, que hace entrar la carga, L y la frecuencia."
+      - texto: "No es así: sigue fija por D"
+        porque: "Eso es el modo continuo. Con el tramo a cero, las áreas del balance cambian con la carga."
+    escalera:
+      - "Con el tramo en cero, ¿la bobina sigue viendo −V_{out} todo el t_{off}?"
+    solucion: "Depende también de la carga, de L y de la frecuencia: por eso cambia el comportamiento con poca carga."
+
+  - id: rizado-salida
+    tipo: pregunta
+    titulo: "El rizado de tensión"
+    texto: "ΔI = 207 mA, condensador de 100 µF con ESR de 50 mΩ. ¿Qué fija el rizado de salida?"
+    libro: [65, 66]
+    fijar: { D: 0.41667, L: 4.7e-5, I_o: 2, C_o: 1e-4 }
+    inicio: { ESR: 0.05 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, esr: ESR, carga: R_cg }
+      corriente: I_o
+      lectura: { valor: dV_esr, rotulo: "Rizado por la ESR" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 4.98, max: 5.03, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "V_c0 + (dI/C_o)*(min((f_s*t - floor(f_s*t)), D)/f_s*(-1/2) + min((f_s*t - floor(f_s*t)), D)^2/(2*D*f_s) + max(0, (f_s*t - floor(f_s*t)) - D)/(2*f_s) - max(0, (f_s*t - floor(f_s*t)) - D)^2/(2*(1 - D)*f_s)) + ESR*dI*(min((f_s*t - floor(f_s*t))/D, (1 - (f_s*t - floor(f_s*t)))/(1 - D)) - 1/2)", color: verde, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: ESR, lista: [0.01, 0.05, 0.1], rotulo: "ESR" }
+    opciones:
+      - texto: "La ESR del condensador"
+        bien: true
+        porque: "10 mV por la ESR frente a 0,9 mV por la capacidad: el condensador se elige por su ESR."
+      - texto: "La capacidad del condensador"
+        porque: "Con 100 µF, la capacidad solo aporta 0,9 mV; la ESR, diez veces más."
+      - texto: "La bobina, únicamente"
+        porque: "La bobina fija ΔI, pero el rizado de tensión es ΔI por la ESR y, mucho menos, por la capacidad."
+    escalera:
+      - "Compare ΔI·ESR con ΔI/(8·C·f_{s})."
+    solucion: "La ESR: 207 mA × 50 mΩ ≈ 10 mV, frente a 0,9 mV de la capacidad."
+    comprobar:
+      - { dV_esr: 0.01035, dV_c: 0.000862, tol: 0.06 }
+
+  - id: bucle-critico
+    tipo: pregunta
+    titulo: "El bucle crítico"
+    texto: "Un bucle conmuta de cero a varios amperios en nanosegundos y debe ser lo más pequeño posible. ¿Cuál?"
+    libro: [71, 72, 76]
+    widget:
+      tipo: figura
+      figura: fig-28.6
+      zonas:
+        - { id: circuito, rotulo: "El reductor", rect: [8, 20, 400, 115] }
+    opciones:
+      - texto: "Condensador de entrada, interruptor y diodo"
+        bien: true
+        porque: "Su área fija la inductancia parásita: picos, timbre y emisión radiada."
+      - texto: "Bobina, condensador de salida y carga"
+        porque: "Por ahí la corriente es casi continua: la bobina no deja que salte."
+      - texto: "El del lazo de realimentación"
+        porque: "Es una señal pequeña; el bucle crítico es el de potencia que conmuta."
+    escalera:
+      - "Busque la corriente que salta de golpe: la que pasa del interruptor al diodo en cada conmutación."
+    solucion: "El del condensador de entrada, el interruptor y el diodo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [48, 53, 58, 66]
+    ideas:
+      - { titulo: "Voltios-segundo.", texto: "V_{out} = D·V_{in}, sin carga, bobina ni frecuencia, en modo continuo." }
+      - { titulo: "Rizado de corriente.", texto: "ΔI = V_{out}·(1 − D)/(L·f_{s}); entre el 20 y el 40 % de la salida." }
+      - { titulo: "El pico satura.", texto: "I_{out} + ΔI/2, no la media; y el rizado de tensión lo fija la ESR." }
+      - { titulo: "El bucle crítico.", texto: "Condensador de entrada, interruptor y diodo: lo más pequeño posible." }

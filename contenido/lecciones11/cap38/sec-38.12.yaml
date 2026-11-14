@@ -1,0 +1,175 @@
+# Lección 1.2 de la sección 39.12 «El Mapa de Memoria: Flash, RAM, Pila y Enlazador» (cap38; etiqueta interna sec-38.12).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.16 (svg_vista 453,6 × 259,2): Flash a la izquierda, RAM a la
+# derecha; las secciones pequeñas de la Flash se agrupan para que las zonas se puedan tocar en un teléfono.
+leccion: cap38/sec-38.12
+
+libro:
+  365: "En Flash: vectores de interrupción, cargador de arranque, código, constantes y tablas."
+  366: "En RAM: variables globales inicializadas, variables sin inicializar, montón y pila."
+  369: "una variable global con valor inicial ocupa espacio en las dos memorias"
+  370: "Pone a cero la zona de variables sin inicializar"
+  371: "inicializar un array grande a cero no cuesta Flash, mientras que inicializarlo con valores sí"
+  373: "Crece hacia abajo desde el final de la RAM"
+  374: "Crece hacia arriba desde el final de las variables globales"
+  375: "crecen el uno hacia el otro, y si se encuentran, la corrupción es silenciosa"
+  376: "Sin montón, la pila tiene toda la memoria libre y el problema desaparece"
+  378: "las de formateo de texto son notorias"
+  379: "rellenar toda la RAM libre con un patrón conocido al arrancar"
+  381: "cuánta Flash y cuánta RAM se usan, qué función o variable ocupa más de lo esperado"
+  388: "Un margen menor del 25 % es una corrupción esperando su momento"
+  389: "Mapa de memoria con la pila y el montón creciendo el uno hacia el otro"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-mapa
+    tipo: explorar
+    titulo: "Dónde vive cada cosa"
+    texto: "Flash a la izquierda, RAM a la derecha. Toque las zonas y lea qué guarda cada una."
+    libro: [365, 366, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: codigo, rotulo: "Bloque grande de la Flash", rect: [62, 129, 119, 68], texto: "Código de la aplicación, en la Flash." }
+        - { id: valores, rotulo: "Flash, encima de las constantes", rect: [62, 72, 119, 36], texto: "Valores iniciales de .data: el arranque los copia a la RAM." }
+        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50], texto: "Pila: variables locales, retornos y contextos; crece hacia abajo." }
+        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36], texto: "Montón: la memoria dinámica; crece hacia arriba." }
+        - { id: data, rotulo: "Abajo de la RAM", rect: [271, 220, 118, 36], texto: ".data: las globales inicializadas, con valores copiados de la Flash." }
+    requiere: { mover: [pila, monton] }
+
+  - id: toque-bss
+    tipo: tocar
+    titulo: "Una global sin valor"
+    texto: "Declara una variable global sin valor inicial. Toque dónde vive."
+    libro: [366, 370, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50] }
+        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36] }
+        - { id: bss, rotulo: "RAM, penúltima zona", rect: [271, 184, 118, 36] }
+        - { id: data, rotulo: "Abajo de la RAM", rect: [271, 220, 118, 36] }
+    tocar:
+      bien: [bss]
+      porque:
+        pila: "En la pila viven las variables locales, no las globales."
+        monton: "El montón es para la memoria dinámica que se pide al ejecutar."
+        data: ".data es para las globales con valor inicial."
+    exito: "En .bss, que el arranque pone a cero: por eso empieza valiendo cero sin que nadie lo escriba."
+    escalera: ["Sin valor inicial: ¿necesita una copia en la Flash?"]
+    solucion: "En .bss, la penúltima zona de la RAM."
+
+  - id: prediga-array
+    tipo: predecir
+    titulo: "Un array grande"
+    texto: "Un array global grande, inicializado a cero o inicializado con valores. ¿Cuál cuesta Flash?"
+    libro: [369, 371, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: valores, rotulo: "Flash, encima de las constantes", rect: [62, 72, 119, 36], texto: "Valores iniciales de .data." }
+    opciones:
+      - { texto: "El de valores: sus valores iniciales se guardan en la Flash", bien: true, porque: "El arranque los copia a la RAM: ocupa en las dos memorias. El de ceros va a .bss y no cuesta Flash." }
+      - { texto: "Los dos igual", porque: "El de ceros no necesita copia: el arranque pone .bss a cero." }
+      - { texto: "El de ceros", porque: "Los ceros no se guardan: el arranque los escribe solo." }
+    escalera: ["¿Qué hay que copiar de la Flash al arrancar?"]
+    solucion: "El de valores: ocupa Flash y RAM. A cero, solo RAM."
+
+  - id: porque-encuentro
+    tipo: porque
+    titulo: "Cuando se encuentran"
+    texto: "La pila y el montón crecen el uno hacia el otro. ¿Por qué es tan difícil de diagnosticar que se encuentren?"
+    libro: [373, 374, 375, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: libre, rotulo: "Hueco libre de la RAM", rect: [271, 82, 118, 66], texto: "Si se encuentran: corrupción silenciosa." }
+    opciones:
+      - { texto: "El programa no falla en ese instante: falla mucho después, en otro sitio", bien: true, porque: "Sigue funcionando con datos corrompidos y el síntoma no tiene nada que ver con la causa." }
+      - { texto: "Porque el compilador lo oculta", porque: "El compilador no sabe cuánto crecerán: ocurre al ejecutar." }
+      - { texto: "Porque el microcontrolador se reinicia y lo borra", porque: "No se reinicia: sigue con datos corruptos, que es peor." }
+    escalera: ["¿Avisa algo en el momento en que se pisan?"]
+    solucion: "La corrupción es silenciosa: el fallo aparece mucho después y lejos."
+
+  - id: pregunta-sin-monton
+    tipo: pregunta
+    titulo: "Sin memoria dinámica"
+    texto: "En un sistema pequeño se decide no usar asignación dinámica. ¿Qué gana la pila?"
+    libro: [376, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36], texto: "Montón." }
+    opciones:
+      - { texto: "Toda la memoria libre, y el choque desaparece", bien: true, porque: "Sin montón no hay nada que crezca hacia ella." }
+      - { texto: "Nada: la pila tiene un tamaño fijo", porque: "Crece hacia abajo hasta donde haya sitio: sin montón, tiene todo el hueco." }
+      - { texto: "Velocidad", porque: "No va más deprisa: gana espacio y elimina el choque." }
+    escalera: ["¿Qué crece hacia la pila?"]
+    solucion: "Toda la memoria libre: el problema desaparece."
+
+  - id: ordene-medir-pila
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Medir la pila"
+    texto: "Ponga en orden la técnica del patrón."
+    libro: [379]
+    ordenar:
+      - "Rellenar toda la RAM libre con un patrón conocido al arrancar."
+      - "Dejar correr el programa en sus condiciones más exigentes."
+      - "Mirar hasta dónde ha llegado el patrón sin tocar."
+    exito: "Eso da el máximo real de pila usada: difícil de calcular, fácil de medir."
+    pistas:
+      - { texto: "El patrón se escribe antes de que el programa use la pila." }
+    escalera: ["Lo que la pila haya pisado ya no tiene el patrón."]
+    solucion: "Rellenar, correr en lo más exigente y mirar el patrón."
+
+  - id: pregunta-margen
+    tipo: pregunta
+    titulo: "El margen de pila"
+    texto: "Ha medido la pila en la condición más exigente. ¿Qué margen libre es una corrupción esperando su momento?"
+    libro: [388, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50], texto: "La pila." }
+    opciones:
+      - { texto: "Menos del 25 %", bien: true, porque: "Con menos margen, una condición algo peor que la medida la desborda." }
+      - { texto: "Ninguno: basta con que la pila quepa", porque: "Lo medido es solo lo que se ha probado: una condición algo peor la desborda." }
+      - { texto: "Cualquier margen basta si no ha fallado", porque: "No haber fallado no prueba nada: la corrupción es silenciosa." }
+    escalera: ["El libro da una cifra: una cuarta parte."]
+    solucion: "Un margen menor del 25 %."
+
+  - id: pregunta-mapa
+    tipo: pregunta
+    titulo: "El fichero de mapa"
+    texto: "¿Qué responde el fichero de mapa que genera el enlazador?"
+    libro: [378, 381, 389]
+    widget:
+      tipo: figura
+      figura: fig-38.16
+      zonas:
+        - { id: codigo, rotulo: "Bloque grande de la Flash", rect: [62, 129, 119, 68], texto: "Código de la aplicación." }
+    opciones:
+      - { texto: "Cuánta Flash y RAM se usan y qué ocupa más de lo esperado", bien: true, porque: "También si una biblioteca, como las de formateo de texto, ha arrastrado código que no se usa." }
+      - { texto: "Cuánta pila se usará al ejecutar", porque: "La pila depende de la ejecución: se mide con el patrón." }
+      - { texto: "Qué variable corrompe la memoria", porque: "Eso lo dice un watchpoint, al ejecutar." }
+    escalera: ["El enlazador sabe dónde ha puesto cada cosa, no cómo se ejecuta."]
+    solucion: "Lo que ocupa cada cosa y cuánto queda libre."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [369, 371, 375, 388]
+    ideas:
+      - { titulo: "Dos memorias.", texto: "Código y constantes en Flash; variables, montón y pila en RAM." }
+      - { titulo: "El arranque copia.", texto: "Lo inicializado ocupa en las dos; lo de ceros, solo en RAM." }
+      - { titulo: "Pila y montón.", texto: "Crecen el uno hacia el otro: sin montón, sin choque." }
+      - { titulo: "Medir.", texto: "El patrón en la RAM y un margen de al menos el 25 %." }

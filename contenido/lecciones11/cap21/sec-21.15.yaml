@@ -1,0 +1,177 @@
+# Lección 1.2 de la sección 20.15 «El Multímetro Integrado» (cap21; etiqueta interna sec-21.15). Formato:
+# contenido/lecciones11/GUIA.md. La tensión de carga del amperímetro (figura 20.31) con el esquema serie: un circuito
+# de 3,3 V con 56 Ω de carga (valores ilustrativos, elegidos para dar los 50 mA de la figura) y el shunt del rango, de
+# unos 10 Ω en miliamperios y 0,01 Ω en el de 10 A (los de la figura 20.31).
+leccion: cap21/sec-21.15
+
+libro:
+  406: "lo que significa que mide correctamente el valor eficaz de señales no senoidales"
+  408: "en el rango de miliamperios, 50 mA cuestan 500 mV al circuito"
+  410: "esta función no opera por debajo de 0,7 V"
+  412: "Las puntas se conectan EN SERIE, abriendo el circuito"
+  413: "Medir corriente requiere intercalar el multímetro en serie en el circuito"
+
+modelo:
+  valores:
+    V_c: { sim: "V", nombre: "tensión del circuito", unidad: V, valor: 3.3 }
+    R_L: { sim: "R_{L}", nombre: "carga del circuito", unidad: Ω, valor: 56 }
+    R_sh: { sim: "R_{shunt}", nombre: "resistencia del amperímetro", unidad: Ω, valor: 10 }
+  calculos:
+    I_a: { expr: "V_c/(R_L + R_sh)", sim: "I", nombre: "corriente que marca", unidad: A }
+    I_0: { expr: "V_c/R_L", sim: "I_{0}", nombre: "corriente sin amperímetro", unidad: A }
+    V_L: { expr: "I_a*R_L", sim: "V_{L}", nombre: "tensión en la carga", unidad: V }
+    V_sh: { expr: "I_a*R_sh", sim: "V_{shunt}", nombre: "caída en el amperímetro", unidad: V }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "El amperímetro también cae"
+    texto: "Un circuito de 3,3 V con el amperímetro en serie. Cambie de rango y mire cuánto se queda el instrumento."
+    libro: [408, 413]
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_c, r1: R_L, r2: R_sh }
+      lectura: { valor: V_sh, rotulo: "Caída en el amperímetro" }
+      barras:
+        - { valor: V_L, rotulo: "La carga: {{V_L}}", color: azul }
+        - { valor: V_sh, rotulo: "El amperímetro: {{V_sh}}", color: naranja }
+      datos:
+        - { valor: I_a, rotulo: "Marca {{I_a}}" }
+      corriente: I_a
+      mide: { corriente: I_a, v1: V_L, v2: V_sh }
+      mandos:
+        - { valor: R_sh, lista: [0.01, 10], nombres: ["rango 10A", "rango mA"], rotulo: "Rango" }
+    requiere: { mover: [R_sh] }
+    comprobar:
+      - { V_c: 3.3 }
+
+  - id: simule-corriente
+    tipo: simular
+    titulo: "Prediga y simule"
+    texto: "Un circuito de 3,3 V sobre 56 Ω, medido en el rango de miliamperios. ¿Qué corriente marca?"
+    libro: [408]
+    fijar: { V_c: 3.3, R_L: 56, R_sh: 10 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_c, r1: R_L, r2: R_sh }
+      lectura: { valor: I_a, rotulo: "Corriente que marca" }
+      mide: { corriente: I_a }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_a
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente que marca"
+      medida: corriente
+      errores:
+        - { expr: "I_0", texto: "Esa es la corriente sin el instrumento: el shunt del rango de miliamperios suma su resistencia a la carga." }
+    exito: "Marca 50 mA, y el amperímetro se queda 500 mV: la corriente que mide ya no es la del circuito sin él."
+    escalera:
+      - "El amperímetro está en serie: su resistencia se suma a la carga."
+    solucion: "3,3 V / (56 + 10) Ω = 50 mA."
+    comprobar:
+      - { I_a: 0.05, V_sh: 0.5, I_0: 0.0589, tol: 0.01 }
+
+  - id: rango-alto
+    tipo: porque
+    titulo: "Robar menos tensión"
+    texto: "Con los mismos 50 mA, el rango de 10 A roba mucha menos tensión al circuito. ¿Por qué?"
+    libro: [408]
+    fijar: { R_sh: 0.01 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_c, r1: R_L, r2: R_sh }
+      lectura: { valor: V_sh, rotulo: "Caída en el amperímetro" }
+      mide: { v2: V_sh }
+    opciones:
+      - texto: "Su shunt es mucho menor"
+        bien: true
+        porque: "Su shunt es mucho más pequeño: la caída baja a menos de un milivoltio, a cambio de menos resolución."
+      - texto: "Porque mide con menos resolución"
+        porque: "Tiene menos resolución, sí, pero eso no cambia la caída: la cambia la resistencia del shunt."
+      - texto: "Porque la corriente es menor"
+        porque: "La corriente es la misma, 50 mA. La caída es la corriente por la resistencia del shunt, y cada rango tiene la suya."
+    escalera:
+      - "Caída = corriente × resistencia del shunt."
+    solucion: "Su shunt es mucho menor: con 50 mA cae menos de un milivoltio."
+    comprobar:
+      - { V_sh: 0.000593, tol: 0.02 }
+
+  - id: true-rms
+    tipo: pregunta
+    titulo: "True RMS"
+    texto: "El multímetro del 2C53T es True RMS. ¿Qué significa?"
+    libro: [406]
+    widget:
+      tipo: figura
+      figura: fig-21.30
+      zonas:
+        - { id: modos, rotulo: "Modos del multímetro", rect: [0, 0, 450, 259] }
+    opciones:
+      - texto: "Que mide bien el eficaz de señales no senoidales"
+        bien: true
+        porque: "Algo que los multímetros baratos no hacen: suponen una senoide."
+      - texto: "Que mide el valor de pico"
+        porque: "RMS es el valor eficaz, no el de pico."
+      - texto: "Que mide a la vez que el osciloscopio"
+        porque: "No: el multímetro y el osciloscopio no funcionan a la vez."
+    escalera:
+      - "RMS es el valor eficaz."
+    solucion: "Mide correctamente el eficaz de señales no senoidales."
+
+  - id: autodeteccion
+    tipo: pregunta
+    titulo: "Una lectura sospechosa"
+    texto: "Mide una tensión de medio voltio y la autodetección no elige bien. ¿Qué hace?"
+    libro: [410]
+    widget:
+      tipo: figura
+      figura: fig-21.30
+      zonas:
+        - { id: modos, rotulo: "Modos del multímetro", rect: [0, 0, 450, 259] }
+    opciones:
+      - texto: "Forzar el modo a mano"
+        bien: true
+        porque: "Según las pruebas publicadas, la detección no opera por debajo de 0,7 V."
+      - texto: "Cambiar la punta roja a mA"
+        porque: "Eso sería medir corriente, y con las puntas en paralelo, un cortocircuito."
+      - texto: "Esperar a que se ajuste"
+        porque: "Por debajo de 0,7 V no se ajustará sola."
+    escalera:
+      - "¿Por debajo de qué tensión deja de funcionar la autodetección?"
+    solucion: "Forzar el modo: por debajo de 0,7 V la autodetección no opera."
+
+  - id: reglas
+    tipo: pregunta
+    titulo: "Las reglas de seguridad"
+    texto: "Empareje cada medida con cómo se conecta."
+    libro: [412, 413]
+    widget:
+      tipo: figura
+      figura: fig-21.30
+      zonas:
+        - { id: modos, rotulo: "Modos del multímetro", rect: [0, 0, 450, 259] }
+    emparejar:
+      - ["Tensión", "En paralelo con el componente"]
+      - ["Corriente", "En serie, abriendo el circuito"]
+      - ["Resistencia, continuidad, capacidad", "Sin alimentación y el componente aislado"]
+    exito: "Y nunca tensión con las puntas en los bornes de corriente: cortocircuito."
+    pistas:
+      - { texto: "La corriente tiene que pasar por el instrumento; la tensión se mide entre dos puntos." }
+    escalera:
+      - "El amperímetro tiene resistencia casi nula: va en serie."
+    solucion: "Tensión en paralelo; corriente en serie; resistencia y demás, sin alimentación."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [406, 408, 410, 412]
+    ideas:
+      - { titulo: "True RMS.", texto: "Mide bien el eficaz de las no senoidales; no funciona a la vez que el osciloscopio." }
+      - { titulo: "El amperímetro cae.", texto: "En el rango de mA, 50 mA cuestan 500 mV al circuito." }
+      - { titulo: "Autodetección.", texto: "Por debajo de 0,7 V no opera: fuerce el modo." }
+      - { titulo: "Serie y paralelo.", texto: "Corriente en serie; tensión en paralelo; resistencia sin alimentación." }

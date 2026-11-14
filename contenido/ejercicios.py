@@ -913,11 +913,9 @@ def main(argv=None):
     # running this script alone never leaves them out; the book's own item wins when it has the same label
     import ejercicios_nuevos
     nuevos = ejercicios_nuevos.main([], libro=OUT)
-    # 1.1: the exercises of the book's expansions (contenido/ampliaciones11/, already in the parts): their mark and
-    # their answers checked against the expansion's data, so running this script alone never drops them
-    import ampliaciones
-    amp = ampliaciones.anotar_ejercicios(OUT)
-    return 1 if problemas or nuevos or amp else 0
+    # 1.2: the 1.1 expansions' exercises are the book's own since 4.0; their checked answers and hints are in
+    # ejercicios_curado.txt like the others (ampliaciones.anotar_ejercicios is no longer run)
+    return 1 if problemas or nuevos else 0
 
 
 if __name__ == '__main__':

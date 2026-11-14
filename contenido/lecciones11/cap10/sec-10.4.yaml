@@ -1,0 +1,317 @@
+# Lección 1.2 de la sección 10.4 «Protección contra Sobretensiones y Transitorios» (cap10). Formato: GUIA.md.
+# - La protección escalonada en la figura 10.7 (fig-10.6, w_104.svg) con zonas en sus cuatro escalones.
+# - La protección de una entrada (bloques 111–112) en el esquema «recortador»: la señal de 24 V de pico (el error del
+#   libro) por R_s a un pin con dos diodos, a V_DD = 3,3 V (vref) y a masa; diodos de 0,6 V, los del libro. La
+#   corriente inyectada en el pico es (24 − 3,3 − 0,6)/R_s: 4,3 mA con 4,7 kΩ. La señal es una senoide de 1 kHz (el
+#   esquema solo admite senoide; su frecuencia no importa aquí).
+# Paso práctico: «diseno» de R_s en E12 con ± 5 %: 3,9 kΩ pasa de 5 mA ya en nominal; 4,7 kΩ cumple en todas las
+# esquinas (4,50 mA con −5 %).
+leccion: cap10/sec-10.4
+
+libro:
+  93: "Descarga electrostática (ESD)"
+  94: "la protección real sea escalonada"
+  96: "Absorbe mucha energía (cientos de julios)"
+  97: "Se degrada con cada actuación"
+  98: "Responde en picosegundos, recorta con precisión"
+  99: "Deriva corrientes enormes"
+  103: "el más rápido conduce primero, absorbe toda la energía y se destruye antes de que el grande llegue a actuar"
+  104: "unos pocos microhenrios apenas frenan la corriente"
+  107: "Vtrabajo < Vumbral de la protección < Vmáxima del componente"
+  108: "la protección no debe conducir en régimen normal"
+  111: "la resistencia es la que protege"
+  112: "Una entrada de 3,3 V que puede recibir por error 24 V, con 5 mA admisibles, necesita (24 − 3,3 − 0,6)/5 mA ≈ 4,0 kΩ; con 4,7 kΩ quedan 4,3 mA"
+  114: "puede subir la tensión de alimentación del circuito"
+  117: "por qué la impedancia intermedia es imprescindible"
+
+modelo:
+  valores:
+    V_m: { sim: "V_{máx}", nombre: "sobretensión de pico en el conector", unidad: V, valor: 24 }
+    f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    R_s: { sim: "R_{s}", nombre: "resistencia en serie", unidad: Ω, valor: 1000 }
+    V_DD: { sim: "V_{DD}", nombre: "alimentación del pin", unidad: V, valor: 3.3 }
+    V_D: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.6 }
+    I_max: { sim: "I_{iny}", nombre: "corriente de inyección admisible", unidad: A, valor: 0.005 }
+  calculos:
+    I_iny: { expr: "(V_m - V_DD - V_D)/R_s", sim: "I_{iny}", nombre: "corriente inyectada en el pico", unidad: A }
+    R_min: { expr: "(V_m - V_DD - V_D)/I_max", sim: "R_{mín}", nombre: "resistencia mínima", unidad: Ω }
+    V_tope: { expr: "V_DD + V_D", sim: "V_{tope}", nombre: "lo más que alcanza el pin", unidad: V }
+
+tarjetas:
+  - id: energias
+    tipo: explorar
+    titulo: "Escalones de distinta talla"
+    texto: "Toque cada escalón. Ningún componente cubre todo el rango de energías: la protección real es escalonada."
+    libro: [94, 96, 98, 99, 117]
+    widget:
+      tipo: figura
+      figura: fig-10.6
+      zonas:
+        - { id: robusto, rotulo: "Primer escalón", rect: [55, 10, 40, 45], texto: "GDT o varistor grande: cientos de julios, lento. Absorbe la energía gruesa." }
+        - { id: bobina, rotulo: "La bobina", rect: [150, 0, 45, 40], texto: "La impedancia intermedia: separa los escalones para que actúen en orden." }
+        - { id: fino, rotulo: "Tercer escalón", rect: [245, 10, 40, 45], texto: "Varistor menor o TVS: responde en picosegundos y recorta con precisión." }
+        - { id: filtro, rotulo: "Cuarto escalón", rect: [338, 10, 40, 45], texto: "El filtro y la protección del propio circuito." }
+    requiere: { mover: [robusto, bobina, fino] }
+
+  - id: origenes
+    tipo: pregunta
+    titulo: "Qué transitorio"
+    texto: "Empareje cada origen de sobretensión con su energía."
+    libro: [93]
+    widget:
+      tipo: figura
+      figura: fig-10.6
+      zonas:
+        - { id: escalones, rotulo: "Los escalones", rect: [40, 0, 360, 60] }
+    emparejar:
+      - ["Descarga electrostática", "µJ – mJ, en nanosegundos"]
+      - ["Conmutación inductiva", "mJ, en microsegundos"]
+      - ["Conmutación en la red", "Julios, miles de voltios"]
+      - ["Rayo indirecto", "Cientos de julios, decenas de kV"]
+    exito: "Varios órdenes de magnitud de energía: elegir la protección exige saber cuál se trata."
+    pistas:
+      - { texto: "La descarga electrostática tiene mucha tensión y muy poca energía." }
+    escalera:
+      - "Ordene de menos a más energía: ESD, inductiva, red, rayo."
+    solucion: "ESD: µJ–mJ. Inductiva: mJ. Red: julios. Rayo indirecto: cientos de julios."
+
+  - id: componentes
+    tipo: pregunta
+    titulo: "Los tres componentes"
+    texto: "Empareje cada componente con su rasgo."
+    libro: [96, 97, 98, 99]
+    widget:
+      tipo: figura
+      figura: fig-10.6
+      zonas:
+        - { id: escalones, rotulo: "Los escalones", rect: [40, 0, 360, 60] }
+    emparejar:
+      - ["Varistor (MOV)", "Cientos de julios; se degrada con cada actuación"]
+      - ["Diodo TVS", "Picosegundos y sujeción precisa; poca energía"]
+      - ["Tubo de gas (GDT)", "Kiloamperios, lento, sigue conduciendo"]
+    exito: "Robusto y lento delante, rápido y fino detrás."
+    pistas:
+      - { texto: "El que se degrada es el de óxido de cinc." }
+    escalera:
+      - "Empiece por el que responde en picosegundos."
+    solucion: "Varistor: energía y degradación. TVS: velocidad y precisión. GDT: kiloamperios y lentitud."
+
+  - id: toque-sin-bobina
+    tipo: tocar
+    titulo: "Sin impedancia intermedia"
+    texto: "Si se quita la bobina, los dos escalones ven la misma tensión. Toque el que se destruye."
+    libro: [103]
+    widget:
+      tipo: figura
+      figura: fig-10.6
+      zonas:
+        - { id: robusto, rotulo: "Primer escalón", rect: [55, 10, 40, 45] }
+        - { id: fino, rotulo: "Tercer escalón", rect: [245, 10, 40, 45] }
+        - { id: filtro, rotulo: "Cuarto escalón", rect: [338, 10, 40, 45] }
+    tocar:
+      bien: [fino]
+      porque:
+        robusto: "El grande es lento: no llega a actuar, porque el rápido ya se ha llevado la energía."
+        filtro: "El filtro está detrás del TVS, que recorta antes de que le llegue."
+    exito: "El más rápido conduce primero, absorbe toda la energía y se destruye: el error de diseño más frecuente."
+    escalera:
+      - "¿Cuál de los dos conduce antes?"
+    solucion: "El tercer escalón, el TVS: el rápido se lo lleva todo."
+
+  - id: por-que-microhenrios
+    tipo: porque
+    titulo: "No basta con que exista"
+    texto: "Entre los escalones se ponen unos pocos microhenrios. ¿Por qué puede no servir?"
+    libro: [104]
+    widget:
+      tipo: figura
+      figura: fig-10.6
+      zonas:
+        - { id: bobina, rotulo: "La bobina", rect: [150, 0, 45, 40] }
+    opciones:
+      - texto: "Frente a un impulso de decenas de microsegundos, unos pocos microhenrios apenas frenan la corriente"
+        bien: true
+        porque: "Hay que dimensionarla para la duración del impulso: de ahí los diez metros de cable entre escalones."
+      - texto: "Porque una bobina se satura siempre"
+        porque: "El problema del libro es su valor frente a la duración del impulso, no la saturación."
+      - texto: "Porque la bobina disipa la energía del rayo"
+        porque: "La bobina no disipa: separa los escalones para que actúen en orden."
+    escalera:
+      - "¿Cuánto frena una inductancia pequeña un cambio lento?"
+    solucion: "Unos pocos microhenrios no frenan un impulso de decenas de microsegundos: hay que dimensionarla."
+
+  - id: ventana
+    tipo: pregunta
+    titulo: "La ventana de la protección"
+    texto: "Ordene de menor a mayor las tres tensiones de una protección bien coordinada."
+    libro: [107, 108]
+    widget:
+      tipo: figura
+      figura: fig-10.6
+      zonas:
+        - { id: escalones, rotulo: "Los escalones", rect: [40, 0, 360, 60] }
+    ordenar:
+      - "Tensión de trabajo, la máxima normal"
+      - "Umbral de la protección"
+      - "Tensión máxima del componente protegido"
+    exito: "Con margen por los dos lados: no conducir en régimen normal y recortar antes del daño."
+    pistas:
+      - { texto: "La protección no debe conducir en régimen normal." }
+    escalera:
+      - "Lo que destruye al componente va arriba del todo."
+    solucion: "Trabajo, umbral y máxima del componente, de menor a mayor."
+
+  - id: explore-entrada
+    tipo: explorar
+    titulo: "Proteger una entrada"
+    texto: "Por error llegan 24 V a una entrada de 3,3 V. Cambie la resistencia en serie y mire la corriente que se inyecta en los diodos."
+    libro: [111, 112]
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
+      lectura: { valor: I_iny, rotulo: "Corriente inyectada" }
+      datos:
+        - { valor: V_tope, rotulo: "El pin no pasa de {{V_tope}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -25, max: 25, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_m*sin(2*pi*f_s*t)", color: tinta, rotulo: "conector", mide: entrada, discontinua: true }
+          - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
+      mandos:
+        - { valor: R_s, lista: [1000, 2200, 4700, 10000], rotulo: "Resistencia en serie" }
+    requiere: { mover: [R_s] }
+
+  - id: prediga-protege
+    tipo: predecir
+    titulo: "Quién protege"
+    texto: "Los diodos internos del microcontrolador ya recortan el pin. ¿Qué protege de verdad la entrada?"
+    libro: [111]
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
+      lectura: { valor: I_iny, rotulo: "Corriente inyectada" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -25, max: 25, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
+    opciones:
+      - texto: "La resistencia en serie"
+        bien: true
+        porque: "Limita la corriente que se inyecta en los diodos a lo que toleran."
+      - texto: "Los diodos"
+        porque: "Recortan, pero sin resistencia la corriente no está limitada y el chip se destruye igual."
+      - texto: "La alimentación V_{DD}"
+        porque: "V_{DD} solo fija el nivel del recorte; la corriente la limita otra cosa."
+    escalera:
+      - "Los diodos ya existen. ¿Qué falta para que no se quemen?"
+    solucion: "La resistencia: limita la corriente de inyección."
+
+  - id: estime-rmin
+    tipo: pregunta
+    titulo: "La resistencia mínima"
+    texto: "Pin de 3,3 V, hasta 24 V en el conector, diodos de 0,6 V y 5 mA admisibles. ¿Qué resistencia mínima?"
+    libro: [112]
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
+      dibujo: true
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -25, max: 25, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_m*sin(2*pi*f_s*t)", color: tinta, rotulo: "conector", mide: entrada, discontinua: true }
+    estimar:
+      objetivo: "R_min"
+      unidad: Ω
+      min: 0
+      max: 10000
+      paso: 100
+      inicio: 8000
+      tol: 0.04
+      rotulo: "R_{s} mínima"
+    exito: "Unos 4,0 kΩ: la tensión que queda en la resistencia, entre la corriente admisible."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4200 }, texto: "Se ha pasado: a la resistencia le quedan 24 − 3,3 − 0,6 V, no los 24 enteros." }
+      - { texto: "Se ha quedado corto: con menos resistencia se inyectan más de 5 mA." }
+    escalera:
+      - "R ≥ (V_{máx} − V_{DD} − 0,6 V)/I_{iny}."
+    solucion: "(24 − 3,3 − 0,6)/5 mA ≈ 4,0 kΩ."
+    comprobar:
+      - { R_min: 4020 }
+
+  - id: disene-rs
+    tipo: diseno
+    titulo: "Elija la resistencia"
+    texto: "Elija R_{s} de la serie E12, del 5 %, para no pasar de 5 mA inyectados en ninguna esquina de la tolerancia."
+    libro: [112]
+    inicio: { R_s: 1000 }
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
+      lectura: { valor: I_iny, rotulo: "Corriente inyectada" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -25, max: 25, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
+      mandos:
+        - { valor: R_s, serie: E12, min: 1000, max: 10000, rotulo: "R_{s} (E12)" }
+    condiciones:
+      - { valor: I_iny, max: 0.005, rotulo: "Inyectada: {{I_iny}}" }
+    diseno:
+      tolerancias: { R_s: 0.05 }
+      metodo: esquinas
+      exigir: todas
+    exito: "Con 4,7 kΩ quedan 4,3 mA, y aun con la resistencia un 5 % baja no se llega a 5 mA."
+    pistas:
+      - { cuando: { valor: I_iny, mayor: 0.005 }, texto: "Pasa de 5 mA: hace falta más resistencia. Redondee hacia arriba, nunca hacia abajo." }
+    escalera:
+      - "El mínimo es unos 4,0 kΩ: busque el valor E12 siguiente."
+    solucion: "4,7 kΩ: 4,3 mA nominales, y menos de 5 mA en la peor esquina."
+    comprobar:
+      - { con: { R_s: 4700 }, I_iny: 0.0043, tol: 0.01 }
+      - { con: { R_s: 4465 }, I_iny: 0.0045, tol: 0.01 }
+
+  - id: efecto-raiil
+    tipo: pregunta
+    titulo: "Un efecto secundario"
+    texto: "Un equipo de batería está apagado y llega señal a una entrada protegida así. ¿Qué puede pasar?"
+    libro: [114]
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
+      lectura: { valor: I_iny, rotulo: "Corriente inyectada" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -25, max: 25, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
+    opciones:
+      - texto: "La corriente inyectada sube el raíl y alimenta parcialmente el sistema"
+        bien: true
+        porque: "El diodo hacia V_{DD} lleva esa corriente al raíl; si el consumo es pequeño, la tensión sube."
+      - texto: "Nada: con el equipo apagado no circula corriente"
+        porque: "El diodo hacia el raíl conduce igual: la señal es una fuente."
+      - texto: "Se funde la resistencia en serie"
+        porque: "La resistencia limita a unos pocos miliamperios; el efecto está en el raíl."
+    escalera:
+      - "¿A dónde va la corriente del diodo de arriba?"
+    solucion: "Puede subir la tensión del raíl y alimentar parcialmente el equipo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [94, 103, 107, 111]
+    ideas:
+      - { titulo: "Escalonada.", texto: "Robusto y lento delante, rápido y fino detrás." }
+      - { titulo: "Impedancia intermedia.", texto: "Sin ella, el escalón rápido se lo lleva todo y muere." }
+      - { titulo: "Ventana.", texto: "V_{trabajo} < V_{umbral} < V_{máxima}, con margen por los dos lados." }
+      - { titulo: "Entradas.", texto: "La resistencia en serie es la que protege: limita la corriente de inyección." }

@@ -28,7 +28,7 @@
   import BarraDominio from '../dominio/BarraDominio.svelte';
   import MedidorDominio from '../dominio/MedidorDominio.svelte';
   // 1.0: the course as a path of lessons that open one after another, with spaced review
-  import { calcularCamino, repasoDe, saltadas, type EstadoNodo, type NodoEntrada } from '../../lib/aprendizaje/camino';
+  import { calcularCamino, dominadaDe, repasoDe, saltadas, type EstadoNodo, type NodoEntrada } from '../../lib/aprendizaje/camino';
   import { progresoLecciones } from '../../lib/lecciones.svelte';
   import Camino, { type GrupoCamino, type NodoVista } from './Camino.svelte';
   import SaltarHasta from './SaltarHasta.svelte';
@@ -58,7 +58,8 @@
 
   const porCapitulo = $derived.by(() => {
     if (!curso || !avance) return [];
-    return curso.partes.map((p) => ({ parte: p, lecciones: avance.lecciones.filter((l) => l.parte === p) }));
+    // (1.2: a console of «Consolas por dentro» without lessons yet is not listed; a book chapter always has sections)
+    return curso.partes.map((p) => ({ parte: p, lecciones: avance.lecciones.filter((l) => l.parte === p) })).filter((x) => x.lecciones.length || !curso.unidades);
   });
 
   // ---------------------------------------------------------------- 1.0: the path
@@ -88,6 +89,7 @@
         estado,
         progreso: hecho ? 1 : p?.n ? Math.min(1, p.h.length / p.n) : 0,
         repaso: hecho && estadoDominio.listo ? repasoDe(dominioDe(clave), ahora) : null,
+        dominada: hecho && estadoDominio.listo && dominadaDe(dominioDe(clave), ahora),
         tipo: 'leccion',
         nuevo: !!l.ampliacion && !g.nuevo,
         // offered on the first locked lesson and at the start of each later chapter (not on every node)
@@ -219,7 +221,8 @@
         {:else}
           <span class="terminado"><Check size={18} aria-hidden="true" /> Curso terminado</span>
         {/if}
-        <a class="t09-boton t09-contorno" href={`#/cursos/${curso.id}/prueba`} data-prueba-nivel><Compass size={18} aria-hidden="true" /> Prueba de nivel</a>
+        <!-- (1.2: a course whose parts are not book chapters has no Repaso questions to test with) -->
+        {#if !curso.unidades}<a class="t09-boton t09-contorno" href={`#/cursos/${curso.id}/prueba`} data-prueba-nivel><Compass size={18} aria-hidden="true" /> Prueba de nivel</a>{/if}
       </div>
       {#if dominioPartes(curso.partes)}
         {@const dc = dominioPartes(curso.partes)!}
@@ -272,7 +275,7 @@
                     </span>
                     <span class="txt">{l.num ? `${l.num} ` : ''}{l.titulo}{#if l.ampliacion && !info?.ampliacion}{' '}<InsigniaNuevo compacta titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" />{/if}</span>
                     {#if estadoDominio.listo}{@const dl = dominioDe(`${l.parte}/${l.label}`)}{#if dl.nivel !== 'nuevo'}<MedidorDominio nivel={dl.nivel} valor={dl.valor} repasar={dl.repasar} />{/if}{/if}
-                    <span class="estado" class:solo-lector={l.estado === 'pendiente'}>{ESTADO[l.estado]}</span>
+                    <span class="estado" class:solo-lector={l.estado === 'pendiente'}>{ESTADO[l.estado]}{#if (l.estado === 'hecha' || l.estado === 'superada') && estadoDominio.listo && dominadaDe(dominioDe(`${l.parte}/${l.label}`), ahora)}{' · '}<span data-dominada-lista>Dominada</span>{/if}</span>
                   </a>
                 </li>
                 {#if l.parte === 'cap22' && PRACTICA_DE_SECCION[l.label]}
@@ -317,7 +320,7 @@
         <li class="t09-tarjeta t09-banda curso" style:--c09={tono.relleno} style:--sobre09={tono.sobre} data-curso-tarjeta={c.id}>
           <h2><a class="toque-44" href={`#/cursos/${c.id}`}>{c.nombre}</a></h2>
           <p class="desc">{c.descripcion}</p>
-          <p class="meta">{c.partes.length} capítulos · {a.total} lecciones</p>
+          <p class="meta">{c.partes.length} {c.unidades ?? 'capítulos'} · {a.total} lecciones</p>
           <div class="avance-curso">
             <span class="barra" aria-hidden="true"><span style:transform={`scaleX(${a.fraccion})`}></span></span>
             <span class="cifras">{pct(a.fraccion)}</span>

@@ -1,0 +1,269 @@
+# Lección 1.2 de la sección 29.3 «La Convolución» (cap30, sec-30.3). Formato: GUIA.md.
+# - El banco del libro (bloques 97 y 98): un pulso corto en un RC da su respuesta al impulso, y dos pulsos más juntos
+#   que esa respuesta se solapan y se suman. Respuesta del RC a un pulso de anchura w y altura uno:
+#   r(t) = (1 − e^(−min(max(t, 0), w)/τ))·e^(−max(t − w, 0)/τ); la salida es r(t) + r(t − d). τ = 1 ms y w = 0,1 ms son
+#   de ejemplo (lo dice la tarjeta).
+# - El ejercicio 29.3 (h = {1; 0,5}, x = {1; 1}) con la suma del bloque 90; δ[k] = max(0, 1 − |k|) en los enteros,
+#   dibujada como palitos (motor12e), como la figura del libro.
+# - El alargamiento del bloque 77: un pulso de 1 ms por una respuesta rectangular de 2 ms da un trapecio de 3 ms,
+#   y(t) = max(0, min(t, 1 ms, 3 ms − t)) normalizada a su máximo (la forma rectangular de h es de ejemplo).
+# Paso práctico: «dibujar» esa salida (la forma importa más que un número).
+leccion: cap30/sec-30.3
+
+libro:
+  71: "La convolución es un producto deslizante"
+  72: 'y lr(( t )) = integral x lr(( τ ))'
+  73: "cada muestra de la entrada produce una copia escalada de la respuesta al impulso"
+  76: "convolucionar con un pulso rectangular es promediar"
+  77: "Un pulso de 1 ms por un sistema con respuesta de 2 ms da una salida de 3 ms"
+  78: "Retarda: si la respuesta al impulso está centrada en un instante"
+  79: "convolucionar con un impulso deja la señal intacta"
+  82: "convolución en el tiempo ⟷ producto en frecuencia"
+  84: "producto en el tiempo ⟷ convolución en frecuencia"
+  86: "lo que ensancha las líneas espectrales"
+  87: "multiplicar por una portadora desplaza el espectro"
+  89: "Con muestras, la integral es una suma"
+  90: 'y lr([ n ]) = "Σ" x lr([ k ])'
+  91: "Programar un filtro FIR es programar una convolución"
+  94: "cuesta del orden de N·log N"
+  97: "aplicando un pulso corto a un circuito RC"
+  98: "las salidas se solapan y se suman"
+  100: "suma de copias escaladas de la respuesta al impulso"
+  "cap30#350": "Un sistema LTI tiene respuesta al impulso"
+
+modelo:
+  valores:
+    tau: { sim: "τ", nombre: "constante de tiempo de ejemplo", unidad: s, valor: 0.001 }
+    w_p: { sim: "w", nombre: "anchura del pulso de ejemplo", unidad: s, valor: 0.0001 }
+    d_p: { sim: "d", nombre: "separación de los pulsos", unidad: s, valor: 0.004 }
+    x_0: { sim: "x[0]", nombre: "primera muestra de la entrada", unidad: "", valor: 1 }
+    x_1: { sim: "x[1]", nombre: "segunda muestra de la entrada", unidad: "", valor: 1 }
+    h_0: { sim: "h[0]", nombre: "primera muestra de h", unidad: "", valor: 1 }
+    h_1: { sim: "h[1]", nombre: "segunda muestra de h", unidad: "", valor: 0.5 }
+  calculos:
+    r_1: { expr: "1 - exp(-w_p/tau)", sim: "v_{pico}", nombre: "pico de una respuesta", unidad: V, cifras: 3 }
+    y_0: { expr: "x_0*h_0", sim: "y[0]", nombre: "primera muestra de la salida", unidad: "" }
+    y_1: { expr: "x_0*h_1 + x_1*h_0", sim: "y[1]", nombre: "segunda muestra de la salida", unidad: "" }
+    y_2: { expr: "x_1*h_1", sim: "y[2]", nombre: "tercera muestra de la salida", unidad: "" }
+    y_m: { expr: "x_0*h_0 + x_1*h_1", sim: "y", nombre: "producto sin deslizar", unidad: "" }
+
+tarjetas:
+  - id: explore-solape
+    tipo: explorar
+    titulo: "Copias que se suman"
+    texto: "Dos pulsos cortos entran en un RC de ejemplo y cada uno da una copia de la respuesta al impulso. Acérquelos hasta que se solapen."
+    nota: "τ = 1 ms y pulsos de 0,1 ms, de ejemplo."
+    libro: [73, 97, 98]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t", muestras: 1600 }
+      y: { min: 0, max: 0.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "(1 - exp(-min(max(t, 0), w_p)/tau))*exp(-max(t - w_p, 0)/tau)", color: azul, rotulo: "copia del primero", discontinua: true }
+        - { expr: "(1 - exp(-min(max(t - d_p, 0), w_p)/tau))*exp(-max(t - d_p - w_p, 0)/tau)", color: verde, rotulo: "copia del segundo", discontinua: true }
+        - { expr: "(1 - exp(-min(max(t, 0), w_p)/tau))*exp(-max(t - w_p, 0)/tau) + (1 - exp(-min(max(t - d_p, 0), w_p)/tau))*exp(-max(t - d_p - w_p, 0)/tau)", color: naranja, rotulo: "salida" }
+      lectura: { valor: d_p, rotulo: "Separación de los pulsos" }
+      mandos:
+        - { valor: d_p, lista: [0.004, 0.002, 0.001, 0.0005], rotulo: "Separación, d" }
+    requiere: { mover: [d_p] }
+    comprobar:
+      - { tau: 0.001, w_p: 0.0001 }
+
+  - id: formula-discreta
+    tipo: formula
+    titulo: "La convolución discreta"
+    texto: "Con muestras, la integral es una suma. Respuesta al impulso {1; 0,5}: cambie la entrada y mire cada muestra de la salida."
+    libro: [72, 89, 90, "cap30#350"]
+    ec: 90
+    sustitucion: "y[1] = {{x_0}} · {{h_1}} + {{x_1}} · {{h_0}} = {{y_1}}"
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 4, unidad: "", rotulo: "n" }
+      y: { min: 0, max: 2.5, unidad: "", rotulo: "y[n]" }
+      curvas:
+        - { expr: "x_0*(h_0*max(0, 1 - abs(k)) + h_1*max(0, 1 - abs(k - 1))) + x_1*(h_0*max(0, 1 - abs(k - 1)) + h_1*max(0, 1 - abs(k - 2)))", palitos: true, color: naranja, rotulo: "y[n]" }
+      lectura: { valor: y_1, rotulo: "y[1]" }
+      datos:
+        - { valor: y_0, rotulo: "y[0] = {{y_0}}" }
+        - { valor: y_2, rotulo: "y[2] = {{y_2}}" }
+      mandos:
+        - { valor: x_1, lista: [0, 1, 2], rotulo: "x[1]" }
+
+  - id: estime-y1
+    tipo: pregunta
+    titulo: "Una convolución a mano"
+    texto: "h[n] = {1; 0,5} y entrada x[n] = {1; 1}. ¿Cuánto vale y[1]?"
+    libro: ["cap30#350"]
+    fijar: { x_0: 1, x_1: 1 }
+    widget:
+      tipo: figura
+      figura: fig-30.5
+      zonas:
+        - { id: todo, rotulo: "Suma de copias de la respuesta al impulso", rect: [0, 0, 437, 276] }
+    estimar:
+      objetivo: "y_1"
+      unidad: ""
+      min: 0
+      max: 3
+      paso: 0.1
+      inicio: 0.5
+      tol: 0.02
+      rotulo: "y[1]"
+    exito: "1,5: la copia de x[0] retrasada (0,5) más la de x[1] (1). La salida completa es {1; 1,5; 0,5}."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.53 }, texto: "Demasiado: solo dos productos suman en n = 1." }
+      - { texto: "Corto: en n = 1 coinciden la cola de la primera copia y el comienzo de la segunda." }
+    escalera:
+      - "y[1] = x[0]·h[1] + x[1]·h[0]."
+    solucion: "1 × 0,5 + 1 × 1 = 1,5."
+    comprobar:
+      - { y_0: 1, y_1: 1.5, y_2: 0.5, y_m: 1.5 }
+
+  - id: predecir-duracion
+    tipo: predecir
+    titulo: "La salida se alarga"
+    texto: "Un pulso de 1 ms atraviesa un sistema cuya respuesta al impulso dura 2 ms. ¿Cuánto dura la salida?"
+    libro: [77]
+    widget:
+      tipo: figura
+      figura: fig-30.4
+      zonas:
+        - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
+    opciones:
+      - texto: "3 ms: la suma de las duraciones"
+        bien: true
+        porque: "La primera copia empieza con el pulso y la última termina 2 ms después de que acabe: 1 + 2 ms."
+      - texto: "2 ms, lo que dura la respuesta"
+        porque: "Las copias empiezan a lo largo de todo el pulso: la última acaba 1 ms más tarde."
+      - texto: "1 ms, lo que dura el pulso"
+        porque: "Cada instante del pulso deja una cola de 2 ms: la salida dura más que la entrada."
+    escalera:
+      - "¿Cuándo empieza la primera copia y cuándo acaba la última?"
+    solucion: "3 ms; con muestras, N + M − 1."
+
+  - id: dibuje-trapecio
+    tipo: dibujar
+    titulo: "Dibuje la salida"
+    texto: "Pulso rectangular de 1 ms; respuesta al impulso rectangular de 2 ms. Dibuje la salida, normalizada a su máximo."
+    nota: "La forma rectangular de h es de ejemplo."
+    libro: [71, 76, 77]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "y/y_{máx}" }
+      curvas:
+        - { expr: "min(max(t*1000000, 0), 1) - min(max((t - 0.001)*1000000, 0), 1)", color: azul, rotulo: "entrada, 1 ms" }
+    dibujar:
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "y/y_{máx}" }
+      curva: "max(0, min(t/0.001, 1, (0.003 - t)/0.001))"
+      puntos: 33
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "La salida"
+    exito: "Un trapecio: sube durante 1 ms, se mantiene mientras el pulso cabe entero en h y baja hasta los 3 ms."
+    pistas:
+      - { cuando: { valor: amplitud, menor: 0.8 }, texto: "Le falta altura: mientras el pulso está entero dentro de h, el solape es máximo." }
+      - { cuando: { valor: desfase, mayor: 0.05 }, texto: "Va tarde: la salida empieza a subir en cuanto entra el pulso." }
+      - { texto: "Deslice el pulso sobre h: el solape crece 1 ms, se queda quieto 1 ms y decrece 1 ms." }
+    escalera:
+      - "La salida en cada instante es el área del solape entre el pulso y h desplazada."
+    solucion: "Rampa de 0 a 1 ms, meseta de 1 a 2 ms y bajada hasta 3 ms."
+
+  - id: empareje-efectos
+    tipo: pregunta
+    titulo: "Lo que hace en la práctica"
+    texto: "Empareje cada convolución con su efecto."
+    libro: [76, 78, 79]
+    widget:
+      tipo: figura
+      figura: fig-30.4
+      zonas:
+        - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
+    emparejar:
+      - ["Con un pulso rectangular", "Promedia: un paso bajo"]
+      - ["Con un impulso", "Deja la señal intacta"]
+      - ["Con un impulso desplazado", "La desplaza sin alterarla"]
+      - ["Con una h centrada en un instante", "Lleva la salida a ese instante"]
+    exito: "El impulso es el elemento neutro de la convolución."
+    pistas:
+      - { texto: "Promediar es sumar las muestras de una ventana: eso hace el pulso rectangular." }
+    escalera:
+      - "Empiece por el impulso: una sola copia, de altura uno."
+    solucion: "Pulso, promedia; impulso, intacta; desplazado, desplaza; centrada, retarda."
+
+  - id: pregunta-ventana
+    tipo: pregunta
+    titulo: "El producto en el tiempo"
+    texto: "Toda captura multiplica la señal por una ventana finita. ¿Qué le pasa a su espectro?"
+    libro: [84, 86, 87]
+    widget:
+      tipo: figura
+      figura: fig-30.4
+      zonas:
+        - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
+    opciones:
+      - texto: "Se convoluciona con el de la ventana: las líneas se ensanchan"
+        bien: true
+        porque: "Producto en el tiempo, convolución en frecuencia: es la fuga espectral de la FFT."
+      - texto: "Se multiplica por el de la ventana"
+        porque: "El producto en frecuencia corresponde a una convolución en el tiempo, no a un producto."
+      - texto: "Nada: la ventana solo recorta en el tiempo"
+        porque: "Recortar en el tiempo cambia el espectro: por eso existen las ventanas."
+    escalera:
+      - "La propiedad funciona en los dos sentidos."
+    solucion: "Se convoluciona con el espectro de la ventana y ensancha las líneas."
+
+  - id: pregunta-fir
+    tipo: pregunta
+    titulo: "Un filtro FIR"
+    texto: "La suma de la convolución discreta, programada. ¿Qué son los coeficientes del filtro FIR que resulta?"
+    libro: [91, 100]
+    widget:
+      tipo: figura
+      figura: fig-30.5
+      zonas:
+        - { id: todo, rotulo: "Suma de copias de la respuesta al impulso", rect: [0, 0, 437, 276] }
+    opciones:
+      - texto: "Su respuesta al impulso"
+        bien: true
+        porque: "Programar un FIR es programar una convolución: sus coeficientes son h[n]."
+      - texto: "Las muestras de la entrada"
+        porque: "Esas cambian a cada instante; los coeficientes son fijos: la respuesta al impulso."
+      - texto: "Los polos del filtro"
+        porque: "Un FIR no realimenta: sus coeficientes son la respuesta al impulso, sin más."
+    escalera:
+      - "Entre un impulso: ¿qué sale por la salida de la suma?"
+    solucion: "La respuesta al impulso."
+
+  - id: porque-fft
+    tipo: porque
+    titulo: "El truco de la FFT"
+    texto: "Para convoluciones largas se transforma, se multiplica y se antitransforma. ¿Por qué compensa ese rodeo?"
+    libro: [82, 94]
+    widget:
+      tipo: figura
+      figura: fig-30.4
+      zonas:
+        - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
+    opciones:
+      - texto: "Directa cuesta N² operaciones; por la FFT, del orden de N·log N"
+        bien: true
+        porque: "Para N grande la diferencia es enorme, y el producto en frecuencia sustituye a la convolución."
+      - texto: "Porque la FFT da un resultado aproximado, más rápido"
+        porque: "No es una aproximación: da el mismo resultado, solo que con muchas menos operaciones."
+      - texto: "Porque en frecuencia no hay que guardar muestras"
+        porque: "Sigue haciendo falta el bloque entero; la ventaja es el número de operaciones."
+    escalera:
+      - "Compare cómo crecen N² y N·log N."
+    solucion: "N² frente a N·log N: el producto en frecuencia es mucho más barato."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [71, 73, 77, 82, 91]
+    ideas:
+      - { titulo: "Producto deslizante.", texto: "Cada muestra de la entrada deja una copia escalada de h; la salida las suma." }
+      - { titulo: "Alarga.", texto: "Dura la suma de las duraciones: N + M − 1 muestras." }
+      - { titulo: "Dualidad.", texto: "Convolución en el tiempo, producto en frecuencia, y al revés." }
+      - { titulo: "FIR.", texto: "Programar un FIR es programar una convolución." }

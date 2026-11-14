@@ -1,0 +1,298 @@
+# Lección 1.2 de la sección 31.5 «Los Lenguajes de la Norma IEC 61131-3» (cap55; etiqueta interna sec-55.5).
+# Formato: contenido/lecciones11/GUIA.md (§11). La red 1 de la figura 31.5 es el lazo OR-AND del circuito lógico, con
+# los contactos como en LD: abiertos = «la variable vale 1». El error clásico (S0 programado con un contacto cerrado) es
+# el mismo circuito con un inversor en S0. El intermitente de dos TON usa la ecuación del libro.
+leccion: cap55/sec-55.5
+
+libro:
+  66: "La norma define cinco lenguajes"
+  68: "Contacto abierto -| |-: conduce si la variable vale 1"
+  69: "da una máquina que solo arranca con el paro pulsado"
+  70: "una salida se escribe en una sola bobina (si aparece en dos redes, gana la última"
+  72: "Retardo a la conexión: Q pasa a 1 cuando IN lleva PT a 1"
+  74: "el lenguaje habitual de los autómatas de seguridad"
+  75: "La autorretención con arranque retardado 2 s"
+  76: "el que se impone en los programas nuevos"
+  78: "un TON al que no se llama no se entera de que pasa el tiempo"
+  79: "La tercera edición de la norma la declaró obsoleta y la cuarta la ha suprimido"
+  81: "El SFC no sirve para escribir operaciones sino para estructurar un programa secuencial"
+  85: "el periodo sale de 1 020 ms con Tc = 10 ms, de 1 022 ms con 7 ms y de 1 002 ms con 1 ms"
+  86: '2 dot.op ⌈ (P T)/(T_("c")) ⌉'
+  87: "las tareas periódicas y las marcas de reloj del autómata"
+  "cap55#138": "Un intermitente se programa con dos TON de 300 ms"
+
+modelo:
+  valores:
+    P_T: { sim: "PT", nombre: "tiempo programado de cada TON", unidad: s, valor: 0.5 }
+    T_c: { sim: "T_{c}", nombre: "tiempo de ciclo", unidad: s, valor: 0.01 }
+  calculos:
+    n_v: { expr: "ceil(P_T/T_c)", sim: "n", nombre: "vueltas de cada TON", unidad: "" }
+    T_b: { expr: "2*ceil(P_T/T_c)*T_c + 2*T_c", sim: "T", nombre: "periodo del intermitente", unidad: s }
+    e_b: { expr: "100*(T_b - 2*P_T)/(2*P_T)", sim: "error", nombre: "error del periodo", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-ld-fbd
+    tipo: explorar
+    titulo: "El mismo programa, dos dibujos"
+    texto: "Arriba, la autorretención con arranque retardado en contactos; abajo, en bloques. Toque las piezas."
+    libro: [68, 74, 75]
+    widget:
+      tipo: figura
+      figura: fig-55.5
+      zonas:
+        - { id: s1, rotulo: "Primer contacto de la red 1", rect: [40, 16, 28, 28], texto: "S1, la marcha: contacto abierto, conduce si vale 1." }
+        - { id: retencion, rotulo: "Contacto debajo del primero", rect: [34, 46, 40, 28], texto: "MARCHA en paralelo con S1: la autorretención." }
+        - { id: s0, rotulo: "Segundo contacto de la red 1", rect: [84, 16, 28, 28], texto: "S0, el paro: cableado cerrado, se programa con un contacto abierto." }
+        - { id: bobina, rotulo: "Bobina de la red 1", rect: [254, 18, 32, 28], texto: "La bobina MARCHA: la memoria." }
+        - { id: ton, rotulo: "Bloque de la red 2", rect: [112, 68, 50, 38], texto: "Un TON, retardo a la conexión: Q sube cuando IN lleva PT = 2 s a 1." }
+        - { id: o-fbd, rotulo: "Primer bloque de abajo", rect: [60, 126, 32, 36], texto: "En FBD, los contactos en paralelo son una puerta O." }
+        - { id: y-fbd, rotulo: "Segundo bloque de abajo", rect: [117, 126, 30, 52], texto: "Y los contactos en serie, una puerta Y." }
+    requiere: { mover: [s0, ton] }
+
+  - id: explore-red
+    tipo: explorar
+    titulo: "La red 1, viva"
+    texto: "En LD un contacto abierto conduce si su variable vale 1, y S0, cableado cerrado, vale 1 sin pulsar. Arranque y pare."
+    libro: [68, 69]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, rotulo: "S1 (marcha)" }, { id: S0, valor: 1, rotulo: "S0 (1 sin pulsar)" }, { id: F2, valor: 1, rotulo: "F2 (1 sin disparar)" }]
+      piezas:
+        - { id: o1, tipo: or, entradas: [S1, marcha] }
+        - { id: marcha, tipo: and, entradas: [o1, S0, F2], rotulo: "MARCHA" }
+      salidas:
+        - { id: M, de: marcha, rotulo: "MARCHA" }
+    requiere: { mover: [S1, S0] }
+
+  - id: prediga-cerrado
+    tipo: predecir
+    titulo: "Un contacto cerrado para S0"
+    texto: "Alguien programó S0 con un contacto cerrado, como el pulsador del esquema, y se pulsa S1 sin tocar el paro. ¿Arranca?"
+    libro: [69]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, valor: 1, rotulo: "S1 (marcha)" }, { id: S0, valor: 1, rotulo: "S0 (1 sin pulsar)" }, { id: F2, valor: 1, rotulo: "F2 (1 sin disparar)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "Contacto cerrado" }
+        - { id: o1, tipo: or, entradas: [S1, marcha] }
+        - { id: marcha, tipo: and, entradas: [o1, c-s0, F2], rotulo: "MARCHA" }
+      salidas:
+        - { id: M, de: marcha, rotulo: "MARCHA" }
+      ocultar: true
+    opciones:
+      - { texto: "No: MARCHA se queda a 0", bien: true, porque: "S0 vale 1 sin pulsar, y un contacto cerrado solo conduce cuando su variable vale 0." }
+      - { texto: "Sí, como en el esquema cableado", porque: "En el esquema el contacto es el pulsador; en LD es una condición sobre la variable, que aquí vale 1." }
+    escalera: ["¿Cuánto vale la entrada de S0 sin pulsar? ¿Y qué deja pasar un contacto cerrado?"]
+    solucion: "S0 = 1 y el contacto cerrado conduce con 0: no arranca."
+
+  - id: sorpresa-contacto-cerrado
+    tipo: sorpresa
+    titulo: "Para que se parezca al esquema"
+    texto: "El mismo programa, con S0 en un contacto cerrado. Intente arrancar con S1; luego pulse S0 y vuelva a probar."
+    libro: [69]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, rotulo: "S1 (marcha)" }, { id: S0, valor: 1, rotulo: "S0 (1 sin pulsar)" }, { id: F2, valor: 1, rotulo: "F2 (1 sin disparar)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "Contacto cerrado" }
+        - { id: o1, tipo: or, entradas: [S1, marcha] }
+        - { id: marcha, tipo: and, entradas: [o1, c-s0, F2], rotulo: "MARCHA" }
+      salidas:
+        - { id: M, de: marcha, rotulo: "MARCHA" }
+    requiere: { mover: [S1, S0] }
+
+  - id: porque-error
+    tipo: porque
+    titulo: "El error más frecuente"
+    texto: "Con el contacto cerrado, la máquina solo arranca con el paro pulsado. ¿Por qué?"
+    libro: [68, 69]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, rotulo: "S1 (marcha)" }, { id: S0, valor: 1, rotulo: "S0 (1 sin pulsar)" }, { id: F2, valor: 1, rotulo: "F2 (1 sin disparar)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "Contacto cerrado" }
+        - { id: o1, tipo: or, entradas: [S1, marcha] }
+        - { id: marcha, tipo: and, entradas: [o1, c-s0, F2], rotulo: "MARCHA" }
+      salidas:
+        - { id: M, de: marcha, rotulo: "MARCHA" }
+    opciones:
+      - { texto: "Un contacto cerrado conduce si la variable vale 0, y S0 solo vale 0 pulsado", bien: true, porque: "En LD el contacto no es el pulsador: dice qué valor de la variable deja pasar." }
+      - { texto: "Porque el autómata invierte todas las entradas", porque: "No invierte nada: la entrada de S0 vale 1 sin pulsar porque el pulsador está cableado cerrado." }
+      - { texto: "Porque falta la autorretención", porque: "La retención está; lo que falla es que el paro conduce justo al revés." }
+    escalera: ["¿Cuánto vale la entrada de S0 sin pulsar?"]
+    solucion: "S0 vale 1 sin pulsar; un contacto cerrado solo conduce con 0: hay que pulsar el paro para arrancar."
+
+  - id: empareje-bloques
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los bloques estándar"
+    texto: "Una cada bloque de la norma con lo que hace."
+    libro: [72]
+    emparejar:
+      - ["TON", "Q sube cuando IN lleva PT a 1"]
+      - ["TOF", "Q se mantiene PT después de que IN baje"]
+      - ["TP", "Un flanco de IN da un pulso de duración PT"]
+      - ["R_TRIG", "Q vale 1 durante una vuelta tras subir"]
+      - ["RS", "Biestable con prioridad de puesta a 0"]
+    exito: "Y los contadores CTU, CTD y CTUD cuentan flancos hasta PV."
+    pistas:
+      - { texto: "TON retrasa la conexión; TOF, la desconexión." }
+    escalera: ["En RS domina la R; en SR, la S."]
+    solucion: "TON conexión, TOF desconexión, TP impulso, R_TRIG flanco, RS prioridad de puesta a 0."
+
+  - id: pregunta-instancia
+    tipo: pregunta
+    titulo: "Un TON por dentro"
+    texto: "En el modelo de software de la norma, ¿qué es un temporizador TON?"
+    libro: [66, 78]
+    widget:
+      tipo: figura
+      figura: fig-55.5
+      zonas:
+        - { id: ton, rotulo: "Bloque de la red 2", rect: [112, 68, 50, 38] }
+    opciones:
+      - { texto: "Un bloque de función con memoria propia, declarado como instancia", bien: true, porque: "Cada temporizador es una instancia, como un objeto, y hay que llamarlo en cada vuelta." }
+      - { texto: "Una función, como una suma", porque: "Las funciones no tienen memoria; un TON tiene que recordar cuánto tiempo lleva IN a 1." }
+      - { texto: "Un programa que llama la tarea", porque: "Los programas son las POU que llama la tarea; el TON es un bloque dentro de ellos." }
+    escalera: ["¿Necesita recordar algo entre vueltas?"]
+    solucion: "Un bloque de función (FB): tiene memoria y se declara como instancia."
+
+  - id: pregunta-dos-bobinas
+    tipo: pregunta
+    titulo: "Una salida en dos redes"
+    texto: "La misma salida KM1 aparece en dos bobinas normales, en dos redes. ¿Qué vale?"
+    libro: [70]
+    widget:
+      tipo: figura
+      figura: fig-55.5
+      zonas:
+        - { id: km1, rotulo: "Bobina de la red 2", rect: [254, 70, 32, 28] }
+    opciones:
+      - { texto: "Lo que diga la última red", bien: true, porque: "Se ejecuta red a red, de arriba abajo: la última escritura gana. Por eso una salida, una sola bobina." }
+      - { texto: "La O de las dos redes", porque: "No se combinan: cada bobina escribe la variable, y la segunda pisa a la primera." }
+      - { texto: "Lo que diga la primera red", porque: "La primera escribe, pero la segunda vuelve a escribir en la misma vuelta." }
+    escalera: ["¿En qué orden se ejecutan las redes?"]
+    solucion: "Gana la última; las bobinas S y R son la excepción, pensadas para eso."
+
+  - id: explore-intermitente
+    tipo: explorar
+    titulo: "Un intermitente de 1 Hz... casi"
+    texto: "Dos TON de 500 ms se encienden uno a otro. Cambie el tiempo de ciclo y mire el periodo."
+    libro: [85]
+    fijar: { P_T: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0.0005, max: 0.012, unidad: s, rotulo: "T_{c}" }
+      y: { min: 0.98, max: 1.06, unidad: s, rotulo: "T" }
+      curvas:
+        - { expr: "2*ceil(P_T/tx)*tx + 2*tx", color: azul, rotulo: "Periodo" }
+        - { expr: "2*P_T", color: tinta, rotulo: "Lo pedido", discontinua: true }
+      marcas:
+        - { x: "T_c", y: "T_b", rotulo: "Su ciclo" }
+      lectura: { valor: T_b, rotulo: "Periodo" }
+      mandos:
+        - { valor: T_c, lista: [0.001, 0.007, 0.01], rotulo: "Tiempo de ciclo" }
+    requiere: { mover: [T_c] }
+
+  - id: formula-intermitente
+    tipo: formula
+    titulo: "Vueltas enteras"
+    texto: "Cada TON tarda el primer múltiplo de T_{c} que no es menor que PT, y cada reinicio pierde una vuelta."
+    libro: [85, 86]
+    ec: 86
+    sustitucion: "2 · {{n_v}} · {{T_c}} + 2 · {{T_c}} = {{T_b}}"
+    fijar: { P_T: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0.0005, max: 0.012, unidad: s, rotulo: "T_{c}" }
+      y: { min: 0.98, max: 1.06, unidad: s, rotulo: "T" }
+      curvas:
+        - { expr: "2*ceil(P_T/tx)*tx + 2*tx", color: azul, rotulo: "Periodo" }
+        - { expr: "2*P_T", color: tinta, rotulo: "Lo pedido", discontinua: true }
+      marcas:
+        - { x: "T_c", y: "T_b", rotulo: "Su ciclo" }
+      lectura: { valor: T_b, rotulo: "Periodo" }
+      datos:
+        - { valor: e_b, rotulo: "Error: {{e_b}}" }
+      mandos:
+        - { valor: T_c, lista: [0.001, 0.007, 0.01], rotulo: "Tiempo de ciclo" }
+    comprobar:
+      - { T_b: 1.02 }
+      - { con: { T_c: 0.007 }, T_b: 1.022 }
+      - { con: { T_c: 0.001 }, T_b: 1.002 }
+
+  - id: estime-intermitente
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Dos TON de 300 ms"
+    texto: "Un intermitente con dos TON de 300 ms y un ciclo constante de 8 ms. ¿Qué periodo tiene?"
+    libro: ["cap55#138", 86]
+    fijar: { P_T: 0.3, T_c: 0.008 }
+    estimar:
+      objetivo: "T_b"
+      unidad: s
+      min: 0.5
+      max: 0.7
+      paso: 0.001
+      inicio: 0.68
+      tol: 0.005
+      rotulo: "Periodo"
+    exito: "624 ms en vez de 600: un 4 % de error, 1,603 Hz en vez de 1,667 Hz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.627 }, texto: "Se ha pasado: cada TON tarda 38 vueltas, y se suman dos vueltas perdidas." }
+      - { texto: "Se ha quedado corto: 300 ms no es múltiplo de 8 ms; cada TON tarda 38 vueltas, y se pierden dos más." }
+    escalera:
+      - "⌈300/8⌉ = 38 vueltas por TON."
+    solucion: "2 × 38 × 8 + 2 × 8 = 624 ms."
+    comprobar:
+      - { T_b: 0.624, n_v: 38 }
+
+  - id: pregunta-sin-ciclo
+    tipo: pregunta
+    titulo: "Un intermitente exacto"
+    texto: "Ese error del 4 % importa en algo que mide tiempo. ¿Cómo se programa sin depender del ciclo?"
+    libro: [87, "cap55#138"]
+    fijar: { P_T: 0.3, T_c: 0.008 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0.0005, max: 0.012, unidad: s, rotulo: "T_{c}" }
+      y: { min: 0.58, max: 0.66, unidad: s, rotulo: "T" }
+      curvas:
+        - { expr: "2*ceil(P_T/tx)*tx + 2*tx", color: azul, rotulo: "Periodo" }
+        - { expr: "2*P_T", color: tinta, rotulo: "Lo pedido", discontinua: true }
+      lectura: { valor: T_b, rotulo: "Periodo" }
+    opciones:
+      - { texto: "Con el reloj del sistema, una tarea periódica o una marca de reloj", bien: true, porque: "Esas bases de tiempo no dependen de cuánto dure cada vuelta." }
+      - { texto: "Bajando PT un 4 %", porque: "Solo valdría con ese ciclo exacto; el ciclo no es constante y el error cambiaría." }
+      - { texto: "Con un tercer TON", porque: "Otro TON sigue actualizándose solo cuando se le llama: el mismo problema." }
+    escalera: ["Busque algo que mida el tiempo fuera del ciclo."]
+    solucion: "Reloj del sistema, tarea periódica o marca de reloj del autómata."
+    comprobar:
+      - { e_b: 4 }
+
+  - id: empareje-lenguajes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cinco lenguajes"
+    texto: "Una cada lenguaje de la IEC 61131-3 con su papel."
+    libro: [66, 74, 76, 79, 81]
+    emparejar:
+      - ["LD (contactos)", "El esquema de mando girado; el que leen los electricistas"]
+      - ["FBD (bloques)", "Circuito de puertas; el de los autómatas de seguridad"]
+      - ["ST (texto)", "Alto nivel, de la familia del Pascal; se impone en lo nuevo"]
+      - ["IL (lista)", "Tipo ensamblador; obsoleto y suprimido en la cuarta edición"]
+      - ["SFC", "Estructura un programa en etapas y transiciones"]
+    exito: "Sea cual sea el lenguaje, el programa corre dentro del ciclo de scan."
+    pistas:
+      - { texto: "Solo uno no escribe operaciones: las organiza." }
+    escalera: ["El que tiene IF, CASE y FOR es de alto nivel."]
+    solucion: "LD contactos, FBD bloques, ST texto, IL obsoleto, SFC etapas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [68, 69, 72, 86]
+    ideas:
+      - { titulo: "Contacto abierto.", texto: "En LD significa «la variable vale 1»; un paro cableado cerrado se programa abierto." }
+      - { titulo: "Bloques con memoria.", texto: "Cada TON es una instancia, y hay que llamarlo en cada vuelta." }
+      - { titulo: "El ciclo se cuela.", texto: "Un TON tarda un número entero de vueltas: el intermitente sale un poco lento." }

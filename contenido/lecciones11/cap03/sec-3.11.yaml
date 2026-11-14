@@ -161,6 +161,9 @@ tarjetas:
     comprobar:
       - { Z_a: 0.487, Z_id: 0.016, tol: 0.01 }
       - { f_res: 17.8e6, tol: 0.002 }
+    escalera:
+      - "Por encima de 17,8 MHz, ¿quién manda: C o L?"
+    solucion: "Ya es una bobina: 487 mΩ, 30 veces peor que la idealización."
 
   - id: regla-impedancia
     tipo: formula
@@ -200,6 +203,23 @@ tarjetas:
         porque: "Solo por debajo de la resonancia. Arriba manda la inductancia del montaje."
       - texto: "Sí, si además tiene menos ESR"
         porque: "A 100 MHz la ESR ya no pesa: lo que domina es ω·L."
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_a, f: f_a, r: R_a, l: L_a, c: C_a }
+      lectura: { valor: Z_a, rotulo: "Impedancia real" }
+      mide: { i_amp: I_a }
+      dibujo: false
+      grafica:
+        x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: f, escala: log }
+        y: { min: 0.01, max: 10, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_a^2 + (2*pi*nu*L_a - 1/(2*pi*nu*C_a))^2)", color: naranja, rotulo: real }
+      mandos:
+        - { valor: f_a, lista: [1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000, 200000000, 500000000, 1000000000], rotulo: "Frecuencia, f" }
+    escalera:
+      - "Por encima de la resonancia |Z| ≈ ω·L: ¿aparece C en esa expresión?"
+    solucion: "No: arriba |Z| ≈ ω·L, que no depende de C. Hay que bajar la inductancia del montaje."
 
   - id: reto-paralelo
     tipo: reto
@@ -221,7 +241,9 @@ tarjetas:
     exito: "Con {{N_a}} iguales, {{Z_n}}: dividen L por {{N_a}}, sin antirresonancia porque resuenan a la misma frecuencia."
     pistas:
       - { cuando: { valor: Z_n, mayor: 0.245 }, texto: "Aún es demasiado inductivo: añada otro igual, con sus propias vías." }
-    ayuda: "Dos 100 nF en paralelo dividen L por dos: 0,24 Ω a 100 MHz."
+    escalera:
+      - "Varios iguales en paralelo, cada uno con sus vías, dividen L."
+    solucion: "Dos 100 nF en paralelo dividen L por dos: 0,24 Ω a 100 MHz."
     comprobar:
       - { con: { N_a: 2 }, Z_n: 0.24, tol: 0.02 }
 
@@ -300,7 +322,9 @@ tarjetas:
     pistas:
       - { cuando: { valor: dq0, mayor: 1.07 }, texto: "Demasiado rizado: el pico, 15,57 V, menos el rizado cae por debajo de 14,5 V. Suba C." }
       - { cuando: { valor: C_rf, mayor: 0.0047 }, texto: "Cumple, pero sobra: el compromiso es el mínimo que cumpla." }
-    ayuda: "ΔV admisible = 15,57 − 14,5 = 1,07 V; C = 0,5 · 0,01 / 1,07 = 4673 µF: el comercial, 4700 µF."
+    escalera:
+      - "El rizado admisible es el pico menos lo que necesita el regulador: 15,57 − 14,5 V."
+    solucion: "1,07 V; C = 0,5 · 0,01 / 1,07 = 4673 µF: el comercial, 4700 µF."
     comprobar:
       - { con: { C_rf: 4700e-6 }, dq0: 1.064, V_r2: 15.57, tol: 0.002 }
 
@@ -345,11 +369,30 @@ tarjetas:
         porque: "No es la ESR: es la geometría de la recarga, más corta con menos rizado."
       - texto: "Porque la carga consume más"
         porque: "La carga sigue en 0,5 A de media. Lo que cambia es cuánto dura cada pulso."
+    fijar: { V_rp: 16.97, f_red: 50, V_rd: 0.7, I_L: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: I_pk, rotulo: "Pico en los diodos" }
+      datos:
+        - { valor: dq6, rotulo: "Rizado: {{dq6}}" }
+      dibujo: false
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: t }
+        y: { min: 10, max: 17, unidad: V, rotulo: v }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: salida, mide: salida }
+      mandos:
+        - { valor: C_rf, lista: [0.0022, 0.0047, 0.01], rotulo: "Condensador, C" }
+    escalera:
+      - "Con menos rizado, ¿cuánto tiempo conducen los diodos en cada ciclo?"
+    solucion: "La conducción es más corta y la misma carga se repone en menos tiempo: más pico de corriente."
 
   - id: regla-rizado-mlcc
     tipo: formula
     titulo: "3.C · El rizado doble"
-    texto: "Reductor de 500 kHz, 300 mA a 5 V, ΔI_{L} de 90 mA. Su MLCC de 10 µF mide el doble de rizado. Baje la capacidad."
+    texto: "Reductor de 500 kHz, 300 mA a 5 V y ΔI_{L} de 90 mA: su MLCC de 10 µF mide el doble de rizado. Baje la capacidad."
     libro: [262, 266, 268, 271]
     ec: 268
     fijar: { dIL: 0.09, f_sw: 500000 }
@@ -383,6 +426,21 @@ tarjetas:
         porque: "Los tiene a cero voltios. En el circuito, polarizado a 5 V, no."
       - texto: "Ninguno: el montaje está mal"
         porque: "No hay fallo en el montaje: el error está en calcular con el valor impreso."
+    fijar: { dIL: 0.09, f_sw: 500000 }
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0.000001, max: 0.00001, unidad: F, rotulo: C }
+      y: { min: 0, max: 0.012, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "dIL/(8*f_sw*cc)", color: naranja, rotulo: rizado }
+      asas:
+        - { mueve: C_o, x: C_o, y: dV_o, rotulo: "Capacidad efectiva" }
+      lectura: { valor: dV_o, rotulo: Rizado }
+      mandos:
+        - { valor: C_o, min: 0.000001, max: 0.00001, paso: 5e-7, rotulo: "Capacidad, C" }
+    escalera:
+      - "¿Con qué tensión continua mide un LCR corriente?"
+    solucion: "El rizado: el LCR mide sin tensión continua, y a 5 V queda la mitad."
 
   - id: correccion
     tipo: pregunta
@@ -397,6 +455,14 @@ tarjetas:
         porque: "Al revés: con menos tensión nominal el dieléctrico es más fino y pierde más."
       - texto: "Cambiarlo por un Y5V del mismo valor"
         porque: "Un Y5V pierde aún más capacidad con la tensión y la temperatura."
+    widget:
+      tipo: figura
+      figura: fig-3.10
+      zonas:
+        - { id: perdida, rotulo: "Pérdida de capacidad con la tensión", rect: [0, 0, 439, 203] }
+    escalera:
+      - "¿Qué condensador tiene el dieléctrico más grueso para la misma capacidad?"
+    solucion: "Subir la tensión nominal: un 10 µF de 25 o 50 V pierde mucha menos capacidad a 5 V."
 
   - id: resumen
     tipo: resumen

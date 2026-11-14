@@ -18,7 +18,9 @@ import formulas_expr as X
 import repaso as Q
 from formulas_visual import FAMILIAS, ESQUEMAS, GRAFICOS, VISUAL
 
-LIB = '/home/claude/v3/libro'
+import fuentes
+
+LIB = fuentes.LIB
 TIPOS_TEXTO = ('significa', 'aplica', 'valores', 'error')
 HTML_PERMITIDO = {'sub', 'sup', 'em', 'strong', 'br'}
 

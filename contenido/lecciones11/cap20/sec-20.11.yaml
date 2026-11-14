@@ -1,0 +1,260 @@
+# Lección 1.2 de la sección 19.10 «Relés de Estado Sólido y el Relé Mecánico Revisitado» (cap20; sec-20.N = impresas
+# 19.(N − 1)).
+# - La conmutación del relé y del SSR de cruce por cero de la figura 19.17 (fig-20.18), con zonas.
+# - La disipación (bloques 268 y 283): SSR P = V_on·I, 1 a 1,5 V con 10 A son 10 a 15 W; MOSFET P = I²·R_DS(on),
+#   5 mΩ con 10 A son 0,5 W. Gráfica como la de la derecha de la figura.
+# Paso práctico: «simular» la disipación del MOSFET con 10 A (0,5 W; errores típicos: I·R, que es la caída, y los
+# 15 W del SSR).
+leccion: cap20/sec-20.11
+
+libro:
+  260: "se manda con unos miliamperios y conmuta la carga con aislamiento total"
+  263: "millones de operaciones sin degradación"
+  264: "Silencioso y sin rebotes"
+  265: "el SSR espera a que la tensión de red pase por cero para conducir"
+  266: "si lo hace en el pico de la onda produce un transitorio considerable"
+  268: "un TRIAC o un SCR caen entre 1 y 1,5 V, y con 10 A eso son 10 a 15 W que hay que disipar"
+  269: "no sirve como elemento de seccionamiento"
+  270: "cuando falla, suele quedar conduciendo"
+  274: "ambos pueden fallar cerrados, y ninguno garantiza la apertura por sí solo"
+  276: "Cargas inductivas y control por ángulo de fase"
+  277: "solo puede encender al principio del semiciclo"
+  279: "con el disipador real puede quedar en la mitad"
+  283: "con RDS(on) de 5 mΩ y 10 A son 0,5 W frente a los 15 del SSR"
+  286: "midiendo la tensión en la carga con el SSR desactivado"
+  287: "Esa última medida es la que demuestra que no aísla"
+  288: "La conmutación en cruce por cero frente al relé mecánico, y la disipación del SSR."
+
+modelo:
+  valores:
+    I_L: { sim: "I", nombre: "corriente de carga", unidad: A, valor: 10 }
+    V_on: { sim: "V_{on}", nombre: "caída del SSR en conducción", unidad: V, valor: 1.5 }
+    R_ds: { sim: "R_{DS(on)}", nombre: "resistencia del MOSFET en conducción", unidad: Ω, valor: 0.005 }
+  calculos:
+    P_s: { expr: "V_on*I_L", sim: "P_{SSR}", nombre: "disipación del SSR", unidad: W }
+    P_m: { expr: "I_L^2*R_ds", sim: "P_{MOSFET}", nombre: "disipación del MOSFET", unidad: W }
+    V_m: { expr: "I_L*R_ds", sim: "V_{DS}", nombre: "caída en el MOSFET", unidad: V }
+
+tarjetas:
+  - id: explore-conmutar
+    tipo: explorar
+    titulo: "Un optoacoplador con potencia"
+    texto: "Un SSR se manda con unos miliamperios y conmuta la carga con aislamiento total. Toque cómo conmuta cada uno."
+    libro: [260, 288]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: rele, rotulo: "Traza roja de arriba", rect: [40, 25, 200, 65], texto: "El relé mecánico cierra en un instante cualquiera: aquí, en el pico. Un escalón: transitorio e interferencia." }
+        - { id: ssr, rotulo: "Traza verde de abajo", rect: [40, 100, 200, 58], texto: "El SSR de cruce por cero espera al paso por cero: empieza sin escalón." }
+        - { id: disipacion, rotulo: "Gráfica de la derecha", rect: [285, 15, 150, 145], texto: "Por qué lleva disipador: la caída en conducción por la corriente." }
+    requiere: { mover: [rele, ssr] }
+
+  - id: empareje-virtudes
+    tipo: pregunta
+    titulo: "Sus tres virtudes"
+    texto: "Empareje cada virtud del SSR frente al relé con lo que trae."
+    libro: [263, 264, 265]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: ssr, rotulo: "Traza verde de abajo", rect: [40, 100, 200, 58] }
+    emparejar:
+      - ["Sin desgaste mecánico", "Millones de operaciones"]
+      - ["Sin contactos que se muevan", "Silencioso y sin rebotes"]
+      - ["Cruce por cero", "La interferencia conducida casi desaparece"]
+    exito: "El cruce por cero es la menos evidente y la más valiosa."
+    pistas:
+      - { texto: "La interferencia viene del escalón de tensión." }
+    escalera:
+      - "Empiece por la vida: ¿qué se gasta en un relé?"
+    solucion: "Sin desgaste, millones de operaciones; sin contactos, sin ruido ni rebotes; cruce por cero, sin interferencia."
+
+  - id: prediga-pico
+    tipo: predecir
+    titulo: "Cerrar en el pico"
+    texto: "La orden llega justo cuando la red pasa por su pico. ¿Qué ve la carga con cada uno?"
+    libro: [265, 266]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: rele, rotulo: "Traza roja de arriba", rect: [40, 25, 200, 65] }
+        - { id: ssr, rotulo: "Traza verde de abajo", rect: [40, 100, 200, 58] }
+    opciones:
+      - texto: "Con el relé, un escalón; el SSR espera al cruce por cero"
+        bien: true
+        porque: "El relé cierra en un instante arbitrario; el SSR de cruce por cero no conduce hasta que la tensión pasa por cero."
+      - texto: "Los dos conducen igual, en el pico"
+        porque: "El SSR de cruce por cero espera: no conduce en el pico."
+      - texto: "El relé espera al cero y el SSR no"
+        porque: "Es al revés: el relé no sabe nada de la red."
+    escalera:
+      - "¿Cuál de los dos mira la tensión de red antes de conducir?"
+    solucion: "El relé da un escalón con transitorio; el SSR espera al cruce por cero."
+
+  - id: explore-disipacion
+    tipo: explorar
+    titulo: "Por qué lleva disipador"
+    texto: "Un TRIAC o un SCR caen de 1 a 1,5 V en conducción; un MOSFET, I·R_{DS(on)}. Mueva la corriente y compare lo que disipan."
+    libro: [268, 283]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 20, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 30, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "V_on*i", color: naranja, rotulo: "SSR" }
+        - { expr: "i^2*R_ds", color: verde, rotulo: "MOSFET de 5 mΩ" }
+      marcas:
+        - { x: "I_L", y: "P_s", rotulo: "{{P_s}}" }
+      lectura: { valor: P_s, rotulo: "Disipación del SSR" }
+      datos:
+        - { valor: P_m, rotulo: "MOSFET: {{P_m}}" }
+      mandos:
+        - { valor: I_L, lista: [5, 10, 20], rotulo: "Corriente, I" }
+        - { valor: V_on, lista: [1, 1.5], rotulo: "Caída del SSR, V_{on}" }
+    requiere: { mover: [I_L, V_on] }
+    comprobar:
+      - { con: { I_L: 10, V_on: 1 }, P_s: 10 }
+      - { con: { I_L: 10, V_on: 1.5 }, P_s: 15 }
+
+  - id: simule-mosfet
+    tipo: simular
+    titulo: "El MOSFET como alternativa"
+    texto: "En continua, un MOSFET con R_{DS(on)} = 5 mΩ conduce 10 A. ¿Cuánto disipa?"
+    libro: [283]
+    fijar: { I_L: 10, R_ds: 0.005, V_on: 1.5 }
+    simular:
+      objetivo: P_m
+      unidad: W
+      tol: 0.03
+      rotulo: "Disipación del MOSFET"
+      errores:
+        - { expr: "V_m", texto: "I·R es la caída, en voltios; la potencia es I²·R." }
+        - { expr: "P_s", texto: "Esos 15 W son los del SSR, con 1,5 V de caída." }
+    exito: "0,5 W frente a los 15 del SSR: la solución moderna en continua."
+    escalera:
+      - "En una resistencia, P = I²·R."
+    solucion: "10² · 0,005 = 0,5 W."
+    comprobar:
+      - { P_m: 0.5, V_m: 0.05, P_s: 15 }
+
+  - id: seccionamiento
+    tipo: pregunta
+    titulo: "Apagado, pero no aislado"
+    texto: "Con el SSR desactivado, se quiere trabajar en la carga conectada a la red. ¿Es seguro?"
+    libro: [269, 286, 287]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: ssr, rotulo: "Traza verde de abajo", rect: [40, 100, 200, 58] }
+    opciones:
+      - texto: "No: tiene fuga en corte y no aísla la carga de la red"
+        bien: true
+        porque: "Unos miliamperios: bastan para que brille una lámpara de neón o para dar una descarga."
+      - texto: "Sí: desactivado no conduce nada"
+        porque: "Conduce unos miliamperios en corte: no sirve como elemento de seccionamiento."
+      - texto: "Sí, si es de cruce por cero"
+        porque: "El cruce por cero decide cuándo enciende, no la fuga en corte."
+    escalera:
+      - "¿Conduce algo un SSR en corte?"
+    solucion: "No: un SSR no aísla la carga de la red; no sirve de seccionamiento."
+
+  - id: porque-fallo
+    tipo: porque
+    titulo: "La última fila de la tabla"
+    texto: "Relé y SSR fallan de forma distinta. ¿Por qué importa en seguridad?"
+    libro: [270, 274]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: todo, rotulo: "La figura entera", rect: [0, 0, 440, 188] }
+    opciones:
+      - texto: "Los dos pueden fallar cerrados y ninguno garantiza la apertura"
+        bien: true
+        porque: "El SSR queda en cortocircuito; el relé, con los contactos pegados."
+      - texto: "Porque el SSR nunca falla"
+        porque: "Falla, y suele quedar conduciendo."
+      - texto: "Porque el relé siempre falla abierto"
+        porque: "No: sus contactos pueden soldarse y quedar pegados."
+    escalera:
+      - "¿Cómo suele fallar cada uno: abierto o cerrado?"
+    solucion: "Ambos pueden fallar cerrados: ninguno garantiza la apertura por sí solo."
+
+  - id: empareje-tipos
+    tipo: pregunta
+    titulo: "Los tipos y su elección"
+    texto: "Empareje cada tipo de SSR con su uso."
+    libro: [276]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: ssr, rotulo: "Traza verde de abajo", rect: [40, 100, 200, 58] }
+    emparejar:
+      - ["Cruce por cero", "Cargas resistivas: calefacción, lámparas"]
+      - ["Conducción instantánea", "Cargas inductivas y ángulo de fase"]
+      - ["De continua", "Con MOSFET"]
+    exito: "Y con cargas inductivas, snubber para evitar el disparo por dv/dt."
+    pistas:
+      - { texto: "Regular por ángulo de fase exige encender en cualquier momento." }
+    escalera:
+      - "¿Cuál enciende al recibir la orden, sin esperar?"
+    solucion: "Cruce por cero, resistivas; instantánea, inductivas y fase; continua, MOSFET."
+
+  - id: prediga-fase
+    tipo: predecir
+    titulo: "Regular con cruce por cero"
+    texto: "Se intenta regular una lámpara por ángulo de fase con un SSR de cruce por cero. ¿Qué pasa?"
+    libro: [277]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: ssr, rotulo: "Traza verde de abajo", rect: [40, 100, 200, 58] }
+    opciones:
+      - texto: "No regula: solo puede encender al principio del semiciclo"
+        bien: true
+        porque: "Para regular, conducción instantánea, o ciclos enteros: unos sí y otros no."
+      - texto: "Regula igual que uno instantáneo"
+        porque: "El de cruce por cero espera al cero: no puede encender a mitad del semiciclo."
+      - texto: "Regula mejor, sin interferencia"
+        porque: "Sin interferencia sí, pero no puede elegir el ángulo de encendido."
+    escalera:
+      - "¿Cuándo puede encender un SSR de cruce por cero?"
+    solucion: "No sirve: solo enciende al principio del semiciclo."
+
+  - id: derating
+    tipo: pregunta
+    titulo: "La corriente nominal"
+    texto: "La hoja da la corriente nominal del SSR a una temperatura de base. ¿Qué pasa con el disipador real?"
+    libro: [279]
+    widget:
+      tipo: figura
+      figura: fig-20.18
+      zonas:
+        - { id: disipacion, rotulo: "Gráfica de la derecha", rect: [285, 15, 150, 145] }
+    opciones:
+      - texto: "Puede quedar en la mitad"
+        bien: true
+        porque: "Hay que aplicar derating por temperatura."
+      - texto: "Se mantiene"
+        porque: "Solo a la temperatura de base de la hoja; con el disipador real, baja."
+      - texto: "Sube, porque el disipador ayuda"
+        porque: "El disipador no supera la condición de la hoja: con el real, la corriente baja."
+    escalera:
+      - "¿A qué temperatura está dada la nominal?"
+    solucion: "Con el disipador real puede quedar en la mitad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [265, 268, 269, 283]
+    ideas:
+      - { titulo: "El SSR.", texto: "Sin desgaste, sin rebotes y con cruce por cero." }
+      - { titulo: "Lo que cuesta.", texto: "1 a 1,5 V de caída: con 10 A, 10 a 15 W y disipador." }
+      - { titulo: "No aísla.", texto: "Fuga en corte; y falla cerrado, como un relé pegado." }
+      - { titulo: "En continua.", texto: "Un MOSFET de 5 mΩ: 0,5 W con 10 A." }

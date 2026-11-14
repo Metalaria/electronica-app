@@ -6,6 +6,7 @@
 import { compilar, type Funcion } from '../../componentes/calculadoras/expresion';
 import { formatoValor } from '../../componentes/calculadoras/unidades';
 import type { Estimar, Magnitud, Modelo, Rango, Tarjeta } from './tipos';
+import type { EstadoActividad12 } from '../leccion12/tipos';
 
 export type Valores = Record<string, number>;
 
@@ -60,9 +61,15 @@ export function compilarModelo(m: Modelo): ModeloCompilado {
   return r;
 }
 
-/** The values a card works with: the reader's, with the card's fixed ones on top. */
-export function valoresDeTarjeta(t: Tarjeta, propios: Valores): Valores {
-  return { ...propios, ...t.fijar };
+/**
+ * The values a card works with: the reader's, with the card's fixed ones on top — and, given the card's state, what
+ * a 1.2 step lays over them (the hidden fault of an «averia»: the widget shows the faulty board).
+ */
+export function valoresDeTarjeta(t: Tarjeta, propios: Valores, e?: { actividad?: EstadoActividad12 } | null): Valores {
+  // (as lib/leccion12/motor12.ts sobrescritos; written here so that this module imports no 1.2 code)
+  const a = t.actividad;
+  const fallo = a?.tipo === 'averia' && e?.actividad?.tipo === 'averia' ? a.fallos[e.actividad.fallo]?.con : undefined;
+  return { ...propios, ...t.fijar, ...(fallo ?? {}) };
 }
 
 /** «4,00 V», «10 kΩ», «20,0 ms»: a quantity of the model in its unit, with its significant figures. */

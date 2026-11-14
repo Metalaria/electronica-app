@@ -1,0 +1,241 @@
+# Lección 1.2 de la sección 52.6 «Fidelidad: Respuesta en Frecuencia y Realimentación» (cap51; etiqueta sec-51.6).
+# Proyecto detallado III. Formato: contenido/lecciones11/GUIA.md.
+# - Los cuatro parámetros y los que no salen en las hojas, sobre la figura 52.12 (fig-51.12) con zonas.
+# - El factor de amortiguamiento efectivo con el cable (bloque 198): 8 Ω/(8 Ω/factor + R_cable), con 2 m de cable de
+#   0,5 mm² de ida y vuelta (R = 2·2 m·0,0172 Ω·mm²/m / 0,5 mm² = 0,138 Ω, los «0,14 Ω» del libro): 52 frente a 37.
+leccion: cap51/sec-51.6
+
+libro:
+  192: "reproducir la señal de entrada sin añadirle ni quitarle nada"
+  194: "típicamente 20 Hz a 20 kHz dentro de ±0,5 dB"
+  195: "Por debajo del 0,1 % es inaudible en la práctica"
+  196: "Por encima de 90 dB es excelente"
+  197: "por encima de 50 es más que suficiente"
+  198: "el factor efectivo queda en unos 52 frente a 37"
+  200: "mejora los cuatro parámetros por el factor de lazo"
+  201: "no reduce el ruido de la primera etapa ni el offset"
+  204: "la respuesta al escalón sobreoscila"
+  206: "buen margen de fase y realimentación moderada"
+  207: "la respuesta al escalón con carga real"
+  210: "A 10 kHz puede ser diez veces peor"
+  211: "un altavoz no es una resistencia"
+  212: "más audible que la armónica"
+  215: "Bode con carga resistiva"
+  216: "a varias potencias y a varias frecuencias"
+  217: "Ruido con la entrada cortocircuitada"
+  218: "con un condensador en paralelo que simule una carga reactiva"
+  219: "Los cuatro parámetros de fidelidad"
+
+modelo:
+  valores:
+    F_n: { sim: "factor", nombre: "factor de amortiguamiento nominal", unidad: "", valor: 500 }
+    R_L: { sim: "R_{L}", nombre: "altavoz", unidad: Ω, valor: 8 }
+    l_c: { sim: "l", nombre: "longitud del cable", unidad: m, valor: 2 }
+    rho: { sim: "ρ", nombre: "resistividad del cobre", unidad: "Ω·mm²/m", valor: 0.0172 }
+    s_c: { sim: "S", nombre: "sección del cable", unidad: "mm²", valor: 0.5 }
+    V_a: { sim: "v", nombre: "tensión de prueba del amplificador", unidad: V, valor: 1 }
+  calculos:
+    Z_o: { expr: "R_L/F_n", sim: "Z_{out}", nombre: "impedancia de salida del amplificador", unidad: Ω }
+    R_c: { expr: "2*l_c*rho/s_c", sim: "R_{cable}", nombre: "resistencia del cable, ida y vuelta", unidad: Ω }
+    R_s: { expr: "Z_o + R_c", sim: "Z_{out} + R_{cable}", nombre: "lo que ve el altavoz hacia el amplificador", unidad: Ω }
+    F_e: { expr: "R_L/R_s", sim: "factor efectivo", nombre: "factor de amortiguamiento efectivo", unidad: "", cifras: 3 }
+    V_l: { expr: "V_a*R_L/(R_s + R_L)", sim: "v_{altavoz}", nombre: "tensión en el altavoz", unidad: V }
+    I_l: { expr: "V_a/(R_s + R_L)", sim: "i", nombre: "corriente por el altavoz", unidad: A }
+
+tarjetas:
+  - id: explore-parametros
+    tipo: explorar
+    titulo: "Los cuatro parámetros"
+    texto: "Ser fiel es no añadir ni quitar nada a la señal. Toque cada parámetro medible."
+    libro: [192, 194, 195, 196, 197, 219]
+    widget:
+      tipo: figura
+      figura: fig-51.12
+      zonas:
+        - { id: respuesta, rotulo: "Primer panel", rect: [0, 0, 112, 134], texto: "Respuesta en frecuencia: plana de 20 Hz a 20 kHz dentro de ±0,5 dB." }
+        - { id: thd, rotulo: "Segundo panel", rect: [119, 0, 103, 134], texto: "Distorsión armónica: por debajo del 0,1 % es inaudible; los buenos diseños llegan al 0,01 %." }
+        - { id: ruido, rotulo: "Tercer panel", rect: [231, 0, 103, 134], texto: "Señal a ruido: por encima de 90 dB es excelente." }
+        - { id: amortiguamiento, rotulo: "Cuarto panel", rect: [341, 0, 110, 134], texto: "Factor de amortiguamiento: altavoz entre salida del amplificador; por encima de 50 sobra." }
+    requiere: { mover: [respuesta, thd, ruido, amortiguamiento] }
+
+  - id: explore-cable
+    tipo: explorar
+    titulo: "El factor de amortiguamiento real"
+    texto: "El altavoz ve la salida del amplificador más el cable. Cambie el factor nominal y la longitud del cable."
+    libro: [197, 198]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_e, rotulo: "Factor efectivo" }
+      datos:
+        - { valor: R_c, rotulo: "Cable: {{R_c}}" }
+        - { valor: Z_o, rotulo: "Salida del amplificador: {{Z_o}}" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+      mandos:
+        - { valor: F_n, lista: [100, 500], rotulo: "Factor nominal" }
+        - { valor: l_c, lista: [0.01, 2], rotulo: "Cable (m)" }
+    requiere: { mover: [F_n, l_c] }
+
+  - id: prediga-cable
+    tipo: predecir
+    titulo: "Factor 500 frente a 100"
+    texto: "Con dos metros de cable de 0,5 mm² (0,14 Ω ida y vuelta) y un altavoz de 8 Ω, ¿cuánto gana el de factor 500 sobre el de 100?"
+    libro: [198]
+    fijar: { F_n: 500, l_c: 2 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_e, rotulo: "Factor efectivo" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+      ocultar: true
+    opciones:
+      - texto: "Poco: unos 52 frente a 37"
+        bien: true
+        porque: "El cable manda: 0,14 Ω pesan mucho más que la salida del amplificador. Es la cifra más exagerada en publicidad."
+      - texto: "Cinco veces: 500 frente a 100"
+        porque: "Eso sería sin cable. Los 0,14 Ω se suman a la salida y limitan el factor efectivo."
+      - texto: "Nada: los dos quedan igual"
+        porque: "El de 500 sigue algo mejor, pero lejos de lo que promete."
+    escalera:
+      - "Factor efectivo = 8 Ω / (8 Ω/factor + R_{cable})."
+    solucion: "8/(0,016 + 0,14) ≈ 52 frente a 8/(0,08 + 0,14) ≈ 37."
+    comprobar:
+      - { F_e: 52.1, Z_o: 0.016, R_L: 8, tol: 0.005 }
+      - { con: { F_n: 100 }, F_e: 36.8, Z_o: 0.08, tol: 0.01 }
+
+  - id: pregunta-realimentacion
+    tipo: pregunta
+    titulo: "Lo que la realimentación no arregla"
+    texto: "La realimentación mejora los cuatro parámetros por el factor de lazo. ¿Qué NO reduce?"
+    libro: [200, 201]
+    widget:
+      tipo: figura
+      figura: fig-51.12
+      zonas:
+        - { id: ruido, rotulo: "Tercer panel", rect: [231, 0, 103, 134] }
+    opciones:
+      - texto: "El ruido de la primera etapa y el offset"
+        bien: true
+        porque: "Y además puede comprometer la estabilidad."
+      - texto: "La distorsión armónica"
+        porque: "Esa sí la reduce, por el factor de lazo."
+      - texto: "La impedancia de salida"
+        porque: "También la reduce, y con ella sube el factor de amortiguamiento."
+    escalera:
+      - "¿Qué nace en la entrada, junto a la señal?"
+    solucion: "El ruido de la primera etapa y el offset."
+
+  - id: porque-transitorios
+    tipo: porque
+    titulo: "El debate de la realimentación"
+    texto: "Un amplificador con THD magnífica puede portarse mal ante señales rápidas. ¿Qué base técnica tiene?"
+    libro: [204, 206]
+    widget:
+      tipo: figura
+      figura: fig-51.12
+      zonas:
+        - { id: escalon, rotulo: "Gráfica de abajo a la derecha", rect: [275, 150, 175, 112] }
+    opciones:
+      - texto: "Con margen de fase escaso, el escalón sobreoscila y la corrección llega con retardo"
+        bien: true
+        porque: "Lo defendible: realimentación moderada y buen margen de fase se portan mejor ante transitorios."
+      - texto: "La realimentación siempre empeora el sonido"
+        porque: "Esa parte del debate no está bien establecida; lo medible es el margen de fase."
+      - texto: "La THD no se puede medir bien"
+        porque: "Se mide bien; lo que no cuenta es el comportamiento ante transitorios."
+    escalera:
+      - "Mire las dos respuestas al escalón de la figura."
+    solucion: "Margen de fase escaso: sobreoscilación y corrección con retardo."
+
+  - id: pregunta-medida
+    tipo: pregunta
+    titulo: "La medida que más dice"
+    texto: "¿Qué medida dice más de un amplificador?"
+    libro: [207]
+    widget:
+      tipo: figura
+      figura: fig-51.12
+      zonas:
+        - { id: escalon, rotulo: "Gráfica de abajo a la derecha", rect: [275, 150, 175, 112] }
+    opciones:
+      - texto: "La respuesta al escalón con carga real"
+        bien: true
+        porque: "Revela el margen de fase, que la THD en la hoja de datos no enseña."
+      - texto: "La THD a 1 kHz"
+        porque: "A 1 kHz la ganancia de lazo es máxima: es donde mejor sale, no donde más dice."
+      - texto: "La potencia máxima"
+        porque: "Dice cuánto da, no lo fiel que es."
+    escalera:
+      - "¿Qué prueba muestra la estabilidad con una carga como un altavoz?"
+    solucion: "La respuesta al escalón con carga real."
+
+  - id: empareje-ocultos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que no sale en las hojas"
+    texto: "Una cada parámetro oculto con lo que esconde."
+    libro: [210, 211, 212]
+    emparejar:
+      - ["Distorsión frente a la frecuencia", "A 10 kHz puede ser diez veces peor que a 1 kHz"]
+      - ["Carga reactiva", "La impedancia del altavoz varía mucho con la frecuencia"]
+      - ["Intermodulación", "Con señales complejas, más audible que la armónica"]
+    exito: "Tres razones de diferencias audibles entre aparatos con la misma hoja."
+    pistas:
+      - { texto: "La THD se suele dar a 1 kHz, donde la ganancia de lazo es máxima." }
+    escalera:
+      - "Una depende de la frecuencia, otra de la carga y otra de mezclar señales."
+    solucion: "Frecuencia–diez veces peor a 10 kHz; carga reactiva–impedancia variable; intermodulación–señales complejas."
+
+  - id: empareje-banco
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "En el banco"
+    texto: "Una cada medida de fidelidad con cómo se hace."
+    libro: [215, 216, 217, 218]
+    emparejar:
+      - ["Respuesta", "Bode con carga resistiva"]
+      - ["THD", "FFT a varias potencias y frecuencias"]
+      - ["Ruido", "Con la entrada cortocircuitada"]
+      - ["Escalón", "Con un condensador en paralelo con la carga"]
+    exito: "El escalón con carga capacitiva es la que más amplificadores caseros suspenden."
+    pistas:
+      - { texto: "El condensador simula una carga reactiva, como un altavoz." }
+    escalera:
+      - "¿Qué instrumento da la respuesta en frecuencia? ¿Y los armónicos?"
+    solucion: "Respuesta–Bode; THD–FFT; ruido–entrada en corto; escalón–con condensador."
+
+  - id: pregunta-condensador
+    tipo: pregunta
+    titulo: "El escalón con carga capacitiva"
+    texto: "¿Por qué se repite la prueba del escalón con un condensador en paralelo con la carga?"
+    libro: [218]
+    widget:
+      tipo: figura
+      figura: fig-51.12
+      zonas:
+        - { id: escalon, rotulo: "Gráfica de abajo a la derecha", rect: [275, 150, 175, 112] }
+    opciones:
+      - texto: "Revela un margen de fase insuficiente antes de que el aparato oscile"
+        bien: true
+        porque: "La carga reactiva añade desfase en el lazo: si el margen es escaso, el escalón sobreoscila."
+      - texto: "Para medir la potencia en carga capacitiva"
+        porque: "No se busca potencia, sino ver si la respuesta sobreoscila."
+      - texto: "Para filtrar el ruido de la medida"
+        porque: "El condensador va en la carga para simular un altavoz, no para filtrar."
+    escalera:
+      - "¿Qué añade un condensador a la carga de un amplificador realimentado?"
+    solucion: "Simula una carga reactiva y destapa un margen de fase escaso."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [194, 198, 201, 207]
+    ideas:
+      - { titulo: "Cuatro parámetros.", texto: "±0,5 dB de 20 Hz a 20 kHz, THD bajo 0,1 %, más de 90 dB y factor sobre 50." }
+      - { titulo: "El cable manda.", texto: "Con 2 m de cable fino, factor 500 da unos 52; el de 100, 37." }
+      - { titulo: "La realimentación.", texto: "Mejora casi todo, salvo el ruido de entrada y el offset; con poco margen, sobreoscila." }
+      - { titulo: "Lo que más dice.", texto: "El escalón con carga real, no la THD a 1 kHz." }

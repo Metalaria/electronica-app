@@ -1,0 +1,249 @@
+# Lección 1.2 de la sección 22.13 «Formulación Matricial del Análisis Nodal» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.13
+
+libro:
+  314: "esa formulación es la que usan todos los simuladores"
+  316: "G · v = i"
+  320: "Diagonal G[k][k]: la suma de todas las conductancias conectadas al nodo k."
+  321: "menos la suma de las conductancias entre los nodos j y k"
+  323: "una resistencia entre j y k suma su conductancia a dos posiciones de la diagonal y la resta de dos fuera de ella"
+  324: "sellado o stamping"
+  327: "esa es la razón de que puedan resolver circuitos de millones de nodos"
+  328: "Un nodo sin ese camino deja la matriz singular"
+  331: "añade la corriente de cada fuente de tensión como incógnita adicional"
+  334: "se sustituyen las conductancias por admitancias complejas"
+  335: "un equivalente resistivo más una fuente que depende del paso anterior"
+  336: "se itera con Newton-Raphson hasta converger"
+  339: "los mensajes de error de SPICE de un obstáculo en una pista"
+  "cap23#80": "el nodo 1 y el 2 están unidos por 5 Ω"
+  "cap23#83": "la diagonal es (0,1 + 0,2) S y (0,05 + 0,2) S, y fuera de ella −0,2 S en ambas posiciones"
+  "cap23#89": "VA·(1/2 + 1/4 + 1/3) = 10/2 + 6/3"
+
+modelo:
+  valores:
+    V_k1: { sim: "V₁", nombre: "fuente de la izquierda", unidad: V, valor: 10 }
+    V_k2: { sim: "V₂", nombre: "fuente de la derecha", unidad: V, valor: 6 }
+    R_k1: { sim: "R₁", nombre: "resistencia de la izquierda", unidad: Ω, valor: 2 }
+    R_k2: { sim: "R₂", nombre: "resistencia de la derecha", unidad: Ω, valor: 3 }
+    R_k3: { sim: "R₃", nombre: "resistencia a masa", unidad: Ω, valor: 4 }
+  calculos:
+    G_11: { expr: "1/R_k1 + 1/R_k2 + 1/R_k3", sim: "G₁₁", nombre: "diagonal de la matriz", unidad: S }
+    i_1: { expr: "V_k1/R_k1 + V_k2/R_k2", sim: "i₁", nombre: "corriente inyectada", unidad: A }
+    V_kn: { expr: "i_1/G_11", sim: "V_{A}", nombre: "tensión del nodo A", unidad: V }
+    I_k1: { expr: "(V_k1 - V_kn)/R_k1", sim: "I₁", nombre: "corriente de la izquierda", unidad: A }
+    I_k2: { expr: "(V_k2 - V_kn)/R_k2", sim: "I₂", nombre: "corriente de la derecha", unidad: A }
+    I_k3: { expr: "V_kn/R_k3", sim: "I₃", nombre: "corriente a masa", unidad: A }
+    R_suma: { expr: "R_k1 + R_k2 + R_k3", sim: "ΣR", nombre: "suma de resistencias", unidad: Ω }
+
+tarjetas:
+  - id: explore-matriz
+    tipo: explorar
+    titulo: "Una fila por nodo"
+    texto: "Con un solo nodo, G · v = i es una ecuación: G₁₁ · V_{A} = i₁. Mueva R₃ y mire cómo cambia la diagonal."
+    libro: [314, 316, 320]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "V_{A} = i₁ / G₁₁" }
+      datos:
+        - { valor: G_11, rotulo: "G₁₁ = {{G_11}}" }
+        - { valor: i_1, rotulo: "i₁ = {{i_1}}" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      mandos:
+        - { valor: R_k3, min: 1, max: 10, paso: 1 }
+
+  - id: prediga-diagonal
+    tipo: predecir
+    titulo: "Prediga la diagonal"
+    texto: "Al nodo A llegan 2 Ω, 4 Ω y 3 Ω. ¿Cuánto vale G₁₁?"
+    libro: [320, "cap23#89"]
+    fijar: { R_k1: 2, R_k2: 3, R_k3: 4 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: G_11, rotulo: "G₁₁" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+      ocultar: true
+    opciones:
+      - texto: "1/2 + 1/4 + 1/3 S"
+        bien: true
+        porque: "La diagonal es la suma de todas las conductancias conectadas al nodo: 13/12 S."
+      - texto: "9 S"
+        porque: "Ha sumado resistencias, 2 + 4 + 3. La matriz se escribe con conductancias, sus inversas."
+      - texto: "1/2 + 1/3 S"
+        porque: "Falta la rama de 4 Ω a masa: también está conectada al nodo y suma su conductancia."
+    escalera:
+      - "La matriz es de conductancias: 1/R de cada rama."
+    solucion: "G₁₁ = 1/2 + 1/4 + 1/3 = 13/12 S."
+    comprobar:
+      - { G_11: 1.0833, R_suma: 9 }
+
+  - id: dos-nodos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La matriz por inspección"
+    texto: "2 A inyectados en el nodo 1; 10 Ω y 20 Ω a masa y 5 Ω entre los nodos. Una cada posición con su valor."
+    libro: ["cap23#80", "cap23#83", 321]
+    emparejar:
+      - ["G₁₁", "0,1 + 0,2 S"]
+      - ["G₂₂", "0,05 + 0,2 S"]
+      - ["G₁₂ y G₂₁", "−0,2 S"]
+      - ["i₁", "2 A"]
+    exito: "Se escribe mirando el circuito, sin plantear ninguna ecuación: es lo que hace un simulador al leer el netlist."
+    pistas:
+      - { texto: "Diagonal: todas las conductancias del nodo. Fuera: la compartida, con signo menos." }
+    escalera:
+      - "La resistencia de 5 Ω está conectada a los dos nodos."
+    solucion: "G₁₁ = 0,1 + 0,2 S, G₂₂ = 0,05 + 0,2 S, G₁₂ = G₂₁ = −0,2 S, i₁ = 2 A."
+
+  - id: sellado
+    tipo: pregunta
+    titulo: "El sellado"
+    texto: "Una resistencia entre los nodos j y k, ¿a cuántas posiciones de la matriz contribuye?"
+    libro: [323, 324]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: G_11, rotulo: "G₁₁" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "A cuatro: suma en dos de la diagonal y resta en dos fuera"
+        bien: true
+        porque: "Cada elemento contribuye de forma local, sin tocar nada más. Así se construye el sistema recorriendo el netlist una vez."
+      - texto: "A una: la posición (j, k)"
+        porque: "También cambia la diagonal de j y la de k, y la simétrica (k, j)."
+      - texto: "A toda la fila j"
+        porque: "Solo toca a las posiciones de sus dos nodos: por eso la matriz queda dispersa."
+    escalera:
+      - "La resistencia aparece en la ecuación del nodo j y en la del nodo k."
+    solucion: "Cuatro posiciones: (j, j) y (k, k) suman; (j, k) y (k, j) restan."
+
+  - id: dispersa
+    tipo: porque
+    titulo: "Millones de nodos"
+    texto: "¿Por qué un simulador puede resolver circuitos de millones de nodos?"
+    libro: [327]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "La matriz es dispersa: casi todo son ceros, y los algoritmos no operan con ellos"
+        bien: true
+        porque: "Cada nodo conecta con unos pocos vecinos, así que en cada fila hay muy pocos elementos distintos de cero."
+      - texto: "Porque la matriz es diagonal"
+        porque: "No es diagonal: fuera hay las conductancias compartidas. Lo que tiene es muy pocos elementos no nulos."
+      - texto: "Porque resuelve cada nodo por separado"
+        porque: "Los nodos están acoplados y se resuelve el sistema entero; la dispersión es lo que lo hace barato."
+    escalera:
+      - "¿Con cuántos vecinos conecta un nodo típico?"
+    solucion: "La dispersión: los algoritmos para matrices dispersas ignoran los ceros."
+
+  - id: flotante
+    tipo: pregunta
+    titulo: "El nodo flotante"
+    texto: "El simulador se queja de un «nodo flotante». ¿Qué le pasa al sistema?"
+    libro: [328, 339]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Un nodo sin camino hasta la referencia deja la matriz singular"
+        bien: true
+        porque: "Con camino a masa la matriz es diagonalmente dominante y la solución, única. Sin él, no hay solución única."
+      - texto: "Hay una fuente de tensión ideal"
+        porque: "Eso lo resuelve el nodal modificado. El nodo flotante es un nodo sin camino a la referencia."
+      - texto: "El circuito tiene demasiados nodos"
+        porque: "El número de nodos no importa: un solo nodo aislado basta para que la matriz sea singular."
+    escalera:
+      - "¿Qué fija la tensión de un nodo respecto a la referencia?"
+    solucion: "Le falta camino a la referencia: la matriz es singular."
+
+  - id: mna
+    tipo: pregunta
+    titulo: "Las fuentes de tensión"
+    texto: "El nodal puro no admite fuentes de tensión ideales. ¿Cómo lo resuelve SPICE?"
+    libro: [331]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Con el nodal modificado: añade la corriente de cada fuente como incógnita"
+        bien: true
+        porque: "Por eso en su salida aparecen corrientes de fuentes como variables. La matriz crece, pero admite cualquier elemento."
+      - texto: "Les pone una conductancia muy grande"
+        porque: "Una fuente de tensión no tiene conductancia: su corriente es la que haga falta. Se añade como incógnita."
+      - texto: "Las transforma en fuentes de corriente"
+        porque: "Una fuente ideal no se puede transformar: daría una corriente infinita."
+    escalera:
+      - "Lo desconocido de una fuente de tensión es su corriente."
+    solucion: "Análisis nodal modificado: la corriente de la fuente pasa a ser incógnita."
+
+  - id: transitorio
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Un instante de un transitorio"
+    texto: "Ordene lo que hace el simulador en cada paso de un transitorio con un elemento no lineal."
+    libro: [335, 336]
+    ordenar:
+      - "Sustituir C y L por un equivalente resistivo y una fuente del paso anterior."
+      - "Linealizar el elemento no lineal alrededor del punto actual."
+      - "Resolver G · v = i."
+      - "Repetir con Newton-Raphson hasta converger."
+    exito: "Por eso un transitorio no lineal resuelve el sistema varias veces por cada paso de tiempo."
+    pistas:
+      - { texto: "Primero el circuito se convierte en resistivo; la iteración va al final." }
+    escalera:
+      - "Antes de resolver, cada instante tiene que ser otra vez un circuito resistivo."
+    solucion: "Equivalentes de C y L, linealizar, resolver e iterar hasta converger."
+
+  - id: alterna
+    tipo: pregunta
+    titulo: "En alterna"
+    texto: "¿Qué cambia en G · v = i para resolver un circuito en alterna?"
+    libro: [334]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Las conductancias pasan a ser admitancias complejas, para cada frecuencia"
+        bien: true
+        porque: "Una sola formulación sirve para continua y para cada frecuencia, con aritmética compleja."
+      - texto: "Hay que añadir una fila por cada condensador"
+        porque: "En alterna los condensadores son admitancias y se sellan como las resistencias."
+      - texto: "No se puede: SPICE solo resuelve continua"
+        porque: "Resuelve el mismo sistema con admitancias complejas en cada frecuencia."
+    escalera:
+      - "¿Qué sustituye a 1/R cuando hay condensadores y bobinas?"
+    solucion: "Admitancias complejas en lugar de conductancias."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [316, 323, 328, 331]
+    ideas:
+      - { titulo: "G · v = i.", texto: "Diagonal: la suma de conductancias del nodo; fuera, menos la compartida; i, lo que inyectan las fuentes." }
+      - { titulo: "Sellado.", texto: "Cada elemento toca solo sus posiciones: la matriz es simétrica y dispersa." }
+      - { titulo: "Los errores.", texto: "Nodo flotante, matriz singular; fuentes de tensión, nodal modificado." }
+      - { titulo: "El simulador.", texto: "Admitancias en alterna, equivalentes en el tiempo y Newton-Raphson con lo no lineal." }

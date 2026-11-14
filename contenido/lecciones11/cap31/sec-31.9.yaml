@@ -1,0 +1,314 @@
+# Lección 1.2 de la sección 30.9 «Estabilidad del Lazo de Control: Margen de Fase y de Ganancia» (cap31, sec-31.9).
+# Formato: GUIA.md.
+# - Margen de fase y sobreimpulso (deducción del bloque 301): ζ ≈ MF/100 y M_p = e^(−πζ/√(1−ζ²)); la gráfica es la
+#   respuesta al escalón de un segundo orden con ω_n = 1 rad/s (tiempo normalizado) y ese ζ.
+# - El pico de sensibilidad, M_s = 1/d_min, con los valores de la tabla; el margen de retardo T_max = MF(rad)/ω_c.
+# - El lugar de las raíces del ejemplo del libro: s² + 4s + 3 + K, polos −2 ± √(1 − K) (reales) o −2 ± j√(K − 1),
+#   ζ = 2/√(3 + K). Las ganancias del mando son de ejemplo, salvo K = 1.
+# Pasos prácticos: «ajuste» del margen de fase hasta que el sobreimpulso baje del 10 % (la regla de los 60°) y
+# «simular» el margen de retardo del ejemplo (0,44 s; errores típicos: grados en vez de radianes, hercios en vez de
+# rad/s).
+leccion: cap31/sec-31.9
+
+libro:
+  299: "a la frecuencia en que la ganancia del lazo todavía vale 1, la fase ha girado tanto"
+  300: "un margen de fase de 45 a 60 grados es lo habitual"
+  301: "Margen de fase y sobreimpulso"
+  302: "De aquí sale la regla universal de diseño: 60° de margen de fase"
+  303: "Margen de fase leído en el diagrama de Bode para tres ganancias de lazo"
+  305: "un lazo puede tener buenos márgenes de fase y de ganancia y aun así ser frágil"
+  309: "Ms es la inversa de la distancia mínima entre la curva de Nyquist y el punto −1"
+  310: 'M_("s") = ("1")/(d_("min"))'
+  311: "Robusto: el objetivo habitual"
+  312: "un Ms de 1,4 garantiza simultáneamente un margen de fase mayor de 41° y un margen de ganancia mayor de 3,5"
+  314: "el retardo no cambia la ganancia, solo resta fase"
+  317: 'T_(op("max"))'
+  318: "Con un margen de fase de 50° (0,87 rad) y cruce en 2 rad/s"
+  320: "ese lazo tolera 0,44 segundos de retardo adicional antes de oscilar"
+  321: "Un lazo con Ts de 100 ms introduce ya medio periodo de retardo medio, 50 ms, que en el ejemplo son el 11 % del presupuesto"
+  324: "Reducir el error a unas frecuencias lo aumenta en otras"
+  328: "el polinomio s² + 4s + 3 + K"
+  329: "un cero añadido, que atrae las ramas hacia la izquierda"
+  332: "impone un techo a la frecuencia de cruce, aproximadamente la mitad de la frecuencia del cero"
+  336: "se añade retardo deliberado en el software"
+
+modelo:
+  valores:
+    MF: { sim: "MF", nombre: "margen de fase", unidad: "°", valor: 45 }
+    d_m: { sim: "d_{min}", nombre: "distancia mínima al punto −1", unidad: "", valor: 0.5 }
+    MF_r: { sim: "MF", nombre: "margen de fase", unidad: "°", valor: 50 }
+    w_c: { sim: "ω_{c}", nombre: "frecuencia de cruce", unidad: "rad/s", valor: 2 }
+    K_r: { sim: "K", nombre: "ganancia del lazo", unidad: "", valor: 0 }
+  calculos:
+    z_m: { expr: "MF/100", sim: "ζ", nombre: "amortiguamiento aproximado", unidad: "", cifras: 2 }
+    M_p: { expr: "100*exp(-pi*z_m/sqrt(1 - z_m^2))", sim: "M_{p}", nombre: "sobreimpulso", unidad: "%" }
+    M_s: { expr: "1/d_m", sim: "M_{s}", nombre: "pico de sensibilidad", unidad: "", cifras: 2 }
+    T_mx: { expr: "MF_r*pi/180/w_c", sim: "T_{max}", nombre: "margen de retardo", unidad: s }
+    T_gr: { expr: "MF_r/w_c", sim: "T", nombre: "con el margen en grados", unidad: s }
+    T_hz: { expr: "MF_r*pi/180/(2*pi*w_c)", sim: "T", nombre: "con ω_c tomada como hercios", unidad: s }
+    re_1: { expr: "-2 + sqrt(max(0, 1 - K_r))", sim: "σ₁", nombre: "parte real del primer polo", unidad: "" }
+    re_2: { expr: "-2 - sqrt(max(0, 1 - K_r))", sim: "σ₂", nombre: "parte real del segundo polo", unidad: "" }
+    im_r: { expr: "sqrt(max(0, K_r - 1))", sim: "ω", nombre: "parte imaginaria", unidad: "" }
+    z_r: { expr: "2/sqrt(3 + K_r)", sim: "ζ", nombre: "amortiguamiento", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-margen
+    tipo: explorar
+    titulo: "Margen de fase y sobreimpulso"
+    texto: "Con ζ ≈ MF/100, cada margen de fase da una respuesta al escalón. Cambie el margen y mire cuánto se pasa."
+    libro: [300, 301, 303]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 15, unidad: "", rotulo: "tiempo normalizado" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z_m*t)*(cos(sqrt(1 - z_m^2)*t) + z_m/sqrt(1 - z_m^2)*sin(sqrt(1 - z_m^2)*t))", color: naranja, rotulo: "respuesta" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: M_p, rotulo: "Sobreimpulso" }
+      datos:
+        - { valor: z_m, rotulo: "ζ ≈ {{z_m}}" }
+      mandos:
+        - { valor: MF, lista: [30, 45, 60, 76], rotulo: "Margen de fase" }
+    requiere: { mover: [MF] }
+
+  - id: ajuste-60
+    tipo: ajuste
+    titulo: "La regla universal"
+    texto: "Suba el margen de fase hasta que el sobreimpulso baje de un 10 %."
+    libro: [301, 302]
+    inicio: { MF: 30 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 15, unidad: "", rotulo: "tiempo normalizado" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z_m*t)*(cos(sqrt(1 - z_m^2)*t) + z_m/sqrt(1 - z_m^2)*sin(sqrt(1 - z_m^2)*t))", color: naranja, rotulo: "respuesta" }
+        - { expr: "1.1", color: tinta, rotulo: "10 % de más", discontinua: true }
+      lectura: { valor: M_p, rotulo: "Sobreimpulso" }
+      mandos:
+        - { valor: MF, min: 20, max: 80, paso: 1, rotulo: "Margen de fase" }
+    ajuste:
+      valor: M_p
+      min: 2.5
+      max: 10
+      rotulo: "Sobreimpulso"
+      escala: { min: 0, max: 50 }
+      bajo: "Ya casi no se pasa, pero se ha vuelto lento: baje algo el margen."
+      alto: "Se pasa demasiado: suba el margen de fase."
+      dentro: "Por debajo del 10 %: hacen falta unos 60°, la regla de diseño."
+    comprobar:
+      - { con: { MF: 60 }, M_p: 9.5, tol: 0.01 }
+      - { con: { MF: 76 }, M_p: 2.5, tol: 0.02 }
+
+  - id: empareje-margenes
+    tipo: pregunta
+    titulo: "Cuatro maneras de medir la distancia"
+    texto: "Empareje cada margen con lo que mide."
+    libro: [299, 300, 309, 314]
+    widget:
+      tipo: figura
+      figura: fig-31.17
+      zonas:
+        - { id: todo, rotulo: "Bode con tres ganancias", rect: [0, 0, 434, 273] }
+    emparejar:
+      - ["Margen de fase", "Fase extra que admite donde la ganancia vale 1"]
+      - ["Margen de ganancia", "Ganancia extra que admite donde la fase es crítica"]
+      - ["Pico de sensibilidad", "Inversa de la distancia de Nyquist al punto −1"]
+      - ["Margen de retardo", "Retardo puro que admite antes de oscilar"]
+    exito: "Un margen pequeño da un sistema nervioso, que oscila y sobrepasa antes de asentarse."
+    pistas:
+      - { texto: "El retardo no cambia la ganancia: solo resta fase." }
+    escalera:
+      - "Los dos clásicos se leen en el Bode; M_{s}, en la curva de Nyquist."
+    solucion: "Fase, la fase extra; ganancia, la ganancia extra; M_{s}, la distancia al −1; retardo, el retardo que admite."
+
+  - id: formula-ms
+    tipo: formula
+    titulo: "Un solo número de robustez"
+    texto: "El pico de sensibilidad es la inversa de la distancia mínima de la curva de Nyquist al punto −1. Acérquela."
+    libro: [309, 310, 311]
+    ec: 310
+    sustitucion: "1 / {{d_m}} = {{M_s}}"
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0.25, max: 1, unidad: "", rotulo: "d_{min}" }
+      y: { min: 0, max: 4.5, unidad: "", rotulo: "M_{s}" }
+      curvas:
+        - { expr: "1/d", color: naranja, rotulo: "M_{s}" }
+        - { expr: "1.4", color: tinta, rotulo: "objetivo habitual", discontinua: true }
+      marcas:
+        - { x: "d_m", y: "M_s", rotulo: "{{M_s}}" }
+      mandos:
+        - { valor: d_m, lista: [0.33, 0.5, 0.71, 0.83], rotulo: "Distancia al punto −1" }
+    comprobar:
+      - { con: { d_m: 0.71 }, M_s: 1.41, tol: 0.01 }
+
+  - id: porque-ms
+    tipo: porque
+    titulo: "Lo que se les escapa a los márgenes"
+    texto: "¿Por qué M_{s} = 1,4 es mejor criterio que el margen de fase y el de ganancia por separado?"
+    libro: [305, 312]
+    widget:
+      tipo: figura
+      figura: fig-31.18
+      zonas:
+        - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
+    opciones:
+      - texto: "Cubre los dos y detecta la curva que se acerca al −1 en diagonal"
+        bien: true
+        porque: "Garantiza más de 41° y más de 3,5 a la vez, y vigila el camino que los dos números no miran."
+      - texto: "Porque es más fácil de medir en el banco"
+        porque: "Se puede estimar de la respuesta a una perturbación, pero su virtud es otra."
+      - texto: "Porque da más velocidad"
+        porque: "Mide robustez, no velocidad."
+    escalera:
+      - "¿Puede una curva tener márgenes holgados y aun así pasar cerca del −1?"
+    solucion: "Un solo número cubre ambos márgenes y el acercamiento en diagonal."
+
+  - id: simule-retardo
+    tipo: simular
+    titulo: "El margen de retardo"
+    texto: "Un lazo con 50° de margen de fase cruza en 2 rad/s. ¿Cuánto retardo adicional tolera antes de oscilar?"
+    libro: [317, 318, 320]
+    fijar: { MF_r: 50, w_c: 2 }
+    simular:
+      objetivo: T_mx
+      unidad: s
+      tol: 0.03
+      rotulo: "Margen de retardo, T_{max}"
+      errores:
+        - { expr: "T_gr", texto: "Ha dividido grados: el margen va en radianes, 50° son 0,87 rad." }
+        - { expr: "T_hz", texto: "Ha pasado ω_{c} a hercios: ya está en rad/s." }
+    exito: "0,44 s: ese es el número que se compara con el muestreo, la red y el transporte."
+    escalera:
+      - "T_{max} = margen de fase en radianes / ω_{c}."
+    solucion: "0,87/2 = 0,44 s."
+    comprobar:
+      - { T_mx: 0.436, T_gr: 25, T_hz: 0.0694, tol: 0.003 }
+
+  - id: muestreo-presupuesto
+    tipo: pregunta
+    titulo: "El muestreo gasta el presupuesto"
+    texto: "Ese mismo lazo se programa con T_{s} de 100 ms. ¿Qué parte de su margen de retardo se lleva el muestreo?"
+    libro: [320, 321]
+    widget:
+      tipo: figura
+      figura: fig-31.18
+      zonas:
+        - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
+    opciones:
+      - texto: "Un 11 %: medio periodo, 50 ms"
+        bien: true
+        porque: "Y se suma a la latencia de la red y al tiempo de transporte."
+      - texto: "Un 23 %: el periodo entero, 100 ms"
+        porque: "El retardo medio del muestreo es medio periodo, no el periodo entero."
+      - texto: "Nada: el muestreo no es un retardo"
+        porque: "Entre muestras el lazo está abierto: un retardo medio de medio periodo."
+    escalera:
+      - "¿Cuánto retardo medio introduce el muestreo?"
+    solucion: "50 ms de 0,44 s: el 11 % del presupuesto."
+    comprobar:
+      - { con: { MF_r: 50, w_c: 2 }, T_mx: 0.436, tol: 0.003 }
+
+  - id: explore-raices
+    tipo: explorar
+    titulo: "Ver moverse los polos"
+    texto: "Lazo con polos en −1 y −3: en lazo cerrado, s² + 4s + 3 + K. Suba K y siga los dos polos."
+    libro: [328]
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: s, min: -4, max: 0.5, unidad: "", rotulo: "parte real, σ" }
+      y: { min: -4, max: 4, unidad: "", rotulo: "parte imaginaria, ω" }
+      curvas:
+        - { expr: "0", color: tinta, rotulo: "eje real", discontinua: true }
+        # the two branches of the root locus, with the gain as the parameter (motor12e)
+        - { param: { id: kk, min: 0, max: 17 }, x: "-2 + sqrt(max(0, 1 - kk))", y: "sqrt(max(0, kk - 1))", color: azul, rotulo: "rama de arriba" }
+        - { param: { id: kk, min: 0, max: 17 }, x: "-2 - sqrt(max(0, 1 - kk))", y: "-sqrt(max(0, kk - 1))", color: azul, rotulo: "rama de abajo" }
+      marcas:
+        - { x: "re_1", y: "im_r", rotulo: "polo" }
+        - { x: "re_2", y: "-im_r", rotulo: "polo" }
+      lectura: { valor: z_r, rotulo: "Amortiguamiento, ζ" }
+      mandos:
+        - { valor: K_r, lista: [0, 0.5, 1, 5, 13], rotulo: "Ganancia, K" }
+    requiere: { mover: [K_r] }
+
+  - id: tercer-polo
+    tipo: pregunta
+    titulo: "Nunca inestable… hasta que"
+    texto: "Con dos polos, al subir K los polos se separan en vertical con parte real −2, y el lazo nunca se vuelve inestable. ¿Qué lo cambia?"
+    libro: [328, 329]
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: s, min: -4, max: 0.5, unidad: "", rotulo: "parte real, σ" }
+      y: { min: -4, max: 4, unidad: "", rotulo: "parte imaginaria, ω" }
+      curvas:
+        - { expr: "0", color: tinta, rotulo: "eje real", discontinua: true }
+        - { param: { id: kk, min: 0, max: 17 }, x: "-2 + sqrt(max(0, 1 - kk))", y: "sqrt(max(0, kk - 1))", color: azul, rotulo: "dos polos, arriba" }
+        - { param: { id: kk, min: 0, max: 17 }, x: "-2 - sqrt(max(0, 1 - kk))", y: "-sqrt(max(0, kk - 1))", color: azul, rotulo: "dos polos, abajo" }
+    opciones:
+      - texto: "Un tercer polo, del sensor o de un filtro: dos ramas se curvan hacia el semiplano derecho"
+        bien: true
+        porque: "Cruzan el eje imaginario a la ganancia crítica, la que busca Ziegler-Nichols."
+      - texto: "Un cero añadido"
+        porque: "Un cero atrae las ramas hacia la izquierda: es lo que hace la acción derivativa."
+      - texto: "Subir K aún más"
+        porque: "Con dos polos, la parte real se queda en −2 para cualquier K."
+    escalera:
+      - "Un polo añadido empuja las ramas hacia la derecha."
+    solucion: "Un tercer polo: aparece una ganancia crítica."
+
+  - id: porque-sensibilidad
+    tipo: porque
+    titulo: "El reparto inevitable"
+    texto: "Un lazo rechaza muy bien las perturbaciones lentas. ¿Por qué amplifica algo las rápidas?"
+    libro: [324]
+    widget:
+      tipo: figura
+      figura: fig-31.18
+      zonas:
+        - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
+    opciones:
+      - texto: "La integral de la sensibilidad está acotada: lo que se gana a unas frecuencias se pierde en otras"
+        bien: true
+        porque: "Ningún controlador lo evita: solo se elige dónde poner la mejora."
+      - texto: "Porque está mal sintonizado"
+        porque: "Pasa con cualquier sintonía: es un límite, no un error."
+      - texto: "Porque el sensor es ruidoso"
+        porque: "Sin ruido pasaría igual: es una propiedad del lazo."
+    escalera:
+      - "¿Se puede reducir el error a todas las frecuencias a la vez?"
+    solucion: "Reducir el error en unas frecuencias lo aumenta en otras."
+
+  - id: cero-derecho
+    tipo: predecir
+    titulo: "La caldera que baja antes de subir"
+    texto: "Un proceso con un cero en el semiplano derecho. ¿Hasta dónde puede llevarse la frecuencia de cruce?"
+    libro: [332]
+    widget:
+      tipo: figura
+      figura: fig-31.18
+      zonas:
+        - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
+    opciones:
+      - texto: "Hasta la mitad de la frecuencia del cero, más o menos"
+        bien: true
+        porque: "Ningún ajuste de ganancia lo supera: hay que cambiar el proceso o aceptar la lentitud."
+      - texto: "Sin límite, si se sube la ganancia"
+        porque: "Intentarlo produce un lazo que oscila."
+      - texto: "Hasta la frecuencia del cero"
+        porque: "El techo está por debajo: aproximadamente la mitad."
+    escalera:
+      - "Es el mismo techo que en las fuentes conmutadas."
+    solucion: "Aproximadamente la mitad de la frecuencia del cero."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [302, 309, 317, 324, 328, 336]
+    ideas:
+      - { titulo: "60° de margen.", texto: "ζ ≈ MF/100: con 60° el sobreimpulso baja del 10 %." }
+      - { titulo: "M_{s}.", texto: "La distancia al −1; 1,4 es robusto y cubre los dos márgenes." }
+      - { titulo: "Retardo.", texto: "T_{max} = MF en radianes / ω_{c}; muestreo, red y transporte suman." }
+      - { titulo: "Polos.", texto: "Un cero atrae las ramas a la izquierda; un polo, a la derecha." }

@@ -1,0 +1,193 @@
+# «Consolas por dentro» · Game Boy Color 7: averías y diagnóstico. Lo simple primero (libro, capítulo 55, e iFixit:
+# interruptor, pilas AA nuevas, cartucho), una consola que no enciende (pilas, interruptor o convertidor U5: medir a lo
+# largo del camino del esquema, con los 3 V de las pilas y los +5 V de U5; no se presenta como la avería más común) y
+# los síntomas de iFixit (pantalla, altavoz, cartucho). Fuentes: los datos de la consola (gbc#n), iFixit «Game Boy
+# Color Troubleshooting» y el libro. No he encontrado una fuente de averías típicas de la placa CGB que se pueda citar.
+leccion: consola-gbc/gbc-averias
+
+libro:
+  "gbc#11": "Interruptor deslizante"
+  "gbc#13": "Altavoz"
+  "gbc#14": "Toma de auriculares"
+  "gbc#15": "Entrada externa de 3 V"
+  "gbc#20": "LED rojo"
+  "gbc#21": "Placa conmutada que saca +5 V"
+  "gbc#84": "comprobar que el interruptor está en «on» y poner pilas AA nuevas"
+  "gbc#85": "Si se enciende el LED junto a la pantalla pero no hay imagen, puede que haya que cambiar la pantalla"
+  "gbc#86": "probar con auriculares; si se oyen, lo que falla es el altavoz"
+  "gbc#87": "Colores corridos o manchas que se ven incluso con la pantalla apagada: la pantalla está rota"
+  "gbc#88": "volver a meter el cartucho hasta el clic y quitarle el polvo"
+  "gbc#97": "Red VCC del esquema (alimentación): llega a C13, C31, R7, SW1, U3, U5"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap53#92": "conviene confirmarlos con el óhmetro"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{pilas}", nombre: "tensión de las pilas", unidad: V, valor: 3 }
+    V_o: { sim: "V_{+5V}", nombre: "salida de U5", unidad: V, valor: 5 }
+    bt: { tipo: interruptor, nombre: "pilas cargadas", valor: 1 }
+    sw: { tipo: interruptor, nombre: "interruptor sano", valor: 1 }
+    dc: { tipo: interruptor, nombre: "U5 sano", valor: 1 }
+  calculos:
+    V_bat: { expr: "V_p*bt", sim: "V_{pilas}", nombre: "tensión en los contactos de las pilas", unidad: V, cifras: 3 }
+    R_sw: { si: sw, entonces: "0", sino: "1e9", sim: "R_{SW1}", nombre: "resistencia del interruptor encendido, sin pilas", unidad: Ω }
+    V_5: { expr: "V_o*bt*sw*dc", sim: "V_{+5V}", nombre: "tensión de la red +5V", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-simple
+    tipo: explorar
+    titulo: "Lo primero, lo simple"
+    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
+    libro: ["cap53#39", "gbc#11", "gbc#15", "gbc#88"]
+    requiere: { mover: [sw, dcj, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: sw, hotspot: sw, rotulo: "Interruptor SW1", texto: "Compruebe que está en «on»." }
+        - { id: dcj, hotspot: dcj, rotulo: "Toma P4", texto: "Entrada externa de 3 V." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Cartucho metido hasta el clic y sin polvo." }
+
+  - id: ordene-antes
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de abrirla"
+    texto: "La consola no enciende. Ordene los pasos, de lo más simple a lo más difícil."
+    libro: ["gbc#84", "gbc#88", "cap53#39"]
+    ordenar:
+      - "Interruptor en «on» y pilas AA nuevas."
+      - "Volver a meter el cartucho y quitarle el polvo."
+      - "Abrir la consola y medir VCC y los +5 V."
+    exito: "Lo de fuera primero: muchas «averías» son unas pilas viejas."
+    pistas:
+      - { texto: "iFixit empieza por el interruptor y las pilas." }
+    escalera:
+      - "¿Qué se puede probar sin destornillador?"
+    solucion: "Interruptor y pilas; después, el cartucho; por último, abrir y medir."
+
+  - id: averia-no-enciende
+    tipo: averia
+    titulo: "No enciende"
+    texto: "Mida a lo largo del camino del esquema y señale la pieza: las pilas, el interruptor o el convertidor U5."
+    libro: ["gbc#15", "gbc#97", "gbc#21", "gbc#84", "cap53#92"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: sw, hotspot: sw, rotulo: "Interruptor SW1" }
+        - { id: dcj, hotspot: dcj, rotulo: "Toma P4" }
+    averia:
+      pasos: 3
+      eleccion: fija
+      sospechosos:
+        - { id: pilas, rotulo: "Pilas" }
+        - { id: interruptor, rotulo: "Interruptor SW1" }
+        - { id: u5, rotulo: "Convertidor U5" }
+      sondas:
+        - { id: bat, rotulo: "Pilas, en sus contactos", valor: V_bat }
+        - { id: sw1, rotulo: "Interruptor encendido, sin pilas", valor: R_sw }
+        - { id: mas5, rotulo: "Red +5V", valor: V_5 }
+      fallos:
+        - { id: pilas-gastadas, pieza: pilas, tipo: abierta, con: { bt: 0 }, texto: "Las pilas no dan tensión: ponga unas AA nuevas antes de abrir nada." }
+        - { id: sw-abierto, pieza: interruptor, tipo: abierta, con: { sw: 0 }, texto: "El interruptor no cierra: VCC no llega a U5." }
+        - { id: u5-muerto, pieza: u5, tipo: abierta, con: { dc: 0 }, texto: "Pilas e interruptor bien, pero la red +5V a cero: falla el convertidor U5." }
+    exito: "Pilas, interruptor y convertidor: la medida dice dónde se corta."
+    escalera:
+      - "Empiece por las pilas: deben dar sus 3 V."
+      - "Si las pilas y el interruptor están bien pero no hay +5 V, queda U5."
+    solucion: "Pilas sin tensión: las pilas. Interruptor abierto: SW1. Los dos bien y +5V a cero: U5."
+    comprobar:
+      - { V_bat: 3, R_sw: 0, V_5: 5 }
+
+  - id: por-que-pilas
+    tipo: porque
+    titulo: "Empezar por la entrada"
+    texto: "La red +5V está a cero. ¿Por qué medir antes las pilas que culpar a U5?"
+    libro: ["gbc#21", "gbc#97", "cap53#39"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc, foto: dorso }
+      zonas:
+        - { id: dcdc, hotspot: b-dcdc, rotulo: "Convertidor U5" }
+    opciones:
+      - texto: "Sin entrada, U5 no puede dar salida: su cero no lo acusa."
+        bien: true
+        porque: "U5 saca los +5 V de las pilas por VCC: primero hay que ver que le llega algo."
+      - texto: "Porque U5 nunca se estropea."
+        porque: "Puede fallar; pero solo se le culpa cuando su entrada está bien."
+      - texto: "Porque medir U5 es peligroso."
+        porque: "No es por peligro: es por orden. Una salida a cero sin entrada no dice nada del convertidor."
+    escalera:
+      - "¿De dónde saca U5 la energía para sus +5 V?"
+    solucion: "Primero la entrada: sin pilas ni VCC, U5 no tiene la culpa."
+
+  - id: prediga-led
+    tipo: predecir
+    titulo: "El LED luce"
+    texto: "No hay imagen, pero el LED rojo junto a la pantalla está encendido. ¿Dónde mira primero?"
+    libro: ["gbc#85", "gbc#20"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc, foto: dorso }
+      zonas:
+        - { id: led, hotspot: b-led, rotulo: "LED D4" }
+    opciones:
+      - texto: "En la pantalla: la consola recibe corriente."
+        bien: true
+        porque: "iFixit lo dice así: con el LED encendido y sin imagen, puede que haya que cambiar la pantalla."
+      - texto: "En las pilas."
+        porque: "Si el LED luce, llega corriente: las pilas no son lo primero."
+      - texto: "En el altavoz."
+        porque: "El altavoz no tiene que ver con la imagen."
+    escalera:
+      - "¿Qué le dice el LED encendido?"
+    solucion: "La pantalla: la alimentación llega."
+
+  - id: tocar-altavoz
+    tipo: tocar
+    titulo: "Sin sonido"
+    texto: "No suena por el altavoz, pero sí por los auriculares. Toque la pieza que falla."
+    libro: ["gbc#86", "gbc#13", "gbc#14"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: ls, hotspot: ls, rotulo: "Pieza redonda, abajo a la izquierda" }
+        - { id: hp, hotspot: hp, rotulo: "Conector, abajo en el centro" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, debajo del grande" }
+    tocar:
+      bien: [ls]
+      porque:
+        hp: "Es la toma de auriculares, y por ella sí suena."
+        amp: "El amplificador funciona: los auriculares suenan."
+    exito: "Si suenan los auriculares, el sonido llega bien: falla el altavoz."
+    escalera:
+      - "¿Qué parte del camino del sonido usan solo los altavoces?"
+    solucion: "El altavoz SP1."
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada síntoma, su sospechoso"
+    texto: "Empareje cada síntoma con lo que señala iFixit."
+    libro: ["gbc#85", "gbc#86", "gbc#87", "gbc#88", "gbc#20"]
+    emparejar:
+      - ["LED encendido, sin imagen", "La pantalla"]
+      - ["Suenan los auriculares, no el altavoz", "El altavoz"]
+      - ["Manchas con la pantalla apagada", "Pantalla rota"]
+      - ["El juego se cuelga", "Cartucho mal metido o con polvo"]
+    exito: "El LED dice que hay alimentación; los auriculares, que hay sonido."
+    pistas:
+      - { texto: "Si el LED luce, la consola recibe corriente." }
+    escalera:
+      - "Cada prueba descarta una parte: alimentación, sonido o cartucho."
+    solucion: "Sin imagen: pantalla. Sin altavoz: altavoz. Manchas: pantalla rota. Cuelgues: cartucho."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap53#39", "gbc#84", "gbc#97", "gbc#86"]
+    ideas:
+      - { titulo: "Lo simple.", texto: "Interruptor, pilas nuevas y cartucho, antes de abrir." }
+      - { titulo: "El camino.", texto: "Pilas, interruptor y U5: la medida dice dónde se corta." }
+      - { titulo: "Descartar.", texto: "El LED y los auriculares dicen qué parte funciona." }

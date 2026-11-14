@@ -1,0 +1,257 @@
+# Lección 1.2 de la sección 35.6 «Los Errores Reales: INL, DNL y Compañía» (cap34; etiqueta interna sec-34.6).
+# Formato: contenido/lecciones11/GUIA.md. El ADC de ejemplo es de 3 bits (entrada en LSB) con un DNL en el código 4;
+# con −1 LSB el código desaparece (los valores del mando, 0, −0,5 y −1 LSB, son de ejemplo alrededor del umbral del
+# libro). El ENOB por ruido es la fórmula del banco del libro, ENOB ≈ n − log₂(σ·√12); el ejemplo de 1,16 cuentas es
+# cuatro veces los 0,29 LSB del ideal (dos bits menos).
+leccion: cap34/sec-34.6
+
+libro:
+  153: "Un convertidor de 16 bits no tiene 16 bits de exactitud"
+  158: "con una calibración de dos puntos desaparecen"
+  159: "Lo que sí queda es su deriva con la temperatura y con el tiempo"
+  161: "cuánto se aparta cada escalón del tamaño ideal de un LSB"
+  162: "con DNL de −1 LSB, el escalón tiene anchura nula y el código desaparece"
+  163: "haría falta una tabla de corrección punto a punto"
+  167: "un convertidor de 16 bits nominales con ENOB de 13,5 es un convertidor de 13,5 bits"
+  168: "SFDR (rango dinámico libre de espurios)"
+  169: "THD: la distorsión armónica"
+  170: "Retardo de apertura y su jitter"
+  173: "un DNL excelente con INL malo da escalones uniformes sobre una curva torcida"
+  174: "si el INL es de ±4 LSB, la exactitud absoluta no puede ser mejor que eso"
+  177: "un convertidor ideal tiene σ = 1/√12 = 0,29 LSB, y cada duplicación de σ por encima de eso cuesta un bit"
+  180: "DNL con un código faltante e INL como desviación acumulada de la recta ideal"
+  "cap34#377": "ENOB = (SINAD − 1,76)/6,02 = (68 − 1,76)/6,02 = 66,24/6,02 ≈ 11,0 bits efectivos"
+
+modelo:
+  valores:
+    d_c: { sim: "DNL", nombre: "DNL del código 4", unidad: LSB, valor: 0 }
+    n_e: { sim: "n", nombre: "bits nominales", unidad: "", valor: 12 }
+    s_e: { sim: "σ", nombre: "desviación típica del ruido", unidad: "cuentas", valor: 0.2887 }
+    S_d: { sim: "SINAD", nombre: "SINAD medido", unidad: dB, valor: 68 }
+    k_3: { sim: "3", nombre: "bits del ejemplo", unidad: "", valor: 3 }
+  calculos:
+    w_4: { expr: "1 + d_c", sim: "anchura", nombre: "anchura del código 4", unidad: LSB, cifras: 2 }
+    ENOB: { expr: "n_e - log10(s_e*sqrt(12))/log10(2)", sim: "ENOB", nombre: "bits efectivos por ruido", unidad: bits, cifras: 3 }
+    E_s: { expr: "(S_d - 1.76)/6.02", sim: "ENOB", nombre: "bits efectivos del SINAD", unidad: bits, cifras: 3 }
+
+tarjetas:
+  - id: explore-figura
+    tipo: explorar
+    titulo: "Un código que falta"
+    texto: "A la izquierda, la característica de un ADC real; a la derecha, su DNL y su INL. Toque el código faltante y el salto del INL."
+    libro: [161, 180]
+    widget:
+      tipo: figura
+      figura: fig-34.8
+      zonas:
+        - { id: faltante, rotulo: "Asterisco de la izquierda", rect: [98, 86, 40, 40], texto: "Ese código no aparece: su escalón tiene anchura nula, DNL = −1 LSB." }
+        - { id: dnl, rotulo: "Barras de la derecha", rect: [262, 88, 175, 72], texto: "El DNL de cada código: cuánto se aparta su escalón del tamaño ideal." }
+        - { id: inl, rotulo: "Curva de la derecha", rect: [262, 30, 80, 60], texto: "El INL: la suma acumulada de los DNL, la desviación respecto a la recta." }
+        - { id: salto, rotulo: "Caída de la curva", rect: [330, 40, 50, 64], texto: "El INL cae de golpe un LSB: ese salto es el DNL = −1 del código faltante." }
+    requiere: { mover: [faltante, salto] }
+
+  - id: explore-anchura
+    tipo: explorar
+    titulo: "Un escalón que se estrecha"
+    texto: "Un ADC de 3 bits con un error en la anchura del código 4. Hágalo más estrecho y mire la escalera."
+    libro: [161, 162]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 8, unidad: LSB, rotulo: "v_{in}" }
+      y: { min: 0, max: 8, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "min(7, floor(vx - d_c*ceil((vx - 4)/1e9)))", color: azul, rotulo: "Código" }
+      lectura: { valor: w_4, rotulo: "Anchura del código 4" }
+      mandos:
+        - { valor: d_c, lista: [0, -0.5, -1], rotulo: "DNL del código 4" }
+    requiere: { mover: [d_c] }
+    comprobar:
+      - { k_3: 3 }
+
+  - id: prediga-faltante
+    tipo: predecir
+    titulo: "DNL de −1 LSB"
+    texto: "El código 4 de ese ADC tiene un DNL de −1 LSB. Al barrer la entrada de punta a punta, ¿qué pasa con él?"
+    libro: [162]
+    fijar: { d_c: -1 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 8, unidad: LSB, rotulo: "v_{in}" }
+      y: { min: 0, max: 8, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "min(7, floor(vx - d_c*ceil((vx - 4)/1e9)))", color: azul, rotulo: "Código" }
+      lectura: { valor: w_4, rotulo: "Anchura del código 4" }
+      ocultar: true
+    opciones:
+      - { texto: "No aparece nunca: es un código faltante", bien: true, porque: "Su escalón tiene anchura nula: el convertidor nunca lo entrega." }
+      - { texto: "Aparece la mitad de las veces", porque: "Eso sería un escalón de medio LSB. Con −1 LSB su anchura es cero." }
+      - { texto: "Aparece dos veces seguidas", porque: "No: los escalones vecinos se juntan y el código 4 se salta." }
+    escalera: ["Anchura = 1 LSB + DNL."]
+    solucion: "1 − 1 = 0: anchura nula, código faltante."
+    comprobar:
+      - { w_4: 0 }
+
+  - id: porque-no-missing
+    tipo: porque
+    titulo: "«No missing codes»"
+    texto: "Las hojas de datos garantizan «no missing codes». ¿Por qué no es un adorno?"
+    libro: [162]
+    fijar: { d_c: -1 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 8, unidad: LSB, rotulo: "v_{in}" }
+      y: { min: 0, max: 8, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "min(7, floor(vx - d_c*ceil((vx - 4)/1e9)))", color: azul, rotulo: "Código" }
+    opciones:
+      - { texto: "Promete que ningún escalón llega a anchura nula: todos los códigos salen", bien: true, porque: "Es una promesa concreta sobre el DNL: nunca −1 LSB." }
+      - { texto: "Promete que el convertidor es exacto", porque: "La exactitud la limita el INL; esta promesa solo habla de que existan todos los códigos." }
+      - { texto: "Promete que no hay ruido", porque: "El ruido es otra cosa: aquí se habla de escalones de anchura nula." }
+    escalera: ["¿Qué DNL hace desaparecer un código?"]
+    solucion: "Garantiza un DNL mayor que −1 LSB en todos los códigos."
+
+  - id: pregunta-calibracion
+    tipo: pregunta
+    titulo: "Lo que se calibra"
+    texto: "Un sistema calibra su ADC en dos puntos. ¿Qué error le queda sin corregir?"
+    libro: [158, 159, 163]
+    widget:
+      tipo: figura
+      figura: fig-34.8
+      zonas:
+        - { id: inl, rotulo: "Curva de la derecha", rect: [262, 30, 80, 60] }
+    opciones:
+      - { texto: "El INL, y la deriva de offset y ganancia", bien: true, porque: "Dos puntos quitan offset y ganancia; el INL pide una tabla punto a punto, y la deriva vuelve con el tiempo." }
+      - { texto: "El offset", porque: "El offset es una constante: la calibración de dos puntos lo elimina." }
+      - { texto: "Ninguno: todo queda corregido", porque: "La curva del INL no es una recta: dos constantes no la enderezan." }
+    escalera: ["Dos puntos fijan una recta: ¿qué error no es una recta?"]
+    solucion: "El INL y la deriva."
+
+  - id: pregunta-coherencia
+    tipo: pregunta
+    titulo: "Muchos bits, INL de ±4 LSB"
+    texto: "Un convertidor de 16 bits tiene un INL de ±4 LSB. ¿Qué exactitud absoluta puede dar?"
+    libro: [153, 174]
+    widget:
+      tipo: figura
+      figura: fig-34.8
+      zonas:
+        - { id: inl, rotulo: "Curva de la derecha", rect: [262, 30, 80, 60] }
+    opciones:
+      - { texto: "No mejor que ±4 LSB", bien: true, porque: "Es la comprobación de coherencia: por muchos bits que tenga, el INL manda." }
+      - { texto: "Medio LSB, la de 16 bits", porque: "Eso es la resolución, no la exactitud." }
+      - { texto: "±4 LSB dividido entre 16", porque: "El INL no se reparte entre los bits: es la desviación de la característica." }
+    escalera: ["¿Qué mide el INL respecto a la recta ideal?"]
+    solucion: "±4 LSB como mucho."
+
+  - id: explore-enob
+    tipo: explorar
+    titulo: "El ruido cuesta bits"
+    texto: "Con la entrada en cortocircuito, la desviación típica σ de mil muestras da el ENOB por ruido. Cambie σ."
+    libro: [177]
+    widget:
+      tipo: grafica
+      x: { id: sx, min: 0.2, max: 5, unidad: "cuentas", rotulo: "σ", escala: log }
+      y: { min: 6, max: 18, unidad: bits, rotulo: "ENOB" }
+      curvas:
+        - { expr: "n_e - log10(sx*sqrt(12))/log10(2)", color: azul, rotulo: "ENOB" }
+      marcas:
+        - { x: "s_e", y: "ENOB", rotulo: "Su σ" }
+      lectura: { valor: ENOB, rotulo: "ENOB" }
+      mandos:
+        - { valor: s_e, lista: [0.2887, 0.5774, 1.1547, 2.3094], rotulo: "σ" }
+        - { valor: n_e, lista: [12, 16], rotulo: "Bits nominales" }
+    requiere: { mover: [s_e] }
+
+  - id: estime-enob
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un ADC de 12 bits ruidoso"
+    texto: "Un ADC de 12 bits, con la entrada en cortocircuito, da σ = 1,16 cuentas. ¿Cuántos bits efectivos tiene por ruido?"
+    libro: [177]
+    fijar: { n_e: 12, s_e: 1.16 }
+    estimar:
+      objetivo: "ENOB"
+      unidad: bits
+      min: 0
+      max: 12
+      paso: 0.1
+      inicio: 11.5
+      tol: 0.03
+      rotulo: "ENOB"
+    exito: "10 bits: σ es cuatro veces la ideal, dos duplicaciones, dos bits menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.3 }, texto: "Se ha pasado: σ ideal es 0,29 LSB y cada duplicación cuesta un bit." }
+      - { texto: "Se ha quedado corto: 1,16 es 0,29 duplicado solo dos veces." }
+    escalera: ["¿Cuántas veces cabe 0,29 en 1,16, en duplicaciones?"]
+    solucion: "1,16/0,29 = 4 = 2²: 12 − 2 = 10 bits."
+    comprobar:
+      - { ENOB: 10 }
+
+  - id: estime-sinad
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Del SINAD al ENOB"
+    texto: "Un conversor tiene un SINAD medido de 68 dB. ¿Cuál es su ENOB?"
+    libro: [167, "cap34#377"]
+    fijar: { S_d: 68 }
+    estimar:
+      objetivo: "E_s"
+      unidad: bits
+      min: 0
+      max: 16
+      paso: 0.1
+      inicio: 15
+      tol: 0.02
+      rotulo: "ENOB"
+    exito: "11,0 bits efectivos: la cifra honesta."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 11.2 }, texto: "Se ha pasado: reste 1,76 antes de dividir entre 6,02." }
+      - { texto: "Se ha quedado corto: (68 − 1,76)/6,02." }
+    escalera: ["ENOB = (SINAD − 1,76)/6,02."]
+    solucion: "(68 − 1,76)/6,02 = 11,0 bits."
+    comprobar:
+      - { E_s: 11.0 }
+
+  - id: empareje-dinamicos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los errores dinámicos"
+    texto: "Una cada cifra con lo que mide."
+    libro: [167, 168, 169, 170]
+    emparejar:
+      - ["SINAD y ENOB", "Señal frente a ruido más distorsión, en bits"]
+      - ["SFDR", "Distancia al mayor espurio"]
+      - ["THD", "Armónicos de la entrada, por la no linealidad"]
+      - ["Jitter de apertura", "Incertidumbre del instante de muestreo"]
+    exito: "El SFDR manda en radio: un espurio puede confundirse con una señal."
+    pistas:
+      - { texto: "El que se traduce a bits efectivos es la cifra honesta." }
+    escalera: ["THD: total harmonic distortion."]
+    solucion: "SINAD/ENOB, SFDR, THD y jitter, cada uno con su error."
+
+  - id: pregunta-criterios
+    tipo: pregunta
+    titulo: "DNL excelente, INL malo"
+    texto: "Una hoja presume de un DNL excelente, pero el INL es malo. ¿Qué característica tiene el convertidor?"
+    libro: [173]
+    widget:
+      tipo: figura
+      figura: fig-34.8
+      zonas:
+        - { id: dnl, rotulo: "Barras de la derecha", rect: [262, 88, 175, 72] }
+    opciones:
+      - { texto: "Escalones uniformes sobre una curva torcida", bien: true, porque: "El DNL mira cada escalón; el INL, la forma de toda la característica." }
+      - { texto: "Escalones desiguales sobre una recta", porque: "Eso sería un DNL malo con buen INL: al revés." }
+      - { texto: "Una característica perfecta", porque: "Mire el INL, no solo el DNL: la exactitud absoluta la fija el INL." }
+    escalera: ["¿Qué mide cada uno: un escalón o toda la curva?"]
+    solucion: "Escalones uniformes sobre una curva torcida."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [158, 162, 163, 177]
+    ideas:
+      - { titulo: "Se calibran.", texto: "Offset y ganancia, con dos puntos; queda su deriva." }
+      - { titulo: "No se calibran.", texto: "DNL, que con −1 LSB hace faltar un código, e INL, que limita la exactitud." }
+      - { titulo: "Bits de verdad.", texto: "ENOB: del SINAD o del ruido, n − log₂(σ · √12)." }

@@ -1,0 +1,240 @@
+# Lección 1.2 de la sección 33.14 «Conmutación Dura y Suave: los Convertidores Resonantes» (cap33, sec-33.12).
+# Formato: GUIA.md.
+# - El encendido como en la figura 33.13: en conmutación dura la corriente sube en un tiempo τ con la tensión aún
+#   alta y luego la tensión cae en otro τ; con ZVS la tensión ya ha caído antes de activar la puerta. La energía de
+#   cada encendido duro es V·I·τ (dos triángulos). 400 V, 10 A, τ = 15 ns y las frecuencias de 100 kHz a 1 MHz son
+#   míos (el libro no da números aquí): sirven para ver que la pérdida media crece con la frecuencia (bloque 451).
+# Sin paso práctico: sección cualitativa; el «banco» del libro es la gráfica que el lector abre con y sin ZVS.
+leccion: cap33/sec-33.12
+
+libro:
+  450: "esa superposición es exactamente la energía que se pierde en cada transición"
+  451: "subir la frecuencia reduce el tamaño de los magnéticos y aumenta las pérdidas en la misma proporción"
+  452: "cuando la tensión o la corriente valen cero"
+  454: "se consigue que la tensión sobre el interruptor sea cero antes de encenderlo"
+  455: "la pérdida de encendido —descargar esa capacidad— es la que domina en los MOSFET"
+  456: "Es más adecuada para IGBT"
+  458: "la energía almacenada en la dispersión del transformador consigue ZVS de forma natural"
+  459: "es la topología dominante hoy en fuentes de ordenador y de televisión"
+  460: "porque el espectro se mueve"
+  462: "rendimientos por encima del 95 %"
+  463: "conmutan suavemente a frecuencia alta y sus magnéticos son diminutos"
+  465: "tienen capacidades de salida y cargas de puerta mucho menores"
+  469: "Un LLC mal dimensionado tiene un rendimiento excelente en su punto y mediocre fuera"
+  473: "En ZVS, la tensión ya ha caído a cero cuando la puerta se activa"
+  475: "Solapamiento de tensión y corriente en conmutación dura"
+
+modelo:
+  valores:
+    V_s: { sim: "V", nombre: "tensión que bloquea el interruptor", unidad: V, valor: 400 }
+    I_s: { sim: "I", nombre: "corriente que conmuta", unidad: A, valor: 10 }
+    tau: { sim: "τ", nombre: "duración de cada rampa", unidad: s, valor: 1.5e-8 }
+    t_0: { sim: "t₀", nombre: "instante en que se activa la puerta", unidad: s, valor: 5e-8 }
+    zvs: { tipo: interruptor, nombre: "conmutación a tensión nula", valor: 0 }
+    f_s: { sim: "f_{s}", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+  calculos:
+    E_on: { expr: "(1 - zvs)*V_s*I_s*tau", sim: "E_{on}", nombre: "energía perdida en cada encendido", unidad: J }
+    P_on: { expr: "(1 - zvs)*V_s*I_s*tau*f_s", sim: "P", nombre: "pérdida media de encendido", unidad: W }
+
+tarjetas:
+  - id: explore-encendido
+    tipo: explorar
+    titulo: "Dura o suave"
+    texto: "Un encendido con tensión y corriente a la vez. Active la conmutación a tensión nula y mire el producto v·i."
+    libro: [450, 454, 473, 475]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "tanto por uno" }
+      curvas:
+        - { expr: "1 - min(1, max(0, (t - t_0 - tau + 3*zvs*tau)/tau))", color: azul, rotulo: "tensión de drenador" }
+        - { expr: "min(1, max(0, (t - t_0)/tau))", color: naranja, rotulo: "corriente" }
+        - { expr: "(1 - min(1, max(0, (t - t_0 - tau + 3*zvs*tau)/tau)))*min(1, max(0, (t - t_0)/tau))", color: verde, rotulo: "v·i" }
+      marcas:
+        - { x: "t_0", y: "0", rotulo: "puerta" }
+      lectura: { valor: E_on, rotulo: "Energía por encendido" }
+      mandos:
+        - { valor: zvs, tipo: interruptor, rotulo: "Tensión nula al encender" }
+    requiere: { mover: [zvs] }
+
+  - id: prediga-frecuencia
+    tipo: predecir
+    titulo: "El muro de la frecuencia"
+    texto: "En conmutación dura, se multiplica la frecuencia por diez para reducir los magnéticos. ¿Qué hacen las pérdidas de conmutación?"
+    libro: [451]
+    fijar: { zvs: 0, f_s: 100000 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "tanto por uno" }
+      curvas:
+        - { expr: "(1 - min(1, max(0, (t - t_0 - tau)/tau)))*min(1, max(0, (t - t_0)/tau))", color: verde, rotulo: "v·i en un encendido" }
+      lectura: { valor: P_on, rotulo: "Pérdida media" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Se multiplican por diez: cada ciclo paga su transición"
+        bien: true
+        porque: "La energía por transición no cambia; diez veces más transiciones por segundo, diez veces más pérdida."
+      - texto: "No cambian: la transición dura lo mismo"
+        porque: "Cada transición cuesta lo mismo, pero hay diez veces más."
+      - texto: "Bajan, porque los magnéticos son menores"
+        porque: "Los magnéticos menguan, pero las pérdidas de conmutación crecen en la misma proporción."
+    escalera:
+      - "Pérdida media = energía por transición × transiciones por segundo."
+    solucion: "Diez veces más: es el muro de la conmutación dura."
+
+  - id: explore-muro
+    tipo: explorar
+    titulo: "Con y sin ZVS"
+    texto: "Suba la frecuencia en conmutación dura y luego active el ZVS."
+    libro: [451, 452]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "tanto por uno" }
+      curvas:
+        - { expr: "(1 - min(1, max(0, (t - t_0 - tau + 3*zvs*tau)/tau)))*min(1, max(0, (t - t_0)/tau))", color: verde, rotulo: "v·i" }
+      lectura: { valor: P_on, rotulo: "Pérdida media de encendido" }
+      mandos:
+        - { valor: f_s, lista: [100000, 300000, 1000000], rotulo: "Frecuencia de conmutación" }
+        - { valor: zvs, tipo: interruptor, rotulo: "Tensión nula al encender" }
+    requiere: { mover: [f_s, zvs] }
+
+  - id: familias
+    tipo: pregunta
+    titulo: "ZVS y ZCS"
+    texto: "Empareje cada familia con lo que hace y su transistor."
+    libro: [454, 455, 456]
+    widget:
+      tipo: figura
+      figura: fig-33.13
+      zonas:
+        - { id: todo, rotulo: "Las dos conmutaciones", rect: [0, 0, 436, 210] }
+    emparejar:
+      - ["ZVS", "Tensión nula antes de encender: MOSFET"]
+      - ["ZCS", "Corriente nula antes de apagar: IGBT"]
+    exito: "Cada una ataca la pérdida que domina: el encendido del MOSFET, el apagado del IGBT con su cola."
+    pistas:
+      - { texto: "El IGBT pierde sobre todo al apagar, por su cola de corriente." }
+    escalera:
+      - "En el MOSFET domina descargar su capacidad al encender."
+    solucion: "ZVS: tensión nula al encender, MOSFET. ZCS: corriente nula al apagar, IGBT."
+
+  - id: banco-zvs
+    tipo: pregunta
+    titulo: "Verlo en el osciloscopio"
+    texto: "Tensión de drenador y señal de puerta en dos canales. ¿Cómo se reconoce el ZVS?"
+    libro: [473]
+    widget:
+      tipo: figura
+      figura: fig-33.13
+      zonas:
+        - { id: todo, rotulo: "Las dos conmutaciones", rect: [0, 0, 436, 210] }
+    opciones:
+      - texto: "La tensión de drenador ya es cero cuando se activa la puerta"
+        bien: true
+        porque: "Sin tensión al encender no hay solapamiento: desaparece la pérdida de encendido."
+      - texto: "La corriente se anula antes de encender"
+        porque: "Eso sería ZCS, y en el apagado."
+      - texto: "La frecuencia queda fija"
+        porque: "Un LLC con ZVS incluso varía la frecuencia; lo que se ve es la tensión a cero antes de la puerta."
+    escalera:
+      - "Compare cuándo baja la tensión y cuándo se activa la puerta."
+    solucion: "La tensión ya ha caído a cero cuando la puerta se activa."
+
+  - id: topologias
+    tipo: pregunta
+    titulo: "Dos topologías resonantes"
+    texto: "Empareje cada topología con su rasgo."
+    libro: [458, 459]
+    widget:
+      tipo: figura
+      figura: fig-33.13
+      zonas:
+        - { id: todo, rotulo: "Las dos conmutaciones", rect: [0, 0, 436, 210] }
+    emparejar:
+      - ["Puente con desplazamiento de fase", "ZVS con la dispersión del transformador; potencia media y alta"]
+      - ["LLC", "Regula variando la frecuencia; fuentes de ordenador y televisión"]
+    exito: "El LLC domina hoy por su rendimiento en un margen amplio."
+    pistas:
+      - { texto: "El LLC no regula con el ciclo de trabajo." }
+    escalera:
+      - "El desplazamiento de fase es entre los dos brazos del puente."
+    solucion: "Desplazamiento de fase: ZVS con la dispersión. LLC: regula por frecuencia."
+
+  - id: por-que-llc-emi
+    tipo: porque
+    titulo: "El precio del LLC"
+    texto: "Un LLC regula variando la frecuencia. ¿Por qué complica eso el filtrado de interferencias?"
+    libro: [460]
+    widget:
+      tipo: figura
+      figura: fig-33.13
+      zonas:
+        - { id: todo, rotulo: "Las dos conmutaciones", rect: [0, 0, 436, 210] }
+    opciones:
+      - texto: "Porque el espectro se mueve con la carga y la entrada"
+        bien: true
+        porque: "Un filtro pensado para una frecuencia fija no sirve igual para un espectro que se desplaza."
+      - texto: "Porque conmuta duro"
+        porque: "Al contrario: consigue ZVS en un margen amplio."
+      - texto: "Porque no tiene transformador"
+        porque: "Lo tiene; la dificultad viene de la frecuencia variable."
+    escalera:
+      - "¿Qué pasa con las rayas del espectro si la frecuencia cambia?"
+    solucion: "El espectro se mueve con el punto de trabajo y es más difícil de filtrar."
+
+  - id: cargadores
+    tipo: pregunta
+    titulo: "Del tamaño de una caja de cerillas"
+    texto: "Cargadores diminutos que entregan decenas de vatios. ¿Qué los hace posibles, sobre todo?"
+    libro: [462, 463, 465]
+    widget:
+      tipo: figura
+      figura: fig-33.13
+      zonas:
+        - { id: todo, rotulo: "Las dos conmutaciones", rect: [0, 0, 436, 210] }
+    opciones:
+      - texto: "Conmutar suave a frecuencia alta: magnéticos diminutos"
+        bien: true
+        porque: "Cientos de kilohercios a megahercios por encima del 95 %; GaN y SiC lo facilitan aún más."
+      - texto: "Solo mejores condensadores"
+        porque: "Ayudan, pero el tamaño lo deciden los magnéticos, que menguan con la frecuencia."
+      - texto: "Reguladores lineales más eficientes"
+        porque: "Un lineal no rinde así ni se reduce con la frecuencia."
+    escalera:
+      - "¿Qué componente se reduce al subir la frecuencia?"
+    solucion: "La conmutación suave a frecuencia alta, con magnéticos diminutos."
+
+  - id: fuera-de-punto
+    tipo: pregunta
+    titulo: "Fuera de su punto"
+    texto: "Un LLC mal dimensionado rinde de maravilla en su punto de trabajo. ¿Y fuera de él?"
+    libro: [469]
+    widget:
+      tipo: figura
+      figura: fig-33.13
+      zonas:
+        - { id: todo, rotulo: "Las dos conmutaciones", rect: [0, 0, 436, 210] }
+    opciones:
+      - texto: "Mediocre: fuera del margen de ZVS vuelve a conmutar duro"
+        bien: true
+        porque: "El ZVS solo se consigue en un margen de carga."
+      - texto: "Igual de bien: el ZVS es permanente"
+        porque: "Depende del punto de trabajo, y de la dispersión."
+      - texto: "Se apaga por protección"
+        porque: "No se apaga: sigue funcionando, pero conmutando duro."
+    escalera:
+      - "¿De qué depende que haya ZVS?"
+    solucion: "Mediocre: fuera de su margen pierde el ZVS."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [451, 454, 459, 463, 469]
+    ideas:
+      - { titulo: "El muro.", texto: "En conmutación dura, la pérdida crece con la frecuencia." }
+      - { titulo: "ZVS y ZCS.", texto: "Conmutar con tensión o corriente nula: MOSFET e IGBT." }
+      - { titulo: "LLC.", texto: "Regula por frecuencia, ZVS en un margen amplio: el dominante hoy." }
+      - { titulo: "Lo que cuesta.", texto: "Diseño delicado y buen rendimiento solo en su margen." }

@@ -25,7 +25,7 @@
 </script>
 
 <Lienzo {descripcion} alto={250}>
-  <FuenteCA x={30} y1={190} y2={90} />
+  <FuenteCA x={30} y1={190} y2={90} pieza="fuente" />
   <Et x={2} y={36} t={`${c.val('fuente')} · ${c.val('f')}`} peq />
   <path class="hilo" d="M30 90 V60 H140 V90 M30 190 V220 H140 V190"></path>
   <path class="pieza azul" d="M90 140 L107 123 M123 107 L140 90 M140 190 L157 173 M173 157 L190 140"></path>
@@ -38,11 +38,11 @@
   <path class="hilo" d={`M190 140 H210 V40 H${fin} M90 140 H70 V214 a6 6 0 0 0 0 12 V240 H${fin}`}></path>
   <Et x={140} y={145} t={c.val('vd')} peq ancla="middle" />
   {#if c.tiene('c')}
-    <C x1={260} y1={40} x2={260} y2={240} color="naranja" polar />
+    <C x1={260} y1={40} x2={260} y2={240} color="naranja" polar pieza="c" />
     <Et x={242} y={150} t={c.val('c')} color="naranja" peq ancla="end" />
   {/if}
   {#if c.tiene('carga')}
-    <R x1={330} y1={40} x2={330} y2={240} color="verde" />
+    <R x1={330} y1={40} x2={330} y2={240} color="verde" pieza="carga" />
     <Et x={344} y={136} t={c.simT('carga')} color="verde" />
     <Et x={344} y={156} t={c.val('carga')} color="verde" peq />
   {/if}

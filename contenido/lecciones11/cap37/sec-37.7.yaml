@@ -1,0 +1,193 @@
+# Lección 1.2 de la sección 38.7 «El Flujo de Diseño» (cap37; etiqueta interna sec-37.7).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 38.9 (svg_vista 450,72 × 216,72): las siete etapas, las
+# restricciones y los informes.
+leccion: cap37/sec-37.7
+
+libro:
+  194: "Descripción en HDL, más las restricciones: reloj, asignación de pines, requisitos temporales."
+  195: "las etapas 4 y 5 son las lentas, de minutos a horas en diseños grandes, porque encaminar es un problema de optimización difícil"
+  197: "sin restricciones, la herramienta no sabe qué se pretende"
+  198: "Sin ella, la herramienta no comprueba tiempos y el diseño puede fallar en el dispositivo aunque «compile bien»."
+  199: "Asignación de pines, con su estándar de tensión y su intensidad."
+  200: "Restricciones de temporización entre dominios y en las entradas y salidas."
+  201: "Falsos caminos y caminos multiciclo, que le dicen a la herramienta qué no debe optimizar"
+  204: "Funcional: solo la lógica, rápida, para depurar el comportamiento."
+  205: "revela problemas que la funcional no ve"
+  206: "comprueba todos los caminos a la vez en lugar de solo los que la simulación ejercita"
+  208: "un analizador lógico integrado"
+  209: "instrumentar un diseño que va justo puede hacer que deje de cerrar"
+  212: "los de latches inferidos (sección 28.4) y señales sin inicializar"
+  213: "encaminar un dispositivo lleno es mucho más difícil"
+  214: "El informe de tiempos, con el margen de los caminos críticos."
+  215: "Ignorar los avisos es la fuente número uno de diseños que funcionan por casualidad."
+  217: "compilar y cargar pronto, con una parte pequeña del diseño"
+  218: "descubrir un problema de pines o de restricciones al principio"
+  219: "El flujo de diseño en FPGA, el papel de las restricciones y los informes que hay que leer."
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-etapas
+    tipo: explorar
+    titulo: "Siete etapas"
+    texto: "Toque la síntesis y la implementación: una traduce, la otra coloca y encamina."
+    libro: [194, 219]
+    widget:
+      tipo: figura
+      figura: fig-37.9
+      zonas:
+        - { id: hdl, rotulo: "Primera caja", rect: [12, 37, 54, 54], texto: "HDL más las restricciones: reloj, pines y requisitos temporales." }
+        - { id: sintesis, rotulo: "Tercera caja", rect: [137, 37, 53, 54], texto: "Síntesis: el HDL pasa a una red de puertas y biestables." }
+        - { id: implementacion, rotulo: "Cuarta caja", rect: [199, 37, 53, 54], texto: "Implementación: colocar en el dispositivo concreto y encaminar las conexiones." }
+        - { id: analisis, rotulo: "Quinta caja", rect: [260, 37, 54, 54], texto: "Análisis temporal con los retardos reales." }
+    requiere: { mover: [sintesis, implementacion] }
+
+  - id: ordene-etapas
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "De la idea al dispositivo"
+    texto: "Ponga en orden las siete etapas del flujo de una FPGA."
+    libro: [194]
+    ordenar:
+      - "Descripción en HDL y restricciones."
+      - "Simulación funcional."
+      - "Síntesis a puertas y biestables."
+      - "Implementación: colocar y encaminar."
+      - "Análisis temporal con retardos reales."
+      - "Generación del fichero de configuración."
+      - "Carga y verificación en el dispositivo."
+    exito: "Primero se comprueba la lógica, luego se traduce, se coloca y se mide con los retardos reales."
+    pistas:
+      - { texto: "Los retardos reales solo se conocen después de colocar y encaminar." }
+    escalera: ["La simulación funcional no necesita saber nada del dispositivo: va antes de la síntesis."]
+    solucion: "HDL, simulación funcional, síntesis, implementación, análisis temporal, fichero y carga."
+
+  - id: porque-lentas
+    tipo: porque
+    titulo: "Las etapas lentas"
+    texto: "La implementación y el análisis temporal tardan de minutos a horas en diseños grandes. ¿Por qué?"
+    libro: [195]
+    widget:
+      tipo: figura
+      figura: fig-37.9
+      zonas:
+        - { id: implementacion, rotulo: "Cuarta caja", rect: [199, 37, 53, 54], texto: "Colocar y encaminar." }
+    opciones:
+      - { texto: "Encaminar es un problema de optimización difícil", bien: true, porque: "Hay que encontrar caminos para todas las conexiones y que cumplan los tiempos." }
+      - { texto: "Porque el fichero de configuración es muy grande", porque: "Generarlo es otra etapa, y no es la lenta." }
+      - { texto: "Porque se simula todo con retardos", porque: "El análisis estático no simula: comprueba caminos. Lo lento es encaminar." }
+    escalera: ["¿Qué tiene que decidir la herramienta para cada conexión?"]
+    solucion: "Encaminar es un problema de optimización difícil: de ahí los minutos u horas."
+
+  - id: pregunta-sin-restricciones
+    tipo: pregunta
+    titulo: "«Compila bien»"
+    texto: "Un diseño se compila sin declarar la frecuencia de su reloj. ¿Qué puede pasar?"
+    libro: [197, 198]
+    widget:
+      tipo: figura
+      figura: fig-37.9
+      zonas:
+        - { id: restricciones, rotulo: "Recuadro naranja de abajo", rect: [6, 128, 209, 82], texto: "Sin reloj declarado no se comprueban tiempos." }
+    opciones:
+      - { texto: "Sintetiza y falla en el dispositivo", bien: true, porque: "Sin la restricción, la herramienta no comprueba tiempos: no sabe qué se pretende." }
+      - { texto: "No compila", porque: "Compila, y ese es el peligro: «compila bien» y no funciona." }
+      - { texto: "Funciona a la máxima frecuencia posible", porque: "La herramienta no deduce la frecuencia: si no se le dice, no la comprueba." }
+    escalera: ["¿Contra qué comprobaría la herramienta los tiempos?"]
+    solucion: "Puede sintetizarse y no funcionar: es la causa más frecuente de sorpresas."
+
+  - id: empareje-restricciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tan importantes como el código"
+    texto: "Una cada restricción con lo que le dice a la herramienta."
+    libro: [198, 199, 200, 201]
+    emparejar:
+      - ["Restricción de reloj", "Su frecuencia"]
+      - ["Asignación de pines", "Su estándar de tensión y su intensidad"]
+      - ["Entre dominios y en E/S", "La temporización entre dominios y en las entradas y salidas"]
+      - ["Falsos caminos y multiciclo", "Qué no debe optimizar"]
+    exito: "Sin restricciones, la herramienta no sabe qué se pretende."
+    pistas:
+      - { texto: "Lo que no se optimiza le ahorra trabajo inútil a la herramienta." }
+    escalera: ["Un pin se describe por su tensión y su intensidad."]
+    solucion: "Reloj: frecuencia. Pines: tensión e intensidad. Dominios y E/S: su temporización. Falsos caminos: qué no optimizar."
+
+  - id: porque-analisis-estatico
+    tipo: porque
+    titulo: "Análisis en lugar de simulación"
+    texto: "La simulación con retardos revela problemas que la funcional no ve. ¿Por qué la mayoría de los flujos la sustituye por el análisis estático?"
+    libro: [204, 205, 206]
+    widget:
+      tipo: figura
+      figura: fig-37.9
+      zonas:
+        - { id: analisis, rotulo: "Quinta caja", rect: [260, 37, 54, 54], texto: "Análisis temporal: todos los caminos." }
+    opciones:
+      - { texto: "Comprueba todos los caminos a la vez, no solo los que la simulación ejercita", bien: true, porque: "Una simulación solo mira los caminos que sus estímulos recorren." }
+      - { texto: "Porque es más preciso con los retardos", porque: "Usa los mismos retardos; su ventaja es que no se deja caminos." }
+      - { texto: "Porque la simulación con retardos no existe", porque: "Existe, pero es mucho más lenta y solo ve lo que se ejercita." }
+    escalera: ["¿Qué caminos comprueba una simulación?"]
+    solucion: "Comprueba todos los caminos a la vez, no solo los que la simulación ejercita."
+
+  - id: prediga-analizador
+    tipo: predecir
+    titulo: "Medir modifica lo medido"
+    texto: "A un diseño que cumple tiempos con poco margen se le añade un analizador lógico integrado para ver señales internas. ¿Qué puede pasar?"
+    libro: [208, 209]
+    widget:
+      tipo: figura
+      figura: fig-37.9
+      zonas:
+        - { id: analisis, rotulo: "Quinta caja", rect: [260, 37, 54, 54], texto: "El análisis temporal se repite con el analizador dentro." }
+    opciones:
+      - { texto: "Que deje de cerrar tiempos", bien: true, porque: "El analizador consume recursos y puede alterar los tiempos: la versión FPGA de que medir modifica lo medido." }
+      - { texto: "Nada: el analizador no forma parte del diseño", porque: "Se instancia dentro de la FPGA: ocupa recursos como cualquier otro bloque." }
+      - { texto: "Que vaya más rápido", porque: "Añadir lógica y conexiones no acorta ningún camino." }
+    escalera: ["¿Dónde vive el analizador lógico integrado?"]
+    solucion: "Puede dejar de cerrar: el analizador consume recursos y altera los tiempos."
+
+  - id: empareje-informes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que hay que leer, siempre"
+    texto: "Una cada informe con lo que hay que mirar en él."
+    libro: [212, 213, 214, 215]
+    emparejar:
+      - ["Avisos de síntesis", "Latches inferidos y señales sin inicializar"]
+      - ["Utilización de recursos", "Si está cerca del límite"]
+      - ["Informe de tiempos", "El margen de los caminos críticos"]
+    exito: "Ignorar los avisos es la fuente número uno de diseños que funcionan por casualidad."
+    pistas:
+      - { texto: "Un dispositivo lleno es mucho más difícil de encaminar." }
+    escalera: ["Los latches inferidos los avisa la síntesis."]
+    solucion: "Síntesis: latches y señales sin inicializar. Recursos: cerca del límite. Tiempos: margen de los caminos críticos."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Cada compilación tarda decenas de minutos. ¿Qué hábito ahorra más tiempo?"
+    libro: [217, 218]
+    widget:
+      tipo: figura
+      figura: fig-37.9
+      zonas:
+        - { id: carga, rotulo: "Séptima caja", rect: [384, 37, 54, 54], texto: "Carga y verificación en el dispositivo." }
+    opciones:
+      - { texto: "Compilar y cargar pronto una parte pequeña del diseño", bien: true, porque: "Un problema de pines o de restricciones se descubre al principio, no con todo escrito." }
+      - { texto: "Escribirlo entero y compilar una sola vez al final", porque: "Así un problema de pines aparece con todo el diseño, y no se sabe de dónde viene." }
+      - { texto: "Saltarse la simulación funcional", porque: "Es la etapa rápida: saltarla solo traslada los fallos a la placa." }
+    escalera: ["¿Cuándo es más barato descubrir un pin mal asignado?"]
+    solucion: "Compilar y cargar pronto, con una parte pequeña del diseño."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [194, 198, 206, 215]
+    ideas:
+      - { titulo: "Siete etapas.", texto: "Colocar y encaminar es lo lento: minutos u horas." }
+      - { titulo: "Restricciones.", texto: "Sin reloj declarado, no se comprueban tiempos: «compila bien» y falla." }
+      - { titulo: "Análisis estático.", texto: "Comprueba todos los caminos a la vez." }
+      - { titulo: "Informes.", texto: "Avisos, recursos y tiempos, siempre." }

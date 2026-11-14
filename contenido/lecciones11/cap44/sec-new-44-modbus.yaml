@@ -1,0 +1,345 @@
+# Lección 1.2 de la sección 45.6 «Modbus: Registros sobre RS-485 y sobre Ethernet» (cap44; etiqueta interna
+# sec-new-44-modbus). Formato: contenido/lecciones11/GUIA.md (§11). La polarización del bus RS-485 (ecuación del
+# bloque 205) es un lazo en serie: la resistencia de D1 a 5 V, el bus visto entre hilos (Z_d, las dos terminaciones de
+# 120 Ω en paralelo con las n cargas unidad, 2 × 12 kΩ/n) y la de D0 a masa; V_BA es la tensión de la del medio. Se
+# escribe Z_d = 1/(2/R_T + n/24 kΩ) para que n = 0 (bus vacío) dé las dos terminaciones. Las dos resistencias de
+# polarización son un solo valor del modelo: la tolerancia las mueve juntas, que es el caso peor (las dos altas).
+# 1.2 (esquemas12d): el lazo se dibuja con el esquema `rs485` (R_p de D1 a V_CC, las dos terminaciones, las n cargas
+# unidad y R_p de D0 a masa) en prediga-cargas, explore-polarizacion y diseno-polarizacion, con las mismas cuentas.
+leccion: cap44/sec-new-44-modbus
+
+libro:
+  179: "En la supervisión, un SCADA y los paneles de operador (HMI) muestran el proceso"
+  180: "lo que se exige al bus deja de ser caudal y pasa a ser determinismo"
+  181: "La pirámide de la automatización."
+  183: "Solo el cliente inicia: envía una petición y el servidor responde"
+  185: "Una excepción es una respuesta correcta; el silencio significa que la petición no llegó, llegó mal o era para otro."
+  186: "El registro «40108» se lee con la función 03 y la dirección 107."
+  189: "función y datos forman la PDU"
+  190: "01 03 00 00 00 0A C5 CD"
+  192: "se envía el byte bajo primero: en el ejemplo vale CDC516 y viaja como C5 CD"
+  194: "La PDU es idéntica"
+  196: "Cada carácter ocupa 11 bits"
+  197: 't_("3,5") = "3,5" dot.op t_("car")'
+  198: "a 19 200 bit/s, 0,573, 0,859 y 2,005 ms"
+  199: "Total: 23,4 ms por transacción."
+  200: "insuficiente para cerrar un lazo de posición, que pide refrescos de un milisegundo o menos"
+  203: "de 450 a 650 Ω según la especificación"
+  205: 'V_("BA") = V_("CC") dot.op Z_("d") / (2 R_("p") + Z_("d"))'
+  206: "con 32 cargas unidad (750 Ω diferenciales) baja a 196 mV, por debajo del umbral"
+  209: "Sobran el CRC y los silencios, porque Ethernet y TCP ya protegen y delimitan los datos"
+  211: "El identificador de unidad es lo que permite las pasarelas"
+  212: "no tiene autenticación, y cualquiera que llegue al puerto 502 puede escribir una bobina"
+  "cap44#472": "con el bus lleno hay que bajar las resistencias de polarización (a 560 Ω, por ejemplo)"
+
+modelo:
+  valores:
+    reg_manual: { sim: "registro", nombre: "registro del manual", valor: 40108 }
+    v_b: { sim: "v_{b}", nombre: "velocidad", unidad: "bit/s", valor: 9600 }
+    n_pet: { sim: "bytes", nombre: "bytes de la petición", valor: 8 }
+    n_resp: { sim: "bytes", nombre: "bytes de la respuesta", valor: 25 }
+    t_proc: { sim: "t_{proceso}", nombre: "tiempo de proceso del servidor", unidad: s, valor: 0.0005 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación de la polarización", unidad: V, valor: 5 }
+    R_pb: { sim: "R_{p}", nombre: "resistencia de polarización", unidad: Ω, valor: 680 }
+    R_T: { sim: "R_{T}", nombre: "terminación", unidad: Ω, valor: 120 }
+    n_cu: { sim: "n", nombre: "cargas unidad", valor: 0 }
+  calculos:
+    dir_trama: { expr: "reg_manual - 40001", sim: "dirección", nombre: "dirección en la trama", cifras: 3 }
+    num_manual: { expr: "reg_manual - 40000", nombre: "número del registro en el manual", cifras: 3 }
+    t_car: { expr: "11/v_b", sim: "t_{car}", nombre: "duración de un carácter", unidad: s, cifras: 4 }
+    t_35: { expr: "3.5*11/v_b", sim: "t_{3,5}", nombre: "silencio entre tramas", unidad: s, cifras: 4 }
+    t_tr: { expr: "(n_pet + n_resp)*11/v_b + 2*3.5*11/v_b + t_proc", sim: "t", nombre: "duración de una transacción", unidad: s, cifras: 3 }
+    Z_d: { expr: "1/(2/R_T + n_cu/24000)", sim: "Z_{d}", nombre: "bus visto entre hilos", unidad: Ω, cifras: 4 }
+    I_pol: { expr: "V_cc/(2*R_pb + Z_d)", sim: "I", nombre: "corriente de polarización", unidad: A }
+    V_rp: { expr: "I_pol*R_pb", sim: "V_{R}", nombre: "tensión en cada resistencia de polarización", unidad: V }
+    V_BA: { expr: "I_pol*Z_d", sim: "V_{BA}", nombre: "tensión diferencial en reposo", unidad: V, cifras: 3 }
+    V_d1: { expr: "V_cc - I_pol*R_pb", sim: "V_{D1}", nombre: "tensión de D1", unidad: V }
+    I_t: { expr: "V_BA/R_T", sim: "I_{T}", nombre: "corriente de una terminación", unidad: A }
+
+tarjetas:
+  - id: explore-piramide
+    tipo: explorar
+    titulo: "La pirámide"
+    texto: "Una fábrica se describe por niveles: hacia abajo, el ciclo se acorta y lo que importa es acotar el retardo. Toque los niveles."
+    libro: [179, 180, 181]
+    widget:
+      tipo: figura
+      figura: fig-new-44-piramide
+      zonas:
+        - { id: supervision, rotulo: "Segundo nivel", rect: [10, 45, 305, 40], texto: "SCADA y paneles de operador: histórico y alarmas, con refrescos de segundos." }
+        - { id: control, rotulo: "Tercer nivel", rect: [10, 85, 305, 42], texto: "Los autómatas leen entradas y escriben salidas en ciclos de 1 a 100 ms." }
+        - { id: campo, rotulo: "Nivel de abajo", rect: [10, 127, 305, 43], texto: "Sensores, actuadores y variadores: pocos bytes, cada pocos milisegundos o menos." }
+    requiere: { mover: [campo, supervision] }
+
+  - id: empareje-tablas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Un cliente y cuatro tablas"
+    texto: "Solo el cliente inicia; el servidor responde con sus datos, en cuatro tablas. Una cada tabla con su contenido."
+    libro: [183]
+    emparejar:
+      - ["Bobinas", "Bits de lectura y escritura, como un relé"]
+      - ["Entradas discretas", "Bits de solo lectura"]
+      - ["Registros de entrada", "Palabras de solo lectura, como una medida"]
+      - ["Registros de retención", "Palabras de lectura y escritura, como una consigna"]
+    exito: "Un servidor nunca habla por su cuenta: solo responde."
+    pistas:
+      - { texto: "Las bobinas y las entradas discretas son bits; los registros, palabras de 16 bits." }
+    escalera: ["¿Cuáles se pueden escribir desde el cliente?"]
+    solucion: "Bobinas, bits R/W; entradas discretas, bits de lectura; registros de entrada, medidas; de retención, consignas."
+
+  - id: estime-direccion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La trampa de las direcciones"
+    texto: "El manual da un dato como «40108», pero en la trama el primer registro de retención es el 0. ¿Qué dirección va en la petición?"
+    libro: [186]
+    estimar:
+      objetivo: "dir_trama"
+      unidad: ""
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.004
+      rotulo: "Dirección en la trama"
+    exito: "107, con la función 03. Con 108 llega el registro de al lado, y sin ninguna excepción."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 107.4 }, texto: "Ha olvidado que la trama numera desde 0: «40001» es la dirección 0." }
+      - { texto: "Demasiado poco: quite el prefijo 4 y reste uno." }
+    escalera: ["«40001» es el primer registro de retención, la dirección 0."]
+    solucion: "108 − 1 = 107, con la función 03."
+    comprobar:
+      - { dir_trama: 107, num_manual: 108 }
+
+  - id: pregunta-excepcion
+    tipo: pregunta
+    titulo: "Excepción o silencio"
+    texto: "Un cliente pide un registro y no recibe nada. ¿Qué significa?"
+    libro: [185]
+    widget:
+      tipo: figura
+      figura: fig-new-44-trama
+      zonas:
+        - { id: rtu, rotulo: "Fila de arriba", rect: [0, 30, 300, 36], texto: "La petición RTU." }
+    opciones:
+      - { texto: "Que la petición no llegó, llegó mal o era para otro", bien: true, porque: "Si el servidor la recibe y no puede atenderla, contesta con una excepción: una respuesta correcta." }
+      - { texto: "Que el registro no existe", porque: "Eso lo dice una excepción, con su motivo: dirección inexistente." }
+      - { texto: "Que el servidor está ocupado y contestará luego", porque: "Un servidor nunca habla por su cuenta: o responde o calla." }
+    escalera: ["Si el servidor recibe la petición pero no puede atenderla, ¿qué hace?"]
+    solucion: "El silencio: la petición no llegó, llegó mal o era para otro servidor."
+
+  - id: empareje-trama
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La petición, byte a byte"
+    texto: "Leer diez registros de retención del servidor 1 es 01 03 00 00 00 0A C5 CD. Una cada parte con su papel."
+    libro: [189, 190, 192, 194]
+    emparejar:
+      - ["01", "La dirección del servidor"]
+      - ["03", "La función: leer registros de retención"]
+      - ["00 00", "La dirección del primer registro"]
+      - ["00 0A", "Cuántos registros: diez"]
+      - ["C5 CD", "El CRC, con el byte bajo primero"]
+    exito: "Función y datos forman la PDU, igual en RTU y en TCP."
+    pistas:
+      - { texto: "Diez, en hexadecimal, es 0A." }
+    escalera: ["Los dos últimos bytes son la comprobación de toda la trama."]
+    solucion: "01 servidor, 03 función, 00 00 primer registro, 00 0A diez registros, C5 CD el CRC."
+
+  - id: formula-silencio
+    tipo: formula
+    titulo: "Los silencios"
+    texto: "La trama RTU no tiene inicio ni fin: la delimita un silencio de 3,5 caracteres de 11 bits. Elija la velocidad."
+    libro: [196, 197]
+    ec: 197
+    sustitucion: "3,5 × 11 / {{v_b}} = {{t_35}}"
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 2400, max: 19200, unidad: "bit/s", rotulo: "v_{b}" }
+      y: { min: 0, max: 0.02, unidad: s, rotulo: "t_{3,5}" }
+      curvas:
+        - { expr: "3.5*11/vv", color: azul, rotulo: "t_{3,5}" }
+      asas:
+        - { mueve: v_b, x: "v_b", y: "t_35", rotulo: "Su velocidad" }
+      lectura: { valor: t_35, rotulo: "Silencio entre tramas" }
+      datos:
+        - { valor: t_car, rotulo: "Un carácter: {{t_car}}" }
+      mandos:
+        - { valor: v_b, lista: [2400, 4800, 9600, 19200], rotulo: "Velocidad" }
+    comprobar:
+      - { t_35: 0.00401, t_car: 0.001146 }
+
+  - id: estime-silencio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 19 200 bit/s"
+    texto: "Con caracteres de 11 bits a 19 200 bit/s, ¿cuánto dura el silencio t_{3,5}?"
+    libro: [197, 198]
+    fijar: { v_b: 19200 }
+    estimar:
+      objetivo: "t_35"
+      unidad: s
+      min: 0
+      max: 0.006
+      paso: 0.00005
+      inicio: 0.005
+      tol: 0.03
+      rotulo: "t_{3,5}"
+    exito: "2,005 ms. Por encima de 19 200 bit/s la especificación lo fija en 1,750 ms."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00207 }, texto: "Demasiado: un carácter dura 0,573 ms; multiplique por 3,5." }
+      - { texto: "Se queda corto: son 3,5 caracteres de 0,573 ms." }
+    escalera: ["Un carácter dura 11/19 200 s."]
+    solucion: "3,5 × 0,573 ms = 2,005 ms."
+    comprobar:
+      - { t_35: 0.002005, t_car: 0.000573 }
+
+  - id: estime-transaccion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una transacción completa"
+    texto: "A 19 200 bit/s: petición de 8 bytes, silencio t_{3,5}, 0,5 ms de proceso, respuesta de 25 bytes y otro t_{3,5}. ¿Cuánto dura?"
+    libro: [199, 200]
+    fijar: { v_b: 19200, n_pet: 8, n_resp: 25, t_proc: 0.0005 }
+    estimar:
+      objetivo: "t_tr"
+      unidad: s
+      min: 0
+      max: 0.05
+      paso: 0.0002
+      inicio: 0.04
+      tol: 0.03
+      rotulo: "Duración"
+    exito: "23,4 ms: con diez servidores, cada dato se refresca unas 4,3 veces por segundo. Bien para temperaturas; no para un lazo de posición."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0241 }, texto: "Demasiado: 33 bytes de 0,573 ms, dos silencios de 2,005 ms y 0,5 ms de proceso." }
+      - { texto: "Se queda corto: no olvide los dos silencios y la respuesta de 25 bytes." }
+    escalera: ["Sume 33 caracteres de 0,573 ms, dos t_{3,5} y el proceso."]
+    solucion: "4,58 + 2,005 + 0,5 + 14,32 + 2,005 = 23,4 ms."
+    comprobar:
+      - { t_tr: 0.0234, tol: 0.002 }
+
+  - id: prediga-cargas
+    tipo: predecir
+    titulo: "Cargas contra polarización"
+    texto: "Un bus RS-485 polarizado con 680 Ω da 211 mV en reposo, vacío. Si se llena con 32 cargas unidad, ¿qué le pasa a V_{BA}?"
+    libro: [203, 206]
+    fijar: { R_pb: 680, n_cu: 32 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_cc, rp: R_pb, rt: R_T, n: n_cu }
+      lectura: { valor: V_BA, rotulo: "V_{BA} con 32 cargas" }
+      mide: { vba: V_BA, vd1: V_d1, vd0: V_rp, ipol: I_pol, it: I_t }
+      ocultar: true
+      mandos: []
+    opciones:
+      - { texto: "Baja, hasta 196 mV: por debajo del umbral", bien: true, porque: "Cada carga unidad pone 2 × 12 kΩ entre los hilos, en paralelo con las terminaciones: el bus visto entre hilos baja." }
+      - { texto: "No cambia: las cargas son receptores", porque: "Cada receptor es una carga: 12 kΩ desde cada hilo, que se suman en paralelo." }
+      - { texto: "Sube: hay más dispositivos empujando", porque: "En reposo nadie transmite: los receptores solo cargan el par." }
+    escalera: ["Las cargas quedan en paralelo con las terminaciones, entre los dos hilos."]
+    solucion: "Baja a 196 mV, por debajo de los 200 mV del umbral del receptor."
+    comprobar:
+      - { V_BA: 0.196 }
+      - { con: { n_cu: 0 }, V_BA: 0.211 }
+
+  - id: explore-polarizacion
+    tipo: explorar
+    titulo: "Polarización contra cargas"
+    texto: "Sin transmisor, dos resistencias de 680 Ω fijan el reposo del par, con el bus entre ellas. Mueva las cargas unidad y mire V_{BA} frente a 200 mV."
+    libro: [203, 205, 206]
+    fijar: { R_pb: 680 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_cc, rp: R_pb, rt: R_T, n: n_cu }
+      lectura: { valor: V_BA, rotulo: "V_{BA} en reposo" }
+      corriente: I_pol
+      mide: { vba: V_BA, vd1: V_d1, vd0: V_rp, ipol: I_pol, it: I_t }
+      mandos:
+        - { valor: n_cu, lista: [0, 8, 16, 32], rotulo: "Cargas unidad" }
+    requiere: { mover: [n_cu] }
+    comprobar:
+      - { V_BA: 0.211 }
+      - { con: { n_cu: 32 }, V_BA: 0.196 }
+
+  - id: diseno-polarizacion
+    tipo: diseno
+    titulo: "Polarice el bus lleno"
+    texto: "Con las 32 cargas unidad, elija las resistencias de polarización (E24, ± 5 %) para no bajar de 200 mV. La especificación admite de 450 a 650 Ω."
+    libro: [203, 206, "cap44#472"]
+    fijar: { n_cu: 32 }
+    inicio: { R_pb: 680 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_cc, rp: R_pb, rt: R_T, n: n_cu }
+      lectura: { valor: V_BA, rotulo: "V_{BA} en reposo" }
+      corriente: I_pol
+      mide: { vba: V_BA, vd1: V_d1, vd0: V_rp, ipol: I_pol, it: I_t }
+      mandos:
+        - { valor: R_pb, serie: E24, min: 470, max: 1000, rotulo: "R_{p} (E24)" }
+    condiciones:
+      - { valor: V_BA, min: 0.2, rotulo: "V_{BA}: {{V_BA}}" }
+      - { valor: R_pb, min: 450, max: 650, rotulo: "R_{p}: {{R_pb}}" }
+    diseno:
+      tolerancias: { R_pb: 0.05 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "En nominal cumple, pero con ± 5 % no siempre: cerca de 450 o de 650 Ω la resistencia real se sale de la especificación. Elija una del centro."
+    exito: "El libro baja a 560 Ω, por ejemplo: polarización y cargas tiran en sentidos contrarios."
+    pistas:
+      - { texto: "Por debajo de 200 mV: las cargas se comen la diferencia. Baje R_{p}." }
+    escalera: ["Con 680 Ω quedan 196 mV: hace falta algo menos de resistencia.", "La resistencia real, con su ± 5 %, también debe quedar entre 450 y 650 Ω."]
+    solucion: "Una E24 entre 450 y 650 Ω que no se salga con su ± 5 %; el libro propone 560 Ω."
+    comprobar:
+      - { V_BA: 0.196 }
+
+  - id: toque-tcp
+    tipo: tocar
+    titulo: "Modbus TCP"
+    texto: "Sobre Ethernet la PDU no cambia. Toque lo que Modbus TCP quita de la trama RTU."
+    libro: [194, 209, 211]
+    widget:
+      tipo: figura
+      figura: fig-new-44-trama
+      zonas:
+        - { id: direccion, rotulo: "Primer byte de arriba", rect: [38, 30, 38, 36] }
+        - { id: funcion, rotulo: "Segundo byte de arriba", rect: [77, 30, 38, 36] }
+        - { id: crc, rotulo: "Último campo de arriba", rect: [233, 30, 57, 36] }
+    tocar:
+      bien: [crc]
+      porque:
+        direccion: "No desaparece del todo: su papel lo hace el identificador de unidad de la cabecera MBAP."
+        funcion: "La función es parte de la PDU, idéntica en RTU y en TCP."
+    exito: "Sobran el CRC y los silencios: Ethernet y TCP ya protegen y delimitan los datos."
+    escalera: ["¿Qué hace ya Ethernet por su cuenta?"]
+    solucion: "El CRC, a la derecha de la fila RTU (y los silencios)."
+
+  - id: porque-seguridad
+    tipo: porque
+    titulo: "Un aviso para todo Modbus"
+    texto: "¿Por qué un equipo Modbus nunca debe quedar expuesto fuera de su red de planta?"
+    libro: [212]
+    widget:
+      tipo: figura
+      figura: fig-new-44-trama
+      zonas:
+        - { id: tcp, rotulo: "Fila del centro", rect: [0, 96, 330, 36], texto: "Modbus TCP, puerto 502." }
+    opciones:
+      - { texto: "No tiene autenticación: cualquiera que llegue al puerto 502 puede escribir", bien: true, porque: "La defensa habitual es no exponerlo y separar esa red, como pide la serie IEC 62443." }
+      - { texto: "Porque es demasiado lento para Internet", porque: "El problema no es la velocidad sino que no comprueba quién escribe." }
+      - { texto: "Porque el CRC no funciona en TCP", porque: "En TCP no hay CRC de Modbus; lo que falta es autenticación." }
+    escalera: ["¿Qué comprueba Modbus antes de obedecer una escritura?"]
+    solucion: "No tiene autenticación: cualquiera que llegue al puerto 502 puede escribir una bobina."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [183, 186, 198, 206]
+    ideas:
+      - { titulo: "El modelo.", texto: "Un cliente pregunta; el servidor responde desde cuatro tablas." }
+      - { titulo: "Direcciones.", texto: "«40108» es la función 03 y la dirección 107." }
+      - { titulo: "RTU.", texto: "La trama la delimitan los silencios: t_{3,5} y t_{1,5}." }
+      - { titulo: "RS-485.", texto: "Las cargas bajan la polarización: con el bus lleno, resistencias menores." }

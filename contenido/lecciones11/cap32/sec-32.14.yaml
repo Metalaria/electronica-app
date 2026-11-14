@@ -1,0 +1,141 @@
+# Lección 1.2 de la sección 32.14 «Precompliance: Medir Emisiones sin Cámara» (cap32). Formato: GUIA.md.
+# El nivel medido (37 dBµV/m a 100 MHz) es un ejemplo frente al límite de clase B a 3 m de 40 dBµV/m (bloque 253 de la
+# sección 32.8); el margen pedido, 6 dB o 10 dB en volumen, es el del bloque 454.
+leccion: cap32/sec-32.14
+
+libro:
+  441: "pasar de las rayas del espectro a una decisión"
+  443: "Rectificador de entrada y sus picos de corriente"
+  446: "hay que reducir su área"
+  447: "hay que reducir la velocidad de flanco o apantallar"
+  448: "la solución es una ferrita de modo común, no un filtro diferencial"
+  450: "la mayor parte de la emisión radiada por debajo de 300 MHz sale por los cables"
+  451: "Si el nivel cambia mucho, son los cables los que radian"
+  454: "6 dB como mínimo, y 10 dB si el producto va a fabricarse en volumen"
+  455: "el equipo cambia"
+  "cap32#253": "frente al límite de clase B a 3 m de 100 µV/m (40 dBµV/m)"
+
+modelo:
+  valores:
+    N_m: { sim: "E", nombre: "nivel medido, dBµV/m", unidad: dB, valor: 37 }
+    N_l: { sim: "E_{lím}", nombre: "límite de clase B a 3 m, dBµV/m", unidad: dB, valor: 40 }
+  calculos:
+    m_g: { expr: "N_l - N_m", sim: "margen", nombre: "margen sobre el límite", unidad: dB }
+
+tarjetas:
+  - id: explore-margen
+    tipo: explorar
+    titulo: "De las rayas a una decisión"
+    texto: "Una raya de su equipo frente al límite de clase B a 3 m. Cambie el nivel medido y mire el margen que queda."
+    nota: "Niveles de ejemplo, en dBµV/m."
+    libro: [441, "cap32#253"]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 80000000, max: 120000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 50, unidad: dB, rotulo: "campo, dBµV/m" }
+      curvas:
+        - { expr: "N_m - 6 + 6*exp(-((nu - 100000000)/2000000)^2) - 30*(1 - exp(-((nu - 100000000)/2000000)^2))", color: azul, rotulo: "medida" }
+        - { expr: "N_l", color: tinta, rotulo: "límite", discontinua: true }
+      lectura: { valor: m_g, rotulo: "Margen" }
+      mandos:
+        - { valor: N_m, lista: [30, 34, 37], rotulo: "Nivel medido" }
+    requiere: { mover: [N_m] }
+
+  - id: prediga-margen
+    tipo: predecir
+    titulo: "¿Listo para el laboratorio?"
+    texto: "Su medida casera da 37 dBµV/m frente a un límite de 40 dBµV/m, y el producto se fabricará en volumen. ¿Lo lleva a certificar?"
+    libro: [454, 455, "cap32#253"]
+    fijar: { N_m: 37 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 80000000, max: 90000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 50, unidad: dB, rotulo: "campo, dBµV/m" }
+      curvas:
+        - { expr: "N_l", color: tinta, rotulo: "límite", discontinua: true }
+      lectura: { valor: m_g, rotulo: "Margen" }
+      ocultar: true
+    opciones:
+      - texto: "No: 3 dB de margen; en volumen hacen falta 10 dB"
+        bien: true
+        porque: "La dispersión entre unidades y las tolerancias del laboratorio se comen la diferencia."
+      - texto: "Sí: está por debajo del límite"
+        porque: "Una medida casera no es un ensayo: hay que dejar margen."
+      - texto: "Sí, con 6 dB de margen basta"
+        porque: "No tiene 6 dB, solo 3; y en volumen se piden 10."
+    escalera:
+      - "Margen = límite − medida. ¿Cuánto se pide en volumen?"
+    solucion: "40 − 37 = 3 dB: insuficiente. Mínimo 6, y 10 en volumen."
+    comprobar:
+      - { m_g: 3 }
+
+  - id: empareje-culpables
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada frecuencia acusa a un culpable"
+    texto: "Una cada frecuencia observada con su origen probable."
+    libro: [443]
+    emparejar:
+      - ["Múltiplos de la conmutación", "Fuente conmutada"]
+      - ["Múltiplos del reloj del micro", "El reloj y sus armónicos"]
+      - ["Múltiplos de la velocidad de un bus", "SPI, I²C, cables de datos"]
+      - ["Múltiplos de 50 Hz en conducida", "Rectificador de entrada y sus picos de corriente"]
+      - ["Raya ancha y aislada", "Oscilación parásita"]
+    exito: "Identificada la raya, la sonda de lazo localiza el bucle que la emite."
+    pistas:
+      - { texto: "Los picos de corriente del rectificador van con la red." }
+    escalera:
+      - "¿Qué frecuencia del sistema es múltiplo de qué?"
+    solucion: "Conmutación–fuente; reloj–armónicos; bus–SPI e I²C; 50 Hz–rectificador; ancha–parásita."
+
+  - id: empareje-sondas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las dos sondas"
+    texto: "Una cada lectura de las sondas de lazo (campo H) y de punta (campo E) con su solución."
+    libro: [446, 447, 448]
+    emparejar:
+      - ["Lazo fuerte, punta débil", "Bucle de corriente: reducir su área"]
+      - ["Punta fuerte, lazo débil", "Tensión alta en un conductor largo: flancos más lentos o pantalla"]
+      - ["Las dos fuertes en un cable", "Modo común: ferrita de modo común"]
+    exito: "En un cable con modo común, un filtro diferencial no sirve."
+    pistas:
+      - { texto: "El lazo ve campo magnético, el de los bucles de corriente." }
+    escalera:
+      - "¿Qué produce campo H y qué produce campo E?"
+    solucion: "Lazo–área; punta–flancos o pantalla; las dos en un cable–ferrita de modo común."
+
+  - id: cables
+    tipo: pregunta
+    titulo: "Mover los cables"
+    texto: "Mueve los cables mientras mira el espectro, y el nivel de una raya cambia mucho. ¿Dónde está el trabajo?"
+    libro: [450, 451]
+    fijar: { N_m: 37 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 80000000, max: 120000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 50, unidad: dB, rotulo: "campo, dBµV/m" }
+      curvas:
+        - { expr: "N_m - 6 + 6*exp(-((nu - 100000000)/2000000)^2) - 30*(1 - exp(-((nu - 100000000)/2000000)^2))", color: azul, rotulo: "medida" }
+        - { expr: "N_l", color: tinta, rotulo: "límite", discontinua: true }
+    opciones:
+      - texto: "En las ferritas y en la conexión de la pantalla de los cables, no en la placa"
+        bien: true
+        porque: "Por debajo de 300 MHz, la mayor parte de lo radiado sale por los cables como modo común."
+      - texto: "En rediseñar el trazado de la placa"
+        porque: "Si el nivel depende de los cables, son ellos los que radian."
+      - texto: "En nada: es la sonda, que se mueve"
+        porque: "La sonda queda quieta; lo que cambia el nivel son los cables."
+    escalera:
+      - "¿Qué actúa de antena para el modo común?"
+    solucion: "Los cables radian: ferritas y pantalla bien conectada."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [443, 446, 450, 454]
+    ideas:
+      - { titulo: "Cada raya, un culpable.", texto: "Conmutación, reloj, bus, rectificador u oscilación parásita." }
+      - { titulo: "Dos sondas.", texto: "Lazo: bucle de corriente. Punta: tensión y flancos. Las dos en un cable: modo común." }
+      - { titulo: "Los cables.", texto: "Por debajo de 300 MHz radian casi todo: muévalos y mire." }
+      - { titulo: "Margen.", texto: "6 dB como mínimo; 10 dB en volumen." }

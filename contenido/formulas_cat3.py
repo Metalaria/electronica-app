@@ -152,23 +152,24 @@ F('rizado-buck-vout', 'Rizado de corriente de un reductor (en función de V_out)
 F('perdida-diodo-libre', 'Pérdidas del diodo de rueda libre de un reductor', 'cap33', 'P = V_("F") dot.op I dot.op lr(( "1" - D ))',
   'P = V_F*I*(1 - D)', {'P': 'Potencia perdida en el diodo', 'V_F': 'Caída directa del diodo', 'I': 'Corriente de salida', 'D': 'Ciclo de trabajo'},
   ej={'V_F': '0,4 V', 'I': '10 A', 'D': '0,4', 'P': '2,4 W'}, claves='diodo schottky pérdidas rueda libre síncrono')
-F('motor-cc-velocidad', 'Velocidad de un motor de continua', 'cap33', ['V = E + I dot.op R quad E = k dot.op ω quad T = k dot.op I'],
+# (1.2: the five motor formulas of the old 32.13 are in chapter 34, cap56, since book 4.0: same ids, its equations)
+F('motor-cc-velocidad', 'Velocidad de un motor de continua', 'cap56', ['V = E + I dot.op R + L dot.op (d I)/(d t) quad quad E = k dot.op ω'],
   'omega = (V - I*R)/k_m',
   {'omega': ('Velocidad angular', 'rad/s', '0', '1e5'), 'V': 'Tensión aplicada', 'I': ('Corriente del motor', 'A', '0 A', '1 kA', '2 A'),
    'R': ('Resistencia del bobinado', 'Ω', '1 mΩ', '1 kΩ', '0,5 Ω'), 'k_m': {'n': 'Constante del motor', 'u': 'V·s/rad', 'r': ('1e-4', '100'), 'd': '0,05', 'sim': 'k'}},
   claves='motor cc fuerza contraelectromotriz velocidad')
-F('motor-cc-par', 'Par de un motor de continua', 'cap33', 'quad T = k dot.op I $', 'T_m = k_m*I',
+F('motor-cc-par', 'Par de un motor de continua', 'cap56', 'T = k dot.op I quad quad E = k dot.op ω quad quad k', 'T_m = k_m*I',
   {'T_m': {'n': 'Par', 'u': 'N·m', 'r': ('0', '1e4'), 'sim': 'T'}, 'k_m': {'n': 'Constante del motor', 'u': 'N·m/A', 'r': ('1e-4', '100'), 'd': '0,05', 'sim': 'k'},
    'I': ('Corriente del motor', 'A', '0 A', '1 kA', '2 A')}, claves='motor par corriente')
-F('velocidad-sincrona', 'Velocidad síncrona de un motor de alterna', 'cap33', 'n_("s") = ("120" dot.op f)/(p)',
+F('velocidad-sincrona', 'Velocidad síncrona de un motor de alterna', 'cap56', 'n_("s") = ("120" dot.op f)/(p)',
   'n_s = 120*f/p', {'n_s': ('Velocidad síncrona', 'rpm', '1', '1e6'), 'f': ('Frecuencia de alimentación', 'Hz', '1 Hz', '1 kHz', '50 Hz'),
                     'p': {'n': 'Número de polos', 'u': '', 'r': ('2', '100'), 'd': '4', 'entero': True}},
   ej={'f': '50 Hz', 'p': '4', 'n_s': '1500'}, claves='motor de inducción síncrono polos rpm')
-F('deslizamiento', 'Deslizamiento de un motor de inducción', 'cap33', 's = (n_("s") - n)/(n_("s"))',
+F('deslizamiento', 'Deslizamiento de un motor de inducción', 'cap56', 's = (n_("s") - n)/(n_("s"))',
   's = 100*(n_s - n_r)/n_s', {'s': ('Deslizamiento', '%', '-100', '100'), 'n_s': ('Velocidad síncrona', 'rpm', '1', '1e6', '1500'),
                               'n_r': ('Velocidad del rotor', 'rpm', '0', '1e6', '1440')},
   ej={'n_s': '1500', 'n_r': '1440', 's': '4 %'}, claves='deslizamiento motor inducción')
-F('ley-v-f', 'Ley V/f de un variador de frecuencia', 'cap33', '(V)/(f) = "constante"',
+F('ley-v-f', 'Ley V/f de un variador de frecuencia', 'cap56', '(V)/(f) = "constante"',
   'V_2 = V_1*f_2/f_1', {'V_2': ('Tensión a la nueva frecuencia', 'V', '0 V', '10 kV'), 'V_1': ('Tensión nominal', 'V', '1 V', '10 kV', '400 V'),
                         'f_2': ('Nueva frecuencia', 'Hz', '0,1 Hz', '1 kHz', '25 Hz'), 'f_1': ('Frecuencia nominal', 'Hz', '1 Hz', '1 kHz', '50 Hz')},
   ej={'V_1': '400 V', 'f_2': '25 Hz', 'f_1': '50 Hz', 'V_2': '200 V'}, claves='variador frecuencia v/f motor')

@@ -1,0 +1,310 @@
+# Lección 1.2 de la sección 20.13 «La FFT como Instrumento: Ventanas, Resolución y Lectura» (cap21; etiqueta interna
+# sec-21.13). Formato: contenido/lecciones11/GUIA.md. El espectro de dos rayas a 1000 y 1050 Hz (armónicos de red
+# separados 50 Hz, bloque 331) con ventana rectangular: cada raya es |sinc((f − f₀)·T)|, de anchura 1/T; se dibuja la
+# mayor de las dos. El leakage: la captura repetida, con un número entero o no de ciclos. THD y suelo de ruido con las
+# ecuaciones y los números del libro.
+leccion: cap21/sec-21.13
+
+libro:
+  327: "Toma N muestras capturadas durante un tiempo T y las convierte en N/2 líneas espectrales"
+  328: '"resolución" = ("1")/(T)'
+  330: "la resolución la fija el tiempo capturado, no la frecuencia de muestreo"
+  331: "Con 1 000 puntos capturados en 1 ms: resolución de 1 kHz y margen hasta 500 kHz"
+  333: "N = f_"
+  334: "Con 1 MS/s y 100 ms son 100 000 puntos"
+  336: "en el empalme aparece una discontinuidad, y su energía se reparte por todo el espectro"
+  337: "aparece como una raya ancha con faldas"
+  340: "Su precio es ensanchar la raya principal"
+  341: "Separar una señal débil de otra fuerte cercana"
+  344: "Con Hann, una raya entre dos bins puede leerse 1,4 dB baja"
+  346: "el suelo se ve más limpio pero está donde estaba"
+  347: "3 dB cada vez que se dobla el número de promedios"
+  352: '"THD"'
+  354: '"0,11"'
+  353: "Con el segundo armónico a −60 dB y el tercero a −66 dB"
+  355: "Si su distorsión no está muy por debajo de la medida, lo que se ha medido es el generador"
+  357: "el suelo se expresa referido a 1 Hz de ancho de banda"
+  358: '"nivel leído"'
+  359: "Con un suelo de −90 dBm y resolución de 100 Hz"
+  360: '"110 dBm"'
+  363: "un armónico de la señal conserva su nivel absoluto; si baja, lo estaba generando el instrumento al recortar"
+  368: "nada por debajo de esa línea es del circuito"
+  371: "con flat-top, una raya ancha cuya amplitud es exacta"
+
+modelo:
+  valores:
+    T_c: { sim: "T", nombre: "tiempo capturado", unidad: s, valor: 0.001 }
+    f_m: { sim: "f_{muestreo}", nombre: "frecuencia de muestreo", unidad: Hz, valor: 1000000 }
+    c_c: { sim: "ciclos", nombre: "ciclos en la captura", unidad: "", valor: 3 }
+    A_2: { sim: "A₂", nombre: "segundo armónico", unidad: dB, valor: -60 }
+    A_3: { sim: "A₃", nombre: "tercer armónico", unidad: dB, valor: -66 }
+    L_r: { sim: "nivel", nombre: "nivel leído", unidad: dBm, valor: -90 }
+    R_b: { sim: "resolución", nombre: "resolución", unidad: Hz, valor: 100 }
+  calculos:
+    d_f: { expr: "1/T_c", sim: "Δf", nombre: "resolución", unidad: Hz }
+    f_max: { expr: "f_m/2", sim: "f_{máx}", nombre: "frecuencia máxima", unidad: Hz }
+    N_p: { expr: "f_m*T_c", sim: "N", nombre: "puntos capturados", unidad: "" }
+    THD: { expr: "100*sqrt(10^(A_2/10) + 10^(A_3/10))", sim: "THD", nombre: "distorsión armónica total", unidad: "%", cifras: 2 }
+    D_r: { expr: "10*log10(R_b)", sim: "corrección", nombre: "corrección por la resolución", unidad: dB }
+    L_hz: { expr: "L_r - 10*log10(R_b)", sim: "nivel/Hz", nombre: "nivel por hercio", unidad: "dBm/Hz" }
+
+tarjetas:
+  - id: explore-resolucion
+    tipo: explorar
+    titulo: "Dos rayas separadas 50 Hz"
+    texto: "Dos armónicos de red separados 50 Hz. Alargue el tiempo capturado y mire cuándo se separan."
+    libro: [327, 330, 331]
+    inicio: { T_c: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 900, max: 1150, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "amplitud" }
+      curvas:
+        - { expr: "max(abs(sin(pi*((nu - 1000)*T_c + 0.000001))/(pi*((nu - 1000)*T_c + 0.000001))), abs(sin(pi*((nu - 1050)*T_c + 0.000001))/(pi*((nu - 1050)*T_c + 0.000001))))", color: azul, rotulo: "FFT" }
+      lectura: { valor: d_f, rotulo: "Resolución" }
+      mandos:
+        - { valor: T_c, lista: [0.001, 0.01, 0.02, 0.1], rotulo: "Tiempo capturado" }
+    requiere: { mover: [T_c] }
+
+  - id: formula-resolucion
+    tipo: formula
+    titulo: "La resolución"
+    texto: "La resolución es el inverso del tiempo capturado; no depende de la frecuencia de muestreo."
+    libro: [328, 330]
+    ec: 328
+    sustitucion: "1 / {{T_c}} = {{d_f}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 900, max: 1150, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "amplitud" }
+      curvas:
+        - { expr: "max(abs(sin(pi*((nu - 1000)*T_c + 0.000001))/(pi*((nu - 1000)*T_c + 0.000001))), abs(sin(pi*((nu - 1050)*T_c + 0.000001))/(pi*((nu - 1050)*T_c + 0.000001))))", color: azul, rotulo: "FFT" }
+      lectura: { valor: d_f, rotulo: "Resolución" }
+      mandos:
+        - { valor: T_c, lista: [0.001, 0.01, 0.02, 0.1], rotulo: "Tiempo capturado" }
+
+  - id: estime-puntos
+    tipo: pregunta
+    titulo: "Los puntos que hacen falta"
+    texto: "Con 1 MS/s y 100 ms de captura, ¿cuántos puntos guarda el instrumento?"
+    libro: [333, 334]
+    fijar: { f_m: 1000000, T_c: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 900, max: 1150, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "amplitud" }
+      curvas:
+        - { expr: "max(abs(sin(pi*((nu - 1000)*T_c + 0.000001))/(pi*((nu - 1000)*T_c + 0.000001))), abs(sin(pi*((nu - 1050)*T_c + 0.000001))/(pi*((nu - 1050)*T_c + 0.000001))))", color: azul, rotulo: "FFT" }
+    estimar:
+      objetivo: "N_p"
+      unidad: ""
+      min: 0
+      max: 200000
+      paso: 1000
+      inicio: 160000
+      tol: 0.05
+      rotulo: "Puntos"
+    exito: "100 000 puntos: la resolución fina pide memoria, y obliga a bajar la base de tiempos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 105000 }, texto: "Se ha pasado: multiplique un millón de muestras por segundo por 0,1 s." }
+      - { texto: "Se ha quedado corto: un millón por segundo durante 100 ms." }
+    escalera:
+      - "N = f_{muestreo} · T_{captura}."
+    solucion: "1 MS/s · 100 ms = 100 000 puntos."
+
+  - id: sorpresa-leakage
+    tipo: sorpresa
+    titulo: "El empalme"
+    texto: "La FFT supone que la captura se repite. Pase de 3 ciclos a 3,5 y mire el empalme entre dos capturas."
+    libro: [336, 337]
+    inicio: { c_c: 3 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "capturas" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*c_c*(n - floor(n)))", color: azul, rotulo: "la captura, repetida" }
+      lectura: { valor: c_c, rotulo: "Ciclos capturados" }
+      mandos:
+        - { valor: c_c, lista: [3, 3.5], rotulo: "Ciclos en la captura" }
+    requiere: { mover: [c_c] }
+    comprobar:
+      - { con: { c_c: 3.5 }, c_c: 3.5 }
+
+  - id: ventanas
+    tipo: pregunta
+    titulo: "Cada ventana, su uso"
+    texto: "Empareje cada ventana con aquello para lo que sirve."
+    libro: [340, 341]
+    widget:
+      tipo: figura
+      figura: fig-21.28
+      zonas:
+        - { id: ventanas, rotulo: "Tres ventanas", rect: [0, 0, 446, 213] }
+    emparejar:
+      - ["Rectangular", "Transitorios, o un número entero de ciclos"]
+      - ["Hann", "Uso general: la opción por defecto"]
+      - ["Blackman", "Una señal débil junto a otra fuerte"]
+      - ["Flat-top", "Medir amplitudes con exactitud"]
+    exito: "Una ventana elimina la discontinuidad del empalme a cambio de ensanchar la raya."
+    pistas:
+      - { texto: "Flat-top tiene la raya más ancha y la amplitud más fiable." }
+    escalera:
+      - "La rectangular es no poner ventana."
+    solucion: "Rectangular, transitorios; Hann, general; Blackman, débil junto a fuerte; flat-top, amplitudes."
+
+  - id: amplitud-exacta
+    tipo: pregunta
+    titulo: "Una raya entre dos bins"
+    texto: "Necesita el nivel exacto de un armónico, que cae entre dos bins. ¿Qué ventana usa?"
+    libro: [344, 371]
+    widget:
+      tipo: figura
+      figura: fig-21.27
+      zonas:
+        - { id: tres, rotulo: "Tres ventanas", rect: [0, 0, 446, 205] }
+    opciones:
+      - texto: "Flat-top"
+        bien: true
+        porque: "Aplana la respuesta y da el nivel correcto aunque la raya no caiga justo en un bin."
+      - texto: "Hann"
+        porque: "Con Hann, una raya entre dos bins puede leerse 1,4 dB baja."
+      - texto: "Rectangular"
+        porque: "Sin ventana aparecen faldas anchas: el nivel no es fiable."
+    escalera:
+      - "¿Qué importa aquí, la frecuencia o la amplitud?"
+    solucion: "Flat-top: si importa la amplitud."
+
+  - id: formula-thd
+    tipo: formula
+    titulo: "El THD"
+    texto: "Cada armónico en dB, convertido a relación y sumado en cuadratura. Cambie sus niveles."
+    libro: [352, 353, 354]
+    inicio: { A_2: -60, A_3: -66 }
+    ec: 354
+    sustitucion: "√(10^({{A_2}}/10) + 10^({{A_3}}/10)) = {{THD}}"
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0.5, max: 3.5, unidad: "", rotulo: "armónico" }
+      y: { min: -80, max: 5, unidad: dB, rotulo: "nivel" }
+      curvas:
+        - { expr: "max(-80, 80*max(0, 1 - abs(k - 1)*20) - 80)", color: azul, rotulo: "fundamental" }
+        - { expr: "max(-80, (A_2 + 80)*max(0, 1 - abs(k - 2)*20) - 80)", color: naranja, rotulo: "2.º" }
+        - { expr: "max(-80, (A_3 + 80)*max(0, 1 - abs(k - 3)*20) - 80)", color: verde, rotulo: "3.º" }
+      lectura: { valor: THD, rotulo: "THD" }
+      mandos:
+        - { valor: A_2, lista: [-70, -66, -60, -50], rotulo: "Segundo armónico" }
+        - { valor: A_3, lista: [-70, -66, -60, -50], rotulo: "Tercer armónico" }
+    comprobar:
+      - { THD: 0.112 }
+
+  - id: generador-solo
+    tipo: pregunta
+    titulo: "La comprobación obligatoria"
+    texto: "Mide un THD de 0,11 % en un amplificador. ¿Qué comprueba antes de creérselo?"
+    libro: [354, 355]
+    fijar: { A_2: -60, A_3: -66 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0.5, max: 3.5, unidad: "", rotulo: "armónico" }
+      y: { min: -80, max: 5, unidad: dB, rotulo: "nivel" }
+      curvas:
+        - { expr: "max(-80, 80*max(0, 1 - abs(k - 1)*20) - 80)", color: azul, rotulo: "fundamental" }
+        - { expr: "max(-80, (A_2 + 80)*max(0, 1 - abs(k - 2)*20) - 80)", color: naranja, rotulo: "2.º" }
+        - { expr: "max(-80, (A_3 + 80)*max(0, 1 - abs(k - 3)*20) - 80)", color: verde, rotulo: "3.º" }
+    opciones:
+      - texto: "La distorsión del generador solo, sin el circuito"
+        bien: true
+        porque: "Si no está muy por debajo de la medida, lo que se ha medido es el generador."
+      - texto: "La compensación de la sonda"
+        porque: "Importa en los flancos, pero no decide si la distorsión es del amplificador o del generador."
+      - texto: "Nada: la FFT es exacta"
+        porque: "La FFT mide bien lo que le llega, y le llega también la distorsión del generador."
+    escalera:
+      - "¿De dónde sale la senoide que entra al amplificador?"
+    solucion: "Medir el generador solo: su distorsión debe quedar muy por debajo."
+
+  - id: estime-suelo
+    tipo: pregunta
+    titulo: "Un suelo referido a 1 Hz"
+    texto: "Un suelo de −90 dBm con una resolución de 100 Hz. ¿Cuánto es por hercio?"
+    libro: [357, 358, 359, 360]
+    fijar: { L_r: -90, R_b: 100 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1, max: 1000, unidad: Hz, rotulo: "resolución", escala: log }
+      y: { min: -130, max: -80, unidad: dBm, rotulo: "nivel por Hz" }
+      curvas:
+        - { expr: "L_r - 10*log10(r)", color: azul, rotulo: "nivel por Hz" }
+    estimar:
+      objetivo: "L_hz"
+      unidad: "dBm/Hz"
+      min: -130
+      max: -80
+      paso: 1
+      inicio: -90
+      tol: 0.02
+      rotulo: "Nivel por Hz"
+    exito: "−90 − 10 · log₁₀(100) = −110 dBm/Hz: así dos medidas con ajustes distintos se pueden comparar."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: -108 }, texto: "Se ha quedado alto: reste 10 · log₁₀ de la resolución." }
+      - { texto: "Se ha pasado: 10 · log₁₀(100) son 20 dB, no más." }
+    escalera:
+      - "Nivel por Hz = nivel leído − 10 · log₁₀(resolución)."
+    solucion: "−90 − 20 = −110 dBm/Hz."
+    comprobar:
+      - { D_r: 20, L_hz: -110 }
+
+  - id: saturar
+    tipo: pregunta
+    titulo: "¿Armónico de verdad?"
+    texto: "Sospecha que un armónico lo genera el instrumento al recortar. ¿Cómo lo comprueba?"
+    libro: [363, 368]
+    widget:
+      tipo: figura
+      figura: fig-21.28
+      zonas:
+        - { id: ventanas, rotulo: "Las ventanas", rect: [0, 0, 446, 213] }
+    opciones:
+      - texto: "Con una escala menos sensible: si baja, era del instrumento"
+        bien: true
+        porque: "Un armónico de la señal conserva su nivel absoluto; uno que baja venía del recorte."
+      - texto: "Con más promedios"
+        porque: "El promediado alisa el ruido; un armónico de recorte sigue ahí."
+      - texto: "Cambiando a ventana Hann"
+        porque: "La ventana cambia la forma de las rayas, no si el recorte las genera."
+    escalera:
+      - "Si deja de recortar, ¿qué le pasa a un armónico que creaba el recorte?"
+    solucion: "Más voltios por división: un armónico propio de la señal no cambia su nivel absoluto."
+
+  - id: promediado
+    tipo: porque
+    titulo: "El suelo que no baja"
+    texto: "Activa el promediado de potencia y el suelo de ruido se ve más limpio, pero no más bajo. ¿Por qué?"
+    libro: [346, 347]
+    widget:
+      tipo: figura
+      figura: fig-21.27
+      zonas:
+        - { id: tres, rotulo: "Tres ventanas", rect: [0, 0, 446, 205] }
+    opciones:
+      - texto: "Promedia espectros: reduce la varianza, no el nivel"
+        bien: true
+        porque: "Sirve para leer el suelo, no para bajarlo. El coherente sí lo baja: 3 dB cada vez que se doblan los promedios."
+      - texto: "Porque hacen falta más promedios"
+        porque: "Con más promedios el suelo se ve aún más liso, pero sigue donde estaba."
+      - texto: "Porque el ruido es del circuito"
+        porque: "Aunque lo fuera, el promediado de potencia no baja ningún suelo: solo lo alisa."
+    escalera:
+      - "¿Qué se promedia: las capturas en el tiempo o los espectros?"
+    solucion: "Promedia espectros: el suelo se alisa pero no baja; el coherente sí lo baja."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [330, 336, 344, 346, 368]
+    ideas:
+      - { titulo: "Resolución = 1/T.", texto: "La fija el tiempo capturado: 10 Hz piden 100 ms." }
+      - { titulo: "Leakage.", texto: "Sin un número entero de ciclos, el empalme ensucia el espectro; la ventana lo arregla." }
+      - { titulo: "Flat-top para amplitudes.", texto: "Hann para lo general; Blackman para lo débil junto a lo fuerte." }
+      - { titulo: "El suelo.", texto: "Nada por debajo del suelo del instrumento es del circuito." }

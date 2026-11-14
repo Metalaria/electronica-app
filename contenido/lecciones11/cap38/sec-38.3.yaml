@@ -1,0 +1,228 @@
+# Lección 1.2 de la sección 39.3 «Programación Bare-metal: Atacar los Registros» (cap38; etiqueta interna sec-38.3).
+# Formato: contenido/lecciones11/GUIA.md (§11). Las tres operaciones sobre un bit (bloque 77) se ven como puertas, un
+# bit del registro (R) y el mismo bit de la máscara 1u << n (M): |= es una OR, &= ~ una AND con la máscara invertida y
+# ^= una XOR. Figura 39.4 (svg_vista 450,72 × 234,72) para el arranque y los dos errores clásicos.
+leccion: cap38/sec-38.3
+
+libro:
+  68: "Una dirección de memoria que no es memoria"
+  70: "#define GPIOA_ODR  (*(volatile uint32_t *)0x48000014)"
+  71: "puede cachear el valor en un registro del procesador, reordenar los accesos o eliminar una lectura"
+  77: "reg |=  (1u << n);"
+  78: "son lectura-modificación-escritura"
+  79: "escribir un uno en la mitad baja pone el bit, en la mitad alta lo borra, en una sola escritura y sin leer"
+  81: "es lo correcto siempre que el pin pueda tocarse desde una interrupción"
+  84: "El vector de reset apunta al código de arranque."
+  85: "estados de espera primero, frecuencia después"
+  87: "un periférico sin reloj habilitado no responde y no avisa"
+  89: "esa es la primera comprobación"
+  91: "i < 400000u"
+  92: "el compilador elimina el bucle entero por no tener efectos observables"
+  95: "con periféricos complejos —USB, Ethernet, radio— cuya configuración son miles de líneas"
+  96: "bibliotecas para lo complejo, registros para lo crítico"
+  99: "La versión bare-metal ocupa una fracción y conmuta en unos pocos ciclos"
+  100: "La secuencia de arranque y los dos errores clásicos del bare-metal"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-poner-bit
+    tipo: explorar
+    titulo: "Poner un bit"
+    texto: "reg |= (1u << n) hace, bit a bit, una OR con la máscara. Mueva el bit del registro y el de la máscara."
+    libro: [77, 78]
+    widget:
+      tipo: logica
+      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
+      piezas:
+        - { id: o1, tipo: or, entradas: [R, M] }
+      salidas:
+        - { id: S, de: o1, rotulo: "reg |= m" }
+      tabla: true
+    requiere: { mover: [R, M] }
+
+  - id: tabla-borrar-invertir
+    tipo: tabla
+    titulo: "Borrar e invertir"
+    texto: "Arriba, reg &= ~m; abajo, reg ^= m. Rellene lo que deja cada una en el bit."
+    libro: [77]
+    widget:
+      tipo: logica
+      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
+      piezas:
+        - { id: n1, tipo: not, entradas: [M] }
+        - { id: a1, tipo: and, entradas: [R, n1] }
+        - { id: x1, tipo: xor, entradas: [R, M] }
+      salidas:
+        - { id: C, de: a1, rotulo: "reg &= ~m" }
+        - { id: T, de: x1, rotulo: "reg ^= m" }
+      ocultar: true
+    tabla:
+      salidas: [C, T]
+    exito: "Con la máscara a 0 el bit no cambia; con la máscara a 1, &= ~ lo borra y ^= lo invierte."
+    escalera:
+      - "Donde la máscara vale 0, las dos dejan el bit como estaba."
+      - "Donde vale 1: ~m es 0, y la AND da 0; la XOR da el contrario de R."
+    solucion: "Borrar: R, 0 (filas con M = 0, M = 1). Invertir: R con M = 0, el contrario con M = 1."
+
+  - id: prediga-volatile
+    tipo: predecir
+    titulo: "Sin volatile"
+    texto: "Un registro de periférico se lee con un puntero sin volatile. Con -O2, ¿qué puede hacer el compilador?"
+    libro: [68, 70, 71, 100]
+    widget:
+      tipo: figura
+      figura: fig-38.4
+      zonas:
+        - { id: volatile, rotulo: "Recuadro de arriba a la derecha", rect: [218, 24, 228, 99], texto: "Falta volatile: funciona sin optimizar y falla con -O2." }
+    opciones:
+      - { texto: "Guardar el valor en un registro, reordenar o eliminar lecturas", bien: true, porque: "No sabe que la dirección cambia fuera del programa: la trata como memoria normal." }
+      - { texto: "Nada: un puntero siempre se lee de memoria", porque: "Sin volatile puede leerlo una vez y reutilizarlo: no ve los cambios del hardware." }
+      - { texto: "Dar un error de compilación", porque: "Compila sin quejarse: el fallo aparece en el banco, con la optimización." }
+    escalera: ["Para el compilador, ¿quién más puede cambiar esa dirección?"]
+    solucion: "Puede cachear el valor, reordenar los accesos o eliminar una lectura: la causa número uno de fallos con -O2."
+
+  - id: pregunta-retardo
+    tipo: pregunta
+    titulo: "El bucle de retardo"
+    texto: "Quite el volatile del contador de los dos retardos del parpadeo. ¿Qué hace el compilador?"
+    libro: [91, 92, 100]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          for (;;) {
+              GPIOA->BSRR = (1u << 5);          /* set */
+              for (volatile uint32_t i = 0; i < 400000u; i++) { }
+              GPIOA->BSRR = (1u << (5 + 16));   /* clear */
+              for (volatile uint32_t i = 0; i < 400000u; i++) { }
+          }
+      resaltar: [3, 5]
+    opciones:
+      - { texto: "Elimina el bucle entero", bien: true, porque: "No tiene efectos observables: para el compilador, quitarlo no cambia nada. El LED deja de parpadear a la vista." }
+      - { texto: "Lo ejecuta igual, solo que más deprisa", porque: "Va más allá: lo quita del todo, porque no tiene efectos." }
+      - { texto: "Lo convierte en un bucle infinito", porque: "Eso pasa con una bandera sin volatile; un bucle vacío con límite desaparece." }
+    escalera: ["¿Cambia algo observable que el bucle no se ejecute?"]
+    solucion: "Lo elimina: sin volatile, el bucle vacío no tiene efectos observables."
+
+  - id: porque-bsrr
+    tipo: porque
+    titulo: "Una escritura atómica"
+    texto: "reg |= m lee, modifica y escribe. ¿Por qué usar BSRR si el pin se toca también desde una interrupción?"
+    libro: [78, 79, 81]
+    widget:
+      tipo: logica
+      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
+      piezas:
+        - { id: o1, tipo: or, entradas: [R, M] }
+      salidas:
+        - { id: S, de: o1, rotulo: "reg |= m" }
+    opciones:
+      - { texto: "Porque una interrupción entre la lectura y la escritura perdería su cambio", bien: true, porque: "BSRR pone o borra en una sola escritura, sin leer: no queda hueco para colarse." }
+      - { texto: "Porque es más rápido", porque: "Lo es, pero el libro insiste: no es una optimización, es lo correcto." }
+      - { texto: "Porque reg |= m no funciona en los puertos", porque: "Funciona, pero en tres pasos: el peligro es el hueco entre leer y escribir." }
+    escalera: ["¿Qué pasa si la interrupción escribe el registro justo después de que usted lo leyera?"]
+    solucion: "La lectura-modificación-escritura deja un hueco: la interrupción escribe y su cambio se pierde. BSRR escribe sin leer."
+
+  - id: ordene-arranque
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de main()"
+    texto: "Ponga en orden lo que hace el código de arranque."
+    libro: [84]
+    ordenar:
+      - "El vector de reset apunta al código de arranque."
+      - "Copiar .data de Flash a RAM."
+      - "Poner a cero .bss."
+      - "Configurar el reloj: PLL, divisores y estados de espera."
+      - "Llamar a main()."
+    exito: "Las variables inicializadas se copian y las demás se ponen a cero antes de llegar a main()."
+    pistas:
+      - { texto: "main() es lo último: todo lo demás lo prepara." }
+    escalera: ["Las variables están listas antes de configurar el reloj."]
+    solucion: "Vector de reset, .data, .bss, reloj y main()."
+
+  - id: pregunta-pll
+    tipo: pregunta
+    titulo: "La trampa del reloj"
+    texto: "Al configurar el reloj se sube la frecuencia con el PLL. ¿En qué orden van frecuencia y estados de espera de la Flash?"
+    libro: [85, 100]
+    widget:
+      tipo: figura
+      figura: fig-38.4
+      zonas:
+        - { id: paso4, rotulo: "Cuarto paso de la izquierda", rect: [26, 145, 178, 52], texto: "Configurar el reloj." }
+    opciones:
+      - { texto: "Estados de espera primero, frecuencia después", bien: true, porque: "Así la Flash nunca va más deprisa de lo que admite." }
+      - { texto: "Frecuencia primero, estados de espera después", porque: "En ese hueco el procesador lee instrucciones corruptas y se cuelga en el arranque." }
+      - { texto: "Da igual el orden", porque: "No da igual: al revés, se cuelga al arrancar." }
+    escalera: ["¿Qué pasa si la Flash tiene que servir instrucciones más deprisa de lo que puede?"]
+    solucion: "Estados de espera primero, frecuencia después."
+
+  - id: toque-sin-reloj
+    tipo: tocar
+    titulo: "Un periférico mudo"
+    texto: "Escribe en los registros de un periférico, no pasa nada y al leerlos obtiene ceros. Toque la causa."
+    libro: [87, 89, 100]
+    widget:
+      tipo: figura
+      figura: fig-38.4
+      zonas:
+        - { id: volatile, rotulo: "Recuadro de arriba a la derecha", rect: [218, 24, 228, 99] }
+        - { id: reloj, rotulo: "Recuadro de abajo a la derecha", rect: [218, 132, 228, 96] }
+        - { id: paso4, rotulo: "Cuarto paso de la izquierda", rect: [26, 145, 178, 52] }
+    tocar:
+      bien: [reloj]
+      porque:
+        volatile: "Sin volatile falla al optimizar; aquí la escritura ni siquiera tiene efecto, y se leen ceros."
+        paso4: "Con la Flash mal configurada se cuelga todo al arrancar, no un solo periférico."
+    exito: "Sin reloj, el periférico no responde ni avisa: es la primera comprobación."
+    escalera: ["¿Qué necesita un periférico moderno antes de tocar sus registros?"]
+    solucion: "Abajo a la derecha: falta habilitar el reloj del periférico."
+
+  - id: pregunta-compensa
+    tipo: pregunta
+    titulo: "¿Bare-metal siempre?"
+    texto: "¿En cuál de estos casos no compensa atacar los registros?"
+    libro: [95, 96, 100]
+    widget:
+      tipo: figura
+      figura: fig-38.4
+      zonas:
+        - { id: reloj, rotulo: "Recuadro de abajo a la derecha", rect: [218, 132, 228, 96], texto: "Lo primero, antes de tocar sus registros: el reloj." }
+    opciones:
+      - { texto: "Configurar un controlador USB", bien: true, porque: "Son miles de líneas: biblioteca para lo complejo, registros para lo crítico." }
+      - { texto: "Un parpadeo que debe ser determinista", porque: "Ahí compensa: el determinismo es una de sus razones." }
+      - { texto: "Un código que hay que certificar", porque: "Compensa: el código propio, sin capas ocultas, se certifica mejor." }
+    escalera: ["¿Cuántas líneas lleva configurar USB, Ethernet o una radio?"]
+    solucion: "USB: periférico complejo. Bibliotecas para lo complejo, registros para lo crítico."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Escribe el parpadeo con la biblioteca y con registros, y mide con el osciloscopio. ¿Qué espera ver?"
+    libro: [99, 100]
+    widget:
+      tipo: figura
+      figura: fig-38.4
+      zonas:
+        - { id: volatile, rotulo: "Recuadro de arriba a la derecha", rect: [218, 24, 228, 99], texto: "Un registro, a través de un puntero volatile: una escritura de una instrucción." }
+    opciones:
+      - { texto: "Bare-metal: una fracción del tamaño y conmuta en pocos ciclos", bien: true, porque: "La biblioteca puede tardar decenas de ciclos; con un pin que conmuta se ve en pantalla." }
+      - { texto: "Lo mismo: el compilador las deja iguales", porque: "La biblioteca añade capas: ocupa más y tarda más en conmutar." }
+      - { texto: "La biblioteca, más rápida", porque: "Al contrario: puede tardar decenas de ciclos frente a unos pocos." }
+    escalera: ["¿Qué añade una capa de abstracción?"]
+    solucion: "La versión bare-metal ocupa una fracción y conmuta en unos pocos ciclos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [71, 77, 79, 87]
+    ideas:
+      - { titulo: "volatile.", texto: "Un registro no es memoria: sin volatile, el compilador lo optimiza mal." }
+      - { titulo: "Bits.", texto: "|= pone, &= ~ borra, ^= invierte; BSRR lo hace sin leer." }
+      - { titulo: "Arranque.", texto: "Estados de espera antes de subir la frecuencia." }
+      - { titulo: "Reloj.", texto: "Un periférico sin reloj no responde ni avisa." }

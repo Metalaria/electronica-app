@@ -1,0 +1,289 @@
+# Lección 1.2 de la sección 40.3 «Parámetros que Hay que Saber Leer» (cap39; etiquetas sec-39.N = impresas 40.N).
+# - Una celda de ion-litio como fuente con resistencia interna en el esquema «thevenin» vivo. Valores de ejemplo: los
+#   3,6 V nominales del ion-litio (bloque 39) y 0,1 Ω, el extremo alto de una 18650 sana (bloque 307); la celda es la
+#   de 2 Ah del bloque 63, a 1C (2 A, carga de 1,7 Ω) y a 2C (4 A, carga de 0,8 Ω). Con el doble de resistencia
+#   interna (bloque 307) y 2C, los bornes caen por debajo del corte de 3,0 V (bloque 146).
+# - La resistencia interna por el método de Thévenin del bloque 72 como «estimar» sobre la recta V-I.
+# Paso práctico: «simular» la energía de la batería del ejercicio 40.1 (9,25 Wh; error típico: dar la capacidad).
+leccion: cap39/sec-39.3
+
+libro:
+  61: "la cifra nominal corresponde a una descarga lenta y a 20 °C"
+  62: "Dos baterías de 2 000 mAh a tensiones distintas no almacenan lo mismo"
+  63: "Una batería de 2 Ah descargada a 1C entrega 2 A durante una hora; a 2C, 4 A durante media"
+  65: "la resistencia interna hace caer la tensión antes de tiempo"
+  66: "Una celda que da 2 000 mAh a 0,2C puede dar 1 700 a 2C"
+  70: "Determina el calentamiento: I²·R dentro de la celda."
+  71: "una batería vieja o fría entrega menos potencia aunque su capacidad parezca razonable"
+  72: "tensión en vacío, tensión con carga conocida, y despejar"
+  74: "Descargar al 50 % en lugar de al 100 % puede multiplicar los ciclos por cinco"
+  75: "del 1-2 % mensual en ion-litio"
+  76: "Almacenar una batería de litio al 100 % y en calor es lo peor que se le puede hacer"
+  79: "De corte de carga: superarla es peligroso en litio."
+  80: "De corte de descarga: bajar de ella daña la celda de forma permanente."
+  87: "Capacidad según la tasa de descarga y ciclos según la profundidad"
+  "cap39#39": "3,6 V nominales"
+  "cap39#146": "3,0 V (2,5 absoluto)"
+  "cap39#307": "En una celda 18650 sana ronda los"
+  "cap39#392": "Una batería de 2500 mAh y 3,7 V alimenta un sistema"
+
+modelo:
+  valores:
+    V_b: { sim: "V_{vacío}", nombre: "tensión en vacío de la celda", unidad: V, valor: 3.6 }
+    R_i: { sim: "R_{int}", nombre: "resistencia interna", unidad: Ω, valor: 0.1 }
+    R_l: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1.7 }
+    on: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+    Q_n: { sim: "C", nombre: "capacidad de la celda", unidad: Ah, valor: 2 }
+    Q_e: { sim: "Q", nombre: "capacidad del ejercicio", unidad: Ah, valor: 2.5 }
+    V_e: { sim: "V", nombre: "tensión del ejercicio", unidad: V, valor: 3.7 }
+  calculos:
+    V_o: { si: on, entonces: "V_b*R_l/(R_i + R_l)", sino: "V_b", sim: "V_{bornes}", nombre: "tensión en bornes", unidad: V }
+    I_b: { si: on, entonces: "V_b/(R_i + R_l)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
+    V_i: { expr: "I_b*R_i", sim: "V_{int}", nombre: "caída interna", unidad: V }
+    P_i: { expr: "I_b^2*R_i", sim: "P", nombre: "calor dentro de la celda", unidad: W }
+    tasa: { expr: "I_b/Q_n", sim: "tasa", nombre: "tasa de descarga", unidad: "C", cifras: 2 }
+    E_e: { expr: "Q_e*V_e", sim: "E", nombre: "energía almacenada", unidad: Wh }
+    V_2a: { expr: "V_b - 2*R_i", sim: "V", nombre: "bornes con 2 A", unidad: V }
+    dV_2a: { expr: "2*R_i", sim: "ΔV", nombre: "caída con 2 A", unidad: V }
+
+tarjetas:
+  - id: explore-celda
+    tipo: explorar
+    titulo: "La celda tiene resistencia"
+    texto: "Una celda de 2 Ah con su resistencia interna y una carga. Pase la descarga de 1C a 2C y mire los bornes."
+    libro: [63, 70, "cap39#39", "cap39#307"]
+    fijar: { on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_b, rth: R_i, carga: R_l, interruptor: on }
+      lectura: { valor: V_o, rotulo: "Tensión en bornes" }
+      datos:
+        - { valor: I_b, rotulo: "Corriente: {{I_b}}" }
+        - { valor: P_i, rotulo: "Calor dentro: {{P_i}}" }
+      corriente: I_b
+      mide: { salida: V_o, corriente: I_b, interna: V_i }
+      mandos:
+        - { valor: R_l, lista: [1.7, 0.8], nombres: ["1C", "2C"], rotulo: "Tasa de descarga" }
+    requiere: { mover: [R_l] }
+    comprobar:
+      - { con: { on: 1, R_l: 1.7 }, I_b: 2, V_o: 3.4, P_i: 0.4, tasa: 1 }
+      - { con: { on: 1, R_l: 0.8 }, I_b: 4, V_o: 3.2, P_i: 1.6, tasa: 2 }
+
+  - id: tasa-c
+    tipo: pregunta
+    titulo: "La tasa C"
+    texto: "Una celda de 1 800 mAh se descarga a 0,5 C. ¿Qué corriente es?"
+    libro: [63, "cap39#392"]
+    widget:
+      tipo: figura
+      figura: fig-39.7
+      zonas:
+        - { id: tasa, rotulo: "Gráfica de la izquierda", rect: [0, 0, 222, 201] }
+    estimar:
+      objetivo: "0.5*1.8"
+      unidad: A
+      min: 0
+      max: 3
+      paso: 0.05
+      inicio: 2.5
+      tol: 0.03
+      rotulo: "Corriente a 0,5 C"
+    exito: "900 mA: la descargaría, idealmente, en 2 horas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.93 }, texto: "Se ha pasado: 1C son 1,8 A; 0,5 C es la mitad." }
+      - { texto: "Se ha quedado corto: 0,5 C es la mitad de la capacidad expresada en amperios." }
+    escalera:
+      - "1C vacía la batería en una hora: 1 800 mA."
+    solucion: "0,5 × 1 800 mA = 900 mA."
+
+  - id: prediga-2c
+    tipo: predecir
+    titulo: "A corriente alta"
+    texto: "La celda da 2 000 mAh descargada a 0,2C. Descargada a 2C, ¿cuánta carga entrega?"
+    libro: [66, 87]
+    fijar: { on: 1, R_l: 0.8 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_b, rth: R_i, carga: R_l, interruptor: on }
+      lectura: { valor: V_o, rotulo: "Tensión en bornes" }
+      corriente: I_b
+      mide: { salida: V_o, corriente: I_b }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Menos: unos 1 700 mAh"
+        bien: true
+        porque: "A 2C la caída interna adelanta el límite de tensión: queda carga dentro."
+      - texto: "Los mismos 2 000 mAh, en menos tiempo"
+        porque: "Sería así sin resistencia interna; con ella, la tensión llega antes al límite."
+      - texto: "Más, porque sale más deprisa"
+        porque: "La corriente alta no añade carga: la caída interna hace que se aproveche menos."
+    escalera:
+      - "Con más corriente, ¿cae más o menos tensión dentro de la celda?"
+    solucion: "Unos 1 700 mAh: por eso la capacidad se da siempre con su tasa."
+
+  - id: sorpresa-vieja
+    tipo: sorpresa
+    titulo: "Una celda vieja"
+    texto: "La misma celda a 2C, pero con el doble de resistencia interna, como una celda degradada. Cambie la resistencia y mire los bornes."
+    libro: [71, "cap39#146", "cap39#307"]
+    fijar: { on: 1, R_l: 0.8 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_b, rth: R_i, carga: R_l, interruptor: on }
+      lectura: { valor: V_o, rotulo: "Tensión en bornes" }
+      datos:
+        - { valor: P_i, rotulo: "Calor dentro: {{P_i}}" }
+      corriente: I_b
+      mide: { salida: V_o, corriente: I_b, interna: V_i }
+      mandos:
+        - { valor: R_i, lista: [0.1, 0.2], nombres: ["sana", "el doble"], rotulo: "Resistencia interna" }
+    requiere: { mover: [R_i] }
+    nota: "Por debajo del corte de 3,0 V: el equipo se apaga aunque quede carga."
+    comprobar:
+      - { con: { R_i: 0.2 }, V_o: 2.88, I_b: 3.6 }
+
+  - id: por-que-menos
+    tipo: porque
+    titulo: "No desaparece"
+    texto: "A 2C la celda entrega menos carga. ¿Adónde va la que falta?"
+    libro: [65]
+    fijar: { on: 1, R_l: 0.8 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_b, rth: R_i, carga: R_l, interruptor: on }
+      lectura: { valor: V_o, rotulo: "Tensión en bornes" }
+      datos:
+        - { valor: V_i, rotulo: "Caída interna: {{V_i}}" }
+      corriente: I_b
+      mide: { salida: V_o, corriente: I_b, interna: V_i }
+      mandos: []
+    opciones:
+      - texto: "Se queda dentro: la tensión llega antes al límite"
+        bien: true
+        porque: "La resistencia interna hunde la tensión; la celda alcanza su límite con carga aún dentro."
+      - texto: "Se pierde toda en calor"
+        porque: "Algo se calienta, pero lo que falta sigue en la celda: no se ha podido sacar."
+      - texto: "Se destruye en la química"
+        porque: "No desaparece: queda dentro porque la tensión toca el límite antes."
+    escalera:
+      - "Mire la caída interna: ¿qué le pasa a la tensión de los bornes?"
+    solucion: "Queda dentro: la tensión llega al límite antes de tiempo."
+
+  - id: estime-rint
+    tipo: pregunta
+    titulo: "Medir la resistencia interna"
+    texto: "En vacío marca 3,6 V; con una carga que pide 2 A, 3,4 V. ¿Cuánto vale la resistencia interna?"
+    libro: [72]
+    fijar: { V_b: 3.6, R_i: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 4, unidad: A, rotulo: "I" }
+      y: { min: 3, max: 3.7, unidad: V, rotulo: "V_{bornes}" }
+      curvas:
+        - { expr: "V_b - ix*R_i", color: naranja, rotulo: "tensión en bornes" }
+      marcas:
+        - { x: "0", y: "V_b", rotulo: "en vacío" }
+        - { x: "2", y: "V_b - 2*R_i", rotulo: "con 2 A" }
+    estimar:
+      objetivo: "R_i"
+      unidad: Ω
+      min: 0
+      max: 0.5
+      paso: 0.005
+      inicio: 0.4
+      tol: 0.05
+      rotulo: "Resistencia interna"
+    exito: "0,2 V entre 2 A: 0,1 Ω, la de una 18650 sana en su extremo alto."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado: divida la caída, 0,2 V, entre la corriente, 2 A." }
+      - { texto: "Se ha quedado corto: R = (3,6 − 3,4) / 2." }
+    escalera:
+      - "La diferencia de tensión es la caída en la resistencia interna."
+    solucion: "R = (3,6 − 3,4) V / 2 A = 0,1 Ω."
+    comprobar:
+      - { R_i: 0.1, V_2a: 3.4, dV_2a: 0.2 }
+
+  - id: simule-energia
+    tipo: simular
+    titulo: "Capacidad no es energía"
+    texto: "Una batería de 2 500 mAh y 3,7 V. ¿Cuánta energía almacena?"
+    libro: [62, "cap39#392"]
+    widget:
+      tipo: grafica
+      x: { id: qx, min: 0, max: 3, unidad: Ah, rotulo: "Q" }
+      y: { min: 0, max: 12, unidad: Wh, rotulo: "E" }
+      curvas:
+        - { expr: "qx*V_e", color: naranja, rotulo: "energía" }
+      lectura: { valor: E_e, rotulo: "Energía" }
+      ocultar: true
+    simular:
+      objetivo: E_e
+      unidad: Wh
+      tol: 0.03
+      rotulo: "Energía almacenada"
+      errores:
+        - { expr: "Q_e", texto: "Ha dado la capacidad, en amperios-hora. La energía es capacidad por tensión media." }
+    exito: "9,25 Wh. Dos de 2 000 mAh a tensiones distintas no almacenan lo mismo."
+    escalera:
+      - "Energía = capacidad × tensión media."
+    solucion: "2,5 Ah × 3,7 V = 9,25 Wh."
+    comprobar:
+      - { E_e: 9.25, Q_e: 2.5 }
+
+  - id: empareje-vida
+    tipo: pregunta
+    titulo: "Los que definen la vida"
+    texto: "Empareje cada parámetro con lo que dice."
+    libro: [74, 75, 76]
+    widget:
+      tipo: figura
+      figura: fig-39.7
+      zonas:
+        - { id: ciclos, rotulo: "Gráfica de la derecha", rect: [222, 0, 221, 201] }
+    emparejar:
+      - ["Ciclos", "Dependen de la profundidad de descarga"]
+      - ["Autodescarga", "Lo que pierde en reposo"]
+      - ["Envejecimiento calendario", "Pierde capacidad con el tiempo, se use o no"]
+    exito: "Descargar al 50 % en lugar de al 100 % puede multiplicar los ciclos por cinco."
+    pistas:
+      - { texto: "La autodescarga ocurre en reposo; el calendario, con los años." }
+    escalera:
+      - "Uno cuenta cargas y descargas; otro, el reposo; otro, el tiempo."
+    solucion: "Ciclos, profundidad; autodescarga, reposo; calendario, el paso del tiempo."
+
+  - id: tensiones
+    tipo: pregunta
+    titulo: "Las tensiones que hay que respetar"
+    texto: "En una celda de litio, ¿qué pasa si se baja de la tensión de corte de descarga?"
+    libro: [79, 80]
+    widget:
+      tipo: figura
+      figura: fig-39.7
+      zonas:
+        - { id: tasa, rotulo: "Gráfica de la izquierda", rect: [0, 0, 222, 201] }
+    opciones:
+      - texto: "Se daña de forma permanente"
+        bien: true
+        porque: "Por debajo del corte de descarga el daño en la celda es irreversible."
+      - texto: "Es peligroso: puede incendiarse"
+        porque: "Ese peligro es el de superar la tensión de corte de carga."
+      - texto: "Nada: solo deja de dar corriente"
+        porque: "No es inocuo: bajar del corte daña la celda para siempre."
+    escalera:
+      - "Hay dos cortes: uno al cargar y otro al descargar; cada uno protege de algo distinto."
+    solucion: "Daño permanente; superar el de carga es lo peligroso. Hacerlos cumplir es tarea del BMS."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [61, 62, 66, 72]
+    ideas:
+      - { titulo: "Capacidad con su tasa.", texto: "A corriente alta la celda entrega menos: la cifra nominal es a descarga lenta." }
+      - { titulo: "Energía.", texto: "Capacidad por tensión media: es lo que hay que comparar." }
+      - { titulo: "Resistencia interna.", texto: "Fija la caída y el calor I²·R; se mide en vacío y con carga." }
+      - { titulo: "Vida.", texto: "Ciclos según profundidad, autodescarga y calendario." }

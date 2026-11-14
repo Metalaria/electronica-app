@@ -214,6 +214,12 @@ const curado = JSON.parse(fs.readFileSync(path.join(contenidoDir, 'porque_curado
 const huella = (t) => normal(t).replace(/[^a-z0-9]+/g, '');
 const pendientes = [];
 const rechazadas = { n: 0 };
+const propias = { R: 0, E: 0, P: 0 };
+// 1.2: a reviewed proposal whose sentence does not explain THAT option may carry, instead, a short explanation of the
+// misconception written in the review («propio»: own words, only what the book says there, «usted»); it is shown
+// in place of the book quote. Allowed only on a rejected sentence (ok: false), and still tied to the proposed
+// sentence's fingerprint: when the book's passage changes, the option goes back to «general» until reviewed again.
+const PROPIO_MAX = 320;
 
 /** The explanation of one wrong option: the reviewed book sentence, or «general». `clave` = «R|id|i», «E|…», «P|…». */
 function entrada(clave, r) {
@@ -222,6 +228,13 @@ function entrada(clave, r) {
   if (!c || huella(c.frase) !== huella(plano(r.f.html).slice(0, 80))) {
     pendientes.push(`${clave}: ${plano(r.f.html).slice(0, 80)}`);
     return { k: 'general' };
+  }
+  if (c.propio != null) {
+    if (c.ok) throw new Error(`porque10: ${clave} aprueba la frase del libro y lleva además una explicación propia`);
+    if (typeof c.propio !== 'string' || !c.propio.trim() || c.propio.length > PROPIO_MAX || /<(?!\/?(sub|sup|em|strong)>)/.test(c.propio))
+      throw new Error(`porque10: ${clave}: la explicación propia tiene que ser un texto de 1 a ${PROPIO_MAX} caracteres (solo <sub>, <sup>, <em>, <strong>)`);
+    propias[clave[0]]++;
+    return { k: 'propio', html: c.propio };
   }
   if (!c.ok) {
     rechazadas.n++;
@@ -356,10 +369,17 @@ for (const p of ordenPartes) {
 const total = (c) => c[0] + c[1];
 fs.writeFileSync(
   path.join(dir, 'indice.json'),
-  JSON.stringify({ version: 1, partes, libro: { repaso: cuenta.repaso[0], ejercicios: cuenta.ejercicios[0], prediccion: cuenta.prediccion[0] }, general: { repaso: cuenta.repaso[1], ejercicios: cuenta.ejercicios[1], prediccion: cuenta.prediccion[1] } }),
+  JSON.stringify({
+    version: 1,
+    partes,
+    libro: { repaso: cuenta.repaso[0], ejercicios: cuenta.ejercicios[0], prediccion: cuenta.prediccion[0] },
+    // 1.2: the reviewed own explanations («propio») are counted apart from «general»
+    general: { repaso: cuenta.repaso[1] - propias.R, ejercicios: cuenta.ejercicios[1] - propias.E, prediccion: cuenta.prediccion[1] - propias.P },
+    propio: { repaso: propias.R, ejercicios: propias.E, prediccion: propias.P },
+  }),
 );
 console.log(
-  `porque10: opciones incorrectas con su frase del libro — repaso ${cuenta.repaso[0]}/${total(cuenta.repaso)}, ejercicios ${cuenta.ejercicios[0]}/${total(cuenta.ejercicios)}, predicciones ${cuenta.prediccion[0]}/${total(cuenta.prediccion)}; el resto, la explicación general (${rechazadas.n} propuestas descartadas en la revisión).`,
+  `porque10: opciones incorrectas con su frase del libro — repaso ${cuenta.repaso[0]}/${total(cuenta.repaso)}, ejercicios ${cuenta.ejercicios[0]}/${total(cuenta.ejercicios)}, predicciones ${cuenta.prediccion[0]}/${total(cuenta.prediccion)}; con explicación propia de la revisión ${propias.R + propias.E + propias.P}; el resto, la explicación general (${rechazadas.n} propuestas descartadas en la revisión).`,
 );
 if (pendientes.length) {
   console.warn(`porque10: ${pendientes.length} propuestas sin revisar en contenido/porque_curado.json (se muestran con la explicación general):`);

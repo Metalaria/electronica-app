@@ -134,13 +134,16 @@ esquemas (fase 5) está en la versión 0.7.
 - **Calculadoras**: 351 fórmulas del libro listas para calcular cualquiera de sus variables, con un dibujo que
   se mueve con los valores, deslizadores, cuenta paso a paso, «¿Qué pasa si…?» y lo que dice el libro de cada
   una; botón «Calcular» junto a cada ecuación catalogada y tarjetas de fórmulas vivas (ver más abajo).
-- **Repaso**: tarjetas de los 910 términos del glosario con repetición espaciada y 1028 preguntas de test de
+- **Repaso**: tarjetas de los 1 054 términos del glosario con repetición espaciada y 1 118 preguntas de test de
   todos los capítulos y apéndices, cada una con la cita del libro de la que sale (ver más abajo).
 - **Estudiar por pasos** (0.9): cualquier sección del libro como una lección de una pantalla por subapartado, con
   sus figuras vivas, ecuaciones y calculadoras, y después las preguntas de Repaso de esa sección (ver más abajo).
 - **Cursos, XP, niveles y logros** (0.11): diez cursos temáticos con su prueba de nivel, sonidos y vibración al
   acertar y fallar, celebración al terminar cada lección, XP, niveles con nombre, 28 logros y un recordatorio
   diario en Android (ver «Cursos, XP y logros» más abajo).
+- **Consolas por dentro** (1.2): el curso 11, con lecciones hechas a mano sobre las placas del explorador «Consolas»
+  (la placa en la foto, alimentación, relojes PAL y NTSC, buses y decodificación, vídeo y sonido, bloqueo regional y
+  averías). Hechas las 49: siete por consola (ver «Consolas por dentro» más abajo).
 - **Modo docente** (1.0): cursos y exámenes propios con las preguntas y los problemas del libro, que se hacen en la
   aplicación (con nota y el desarrollo del libro) o se exportan a PDF, con variantes y soluciones (ver más abajo).
 - **Guía de uso** (1.0): cómo se usa cada parte de la aplicación, dentro de ella y sin conexión, con su propio buscador y
@@ -182,6 +185,10 @@ escritorio y en pantallas táctiles (teléfono de 360 px y tableta), solo con el
   acento, contraste de al menos 3:1 en los tres temas), no solo un cambio de color del borde: el buscador de la guía, la
   respuesta del problema del día y de las prácticas numéricas, la búsqueda, los filtros del índice, del glosario, de las
   calculadoras, de la galería y del catálogo 3D, los valores de las calculadoras y el editor de netlists.
+- **Sin anillo en los títulos que reciben el foco** (fix12): tras cambiar de página el foco va al título (para que el
+  lector de pantalla lo lea), pero un título no es un control y no lleva anillo (`app.css`: `h1`…`h6` y `main` con
+  `tabindex="-1"`). Antes, al abrir un curso sin haber tocado la pantalla, su título salía con un recuadro grande. Lo
+  mismo en las etapas de los proyectos y los pasos del laboratorio.
 - **Editor de esquemas y protoboard con el teclado**: el lienzo y la mesa se alcanzan con `Tab`. Al elegir con el
   teclado una pieza de la paleta (o una carta de la bandeja de la protoboard), el foco pasa al lienzo con un cursor.
   Las flechas lo mueven (de punto en punto de la rejilla en el editor, de agujero en agujero en la protoboard;
@@ -801,7 +808,9 @@ pestañas enlazadas entre sí:
 - **Game Boy Color** (CGB-CPU-04): fotos de gbhwdb y el esquema de la placa original redibujado por Natalie the
   Nerd (CC BY-NC-SA 4.0), reconstruido a partir de su PDF y comprobado con la recreación opengbc (los 118 pines
   conectados de la CPU coinciden). Arquitectura: doble velocidad (KEY1), bancos de VRAM y WRAM, HDMA por línea y
-  general, la PPU y las paletas.
+  general, la PPU y las paletas. Alimentación: la placa conmutada U5 saca de las dos pilas AA los +5 V y las tensiones
+  de la pantalla; los +3,3 V los da U7, un regulador lineal RN5RT33A de Ricoh alimentado desde +5 V (en el esquema,
+  VIN en +5V y VOUT en +3V3; hasta la 1.2 el texto los atribuía a U5).
 - **Super Nintendo** (SNSP-CPU-01 PAL, 0.9): esquema y placa de **nonSNES** de stonedDiscord (GPL-3.0, commit
   `cf2e70b`), una recreación «1:1» de la SNSP-CPU-01 Rev5 con el esquema de arzi84; el texto completo de la GPL va
   en «Fuentes» (`web/public/consolas/snes/LICENSE-nonSNES.txt`). Dos fotos de esa misma placa, del propio
@@ -821,6 +830,20 @@ pestañas enlazadas entre sí:
   `origen` y `alineacion` de la foto en `MAQUINAS` (`contenido/consolas.py`, entrada `snes`) y ejecutar
   `python3 contenido/consolas.py snes`. Los recuadros y las marcas salen solos; los textos de cada pieza están en
   `contenido/consolas_snes.py`.
+
+  **1.2 (propietario, 12-11).** Las dos fotos de nonSNES se llaman ahora por lo que son: «Cara de componentes · PAL,
+  sin piezas» (un escaneo de la placa desnuda: sus recuadros marcan dónde va cada pieza) y «Cara de soldadura · PAL,
+  incompleta»; no llevan marcador las piezas que no están en ellas (P6 y SW1, que añade nonSNES, en la cara A; J3 y
+  las 15 huellas vacías de la cara B: R4–R6, R24, R32, R42, R45, R47, R108–R111, C4, C5 y C69, comprobadas en la
+  foto). Pestaña **«Cara de componentes · NTSC»** (la primera y la que se abre desde el 13-11; antes, la segunda): la foto del propietario de una SNS-CPU-RGB-01 con todos sus
+  chips (Wikimedia Commons, File:SNES-CPU-RGB01_01.jpg, Yaca2671, CC BY-SA 3.0; en «Fuentes», con el enlace, la
+  licencia y los cambios: recomprimida a calidad 78, 1206 × 1046 px, sin recortar), con 22 piezas colocadas a mano
+  por las marcas y la serigrafía que se leen (S-CPU B, S-PPU1, S-PPU2 C, S-WRAM, S-DSP A, F411A, D21G4, S-RGB,
+  S-MIX A…; las que no se leen, como el S-SMP y el DAC, en discontinuo). Sus textos, en `CARA_NTSC` de
+  `contenido/consolas_snes.py`, con sus fuentes (Fabien Sanglard, SNESdev, ConsoleMods). La carpeta de
+  investigación de esta máquina solo tiene ahora la foto del propietario, así que `consolas.py snes` no se pudo
+  volver a ejecutar: `snes.json` se cambió a mano, igual que lo escribiría el generador (lo mismo está en
+  `consolas.py` y `consolas_snes.py`).
 
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
@@ -1617,9 +1640,9 @@ por pantalla (`tests/capturas/calculadoras/`).
 **Página «Repaso»** (carril de iconos, `#/repaso`). Reúne lo que hay para hoy, las aprendidas y los días seguidos de
 repaso, con un mapa de actividad de las últimas cuatro semanas.
 
-**Tarjetas del glosario.** Cada uno de los 910 términos es una tarjeta: delante el término, detrás la definición
+**Tarjetas del glosario.** Cada uno de los 1 054 términos es una tarjeta: delante el término, detrás la definición
 del glosario y los enlaces «En el libro» a sus secciones. Con «Tarjetas inversas» se estudia también al revés (de
-la definición al término: 1820 tarjetas). Mazos: todo el glosario, por tomo, por capítulo o apéndice y por tema.
+la definición al término: 2 108 tarjetas). Mazos: todo el glosario, por tomo, por capítulo o apéndice y por tema.
 Tras ver la respuesta se elige **Otra vez · Difícil · Bien · Fácil**; cada botón dice cuándo volverá la tarjeta
 (1 min, 10 min, 4 d…). El planificador es el de Anki (SM-2): las nuevas pasan por dos pasos cortos (1 y 10 min) y
 después vuelven a intervalos de días que crecen con cada acierto; un fallo las devuelve a un paso corto y baja su
@@ -1627,7 +1650,7 @@ facilidad. Se presentan como mucho las nuevas al día que se elijan (15 por defe
 muestra la respuesta, `1`–`4` califican (`espacio` = Bien), `Ctrl`/`⌘` `Z` deshace la última. En pantalla táctil:
 tocar la tarjeta la gira; deslizar a la derecha es «Bien» y a la izquierda «Otra vez».
 
-**Tests por capítulo.** 1028 preguntas (de 10 a 20 por capítulo y de 5 a 12 por apéndice), de opción múltiple y
+**Tests por capítulo.** 1 118 preguntas (de 10 a 20 por capítulo y de 5 a 12 por apéndice), de opción múltiple y
 numéricas (con coma decimal y tolerancia). Los distractores recogen los errores contra los que el libro previene.
 Cada respuesta se corrige al momento con la explicación, la **cita literal del libro** y el enlace «Ver la
 sección…» (o «Ver el problema…») de donde sale. Al final, la puntuación y la lista «Para repasar»; los fallos
@@ -1684,6 +1707,19 @@ puerto 4311); capturas en el Mac, la tableta y el teléfono, en claro, oscuro y 
 `node tests/leccion09-capturas.mjs` → `tests/capturas/lavado09/leccion/`.
 
 ## Ampliaciones del libro (1.1)
+
+> **1.2: ya están en el libro.** La edición 4.0 trae las diez ampliaciones y la 4.1 da a los dos capítulos nuevos sus
+> identificadores definitivos (`cap55`, `cap56`), así que `generar.py` ya no las fusiona ni las marca «Aún no en el
+> libro»: el contenido sale del libro como el resto. Lo que solo tenía la capa pasó a las fuentes propias de la
+> aplicación (preguntas de repaso a `contenido/repaso/`, respuestas y pistas de sus ejercicios a
+> `ejercicios_curado.txt`, la práctica de la antigua 32.13 a `contenido/practica_retirada.json`) y la renumeración de
+> las citas de las fuentes curadas (`renumerar_fuentes`) la sigue llamando `generar.py`. Lo que sigue describe la capa
+> tal como era (la carpeta `contenido/ampliaciones11/` se conserva como historia). Sus pruebas de la capa
+> (`tests/ampliaciones11-*.spec.ts` y `playwright.ampliaciones11.config.ts`) se han retirado en la 1.2; lo que seguía
+> teniendo sentido está en `tests/sync41-ampliaciones-unidad.spec.ts` (con `playwright.sync41.config.ts`, sin
+> navegador): los 90 ejercicios de las diez ampliaciones y los 31 nuevos de la 4.1 son del libro, se comprueban solos,
+> con dos pistas y sus respuestas aceptadas; las 116 netlists validadas y enlazadas; las preguntas de repaso con su id;
+> las secciones nuevas con su número impreso. Lo que se describe a continuación sobre las pruebas es historia.
 
 Los autores escriben ampliaciones del libro (secciones nuevas, problemas, ejercicios, un capítulo entero) en Typst, con
 sus figuras, netlists, preguntas de repaso y los datos de los que salen sus números. La aplicación las trae ya, marcadas
@@ -1880,14 +1916,27 @@ teclado, arrastrando, axe en los tres temas, 360 px, movimiento reducido, el pro
 lección de catálogo `web/tests/lecciones11-catalogo/cap01/sec-1.5.yaml`, ocho modelos equivocados a propósito que el
 simulador detecta, las tolerancias y las reglas nuevas del generador) y `tests/lecciones11-catalogo.spec.ts` (esa
 lección en el navegador, servida desde la prueba: cada dibujo y gráfica, cada mando con el teclado, axe en los tres
-temas, 360 px).
+temas, 360 px; la prueba de los mandos va en tres partes y comprueba que el deslizador conserva el foco tras cada
+tecla: un asa del esquema que desaparecía con su pieza, «rs485» con 0 cargas, dejaba la prueba esperando).
 `tests/lecciones11-practica.spec.ts` (las tarjetas practicables y el índice al día, el estado en que se preguntan, y
 en el navegador una sección practicada solo con su lección: dominio y XP con el id de la tarjeta, una vez).
 `tests/lecciones11-recorrido.spec.ts` recorre **cada lección publicada** a partir de sus datos (paramétrico; filtre
 con `EPA_RECORRER='^cap00/'`): abre cada exploración moviendo lo que pide, responde mal y luego bien cada pregunta
 (con su explicación), falla y resuelve cada reto con el teclado en una posición que el modelo da por buena, estima por
 los dos lados, ordena y empareja, pasa axe en cada tarjeta y repite a 360 px en el tema oscuro sin desplazamiento
-horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`.
+horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`. 1.2: también recorre los pasos de aprender haciendo a
+partir del modelo: `simular` (escribe el valor bueno y espera al ngspice de la app), `banco` (compara la lectura
+esperada), `ajuste` (lleva el mando a la banda), `averia` (mide, falla un sospechoso y acierta el de la primera
+ronda), `dibujar` (pone cada punto en la curva con el teclado, espaciados por igual en log x si el eje es
+logarítmico, como los dibuja la app), `diseno` (como un reto, en una posición del modelo) y `sql` (escribe la
+consulta de la solución, rellena los huecos que saca de la plantilla o sube las cláusulas a su sitio, la ejecuta en el
+SQLite de la app y comprueba).
+axe se pasa con la tarjeta desplazada hasta «Del libro»; en una tarjeta más alta que la pantalla, un control puede
+quedar entonces bajo la cabecera o el pie fijos (los botones de zoom de una figura). Cada control que axe marque por
+tamaño y esté bajo una barra se enfoca, como lo alcanza el lector (la lección pone `scroll-padding` con el alto de las
+barras), tiene que quedar entero a la vista y fuera de ellas, y se vuelve a pasar axe sobre él: si el fallo sigue, cuenta.
+No hay excepciones por tipo de tarjeta. El libro temporal de la prueba «idempotente» de `lecciones11-unidad` enlaza
+también `img/`: el generador lee el tamaño de las fotos del libro que muestra un widget `figura` con `imagen`.
 
 ### Enlaces del libro impreso: códigos QR (1.1)
 
@@ -1898,6 +1947,10 @@ edición no tiene, o un enlace mal formado, muestran «No se encuentra esa lecci
 nunca un error. El enlace se comprueba de forma estricta (solo `epa://leccion/`, un capítulo `capNN`, un apéndice
 `apX` o un capítulo nuevo de las ampliaciones `cap-new-<nombre>`, una sección `sec-…`, letras, cifras, punto y guion): no puede llevar a ninguna otra parte de la aplicación ni a
 ninguna dirección de fuera. Mayúsculas y minúsculas dan igual (`EPA://LECCION/APA/SEC-A.1` abre el apéndice A).
+1.2 (libro 4.1): los capítulos nuevos se llaman `cap55` (31, automatismos), `cap56` (34, máquinas) y `cap57` (54,
+robótica), y el apéndice K, `apK`; un QR impreso en la 4.0 con los nombres provisionales
+(`epa://leccion/cap-new-automatas/sec-new-automatas.3`) abre la misma sección de la 4.1 (`cap55/sec-55.3`). Los 792
+QR del libro 4.1 abren una sección de la aplicación (comprobado en `tests/sync41-unidad.spec.ts`).
 
 Cómo probarlo en cada equipo (con la aplicación cerrada y también abierta: debe abrir la lección en la ventana que ya
 está, sin abrir otra):
@@ -1921,6 +1974,344 @@ configuración de Tauri) y `tests/enlaces11-navegador.spec.ts` (el enlace como h
 un apéndice; «Atrás» no vuelve al enlace; «No se encuentra esa lección» con axe en los tres temas y a 360 px), con
 `playwright.enlaces11.config.ts` (puerto 4686). La parte nativa se comprueba con `cargo check` y `cargo test --lib`
 (`solo_enlaces_epa_cortos_y_ascii`); lo que solo se ve en los equipos es la lista de arriba.
+
+## La forma de las lecciones 1.2: circuito vivo, ritmo e identidad del libro
+
+Vale para todas las lecciones hechas a mano (también las de Fundamentos, que no cambian como datos). Toma los
+principios de diseño de Brilliant (una idea por pantalla, el dibujo que se toca, el ritmo de tarjetas), nunca su aspecto.
+
+- **Circuito vivo** (`componentes/leccion12/CircuitoVivo.svelte`). La corriente son partículas que recorren el circuito
+  (el motor de las figuras vivas, `figuras-vivas/esquema/particulas.ts`): más deprisa con más corriente (escala
+  logarítmica absoluta: 0,1 A a toda velocidad, 10 µA la más lenta), en el sentido de la corriente y de ida y vuelta con
+  una fuente alterna. Los hilos toman el color de la tensión de su nodo (azul negativo, gris 0 V, rojo positivo) con una
+  leyenda en voltios y «Ver valores», que escribe la tensión de cada nodo en el dibujo: el color nunca es la única pista.
+  Las tensiones salen del propio netlist del esquema resuelto en la página (`lib/leccion12/cc.ts`, análisis nodal en
+  continua; en 88 tarjetas de Fundamentos da lo mismo que el modelo de la lección, que el generador comprobó con ngspice);
+  un circuito con diodos o transistores colorea solo los nodos que se saben exactos (las fuentes y masa), y los de
+  alterna o de conmutación no se colorean. Una predicción no da pistas: sin colores ni leyenda, y las partículas a una
+  velocidad neutra. Las partículas van solo por los hilos (fix12): no se dibujan dentro del cuerpo de una pieza (entran
+  por un borne y salen por el otro), ni sobre una etiqueta o un punto de unión, con un hueco de 3 px; los cuerpos los
+  declara el kit (`data-cuerpo`) y, para lo demás, se miden en el propio dibujo. Igual en las figuras vivas del libro
+  (cuerpo de cada pieza entre sus `istart`/`iend`, puntos de unión y anotaciones); y en ellas el color de tensión de un
+  hilo no se pinta sobre el cuerpo de una pieza de dos bornes (en 33.11 y 53.33 el libro trae un hilo a lo largo de
+  toda la pieza: su halo se recorta). Ningún hilo de los 32 esquemas de las lecciones pasa por el cuerpo de una pieza
+  ni bajo una etiqueta (en RLC serie y paralelo la frecuencia y Rₚ pisaban un hilo: se han movido). El LED brilla según su corriente y la lectura grande late al cambiar. Con «reducir movimiento»,
+  flechas quietas en el sentido de la corriente. Solo se anima mientras el dibujo está en pantalla y la página visible;
+  mide su ritmo y, en un equipo lento, dibuja la mitad de partículas a 30 fps y, si aún no llega, pasa a las flechas.
+- **Tocar el esquema** (`lib/leccion12/manipular.ts`). Cada pieza cuyo valor mueve un mando de la tarjeta se arrastra en
+  el dibujo (arriba o a la derecha sube; los valores son los del mando, así que se ajusta a la serie E12/E24), se toca
+  para abrir «−» y «+», o se enfoca con el tabulador y se mueve con las flechas, Re Pág/Av Pág, Inicio y Fin; el lector
+  de pantalla oye el valor como en el mando de abajo. Un interruptor del dibujo se abre y cierra con un toque. Las
+  tarjetas de «ajuste» y «diseño» de la 1.2 lo tienen solo por usar el widget de circuito.
+- **Una idea por pantalla.** Arriba el dibujo (o la fórmula), debajo el texto corto y después lo que se responde. El
+  generador avisa (no para) con `lib/leccion12/una-idea.ts` de una tarjeta de más de 40 palabras, de más de dos frases o
+  sin nada que mirar. Fundamentos (capítulos 0–6) está revisado para la 1.2: 0 avisos en 1168 tarjetas, cada opción
+  con su `porque`, cada pregunta con `escalera` y `solucion`, y 22 de sus 100 lecciones con un paso práctico (simular,
+  diseño, ajuste, avería, dibujar o banco con su ficha del cuaderno).
+- **Ritmo** (`lib/leccion12/ritmo.ts`). Barra de progreso por tramos, «Continuar» fijo abajo y abierto al interactuar
+  (como en la 1.1), las tarjetas entran deslizándose (sin movimiento con «reducir movimiento»), un toque corto de
+  vibración y sonido en cada comprobación (también en las que ya no cuentan; en el escritorio no vibra) y **las tarjetas
+  falladas vuelven al final**: las que fallaron a la primera o se saltaron se repiten una vez, frescas, antes del
+  resumen, con sus propios tramos en la barra y «Repaso» como fase. Empiezan con los valores que tenían la primera vez y
+  son una ronda nueva para el repaso espaciado (si en su primera ronda no dieron XP, la dan ahora). No se guarda nada
+  nuevo: al recargar, la visita es normal.
+- **Mapa del curso** (`componentes/cursos/Camino.svelte`). El camino de nodos (con la vista de lista para el teclado y
+  los lectores) muestra cuatro estados con su leyenda: por hacer, en curso, hecha y **dominada**. «Dominada» es una
+  lección hecha cuya sección está en el nivel «Dominado» del dominio y no tiene el repaso pendiente
+  (`dominadaDe`, `lib/aprendizaje/camino.ts`); si se olvida o le toca repaso, vuelve a «hecha» hasta repasarla. El
+  resumen de la lección lo dice («Sección dominada») junto a la celebración de siempre.
+- **Identidad de la edición 4.0/4.1** (`estilos/tokens11.css`, `estilos/fuentes12.css`). Inter para el texto, Space
+  Grotesk para los títulos y JetBrains Mono para el código (OFL, de las fuentes del libro, 400 y 700, recortadas a 11 KB
+  cada una, sin ligaduras); la tinta #1B1F27, los grises de la plantilla y los cinco colores de serie (azul #2457D6, rojo
+  #B3261E, verde #1C7A4B, violeta #6A45C0, naranja #D9661C) en claro, sepia y oscuro; los hilos de los circuitos en el
+  color del bloque del capítulo (un tono oscuro de él, para no confundirse con las piezas). Contraste comprobado por
+  script: cada par de tokens ≥ 4,5:1 (texto) o ≥ 3:1 (gráficos), cada paso de la escala de tensiones ≥ 3,26:1 sobre el
+  panel y los hilos de los seis bloques ≥ 6,98:1.
+
+Pruebas: `tests/lecciones11-ui12-unidad.spec.ts` (sin navegador: ritmo, «dominada», contraste, el solucionador frente a
+cada tarjeta de circuito publicada, manipulación, una idea) y `tests/lecciones11-ui12-navegador.spec.ts` (partículas,
+colores y valores, arrastre, toque y teclado, predicción sin pistas, vibración, leyenda del mapa, axe en oscuro, reducir
+movimiento y el ritmo con la CPU 4× y 6× más lenta), con `playwright.lecciones11.config.ts`. Lo que solo se ve en los
+equipos: la fluidez en el Android (el elemento del circuito dice `data-vivo-fps` y `data-vivo-nivel`) y la vibración.
+
+## Aprender haciendo en las lecciones (1.2)
+
+Las lecciones hechas a mano tienen, además de las tarjetas de la 1.1, **pistas escalonadas** en cada pregunta
+(«Pista», «Otra pista», «Ver la solución»; los peldaños abiertos cuentan como ayuda en el dominio) y **siete pasos
+nuevos** para aprender haciendo, que el autor escribe como datos (guía: `contenido/lecciones11/GUIA.md` §10; ejemplos
+probados: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml`):
+
+- **Prediga y simule** (`simular`): se escribe una estimación con su unidad, se fija y el ngspice de la app simula el
+  circuito; se ve el error relativo y su causa (los errores típicos de la tarjeta: olvidar la carga, pico por eficaz;
+  o un prefijo equivocado, el signo).
+- **Diseñe** (`diseno`): valores E12/E24 para una especificación con tolerancia; se comprueba el diseño nominal y con
+  las tolerancias de las piezas (todas las esquinas o placas de Monte Carlo con semilla), con su informe.
+- **Busque la avería** (`averia`): una avería escondida (abierta, corto, otro valor, al revés), un multímetro virtual
+  (y un osciloscopio en alterna) con medidas que cuestan pasos, y nombrar la pieza; un sospechoso equivocado se
+  explica con las propias medidas. El dibujo no delata la avería (fix12): hasta encontrarla (o saltar la tarjeta)
+  enseña los valores nominales de la placa sana («R₂ 5 kΩ», no «1 GΩ»; también en la descripción para lectores de
+  pantalla) y se comporta como una predicción: sin lectura, sin colores de tensión, leyenda ni «Ver valores», y las
+  partículas a velocidad neutra. Al acertar se ve la placa averiada con sus tensiones; «Otra placa» la vuelve a ocultar.
+  Solo las sondas miden la placa averiada.
+- **Ajuste** (`ajuste`): un mando hasta que una medida entre en su banda, con un medidor en vivo.
+- **En el banco** (`banco`, opcional): piezas, qué medir y lo que debería dar; se escribe lo medido y la app compara y
+  aconseja, con la ficha del cuaderno de prácticas.
+- **Dibuje la forma de onda** (`dibujar`): con el dedo, el ratón o el teclado; se compara con la curva del modelo con
+  una medida de error que perdona un pequeño desfase y un pequeño escalón, y se superpone la buena. El eje x puede ser
+  logarítmico (`escala: log`, un Bode frente a la frecuencia): los puntos van espaciados por décadas y el desfase que se
+  perdona es una fracción del eje en esa escala.
+- **SQL** (`sql`, sección 17.10): SQLite en WebAssembly (sql.js 1.14.2, licencia MIT, unos 700 kB que solo se cargan al
+  abrir una tarjeta SQL), una base de ejemplo con el esquema del libro y datos generados por la app; escribir la
+  consulta, rellenar sus huecos u ordenar sus cláusulas, ver la tabla y los errores explicados en español.
+- **Figuras con zonas y electrónica digital (1.2, motor12c)** (guía: `contenido/lecciones11/GUIA.md` §11; ejemplos
+  probados: `web/tests/lecciones12-catalogo/cap29/sec-29.2.yaml`):
+  - widget **`figura`**: una figura o foto del libro, o una foto de placa del explorador «Consolas» (sus piezas ya
+    identificadas, `hotspots`, son zonas), con zonas que se tocan; se amplía con «+ / −» o con dos dedos y las zonas son
+    también una lista de botones (teclado y lector de pantalla). Paso nuevo **«Toque»** (`tocar`): toque el defecto o
+    la pieza; cada zona equivocada se explica y queda tachada.
+  - widget **`logica`**: un circuito digital vivo (puertas AND, OR, NOT, NAND, NOR, XOR, XNOR; biestables D, JK y T;
+    contador, multiplexor y decodificador; interruptores, reloj con «Pulso» y LED), simulado en la página por eventos y
+    de forma determinista, dibujado solo y con cada cable del color de su nivel (y su «1»/«0» escrito); con su
+    **tabla de verdad** (fila actual marcada) o su **cronograma** (un cursor que lleva el circuito a cada momento).
+  - pasos sobre el circuito: predecir la salida (LED «?»), **«Tabla de verdad»** (`tabla`, rellenarla), **buscar la
+    avería con la sonda lógica** (salida atascada a 0 o a 1, entrada al aire que el TTL lee como 1), **diseñar** una
+    función con el mínimo de puertas (el generador demuestra que no hay un circuito más pequeño) y **dibujar** una señal
+    en modo digital, tramo a tramo y ajustada a los flancos del reloj.
+  - De paso: los nombres de un mando de lista admiten cifras («Sn63Pb37», «0805»), y el generador avisa de un widget
+    oculto sin lectura y de una estimación que empieza en el extremo más alejado; no avisa de pocas medidas en una
+    avería por bisección (`adaptativa: true`).
+  - Pruebas: `tests/lecciones12-digital-unidad.spec.ts` (simulación, dibujo, generador y motor, en Node) y
+    `tests/lecciones12-digital-navegador.spec.ts` (cada tarjeta con teclado y ratón, axe; 360 px en oscuro y sepia).
+- **Peticiones del motor que no son esquemas (1.2, motor12e)** (guía: `contenido/lecciones11/GUIA.md` §3.2, §5.2,
+  §10.2–10.5, §11.7 y §11.9; ejemplos probados: `web/tests/lecciones12-catalogo/cap01/sec-1.12.yaml`):
+  - gráficas: **curvas paramétricas** x(p), y(p) (Nyquist, lugar de las raíces, círculo unidad, XY de I y Q, carta de
+    Smith) con **`aspecto: igual`** (un círculo sale redondo), **secuencias en palitos** y, en una predicción,
+    **`ocultar: curvas`** (u `oculta` por curva o marca): las curvas no salen hasta responder. Las marcas de los ejes
+    llevan las cifras que hagan falta para no repetirse (99,8–100,4 mV ya no da «100 mV» en todas).
+  - `ajuste` con **banda abierta** (solo `max` o solo `min`) y con **varios mandos**.
+  - lenguaje del modelo: `erfc`, `erf` y **`ruido(x, semilla)`** (normal, determinista); `asin`, `acos` y `log2`
+    ya existían y ahora están en la guía.
+  - números de las tablas del libro, **celda a celda** (las celdas vecinas ya no se juntan en «5 100»); `formula` con
+    una ecuación de dentro de una «tarjeta» de repaso (`ec: "cap53#338.1"`); nombres de los ciclos en el cronograma;
+    `simular` sin circuito dice «se calcula con el modelo»; `diseno` con un mando de `lista` no avisa de serie E; la
+    coma decimal que parte unos `nombres` se explica en el error.
+  - recorrido (`tests/lecciones11-recorrido.spec.ts`): un `diseno` se resuelve con una posición que aprueba con las
+    tolerancias, una `averia` al azar se sigue por lo que mide el multímetro, un `ajuste` busca entre todos sus mandos,
+    y `EPA_RECORRER_CATALOGO=1` recorre las lecciones de catálogo de 1.2.
+  - un **listado de código** como figura (un bloque `codigo` del libro o un trozo propio, con líneas resaltadas y
+    zonas de líneas que se tocan) y el **cerrojo D** (`latch`) en los circuitos lógicos.
+  - Pruebas: `tests/lecciones12-motor12e.spec.ts` (en Node) y `tests/lecciones12-motor12e-navegador.spec.ts`
+    (dibujo, curvas ocultas y su salida, banda abierta, ciclos con nombre, listado; axe a 360 px en oscuro).
+- **Esquemas nuevos (1.2, motor12b)**, a petición de los autores de Análisis de circuitos (catálogo en
+  `contenido/lecciones11/GUIA.md` §5.4): `fuente-controlada` (una tensión de control manda una fuente dependiente,
+  dibujada como un rombo: VCCS g_m·v con r_o en paralelo o VCVS A_v·v con r_o en serie, y su carga; secciones 22.11 y
+  22.8), `fuente-corriente-y-tension` (el circuito de la figura 22.9: 12 V con 4 Ω, 3 Ω y 2 A entre los mismos
+  terminales), `sallen-key` y `sallen-key-alto` (paso bajo y paso alto de ganancia unidad, sección 24.5; el operacional
+  ideal o, con `gbw` y `rsal`, con un polo y resistencia de salida, para ver lo que deja pasar muy por encima del corte).
+  Piezas nuevas del kit: `FuenteDep` (rombo con flecha o ±) y `AO` (operacional). Cada uno tiene su tarjeta en la
+  lección de catálogo de las pruebas, comprobada con ngspice (`tests/lecciones11-esquemas.spec.ts`) y recorrida en el
+  navegador (`tests/lecciones11-catalogo.spec.ts`, `tests/lecciones12-fix12.spec.ts`: ningún hilo bajo una pieza o una
+  etiqueta y ninguna partícula sobre ellas). Con ellas la lección de catálogo pasó de 50 tarjetas y destapó un fallo de
+  la cabecera de las lecciones: a 360 px los huecos de 5 px entre los segmentos de la barra de progreso empujaban
+  «Cerrar la lección» fuera de la pantalla; con más de 24 tarjetas los huecos son de 2 px.
+- **Esquemas nuevos (1.2, esquemas12)**, a petición de los autores de Analógica (cap07, cap08) y de Análisis (cap24,
+  cap42), en `contenido/lecciones11/GUIA.md` §5.4 bis: `mosfet` (canal N con R_D, R_G, R_GS y R_S; la ley cuadrática del
+  libro es el LEVEL=1 de ngspice con KP = k y VTO = V_th; puerta continua o PWM), la familia del operacional
+  (`ao-no-inversor` con el seguidor, `ao-inversor`, `ao-sumador`, `ao-integrador`, `comparador-schmitt`) con un solo
+  modelo de operacional documentado (A₀ = 10⁵, raíles sin «wind-up», un polo de GBW, slew rate; en continua, la parte
+  lineal de su región, así que el circuito vivo colorea los hilos también con operacional), `regulador-lineal`
+  (elemento de paso ideal, referencia, divisor y dropout; mide la potencia del paso), `ne555-astable` (con sus dos
+  comparadores, el biestable y el transistor de descarga dibujados), `muestreo-retencion` (adquisición, pedestal Q/C y
+  caída I/C), `rlc-escalon` (respuesta de segundo orden), `trifasica` (estrella con el neutro conectado o cortado, o
+  triángulo) y `transformador-real` (magnetizante y dispersión: la banda pasante); `rlc-serie` mide además su impedancia
+  (`z_amp`, `z_fase`: un condensador de desacoplo con ESR y ESL). Piezas del kit: `Mosfet` (N o P, con diodo interno),
+  `Entrada` (la fuente de entrada: pila o senoidal), `EtiquetasAO`; `AO` con patillas de alimentación opcionales y
+  `FuenteI` que puede apuntar hacia abajo. La comparación con ngspice admite, en los esquemas de conmutación, que un
+  salto del modelo caiga un paso de tiempo antes o después (± 0,15 % del eje; ± 0,4 % en el 555), y en una curva con eje
+  `y` logarítmico la tolerancia ya no es el 0,01 % de la altura del eje (con una impedancia de 0,01 Ω a 10 kΩ, 1 Ω, más
+  que todo el valle del desacoplo). Pruebas: la lección de catálogo (272 comprobaciones con ngspice),
+  `tests/lecciones12-esquemas12.spec.ts` (cada esquema frente a los valores del libro: 139/263/331 V del neutro cortado,
+  687 Hz del 555, ±1,09 V del Schmitt…), `tests/lecciones12-fix12.spec.ts` (cada esquema registrado tiene su tarjeta
+  dibujada; ningún hilo bajo una pieza y ninguna partícula sobre ella). El recorrido de las lecciones
+  (`tests/lecciones11-recorrido.spec.ts`) toca los interruptores cuando una tarjeta no tiene deslizadores bastantes, y
+  la primera estimación equivocada nunca es la posición de partida.
+- **Esquemas nuevos (1.2, esquemas12b)**, a petición de Taller (cap15), en `contenido/lecciones11/GUIA.md` §5.4 bis:
+  `mosfet` con **carga inductiva** (`l` en serie con R_D, la avalancha `bv` y el diodo de rueda libre `vf` con su
+  interruptor `rueda`: el pico al apagar con y sin diodo, sección 4.5; la bobina parte de la corriente de conducción y
+  se extingue en el t = (L/R)·ln(1 + I·R/V) del libro), `rectificador-toma-media` (secundario 15-0-15 con la toma media
+  a masa, un diodo por rama, un condensador por raíl para ±V, carga resistiva o de corriente constante y 78xx/79xx
+  opcionales con su dropout: los 20,5 V y el rizado de la sección 14.2) y `lm3914` (escalera de diez resistencias, diez
+  comparadores, salidas de corriente 10·V_ref/R_ref, modo barra o punto y la disipación del integrado: los 400 mW de la
+  sección 14.4); y `ao-no-inversor` documentado como bloque de ganancia con recorte (el LM386 de la sección 14.3,
+  ganancia 20 o 200). Sin la bobina, la netlist de `mosfet` es la de antes (las lecciones que ya lo usan no cambian).
+  Pruebas: cinco tarjetas más en la lección de catálogo (292 comprobaciones con ngspice) y tres en
+  `tests/lecciones12-esquemas12.spec.ts`.
+- **Esquemas nuevos (1.2, esquemas12c)**, a petición de Analógica (cap23, cap26, cap27, cap43, cap51, cap07, cap08),
+  Taller (cap11, cap12, cap22) y del revisor, en `contenido/lecciones11/GUIA.md` §5.4 ter: `emisor-comun` (la etapa
+  completa en alterna con desvío y acoplos: ganancia, Z_in y corte inferior), `par-diferencial` (cola R_EE o fuente
+  con r_o; ganancia diferencial, de modo común, CMRR y el reparto tanh), `etapa-clase-ab` (par complementario con
+  multiplicador de V_BE, puente a clase B con la zona muerta, deriva térmica y averías de 51.9/51.10),
+  `ao-estabilidad` (dos polos, R_o, C_L, R_iso dentro o fuera del lazo, snubber; la ganancia de lazo T medida con el
+  lazo abierto), `ao-instrumentacion` (tres operacionales, desajuste y modo común), `transimpedancia` (C_in, R_f ∥ C_f
+  y el pico con el GBW), `comparador-no-inversor` (el termostato del problema 26.C), `mosfet-p`, `puerta-transmision`,
+  `lm317` y `sonda-x10` (con el trimmer). Opciones nuevas: `invierte` en `fuente-controlada` (el signo del emisor
+  común), `vf` (LED en el colector) e `iref` (la corriente de V_BE: interruptores de potencia y bases de µA) en
+  `bjt-interruptor`, `reves` en `led` y `diodo`, `rdson` (R_DS(on) de tabla) en `mosfet`, la entrada en rampa
+  (`forma: 3`) y el `ruido` repetible de los operacionales, `union` y `etiqueta` (punto de unión y etiqueta de red,
+  pieza nueva `kit/EtiquetaRed.svelte`) en `divisor`, `muestras` en el eje x de las gráficas (una portadora) y el
+  `Npn` del kit espejado y PNP, el `C` variable (trimmer). Los transistores de pequeña señal caen exactamente V_BE en el
+  punto de trabajo que el esquema calcula (`comun.ts bjtEn`), así que la alterna se compara al 0,1 % con el modelo en π
+  del libro; una lectura de fase da la vuelta como una curva (`spice.ts`). Sin las piezas nuevas, las netlists de los
+  esquemas que ya existían no cambian. Pruebas: 30 tarjetas más en la lección de catálogo (403 comprobaciones con
+  ngspice), ocho en `tests/lecciones12-esquemas12.spec.ts` frente a los valores del libro (52° de margen y 16 % de
+  sobreoscilación con 10 Hz y 1 MHz, G = 101 del amplificador de instrumentación, 5,036 V del LM317, umbrales de
+  2,5975 y 2,4025 V del termostato…) y el recorrido geométrico de `tests/lecciones12-fix12.spec.ts` sobre todos.
+- **Esquemas nuevos (1.2, esquemas12d)**, a petición de Potencia (cap10, cap56), Taller (cap11, cap12), Analógica
+  (cap28) y Digital (cap44), en `contenido/lecciones11/GUIA.md` §5.4 quater: `tiristor` (SCR o TRIAC que se enclava
+  con el pulso de puerta a α y se apaga en el cero de su corriente; carga R o R-L: la potencia 97/50/20 % de la figura
+  10.3), `crowbar` (Zener, R_G y SCR sobre un raíl con fusible de I²t), `motor-cc` (inducido R + L con E = k·ω y la
+  mecánica como circuito, la inercia un condensador: 46,96 A de pico, 4,80 A con rampa, −24 A al frenar), `induccion`
+  (el circuito por fase de la figura 34.5 con el deslizamiento como pieza: 49,84 A y 48,54 N·m parado, 7,887 A y
+  26,61 N·m nominal), `snubber` (el apagado de la figura 10.11: 585 V sin snubber, 448 V con él), `termica` (la cadena
+  unión–cápsula–disipador–ambiente con sus capacidades; el circuito vivo rotula los nodos en °C), `rs485` (polarización,
+  terminaciones, cargas unidad y la terminación activa de PROFIBUS: 211/196 mV y 1,1 V/987 mV), `wien`, `desfase` (con
+  o sin seguidores: 1/29 o 1/8) y `cristal` (modelo BVD, sus dos resonancias), y la etiqueta de red en `led`
+  (`etiqueta`/`etiqueta2`, como en `divisor`). El `reductor` (buck: PWM, diodo o síncrono, DCR, ESR, en régimen permanente desde t = 0: 207 mA de rizado de la
+  sección 33.2). Kit: `kit/Tiristor.svelte` (SCR y TRIAC en horizontal o vertical);
+  `Lienzo` acepta `nodos: { magnitud, unidad }` y el circuito vivo usa esa unidad en las etiquetas y la leyenda. Unidades
+  sin prefijo nuevas: kg·m², A²·s, cm², dBc/Hz, dBµV/m (antes «100 µkg·m²»). Sin las piezas nuevas, las netlists que
+  ya existían no cambian. Pruebas: 17 tarjetas más en la lección de catálogo (478 comprobaciones con ngspice), nueve en
+  `tests/lecciones12-esquemas12.spec.ts` frente a las cifras del libro y el recorrido geométrico de
+  `tests/lecciones12-fix12.spec.ts`.
+- **Una prueba que fallaba a veces (fix12, «espejo»).** La prueba de las partículas medía cada pieza por la caja que
+  envuelve su trazo fuera de los hilos con corriente; la carga del espejo cuelga del hilo de arriba en una T, así que su
+  caja era tan ancha como el zigzag y llegaba a 3 unidades del hilo, y una partícula que pasaba junto a la T, a 7
+  unidades del trazo, encendía 6–7 px «dentro» (107 de 8 436 posiciones en 200 cuadros, ninguna sobre el trazo): según
+  el momento muestreado, fallaba o no. Ahora la tinta de cada pieza se mide trazo a trazo (media anchura + 0,5); las
+  zonas entre trazos siguen siendo los cuerpos declarados y las formas cerradas. Cinco repeticiones seguidas pasan.
+
+Todo se comprueba al generar (una regla rota es un error que dice tarjeta y motivo: retos sin solución con tolerancias,
+averías que no se distinguen, consultas que dependen del día…), y las averías se simulan con ngspice como cualquier
+otro estado. Los números son deterministas (semillas fijas). No cambia nada de lo guardado: ni claves nuevas ni
+migración; el formato de las lecciones sigue en la versión 1 (`ESQUEMA.md`, «Learning-by-doing steps»).
+
+Pruebas: `tests/lecciones12-unidad.spec.ts` (sin navegador) y `tests/lecciones12-navegador.spec.ts` (la lección de
+catálogo de punta a punta, axe y 360 px), con `playwright.lecciones12.config.ts` (puerto 4312).
+
+## El libro 4.1 en la aplicación (1.2)
+
+La aplicación es un espejo de la edición 4.1.0 del libro, con sus erratas 4.1.1 y 4.1.2: todo `web/public/libro/` (y `proyectos/`, `fm7303/`,
+`miniaturas/`) sale de sus fuentes (`EPA_FUENTES`, «Generar el contenido»). Con la 4.1 hay 72 partes (57 capítulos, 11
+apéndices, glosario y tres anexos), 804 secciones, 2 702 etiquetas numeradas, 1 057 figuras (952 dibujos y 105 fotos),
+1 076 ecuaciones, 1 054 términos de glosario, 637 ejercicios y problemas (518 + 119; 632 autocomprobables), 442
+netlists, 1 118 preguntas de repaso y 670 ítems de práctica. La numeración impresa coincide con la del libro etiqueta por
+etiqueta (`figuras/numeros.json`, 0 diferencias). Los tomos (títulos y reparto, con los capítulos que cambiaron de tomo)
+salen de `tomos.json` y `tomos_titulos.json`; la aplicación no los tiene escritos en ningún otro sitio.
+
+- **Identificadores definitivos.** Los capítulos nuevos de la 4.0 dejan los provisionales: `cap-new-automatas` →
+  `cap55` (capítulo 31), `cap-new-maquinas` → `cap56` (34), con sus etiquetas (`sec-55.N`, `fig-`, `ej-`, `prob-55.A`) y
+  las preguntas de repaso (`cap55-01`…). Lo que el lector guardó con la 1.1 se migra al arrancar (`lib/esquemas.ts`,
+  «Data 1.0» de ESQUEMA.md): lectura, marcadores, notas (su texto no se toca), ejercicios, lecciones, XP, dominio,
+  repaso, circuitos del editor, cursos propios y el estado de la sincronización, con copia previa de los originales. El
+  fichero de sincronización pasa al **formato 3**: un equipo con la 1.1 ya no puede escribirlo y pide actualizar.
+  **Sincronice cada equipo justo antes de actualizarlo a la 1.2.** Un QR impreso con los nombres provisionales abre la
+  sección de la 4.1.
+- **Contenido nuevo.** El capítulo 54 de robótica (`cap57`) en «Proyectos completos» (no en «Potencia y energía»: es un
+  sistema entero, no electrónica de potencia); el apéndice K (C para sistemas empotrados, `apK`) cierra «Digital y
+  programable», donde está también la sección 39.16 de ensamblador (`cap38`); las secciones nuevas 17.10 (SQLite), 30.17
+  (control muestreado), 48.4 (GUM), la 30.16 ampliada y lo añadido a 34.5 salen solas en su capítulo. 42 preguntas de
+  autoevaluación del paratexto del libro son ya preguntas de repaso (apK 6, 39.x 2, cap55 6 + 6, cap56 6 + 6, cap57 10;
+  con `"paratexto": true` cuando el número de la respuesta solo lo escribe la solución del paratexto, `repaso.py`).
+- **Lo que hacía la capa de ampliaciones de la 1.1**, ya en las fuentes propias (véase «Ampliaciones del libro»): sus
+  preguntas de repaso, las respuestas y pistas de sus 90 ejercicios (en `ejercicios_curado.txt`, como las de los 30
+  ejercicios nuevos de la 4.0 con su «Para el curado»), el título, las etiquetas y la descripción en español de sus
+  netlists (`contenido/spice_curado.json`, 126, también las 10 nuevas de la 4.0/4.1 sin etiquetas en su cabecera) y las
+  cinco fórmulas de motores (`formulas_cat3.py`, ahora en `cap56`). La pregunta `cap33-18` (V/f) conserva su id y cita la
+  34.6 (`"retirada": "sec-33.13"`).
+- **Ejercicios curados (1.2).** Los 31 ejercicios nuevos de la 4.1 (17.9–17.11, 30.26–30.29, 34.10, 39.6–39.8,
+  48.14–48.16, el capítulo 54 y el apéndice K), que solo tenían lo que sacaba el analizador, y 59 de los 90 de las
+  ampliaciones de la 1.1 que se habían quedado en «comparar con la solución» o con menos de dos pistas, tienen ya su
+  entrada en `ejercicios_curado.txt`: respuestas con unidad y tolerancia, preguntas de elegir o clasificar con el «por
+  qué no» de cada opción, la cita literal de la solución y dos pistas. Cada valor se ha recalculado (NumPy, SciPy para
+  la t de Student, aritmética entera de 16, 32 y 64 bits para el apéndice K). Quedan 632 de 637 autocomprobables (los
+  cinco de la 1.0 que siguen autoevaluados, `tests/razonar11-unidad.spec.ts`). En 30.29 la solución del libro usa
+  desde la 4.1.2 el K<sub>p</sub> = 1,60 del enunciado (1,6082 y 1,5918); se aceptan también los del diseño sin
+  redondear (K<sub>p</sub> = 1,5993, el de las netlists: 1,6075 y 1,5911).
+- **«Por qué no» de las preguntas nuevas.** Las 46 propuestas de `porque10.mjs` sin revisar (de las preguntas de
+  repaso de las ampliaciones y de la 4.1) se han revisado: 6 frases del libro aprobadas (2 con la anterior) y 40
+  rechazadas que llevan en su lugar una explicación breve del error de esa opción, escrita en la revisión con lo que
+  dice el libro (`"propio"` en `contenido/porque_curado.json`; `PorQueNo` la muestra sin comillas ni «Del libro»).
+- **Lo que el libro ya corrige.** Los 33 «Dato que usa la solución del libro» cuyo dato ya da el enunciado se han
+  quitado del curado (queda el de 45.A: los 3 mA a 0,4 V de la norma I²C), y las dos notas «errata» (1.B y 3.B), que
+  el libro ya resuelve. La lección 2.5 dice «la combinación de dos tolerancias» y la 5.7 cita la tabla nueva («Pérdida
+  (100 V, I<sub>RM</sub> = 2 A)»).
+- **Figuras.** La 4.1 redibujó todas las figuras con guion (Inter y colores por papel); sus datos interactivos
+  (`datos/`, que el libro ya no trae) se llevan al dibujo nuevo con `contenido/datos_figuras_recolocar.py`, que vuelve a
+  ejecutar el guion de cada figura en una copia de trabajo y mide el recorte real: 381 movidos de 1 a 4 puntos, 140
+  iguales y uno retirado (0.11: su gráfica pequeña cambió de sitio; queda como figura sin datos).
+- **Glosario.** 1 054 términos, los de `glosario.typ` y los que dicen los créditos y las novedades del libro (rama
+  `fix-4.1.1`, F1–F3): el libro ha separado las 28 entradas que iban pegadas a la anterior (lo que hacía el generador
+  para separarlas se queda, ya no encuentra ninguna) y ha fundido «Control vectorial» en «Control vectorial (FOC)»
+  (34.6, también término clave del capítulo 34), como antes «Deslizamiento» en «Deslizamiento (s)».
+- **«sen» para el seno** (F7): las fórmulas y el texto de 30.10, 30.12, 30.D, 33.10 y 34.x dicen «sen» y «arcsen», y
+  también la fórmula de la máquina síncrona del paratexto de `cap56` y la explicación de la pregunta de repaso de
+  `cap31` sobre la red de adelanto.
+- **Erratas 4.1.2 y figura 40.19** (libro `integra-4.1` en `b97164c`; `Informes/erratas_4.1.0.md`, apartados G–N, y
+  `decisiones_4.1.md`, R1–R8). Regenerado con `EPA_FUENTES`: cambian los bloques 101 de 14.4 (I<sub>LED</sub> ≈
+  10·V<sub>ref</sub>/R<sub>ref</sub>, 1 kΩ da 12,5 mA), 357 de 21.13 (el divisor de la práctica 1, hasta un 6,9 %),
+  57 de 26.2 (el cambio exacto, 0,011 %, y la sensibilidad lineal, 0,0055 %) y la solución de 30.29; las figuras 20.5
+  (BMP, sin GND), 20.34 (compensar con la salida DDS), 21.22 (6,9 %) y 40.19 (descarte por debajo de 1,5 V) y la foto
+  20.23 con rótulos en español, con sus miniaturas. Ninguna numeración cambia. Lo escrito a mano que citaba el texto
+  viejo sigue al libro: las anclas y las tarjetas de las lecciones 14.4, 21.13 y 26.2, el `[ej-31.29]` del curado, la
+  frase aprobada de la pregunta de repaso `cap22-20` (`porque_curado.json`) y el comentario de la escena
+  «Realimentación». El paratexto no cambia (`DIFERENCIAS.md` igual); el índice de los tomos III y IV que genera la
+  aplicación recoge «Tolerancia» en 21.13 y «Sensibilidad» en 26.2.
+
+### Paratexto del libro (`contenido/paratexto/`)
+
+El paratexto de los capítulos (objetivos, términos clave, correspondencia con el grado, resumen, normas y lecturas,
+fórmulas, autoevaluación, dificultad, índice de cada tomo) lo genera este paquete a partir de los datos de la aplicación
+(el `paratexto11` de la entrega 1.1, ahora en el repositorio). Desde la 4.0 el libro lo ha cambiado también a mano; para
+que regenerarlo no deshaga esos cambios, se traen al paquete:
+
+```sh
+python3 contenido/paratexto/scripts/importar_libro.py   # lo cambiado a mano en Fuentes/paratexto → redaccion/libro41.yaml, redaccion/libro41/, redaccion/grado.typ, paratexto.typ
+python3 contenido/paratexto/scripts/generar.py          # datos/<parte>.json desde web/public/libro y contenido/repaso
+python3 contenido/paratexto/scripts/generar_typ.py      # el Typst, en contenido/.cache/paratexto (EPA_PARATEXTO_SALIDA para otra carpeta)
+python3 contenido/paratexto/scripts/comparar.py         # frente a Fuentes/paratexto: contenido/paratexto/DIFERENCIAS.md
+```
+
+Traído del libro: las piezas redactadas de cada parte (`objetivos-cap`, `terminos` —los términos clave que añadió la
+4.1, G5—, `grado`, `resumen` y `normas` con las lecturas de cada capítulo y sus ediciones, E8), la página
+«Correspondencia con el grado» con la numeración de la 4.1 y la auditoría CIN/351/2009 (E3, G1–G7), el paratexto entero
+de las partes escritas fuera del paquete (`cap55`, `cap56`, `cap57`, `apK`) y las preguntas de repaso de la aplicación
+que la autoevaluación del libro no recoge (las 42 de las ampliaciones de la 1.1: `autoev_fuera`). Reglas nuevas del
+generador: «Problema N.X» se escribe `Problema #nr("prob-…")` en las preguntas y en las soluciones (E3). Resultado: 43
+de 78 ficheros iguales byte a byte; las diferencias que quedan, todas en piezas que salen de los datos de la
+aplicación (detalle en `DIFERENCIAS.md`):
+
+- **Números de reserva** (`soluciones`, `formulas`): el libro conserva los números impresos de la 3.0.2 como reserva y
+  la aplicación escribe los de la 4.1; la plantilla imprime siempre los de `NUMS`/`PARTES`, así que el PDF no cambia.
+- **Dificultad** (`niveles`, 8 capítulos: 0, 17, 23, 30, 33, 37, 45 y 48). Desde la 1.2 los puntos que el libro
+  imprime mandan (`importar_libro.py` los trae a `libro41.yaml`, `niveles`), así que regenerar ya no cambia ninguno de
+  los 556 que tiene; los 81 ejercicios que imprime sin puntos (los nuevos desde la 4.0) toman los de
+  `redaccion/niveles.yaml`: los 10 que propone G5 (`propuesta`) y 71 de la aplicación (`aplicacion`, con la misma
+  escala: 1 un cálculo directo aunque dé varios valores, 2 varios pasos o un razonamiento, 3 un diseño o una cadena
+  larga); la regla de `generar.py` solo queda de reserva y avisa si la usa. Cada `dificultad` de `datos/<parte>.json`
+  dice su `origen` (`libro`, `propuesta`, `aplicacion` o `regla`) y el nivel de la regla. **Para el autor**: llevar
+  esos 81 niveles a `niveles` de su `Fuentes/paratexto/<parte>.typ`, y el libro los imprimirá.
+- **Fórmulas** de `cap33`: resuelto en el libro (rama `fix-4.1.1`, F4): ha adoptado la línea que genera la aplicación,
+  `cap33-18` cita la 34.6 y el término clave «Fuerza contraelectromotriz» sale del 33 (`importar_libro.py` lo trae);
+  `cap33.typ` solo difiere ya en los niveles y en los números de reserva de las soluciones, y `cap56.typ` es igual byte
+  a byte (término clave «Control vectorial (FOC)», «sen» en sus fórmulas).
+- **`cap38`**: las dos preguntas nuevas de la 4.1 llevan la unidad como contenido (`[ciclos]`) y sin escapar el guion.
+- **Índice de cada tomo** (`tomo*.typ`): las entradas y sus secciones salen del texto de hoy de la aplicación.
+
+Pruebas (Node, sin navegador): `EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.sync41.config.ts` — los ids frente
+a `Informes/ids_4.1.json`, la migración de un perfil de la 1.1 (`tests/fixtures/perfil-11-capitulos-nuevos.json`: cada
+id renombrado existe en el contenido de la 4.1, notas intactas, copia previa, idempotente), el fichero de formato 2, la
+numeración frente a `numeros.json`, los 792 QR (y los de la 4.0) y los cursos. Con las fuentes del libro ausentes, las
+comprobaciones del libro se saltan.
 
 ## Aprender haciendo (0.10)
 
@@ -1957,6 +2348,35 @@ inventado más allá de frases fijas alrededor de nombres y valores del libro.
 Se generan con `node web/scripts/practica10.mjs` (unos 60 s; también lo llama `contenido/generar.py` al final) en
 `web/public/libro/practica/`. Pruebas: `npx playwright test -c playwright.preguntas10.config.ts
 tests/preguntas10.spec.ts` (puerto 4391); capturas en `tests/capturas/preguntas10/`.
+
+## Consolas por dentro (1.2)
+
+El curso 11 (`#/cursos/consolas`) tiene una parte por consola del explorador «Consolas», en su orden (NES, Neo Geo AES,
+Master System II, Mega Drive, Game Boy, Game Boy Color y Super Nintendo) y unas siete lecciones por consola, del mismo
+estilo que las del libro (una idea por tarjeta, la foto de la placa encima, tocar piezas, circuitos lógicos, ajustes,
+averías que se buscan con el multímetro). Sus datos no salen de una sección del libro sino de los del explorador (sus
+fotos y piezas identificadas, la arquitectura y el decodificador, las fuentes), de los capítulos del libro con los que
+se relacionan y, en las averías, de fuentes externas citadas en cada tarjeta (ConsoleMods, Fabien Sanglard, SNESdev…),
+con su título y su enlace. Cada tarjeta enseña sus fuentes debajo; no hay lección «por pasos» ni prueba de nivel, y
+el lector del libro no las lista. Hechas en la 1.2: las siete de la Super Nintendo, la NES, la Mega Drive, el Master
+System II, la Neo Geo AES, la Game Boy y la Game Boy Color (49; contenido/lecciones11/GUIA.md §12). Las consolas sin
+bloqueo regional por chip lo explican con lo que tienen: el TMSS y los puentes de región de la Mega Drive, la cabecera
+«TMR SEGA» que pide la ROM de arranque del Master System, la BIOS que fija región y modo en la Neo Geo y el logotipo
+de Nintendo que compara la ROM de arranque de la Game Boy (la Game Boy Color solo compara la mitad, lee el indicador
+CGB de la cabecera y sus cartuchos «solo Color» llevan un bloqueo de plástico). Las siete de la Game Boy Color tratan
+solo lo que cambia: doble velocidad, paletas de 15 bits, bancos de VRAM y WRAM, infrarrojos y el convertidor que
+eleva de dos pilas a 5 V. En las averías de la Game Boy, sus fuentes son iFixit, el blog de nitro2k01 y ConsoleMods.
+
+El explorador ya no escribe a mano el número de las figuras del libro de la NES y la Neo Geo: la nota de la foto y
+«Fuentes» lo sacan de `refs.json` por su etiqueta (`fig-37.16`, `fig-37.22`), así que hoy dicen 38.16 y 38.22, los
+números del libro 4.1, y seguirán bien si el libro se vuelve a numerar.
+
+La foto NTSC de la Super Nintendo (placa SNS-CPU-RGB-01 con todos sus chips; Yaca2671, Wikimedia Commons, CC BY-SA 3.0)
+está también en el explorador, como «Cara de componentes · NTSC», con 22 piezas colocadas por las marcas que se leen
+en ella. Las dos fotos PAL de nonSNES dicen ahora lo que son (la placa desnuda y una cara de soldadura con huellas
+vacías) y no marcan piezas que no se ven en ellas. Desde el 13-11 (propietario) la foto NTSC es la principal: el
+explorador abre en ella; la cara A PAL desnuda es la segunda pestaña, con sus recuadros de «dónde va la pieza» y su
+enlace al esquema PAL (desde el esquema, «Ver en la foto» abre la cara A).
 
 ## Cursos, XP y logros (0.11)
 
@@ -2657,11 +3077,25 @@ cd app
 python3 contenido/generar.py
 ```
 
-Lee las fuentes de `/home/claude/v3` (sin modificarlas) y escribe `web/public/libro/`: `indice.json`,
+Lee las fuentes del libro (sin modificarlas) y escribe `web/public/libro/`: `indice.json`,
 `refs.json`, `glosario.json`, `busqueda.json`, `partes/*.json` y las imágenes (`fig/`, `img/`, `ec/`). El
-formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 112 MB): las máquinas de GitHub
+formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 119 MB): las máquinas de GitHub
 Actions no pueden regenerarla, porque hacen falta las fuentes del libro, las tipografías y las fotos, que
 están en otra máquina.
+
+**Dónde está el libro (1.2).** Toda la cadena (`generar.py`, `spice.py`, `repaso.py`, `fm7303.py`,
+`proyectos_kicad*.py`, `formulas_enriquecer.py`, `datos_figuras_recolocar.py`, `paratexto/`) lo busca en un solo sitio,
+`contenido/fuentes.py`: la variable de entorno **`EPA_FUENTES`**, la carpeta `Fuentes/` del repositorio del libro (la
+misma variable que lee su `herramientas/construir.py`); `Complementos/` va a su lado. Sin ella, el libro 4.1 en
+`/home/claude/libro-integra/Fuentes`. También vale la carpeta de trabajo antigua `/home/claude/v3` (con `complementos`
+dentro). En otro equipo, por ejemplo:
+
+```sh
+EPA_FUENTES=~/electronica-libro/Fuentes python3 contenido/generar.py
+```
+
+Las ecuaciones necesitan `typst` (0.15) en el PATH; las figuras, `pdftocairo`; los proyectos KiCad, `kicad-cli`; las
+miniaturas, el Chromium de Playwright.
 
 1.1: los ejercicios nuevos que aún no están en el libro (`contenido/ejercicios_nuevos11/*.yaml`) los añade
 `contenido/ejercicios_nuevos.py` a `ejercicios.json` y `busqueda.json`; lo llama `contenido/ejercicios.py` al terminar
@@ -2679,7 +3113,7 @@ web/scripts/lecciones11.mjs` las comprueba y escribe `web/public/libro/lecciones
 `contenido/glosario_imagenes.py` (también llamado al final de `generar.py`, o solo) escribe
 `web/public/libro/glosario-imagenes.json`: el símbolo de circuito y el modelo 3D de cada término del glosario,
 según una tabla revisada a mano por término (más unas pocas reglas por nombre) e indica la cobertura (hoy 137
-términos con símbolo, 75 con modelo 3D, 54 con ambos y 752 sin imagen, de 910).
+términos con símbolo, 75 con modelo 3D, 54 con ambos y 896 sin imagen, de 1 054).
 
 Al final, `generar.py` llama a `contenido/spice.py`, que también se puede ejecutar solo (más rápido, si
 solo han cambiado las netlists):

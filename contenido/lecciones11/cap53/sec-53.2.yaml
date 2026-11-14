@@ -1,0 +1,276 @@
+# Lección 1.2 de la sección 55.2 «Seguridad: lo que se Hace antes de Tocar Nada» (cap53; etiqueta interna sec-53.2).
+# Formato: contenido/lecciones11/GUIA.md. La descarga de la figura 55.5 viva: 470 µF cargado a 320 V que se descarga
+# por 100 Ω, 1 kΩ o 10 kΩ (esquema carga-rc con el conmutador en descarga). El límite de 30 V para tocar es el de la
+# figura (valor fijado en el modelo). La foto 55.16 del Brymen, en píxeles de la foto de 836 × 1600.
+# Paso práctico: «dibujar» la descarga por 1 kΩ.
+leccion: cap53/sec-53.2
+
+libro:
+  61: "el orden no es negociable"
+  62: "1 kΩ es el compromiso entre rapidez y disipación"
+  63: "Un condensador de 470 µF a 320 V almacena 24 julios"
+  64: "una punta barata anula la protección del instrumento entero"
+  65: "los dos canales comparten la misma masa"
+  "cap53#221": "El Brymen BM869s: pantalla de seis dígitos"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la que se cargó", unidad: V, valor: 320 }
+    R_d: { sim: "R", nombre: "resistencia de descarga", unidad: Ω, valor: 1000 }
+    C_d: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 470e-6 }
+    V_d0: { sim: "V₀", nombre: "tensión inicial del condensador", unidad: V, valor: 320 }
+    d_modo: { tipo: interruptor, nombre: "conmutador en carga", valor: 0 }
+    V_seg: { sim: "V_{seg}", nombre: "límite para tocar", unidad: V, valor: 30 }
+    t_v: { sim: "t", nombre: "tiempo de descarga", unidad: s, valor: 2 }
+  calculos:
+    tau_d: { expr: "R_d*C_d", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    t_30: { expr: "tau_d*ln(V_d0/V_seg)", sim: "t_{30}", nombre: "tiempo hasta 30 V", unidad: s }
+    P_pico: { expr: "V_d0^2/R_d", sim: "P_{pico}", nombre: "pico de potencia en la resistencia", unidad: W }
+    E_d: { expr: "0.5*C_d*V_d0^2", sim: "E", nombre: "energía almacenada", unidad: J }
+    V_t: { expr: "V_d0*exp(-t_v/tau_d)", sim: "v(t)", nombre: "tensión que queda", unidad: V }
+
+tarjetas:
+  - id: explore-descarga
+    tipo: explorar
+    titulo: "Descargar el condensador de filtro"
+    texto: "470 µF cargados a 320 V se descargan por una resistencia. Elija su valor y mire cuánto tarda en bajar de 30 V."
+    libro: [62, 63]
+    fijar: { V_d0: 320, V_seg: 30, d_modo: 0 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_d, r: R_d, c: C_d, v0: V_d0, interruptor: d_modo }
+      lectura: { valor: t_30, rotulo: "Hasta 30 V" }
+      datos:
+        - { valor: tau_d, rotulo: "τ = {{tau_d}}" }
+        - { valor: P_pico, rotulo: "Pico en R: {{P_pico}}" }
+      grafica:
+        x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_d0*exp(-t/tau_d)", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_seg", color: tinta, rotulo: "30 V", discontinua: true }
+        marcas:
+          - { x: "min(t_30, 3)", y: "V_seg*exp((t_30 - min(t_30, 3))/tau_d)", rotulo: "{{t_30}}" }
+      mandos:
+        - { valor: R_d, lista: [100, 1000, 10000], rotulo: "Resistencia de descarga" }
+    requiere: { mover: [R_d] }
+
+  - id: estime-energia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La energía guardada"
+    texto: "¿Cuánta energía almacena un condensador de 470 µF cargado a 320 V?"
+    libro: [63]
+    fijar: { C_d: 470e-6, V_d0: 320 }
+    estimar:
+      objetivo: "E_d"
+      unidad: J
+      min: 0
+      max: 60
+      paso: 1
+      inicio: 50
+      tol: 0.05
+      rotulo: "½ · C · V²"
+    exito: "24 julios: suficiente para una quemadura profunda y para volatilizar la punta de un destornillador."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 25 }, texto: "Se ha pasado: no olvide el medio de ½ · C · V²." }
+      - { texto: "Se ha quedado corto: eleve al cuadrado los 320 V." }
+    escalera:
+      - "E = ½ · C · V², con C en faradios."
+    solucion: "½ · 470 µF · 320² = 24 J."
+    comprobar:
+      - { E_d: 24, tol: 0.01 }
+
+  - id: prediga-100
+    tipo: predecir
+    titulo: "Con 100 Ω, más deprisa"
+    texto: "Si se descarga por 100 Ω en vez de por 1 kΩ, ¿qué pico de potencia soporta la resistencia al empezar?"
+    libro: [62]
+    fijar: { R_d: 100, V_d0: 320, d_modo: 0 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_d, r: R_d, c: C_d, v0: V_d0, interruptor: d_modo }
+      lectura: { valor: P_pico, rotulo: "Pico en R" }
+      grafica:
+        x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_d0*exp(-t/tau_d)", color: naranja, rotulo: "v_{C}", mide: vc }
+      ocultar: true
+    opciones:
+      - texto: "Unos 1 kW: diez veces más que con 1 kΩ"
+        bien: true
+        porque: "Al empezar cae en ella toda la tensión: 320² / 100 da 1 kW, y τ baja a 47 ms."
+      - texto: "Unos 102 W, como con 1 kΩ"
+        porque: "Eso es con 1 kΩ: con una resistencia diez veces menor, la corriente y la potencia suben."
+      - texto: "Menos que con 1 kΩ, porque dura menos"
+        porque: "Dura menos, pero la potencia de pico es V² / R: crece al bajar R."
+    escalera:
+      - "Al conectar, toda la tensión del condensador cae en la resistencia."
+    solucion: "320² / 100 = 1 kW: la resistencia sufre."
+    comprobar:
+      - { P_pico: 1024, tau_d: 0.047 }
+      - { con: { R_d: 1000 }, P_pico: 102.4 }
+
+  - id: compromiso
+    tipo: porque
+    titulo: "¿Por qué 1 kΩ?"
+    texto: "El libro descarga con unos 1 kΩ y 5 W. Mueva la resistencia: ¿por qué ese valor?"
+    libro: [62, 63]
+    fijar: { V_d0: 320, V_seg: 30, d_modo: 0 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_d, r: R_d, c: C_d, v0: V_d0, interruptor: d_modo }
+      lectura: { valor: t_30, rotulo: "Hasta 30 V" }
+      datos:
+        - { valor: P_pico, rotulo: "Pico en R: {{P_pico}}" }
+      grafica:
+        x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_d0*exp(-t/tau_d)", color: naranja, rotulo: "v_{C}", mide: vc }
+      mandos:
+        - { valor: R_d, lista: [100, 1000, 10000], rotulo: "Resistencia de descarga" }
+    opciones:
+      - texto: "Es el compromiso: baja de 30 V en 1,1 s y su pico dura un instante"
+        bien: true
+        porque: "Unos 102 W al empezar, que caen con τ = 0,47 s: una de 5 W lo aguanta."
+      - texto: "Es el más rápido"
+        porque: "Una menor es más rápida, pero la resistencia sufre; un cortocircuito libera los 24 J de golpe."
+      - texto: "Es el que menos se calienta"
+        porque: "10 kΩ disipa menos, pero tarda 11 s en bajar de 30 V: demasiado lento."
+    escalera:
+      - "Mueva la resistencia y compare el tiempo con el pico."
+    solucion: "1 kΩ y 5 W: el compromiso entre rapidez y disipación."
+    comprobar:
+      - { con: { R_d: 10000 }, t_30: 11.1, tol: 0.01 }
+      - { con: { R_d: 1000 }, t_30: 1.11, P_pico: 102.4, tau_d: 0.47, tol: 0.01 }
+
+  - id: dibuje-descarga
+    tipo: dibujar
+    titulo: "Dibuje la descarga"
+    texto: "Dibuje la tensión del condensador de 470 µF, cargado a 320 V, mientras se descarga por 1 kΩ."
+    libro: [62, 63]
+    fijar: { R_d: 1000, C_d: 470e-6, V_d0: 320, V_seg: 30 }
+    dibujar:
+      x: { id: tx, min: 0, max: 3, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 340, unidad: V, rotulo: "v_{C}" }
+      curva: "V_d0*exp(-tx/tau_d)"
+      puntos: 25
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Descarga por 1 kΩ"
+    exito: "Una exponencial: cae deprisa al principio, baja de 30 V en 1,1 s y está casi vacía en 2,4 s."
+    pistas:
+      - { cuando: { valor: media, mayor: 0.05 }, texto: "Su curva queda alta: con τ = 0,47 s, en medio segundo ya ha perdido casi dos tercios." }
+      - { texto: "Empieza en 320 V y cae como una exponencial: deprisa al principio y cada vez más despacio." }
+    escalera:
+      - "En una constante de tiempo, 0,47 s, ya ha perdido casi dos tercios."
+    solucion: "Una exponencial desde 320 V con τ = 0,47 s: casi cero a los 2,4 s."
+    comprobar:
+      - { tau_d: 0.47, t_30: 1.11, tol: 0.01 }
+      - { con: { t_v: 2.4 }, V_t: 1.94, tol: 0.02 }
+
+  - id: aun-cargado
+    tipo: pregunta
+    titulo: "¿Ya está descargado?"
+    texto: "Se descargó por 10 kΩ durante dos segundos. ¿Se puede tocar ya?"
+    libro: [62, 63]
+    fijar: { R_d: 10000, V_d0: 320, t_v: 2, d_modo: 0 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_d, r: R_d, c: C_d, v0: V_d0, interruptor: d_modo }
+      lectura: { valor: V_t, rotulo: "Queda a los 2 s" }
+      grafica:
+        x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_d0*exp(-t/tau_d)", color: naranja, rotulo: "v_{C}", mide: vc }
+        marcas:
+          - { x: "t_v", y: "V_t", rotulo: "{{V_t}}" }
+    opciones:
+      - texto: "No: quedan unos 209 V, y se verifica con el Brymen antes de tocar"
+        bien: true
+        porque: "Con τ = 4,7 s, dos segundos no bastan. Medir convierte la suposición en un hecho."
+      - texto: "Sí: ya se ha descargado"
+        porque: "Es una suposición. Con 10 kΩ, a los 2 s quedan unos 209 V."
+      - texto: "Sí, si el aparato está apagado"
+        porque: "Apagar no descarga nada, y el interruptor puede cortar solo un polo."
+    escalera:
+      - "Calcule τ = R · C y compare con los dos segundos."
+    solucion: "No: 320 · e^{−2/4,7} ≈ 209 V. Hay que medir."
+    comprobar:
+      - { V_t: 209, tau_d: 4.7, tol: 0.01 }
+
+  - id: ordene-red
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Con la red presente"
+    texto: "El orden no es negociable. Ordene los pasos antes de tocar nada."
+    libro: [61, 63]
+    ordenar:
+      - "Desenchufar y esperar."
+      - "Descargar los condensadores de filtro con la resistencia."
+      - "Verificar con el Brymen que están descargados."
+      - "Medir con una mano en el bolsillo si hay tensión."
+    exito: "No basta con apagar: el interruptor puede cortar solo un polo."
+    pistas:
+      - { texto: "No se descarga nada que siga enchufado, y se verifica después de descargar." }
+    escalera:
+      - "Lo primero es quitar la red; lo último, medir con tensión presente."
+    solucion: "Desenchufar, descargar, verificar y, si hay que medir con tensión, una mano en el bolsillo."
+
+  - id: toque-categoria
+    tipo: tocar
+    titulo: "La categoría de medida"
+    texto: "Toque dónde indica el Brymen su categoría de medida."
+    libro: [64, "cap53#221"]
+    widget:
+      tipo: figura
+      figura: fig-53.9
+      zonas:
+        - { id: pantalla, rotulo: "Arriba", rect: [120, 95, 580, 350] }
+        - { id: selector, rotulo: "En el centro", rect: [230, 750, 370, 330] }
+        - { id: com, rotulo: "Borne negro", rect: [440, 1235, 110, 110] }
+        - { id: cat, rotulo: "Abajo a la derecha, bajo los bornes", rect: [515, 1350, 180, 75] }
+    tocar:
+      bien: [cat]
+      porque:
+        pantalla: "La pantalla da la lectura, no la categoría."
+        selector: "El selector elige la función; la categoría no cambia con él."
+        com: "Es el borne común, donde va siempre la punta negra."
+    exito: "CAT IV 1000 V: para la acometida. Pero una punta barata anula la protección del instrumento entero."
+    escalera:
+      - "Busque el rótulo junto a los bornes de tensión."
+    solucion: "Bajo el borne VΩ: «MAX 1000V CAT IV»."
+
+  - id: masa-fnirsi
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La masa flotante del FNIRSI"
+    texto: "Funciona a batería y su masa no va a tierra. Una cada situación con lo que pasa."
+    libro: [65]
+    emparejar:
+      - ["Pinzas de CH1 y CH2 en puntos distintos", "Cortocircuito a través del instrumento"]
+      - ["Cargando por USB desde la red", "Deja de ser flotante"]
+      - ["Pinza referenciada a 300 V", "La pinza está a 300 V"]
+    exito: "Flotante es una ventaja para medir en fuentes conmutadas, no una protección para quien toca."
+    pistas:
+      - { texto: "Los dos canales comparten la misma masa." }
+    escalera:
+      - "El adaptador de red une la masa a tierra."
+    solucion: "Dos pinzas: cortocircuito; USB: ya no flota; a 300 V: la pinza está a 300 V."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [61, 62, 63, 64, 65]
+    ideas:
+      - { titulo: "Desenchufar.", texto: "Apagar no basta: el interruptor puede cortar solo un polo." }
+      - { titulo: "Descargar.", texto: "470 µF a 320 V son 24 J: con 1 kΩ y 5 W, nunca en cortocircuito." }
+      - { titulo: "Verificar.", texto: "Medir con el Brymen convierte la suposición en un hecho." }
+      - { titulo: "Instrumentos.", texto: "CAT IV con puntas de la misma categoría; la masa del FNIRSI flota, pero no protege." }

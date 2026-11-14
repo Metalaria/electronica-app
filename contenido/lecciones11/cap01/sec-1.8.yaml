@@ -91,6 +91,9 @@ tarjetas:
         porque: "Los mAh son carga, no energía: falta multiplicar por la tensión."
     comprobar:
       - { E_wh: 3.0, E_j: 10800 }
+    escalera:
+      - "Energía = carga × tensión, con la carga en amperios-hora."
+    solucion: "2 Ah × 1,5 V = 3,0 Wh."
 
   - id: regla-energia
     tipo: formula
@@ -135,6 +138,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: la tensión no entra en la autonomía; solo capacidad entre consumo." }
     comprobar:
       - { aut: 50, E_wh: 9.25 }
+    escalera:
+      - "La autonomía teórica es la capacidad dividida entre el consumo."
+    solucion: "2500 mAh / 50 mA = 50 h, y guarda 2,5 Ah × 3,7 V = 9,25 Wh. Algo menos en la práctica."
 
   - id: peukert
     tipo: sorpresa
@@ -176,6 +182,9 @@ tarjetas:
     exito: "Entonces cambiar de química importa más que optimizar el firmware."
     pistas:
       - { texto: "La NiMH normal es con diferencia la peor: se mide por meses, no por años." }
+    escalera:
+      - "Compare cuánto pierde cada química en un año."
+    solucion: "Alcalina: un 2 o 3 % al año. NiMH normal: hasta un 20 % al mes. NiMH de baja autodescarga: un 15 % al año. Litio: menos del 1 % anual."
 
   - id: consumo-medio
     tipo: explorar
@@ -200,6 +209,30 @@ tarjetas:
     requiere: { mover: [t_on] }
     comprobar:
       - { con: { t_on: 0.005, I_act: 0.008 }, I_med: 43e-6 }
+
+  - id: ajuste-cinco-anos
+    tipo: ajuste
+    titulo: "Cinco años con una pila"
+    texto: "El nodo toma 8 mA despierto y 3 µA dormido. Acorte el tiempo despierto hasta que la pila de 2 000 mAh dure cinco años."
+    libro: [169, 170]
+    fijar: { I_act: 0.008, I_dor: 0.000003 }
+    inicio: { t_on: 0.05 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: t }
+      y: { min: 0, max: 0.01, unidad: A, rotulo: i }
+      curvas:
+        - { expr: "I_dor + (I_act - I_dor)*floor(1 + t_on - (t - floor(t)))", color: azul, rotulo: consumo }
+        - { expr: "I_med", color: naranja, rotulo: media, discontinua: true }
+      lectura: { valor: I_med, rotulo: "Consumo medio" }
+      mandos:
+        - { valor: t_on, min: 0.001, max: 0.05, paso: 0.001, rotulo: "Despierto cada segundo, t_{activo}" }
+    ajuste:
+      valor: anos
+      min: 5
+      rotulo: "Autonomía teórica"
+      bajo: "Dura poco: acorte el tiempo despierto."
+      dentro: "Cinco años o más: lo que manda es el tiempo activo."
 
   - id: explore-cascada
     tipo: explorar
@@ -244,6 +277,9 @@ tarjetas:
         porque: "Los rendimientos no se promedian: se multiplican, y el total es menor que cualquiera."
     comprobar:
       - { eta_t: 72.7 }
+    escalera:
+      - "Cada etapa se lleva su fracción de lo que le llega: los rendimientos se multiplican."
+    solucion: "0,9 × 0,85 × 0,95 = 72,7 %."
 
   - id: estime-regulador
     tipo: pregunta
@@ -269,6 +305,9 @@ tarjetas:
       - { P_dis: 2.85, eta_r: 36.7 }
       - { con: { V_in: 3.3 }, P_dis: 0 }
       - { caida: 5.7 }
+    escalera:
+      - "Lo que disipa el regulador es la caída por la corriente."
+    solucion: "(9 − 3,3) × 0,5 = 2,85 W. Su rendimiento es 3,3/9, un 37 %: el resto se va en calor."
 
   - id: por-que-directa
     tipo: porque
@@ -283,6 +322,18 @@ tarjetas:
         porque: "El argumento del libro es la energía: la multiplicación de rendimientos."
       - texto: "Cada etapa en cascada consume la misma potencia"
         porque: "Cada una pierde una fracción de lo que le llega, y esas fracciones se multiplican."
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 3.99, unidad: "", rotulo: etapa }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "potencia que queda" }
+      curvas:
+        - { expr: "100*(e_1/100)^min(1, floor(k))*(e_2/100)^min(1, max(0, floor(k) - 1))*(e_3/100)^max(0, floor(k) - 2)", color: azul, rotulo: potencia }
+      lectura: { valor: eta_t, rotulo: "Rendimiento total" }
+      mandos:
+        - { valor: e_2, min: 50, max: 100, paso: 5, rotulo: "Convertidor, η₂" }
+    escalera:
+      - "Con cada etapa añadida en cadena, ¿qué le pasa al rendimiento total?"
+    solucion: "Los rendimientos de la cadena se multiplican: cuantas menos etapas, menos se pierde."
 
   - id: resumen
     tipo: resumen

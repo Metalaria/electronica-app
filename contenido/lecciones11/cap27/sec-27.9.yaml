@@ -1,0 +1,258 @@
+# Lección 1.2 de la sección 26.9 «La Compensación en Detalle: Polo Dominante, Miller y Carga Capacitiva» (cap27).
+# Formato: contenido/lecciones11/GUIA.md. El operacional «descompensado» es un ejemplo mío con el mismo modelo de dos
+# polos de la lección 26.8 pero el primer polo en 50 Hz (en lugar de 10 Hz): sale estable para ganancia ≥ 5 (unos
+# 52°) y con 25° como seguidor, que es la especificación del bloque 283. El cruce se resuelve exacto, como en 26.8.
+# Miller: 30 pF (bloque 278) multiplicados por (1 + A) de la etapa, con A de 300 a 1000 («varios cientos»).
+leccion: cap27/sec-27.9
+
+libro:
+  273: "llega a la unidad antes de que los demás polos aporten desfase"
+  275: "se sacrifica casi todo el ancho de banda"
+  277: "entre la entrada y la salida de la etapa de ganancia"
+  278: "un condensador de 30 pF integrado se comporta como uno de decenas de nanofaradios"
+  282: "hace falta mucha menos compensación"
+  283: "no son estables en seguidor"
+  288: "Resistencia serie de decenas de ohmios entre la salida y la carga, fuera del lazo"
+  289: "Conserva la exactitud en continua"
+  290: "Operacional diseñado para carga capacitiva"
+  296: "funciona en la mesa y falla en la caja"
+  "cap27#236": "Compromiso recomendado"
+  298: "por encima del 50 % de sobreoscilación el circuito está al borde"
+
+modelo:
+  valores:
+    A_0: { sim: "A", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    f_1: { sim: "f₁", nombre: "primer polo", unidad: Hz, valor: 50 }
+    f_2: { sim: "f₂", nombre: "segundo polo", unidad: Hz, valor: 1000000 }
+    G: { sim: "G", nombre: "ganancia del montaje", unidad: "", valor: 5 }
+    C_c: { sim: "C", nombre: "condensador de compensación", unidad: F, valor: 30e-12 }
+    A_e: { sim: "A_{etapa}", nombre: "ganancia de la etapa", unidad: "", valor: 300 }
+    z: { sim: "ζ", nombre: "amortiguamiento", unidad: "", valor: 0.2 }
+    e_9: { sim: "V_{in}", nombre: "nivel medio de la entrada", unidad: V, valor: 0 }
+    a_9: { sim: "A", nombre: "amplitud del escalón", unidad: V, valor: 0.5 }
+    f_9: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 10000 }
+    sq_9: { sim: "forma", nombre: "forma de la entrada (cuadrada)", unidad: "", valor: 1 }
+  calculos:
+    a_q: { expr: "1/(f_1^2*f_2^2)", sim: "a", nombre: "coeficiente", unidad: "" }
+    b_q: { expr: "1/f_1^2 + 1/f_2^2", sim: "b", nombre: "coeficiente", unidad: "" }
+    c_q: { expr: "1 - (A_0/G)^2", sim: "c", nombre: "coeficiente", unidad: "" }
+    f_c: { expr: "sqrt((-b_q + sqrt(b_q^2 - 4*a_q*c_q))/(2*a_q))", sim: "f_{c}", nombre: "frecuencia de cruce", unidad: Hz }
+    P_m: { expr: "180 - (atan(f_c/f_1) + atan(f_c/f_2))*180/pi", sim: "MF", nombre: "margen de fase", unidad: "°", cifras: 3 }
+    G_db: { expr: "20*log10(G)", sim: "1/β", nombre: "ganancia del montaje en dB", unidad: dB }
+    C_m: { expr: "C_c*(1 + A_e)", sim: "C_{Miller}", nombre: "capacidad equivalente", unidad: F }
+    gbw_9: { expr: "A_0*f_1", sim: "GBW", nombre: "producto ganancia-ancho de banda", unidad: Hz }
+    w1_9: { expr: "2*pi*gbw_9/A_0", sim: "ω₁", nombre: "primer polo", unidad: "rad/s" }
+    w2_9: { expr: "2*pi*f_2", sim: "ω₂", nombre: "segundo polo", unidad: "rad/s" }
+    be_9: { expr: "1", sim: "β", nombre: "fracción realimentada", unidad: "" }
+    wn_9: { expr: "sqrt(w1_9*w2_9*(1 + A_0*be_9))", sim: "ω_{n}", nombre: "pulsación propia", unidad: "rad/s" }
+    z_9: { expr: "(w1_9 + w2_9)/(2*wn_9)", sim: "ζ", nombre: "amortiguamiento", unidad: "" }
+    G0_9: { expr: "A_0/(1 + A_0*be_9)", sim: "G₀", nombre: "ganancia en continua", unidad: "" }
+    wd_9: { expr: "wn_9*sqrt(1 - z_9^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    so_9: { expr: "100*exp(-pi*z_9/sqrt(1 - z_9^2))", sim: "sobreoscilación", nombre: "sobreoscilación", unidad: "%", cifras: 2 }
+    t0_9: { expr: "1/(2*f_9)", sim: "t₀", nombre: "instante del escalón", unidad: s }
+    O_s: { expr: "100*exp(-pi*z/sqrt(1 - z^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-descompensado
+    tipo: explorar
+    titulo: "Un operacional descompensado"
+    texto: "Lleva menos compensación y más ancho de banda. Cambie la ganancia del montaje y mire el margen de fase."
+    nota: "Polos de ejemplo en 50 Hz y 1 MHz."
+    libro: [282, 283]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+        - { expr: "G_db", color: naranja, rotulo: "montaje, 1/β", discontinua: true }
+      marcas:
+        - { x: "f_c", y: "G_db", rotulo: "cruce: {{f_c}}" }
+      lectura: { valor: P_m, rotulo: "Margen de fase" }
+      mandos:
+        - { valor: G, lista: [1, 5, 10], nombres: [seguidor, "ganancia 5", "ganancia 10"], rotulo: "Montaje" }
+    requiere: { mover: [G] }
+    comprobar:
+      - { f_1: 50, f_2: 1000000 }
+
+  - id: prediga-seguidor
+    tipo: predecir
+    titulo: "Estable para ganancia ≥ 5"
+    texto: "Un operacional especificado «estable para ganancia ≥ 5» se monta como seguidor. ¿Qué pasa?"
+    libro: [283]
+    fijar: { G: 1 }
+    widget:
+      tipo: circuito
+      esquema: ao-estabilidad
+      piezas: { entrada: e_9, amplitud: a_9, f: f_9, forma: sq_9, a0: A_0, gbw: gbw_9, polo2: f_2 }
+      lectura: { valor: P_m, rotulo: "Margen como seguidor" }
+      datos:
+        - { valor: so_9, rotulo: "Sobreoscilación: {{so_9}}" }
+      grafica:
+        x: { id: t, min: 0.0000495, max: 0.000052, unidad: s, rotulo: "t" }
+        y: { min: -1, max: 1, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "G0_9*(e_9 + a_9) - 2*a_9*G0_9*ceil((t - t0_9)/1e9)*(1 - exp(-z_9*wn_9*max(0, t - t0_9))*(cos(wd_9*max(0, t - t0_9)) + z_9*wn_9/wd_9*sin(wd_9*max(0, t - t0_9))))", color: naranja, rotulo: "v_{o}", mide: salida }
+      ocultar: true
+    opciones:
+      - texto: "Se queda casi sin margen y oscila o timbra"
+        bien: true
+        porque: "En seguidor la ganancia de lazo es la máxima: el cruce sube a donde el segundo polo ya resta mucha fase."
+      - texto: "Funciona mejor: el seguidor es lo más sencillo"
+        porque: "Es justo al revés: el seguidor es el caso difícil."
+      - texto: "Da ganancia 5 en lugar de 1"
+        porque: "La ganancia la fija la red; la especificación habla de estabilidad."
+    escalera:
+      - "¿Qué montaje tiene más ganancia de lazo, el de ganancia 5 o el seguidor?"
+    solucion: "Unos 25° de margen en este ejemplo: oscila o timbra."
+    comprobar:
+      - { P_m: 25.2, tol: 0.01 }
+
+  - id: ajuste-ganancia
+    tipo: ajuste
+    titulo: "La ganancia mínima estable"
+    texto: "Suba la ganancia del montaje hasta el margen de fase recomendado, de 45 a 60°."
+    libro: [282, 283, "cap27#236"]
+    inicio: { G: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+        - { expr: "G_db", color: naranja, rotulo: "montaje, 1/β", discontinua: true }
+      marcas:
+        - { x: "f_c", y: "G_db", rotulo: "cruce" }
+      lectura: { valor: P_m, rotulo: "Margen de fase" }
+      mandos:
+        - { valor: G, min: 1, max: 10, paso: 0.5, rotulo: "Ganancia del montaje" }
+    ajuste:
+      valor: P_m
+      min: 45
+      max: 60
+      rotulo: "Margen de fase"
+      escala: { min: 0, max: 90 }
+      bajo: "Poco margen: suba la ganancia, el cruce bajará en frecuencia."
+      alto: "Más de 60°: muy estable, pero lento. Baje un poco la ganancia."
+      dentro: "Entre 45 y 60°: con más ganancia hace falta menos compensación."
+
+  - id: explore-miller
+    tipo: explorar
+    titulo: "Miller a favor"
+    texto: "Los 30 pF de compensación van entre la entrada y la salida de la etapa de ganancia. Cambie su ganancia y mire la capacidad que parece."
+    libro: [277, 278]
+    widget:
+      tipo: grafica
+      x: { id: ae, min: 0, max: 1000, unidad: "", rotulo: "A_{etapa}" }
+      y: { min: 0, max: 0.00000004, unidad: F, rotulo: "C equivalente" }
+      curvas:
+        - { expr: "C_c*(1 + ae)", color: azul, rotulo: "C · (1 + A)" }
+      marcas:
+        - { x: "A_e", y: "C_m", rotulo: "{{C_m}}" }
+      lectura: { valor: C_m, rotulo: "Capacidad equivalente" }
+      mandos:
+        - { valor: A_e, lista: [300, 500, 1000], rotulo: "Ganancia de la etapa" }
+    requiere: { mover: [A_e] }
+    comprobar:
+      - { C_c: 30e-12 }
+
+  - id: por-que-miller
+    tipo: porque
+    titulo: "¿Por qué ahí?"
+    texto: "El condensador de compensación no va a masa, sino entre entrada y salida de la etapa. ¿Por qué?"
+    libro: [277, 278]
+    fijar: { A_e: 500 }
+    widget:
+      tipo: grafica
+      x: { id: ae, min: 0, max: 1000, unidad: "", rotulo: "A_{etapa}" }
+      y: { min: 0, max: 0.00000004, unidad: F, rotulo: "C equivalente" }
+      curvas:
+        - { expr: "C_c*(1 + ae)", color: azul, rotulo: "C · (1 + A)" }
+    opciones:
+      - texto: "El efecto Miller lo multiplica por la ganancia: unos picofaradios hacen de nanofaradios"
+        bien: true
+        porque: "Así la compensación cabe en el chip. Es uno de los pocos casos en que el efecto Miller resulta imprescindible."
+      - texto: "Porque a masa cargaría la fuente de alimentación"
+        porque: "No es cuestión de alimentación: un condensador de nanofaradios no cabría en el silicio."
+      - texto: "Porque así no afecta al ancho de banda"
+        porque: "Lo afecta, y mucho: es el que limita el GBW. Ahí, además, se multiplica."
+    escalera:
+      - "¿Qué le pasa a una capacidad entre entrada y salida de una etapa inversora de ganancia A?"
+    solucion: "Miller la multiplica por (1 + A): pocos picofaradios integrados bastan."
+
+  - id: empareje-carga
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres soluciones para la carga capacitiva"
+    texto: "Una cada solución con su rasgo."
+    libro: [288, 289, 290]
+    emparejar:
+      - ["Resistencia serie a la salida", "La más simple; cuesta una pequeña caída"]
+      - ["Realimentar desde la carga en continua y desde antes en alterna", "Conserva la exactitud en continua"]
+      - ["Operacional para carga capacitiva", "Diseñado para ello"]
+    exito: "La resistencia serie saca el polo de la carga fuera del lazo."
+    pistas:
+      - { texto: "La que usa un condensador además de la resistencia es la de dos caminos." }
+    escalera:
+      - "La más usada es también la más simple."
+    solucion: "Resistencia–sencilla, dos caminos–exactitud, operacional específico–diseñado."
+
+  - id: sintomas
+    tipo: pregunta
+    titulo: "Funciona en la mesa"
+    texto: "Un circuito funciona en la mesa y falla al meterlo en la caja, con sus cables. ¿Qué sospecha?"
+    libro: [296]
+    fijar: { G: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+        - { expr: "G_db", color: naranja, rotulo: "montaje, 1/β", discontinua: true }
+    opciones:
+      - texto: "Un lazo mal compensado: la carga del cableado le quita el poco margen que tenía"
+        bien: true
+        porque: "La sensibilidad a la carga o al cableado es un síntoma, como el pico antes del corte o el timbre."
+      - texto: "Un fallo de alimentación"
+        porque: "Podría ser, pero el patrón mesa sí, caja no, apunta a las capacidades del cableado."
+      - texto: "Ruido de la red"
+        porque: "El ruido no hace oscilar; la oscilación, de megahercios, a veces se confunde con ruido."
+    escalera:
+      - "¿Qué añade un cable largo a la salida?"
+    solucion: "Un lazo con poco margen, al que el cableado añade carga capacitiva."
+
+  - id: escalon-borde
+    tipo: pregunta
+    titulo: "El escalón del banco"
+    texto: "Un escalón pequeño da un 53 % de sobreoscilación. ¿Cómo está el circuito?"
+    libro: [298]
+    widget:
+      tipo: grafica
+      x: { id: wt, min: 0, max: 15, unidad: "", rotulo: "ω₀t" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z*wt)*(cos(sqrt(1 - z^2)*wt) + z/sqrt(1 - z^2)*sin(sqrt(1 - z^2)*wt))", color: naranja, rotulo: "salida" }
+      lectura: { valor: O_s, rotulo: "Sobreoscilación" }
+    opciones:
+      - texto: "Al borde: hay que compensar"
+        bien: true
+        porque: "Por encima del 50 % de sobreoscilación el margen es muy escaso."
+      - texto: "Bien: sobreoscila, pero se estabiliza"
+        porque: "Se estabiliza ahora; cualquier cambio de carga o temperatura puede hacerlo oscilar."
+      - texto: "No se sabe sin un analizador de redes"
+        porque: "La sobreoscilación se traduce en margen de fase; basta para decidir."
+    escalera:
+      - "La correspondencia es aproximada, pero sirve para decidir."
+    solucion: "Al borde: más del 50 % pide compensación."
+    comprobar:
+      - { O_s: 52.7, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [273, 275, 278, 283]
+    ideas:
+      - { titulo: "Polo dominante.", texto: "La ganancia cae a la unidad antes de que los otros polos den fase; se paga en ancho de banda." }
+      - { titulo: "Miller.", texto: "El condensador entre entrada y salida de la etapa se multiplica: cabe en el chip." }
+      - { titulo: "Descompensados.", texto: "Más banda, pero estables solo por encima de cierta ganancia: no en seguidor." }

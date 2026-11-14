@@ -1,0 +1,285 @@
+# Lección 1.2 de la sección 14.4 «Proyecto 3: Indicador de Nivel con LM3914» (cap15; etiqueta sec-15.4).
+# Formato: contenido/lecciones11/GUIA.md. El integrado se dibuja con el esquema «lm3914» (diez comparadores sobre una
+# cadena de diez resistencias iguales; el LED k se enciende con la entrada por encima de V_LO + k·ΔV/10, ficha 7); la
+# gráfica de las preguntas es su escalera. La escala de 0 a 5 V es un EJEMPLO (el libro no fija una). La corriente por
+# LED es la del bloque 101: unas diez veces la de la referencia, I_LED ≈ 10·V_ref/R_ref; con los 1,25 V de la
+# referencia interna, 1 kΩ da 10 × 1,25 mA = 12,5 mA (la relación y las cifras son del libro desde la errata 4.1.2,
+# L). El exceso de 4 V del bloque 97 se reparte en 6 V de alimentación de los LED y 2 V de caída (EJEMPLO).
+leccion: cap15/sec-15.4
+
+libro:
+  87: "es un convertidor A/D flash en miniatura"
+  90: "Una cadena de diez resistencias iguales entre dos referencias."
+  91: "Al subir la entrada, los comparadores van conmutando uno tras otro."
+  92: "con doce bits harían falta cuatro mil"
+  94: "La patilla 9 elige el modo"
+  95: "Consume mucho —hasta diez veces la corriente de un LED— y es más legible."
+  96: "Consume una décima parte."
+  97: "Con 10 LED a 10 mA y 4 V de exceso, son 400 mW dentro del chip."
+  98: "alimentar los LED desde una tensión ajustada"
+  101: "1 kΩ da 10 × 1,25 mA = 12,5 mA por LED"
+  104: "Existe además el LM3915, con la escala logarítmica de 3 dB por paso ya incorporada"
+  107: "No sirve para medir"
+  108: "Para vigilar una magnitud que cambia, la barra es mejor aunque tenga menos resolución."
+  112: "Medir la corriente total en modo barra y en modo punto, comprobando el factor diez"
+
+modelo:
+  valores:
+    v_in: { sim: "V_{entrada}", nombre: "tensión de entrada", unidad: V, valor: 0.55 }
+    V_LO: { sim: "V_{LO}", nombre: "extremo inferior de la cadena", unidad: V, valor: 0 }
+    V_HI: { sim: "V_{HI}", nombre: "extremo superior de la cadena", unidad: V, valor: 5 }
+    m_b: { tipo: interruptor, nombre: "modo barra", valor: 1 }
+    R_ref: { sim: "R_{ref}", nombre: "resistencia de la referencia a masa", unidad: Ω, valor: 1000 }
+    V_ref: { sim: "V_{ref}", nombre: "tensión de la referencia", unidad: V, valor: 1.25 }
+    V_led: { sim: "V_{LED}", nombre: "alimentación de los LED", unidad: V, valor: 6 }
+    V_fl: { sim: "V_{F}", nombre: "caída de un LED", unidad: V, valor: 2 }
+  calculos:
+    d_v: { expr: "(V_HI - V_LO)/10", sim: "ΔV/10", nombre: "escalón de la cadena", unidad: V }
+    n_on: { expr: "min(10, max(0, floor(10*(v_in - V_LO)/(V_HI - V_LO))))", sim: "n", nombre: "nivel de la entrada", unidad: "" }
+    V_ex: { expr: "V_led - V_fl", sim: "V_{exceso}", nombre: "alimentación menos la caída del LED", unidad: V }
+    I_ref: { expr: "V_ref/R_ref", sim: "I_{ref}", nombre: "corriente de la referencia", unidad: A }
+    I_led: { expr: "10*I_ref", sim: "I_{LED}", nombre: "corriente por LED", unidad: A }
+    n_i: { expr: "m_b*n_on + (1 - m_b)*min(n_on, 1)", sim: "LED", nombre: "LED encendidos", unidad: "" }
+    I_tot: { expr: "n_i*I_led", sim: "I_{LED total}", nombre: "corriente de los LED", unidad: A }
+    P_c: { expr: "I_tot*V_ex", sim: "P", nombre: "disipación en el chip", unidad: W }
+
+tarjetas:
+  - id: explore-escalera
+    tipo: explorar
+    titulo: "Diez comparadores en escalera"
+    texto: "Suba la entrada despacio: cada comparador conmuta al pasar su escalón de la cadena."
+    nota: "Escala de ejemplo, de 0 a 5 V."
+    libro: [90, 91, 87]
+    widget:
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
+      lectura: { valor: n_i, rotulo: "LED encendidos" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
+      mandos:
+        - { valor: v_in, min: 0.05, max: 5.45, paso: 0.1, rotulo: "Entrada" }
+    requiere: { mover: [v_in] }
+    comprobar:
+      - { V_LO: 0, V_HI: 5 }
+
+  - id: prediga-nivel
+    tipo: predecir
+    titulo: "A media escala"
+    texto: "En modo barra, con la escala de 0 a 5 V y la entrada a 2,7 V, ¿cuántos LED se encienden?"
+    libro: [90, 95]
+    fijar: { v_in: 2.7, m_b: 1 }
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
+      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
+      curvas:
+        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+      lectura: { valor: n_i, rotulo: "LED encendidos" }
+      ocultar: true
+    opciones:
+      - texto: "Cinco"
+        bien: true
+        porque: "Cada escalón es la décima parte de la escala, 0,5 V: 2,7 V pasa cinco escalones."
+      - texto: "Uno"
+        porque: "Ese sería el modo punto: solo el del nivel."
+      - texto: "Seis"
+        porque: "El sexto escalón está en 3,0 V; la entrada no llega."
+    escalera:
+      - "La cadena reparte la escala en diez escalones iguales."
+    solucion: "Cinco."
+    comprobar:
+      - { n_i: 5, d_v: 0.5 }
+      - { con: { v_in: 3.0 }, n_on: 6 }
+
+  - id: doce-bits
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un flash de doce bits"
+    texto: "Un flash necesita un comparador por nivel. ¿Cuántos harían falta para doce bits?"
+    libro: [92]
+    estimar:
+      objetivo: "2^12 - 1"
+      unidad: ""
+      min: 0
+      max: 10000
+      paso: 50
+      inicio: 500
+      tol: 0.05
+      rotulo: "Comparadores"
+    exito: "Unos cuatro mil: por eso un flash de muchos bits es inviable."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4300 }, texto: "Se ha pasado: doce bits son unos cuatro mil niveles." }
+      - { texto: "Se ha quedado corto: cada bit más duplica los niveles." }
+    escalera:
+      - "Diez niveles piden diez comparadores; cada bit más duplica los niveles."
+    solucion: "Unos cuatro mil."
+    comprobar:
+      - { con: { v_in: 0.5 }, n_on: 1 }
+
+  - id: sorpresa-modo
+    tipo: sorpresa
+    titulo: "Punto o barra"
+    texto: "Con la entrada al máximo, cambie entre modo barra y modo punto. Mire la corriente de los LED."
+    libro: [95, 96]
+    fijar: { v_in: 5.5, R_ref: 1000 }
+    inicio: { m_b: 1 }
+    widget:
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
+      lectura: { valor: I_tot, rotulo: "Corriente de los LED" }
+      datos:
+        - { valor: n_i, rotulo: "LED encendidos: {{n_i}}" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
+      mandos:
+        - { valor: m_b, tipo: interruptor, rotulo: "Modo barra" }
+    requiere: { mover: [m_b] }
+
+  - id: por-que-calienta
+    tipo: porque
+    titulo: "¿Por qué se calienta en barra?"
+    texto: "Diez LED a 10 mA con 4 V de exceso: 400 mW dentro del chip. ¿Por qué ahí y no en los LED?"
+    libro: [97, 98]
+    fijar: { v_in: 5.5, m_b: 1, R_ref: 1250 }
+    widget:
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
+      lectura: { valor: P_c, rotulo: "Disipación en el chip" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
+    opciones:
+      - texto: "Sus salidas son fuentes de corriente: disipan lo que sobra entre la alimentación y el LED"
+        bien: true
+        porque: "Por eso conviene alimentar los LED desde una tensión ajustada, no desde el raíl más alto."
+      - texto: "Porque los comparadores consumen mucho"
+        porque: "Lo que calienta son las salidas con su exceso de tensión."
+      - texto: "Porque la cadena de resistencias se calienta"
+        porque: "La cadena lleva muy poca corriente; el calor está en las salidas."
+    escalera:
+      - "Diez salidas por 10 mA por 4 V."
+    solucion: "Las salidas disipan el exceso de tensión: 400 mW."
+    comprobar:
+      - { P_c: 0.4, I_led: 0.01 }
+
+  - id: ajuste-brillo
+    tipo: ajuste
+    titulo: "Diez miliamperios por LED"
+    texto: "Con 1 kΩ cada LED lleva 12,5 mA. Cambie la resistencia de la referencia hasta 10 mA."
+    libro: [101]
+    inicio: { R_ref: 1000 }
+    fijar: { v_in: 5.5, m_b: 0 }
+    widget:
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
+      lectura: { valor: I_led, rotulo: "Corriente por LED" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
+      mandos:
+        - { valor: R_ref, serie: E12, min: 470, max: 2200, rotulo: "R de la referencia (E12)" }
+    ajuste:
+      valor: I_led
+      objetivo: 0.01
+      tol: 0.05
+      rotulo: "Corriente por LED"
+      bajo: "Poca corriente: baje la resistencia."
+      alto: "Demasiada corriente: suba la resistencia."
+      dentro: "Dentro de la banda: unos 10 mA por LED."
+
+  - id: escala-brillo
+    tipo: pregunta
+    titulo: "Cambiar la escala, cambiar el brillo"
+    texto: "Cambia la resistencia de la referencia para cambiar la escala. ¿Qué más cambia?"
+    libro: [101]
+    fijar: { v_in: 5.5, m_b: 1 }
+    widget:
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
+      lectura: { valor: I_led, rotulo: "Corriente por LED" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
+    opciones:
+      - texto: "El brillo: la misma resistencia fija la corriente de los LED"
+        bien: true
+        porque: "Es una elegancia del diseño y una fuente de confusión."
+      - texto: "Nada más: solo la escala"
+        porque: "La corriente de los LED es unas diez veces la de la referencia."
+      - texto: "El número de LED"
+        porque: "Siguen siendo diez niveles: cambian sus umbrales y su brillo."
+    escalera:
+      - "¿Qué fija, además, la resistencia entre la referencia y masa?"
+    solucion: "El brillo de los LED."
+
+  - id: vumetro
+    tipo: pregunta
+    titulo: "Un vúmetro"
+    texto: "Para audio se quiere una escala en decibelios. ¿Qué es lo razonable?"
+    libro: [104]
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
+      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
+      curvas:
+        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+    opciones:
+      - texto: "El LM3915, con 3 dB por paso ya incorporados"
+        bien: true
+        porque: "El oído responde de forma logarítmica; una escala lineal concentra la información arriba."
+      - texto: "El LM3914 tal cual: los escalones iguales sirven"
+        porque: "Escalones lineales: toda la información se amontona en el extremo superior."
+      - texto: "Un convertidor de muchos bits"
+        porque: "Para vigilar de un vistazo, la barra; lo que falta es la escala logarítmica."
+    escalera:
+      - "¿Cómo responde el oído al nivel?"
+    solucion: "El LM3915, logarítmico."
+
+  - id: medir-no
+    tipo: pregunta
+    titulo: "¿Sirve para medir?"
+    texto: "¿Para qué sirve, y para qué no, un indicador de diez LED?"
+    libro: [107, 108]
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
+      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
+      curvas:
+        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+    opciones:
+      - texto: "Para vigilar de un vistazo; no para medir"
+        bien: true
+        porque: "Diez niveles son poco más de tres bits; para medir hace falta un convertidor y un display."
+      - texto: "Para medir con precisión: es un convertidor"
+        porque: "Su exactitud es la de sus comparadores y su referencia."
+      - texto: "Para nada: un número siempre es mejor"
+        porque: "Para una magnitud que cambia, la barra se lee mejor."
+    escalera:
+      - "¿Cuántos bits son diez niveles?"
+    solucion: "Vigilar sí; medir no."
+
+  - id: banco-consumo
+    tipo: banco
+    titulo: "El factor diez, medido"
+    texto: "Con 1 kΩ en la referencia y la entrada al máximo, mida la corriente de los LED en modo barra."
+    libro: [112, 101, 94]
+    fijar: { v_in: 5.5, m_b: 1, R_ref: 1000 }
+    banco:
+      piezas: ["LM3914 y diez LED", "1 kΩ entre la referencia y masa", "Fuente o potenciómetro para la entrada", "Brymen en serie, en mA"]
+      medir: "La corriente que toma la alimentación de los LED."
+      esperado: I_tot
+      unidad: A
+      tol: 0.2
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.2 }, texto: "Mide de más: el integrado suma su propio consumo si mide en la alimentación común." }
+        - { texto: "Mide de menos: ¿está en modo punto? Compruebe la patilla 9." }
+      ficha: { n: 7, titulo: "Indicador de nivel con LM3914" }
+    comprobar:
+      - { I_tot: 0.125 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [87, 95, 97, 101]
+    ideas:
+      - { titulo: "Un flash.", texto: "Diez comparadores sobre una cadena de resistencias iguales." }
+      - { titulo: "Punto o barra.", texto: "La barra consume hasta diez veces más y calienta el chip." }
+      - { titulo: "La referencia.", texto: "Fija la escala y también el brillo: 1 kΩ, 12,5 mA." }
+      - { titulo: "Su uso.", texto: "Vigilar de un vistazo, no medir." }

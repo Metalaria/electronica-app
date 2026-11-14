@@ -1,0 +1,203 @@
+# Lección 1.2 de la sección K.2 «Punteros, Vectores y Estructuras» (apK). Formato: contenido/lecciones11/GUIA.md (§11).
+# El ejemplo de relleno es el del libro (struct muestra: 12 bytes en un Cortex-M, 8 ordenada, 6 en el AVR; comprobado en
+# Complementos/codigo/apK/tamanos). Figura K.1 (svg_vista 325,42 × 187,09) para dónde apunta un puntero.
+leccion: apK/sec-K.2
+
+libro:
+  15: "p + 1 apunta al elemento siguiente, sea un byte o un uint32_t de cuatro"
+  16: "const uint8_t *p apunta a datos que no se pueden cambiar a través de él"
+  17: "como la tabla de vectores de interrupción, que es exactamente eso"
+  20: "struct muestra {"
+  19: "el compilador mete bytes de relleno para alinear cada campo"
+  21: "struct muestra ocupa 12 bytes"
+  22: "su relleno y el orden de sus bytes dependen del compilador"
+  "apK#69": "Dónde acaba cada parte de un programa en C en la memoria de un microcontrolador"
+
+modelo:
+  valores:
+    al: { sim: "alineación", nombre: "alineación del uint32_t", unidad: "", valor: 4 }
+    b1: { sim: "uint8_t", nombre: "bytes de un uint8_t", unidad: "", valor: 1 }
+    b4: { sim: "uint32_t", nombre: "bytes de un uint32_t", unidad: "", valor: 4 }
+  calculos:
+    tam: { expr: "ceil((ceil(b1/al)*al + b4 + b1)/al)*al", sim: "sizeof", nombre: "tamaño de struct muestra", unidad: "" }
+    tam_ord: { expr: "ceil((b4 + 2*b1)/al)*al", sim: "sizeof", nombre: "tamaño de la estructura ordenada", unidad: "" }
+    rel_fin: { expr: "ceil((b4 + 2*b1)/al)*al - b4 - 2*b1", sim: "relleno", nombre: "relleno al final de la ordenada", unidad: "" }
+    tam_avr: { expr: "b4 + 2*b1", sim: "sizeof", nombre: "tamaño en el AVR", unidad: "" }
+
+tarjetas:
+  - id: explore-punteros
+    tipo: explorar
+    titulo: "Un puntero es una dirección"
+    texto: "Un puntero guarda una dirección de la Flash o de la RAM, y su tipo dice qué hay en ella. Toque las zonas."
+    libro: [15, "apK#69"]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50], texto: "El código: un puntero a función apunta aquí." }
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26], texto: "Constantes: lo que recibe un const uint8_t *." }
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "Variables: lo que recorre un puntero a un vector." }
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28], texto: "La pila: las variables locales." }
+    requiere: { mover: [text, ram] }
+
+  - id: prediga-p-mas-uno
+    tipo: predecir
+    titulo: "p + 1"
+    texto: "p es un puntero a uint32_t que apunta a la dirección 0x0100. ¿Adónde apunta p + 1?"
+    libro: [15]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "Un vector de uint32_t en la RAM." }
+    opciones:
+      - { texto: "Al elemento siguiente, 4 bytes más allá", bien: true, porque: "El tipo dice qué hay en la dirección: p + 1 salta un uint32_t entero." }
+      - { texto: "Un byte más allá", porque: "Eso pasaría con un puntero a uint8_t; este apunta a elementos de cuatro bytes." }
+      - { texto: "Al mismo sitio", porque: "p + 1 siempre avanza un elemento." }
+    escalera: ["¿Cuántos bytes ocupa un uint32_t?"]
+    solucion: "Al elemento siguiente: cuatro bytes más allá."
+    comprobar:
+      - { b4: 4 }
+
+  - id: empareje-punteros
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Leer un puntero"
+    texto: "Una cada declaración o expresión con lo que significa."
+    libro: [15, 16, 17]
+    emparejar:
+      - ["const uint8_t *p", "No se pueden cambiar los datos a través de él"]
+      - ["uint8_t *const p", "Un puntero que no se puede mover"]
+      - ["v[i]", "*(v + i)"]
+      - ["Una tabla de punteros a función", "La tabla de vectores de interrupción"]
+    exito: "Una función que solo lee un búfer debe recibir const uint8_t *: el compilador detecta el error de escribirlo."
+    pistas:
+      - { texto: "const delante del tipo protege los datos; detrás del asterisco, el puntero." }
+    escalera: ["Lea la declaración de derecha a izquierda."]
+    solucion: "const antes, datos fijos; const después, puntero fijo; v[i], *(v + i); vectores, punteros a función."
+
+  - id: estime-relleno
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lo que ocupa una estructura"
+    texto: "struct muestra: un uint8_t, un uint32_t y otro uint8_t, por ese orden. ¿Cuántos bytes ocupa en un Cortex-M?"
+    libro: [19, 20, 21]
+    widget:
+      tipo: figura
+      codigo: "apK#20"
+      resaltar: [3, 4, 5, 6, 7]
+    estimar:
+      objetivo: "tam"
+      unidad: "B"
+      min: 0
+      max: 16
+      paso: 1
+      inicio: 3
+      tol: 0.01
+      rotulo: "sizeof(struct muestra)"
+    exito: "12 bytes: 3 de relleno tras canal para alinear instante en la dirección 4, y 3 al final."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 12 }, texto: "Se ha pasado: el relleno solo llega hasta el siguiente múltiplo de 4." }
+      - { texto: "Se ha quedado corto: el uint32_t debe empezar en una dirección múltiplo de 4." }
+    escalera: ["El uint32_t no puede empezar en la dirección 1: el compilador rellena."]
+    solucion: "1 + 3 de relleno + 4 + 1 + 3 de relleno = 12."
+    comprobar:
+      - { tam: 12, tam_ord: 8, tam_avr: 6 }
+
+  - id: pregunta-ordenada
+    tipo: pregunta
+    titulo: "Ordenar los campos"
+    texto: "Los mismos campos, del mayor al menor: uint32_t, uint8_t, uint8_t. ¿Cuánto ocupa en un Cortex-M?"
+    libro: [20, 21]
+    widget:
+      tipo: figura
+      codigo: "apK#20"
+      resaltar: [9, 10, 11, 12, 13]
+    opciones:
+      - { texto: "8 bytes", bien: true, porque: "4 + 1 + 1 y 2 de relleno al final para que la siguiente del vector quede alineada." }
+      - { texto: "6 bytes", porque: "Esos son los datos; el vector de estructuras necesita relleno al final." }
+      - { texto: "12 bytes, como antes", porque: "Al ordenar de mayor a menor, desaparece el relleno de en medio." }
+    escalera: ["Sin hueco en medio, ¿cuánto relleno hace falta al final?"]
+    solucion: "8 bytes."
+    comprobar:
+      - { tam_ord: 8, tam_avr: 6, rel_fin: 2 }
+
+  - id: pregunta-avr
+    tipo: pregunta
+    titulo: "En el AVR"
+    texto: "¿Cuánto ocupan las dos versiones de la estructura en el AVR?"
+    libro: [21]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "La RAM del AVR, byte a byte." }
+    opciones:
+      - { texto: "6 bytes las dos", bien: true, porque: "El AVR lee byte a byte: no necesita alinear y no mete relleno." }
+      - { texto: "12 y 8, como en el Cortex-M", porque: "El relleno lo pide el acceso de 32 bits del Cortex-M; el AVR no lo tiene." }
+      - { texto: "8 bytes las dos", porque: "Sin relleno, son los 6 bytes de los datos." }
+    escalera: ["¿Cuántos bytes lee el AVR de una vez?"]
+    solucion: "6 bytes las dos: sizeof y offsetof dan siempre la respuesta del compilador que se usa."
+    comprobar:
+      - { tam_avr: 6 }
+
+  - id: porque-trama
+    tipo: porque
+    titulo: "No enviar la estructura"
+    texto: "¿Por qué una estructura no se envía tal cual por un bus a otro procesador?"
+    libro: [22]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "La estructura, como la deja este compilador." }
+    opciones:
+      - { texto: "Su relleno y el orden de sus bytes dependen del compilador", bien: true, porque: "Otro procesador la leería de otra forma: una trama se escribe y se lee byte a byte." }
+      - { texto: "Porque es demasiado grande", porque: "No es el tamaño: es que su forma en memoria no es universal." }
+      - { texto: "Porque lleva punteros", porque: "Esta no lleva: aun así, relleno y orden de bytes cambian." }
+    escalera: ["¿Ocupa lo mismo struct muestra en un AVR y en un Cortex-M?"]
+    solucion: "Relleno y orden de bytes dependen del compilador: se envía byte a byte."
+
+  - id: pregunta-endian
+    tipo: pregunta
+    titulo: "El byte más significativo primero"
+    texto: "Modbus envía un uint16_t v con el byte más significativo primero. ¿Cómo se escribe en la trama?"
+    libro: [22]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "En la RAM, el byte menos significativo primero." }
+    opciones:
+      - { texto: "b[0] = v >> 8; b[1] = v & 0xFF;", bien: true, porque: "Con desplazamientos funciona igual en cualquier procesador, sea cual sea su orden de bytes." }
+      - { texto: "Copiando los dos bytes de v tal cual", porque: "El AVR, los Cortex-M y los PC guardan primero el menos significativo: saldría al revés." }
+      - { texto: "b[0] = v & 0xFF; b[1] = v >> 8;", porque: "Así va primero el menos significativo, al revés de lo que pide Modbus." }
+    escalera: ["v >> 8 es el byte alto."]
+    solucion: "b[0] = v >> 8; b[1] = v & 0xFF;"
+
+  - id: pregunta-packed
+    tipo: pregunta
+    titulo: "El atributo packed"
+    texto: "El atributo packed de gcc quita el relleno. ¿Qué cuesta?"
+    libro: [22]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "Campos sin alinear." }
+    opciones:
+      - { texto: "Accesos desalineados que el compilador trocea: más lentos", bien: true, porque: "Ahorra bytes a cambio de velocidad." }
+      - { texto: "Nada: es gratis", porque: "Leer un uint32_t desalineado obliga a trocear el acceso." }
+      - { texto: "Ocupa más memoria", porque: "Ocupa menos: quita el relleno." }
+    escalera: ["Sin relleno, ¿queda alineado el uint32_t?"]
+    solucion: "Accesos desalineados, troceados por el compilador, más lentos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [15, 16, 19, 22]
+    ideas:
+      - { titulo: "Punteros.", texto: "p + 1 salta un elemento; v[i] es *(v + i)." }
+      - { titulo: "const.", texto: "Delante, datos fijos; detrás del asterisco, puntero fijo." }
+      - { titulo: "Relleno.", texto: "Campos de mayor a menor; sizeof y offsetof dicen la verdad." }
+      - { titulo: "Tramas.", texto: "Byte a byte, con desplazamientos." }

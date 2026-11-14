@@ -1,0 +1,270 @@
+# Lección 1.2 de la sección 16.5 «Entradas Analógicas y Salidas PWM» (cap17; etiquetas sec-17.N = impresas 16.N).
+# - El convertidor de 10 bits: LSB = V_ref/2¹⁰ (4,88 mV con 5 V), la referencia, la impedancia de la fuente
+#   (figura 16.9, fig-17.9) y el promediado (√n).
+# - El PWM de analogWrite() como gráfica: una onda cuadrada de 490 Hz entre 0 y 5 V con ciclo de trabajo valor/255
+#   (figura 16.8): v = 5·(1 − ⌊frac(t·f) + 1 − D⌋), alta mientras frac(t·f) < D; su media, 5·D.
+# Paso práctico: «dibujar» la onda de analogWrite(pin, 191) (75 %, ejercicio 16.4).
+leccion: cap17/sec-17.5
+
+libro:
+  121: "Con 5 V, cada paso vale 4,88 mV"
+  123: "Una medida «de 2,5 V» significa en realidad «la mitad de lo que valga la alimentación en ese instante»"
+  124: "la variación se cancela y la referencia deja de importar"
+  125: "sale baja si antes se midió una tensión menor"
+  126: "La hoja de datos recomienda menos de 10 kΩ de impedancia de fuente"
+  128: "Cuatro lecturas lo dividen por dos; para dividir por diez hacen falta cien"
+  130: "algo menos de 10 000 muestras por segundo como máximo"
+  133: "analogWrite() no genera una tensión: genera una onda cuadrada de ciclo de trabajo variable"
+  134: "La entrada de un circuito analógico: no promedia nada"
+  135: "con 10 ms quedan todavía unos 0,25 V de rizado pico a pico"
+  145: "fracción del periodo en alto, valor/255"
+  146: "Efecto de la impedancia de la fuente en la lectura del convertidor"
+  "cap17#342": "valor = 0,75 × 255 = 191"
+
+modelo:
+  valores:
+    V_rf: { sim: "V_{ref}", nombre: "referencia del convertidor", unidad: V, valor: 5 }
+    n_b: { sim: "n", nombre: "bits del convertidor", unidad: "", valor: 10 }
+    a_w: { sim: "valor", nombre: "valor de analogWrite()", unidad: "", valor: 64 }
+    f_p: { sim: "f_{PWM}", nombre: "frecuencia del PWM", unidad: Hz, valor: 490 }
+    V_pw: { sim: "V", nombre: "tensión del pin en alto", unidad: V, valor: 5 }
+  calculos:
+    LSB: { expr: "V_rf/2^n_b", sim: "LSB", nombre: "valor de un paso", unidad: V, cifras: 3 }
+    D_w: { expr: "100*a_w/255", sim: "D", nombre: "ciclo de trabajo", unidad: "%", cifras: 3 }
+    V_md: { expr: "V_pw*a_w/255", sim: "V_{media}", nombre: "tensión media", unidad: V }
+    T_p: { expr: "1/f_p", sim: "T", nombre: "periodo del PWM", unidad: s }
+    t_al: { expr: "T_p*a_w/255", sim: "t_{alto}", nombre: "tiempo en alto", unidad: s }
+    t_ba: { expr: "T_p - t_al", sim: "t_{bajo}", nombre: "tiempo en bajo", unidad: s }
+
+tarjetas:
+  - id: estime-lsb
+    tipo: pregunta
+    titulo: "Un paso del convertidor"
+    texto: "El ATmega328P convierte con 10 bits, 1024 códigos entre 0 y 5 V. ¿Cuánto vale un paso?"
+    libro: [121]
+    estimar:
+      objetivo: "LSB"
+      unidad: V
+      min: 0
+      max: 0.02
+      paso: 0.0001
+      inicio: 0.015
+      tol: 0.05
+      rotulo: "Un paso, LSB"
+    exito: "4,88 mV: el límite de resolución."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00513 }, texto: "Demasiado: reparta 5 V entre 1024 códigos." }
+      - { texto: "Se ha quedado corto: reparta 5 V entre 1024 códigos." }
+    escalera:
+      - "Divida la referencia entre el número de códigos."
+    solucion: "5 V / 1024 = 4,88 mV."
+    comprobar:
+      - { LSB: 0.004883 }
+
+  - id: pregunta-referencia
+    tipo: pregunta
+    titulo: "Lo que de verdad mide"
+    texto: "Por defecto el convertidor mide respecto a la alimentación, y lee «2,5 V». ¿Qué significa?"
+    libro: [123]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
+    opciones:
+      - texto: "La mitad de lo que valga la alimentación en ese instante"
+        bien: true
+        porque: "Los 5 V del regulador no son 5,000 V ni son estables: varían con la carga y la temperatura."
+      - texto: "Exactamente 2,5 V"
+        porque: "Solo si la alimentación vale 5,000 V justo entonces, y no los vale."
+      - texto: "2,5 V más o menos un paso"
+        porque: "La resolución es lo de menos: la referencia variable pesa mucho más."
+    escalera:
+      - "¿Cuánto valen, de verdad, los 5 V del regulador?"
+    solucion: "La mitad de la alimentación de ese instante."
+
+  - id: empareje-referencias
+    tipo: pregunta
+    titulo: "Tres salidas"
+    texto: "Empareje cada alternativa a la alimentación con lo que hay que saber de ella."
+    libro: [124]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
+    emparejar:
+      - ["Referencia interna de 1,1 V", "Estable, pero hay que calibrarla una vez"]
+      - ["Referencia externa por AREF", "Una tensión de referencia aparte"]
+      - ["Medida ratiométrica", "El sensor se alimenta de la misma tensión"]
+    exito: "En la ratiométrica la variación se cancela y la referencia deja de importar."
+    pistas:
+      - { texto: "La interna tiene una tolerancia inicial de 1,0 a 1,2 V." }
+    escalera:
+      - "Una de las tres hace que la referencia deje de importar."
+    solucion: "1,1 V, calibrar; AREF, externa; ratiométrica, misma alimentación."
+
+  - id: predecir-impedancia
+    tipo: predecir
+    titulo: "Un potenciómetro de 100 kΩ"
+    texto: "Lee un potenciómetro de 100 kΩ justo después de leer otro canal con menos tensión. ¿Cómo sale la lectura?"
+    libro: [125, 126, 146]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
+    opciones:
+      - texto: "Baja, y ningún promediado lo arregla"
+        bien: true
+        porque: "El condensador de muestreo no llega a cargarse y arrastra la lectura anterior. Se recomiendan menos de 10 kΩ."
+      - texto: "Correcta, aunque con más ruido"
+        porque: "No es ruido: es un error de establecimiento, siempre hacia la tensión anterior."
+      - texto: "Alta"
+        porque: "Arrastra la tensión anterior, que era menor: sale baja."
+    escalera:
+      - "Cada muestra carga un condensador de unos 14 pF a través de la fuente."
+    solucion: "Baja. Un buffer, menos impedancia o un condensador en la entrada."
+
+  - id: pregunta-promedio
+    tipo: pregunta
+    titulo: "Promediar"
+    texto: "Los dos últimos bits son ruido aleatorio. ¿Cuántas lecturas hay que promediar para dividirlo por diez?"
+    libro: [128]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
+    opciones:
+      - texto: "Cien"
+        bien: true
+        porque: "Promediar n lecturas divide el ruido por √n: √100 = 10."
+      - texto: "Diez"
+        porque: "El ruido baja con √n, no con n: diez lecturas lo dividen por algo más de tres."
+      - texto: "Cuatro"
+        porque: "Cuatro lecturas lo dividen por dos, no por diez."
+    escalera:
+      - "Cuatro lecturas lo dividen por dos."
+    solucion: "Cien: el ruido baja con la raíz de n."
+
+  - id: pregunta-velocidad
+    tipo: pregunta
+    titulo: "El tiempo de conversión"
+    texto: "Cada conversión tarda unos 104 µs. ¿Cuántas muestras por segundo, como mucho?"
+    libro: [130]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
+    opciones:
+      - texto: "Algo menos de 10 000"
+        bien: true
+        porque: "Y eso sin hacer nada más: para audio o señales rápidas, es el límite."
+      - texto: "Tantas como el reloj de 125 kHz"
+        porque: "125 kHz es el reloj del convertidor, y cada conversión gasta 13 de sus ciclos."
+      - texto: "16 millones"
+        porque: "Eso es el reloj del núcleo, no el ritmo del convertidor."
+    escalera:
+      - "Invierta 104 µs."
+    solucion: "1 / 104 µs: algo menos de 10 000 muestras por segundo."
+
+  - id: explore-pwm
+    tipo: explorar
+    titulo: "El PWM no es analógico"
+    texto: "analogWrite() da una onda cuadrada de 490 Hz. Cambie el valor y mire el ciclo de trabajo y la media."
+    libro: [133, 145]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0061, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -0.5, max: 5.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_pw*(1 - floor(t*f_p - floor(t*f_p) + 1 - a_w/255))", color: azul, rotulo: "pin" }
+        - { expr: "V_md", color: naranja, rotulo: "media", discontinua: true }
+      lectura: { valor: V_md, rotulo: "Tensión media" }
+      datos:
+        - { valor: D_w, rotulo: "Ciclo de trabajo: {{D_w}}" }
+      mandos:
+        - { valor: a_w, min: 0, max: 255, paso: 1, rotulo: "analogWrite(pin, valor)" }
+    requiere: { mover: [a_w] }
+
+  - id: dibuje-pwm
+    tipo: dibujar
+    titulo: "Dibuje el 75 %"
+    texto: "Dibuje la tensión del pin con analogWrite(pin, 191), durante dos periodos."
+    libro: [145, "cap17#342"]
+    fijar: { a_w: 191 }
+    dibujar:
+      x: { id: t, min: 0, max: 0.00408, unidad: s, rotulo: "t" }
+      y: { min: -0.5, max: 5.5, unidad: V, rotulo: "v" }
+      curva: "V_pw*(1 - floor(t*f_p - floor(t*f_p) + 1 - a_w/255))"
+      puntos: 41
+      tol: 0.15
+      holgura: 0.03
+      rotulo: "Tensión del pin"
+    exito: "Tres cuartos de cada periodo en alto y uno en bajo: la media es de 3,75 V."
+    pistas:
+      - { cuando: { valor: media, menor: -0.05 }, texto: "Le sobra tiempo en bajo: 191 de 255 son tres cuartos del periodo en alto." }
+      - { cuando: { valor: media, mayor: 0.05 }, texto: "Le sobra tiempo en alto: un cuarto de cada periodo está a 0 V." }
+      - { texto: "Es una onda cuadrada: solo 0 o 5 V, nunca valores intermedios." }
+    escalera:
+      - "El pin solo vale 0 o 5 V; lo que cambia es cuánto tiempo pasa en alto."
+      - "191/255 son tres cuartos de cada periodo de 2,04 ms."
+    solucion: "Alto unos 1,53 ms y bajo unos 0,51 ms, dos veces."
+    comprobar:
+      - { V_md: 3.745, D_w: 74.9, T_p: 0.002041, t_al: 0.001529, t_ba: 0.000512 }
+
+  - id: empareje-promedia
+    tipo: pregunta
+    titulo: "Quién promedia"
+    texto: "El efecto analógico lo da el promediado. Empareje cada carga con quién lo hace."
+    libro: [134]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: pwm, rotulo: "Gráfica de la derecha", rect: [245, 0, 199, 199] }
+    emparejar:
+      - ["Un LED", "El ojo"]
+      - ["Un motor", "Su inercia mecánica y eléctrica"]
+      - ["Un altavoz", "En parte: se oye la portadora"]
+      - ["Un circuito analógico", "Nadie: hace falta un filtro o un DAC"]
+    exito: "La entrada de un circuito analógico no promedia nada."
+    pistas:
+      - { texto: "Solo uno de los cuatro necesita un filtro paso bajo." }
+    escalera:
+      - "Al LED y al motor se les puede dar el PWM directamente."
+    solucion: "LED, el ojo; motor, la inercia; altavoz, en parte; circuito analógico, nadie."
+
+  - id: pregunta-rizado
+    tipo: pregunta
+    titulo: "Filtrar 490 Hz"
+    texto: "Un filtro RC de 10 ms sobre el PWM de 490 Hz. ¿Qué rizado deja?"
+    libro: [135]
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: pwm, rotulo: "Gráfica de la derecha", rect: [245, 0, 199, 199] }
+    opciones:
+      - texto: "Unos 0,25 V pico a pico"
+        bien: true
+        porque: "Todavía mucho: para acercarse a una LSB de 8 bits hacen falta unos 100 ms, y el control se vuelve lento."
+      - texto: "Menos de una LSB de 8 bits"
+        porque: "Eso pide unos 100 ms de constante de tiempo, no 10 ms."
+      - texto: "Ninguno: 10 ms es mucho más que el periodo"
+        porque: "Más que el periodo no basta: con 10 ms quedan unos 0,25 V."
+    escalera:
+      - "La frecuencia del PWM es baja: el filtro debe ser lento."
+    solucion: "Unos 0,25 V pico a pico; para menos, unos 100 ms."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [121, 123, 126, 133]
+    ideas:
+      - { titulo: "10 bits, 4,88 mV.", texto: "Pero mandan la referencia, la impedancia de la fuente y el ruido." }
+      - { titulo: "Menos de 10 kΩ.", texto: "Con más, el condensador de muestreo no se carga y la lectura sale baja." }
+      - { titulo: "√n.", texto: "Promediar cuatro lecturas divide el ruido por dos." }
+      - { titulo: "PWM no es tensión.", texto: "Una onda cuadrada de 490 Hz: la carga o un filtro la promedian." }

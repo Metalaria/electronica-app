@@ -7,6 +7,7 @@
 import type { DocBusqueda, EntradaGlosario, Indice, InfoParte, Parte, Refs } from './tipos';
 import { sinFallos } from './errores';
 import { leerMatematicas } from './habla-matematicas';
+import { mezclarPartes } from './partes-extra';
 
 type Modo = 'libro' | 'muestra';
 
@@ -60,8 +61,14 @@ export async function iniciar(): Promise<{ indice: Indice; refs: Refs; modo: Mod
     // «?muestra» in the URL forces the sample (handy to test the renderer against every block type).
     if (new URLSearchParams(location.search).has('muestra')) throw new Error('muestra');
     modo = 'libro';
-    const [i, r] = await Promise.all([leerLibro<Indice>('indice.json'), leerLibro<Refs>('refs.json')]);
-    indice = i;
+    const [i, r, extra] = await Promise.all([
+      leerLibro<Indice>('indice.json'),
+      leerLibro<Refs>('refs.json'),
+      // 1.2 (consolas-A): the parts that are not in the book (the «Consolas por dentro» course, tipo «consola»),
+      // written by scripts/lecciones11.mjs; optional (an older content folder has none)
+      leerLibro<{ partes?: Record<string, InfoParte> }>('lecciones11/partes.json').catch(() => null),
+    ]);
+    indice = mezclarPartes(i, extra?.partes);
     refs = r;
   } catch {
     modo = 'muestra';
@@ -149,7 +156,8 @@ export function ordenLectura(): string[] {
       }
     }
   }
-  for (const p of Object.keys(i.partes)) if (!vistos.has(p)) orden.push(p);
+  // (not the console parts of the lessons: they have no page to read, lib/datos.ts mezclarPartes)
+  for (const p of Object.keys(i.partes)) if (!vistos.has(p) && i.partes[p]?.tipo !== 'consola') orden.push(p);
   return orden;
 }
 
@@ -163,6 +171,7 @@ export function rotuloParte(id: string): string {
   if (!p) return id;
   if (p.tipo === 'capitulo' && p.num != null) return `Capítulo ${p.num}`;
   if (p.tipo === 'apendice' && p.num != null) return `Apéndice ${p.num}`;
+  if (p.tipo === 'consola') return 'Consola';
   return p.titulo;
 }
 

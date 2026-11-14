@@ -1,0 +1,327 @@
+# Lección 1.2 de la sección 45.2 «UART y las Líneas Serie Clásicas» (cap44; etiqueta interna sec-44.2).
+# Formato: contenido/lecciones11/GUIA.md (§11). La trama de la «U» (0x55, bloque 69; figura 45.2) se dibuja en un
+# cronograma sin reloj: cada ciclo es un bit, con su nombre en el eje (motor12e, `etiquetas`: reposo, inicio, D0…D7 con el menos significativo primero, parada,
+# reposo). El margen de los relojes (figura 45.3) va en una gráfica del modelo: el muestreo de la parada cae a 9,5 bits
+# del flanco de inicio, así que se desplaza 9,5 veces el error total (2 % → 19 % de bit; el medio bit se alcanza hacia el
+# 5 % del bloque 47).
+leccion: cap44/sec-44.2
+
+libro:
+  37: "Un UART envía bytes por un solo hilo, sin reloj compartido"
+  39: "Bit de inicio (nivel bajo)"
+  40: "5 a 9 bits de datos, normalmente 8, con el menos significativo primero."
+  42: "Uno o dos bits de parada (nivel alto)."
+  43: "115 200 baudios sean unos 11 500 bytes por segundo"
+  44: "con 16 símbolos distintos, cada uno transporta 4 bits, y 2 400 baudios son 9 600 bit/s"
+  46: "El receptor muestrea en el centro de cada bit, contando desde el flanco de inicio con su propio reloj."
+  47: "Con 10 bits, eso permite un error de hasta el 5 % entre ambos relojes; en la práctica se exige menos del 2 %"
+  48: "un oscilador RC interno con 3 % de error no basta para UART fiable"
+  50: "TTL/CMOS: 0 y la tensión de alimentación."
+  51: "RS-232: ±3 a ±15 V, con lógica invertida"
+  52: "RS-485: diferencial, hasta 1 200 metros"
+  53: "la tensión puede destruir la entrada"
+  56: "Por hardware (RTS/CTS), con dos líneas adicionales."
+  57: "no sirve para datos binarios, porque esos dos bytes pueden aparecer en los datos"
+  61: "Error de trama: no encuentra el bit de parada donde debe."
+  62: "Error de paridad: detecta un número impar de bits cambiados."
+  63: "Desbordamiento: llegó un byte antes de leer el anterior."
+  64: "ninguna comprobación de integridad del mensaje"
+  69: "a 115 200 baudios se miden 57,6 kHz"
+  70: "cada byte viaja entre un bit de inicio y uno de parada"
+  71: "La trama UART 8N1 y la desviación admisible entre relojes."
+  72: "conectado a un RS-232 sin adaptar niveles, se daña"
+
+modelo:
+  valores:
+    baudios: { sim: "v", nombre: "velocidad", unidad: "baud", valor: 115200 }
+    bits_trama: { sim: "n", nombre: "bits por trama 8N1", valor: 10 }
+    e_tot: { sim: "e", nombre: "error total entre los dos relojes", unidad: "%", valor: 1 }
+    simbolos: { sim: "M", nombre: "símbolos distintos", valor: 16 }
+    baud_mod: { sim: "v_{s}", nombre: "velocidad en baudios de la modulación", unidad: "baud", valor: 2400 }
+  calculos:
+    bytes_s: { expr: "baudios/bits_trama", sim: "bytes/s", nombre: "bytes por segundo", cifras: 4 }
+    util: { expr: "baudios*8/bits_trama", sim: "caudal", nombre: "caudal útil", unidad: "bit/s", cifras: 4 }
+    desp: { expr: "9.5*e_tot", sim: "δ", nombre: "desplazamiento del último muestreo", unidad: "%", cifras: 2 }
+    e_lim: { expr: "50/9.5", sim: "e_{máx}", nombre: "error que lleva el muestreo al borde del bit", unidad: "%", cifras: 2 }
+    bitrate: { expr: "baud_mod*ln(simbolos)/ln(2)", sim: "tasa", nombre: "tasa de bits", unidad: "bit/s", cifras: 4 }
+    bitrate_mal: { expr: "baud_mod*simbolos", nombre: "baudios por símbolos", unidad: "bit/s", cifras: 4 }
+    t_parada: { expr: "bits_trama - 0.5", sim: "t_{parada}", nombre: "muestreo de la parada, en bits desde el inicio", cifras: 2 }
+    medio: { expr: "50", nombre: "medio bit", unidad: "%", cifras: 2 }
+    f_u: { expr: "baudios/2", sim: "f", nombre: "frecuencia de la onda de la U", unidad: Hz, cifras: 3 }
+
+tarjetas:
+  - id: explore-trama
+    tipo: explorar
+    titulo: "La trama"
+    texto: "Sin reloj compartido: cada byte viaja entre un bit de inicio, a cero, y uno de parada, a uno. Toque las partes."
+    libro: [37, 39, 40, 42, 70]
+    widget:
+      tipo: figura
+      figura: fig-44.2
+      zonas:
+        - { id: inicio, rotulo: "Tramo rosa, a la izquierda", rect: [40, 20, 32, 95], texto: "El bit de inicio, a nivel bajo: despierta al receptor y marca el instante de referencia." }
+        - { id: datos, rotulo: "Los ocho bits del centro", rect: [73, 20, 188, 95], texto: "De 5 a 9 bits de datos, normalmente 8, con el menos significativo primero." }
+        - { id: paridad, rotulo: "Tramo gris discontinuo", rect: [262, 20, 28, 95], texto: "El bit de paridad, opcional." }
+        - { id: parada, rotulo: "Tramo verde, a la derecha", rect: [290, 20, 32, 95], texto: "Uno o dos bits de parada, a nivel alto: la línea vuelve al reposo." }
+    requiere: { mover: [inicio, parada] }
+
+  - id: dibuje-u
+    tipo: dibujar
+    titulo: "Dibuje la U"
+    texto: "La U es 01010101 en binario. Dibuje la línea en 8N1, bit a bit como marca el eje: reposo, inicio, los ocho datos (el menos significativo primero), parada y reposo."
+    libro: [39, 40, 42, 69]
+    widget:
+      tipo: logica
+      entradas: [{ id: TX, valor: 1 }]
+      piezas:
+        - { id: linea, tipo: buf, entradas: [TX], rotulo: "Línea" }
+      salidas:
+        - { id: RX, de: linea }
+      cronograma: { ciclos: 12, estimulo: { TX: "101010101011" }, senales: [RX], etiquetas: [reposo, inicio, D0, D1, D2, D3, D4, D5, D6, D7, parada, reposo] }
+      dibujo: false
+    dibujar:
+      senal: RX
+    exito: "Una onda cuadrada perfecta con un periodo de dos bits: por eso la U es la prueba del enlace."
+    escalera:
+      - "El primer bit de datos que sale es el de la derecha de 01010101, el menos significativo: un 1."
+      - "Entre el reposo y el primer dato va el bit de inicio, a cero; tras el último dato, la parada, a uno."
+    solucion: "1 de reposo, 0 de inicio, 1 0 1 0 1 0 1 0, la parada a 1 y reposo a 1."
+
+  - id: estime-bytes
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Bytes por segundo"
+    texto: "En 8N1 cada byte ocupa 10 bits. ¿Cuántos bytes por segundo caben a 115 200 baudios?"
+    libro: [43]
+    fijar: { baudios: 115200, bits_trama: 10 }
+    estimar:
+      objetivo: "bytes_s"
+      unidad: ""
+      min: 0
+      max: 20000
+      paso: 10
+      inicio: 14400
+      tol: 0.02
+      rotulo: "Bytes por segundo"
+    exito: "Unos 11 500 bytes por segundo: los bits de inicio y parada se llevan uno de cada cinco."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 11750 }, texto: "Ha dividido entre 8: cada byte lleva además el inicio y la parada." }
+      - { texto: "Demasiado poco: en 8N1 son 10 bits por byte, no más." }
+    escalera: ["Divida los baudios entre los bits de cada trama."]
+    solucion: "115 200 / 10 = 11 520: unos 11 500 bytes por segundo."
+    comprobar:
+      - { bytes_s: 11520 }
+
+  - id: estime-baudios
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Baudios no son bits"
+    texto: "Una modulación usa 16 símbolos distintos a 2 400 baudios. ¿Cuántos bit/s transmite?"
+    libro: [44]
+    fijar: { simbolos: 16, baud_mod: 2400 }
+    estimar:
+      objetivo: "bitrate"
+      unidad: "bit/s"
+      min: 0
+      max: 40000
+      paso: 100
+      inicio: 30000
+      tol: 0.02
+      rotulo: "Tasa de bits"
+    exito: "9 600 bit/s: cada símbolo lleva 4 bits. En la UART cada símbolo lleva uno, y baudios y bit/s coinciden."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 30000 }, texto: "Ha multiplicado por los 16 símbolos (38 400); cada uno lleva solo 4 bits." }
+      - { cuando: { valor: estimacion, mayor: 9800 }, texto: "Demasiado: cada símbolo lleva 4 bits, no más." }
+      - { texto: "Demasiado poco: con 16 símbolos distintos, cada uno lleva más de un bit." }
+    escalera: ["¿Cuántos bits hacen falta para numerar 16 símbolos distintos?"]
+    solucion: "4 bits por símbolo: 2 400 baudios son 9 600 bit/s."
+    comprobar:
+      - { bitrate: 9600, bitrate_mal: 38400 }
+
+  - id: explore-margen
+    tipo: explorar
+    titulo: "El margen de los relojes"
+    texto: "El receptor muestrea el centro de cada bit con su reloj. Arrastre el error entre relojes: el muestreo de la parada se desplaza 9,5 veces."
+    libro: [46, 47, 71]
+    widget:
+      tipo: grafica
+      x: { id: ee, min: 0, max: 8, unidad: "%", rotulo: "error total" }
+      y: { min: 0, max: 80, unidad: "%", rotulo: "desplazamiento (% de bit)" }
+      curvas:
+        - { expr: "9.5*ee", color: azul, rotulo: "último muestreo" }
+        - { expr: "50", color: naranja, rotulo: "medio bit", discontinua: true }
+      asas:
+        - { mueve: e_tot, x: "e_tot", y: "desp", rotulo: "Su error" }
+      lectura: { valor: desp, rotulo: "Desplazamiento" }
+      mandos:
+        - { valor: e_tot, min: 0, max: 8, paso: 0.5, rotulo: "Error total entre relojes" }
+    nota: "Pasado medio bit, cae en el bit de al lado."
+    comprobar:
+      - { t_parada: 9.5 }
+
+  - id: prediga-rc
+    tipo: predecir
+    titulo: "Un oscilador RC interno"
+    texto: "Dos microcontroladores con osciladores RC internos, de un 3 % de error cada uno, en sentidos opuestos. ¿Funciona la UART?"
+    libro: [47, 48]
+    fijar: { e_tot: 6 }
+    widget:
+      tipo: grafica
+      x: { id: ee, min: 0, max: 8, unidad: "%", rotulo: "error total" }
+      y: { min: 0, max: 80, unidad: "%", rotulo: "desplazamiento (% de bit)" }
+      curvas:
+        - { expr: "9.5*ee", color: azul, rotulo: "último muestreo", oculta: true }
+        - { expr: "50", color: naranja, rotulo: "medio bit", discontinua: true }
+      lectura: { valor: desp, rotulo: "Desplazamiento con un 6 %" }
+      ocultar: true
+    opciones:
+      - { texto: "No: el último muestreo sale del bit", bien: true, porque: "Hasta un 6 % de error total: 57 % de bit, más de la mitad. Por eso muchos microcontroladores exigen cristal." }
+      - { texto: "Sí: un 3 % está por debajo del 5 %", porque: "Los errores se suman: 3 % en cada extremo son hasta un 6 % entre los dos." }
+      - { texto: "Sí, pero con algún error de paridad", porque: "No es un error ocasional: cada byte se muestrea fuera de sitio." }
+    escalera: ["Sume los errores de los dos extremos y compárelo con el 5 %."]
+    solucion: "Hasta un 6 % total, el 57 % de un bit: un oscilador RC del 3 % no basta."
+    comprobar:
+      - { desp: 57 }
+      - { con: { e_tot: 2 }, desp: 19 }
+
+  - id: estime-limite
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El límite teórico"
+    texto: "El muestreo de la parada cae a 9,5 bits del flanco de inicio. ¿Con qué error total llega al borde, a medio bit?"
+    libro: [46, 47]
+    estimar:
+      objetivo: "e_lim"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 8
+      tol: 0.03
+      rotulo: "Error total"
+    exito: "Un 5,3 %: el límite teórico de alrededor del 5 %. En la práctica se exige menos del 2 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5.42 }, texto: "Demasiado: con ese error el desplazamiento ya pasa de medio bit." }
+      - { texto: "Se queda corto: ahí aún queda margen hasta medio bit." }
+    escalera: ["El desplazamiento es 9,5 veces el error: iguálelo al 50 % de un bit."]
+    solucion: "50 % / 9,5 = 5,3 %."
+    comprobar:
+      - { e_lim: 5.3, tol: 0.01, t_parada: 9.5, medio: 50 }
+
+  - id: empareje-niveles
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres niveles distintos"
+    texto: "Una cada nivel con lo que es."
+    libro: [50, 51, 52]
+    emparejar:
+      - ["TTL/CMOS", "0 y la alimentación: lo que sale del microcontrolador"]
+      - ["RS-232", "±3 a ±15 V con lógica invertida, unos 15 m"]
+      - ["RS-485", "Diferencial, hasta 1 200 m, varios en el par"]
+    exito: "El mismo protocolo UART sobre tres capas físicas muy distintas."
+    pistas:
+      - { texto: "La lógica invertida es la del nivel negativo como 1." }
+    escalera: ["¿Cuál de los tres es diferencial?"]
+    solucion: "TTL, 0 y la alimentación; RS-232, ±3 a ±15 V invertidos; RS-485, diferencial."
+
+  - id: toque-rs232
+    tipo: tocar
+    titulo: "El error clásico"
+    texto: "Toque lo que se daña si se conecta directamente a un puerto RS-232."
+    libro: [53, 72]
+    widget:
+      tipo: figura
+      figura: fig-44.4
+      zonas:
+        - { id: de9, rotulo: "La foto de la izquierda", rect: [0, 0, 1000, 420] }
+        - { id: ttl, rotulo: "La foto de la derecha", rect: [1020, 0, 580, 420] }
+    tocar:
+      bien: [ttl]
+      porque:
+        de9: "Es el conector DE-9 del propio RS-232: sus ±3 a ±15 V son los que dañan."
+    exito: "El cable USB a serie de nivel TTL: niveles y polaridad distintos, y la tensión puede destruir la entrada."
+    escalera: ["¿Cuál de los dos trabaja entre 0 y la alimentación?"]
+    solucion: "El cable de nivel TTL, a la derecha: sin adaptar niveles, se daña."
+
+  - id: empareje-errores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que detecta la UART"
+    texto: "Una cada error con su causa."
+    libro: [61, 62, 63]
+    emparejar:
+      - ["Error de trama", "La parada no está donde debe: velocidad o ruido"]
+      - ["Error de paridad", "Un número impar de bits cambiados"]
+      - ["Desbordamiento", "Llegó un byte antes de leer el anterior"]
+    exito: "La paridad no ve dos errores ni corrige nada."
+    pistas:
+      - { texto: "La paridad cuenta unos: solo nota un cambio impar." }
+    escalera: ["¿Cuál depende de leer a tiempo, y no de la línea?"]
+    solucion: "Trama, la parada fuera de sitio; paridad, bits impares cambiados; desbordamiento, no se leyó a tiempo."
+
+  - id: porque-crc
+    tipo: porque
+    titulo: "Un marco propio"
+    texto: "¿Por qué todo protocolo serio sobre UART añade su propio marco y su CRC?"
+    libro: [62, 64]
+    widget:
+      tipo: figura
+      figura: fig-44.2
+      zonas:
+        - { id: paridad, rotulo: "Tramo gris discontinuo", rect: [262, 20, 28, 95], texto: "La única comprobación: la paridad, opcional." }
+    opciones:
+      - { texto: "La UART no comprueba la integridad del mensaje", bien: true, porque: "Solo la paridad de cada byte, que no ve dos errores: el mensaje entero queda sin comprobar." }
+      - { texto: "Para que vaya más rápido", porque: "El marco y el CRC añaden bytes: es más lento, pero fiable." }
+      - { texto: "Porque la UART no tiene bit de inicio", porque: "Sí lo tiene; lo que no tiene es comprobación del mensaje." }
+    escalera: ["¿Qué comprueba la UART por sí sola, aparte de cada byte?"]
+    solucion: "Ninguna comprobación de integridad del mensaje: el marco y el CRC la ponen."
+
+  - id: empareje-flujo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El control de flujo"
+    texto: "Una cada control de flujo con su rasgo."
+    libro: [56, 57]
+    emparejar:
+      - ["RTS/CTS", "Dos líneas más: fiable e inmediato"]
+      - ["XON/XOFF", "Dos caracteres reservados: no vale para binario"]
+    exito: "Sin control de flujo, un extremo más lento pierde datos."
+    pistas:
+      - { texto: "Un byte de datos binarios puede valer cualquier cosa, también un carácter reservado." }
+    escalera: ["¿Cuál necesita hilos y cuál caracteres?"]
+    solucion: "RTS/CTS, por hardware; XON/XOFF, por software, no para datos binarios."
+
+  - id: estime-u
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La prueba de la U"
+    texto: "Se envía la U a 115 200 baudios: la línea da una onda cuadrada con un periodo de dos bits. ¿Qué frecuencia mide el osciloscopio?"
+    libro: [69]
+    fijar: { baudios: 115200 }
+    estimar:
+      objetivo: "f_u"
+      unidad: Hz
+      min: 0
+      max: 200000
+      paso: 100
+      inicio: 115200
+      tol: 0.02
+      rotulo: "Frecuencia medida"
+    exito: "57,6 kHz: el doble es la velocidad exacta en baudios."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 58800 }, texto: "Demasiado: un periodo dura dos bits, no uno." }
+      - { texto: "Demasiado poco: el periodo son solo dos bits, uno arriba y otro abajo." }
+    escalera: ["Un periodo dura dos bits: la frecuencia es la mitad de los baudios."]
+    solucion: "115 200 / 2 = 57,6 kHz."
+    comprobar:
+      - { f_u: 57600 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [43, 47, 53, 69]
+    ideas:
+      - { titulo: "La trama.", texto: "Inicio a cero, 8 datos con el menos significativo primero y parada a uno: 10 bits por byte." }
+      - { titulo: "Relojes.", texto: "Menos del 2 % de error total; un RC interno del 3 % no basta." }
+      - { titulo: "Niveles.", texto: "TTL no es RS-232: conectarlos directamente destruye la entrada." }
+      - { titulo: "La U.", texto: "Una onda cuadrada de dos bits: el doble de su frecuencia es la velocidad." }

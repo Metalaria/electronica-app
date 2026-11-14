@@ -1,0 +1,286 @@
+# Lección 1.2 de la sección 11.3 «Designadores de Referencia» (cap11). Formato: contenido/lecciones11/GUIA.md.
+# El esquema que se lee es la etapa en emisor común del libro (sección 6.5: 12 V, R₁ = 47 kΩ, R₂ = 10 kΩ,
+# R_C = 3,3 kΩ, R_E = 1 kΩ, β = 150), con designadores por orden de lectura: R1 y R2 el divisor, R3 el colector,
+# R4 el emisor. Esa numeración es mía (el libro la llama R₁, R₂, R_C, R_E).
+leccion: cap11/sec-11.3
+
+libro:
+  58: "R1, C7, U3"
+  59: "Referirse a él sin ambigüedad"
+  60: "Enlazar el esquema con la placa"
+  61: "Enlazar con la lista de materiales"
+  64: "IEEE 315 / ASME Y14.44"
+  65: "Circuito integrado"
+  66: "para relés"
+  69: "Por orden de lectura"
+  70: "R1xx para la fuente, R2xx para la entrada, R3xx para la salida"
+  71: "saber que C304 está en la etapa de salida"
+  73: "Los designadores no se reutilizan"
+  74: "una reanotación automática que renumere todo"
+  76: "la lista indica DNP"
+  77: "conserva la trazabilidad entre versiones"
+  79: "anotar cada lectura junto al designador"
+  80: "R14 en circuito: 980 Ω, marcada 1 kΩ"
+  "cap11#306": "En un esquema ves el designador «Q3»"
+  "cap06#452": "R₁ = 47 kΩ, R₂ = 10 kΩ, RE = 1 kΩ, RC = 3,3 kΩ"
+  "cap06#184": "Con β = 150 el punto Q está en 1,324 mA y 6,31 V."
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R1", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R2", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R3", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R4", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente de Q1", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+  calculos:
+    V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión Thévenin del divisor", unidad: V }
+    R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
+    I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+
+tarjetas:
+  - id: explore-designadores
+    tipo: explorar
+    titulo: "Cada lectura, con su designador"
+    texto: "Cambie el ejemplar de Q1 y lea las tensiones junto al designador de cada resistencia."
+    nota: "La etapa en emisor común del libro, numerada por orden de lectura."
+    libro: [58, 69, 79, "cap06#452", "cap06#184"]
+    inicio: { beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      datos:
+        - { valor: V_pb, rotulo: "Unión de R1 y R2: {{V_pb}}" }
+        - { valor: V_pc, rotulo: "Unión de R3 y Q1: {{V_pc}}" }
+        - { valor: V_pe, rotulo: "Sobre R4: {{V_pe}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β de Q1" }
+    requiere: { mover: [beta] }
+
+  - id: tres-funciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Para qué sirve una etiqueta"
+    texto: "Una cada función del designador con lo que permite."
+    libro: [59, 60, 61]
+    emparejar:
+      - ["Referirse a él sin ambigüedad", "En el texto, la BOM y el diagnóstico"]
+      - ["Enlazar el esquema con la placa", "La serigrafía lleva el mismo designador"]
+      - ["Enlazar con la lista de materiales", "Valor, encapsulado y referencia comprable"]
+    exito: "Las tres hacen mantenible un diseño; sin ellas, un aparato sin documentación es irreparable."
+    pistas:
+      - { texto: "La serigrafía es lo que une el papel con la pieza física." }
+    escalera:
+      - "La placa se enlaza por la serigrafía; la compra, por la BOM."
+    solucion: "Sin ambigüedad–texto y diagnóstico; placa–serigrafía; BOM–valor, encapsulado y referencia."
+
+  - id: letras-uno
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las letras normalizadas"
+    texto: "Una cada letra con su componente."
+    libro: [64, 65]
+    emparejar:
+      - ["R", "Resistencia"]
+      - ["C", "Condensador"]
+      - ["L", "Bobina"]
+      - ["D", "Diodo o LED"]
+      - ["Q", "Transistor"]
+      - ["U o IC", "Circuito integrado"]
+    exito: "Son las de la práctica industrial recogida en IEEE 315 / ASME Y14.44."
+    pistas:
+      - { texto: "Q no es de «quartz»: es el transistor." }
+    escalera:
+      - "L es la bobina; U, el integrado."
+    solucion: "R resistencia, C condensador, L bobina, D diodo, Q transistor, U integrado."
+
+  - id: letras-dos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Más letras"
+    texto: "Una cada letra con su componente."
+    libro: [65, 66]
+    emparejar:
+      - ["J", "Conector"]
+      - ["SW o S", "Interruptor"]
+      - ["F", "Fusible"]
+      - ["Y", "Cristal"]
+      - ["TP", "Punto de prueba"]
+      - ["K", "Relé"]
+    exito: "Dos que se confunden: K para relés y RV o VR para resistencias variables (P en esquemas antiguos)."
+    pistas:
+      - { texto: "El cristal es la Y; la K es del relé." }
+    escalera:
+      - "TP viene de «test point»."
+    solucion: "J conector, SW interruptor, F fusible, Y cristal, TP punto de prueba, K relé."
+
+  - id: prediga-q3
+    tipo: predecir
+    titulo: "El designador «Q3»"
+    texto: "En un esquema ve «Q3». ¿Qué es y qué indica el 3?"
+    libro: ["cap11#306"]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Un transistor; el 3 lo distingue de los demás"
+        bien: true
+        porque: "Q es transistor, BJT o MOSFET. Por orden de lectura sería el tercero, tras Q1 y Q2."
+      - texto: "Un cristal de cuarzo"
+        porque: "El cristal lleva Y. La Q es del transistor."
+      - texto: "Un transistor de 3 A"
+        porque: "El número no es un valor: identifica de forma única la pieza en el esquema y en la placa."
+    escalera:
+      - "La letra dice el tipo; el número, cuál de ellos."
+    solucion: "Un transistor, el tercero por orden de lectura."
+
+  - id: por-bloque
+    tipo: pregunta
+    titulo: "Numeración por bloque"
+    texto: "En un equipo numerado por bloques, R1xx es la fuente, R2xx la entrada y R3xx la salida. ¿Dónde busca C304?"
+    libro: [70, 71]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "En la etapa de salida"
+        bien: true
+        porque: "El propio designador dice a qué parte pertenece, sin consultar nada: eso ahorra tiempo real al diagnosticar."
+      - texto: "Arriba a la izquierda del esquema"
+        porque: "Eso diría la numeración por orden de lectura. Aquí la centena indica el bloque."
+      - texto: "En la fuente, porque es un condensador"
+        porque: "La letra solo dice el tipo; el bloque lo da la centena: 3 es la salida."
+    escalera:
+      - "Mire la primera cifra del número."
+    solucion: "La centena 3 es la etapa de salida."
+
+  - id: r7-eliminada
+    tipo: pregunta
+    titulo: "Se elimina R7"
+    texto: "En una revisión se quita R7 y se añade una resistencia nueva. ¿Qué designador lleva la nueva?"
+    libro: [73]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "Uno nuevo, sin usar; R7 queda libre"
+        bien: true
+        porque: "Los designadores no se reutilizan: documentos, listas y notas antiguas seguirían refiriéndose a R7."
+      - texto: "R7, que ha quedado libre"
+        porque: "Reutilizarlo haría que las notas antiguas sobre R7 hablaran de otra pieza."
+      - texto: "Se renumeran todas para no dejar huecos"
+        porque: "Renumerar todo deja inservible cualquier documentación previa."
+    escalera:
+      - "Piense en las notas antiguas que nombran a R7."
+    solucion: "Un designador nuevo; R7 no se asigna a otra pieza."
+
+  - id: por-que-reanotar
+    tipo: porque
+    titulo: "Anotar solo lo nuevo"
+    texto: "Las herramientas permiten anotar solo los componentes nuevos. ¿Por qué es la opción correcta?"
+    libro: [74]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "Porque renumerar todo inutiliza la documentación anterior"
+        bien: true
+        porque: "Es una de las formas más eficaces de estropear un proyecto que funcionaba: lo escrito deja de corresponder a las piezas."
+      - texto: "Porque reanotar todo es más lento"
+        porque: "La herramienta lo hace en un instante; el daño está en lo que deja inservible."
+      - texto: "Porque los números altos confunden"
+        porque: "El orden de los números no es el problema: lo es que cambien entre revisiones."
+    escalera:
+      - "¿Qué pasa con los documentos que nombraban a cada pieza?"
+    solucion: "Una reanotación completa deja inservible la documentación previa."
+
+  - id: dnp
+    tipo: pregunta
+    titulo: "Una posición sin montar"
+    texto: "Una pieza no se monta en una de las versiones de la placa. ¿Qué se hace con ella en el esquema?"
+    libro: [76, 77]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "Se deja con su designador y la lista indica DNP"
+        bien: true
+        porque: "Conserva la trazabilidad entre versiones y explica las almohadillas vacías de la placa."
+      - texto: "Se borra del esquema"
+        porque: "Se pierde la trazabilidad y nadie sabe por qué hay almohadillas vacías."
+      - texto: "Se le da un designador especial"
+        porque: "El designador se mantiene; lo que cambia es la marca DNP en la lista."
+    escalera:
+      - "DNP: «do not populate»."
+    solucion: "Mismo designador, marcado DNP en la lista."
+
+  - id: anote-lectura
+    tipo: pregunta
+    titulo: "Una nota que sirva"
+    texto: "Ha medido una resistencia en la placa. ¿Qué nota servirá dentro de seis meses?"
+    libro: [79, 80]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de Q1" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "«R14 en circuito: 980 Ω, marcada 1 kΩ»"
+        bien: true
+        porque: "Con el designador, la lectura se encuentra y se reutiliza."
+      - texto: "«La resistencia de arriba a la derecha mide bien»"
+        porque: "Una descripción vaga no localiza la pieza ni dice qué se midió."
+      - texto: "«R14 bien»"
+        porque: "Falta el dato: cuánto midió y cuánto debía medir."
+    escalera:
+      - "Una buena nota dice qué pieza, qué midió y qué debía medir."
+    solucion: "«R14 en circuito: 980 Ω, marcada 1 kΩ»."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [59, 65, 73, 79]
+    ideas:
+      - { titulo: "Tres funciones.", texto: "Referirse a la pieza, enlazar con la placa y con la BOM." }
+      - { titulo: "Letras.", texto: "R, C, L, D, Q, U, J, SW, F, Y, TP, K." }
+      - { titulo: "Numeración.", texto: "Por orden de lectura o por bloque; los designadores no se reutilizan." }
+      - { titulo: "En el banco.", texto: "Cada lectura, junto a su designador." }

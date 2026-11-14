@@ -1,0 +1,222 @@
+# Lección 1.2 de la sección 43.7 «Lo que SPICE No Puede Hacer» (cap42). Formato: contenido/lecciones11/GUIA.md.
+# El ejemplo de «mirar sin perturbar» (bloque 211) es el divisor de 1 MΩ desde 10 V de la sección 1.11
+# (cap01#216, #234): el simulador ve 5,000 V; un voltímetro de 10 MΩ, 4,762 V. Ficha 1 del cuaderno.
+leccion: cap42/sec-42.7
+
+libro:
+  190: "solo conoce lo que está en el netlist y en los modelos"
+  193: "Los parásitos del trazado."
+  195: "SPICE simula a una temperatura fija."
+  196: "Ni la emisión ni la inmunidad son simulables con SPICE: son problemas de campos, no de circuitos."
+  197: "solo del que esté en los modelos"
+  200: "El transistor «2N3904» de la biblioteca por defecto puede no corresponder al que se va a comprar."
+  201: "Un modelo de operacional ideal simulará ganancia infinita sin slew rate"
+  202: "Un modelo caracterizado entre 0 y 70 °C no dice nada útil a 120."
+  203: "el resultado de una simulación no es mejor que el peor de sus modelos"
+  206: "pueden hacer que el simulador dé un resultado convergido pero incorrecto"
+  211: "en el simulador se puede mirar dentro de un circuito sin perturbarlo, cosa imposible en el banco"
+  213: "la respuesta correcta no es ajustar la simulación hasta que coincida, sino averiguar qué falta en el modelo"
+  216: "Con un divisor o un RC coincidirán casi exactamente"
+  "cap01#82": 'V_("salida") = V_("entrada") dot.op (R_("2"))/(R_("1") + R_("2"))'
+  "cap01#216": "Con un divisor de dos resistencias de 1 MΩ desde 10 V, la tensión real en el punto medio es 5,000 V."
+  "cap01#234": "Después repetir con dos resistencias de 1 kΩ: la lectura será 5,000 V."
+
+modelo:
+  valores:
+    V_in: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 10 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 1000000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 1000000 }
+    R_v: { sim: "R_{v}", nombre: "entrada del voltímetro", unidad: Ω, valor: 10000000 }
+    v_on: { tipo: interruptor, nombre: "voltímetro conectado", valor: 0 }
+  calculos:
+    R_ab: { si: v_on, entonces: "par(R_2, R_v)", sino: "R_2", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
+    V_o: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{medio}", nombre: "tensión del punto medio", unidad: V, cifras: 4 }
+    I_v: { si: v_on, entonces: "V_o/R_v", sino: "0", sim: "I_{v}", nombre: "corriente por el voltímetro", unidad: A }
+    err: { expr: "(1 - V_o/(V_in*R_2/(R_1 + R_2)))*100", sim: "error", nombre: "error por medir", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-dentro
+    tipo: explorar
+    titulo: "Mirar dentro sin tocar"
+    texto: "El divisor de dos resistencias de 1 MΩ desde 10 V: en el simulador, el punto medio se lee sin cargarlo. Cambie R₂."
+    libro: [211, "cap01#216"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_v, interruptor: v_on }
+      lectura: { valor: V_o, rotulo: "Punto medio" }
+      mide: { salida: V_o, carga: I_v }
+      mandos:
+        - { valor: R_2, lista: [500000, 1000000, 2000000] }
+
+  - id: prediga-emc
+    tipo: predecir
+    titulo: "Lo que nunca simulará"
+    texto: "SPICE resuelve muy bien las ecuaciones del circuito que se le describe. ¿Qué no puede simular en ningún caso?"
+    libro: [190, 196]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_v, interruptor: v_on }
+      lectura: { valor: V_o, rotulo: "Punto medio" }
+      mide: { salida: V_o }
+      ocultar: true
+    opciones:
+      - texto: "La emisión y la inmunidad electromagnéticas"
+        bien: true
+        porque: "Son problemas de campos, no de circuitos: hace falta simulación electromagnética."
+      - texto: "El ruido térmico de las resistencias"
+        porque: "Ese sí está: el análisis de ruido usa el térmico de las resistencias."
+      - texto: "Un cambio de temperatura"
+        porque: "Puede simular a otra temperatura fija; lo que no ve sin modelarlos son los lazos térmicos."
+    escalera:
+      - "¿Cuál no es un problema de tensiones y corrientes en nodos?"
+    solucion: "La compatibilidad electromagnética."
+
+  - id: formula-sonda
+    tipo: formula
+    titulo: "El voltímetro también es circuito"
+    texto: "Conectado, los 10 MΩ del voltímetro quedan en paralelo con R₂. Conéctelo y mire la sustitución."
+    libro: ["cap01#82", "cap01#216"]
+    ec: "cap01#82"
+    sustitucion: "{{V_in}} · {{R_ab}} / ({{R_1}} + {{R_ab}}) = {{V_o}}"
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_v, interruptor: v_on }
+      lectura: { valor: V_o, rotulo: "Punto medio" }
+      mide: { salida: V_o, carga: I_v }
+      mandos:
+        - { valor: v_on, tipo: interruptor, rotulo: "Voltímetro de 10 MΩ" }
+    comprobar:
+      - { con: { v_on: 1, R_2: 1000000 }, R_ab: 909091, V_o: 4.762 }
+
+  - id: no-esquema
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que no está en el esquema"
+    texto: "Todo lo que no está en el netlist no existe para el simulador. Una cada ausencia con su consecuencia."
+    libro: [193, 195, 196, 197]
+    emparejar:
+      - ["Parásitos del trazado", "Dominan en circuitos rápidos o de potencia"]
+      - ["Efectos térmicos", "Simula a una temperatura fija"]
+      - ["Compatibilidad electromagnética", "Problemas de campos, no de circuitos"]
+      - ["Ruido real", "Solo el que está en los modelos"]
+    exito: "Por eso «en el simulador funcionaba»: lo simulado y lo construido son eléctricamente distintos."
+    pistas:
+      - { texto: "La interferencia captada no está en ningún modelo." }
+    escalera:
+      - "¿Cuál se resuelve en parte con la simulación post-layout?"
+    solucion: "Parásitos: rápidos y potencia; térmicos: temperatura fija; EMC: campos; ruido: el de los modelos."
+
+  - id: del-modelo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que depende del modelo"
+    texto: "El simulador da un resultado que parece correcto. Una cada problema de modelo con su ejemplo."
+    libro: [200, 201, 202]
+    emparejar:
+      - ["Modelo genérico", "El «2N3904» de biblioteca no es el que se compra"]
+      - ["Modelo incompleto", "Ganancia infinita sin slew rate"]
+      - ["Fuera de su rango", "Caracterizado de 0 a 70 °C, usado a 120"]
+    exito: "El resultado no es mejor que el peor de sus modelos."
+    pistas:
+      - { texto: "El operacional ideal es el ejemplo del modelo incompleto." }
+    escalera:
+      - "¿Cuál es un problema de dónde se usa el modelo y no de cómo se hizo?"
+    solucion: "Genérico: 2N3904; incompleto: ideal; fuera de rango: 120 °C."
+
+  - id: convergido
+    tipo: pregunta
+    titulo: "Forzar la convergencia"
+    texto: "Un circuito solo converge tras subir mucho gmin y relajar las tolerancias. ¿Qué merece su resultado?"
+    libro: [206]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_v, interruptor: v_on }
+      mide: { salida: V_o }
+    opciones:
+      - texto: "Desconfianza: puede estar convergido pero ser incorrecto"
+        bien: true
+        porque: "Las soluciones sanas son resistencias serie pequeñas, flancos finitos y condiciones iniciales."
+      - texto: "Confianza: si converge, es correcto"
+        porque: "Convergencia no es corrección: los ajustes que la fuerzan pueden dar un número falso."
+      - texto: "Más precisión que antes"
+        porque: "Relajar las tolerancias da menos exactitud, no más."
+    escalera:
+      - "¿Qué se sacrifica al relajar las tolerancias?"
+    solucion: "Desconfianza: convergido no es correcto."
+
+  - id: sonda-carga
+    tipo: sorpresa
+    titulo: "En el banco, medir perturba"
+    texto: "Conecte el voltímetro de 10 MΩ: el punto medio cae de 5,000 a 4,762 V. Con 1 kΩ no se notaría; con 1 MΩ, un 4,8 %."
+    libro: [211, "cap01#216", "cap01#234"]
+    fijar: { V_in: 10, R_1: 1000000, R_2: 1000000 }
+    inicio: { v_on: 0 }
+    requiere: { mover: [v_on] }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_v, interruptor: v_on }
+      lectura: { valor: V_o, rotulo: "Punto medio" }
+      datos:
+        - { valor: err, rotulo: "Error por medir: {{err}}" }
+      mide: { salida: V_o, carga: I_v }
+      mandos:
+        - { valor: v_on, tipo: interruptor, rotulo: "Voltímetro de 10 MΩ" }
+    comprobar:
+      - { con: { v_on: 1 }, V_o: 4.762, err: 4.76 }
+
+  - id: por-que-actitud
+    tipo: porque
+    titulo: "¿Qué hacer cuando discrepan?"
+    texto: "La simulación de un amplificador no coincide con la medida. ¿Cuál es la respuesta correcta?"
+    libro: [213]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_v, interruptor: v_on }
+      lectura: { valor: V_o, rotulo: "Punto medio" }
+      mide: { salida: V_o }
+    opciones:
+      - texto: "Averiguar qué falta en el modelo"
+        bien: true
+        porque: "El simulador es una hipótesis y el banco, el experimento. Lo que falta casi siempre enseña algo."
+      - texto: "Ajustar la simulación hasta que coincida"
+        porque: "Así coincide en ese punto y no predice nada: se tira la información del desacuerdo."
+      - texto: "Fiarse de la simulación: el banco tiene errores"
+        porque: "El banco es el experimento: si discrepan, a la hipótesis le falta algo."
+    escalera:
+      - "¿Quién es la hipótesis y quién el experimento?"
+    solucion: "Buscar lo que falta en el modelo."
+
+  - id: banco-divisor
+    tipo: banco
+    titulo: "Simule, monte y compare"
+    texto: "Con un divisor, simulación y medida coinciden casi exactamente. Monte dos resistencias de 1 kΩ desde 10 V y mida el punto medio."
+    libro: [216, "cap01#234"]
+    fijar: { V_in: 10, R_1: 1000, R_2: 1000, v_on: 0 }
+    banco:
+      piezas: ["Dos resistencias de 1 kΩ", "Fuente de 10 V", "Brymen en V⎓"]
+      medir: "La tensión del punto medio."
+      esperado: V_o
+      unidad: V
+      tol: 0.02
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.02 }, texto: "Sale alta: mida las dos resistencias y la fuente; la diferencia está en sus tolerancias." }
+        - { texto: "Sale baja: compruebe la fuente; con 1 kΩ el voltímetro no carga el divisor." }
+      ficha: { n: 1, titulo: "El voltímetro forma parte del circuito" }
+    comprobar:
+      - { V_o: 5 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [190, 203, 211, 213]
+    ideas:
+      - { titulo: "Lo que no ve.", texto: "Parásitos, temperatura real, EMC y el ruido que no está en los modelos." }
+      - { titulo: "Los modelos.", texto: "El resultado no es mejor que el peor de ellos." }
+      - { titulo: "Para qué sirve.", texto: "Mirar dentro de un circuito sin perturbarlo, lo que el banco no puede." }
+      - { titulo: "La actitud.", texto: "Hipótesis frente a experimento: si discrepan, buscar lo que falta." }

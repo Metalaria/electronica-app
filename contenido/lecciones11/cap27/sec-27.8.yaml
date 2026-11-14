@@ -1,0 +1,301 @@
+# Lección 1.2 de la sección 26.8 «Estabilidad del Operacional: Compensación y Carga Capacitiva» (cap27; sec-27.8).
+# Formato: contenido/lecciones11/GUIA.md. El Bode es el del operacional de la tabla del bloque 240: A = 10⁵ con polos
+# en 10 Hz y 1 MHz. El cruce de |A|/G = 1 se resuelve exacto (una ecuación de segundo grado en f²) y el margen es
+# 180° menos la fase de los dos polos allí: da los 89,5°, 84,8° y 52° de la tabla. La respuesta al escalón es la de un
+# segundo orden normalizado (tiempo en 1/ω₀), con ζ de 0,9, 0,7 (unos 65°), 0,42 (45°, 23 %) y 0,2 (bloque 237).
+leccion: cap27/sec-27.8
+
+libro:
+  230: "el amplificador introduce retardo"
+  231: "el circuito oscila"
+  234: "en la frecuencia donde la ganancia de lazo vale 1"
+  236: "Compromiso recomendado"
+  237: "con 45° el amortiguamiento baja a unos 0,42 y el sobreimpulso ronda el 23 %"
+  240: "Seguidor (ganancia 1)"
+  242: "Cuanta menos ganancia, peor el margen"
+  243: "el seguidor de tensión es la configuración más difícil de estabilizar"
+  245: "la ganancia haya caído por debajo de 1 antes de que el segundo polo aporte fase"
+  246: "ese condensador es exactamente el que limita el GBW y el slew rate"
+  248: "Con unos cientos de picofaradios, un operacional estable puede empezar a timbrar"
+  249: "una resistencia de aislamiento de decenas de ohmios"
+  250: "con 1 MΩ y 10 pF, el polo está en 16 kHz"
+  251: "añade fase sin reducir ganancia"
+  254: "La sobreoscilación dice el margen de fase"
+  "cap27#305": 'f_("p") = ("1")/("2" π dot.op R_("o") dot.op C_("L"))'
+  266: "añadir 1 nF a la salida y repetir el escalón"
+
+modelo:
+  valores:
+    A_0: { sim: "A", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    f_1: { sim: "f₁", nombre: "primer polo", unidad: Hz, valor: 10 }
+    f_2: { sim: "f₂", nombre: "segundo polo", unidad: Hz, valor: 1000000 }
+    G: { sim: "G", nombre: "ganancia del montaje", unidad: "", valor: 100 }
+    z: { sim: "ζ", nombre: "amortiguamiento", unidad: "", valor: 0.7 }
+    R_x: { sim: "R", nombre: "resistencia de realimentación", unidad: Ω, valor: 1000000 }
+    C_x: { sim: "C", nombre: "capacidad del nodo de entrada", unidad: F, valor: 10e-12 }
+    e_8: { sim: "V_{in}", nombre: "nivel medio de la entrada", unidad: V, valor: 0 }
+    a_8: { sim: "A", nombre: "amplitud del escalón", unidad: V, valor: 0.5 }
+    f_8: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 10000 }
+    sq_8: { sim: "forma", nombre: "forma de la entrada (cuadrada)", unidad: "", valor: 1 }
+    G_8: { sim: "G", nombre: "ganancia del montaje en vivo", unidad: "", valor: 1 }
+    R1_8: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 1000 }
+  calculos:
+    a_q: { expr: "1/(f_1^2*f_2^2)", sim: "a", nombre: "coeficiente", unidad: "" }
+    b_q: { expr: "1/f_1^2 + 1/f_2^2", sim: "b", nombre: "coeficiente", unidad: "" }
+    c_q: { expr: "1 - (A_0/G)^2", sim: "c", nombre: "coeficiente", unidad: "" }
+    f_c: { expr: "sqrt((-b_q + sqrt(b_q^2 - 4*a_q*c_q))/(2*a_q))", sim: "f_{c}", nombre: "frecuencia de cruce", unidad: Hz }
+    P_m: { expr: "180 - (atan(f_c/f_1) + atan(f_c/f_2))*180/pi", sim: "MF", nombre: "margen de fase", unidad: "°", cifras: 3 }
+    G_db: { expr: "20*log10(G)", sim: "1/β", nombre: "ganancia del montaje en dB", unidad: dB }
+    O_s: { expr: "100*exp(-pi*z/sqrt(1 - z^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+    gbw_8: { expr: "A_0*f_1", sim: "GBW", nombre: "producto ganancia-ancho de banda", unidad: Hz }
+    R2_8: { expr: "(G_8 - 1)*R1_8", sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω }
+    w1_8: { expr: "2*pi*gbw_8/A_0", sim: "ω₁", nombre: "primer polo", unidad: "rad/s" }
+    w2_8: { expr: "2*pi*f_2", sim: "ω₂", nombre: "segundo polo", unidad: "rad/s" }
+    be_8: { expr: "R1_8/(R1_8 + R2_8)", sim: "β", nombre: "fracción realimentada", unidad: "" }
+    wn_8: { expr: "sqrt(w1_8*w2_8*(1 + A_0*be_8))", sim: "ω_{n}", nombre: "pulsación propia", unidad: "rad/s" }
+    z_8: { expr: "(w1_8 + w2_8)/(2*wn_8)", sim: "ζ", nombre: "amortiguamiento", unidad: "" }
+    G0_8: { expr: "A_0/(1 + A_0*be_8)", sim: "G₀", nombre: "ganancia en continua", unidad: "" }
+    wd_8: { expr: "wn_8*sqrt(1 - z_8^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    so_8: { expr: "100*exp(-pi*z_8/sqrt(1 - z_8^2))", sim: "sobreoscilación", nombre: "sobreoscilación", unidad: "%", cifras: 2 }
+    t0_8: { expr: "1/(2*f_8)", sim: "t₀", nombre: "instante del escalón", unidad: s }
+    f_x: { expr: "1/(2*pi*R_x*C_x)", sim: "f_{p}", nombre: "polo de la entrada", unidad: Hz }
+
+tarjetas:
+  - id: explore-margen
+    tipo: explorar
+    titulo: "Dónde se cruzan"
+    texto: "La ganancia en lazo abierto, con polos en 10 Hz y 1 MHz, y la del montaje. Bájela y mire el margen de fase."
+    libro: [234, 240, 242]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+        - { expr: "G_db", color: naranja, rotulo: "montaje, 1/β", discontinua: true }
+      marcas:
+        - { x: "f_c", y: "G_db", rotulo: "cruce: {{f_c}}" }
+      lectura: { valor: P_m, rotulo: "Margen de fase" }
+      mandos:
+        - { valor: G, lista: [1, 11, 100], nombres: [seguidor, "ganancia 11", "ganancia 100"], rotulo: "Montaje" }
+    requiere: { mover: [G] }
+    comprobar:
+      - { P_m: 89.5, tol: 0.01 }
+      - { con: { G: 11 }, P_m: 84.8, tol: 0.01 }
+      - { con: { G: 1 }, P_m: 52, f_c: 786000, tol: 0.01 }
+
+  - id: prediga-seguidor
+    tipo: predecir
+    titulo: "¿Cuál oscila antes?"
+    texto: "Con el mismo operacional, ¿qué montaje tiene menos margen de fase?"
+    libro: [240, 243]
+    fijar: { G: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+      lectura: { valor: P_m, rotulo: "Margen del seguidor" }
+      ocultar: true
+    opciones:
+      - texto: "El seguidor, de ganancia 1: unos 52°"
+        bien: true
+        porque: "Es el más difícil de estabilizar, no el más fácil: con ganancia 100 el margen es de 89,5°."
+      - texto: "El de ganancia 100"
+        porque: "Más ganancia del montaje es menos ganancia de lazo: cruce a frecuencia más baja, menos fase."
+      - texto: "Todos igual: el operacional es el mismo"
+        porque: "El operacional sí, pero la realimentación no: cambia dónde se cruzan las curvas."
+    escalera:
+      - "¿Dónde cruza la recta de 1/β la curva del operacional cuando la ganancia baja?"
+    solucion: "El seguidor: el cruce sube hasta 786 kHz y el margen baja a unos 52°."
+    comprobar:
+      - { P_m: 52, f_c: 786000, tol: 0.01 }
+      - { con: { G: 100 }, P_m: 89.5, tol: 0.01 }
+
+  - id: explore-seguidor-vivo
+    tipo: explorar
+    titulo: "El seguidor, en vivo"
+    texto: "El operacional de la tabla como seguidor y con ganancia 2. Cambie la ganancia y mire el timbre tras el escalón."
+    libro: [240, 242, 243]
+    widget:
+      tipo: circuito
+      esquema: ao-estabilidad
+      piezas: { entrada: e_8, amplitud: a_8, f: f_8, forma: sq_8, r1: R1_8, r2: R2_8, a0: A_0, gbw: gbw_8, polo2: f_2 }
+      lectura: { valor: so_8, rotulo: "Sobreoscilación" }
+      grafica:
+        x: { id: t, min: 0.0000495, max: 0.000052, unidad: s, rotulo: "t" }
+        y: { min: -1.4, max: 1.4, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "G0_8*(e_8 + a_8) - 2*a_8*G0_8*ceil((t - t0_8)/1e9)*(1 - exp(-z_8*wn_8*max(0, t - t0_8))*(cos(wd_8*max(0, t - t0_8)) + z_8*wn_8/wd_8*sin(wd_8*max(0, t - t0_8))))", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: G_8, lista: [1, 2], rotulo: "Ganancia del montaje" }
+    requiere: { mover: [G_8] }
+
+  - id: por-que-seguidor
+    tipo: porque
+    titulo: "¿Por qué el seguidor?"
+    texto: "Cuanta menos ganancia, peor margen. ¿Por qué?"
+    libro: [230, 242, 243]
+    fijar: { G: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+        - { expr: "G_db", color: naranja, rotulo: "montaje, 1/β", discontinua: true }
+    opciones:
+      - texto: "La realimentación es más fuerte: el cruce cae más arriba, donde hay más fase acumulada"
+        bien: true
+        porque: "En el seguidor el segundo polo ya resta fase en el cruce. Por eso hay operacionales «estables para ganancias ≥ 5»."
+      - texto: "Porque el seguidor no tiene resistencias que amortigüen"
+        porque: "Las resistencias de la red no amortiguan: fijan β. Lo que importa es la fase en el cruce."
+      - texto: "Porque con ganancia 1 el operacional satura"
+        porque: "No satura: es un problema de fase a frecuencia alta, no de amplitud."
+    escalera:
+      - "Cada polo aporta hasta 90°, empezando una década antes de su frecuencia."
+    solucion: "Menos ganancia, cruce más alto, más fase: el seguidor es el caso difícil."
+
+  - id: explore-escalon
+    tipo: explorar
+    titulo: "El margen se ve en el escalón"
+    texto: "Respuesta a un escalón según el margen de fase. Bájelo y mire el sobreimpulso."
+    nota: "Tiempo en unidades de 1/ω₀."
+    libro: [237, 254]
+    widget:
+      tipo: grafica
+      x: { id: wt, min: 0, max: 15, unidad: "", rotulo: "ω₀t" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z*wt)*(cos(sqrt(1 - z^2)*wt) + z/sqrt(1 - z^2)*sin(sqrt(1 - z^2)*wt))", color: naranja, rotulo: "salida" }
+        - { expr: "1", color: tinta, rotulo: "valor final", discontinua: true }
+      lectura: { valor: O_s, rotulo: "Sobreimpulso" }
+      mandos:
+        - { valor: z, lista: [0.9, 0.7, 0.42, 0.2], nombres: ["más de 70°", "unos 65°", "45°", "menos de 30°"], rotulo: "Margen de fase" }
+    requiere: { mover: [z] }
+    comprobar:
+      - { con: { z: 0.42 }, O_s: 23, tol: 0.02 }
+
+  - id: margen-recomendado
+    tipo: pregunta
+    titulo: "Cuánto margen"
+    texto: "¿Qué margen de fase recomienda el libro como compromiso?"
+    libro: [236, 237]
+    fijar: { z: 0.42 }
+    widget:
+      tipo: grafica
+      x: { id: wt, min: 0, max: 15, unidad: "", rotulo: "ω₀t" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z*wt)*(cos(sqrt(1 - z^2)*wt) + z/sqrt(1 - z^2)*sin(sqrt(1 - z^2)*wt))", color: naranja, rotulo: "salida" }
+    opciones:
+      - texto: "Entre 45 y 60°"
+        bien: true
+        porque: "Por debajo, sobreoscilación y timbre; por encima de 70°, muy estable pero lento."
+      - texto: "Más de 90°, cuanto más mejor"
+        porque: "Demasiado margen da una respuesta lenta: se paga en velocidad."
+      - texto: "Entre 0 y 30°"
+        porque: "Es estable, pero con sobreoscilación y timbre marcados."
+    escalera:
+      - "Con 45° el sobreimpulso ronda el 23 %; con unos 65°, la respuesta es máximamente plana."
+    solucion: "De 45 a 60°: el compromiso recomendado."
+
+  - id: empareje-enemigos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los enemigos del margen"
+    texto: "Una cada causa de pérdida de margen con su remedio o su rasgo."
+    libro: [248, 249, 250, 251]
+    emparejar:
+      - ["Carga capacitiva en la salida", "Resistencia de aislamiento de decenas de ohmios"]
+      - ["Capacidad en la entrada inversora", "Condensador pequeño en paralelo con la realimentación"]
+      - ["Retardo del lazo", "Añade fase sin reducir ganancia"]
+    exito: "La carga capacitiva es el problema más frecuente: un cable largo, un piezo, un convertidor."
+    pistas:
+      - { texto: "Un cero compensa un polo: el condensador en paralelo con la resistencia de realimentación." }
+    escalera:
+      - "El retardo puro es la peor combinación: fase sin pérdida de ganancia."
+    solucion: "Carga–R de aislamiento, entrada–C en paralelo con R_{f}, retardo–fase sin ganancia."
+
+  - id: estime-polo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El polo de la entrada"
+    texto: "1 MΩ de realimentación y 10 pF en el nodo inversor. ¿Dónde cae el polo que forman?"
+    libro: [250, "cap27#305"]
+    estimar:
+      objetivo: "f_x"
+      unidad: Hz
+      min: 0
+      max: 100000
+      paso: 500
+      inicio: 80000
+      tol: 0.05
+      rotulo: "Frecuencia del polo"
+    exito: "Unos 16 kHz: con resistencias altas, el polo cae donde importa."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 16700 }, texto: "Se ha pasado: f = 1/(2π · R · C)." }
+      - { texto: "Se ha quedado corto: 1/(2π · 10⁶ · 10⁻¹¹)." }
+    escalera:
+      - "f = 1/(2π · R · C)."
+    solucion: "1/(2π · 1 MΩ · 10 pF) ≈ 16 kHz."
+    comprobar:
+      - { f_x: 15915 }
+
+  - id: compensacion-interna
+    tipo: pregunta
+    titulo: "El condensador de compensación"
+    texto: "Casi todos los operacionales llevan dentro un condensador que crea un polo a muy baja frecuencia. ¿Qué cuesta?"
+    libro: [245, 246]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
+      curvas:
+        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+    opciones:
+      - texto: "Ancho de banda: limita el GBW y el slew rate"
+        bien: true
+        porque: "Gracias a él la ganancia cae por debajo de 1 antes de que el segundo polo aporte fase: estable incluso como seguidor."
+      - texto: "Precisión en continua"
+        porque: "En continua el condensador no hace nada: su efecto está en frecuencia."
+      - texto: "Nada: es gratis"
+        porque: "Un descompensado, sin él, tiene mucho más ancho de banda."
+    escalera:
+      - "¿Qué limita un polo puesto a propósito a baja frecuencia?"
+    solucion: "El ancho de banda: el GBW y el slew rate."
+
+  - id: prueba-1nf
+    tipo: pregunta
+    titulo: "La prueba de la carga capacitiva"
+    texto: "Un montaje responde limpio a un escalón; con 1 nF a la salida, timbra. ¿Qué concluye?"
+    libro: [254, 266]
+    fijar: { z: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: wt, min: 0, max: 15, unidad: "", rotulo: "ω₀t" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z*wt)*(cos(sqrt(1 - z^2)*wt) + z/sqrt(1 - z^2)*sin(sqrt(1 - z^2)*wt))", color: naranja, rotulo: "salida" }
+    opciones:
+      - texto: "El margen era escaso: hay que corregirlo antes de darlo por bueno"
+        bien: true
+        porque: "En el equipo final habrá cables y capacidades que no están en el prototipo."
+      - texto: "Que 1 nF es demasiado y nunca se verá"
+        porque: "Un cable de un metro ya son unos 100 pF: cargas así aparecen."
+      - texto: "Que el operacional está averiado"
+        porque: "Funciona; solo tiene poco margen, y la carga se lo come."
+    escalera:
+      - "Un amplificador que timbra ante un escalón está avisando."
+    solucion: "Margen escaso: compensar ahora, no en el equipo final."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [231, 236, 243, 246, 254]
+    ideas:
+      - { titulo: "Retardo es fase.", texto: "Con −180° y ganancia de lazo mayor que 1, oscila." }
+      - { titulo: "Margen.", texto: "De 45 a 60°; se lee en el sobreimpulso del escalón." }
+      - { titulo: "El seguidor.", texto: "Menos ganancia, peor margen: es el caso difícil." }
+      - { titulo: "Enemigos.", texto: "Carga capacitiva, capacidad de entrada y retardos." }

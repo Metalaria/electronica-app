@@ -1,0 +1,325 @@
+# Lección 1.2 de la sección 21.1 «Práctica 1 — Ley de Ohm y Divisor de Tensión» (cap22; etiqueta interna sec-22.1).
+# Formato: contenido/lecciones11/GUIA.md. El divisor del libro (9 V, 10 kΩ y 4,7 kΩ) y el de 1 MΩ con el multímetro
+# de 10 MΩ o la sonda en ×1 (1 MΩ, ejercicio 21.1) como carga en paralelo con R₂. El Thévenin de la salida (3,2 kΩ)
+# alimenta cargas de 10 MΩ, 32 kΩ y 3,2 kΩ: las dos últimas son ilustrativas (diez veces y una vez el Thévenin).
+leccion: cap22/sec-22.1
+
+libro:
+  6: "la tolerancia importa, el instrumento carga, y la potencia se disipa"
+  9: 'V_("out") = V_("in")'
+  10: "Con 9 V, R1 = 10 kΩ y R2 = 4,7 kΩ"
+  11: '"2,88 V"'
+  12: "La corriente es 9 / 14 700 = 0,61 mA, y las potencias 3,7 mW y 1,8 mW"
+  15: "La comprobación correcta es medir las resistencias primero y recalcular con esos valores"
+  16: "el valor nominal es un punto de partida, no un dato"
+  17: "Una pila «de 9 V» nueva da 9,5 y usada da 8."
+  19: "Repitiendo con R1 = R2 = 1 MΩ, la salida teórica es la mitad de la alimentación… y sale menos."
+  20: "el multímetro tiene una impedancia de entrada de unos 10 MΩ, que se pone en paralelo con R2"
+  21: "el instrumento o la etapa siguiente forman parte del circuito"
+  24: "La tensión se hunde."
+  25: "esa impedancia es de 3,2 kΩ"
+  26: "un divisor sirva para dar una referencia de tensión a una entrada de alta impedancia y no para alimentar"
+  28: "comprobar que la relación es lineal con la posición"
+  29: "Con un LDR en lugar de R2, que convierte el divisor en un sensor de luz"
+  30: "Con una NTC, lo mismo con temperatura, y ahí aparece que la relación no es lineal"
+  32: "valores medidos de las resistencias, alimentación real"
+  33: "la discrepancia es el resultado interesante, no el fallo"
+  "cap22#370": "Con la sonda en ×1, la entrada del osciloscopio presenta 1 MΩ"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de la pila", unidad: V, valor: 9 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 4700 }
+    R_m: { sim: "R_{in}", nombre: "entrada del instrumento", unidad: Ω, valor: 10000000 }
+    med: { tipo: interruptor, nombre: "instrumento conectado", valor: 0 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000000 }
+  calculos:
+    R_ab: { si: med, entonces: "par(R_2, R_m)", sino: "R_2", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    V_vacio: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{vacío}", nombre: "salida sin instrumento", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    P_1: { expr: "I^2*R_1", sim: "P₁", nombre: "potencia en R₁", unidad: W }
+    P_2: { expr: "V_out^2/R_ab", sim: "P₂", nombre: "potencia abajo", unidad: W }
+    V_th: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{Th}", nombre: "tensión de Thévenin", unidad: V }
+    R_th: { expr: "par(R_1, R_2)", sim: "R_{Th}", nombre: "resistencia de Thévenin", unidad: Ω }
+    V_c: { expr: "V_th*R_L/(R_th + R_L)", sim: "V_{carga}", nombre: "tensión en la carga", unidad: V }
+    I_c: { expr: "V_th/(R_th + R_L)", sim: "I", nombre: "corriente de la carga", unidad: A }
+    V_rth: { expr: "I_c*R_th", sim: "V_{Th}", nombre: "caída en el Thévenin", unidad: V }
+
+tarjetas:
+  - id: explore-divisor
+    tipo: explorar
+    titulo: "El divisor de la práctica"
+    texto: "Con 9 V y R₁ = 10 kΩ, mueva R₂ y mire la salida."
+    libro: [10]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_2, min: 1000, max: 20000, paso: 100 }
+    requiere: { mover: [R_2] }
+
+  - id: formula-divisor
+    tipo: formula
+    titulo: "El cálculo antes de medir"
+    texto: "Con 4,7 kΩ abajo, la salida es la parte de R₂ en el total. Las potencias, despreciables."
+    libro: [9, 10, 11, 12]
+    fijar: { R_2: 4700, V_in: 9, med: 0 }
+    ec: 9
+    sustitucion: "{{V_in}} · {{R_2}} / ({{R_1}} + {{R_2}}) = {{V_out}}"
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I, rotulo: "I = {{I}}" }
+        - { valor: P_1, rotulo: "P₁ = {{P_1}}" }
+        - { valor: P_2, rotulo: "P₂ = {{P_2}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+    comprobar:
+      - { V_out: 2.88, I: 0.00061 }
+      - { P_1: 0.0037, P_2: 0.0018, tol: 0.03 }
+
+  - id: pila-real
+    tipo: explorar
+    titulo: "La pila tampoco vale 9 V"
+    texto: "Una pila nueva da 9,5 V y una usada, 8 V. Muévala y mire cuánto cambia la salida."
+    libro: [17]
+    fijar: { R_2: 4700, med: 0 }
+    inicio: { V_in: 9 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: V_in, lista: [8, 9, 9.5], rotulo: "Pila" }
+    requiere: { mover: [V_in] }
+
+  - id: tolerancias
+    tipo: pregunta
+    titulo: "No sale 2,88 V"
+    texto: "Mide el divisor con resistencias del 5 % y la salida no es la calculada. ¿Qué comprobación es la correcta?"
+    libro: [11, 15, 16]
+    fijar: { R_2: 4700, V_in: 9, med: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Salida calculada" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Medir primero las resistencias y recalcular con esos valores"
+        bien: true
+        porque: "El valor nominal es un punto de partida, no un dato. Con los valores medidos, el cálculo sí coincide."
+      - texto: "Repetir con los valores nominales hasta que cuadre"
+        porque: "Repetir el mismo cálculo da el mismo número: el error está en suponer que valen lo que dicen."
+      - texto: "Cambiar de multímetro: el primero está descalibrado"
+        porque: "Con el 5 % de tolerancia, la salida puede desviarse un 3 % o más sin que el instrumento falle."
+    escalera:
+      - "¿Cuánto vale de verdad una resistencia marcada «10 kΩ, 5 %»?"
+    solucion: "Medir R₁ y R₂ con el multímetro y recalcular: el nominal es un punto de partida, no un dato."
+
+  - id: prediga-megaohmio
+    tipo: predecir
+    titulo: "Prediga con 1 MΩ"
+    texto: "Con R₁ = R₂ = 1 MΩ y 9 V, la salida teórica es la mitad. ¿Qué marcará el multímetro de 10 MΩ?"
+    libro: [19, 20]
+    fijar: { V_in: 9, R_1: 1000000, R_2: 1000000, R_m: 10000000, med: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_m, interruptor: med }
+      lectura: { valor: V_out, rotulo: "Lo que marca" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      ocultar: true
+    opciones:
+      - texto: "Algo menos de la mitad"
+        bien: true
+        porque: "El multímetro queda en paralelo con R₂ y baja la rama de abajo: marca menos de lo teórico."
+      - texto: "Exactamente la mitad"
+        porque: "Eso sería con un voltímetro ideal. El real tiene unos 10 MΩ de entrada, en paralelo con R₂."
+      - texto: "Algo más de la mitad"
+        porque: "Lo que se pone en paralelo con R₂ la hace menor, nunca mayor: la salida baja."
+    escalera:
+      - "¿Dónde queda la entrada del multímetro respecto a R₂?"
+    solucion: "Algo menos: 10 MΩ en paralelo con 1 MΩ bajan la rama de abajo."
+
+  - id: instrumento-carga
+    tipo: sorpresa
+    titulo: "El multímetro forma parte del circuito"
+    texto: "Con R₁ = R₂ = 1 MΩ la salida debería ser la mitad. Conecte el multímetro de 10 MΩ."
+    libro: [19, 20]
+    fijar: { V_in: 9, R_1: 1000000, R_2: 1000000, R_m: 10000000 }
+    inicio: { med: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_m, interruptor: med }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: med, tipo: conectar, boton: "Conectar el multímetro (10 MΩ)" }
+    requiere: { conectar: [med] }
+    comprobar:
+      - { con: { med: 1 }, V_out: 4.29 }
+
+  - id: por-que-carga
+    tipo: porque
+    titulo: "¿Por qué baja?"
+    texto: "Con 10 kΩ el multímetro no se notaba y con 1 MΩ sí. ¿Por qué?"
+    libro: [20, 21]
+    fijar: { V_in: 9, R_1: 1000000, R_2: 1000000, R_m: 10000000, med: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_m, interruptor: med }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Sus 10 MΩ quedan en paralelo con R₂, y frente a 1 MΩ ya pesan"
+        bien: true
+        porque: "Frente a 4,7 kΩ, 10 MΩ en paralelo no cambian nada; frente a 1 MΩ bajan la rama de abajo de forma medible."
+      - texto: "Las resistencias de 1 MΩ tienen más tolerancia"
+        porque: "La tolerancia no depende del valor. Lo que cambia es la relación entre R₂ y la entrada del instrumento."
+      - texto: "La pila se descarga más con resistencias altas"
+        porque: "Con resistencias altas la pila entrega menos corriente, no más. La caída viene del instrumento en paralelo."
+    escalera:
+      - "¿Dónde se conecta el multímetro y qué resistencia tiene?"
+    solucion: "Sus 10 MΩ en paralelo con R₂: frente a 1 MΩ desplazan el resultado. El instrumento forma parte del circuito."
+
+  - id: simule-sonda
+    tipo: simular
+    titulo: "Con la sonda en ×1"
+    texto: "El mismo divisor de 1 MΩ y 9 V, medido con el osciloscopio y la sonda en ×1, que presenta 1 MΩ. ¿Cuánto marca?"
+    libro: [19, "cap22#370"]
+    fijar: { V_in: 9, R_1: 1000000, R_2: 1000000, R_m: 1000000, med: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_m, interruptor: med }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.03
+      rotulo: "Lo que marca el osciloscopio"
+      medida: salida
+      errores:
+        - { expr: "V_vacio", texto: "Esos 4,5 V son la salida sin instrumento: ha olvidado que la sonda queda en paralelo con R₂." }
+        - { expr: "V_in*par(R_2, 10000000)/(R_1 + par(R_2, 10000000))", texto: "Esos 4,29 V son los del multímetro de 10 MΩ. En ×1 la sonda presenta solo 1 MΩ." }
+    exito: "Abajo quedan 1 MΩ ‖ 1 MΩ = 500 kΩ: la salida cae a 3 V, un tercio menos. En ×1 la sonda no sirve aquí."
+    escalera:
+      - "La sonda en ×1 pone 1 MΩ en paralelo con R₂."
+      - "Calcule R₂ ‖ 1 MΩ y úsela como la resistencia de abajo."
+    solucion: "Abajo quedan R₂ ‖ 1 MΩ = 500 kΩ, la mitad de R₁: la salida es un tercio de 9 V, 3 V."
+    comprobar:
+      - { V_out: 3, V_vacio: 4.5, R_ab: 500000 }
+      - { con: { R_m: 10000000 }, V_out: 4.29 }
+
+  - id: no-alimenta
+    tipo: explorar
+    titulo: "Un divisor no alimenta nada"
+    texto: "La salida del divisor de 10 kΩ y 4,7 kΩ es una fuente con 3,2 kΩ en serie. Conecte cargas cada vez menores."
+    libro: [24, 25]
+    fijar: { V_in: 9, R_1: 10000, R_2: 4700 }
+    inicio: { R_L: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_th, rth: R_th, carga: R_L }
+      lectura: { valor: V_c, rotulo: "Tensión en la carga" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c, interna: V_rth }
+      mandos:
+        - { valor: R_L, lista: [10000000, 32000, 3200], rotulo: "Carga" }
+    requiere: { mover: [R_L] }
+    comprobar:
+      - { R_th: 3200, V_th: 2.88 }
+
+  - id: para-que-sirve
+    tipo: pregunta
+    titulo: "¿Para qué sirve un divisor?"
+    texto: "Su salida tiene 3,2 kΩ de Thévenin. ¿Para qué sirve, y para qué no?"
+    libro: [25, 26]
+    fijar: { V_in: 9, R_1: 10000, R_2: 4700, R_L: 3200 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_th, rth: R_th, carga: R_L }
+      lectura: { valor: V_c, rotulo: "Tensión en la carga" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+    opciones:
+      - texto: "Para dar una referencia a una entrada de alta impedancia, no para alimentar"
+        bien: true
+        porque: "Una entrada de alta impedancia apenas pide corriente. Una carga comparable a 3,2 kΩ la hunde."
+      - texto: "Para alimentar cargas pequeñas, como un LED"
+        porque: "Un LED que pida unos miliamperios hunde la salida por completo: cae casi todo en los 3,2 kΩ."
+      - texto: "Para cualquier cosa, si las resistencias son de precisión"
+        porque: "La precisión no baja el Thévenin. Una carga comparable hunde la salida igual."
+    escalera:
+      - "Una carga igual al Thévenin se queda con la mitad de la tensión."
+    solucion: "Para dar una referencia a una entrada de alta impedancia. Si la carga pesa, hace falta un seguidor."
+    comprobar:
+      - { V_c: 1.44 }
+
+  - id: variantes
+    tipo: pregunta
+    titulo: "Las variantes que merecen la pena"
+    texto: "Empareje cada cambio del divisor con lo que enseña."
+    libro: [28, 29, 30]
+    emparejar:
+      - ["Un potenciómetro", "La salida es lineal con la posición"]
+      - ["Un LDR en lugar de R₂", "Un sensor de luz"]
+      - ["Una NTC en lugar de R₂", "Un sensor de temperatura no lineal, que hay que linealizar"]
+    exito: "El mismo divisor, tres sensores. Con la NTC aparece que la relación no es lineal."
+    pistas:
+      - { texto: "Una LDR cambia con la luz y una NTC con la temperatura." }
+    escalera:
+      - "¿Qué magnitud cambia cada componente?"
+    solucion: "Potenciómetro: lineal con la posición. LDR: luz. NTC: temperatura, no lineal."
+
+  - id: banco-divisor
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte el divisor del libro, mida las resistencias y la pila, y luego la salida."
+    libro: [10, 32, 33]
+    fijar: { V_in: 9, R_1: 10000, R_2: 4700, med: 0 }
+    banco:
+      piezas: ["Pila de 9 V", "R₁ = 10 kΩ y R₂ = 4,7 kΩ", "Multímetro en V⎓"]
+      medir: "La tensión entre la salida y masa."
+      esperado: V_out
+      unidad: V
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: ¿es la pila nueva, de 9,5 V? Recalcule con la alimentación real." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Mide de menos: una pila usada da 8 V. Mida la alimentación y recalcule." }
+        - { texto: "Dentro de lo esperado. Anote los valores medidos, el cálculo con ellos y la diferencia." }
+      ficha: { n: 25, titulo: "Práctica 1 · Ley de Ohm y divisor de tensión" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [6, 16, 21, 26]
+    ideas:
+      - { titulo: "Tolerancia.", texto: "El valor nominal es un punto de partida: mida las resistencias y la pila y recalcule." }
+      - { titulo: "El instrumento carga.", texto: "Sus 10 MΩ en paralelo se notan con resistencias de megaohmios; la sonda en ×1, todavía más." }
+      - { titulo: "No alimenta.", texto: "El divisor tiene un Thévenin de R₁ ‖ R₂: sirve de referencia, no de fuente." }
+      - { titulo: "Discrepancia.", texto: "La diferencia entre lo medido y lo calculado es el resultado interesante, no el fallo." }

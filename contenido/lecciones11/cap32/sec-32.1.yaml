@@ -1,0 +1,228 @@
+# Lección 1.2 de la sección 32.1 «Por Qué el Ruido Pone un Límite» (cap32). Formato: contenido/lecciones11/GUIA.md.
+# El suelo es el del bloque 9 más 10·log₁₀(B) y la figura de ruido (bloques 11 y 12). El espectro de la FFT es un
+# dibujo de ejemplo: fondo plano con picos a 50, 150 y 250 Hz (red y armónicos), sin valores que se lean.
+leccion: cap32/sec-32.1
+
+libro:
+  5: "ese ruido pone un suelo absoluto por debajo del cual no hay señal detectable"
+  6: "es termodinámica"
+  9: "−174 dBm en 1 Hz de ancho de banda"
+  11: "el suelo sube a −174 + 60 ="
+  12: "el suelo sube NF decibelios más"
+  16: "Un amplificador con 5 nV/√Hz de ruido en 10 kHz de banda tiene 0,5 µV de ruido"
+  20: "comprar 24 bits cuando el ruido del sistema deja 14 útiles"
+  23: "Es la más eficaz y la más barata"
+  24: "que es la que domina por Friis"
+  25: "Reduce el ruido por √n"
+  26: "precisamente porque el suelo depende de T"
+  28: "interferencia"
+  29: "intentar apantallar el ruido térmico"
+  30: "fondo continuo es ruido, picos discretos es interferencia"
+  32: "no dejarla al aire"
+  33: "ese número es el límite real de lo que se puede medir"
+
+modelo:
+  valores:
+    B_w: { sim: "B", nombre: "ancho de banda", unidad: Hz, valor: 1000 }
+    N_F: { sim: "NF", nombre: "figura de ruido", unidad: dB, valor: 0 }
+    e_n: { sim: "e_{n}", nombre: "densidad de ruido", unidad: "V/√Hz", valor: 5e-9 }
+    B_m: { sim: "B", nombre: "banda de la medida", unidad: Hz, valor: 10000 }
+  calculos:
+    P_s: { expr: "-174 + 10*log10(B_w) + N_F", sim: "suelo", nombre: "suelo de ruido", unidad: dBm }
+    r_b: { expr: "sqrt(B_m)", sim: "√B", nombre: "raíz de la banda", unidad: "" }
+    v_n: { expr: "e_n*sqrt(B_m)", sim: "v_{n}", nombre: "ruido total", unidad: V }
+
+tarjetas:
+  - id: explore-suelo
+    tipo: explorar
+    titulo: "Un suelo que no se mueve"
+    texto: "Una resistencia a temperatura ambiente da −174 dBm en 1 Hz de banda. Cambie la banda y la figura de ruido y mire el suelo."
+    libro: [5, 9, 12]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "ancho de banda", escala: log }
+      y: { min: -180, max: -90, unidad: dBm, rotulo: "suelo de ruido" }
+      curvas:
+        - { expr: "-174 + 10*log10(nu)", color: tinta, rotulo: "térmico, sin amplificador", discontinua: true }
+        - { expr: "-174 + 10*log10(nu) + N_F", color: azul, rotulo: "con el amplificador" }
+      marcas:
+        - { x: "B_w", y: "P_s", rotulo: "{{P_s}}" }
+      lectura: { valor: P_s, rotulo: "Suelo de ruido" }
+      mandos:
+        - { valor: B_w, lista: [1, 1000, 1000000], rotulo: "Ancho de banda" }
+        - { valor: N_F, lista: [0, 3, 10], rotulo: "Figura de ruido, NF" }
+    requiere: { mover: [B_w, N_F] }
+
+  - id: prediga-megahercio
+    tipo: predecir
+    titulo: "En 1 MHz de banda"
+    texto: "Sin amplificador, ¿dónde queda el suelo de ruido térmico en 1 MHz de banda?"
+    libro: [9, 11]
+    fijar: { B_w: 1000000, N_F: 0 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "ancho de banda", escala: log }
+      y: { min: -180, max: -90, unidad: dBm, rotulo: "suelo de ruido" }
+      curvas:
+        - { expr: "-174 + 10*log10(nu)", color: azul, rotulo: "térmico" }
+      lectura: { valor: P_s, rotulo: "Suelo en 1 MHz" }
+      ocultar: curvas
+    opciones:
+      - texto: "−114 dBm"
+        bien: true
+        porque: "1 MHz es 10⁶ Hz: 60 dB más que en 1 Hz. −174 + 60 = −114 dBm."
+      - texto: "−174 dBm"
+        porque: "Esa es la cifra en 1 Hz. Con más banda entra más ruido."
+      - texto: "−168 dBm"
+        porque: "Ha sumado muy poco: eso sería una banda de unos pocos hercios, no de un millón."
+    escalera:
+      - "El suelo sube 10 · log₁₀(B) sobre −174 dBm."
+    solucion: "−174 + 10 · log₁₀(10⁶) = −174 + 60 = −114 dBm."
+    comprobar:
+      - { P_s: -114 }
+      - { con: { B_w: 4 }, P_s: -168, tol: 0.001 }
+
+  - id: estime-resolucion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La resolución alcanzable"
+    texto: "Un amplificador tiene 5 nV/√Hz de ruido y trabaja en 10 kHz de banda. ¿Cuánto ruido tiene?"
+    libro: [16]
+    estimar:
+      objetivo: "v_n"
+      unidad: V
+      min: 0
+      max: 0.000003
+      paso: 0.00000005
+      inicio: 0.0000025
+      tol: 0.05
+      rotulo: "Ruido total"
+    exito: "0,5 µV: no puede medir microvoltios, por muchos bits que tenga el convertidor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000000525 }, texto: "Se ha pasado: multiplique por la raíz de la banda, no por la banda." }
+      - { texto: "Se ha quedado corto: 5 nV/√Hz por √(10 000 Hz)." }
+    escalera:
+      - "Ruido total = densidad · √B."
+    solucion: "5 nV/√Hz · √10 000 = 5 nV · 100 = 0,5 µV."
+    comprobar:
+      - { v_n: 0.0000005, B_m: 10000, r_b: 100 }
+
+  - id: bits-utiles
+    tipo: pregunta
+    titulo: "Veinticuatro bits"
+    texto: "El ruido de un sistema de adquisición deja 14 bits útiles. ¿Qué gana comprando un convertidor de 24 bits?"
+    libro: [20]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "ancho de banda", escala: log }
+      y: { min: -180, max: -90, unidad: dBm, rotulo: "suelo de ruido" }
+      curvas:
+        - { expr: "-174 + 10*log10(nu)", color: azul, rotulo: "suelo térmico" }
+    opciones:
+      - texto: "Nada: los bits por debajo del ruido no aportan"
+        bien: true
+        porque: "Es gastar sin ganar nada: el suelo de ruido decide los bits útiles, no el convertidor."
+      - texto: "Diez bits más de resolución"
+        porque: "Serían bits que solo digitalizan ruido: la resolución real la fija el suelo."
+      - texto: "Menos ruido, porque el convertidor es mejor"
+        porque: "El ruido del sistema sigue ahí; el convertidor no lo baja."
+    escalera:
+      - "¿Qué digitalizan los bits que quedan por debajo del ruido?"
+    solucion: "Nada: con 14 bits útiles, los otros 10 solo miden ruido."
+
+  - id: empareje-mejoras
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las formas de mejorar"
+    texto: "El suelo no se mueve: solo se puede mejorar de pocas formas. Una cada una con su efecto."
+    libro: [23, 24, 25, 26]
+    emparejar:
+      - ["Reducir el ancho de banda", "La más eficaz y barata: el ruido crece con √B"]
+      - ["Bajar la figura de ruido de la primera etapa", "Es la que domina, por Friis"]
+      - ["Promediar más tiempo", "Reduce el ruido por √n"]
+      - ["Enfriar", "Solo en casos extremos: el suelo depende de T"]
+    exito: "Promediar es además la forma de medir por debajo del suelo instantáneo."
+    pistas:
+      - { texto: "La radioastronomía lleva sus primeras etapas a temperaturas criogénicas." }
+    escalera:
+      - "¿Cuál actúa sobre la banda, cuál sobre el tiempo, cuál sobre la temperatura?"
+    solucion: "Banda–√B; figura de ruido–Friis; promediar–√n; enfriar–T."
+
+  - id: ruido-o-interferencia
+    tipo: pregunta
+    titulo: "¿Ruido o interferencia?"
+    texto: "La FFT de una salida sucia se ve así. ¿Qué tiene delante?"
+    libro: [28, 30]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0, max: 300, unidad: Hz, rotulo: "f" }
+      y: { min: -110, max: -50, unidad: dB, rotulo: "espectro" }
+      curvas:
+        - { expr: "-100 + 40*exp(-((nu - 50)/3)^2) + 25*exp(-((nu - 150)/3)^2) + 15*exp(-((nu - 250)/3)^2)", color: azul, rotulo: "FFT" }
+    opciones:
+      - texto: "Interferencia: picos discretos que entran de fuera y se pueden eliminar"
+        bien: true
+        porque: "Picos a frecuencias concretas son interferencia; aquí, la red y sus armónicos."
+      - texto: "Ruido: no se puede eliminar"
+        porque: "El ruido es un fondo continuo. Estos picos tienen frecuencias concretas."
+      - texto: "Ruido térmico de las resistencias"
+        porque: "El térmico es blanco: la misma densidad a todas las frecuencias, sin picos."
+    escalera:
+      - "Fondo continuo o picos discretos: ¿qué ve?"
+    solucion: "Picos discretos: interferencia, que se busca y se elimina."
+
+  - id: por-que-apantallar
+    tipo: porque
+    titulo: "Apantallar el ruido térmico"
+    texto: "Alguien encierra un amplificador en una caja metálica para bajar su ruido térmico. ¿Por qué no sirve?"
+    libro: [6, 29]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "ancho de banda", escala: log }
+      y: { min: -180, max: -90, unidad: dBm, rotulo: "suelo de ruido" }
+      curvas:
+        - { expr: "-174 + 10*log10(nu)", color: azul, rotulo: "suelo térmico" }
+    opciones:
+      - texto: "El ruido térmico lo generan los propios componentes: es termodinámica, no entra de fuera"
+        bien: true
+        porque: "Una pantalla frena lo que viene de fuera, la interferencia. El suelo térmico solo baja enfriando."
+      - texto: "Porque la caja debería ser de cobre"
+        porque: "El material no importa aquí: ninguna pantalla para un ruido que se genera dentro."
+      - texto: "Sí sirve, si la caja se conecta a masa"
+        porque: "Conectarla a masa ayuda contra la interferencia, no contra el ruido térmico."
+    escalera:
+      - "¿Dónde nace el ruido térmico?"
+    solucion: "Nace en los componentes por la agitación térmica: la pantalla no lo alcanza."
+
+  - id: banco-suelo
+    tipo: pregunta
+    titulo: "Medir su propio suelo"
+    texto: "Quiere medir el suelo de ruido de su sistema. ¿Qué hace con la entrada?"
+    libro: [32, 33]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0, max: 300, unidad: Hz, rotulo: "f" }
+      y: { min: -110, max: -50, unidad: dB, rotulo: "espectro" }
+      curvas:
+        - { expr: "-100 + 0*nu", color: azul, rotulo: "fondo de ruido" }
+    opciones:
+      - texto: "Cortocircuitarla, no dejarla al aire, y medir la salida con la banda de interés"
+        bien: true
+        porque: "Ese ruido dividido por la ganancia es el límite real de lo que puede medir."
+      - texto: "Dejarla al aire: así no se le añade nada"
+        porque: "Al aire, la entrada capta interferencias y mide algo que no es su suelo."
+      - texto: "Conectar una señal grande para ver el ruido encima"
+        porque: "La señal taparía el ruido; el suelo se mide sin señal."
+    escalera:
+      - "¿Qué capta una entrada de alta impedancia al aire?"
+    solucion: "Entrada en cortocircuito y la salida dividida por la ganancia: ese es su suelo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [9, 11, 23, 28]
+    ideas:
+      - { titulo: "El suelo.", texto: "−174 dBm en 1 Hz, más 10 · log₁₀(B), más la figura de ruido." }
+      - { titulo: "Decide diseños.", texto: "Resolución, alcance, velocidad y bits útiles: por debajo del ruido no hay nada." }
+      - { titulo: "Mejorar.", texto: "Menos banda, mejor primera etapa, promediar; en casos extremos, enfriar." }
+      - { titulo: "Ruido o interferencia.", texto: "Fondo continuo, del circuito; picos discretos, de fuera, y se pueden eliminar." }

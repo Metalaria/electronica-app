@@ -1,0 +1,363 @@
+# Lección 1.2 de la sección 21.12 «Práctica 12 — Medir L y C: Puentes y el Medidor LCR» (cap22; etiqueta interna
+# sec-22.13). Formato: contenido/lecciones11/GUIA.md. El puente es el de la sección 1.9 (5 V, ramas de 1000 Ω y la
+# resistencia que pasa a 1010 Ω), con detector ideal; las alimentaciones de 2,5 V y 10 V de la sorpresa son
+# ilustrativas. El condensador de la curva de impedancia (100 µF, ESR 0,1 Ω, ESL 20 nH) es ilustrativo, en los ejes de
+# la figura 21.21. La medida por resonancia usa la bobina de 10 mH y el condensador de 100 nF de la práctica 9.
+leccion: cap22/sec-22.13
+
+libro:
+  322: "comparar una impedancia desconocida con una conocida, en lugar de medirla en absoluto"
+  323: "detectar un cero es mucho más preciso que medir un valor, porque no depende de la exactitud del detector ni de la fuente"
+  326: "Wheatstone: resistencias puras"
+  327: "Maxwell: mide una inductancia comparándola con un condensador, que es un patrón mucho mejor."
+  328: "Schering: mide capacidad y factor de pérdidas"
+  329: "Wien: mide frecuencia"
+  331: "aplican una señal de frecuencia conocida, miden módulo y fase de la corriente, y calculan los componentes del modelo"
+  332: "un medidor LCR elige un modelo, serie o paralelo, y los resultados difieren"
+  333: "Modelo serie (R en serie con L o C): adecuado para impedancias bajas, es decir, condensadores grandes e inductancias pequeñas. Es el que da la ESR"
+  334: "Modelo paralelo: adecuado para impedancias altas, es decir, condensadores pequeños e inductancias grandes. Es el que da la resistencia de fuga."
+  335: "Usar el modelo equivocado da un valor de resistencia que no significa nada"
+  337: "Un condensador medido a 100 Hz y a 100 kHz da valores distintos, y ambos son correctos"
+  338: "Un electrolítico medido a 120 Hz da su capacidad nominal; su ESR, en cambio, se especifica a 100 kHz"
+  340: "Es lo que delata un condensador degradado o un núcleo con pérdidas."
+  341: "el parámetro que predice el fallo de un electrolítico mucho antes que la capacidad"
+  345: "se busca la frecuencia de resonancia con el generador y el osciloscopio, y de ahí se despeja el valor"
+  346: "se mide la relación de amplitudes y el desfase a una frecuencia (sección 23.4). De ahí sale la impedancia compleja completa."
+  347: "enseñan mucho más sobre lo que se está midiendo"
+  "cap01#184": "con independencia de la tensión de alimentación"
+  "cap01#185": "con 5 V de alimentación y una resistencia que pasa de 1000 a 1010 Ω"
+  "cap22#235": "L = 10 mH, C = 100 nF"
+  "cap22#238": '("2" π dot.op sqrt(L C))'
+
+modelo:
+  valores:
+    V_w: { sim: "V", nombre: "alimentación del puente", unidad: V, valor: 5 }
+    R_w1: { sim: "R₁", nombre: "rama izquierda, arriba", unidad: Ω, valor: 1000 }
+    R_w2: { sim: "R₂", nombre: "rama izquierda, abajo", unidad: Ω, valor: 1000 }
+    R_w3: { sim: "R₃", nombre: "patrón ajustable", unidad: Ω, valor: 990 }
+    R_x: { sim: "R_{x}", nombre: "resistencia desconocida", unidad: Ω, valor: 1010 }
+    V_p: { sim: "V_{p}", nombre: "amplitud del generador", unidad: V, valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia del generador", unidad: Hz, valor: 2000 }
+    R_r: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 100 }
+    L_r: { sim: "L", nombre: "bobina desconocida", unidad: H, valor: 0.01 }
+    C_r: { sim: "C", nombre: "condensador conocido", unidad: F, valor: 100e-9 }
+    V_z: { sim: "V_{p}", nombre: "amplitud de prueba", unidad: V, valor: 1 }
+    f_z: { sim: "f", nombre: "frecuencia de prueba", unidad: Hz, valor: 120 }
+    R_z: { sim: "ESR", nombre: "resistencia serie equivalente", unidad: Ω, valor: 0.1 }
+    L_z: { sim: "ESL", nombre: "inductancia serie equivalente", unidad: H, valor: 20e-9 }
+    C_z: { sim: "C", nombre: "capacidad del electrolítico", unidad: F, valor: 100e-6 }
+  calculos:
+    V_wa: { expr: "V_w*R_w2/(R_w1 + R_w2)", sim: "V_{a}", nombre: "punto medio izquierdo", unidad: V }
+    V_wb: { expr: "V_w*R_x/(R_w3 + R_x)", sim: "V_{b}", nombre: "punto medio derecho", unidad: V }
+    V_wab: { expr: "V_wa - V_wb", sim: "V_{ab}", nombre: "tensión del detector", unidad: V, cifras: 3 }
+    I_w: { expr: "V_w/(R_w1 + R_w2) + V_w/(R_w3 + R_x)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    f_0: { expr: "1/(2*pi*sqrt(L_r*C_r))", sim: "f₀", nombre: "frecuencia de resonancia", unidad: Hz }
+    w_r: { expr: "2*pi*f_r", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    V_R: { expr: "V_p*R_r/sqrt(R_r^2 + (w_r*L_r - 1/(w_r*C_r))^2)", sim: "V_{R}", nombre: "amplitud en R", unidad: V }
+    Z_z: { expr: "sqrt(R_z^2 + (2*pi*f_z*L_z - 1/(2*pi*f_z*C_z))^2)", sim: "|Z|", nombre: "impedancia del condensador", unidad: Ω }
+
+tarjetas:
+  - id: explore-puente
+    tipo: explorar
+    titulo: "Comparar con un patrón"
+    texto: "La resistencia desconocida está en la rama derecha. Mueva el patrón R₃ y mire el detector."
+    libro: [322, "cap01#185"]
+    inicio: { R_w3: 990 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_x }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: R_w3, min: 990, max: 1030, paso: 1, rotulo: "Patrón R₃" }
+    requiere: { mover: [R_w3] }
+
+  - id: ajuste-equilibrio
+    tipo: ajuste
+    titulo: "Equilibre el puente"
+    texto: "Lleve el detector a cero con el patrón. Entonces R₃ vale lo mismo que la desconocida."
+    libro: [322, 323]
+    inicio: { R_w3: 990 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_x }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb }
+      mandos:
+        - { valor: R_w3, min: 990, max: 1030, paso: 1, rotulo: "Patrón R₃" }
+    ajuste:
+      valor: V_wab
+      min: -0.0006
+      max: 0.0006
+      rotulo: "Detector"
+      escala: { min: -0.02, max: 0.02 }
+      bajo: "El detector marca negativo: suba R₃."
+      alto: "El detector marca positivo: baje R₃."
+      dentro: "Cero: R₃ = R_{x} = 1010 Ω."
+
+  - id: prediga-fuente
+    tipo: predecir
+    titulo: "Prediga con el doble de alimentación"
+    texto: "El puente equilibrado marca cero y se dobla su alimentación. ¿Qué marca ahora el detector?"
+    libro: [323, "cap01#184"]
+    fijar: { R_w3: 1010, V_w: 10 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_x }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb }
+      ocultar: true
+    opciones:
+      - texto: "Sigue en cero"
+        bien: true
+        porque: "Los dos divisores suben en la misma proporción: el equilibrio solo depende de las relaciones entre ramas."
+      - texto: "El doble que antes"
+        porque: "El doble de cero sigue siendo cero. Ambos puntos medios suben lo mismo."
+      - texto: "La mitad de la alimentación"
+        porque: "Esa es la tensión de cada punto medio, no la diferencia entre ellos, que es lo que ve el detector."
+    escalera:
+      - "¿De qué depende la tensión de cada punto medio, y de qué su diferencia?"
+    solucion: "Sigue en cero: el equilibrio es independiente de la alimentación."
+
+  - id: sorpresa-fuente
+    tipo: sorpresa
+    titulo: "El cero no depende de la fuente"
+    texto: "El puente está equilibrado. Cambie la alimentación."
+    libro: [323, "cap01#184"]
+    fijar: { R_w3: 1010 }
+    inicio: { V_w: 5 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_x }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      datos:
+        - { valor: V_wa, rotulo: "V_{a} = {{V_wa}}" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb }
+      mandos:
+        - { valor: V_w, lista: [2.5, 5, 10], rotulo: "Alimentación" }
+    requiere: { mover: [V_w] }
+
+  - id: por-que-cero
+    tipo: porque
+    titulo: "¿Por qué un cero es mejor?"
+    texto: "Medir con un puente es detectar un cero, no leer un valor. ¿Por qué es mucho más preciso?"
+    libro: [323]
+    fijar: { R_w3: 1010 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_x }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab }
+    opciones:
+      - texto: "No depende de la exactitud del detector ni de la fuente"
+        bien: true
+        porque: "El detector solo tiene que decir «cero»; el valor sale de las relaciones entre ramas, no de una lectura."
+      - texto: "Porque el detector es más exacto que un voltímetro"
+        porque: "Puede ser el mismo voltímetro. Su exactitud da igual: solo tiene que ver el cero."
+      - texto: "Porque el puente amplifica la tensión"
+        porque: "No amplifica nada. Compara dos divisores y su diferencia se anula en el equilibrio."
+    escalera:
+      - "En el equilibrio, ¿qué tiene que medir bien el detector?"
+    solucion: "Detectar un cero no depende de la exactitud del detector ni de la fuente: solo de las ramas."
+
+  - id: puentes
+    tipo: pregunta
+    titulo: "Los puentes clásicos"
+    texto: "Empareje cada puente con lo que mide."
+    libro: [326, 327, 328, 329]
+    emparejar:
+      - ["Wheatstone", "Resistencias puras"]
+      - ["Maxwell", "Una inductancia, comparada con un condensador"]
+      - ["Schering", "Capacidad y factor de pérdidas"]
+      - ["Wien", "Frecuencia"]
+    exito: "Sus nombres siguen en las hojas de datos de los medidores."
+    pistas:
+      - { texto: "El de Wien da nombre también a un oscilador." }
+    escalera:
+      - "Maxwell usa un condensador como patrón porque es mucho mejor que una bobina."
+    solucion: "Wheatstone: resistencias. Maxwell: inductancias. Schering: capacidad y pérdidas. Wien: frecuencia."
+
+  - id: modelo-lcr
+    tipo: pregunta
+    titulo: "Serie o paralelo"
+    texto: "Un medidor LCR va a medir un condensador grande, de impedancia baja. ¿Qué modelo conviene?"
+    libro: [331, 332, 333, 334, 335]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      lectura: { valor: Z_z, rotulo: "|Z| a la frecuencia de prueba" }
+      mide: { z_amp: Z_z }
+    opciones:
+      - texto: "El serie: es el que da la ESR"
+        bien: true
+        porque: "Para impedancias bajas, condensadores grandes e inductancias pequeñas, el modelo serie; y da la ESR."
+      - texto: "El paralelo: da la resistencia de fuga"
+        porque: "El paralelo es para impedancias altas, condensadores pequeños. En uno grande, su resistencia no significa nada."
+      - texto: "Da igual: la capacidad sale bien con los dos"
+        porque: "La capacidad puede salir bien, pero la resistencia del modelo equivocado no significa nada."
+    escalera:
+      - "¿Qué resistencia importa en un condensador grande, la de fuga o la ESR?"
+    solucion: "El modelo serie: impedancia baja, y da la ESR."
+
+  - id: frecuencia-medida
+    tipo: pregunta
+    titulo: "¿A qué frecuencia se mide?"
+    texto: "La impedancia de un electrolítico cambia con la frecuencia. ¿A cuál se mide su capacidad, y a cuál su ESR?"
+    libro: [337, 338]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      lectura: { valor: Z_z, rotulo: "|Z| a 120 Hz" }
+      mide: { z_amp: Z_z }
+      grafica:
+        x: { id: nu, min: 10, max: 2000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.01, max: 1000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_z^2 + (2*pi*nu*L_z - 1/(2*pi*nu*C_z))^2)", color: naranja, rotulo: "|Z|", mide: z_amp }
+    opciones:
+      - texto: "La capacidad a 120 Hz y la ESR a 100 kHz"
+        bien: true
+        porque: "A 120 Hz manda la capacidad; a 100 kHz la curva toca fondo en la ESR. Ambos valores son correctos."
+      - texto: "Las dos a 100 kHz"
+        porque: "A 100 kHz casi no queda reactancia del condensador: la capacidad no se puede medir allí."
+      - texto: "Da igual: el componente no cambia"
+        porque: "Sí cambia con la frecuencia, y las dos medidas son correctas. Hay que saber a cuál se midió."
+    escalera:
+      - "Mire dónde manda la reactancia y dónde la curva se aplana."
+    solucion: "Capacidad a 120 Hz; ESR a 100 kHz, donde importa."
+
+  - id: esr
+    tipo: pregunta
+    titulo: "Lo que delata el fallo"
+    texto: "¿Qué parámetro predice el fallo de un electrolítico mucho antes que su capacidad?"
+    libro: [340, 341]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      lectura: { valor: Z_z, rotulo: "|Z|" }
+      mide: { z_amp: Z_z }
+    opciones:
+      - texto: "La ESR"
+        bien: true
+        porque: "La ESR sube con el envejecimiento mucho antes de que la capacidad baje de forma apreciable."
+      - texto: "La tensión nominal"
+        porque: "Es un dato de catálogo, no algo que cambie con el fallo."
+      - texto: "La inductancia serie"
+        porque: "La ESL depende sobre todo del encapsulado. Lo que delata el envejecimiento es la ESR."
+    escalera:
+      - "¿Qué parte resistiva del modelo serie da el medidor LCR?"
+    solucion: "La ESR, junto con el factor de disipación D."
+
+  - id: ajuste-resonancia
+    tipo: ajuste
+    titulo: "Sin medidor: por resonancia"
+    texto: "Una bobina desconocida con un condensador conocido de 100 nF. Barra el generador hasta el máximo en la resistencia."
+    libro: [345, "cap22#235"]
+    fijar: { R_r: 100, C_r: 100e-9, L_r: 0.01 }
+    inicio: { f_r: 2000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: V_R, rotulo: "Amplitud en R" }
+      mide: { vr_amp: V_R }
+      mandos:
+        - { valor: f_r, min: 2000, max: 12000, paso: 10, rotulo: "Generador" }
+    ajuste:
+      valor: V_R
+      min: 0.99
+      max: 1.001
+      rotulo: "Amplitud en R"
+      escala: { min: 0, max: 1.05 }
+      bajo: "Todavía no es el máximo: siga barriendo."
+      alto: "La tensión de R no puede pasar de la entrada: revise el montaje."
+      dentro: "Máximo: anote la frecuencia, unos 5 kHz."
+
+  - id: estime-l
+    tipo: pregunta
+    titulo: "Despeje la bobina"
+    texto: "La resonancia sale en 5033 Hz con el condensador de 100 nF. ¿Cuánto vale la bobina?"
+    libro: [345, "cap22#235", "cap22#238"]
+    fijar: { C_r: 100e-9, L_r: 0.01 }
+    estimar:
+      objetivo: "1/((2*pi*5033)^2*C_r)"
+      unidad: H
+      min: 0
+      max: 0.03
+      paso: 0.0001
+      inicio: 0.025
+      tol: 0.03
+      rotulo: "L"
+    exito: "L = 1/((2π·f₀)²·C) = 10 mH. Funciona muy bien con inductancias."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0103 }, texto: "Se ha pasado: despeje L de f₀ = 1/(2π√(LC))." }
+      - { texto: "Se ha quedado corto: eleve 2π·f₀ al cuadrado y multiplique por C antes de invertir." }
+    escalera:
+      - "De f₀ = 1/(2π√(LC)), L = 1/((2π·f₀)²·C)."
+    solucion: "L = 1/((2π·5033)²·100 nF) ≈ 10 mH."
+    comprobar:
+      - { f_0: 5033 }
+
+  - id: divisor
+    tipo: pregunta
+    titulo: "Sin medidor: por divisor"
+    texto: "El componente se pone en serie con una resistencia conocida y se miden amplitudes y desfase a una frecuencia. ¿Qué se obtiene?"
+    libro: [346, 347]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: V_R, rotulo: "Amplitud en R" }
+      mide: { vr_amp: V_R }
+    opciones:
+      - texto: "La impedancia compleja completa"
+        bien: true
+        porque: "Relación de amplitudes y desfase dan módulo y fase: la parte resistiva y la reactiva."
+      - texto: "Solo el módulo de la impedancia"
+        porque: "Con el desfase se tiene también la fase, y con ella las dos partes."
+      - texto: "Solo la frecuencia de resonancia"
+        porque: "Eso es el otro método. Con el divisor basta una frecuencia y sale la impedancia entera."
+    escalera:
+      - "¿Qué dos números dan la relación de amplitudes y el desfase?"
+    solucion: "La impedancia compleja completa: módulo y fase."
+
+  - id: banco-lc
+    tipo: banco
+    titulo: "Mida una bobina en el banco"
+    texto: "Monte la bobina con un condensador conocido de 100 nF y busque la resonancia con el generador y el osciloscopio."
+    libro: [345, 347, "cap22#235", "cap22#238"]
+    fijar: { R_r: 100, C_r: 100e-9, L_r: 0.01 }
+    banco:
+      piezas: ["Generador y osciloscopio del FNIRSI", "La bobina, un condensador de 100 nF y 100 Ω", "Multímetro para medir C"]
+      medir: "La frecuencia de resonancia, para despejar L."
+      esperado: f_0
+      unidad: Hz
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Sale alta: la bobina o el condensador reales son menores. Despeje L con el C medido." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Sale baja: mida el condensador; si es el nominal, la bobina es mayor que 10 mH." }
+        - { texto: "Despeje L = 1/((2π·f₀)²·C) con la capacidad medida." }
+      ficha: { n: 36, titulo: "Práctica 12 · Medir L y C sin medidor LCR" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [323, 332, 338, 345]
+    ideas:
+      - { titulo: "Un cero.", texto: "El puente compara con un patrón: detectar un cero no depende del detector ni de la fuente." }
+      - { titulo: "Serie o paralelo.", texto: "Serie para impedancias bajas (da la ESR); paralelo para altas (da la fuga)." }
+      - { titulo: "La frecuencia.", texto: "Capacidad de un electrolítico a 120 Hz; su ESR, a 100 kHz." }
+      - { titulo: "Sin LCR.", texto: "Por resonancia con un componente conocido, o por divisor con una resistencia." }

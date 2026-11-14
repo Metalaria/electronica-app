@@ -1,0 +1,190 @@
+# Lección 1.2 de la sección 31.7 «Seguridad de Máquinas: la Parada de Emergencia» (cap55; etiqueta interna sec-55.7).
+# Formato: contenido/lecciones11/GUIA.md (§11). Los dos contactores en serie en la fuerza son una Y: con uno soldado
+# (una entrada fija a 1) el otro sigue cortando, y el bucle de realimentación impide rearmar.
+leccion: cap55/sec-55.7
+
+libro:
+  104: "La seguridad de una máquina no se añade al final"
+  107: "Rearmarla no pone la máquina en marcha"
+  108: "la 2, una parada controlada sin corte de energía, que no sirve como parada de emergencia"
+  110: "Si un contactor se ha soldado, el relé no rearma"
+  111: "dos contactores en serie en la fuerza"
+  113: "3, de dos canales, en la que un fallo no hace perder la función"
+  114: "Un paro, por bien cableado que esté, no es una parada de emergencia"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-rele
+    tipo: explorar
+    titulo: "El relé de seguridad"
+    texto: "Toque la seta, sus dos canales, las salidas del relé y el bucle de realimentación."
+    libro: [110, 111]
+    widget:
+      tipo: figura
+      figura: fig-55.7
+      zonas:
+        - { id: seta, rotulo: "A la izquierda", rect: [32, 46, 26, 32], texto: "La seta S5: roja, con enclavamiento mecánico, contactos de maniobra positiva." }
+        - { id: canal1, rotulo: "Contacto de arriba", rect: [60, 52, 48, 32], texto: "Primer canal, S11-S12. El relé lee la seta por dos canales y detecta un cruce entre ellos." }
+        - { id: canal2, rotulo: "Contacto de abajo", rect: [80, 96, 34, 34], texto: "Segundo canal, S21-S22: si uno no abre, el relé lo detecta." }
+        - { id: salidas, rotulo: "Contactos dentro del relé", rect: [160, 42, 60, 36], texto: "Salidas 13-14 y 23-24: relés redundantes de contactos guiados que alimentan KM1 y KM2." }
+        - { id: bucle, rotulo: "Abajo en el centro", rect: [140, 152, 72, 34], texto: "Bucle Y1-Y2: los contactos espejo de KM1 y KM2 en serie con el rearme S6." }
+        - { id: automata, rotulo: "Salida a la derecha", rect: [205, 120, 72, 28], texto: "El 41-42 solo informa al autómata: él no corta nada." }
+        - { id: bobinas, rotulo: "Abajo a la derecha", rect: [246, 138, 64, 30], texto: "KM1 y KM2, dos contactores con sus contactos en serie en la fuerza." }
+    requiere: { mover: [seta, bucle] }
+
+  - id: explore-serie
+    tipo: explorar
+    titulo: "Dos contactores en serie"
+    texto: "Los contactos de KM1 y KM2 están en serie en la fuerza: el motor solo gira con los dos cerrados. Pulse la seta."
+    libro: [111]
+    widget:
+      tipo: logica
+      entradas: [{ id: SEG, valor: 1, rotulo: "Seta sin pulsar" }]
+      piezas:
+        - { id: km1, tipo: buf, entradas: [SEG], rotulo: "KM1" }
+        - { id: km2, tipo: buf, entradas: [SEG], rotulo: "KM2" }
+        - { id: fuerza, tipo: and, entradas: [km1, km2], rotulo: "Fuerza en serie" }
+      salidas:
+        - { id: M, de: fuerza, rotulo: "Motor" }
+    requiere: { mover: [SEG] }
+
+  - id: prediga-soldado
+    tipo: predecir
+    titulo: "KM1 soldado"
+    texto: "Los contactos de KM1 se han soldado y alguien pulsa la seta. ¿Qué pasa?"
+    libro: [110, 111]
+    widget:
+      tipo: logica
+      entradas: [{ id: SEG, valor: 0, rotulo: "Seta sin pulsar" }]
+      piezas:
+        - { id: km1, tipo: buf, entradas: ["1"], rotulo: "KM1 (soldado)" }
+        - { id: km2, tipo: buf, entradas: [SEG], rotulo: "KM2" }
+        - { id: fuerza, tipo: and, entradas: [km1, km2], rotulo: "Fuerza en serie" }
+      salidas:
+        - { id: M, de: fuerza, rotulo: "Motor" }
+      ocultar: true
+    opciones:
+      - { texto: "El motor se para por KM2, y el relé no deja rearmar", bien: true, porque: "Un fallo no hace perder la función, y el bucle de realimentación lo detecta: el contacto espejo de KM1 sigue abierto." }
+      - { texto: "El motor sigue: KM1 está soldado", porque: "KM2 está en serie y abre: con uno de los dos basta para cortar." }
+      - { texto: "El motor se para y todo sigue normal", porque: "Se para, pero el fallo no pasa desapercibido: el relé no rearma con un contactor soldado." }
+    escalera: ["Dos contactos en serie: ¿cuántos hacen falta abiertos para cortar?"]
+    solucion: "KM2 corta el motor; el contacto espejo de KM1 impide rearmar."
+
+  - id: porque-automata
+    tipo: porque
+    titulo: "Fuera del autómata"
+    texto: "La parada de emergencia corta por hardware y el autómata solo se entera. ¿Por qué no la gestiona él?"
+    libro: [110]
+    widget:
+      tipo: figura
+      figura: fig-55.7
+      zonas:
+        - { id: automata, rotulo: "Salida a la derecha", rect: [205, 120, 72, 28] }
+    opciones:
+      - { texto: "Una CPU bloqueada, un transistor en corto o un error de programa la dejarían sin efecto", bien: true, porque: "Un autómata normal no es un equipo de seguridad." }
+      - { texto: "Porque el autómata es demasiado lento", porque: "No es la velocidad: es que un solo fallo suyo anularía la emergencia." }
+      - { texto: "Porque no tiene entradas suficientes", porque: "Le basta una entrada para enterarse; el corte tiene que ser independiente de él." }
+    escalera: ["Piense en qué fallos del autómata dejarían las salidas a 1."]
+    solucion: "Un fallo del autómata anularía la emergencia: el corte lo hace un relé de seguridad."
+
+  - id: empareje-paradas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Categorías de parada"
+    texto: "Una cada categoría de parada de la IEC 60204-1 con lo que hace."
+    libro: [108]
+    emparejar:
+      - ["Categoría 0", "Corta de inmediato la energía de los accionadores"]
+      - ["Categoría 1", "Frena con energía y la corta al detenerse"]
+      - ["Categoría 2", "Para sin cortar la energía: no vale para emergencia"]
+    exito: "La parada de emergencia es de categoría 0 o 1."
+    pistas:
+      - { texto: "Un variador que frena con una rampa y luego desconecta es la del medio." }
+    escalera: ["La 0 es la parada no controlada."]
+    solucion: "0, corte inmediato; 1, controlada y corte; 2, controlada sin corte."
+
+  - id: pregunta-rearme
+    tipo: pregunta
+    titulo: "Rearmar la seta"
+    texto: "La seta, pulsada y enclavada, se rearma a mano. ¿Qué hace la máquina?"
+    libro: [107]
+    widget:
+      tipo: figura
+      figura: fig-55.7
+      zonas:
+        - { id: seta, rotulo: "A la izquierda", rect: [32, 46, 26, 32] }
+    opciones:
+      - { texto: "Nada: solo permite volver a arrancarla con la marcha normal", bien: true, porque: "Rearmar no pone la máquina en marcha." }
+      - { texto: "Vuelve a arrancar donde se quedó", porque: "Sería peligroso: quien rearma puede no ver a quien está junto a la máquina." }
+      - { texto: "Arranca a velocidad reducida", porque: "No arranca de ninguna forma: espera la marcha normal." }
+    escalera: ["Rearmar y arrancar son dos acciones distintas."]
+    solucion: "Nada; hay que pulsar la marcha."
+
+  - id: toque-soldado
+    tipo: tocar
+    titulo: "Quién descubre el contacto soldado"
+    texto: "Si un contactor se suelda, el relé no rearma. Toque la parte del circuito que lo descubre."
+    libro: [110]
+    widget:
+      tipo: figura
+      figura: fig-55.7
+      zonas:
+        - { id: seta, rotulo: "A la izquierda", rect: [32, 46, 26, 32] }
+        - { id: salidas, rotulo: "Contactos dentro del relé", rect: [160, 42, 60, 36] }
+        - { id: bucle, rotulo: "Abajo en el centro", rect: [140, 152, 72, 34] }
+        - { id: automata, rotulo: "Salida a la derecha", rect: [205, 120, 72, 28] }
+    tocar:
+      bien: [bucle]
+      porque:
+        seta: "La seta pide la parada; no sabe nada de los contactores."
+        salidas: "Son las salidas del relé, de contactos guiados: vigilan sus propios relés, no los contactores."
+        automata: "Ese contacto solo informa al autómata, que no forma parte de la seguridad."
+    exito: "El bucle Y1-Y2: los contactos espejo no pueden estar cerrados si un principal lo está."
+    escalera: ["Busque los auxiliares de KM1 y KM2 en serie con el rearme."]
+    solucion: "El bucle de realimentación Y1-Y2."
+
+  - id: empareje-arquitecturas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Categorías de arquitectura"
+    texto: "Las de la ISO 13849-1 no tienen nada que ver con las de parada. Una cada una con su rasgo."
+    libro: [113]
+    emparejar:
+      - ["B y 1", "Un canal: un fallo hace perder la función"]
+      - ["2", "Un canal con prueba periódica"]
+      - ["3", "Dos canales: un fallo no la hace perder"]
+      - ["4", "Todo fallo se detecta a tiempo"]
+    exito: "El circuito del relé de seguridad es la estructura típica de categoría 3 o 4."
+    pistas:
+      - { texto: "Las dos últimas son de dos canales." }
+    escalera: ["La 1 usa componentes de eficacia probada, pero sigue siendo de un canal."]
+    solucion: "B y 1 un canal; 2 con prueba; 3 dos canales; 4 todo fallo detectado."
+
+  - id: pregunta-paro
+    tipo: pregunta
+    titulo: "Paro y emergencia"
+    texto: "¿Quién protege a quien no ve venir el peligro?"
+    libro: [104, 114]
+    widget:
+      tipo: figura
+      figura: fig-55.7
+      zonas:
+        - { id: seta, rotulo: "A la izquierda", rect: [32, 46, 26, 32] }
+    opciones:
+      - { texto: "Los resguardos con enclavamiento y las barreras fotoeléctricas", bien: true, porque: "La emergencia solo sirve a quien ve el peligro; esos son funciones de seguridad con su PLr." }
+      - { texto: "La parada de emergencia", porque: "Hay que verlo para pulsarla: es una medida complementaria." }
+      - { texto: "Un paro bien cableado", porque: "Un paro no es una parada de emergencia, por bien cableado que esté." }
+    escalera: ["Para pulsar la seta hay que ver el peligro."]
+    solucion: "Resguardos con enclavamiento y barreras: lo decide la evaluación de riesgos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [107, 110, 113]
+    ideas:
+      - { titulo: "Por hardware.", texto: "La emergencia corta contactores y válvulas; el autómata solo se entera." }
+      - { titulo: "Redundancia.", texto: "Dos canales, dos contactores en serie y un bucle que descubre el soldado." }
+      - { titulo: "Rearmar no arranca.", texto: "Solo permite volver a arrancar con la marcha normal." }

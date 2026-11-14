@@ -1,0 +1,316 @@
+# Lección 1.2 de la sección 31.1 «Lógica Cableada: Contactores y el Circuito de Mando» (cap55; etiqueta interna sec-55.1).
+# Formato: contenido/lecciones11/GUIA.md (§11). El mando es lógica de Boole escrita con contactos: cada contacto es una
+# pieza del circuito lógico (S0 y el 95-96 de F2, cerrados, son inversores de su pulsación) y la autorretención es el lazo
+# OR-AND del libro. Los números del arranque estrella-triángulo son los del ejemplo de 11 kW y los del ejercicio 31.2.
+leccion: cap55/sec-55.1
+
+libro:
+  4: "tres contactos principales (bornes 1-2, 3-4 y 5-6)"
+  7: "El mando es lógica de Boole (sección 9.1) escrita con contactos"
+  8: "Al pulsar S1 la bobina se excita, KM1 cierra su 13-14"
+  9: 'overline("S0")'
+  10: "Con marcha y paro pulsados a la vez el motor se para"
+  12: "Hacen falta los dos"
+  14: "toma de seis a ocho veces su corriente nominal"
+  15: 'T_("arr,Y") = (T_("arr,Δ"))/(3)'
+  16: "toma 147 A en directo y 49 A en estrella"
+  17: "In/√3 = 12,12 A"
+  18: "Con 50 ms de pausa el hueco es de 43 ms como mínimo"
+  "cap55#138": "Escribe la ecuación de un contactor KM1 con autorretención"
+
+modelo:
+  valores:
+    I_n: { sim: "I_{n}", nombre: "corriente nominal", unidad: A, valor: 21 }
+    k_a: { sim: "k", nombre: "veces la nominal al arrancar", unidad: "", valor: 7 }
+  calculos:
+    I_d: { expr: "k_a*I_n", sim: "I_{arr,Δ}", nombre: "corriente de arranque en directo", unidad: A }
+    I_y: { expr: "k_a*I_n/3", sim: "I_{arr,Y}", nombre: "corriente de arranque en estrella", unidad: A }
+    I_km: { expr: "I_n/sqrt(3)", sim: "I_{KM1}", nombre: "corriente de KM1 y KM2", unidad: A }
+
+tarjetas:
+  - id: explore-esquemas
+    tipo: explorar
+    titulo: "Fuerza y mando"
+    texto: "Toque las piezas del arranque directo. Busque la marcha S1 y el contacto que la acompaña."
+    libro: [4, 7, 8]
+    widget:
+      tipo: figura
+      figura: fig-55.1
+      zonas:
+        - { id: q1, rotulo: "Fuerza, arriba", rect: [8, 20, 60, 26], texto: "Q1, la protección: se encarga del cortocircuito. El contactor no protege." }
+        - { id: km1-fuerza, rotulo: "Fuerza, en el centro", rect: [8, 52, 60, 28], texto: "Los tres contactos principales de KM1 llevan la corriente del motor." }
+        - { id: f2-fuerza, rotulo: "Fuerza, abajo", rect: [8, 82, 60, 27], texto: "F2, el relé térmico: protege de la sobrecarga." }
+        - { id: motor, rotulo: "El motor", rect: [30, 116, 40, 38], texto: "El motor trifásico M1." }
+        - { id: paro, rotulo: "Mando, segundo contacto", rect: [150, 61, 58, 28], texto: "S0, el paro: un pulsador cerrado (21-22) en serie con todo." }
+        - { id: s1, rotulo: "Mando, a la izquierda", rect: [150, 92, 52, 28], texto: "S1, la marcha: un pulsador abierto." }
+        - { id: retencion, rotulo: "Mando, a la derecha", rect: [208, 92, 50, 28], texto: "El auxiliar 13-14 de KM1, en paralelo con S1: retiene la bobina al soltar la marcha." }
+        - { id: bobina, rotulo: "Mando, abajo", rect: [170, 142, 50, 26], texto: "La bobina A1-A2 de KM1: cuando se excita, cierra todos sus contactos." }
+    requiere: { mover: [s1, retencion] }
+
+  - id: explore-autorretencion
+    tipo: explorar
+    titulo: "La autorretención"
+    texto: "S1 y S0 valen 1 mientras se pulsan. Pulse S1 y suéltelo; luego pulse S0."
+    nota: "KM1 = (S1 + KM1) · S̄0 · F̄2: un biestable."
+    libro: [8, 9]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, rotulo: "S1 (marcha)" }, { id: S0, rotulo: "S0 (paro)" }, { id: F2, rotulo: "F2 (térmico)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "S0, 21-22" }
+        - { id: c-f2, tipo: not, entradas: [F2], rotulo: "F2, 95-96" }
+        - { id: c-13, tipo: buf, entradas: [km1], rotulo: "KM1, 13-14" }
+        - { id: o1, tipo: or, entradas: [S1, c-13] }
+        - { id: km1, tipo: and, entradas: [o1, c-s0, c-f2], rotulo: "Bobina KM1" }
+      salidas:
+        - { id: KM1, de: km1 }
+    requiere: { mover: [S1, S0] }
+
+  - id: prediga-prioridad
+    tipo: predecir
+    titulo: "Los dos a la vez"
+    texto: "Alguien pulsa la marcha S1 y el paro S0 a la vez. ¿Qué hace KM1?"
+    libro: [9, 10]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, valor: 1, rotulo: "S1 (marcha)" }, { id: S0, valor: 1, rotulo: "S0 (paro)" }, { id: F2, rotulo: "F2 (térmico)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "S0, 21-22" }
+        - { id: c-f2, tipo: not, entradas: [F2], rotulo: "F2, 95-96" }
+        - { id: c-13, tipo: buf, entradas: [km1], rotulo: "KM1, 13-14" }
+        - { id: o1, tipo: or, entradas: [S1, c-13] }
+        - { id: km1, tipo: and, entradas: [o1, c-s0, c-f2], rotulo: "Bobina KM1" }
+      salidas:
+        - { id: KM1, de: km1 }
+      ocultar: true
+    opciones:
+      - { texto: "Cae: el motor se para", bien: true, porque: "S̄0 vale 0 y multiplica a todo lo demás: es un circuito con prioridad de paro." }
+      - { texto: "Se excita: la marcha manda", porque: "La marcha entra en la suma S1 + KM1, pero el paro multiplica a esa suma: un 0 la anula." }
+      - { texto: "Se queda como estaba", porque: "Eso haría un biestable sin prioridad. Aquí S̄0 = 0 fuerza KM1 a 0 sea cual sea su estado." }
+    escalera: ["Mire la ecuación: ¿el paro suma o multiplica?"]
+    solucion: "(S1 + KM1) · S̄0 con S0 = 1 da 0: prioridad de paro, el motor se para."
+
+  - id: pregunta-prioridad-marcha
+    tipo: pregunta
+    titulo: "Prioridad de marcha"
+    texto: "Este mando es KM1 = S1 + KM1 · S̄0. Con marcha y paro pulsados a la vez, ¿qué hace?"
+    libro: ["cap55#138"]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, valor: 1, rotulo: "S1 (marcha)" }, { id: S0, valor: 1, rotulo: "S0 (paro)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "S0, cerrado" }
+        - { id: a1, tipo: and, entradas: [km1, c-s0] }
+        - { id: km1, tipo: or, entradas: [S1, a1], rotulo: "Bobina KM1" }
+      salidas:
+        - { id: KM1, de: km1 }
+      ocultar: true
+    opciones:
+      - { texto: "Se excita: aquí la marcha va sumando a todo", bien: true, porque: "S1 = 1 en una suma da 1 sin mirar el paro: es la prioridad de marcha." }
+      - { texto: "Cae, como en el mando de antes", porque: "Ahí el paro multiplicaba a la suma. Aquí solo multiplica a la retención, no a S1." }
+      - { texto: "Depende de cómo estaba antes", porque: "Con S1 = 1, la suma ya vale 1: el estado anterior no cuenta." }
+    escalera: ["¿Qué vale una suma con un término a 1?"]
+    solucion: "S1 = 1 hace KM1 = 1: con los dos pulsados, la segunda ecuación arranca."
+
+  - id: porque-paro-cerrado
+    tipo: porque
+    titulo: "Un paro cerrado"
+    texto: "¿Por qué el paro se cablea con un contacto cerrado y no con uno abierto?"
+    libro: [10]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, rotulo: "S1 (marcha)" }, { id: S0, rotulo: "S0 (paro)" }, { id: F2, rotulo: "F2 (térmico)" }]
+      piezas:
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "S0, 21-22" }
+        - { id: c-f2, tipo: not, entradas: [F2], rotulo: "F2, 95-96" }
+        - { id: c-13, tipo: buf, entradas: [km1], rotulo: "KM1, 13-14" }
+        - { id: o1, tipo: or, entradas: [S1, c-13] }
+        - { id: km1, tipo: and, entradas: [o1, c-s0, c-f2], rotulo: "Bobina KM1" }
+      salidas:
+        - { id: KM1, de: km1 }
+    opciones:
+      - { texto: "Si se rompe su cable o se afloja un borne, la máquina se para", bien: true, porque: "El fallo va al lado seguro. Con uno abierto, la máquina se quedaría sin paro sin que nadie lo supiera." }
+      - { texto: "Porque un contacto cerrado gasta menos", porque: "No es cuestión de consumo: es qué pasa cuando el cable falla." }
+      - { texto: "Para que el motor arranque solo al volver la tensión", porque: "Al revés: sin tensión el contactor cae y no vuelve a arrancar solo." }
+    escalera: ["Imagine que se suelta el cable del paro. ¿Qué ve la bobina?"]
+    solucion: "Un cable roto abre el circuito como si se pulsara el paro: la máquina se para."
+
+  - id: averia-mando
+    tipo: averia
+    titulo: "Un mando que falla"
+    texto: "Una de las piezas del mando está averiada. Pulse, suelte y mida con la sonda; después diga cuál es."
+    libro: [8, 10]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, rotulo: "S1 (marcha)" }, { id: S0, rotulo: "S0 (paro)" }, { id: F2, rotulo: "F2 (térmico)" }]
+      piezas:
+        - { id: c-s1, tipo: buf, entradas: [S1], rotulo: "S1, 13-14" }
+        - { id: c-s0, tipo: not, entradas: [S0], rotulo: "S0, 21-22" }
+        - { id: c-f2, tipo: not, entradas: [F2], rotulo: "F2, 95-96" }
+        - { id: c-13, tipo: buf, entradas: [km1], rotulo: "KM1, 13-14" }
+        - { id: o1, tipo: or, entradas: [c-s1, c-13] }
+        - { id: km1, tipo: and, entradas: [o1, c-s0, c-f2], rotulo: "Bobina KM1" }
+      salidas:
+        - { id: KM1, de: km1 }
+    averia:
+      eleccion: fija
+      sospechosos:
+        - { id: c-s1, rotulo: "La marcha S1" }
+        - { id: c-s0, rotulo: "El paro S0" }
+        - { id: c-f2, rotulo: "El 95-96 de F2" }
+        - { id: c-13, rotulo: "El auxiliar 13-14 de KM1" }
+      fallos:
+        - { id: retencion-abierta, pieza: c-13, tipo: atascada-0, texto: "El auxiliar 13-14 no cierra: la bobina solo se excita mientras se pulsa S1. Falta la autorretención." }
+        - { id: termico-abierto, pieza: c-f2, tipo: atascada-0, texto: "El 95-96 está abierto, como con el térmico disparado: la bobina no se excita nunca." }
+        - { id: paro-pegado, pieza: c-s0, tipo: atascada-1, texto: "El contacto del paro no abre: la máquina arranca, pero el paro no la para." }
+        - { id: marcha-abierta, pieza: c-s1, tipo: atascada-0, texto: "La marcha no cierra: pulsarla no hace nada, aunque el resto del mando esté bien." }
+    escalera:
+      - "Pulse S1, suéltelo y pulse S0: ¿qué parte del comportamiento falta?"
+      - "Mida la salida de cada contacto con su pulsador pulsado y sin pulsar."
+    solucion: "Compare cada contacto con lo que debe dar: el que no sigue a su pulsador, o a la bobina, es el averiado."
+
+  - id: explore-enclavamiento
+    tipo: explorar
+    titulo: "Estrella y triángulo, nunca juntos"
+    texto: "Con KM1 cerrado, el temporizador KT pasa de 0 a 1 al cumplirse el tiempo en estrella. Muévalo y mire KM3 y KM2."
+    libro: [17, 18]
+    widget:
+      tipo: logica
+      entradas: [{ id: KM1, valor: 1, rotulo: "KM1 (línea)" }, { id: KT, rotulo: "KT (tiempo cumplido)" }]
+      piezas:
+        - { id: nkt, tipo: not, entradas: [KT], rotulo: "KT, 55-56" }
+        - { id: n2, tipo: not, entradas: [km2], rotulo: "KM2, 21-22" }
+        - { id: n3, tipo: not, entradas: [km3], rotulo: "KM3, 21-22" }
+        - { id: km3, tipo: and, entradas: [KM1, nkt, n2], rotulo: "Bobina KM3" }
+        - { id: km2, tipo: and, entradas: [KM1, KT, n3], rotulo: "Bobina KM2" }
+      salidas:
+        - { id: Y, de: km3, rotulo: "KM3 (estrella)" }
+        - { id: D, de: km2, rotulo: "KM2 (triángulo)" }
+    requiere: { mover: [KT] }
+
+  - id: formula-estrella
+    tipo: formula
+    titulo: "Un tercio de corriente y de par"
+    texto: "En estrella, la corriente de línea baja a la tercera parte. Cambie la nominal y el múltiplo de arranque."
+    libro: [14, 15, 16, "cap55#138"]
+    ec: 15
+    sustitucion: "{{I_d}} / 3 = {{I_y}}"
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 30, unidad: A, rotulo: "I_{n}" }
+      y: { min: 0, max: 250, unidad: A, rotulo: "I_{arr}" }
+      curvas:
+        - { expr: "k_a*ix", color: azul, rotulo: "En directo" }
+        - { expr: "k_a*ix/3", color: naranja, rotulo: "En estrella" }
+      marcas:
+        - { x: "I_n", y: "I_d", rotulo: "Directo" }
+        - { x: "I_n", y: "I_y", rotulo: "Estrella" }
+      lectura: { valor: I_y, rotulo: "Arranque en estrella" }
+      datos:
+        - { valor: I_d, rotulo: "En directo: {{I_d}}" }
+      mandos:
+        - { valor: I_n, lista: [14.5, 21], rotulo: "Corriente nominal" }
+        - { valor: k_a, lista: [6.5, 7], rotulo: "Múltiplo de arranque" }
+    comprobar:
+      - { I_d: 147, I_y: 49 }
+
+  - id: estime-estrella
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un motor de 7,5 kW"
+    texto: "Un motor de 14,5 A nominales arranca en directo con 6,5 veces la nominal. ¿Cuánto toma en estrella?"
+    libro: ["cap55#138"]
+    fijar: { I_n: 14.5, k_a: 6.5 }
+    estimar:
+      objetivo: "I_y"
+      unidad: A
+      min: 0
+      max: 100
+      paso: 0.5
+      inicio: 70
+      tol: 0.03
+      rotulo: "Corriente de arranque en estrella"
+    exito: "31,42 A, la tercera parte de los 94,25 A del directo; y un tercio del par."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 32.4 }, texto: "Se ha pasado: calcule el directo, 6,5 × 14,5, y divídalo entre 3." }
+      - { texto: "Se ha quedado corto: la corriente en estrella es la tercera parte de la de directo, no la novena." }
+    escalera:
+      - "Primero el directo: múltiplo de arranque por corriente nominal."
+    solucion: "6,5 × 14,5 = 94,25 A en directo; en estrella, 94,25/3 = 31,42 A."
+    comprobar:
+      - { I_d: 94.25, I_y: 31.42 }
+
+  - id: empareje-contactores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué lleva cada uno"
+    texto: "Motor de 21 A nominales en estrella-triángulo: una cada pieza con su corriente."
+    libro: [17]
+    emparejar:
+      - ["KM1, de línea", "I_{n}/√3: el 58 % de la nominal"]
+      - ["KM3, la estrella", "I_{n}/3: el 33 %, solo al arrancar"]
+      - ["F2, tras KM1", "Se ajusta a 12,12 A"]
+    exito: "KM1 y KM2 llevan la corriente de devanado; KM3 solo trabaja al arrancar."
+    pistas:
+      - { texto: "Solo uno de los contactores deja de trabajar tras el arranque." }
+    escalera: ["El relé térmico va tras KM1: ve la corriente de devanado."]
+    solucion: "KM1 (y KM2) In/√3 = 12,12 A; KM3 In/3 = 7,0 A; F2 ajustado a 12,12 A."
+    comprobar:
+      - { I_km: 12.12 }
+
+  - id: porque-pausa
+    tipo: porque
+    titulo: "Una pausa de 50 ms"
+    texto: "Al pasar a triángulo se abre KM3, se espera y se cierra KM2. ¿Por qué esperar si ya están enclavados?"
+    libro: [18]
+    widget:
+      tipo: logica
+      entradas: [{ id: KM1, valor: 1, rotulo: "KM1 (línea)" }, { id: KT, rotulo: "KT (tiempo cumplido)" }]
+      piezas:
+        - { id: nkt, tipo: not, entradas: [KT], rotulo: "KT, 55-56" }
+        - { id: n2, tipo: not, entradas: [km2], rotulo: "KM2, 21-22" }
+        - { id: n3, tipo: not, entradas: [km3], rotulo: "KM3, 21-22" }
+        - { id: km3, tipo: and, entradas: [KM1, nkt, n2], rotulo: "Bobina KM3" }
+        - { id: km2, tipo: and, entradas: [KM1, KT, n3], rotulo: "Bobina KM2" }
+      salidas:
+        - { id: Y, de: km3, rotulo: "KM3 (estrella)" }
+        - { id: D, de: km2, rotulo: "KM2 (triángulo)" }
+    opciones:
+      - { texto: "Los contactos de KM3 tardan en separarse y su arco dura hasta el paso por cero", bien: true, porque: "Abrir lleva de 4 a 19 ms y el arco puede durar 10 ms: sin pausa, KM2 cerraría sobre un cortocircuito entre fases." }
+      - { texto: "Para que el motor coja velocidad", porque: "La velocidad la da el tiempo en estrella del temporizador; la pausa es de milisegundos." }
+      - { texto: "Porque el enclavamiento eléctrico tarda en actuar", porque: "El enclavamiento impide excitar las dos bobinas, pero no acelera la apertura mecánica ni apaga el arco." }
+    escalera: ["Una bobina sin tensión no separa sus contactos al instante."]
+    solucion: "Con 50 ms de pausa queda un hueco de 43 ms como mínimo entre contactos."
+
+  - id: pregunta-dos-enclavamientos
+    tipo: pregunta
+    titulo: "Eléctrico y mecánico"
+    texto: "KM2 y KM3 llevan un enclavamiento eléctrico, como el del circuito, y otro mecánico. ¿Contra qué protege el mecánico?"
+    libro: [12, 18]
+    widget:
+      tipo: logica
+      entradas: [{ id: KM1, valor: 1, rotulo: "KM1 (línea)" }, { id: KT, rotulo: "KT (tiempo cumplido)" }]
+      piezas:
+        - { id: nkt, tipo: not, entradas: [KT], rotulo: "KT, 55-56" }
+        - { id: n2, tipo: not, entradas: [km2], rotulo: "KM2, 21-22" }
+        - { id: n3, tipo: not, entradas: [km3], rotulo: "KM3, 21-22" }
+        - { id: km3, tipo: and, entradas: [KM1, nkt, n2], rotulo: "Bobina KM3" }
+        - { id: km2, tipo: and, entradas: [KM1, KT, n3], rotulo: "Bobina KM2" }
+      salidas:
+        - { id: Y, de: km3, rotulo: "KM3 (estrella)" }
+        - { id: D, de: km2, rotulo: "KM2 (triángulo)" }
+    opciones:
+      - { texto: "Contra un contactor con los contactos soldados", bien: true, porque: "Soldado, tiene la bobina sin tensión y su auxiliar cerrado: el eléctrico no lo ve." }
+      - { texto: "Contra excitar las dos bobinas a la vez", porque: "Eso ya lo cubre el eléctrico: un contacto cerrado de cada contactor en serie con la bobina del otro." }
+      - { texto: "Contra un error del programa del autómata", porque: "El enclavamiento por programa se añade a los dos, no los sustituye; el mecánico es otra cosa." }
+    escalera: ["¿Qué fallo deja al auxiliar del contactor diciendo lo contrario de lo que pasa?"]
+    solucion: "El mecánico cubre el contactor soldado; el eléctrico, la pulsación de los dos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [7, 9, 10, 15, 18]
+    ideas:
+      - { titulo: "Contactos y Boole.", texto: "En serie, Y; en paralelo, O; un contacto cerrado, la negación." }
+      - { titulo: "Autorretención.", texto: "S1 en paralelo con el 13-14 de KM1 y el paro cerrado en serie: biestable con prioridad de paro." }
+      - { titulo: "Estrella-triángulo.", texto: "Un tercio de corriente y de par, enclavamientos y una pausa al cambiar." }

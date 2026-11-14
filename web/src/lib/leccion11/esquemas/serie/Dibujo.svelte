@@ -11,27 +11,29 @@
 
 <Lienzo {descripcion} alto={262}>
   <Flujo d="M40 230 V50 H300 V230 Z" {dur} />
-  <Pila x={40} y1={230} y2={50} />
+  <Pila x={40} y1={230} y2={50} pieza="fuente" nodos={['0', 'fte']} />
   <Et x={2} y={170} t={c.val('fuente')} />
-  <path class="hilo" d="M40 50 H60"></path>
-  <R x1={60} y1={50} x2={170} y2={50} color="azul" />
+  <path class="hilo" d="M40 50 H60" data-red="fte"></path>
+  <R x1={60} y1={50} x2={170} y2={50} color="azul" pieza="r1" />
   <Et x={115} y={30} t={c.rot('r1')} ancla="middle" color="azul" />
-  <R x1={175} y1={50} x2={285} y2={50} color="naranja" />
+  <path class="hilo" d="M170 50 H175" data-red="a1"></path>
+  <R x1={175} y1={50} x2={285} y2={50} color="naranja" pieza="r2" />
   <Et x={230} y={30} t={c.rot('r2')} ancla="middle" color="naranja" />
-  <path class="hilo" d="M285 50 H300"></path>
+  <path class="hilo" d="M285 50 H300" data-red="a2"></path>
   {#if c.tiene('r3')}
-    <R x1={300} y1={50} x2={300} y2={230} color="verde" />
+    <R x1={300} y1={50} x2={300} y2={230} color="verde" pieza="r3" />
     <Et x={312} y={136} t={c.simT('r3')} color="verde" />
     <Et x={312} y={156} t={c.val('r3')} color="verde" peq />
   {:else}
-    <path class="hilo" d="M300 50 V230"></path>
+    <path class="hilo" d="M300 50 V230" data-red="a2"></path>
   {/if}
   {#if c.tiene('r4')}
-    <path class="hilo" d="M300 230 H285 M40 230 H65"></path>
-    <R x1={285} y1={230} x2={175} y2={230} color="azul" />
+    <path class="hilo" d="M300 230 H285" data-red="a3"></path>
+    <path class="hilo" d="M40 230 H65" data-red="0"></path>
+    <R x1={285} y1={230} x2={175} y2={230} color="azul" pieza="r4" />
     <Et x={230} y={256} t={c.rot('r4')} ancla="middle" color="azul" />
-    <path class="hilo" d="M175 230 H65"></path>
+    <path class="hilo" d="M175 230 H65" data-red="0"></path>
   {:else}
-    <path class="hilo" d="M300 230 H40"></path>
+    <path class="hilo" d="M300 230 H40" data-red="0"></path>
   {/if}
 </Lienzo>

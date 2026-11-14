@@ -41,13 +41,15 @@ const LEGADO_011 = { [DIA]: { pasos: 4, preguntas: 2, secciones: 1, cumplido: tr
 test.describe('formato estable · migraciones (Node)', () => {
   test('el registro: cada migración en orden, con su almacén y su formato; toda clave conocida tiene versión', () => {
     for (const m of MIGRACIONES) {
-      expect(ESQUEMAS[m.clave], m.clave).toBeGreaterThan(m.de);
+      // (1.2: the collection-only steps of synchronised stores that are not a storage key have no version of their own)
+      expect(ESQUEMAS[m.clave] ?? m.de + 1, m.clave).toBeGreaterThan(m.de);
       expect(m.formato).toBeLessThanOrEqual(VERSION_DOC);
       expect(typeof m.descripcion).toBe('string');
     }
-    expect(ESQUEMAS['progreso-diario']).toBe(2);
-    expect(VERSION_DOC).toBe(2);
-    expect(VERSION_COPIA).toBe(2);
+    // (1.2: format 3, the ids of book 4.1 — tests/sync41-unidad.spec.ts)
+    expect(ESQUEMAS['progreso-diario']).toBe(3);
+    expect(VERSION_DOC).toBe(3);
+    expect(VERSION_COPIA).toBe(3);
   });
 
   test('datos de la 0.12: se migran, se guarda antes la copia del original (una sola vez) y las versiones', async () => {
@@ -137,13 +139,13 @@ test.describe('formato estable · migraciones (Node)', () => {
   test('el fichero de sincronización: el formato 1 se lee migrado (y se reescribe), uno más nuevo se rechaza con «actualice»', () => {
     const v1 = { formato: 'epa-sincronizacion', version: 1, id: 'f', actualizado: 5, podado: 0, dispositivos: {}, almacenes: { 'progreso-diario': { [DIA]: { t: 1000, v: LEGADO_011[DIA] } } } };
     const d = leerDoc(JSON.stringify(v1));
-    expect(d.version).toBe(2);
+    expect(d.version).toBe(3);
     expect(migradoDe(d)).toBe(1);
     expect((d.almacenes['progreso-diario']![`${DIA}@0`] as { t: number; v: { pasos: number } }).v.pasos).toBe(4);
     const d2 = leerDoc(escribirDoc(d));
     expect(migradoDe(d2)).toBeUndefined();
     expect(canonico(d2.almacenes)).toBe(canonico(d.almacenes));
-    expect(() => leerDoc(JSON.stringify({ ...v1, version: 3 }))).toThrow(/versión 3 del formato; actualice la aplicación/);
+    expect(() => leerDoc(JSON.stringify({ ...v1, version: 4 }))).toThrow(/versión 4 del formato; actualice la aplicación/);
     // a backup of format 1 (0.12) is migrated the same way; the synchronisation file of format 1 too
     const copia1 = { formato: 'epa-copia-seguridad', version: 1, app: '0.12.0', exportado: 9, dispositivo: 'Mac', almacenes: v1.almacenes };
     const conocidos = [{ clave: 'progreso-diario', nombre: 'Progreso diario' }];
@@ -151,7 +153,7 @@ test.describe('formato estable · migraciones (Node)', () => {
       const l = leerCopia(texto, conocidos);
       expect((l.copia.almacenes['progreso-diario']![`${DIA}@0`] as { v: { pasos: number } }).v.pasos).toBe(4);
     }
-    expect(() => leerCopia(JSON.stringify({ ...copia1, version: 3 }), conocidos)).toThrow(/versión más nueva/);
+    expect(() => leerCopia(JSON.stringify({ ...copia1, version: 4 }), conocidos)).toThrow(/versión más nueva/);
   });
 
   test('la unión de dos versiones de un ejercicio: conmutativa, asociativa e idempotente (5000 tríos al azar; resuelto y tapada por sus claves `_r`/`_o`, revisión 10j)', () => {
@@ -385,9 +387,9 @@ test.describe('migración · navegador', () => {
           reintentos: 0,
           porAlmacen: {},
           dispositivos: [
-            { nombre: 'Mac', ultima: ahora, version: '1.0.0', datos: 2, este: true },
+            { nombre: 'Mac', ultima: ahora, version: '1.2.0', datos: 3, este: true },
             { nombre: 'Tableta', ultima: ahora - 86_400_000, version: '0.12.0', este: false },
-            { nombre: 'Windows', ultima: ahora - 3_600_000, version: '1.0.0', datos: 2, este: false },
+            { nombre: 'Windows', ultima: ahora - 3_600_000, version: '1.2.0', datos: 3, este: false },
           ],
         },
       },

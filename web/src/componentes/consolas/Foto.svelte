@@ -5,6 +5,7 @@
   // get a photo switcher; a photo with traces (Game Boy) lights up the copper of a net or a whole bus, and a
   // photo aligned with a PCB (Mega Drive) marks where any schematic part sits.
   import { untrack } from 'svelte';
+  import { numeroImpreso } from '../../lib/datos';
   import { cargarTrazas, fotosDe, htmlKicad, nombreRed, type DatosMaquina, type Hotspot, type Trazas } from './datos';
   import type { Seleccion } from './estado.svelte';
   import ZoomIn from '@lucide/svelte/icons/zoom-in';
@@ -152,7 +153,9 @@
 
   const mostrado = $derived(elegido ?? null);
   const grupos = $derived(datos.grupos);
-  const figura = $derived(datos.foto.figura ? (datos.id === 'nes' ? '36.16' : '36.22') : null);
+  // The photo's book figure («fig-37.16»): its printed number comes from refs.json, never written by hand, so a
+  // renumbering of the book (4.1 moved these two from 36.x to 38.x) cannot leave it stale.
+  const figura = $derived(datos.foto.figura ? numeroImpreso(datos.foto.figura, datos.foto.figura) : null);
 </script>
 
 <div class="foto-vista">

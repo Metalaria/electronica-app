@@ -1,0 +1,267 @@
+# Lección 1.2 de la sección 12.9 «Criterios Cuantitativos» (cap12). Formato: GUIA.md.
+# La potencia con margen se calcula con el ejemplo del libro (sección 1.1: 220 Ω con 12 V, 0,655 W). Paso práctico:
+# «ajuste» de la tensión de trabajo de un condensador de 50 V con un 50 % de margen (ejercicio del capítulo:
+# 50 V / 1,5 ≈ 33 V), dibujado con «carga-rc» (10 kΩ y 100 µF de ejemplo); el consumo de 200 mA es el del bloque 243.
+leccion: cap12/sec-12.9
+
+libro:
+  250: "ERC en cero"
+  252: "Es la comprobación más aburrida y la que evita el error más caro."
+  258: "Con margen del 50 % sobre lo estimado"
+  260: "al menos un 50 % por encima del máximo previsto"
+  261: "el doble del máximo continuo"
+  262: "el doble de la disipación calculada"
+  263: "al menos 30 °C por debajo del máximo del componente"
+  266: "el firmware sobre una placa de desarrollo"
+  268: "alguien que no haya dibujado el esquema encuentra errores que el autor no ve"
+  269: "Media hora de otra persona vale más que dos horas del autor releyendo."
+  272: "Lo que quede sin marcar es lo que no se ha comprobado"
+  "cap12#303": "50 V / 1,5 ≈ 33 V"
+  "cap12#243": "consumo menor de 200 mA"
+  "cap01#33": "Una resistencia de 220 Ω se conecta a una fuente de 12 V."
+
+modelo:
+  valores:
+    V_r: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_r: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 220 }
+    V_w: { sim: "V_{trabajo}", nombre: "tensión de trabajo del condensador", unidad: V, valor: 20 }
+    V_n: { sim: "V_{nominal}", nombre: "tensión nominal del condensador", unidad: V, valor: 50 }
+    R_c: { sim: "R", nombre: "resistencia de carga", unidad: Ω, valor: 10000 }
+    C_c: { sim: "C", nombre: "condensador", unidad: F, valor: 100e-6 }
+    I_est: { sim: "I_{estimada}", nombre: "consumo estimado", unidad: A, valor: 0.2 }
+  calculos:
+    I_r: { expr: "V_r/R_r", sim: "I", nombre: "corriente", unidad: A }
+    P_r: { expr: "V_r^2/R_r", sim: "P", nombre: "potencia disipada", unidad: W }
+    P_nom: { expr: "2*P_r", sim: "P_{nominal}", nombre: "potencia nominal mínima", unidad: W }
+    tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    V_lim: { expr: "V_n/1.5", sim: "V_{máx}", nombre: "tensión de trabajo máxima con margen", unidad: V }
+    I_dis: { expr: "1.5*I_est", sim: "I_{diseño}", nombre: "consumo con margen", unidad: A }
+
+tarjetas:
+  - id: explore-potencia
+    tipo: explorar
+    titulo: "Potencia con margen"
+    texto: "Con 12 V, cambie la resistencia. Compare lo que disipa con la potencia nominal que debe tener: el doble."
+    libro: [262, "cap01#33"]
+    fijar: { V_r: 12 }
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_r }
+      lectura: { valor: P_r, rotulo: "Potencia disipada" }
+      datos:
+        - { valor: P_nom, rotulo: "Potencia nominal mínima: {{P_nom}}" }
+      corriente: I_r
+      mide: { corriente: I_r, tension: V_r }
+      mandos:
+        - { valor: R_r, serie: E12, min: 100, max: 1000, rotulo: "R (E12)" }
+
+  - id: estime-220
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿De cuántos vatios?"
+    texto: "Una resistencia de 220 Ω a 12 V disipa 0,655 W. ¿Qué potencia nominal mínima debe tener?"
+    libro: [262, "cap01#33"]
+    fijar: { V_r: 12, R_r: 220 }
+    estimar:
+      objetivo: "P_nom"
+      unidad: W
+      min: 0
+      max: 3
+      paso: 0.01
+      inicio: 2.5
+      tol: 0.03
+      rotulo: "Potencia nominal"
+    exito: "1,31 W: el doble de la disipación calculada."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.35 }, texto: "Se ha pasado: basta con el doble de lo calculado." }
+      - { texto: "Se ha quedado corto: hace falta el doble de 0,655 W." }
+    escalera:
+      - "Potencia: el doble de la disipación calculada."
+    solucion: "2 · 0,655 W = 1,31 W."
+    comprobar:
+      - { P_nom: 1.31, tol: 0.002 }
+
+  - id: ajuste-condensador
+    tipo: ajuste
+    titulo: "Un condensador de 50 V"
+    texto: "Su condensador es de 50 V. Baje la tensión de trabajo hasta que quede el 50 % de margen."
+    nota: "Resistencia y capacidad de ejemplo."
+    libro: [260, "cap12#303"]
+    inicio: { V_w: 45 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_w, r: R_c, c: C_c }
+      lectura: { valor: V_w, rotulo: "Tensión de trabajo" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 55, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_w*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_n", color: tinta, rotulo: "nominal", discontinua: true }
+          - { expr: "V_lim", color: azul, rotulo: "con margen", discontinua: true }
+      mandos:
+        - { valor: V_w, min: 5, max: 50, paso: 1, rotulo: "Tensión de trabajo" }
+    ajuste:
+      valor: V_w
+      min: 0
+      max: 33.4
+      rotulo: "Trabajo frente al margen"
+      escala: { min: 0, max: 50 }
+      bajo: "Dentro del margen."
+      alto: "Sin margen suficiente: baje la tensión de trabajo."
+      dentro: "Con 50 V / 1,5 ≈ 33 V, el condensador trabaja con un 50 % de margen."
+    comprobar:
+      - { V_lim: 33.3, tol: 0.002 }
+
+  - id: margenes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los márgenes razonables"
+    texto: "Una cada magnitud con su margen."
+    libro: [260, 261, 262, 263]
+    emparejar:
+      - ["Tensión", "Un 50 % por encima del máximo previsto"]
+      - ["Corriente", "El doble del máximo continuo"]
+      - ["Potencia", "El doble de la disipación calculada"]
+      - ["Temperatura", "30 °C por debajo del máximo del componente"]
+    exito: "Parecen generosos y son lo que separa un prototipo de algo que dura."
+    pistas:
+      - { texto: "La tensión es la única con un 50 %; corriente y potencia, el doble." }
+    escalera:
+      - "Con transitorios, la tensión necesita aún más margen."
+    solucion: "Tensión +50 %; corriente y potencia, el doble; temperatura, 30 °C por debajo."
+
+  - id: estime-consumo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El consumo total"
+    texto: "Ha estimado un consumo de 200 mA. ¿Para cuánto dimensiona la alimentación?"
+    libro: [258, "cap12#243"]
+    fijar: { I_est: 0.2 }
+    estimar:
+      objetivo: "I_dis"
+      unidad: A
+      min: 0
+      max: 0.6
+      paso: 0.01
+      inicio: 0.55
+      tol: 0.03
+      rotulo: "Consumo de diseño"
+    exito: "300 mA: el consumo total lleva un margen del 50 % sobre lo estimado."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.31 }, texto: "Se ha pasado: el consumo lleva un 50 %, no el doble." }
+      - { texto: "Se ha quedado corto: sume un 50 % a lo estimado." }
+    escalera:
+      - "Consumo total: con margen del 50 % sobre lo estimado."
+    solucion: "200 mA · 1,5 = 300 mA."
+    comprobar:
+      - { I_dis: 0.3 }
+
+  - id: aburrida
+    tipo: predecir
+    titulo: "La más aburrida"
+    texto: "En la lista previa a fabricar, ¿qué comprobación es la más aburrida y la que evita el error más caro?"
+    libro: [250, 252]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_r }
+      lectura: { valor: P_r, rotulo: "Potencia disipada" }
+      mide: { corriente: I_r, tension: V_r }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Cotejar el patillaje con la hoja de datos, uno a uno"
+        bien: true
+        porque: "Un patillaje equivocado pasa ERC y DRC y deja la placa inservible."
+      - texto: "Dejar el ERC en cero"
+        porque: "Es imprescindible, pero el ERC no ve el patillaje: la comprobación cara es la manual."
+      - texto: "Revisar los Gerbers"
+        porque: "Se revisan en un visor independiente, pero el error más caro es el del patillaje."
+    escalera:
+      - "¿Qué error no ve ninguna herramienta?"
+    solucion: "El patillaje cotejado con la hoja de datos de cada componente."
+
+  - id: por-que-otra
+    tipo: porque
+    titulo: "Otra persona"
+    texto: "Media hora de otra persona vale más que dos horas del autor releyendo. ¿Por qué?"
+    libro: [268, 269]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_r }
+      lectura: { valor: P_r, rotulo: "Potencia disipada" }
+      mide: { corriente: I_r, tension: V_r }
+      mandos: []
+    opciones:
+      - texto: "Porque quien no lo dibujó ve errores que el autor no ve"
+        bien: true
+        porque: "No hace falta que sea experto: basta con que recorra las conexiones preguntando por qué."
+      - texto: "Porque sabe más electrónica"
+        porque: "No hace falta que sea experto."
+      - texto: "Porque trabaja más deprisa"
+        porque: "No es la velocidad: es que no da por supuesto lo que el autor cree haber dibujado."
+    escalera:
+      - "El autor lee lo que quiso dibujar."
+    solucion: "Ve lo que el autor no ve."
+
+  - id: prototipar
+    tipo: pregunta
+    titulo: "Antes de comprometer una placa"
+    texto: "¿Qué hay que haber prototipado antes de comprometer una placa?"
+    libro: [266]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_r }
+      lectura: { valor: P_r, rotulo: "Potencia disipada" }
+      mide: { corriente: I_r, tension: V_r }
+      mandos: []
+    opciones:
+      - texto: "Los bloques analógicos delicados, las interfaces nuevas y el firmware"
+        bien: true
+        porque: "Es lo que el libro pide antes de comprometer la placa: todo bloque analógico delicado, toda interfaz no usada antes y el firmware, este sobre una placa de desarrollo."
+      - texto: "Nada: para eso está la simulación"
+        porque: "La simulación no sustituye a un prototipo de lo delicado o nuevo."
+      - texto: "Solo la alimentación"
+        porque: "La alimentación importa, pero el libro pide lo analógico delicado, lo nuevo y el firmware."
+    escalera:
+      - "Lo delicado y lo nunca usado antes."
+    solucion: "Lo analógico delicado, lo que no se ha usado antes y el firmware."
+
+  - id: rotulador
+    tipo: pregunta
+    titulo: "En el banco: un rotulador"
+    texto: "Imprime el esquema y marca cada red al comprobarla; al terminar, queda una sin marcar. ¿Qué significa?"
+    libro: [272]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_r }
+      lectura: { valor: P_r, rotulo: "Potencia disipada" }
+      mide: { corriente: I_r, tension: V_r }
+      mandos: []
+    opciones:
+      - texto: "Que no se ha comprobado, y ahí suelen estar los errores"
+        bien: true
+        porque: "Todo debe quedar marcado: la tarde que cuesta evita rehacer una placa."
+      - texto: "Que esa red no hace falta"
+        porque: "Está en el esquema: hace falta y no se ha comprobado."
+      - texto: "Nada: se dio por buena"
+        porque: "Sin marca no hay comprobación: eso es lo que dice el método."
+    escalera:
+      - "La marca es la prueba de que se comprobó."
+    solucion: "Lo sin marcar no se ha comprobado."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [252, 258, 262, 268]
+    ideas:
+      - { titulo: "Lista previa.", texto: "ERC y DRC en cero, patillaje, Gerbers, impresión 1:1 y BOM completa." }
+      - { titulo: "Calculado, no estimado.", texto: "Consumo con un 50 % de margen; potencias en el peor caso." }
+      - { titulo: "Márgenes.", texto: "Tensión +50 %; corriente y potencia, el doble; 30 °C de temperatura." }
+      - { titulo: "Otra persona.", texto: "Encuentra lo que el autor no ve." }

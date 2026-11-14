@@ -1,0 +1,293 @@
+# Lección 1.2 de la sección 52.4 «La Etapa de Potencia Clase AB» (cap51; etiqueta sec-51.4). Proyecto detallado III.
+# Formato: contenido/lecciones11/GUIA.md. La etapa de la figura 52.7 (fig-51.7: Q₁ NPN y Q₂ PNP seguidores, R_E de
+# 0,22 Ω, polarización por diodos con fuente de corriente, driver Q₃, altavoz de 8 Ω, ±35 V) con zonas; el resto,
+# emparejar y opciones con los argumentos del libro, y el ejercicio 52.2 (bloque 377).
+leccion: cap51/sec-51.4
+
+libro:
+  119: "tiene que dar corriente a un altavoz de pocos ohmios"
+  121: "25 % en el mejor caso"
+  122: "mientras la señal atraviesa la zona de los ±0,6 V"
+  123: "lo que elimina el hueco del cruce"
+  124: "la corriente de reposo sea el ajuste más delicado"
+  126: "un NPN y un PNP, ambos como seguidores de emisor"
+  128: "La ganancia la aporta el driver anterior"
+  129: "Impedancia de salida baja"
+  130: "con la corriente de reposo circulando por ambos alrededor del cero"
+  133: "con dos caídas base-emisor —1,4 V—"
+  134: "Solo una caída y mejor linealidad"
+  135: "permite usar dos transistores de potencia del mismo tipo"
+  137: "Unos 0,1 a 0,47 Ω en serie con cada emisor"
+  138: "Estabilizan térmicamente la corriente de reposo"
+  139: "Reparten la corriente cuando hay transistores en paralelo"
+  140: "Permiten medir la corriente de reposo midiendo su caída"
+  141: "disipan y reducen ligeramente el rendimiento"
+  144: "evita la destrucción con la salida en cortocircuito"
+  145: "contra la fuerza contraelectromotriz del altavoz"
+  146: "que estabiliza ante la inductancia de la bobina móvil"
+  147: "desconecta el altavoz si aparece tensión continua en la salida"
+  153: "debe ser baja a potencia media y crecer cerca del recorte"
+  154: "Debe ser de milivoltios"
+  155: "Etapa de potencia Clase AB con par complementario"
+  "cap51#14": "fijan la alimentación en unos ±35 V"
+  "cap51#377": "¿Por qué la etapa de potencia necesita alimentación doble y simétrica"
+
+modelo:
+  valores:
+    Vcc: { sim: "V_{CC}", nombre: "alimentación simétrica", unidad: V, valor: 35 }
+    Ib: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.05 }
+    R1: { sim: "R₁", nombre: "resistencia de ajuste del multiplicador", unidad: Ω, valor: 1037 }
+    R2: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
+    pu: { tipo: interruptor, nombre: "multiplicador puenteado", valor: 0 }
+    Re: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 0.22 }
+    RL: { sim: "R_{L}", nombre: "altavoz", unidad: Ω, valor: 8 }
+    b: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    bm: { sim: "β_{3}", nombre: "ganancia de corriente del multiplicador (sin corriente de base)", unidad: "", valor: 1e9 }
+    Vbe: { sim: "V_{BE}", nombre: "caída base-emisor", unidad: V, valor: 0.6 }
+    A: { sim: "A", nombre: "amplitud de la señal del driver", unidad: V, valor: 1 }
+    f: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+  calculos:
+    Vbb: { expr: "(1 - pu)*Vbe*(1 + R1/R2)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie: { expr: "max(0, (Vbb - 2*Vbe)/(2*Re))", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq: { expr: "b/(b + 1)*Ie", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir: { expr: "max(Iq, 0.01)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin: { expr: "-Vbb/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    k: { expr: "Re/RL", sim: "k", nombre: "R_E/R_L", unidad: "" }
+    sab: { expr: "ceil(max(0, Vbb - 2*Vbe)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
+
+tarjetas:
+  - id: explore-etapa
+    tipo: explorar
+    titulo: "La etapa que entrega la potencia"
+    texto: "Tiene que dar corriente a un altavoz de pocos ohmios. Toque cada parte de la etapa."
+    libro: [119, 126, 128, 137, 155]
+    widget:
+      tipo: figura
+      figura: fig-51.7
+      zonas:
+        - { id: q1, rotulo: "Transistor de arriba", rect: [135, 65, 40, 38], texto: "Q₁, NPN, seguidor de emisor: da el semiciclo positivo." }
+        - { id: q2, rotulo: "Transistor de abajo", rect: [135, 180, 40, 38], texto: "Q₂, PNP, seguidor de emisor: da el semiciclo negativo." }
+        - { id: re, rotulo: "Resistencias del centro", rect: [140, 106, 45, 68], texto: "Las R_{E}, de décimas de ohmio: estabilizan la corriente de reposo y permiten medirla." }
+        - { id: bias, rotulo: "Diodos de la izquierda", rect: [85, 95, 40, 55], texto: "La polarización entre las bases: corriente de reposo en los dos, sin hueco de cruce." }
+        - { id: driver, rotulo: "Transistor de la izquierda, abajo", rect: [78, 208, 40, 38], texto: "Q₃, el driver: aporta la ganancia de tensión." }
+        - { id: altavoz, rotulo: "A la derecha", rect: [245, 130, 40, 38], texto: "El altavoz de 8 Ω, entre la salida y masa." }
+    requiere: { mover: [q1, q2, bias, driver] }
+
+  - id: explore-seguidor
+    tipo: explorar
+    titulo: "Clase B y clase AB"
+    texto: "Puentee el multiplicador: sin bias, ningún transistor conduce en la zona de ±0,6 V. Cambie también la amplitud."
+    libro: [122, 123, 130]
+    widget:
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, amplitud: A, f: f, ib: Ib, r1: R1, r2: R2, puente: pu, re: Re, carga: RL, beta: b, vbe: Vbe, iref: Ir, betam: bm }
+      lectura: { valor: Iq, rotulo: "Corriente de reposo" }
+      corriente: Iq
+      mide: { iq: Iq, vbb: Vbb }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -4.5, max: 4.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A*sin(2*pi*f*t)", color: tinta, rotulo: "señal del driver", discontinua: true }
+          - { expr: "sab*max((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), min((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), (2*A*sin(2*pi*f*t))/(2 + k))) + (1 - sab)*(max((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), 0) + min((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), 0))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: pu, tipo: interruptor, rotulo: "Multiplicador puenteado (clase B)" }
+        - { valor: A, lista: [1, 2, 4], rotulo: "Amplitud de la señal" }
+    requiere: { mover: [pu] }
+
+  - id: empareje-clases
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Por qué clase AB"
+    texto: "Una cada clase con lo que la descarta o la elige."
+    libro: [121, 122, 123, 124]
+    emparejar:
+      - ["Clase A", "Distorsión mínima, 25 % en el mejor caso: disipa en reposo"]
+      - ["Clase B", "78 %, pero ambos cortados en la zona de ±0,6 V"]
+      - ["Clase AB", "Una pequeña corriente de reposo quita el hueco del cruce"]
+    exito: "El compromiso del audio analógico: el ajuste delicado es la corriente de reposo."
+    pistas:
+      - { texto: "La clase B no conduce cerca de cero; la AB conduce un poco en los dos." }
+    escalera:
+      - "Una pierde rendimiento, otra linealidad; la tercera, casi nada de ninguna."
+    solucion: "A–25 % y disipa en reposo; B–cruce de ±0,6 V; AB–corriente de reposo sin hueco."
+
+  - id: pregunta-ganancia
+    tipo: pregunta
+    titulo: "El seguidor complementario"
+    texto: "Q₁ y Q₂ son seguidores de emisor. ¿Quién da entonces la ganancia de tensión?"
+    libro: [126, 128, 129]
+    fijar: { pu: 0, A: 2 }
+    widget:
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, amplitud: A, f: f, ib: Ib, r1: R1, r2: R2, puente: pu, re: Re, carga: RL, beta: b, vbe: Vbe, iref: Ir, betam: bm }
+      mide: { iq: Iq }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -4.5, max: 4.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A*sin(2*pi*f*t)", color: tinta, rotulo: "señal del driver", discontinua: true }
+          - { expr: "sab*max((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), min((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), (2*A*sin(2*pi*f*t))/(2 + k))) + (1 - sab)*(max((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), 0) + min((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), 0))", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "El driver anterior"
+        bien: true
+        porque: "La etapa de salida tiene ganancia de tensión de casi uno y salida baja: da corriente."
+      - texto: "Q₁ en el semiciclo positivo y Q₂ en el negativo"
+        porque: "Conducen por turnos, pero como seguidores: copian la tensión, no la amplifican."
+      - texto: "Las resistencias de emisor"
+        porque: "Estabilizan y permiten medir el reposo; no dan ganancia."
+    escalera:
+      - "¿Cuánta ganancia de tensión tiene un seguidor de emisor?"
+    solucion: "El driver: los seguidores solo dan corriente."
+
+  - id: porque-simetrica
+    tipo: porque
+    titulo: "Alimentación doble"
+    texto: "Un ejercicio del capítulo: ¿por qué la etapa necesita ±V y no una sola tensión positiva?"
+    libro: ["cap51#377"]
+    widget:
+      tipo: figura
+      figura: fig-51.7
+      zonas:
+        - { id: q2, rotulo: "Transistor de abajo", rect: [135, 180, 40, 38] }
+    opciones:
+      - texto: "El PNP lleva la salida por debajo de cero en el semiciclo negativo"
+        bien: true
+        porque: "Para que la onda baje de cero hace falta un raíl negativo; con uno solo, un condensador grande o un punto medio."
+      - texto: "Para doblar la potencia"
+        porque: "La potencia la fija el pico sobre la carga; la doble alimentación es para que la salida pase por cero."
+      - texto: "Porque el NPN lo necesita para encender"
+        porque: "El NPN trabaja con el raíl positivo; el negativo es el del PNP."
+    escalera:
+      - "El audio sube y baja alrededor de cero. ¿De dónde sale la corriente del semiciclo negativo?"
+    solucion: "Un raíl positivo para el NPN y otro negativo para el PNP: la salida oscila alrededor de cero."
+
+  - id: empareje-darlington
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Darlington y alternativas"
+    texto: "Con transistores de β modesta el driver tendría que dar mucha corriente de base. Una cada solución con su rasgo."
+    libro: [133, 134, 135]
+    emparejar:
+      - ["Darlington", "Dos caídas base-emisor, 1,4 V"]
+      - ["Sziklai", "Una caída y mejor linealidad"]
+      - ["Cuasicomplementaria", "Dos transistores de potencia del mismo tipo"]
+    exito: "La cuasicomplementaria esquiva que NPN y PNP de potencia nunca sean exactamente complementarios."
+    pistas:
+      - { texto: "La Sziklai pone un driver del tipo opuesto: solo una unión en el camino." }
+    escalera:
+      - "Cuente las uniones base-emisor en el camino de la señal."
+    solucion: "Darlington–1,4 V; Sziklai–una caída; cuasicomplementaria–dos NPN."
+
+  - id: empareje-re
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las resistencias de emisor"
+    texto: "Unos 0,1 a 0,47 Ω en serie con cada emisor. Una cada función con su razón."
+    libro: [137, 138, 139, 140]
+    emparejar:
+      - ["Estabilidad térmica", "Realimentación local de la corriente de reposo"]
+      - ["Transistores en paralelo", "Reparten la corriente"]
+      - ["Ajuste del bias", "Su caída mide la corriente de reposo"]
+    exito: "Su precio: disipan, bajan algo el rendimiento y suben la impedancia de salida."
+    pistas:
+      - { texto: "Por la ley de Ohm, su caída dice la corriente que pasa." }
+    escalera:
+      - "Más corriente, más caída en R_{E}: ¿qué le pasa a V_{BE}?"
+    solucion: "Estabilidad–realimentación local; paralelo–reparto; bias–su caída mide el reposo."
+
+  - id: pregunta-precio-re
+    tipo: pregunta
+    titulo: "El precio de R_{E}"
+    texto: "¿Qué pagan las resistencias de emisor?"
+    libro: [141]
+    widget:
+      tipo: figura
+      figura: fig-51.7
+      zonas:
+        - { id: re, rotulo: "Resistencias del centro", rect: [140, 106, 45, 68] }
+    opciones:
+      - texto: "Disipan, bajan algo el rendimiento y suben la impedancia de salida"
+        bien: true
+        porque: "Toda la corriente del altavoz pasa por ellas: por eso son de décimas de ohmio."
+      - texto: "Añaden distorsión de cruce"
+        porque: "Al contrario: ayudan a estabilizar el reposo que la quita."
+      - texto: "Nada"
+        porque: "En serie con la salida, la corriente del altavoz las calienta y suben la impedancia de salida."
+    escalera:
+      - "¿Por dónde pasa la corriente del altavoz?"
+    solucion: "Disipación, algo de rendimiento e impedancia de salida."
+
+  - id: empareje-protecciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las protecciones imprescindibles"
+    texto: "Una etapa de potencia sin protección se destruye a la primera. Una cada protección con lo que evita."
+    libro: [144, 145, 146, 147]
+    emparejar:
+      - ["Limitación de corriente", "La salida en cortocircuito"]
+      - ["Diodos de recuperación", "La fuerza contraelectromotriz del altavoz"]
+      - ["Red Zobel", "La inestabilidad por la inductancia de la bobina"]
+      - ["Protección de continua", "Un transistor en corto que quema el altavoz"]
+    exito: "Con el retardo de conexión, cinco protecciones que no son opcionales."
+    pistas:
+      - { texto: "La Zobel es una resistencia y un condensador en serie, de la salida a masa." }
+    escalera:
+      - "El altavoz es una carga inductiva: dos de ellas vienen de ahí."
+    solucion: "Limitación–cortocircuito; diodos–contraelectromotriz; Zobel–inductancia; continua–transistor en corto."
+
+  - id: pregunta-seguridad
+    tipo: pregunta
+    titulo: "Antes de conectar el altavoz"
+    texto: "Con el amplificador en reposo se mide la continua en la salida. ¿Qué debe leerse?"
+    libro: [154, "cap51#14"]
+    widget:
+      tipo: figura
+      figura: fig-51.7
+      zonas:
+        - { id: altavoz, rotulo: "A la derecha", rect: [245, 130, 40, 38] }
+    opciones:
+      - texto: "Milivoltios"
+        bien: true
+        porque: "Si hay voltios algo va mal, y el altavoz lo pagaría."
+      - texto: "La mitad de la alimentación"
+        porque: "Con alimentación simétrica, la salida en reposo está en cero, no a media tensión."
+      - texto: "Unos 35 V"
+        porque: "Eso sería la salida pegada a un raíl: la avería que destruye el altavoz."
+    escalera:
+      - "Con ±35 V simétricos, ¿dónde está la salida sin señal?"
+    solucion: "Milivoltios: la salida en reposo está en cero."
+
+  - id: prediga-fft
+    tipo: predecir
+    titulo: "La distorsión con la FFT"
+    texto: "Se mide la distorsión de la etapa a varios niveles. ¿Qué es lo esperable?"
+    libro: [153]
+    widget:
+      tipo: figura
+      figura: fig-51.7
+      zonas:
+        - { id: q1, rotulo: "Transistor de arriba", rect: [135, 65, 40, 38] }
+    opciones:
+      - texto: "Baja a potencia media y creciendo cerca del recorte"
+        bien: true
+        porque: "Cerca del recorte los transistores trabajan en sus límites; a potencia media, la AB es lineal."
+      - texto: "Constante a todos los niveles"
+        porque: "Cerca del recorte los picos se aplanan: la distorsión crece."
+      - texto: "Máxima a potencia media"
+        porque: "Ese es el máximo de la disipación, no de la distorsión."
+    escalera:
+      - "¿Dónde empiezan a aplanarse los picos?"
+    solucion: "Baja a potencia media y creciente al acercarse al recorte."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [123, 128, 137, 147]
+    ideas:
+      - { titulo: "Clase AB.", texto: "Una corriente de reposo pequeña quita el hueco del cruce con casi todo el rendimiento." }
+      - { titulo: "Seguidores.", texto: "Q₁ y Q₂ dan corriente; la ganancia la aporta el driver." }
+      - { titulo: "R_{E}.", texto: "Unas décimas de ohmio: estabilizan, reparten y miden el reposo." }
+      - { titulo: "Protecciones.", texto: "Corriente, contraelectromotriz, Zobel, continua y retardo: no son opcionales." }

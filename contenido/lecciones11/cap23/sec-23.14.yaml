@@ -1,0 +1,202 @@
+# Lección 1.2 de la sección 22.14 «Reciprocidad, Sustitución y el Teorema de Tellegen» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.14
+
+libro:
+  345: "al intercambiar la fuente y el amperímetro se mide la misma corriente"
+  346: "la suma de las potencias entregadas y absorbidas por todos los elementos es cero"
+
+modelo:
+  valores:
+    V_k1: { sim: "V₁", nombre: "fuente de la izquierda", unidad: V, valor: 10 }
+    V_k2: { sim: "V₂", nombre: "fuente de la derecha", unidad: V, valor: 10 }
+    R_k1: { sim: "R₁", nombre: "resistencia de la izquierda", unidad: Ω, valor: 2 }
+    R_k2: { sim: "R₂", nombre: "resistencia de la derecha", unidad: Ω, valor: 3 }
+    R_k3: { sim: "R₃", nombre: "resistencia a masa", unidad: Ω, valor: 4 }
+    k_on1: { tipo: interruptor, nombre: "fuente de la izquierda encendida", valor: 1 }
+    k_on2: { tipo: interruptor, nombre: "fuente de la derecha encendida", valor: 0 }
+  calculos:
+    E_k1: { expr: "V_k1*k_on1", sim: "E₁", nombre: "fuente izquierda efectiva", unidad: V }
+    E_k2: { expr: "V_k2*k_on2", sim: "E₂", nombre: "fuente derecha efectiva", unidad: V }
+    V_kn: { expr: "(E_k1/R_k1 + E_k2/R_k2)/(1/R_k1 + 1/R_k2 + 1/R_k3)", sim: "V_{nodo}", nombre: "tensión del nodo", unidad: V }
+    I_k1: { expr: "(E_k1 - V_kn)/R_k1", sim: "I₁", nombre: "corriente que llega por la izquierda", unidad: A }
+    I_k2: { expr: "(E_k2 - V_kn)/R_k2", sim: "I₂", nombre: "corriente que llega por la derecha", unidad: A }
+    I_k3: { expr: "V_kn/R_k3", sim: "I₃", nombre: "corriente a masa", unidad: A }
+    I_dcha: { expr: "-I_k2", sim: "I_{dcha}", nombre: "corriente por la rama derecha", unidad: A }
+    I_izda: { expr: "-I_k1", sim: "I_{izda}", nombre: "corriente por la rama izquierda", unidad: A }
+    P_f: { expr: "-(E_k1*I_k1 + E_k2*I_k2)", sim: "P_{fuentes}", nombre: "potencia absorbida por las fuentes", unidad: W }
+    P_r: { expr: "I_k1^2*R_k1 + I_k2^2*R_k2 + I_k3^2*R_k3", sim: "P_{R}", nombre: "potencia absorbida por las resistencias", unidad: W }
+    P_tot: { expr: "P_f + P_r", sim: "ΣP", nombre: "suma de todas las potencias", unidad: W, cifras: 2 }
+    I_rec: { expr: "V_k1/(R_k1*R_k2*(1/R_k1 + 1/R_k2 + 1/R_k3))", sim: "I", nombre: "corriente en la otra rama", unidad: A }
+
+tarjetas:
+  - id: explore-reciprocidad
+    tipo: explorar
+    titulo: "Fuente aquí, amperímetro allí"
+    texto: "Encienda solo la fuente de la izquierda y mire la corriente por la rama derecha. Luego, solo la de la derecha, y mire la izquierda."
+    libro: [345]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      datos:
+        - { valor: I_dcha, rotulo: "Por la rama derecha: {{I_dcha}}" }
+        - { valor: I_izda, rotulo: "Por la rama izquierda: {{I_izda}}" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      mandos:
+        - { valor: k_on1, tipo: interruptor, rotulo: "Fuente de la izquierda" }
+        - { valor: k_on2, tipo: interruptor, rotulo: "Fuente de la derecha" }
+    requiere: { mover: [k_on1, k_on2] }
+
+  - id: prediga-intercambio
+    tipo: predecir
+    titulo: "Prediga el intercambio"
+    texto: "La fuente de la izquierda sola hace circular {{I_rec}} por la rama derecha. Si la fuente pasa a la derecha, ¿qué circula por la izquierda?"
+    libro: [345]
+    fijar: { k_on1: 0, k_on2: 1 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: I_izda, rotulo: "Por la rama izquierda" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1 }
+      ocultar: true
+    opciones:
+      - texto: "La misma corriente"
+        bien: true
+        porque: "Es la reciprocidad: en una red lineal pasiva, intercambiar fuente y amperímetro da la misma corriente."
+      - texto: "Más, porque la rama izquierda tiene menos resistencia"
+        porque: "Parece lógico, pero la red no distingue el sentido: el intercambio da exactamente la misma corriente."
+      - texto: "Depende de la resistencia a masa"
+        porque: "Esa resistencia cambia la corriente, pero cambia igual las dos: siguen siendo iguales."
+    escalera:
+      - "La red solo tiene resistencias: es lineal y pasiva."
+    solucion: "La misma: la red «no distingue» el sentido."
+
+  - id: quien-no
+    tipo: pregunta
+    titulo: "Quién no la cumple"
+    texto: "¿Qué redes no cumplen la reciprocidad?"
+    libro: [345]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Las que tienen transistores, giradores o circuladores"
+        bien: true
+        porque: "La reciprocidad exige una red lineal pasiva, sin fuentes dependientes."
+      - texto: "Las que tienen condensadores o bobinas"
+        porque: "Bobinas, condensadores y transformadores sí la cumplen: son pasivos."
+      - texto: "Las que tienen más de un nodo"
+        porque: "El número de nodos no importa. Lo que la rompe son los elementos activos o no recíprocos."
+    escalera:
+      - "Un transistor se modela con una fuente dependiente."
+    solucion: "Transistores, giradores y circuladores."
+
+  - id: sustitucion
+    tipo: pregunta
+    titulo: "El teorema de sustitución"
+    texto: "Se sustituye R₃ por una fuente que impone su misma tensión. ¿Qué cambia en el resto del circuito?"
+    libro: [345]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Nada: el resto ve la misma tensión y las mismas corrientes"
+        bien: true
+        porque: "Cualquier rama puede reemplazarse por una fuente que imponga su tensión o su corriente sin alterar el resto."
+      - texto: "Todo: la fuente aporta energía"
+        porque: "Impone exactamente lo que había: para el resto del circuito no hay ninguna diferencia."
+      - texto: "Solo vale si R₃ no lleva corriente"
+        porque: "Vale con cualquier corriente: basta con que la fuente imponga la tensión que tenía la rama."
+    escalera:
+      - "¿Qué ve el resto del circuito de una rama?"
+    solucion: "Nada cambia: se impone lo mismo que había."
+
+  - id: tellegen
+    tipo: sorpresa
+    titulo: "Todas las potencias suman cero"
+    texto: "Encienda las dos fuentes y mueva las resistencias. Sume la potencia de cada elemento, con su signo."
+    libro: [346]
+    fijar: { k_on1: 1, k_on2: 1 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: P_tot, rotulo: "Suma de todas las potencias" }
+      datos:
+        - { valor: P_f, rotulo: "Fuentes: {{P_f}}" }
+        - { valor: P_r, rotulo: "Resistencias: {{P_r}}" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      mandos:
+        - { valor: R_k1, min: 1, max: 10, paso: 1 }
+        - { valor: R_k3, min: 1, max: 10, paso: 1 }
+
+  - id: por-que-tellegen
+    tipo: porque
+    titulo: "¿Y con un diodo?"
+    texto: "Si una de las resistencias fuera un diodo, ¿seguirían sumando cero todas las potencias?"
+    libro: [346]
+    fijar: { k_on1: 1, k_on2: 1 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: P_tot, rotulo: "Suma de todas las potencias" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Sí: Tellegen solo exige que se cumplan las dos leyes de Kirchhoff"
+        bien: true
+        porque: "Es la conservación de la energía: vale con elementos no lineales o variables en el tiempo."
+      - texto: "No: como la superposición, solo vale en circuitos lineales"
+        porque: "La superposición exige linealidad; Tellegen no. Solo pide tensiones y corrientes que cumplan Kirchhoff."
+      - texto: "Solo si el diodo conduce"
+        porque: "Conduzca o no, la energía se conserva: entregada y absorbida suman cero."
+    escalera:
+      - "¿Qué exige Tellegen a las tensiones y a las corrientes?"
+    solucion: "Sí: vale con cualquier elemento que respete Kirchhoff."
+
+  - id: comprobacion
+    tipo: pregunta
+    titulo: "Una comprobación universal"
+    texto: "Los números de un análisis no cumplen Tellegen. ¿Qué significa?"
+    libro: [346]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      lectura: { valor: P_tot, rotulo: "Suma de todas las potencias" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Que hay un error en alguna parte"
+        bien: true
+        porque: "La potencia que entregan las fuentes es exactamente la que consumen los componentes. Si no cuadra, algo está mal."
+      - texto: "Que el circuito no es lineal"
+        porque: "Tellegen vale también con elementos no lineales: no cumplirlo es un error de cálculo."
+      - texto: "Que se crea energía en el circuito"
+        porque: "No se pierde ni se crea energía. Si los números dicen otra cosa, están mal."
+    escalera:
+      - "Tellegen es la conservación de la energía."
+    solucion: "Hay un error: Tellegen se cumple siempre."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [345, 346]
+    ideas:
+      - { titulo: "Reciprocidad.", texto: "En una red lineal pasiva, fuente y amperímetro se pueden intercambiar." }
+      - { titulo: "Sustitución.", texto: "Cualquier rama se reemplaza por una fuente que imponga su tensión o corriente." }
+      - { titulo: "Tellegen.", texto: "Las potencias de todos los elementos suman cero, también con elementos no lineales." }

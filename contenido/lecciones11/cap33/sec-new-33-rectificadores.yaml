@@ -1,0 +1,346 @@
+# Lección 1.2 de la sección 33.11 «Rectificadores Controlados» (cap33, sec-new-33-rectificadores). Formato: GUIA.md.
+# - Sin esquema de puente de tiristores: las formas de onda son gráficas de las ecuaciones del libro. Monofásico con
+#   230 V: carga resistiva, |v| desde α hasta el paso por cero; carga muy inductiva, cada pareja conduce de α a
+#   α + 180° (v = V_p·sen(θ − π·⌊(θ − α)/π⌋)). Seis pulsos con 400 V de línea: casquetes de 60° de √2·V_LL·cos(φ − 30°
+#   + α), φ la posición en el casquete contada desde el cambio de pareja retrasado α (media 1,35·V_LL·cos α).
+# Paso práctico: «simular» la tensión media con α = 45° y carga inductiva (146,4 V; error típico, la fórmula de la
+# carga resistiva, 176,7 V).
+leccion: cap33/sec-new-33-rectificadores
+
+libro:
+  364: "el instante de disparo controla la tensión media"
+  366: "El retraso del disparo respecto al paso por cero de la red es el ángulo de disparo α"
+  367: "los tiristores conducen desde α hasta el paso por cero"
+  368: '(sqrt("2") dot.op V)/(π) dot.op ("1" + cos α)'
+  369: "Cada pareja conduce exactamente medio ciclo, desde α hasta α + 180°"
+  370: '"0,900" dot.op V dot.op cos α'
+  371: "146,4 V con α = 45°"
+  372: "En la práctica se limita a unos 150°"
+  377: '"desplazamiento"'
+  378: "a media tensión, con α = 60°, el factor de potencia es 0,45"
+  380: "seis casquetes de senoide por ciclo, cada uno de 60°"
+  381: '"1,35" dot.op V_("LL") dot.op cos α'
+  382: "Un motor de continua de 440 V se alimenta con α = 35,5°"
+  383: "75,8 V de pico a pico a 300 Hz"
+  384: "cada fase toma bloques de corriente de 120°"
+  386: "No hay tercer armónico ni múltiplos de tres"
+  388: '(3 dot.op ω dot.op L_("s"))/(π) dot.op I_("d")'
+  389: "Con Ls = 1 mH, Id = 30 A y α = 30°, ΔVd = 9,0 V"
+  394: "Un rectificador activo"
+  396: "desaparecen dos casquetes de cada seis"
+
+modelo:
+  valores:
+    V: { sim: "V", nombre: "tensión eficaz de la red", unidad: V, valor: 230 }
+    f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    alfa: { sim: "α", nombre: "ángulo de disparo", unidad: "°", valor: 0 }
+    m_L: { tipo: interruptor, nombre: "carga muy inductiva", valor: 0 }
+    V_LL: { sim: "V_{LL}", nombre: "tensión de línea eficaz", unidad: V, valor: 400 }
+    alfa3: { sim: "α", nombre: "ángulo de disparo del puente trifásico", unidad: "°", valor: 0 }
+    V_m: { sim: "V_{motor}", nombre: "tensión del motor de continua", unidad: V, valor: 440 }
+    L_s: { sim: "L_{s}", nombre: "inductancia de la red por fase", unidad: H, valor: 0.001 }
+    I_d: { sim: "I_{d}", nombre: "corriente de la carga", unidad: A, valor: 30 }
+  calculos:
+    V_p: { expr: "V*sqrt(2)", sim: "V_{p}", nombre: "pico de la red", unidad: V }
+    Vd_L: { expr: "2*sqrt(2)/pi*V*cos(alfa*pi/180)", sim: "V_{d}", nombre: "tensión media con carga inductiva", unidad: V }
+    Vd_R: { expr: "sqrt(2)*V/pi*(1 + cos(alfa*pi/180))", sim: "V_{d}", nombre: "tensión media con carga resistiva", unidad: V }
+    V_d: { si: m_L, entonces: "Vd_L", sino: "Vd_R", sim: "V_{d}", nombre: "tensión media", unidad: V }
+    FP: { expr: "2*sqrt(2)/pi*cos(alfa*pi/180)", sim: "FP", nombre: "factor de potencia con carga inductiva", unidad: "" }
+    Vd3: { expr: "3*sqrt(2)/pi*V_LL*cos(alfa3*pi/180)", sim: "V_{d}", nombre: "tensión media del puente de seis pulsos", unidad: V }
+    a_mot: { expr: "atan2(sqrt(1 - (V_m/(3*sqrt(2)/pi*V_LL))^2), V_m/(3*sqrt(2)/pi*V_LL))*180/pi", sim: "α", nombre: "ángulo para el motor", unidad: "°" }
+    w_r: { expr: "2*pi*f_r", sim: "ω", nombre: "pulsación de la red", unidad: "rad/s" }
+    dV3: { expr: "3*2*pi*f_r*L_s/pi*I_d", sim: "ΔV_{d}", nombre: "caída por el solapamiento", unidad: V }
+
+tarjetas:
+  - id: explore-mono
+    tipo: explorar
+    titulo: "El disparo controla la media"
+    texto: "Puente de cuatro tiristores en la red de 230 V. Retrase el disparo con carga resistiva y luego con carga muy inductiva."
+    libro: [364, 366, 367, 368, 369]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -340, max: 340, unidad: V, rotulo: "v_{d}" }
+      curvas:
+        - { expr: "m_L*V_p*sin(2*pi*f_r*t - pi*floor((2*pi*f_r*t - alfa*pi/180)/pi)) + (1 - m_L)*V_p*abs(sin(2*pi*f_r*t))*ceil(max(0, 2*f_r*t - floor(2*f_r*t) - alfa/180))", color: naranja, rotulo: "salida" }
+        - { expr: "V_d", color: verde, rotulo: "media", discontinua: true }
+      lectura: { valor: V_d, rotulo: "Tensión media, V_{d}" }
+      mandos:
+        - { valor: alfa, min: 0, max: 150, paso: 5, rotulo: "Disparo, α" }
+        - { valor: m_L, tipo: interruptor, rotulo: "Carga muy inductiva" }
+    requiere: { mover: [alfa, m_L] }
+
+  - id: formula-inductiva
+    tipo: formula
+    titulo: "Con carga muy inductiva"
+    texto: "Cada pareja conduce medio ciclo, también con la red ya negativa. La media sigue al coseno del disparo."
+    libro: [369, 370]
+    fijar: { m_L: 1 }
+    ec: 370
+    sustitucion: "0,900 · {{V}} · cos {{alfa}} = {{Vd_L}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -340, max: 340, unidad: V, rotulo: "v_{d}" }
+      curvas:
+        - { expr: "V_p*sin(2*pi*f_r*t - pi*floor((2*pi*f_r*t - alfa*pi/180)/pi))", color: naranja, rotulo: "salida" }
+        - { expr: "Vd_L", color: verde, rotulo: "media", discontinua: true }
+      mandos:
+        - { valor: alfa, min: 0, max: 150, paso: 5, rotulo: "Disparo, α" }
+
+  - id: simule-45
+    tipo: simular
+    titulo: "Prediga la media a 45°"
+    texto: "Puente monofásico en la red de 230 V, carga muy inductiva y α = 45°. ¿Qué tensión media da?"
+    libro: [370, 371]
+    fijar: { alfa: 45, m_L: 1 }
+    simular:
+      objetivo: Vd_L
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión media, V_{d}"
+      errores:
+        - { expr: "Vd_R", texto: "176,7 V es con carga resistiva. Con carga inductiva la salida incluye un trozo negativo: 0,900·V·cos α." }
+    exito: "146,4 V: 0,900 × 230 × cos 45°."
+    escalera:
+      - "Con carga muy inductiva, V_{d} = 0,900·V·cos α."
+    solucion: "0,900 × 230 V × cos 45° = 146,4 V."
+    comprobar:
+      - { Vd_L: 146.4, Vd_R: 176.7, tol: 0.002 }
+
+  - id: prediga-120
+    tipo: predecir
+    titulo: "Más allá de 90°"
+    texto: "Carga muy inductiva con una fuente de energía en ella, por ejemplo un motor que frena, y α = 120°. ¿Qué hace el puente?"
+    libro: [372]
+    fijar: { alfa: 120, m_L: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -340, max: 340, unidad: V, rotulo: "v_{d}" }
+      curvas:
+        - { expr: "V_p*sin(2*pi*f_r*t - pi*floor((2*pi*f_r*t - alfa*pi/180)/pi))", color: naranja, rotulo: "salida" }
+      lectura: { valor: Vd_L, rotulo: "Tensión media" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "La media es negativa y la potencia va de la carga a la red"
+        bien: true
+        porque: "La corriente no cambia de sentido: es un inversor conmutado por la red. El ángulo se limita a unos 150°."
+      - texto: "La corriente se invierte y el motor gira al revés"
+        porque: "Los tiristores solo conducen en un sentido: lo que cambia de signo es la tensión media."
+      - texto: "Los tiristores ya no se disparan"
+        porque: "Se disparan; solo que más tarde, y la media pasa a ser negativa."
+    escalera:
+      - "¿Qué signo tiene cos 120°?"
+    solucion: "Media negativa con corriente positiva: la potencia vuelve a la red, como inversor conmutado por la red."
+
+  - id: estime-fp
+    tipo: pregunta
+    titulo: "El precio del control por fase"
+    texto: "Carga muy inductiva y α = 60°: media tensión. ¿Qué factor de potencia ve la red?"
+    libro: [377, 378]
+    fijar: { alfa: 60 }
+    widget:
+      tipo: grafica
+      x: { id: a, min: 0, max: 90, unidad: "°", rotulo: "α" }
+      y: { min: 0, max: 1, unidad: "", rotulo: "FP" }
+      curvas:
+        - { expr: "2*sqrt(2)/pi", color: tinta, rotulo: "distorsión", discontinua: true }
+    estimar:
+      objetivo: "FP"
+      unidad: ""
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.9
+      tol: 0.04
+      rotulo: "Factor de potencia"
+    exito: "0,45: cuanto más se baja la tensión, peor el factor de potencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.47 }, texto: "Se ha pasado: al 0,900 de la distorsión hay que multiplicarle el cos α del desplazamiento." }
+      - { texto: "Se ha quedado corto: FP = 0,900 · cos α." }
+    escalera:
+      - "Distorsión de la onda cuadrada, 0,900, por desplazamiento, cos α."
+    solucion: "0,900 × cos 60° = 0,45."
+    comprobar:
+      - { FP: 0.45 }
+
+  - id: explore-seis
+    tipo: explorar
+    titulo: "Seis casquetes"
+    texto: "Puente trifásico en la red de 400 V. Con diodos, la envolvente de las tensiones de línea; con tiristores, cada cambio de pareja se retrasa α."
+    libro: [380, 381]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -600, max: 600, unidad: V, rotulo: "v_{d}" }
+      curvas:
+        - { expr: "sqrt(2)*V_LL*cos((360*f_r*t - alfa3 - 60*floor((360*f_r*t - alfa3)/60) - 30 + alfa3)*pi/180)", color: naranja, rotulo: "salida" }
+        - { expr: "Vd3", color: verde, rotulo: "media", discontinua: true }
+      lectura: { valor: Vd3, rotulo: "Tensión media" }
+      mandos:
+        - { valor: alfa3, min: 0, max: 90, paso: 5, rotulo: "Disparo, α" }
+    requiere: { mover: [alfa3] }
+
+  - id: estime-motor
+    tipo: pregunta
+    titulo: "Un motor de 440 V"
+    texto: "Un motor de continua de 440 V se alimenta con un puente de seis tiristores en la red de 400 V. ¿Con qué ángulo?"
+    libro: [381, 382]
+    widget:
+      tipo: grafica
+      x: { id: a, min: 0, max: 90, unidad: "°", rotulo: "α" }
+      y: { min: 0, max: 600, unidad: V, rotulo: "V_{d}" }
+      curvas:
+        - { expr: "3*sqrt(2)/pi*V_LL*cos(a*pi/180)", color: naranja, rotulo: "1,35·V_{LL}·cos α" }
+        - { expr: "V_m", color: tinta, rotulo: "440 V", discontinua: true }
+    estimar:
+      objetivo: "a_mot"
+      unidad: "°"
+      min: 0
+      max: 90
+      paso: 0.5
+      inicio: 70
+      tol: 0.04
+      rotulo: "Ángulo de disparo"
+    exito: "35,5°: 440 V son el coseno de α por los 540,2 V del puente de diodos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 37 }, texto: "Se ha pasado: con ese ángulo la media no llega a 440 V." }
+      - { texto: "Se ha quedado corto: la media pasa de 440 V." }
+    escalera:
+      - "cos α = 440/(1,35 × 400)."
+    solucion: "cos α = 440/540,2: α = 35,5°."
+    comprobar:
+      - { a_mot: 35.5, tol: 0.01 }
+
+  - id: rizado-seis
+    tipo: pregunta
+    titulo: "Un filtro mucho menor"
+    texto: "El puente de seis pulsos tiene 75,8 V de rizado a 300 Hz. ¿Por qué necesita mucho menos filtro que el monofásico?"
+    libro: [383]
+    fijar: { alfa3: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: 0, max: 600, unidad: V, rotulo: "v_{d}" }
+      curvas:
+        - { expr: "sqrt(2)*V_LL*cos((360*f_r*t - alfa3 - 60*floor((360*f_r*t - alfa3)/60) - 30 + alfa3)*pi/180)", color: naranja, rotulo: "salida con diodos" }
+    opciones:
+      - texto: "Su rizado es once veces menor en proporción y está a 300 Hz, no a 100"
+        bien: true
+        porque: "El 4,2 % de la media frente al 48,3 % del monofásico: el condensador del bus es más para el inversor que para la red."
+      - texto: "Porque su tensión es más alta"
+        porque: "La tensión alta no reduce el filtro; lo hacen el rizado pequeño y su frecuencia alta."
+      - texto: "Porque los tiristores filtran"
+        porque: "Los tiristores conmutan; no almacenan energía ni filtran."
+    escalera:
+      - "Cada casquete solo baja del pico al pico por cos 30°."
+    solucion: "Rizado pequeño (4,2 % de la media) y a seis veces la frecuencia de red."
+
+  - id: sin-neutro
+    tipo: porque
+    titulo: "Tres hilos, sin neutro"
+    texto: "Con carga muy inductiva, cada fase toma bloques de 120°. ¿Por qué el puente se conecta sin neutro?"
+    libro: [384, 386]
+    widget:
+      tipo: figura
+      figura: fig-new-33-seis-pulsos
+      zonas:
+        - { id: todo, rotulo: "El puente de seis pulsos", rect: [0, 0, 453, 294] }
+    opciones:
+      - texto: "No hay tercer armónico ni múltiplos de tres: solo los de orden 6k ± 1"
+        bien: true
+        porque: "Quedan el 5.º y el 7.º; en grandes potencias, doce pulsos los cancelan y el primero pasa a ser el 11.º."
+      - texto: "Porque no hay armónicos"
+        porque: "Los hay: el 5.º, el 7.º, el 11.º y el 13.º, con amplitudes I₁/n."
+      - texto: "Porque el neutro está siempre a la tensión media"
+        porque: "La razón es que no hay armónicos múltiplos de tres que se sumen en el neutro."
+    escalera:
+      - "¿Qué armónicos se suman en el neutro en los rectificadores monofásicos?"
+    solucion: "Sin tercer armónico ni múltiplos de tres: no hay nada que llevar por el neutro."
+
+  - id: estime-solapamiento
+    tipo: pregunta
+    titulo: "La conmutación no es instantánea"
+    texto: "La red tiene 1 mH por fase y la carga lleva 30 A. ¿Cuánto baja la tensión media por el solapamiento?"
+    libro: [388, 389]
+    widget:
+      tipo: figura
+      figura: fig-new-33-seis-pulsos
+      zonas:
+        - { id: todo, rotulo: "El puente de seis pulsos", rect: [0, 0, 453, 294] }
+    estimar:
+      objetivo: "dV3"
+      unidad: V
+      min: 0
+      max: 30
+      paso: 0.5
+      inicio: 25
+      tol: 0.05
+      rotulo: "Caída por solapamiento"
+    exito: "9,0 V: una caída sin resistencia, como una impedancia de salida, sin pérdida de energía."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9.5 }, texto: "Se ha pasado: ΔV_{d} = 3·ω·L_{s}·I_{d}/π, con ω = 2π·50." }
+      - { texto: "Se ha quedado corto: multiplique 3 × ω × L_{s} × I_{d} y divida por π, con ω = 314 rad/s." }
+    escalera:
+      - "ΔV_{d} = 3·ω·L_{s}·I_{d}/π."
+    solucion: "3 × 314 rad/s × 1 mH × 30 A/π ≈ 9,0 V."
+    comprobar:
+      - { dV3: 9.0, w_r: 314.16, tol: 0.003 }
+
+  - id: diodo-abierto
+    tipo: pregunta
+    titulo: "Contar los casquetes"
+    texto: "En la salida de un puente de seis pulsos solo cuenta cuatro casquetes de cada seis, con rizado de 50 Hz. ¿Qué le pasa?"
+    libro: [396]
+    fijar: { alfa3: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: 0, max: 600, unidad: V, rotulo: "v_{d}" }
+      curvas:
+        - { expr: "sqrt(2)*V_LL*cos((360*f_r*t - alfa3 - 60*floor((360*f_r*t - alfa3)/60) - 30 + alfa3)*pi/180)", color: naranja, rotulo: "sano: seis casquetes" }
+    opciones:
+      - texto: "Un diodo o tiristor está abierto"
+        bien: true
+        porque: "Desaparecen dos casquetes de cada seis: la avería típica de la entrada de un variador, visible antes en el rizado que en la media."
+      - texto: "El ángulo de disparo es demasiado grande"
+        porque: "Un α grande baja la media, pero los seis casquetes siguen ahí, iguales."
+      - texto: "Falta el condensador del bus"
+        porque: "Sin condensador se verían los seis casquetes enteros; aquí faltan dos."
+    escalera:
+      - "Cada diodo participa en dos de los seis casquetes."
+    solucion: "Un semiconductor abierto: faltan dos casquetes de cada seis."
+
+  - id: hoy
+    tipo: pregunta
+    titulo: "Lo que se hace hoy"
+    texto: "¿Qué sustituye hoy al puente de tiristores en variadores regenerativos y cargadores rápidos?"
+    libro: [394]
+    widget:
+      tipo: figura
+      figura: fig-new-33-rect-mono
+      zonas:
+        - { id: todo, rotulo: "El puente monofásico", rect: [0, 0, 453, 277] }
+    opciones:
+      - texto: "Un rectificador activo: un inversor trifásico funcionando al revés"
+        bien: true
+        porque: "Corriente senoidal, factor de potencia unitario y regeneración sin el tope de 150°, a cambio de seis transistores y un control complejo."
+      - texto: "Un puente de diodos con condensador grande"
+        porque: "No ajusta la tensión ni devuelve energía a la red."
+      - texto: "Un puente de doce pulsos"
+        porque: "Reduce armónicos, pero sigue siendo de tiristores, con su factor de potencia de desplazamiento."
+    escalera:
+      - "Piense en el inversor de la sección anterior, con bobinas hacia la red."
+    solucion: "El rectificador activo: un inversor trifásico al revés."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [370, 372, 378, 381, 386]
+    ideas:
+      - { titulo: "Monofásico.", texto: "Con carga inductiva, V_{d} = 0,900·V·cos α; más allá de 90°, devuelve energía." }
+      - { titulo: "Factor de potencia.", texto: "0,900·cos α: cuanto menos tensión, peor." }
+      - { titulo: "Seis pulsos.", texto: "1,35·V_{LL}·cos α, rizado pequeño a 300 Hz, armónicos 6k ± 1." }
+      - { titulo: "Banco.", texto: "Seis casquetes iguales; si faltan dos, un semiconductor está abierto." }

@@ -1,0 +1,212 @@
+# Lección 1.2 de la sección 20.17 «Flujo de Trabajo: Medir una Señal Paso a Paso» (cap21; etiqueta interna
+# sec-21.17). Formato: contenido/lecciones11/GUIA.md. Una sección larga de procedimientos: la lección toma el B (medir
+# una señal desconocida), los errores de principiante, el escalón de 8 bits (tabla del bloque 502), la lectura de un
+# byte UART (el 0x41 del bloque 511, dibujado en tiempos de bit: reposo, arranque, ocho datos y parada; el nivel alto
+# vale 1) y el noveno pulso de I²C.
+leccion: cap21/sec-21.17
+
+libro:
+  446: "el procedimiento recomendado para medir cualquier señal desconocida"
+  447: "Flujo de trabajo completo para medir una señal desconocida"
+  452: "Conectar la pinza de masa primero"
+  473: "«No veo nada»"
+  475: "sobre diez ciclos y dividir entre diez"
+  497: "Solución: medir siempre con la batería"
+  500: "cada nivel es el 0,39 % del fondo de escala"
+  502: "Escalón mínimo"
+  503: "Un rizado de ±20 mV sobre 5 V, visto a 1 V/div, apenas ocupa uno o dos escalones del convertidor"
+  508: "Un byte UART a 9 600 baudios y una dirección I²C con su noveno pulso"
+  509: "La línea reposa en alto. Un byte empieza con un bit de arranque en bajo"
+  511: "El byte 0x41 (la letra «A», 01000001 en binario) aparece en línea, tras el arranque, como 1, 0, 0, 0, 0, 0, 1, 0"
+  512: "si el dispositivo direccionado existe y responde, tira SDA a bajo durante ese pulso (ACK)"
+
+modelo:
+  valores:
+    v_div: { sim: "V/div", nombre: "escala vertical", unidad: V, valor: 1 }
+  calculos:
+    esc: { expr: "8*v_div/256", sim: "escalón", nombre: "escalón mínimo del convertidor", unidad: V }
+
+tarjetas:
+  - id: explore-flujo
+    tipo: explorar
+    titulo: "El flujo de trabajo"
+    texto: "De la preparación de la sonda al guardado de la captura. Toque el diagrama."
+    libro: [446, 447]
+    widget:
+      tipo: figura
+      figura: fig-21.34
+      zonas:
+        - { id: arriba, rotulo: "Preparar: procedimiento A", rect: [0, 0, 385, 95], texto: "Encender, sonda en ×10 en el menú y en el conmutador, y compensarla." }
+        - { id: medio, rotulo: "Conectar y ajustar", rect: [0, 95, 385, 120], texto: "Masa primero y luego la punta; AUTO; y el ajuste fino de las dos escalas." }
+        - { id: abajo, rotulo: "Disparar, leer y guardar", rect: [0, 215, 385, 109], texto: "Nivel de disparo a la mitad, PRM, cursores para exactitud, y Run/Stop y SAVE." }
+    requiere: { mover: [arriba, abajo] }
+
+  - id: procedimiento-b
+    tipo: pregunta
+    titulo: "Una señal desconocida"
+    texto: "Ordene el procedimiento B."
+    libro: [452]
+    ordenar:
+      - "Pinza de masa primero, luego la punta"
+      - "AUTO"
+      - "▲▼ hasta 4 a 6 divisiones"
+      - "◄► hasta 2 o 3 ciclos"
+      - "TRIGGER: nivel a la mitad de la señal"
+      - "PRM y anotar; cursores para exactitud"
+      - "Run/Stop y SAVE si hay que documentarla"
+    exito: "Cada paso deja preparado el siguiente: sin escala no hay nivel de disparo que poner."
+    pistas:
+      - { texto: "Primero conectar; después que aparezca algo; luego escalas y disparo; al final, medir y guardar." }
+    escalera:
+      - "La masa va antes que la punta."
+    solucion: "Masa y punta, AUTO, vertical, horizontal, disparo, PRM y cursores, Run/Stop y SAVE."
+
+  - id: errores
+    tipo: pregunta
+    titulo: "Errores de principiante"
+    texto: "Empareje cada síntoma con su causa."
+    libro: [473]
+    widget:
+      tipo: figura
+      figura: fig-21.40
+      zonas:
+        - { id: medidas, rotulo: "Medidas automáticas", rect: [0, 0, 442, 310] }
+    emparejar:
+      - ["Diez veces más pequeño", "Factor de sonda distinto en menú y sonda"]
+      - ["La traza corre de lado", "Nivel de disparo fuera de la señal"]
+      - ["Oscilación en cada flanco", "Latiguillo de masa largo"]
+      - ["Senoide lenta donde hay conmutación", "Aliasing por base de tiempos larga"]
+      - ["Deja de funcionar al tocarlo", "La sonda ×1 lo carga"]
+    exito: "La mitad de las medidas raras se explican por un indicador o un accesorio."
+    pistas:
+      - { texto: "El factor diez es siempre la sonda; la traza que corre, siempre el disparo." }
+    escalera:
+      - "¿Qué ajuste multiplica o divide por diez?"
+    solucion: "Factor de sonda; disparo; latiguillo; aliasing; sonda ×1."
+
+  - id: estime-escalon
+    tipo: pregunta
+    titulo: "Ocho bits a 1 V/div"
+    texto: "La pantalla tiene 8 divisiones y 256 niveles. A 1 V/div, ¿cuánto vale el escalón mínimo?"
+    libro: [500, 502, 503]
+    fijar: { v_div: 1 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: 4.9, max: 5.1, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "5 + 0.02*sin(2*pi*n)", color: tinta, rotulo: "rizado real", discontinua: true }
+        - { expr: "esc*round((5 + 0.02*sin(2*pi*n))/esc)", color: naranja, rotulo: "lo que digitaliza" }
+    estimar:
+      objetivo: "esc"
+      unidad: V
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.08
+      tol: 0.05
+      rotulo: "Escalón mínimo"
+    exito: "8 V / 256 ≈ 31 mV: un rizado de ±20 mV ocupa uno o dos escalones. Por eso se mide en AC."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.033 }, texto: "Se ha pasado: reparta los 8 V de pantalla entre los 256 niveles." }
+      - { texto: "Se ha quedado corto: el fondo de escala son 8 divisiones de 1 V." }
+    escalera:
+      - "Fondo de escala entre niveles."
+    solucion: "8 V / 256 ≈ 31 mV."
+    comprobar:
+      - { esc: 0.03125 }
+
+  - id: dibuje-uart
+    tipo: dibujar
+    titulo: "Dibuje la «A» en UART"
+    texto: "La línea reposa en alto. Dibuje el reposo, el arranque, los ocho bits de 0x41 y la parada."
+    libro: [509, 511]
+    dibujar:
+      x: { id: b, min: 0, max: 11, unidad: "", rotulo: "tiempos de bit" }
+      y: { min: -0.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curva: "1 - max(0, 1 - abs(floor(b) - 1)) - max(0, 1 - abs(floor(b) - 3)) - max(0, 1 - abs(floor(b) - 4)) - max(0, 1 - abs(floor(b) - 5)) - max(0, 1 - abs(floor(b) - 6)) - max(0, 1 - abs(floor(b) - 7)) - max(0, 1 - abs(floor(b) - 9))"
+      puntos: 23
+      tol: 0.15
+      holgura: 0.03
+      rotulo: "La línea TX"
+    exito: "Arranque en bajo; luego 1, 0, 0, 0, 0, 0, 1, 0, del menos significativo al más; y la parada en alto."
+    escalera:
+      - "Los datos empiezan por el bit menos significativo: 01000001 se envía al revés."
+      - "Tras el reposo y el arranque: 1, 0, 0, 0, 0, 0, 1, 0, y la parada."
+    solucion: "Alto, arranque bajo, 1, 0, 0, 0, 0, 0, 1, 0 y parada alta."
+
+  - id: i2c
+    tipo: pregunta
+    titulo: "El noveno pulso"
+    texto: "En el noveno pulso de reloj tras la dirección, SDA queda en alto. ¿Qué significa?"
+    libro: [508, 512]
+    widget:
+      tipo: figura
+      figura: fig-21.39
+      zonas:
+        - { id: uart, rotulo: "UART e I²C", rect: [0, 0, 450, 308] }
+    opciones:
+      - texto: "Nadie ha respondido en esa dirección: NACK"
+        bien: true
+        porque: "Si el dispositivo existiera y respondiera, tiraría SDA a bajo durante ese pulso (ACK)."
+      - texto: "El dispositivo ha respondido: ACK"
+        porque: "El ACK es SDA en bajo. En alto, nadie ha contestado."
+      - texto: "Que el maestro manda un bit más de datos"
+        porque: "El noveno pulso no es de datos: el maestro suelta SDA para que el esclavo conteste."
+    escalera:
+      - "¿Quién tira de SDA durante el noveno pulso si el dispositivo está vivo?"
+    solucion: "NACK: nadie contesta en esa dirección, y el maestro aborta."
+
+  - id: frecuencia-exacta
+    tipo: pregunta
+    titulo: "Una frecuencia fiable"
+    texto: "La frecuencia de PRM baila porque la señal tiene ruido. ¿Cómo la mide con exactitud?"
+    libro: [475]
+    widget:
+      tipo: figura
+      figura: fig-21.40
+      zonas:
+        - { id: medidas, rotulo: "Medidas automáticas", rect: [0, 0, 442, 310] }
+    opciones:
+      - texto: "Cursores sobre diez ciclos y dividir entre diez"
+        bien: true
+        porque: "El error de colocar el cursor se reparte entre los diez ciclos."
+      - texto: "Repitiendo PRM hasta que salga un número estable"
+        porque: "Con ruido puede contar cruces de más: repetir no corrige eso."
+      - texto: "Con la FFT de mil puntos"
+        porque: "Con mil puntos la FFT tiene poca resolución en frecuencia."
+    escalera:
+      - "¿Cómo se reparte un error de posición fijo entre más ciclos?"
+    solucion: "Cursores sobre diez ciclos, entre diez."
+
+  - id: cargador
+    tipo: porque
+    titulo: "Un zumbido que no está"
+    texto: "Mide con el instrumento cargando por USB desde un adaptador de red y aparece un zumbido de 50 Hz. ¿Por qué?"
+    libro: [497]
+    widget:
+      tipo: figura
+      figura: fig-21.40
+      zonas:
+        - { id: medidas, rotulo: "Medidas automáticas", rect: [0, 0, 442, 310] }
+    opciones:
+      - texto: "Su masa queda unida a la de la red por el adaptador"
+        bien: true
+        porque: "A través de la capacidad del adaptador: un bucle de masa. Solución: medir siempre con la batería."
+      - texto: "La batería mete ruido al cargarse"
+        porque: "El zumbido es de 50 Hz, la red: llega por el adaptador, no por la batería."
+      - texto: "El circuito tiene ese zumbido"
+        porque: "Puede, pero si desaparece al desenchufar el cargador, no era del circuito."
+    escalera:
+      - "¿Qué une el instrumento a la red mientras carga?"
+    solucion: "El adaptador une su masa a la de la red: mida con batería."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [452, 473, 503, 512]
+    ideas:
+      - { titulo: "En orden.", texto: "Masa, AUTO, escalas, disparo, PRM y cursores, guardar." }
+      - { titulo: "Lo raro tiene causa.", texto: "Factor diez, la sonda; traza que corre, el disparo; senoide falsa, alias." }
+      - { titulo: "8 bits.", texto: "A 1 V/div, escalones de 31 mV: el rizado se mide en AC." }
+      - { titulo: "A ojo.", texto: "Un byte UART o el noveno pulso de I²C se leen sin analizador." }

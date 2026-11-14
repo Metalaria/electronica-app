@@ -1,0 +1,247 @@
+# Lección 1.2 de la sección 15.12 «Diagnóstico de Averías por Etapas» (cap16; etiquetas sec-16.N = impresas 15.N).
+# - El camino de la señal con el punto de inyección (figura 15.18, fig-16.18) y el árbol de diagnóstico (figura 15.17,
+#   fig-16.17), con zonas.
+# - La tabla de síntomas, la inyección de audio, el seguimiento, las cinco averías propias de un kit y el orden del
+#   banco (bloques 243 a 273).
+# - Modelo: la salida de audio inyectando un tono de 1 kHz (el de la sección 15.11.8, cap16#238) como un paso alto
+#   (esquema «filtro-rc»): el condensador de salida C53 (1000 µF) en serie con el altavoz de 8 Ω. La amplitud de 1 V a
+#   la salida del integrado es de ejemplo. Averías: C53 con una soldadura fría (abierto: 1 pF), C53 de un valor
+#   equivocado (componente en posición equivocada, 1 µF: de ejemplo) y el altavoz desconectado (abierto). Las tensiones
+#   y corrientes de cada avería las da el modelo (comprobadas con ngspice).
+# Pasos prácticos: «averia» de la etapa de salida (orden fijo), «tocar» la etapa culpable en el árbol y «ordenar» el
+# orden del banco.
+leccion: cap16/sec-16.12
+
+libro:
+  243: "se busca en qué punto desaparece"
+  249: "Display sí, sin sonido"
+  250: "Esa tabla convierte el primer síntoma en una hipótesis"
+  252: "inyectar una señal de audio —del generador, o incluso la salida de un móvil— en la entrada del amplificador de potencia"
+  253: "Si suena, toda la cadena de audio está bien y el problema está antes"
+  254: "ese es el mayor salto de información que se puede conseguir de un golpe"
+  261: "El punto donde la señal desaparece es el que hay que investigar"
+  264: "Soldadura fría o puente, con diferencia la primera causa"
+  265: "Componente en posición equivocada"
+  269: "tiene, con altísima probabilidad, uno de esos cinco problemas y no un componente defectuoso"
+  272: "Inspección visual completa con lupa"
+  273: "ajustar un receptor que tiene una avería no lo arregla y estropea el ajuste"
+  274: "Árbol de diagnóstico del FM7303"
+  275: "El camino de la señal con el punto de inyección de audio, y las averías propias de un kit"
+  "cap16#238": "inyecta con el generador DDS del FNIRSI un tono de 1 kHz"
+  "cap16#154": "los grandes electrolíticos de salida (C53 y C58 de 1000 µF)"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud a la salida del integrado (de ejemplo)", unidad: V, valor: 1 }
+    f_a: { sim: "f", nombre: "frecuencia del tono inyectado", unidad: Hz, valor: 1000 }
+    R_a: { sim: "R_{altavoz}", nombre: "altavoz", unidad: Ω, valor: 8 }
+    C_a: { sim: "C₅₃", nombre: "condensador de salida C53", unidad: F, valor: 0.001 }
+  calculos:
+    x_a: { expr: "2*pi*f_a*R_a*C_a", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_r: { expr: "V_p*x_a/sqrt(1 + x_a^2)", sim: "V_{altavoz}", nombre: "tensión en el altavoz", unidad: V }
+    A_c: { expr: "V_p/sqrt(1 + x_a^2)", sim: "V_{C53}", nombre: "tensión en C53", unidad: V }
+    A_i: { expr: "A_r/R_a", sim: "I", nombre: "corriente por el altavoz", unidad: A }
+
+tarjetas:
+  - id: explore-camino
+    tipo: explorar
+    titulo: "El camino de la señal"
+    texto: "La señal de un receptor recorre un camino definido: se busca en qué punto desaparece. Toque las etapas y la inyección."
+    libro: [243, 275]
+    widget:
+      tipo: figura
+      figura: fig-16.18
+      zonas:
+        - { id: antena, rotulo: "Arriba, el primero", rect: [2, 22, 68, 44], texto: "Antena y front-end: la señal de radio entra y se filtra." }
+        - { id: mezclador, rotulo: "Arriba, el segundo", rect: [77, 22, 68, 44], texto: "Mezclador y oscilador local: la señal pasa a la FI." }
+        - { id: fi, rotulo: "Arriba, el tercero", rect: [151, 22, 66, 44], texto: "Filtro de FI y amplificación." }
+        - { id: demodulador, rotulo: "Arriba, el cuarto", rect: [224, 22, 66, 44], texto: "Demodulador: de FI a audio." }
+        - { id: audio, rotulo: "Arriba, el quinto", rect: [298, 22, 66, 44], texto: "Etapa de audio y volumen." }
+        - { id: amplificador, rotulo: "Arriba, el último", rect: [384, 22, 66, 44], texto: "Amplificador de potencia y altavoz." }
+        - { id: inyeccion, rotulo: "La flecha que baja a la derecha", rect: [270, 80, 130, 85], texto: "Aquí se inyecta audio, a través de un condensador: parte el aparato en dos mitades." }
+    requiere: { mover: [antena, demodulador, inyeccion] }
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    titulo: "La tabla de síntomas"
+    texto: "Cada avería típica apunta a una zona. Empareje cada síntoma con la zona probable."
+    libro: [249, 250]
+    widget:
+      tipo: figura
+      figura: fig-16.18
+      zonas:
+        - { id: cadena, rotulo: "La fila de etapas", rect: [2, 22, 448, 44] }
+    emparejar:
+      - ["Nada, ni display", "Alimentación"]
+      - ["Display sí, sin sonido", "Audio, altavoz o su acoplo"]
+      - ["Ruido de fondo y nada más", "Front-end, antena o mezclador"]
+      - ["Sintoniza pero distorsionado", "Demodulador o FI"]
+      - ["Poca sensibilidad", "Front-end o ajuste de bobinas"]
+      - ["No cambia de emisora", "Oscilador local"]
+    exito: "La tabla convierte el primer síntoma en una hipótesis: el método del capítulo 55."
+    pistas:
+      - { texto: "Si ni el display enciende, no llega alimentación." }
+    escalera:
+      - "Ruido sin emisoras: la FI y el audio viven; falla lo de antes."
+    solucion: "Alimentación; audio; front-end; demodulador; front-end y bobinas; oscilador local."
+
+  - id: predecir-inyeccion
+    tipo: predecir
+    titulo: "Inyectar audio"
+    texto: "La radio no suena, pero un tono inyectado en la entrada del amplificador de potencia sí. ¿Dónde está el fallo?"
+    libro: [252, 253, 254]
+    widget:
+      tipo: figura
+      figura: fig-16.18
+      zonas:
+        - { id: inyeccion, rotulo: "La flecha que baja a la derecha", rect: [270, 80, 130, 85] }
+    opciones:
+      - texto: "Antes del amplificador: en la radio"
+        bien: true
+        porque: "Si suena, toda la cadena de audio está bien. Una sola prueba divide el aparato en dos mitades."
+      - texto: "En el amplificador o el altavoz"
+        porque: "Eso sería si no sonara: el tono ha salido por el altavoz."
+      - texto: "En la alimentación"
+        porque: "Sin alimentación no sonaría tampoco el tono."
+    escalera:
+      - "El tono ha recorrido el amplificador y el altavoz."
+    solucion: "Antes del amplificador."
+
+  - id: averia-salida
+    tipo: averia
+    titulo: "Display sí, sin sonido"
+    texto: "Con un tono de 1 kHz inyectado, el altavoz no suena bien. Mida en la etapa de salida y encuentre la pieza."
+    nota: "La amplitud de 1 V es de ejemplo."
+    libro: [249, 264, 265, "cap16#238", "cap16#154"]
+    fijar: { V_p: 1, f_a: 1000, R_a: 8, C_a: 0.001 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_a, r: R_a, c: C_a }
+      mide: { vr_amp: A_r, vc_amp: A_c, i_amp: A_i }
+      mandos: []
+    averia:
+      pasos: 2
+      eleccion: fija
+      preguntar_tipo: false
+      sospechosos:
+        - { id: c, rotulo: "C53, el acoplo de salida" }
+        - { id: r, rotulo: "El altavoz y su cable" }
+      sondas:
+        - { id: altavoz, rotulo: "Tensión en el altavoz", valor: A_r }
+        - { id: c53, rotulo: "Tensión en C53", valor: A_c }
+        - { id: corriente, rotulo: "Corriente por el altavoz", valor: A_i }
+      fallos:
+        - { id: c-fria, pieza: c, tipo: abierta, con: { C_a: 1e-12 }, texto: "C53 con una soldadura fría: abierto. Todo el tono se queda en él y no llega nada al altavoz." }
+        - { id: altavoz-suelto, pieza: r, tipo: abierta, con: { R_a: 1e9 }, texto: "El altavoz desconectado: hay tensión en sus bornes, pero no circula corriente." }
+        - { id: c-equivocado, pieza: c, tipo: valor, con: { C_a: 1e-6 }, texto: "Un condensador de valor equivocado en el sitio de C53: al altavoz llega una pequeña parte del tono. Componente en posición equivocada." }
+    exito: "Las tres callan el altavoz; tensión y corriente dicen cuál es."
+    escalera:
+      - "Sano, casi todo el tono está en el altavoz y por él circula corriente. ¿Dónde se queda el tono?"
+    solucion: "Tono en C53 y nada en el altavoz: C53 abierto. Tensión en el altavoz sin corriente: el altavoz suelto."
+    comprobar:
+      - { A_r: 0.9998, A_i: 0.125, A_c: 0.0199, tol: 0.01 }
+      - { con: { C_a: 1e-6 }, A_r: 0.0502, tol: 0.01 }
+
+  - id: toque-arbol
+    tipo: tocar
+    titulo: "Siga el árbol"
+    texto: "El display enciende, el consumo es normal, el altavoz zumba al tocar su entrada y hay siseo al tocar TP2, pero no sintoniza. Toque la etapa culpable."
+    libro: [274]
+    widget:
+      tipo: figura
+      figura: fig-16.17
+      zonas:
+        - { id: alimentacion, rotulo: "A la derecha, el primero", rect: [235, 38, 215, 36] }
+        - { id: corto, rotulo: "A la derecha, el segundo", rect: [235, 89, 215, 36] }
+        - { id: amplificador, rotulo: "A la derecha, el tercero", rect: [235, 140, 215, 36] }
+        - { id: fi, rotulo: "A la derecha, el cuarto", rect: [235, 190, 215, 36] }
+        - { id: frontend, rotulo: "A la derecha, el quinto", rect: [235, 240, 215, 36] }
+    tocar:
+      bien: [frontend]
+      porque:
+        alimentacion: "El display enciende: la alimentación llega."
+        corto: "El consumo es normal: no hay cortocircuito ni pieza al revés."
+        amplificador: "El altavoz zumba al tocar su entrada: el amplificador funciona."
+        fi: "Hay siseo al tocar TP2: la FI y la detección viven."
+    exito: "Front-end u oscilador: el TA7358AP, el variable, L1 o L2."
+    escalera:
+      - "Cada «sí» del árbol descarta una etapa: ¿cuál queda?"
+    solucion: "La última: front-end u oscilador."
+
+  - id: ordene-banco
+    tipo: pregunta
+    titulo: "El orden del banco"
+    texto: "Ordene el procedimiento de diagnóstico de un receptor que no funciona."
+    libro: [272]
+    widget:
+      tipo: figura
+      figura: fig-16.18
+      zonas:
+        - { id: averias, rotulo: "El recuadro de abajo", rect: [4, 173, 445, 55] }
+    ordenar:
+      - "Inspección visual con lupa, sin alimentar"
+      - "Comprobar las alimentaciones en cada punto"
+      - "Inyectar audio para partir el aparato en dos"
+      - "Seguir la señal en la mitad sospechosa"
+      - "Ajustar, solo con todo lo demás confirmado"
+    exito: "Ajustar va al final: un receptor averiado no se arregla ajustándolo."
+    pistas:
+      - { texto: "Lo que no necesita alimentar va primero." }
+    escalera:
+      - "De lo más barato a lo más fino; el ajuste, lo último."
+    solucion: "Lupa, alimentaciones, inyección, seguimiento, ajuste."
+
+  - id: porque-ajuste
+    tipo: porque
+    titulo: "No ajustar una avería"
+    texto: "¿Por qué no se toca el ajuste de un receptor que tiene una avería?"
+    libro: [273]
+    widget:
+      tipo: figura
+      figura: fig-16.18
+      zonas:
+        - { id: averias, rotulo: "El recuadro de abajo", rect: [4, 173, 445, 55] }
+    opciones:
+      - texto: "Porque no lo arregla y estropea el ajuste: dos problemas"
+        bien: true
+        porque: "Después habrá que reparar la avería y, además, repetir la alineación."
+      - texto: "Porque los núcleos se rompen con la avería"
+        porque: "El núcleo no se rompe por la avería; el riesgo es desajustar algo que estaba bien."
+      - texto: "Porque el FNIRSI no mide un receptor averiado"
+        porque: "Sí mide; lo que no tiene sentido es ajustar contra una referencia falsa."
+    escalera:
+      - "¿Qué queda si se ajusta y la avería sigue?"
+    solucion: "Habría dos problemas en lugar de uno."
+
+  - id: pregunta-kit
+    tipo: pregunta
+    titulo: "Un kit recién montado"
+    texto: "Un kit no funciona a la primera. ¿Qué es lo más probable?"
+    libro: [264, 269]
+    widget:
+      tipo: figura
+      figura: fig-16.18
+      zonas:
+        - { id: averias, rotulo: "El recuadro de abajo", rect: [4, 173, 445, 55] }
+    opciones:
+      - texto: "Una soldadura fría o un puente"
+        bien: true
+        porque: "Con diferencia la primera causa: la inspección con lupa antes de medir resuelve buena parte."
+      - texto: "Un integrado defectuoso de fábrica"
+        porque: "Con altísima probabilidad es uno de los cinco problemas del montaje, no un componente defectuoso."
+      - texto: "Que el diseño no funciona"
+        porque: "El diseño funciona: falla el montaje."
+    escalera:
+      - "¿Qué se hace mal con más frecuencia al montar?"
+    solucion: "Soldadura fría o puente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [250, 254, 261, 273]
+    ideas:
+      - { titulo: "Síntoma, hipótesis.", texto: "La tabla de síntomas apunta a una zona." }
+      - { titulo: "Inyectar audio.", texto: "Una prueba parte el aparato en dos mitades." }
+      - { titulo: "Seguir la señal.", texto: "Donde desaparece, ahí se investiga." }
+      - { titulo: "Ajustar al final.", texto: "Las averías de kit, primero; el ajuste, solo con todo confirmado." }

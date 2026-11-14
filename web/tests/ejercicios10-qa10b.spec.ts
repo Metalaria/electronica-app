@@ -29,7 +29,8 @@ const L = cargarLibro();
 const ctx: ContextoExamen = L.libro;
 
 test('qa10b·a1 lo que se pide en cada variante lleva sus valores, nunca el del libro de un dato que cambia', () => {
-  expect(enlazados.length).toBe(40);
+  // (40 in 1.0 and 1.1; 1.2, book 4.1: 46, practica10's «ejercicios enlazados»)
+  expect(enlazados.length).toBe(46);
   const malos: string[] = [];
   for (const it of enlazados) {
     for (const v of variantes(it)) {
@@ -133,11 +134,10 @@ test('qa10b·a4 «Solo lo que la aplicación corrige sola» deja fuera todo ejer
   expect(conAbierta.map((e) => e.ref)).toEqual([]);
   // the book's 175, plus (1.1 «razonar») the 173 self-assessed ones turned into choices, orders and matchings with no
   // open part left (tests/razonar11-unidad.spec.ts), plus the ones not in the book yet («nuevo» in the bank): the 30 new
-  // exercises (ejnuevos11-unidad) and the 55 checkable ones of the book expansions (ampliaciones11-unidad)
-  expect(auto.filter((e) => !e.nuevo)).toHaveLength(175 + 173);
-  expect(auto.filter((e) => e.nuevo && ctx.ejercicio(e.ref)!.nuevo)).toHaveLength(30);
-  expect(auto.filter((e) => e.nuevo && ctx.ejercicio(e.ref)!.ampliacion)).toHaveLength(55);
-  expect(auto.filter((e) => e.nuevo)).toHaveLength(30 + 55);
+  // exercises (ejnuevos11-unidad) and the 55 checkable ones of the book expansions (ampliaciones11-unidad): 348 + 85.
+  // 1.2: book 4.0/4.1 took them all in (none «nuevo»): 475 of the book's
+  expect(auto.filter((e) => !e.nuevo)).toHaveLength(475);
+  expect(auto.filter((e) => e.nuevo)).toHaveLength(0);
   // and each of them is graded without a self-assessment: answering nothing leaves no part pending
   // (review 11a: a text alone on one that 1.0 self-assessed is a 1.0 answer, graded as 1.0 did — one self-assessed open
   // part, tests/revision11a-unidad.spec.ts A1–A3 — so those are left out here)
@@ -145,6 +145,6 @@ test('qa10b·a4 «Solo lo que la aplicación corrige sola» deja fuera todo ejer
     const m = montarExamen({ items: [{ k: 'ejercicio', ref: e.ref, puntos: 1 }], minutos: 0, variantes: false, barajar: false, semilla: 1, espacio: 'no' }, ctx, 0).items[0]!;
     expect(calificarItem(m, ctx, { texto: 'algo' }).estado, e.ref).not.toBe('pendiente');
   }
-  // (1.1 «razonar»: 8 of the converted self-assessed ones keep an optional open part)
-  expect(banco.filter((e) => e.mixto)).toHaveLength(125 + 8);
+  // (1.1 «razonar»: 8 of the converted self-assessed ones keep an optional open part: 125 + 8; 1.2, book 4.1: 157)
+  expect(banco.filter((e) => e.mixto)).toHaveLength(157);
 });

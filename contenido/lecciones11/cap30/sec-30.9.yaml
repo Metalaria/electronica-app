@@ -1,0 +1,250 @@
+# Lección 1.2 de la sección 29.9 «El Análisis Tiempo-Frecuencia: el Espectrograma» (cap30, sec-30.9). Formato: GUIA.md.
+# - El compromiso del bloque 284: una ventana de T da Δf = 1/T en frecuencia y T en tiempo (100 ms: 10 Hz y 100 ms;
+#   5 Hz exige 200 ms).
+# - El barrido del banco (bloque 298, 2 500 Hz/s): la anchura de la línea se aproxima como la suma de lo que ensancha la
+#   ventana corta (1/T) y lo que recorre el tono dentro de la ventana larga (velocidad·T). El mínimo cae en
+#   T = 1/√velocidad = 20 ms, como dice el libro; la suma de los dos términos es mi aproximación (lo dice la nota).
+# Pasos prácticos: «tocar» en la figura 29.15 el espectrograma que sitúa mejor el clic, y «ajuste» de la ventana hasta
+# la línea más fina del barrido.
+leccion: cap30/sec-30.9
+
+libro:
+  277: "ese resultado promedia todo y no dice nada útil"
+  278: "trocear la señal en ventanas y transformar cada trozo"
+  281: "Ventana larga: buena resolución en frecuencia"
+  282: "Ventana corta: buena resolución temporal y mala en frecuencia"
+  283: "El producto de ambas resoluciones está acotado"
+  284: "una ventana de 100 ms da una resolución de 10 Hz en frecuencia y de 100 ms en tiempo"
+  286: "típicamente al 50 o al 75 %"
+  287: "con un 75 % de solapamiento se calculan cuatro veces más transformadas"
+  289: "cada defecto mecánico produce su firma en frecuencia"
+  290: "los armónicos, su evolución y las transiciones son directamente visibles"
+  291: "La representación en cascada de un receptor SDR es exactamente un espectrograma"
+  292: "una interferencia que aparece y desaparece se localiza en el tiempo y en frecuencia a la vez"
+  294: "largas para las frecuencias bajas"
+  295: "Esa es la idea de las wavelets"
+  297: "grabar un barrido de frecuencia del generador y verlo como una línea diagonal"
+  298: "unos 20 ms para un barrido de 2 500 Hz/s"
+  299: "El mismo espectrograma con tres longitudes de ventana"
+  "cap30#350": "¿Qué ventaja tiene un espectrograma frente a una sola FFT"
+
+modelo:
+  valores:
+    T_v: { sim: "T", nombre: "longitud de la ventana", unidad: s, valor: 0.02 }
+    T_b: { sim: "T", nombre: "ventana sobre el barrido", unidad: s, valor: 0.1 }
+    v_b: { sim: "v", nombre: "velocidad del barrido", unidad: "Hz/s", valor: 2500 }
+    s_l: { sim: "solape", nombre: "solapamiento", unidad: "%", valor: 50 }
+  calculos:
+    d_f: { expr: "1/T_v", sim: "Δf", nombre: "resolución en frecuencia", unidad: Hz }
+    a_b: { expr: "1/T_b + v_b*T_b", sim: "anchura", nombre: "anchura de la línea del barrido", unidad: Hz }
+    T_o: { expr: "1/sqrt(v_b)", sim: "T_{óptima}", nombre: "ventana de la línea más fina", unidad: s }
+    n_t: { expr: "1/(1 - s_l/100)", sim: "×", nombre: "transformadas de más", unidad: "" }
+
+tarjetas:
+  - id: explore-compromiso
+    tipo: explorar
+    titulo: "Líneas finas o instantes precisos"
+    texto: "Un espectrograma trocea la señal en ventanas y transforma cada una. Alargue la ventana y mire las dos resoluciones."
+    libro: [278, 281, 282, 284]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 0.01, max: 1, unidad: s, rotulo: "ventana, T", escala: log }
+      y: { min: 1, max: 100, unidad: Hz, rotulo: "Δf", escala: log }
+      curvas:
+        - { expr: "1/w", color: naranja, rotulo: "resolución en frecuencia" }
+      marcas:
+        - { x: "T_v", y: "d_f", rotulo: "{{d_f}}" }
+      lectura: { valor: d_f, rotulo: "Resolución en frecuencia" }
+      datos:
+        - { valor: T_v, rotulo: "Resolución en tiempo: {{T_v}}" }
+      mandos:
+        - { valor: T_v, lista: [0.02, 0.05, 0.1, 0.2], rotulo: "Ventana, T" }
+    requiere: { mover: [T_v] }
+    comprobar:
+      - { con: { T_v: 0.1 }, d_f: 10 }
+
+  - id: predecir-5hz
+    tipo: predecir
+    titulo: "Dos tonos a 5 Hz"
+    texto: "Quiere separar dos tonos a 5 Hz de distancia y, a la vez, saber cuándo ocurrió un evento. ¿Qué consigue?"
+    libro: [283, 284]
+    fijar: { T_v: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: w, min: 0.01, max: 1, unidad: s, rotulo: "ventana, T", escala: log }
+      y: { min: 1, max: 100, unidad: Hz, rotulo: "Δf", escala: log }
+      curvas:
+        - { expr: "1/w", color: naranja, rotulo: "resolución en frecuencia" }
+      marcas:
+        - { x: "T_v", y: "d_f", rotulo: "{{d_f}}" }
+      lectura: { valor: d_f, rotulo: "Resolución en frecuencia" }
+      ocultar: true
+    opciones:
+      - texto: "Ventana de al menos 200 ms, y el evento no se sitúa mejor que eso"
+        bien: true
+        porque: "El producto de las dos resoluciones está acotado: mejorar una empeora la otra, siempre."
+      - texto: "Ventana corta para el evento y, a la vez, líneas de 5 Hz"
+        porque: "Una ventana corta emborrona la frecuencia: 5 Hz piden 200 ms de ventana."
+      - texto: "Basta más solapamiento para tener las dos"
+        porque: "El solapamiento suaviza la imagen, pero no cambia la longitud de cada ventana."
+    escalera:
+      - "Δf ≈ 1/T: ¿qué T da 5 Hz?"
+    solucion: "200 ms de ventana y 200 ms de incertidumbre en el tiempo."
+    comprobar:
+      - { d_f: 5 }
+
+  - id: toque-clic
+    tipo: tocar
+    titulo: "Un clic breve"
+    texto: "La misma señal con tres ventanas: un barrido, dos tonos cercanos y un clic breve. Toque el espectrograma que sitúa mejor el clic en el tiempo."
+    libro: [282, 298, 299]
+    widget:
+      tipo: figura
+      figura: fig-30.15
+      zonas:
+        - { id: corta, rotulo: "Panel de la izquierda", rect: [37, 20, 133, 131] }
+        - { id: media, rotulo: "Panel del centro", rect: [174, 20, 133, 131] }
+        - { id: larga, rotulo: "Panel de la derecha", rect: [315, 20, 132, 131] }
+    tocar:
+      bien: [corta]
+      porque:
+        media: "El clic se ve, pero más ancho: la ventana media lo reparte en más tiempo."
+        larga: "La ventana larga separa bien los dos tonos, pero emborrona el clic en una franja ancha."
+    exito: "La ventana corta lo deja en una raya fina; a cambio, los dos tonos se funden en una banda."
+    escalera:
+      - "Busque la raya vertical más fina."
+    solucion: "La de la izquierda, la ventana corta."
+
+  - id: ajuste-barrido
+    tipo: ajuste
+    titulo: "La línea más fina"
+    texto: "Un barrido de 2 500 Hz/s: con ventana corta la línea se ensancha en frecuencia; muy larga, el tono recorre muchas frecuencias dentro. Busque la más fina."
+    nota: "Anchura aproximada como suma de los dos efectos."
+    libro: [297, 298]
+    inicio: { T_b: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: w, min: 0.004, max: 0.2, unidad: s, rotulo: "ventana, T" }
+      y: { min: 0, max: 600, unidad: Hz, rotulo: "anchura" }
+      curvas:
+        - { expr: "1/w", color: azul, rotulo: "por la ventana, 1/T", discontinua: true }
+        - { expr: "v_b*w", color: verde, rotulo: "por el barrido, v·T", discontinua: true }
+        - { expr: "1/w + v_b*w", color: naranja, rotulo: "anchura de la línea" }
+      marcas:
+        - { x: "T_b", y: "a_b", rotulo: "{{a_b}}" }
+      lectura: { valor: a_b, rotulo: "Anchura de la línea" }
+      mandos:
+        - { valor: T_b, min: 0.004, max: 0.2, paso: 0.001, rotulo: "Ventana, T" }
+    ajuste:
+      valor: a_b
+      min: 99
+      max: 105
+      rotulo: "Anchura de la línea"
+      escala: { min: 0, max: 600 }
+      bajo: "Más fina no se puede."
+      alto: "Aún ancha: mire qué término domina y mueva la ventana hacia el cruce."
+      dentro: "Unos 20 ms: del orden de la raíz inversa de la velocidad de barrido."
+    comprobar:
+      - { T_o: 0.02 }
+      - { con: { T_b: 0.02 }, a_b: 100 }
+
+  - id: pregunta-solape
+    tipo: pregunta
+    titulo: "El solapamiento"
+    texto: "Las ventanas se toman solapadas para no perder lo que la ponderación atenúa en los extremos. Con un 75 %, ¿cuántas transformadas más?"
+    libro: [286, 287]
+    fijar: { s_l: 75 }
+    widget:
+      tipo: figura
+      figura: fig-30.15
+      zonas:
+        - { id: todo, rotulo: "Tres longitudes de ventana", rect: [0, 0, 451, 179] }
+    opciones:
+      - texto: "Cuatro veces más"
+        bien: true
+        porque: "Cada ventana avanza solo una cuarta parte de su longitud: cuatro por cada una sin solape."
+      - texto: "Un 75 % más"
+        porque: "No se suma: cada ventana avanza un cuarto, así que caben cuatro donde antes cabía una."
+      - texto: "Las mismas: solo cambia la imagen"
+        porque: "El coste del solapamiento es precisamente computacional."
+    escalera:
+      - "Si se solapan un 75 %, ¿cuánto avanza cada ventana?"
+    solucion: "Cuatro veces más transformadas."
+    comprobar:
+      - { n_t: 4 }
+
+  - id: empareje-usos
+    tipo: pregunta
+    titulo: "Para qué sirve"
+    texto: "Empareje cada campo con lo que el espectrograma deja ver."
+    libro: [289, 290, 291, 292]
+    widget:
+      tipo: figura
+      figura: fig-30.15
+      zonas:
+        - { id: todo, rotulo: "Tres longitudes de ventana", rect: [0, 0, 451, 179] }
+    emparejar:
+      - ["Máquinas", "La firma de cada defecto al variar la velocidad"]
+      - ["Voz y música", "Los armónicos y sus transiciones"]
+      - ["Radio", "La cascada de un receptor SDR"]
+      - ["Circuitos", "Una interferencia que aparece y desaparece"]
+    exito: "En todos, lo que una FFT sola promediaría."
+    pistas:
+      - { texto: "La cascada de la SDR es exactamente un espectrograma." }
+    escalera:
+      - "Empiece por la máquina que acelera."
+    solucion: "Máquinas, firmas con la velocidad; voz, armónicos; radio, la cascada; circuitos, interferencias intermitentes."
+
+  - id: pregunta-melodia
+    tipo: pregunta
+    titulo: "Una melodía"
+    texto: "¿Qué ventaja tiene un espectrograma frente a una sola FFT cuando la señal cambia con el tiempo, como una melodía?"
+    libro: [277, "cap30#350"]
+    widget:
+      tipo: figura
+      figura: fig-30.15
+      zonas:
+        - { id: todo, rotulo: "Tres longitudes de ventana", rect: [0, 0, 451, 179] }
+    opciones:
+      - texto: "Muestra cómo evoluciona el espectro: se ve el orden de las notas"
+        bien: true
+        porque: "Una FFT de todo promedia; muchas FFT de ventanas cortas dicen qué sonó y cuándo."
+      - texto: "Tiene más resolución en frecuencia"
+        porque: "Usa ventanas más cortas: gana en tiempo, no en frecuencia."
+      - texto: "Elimina el ruido de la señal"
+        porque: "Muestra la misma señal, ruido incluido, repartida en el tiempo."
+    escalera:
+      - "¿Qué dice una sola FFT de cuándo sonó cada nota?"
+    solucion: "Muestra la evolución del espectro en el tiempo."
+
+  - id: porque-wavelets
+    tipo: porque
+    titulo: "Repartir la resolución"
+    texto: "Las wavelets usan ventanas largas para las frecuencias bajas y cortas para las altas. ¿Por qué así?"
+    libro: [294, 295]
+    widget:
+      tipo: figura
+      figura: fig-30.15
+      zonas:
+        - { id: todo, rotulo: "Tres longitudes de ventana", rect: [0, 0, 451, 179] }
+    opciones:
+      - texto: "Como no se puede tener todo en todas partes, se da resolución fina donde importa"
+        bien: true
+        porque: "Abajo importa separar frecuencias; arriba, situar los eventos en el tiempo."
+      - texto: "Porque así se esquiva el compromiso"
+        porque: "No se esquiva: se reparte según dónde haga falta."
+      - texto: "Porque las frecuencias altas no tienen armónicos"
+        porque: "No es eso: en las altas lo útil es la localización temporal."
+    escalera:
+      - "El compromiso sigue ahí. ¿Qué hace falta en cada zona del espectro?"
+    solucion: "Reparte el compromiso: largas abajo, cortas arriba."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [278, 283, 287, 295, 298]
+    ideas:
+      - { titulo: "Espectrograma.", texto: "Ventanas sucesivas transformadas: tiempo, frecuencia y color." }
+      - { titulo: "El compromiso.", texto: "Ventana larga, líneas finas; corta, instantes precisos: el producto está acotado." }
+      - { titulo: "La ventana justa.", texto: "En un barrido, del orden de la raíz inversa de su velocidad." }
+      - { titulo: "Wavelets.", texto: "Repartir la resolución según la frecuencia." }

@@ -1,0 +1,300 @@
+# Lección 1.2 de la sección 34.2 «El Transformador Trifásico» (cap56; etiqueta sec-56.2). Formato: GUIA.md.
+# - Estrella y triángulo en el esquema «trifasica» (tres cargas iguales de 100 Ω con 230,9 V de fase): en estrella
+#   cada carga (cada devanado) ve 230,9 V; en triángulo, la tensión de línea, 400 V. Es la razón de que un
+#   20 000/400 V Dyn11 tenga N1/N2 = 86,6 y no 50 (bloque 22).
+# - El transformador de 100 kVA del bloque 26 (P0 = 210 W, Pcc = 1 750 W, εcc = 4 %; εR = 1,75 %, εX = 3,60 %) en
+#   gráficas del modelo: la caída de Kapp (bloques 29–30) y el rendimiento (bloque 31: 97,61 % a plena carga con
+#   cos φ = 0,8; máximo del 98,51 % al 34,6 %; 98,43 % al 25 %).
+# Paso práctico: «ajuste» de la carga hasta el rendimiento máximo (donde las pérdidas del hierro y del cobre se igualan).
+leccion: cap56/sec-56.2
+
+libro:
+  19: "alta en triángulo, baja en estrella con neutro, y la baja adelantada 30°"
+  21: "tienen que tener el mismo índice, la misma relación de tensiones y tensiones de cortocircuito parecidas"
+  22: "Un transformador de 20 000/400 V Dyn11 tiene en cada devanado de alta los 20 000 V de línea y en cada uno de baja 400/√3 = 230,9 V: N1/N2 = 86,6, mientras que las tensiones de línea están en relación 50."
+  25: "el vatímetro mide las pérdidas del hierro P0"
+  26: "un cortocircuito en bornes de baja deja pasar In/εcc = 3,61 kA"
+  29: 'ε approx c dot.op ( ε_("R") dot.op cos φ + ε_("X") dot.op op("sen") φ )'
+  30: "A plena carga con cos φ = 0,8 inductivo, ε = 1,75 × 0,8 + 3,60 × 0,6 = 3,56 %, y el secundario da 385,8 V"
+  31: "el máximo está donde las dos se igualan, c = √(P0/Pcc) = 34,6 %, con el 98,51 %"
+  33: "una I0 o una P0 mucho mayores que las de su placa indican espiras en cortocircuito o chapas dañadas"
+
+modelo:
+  valores:
+    Vf: { sim: "V_{f}", nombre: "tensión de fase", unidad: V, valor: 230.9 }
+    f_r: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
+    R_d: { sim: "R", nombre: "cada carga", unidad: Ω, valor: 100 }
+    tri: { tipo: interruptor, nombre: "conexión en triángulo", valor: 0 }
+    S_n: { sim: "S", nombre: "potencia nominal", unidad: VA, valor: 100000 }
+    V_l: { sim: "V_{L}", nombre: "tensión de línea de baja", unidad: V, valor: 400 }
+    P_0: { sim: "P_{0}", nombre: "pérdidas del hierro", unidad: W, valor: 210 }
+    P_cc: { sim: "P_{cc}", nombre: "pérdidas del cobre a plena carga", unidad: W, valor: 1750 }
+    e_cc: { sim: "ε_{cc}", nombre: "tensión de cortocircuito", unidad: "", valor: 0.04 }
+    e_R: { sim: "ε_{R}", nombre: "caída resistiva", unidad: "%", valor: 1.75 }
+    e_X: { sim: "ε_{X}", nombre: "caída reactiva", unidad: "%", valor: 3.6 }
+    c_l: { sim: "c", nombre: "índice de carga", unidad: "", valor: 1 }
+    cphi: { sim: "cos φ", nombre: "factor de potencia", unidad: "", valor: 0.8 }
+  calculos:
+    V_dev: { expr: "Vf*(1 + (sqrt(3) - 1)*tri)", sim: "V_{devanado}", nombre: "tensión de cada devanado", unidad: V }
+    I_dev: { expr: "V_dev/R_d", sim: "I", nombre: "corriente de cada carga", unidad: A }
+    I_lin: { expr: "I_dev*(1 + (sqrt(3) - 1)*tri)", sim: "I_{L}", nombre: "corriente de línea", unidad: A }
+    rel_N: { expr: "20000/(400/sqrt(3))", sim: "N₁/N₂", nombre: "relación de espiras del Dyn11", unidad: "", cifras: 3 }
+    rel_mal: { expr: "20000/sqrt(3)/400", sim: "N₁/N₂", nombre: "relación con las dos en estrella (error)", unidad: "", cifras: 3 }
+    eps_sum: { expr: "e_R + e_X", sim: "ε", nombre: "suma sin ponderar (error)", unidad: "%", cifras: 3 }
+    I_n2: { expr: "S_n/(sqrt(3)*V_l)", sim: "I_{n}", nombre: "corriente nominal de baja", unidad: A }
+    I_cc: { expr: "I_n2/e_cc", sim: "I_{cc}", nombre: "corriente de cortocircuito", unidad: A }
+    sphi: { expr: "sqrt(1 - cphi^2)", sim: "sen φ", nombre: "seno de φ", unidad: "", cifras: 2 }
+    eps: { expr: "c_l*(e_R*cphi + e_X*sphi)", sim: "ε", nombre: "caída de tensión", unidad: "%", cifras: 3 }
+    V_2: { expr: "V_l*(1 - eps/100)", sim: "V₂", nombre: "tensión del secundario", unidad: V, cifras: 4 }
+    P_s: { expr: "c_l*S_n*cphi", sim: "P", nombre: "potencia de salida", unidad: W }
+    eta: { expr: "100*P_s/(P_s + P_0 + c_l^2*P_cc)", sim: "η", nombre: "rendimiento", unidad: "%", cifras: 4 }
+    c_opt: { expr: "sqrt(P_0/P_cc)", sim: "c", nombre: "carga de rendimiento máximo", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-triangulo
+    tipo: explorar
+    titulo: "Estrella y triángulo"
+    texto: "Pase las tres cargas de estrella a triángulo: cada una pasa de la tensión de fase a la de línea."
+    libro: [19, 22]
+    widget:
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vf, f: f_r, r1: R_d, r2: R_d, r3: R_d, triangulo: tri }
+      lectura: { valor: V_dev, rotulo: "Tensión de cada carga" }
+      mide: { v1_amp: V_dev, ir1_amp: I_dev, i1_amp: I_lin }
+      mandos:
+        - { valor: tri, tipo: interruptor, rotulo: "Triángulo" }
+    requiere: { mover: [tri] }
+
+  - id: prediga-espiras
+    tipo: predecir
+    titulo: "La relación de espiras"
+    texto: "Un 20 000/400 V Dyn11: alta en triángulo, baja en estrella. ¿Qué relación de espiras tiene cada columna?"
+    libro: [22]
+    widget:
+      tipo: figura
+      figura: fig-56.2
+      zonas:
+        - { id: grupo, rotulo: "Los dos devanados", rect: [0, 0, 325, 141] }
+    opciones:
+      - texto: "86,6"
+        bien: true
+        porque: "Cada devanado de alta ve los 20 000 V de línea; cada uno de baja, 230,9 V."
+      - texto: "50"
+        porque: "Esa es la relación de las tensiones de línea; en baja, el devanado en estrella solo ve la de fase."
+      - texto: "28,9"
+        porque: "Sería dividir también la alta por √3, pero en triángulo el devanado tiene la tensión de línea."
+    escalera:
+      - "¿Qué tensión ve un devanado en triángulo, y cuál uno en estrella?"
+    solucion: "20 000/230,9 = 86,6."
+    comprobar:
+      - { rel_N: 86.6, rel_mal: 28.9 }
+      - { con: { tri: 0 }, V_dev: 230.9 }
+
+  - id: ensayos
+    tipo: pregunta
+    titulo: "Dos ensayos sin carga"
+    texto: "Empareje cada ensayo con lo que mide el vatímetro."
+    libro: [25]
+    widget:
+      tipo: figura
+      figura: fig-56.2
+      zonas:
+        - { id: grupo, rotulo: "Los dos devanados", rect: [0, 0, 325, 141] }
+    emparejar:
+      - ["Vacío, a tensión nominal", "Las pérdidas del hierro, P₀"]
+      - ["Cortocircuito, a corriente nominal", "Las pérdidas del cobre a plena carga, P_{cc}"]
+    exito: "En vacío la caída en serie es despreciable; en cortocircuito, con tan poca tensión, el hierro apenas pierde."
+    pistas:
+      - { texto: "En cortocircuito basta un pequeño porcentaje de la tensión nominal." }
+    escalera:
+      - "¿Qué ensayo tiene el hierro a su tensión de trabajo?"
+    solucion: "Vacío: hierro. Cortocircuito: cobre."
+
+  - id: estime-icc
+    tipo: pregunta
+    titulo: "La corriente de cortocircuito"
+    texto: "100 kVA, 400 V en baja (144,3 A nominales) y ε_{cc} = 4 %. ¿Qué corriente deja pasar un cortocircuito en bornes de baja?"
+    libro: [26]
+    widget:
+      tipo: figura
+      figura: fig-56.2
+      zonas:
+        - { id: baja, rotulo: "El secundario", rect: [170, 0, 155, 141] }
+    estimar:
+      objetivo: "I_cc"
+      unidad: A
+      min: 0
+      max: 10000
+      paso: 50
+      inicio: 600
+      tol: 0.03
+      rotulo: "Corriente de cortocircuito"
+    exito: "3,61 kA: el dato con que se eligen el poder de corte de las protecciones de baja."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3720 }, texto: "Se ha pasado: I_{n} entre ε_{cc}." }
+      - { texto: "Se ha quedado corto: divida 144,3 A entre 0,04." }
+    escalera:
+      - "I_{cc} = I_{n}/ε_{cc}."
+    solucion: "144,3/0,04 = 3,61 kA."
+    comprobar:
+      - { I_cc: 3610, I_n2: 144.3 }
+
+  - id: formula-kapp
+    tipo: formula
+    titulo: "La caída con carga"
+    texto: "Cambie la carga y el factor de potencia: la caída de Kapp suma la parte resistiva y la reactiva."
+    libro: [29, 30]
+    ec: 29
+    sustitucion: "{{c_l}} · ({{e_R}} · {{cphi}} + {{e_X}} · {{sphi}}) = {{eps}}"
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 1.2, unidad: "", rotulo: "c" }
+      y: { min: 0, max: 5, unidad: "%", rotulo: "ε" }
+      curvas:
+        - { expr: "cx*(e_R*cphi + e_X*sphi)", color: naranja, rotulo: "ε" }
+      marcas:
+        - { x: "c_l", y: "eps", rotulo: "{{V_2}}" }
+      lectura: { valor: V_2, rotulo: "Secundario" }
+      mandos:
+        - { valor: c_l, min: 0.25, max: 1, paso: 0.25, rotulo: "Carga, c" }
+        - { valor: cphi, lista: [0.8, 1], rotulo: "cos φ" }
+    comprobar:
+      - { eps: 3.56, V_2: 385.8 }
+
+  - id: prediga-cos1
+    tipo: predecir
+    titulo: "Con cos φ = 1"
+    texto: "A plena carga con cos φ = 0,8 la caída es del 3,56 %. ¿Y con cos φ = 1?"
+    libro: [30]
+    fijar: { c_l: 1, cphi: 1 }
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 0.2, unidad: "", rotulo: "c" }
+      y: { min: 0, max: 5, unidad: "%", rotulo: "ε" }
+      curvas:
+        - { expr: "cx*(e_R*cphi + e_X*sphi)", color: naranja, rotulo: "ε" }
+      lectura: { valor: eps, rotulo: "Caída" }
+      ocultar: true
+    opciones:
+      - texto: "Solo la resistiva, 1,75 %"
+        bien: true
+        porque: "Con sen φ = 0 la parte reactiva no cuenta."
+      - texto: "La misma, 3,56 %"
+        porque: "La caída depende del factor de potencia: la reactiva pesa con sen φ."
+      - texto: "Más: 5,35 %, la suma de las dos"
+        porque: "Las dos se ponderan con cos φ y sen φ; con cos φ = 1 la reactiva desaparece."
+    escalera:
+      - "¿Cuánto vale sen φ con cos φ = 1?"
+    solucion: "1,75 %: solo la caída resistiva."
+    comprobar:
+      - { eps: 1.75, eps_sum: 5.35 }
+
+  - id: ajuste-rendimiento
+    tipo: ajuste
+    titulo: "El rendimiento máximo"
+    texto: "Con cos φ = 0,8, cambie la carga hasta el rendimiento máximo: donde las pérdidas del hierro y las del cobre se igualan."
+    libro: [31]
+    fijar: { cphi: 0.8 }
+    inicio: { c_l: 1 }
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0.05, max: 1.2, unidad: "", rotulo: "c" }
+      y: { min: 96, max: 99, unidad: "%", rotulo: "η" }
+      curvas:
+        - { expr: "100*cx*S_n*cphi/(cx*S_n*cphi + P_0 + cx^2*P_cc)", color: naranja, rotulo: "η" }
+      marcas:
+        - { x: "c_l", y: "eta", rotulo: "{{eta}}" }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      mandos:
+        - { valor: c_l, min: 0.1, max: 1.2, paso: 0.025, rotulo: "Carga, c" }
+    ajuste:
+      valor: eta
+      objetivo: 98.51
+      tol: 0.0003
+      rotulo: "Rendimiento"
+      escala: { min: 97.5, max: 98.6 }
+      bajo: "Aún no es el máximo: busque donde las pérdidas del cobre igualan los 210 W del hierro."
+      alto: "Por encima del máximo no se puede."
+      dentro: "En el máximo: c = √(P₀/P_{cc}), un 34,6 % de carga."
+    comprobar:
+      - { eta: 97.61, P_s: 80000 }
+      - { con: { c_l: 0.346 }, eta: 98.51 }
+      - { c_opt: 0.346 }
+
+  - id: por-que-p0
+    tipo: porque
+    titulo: "Pérdidas en vacío bajas"
+    texto: "¿Por qué los transformadores de distribución se diseñan con P₀ baja, aunque cueste chapa de grano orientado o amorfa?"
+    libro: [31]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0.05, max: 1.2, unidad: "", rotulo: "c" }
+      y: { min: 96, max: 99, unidad: "%", rotulo: "η" }
+      curvas:
+        - { expr: "100*cx*S_n*cphi/(cx*S_n*cphi + P_0 + cx^2*P_cc)", color: naranja, rotulo: "η" }
+    opciones:
+      - texto: "Pasan casi todo el año con poca carga, y P₀ está ahí las 8 760 horas"
+        bien: true
+        porque: "1 840 kWh al año de hierro en este, frente a 2 453 kWh de cobre si trabajase todo el año al 40 %."
+      - texto: "Porque P₀ crece con el cuadrado de la carga"
+        porque: "Esa es P_{cc}; P₀ no depende de la carga."
+      - texto: "Porque a plena carga P₀ es la mayor pérdida"
+        porque: "A plena carga gana el cobre: 1 750 W frente a 210 W."
+    escalera:
+      - "¿Cuántas horas al año está conectado el hierro?"
+    solucion: "Porque trabajan con poca carga la mayor parte del año y P₀ no para."
+
+  - id: paralelo
+    tipo: pregunta
+    titulo: "Dos transformadores en paralelo"
+    texto: "¿Qué deben tener en común dos transformadores para conectarlos en paralelo?"
+    libro: [21]
+    widget:
+      tipo: figura
+      figura: fig-56.2
+      zonas:
+        - { id: grupo, rotulo: "Los dos devanados", rect: [0, 0, 325, 141] }
+    opciones:
+      - texto: "El mismo índice, la misma relación y tensiones de cortocircuito parecidas"
+        bien: true
+        porque: "Si no, circula corriente entre ellos sin carga."
+      - texto: "Solo la misma potencia"
+        porque: "La potencia puede diferir; lo que no puede es el desfase ni la relación."
+      - texto: "Solo la misma relación de tensiones"
+        porque: "Con distinto índice horario sus secundarios estarían desfasados."
+    escalera:
+      - "¿Qué pasa si sus secundarios no están en fase?"
+    solucion: "Mismo índice, misma relación y ε_{cc} parecidas."
+
+  - id: banco
+    tipo: pregunta
+    titulo: "El ensayo de vacío como diagnóstico"
+    texto: "Un transformador da en vacío una I₀ y una P₀ mucho mayores que las de su placa. ¿Qué indica?"
+    libro: [33]
+    widget:
+      tipo: figura
+      figura: fig-56.2
+      zonas:
+        - { id: grupo, rotulo: "Los dos devanados", rect: [0, 0, 325, 141] }
+    opciones:
+      - texto: "Espiras en cortocircuito o chapas dañadas"
+        bien: true
+        porque: "El ensayo de vacío informa del estado del núcleo."
+      - texto: "Que el cobre está a plena carga"
+        porque: "En vacío no hay carga: el cobre apenas trabaja."
+      - texto: "Que la tensión de ensayo era baja"
+        porque: "Con menos tensión saldrían menores, no mayores."
+    escalera:
+      - "¿Qué parte del transformador mide el ensayo de vacío?"
+    solucion: "Espiras en cortocircuito o chapas dañadas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [19, 22, 29, 31]
+    ideas:
+      - { titulo: "Dyn11.", texto: "Alta en triángulo, baja en estrella con neutro, la baja adelantada 30°." }
+      - { titulo: "Espiras.", texto: "En triángulo el devanado ve la de línea; en estrella, la de fase: 86,6, no 50." }
+      - { titulo: "Kapp.", texto: "ε ≈ c·(ε_{R}·cos φ + ε_{X}·sen φ)." }
+      - { titulo: "Rendimiento.", texto: "Máximo donde se igualan hierro y cobre: c = √(P₀/P_{cc})." }

@@ -1,0 +1,190 @@
+# «Consolas por dentro» · Game Boy Color 3: la doble velocidad. El cristal es de 2²³ Hz (8,388608 MHz), el doble que
+# el de la Game Boy: a velocidad normal el ciclo de máquina sigue siendo de 1,048576 MHz (÷ 8) y en doble velocidad de
+# 2,097152 MHz (÷ 4). Qué va al doble (CPU, temporizador, puerto serie, DMA a la OAM) y qué no (la pantalla, unos
+# 59,7 Hz; la HDMA; el sonido), cómo se cambia (KEY1 y STOP) y por qué no siempre conviene (el consumo). Fuentes: los
+# datos de la consola (gbc#n), Pan Docs «CGB Registers» y «Video Display», y el libro (contadores que dividen, 9.5).
+leccion: consola-gbc/gbc-relojes
+
+libro:
+  "gbc#4": "en velocidad normal el ciclo de máquina sigue siendo de 1,048576 MHz y en doble velocidad de 2,097152 MHz"
+  "gbc#41": "La PPU sigue trabajando con puntos de 4,194304 MHz"
+  "gbc#42": "doble velocidad"
+  "gbc#56": "KEY1: con el bit 0 a 1, la siguiente instrucción STOP cambia de velocidad"
+  "gbc#60": "Con el bit 0 de KEY1 ($FF4D) a 1, una instrucción STOP cambia de velocidad; el bit se borra solo"
+  "gbc#61": "En doble velocidad van al doble la CPU (2,10 MHz, un ciclo de unos 0,5 µs)"
+  "gbc#62": "No cambian con la doble velocidad: el controlador de la pantalla, la HDMA a la VRAM y todos los tiempos y frecuencias del sonido"
+  "gbc#63": "La pantalla parpadea en blanco un momento al cambiar de velocidad"
+  "gbc#64": "La doble velocidad aumenta el consumo"
+  "gbc#69": "llega unas 59,7 veces por segundo en una Game Boy portátil (DMG o CGB)"
+  "gbc#73": "La DMA a la OAM tarda 152 µs a velocidad normal y 76 µs en doble velocidad"
+  "cap09#61": "la frecuencia queda dividida por 2ⁿ"
+
+modelo:
+  valores:
+    FX: { sim: "f_{cristal}", nombre: "frecuencia del cristal", unidad: Hz, valor: 8388608 }
+    n: { sim: "n", nombre: "divisor", unidad: "", valor: 8 }
+  calculos:
+    f_div: { expr: "FX/n", sim: "f_{cristal} / n", nombre: "reloj dividido", unidad: Hz, cifras: 7 }
+    f_norm: { expr: "FX/8", sim: "f_{M}", nombre: "ciclo de máquina a velocidad normal", unidad: Hz, cifras: 7 }
+
+tarjetas:
+  - id: explore-reloj
+    tipo: explorar
+    titulo: "El doble de cristal"
+    texto: "Toque el cristal y el chip que lo divide."
+    libro: ["gbc#4", "gbc#41", "gbc#42"]
+    requiere: { mover: [xtal, soc] }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: xtal, hotspot: xtal, rotulo: "Cristal X1", texto: "8,388608 MHz: 2²³ Hz." }
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "La CPU puede ir a velocidad normal o doble." }
+
+  - id: simule-normal
+    tipo: simular
+    titulo: "Velocidad normal"
+    texto: "A velocidad normal, el ciclo de máquina es el de la Game Boy. ¿Entre cuánto se divide el cristal?"
+    libro: ["gbc#4", "cap09#61"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: k, min: 1, max: 16, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 9000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "FX/k", color: azul, rotulo: "cristal ÷ divisor", palitos: true }
+    simular:
+      objetivo: f_norm
+      unidad: Hz
+      tol: 0.001
+      rotulo: "Ciclo de máquina, velocidad normal"
+      errores:
+        - { expr: "FX/4", texto: "Ese es el de doble velocidad: a velocidad normal se divide entre 8." }
+        - { expr: "FX", texto: "Esa es la frecuencia del cristal." }
+        - { expr: "FX/2", texto: "Dividir entre 2 da 4,194304 MHz, el punto de la pantalla." }
+    exito: "8,388608 MHz ÷ 8 = 1,048576 MHz: los juegos de Game Boy van a su ritmo."
+    escalera:
+      - "El cristal es el doble que el de la Game Boy, que dividía entre 4."
+    solucion: "÷ 8: 1,048576 MHz."
+    comprobar:
+      - { f_norm: 1048576 }
+
+  - id: ajuste-doble
+    tipo: ajuste
+    titulo: "Doble velocidad"
+    texto: "Ajuste el divisor hasta el ciclo de máquina en doble velocidad: 2,097152 MHz."
+    libro: ["gbc#4", "gbc#61"]
+    inicio: { n: 8 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 16, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 9000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "FX/k", color: azul, rotulo: "cristal ÷ divisor", palitos: true }
+      marcas:
+        - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
+      mandos: [ { valor: n, min: 1, max: 16, paso: 1, rotulo: "Divisor, n" } ]
+    ajuste:
+      valor: f_div
+      objetivo: 2097152
+      tol: 0.001
+      rotulo: "Ciclo de máquina"
+      bajo: "Demasiado lento: baje el divisor."
+      alto: "Demasiado rápido: suba el divisor."
+      dentro: "÷ 4: la CPU va al doble."
+    exito: "Dividir entre 4 en vez de entre 8: el doble de ciclos por segundo."
+    escalera:
+      - "El doble de frecuencia es la mitad de divisor."
+    solucion: "n = 4: 2,097152 MHz."
+    comprobar:
+      - { con: { n: 4 }, f_div: 2097152 }
+
+  - id: por-que-pantalla
+    tipo: porque
+    titulo: "¿Y la pantalla?"
+    texto: "En doble velocidad la CPU va al doble. ¿Por qué la imagen no se acelera?"
+    libro: ["gbc#41", "gbc#62", "gbc#69"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: ffc, hotspot: ffc, rotulo: "Conector de la pantalla" }
+    opciones:
+      - texto: "La PPU sigue con sus puntos de 4,194304 MHz."
+        bien: true
+        porque: "El controlador de la pantalla no cambia: sigue a unos 59,7 Hz, como en la Game Boy."
+      - texto: "La pantalla no puede ir más deprisa."
+        porque: "No es el panel: la PPU no cambia de reloj al cambiar la CPU."
+      - texto: "Sí se acelera, pero no se nota."
+        porque: "No se acelera: la doble velocidad deja igual el controlador de la pantalla."
+    escalera:
+      - "¿De qué reloj saca la PPU sus puntos?"
+    solucion: "La PPU no cambia: unos 59,7 Hz."
+
+  - id: empareje-doble
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué va al doble"
+    texto: "Empareje cada parte con lo que le pasa en doble velocidad."
+    libro: ["gbc#61", "gbc#73", "gbc#62", "gbc#69"]
+    emparejar:
+      - ["CPU", "2,10 MHz"]
+      - ["DMA a la OAM", "76 µs en vez de 152"]
+      - ["Pantalla", "Unos 59,7 Hz, como siempre"]
+      - ["Sonido", "Mismos tiempos y frecuencias"]
+    exito: "La CPU y lo que la sirve van al doble; la imagen y el sonido, no."
+    pistas:
+      - { texto: "Lo que el jugador ve y oye no cambia de ritmo." }
+    escalera:
+      - "La DMA a la OAM va al doble: tarda la mitad."
+    solucion: "CPU: 2,10 MHz. DMA a la OAM: 76 µs. Pantalla y sonido: sin cambios."
+
+  - id: ordene-cambio
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cambiar de velocidad"
+    texto: "Ordene lo que pasa al pasar a doble velocidad."
+    libro: ["gbc#60", "gbc#63", "gbc#56"]
+    ordenar:
+      - "El juego pone a 1 el bit 0 de KEY1."
+      - "Ejecuta STOP."
+      - "La pantalla parpadea en blanco un momento."
+      - "El bit 0 se ha borrado solo: va al doble."
+    exito: "Preparar con KEY1 y cambiar con STOP."
+    pistas:
+      - { texto: "KEY1 solo prepara el cambio; lo hace STOP." }
+    escalera:
+      - "El cambio no ocurre al escribir en KEY1."
+    solucion: "Bit 0 de KEY1, STOP, parpadeo y el bit borrado."
+
+  - id: prediga-consumo
+    tipo: predecir
+    titulo: "¿Siempre al doble?"
+    texto: "Si la doble velocidad es más rápida, ¿por qué no la usan todos los juegos todo el tiempo?"
+    libro: ["gbc#64"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB" }
+    opciones:
+      - texto: "Gasta más pilas."
+        bien: true
+        porque: "Pan Docs recomienda la velocidad normal siempre que se pueda: la doble aumenta el consumo."
+      - texto: "Calienta el chip hasta romperlo."
+        porque: "La fuente no habla de calor: el problema es el consumo de las pilas."
+      - texto: "La pantalla parpadea todo el tiempo."
+        porque: "Solo parpadea un momento, al cambiar."
+    escalera:
+      - "¿Qué se agota antes en una consola portátil?"
+    solucion: "Más consumo: se usa solo cuando hace falta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gbc#4", "gbc#62", "gbc#60", "gbc#64"]
+    ideas:
+      - { titulo: "2²³ Hz.", texto: "1,048576 MHz a velocidad normal; 2,097152 MHz en doble." }
+      - { titulo: "Al doble.", texto: "La CPU, el temporizador, el serie y la DMA a la OAM." }
+      - { titulo: "Igual.", texto: "La pantalla, la HDMA y el sonido." }
+      - { titulo: "KEY1 y STOP.", texto: "Así se cambia; cuesta pilas." }

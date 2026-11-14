@@ -1,0 +1,298 @@
+# Lección 1.2 de la sección 55.8 «Sacarle Todo el Partido al FNIRSI 2C53T» (cap53; etiqueta interna sec-53.8).
+# Formato: contenido/lecciones11/GUIA.md. (1) La compensación de la sonda ×10 con la cuadrada de 1 kHz del propio
+# generador (esquema sonda-x10, con los valores de la sección 20.5 que usa la lección de catálogo: 9 MΩ ∥ 11 pF en la
+# punta, 1 MΩ ∥ C₂ en la entrada; compensada con C₂ = 99 pF; amplitud de 1 V de ejemplo). La medida del ajuste es el
+# salto de la esquina respecto a la meseta, (K₀/K∞ − 1)·100 %. (2) La carga de la sonda (tabla del bloque 309): el
+# nodo como su equivalente de Thévenin, R = nodo ∥ sonda y la capacidad de la sonda (esquema filtro-rc); da 161 kHz,
+# 17,5 kHz, 797 kHz y 80,4 kHz. La figura 55.21 con zonas en su svg_vista (442,9 × 187,8).
+# Paso práctico: «ajuste» del trimmer hasta que la esquina quede recta.
+leccion: cap53/sec-53.8
+
+libro:
+  304: "cómo es la señal, cuándo ocurre y qué forma tiene"
+  305: "los picos de la izquierda los capta el bucle de la sonda y no están en el circuito"
+  307: "cuadrada de 1 kHz a la punta de la sonda"
+  309: "17,5 kHz"
+  310: "con R la impedancia del nodo en paralelo con la resistencia de la sonda"
+  312: "el circuito con sonda no es el mismo circuito"
+  315: "conectar y desconectar la sonda mientras se observa el síntoma por otro medio"
+  318: "Acoplamiento AC, para quitar la continua y poder ampliar la escala vertical."
+  320: "la base de tiempos en microsegundos por división, no en milisegundos"
+  322: "Capturar un evento que pasa una vez"
+  323: "El disparo único es el que resuelve los fallos intermitentes"
+  325: "identifica el origen de un zumbido (50 Hz de red, 100 Hz de rectificación, cientos de kilohercios de una conmutada)"
+
+modelo:
+  valores:
+    V_sx: { sim: "V", nombre: "cuadrada de calibración", unidad: V, valor: 1 }
+    f_sx: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 1000 }
+    R1_sx: { sim: "R₁", nombre: "resistencia de la punta", unidad: Ω, valor: 9000000 }
+    C1_sx: { sim: "C₁", nombre: "condensador de la punta", unidad: F, valor: 11e-12 }
+    R2_sx: { sim: "R₂", nombre: "resistencia de entrada", unidad: Ω, valor: 1000000 }
+    C2_sx: { sim: "C₂", nombre: "capacidad de entrada con el trimmer", unidad: F, valor: 60e-12 }
+    V_n: { sim: "V_{nodo}", nombre: "señal del nodo", unidad: V, valor: 1 }
+    R_n: { sim: "R_{nodo}", nombre: "impedancia del nodo", unidad: Ω, valor: 100000 }
+    s10: { tipo: interruptor, nombre: "sonda en ×10", valor: 0 }
+    f_n: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 10000 }
+  calculos:
+    K0_sx: { expr: "C1_sx/(C1_sx + C2_sx)", sim: "K₀", nombre: "división en el flanco", unidad: "" }
+    Ki_sx: { expr: "R2_sx/(R1_sx + R2_sx)", sim: "K_{∞}", nombre: "división en la meseta", unidad: "" }
+    tau_sx: { expr: "par(R1_sx, R2_sx)*(C1_sx + C2_sx)", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    vh_sx: { expr: "V_sx*(Ki_sx + (K0_sx - Ki_sx)*exp(-1/(2*f_sx*tau_sx)))", sim: "v_{T/2}", nombre: "salida al final de la meseta alta", unidad: V }
+    e_sx: { expr: "(K0_sx/Ki_sx - 1)*100", sim: "e", nombre: "salto de la esquina", unidad: "%", cifras: 2 }
+    R_pr: { si: s10, entonces: "10000000", sino: "1000000", sim: "R_{sonda}", nombre: "resistencia de la sonda", unidad: Ω }
+    C_pr: { si: s10, entonces: "20e-12", sino: "100e-12", sim: "C_{sonda}", nombre: "capacidad de la sonda", unidad: F }
+    R_e: { expr: "par(R_n, R_pr)", sim: "R", nombre: "nodo en paralelo con la sonda", unidad: Ω }
+    V_th: { expr: "V_n*R_pr/(R_n + R_pr)", sim: "V_{Th}", nombre: "señal vista con la sonda", unidad: V }
+    f_cs: { expr: "1/(2*pi*R_e*C_pr)", sim: "f_{c}", nombre: "corte de la sonda sobre el nodo", unidad: Hz }
+    A_n: { expr: "V_th/sqrt(1 + (2*pi*f_n*R_e*C_pr)^2)", sim: "V", nombre: "amplitud que llega", unidad: V }
+
+tarjetas:
+  - id: explore-sonda
+    tipo: explorar
+    titulo: "Una sonda sin compensar"
+    texto: "La cuadrada de 1 kHz del propio generador, a la punta. Gire el trimmer y mire las esquinas."
+    libro: [307]
+    widget:
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_sx, f: f_sx, r1: R1_sx, c1: C1_sx, r2: R2_sx, c2: C2_sx }
+      lectura: { valor: e_sx, rotulo: "Salto de la esquina" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.1, max: 0.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_sx))/1e9))*V_sx*(Ki_sx + (K0_sx - Ki_sx)*exp(-t/tau_sx)) + ceil((t - 1/(2*f_sx))/1e9)*(vh_sx - V_sx*K0_sx)*exp(-max(0, t - 1/(2*f_sx))/tau_sx)", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: C2_sx, lista: [60e-12, 99e-12, 140e-12], nombres: [poca, justa, mucha], rotulo: "Trimmer, C₂" }
+    requiere: { mover: [C2_sx] }
+
+  - id: ajuste-trimmer
+    tipo: ajuste
+    titulo: "Compense la sonda"
+    texto: "Gire el trimmer hasta que la parte plana sea plana y las esquinas, rectas: sin punta ni redondeo."
+    libro: [307]
+    inicio: { C2_sx: 60e-12 }
+    widget:
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_sx, f: f_sx, r1: R1_sx, c1: C1_sx, r2: R2_sx, c2: C2_sx }
+      lectura: { valor: e_sx, rotulo: "Salto de la esquina" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.1, max: 0.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_sx))/1e9))*V_sx*(Ki_sx + (K0_sx - Ki_sx)*exp(-t/tau_sx)) + ceil((t - 1/(2*f_sx))/1e9)*(vh_sx - V_sx*K0_sx)*exp(-max(0, t - 1/(2*f_sx))/tau_sx)", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: C2_sx, min: 60e-12, max: 140e-12, paso: 1e-12, rotulo: "Trimmer, C₂" }
+    ajuste:
+      valor: e_sx
+      min: -2
+      max: 2
+      rotulo: "Esquina frente a meseta"
+      escala: { min: -30, max: 90 }
+      bajo: "Esquina redondeada: gire el trimmer hacia menos capacidad."
+      alto: "Esquina con punta: gire el trimmer hacia más capacidad."
+      dentro: "Plana y con esquinas rectas: compensada. Rehágalo al cambiar de canal o de sonda."
+
+  - id: explore-carga
+    tipo: explorar
+    titulo: "La sonda carga el circuito"
+    texto: "La capacidad de la sonda y la impedancia del nodo forman un paso bajo. Cambie la sonda y el nodo y mire el corte."
+    libro: [309, 310]
+    fijar: { V_n: 1, f_n: 10000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_th, f: f_n, r: R_e, c: C_pr }
+      lectura: { valor: f_cs, rotulo: "Corte sobre el nodo" }
+      grafica:
+        x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_th/sqrt(1 + (2*pi*nu*R_e*C_pr)^2)", color: naranja, rotulo: "lo que ve", mide: vc_amp }
+        marcas:
+          - { x: "f_cs", y: "V_th*0.7071", rotulo: "f_{c}" }
+      mide: { vc_amp: A_n }
+      mandos:
+        - { valor: s10, tipo: interruptor, rotulo: "Sonda en ×10" }
+        - { valor: R_n, lista: [10000, 100000], rotulo: "Impedancia del nodo" }
+    requiere: { mover: [s10, R_n] }
+
+  - id: estime-corte
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una ×1 sobre 100 kΩ"
+    texto: "Sonda ×1, de 1 MΩ y unos 100 pF, sobre un nodo de 100 kΩ. ¿Dónde corta?"
+    libro: [309, 310]
+    fijar: { s10: 0, R_n: 100000 }
+    estimar:
+      objetivo: "f_cs"
+      unidad: Hz
+      min: 0
+      max: 100000
+      paso: 500
+      inicio: 90000
+      tol: 0.05
+      rotulo: "1 / (2π · R · C)"
+    exito: "17,5 kHz: la sonda filtra la señal que intenta ver."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 18400 }, texto: "Se ha pasado: R es el nodo en paralelo con la sonda, 91 kΩ, y C son 100 pF." }
+      - { texto: "Se ha quedado corto: R no llega a 100 kΩ, porque el 1 MΩ de la sonda queda en paralelo." }
+    escalera:
+      - "Primero R = 100 kΩ ∥ 1 MΩ; después f = 1/(2π · R · C)."
+    solucion: "R = 91 kΩ; f = 1/(2π · 91 kΩ · 100 pF) = 17,5 kHz."
+    comprobar:
+      - { f_cs: 17500, R_e: 91000, tol: 0.01 }
+
+  - id: por-que-x10
+    tipo: porque
+    titulo: "¿Por qué ×10 siempre?"
+    texto: "Pierde un factor diez en amplitud y, aun así, se usa siempre salvo que haga falta sensibilidad. ¿Por qué?"
+    libro: [309, 310]
+    fijar: { R_n: 100000, s10: 1 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_th, f: f_n, r: R_e, c: C_pr }
+      lectura: { valor: f_cs, rotulo: "Corte sobre el nodo" }
+      grafica:
+        x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_th/sqrt(1 + (2*pi*nu*R_e*C_pr)^2)", color: naranja, rotulo: "lo que ve", mide: vc_amp }
+      mide: { vc_amp: A_n }
+    opciones:
+      - texto: "Su capacidad es cinco veces menor: corta mucho más arriba"
+        bien: true
+        porque: "Sobre 100 kΩ pasa de 17,5 kHz a 80,4 kHz, y su ancho de banda es el del instrumento."
+      - texto: "Porque amplifica la señal"
+        porque: "Al revés: la divide entre diez. Lo que gana es capacidad y resistencia."
+      - texto: "Porque protege la entrada del osciloscopio"
+        porque: "No es su función principal: lo que vale es cargar menos el circuito."
+    escalera:
+      - "Compare los cortes de las dos sondas sobre el mismo nodo."
+    solucion: "Menos capacidad: corta a 80,4 kHz sobre 100 kΩ en vez de a 17,5 kHz."
+    comprobar:
+      - { f_cs: 80400, tol: 0.01 }
+
+  - id: desaparece
+    tipo: pregunta
+    titulo: "El fallo desaparece al medirlo"
+    texto: "Un oscilador falla, pero al poner la sonda en su nodo de alta impedancia funciona. ¿Qué pasa?"
+    libro: [312, 315]
+    fijar: { R_n: 100000, s10: 0 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_th, f: f_n, r: R_e, c: C_pr }
+      lectura: { valor: f_cs, rotulo: "Corte sobre el nodo" }
+      mide: { vc_amp: A_n }
+    opciones:
+      - texto: "La sonda cambia el circuito: su capacidad amortigua o retrasa"
+        bien: true
+        porque: "El circuito con sonda no es el mismo circuito. Se comprueba conectando y desconectando mientras se mira otro síntoma."
+      - texto: "La sonda lo ha reparado"
+        porque: "Al quitarla vuelve el fallo: solo lo enmascara."
+      - texto: "El fallo era del osciloscopio"
+        porque: "El fallo se ve sin el osciloscopio; lo que hace la sonda es cambiar el nodo."
+    escalera:
+      - "¿Qué añade la sonda a un nodo de alta impedancia?"
+    solucion: "La sonda altera el circuito."
+
+  - id: medir-rizado
+    tipo: pregunta
+    titulo: "Medir rizado"
+    texto: "Milivoltios sobre varios voltios de una conmutada. ¿Qué dos ajustes hacen que la medida valga?"
+    libro: [305, 318]
+    widget:
+      tipo: figura
+      figura: fig-53.14
+      zonas:
+        - { id: latiguillo, rotulo: "Gráfica de la izquierda", rect: [0, 0, 215, 187] }
+        - { id: muelle, rotulo: "Gráfica de la derecha", rect: [225, 0, 217, 187] }
+    opciones:
+      - texto: "Acoplamiento AC y masa de muelle"
+        bien: true
+        porque: "AC quita la continua para ampliar la escala; el muelle evita el bucle que capta la conmutación."
+      - texto: "Acoplamiento DC y latiguillo largo"
+        porque: "En DC los milivoltios no se ven sobre los voltios, y el latiguillo inventa picos."
+      - texto: "Sonda ×1 y disparo único"
+        porque: "La ×1 carga más y el disparo único es para eventos que pasan una vez."
+    escalera:
+      - "Hay que quitar la continua y no formar un bucle con la masa."
+    solucion: "Acoplamiento AC y masa de muelle."
+
+  - id: base-tiempos
+    tipo: pregunta
+    titulo: "La base de tiempos"
+    texto: "En una fuente conmutada, ¿por qué la base de tiempos en microsegundos por división?"
+    libro: [320]
+    widget:
+      tipo: figura
+      figura: fig-53.14
+      zonas:
+        - { id: latiguillo, rotulo: "Gráfica de la izquierda", rect: [0, 0, 215, 187] }
+        - { id: muelle, rotulo: "Gráfica de la derecha", rect: [225, 0, 217, 187] }
+    opciones:
+      - texto: "Con la base larga el muestreo no alcanza y la conmutación sale aliasada"
+        bien: true
+        porque: "Se vería una onda falsa, más lenta de lo que es."
+      - texto: "Para ver la red de 50 Hz"
+        porque: "Eso pide milisegundos: lo que se busca es la conmutación."
+      - texto: "Porque en milisegundos no se ve el rizado"
+        porque: "Se ve algo, pero falso: el aliasing."
+    escalera:
+      - "¿Cuántas muestras por ciclo de conmutación toma con una base larga?"
+    solucion: "Para que el muestreo alcance: si no, aliasing."
+
+  - id: disparo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El disparo es la mitad del instrumento"
+    texto: "Una cada modo de disparo con su uso."
+    libro: [322, 323]
+    emparejar:
+      - ["Flanco, automático", "Señales periódicas estables"]
+      - ["Flanco, normal", "Ver solo cuando ocurre algo"]
+      - ["Único", "Un evento que pasa una vez"]
+      - ["Por ancho de pulso", "Glitches más cortos de lo normal"]
+    exito: "El disparo único se arma y espera: resuelve los intermitentes aunque no esté delante."
+    pistas:
+      - { texto: "El automático dibuja aunque no haya disparo: para señales que se repiten." }
+    escalera:
+      - "Un glitch es un pulso más corto de lo normal."
+    solucion: "Automático: periódicas; normal: cuando ocurre algo; único: una vez; ancho de pulso: glitches."
+
+  - id: fft-zumbido
+    tipo: pregunta
+    titulo: "¿De dónde viene el zumbido?"
+    texto: "La FFT de un zumbido muestra una raya a 100 Hz. ¿De dónde viene?"
+    libro: [325]
+    widget:
+      tipo: figura
+      figura: fig-53.14
+      zonas:
+        - { id: latiguillo, rotulo: "Gráfica de la izquierda", rect: [0, 0, 215, 187] }
+        - { id: muelle, rotulo: "Gráfica de la derecha", rect: [225, 0, 217, 187] }
+    opciones:
+      - texto: "De la rectificación"
+        bien: true
+        porque: "Un puente rectifica los dos semiciclos de 50 Hz: rizado a 100 Hz."
+      - texto: "De la red directamente"
+        porque: "La red daría la raya a 50 Hz."
+      - texto: "De una fuente conmutada"
+        porque: "La conmutación está en cientos de kilohercios."
+    escalera:
+      - "100 Hz es el doble de la red."
+    solucion: "De la rectificación."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [304, 307, 310, 318]
+    ideas:
+      - { titulo: "Compensar.", texto: "Cuadrada de 1 kHz del generador y el trimmer hasta las esquinas rectas." }
+      - { titulo: "La sonda carga.", texto: "Nodo ∥ sonda con su capacidad: un paso bajo. ×10 siempre." }
+      - { titulo: "Rizado.", texto: "AC, masa de muelle y base de tiempos en microsegundos." }
+      - { titulo: "Disparo y FFT.", texto: "El único caza intermitentes; la FFT dice de dónde viene un zumbido." }

@@ -1,0 +1,358 @@
+# Lección 1.2 de la sección 54.3 «Actuadores y sus Etapas de Potencia» (cap57; etiquetas sec-57.N = impresas 54.N).
+# - Los tres actuadores (tabla 54.2, bloque 48).
+# - El motorreductor (bloque 50): 12 V, 1:30, 330 rpm en vacío a la salida, 2,0 A bloqueado; k = 0,01158 V·s/rad,
+#   R = 6 Ω, reductora del 70 %: 0,486 N·m bloqueado a la salida. Gráfica de la recta par-velocidad a la salida
+#   (n = (V − R·T/(30·0,7·k))/k a la salida entre 30).
+# - Los puentes (bloque 51): L298 con 1,8 V de caída a 1 A (1,8 W), TB6612FNG con 0,5 Ω (0,5 W).
+# - El servo de modelismo y su pulso con el Timer1 (bloques 54 a 59, figura 54.4): OCR1x = 2·t − 1 en pasos de 0,5 µs.
+# - El paso a paso y su driver (bloques 61 a 68, figura 54.5): la inversión de la corriente de una fase de 1,5 Ω y
+#   2,8 mH de −1,5 a +1,5 A con el esquema carga-rl (la fuente completa sobre la fase con su resistencia, como la
+#   comprobación de ngspice del bloque 65: 0,708 ms a 12 V y 0,351 ms a 24 V); I = VREF/(5·RSENSE) con 0,100 Ω.
+# - La alimentación (bloque 71).
+# Pasos prácticos: «simular» la disipación del L298 con 1 A (1,8 W; errores: la del TB6612, 0,5 W, o la del motor),
+# «banco» opcional (el pico de arranque sobre 0,1 Ω, 0,2 V con los 2 A de bloqueo; ficha 8 del cuaderno; la tolerancia
+# del ± 25 % es de ejemplo) y «ajuste» de VREF del DRV8825 para 1,5 A de pico (0,75 V).
+leccion: cap57/sec-57.3
+
+libro:
+  48: "Pierde pasos sin avisar"
+  50: "k = 12/(9 900 × 2π/60) = 0,01158 V·s/rad y R = 12/2,0 = 6 Ω. Su par de bloqueo es 23,2 mN·m en el motor y 0,486 N·m (4,96 kg·cm) a la salida con un rendimiento de la reductora del 70 %"
+  51: "Con 1 A el motor recibe 10,2 V de los 12 y el integrado disipa 1,8 W. Un puente de MOSFET como el TB6612FNG tiene 0,5 Ω típicos en el mismo camino: 0,5 V y 0,5 W con 1 A"
+  52: "La corriente de un motorreductor se mide con una resistencia de 0,1 Ω en serie y el osciloscopio en disparo único"
+  54: "La orden es un pulso que se repite cada 20 ms (50 Hz) y cuya anchura es la posición"
+  55: "La orden de un servo de modelismo: un pulso cada 20 ms cuya anchura es la posición"
+  56: "el Timer1 de 16 bits en el modo 14 (PWM rápida con el periodo en ICR1) a 16 MHz/8 cuenta en pasos de 0,5 µs, y con ICR1 = 39 999 el periodo es exactamente 20 ms"
+  58: "para 1 500 µs hace falta 2 999, no 3 000"
+  59: "para que se mueva despacio hay que mandarle posiciones intermedias"
+  61: "200 pasos por vuelta, 1,7 A y 1,5 Ω por fase, 2,8 mH"
+  62: "I = VREF/(5·RSENSE), y con las resistencias de 0,100 Ω de las placas habituales, I = 2·VREF. Para 1,5 A de pico, VREF = 0,75 V"
+  63: "unos 2·L·I/V, 0,70 ms a 12 V y 0,35 ms a 24 V con 1,5 A"
+  64: "Par máximo del 17HS4401 en función de la velocidad"
+  65: "tarda 0,708 ms a 12 V y 0,351 ms a 24 V"
+  67: "el 20 % del par de retención a 1/8, el 9,8 % a 1/16 y el 4,9 % a 1/32"
+  71: "el detector de caída (brown-out, 2,7 V en el Arduino UNO) lo reinicia en el peor momento"
+
+modelo:
+  valores:
+    V_m: { sim: "V", nombre: "tensión del motorreductor", unidad: V, valor: 12 }
+    k_m: { sim: "k", nombre: "constante del motor", unidad: "V·s/rad", valor: 0.01158 }
+    R_m: { sim: "R", nombre: "resistencia del motor", unidad: Ω, valor: 6 }
+    N_r: { sim: "N", nombre: "reducción", unidad: "", valor: 30 }
+    e_r: { sim: "η", nombre: "rendimiento de la reductora", unidad: "", valor: 0.7 }
+    T_o: { sim: "T", nombre: "par de la carga a la salida", unidad: "N·m", valor: 0.1 }
+    I_b: { sim: "I", nombre: "corriente del motor", unidad: A, valor: 1 }
+    V_L: { sim: "V_{L298}", nombre: "caída del L298", unidad: V, valor: 1.8 }
+    R_T: { sim: "R_{TB6612}", nombre: "resistencia del TB6612FNG", unidad: Ω, valor: 0.5 }
+    R_sh: { sim: "R_{shunt}", nombre: "resistencia de medida", unidad: Ω, valor: 0.1 }
+    V_d: { sim: "V", nombre: "tensión del driver", unidad: V, valor: 12 }
+    R_f: { sim: "R", nombre: "resistencia de la fase", unidad: Ω, valor: 1.5 }
+    L_f: { sim: "L", nombre: "inductancia de la fase", unidad: H, valor: 0.0028 }
+    I_0: { sim: "I₀", nombre: "corriente de partida", unidad: A, valor: -1.5 }
+    I_p: { sim: "I", nombre: "corriente de pico del troceador", unidad: A, valor: 1.5 }
+    V_r: { sim: "V_{REF}", nombre: "tensión de referencia", unidad: V, valor: 0.3 }
+    R_s: { sim: "R_{SENSE}", nombre: "resistencia de sensado", unidad: Ω, valor: 0.1 }
+    n_u: { sim: "n", nombre: "fracción de paso", unidad: "", valor: 8 }
+    t_s: { sim: "t", nombre: "anchura del pulso", unidad: s, valor: 0.0015 }
+    t_q: { sim: "Δt", nombre: "paso del Timer1", unidad: s, valor: 0.0000005 }
+    t_u: { sim: "Δt₁", nombre: "un paso de 1 µs", unidad: s, valor: 0.000001 }
+    tol_b: { sim: "tol", nombre: "tolerancia del banco", unidad: "%", valor: 25 }
+  calculos:
+    T_mo: { expr: "T_o/(N_r*e_r)", sim: "T_{motor}", nombre: "par en el motor", unidad: "N·m" }
+    I_mo: { expr: "T_mo/k_m", sim: "I", nombre: "corriente del motor", unidad: A }
+    n_o: { expr: "(V_m - I_mo*R_m)/k_m*60/(2*pi)/N_r", sim: "n", nombre: "velocidad a la salida", unidad: rpm, cifras: 3 }
+    n_0: { expr: "V_m/k_m*60/(2*pi)/N_r", sim: "n₀", nombre: "velocidad en vacío a la salida", unidad: rpm, cifras: 3 }
+    I_bl: { expr: "V_m/R_m", sim: "I_{bloqueo}", nombre: "corriente de bloqueo", unidad: A }
+    T_bl: { expr: "k_m*V_m/R_m*N_r*e_r", sim: "T_{bloqueo}", nombre: "par de bloqueo a la salida", unidad: "N·m" }
+    P_L: { expr: "V_L*I_b", sim: "P_{L298}", nombre: "disipación del L298", unidad: W }
+    P_T: { expr: "R_T*I_b^2", sim: "P_{TB6612}", nombre: "disipación del TB6612FNG", unidad: W }
+    P_mo: { expr: "(V_m - V_L)*I_b", sim: "P_{motor}", nombre: "potencia que recibe el motor", unidad: W }
+    Vm_L: { expr: "V_m - V_L", sim: "V_{motor}", nombre: "tensión en el motor con el L298", unidad: V }
+    V_sh: { expr: "I_bl*R_sh", sim: "V_{shunt}", nombre: "pico en el shunt al arrancar", unidad: V }
+    tau_f: { expr: "L_f/R_f", sim: "τ", nombre: "constante de tiempo de la fase", unidad: s }
+    I_fin: { expr: "V_d/R_f", sim: "V/R", nombre: "corriente final sin troceador", unidad: A }
+    t_inv: { expr: "tau_f*ln((I_fin - I_0)/(I_fin - I_p))", sim: "t_{inversión}", nombre: "tiempo de inversión", unidad: s }
+    t_apr: { expr: "2*L_f*I_p/V_d", sim: "2·L·I/V", nombre: "tiempo de inversión aproximado", unidad: s }
+    t_med: { expr: "L_f*I_p/V_d", sim: "L·I/V", nombre: "la mitad del aproximado", unidad: s }
+    I_lim: { expr: "V_r/(5*R_s)", sim: "I", nombre: "límite de corriente", unidad: A }
+    f_mp: { expr: "100*sin(90/n_u*pi/180)", sim: "ΔT/T_{ret}", nombre: "incremento de par de un micropaso", unidad: "%" }
+    N_oc: { expr: "t_s/t_q - 1", sim: "OCR1A", nombre: "valor de comparación", unidad: "" }
+    N_al: { expr: "N_oc + 2", sim: "N", nombre: "pasos en alto escribiendo 3 000", unidad: "" }
+    N_1u: { expr: "t_s/t_u - 1", sim: "OCR1A", nombre: "valor con pasos de 1 µs", unidad: "" }
+
+tarjetas:
+  - id: explore-motorreductor
+    tipo: explorar
+    titulo: "El motorreductor del capítulo"
+    texto: "Motor de 12 V con reductora 1:30. Cargue el eje de salida y mire la velocidad y la corriente."
+    libro: [50]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.5, unidad: "N·m", rotulo: "T_{salida}" }
+      y: { min: 0, max: 350, unidad: rpm, rotulo: "n" }
+      curvas:
+        - { expr: "max(0, (V_m - tx/(N_r*e_r)/k_m*R_m)/k_m*60/(2*pi)/N_r)", color: naranja, rotulo: "velocidad a la salida" }
+      marcas:
+        - { x: "T_o", y: "n_o", rotulo: "{{n_o}}" }
+      lectura: { valor: n_o, rotulo: "Velocidad a la salida" }
+      datos:
+        - { valor: I_mo, rotulo: "Corriente: {{I_mo}}" }
+      mandos:
+        - { valor: T_o, min: 0, max: 0.48, paso: 0.01, rotulo: "Par de la carga a la salida" }
+    comprobar:
+      - { con: { T_o: 0 }, n_o: 330 }
+      - { I_bl: 2, T_bl: 0.486, tol: 0.003 }
+
+  - id: empareje-actuadores
+    tipo: pregunta
+    titulo: "Tres maneras de mover un eje"
+    texto: "Empareje cada actuador con su fallo típico."
+    libro: [48]
+    emparejar:
+      - ["Motorreductor con encoder", "Mal sintonizado: oscila"]
+      - ["Servo de modelismo", "Banda muerta, giro limitado"]
+      - ["Paso a paso", "Pierde pasos sin avisar"]
+    exito: "El paso a paso va en lazo abierto: cuenta pasos y no sabe si los ha dado."
+    pistas:
+      - { texto: "El único sin sensor de posición es el que puede perder pasos sin enterarse." }
+    escalera:
+      - "¿Quién cierra el lazo en cada uno: el micro, el propio servo o nadie?"
+    solucion: "Motorreductor: oscila si está mal sintonizado. Servo: banda muerta. Paso a paso: pierde pasos."
+
+  - id: simule-l298
+    tipo: simular
+    titulo: "El puente se come voltios"
+    texto: "El L298 bipolar cae 1,8 V típicos con 1 A. Con el motor tomando 1 A de 12 V, ¿cuánto disipa el puente?"
+    libro: [51]
+    fijar: { I_b: 1 }
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 2, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 4, unidad: W, rotulo: "P_{puente}" }
+      curvas:
+        - { expr: "V_L*ix", color: naranja, rotulo: "L298 (1,8 V)" }
+        - { expr: "R_T*ix^2", color: azul, rotulo: "TB6612FNG (0,5 Ω)" }
+      lectura: { valor: P_L, rotulo: "Disipación del L298" }
+      ocultar: curvas
+    simular:
+      objetivo: P_L
+      unidad: W
+      tol: 0.03
+      rotulo: "Disipación del L298"
+      errores:
+        - { expr: "P_T", texto: "0,5 W es la del TB6612FNG, con sus 0,5 Ω: el L298 cae 1,8 V, no 0,5." }
+        - { expr: "P_mo", texto: "10,2 W es lo que recibe el motor con 10,2 V; el puente se queda los 1,8 V que faltan." }
+    exito: "1,8 W en el L298, y al motor le llegan 10,2 V. Un TB6612FNG se queda 0,5 V y 0,5 W."
+    escalera:
+      - "P = caída × corriente."
+    solucion: "1,8 V × 1 A = 1,8 W."
+    comprobar:
+      - { P_L: 1.8, P_T: 0.5, P_mo: 10.2, Vm_L: 10.2 }
+
+  - id: banco-arranque
+    tipo: banco
+    titulo: "El pico de arranque"
+    texto: "Mida la corriente del motorreductor al arrancar con una resistencia de 0,1 Ω en serie y el osciloscopio en disparo único."
+    nota: "La tolerancia del ± 25 % es de ejemplo."
+    libro: [52, 50]
+    fijar: { V_m: 12, R_m: 6, R_sh: 0.1 }
+    banco:
+      piezas: ["Motorreductor de 12 V", "Puente en H con PWM", "Resistencia de 0,1 Ω en serie", "FNIRSI en disparo único"]
+      medir: "La tensión de pico sobre la resistencia en el arranque, durante los primeros milisegundos."
+      esperado: V_sh
+      unidad: V
+      tol: 0.25
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.25 }, texto: "Mide de más: compruebe la resistencia de 0,1 Ω y que mide su tensión, no la del motor." }
+        - { cuando: { valor: desviacion, menor: -0.25 }, texto: "Mide de menos: ¿arranca con rampa? Sin ella llega casi a la corriente de bloqueo, 2 A." }
+        - { texto: "Dentro: la corriente de bloqueo en el arranque. Ahora mire el rizado triangular de la PWM." }
+      ficha: { n: 8, titulo: "Control de un motor de continua con PWM" }
+    comprobar:
+      - { V_sh: 0.2, I_bl: 2, tol_b: 25 }
+
+  - id: prediga-ocr
+    tipo: predecir
+    titulo: "Un pulso de 1 500 µs"
+    texto: "El Timer1 cuenta en pasos de 0,5 µs y la salida está en alto OCR1A + 1 pasos. ¿Qué valor da 1 500 µs?"
+    libro: [54, 56, 58, 55]
+    fijar: { t_s: 0.0015 }
+    widget:
+      tipo: figura
+      figura: fig-57.4
+      zonas:
+        - { id: pulso, rotulo: "Los pulsos, a la izquierda", rect: [5, 10, 160, 115] }
+    opciones:
+      - texto: "2 999"
+        bien: true
+        porque: "1 500 µs son 3 000 pasos de 0,5 µs, y el pin está en alto un paso más que el valor escrito."
+      - texto: "3 000"
+        porque: "Daría 3 001 pasos en alto: en PWM rápida el pin sigue alto hasta que el contador pasa de OCR1A."
+      - texto: "1 499"
+        porque: "Así sería con pasos de 1 µs; con el reloj de 16 MHz entre 8 son de 0,5 µs."
+      - texto: "39 999"
+        porque: "Ese es ICR1, el periodo de 20 ms, no la anchura del pulso."
+    escalera:
+      - "¿Cuántos pasos de 0,5 µs caben en 1 500 µs?"
+    solucion: "3 000 pasos menos uno: 2 999."
+    comprobar:
+      - { N_oc: 2999, N_al: 3001, N_1u: 1499 }
+
+  - id: porque-despacio
+    tipo: porque
+    titulo: "Un servo que vaya despacio"
+    texto: "El lazo del servo es proporcional con banda muerta y va a la posición a toda velocidad. ¿Cómo se consigue que se mueva despacio?"
+    libro: [59]
+    widget:
+      tipo: figura
+      figura: fig-57.4
+      zonas:
+        - { id: lazo, rotulo: "El lazo, a la derecha", rect: [170, 30, 150, 80] }
+    opciones:
+      - texto: "Mandándole posiciones intermedias: lo hace el generador de trayectoria"
+        bien: true
+        porque: "El servo no admite una consigna de velocidad; solo posiciones."
+      - texto: "Bajando la frecuencia de los pulsos"
+        porque: "El periodo no es la velocidad: la anchura del pulso es la posición."
+      - texto: "Alimentándolo con menos tensión"
+        porque: "Le quitaría par sin controlar la velocidad, y el lazo seguiría yendo a toda velocidad."
+    escalera:
+      - "¿Qué entiende el servo: posiciones o velocidades?"
+    solucion: "Con posiciones intermedias, una tras otra."
+
+  - id: explore-inversion
+    tipo: explorar
+    titulo: "Invertir la corriente de una fase"
+    texto: "El driver aplica la tensión completa a una fase que lleva −1,5 A. Cambie la tensión y vea cuándo llega a +1,5 A."
+    libro: [61, 63, 65]
+    fijar: { I_0: -1.5, R_f: 1.5, L_f: 0.0028 }
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_d, r: R_f, l: L_f, i0: I_0 }
+      lectura: { valor: t_inv, rotulo: "Tiempo hasta +1,5 A" }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: -2, max: 4, unidad: A, rotulo: "i" }
+        curvas:
+          - { expr: "I_0 + (I_fin - I_0)*(1 - exp(-t/tau_f))", color: naranja, rotulo: "i(t)", mide: i }
+        marcas:
+          - { x: "t_inv", y: "I_p", rotulo: "+1,5 A" }
+      mandos:
+        - { valor: V_d, lista: [12, 24], rotulo: "Tensión del driver" }
+    requiere: { mover: [V_d] }
+    comprobar:
+      - { t_inv: 0.000708, tol: 0.003 }
+      - { con: { V_d: 24 }, t_inv: 0.000351, tol: 0.003 }
+
+  - id: estime-inversion
+    tipo: pregunta
+    titulo: "Con el doble de tensión"
+    texto: "A 12 V, la corriente de la fase tarda unos 0,70 ms en ir de −1,5 A a +1,5 A. ¿Cuánto tarda a 24 V?"
+    libro: [63, 64, 65]
+    fijar: { V_d: 24, I_0: -1.5, R_f: 1.5, L_f: 0.0028 }
+    widget:
+      tipo: figura
+      figura: fig-57.5
+      zonas:
+        - { id: par, rotulo: "La gráfica de la derecha", rect: [160, 5, 165, 145] }
+    estimar:
+      objetivo: "t_apr"
+      unidad: s
+      min: 0
+      max: 0.0015
+      paso: 0.00001
+      inicio: 0.0011
+      tol: 0.05
+      rotulo: "Tiempo de inversión a 24 V"
+    exito: "0,35 ms: el tiempo es 2·L·I/V, la mitad con el doble de tensión. Por eso la velocidad útil crece con la tensión."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00037 }, texto: "Se ha pasado: con más tensión la bobina cambia de corriente antes." }
+      - { texto: "Se ha quedado corto: el tiempo es inversamente proporcional a la tensión, no a su cuadrado." }
+    escalera:
+      - "t ≈ 2·L·I/V."
+    solucion: "2 × 2,8 mH × 1,5 A / 24 V = 0,35 ms."
+    comprobar:
+      - { t_apr: 0.00035, t_inv: 0.000351, tol: 0.005 }
+
+  - id: ajuste-vref
+    tipo: ajuste
+    titulo: "El límite del DRV8825"
+    texto: "El DRV8825 limita la corriente con I = V_{REF}/(5·R_{SENSE}), con 0,100 Ω. Gire el potenciómetro hasta 1,5 A de pico."
+    libro: [62]
+    fijar: { R_s: 0.1 }
+    inicio: { V_r: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 1.5, unidad: V, rotulo: "V_{REF}" }
+      y: { min: 0, max: 3, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "vx/(5*R_s)", color: azul, rotulo: "límite de corriente" }
+      marcas:
+        - { x: "V_r", y: "I_lim", rotulo: "{{I_lim}}" }
+      mandos:
+        - { valor: V_r, min: 0, max: 1.5, paso: 0.01, rotulo: "V_{REF} (potenciómetro)" }
+    ajuste:
+      valor: I_lim
+      objetivo: 1.5
+      tol: 0.02
+      rotulo: "Corriente de pico"
+      bajo: "Falta corriente: suba V_{REF}."
+      alto: "Sobra corriente: baje V_{REF}."
+      dentro: "V_{REF} = 0,75 V: con 0,100 Ω, I = 2·V_{REF}. En el banco se mide con el multímetro."
+    comprobar:
+      - { con: { V_r: 0.75 }, I_lim: 1.5 }
+
+  - id: prediga-micropaso
+    tipo: predecir
+    titulo: "¿Treinta y dos veces más exacto?"
+    texto: "Pasar de paso completo a micropaso de 1/32 divide el paso en 32. ¿Divide también el error de posición?"
+    libro: [67]
+    fijar: { n_u: 32 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 1, max: 32, unidad: "", rotulo: "n" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "ΔT/T_{ret}" }
+      curvas:
+        - { expr: "100*sin(90/nx*pi/180)", color: azul, rotulo: "incremento de par por micropaso" }
+      marcas:
+        - { x: "n_u", y: "f_mp", rotulo: "{{f_mp}}" }
+    opciones:
+      - texto: "No: cada micropaso solo añade el 4,9 % del par de retención"
+        bien: true
+        porque: "Si el rozamiento pide más, el rotor espera a que se acumulen varios micropasos: más suavidad, no más exactitud."
+      - texto: "Sí, la exactitud mejora treinta y dos veces"
+        porque: "La resolución sí; pero el rotor solo alcanza el micropaso si la carga pide poco par."
+      - texto: "No: el micropaso empeora la exactitud"
+        porque: "No la empeora; suaviza el movimiento y reduce ruido y resonancias."
+    escalera:
+      - "Incremento de par = T_{ret}·sen(90°/n)."
+    solucion: "No: con 1/32, cada micropaso es solo el 4,9 % del par; la resolución no es exactitud."
+    comprobar:
+      - { f_mp: 4.9, tol: 0.01 }
+      - { con: { n_u: 16 }, f_mp: 9.8, tol: 0.01 }
+
+  - id: empareje-alimentacion
+    tipo: pregunta
+    titulo: "La alimentación de un robot"
+    texto: "Empareje cada regla con el problema que evita."
+    libro: [71]
+    emparejar:
+      - ["Alimentaciones separadas", "El brown-out del micro cuando un servo se bloquea"]
+      - ["Masas en estrella", "Corrientes de motor por la masa de las señales"]
+      - ["Electrolítico junto a cada driver", "Picos que pasan de la tensión máxima del driver"]
+      - ["TVS o circuito de frenado", "La energía que devuelve el motor al frenar"]
+    exito: "Un servo bloqueado toma 2,5 A: con 60 mΩ por cable, 0,3 V menos, y el UNO se reinicia con 2,7 V."
+    pistas:
+      - { texto: "Una fuente conmutada no absorbe la energía que vuelve; una batería sí." }
+    escalera:
+      - "Piense en qué hace el motor que le pueda sentar mal a lo demás: picos, ruido de masa, energía de vuelta."
+    solucion: "Separadas: brown-out. Estrella: ruido de masa. Electrolítico: picos. TVS: energía de frenado."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [48, 51, 62, 67]
+    ideas:
+      - { titulo: "Tres actuadores.", texto: "Motorreductor con puente y encoder, servo con su lazo dentro, paso a paso en lazo abierto." }
+      - { titulo: "El puente importa.", texto: "L298: 1,8 V y 1,8 W con 1 A; TB6612FNG: 0,5 W." }
+      - { titulo: "El troceador.", texto: "Mucha tensión y corriente limitada: I = V_{REF}/(5·R_{SENSE})." }
+      - { titulo: "Micropaso.", texto: "Resolución, no exactitud." }

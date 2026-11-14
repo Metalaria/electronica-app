@@ -1,0 +1,239 @@
+# Lección 1.2 de la sección 9.5 «Contadores, Registros y Memorias» (cap09). Formato: contenido/lecciones11/GUIA.md (§11: circuito lógico y cronograma).
+leccion: cap09/sec-9.5
+
+libro:
+  59: "cuentan pulsos de reloj, incrementando o decrementando un valor binario"
+  61: "Un divisor de 32 768 Hz por 2¹⁵ da exactamente 1 Hz"
+  62: "en cada flanco el contenido avanza una posición"
+  63: "la SRAM en un biestable, la DRAM como carga en un condensador que hay que refrescar"
+  64: "Se elimina con un filtro RC (10 kΩ y 1 µF dan 10 ms)"
+  "cap09#199": "Para contar de 0 a 15 (16 valores) se necesitan 4 flip-flops"
+
+modelo:
+  valores:
+    f_cr: { sim: "f", nombre: "frecuencia del cristal", unidad: Hz, valor: 32768 }
+    R_ab: { sim: "R", nombre: "resistencia del filtro", unidad: Ω, valor: 10000 }
+    C_ab: { sim: "C", nombre: "condensador del filtro", unidad: F, valor: 0.000001 }
+  calculos:
+    n_et: { expr: "log10(f_cr)/log10(2)", sim: "n", nombre: "etapas divisoras por dos", unidad: "", cifras: 3 }
+    tau_ab: { expr: "R_ab*C_ab", sim: "τ", nombre: "constante del filtro", unidad: s }
+
+tarjetas:
+  - id: explore-contador
+    tipo: explorar
+    titulo: "Un contador de cuatro bits"
+    texto: "Dé pulsos de reloj. Los LED cuentan en binario de 0 a 15 y vuelven a empezar."
+    libro: [59, "cap09#199"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 4, entradas: [CLK] }
+      salidas:
+        - { id: Q3, de: c1.q3 }
+        - { id: Q2, de: c1.q2 }
+        - { id: Q1, de: c1.q1 }
+        - { id: Q0, de: c1.q0 }
+    requiere: { mover: [CLK] }
+
+  - id: prediga-ocho-bits
+    tipo: predecir
+    titulo: "De 0 a 255"
+    texto: "Para contar de 0 a 15 hacen falta 4 flip-flops. ¿Cuántos para contar de 0 a 255?"
+    libro: ["cap09#199"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 4, entradas: [CLK] }
+      salidas:
+        - { id: Q3, de: c1.q3 }
+        - { id: Q2, de: c1.q2 }
+        - { id: Q1, de: c1.q1 }
+        - { id: Q0, de: c1.q0 }
+      ocultar: true
+    opciones:
+      - { texto: "8", bien: true, porque: "Cada flip-flop guarda un bit; con 8 bits caben 2⁸ = 256 valores, de 0 a 255." }
+      - { texto: "255", porque: "Ese es el número de pulsos hasta la cuenta máxima. Hace falta un flip-flop por bit, no por valor." }
+      - { texto: "16", porque: "Con 16 bits contaría hasta mucho más. Para 256 valores bastan 8 bits." }
+    escalera: ["Con n bits se cuentan 2ⁿ valores."]
+    solucion: "2⁸ = 256 valores: 8 flip-flops."
+
+  - id: explore-rizado
+    tipo: explorar
+    titulo: "Divisores encadenados"
+    texto: "Cada flip-flop T conmuta disparado por el anterior. Mueva el cursor y compare la frecuencia de cada salida con la del reloj."
+    libro: [61]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: t1, tipo: t, entradas: ["1", CLK] }
+        - { id: t2, tipo: t, entradas: ["1", t1.nq] }
+        - { id: t3, tipo: t, entradas: ["1", t2.nq] }
+      salidas:
+        - { id: Q0, de: t1.q }
+        - { id: Q1, de: t2.q }
+        - { id: Q2, de: t3.q }
+      cronograma: { ciclos: 8, senales: [CLK, Q0, Q1, Q2] }
+
+  - id: estime-cristal
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El cristal de los relojes"
+    texto: "Un cristal de 32 768 Hz alimenta una cadena de divisores por dos. ¿Cuántas etapas hacen falta para obtener 1 Hz?"
+    libro: [61]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: t1, tipo: t, entradas: ["1", CLK] }
+        - { id: t2, tipo: t, entradas: ["1", t1.nq] }
+      salidas:
+        - { id: Q0, de: t1.q }
+        - { id: Q1, de: t2.q }
+      cronograma: { ciclos: 4, senales: [CLK, Q0, Q1] }
+      dibujo: false
+    estimar:
+      objetivo: "n_et"
+      unidad: ""
+      min: 1
+      max: 20
+      paso: 1
+      inicio: 5
+      tol: 0.01
+      rotulo: "Etapas"
+    exito: "15: 32 768 = 2¹⁵. Por eso los cristales de reloj tienen esa frecuencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 15 }, texto: "Se ha pasado: cada etapa divide por dos; cuente cuántas veces cabe dividir 32 768 hasta llegar a 1." }
+      - { texto: "Se ha quedado corto: cada etapa solo divide por dos." }
+    escalera: ["32 768 es una potencia de dos exacta."]
+    solucion: "32 768 = 2¹⁵: quince etapas."
+    comprobar:
+      - { n_et: 15 }
+
+  - id: explore-registro
+    tipo: explorar
+    titulo: "Un registro de desplazamiento"
+    texto: "Cuatro flip-flops D en cadena. Mueva el cursor y siga el 1 que entra por la izquierda."
+    libro: [62]
+    widget:
+      tipo: logica
+      entradas: [DS, { id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [DS, CLK] }
+        - { id: f2, tipo: d, entradas: [f1.q, CLK] }
+        - { id: f3, tipo: d, entradas: [f2.q, CLK] }
+        - { id: f4, tipo: d, entradas: [f3.q, CLK] }
+      salidas:
+        - { id: Q1, de: f1.q }
+        - { id: Q2, de: f2.q }
+        - { id: Q3, de: f3.q }
+        - { id: Q4, de: f4.q }
+      cronograma: { ciclos: 6, estimulo: { DS: "100000" }, senales: [CLK, DS, Q1, Q2, Q3, Q4] }
+
+  - id: dibuje-registro
+    tipo: dibujar
+    titulo: "Dibuje la tercera etapa"
+    texto: "Por la entrada serie DS llega esta secuencia. Dibuje Q3, la salida del tercer flip-flop."
+    libro: [62]
+    widget:
+      tipo: logica
+      entradas: [DS, { id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [DS, CLK] }
+        - { id: f2, tipo: d, entradas: [f1.q, CLK] }
+        - { id: f3, tipo: d, entradas: [f2.q, CLK] }
+        - { id: f4, tipo: d, entradas: [f3.q, CLK] }
+      salidas:
+        - { id: Q1, de: f1.q }
+        - { id: Q2, de: f2.q }
+        - { id: Q3, de: f3.q }
+        - { id: Q4, de: f4.q }
+      cronograma: { ciclos: 8, estimulo: { DS: "11010000" }, senales: [CLK, DS] }
+      dibujo: false
+    dibujar:
+      senal: Q3
+    exito: "Q3 repite DS dos flancos más tarde que Q1: el dato avanza una posición por flanco."
+    escalera:
+      - "Q1 copia DS en cada flanco; Q2 copia Q1; Q3 copia Q2."
+      - "Dibuje primero Q1 en su cabeza y retráselo dos flancos."
+    solucion: "Q3 es DS retrasado tres flancos: sube en el tercer flanco."
+
+  - id: empareje-bloques
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Registros y memorias"
+    texto: "Una cada pieza con lo que hace."
+    libro: [62, 63]
+    emparejar:
+      - ["74HC595", "Serie a paralelo: ocho salidas con tres pines"]
+      - ["74HC165", "Paralelo a serie: ocho entradas"]
+      - ["SRAM", "Guarda el bit en un biestable"]
+      - ["DRAM", "Carga en un condensador que hay que refrescar"]
+      - ["Flash", "Carga atrapada en una puerta flotante"]
+    exito: "Por eso los registros y cachés son SRAM, la memoria principal DRAM y el programa Flash."
+    pistas:
+      - { texto: "El 74HC595 da salidas a un microcontrolador; el 74HC165 le da entradas." }
+    escalera: ["Solo una de las memorias necesita refresco."]
+    solucion: "74HC595 serie a paralelo, 74HC165 paralelo a serie; SRAM biestable, DRAM condensador, Flash puerta flotante."
+
+  - id: porque-rebote
+    tipo: porque
+    titulo: "Un pulsador que cuenta de más"
+    texto: "Un pulsador conectado a un contador suma varias pulsaciones de una sola vez. ¿Por qué?"
+    libro: [64]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Pulsador" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 4, entradas: [CLK] }
+      salidas:
+        - { id: Q1, de: c1.q1 }
+        - { id: Q0, de: c1.q0 }
+    opciones:
+      - { texto: "El contacto rebota de 1 a 20 ms y da decenas de pulsos", bien: true, porque: "Un circuito digital rápido cuenta cada rebote como una pulsación distinta." }
+      - { texto: "El contador está averiado", porque: "El contador hace bien su trabajo: cuenta todos los pulsos que le llegan, también los rebotes." }
+      - { texto: "El pulsador tiene poca tensión", porque: "No es cuestión de nivel: el contacto mecánico no cierra de golpe, rebota." }
+    escalera: ["Un contacto mecánico no cierra de golpe."]
+    solucion: "Rebota durante 1 a 20 ms: el contador cuenta cada rebote."
+
+  - id: estime-filtro
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El filtro antirrebote"
+    texto: "Un filtro RC de 10 kΩ y 1 µF precede al disparador de Schmitt. ¿Qué constante de tiempo da?"
+    libro: [64]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.05, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "v/V" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_ab)", color: azul, rotulo: "tensión del condensador" }
+    estimar:
+      objetivo: "tau_ab"
+      unidad: s
+      min: 0
+      max: 0.05
+      paso: 0.001
+      inicio: 0.03
+      tol: 0.05
+      rotulo: "Constante de tiempo"
+    exito: "10 ms: dentro de los 1 a 20 ms que dura el rebote; el Schmitt convierte la rampa en un flanco limpio."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado: τ = R · C, sin más factores." }
+      - { texto: "Se ha quedado corto: multiplique los 10 kΩ por 1 µF." }
+    escalera: ["τ = R · C."]
+    solucion: "10 kΩ · 1 µF = 10 ms."
+    comprobar:
+      - { tau_ab: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [61, 62, 63, 64]
+    ideas:
+      - { titulo: "Contadores.", texto: "n flip-flops cuentan de 0 a 2ⁿ − 1 y dividen la frecuencia por 2ⁿ." }
+      - { titulo: "Registros.", texto: "En cada flanco el dato avanza una posición: serie a paralelo y al revés." }
+      - { titulo: "Memorias.", texto: "SRAM en un biestable, DRAM en un condensador, Flash en una puerta flotante." }
+      - { titulo: "Rebotes.", texto: "Filtro RC y Schmitt, latch SR o software." }

@@ -1,0 +1,297 @@
+# Lección 1.2 de la sección 8.8 «Interruptores y Multiplexores Analógicos» (cap08). Formato: contenido/lecciones11/GUIA.md.
+# La R_on frente a la entrada del convertidor se dibuja con el esquema «thevenin» (fuente de señal, R_on en serie y la
+# entrada como carga), como el divisor del libro. La curva de la puerta de transmisión es ilustrativa: canales con una
+# conductancia proporcional a su V_GS efectiva (puertas a 0 y 5 V, umbral de 1 V); el libro no da números.
+# 1.2: el canal N solo es el esquema «mosfet» usado como interruptor de señal: la señal (V_DD, con 1 Ω de fuente) entra
+# por el drenador y la entrada de 100 kΩ del convertidor es R_S; la puerta a 5 V, k = 0,01 A/V² y V_th = 1 V son los
+# de la curva de ejemplo (G_N = k·(5 − 1 − V_señal)). La corriente resuelve la ley de la zona óhmica con R_S (cuadrática,
+# raíz menor en forma estable); la señal llega hasta 3,5 V para que el canal no salga de la zona óhmica.
+leccion: cap08/sec-8.8
+
+libro:
+  170: "Sus parámetros clave son la resistencia en conducción (Ron)"
+  173: "un canal N conduce bien las señales bajas y mal las altas"
+  174: "Una Ron de 100 Ω sobre una entrada de 1 MΩ forma un divisor con un error estático del 0,01 %"
+  175: "Sobre un condensador de muestreo de 100 pF, 10 pC son un escalón de 100 mV"
+  176: "a 10 MHz la atenuación puede quedarse en 50 o 60 dB"
+  177: "los diodos de protección conducen"
+
+modelo:
+  valores:
+    V_sg: { sim: "V_{señal}", nombre: "tensión de la señal", unidad: V, valor: 1 }
+    R_on: { sim: "R_{on}", nombre: "resistencia en conducción", unidad: Ω, valor: 100 }
+    R_in: { sim: "R_{entrada}", nombre: "entrada del convertidor", unidad: Ω, valor: 1000000 }
+    s_on: { tipo: interruptor, nombre: "interruptor cerrado", valor: 1 }
+    V_x: { sim: "V_{señal}", nombre: "nivel de la señal", unidad: V, valor: 1 }
+    s_p: { tipo: interruptor, nombre: "canal P en paralelo", valor: 0 }
+    Q_i: { sim: "Q", nombre: "carga inyectada", unidad: C, valor: 10e-12 }
+    C_h: { sim: "C", nombre: "condensador de muestreo", unidad: F, valor: 100e-12 }
+    V_gn: { sim: "V_{G}", nombre: "puerta del interruptor", unidad: V, valor: 5 }
+    k_n: { sim: "k", nombre: "parámetro del canal N (ejemplo)", unidad: "A/V²", valor: 0.01 }
+    Vth_n: { sim: "V_{th}", nombre: "umbral del canal N (ejemplo)", unidad: V, valor: 1 }
+    R_dn: { sim: "R_{fuente}", nombre: "resistencia de la fuente de señal", unidad: Ω, valor: 1 }
+    V_gp: { sim: "V_{G}", nombre: "puerta del canal P", unidad: V, valor: 0 }
+    on_t: { tipo: interruptor, nombre: "puerta de transmisión cerrada", valor: 1 }
+  calculos:
+    a_n: { expr: "V_gn - Vth_n", sim: "V_{G} − V_{th}", nombre: "puerta sobre el umbral", unidad: V }
+    Rt_n: { expr: "R_dn + R_in", sim: "R", nombre: "resistencia del lazo", unidad: Ω }
+    c2_n: { expr: "R_in*Rt_n - Rt_n^2/2", sim: "c₂", nombre: "coeficiente cuadrático", unidad: "" }
+    B_n: { expr: "a_n*Rt_n + V_x*R_in - V_x*Rt_n + 1/k_n", sim: "B", nombre: "coeficiente lineal", unidad: "" }
+    c0_n: { expr: "a_n*V_x - V_x^2/2", sim: "c₀", nombre: "término independiente", unidad: "" }
+    I_n: { expr: "2*c0_n/(B_n + sqrt(B_n^2 - 4*c2_n*c0_n))", sim: "I", nombre: "corriente por el interruptor", unidad: A }
+    V_sn: { expr: "I_n*R_in", sim: "V_{salida}", nombre: "tensión en la entrada del convertidor", unidad: V }
+    V_dsn: { expr: "V_x - I_n*Rt_n", sim: "V_{DS}", nombre: "caída en el interruptor", unidad: V }
+    V_gsn: { expr: "V_gn - V_sn", sim: "V_{GS}", nombre: "tensión puerta-fuente efectiva", unidad: V }
+    R_onn: { expr: "1/(k_n*(a_n - V_sn - V_dsn/2))", sim: "R_{on}", nombre: "resistencia del canal N", unidad: Ω }
+    V_l: { si: s_on, entonces: "V_sg*R_in/(R_on + R_in)", sino: "V_sg", sim: "V_{entrada}", nombre: "tensión en la entrada", unidad: V }
+    I_l: { si: s_on, entonces: "V_sg/(R_on + R_in)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
+    V_ron: { expr: "I_l*R_on", sim: "V_{R_{on}}", nombre: "caída en R_on", unidad: V }
+    e_r: { expr: "100*R_on/(R_on + R_in)", sim: "error", nombre: "error estático", unidad: "%", cifras: 2 }
+    G_n: { expr: "0.01*max(0, 4 - V_x)", sim: "G_{N}", nombre: "conductancia del canal N", unidad: S }
+    G_p: { si: s_p, entonces: "0.01*max(0, V_x - 1)", sino: "0", sim: "G_{P}", nombre: "conductancia del canal P", unidad: S }
+    R_tg: { expr: "1/max(0.0001, G_n + G_p)", sim: "R_{on}", nombre: "resistencia del interruptor", unidad: Ω }
+    Vov_p: { expr: "max(0, V_x - V_gp - Vth_n)", sim: "V_{ov}", nombre: "puerta del canal P sobre el umbral", unidad: V }
+    b_p: { expr: "k_n*Vov_p + 1/R_in", sim: "b", nombre: "coeficiente", unidad: "" }
+    Vtri_p: { expr: "(b_p - sqrt(max(0, b_p^2 - 2*k_n*V_x/R_in)))/k_n", sim: "V_{tri}", nombre: "V_SD en zona óhmica", unidad: V }
+    Vsat_p: { expr: "V_x - R_in*k_n*Vov_p^2/2", sim: "V_{sat}", nombre: "V_SD en saturación", unidad: V }
+    VSD_p: { expr: "max(Vsat_p, min(Vov_p, Vtri_p))", sim: "V_{SD}", nombre: "caída en el canal P", unidad: V }
+    ID_p: { expr: "(V_x - VSD_p)/R_in", sim: "I", nombre: "corriente por el canal P", unidad: A }
+    Vd_p: { expr: "V_x - VSD_p", sim: "V_{salida}", nombre: "tensión en la entrada del convertidor", unidad: V }
+    Ron_p: { expr: "VSD_p/max(ID_p, 1e-12)", sim: "R_{on}", nombre: "resistencia del canal P", unidad: Ω }
+    Bn_t: { expr: "max(0, V_gn - V_x - Vth_n)", sim: "V_{ov,n}", nombre: "sobretensión del NMOS", unidad: V }
+    Ap_t: { expr: "max(0, V_x - Vth_n)", sim: "V_{ov,p}", nombre: "sobretensión del PMOS", unidad: V }
+    Ron_t: { expr: "1/(k_n*(Bn_t + Ap_t))", sim: "R_{on}", nombre: "resistencia de la puerta de transmisión", unidad: Ω }
+    Vo_t: { expr: "on_t*V_x*R_in/(R_in + Ron_t)", sim: "V_{salida}", nombre: "tensión en la entrada del convertidor", unidad: V }
+    I_t: { expr: "Vo_t/R_in", sim: "I", nombre: "corriente por la puerta", unidad: A }
+    V_q: { expr: "Q_i/C_h", sim: "ΔV", nombre: "escalón por inyección de carga", unidad: V }
+
+tarjetas:
+  - id: explore-ron
+    tipo: explorar
+    titulo: "Un divisor con la entrada"
+    texto: "La R_{on} del interruptor y la entrada del convertidor forman un divisor. Cambie las dos y mire el error."
+    libro: [170, 174]
+    fijar: { V_sg: 1, s_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_sg, rth: R_on, carga: R_in, interruptor: s_on }
+      lectura: { valor: e_r, rotulo: "Error estático" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l, interna: V_ron }
+      mandos:
+        - { valor: R_on, lista: [100, 300], rotulo: "R_{on}" }
+        - { valor: R_in, lista: [100000, 1000000], rotulo: "Entrada del convertidor" }
+    requiere: { mover: [R_on, R_in] }
+
+  - id: prediga-error
+    tipo: predecir
+    titulo: "Sobre 100 kΩ"
+    texto: "100 Ω sobre 1 MΩ dan un 0,01 % de error. ¿Y sobre una entrada de 100 kΩ?"
+    libro: [174]
+    fijar: { V_sg: 1, s_on: 1, R_on: 100, R_in: 100000 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_sg, rth: R_on, carga: R_in, interruptor: s_on }
+      lectura: { valor: e_r, rotulo: "Error estático" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l, interna: V_ron }
+      ocultar: true
+    opciones:
+      - texto: "Un 0,1 %, un bit de 10"
+        bien: true
+        porque: "El error es R_{on}/(R_{on} + R_{entrada}): diez veces menos entrada, diez veces más error."
+      - texto: "El mismo 0,01 %"
+        porque: "El error depende de la relación entre R_{on} y la entrada, y la entrada es diez veces menor."
+      - texto: "Un 1 %"
+        porque: "Sobra un factor diez: 100 Ω frente a 100 kΩ es una milésima."
+    escalera:
+      - "Error = R_{on}/(R_{on} + R_{entrada})."
+    solucion: "100 Ω / (100 Ω + 100 kΩ) ≈ 0,1 %."
+    comprobar:
+      - { e_r: 0.1, tol: 0.002 }
+      - { con: { R_in: 1000000 }, e_r: 0.01, tol: 0.001 }
+
+  - id: explore-canal-n
+    tipo: explorar
+    titulo: "Un MOSFET como interruptor de señal"
+    texto: "Puerta a 5 V; la señal entra por el drenador y sale por la fuente hacia el convertidor. Suba la señal y mire R_{on}."
+    nota: "Transistor de ejemplo; entrada de 100 kΩ."
+    libro: [173, 174]
+    fijar: { V_gn: 5, R_in: 100000 }
+    inicio: { V_x: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_x, rd: R_dn, entrada: V_gn, rs: R_in, k: k_n, vth: Vth_n }
+      lectura: { valor: R_onn, rotulo: "R_{on} del canal N" }
+      datos:
+        - { valor: V_gsn, rotulo: "V_{GS} efectiva: {{V_gsn}}" }
+      corriente: I_n
+      mide: { id: I_n, vs: V_sn, vgs: V_gsn, vds: V_dsn }
+      mandos:
+        - { valor: V_x, min: 0, max: 3.5, paso: 0.25, rotulo: "Nivel de la señal" }
+    requiere: { mover: [V_x] }
+
+  - id: explore-canal-p
+    tipo: explorar
+    titulo: "Un canal P, al revés"
+    texto: "Ahora un canal P con la puerta a 0 V: la señal entra por la fuente. Baje la señal y mire R_{on}."
+    nota: "Transistor de ejemplo; entrada de 100 kΩ."
+    libro: [173]
+    fijar: { V_gp: 0, R_in: 100000 }
+    inicio: { V_x: 4.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet-p
+      piezas: { vdd: V_x, rd: R_in, entrada: V_gp, k: k_n, vth: Vth_n }
+      lectura: { valor: Ron_p, rotulo: "R_{on} del canal P" }
+      corriente: ID_p
+      mide: { id: ID_p, vsd: VSD_p, vd: Vd_p }
+      mandos:
+        - { valor: V_x, min: 1.5, max: 5, paso: 0.25, rotulo: "Nivel de la señal" }
+    requiere: { mover: [V_x] }
+
+  - id: sorpresa-transmision
+    tipo: sorpresa
+    titulo: "Un canal N no basta"
+    texto: "Recorra todo el margen de la señal con un canal N. Luego añada un canal P en paralelo."
+    nota: "Curvas de ejemplo."
+    libro: [173]
+    inicio: { V_x: 1, s_p: 0 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 5, unidad: V, rotulo: "V_{señal}" }
+      y: { min: 0, max: 200, unidad: Ω, rotulo: "R_{on}" }
+      curvas:
+        - { expr: "min(200, 1/max(0.0001, 0.01*max(0, 4 - vx) + s_p*0.01*max(0, vx - 1)))", color: azul, rotulo: "interruptor" }
+      asas:
+        - { mueve: V_x, x: "V_x", y: "min(200, R_tg)", rotulo: "Su señal" }
+      lectura: { valor: R_tg, rotulo: "Resistencia del interruptor" }
+      mandos:
+        - { valor: V_x, min: 0, max: 5, paso: 0.25, rotulo: "Nivel de la señal" }
+        - { valor: s_p, tipo: interruptor, rotulo: "Canal P en paralelo" }
+    requiere: { mover: [V_x, s_p] }
+
+  - id: por-que-transmision
+    tipo: porque
+    titulo: "¿Por qué se aplana?"
+    texto: "Con los dos canales en paralelo, la R_{on} queda casi plana en todo el margen. ¿Por qué?"
+    libro: [173]
+    fijar: { s_p: 1 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 5, unidad: V, rotulo: "V_{señal}" }
+      y: { min: 0, max: 200, unidad: Ω, rotulo: "R_{on}" }
+      curvas:
+        - { expr: "min(200, 1/max(0.0001, 0.01*max(0, 4 - vx) + s_p*0.01*max(0, vx - 1)))", color: azul, rotulo: "interruptor" }
+    opciones:
+      - texto: "Cuando la señal sube, el N conduce peor y el P mejor: la suma se compensa"
+        bien: true
+        porque: "Con puertas de polaridad opuesta, cada canal cubre la mitad en que el otro flojea."
+      - texto: "Porque dos resistencias en paralelo siempre dan la mitad"
+        porque: "Darían la mitad si fueran fijas; aquí cada una cambia con la señal en sentido contrario."
+      - texto: "Porque el canal P tiene menos resistencia"
+        porque: "No es que sea mejor: conduce bien justo donde el N conduce mal."
+    escalera:
+      - "¿Cómo cambia la V_{GS} efectiva de cada canal al subir la señal?"
+    solucion: "Las dos conducciones son complementarias: su suma se mantiene."
+
+  - id: explore-puerta-transmision
+    tipo: explorar
+    titulo: "La puerta de transmisión, viva"
+    texto: "Los dos canales en paralelo, con las puertas en contrafase. Recorra la señal y abra y cierre el control."
+    libro: [173]
+    fijar: { V_gn: 5, R_in: 100000 }
+    inicio: { V_x: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: puerta-transmision
+      piezas: { vdd: V_gn, entrada: V_x, carga: R_in, kn: k_n, vtn: Vth_n, kp: k_n, vtp: Vth_n, ctrl: on_t }
+      lectura: { valor: Ron_t, rotulo: "R_{on}" }
+      datos:
+        - { valor: Vo_t, rotulo: "Al convertidor: {{Vo_t}}" }
+      corriente: I_t
+      mide: { vout: Vo_t, corriente: I_t }
+      mandos:
+        - { valor: V_x, min: 0.5, max: 4.5, paso: 0.25, rotulo: "Nivel de la señal" }
+        - { valor: on_t, tipo: interruptor, rotulo: "Control" }
+    requiere: { mover: [V_x, on_t] }
+
+  - id: estime-inyeccion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Inyección de carga"
+    texto: "Al conmutar, el interruptor transfiere 10 pC a un condensador de muestreo de 100 pF. ¿Qué escalón produce?"
+    libro: [175]
+    estimar:
+      objetivo: "V_q"
+      unidad: V
+      min: 0
+      max: 0.3
+      paso: 0.005
+      inicio: 0.25
+      tol: 0.05
+      rotulo: "Escalón"
+    exito: "100 mV: enorme frente a un LSB de 12 bits. Se reduce con condensadores mayores o con un interruptor ficticio."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado: ΔV = Q/C." }
+      - { texto: "Se ha quedado corto: 10 pC entre 100 pF son una décima de voltio." }
+    escalera:
+      - "ΔV = Q/C."
+    solucion: "10 pC / 100 pF = 0,1 V."
+    comprobar:
+      - { V_q: 0.1 }
+
+  - id: errores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los errores de un interruptor"
+    texto: "Una cada error con su origen."
+    libro: [174, 175, 176]
+    emparejar:
+      - ["Error estático", "R_{on} en divisor con la entrada"]
+      - ["No linealidad y deriva", "R_{on} cambia con la señal y la temperatura"]
+      - ["Establecimiento", "La capacidad siguiente se carga a través de R_{on}"]
+      - ["Pedestal", "La carga que inyecta la puerta al conmutar"]
+      - ["Diafonía", "La capacidad parásita del interruptor abierto"]
+    exito: "Con fuentes de alta impedancia, la R de la fuente domina sobre R_{on} y el tiempo se dispara."
+    pistas:
+      - { texto: "Un interruptor abierto no es infinito: a 10 MHz deja pasar señal." }
+    escalera:
+      - "Dos de los errores son de R_{on}; otros dos, de capacidades."
+    solucion: "Estático–divisor, deriva–R_{on} variable, establecimiento–carga, pedestal–inyección, diafonía–capacidad."
+
+  - id: fuera-alimentacion
+    tipo: pregunta
+    titulo: "Fuera de la alimentación"
+    texto: "Un sensor sigue alimentado mientras el multiplexor está apagado. ¿Qué riesgo hay?"
+    libro: [177]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 5, unidad: V, rotulo: "V_{señal}" }
+      y: { min: 0, max: 200, unidad: Ω, rotulo: "R_{on}" }
+      curvas:
+        - { expr: "min(200, 1/max(0.0001, 0.01*max(0, 4 - vx) + s_p*0.01*max(0, vx - 1)))", color: azul, rotulo: "interruptor" }
+    opciones:
+      - texto: "Los diodos de protección conducen: distorsión y hasta latch-up"
+        bien: true
+        porque: "Se usan interruptores con protección de fallo o resistencias de limitación en serie."
+      - texto: "Ninguno: apagado, el interruptor está abierto"
+        porque: "Con la señal fuera de la alimentación, los diodos de protección conducen igualmente."
+      - texto: "Solo que la R_{on} sube"
+        porque: "El problema es la corriente inyectada al sustrato, que puede destruir el chip."
+    escalera:
+      - "Las señales deben quedar dentro de la alimentación del interruptor."
+    solucion: "Conducen los diodos de protección: error, distorsión o enclavamiento."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [170, 173, 174, 175]
+    ideas:
+      - { titulo: "R_{on}.", texto: "Forma un divisor con la entrada: 100 Ω sobre 1 MΩ, un 0,01 %." }
+      - { titulo: "Puerta de transmisión.", texto: "N y P en paralelo: R_{on} casi plana en todo el margen." }
+      - { titulo: "Inyección de carga.", texto: "ΔV = Q/C: 10 pC sobre 100 pF son 100 mV." }
+      - { titulo: "Dentro de la alimentación.", texto: "Fuera de ella conducen los diodos de protección." }

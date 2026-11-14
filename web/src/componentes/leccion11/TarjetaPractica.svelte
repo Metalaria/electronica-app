@@ -20,6 +20,10 @@
   import Estimar from './Estimar.svelte';
   import Ordenar from './Ordenar.svelte';
   import Emparejar from './Emparejar.svelte';
+  // 1.2 learning-by-doing steps and the hint ladder (motor12)
+  import Actividad12 from '../leccion12/Actividad12.svelte';
+  import Widget12 from '../leccion12/Widget12.svelte';
+  import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
 
   let {
@@ -46,7 +50,8 @@
   let respondida = false;
 
   const mc = $derived(compilarModelo(leccion.modelo));
-  const efectivos = $derived(valoresDeTarjeta(t, propios));
+  // (1.2: with the card's state, so an «averia» card's widget shows the faulty board)
+  const efectivos = $derived(valoresDeTarjeta(t, propios, e));
   const evaluados = $derived(mc.evaluar(efectivos));
   const boton = $derived(botonPrincipal(t, e, evaluados));
   const objetivo = $derived(t.estimar ? objetivoEstimar(mc, t.estimar, efectivos) : 0);
@@ -122,6 +127,8 @@
     <CircuitoLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} />
   {:else if t.widget?.tipo === 'grafica'}
     <GraficaLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} />
+  {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
+    <Widget12 {t} {e} {oculto} {prefijo} cambiar={cambiarEstado} />
   {/if}
 
   {#if t.nota}<p class="nota"><TextoVivo texto={t.nota} {valor} /></p>{/if}
@@ -144,6 +151,10 @@
   {:else if t.emparejar}
     <Emparejar parejas={t.emparejar.parejas} inicio={t.emparejar.inicio} puestas={e.puestas} bloqueado={e.resuelta} comprobado={e.comprobado} {valor} cambiar={(p) => cambiarEstado({ puestas: p, comprobado: false, bien: null })} />
   {/if}
+  {#if t.actividad}
+    <Actividad12 {leccion} {t} {e} valores={evaluados} {efectivos} {prefijo} {valor} cambiar={cambiarEstado} />
+  {/if}
+  <Escalera {t} {e} {valor} cambiar={cambiarEstado} />
 
   {#if aviso}
     <div class={`banner ${aviso.bien ? 'bien' : 'mal'}`} role="status" data-veredicto={aviso.bien ? 'bien' : 'mal'}>

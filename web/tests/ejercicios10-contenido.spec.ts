@@ -115,7 +115,8 @@ function respuestaMala(p: Pregunta): string {
 test('cada ejercicio y problema del libro tiene enunciado, comprobación o autoevaluación y desarrollo', () => {
   // (the book's own: the new exercises and the expansions' ones, «Aún no en el libro», have their own tests)
   const items = (Object.entries(ej.items) as [string, any][]).filter(([, it]) => !it.nuevo && !it.ampliacion);
-  expect(items.length).toBe(486);
+  // 486 in 1.0; 1.2 (book 4.1): 637, with the 1.1 expansions, the 30 new exercises of 4.0 and the 4.1 additions
+  expect(items.length).toBe(637);
   expect(ej.version).toBe(2);
   // every exercise block item and every problem of the parts is in ejercicios.json (none forgotten)
   const delLibro = new Set<string>();
@@ -152,7 +153,7 @@ test('cada ejercicio y problema del libro tiene enunciado, comprobación o autoe
     }
   }
   expect(sinAlgo).toEqual([]);
-  expect(auto + autoev).toBe(486);
+  expect(auto + autoev).toBe(637);
   expect(auto).toBeGreaterThanOrEqual(300);
 });
 
@@ -162,6 +163,9 @@ test('cada pregunta estructurada está bien formada, acepta su respuesta y recha
   for (const [label, it] of Object.entries(ej.items) as [string, any][]) {
     const ids = new Set<string>();
     for (const p of (it.preguntas ?? []) as Pregunta[]) {
+      // 1.2: the design questions (the 4.0 new exercises, now the book's) are checked by simulation in
+      // tests/ejnuevos11-unidad.spec.ts; this generic right/wrong encoding does not apply to them
+      if ((p as { tipo: string }).tipo === 'diseno') continue;
       n++;
       const donde = `${label}/${p.id}`;
       if (ids.has(p.id)) fallos.push(`${donde}: id repetido`);

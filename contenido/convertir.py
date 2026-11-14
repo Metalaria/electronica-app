@@ -18,10 +18,12 @@ BOXES = ('nota', 'importante', 'precaucion', 'ejemplo', 'comprobacion')
 PART_HEADS = ('capitulo', 'apendice', 'glosario', 'creditos', 'prelim')
 BLOCK_CALLS = set(BOXES) | set(PART_HEADS) | {
     'heading', 'figura', 'tabla', 'ec', 'formula', 'formula-texto', 'eclabel', 'deduccion', 'tarjeta', 'codigo',
-    'centrado', 'ejercicios', 'soluciones', 'ejercicio', 'solucion', 'cap-erratas', 'ap-erratas'}
+    'centrado', 'ejercicios', 'soluciones', 'ejercicio', 'solucion', 'cap-erratas', 'ap-erratas', 'cap-erratas4'}
 # statements the pipeline skips on purpose: imports, local style rules and the helper functions that
-# novedades.typ and apJ.typ define (caps, cap-erratas, ap-erratas are implemented natively here)
-KNOWN_CODE = {('import', None), ('set', None), ('let', 'caps'), ('let', 'cap-erratas'), ('let', 'ap-erratas')}
+# novedades.typ and apJ.typ define (caps, cap-erratas, ap-erratas and, since 4.0, cap-erratas4 are implemented
+# natively here)
+KNOWN_CODE = {('import', None), ('set', None), ('let', 'caps'), ('let', 'cap-erratas'), ('let', 'ap-erratas'),
+              ('let', 'cap-erratas4')}
 
 
 def esc(s):
@@ -421,6 +423,14 @@ class Parte:
         h = 'Capítulo ' + self.ref(key) + ' — ' + self.inline(self.content_arg(c, 1))
         if n >= 15:
             h += f' <span class="nota-ed">(capítulo {n} en la 2.3)</span>'
+        return [{'t': 'h4', 'html': h}]
+
+    def b_cap_erratas4(self, c):
+        # 4.0: «Capítulo N — title (M en la 3.0)», or «Apéndice X — title»; `antes` is none when the number did not change
+        key = c.pos[0].value
+        h = ('Apéndice ' if key.startswith('ap-') else 'Capítulo ') + self.ref(key) + ' — ' + self.inline(self.content_arg(c, 2))
+        if isinstance(c.pos[1], Content):
+            h += f' <span class="nota-ed">({strip_tags(self.inline(c.pos[1].children))} en la 3.0)</span>'
         return [{'t': 'h4', 'html': h}]
 
     def b_ap_erratas(self, c):

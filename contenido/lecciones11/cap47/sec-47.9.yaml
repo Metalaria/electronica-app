@@ -1,0 +1,279 @@
+# Lección 1.2 de la sección 48.11 «Refrigeración Activa: Ventiladores y Peltier» (cap47; etiqueta interna sec-47.9).
+# Formato: contenido/lecciones11/GUIA.md. Las curvas del punto de trabajo reproducen la figura 48.20: ventilador
+# p = 60·(1 − q²) Pa y sistema p = k·q² (k = 60 Pa con filtro, 18 Pa despejada), con q el caudal en fracción del
+# máximo: cortan en el 71 % y el 88 %, como la figura. El balance del Peltier (bloque 388): 20 W bombeados con 40 W
+# eléctricos, 60 W en la cara caliente; la gráfica dibuja Q_caliente = Q_frío·(1 + 1/COP) a partir de COP 0,6, sin
+# llegar al caso del libro (COP 0,5), para no dar la respuesta antes de tiempo.
+leccion: cap47/sec-47.9
+
+libro:
+  370: "por encima de unos 10 W en un espacio cerrado empieza a no bastar"
+  371: "por un factor de tres a cinco"
+  373: "a caudal máximo la presión es cero, y a presión máxima el caudal es cero"
+  374: "elegir por caudal solo"
+  375: "El caudal real sale de cruzar la curva del ventilador con la curva del sistema"
+  378: "el polvo solo entra por donde está el filtro"
+  379: "entra aire por todas las rendijas, sin filtrar"
+  380: "el camino del aire importa más que el caudal"
+  383: "típicamente 30 000 a 70 000 horas"
+  384: "a media velocidad el ventilador da la mitad de caudal y unos 15 dB menos de ruido"
+  387: "permite enfriar por debajo del ambiente, cosa que ningún disipador puede"
+  388: "bombear 20 W puede exigir 40 W eléctricos, y la cara caliente debe evacuar 60 W"
+  389: "un Peltier empeora el problema térmico global y solo lo resuelve localmente"
+  390: "estabilizar un láser o un cristal"
+  391: "la cara fría condensa humedad"
+  393: "Disipador con ventilador"
+  395: "suele estar entre tres y cinco"
+  396: "Si sale casi frío, el aire no está pasando por donde debe"
+  397: "Punto de trabajo de un ventilador"
+
+modelo:
+  valores:
+    k_s: { sim: "k", nombre: "resistencia de la caja", unidad: "", valor: 18 }
+    Q_f: { sim: "Q_{frío}", nombre: "calor bombeado", unidad: W, valor: 20 }
+    P_e: { sim: "P_{eléctrica}", nombre: "potencia eléctrica", unidad: W, valor: 40 }
+  calculos:
+    q_op: { expr: "100*sqrt(60/(60 + k_s))", sim: "caudal", nombre: "caudal real", unidad: "%", cifras: 2 }
+    p_op: { expr: "k_s*(q_op/100)^2", sim: "p", nombre: "presión de trabajo", unidad: "", cifras: 2 }
+    Q_c: { expr: "Q_f + P_e", sim: "Q_{caliente}", nombre: "calor de la cara caliente", unidad: W }
+    COP: { expr: "Q_f/P_e", sim: "COP", nombre: "coeficiente de rendimiento", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-punto
+    tipo: explorar
+    titulo: "El punto de trabajo"
+    texto: "El caudal real sale de cruzar la curva del ventilador con la de la caja. Ponga un filtro y mire el caudal."
+    libro: [373, 375, 397]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0, max: 100, unidad: "%", rotulo: "caudal, del máximo" }
+      y: { min: 0, max: 65, unidad: "", rotulo: "presión estática (Pa)" }
+      curvas:
+        - { expr: "60*(1 - (q/100)^2)", color: azul, rotulo: "ventilador" }
+        - { expr: "k_s*(q/100)^2", color: naranja, rotulo: "caja" }
+      marcas:
+        - { x: "q_op", y: "p_op", rotulo: "{{q_op}}" }
+      lectura: { valor: q_op, rotulo: "Caudal real" }
+      mandos:
+        - { valor: k_s, lista: [18, 60], nombres: [despejada, con filtro], rotulo: "Caja" }
+    requiere: { mover: [k_s] }
+    comprobar:
+      - { con: { k_s: 18 }, q_op: 88 }
+      - { con: { k_s: 60 }, q_op: 71 }
+
+  - id: prediga-caudal
+    tipo: predecir
+    titulo: "Elegir por caudal"
+    texto: "Un ventilador de gran caudal y poca presión estática, en una caja con rejillas estrechas y filtros. ¿Qué entrega?"
+    libro: [374, 375]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0, max: 100, unidad: "%", rotulo: "caudal, del máximo" }
+      y: { min: 0, max: 65, unidad: "", rotulo: "presión estática (Pa)" }
+      curvas:
+        - { expr: "60*(1 - (q/100)^2)", color: azul, rotulo: "ventilador" }
+    opciones:
+      - texto: "Una fracción de lo que promete"
+        bien: true
+        porque: "Su presión no vence la resistencia de la caja: el punto de trabajo cae lejos del caudal máximo."
+      - texto: "Su caudal nominal"
+        porque: "El nominal es con presión cero: una caja con filtros pide presión."
+      - texto: "Más de lo que promete"
+        porque: "La caja solo puede restar caudal: el ventilador nunca da más que su máximo."
+    escalera:
+      - "¿Cuánta presión hay a caudal máximo?"
+    solucion: "Una fracción: hay que cruzar la curva del ventilador con la de la caja."
+
+  - id: empujar-extraer
+    tipo: pregunta
+    titulo: "Empujar o extraer"
+    texto: "Empareje cada configuración o tipo con su consecuencia."
+    libro: [375, 378, 379]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    emparejar:
+      - ["Presión positiva, empuja", "El polvo solo entra por el filtro"]
+      - ["Presión negativa, extrae", "Entra aire sin filtrar por todas las rendijas"]
+      - ["Ventilador axial", "Mucho caudal y poca presión"]
+      - ["Ventilador radial", "Vence resistencia: más presión"]
+    exito: "Y en ambos casos, el camino del aire importa más que el caudal."
+    pistas:
+      - { texto: "Si dentro hay más presión, el aire sale por las rendijas en vez de entrar." }
+    escalera:
+      - "Empiece por la que deja el interior a más presión que fuera."
+    solucion: "Empujar, por el filtro; extraer, sin filtrar; axial, caudal; radial, presión."
+
+  - id: simule-peltier
+    tipo: simular
+    titulo: "El balance de un Peltier"
+    texto: "Una célula bombea 20 W desde la cara fría consumiendo 40 W eléctricos. ¿Cuánto debe evacuar la cara caliente?"
+    libro: [387, 388]
+    widget:
+      tipo: grafica
+      x: { id: c, min: 0.6, max: 3, unidad: "", rotulo: "COP" }
+      y: { min: 0, max: 70, unidad: W, rotulo: "calor de la cara caliente" }
+      curvas:
+        - { expr: "Q_f*(1 + 1/c)", color: naranja, rotulo: "con 20 W bombeados" }
+      lectura: { valor: Q_c, rotulo: "Cara caliente" }
+      ocultar: true
+    simular:
+      objetivo: Q_c
+      unidad: W
+      tol: 0.03
+      rotulo: "Calor de la cara caliente"
+      errores:
+        - { expr: "Q_f", texto: "Eso es solo lo bombeado. La cara caliente evacua además toda la potencia eléctrica." }
+        - { expr: "P_e", texto: "Eso es solo la potencia eléctrica. Se suma al calor bombeado." }
+        - { expr: "P_e - Q_f", texto: "No se restan: los dos calores acaban en la cara caliente." }
+    exito: "60 W: el calor bombeado más toda la potencia eléctrica."
+    escalera:
+      - "Por conservación de la energía: ¿qué entra en la célula?"
+    solucion: "20 + 40 = 60 W en la cara caliente."
+    comprobar:
+      - { Q_c: 60, COP: 0.5 }
+
+  - id: empeora
+    tipo: porque
+    titulo: "Empeora el problema global"
+    texto: "Un Peltier resuelve el calor localmente. ¿Por qué el conjunto puede acabar peor que sin él?"
+    libro: [389]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: peltier, rotulo: "La célula y sus caras", rect: [270, 15, 170, 160] }
+    opciones:
+      - texto: "Si el disipador de la cara caliente no basta, el salto que mantiene se reduce"
+        bien: true
+        porque: "La cara caliente se calienta y arrastra a la fría. Hay que dimensionar ese disipador para todo."
+      - texto: "Porque la célula genera frío que se pierde"
+        porque: "No genera frío: bombea calor de una cara a otra, y añade el suyo."
+      - texto: "Porque la cara fría se calienta por la corriente"
+        porque: "La potencia eléctrica acaba en la cara caliente; el problema es evacuarla."
+    escalera:
+      - "¿Qué le pasa al salto térmico si la cara caliente sube?"
+    solucion: "Con un disipador insuficiente la cara caliente sube, el salto se reduce y el conjunto acaba peor."
+
+  - id: usos
+    tipo: pregunta
+    titulo: "Cuándo un Peltier"
+    texto: "¿Cuál es un uso legítimo de un Peltier?"
+    libro: [387, 390, 391]
+    widget:
+      tipo: figura
+      figura: fig-47.16
+      zonas:
+        - { id: celulas, rotulo: "Los dos módulos", rect: [0, 0, 1600, 559] }
+    opciones:
+      - texto: "Estabilizar un láser o un cristal por debajo del ambiente"
+        bien: true
+        porque: "Donde de verdad hay que bajar del ambiente, cosa que ningún disipador puede. Con su cara fría sellada contra la condensación."
+      - texto: "Refrigerar un regulador de 10 W"
+        porque: "Basta un disipador con convección o ventilador; el Peltier añadiría 20 W más que evacuar."
+      - texto: "Sustituir un ventilador para ahorrar energía"
+        porque: "Al revés: consume más de lo que bombea, con un COP típico menor que uno."
+    escalera:
+      - "¿Qué hace un Peltier que un disipador no puede?"
+    solucion: "Bajar del ambiente: un láser, un cristal, un sensor de imagen o una referencia."
+
+  - id: tabla-decision
+    tipo: pregunta
+    titulo: "La tabla de decisión"
+    texto: "Empareje cada potencia con su solución."
+    libro: [370, 393]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    emparejar:
+      - ["Menos de 1 W", "Encapsulado y placa"]
+      - ["De 1 a 10 W", "Disipador con convección natural"]
+      - ["De 10 a 100 W", "Disipador con ventilador"]
+      - ["Bajar del ambiente", "Peltier, con el disipador que exige"]
+    exito: "Por encima de 100 W, ventilación forzada bien encaminada, o líquido."
+    pistas:
+      - { texto: "Por encima de unos 10 W en un espacio cerrado, la convección natural no basta." }
+    escalera:
+      - "Cuanta más potencia, más hay que mover el aire."
+    solucion: "<1 W, placa; 1–10 W, natural; 10–100 W, ventilador; bajo el ambiente, Peltier."
+
+  - id: ruido
+    tipo: pregunta
+    titulo: "Media velocidad"
+    texto: "A media velocidad, ¿qué da un ventilador?"
+    libro: [384]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0, max: 100, unidad: "%", rotulo: "caudal, del máximo" }
+      y: { min: 0, max: 65, unidad: "", rotulo: "presión estática (Pa)" }
+      curvas:
+        - { expr: "60*(1 - (q/100)^2)", color: azul, rotulo: "ventilador" }
+    opciones:
+      - texto: "La mitad de caudal y unos 15 dB menos de ruido"
+        bien: true
+        porque: "El ruido baja mucho más deprisa que el caudal: de ahí el control PWM según temperatura."
+      - texto: "La mitad de caudal y la mitad de ruido"
+        porque: "El ruido crece muy deprisa con la velocidad: baja mucho más que a la mitad."
+      - texto: "El mismo caudal con menos ruido"
+        porque: "El caudal es proporcional a las revoluciones: a media velocidad, la mitad."
+    escalera:
+      - "El caudal es proporcional a las revoluciones; el ruido, no."
+    solucion: "La mitad de caudal y unos 15 dB menos de ruido."
+
+  - id: fallo-ventilador
+    tipo: pregunta
+    titulo: "Un componente mecánico"
+    texto: "El ventilador dura de 30 000 a 70 000 horas, menos en caliente. Si la seguridad depende de él, ¿qué hace falta?"
+    libro: [383]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    opciones:
+      - texto: "Detectar su parada con la salida de tacómetro, y actuar"
+        bien: true
+        porque: "Tiene vida limitada: el equipo debe enterarse de que se ha parado."
+      - texto: "Un ventilador de más caudal"
+        porque: "También se para algún día: hay que detectarlo."
+      - texto: "Nada: dura más que el equipo"
+        porque: "Es un componente mecánico con vida limitada, y menos en caliente."
+    escalera:
+      - "¿Cómo sabe el equipo que el ventilador sigue girando?"
+    solucion: "Vigilar el tacómetro y actuar si se para."
+
+  - id: aire-frio
+    tipo: pregunta
+    titulo: "El aire sale frío"
+    texto: "Mide el aire a la salida de la caja y sale casi frío. ¿Qué indica?"
+    libro: [380, 395, 396]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    opciones:
+      - texto: "Que el aire no pasa por los componentes calientes"
+        bien: true
+        porque: "El camino del aire importa más que el caudal: entrada, recorrido por lo caliente y salida."
+      - texto: "Que la refrigeración es excelente"
+        porque: "Si el aire no se calienta, no se ha llevado el calor: no pasa por donde debe."
+      - texto: "Que sobra ventilador"
+        porque: "El caudal puede ser mucho; el problema es el encaminamiento."
+    escalera:
+      - "Si el aire se llevara el calor, ¿cómo saldría?"
+    solucion: "Un problema de encaminamiento: el aire no pasa por donde debe."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [371, 375, 388, 389]
+    ideas:
+      - { titulo: "Ventilar.", texto: "Baja R_{sa} de tres a cinco veces; el caudal real, cruzando las dos curvas." }
+      - { titulo: "El camino.", texto: "Importa más que el caudal; y el ventilador, vigilado." }
+      - { titulo: "El Peltier.", texto: "La cara caliente evacua lo bombeado más lo eléctrico: 20 + 40 = 60 W." }
+      - { titulo: "Cuándo.", texto: "Solo para bajar del ambiente: un láser, un cristal, un sensor." }

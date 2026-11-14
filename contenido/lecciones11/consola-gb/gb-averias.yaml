@@ -1,0 +1,195 @@
+# «Consolas por dentro» · Game Boy 7: averías típicas y reparación. Lo simple primero (libro, capítulo 55, e iFixit:
+# pilas, contactos corroídos, cartucho sucio), una consola que no enciende (contactos de las pilas, interruptor o
+# convertidor: búsqueda con el multímetro sobre la foto; los +5 V de VDD se miden en C1), las columnas muertas de la
+# pantalla y por qué las filas son más difíciles (nitro2k01) y las partidas que se pierden (la pila del cartucho,
+# ConsoleMods). Fuentes: los datos de la consola (gb#n), iFixit, el blog de nitro2k01, ConsoleMods y el libro.
+leccion: consola-gb/gb-averias
+
+libro:
+  "gb#11": "Conmutador doble de la alimentación"
+  "gb#12": "Entrada de 6 V externa: desconecta las pilas"
+  "gb#14": "Desacoplo general de la alimentación"
+  "gb#30": "Cable plano a la placa base. 21 vías"
+  "gb#35": "Cristal líquido monocromo de 4 tonos"
+  "gb#60": "la placa de alimentación saca +5 V"
+  "gb#92": "Las líneas verticales muertas vienen de la conexión del lado derecho de la pantalla"
+  "gb#93": "Se reparan pasando un soldador caliente por la unión entre el conector de plástico marrón"
+  "gb#94": "El último tramo de esa conexión es un plástico blanco endeble que el calor del soldador daña con facilidad"
+  "gb#95": "el autor aconseja no intentar repararlas"
+  "gb#96": "Los restos de corrosión en los contactos de las pilas impiden que llegue la corriente"
+  "gb#97": "hay que comprobar que el cartucho no tiene suciedad y que entra del todo"
+  "gb#98": "si la pila se agota o se desconecta, se pierden"
+  "gb#107": "Red VDD del esquema (alimentación): llega a C1"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap53#92": "conviene confirmarlos con el óhmetro"
+
+modelo:
+  valores:
+    V_o: { sim: "V_{DD}", nombre: "salida del convertidor", unidad: V, valor: 5 }
+    ct: { tipo: interruptor, nombre: "contactos de las pilas limpios", valor: 1 }
+    sw: { tipo: interruptor, nombre: "interruptor sano", valor: 1 }
+    dc: { tipo: interruptor, nombre: "convertidor sano", valor: 1 }
+  calculos:
+    R_ct: { si: ct, entonces: "0", sino: "1e9", sim: "R_{contacto}", nombre: "resistencia entre la pila y su contacto", unidad: Ω }
+    R_sw: { si: sw, entonces: "0", sino: "1e9", sim: "R_{SW1}", nombre: "resistencia del interruptor encendido, sin pilas", unidad: Ω }
+    V_dd: { expr: "V_o*ct*sw*dc", sim: "V_{DD}", nombre: "tensión en C1 (VDD)", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-simple
+    tipo: explorar
+    titulo: "Lo primero, lo simple"
+    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
+    libro: ["cap53#39", "gb#11", "gb#12", "gb#97"]
+    requiere: { mover: [sw, dc, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: sw, hotspot: sw, rotulo: "Interruptor", texto: "Por él pasa toda la corriente de las pilas." }
+        - { id: dc, hotspot: dc, rotulo: "Toma DC1", texto: "Al enchufar, desconecta las pilas." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Un cartucho sucio o mal metido no arranca." }
+
+  - id: ordene-antes
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de abrirla"
+    texto: "La consola no arranca. Ordene los pasos, de lo más simple a lo más difícil."
+    libro: ["gb#96", "gb#97", "cap53#39"]
+    ordenar:
+      - "Pilas nuevas y contactos limpios."
+      - "Cartucho limpio y metido del todo."
+      - "Abrir la consola y medir los 5 V."
+    exito: "Lo de fuera primero: pilas, contactos y cartucho."
+    pistas:
+      - { texto: "Abrir es lo último: antes se cambia lo que se puede cambiar sin herramientas." }
+    escalera:
+      - "¿Qué se puede probar sin destornillador?"
+    solucion: "Pilas y contactos; después, el cartucho; por último, abrir y medir."
+
+  - id: averia-no-enciende
+    tipo: averia
+    titulo: "No enciende"
+    texto: "Con pilas nuevas, la consola no enciende. Mida y señale la pieza: los contactos, el interruptor o el convertidor."
+    libro: ["gb#96", "gb#11", "gb#60", "gb#107", "gb#14", "cap53#92"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: sw, hotspot: sw, rotulo: "Interruptor SW1" }
+        - { id: c1, hotspot: c1, rotulo: "C1 (VDD)" }
+    averia:
+      pasos: 3
+      eleccion: fija
+      sospechosos:
+        - { id: contactos, rotulo: "Contactos de las pilas" }
+        - { id: interruptor, rotulo: "Interruptor SW1" }
+        - { id: convertidor, rotulo: "Placa DC-DC" }
+      sondas:
+        - { id: contacto, rotulo: "Contacto de las pilas, resistencia", valor: R_ct }
+        - { id: sw1, rotulo: "Interruptor encendido, sin pilas", valor: R_sw }
+        - { id: vdd, rotulo: "VDD en C1", valor: V_dd }
+      fallos:
+        - { id: contacto-corroido, pieza: contactos, tipo: abierta, con: { ct: 0 }, texto: "La corrosión del contacto no deja pasar la corriente: hay que rascarla." }
+        - { id: sw-abierto, pieza: interruptor, tipo: abierta, con: { sw: 0 }, texto: "El interruptor no cierra: las pilas no llegan a VCC." }
+        - { id: dc-muerto, pieza: convertidor, tipo: abierta, con: { dc: 0 }, texto: "Contactos e interruptor bien, pero sin +5 V: el fallo está en la placa DC-DC." }
+    exito: "Medir a lo largo del camino separa el contacto, el interruptor y el convertidor."
+    escalera:
+      - "Empiece por los contactos: la corrosión corta la corriente."
+      - "Si el contacto y el interruptor cierran pero C1 no tiene 5 V, queda el convertidor."
+    solucion: "Contacto abierto: corrosión. Interruptor abierto: SW1. Los dos bien y VDD a cero: la placa DC-DC."
+    comprobar:
+      - { R_ct: 0, R_sw: 0, V_dd: 5 }
+
+  - id: prediga-columnas
+    tipo: predecir
+    titulo: "Columnas muertas"
+    texto: "Faltan columnas: líneas verticales que no se encienden. ¿Dónde está el fallo?"
+    libro: ["gb#92", "gb#35", "gb#30"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb, foto: lcd-f }
+      zonas:
+        - { id: lcd, hotspot: f-lcd, rotulo: "Pantalla" }
+    opciones:
+      - texto: "En la conexión del lado derecho de la pantalla, sobre el cristal."
+        bien: true
+        porque: "nitro2k01 sitúa ahí las líneas verticales muertas: es una unión pegada al cristal."
+      - texto: "En el SoC, que ya no dibuja esas columnas."
+        porque: "El SoC manda la imagen entera; las columnas se pierden en la unión con el cristal."
+      - texto: "En el cable plano de 21 vías."
+        porque: "Ese cable une las dos placas; las columnas sueltas vienen de la conexión del propio panel."
+    escalera:
+      - "Las columnas van a un lado del panel; las filas, a otro."
+    solucion: "La conexión del lado derecho del panel."
+
+  - id: por-que-soldador
+    tipo: porque
+    titulo: "Con cuidado"
+    texto: "Las columnas se arreglan pasando un soldador caliente por esa unión. ¿Por qué con mucho cuidado?"
+    libro: ["gb#93", "gb#94"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb, foto: lcd-f }
+      zonas:
+        - { id: lcd, hotspot: f-lcd, rotulo: "Pantalla" }
+    opciones:
+      - texto: "El último tramo es un plástico blanco que el calor daña con facilidad."
+        bien: true
+        porque: "Se busca volver a fundir lo que une el conector al cristal, sin quemar ese plástico."
+      - texto: "Porque el cristal se funde."
+        porque: "Lo que se funde es la unión; lo frágil es el plástico blanco del último tramo."
+      - texto: "Por la alta tensión de la pantalla."
+        porque: "El riesgo que avisa la fuente es el calor sobre el plástico, no una descarga."
+    escalera:
+      - "¿Qué parte de la unión es la más delicada?"
+    solucion: "El plástico blanco del último tramo se daña con el calor."
+
+  - id: prediga-filas
+    tipo: predecir
+    titulo: "¿Y las filas?"
+    texto: "Ahora son líneas horizontales. ¿Se arreglan igual?"
+    libro: ["gb#95", "gb#92"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb, foto: lcd-f }
+      zonas:
+        - { id: lcd, hotspot: f-lcd, rotulo: "Pantalla" }
+    opciones:
+      - texto: "Es más difícil: su cinta se une por debajo del cristal."
+        bien: true
+        porque: "La posición es más incómoda, y el autor aconseja no intentarlo."
+      - texto: "Sí, igual de fácil."
+        porque: "La conexión de las filas está por debajo del cristal, mucho peor colocada."
+      - texto: "No tienen arreglo porque fallan los drivers."
+        porque: "La fuente no culpa a los drivers: el problema es dónde está la unión."
+    escalera:
+      - "¿En qué lado del cristal está la conexión de las filas?"
+    solucion: "Más difícil: la unión está por debajo del cristal."
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada síntoma, su sospechoso"
+    texto: "Empareje cada síntoma con lo que señalan las fuentes."
+    libro: ["gb#96", "gb#92", "gb#97", "gb#98"]
+    emparejar:
+      - ["No enciende con pilas nuevas", "Contactos corroídos"]
+      - ["Columnas muertas", "La unión del panel"]
+      - ["El juego no arranca", "Cartucho sucio o mal metido"]
+      - ["Se pierden las partidas", "La pila del cartucho"]
+    exito: "Cada síntoma señala una zona: alimentación, pantalla o cartucho."
+    pistas:
+      - { texto: "Las partidas se guardan en una RAM mantenida por una pila." }
+    escalera:
+      - "Repase las tarjetas anteriores: cada fallo tiene su sitio."
+    solucion: "Contactos, unión del panel, cartucho y pila del cartucho."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap53#39", "gb#96", "gb#92", "gb#98"]
+    ideas:
+      - { titulo: "Lo simple.", texto: "Pilas, contactos y cartucho, antes de abrir." }
+      - { titulo: "El camino.", texto: "Contacto, interruptor y convertidor: la medida dice dónde se corta." }
+      - { titulo: "La pantalla.", texto: "Las columnas se arreglan con calor y cuidado; las filas, mejor no." }
+      - { titulo: "Las partidas.", texto: "Viven de la pila del cartucho." }

@@ -1,0 +1,249 @@
+# Lección 1.2 de la sección 45.1 «Serie o Paralelo, Síncrono o Asíncrono» (cap44; etiqueta interna sec-44.1).
+# Formato: contenido/lecciones11/GUIA.md (§11). La figura 45.1 (w_441.svg, svg_vista 453,6 × 226,8) es la tabla de
+# las cuatro decisiones; sus filas son las zonas. El reloj compartido se ve en un registro D vivo: el emisor pone el
+# dato y el receptor lo lee en cada flanco de subida (bloque 9).
+leccion: cap44/sec-44.1
+
+libro:
+  5: "Paralelo: varios bits a la vez por líneas distintas."
+  6: "Serie: un bit tras otro."
+  7: "hoy prácticamente todo lo rápido es serie"
+  9: "Síncrono: hay una línea de reloj que marca cuándo leer cada bit."
+  10: "menos del 2 % de error total entre los dos extremos, con un límite teórico de alrededor del 5 %"
+  11: "codificación autosincronizada, donde el reloj va embebido en las transiciones de los propios datos"
+  13: "Un maestro: uno gobierna y los demás responden."
+  14: "Varios maestros: cualquiera puede iniciar, y hace falta resolver las colisiones."
+  16: "Simple y limitado a distancias cortas y entornos limpios."
+  17: "Diferencial: la señal es la diferencia entre dos conductores"
+  21: "Un enlace símplex transmite en un solo sentido, como un receptor GPS que solo emite sus frases."
+  25: "escribir un byte en un registro cuesta 27 ciclos de reloj"
+  27: "SPI si sobran pines y hace falta velocidad; I²C si escasean los pines y hay muchos dispositivos lentos."
+  28: "Entre placas del mismo equipo: UART con protocolo"
+  29: "Entre equipos o en entorno ruidoso: CAN o RS-485."
+  30: "Con un ordenador: USB"
+  32: "nivel físico con el osciloscopio"
+  33: "la mayoría de los problemas de bus son de nivel físico, no de protocolo"
+  34: "Clasificación de los buses según las cuatro decisiones de diseño."
+
+modelo:
+  valores:
+    n_campos: { sim: "n", nombre: "bytes de la escritura (dirección, registro y dato)", valor: 3 }
+  calculos:
+    ciclos_i2c: { expr: "n_campos*(8 + 1)", sim: "ciclos", nombre: "ciclos de reloj de la escritura", cifras: 2 }
+
+tarjetas:
+  - id: explore-mapa
+    tipo: explorar
+    titulo: "Cuatro decisiones"
+    texto: "Todo bus se clasifica con cuatro preguntas: serie o paralelo, con reloj o sin él, uno o varios maestros, referido a masa o diferencial. Toque las filas."
+    libro: [34, 9, 13, 14, 16]
+    widget:
+      tipo: figura
+      figura: fig-44.1
+      zonas:
+        - { id: serie, rotulo: "Columna «¿Serie o paralelo?»", rect: [76, 0, 49, 192], texto: "Todos los de la tabla son serie." }
+        - { id: reloj, rotulo: "Columna «¿Síncrono o asíncrono?»", rect: [126, 0, 86, 192], texto: "Con reloj (SPI, I²C), sin él (UART) o con el reloj en los datos (CAN, USB, Ethernet)." }
+        - { id: maestros, rotulo: "Columna «¿Uno o varios maestros?»", rect: [214, 0, 72, 192], texto: "Uno gobierna (SPI, USB) o cualquiera inicia y hay que resolver colisiones (I²C, CAN)." }
+        - { id: masa, rotulo: "Columna «¿Referido a masa o diferencial?»", rect: [288, 0, 74, 192], texto: "Referido: distancias cortas y entornos limpios. Diferencial: metros de cable o ruido." }
+    requiere: { mover: [reloj, masa] }
+
+  - id: empareje-decisiones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada elección, su rasgo"
+    texto: "Una cada elección con lo que la define."
+    libro: [5, 6, 9, 17]
+    emparejar:
+      - ["Paralelo", "Varios bits a la vez por líneas distintas"]
+      - ["Serie", "Un bit tras otro, sin skew entre datos"]
+      - ["Síncrono", "Una línea de reloj marca cuándo leer"]
+      - ["Diferencial", "La señal es la diferencia entre dos conductores"]
+    exito: "Y la diferencial es obligatoria en cuanto hay metros de cable o ruido."
+    pistas:
+      - { texto: "El skew es que unas líneas de datos lleguen antes que otras: solo lo sufre quien tiene varias." }
+    escalera: ["¿Cuál de ellas necesita varias líneas de datos alineadas?"]
+    solucion: "Paralelo, varios bits a la vez; serie, uno tras otro; síncrono, con reloj; diferencial, dos conductores."
+
+  - id: porque-serie
+    tipo: porque
+    titulo: "El vuelco histórico"
+    texto: "Durante décadas el paralelo fue sinónimo de velocidad. ¿Por qué hoy casi todo lo rápido es serie?"
+    libro: [5, 7]
+    widget:
+      tipo: figura
+      figura: fig-44.1
+      zonas:
+        - { id: serie, rotulo: "Columna «¿Serie o paralelo?»", rect: [76, 0, 49, 192], texto: "Todos serie." }
+    opciones:
+      - { texto: "Es más fácil llevar una línea a diez gigabits que dieciséis alineadas a mil", bien: true, porque: "El paralelo arrastra skew entre líneas, diafonía y rebote de masa por conmutar a la vez." }
+      - { texto: "Porque el serie transmite más bits por ciclo", porque: "Al revés: el paralelo lleva más bits por ciclo; el serie necesita más velocidad por línea." }
+      - { texto: "Porque el paralelo no admite reloj", porque: "Puede llevarlo; su problema es mantener alineadas muchas líneas." }
+    escalera: ["¿Qué les pasa a dieciséis líneas que deben llegar a la vez?"]
+    solucion: "Una línea rápida es más fácil que dieciséis alineadas: el paralelo sufre skew, diafonía y rebote de masa."
+
+  - id: explore-sincrono
+    tipo: explorar
+    titulo: "Con reloj"
+    texto: "Síncrono: el emisor da el dato D y el reloj; el receptor lee D en cada flanco de subida. Mueva el cursor."
+    libro: [9]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }, D]
+      piezas:
+        - { id: rx, tipo: d, entradas: [D, CLK], rotulo: "Receptor" }
+      salidas:
+        - { id: Q, de: rx.q }
+      cronograma: { ciclos: 8, estimulo: { D: "10110010" }, senales: [CLK, D, Q] }
+    nota: "Comparten el reloj: no hace falta que los de los extremos coincidan."
+
+  - id: pregunta-asincrono
+    tipo: pregunta
+    titulo: "Sin línea de reloj"
+    texto: "Una UART no tiene reloj compartido: cada extremo usa el suyo. ¿Qué exige eso?"
+    libro: [10]
+    widget:
+      tipo: figura
+      figura: fig-44.1
+      zonas:
+        - { id: reloj, rotulo: "Columna «¿Síncrono o asíncrono?»", rect: [126, 0, 86, 192], texto: "La UART, la única asíncrona." }
+    opciones:
+      - { texto: "Que los dos relojes coincidan: en la práctica, menos del 2 % de error total", bien: true, porque: "El límite teórico ronda el 5 %; el 2 % deja margen." }
+      - { texto: "Nada: el bit de inicio lo arregla todo", porque: "El inicio marca la referencia, pero desde ahí cada extremo cuenta con su reloj: deben coincidir." }
+      - { texto: "Que haya un maestro que reparta el reloj", porque: "Eso sería síncrono; el asíncrono ahorra precisamente esa línea." }
+    escalera: ["Si no hay reloj común, ¿con qué cuenta cada extremo los bits?"]
+    solucion: "Que ambos relojes coincidan: menos del 2 % de error en la práctica, con un límite teórico de alrededor del 5 %."
+
+  - id: porque-autosincronizado
+    tipo: porque
+    titulo: "La tercera vía"
+    texto: "Ethernet, USB y CAN van rápido sin línea de reloj. ¿Cómo lo consiguen?"
+    libro: [11]
+    widget:
+      tipo: figura
+      figura: fig-44.1
+      zonas:
+        - { id: reloj, rotulo: "Columna «¿Síncrono o asíncrono?»", rect: [126, 0, 86, 192], texto: "CAN, USB y Ethernet: autosincronizados." }
+    opciones:
+      - { texto: "El reloj va en las transiciones de los datos y el receptor lo recupera", bien: true, porque: "Con un PLL o, como CAN, resincronizando en cada flanco; el relleno de bits garantiza flancos." }
+      - { texto: "Tienen relojes perfectos en los dos extremos", porque: "Ningún reloj es perfecto: recuperan el del emisor de los propios datos." }
+      - { texto: "Envían el reloj por los hilos de alimentación", porque: "No hay línea de reloj de ningún tipo: va embebido en los datos." }
+    escalera: ["¿Qué tienen los datos que puede servir para recuperar el reloj?"]
+    solucion: "Codificación autosincronizada: el receptor recupera el reloj de las transiciones de los datos."
+
+  - id: empareje-sentido
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El sentido de la comunicación"
+    texto: "Una cada modo con su ejemplo."
+    libro: [21]
+    emparejar:
+      - ["Símplex", "Un receptor GPS que solo emite sus frases"]
+      - ["Semidúplex", "I²C, CAN o RS-485 a dos hilos: por turnos"]
+      - ["Dúplex completo", "UART con TX y RX, o SPI con MOSI y MISO"]
+    exito: "El semidúplex exige decidir quién habla y que el emisor suelte la línea a tiempo."
+    pistas:
+      - { texto: "Dúplex completo necesita un camino para cada sentido." }
+    escalera: ["¿Cuáles tienen un hilo para cada sentido?"]
+    solucion: "Símplex, el GPS; semidúplex, I²C, CAN o RS-485 a dos hilos; dúplex completo, UART y SPI."
+
+  - id: estime-ciclos
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El caudal útil"
+    texto: "Escribir un byte en un registro de un sensor I²C envía dirección, registro y dato, cada uno con su ACK. ¿Cuántos ciclos de reloj, sin inicio ni parada?"
+    libro: [25]
+    fijar: { n_campos: 3 }
+    estimar:
+      objetivo: "ciclos_i2c"
+      min: 0
+      max: 60
+      paso: 1
+      inicio: 12
+      tol: 0.02
+      rotulo: "Ciclos de reloj"
+    exito: "27 ciclos para 8 bits útiles: en transferencias cortas el caudal útil ronda la mitad de la nominal, o menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 27.5 }, texto: "Demasiados: son tres bytes de 8 bits y cada uno lleva un solo ACK." }
+      - { texto: "Faltan: cuente tres bytes, cada uno de 8 bits más su ACK." }
+    escalera: ["Cada byte de I²C cuesta 9 ciclos: 8 bits y el ACK."]
+    solucion: "Tres bytes de 9 ciclos: 27 ciclos de reloj para 8 bits útiles."
+    comprobar:
+      - { ciclos_i2c: 27 }
+
+  - id: empareje-eleccion
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El criterio de elección"
+    texto: "Una cada situación con el bus que el libro recomienda."
+    libro: [27, 28, 29, 30]
+    emparejar:
+      - ["En la placa, sobran pines y hace falta velocidad", "SPI"]
+      - ["En la placa, pocos pines y muchos dispositivos lentos", "I²C"]
+      - ["Entre placas del mismo equipo", "UART con protocolo"]
+      - ["Entre equipos o en entorno ruidoso", "CAN o RS-485"]
+      - ["Con un ordenador", "USB"]
+    exito: "Un criterio en una línea por situación; las secciones siguientes dan el detalle de cada bus."
+    pistas:
+      - { texto: "Dentro de la placa compiten SPI e I²C: uno gasta pines, el otro es lento." }
+    escalera: ["Empiece por lo fácil: con un ordenador, USB; con ruido entre equipos, uno diferencial."]
+    solucion: "SPI, velocidad con pines; I²C, pocos pines; UART, entre placas; CAN o RS-485, con ruido; USB, con un ordenador."
+
+  - id: prediga-diferencial
+    tipo: predecir
+    titulo: "Metros de cable y ruido"
+    texto: "Dos equipos de una nave con motores se unen con varios metros de cable. ¿Qué señal hace falta?"
+    libro: [16, 17]
+    widget:
+      tipo: figura
+      figura: fig-44.1
+      zonas:
+        - { id: masa, rotulo: "Columna «¿Referido a masa o diferencial?»", rect: [288, 0, 74, 192], texto: "Referido o diferencial." }
+    opciones:
+      - { texto: "Diferencial", bien: true, porque: "Es obligatoria en cuanto hay metros de cable o ruido: la señal es la diferencia entre dos conductores." }
+      - { texto: "Referida a masa, con más tensión", porque: "Referida a masa se limita a distancias cortas y entornos limpios." }
+      - { texto: "Paralelo, para ir más despacio", porque: "Serie o paralelo es otra decisión; el ruido se combate con la señal diferencial." }
+    escalera: ["¿Qué señal se mide respecto a la masa común y cuál entre dos conductores?"]
+    solucion: "Diferencial: obligatoria con metros de cable o ruido."
+
+  - id: ordene-diagnostico
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Diagnosticar cualquier bus"
+    texto: "Ordene los pasos del diagnóstico."
+    libro: [32]
+    ordenar:
+      - "Nivel físico con el osciloscopio: señal, amplitud y flancos."
+      - "Temporización: ¿la velocidad es la configurada?"
+      - "Contenido con el analizador lógico, que decodifica el protocolo."
+    exito: "El analizador lógico ahorra contar bits, pero solo después de ver que hay señal."
+    pistas:
+      - { texto: "Antes de leer el contenido hay que saber que la señal existe." }
+    escalera: ["Empiece por lo que se ve con el osciloscopio."]
+    solucion: "Nivel físico, temporización y, al final, el contenido con el analizador lógico."
+
+  - id: pregunta-nivel-fisico
+    tipo: pregunta
+    titulo: "Dónde está el fallo"
+    texto: "Un bus no funciona. ¿Dónde está, casi siempre, el problema?"
+    libro: [33]
+    widget:
+      tipo: figura
+      figura: fig-44.1
+      zonas:
+        - { id: masa, rotulo: "Columna «¿Referido a masa o diferencial?»", rect: [288, 0, 74, 192], texto: "Parte de la capa física." }
+    opciones:
+      - { texto: "En el nivel físico", bien: true, porque: "Pull-ups mal dimensionados, terminación ausente, niveles incompatibles o masas distintas explican más fallos que el software." }
+      - { texto: "En el protocolo", porque: "Los errores de protocolo existen, pero son menos que los físicos." }
+      - { texto: "En el analizador lógico", porque: "El analizador decodifica; si el nivel físico falla, decodifica basura." }
+    escalera: ["Piense en pull-ups, terminaciones, niveles y masas."]
+    solucion: "En el nivel físico, no en el protocolo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [7, 10, 11, 33]
+    ideas:
+      - { titulo: "Cuatro decisiones.", texto: "Serie o paralelo, reloj o no, uno o varios maestros, masa o diferencial." }
+      - { titulo: "Serie.", texto: "Hoy casi todo lo rápido es serie: sin skew entre líneas." }
+      - { titulo: "Relojes.", texto: "Asíncrono: menos del 2 % de error; autosincronizado: el reloj va en los datos." }
+      - { titulo: "Diagnóstico.", texto: "La mayoría de los fallos son del nivel físico." }

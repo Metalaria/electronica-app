@@ -1,0 +1,305 @@
+# Lección 1.2 de la sección 30.11 «Criterios de Estabilidad: Routh-Hurwitz y Nyquist» (cap31, sec-new-31-estabilidad).
+# Formato: GUIA.md.
+# - El ejemplo del libro, K/((s + 1)(s + 3)(s + 10)): polinomio s³ + 14s² + 43s + 30 + K; la fila de s¹ de la tabla de
+#   Routh vale (14·43 − 30 − K)/14 y cambia de signo en K = 572; el polinomio auxiliar 14s² + 602 da ω = √43.
+# - El diagrama de Nyquist del libro (figura 30.22) con zonas: el corte con el semieje negativo, el cruce con la
+#   circunferencia unidad y la distancia mínima al −1.
+# Pasos prácticos: «simular» la ganancia crítica por Routh (572; errores: olvidar el 30 de a₀, dividir en vez de
+# restar) y «tocar» en la figura 30.22 el punto del margen de fase.
+# - 1.2 (motor12e): explore-nyquist-vivo dibuja la curva de Nyquist con ω como parámetro y `aspecto: igual`; con
+#   K = 572 pasa por el −1 y con 1000 lo rodea (dos raíces a la derecha, como Routh).
+leccion: cap31/sec-new-31-estabilidad
+
+libro:
+  377: "Una condición necesaria se ve a simple vista: ningún coeficiente nulo ni de signo distinto"
+  381: "El número de cambios de signo en la primera columna es el número de raíces en el semiplano derecho"
+  382: 'a_2 dot.op a_1 > a_0'
+  384: "polos en −1 y −3 y un tercero en −10 (el del sensor)"
+  385: 's^3 + 14 s^2 + 43 s + 30 + K = 0'
+  387: "La columna solo cambia en la fila de s¹"
+  388: "14·s² + 602 = 0, s = ±j6,56 rad/s: oscilación sostenida con periodo de 0,958 s"
+  392: "se sustituye por un ε"
+  393: "Lo que Routh no trata es el retardo"
+  396: 'Z = N + P'
+  397: "Con lazo abierto estable (P = 0): el lazo cerrado es estable si la curva no rodea el punto −1"
+  399: "Con K = 100, la curva corta el semieje negativo en −0,175 a 6,56 rad/s"
+  400: "Diagrama de Nyquist de 100/((s + 1)(s + 3)(s + 10))"
+  401: "Con 61,7° de margen la regla de la sección 30.9 predice menos de un 10 % de sobreimpulso, y la simulación da un 23 %"
+  403: "1,078/2,35 = 0,458 s"
+  405: "Si oscila con bastante menos, falta un polo"
+
+modelo:
+  valores:
+    K_r: { sim: "K", nombre: "ganancia del lazo", unidad: "", valor: 100 }
+    a_2: { sim: "a₂", nombre: "coeficiente de s²", unidad: "", valor: 14 }
+    a_1: { sim: "a₁", nombre: "coeficiente de s", unidad: "", valor: 43 }
+    a_0: { sim: "a₀", nombre: "término independiente sin K", unidad: "", valor: 30 }
+  calculos:
+    s_1: { expr: "(a_2*a_1 - a_0 - K_r)/a_2", sim: "s¹", nombre: "primera columna, fila de s¹", unidad: "" }
+    s_0: { expr: "a_0 + K_r", sim: "s⁰", nombre: "primera columna, fila de s⁰", unidad: "" }
+    n_c: { expr: "2*ceil((K_r - (a_2*a_1 - a_0))/1e9)", sim: "N", nombre: "cambios de signo", unidad: "" }
+    pr: { expr: "a_2*a_1", sim: "a₂·a₁", nombre: "producto de los coeficientes centrales", unidad: "" }
+    K_u: { expr: "a_2*a_1 - a_0", sim: "K_{u}", nombre: "ganancia crítica", unidad: "" }
+    K_e1: { expr: "a_2*a_1", sim: "K", nombre: "sin restar el 30", unidad: "" }
+    K_e2: { expr: "a_2*a_1/a_0", sim: "K", nombre: "dividiendo", unidad: "" }
+    w_u: { expr: "sqrt(a_1)", sim: "ω_{u}", nombre: "frecuencia de oscilación", unidad: "rad/s" }
+    T_u: { expr: "2*pi/sqrt(a_1)", sim: "T_{u}", nombre: "periodo de oscilación", unidad: s }
+    T_i: { expr: "1/sqrt(a_1)", sim: "1/ω", nombre: "inversa de la pulsación", unidad: s }
+    d_K: { expr: "a_2*a_1 - a_0 - K_r", sim: "ΔK", nombre: "diferencia de ganancias", unidad: "" }
+    M_g: { expr: "(a_2*a_1 - a_0)/K_r", sim: "MG", nombre: "margen de ganancia", unidad: "" }
+    M_gdb: { expr: "20*log10((a_2*a_1 - a_0)/K_r)", sim: "MG", nombre: "margen de ganancia en dB", unidad: dB }
+
+tarjetas:
+  - id: explore-routh
+    tipo: explorar
+    titulo: "La primera columna"
+    texto: "Polos en −1, −3 y −10. Suba K y mire la fila de s¹ de la tabla de Routh: cuando cambia de signo, hay raíces a la derecha."
+    libro: [381, 384, 385]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 1200, unidad: "", rotulo: "K" }
+      y: { min: -50, max: 50, unidad: "", rotulo: "fila de s¹" }
+      curvas:
+        - { expr: "(a_2*a_1 - a_0 - k)/a_2", color: naranja, rotulo: "primera columna, s¹" }
+        - { expr: "0", color: tinta, rotulo: "cero", discontinua: true }
+      marcas:
+        - { x: "K_r", y: "s_1", rotulo: "{{s_1}}" }
+      lectura: { valor: n_c, rotulo: "Raíces en el semiplano derecho" }
+      datos:
+        - { valor: s_0, rotulo: "Fila de s⁰: {{s_0}}" }
+      mandos:
+        - { valor: K_r, lista: [100, 560, 572, 1000], rotulo: "Ganancia, K" }
+    requiere: { mover: [K_r] }
+
+  - id: formula-tercer-grado
+    tipo: formula
+    titulo: "En tercer grado, de una vez"
+    texto: "Todos los coeficientes positivos y el producto de los centrales mayor que el último."
+    libro: [377, 382, 385]
+    ec: 382
+    sustitucion: "a₂·a₁ = 14 · 43 = {{pr}} frente a a₀ = 30 + K = {{s_0}}"
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 1200, unidad: "", rotulo: "K" }
+      y: { min: 0, max: 1300, unidad: "", rotulo: "coeficientes" }
+      curvas:
+        - { expr: "a_2*a_1", color: azul, rotulo: "a₂·a₁" }
+        - { expr: "a_0 + k", color: naranja, rotulo: "a₀ = 30 + K" }
+      marcas:
+        - { x: "K_r", y: "s_0", rotulo: "{{s_0}}" }
+      mandos:
+        - { valor: K_r, lista: [100, 560, 572, 1000], rotulo: "Ganancia, K" }
+    comprobar:
+      - { pr: 602 }
+
+  - id: simule-ku
+    tipo: simular
+    titulo: "La ganancia crítica, en el papel"
+    texto: "Con s³ + 14s² + 43s + 30 + K, ¿hasta qué K es estable el lazo?"
+    libro: [382, 385, 387, 405]
+    simular:
+      objetivo: K_u
+      unidad: ""
+      tol: 0.01
+      rotulo: "Ganancia crítica, K_{u}"
+      errores:
+        - { expr: "K_e1", texto: "Ha olvidado que a₀ es 30 + K: la condición es 30 + K < 602." }
+        - { expr: "K_e2", texto: "La condición no es un cociente: a₂·a₁ debe superar a a₀." }
+    exito: "0 < K < 572: los números que Ziegler-Nichols busca subiendo la ganancia, obtenidos en el papel."
+    escalera:
+      - "Estable si 14 × 43 > 30 + K."
+    solucion: "602 − 30 = 572."
+    comprobar:
+      - { K_u: 572, K_e1: 602, K_e2: 20.07, tol: 0.002 }
+
+  - id: periodo-critico
+    tipo: pregunta
+    titulo: "¿A qué frecuencia oscila?"
+    texto: "Con K = 572 la fila de s¹ se anula y la anterior da el polinomio auxiliar 14·s² + 602 = 0. ¿Qué periodo tiene la oscilación?"
+    libro: [388]
+    fijar: { K_r: 572 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación" }
+      curvas:
+        - { expr: "sin(w_u*t)", color: naranja, rotulo: "oscilación sostenida" }
+    opciones:
+      - texto: "0,958 s: s = ±j6,56 rad/s"
+        bien: true
+        porque: "Es T_{u}, el periodo que Ziegler-Nichols mide en la planta."
+      - texto: "6,56 s"
+        porque: "6,56 es la pulsación en rad/s; el periodo es 2π entre ella."
+      - texto: "0,15 s: la inversa de 6,56"
+        porque: "6,56 son radianes por segundo, no hercios: falta el 2π."
+    escalera:
+      - "s² = −602/14 = −43: ω = √43."
+    solucion: "ω = 6,56 rad/s y T_{u} = 2π/6,56 = 0,958 s."
+    comprobar:
+      - { w_u: 6.56, T_u: 0.958, tol: 0.003 }
+      - { T_i: 0.15, tol: 0.02 }
+
+  - id: margen-ganancia
+    tipo: pregunta
+    titulo: "El margen de una ganancia"
+    texto: "El lazo trabaja con K = 100. ¿Qué margen de ganancia tiene?"
+    libro: [387, 388]
+    fijar: { K_r: 100 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 1200, unidad: "", rotulo: "K" }
+      y: { min: -50, max: 50, unidad: "", rotulo: "fila de s¹" }
+      curvas:
+        - { expr: "(a_2*a_1 - a_0 - k)/a_2", color: naranja, rotulo: "primera columna, s¹" }
+      marcas:
+        - { x: "K_r", y: "s_1", rotulo: "K = 100" }
+    opciones:
+      - texto: "5,72, o 15,1 dB"
+        bien: true
+        porque: "572/100: la ganancia puede multiplicarse por 5,72 antes de oscilar; el Bode da lo mismo a 6,56 rad/s."
+      - texto: "472"
+        porque: "El margen de ganancia es un factor, no una diferencia."
+      - texto: "33,7, el valor de la fila de s¹"
+        porque: "Ese número solo dice que la columna es positiva, no cuánto margen queda."
+    escalera:
+      - "¿Por cuánto se puede multiplicar K = 100 antes de llegar a 572?"
+    solucion: "572/100 = 5,72, es decir, 15,1 dB."
+    comprobar:
+      - { M_g: 5.72, s_1: 33.7, d_K: 472, tol: 0.003 }
+      - { M_gdb: 15.1, tol: 0.005 }
+
+  - id: empareje-especiales
+    tipo: pregunta
+    titulo: "Casos especiales"
+    texto: "Empareje cada situación de la tabla con lo que se hace."
+    libro: [392, 393]
+    widget:
+      tipo: figura
+      figura: fig-new-31-routh
+      zonas:
+        - { id: todo, rotulo: "Lugar de las raíces y respuestas", rect: [0, 0, 451, 191] }
+    emparejar:
+      - ["Un cero en la primera columna", "Se sustituye por un ε > 0 pequeño"]
+      - ["Una fila entera de ceros", "La derivada del polinomio auxiliar"]
+      - ["Saber si la parte real pasa de −σ₀", "Cambiar s = z − σ₀"]
+      - ["Un retardo puro", "Routh no lo trata: no es un polinomio"]
+    exito: "Con el cambio de variable, la tabla acota el establecimiento sin calcular raíces."
+    pistas:
+      - { texto: "Una fila de ceros indica raíces simétricas respecto al origen." }
+    escalera:
+      - "El ε evita dividir por cero; el polinomio auxiliar da las raíces simétricas."
+    solucion: "ε; derivada del auxiliar; s = z − σ₀; el retardo, solo con Padé."
+
+  - id: explore-nyquist-vivo
+    tipo: explorar
+    titulo: "La curva crece con K"
+    texto: "La curva de Nyquist de K/((s + 1)(s + 3)(s + 10)). Suba K y mire cuándo la curva rodea el punto −1."
+    libro: [396, 397, 399, 400]
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: re, min: -2.5, max: 1, unidad: "", rotulo: "parte real" }
+      y: { min: -2, max: 2, unidad: "", rotulo: "parte imaginaria" }
+      curvas:
+        # L(jω) with ω = 10^u as the parameter (motor12e): (jω)³ + 14(jω)² + 43jω + 30 = (30 − 14ω²) + j(43ω − ω³)
+        - { param: { id: u, min: -1, max: 2, muestras: 600 }, x: "K_r*(a_0 - a_2*10^(2*u))/((a_0 - a_2*10^(2*u))^2 + (a_1*10^u - 10^(3*u))^2)", y: "-K_r*(a_1*10^u - 10^(3*u))/((a_0 - a_2*10^(2*u))^2 + (a_1*10^u - 10^(3*u))^2)", color: naranja, rotulo: "ω > 0" }
+        - { param: { id: u, min: -1, max: 2, muestras: 600 }, x: "K_r*(a_0 - a_2*10^(2*u))/((a_0 - a_2*10^(2*u))^2 + (a_1*10^u - 10^(3*u))^2)", y: "K_r*(a_1*10^u - 10^(3*u))/((a_0 - a_2*10^(2*u))^2 + (a_1*10^u - 10^(3*u))^2)", color: naranja, discontinua: true, rotulo: "ω < 0" }
+      marcas:
+        - { x: "-1", y: "0", rotulo: "−1" }
+      lectura: { valor: n_c, rotulo: "Raíces en el semiplano derecho" }
+      mandos:
+        - { valor: K_r, lista: [100, 572, 1000], rotulo: "Ganancia, K" }
+    requiere: { mover: [K_r] }
+
+  - id: explore-nyquist
+    tipo: explorar
+    titulo: "Los márgenes en la curva de Nyquist"
+    texto: "La curva de 100/((s + 1)(s + 3)(s + 10)). Toque cada punto marcado."
+    libro: [396, 397, 399, 400]
+    widget:
+      tipo: figura
+      figura: fig-new-31-nyquist
+      zonas:
+        - { id: menos-uno, rotulo: "La cruz roja", rect: [30, 53, 38, 36], texto: "El punto −1. Con lazo abierto estable, el lazo cerrado es estable si la curva no lo rodea." }
+        - { id: corte, rotulo: "Punto naranja", rect: [72, 52, 36, 36], texto: "Corte con el semieje negativo, en −0,175: la ganancia puede multiplicarse por 5,72 antes de llegar al −1." }
+        - { id: cruce, rotulo: "Punto verde", rect: [52, 92, 36, 36], texto: "Cruce con la circunferencia unidad: le faltan 61,7° de giro para llegar al −1, el margen de fase." }
+        - { id: distancia, rotulo: "Rótulo violeta", rect: [14, 100, 36, 36], texto: "La distancia mínima al −1, 0,640: M_{s} = 1,56." }
+    requiere: { mover: [corte, cruce, distancia] }
+
+  - id: toque-margen-fase
+    tipo: tocar
+    titulo: "Dónde se lee el margen de fase"
+    texto: "Toque el punto de la curva de la izquierda donde se lee el margen de fase."
+    libro: [399, 400]
+    widget:
+      tipo: figura
+      figura: fig-new-31-nyquist
+      zonas:
+        - { id: menos-uno, rotulo: "La cruz roja", rect: [30, 53, 38, 36] }
+        - { id: corte, rotulo: "Punto naranja", rect: [72, 52, 36, 36] }
+        - { id: cruce, rotulo: "Punto verde", rect: [52, 92, 36, 36] }
+        - { id: distancia, rotulo: "Rótulo violeta", rect: [14, 100, 36, 36] }
+    tocar:
+      bien: [cruce]
+      porque:
+        menos-uno: "Es el punto crítico, la referencia de todos los márgenes."
+        corte: "El corte con el semieje negativo da el margen de ganancia."
+        distancia: "La distancia mínima al −1 da M_{s}."
+    exito: "El cruce con la circunferencia unidad: ahí |L| = 1 y se mide cuánta fase falta hasta el −1."
+    escalera:
+      - "El margen de fase se mide donde la ganancia vale 1."
+    solucion: "El punto verde, sobre la circunferencia unidad."
+
+  - id: predecir-diagonal
+    tipo: predecir
+    titulo: "Un margen que engaña"
+    texto: "Ese lazo tiene 61,7° de margen de fase, y la regla predice menos de un 10 % de sobreimpulso. ¿Qué da la simulación?"
+    libro: [401]
+    widget:
+      tipo: figura
+      figura: fig-new-31-nyquist
+      zonas:
+        - { id: todo, rotulo: "Nyquist con y sin retardo", rect: [0, 0, 441, 193] }
+    opciones:
+      - texto: "Un 23 %: la curva se acerca al −1 en diagonal, y M_{s} = 1,56 lo avisa"
+        bien: true
+        porque: "La regla supone el lazo de referencia; este es de tipo 0. Hay que mirar los tres números."
+      - texto: "Menos de un 10 %, como dice la regla"
+        porque: "La regla vale para el segundo orden de referencia, no para este lazo."
+      - texto: "Oscila sin amortiguar"
+        porque: "Es estable, con margen; solo se pasa más de lo que dice la regla."
+    escalera:
+      - "¿Por dónde pasa la curva más cerca del −1: por el cruce o por otro sitio?"
+    solucion: "Un 23 %: M_{s} = 1,56, por encima de 1,4, lo avisaba."
+
+  - id: porque-nyquist
+    tipo: porque
+    titulo: "Lo que Nyquist resuelve"
+    texto: "¿Por qué el retardo puro se trata con Nyquist y no con Routh?"
+    libro: [393, 403]
+    widget:
+      tipo: figura
+      figura: fig-new-31-nyquist
+      zonas:
+        - { id: todo, rotulo: "Nyquist con y sin retardo", rect: [0, 0, 441, 193] }
+    opciones:
+      - texto: "e^{−sT} no es un polinomio; en Nyquist solo gira cada punto sin cambiar su módulo"
+        bien: true
+        porque: "Con 0,458 s el cruce llega al −1: el margen de retardo, 1,078/2,35."
+      - texto: "Porque el retardo cambia la ganancia del lazo"
+        porque: "No la cambia: solo resta fase."
+      - texto: "Porque Routh solo vale en segundo grado"
+        porque: "Vale en cualquier grado; lo que no admite es una función que no sea un polinomio."
+    escalera:
+      - "¿Qué hace e^{−jωT} con el módulo y con la fase?"
+    solucion: "El retardo no es un polinomio; en el plano complejo solo gira la curva."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [381, 382, 387, 388, 397, 401]
+    ideas:
+      - { titulo: "Routh.", texto: "Cambios de signo de la primera columna = raíces a la derecha." }
+      - { titulo: "Ganancia crítica.", texto: "572 y 0,958 s en el papel: K_{u} y T_{u} sin ensayo." }
+      - { titulo: "Nyquist.", texto: "Estable si la curva no rodea el −1; ahí se leen los márgenes." }
+      - { titulo: "Tres números.", texto: "Fase, ganancia y M_{s}: uno solo puede engañar." }

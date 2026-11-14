@@ -1,0 +1,299 @@
+# Lección 1.2 de la sección 12.1 «Bloques Funcionales en Circuitos Reales» (cap12). Formato: GUIA.md.
+# Los bloques se reconocen sobre esquemas del kit: la etapa en emisor común del libro (sección 6.5: 12 V, 47 kΩ,
+# 10 kΩ, 3,3 kΩ, 1 kΩ); un RC de entrada (1 kΩ y 159 nF, corte en 1 kHz, valores de ejemplo); un puente con su
+# condensador (17 V de pico, 1000 µF y 100 Ω, valores de ejemplo).
+# Paso práctico: «averia» por bisección. Cuatro resistencias iguales en serie (12 V, 1 kΩ cada una, de ejemplo)
+# hacen de cuatro bloques en cadena: se mide la salida de los bloques y se localiza el que está abierto.
+leccion: cap12/sec-12.1
+
+libro:
+  4: "reconocerlos es lo que convierte un esquema opaco en algo comprensible en minutos"
+  7: "Es siempre el primer bloque que hay que localizar"
+  9: "lo delata la bobina"
+  10: "dos condensadores pequeños a masa"
+  11: "uno por cada par de pines de alimentación de cada integrado"
+  12: "dos resistencias entre salida y entrada inversora"
+  13: "dos resistencias en la base formando divisor, una en el emisor, una en el colector"
+  14: "resistencias de pull-up en pares de líneas"
+  15: "diodos hacia los raíles, TVS, resistencia serie"
+  16: "casi siempre justo antes de un convertidor"
+  18: "Localizar los integrados"
+  20: "No lleva componentes ni valores"
+  23: "Barrera de aislamiento de red"
+  25: "el bloque cuya entrada es correcta y salida no lo es contiene el fallo"
+  26: "Con cinco bloques, tres medidas localizan el problema."
+  "cap06#452": "R₁ = 47 kΩ, R₂ = 10 kΩ, RE = 1 kΩ, RC = 3,3 kΩ"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    R_f: { sim: "R", nombre: "resistencia del filtro", unidad: Ω, valor: 1000 }
+    C_f: { sim: "C", nombre: "condensador del filtro", unidad: F, valor: 159.15e-9 }
+    V_rp: { sim: "V_{p}", nombre: "pico de la entrada", unidad: V, valor: 16.97 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.7 }
+    C_rf: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 1000e-6 }
+    R_rl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 100 }
+    V_s: { sim: "V", nombre: "alimentación de la cadena", unidad: V, valor: 12 }
+    R_s1: { sim: "B1", nombre: "primer bloque", unidad: Ω, valor: 1000 }
+    R_s2: { sim: "B2", nombre: "segundo bloque", unidad: Ω, valor: 1000 }
+    R_s3: { sim: "B3", nombre: "tercer bloque", unidad: Ω, valor: 1000 }
+    R_s4: { sim: "B4", nombre: "cuarto bloque", unidad: Ω, valor: 1000 }
+  calculos:
+    V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión Thévenin del divisor", unidad: V }
+    R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
+    I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{C}", nombre: "amplitud a la salida del filtro", unidad: V }
+    V_r2: { expr: "V_rp - 2*V_rd", sim: "V_{pico}", nombre: "pico de la salida", unidad: V }
+    T_red: { expr: "1/f_red", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau_r: { expr: "R_rl*C_rf", sim: "τ", nombre: "constante de descarga", unidad: s }
+    I_s: { expr: "V_s/(R_s1 + R_s2 + R_s3 + R_s4)", sim: "I", nombre: "corriente de la cadena", unidad: A }
+    V_n1: { expr: "V_s - I_s*R_s1", sim: "V₁", nombre: "salida del primer bloque", unidad: V }
+    V_n2: { expr: "V_n1 - I_s*R_s2", sim: "V₂", nombre: "salida del segundo bloque", unidad: V }
+    V_n3: { expr: "V_n2 - I_s*R_s3", sim: "V₃", nombre: "salida del tercer bloque", unidad: V }
+    V_b1: { expr: "I_s*R_s1", sim: "V_{B1}", nombre: "tensión en el primer bloque", unidad: V }
+    V_b2: { expr: "I_s*R_s2", sim: "V_{B2}", nombre: "tensión en el segundo bloque", unidad: V }
+    V_b3: { expr: "I_s*R_s3", sim: "V_{B3}", nombre: "tensión en el tercer bloque", unidad: V }
+    V_b4: { expr: "I_s*R_s4", sim: "V_{B4}", nombre: "tensión en el cuarto bloque", unidad: V }
+
+tarjetas:
+  - id: explore-polarizacion
+    tipo: explorar
+    titulo: "Un bloque, no cinco piezas"
+    texto: "Divisor en la base, una resistencia en el emisor y otra en el colector: una polarización de transistor. Cambie el ejemplar y mire la corriente."
+    libro: [4, 13, "cap06#452"]
+    inicio: { beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
+    requiere: { mover: [beta] }
+
+  - id: prediga-rc
+    tipo: predecir
+    titulo: "¿Qué bloque es?"
+    texto: "Una resistencia en serie y un condensador a masa, justo antes de la entrada de un convertidor. ¿Qué bloque es?"
+    nota: "Valores de ejemplo."
+    libro: [16]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: A_c, rotulo: "Amplitud a la salida" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Un filtro paso bajo antialiasing"
+        bien: true
+        porque: "Resistencia y condensador en una entrada analógica, casi siempre justo antes de un convertidor."
+      - texto: "Un oscilador de cristal"
+        porque: "El oscilador lleva un cristal y dos condensadores pequeños a masa, junto al micro."
+      - texto: "Un desacoplo"
+        porque: "El desacoplo va entre la alimentación y masa de un integrado; este RC está en el camino de la señal."
+    escalera:
+      - "Está en el camino de la señal, antes del convertidor."
+    solucion: "Un filtro paso bajo: el antialiasing de la entrada analógica."
+
+  - id: que-puente
+    tipo: pregunta
+    titulo: "Puente y condensador grande"
+    texto: "Tras el conector de entrada, un puente de diodos y un condensador grande. ¿Qué bloque es y cuándo se busca?"
+    nota: "Valores de ejemplo."
+    libro: [7]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: V_r2, rotulo: "Pico de la salida" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "La alimentación: el primer bloque que hay que localizar"
+        bien: true
+        porque: "Conector, diodo o puente y condensadores grandes delatan la alimentación."
+      - texto: "Un regulador conmutado, al final"
+        porque: "Al conmutado lo delata la bobina, y no hay ninguna."
+      - texto: "Una protección de entrada, en cualquier orden"
+        porque: "La protección lleva diodos hacia los raíles, TVS y una resistencia serie, no un condensador grande."
+    escalera:
+      - "Los condensadores grandes indican energía, no señal."
+    solucion: "La alimentación, que se localiza siempre lo primero."
+
+  - id: patrones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El patrón que los delata"
+    texto: "Una cada bloque con el patrón que lo identifica."
+    libro: [9, 10, 11, 12, 14, 15]
+    emparejar:
+      - ["Regulador conmutado", "La bobina"]
+      - ["Oscilador de cristal", "Cristal y dos condensadores pequeños a masa"]
+      - ["Desacoplo", "100 nF por cada par de pines de alimentación"]
+      - ["Etapa con operacional", "Dos resistencias entre salida y entrada inversora"]
+      - ["Interfaz digital", "Pull-ups en pares de líneas"]
+      - ["Protección de entrada", "Diodos hacia los raíles, TVS y resistencia serie"]
+    exito: "La bobina de potencia en una placa es prácticamente diagnóstica de un conmutado."
+    pistas:
+      - { texto: "Los pull-ups en pares son los del I²C." }
+    escalera:
+      - "El desacoplo se reconoce y se ignora mentalmente."
+    solucion: "Conmutado–bobina; cristal–dos condensadores; desacoplo–100 nF; operacional–realimentación; digital–pull-ups; protección–diodos."
+
+  - id: pistas-fisicas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Sin esquema, en la placa"
+    texto: "Una lo que se ve en la placa con lo que indica."
+    libro: [23]
+    emparejar:
+      - ["Electrolíticos grandes", "Alimentación"]
+      - ["Bobina de potencia", "Regulador conmutado"]
+      - ["Disipador o cobre ancho", "Potencia"]
+      - ["Cristal metálico", "Oscilador, junto al micro"]
+      - ["Ranura fresada en el sustrato", "Barrera de aislamiento de red"]
+      - ["Serigrafía con TP", "Puntos de prueba"]
+    exito: "Los conectores con muchos pines finos son un bus o un display; los componentes muy pequeños y juntos, un circuito rápido."
+    pistas:
+      - { texto: "La ranura separa el lado de red del resto." }
+    escalera:
+      - "TP es «test point»."
+    solucion: "Electrolíticos–alimentación; bobina–conmutado; disipador–potencia; cristal–oscilador; ranura–aislamiento; TP–pruebas."
+
+  - id: metodo
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El método de identificación"
+    texto: "Ordene los pasos para reconocer los bloques de un aparato."
+    libro: [18, 20]
+    ordenar:
+      - "Localizar los integrados y buscar sus referencias"
+      - "Seguir la alimentación y ver qué alimenta cada raíl"
+      - "Identificar los bloques auxiliares por su patrón"
+      - "Marcar los bloques en una copia o en la foto"
+      - "Dibujar el diagrama de bloques"
+    exito: "Lo que queda sin identificar es lo específico del aparato, y suele ser mucho menos de lo que parecía."
+    pistas:
+      - { texto: "El diagrama de bloques es el resultado de todo el trabajo." }
+    escalera:
+      - "Los integrados primero: con tres o cuatro hojas de datos se tiene la arquitectura."
+    solucion: "Integrados, alimentación, auxiliares, marcar y dibujar el diagrama."
+
+  - id: averia-biseccion
+    tipo: averia
+    titulo: "Bisección por bloques"
+    texto: "Cuatro bloques en cadena y uno abierto. Mida la salida de los bloques y diga cuál falla, con solo dos medidas."
+    nota: "Cuatro resistencias iguales hacen de bloques."
+    libro: [25, 26]
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_s1, r2: R_s2, r3: R_s3, r4: R_s4 }
+      mide: { corriente: I_s, v1: V_b1, v2: V_b2, v3: V_b3, v4: V_b4 }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: b1, rotulo: "B1" }
+        - { id: b2, rotulo: "B2" }
+        - { id: b3, rotulo: "B3" }
+        - { id: b4, rotulo: "B4" }
+      sondas:
+        - { id: n2, rotulo: "Salida de B2", valor: V_n2 }
+        - { id: n1, rotulo: "Salida de B1", valor: V_n1 }
+        - { id: n3, rotulo: "Salida de B3", valor: V_n3 }
+      fallos:
+        - { id: b3-abierto, pieza: b3, tipo: abierta, con: { R_s3: 1e9 }, texto: "B3 abierto: hasta su entrada llega toda la tensión y a su salida, nada." }
+        - { id: b1-abierto, pieza: b1, tipo: abierta, con: { R_s1: 1e9 }, texto: "B1 abierto: ya su salida está a cero." }
+        - { id: b4-abierto, pieza: b4, tipo: abierta, con: { R_s4: 1e9 }, texto: "B4 abierto: todas las salidas anteriores tienen la tensión entera." }
+        - { id: b2-abierto, pieza: b2, tipo: abierta, con: { R_s2: 1e9 }, texto: "B2 abierto: la salida de B1 tiene toda la tensión y la de B2, nada." }
+    pistas:
+      - { texto: "Mida primero en medio de la cadena: le dice en qué mitad está el fallo." }
+    escalera:
+      - "Sana, la cadena da 9, 6 y 3 V a la salida de B1, B2 y B3."
+      - "Empiece por la salida de B2; luego mida dentro de la mitad que falla."
+    comprobar:
+      - { V_n1: 9, V_n2: 6, V_n3: 3 }
+
+  - id: por-que-biseccion
+    tipo: porque
+    titulo: "¿Por qué tan pocas medidas?"
+    texto: "Con cuatro bloques bastaron dos medidas. ¿Por qué medir la entrada y la salida de cada bloque?"
+    libro: [25, 26]
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_s1, r2: R_s2, r3: R_s3, r4: R_s4 }
+      lectura: { valor: I_s, rotulo: "Corriente" }
+      corriente: I_s
+      mide: { corriente: I_s, v1: V_b1, v2: V_b2, v3: V_b3, v4: V_b4 }
+      mandos: []
+    opciones:
+      - texto: "El bloque con la entrada bien y la salida mal contiene el fallo"
+        bien: true
+        porque: "Cada medida descarta media cadena: con cinco bloques, tres medidas localizan el problema."
+      - texto: "Porque así se mide cada componente"
+        porque: "Al contrario: se deja de medir componente a componente y se comprueba bloque a bloque."
+      - texto: "Porque los bloques nunca fallan por dentro"
+        porque: "Fallan por dentro; la medida en sus bordes dice cuál es."
+    escalera:
+      - "Una medida en medio dice en qué mitad está el fallo."
+    solucion: "Entrada bien y salida mal: ese bloque tiene el fallo, y cada medida parte la cadena en dos."
+
+  - id: diagrama
+    tipo: pregunta
+    titulo: "El diagrama de bloques"
+    texto: "El resultado de reconocer los bloques se dibuja como un diagrama de bloques. ¿Qué lleva?"
+    libro: [20]
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_s1, r2: R_s2, r3: R_s3, r4: R_s4 }
+      lectura: { valor: I_s, rotulo: "Corriente" }
+      corriente: I_s
+      mide: { corriente: I_s, v1: V_b1, v2: V_b2, v3: V_b3, v4: V_b4 }
+      mandos: []
+    opciones:
+      - texto: "Rectángulos con su función y flechas de señales y alimentaciones"
+        bien: true
+        porque: "No lleva componentes ni valores: muestra la arquitectura entera en una hoja."
+      - texto: "Todos los componentes, agrupados por bloque"
+        porque: "Eso sigue siendo un esquema; el diagrama no lleva componentes."
+      - texto: "Los valores de cada bloque"
+        porque: "Ni componentes ni valores: solo funciones y las flechas que las unen."
+    escalera:
+      - "Su virtud es lo que no lleva."
+    solucion: "Bloques con su función y flechas, sin componentes ni valores."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [4, 9, 20, 25]
+    ideas:
+      - { titulo: "Bloques.", texto: "Reconocerlos es más rápido que analizar componentes uno a uno." }
+      - { titulo: "Patrones.", texto: "La bobina delata el conmutado; el cristal con dos condensadores, el oscilador." }
+      - { titulo: "Diagrama de bloques.", texto: "Funciones y flechas, sin componentes ni valores." }
+      - { titulo: "Diagnóstico.", texto: "Entrada bien y salida mal: ese bloque tiene el fallo." }

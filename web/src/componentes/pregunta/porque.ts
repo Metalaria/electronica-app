@@ -4,8 +4,12 @@
 
 import { leerJSON } from '../../lib/datos';
 
-/** The book's sentence that speaks to a wrong option, or «general» (the question's general explanation covers it). */
-export type Porque = { k: 'libro'; html: string; ref: string; donde: string } | { k: 'general' };
+/**
+ * The book's sentence that speaks to a wrong option, or «general» (the question's general explanation covers it).
+ * 1.2: «propio», a short explanation of that option's misconception written in the hand review when the proposed
+ * book sentence did not explain it (contenido/porque_curado.json «propio»; own words, only what the book says).
+ */
+export type Porque = { k: 'libro'; html: string; ref: string; donde: string } | { k: 'propio'; html: string } | { k: 'general' };
 
 export interface PorqueParte {
   version: 1;

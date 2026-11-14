@@ -1,0 +1,364 @@
+# Catálogo de pruebas del motor 1.2 (motor12e, contenido/lecciones11/GUIA.md §10 y §5.2): un diseño cuya primera
+# solución nominal no aprueba con las tolerancias, una avería «al azar», «ajuste» de banda abierta (solo max, solo min)
+# y de dos mandos, gráficas paramétricas con la misma escala en los dos ejes, una secuencia en palitos con ruido, una
+# curva con erfc en un eje logarítmico, una predicción con las curvas ocultas, «simular» sin circuito, una fórmula
+# sacada de una ecuación dentro de una «tarjeta» del libro y un cronograma con nombres de ciclo. NO se publica: las
+# pruebas (tests/lecciones12-motor12e.spec.ts y el recorrido con EPA_RECORRER_CATALOGO=1) la generan y la sirven en
+# lugar de la lección publicada.
+leccion: cap01/sec-1.12
+
+libro:
+  241: "Un equipo alimentado a"
+  250: "Fijando un consumo de unos 2 mA"
+  251: 'V_("0")'
+  255: "Tolerancia 1 % (peor caso)"
+  280: "frente al 3 % permitido"
+  "cap53#338": "Las expresiones clave, para repasar de un vistazo"
+  "cap09#56": "una onda cuadrada de la mitad de la frecuencia del reloj"
+  "apK#19": "el compilador mete bytes de relleno para alinear cada campo"
+  "apK#20": "struct muestra"
+  "apK#21": "ocupa 12 bytes"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{cc}", nombre: "tensión de alimentación", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 4700 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 1800 }
+    phi: { sim: "φ", nombre: "desfase", unidad: "°", valor: 60 }
+    a: { sim: "a", nombre: "polo de la secuencia", unidad: "", valor: 0.8 }
+    s: { sim: "σ", nombre: "ruido", unidad: "", valor: 0.1 }
+    x0: { sim: "x", nombre: "relación señal a ruido", unidad: "", valor: 3 }
+    rho: { sim: "ρ", nombre: "resistividad del cobre", unidad: "Ω·m", valor: 1.72e-8 }
+    t_cu: { sim: "t", nombre: "espesor del cobre", unidad: m, valor: 35e-6 }
+  calculos:
+    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{0}", nombre: "tensión de salida", unidad: V, cifras: 4 }
+    I: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "consumo del divisor", unidad: A }
+    V_1: { expr: "V_in - V_out", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    Q0: { expr: "0.5*erfc(x0/sqrt(2))", sim: "Q", nombre: "probabilidad de error", unidad: "", cifras: 3 }
+    R_cuadro: { expr: "rho/t_cu", sim: "R_{□}", nombre: "resistencia por cuadro", unidad: Ω }
+
+tarjetas:
+  - id: explore-lissajous
+    tipo: explorar
+    titulo: "Dos senoides en XY"
+    texto: "Mueva el desfase: la figura de las dos señales en XY pasa de recta a círculo y vuelve."
+    libro: [241]
+    requiere: { mover: [phi] }
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: u, min: -1.2, max: 1.2, unidad: V, rotulo: "x" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "y" }
+      curvas:
+        - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "cos(th - phi*pi/180)", color: azul, rotulo: "x frente a y" }
+        - { param: { id: th, min: 0, max: "2*pi", muestras: 120 }, x: "cos(th)", y: "sin(th)", color: tinta, discontinua: true, rotulo: "círculo unidad" }
+      mandos:
+        - { valor: phi, min: 0, max: 180, paso: 15, rotulo: "Desfase, φ" }
+
+  - id: explore-palitos
+    tipo: explorar
+    titulo: "Una secuencia con ruido"
+    texto: "Cada palito es una muestra. Mueva el ruido y vea cómo tapa la secuencia limpia."
+    libro: [241]
+    requiere: { mover: [s] }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 20, unidad: "", rotulo: "n" }
+      y: { min: -0.6, max: 1.4, unidad: "", rotulo: "x[n]" }
+      curvas:
+        - { expr: "a^n", palitos: true, color: tinta, rotulo: "limpia" }
+        - { expr: "a^n + s*ruido(n, 3)", palitos: true, color: naranja, rotulo: "con ruido" }
+      mandos:
+        - { valor: a, min: 0.5, max: 0.95, paso: 0.05, rotulo: "Polo, a" }
+        - { valor: s, min: 0, max: 0.3, paso: 0.05, rotulo: "Ruido, σ" }
+
+  - id: explore-erfc
+    tipo: explorar
+    titulo: "La cola de la campana"
+    texto: "La probabilidad de que el ruido supere x veces su valor eficaz cae muy deprisa."
+    libro: [241]
+    widget:
+      tipo: grafica
+      x: { id: z, min: 0, max: 6, unidad: "", rotulo: "x" }
+      y: { min: 1e-10, max: 1, unidad: "", rotulo: "Q(x)", escala: log }
+      curvas:
+        - { expr: "0.5*erfc(z/sqrt(2))", color: azul, rotulo: "Q(x)" }
+      marcas:
+        - { x: "x0", y: "Q0", rotulo: "Q = {{Q0}}" }
+      datos:
+        - { valor: Q0, rotulo: "Q = {{Q0}}" }
+      mandos:
+        - { valor: x0, min: 1, max: 6, paso: 0.5, rotulo: "Umbral, x" }
+
+  - id: prediga-curva
+    tipo: predecir
+    titulo: "¿Cómo crece la salida?"
+    texto: "Con R₁ fija, piense cómo cambia la salida del divisor al subir R₂ antes de ver la curva."
+    libro: [250]
+    fijar: { V_in: 12, R_1: 4700 }
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: r, min: 0, max: 20000, unidad: Ω, rotulo: "R₂" }
+      y: { min: 0, max: 12, unidad: V, rotulo: "V_{0}" }
+      curvas:
+        - { expr: "V_in*r/(R_1 + r)", color: azul, rotulo: "salida" }
+      marcas:
+        - { x: "R_2", y: "V_out", rotulo: "R₂ actual" }
+      mandos: []
+    opciones:
+      - { texto: "Sube deprisa al principio y luego se aplana bajo la alimentación.", bien: true, porque: "R₂/(R₁ + R₂) se acerca a uno sin llegar: cada ohmio más cuenta menos." }
+      - { texto: "Sube en línea recta.", porque: "Sería recta si R₂ no estuviera también en el denominador." }
+      - { texto: "Baja.", porque: "Con más resistencia abajo, a la salida le toca más tensión, no menos." }
+    escalera:
+      - "Mire qué pasa con R₂ muy pequeña y con R₂ muy grande."
+
+  - id: simule-modelo
+    tipo: simular
+    titulo: "Calcule el consumo"
+    texto: "Con 12 V, R₁ = 4,7 kΩ y R₂ = 1,8 kΩ, ¿cuánto consume el divisor?"
+    libro: [241, 251]
+    fijar: { V_in: 12, R_1: 4700, R_2: 1800 }
+    widget:
+      tipo: grafica
+      ocultar: true
+      x: { id: r, min: 1000, max: 10000, unidad: Ω, rotulo: "R₁ + R₂" }
+      y: { min: 0, max: 0.012, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "V_in/r", color: azul, rotulo: "consumo" }
+      lectura: { valor: I, rotulo: "Consumo del divisor" }
+      mandos: []
+    simular:
+      objetivo: I
+      unidad: A
+      tol: 0.03
+      rotulo: "Consumo, I"
+      errores:
+        - { expr: "V_in/R_1", texto: "Ha dividido entre R₁ sola: la corriente atraviesa las dos resistencias en serie." }
+    exito: "Doce voltios entre la suma de las dos: el consumo del divisor."
+    escalera:
+      - "Las dos resistencias están en serie."
+    comprobar:
+      - { I: 0.001846 }
+
+  - id: disene-tolerancias
+    tipo: diseno
+    titulo: "Diseñe con margen"
+    texto: "Una referencia de 3,3 V ± 3 % a partir de 12 V, con resistencias E24 del 1 %."
+    libro: [241, 255, 280]
+    fijar: { V_in: 12 }
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      mandos:
+        - { valor: R_1, serie: E24, min: 1000, max: 10000, rotulo: "R₁ (E24)" }
+        - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }
+    condiciones:
+      - { valor: V_out, objetivo: 3.3, tol: 0.03, rotulo: "Salida: {{V_out}}" }
+    diseno:
+      tolerancias: { R_1: 0.01, R_2: 0.01 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal cumple, pero queda pegado al borde: con el 1 % una esquina se sale. Busque un par más centrado."
+    exito: "Aprobado: incluso en las peores esquinas, la salida queda en su banda."
+    pistas:
+      - { cuando: { valor: V_out, mayor: 3.399 }, texto: "Sobra tensión: R₂ tiene que ser menor frente a R₁." }
+      - { cuando: { valor: V_out, menor: 3.201 }, texto: "Falta tensión: R₂ tiene que ser mayor frente a R₁." }
+      - { texto: "Ajuste la relación entre R₁ y R₂." }
+
+  - id: averia-azar
+    tipo: averia
+    titulo: "Una placa al azar"
+    texto: "Cada vez que abre la tarjeta, la placa tiene otra avería. Mida y diga qué pieza falla."
+    libro: [241]
+    fijar: { V_in: 12, R_1: 4700, R_2: 1800 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    averia:
+      pasos: 2
+      eleccion: azar
+      sospechosos:
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "R₂" }
+      sondas:
+        - { id: salida, rotulo: "Salida", valor: V_out }
+        - { id: corriente, rotulo: "Corriente", valor: I }
+        - { id: r1, rotulo: "Extremos de R₁", valor: V_1 }
+      fallos:
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_2: 1e9 }, texto: "R₂ abierta: no circula corriente y la salida sube hasta la alimentación." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "R₁ abierta: no llega corriente y la salida cae a cero." }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R_2: 0.001 }, texto: "R₂ en corto: la salida cae a cero, pero la corriente sigue circulando." }
+    escalera:
+      - "Compare la salida y la corriente con las de un divisor sano."
+
+  - id: ajuste-consumo
+    tipo: ajuste
+    titulo: "Que no consuma más de 2 mA"
+    texto: "Suba R₁ hasta que el consumo del divisor quede por debajo de 2 mA."
+    libro: [250]
+    fijar: { V_in: 12, R_2: 1800 }
+    inicio: { R_1: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: I, rotulo: "Consumo" }
+      mide: { corriente: I }
+      mandos:
+        - { valor: R_1, min: 100, max: 10000, paso: 100 }
+    ajuste:
+      valor: I
+      max: 0.002
+      rotulo: "Consumo"
+      alto: "Consume demasiado: suba R₁."
+      dentro: "Por debajo de 2 mA."
+
+  - id: ajuste-minimo
+    tipo: ajuste
+    titulo: "Al menos 3,3 V"
+    texto: "Suba R₂ hasta que la salida llegue por lo menos a 3,3 V."
+    libro: [241]
+    fijar: { V_in: 12, R_1: 4700 }
+    inicio: { R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      mandos:
+        - { valor: R_2, min: 100, max: 5000, paso: 100 }
+    ajuste:
+      valor: V_out
+      min: 3.3
+      rotulo: "Salida"
+      bajo: "Falta tensión: suba R₂."
+      dentro: "Ya llega a 3,3 V."
+
+  - id: ajuste-dos
+    tipo: ajuste
+    titulo: "Con los dos mandos"
+    texto: "Mueva R₁ y R₂ hasta que la salida quede en 3,3 V ± 3 %."
+    libro: [241, 280]
+    fijar: { V_in: 12 }
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      mandos:
+        - { valor: R_1, min: 1000, max: 10000, paso: 500 }
+        - { valor: R_2, min: 1000, max: 5000, paso: 500 }
+    ajuste:
+      valor: V_out
+      objetivo: 3.3
+      tol: 0.03
+      rotulo: "Salida"
+      bajo: "Falta tensión: suba R₂ o baje R₁."
+      alto: "Sobra tensión: baje R₂ o suba R₁."
+      dentro: "Dentro de la banda."
+
+  - id: formula-cuadro
+    tipo: formula
+    titulo: "La resistencia por cuadro"
+    texto: "Una pista de cobre resiste en proporción a la resistividad e inversamente a su espesor."
+    libro: ["cap53#338"]
+    ec: "cap53#338.1"
+    sustitucion: "{{rho}} / {{t_cu}} = {{R_cuadro}}"
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0.00001, max: 0.0001, unidad: m, rotulo: "t" }
+      y: { min: 0, max: 0.002, unidad: Ω, rotulo: "R_{□}" }
+      curvas:
+        - { expr: "rho/tt", color: azul, rotulo: "R_{□}" }
+      marcas:
+        - { x: "t_cu", y: "R_cuadro", rotulo: "{{R_cuadro}}" }
+      mandos:
+        - { valor: t_cu, min: 0.0000175, max: 0.00007, paso: 0.0000175, rotulo: "Espesor, t" }
+
+  - id: explore-ciclos
+    tipo: explorar
+    titulo: "Ciclos con nombre"
+    texto: "Cada ciclo del cronograma lleva su nombre. Mueva el cursor y compare Q con el reloj."
+    libro: ["cap09#56"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [f1.nq, CLK] }
+      salidas:
+        - { id: Q, de: f1.q }
+      cronograma: { ciclos: 4, senales: [CLK, Q], etiquetas: [reposo, inicio, dato, fin] }
+
+  - id: explore-latch
+    tipo: explorar
+    titulo: "Cerrojo frente a biestable"
+    texto: "El cerrojo copia D mientras su habilitación está alta; el biestable, solo en el flanco. Compare las dos salidas."
+    libro: ["cap09#56"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }, D]
+      piezas:
+        - { id: n1, tipo: not, entradas: [CLK] }
+        - { id: l1, tipo: latch, entradas: [D, n1] }
+        - { id: f1, tipo: d, entradas: [D, CLK] }
+      salidas:
+        - { id: QL, de: l1.q, rotulo: "Q del cerrojo" }
+        - { id: QF, de: f1.q, rotulo: "Q del biestable" }
+      cronograma: { ciclos: 4, estimulo: { D: "0110" }, senales: [CLK, D, QL, QF] }
+
+  - id: pregunta-relleno
+    tipo: pregunta
+    titulo: "Una estructura con relleno"
+    texto: "En un Cortex-M, ¿cuánto ocupa la estructura de las líneas resaltadas?"
+    libro: ["apK#20", "apK#21"]
+    widget:
+      tipo: figura
+      codigo: "apK#20"
+      resaltar: [3, 4, 5, 6, 7]
+    opciones:
+      - { texto: "12 bytes.", bien: true, porque: "Tres de relleno tras canal para alinear instante, y tres al final." }
+      - { texto: "6 bytes.", porque: "Es la suma de los campos, sin el relleno que mete el compilador." }
+      - { texto: "8 bytes.", porque: "Esa es la ordenada, con los campos de mayor a menor." }
+    escalera:
+      - "Un uint32_t se lee de una vez solo en una dirección múltiplo de 4."
+
+  - id: toque-campo
+    tipo: tocar
+    titulo: "El campo que obliga a alinear"
+    texto: "Toque la línea del campo que el procesador lee de una vez y por eso se alinea."
+    libro: ["apK#19", "apK#20"]
+    widget:
+      tipo: figura
+      codigo: "apK#20"
+      zonas:
+        - { id: canal, lineas: [4], rotulo: "Primer campo" }
+        - { id: instante, lineas: [5], rotulo: "Segundo campo" }
+        - { id: estado, lineas: [6], rotulo: "Tercer campo" }
+    tocar:
+      bien: [instante]
+      porque:
+        canal: "Es un uint8_t: un solo byte, cabe en cualquier dirección."
+        estado: "También es un uint8_t: no pide alineación."
+    exito: "Es el uint32_t: el compilador lo lleva a una dirección múltiplo de 4."
+    escalera:
+      - "Busque el campo más ancho."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Catálogo del motor completado"
+    libro: [241]
+    ideas:
+      - { titulo: "Con tolerancias.", texto: "Un diseño vale cuando aprueba en todas sus esquinas, no solo en el nominal." }
+      - { titulo: "Bandas abiertas.", texto: "Un ajuste puede pedir solo un máximo o solo un mínimo." }
+      - { titulo: "Más gráficas.", texto: "Curvas paramétricas, palitos con ruido y curvas que se ocultan hasta responder." }

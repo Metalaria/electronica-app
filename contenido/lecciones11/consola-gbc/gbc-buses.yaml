@@ -1,0 +1,191 @@
+# «Consolas por dentro» · Game Boy Color 4: bancos e infrarrojos, por lo que cambia respecto a la Game Boy. La WRAM de
+# 32 KB en ocho bancos de 4 KB por el bus MA/MD (el banco 0 en $C000–$CFFF y el de SVBK en $D000–$DFFF; SVBK = 0
+# elige el 1), la VRAM interna de dos bancos (VBK: solo cuenta el bit 0), la HDMA (un motor de copia, como el DMA del
+# libro, 39.8) y el puerto de infrarrojos RP ($FF56: circuito lógico y tabla de la habilitación de lectura, el LED, el
+# consumo y el receptor que se adapta). Fuentes: el decodificador del explorador (arquitectura gbc.ts), Pan Docs «CGB
+# Registers» y «Video Display», y el libro.
+leccion: consola-gbc/gbc-buses
+
+libro:
+  "gbc#3": "32 KB en ocho bancos de 4 KB: MA0–MA12 más RA0/RA1 desde el SoC, que pone el banco de SVBK ($FF70)"
+  "gbc#8": "Comunicación por infrarrojos ($FF56)"
+  "gbc#43": "$C000–$CFFF es siempre el banco 0; $D000–$DFFF, el banco de SVBK ($FF70, 1–7)"
+  "gbc#52": "VRAM interna del CPU CGB (banco de VBK, $FF4F)"
+  "gbc#53": "Decodificador, lectura en $C000"
+  "gbc#54": "Dirección de la SRAM = banco × 4096 + $123"
+  "gbc#58": "Registros de la DMA a VRAM (HDMA): origen, destino y longitud/modo"
+  "gbc#59": "SVBK: los bits 0–2 eligen el banco de WRAM de $D000–$DFFF (0 equivale a 1)"
+  "gbc#62": "la HDMA a la VRAM"
+  "gbc#65": "los bits 6 y 7 habilitan la lectura (3) o no (0)"
+  "gbc#66": "hay que poner RP a $00 para volver a reducir el consumo de las pilas"
+  "gbc#67": "una señal larga con el LED encendido puede tomarse como apagado"
+  "gbc#74": "VBK ($FF4F) cambia el banco de VRAM: solo cuenta el bit 0"
+  "cap38#231": "El DMA (acceso directo a memoria) es un motor de copia independiente"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-wram
+    tipo: explorar
+    titulo: "Ocho bancos"
+    texto: "Toque la WRAM y el chip que le pone el banco."
+    libro: ["gbc#3", "gbc#43"]
+    requiere: { mover: [wram, soc] }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: wram, hotspot: wram, rotulo: "WRAM", texto: "32 KB: ocho bancos de 4 KB." }
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "Pone MA0–MA12 y, con RA0/RA1, el banco de SVBK." }
+
+  - id: empareje-bancos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "¿Qué banco se ve?"
+    texto: "Empareje cada acceso con la memoria y el banco que contestan."
+    libro: ["gbc#43", "gbc#53", "gbc#59", "gbc#52"]
+    emparejar:
+      - ["Leer $C123", "WRAM, banco 0"]
+      - ["Leer $D123 con SVBK = 7", "WRAM, banco 7"]
+      - ["Leer $D123 con SVBK = 0", "WRAM, banco 1"]
+      - ["Escribir en $8000", "VRAM interna, banco de VBK"]
+    exito: "Banco 0 fijo abajo; el de SVBK arriba; y el 0 no se puede poner arriba."
+    pistas:
+      - { texto: "SVBK = 0 equivale a 1." }
+    escalera:
+      - "$C000–$CFFF es siempre el banco 0."
+    solucion: "$C123: banco 0. $D123: el de SVBK, con 0 = 1. $8000: VRAM interna."
+
+  - id: prediga-sram
+    tipo: predecir
+    titulo: "¿Qué celda de la SRAM?"
+    texto: "Con SVBK = 7, la CPU lee $D123. ¿Qué dirección ve el chip de WRAM?"
+    libro: ["gbc#54", "gbc#3"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: wram, hotspot: wram, rotulo: "WRAM" }
+    opciones:
+      - texto: "Banco × 4096 + $123: el banco 7 en los bits altos."
+        bien: true
+        porque: "Así la rehace el CPU CGB: los bits bajos son los de la CPU; los altos, el banco."
+      - texto: "$D123, la misma."
+        porque: "La SRAM solo tiene 32 KB: la dirección se rehace con el banco."
+      - texto: "$123: el banco no cuenta."
+        porque: "Eso sería el banco 0. Con SVBK = 7, el banco 7 entra en los bits altos."
+    escalera:
+      - "Multiplicar el banco por 4096 lo sube a los bits altos de la dirección."
+    solucion: "Banco × 4096 + $123, con el banco 7."
+
+  - id: prediga-vbk
+    tipo: predecir
+    titulo: "Un registro de un bit"
+    texto: "El juego escribe $FF en VBK. ¿Qué banco de VRAM ve la CPU?"
+    libro: ["gbc#74", "gbc#52"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "La VRAM está aquí dentro" }
+    opciones:
+      - texto: "El banco 1: solo cuenta el bit 0."
+        bien: true
+        porque: "VBK elige entre dos bancos con el bit 0, que en $FF vale 1."
+      - texto: "Un banco que no existe."
+        porque: "VBK ignora los demás bits: no hay más bancos que elegir."
+      - texto: "El banco 0, porque $FF no es válido."
+        porque: "Cualquier valor es válido: el bit 0 de $FF es 1."
+    escalera:
+      - "¿Cuánto vale el bit 0 de $FF?"
+    solucion: "El banco 1."
+
+  - id: por-que-hdma
+    tipo: porque
+    titulo: "Copiar sin la CPU"
+    texto: "La CPU podría copiar a la VRAM byte a byte. ¿Para qué está la HDMA?"
+    libro: ["gbc#58", "cap38#231", "gbc#62"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB" }
+    opciones:
+      - texto: "Es un motor de copia: se le dan origen, destino y longitud, y copia solo."
+        bien: true
+        porque: "Como el DMA del libro: la CPU no gasta una instrucción por byte."
+      - texto: "Para copiar más rápido en doble velocidad."
+        porque: "Al revés: la HDMA no cambia con la doble velocidad."
+      - texto: "Para escribir en la WRAM."
+        porque: "Es la DMA a la VRAM: copia hacia la memoria de vídeo."
+    escalera:
+      - "¿Qué tres datos se le dan a la HDMA?"
+    solucion: "Copia bloques a la VRAM sin la CPU."
+
+  - id: explore-rp
+    tipo: explorar
+    titulo: "El puerto de infrarrojos"
+    texto: "En RP ($FF56), los bits 7 y 6 habilitan la lectura. Pruebe cuándo se puede leer."
+    libro: ["gbc#65", "gbc#8"]
+    requiere: { mover: [B7, B6] }
+    widget:
+      tipo: logica
+      entradas: [{ id: B7, rotulo: "Bit 7" }, { id: B6, rotulo: "Bit 6" }]
+      piezas:
+        - { id: y, tipo: and, entradas: [B7, B6] }
+      salidas:
+        - { id: LEER, de: y, rotulo: "Lectura habilitada" }
+
+  - id: tabla-rp
+    tipo: tabla
+    titulo: "La tabla de la lectura"
+    texto: "Rellene en qué filas está habilitada la lectura."
+    libro: ["gbc#65"]
+    widget:
+      tipo: logica
+      entradas: [{ id: B7, rotulo: "Bit 7" }, { id: B6, rotulo: "Bit 6" }]
+      piezas:
+        - { id: y, tipo: and, entradas: [B7, B6] }
+      salidas:
+        - { id: LEER, de: y, rotulo: "Lectura habilitada" }
+      ocultar: true
+    tabla:
+      salidas: [LEER]
+    exito: "Los dos bits a la vez: 3 habilita, 0 deshabilita."
+    escalera:
+      - "La fuente da dos valores: 3 o 0."
+    solucion: "Solo con los dos bits a uno."
+
+  - id: prediga-rp
+    tipo: predecir
+    titulo: "Después de enviar"
+    texto: "El juego ha terminado de enviar por infrarrojos. ¿Qué debe hacer con RP?"
+    libro: ["gbc#66", "gbc#67"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: ir, hotspot: ir, rotulo: "LED y fototransistor" }
+    opciones:
+      - texto: "Ponerlo a $00, para no gastar pilas."
+        bien: true
+        porque: "Pan Docs lo pide: así vuelve a bajar el consumo."
+      - texto: "Dejar el LED encendido, para que el otro siga recibiendo."
+        porque: "Una señal larga encendida acaba leyéndose como apagada: el receptor se adapta."
+      - texto: "Nada: se apaga solo."
+        porque: "Hay que ponerlo a $00 a mano."
+    escalera:
+      - "¿Qué se gasta con el puerto habilitado?"
+    solucion: "RP = $00."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gbc#43", "gbc#74", "gbc#58", "gbc#66"]
+    ideas:
+      - { titulo: "SVBK.", texto: "El banco de WRAM de $D000–$DFFF." }
+      - { titulo: "VBK.", texto: "Dos bancos de VRAM: solo cuenta el bit 0." }
+      - { titulo: "HDMA.", texto: "Copia a la VRAM sin la CPU." }
+      - { titulo: "RP.", texto: "Infrarrojos: habilitar, usar y volver a $00." }

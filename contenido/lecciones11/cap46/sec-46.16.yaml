@@ -1,0 +1,307 @@
+# Lección 1.2 de la sección 47.16 «Mantenibilidad y Disponibilidad: el MTTR» (cap46; etiquetas sec-46.N = impresas 47.N).
+# - Disponibilidad = MTBF/(MTBF + MTTR) (bloque 557) y la parada anual, con 525 600 minutos al año (8 760 h, implícitas
+#   en la tabla del bloque 559): 10 000 h y 4 h, 99,96 % y 210 min; 10 000 h y 48 h, 99,52 % y 2 511 min; 1 000 h y
+#   4 h, 99,60 % y 2 094 min. Gráfica del modelo como la figura 47.25 (fig-46.25), en ejes logarítmicos.
+# - Redundancia con conmutador: 0,9999 × 0,995 = 0,9949 (bloque 576).
+# Paso práctico: «ajuste» del MTTR de un equipo de 10 000 h de MTBF hasta 210 min de parada al año (4 h).
+leccion: cap46/sec-46.16
+
+libro:
+  556: "Un equipo puede fallar poco y estar mucho tiempo parado, o fallar a menudo y estar casi siempre operativo."
+  557: "Disponibilidad = MTBF / (MTBF + MTTR)"
+  559: "10 000 h 4 h 99,96 % 210 min"
+  560: "pasa de 3,5 horas a 42 horas de parada anual solo por tardar dos días en repararlo en lugar de cuatro horas"
+  561: "un equipo que falla diez veces más pero se repara rápido tiene mejor disponibilidad que uno fiable con reparación lenta"
+  564: "Diagnosticar dónde está."
+  565: "En equipos reales, los pasos 2 y 3 dominan con diferencia."
+  568: "Un equipo que avisa de qué le pasa elimina el paso 1 y acorta el 2."
+  569: "Es el paso donde el diseño puede ahorrar más tiempo."
+  570: "componentes estándar y disponibles en lugar de exóticos"
+  571: "zócalos en los componentes que más fallan, módulos sustituibles"
+  572: "un procedimiento de prueba escrito, derivado de la especificación"
+  574: "dos de 0,99 dan 0,9999"
+  576: "0,9999 × 0,995 = 0,9949"
+  580: "convierte una parada no planificada en una planificada"
+  577: "en un sistema redundante, el elemento crítico es el que decide, no los que se duplican"
+  581: "el criterio para fijar el intervalo es la vida estimada dividida por un margen"
+  583: "casi siempre en documentación y en puntos de prueba, no en herramientas"
+  584: "Parada anual según el MTTR para varios MTBF, y la descomposición del tiempo de reparación."
+
+modelo:
+  valores:
+    MTBF: { sim: "MTBF", nombre: "tiempo medio entre fallos", unidad: h, valor: 10000 }
+    MTTR: { sim: "MTTR", nombre: "tiempo medio de reparación", unidad: h, valor: 4 }
+    M_a: { sim: "t_{año}", nombre: "minutos de un año", unidad: min, valor: 525600 }
+    R_e: { sim: "R", nombre: "fiabilidad de cada elemento", unidad: "", valor: 0.99 }
+    R_sw: { sim: "R_{conm}", nombre: "fiabilidad del conmutador", unidad: "", valor: 0.995 }
+  calculos:
+    A_d: { expr: "MTBF/(MTBF + MTTR)*100", sim: "A", nombre: "disponibilidad", unidad: "%", cifras: 4 }
+    P_m: { expr: "MTTR/(MTBF + MTTR)*M_a", sim: "P", nombre: "parada al año", unidad: min, cifras: 4 }
+    P_h: { expr: "P_m/60", sim: "P", nombre: "parada al año en horas", unidad: h, cifras: 2 }
+    R_p: { expr: "1 - (1 - R_e)^2", sim: "R_{par}", nombre: "dos en paralelo", unidad: "", cifras: 4 }
+    R_t: { expr: "R_p*R_sw", sim: "R_{total}", nombre: "paralelo con su conmutador", unidad: "", cifras: 4 }
+
+tarjetas:
+  - id: explore-parada
+    tipo: explorar
+    titulo: "Fiable no es disponible"
+    texto: "La parada al año depende del MTBF y del MTTR, lo que se tarda en reparar. Mueva los dos."
+    libro: [556, 557, 584]
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
+      y: { min: 10, max: 100000, unidad: min, rotulo: "parada al año", escala: log }
+      curvas:
+        - { expr: "xx/(1000 + xx)*M_a", color: naranja, rotulo: "MTBF = 1 000 h" }
+        - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
+      marcas:
+        - { x: "MTTR", y: "P_m", rotulo: "{{P_m}}" }
+      lectura: { valor: P_m, rotulo: "Parada al año" }
+      datos:
+        - { valor: A_d, rotulo: "Disponibilidad: {{A_d}}" }
+      mandos:
+        - { valor: MTBF, lista: [1000, 10000], rotulo: "MTBF" }
+        - { valor: MTTR, lista: [1, 2, 4, 8, 12, 24, 48], rotulo: "MTTR" }
+    requiere: { mover: [MTBF, MTTR] }
+
+  - id: prediga-dos-dias
+    tipo: predecir
+    titulo: "Dos días en vez de cuatro horas"
+    texto: "Un equipo de 10 000 h de MTBF para 3,5 horas al año si se repara en 4 h. ¿Y si tarda dos días, 48 h?"
+    libro: [559, 560]
+    fijar: { MTBF: 10000, MTTR: 48 }
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
+      y: { min: 10, max: 100000, unidad: min, rotulo: "parada al año", escala: log }
+      curvas:
+        - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
+      lectura: { valor: P_h, rotulo: "Parada al año" }
+      ocultar: true
+    opciones:
+      - texto: "Unas 42 horas al año"
+        bien: true
+        porque: "La parada crece casi en proporción al MTTR: doce veces más tiempo de reparación."
+      - texto: "Igual, 3,5 horas: el MTBF no ha cambiado"
+        porque: "Falla igual de a menudo, pero cada fallo lo deja parado doce veces más."
+      - texto: "Unas 7 horas: el doble"
+        porque: "No es el doble: de 4 a 48 h es doce veces más."
+    escalera:
+      - "¿Cuántas veces cabe 4 h en 48 h?"
+    solucion: "Unas 42 horas: 2 511 minutos al año."
+    comprobar:
+      - { P_h: 41.85, P_m: 2511 }
+      - { con: { MTTR: 4 }, P_h: 3.5 }
+      - { con: { MTTR: 8 }, P_h: 7 }
+
+  - id: prediga-rapido
+    tipo: predecir
+    titulo: "Falla más, se repara antes"
+    texto: "Equipo A: MTBF de 1 000 h y MTTR de 4 h; equipo B: MTBF de 10 000 h y MTTR de 48 h. ¿Cuál está más disponible?"
+    libro: [559, 561]
+    fijar: { MTBF: 1000, MTTR: 4 }
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
+      y: { min: 10, max: 100000, unidad: min, rotulo: "parada al año", escala: log }
+      curvas:
+        - { expr: "xx/(1000 + xx)*M_a", color: naranja, rotulo: "MTBF = 1 000 h" }
+        - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
+      lectura: { valor: A_d, rotulo: "Disponibilidad del A" }
+      ocultar: true
+    opciones:
+      - texto: "El A: falla diez veces más, pero se repara rápido"
+        bien: true
+        porque: "99,60 % frente a 99,52 %: reducir el MTTR suele ser más barato que aumentar el MTBF."
+      - texto: "El B: es diez veces más fiable"
+        porque: "Más fiable no es más disponible: su reparación lenta lo deja parado más tiempo."
+      - texto: "Los dos igual"
+        porque: "No: el A para 2 094 minutos al año y el B, 2 511."
+    escalera:
+      - "Compare sus paradas anuales, no sus MTBF."
+    solucion: "El A: 99,60 % frente a 99,52 %."
+    comprobar:
+      - { A_d: 99.60, P_m: 2094 }
+      - { con: { MTBF: 10000, MTTR: 48 }, A_d: 99.52, P_m: 2511 }
+
+  - id: ajuste-mttr
+    tipo: ajuste
+    titulo: "Recorte el MTTR"
+    texto: "Un equipo de 10 000 h de MTBF tarda 48 h en repararse. Baje el MTTR hasta no pasar de 210 minutos de parada al año."
+    libro: [559]
+    fijar: { MTBF: 10000 }
+    inicio: { MTTR: 48 }
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
+      y: { min: 10, max: 100000, unidad: min, rotulo: "parada al año", escala: log }
+      curvas:
+        - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
+      marcas:
+        - { x: "MTTR", y: "P_m", rotulo: "{{P_m}}" }
+      lectura: { valor: P_m, rotulo: "Parada al año" }
+      datos:
+        - { valor: A_d, rotulo: "Disponibilidad: {{A_d}}" }
+      mandos:
+        - { valor: MTTR, lista: [48, 24, 12, 8, 4, 2], rotulo: "MTTR" }
+    ajuste:
+      valor: P_m
+      max: 211
+      rotulo: "Parada al año"
+      escala: { min: 0, max: 2600 }
+      alto: "Demasiada parada: hay que reparar antes."
+      dentro: "Dentro: con 4 h, unos 210 minutos al año y el 99,96 %."
+    exito: "Sin tocar el MTBF: el diseño para el MTTR es más barato que hacerlo más fiable."
+    comprobar:
+      - { con: { MTTR: 4 }, P_m: 210, A_d: 99.96 }
+
+  - id: ordene-mttr
+    tipo: pregunta
+    titulo: "De qué se compone el MTTR"
+    texto: "Casi nada del MTTR es reparar. Ordene sus cinco pasos."
+    libro: [564]
+    widget:
+      tipo: figura
+      figura: fig-46.25
+      zonas:
+        - { id: desglose, rotulo: "Barras de la derecha", rect: [280, 20, 145, 170] }
+    ordenar:
+      - "Detectar que hay un fallo"
+      - "Diagnosticar dónde está"
+      - "Conseguir el repuesto"
+      - "Reparar físicamente"
+      - "Verificar que funciona"
+    exito: "Reparar puede ser diez minutos; encontrarlo, horas; la pieza, días."
+    pistas:
+      - { texto: "Antes de reparar hay que saber qué y tener con qué." }
+    escalera:
+      - "Lo último es comprobar que ha quedado bien."
+    solucion: "Detectar, diagnosticar, conseguir el repuesto, reparar y verificar."
+
+  - id: toque-domina
+    tipo: tocar
+    titulo: "Lo que domina"
+    texto: "En el desglose de un MTTR de 48 h, toque los dos pasos que dominan."
+    libro: [565, 584]
+    widget:
+      tipo: figura
+      figura: fig-46.25
+      zonas:
+        - { id: detectar, rotulo: "Primera barra", rect: [280, 25, 145, 34] }
+        - { id: diagnosticar, rotulo: "Segunda barra", rect: [280, 59, 145, 34] }
+        - { id: repuesto, rotulo: "Tercera barra", rect: [280, 93, 145, 34] }
+        - { id: reparar, rotulo: "Cuarta barra", rect: [280, 127, 145, 34] }
+        - { id: verificar, rotulo: "Quinta barra", rect: [280, 161, 145, 34] }
+    tocar:
+      bien: [diagnosticar, repuesto]
+      todas: true
+      porque:
+        detectar: "Detectar es corto si el equipo avisa de qué le pasa."
+        reparar: "Reparar es lo más breve: cambiar la pieza."
+        verificar: "Verificar es breve con un procedimiento escrito."
+    exito: "Diagnosticar y conseguir el repuesto: ahí es donde el diseño ahorra más tiempo."
+    escalera:
+      - "Busque las dos barras más largas."
+    solucion: "La segunda y la tercera: diagnosticar y conseguir el repuesto."
+
+  - id: empareje-diseno
+    tipo: pregunta
+    titulo: "Diseñar para el MTTR"
+    texto: "Empareje cada decisión de diseño con el paso del MTTR que acorta."
+    libro: [568, 569, 570, 571, 572]
+    widget:
+      tipo: figura
+      figura: fig-46.25
+      zonas:
+        - { id: desglose, rotulo: "Barras de la derecha", rect: [280, 20, 145, 170] }
+    emparejar:
+      - ["Autodiagnóstico e indicadores", "Detectar"]
+      - ["Puntos de prueba y tensiones anotadas", "Diagnosticar"]
+      - ["Componentes estándar y disponibles", "Conseguir el repuesto"]
+      - ["Zócalos y módulos sustituibles", "Reparar"]
+      - ["Procedimiento de prueba escrito", "Verificar"]
+    exito: "Decisiones baratas si se toman a tiempo."
+    pistas:
+      - { texto: "Un equipo que avisa de qué le pasa elimina el primer paso." }
+    escalera:
+      - "Los puntos de prueba sirven para encontrar dónde está el fallo."
+    solucion: "Autodiagnóstico, detectar; puntos de prueba, diagnosticar; estándar, repuesto; zócalos, reparar; procedimiento, verificar."
+
+  - id: estime-conmutador
+    tipo: pregunta
+    titulo: "La letra pequeña de la redundancia"
+    texto: "Dos elementos de 0,99 en paralelo dan 0,9999, pero el conmutador, de 0,995, queda en serie con todo. ¿Qué fiabilidad tiene el conjunto?"
+    libro: [574, 576, 577]
+    fijar: { R_e: 0.99, R_sw: 0.995 }
+    estimar:
+      objetivo: "R_t"
+      unidad: ""
+      min: 0.98
+      max: 1
+      paso: 0.0001
+      inicio: 0.9999
+      tol: 0.0005
+      rotulo: "Fiabilidad del conjunto"
+    exito: "0,9949: algo mejor que un solo elemento de 0,99, pero muy lejos de 0,9999."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.9954 }, texto: "Demasiado: el conmutador está en serie y multiplica por 0,995." }
+      - { texto: "Demasiado poco: 0,9999 × 0,995." }
+    escalera:
+      - "En serie, las fiabilidades se multiplican."
+    solucion: "0,9999 × 0,995 = 0,9949: manda el que decide."
+    comprobar:
+      - { R_p: 0.9999, R_t: 0.9949 }
+
+  - id: porque-preventivo
+    tipo: porque
+    titulo: "El mantenimiento preventivo"
+    texto: "Cambiar ventiladores, baterías o electrolíticos antes de que fallen mejora la disponibilidad. ¿Por qué, y cada cuánto?"
+    libro: [580, 581]
+    widget:
+      tipo: figura
+      figura: fig-46.25
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [45, 15, 215, 175] }
+    opciones:
+      - texto: "Vuelve planificada la parada; el intervalo, vida estimada entre un margen"
+        bien: true
+        porque: "Una parada planificada es corta y prevista: eso es lo que mejora la disponibilidad."
+      - texto: "Sube el MTBF; se cambian cuando dejan de funcionar"
+        porque: "Cambiarlos al fallar es justo lo que se evita: la parada llegaría sin avisar."
+      - texto: "Evita las paradas; se cambian mientras la experiencia diga que funcionan"
+        porque: "La experiencia de que «todavía funcionan» no es criterio: lo es la vida estimada."
+    escalera:
+      - "¿Qué diferencia hay entre una parada planificada y una que llega sin avisar?"
+    solucion: "Convierte la parada en planificada; el intervalo es la vida estimada dividida por un margen."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Se cronometra una reparación real, paso a paso. ¿Dónde suele señalar que hay que invertir?"
+    libro: [583]
+    widget:
+      tipo: figura
+      figura: fig-46.25
+      zonas:
+        - { id: desglose, rotulo: "Barras de la derecha", rect: [280, 20, 145, 170] }
+    opciones:
+      - texto: "En documentación y puntos de prueba"
+        bien: true
+        porque: "El reparto sorprende: el tiempo se va en diagnosticar, no en reparar."
+      - texto: "En herramientas mejores"
+        porque: "Las herramientas acortan reparar, que es el paso más breve."
+      - texto: "En componentes más fiables"
+        porque: "Eso sube el MTBF; el cronómetro mide el MTTR."
+    escalera:
+      - "¿En qué paso se va casi todo el tiempo?"
+    solucion: "En documentación y en puntos de prueba, no en herramientas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [557, 561, 565, 577]
+    ideas:
+      - { titulo: "Disponibilidad.", texto: "MTBF/(MTBF + MTTR): reparar rápido pesa tanto como fallar poco." }
+      - { titulo: "El MTTR.", texto: "Diagnosticar y conseguir el repuesto dominan; reparar es lo breve." }
+      - { titulo: "Diseñar para repararlo.", texto: "Autodiagnóstico, puntos de prueba, piezas estándar y zócalos." }
+      - { titulo: "Redundancia.", texto: "El conmutador queda en serie: 0,9999 baja a 0,9949." }

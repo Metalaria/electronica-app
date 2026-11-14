@@ -386,7 +386,7 @@ caso('r3·5 · volver a la 0.12 (reinstalar): sus pasadas se rechazan sin tocar 
   igual((JSON.parse(repo.texto!) as { version: number }).version, 1, 'la 0.12 escribe el formato 1');
   await cambiarVersion(A, '0.11');
   await pasada(A, repo, 2000);
-  igual((JSON.parse(repo.texto!) as { version: number }).version, 2, 'la primera pasada de la 1.0 lo deja en el formato 2');
+  igual((JSON.parse(repo.texto!) as { version: number }).version, 3, 'la primera pasada de la 1.2 lo deja en el formato 3');
   await cambiarVersion(B, '0.11');
   await pasada(B, repo, 2100);
   await pasada(A, repo, 2200);
@@ -400,7 +400,7 @@ caso('r3·5 · volver a la 0.12 (reinstalar): sus pasadas se rechazan sin tocar 
   const texto = repo.texto;
   const commits = repo.commits;
   assert.equal(await pasada(A, repo, 6000), false);
-  assert.match(ultimoError, /versión 2 del formato; actualice la aplicación/);
+  assert.match(ultimoError, /versión 3 del formato; actualice la aplicación/);
   igual(repo.texto, texto, 'la 0.12 no toca el fichero');
   igual(repo.commits, commits);
   igual(repo.vivos('marcadores').m1, { label: 'a otra vez', t: 5000 });

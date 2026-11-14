@@ -1,0 +1,301 @@
+# Lección 1.2 de la sección 20.8 «La Sonda ×1 vs ×10 — Cuál Usar» (cap21; etiqueta interna sec-21.8). Formato:
+# contenido/lecciones11/GUIA.md. La capacidad de la sonda sobre una fuente de 10 kΩ es el paso bajo del esquema
+# filtro-rc (R = la fuente, C = la sonda): 100 pF la ×1, 20 pF la ×10, 12 pF otra ×10 y 1 pF la activa (bloques
+# 179–183). La amplitud de 1 V y la frecuencia de 1 MHz del paso «simular» son ilustrativas. La foto de la sonda
+# (figura 20.17) se toca en píxeles (1600 × 1064).
+leccion: cap21/sec-21.8
+
+libro:
+  174: "una ×10 la divide por diez con la red compensada"
+  176: "Capacidad de carga"
+  177: "explican por qué la ×10 es la posición por defecto pese a perder amplitud"
+  179: "Con una fuente de 10 kΩ forman un paso bajo de 160 kHz"
+  180: "el corte sube a unos 800 kHz (y a 1,3 MHz con una sonda de 12 pF)"
+  181: "medir un oscilador de cristal con una sonda ×1 lo detiene"
+  183: "Sobre la misma fuente de 10 kΩ, el corte sube a unos 16 MHz"
+  185: "×10 casi siempre"
+  186: "los 10 mV que la ×10 haría casi invisibles se ven bien con la ×1"
+  187: "la ×1 no tiene más sensibilidad, tiene menos atenuación"
+  189: "todas las lecturas de amplitud están equivocadas por un factor diez"
+  190: "tensiones diez veces mayores o diez veces menores de lo esperado"
+  192: "cuya inductancia resuena con la capacidad de la sonda"
+  194: "el muelle que se acopla al cuerpo de la punta"
+  196: "El timbre desaparece"
+  200: "conmutador ×1/×10 en el cuerpo, latiguillo de masa con pinza de cocodrilo y conector BNC"
+  "cap21#607": "si indica 0,5 V, la tensión REAL de la señal es 0,5 × 10 = 5 V"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 100000 }
+    R_f: { sim: "R_{fuente}", nombre: "resistencia de la fuente", unidad: Ω, valor: 10000 }
+    C_f: { sim: "C_{sonda}", nombre: "capacidad de la sonda", unidad: F, valor: 1e-10 }
+    V_lee: { sim: "V_{leída}", nombre: "lo que indica la pantalla", unidad: V, valor: 0.5 }
+  calculos:
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{sonda}", nombre: "amplitud que llega a la sonda", unidad: V }
+    V_real: { expr: "10*V_lee", sim: "V_{real}", nombre: "tensión real", unidad: V }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "La capacidad de la sonda"
+    texto: "La sonda carga una fuente de 10 kΩ con su capacidad: un paso bajo. Cambie de sonda y mire el corte."
+    libro: [174, 176, 179, 180, 183]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      grafica:
+        x: { id: nu, min: 10000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud en la sonda" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v_{sonda}", mide: vc_amp }
+        marcas:
+          - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
+      mandos:
+        - { valor: C_f, lista: [1e-10, 2e-11, 1.2e-11, 1e-12], nombres: ["×1", "×10", "×10 de 12 pF", "activa"], rotulo: "Sonda" }
+    requiere: { mover: [C_f] }
+
+  - id: prediga-x1
+    tipo: predecir
+    titulo: "La ×1 sobre 10 kΩ"
+    texto: "La ×1 presenta unos 100 pF. Sobre una fuente de 10 kΩ, ¿dónde corta?"
+    libro: [176, 179]
+    fijar: { C_f: 1e-10 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+    opciones:
+      - texto: "En unos 160 kHz"
+        bien: true
+        porque: "1/(2π · 10 kΩ · 100 pF) ≈ 160 kHz: lo más rápido se ve deformado, y lo deforma la sonda."
+      - texto: "En unos 6 MHz"
+        porque: "Ese es el ancho de banda de la propia sonda ×1. Sobre 10 kΩ, su capacidad corta mucho antes."
+      - texto: "En unos 800 kHz"
+        porque: "Ese es el corte con la ×10 y sus 20 pF, cinco veces menos capacidad."
+    escalera:
+      - "Un paso bajo RC corta en 1/(2πRC)."
+    solucion: "Unos 160 kHz: 1/(2π · 10 kΩ · 100 pF)."
+    comprobar:
+      - { f_c: 160000, tol: 0.01 }
+
+  - id: estime-x10
+    tipo: pregunta
+    titulo: "La ×10 sobre la misma fuente"
+    texto: "La ×10 presenta unos 20 pF. Sobre la misma fuente de 10 kΩ, ¿dónde corta?"
+    libro: [180]
+    fijar: { C_f: 2e-11 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    estimar:
+      objetivo: "f_c"
+      unidad: Hz
+      min: 0
+      max: 2000000
+      paso: 10000
+      inicio: 200000
+      tol: 0.05
+      rotulo: "f_{c} con la ×10"
+    exito: "Unos 800 kHz: cinco veces mejor, porque la red divisora reduce también la capacidad vista."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 840000 }, texto: "Se ha pasado: con cinco veces menos capacidad, el corte sube cinco veces." }
+      - { texto: "Se ha quedado corto: 100 pF frente a 20 pF es cinco veces menos capacidad." }
+    escalera:
+      - "La capacidad baja cinco veces; el corte sube otras tantas."
+    solucion: "1/(2π · 10 kΩ · 20 pF) ≈ 800 kHz."
+
+  - id: simule-1mhz
+    tipo: simular
+    titulo: "Prediga y simule"
+    texto: "Una senoide de 1 V y 1 MHz sale de una fuente de 10 kΩ. ¿Qué amplitud llega a la sonda ×1?"
+    libro: [179, 181]
+    fijar: { V_p: 1, f_f: 1000000, C_f: 1e-10 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: A_c, rotulo: "Amplitud en la sonda" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: A_c
+      unidad: V
+      tol: 0.05
+      rotulo: "Amplitud en la sonda"
+      medida: vc_amp
+      errores:
+        - { expr: "V_p", texto: "Ha olvidado la sonda: sus 100 pF son un paso bajo de 160 kHz, muy por debajo de 1 MHz." }
+        - { expr: "V_p*0.7071", texto: "Esa es la amplitud en el corte. 1 MHz está seis veces por encima: cae mucho más." }
+        - { expr: "V_p/sqrt(1 + (2*pi*f_f*R_f*2e-11)^2)", texto: "Ese es el resultado con la ×10, de 20 pF. La ×1 carga cinco veces más." }
+    exito: "Llega una sexta parte: la deformación la produce la propia sonda."
+    escalera:
+      - "Compare 1 MHz con el corte de la ×1 sobre 10 kΩ."
+    solucion: "ωRC = 2π · 1 MHz · 10 kΩ · 100 pF ≈ 6,3: llegan unos 0,16 V."
+    comprobar:
+      - { A_c: 0.155, tol: 0.02, x_c: 6.28 }
+
+  - id: cristal
+    tipo: porque
+    titulo: "El oscilador que se para"
+    texto: "Mide un oscilador de cristal con la sonda en ×1 y deja de oscilar. ¿Por qué?"
+    libro: [181]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Sus 100 pF desintonizan un circuito de decenas de picofaradios"
+        bien: true
+        porque: "La sonda añade más capacidad que la que tiene el propio oscilador: lo desintoniza por completo."
+      - texto: "La sonda ×1 tiene poca impedancia de entrada en continua"
+        porque: "Su 1 MΩ importa poco aquí: lo que pesa a esa frecuencia es la capacidad."
+      - texto: "El ruido de la sonda lo bloquea"
+        porque: "El ruido no para un oscilador; la capacidad añadida sí lo desintoniza."
+    escalera:
+      - "Compare la capacidad de la sonda con la del circuito que oscila."
+    solucion: "Los 100 pF de la ×1 sobre decenas de picofaradios lo desintonizan."
+
+  - id: tabla-sondas
+    tipo: pregunta
+    titulo: "La comparación completa"
+    texto: "Empareje cada dato con su valor."
+    libro: [176]
+    widget:
+      tipo: figura
+      figura: fig-21.15
+      zonas:
+        - { id: tabla, rotulo: "×1 frente a ×10", rect: [0, 0, 453, 182] }
+    emparejar:
+      - ["Atenuación de la ×10", "10 veces"]
+      - ["Ancho de banda de la ×1", "Unos 6 MHz"]
+      - ["Capacidad de la ×1", "Unos 100 pF"]
+      - ["Impedancia de entrada de la ×10", "10 MΩ"]
+    exito: "Las dos filas centrales, ancho de banda y capacidad, deciden: la ×10 es la posición por defecto."
+    pistas:
+      - { texto: "La ×10 divide y presenta más impedancia; la ×1 carga más y es más lenta." }
+    escalera:
+      - "La impedancia de la ×10 suma la de la red divisora a la del osciloscopio."
+    solucion: "×10 atenúa 10 veces y presenta 10 MΩ; la ×1, unos 6 MHz y unos 100 pF."
+
+  - id: cuando-x1
+    tipo: pregunta
+    titulo: "Cuándo la ×1"
+    texto: "¿En cuál de estas medidas conviene la ×1?"
+    libro: [185, 186, 187]
+    widget:
+      tipo: figura
+      figura: fig-21.15
+      zonas:
+        - { id: tabla, rotulo: "×1 frente a ×10", rect: [0, 0, 453, 182] }
+    opciones:
+      - texto: "El rizado de milivoltios de una fuente"
+        bien: true
+        porque: "Pequeña, lenta y de baja impedancia: los 10 mV que la ×10 haría casi invisibles se ven bien con la ×1."
+      - texto: "Una señal digital rápida"
+        porque: "Es justo lo de la ×10: con la ×1 la sonda deformaría los flancos."
+      - texto: "Un nodo de alta impedancia"
+        porque: "La ×10 carga menos: es la buena para la alta impedancia."
+    escalera:
+      - "La ×1 solo cuando la señal es muy pequeña, muy lenta y la fuente de baja impedancia."
+    solucion: "El rizado de milivoltios: la ×1 tiene menos atenuación, no más sensibilidad."
+
+  - id: estime-factor
+    tipo: pregunta
+    titulo: "El error de cada día"
+    texto: "Sonda en ×10 y menú en ×1: la pantalla indica 0,5 V de pico. ¿Cuánto vale de verdad?"
+    libro: [189, 190, "cap21#607"]
+    fijar: { V_lee: 0.5 }
+    widget:
+      tipo: figura
+      imagen: img/foto_sonda.jpg
+      zonas:
+        - { id: conmutador, rotulo: "El conmutador ×1/×10", rect: [850, 720, 130, 130] }
+    estimar:
+      objetivo: "V_real"
+      unidad: V
+      min: 0
+      max: 10
+      paso: 0.05
+      inicio: 1
+      tol: 0.03
+      rotulo: "Tensión real de pico"
+    exito: "0,5 × 10 = 5 V: el instrumento no aplicó el factor que la sonda ya había dividido."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5.15 }, texto: "Se ha pasado: la sonda divide por diez una sola vez." }
+      - { texto: "Se ha quedado corto: la sonda ya atenuó diez veces y el menú no lo corrige." }
+    escalera:
+      - "La sonda ×10 divide por diez; ¿quién debía multiplicar?"
+    solucion: "5 V: la lectura es diez veces menor que la real."
+    comprobar:
+      - { V_real: 5 }
+
+  - id: toque-timbre
+    tipo: tocar
+    titulo: "Un timbre que no existe"
+    texto: "Un flanco rápido sale con timbre y sobreimpulso que el circuito no tiene. Toque la parte de la sonda culpable."
+    libro: [192, 194, 196, 200]
+    widget:
+      tipo: figura
+      imagen: img/foto_sonda.jpg
+      zonas:
+        - { id: bnc, rotulo: "Arriba a la izquierda", rect: [240, 230, 190, 130] }
+        - { id: pinza, rotulo: "Abajo a la izquierda", rect: [120, 690, 220, 180] }
+        - { id: punta, rotulo: "Abajo, en el centro", rect: [390, 800, 150, 130] }
+        - { id: conmutador, rotulo: "En el cuerpo naranja", rect: [850, 720, 130, 130] }
+    tocar:
+      bien: [pinza]
+      porque:
+        bnc: "El conector BNC no forma ningún bucle con la punta."
+        punta: "La punta es necesaria; el problema es el camino de vuelta a masa."
+        conmutador: "El conmutador cambia la atenuación, no crea timbre."
+    exito: "El latiguillo de masa: su bucle tiene inductancia que resuena con la capacidad de la sonda. El muelle corto lo elimina."
+    escalera: ["Busque lo que forma un bucle grande con la punta."]
+    solucion: "Abajo a la izquierda: el latiguillo de masa con su pinza. Use el muelle corto."
+
+  - id: activa
+    tipo: pregunta
+    titulo: "Cuando la ×10 no basta"
+    texto: "Una sonda activa presenta del orden de 1 pF. ¿Qué cuesta a cambio?"
+    libro: [183]
+    fijar: { C_f: 1e-12 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Alimentación, pocos voltios de entrada y fragilidad"
+        bien: true
+        porque: "Lleva un seguidor en la punta: necesita alimentación, admite pocos voltios y teme las descargas."
+      - texto: "Menos ancho de banda que la ×10"
+        porque: "Al revés: el corte sube a unos 16 MHz y su ancho de banda llega a gigahercios."
+      - texto: "Más capacidad de carga"
+        porque: "Presenta del orden de 1 pF, frente a 10 a 20 pF de una ×10 pasiva."
+    escalera:
+      - "Es un amplificador montado en la punta."
+    solucion: "Alimentación, unos pocos voltios de entrada, fragilidad ante descargas y su precio."
+    comprobar:
+      - { f_c: 16000000, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [177, 180, 186, 190, 194]
+    ideas:
+      - { titulo: "×10 casi siempre.", texto: "Unos 20 pF frente a 100 pF: sobre 10 kΩ, 800 kHz frente a 160 kHz." }
+      - { titulo: "×1 para lo diminuto.", texto: "Pequeño, lento y de baja impedancia: menos atenuación, no más sensibilidad." }
+      - { titulo: "Diga qué sonda hay.", texto: "Si no coincide, todo sale diez veces mayor o menor." }
+      - { titulo: "Masa corta.", texto: "El latiguillo largo crea timbre; el muelle lo quita." }

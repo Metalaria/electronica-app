@@ -1,0 +1,259 @@
+# Lección 1.2 de la sección 42.7 «Rebote de Masa y Ruido de Conmutación» (cap41, sec-41.7). Formato: GUIA.md.
+# - v = N·L·di/dt (bloque 196): 8 salidas, 20 mA en 2 ns y 5 nH dan 400 mV (bloque 198), viva frente a N con las tres
+#   inductancias de la figura 42.11 (fig-41.11): 5 nH con patillas, 1,5 nH QFN y 0,4 nH BGA.
+# - El margen en bajo de LVCMOS de 3,3 V, 0,6 V (bloque 201): 400 mV son dos tercios.
+# Paso práctico: «simular» el rebote del ejemplo del libro antes de la fórmula (400 mV; error: una sola salida).
+leccion: cap41/sec-41.7
+
+libro:
+  195: "Ese camino tiene inductancia, y sobre ella la corriente conmutada desarrolla tensión"
+  196: 'v = N dot.op L dot.op (d i)/(d t)'
+  197: "Con 8 salidas conmutando 20 mA en 2 ns sobre 5 nH de inductancia de encapsulado"
+  198: '"400 mV"'
+  199: "el chip toma sus decisiones respecto a su masa interna, no respecto a la de la placa"
+  201: "el margen en nivel bajo es de unos 0,6 V (VIL = 0,8 V frente a una salida a 0,2 V), así que el rebote se come dos tercios"
+  202: "Es la causa de contadores que cuentan de más y de resets espurios"
+  203: "Una salida en bajo está conectada a la masa interna, así que sigue el rebote"
+  205: "Proporcional: es el factor N"
+  206: "Un bus de 8 bits que conmuta todo a la vez es el peor caso"
+  208: "un BGA sea mucho mejor que un DIP a alta velocidad: sus contactos son cortos y numerosos"
+  209: "la inductancia de los pines de masa del propio encapsulado, en cambio, no la corrige ningún condensador externo"
+  210: "Vías de masa cortas y múltiples junto a cada pin"
+  211: "usarlo es gratis: reduce el rebote, la emisión y la diafonía a la vez"
+  212: "Escalonar las conmutaciones"
+  213: "Resistencias serie en las salidas, que limitan di/dt y además terminan la línea"
+  218: "una salida que esté quieta en nivel bajo: está unida a esa masa interna y la copia"
+  221: "Rebote de masa según el número de salidas simultáneas"
+
+modelo:
+  valores:
+    N_s: { sim: "N", nombre: "salidas que conmutan a la vez", unidad: "", valor: 8 }
+    L_g: { sim: "L", nombre: "inductancia del encapsulado", unidad: H, valor: 5e-9 }
+    i_g: { sim: "Δi", nombre: "corriente de cada salida", unidad: A, valor: 0.02 }
+    t_g: { sim: "Δt", nombre: "duración del flanco", unidad: s, valor: 2e-9 }
+    m_g: { sim: "margen", nombre: "margen de ruido en bajo", unidad: V, valor: 0.6 }
+  calculos:
+    v_g: { expr: "N_s*L_g*i_g/t_g", sim: "v", nombre: "rebote de masa", unidad: V }
+    v_1g: { expr: "L_g*i_g/t_g", sim: "v", nombre: "con una sola salida", unidad: V }
+    f_m: { expr: "v_g/m_g*100", sim: "fracción", nombre: "fracción del margen", unidad: "%" }
+
+tarjetas:
+  - id: explore-rebote
+    tipo: explorar
+    titulo: "La masa no está en todas partes"
+    texto: "Las salidas que conmutan a la vez devuelven su corriente por los mismos pines de masa. Cambie cuántas y el encapsulado."
+    libro: [195, 221]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
+      y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "v = N·L·Δi/Δt" }
+        - { expr: "m_g + 0*nn", color: verde, rotulo: "Margen en bajo", discontinua: true }
+      marcas:
+        - { x: "N_s", y: "v_g", rotulo: "{{v_g}}" }
+      lectura: { valor: v_g, rotulo: "Rebote de masa" }
+      mandos:
+        - { valor: N_s, min: 1, max: 16, paso: 1, rotulo: "Salidas a la vez, N" }
+        - { valor: L_g, lista: [0.4e-9, 1.5e-9, 5e-9], nombres: ["BGA", "QFN", "con patillas"], rotulo: "Encapsulado" }
+    requiere: { mover: [N_s, L_g] }
+
+  - id: simule-rebote
+    tipo: simular
+    titulo: "Prediga el rebote"
+    texto: "Ocho salidas conmutan 20 mA cada una en 2 ns sobre 5 nH de encapsulado. ¿Cuánto se separa la masa interna de la de la placa?"
+    libro: [197, 198, 199]
+    fijar: { N_s: 8, L_g: 5e-9, i_g: 0.02, t_g: 2e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
+      y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "v = N·L·Δi/Δt" }
+      lectura: { valor: v_g, rotulo: "Rebote de masa" }
+      ocultar: true
+    simular:
+      objetivo: v_g
+      unidad: V
+      tol: 0.05
+      rotulo: "Rebote de masa, v"
+      errores:
+        - { expr: "v_1g", texto: "Eso es una sola salida: las ocho devuelven su corriente por el mismo camino." }
+    exito: "400 mV entre la masa interna y la de la placa, y el chip decide respecto a la interna."
+    escalera:
+      - "L·Δi/Δt para una salida, por el número de salidas."
+    solucion: "8 × 5 nH × 0,02 A / 2 ns = 400 mV."
+    comprobar:
+      - { v_g: 0.4, v_1g: 0.05 }
+
+  - id: formula-rebote
+    tipo: formula
+    titulo: "El rebote de masa"
+    texto: "N salidas, la inductancia del camino de masa y la rapidez del cambio de corriente."
+    libro: [196, 205]
+    ec: 196
+    sustitucion: "{{N_s}} · {{L_g}} · {{i_g}} / {{t_g}} = {{v_g}}"
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
+      y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "v = N·L·Δi/Δt" }
+      marcas:
+        - { x: "N_s", y: "v_g", rotulo: "{{v_g}}" }
+      lectura: { valor: v_g, rotulo: "Rebote de masa" }
+      mandos:
+        - { valor: N_s, min: 1, max: 16, paso: 1, rotulo: "Salidas a la vez, N" }
+        - { valor: t_g, lista: [1e-9, 2e-9, 4e-9], rotulo: "Flanco, Δt" }
+
+  - id: estime-margen
+    tipo: pregunta
+    titulo: "Lo que se come del margen"
+    texto: "En LVCMOS de 3,3 V el margen en nivel bajo es de unos 0,6 V. ¿Qué parte se comen esos 400 mV?"
+    libro: [198, 201]
+    fijar: { N_s: 8, L_g: 5e-9, i_g: 0.02, t_g: 2e-9, m_g: 0.6 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
+      y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "Rebote" }
+        - { expr: "m_g + 0*nn", color: verde, rotulo: "Margen en bajo", discontinua: true }
+    estimar:
+      objetivo: "f_m"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 20
+      tol: 0.05
+      rotulo: "Parte del margen"
+    exito: "Dos tercios: queda muy poco para el ruido de verdad."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 70 }, texto: "Se ha pasado: 0,4 entre 0,6." }
+      - { texto: "Se ha quedado corto: 0,4 entre 0,6." }
+    escalera:
+      - "Divida el rebote entre el margen."
+    solucion: "0,4 / 0,6: dos tercios, un 67 %."
+    comprobar:
+      - { f_m: 66.7, v_g: 0.4 }
+
+  - id: empareje-consecuencias
+    tipo: pregunta
+    titulo: "Las tres consecuencias"
+    texto: "Empareje cada consecuencia del rebote con lo que produce."
+    libro: [201, 202, 203]
+    emparejar:
+      - ["Menos margen de ruido", "Las entradas ven la señal desplazada"]
+      - ["Conmutaciones falsas", "Contadores que cuentan de más, resets espurios"]
+      - ["Ruido en las salidas quietas", "Una salida en bajo sigue el rebote"]
+    exito: "El chip decide respecto a su masa interna, no a la de la placa."
+    pistas:
+      - { texto: "Una salida en bajo está unida a la masa interna." }
+    escalera:
+      - "Un pulso que no existe hace contar de más."
+    solucion: "Margen, señal desplazada; falsas, contadores y resets; salidas quietas, lo transmiten."
+
+  - id: toque-defensa
+    tipo: tocar
+    titulo: "La defensa que no llega"
+    texto: "Parte del rebote es la inductancia de los pines de masa del propio encapsulado. Toque la defensa que no la corrige."
+    libro: [208, 209, 210, 211, 212, 213]
+    widget:
+      tipo: figura
+      figura: fig-41.11
+      zonas:
+        - { id: pines, rotulo: "Defensa 1", rect: [267, 31, 170, 35] }
+        - { id: desacoplo, rotulo: "Defensa 2", rect: [267, 56, 170, 35] }
+        - { id: vias, rotulo: "Defensa 3", rect: [267, 84, 170, 35] }
+        - { id: flancos, rotulo: "Defensa 4", rect: [267, 111, 170, 35] }
+        - { id: escalonar, rotulo: "Defensa 5", rect: [267, 137, 170, 35] }
+        - { id: serie, rotulo: "Defensa 6", rect: [267, 164, 170, 35] }
+    tocar:
+      bien: [desacoplo]
+      porque:
+        pines: "Más pines en paralelo reparten la inductancia del encapsulado: sí actúa."
+        vias: "Acortan el camino a masa junto a cada pin: sí actúan."
+        flancos: "Menos di/dt, menos rebote: actúa sobre cualquier inductancia."
+        escalonar: "Menos salidas a la vez, menos N: sí actúa."
+        serie: "Limitan di/dt: sí actúan."
+    exito: "El desacoplo es la más barata contra el rebote de la alimentación, pero ningún condensador externo corrige los pines de masa."
+    escalera:
+      - "¿Cuál actúa fuera del encapsulado, en la alimentación?"
+    solucion: "La 2, el desacoplo."
+
+  - id: predecir-bga
+    tipo: predecir
+    titulo: "BGA frente a DIP"
+    texto: "El mismo circuito en un encapsulado DIP y en un BGA, a alta velocidad. ¿Cuál rebota menos?"
+    libro: [208]
+    widget:
+      tipo: figura
+      figura: fig-41.11
+      zonas:
+        - { id: pines, rotulo: "Defensa 1", rect: [267, 31, 170, 35] }
+    opciones:
+      - texto: "El BGA: sus contactos son cortos y numerosos"
+        bien: true
+        porque: "Muchos pines de masa en paralelo: la defensa número 1."
+      - texto: "El DIP: sus patillas son más gruesas"
+        porque: "Son largas, y eso es más inductancia por pin."
+      - texto: "Igual: el chip es el mismo"
+        porque: "El rebote depende de la inductancia del encapsulado."
+    escalera:
+      - "¿Qué encapsulado tiene más pines de masa y más cortos?"
+    solucion: "El BGA."
+
+  - id: pregunta-byte
+    tipo: pregunta
+    titulo: "Lo que importa es la simultaneidad"
+    texto: "¿Cuándo se da el peor caso de rebote en un bus de 8 bits?"
+    libro: [205, 206]
+    widget:
+      tipo: figura
+      figura: fig-41.11
+      zonas:
+        - { id: escalonar, rotulo: "Defensa 5", rect: [267, 137, 170, 35] }
+    opciones:
+      - texto: "Al escribir un byte que cambia los ocho bits a la vez"
+        bien: true
+        porque: "El rebote es proporcional a N: todo a la vez es el peor caso."
+      - texto: "Cuando el bus está quieto"
+        porque: "Sin conmutar no hay di/dt."
+      - texto: "Cuando cambia un solo bit muy deprisa"
+        porque: "Un bit rápido rebota, pero ocho a la vez rebotan ocho veces más."
+    escalera:
+      - "Mire el factor N de la fórmula."
+    solucion: "Cuando los ocho bits cambian a la vez."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "La masa interna del chip no es accesible. ¿Cómo se mide su rebote?"
+    libro: [218]
+    widget:
+      tipo: figura
+      figura: fig-41.11
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [30, 20, 215, 190] }
+    opciones:
+      - texto: "En una salida quieta en nivel bajo, con la pinza de masa corta junto al chip"
+        bien: true
+        porque: "Esa salida está unida a la masa interna y la copia."
+      - texto: "En el plano de masa, lejos del chip"
+        porque: "Eso es la masa de la placa: la referencia, no lo que rebota."
+      - texto: "Con el latiguillo de masa largo"
+        porque: "El latiguillo largo capta justo lo que se quiere medir."
+    escalera:
+      - "¿Qué salida está unida a la masa interna?"
+    solucion: "En una salida quieta en bajo, con masa corta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [196, 201, 208, 209]
+    ideas:
+      - { titulo: "N·L·di/dt.", texto: "400 mV con ocho salidas de 20 mA en 2 ns y 5 nH." }
+      - { titulo: "Dos tercios.", texto: "Del margen en bajo de LVCMOS de 3,3 V." }
+      - { titulo: "Simultaneidad.", texto: "Un byte que cambia entero es el peor caso." }
+      - { titulo: "Defensas.", texto: "Pines de masa, vías, flancos lentos, escalonar, R serie; el desacoplo no llega a los pines." }

@@ -1,0 +1,311 @@
+# Lección 1.2 de la sección 33.3 «Elevador (Boost) y Reductor-Elevador (Buck-Boost)» (cap33). Formato: GUIA.md.
+# - Sin esquema de elevador (pedido en peticiones-motor12.md): la relación de conversión de las tres topologías es una
+#   gráfica frente a D (la de la figura 33.3, izquierda) con un asa en la curva del elevador.
+# - El balance voltios-segundo se sustituye por fracciones del periodo (t_on = D·T, t_off = (1 − D)·T; T se va).
+# - La respuesta con el cero en el semiplano derecho no se dibuja (el libro solo da la figura simulada): se pregunta
+#   sobre la figura y se explica con el balance (la salida recibe energía solo durante t_off).
+# Paso práctico: «simular» la corriente de entrada (bloque 87: 1,35 A), con sus dos errores típicos.
+leccion: cap33/sec-33.3
+
+libro:
+  80: "Durante esa fase, la salida no recibe nada: vive del condensador"
+  81: "Su tensión se suma a la de entrada, y por eso la salida es mayor"
+  83: 'V_("in") dot.op t_("on")'
+  84: "V"
+  85: "Con 3,7 V de batería y 5 V de salida, D = 0,26"
+  87: "la entrada toma al menos 1,35 A"
+  88: "un elevador no puede apagar su salida"
+  89: "La corriente de salida es discontinua, en pulsos"
+  90: "la tensión baje momentáneamente antes de subir"
+  92: "una batería de litio que va de 4,2 a 3,0 V con salida de 3,3 V"
+  93: "con la salida invertida respecto a la entrada"
+  94: "SEPIC: salida no invertida, con dos bobinas"
+  95: "ambas corrientes son continuas"
+  96: "Es la solución moderna y la de mejor rendimiento"
+  98: "SEPIC o buck-boost de 4 interruptores"
+  100: "porque el interruptor ni siquiera participa"
+  101: "llevan limitación de irrupción aparte"
+  104: "Debe aparecer la tensión de entrada menos la caída del diodo"
+  105: "Relación de conversión de las tres topologías básicas"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de la batería", unidad: V, valor: 3.7 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.5 }
+    V_set: { sim: "V_{out}", nombre: "salida pedida", unidad: V, valor: 5 }
+    I_out: { sim: "I_{out}", nombre: "corriente de salida", unidad: A, valor: 1 }
+  calculos:
+    M_bu: { expr: "D", sim: "M_{buck}", nombre: "relación del reductor", unidad: "" }
+    M_bo: { expr: "1/(1 - D)", sim: "M_{boost}", nombre: "relación del elevador", unidad: "" }
+    M_bb: { expr: "D/(1 - D)", sim: "M_{buck-boost}", nombre: "relación del reductor-elevador", unidad: "" }
+    V_bo: { expr: "V_in/(1 - D)", sim: "V_{out}", nombre: "salida del elevador", unidad: V }
+    D_b: { expr: "1 - V_in/V_set", sim: "D", nombre: "ciclo de trabajo para la salida pedida", unidad: "" }
+    I_in: { expr: "I_out*V_set/V_in", sim: "I_{in}", nombre: "corriente de entrada mínima", unidad: A }
+    I_buck: { expr: "I_out*V_in/V_set", sim: "I", nombre: "lo que tomaría con la relación al revés", unidad: A }
+
+tarjetas:
+  - id: explore-relacion
+    tipo: explorar
+    titulo: "Tres relaciones"
+    texto: "Arrastre el punto rojo, el elevador, y compare con el reductor y el reductor-elevador."
+    libro: [84, 105]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.85, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 5, unidad: "", rotulo: "|V_{out}/V_{in}|" }
+      curvas:
+        - { expr: "d", color: verde, rotulo: "reductor: D" }
+        - { expr: "1/(1 - d)", color: naranja, rotulo: "elevador: 1/(1 − D)" }
+        - { expr: "d/(1 - d)", color: azul, rotulo: "reductor-elevador: D/(1 − D)", discontinua: true }
+      asas:
+        - { mueve: D, x: "D", y: "M_bo", rotulo: "Elevador" }
+      lectura: { valor: V_bo, rotulo: "Salida desde 3,7 V" }
+      mandos:
+        - { valor: D, min: 0, max: 0.85, paso: 0.01, rotulo: "Ciclo de trabajo, D" }
+    requiere: { mover: [D] }
+
+  - id: formula-elevador
+    tipo: formula
+    titulo: "El balance del elevador"
+    texto: "Cerrado, la bobina ve V_{in}; abierto, V_{out} − V_{in}. Divida por el periodo y mueva D."
+    libro: [80, 81, 83, 84]
+    ec: 83
+    sustitucion: "{{V_in}} · {{D}} = ({{V_bo}} − {{V_in}}) · (1 − {{D}})"
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.85, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 5, unidad: "", rotulo: "V_{out}/V_{in}" }
+      curvas:
+        - { expr: "1/(1 - d)", color: naranja, rotulo: "elevador" }
+      asas:
+        - { mueve: D, x: "D", y: "M_bo", rotulo: "Elevador" }
+      mandos:
+        - { valor: D, min: 0, max: 0.85, paso: 0.01, rotulo: "Ciclo de trabajo, D" }
+
+  - id: estime-d
+    tipo: pregunta
+    titulo: "De 3,7 V a 5 V"
+    texto: "Una batería de 3,7 V y 5 V de salida con un elevador. ¿Qué ciclo de trabajo?"
+    libro: [84, 85]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.85, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 5, unidad: "", rotulo: "V_{out}/V_{in}" }
+      curvas:
+        - { expr: "1/(1 - d)", color: naranja, rotulo: "elevador" }
+        - { expr: "V_set/V_in", color: tinta, rotulo: "5/3,7", discontinua: true }
+    estimar:
+      objetivo: "D_b"
+      unidad: ""
+      min: 0
+      max: 0.85
+      paso: 0.01
+      inicio: 0.6
+      tol: 0.05
+      rotulo: "Ciclo de trabajo, D"
+    exito: "D = 0,26: basta con tener la bobina cargándose una cuarta parte del periodo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.28 }, texto: "Se ha pasado: con ese D la salida pasa de 5 V." }
+      - { texto: "Se ha quedado corto: la salida no llega a 5 V." }
+    escalera:
+      - "Despeje D de V_{out} = V_{in}/(1 − D): D = 1 − V_{in}/V_{out}."
+    solucion: "D = 1 − 3,7/5 = 0,26."
+    comprobar:
+      - { D_b: 0.26 }
+
+  - id: simule-entrada
+    tipo: simular
+    titulo: "La corriente de entrada"
+    texto: "El elevador da 5 V y 1 A desde la batería de 3,7 V. ¿Cuánta corriente toma de la entrada, como mínimo?"
+    libro: [87]
+    simular:
+      objetivo: I_in
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de entrada"
+      errores:
+        - { expr: "I_out", texto: "1 A es la de salida. Para dar más tensión, la entrada aporta más corriente: la potencia es la misma." }
+        - { expr: "I_buck", texto: "Eso sería en un reductor. Aquí la tensión sube, así que la corriente de entrada es mayor que la de salida." }
+    exito: "Al menos 1,35 A, y con el rizado, picos mayores: bobina e interruptor se dimensionan para ellos."
+    escalera:
+      - "Sin pérdidas, la potencia de entrada iguala la de salida."
+    solucion: "5 V × 1 A / 3,7 V = 1,35 A."
+    comprobar:
+      - { I_in: 1.35, I_out: 1, I_buck: 0.74, tol: 0.005 }
+
+  - id: apagado
+    tipo: pregunta
+    titulo: "Desactivado"
+    texto: "Se desactiva el elevador con la batería conectada. ¿Qué aparece a la salida?"
+    libro: [88, 104]
+    fijar: { D: 0 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.85, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 5, unidad: "", rotulo: "V_{out}/V_{in}" }
+      curvas:
+        - { expr: "1/(1 - d)", color: naranja, rotulo: "elevador" }
+      marcas:
+        - { x: "D", y: "M_bo", rotulo: "D = 0" }
+    opciones:
+      - texto: "La tensión de entrada menos la caída del diodo"
+        bien: true
+        porque: "El diodo une entrada y salida mientras la salida quede por debajo: un elevador no puede apagar su salida."
+      - texto: "Cero voltios"
+        porque: "Eso haría un reductor. Aquí el camino bobina-diodo sigue conectado sin que el interruptor participe."
+      - texto: "La tensión de salida nominal"
+        porque: "Sin conmutar no hay elevación; queda la entrada a través del diodo."
+    escalera:
+      - "Siga el camino de la entrada a la salida con el interruptor abierto."
+    solucion: "La entrada menos la caída del diodo: si hace falta cortar de verdad, se añade un interruptor."
+
+  - id: pulsos
+    tipo: pregunta
+    titulo: "La salida, a pulsos"
+    texto: "Comparado con un reductor, ¿por qué el elevador necesita más condensador de salida?"
+    libro: [80, 89]
+    widget:
+      tipo: figura
+      figura: fig-33.3
+      zonas:
+        - { id: relacion, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 225] }
+    opciones:
+      - texto: "Su corriente de salida es discontinua: mientras conduce, la salida vive del condensador"
+        bien: true
+        porque: "La salida solo recibe durante t_{off}: más rizado y más condensador que en un reductor."
+      - texto: "Porque su salida es más alta"
+        porque: "La tensión mayor no es el motivo; lo es que la corriente llegue a pulsos."
+      - texto: "Porque la bobina es más grande"
+        porque: "La bobina no alimenta la salida durante t_{on}: entonces solo queda el condensador."
+    escalera:
+      - "¿Qué recibe la salida mientras el interruptor está cerrado?"
+    solucion: "La corriente de salida va a pulsos: durante t_{on} la salida vive del condensador."
+
+  - id: prediga-escalon
+    tipo: predecir
+    titulo: "Más carga de golpe"
+    texto: "La carga pide más corriente y el lazo sube D. ¿Qué hace la salida en el primer instante?"
+    libro: [90]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.85, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 5, unidad: "", rotulo: "V_{out}/V_{in}" }
+      curvas:
+        - { expr: "1/(1 - d)", color: naranja, rotulo: "elevador, en régimen" }
+      lectura: { valor: V_bo, rotulo: "Salida en régimen" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Baja un momento y luego sube"
+        bien: true
+        porque: "Con más D la salida recibe energía menos tiempo: primero baja. Es el cero en el semiplano derecho."
+      - texto: "Sube enseguida"
+        porque: "En régimen sí subiría, pero al principio t_{off} se acorta y llega menos energía."
+      - texto: "No cambia"
+        porque: "Cambia: primero en sentido contrario, y eso limita el ancho de banda del lazo."
+    escalera:
+      - "¿Cuándo recibe energía la salida de un elevador: con el interruptor cerrado o abierto?"
+    solucion: "Baja momentáneamente antes de subir: el cero en el semiplano derecho."
+
+  - id: por-que-cero
+    tipo: porque
+    titulo: "Una respuesta al revés"
+    texto: "¿Por qué esa respuesta inicial en sentido contrario limita tanto el lazo de control?"
+    libro: [90, 105]
+    widget:
+      tipo: figura
+      figura: fig-33.3
+      zonas:
+        - { id: escalon, rotulo: "La gráfica de la derecha", rect: [255, 0, 187, 225] }
+    opciones:
+      - texto: "Un lazo rápido reaccionaría al hundimiento subiendo aún más D y lo empeoraría"
+        bien: true
+        porque: "Por eso el ancho de banda del elevador se limita severamente: el lazo debe ser más lento que ese hundimiento."
+      - texto: "Porque la bobina se satura al subir D"
+        porque: "No es saturación: la salida recibe menos tiempo al crecer t_{on}."
+      - texto: "Porque el diodo tarda en conducir"
+        porque: "El diodo no es la causa; lo es la menor duración de t_{off}."
+    escalera:
+      - "Si al subir D la salida baja, ¿qué haría un lazo impaciente?"
+    solucion: "Un lazo rápido subiría aún más D al ver bajar la salida: el ancho de banda tiene que ser bajo."
+
+  - id: litio
+    tipo: pregunta
+    titulo: "Batería de litio a 3,3 V"
+    texto: "Una batería de 4,2 a 3,0 V y salida de 3,3 V. ¿Qué topología conviene?"
+    libro: [92, 93, 96, 98]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.85, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 5, unidad: "", rotulo: "|V_{out}/V_{in}|" }
+      curvas:
+        - { expr: "d", color: verde, rotulo: "reductor" }
+        - { expr: "1/(1 - d)", color: naranja, rotulo: "elevador" }
+        - { expr: "1", color: tinta, rotulo: "V_{out} = V_{in}", discontinua: true }
+    opciones:
+      - texto: "SEPIC o buck-boost de cuatro interruptores"
+        bien: true
+        porque: "La entrada cruza la salida: hay que reducir al principio y elevar al final, sin invertir."
+      - texto: "Un reductor"
+        porque: "Al bajar de 3,3 V la batería, el reductor ya no llega."
+      - texto: "Un elevador"
+        porque: "Con 4,2 V la entrada supera la salida, y el elevador no puede bajar."
+      - texto: "El buck-boost clásico"
+        porque: "Cubre los dos casos, pero invierte la salida, lo que a menudo lo descarta."
+    escalera:
+      - "La entrada empieza por encima de 3,3 V y acaba por debajo."
+    solucion: "SEPIC o buck-boost de cuatro interruptores: la entrada cruza la salida."
+
+  - id: parientes
+    tipo: pregunta
+    titulo: "Los parientes"
+    texto: "Empareje cada topología con su rasgo."
+    libro: [93, 94, 95, 96]
+    widget:
+      tipo: figura
+      figura: fig-33.3
+      zonas:
+        - { id: relacion, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 225] }
+    emparejar:
+      - ["Buck-boost clásico", "Sencillo, con la salida invertida"]
+      - ["SEPIC", "No invierte; dos bobinas y un condensador de acoplo"]
+      - ["Ćuk", "Corrientes de entrada y salida continuas"]
+      - ["Buck-boost de cuatro interruptores", "El mejor rendimiento; lo habitual con baterías"]
+    exito: "La tabla de elección sale de estos rasgos: invertir, rizado, componentes y rendimiento."
+    pistas:
+      - { texto: "El de muy poco rizado es el que tiene las dos corrientes continuas." }
+    escalera:
+      - "El SEPIC paga con más componentes el no invertir."
+    solucion: "Clásico: invierte. SEPIC: no invierte. Ćuk: corrientes continuas. Cuatro interruptores: mejor rendimiento."
+
+  - id: irrupcion
+    tipo: pregunta
+    titulo: "Al conectar"
+    texto: "Al conectar un elevador, el condensador de salida está descargado. ¿Por qué el control no puede limitar esa corriente?"
+    libro: [100, 101]
+    widget:
+      tipo: figura
+      figura: fig-33.3
+      zonas:
+        - { id: relacion, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 225] }
+    opciones:
+      - texto: "El camino entrada-bobina-diodo-salida no pasa por el interruptor"
+        bien: true
+        porque: "Es un cortocircuito en el que el interruptor ni siquiera participa: hace falta limitación de irrupción aparte."
+      - texto: "Porque el control aún no ha arrancado"
+        porque: "Aunque hubiera arrancado, el interruptor no está en ese camino."
+      - texto: "Porque la bobina la limita sola"
+        porque: "La bobina solo retrasa la corriente; el condensador descargado la pide toda."
+    escalera:
+      - "Recorra el camino de la entrada al condensador: ¿pasa por el interruptor?"
+    solucion: "Entrada, bobina, diodo y condensador: el interruptor no participa, así que se añade limitación aparte."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [84, 87, 88, 90, 98]
+    ideas:
+      - { titulo: "La bobina como bomba.", texto: "V_{out} = V_{in}/(1 − D); la entrada toma más corriente que la salida." }
+      - { titulo: "No se apaga.", texto: "El diodo deja pasar la entrada a la salida: hace falta un interruptor para cortar." }
+      - { titulo: "El cero del semiplano derecho.", texto: "Al subir D la salida baja antes de subir: lazo lento." }
+      - { titulo: "Si la entrada cruza la salida.", texto: "SEPIC o buck-boost de cuatro interruptores." }

@@ -1,0 +1,261 @@
+# Lección 1.2 de la sección 26.1 «El Operacional Ideal» (cap27; etiqueta interna sec-27.1).
+# Formato: contenido/lecciones11/GUIA.md. Operacional de la app (A₀ = 10⁵, la ganancia real de la tabla del bloque 23)
+# con ±12 V de salida máxima (ejemplo). Las reglas de oro, en el esquema «ao-no-inversor» de ganancia 11 (1 kΩ y 10 kΩ,
+# la red de la sección 26.2); el lazo abierto, en «comparador-schmitt» sin resistencias (comparador simple en 0 V).
+# El offset de 1 mV con ganancia 1000 (bloque 27) se simula como 1 mV de entrada en un no inversor de 1 kΩ y 999 kΩ.
+leccion: cap27/sec-27.1
+
+libro:
+  6: "Ganancia infinita"
+  7: "Impedancia de entrada infinita"
+  8: "Impedancia de salida cero"
+  13: "La tensión entre las dos entradas es cero"
+  15: "No entra corriente por las entradas"
+  18: "solo vale con realimentación negativa"
+  20: "hacia qué entrada va la realimentación"
+  23: "10⁵ a 10⁶"
+  27: "que aparecerá como 1 V a la salida"
+  28: "los parámetros reales dicen si puede hacerlo"
+  31: "Salida pegada a un raíl"
+  32: "Ganancia menor de la esperada a alta frecuencia"
+  33: "Distorsión con señal grande y rápida"
+  34: "Deriva con la temperatura"
+  35: "Oscilación"
+  38: "Debe dar prácticamente cero"
+
+modelo:
+  valores:
+    V_i: { sim: "v_{in}", nombre: "tensión de entrada", unidad: V, valor: 0.5 }
+    R_1: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 1000 }
+    R_2: { sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω, valor: 10000 }
+    A_0: { sim: "A_{0}", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    V_s: { sim: "V_{sat}", nombre: "salida máxima", unidad: V, valor: 12 }
+    V_c: { sim: "v_{d}", nombre: "tensión entre las entradas", unidad: V, valor: 0.001 }
+    V_o1: { sim: "V_{os}", nombre: "offset de entrada", unidad: V, valor: 0.001 }
+    R_g: { sim: "R₂", nombre: "realimentación del amplificador de 1000", unidad: Ω, valor: 999000 }
+    cero: { sim: "0", nombre: "masa", unidad: V, valor: 0 }
+    GBW: { sim: "GBW", nombre: "producto ganancia por ancho de banda", unidad: Hz, valor: 1000000 }
+    f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 10000 }
+  calculos:
+    b_r: { expr: "R_1/(R_1 + R_2)", sim: "β", nombre: "fracción realimentada", unidad: "" }
+    V_o: { expr: "max(-V_s, min(V_s, V_i*A_0/(1 + A_0*b_r)))", sim: "v_{o}", nombre: "tensión de salida", unidad: V, cifras: 4 }
+    V_m: { expr: "V_o*b_r", sim: "v_{−}", nombre: "tensión de la entrada −", unidad: V, cifras: 4 }
+    G_n: { expr: "1/b_r", sim: "G", nombre: "ganancia ideal", unidad: "" }
+    V_d: { expr: "V_i - V_m", sim: "v_{+} − v_{−}", nombre: "tensión entre las entradas", unidad: V }
+    I_1: { expr: "V_m/R_1", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+    V_oc: { expr: "V_s*(1 - 2*ceil(V_c/1e9))", sim: "v_{o}", nombre: "salida en lazo abierto", unidad: V }
+    V_ab: { expr: "A_0*V_c", sim: "A_{0} · v_{d}", nombre: "lo que pediría la ganancia", unidad: V }
+    V_of: { expr: "V_o1*A_0/(1 + A_0/(1 + R_g/R_1))", sim: "v_{o}", nombre: "salida por el offset", unidad: V }
+    A_d: { expr: "GBW/f_s", sim: "A", nombre: "ganancia disponible", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-reglas
+    tipo: explorar
+    titulo: "Las dos entradas, juntas"
+    texto: "Un no inversor de ganancia 11. Mueva la entrada y mire la tensión entre las dos entradas."
+    libro: [13, 15]
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: V_d, rotulo: "Entre las entradas" }
+      datos:
+        - { valor: V_o, rotulo: "Salida: {{V_o}}" }
+        - { valor: V_m, rotulo: "Entrada −: {{V_m}}" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+      mandos:
+        - { valor: V_i, min: -1, max: 1, paso: 0.1, rotulo: "Entrada" }
+    requiere: { mover: [V_i] }
+    comprobar:
+      - { G_n: 11 }
+
+  - id: empareje-ideal
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Ideal y real"
+    texto: "Una cada propiedad ideal con su valor real."
+    libro: [6, 7, 8, 23]
+    emparejar:
+      - ["Ganancia infinita", "10⁵ a 10⁶"]
+      - ["Impedancia de entrada infinita", "GΩ a MΩ, con corriente de polarización"]
+      - ["Impedancia de salida cero", "Decenas de Ω, dividida por la realimentación"]
+      - ["Ancho de banda infinito", "GBW finito"]
+      - ["Offset cero", "De µV a mV"]
+    exito: "El diseño consiste en comprobar que la desviación no importa."
+    pistas:
+      - { texto: "La ganancia real es enorme, pero no infinita." }
+    escalera:
+      - "El ancho de banda real lo resume un producto: el GBW."
+    solucion: "Ganancia–10⁵ a 10⁶, entrada–GΩ a MΩ, salida–decenas de Ω, banda–GBW, offset–µV a mV."
+
+  - id: prediga-lazo-abierto
+    tipo: predecir
+    titulo: "Sin realimentación"
+    texto: "Un operacional sin realimentación, con ±12 V de salida máxima, tiene 1 mV en su entrada −. ¿Qué hace la salida?"
+    libro: [18, 23]
+    widget:
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_c, a0: A_0, vsat: V_s }
+      lectura: { valor: V_oc, rotulo: "v_{o}" }
+      mide: { vo: V_oc, vmas: cero }
+      ocultar: true
+    opciones:
+      - texto: "Se va al raíl: −12 V"
+        bien: true
+        porque: "10⁵ · 1 mV pediría 100 V: la salida satura. Sin realimentación nada iguala las entradas."
+      - texto: "Se queda en 1 mV"
+        porque: "Eso sería aplicar la regla de oro, que solo vale con realimentación negativa."
+      - texto: "Sale 100 V"
+        porque: "Es lo que pide la ganancia, pero la salida no pasa de sus raíles."
+    escalera:
+      - "Multiplique 1 mV por la ganancia en lazo abierto y compárelo con los raíles."
+    solucion: "Satura en −12 V: un comparador, no un amplificador."
+    comprobar:
+      - { V_oc: -12, V_ab: 100 }
+
+  - id: sorpresa-comparador
+    tipo: sorpresa
+    titulo: "Las entradas no se igualan"
+    texto: "El mismo operacional sin realimentación. Mueva la entrada −: la + sigue en 0 V."
+    libro: [18, 20]
+    inicio: { V_c: 0.001 }
+    widget:
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_c, a0: A_0, vsat: V_s }
+      lectura: { valor: V_oc, rotulo: "v_{o}" }
+      mide: { vo: V_oc, vmas: cero }
+      mandos:
+        - { valor: V_c, lista: [-1, -0.001, 0.001, 1], rotulo: "Entrada −" }
+    requiere: { mover: [V_c] }
+
+  - id: por-que-regla
+    tipo: porque
+    titulo: "¿Por qué falla la regla?"
+    texto: "Sin realimentación, la tensión entre las entradas no es cero. ¿Por qué?"
+    libro: [13, 18]
+    fijar: { V_c: 1 }
+    widget:
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_c, a0: A_0, vsat: V_s }
+      lectura: { valor: V_oc, rotulo: "v_{o}" }
+      mide: { vo: V_oc, vmas: cero }
+    opciones:
+      - texto: "La regla sale de que la realimentación negativa corrige la salida; aquí no hay nada que corrija"
+        bien: true
+        porque: "La ganancia sola lleva la salida al raíl. Por eso lo primero es mirar hacia qué entrada va la realimentación."
+      - texto: "Porque la ganancia no es infinita"
+        porque: "Con 10⁵ la regla se cumple de sobra cuando hay realimentación negativa."
+      - texto: "Porque por las entradas entra corriente"
+        porque: "Esa es la segunda regla, y se sigue cumpliendo. La que falla es la primera."
+    escalera:
+      - "¿De dónde sale la primera regla de oro?"
+    solucion: "Sin realimentación negativa, nada iguala las entradas: la salida satura."
+
+  - id: offset-mil
+    tipo: predecir
+    titulo: "Ganancia 1000 y 1 mV de offset"
+    texto: "Un amplificador de ganancia 1000 usa un operacional con 1 mV de offset. ¿Qué aparece a la salida?"
+    libro: [27, 28]
+    fijar: { V_o1: 0.001 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_o1, r1: R_1, r2: R_g, a0: A_0, vsat: V_s }
+      lectura: { valor: V_of, rotulo: "v_{o}" }
+      mide: { vo: V_of }
+      ocultar: true
+    opciones:
+      - texto: "Unos 1 V de error"
+        bien: true
+        porque: "El offset es una tensión en la entrada y se amplifica como la señal: 1 mV · 1000."
+      - texto: "1 mV"
+        porque: "El offset está en la entrada; a la salida llega multiplicado por la ganancia."
+      - texto: "Nada: la realimentación lo corrige"
+        porque: "La realimentación no distingue el offset de una señal legítima."
+    escalera:
+      - "Trate el offset como una señal de 1 mV en la entrada."
+    solucion: "1 mV · 1000 = 1 V a la salida."
+    comprobar:
+      - { V_of: 0.99, tol: 0.01 }
+
+  - id: estime-gbw
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lo que deja el GBW"
+    texto: "Un operacional de GBW = 1 MHz debe amplificar 10 kHz. ¿Cuánta ganancia queda disponible?"
+    libro: [27]
+    estimar:
+      objetivo: "A_d"
+      unidad: ""
+      min: 0
+      max: 1000
+      paso: 10
+      inicio: 800
+      tol: 0.05
+      rotulo: "Ganancia disponible"
+    exito: "100: un amplificador de ganancia 1000 no funcionará ahí."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 105 }, texto: "Se ha pasado: divida el GBW entre la frecuencia." }
+      - { texto: "Se ha quedado corto: 1 MHz entre 10 kHz." }
+    escalera:
+      - "Ganancia disponible = GBW/f."
+    solucion: "1 MHz / 10 kHz = 100."
+    comprobar:
+      - { A_d: 100 }
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada síntoma, su causa"
+    texto: "Una cada síntoma con la desviación del ideal que lo produce."
+    libro: [31, 32, 33, 34, 35]
+    emparejar:
+      - ["Salida pegada a un raíl", "Entrada flotante, offset amplificado o lazo abierto"]
+      - ["Poca ganancia a alta frecuencia", "GBW"]
+      - ["Distorsión con señal grande y rápida", "Slew rate"]
+      - ["Deriva con la temperatura", "El offset y sus coeficientes"]
+      - ["Oscilación", "Margen de fase"]
+    exito: "Reconocer el síntoma acelera el diagnóstico."
+    pistas:
+      - { texto: "El slew rate es un límite de señal grande; el GBW, de frecuencia." }
+    escalera:
+      - "Una salida pegada a un raíl dice que el lazo no está trabajando."
+    solucion: "Raíl–lazo o offset, alta frecuencia–GBW, distorsión–slew rate, deriva–offset, oscilación–margen."
+
+  - id: medir-entradas
+    tipo: pregunta
+    titulo: "La comprobación de banco"
+    texto: "Mide entre las dos entradas de un operacional que amplifica: lee milivoltios. ¿Qué pasa?"
+    libro: [38, 31]
+    fijar: { V_i: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: V_d, rotulo: "Entre las entradas" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+    opciones:
+      - texto: "El lazo está roto o la salida saturada"
+        bien: true
+        porque: "Con el lazo funcionando debe dar prácticamente cero: es el primer diagnóstico."
+      - texto: "Es normal: es el offset"
+        porque: "El offset es de µV a mV a la entrada, pero el lazo funcionando deja entre las entradas prácticamente cero."
+      - texto: "El polímetro está cargando el circuito"
+        porque: "Las entradas tienen impedancia altísima; el polímetro no las altera."
+    escalera:
+      - "Con realimentación negativa funcionando, ¿cuánto debe haber entre las entradas?"
+    solucion: "Prácticamente cero si el lazo funciona; milivoltios dicen lazo roto o saturación."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [13, 15, 18, 28]
+    ideas:
+      - { titulo: "Dos reglas.", texto: "Entre las entradas, cero; por las entradas, nada de corriente." }
+      - { titulo: "La condición.", texto: "La primera solo vale con realimentación negativa." }
+      - { titulo: "El real.", texto: "El modelo ideal dice qué hace el circuito; los parámetros reales, si puede hacerlo." }

@@ -1,0 +1,291 @@
+# Lección 1.2 de la sección 44.11 «Ampliación: Amplificadores de Clase D» (cap43; etiqueta sec-43.11), con los
+# ejercicios del capítulo (bloque 365). Formato: contenido/lecciones11/GUIA.md.
+# - El PWM en una gráfica del modelo: una senoide comparada con una triangular; las frecuencias (1 kHz y 10 kHz) son de
+#   ejemplo para que se vean los pulsos (el libro: 300 kHz o más).
+# - Las pérdidas de conducción (ecuación del bloque 361) sobre el esquema «resistencia» (16 V eficaces sobre 8 Ω: los
+#   32 W del libro, 2 A).
+# - El filtro LC de salida (22 µH, 0,68 µF; cada mitad del puente ve 4 Ω): gráfica de |H| = 1/|1 − ω²LC + jωL/R|.
+# Paso práctico: «ajuste» del condensador del filtro hasta el corte del libro (41,1 kHz con 22 µH).
+leccion: cap43/sec-43.11
+
+libro:
+  359: "Como el interruptor está siempre saturado o cortado, idealmente no disipa"
+  360: "siempre conducen dos transistores en serie con el altavoz"
+  361: 'P_("conducción") = "2" dot.op I^("2") dot.op R_("DS" lr(( "on" )))'
+  362: "la conducción disipa 0,4 W, es decir, un rendimiento del 98,8 %"
+  363: "con 50 ns de tiempo muerto en cada una de las dos conmutaciones"
+  366: "Modulación por ancho de pulso en clase D"
+  "cap43#365": "¿Cambia algo si la resistencia de emisor existe pero está puenteada por un condensador?"
+
+modelo:
+  valores:
+    A_m: { sim: "A", nombre: "amplitud de la señal (fracción del máximo)", unidad: "", valor: 0.5 }
+    f_a: { sim: "f_{señal}", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    f_p: { sim: "f_{PWM}", nombre: "frecuencia de conmutación de ejemplo", unidad: Hz, valor: 10000 }
+    P_o: { sim: "P", nombre: "potencia de salida", unidad: W, valor: 32 }
+    R_L: { sim: "R_{L}", nombre: "altavoz", unidad: Ω, valor: 8 }
+    R_ds: { sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω, valor: 0.05 }
+    f_c: { sim: "f_{conm}", nombre: "frecuencia de conmutación", unidad: Hz, valor: 300000 }
+    t_m: { sim: "t_{muerto}", nombre: "tiempo muerto por conmutación", unidad: s, valor: 50e-9 }
+    L_f: { sim: "L", nombre: "bobina del filtro", unidad: H, valor: 22e-6 }
+    C_f: { sim: "C", nombre: "condensador del filtro", unidad: F, valor: 0.68e-6 }
+    R_h: { sim: "R", nombre: "carga de cada mitad del filtro", unidad: Ω, valor: 4 }
+  calculos:
+    V_rms: { expr: "sqrt(P_o*R_L)", sim: "V", nombre: "tensión eficaz en el altavoz", unidad: V }
+    I_r: { expr: "V_rms/R_L", sim: "I", nombre: "corriente eficaz", unidad: A }
+    P_c: { expr: "2*I_r^2*R_ds", sim: "P_{conducción}", nombre: "pérdida de conducción", unidad: W }
+    eta: { expr: "P_o/(P_o + P_c)*100", sim: "η", nombre: "rendimiento solo por conducción", unidad: "%", cifras: 3 }
+    T_c: { expr: "1/f_c", sim: "T", nombre: "periodo de conmutación", unidad: s }
+    k_t: { expr: "2*t_m/T_c*100", sim: "hueco", nombre: "parte del periodo perdida", unidad: "%", cifras: 2 }
+    P_t: { expr: "P_o + P_c", sim: "P_{consumida}", nombre: "potencia consumida", unidad: W }
+    t_2: { expr: "2*t_m", sim: "2·t_{muerto}", nombre: "hueco por periodo", unidad: s }
+    f_0: { expr: "1/(2*pi*sqrt(L_f*C_f))", sim: "f_{0}", nombre: "frecuencia de corte del filtro", unidad: Hz }
+    Q_f: { expr: "R_h*sqrt(C_f/L_f)", sim: "Q", nombre: "factor de calidad del filtro", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-pwm
+    tipo: explorar
+    titulo: "El transistor no amplifica: conmuta"
+    texto: "La señal se compara con una triangular rápida y sale un tren de pulsos. Cambie la amplitud y mire su anchura."
+    nota: "Frecuencias de ejemplo, 1 kHz y 10 kHz, para que se vean los pulsos."
+    libro: [359, 366]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "4*abs(t*f_p - floor(t*f_p + 0.5)) - 1", color: tinta, rotulo: "triangular", discontinua: true }
+        - { expr: "A_m*sin(2*pi*f_a*t)", color: azul, rotulo: "señal" }
+        - { expr: "2*ceil((A_m*sin(2*pi*f_a*t) - (4*abs(t*f_p - floor(t*f_p + 0.5)) - 1))/1e9) - 1", color: naranja, rotulo: "pulsos" }
+      mandos:
+        - { valor: A_m, min: 0, max: 0.9, paso: 0.1, rotulo: "Amplitud de la señal" }
+    requiere: { mover: [A_m] }
+    comprobar:
+      - { f_p: 10000, f_a: 1000 }
+
+  - id: formula-conduccion
+    tipo: formula
+    titulo: "Las pérdidas de conducción"
+    texto: "En un puente conducen siempre dos transistores en serie con el altavoz. Cambie la potencia y la R_{DS(on)}."
+    libro: [360, 361]
+    ec: 361
+    sustitucion: "2 · {{I_r}}² · {{R_ds}} = {{P_c}}"
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_rms, r: R_L }
+      lectura: { valor: P_c, rotulo: "Pérdida de conducción" }
+      datos:
+        - { valor: I_r, rotulo: "Corriente eficaz: {{I_r}}" }
+        - { valor: eta, rotulo: "η = {{eta}}" }
+      corriente: I_r
+      mide: { corriente: I_r, tension: V_rms }
+      mandos:
+        - { valor: P_o, lista: [8, 32, 100] }
+        - { valor: R_ds, lista: [0.025, 0.05, 0.1] }
+
+  - id: estime-rendimiento
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El rendimiento por conducción"
+    texto: "Un puente con R_{DS(on)} = 50 mΩ entrega 32 W sobre 8 Ω. ¿Qué rendimiento tiene solo por conducción?"
+    libro: [361, 362]
+    fijar: { P_o: 32, R_L: 8, R_ds: 0.05 }
+    estimar:
+      objetivo: "eta"
+      unidad: "%"
+      min: 80
+      max: 100
+      paso: 0.1
+      inicio: 85
+      tol: 0.002
+      rotulo: "Rendimiento"
+    exito: "98,8 %: 0,4 W de conducción, frente al 78,5 % teórico de la clase B."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 99 }, texto: "Se ha pasado: con 2 A por dos transistores de 50 mΩ se pierden 0,4 W." }
+      - { texto: "Se ha quedado corto: las pérdidas son solo 0,4 W frente a 32 W." }
+    escalera:
+      - "32 W sobre 8 Ω son 2 A eficaces."
+      - "2 · 2² · 0,05 = 0,4 W; η = 32/32,4."
+    solucion: "32/(32 + 0,4) = 98,8 %."
+    comprobar:
+      - { eta: 98.8, P_c: 0.4, I_r: 2, tol: 0.002 }
+      - { con: { P_o: 32 }, P_t: 32.4, tol: 0.001 }
+
+  - id: porque-no-disipa
+    tipo: porque
+    titulo: "Por qué rinde tanto"
+    texto: "Los transistores de un clase D están siempre saturados o cortados. ¿Por qué eso casi no disipa?"
+    libro: [359]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "2*ceil((A_m*sin(2*pi*f_a*t) - (4*abs(t*f_p - floor(t*f_p + 0.5)) - 1))/1e9) - 1", color: naranja, rotulo: "pulsos" }
+    opciones:
+      - texto: "Cortado no pasa corriente; saturado casi no cae tensión"
+        bien: true
+        porque: "La potencia es tensión por corriente, y en los dos estados una de las dos es casi cero."
+      - texto: "Porque conduce menos tiempo"
+        porque: "Conduce la mitad del tiempo o más; lo que importa es que nunca está a medias."
+      - texto: "Porque el filtro LC absorbe el calor"
+        porque: "El filtro solo reconstruye la señal; idealmente tampoco disipa."
+    escalera:
+      - "P = V · I en el transistor. ¿Cuánto vale cada una en corte y en saturación?"
+    solucion: "En corte, casi sin corriente; en saturación, casi sin tensión: casi no disipa."
+
+  - id: prediga-tiempo-muerto
+    tipo: predecir
+    titulo: "El tiempo muerto"
+    texto: "Los dos transistores de cada rama no pueden conducir a la vez: se inserta un hueco. ¿Qué produce ese hueco?"
+    libro: [363]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "2*ceil((A_m*sin(2*pi*f_a*t) - (4*abs(t*f_p - floor(t*f_p + 0.5)) - 1))/1e9) - 1", color: naranja, rotulo: "pulsos" }
+      lectura: { valor: k_t, rotulo: "Periodo perdido" }
+      ocultar: true
+    opciones:
+      - texto: "Distorsión de cruce, igual que en la clase B"
+        bien: true
+        porque: "Reducirlo mejora la distorsión, pero acerca al cortocircuito de la rama."
+      - texto: "Un cortocircuito de la alimentación"
+        porque: "Eso es lo que evita: sin hueco, los dos conducirían a la vez."
+      - texto: "Nada: es demasiado corto para notarse"
+        porque: "A 300 kHz, 50 ns en cada conmutación son el 3 % del periodo: se nota."
+    escalera:
+      - "Durante el hueco no conduce ninguno. ¿Le recuerda a alguna clase?"
+    solucion: "Distorsión de cruce, como el tramo muerto de la clase B."
+
+  - id: estime-hueco
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Cuánto periodo se pierde"
+    texto: "A 300 kHz el periodo es de 3,33 µs. Con 50 ns de tiempo muerto en cada una de sus dos conmutaciones, ¿qué parte se pierde?"
+    libro: [363]
+    estimar:
+      objetivo: "k_t"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 8
+      tol: 0.05
+      rotulo: "Periodo perdido"
+    exito: "Un 3 %: poco tiempo, pero distorsión de cruce."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Se ha pasado: son 100 ns de 3,33 µs." }
+      - { texto: "Se ha quedado corto: cuente las dos conmutaciones del periodo, 100 ns en total." }
+    escalera:
+      - "Dos huecos de 50 ns: 100 ns por periodo."
+    solucion: "100 ns / 3,33 µs = 3 %."
+    comprobar:
+      - { k_t: 3, T_c: 3.33e-6, tol: 0.005 }
+      - { con: { t_m: 50e-9 }, t_2: 100e-9, tol: 0.001 }
+
+  - id: explore-filtro
+    tipo: explorar
+    titulo: "El filtro de salida"
+    texto: "22 µH y 0,68 µF recuperan la señal y quitan la conmutación. Cambie la carga que ve cada mitad del filtro."
+    libro: [363]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 2.5, unidad: "", rotulo: "|H|" }
+      curvas:
+        - { expr: "1/sqrt((1 - (2*pi*nu)^2*L_f*C_f)^2 + (2*pi*nu*L_f/R_h)^2)", color: naranja, rotulo: "filtro LC" }
+      marcas:
+        - { x: "f_0", y: "1", rotulo: "f_{0}" }
+      lectura: { valor: Q_f, rotulo: "Q" }
+      datos:
+        - { valor: f_0, rotulo: "f_{0} = {{f_0}}" }
+      mandos:
+        - { valor: R_h, lista: [2, 4, 8, 16], rotulo: "Carga de cada mitad" }
+    requiere: { mover: [R_h] }
+
+  - id: ajuste-filtro
+    tipo: ajuste
+    titulo: "Sitúe el corte"
+    texto: "Con la bobina de 22 µH, ajuste el condensador hasta llevar el corte a 41,1 kHz: por encima del audio, muy por debajo de la conmutación."
+    libro: [363]
+    fijar: { R_h: 4 }
+    inicio: { C_f: 0.2e-6 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 2.5, unidad: "", rotulo: "|H|" }
+      curvas:
+        - { expr: "1/sqrt((1 - (2*pi*nu)^2*L_f*C_f)^2 + (2*pi*nu*L_f/R_h)^2)", color: naranja, rotulo: "filtro LC" }
+      marcas:
+        - { x: "f_0", y: "1", rotulo: "f_{0}" }
+      lectura: { valor: f_0, rotulo: "Corte" }
+      mandos:
+        - { valor: C_f, min: 0.1e-6, max: 2e-6, paso: 0.02e-6, rotulo: "Condensador, C" }
+    ajuste:
+      valor: f_0
+      objetivo: 41100
+      tol: 0.03
+      rotulo: "Corte del filtro"
+      bajo: "El corte ha bajado demasiado, hacia el audio: reduzca C."
+      alto: "El corte está demasiado alto, hacia la conmutación: aumente C."
+      dentro: "Con 4 Ω por mitad sale plano, de Butterworth (Q ≈ 0,7)."
+
+  - id: pregunta-interferencias
+    tipo: pregunta
+    titulo: "Una antena en el salón"
+    texto: "¿Por qué un clase D obliga a cuidar tanto el trazado y el cableado?"
+    libro: [363]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "2*ceil((A_m*sin(2*pi*f_a*t) - (4*abs(t*f_p - floor(t*f_p + 0.5)) - 1))/1e9) - 1", color: naranja, rotulo: "pulsos" }
+    opciones:
+      - texto: "Conmuta varios amperios a cientos de kilohercios junto a un cable largo: una antena"
+        bien: true
+        porque: "El cable del altavoz radia lo que la conmutación genera: todo el capítulo de compatibilidad aplica."
+      - texto: "Porque disipa mucho y el calor afecta a las pistas"
+        porque: "Disipa muy poco; el problema son las interferencias."
+      - texto: "Porque su señal es de muy bajo nivel"
+        porque: "Maneja amperios; el riesgo es lo que radia, no lo que capta."
+    escalera:
+      - "¿Qué forma un conmutador rápido conectado a un cable largo?"
+    solucion: "Un emisor de interferencias: amperios conmutados a cientos de kHz y un cable largo."
+
+  - id: pregunta-ejercicio
+    tipo: pregunta
+    titulo: "Un ejercicio del capítulo"
+    texto: "Una etapa de emisor común tiene su resistencia de emisor puenteada por un condensador. ¿Sigue estabilizando el punto de trabajo?"
+    libro: ["cap43#365"]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_rms, r: R_L }
+      lectura: { valor: I_r, rotulo: "Corriente" }
+      corriente: I_r
+      mide: { corriente: I_r, tension: V_rms }
+    opciones:
+      - texto: "Sí: el condensador solo actúa sobre la señal"
+        bien: true
+        porque: "En continua el condensador no conduce: la realimentación de R_{E} sigue frenando la deriva térmica."
+      - texto: "No: el condensador la anula"
+        porque: "La anula solo en alterna, para recuperar ganancia; en continua sigue ahí."
+      - texto: "Solo si el condensador es pequeño"
+        porque: "Sea del tamaño que sea, en continua es un circuito abierto."
+    escalera:
+      - "¿Qué es un condensador para la continua?"
+    solucion: "Sí: en continua el condensador es un circuito abierto y R_{E} sigue estabilizando."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [359, 362, 363]
+    ideas:
+      - { titulo: "Conmutar.", texto: "PWM muy por encima del audio; un filtro LC recupera la señal." }
+      - { titulo: "Pérdidas.", texto: "Conducción 2·I²·R_{DS(on)}: 0,4 W con 32 W, un 98,8 %." }
+      - { titulo: "Tiempo muerto.", texto: "Un 3 % del periodo a 300 kHz: distorsión de cruce como la clase B." }
+      - { titulo: "Filtro y antena.", texto: "41,1 kHz, que depende del altavoz; y un cable largo que radia." }

@@ -1,0 +1,203 @@
+# Lección 1.2 de la sección 17.2 «Los Pines GPIO» (cap18; etiquetas sec-18.N = impresas 17.N).
+# - La cabecera de 40 pines sobre la figura 17.4 (fig-18.4, fichero 18.3.svg), con zonas por grupos de función (los
+#   pines sueltos miden menos de lo que se toca en un teléfono).
+# - Sin modelo numérico.
+# Paso práctico: «tocar» los pines que se pierden como GPIO al activar la UART.
+leccion: cap18/sec-18.2
+
+libro:
+  44: "no son cuarenta entradas y salidas equivalentes"
+  46: "5 V (directo de la fuente, sin regular)"
+  47: "usarlas todas y no solo una reduce la inductancia del retorno"
+  49: "activar esos buses consume esos pines"
+  50: "Una biblioteca que espere una y reciba la otra actúa sobre el pin equivocado"
+  52: "durante el arranque, los pines no están donde el programa los deja"
+  53: "una resistencia externa que fije el estado seguro"
+  56: "No hay: entradas analógicas"
+  58: "una EEPROM de identificación"
+  62: "Que la señal no supere 3,3 V, porque los pines no toleran 5"
+  66: "Cabecera GPIO de 40 pines de la Raspberry Pi"
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-cabecera
+    tipo: explorar
+    titulo: "Cuarenta pines, no cuarenta GPIO"
+    texto: "Alimentaciones, masas y pines de doble función. Toque los grupos."
+    libro: [44, 46, 49, 66]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: i2c, rotulo: "Pines verdes, arriba a la izquierda", rect: [40, 31, 110, 36], texto: "I²C: las líneas SDA y SCL, en dos pines concretos." }
+        - { id: uart, rotulo: "Pines violetas, arriba a la derecha", rect: [125, 58, 100, 36], texto: "UART: las líneas TXD y RXD del puerto serie." }
+        - { id: spi, rotulo: "Pines azules, a la izquierda", rect: [40, 148, 110, 45], texto: "SPI: MOSI, MISO y SCLK, más las selecciones CE0 y CE1." }
+        - { id: eeprom, rotulo: "Pines de trazo discontinuo", rect: [35, 198, 190, 36], texto: "Reservados para la EEPROM del sombrero." }
+        - { id: aviso, rotulo: "Recuadro rojo, a la derecha", rect: [277, 178, 173, 66], texto: "Pin físico no es número de GPIO; 3,3 V que no toleran 5 V." }
+    requiere: { mover: [i2c, aviso] }
+
+  - id: toque-uart
+    tipo: tocar
+    titulo: "Activar un bus consume pines"
+    texto: "Activa el puerto serie de la cabecera. Toque los pines que deja de tener como GPIO genéricos."
+    libro: [49, 66]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: i2c, rotulo: "Pines verdes, arriba a la izquierda", rect: [40, 31, 110, 36] }
+        - { id: uart, rotulo: "Pines violetas, arriba a la derecha", rect: [125, 58, 100, 36] }
+        - { id: spi, rotulo: "Pines azules, a la izquierda", rect: [40, 148, 110, 45] }
+        - { id: eeprom, rotulo: "Pines de trazo discontinuo", rect: [35, 198, 190, 36] }
+    tocar:
+      bien: [uart]
+      porque:
+        i2c: "Son los de I²C, SDA y SCL."
+        spi: "Son los de SPI."
+        eeprom: "Están reservados para la EEPROM del sombrero, no para la UART."
+    exito: "TXD y RXD: activar el bus consume esos pines. Es la primera fuente de conflictos."
+    escalera:
+      - "El puerto serie tiene una línea para transmitir y otra para recibir."
+    solucion: "Los dos violetas: TXD y RXD."
+
+  - id: predecir-numeracion
+    tipo: predecir
+    titulo: "Dos numeraciones"
+    texto: "Una biblioteca espera números de GPIO y le pasa el número físico del pin. ¿Qué ocurre?"
+    libro: [50, 66]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: aviso, rotulo: "Recuadro rojo, a la derecha", rect: [277, 178, 173, 66] }
+    opciones:
+      - texto: "Actúa sobre el pin equivocado"
+        bien: true
+        porque: "La física (posición) y la lógica (GPIO del chip) no coinciden."
+      - texto: "Da un error al arrancar"
+        porque: "No hay error: el número es válido, pero señala otro pin."
+      - texto: "Nada: coinciden"
+        porque: "No coinciden: compare en la figura el número del círculo con el GPIO de al lado."
+    escalera:
+      - "Compare el número del círculo con el GPIO de al lado."
+    solucion: "Actúa sobre el pin equivocado."
+
+  - id: predecir-arranque
+    tipo: predecir
+    titulo: "Un relé que chasquea"
+    texto: "Un GPIO gobierna un relé. ¿Qué puede pasar mientras la Pi arranca?"
+    libro: [52, 53]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: cabecera, rotulo: "La cabecera", rect: [70, 10, 160, 305] }
+    opciones:
+      - texto: "Que el relé se active solo"
+        bien: true
+        porque: "Hay pull-ups y pull-downs por defecto y pines que cambian durante decenas de segundos."
+      - texto: "Nada: los pines están apagados"
+        porque: "No lo están: durante el arranque no están donde el programa los deja."
+      - texto: "Que la Pi no arranque"
+        porque: "Arranca; el problema es lo que hace el relé mientras tanto."
+    escalera:
+      - "¿Quién manda en el pin antes de que corra el programa?"
+    solucion: "Puede activarse. Una resistencia externa fija el estado seguro."
+
+  - id: pregunta-analogica
+    tipo: pregunta
+    titulo: "Medir una tensión"
+    texto: "Quiere leer un potenciómetro con la Pi, como haría con analogRead() en un Arduino. ¿Cómo?"
+    libro: [56]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: cabecera, rotulo: "La cabecera", rect: [70, 10, 160, 305] }
+    opciones:
+      - texto: "Con un convertidor externo por I²C o SPI"
+        bien: true
+        porque: "Ningún pin del conector llega a un convertidor A/D: es una diferencia estructural."
+      - texto: "Con cualquier GPIO en modo analógico"
+        porque: "No hay entradas analógicas en el conector."
+      - texto: "Con un pin PWM como entrada"
+        porque: "El PWM es una salida; para medir hace falta un convertidor."
+    escalera:
+      - "Lo que hay y lo que no hay en el conector."
+    solucion: "Con un convertidor externo, por I²C o SPI."
+
+  - id: pregunta-sombrero
+    tipo: pregunta
+    titulo: "Los sombreros"
+    texto: "Una placa de expansión configura sola los pines al arrancar. ¿Cómo lo sabe el sistema?"
+    libro: [58, 66]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: eeprom, rotulo: "Pines de trazo discontinuo", rect: [35, 198, 190, 36] }
+    opciones:
+      - texto: "Lee la EEPROM de identificación del sombrero"
+        bien: true
+        porque: "Sabe qué placa hay y configura los pines. Muchas placas baratas no la llevan."
+      - texto: "Prueba todos los pines al arrancar"
+        porque: "No los prueba: la placa se identifica con su EEPROM."
+      - texto: "Por el número de serie de la Pi"
+        porque: "La identificación está en la placa de expansión, no en la Pi."
+    escalera:
+      - "Mire para qué están reservados dos pines."
+    solucion: "Por la EEPROM de identificación."
+
+  - id: empareje-comprobar
+    tipo: pregunta
+    titulo: "Antes de conectar nada"
+    texto: "Empareje cada comprobación con su límite."
+    libro: [62]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: aviso, rotulo: "Recuadro rojo, a la derecha", rect: [277, 178, 173, 66] }
+    emparejar:
+      - ["La tensión de la señal", "No más de 3,3 V"]
+      - ["La corriente", "16 mA por pin y 50 mA en total"]
+      - ["Los pines de la función", "Que no se solapen"]
+    exito: "Ninguna cuesta más de dos minutos."
+    pistas:
+      - { texto: "Los pines no toleran 5 V." }
+    escalera:
+      - "Una es de tensión, otra de corriente y otra de asignación."
+    solucion: "Tensión, 3,3 V; corriente, 16 y 50 mA; pines, sin solaparse."
+
+  - id: pregunta-masas
+    tipo: pregunta
+    titulo: "Ocho masas"
+    texto: "La cabecera tiene masas repartidas. ¿Por qué conviene usarlas todas?"
+    libro: [47]
+    widget:
+      tipo: figura
+      figura: fig-18.4
+      zonas:
+        - { id: cabecera, rotulo: "La cabecera", rect: [70, 10, 160, 305] }
+    opciones:
+      - texto: "Reduce la inductancia del retorno"
+        bien: true
+        porque: "Repartir el retorno por varias masas lo acorta."
+      - texto: "Para tener más corriente de 3,3 V"
+        porque: "Las masas no dan corriente: son el retorno."
+      - texto: "Por estética del conector"
+        porque: "Tiene un motivo eléctrico: la inductancia del retorno."
+    escalera:
+      - "Por las masas vuelve la corriente."
+    solucion: "Reduce la inductancia del retorno."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [44, 50, 52, 56]
+    ideas:
+      - { titulo: "No son equivalentes.", texto: "Alimentaciones, masas y pines de doble función: un bus consume sus pines." }
+      - { titulo: "Dos numeraciones.", texto: "Pin físico y número de GPIO no coinciden." }
+      - { titulo: "El arranque.", texto: "Los pines no están donde el programa los deja: resistencia externa." }
+      - { titulo: "Sin analógicas.", texto: "Para medir tensiones, un convertidor externo por I²C o SPI." }

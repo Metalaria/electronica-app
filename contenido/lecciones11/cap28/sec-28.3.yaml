@@ -1,0 +1,307 @@
+# Lección 1.2 de la sección 27.3 «Osciladores de Cristal» (cap28). Formato: contenido/lecciones11/GUIA.md.
+# El cristal de ejemplo es de 10 MHz (bloque 68): rama serie con R = 20 Ω («decenas de ohmios», bloque 67),
+# C₁ = 20 fF y L₁ la que da 10 MHz exactos; C₀ de 4, 5 o 10 pF da una antirresonancia de 25, 20 o 10 kHz más arriba,
+# los «10 a 25 kHz» del bloque 68. |Z| del modelo de Butterworth-Van Dyke: (R + jX) ‖ (1/jωC₀), escrito en módulos.
+# La rama serie sola es el esquema rlc-serie (impedancia z_amp, ngspice). El arranque se dibuja con la envolvente de un
+# resonador, 1 − e^(−t/τ) con τ = Q/(π·f) y el mismo Q = 100 000 en los dos cristales (bloque 78).
+# 1.2 (esquemas12d): el modelo BVD vivo, esquema `cristal`, en explore-resonancias e inductivo: |Z| medido por el
+# simulador en un eje lineal de f_s − 15 kHz a f_s + 40 kHz.
+leccion: cap28/sec-28.3
+
+libro:
+  64: "Esa diferencia de tres órdenes de magnitud es lo que separa una exactitud del 1 % de una de partes por millón"
+  67: "decenas de ohmios en un cristal de megahercios"
+  68: "unos 10 a 25 kHz en uno de 10 MHz"
+  69: "esa es la zona donde trabajan la mayoría de los osciladores"
+  70: "en un reloj basta un error de 10 ppm para desviarse casi medio minuto al mes"
+  73: "el inversor da 180° de desfase"
+  74: "un cristal de 12 pF y unos 5 pF de parásitas piden"
+  76: "la resistencia serie del cristal (ESR) determina cuánta hace falta"
+  77: "para limitar el nivel de excitación y no degradarlo"
+  78: "a 32 768 Hz cada ciclo dura cientos de veces más que a 10 MHz"
+  80: "exactitud del 0,5 %, y arranque más rápido"
+  81: "mucho más robusto frente a golpes y vibración"
+  82: "usado sobre todo como filtro en radio"
+  85: "el cristal apenas se inmuta"
+
+modelo:
+  valores:
+    f_s: { sim: "f_{s}", nombre: "resonancia serie", unidad: Hz, valor: 10000000 }
+    R_x: { sim: "R₁", nombre: "resistencia serie del cristal", unidad: Ω, valor: 20 }
+    C_x: { sim: "C₁", nombre: "capacidad de la rama serie", unidad: F, valor: 20e-15 }
+    C_0: { sim: "C₀", nombre: "capacidad del encapsulado", unidad: F, valor: 5e-12 }
+    V_x: { sim: "V_{p}", nombre: "amplitud de la prueba", unidad: V, valor: 1 }
+    C_p: { sim: "C₁ = C₂", nombre: "condensadores del Pierce", unidad: F, valor: 22e-12 }
+    C_s: { sim: "C_{par}", nombre: "capacidades parásitas", unidad: F, valor: 5e-12 }
+    Q_c: { sim: "Q", nombre: "factor de calidad", unidad: "", valor: 100000 }
+  calculos:
+    L_x: { expr: "1/((2*pi*f_s)^2*C_x)", sim: "L₁", nombre: "inductancia de la rama serie", unidad: H }
+    f_p: { expr: "f_s*sqrt(1 + C_x/C_0)", sim: "f_{p}", nombre: "antirresonancia", unidad: Hz }
+    sep: { expr: "f_p - f_s", sim: "f_{p} − f_{s}", nombre: "separación de las resonancias", unidad: Hz }
+    Z_p: { expr: "1/((2*pi*f_p)^2*C_0^2*R_x)", sim: "|Z|_{máx}", nombre: "impedancia en la antirresonancia", unidad: Ω }
+    Z_s: { expr: "R_x", sim: "|Z|_{mín}", nombre: "impedancia en la resonancia serie", unidad: Ω }
+    Z_0: { expr: "sqrt(L_x/C_x)", sim: "√(L/C)", nombre: "impedancia característica", unidad: Ω }
+    C_L: { expr: "C_p/2 + C_s", sim: "C_{L}", nombre: "capacidad de carga que ve el cristal", unidad: F }
+    t_m: { expr: "1e-5*30*86400", sim: "Δt", nombre: "desvío en un mes con 10 ppm", unidad: s }
+    s_mes: { expr: "30*86400", sim: "t", nombre: "segundos de un mes", unidad: s }
+    r_t: { expr: "10000000/32768", sim: "T_{32k}/T_{10M}", nombre: "cociente de periodos", unidad: "" }
+
+tarjetas:
+  - id: explore-resonancias
+    tipo: explorar
+    titulo: "Dos resonancias"
+    texto: "El cristal es una rama serie R, L, C muy pequeña, en paralelo con C₀. Cambie C₀ y mire cuánto se separan sus dos resonancias."
+    nota: "Cristal de ejemplo de 10 MHz."
+    libro: [68]
+    widget:
+      tipo: circuito
+      esquema: cristal
+      piezas: { r1: R_x, l1: L_x, c1: C_x, c0: C_0 }
+      grafica:
+        x: { id: nu, min: 9985000, max: 10040000, unidad: Hz, rotulo: "f" }
+        y: { min: 1, max: 10000000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_x^2 + (2*pi*nu*L_x - 1/(2*pi*nu*C_x))^2)/(2*pi*nu*C_0)/sqrt(R_x^2 + (2*pi*nu*L_x - 1/(2*pi*nu*C_x) - 1/(2*pi*nu*C_0))^2)", color: naranja, rotulo: "|Z| del cristal", mide: z_amp }
+        marcas:
+          - { x: "f_s", y: "Z_s", rotulo: "serie" }
+          - { x: "f_p", y: "Z_p", rotulo: "paralelo" }
+      lectura: { valor: sep, rotulo: "Separación" }
+      mandos:
+        - { valor: C_0, lista: [4e-12, 5e-12, 10e-12], rotulo: "C₀" }
+    requiere: { mover: [C_0] }
+
+  - id: simule-serie
+    tipo: simular
+    titulo: "En la resonancia serie"
+    texto: "La rama serie de un cristal de 10 MHz, excitada justo en su resonancia. ¿Qué impedancia presenta?"
+    libro: [67]
+    fijar: { C_0: 5e-12 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_x, f: f_s, r: R_x, l: L_x, c: C_x }
+      lectura: { valor: Z_s, rotulo: "|Z| en la resonancia" }
+      mide: { z_amp: Z_s }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: Z_s
+      unidad: Ω
+      tol: 0.05
+      rotulo: "Impedancia, |Z|"
+      medida: z_amp
+      errores:
+        - { expr: "sqrt(L_x/C_x)", texto: "Eso es √(L/C), unos 800 kΩ: la reactancia de cada pieza, no la del conjunto. En resonancia se anulan." }
+    pistas:
+      - { texto: "En resonancia, la reactancia de L y la de C se cancelan. ¿Qué queda?" }
+    exito: "Queda solo la resistencia serie: unas decenas de ohmios. Ahí la impedancia es mínima."
+    escalera:
+      - "Las reactancias de L y C se anulan en la resonancia serie."
+    solucion: "|Z| = R₁ = 20 Ω: la resistencia serie del cristal."
+    comprobar:
+      - { Z_s: 20, Z_0: 800000, tol: 0.01 }
+
+  - id: inductivo
+    tipo: pregunta
+    titulo: "Entre las dos"
+    texto: "La mayoría de los osciladores de cristal trabajan entre la resonancia serie y la paralelo. ¿Cómo es ahí el cristal?"
+    libro: [68, 69]
+    fijar: { C_0: 5e-12 }
+    widget:
+      tipo: circuito
+      esquema: cristal
+      piezas: { r1: R_x, l1: L_x, c1: C_x, c0: C_0 }
+      grafica:
+        x: { id: nu, min: 9985000, max: 10040000, unidad: Hz, rotulo: "f" }
+        y: { min: 1, max: 10000000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_x^2 + (2*pi*nu*L_x - 1/(2*pi*nu*C_x))^2)/(2*pi*nu*C_0)/sqrt(R_x^2 + (2*pi*nu*L_x - 1/(2*pi*nu*C_x) - 1/(2*pi*nu*C_0))^2)", color: naranja, rotulo: "|Z| del cristal", mide: z_amp }
+      mandos: []
+    opciones:
+      - texto: "Inductivo"
+        bien: true
+        porque: "Por encima de su resonancia la rama serie ya es inductiva, y resuena con C₀ en la antirresonancia."
+      - texto: "Capacitivo"
+        porque: "Es capacitivo por debajo de la resonancia serie y por encima de la paralelo; entre ambas, no."
+      - texto: "Puramente resistivo"
+        porque: "Solo en las resonancias se anula su reactancia; entre ellas tiene reactancia, y mucha."
+    escalera:
+      - "Por encima de su resonancia, ¿qué domina en una rama RLC serie, L o C?"
+    solucion: "Inductivo: la rama serie ya es inductiva y aún no resuena con C₀."
+
+  - id: estime-ppm
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Diez partes por millón"
+    texto: "Un cristal mal especificado da un reloj con 10 ppm de error. ¿Cuántos segundos se desvía en un mes?"
+    libro: [70]
+    estimar:
+      objetivo: "t_m"
+      unidad: s
+      min: 0
+      max: 120
+      paso: 1
+      inicio: 90
+      tol: 0.08
+      rotulo: "Desvío en un mes"
+    exito: "Unos 26 s: casi medio minuto al mes, por solo 10 ppm."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 28 }, texto: "Se ha pasado: 10 ppm son 10 segundos por cada millón de segundos." }
+      - { texto: "Se ha quedado corto: un mes tiene unos 2,6 millones de segundos." }
+    escalera:
+      - "10 ppm son 10 segundos por cada millón de segundos."
+    solucion: "Unos 2,6 millones de segundos por 10 ppm: unos 26 s, casi medio minuto."
+    comprobar:
+      - { t_m: 26, tol: 0.01 }
+      - { s_mes: 2600000, tol: 0.01 }
+
+  - id: pierce-fase
+    tipo: pregunta
+    titulo: "El circuito de Pierce"
+    texto: "Un inversor con el cristal entre entrada y salida y dos condensadores a masa: el inversor da 180°. ¿Quién da los otros 180°?"
+    libro: [73]
+    widget:
+      tipo: figura
+      figura: fig-28.5
+      zonas:
+        - { id: inductivo, rotulo: "Zona sombreada", rect: [107, 16, 50, 148] }
+    opciones:
+      - texto: "El cristal, inductivo entre sus resonancias, con los dos condensadores"
+        bien: true
+        porque: "Esa red completa la vuelta entera de fase: la condición de Barkhausen."
+      - texto: "Un segundo inversor"
+        porque: "No lo hay: basta un inversor. La red pasiva aporta la otra mitad."
+      - texto: "Nadie: con 180° ya oscila"
+        porque: "Barkhausen pide que el desfase de todo el lazo complete una vuelta entera."
+    escalera:
+      - "¿Qué se comporta como una bobina entre las dos resonancias?"
+    solucion: "El cristal inductivo y los dos condensadores aportan los otros 180°."
+
+  - id: reto-carga
+    tipo: reto
+    titulo: "La capacidad de carga"
+    texto: "Vistos desde el cristal, C₁ y C₂ van en serie, y se suman unos 5 pF de parásitas. Elija C₁ = C₂ para un cristal de 12 pF."
+    libro: [74]
+    fijar: { C_s: 5e-12 }
+    inicio: { C_p: 22e-12 }
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 40e-12, unidad: F, rotulo: "C₁ = C₂" }
+      y: { min: 0, max: 30e-12, unidad: F, rotulo: "C_{L}" }
+      curvas:
+        - { expr: "cc/2 + C_s", color: azul, rotulo: "serie + parásitas" }
+        - { expr: "12e-12", color: verde, rotulo: "la del cristal", discontinua: true }
+      asas:
+        - { mueve: C_p, x: "C_p", y: "C_L", rotulo: "Sus condensadores" }
+      lectura: { valor: C_L, rotulo: "Capacidad de carga" }
+      mandos:
+        - { valor: C_p, min: 6e-12, max: 30e-12, paso: 1e-12, rotulo: "C₁ = C₂" }
+    condiciones:
+      - { valor: C_L, objetivo: 12e-12, tol: 0.02, rotulo: "Carga: {{C_L}}" }
+    exito: "14 pF: en serie valen la mitad, y con 5 pF de parásitas suman 12 pF. Copiarlos de otro diseño desplaza la frecuencia."
+    pistas:
+      - { cuando: { valor: C_L, mayor: 12.24e-12 }, texto: "Carga de más: dos iguales en serie valen la mitad de uno; bájelos." }
+      - { texto: "Carga de menos: súbalos." }
+    escalera:
+      - "Dos condensadores iguales en serie valen la mitad de uno."
+    solucion: "C/2 + 5 pF = 12 pF: C = 14 pF."
+    comprobar:
+      - { con: { C_p: 14e-12 }, C_L: 12e-12 }
+
+  - id: por-que-32k
+    tipo: porque
+    titulo: "Segundos para arrancar"
+    texto: "Un cristal de megahercios arranca en milisegundos; uno de 32 768 Hz tarda uno o dos segundos. ¿Por qué?"
+    nota: "El mismo Q en los dos."
+    libro: [78]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0.0001, max: 10, unidad: s, rotulo: "t", escala: log }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "amplitud relativa" }
+      curvas:
+        - { expr: "1 - exp(-t*pi*10000000/Q_c)", color: azul, rotulo: "10 MHz" }
+        - { expr: "1 - exp(-t*pi*32768/Q_c)", color: naranja, rotulo: "32 768 Hz" }
+    opciones:
+      - texto: "Crecer pide ciclos en proporción al Q, y cada ciclo de 32 768 Hz dura cientos de veces más"
+        bien: true
+        porque: "El Q es del mismo orden en los dos; lo que cambia es la duración de cada ciclo."
+      - texto: "El de 32 768 Hz tiene un Q mucho mayor"
+        porque: "El libro lo descarta: los dos tienen Q de decenas o cientos de miles."
+      - texto: "Su resistencia serie es mayor y gasta más energía"
+        porque: "Pide más ganancia para arrancar, pero la lentitud la explica la frecuencia."
+    escalera:
+      - "Cuente en ciclos, no en segundos."
+    solucion: "Mismos ciclos, cada uno cientos de veces más largo: segundos en lugar de milisegundos."
+    comprobar:
+      - { r_t: 305 }
+
+  - id: resistencia-serie
+    tipo: pregunta
+    titulo: "Una resistencia que «no hace nada»"
+    texto: "Entre la salida del inversor y el cristal hay a veces una resistencia en serie. ¿Para qué?"
+    libro: [76, 77]
+    widget:
+      tipo: figura
+      figura: fig-28.5
+      zonas:
+        - { id: serie, rotulo: "Resonancia serie", rect: [92, 110, 34, 54] }
+    opciones:
+      - texto: "Para limitar el nivel de excitación y no degradar el cristal"
+        bien: true
+        porque: "Sin ella la amplitud crece hasta que satura el inversor, y el cristal se sobreexcita."
+      - texto: "Para que arranque antes"
+        porque: "Al contrario: quita algo de ganancia. Arrancar exige ganancia de sobra según la ESR."
+      - texto: "Para fijar la frecuencia"
+        porque: "La frecuencia la fija el cristal con su carga; la resistencia limita la excitación."
+    escalera:
+      - "¿Qué limita la amplitud si no hay nada más?"
+    solucion: "Limita la excitación: sin ella, solo la saturación del inversor frena la amplitud."
+
+  - id: empareje-resonadores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los otros resonadores"
+    texto: "Una cada resonador con su rasgo."
+    libro: [80, 81, 82]
+    emparejar:
+      - ["Cerámico", "Exactitud del 0,5 % y arranque más rápido"]
+      - ["MEMS", "Robusto frente a golpes y vibración"]
+      - ["SAW", "Sobre todo como filtro en radio"]
+    exito: "El MEMS, con exactitud comparable a un cristal, está desplazando al cuarzo donde importa la robustez."
+    pistas:
+      - { texto: "El de onda acústica superficial trabaja de decenas de megahercios a gigahercios." }
+    escalera:
+      - "¿Cuál es de silicio micromecanizado?"
+    solucion: "Cerámico–0,5 %; MEMS–robusto; SAW–filtro de radio."
+
+  - id: banco-mano
+    tipo: pregunta
+    titulo: "Calentarlos con la mano"
+    texto: "En el banco se calientan con la mano un oscilador LC y uno de cristal. ¿Qué se ve?"
+    libro: [64, 85]
+    widget:
+      tipo: figura
+      figura: fig-28.5
+      zonas:
+        - { id: q, rotulo: "Los factores de calidad", rect: [282, 16, 156, 148] }
+    opciones:
+      - texto: "El LC deriva de forma visible; el cristal apenas se inmuta"
+        bien: true
+        porque: "Tres órdenes de magnitud de Q: del 1 % a partes por millón. Es toda la razón de que exista."
+      - texto: "Los dos derivan lo mismo"
+        porque: "El LC depende de una bobina y un condensador que cambian con la temperatura; el cuarzo, mucho menos."
+      - texto: "Deriva más el cristal, por ser piezoeléctrico"
+        porque: "La piezoelectricidad es la que le da una resonancia tan definida, no una deriva mayor."
+    escalera:
+      - "¿Qué resonador tiene el Q mil veces mayor?"
+    solucion: "El LC se mueve a la vista; el cristal, apenas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [67, 68, 69, 74, 78]
+    ideas:
+      - { titulo: "Dos resonancias.", texto: "Serie, con impedancia mínima igual a R₁; paralelo, una milésima más arriba, con impedancia máxima." }
+      - { titulo: "Inductivo entre ambas.", texto: "Ahí trabaja el Pierce: el inversor da 180° y el cristal con sus condensadores, el resto." }
+      - { titulo: "La carga.", texto: "C₁ y C₂ en serie más las parásitas deben dar la capacidad del cristal." }
+      - { titulo: "El arranque.", texto: "Ciclos proporcionales al Q: milisegundos a megahercios, segundos a 32 768 Hz." }

@@ -1,0 +1,207 @@
+# «Consolas por dentro» · Neo Geo AES 2: la alimentación, 5 V justos. La NEO-AES de primera generación no lleva
+# regulador: toma 5 V ± 0,2 V del adaptador PRO-POW (5 V, 3 A), con una protección que actúa por encima de 5,4 V; la
+# polaridad (exterior positivo) sin protección contra la inversión; el NEO-POW3 de 10 V que puede quemarla; y las
+# placas de «9 V» con LM2576. Fuentes: los datos de la consola (neogeo#n), NeoGeo Development Wiki («Power
+# requirements», «Power supply») y el libro (potencia, sección 1.2).
+leccion: consola-neogeo/neogeo-alimentacion
+
+libro:
+  "neogeo#28": "Circuito que actúa por encima de 5,4 V"
+  "neogeo#30": "Interruptor deslizante de la alimentación"
+  "neogeo#54": "LM2576T-5 (U37) Alimentación de 5 V"
+  "neogeo#95": "La mayoría de las AES de primera generación (placa NEO-AES) son solo de 5 V"
+  "neogeo#96": "Piden 5 V ± 0,2 V y 2 A"
+  "neogeo#97": "Por encima de 5,2 V se acaban muriendo componentes; por debajo de 4,8 V puede haber fallos de imagen o reinicios"
+  "neogeo#98": "Algunas, con la placa NEO-POWER-0, piden 9 V: llevan una bobina grande de cobre y un LM2576 de 5 patillas"
+  "neogeo#100": "el exterior es el positivo y el interior, masa"
+  "neogeo#101": "Las primeras consolas no tienen protección contra la polaridad invertida"
+  "neogeo#102": "salida de 5 V de continua y 3 A"
+  "neogeo#103": "El NEO-POW3 da 10 V de continua y 1 A (otra versión, 11 V y 700 mA) y puede quemar las primeras consolas de 5 V"
+  "cap01#27": "P = V dot.op I"
+
+modelo:
+  valores:
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 6 }
+    V_n: { sim: "V_{nominal}", nombre: "tensión que pide la placa", unidad: V, valor: 5 }
+    I: { sim: "I", nombre: "corriente de la consola", unidad: A, valor: 1 }
+  calculos:
+    V_pl: { expr: "V_ad", sim: "V_{placa}", nombre: "tensión en la placa", unidad: V, cifras: 3 }
+    P: { expr: "V_n*I", sim: "P", nombre: "potencia de la consola", unidad: W, cifras: 3 }
+
+tarjetas:
+  - id: explore-alim
+    tipo: explorar
+    titulo: "La alimentación en la foto"
+    texto: "Toque el interruptor y la protección de sobretensión, el transistor del disipador verde."
+    libro: ["neogeo#30", "neogeo#28"]
+    requiere: { mover: [power, prot] }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Deslizante, a la entrada." }
+        - { id: prot, hotspot: prot, rotulo: "Protección de sobretensión", texto: "Actúa por encima de 5,4 V." }
+
+  - id: prediga-regulador
+    tipo: predecir
+    titulo: "¿Dónde está el regulador?"
+    texto: "En esta NEO-AES de primera generación no hay ningún regulador. ¿De dónde salen sus 5 V?"
+    libro: ["neogeo#95", "neogeo#102"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: prot, hotspot: prot, rotulo: "Protección" }
+        - { id: power, hotspot: power, rotulo: "Interruptor" }
+    opciones:
+      - texto: "Del adaptador: el PRO-POW da ya 5 V."
+        bien: true
+        porque: "La NEO-AES de primera generación es solo de 5 V: el adaptador da 5 V de continua y 3 A."
+      - texto: "De un regulador escondido bajo la placa auxiliar."
+        porque: "No lo hay: la placa toma los 5 V tal cual del adaptador."
+      - texto: "Del cartucho."
+        porque: "El cartucho recibe los 5 V de la consola; no los genera."
+    escalera:
+      - "Mire qué da el adaptador original."
+    solucion: "Del adaptador PRO-POW, que da 5 V de continua."
+
+  - id: formula-potencia
+    tipo: formula
+    titulo: "Diez vatios a 5 V"
+    texto: "La placa pide 5 V y hasta 2 A. Mueva la corriente y vea la potencia."
+    libro: ["cap01#27", "neogeo#96"]
+    ec: "cap01#27"
+    sustitucion: "{{V_n}} · {{I}} = {{P}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 3, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 16, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "V_n*i", color: naranja, rotulo: "P = V · I" }
+      marcas:
+        - { x: "I", y: "P", rotulo: "{{P}}" }
+      mandos: [ { valor: I, min: 0.1, max: 3, paso: 0.1, rotulo: "Corriente, I" } ]
+
+  - id: ajuste-ventana
+    tipo: ajuste
+    titulo: "Una ventana estrecha"
+    texto: "La placa pide 5 V ± 0,2 V. Ajuste la tensión del adaptador hasta que esté dentro."
+    libro: ["neogeo#96", "neogeo#97"]
+    inicio: { V_ad: 6 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 3, max: 7, unidad: V, rotulo: "V_{adaptador}" }
+      y: { min: 3, max: 7, unidad: V, rotulo: "V_{placa}" }
+      curvas:
+        - { expr: "v", color: azul, rotulo: "tensión en la placa" }
+      marcas:
+        - { x: "V_ad", y: "V_pl", rotulo: "{{V_pl}}" }
+      mandos: [ { valor: V_ad, min: 3, max: 7, paso: 0.1, rotulo: "Adaptador, V_{adaptador}" } ]
+    ajuste:
+      valor: V_pl
+      objetivo: 5
+      tol: 0.04
+      rotulo: "Tensión en la placa"
+      bajo: "Por debajo de 4,8 V: fallos de imagen o reinicios. Súbala."
+      alto: "Por encima de 5,2 V se mueren componentes. Bájela."
+      dentro: "Dentro de 5 V ± 0,2 V."
+    exito: "Sin regulador, la placa recibe justo lo que da el adaptador."
+    escalera:
+      - "La ventana va de 4,8 V a 5,2 V."
+    solucion: "Entre 4,8 V y 5,2 V; lo ideal, 5 V."
+    comprobar:
+      - { con: { V_ad: 5 }, V_pl: 5 }
+
+  - id: prediga-pow3
+    tipo: predecir
+    titulo: "El adaptador equivocado"
+    texto: "Alguien conecta un NEO-POW3, de 10 V, a esta NEO-AES de 5 V. ¿Qué puede pasar?"
+    libro: ["neogeo#103", "neogeo#97"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: prot, hotspot: prot, rotulo: "Protección" }
+    opciones:
+      - texto: "Puede quemarla: es el doble de lo que pide."
+        bien: true
+        porque: "El NEO-POW3 puede quemar las primeras consolas de 5 V: por encima de 5,2 V mueren componentes."
+      - texto: "Nada: la placa ya regula a 5 V."
+        porque: "Esta placa no tiene regulador. Las de «9 V», con LM2576, son otras."
+      - texto: "Irá más rápida."
+        porque: "La velocidad la fija el cristal. Lo que hace el exceso de tensión es dañar componentes."
+    escalera:
+      - "Esta placa no tiene regulador."
+    solucion: "Puede quemarla: el NEO-POW3 da 10 V a una placa que pide 5 V ± 0,2 V."
+
+  - id: empareje-adaptadores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada placa, su adaptador"
+    texto: "Empareje cada adaptador o placa con su tensión."
+    libro: ["neogeo#102", "neogeo#103", "neogeo#95", "neogeo#98", "neogeo#54"]
+    emparejar:
+      - ["PRO-POW", "5 V y 3 A"]
+      - ["NEO-POW3", "10 V y 1 A"]
+      - ["NEO-AES de primera generación", "Solo 5 V"]
+      - ["Placa con LM2576", "9 V"]
+    exito: "Las placas con LM2576 regulan; las de primera generación, no."
+    pistas:
+      - { texto: "Las placas de «9 V» se reconocen por una bobina grande de cobre y un LM2576." }
+    escalera:
+      - "El PRO-POW es el de la primera generación."
+    solucion: "PRO-POW: 5 V, 3 A. NEO-POW3: 10 V, 1 A. NEO-AES de primera generación: 5 V. Con LM2576: 9 V."
+
+  - id: prediga-polaridad
+    tipo: predecir
+    titulo: "La polaridad"
+    texto: "¿Cómo es la clavija de la AES, y qué pasa si se invierte en una de las primeras?"
+    libro: ["neogeo#100", "neogeo#101"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor" }
+    opciones:
+      - texto: "Exterior positivo e interior a masa; las primeras no se protegen si se invierte."
+        bien: true
+        porque: "La polaridad es la del wiki de neogeodev, y las primeras consolas no tienen protección contra la inversión."
+      - texto: "Interior positivo; si se invierte, no pasa nada."
+        porque: "Es al revés: el exterior es el positivo, y las primeras no tienen protección."
+      - texto: "Da igual: la consola corrige la polaridad."
+        porque: "Las primeras no tienen protección contra la polaridad invertida."
+    escalera:
+      - "Masa en el centro."
+    solucion: "Exterior positivo, interior masa; las primeras AES no se protegen contra la inversión."
+
+  - id: por-que-proteccion
+    tipo: porque
+    titulo: "Una protección a 5,4 V"
+    texto: "¿Por qué esta placa lleva una protección que actúa por encima de 5,4 V?"
+    libro: ["neogeo#28", "neogeo#97", "neogeo#95"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: prot, hotspot: prot, rotulo: "Protección de sobretensión" }
+    opciones:
+      - texto: "No hay regulador: una sobretensión del adaptador llegaría directa a los chips."
+        bien: true
+        porque: "Por encima de 5,2 V se acaban muriendo componentes; la protección vigila la entrada."
+      - texto: "Para que la consola vaya más rápida."
+        porque: "La tensión no cambia la velocidad: los relojes salen del cristal."
+      - texto: "Para cargar la tarjeta de memoria."
+        porque: "La protección está en la entrada de alimentación: vigila la tensión de toda la placa."
+    escalera:
+      - "¿Qué pasa por encima de 5,2 V?"
+    solucion: "Sin regulador, la tensión del adaptador llega tal cual: la protección evita que pase de 5,4 V."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["neogeo#95", "neogeo#96", "neogeo#28", "neogeo#103"]
+    ideas:
+      - { titulo: "Sin regulador.", texto: "La primera NEO-AES toma 5 V del adaptador." }
+      - { titulo: "Ventana estrecha.", texto: "5 V ± 0,2 V: fuera, fallos o daños." }
+      - { titulo: "Protección.", texto: "Un circuito vigila que no pase de 5,4 V." }
+      - { titulo: "Ojo al adaptador.", texto: "Uno de 10 V puede quemarla." }

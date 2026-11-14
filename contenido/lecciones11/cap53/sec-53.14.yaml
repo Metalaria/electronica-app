@@ -1,0 +1,245 @@
+# Lección 1.2 de la sección 55.15 «Después de Reparar: Entender por Qué Falló» (cap53; etiqueta interna sec-53.14).
+# Formato: contenido/lecciones11/GUIA.md. La figura 55.34 (las tres razones) con zonas en su svg_vista
+# (450,7 × 223,9). Circuito de EJEMPLO para el caso del BM869s (bloques 538–541): una pila con su resistencia
+# interna (9 V y 2 Ω, de ejemplo) que alimenta el instrumento (unos 9 kΩ equivalentes) y el tántalo C102 en paralelo,
+# sano (abierto) o en cortocircuito (0,05 Ω); la potencia se va a la resistencia interna: se calienta la pila.
+leccion: cap53/sec-53.14
+
+libro:
+  522: "¿por qué falló?"
+  524: "sustituirlo resuelve el problema de verdad"
+  525: "Sustituirlo sin cambiar las condiciones solo aplaza el fallo."
+  526: "reponer el fusible sin buscar por qué se fundió"
+  529: "si varios electrolíticos de la misma zona están degradados y los de otra no, hay una condición local"
+  533: "Fusible fundido: nunca es la avería, es el síntoma."
+  534: "comprobar el driver antes de poner el transistor nuevo, o se destruirá también"
+  536: "revisar las protecciones de entrada, que probablemente hicieron su trabajo y se sacrificaron"
+  538: "esta vez con olor a placa quemada y la pila muy caliente"
+  539: "el condensador de tántalo C102 en cortocircuito"
+  541: "lo que se calienta es la fuente, aquí la propia pila"
+  544: "un electrolítico de 105 °C y baja ESR donde había uno normal"
+  547: "Conviene decidirlo con criterio, no por rutina."
+  550: "«Cambiado C12» no vale dentro de un año."
+  551: "Las tres razones posibles de un fallo y cómo distinguirlas."
+
+modelo:
+  valores:
+    V_p: { sim: "V", nombre: "tensión de la pila", unidad: V, valor: 9 }
+    R_i: { sim: "R_{int}", nombre: "resistencia interna de la pila", unidad: Ω, valor: 2 }
+    R_eq: { sim: "R_{equipo}", nombre: "el multímetro, como carga", unidad: Ω, valor: 9000 }
+    R_t: { sim: "R_{C102}", nombre: "el tántalo C102 en corto", unidad: Ω, valor: 0.05 }
+    t_on: { tipo: interruptor, nombre: "C102 en cortocircuito", valor: 0 }
+  calculos:
+    R_c: { si: t_on, entonces: "par(R_eq, R_t)", sino: "R_eq", sim: "R_{carga}", nombre: "lo que ve la pila", unidad: Ω }
+    I_p: { expr: "V_p/(R_i + R_c)", sim: "I", nombre: "corriente de la pila", unidad: A }
+    V_b: { expr: "I_p*R_c", sim: "V_{bornes}", nombre: "tensión en los contactos", unidad: V }
+    V_i: { expr: "I_p*R_i", sim: "V_{int}", nombre: "caída dentro de la pila", unidad: V }
+    P_i: { expr: "I_p^2*R_i", sim: "P_{pila}", nombre: "potencia que calienta la pila", unidad: W }
+    P_c: { expr: "I_p*V_b", sim: "P_{placa}", nombre: "potencia en la placa", unidad: W }
+
+tarjetas:
+  - id: explore-razones
+    tipo: explorar
+    titulo: "Cambiar no es reparar"
+    texto: "Funciona otra vez, pero falta la pregunta: ¿por qué falló? Toque las tres respuestas posibles."
+    libro: [522, 551]
+    widget:
+      tipo: figura
+      figura: fig-53.24
+      zonas:
+        - { id: vida, rotulo: "Recuadro verde", rect: [4, 4, 138, 87], texto: "Vida útil agotada: cumplió su vida; sustituirlo lo resuelve." }
+        - { id: prematuro, rotulo: "Recuadro naranja", rect: [155, 4, 138, 87], texto: "Fallo prematuro por las condiciones: sustituirlo sin cambiarlas solo aplaza el fallo." }
+        - { id: consecuencia, rotulo: "Recuadro rojo", rect: [306, 4, 138, 87], texto: "Consecuencia de otro: algo falló antes y lo destruyó." }
+        - { id: anotar, rotulo: "Recuadro de abajo", rect: [4, 152, 441, 68], texto: "Anotar la causa, no solo la solución." }
+    requiere: { mover: [vida, prematuro, consecuencia] }
+
+  - id: razones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las tres respuestas"
+    texto: "Una cada caso con su razón."
+    libro: [524, 525, 526, 529]
+    emparejar:
+      - ["Electrolítico seco tras diez años en caliente", "Vida útil agotada"]
+      - ["Electrolíticos secos solo en una zona", "Fallo prematuro por las condiciones"]
+      - ["Fusible fundido", "Consecuencia de otro"]
+    exito: "Distinguirlas: edad frente a vida esperable, estado de los vecinos, señales de calor y coherencia."
+    pistas:
+      - { texto: "Una zona degradada y otra no indica una condición local: calor." }
+    escalera:
+      - "El fusible nunca es la avería: es el síntoma."
+    solucion: "Diez años: vida agotada; una zona: condiciones; fusible: consecuencia de otro."
+
+  - id: transistor-potencia
+    tipo: pregunta
+    titulo: "Un transistor de potencia en corto"
+    texto: "Antes de soldar el transistor nuevo, ¿qué hay que comprobar?"
+    libro: [534]
+    widget:
+      tipo: figura
+      figura: fig-53.24
+      zonas:
+        - { id: prematuro, rotulo: "Recuadro naranja", rect: [155, 4, 138, 87] }
+        - { id: consecuencia, rotulo: "Recuadro rojo", rect: [306, 4, 138, 87] }
+    opciones:
+      - texto: "El driver, o el nuevo se destruirá también"
+        bien: true
+        porque: "Y averiguar si fue sobrecarga, disipación insuficiente o fallo del driver."
+      - texto: "Nada: el viejo estaba en corto"
+        porque: "Estar en corto es el efecto; si la causa sigue, el nuevo dura un instante."
+      - texto: "Solo su ganancia"
+        porque: "Lo que lo mató puede seguir ahí: el driver."
+    escalera:
+      - "¿Qué puede haber destruido al transistor?"
+    solucion: "El driver."
+
+  - id: tormenta
+    tipo: pregunta
+    titulo: "Tras una tormenta"
+    texto: "Un aparato falló tras una tormenta. Además de lo averiado, ¿qué se revisa?"
+    libro: [536]
+    widget:
+      tipo: figura
+      figura: fig-53.24
+      zonas:
+        - { id: consecuencia, rotulo: "Recuadro rojo", rect: [306, 4, 138, 87] }
+        - { id: anotar, rotulo: "Recuadro de abajo", rect: [4, 152, 441, 68] }
+    opciones:
+      - texto: "Las protecciones de entrada: probablemente se sacrificaron"
+        bien: true
+        porque: "Hicieron su trabajo; sin reponerlas, la siguiente sobretensión llega dentro."
+      - texto: "La batería del reloj"
+        porque: "No tiene que ver con una sobretensión."
+      - texto: "Nada más: fue mala suerte"
+        porque: "Una sobretensión deja huella en las protecciones: hay que revisarlas."
+    escalera:
+      - "¿Qué está diseñado para absorber una sobretensión?"
+    solucion: "Las protecciones de entrada."
+
+  - id: prediga-pila
+    tipo: predecir
+    titulo: "El BM869s que calentaba la pila"
+    texto: "El tántalo C102 se ha puesto en cortocircuito sobre la alimentación. ¿Qué se calienta más?"
+    nota: "Pila y consumo de ejemplo."
+    libro: [538, 539, 541]
+    fijar: { t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_p, rth: R_i, carga: R_c }
+      lectura: { valor: P_i, rotulo: "Potencia en la pila" }
+      mide: { salida: V_b, corriente: I_p, interna: V_i }
+      ocultar: true
+    opciones:
+      - texto: "La propia pila"
+        bien: true
+        porque: "Un tántalo que falla no se abre: cortocircuita la alimentación y la potencia se va a la resistencia interna de la pila."
+      - texto: "El tántalo, que se quema"
+        porque: "Con un corto franco cae muy poca tensión en él: la potencia se disipa en la fuente."
+      - texto: "Nada: el regulador lo protege"
+        porque: "El corto está antes del regulador, sobre la alimentación."
+    escalera:
+      - "Con la carga en corto, ¿dónde queda casi toda la tensión de la pila?"
+    solucion: "La pila: lo que se calienta es la fuente."
+    comprobar:
+      - { P_i: 38.5, P_c: 0.96, tol: 0.02 }
+
+  - id: explore-corto
+    tipo: explorar
+    titulo: "Con el tántalo sano y en corto"
+    texto: "Ponga C102 en corto y compare dónde se va la potencia."
+    nota: "Pila y consumo de ejemplo."
+    libro: [541]
+    inicio: { t_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_p, rth: R_i, carga: R_c }
+      lectura: { valor: P_i, rotulo: "Potencia en la pila" }
+      datos:
+        - { valor: I_p, rotulo: "Corriente: {{I_p}}" }
+        - { valor: P_c, rotulo: "En la placa: {{P_c}}" }
+      corriente: I_p
+      mide: { salida: V_b, corriente: I_p, interna: V_i }
+      mandos:
+        - { valor: t_on, tipo: interruptor, rotulo: "C102 en cortocircuito" }
+    requiere: { mover: [t_on] }
+
+  - id: pila-nueva
+    tipo: pregunta
+    titulo: "Antes de poner una pila nueva"
+    texto: "El aparato ha fallado y va a ponerle una pila nueva. ¿Qué mide antes?"
+    libro: [541]
+    fijar: { t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_p, rth: R_i, carga: R_c }
+      lectura: { valor: V_b, rotulo: "En los contactos" }
+      mide: { salida: V_b, corriente: I_p, interna: V_i }
+    opciones:
+      - texto: "La resistencia entre sus contactos, sin pila"
+        bien: true
+        porque: "Un cortocircuito se ve en el multímetro antes de que caliente nada."
+      - texto: "La tensión de la pila nueva"
+        porque: "La pila nueva está bien: el problema es lo que alimenta."
+      - texto: "Nada: si falla, se ve enseguida"
+        porque: "Se ve con olor a quemado y la pila muy caliente: tarde."
+    escalera:
+      - "¿Qué medida sin alimentar delata un corto?"
+    solucion: "La resistencia entre los contactos."
+
+  - id: sustituto-tantalo
+    tipo: pregunta
+    titulo: "Al sustituir el tántalo"
+    texto: "¿Con qué se sustituye un tántalo que ha fallado en cortocircuito?"
+    libro: [541]
+    widget:
+      tipo: figura
+      figura: fig-53.24
+      zonas:
+        - { id: prematuro, rotulo: "Recuadro naranja", rect: [155, 4, 138, 87] }
+        - { id: anotar, rotulo: "Recuadro de abajo", rect: [4, 152, 441, 68] }
+    opciones:
+      - texto: "Con margen de tensión de dos a tres veces el raíl, o uno cerámico o de polímero"
+        bien: true
+        porque: "Los cerámicos y de polímero del mismo valor no fallan de esa forma."
+      - texto: "Con otro idéntico"
+        porque: "Sin cambiar las condiciones, se aplaza el fallo."
+      - texto: "Con uno de menos tensión, más pequeño"
+        porque: "Menos margen de tensión es justo lo que los hace fallar en corto."
+    escalera:
+      - "Los tántalos fallan con tensión inversa o excesiva."
+    solucion: "Más margen de tensión, o cerámico o de polímero."
+
+  - id: anotar-causa
+    tipo: porque
+    titulo: "Anotar la causa"
+    texto: "¿Por qué «Cambiado C12» no sirve dentro de un año y la causa sí?"
+    libro: [550]
+    widget:
+      tipo: figura
+      figura: fig-53.24
+      zonas:
+        - { id: anotar, rotulo: "Recuadro de abajo", rect: [4, 152, 441, 68] }
+    opciones:
+      - texto: "La causa dice qué mirar la próxima vez que llegue el mismo modelo"
+        bien: true
+        porque: "«C12 seco junto al disipador caliente» señala la condición que lo mató."
+      - texto: "Porque C12 puede no existir en otro modelo"
+        porque: "El problema no es el nombre, sino que no dice por qué falló."
+      - texto: "Sí sirve: dice qué se cambió"
+        porque: "Dice qué, no por qué: no evita que vuelva."
+    escalera:
+      - "¿Qué pregunta separa cambiar de reparar?"
+    solucion: "La causa dice qué mirar la próxima vez."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [522, 525, 533, 541, 544, 547]
+    ideas:
+      - { titulo: "Por qué falló.", texto: "Vida agotada, condiciones o consecuencia de otro." }
+      - { titulo: "El fusible.", texto: "Nunca es la avería: es el síntoma." }
+      - { titulo: "El tántalo.", texto: "Falla en corto y calienta la fuente: medir antes de poner pila." }
+      - { titulo: "Mejorar.", texto: "Mejor especificación, ventilación o protección, con criterio." }

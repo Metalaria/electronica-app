@@ -1,0 +1,259 @@
+# Lección 1.2 de la sección 19.1 «Optoacopladores: Aislamiento por Luz» (cap20; etiquetas sec-20.N = impresas
+# 19.(N − 1): el capítulo empieza en sec-20.2).
+# - El optoacoplador de la figura 19.1 (fig-20.2) con zonas: LED, barrera y fototransistor.
+# - El CTR (bloque 7): I_C = CTR·I_F; 10 mA con 100 % dan 10 mA. Dispersión del 50 al 300 % (bloque 9); de final de
+#   vida, la mitad del mínimo (bloque 12). No hay esquema de optoacoplador en la app: la relación va como gráfica
+#   (petición en peticiones-motor12.md).
+# Paso práctico: «simular» la corriente de colector garantizada al final de la vida con 10 mA y CTR mínimo del 50 %
+# (2,5 mA; errores típicos: olvidar el envejecimiento, 5 mA; usar el 100 % del ejemplo, 10 mA).
+leccion: cap20/sec-20.2
+
+libro:
+  5: "cómo se dimensiona uno para que funcione durante años"
+  7: "Un CTR del 100 % significa que 10 mA en el LED dan 10 mA en el fototransistor"
+  9: "un mismo modelo puede tener CTR del 50 al 300 %"
+  10: "máximo en un margen intermedio"
+  11: "Al cabo de años puede haber caído a la mitad"
+  12: "diseñar con la mitad del mínimo de la hoja"
+  14: "típicamente 5 a 10 mA"
+  15: "Un valor alto da más señal y hace el circuito más lento"
+  16: "el fototransistor debe saturar con el CTR mínimo"
+  18: "lo que limita a unos 10 o 100 kbit/s"
+  19: "el apagado es más lento que el encendido"
+  22: "Con salida Darlington: mucho más CTR y mucho más lento."
+  23: "da flancos limpios y una temporización definida"
+  24: "dispara la puerta de un TRIAC de potencia"
+  26: "bajo el optoacoplador no puede pasar ninguna pista que una ambos lados"
+  29: "el retardo de apagado es visiblemente mayor que el de encendido"
+  30: "El optoacoplador: un LED y un fototransistor aislados ópticamente."
+
+modelo:
+  valores:
+    I_F: { sim: "I_{F}", nombre: "corriente del LED", unidad: A, valor: 0.01 }
+    c_t: { sim: "CTR", nombre: "relación de transferencia de corriente", unidad: "%", valor: 100 }
+    c_m: { sim: "CTR_{mín}", nombre: "CTR mínimo de la hoja", unidad: "%", valor: 50 }
+  calculos:
+    I_C: { expr: "c_t/100*I_F", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    I_v: { expr: "c_m/2/100*I_F", sim: "I_{C}", nombre: "corriente de colector garantizada al final de la vida", unidad: A }
+    I_n: { expr: "c_m/100*I_F", sim: "I_{C}", nombre: "corriente con el CTR mínimo nuevo", unidad: A }
+    I_t: { expr: "I_F", sim: "I_{C}", nombre: "corriente con un CTR del 100 %", unidad: A }
+
+tarjetas:
+  - id: explore-opto
+    tipo: explorar
+    titulo: "Un LED y un fototransistor"
+    texto: "La señal cruza la barrera como luz: sin cobre entre los dos lados. Toque cada parte."
+    libro: [5, 30]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: led, rotulo: "Lado izquierdo, el diodo", rect: [95, 70, 65, 40], texto: "El LED de entrada: su corriente I_{F} es la que manda." }
+        - { id: barrera, rotulo: "Línea discontinua del centro", rect: [168, 35, 20, 120], texto: "La barrera de aislamiento: solo la cruza la luz." }
+        - { id: transistor, rotulo: "Lado derecho, el transistor", rect: [198, 65, 50, 50], texto: "El fototransistor: su corriente de colector es I_{C} = CTR · I_{F}." }
+    requiere: { mover: [led, transistor] }
+
+  - id: explore-ctr
+    tipo: explorar
+    titulo: "El parámetro que lo decide todo"
+    texto: "El CTR es la corriente de salida entre la del LED, en porcentaje. Mueva la corriente del LED y el CTR."
+    libro: [7, 9]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 300, unidad: "%", rotulo: "CTR" }
+      y: { min: 0, max: 0.03, unidad: A, rotulo: "I_{C}" }
+      curvas:
+        - { expr: "k/100*I_F", color: naranja, rotulo: "I_{C} = CTR · I_{F}" }
+      marcas:
+        - { x: "c_t", y: "I_C", rotulo: "{{I_C}}" }
+      lectura: { valor: I_C, rotulo: "Corriente de colector" }
+      mandos:
+        - { valor: I_F, lista: [0.005, 0.01], rotulo: "Corriente del LED, I_{F}" }
+        - { valor: c_t, lista: [50, 100, 300], rotulo: "CTR" }
+    requiere: { mover: [c_t] }
+    comprobar:
+      - { con: { I_F: 0.01, c_t: 100 }, I_C: 0.01 }
+
+  - id: empareje-propiedades
+    tipo: pregunta
+    titulo: "Tres propiedades del CTR"
+    texto: "Empareje cada propiedad del CTR con lo que significa."
+    libro: [9, 10, 11]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: transistor, rotulo: "Lado derecho, el transistor", rect: [198, 65, 50, 50] }
+    emparejar:
+      - ["Varía entre unidades", "Del 50 al 300 % en un mismo modelo"]
+      - ["Depende de la corriente del LED", "Máximo en un margen intermedio"]
+      - ["Decae con el tiempo", "Puede caer a la mitad en años"]
+    exito: "Las tres hacen todo el diseño."
+    pistas:
+      - { texto: "El LED envejece: eso es lo que cambia con el tiempo." }
+    escalera:
+      - "Empiece por la dispersión: es la que da un margen de valores."
+    solucion: "Dispersión del 50 al 300 %; no lineal con I_{F}; cae a la mitad con los años."
+
+  - id: simule-vida
+    tipo: simular
+    titulo: "Al final de la vida"
+    texto: "El LED lleva 10 mA y la hoja da un CTR mínimo del 50 %. ¿Qué corriente de colector puede garantizar dentro de años?"
+    libro: [9, 11, 12]
+    fijar: { I_F: 0.01, c_m: 50 }
+    simular:
+      objetivo: I_v
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de colector garantizada"
+      errores:
+        - { expr: "I_n", texto: "Ese es el mínimo de hoy. El CTR puede caer a la mitad con los años: hay que diseñar con la mitad." }
+        - { expr: "I_t", texto: "Ha usado el CTR del 100 % del ejemplo: hay que partir del mínimo de la hoja." }
+    exito: "2,5 mA: la mitad del mínimo de la hoja. Un circuito que funcione con el CTR típico fallará en campo."
+    escalera:
+      - "Parta del mínimo de la hoja y tenga en cuenta el envejecimiento."
+    solucion: "10 mA · 50 % / 2 = 2,5 mA."
+    comprobar:
+      - { I_v: 0.0025, I_n: 0.005, I_t: 0.01 }
+
+  - id: porque-mitad
+    tipo: porque
+    titulo: "Diseñar con la mitad"
+    texto: "Un circuito funciona en el banco con el CTR típico. ¿Por qué es un mal diseño?"
+    libro: [12]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: led, rotulo: "Lado izquierdo, el diodo", rect: [95, 70, 65, 40] }
+    opciones:
+      - texto: "Fallará dentro de años, en campo, cuando el LED envejezca"
+        bien: true
+        porque: "Hay que diseñar con el CTR mínimo de final de vida: la mitad del mínimo de la hoja."
+      - texto: "No es malo: si funciona en el banco, funciona"
+        porque: "Funciona hoy, con esa unidad; otra unidad, o la misma dentro de años, tendrá menos CTR."
+      - texto: "Porque el CTR típico es demasiado bajo"
+        porque: "El problema es el contrario: el típico es optimista frente al mínimo de final de vida."
+    escalera:
+      - "¿Qué le pasa al LED con los años?"
+    solucion: "Fallará en campo dentro de años: hay que diseñar con el CTR de final de vida."
+
+  - id: corriente-led
+    tipo: pregunta
+    titulo: "Cuánta corriente al LED"
+    texto: "Al dimensionar la corriente del LED, ¿dónde suele estar el óptimo?"
+    libro: [14]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: led, rotulo: "Lado izquierdo, el diodo", rect: [95, 70, 65, 40] }
+    opciones:
+      - texto: "En la parte baja del margen recomendado, de 5 a 10 mA"
+        bien: true
+        porque: "Más corriente da margen al principio y acelera la degradación; menos reduce el CTR."
+      - texto: "En el máximo, para tener más margen"
+        porque: "Más margen inicial, pero el LED envejece antes: el CTR cae más deprisa."
+      - texto: "Lo más baja posible"
+        porque: "Con corrientes muy pequeñas el CTR también baja."
+    escalera:
+      - "¿Qué le hace al envejecimiento una corriente alta?"
+    solucion: "Bastante por debajo del máximo, típicamente 5 a 10 mA, en la parte baja."
+
+  - id: prediga-rc
+    tipo: predecir
+    titulo: "La resistencia de colector"
+    texto: "Se sube la resistencia de colector del fototransistor. ¿Qué pasa?"
+    libro: [15, 16]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: transistor, rotulo: "Lado derecho, el transistor", rect: [198, 65, 50, 50] }
+    opciones:
+      - texto: "Más señal, pero más lento"
+        bien: true
+        porque: "La capacidad de la unión tarda más en cargarse a través de una resistencia mayor."
+      - texto: "Menos señal y más rápido"
+        porque: "Es al revés: una resistencia alta da más tensión por la misma corriente, y frena."
+      - texto: "Nada cambia"
+        porque: "Decide la ganancia de tensión y la velocidad."
+    escalera:
+      - "Piense en la capacidad de la unión cargándose a través de esa resistencia."
+    solucion: "Más señal y circuito más lento."
+
+  - id: prediga-apagado
+    tipo: predecir
+    titulo: "Encender y apagar"
+    texto: "Con una onda cuadrada en el LED y el osciloscopio en los dos lados, ¿qué se ve en la salida?"
+    libro: [19, 29]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: transistor, rotulo: "Lado derecho, el transistor", rect: [198, 65, 50, 50] }
+    opciones:
+      - texto: "El apagado es más lento que el encendido"
+        bien: true
+        porque: "La carga almacenada en la base tarda en evacuarse."
+      - texto: "Los dos flancos igual de rápidos"
+        porque: "Hay una asimetría característica: el retardo de apagado es visiblemente mayor."
+      - texto: "El encendido es el lento"
+        porque: "Es al revés: lo que tarda es evacuar la carga de la base al apagar."
+    escalera:
+      - "¿Qué tiene que salir de la base para que el transistor se apague?"
+    solucion: "El apagado es más lento que el encendido."
+
+  - id: empareje-variantes
+    tipo: pregunta
+    titulo: "Las variantes"
+    texto: "Empareje cada variante de optoacoplador con lo que aporta."
+    libro: [18, 22, 23, 24]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: transistor, rotulo: "Lado derecho, el transistor", rect: [198, 65, 50, 50] }
+    emparejar:
+      - ["Fototransistor", "Unos 10 o 100 kbit/s"]
+      - ["Darlington", "Mucho más CTR y mucho más lento"]
+      - ["Salida lógica", "Flancos limpios y temporización definida"]
+      - ["Optotriac", "Dispara un TRIAC de potencia"]
+    exito: "Para más velocidad: fotodiodo con amplificador, o aisladores digitales."
+    pistas:
+      - { texto: "El Darlington es un par de transistores: más ganancia, más lento." }
+    escalera:
+      - "Empiece por el optotriac: su salida es un pequeño TRIAC."
+    solucion: "Fototransistor, 10 a 100 kbit/s; Darlington, más CTR; lógica, flancos limpios; optotriac, TRIAC."
+
+  - id: placa
+    tipo: pregunta
+    titulo: "Lo que hay que respetar en la placa"
+    texto: "El componente aísla kilovoltios. ¿Qué puede anular esa barrera en la placa?"
+    libro: [26]
+    widget:
+      tipo: figura
+      figura: fig-20.2
+      zonas:
+        - { id: caja, rotulo: "Recuadro del optoacoplador", rect: [112, 35, 140, 120] }
+    opciones:
+      - texto: "Una pista bajo el optoacoplador que una ambos lados"
+        bien: true
+        porque: "La barrera del componente no vale nada si la placa no la respeta."
+      - texto: "Una resistencia de LED demasiado grande"
+        porque: "Eso reduce la corriente del LED, no el aislamiento."
+      - texto: "Nada: el aislamiento lo da el componente"
+        porque: "La placa también cuenta: ni pistas bajo el componente, y con las distancias de fuga."
+    escalera:
+      - "¿Qué camino de cobre podría saltarse la luz?"
+    solucion: "Una pista que pase bajo el optoacoplador y una ambos lados."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [7, 12, 14, 19]
+    ideas:
+      - { titulo: "El CTR.", texto: "I_{C} = CTR · I_{F}: del 50 al 300 %, no lineal y decae con los años." }
+      - { titulo: "La regla.", texto: "Diseñar con la mitad del mínimo de la hoja: el CTR de final de vida." }
+      - { titulo: "El LED.", texto: "De 5 a 10 mA, en la parte baja." }
+      - { titulo: "La velocidad.", texto: "Microsegundos, y el apagado más lento que el encendido." }

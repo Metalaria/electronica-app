@@ -1,0 +1,258 @@
+# Lección 1.2 de la sección 32.2 «Tipos de Ruido» (cap32). Formato: contenido/lecciones11/GUIA.md.
+# Térmico: √(4kTRB) con k = 1,380649·10⁻²³ J/K y T = 300 K (bloque 42). Disparo: √(2qIB) con q = 1,602·10⁻¹⁹ C
+# (bloque 50). La densidad con zona 1/f se dibuja como e·√(1 + f_c/f), con la esquina de cada dispositivo en el
+# centro (geométrico) de su intervalo de la tabla del bloque 55 y la densidad blanca normalizada a 1.
+leccion: cap32/sec-32.2
+
+libro:
+  41: 'V_(n) = sqrt("4" dot.op k dot.op T dot.op R dot.op B)'
+  42: "Con R = 1 kΩ a 300 K, la densidad es de"
+  44: "doblar el ancho de banda multiplica el ruido por 1,41, no por 2"
+  45: "usar resistencias bajas donde se pueda"
+  49: 'I_(n) = sqrt("2" dot.op q dot.op I dot.op B)'
+  50: "en términos relativos disminuye al aumentar la corriente"
+  51: "No existe en una resistencia (no hay barrera que atravesar)"
+  53: "que separa la zona 1/f de la zona blanca"
+  55: "100 Hz – 1 kHz"
+  56: "un bipolar es mucho mejor que un MOSFET"
+  57: "Es lo que hacen los amplificadores de offset cero"
+  59: "un amplificador que da saltos aleatorios de offset"
+  60: "Es la razón de que un Zener sea mal componente en una referencia sin filtrar"
+  63: "El valor de pico a pico dividido por unos 6 da una estimación razonable del valor eficaz"
+
+modelo:
+  valores:
+    R_n: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    T_k: { sim: "T", nombre: "temperatura", unidad: K, valor: 300 }
+    B_n: { sim: "B", nombre: "ancho de banda", unidad: Hz, valor: 1000000 }
+    I_d: { sim: "I", nombre: "corriente", unidad: A, valor: 0.001 }
+    f_e: { sim: "f_{c}", nombre: "frecuencia de esquina 1/f", unidad: Hz, valor: 10 }
+  calculos:
+    e_t: { expr: "sqrt(4*1.380649e-23*T_k*R_n)", sim: "e_{n}", nombre: "densidad de ruido térmico", unidad: "V/√Hz" }
+    v_t: { expr: "e_t*sqrt(B_n)", sim: "V_{n}", nombre: "ruido térmico en la banda", unidad: V }
+    i_s: { expr: "sqrt(2*1.602e-19*I_d)", sim: "i_{n}", nombre: "densidad de ruido de disparo", unidad: "A/√Hz" }
+    r_s: { expr: "100*i_s/I_d", sim: "i_{n}/I", nombre: "ruido de disparo relativo, por √Hz", unidad: "%" }
+    k_2: { expr: "sqrt(2)", sim: "√2", nombre: "raíz de dos", unidad: "" }
+
+tarjetas:
+  - id: explore-termico
+    tipo: explorar
+    titulo: "Ruido térmico"
+    texto: "Todo conductor lo genera por la agitación térmica de sus portadores. Cambie la resistencia y la banda y mire el ruido."
+    libro: [41, 42]
+    fijar: { T_k: 300 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 10000000, unidad: Ω, rotulo: "R", escala: log }
+      y: { min: 1e-10, max: 1e-6, unidad: "V/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "sqrt(4*1.380649e-23*T_k*rr)", color: azul, rotulo: "√(4kTR)" }
+      marcas:
+        - { x: "R_n", y: "e_t", rotulo: "{{e_t}}" }
+      lectura: { valor: e_t, rotulo: "Densidad" }
+      datos:
+        - { valor: v_t, rotulo: "En la banda: {{v_t}}" }
+      mandos:
+        - { valor: R_n, lista: [1000, 1000000], rotulo: "R" }
+        - { valor: B_n, lista: [10000, 1000000], rotulo: "Banda, B" }
+    requiere: { mover: [R_n] }
+    comprobar:
+      - { con: { R_n: 1000 }, e_t: 4.1e-9, tol: 0.01 }
+      - { con: { R_n: 1000000, B_n: 1000000 }, v_t: 0.000129, tol: 0.01 }
+
+  - id: formula-termico
+    tipo: formula
+    titulo: "Solo R, T y B"
+    texto: "Depende de R, T y B, y de nada más: ni de la corriente ni del material."
+    libro: [41, 44, 45]
+    ec: 41
+    sustitucion: "√(4 · k · {{T_k}} · {{R_n}} · {{B_n}}) = {{v_t}}"
+    fijar: { T_k: 300 }
+    widget:
+      tipo: grafica
+      x: { id: bb, min: 1, max: 10000000, unidad: Hz, rotulo: "B", escala: log }
+      y: { min: 1e-9, max: 0.001, unidad: V, rotulo: "V_{n}", escala: log }
+      curvas:
+        - { expr: "sqrt(4*1.380649e-23*T_k*R_n*bb)", color: azul, rotulo: "V_{n}" }
+      marcas:
+        - { x: "B_n", y: "v_t", rotulo: "{{v_t}}" }
+      lectura: { valor: v_t, rotulo: "Ruido en la banda" }
+      mandos:
+        - { valor: R_n, lista: [1000, 1000000], rotulo: "R" }
+        - { valor: B_n, lista: [10000, 1000000], rotulo: "Banda, B" }
+
+  - id: prediga-doble
+    tipo: predecir
+    titulo: "Doble de banda"
+    texto: "Si dobla el ancho de banda de medida, ¿por cuánto se multiplica el ruido térmico?"
+    libro: [44]
+    widget:
+      tipo: grafica
+      x: { id: bb, min: 1, max: 10, unidad: Hz, rotulo: "B" }
+      y: { min: 0, max: 4, unidad: "", rotulo: "ruido relativo" }
+      curvas:
+        - { expr: "sqrt(bb)", color: azul, rotulo: "√B" }
+      lectura: { valor: k_2, rotulo: "Factor" }
+      ocultar: curvas
+    opciones:
+      - texto: "Por 1,41"
+        bien: true
+        porque: "Crece con la raíz de la banda: √2 ≈ 1,41."
+      - texto: "Por 2"
+        porque: "Eso sería si creciera con la banda. Crece con su raíz."
+      - texto: "Por 4"
+        porque: "Por 4 crece la banda si el ruido se dobla, no al revés."
+    escalera:
+      - "V_{n} es proporcional a √B."
+    solucion: "√2 ≈ 1,41: no se dobla."
+    comprobar:
+      - { k_2: 1.41, tol: 0.003 }
+
+  - id: explore-disparo
+    tipo: explorar
+    titulo: "Ruido de disparo"
+    texto: "La corriente que cruza una unión es un goteo de cargas. Cambie la corriente: el ruido crece, pero en relación con ella, baja."
+    libro: [49, 50]
+    widget:
+      tipo: grafica
+      x: { id: ii, min: 0.000001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 1e-13, max: 1e-9, unidad: "A/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "sqrt(2*1.602e-19*ii)", color: azul, rotulo: "√(2qI)" }
+      marcas:
+        - { x: "I_d", y: "i_s", rotulo: "{{i_s}}" }
+      lectura: { valor: i_s, rotulo: "Densidad" }
+      datos:
+        - { valor: r_s, rotulo: "Relativa: {{r_s}} por √Hz" }
+      mandos:
+        - { valor: I_d, lista: [0.00001, 0.001, 0.1], rotulo: "Corriente" }
+    requiere: { mover: [I_d] }
+    comprobar:
+      - { con: { I_d: 0.001 }, i_s: 17.9e-12, tol: 0.01 }
+
+  - id: por-que-resistencia
+    tipo: porque
+    titulo: "Una resistencia no lo tiene"
+    texto: "Un diodo y un transistor tienen ruido de disparo; una resistencia por la que circula corriente, no. ¿Por qué?"
+    libro: [51]
+    widget:
+      tipo: grafica
+      x: { id: ii, min: 0.000001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 1e-13, max: 1e-9, unidad: "A/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "sqrt(2*1.602e-19*ii)", color: azul, rotulo: "disparo en una unión" }
+    opciones:
+      - texto: "En una resistencia no hay barrera de potencial que atravesar"
+        bien: true
+        porque: "El disparo aparece cuando las cargas cruzan una unión PN. Por eso el transistor tiene ruidos que la resistencia no tiene."
+      - texto: "Porque la resistencia ya tiene ruido térmico y no caben dos"
+        porque: "Los ruidos independientes se suman; el disparo falta porque no hay unión."
+      - texto: "Porque por una resistencia pasa poca corriente"
+        porque: "Pase la que pase: sin barrera, no hay ruido de disparo."
+    escalera:
+      - "¿Dónde aparece el ruido de disparo?"
+    solucion: "Sin barrera de potencial no hay goteo de cargas que la crucen: no hay disparo."
+
+  - id: empareje-esquina
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La esquina 1/f"
+    texto: "Por debajo de su esquina domina el ruido 1/f. Una cada dispositivo con su esquina típica."
+    libro: [53, 55]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.1, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.5, max: 100, unidad: "", rotulo: "densidad relativa", escala: log }
+      curvas:
+        - { expr: "sqrt(1 + 10/nu)", color: azul, rotulo: "esquina baja" }
+        - { expr: "sqrt(1 + 316/nu)", color: verde, rotulo: "esquina media", discontinua: true }
+        - { expr: "sqrt(1 + 10000/nu)", color: naranja, rotulo: "esquina alta" }
+    emparejar:
+      - ["Bipolar", "1 – 100 Hz"]
+      - ["JFET", "100 Hz – 1 kHz"]
+      - ["MOSFET", "1 – 100 kHz"]
+    exito: "El MOSFET tiene la esquina más alta: su ruido 1/f llega mucho más arriba."
+    pistas:
+      - { texto: "El bipolar es el preferido en continua por su esquina baja." }
+    escalera:
+      - "¿Cuál se elige para sensores lentos?"
+    solucion: "Bipolar 1–100 Hz; JFET 100 Hz–1 kHz; MOSFET 1–100 kHz."
+
+  - id: sensor-lento
+    tipo: pregunta
+    titulo: "Un sensor lento"
+    texto: "Debe amplificar la señal casi continua de un sensor lento, y solo tiene CMOS. ¿Qué técnica salva el ruido 1/f?"
+    libro: [56, 57]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.1, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.5, max: 100, unidad: "", rotulo: "densidad relativa", escala: log }
+      curvas:
+        - { expr: "sqrt(1 + 10000/nu)", color: naranja, rotulo: "MOSFET" }
+    opciones:
+      - texto: "El chopper: llevar la señal a una frecuencia alta, amplificarla y devolverla a banda base"
+        bien: true
+        porque: "Así se amplifica fuera de la zona 1/f. Es lo que hacen los amplificadores de offset cero."
+      - texto: "Reducir el ancho de banda hasta 1 Hz"
+        porque: "Con la señal casi en continua, la banda estrecha sigue dentro de la zona 1/f."
+      - texto: "Usar resistencias más bajas"
+        porque: "Baja el ruido térmico, no el 1/f del transistor."
+    escalera:
+      - "¿Dónde es pequeño el ruido 1/f?"
+    solucion: "El chopper: amplifica a frecuencia alta, fuera de la zona 1/f."
+
+  - id: rafagas
+    tipo: pregunta
+    titulo: "Saltos de offset"
+    texto: "Un amplificador da saltos aleatorios de offset entre dos niveles; otro igual del mismo lote, no. ¿Qué es?"
+    libro: [59, 60]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 10, unidad: "", rotulo: "t, relativo" }
+      y: { min: -0.5, max: 1.5, unidad: "", rotulo: "offset, relativo" }
+      curvas:
+        - { expr: "floor(2*(sin(1.7*xt) + sin(4.1*xt + 1))/2.5 + 1)/2", color: azul, rotulo: "salida" }
+    opciones:
+      - texto: "Ruido en ráfagas: un defecto de fabricación de ese ejemplar"
+        bien: true
+        porque: "Saltos discretos entre dos niveles, solo en algunos ejemplares: es el popcorn."
+      - texto: "Ruido de avalancha"
+        porque: "Ese lo genera un Zener en ruptura, y es continuo, no a saltos entre dos niveles."
+      - texto: "Ruido térmico"
+        porque: "El térmico es blanco y lo tienen todos los ejemplares por igual."
+    escalera:
+      - "¿Qué ruido aparece en unos ejemplares y no en otros?"
+    solucion: "Ráfagas (popcorn): un defecto de fabricación, no un fenómeno universal."
+
+  - id: banco-osciloscopio
+    tipo: pregunta
+    titulo: "Medirlo en el osciloscopio"
+    texto: "Mide ruido con el osciloscopio en AC, escala más sensible. ¿Cómo deja la entrada del circuito y cómo estima el valor eficaz?"
+    libro: [63]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 10, unidad: "", rotulo: "t, relativo" }
+      y: { min: -4, max: 4, unidad: "", rotulo: "ruido, relativo" }
+      curvas:
+        - { expr: "sin(13*xt) + 0.7*sin(31*xt + 2) + 0.5*sin(57*xt + 1) + 0.4*sin(89*xt + 4)", color: azul, rotulo: "ruido" }
+    opciones:
+      - texto: "Terminada en una resistencia; pico a pico dividido por unos 6"
+        bien: true
+        porque: "Al aire captaría interferencias; el pico a pico entre 6 aproxima el eficaz de un ruido aleatorio."
+      - texto: "Al aire; pico a pico dividido por 2"
+        porque: "Al aire mide interferencia. Y dividir por 2 da la amplitud, no el valor eficaz de un ruido."
+      - texto: "En cortocircuito con la sonda ×1; el pico a pico tal cual"
+        porque: "El pico a pico no es el valor eficaz: es unas seis veces mayor."
+    escalera:
+      - "Un ruido aleatorio no tiene una amplitud fija: ¿cuántas veces el eficaz mide su pico a pico?"
+    solucion: "Entrada terminada en una resistencia; eficaz ≈ pico a pico / 6."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [41, 44, 50, 55, 59]
+    ideas:
+      - { titulo: "Térmico.", texto: "√(4kTRB): blanco, solo de R, T y B, y crece con la raíz." }
+      - { titulo: "Disparo.", texto: "√(2qIB), solo en uniones: crece con la corriente pero relativo baja." }
+      - { titulo: "1/f.", texto: "Domina bajo la esquina: bipolar en continua, o un chopper." }
+      - { titulo: "Ráfagas y avalancha.", texto: "Saltos de un ejemplar defectuoso; el Zener, mal en una referencia sin filtrar." }

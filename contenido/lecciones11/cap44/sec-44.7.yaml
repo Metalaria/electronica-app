@@ -1,0 +1,185 @@
+# Lección 1.2 de la sección 45.9 «Buses Especializados: 1-Wire e I²S» (cap44; etiqueta interna sec-44.7).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 45.13 (44.10.svg, svg_vista 453,6 × 198): 1-Wire a la
+# izquierda, I²S a la derecha. Las tres líneas de I²S (bloque 283) se ven en pequeño en un cronograma: BCLK es el
+# reloj y WS sale de un contador de tres bits (cambia de canal cada cuatro bits); el tamaño de palabra es de ejemplo.
+leccion: cap44/sec-44.7
+
+libro:
+  276: "un sensor de temperatura a treinta metros con dos hilos en lugar de cuatro"
+  277: "el maestro debe mantener la línea en alto con un pull-up fuerte o el dispositivo se queda sin energía a medias"
+  278: "el sensor responde a la lectura de su identificador y falla al pedirle una medida"
+  279: "Cada dispositivo tiene un identificador único de 64 bits grabado de fábrica"
+  280: "es lento (unos 16 kbit/s) y su temporización es estricta"
+  283: "WS (word select): indica si el dato es del canal izquierdo o derecho, y su frecuencia es la de muestreo."
+  284: "cualquier irregularidad en la temporización se traduce en jitter y con él en distorsión"
+  285: "el dispositivo que lo genera impone su calidad al sistema"
+  288: "Es lo que usan las baterías inteligentes"
+  289: "LIN: un bus de un hilo para automoción, mucho más lento y barato que CAN"
+  290: "no es un bus físico sino un protocolo que corre sobre RS-485 o sobre TCP"
+  291: "Prácticamente desaparecido de los ordenadores y muy vivo en equipos industriales y de laboratorio."
+  293: "si el problema es exactamente el suyo, son la respuesta; si no, un bus general será más fácil"
+  296: "un maestro implementado por software con interrupciones activas los incumple con facilidad"
+  297: "Un desajuste entre ambos produce audio con ruido o con los canales intercambiados"
+  298: "1-Wire e I²S con sus rasgos característicos."
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-nicho
+    tipo: explorar
+    titulo: "Dos buses de nicho"
+    texto: "1-Wire lleva datos y alimentación por un hilo más la masa; I²S, audio entre chips. Toque sus rasgos."
+    libro: [276, 279, 280, 298]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: parasita, rotulo: "Recuadro naranja de la izquierda", rect: [3, 20, 218, 42], texto: "Con la línea en alto carga un condensador interno; al transmitir, vive de esa carga." }
+        - { id: id64, rotulo: "Recuadro verde de la izquierda", rect: [3, 113, 218, 42], texto: "Un identificador único de 64 bits de fábrica: decenas en el mismo cable, sin configurar direcciones." }
+        - { id: lento, rotulo: "Recuadro azul de la izquierda", rect: [3, 158, 218, 36], texto: "Unos 16 kbit/s, con pulsos de decenas de microsegundos: para sensores lentos e identificación." }
+        - { id: reloj, rotulo: "Recuadro verde de la derecha", rect: [228, 120, 222, 45], texto: "Quien genera el reloj impone su calidad." }
+    requiere: { mover: [parasita, id64] }
+
+  - id: prediga-parasita
+    tipo: predecir
+    titulo: "Un fallo desconcertante"
+    texto: "Un sensor 1-Wire con alimentación parásita responde bien cuando se lee su identificador. ¿Qué pasa al pedirle una conversión de temperatura?"
+    libro: [277, 278]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: parasita, rotulo: "Recuadro naranja de la izquierda", rect: [3, 20, 218, 42], texto: "La alimentación parásita." }
+    opciones:
+      - { texto: "Puede fallar: se queda sin energía a medias", bien: true, porque: "La conversión consume: el maestro debe mantener la línea en alto con un pull-up fuerte." }
+      - { texto: "Funciona igual que la lectura", porque: "La lectura apenas consume; la conversión sí, y el condensador interno no basta." }
+      - { texto: "Responde con otro identificador", porque: "El identificador es único y fijo; lo que falta es energía." }
+    escalera: ["¿De dónde saca la energía el sensor mientras la línea está baja?"]
+    solucion: "Falla al pedirle la medida si no hay pull-up fuerte: se queda sin energía."
+
+  - id: pregunta-1wire-uso
+    tipo: pregunta
+    titulo: "Para qué sirve 1-Wire"
+    texto: "¿Qué justifica elegir 1-Wire?"
+    libro: [276, 280, 293]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: lento, rotulo: "Recuadro azul de la izquierda", rect: [3, 158, 218, 36], texto: "Lento y de temporización estricta." }
+    opciones:
+      - { texto: "Un sensor de temperatura lejano con dos hilos", bien: true, porque: "Dos hilos en lugar de cuatro: es exactamente su problema." }
+      - { texto: "Mover datos de un ADC rápido", porque: "Unos 16 kbit/s: para sensores lentos e identificación, no para datos." }
+      - { texto: "Unir dos microcontroladores en la misma placa", porque: "Para eso, I²C o SPI son más sencillos y están mejor soportados." }
+    escalera: ["¿Qué problema concreto resuelve mejor que un bus general?"]
+    solucion: "Un sensor lejano con dos hilos."
+
+  - id: explore-i2s
+    tipo: explorar
+    titulo: "Las tres líneas de I²S"
+    texto: "BCLK da un flanco por bit; WS dice si el dato es del canal izquierdo o del derecho. Mueva el cursor."
+    libro: [283]
+    widget:
+      tipo: logica
+      entradas: [{ id: BCLK, reloj: true }]
+      piezas:
+        - { id: cuenta, tipo: contador, bits: 3, entradas: [BCLK], rotulo: "Bits de la trama" }
+      salidas:
+        - { id: WS, de: cuenta.q2 }
+      cronograma: { ciclos: 16, senales: [BCLK, WS] }
+    nota: "En pequeño, cuatro bits por canal. La frecuencia de WS es la de muestreo."
+
+  - id: porque-reloj-continuo
+    tipo: porque
+    titulo: "Por qué un bus dedicado"
+    texto: "¿Por qué el audio no va por un bus genérico, y I²S tiene un reloj continuo y una trama estrictamente periódica?"
+    libro: [284]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: dedicado, rotulo: "Recuadro naranja de la derecha", rect: [228, 74, 222, 42], texto: "Un flujo regular." }
+    opciones:
+      - { texto: "Cualquier irregularidad en la temporización es jitter, y el jitter, distorsión", bien: true, porque: "El audio es un flujo continuo y regular que los buses genéricos no garantizan." }
+      - { texto: "Porque el audio necesita direcciones", porque: "No hay direcciones: el problema es la regularidad del flujo." }
+      - { texto: "Para ahorrar hilos", porque: "Lleva tres líneas, y a veces una cuarta, el reloj maestro." }
+    escalera: ["¿Qué le hace al sonido un reloj irregular?"]
+    solucion: "La irregularidad se traduce en jitter, y el jitter en distorsión."
+
+  - id: pregunta-quien-reloj
+    tipo: pregunta
+    titulo: "Quién genera el reloj"
+    texto: "Un microcontrolador y un convertidor de audio de calidad por I²S. ¿Quién debe generar el reloj?"
+    libro: [285]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: reloj, rotulo: "Recuadro verde de la derecha", rect: [228, 120, 222, 45], texto: "El que genera el reloj." }
+    opciones:
+      - { texto: "El convertidor, desde su propio cristal, con el microcontrolador de esclavo", bien: true, porque: "El que genera el reloj impone su calidad: así el jitter es el mejor posible." }
+      - { texto: "El microcontrolador, que es el maestro", porque: "Su reloj suele ser peor; la calidad la impone quien lo genera." }
+      - { texto: "Da igual", porque: "No da igual: el jitter del reloj se traduce en distorsión." }
+    escalera: ["¿Quién tiene el mejor cristal para audio?"]
+    solucion: "El convertidor, desde su cristal; el microcontrolador, esclavo."
+
+  - id: empareje-otros
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los otros que conviene conocer"
+    texto: "Una cada bus con su rasgo."
+    libro: [288, 289, 290, 291]
+    emparejar:
+      - ["SMBus", "Variante de I²C: baterías inteligentes"]
+      - ["LIN", "Un hilo, para elevalunas y espejos"]
+      - ["Modbus", "Un protocolo sobre RS-485 o TCP"]
+      - ["RS-232", "Vivo en equipos industriales y de laboratorio"]
+    exito: "Cada uno resuelve un problema concreto mejor que los generales."
+    pistas:
+      - { texto: "LIN es mucho más lento y barato que CAN." }
+    escalera: ["¿Cuál no es un bus físico?"]
+    solucion: "SMBus, baterías; LIN, automoción no crítica; Modbus, protocolo; RS-232, laboratorio e industria."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Un audio I²S suena con ruido o con los canales intercambiados. ¿Qué se comprueba?"
+    libro: [297]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: lineas, rotulo: "Recuadro azul de la derecha", rect: [228, 20, 222, 50], texto: "Las tres líneas." }
+    opciones:
+      - { texto: "Que WS va a la frecuencia de muestreo y BCLK da los pulsos correctos por trama", bien: true, porque: "Un desajuste entre ambos da esos síntomas, muy reconocibles." }
+      - { texto: "Las direcciones de los dispositivos", porque: "I²S no tiene direcciones." }
+      - { texto: "El pull-up fuerte", porque: "Eso es de 1-Wire con alimentación parásita." }
+    escalera: ["¿Qué relación debe haber entre WS y BCLK?"]
+    solucion: "La frecuencia de WS y el número de pulsos de BCLK por trama."
+
+  - id: porque-software
+    tipo: porque
+    titulo: "Un maestro 1-Wire por software"
+    texto: "Un maestro 1-Wire hecho por software falla de vez en cuando, sobre todo con otras interrupciones activas. ¿Por qué?"
+    libro: [280, 296]
+    widget:
+      tipo: figura
+      figura: fig-44.10
+      zonas:
+        - { id: lento, rotulo: "Recuadro azul de la izquierda", rect: [3, 158, 218, 36], texto: "Pulsos de decenas de microsegundos." }
+    opciones:
+      - { texto: "Los tiempos de los bits son estrictos y una interrupción los alarga", bien: true, porque: "Se depura con el osciloscopio mirando la temporización de los pulsos, que es donde falla." }
+      - { texto: "Porque 1-Wire necesita un cristal", porque: "El problema son los pulsos alargados por las interrupciones." }
+      - { texto: "Porque los identificadores se repiten", porque: "Son únicos de fábrica: no se repiten." }
+    escalera: ["¿Qué le pasa a un pulso de decenas de microsegundos si llega una interrupción a mitad?"]
+    solucion: "La temporización es estricta y las interrupciones la incumplen."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [277, 279, 285, 293]
+    ideas:
+      - { titulo: "1-Wire.", texto: "Un hilo y masa; alimentación parásita con pull-up fuerte al convertir." }
+      - { titulo: "Sin direcciones.", texto: "Un identificador único de 64 bits de fábrica." }
+      - { titulo: "I²S.", texto: "BCLK, WS y SD; quien genera el reloj impone su calidad." }
+      - { titulo: "Nicho.", texto: "Si el problema es exactamente el suyo, son la respuesta." }

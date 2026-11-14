@@ -1,0 +1,193 @@
+# «Consolas por dentro» · Super Nintendo 6: el CIC y la región. Lo que hace el chip de bloqueo (datos del explorador),
+# el F411 de las NTSC y el F413 de las PAL, las pestañas de la ranura y la patilla 4 (ConsoleMods, «SNES:Region
+# Information» y «SNES:Disabling CIC», en los hechos externos del manifiesto). Un circuito lógico resume cuándo arranca.
+leccion: consola-snes/snes-bloqueo
+
+libro:
+  "snes#13": "Si no se entienden, mantiene /RESET bajo en la PPU2"
+  "snes#14": "los 3,55 MHz (÷ 5) del CIC de la consola y del cartucho"
+  "snes#24": "llega a la entrada RES del CIC, que reinicia la consola a través de la PPU2"
+  "snes#37": "Nintendo F411A · SOIC de 18 patas"
+  "snes#114": "mantiene el sistema en reset y el juego no arranca"
+  "snes#115": "basta con levantar la patilla 4 para desactivar el bloqueo"
+  "snes#116": "cerca del botón de reset"
+  "snes#117": "Los juegos con el chip SA-1 pueden negarse a arrancar con el CIC desactivado"
+  "snes#118": "levantada, conviene llevarla a masa, por ejemplo a la patilla 9"
+  "snes#119": "Todas las consolas NTSC llevan el chip de bloqueo F411 y todas las PAL el F413"
+  "snes#120": "no entran del todo en una consola norteamericana por unas pestañas de su ranura"
+  "snes#121": "algunos juegos PAL detectan si la consola va a 60 Hz"
+  "snes#19": "En las PAL la patilla 3 no lleva el sincronismo, sino 12 V"
+  "snes#43": "Un 7805, que según Fabien Sanglard está en todas las versiones de la SNES"
+  "cap29#37": "las variables solo valen 0 o 1"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-cic
+    tipo: explorar
+    titulo: "El chip de bloqueo"
+    texto: "Toque el CIC, el botón de reset y la ranura de la placa NTSC."
+    libro: ["snes#13", "snes#24", "snes#37"]
+    requiere: { mover: [n-cic, n-reset] }
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cic, hotspot: n-cic, rotulo: "CIC F411A", texto: "Habla con el CIC del cartucho; si no se entienden, deja la consola en reset." }
+        - { id: n-reset, hotspot: n-reset, rotulo: "Botón de reset", texto: "Entra por la patilla RES del CIC, que reinicia la consola." }
+        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho", texto: "Por ella hablan los dos CIC." }
+
+  - id: prediga-pal
+    tipo: predecir
+    titulo: "Un cartucho PAL en una NTSC"
+    texto: "Un cartucho PAL, con su CIC F413, en una consola NTSC con su F411. ¿Qué pasa al encender?"
+    libro: ["snes#119", "snes#114", "snes#121"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cic, hotspot: n-cic, rotulo: "CIC F411A" }
+    opciones:
+      - texto: "Los CIC no se entienden: la consola se queda en reset."
+        bien: true
+        porque: "Un juego PAL no arranca en otra consola por el chip de bloqueo distinto: el CIC mantiene el sistema en reset."
+      - texto: "Arranca, pero a 60 Hz."
+        porque: "No llega a arrancar: el CIC lo impide antes. Lo de los 60 Hz es otra comprobación de algunos juegos PAL."
+      - texto: "Arranca sin problema: el bus es el mismo."
+        porque: "El bus es el mismo, pero el CIC no deja salir del reset si no reconoce al del cartucho."
+    escalera:
+      - "Los CIC de las dos normas no son el mismo chip."
+    solucion: "No arranca: el F411 y el F413 no se entienden y la consola se queda en reset."
+
+  - id: explore-reset
+    tipo: explorar
+    titulo: "Cuándo arranca"
+    texto: "Resumen en lógica: la consola sale del reset si los CIC se entienden y nadie pulsa reset. Pruebe."
+    libro: ["snes#13", "snes#24"]
+    requiere: { mover: [CIC, RES] }
+    widget:
+      tipo: logica
+      entradas: [{ id: CIC, rotulo: "Los CIC se entienden" }, { id: RES, rotulo: "Reset pulsado" }]
+      piezas:
+        - { id: n1, tipo: not, entradas: [RES] }
+        - { id: y1, tipo: and, entradas: [CIC, n1] }
+      salidas:
+        - { id: MARCHA, de: y1 }
+      tabla: true
+
+  - id: tabla-reset
+    tipo: tabla
+    titulo: "La tabla del arranque"
+    texto: "Rellene cuándo funciona la consola (1) y cuándo se queda en reset (0)."
+    libro: ["snes#13", "snes#24", "snes#114", "cap29#37"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CIC, rotulo: "Los CIC se entienden" }, { id: RES, rotulo: "Reset pulsado" }]
+      piezas:
+        - { id: n1, tipo: not, entradas: [RES] }
+        - { id: y1, tipo: and, entradas: [CIC, n1] }
+      salidas:
+        - { id: MARCHA, de: y1 }
+      ocultar: true
+    tabla:
+      salidas: [MARCHA]
+    exito: "Solo con los CIC de acuerdo y sin pulsar reset: una sola fila de cuatro."
+    escalera:
+      - "Si los CIC no se entienden, da igual el botón."
+    solucion: "MARCHA vale 1 solo cuando los CIC se entienden y el reset no está pulsado."
+
+  - id: toque-cic
+    tipo: tocar
+    titulo: "Encuentre el CIC"
+    texto: "El CIC es un chip pequeño de 18 patillas, cerca del botón de reset. Tóquelo."
+    libro: ["snes#116", "snes#37"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: cic, hotspot: n-cic, rotulo: "Chip pequeño, arriba a la derecha" }
+        - { id: rgb, hotspot: n-rgb, rotulo: "Chip alargado, arriba en el centro" }
+        - { id: mix, hotspot: n-mix, rotulo: "Chip pequeño, a la izquierda" }
+    tocar:
+      bien: [cic]
+      porque:
+        rgb: "Es el S-RGB, el codificador de vídeo."
+        mix: "Es el S-MIX, el mezclador de audio, lejos del reset."
+    exito: "El F411A, junto al botón de reset."
+    escalera:
+      - "Busque el botón de reset: el CIC está al lado."
+    solucion: "Arriba a la derecha, junto al reset: Nintendo F411A."
+
+  - id: empareje-region
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Bloqueo y región"
+    texto: "Empareje cada pieza con lo que dice ConsoleMods."
+    libro: ["snes#119", "snes#115", "snes#117", "snes#120"]
+    emparejar:
+      - ["F411", "El CIC de todas las NTSC"]
+      - ["F413", "El CIC de todas las PAL"]
+      - ["Patilla 4 levantada", "Desactiva el bloqueo"]
+      - ["Pestañas de la ranura", "Frenan cartuchos de otra forma"]
+    exito: "El bloqueo es eléctrico (el CIC) y, en las norteamericanas, también mecánico (las pestañas)."
+    pistas:
+      - { texto: "El F411 es el de la foto NTSC." }
+    escalera:
+      - "La foto NTSC lleva un F411A."
+    solucion: "F411: NTSC. F413: PAL. Patilla 4: desactiva. Pestañas: frenan cartuchos de otra forma."
+
+  - id: patilla-al-aire
+    tipo: pregunta
+    titulo: "La patilla 4, levantada"
+    texto: "Tras levantar la patilla 4 del F411, ¿qué conviene hacer con ella?"
+    libro: ["snes#115", "snes#118", "snes#19"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cic, hotspot: n-cic, rotulo: "CIC F411A" }
+    opciones:
+      - texto: "Llevarla a masa, por ejemplo a la patilla 9."
+        bien: true
+        porque: "Así no queda al aire: ConsoleMods aconseja llevarla a masa, por ejemplo a la patilla 9."
+      - texto: "Dejarla al aire: ya no hace nada."
+        porque: "Una entrada al aire puede tomar cualquier nivel: conviene fijarla a masa."
+      - texto: "Llevarla a 12 V."
+        porque: "Nada en la placa lógica va a 12 V salvo la patilla 3 del Multi Out en las PAL: la recomendación es masa."
+    escalera:
+      - "Una patilla al aire no tiene un nivel fijo."
+    solucion: "A masa, por ejemplo a la patilla 9."
+
+  - id: por-que-sa1
+    tipo: porque
+    titulo: "Un juego que se niega"
+    texto: "Con el CIC desactivado, algunos juegos con el chip SA-1 no arrancan. ¿Por qué?"
+    libro: ["snes#117", "snes#14", "snes#43"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "Su cartucho comprueba que el CIC de la consola funcione."
+        bien: true
+        porque: "Pueden detectar que el CIC está desactivado y negarse a arrancar si no funciona con normalidad."
+      - texto: "El SA-1 necesita el S-CLK de las PAL."
+        porque: "No es cosa del reloj: el juego detecta que el CIC no funciona normalmente."
+      - texto: "El SA-1 consume demasiado para el 7805."
+        porque: "No es la alimentación: es el bloqueo, que el cartucho comprueba."
+    escalera:
+      - "El cartucho también tiene su lado del diálogo."
+    solucion: "Detectan que el CIC está desactivado y no arrancan si no funciona con normalidad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["snes#13", "snes#119", "snes#115", "snes#120"]
+    ideas:
+      - { titulo: "El diálogo.", texto: "Los dos CIC se entienden o la consola se queda en reset." }
+      - { titulo: "Dos chips.", texto: "F411 en las NTSC, F413 en las PAL." }
+      - { titulo: "La patilla 4.", texto: "Levantada desactiva el bloqueo; conviene llevarla a masa." }
+      - { titulo: "Las pestañas.", texto: "Un bloqueo mecánico de la ranura, en las norteamericanas." }

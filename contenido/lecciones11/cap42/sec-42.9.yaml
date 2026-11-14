@@ -1,0 +1,225 @@
+# Lección 1.2 de la sección 43.9 «El Barrido Paramétrico» (cap42). Formato: contenido/lecciones11/GUIA.md.
+# La familia de curvas es el RLC serie de la práctica 9 (cap22#235: 10 mH y 100 nF) con la salida en el condensador y
+# R barrida de 20 Ω a 632 Ω (valores de ejemplo). Las dos curvas de «óptimo agudo» y «óptimo plano» son ilustrativas
+# (una lorentziana estrecha y una meseta de 0,9): el libro las describe sin números (bloque 274).
+leccion: cap42/sec-42.9
+
+libro:
+  252: "Un barrido paramétrico repite un análisis variando un valor"
+  253: "el simulador dibuja una familia de curvas"
+  255: "Encontrar el valor óptimo"
+  256: "si el comportamiento cambia mucho con un componente, ese componente necesita tolerancia estrecha; si apenas cambia, se puede usar uno del 5 %"
+  262: "Barrer de −40 a +85 °C revela derivas que a 25 °C no se ven"
+  263: "Los pasivos ideales no derivan a menos que se les dé un coeficiente explícito."
+  266: "Dos componentes pueden ser individualmente poco críticos y ser críticos en combinación"
+  267: "veinte valores de dos parámetros son cuatrocientas simulaciones"
+  270: "El barrido paramétrico explora sistemáticamente"
+  271: "Monte Carlo explora estadísticamente"
+  274: "Un óptimo agudo es frágil: cualquier tolerancia lo desplaza. Uno plano es robusto, aunque su valor central sea peor."
+  275: "es mejor un circuito que funciona bien siempre que uno que funciona perfectamente con los valores nominales"
+  278: "barrer tres parámetros con veinte valores cada uno son ocho mil casos"
+  "cap22#235": "L = 10 mH, C = 100 nF, R = 100 Ω"
+  "cap24#156": 'Q = (ω_("0") dot.op L)/(R) = ("1")/(R) dot.op sqrt((L)/(C))'
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 5032.92 }
+    R_r: { sim: "R", nombre: "resistencia barrida", unidad: Ω, valor: 100 }
+    L_r: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    C_r: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    n_v: { sim: "valores", nombre: "valores por parámetro", unidad: "", valor: 20 }
+    n_p: { sim: "parámetros", nombre: "parámetros barridos", unidad: "", valor: 3 }
+    d_v: { sim: "Δ", nombre: "desviación del componente", unidad: "", valor: 0 }
+  calculos:
+    Q_r: { expr: "sqrt(L_r/C_r)/R_r", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 3 }
+    A_c: { expr: "V_p/(2*pi*f_r*C_r)/sqrt(R_r^2 + (2*pi*f_r*L_r - 1/(2*pi*f_r*C_r))^2)", sim: "V_{C}", nombre: "amplitud en C", unidad: V }
+    n_2: { expr: "n_v^2", sim: "casos", nombre: "simulaciones con dos parámetros", unidad: "" }
+    n_s: { expr: "n_v^n_p", sim: "casos", nombre: "simulaciones del barrido", unidad: "" }
+    P_ag: { expr: "1/(1 + (d_v/0.05)^2)", sim: "agudo", nombre: "prestación del óptimo agudo", unidad: "", cifras: 2 }
+    P_pl: { expr: "0.9/(1 + (d_v/0.4)^4)", sim: "plano", nombre: "prestación del óptimo plano", unidad: "", cifras: 2 }
+    u_d: { expr: "1 + d_v", sim: "x", nombre: "valor relativo del componente", unidad: "" }
+
+tarjetas:
+  - id: explore-familia
+    tipo: explorar
+    titulo: "Una familia de curvas"
+    texto: "Un RLC con la salida en el condensador. Barra R: cada valor es una simulación, y las curvas a trazos son dos de la familia."
+    libro: [252, 253, "cap22#235"]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q_r, rotulo: "Q" }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 12, unidad: V, rotulo: "|v_{C}|" }
+        curvas:
+          - { expr: "V_p/(2*pi*nu*C_r)/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "R elegida", mide: vc_amp }
+          - { expr: "V_p/(2*pi*nu*C_r)/sqrt(63.2^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "R = 63,2 Ω", discontinua: true }
+          - { expr: "V_p/(2*pi*nu*C_r)/sqrt(632^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: tinta, rotulo: "R = 632 Ω", discontinua: true }
+      mandos:
+        - { valor: R_r, lista: [32, 63.2, 100, 200, 632], rotulo: "R" }
+
+  - id: prediga-sensible
+    tipo: predecir
+    titulo: "Lo que dice la sensibilidad"
+    texto: "Al barrer un componente, la respuesta cambia mucho. ¿Qué tolerancia pide ese componente?"
+    libro: [255, 256]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q_r, rotulo: "Q" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+    opciones:
+      - texto: "Estrecha; los que apenas influyen pueden ser del 5 %"
+        bien: true
+        porque: "Es la aplicación más valiosa y menos usada: dice dónde gastar en precisión."
+      - texto: "Da igual: todos del 1 % por si acaso"
+        porque: "Eso es comprar componentes buenos por si acaso: el barrido dice cuáles lo necesitan."
+      - texto: "Ancha, para compensar"
+        porque: "Al revés: si mueve mucho la respuesta, su dispersión se nota mucho."
+    escalera:
+      - "¿Dónde se nota más la dispersión de un componente?"
+    solucion: "Tolerancia estrecha solo en los sensibles."
+
+  - id: formula-q
+    tipo: formula
+    titulo: "Lo que mueve el barrido"
+    texto: "Barrer R es barrer Q: con L y C fijas, el pico de resonancia sube o desaparece."
+    libro: ["cap24#156"]
+    ec: "cap24#156"
+    sustitucion: "Q = (1/{{R_r}}) · √({{L_r}}/{{C_r}}) = {{Q_r}}"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q_r, rotulo: "Q" }
+      mide: { vc_amp: A_c }
+      mandos:
+        - { valor: R_r, lista: [32, 63.2, 100, 200, 632], rotulo: "R" }
+
+  - id: estime-casos
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El coste del barrido múltiple"
+    texto: "Se barren tres parámetros con veinte valores cada uno. ¿Cuántas simulaciones son?"
+    libro: [267, 278]
+    estimar:
+      objetivo: "n_s"
+      unidad: ""
+      min: 0
+      max: 20000
+      paso: 100
+      inicio: 100
+      tol: 0.05
+      rotulo: "Simulaciones"
+    exito: "20³ = 8000: en el banco no se hacen; en el ordenador, unos minutos. Con dos parámetros, 400."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8400 }, texto: "Demasiado: son 20 × 20 × 20." }
+      - { texto: "Poco: no se suman, se multiplican: 20 × 20 × 20." }
+    escalera:
+      - "Cada valor de uno se combina con todos los de los otros."
+    solucion: "20³ = 8000."
+    comprobar:
+      - { n_s: 8000, n_2: 400, n_v: 20 }
+
+  - id: agudo-plano
+    tipo: sorpresa
+    titulo: "El óptimo agudo se cae"
+    texto: "Dos diseños (curvas de ejemplo): uno con un máximo agudo y otro con uno plano y algo peor. Desvíe el componente: el agudo se hunde."
+    libro: [274]
+    inicio: { d_v: 0 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.5, max: 1.5, unidad: "", rotulo: "valor relativo del componente" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "prestación" }
+      curvas:
+        - { expr: "1/(1 + ((u - 1)/0.05)^2)", color: naranja, rotulo: "óptimo agudo" }
+        - { expr: "0.9/(1 + ((u - 1)/0.4)^4)", color: azul, rotulo: "óptimo plano" }
+      asas:
+        - { mueve: d_v, x: "u_d", y: "P_ag", rotulo: "Desviación del componente" }
+      lectura: { valor: P_ag, rotulo: "Agudo" }
+      datos:
+        - { valor: P_pl, rotulo: "Plano: {{P_pl}}" }
+      mandos:
+        - { valor: d_v, min: 0, max: 0.3, paso: 0.01, rotulo: "Desviación" }
+
+  - id: por-que-plano
+    tipo: porque
+    titulo: "¿Por qué el plano?"
+    texto: "El óptimo agudo da más en el nominal. ¿Por qué se prefiere el plano?"
+    libro: [274, 275]
+    fijar: { d_v: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.5, max: 1.5, unidad: "", rotulo: "valor relativo del componente" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "prestación" }
+      curvas:
+        - { expr: "1/(1 + ((u - 1)/0.05)^2)", color: naranja, rotulo: "óptimo agudo" }
+        - { expr: "0.9/(1 + ((u - 1)/0.4)^4)", color: azul, rotulo: "óptimo plano" }
+    opciones:
+      - texto: "Porque es robusto: funciona bien siempre, no solo con los valores nominales"
+        bien: true
+        porque: "Cualquier tolerancia desplaza el agudo. Es un principio general de diseño."
+      - texto: "Porque es más fácil de simular"
+        porque: "Los dos se simulan igual; la diferencia es cómo se comportan las unidades reales."
+      - texto: "Porque su máximo es mayor"
+        porque: "No: su máximo es algo peor. Gana en todo lo demás."
+    escalera:
+      - "¿Qué unidad se fabrica: la nominal o una desviada?"
+    solucion: "Robusto frente a las tolerancias."
+
+  - id: barrido-mc
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Barridos y Monte Carlo"
+    texto: "Una cada análisis con la pregunta que responde."
+    libro: [262, 266, 270, 271]
+    emparejar:
+      - ["Barrido paramétrico", "Qué pasa con cada valor: para diseñar"]
+      - ["Monte Carlo", "Qué proporción cumple: si es fabricable"]
+      - ["Barrido de temperatura", "Derivas de −40 a +85 °C"]
+      - ["Barrido múltiple", "Las interacciones entre dos componentes"]
+    exito: "El barrido es para el diseñador; Monte Carlo, para decidir si se fabrica."
+    pistas:
+      - { texto: "El sistemático y el estadístico responden a preguntas distintas." }
+    escalera:
+      - "¿Cuál usa valores aleatorios dentro de las tolerancias?"
+    solucion: "Paramétrico: cada valor; Monte Carlo: proporción; temperatura: derivas; múltiple: interacciones."
+
+  - id: temperatura
+    tipo: pregunta
+    titulo: "Un barrido de temperatura sin deriva"
+    texto: "Se barre la temperatura de −40 a +85 °C y este RLC, hecho con componentes ideales, no cambia nada. ¿Por qué?"
+    libro: [263]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q_r, rotulo: "Q" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Porque los pasivos ideales no derivan sin un coeficiente térmico explícito"
+        bien: true
+        porque: "El simulador solo modela la temperatura de lo que tiene coeficiente térmico en su modelo."
+      - texto: "Porque un RLC no depende de la temperatura"
+        porque: "Sus componentes reales sí derivan; el modelo ideal no lo sabe."
+      - texto: "Porque el barrido estaba mal configurado"
+        porque: "Está bien: es el modelo el que no tiene nada que derivar."
+    escalera:
+      - "¿Qué hace falta en el modelo para que la temperatura cambie algo?"
+    solucion: "Sin coeficiente térmico, nada deriva."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [252, 256, 274, 278]
+    ideas:
+      - { titulo: "Explorar.", texto: "Un barrido repite un análisis variando un valor: una familia de curvas." }
+      - { titulo: "Sensibilidad.", texto: "Dice dónde gastar en precisión y dónde basta el 5 %." }
+      - { titulo: "Plano mejor que agudo.", texto: "Mejor funcionar bien siempre que perfecto solo en el nominal." }
+      - { titulo: "La escala.", texto: "Tres parámetros con veinte valores: ocho mil casos, minutos en el ordenador." }

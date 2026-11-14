@@ -1,0 +1,277 @@
+# Lección 1.2 de la sección 31.4 «El Ciclo de Scan y el Tiempo de Respuesta» (cap55; etiqueta interna sec-55.4).
+# Formato: contenido/lecciones11/GUIA.md (§11). La imagen de entradas y la de salidas son dos registros con el reloj
+# del ciclo (el libro: «Es el registro de entrada de un circuito síncrono»): la salida responde entre uno y dos ciclos
+# después. El tiempo de respuesta, la dispersión y los pulsos cortos usan los números del texto y de los ejercicios 31.5
+# y 31.6. La salida de transistor se toma sin retardo (el texto da 13 a 23 ms con ella) y la de relé con sus 10 ms.
+leccion: cap55/sec-55.4
+
+libro:
+  52: "Un autómata no ejecuta su programa cuando cambia una entrada"
+  53: "Escribe las salidas: copia a los bornes la imagen de salidas"
+  54: "Es el registro de entrada de un circuito síncrono"
+  56: "Si llega justo después de una lectura, espera casi un ciclo a la siguiente y luego otro: dos"
+  57: "la respuesta va de 13 a 23 ms"
+  59: "una distancia que varía 2 mm de una pieza a otra con Tc = 10 ms"
+  61: "la probabilidad de verlo es tp/Tc"
+  63: "en un autómata no se escriben bucles que esperan"
+  58: "la salida responde en 13,2 o en 22,8 ms"
+  "cap55#48": "lenta (unos 10 ms)"
+  "cap55#138": "Con un ciclo de 15 ms, un filtro de entrada de 6 ms y salidas de relé de 10 ms"
+
+modelo:
+  valores:
+    T_c: { sim: "T_{c}", nombre: "tiempo de ciclo", unidad: s, valor: 0.01 }
+    t_e: { sim: "t_{e}", nombre: "retardo del filtro de entrada", unidad: s, valor: 0.003 }
+    t_s: { sim: "t_{s}", nombre: "retardo de la salida", unidad: s, valor: 0 }
+    v_c: { sim: "v", nombre: "velocidad de la cinta", unidad: "m/s", valor: 0.2 }
+    t_p: { sim: "t_{p}", nombre: "duración del pulso", unidad: s, valor: 0.002 }
+  calculos:
+    t_min: { expr: "t_e + T_c + t_s", sim: "t_{r,mín}", nombre: "respuesta mínima", unidad: s }
+    t_max: { expr: "t_e + 2*T_c + t_s", sim: "t_{r,máx}", nombre: "respuesta máxima", unidad: s }
+    t_med: { expr: "t_e + 1.5*T_c + t_s", sim: "t_{r,media}", nombre: "respuesta media", unidad: s }
+    d_x: { expr: "v_c*T_c", sim: "Δx", nombre: "dispersión de la parada", unidad: m }
+    x_max: { expr: "v_c*t_max", sim: "x_{máx}", nombre: "avance en el peor caso", unidad: m }
+    P_v: { expr: "100*min(1, t_p/T_c)", sim: "P", nombre: "probabilidad de ver el pulso", unidad: "%" }
+
+tarjetas:
+  - id: explore-ciclo
+    tipo: explorar
+    titulo: "Una vuelta tras otra"
+    texto: "Toque los pasos del ciclo y los dos casos del centro: la misma entrada responde en 13,2 o en 22,8 ms."
+    libro: [52, 53, 57, 58]
+    widget:
+      tipo: figura
+      figura: fig-55.4
+      zonas:
+        - { id: escribir, rotulo: "Primer paso", rect: [12, 9, 85, 37], texto: "Escribe las salidas que calculó la vuelta anterior." }
+        - { id: leer, rotulo: "Segundo paso", rect: [12, 43, 85, 37], texto: "Lee las entradas: fotografía todos los bornes en la imagen de proceso." }
+        - { id: ejecutar, rotulo: "Tercer paso", rect: [12, 77, 85, 37], texto: "Ejecuta el programa entero, leyendo solo esa imagen." }
+        - { id: comunicar, rotulo: "Cuarto paso", rect: [12, 111, 85, 37], texto: "Entre vueltas, comunicaciones y autodiagnóstico." }
+        - { id: mejor, rotulo: "Arriba en el centro", rect: [110, 38, 225, 44], texto: "Mejor caso: la entrada cambia justo antes de una lectura y la salida responde en 13,2 ms." }
+        - { id: peor, rotulo: "Abajo en el centro", rect: [110, 84, 225, 44], texto: "Peor caso: cambia justo después de una lectura y espera casi un ciclo más: 22,8 ms." }
+    requiere: { mover: [leer, peor] }
+
+  - id: ordene-vuelta
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cada vuelta"
+    texto: "Ordene lo que hace el autómata en cada vuelta del ciclo de scan."
+    libro: [53]
+    ordenar:
+      - "Escribe en los bornes la imagen de salidas de la vuelta anterior"
+      - "Copia el estado de los bornes en la imagen de entradas"
+      - "Ejecuta el programa leyendo solo esa imagen"
+    exito: "Durante una vuelta, las entradas no cambian: el programa ve una fotografía coherente."
+    pistas:
+      - { texto: "Las salidas que se escriben al empezar son las que calculó la vuelta anterior." }
+    escalera: ["El programa trabaja con una copia de las entradas, no con los bornes."]
+    solucion: "Escribir salidas, leer entradas y ejecutar el programa."
+
+  - id: explore-registro
+    tipo: explorar
+    titulo: "Dos registros con el reloj del ciclo"
+    texto: "La imagen de entradas y la de salidas se copian una vez por vuelta. Mueva el cursor y siga el cambio de A hasta Y."
+    libro: [54]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, rotulo: "Borne de entrada" }, { id: CLK, reloj: true, rotulo: "Vuelta" }]
+      piezas:
+        - { id: ent, tipo: d, entradas: [A, CLK], rotulo: "Imagen de entradas" }
+        - { id: prog, tipo: buf, entradas: [ent.q], rotulo: "Programa" }
+        - { id: sal, tipo: d, entradas: [prog, CLK], rotulo: "Imagen de salidas" }
+      salidas:
+        - { id: I, de: ent.q, rotulo: "Imagen de A" }
+        - { id: Y, de: sal.q, rotulo: "Borne de salida" }
+      cronograma: { ciclos: 6, estimulo: { A: "011100" }, senales: [CLK, A, I, Y] }
+
+  - id: dibuje-respuesta
+    tipo: dibujar
+    titulo: "Dibuje la salida"
+    texto: "La entrada A cambia como se ve. Dibuje el borne de salida Y, tramo a tramo."
+    libro: [54, 56]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, rotulo: "Borne de entrada" }, { id: CLK, reloj: true, rotulo: "Vuelta" }]
+      piezas:
+        - { id: ent, tipo: d, entradas: [A, CLK], rotulo: "Imagen de entradas" }
+        - { id: prog, tipo: buf, entradas: [ent.q], rotulo: "Programa" }
+        - { id: sal, tipo: d, entradas: [prog, CLK], rotulo: "Imagen de salidas" }
+      salidas:
+        - { id: Y, de: sal.q, rotulo: "Borne de salida" }
+      cronograma: { ciclos: 8, estimulo: { A: "00111000" }, senales: [CLK, A] }
+      dibujo: false
+    dibujar:
+      senal: Y
+    exito: "Y repite A con retraso: un flanco para leerla y otro para escribir el resultado."
+    escalera:
+      - "La imagen de entradas copia A en el primer flanco tras el cambio."
+      - "La salida copia esa imagen en el flanco siguiente."
+    solucion: "Y es A desplazada: sube en el segundo flanco tras subir A y baja igual."
+
+  - id: explore-tiempos
+    tipo: explorar
+    titulo: "Entre un ciclo y dos"
+    texto: "Si los cambios llegan al azar, la respuesta se reparte por igual entre el mínimo y el máximo. Cambie el ciclo, el filtro y la salida."
+    libro: [56, 57, "cap55#48"]
+    widget:
+      tipo: grafica
+      x: { id: tr, min: 0, max: 0.06, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "reparto" }
+      curvas:
+        - { expr: "ceil((tr - t_min)/1e9)*(1 - ceil((tr - t_max)/1e9))", color: azul, rotulo: "Respuestas" }
+      marcas:
+        - { x: "t_min", y: "1", rotulo: "Mínimo" }
+        - { x: "t_max", y: "1", rotulo: "Máximo" }
+      lectura: { valor: t_max, rotulo: "Respuesta máxima" }
+      datos:
+        - { valor: t_min, rotulo: "Mínima: {{t_min}}" }
+        - { valor: t_med, rotulo: "Media: {{t_med}}" }
+      mandos:
+        - { valor: T_c, lista: [0.01, 0.015], rotulo: "Tiempo de ciclo" }
+        - { valor: t_e, lista: [0.003, 0.006], rotulo: "Filtro de entrada" }
+        - { valor: t_s, lista: [0, 0.01], nombres: [transistor, relé], rotulo: "Salida" }
+    requiere: { mover: [T_c] }
+
+  - id: prediga-respuesta
+    tipo: predecir
+    titulo: "Ciclo de 10 ms"
+    texto: "Ciclo de 10 ms, filtro de entrada de 3 ms y salida de transistor. ¿Entre qué tiempos responde?"
+    libro: [56, 57]
+    fijar: { T_c: 0.01, t_e: 0.003, t_s: 0 }
+    widget:
+      tipo: grafica
+      x: { id: tr, min: 0, max: 0.06, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "reparto" }
+      curvas:
+        - { expr: "ceil((tr - t_min)/1e9)*(1 - ceil((tr - t_max)/1e9))", color: azul, rotulo: "Respuestas" }
+      lectura: { valor: t_max, rotulo: "Respuesta máxima" }
+      ocultar: true
+    opciones:
+      - { texto: "De 13 a 23 ms", bien: true, porque: "Mínimo, filtro más un ciclo; máximo, filtro más dos ciclos: 3 + 10 y 3 + 20." }
+      - { texto: "Siempre 13 ms", porque: "Eso es el mejor caso. Si el cambio llega justo después de una lectura, espera casi otro ciclo." }
+      - { texto: "De 3 a 13 ms", porque: "Falta un ciclo: el resultado se escribe en los bornes al empezar la vuelta siguiente." }
+    escalera: ["Sume el filtro y uno o dos ciclos."]
+    solucion: "t_{e} + T_{c} = 13 ms y t_{e} + 2 · T_{c} = 23 ms."
+    comprobar:
+      - { t_min: 0.013, t_max: 0.023 }
+
+  - id: estime-rele
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Con relés y un ciclo de 15 ms"
+    texto: "Ciclo de 15 ms, filtro de 6 ms y salidas de relé de 10 ms. ¿Cuál es la respuesta máxima?"
+    libro: ["cap55#138"]
+    fijar: { T_c: 0.015, t_e: 0.006, t_s: 0.01 }
+    estimar:
+      objetivo: "t_max"
+      unidad: s
+      min: 0
+      max: 0.08
+      paso: 0.0005
+      inicio: 0.07
+      tol: 0.02
+      rotulo: "Respuesta máxima"
+    exito: "46 ms; la mínima, 31 ms. La diferencia es un ciclo entero."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0465 }, texto: "Se ha pasado: son dos ciclos, no tres, más el filtro y el relé." }
+      - { texto: "Se ha quedado corto: en el peor caso el cambio espera dos ciclos, y el relé suma sus 10 ms." }
+    escalera: ["t_{e} + 2 · T_{c} + t_{s}."]
+    solucion: "6 + 2 × 15 + 10 = 46 ms."
+    comprobar:
+      - { t_max: 0.046, t_min: 0.031 }
+
+  - id: pregunta-dispersion
+    tipo: pregunta
+    titulo: "Dónde se para la pieza"
+    texto: "Una cinta a 0,2 m/s se para cuando una pieza llega al detector, con un ciclo de 10 ms. ¿Cuánto varía el punto de parada?"
+    libro: [59]
+    fijar: { T_c: 0.01, v_c: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: tr, min: 0, max: 0.06, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "reparto" }
+      curvas:
+        - { expr: "ceil((tr - t_min)/1e9)*(1 - ceil((tr - t_max)/1e9))", color: azul, rotulo: "Respuestas" }
+      lectura: { valor: d_x, rotulo: "Dispersión" }
+      ocultar: true
+    opciones:
+      - { texto: "2 mm: la velocidad por un ciclo", bien: true, porque: "Lo que varía es un ciclo entero: 0,2 m/s × 10 ms." }
+      - { texto: "4,6 mm: la velocidad por la respuesta máxima", porque: "Eso es cuánto avanza en el peor caso; lo fijo se compensa colocando el detector. Varía un ciclo." }
+      - { texto: "Nada: el autómata es determinista", porque: "El programa lo es, pero la pieza llega en cualquier momento de la vuelta." }
+    escalera: ["La respuesta varía entre el mínimo y el máximo: un ciclo."]
+    solucion: "0,2 m/s × 10 ms = 2 mm."
+    comprobar:
+      - { d_x: 0.002, x_max: 0.0046 }
+      - { con: { t_e: 0.003, t_s: 0 }, t_max: 0.023 }
+
+  - id: sorpresa-pulsos
+    tipo: sorpresa
+    titulo: "Pulsos más cortos que el ciclo"
+    texto: "Un pulso más corto que T_{c} puede caer entero entre dos lecturas. Acorte el pulso y mire cuántos se ven."
+    nota: "El simulador del libro, con 10 ms: 19 %, 51 %, 75 % y todos."
+    libro: [61]
+    fijar: { T_c: 0.01 }
+    inicio: { t_p: 0.01 }
+    widget:
+      tipo: grafica
+      x: { id: tq, min: 0, max: 0.015, unidad: s, rotulo: "t_{p}" }
+      y: { min: 0, max: 110, unidad: "%", rotulo: "vistos" }
+      curvas:
+        - { expr: "100*min(1, tq/T_c)", color: azul, rotulo: "t_{p}/T_{c}" }
+      marcas:
+        - { x: "t_p", y: "P_v", rotulo: "Su pulso" }
+      lectura: { valor: P_v, rotulo: "Pulsos vistos" }
+      mandos:
+        - { valor: t_p, lista: [0.002, 0.005, 0.0075, 0.01], rotulo: "Duración del pulso" }
+    requiere: { mover: [t_p] }
+
+  - id: estime-piezas
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Contar piezas en una cinta"
+    texto: "Piezas de 20 mm pasan ante un detector a 1,5 m/s: pulsos de 13,3 ms. Con un ciclo de 18 ms, ¿qué fracción se cuenta?"
+    libro: ["cap55#138", 61]
+    fijar: { T_c: 0.018, t_p: 0.01333 }
+    estimar:
+      objetivo: "P_v"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 20
+      tol: 0.04
+      rotulo: "Piezas contadas"
+    exito: "El 74 %: se pierde una de cada cuatro. El simulador cuenta el 74,6 %. Lo correcto es un contador rápido."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 77 }, texto: "Se ha pasado: el pulso es más corto que el ciclo, así que no se ven todas." }
+      - { texto: "Se ha quedado corto: la probabilidad es t_{p}/T_{c}, 13,3 entre 18." }
+    escalera: ["P = t_{p}/T_{c}."]
+    solucion: "13,3/18 = 0,741: el 74 %."
+    comprobar:
+      - { P_v: 74 }
+
+  - id: porque-bucle
+    tipo: porque
+    titulo: "Nada de esperar"
+    texto: "En un autómata no se escriben bucles que esperan. ¿Por qué?"
+    libro: [63]
+    widget:
+      tipo: figura
+      figura: fig-55.4
+      zonas:
+        - { id: ejecutar, rotulo: "Tercer paso", rect: [12, 77, 85, 37] }
+    opciones:
+      - { texto: "Una vuelta demasiado larga dispara el perro guardián y lleva el autómata a STOP", bien: true, porque: "El programa entero es el cuerpo de un bucle: esperar es dejar pasar vueltas." }
+      - { texto: "Porque el lenguaje no tiene bucles", porque: "El texto estructurado tiene FOR; lo que no se puede es alargar una vuelta esperando." }
+      - { texto: "Porque gastan memoria", porque: "No es la memoria: mientras espera, ni lee entradas ni escribe salidas, y el perro guardián salta." }
+    escalera: ["¿Qué vigila el perro guardián del ciclo?"]
+    solucion: "Si una vuelta supera el tiempo máximo, el perro guardián lleva el autómata a STOP."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [54, 56, 59, 61]
+    ideas:
+      - { titulo: "Imagen de proceso.", texto: "El programa ve una fotografía de las entradas, tomada una vez por vuelta." }
+      - { titulo: "Respuesta.", texto: "Entre t_{e} + T_{c} + t_{s} y t_{e} + 2 · T_{c} + t_{s}: varía un ciclo entero." }
+      - { titulo: "Pulsos cortos.", texto: "Se ven con probabilidad t_{p}/T_{c}: para contar deprisa, contadores rápidos." }

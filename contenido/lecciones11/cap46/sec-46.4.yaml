@@ -1,0 +1,279 @@
+# Lección 1.2 de la sección 47.4 «Temperatura y Vida: la Ley de Arrhenius» (cap46; etiquetas sec-46.N = impresas 47.N).
+# - La vida relativa frente a la temperatura (Arrhenius con Ea = 0,7 eV desde 25 °C y la regla de ×2 cada 10 °C) en una
+#   gráfica del modelo, como la figura 47.7 (fig-46.7): +10 °C ÷2,4; +20 °C ÷5,5; +40 °C ÷25; de 85 a 125 °C, unos 10.
+#   La constante de Boltzmann y la carga del electrón son las de la app (k_B, q_e): Ea·q_e/k_B = 8 123 K.
+# - MTBF de 100 000 h en una flota de mil: un fallo cada 100 h; sobrevivir un MTBF, e⁻¹ = 37 %; diez piezas de 0,99 en
+#   serie, 0,904 (bloques 108, 109, 111). Coffin–Manson con exponente 2: (100/25)² = 16 (bloque 123).
+# Paso práctico: «simular» el factor de +20 °C con Arrhenius (errores típicos: la regla de los 10 °C, ×4; sumar dos
+# factores de +10 °C, 4,8).
+leccion: cap46/sec-46.4
+
+libro:
+  104: "es en esta zona donde tienen sentido el MTBF y las predicciones de fiabilidad"
+  106: "Un equipo con MTBF de 100 000 horas (once años) puede tener componentes cuya vida de desgaste sea de tres"
+  108: "en una flota de mil equipos cabe esperar un fallo cada 100 horas en el conjunto"
+  109: "la probabilidad de sobrevivir un tiempo igual al MTBF es solo del 37 % (e⁻¹)"
+  111: "Con diez componentes de fiabilidad 0,99 cada uno, el conjunto tiene 0,904"
+  112: "el componente peor domina el conjunto, así que mejorar los buenos no sirve de nada"
+  115: "Con una energía de activación típica de 0,7 eV y partiendo de la temperatura ambiente (25 °C)"
+  116: "5,5"
+  117: "de 85 a 125 °C el factor es unos 10, no 25"
+  118: "cada diez grados menos duplican la vida"
+  119: "la mejor inversión en fiabilidad es térmica"
+  122: "lo que lo gobierna no es la temperatura media sino la amplitud ΔT de cada ciclo"
+  123: "daña cada ciclo (100/25)² = 16 veces más"
+  132: "Un electrolítico de 2 000 h a 105 °C, trabajando a 85 °C, durará menos de un año; el mismo a 45 °C, más de catorce"
+  133: "enfriar un componente 20 °C multiplica su vida útil por unas cuatro veces (por 5,5 con Ea = 0,7 eV, de 45 a 25 °C)"
+  134: "la vida relativa según la temperatura de trabajo por la ley de Arrhenius"
+
+modelo:
+  valores:
+    T_w: { sim: "T", nombre: "temperatura de trabajo", unidad: "°C", valor: 35 }
+    T_r: { sim: "T_{ref}", nombre: "temperatura de referencia", unidad: "°C", valor: 25 }
+    E_a: { sim: "E_{a}", nombre: "energía de activación", unidad: eV, valor: 0.7 }
+    MTBF: { sim: "MTBF", nombre: "tiempo medio entre fallos", unidad: h, valor: 100000 }
+    N_f: { sim: "N", nombre: "equipos de la flota", unidad: "", valor: 1000 }
+    R_c: { sim: "R", nombre: "fiabilidad de cada componente", unidad: "", valor: 0.99 }
+    n_c: { sim: "n", nombre: "componentes en serie", unidad: "", valor: 10 }
+    dT_e: { sim: "ΔT_{ensayo}", nombre: "amplitud del ciclo de ensayo", unidad: "°C", valor: 100 }
+    dT_u: { sim: "ΔT_{uso}", nombre: "amplitud del ciclo de uso", unidad: "°C", valor: 25 }
+  calculos:
+    V_ar: { expr: "exp(-E_a*q_e/k_B*(1/(T_r + 273.15) - 1/(T_w + 273.15)))", sim: "V", nombre: "vida relativa (1 a la referencia)", unidad: "", cifras: 3 }
+    D_ar: { expr: "1/V_ar", sim: "÷", nombre: "la vida se divide por", unidad: "", cifras: 2 }
+    D_re: { expr: "2^((T_w - T_r)/10)", sim: "÷", nombre: "la vida se divide por, regla de los 10 °C", unidad: "", cifras: 2 }
+    D_10: { expr: "exp(E_a*q_e/k_B*(1/(T_r + 273.15) - 1/(T_r + 283.15)))", sim: "÷", nombre: "factor de +10 °C", unidad: "", cifras: 2 }
+    D_hi: { expr: "exp(E_a*q_e/k_B*(1/358.15 - 1/398.15))", sim: "÷", nombre: "factor de 85 a 125 °C", unidad: "", cifras: 2 }
+    t_f: { expr: "MTBF/N_f", sim: "t", nombre: "tiempo entre fallos de la flota", unidad: h }
+    S_m: { expr: "exp(-1)*100", sim: "S", nombre: "sobreviven un MTBF", unidad: "%", cifras: 2 }
+    R_s: { expr: "R_c^n_c", sim: "R_{serie}", nombre: "fiabilidad del conjunto en serie", unidad: "", cifras: 3 }
+    K_cm: { expr: "(dT_e/dT_u)^2", sim: "K", nombre: "daño por ciclo, ensayo frente a uso", unidad: "" }
+
+tarjetas:
+  - id: explore-arrhenius
+    tipo: explorar
+    titulo: "Más calor, menos vida"
+    texto: "La degradación es química y sigue a Arrhenius. Suba la temperatura de trabajo y mire por cuánto se divide la vida."
+    libro: [115, 116, 118, 134]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 20, max: 90, unidad: "°C", rotulo: "T" }
+      y: { min: 0.005, max: 1.5, unidad: "", rotulo: "vida relativa", escala: log }
+      curvas:
+        - { expr: "exp(-E_a*q_e/k_B*(1/(T_r + 273.15) - 1/(tt + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
+        - { expr: "2^(-(tt - T_r)/10)", color: tinta, rotulo: "×2 cada 10 °C", discontinua: true }
+      marcas:
+        - { x: "T_w", y: "V_ar", rotulo: "÷{{D_ar}}" }
+      lectura: { valor: D_ar, rotulo: "La vida se divide por" }
+      datos:
+        - { valor: D_re, rotulo: "Regla de los 10 °C: ÷{{D_re}}" }
+      mandos:
+        - { valor: T_w, min: 25, max: 85, paso: 5, rotulo: "Temperatura de trabajo" }
+    requiere: { mover: [T_w] }
+
+  - id: simule-veinte
+    tipo: simular
+    titulo: "Veinte grados más"
+    texto: "Un componente pasa de 25 a 45 °C. Con Arrhenius y 0,7 eV, ¿por cuánto se divide su vida?"
+    libro: [115, 116, 133]
+    fijar: { T_w: 45, T_r: 25 }
+    simular:
+      objetivo: D_ar
+      unidad: ""
+      tol: 0.05
+      rotulo: "La vida se divide por"
+      errores:
+        - { expr: "D_re", texto: "Eso es la regla de duplicar cada 10 °C: aproximada. Arrhenius con 0,7 eV da algo más." }
+        - { expr: "2*D_10", texto: "Ha sumado dos factores de +10 °C: los factores se multiplican, no se suman." }
+    exito: "Se divide por 5,5: enfriar 20 °C es multiplicar la vida por 5,5."
+    escalera:
+      - "+10 °C divide la vida por 2,4."
+      - "Dos saltos de 10 °C se multiplican, y el segundo pesa un poco menos."
+    solucion: "Por 5,5, según la tabla del libro."
+    comprobar:
+      - { D_ar: 5.54, D_re: 4, D_10: 2.42 }
+
+  - id: prediga-alta
+    tipo: predecir
+    titulo: "El mismo salto, más arriba"
+    texto: "De 25 a 65 °C la vida se divide por 25. ¿Y de 85 a 125 °C, también 40 grados?"
+    libro: [116, 117]
+    fijar: { T_w: 65 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 20, max: 130, unidad: "°C", rotulo: "T" }
+      y: { min: 0.0005, max: 1.5, unidad: "", rotulo: "vida relativa", escala: log }
+      curvas:
+        - { expr: "exp(-E_a*q_e/k_B*(1/(T_r + 273.15) - 1/(tt + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
+      lectura: { valor: D_hi, rotulo: "De 85 a 125 °C, se divide por" }
+      ocultar: true
+    opciones:
+      - texto: "Por unos 10: a temperaturas altas el salto pesa menos"
+        bien: true
+        porque: "Cuenta la inversa de la temperatura absoluta: arriba, 40 grados la cambian menos."
+      - texto: "Por 25, igual: son los mismos 40 grados"
+        porque: "La ley no va con la diferencia en °C, sino con la inversa de la temperatura en kelvin."
+      - texto: "Por más de 25, porque hace más calor"
+        porque: "Al revés: a temperaturas altas el mismo salto pesa algo menos."
+    escalera:
+      - "¿Qué temperatura usa la ley: en grados Celsius o la inversa de la absoluta?"
+    solucion: "Por unos 10, no 25."
+    comprobar:
+      - { D_hi: 9.76 }
+
+  - id: estime-flota
+    tipo: pregunta
+    titulo: "Una flota de mil"
+    texto: "Mil equipos con un MTBF de 100 000 horas funcionan a la vez. ¿Cada cuánto cabe esperar un fallo en el conjunto?"
+    libro: [104, 108]
+    fijar: { MTBF: 100000, N_f: 1000 }
+    widget:
+      tipo: figura
+      figura: fig-46.8
+      zonas:
+        - { id: util, rotulo: "Tramo central de la bañera", rect: [55, 15, 80, 135] }
+    estimar:
+      objetivo: "t_f"
+      unidad: h
+      min: 0
+      max: 1000
+      paso: 10
+      inicio: 600
+      tol: 0.05
+      rotulo: "Un fallo cada"
+    exito: "Cada 100 horas: el MTBF es una tasa de la población, en su zona plana."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 105 }, texto: "Demasiado: con mil equipos, los fallos llegan mil veces más a menudo." }
+      - { texto: "Demasiado poco: divida 100 000 horas entre mil equipos." }
+    escalera:
+      - "Mil equipos acumulan mil horas de funcionamiento por cada hora."
+    solucion: "100 000/1 000 = 100 horas."
+    comprobar:
+      - { t_f: 100 }
+
+  - id: prediga-sobrevivir
+    tipo: predecir
+    titulo: "Sobrevivir un MTBF"
+    texto: "Con tasa de fallos constante, ¿qué probabilidad tiene un equipo de seguir funcionando al cabo de un tiempo igual a su MTBF?"
+    libro: [106, 109]
+    widget:
+      tipo: figura
+      figura: fig-46.8
+      zonas:
+        - { id: util, rotulo: "Tramo central de la bañera", rect: [55, 15, 80, 135] }
+    opciones:
+      - texto: "Solo un 37 %"
+        bien: true
+        porque: "Es e⁻¹: el MTBF no es «la vida», es un parámetro estadístico."
+      - texto: "La mitad: es el tiempo medio"
+        porque: "Media no es mediana: con tasa constante, a un MTBF ya han fallado casi dos tercios."
+      - texto: "Casi el 100 %: aún no ha llegado a su MTBF"
+        porque: "Sería así si el MTBF fuera una vida garantizada; es una tasa."
+    escalera:
+      - "Con tasa constante, la supervivencia cae como una exponencial."
+    solucion: "e⁻¹, un 37 %."
+    comprobar:
+      - { S_m: 36.8 }
+
+  - id: estime-serie
+    tipo: pregunta
+    titulo: "Diez piezas en serie"
+    texto: "Un sistema falla si falla cualquiera de sus diez componentes, cada uno de fiabilidad 0,99. ¿Qué fiabilidad tiene el conjunto?"
+    libro: [111, 112]
+    fijar: { R_c: 0.99, n_c: 10 }
+    estimar:
+      objetivo: "R_s"
+      unidad: ""
+      min: 0.8
+      max: 1
+      paso: 0.001
+      inicio: 0.97
+      tol: 0.004
+      rotulo: "Fiabilidad del conjunto"
+    exito: "0,904: casi un 10 % de fallos aunque cada pieza sea buena al 99 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.91 }, texto: "Demasiado: las fiabilidades se multiplican, y diez veces 0,99 baja bastante." }
+      - { texto: "Demasiado poco: 0,99 multiplicado por sí mismo diez veces." }
+    escalera:
+      - "En serie, las fiabilidades se multiplican."
+    solucion: "0,99¹⁰ = 0,904."
+    comprobar:
+      - { R_s: 0.904 }
+
+  - id: porque-peor
+    tipo: porque
+    titulo: "El peor manda"
+    texto: "En serie, ¿por qué mejorar los componentes que ya son buenos apenas sirve?"
+    libro: [111, 112]
+    widget:
+      tipo: figura
+      figura: fig-46.8
+      zonas:
+        - { id: util, rotulo: "Tramo central de la bañera", rect: [55, 15, 80, 135] }
+    opciones:
+      - texto: "El componente peor domina el conjunto"
+        bien: true
+        porque: "Las tasas se suman: la mayor manda. Por eso también reducir piezas es de primer orden."
+      - texto: "Porque los buenos ya no fallan nunca"
+        porque: "Fallan poco, pero su tasa ya es pequeña frente a la del peor: mejorarla cambia poco."
+      - texto: "Porque en serie solo cuenta el primero"
+        porque: "Cuentan todos, pero el peor pesa mucho más que los demás."
+    escalera:
+      - "¿Qué tasa pesa más en la suma?"
+    solucion: "El componente peor domina el conjunto."
+
+  - id: pregunta-ciclos
+    tipo: pregunta
+    titulo: "La excepción: las soldaduras"
+    texto: "Una semana a 125 °C apenas fatiga una soldadura. ¿Por qué los ensayos de soldaduras son de ciclado térmico?"
+    libro: [122, 123]
+    fijar: { dT_e: 100, dT_u: 25 }
+    widget:
+      tipo: figura
+      figura: fig-46.8
+      zonas:
+        - { id: arrhenius, rotulo: "Panel de la derecha", rect: [245, 15, 180, 150] }
+    opciones:
+      - texto: "La fatiga depende de la amplitud ΔT de cada ciclo, no de la temperatura"
+        bien: true
+        porque: "Coffin–Manson: con exponente 2, ciclos de 100 °C dañan (100/25)² = 16 veces más que los de 25 °C."
+      - texto: "Porque a 125 °C el estaño se funde"
+        porque: "No se funde; simplemente, sin ciclos no se acumula daño mecánico."
+      - texto: "Porque la fatiga también sigue a Arrhenius"
+        porque: "Es la excepción: no es una reacción química, sino daño mecánico ciclo a ciclo."
+    escalera:
+      - "¿Es la fatiga un proceso químico o mecánico?"
+    solucion: "Lo gobierna la amplitud del ciclo: Coffin–Manson, no Arrhenius."
+    comprobar:
+      - { K_cm: 16 }
+
+  - id: pregunta-electrolitico
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Un electrolítico de 2 000 h a 105 °C trabaja a 85 °C; otro igual, a 45 °C. ¿Qué les espera?"
+    libro: [119, 132]
+    widget:
+      tipo: figura
+      figura: fig-46.8
+      zonas:
+        - { id: arrhenius, rotulo: "Panel de la derecha", rect: [245, 15, 180, 150] }
+    opciones:
+      - texto: "Menos de un año el primero; más de catorce el segundo"
+        bien: true
+        porque: "Cuarenta grados de diferencia: la mejor inversión en fiabilidad es térmica."
+      - texto: "Los dos, unas 2 000 horas"
+        porque: "Esas horas son a 105 °C; por debajo, la vida crece con cada grado que se enfría."
+      - texto: "Lo mismo: el condensador es el mismo"
+        porque: "La vida depende de la temperatura de trabajo: es lo que dice Arrhenius."
+    escalera:
+      - "Cada 10 °C menos duplican la vida de un electrolítico."
+    solucion: "Menos de un año a 85 °C; más de catorce a 45 °C."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [109, 111, 116, 122]
+    ideas:
+      - { titulo: "Arrhenius.", texto: "Con 0,7 eV, +10 °C divide la vida por 2,4 y +20 °C por 5,5." }
+      - { titulo: "El MTBF.", texto: "Una tasa de la zona plana: a un MTBF sobrevive el 37 %." }
+      - { titulo: "En serie.", texto: "Las fiabilidades se multiplican y el peor manda." }
+      - { titulo: "Las soldaduras.", texto: "La fatiga va con la amplitud del ciclo, no con Arrhenius." }

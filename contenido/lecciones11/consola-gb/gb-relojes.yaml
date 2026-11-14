@@ -1,0 +1,233 @@
+# «Consolas por dentro» · Game Boy 3: un cristal de 2²² Hz. De él salen el punto de la pantalla (4,194304 MHz), el
+# ciclo de máquina y PHI del cartucho (÷ 4), el puerto serie con el reloj interno (8192 Hz, ÷ 2⁹) y el cuadro: 456
+# puntos por línea y 154 líneas, unos 59,7 Hz. No hay versión PAL ni NTSC: la pantalla va dentro. Fuentes: los datos
+# de la consola (gb#n), Pan Docs «Video Display» y el libro (contadores que dividen por 2ⁿ, 9.5; el cristal de 2¹⁵ Hz).
+leccion: consola-gb/gb-relojes
+
+libro:
+  "gb#5": "Un ciclo de máquina son 4 periodos: 1,048576 MHz, la señal PHI del cartucho"
+  "gb#35": "Cristal líquido monocromo de 4 tonos"
+  "gb#51": "genera el reloj de punto de la PPU (4 MHz) y PHI (1 MHz) para el cartucho"
+  "gb#52": "Contiene la CPU, la PPU, el sonido, los temporizadores"
+  "gb#58": "Puerto serie de 8 bits ($FF01–$FF02) a 8192 Hz con el reloj interno"
+  "gb#70": "un reloj de punto de 2²² Hz (4,194 MHz)"
+  "gb#71": "Un cuadro son 154 líneas, 70 224 puntos o 16,74 ms"
+  "gb#72": "cada 456 puntos"
+  "gb#73": "llega unas 59,7 veces por segundo en una Game Boy portátil (DMG o CGB)"
+  "cap09#61": "encadenando n de ellos, cada uno disparado por la salida del anterior, se cuenta de 0 a 2ⁿ − 1 y la frecuencia queda dividida por 2ⁿ"
+  "cap20#78": "su frecuencia es 2¹⁵, de modo que quince divisiones por dos dan exactamente un segundo"
+
+modelo:
+  valores:
+    FX: { sim: "f_{cristal}", nombre: "frecuencia del cristal", unidad: Hz, valor: 4194304 }
+    k: { sim: "k", nombre: "divisiones por dos", unidad: "", valor: 6 }
+    P: { sim: "P", nombre: "puntos por línea", unidad: "", valor: 456 }
+    L: { sim: "L", nombre: "líneas por cuadro", unidad: "", valor: 120 }
+  calculos:
+    f_phi: { expr: "FX/4", sim: "f_{PHI}", nombre: "ciclo de máquina (PHI)", unidad: Hz, cifras: 7 }
+    f_ser: { expr: "FX/2^k", sim: "f_{cristal} / 2^k", nombre: "reloj dividido por 2^k", unidad: Hz, cifras: 4 }
+    f_lin: { expr: "FX/P", sim: "f_{línea}", nombre: "líneas por segundo", unidad: Hz, cifras: 4 }
+    f_cuadro: { expr: "FX/(P*L)", sim: "f_{cuadro}", nombre: "cuadros por segundo", unidad: Hz, cifras: 3 }
+
+tarjetas:
+  - id: explore-reloj
+    tipo: explorar
+    titulo: "Un cristal para todo"
+    texto: "Toque el cristal, el chip que lo divide y la ranura, que recibe PHI."
+    libro: ["gb#5", "gb#51", "gb#52"]
+    requiere: { mover: [xtal, soc, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: xtal, hotspot: xtal, rotulo: "Cristal X1", texto: "4,194304 MHz entre CK1 y CK2." }
+        - { id: soc, hotspot: soc, rotulo: "SoC", texto: "Saca el punto de la pantalla y PHI." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Recibe PHI: 1,048576 MHz." }
+
+  - id: por-que-potencia
+    tipo: porque
+    titulo: "Un número raro, otra vez"
+    texto: "El cristal es de 4,194304 MHz, justo 2²² Hz. ¿Qué gana la consola con eso?"
+    libro: ["gb#70", "cap09#61", "cap20#78"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: xtal, hotspot: xtal, rotulo: "Cristal" }
+    opciones:
+      - texto: "Dividiendo por dos una y otra vez salen frecuencias exactas."
+        bien: true
+        porque: "Como el cristal de reloj de 2¹⁵ Hz: unos biestables encadenados dividen por 2ⁿ sin error."
+      - texto: "Es la frecuencia de la subportadora de color."
+        porque: "La Game Boy no tiene salida de televisión ni color: no necesita subportadora."
+      - texto: "Es la frecuencia máxima del SM83."
+        porque: "La CPU va a la cuarta parte. El valor se elige para dividir por potencias de dos."
+    escalera:
+      - "Piense en el cristal de un reloj de pulsera: 32 768 Hz es 2¹⁵."
+    solucion: "Es una potencia de dos: cada división por dos da un número exacto."
+
+  - id: simule-phi
+    tipo: simular
+    titulo: "El ciclo de máquina"
+    texto: "Un ciclo de máquina son 4 periodos del cristal. ¿A qué frecuencia va PHI?"
+    libro: ["gb#5", "gb#51", "cap09#61"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: n, min: 1, max: 8, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 4500000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "FX/n", color: azul, rotulo: "cristal ÷ divisor", palitos: true }
+    simular:
+      objetivo: f_phi
+      unidad: Hz
+      tol: 0.001
+      rotulo: "Ciclo de máquina, f_{PHI}"
+      errores:
+        - { expr: "FX/2", texto: "Ha dividido entre 2: un ciclo de máquina son 4 periodos." }
+        - { expr: "FX", texto: "Esa es la frecuencia del cristal, la del punto de la pantalla." }
+        - { expr: "FX/8", texto: "Ha dividido entre 8: son 4 periodos por ciclo." }
+    exito: "4,194304 MHz ÷ 4 = 1,048576 MHz: el ritmo de la CPU y del cartucho."
+    escalera:
+      - "Divida 4,194304 MHz entre 4."
+    solucion: "1,048576 MHz."
+    comprobar:
+      - { f_phi: 1048576 }
+
+  - id: ajuste-serie
+    tipo: ajuste
+    titulo: "El reloj del puerto serie"
+    texto: "Con el reloj interno, el puerto de enlace va a 8192 Hz. ¿Cuántas divisiones por dos hacen falta?"
+    libro: ["gb#58", "cap09#61"]
+    inicio: { k: 6 }
+    widget:
+      tipo: grafica
+      x: { id: j, min: 6, max: 12, unidad: "", rotulo: "divisiones por dos, k" }
+      y: { min: 0, max: 70000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "FX/2^j", color: azul, rotulo: "cristal ÷ 2^k", palitos: true }
+      marcas:
+        - { x: "k", y: "f_ser", rotulo: "{{f_ser}}" }
+      mandos: [ { valor: k, min: 6, max: 12, paso: 1, rotulo: "Divisiones por dos, k" } ]
+    ajuste:
+      valor: f_ser
+      objetivo: 8192
+      tol: 0.001
+      rotulo: "Reloj del puerto serie"
+      bajo: "Demasiado lento: quite una división."
+      alto: "Demasiado rápido: añada una división."
+      dentro: "8192 Hz justos."
+    exito: "Nueve divisiones por dos: 2²² ÷ 2⁹ = 2¹³ = 8192 Hz."
+    escalera:
+      - "8192 Hz es 2¹³; el cristal, 2²²."
+    solucion: "k = 9."
+    comprobar:
+      - { con: { k: 9 }, f_ser: 8192 }
+
+  - id: simule-linea
+    tipo: simular
+    titulo: "Líneas por segundo"
+    texto: "La pantalla cuenta puntos del cristal: 456 por línea. ¿Cuántas líneas dibuja por segundo?"
+    libro: ["gb#70", "gb#72"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: p, min: 100, max: 600, unidad: "", rotulo: "puntos por línea" }
+      y: { min: 0, max: 45000, unidad: Hz, rotulo: "líneas por segundo" }
+      curvas:
+        - { expr: "FX/p", color: azul, rotulo: "f_{cristal} / puntos" }
+    simular:
+      objetivo: f_lin
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Líneas por segundo, f_{línea}"
+      errores:
+        - { expr: "FX/(4*P)", texto: "Ha contado ciclos de máquina: la pantalla cuenta puntos del cristal, cuatro por ciclo." }
+        - { expr: "FX/154", texto: "Ha dividido entre las líneas: cada línea son 456 puntos." }
+    exito: "4,194304 MHz ÷ 456 ≈ 9198 líneas por segundo."
+    escalera:
+      - "Divida la frecuencia del cristal entre 456."
+    solucion: "Unas 9198 líneas por segundo."
+    comprobar:
+      - { f_lin: 9198 }
+
+  - id: ajuste-lineas
+    tipo: ajuste
+    titulo: "Cerrar el cuadro"
+    texto: "Ajuste las líneas por cuadro, visibles más borrado, hasta unos 59,7 Hz."
+    libro: ["gb#71", "gb#72", "gb#73"]
+    inicio: { L: 120 }
+    widget:
+      tipo: grafica
+      x: { id: l, min: 100, max: 200, unidad: "", rotulo: "líneas por cuadro" }
+      y: { min: 40, max: 90, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "FX/(P*l)", color: azul, rotulo: "f_{cristal} / (456 · líneas)" }
+      marcas:
+        - { x: "L", y: "f_cuadro", rotulo: "{{f_cuadro}}" }
+      mandos: [ { valor: L, min: 100, max: 200, paso: 1, rotulo: "Líneas por cuadro, L" } ]
+    ajuste:
+      valor: f_cuadro
+      objetivo: 59.7
+      tol: 0.003
+      rotulo: "Cuadros por segundo"
+      bajo: "Demasiado lento: quite líneas."
+      alto: "Demasiado rápido: añada líneas."
+      dentro: "154 líneas: 144 visibles más el borrado."
+    exito: "456 puntos × 154 líneas = 70 224 puntos: unos 59,7 cuadros por segundo."
+    escalera:
+      - "Las 144 visibles dan demasiado: faltan las del borrado vertical."
+      - "El borrado vertical son las líneas 144 a 153."
+    solucion: "L = 154."
+    comprobar:
+      - { con: { L: 154 }, f_cuadro: 59.73 }
+
+  - id: por-que-sin-pal
+    tipo: predecir
+    titulo: "¿Una Game Boy PAL?"
+    texto: "Una Mega Drive europea va a 50 Hz. ¿Y una Game Boy europea?"
+    libro: ["gb#73", "gb#35", "gb#71"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb, foto: lcd-f }
+      zonas:
+        - { id: lcd, hotspot: f-lcd, rotulo: "Su propia pantalla" }
+    opciones:
+      - texto: "Igual, unos 59,7 Hz: no hay televisor que seguir."
+        bien: true
+        porque: "Lleva su propia pantalla: el cuadro lo marcan el cristal y las 154 líneas."
+      - texto: "A 50 Hz, como las consolas PAL."
+        porque: "Las de sobremesa siguen al televisor; la Game Boy no se conecta a ninguno."
+      - texto: "Depende del cartucho."
+        porque: "El juego no elige el cuadro: lo fijan el cristal y las líneas."
+    escalera:
+      - "¿A qué se conecta la Game Boy para dar imagen?"
+    solucion: "Unos 59,7 Hz en todas: la pantalla va dentro."
+
+  - id: empareje-cifras
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada cifra, su reloj"
+    texto: "Empareje cada frecuencia con lo que mueve."
+    libro: ["gb#5", "gb#58", "gb#70", "gb#73"]
+    emparejar:
+      - ["4,194304 MHz", "El punto de la pantalla"]
+      - ["1,048576 MHz", "El ciclo de máquina, PHI"]
+      - ["8192 Hz", "El puerto serie"]
+      - ["59,7 Hz", "Los cuadros"]
+    exito: "Un cristal y divisores: todo sale de 2²² Hz."
+    pistas:
+      - { texto: "De mayor a menor: punto, ciclo de máquina, puerto serie, cuadro." }
+    escalera:
+      - "Cuanto más se divide, más baja la frecuencia."
+    solucion: "4,194304 MHz: punto. 1,048576 MHz: PHI. 8192 Hz: serie. 59,7 Hz: cuadro."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gb#70", "gb#5", "gb#58", "gb#71"]
+    ideas:
+      - { titulo: "2²² Hz.", texto: "Un cristal que se divide por dos sin error." }
+      - { titulo: "÷ 4.", texto: "El ciclo de máquina y PHI: 1,048576 MHz." }
+      - { titulo: "El cuadro.", texto: "456 puntos × 154 líneas: unos 59,7 Hz." }
+      - { titulo: "Sin norma de TV.", texto: "Igual en todo el mundo: la pantalla va dentro." }

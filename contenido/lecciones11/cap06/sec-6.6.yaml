@@ -87,6 +87,9 @@ tarjetas:
         porque: "Ni uno ni otro: g_{m} = I_{C}/V_{T} es igual para cualquier transistor a la misma corriente."
     comprobar:
       - { g_m: 0.0512, r_e: 19.5 }
+    escalera:
+      - "g_{m} = I_{C}/V_{T}: ¿aparece β en la fórmula?"
+    solucion: "Los dos, 51,2 mS: solo depende de la corriente de polarización."
 
   - id: formula-ec
     tipo: formula
@@ -116,7 +119,7 @@ tarjetas:
   - id: sorpresa-degeneracion
     tipo: sorpresa
     titulo: "Sin el condensador de emisor"
-    texto: "Emisor común con 3,3 kΩ de colector, a 1,324 mA. Deje sin puentear una parte R_{E1} de la resistencia de emisor, hasta el kiloohmio entero. Mire la ganancia."
+    texto: "Emisor común con 3,3 kΩ de colector, a 1,324 mA. Deje sin puentear una parte R_{E1} de la resistencia de emisor, hasta el kiloohmio entero, y mire la ganancia."
     libro: [207, "cap06#191"]
     fijar: { I_C: 0.001324, R_C: 3300 }
     inicio: { R_E1: 0 }
@@ -159,27 +162,36 @@ tarjetas:
         porque: "La corriente de reposo es la misma: R_{E} ya estaba en continua. Solo cambia lo que la señal ve en el emisor."
     comprobar:
       - { A_deg: 3.24 }
+    escalera:
+      - "Con R_{E} sin puentear, la ganancia es R_{C}/(r_{e} + R_{E}). ¿Qué término manda?"
+    solucion: "R_{E}: la ganancia es casi R_{C}/R_{E} y ya no depende del transistor ni de la temperatura."
 
   - id: estime-miller
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "El efecto Miller"
-    texto: "Un emisor común de ganancia 169 tiene unos 4 pF entre base y colector. Desde la entrada parecen multiplicados por (1 + |A_{v}|). Estime la capacidad que se ve."
+    texto: "Un emisor común de ganancia 169 tiene unos 4 pF entre base y colector, que desde la entrada parecen multiplicados por (1 + |A_{v}|). ¿Qué capacidad se ve?"
     libro: [208]
     fijar: { I_C: 0.001324, R_C: 3300 }
-    estimar:
-      objetivo: "C_mil"
+    widget:
+      tipo: grafica
+      x: { id: a, min: 0, max: 200, unidad: "", rotulo: "|A_{v}|" }
+      y: { min: 0, max: 0.000000001, unidad: F, rotulo: "C_{Miller}" }
+      curvas:
+        - { expr: "C_bc*(1 + a)", color: naranja, rotulo: "C_{bc}·(1 + |A_{v}|)" }
+      marcas:
+        - { x: "R_C/r_e", y: "C_mil", rotulo: "La etapa" }
+      ocultar: curvas
+    simular:
+      objetivo: C_mil
       unidad: F
-      min: 0
-      max: 0.000000002
-      paso: 0.00000000001
-      inicio: 0.0000000016
-      tol: 0.05
-      rotulo: "C_{Miller}"
+      tol: 0.03
+      rotulo: "Capacidad vista desde la entrada"
+      errores:
+        - { expr: "C_bc", texto: "Esos 4 pF son la capacidad sin multiplicar: desde la entrada pesan (1 + |A_{v}|) veces más." }
     exito: "4 pF · 170 = 680 pF. Con una fuente de 1 kΩ cortan la respuesta hacia 234 kHz: el emisor común es la configuración con peor ancho de banda."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.000000000715 }, texto: "Se ha pasado. Multiplique los 4 pF por 1 + 169." }
-      - { texto: "Se ha quedado corto. La ganancia multiplica la capacidad: 4 pF por 170." }
+    escalera:
+      - "Multiplique los 4 pF por 1 + 169."
+    solucion: "4 pF × 170 = 680 pF."
     comprobar:
       - { C_mil: 0.00000000068, f_mil: 234000 }
 
@@ -198,6 +210,14 @@ tarjetas:
         porque: "Esa es la virtud de la base común: sin efecto Miller y con ganancia de tensión."
     comprobar:
       - { A_cc: 0.981, R_occ: 26.15 }
+    widget:
+      tipo: figura
+      figura: fig-6.13
+      zonas:
+        - { id: configuraciones, rotulo: "Las tres configuraciones del BJT", rect: [0, 0, 453, 247] }
+    escalera:
+      - "No gana tensión. ¿Qué pasa con la resistencia que ve la carga?"
+    solucion: "Convierte una fuente de 1 kΩ en una de 26 Ω: da corriente y potencia, sin efecto Miller."
 
   - id: empareje-configuraciones
     tipo: pregunta
@@ -213,6 +233,9 @@ tarjetas:
     exito: "Eso es: la señal nunca entra y sale por el mismo terminal, así que quedan tres combinaciones, y el cascodo combina dos."
     pistas:
       - { texto: "El común es el terminal que no es ni entrada ni salida. El seguidor no gana tensión." }
+    escalera:
+      - "El común es el terminal que no es ni entrada ni salida. El seguidor no gana tensión."
+    solucion: "Emisor común: −169. Colector común: 0,981. Base común: +169 sin Miller. Cascodo: los dos."
 
   - id: elegir
     tipo: pregunta
@@ -227,6 +250,14 @@ tarjetas:
         porque: "Gana tensión, pero el efecto Miller multiplica su capacidad base-colector: es la de peor ancho de banda."
       - texto: "Colector común"
         porque: "No tiene efecto Miller, pero tampoco ganancia de tensión: 0,981."
+    widget:
+      tipo: figura
+      figura: fig-6.13
+      zonas:
+        - { id: base-comun, rotulo: "Ganancia e impedancias de cada configuración", rect: [0, 0, 453, 247] }
+    escalera:
+      - "Hace falta ganancia sin efecto Miller. ¿Cuál gana tensión sin capacidad base-colector a la entrada?"
+    solucion: "La base común, o un cascodo, que suma la ganancia del emisor común."
 
   - id: banco-osciloscopio
     tipo: pregunta
@@ -241,6 +272,20 @@ tarjetas:
         porque: "Tiene la misma ganancia, pero sin inversión: no estaría desfasada 180°."
       - texto: "Un emisor común sin el condensador de emisor"
         porque: "Sin condensador la ganancia cae a poco más de 3."
+    fijar: { I_C: 0.001324, R_C: 3300 }
+    inicio: { R_E1: 0 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 1000, unidad: Ω, rotulo: "R_{E1}" }
+      y: { min: 1, max: 300, unidad: "", rotulo: "|A_{v}|", escala: log }
+      curvas:
+        - { expr: "R_C/(r_e + r)", color: naranja, rotulo: "|A_{v}|" }
+      lectura: { valor: A_deg, rotulo: "Ganancia, en módulo" }
+      mandos:
+        - { valor: R_E1, lista: [0, 1000], nombres: [con condensador, sin condensador], rotulo: "Condensador de emisor" }
+    escalera:
+      - "Desfase de 180° es inversión. ¿Qué configuración invierte, y con cuánta ganancia?"
+    solucion: "Un emisor común con el condensador de emisor puesto: ganancia de unas 170 veces, invertida."
 
   - id: resumen
     tipo: resumen

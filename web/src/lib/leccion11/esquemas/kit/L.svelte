@@ -1,7 +1,12 @@
 <script lang="ts">
   // 1.1 schematic kit: an inductor (four turns), leads included.
-  import { camino, cuerpo, ejes, en } from './geometria';
-  let { x1, y1, x2, y2, color = 'tinta' }: { x1: number; y1: number; x2: number; y2: number; color?: string } = $props();
+  import { cajaCuerpo, camino, cuerpo, ejes, en } from './geometria';
+  let { x1, y1, x2, y2, color = 'tinta', pieza }: { x1: number; y1: number; x2: number; y2: number; color?: string; pieza?: string } = $props();
+  // (1.2: the turns' box — they bulge to one side, 6 units — kept clear of the living circuit's particles)
+  const caja = $derived.by(() => {
+    const { a, b } = cuerpo(x1, y1, x2, y2, 48);
+    return cajaCuerpo(x1, y1, x2, y2, a, b, 7);
+  });
   const d = $derived.by(() => {
     const { a, b, l } = cuerpo(x1, y1, x2, y2, 48);
     const { n } = ejes(x1, y1, x2, y2);
@@ -16,4 +21,4 @@
   });
 </script>
 
-<path class={`pieza ${color}`} {d}></path>
+<g data-pieza={pieza} data-cuerpo={caja}><path class={`pieza ${color}`} {d}></path></g>

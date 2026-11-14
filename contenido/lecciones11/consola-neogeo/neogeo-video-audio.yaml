@@ -1,0 +1,182 @@
+# «Consolas por dentro» · Neo Geo AES 5: sprites, paleta y sonido. El camino del píxel (LSPC → buffer de línea → RAM
+# de paleta → latches 74LS273 → DAC de resistencias → codificador → DIN), los 65 536 colores de 16 bits, y el sonido
+# (Z80 con la ROM M1, YM2610 que lee él solo las ROM V, NJM2066D para auriculares). Fuentes: los datos de la consola
+# (neogeo#n: explorador, arquitectura, esquemas MV4 de SNK) y el libro (sección 38.14).
+leccion: consola-neogeo/neogeo-video-audio
+
+libro:
+  "neogeo#4": "que lee directamente de las ROM V del cartucho por sus propios buses multiplexados"
+  "neogeo#5": "elige los sprites de cada línea (hasta 96)"
+  "neogeo#14": "cada píxel del buffer de línea se convierte aquí en un color de 16 bits"
+  "neogeo#15": "Capturan los 16 bits del color con el reloj de píxel para que el DAC vea un valor estable durante todo el píxel"
+  "neogeo#16": "Resistencias ponderadas que convierten 5 bits por color"
+  "neogeo#17": "Convierte R, G, B y el sincronismo del LSPC en vídeo compuesto y RGB para el conector DIN"
+  "neogeo#26": "Amplificador estéreo para los auriculares, tras el control de volumen"
+  "neogeo#29": "Salida de vídeo compuesto, RGB, sincronismo y audio"
+  "neogeo#75": "Mientras uno se escribe con los sprites de la línea siguiente, el otro se lee para mostrar la actual"
+  "neogeo#82": "Programa en la ROM M1 del cartucho"
+  "neogeo#83": "lee las muestras ADPCM de las ROM V él solo"
+  "cap37#556": "4 096 colores en pantalla sobre una paleta de 65 536"
+
+modelo:
+  valores:
+    b: { sim: "b", nombre: "bits por color", unidad: "", valor: 16 }
+  calculos:
+    colores: { expr: "2^b", sim: "N", nombre: "colores posibles", unidad: "", cifras: 5 }
+    colores8: { expr: "2^(b/2)", sim: "N_8", nombre: "colores con 8 bits (error)", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-video
+    tipo: explorar
+    titulo: "El camino de un píxel"
+    texto: "Toque el LSPC, los latches de paleta, el DAC de resistencias y el conector DIN."
+    libro: ["neogeo#5", "neogeo#15", "neogeo#16", "neogeo#29"]
+    requiere: { mover: [lspc, latch, dac, din] }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0", texto: "Elige hasta 96 sprites por línea." }
+        - { id: latch, hotspot: latch, rotulo: "Latches 74LS273", texto: "Retienen el color durante todo el píxel." }
+        - { id: dac, hotspot: dac, rotulo: "DAC de resistencias", texto: "5 bits por color a tensión R, G y B." }
+        - { id: din, hotspot: din, rotulo: "Conector DIN", texto: "Compuesto, RGB, sincronismo y audio." }
+
+  - id: ordene-pixel
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Del sprite a la pantalla"
+    texto: "Ordene el camino de un píxel hasta el conector."
+    libro: ["neogeo#75", "neogeo#14", "neogeo#15", "neogeo#16", "neogeo#17"]
+    ordenar:
+      - "El buffer de línea guarda paleta y color del píxel."
+      - "La RAM de paleta lo convierte en un color de 16 bits."
+      - "Los 74LS273 lo retienen durante el píxel."
+      - "El DAC de resistencias da R, G y B."
+      - "El codificador saca compuesto y RGB al DIN."
+    exito: "Número de color, color de 16 bits, tensión y vídeo."
+    pistas:
+      - { texto: "El DAC necesita un valor estable: los latches van justo antes." }
+    escalera:
+      - "Lo primero es el buffer de línea; lo último, el conector."
+    solucion: "Buffer de línea, RAM de paleta, latches, DAC y codificador."
+
+  - id: prediga-colores
+    tipo: predecir
+    titulo: "Colores de 16 bits"
+    texto: "Cada color de la paleta es de 16 bits. ¿Cuántos colores distintos puede haber en la paleta?"
+    libro: ["neogeo#14", "cap37#556"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: k, min: 8, max: 16, unidad: "", rotulo: "bits por color" }
+      y: { min: 0, max: 70000, unidad: "", rotulo: "colores" }
+      curvas:
+        - { expr: "2^k", color: azul, rotulo: "2^{bits}", palitos: true }
+    opciones:
+      - texto: "65 536."
+        bien: true
+        porque: "2¹⁶ = 65 536: la paleta de la que salen los 4 096 colores en pantalla."
+      - texto: "4 096."
+        porque: "Esos son los que puede haber a la vez en pantalla. La paleta tiene 65 536."
+      - texto: "256."
+        porque: "Serían 8 bits. Con 16 bits hay 2¹⁶."
+    escalera:
+      - "Con n bits hay 2ⁿ combinaciones."
+    solucion: "2¹⁶ = 65 536 colores."
+    comprobar:
+      - { colores: 65536, colores8: 256 }
+
+  - id: toque-dac
+    tipo: tocar
+    titulo: "Un DAC hecho de resistencias"
+    texto: "Toque la fila de resistencias que convierte cada color en una tensión."
+    libro: ["neogeo#16", "neogeo#15", "neogeo#17"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: dac, hotspot: dac, rotulo: "Fila de resistencias, arriba" }
+        - { id: latch, hotspot: latch, rotulo: "Chip pequeño, a la izquierda" }
+        - { id: enc, hotspot: enc, rotulo: "Zona con un cristal, a la izquierda" }
+    tocar:
+      bien: [dac]
+      porque:
+        latch: "Son los latches 74LS273: retienen el número, no lo convierten."
+        enc: "Es el codificador: recibe R, G y B ya en tensión."
+    exito: "Resistencias ponderadas: 5 bits por color, a tensión."
+    escalera:
+      - "Busque los valores 3,9 kΩ y 2,2 kΩ de la serigrafía."
+    solucion: "La fila de resistencias de arriba: el DAC de R, G y B."
+
+  - id: por-que-latch
+    tipo: porque
+    titulo: "Retener el color"
+    texto: "¿Por qué hay latches 74LS273 entre la RAM de paleta y el DAC?"
+    libro: ["neogeo#15"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: latch, hotspot: latch, rotulo: "Latches 74LS273" }
+    opciones:
+      - texto: "Para que el DAC vea un valor estable durante todo el píxel, y negro en el borrado."
+        bien: true
+        porque: "Capturan los 16 bits con el reloj de píxel; su /CLR es BNKB y pone negro durante el borrado."
+      - texto: "Para multiplicar el número de colores."
+        porque: "No añaden colores: retienen el que ya hay."
+      - texto: "Para amplificar la señal del DAC."
+        porque: "Están antes del DAC y son digitales: retienen bits, no amplifican."
+    escalera:
+      - "¿Qué pasa si los bits cambian a mitad de un píxel?"
+    solucion: "Retienen el color durante el píxel y dan negro en el borrado."
+
+  - id: prediga-adpcm
+    tipo: predecir
+    titulo: "Las muestras de sonido"
+    texto: "El YM2610 reproduce muestras ADPCM. ¿De dónde las lee?"
+    libro: ["neogeo#4", "neogeo#83", "neogeo#82"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: ym, hotspot: ym2610, rotulo: "YM2610" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "Él solo, de las ROM V del cartucho."
+        bien: true
+        porque: "Tiene sus propios buses multiplexados hasta las ROM V: el Z80 no copia las muestras."
+      - texto: "De la RAM del Z80."
+        porque: "La RAM del Z80 es de 2 KB: el YM2610 lee las muestras de las ROM V."
+      - texto: "Del 68000, que se las manda."
+        porque: "El 68000 solo deja un código al Z80. El YM2610 lee las muestras él solo."
+    escalera:
+      - "Lea la ficha del YM2610."
+    solucion: "De las ROM V del cartucho, por sus propios buses."
+
+  - id: empareje-sonido
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El sonido, pieza a pieza"
+    texto: "Empareje cada pieza con su papel en el sonido."
+    libro: ["neogeo#82", "neogeo#4", "neogeo#26", "neogeo#29"]
+    emparejar:
+      - ["Z80", "Ejecuta la ROM M1"]
+      - ["YM2610", "FM y ADPCM"]
+      - ["NJM2066D", "Auriculares"]
+      - ["Conector DIN", "Audio con el vídeo"]
+    exito: "Un procesador, un sintetizador y dos salidas."
+    pistas:
+      - { texto: "El NJM2066D es un amplificador estéreo, tras el volumen." }
+    escalera:
+      - "El programa del sonido está en la ROM M1."
+    solucion: "Z80: ROM M1. YM2610: FM y ADPCM. NJM2066D: auriculares. DIN: audio."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["neogeo#75", "neogeo#14", "neogeo#16", "neogeo#4"]
+    ideas:
+      - { titulo: "Buffer de línea.", texto: "Uno se escribe mientras el otro se muestra." }
+      - { titulo: "16 bits.", texto: "La paleta convierte el número en un color de 65 536." }
+      - { titulo: "DAC de resistencias.", texto: "Latches y resistencias dan R, G y B." }
+      - { titulo: "El sonido.", texto: "El YM2610 lee las muestras del cartucho él solo." }

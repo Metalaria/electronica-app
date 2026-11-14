@@ -2,6 +2,8 @@
 // exercises with its «Aún no en el libro» mark (also in the «Ejercicios» page), a numeric answer accepted, a design
 // problem checked by simulating it with the app's ngspice (a wrong design first, with its hint, then a valid one), and
 // axe (contrast included) on the block in the light and dark themes.
+// 1.2 (motor12b): book 4.0/4.1 prints them with the same labels, so they are the book's own exercises block of the
+// chapter and nothing says «Aún no en el libro» (tests/ejnuevos11-unidad.spec.ts, the data); the rest, as before.
 //   PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c playwright.ejnuevos11.config.ts tests/ejnuevos11-navegador.spec.ts
 import { createRequire } from 'node:module';
 import { expect, test, type Page } from '@playwright/test';
@@ -30,17 +32,19 @@ async function axe(page: Page, sel: string): Promise<string[]> {
   }, sel);
 }
 
-test('capítulo 24: los ejercicios nuevos, marcados; una respuesta aceptada y un diseño comprobado simulándolo; axe en claro y oscuro', async ({ browser }) => {
+test('capítulo 24: los ejercicios de la 1.1, ya del libro y sin marca; una respuesta aceptada y un diseño comprobado simulándolo; axe en claro y oscuro', async ({ browser }) => {
   test.setTimeout(150_000);
   for (const tema of ['claro', 'oscuro'] as const) {
     const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
     const page = await ctx.newPage();
     await limpio(page, tema);
-    // the anchor of a new exercise (as the search and «Abrir en el capítulo» link it) brings it into view
+    // the anchor of the exercise (as the search and «Abrir en el capítulo» link it) brings it into view, in the book's
+    // own block of the chapter, without the 1.1 mark
     await page.goto('#/cap25/ej-25.1');
-    const bloque = page.locator('.ejercicios[data-nuevos]');
+    const bloque = page.locator('.ejercicios:has([id="ej-25.1"])');
     await expect(bloque).toBeVisible();
-    await expect(bloque.locator('.ejercicios-cab [data-nuevo]')).toHaveText('Aún no en el libro');
+    await expect(page.locator('[data-nuevos], [data-nuevo]')).toHaveCount(0);
+    await expect(page.getByText('Aún no en el libro')).toHaveCount(0);
     await expect(bloque.locator('.ejercicio')).toHaveCount(11);
     await expect(page.locator('[id="ej-25.1"]')).toBeInViewport();
     await expect(bloque.locator('.ejercicio-num').first()).toHaveText('Ejercicio 24.1.');
@@ -66,14 +70,15 @@ test('capítulo 24: los ejercicios nuevos, marcados; una respuesta aceptada y un
       await expect(d.locator('.preg[data-tipo="diseno"] .fb-bien')).toContainText('Correcto: simulado', { timeout: 60_000 });
       await expect(d.locator('[data-medido]')).toContainText('1,03');
       await expect(d.locator('.desarrollo')).toContainText('Desarrollo');
-      // the «Ejercicios» page marks them too
+      // the «Ejercicios» page lists them as the book's, without the mark
       await page.goto('#/ejercicios');
       await page.getByRole('button', { name: /Capítulo 24/ }).click();
-      await expect(page.locator('.pagina-ej li .fila [data-nuevo]').first()).toHaveText('Aún no en el libro');
+      await expect(page.locator('.pagina-ej li .fila').first()).toBeVisible();
+      await expect(page.locator('.pagina-ej [data-nuevo]')).toHaveCount(0);
       await page.goto('#/cap25/ej-25.9');
       await expect(bloque).toBeVisible();
     }
-    expect(await axe(page, '.ejercicios[data-nuevos]'), tema).toEqual([]);
+    expect(await axe(page, '.ejercicios:has([id="ej-25.1"])'), tema).toEqual([]);
     await ctx.close();
   }
 });

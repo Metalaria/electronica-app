@@ -1,0 +1,217 @@
+# «Consolas por dentro» · Super Nintendo 3: relojes y divisores, PAL y NTSC. El reloj maestro XIN (PAL: S-CLK × 6/5 del
+# cristal de 17,734475 MHz; NTSC: cristal de 21,477 MHz), los accesos de 6, 8 y 12 ciclos, las líneas por cuadro y el
+# reloj aparte del sonido. Fuentes: los datos de la consola (snes#n: explorador, arquitectura, SNESdev «Timing»,
+# memmap.txt) y el libro (contadores como divisores, 9.5; el cristal, 27.3).
+leccion: consola-snes/snes-relojes
+
+libro:
+  "snes#14": "genera el reloj maestro XIN de 21,28137 MHz (× 6/5)"
+  "snes#15": "TC1 ajusta la frecuencia para que la subportadora de color sea exacta"
+  "snes#16": "24,576 MHz ÷ 24 = 1,024 MHz para el SPC700 y ÷ 768 = 32 kHz para las muestras"
+  "snes#38": "En una NTSC el reloj maestro sale de este cristal de 21,477 MHz"
+  "snes#61": "El reloj maestro PAL es 6/5 de cuatro veces la subportadora PAL"
+  "snes#2": "Cada acceso dura 6, 8 o 12 ciclos del reloj maestro XIN: 3,55, 2,66 o 1,77 MHz en esta placa PAL"
+  "snes#75": "1364 ciclos maestros por línea, 312 líneas"
+  "snes#99": "XIN de 21,28137 MHz, 312 líneas de 64,09 µs (50,007 Hz)"
+  "snes#100": "XIN de 21,477272 MHz con su propio cristal, sin S-CLK, 262 líneas de 63,51 µs (60,10 Hz)"
+  "cap09#61": "Un flip-flop que conmuta en cada flanco"
+  "cap28#64": "lo que separa una exactitud del 1 % de una de partes por millón"
+
+modelo:
+  valores:
+    X1p: { sim: "f_{X1}", nombre: "cristal PAL", unidad: Hz, valor: 17734475 }
+    XINp: { sim: "XIN_{PAL}", nombre: "reloj maestro PAL", unidad: Hz, valor: 21281370 }
+    XINn: { sim: "XIN_{NTSC}", nombre: "reloj maestro NTSC", unidad: Hz, valor: 21477272 }
+    L: { sim: "L", nombre: "líneas por cuadro", unidad: "", valor: 262 }
+  calculos:
+    f_lento: { expr: "XINp/8", sim: "f_{CPU}", nombre: "CPU en un acceso de 8 ciclos (PAL)", unidad: Hz, cifras: 3 }
+    f_cuadro: { expr: "XINp/(1364*L)", sim: "f_{cuadro}", nombre: "cuadros por segundo con el reloj PAL", unidad: Hz, cifras: 5 }
+
+tarjetas:
+  - id: explore-relojes
+    tipo: explorar
+    titulo: "Dos relojes en la placa"
+    texto: "Toque el cristal y el generador de sonido de la placa NTSC: cada uno marca su propio ritmo."
+    libro: ["snes#38", "snes#16"]
+    requiere: { mover: [n-x1, n-dsp] }
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-x1, hotspot: n-x1, rotulo: "Cristal X1", texto: "21,477 MHz: el reloj maestro de una NTSC, sin S-CLK." }
+        - { id: n-dsp, hotspot: n-dsp, rotulo: "S-DSP", texto: "El sonido va con su propio resonador de 24,576 MHz." }
+
+  - id: prediga-pal
+    tipo: predecir
+    titulo: "El reloj maestro PAL"
+    texto: "Una PAL lleva un cristal de 17,734475 MHz. ¿De dónde sale su reloj maestro?"
+    libro: ["snes#14", "snes#61"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: cara-a }
+      zonas:
+        - { id: sclk, hotspot: sclk, rotulo: "Sitio del S-CLK (U18)" }
+        - { id: x1, hotspot: x1, rotulo: "Sitio del cristal X1" }
+    opciones:
+      - texto: "El S-CLK multiplica el cristal por 6/5: 21,28137 MHz."
+        bien: true
+        porque: "Las PAL no tienen un cristal del reloj maestro: el S-CLK lo saca del de 17,734475 MHz multiplicando por 6/5."
+      - texto: "Es el mismo cristal de 21,477 MHz que el de una NTSC."
+        porque: "Ese cristal es el de las NTSC. La PAL tiene uno de 17,734475 MHz y lo convierte con el S-CLK."
+      - texto: "Es directamente el cristal: 17,734475 MHz."
+        porque: "El cristal no va directo a la CPU: el S-CLK lo multiplica por 6/5 antes."
+    escalera:
+      - "Hay un chip, U18, que solo llevan las PAL."
+    solucion: "El S-CLK (U18) multiplica 17,734475 MHz por 6/5: XIN = 21,28137 MHz."
+
+  - id: por-que-cristal
+    tipo: porque
+    titulo: "Un número raro"
+    texto: "¿Por qué el cristal PAL es de 17,734475 MHz y no de un valor redondo?"
+    libro: ["snes#14", "snes#15", "cap28#64"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: cara-a }
+      zonas:
+        - { id: x1, hotspot: x1, rotulo: "Sitio del cristal X1 y de TC1" }
+    opciones:
+      - texto: "Es cuatro veces la subportadora de color PAL."
+        bien: true
+        porque: "El color de la señal PAL necesita una subportadora exacta: el cristal es cuatro veces ella, y TC1 lo retoca."
+      - texto: "Es el valor más barato que había."
+        porque: "No es cuestión de precio: el valor lo impone la subportadora de color, que tiene que ser exacta."
+      - texto: "Lo pide la CPU 5A22."
+        porque: "La CPU va al ritmo de XIN, sea cual sea: lo que fija el cristal es el color del vídeo."
+    escalera:
+      - "Piense en qué parte de la señal de vídeo tiene que ser exacta."
+    solucion: "17,734475 MHz son cuatro veces la subportadora PAL; TC1 ajusta para que el color sea exacto."
+
+  - id: simule-acceso
+    tipo: simular
+    titulo: "Un acceso de 8 ciclos"
+    texto: "Leer la WRAM o la ROM dura 8 ciclos de XIN. En una PAL, ¿a qué frecuencia va la CPU en ese acceso?"
+    libro: ["snes#2", "snes#99", "cap09#61"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: n, min: 4, max: 13, unidad: "", rotulo: "ciclos de XIN por acceso" }
+      y: { min: 0, max: 6000000, unidad: Hz, rotulo: "f_{CPU}" }
+      curvas:
+        - { expr: "XINp/n", color: azul, rotulo: "XIN ÷ ciclos", palitos: true }
+    simular:
+      objetivo: f_lento
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Frecuencia de la CPU, f_{CPU}"
+      errores:
+        - { expr: "XINp/6", texto: "Esos 3,55 MHz son los de un acceso rápido, de 6 ciclos. La WRAM y la ROM tardan 8." }
+        - { expr: "XINn/8", texto: "Ha usado el reloj NTSC, de 21,477 MHz. En una PAL, XIN es de 21,28137 MHz." }
+        - { expr: "X1p/8", texto: "Ha dividido el cristal. El S-CLK lo multiplica antes por 6/5: divida XIN." }
+    exito: "21,28137 MHz ÷ 8 = 2,66 MHz: el divisor reparte un solo reloj."
+    escalera:
+      - "Divida el reloj maestro PAL entre los ciclos del acceso."
+    solucion: "21,28137 MHz ÷ 8 = 2,66 MHz."
+    comprobar:
+      - { f_lento: 2660171 }
+
+  - id: ajuste-lineas
+    tipo: ajuste
+    titulo: "Cincuenta cuadros por segundo"
+    texto: "Cada línea dura 1364 ciclos del reloj PAL. Ajuste las líneas por cuadro hasta los 50 Hz de un televisor PAL."
+    libro: ["snes#75", "snes#99"]
+    inicio: { L: 262 }
+    widget:
+      tipo: grafica
+      x: { id: l, min: 200, max: 340, unidad: "", rotulo: "líneas por cuadro" }
+      y: { min: 40, max: 80, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "XINp/(1364*l)", color: azul, rotulo: "XIN ÷ (1364 · líneas)" }
+      marcas:
+        - { x: "L", y: "f_cuadro", rotulo: "{{f_cuadro}}" }
+      mandos: [ { valor: L, min: 200, max: 340, paso: 1, rotulo: "Líneas por cuadro, L" } ]
+    ajuste:
+      valor: f_cuadro
+      objetivo: 50.007
+      tol: 0.0005
+      rotulo: "Cuadros por segundo"
+      bajo: "Demasiado lento: quite líneas."
+      alto: "Demasiado rápido: añada líneas."
+      dentro: "50,007 Hz: el televisor PAL engancha."
+    exito: "312 líneas de 1364 ciclos: 50,007 Hz, como una PAL."
+    comprobar:
+      - { con: { L: 312 }, f_cuadro: 50.007 }
+
+  - id: empareje-normas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "PAL frente a NTSC"
+    texto: "Empareje cada cifra con su norma."
+    libro: ["snes#99", "snes#100"]
+    emparejar:
+      - ["Reloj maestro PAL", "21,28137 MHz"]
+      - ["Reloj maestro NTSC", "21,477272 MHz"]
+      - ["Líneas de una PAL", "312, a 50,007 Hz"]
+      - ["Líneas de una NTSC", "262, a 60,10 Hz"]
+    exito: "Relojes casi iguales; lo que cambia de verdad son las líneas por cuadro."
+    pistas:
+      - { texto: "La PAL va a 50 Hz: necesita más líneas por cuadro que la NTSC, que va a 60 Hz." }
+    escalera:
+      - "El reloj NTSC sale de su propio cristal de 21,477 MHz."
+    solucion: "PAL: 21,28137 MHz y 312 líneas (50,007 Hz). NTSC: 21,477272 MHz y 262 líneas (60,10 Hz)."
+
+  - id: sonido-igual
+    tipo: pregunta
+    titulo: "El sonido no cambia"
+    texto: "Las muestras salen a 32 kHz en una PAL y en una NTSC. ¿Por qué?"
+    libro: ["snes#16", "snes#38"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-dsp, hotspot: n-dsp, rotulo: "S-DSP" }
+        - { id: n-x1, hotspot: n-x1, rotulo: "Cristal X1" }
+    opciones:
+      - texto: "El sonido divide su propio resonador de 24,576 MHz, que no depende de la norma."
+        bien: true
+        porque: "24,576 MHz ÷ 768 = 32 kHz en las dos normas: el reloj del sonido es independiente del de vídeo."
+      - texto: "Porque 21,28137 y 21,477 MHz son casi iguales."
+        porque: "Son parecidos, pero el sonido no usa ninguno de los dos: tiene su resonador de 24,576 MHz."
+      - texto: "El S-CLK corrige el sonido en las PAL."
+        porque: "El S-CLK hace el reloj maestro y el del CIC; el sonido va con el resonador X2, aparte."
+    escalera:
+      - "Busque qué reloj usa el S-DSP."
+    solucion: "El S-DSP divide su resonador de 24,576 MHz entre 768: 32 kHz en cualquier norma."
+
+  - id: toque-sclk
+    tipo: tocar
+    titulo: "La pieza de las PAL"
+    texto: "En la placa PAL desnuda, toque el sitio del chip que solo llevan las PAL."
+    libro: ["snes#14", "snes#61"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: cara-a }
+      zonas:
+        - { id: sclk, hotspot: sclk, rotulo: "Huella pequeña, abajo junto al cristal" }
+        - { id: cic, hotspot: cic, rotulo: "Huella pequeña, abajo a la derecha" }
+        - { id: cpu, hotspot: cpu, rotulo: "Huella cuadrada grande, abajo a la derecha" }
+        - { id: smp, hotspot: smp, rotulo: "Huella cuadrada, arriba a la izquierda" }
+    tocar:
+      bien: [sclk]
+      porque:
+        cic: "Es el sitio del CIC, que llevan todas las consolas."
+        cpu: "Es el sitio de la CPU: la llevan todas."
+        smp: "Es el sitio del S-SMP, el sonido: igual en PAL y en NTSC."
+    exito: "El S-CLK (U18): las NTSC no lo llevan, su cristal ya da el reloj maestro."
+    escalera:
+      - "Está pegado al cristal X1."
+    solucion: "U18, junto al cristal: el S-CLK."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["snes#14", "snes#2", "snes#99", "snes#16"]
+    ideas:
+      - { titulo: "Un reloj maestro.", texto: "XIN: 21,28137 MHz en PAL (S-CLK × 6/5) y 21,477 MHz en NTSC." }
+      - { titulo: "Dividir.", texto: "La CPU va a XIN ÷ 6, 8 o 12 según dónde accede." }
+      - { titulo: "El cuadro.", texto: "312 líneas de 1364 ciclos dan los 50,007 Hz de una PAL." }
+      - { titulo: "El sonido, aparte.", texto: "Su resonador de 24,576 MHz no depende de la norma." }

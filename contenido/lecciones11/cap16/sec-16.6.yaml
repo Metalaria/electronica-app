@@ -1,0 +1,246 @@
+# Lección 1.2 de la sección 15.6 «Alimentación y Display (la Cara Oculta de la Placa)» (cap16; etiquetas sec-16.N =
+# impresas 15.N).
+# - Los puntos ciegos del display y las exigencias de la alimentación (figura 15.6, fig-16.6, con zonas).
+# - Las cuatro tensiones del kit (bloque 103): 12 V sin regular para la FI y el audio; unos 8 V para el decodificador,
+#   desde los 12 V por R13 (220 Ω); 6 V del 78L06 para el front-end; 3,3 V del AMS1117 para el display.
+# - Modelo: la rama del decodificador como divisor (esquema «divisor»): 12 V, R13 = 220 Ω arriba y el decodificador
+#   abajo como una resistencia equivalente de 440 Ω, la que deja los 8 V del libro (en R13 caen 4 V: 18,2 mA). La
+#   resistencia equivalente sale de las cifras del libro; el libro no da la corriente del decodificador.
+# Paso práctico: «simular» la corriente del decodificador (18,2 mA; errores típicos: 12 V / 220 Ω = 54,5 mA y
+# 8 V / 220 Ω = 36,4 mA).
+leccion: cap16/sec-16.6
+
+libro:
+  100: "dos bloques que no llevan señal y de los que depende todo"
+  102: "debe ser limpia, porque cualquier ruido en ella acaba en el audio"
+  103: "unos 8 V para el decodificador estéreo, que los toma de los 12 V a través de la resistencia R13 (220 Ω)"
+  104: "El síntoma es un sonido «respirado» o un zumbido a volumen alto"
+  106: "El SC3610D es un frecuencímetro"
+  108: "frecuencias concretas donde un armónico del reloj del display cae en la banda o en la FI y tapa la emisora"
+  109: "no llevar sus cables junto a la antena ni junto a L1 y L2"
+  112: "El amplificador TEA2025: lo que domina, y depende del volumen"
+  113: "a volumen bajo, las pilas duran mucho; a volumen alto, poco"
+  116: "El rizado de la alimentación en acoplamiento AC, en los pines de cada integrado"
+  117: "Los puntos ciegos que produce el display y las exigencias de la alimentación"
+
+modelo:
+  valores:
+    V_a: { sim: "12 V", nombre: "alimentación sin regular", unidad: V, valor: 12 }
+    R_13: { sim: "R₁₃", nombre: "resistencia de caída R13", unidad: Ω, valor: 220 }
+    R_d: { sim: "R_{IC4}", nombre: "decodificador estéreo como resistencia equivalente", unidad: Ω, valor: 440 }
+  calculos:
+    V_8: { expr: "V_a*R_d/(R_13 + R_d)", sim: "V_{IC4}", nombre: "tensión del decodificador", unidad: V }
+    I_8: { expr: "V_a/(R_13 + R_d)", sim: "I", nombre: "corriente del decodificador", unidad: A }
+    I_x: { expr: "V_a/R_13", sim: "I_{12}", nombre: "los 12 V enteros sobre R13", unidad: A }
+    I_y: { expr: "V_8/R_13", sim: "I_{8}", nombre: "los 8 V sobre R13", unidad: A }
+    V_r: { expr: "V_a - V_8", sim: "V_{R13}", nombre: "caída en R13", unidad: V }
+
+tarjetas:
+  - id: explore-alimentacion
+    tipo: explorar
+    titulo: "La cara oculta"
+    texto: "La alimentación y el display no llevan señal, y de ellos depende todo. Toque los puntos ciegos y las cuatro exigencias."
+    libro: [100, 102, 117]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: ciegos, rotulo: "La gráfica de la izquierda", rect: [15, 15, 235, 175], texto: "Un armónico del reloj del display cae en la emisora sintonizada y el receptor no oye nada en ese punto." }
+        - { id: lineal, rotulo: "A la derecha, el primero", rect: [267, 20, 160, 40], texto: "Lineal, nunca conmutada: una conmutada mete su frecuencia y sus armónicos en la banda." }
+        - { id: aparte, rotulo: "A la derecha, el segundo", rect: [267, 67, 160, 42], texto: "El 78L06 para la radio y el AMS1117 para el display." }
+        - { id: desacoplo, rotulo: "A la derecha, el tercero", rect: [267, 113, 160, 42], texto: "Un electrolítico y un cerámico junto a cada integrado." }
+        - { id: picos, rotulo: "A la derecha, el cuarto", rect: [267, 160, 160, 42], texto: "Los picos del amplificador hunden la alimentación al ritmo de la música." }
+    requiere: { mover: [ciegos, lineal, aparte] }
+
+  - id: empareje-tensiones
+    tipo: pregunta
+    titulo: "Una tensión para cada bloque"
+    texto: "Empareje cada tensión del FM7303 con lo que alimenta."
+    libro: [103]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: aparte, rotulo: "A la derecha, el segundo", rect: [267, 67, 160, 42] }
+    emparejar:
+      - ["12 V sin regular", "La cadena de FI y el amplificador de audio"]
+      - ["Unos 8 V, por R13", "El decodificador estéreo"]
+      - ["6 V del 78L06", "El front-end"]
+      - ["3,3 V del AMS1117", "Solo el display, a través de D3"]
+    exito: "Así el display tiene su propio regulador y no carga directamente la alimentación de la radio."
+    pistas:
+      - { texto: "El front-end, la etapa más sensible, va regulado y filtrado." }
+    escalera:
+      - "Lo que necesita margen de tensión toma los 12 V sin regular."
+    solucion: "12 V, FI y audio; 8 V, decodificador; 6 V, front-end; 3,3 V, display."
+
+  - id: explore-r13
+    tipo: explorar
+    titulo: "Los 8 V del decodificador"
+    texto: "El decodificador toma sus 8 V de los 12 V a través de R13. Cambie R13."
+    libro: [103]
+    nota: "El decodificador va como una resistencia de 440 Ω: la que deja 8 V."
+    fijar: { R_d: 440 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_13, abajo: R_d }
+      lectura: { valor: V_8, rotulo: "Tensión del decodificador" }
+      corriente: I_8
+      mide: { salida: V_8, corriente: I_8 }
+      mandos:
+        - { valor: R_13, lista: [100, 220, 470], rotulo: "R13" }
+    comprobar:
+      - { V_8: 8.0 }
+
+  - id: simule-corriente
+    tipo: simular
+    titulo: "La corriente del decodificador"
+    texto: "Con 12 V, R13 = 220 Ω y 8 V en el decodificador, ¿cuánta corriente toma el decodificador?"
+    libro: [103]
+    fijar: { V_a: 12, R_13: 220, R_d: 440 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_13, abajo: R_d }
+      lectura: { valor: I_8, rotulo: "Corriente" }
+      mide: { corriente: I_8 }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_8
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente por R13"
+      medida: corriente
+      errores:
+        - { expr: "I_x", texto: "Ha puesto los 12 V enteros sobre R13: en ella solo caen 12 − 8 = 4 V." }
+        - { expr: "I_y", texto: "Ha usado los 8 V del decodificador: en R13 caen los otros 4 V." }
+    exito: "En R13 caen 4 V: 4 V / 220 Ω = 18,2 mA, la que toma el decodificador."
+    escalera:
+      - "¿Cuánta tensión cae en R13?"
+    solucion: "(12 − 8) V / 220 Ω = 18,2 mA."
+    comprobar:
+      - { I_8: 0.01818, I_x: 0.05455, I_y: 0.03636, V_r: 4.0 }
+
+  - id: porque-conmutada
+    tipo: porque
+    titulo: "Nunca conmutada"
+    texto: "¿Por qué el manual prohíbe una fuente conmutada, aunque dé sus 12 V exactos?"
+    libro: [102, 103]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: lineal, rotulo: "A la derecha, el primero", rect: [267, 20, 160, 40] }
+    opciones:
+      - texto: "Porque su frecuencia y sus armónicos entran en la FI y en la banda"
+        bien: true
+        porque: "Por eso el manual la prohíbe: el ruido acaba en el audio o degrada la sensibilidad."
+      - texto: "No hay razón si la tensión es correcta"
+        porque: "No basta la tensión: la alimentación tiene que ser limpia."
+      - texto: "Porque calienta el 78L06"
+        porque: "El problema no es el calor: es el ruido que la conmutada mete en la recepción."
+    escalera:
+      - "¿Qué genera una fuente conmutada además de la tensión?"
+    solucion: "Su ruido entra en la FI y en la banda: nunca conmutada."
+
+  - id: toque-respirado
+    tipo: tocar
+    titulo: "El sonido respirado"
+    texto: "Con pilas gastadas, a volumen alto se oye un sonido «respirado». Toque la exigencia que lo explica."
+    libro: [104, 117]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: lineal, rotulo: "A la derecha, el primero", rect: [267, 20, 160, 40] }
+        - { id: aparte, rotulo: "A la derecha, el segundo", rect: [267, 67, 160, 42] }
+        - { id: desacoplo, rotulo: "A la derecha, el tercero", rect: [267, 113, 160, 42] }
+        - { id: picos, rotulo: "A la derecha, el cuarto", rect: [267, 160, 160, 42] }
+    tocar:
+      bien: [picos]
+      porque:
+        lineal: "La fuente es lineal o de pilas; el problema es que se hunde con los picos."
+        aparte: "Separar radio y display evita su ruido, no el del amplificador."
+        desacoplo: "Un desacoplo bien soldado es parte de la cura, pero la causa son los picos del amplificador."
+    exito: "El TEA2025 hunde los 12 V al ritmo de la música y la variación llega a la FI. Cura: fuente con margen y buen desacoplo."
+    escalera:
+      - "¿Qué cambia al ritmo de la música?"
+    solucion: "Los picos del amplificador."
+
+  - id: pregunta-ciegos
+    tipo: predecir
+    titulo: "Puntos ciegos"
+    texto: "En ciertas frecuencias concretas el receptor no oye nada, aunque haya emisora. ¿Causa más probable?"
+    libro: [106, 108]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: ciegos, rotulo: "La gráfica de la izquierda", rect: [15, 15, 235, 175] }
+    opciones:
+      - texto: "Un armónico del reloj del display cae en la banda o en la FI"
+        bien: true
+        porque: "El display es un frecuencímetro con su propio reloj: desconcertante y perfectamente explicable."
+      - texto: "Una avería en el front-end"
+        porque: "Una avería del front-end no deja sordas solo unas frecuencias concretas."
+      - texto: "El AFC mal ajustado"
+        porque: "Con W1 mal ajustado la emisora salta al pulsar K1; no aparecen puntos ciegos."
+    escalera:
+      - "¿Qué pieza de la radio lleva su propio reloj?"
+    solucion: "El reloj del display, con un armónico en la banda."
+
+  - id: pregunta-cables
+    tipo: pregunta
+    titulo: "Lo que queda en sus manos"
+    texto: "Las defensas contra el ruido del display ya están en el diseño. ¿Qué queda en manos de quien monta?"
+    libro: [109]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: aparte, rotulo: "A la derecha, el segundo", rect: [267, 67, 160, 42] }
+    opciones:
+      - texto: "No llevar sus cables junto a la antena ni junto a L1 y L2"
+        bien: true
+        porque: "El regulador propio, la separación y el buffer 9018 ya vienen; el cableado lo decide quien monta."
+      - texto: "Cambiar su regulador"
+        porque: "El display ya tiene su propio regulador de 3,3 V."
+      - texto: "Quitar el buffer 9018"
+        porque: "El buffer es una defensa: por él lee el display el oscilador sin cargarlo."
+    escalera:
+      - "Piense en lo que se coloca a mano al montar."
+    solucion: "Alejar sus cables de la antena, L1 y L2."
+
+  - id: pregunta-pilas
+    tipo: pregunta
+    titulo: "Las pilas"
+    texto: "Con la placa de batería, ¿de qué depende sobre todo la autonomía?"
+    libro: [112, 113]
+    widget:
+      tipo: figura
+      figura: fig-16.6
+      zonas:
+        - { id: picos, rotulo: "A la derecha, el cuarto", rect: [267, 160, 160, 42] }
+    opciones:
+      - texto: "Del volumen al que se escucha"
+        bien: true
+        porque: "El TEA2025 domina el consumo y depende del volumen: a volumen bajo las pilas duran mucho."
+      - texto: "Del display"
+        porque: "Pesa en silencio, pero lo que domina es el amplificador."
+      - texto: "De la emisora sintonizada"
+        porque: "La radio consume decenas de miliamperios con cualquier emisora."
+    escalera:
+      - "¿Qué bloque consume más y cambia según se escucha?"
+    solucion: "Del volumen: lo domina el TEA2025."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [102, 103, 108, 116]
+    ideas:
+      - { titulo: "Limpia.", texto: "Lineal o pilas, nunca conmutada: el ruido de la fuente acaba en el audio." }
+      - { titulo: "Cuatro tensiones.", texto: "12 V para FI y audio, 8 V por R13, 6 V del 78L06, 3,3 V del AMS1117." }
+      - { titulo: "El display.", texto: "Su reloj puede crear puntos ciegos: sus cables, lejos de la antena." }
+      - { titulo: "En el banco.", texto: "Rizado en los pines de cada integrado y consumo en silencio." }

@@ -1,0 +1,215 @@
+# «Consolas por dentro» · Neo Geo AES 7: averías y diagnóstico. Lo simple primero (libro, capítulo 55), una consola
+# que no enciende (adaptador de 5 V o interruptor: búsqueda con el multímetro sobre la foto), la tensión justa de la
+# NEO-AES, el watchdog (circuito lógico y su tabla), «el clic de la muerte» de 3,7 Hz (estimar su periodo) y por qué
+# se desactiva el watchdog para buscar averías. Fuentes: NeoGeo Development Wiki («Power requirements», «Power
+# supply», «Watchdog»), los datos de la consola (neogeo#n) y el libro.
+leccion: consola-neogeo/neogeo-averias
+
+libro:
+  "neogeo#7": "el watchdog (DOGE, con el puente «CUT DOG»)"
+  "neogeo#28": "Circuito que actúa por encima de 5,4 V"
+  "neogeo#30": "Interruptor deslizante de la alimentación"
+  "neogeo#96": "Piden 5 V ± 0,2 V y 2 A"
+  "neogeo#97": "por debajo de 4,8 V puede haber fallos de imagen o reinicios"
+  "neogeo#101": "Las primeras consolas no tienen protección contra la polaridad invertida"
+  "neogeo#102": "salida de 5 V de continua y 3 A"
+  "neogeo#103": "puede quemar las primeras consolas de 5 V"
+  "neogeo#104": "un contador de cuadros que reinicia el sistema cuando pasa de un límite"
+  "neogeo#105": "El programa tiene que poner el contador a cero de vez en cuando escribiendo en REG_DIPSW"
+  "neogeo#106": "Un sistema que se reinicia sin parar da una señal RESET constante de 3,7 Hz"
+  "neogeo#107": "Para buscar averías, el watchdog se puede desactivar llevando a masa la patilla DOGE"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap53#92": "conviene confirmarlos con el óhmetro"
+
+modelo:
+  valores:
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 5 }
+    ad: { tipo: interruptor, nombre: "adaptador sano", valor: 1 }
+    sw: { tipo: interruptor, nombre: "interruptor sano", valor: 1 }
+    V_ej: { sim: "V_{ejemplo}", nombre: "tensión de un adaptador flojo (ejemplo)", unidad: V, valor: 4.7 }
+    f_r: { sim: "f_{RESET}", nombre: "frecuencia del bucle de reset", unidad: Hz, valor: 3.7 }
+  calculos:
+    V_clav: { expr: "V_ad*ad", sim: "V_{clavija}", nombre: "tensión en la clavija del adaptador", unidad: V, cifras: 3 }
+    R_sw: { si: sw, entonces: "0", sino: "1e9", sim: "R_{SW}", nombre: "resistencia del interruptor cerrado, desenchufada", unidad: Ω }
+    V_cc: { expr: "V_ad*ad*sw", sim: "V_{CC}", nombre: "tensión en la placa", unidad: V, cifras: 3 }
+    V_flojo: { expr: "V_ej", sim: "V_{flojo}", nombre: "tensión del adaptador flojo (ejemplo)", unidad: V, cifras: 2 }
+    T_r: { expr: "1/f_r", sim: "T_{RESET}", nombre: "periodo del bucle de reset", unidad: s, cifras: 2 }
+
+tarjetas:
+  - id: explore-primero
+    tipo: explorar
+    titulo: "Lo primero, lo simple"
+    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
+    libro: ["cap53#39", "neogeo#30", "neogeo#28"]
+    requiere: { mover: [power, prot, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Deslizante, a la entrada." }
+        - { id: prot, hotspot: prot, rotulo: "Protección", texto: "Actúa por encima de 5,4 V." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "El juego entero pasa por aquí." }
+
+  - id: averia-no-enciende
+    tipo: averia
+    titulo: "No enciende"
+    texto: "La consola no enciende. Mida y señale la pieza: el adaptador PRO-POW o el interruptor."
+    libro: ["neogeo#102", "neogeo#30", "cap53#92"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: adaptador, rotulo: "Adaptador PRO-POW" }
+        - { id: interruptor, rotulo: "Interruptor" }
+      sondas:
+        - { id: clavija, rotulo: "Clavija del adaptador", valor: V_clav }
+        - { id: interruptor, rotulo: "Interruptor cerrado, desenchufada", valor: R_sw }
+        - { id: placa, rotulo: "5 V de la placa", valor: V_cc }
+      fallos:
+        - { id: interruptor-abierto, pieza: interruptor, tipo: abierta, con: { sw: 0 }, texto: "El interruptor no cierra: el adaptador da sus 5 V, pero no llegan a la placa." }
+        - { id: adaptador-muerto, pieza: adaptador, tipo: abierta, con: { ad: 0 }, texto: "El adaptador no da sus 5 V: la consola no tiene la culpa." }
+    exito: "Clavija e interruptor: dos medidas separan las dos piezas."
+    escalera:
+      - "Empiece por la clavija: si no hay 5 V, es el adaptador."
+      - "Desenchufada y con el interruptor en «encendido», debe marcar 0 Ω."
+    solucion: "Clavija sin tensión: el adaptador. Clavija bien e interruptor sin continuidad: el interruptor."
+    comprobar:
+      - { V_clav: 5, R_sw: 0, V_cc: 5 }
+
+  - id: prediga-baja
+    tipo: predecir
+    titulo: "Un adaptador flojo"
+    texto: "Con un adaptador flojo que da, por ejemplo, 4,7 V, ¿qué puede pasar en la NEO-AES?"
+    libro: ["neogeo#97", "neogeo#96"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: prot, hotspot: prot, rotulo: "Protección" }
+    opciones:
+      - texto: "Fallos de imagen o reinicios."
+        bien: true
+        porque: "Por debajo de 4,8 V puede haber fallos de imagen o reinicios: la placa pide 5 V ± 0,2 V."
+      - texto: "Nada: le sobra margen."
+        porque: "No le sobra: la ventana es de 5 V ± 0,2 V, y 4,7 V queda por debajo."
+      - texto: "Salta la protección."
+        porque: "La protección actúa por arriba, por encima de 5,4 V."
+    escalera:
+      - "¿Cuál es el mínimo de la ventana?"
+    solucion: "Fallos de imagen o reinicios: 4,7 V está por debajo de 4,8 V."
+    comprobar:
+      - { V_flojo: 4.7 }
+
+  - id: explore-watchdog
+    tipo: explorar
+    titulo: "El watchdog"
+    texto: "El watchdog reinicia la consola si el juego no le escribe a tiempo, salvo que DOGE esté a masa. Mueva las dos."
+    libro: ["neogeo#104", "neogeo#105", "neogeo#107", "neogeo#7"]
+    requiere: { mover: [ESCRIBE, DOGE] }
+    widget:
+      tipo: logica
+      entradas: [{ id: ESCRIBE, rotulo: "Escribe en REG_DIPSW" }, { id: DOGE, rotulo: "DOGE a masa" }]
+      piezas:
+        - { id: n1, tipo: nor, entradas: [ESCRIBE, DOGE] }
+      salidas:
+        - { id: RESET, de: n1, rotulo: "Reinicia" }
+
+  - id: tabla-watchdog
+    tipo: tabla
+    titulo: "La tabla del watchdog"
+    texto: "Rellene cuándo reinicia la consola (1)."
+    libro: ["neogeo#104", "neogeo#105", "neogeo#107"]
+    widget:
+      tipo: logica
+      entradas: [{ id: ESCRIBE, rotulo: "Escribe en REG_DIPSW" }, { id: DOGE, rotulo: "DOGE a masa" }]
+      piezas:
+        - { id: n1, tipo: nor, entradas: [ESCRIBE, DOGE] }
+      salidas:
+        - { id: RESET, de: n1, rotulo: "Reinicia" }
+      ocultar: true
+    tabla:
+      salidas: [RESET]
+    exito: "Una NOR: solo reinicia si el juego no escribe y el watchdog está activo."
+    escalera:
+      - "Con DOGE a masa, el watchdog está desactivado."
+      - "Si el juego escribe a tiempo, tampoco reinicia."
+    solucion: "Reinicia solo si el juego no escribe y DOGE no está a masa."
+
+  - id: estime-clic
+    tipo: pregunta
+    titulo: "El clic de la muerte"
+    texto: "Una consola que se reinicia sin parar da un RESET de 3,7 Hz y un clic audible. ¿Cada cuánto suena?"
+    libro: ["neogeo#106"]
+    estimar:
+      objetivo: T_r
+      unidad: s
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.05
+      rotulo: "Periodo del clic"
+    exito: "1 ÷ 3,7 Hz ≈ 0,27 s: unos cuatro clics por segundo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.3 }, texto: "Demasiado lento: a 3,7 Hz hay casi cuatro clics por segundo." }
+      - { texto: "Demasiado rápido: el periodo es la inversa de 3,7 Hz." }
+    escalera:
+      - "El periodo es 1 ÷ f."
+    solucion: "T = 1 ÷ 3,7 Hz ≈ 0,27 s."
+    comprobar:
+      - { T_r: 0.27 }
+
+  - id: por-que-doge
+    tipo: porque
+    titulo: "Apagar el watchdog"
+    texto: "¿Por qué se lleva DOGE a masa para buscar una avería de arranque?"
+    libro: ["neogeo#107", "neogeo#104", "neogeo#106"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: proc0, hotspot: proc0, rotulo: "PRO-C0 (watchdog)" }
+    opciones:
+      - texto: "Para que no reinicie cada fracción de segundo y se pueda ver dónde se queda."
+        bien: true
+        porque: "Con el watchdog activo, un fallo de arranque se ve como un bucle de resets; desactivado, la placa se queda quieta y se puede medir."
+      - texto: "Para que la consola vaya más rápida."
+        porque: "El watchdog no frena nada: solo reinicia cuando el programa no le escribe."
+      - texto: "Para siempre: el watchdog sobra."
+        porque: "Es un recurso para buscar averías; en uso normal evita que los juegos se cuelguen."
+    escalera:
+      - "¿Qué hace el watchdog si el programa se cuelga?"
+    solucion: "Para quitar el bucle de resets mientras se busca la avería."
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada síntoma, su causa"
+    texto: "Empareje cada síntoma con lo que suele haber detrás."
+    libro: ["neogeo#106", "neogeo#97", "neogeo#103", "neogeo#101"]
+    emparejar:
+      - ["Un clic constante", "El watchdog reinicia sin parar"]
+      - ["Reinicios con un adaptador flojo", "Tensión por debajo de 4,8 V"]
+      - ["Placa dañada tras un NEO-POW3", "10 V en una placa de 5 V"]
+      - ["Daños con la clavija al revés", "Sin protección de polaridad"]
+    exito: "En la Neo Geo, la alimentación y el watchdog explican muchos síntomas."
+    pistas:
+      - { texto: "El clic de la muerte es el bucle de resets." }
+    escalera:
+      - "Repase la lección de la alimentación: 5 V ± 0,2 V."
+    solucion: "Clic: watchdog. Adaptador flojo: tensión baja. NEO-POW3: sobretensión. Clavija al revés: sin protección."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap53#39", "neogeo#96", "neogeo#104", "neogeo#107"]
+    ideas:
+      - { titulo: "Lo simple.", texto: "Adaptador e interruptor antes que nada." }
+      - { titulo: "5 V justos.", texto: "Fuera de 5 V ± 0,2 V, fallos o daños." }
+      - { titulo: "El watchdog.", texto: "Si el juego no le escribe, reinicia: el clic de la muerte." }
+      - { titulo: "Para medir.", texto: "DOGE a masa quita el bucle de resets." }

@@ -1,0 +1,313 @@
+# Lección 1.2 de la sección 25.8 «El Efecto de la Temperatura» (cap26; etiqueta interna sec-26.8).
+# Formato: contenido/lecciones11/GUIA.md. El diodo caliente: esquema «diodo» con el modelo de Shockley; V_T = kT/q
+# (25,85 mV a 300 K) e I_S que se duplica cada 5 °C (el libro: «cada 4 o 5 °C», bloque 233), con I_S = 1 pA a 25 °C
+# (el de la calculadora del libro); de ahí sale, sin imponerlo, una caída de unos −2 mV/°C (bloque 235). La resistencia
+# de 4,7 kΩ desde 5 V (unos 1 mA) es un ejemplo del montaje del bloque 256.
+# Tensión de base fija frente a resistencia de emisor (bloque 238, figura 25.15): V_BE = 0,7 V − 2 mV/°C·ΔT en el
+# esquema «bjt-polarizacion» con los valores de ejemplo de la guía (12 V, 47 kΩ, 10 kΩ, 3,3 kΩ, 1 kΩ, β = 100); la
+# curva sin resistencia multiplica por diez cada 60 mV (30 °C). R_DS(on)(T) del bloque 241 con 10 mΩ de ejemplo.
+leccion: cap26/sec-26.8
+
+libro:
+  229: "crece exponencialmente con la temperatura"
+  233: "se dobla aproximadamente cada 8 a 10 °C"
+  235: "la tensión directa baja unos 2 mV/°C"
+  236: "un sensor de temperatura lineal y barato"
+  238: "30 °C de calentamiento la multiplican casi por diez"
+  241: 'R_("DS" lr(( "on" ))) lr(( T )) approx'
+  242: "A 100 °C, con ΔT = 75 °C, eso da un 50 % más"
+  244: "baja unos 2 a 5 mV/°C"
+  247: "Las fugas se duplican cada 10 °C"
+  249: "×2 cada 4 o 5 °C"
+  251: "Toda polarización necesita realimentación"
+  252: "La disipación se calcula con la R"
+  254: "cada 10 °C menos, aproximadamente el doble de vida"
+  256: "una resistencia desde 5 V basta"
+  257: "cerca de −2 mV/°C"
+
+modelo:
+  valores:
+    T_c: { sim: "T", nombre: "temperatura del diodo", unidad: "°C", valor: 25 }
+    V_s: { sim: "V", nombre: "fuente", unidad: V, valor: 5 }
+    R_s: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 4700 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    dT: { sim: "ΔT", nombre: "calentamiento", unidad: "°C", valor: 0 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    R_25: { sim: "R_{DS(on)}(25 °C)", nombre: "resistencia en conducción a 25 °C", unidad: Ω, valor: 0.01 }
+    dTm: { sim: "ΔT", nombre: "calentamiento del MOSFET", unidad: "°C", valor: 0 }
+  calculos:
+    V_T: { expr: "0.02585*(T_c + 273.15)/300", sim: "V_{T}", nombre: "tensión térmica", unidad: V }
+    I_S: { expr: "1e-12*2^((T_c - 25)/5)", sim: "I_{S}", nombre: "corriente de saturación", unidad: A }
+    I_d: { expr: "n_d*V_T/R_s*wright(ln(I_S*R_s/(n_d*V_T)) + (V_s + I_S*R_s)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_d: { expr: "V_s - I_d*R_s", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 4 }
+    V_T0: { expr: "0.02585*298.15/300", sim: "V_{T}", nombre: "tensión térmica a 25 °C", unidad: V }
+    I_d0: { expr: "n_d*V_T0/R_s*wright(ln(1e-12*R_s/(n_d*V_T0)) + (V_s + 1e-12*R_s)/(n_d*V_T0)) - 1e-12", sim: "I_{D}", nombre: "corriente a 25 °C", unidad: A }
+    V_d0: { expr: "V_s - I_d0*R_s", sim: "V_{D}", nombre: "tensión a 25 °C", unidad: V, cifras: 4 }
+    dV: { expr: "V_d - V_d0", sim: "ΔV_{D}", nombre: "cambio desde 25 °C", unidad: V, cifras: 2 }
+    pend: { expr: "(V_d - V_d0)/max(1, T_c - 25)", sim: "ΔV/ΔT", nombre: "pendiente", unidad: "V/°C", cifras: 2 }
+    pend_mV: { expr: "1000*(V_d - V_d0)/max(1, T_c - 25)", sim: "ΔV/ΔT", nombre: "pendiente", unidad: "", cifras: 2 }
+    V_up: { expr: "V_d0 + 2*(V_d0 - V_d)", sim: "V", nombre: "con el signo cambiado", unidad: V }
+    V_th: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{th}", nombre: "tensión de Thévenin del divisor", unidad: V }
+    I_pb: { expr: "(V_th - V_BE)/(par(R_p1, R_p2) + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    I_p0: { expr: "beta*(V_th - 0.7)/(par(R_p1, R_p2) + (beta + 1)*R_pe)", sim: "I_{C}", nombre: "corriente en frío", unidad: A }
+    dTe: { expr: "(0.7 - V_BE)/0.002", sim: "ΔT", nombre: "calentamiento equivalente", unidad: "°C" }
+    c_pc: { expr: "100*(I_pc/I_p0 - 1)", sim: "ΔI_{C}", nombre: "aumento de la corriente", unidad: "%", cifras: 2 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    k_f: { expr: "10^(0.002*dT/0.06)", sim: "×", nombre: "con tensión de base fija", unidad: "", cifras: 2 }
+    R_T: { expr: "R_25*(1 + 0.007*dTm)", sim: "R_{DS(on)}(T)", nombre: "resistencia en caliente", unidad: Ω }
+    s_R: { expr: "100*0.007*dTm", sim: "ΔR", nombre: "aumento de R_DS(on)", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-diodo
+    tipo: explorar
+    titulo: "Un diodo que se calienta"
+    texto: "Un diodo con una resistencia desde 5 V. Caliéntelo y mire su tensión directa."
+    libro: [229, 235, 236, 256]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_s, r: R_s, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_d, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: dV, rotulo: "Desde 25 °C: {{dV}}" }
+        - { valor: pend, rotulo: "Por grado: {{pend}}" }
+      corriente: I_d
+      mide: { corriente: I_d, vd: V_d }
+      mandos:
+        - { valor: T_c, min: 25, max: 85, paso: 5, rotulo: "Temperatura" }
+    requiere: { mover: [T_c] }
+    comprobar:
+      - { V_s: 5 }
+
+  - id: simule-calor
+    tipo: simular
+    titulo: "Treinta grados más"
+    texto: "El diodo cae {{V_d0}} a 25 °C. Lo calienta a 55 °C, con la misma resistencia: ¿cuánto caerá?"
+    libro: [235, 249]
+    fijar: { T_c: 55 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_s, r: R_s, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_d, rotulo: "Tensión del diodo" }
+      corriente: I_d
+      mide: { corriente: I_d, vd: V_d }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_d
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión del diodo a 55 °C"
+      medida: vd
+      errores:
+        - { expr: "V_d0", texto: "Igual que en frío no: a corriente constante baja unos 2 mV por grado." }
+        - { expr: "V_up", texto: "Ha subido en vez de bajar: V_{T} sube, pero I_{S} sube mucho más deprisa." }
+    exito: "Unos 60 mV menos en 30 °C: −2 mV/°C. Por eso un diodo a corriente constante es un termómetro."
+    escalera:
+      - "Treinta grados a −2 mV/°C."
+    solucion: "{{V_d0}} − 0,06 V ≈ {{V_d}}."
+    comprobar:
+      - { V_d: 0.467, V_d0: 0.531, pend_mV: -2.13, tol: 0.02 }
+      - { con: { T_c: 25 }, T_c: 25 }
+
+  - id: banco-secador
+    tipo: banco
+    titulo: "El secador de pelo"
+    texto: "Mida la tensión del diodo antes y después de calentarlo, con un termómetro al lado. Calcule cuánto baja por grado."
+    libro: [256, 257]
+    fijar: { T_c: 55 }
+    banco:
+      piezas: ["Fuente de 5 V", "Diodo de silicio y una resistencia de 4,7 kΩ", "Multímetro en V⎓", "Secador de pelo y termómetro"]
+      medir: "La pendiente, en mV por grado: lo que baja la tensión dividido entre lo que sube la temperatura."
+      esperado: pend_mV
+      unidad: ""
+      tol: 0.3
+      consejos:
+        - { cuando: { valor: medida, mayor: 0 }, texto: "Ha salido positiva: la tensión debe bajar al calentar. Revise el signo de la resta." }
+        - { cuando: { valor: desviacion, mayor: 0.3 }, texto: "Sale más empinada: ¿llegó el termómetro a la temperatura del diodo?" }
+        - { texto: "Sale menos empinada: deje que el diodo se caliente del todo antes de medir." }
+    comprobar:
+      - { R_s: 4700 }
+
+  - id: explore-polarizacion
+    tipo: explorar
+    titulo: "Base fija o resistencia de emisor"
+    texto: "Corriente de colector al calentar, frente a la de frío. Mueva el calentamiento y compare las dos curvas."
+    libro: [238]
+    widget:
+      tipo: grafica
+      x: { id: dt, min: 0, max: 30, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 11, unidad: "", rotulo: "I_{C}/I_{C}(frío)" }
+      curvas:
+        - { expr: "10^(0.002*dt/0.06)", color: naranja, rotulo: "tensión de base fija" }
+        - { expr: "(V_th - 0.7 + 0.002*dt)/(V_th - 0.7)", color: verde, rotulo: "con resistencia de emisor" }
+      marcas:
+        - { x: "dT", y: "k_f", rotulo: "×{{k_f}}" }
+      lectura: { valor: k_f, rotulo: "Con base fija, I_{C} se multiplica por" }
+      mandos:
+        - { valor: dT, min: 0, max: 30, paso: 5, rotulo: "Calentamiento" }
+    requiere: { mover: [dT] }
+
+  - id: sorpresa-emisor
+    tipo: sorpresa
+    titulo: "Con la resistencia de emisor"
+    texto: "El mismo calentamiento en una etapa con divisor y R_{E}. Caliente 30 °C y mire cuánto cambia I_{C}."
+    libro: [238, 251]
+    inicio: { V_BE: 0.7 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "I_{C}" }
+      datos:
+        - { valor: c_pc, rotulo: "Cambio: {{c_pc}}" }
+        - { valor: dTe, rotulo: "Calentamiento: {{dTe}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: V_BE, lista: [0.7, 0.69, 0.68, 0.67, 0.66, 0.65, 0.64], nombres: ["en frío", "+5 °C", "+10 °C", "+15 °C", "+20 °C", "+25 °C", "+30 °C"], rotulo: "V_{BE} al calentar" }
+    requiere: { mover: [V_BE] }
+    comprobar:
+      - { con: { V_BE: 0.64 }, c_pc: 4.3, dTe: 30, tol: 0.02 }
+      - { con: { dT: 30 }, k_f: 10, tol: 0.02 }
+
+  - id: por-que-emisor
+    tipo: porque
+    titulo: "¿Por qué la resistencia de emisor?"
+    texto: "Con base fija, 30 °C multiplican la corriente casi por diez; con R_{E}, unos pocos por ciento. ¿Por qué?"
+    libro: [238, 251]
+    fijar: { V_BE: 0.64 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "I_{C}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+    opciones:
+      - texto: "Los 60 mV que pierde V_{BE} pasan a R_{E}, que fija la corriente casi sola"
+        bien: true
+        porque: "La corriente la manda la tensión de R_{E}, y unos milivoltios más sobre más de un voltio son unos pocos por ciento. Es realimentación."
+      - texto: "Porque R_{E} enfría el transistor"
+        porque: "R_{E} disipa algo, pero no lo enfría: corrige la deriva eléctricamente."
+      - texto: "Porque con R_{E} la β no cambia"
+        porque: "La β cambia igual; R_{E} hace que la corriente dependa poco de V_{BE} y de β."
+    escalera:
+      - "Con base fija, la deriva de V_{BE} manda en la exponencial. Con R_{E}, ¿qué fija la corriente?"
+    solucion: "R_{E} convierte la deriva de V_{BE} en un cambio pequeño de su tensión: toda polarización necesita realimentación."
+
+  - id: prediga-rdson
+    tipo: predecir
+    titulo: "R_{DS(on)} en caliente"
+    texto: "Un MOSFET pasa de 25 °C a 100 °C. ¿Cuánto sube su R_{DS(on)}?"
+    libro: [241, 242]
+    fijar: { dTm: 75 }
+    widget:
+      tipo: grafica
+      x: { id: dt, min: 0, max: 125, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*dt)", color: naranja, rotulo: "R_{DS(on)}" }
+      lectura: { valor: s_R, rotulo: "Aumento a 100 °C" }
+      ocultar: true
+    opciones:
+      - texto: "Un 50 % más"
+        bien: true
+        porque: "+0,7 %/°C por 75 °C son un 52 %. En los de alta tensión, la hoja llega a mostrar un 70 % o más."
+      - texto: "Un 7 % más"
+        porque: "Eso sería con 10 °C. De 25 a 100 °C son 75 °C."
+      - texto: "Nada: la hoja da un solo valor"
+        porque: "La hoja lo da a 25 °C. La disipación se calcula con la R_{DS(on)} caliente."
+    escalera:
+      - "R_{DS(on)}(T) ≈ R_{DS(on)}(25 °C) · (1 + 0,007 · ΔT)."
+    solucion: "0,007 · 75 ≈ 0,5: un 50 % más."
+    comprobar:
+      - { s_R: 52.5, tol: 0.01 }
+      - { con: { dTm: 10 }, s_R: 7 }
+
+  - id: formula-rdson
+    tipo: formula
+    titulo: "La R_{DS(on)} caliente"
+    texto: "Un MOSFET de 10 mΩ a 25 °C. Caliéntelo y mire su resistencia."
+    libro: [241, 252]
+    ec: 241
+    sustitucion: "{{R_25}} · (1 + 0,007 · {{dTm}}) = {{R_T}}"
+    widget:
+      tipo: grafica
+      x: { id: dt, min: 0, max: 125, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*dt)", color: naranja, rotulo: "R_{DS(on)}" }
+      asas:
+        - { mueve: dTm, x: "dTm", y: "R_T", rotulo: "Su temperatura" }
+      lectura: { valor: R_T, rotulo: "R_{DS(on)} en caliente" }
+      mandos:
+        - { valor: dTm, min: 0, max: 125, paso: 5, rotulo: "Calentamiento" }
+    comprobar:
+      - { R_25: 0.01 }
+
+  - id: empareje-tabla
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla que conviene retener"
+    texto: "Una cada parámetro con su coeficiente térmico."
+    libro: [233, 235, 244, 247, 249]
+    emparejar:
+      - ["V_{BE} o V_{F} a corriente constante", "−2 mV/°C"]
+      - ["I_{S} de la ecuación", "×2 cada 4 o 5 °C"]
+      - ["Fuga inversa medida", "×2 cada 10 °C"]
+      - ["R_{DS(on)}", "+0,7 %/°C"]
+      - ["V_{GS(th)}", "−2 a −5 mV/°C"]
+    exito: "Cuidado con no confundir I_{S}, que va con n_{i}², con la fuga medida, que va con n_{i}."
+    pistas:
+      - { texto: "Las dos que se duplican: la que va con n_{i}² lo hace más deprisa." }
+    escalera:
+      - "Bajan las tensiones de la unión y del umbral; sube la resistencia del canal."
+    solucion: "V_{BE}–−2 mV/°C, I_{S}–4 o 5 °C, fuga–10 °C, R_{DS(on)}–+0,7 %/°C, umbral–−2 a −5 mV/°C."
+
+  - id: vida
+    tipo: pregunta
+    titulo: "Diez grados menos"
+    texto: "Un equipo trabaja 10 °C más frío gracias a un disipador mejor. ¿Qué le pasa a su vida?"
+    libro: [247, 254]
+    fijar: { dTm: 10 }
+    widget:
+      tipo: grafica
+      x: { id: dt, min: 0, max: 125, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*dt)", color: naranja, rotulo: "R_{DS(on)}" }
+    opciones:
+      - texto: "Aproximadamente se dobla"
+        bien: true
+        porque: "Los mismos mecanismos térmicos que doblan las fugas cada 10 °C doblan la velocidad de casi toda degradación."
+      - texto: "No cambia: la vida la fija el fabricante"
+        porque: "La degradación es térmica, como las fugas: depende de la temperatura de trabajo."
+      - texto: "Mejora un 7 %"
+        porque: "Ese es el cambio de R_{DS(on)} en 10 °C, no el de la vida."
+    escalera:
+      - "¿Qué se duplica cada 10 °C?"
+    solucion: "Cada 10 °C menos, aproximadamente el doble de vida."
+    comprobar:
+      - { s_R: 7 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [235, 238, 241, 247, 254]
+    ideas:
+      - { titulo: "−2 mV/°C.", texto: "La tensión de la unión baja con la temperatura: un termómetro barato." }
+      - { titulo: "Realimentación.", texto: "Con base fija, 30 °C multiplican I_{C} casi por diez; con R_{E}, unos pocos por ciento." }
+      - { titulo: "R_{DS(on)} caliente.", texto: "+0,7 %/°C: a 100 °C, un 50 % más." }
+      - { titulo: "Fugas y vida.", texto: "Las fugas se duplican cada 10 °C; 10 °C menos, el doble de vida." }

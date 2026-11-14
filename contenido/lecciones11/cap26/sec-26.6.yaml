@@ -1,0 +1,258 @@
+# Lección 1.2 de la sección 25.6 «El MOSFET en Funcionamiento: Canal, Regiones y Diodo de Cuerpo» (cap26; sec-26.6).
+# Formato: contenido/lecciones11/GUIA.md. La ley cuadrática del libro (bloque 178) con k = 2 mA/V² y V_GS − V_th = 2 V
+# del ejercicio 25.4 (I_D = 4 mA), V_th = 2 V de ejemplo; el circuito, el esquema «mosfet» con 12 V y 470 Ω (ejemplo).
+# La característica de salida es la del modelo de canal largo (triodo k·(V_ov·V_DS − V_DS²/2) y saturación ½·k·V_ov²).
+# Los coeficientes térmicos y la estructura, sobre la figura 25.11 del libro (fig-26.11).
+leccion: cap26/sec-26.6
+
+libro:
+  174: "la puerta no consume corriente en continua"
+  176: "el transistor se comporta como una resistencia controlada por la puerta"
+  177: "el canal se estrangula cerca del drenador y la corriente deja de crecer"
+  178: 'I_("D") = ("1")/("2") dot.op k dot.op lr(( V_("GS") - V_("th") ))^("2")'
+  179: "crece solo con la raíz de la corriente"
+  180: "«saturación» significa lo contrario en MOSFET y en BJT"
+  183: "el reparto se equilibra solo"
+  184: "hay realimentación térmica positiva"
+  186: "un diodo entre fuente y drenador que existe siempre"
+  188: "para eso hacen falta dos en oposición"
+  190: "su rigidez dieléctrica se supera con unas decenas de voltios"
+  191: "las resistencias de puerta a fuente en el montaje"
+  "cap26#286": "Un MOSFET en saturación tiene k = 2 mA/V² y una tensión de exceso"
+
+modelo:
+  valores:
+    VDD: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 12 }
+    RD: { sim: "R_{D}", nombre: "resistencia de drenador", unidad: Ω, valor: 470 }
+    V_g: { sim: "V_{GS}", nombre: "tensión de puerta", unidad: V, valor: 4 }
+    k_m: { sim: "k", nombre: "parámetro de transconductancia", unidad: "A/V²", valor: 0.002 }
+    V_th: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 2 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+  calculos:
+    V_ov: { expr: "max(0, V_g - V_th)", sim: "V_{GS} − V_{th}", nombre: "exceso sobre el umbral", unidad: V }
+    b_m: { expr: "k_m*V_ov + 1/RD", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tri: { expr: "(b_m - sqrt(max(0, b_m^2 - 2*k_m*VDD/RD)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_sat: { expr: "VDD - RD*k_m*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_DS: { expr: "max(V_sat, min(V_ov, V_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    I_D: { expr: "(VDD - V_DS)/RD", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
+    I_s: { expr: "k_m*V_ov^2/2", sim: "I_{D,sat}", nombre: "corriente de saturación", unidad: A }
+    I_2: { expr: "k_m*V_ov^2", sim: "k · V_{ov}²", nombre: "sin el medio", unidad: A }
+    I_1: { expr: "k_m*V_ov", sim: "k · V_{ov}", nombre: "sin elevar al cuadrado", unidad: A }
+    g_m: { expr: "sqrt(2*k_m*I_s)", sim: "g_{m}", nombre: "transconductancia", unidad: S }
+    g_b: { expr: "I_s/V_T", sim: "g_{m,BJT}", nombre: "la de un BJT a la misma corriente", unidad: S }
+
+tarjetas:
+  - id: explore-salida
+    tipo: explorar
+    titulo: "Óhmica y saturación"
+    texto: "La corriente frente a V_{DS}. Cambie V_{GS} y mire dónde deja de crecer la corriente."
+    libro: [176, 177]
+    widget:
+      tipo: grafica
+      x: { id: vd, min: 0, max: 8, unidad: V, rotulo: "V_{DS}" }
+      y: { min: 0, max: 0.03, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "k_m*(V_ov*min(vd, V_ov) - min(vd, V_ov)^2/2)", color: naranja, rotulo: "I_{D}" }
+        - { expr: "k_m*vd^2/2", color: tinta, rotulo: "frontera, V_{DS} = V_{GS} − V_{th}", discontinua: true }
+      marcas:
+        - { x: "V_ov", y: "I_s", rotulo: "estrangulamiento" }
+      lectura: { valor: I_s, rotulo: "Corriente de saturación" }
+      mandos:
+        - { valor: V_g, min: 2.5, max: 7, paso: 0.5, rotulo: "V_{GS}" }
+    requiere: { mover: [V_g] }
+
+  - id: prediga-id
+    tipo: predecir
+    titulo: "La ley cuadrática"
+    texto: "k = 2 mA/V² y V_{GS} − V_{th} = 2 V, en saturación. ¿Cuánta corriente de drenador?"
+    libro: [178, "cap26#286"]
+    fijar: { V_g: 4 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD, rd: RD, entrada: V_g, k: k_m, vth: V_th }
+      lectura: { valor: I_D, rotulo: "I_{D}" }
+      corriente: I_D
+      mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
+      ocultar: true
+    opciones:
+      - texto: "4 mA"
+        bien: true
+        porque: "½ · 2 mA/V² · (2 V)² = 4 mA. Y V_{DS} queda muy por encima de 2 V: sigue en saturación."
+      - texto: "8 mA"
+        porque: "Falta el medio: I_{D} = ½ · k · (V_{GS} − V_{th})²."
+      - texto: "4 mA, pero solo si V_{DS} es pequeña"
+        porque: "Con V_{DS} pequeña estaría en la zona óhmica. La ley cuadrática es la de saturación."
+    escalera:
+      - "Eleve al cuadrado el exceso sobre el umbral y multiplique por k/2."
+    solucion: "I_{D} = ½ · 2 mA/V² · 4 V² = 4 mA."
+    comprobar:
+      - { I_D: 0.004, I_2: 0.008, I_1: 0.004, tol: 0.001 }
+
+  - id: formula-cuadratica
+    tipo: formula
+    titulo: "Corriente de saturación"
+    texto: "Suba V_{GS}: la corriente crece con el cuadrado del exceso sobre el umbral."
+    libro: [178]
+    ec: 178
+    sustitucion: "½ · {{k_m}} · ({{V_g}} − {{V_th}})² = {{I_s}}"
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD, rd: RD, entrada: V_g, k: k_m, vth: V_th }
+      lectura: { valor: I_D, rotulo: "I_{D}" }
+      datos:
+        - { valor: V_DS, rotulo: "V_{DS} = {{V_DS}}" }
+      corriente: I_D
+      mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
+      mandos:
+        - { valor: V_g, min: 2.5, max: 6, paso: 0.5, rotulo: "V_{GS}" }
+
+  - id: estime-gm
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La g_{m} del MOSFET"
+    texto: "El mismo MOSFET con 4 mA: ¿cuánto vale g_{m} = √(2 · k · I_{D})?"
+    libro: [178, 179]
+    fijar: { V_g: 4 }
+    estimar:
+      objetivo: "g_m"
+      unidad: S
+      min: 0
+      max: 0.02
+      paso: 0.0005
+      inicio: 0.015
+      tol: 0.05
+      rotulo: "g_{m}"
+    exito: "4 mS. Un BJT a la misma corriente daría unos 155 mS: g_{m} = I_{C}/V_{T} no depende del dispositivo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0042 }, texto: "Se ha pasado: es la raíz de 2 · k · I_{D}, con k = 2 mA/V² e I_{D} = 4 mA." }
+      - { texto: "Se ha quedado corto: también vale k · (V_{GS} − V_{th}), 2 mA/V² por 2 V." }
+    escalera:
+      - "g_{m} = k · (V_{GS} − V_{th})."
+    solucion: "g_{m} = 2 mA/V² · 2 V = 4 mS."
+    comprobar:
+      - { g_m: 0.004, g_b: 0.155, tol: 0.01 }
+
+  - id: dibuje-salida
+    tipo: dibujar
+    titulo: "Dibuje la curva de salida"
+    texto: "Con V_{GS} − V_{th} = 2 V y k = 2 mA/V², dibuje I_{D} al subir V_{DS}."
+    libro: [176, 177, 178]
+    fijar: { V_g: 4 }
+    dibujar:
+      x: { id: vd, min: 0, max: 6, unidad: V, rotulo: "V_{DS}" }
+      y: { min: 0, max: 0.006, unidad: A, rotulo: "I_{D}" }
+      curva: "k_m*(V_ov*min(vd, V_ov) - min(vd, V_ov)^2/2)"
+      puntos: 25
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "I_{D} frente a V_{DS}"
+    exito: "Sube como una resistencia y se aplana a 4 mA a partir de V_{DS} = 2 V: el canal se estrangula."
+    pistas:
+      - { cuando: { valor: amplitud, mayor: 1.15 }, texto: "Se ha pasado de altura: la meseta es ½ · k · (V_{GS} − V_{th})² = 4 mA." }
+      - { texto: "La curva sube desde cero y se queda plana en 4 mA más allá de 2 V." }
+    escalera:
+      - "Por debajo de V_{DS} = V_{GS} − V_{th}, zona óhmica; por encima, corriente constante."
+    solucion: "Una curva que sube desde el origen y se aplana en 4 mA desde 2 V."
+
+  - id: interruptor-saturado
+    tipo: pregunta
+    titulo: "«Saturado»"
+    texto: "Con 8 V en la puerta, el MOSFET conduce de lleno como interruptor. ¿En qué región está?"
+    libro: [176, 180]
+    fijar: { V_g: 8 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD, rd: RD, entrada: V_g, k: k_m, vth: V_th }
+      lectura: { valor: V_DS, rotulo: "V_{DS}" }
+      corriente: I_D
+      mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
+    opciones:
+      - texto: "En la zona óhmica"
+        bien: true
+        porque: "V_{DS} queda muy por debajo de V_{GS} − V_{th}: el canal es una resistencia pequeña. Es lo que se llama «saturado»."
+      - texto: "En saturación"
+        porque: "La saturación del MOSFET es la de corriente constante. La palabra significa lo contrario que en el BJT."
+      - texto: "En corte"
+        porque: "Con 8 V en la puerta, muy por encima del umbral, hay canal de sobra."
+    escalera:
+      - "Compare V_{DS} con V_{GS} − V_{th}."
+    solucion: "Zona óhmica: V_{DS} es mucho menor que V_{GS} − V_{th}."
+    comprobar:
+      - { con: { V_g: 8 }, V_g: 8 }
+
+  - id: toque-paralelo
+    tipo: tocar
+    titulo: "En paralelo sin resistencias"
+    texto: "Toque la recta que explica que varios MOSFET en conducción se repartan la corriente solos."
+    libro: [183, 184]
+    widget:
+      tipo: figura
+      figura: fig-26.11
+      zonas:
+        - { id: sube, rotulo: "Recta que sube", rect: [150, 22, 84, 50] }
+        - { id: baja, rotulo: "Recta que baja", rect: [150, 118, 84, 36] }
+    tocar:
+      bien: [sube]
+      porque:
+        baja: "Es el umbral, que baja con la temperatura: en zona lineal hace subir la corriente del que se calienta. Realimentación positiva."
+    exito: "La R_{DS(on)} sube con la temperatura: el que se calienta conduce menos y el reparto se equilibra."
+    escalera:
+      - "¿Qué debe pasarle a la resistencia del transistor que se calienta para que conduzca menos?"
+    solucion: "La recta que sube: la de R_{DS(on)}."
+
+  - id: dos-sentidos
+    tipo: pregunta
+    titulo: "Bloquear en los dos sentidos"
+    texto: "Hay que cortar una corriente que puede ir en cualquier sentido. ¿Basta un MOSFET apagado?"
+    libro: [186, 188]
+    widget:
+      tipo: figura
+      figura: fig-26.11
+      zonas:
+        - { id: diodo, rotulo: "Tercer recuadro", rect: [251, 128, 190, 43] }
+    opciones:
+      - texto: "No: su diodo de cuerpo conduce en inversa; hacen falta dos en oposición"
+        bien: true
+        porque: "El sustrato unido a la fuente forma un diodo entre fuente y drenador que existe siempre."
+      - texto: "Sí, con la puerta sin tensión"
+        porque: "La puerta corta el canal, pero no el diodo de cuerpo, que conduce en un sentido."
+      - texto: "Sí, porque el canal es simétrico"
+        porque: "El canal lo sería, pero el diodo de cuerpo no se puede eliminar."
+    escalera:
+      - "Además del canal, ¿qué otro camino hay entre fuente y drenador?"
+    solucion: "Dos MOSFET en oposición: el diodo de uno bloquea lo que conduce el del otro."
+
+  - id: electrostatica
+    tipo: porque
+    titulo: "Una descarga que no se notó"
+    texto: "La puerta aislada no consume corriente. Tras tocarlo sin precaución, el MOSFET sigue funcionando: ¿está a salvo?"
+    libro: [174, 190, 191]
+    widget:
+      tipo: figura
+      figura: fig-26.11
+      zonas:
+        - { id: oxido, rotulo: "Cuarto recuadro", rect: [251, 177, 190, 43] }
+    opciones:
+      - texto: "No necesariamente: el daño puede ser parcial y fallar semanas después"
+        bien: true
+        porque: "Unas decenas de voltios perforan un óxido de pocos nanómetros. De ahí las precauciones y la resistencia de puerta a fuente."
+      - texto: "Sí: si funciona, la puerta está intacta"
+        porque: "Una perforación parcial deja el transistor funcionando un tiempo."
+      - texto: "Sí: la puerta soporta cientos de voltios"
+        porque: "Su rigidez dieléctrica se supera con unas decenas de voltios."
+    escalera:
+      - "¿Qué espesor tiene el óxido de puerta?"
+    solucion: "No: una descarga puede dañarlo a medias y fallar más tarde."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [176, 177, 180, 183, 186]
+    ideas:
+      - { titulo: "Dos regiones.", texto: "Óhmica: una resistencia gobernada por la puerta. Saturación: ½ · k · (V_{GS} − V_{th})²." }
+      - { titulo: "«Saturado».", texto: "Un interruptor «saturado» está en la zona óhmica." }
+      - { titulo: "Temperatura.", texto: "En conducción, el reparto se equilibra solo; en lineal, realimentación positiva." }
+      - { titulo: "Diodo de cuerpo.", texto: "Siempre está: un MOSFET no bloquea en los dos sentidos." }

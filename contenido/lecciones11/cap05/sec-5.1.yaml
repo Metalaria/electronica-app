@@ -30,12 +30,15 @@ modelo:
     N_D: { sim: "N_{D}", nombre: "concentración de donadores", unidad: "cm⁻³", valor: 1e10 }
     n_i: { sim: "n_{i}", nombre: "concentración intrínseca del silicio", unidad: "cm⁻³", valor: 1e10 }
     d_T: { sim: "ΔT", nombre: "calentamiento", unidad: "°C", valor: 0 }
+    E_f: { sim: "E", nombre: "campo eléctrico", unidad: "V/cm", valor: 100 }
   calculos:
     n_e: { expr: "max(N_D, n_i)", sim: "n", nombre: "electrones libres", unidad: "cm⁻³" }
     p_h: { expr: "n_i^2/n_e", sim: "p", nombre: "huecos", unidad: "cm⁻³" }
     n_p: { expr: "n_e*p_h", sim: "n·p", nombre: "producto de las dos poblaciones", unidad: "cm⁻⁶" }
     veces: { expr: "n_e/n_i", sim: "n/n_{i}", nombre: "veces más electrones que en el silicio puro", unidad: "" }
     fuga: { expr: "2^(d_T/10)", sim: "×", nombre: "veces la fuga inicial", unidad: "", cifras: 2, recortar: true }
+    v_n: { expr: "1450*E_f", sim: "v_{n}", nombre: "velocidad media de los electrones", unidad: "cm/s" }
+    v_p: { expr: "500*E_f", sim: "v_{p}", nombre: "velocidad media de los huecos", unidad: "cm/s" }
 
 tarjetas:
   - id: explore-dopaje
@@ -62,7 +65,7 @@ tarjetas:
   - id: prediga-millon
     tipo: predecir
     titulo: "Prediga"
-    texto: "Silicio con 10¹⁶ cm⁻³ de fósforo: una impureza por cada cinco millones de átomos. Su resistividad era 320 000 Ω·cm. ¿Qué queda?"
+    texto: "Al silicio de 320 000 Ω·cm se le añaden 10¹⁶ cm⁻³ de fósforo: una impureza por cada cinco millones de átomos. ¿Qué resistividad queda?"
     libro: [15]
     fijar: { N_D: 1e16 }
     widget:
@@ -83,6 +86,9 @@ tarjetas:
         porque: "No es un retoque: los electrones libres se multiplican por un millón."
     comprobar:
       - { veces: 1000000 }
+    escalera:
+      - "Los portadores libres pasan de 10¹⁰ a 10¹⁶ cm⁻³."
+    solucion: "Un millón de veces más portadores: de 320 000 a 0,52 Ω·cm."
 
   - id: empareje-bandas
     tipo: pregunta
@@ -98,6 +104,9 @@ tarjetas:
     exito: "Eso es. La del silicio es bastante para que casi no haya electrones libres y poca para poder gobernarlo."
     pistas:
       - { texto: "El aislante tiene la banda más ancha; el metal, ninguna. El germanio va por debajo del silicio." }
+    escalera:
+      - "El aislante tiene la banda más ancha; el metal, ninguna. El germanio va por debajo del silicio."
+    solucion: "Metal: sin banda prohibida. Germanio: 0,67 eV. Silicio: 1,12 eV. Diamante: 5 eV o más."
 
   - id: porque-semiconductor
     tipo: porque
@@ -112,6 +121,19 @@ tarjetas:
         porque: "Conducir poco no sirve de nada por sí solo: lo valioso es poder gobernar cuánto conduce."
       - texto: "Porque es más barato que el cobre"
         porque: "No es el precio: es que su conductividad se controla con el dopaje, seis órdenes de magnitud."
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1e10, max: 1e19, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 1, max: 1e20, unidad: "cm⁻³", rotulo: "concentración", escala: log }
+      curvas:
+        - { expr: "max(x, n_i)", color: azul, rotulo: "electrones, n" }
+        - { expr: "n_i^2/max(x, n_i)", color: naranja, rotulo: "huecos, p" }
+      lectura: { valor: n_e, rotulo: "Electrones libres" }
+      mandos:
+        - { valor: N_D, lista: [1e10, 1e12, 1e14, 1e16, 1e18, 1e19], rotulo: "Donadores, N_{D}" }
+    escalera:
+      - "Mueva el dopaje: ¿se puede hacer lo mismo con un trozo de cobre?"
+    solucion: "No: la conductividad del silicio se fija desde fuera con el dopaje; la de un conductor, no."
 
   - id: pregunta-boro
     tipo: pregunta
@@ -126,6 +148,14 @@ tarjetas:
         porque: "Eso hace el fósforo, con un electrón de sobra. Al boro le falta uno."
       - texto: "Nada: con tres electrones no se enlaza"
         porque: "Se enlaza con tres vecinos y deja el cuarto enlace sin completar: eso es el hueco."
+    widget:
+      tipo: figura
+      figura: fig-5.3
+      zonas:
+        - { id: escala, rotulo: "La escala del dopaje", rect: [0, 0, 438, 169] }
+    escalera:
+      - "El silicio forma cuatro enlaces. ¿Cuántos puede completar el boro?"
+    solucion: "Tres: deja un enlace incompleto, un hueco, que se mueve al revés que los electrones."
 
   - id: prediga-huecos
     tipo: predecir
@@ -152,6 +182,9 @@ tarjetas:
         porque: "La agitación térmica los sigue generando, en cantidad ínfima pero no nula."
     comprobar:
       - { p_h: 10000 }
+    escalera:
+      - "n·p = nᵢ²: divida (10¹⁰)² entre 10¹⁶."
+    solucion: "p = 10²⁰ / 10¹⁶ = 10⁴ cm⁻³."
 
   - id: formula-masas
     tipo: formula
@@ -186,6 +219,19 @@ tarjetas:
         porque: "Ellos dan la conducción, pero el comportamiento fino, la fuga incluida, depende de los minoritarios."
       - texto: "De ninguna: la fuga es del encapsulado"
         porque: "La fuga es la parte intrínseca del silicio que no se ha podido eliminar: portadores minoritarios generados por el calor."
+    fijar: { N_D: 1e16 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1e10, max: 1e19, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 1, max: 1e20, unidad: "cm⁻³", rotulo: "concentración", escala: log }
+      curvas:
+        - { expr: "max(x, n_i)", color: azul, rotulo: "electrones, n" }
+        - { expr: "n_i^2/max(x, n_i)", color: naranja, rotulo: "huecos, p" }
+      lectura: { valor: p_h, rotulo: "Huecos" }
+      mandos: []
+    escalera:
+      - "Los mayoritarios explican la conducción. ¿Y el comportamiento fino del dispositivo?"
+    solucion: "De los minoritarios: la fuga, la recuperación inversa y la deriva térmica dependen de ellos."
 
   - id: sorpresa-calor
     tipo: sorpresa
@@ -222,6 +268,21 @@ tarjetas:
         porque: "Los electrones tienen casi tres veces más movilidad: el NPN es el rápido."
       - texto: "Iguales: el hueco no es una partícula real"
         porque: "El hueco tiene su propia movilidad, y esa diferencia física se nota en todo el libro."
+    widget:
+      tipo: grafica
+      x: { id: e, min: 0, max: 1000, unidad: "V/cm", rotulo: "E" }
+      y: { min: 0, max: 1500000, unidad: "cm/s", rotulo: "velocidad media" }
+      curvas:
+        - { expr: "1450*e", color: azul, rotulo: "electrones" }
+        - { expr: "500*e", color: naranja, rotulo: "huecos" }
+      lectura: { valor: v_p, rotulo: "Velocidad de los huecos" }
+      datos:
+        - { valor: v_n, rotulo: "Electrones: {{v_n}}" }
+      mandos:
+        - { valor: E_f, lista: [100, 500, 1000], rotulo: "Campo, E" }
+    escalera:
+      - "Con el mismo campo, la velocidad media es proporcional a la movilidad."
+    solucion: "El PNP: sus huecos van casi tres veces más despacio que los electrones del NPN."
 
   - id: empareje-transporte
     tipo: pregunta
@@ -236,6 +297,9 @@ tarjetas:
     exito: "Eso es. Son la misma agitación térmica vista de dos maneras; por eso V_{T} aparece en la ecuación del diodo."
     pistas:
       - { texto: "La difusión no necesita campo; el arrastre, sí." }
+    escalera:
+      - "La difusión no necesita campo; el arrastre, sí."
+    solucion: "Arrastre: un campo. Difusión: un gradiente. Relación de Einstein: liga los dos coeficientes con V_{T}."
 
   - id: porque-asimetria
     tipo: porque
@@ -250,6 +314,14 @@ tarjetas:
         porque: "Su resistencia se fija con el dopaje donde se quiera. El problema es que es simétrica."
       - texto: "Le faltan huecos"
         porque: "Un material P, con huecos, tampoco rectifica solo: también conduce igual en los dos sentidos."
+    widget:
+      tipo: figura
+      figura: fig-5.5
+      zonas:
+        - { id: union, rotulo: "La unión P-N y su zona de agotamiento", rect: [0, 0, 222, 184] }
+    escalera:
+      - "Un material homogéneo, ¿cómo distinguiría un sentido del otro?"
+    solucion: "No puede: conduce igual en los dos sentidos. La asimetría la da la frontera entre dos dopajes, la unión."
 
   - id: pregunta-unipolares
     tipo: pregunta
@@ -264,6 +336,14 @@ tarjetas:
         porque: "Al contrario: la carga de minoritarios inyectados hay que evacuarla al apagar, y eso los hace lentos."
       - texto: "Igual: depende solo del tamaño"
         porque: "Depende del mecanismo: inyectar minoritarios obliga a evacuarlos después."
+    widget:
+      tipo: figura
+      figura: fig-5.16
+      zonas:
+        - { id: recuperacion, rotulo: "La corriente que sigue al apagar", rect: [0, 0, 439, 259] }
+    escalera:
+      - "Los minoritarios inyectados hay que evacuarlos al apagar. ¿Quién no los tiene?"
+    solucion: "Los unipolares, Schottky y MOSFET: sin carga de minoritarios que evacuar, conmutan mucho más deprisa."
 
   - id: resumen
     tipo: resumen

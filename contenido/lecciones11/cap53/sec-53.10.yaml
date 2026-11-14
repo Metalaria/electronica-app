@@ -1,0 +1,291 @@
+# Lección 1.2 de la sección 55.11 «Rastreo por Etapas: Dónde se Pierde la Señal» (cap53; etiqueta interna sec-53.10).
+# Formato: contenido/lecciones11/GUIA.md. (1) Medidas frente al número de etapas (figura 55.24): una a una, n/2 de
+# media; por bisección, log₂ n (las cadenas de la tabla son potencias de dos). (2) Paso práctico: «averia» con la
+# sonda lógica sobre una cadena de ocho etapas (ocho seguidores en serie, la figura 55.26 en versión lógica: la «señal»
+# es un 1 a la entrada); una etapa con la salida atascada a 0; tres medidas bastan si se biseca.
+leccion: cap53/sec-53.10
+
+libro:
+  370: "se sigue desde la entrada hacia la salida con el osciloscopio"
+  374: "al revés, desde la salida hacia la entrada"
+  375: "no necesita que la entrada funcione"
+  376: "se inyecta siempre a través de un condensador"
+  379: "La bisección mide en el punto medio y descarta la mitad"
+  380: "1 024"
+  381: "La bisección crece con el logaritmo y la búsqueda secuencial, linealmente"
+  383: "Confirmar que hay señal correcta en la entrada y no en la salida."
+  384: "con ocho, tres medidas"
+  389: "La técnica es abrir el lazo en un punto conocido"
+  392: "Bisecar una cadena cuyo problema es que le faltan 3,3 V lleva a conclusiones absurdas."
+  397: "Un aparato idéntico que funcione, que es la referencia más útil de todas"
+  403: "tocar la entrada de un amplificador de audio produce un zumbido si la cadena funciona"
+  405: "La señal desaparece: etapa cortada, acoplo abierto, alimentación de esa etapa."
+  406: "Se atenúa: ganancia insuficiente, componente derivado."
+  407: "Se deforma: polarización incorrecta"
+  408: "Aparece ruido donde no había"
+  412: "Bisección frente a búsqueda etapa por etapa"
+  414: "Bisección de una cadena de ocho etapas, con seguimiento e inyección."
+
+modelo:
+  valores:
+    n_e: { sim: "n", nombre: "número de etapas", unidad: "", valor: 16 }
+  calculos:
+    m_b: { expr: "ln(n_e)/ln(2)", sim: "m_{bis}", nombre: "medidas por bisección", unidad: "" }
+    m_s: { expr: "n_e/2", sim: "m_{una}", nombre: "medidas una a una, de media", unidad: "" }
+
+tarjetas:
+  - id: explore-biseccion
+    tipo: explorar
+    titulo: "Una a una o por la mitad"
+    texto: "Recorrer las etapas una a una cuesta n/2 medidas de media; bisecar, cada medida descarta la mitad. Alargue la cadena."
+    libro: [379, 381, 412]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 2, max: 1024, unidad: "", rotulo: "etapas", escala: log }
+      y: { min: 1, max: 600, unidad: "", rotulo: "medidas", escala: log }
+      curvas:
+        - { expr: "nx/2", color: azul, rotulo: "una a una" }
+        - { expr: "ln(nx)/ln(2)", color: naranja, rotulo: "bisección" }
+      marcas:
+        - { x: "n_e", y: "m_b", rotulo: "{{m_b}}" }
+      lectura: { valor: m_b, rotulo: "Por bisección" }
+      datos:
+        - { valor: m_s, rotulo: "Una a una: {{m_s}}" }
+      mandos:
+        - { valor: n_e, lista: [8, 16, 32, 64, 1024], rotulo: "Etapas" }
+    requiere: { mover: [n_e] }
+
+  - id: estime-1024
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una cadena de 1 024 etapas"
+    texto: "¿Cuántas medidas bastan por bisección para localizar la etapa averiada entre 1 024?"
+    libro: [380, 381]
+    fijar: { n_e: 1024 }
+    estimar:
+      objetivo: "m_b"
+      unidad: ""
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 60
+      tol: 0.05
+      rotulo: "Medidas por bisección"
+    exito: "Diez, frente a 512 de media una a una: la diferencia entre una tarde y diez minutos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.5 }, texto: "Se ha pasado: cada medida divide por dos; ¿cuántas veces hay que dividir 1 024 hasta llegar a 1?" }
+      - { texto: "Se ha quedado corto: con 8 etapas ya hacen falta 3." }
+    escalera:
+      - "2¹⁰ = 1 024."
+    solucion: "log₂ 1 024 = 10 medidas."
+    comprobar:
+      - { m_b: 10, m_s: 512 }
+
+  - id: averia-cadena
+    tipo: averia
+    titulo: "Dónde se pierde la señal"
+    texto: "Hay señal en la entrada y no en la salida. Una etapa la pierde: localícela con la sonda lógica en solo tres medidas."
+    libro: [383, 384, 414]
+    widget:
+      tipo: logica
+      entradas: [{ id: E, valor: 1, rotulo: "Señal" }]
+      piezas:
+        - { id: e1, tipo: buf, entradas: [E], rotulo: "Etapa 1" }
+        - { id: e2, tipo: buf, entradas: [e1], rotulo: "Etapa 2" }
+        - { id: e3, tipo: buf, entradas: [e2], rotulo: "Etapa 3" }
+        - { id: e4, tipo: buf, entradas: [e3], rotulo: "Etapa 4" }
+        - { id: e5, tipo: buf, entradas: [e4], rotulo: "Etapa 5" }
+        - { id: e6, tipo: buf, entradas: [e5], rotulo: "Etapa 6" }
+        - { id: e7, tipo: buf, entradas: [e6], rotulo: "Etapa 7" }
+        - { id: e8, tipo: buf, entradas: [e7], rotulo: "Etapa 8" }
+      salidas:
+        - { id: S, de: e8 }
+    averia:
+      pasos: 3
+      eleccion: fija
+      sospechosos:
+        - { id: e1, rotulo: "Etapa 1" }
+        - { id: e2, rotulo: "Etapa 2" }
+        - { id: e3, rotulo: "Etapa 3" }
+        - { id: e4, rotulo: "Etapa 4" }
+        - { id: e5, rotulo: "Etapa 5" }
+        - { id: e6, rotulo: "Etapa 6" }
+        - { id: e7, rotulo: "Etapa 7" }
+        - { id: e8, rotulo: "Etapa 8" }
+      puntos:
+        - { id: p1, rotulo: "Salida de la etapa 1", senal: e1 }
+        - { id: p2, rotulo: "Salida de la etapa 2", senal: e2 }
+        - { id: p3, rotulo: "Salida de la etapa 3", senal: e3 }
+        - { id: p4, rotulo: "Salida de la etapa 4", senal: e4 }
+        - { id: p5, rotulo: "Salida de la etapa 5", senal: e5 }
+        - { id: p6, rotulo: "Salida de la etapa 6", senal: e6 }
+        - { id: p7, rotulo: "Salida de la etapa 7", senal: e7 }
+        - { id: p8, rotulo: "Salida de la etapa 8", senal: e8 }
+      fallos:
+        - { id: e5-cortada, pieza: e5, tipo: atascada-0, texto: "La quinta etapa no transmite: hay señal en el punto medio y no a su salida." }
+        - { id: e1-cortada, pieza: e1, tipo: atascada-0, texto: "La primera etapa no transmite: su salida ya está a nivel bajo." }
+        - { id: e2-cortada, pieza: e2, tipo: atascada-0, texto: "La segunda etapa no transmite: a la salida de la primera hay señal y a la suya, no." }
+        - { id: e3-cortada, pieza: e3, tipo: atascada-0, texto: "La tercera etapa no transmite: hay señal hasta la salida de la segunda." }
+        - { id: e4-cortada, pieza: e4, tipo: atascada-0, texto: "La cuarta etapa no transmite: hay señal hasta la salida de la tercera." }
+        - { id: e6-cortada, pieza: e6, tipo: atascada-0, texto: "La sexta etapa no transmite: hay señal hasta la salida de la quinta." }
+        - { id: e7-cortada, pieza: e7, tipo: atascada-0, texto: "La séptima etapa no transmite: hay señal hasta la salida de la sexta." }
+        - { id: e8-cortada, pieza: e8, tipo: atascada-0, texto: "La última etapa no transmite: hay señal en todas las salidas menos la suya." }
+    escalera:
+      - "Mida primero en el punto medio, a la salida de la cuarta etapa: si hay señal, el fallo está después."
+      - "Repita en el medio de la mitad que queda: a la salida de la segunda o de la sexta."
+    solucion: "La cuarta, luego la segunda o la sexta, y luego la que queda en medio: tres medidas, con ocho etapas."
+
+  - id: seguir-inyectar
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Seguimiento e inyección"
+    texto: "Una cada técnica con lo que la caracteriza."
+    libro: [370, 374, 375]
+    emparejar:
+      - ["Seguimiento", "Señal en la entrada; se mira etapa a etapa hacia la salida"]
+      - ["Inyección", "Señal en cada etapa; se mira si llega a la salida"]
+      - ["Ventaja de la inyección", "No necesita que la entrada funcione"]
+    exito: "Las dos son bisección en distinta dirección, y se combinan."
+    pistas:
+      - { texto: "La inyección avanza de la salida hacia la entrada." }
+    escalera:
+      - "El seguimiento necesita una señal de entrada adecuada."
+    solucion: "Seguimiento: de la entrada hacia la salida; inyección: al revés, sin depender de la entrada."
+
+  - id: inyectar-condensador
+    tipo: pregunta
+    titulo: "Cómo se inyecta"
+    texto: "Al inyectar en una etapa, ¿qué precauciones se toman?"
+    libro: [376, 414]
+    widget:
+      tipo: figura
+      figura: fig-53.17
+      zonas:
+        - { id: cadena, rotulo: "La cadena", rect: [5, 5, 440, 180] }
+    opciones:
+      - texto: "Nivel bajo y a través de un condensador"
+        bien: true
+        porque: "Una señal grande satura o daña una etapa de ganancia alta; el condensador bloquea la continua."
+      - texto: "Nivel alto para que se oiga bien"
+        porque: "En una etapa de ganancia alta, una señal grande la satura o la daña."
+      - texto: "Directamente, sin nada en serie"
+        porque: "La continua del circuito o del generador desplaza el punto de trabajo."
+    escalera:
+      - "Piense en los niveles y en la continua de la etapa."
+    solucion: "Nivel bajo y a través de un condensador."
+
+  - id: ordene-procedimiento
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El procedimiento"
+    texto: "Ordene la bisección de una cadena."
+    libro: [383]
+    ordenar:
+      - "Definir la cadena y sus puntos accesibles."
+      - "Confirmar señal en la entrada y no en la salida."
+      - "Comprobar las alimentaciones de todas las etapas."
+      - "Medir en el punto medio."
+      - "Repetir en la mitad que contiene el fallo."
+      - "Bisecar dentro de la etapa."
+    exito: "Comprobar las alimentaciones cuesta una sola medida y ahorra la mitad de los casos."
+    pistas:
+      - { texto: "Antes de medir en medio, la entrada, la salida y las alimentaciones." }
+    escalera:
+      - "Sin señal en la entrada y no en la salida, no se busca lo que se cree."
+    solucion: "Cadena, entrada y salida, alimentaciones, punto medio, repetir y bisecar dentro de la etapa."
+
+  - id: realimentacion
+    tipo: pregunta
+    titulo: "Cuándo no vale"
+    texto: "La cadena tiene un lazo de realimentación. ¿Qué se hace?"
+    libro: [389, 412]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 2, max: 1024, unidad: "", rotulo: "etapas", escala: log }
+      y: { min: 1, max: 600, unidad: "", rotulo: "medidas", escala: log }
+      curvas:
+        - { expr: "nx/2", color: azul, rotulo: "una a una" }
+        - { expr: "ln(nx)/ln(2)", color: naranja, rotulo: "bisección" }
+    opciones:
+      - texto: "Abrir el lazo en un punto conocido y analizarlo como cadena abierta"
+        bien: true
+        porque: "Un lazo cerrado no tiene «antes» ni «después»: un fallo altera todo el lazo."
+      - texto: "Bisecar igual: es una cadena"
+        porque: "En un lazo cerrado cualquier fallo altera todo el lazo: las mitades no se descartan."
+      - texto: "Medir etapa por etapa desde la entrada"
+        porque: "Tampoco funciona: con el lazo cerrado, todo depende de todo."
+    escalera:
+      - "¿Qué supone la bisección sobre el orden de las etapas?"
+    solucion: "Abrir el lazo, o sustituir la realimentación por una señal fija."
+
+  - id: alimentacion-antes
+    tipo: porque
+    titulo: "Antes de bisecar"
+    texto: "¿Por qué se comprueban los raíles antes de cualquier bisección?"
+    libro: [392]
+    widget:
+      tipo: figura
+      figura: fig-53.17
+      zonas:
+        - { id: cadena, rotulo: "La cadena", rect: [5, 5, 440, 180] }
+    opciones:
+      - texto: "Un raíl caído explica el fallo de golpe y la bisección daría conclusiones absurdas"
+        bien: true
+        porque: "Bisecar una cadena a la que le faltan 3,3 V lleva a conclusiones absurdas."
+      - texto: "Porque la bisección consume más corriente"
+        porque: "Medir no consume nada apreciable."
+      - texto: "Porque el osciloscopio se alimenta del circuito"
+        porque: "El FNIRSI va a batería."
+    escalera:
+      - "La alimentación es la causa más frecuente."
+    solucion: "Un raíl caído lo explica todo y falsea la bisección."
+
+  - id: sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los síntomas y su lectura"
+    texto: "Una cada síntoma de la señal con su lectura."
+    libro: [405, 406, 407, 408]
+    emparejar:
+      - ["Desaparece", "Etapa cortada, acoplo abierto o su alimentación"]
+      - ["Se atenúa", "Ganancia insuficiente, componente derivado"]
+      - ["Se deforma", "Polarización, recorte o distorsión de cruce"]
+      - ["Aparece ruido nuevo", "Realimentación perdida o componente ruidoso"]
+    exito: "Una señal presente pero deformada también es información."
+    pistas:
+      - { texto: "El ruido nuevo suele ser una ganancia excesiva porque se ha perdido la realimentación." }
+    escalera:
+      - "La deformación habla del punto de trabajo."
+    solucion: "Desaparece: cortada; atenúa: ganancia; deforma: polarización; ruido: realimentación."
+
+  - id: el-dedo
+    tipo: pregunta
+    titulo: "El inyector más barato"
+    texto: "Sin generador, ¿cómo se comprueba en un segundo una cadena de audio?"
+    libro: [397, 403]
+    widget:
+      tipo: figura
+      figura: fig-53.17
+      zonas:
+        - { id: cadena, rotulo: "La cadena", rect: [5, 5, 440, 180] }
+    opciones:
+      - texto: "Tocando su entrada con el dedo: si funciona, zumba"
+        bien: true
+        porque: "Poco elegante, y resuelve muchas dudas en un segundo."
+      - texto: "Midiendo la continua de la salida"
+        porque: "Dice si está polarizada, no si transmite señal."
+      - texto: "Con la prueba de diodos"
+        porque: "Se hace sin alimentar: no dice si la cadena transmite."
+    escalera:
+      - "El cuerpo capta la red y la lleva a la entrada."
+    solucion: "Con el dedo en la entrada."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [379, 380, 381, 383, 389]
+    ideas:
+      - { titulo: "Por la mitad.", texto: "Cada medida descarta la mitad: diez medidas bastan para más de mil etapas." }
+      - { titulo: "Dos direcciones.", texto: "Seguimiento desde la entrada; inyección desde la salida, por un condensador." }
+      - { titulo: "Antes.", texto: "Señal en la entrada y no en la salida, y los raíles comprobados." }
+      - { titulo: "Cuándo no.", texto: "Lazos cerrados, varias averías, intermitentes y alimentación." }

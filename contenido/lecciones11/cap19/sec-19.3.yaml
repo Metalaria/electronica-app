@@ -1,0 +1,200 @@
+# Lección 1.2 de la sección 18.3 «Proyecto Integrador: Estación de Monitorización Ambiental» (cap19; sec-19.N =
+# impresas 18.N).
+# - La figura del ciclo de trabajo de la estación a pilas (fig-19.4, que el libro imprime en el capítulo 50, bloque
+#   cap49#43) con zonas: dormido, medir y guardar, enviar el lote, la media y las tres validaciones.
+# - La cadena MQTT de la figura 50.18 (fig-49.18, cap49#383) para el reparto llevado a la red.
+# - Sin modelo de circuito: la sección es de arquitectura.
+# Paso práctico: «tocar» en la figura del ciclo lo que ahorra en la radio (el envío por lotes).
+leccion: cap19/sec-19.3
+
+libro:
+  52: "¿hacen falta las dos placas?"
+  54: "el consumo medio baja dos o tres órdenes de magnitud respecto a estar despierto"
+  55: "su arranque de medio minuto (sección 18.2) no encaja en un ciclo que dura unos segundos"
+  57: "un ordenador de placa siempre alimentado hace de servidor"
+  58: "cada una necesita almacenamiento local, que cubre los cortes de red y del servidor"
+  60: "reiniciar el servidor con las estaciones en marcha"
+  61: "y de campo, dejándolo instalado semanas"
+  "cap49#43": "el ciclo de trabajo del microcontrolador (dormir, medir y guardar, enviar por lotes)"
+  "cap49#383": "Flujo de datos a la nube por MQTT, del ESP32 al panel."
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-ciclo
+    tipo: explorar
+    titulo: "Despertar, medir, dormir"
+    texto: "La estación a pilas despierta, lee los sensores, guarda y vuelve a dormir. Toque cada parte de su ciclo."
+    libro: [52, 54, "cap49#43"]
+    widget:
+      tipo: figura
+      figura: fig-19.4
+      zonas:
+        - { id: dormido, rotulo: "Línea de abajo de la gráfica", rect: [48, 148, 215, 16], texto: "Dormido casi todo el tiempo: así el consumo medio baja dos o tres órdenes de magnitud." }
+        - { id: medir, rotulo: "Picos cortos de la gráfica", rect: [50, 60, 125, 86], texto: "Medir y guardar: despierta, lee los sensores y vuelve a dormir." }
+        - { id: lote, rotulo: "Pico más alto, a la derecha", rect: [178, 38, 84, 108], texto: "Enviar el lote: transmitir cuesta mucho más que medir, así que se acumulan medidas y se envían juntas." }
+        - { id: decisiones, rotulo: "Columna de recuadros naranjas", rect: [281, 26, 160, 160], texto: "La cadena de decisiones que arranca en la frecuencia de medida." }
+    requiere: { mover: [dormido, lote] }
+
+  - id: prediga-dormir
+    tipo: predecir
+    titulo: "Lo que ahorra dormir"
+    texto: "La estación duerme entre medida y medida. ¿Cuánto baja su consumo medio respecto a estar siempre despierta?"
+    libro: [54]
+    widget:
+      tipo: figura
+      figura: fig-19.4
+      zonas:
+        - { id: grafica, rotulo: "Gráfica del ciclo de trabajo", rect: [48, 15, 215, 150] }
+    opciones:
+      - texto: "Dos o tres órdenes de magnitud"
+        bien: true
+        porque: "Despierta solo unos instantes por ciclo: el resto del tiempo consume casi nada."
+      - texto: "A la mitad"
+        porque: "Se queda muy corto: pasa casi todo el tiempo dormida, no la mitad."
+      - texto: "Casi nada: medir es lo que gasta"
+        porque: "Al contrario: lo que más gasta es estar despierto, y sobre todo transmitir."
+    escalera:
+      - "¿Qué fracción del tiempo pasa despierta?"
+    solucion: "Dos o tres órdenes de magnitud."
+
+  - id: toque-lote
+    tipo: tocar
+    titulo: "Lo que domina el consumo"
+    texto: "Transmitir cuesta mucho más que medir. Toque lo que hace la estación para gastar menos en la radio."
+    libro: [54, "cap49#43"]
+    widget:
+      tipo: figura
+      figura: fig-19.4
+      zonas:
+        - { id: dormido, rotulo: "Línea de abajo de la gráfica", rect: [48, 148, 215, 16] }
+        - { id: medir, rotulo: "Picos cortos de la gráfica", rect: [50, 60, 125, 86] }
+        - { id: lote, rotulo: "Pico más alto, a la derecha", rect: [178, 38, 84, 108] }
+    tocar:
+      bien: [lote]
+      porque:
+        dormido: "Dormir ahorra en todo el ciclo, pero la radio se ahorra de otra manera."
+        medir: "Medir cuesta poco; lo caro es transmitir."
+    exito: "Envía por lotes: acumula varias medidas y las transmite juntas."
+    escalera:
+      - "Busque el pico que no se repite en cada medida."
+    solucion: "El pico más alto, a la derecha: el envío del lote."
+
+  - id: sin-pi
+    tipo: porque
+    titulo: "¿Una Pi en el nodo?"
+    texto: "¿Por qué el nodo que mide no lleva un ordenador de placa además del microcontrolador?"
+    libro: [55]
+    widget:
+      tipo: figura
+      figura: fig-19.4
+      zonas:
+        - { id: medir, rotulo: "Picos cortos de la gráfica", rect: [50, 60, 125, 86] }
+    opciones:
+      - texto: "Consume más que el presupuesto entero y tarda medio minuto en arrancar"
+        bien: true
+        porque: "Encendido siempre agota las pilas, y su arranque no encaja en un ciclo de unos segundos."
+      - texto: "Porque no sabe leer sensores"
+        porque: "Podría leerlos; el problema es el consumo y el arranque, no la capacidad."
+      - texto: "Porque no tiene red"
+        porque: "Sí tiene red; lo que no tiene es un consumo y un arranque compatibles con el ciclo."
+    escalera:
+      - "Piense en las pilas y en cuánto dura cada despertar."
+    solucion: "Consume más que todo el presupuesto y su arranque de medio minuto no cabe en el ciclo."
+
+  - id: toque-servidor
+    tipo: tocar
+    titulo: "Donde reaparece el ordenador"
+    texto: "Con varias estaciones, los nodos miden y publican por MQTT. Toque dónde vuelve el ordenador de placa, siempre alimentado."
+    libro: [57, "cap49#383"]
+    widget:
+      tipo: figura
+      figura: fig-49.18
+      zonas:
+        - { id: esp32, rotulo: "Primer recuadro, a la izquierda", rect: [4, 57, 80, 47] }
+        - { id: broker, rotulo: "Segundo recuadro", rect: [125, 57, 80, 47] }
+        - { id: base, rotulo: "Tercer recuadro", rect: [246, 57, 80, 47] }
+        - { id: panel, rotulo: "Último recuadro, a la derecha", rect: [367, 57, 80, 47] }
+    tocar:
+      bien: [broker, base, panel]
+      todas: true
+      porque:
+        esp32: "Ese es el nodo de microcontrolador: mide y publica, nada más."
+    exito: "El servidor recibe los mensajes por MQTT, los almacena y sirve el panel."
+    escalera:
+      - "Todo lo que está después del nodo lo hace el servidor."
+    solucion: "Broker, base de datos y panel: el ordenador de placa hace de servidor."
+
+  - id: empareje-supervivencia
+    tipo: pregunta
+    titulo: "Si el servidor se cae"
+    texto: "Las estaciones deben seguir midiendo aunque el servidor se cuelgue. Empareje cada medida con lo que resuelve."
+    libro: [58]
+    widget:
+      tipo: figura
+      figura: fig-49.18
+      zonas:
+        - { id: esp32, rotulo: "Primer recuadro, a la izquierda", rect: [4, 57, 80, 47] }
+    emparejar:
+      - ["Almacenamiento local", "Cubre los cortes de red y del servidor"]
+      - ["Marcas de tiempo propias", "Los datos enviados con retraso quedan en su sitio"]
+      - ["Watchdog y causa de reinicio", "Funcionar sin nadie delante"]
+    exito: "Así se conserva la propiedad del reparto: si el servidor se reinicia, las estaciones siguen midiendo."
+    pistas:
+      - { texto: "Lo que llega tarde necesita saber cuándo se midió." }
+    escalera:
+      - "Empiece por lo que guarda las medidas mientras no hay servidor."
+    solucion: "Almacenamiento para los cortes, marcas para el retraso, watchdog para funcionar sin nadie."
+
+  - id: prueba-servidor
+    tipo: pregunta
+    titulo: "La prueba, en red"
+    texto: "Tras reiniciar el servidor con las estaciones en marcha, faltan medidas del intervalo. ¿Qué está mal resuelto?"
+    libro: [58, 60]
+    widget:
+      tipo: figura
+      figura: fig-49.18
+      zonas:
+        - { id: base, rotulo: "Tercer recuadro", rect: [246, 57, 80, 47] }
+    opciones:
+      - texto: "El almacenamiento local de las estaciones"
+        bien: true
+        porque: "Es lo que guarda las medidas mientras el servidor no está; si faltan, no las guardó o no las reenvió."
+      - texto: "La frecuencia de medida"
+        porque: "Medir más o menos no explica que se pierdan medidas durante el corte."
+      - texto: "El panel"
+        porque: "El panel solo representa lo que hay; las medidas se perdieron antes."
+    escalera:
+      - "¿Qué cubre los cortes del servidor?"
+    solucion: "El almacenamiento local (y, si llegan mal fechadas, las marcas de tiempo)."
+
+  - id: ordene-validacion
+    tipo: pregunta
+    titulo: "Las tres validaciones"
+    texto: "Ordene la validación completa antes de dar el sistema por bueno."
+    libro: [61, "cap49#43"]
+    widget:
+      tipo: figura
+      figura: fig-19.4
+      zonas:
+        - { id: fases, rotulo: "Fila de recuadros de abajo", rect: [71, 208, 372, 36] }
+    ordenar:
+      - "Funcional, en la mesa"
+      - "De consumo, midiendo el perfil de un ciclo"
+      - "De campo, instalado durante semanas"
+    exito: "La de campo es la única que descubre los fallos reales."
+    pistas:
+      - { texto: "La que más tiempo lleva va al final." }
+    escalera:
+      - "Primero que funcione; luego cuánto gasta; luego, en su sitio."
+    solucion: "Funcional, consumo y campo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [54, 55, 57, 61]
+    ideas:
+      - { titulo: "El nodo.", texto: "Un microcontrolador con radio: despierta, mide, guarda y duerme." }
+      - { titulo: "La radio.", texto: "Transmitir cuesta más que medir: se envía por lotes." }
+      - { titulo: "La red.", texto: "Con varias estaciones, un ordenador de placa hace de servidor por MQTT." }
+      - { titulo: "Sin servidor.", texto: "Almacenamiento local y marcas de tiempo propias; validación de campo." }

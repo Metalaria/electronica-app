@@ -1,0 +1,354 @@
+# Lección 1.2 de la sección 21.5 «Práctica 5 — Filtro RC Paso-Bajo y Diagrama de Bode» (cap22; etiqueta interna
+# sec-22.5). Formato: contenido/lecciones11/GUIA.md. El RC del libro (1,6 kΩ y 100 nF, corte en 995 Hz) con 1 V de pico
+# a la entrada; el barrido de frecuencias es el del procedimiento (100 Hz a 20 kHz). Las 500 Hz, 1 kHz y 2 kHz de la
+# suma de las dos salidas son ilustrativas (la suma da la entrada a cualquier frecuencia).
+leccion: cap22/sec-22.5
+
+libro:
+  131: "enseña lo que la teoría no dice: dónde están las tolerancias, dónde la sonda influye"
+  133: "Con R = 1,6 kΩ y C = 100 nF"
+  134: 'f_("c") = ("1")/("2" π dot.op R dot.op C)'
+  135: "En el corte, la salida debe ser 0,707 veces la entrada (−3 dB) y estar desfasada −45°."
+  137: "Recorrer frecuencias en progresión geométrica: 100, 200, 500, 1 k, 2 k, 5 k, 10 k, 20 k"
+  138: "con espaciado lineal, la mitad de los puntos caen en una década y se pierde la forma"
+  140: "Suele salir un 5 o 10 % desviado por las tolerancias, y recalculando con los valores medidos coincide."
+  141: "La pendiente asintótica de −20 dB/década"
+  142: "la fase cambia mucho antes que la amplitud, y ya vale −6° una década por debajo del corte"
+  144: "No comprobar la amplitud de entrada en cada frecuencia."
+  145: "Medir con la sonda ×1, cuya capacidad se suma al condensador"
+  146: "Saturar el generador o el osciloscopio"
+  149: "Repetir la medida con la salida en la resistencia en lugar del condensador: sale un paso alto con el mismo corte"
+  150: "la suma de ambas salidas es la entrada, exactamente, a cualquier frecuencia"
+  153: "El DDS del 2C53T no ofrece barrido entre sus funciones, y con él la práctica se hace punto a punto."
+  "cap22#370": "Se pide: la ganancia en decibelios a 500 Hz y a 4 kHz"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia del generador", unidad: Hz, valor: 100 }
+    R_f: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1600 }
+    C_f: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+  calculos:
+    w_f: { expr: "2*pi*f_f", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    x_c: { expr: "w_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{C}", nombre: "amplitud en C", unidad: V }
+    ph_c: { expr: "-atan2(x_c, 1)*180/pi", sim: "φ_{C}", nombre: "fase en C", unidad: "°" }
+    A_r: { expr: "V_p*x_c/sqrt(1 + x_c^2)", sim: "V_{R}", nombre: "amplitud en R", unidad: V }
+    ph_r: { expr: "90 - atan2(x_c, 1)*180/pi", sim: "φ_{R}", nombre: "fase en R", unidad: "°" }
+    G_db: { expr: "20*log10(A_c/V_p)", sim: "G", nombre: "ganancia", unidad: dB, cifras: 2 }
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    rel: { expr: "A_c/V_p", sim: "V_{C}/V_{p}", nombre: "relación de amplitudes", unidad: "" }
+
+tarjetas:
+  - id: explore-barrido
+    tipo: explorar
+    titulo: "Punto a punto"
+    texto: "Recorra las frecuencias del procedimiento. Cada una da un punto: la relación de amplitudes, en decibelios."
+    libro: [131, 133, 137]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: G_db, rotulo: "Ganancia" }
+      datos:
+        - { valor: ph_c, rotulo: "Fase: {{ph_c}}" }
+      mide: { vc_db: G_db, vc_fase: ph_c }
+      grafica:
+        x: { id: nu, min: 50, max: 50000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -35, max: 3, unidad: dB, rotulo: "V_{C}/V_{p}" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v_{C}", mide: vc_db }
+        marcas:
+          - { x: "f_f", y: "G_db", rotulo: "su punto" }
+      mandos:
+        - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000, 20000], rotulo: "Generador" }
+    requiere: { mover: [f_f] }
+
+  - id: formula-corte
+    tipo: formula
+    titulo: "La frecuencia de corte"
+    texto: "Con 1,6 kΩ y 100 nF, el corte cae en 995 Hz."
+    libro: [133, 134]
+    fijar: { R_f: 1600, C_f: 100e-9 }
+    ec: 134
+    sustitucion: "1 / (2π · {{R_f}} · {{C_f}}) = {{f_c}}"
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_db: G_db }
+      grafica:
+        x: { id: nu, min: 50, max: 50000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -35, max: 3, unidad: dB, rotulo: "V_{C}/V_{p}" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v_{C}", mide: vc_db }
+        marcas:
+          - { x: "f_c", y: "-3.01", rotulo: "f_{c}" }
+    comprobar:
+      - { f_c: 995 }
+
+  - id: prediga-corte
+    tipo: predecir
+    titulo: "Prediga en el corte"
+    texto: "El generador está justo en la frecuencia de corte. ¿Cómo sale la tensión del condensador?"
+    libro: [135]
+    fijar: { f_f: 994.72, R_f: 1600, C_f: 100e-9, V_p: 1 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: rel, rotulo: "Salida / entrada" }
+      datos:
+        - { valor: ph_c, rotulo: "Fase: {{ph_c}}" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
+      ocultar: true
+    opciones:
+      - texto: "0,707 veces la entrada y retrasada 45°"
+        bien: true
+        porque: "En el corte R y X_{C} valen lo mismo: −3 dB y −45°, la mitad del camino hacia los −90°."
+      - texto: "La mitad de la entrada y retrasada 90°"
+        porque: "−90° es el límite muy por encima del corte. En el corte, la mitad del camino: −45°."
+      - texto: "Igual que la entrada, en fase"
+        porque: "Eso es muy por debajo del corte. En el corte ya ha caído 3 dB."
+    escalera:
+      - "En el corte, ωRC = 1: la resistencia y la reactancia son iguales."
+    solucion: "0,707 veces la entrada (−3 dB) y −45°."
+    comprobar:
+      - { rel: 0.707, ph_c: -45 }
+
+  - id: dibuje-bode
+    tipo: dibujar
+    titulo: "Dibuje el Bode"
+    texto: "Con el corte en 995 Hz, dibuje la ganancia en decibelios de 100 Hz a 100 kHz."
+    libro: [134, 141]
+    fijar: { R_f: 1600, C_f: 100e-9 }
+    dibujar:
+      x: { id: nu, min: 100, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "G" }
+      curva: "-10*log10(1 + (nu/f_c)^2)"
+      puntos: 13
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Ganancia del paso bajo"
+    exito: "Plana por debajo del corte, −3 dB en 995 Hz y luego −20 dB por década: un filtro de primer orden."
+    escalera:
+      - "Por debajo del corte, casi 0 dB; en el corte, −3 dB."
+      - "Muy por encima, cae 20 dB por cada década."
+    solucion: "Unos 0 dB hasta cerca de 1 kHz, −3 dB en el corte y −20 dB por década: unos −40 dB a 100 kHz."
+    comprobar:
+      - { f_c: 995 }
+
+  - id: geometrica
+    tipo: pregunta
+    titulo: "¿Por qué 100, 200, 500…?"
+    texto: "El procedimiento recorre las frecuencias en progresión geométrica, no de 100 en 100 Hz. ¿Por qué?"
+    libro: [137, 138]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: G_db, rotulo: "Ganancia" }
+      mide: { vc_db: G_db }
+      grafica:
+        x: { id: nu, min: 50, max: 50000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -35, max: 3, unidad: dB, rotulo: "V_{C}/V_{p}" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v_{C}", mide: vc_db }
+    opciones:
+      - texto: "Con espaciado lineal, la mitad de los puntos caen en una década"
+        bien: true
+        porque: "El Bode se dibuja en escala logarítmica: tres o cuatro puntos por década reparten bien la curva."
+      - texto: "Porque el generador solo admite esos valores"
+        porque: "El generador da cualquier frecuencia. La progresión es para repartir los puntos en la escala logarítmica."
+      - texto: "Para que la amplitud de entrada no cambie"
+        porque: "La amplitud hay que comprobarla en cada frecuencia, se elija como se elija."
+    escalera:
+      - "¿En qué escala de frecuencia se representa el Bode?"
+    solucion: "Con espaciado lineal, la mitad de los puntos caen en una década y se pierde la forma."
+
+  - id: estime-4k
+    tipo: pregunta
+    titulo: "La ganancia a 4 kHz"
+    texto: "El filtro de 1,6 kΩ y 100 nF a 4 kHz. ¿Cuántos decibelios da?"
+    libro: [134, "cap22#370"]
+    fijar: { R_f: 1600, C_f: 100e-9 }
+    estimar:
+      objetivo: "-10*log10(1 + (4000/f_c)^2)"
+      unidad: dB
+      min: -30
+      max: 0
+      paso: 0.05
+      inicio: -3
+      tol: 0.03
+      rotulo: "Ganancia a 4 kHz"
+    exito: "4 kHz es unas 4,02 veces el corte: −10·log(1 + 16,2) ≈ −12,35 dB, ya cerca de la asíntota."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: -12 }, texto: "Se ha quedado corto: a cuatro veces el corte ya cae bastante más que 3 dB." }
+      - { texto: "Se ha pasado: la asíntota de −20 dB/década da algo menos de 12 dB a cuatro veces el corte." }
+    escalera:
+      - "Calcule f/f_{c} con el corte de 995 Hz."
+      - "G = −10·log(1 + (f/f_{c})²)."
+    solucion: "f/f_{c} ≈ 4,02 y G = −10·log(1 + 16,2) ≈ −12,35 dB."
+    comprobar:
+      - { f_c: 995 }
+
+  - id: fase-antes
+    tipo: sorpresa
+    titulo: "La fase se adelanta a la amplitud"
+    texto: "Recorra las frecuencias y mire la fase. Compare con lo poco que ha caído la amplitud."
+    libro: [142]
+    inicio: { f_f: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: ph_c, rotulo: "Fase de la salida" }
+      datos:
+        - { valor: G_db, rotulo: "Ganancia: {{G_db}}" }
+      mide: { vc_fase: ph_c, vc_db: G_db }
+      grafica:
+        x: { id: nu, min: 50, max: 50000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -95, max: 5, unidad: "°", rotulo: "φ_{C}" }
+        curvas:
+          - { expr: "-atan2(2*pi*nu*R_f*C_f, 1)*180/pi", color: azul, rotulo: "fase", mide: vc_fase }
+        marcas:
+          - { x: "f_f", y: "ph_c", rotulo: "su punto" }
+      mandos:
+        - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000, 20000], rotulo: "Generador" }
+    requiere: { mover: [f_f] }
+    comprobar:
+      - { con: { f_f: 100 }, ph_c: -6, tol: 0.06 }
+
+  - id: suma-salidas
+    tipo: sorpresa
+    titulo: "Las dos salidas suman la entrada"
+    texto: "La salida en la resistencia es un paso alto con el mismo corte. Sume las dos y compare con la entrada."
+    libro: [149, 150]
+    inicio: { f_f: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: A_r, rotulo: "Amplitud en R" }
+      datos:
+        - { valor: A_c, rotulo: "En C: {{A_c}}" }
+      mide: { vc_amp: A_c, vr_amp: A_r }
+      grafica:
+        x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "A_r*sin(w_f*t + ph_r*pi/180)", color: azul, rotulo: "v_{R}", mide: vr }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180) + A_r*sin(w_f*t + ph_r*pi/180)", color: tinta, rotulo: "suma", discontinua: true }
+      mandos:
+        - { valor: f_f, lista: [500, 1000, 2000], rotulo: "Generador" }
+    requiere: { mover: [f_f] }
+
+  - id: por-que-suma
+    tipo: porque
+    titulo: "¿Por qué suman exactamente la entrada?"
+    texto: "Cada salida está atenuada y desfasada, y sin embargo su suma es la entrada a cualquier frecuencia. ¿Por qué?"
+    libro: [150]
+    fijar: { f_f: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: A_r, rotulo: "Amplitud en R" }
+      datos:
+        - { valor: A_c, rotulo: "En C: {{A_c}}" }
+      mide: { vc_amp: A_c, vr_amp: A_r }
+    opciones:
+      - texto: "Sus fasores son perpendiculares y su suma vectorial es la entrada"
+        bien: true
+        porque: "v_{R} y v_{C} van a 90° entre sí. Las amplitudes no se suman como números, pero los fasores sí dan la entrada."
+      - texto: "Porque sus amplitudes suman 1 V"
+        porque: "Las amplitudes suman más de 1 V. Lo que da la entrada es la suma de los fasores, no la de los números."
+      - texto: "Porque la corriente es la misma en las dos"
+        porque: "Es la misma, pero eso no basta: lo que cierra la cuenta es la ley de tensiones, con fasores a 90°."
+    escalera:
+      - "¿Qué desfase hay entre la tensión de la resistencia y la del condensador?"
+    solucion: "Los fasores de v_{R} y v_{C} son perpendiculares: su suma vectorial es la entrada, a cualquier frecuencia."
+
+  - id: errores
+    tipo: pregunta
+    titulo: "El error que arruina la medida"
+    texto: "Se repite la práctica con un condensador de 1 nF. ¿Qué error estropea ahora la medida?"
+    libro: [144, 145, 146]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Medir con la sonda en ×1: su capacidad se suma al condensador"
+        bien: true
+        porque: "Con 100 nF la capacidad de la sonda es irrelevante; con 1 nF, no: desplaza el corte."
+      - texto: "Confundir amplitud de pico con eficaz"
+        porque: "En una relación de amplitudes ambas se cancelan: no estropea los decibelios."
+      - texto: "Recorrer las frecuencias en progresión geométrica"
+        porque: "Eso es lo correcto: tres o cuatro puntos por década."
+    escalera:
+      - "¿Qué se pone en paralelo con el condensador al medir?"
+    solucion: "La sonda en ×1: su capacidad se suma al condensador, y frente a 1 nF ya no es despreciable."
+
+  - id: ajuste-corte
+    tipo: ajuste
+    titulo: "Busque el corte"
+    texto: "Mueva el generador hasta que la salida caiga 3 dB."
+    libro: [135, 140]
+    fijar: { R_f: 1600, C_f: 100e-9, V_p: 1 }
+    inicio: { f_f: 200 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: G_db, rotulo: "Ganancia" }
+      mide: { vc_db: G_db, vc_amp: A_c }
+      mandos:
+        - { valor: f_f, min: 200, max: 5000, paso: 5, rotulo: "Generador" }
+    ajuste:
+      valor: G_db
+      objetivo: -3.01
+      tol: 0.05
+      rotulo: "Ganancia"
+      escala: { min: -15, max: 0 }
+      bajo: "Ha caído demasiado: baje la frecuencia."
+      alto: "Todavía no cae 3 dB: suba la frecuencia."
+      dentro: "En el corte: compárelo con los 995 Hz calculados."
+
+  - id: banco-bode
+    tipo: banco
+    titulo: "Levante el Bode en el banco"
+    texto: "Con el DDS del 2C53T, punto a punto. Busque la frecuencia en que la salida cae 3 dB."
+    libro: [140, 153]
+    fijar: { R_f: 1600, C_f: 100e-9 }
+    banco:
+      piezas: ["Generador DDS del 2C53T", "R = 1,6 kΩ y C = 100 nF", "Osciloscopio de dos canales"]
+      medir: "La frecuencia de corte a −3 dB."
+      esperado: f_c
+      unidad: Hz
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Sale alto: mida R y C y recalcule. Compruebe también la amplitud de entrada en cada frecuencia." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Sale bajo: ¿mide con la sonda en ×1? Su capacidad se suma a C. Recalcule con los valores medidos." }
+        - { texto: "Dentro del 5 o 10 % de las tolerancias: recalcule con los valores medidos y coincidirá." }
+      ficha: { n: 29, titulo: "Práctica 5 · Filtro RC paso bajo y diagrama de Bode" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [135, 138, 141, 142]
+    ideas:
+      - { titulo: "El corte.", texto: "En f_{c} = 1/(2πRC), 0,707 veces la entrada (−3 dB) y −45°." }
+      - { titulo: "Geométrica.", texto: "Tres o cuatro puntos por década, no espaciados linealmente." }
+      - { titulo: "Primer orden.", texto: "−20 dB por década por encima del corte; la fase cambia mucho antes que la amplitud." }
+      - { titulo: "Dos salidas.", texto: "En C, paso bajo; en R, paso alto con el mismo corte. Sus fasores suman la entrada." }

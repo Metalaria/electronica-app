@@ -1,0 +1,200 @@
+# Lección 1.2 de la sección K.3 «volatile, const y el Modelo de Memoria» (apK). Formato: contenido/lecciones11/GUIA.md
+# (§11). Figura K.1a (svg_vista 325,42 × 187,09): secciones en la Flash y en la RAM. La comprobación en simavr de
+# ticks_lee() (46 valores imposibles de 20 000 sin ATOMIC_BLOCK) es la del bloque 35 (Complementos/codigo/apK/atomico).
+leccion: apK/sec-K.3
+
+libro:
+  25: "las variables con valor inicial en .data, que ocupa RAM y cuyo valor inicial se copia desde la Flash antes de main()"
+  26: "Una tabla de un seno de 256 valores de 16 bits son 512 bytes, la cuarta parte de los 2 KB del ATmega328P"
+  28: "Es imprescindible en tres sitios"
+  30: "No hace atómico el acceso."
+  33: "ATOMIC_BLOCK(ATOMIC_RESTORESTATE)"
+  34: "guarda SREG, deshabilita las interrupciones y, al salir del bloque, devuelve SREG como estaba"
+  35: "20 000 lecturas directas dan 46 valores que nunca existieron, uno de cada 435"
+  "apK#69": "en el AVR las constantes también se copian a la RAM salvo que se declaren en la Flash"
+
+modelo:
+  valores:
+    n_tab: { sim: "n", nombre: "valores de la tabla", unidad: "", valor: 256 }
+    b_val: { sim: "bytes", nombre: "bytes por valor", unidad: "B", valor: 2 }
+    ram_avr: { sim: "RAM", nombre: "RAM del ATmega328P", unidad: "B", valor: 2048 }
+  calculos:
+    tab: { expr: "n_tab*b_val", sim: "tabla", nombre: "tamaño de la tabla", unidad: "B" }
+    frac_ram: { expr: "tab/ram_avr", sim: "fracción", nombre: "fracción de la RAM", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-secciones
+    tipo: explorar
+    titulo: "Dónde acaba cada cosa"
+    texto: "El enlazador reparte el programa en secciones. Toque las de la Flash y las de la RAM."
+    libro: [25, "apK#69"]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50], texto: ".text: el código, en la Flash." }
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26], texto: ".rodata: las constantes; en el AVR también se copian a la RAM." }
+        - { id: valores, rotulo: "Flash, abajo", rect: [9, 112, 62, 26], texto: "Valores de .data: se copian a la RAM antes de main()." }
+        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26], texto: ".data: las variables con valor inicial." }
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28], texto: "La pila, al final de la RAM." }
+    requiere: { mover: [rodata, data] }
+
+  - id: toque-tabla-avr
+    tipo: tocar
+    titulo: "Una tabla const en el AVR"
+    texto: "En el AVR declara const una tabla, sin __flash ni PROGMEM. Toque dónde la lee el programa al ejecutarse."
+    libro: [25, "apK#69"]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26] }
+        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26] }
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28] }
+    tocar:
+      bien: [data]
+      porque:
+        rodata: "Así es en un Cortex-M; en el AVR, Harvard, las lecturas de datos no llegan a la Flash."
+        pila: "La pila es para las locales: una tabla global no va ahí."
+    exito: "Se copia a la RAM con .data: ocupa RAM aunque sea constante."
+    escalera: ["El AVR es Harvard: ¿llegan sus instrucciones de datos a la Flash?"]
+    solucion: "En la RAM, con .data."
+
+  - id: estime-seno
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una tabla de seno"
+    texto: "Una tabla de un seno de 256 valores de 16 bits, copiada a la RAM. ¿Qué parte de los 2 KB del ATmega328P se come?"
+    libro: [26]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26], texto: "La tabla, copiada a .data." }
+    estimar:
+      objetivo: "frac_ram"
+      unidad: ""
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.05
+      rotulo: "Fracción de la RAM"
+    exito: "512 bytes: la cuarta parte de la RAM, por una tabla que nunca cambia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.25 }, texto: "Se ha pasado: 256 valores de 2 bytes son 512 bytes." }
+      - { texto: "Se ha quedado corto: cada valor de 16 bits ocupa 2 bytes." }
+    escalera: ["256 × 2 bytes, frente a 2048."]
+    solucion: "512 / 2048 = 0,25: la cuarta parte."
+    comprobar:
+      - { tab: 512, frac_ram: 0.25, ram_avr: 2048, b_val: 2 }
+
+  - id: pregunta-flash
+    tipo: pregunta
+    titulo: "Dejarla en la Flash"
+    texto: "Declara la tabla en el espacio __flash del avr-gcc. ¿Qué cambia al leerla?"
+    libro: [26]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26], texto: "Lo declarado __flash se queda aquí." }
+    opciones:
+      - { texto: "Se lee con lpm, un ciclo más lenta que de la RAM", bien: true, porque: "A cambio no ocupa RAM: es la memoria de programa de la sección 39.16." }
+      - { texto: "Nada: se lee igual", porque: "La Flash del AVR se lee con lpm, una instrucción aparte." }
+      - { texto: "Ya no se puede leer", porque: "Se lee, con pgm_read_word() o directamente con __flash." }
+    escalera: ["¿Qué instrucción lee la memoria de programa?"]
+    solucion: "lpm: un ciclo más que de la RAM, sin gastar RAM."
+
+  - id: pregunta-donde-volatile
+    tipo: pregunta
+    titulo: "Dónde hace falta volatile"
+    texto: "volatile es imprescindible en tres sitios. ¿Cuál de estos no es uno de ellos?"
+    libro: [28]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28], texto: "Las variables locales viven en la pila o en registros." }
+    opciones:
+      - { texto: "Una variable local que solo usa su función", bien: true, porque: "Nadie la cambia fuera de lo que ve el compilador: no lo necesita." }
+      - { texto: "Un registro de un periférico", porque: "Es uno de los tres: leerlo o escribirlo tiene efectos." }
+      - { texto: "Una variable que cambia una interrupción y lee el programa", porque: "Es uno de los tres: el compilador no ve la interrupción." }
+      - { texto: "La variable que consulta un bucle de espera", porque: "Es uno de los tres: sin él, el bucle no termina." }
+    escalera: ["¿Quién más que la propia función puede cambiar una local?"]
+    solucion: "La variable local: los tres sitios son registros, variables de interrupciones y esperas."
+
+  - id: prediga-atomico
+    tipo: predecir
+    titulo: "volatile no basta"
+    texto: "Una interrupción incrementa volatile uint16_t ticks y el programa la lee directamente 20 000 veces. ¿Qué lee?"
+    libro: [30, 35]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26], texto: "ticks: dos bytes en la RAM." }
+    opciones:
+      - { texto: "Algunos valores que nunca existieron: 46, uno de cada 435", bien: true, porque: "Coge el byte bajo antes de que pase de 255 a 0 y el alto después: volatile no hace atómico el acceso." }
+      - { texto: "Siempre valores correctos: es volatile", porque: "volatile obliga a leer de memoria, pero en dos instrucciones." }
+      - { texto: "Siempre el mismo valor", porque: "Con volatile sí ve los cambios; el problema es leerlos a medias." }
+    escalera: ["¿Cuántas instrucciones son leer un uint16_t en el AVR?"]
+    solucion: "46 valores imposibles de 20 000: hace falta ATOMIC_BLOCK."
+
+  - id: ordene-atomic
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "ATOMIC_BLOCK por dentro"
+    texto: "Ponga en orden lo que hace ATOMIC_BLOCK(ATOMIC_RESTORESTATE) alrededor de la copia."
+    libro: [33, 34]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          uint16_t ticks_lee(void)
+          {
+              uint16_t copia;
+              ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {   /* cli ... restore SREG */
+                  copia = ticks;                    /* two bytes, one copy  */
+              }
+              return copia;
+          }
+      resaltar: [4, 5, 6]
+    ordenar:
+      - "Guardar SREG."
+      - "Deshabilitar las interrupciones."
+      - "Copiar ticks."
+      - "Devolver SREG como estaba."
+    exito: "Con ticks_lee(), 20 000 lecturas nunca dan un valor menor que el anterior. Y no habilita las interrupciones si ya estaban deshabilitadas."
+    pistas:
+      - { texto: "Antes de tocar las interrupciones, se apunta cómo estaban." }
+    escalera: ["Restaurar SREG es lo último."]
+    solucion: "Guardar SREG, cli, copiar y devolver SREG."
+
+  - id: porque-orden
+    tipo: porque
+    titulo: "Un ciclo imposible"
+    texto: "PORTB = 1; cinematica_inversa(…); PORTB = 0; y el pin mide un ciclo. ¿Por qué?"
+    libro: [30]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50], texto: "El código, en el orden que elige el compilador." }
+    opciones:
+      - { texto: "El compilador movió el cálculo después de la segunda escritura", bien: true, porque: "volatile no ordena los accesos que no lo son. Se arregla guardando el resultado en una variable volatile antes de bajar el pin." }
+      - { texto: "Porque la cinemática es muy rápida", porque: "No tarda un ciclo: es que se ejecuta fuera del pulso." }
+      - { texto: "Porque PORTB no es volatile", porque: "Lo es: por eso las dos escrituras quedan; lo que se mueve es el cálculo." }
+    escalera: ["¿Obliga volatile a mantener en su sitio un cálculo cuyo resultado no se usa entre las escrituras?"]
+    solucion: "El cálculo se movió tras la segunda escritura: volatile no ordena lo que no es volatile."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [25, 26, 28, 30]
+    ideas:
+      - { titulo: "Secciones.", texto: "Código en .text; lo inicializado, en .data, copiado desde la Flash." }
+      - { titulo: "AVR y const.", texto: "Las constantes van a la RAM salvo con __flash: lpm, un ciclo más." }
+      - { titulo: "volatile.", texto: "Cada acceso se hace de verdad, pero no es atómico ni ordena lo demás." }
+      - { titulo: "ATOMIC_BLOCK.", texto: "Guarda SREG, deshabilita, copia y restaura." }

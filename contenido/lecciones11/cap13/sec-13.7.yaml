@@ -1,0 +1,230 @@
+# Lección 1.2 de la sección 13.7 «La Transición sin Plomo y sus Consecuencias» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# La gráfica es un perfil de refusión de EJEMPLO (los tiempos son ilustrativos: rampa hasta 150 °C en 60 s, remojo
+# hasta 200 °C a los 150 s, pico a los 180 s mantenido hasta los 200 s y enfriamiento en 100 s). El pico sin plomo
+# es el de la sección 13.9 (unos 240 °C con SAC305, cap13#240); con plomo, el mismo perfil 35 °C más bajo (el libro:
+# «sube unos 30 a 40 °C»). El límite del componente es el de 260 °C (sección 13.11, cap13#296).
+leccion: cap13/sec-13.7
+
+libro:
+  165: "funden alrededor de 217 °C"
+  166: "Treinta y cuatro grados no parecen mucho."
+  167: "El perfil de refusión sube unos 30 a 40 °C"
+  168: "La ventana de proceso se estrecha."
+  169: "La junta es más rígida y menos dúctil."
+  170: "El mojado es peor"
+  172: "grietas en las juntas de encapsulados grandes"
+  173: "tienen coeficientes de dilatación distintos"
+  174: "era más lento porque el material admitía más deformación plástica"
+  175: "no fue un fallo de la soldadura sin plomo en sí"
+  177: "con resultados temporales"
+  180: "No volviendo atrás —la normativa siguió— sino cambiando el diseño"
+  186: "mezclarlas produce juntas de composición intermedia"
+  193: "el daño se acumula a lo largo de cientos o miles de ciclos"
+  "cap13#240": "unos 240 °C con SAC305"
+  "cap13#296": "260 °C durante 10 s como máximo en la patilla"
+
+modelo:
+  valores:
+    T_pk: { sim: "T_{pico}", nombre: "pico del perfil sin plomo", unidad: "°C", valor: 240 }
+    s_p: { tipo: interruptor, nombre: "aleación sin plomo", valor: 1 }
+    L_c: { sim: "T_{máx}", nombre: "temperatura que tolera la patilla", unidad: "°C", valor: 260 }
+  calculos:
+    d_p: { expr: "35*(1 - s_p)", sim: "Δ", nombre: "descenso del perfil con plomo", unidad: "°C" }
+    T_pico: { expr: "T_pk - d_p", sim: "T_{pico}", nombre: "pico del perfil", unidad: "°C" }
+    M_v: { expr: "L_c - T_pico", sim: "margen", nombre: "margen hasta el límite del componente", unidad: "°C" }
+
+tarjetas:
+  - id: explore-perfil
+    tipo: explorar
+    titulo: "El perfil sube"
+    texto: "Cambie entre con plomo y sin plomo: mire cuánto queda hasta los 260 °C que tolera la patilla."
+    nota: "Perfil de ejemplo: los tiempos son ilustrativos."
+    libro: [167, "cap13#240", "cap13#296"]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+        - { expr: "L_c", color: tinta, rotulo: "límite del componente", discontinua: true }
+      lectura: { valor: M_v, rotulo: "Margen hasta 260 °C" }
+      datos:
+        - { valor: T_pico, rotulo: "Pico: {{T_pico}}" }
+      mandos:
+        - { valor: s_p, tipo: interruptor, rotulo: "Sin plomo" }
+    requiere: { mover: [s_p] }
+
+  - id: prediga-ventana
+    tipo: predecir
+    titulo: "Treinta y cuatro grados"
+    texto: "Sin plomo, el perfil sube unos 30 a 40 °C. ¿Qué le pasa a la ventana entre «suelda bien» y «daña el componente»?"
+    libro: [165, 166, 167, 168]
+    fijar: { s_p: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+        - { expr: "L_c", color: tinta, rotulo: "límite del componente", discontinua: true }
+      lectura: { valor: M_v, rotulo: "Margen hasta 260 °C" }
+      ocultar: true
+    opciones:
+      - texto: "Se estrecha: controlar el perfil pasa a ser crítico"
+        bien: true
+        porque: "El límite del componente no se mueve y el perfil sube: el margen se reduce."
+      - texto: "No cambia: el componente aguanta igual"
+        porque: "El componente aguanta lo mismo, pero el perfil sube 30 a 40 °C hacia ese límite."
+      - texto: "Se ensancha: la aleación aguanta más"
+        porque: "Que funda más alta no da margen: lo quita."
+    escalera:
+      - "¿Se mueve el límite del componente al cambiar de aleación?"
+    solucion: "Se estrecha."
+    comprobar:
+      - { M_v: 20 }
+      - { con: { s_p: 0 }, M_v: 55 }
+
+  - id: consecuencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que trajo el cambio"
+    texto: "Una cada cambio físico con su consecuencia."
+    libro: [167, 168, 169, 170]
+    emparejar:
+      - ["El perfil sube 30 a 40 °C", "Piezas trabajando cerca de su límite"]
+      - ["La ventana se estrecha", "El control del perfil pasa a crítico"]
+      - ["Junta más rígida y menos dúctil", "Acumula fatiga con el ciclado"]
+      - ["Peor mojado", "Más flux y peor aspecto"]
+    exito: "Un cambio normativo se convirtió en un problema térmico y mecánico."
+    pistas:
+      - { texto: "La fatiga viene de la rigidez: la junta ya no absorbe las deformaciones." }
+    escalera:
+      - "Empiece por la temperatura: ¿qué le pasa a cada componente durante la soldadura?"
+    solucion: "Perfil: piezas al límite; ventana: control crítico; rigidez: fatiga; mojado: más flux."
+
+  - id: mecanismo
+    tipo: pregunta
+    titulo: "La oleada de fallos"
+    texto: "Tras meses de encender y apagar, se agrietan las juntas de procesadores gráficos. ¿Cuál es el mecanismo?"
+    libro: [172, 173]
+    fijar: { s_p: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+    opciones:
+      - texto: "Silicio, encapsulado y placa dilatan distinto: cada ciclo deforma la junta"
+        bien: true
+        porque: "La junta acumula deformación hasta agrietarse; la sin plomo, más rígida, lo admite peor."
+      - texto: "El estaño se evapora con el uso"
+        porque: "No se evapora: se fatiga por el ciclado térmico."
+      - texto: "Un defecto de fábrica de los chips"
+        porque: "Los chips estaban bien: falló la junta por fatiga."
+    escalera:
+      - "¿Qué ocurre en cada encendido y apagado con materiales de dilatación distinta?"
+    solucion: "Dilatación distinta: cada ciclo deforma la junta hasta agrietarla."
+
+  - id: por-que-culpa
+    tipo: porque
+    titulo: "¿Fue culpa del sin plomo?"
+    texto: "Las juntas sin plomo se agrietaban. ¿Por qué el libro dice que no fue un fallo de la soldadura en sí?"
+    libro: [174, 175]
+    fijar: { s_p: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+    opciones:
+      - texto: "Los diseños estaban hechos para el material anterior y no se revisaron"
+        bien: true
+        porque: "El mecanismo ya existía con plomo, más lento; diseños al límite pasaron a fallar dentro de su vida."
+      - texto: "Porque los fallos eran de los condensadores"
+        porque: "Fallaban las juntas de los encapsulados grandes."
+      - texto: "Porque el sin plomo es más resistente"
+        porque: "Es más rígido y menos dúctil: acumula fatiga."
+    escalera:
+      - "¿Existía la fatiga con estaño-plomo?"
+    solucion: "Diseños dimensionados para la aleación anterior."
+
+  - id: horno-casero
+    tipo: pregunta
+    titulo: "Resoldar en el horno"
+    texto: "Calentar la placa para «resoldar» las juntas agrietadas funciona unos meses. ¿Por qué vuelve a fallar?"
+    libro: [177]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+    opciones:
+      - texto: "No corrige la causa: el ciclado sigue y la fatiga se reanuda"
+        bien: true
+        porque: "Los coeficientes de dilatación siguen siendo los mismos. Reparar sin entender la causa solo aplaza el fallo."
+      - texto: "Porque el horno no llega a fundir"
+        porque: "Sí funde: por eso funciona al principio."
+      - texto: "Porque añade plomo a la junta"
+        porque: "No añade nada: vuelve a unir la grieta y nada más."
+    escalera:
+      - "¿Qué ha cambiado en el equipo después de resoldar?"
+    solucion: "No corrige la causa: la fatiga continúa."
+
+  - id: como-se-resolvio
+    tipo: pregunta
+    titulo: "Cómo se resolvió de verdad"
+    texto: "La normativa siguió. ¿Qué resolvió los fallos?"
+    libro: [180]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+    opciones:
+      - texto: "Cambiar el diseño: menos ciclado, rellenos bajo los encapsulados, aleaciones más dúctiles y ensayos de ciclado"
+        bien: true
+        porque: "No se volvió atrás: se diseñó para el material nuevo."
+      - texto: "Volver al estaño-plomo"
+        porque: "La normativa siguió; no se volvió atrás."
+      - texto: "Soldar con más temperatura"
+        porque: "Más temperatura no corrige la fatiga y estrecha aún más la ventana."
+    escalera:
+      - "Si el material no cambia, ¿qué queda por cambiar?"
+    solucion: "Cambiar el diseño."
+
+  - id: fatiga-banco
+    tipo: pregunta
+    titulo: "Doblar la placa en el banco"
+    texto: "Dobla unas cuantas veces una placa con juntas sanas y no se agrietan. ¿Qué demuestra?"
+    libro: [193]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
+      curvas:
+        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
+    opciones:
+      - texto: "Nada sobre la fatiga: el daño se acumula en cientos o miles de ciclos"
+        bien: true
+        porque: "Se ve en aparatos con años de uso: el aro oscuro de la junta agrietada."
+      - texto: "Que la sin plomo no sufre fatiga"
+        porque: "La sufre, y más que la de plomo; solo que no en cinco minutos."
+      - texto: "Que las juntas durarán siempre"
+        porque: "Unas pocas flexiones no son miles de ciclos térmicos."
+    escalera:
+      - "¿Cuántos ciclos hacen falta para que la fatiga se note?"
+    solucion: "Nada: la fatiga tarda cientos o miles de ciclos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [167, 169, 175, 186]
+    ideas:
+      - { titulo: "Más alto, menos margen.", texto: "El perfil sube 30 a 40 °C hacia el mismo límite del componente." }
+      - { titulo: "Fatiga.", texto: "La junta sin plomo, más rígida, se agrieta antes con el ciclado térmico." }
+      - { titulo: "La lección.", texto: "Fallaron diseños hechos para el material anterior; se resolvió rediseñando." }
+      - { titulo: "Hoy.", texto: "Conviven las dos aleaciones: no mezclarlas y juzgar cada una por su aspecto normal." }

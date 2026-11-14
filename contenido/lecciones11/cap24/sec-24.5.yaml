@@ -1,0 +1,282 @@
+# Lección 1.2 de la sección 23.5 «Potencia en Corriente Alterna» (cap24). Formato: contenido/lecciones11/GUIA.md.
+# La carga es la del libro (bloques 129-133: 230 V, 10 A, FP = 0,8) y el ejercicio 23.3 (cap24#329: 120 V, 4 A, 0,7).
+# La forma de la corriente en pulsos de la tarjeta «por qué» es ilustrativa (cos·|cos|¹¹), no un dato del libro.
+leccion: cap24/sec-24.5
+
+libro:
+  119: "El producto V·I, lo que el cableado debe soportar"
+  120: "La relación entre ellas es pitagórica, S² = P² + Q²"
+  124: "energía que la fuente entrega durante medio ciclo y recupera durante el otro"
+  126: "La potencia instantánea pulsa al doble de la frecuencia de red"
+  128: '"FP" = (P)/(S) = op("cos") φ'
+  129: "Una carga de 230 V que toma 10 A con un factor de potencia de 0,8"
+  133: "El usuario aprovecha 1 840 W, pero el cableado, el transformador y la protección deben soportar 10 A"
+  139: 'C = (Q)/("2" π dot.op f dot.op V^("2"))'
+  140: "Con los 1 380 VAr del ejemplo, a 50 Hz y 230 V: 83 µF"
+  141: "no se ha ahorrado energía, porque la reactiva no consumía"
+  143: "su cos φ es casi 1, y sin embargo su factor de potencia es malísimo, del orden de 0,6"
+  147: "un condensador no corrige el factor de potencia de una fuente conmutada, porque el problema no es el desfase sino los armónicos"
+  149: "el desfase entre ambas da el cos φ, y la forma de la corriente dice si hay armónicos"
+  "cap24#329": "Una carga toma 120 V y 4 A con un factor de potencia de 0,7"
+
+modelo:
+  valores:
+    V_e: { sim: "V", nombre: "tensión eficaz", unidad: V, valor: 230 }
+    I_e: { sim: "I", nombre: "corriente eficaz", unidad: A, valor: 10 }
+    f_p: { sim: "FP", nombre: "factor de potencia", unidad: "", valor: 0.8 }
+    f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+  calculos:
+    w_r: { expr: "2*pi*f_r", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    phr: { expr: "atan2(sqrt(1 - f_p^2), f_p)", sim: "φ", nombre: "desfase en radianes", unidad: "rad" }
+    phd: { expr: "phr*180/pi", sim: "φ", nombre: "desfase", unidad: "°" }
+    S_a: { expr: "V_e*I_e", sim: "S", nombre: "potencia aparente", unidad: VA }
+    P_a: { expr: "S_a*f_p", sim: "P", nombre: "potencia activa", unidad: W }
+    Q_a: { expr: "S_a*sqrt(1 - f_p^2)", sim: "Q", nombre: "potencia reactiva", unidad: VAr }
+    f_pul: { expr: "2*f_r", sim: "f_{p}", nombre: "frecuencia de la pulsación", unidad: Hz }
+    C_k: { expr: "Q_a/(2*pi*f_r*V_e^2)", sim: "C", nombre: "condensador de corrección", unidad: F }
+    I_k: { expr: "P_a/V_e", sim: "I", nombre: "corriente con FP = 1", unidad: A }
+
+tarjetas:
+  - id: explore-pulsa
+    tipo: explorar
+    titulo: "La potencia que pulsa"
+    texto: "La potencia instantánea v·i de una carga de 230 V y 10 A. Cambie el factor de potencia: la media es la activa; lo que oscila alrededor, va y vuelve."
+    libro: [124, 129]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+        - { expr: "P_a", color: azul, rotulo: "P, la media", discontinua: true }
+      lectura: { valor: P_a, rotulo: "Potencia activa P" }
+      datos:
+        - { valor: S_a, rotulo: "Aparente S: {{S_a}}" }
+        - { valor: Q_a, rotulo: "Reactiva Q: {{Q_a}}" }
+      mandos:
+        - { valor: f_p, lista: [1, 0.9, 0.8, 0.7, 0.5, 0], rotulo: "Factor de potencia" }
+
+  - id: prediga-pulso
+    tipo: predecir
+    titulo: "¿A qué ritmo pulsa?"
+    texto: "La red es de 50 Hz. ¿A qué frecuencia oscila la potencia instantánea de la carga?"
+    libro: [126]
+    fijar: { f_r: 50, f_p: 0.8 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+      lectura: { valor: f_pul, rotulo: "Frecuencia de p(t)" }
+      ocultar: true
+    opciones:
+      - texto: "A 100 Hz, el doble de la red"
+        bien: true
+        porque: "p = v·i tiene un término en cos(2ωt). Por eso el rizado de un rectificador de onda completa es de 100 Hz."
+      - texto: "A 50 Hz, como la red"
+        porque: "Cada semiciclo, positivo o negativo, da un pulso de potencia: dos por periodo."
+      - texto: "No pulsa: es constante"
+        porque: "En monofásica la potencia llega a golpes; constante solo es la media."
+    escalera:
+      - "Cuente los máximos de p(t) en un periodo de la red."
+    solucion: "Dos pulsos por periodo: 100 Hz."
+    comprobar:
+      - { f_pul: 100 }
+
+  - id: formula-fp
+    tipo: formula
+    titulo: "El factor de potencia"
+    texto: "Para senoides, FP = P/S = cos φ. Mueva el factor y mire cómo se reparten las potencias."
+    libro: [120, 128]
+    ec: 128
+    sustitucion: "{{P_a}} / {{S_a}} = {{f_p}}; φ = {{phd}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+        - { expr: "P_a", color: azul, rotulo: "P", discontinua: true }
+      lectura: { valor: P_a, rotulo: "Potencia activa P" }
+      datos:
+        - { valor: Q_a, rotulo: "Q: {{Q_a}}" }
+      mandos:
+        - { valor: f_p, lista: [1, 0.9, 0.8, 0.7, 0.5, 0], rotulo: "Factor de potencia" }
+
+  - id: dimensionar
+    tipo: pregunta
+    titulo: "Para qué se dimensiona"
+    texto: "Una carga toma 10 A de la red de 230 V con cos φ = 0,8. ¿Para qué potencia hay que dimensionar cables y protección?"
+    libro: [119, 133]
+    fijar: { V_e: 230, I_e: 10, f_p: 0.8 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+        - { expr: "P_a", color: azul, rotulo: "P", discontinua: true }
+    opciones:
+      - texto: "Para 2300 VA, la aparente"
+        bien: true
+        porque: "Por los cables pasan 10 A con 230 V, aunque el usuario aproveche 1840 W: se dimensiona por S."
+      - texto: "Para 1840 W, la activa"
+        porque: "Esa es la que se aprovecha y se factura. La corriente, y con ella los cables, corresponde a S."
+      - texto: "Para 1380 VAr, la reactiva"
+        porque: "La reactiva es solo una parte de la corriente; el cableado debe soportar el producto V·I."
+    escalera:
+      - "¿Qué corriente circula de verdad por el cable?"
+    solucion: "230 × 10 = 2300 VA."
+    comprobar:
+      - { S_a: 2300, P_a: 1840, Q_a: 1380 }
+
+  - id: estime-q
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La reactiva del ejercicio"
+    texto: "Una carga toma 120 V y 4 A con un factor de potencia de 0,7. Estime su potencia reactiva."
+    libro: [120, "cap24#329"]
+    fijar: { V_e: 120, I_e: 4, f_p: 0.7 }
+    estimar:
+      objetivo: "Q_a"
+      unidad: VAr
+      min: 0
+      max: 500
+      paso: 1
+      inicio: 100
+      tol: 0.05
+      rotulo: "Potencia reactiva"
+    exito: "S = 480 VA y P = 336 W, así que Q = √(480² − 336²) ≈ 342,8 VAr."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 360 }, texto: "Demasiado: Q no puede pasar de S, 480 VA, y aquí es algo menos que P." }
+      - { texto: "Poco: con FP = 0,7, la reactiva es casi tan grande como la activa." }
+    escalera:
+      - "S = V·I y P = S·cos φ."
+      - "Q = √(S² − P²)."
+    solucion: "√(480² − 336²) ≈ 342,8 VAr."
+    comprobar:
+      - { S_a: 480, P_a: 336, Q_a: 342.8 }
+
+  - id: formula-correccion
+    tipo: formula
+    titulo: "La corrección, en una línea"
+    texto: "Un condensador en paralelo toma corriente adelantada y cancela la reactiva de la carga inductiva. Mueva el factor de potencia de partida."
+    libro: [139, 140]
+    ec: 139
+    sustitucion: "{{Q_a}} / (2π · {{f_r}} · {{V_e}}²) = {{C_k}}"
+    fijar: { V_e: 230, I_e: 10 }
+    inicio: { f_p: 0.8 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+      lectura: { valor: C_k, rotulo: "Condensador para FP = 1" }
+      datos:
+        - { valor: I_k, rotulo: "Corriente después: {{I_k}}" }
+      mandos:
+        - { valor: f_p, lista: [1, 0.9, 0.8, 0.7, 0.5, 0], rotulo: "Factor de potencia" }
+    comprobar:
+      - { con: { f_p: 0.8 }, C_k: 83e-6, I_k: 8 }
+
+  - id: cero-vatios
+    tipo: sorpresa
+    titulo: "Corriente sin consumo"
+    texto: "Lleve el factor de potencia a 0, una bobina o un condensador ideales: circulan 10 A con 230 V, y la potencia media es cero."
+    libro: [124]
+    fijar: { V_e: 230, I_e: 10 }
+    inicio: { f_p: 0.8 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+        - { expr: "P_a", color: azul, rotulo: "P", discontinua: true }
+      lectura: { valor: P_a, rotulo: "Potencia activa P" }
+      datos:
+        - { valor: Q_a, rotulo: "Reactiva Q: {{Q_a}}" }
+      mandos:
+        - { valor: f_p, lista: [1, 0.9, 0.8, 0.7, 0.5, 0], rotulo: "Factor de potencia" }
+    comprobar:
+      - { con: { f_p: 0 }, P_a: 0, S_a: 2300 }
+
+  - id: por-que-conmutada
+    tipo: porque
+    titulo: "¿Por qué no basta un condensador?"
+    texto: "Una fuente conmutada toma pulsos estrechos en fase con la tensión (forma de ejemplo): cos φ casi 1, FP unos 0,6. ¿Por qué no lo corrige un condensador?"
+    libro: [143, 147]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "v, i (relativas)" }
+      curvas:
+        - { expr: "cos(w_r*t)", color: azul, rotulo: "tensión" }
+        - { expr: "cos(w_r*t)*abs(cos(w_r*t))^11", color: naranja, rotulo: "corriente en pulsos" }
+    opciones:
+      - texto: "Porque el problema no es el desfase sino los armónicos"
+        bien: true
+        porque: "FP = desplazamiento × distorsión: el desplazamiento ya es casi 1; lo que falla es la distorsión, y eso pide PFC activa."
+      - texto: "Porque la corriente va adelantada"
+        porque: "Los pulsos están en fase con la tensión: no hay reactiva que compensar."
+      - texto: "Porque haría falta un condensador enorme"
+        porque: "No es cuestión de tamaño: un condensador compensa desfase, y aquí no lo hay."
+    escalera:
+      - "¿Qué tiene de malo esa corriente, si está en fase?"
+    solucion: "Sus armónicos: el condensador corrige desfase, no distorsión."
+
+  - id: tres-potencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres potencias, tres unidades"
+    texto: "Una cada potencia con su unidad y lo que es."
+    libro: [119]
+    emparejar:
+      - ["Activa, P", "Vatios: hace trabajo y produce calor"]
+      - ["Reactiva, Q", "VAr: va y vuelve sin hacer trabajo"]
+      - ["Aparente, S", "VA: el producto V·I"]
+    exito: "Las unidades distintas evitan confundirlas: S² = P² + Q²."
+    pistas:
+      - { texto: "La que va y vuelve tiene la «r» de reactiva en la unidad." }
+    escalera:
+      - "¿Cuál se factura, cuál dimensiona el cable y cuál va y viene?"
+    solucion: "P en W; Q en VAr; S en VA."
+
+  - id: ahorro
+    tipo: pregunta
+    titulo: "¿Qué se ha ahorrado?"
+    texto: "Con los 83 µF, la carga de 1840 W pasa de tomar 10 A a tomar 8 A. ¿Qué se ha conseguido?"
+    libro: [140, 141]
+    fijar: { V_e: 230, I_e: 10, f_p: 0.8 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2500, max: 5000, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "2*S_a*cos(w_r*t)*cos(w_r*t - phr)", color: naranja, rotulo: "p(t)" }
+        - { expr: "P_a", color: azul, rotulo: "P", discontinua: true }
+    opciones:
+      - texto: "Menos corriente: menos pérdidas en el cableado, con la misma potencia útil"
+        bien: true
+        porque: "La reactiva no consumía. Se ha reducido la corriente que circula, y con ella las pérdidas I²·R y el dimensionado."
+      - texto: "Ahorrar la energía reactiva que consumía la carga"
+        porque: "La reactiva va y vuelve: no se consume. Lo que baja es la corriente."
+      - texto: "Que la carga dé más potencia útil"
+        porque: "Sigue entregando los mismos 1840 W."
+    escalera:
+      - "¿Consumía energía la potencia reactiva?"
+    solucion: "La misma potencia útil con 8 A en lugar de 10: menos pérdidas y cables más finos."
+    comprobar:
+      - { C_k: 83e-6, I_k: 8, P_a: 1840 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [120, 126, 139, 147, 149]
+    ideas:
+      - { titulo: "Tres potencias.", texto: "P en W, Q en VAr y S en VA, con S² = P² + Q²; el cableado se dimensiona por S." }
+      - { titulo: "Pulsa al doble.", texto: "p(t) oscila a 100 Hz en una red de 50 Hz; con φ = 90°, la media es cero." }
+      - { titulo: "Corregir.", texto: "C = Q/(2πfV²) reduce la corriente, no la energía; no corrige armónicos." }
+      - { titulo: "En el banco.", texto: "El desfase entre v e i da el cos φ; la forma de la corriente, los armónicos." }

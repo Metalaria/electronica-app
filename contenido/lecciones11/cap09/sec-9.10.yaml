@@ -1,0 +1,277 @@
+# Lección 1.2 de la sección 9.10 «Problemas de Diseño» (cap09): problemas 9.A, 9.B y 9.C y ejercicios del capítulo.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap09/sec-9.10
+
+libro:
+  161: "Problema 9.A — Conectar dos familias lógicas"
+  175: "Problema 9.B — Fan-out y velocidad"
+  187: "Problema 9.C — Bajar de 5 V a 3,3 V"
+  168: '"2,4" - "3,5" = - "1,10 V"'
+  169: '"4,4" - "2,0" = + "2,40 V"'
+  170: "Un margen negativo no significa que falle a veces: significa que el fabricante no garantiza nada"
+  171: "usar la familia HCT, cuyos umbrales de entrada son los de TTL"
+  177: "Cada entrada presenta 5 pF y la pista aporta 15 pF"
+  180: "El tiempo de subida del 10 al 90 % de una carga RC vale 2,2·R·C"
+  181: "28,6 ns"
+  182: "en CMOS el fan-out no lo limita la corriente (las entradas no consumen), sino la capacidad"
+  185: "Mide el flanco en la última entrada de la cadena, la más alejada, que es la peor"
+  192: "Con una capacidad de entrada y pista de 15 pF"
+  193: "15,9 MHz"
+  194: "con 1 k/2 k circulan 1,7 mA permanentes en nivel alto"
+  198: "1 kΩ / 2 kΩ para señales hasta unos 10 MHz"
+  199: "El margen de ruido en alto es VOH − VIH = 2,4 − 2,0 = 0,4 V"
+
+modelo:
+  valores:
+    R_s: { sim: "R_{salida}", nombre: "impedancia de la salida", unidad: Ω, valor: 50 }
+    n_in: { sim: "n", nombre: "entradas", unidad: "", valor: 1 }
+    C_p: { sim: "C_{pista}", nombre: "capacidad de la pista", unidad: F, valor: 15e-12 }
+    C_i: { sim: "C_{entrada}", nombre: "capacidad de cada entrada", unidad: F, valor: 5e-12 }
+    V_5: { sim: "V", nombre: "salida de 5 V", unidad: V, valor: 5 }
+    R_a: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_b: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 2000 }
+    C_c: { sim: "C", nombre: "capacidad de entrada y pista", unidad: F, valor: 15e-12 }
+    V_OHt: { sim: "V_{OH}", nombre: "alto garantizado de TTL", unidad: V, valor: 2.4 }
+    V_IHt: { sim: "V_{IH}", nombre: "alto exigido por TTL", unidad: V, valor: 2 }
+  calculos:
+    C_t: { expr: "C_p + n_in*C_i", sim: "C_{total}", nombre: "capacidad total", unidad: F }
+    t_s: { expr: "2.2*R_s*C_t", sim: "t_{subida}", nombre: "tiempo de subida del 10 al 90 %", unidad: s }
+    V_c: { expr: "V_5*R_b/(R_a + R_b)", sim: "V_{salida}", nombre: "tensión en la entrada de 3,3 V", unidad: V }
+    R_ab: { expr: "R_a + R_b", sim: "R₁ + R₂", nombre: "resistencia del divisor", unidad: Ω }
+    I_c: { expr: "V_5/(R_a + R_b)", sim: "I", nombre: "corriente del divisor en alto", unidad: A }
+    tau_c: { expr: "par(R_a, R_b)*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    f_c: { expr: "1/(2*pi*tau_c)", sim: "f_{máx}", nombre: "frecuencia máxima", unidad: Hz }
+    NM_t: { expr: "V_OHt - V_IHt", sim: "NM_{H}", nombre: "margen en alto de TTL", unidad: V }
+
+tarjetas:
+  - id: explore-fanout
+    tipo: explorar
+    titulo: "Problema 9.B: fan-out y velocidad"
+    texto: "Cada entrada añade 5 pF a los 15 pF de la pista. Añada entradas y cambie la impedancia de la salida."
+    libro: [175, 177, 180]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 1, max: 10, unidad: "", rotulo: "entradas" }
+      y: { min: 0, max: 0.00000004, unidad: s, rotulo: "t_{subida}" }
+      curvas:
+        - { expr: "2.2*R_s*(C_p + nx*C_i)", color: azul, rotulo: "su salida" }
+        - { expr: "2.2*200*(C_p + nx*C_i)", color: naranja, rotulo: "200 Ω", discontinua: true }
+      asas:
+        - { mueve: n_in, x: "n_in", y: "t_s", rotulo: "Sus entradas" }
+      lectura: { valor: t_s, rotulo: "Tiempo de subida" }
+      datos:
+        - { valor: C_t, rotulo: "Capacidad total: {{C_t}}" }
+      mandos:
+        - { valor: n_in, min: 1, max: 10, paso: 1, rotulo: "Entradas" }
+        - { valor: R_s, lista: [50, 200], rotulo: "Impedancia de la salida" }
+    requiere: { mover: [n_in, R_s] }
+
+  - id: estime-subida
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Diez entradas con 200 Ω"
+    texto: "Una salida de 200 Ω ataca diez entradas de 5 pF por una pista de 15 pF. ¿Cuánto tarda en subir del 10 al 90 %?"
+    libro: [177, 180, 181]
+    fijar: { R_s: 200, n_in: 10 }
+    estimar:
+      objetivo: "t_s"
+      unidad: s
+      min: 0
+      max: 0.00000005
+      paso: 0.0000000002
+      inicio: 0.000000012
+      tol: 0.03
+      rotulo: "Tiempo de subida"
+    exito: "28,6 ns: suficiente por debajo de unos 10 MHz; por encima, hay que trocear la carga."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000000295 }, texto: "Se ha pasado: la capacidad total es 15 + 10 · 5 = 65 pF." }
+      - { texto: "Se ha quedado corto: no olvide los 15 pF de la pista ni el 2,2." }
+    escalera: ["t = 2,2 · R · C, con C = 15 pF + 10 · 5 pF."]
+    solucion: "2,2 · 200 Ω · 65 pF = 28,6 ns."
+    comprobar:
+      - { C_t: 65e-12, t_s: 28.6e-9 }
+
+  - id: prediga-sentido
+    tipo: predecir
+    titulo: "Problema 9.A: el sentido importa"
+    texto: "Una salida TTL ataca una entrada HC a 5 V y, en otro punto, una salida HC ataca una entrada TTL. ¿Cuál funciona?"
+    libro: [161, 168, 169]
+    widget:
+      tipo: figura
+      figura: fig-9.2
+      zonas:
+        - { id: ttl, rotulo: "Primera columna", rect: [58, 50, 44, 182], texto: "TTL: sale 2,4 V; exige 2,0 V." }
+        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182], texto: "HC: sale 4,4 V; exige 3,5 V." }
+    opciones:
+      - { texto: "Solo HC → TTL, con +2,40 V de margen", bien: true, porque: "4,4 − 2,0 = +2,40 V. Al revés, 2,4 − 3,5 = −1,10 V: incompatible." }
+      - { texto: "Solo TTL → HC", porque: "Es el sentido malo: TTL garantiza 2,4 V y la HC exige 3,5 V, −1,10 V de margen." }
+      - { texto: "Los dos, porque ambas son de 5 V", porque: "La misma alimentación no basta: cuentan V_{OH} de la salida y V_{IH} de la entrada." }
+    escalera: ["Calcule V_{OH} de la salida menos V_{IH} de la entrada en cada sentido."]
+    solucion: "TTL → HC: −1,10 V, no vale; HC → TTL: +2,40 V, vale."
+
+  - id: pregunta-negativo
+    tipo: pregunta
+    titulo: "¿Por qué es el peor fallo?"
+    texto: "Con margen negativo, el montaje puede funcionar en la mesa. ¿Por qué es el peor tipo de fallo?"
+    libro: [170]
+    widget:
+      tipo: figura
+      figura: fig-9.2
+      zonas:
+        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182], texto: "HC: exige 3,5 V." }
+    opciones:
+      - { texto: "Porque el fabricante no garantiza nada: puede fallar en producción, con la temperatura o con otra unidad", bien: true, porque: "No es que falle a veces: que funcione en la mesa es una casualidad." }
+      - { texto: "Porque quema la entrada", porque: "No es un problema de daño, sino de reconocer el nivel: no hay garantía de que se lea bien." }
+      - { texto: "Porque nunca funciona", porque: "Puede funcionar en la mesa. Eso es lo peligroso: falla después." }
+    escalera: ["¿Qué garantiza el fabricante fuera de los umbrales?"]
+    solucion: "Funciona por casualidad: el fallo aparece en producción."
+
+  - id: pregunta-hct
+    tipo: pregunta
+    titulo: "La solución más sencilla"
+    texto: "Para el sentido TTL → HC, ¿cuál es la solución más sencilla?"
+    libro: [171]
+    widget:
+      tipo: figura
+      figura: fig-9.2
+      zonas:
+        - { id: ttl, rotulo: "Primera columna", rect: [58, 50, 44, 182], texto: "TTL: 2,0 V para un alto." }
+    opciones:
+      - { texto: "Usar HCT, cuyos umbrales de entrada son los de TTL", bien: true, porque: "Existe precisamente para esto. Después vienen el pull-up a 5 V con colector abierto y el traductor de niveles." }
+      - { texto: "Un divisor resistivo", porque: "El divisor baja tensión, y aquí falta tensión: empeoraría el margen." }
+      - { texto: "Bajar la alimentación de la HC", porque: "Cambiaría todo el circuito HC. La solución directa es una familia con umbrales TTL." }
+    escalera: ["Hay una familia CMOS hecha para mezclarse con TTL."]
+    solucion: "La familia HCT."
+
+  - id: reto-divisor
+    tipo: reto
+    titulo: "Problema 9.C: bajar de 5 V a 3,3 V"
+    texto: "Elija el divisor que dé 3,33 V a la entrada y deje pasar señales de 10 MHz, con 15 pF de entrada y pista."
+    libro: [187, 192, 193, 198]
+    inicio: { R_a: 10000, R_b: 2000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_5, arriba: R_a, abajo: R_b }
+      lectura: { valor: V_c, rotulo: "Tensión en la entrada" }
+      datos:
+        - { valor: f_c, rotulo: "Frecuencia máxima: {{f_c}}" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+      mandos:
+        - { valor: R_a, lista: [1000, 10000], rotulo: "R₁" }
+        - { valor: R_b, lista: [2000, 20000], rotulo: "R₂" }
+    condiciones:
+      - { valor: V_c, objetivo: 3.333, tol: 0.02, rotulo: "Entrada: {{V_c}}" }
+      - { valor: f_c, min: 10000000, rotulo: "Frecuencia: {{f_c}}" }
+    exito: "1 kΩ y 2 kΩ: 3,33 V, τ = 10 ns y 15,9 MHz. Con 10 k y 20 k, la misma tensión pero diez veces más lento."
+    pistas:
+      - { cuando: { valor: V_c, max: 3 }, texto: "Falta tensión: R₂ debe ser el doble de R₁." }
+      - { cuando: { valor: V_c, min: 3.5 }, texto: "Sobra tensión: R₂ debe ser el doble de R₁, no veinte veces." }
+      - { texto: "La tensión es buena pero es lento: con resistencias diez veces más altas, la constante crece diez veces." }
+    escalera:
+      - "Para 3,33 V, R₂ = 2 · R₁."
+      - "La velocidad la fija R₁ ‖ R₂ con los 15 pF: cuanto más bajas, más rápido."
+    solucion: "R₁ = 1 kΩ y R₂ = 2 kΩ."
+    comprobar:
+      - { con: { R_a: 1000, R_b: 2000 }, V_c: 3.333, tau_c: 10e-9, f_c: 15.9e6, I_c: 0.00167, tol: 0.01 }
+
+  - id: porque-diez-veces
+    tipo: porque
+    titulo: "¿Por qué diez veces más lento?"
+    texto: "Los divisores de 1 k/2 k y de 10 k/20 k dan los mismos 3,33 V. ¿Por qué el segundo es diez veces más lento?"
+    libro: [193, 194]
+    fijar: { R_a: 10000, R_b: 20000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_5, arriba: R_a, abajo: R_b }
+      lectura: { valor: V_c, rotulo: "Tensión en la entrada" }
+      datos:
+        - { valor: tau_c, rotulo: "τ = {{tau_c}}" }
+      mide: { salida: V_c }
+    opciones:
+      - { texto: "La entrada ve R₁ ‖ R₂ con sus 15 pF: diez veces más resistencia, diez veces más τ", bien: true, porque: "La tensión depende de la proporción; la velocidad, del valor: 100 ns frente a 10 ns." }
+      - { texto: "Porque llega menos tensión", porque: "La tensión es la misma, 3,33 V: depende solo de la proporción entre R₁ y R₂." }
+      - { texto: "Porque circula más corriente", porque: "Es al revés: circula diez veces menos, y por eso carga la capacidad diez veces más despacio." }
+    escalera: ["¿Qué resistencia ve el condensador de entrada?"]
+    solucion: "τ = (R₁ ‖ R₂) · 15 pF: 10 ns con 1 k/2 k y 100 ns con 10 k/20 k."
+    comprobar:
+      - { V_c: 3.333, tau_c: 100e-9, tol: 0.01 }
+      - { con: { R_a: 1000, R_b: 2000 }, tau_c: 10e-9, tol: 0.01 }
+
+  - id: estime-consumo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El precio de la velocidad"
+    texto: "El divisor de 1 kΩ y 2 kΩ recibe 5 V cuando la salida está en alto. ¿Qué corriente circula?"
+    libro: [194]
+    fijar: { R_a: 1000, R_b: 2000 }
+    estimar:
+      objetivo: "I_c"
+      unidad: A
+      min: 0
+      max: 0.005
+      paso: 0.0001
+      inicio: 0.004
+      tol: 0.05
+      rotulo: "Corriente"
+    exito: "1,7 mA permanentes en nivel alto: resistencias bajas dan velocidad pero consumen."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00175 }, texto: "Se ha pasado: la corriente pasa por las dos resistencias en serie, 3 kΩ." }
+      - { texto: "Se ha quedado corto: 5 V entre 3 kΩ." }
+    escalera: ["I = V / (R₁ + R₂)."]
+    solucion: "5 V / 3 kΩ = 1,7 mA."
+    comprobar:
+      - { I_c: 0.00167, R_ab: 3000, tol: 0.01 }
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Dónde medir el flanco"
+    texto: "Una salida ataca una cadena de entradas. ¿Dónde se mide el flanco?"
+    libro: [182, 185]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 1, max: 10, unidad: "", rotulo: "entradas" }
+      y: { min: 0, max: 0.00000004, unidad: s, rotulo: "t_{subida}" }
+      curvas:
+        - { expr: "2.2*200*(C_p + nx*C_i)", color: naranja, rotulo: "200 Ω" }
+    opciones:
+      - { texto: "En la última entrada, la más alejada: es la peor", bien: true, porque: "Si es demasiado lento, se reparte con dos salidas o se usa un buffer." }
+      - { texto: "En la salida que ataca", porque: "Lo que importa es lo que llega: el flanco se degrada a lo largo de la cadena." }
+      - { texto: "En la primera entrada", porque: "Es la mejor de todas; la más alejada es la que limita." }
+    escalera: ["¿Qué entrada ve el flanco más lento?"]
+    solucion: "En la última entrada de la cadena."
+
+  - id: estime-margen-ttl
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El margen en alto de TTL"
+    texto: "Una familia garantiza V_{OH} = 2,4 V y exige V_{IH} = 2,0 V. ¿Qué margen de ruido tiene en alto?"
+    libro: [199]
+    estimar:
+      objetivo: "NM_t"
+      unidad: V
+      min: 0
+      max: 2
+      paso: 0.01
+      inicio: 1.5
+      tol: 0.02
+      rotulo: "NM_{H}"
+    exito: "0,4 V: el ruido máximo que puede sumarse sin que un alto se lea como bajo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.41 }, texto: "Se ha pasado: reste 2,0 V a 2,4 V." }
+      - { texto: "Se ha quedado corto: el margen es V_{OH} − V_{IH}." }
+    escalera: ["NM_{H} = V_{OH} − V_{IH}."]
+    solucion: "2,4 − 2,0 = 0,4 V."
+    comprobar:
+      - { NM_t: 0.4 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [161, 169, 171, 175, 182, 187, 198]
+    ideas:
+      - { titulo: "9.A.", texto: "TTL → HC no vale (−1,10 V): HCT. HC → TTL vale con +2,40 V." }
+      - { titulo: "9.B.", texto: "En CMOS el fan-out lo limita la capacidad: 28,6 ns con 200 Ω y diez entradas." }
+      - { titulo: "9.C.", texto: "1 kΩ / 2 kΩ hasta unos 10 MHz; bidireccional o rápido, traductor dedicado." }

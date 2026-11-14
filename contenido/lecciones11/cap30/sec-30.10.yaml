@@ -1,0 +1,323 @@
+# Lección 1.2 de la sección 29.10 «Problemas de Diseño» (cap30, sec-30.10). Formato: GUIA.md.
+# - Problema 29.A (bloques 306 a 316): A ≥ 6,02·N + 1,76 dB y A ≈ 20·n·log₁₀(f_stop/f_máx) con f_stop = f_s − f_máx:
+#   n = A/(20·log₁₀(f_stop/f_máx)); 45,7 a 44,1 kHz con 12 bits, 60,6 con 16; 6,4 a 96 kHz.
+# - Problema 29.B (bloques 326 a 331): N ≈ k·f_s/Δf, k = 3,3 Hamming o 5,5 Blackman: 53, 88 y 132; 53 × 8 000 MAC/s.
+# - Problema 29.C (bloques 341 a 346): a ≈ 2/(N + 1), retardo (N − 1)/2; la media móvil de N tiene ceros en los
+#   múltiplos de f_s/N. Su respuesta, |sen(πfN/f_s)/(N·sen(πf/f_s))|, es la fórmula conocida de la media móvil (no la
+#   escribe el libro: dibuja su afirmación de los ceros).
+# Paso práctico: «simular» el orden del Butterworth a 44,1 kHz (45,7; errores típicos: f_s en lugar de f_s − f_máx,
+# y los 16 bits). Además un reto: elegir N para anular los 50 Hz.
+leccion: cap30/sec-30.10
+
+libro:
+  303: "Se quiere digitalizar audio hasta 20 kHz con un convertidor de 12 bits, muestreando a 44,1 kHz"
+  306: "La primera frecuencia que se pliega dentro de la banda útil es fs − fmax"
+  307: 'A lr(( "dB" )) gt.eq "6,02" dot.op N + "1,76"'
+  308: "20·n dB por década"
+  310: '"24,1 kHz"'
+  311: "n ≥ 45,7"
+  312: "En la práctica nadie pasa de orden 8 en analógico"
+  313: "un elíptico de ese orden tiene un retardo de grupo muy irregular cerca del corte"
+  314: "Muestreando a 96 kHz, la banda de transición pasa de 20 a 76 kHz"
+  315: '"orden necesario" ": " n gt.eq "6,4"'
+  316: "es decir, orden 7 para los 12 bits del enunciado"
+  322: "Hay que filtrar una señal muestreada a 8 kHz con una transición de 500 Hz"
+  326: 'N approx (k dot.op f_("s"))/("Δ" f)'
+  327: "3,3 para Hamming, 5,5 para Blackman"
+  328: "Blackman"
+  329: "estrecharla de 500 a 200 Hz multiplica por 2,5 el filtro"
+  331: '"53" times "8000"'
+  332: "El diseño del filtro y la elección del procesador son la misma decisión"
+  338: "media móvil de N muestras o filtro recursivo de primer orden"
+  341: "3,5 muestras"
+  343: 'a approx ("2")/(N + "1")'
+  344: "una media móvil de 8 equivale a un recursivo con a = 0,222"
+  345: "una media móvil de N muestras tiene ceros exactos en múltiplos de fs/N"
+  346: "muestreando a 500 Hz, una media móvil de 10 muestras anula exactamente los 50 Hz de red"
+  349: "recursivo con a = 0,125 para uso general (un desplazamiento)"
+
+modelo:
+  valores:
+    f_mx: { sim: "f_{máx}", nombre: "frecuencia máxima del audio", unidad: Hz, valor: 20000 }
+    f_a: { sim: "f_{s}", nombre: "frecuencia de muestreo", unidad: Hz, valor: 44100 }
+    n_b: { sim: "N", nombre: "bits del convertidor", unidad: "", valor: 12 }
+    k_w: { sim: "k", nombre: "constante de la ventana", unidad: "", valor: 3.3 }
+    t_w: { sim: "Δf", nombre: "anchura de la transición", unidad: Hz, valor: 500 }
+    f_8: { sim: "f_{s}", nombre: "muestreo del filtro digital", unidad: Hz, valor: 8000 }
+    N_m: { sim: "N", nombre: "muestras de la media móvil", unidad: "", valor: 4 }
+    f_r: { sim: "f_{s}", nombre: "muestreo del sensor", unidad: Hz, valor: 500 }
+  calculos:
+    A_r: { expr: "6.02*n_b + 1.76", sim: "A", nombre: "atenuación exigida", unidad: dB }
+    f_st: { expr: "f_a - f_mx", sim: "f_{stop}", nombre: "primera frecuencia que se pliega", unidad: Hz }
+    n_r: { expr: "(6.02*n_b + 1.76)/(20*log10((f_a - f_mx)/f_mx))", sim: "n", nombre: "orden necesario", unidad: "" }
+    n_e: { expr: "(6.02*n_b + 1.76)/(20*log10(f_a/f_mx))", sim: "n", nombre: "orden con f_s en lugar de f_stop", unidad: "" }
+    n_16: { expr: "(6.02*16 + 1.76)/(20*log10((f_a - f_mx)/f_mx))", sim: "n", nombre: "orden con 16 bits", unidad: "" }
+    N_c: { expr: "k_w*f_8/t_w", sim: "N", nombre: "coeficientes del FIR", unidad: "" }
+    M_s: { expr: "53*f_8", sim: "MAC/s", nombre: "operaciones por segundo", unidad: "" }
+    H_50: { expr: "abs(sin(pi*50*N_m/f_r)/(N_m*sin(pi*50/f_r)))", sim: "|H(50 Hz)|", nombre: "ganancia a 50 Hz", unidad: "", cifras: 2 }
+    z_1: { expr: "f_r/N_m", sim: "f_{s}/N", nombre: "primer cero de la media móvil", unidad: Hz }
+    a_q: { expr: "2/(N_m + 1)", sim: "a", nombre: "recursivo equivalente", unidad: "", cifras: 3 }
+    r_g: { expr: "(N_m - 1)/2", sim: "retardo", nombre: "retardo de grupo en muestras", unidad: "" }
+
+tarjetas:
+  - id: explore-orden
+    tipo: explorar
+    titulo: "El filtro antialiasing imposible"
+    texto: "Audio de 20 kHz: el filtro debe hundir f_{s} − f_{máx} bajo el ruido de cuantificación. Cambie el muestreo y los bits y mire el orden necesario."
+    libro: [303, 306, 307]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 70, unidad: "", rotulo: "orden, n" }
+      y: { min: 0, max: 160, unidad: dB, rotulo: "atenuación en f_{stop}" }
+      curvas:
+        - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
+        - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
+      marcas:
+        - { x: "n_r", y: "A_r", rotulo: "n = {{n_r}}" }
+      lectura: { valor: n_r, rotulo: "Orden necesario" }
+      datos:
+        - { valor: f_st, rotulo: "Primera que se pliega: {{f_st}}" }
+      mandos:
+        - { valor: f_a, lista: [44100, 96000], rotulo: "Muestreo, f_{s}" }
+        - { valor: n_b, lista: [12, 16], rotulo: "Bits, N" }
+    requiere: { mover: [f_a, n_b] }
+
+  - id: formula-orden
+    tipo: formula
+    titulo: "Atenuación y pendiente"
+    texto: "La atenuación exigida por los bits y la pendiente de un Butterworth con el corte en f_{máx}: 20·n dB por década."
+    libro: [307, 308, 310]
+    ec: 307
+    sustitucion: "n ≥ {{A_r}} / (20 · log₁₀({{f_st}} / {{f_mx}})) = {{n_r}}"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 70, unidad: "", rotulo: "orden, n" }
+      y: { min: 0, max: 160, unidad: dB, rotulo: "atenuación en f_{stop}" }
+      curvas:
+        - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
+        - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
+      lectura: { valor: n_r, rotulo: "Orden necesario" }
+      mandos:
+        - { valor: f_a, lista: [44100, 96000], rotulo: "Muestreo, f_{s}" }
+        - { valor: n_b, lista: [12, 16], rotulo: "Bits, N" }
+
+  - id: simule-orden
+    tipo: simular
+    titulo: "El orden a 44,1 kHz"
+    texto: "Audio hasta 20 kHz, 12 bits, muestreo a 44,1 kHz. ¿Qué orden de Butterworth haría falta?"
+    libro: [303, 310, 311]
+    fijar: { f_a: 44100, n_b: 12 }
+    simular:
+      objetivo: n_r
+      unidad: ""
+      tol: 0.02
+      rotulo: "Orden necesario, n"
+      errores:
+        - { expr: "n_e", texto: "Ha usado f_{s} como frecuencia de rechazo: la primera que se pliega es f_{s} − f_{máx} = 24,1 kHz." }
+        - { expr: "n_16", texto: "Esa es la cuenta con 16 bits (98,1 dB); con 12 bits se exigen 74,0 dB." }
+    exito: "45,7: una cascada de veintitrés secciones de segundo orden. El filtro es imposible."
+    escalera:
+      - "f_{stop} = 44,1 − 20 = 24,1 kHz; A = 6,02 × 12 + 1,76 = 74,0 dB."
+    solucion: "n ≥ 74,0 / (20 · log₁₀(24,1/20)) = 45,7."
+    comprobar:
+      - { n_r: 45.7, n_16: 60.6, A_r: 74.0, f_st: 24100, n_e: 10.8, tol: 0.005 }
+
+  - id: predecir-96k
+    tipo: predecir
+    titulo: "Muestrear a 96 kHz"
+    texto: "Mismo audio y mismos 12 bits, pero muestreando a 96 kHz. ¿Qué orden hace falta ahora?"
+    libro: [314, 315, 316]
+    fijar: { f_a: 96000, n_b: 12 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 70, unidad: "", rotulo: "orden, n" }
+      y: { min: 0, max: 160, unidad: dB, rotulo: "atenuación en f_{stop}" }
+      curvas:
+        - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
+        - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
+      lectura: { valor: n_r, rotulo: "Orden necesario" }
+      ocultar: true
+    opciones:
+      - texto: "Orden 7"
+        bien: true
+        porque: "La transición pasa de 20 a 76 kHz y basta n ≥ 6,4: realizable."
+      - texto: "Orden 46, como antes"
+        porque: "El orden depende de la banda de transición, que ahora es mucho más ancha."
+      - texto: "Orden 2"
+        porque: "Ese pediría un muestreo mucho más alto; a 96 kHz aún hacen falta 6,4."
+    escalera:
+      - "f_{stop} = 96 − 20 = 76 kHz."
+    solucion: "n ≥ 6,4: orden 7, y después filtrado digital y diezmado."
+    comprobar:
+      - { n_r: 6.4, f_st: 76000, tol: 0.01 }
+
+  - id: estime-coeficientes
+    tipo: pregunta
+    titulo: "Cuánto cuesta un FIR"
+    texto: "FIR por ventanas a 8 kHz, transición de 500 Hz, ventana de Hamming. ¿Cuántos coeficientes?"
+    libro: [322, 326, 327, 331]
+    fijar: { k_w: 3.3, t_w: 500 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 100, max: 1000, unidad: Hz, rotulo: "transición, Δf" }
+      y: { min: 0, max: 300, unidad: "", rotulo: "N" }
+      curvas:
+        - { expr: "3.3*f_8/d", color: naranja, rotulo: "Hamming" }
+        - { expr: "5.5*f_8/d", color: azul, rotulo: "Blackman", discontinua: true }
+    estimar:
+      objetivo: "N_c"
+      unidad: ""
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.03
+      rotulo: "Coeficientes, N"
+    exito: "53 coeficientes: 424 000 MAC/s. Con Blackman, 88; con 200 Hz de transición, 132."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 55 }, texto: "Demasiados: f_{s}/Δf = 16, y Hamming tiene k = 3,3." }
+      - { texto: "Pocos: N ≈ k·f_{s}/Δf, con k = 3,3." }
+    escalera:
+      - "f_{s}/Δf = 8 000/500."
+    solucion: "3,3 × 16 ≈ 53."
+    comprobar:
+      - { N_c: 52.8, M_s: 424000, tol: 0.003 }
+      - { con: { k_w: 5.5 }, N_c: 88 }
+      - { con: { t_w: 200 }, N_c: 132 }
+
+  - id: empareje-leyes
+    tipo: pregunta
+    titulo: "Dos leyes del coste"
+    texto: "Empareje cada cambio del FIR con lo que cuesta."
+    libro: [328, 329, 332]
+    widget:
+      tipo: figura
+      figura: fig-30.12
+      zonas:
+        - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
+    emparejar:
+      - ["Transición de 500 a 200 Hz", "Multiplica el filtro por 2,5"]
+      - ["De Hamming a Blackman", "Un 66 % más de coeficientes"]
+      - ["Cada coeficiente", "Una multiplicación-acumulación por muestra"]
+    exito: "El diseño del filtro y la elección del procesador son la misma decisión."
+    pistas:
+      - { texto: "El coste es inversamente proporcional a la anchura de la transición." }
+    escalera:
+      - "500/200 = 2,5."
+    solucion: "Estrechar, ×2,5; Blackman, +66 %; cada coeficiente, un MAC por muestra."
+
+  - id: reto-red
+    tipo: reto
+    titulo: "Anule la red"
+    texto: "Lectura de un sensor muestreada a 500 Hz. Elija las muestras de la media móvil para que anule exactamente los 50 Hz."
+    libro: [345, 346]
+    inicio: { N_m: 4 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0, max: 250, unidad: Hz, rotulo: "f", muestras: 1000 }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "|H|" }
+      curvas:
+        - { expr: "abs(sin(pi*nu*N_m/f_r + 0.0000001)/(N_m*sin(pi*nu/f_r + 0.0000001)))", color: naranja, rotulo: "media móvil" }
+      marcas:
+        - { x: "50", y: "H_50", rotulo: "50 Hz" }
+      lectura: { valor: H_50, rotulo: "Ganancia a 50 Hz" }
+      datos:
+        - { valor: z_1, rotulo: "Primer cero: {{z_1}}" }
+      mandos:
+        - { valor: N_m, min: 2, max: 16, paso: 1, rotulo: "Muestras, N" }
+    condiciones:
+      - { valor: H_50, menor: 0.01, rotulo: "Ganancia a 50 Hz" }
+    exito: "Con 10 muestras, ceros en 50 Hz y en sus múltiplos: un supresor perfecto de la red."
+    pistas:
+      - { texto: "Los ceros caen en los múltiplos de f_{s}/N: 50 Hz tiene que ser uno de ellos." }
+    escalera:
+      - "Los ceros están en f_{s}/N y sus múltiplos."
+    solucion: "N = 10: f_{s}/N = 500/10 = 50 Hz."
+    comprobar:
+      - { con: { N_m: 10 }, z_1: 50 }
+
+  - id: estime-recursivo
+    tipo: pregunta
+    titulo: "Media móvil o recursivo"
+    texto: "Una media móvil de 8 muestras y un recursivo de primer orden con el mismo retardo en continua. ¿Qué a le corresponde?"
+    libro: [338, 341, 343, 344]
+    fijar: { N_m: 8 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 2, max: 20, unidad: "", rotulo: "N" }
+      y: { min: 0, max: 0.7, unidad: "", rotulo: "a" }
+      curvas:
+        - { expr: "2/(n + 1)", color: naranja, rotulo: "a ≈ 2/(N + 1)" }
+    estimar:
+      objetivo: "a_q"
+      unidad: ""
+      min: 0
+      max: 0.6
+      paso: 0.001
+      inicio: 0.5
+      tol: 0.03
+      rotulo: "Coeficiente, a"
+    exito: "0,222: los dos retrasan 3,5 muestras. El recursivo lo hace con una variable y una operación."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.229 }, texto: "Demasiado: a ≈ 2/(N + 1), con N = 8." }
+      - { texto: "Poco: a ≈ 2/(N + 1) = 2/9." }
+    escalera:
+      - "Use la equivalencia a ≈ 2/(N + 1)."
+    solucion: "a ≈ 2/9 = 0,222; retardo (8 − 1)/2 = 3,5 muestras."
+    comprobar:
+      - { a_q: 0.222, r_g: 3.5, tol: 0.003 }
+
+  - id: pregunta-eleccion
+    tipo: pregunta
+    titulo: "La elección"
+    texto: "Suavizar la lectura de un sensor en un microcontrolador, sin red que anular ni fase que conservar. ¿Qué filtro?"
+    libro: [345, 349]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 2, max: 20, unidad: "", rotulo: "N" }
+      y: { min: 0, max: 0.7, unidad: "", rotulo: "a" }
+      curvas:
+        - { expr: "2/(n + 1)", color: naranja, rotulo: "a ≈ 2/(N + 1)" }
+    opciones:
+      - texto: "Recursivo con a = 0,125: un desplazamiento"
+        bien: true
+        porque: "Una variable y una operación; con a potencia de dos, sin multiplicar."
+      - texto: "Media móvil de 16 muestras"
+        porque: "Gana si hay que anular la red o conservar la fase; si no, gasta 16 valores de memoria."
+      - texto: "Un FIR de 53 coeficientes"
+        porque: "Demasiado para suavizar una lectura: el recursivo hace lo mismo con una operación."
+    escalera:
+      - "¿Qué cuesta menos memoria y menos operaciones?"
+    solucion: "El recursivo con a = 0,125."
+
+  - id: porque-eliptico
+    tipo: porque
+    titulo: "El elíptico de pared"
+    texto: "Un elíptico baja la cuenta a orden 9 para 74 dB. ¿Por qué se abandonó esa solución?"
+    libro: [312, 313]
+    widget:
+      tipo: figura
+      figura: fig-30.8
+      zonas:
+        - { id: todo, rotulo: "El filtro a 44,1 kHz y con sobremuestreo", rect: [0, 0, 449, 293] }
+    opciones:
+      - texto: "Retardo de grupo irregular cerca del corte, oscilación ante transitorios y sensibilidad extrema a las tolerancias"
+        bien: true
+        porque: "Cumple en módulo, pero estropea la forma de onda y no se puede fabricar estable."
+      - texto: "Porque no atenúa lo suficiente"
+        porque: "Atenúa 74 dB con orden 9: el problema no es el módulo, es la fase y la sensibilidad."
+      - texto: "Porque es digital"
+        porque: "Era analógico: los filtros «de pared» de los primeros equipos de audio digital."
+    escalera:
+      - "Piense en lo que pasa cerca del corte de un filtro tan abrupto."
+    solucion: "Por su fase, sus oscilaciones y su sensibilidad a las tolerancias."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [312, 316, 329, 346, 349]
+    ideas:
+      - { titulo: "Antialiasing.", texto: "A 44,1 kHz harían falta 45,7 órdenes; a 96 kHz, 7: por eso se sobremuestrea." }
+      - { titulo: "Coste de un FIR.", texto: "N ≈ k·f_{s}/Δf: la transición es lo que más cuesta." }
+      - { titulo: "Anular la red.", texto: "Una media móvil tiene ceros en los múltiplos de f_{s}/N." }
+      - { titulo: "Suavizar.", texto: "Recursivo, a ≈ 2/(N + 1): una variable y una operación." }

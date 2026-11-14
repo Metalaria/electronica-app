@@ -15,7 +15,7 @@
 <Lienzo {descripcion} alto={260}>
   <Flujo d="M340 20 H108 V240 H340 Z" {dur} />
   <path class="hilo" d="M108 20 H340 M108 240 H340"></path>
-  <R x1={108} y1={20} x2={108} y2={96} color="azul" />
+  <R x1={108} y1={20} x2={108} y2={96} color="azul" pieza="rref" />
   <Et x={20} y={56} t={c.simT('rref')} color="azul" />
   <!-- (review 11c: 22 below the symbol, whose subscript hung into the value at 18) -->
   <Et x={20} y={78} t={c.val('rref')} color="azul" peq />
@@ -30,10 +30,10 @@
   {#if c.tiene('dvbe')}
     <Et x={188} y={140} t={`ΔV ${c.val('dvbe')}`} ancla="middle" peq />
   {/if}
-  <R x1={272} y1={20} x2={272} y2={110} color="naranja" />
+  <R x1={272} y1={20} x2={272} y2={110} color="naranja" pieza="carga" />
   <!-- (review 11c: symbol and value on two lines; on one, «R_L 4,7 kΩ» ran over the V_CC wire at x = 340) -->
   <Et x={286} y={56} t={c.simT('carga')} color="naranja" />
   <Et x={286} y={78} t={c.val('carga')} color="naranja" peq />
-  <Pila x={340} y1={240} y2={20} />
+  <Pila x={340} y1={240} y2={20} pieza="vcc" />
   <Et x={348} y={176} t={c.val('vcc')} peq />
 </Lienzo>

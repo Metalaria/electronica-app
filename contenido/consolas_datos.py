@@ -423,7 +423,10 @@ FUENTES = {
          'url': 'https://www.nesdev.org/wiki/', 'licencia': 'Solo consulta',
          'uso': 'Cifras de temporización de la animación (M2 15/24, ALE, 341 × 262 puntos, NMI en la línea 241).'},
         {'titulo': 'Foto de la placa NES-CPU-07', 'autor': 'Evan-Amos (Wikimedia Commons)',
-         'url': 'https://commons.wikimedia.org/', 'licencia': 'Dominio público', 'uso': 'Figura 36.16 del libro.'},
+         'url': 'https://commons.wikimedia.org/', 'licencia': 'Dominio público',
+         # {{num:label}}: the book's printed number, resolved when shown (lib/datos.ts conNumerosImpresos), so a
+         # renumbering of the book never leaves a stale figure number here
+         'uso': 'Figura {{num:fig-37.16}} del libro.'},
     ],
     'neogeo': [
         {'titulo': 'Board-Folk NeoGeoAES-3.5 — recreación KiCad de la NEO-AES3-5',
@@ -462,7 +465,7 @@ FUENTES = {
         {'titulo': 'neogeodev/SVGPinout', 'autor': 'Comunidad neogeodev', 'url': 'https://github.com/neogeodev/SVGPinout',
          'licencia': 'Sin licencia: referencia privada, no se incluye en la aplicación', 'uso': 'Consulta de patillajes.'},
         {'titulo': 'Foto de la placa NEO-AES', 'autor': 'Evan-Amos (Wikimedia Commons)',
-         'url': 'https://commons.wikimedia.org/', 'licencia': 'Dominio público', 'uso': 'Figura 36.22 del libro.'},
+         'url': 'https://commons.wikimedia.org/', 'licencia': 'Dominio público', 'uso': 'Figura {{num:fig-37.22}} del libro.'},
     ],
 }
 

@@ -1,0 +1,322 @@
+# Lección 1.2 de la sección 30.4 «Comunicaciones: la Modulación» (cap31, sec-31.4). Formato: GUIA.md.
+# - Formas de onda de AM y FM con la portadora del bloque 129: AM, A·(1 + m·sen 2πf_m·t)·cos 2πf_c·t; FM,
+#   cos(2πf_c·t + (Δf/f_m)·sen 2πf_m·t). La portadora de 20 kHz y la moduladora de 1 kHz son de ejemplo (para que se
+#   vean en pantalla); lo dicen las tarjetas.
+# - La fracción de potencia de la portadora en AM, 1/(1 + m²/2): dos tercios con m = 1, más del 95 % con m = 0,3.
+# Pasos prácticos: «simular» el ancho de banda de Carson de la FM comercial (180 kHz; errores típicos: olvidar f_max,
+# olvidar el 2, la AM) y «banco» opcional: las bandas laterales de la AM en la FFT (ficha 35 del cuaderno).
+leccion: cap31/sec-31.4
+
+libro:
+  123: "no se puede transmitir directamente por radio"
+  124: "Para 1 kHz, λ vale 300 km"
+  125: "Modular permite asignar a cada uno una frecuencia distinta"
+  126: "Cada banda de frecuencias se propaga de forma distinta"
+  128: "modular consiste en variar uno de ellos con la información"
+  129: 'v lr(( t )) = A dot.op op("cos")'
+  130: "modulación de amplitud (AM, ASK, QAM parcialmente)"
+  131: "FM y PM son variantes del mismo mecanismo"
+  134: "Una emisora de AM con 5 kHz de audio ocupa 10 kHz"
+  136: '"BW" approx "2"'
+  137: "Con la desviación de ±75 kHz y 15 kHz de audio de la radio comercial: 180 kHz"
+  139: "el ruido afecta sobre todo a la amplitud, y un receptor de FM desecha la amplitud"
+  140: "se puede cambiar ancho de banda por relación señal a ruido"
+  143: "existe un umbral de relación señal a ruido (unos 10 dB)"
+  144: "una de FM lejana se oye perfectamente hasta un punto y después desaparece"
+  154: "exactamente dos tercios con modulación del 100 %, y más del 95 % con el 30 % habitual en la voz"
+  156: "DSB-SC (doble banda lateral con portadora suprimida): elimina la portadora"
+  157: "SSB (banda lateral única): elimina además una banda lateral"
+  158: "VSB (banda lateral vestigial): un compromiso"
+  165: "separadas de ella exactamente por la frecuencia moduladora"
+  166: "el detector de envolvente de la sección 5.10"
+  167: "La misma señal moduladora aplicada a la amplitud y a la frecuencia de una portadora"
+
+modelo:
+  valores:
+    m_a: { sim: "m", nombre: "índice de modulación", unidad: "", valor: 0.5 }
+    f_c: { sim: "f_{c}", nombre: "portadora de ejemplo", unidad: Hz, valor: 20000 }
+    f_m: { sim: "f_{m}", nombre: "moduladora de ejemplo", unidad: Hz, valor: 1000 }
+    d_f: { sim: "Δf", nombre: "desviación", unidad: Hz, valor: 2000 }
+    D_f: { sim: "Δf", nombre: "desviación", unidad: Hz, valor: 25000 }
+    f_x: { sim: "f_{max}", nombre: "frecuencia máxima del audio", unidad: Hz, valor: 5000 }
+    f_t: { sim: "f", nombre: "frecuencia de la portadora", unidad: Hz, valor: 100000000 }
+  calculos:
+    BW: { expr: "2*(D_f + f_x)", sim: "BW", nombre: "ancho de banda de Carson", unidad: Hz }
+    BW_a: { expr: "2*D_f", sim: "BW", nombre: "Carson sin el audio", unidad: Hz }
+    BW_b: { expr: "D_f + f_x", sim: "BW", nombre: "Carson sin el 2", unidad: Hz }
+    BW_am: { expr: "2*f_x", sim: "BW", nombre: "ancho de banda en AM", unidad: Hz }
+    lam: { expr: "300000000/f_t", sim: "λ", nombre: "longitud de onda", unidad: m }
+    P_c: { expr: "100/(1 + m_a^2/2)", sim: "P_{c}/P", nombre: "potencia de la portadora", unidad: "%" }
+
+tarjetas:
+  - id: explore-am
+    tipo: explorar
+    titulo: "Variar la amplitud"
+    texto: "Una portadora cuya amplitud sigue a la señal: AM. Cambie el índice de modulación y mire la envolvente."
+    nota: "Portadora de 20 kHz y moduladora de 1 kHz, de ejemplo."
+    libro: [128, 129, 130, 167]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: -2.2, max: 2.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "(1 + m_a*sin(2*pi*f_m*t))*cos(2*pi*f_c*t)", color: azul, rotulo: "señal de AM" }
+        - { expr: "1 + m_a*sin(2*pi*f_m*t)", color: naranja, rotulo: "envolvente", discontinua: true }
+      mandos:
+        - { valor: m_a, lista: [0.3, 0.5, 1], rotulo: "Índice de modulación, m" }
+    requiere: { mover: [m_a] }
+    comprobar:
+      - { f_c: 20000, f_m: 1000 }
+
+  - id: explore-fm
+    tipo: explorar
+    titulo: "Variar la frecuencia"
+    texto: "Ahora la amplitud no cambia y es la frecuencia la que sigue a la señal: FM. Suba la desviación."
+    libro: [128, 130, 131, 167]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "cos(2*pi*f_c*t + d_f/f_m*sin(2*pi*f_m*t))", color: azul, rotulo: "señal de FM" }
+        - { expr: "sin(2*pi*f_m*t)", color: naranja, rotulo: "moduladora", discontinua: true }
+      lectura: { valor: d_f, rotulo: "Desviación" }
+      mandos:
+        - { valor: d_f, lista: [2000, 5000, 10000], rotulo: "Desviación, Δf" }
+    requiere: { mover: [d_f] }
+
+  - id: empareje-parametros
+    tipo: pregunta
+    titulo: "Tres parámetros que variar"
+    texto: "Empareje cada parámetro de la portadora con las modulaciones que lo varían."
+    libro: [129, 130, 131]
+    widget:
+      tipo: figura
+      figura: fig-31.6
+      zonas:
+        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
+    emparejar:
+      - ["Amplitud, A", "AM y ASK"]
+      - ["Frecuencia, f", "FM y FSK"]
+      - ["Fase, φ", "PM y PSK"]
+    exito: "Y FM y PM son variantes del mismo mecanismo: la frecuencia es la derivada de la fase."
+    pistas:
+      - { texto: "La letra de en medio lo dice: A, F, P." }
+    escalera:
+      - "AM es «amplitude modulation»; la K de ASK, «keying», con valores discretos."
+    solucion: "Amplitud, AM y ASK; frecuencia, FM y FSK; fase, PM y PSK."
+
+  - id: estime-antena
+    tipo: pregunta
+    titulo: "La antena"
+    texto: "Para 1 kHz, λ vale 300 km. ¿Cuánto vale λ si se traslada la señal a 100 MHz?"
+    libro: [123, 124]
+    widget:
+      tipo: figura
+      figura: fig-31.6
+      zonas:
+        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
+    estimar:
+      objetivo: "lam"
+      unidad: m
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 8
+      tol: 0.05
+      rotulo: "λ a 100 MHz"
+    exito: "3 m: la antena cabe en un tejado; una de 3 km para 1 kHz sería «pequeña»."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Demasiado larga: λ es inversa a la frecuencia." }
+      - { texto: "Demasiado corta: la frecuencia sube cien mil veces y λ baja cien mil veces." }
+    escalera:
+      - "Multiplicar la frecuencia por cien mil divide λ por cien mil."
+    solucion: "300 km entre cien mil: 3 m."
+    comprobar:
+      - { lam: 3 }
+
+  - id: banda-am
+    tipo: pregunta
+    titulo: "Cuánta banda ocupa la AM"
+    texto: "Una emisora de AM transmite 5 kHz de audio. ¿Qué ancho de banda ocupa?"
+    libro: [134]
+    widget:
+      tipo: figura
+      figura: fig-31.6
+      zonas:
+        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
+    opciones:
+      - texto: "10 kHz"
+        bien: true
+        porque: "Dos bandas laterales alrededor de la portadora: el doble de la moduladora."
+      - texto: "5 kHz"
+        porque: "Eso es una sola banda lateral; la AM clásica tiene dos."
+      - texto: "Depende del índice de modulación"
+        porque: "El índice cambia la amplitud de las bandas laterales, no dónde están."
+    escalera:
+      - "Cada componente del audio aparece a cada lado de la portadora."
+    solucion: "El doble del audio: 10 kHz."
+
+  - id: formula-carson
+    tipo: formula
+    titulo: "La regla de Carson"
+    texto: "En FM, el ancho de banda lo dan la desviación y la frecuencia máxima del audio. Muévalas."
+    libro: [134, 136]
+    ec: 136
+    sustitucion: "2 · ({{D_f}} + {{f_x}}) = {{BW}}"
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 100000, unidad: Hz, rotulo: "Δf" }
+      y: { min: 0, max: 250000, unidad: Hz, rotulo: "BW" }
+      curvas:
+        - { expr: "2*(d + f_x)", color: naranja, rotulo: "Carson" }
+      marcas:
+        - { x: "D_f", y: "BW", rotulo: "{{BW}}" }
+      lectura: { valor: BW, rotulo: "Ancho de banda" }
+      mandos:
+        - { valor: D_f, lista: [25000, 50000], rotulo: "Desviación, Δf" }
+        - { valor: f_x, lista: [5000, 10000], rotulo: "Audio, f_{max}" }
+
+  - id: simule-carson
+    tipo: simular
+    titulo: "La FM comercial"
+    texto: "Desviación de ±75 kHz y audio de 15 kHz. ¿Qué ancho de banda ocupa?"
+    libro: [136, 137]
+    fijar: { D_f: 75000, f_x: 15000 }
+    simular:
+      objetivo: BW
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Ancho de banda, BW"
+      errores:
+        - { expr: "BW_a", texto: "Le falta el audio: Carson suma la desviación y la frecuencia máxima." }
+        - { expr: "BW_b", texto: "Le falta el 2: la banda se extiende a los dos lados de la portadora." }
+        - { expr: "BW_am", texto: "Ese es el ancho del mismo audio en AM. La FM ocupa seis veces más." }
+    exito: "180 kHz: el precio de la FM."
+    escalera:
+      - "BW ≈ 2·(Δf + f_{max})."
+    solucion: "2 × (75 + 15) kHz = 180 kHz."
+    comprobar:
+      - { BW: 180000, BW_a: 150000, BW_b: 90000, BW_am: 30000 }
+
+  - id: porque-fm-ruido
+    tipo: porque
+    titulo: "Lo que compra la banda"
+    texto: "¿Por qué la FM suena con menos ruido que la AM?"
+    libro: [139, 140]
+    widget:
+      tipo: figura
+      figura: fig-31.6
+      zonas:
+        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
+    opciones:
+      - texto: "El ruido va sobre todo en la amplitud, y el receptor de FM la limita y solo mira la frecuencia"
+        bien: true
+        porque: "Es la ley general: se puede cambiar ancho de banda por relación señal a ruido."
+      - texto: "Porque la FM transmite con más potencia"
+        porque: "No hace falta más potencia: la ventaja viene de ocupar más banda y desechar la amplitud."
+      - texto: "Porque su portadora es de frecuencia más alta"
+        porque: "La frecuencia de la portadora no decide el ruido; el tipo de modulación sí."
+    escalera:
+      - "¿Dónde se suma el ruido: en la amplitud o en la frecuencia?"
+    solucion: "El limitador quita las variaciones de amplitud, donde va el ruido."
+
+  - id: predecir-umbral
+    tipo: predecir
+    titulo: "Una emisora lejana"
+    texto: "Se aleja de una emisora de AM y de una de FM. ¿Cómo se pierden?"
+    libro: [143, 144]
+    widget:
+      tipo: figura
+      figura: fig-31.6
+      zonas:
+        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
+    opciones:
+      - texto: "La AM se oye con ruido creciente; la FM se oye bien hasta un punto y desaparece"
+        bien: true
+        porque: "Por debajo de unos 10 dB de señal a ruido, el receptor de FM pierde el enganche."
+      - texto: "Las dos van empeorando poco a poco igual"
+        porque: "La ventaja de la FM no es gradual: tiene umbral, como las digitales."
+      - texto: "La FM se oye con ruido creciente; la AM desaparece de golpe"
+        porque: "Al revés: el umbral es de la FM."
+    escalera:
+      - "La ventaja de la FM no es gratuita ni gradual."
+    solucion: "AM, ruido creciente; FM, todo o nada por debajo de unos 10 dB."
+
+  - id: potencia-portadora
+    tipo: pregunta
+    titulo: "Una portadora que no informa"
+    texto: "Fracción de la potencia de AM que se lleva la portadora. Con el 30 % habitual en la voz, ¿cuánto es?"
+    libro: [154]
+    fijar: { m_a: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: m, min: 0, max: 1, unidad: "", rotulo: "m" }
+      y: { min: 50, max: 100, unidad: "%", rotulo: "P_{c}/P" }
+      curvas:
+        - { expr: "100/(1 + m^2/2)", color: naranja, rotulo: "portadora" }
+      marcas:
+        - { x: "1", y: "100/1.5", rotulo: "2/3" }
+    opciones:
+      - texto: "Más del 95 %"
+        bien: true
+        porque: "Casi toda la potencia va en algo que no lleva información."
+      - texto: "Dos tercios"
+        porque: "Ese es el mínimo, con modulación del 100 %; con menos, se lleva más."
+      - texto: "La mitad"
+        porque: "La portadora se lleva al menos dos tercios incluso al 100 %."
+    escalera:
+      - "Mire la curva en m = 0,3."
+    solucion: "Más del 95 %; por eso existen DSB-SC y SSB."
+    comprobar:
+      - { P_c: 95.7, tol: 0.002 }
+
+  - id: empareje-variantes
+    tipo: pregunta
+    titulo: "Las variantes que ahorran"
+    texto: "Empareje cada variante de la AM con lo que hace."
+    libro: [156, 157, 158]
+    widget:
+      tipo: figura
+      figura: fig-31.6
+      zonas:
+        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
+    emparejar:
+      - ["DSB-SC", "Suprime la portadora; demodulador coherente"]
+      - ["SSB", "Además, una banda lateral: la mitad de banda"]
+      - ["VSB", "Un compromiso: la televisión analógica"]
+    exito: "SSB es la de onda corta profesional: 100 Hz de error de frecuencia ya hacen la voz ininteligible."
+    pistas:
+      - { texto: "«Single sideband»: una sola banda lateral." }
+    escalera:
+      - "DSB conserva las dos bandas; SSB, una; VSB, un vestigio."
+    solucion: "DSB-SC sin portadora; SSB, una banda; VSB, el compromiso."
+
+  - id: banco-am
+    tipo: banco
+    titulo: "Las bandas laterales en la FFT"
+    texto: "Module en amplitud con un tono de 1 kHz y mire la FFT. ¿A qué distancia de la portadora están las bandas laterales?"
+    libro: [165, 166]
+    fijar: { f_m: 1000 }
+    banco:
+      piezas: ["Generador con modulación AM", "Osciloscopio con FFT"]
+      medir: "La distancia en frecuencia entre la portadora y una banda lateral."
+      esperado: f_m
+      unidad: Hz
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.5 }, texto: "Le sale el doble: ha medido de una banda lateral a la otra." }
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Le sale largo: amplíe la FFT y ponga los cursores en el centro de cada raya." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Le sale corto: compruebe la frecuencia moduladora del generador." }
+        - { texto: "Exacto: la AM ocupa el doble de la moduladora." }
+      ficha: { n: 35, titulo: "Práctica 11 · Ver y demodular una señal de AM" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [124, 125, 126, 134, 137, 140, 154]
+    ideas:
+      - { titulo: "Por qué modular.", texto: "La antena, el reparto del espectro y la propagación." }
+      - { titulo: "Qué se modula.", texto: "Amplitud, frecuencia o fase de una portadora." }
+      - { titulo: "La banda.", texto: "AM, el doble del audio; FM, la regla de Carson: 180 kHz en la radio comercial." }
+      - { titulo: "Banda contra ruido.", texto: "La FM gasta banda y compra inmunidad, con un umbral." }

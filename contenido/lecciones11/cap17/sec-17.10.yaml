@@ -1,0 +1,253 @@
+# Lección 1.2 de la sección 16.10 «Alimentar el Arduino y sus Límites de Corriente» (cap17; sec-17.N = impresas 16.N).
+# - El regulador lineal de la placa en el esquema vivo «regulador-lineal»: referencia de 5 V sin divisor (salida =
+#   5 V), paso ideal (corriente de entrada = de salida) y una carga de 12,5 Ω, que a 5 V pide los 400 mA del libro.
+#   P = (V_entrada − 5)·I (bloque 264): 2,8 W a 12 V, 1 W a 7,5 V. El libro no da el dropout: no se modela (0 V); la
+#   entrada no baja de 7 V, el mínimo del jack.
+# Paso práctico: «simular» la potencia del regulador a 12 V y 400 mA (errores: la entrada entera, lo que recibe la carga).
+leccion: cap17/sec-17.10
+
+libro:
+  260: "de 7 a 12 V, que pasan por un regulador lineal a bordo"
+  263: "El regulador lineal de la placa disipa la diferencia"
+  264: 'P = lr(( V_("entrada") - "5" )) dot.op I'
+  265: "Con 12 V de entrada y 400 mA de consumo: 2,8 W"
+  266: "Con 7,5 V, la misma corriente disipa 1 W en lugar de 2,8"
+  267: "alimentar con 5 V regulados directamente al pin 5V, saltándose el regulador"
+  269: "~400 mA menos el consumo de la placa"
+  272: "el microcontrolador manda, no alimenta"
+  273: "los picos del motor hunden la alimentación del microcontrolador y lo reinician"
+  277: "Si baja de 4,7 V, el sistema está al borde"
+  278: "Disipación del regulador de la placa según la tensión de entrada"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión del jack", unidad: V, valor: 9 }
+    V_rf: { sim: "V_{ref}", nombre: "salida del regulador", unidad: V, valor: 5 }
+    R_L: { sim: "R_{L}", nombre: "placa y su carga", unidad: Ω, valor: 12.5 }
+  calculos:
+    V_o: { expr: "V_rf", sim: "V_{5V}", nombre: "tensión del pin 5V", unidad: V }
+    I_L: { expr: "V_o/R_L", sim: "I", nombre: "consumo", unidad: A }
+    P_r: { expr: "(V_in - V_o)*I_L", sim: "P", nombre: "potencia en el regulador", unidad: W }
+    P_e: { expr: "V_in*I_L", sim: "P_{entrada}", nombre: "potencia que entra", unidad: W }
+    P_c: { expr: "V_o*I_L", sim: "P_{carga}", nombre: "potencia de la carga", unidad: W }
+
+tarjetas:
+  - id: explore-regulador
+    tipo: explorar
+    titulo: "El regulador de a bordo"
+    texto: "El jack admite de 7 a 12 V, que pasan por un regulador lineal. Suba la entrada y mire cuánto calor disipa."
+    libro: [260, 263]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      lectura: { valor: P_r, rotulo: "Potencia en el regulador" }
+      datos:
+        - { valor: I_L, rotulo: "Consumo: {{I_L}}" }
+        - { valor: V_o, rotulo: "Pin 5V: {{V_o}}" }
+      corriente: I_L
+      mide: { vout: V_o, iin: I_L, icarga: I_L, p_paso: P_r }
+      mandos:
+        - { valor: V_in, min: 7, max: 12, paso: 0.5, rotulo: "Entrada, V_{entrada}" }
+    requiere: { mover: [V_in] }
+
+  - id: formula-disipa
+    tipo: formula
+    titulo: "Disipa la diferencia"
+    texto: "Toda la tensión que sobra por encima de 5 V se queda en el regulador, multiplicada por la corriente."
+    libro: [263, 264]
+    ec: 264
+    sustitucion: "({{V_in}} − {{V_o}}) · {{I_L}} = {{P_r}}"
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      lectura: { valor: P_r, rotulo: "Potencia en el regulador" }
+      corriente: I_L
+      mide: { vout: V_o, p_paso: P_r }
+      mandos:
+        - { valor: V_in, min: 7, max: 12, paso: 0.5, rotulo: "Entrada, V_{entrada}" }
+
+  - id: simule-12v
+    tipo: simular
+    titulo: "Prediga a 12 V"
+    texto: "Con 12 V en el jack y 400 mA de consumo, ¿cuánto disipa el regulador?"
+    libro: [264, 265]
+    fijar: { V_in: 12, R_L: 12.5 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      lectura: { valor: P_r, rotulo: "Potencia en el regulador" }
+      mide: { p_paso: P_r }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: P_r
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en el regulador"
+      medida: p_paso
+      errores:
+        - { expr: "P_e", texto: "Esos 4,8 W son toda la potencia que entra: el regulador solo se queda con lo que sobra por encima de 5 V." }
+        - { expr: "P_c", texto: "Esos 2,0 W son los que recibe la placa a 5 V; el regulador disipa los 7 V que sobran." }
+    exito: "2,8 W en un encapsulado pequeño y sin disipador."
+    escalera:
+      - "Sobran 12 − 5 V."
+      - "Multiplique esa diferencia por la corriente."
+    solucion: "(12 − 5) V · 0,4 A = 2,8 W."
+    comprobar:
+      - { P_r: 2.8, P_e: 4.8, P_c: 2.0, I_L: 0.4 }
+
+  - id: predecir-sintoma
+    tipo: predecir
+    titulo: "Funciona unos minutos"
+    texto: "Esa placa, a 12 V y 400 mA, sin disipador. ¿Qué síntoma da?"
+    libro: [265]
+    fijar: { V_in: 12, R_L: 12.5 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      lectura: { valor: P_r, rotulo: "Potencia en el regulador" }
+      corriente: I_L
+      mide: { vout: V_o, p_paso: P_r }
+      mandos: []
+    opciones:
+      - texto: "Funciona unos minutos y se reinicia"
+        bien: true
+        porque: "El regulador se calienta hasta cortar por protección térmica."
+      - texto: "No arranca"
+        porque: "Arranca bien: el problema aparece cuando el regulador se calienta."
+      - texto: "Funciona siempre, solo se calienta"
+        porque: "Se calienta hasta que la protección térmica lo corta: la placa se reinicia."
+    escalera:
+      - "¿Qué hace un regulador con protección térmica cuando se calienta demasiado?"
+    solucion: "Funciona unos minutos y se reinicia."
+
+  - id: reto-1w
+    tipo: reto
+    titulo: "Con menos tensión"
+    texto: "Con los mismos 400 mA, elija una entrada con la que el regulador no pase de 1 W."
+    libro: [266]
+    fijar: { R_L: 12.5 }
+    inicio: { V_in: 12 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      lectura: { valor: P_r, rotulo: "Potencia en el regulador" }
+      corriente: I_L
+      mide: { vout: V_o, p_paso: P_r }
+      mandos:
+        - { valor: V_in, min: 7, max: 12, paso: 0.5, rotulo: "Entrada, V_{entrada}" }
+    condiciones:
+      - { valor: P_r, max: 1.0, rotulo: "Regulador: {{P_r}}" }
+    exito: "Con 7 u 8 V, no con 12: a 7,5 V la misma corriente disipa 1 W y el problema desaparece."
+    pistas:
+      - { cuando: { valor: P_r, mayor: 1.0 }, texto: "Todavía sobra tensión: baje la entrada." }
+    escalera:
+      - "Cada voltio de más son 0,4 W con 400 mA."
+    solucion: "7,5 V o menos: (7,5 − 5) · 0,4 = 1 W."
+    comprobar:
+      - { con: { V_in: 7.5 }, P_r: 1.0, I_L: 0.4 }
+
+  - id: pregunta-pin5v
+    tipo: pregunta
+    titulo: "Consumos apreciables"
+    texto: "Su montaje consume bastante. ¿Cuál es la solución correcta para alimentarlo?"
+    libro: [267]
+    widget:
+      tipo: figura
+      figura: fig-17.15
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 206] }
+    opciones:
+      - texto: "5 V regulados directamente al pin 5V"
+        bien: true
+        porque: "Se salta el regulador; pero no hay protección, así que esos 5 V deben ser buenos."
+      - texto: "12 V por el jack, con un ventilador"
+        porque: "El regulador sigue disipando lo que sobra; la solución es saltárselo."
+      - texto: "Por el pin Vin en lugar del jack"
+        porque: "Vin es lo mismo que el jack, sin el diodo de protección: pasa por el mismo regulador."
+    escalera:
+      - "El problema es el regulador: ¿cómo evitarlo?"
+    solucion: "5 V regulados al pin 5V, con la precaución de que sean buenos."
+
+  - id: empareje-limites
+    tipo: pregunta
+    titulo: "Los límites de corriente"
+    texto: "Empareje cada salida con lo que puede dar."
+    libro: [269]
+    widget:
+      tipo: figura
+      figura: fig-17.15
+      zonas:
+        - { id: limites, rotulo: "El cuadro de la derecha", rect: [255, 10, 187, 180] }
+    emparejar:
+      - ["Un pin, recomendado", "20 mA"]
+      - ["El microcontrolador entero", "200 mA"]
+      - ["La salida de 5 V con USB", "~400 mA menos la placa"]
+      - ["La salida de 3,3 V", "50 mA"]
+    exito: "El pin de 3,3 V no puede alimentar casi nada."
+    pistas:
+      - { texto: "La menor de las salidas de alimentación es la de 3,3 V." }
+    escalera:
+      - "El total del micro es diez veces lo de un pin."
+    solucion: "Pin, 20 mA; micro, 200 mA; 5 V, ~400 mA menos la placa; 3,3 V, 50 mA."
+
+  - id: porque-motor
+    tipo: porque
+    titulo: "Un motor que reinicia la placa"
+    texto: "La placa y un motor comparten fuente, y cada vez que arranca el motor la placa se reinicia. ¿Por qué?"
+    libro: [272, 273, 278]
+    widget:
+      tipo: figura
+      figura: fig-17.15
+      zonas:
+        - { id: limites, rotulo: "El cuadro de la derecha", rect: [255, 10, 187, 180] }
+    opciones:
+      - texto: "Los picos del motor hunden la alimentación"
+        bien: true
+        porque: "Defensas: alimentaciones separadas, condensadores grandes o masas unidas en un solo punto."
+      - texto: "El pin no da corriente suficiente"
+        porque: "El motor no se alimenta del pin, sino de la fuente común: es esa la que se hunde."
+      - texto: "El motor genera interferencias en el USB"
+        porque: "El mecanismo es la caída de la alimentación compartida en cada pico."
+    escalera:
+      - "¿Qué le pasa a una fuente compartida cuando arranca una carga grande?"
+    solucion: "Sus picos hunden la alimentación del microcontrolador."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Mide el pin 5V con la carga funcionando y lee 4,6 V. ¿Qué concluye?"
+    libro: [277]
+    widget:
+      tipo: figura
+      figura: fig-17.15
+      zonas:
+        - { id: limites, rotulo: "El cuadro de la derecha", rect: [255, 10, 187, 180] }
+    opciones:
+      - texto: "Está al borde: cualquier pico lo cruzará"
+        bien: true
+        porque: "Por debajo de 4,7 V con la carga conectada, el sistema está al borde."
+      - texto: "Está bien: es casi 5 V"
+        porque: "El umbral es 4,7 V con carga: 4,6 V ya lo cruza."
+      - texto: "Hay que medirlo en vacío"
+        porque: "Se mide con la carga conectada, no en vacío: así se ve el problema."
+    escalera:
+      - "Compare con 4,7 V."
+    solucion: "Está por debajo de 4,7 V: al borde."
+    comprobar:
+      - { con: { V_rf: 4.6 }, V_o: 4.6 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [264, 266, 267, 269]
+    ideas:
+      - { titulo: "P = (V − 5)·I.", texto: "El regulador de la placa disipa lo que sobra por encima de 5 V." }
+      - { titulo: "7 u 8 V, no 12.", texto: "Con 400 mA, 2,8 W a 12 V y 1 W a 7,5 V." }
+      - { titulo: "Manda, no alimenta.", texto: "Cargas de verdad, con su fuente y un transistor o driver." }
+      - { titulo: "4,7 V.", texto: "Mida el pin 5V con la carga: por debajo, al borde." }

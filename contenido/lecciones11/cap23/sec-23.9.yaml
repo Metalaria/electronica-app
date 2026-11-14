@@ -1,0 +1,233 @@
+# Lección 1.2 de la sección 22.9 «Máxima Transferencia de Potencia» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.9
+
+libro:
+  201: "entrega la máxima potencia a una carga cuando Rcarga = Rs"
+  202: "con la carga al doble o a la mitad de lo óptimo, todavía se entrega el 89 % de la potencia máxima"
+  204: "la carga óptima es de 3 Ω y recibe 9²/(4 × 3) = 6,75 W"
+  206: "El rendimiento es del 50 %, y no puede ser mejor."
+  207: "Un amplificador de audio no adapta su impedancia de salida a la del altavoz"
+  212: "En la entrada de un receptor, donde la señal captada es de picovatios"
+  217: "Máxima tensión"
+  218: "está construido para transferir tensión con la mínima pérdida"
+  225: "VTh = 9 V, RTh = 3 Ω"
+
+modelo:
+  valores:
+    V_t: { sim: "V_{Th}", nombre: "tensión de Thévenin", unidad: V, valor: 9 }
+    R_ti: { sim: "R_{Th}", nombre: "resistencia de Thévenin", unidad: Ω, valor: 3 }
+    R_tl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1 }
+  calculos:
+    V_to: { expr: "V_t*R_tl/(R_ti + R_tl)", sim: "V_{L}", nombre: "tensión en la carga", unidad: V }
+    I_t: { expr: "V_t/(R_ti + R_tl)", sim: "I", nombre: "corriente", unidad: A }
+    V_ti: { expr: "I_t*R_ti", sim: "V_{Th} − V_{L}", nombre: "caída en R_Th", unidad: V }
+    P_L: { expr: "I_t^2*R_tl", sim: "P_{L}", nombre: "potencia en la carga", unidad: W }
+    P_i: { expr: "I_t^2*R_ti", sim: "P_{Th}", nombre: "potencia en la resistencia interna", unidad: W }
+    eta: { expr: "R_tl/(R_ti + R_tl)*100", sim: "η", nombre: "rendimiento", unidad: "%", cifras: 3 }
+    P_max: { expr: "V_t^2/(4*R_ti)", sim: "P_{máx}", nombre: "potencia máxima", unidad: W }
+    P_todo: { expr: "V_t^2/R_ti", sim: "V²/R", nombre: "toda la tensión sobre R_Th", unidad: W }
+    P_mitad: { expr: "V_t^2/(2*R_ti)", sim: "V²/2R", nombre: "la mitad de V²/R", unidad: W }
+    frac: { expr: "P_L/P_max*100", sim: "P/P_{máx}", nombre: "fracción de la máxima", unidad: "%", cifras: 3 }
+
+tarjetas:
+  - id: explore-curva
+    tipo: explorar
+    titulo: "La curva de potencia"
+    texto: "Arrastre la carga a lo largo de la curva de la red de 9 V y 3 Ω. Busque dónde recibe más potencia."
+    libro: [201, 225]
+    fijar: { V_t: 9, R_ti: 3 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 15, unidad: Ω, rotulo: "R_{L}" }
+      y: { min: 0, max: 8, unidad: W, rotulo: "P_{L}" }
+      curvas:
+        - { expr: "V_t^2*r/(R_ti + r)^2", color: naranja, rotulo: "P_{L}" }
+      asas:
+        - { mueve: R_tl, x: "R_tl", y: "P_L", rotulo: "Su carga" }
+      lectura: { valor: P_L, rotulo: "Potencia en la carga" }
+      datos:
+        - { valor: V_to, rotulo: "V_{L} = {{V_to}}" }
+      mandos:
+        - { valor: R_tl, min: 0.5, max: 15, paso: 0.5, rotulo: "R_{L}" }
+
+  - id: prediga-pmax
+    tipo: predecir
+    titulo: "Prediga la potencia máxima"
+    texto: "La red de 9 V y 3 Ω con la carga óptima, R_{L} = R_{Th}. ¿Cuánta potencia recibe?"
+    libro: [204]
+    fijar: { V_t: 9, R_ti: 3, R_tl: 3 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: P_L, rotulo: "Potencia en la carga" }
+      datos:
+        - { valor: V_to, rotulo: "V_{L} = {{V_to}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      ocultar: true
+    opciones:
+      - texto: "6,75 W"
+        bien: true
+        porque: "La carga recibe la mitad de la tensión, 4,5 V, con 1,5 A: P_{máx} = 9²/(4 × 3) = 6,75 W."
+      - texto: "27 W"
+        porque: "Es 9²/3, como si toda la tensión cayera en la carga. Con R_{L} = R_{Th} solo le llega la mitad."
+      - texto: "13,5 W"
+        porque: "Es la mitad de 9²/3. La carga tiene la mitad de la tensión y la potencia va con su cuadrado: la cuarta parte."
+    escalera:
+      - "Con R_{L} = R_{Th}, la tensión se reparte a partes iguales."
+    solucion: "4,5 V × 1,5 A = 6,75 W, que es 9²/(4 × 3)."
+    comprobar:
+      - { P_L: 6.75, V_to: 4.5, I_t: 1.5, P_todo: 27, P_mitad: 13.5 }
+
+  - id: ajuste-maximo
+    tipo: ajuste
+    titulo: "Ajuste hasta el máximo"
+    texto: "Mueva la carga hasta que la potencia entre en la banda del máximo. Fíjese en lo ancha que es la banda."
+    libro: [201, 202]
+    fijar: { V_t: 9, R_ti: 3 }
+    inicio: { R_tl: 12 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: P_L, rotulo: "Potencia en la carga" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_tl, min: 0.5, max: 15, paso: 0.5, rotulo: "R_{L}" }
+    ajuste:
+      valor: P_L
+      objetivo: 6.75
+      tol: 0.02
+      rotulo: "Potencia en la carga"
+      escala: { min: 0, max: 7 }
+      bajo: "Falta potencia: acerque la carga a R_{Th}."
+      alto: "Por encima del máximo no se puede."
+      dentro: "En la banda: la cima es muy plana."
+    comprobar:
+      - { P_max: 6.75 }
+
+  - id: estime-doble
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lejos del óptimo"
+    texto: "Con la carga al doble de lo óptimo, 6 Ω, ¿qué fracción de la potencia máxima recibe?"
+    libro: [202]
+    fijar: { V_t: 9, R_ti: 3, R_tl: 6 }
+    estimar:
+      objetivo: "frac"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 40
+      tol: 0.03
+      rotulo: "Fracción de la máxima"
+    exito: "Un 89 %: la curva es muy plana en el máximo, y la adaptación no tiene que ser perfecta."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 91.6 }, texto: "Se ha pasado: con el doble de carga se pierde algo, aunque poco." }
+      - { texto: "Se ha quedado corto: la curva es muy plana alrededor del máximo." }
+    escalera:
+      - "Calcule P_{L} con 6 Ω y divídala por los 6,75 W."
+    solucion: "9² · 6/9² = 6 W, y 6/6,75 = 89 %."
+    comprobar:
+      - { frac: 88.9, P_L: 6 }
+
+  - id: cincuenta
+    tipo: sorpresa
+    titulo: "El dato incómodo"
+    texto: "Mueva la carga hasta R_{Th} y compare lo que recibe la carga con lo que se pierde dentro de la fuente."
+    libro: [206]
+    fijar: { V_t: 9, R_ti: 3 }
+    inicio: { R_tl: 12 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      datos:
+        - { valor: P_L, rotulo: "En la carga: {{P_L}}" }
+        - { valor: P_i, rotulo: "Dentro: {{P_i}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_tl, min: 0.5, max: 15, paso: 0.5, rotulo: "R_{L}" }
+    comprobar:
+      - { con: { R_tl: 3 }, eta: 50, P_L: 6.75, P_i: 6.75 }
+
+  - id: por-que-audio
+    tipo: porque
+    titulo: "¿Por qué no se adapta el altavoz?"
+    texto: "Un amplificador de audio no adapta su impedancia de salida a los 8 Ω del altavoz. ¿Por qué?"
+    libro: [206, 207]
+    fijar: { V_t: 9, R_ti: 3, R_tl: 3 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+    opciones:
+      - texto: "Disiparía tanto como el altavoz: el rendimiento se quedaría en el 50 %"
+        bien: true
+        porque: "Con salida de miliohmios frente a 8 Ω, el rendimiento se acerca al 100 %."
+      - texto: "Porque el altavoz no es una resistencia"
+        porque: "Aunque lo fuera, adaptar costaría la mitad de la energía. El motivo es el rendimiento."
+      - texto: "Porque adaptar daría menos potencia al altavoz"
+        porque: "Adaptado recibiría la máxima posible de esa fuente, pero a costa de perder otro tanto dentro."
+    escalera:
+      - "En el punto de máxima transferencia, ¿cuánto se disipa dentro de la fuente?"
+    solucion: "Adaptar es perder la mitad: en potencia se busca rendimiento, con salida de impedancia muy baja."
+
+  - id: criterios
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres criterios de acoplamiento"
+    texto: "Una cada objetivo con su condición."
+    libro: [217, 218]
+    emparejar:
+      - ["Máxima potencia", "Z_{L} = Z_{s}*"]
+      - ["Máxima tensión", "Z_{L} ≫ Z_{s}"]
+      - ["Máxima corriente", "Z_{L} ≪ Z_{s}"]
+    exito: "El segundo es el habitual entre etapas: por eso un operacional tiene entrada de gigaohmios y salida de miliohmios."
+    pistas:
+      - { texto: "Para llevarse la tensión, la carga tiene que ser mucho mayor que la fuente." }
+    escalera:
+      - "Solo uno de los tres iguala las impedancias."
+    solucion: "Potencia: conjugadas; tensión: Z_{L} ≫ Z_{s}; corriente: Z_{L} ≪ Z_{s}."
+
+  - id: donde-si
+    tipo: pregunta
+    titulo: "Dónde sí se adapta"
+    texto: "¿En cuál de estos casos sí conviene la máxima transferencia de potencia?"
+    libro: [212]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: P_L, rotulo: "Potencia en la carga" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+    opciones:
+      - texto: "En la entrada de un receptor, con señal de picovatios"
+        bien: true
+        porque: "La señal es escasa y la energía no cuesta: desperdiciar la mitad de la señal es inaceptable."
+      - texto: "En una fuente de alimentación"
+        porque: "Ahí cuesta la energía: se diseña con impedancia de salida lo más baja posible, no igual a la carga."
+      - texto: "Entre dos etapas que se pasan tensión"
+        porque: "Para transferir tensión se busca salida baja y entrada alta, no impedancias iguales."
+    escalera:
+      - "Adapte cuando la señal es escasa y la energía no importa."
+    solucion: "En la entrada de un receptor: señal escasa, energía barata."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [201, 202, 206, 217]
+    ideas:
+      - { titulo: "La condición.", texto: "R_{L} = R_{Th} (en alterna, Z_{L} = Z_{s}*): P_{máx} = V_{Th}²/(4·R_{Th})." }
+      - { titulo: "Una cima plana.", texto: "Al doble o a la mitad de lo óptimo, aún el 89 %." }
+      - { titulo: "El 50 %.", texto: "Adaptado, la fuente disipa lo mismo que la carga: no se usa en potencia." }
+      - { titulo: "Tres criterios.", texto: "Potencia, impedancias conjugadas; tensión, Z_{L} ≫ Z_{s}; corriente, Z_{L} ≪ Z_{s}." }

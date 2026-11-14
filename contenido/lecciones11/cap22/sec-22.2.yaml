@@ -1,0 +1,353 @@
+# Lección 1.2 de la sección 21.2 «Práctica 2 — Carga y Descarga de un Condensador (RC)» (cap22; etiqueta interna
+# sec-22.2). Formato: contenido/lecciones11/GUIA.md. El RC del libro (10 kΩ y 100 nF, τ = 1 ms) con la cuadrada de
+# 0 a 3 V del ejercicio 21.2. La sonda de 10 MΩ en paralelo con C se dibuja con su equivalente de Thévenin exacto: la
+# fuente baja a V·10/11 y la resistencia a R ‖ 10 MΩ (lo que dice el bloque 52). La cuadrada de 1 kHz y 10 kHz de la
+# gráfica de frecuencias es ilustrativa (el libro: «frecuencia demasiado alta»); la respuesta es la estacionaria.
+leccion: cap22/sec-22.2
+
+libro:
+  38: "Medir la carga de un condensador es la forma más directa de comprobar la exponencial"
+  40: "Una resistencia en serie con un condensador, alimentados por una onda cuadrada del generador"
+  41: "Con R = 10 kΩ y C = 100 nF, la constante de tiempo es:"
+  42: 'τ = R dot.op C'
+  43: "Con una cuadrada de 100 Hz, cada semiciclo dura 5 ms, es decir, cinco constantes de tiempo"
+  45: "la tensión alcanza el 63,2 % de la final en exactamente una constante de tiempo"
+  47: "Tensión alcanzada"
+  48: "con cinco constantes de tiempo se considera terminado el transitorio"
+  49: "La descarga, que es la misma curva invertida y con la misma constante"
+  51: "Si se repite con R = 1 MΩ"
+  52: "la tensión final se queda en el 90,9 % (10/11) y la constante efectiva baja a 0,91·τ, unos 91 ms"
+  53: "medir modifica lo medido"
+  59: "eso es exactamente un integrador"
+  61: "el tiempo de subida del 10 al 90 % es 2,2·τ, no τ"
+  63: "calcular τ a partir de la curva medida con los cursores"
+  64: "la diferencia señala exactamente cuál de los tres —R, C o la sonda— es el responsable"
+  "cap22#370": "se excita con una cuadrada de 0 a 3 V y 100 Hz"
+
+modelo:
+  valores:
+    V_c: { sim: "V", nombre: "nivel alto de la cuadrada", unidad: V, valor: 3 }
+    R_c: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 10000 }
+    C_c: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    R_p: { sim: "R_{sonda}", nombre: "resistencia de la sonda", unidad: Ω, valor: 10000000 }
+    sonda: { tipo: interruptor, nombre: "sonda conectada", valor: 0 }
+    c_modo: { tipo: interruptor, nombre: "conmutador en carga", valor: 1 }
+    f_q: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 100 }
+  calculos:
+    tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    V_ef: { si: sonda, entonces: "V_c*R_p/(R_c + R_p)", sino: "V_c", sim: "V", nombre: "tensión que ve el condensador", unidad: V }
+    R_ef: { si: sonda, entonces: "par(R_c, R_p)", sino: "R_c", sim: "R", nombre: "resistencia que ve el condensador", unidad: Ω }
+    tau_ef: { expr: "R_ef*C_c", sim: "τ_{ef}", nombre: "constante efectiva", unidad: s }
+    fin_pct: { expr: "V_ef/V_c*100", sim: "V_{final}", nombre: "tensión final", unidad: "%" }
+    V_cf: { si: c_modo, entonces: "V_ef", sino: "0", sim: "V_{final}", nombre: "tensión final", unidad: V }
+    V_c0: { si: c_modo, entonces: "0", sino: "V_ef", sim: "V₀", nombre: "tensión inicial", unidad: V }
+    v_tau: { expr: "V_c0 + 0.632*(V_cf - V_c0)", sim: "v(τ)", nombre: "tensión en un τ", unidad: V }
+    t_10: { expr: "tau_c*ln(10/9)", sim: "t_{10}", nombre: "llegada al 10 %", unidad: s }
+    t_90: { expr: "tau_c*ln(10)", sim: "t_{90}", nombre: "llegada al 90 %", unidad: s }
+    t_r: { expr: "t_90 - t_10", sim: "t_{r}", nombre: "tiempo de subida", unidad: s }
+    v_10: { expr: "0.1*V_c", sim: "v", nombre: "10 %", unidad: V }
+    v_90: { expr: "0.9*V_c", sim: "v", nombre: "90 %", unidad: V }
+    e_h: { expr: "exp(-1/(2*f_q*tau_c))", sim: "e", nombre: "decaimiento en un semiciclo", unidad: "" }
+    v_hi: { expr: "V_c/(1 + e_h)", sim: "v_{máx}", nombre: "máximo estacionario", unidad: V }
+    v_lo: { expr: "v_hi*e_h", sim: "v_{mín}", nombre: "mínimo estacionario", unidad: V }
+    v_pp: { expr: "v_hi - v_lo", sim: "Δv", nombre: "excursión del condensador", unidad: V }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "Carga y descarga"
+    texto: "Mueva el conmutador. La descarga es la misma curva invertida, con la misma constante."
+    libro: [38, 40, 49]
+    fijar: { R_c: 10000, C_c: 100e-9, sonda: 0 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: -3.3, max: 3.3, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "(V_cf - V_c0)*exp(-t/tau_ef)", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
+        marcas:
+          - { x: "tau_ef", y: "v_tau", rotulo: "τ" }
+      mandos:
+        - { valor: c_modo, tipo: interruptor, rotulo: "Conmutador en carga" }
+    requiere: { mover: [c_modo] }
+
+  - id: formula-tau
+    tipo: formula
+    titulo: "La constante de tiempo"
+    texto: "Con 10 kΩ y 100 nF, τ = 1 ms. Una cuadrada de 100 Hz deja 5 ms por semiciclo: cinco constantes."
+    libro: [41, 42, 43]
+    fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
+    ec: 42
+    sustitucion: "{{R_c}} · {{C_c}} = {{tau_c}}"
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
+        marcas:
+          - { x: "tau_ef", y: "v_tau", rotulo: "τ" }
+    comprobar:
+      - { tau_c: 0.001 }
+
+  - id: prediga-tau
+    tipo: predecir
+    titulo: "Prediga en un τ"
+    texto: "El condensador se carga desde cero. ¿Qué parte de la tensión final tiene al cabo de una constante de tiempo?"
+    libro: [45]
+    fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: v_tau, rotulo: "Tensión en un τ" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
+      ocultar: true
+    opciones:
+      - texto: "El 63,2 %"
+        bien: true
+        porque: "Es 1 − e⁻¹: en un τ queda por recorrer e⁻¹ del camino. Medir ese tiempo es la comprobación central."
+      - texto: "La mitad"
+        porque: "La mitad se alcanza antes de τ. En un τ ya va por el 63,2 %."
+      - texto: "Toda la tensión"
+        porque: "La exponencial no llega nunca del todo: con cinco constantes se da por terminada."
+    escalera:
+      - "Tras un τ, lo que falta por cargar se ha reducido en un factor e."
+    solucion: "El 63,2 % de la tensión final."
+
+  - id: tabla-tau
+    tipo: pregunta
+    titulo: "Los valores de referencia"
+    texto: "Empareje cada tiempo con la tensión alcanzada, en porcentaje de la final."
+    libro: [47, 48]
+    emparejar:
+      - ["1τ", "63,2 %"]
+      - ["2τ", "86,5 %"]
+      - ["3τ", "95,0 %"]
+      - ["5τ", "99,3 %"]
+    exito: "Con cinco constantes, el 99,3 %: por eso se considera terminado el transitorio."
+    pistas:
+      - { texto: "Cada constante de tiempo más, lo que falta por cargar se divide por e." }
+    escalera:
+      - "La primera, 63,2 %, ya la conoce: la cifra sube cada vez menos."
+    solucion: "1τ: 63,2 %; 2τ: 86,5 %; 3τ: 95,0 %; 5τ: 99,3 %."
+
+  - id: estime-2ms
+    tipo: pregunta
+    titulo: "Dos milisegundos después"
+    texto: "Una cuadrada de 0 a 3 V carga el RC de 1 ms desde cero. ¿Qué tensión tiene el condensador 2 ms después del flanco?"
+    libro: [42, 47, "cap22#370"]
+    fijar: { V_c: 3, R_c: 10000, C_c: 100e-9 }
+    estimar:
+      objetivo: "V_c*(1 - exp(-0.002/tau_c))"
+      unidad: V
+      min: 0
+      max: 3
+      paso: 0.01
+      inicio: 1
+      tol: 0.03
+      rotulo: "v_{C} a los 2 ms"
+    exito: "2 ms son dos constantes: el 86,5 % de 3 V, unos 2,59 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.7 }, texto: "Se ha pasado: en 2τ aún no ha llegado a 3 V; va por el 86,5 %." }
+      - { texto: "Se ha quedado corto: 2 ms son dos constantes de tiempo, no una." }
+    escalera:
+      - "¿Cuántas constantes de tiempo son 2 ms?"
+      - "Con 2τ se alcanza el 86,5 % de la tensión final."
+    solucion: "v = 3 · (1 − e⁻²) ≈ 2,59 V, el 86,5 % de la tabla."
+    comprobar:
+      - { con: { V_c: 3 }, V_c: 3 }
+
+  - id: tiempo-subida
+    tipo: pregunta
+    titulo: "Del 10 al 90 %"
+    texto: "Los osciloscopios miden el tiempo de subida entre el 10 y el 90 % del salto. ¿Cuánto vale en un RC?"
+    libro: [61]
+    fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
+        marcas:
+          - { x: "t_10", y: "v_10", rotulo: "10 %" }
+          - { x: "t_90", y: "v_90", rotulo: "90 %" }
+    opciones:
+      - texto: "2,2·τ"
+        bien: true
+        porque: "Del 10 % al 90 % del salto pasan 2,2 constantes de tiempo: con 1 ms, unos 2,2 ms."
+      - texto: "τ"
+        porque: "Es el error típico de la práctica: τ es la llegada al 63,2 %, no el tiempo del 10 al 90 %."
+      - texto: "5·τ"
+        porque: "Cinco constantes es cuando se da por terminado el transitorio, no el tiempo de subida."
+    escalera:
+      - "Mire dónde caen las marcas del 10 % y del 90 % en la gráfica."
+    solucion: "2,2·τ: con τ = 1 ms, unos 2,2 ms."
+    comprobar:
+      - { t_r: 0.0022, tol: 0.01 }
+
+  - id: sonda-carga
+    tipo: sorpresa
+    titulo: "La sonda en un RC de 1 MΩ"
+    texto: "Con R = 1 MΩ, τ = 100 ms. Conecte la sonda de 10 MΩ en paralelo con el condensador."
+    libro: [51, 52]
+    fijar: { R_c: 1000000, C_c: 100e-9, c_modo: 1, R_p: 10000000 }
+    inicio: { sonda: 0 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_ef, rotulo: "Constante efectiva" }
+      datos:
+        - { valor: fin_pct, rotulo: "Tensión final: {{fin_pct}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_c*(1 - exp(-t/tau_c))", color: tinta, rotulo: "sin sonda", discontinua: true }
+      mandos:
+        - { valor: sonda, tipo: conectar, boton: "Conectar la sonda (10 MΩ)" }
+    requiere: { conectar: [sonda] }
+    comprobar:
+      - { tau_c: 0.1 }
+      - { con: { sonda: 1 }, tau_ef: 0.091, fin_pct: 90.9, tol: 0.005 }
+
+  - id: por-que-sonda
+    tipo: porque
+    titulo: "¿Por qué cambia también τ?"
+    texto: "Con la sonda, la tensión final baja al 90,9 % y la constante a unos 91 ms. ¿Por qué cambia la constante?"
+    libro: [52, 53]
+    fijar: { R_c: 1000000, C_c: 100e-9, c_modo: 1, R_p: 10000000, sonda: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_ef, rotulo: "Constante efectiva" }
+      grafica:
+        x: { id: t, min: 0, max: 0.5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
+    opciones:
+      - texto: "El condensador se carga a través de 1 MΩ ‖ 10 MΩ, no de 1 MΩ"
+        bien: true
+        porque: "Visto desde C, la fuente y las dos resistencias son un Thévenin de 10/11 de la tensión y R ‖ 10 MΩ: 0,91·τ."
+      - texto: "La sonda añade 20 pF al condensador"
+        porque: "Los 20 pF de la sonda son despreciables frente a 100 nF. Lo que pesa son sus 10 MΩ frente a 1 MΩ."
+      - texto: "El generador se carga y da menos tensión"
+        porque: "La tensión final baja por el divisor de 1 MΩ y 10 MΩ, no por el generador. Y la constante, por el paralelo."
+    escalera:
+      - "Sustituya la fuente, R y la sonda por su equivalente de Thévenin visto desde el condensador."
+    solucion: "C ve R ‖ 10 MΩ ≈ 0,91 MΩ: τ efectiva de 91 ms y tensión final del 90,9 %. Medir modifica lo medido."
+
+  - id: frecuencia-alta
+    tipo: explorar
+    titulo: "Si la cuadrada va demasiado deprisa"
+    texto: "Suba la frecuencia de la cuadrada. El condensador ya no llega a cargarse."
+    libro: [43, 59]
+    fijar: { V_c: 3, R_c: 10000, C_c: 100e-9 }
+    inicio: { f_q: 100 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "ciclos" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_c*(1 - floor(2*(n - floor(n))))", color: tinta, rotulo: "cuadrada", discontinua: true }
+        - { expr: "(1 - floor(2*(n - floor(n))))*(V_c - (V_c - v_lo)*exp(-(n - floor(n))/(f_q*tau_c))) + floor(2*(n - floor(n)))*v_hi*exp(-(n - floor(n) - 0.5)/(f_q*tau_c))", color: naranja, rotulo: "v_{C}" }
+      lectura: { valor: v_pp, rotulo: "Excursión del condensador" }
+      mandos:
+        - { valor: f_q, lista: [100, 1000, 10000], rotulo: "Frecuencia" }
+    requiere: { mover: [f_q] }
+
+  - id: integrador
+    tipo: pregunta
+    titulo: "¿Qué es esa triangular?"
+    texto: "Con la cuadrada demasiado rápida, en la pantalla sale una triangular pequeña en lugar de la exponencial. ¿Qué es?"
+    libro: [59]
+    fijar: { V_c: 3, R_c: 10000, C_c: 100e-9, f_q: 10000 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "ciclos" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_c*(1 - floor(2*(n - floor(n))))", color: tinta, rotulo: "cuadrada", discontinua: true }
+        - { expr: "(1 - floor(2*(n - floor(n))))*(V_c - (V_c - v_lo)*exp(-(n - floor(n))/(f_q*tau_c))) + floor(2*(n - floor(n)))*v_hi*exp(-(n - floor(n) - 0.5)/(f_q*tau_c))", color: naranja, rotulo: "v_{C}" }
+    opciones:
+      - texto: "Un error y un descubrimiento: es un integrador"
+        bien: true
+        porque: "Con semiciclos mucho más cortos que τ, solo se ve el principio de cada exponencial, casi recto: la integral de la cuadrada."
+      - texto: "Un fallo del generador"
+        porque: "El generador da su cuadrada. Es el RC el que no tiene tiempo de cargarse en cada semiciclo."
+      - texto: "Un efecto de la sonda ×10"
+        porque: "La sonda no cambia la forma así. Lo que manda es la relación entre el semiciclo y τ."
+    escalera:
+      - "Compare la duración de un semiciclo con τ = 1 ms."
+    solucion: "Semiciclos mucho más cortos que τ: el condensador integra la cuadrada. Un integrador."
+
+  - id: dibuje-carga
+    tipo: dibujar
+    titulo: "Dibuje la carga"
+    texto: "Con 0 a 3 V y τ = 1 ms, dibuje la tensión del condensador durante un semiciclo de 5 ms."
+    libro: [42, 43, "cap22#370"]
+    fijar: { V_c: 3, R_c: 10000, C_c: 100e-9 }
+    dibujar:
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "v_{C}" }
+      curva: "V_c*(1 - exp(-t/tau_c))"
+      puntos: 21
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "La carga en un semiciclo"
+    exito: "Sube deprisa al principio, pasa por el 63,2 % en 1 ms y está casi en 3 V a los 5 ms."
+    escalera:
+      - "En t = τ va por el 63,2 %; en 5τ, por el 99,3 %."
+    solucion: "La exponencial 3·(1 − e^{−t/τ}): 1,9 V a 1 ms y casi 3 V a 5 ms."
+    comprobar:
+      - { v_tau: 1.9, tol: 0.01 }
+
+  - id: banco-rc
+    tipo: banco
+    titulo: "Mida τ en el banco"
+    texto: "Monte el RC, mire la carga con el osciloscopio y mida τ con los cursores, hasta el 63,2 %."
+    libro: [45, 63, 64]
+    fijar: { R_c: 10000, C_c: 100e-9, sonda: 0 }
+    banco:
+      piezas: ["Generador: cuadrada de 100 Hz", "R = 10 kΩ y C = 100 nF", "Osciloscopio en el condensador"]
+      medir: "El tiempo desde el flanco hasta el 63,2 % de la tensión final."
+      esperado: tau_c
+      unidad: s
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Sale largo: mida R y C con el multímetro y recalcule. Un condensador real puede ser mayor que el nominal." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Sale corto: recalcule con los valores medidos, y mire que la sonda esté en ×10." }
+        - { texto: "Coincide dentro de las tolerancias: el capítulo de los condensadores, confirmado." }
+      ficha: { n: 26, titulo: "Práctica 2 · Carga y descarga de un condensador" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [45, 48, 53, 61]
+    ideas:
+      - { titulo: "El 63,2 %.", texto: "En τ = R·C se alcanza el 63,2 % de la final; con cinco constantes, el transitorio ha terminado." }
+      - { titulo: "Subida.", texto: "Del 10 al 90 % pasan 2,2·τ, no τ." }
+      - { titulo: "La sonda.", texto: "Con R de 1 MΩ, sus 10 MΩ bajan la tensión final y la constante: medir modifica lo medido." }
+      - { titulo: "Integrador.", texto: "Si la cuadrada es demasiado rápida, sale una triangular: el RC integra." }

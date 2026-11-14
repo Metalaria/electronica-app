@@ -1,7 +1,8 @@
 // Thematic courses (0.11): the book's chapters grouped by subject, as approved by the owner. A course is an
-// ordered list of chapters (part ids `capNN` of the generated content — the file numbering, which from cap15 on
-// is one more than the printed chapter number: cap15 is «Capítulo 14»); its lessons are the sections (h2) of
-// those chapters, in order, each one a lesson «Estudiar por pasos».
+// ordered list of chapters (part ids `capNN` of the generated content — the file numbering, not the printed one: cap15
+// is «Capítulo 14», and the chapters new since 4.0 have the next free numbers, cap55 «Capítulo 31», cap56 «Capítulo 34»,
+// cap57 «Capítulo 54»); its lessons are the sections (h2) of those chapters, in order, each one a lesson. A course may
+// also list an appendix (apK) whose sections are lessons too.
 // Pure module (types only): the tests import it to check that every chapter is mapped.
 
 import type { Indice, Seccion } from '../tipos';
@@ -13,6 +14,11 @@ export interface Curso {
   descripcion: string;
   /** Part ids, in the order they are studied (easy → hard). */
   partes: string[];
+  /**
+   * 1.2 (consolas-A): what its parts are called in the course list («consolas»); by default «capítulos». A course whose
+   * parts are not book chapters has no placement test either (its questions are the book's Repaso).
+   */
+  unidades?: string;
 }
 
 const cap = (...ns: (number | [number, number])[]): string[] =>
@@ -23,16 +29,29 @@ export const CURSOS: Curso[] = [
   { id: 'fundamentos', nombre: 'Fundamentos', descripcion: 'Matemáticas, electricidad y los componentes básicos: resistencias, condensadores, bobinas, diodos y transistores.', partes: cap([0, 6]) },
   { id: 'analisis', nombre: 'Análisis de circuitos', descripcion: 'Métodos formales, transitorios y alterna, cuadripolos y simulación con SPICE.', partes: cap(23, 24, 25, 42) },
   { id: 'analogica', nombre: 'Electrónica analógica', descripcion: 'MOSFET, integrados analógicos, el operacional, osciladores, ruido, amplificadores discretos y un amplificador de audio completo.', partes: cap(7, 8, 26, 27, 28, 32, 43, 51) },
-  // (1.1: the expansions' two new chapters, «Aún no en el libro», where the book places them: the PLCs after control and
-  // communications, the electric machines right after power electronics. Progress is kept per lesson
-  // «parte/label», so adding chapters leaves every stored course progress valid)
-  { id: 'digital', nombre: 'Digital y programable', descripcion: 'Lógica, secuencias, automatismos y autómatas programables, conversión de datos, FPGA, sistemas embebidos y buses.', partes: [...cap(9, 29), 'cap-new-automatas', ...cap(34, 37, 38, 44)] },
-  { id: 'potencia', nombre: 'Potencia y energía', descripcion: 'Componentes de potencia, convertidores, máquinas eléctricas y accionamientos, baterías y una fuente de alimentación completa.', partes: [...cap(10, 33), 'cap-new-maquinas', ...cap(39, 50)] },
+  // (the two chapters new in 4.0 where the book places them: the PLCs (cap55) after control and communications, the
+  // electric machines (cap56) right after power electronics — 1.1 called them cap-new-automatas and cap-new-maquinas,
+  // and lib/esquemas.ts migrates the stored progress. 1.2: appendix K, C for embedded systems, closes the digital
+  // course, after the embedded systems of cap38, which now include the assembler section 39.16)
+  { id: 'digital', nombre: 'Digital y programable', descripcion: 'Lógica, secuencias, automatismos y autómatas programables, conversión de datos, FPGA, sistemas embebidos, ensamblador, C para sistemas empotrados y buses.', partes: [...cap(9, 29, 55, 34, 37, 38, 44), 'apK'] },
+  { id: 'potencia', nombre: 'Potencia y energía', descripcion: 'Componentes de potencia, convertidores, máquinas eléctricas y accionamientos, baterías y una fuente de alimentación completa.', partes: cap(10, 33, 56, 39, 50) },
   { id: 'senales', nombre: 'Señales, RF y comunicaciones', descripcion: 'Señales y sistemas, control y comunicaciones, radiofrecuencia, optoelectrónica y una radio definida por software.', partes: cap(30, 31, 36, 45, 52) },
   { id: 'sensores', nombre: 'Sensores y microcontroladores', descripcion: 'Arduino, Raspberry Pi, sensores, acondicionamiento de señal y una estación de medida.', partes: cap([17, 20], 35, 49) },
   { id: 'taller', nombre: 'Taller e instrumentos', descripcion: 'Esquemas, soldadura, protoboard, el osciloscopio, instrumentación y reparación.', partes: cap([11, 13], 15, 21, 22, 47, 53) },
   { id: 'placas', nombre: 'Diseño de placas', descripcion: 'Circuito impreso avanzado, integridad de señal y diseño para fabricación.', partes: cap(40, 41, 46) },
-  { id: 'proyectos', nombre: 'Proyectos completos', descripcion: 'El receptor de radio, los cuatro proyectos detallados y la ingeniería inversa.', partes: cap(16, [48, 52], 54) },
+  // (1.2: the robotics chapter of 4.1, cap57, printed 54 after the SDR, only here: it is a whole system — arms and
+  // mobile robots, kinematics, drives, sensors and programming — rather than power electronics)
+  { id: 'proyectos', nombre: 'Proyectos completos', descripcion: 'El receptor de radio, los cuatro proyectos detallados, la electrónica de un robot y la ingeniería inversa.', partes: cap(16, [48, 52], 57, 54) },
+  // 1.2 (owner 12-11 19:40): the boards of the «Consolas» explorer, one part per console in the explorer's order. Its
+  // lessons are not book sections: parts consola-<maquina> (contenido/lecciones11/consolas.yaml, scripts/consolas11.mjs),
+  // merged into the index by lib/datos.ts (tipo «consola»)
+  {
+    id: 'consolas',
+    nombre: 'Consolas por dentro',
+    descripcion: 'Las placas de siete consolas: alimentación, relojes, buses y decodificación, vídeo y sonido, bloqueo regional y averías típicas.',
+    partes: ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes'].map((m) => `consola-${m}`),
+    unidades: 'consolas',
+  },
 ];
 
 export const CURSO = new Map(CURSOS.map((c) => [c.id, c]));
@@ -85,7 +104,9 @@ export interface Verificacion {
 /** Checks the table against the content's index. */
 export function verificarCursos(indice: Indice): Verificacion {
   const usados = new Map<string, string[]>();
-  for (const c of CURSOS) for (const p of c.partes) usados.set(p, [...(usados.get(p) ?? []), c.id]);
+  // (1.2: a course of parts that are not book chapters, «Consolas por dentro», is checked against its own parts
+  // file — lib/partes-extra.ts — not against the book's index)
+  for (const c of CURSOS) if (!c.unidades) for (const p of c.partes) usados.set(p, [...(usados.get(p) ?? []), c.id]);
   const capitulos = Object.entries(indice.partes)
     .filter(([, i]) => i.tipo === 'capitulo')
     .map(([id]) => id);

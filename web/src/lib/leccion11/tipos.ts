@@ -2,6 +2,9 @@
 // web/public/libro/lecciones11/<parte>/<label>.json from the sources in contenido/lecciones11/<parte>/<label>.yaml
 // (format: contenido/lecciones11/GUIA.md and ESQUEMA.md «Lecciones 1.1»). Types only.
 
+import type { Actividad12, TipoActividad } from '../leccion12/tipos';
+import type { WidgetFigura, WidgetLogica } from '../leccion12/digital/tipos';
+
 /** A run of a short text: plain, subscript, superscript, bold, or the live value of a quantity of the model. */
 export type Trozo =
   | { t: 'txt'; s: string }
@@ -56,7 +59,7 @@ export interface Mando {
   /** The positions (SI units), ascending; [0, 1] for a switch. */
   valores: number[];
   /** E series the positions come from, for the label («R₂ (E24)»). */
-  serie?: 'E12' | 'E24';
+  serie?: 'E6' | 'E12' | 'E24';
   /** Label of the control (default: the value's symbol). */
   rotulo?: Texto;
   /** A name for each position of a «lista» control, in the order of `valores` (the control reads «rojo (2)»). */
@@ -107,6 +110,17 @@ export interface Curva {
   discontinua: boolean;
   /** In a circuit's graph: the schematic's observable this curve is (checked against ngspice). Generator only. */
   mide?: string;
+  /**
+   * 1.2 (motor12e): a parametric curve (Nyquist, root locus, the unit circle, the XY of I and Q, the Smith plane):
+   * `expr` is y and `x` is x, both expressions of `param.id` (not of the axis) and the model; `param.min`/`max` are
+   * expressions of the model (numbers, «2*pi»).
+   */
+  x?: string;
+  param?: { id: string; min: string; max: string; muestras: number };
+  /** 1.2 (motor12e): a discrete sequence drawn as stems at x = k·paso (x[n], h[n], y[n] of a DSP lesson). */
+  palitos?: { paso: number };
+  /** 1.2 (motor12e): hidden (with its legend entry «¿?») while the widget hides its readings (a prediction). */
+  oculta?: boolean;
 }
 
 /** A fixed point of a graph (τ on a charge curve, the cut-off frequency): a dot, a label, guide lines to the axes. */
@@ -115,6 +129,8 @@ export interface Marca {
   y: string;
   rotulo: Texto;
   guias: boolean;
+  /** 1.2 (motor12e): hidden while the widget hides its readings (a prediction with `ocultar: curvas`). */
+  oculta?: boolean;
 }
 
 /** A point of the graph the reader drags: dragging moves `mueve` to the position that brings the point closest. */
@@ -133,6 +149,8 @@ export interface Eje {
   rotulo: Texto;
   /** Logarithmic axis (frequency, impedance): absent means linear. */
   escala?: 'log';
+  /** 1.2 (esquemas12c): points the curves are drawn with along this axis (2 to 4000; absent, 240) — a carrier. */
+  muestras?: number;
 }
 
 /** The plot itself: axes, curves, handles and marks (a `grafica` widget, or a circuit's graph). */
@@ -143,6 +161,8 @@ export interface Grafica {
   asas: Asa[];
   /** Absent when there are none. */
   marcas?: Marca[];
+  /** 1.2 (motor12e): one unit of x as long as one of y on screen (linear axes; the shorter range is widened). */
+  aspecto?: 'igual';
 }
 
 export interface WidgetGrafica extends Grafica {
@@ -154,7 +174,8 @@ export interface WidgetGrafica extends Grafica {
   ocultar: boolean;
 }
 
-export type Widget = WidgetCircuito | WidgetGrafica;
+/** 1.2: a book figure or photo with tappable zones, and a logic circuit (lib/leccion12/digital/tipos.ts). */
+export type Widget = WidgetCircuito | WidgetGrafica | WidgetFigura | WidgetLogica;
 
 /** v ∈ [min, max] (either may be missing). */
 export interface Rango {
@@ -223,7 +244,8 @@ export interface Idea {
   texto: Texto;
 }
 
-export type TipoTarjeta = 'explorar' | 'predecir' | 'pregunta' | 'formula' | 'reto' | 'sorpresa' | 'porque' | 'resumen';
+/** 1.2: the learning-by-doing step types (lib/leccion12/tipos.ts) are card types too. */
+export type TipoTarjeta = 'explorar' | 'predecir' | 'pregunta' | 'formula' | 'reto' | 'sorpresa' | 'porque' | 'resumen' | TipoActividad;
 
 export interface Tarjeta {
   /** Stable id inside the lesson (answers are recorded under it). */
@@ -258,6 +280,11 @@ export interface Tarjeta {
   /** The formula with the current values: «{{V_in}} · {{R_2}} / ({{R_1}} + {{R_2}}) = {{V_out}}». */
   sustitucion?: Texto;
   ideas?: Idea[];
+  /** 1.2: the hint ladder the reader opens one step at a time (pista 1, pista 2), then the solution. */
+  escalera?: Texto[];
+  solucion?: Texto;
+  /** 1.2: the data of a learning-by-doing step (simular, diseno, averia, ajuste, banco, dibujar, sql). */
+  actividad?: Actividad12;
 }
 
 export interface CitaLibro {
@@ -266,6 +293,11 @@ export interface CitaLibro {
   /** Verbatim words of that block (checked by the generator, which also finds the block by them when an expansion
    * moved it: `bloque` is the block's current index, whatever index the source wrote). */
   cita: string;
+  /** 1.2 (consolas-A), console lessons only: the source of a block of console data (an explorer view, or an external
+   * page with its title and address), shown as the card's «Fuentes» link (scripts/consolas11.mjs). */
+  fuente?: { titulo: string; url: string };
+  /** 1.2 (consolas-A), console lessons only: the book section a cited book block is in (its «Del libro» link). */
+  seccion?: string;
 }
 
 export interface Leccion11 {
@@ -279,6 +311,8 @@ export interface Leccion11 {
   libro: Record<string, CitaLibro>;
   modelo: Modelo;
   tarjetas: Tarjeta[];
+  /** 1.2 (consolas-A): a lesson of the «Consolas por dentro» course (part consola-<maquina>), not a book section. */
+  consola?: string;
 }
 
 export interface IndiceLecciones11 {

@@ -1,0 +1,190 @@
+# Lección 1.2 de la sección 52.11 «El Amplificador y el Altavoz: Impedancia de Salida y Amortiguamiento» (cap51;
+# etiqueta sec-51.11), con los ejercicios del capítulo (bloque 377). Proyecto detallado III.
+# Formato: contenido/lecciones11/GUIA.md.
+# - El factor de amortiguamiento con realimentación (bloque 375): salida en lazo abierto de 1 Ω dividida por (1 + T);
+#   con T = 1000, 1 mΩ y un factor de 8000 sobre 8 Ω. En el esquema «divisor»: el amplificador (fuente de 1 V de
+#   prueba) con su impedancia de salida y el cable arriba, el altavoz abajo; el cable de 2 m de 0,5 mm² (0,138 Ω) es el
+#   de la sección 52.6 (bloque 198).
+# - Ejercicio 52.4: 16 V de pico sobre 8 Ω, 16 W, sobre el esquema «resistencia».
+leccion: cap51/sec-51.11
+
+libro:
+  373: "genera su propia tensión, como un pequeño generador"
+  374: "La realimentación negativa (sección 52.6) es justo lo que hunde esa impedancia de salida"
+  375: "Con una impedancia de salida en lazo abierto de 1 Ω y T = 1000, la efectiva es de 1 mΩ"
+  378: "factor de amortiguamiento según la impedancia de salida"
+  "cap51#198": "con 2 m de cable de 0,5 mm² (0,14 Ω entre ida y vuelta)"
+  "cap51#377": "si el pico de tensión a la salida es de 16 V"
+
+modelo:
+  valores:
+    Z_ol: { sim: "Z_{out,LA}", nombre: "impedancia de salida en lazo abierto", unidad: Ω, valor: 1 }
+    T_l: { sim: "T", nombre: "ganancia de lazo", unidad: "", valor: 0 }
+    R_c: { sim: "R_{cable}", nombre: "resistencia del cable", unidad: Ω, valor: 0.0001 }
+    R_L: { sim: "R_{L}", nombre: "altavoz", unidad: Ω, valor: 8 }
+    V_a: { sim: "v", nombre: "tensión de prueba", unidad: V, valor: 1 }
+    V_p: { sim: "V_{p}", nombre: "pico sobre el altavoz", unidad: V, valor: 16 }
+  calculos:
+    Z_f: { expr: "Z_ol/(1 + T_l)", sim: "Z_{out}", nombre: "impedancia de salida con realimentación", unidad: Ω }
+    R_s: { expr: "Z_f + R_c", sim: "Z_{out} + R_{cable}", nombre: "lo que ve el altavoz", unidad: Ω }
+    F_a: { expr: "R_L/Z_f", sim: "factor", nombre: "factor de amortiguamiento del amplificador", unidad: "", cifras: 3 }
+    F_e: { expr: "R_L/R_s", sim: "factor efectivo", nombre: "factor de amortiguamiento con el cable", unidad: "", cifras: 3 }
+    V_l: { expr: "V_a*R_L/(R_s + R_L)", sim: "v_{altavoz}", nombre: "tensión en el altavoz", unidad: V }
+    I_l: { expr: "V_a/(R_s + R_L)", sim: "i", nombre: "corriente por el altavoz", unidad: A }
+    I_p: { expr: "V_p/R_L", sim: "I_{pico}", nombre: "corriente de pico", unidad: A }
+    V_ef: { expr: "V_p/sqrt(2)", sim: "V_{ef}", nombre: "tensión eficaz", unidad: V }
+    P_o: { expr: "V_ef^2/R_L", sim: "P", nombre: "potencia sobre el altavoz", unidad: W }
+    P_mal: { expr: "V_p^2/R_L", sim: "P", nombre: "potencia con el pico como eficaz", unidad: W }
+
+tarjetas:
+  - id: explore-lazo
+    tipo: explorar
+    titulo: "La realimentación agarra el cono"
+    texto: "La impedancia de salida en lazo abierto, 1 Ω, se divide por 1 + T. Suba la ganancia de lazo y mire el factor de amortiguamiento."
+    libro: [374, 375, 378]
+    fijar: { R_c: 0.0001 }
+    inicio: { T_l: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_e, rotulo: "Factor de amortiguamiento" }
+      datos:
+        - { valor: Z_f, rotulo: "Z_{out} = {{Z_f}}" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+      mandos:
+        - { valor: T_l, lista: [0, 10, 100, 1000], rotulo: "Ganancia de lazo, T" }
+    requiere: { mover: [T_l] }
+
+  - id: prediga-8000
+    tipo: predecir
+    titulo: "T = 1000"
+    texto: "Con 1 Ω en lazo abierto y T = 1000, ¿qué factor de amortiguamiento da el amplificador sobre 8 Ω?"
+    libro: [375]
+    fijar: { T_l: 1000, R_c: 0.0001 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_a, rotulo: "Factor de amortiguamiento" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+      ocultar: true
+    opciones:
+      - texto: "Unos 8000: la salida baja a 1 mΩ"
+        bien: true
+        porque: "Absurdamente alto: el límite real lo pondrá el cable."
+      - texto: "8: el altavoz entre 1 Ω"
+        porque: "Ese sería sin realimentación. El lazo divide la impedancia de salida por 1 + T."
+      - texto: "1000, como T"
+        porque: "T reduce la impedancia; el factor es 8 Ω entre lo que queda, 1 mΩ."
+    escalera:
+      - "Primero la impedancia efectiva: 1 Ω / (1 + 1000)."
+    solucion: "1 Ω/(1 + 1000) ≈ 1 mΩ; 8 Ω / 1 mΩ ≈ 8000."
+    comprobar:
+      - { F_a: 8008, Z_f: 0.001, tol: 0.002 }
+      - { con: { T_l: 0 }, F_a: 8, tol: 0.001 }
+
+  - id: sorpresa-cable
+    tipo: sorpresa
+    titulo: "Y ahora, el cable"
+    texto: "El amplificador da 8000. Ponga los 2 m de cable fino de la sección anterior entre él y el altavoz."
+    libro: [375, "cap51#198"]
+    fijar: { T_l: 1000 }
+    inicio: { R_c: 0.0001 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_e, rotulo: "Factor efectivo" }
+      datos:
+        - { valor: R_c, rotulo: "Cable: {{R_c}}" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+      mandos:
+        - { valor: R_c, lista: [0.0001, 0.138], nombres: ["sin cable", "2 m de 0,5 mm²"], rotulo: "Cable" }
+    requiere: { mover: [R_c] }
+
+  - id: porque-generador
+    tipo: porque
+    titulo: "Por qué importa una salida baja"
+    texto: "Un altavoz no es una carga dócil. ¿Por qué una impedancia de salida baja da un grave más seco?"
+    libro: [373, 374]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_e, rotulo: "Factor efectivo" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+    opciones:
+      - texto: "El cono sigue vibrando y genera tensión; una salida baja lo frena como un cortocircuito"
+        bien: true
+        porque: "Con salida casi nula, el amplificador lo obliga a moverse solo cuando la señal lo manda."
+      - texto: "Porque entrega más potencia"
+        porque: "No es cuestión de potencia: es de frenar la vibración residual del cono."
+      - texto: "Porque reduce la distorsión de cruce"
+        porque: "El cruce lo quita el bias; el amortiguamiento controla el movimiento del cono."
+    escalera:
+      - "La bobina en movimiento es un pequeño generador. ¿Qué la frena más: un circuito abierto o un corto?"
+    solucion: "La salida baja cortocircuita la tensión que genera el cono y lo detiene en seco."
+
+  - id: estime-ejercicio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un ejercicio del capítulo"
+    texto: "Un altavoz de 8 Ω recibe 16 V de pico. ¿Qué potencia le entrega el amplificador?"
+    libro: ["cap51#377"]
+    estimar:
+      objetivo: "P_o"
+      unidad: W
+      min: 0
+      max: 40
+      paso: 0.5
+      inicio: 35
+      tol: 0.04
+      rotulo: "Potencia"
+    exito: "16 W: el eficaz es el pico entre √2."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 16.6 }, texto: "Se ha pasado: con el pico como si fuese eficaz sale el doble. Divida antes por √2." }
+      - { texto: "Se ha quedado corto: 11,3 V eficaces sobre 8 Ω." }
+    escalera:
+      - "V_{ef} = 16/√2 ≈ 11,3 V."
+      - "P = V_{ef}²/R."
+    solucion: "11,3²/8 ≈ 16 W."
+    comprobar:
+      - { P_o: 16, V_ef: 11.3, P_mal: 32, tol: 0.005 }
+
+  - id: pregunta-realimentacion
+    tipo: pregunta
+    titulo: "Otro ejercicio: la realimentación global"
+    texto: "¿Qué aporta la realimentación negativa global a la fidelidad, y qué riesgo trae si se exagera?"
+    libro: ["cap51#377"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_s, abajo: R_L }
+      lectura: { valor: F_e, rotulo: "Factor efectivo" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l }
+    opciones:
+      - texto: "Menos distorsión, ganancia estable y respuesta plana; exagerada, puede oscilar"
+        bien: true
+        porque: "Compara la salida con la entrada y corrige; con un lazo mal compensado se vuelve inestable."
+      - texto: "Más ganancia; ningún riesgo"
+        porque: "Reduce la ganancia a cambio de precisión, y un lazo exagerado puede oscilar."
+      - texto: "Menos ruido de entrada; el riesgo es el calor"
+        porque: "No reduce el ruido de la primera etapa; el riesgo es la inestabilidad."
+    escalera:
+      - "¿Qué pasa con un lazo de mucha ganancia y poco margen de fase?"
+    solucion: "Corrige distorsión, ganancia y respuesta; con exceso, el lazo oscila."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [373, 374, 375]
+    ideas:
+      - { titulo: "El altavoz genera.", texto: "La bobina sigue vibrando y da tensión: el amplificador debe frenarla." }
+      - { titulo: "Factor de amortiguamiento.", texto: "Altavoz entre impedancia de salida; la realimentación la divide por 1 + T." }
+      - { titulo: "El cable manda.", texto: "Un factor de 8000 se queda en decenas con un cable fino." }

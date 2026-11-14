@@ -1,0 +1,199 @@
+# «Consolas por dentro» · Mega Drive 1: la placa de un vistazo, sobre la foto principal del explorador (Mega Drive
+# modelo 1 VA6.8 PAL, «IC BD M5 PAL», ConsoleMods Wiki, CC BY): los dos procesadores, los tres chips de Sega y Yamaha,
+# las cuatro memorias y los cables de una modificación de región. Fuentes: los datos de la consola (megadrive#n,
+# scripts/consolas11.mjs).
+leccion: consola-megadrive/megadrive-placa
+
+libro:
+  "megadrive#1": "Los cables rojo, azul, blanco y marrón no son de fábrica"
+  "megadrive#2": "Bus de 23 bits de dirección (VA1–VA23 con /UDS y /LDS) y 16 de datos"
+  "megadrive#3": "Procesador de vídeo con el PSG (SN76489) dentro"
+  "megadrive#4": "Decodifica el mapa del 68000, arbitra el bus entre 68000, Z80 y VDP"
+  "megadrive#5": "Programa el YM2612 y el PSG"
+  "megadrive#6": "8 KB en $0000–$1FFF del Z80"
+  "megadrive#7": "OPN2: seis canales FM (el sexto puede reproducir PCM)"
+  "megadrive#8": "PSRAM de 32K × 8: los bytes pares de los 64 KB de RAM de trabajo ($FF0000)"
+  "megadrive#9": "Los bytes impares de la RAM de trabajo"
+  "megadrive#10": "64 KB de VRAM"
+  "megadrive#25": "hay cables soldados a los puentes de región JP1–JP4"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-chips
+    tipo: explorar
+    titulo: "Dos procesadores y dos chips de sonido e imagen"
+    texto: "Toque el 68000, el Z80, el VDP y el YM2612 de esta Mega Drive PAL."
+    libro: ["megadrive#2", "megadrive#3", "megadrive#5", "megadrive#7"]
+    requiere: { mover: [m68k, z80, vdp, ym] }
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: m68k, hotspot: m68k, rotulo: "CPU 68000", texto: "La CPU principal: 23 bits de dirección y 16 de datos." }
+        - { id: z80, hotspot: z80, rotulo: "Z80", texto: "La CPU del sonido: programa el YM2612 y el PSG." }
+        - { id: vdp, hotspot: vdp, rotulo: "VDP 315-5313A", texto: "El vídeo, con el PSG dentro." }
+        - { id: ym, hotspot: ym, rotulo: "YM2612", texto: "Seis canales FM." }
+
+  - id: toque-cpu
+    tipo: tocar
+    titulo: "¿Cuál es la CPU principal?"
+    texto: "Toque el procesador que ejecuta el juego, con un bus de datos de 16 bits."
+    libro: ["megadrive#2", "megadrive#5", "megadrive#3"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: m68k, hotspot: m68k, rotulo: "Chip largo, arriba a la derecha" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo, abajo en el centro" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: ym, hotspot: ym, rotulo: "Chip largo, a la izquierda" }
+    tocar:
+      bien: [m68k]
+      porque:
+        z80: "Es el Z80: también es un procesador, pero de 8 bits y para el sonido."
+        vdp: "Es el VDP: hace la imagen, no ejecuta el programa."
+        ym: "Es el YM2612: un sintetizador, no un procesador."
+    exito: "El Motorola MC68000: 23 bits de dirección y 16 de datos."
+    escalera:
+      - "Lea las marcas: busque «MC68000»."
+      - "Es el chip más largo de la placa, junto a la ranura del cartucho."
+    solucion: "Arriba a la derecha: Motorola MC68000P8 (IC1)."
+
+  - id: prediga-z80
+    tipo: predecir
+    titulo: "Un segundo procesador"
+    texto: "Además del 68000, la placa lleva un Z80. En un juego de Mega Drive, ¿para qué sirve?"
+    libro: ["megadrive#5", "megadrive#6"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+        - { id: zram, hotspot: zram, rotulo: "RAM del Z80" }
+    opciones:
+      - texto: "Lleva el sonido: programa el YM2612 y el PSG."
+        bien: true
+        porque: "Es la CPU de sonido, con sus 8 KB de RAM propios: así el 68000 no pierde tiempo con la música."
+      - texto: "Ayuda al 68000 a dibujar la imagen."
+        porque: "La imagen la hace el VDP. El Z80 programa los dos chips de sonido."
+      - texto: "Solo sirve para los juegos de Master System."
+        porque: "En modo Master System es la CPU principal, sí; pero en los juegos de Mega Drive lleva el sonido."
+    escalera:
+      - "Tiene una RAM de 8 KB al lado y está en el mapa junto al YM2612."
+    solucion: "El sonido: el Z80 programa el YM2612 y el PSG."
+
+  - id: toque-arbitro
+    tipo: tocar
+    titulo: "El que reparte el bus"
+    texto: "Toque el chip que decodifica el mapa del 68000 y decide quién usa el bus."
+    libro: ["megadrive#4", "megadrive#3"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: io, hotspot: io, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: ym, hotspot: ym, rotulo: "Chip largo, a la izquierda" }
+        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, en el centro" }
+    tocar:
+      bien: [io]
+      porque:
+        vdp: "Es el VDP: pide el bus para su DMA, pero no lo reparte."
+        ym: "Es el YM2612: solo contesta en su dirección."
+        osc: "Es el oscilador maestro: da el reloj a todos."
+    exito: "El 315-5433: mapa, árbitro, mandos y registro de banco del Z80."
+    escalera:
+      - "Lea las marcas: busque «315-5433»."
+      - "Es el otro chip cuadrado de Sega, a la derecha del VDP."
+    solucion: "A la derecha: SEGA 315-5433 (IC4)."
+
+  - id: empareje-chips
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada chip, su papel"
+    texto: "Empareje cada chip de la placa con lo que hace."
+    libro: ["megadrive#2", "megadrive#3", "megadrive#4", "megadrive#7"]
+    emparejar:
+      - ["MC68000", "Ejecuta el juego"]
+      - ["315-5313A", "Vídeo y PSG"]
+      - ["315-5433", "Mapa, árbitro y mandos"]
+      - ["YM2612", "Seis canales FM"]
+    exito: "Dos procesadores de catálogo, dos chips de Sega y un sintetizador de Yamaha."
+    pistas:
+      - { texto: "Los dos chips «315-» son de Sega; el YM2612 es de Yamaha." }
+    escalera:
+      - "Toque los chips de la foto en las tarjetas anteriores para leer sus fichas."
+    solucion: "MC68000: el juego. 315-5313A: vídeo y PSG. 315-5433: mapa y árbitro. YM2612: FM."
+
+  - id: explore-memorias
+    tipo: explorar
+    titulo: "Cuatro memorias"
+    texto: "Toque la RAM del 68000, la VRAM y la RAM del Z80."
+    libro: ["megadrive#8", "megadrive#9", "megadrive#10", "megadrive#6"]
+    requiere: { mover: [wram-h, wram-l, vram, zram] }
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: wram-h, hotspot: wram-h, rotulo: "RAM del 68000, byte alto", texto: "32K × 8: los bytes pares de los 64 KB." }
+        - { id: wram-l, hotspot: wram-l, rotulo: "RAM del 68000, byte bajo", texto: "Los bytes impares." }
+        - { id: vram, hotspot: vram, rotulo: "VRAM", texto: "64 KB de doble puerto, junto al cartucho." }
+        - { id: zram, hotspot: zram, rotulo: "RAM del Z80", texto: "8 KB solo para el sonido." }
+
+  - id: por-que-dos-ram
+    tipo: porque
+    titulo: "Dos chips para una RAM"
+    texto: "¿Por qué la RAM del 68000 son dos chips de 8 bits, uno par y otro impar?"
+    libro: ["megadrive#2", "megadrive#8", "megadrive#9"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: wram-h, hotspot: wram-h, rotulo: "Byte alto" }
+        - { id: wram-l, hotspot: wram-l, rotulo: "Byte bajo" }
+    opciones:
+      - texto: "El bus de datos es de 16 bits: cada chip da la mitad."
+        bien: true
+        porque: "El 68000 lee 16 bits a la vez: un chip da los bytes pares y el otro los impares."
+      - texto: "Uno es copia del otro, por seguridad."
+        porque: "No hay copia: juntos forman los 64 KB, la mitad de los bytes en cada uno."
+      - texto: "Uno es del 68000 y el otro del Z80."
+        porque: "La RAM del Z80 es otro chip, de 8 KB. Estos dos son los 64 KB del 68000."
+    escalera:
+      - "¿Cuántos bits de datos tiene el bus del 68000?"
+    solucion: "16 bits de datos: los bytes pares en un chip y los impares en el otro."
+
+  - id: sorpresa-cables
+    tipo: predecir
+    titulo: "Unos cables que no son de fábrica"
+    texto: "En la foto hay cables rojo, azul, blanco y marrón soldados. ¿Qué son?"
+    libro: ["megadrive#1", "megadrive#25"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: mod, hotspot: mod, rotulo: "Cables añadidos" }
+    opciones:
+      - texto: "Una modificación posterior: llevan los puentes de región a un conmutador."
+        bien: true
+        porque: "Van a los puentes JP1–JP4 de región. Lo habitual es un conmutador de región y de 50/60 Hz."
+      - texto: "Puentes de fábrica para corregir un fallo."
+        porque: "No son de fábrica: los añadió alguien después."
+      - texto: "La alimentación de la expansión."
+        porque: "Van a los puentes de región y a unas líneas de la RAM, no a la alimentación."
+    escalera:
+      - "Siga los cables: varios acaban en los puentes JP1–JP4."
+    solucion: "Una modificación de región: cables a los puentes JP1–JP4 para un conmutador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["megadrive#2", "megadrive#5", "megadrive#4", "megadrive#8"]
+    ideas:
+      - { titulo: "Dos procesadores.", texto: "El 68000 ejecuta el juego; el Z80 lleva el sonido." }
+      - { titulo: "Chips de Sega.", texto: "El VDP hace la imagen; el 315-5433 reparte el bus." }
+      - { titulo: "16 bits.", texto: "La RAM de trabajo son dos chips: bytes pares e impares." }
+      - { titulo: "Ojo con las fotos.", texto: "Unos cables pueden ser una modificación, no la placa." }

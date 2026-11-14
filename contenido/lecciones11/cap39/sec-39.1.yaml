@@ -1,0 +1,290 @@
+# Lección 1.2 de la sección 40.1 «Por Qué la Energía Manda» (cap39; etiquetas sec-39.N = impresas 40.N).
+# - El presupuesto por fases de la tabla del bloque 9 (dormido 5 µA, despertar 5 mA 50 ms, transmitir 120 mA 200 ms)
+#   con un ciclo cada diez minutos (bloque 10), en una gráfica de la corriente media frente al periodo del ciclo. Las
+#   posiciones de 1 min y 1 h del mando son de ejemplo; las cifras del texto son las de 10 min, comprobadas.
+# - El divisor de 100 kΩ sobre 3,3 V (33 µA, bloque 17) como sorpresa.
+# Paso práctico: «simular» la corriente media (45,4 µA; errores típicos: solo el dormido, o la media sin pesar por el
+# tiempo).
+leccion: cap39/sec-39.1
+
+libro:
+  3: "la energía es la restricción principal y condiciona todas las demás decisiones"
+  7: "ciclos por día = consumo diario"
+  9: "120 mA"
+  10: "la transmisión —que ocupa una fracción minúscula del tiempo— consume más que todo lo demás junto"
+  12: "Larga vida, autodescarga mínima"
+  13: "una litio primaria suele ganar a cualquier recargable"
+  15: "Usar el consumo medio del catálogo en lugar de medir el real"
+  16: "esos microamperios dominan el total"
+  17: "Un divisor de 100 kΩ sobre 3,3 V consume 33 µA continuamente"
+  21: "acumular en un condensador o supercondensador, y hacer el trabajo en ráfagas"
+  24: "la diferencia está casi siempre en el consumo en reposo"
+
+modelo:
+  valores:
+    I_s: { sim: "I_{dormido}", nombre: "corriente dormido", unidad: A, valor: 5e-6 }
+    I_w: { sim: "I_{medir}", nombre: "corriente al despertar y medir", unidad: A, valor: 0.005 }
+    t_w: { sim: "t_{medir}", nombre: "duración de la medida", unidad: s, valor: 0.05 }
+    I_tx: { sim: "I_{tx}", nombre: "corriente al transmitir", unidad: A, valor: 0.12 }
+    t_tx: { sim: "t_{tx}", nombre: "duración de la transmisión", unidad: s, valor: 0.2 }
+    T_c: { sim: "T", nombre: "periodo del ciclo", unidad: s, valor: 600 }
+    V_d: { sim: "V", nombre: "tensión del divisor", unidad: V, valor: 3.3 }
+    R_d: { sim: "R", nombre: "divisor de la batería", unidad: Ω, valor: 100000 }
+    div: { tipo: interruptor, nombre: "divisor conectado", valor: 0 }
+  calculos:
+    I_dv: { si: div, entonces: "V_d/R_d", sino: "0", sim: "I_{div}", nombre: "corriente del divisor", unidad: A }
+    Q_tx: { expr: "I_tx*t_tx/3600", sim: "Q_{tx}", nombre: "carga al transmitir", unidad: Ah }
+    Q_w: { expr: "I_w*t_w/3600", sim: "Q_{medir}", nombre: "carga al medir", unidad: Ah }
+    Q_s: { expr: "I_s*(T_c - t_w - t_tx)/3600", sim: "Q_{dormido}", nombre: "carga dormido", unidad: Ah }
+    Q_dv: { expr: "I_dv*T_c/3600", sim: "Q_{div}", nombre: "carga del divisor", unidad: Ah }
+    Q_c: { expr: "Q_tx + Q_w + Q_s + Q_dv", sim: "Q_{ciclo}", nombre: "carga por ciclo", unidad: Ah }
+    n_dia: { expr: "86400/T_c", sim: "n", nombre: "ciclos por día", unidad: "", cifras: 3 }
+    Q_dia: { expr: "Q_c*n_dia", sim: "Q_{día}", nombre: "consumo diario", unidad: Ah }
+    I_med: { expr: "Q_c*3600/T_c", sim: "I_{media}", nombre: "corriente media", unidad: A }
+    p_tx: { expr: "Q_tx/Q_c*100", sim: "tx", nombre: "parte de la transmisión", unidad: "%" }
+    I_ar: { expr: "(I_s + I_w + I_tx)/3", sim: "I", nombre: "media sin pesar por el tiempo", unidad: A }
+
+tarjetas:
+  - id: explore-ciclo
+    tipo: explorar
+    titulo: "Un sensor que duerme"
+    texto: "Duerme, despierta, mide y transmite. Cambie cada cuánto se repite el ciclo y mire la corriente media."
+    libro: [9, 10]
+    widget:
+      tipo: grafica
+      x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
+      curvas:
+        - { expr: "(I_tx*t_tx + I_w*t_w + I_s*(per - t_w - t_tx))/per + I_dv", color: naranja, rotulo: "corriente media" }
+        - { expr: "I_tx*t_tx/per", color: azul, rotulo: "parte de la transmisión", discontinua: true }
+      marcas:
+        - { x: "T_c", y: "I_med", rotulo: "{{I_med}}" }
+      lectura: { valor: I_med, rotulo: "Corriente media" }
+      datos:
+        - { valor: p_tx, rotulo: "La transmisión pone el {{p_tx}}" }
+      mandos:
+        - { valor: T_c, lista: [60, 600, 3600], nombres: ["cada minuto", "cada diez minutos", "cada hora"], rotulo: "Periodo del ciclo" }
+    requiere: { mover: [T_c] }
+
+  - id: prediga-quien
+    tipo: predecir
+    titulo: "¿Quién gasta más?"
+    texto: "Un ciclo cada diez minutos: dormido el 99 % del tiempo, 50 ms midiendo, 200 ms transmitiendo. ¿Qué fase gasta más carga?"
+    libro: [9, 10]
+    fijar: { T_c: 600, div: 0 }
+    widget:
+      tipo: grafica
+      x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
+      curvas:
+        - { expr: "I_tx*t_tx/per", color: azul, rotulo: "parte de la transmisión" }
+      lectura: { valor: p_tx, rotulo: "Parte de la transmisión" }
+      ocultar: true
+    opciones:
+      - texto: "Transmitir"
+        bien: true
+        porque: "120 mA durante 200 ms: el {{p_tx}} de la carga del ciclo, más que todo lo demás junto."
+      - texto: "Dormir, porque ocupa el 99 % del tiempo"
+        porque: "Ocupa casi todo el tiempo, pero con 5 µA: su carga es unas ocho veces menor que la de transmitir."
+      - texto: "Despertar y medir"
+        porque: "5 mA durante 50 ms es la fase que menos carga gasta de las tres."
+    escalera:
+      - "Compare corriente por duración de cada fase, no solo la duración."
+    solucion: "Transmitir: 120 mA × 200 ms pesa más que 5 µA durante casi diez minutos."
+    comprobar:
+      - { p_tx: 88.1, Q_tx: 6.667e-6, Q_s: 8.33e-7, Q_w: 6.94e-8 }
+
+  - id: formula-diario
+    tipo: formula
+    titulo: "El presupuesto energético"
+    texto: "La carga de un ciclo por los ciclos de un día: el consumo diario. Cambie el periodo y mire cómo se mueve."
+    libro: [7]
+    fijar: { div: 0 }
+    ec: 7
+    sustitucion: "{{Q_c}} × {{n_dia}} = {{Q_dia}}"
+    widget:
+      tipo: grafica
+      x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
+      curvas:
+        - { expr: "(I_tx*t_tx + I_w*t_w + I_s*(per - t_w - t_tx))/per", color: naranja, rotulo: "corriente media" }
+      marcas:
+        - { x: "T_c", y: "I_med", rotulo: "{{I_med}}" }
+      lectura: { valor: Q_dia, rotulo: "Consumo diario" }
+      mandos:
+        - { valor: T_c, lista: [60, 600, 3600], nombres: ["cada minuto", "cada diez minutos", "cada hora"], rotulo: "Periodo del ciclo" }
+    comprobar:
+      - { con: { T_c: 600 }, Q_c: 7.569e-6, n_dia: 144, Q_dia: 1.09e-3 }
+
+  - id: simule-media
+    tipo: simular
+    titulo: "La corriente media"
+    texto: "Con el ciclo cada diez minutos y la tabla de fases, ¿cuál es la corriente media que pide el sensor a la batería?"
+    libro: [9, 10]
+    fijar: { T_c: 600, div: 0 }
+    widget:
+      tipo: grafica
+      x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
+      curvas:
+        - { expr: "(I_tx*t_tx + I_w*t_w + I_s*(per - t_w - t_tx))/per", color: naranja, rotulo: "corriente media" }
+      lectura: { valor: I_med, rotulo: "Corriente media" }
+      ocultar: true
+    simular:
+      objetivo: I_med
+      unidad: A
+      tol: 0.05
+      rotulo: "Corriente media, I_{media}"
+      errores:
+        - { expr: "I_s", texto: "Ha contado solo el dormido. Las ráfagas son cortas, pero su carga, sumada al ciclo, es la mayor parte." }
+        - { expr: "I_ar", texto: "Ha promediado las tres corrientes sin pesarlas por su duración: cada fase cuenta por el tiempo que dura." }
+    exito: "Unos 45 µA: nueve veces lo que gasta dormido, y casi todo por la transmisión."
+    escalera:
+      - "Sume corriente por duración de cada fase y divida entre los 600 s del ciclo."
+    solucion: "(120 mA × 200 ms + 5 mA × 50 ms + 5 µA × casi 600 s) / 600 s ≈ 45,4 µA."
+    comprobar:
+      - { I_med: 45.4e-6, I_s: 5e-6, I_ar: 0.04167, tol: 0.005 }
+
+  - id: sorpresa-divisor
+    tipo: sorpresa
+    titulo: "El divisor olvidado"
+    texto: "Para medir la batería se deja un divisor de 100 kΩ sobre 3,3 V. Conéctelo y mire la corriente media."
+    libro: [16, 17]
+    fijar: { T_c: 600 }
+    widget:
+      tipo: grafica
+      x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
+      curvas:
+        - { expr: "(I_tx*t_tx + I_w*t_w + I_s*(per - t_w - t_tx))/per + I_dv", color: naranja, rotulo: "corriente media" }
+      marcas:
+        - { x: "T_c", y: "I_med", rotulo: "{{I_med}}" }
+      lectura: { valor: I_med, rotulo: "Corriente media" }
+      datos:
+        - { valor: I_dv, rotulo: "Divisor: {{I_dv}}" }
+      mandos:
+        - { valor: div, tipo: conectar, boton: "Conectar el divisor" }
+    requiere: { conectar: [div] }
+    nota: "33 µA continuos: más que el microcontrolador dormido."
+    comprobar:
+      - { con: { div: 1 }, I_dv: 33e-6, I_med: 78.4e-6 }
+
+  - id: primera-decision
+    tipo: pregunta
+    titulo: "La primera decisión"
+    texto: "La transmisión domina el presupuesto del sensor. ¿Qué conviene optimizar antes que nada?"
+    libro: [10]
+    widget:
+      tipo: figura
+      figura: fig-39.1
+      zonas:
+        - { id: fases, rotulo: "Gráfica de la izquierda", rect: [0, 0, 225, 191] }
+    opciones:
+      - texto: "Transmitir menos veces, o menos datos"
+        bien: true
+        porque: "Es la fase que más gasta: cada envío que se ahorra pesa más que cualquier otra mejora."
+      - texto: "Bajar la corriente del microcontrolador dormido"
+        porque: "Ayuda poco mientras la transmisión ponga la mayor parte de la carga del ciclo."
+      - texto: "Medir más deprisa al despertar"
+        porque: "La medida es la fase que menos carga gasta: acortarla casi no se nota."
+    escalera:
+      - "Ataque primero la fase que pone más carga en cada ciclo."
+    solucion: "Transmitir menos veces o menos datos, antes de optimizar nada más."
+
+  - id: empareje-quimicas
+    tipo: pregunta
+    titulo: "Lo que aporta cada química"
+    texto: "Empareje cada química con su rasgo."
+    libro: [12]
+    widget:
+      tipo: figura
+      figura: fig-39.1
+      zonas:
+        - { id: quimicas, rotulo: "Gráfica de la derecha", rect: [225, 0, 225, 191] }
+    emparejar:
+      - ["Alcalina", "Barata, no recargable, resistencia interna alta"]
+      - ["Litio primaria", "Larga vida, autodescarga mínima"]
+      - ["Ion-litio", "Recargable, exige BMS"]
+      - ["LiFePO₄", "Más segura y con muchos más ciclos"]
+    exito: "Y la NiMH: recargable, con autodescarga apreciable."
+    pistas:
+      - { texto: "La que exige electrónica de protección es la recargable de más energía." }
+    escalera:
+      - "Dos no se recargan: la barata y la de larga vida."
+    solucion: "Alcalina, barata; litio primaria, larga vida; ion-litio, BMS; LiFePO₄, segura y con ciclos."
+
+  - id: por-que-primaria
+    tipo: porque
+    titulo: "Años sin tocarlo"
+    texto: "El aparato debe durar años sin que nadie lo toque. ¿Por qué suele ganar una litio primaria a cualquier recargable?"
+    libro: [13]
+    widget:
+      tipo: figura
+      figura: fig-39.1
+      zonas:
+        - { id: quimicas, rotulo: "Gráfica de la derecha", rect: [225, 0, 225, 191] }
+    opciones:
+      - texto: "Autodescarga mínima y sin electrónica de carga"
+        bien: true
+        porque: "Conserva la carga durante años y no necesita cargador ni protección de carga."
+      - texto: "Porque da más corriente en los picos"
+        porque: "No es su punto fuerte: lo que decide aquí es cuánto se pierde en reposo."
+      - texto: "Porque es más barata que una alcalina"
+        porque: "La barata es la alcalina; la primaria de litio gana por su larga vida."
+    escalera:
+      - "¿Qué le pasa a una batería que espera años: se gasta usándola o sola?"
+    solucion: "Su autodescarga es mínima y no necesita electrónica de carga."
+
+  - id: dura-menos
+    tipo: pregunta
+    titulo: "Dura menos de lo previsto"
+    texto: "Se deja el aparato funcionando y dura mucho menos de lo calculado. ¿Dónde suele estar la diferencia?"
+    libro: [15, 16, 24]
+    widget:
+      tipo: figura
+      figura: fig-39.2
+      zonas:
+        - { id: olvidos, rotulo: "Recuadro de la derecha", rect: [290, 5, 150, 230] }
+    opciones:
+      - texto: "En el consumo en reposo"
+        bien: true
+        porque: "Reguladores, divisores y LED consumen siempre, y en un aparato que duerme el 99 % del tiempo dominan."
+      - texto: "En la corriente al transmitir"
+        porque: "Esa se mide y se calcula; lo que se olvida es lo que consume siempre."
+      - texto: "En que el catálogo da un consumo menor que el real"
+        porque: "Es uno de los errores, pero lo que más se escapa es el reposo del circuito entero."
+    escalera:
+      - "¿Qué consume aunque el microcontrolador esté dormido?"
+    solucion: "En el consumo en reposo de todo el circuito, no solo del microcontrolador."
+
+  - id: recolectar
+    tipo: pregunta
+    titulo: "Sin batería"
+    texto: "La energía del entorno llega en microvatios y de forma irregular. ¿Cuál es la arquitectura correcta?"
+    libro: [21]
+    widget:
+      tipo: figura
+      figura: fig-39.1
+      zonas:
+        - { id: fases, rotulo: "Gráfica de la izquierda", rect: [0, 0, 225, 191] }
+    opciones:
+      - texto: "Acumular en un condensador y trabajar en ráfagas"
+        bien: true
+        porque: "Se junta energía hasta tener bastante y entonces se hace el trabajo."
+      - texto: "Alimentar el circuito de forma continua"
+        porque: "Con microvatios no se puede hacer nada continuamente."
+      - texto: "Conectar el transductor directamente al microcontrolador"
+        porque: "Sin almacenamiento, la irregularidad de la fuente lo apagaría a cada momento."
+    escalera:
+      - "Si llega poco y a ratos, hay que guardarlo antes de gastarlo."
+    solucion: "Un condensador o supercondensador que se carga, y trabajo en ráfagas cuando hay energía."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 7, 10, 16]
+    ideas:
+      - { titulo: "Restricción principal.", texto: "Con batería, la energía decide el resto, y el presupuesto se hace al principio." }
+      - { titulo: "Por fases.", texto: "Energía por ciclo × ciclos por día; la transmisión suele dominar." }
+      - { titulo: "El reposo.", texto: "Divisores, reguladores y LED consumen siempre: midan el reposo del circuito entero." }
+      - { titulo: "Medir.", texto: "La prueba definitiva es dejarlo funcionando y ver cuánto dura." }

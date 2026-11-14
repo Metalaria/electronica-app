@@ -1,0 +1,271 @@
+# Lección 1.2 de la sección 33.7 «Pérdidas y Rendimiento del Convertidor» (cap33). Formato: GUIA.md.
+# - La curva de rendimiento es una gráfica del modelo con las dos dependencias del libro (bloques 213–215): unas
+#   pérdidas fijas P_0 (control, conmutación, núcleo) y unas de conducción que crecen con el cuadrado de la carga,
+#   P_c·(P/P_n)²; P_n = 100 W (bloque 216). η = P/(P + P_0 + P_c·(P/P_n)²), máximo en P/P_n = √(P_0/P_c).
+#   P_0 = 1 W y P_c = 6,25 W dan el máximo al 40 %, como la figura 33.8; esos dos valores son míos.
+# Paso práctico: «dibujar» la forma de la curva (el libro la describe; la tolerancia es amplia, 10 % del eje).
+leccion: cap33/sec-33.7
+
+libro:
+  206: "Crece con el cuadrado de la corriente, así que domina a plena carga"
+  207: "Es proporcional a la frecuencia"
+  208: "con Schottky son de 0,3 a 0,5 V"
+  209: "pérdidas de cobre"
+  210: "que es fijo"
+  213: "Con carga muy pequeña, las pérdidas fijas"
+  214: "típicamente entre el 30 y el 60 % de la carga nominal"
+  215: "A plena carga, las pérdidas de conducción"
+  216: "Un convertidor de 100 W alimentando 5 W trabaja en su peor zona"
+  219: "Subirla reduce el tamaño de la bobina y del condensador"
+  221: "permiten subir la frecuencia sin pagar el precio"
+  222: "sus pérdidas de conmutación son mucho menores"
+  225: "Si es el interruptor con poca carga: bajar la frecuencia o mejorar el driver"
+  226: "Ese primer paso es el que más veces se salta"
+  229: "Un error del 1 % en cada medida da un 2 % de incertidumbre en el rendimiento"
+  230: "un multímetro de valor medio se equivoca"
+  231: "Esperar al régimen térmico"
+  232: "Medir a varias cargas"
+  236: "Curva de rendimiento de una conmutada"
+
+modelo:
+  valores:
+    P_n: { sim: "P_{n}", nombre: "potencia nominal", unidad: W, valor: 100 }
+    P_0: { sim: "P_{0}", nombre: "pérdidas fijas", unidad: W, valor: 1 }
+    P_c: { sim: "P_{c}", nombre: "pérdidas de conducción a plena carga", unidad: W, valor: 6.25 }
+    P_5: { sim: "P", nombre: "carga de 5 W", unidad: W, valor: 5 }
+  calculos:
+    x_max: { expr: "100*sqrt(P_0/P_c)", sim: "carga", nombre: "carga del máximo, en % de la nominal", unidad: "%", cifras: 2 }
+    eta_max: { expr: "100*P_n*sqrt(P_0/P_c)/(P_n*sqrt(P_0/P_c) + 2*P_0)", sim: "η_{máx}", nombre: "rendimiento máximo", unidad: "%" }
+    eta_5: { expr: "100*P_5/(P_5 + P_0 + P_c*(P_5/P_n)^2)", sim: "η", nombre: "rendimiento con 5 W", unidad: "%" }
+
+tarjetas:
+  - id: explore-curva
+    tipo: explorar
+    titulo: "La forma de la curva"
+    texto: "Un convertidor de 100 W. Cambie las pérdidas fijas y las de conducción y mire dónde queda el máximo."
+    libro: [213, 214, 215, 216, 236]
+    widget:
+      tipo: grafica
+      x: { id: p, min: 1, max: 100, unidad: "%", rotulo: "carga" }
+      y: { min: 50, max: 100, unidad: "%", rotulo: "η" }
+      curvas:
+        - { expr: "100*p/(p + P_0*100/P_n + P_c*100/P_n*(p/100)^2)", color: naranja, rotulo: "rendimiento" }
+      marcas:
+        - { x: "x_max", y: "eta_max", rotulo: "máximo" }
+      lectura: { valor: x_max, rotulo: "Máximo, a la carga" }
+      datos:
+        - { valor: eta_max, rotulo: "η máximo: {{eta_max}}" }
+      mandos:
+        - { valor: P_0, lista: [0.5, 1, 2], rotulo: "Pérdidas fijas" }
+        - { valor: P_c, lista: [3, 6.25, 12], rotulo: "Conducción a plena carga" }
+    requiere: { mover: [P_0, P_c] }
+
+  - id: cinco-fuentes
+    tipo: pregunta
+    titulo: "Cinco sitios"
+    texto: "Empareje cada fuente de pérdidas con cómo crece."
+    libro: [206, 207, 208, 209, 210]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: curva, rotulo: "La curva de la izquierda", rect: [0, 0, 215, 214] }
+    emparejar:
+      - ["Conducción del interruptor", "Con el cuadrado de la corriente"]
+      - ["Conmutación", "Proporcional a la frecuencia"]
+      - ["Diodo", "V_{F}·I, de 0,3 a 0,5 V con Schottky"]
+      - ["Control y drivers", "Fijo"]
+    exito: "Saber cuál domina en cada caso permite mejorar sin probar a ciegas."
+    pistas:
+      - { texto: "La que no depende de la carga es la del control." }
+    escalera:
+      - "R_{DS(on)} se multiplica por I²."
+    solucion: "Conducción: I². Conmutación: frecuencia. Diodo: V_{F}·I. Control: fijo."
+
+  - id: cinco-vatios
+    tipo: pregunta
+    titulo: "100 W para 5 W"
+    texto: "Un convertidor de 100 W alimenta una carga de 5 W. ¿En qué zona de su curva trabaja?"
+    libro: [213, 216]
+    widget:
+      tipo: grafica
+      x: { id: p, min: 1, max: 100, unidad: "%", rotulo: "carga" }
+      y: { min: 50, max: 100, unidad: "%", rotulo: "η" }
+      curvas:
+        - { expr: "100*p/(p + P_0*100/P_n + P_c*100/P_n*(p/100)^2)", color: naranja, rotulo: "rendimiento" }
+    opciones:
+      - texto: "En la peor: las pérdidas fijas son comparables a la potencia entregada"
+        bien: true
+        porque: "Conviene dimensionar para que la carga habitual caiga cerca del máximo, no en el extremo."
+      - texto: "En la mejor: con poca carga casi no hay pérdidas"
+        porque: "Las de conducción son pequeñas, pero las fijas siguen ahí y pesan frente a 5 W."
+      - texto: "En la zona donde domina I²·R"
+        porque: "I²·R domina a plena carga, en el otro extremo."
+    escalera:
+      - "5 W son el 5 % de la nominal: mire el principio de la curva."
+    solucion: "En la peor zona: las pérdidas fijas pesan frente a 5 W."
+
+  - id: maximo
+    tipo: pregunta
+    titulo: "Dónde está el máximo"
+    texto: "¿Dónde alcanza su máximo el rendimiento de un convertidor conmutado típico?"
+    libro: [214]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: curva, rotulo: "La curva de la izquierda", rect: [0, 0, 215, 214] }
+    opciones:
+      - texto: "Con carga media, entre el 30 y el 60 % de la nominal"
+        bien: true
+        porque: "Ahí las fijas ya pesan poco y la conducción aún no domina."
+      - texto: "A plena carga"
+        porque: "A plena carga dominan las pérdidas de conducción y el rendimiento baja."
+      - texto: "En vacío"
+        porque: "En vacío las pérdidas fijas se comen toda la potencia."
+    escalera:
+      - "Busque el punto entre los dos extremos que pierden por razones distintas."
+    solucion: "Con carga media: entre el 30 y el 60 % de la nominal."
+
+  - id: dibuje-curva
+    tipo: dibujar
+    titulo: "Dibuje la curva"
+    texto: "Dibuje el rendimiento de un convertidor de 100 W desde vacío hasta plena carga, con el máximo hacia el 40 %."
+    libro: [213, 214, 215]
+    fijar: { P_0: 1, P_c: 6.25 }
+    dibujar:
+      x: { id: p, min: 2, max: 100, unidad: "%", rotulo: "carga" }
+      y: { min: 50, max: 100, unidad: "%", rotulo: "η" }
+      curva: "100*p/(p + P_0*100/P_n + P_c*100/P_n*(p/100)^2)"
+      puntos: 25
+      tol: 0.1
+      holgura: 0.04
+      rotulo: "Rendimiento frente a la carga"
+    exito: "Sube deprisa al principio, tiene su máximo con carga media y baja suave hacia plena carga."
+    pistas:
+      - { cuando: { valor: media, menor: -0.1 }, texto: "Demasiado bajo: con carga media la curva está cerca de lo más alto." }
+      - { texto: "Con muy poca carga se hunde; luego sube rápido, y al final baja poco a poco por I²·R." }
+    escalera:
+      - "Tres zonas: pérdidas fijas, máximo y conducción."
+    solucion: "Una subida brusca, un máximo plano hacia el 40 % y una bajada suave a plena carga."
+    comprobar:
+      - { x_max: 40 }
+
+  - id: frecuencia
+    tipo: pregunta
+    titulo: "El compromiso de la frecuencia"
+    texto: "Subir la frecuencia de conmutación, ¿qué gana y qué paga?"
+    libro: [219]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: compromiso, rotulo: "La gráfica de la derecha", rect: [225, 0, 215, 214] }
+    opciones:
+      - texto: "Bobina y condensador menores; más pérdidas de conmutación y de núcleo"
+        bien: true
+        porque: "Hay que almacenar menos energía por ciclo, pero cada ciclo cuesta su conmutación."
+      - texto: "Mejor rendimiento y componentes mayores"
+        porque: "Eso es al bajarla."
+      - texto: "Menos rizado sin ningún coste"
+        porque: "El coste son las pérdidas que crecen con la frecuencia."
+    escalera:
+      - "¿Qué pérdidas crecen con la frecuencia?"
+    solucion: "Componentes menores a cambio de más pérdidas de conmutación y de núcleo."
+
+  - id: por-que-gan
+    tipo: porque
+    titulo: "Fuentes cada vez más pequeñas"
+    texto: "La conmutación suave, GaN y SiC han hecho las fuentes cada vez más pequeñas. ¿Por qué?"
+    libro: [221, 222]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: compromiso, rotulo: "La gráfica de la derecha", rect: [225, 0, 215, 214] }
+    opciones:
+      - texto: "Reducen las pérdidas de conmutación: se puede subir la frecuencia sin pagar el precio"
+        bien: true
+        porque: "Más frecuencia, magnéticos menores, sin que el rendimiento se hunda."
+      - texto: "Porque conducen con menos R_{DS(on)}"
+        porque: "Eso baja la conducción, pero no permite subir la frecuencia; lo hace la conmutación."
+      - texto: "Porque no necesitan bobina"
+        porque: "Siguen necesitándola; solo que más pequeña, a más frecuencia."
+    escalera:
+      - "¿Qué impide subir la frecuencia con silicio en conmutación dura?"
+    solucion: "Menos pérdidas de conmutación permiten frecuencias más altas: magnéticos menores."
+
+  - id: mejorar
+    tipo: pregunta
+    titulo: "Cómo mejorar"
+    texto: "Tras medir dónde se pierde, empareje cada punto caliente con su remedio."
+    libro: [225, 226]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: curva, rotulo: "La curva de la izquierda", rect: [0, 0, 215, 214] }
+    emparejar:
+      - ["Interruptor, a plena carga", "R_{DS(on)} menor"]
+      - ["Interruptor, con poca carga", "Bajar la frecuencia o mejorar el driver"]
+      - ["Diodo", "Rectificación síncrona"]
+      - ["Magnético", "Núcleo adecuado a la frecuencia o más cobre"]
+    exito: "Y antes de todo, medir: es el paso que más se salta."
+    pistas:
+      - { texto: "Con poca carga pesan las pérdidas fijas, como las de conmutación." }
+    escalera:
+      - "A plena carga manda I²·R."
+    solucion: "Plena carga: R_{DS(on)}. Poca carga: frecuencia o driver. Diodo: síncrono. Magnético: núcleo o cobre."
+
+  - id: medir-mal
+    tipo: predecir
+    titulo: "Medir el rendimiento"
+    texto: "Entrada y salida medidas con un 1 % de error cada una. ¿Qué incertidumbre puede tener el rendimiento?"
+    libro: [229]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: curva, rotulo: "La curva de la izquierda", rect: [0, 0, 215, 214] }
+    opciones:
+      - texto: "Un 2 %, que puede ser todo lo que se intenta medir"
+        bien: true
+        porque: "El rendimiento es un cociente: los errores de las dos medidas se suman."
+      - texto: "Un 1 %, el de los instrumentos"
+        porque: "Hay dos medidas en el cociente, cada una con su 1 %."
+      - texto: "Nada: los errores se cancelan"
+        porque: "Solo se cancelarían si fueran iguales y del mismo signo; no se puede contar con ello."
+    escalera:
+      - "η = P_{out}/P_{in}: ¿cuántas medidas entran?"
+    solucion: "Un 2 %: hacen falta instrumentos de exactitud conocida."
+
+  - id: trampas
+    tipo: pregunta
+    titulo: "Las trampas"
+    texto: "Empareje cada precaución con su motivo."
+    libro: [230, 231, 232]
+    widget:
+      tipo: figura
+      figura: fig-33.8
+      zonas:
+        - { id: curva, rotulo: "La curva de la izquierda", rect: [0, 0, 215, 214] }
+    emparejar:
+      - ["Corriente de entrada", "Es pulsante: un multímetro de valor medio se equivoca"]
+      - ["Esperar", "El rendimiento cambia al calentarse"]
+      - ["Varias cargas", "Un solo punto no dice la forma de la curva"]
+    exito: "De seis a ocho puntos, del 5 al 100 % de carga, y comparar con el fabricante."
+    pistas:
+      - { texto: "El régimen térmico es cuestión de tiempo." }
+    escalera:
+      - "La entrada de un conmutado no toma una corriente continua limpia."
+    solucion: "Corriente pulsante, régimen térmico y varios puntos de carga."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [206, 213, 214, 219, 226]
+    ideas:
+      - { titulo: "Cinco sitios.", texto: "Conducción, conmutación, diodo, magnético y control." }
+      - { titulo: "La curva.", texto: "Se hunde en vacío, máximo con carga media, baja a plena carga." }
+      - { titulo: "La frecuencia.", texto: "Componentes menores contra pérdidas de conmutación." }
+      - { titulo: "Medir primero.", texto: "Antes de cambiar nada, saber dónde se pierde." }

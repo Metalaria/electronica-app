@@ -542,13 +542,10 @@
   h3 {
     font-size: 18px;
   }
-  h3:focus {
-    outline: none;
-  }
+  /* the step's heading takes the focus at each step (tabindex -1, not a control): no ring (fix12, as app.css) */
+  h3:focus,
   h3:focus-visible {
-    outline: 3px solid var(--v11-foco);
-    outline-offset: 3px;
-    border-radius: 4px;
+    outline: none;
   }
   .objetivo,
   .texto,

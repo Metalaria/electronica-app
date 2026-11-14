@@ -225,51 +225,39 @@ test('B3 · el libro ya contiene las ampliaciones (cap31 y cap33 sin marca): los
   }
 });
 
-test('B4 · el libro ya contiene ej-25.9 y ej-22.4 (pegados con su bloque «Para el curado»): la pregunta de diseño p1 y los «porque» sobreviven', () => {
-  test.setTimeout(600_000);
-  const items = L.ejercicios.items;
-  const nuevos = { 'ej-25.9': items['ej-25.9']!, 'ej-22.4': items['ej-22.4']! };
-  // the book now has them: an «ejercicios» block at the end of their section, as the converter writes a pasted one
-  const conEjercicio = (label: keyof typeof nuevos) => (d: { bloques: { t: string; label?: string }[] }) => {
-    const e = nuevos[label];
-    const h2 = d.bloques.findIndex((b) => b.t === 'h2' && b.label === e.seccion);
-    let fin = d.bloques.findIndex((b, i) => i > h2 && b.t === 'h2');
-    if (fin < 0) fin = d.bloques.length;
-    d.bloques.splice(fin, 0, { t: 'ejercicios', items: [{ label, num: e.num, bloques: e.enunciado, solucion: e.solucion }] } as never);
-    return d;
-  };
-  const copia = copiaLibro(['ejercicios.json', 'busqueda.json'], { cap25: conEjercicio('ej-25.9'), cap22: conEjercicio('ej-22.4') });
+// 1.2: book 4.0 took in the 30 exercises 1.1 added as «nuevo» (contenido/ejercicios_nuevos11), pasted with their «Para
+// el curado» blocks. What B4 simulated in 1.1 (pasting ej-25.9 and ej-22.4 into a copy of the book and rerunning
+// ejercicios.py) is now the real data: the book's items are compared with the ones 1.1.0 published.
+const V11 = (() => {
+  const git = (...a: string[]) => execFileSync('git', a, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   try {
-    // the curated file with the blocks that «ejercicios_nuevos.py --typst» gives for the book
-    const md = path.join(copia, 'nuevos.md');
-    execFileSync('python3', [path.join(REPO, 'contenido', 'ejercicios_nuevos.py'), '--comprobar', '--typst', md], { encoding: 'utf8' });
-    const texto = fs.readFileSync(md, 'utf8');
-    const bloque = (l: string) => texto.slice(texto.indexOf(`[${l}]\n`)).split('\n\n')[0]!;
-    expect(bloque('ej-25.9')).toMatch(/^\? diseno: \{/m);
-    expect(bloque('ej-22.4')).toMatch(/^porque \d+: /m);
-    const curado = path.join(copia, 'curado.txt');
-    fs.writeFileSync(curado, `${fs.readFileSync(path.join(REPO, 'contenido', 'ejercicios_curado.txt'), 'utf8')}\n${bloque('ej-25.9')}\n\n${bloque('ej-22.4')}\n`);
-    execFileSync('python3', [path.join(REPO, 'contenido', 'ejercicios.py')], { env: { ...process.env, EPA_LIBRO: copia, EPA_CURADO: curado }, encoding: 'utf8' });
-    const despues = (JSON.parse(fs.readFileSync(path.join(copia, 'ejercicios.json'), 'utf8')) as typeof L.ejercicios).items;
-    for (const l of Object.keys(nuevos) as (keyof typeof nuevos)[]) {
-      expect(despues[l]!.nuevo, `${l}: the book's item now`).toBeUndefined();
-      expect(despues[l]!.preguntas!.map((p) => [p.id, p.tipo])).toEqual(nuevos[l].preguntas!.map((p) => [p.id, p.tipo]));
-    }
-    // the design question: the same question, so a stored answer gives the same verdict
-    const [a, b] = [despues['ej-25.9']!.preguntas![0] as PDiseno, nuevos['ej-25.9'].preguntas![0] as PDiseno];
-    expect(a).toEqual(b);
-    expect(despues['ej-25.9']!.clase).toBe('diseno');
-    for (const v of ['3,3 k|47 n#3300,4.7e-8#fc=1026.14', '3,3 k|4,7 n#3300,4.7e-9#fc=10261.4']) expect(comprobarDiseno(a, v)).toEqual(comprobarDiseno(b, v));
-    // the choice question: the same options in the same shown order, the same right one, every «porque» kept
-    const plano = (h: string) => h.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-    const [c, d] = [despues['ej-22.4']!.preguntas![0] as PEleccion, nuevos['ej-22.4'].preguntas![0] as PEleccion];
-    expect(c.opciones.map(plano)).toEqual(d.opciones.map(plano));
-    expect(c.correcta).toBe(d.correcta);
-    expect(Object.fromEntries(Object.entries(c.porque ?? {}).map(([k, t]) => [k, plano(t)]))).toEqual(Object.fromEntries(Object.entries(d.porque ?? {}).map(([k, t]) => [k, plano(t)])));
-    expect(Object.keys(c.porque ?? {}).length).toBe(c.opciones.length - 1);
-  } finally {
-    fs.rmSync(copia, { recursive: true, force: true });
+    return git('rev-parse', '--verify', '--quiet', 'eb2298b^{commit}');
+  } catch {
+    return git('log', '--format=%H', '-n', '1', '--grep=^Versión 1\\.1\\.0:');
   }
+})();
+
+test('B4 · el libro ya contiene ej-25.9 y ej-22.4 (pegados con su bloque «Para el curado»): la pregunta de diseño p1 y los «porque» sobreviven', () => {
+  const viejos = (JSON.parse(execFileSync('git', ['show', `${V11}:web/public/libro/ejercicios.json`], { cwd: REPO, encoding: 'utf8', maxBuffer: 256 << 20 })) as typeof L.ejercicios).items;
+  const nuevos = { 'ej-25.9': viejos['ej-25.9']!, 'ej-22.4': viejos['ej-22.4']! };
+  const despues = L.ejercicios.items;
+  for (const l of Object.keys(nuevos) as (keyof typeof nuevos)[]) {
+    expect(nuevos[l].nuevo, `${l}: new in 1.1`).toBe(true);
+    expect(despues[l]!.nuevo, `${l}: the book's item now`).toBeUndefined();
+    expect(despues[l]!.preguntas!.map((p) => [p.id, p.tipo])).toEqual(nuevos[l].preguntas!.map((p) => [p.id, p.tipo]));
+  }
+  // the design question: the same question, so a stored answer gives the same verdict
+  const [a, b] = [despues['ej-25.9']!.preguntas![0] as PDiseno, nuevos['ej-25.9'].preguntas![0] as PDiseno];
+  expect(a).toEqual(b);
+  expect(despues['ej-25.9']!.clase).toBe('diseno');
+  for (const v of ['3,3 k|47 n#3300,4.7e-8#fc=1026.14', '3,3 k|4,7 n#3300,4.7e-9#fc=10261.4']) expect(comprobarDiseno(a, v)).toEqual(comprobarDiseno(b, v));
+  // the choice question: the same options in the same shown order, the same right one, every «porque» kept
+  const plano = (h: string) => h.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const [c, d] = [despues['ej-22.4']!.preguntas![0] as PEleccion, nuevos['ej-22.4'].preguntas![0] as PEleccion];
+  expect(c.opciones.map(plano)).toEqual(d.opciones.map(plano));
+  expect(c.correcta).toBe(d.correcta);
+  expect(Object.fromEntries(Object.entries(c.porque ?? {}).map(([k, t]) => [k, plano(t)]))).toEqual(Object.fromEntries(Object.entries(d.porque ?? {}).map(([k, t]) => [k, plano(t)])));
+  expect(Object.keys(c.porque ?? {}).length).toBe(c.opciones.length - 1);
 });
 
 // ------------------------------------------------------------------ C. lesson progress on two devices

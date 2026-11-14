@@ -1,0 +1,233 @@
+# Lección 1.2 de la sección K.6 «Errores Típicos» (apK). Formato: contenido/lecciones11/GUIA.md (§5.2, §11). Todos los
+# resultados son los del libro: el bloque de promoción compilado en el PC y en simavr (bloque 63; Complementos/codigo/
+# apK/promocion) y el ejercicio K.1 (300 × 300 = 24 464 en el AVR). La gráfica dibuja lo que queda de un producto en un
+# int de 16 bits, como lo da en la práctica el avr-gcc (90 000 − 65 536 = 24 464; 60 000 − 65 536 = −5 536).
+leccion: apK/sec-K.6
+
+libro:
+  60: "C convierte todo lo que es más pequeño que un int en int"
+  61: "uint8_t  a = 200, b = 100, e = 0x80;"
+  62: "en la práctica el avr-gcc da −5 536, que convertido a uint32_t son 4 294 961 760"
+  63: "El bloque, compilado para el PC y ejecutado, da c = 44, d = 1, f = 0, g = 60 000, h = 60 000 e i = 0"
+  65: "puede convertir if (x + 1 > x) en if (1)"
+  66: "leer o escribir fuera de un vector"
+  68: "-fsanitize=undefined,address"
+  "apK#70": "el avr-gcc da en la práctica 90 000 − 65 536 = 24 464"
+
+modelo:
+  valores:
+    prod: { sim: "producto", nombre: "producto exacto", unidad: "", valor: 60000 }
+    ua: { sim: "a", nombre: "primer factor", unidad: "", valor: 300 }
+    ub: { sim: "b", nombre: "segundo factor", unidad: "", valor: 300 }
+  calculos:
+    i16: { expr: "prod - 65536*floor((prod + 32768)/65536)", sim: "int", nombre: "lo que queda en un int de 16 bits", unidad: "" }
+    u16: { expr: "ua*ub - 65536*floor(ua*ub/65536)", sim: "uint16_t", nombre: "lo que queda en 16 bits sin signo", unidad: "" }
+
+tarjetas:
+  - id: explore-desborde
+    tipo: explorar
+    titulo: "Un producto que no cabe"
+    texto: "En el AVR, dos int dan un producto int de 16 bits. Elija el producto exacto y mire lo que da en la práctica el avr-gcc."
+    libro: [62, "apK#70"]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "lo que queda" }
+      marcas:
+        - { x: "prod", y: "i16", rotulo: "{{i16}}" }
+      lectura: { valor: i16, rotulo: "Resultado en el AVR" }
+      mandos:
+        - { valor: prod, lista: [30000, 60000, 90000], rotulo: "Producto exacto" }
+    requiere: { mover: [prod] }
+    comprobar:
+      - { i16: -5536 }
+      - { con: { prod: 90000 }, i16: 24464 }
+
+  - id: prediga-suma
+    tipo: predecir
+    titulo: "200 + 100 en un uint8_t"
+    texto: "uint8_t a = 200, b = 100, c; c = a + b; ¿Cuánto vale c?"
+    libro: [60, 61, 63]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "lo que queda" }
+    opciones:
+      - { texto: "44", bien: true, porque: "a + b es el int 300; guardado en un uint8_t pierde el bit 8 y queda en 44." }
+      - { texto: "300", porque: "La suma es 300, pero c tiene 8 bits: no cabe." }
+      - { texto: "255", porque: "No satura: se pierden los bits que no caben." }
+    escalera: ["300 en binario necesita 9 bits."]
+    solucion: "44: el int 300 truncado a 8 bits."
+
+  - id: empareje-promocion
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las conversiones habituales"
+    texto: "Con uint8_t a = 200, b = 100 y e = 0x80, una cada expresión con lo que da."
+    libro: [61, 62, 63]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          uint8_t  a = 200, b = 100, e = 0x80;
+
+          void promocion(void)
+          {
+              c = a + b;
+              d = a + b > 255;
+              f = ~e == 0x7F;
+              g = 1000 * 60;
+              h = 1000ul * 60;
+              i = -1 < 1u;
+          }
+      resaltar: [1]
+    emparejar:
+      - ["a + b > 255", "1: se compara como int"]
+      - ["~e == 0x7F", "0: ~e es el int 0xFF7F"]
+      - ["1000ul * 60", "60 000 en cualquier compilador"]
+      - ["-1 < 1u", "0: el −1 pasa a unsigned"]
+    exito: "El compilador avisa de las cuatro trampas con -Wall -Wextra."
+    pistas:
+      - { texto: "~ se aplica después de convertir e en int." }
+    escalera: ["Todo lo menor que un int se convierte en int antes de operar."]
+    solucion: "a + b > 255, 1; ~e == 0x7F, 0; 1000ul * 60, 60 000; -1 < 1u, 0."
+
+  - id: prediga-g
+    tipo: predecir
+    titulo: "1000 * 60 en un uint32_t"
+    texto: "uint32_t g = 1000 * 60; en el Arduino UNO. ¿Qué vale g?"
+    libro: [62, 63]
+    fijar: { prod: 60000 }
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "lo que queda" }
+      lectura: { valor: i16, rotulo: "1000 * 60 en un int" }
+      ocultar: true
+    opciones:
+      - { texto: "4 294 961 760", bien: true, porque: "El producto de dos int no cabe en 16 bits: da −5 536, que convertido a uint32_t es ese número." }
+      - { texto: "60 000", porque: "Eso da en el PC, con int de 32 bits; en el AVR el producto se desborda antes de guardarse." }
+      - { texto: "−5 536", porque: "Ese es el int; al guardarlo en un uint32_t se convierte en un número enorme." }
+    escalera: ["¿De qué tipo son 1000 y 60 en el AVR?"]
+    solucion: "4 294 961 760: el desbordamiento ocurre en el producto int."
+    comprobar:
+      - { i16: -5536 }
+
+  - id: estime-300
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "300 × 300"
+    texto: "En el Arduino UNO, uint16_t x = 300 * 300; ¿Cuánto vale x en la práctica?"
+    libro: ["apK#70"]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "lo que queda" }
+    estimar:
+      objetivo: "u16"
+      unidad: ""
+      min: 0
+      max: 30000
+      paso: 16
+      inicio: 28000
+      tol: 0.01
+      rotulo: "Valor de x"
+    exito: "24 464, y también en un Cortex-M, porque 90 000 no cabe en un uint16_t."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 24464 }, texto: "Se ha pasado: a 90 000 réstele 65 536." }
+      - { texto: "Se ha quedado corto: a 90 000 réstele 65 536 una sola vez." }
+    escalera: ["300 × 300 son 90 000; 16 bits dan la vuelta en 65 536."]
+    solucion: "90 000 − 65 536 = 24 464."
+    comprobar:
+      - { u16: 24464 }
+
+  - id: porque-destino
+    tipo: porque
+    titulo: "El destino no importa"
+    texto: "uint32_t g = 1000 * 60; guarda en 32 bits. ¿Por qué se desborda igual en el AVR?"
+    libro: [62]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "lo que queda" }
+    opciones:
+      - { texto: "El tipo de una operación lo deciden sus operandos, no dónde se guarda", bien: true, porque: "Dos int dan un int de 16 bits; la conversión a 32 llega tarde. Se arregla con 1000ul." }
+      - { texto: "Porque uint32_t no existe en el AVR", porque: "Existe: el problema es el producto, que se hace antes en int." }
+      - { texto: "Porque 60 es un número negativo", porque: "No lo es: lo que no cabe es el producto, 60 000." }
+    escalera: ["¿Qué se calcula antes, el producto o la asignación?"]
+    solucion: "Los operandos son int: el producto se desborda antes de guardarse."
+
+  - id: pregunta-bucle
+    tipo: pregunta
+    titulo: "Un bucle que no termina"
+    texto: "for (unsigned k = n - 1; k >= 0; k--) recorre un vector hacia atrás. ¿Qué pasa?"
+    libro: [62]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "dar la vuelta" }
+    opciones:
+      - { texto: "No termina nunca: un unsigned siempre es mayor o igual que 0", bien: true, porque: "Al bajar de 0 da la vuelta al mayor unsigned: el mismo error que -1 < 1u." }
+      - { texto: "Termina al llegar a 0", porque: "k >= 0 es siempre cierto para un unsigned: la condición no para nunca." }
+      - { texto: "No compila", porque: "Compila; -Wextra avisa de la comparación siempre cierta." }
+    escalera: ["¿Puede un unsigned valer menos que 0?"]
+    solucion: "Bucle infinito: k da la vuelta al llegar a 0."
+
+  - id: pregunta-indefinido
+    tipo: pregunta
+    titulo: "Comportamiento indefinido"
+    texto: "int x; if (x + 1 > x) … ¿Qué puede hacer el compilador con esa comparación?"
+    libro: [65, 66]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "con signo" }
+    opciones:
+      - { texto: "Convertirla en if (1): supone que el desbordamiento con signo no ocurre", bien: true, porque: "Es comportamiento indefinido: el programa puede funcionar hasta que cambie la optimización." }
+      - { texto: "Comprobarla siempre en tiempo de ejecución", porque: "Puede quitarla: el estándar no le obliga a nada si hay desbordamiento." }
+      - { texto: "Dar un error", porque: "No es un error de compilación: es indefinido al ejecutar." }
+    escalera: ["Con signo, ¿está definido qué pasa al desbordarse?"]
+    solucion: "if (1): optimiza suponiendo que no hay desbordamiento con signo."
+
+  - id: pregunta-defenderse
+    tipo: pregunta
+    titulo: "Defenderse"
+    texto: "Prueba en el PC la lógica que no toca el hardware, con -fsanitize=undefined,address. ¿Qué le falta?"
+    libro: [68]
+    widget:
+      tipo: grafica
+      x: { id: pp, min: 0, max: 100000, unidad: "", rotulo: "producto exacto" }
+      y: { min: -35000, max: 35000, unidad: "", rotulo: "int de 16 bits" }
+      curvas:
+        - { expr: "pp - 65536*floor((pp + 32768)/65536)", color: azul, rotulo: "en el AVR" }
+    opciones:
+      - { texto: "Probar también en el procesador real o en un simulador: en el PC el int tiene 32 bits", bien: true, porque: "Los desbordamientos de 16 bits del AVR no aparecen en el PC." }
+      - { texto: "Nada: el sanitizador lo detecta todo", porque: "Detecta lo que ocurre en el PC; con otros tamaños, el AVR falla donde el PC no." }
+      - { texto: "Compilar sin avisos para que vaya más rápido", porque: "Al contrario: -Wall -Wextra siempre, y -Werror en lo que se entrega." }
+    escalera: ["¿Tiene el mismo tamaño el int en el PC y en el AVR?"]
+    solucion: "Probar también en el AVR o en simavr: los tamaños cambian."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [60, 62, 65, 68]
+    ideas:
+      - { titulo: "Promoción.", texto: "Todo lo menor que un int se opera como int." }
+      - { titulo: "Operandos.", texto: "El tipo lo deciden los operandos, no el destino: 1000ul." }
+      - { titulo: "Indefinido.", texto: "Con signo, el desbordamiento no existe para el compilador." }
+      - { titulo: "Defensa.", texto: "Avisos, sanitizadores en el PC y prueba en el procesador real." }

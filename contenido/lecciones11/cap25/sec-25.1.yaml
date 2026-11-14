@@ -1,0 +1,226 @@
+# Lección 1.2 de la sección 24.1 «El Circuito como Caja de Dos Puertos» (cap25). Formato: contenido/lecciones11/GUIA.md.
+# El bloque que se mide es el RC de la práctica de la sección 21.5 (cap22#133: 1,6 kΩ y 100 nF).
+leccion: cap25/sec-25.1
+
+libro:
+  4: "Se puede describir por completo por lo que hace en esos cuatro terminales, sin conocer su interior."
+  7: "hay cuatro magnitudes"
+  8: "Las dos corrientes"
+  9: "se elige el que haga fácil el problema"
+  11: "hfe es la β en pequeña señal"
+  12: "al encadenar bloques, sus matrices se multiplican"
+  14: "exigen abrir o cortocircuitar terminales"
+  15: "midiendo con todos los puertos terminados en 50 Ω"
+  18: "no lo cumple una red con elementos activos o con ferritas magnetizadas"
+  20: "En una red recíproca y simétrica, los cuatro parámetros se reducen a dos"
+  23: "quedar descritos por cuatro números por frecuencia"
+  25: "se mide la relación de amplitudes y el desfase entre entrada y salida a varias frecuencias"
+  "cap22#133": "Con R = 1,6 kΩ y C = 100 nF"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    R_f: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1600 }
+    C_f: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+  calculos:
+    w_f: { expr: "2*pi*f_f", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    x_c: { expr: "w_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{salida}", nombre: "amplitud de la salida", unidad: V }
+    ph_c: { expr: "-atan(x_c)*180/pi", sim: "φ", nombre: "desfase de la salida", unidad: "°" }
+    H: { expr: "A_c/V_p", sim: "|H|", nombre: "relación de amplitudes", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-caja
+    tipo: explorar
+    titulo: "Medir la caja desde fuera"
+    texto: "Un bloque con entrada y salida. Recorra las frecuencias y anote, en cada una, la relación de amplitudes y el desfase."
+    libro: [4, 25, "cap22#133"]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      datos:
+        - { valor: ph_c, rotulo: "Desfase: {{ph_c}}" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      grafica:
+        x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "salida", mide: vc }
+      mandos:
+        - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000] }
+    requiere: { mover: [f_f] }
+
+  - id: cuatro-magnitudes
+    tipo: predecir
+    titulo: "¿Cuántas son independientes?"
+    texto: "Tensión y corriente de entrada, tensión y corriente de salida. ¿Cuántas de las cuatro son independientes?"
+    libro: [7]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+    opciones:
+      - texto: "Dos"
+        bien: true
+        porque: "Fijadas dos, el bloque determina las otras dos. Según cuáles se elijan, sale un juego de parámetros distinto."
+      - texto: "Cuatro"
+        porque: "El bloque relaciona las magnitudes entre sí: conocidas dos, las otras dos ya no son libres."
+      - texto: "Una"
+        porque: "Con una sola no basta: entrada y salida dependen también de lo que se conecte a cada puerto."
+    escalera:
+      - "Cada juego de parámetros elige qué pareja se toma como independiente."
+    solucion: "Dos: por eso hay varios juegos de parámetros."
+
+  - id: juegos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los juegos de parámetros"
+    texto: "Una cada juego con sus magnitudes independientes."
+    libro: [8, 9]
+    emparejar:
+      - ["Z (impedancia)", "Las dos corrientes"]
+      - ["Y (admitancia)", "Las dos tensiones"]
+      - ["h (híbridos)", "I entrada, V salida"]
+      - ["S (dispersión)", "Ondas"]
+    exito: "Todos describen lo mismo y se convierten unos en otros: se elige el que haga fácil el problema."
+    pistas:
+      - { texto: "Una impedancia es tensión entre corriente: con las corrientes como datos, los Z dan las tensiones." }
+    escalera:
+      - "Los híbridos mezclan: una corriente y una tensión."
+    solucion: "Z: corrientes; Y: tensiones; h: I de entrada y V de salida; S: ondas."
+
+  - id: abcd
+    tipo: pregunta
+    titulo: "Encadenar bloques"
+    texto: "¿Qué propiedad hace útiles los parámetros ABCD en cascadas, líneas y filtros en escalera?"
+    libro: [12]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Al encadenar bloques, sus matrices se multiplican"
+        bien: true
+        porque: "La respuesta de toda la cadena sale de un producto de matrices, sin resolver el circuito entero."
+      - texto: "Se miden sin abrir ni cortocircuitar terminales"
+        porque: "Esa es la virtud de los S. Los ABCD sí exigen esas condiciones."
+      - texto: "Cada uno se mide con una condición sencilla"
+        porque: "Esa es la virtud de los h: entrada abierta o salida en cortocircuito."
+    escalera:
+      - "Piense en una cadena de bloques uno tras otro."
+    solucion: "En cascada sus matrices se multiplican."
+
+  - id: parametros-s
+    tipo: porque
+    titulo: "En radiofrecuencia"
+    texto: "¿Por qué en radiofrecuencia se usan los parámetros S y no Z, Y, h o ABCD?"
+    libro: [14, 15]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Los otros exigen abrir o cortocircuitar terminales, imposible a frecuencias altas"
+        bien: true
+        porque: "Y puede hacer oscilar el dispositivo. Los S se miden con todos los puertos terminados en 50 Ω, algo realizable."
+      - texto: "Porque los S dan más información"
+        porque: "Todos describen lo mismo y se convierten unos en otros. La razón es que los S se pueden medir."
+      - texto: "Porque en RF no hay corrientes"
+        porque: "Las hay; lo que no se puede hacer bien es dejar un puerto abierto o en corto a esas frecuencias."
+    escalera:
+      - "¿Cómo se mide cada parámetro Z o h?"
+    solucion: "Abrir o cortocircuitar no es realizable en RF; terminar en 50 Ω, sí."
+
+  - id: hfe
+    tipo: pregunta
+    titulo: "Los parámetros h"
+    texto: "En una hoja de datos antigua de un transistor aparece h_{fe}. ¿Qué es?"
+    libro: [11]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "La β en pequeña señal"
+        bien: true
+        porque: "h_{ie} es la impedancia de entrada. Cada h se mide con una condición sencilla, fácil en baja frecuencia."
+      - texto: "La impedancia de entrada"
+        porque: "Esa es h_{ie}. h_{fe} es una relación de corrientes: la β."
+      - texto: "Un parámetro S"
+        porque: "Es de los híbridos, los de las hojas de datos de baja frecuencia."
+    escalera:
+      - "La f es de «forward»: lo que pasa de la entrada a la salida."
+    solucion: "h_{fe} es la β en pequeña señal."
+
+  - id: reciproca
+    tipo: pregunta
+    titulo: "Recíproca y pasiva"
+    texto: "Una red recíproca transmite igual en los dos sentidos. ¿Cuál de estas no lo es, aunque sea pasiva?"
+    libro: [18, 20]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Un circulador, con ferritas magnetizadas"
+        bien: true
+        porque: "Las ferritas magnetizadas rompen la reciprocidad aunque no haya elementos activos."
+      - texto: "Un filtro de resistencias y condensadores"
+        porque: "Cualquier red de R, C, L y transformadores es recíproca."
+      - texto: "Un transformador"
+        porque: "Los transformadores están en la lista de elementos recíprocos."
+    escalera:
+      - "La reciprocidad la cumplen R, L, C y transformadores."
+    solucion: "El circulador: pasivo pero no recíproco. En una red recíproca y simétrica, los cuatro parámetros se reducen a dos."
+
+  - id: para-que
+    tipo: pregunta
+    titulo: "Lo que aporta"
+    texto: "Se compra un filtro y se mide en sus terminales. ¿Qué se consigue?"
+    libro: [23, 25]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      datos:
+        - { valor: ph_c, rotulo: "Desfase: {{ph_c}}" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      mandos:
+        - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000] }
+    opciones:
+      - texto: "Queda descrito por cuatro números por frecuencia, sin saber qué lleva dentro"
+        bien: true
+        porque: "Con eso, predecir qué hará en un sistema es aritmética."
+      - texto: "Saber qué componentes lleva dentro"
+        porque: "La medida en los terminales no dice qué hay dentro, y no hace falta para usarlo."
+      - texto: "Nada útil: hay que conocer el esquema"
+        porque: "Precisamente se trata de no necesitarlo: el bloque se describe por lo que hace en sus terminales."
+    escalera:
+      - "¿Hace falta saber qué hay dentro para usarlo en un cálculo?"
+    solucion: "Cuatro números por frecuencia que bastan para usarlo en cualquier cálculo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [4, 7, 12, 15]
+    ideas:
+      - { titulo: "Una caja.", texto: "Un bloque se describe por lo que hace en sus cuatro terminales, sin abrirlo." }
+      - { titulo: "Juegos.", texto: "Z, Y, h, ABCD y S eligen dos magnitudes independientes; se convierten unos en otros." }
+      - { titulo: "Cada uno, para algo.", texto: "h en transistores, ABCD en cascadas (se multiplican), S en radiofrecuencia." }
+      - { titulo: "Se mide.", texto: "Relación de amplitudes y desfase a varias frecuencias, con la carga real." }

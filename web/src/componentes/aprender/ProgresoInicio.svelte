@@ -18,6 +18,8 @@
     const enCurso: { id: string; f: number; t: number }[] = [];
     if (!aprendizaje.listo) return { total, leidas, enCurso };
     for (const [id, p] of Object.entries(indice.partes)) {
+      // (1.2: the console lessons' parts are not read in the book)
+      if (p.tipo === 'consola') continue;
       const secs = p.secciones ?? [];
       total += secs.length;
       const l = aprendizaje.leidas[id];

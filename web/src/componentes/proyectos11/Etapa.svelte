@@ -374,13 +374,10 @@
   h2 {
     font-size: 18px;
   }
-  h1:focus {
-    outline: none;
-  }
+  /* the heading takes the focus when a stage opens (tabindex -1, not a control): no ring (fix12, as app.css) */
+  h1:focus,
   h1:focus-visible {
-    outline: 3px solid var(--v11-foco);
-    outline-offset: 3px;
-    border-radius: 4px;
+    outline: none;
   }
   .objetivo,
   .nota,

@@ -1,0 +1,244 @@
+# Lección 1.2 de la sección 42.6 «Integridad de Alimentación: la PDN» (cap41, sec-41.6). Formato: GUIA.md.
+# - Z_objetivo = ΔV_admisible / ΔI_máxima (bloque 163): 1,2 V con un 5 % y 5 A de variación, 12 mΩ (bloques 164–165),
+#   en una gráfica viva frente a ΔI.
+# - La figura 42.10 (fig-41.10) con zonas: el objetivo, las antirresonancias y las defensas.
+# Paso práctico: «simular» la impedancia objetivo del ejemplo del libro antes de ver la fórmula (12 mΩ; errores: sin el
+# 5 %, multiplicar por la corriente).
+leccion: cap41/sec-41.6
+
+libro:
+  159: "debe presentar baja impedancia en todo el margen de frecuencias en que esos pulsos tienen contenido"
+  160: "esa caída es indistinguible de un fallo lógico"
+  163: 'Z_("objetivo") = ("Δ" V_("admisible"))/("Δ" I_("máxima"))'
+  164: "Con una alimentación de 1,2 V, un 5 % de tolerancia y 5 A de variación de corriente"
+  165: '"12 mΩ"'
+  166: "desde continua hasta cientos de megahercios"
+  169: "El regulador: de continua a unas decenas de kilohercios. Su lazo no responde más rápido"
+  170: "de decenas de kilohercios a unos megahercios"
+  171: "de megahercios a decenas de megahercios"
+  172: "La capacidad entre planos: por encima de eso"
+  173: "lo más rápido de todo, y no está bajo control del diseñador"
+  174: "ningún elemento cubre todo el margen, y el diseño consiste en encadenarlos sin dejar huecos"
+  177: "aparece una resonancia paralelo donde la impedancia sube en lugar de bajar"
+  178: "el resultado es peor que sin el condensador"
+  180: "Usar menos valores distintos y más unidades del mismo"
+  181: "un electrolítico o un cerámico con ESR controlada amortigua el pico"
+  185: "errores que dependen del patrón de datos, peores cuando muchos bits cambian a la vez"
+  186: "más pines de masa"
+  190: "revela las antirresonancias que el osciloscopio solo insinúa"
+  192: "Impedancia de la PDN por bandas y el problema de las antirresonancias"
+
+modelo:
+  valores:
+    V_n: { sim: "V", nombre: "tensión de alimentación", unidad: V, valor: 1.2 }
+    tol_p: { sim: "tol", nombre: "tolerancia", unidad: "%", valor: 5 }
+    dI: { sim: "ΔI_{máxima}", nombre: "variación de corriente", unidad: A, valor: 5 }
+  calculos:
+    dV: { expr: "V_n*tol_p/100", sim: "ΔV_{admisible}", nombre: "caída admisible", unidad: V }
+    Z_o: { expr: "dV/dI", sim: "Z_{objetivo}", nombre: "impedancia objetivo", unidad: Ω }
+    Z_sinpct: { expr: "V_n/dI", sim: "Z", nombre: "sin aplicar la tolerancia", unidad: Ω }
+    Z_mult: { expr: "dV*dI", sim: "Z", nombre: "multiplicando por la corriente", unidad: Ω }
+
+tarjetas:
+  - id: explore-pdn
+    tipo: explorar
+    titulo: "La alimentación también es una señal"
+    texto: "La red que entrega la corriente debe tener baja impedancia desde continua hasta cientos de megahercios. Toque las tres zonas."
+    libro: [159, 160, 166, 192]
+    widget:
+      tipo: figura
+      figura: fig-41.10
+      zonas:
+        - { id: objetivo, rotulo: "Línea de puntos roja", rect: [35, 115, 75, 36], texto: "El objetivo: la impedancia que no se debe superar en ninguna frecuencia." }
+        - { id: anti, rotulo: "Rótulo antirresonancias", rect: [110, 40, 80, 36], texto: "Picos donde la impedancia sube en lugar de bajar." }
+        - { id: defensas, rotulo: "Recuadro verde", rect: [315, 160, 125, 75], texto: "Menos valores distintos, ESR que amortigüe y simular la PDN." }
+    requiere: { mover: [objetivo, anti, defensas] }
+
+  - id: simule-objetivo
+    tipo: simular
+    titulo: "Prediga el objetivo"
+    texto: "Alimentación de 1,2 V con un 5 % de tolerancia y 5 A de variación de corriente. ¿Qué impedancia no debe superar la PDN?"
+    libro: [164, 165]
+    fijar: { V_n: 1.2, tol_p: 5, dI: 5 }
+    widget:
+      tipo: grafica
+      x: { id: ii, min: 1, max: 20, unidad: A, rotulo: "ΔI" }
+      y: { min: 0, max: 0.07, unidad: Ω, rotulo: "Z" }
+      curvas:
+        - { expr: "dV/ii", color: naranja, rotulo: "ΔV/ΔI" }
+      lectura: { valor: Z_o, rotulo: "Impedancia objetivo" }
+      ocultar: true
+    simular:
+      objetivo: Z_o
+      unidad: Ω
+      tol: 0.05
+      rotulo: "Impedancia objetivo"
+      errores:
+        - { expr: "Z_sinpct", texto: "Ha usado los 1,2 V enteros: lo admisible es el 5 %, 0,06 V." }
+        - { expr: "Z_mult", texto: "Ha multiplicado: la impedancia es tensión entre corriente." }
+    exito: "12 mΩ, y hay que mantenerlos desde continua hasta cientos de megahercios."
+    escalera:
+      - "Primero la caída admisible: el 5 % de 1,2 V."
+    solucion: "0,06 V / 5 A = 12 mΩ."
+    comprobar:
+      - { Z_o: 0.012, dV: 0.06, Z_sinpct: 0.24, Z_mult: 0.3 }
+
+  - id: formula-objetivo
+    tipo: formula
+    titulo: "El objetivo de impedancia"
+    texto: "El cálculo que ordena el diseño. Mueva la corriente y la tolerancia."
+    libro: [163, 165]
+    ec: 163
+    sustitucion: "{{dV}} / {{dI}} = {{Z_o}}"
+    widget:
+      tipo: grafica
+      x: { id: ii, min: 1, max: 20, unidad: A, rotulo: "ΔI" }
+      y: { min: 0, max: 0.2, unidad: Ω, rotulo: "Z" }
+      curvas:
+        - { expr: "dV/ii", color: naranja, rotulo: "ΔV/ΔI" }
+      marcas:
+        - { x: "dI", y: "Z_o", rotulo: "{{Z_o}}" }
+      lectura: { valor: Z_o, rotulo: "Impedancia objetivo" }
+      mandos:
+        - { valor: dI, min: 1, max: 20, paso: 1, rotulo: "Variación de corriente, ΔI" }
+        - { valor: tol_p, lista: [3, 5, 10], rotulo: "Tolerancia" }
+    comprobar:
+      - { con: { V_n: 1.2, tol_p: 5, dI: 5 }, Z_o: 0.012 }
+
+  - id: empareje-bandas
+    tipo: pregunta
+    titulo: "Quién cubre cada banda"
+    texto: "Empareje cada elemento de la PDN con la banda que cubre."
+    libro: [169, 170, 171, 172, 173]
+    emparejar:
+      - ["El regulador", "De continua a decenas de kHz"]
+      - ["Electrolíticos y cerámicos grandes", "De decenas de kHz a unos MHz"]
+      - ["Cerámicos de desacoplo", "De MHz a decenas de MHz"]
+      - ["Capacidad entre planos", "Por encima"]
+      - ["Capacidad interna del chip", "Lo más rápido de todo"]
+    exito: "Ningún elemento cubre todo el margen: se encadenan sin dejar huecos."
+    pistas:
+      - { texto: "El lazo del regulador es lo más lento." }
+    escalera:
+      - "Cuanto más pequeño y cercano al chip, más alta la banda."
+    solucion: "Regulador, continua; grandes, kHz a MHz; desacoplo, MHz; planos, por encima; chip, lo más rápido."
+
+  - id: porque-regulador
+    tipo: porque
+    titulo: "Por qué no basta el regulador"
+    texto: "Un buen regulador mantiene la tensión. ¿Por qué hace falta todo lo demás?"
+    libro: [169, 174]
+    widget:
+      tipo: figura
+      figura: fig-41.10
+      zonas:
+        - { id: objetivo, rotulo: "Línea de puntos roja", rect: [35, 115, 75, 36] }
+    opciones:
+      - texto: "Su lazo no responde más allá de unas decenas de kilohercios"
+        bien: true
+        porque: "Por encima, son los condensadores, los planos y el chip los que entregan la corriente."
+      - texto: "Porque su tensión no es exacta"
+        porque: "El problema no es la continua sino los pulsos rápidos."
+      - texto: "Porque no da bastante corriente media"
+        porque: "La media la da; lo que no puede es seguir los nanosegundos."
+    escalera:
+      - "¿Hasta qué frecuencia responde un lazo de regulación?"
+    solucion: "Su lazo es lento: decenas de kilohercios."
+
+  - id: predecir-anti
+    tipo: predecir
+    titulo: "Dos valores distintos"
+    texto: "Se añade un condensador de otro valor junto a los existentes. Entre las resonancias de ambos, ¿qué hace la impedancia?"
+    libro: [177, 178]
+    widget:
+      tipo: figura
+      figura: fig-41.10
+      zonas:
+        - { id: anti, rotulo: "Rótulo antirresonancias", rect: [110, 40, 80, 36] }
+    opciones:
+      - texto: "Sube: aparece una resonancia paralelo"
+        bien: true
+        porque: "Si cae donde el circuito tiene contenido, el resultado es peor que sin el condensador."
+      - texto: "Baja, porque hay más capacidad"
+        porque: "Más capacidad no garantiza menos impedancia entre resonancias."
+      - texto: "No cambia"
+        porque: "Cambia: entre las dos resonancias aparece un pico."
+    escalera:
+      - "Una bobina y un condensador en paralelo forman un tanque."
+    solucion: "Sube: una antirresonancia."
+
+  - id: pregunta-defensa
+    tipo: pregunta
+    titulo: "Domar el pico"
+    texto: "Un pico de antirresonancia cae donde el circuito tiene contenido. ¿Qué lo amortigua?"
+    libro: [180, 181]
+    widget:
+      tipo: figura
+      figura: fig-41.10
+      zonas:
+        - { id: defensas, rotulo: "Recuadro verde", rect: [315, 160, 125, 75] }
+    opciones:
+      - texto: "Condensadores con algo de resistencia serie"
+        bien: true
+        porque: "Un electrolítico o un cerámico con ESR controlada amortigua el pico; y menos valores distintos."
+      - texto: "Un condensador de un valor más pequeño"
+        porque: "Añadir otro valor puede crear otra antirresonancia."
+      - texto: "Cerámicos con la menor ESR posible"
+        porque: "Sin resistencia, el pico queda sin amortiguar."
+    escalera:
+      - "Un tanque sin pérdidas resuena más."
+    solucion: "Algo de ESR: un electrolítico o un cerámico con ESR controlada."
+
+  - id: pregunta-ssn
+    tipo: pregunta
+    titulo: "El ruido de conmutación simultánea"
+    texto: "Un sistema da errores que dependen del patrón de datos, peores cuando cambian muchos bits a la vez. ¿Qué es?"
+    libro: [185, 186]
+    widget:
+      tipo: figura
+      figura: fig-41.10
+      zonas:
+        - { id: defensas, rotulo: "Recuadro verde", rect: [315, 160, 125, 75] }
+    opciones:
+      - texto: "Ruido de conmutación simultánea"
+        bien: true
+        porque: "La corriente de retorno atraviesa los pines de masa y desplaza la referencia interna del chip."
+      - texto: "Un fallo de software"
+        porque: "Depende de cuántos bits cambian a la vez: es eléctrico."
+      - texto: "Una antirresonancia de la PDN"
+        porque: "Puede sumarse, pero la firma del patrón de datos es la de la conmutación simultánea."
+    escalera:
+      - "Muchas salidas a la vez, mucha corriente por los pines de masa."
+    solucion: "Ruido de conmutación simultánea: más pines de masa, flancos más lentos."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "¿Qué medida revela las antirresonancias que el osciloscopio solo insinúa?"
+    libro: [190]
+    widget:
+      tipo: figura
+      figura: fig-41.10
+      zonas:
+        - { id: anti, rotulo: "Rótulo antirresonancias", rect: [110, 40, 80, 36] }
+    opciones:
+      - texto: "La impedancia entre alimentación y masa con un analizador de redes"
+        bien: true
+        porque: "Es la medida rigurosa; el osciloscopio en AC da la caída real, no la curva."
+      - texto: "La tensión continua con el multímetro"
+        porque: "La continua no dice nada de cientos de megahercios."
+      - texto: "La corriente media de la fuente"
+        porque: "La media no ve los picos de impedancia."
+    escalera:
+      - "Hace falta barrer la frecuencia."
+    solucion: "Un analizador de redes de dos puertos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [163, 165, 174, 180]
+    ideas:
+      - { titulo: "Objetivo.", texto: "ΔV/ΔI: 12 mΩ con 1,2 V, un 5 % y 5 A." }
+      - { titulo: "Por bandas.", texto: "Regulador, condensadores, planos y chip, sin huecos." }
+      - { titulo: "Antirresonancias.", texto: "Entre valores distintos la impedancia sube." }
+      - { titulo: "Defensas.", texto: "Menos valores, algo de ESR y simular la PDN." }

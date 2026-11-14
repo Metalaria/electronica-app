@@ -1,0 +1,239 @@
+# Lección 1.2 de la sección 44.8 «El Transistor como Llave Analógica» (cap43; etiqueta sec-43.8).
+# Formato: contenido/lecciones11/GUIA.md. Sección cualitativa: la figura 44.16 (fig-43.16: R_on de un canal frente a
+# la llave CMOS, y los parámetros de una llave) con zonas; la inyección de carga, en el esquema «muestreo-retencion»
+# (llave, condensador y seguidor) con los números de la sección 8.9 (cap08, bloques 175 y 197: 10 pC sobre 100 pF son
+# 100 mV; sobre 1 nF, 10 mV). La señal de 1 V y la R_on de 100 Ω de la llave son de ejemplo.
+leccion: cap43/sec-43.8
+
+libro:
+  276: "conduce en ambos sentidos cuando su puerta está activada"
+  277: "la tensión puerta-fuente cambia cuando la fuente sigue a la señal"
+  278: "parte de la carga de la puerta pasa al circuito"
+  279: "ese aislamiento empeora con la frecuencia"
+  281: "Un MOSFET de canal N y otro de canal P en paralelo"
+  282: "el canal N conduce peor y el canal P conduce mejor"
+  283: "Es lo que hay dentro de cualquier multiplexor o llave analógica integrada"
+  285: "Ron y su planitud a lo largo del margen de señal"
+  289: "no puede exceder la alimentación de la llave"
+  290: "toleran señales fuera del margen sin destruirse"
+  292: "su unión base-emisor introduce corriente y offset en el camino de señal"
+  295: "Multiplexores para convertidores"
+  296: "Circuitos de muestreo y retención"
+  298: "una llave conmutada a frecuencia fija es un mezclador"
+  303: "el salto de tensión al conmutar, multiplicado por el condensador, da la carga inyectada"
+  304: "Resistencia en conducción de una llave CMOS frente a un solo canal"
+  "cap08#175": "Sobre un condensador de muestreo de 100 pF, 10 pC son un escalón de 100 mV"
+  "cap08#197": "con 10 pC sobre 1 nF, 10 mV"
+
+modelo:
+  valores:
+    V_sh: { sim: "v_{in}", nombre: "señal de entrada", unidad: V, valor: 1 }
+    R_on: { sim: "R_{on}", nombre: "resistencia de la llave cerrada", unidad: Ω, valor: 100 }
+    C_h: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 1e-9 }
+    tm_h: { sim: "t_{abre}", nombre: "instante en que se abre la llave", unidad: s, valor: 0.000001 }
+    Q_h: { sim: "Q", nombre: "carga inyectada", unidad: C, valor: 10e-12 }
+    dV_b: { sim: "ΔV", nombre: "salto medido", unidad: V, valor: 0.01 }
+    C_b: { sim: "C", nombre: "condensador del banco", unidad: F, valor: 1e-9 }
+  calculos:
+    tau_h: { expr: "R_on*C_h", sim: "τ", nombre: "constante de tiempo de la llave cerrada", unidad: s }
+    Vm_h: { expr: "V_sh*(1 - exp(-tm_h/tau_h))", sim: "v_{C}", nombre: "tensión al abrir", unidad: V }
+    ped: { expr: "Q_h/C_h", sim: "ΔV", nombre: "salto al abrir la llave", unidad: V }
+    Q_b: { expr: "dV_b*C_b", sim: "Q", nombre: "carga inyectada", unidad: C }
+
+tarjetas:
+  - id: explore-parametros
+    tipo: explorar
+    titulo: "Los parámetros de una llave"
+    texto: "Un transistor también encamina señales: las deja pasar o las corta. Toque cada parámetro de una llave integrada."
+    libro: [285, 289, 304]
+    widget:
+      tipo: figura
+      figura: fig-43.16
+      zonas:
+        - { id: ron, rotulo: "Primer recuadro", rect: [270, 26, 178, 35], texto: "R_{on} y su planitud a lo largo de la señal: deciden la distorsión." }
+        - { id: carga, rotulo: "Segundo recuadro", rect: [270, 64, 178, 35], texto: "Inyección de carga: el salto al conmutar, en picoculombios." }
+        - { id: aislamiento, rotulo: "Tercer recuadro", rect: [270, 101, 178, 35], texto: "Aislamiento en corte: en decibelios, a una frecuencia dada; empeora con ella." }
+        - { id: diafonia, rotulo: "Cuarto recuadro", rect: [270, 139, 178, 35], texto: "Diafonía entre canales del mismo encapsulado." }
+        - { id: margen, rotulo: "Quinto recuadro", rect: [270, 176, 178, 35], texto: "Margen de señal: no puede exceder la alimentación de la llave." }
+    requiere: { mover: [ron, carga, margen] }
+
+  - id: prediga-un-canal
+    tipo: predecir
+    titulo: "Un solo MOSFET"
+    texto: "Una llave de un solo canal N: la fuente sigue a la señal. Al subir la señal, ¿qué hace su resistencia en conducción?"
+    libro: [276, 277]
+    widget:
+      tipo: figura
+      figura: fig-43.16
+      zonas:
+        - { id: ron, rotulo: "Primer recuadro", rect: [270, 26, 178, 35] }
+    opciones:
+      - texto: "Sube: la tensión puerta-fuente baja"
+        bien: true
+        porque: "Con la puerta fija y la fuente subiendo, el canal conduce cada vez peor: R_{on} varía con la señal y distorsiona."
+      - texto: "No cambia: la puerta está activada"
+        porque: "Está activada, pero lo que manda es la tensión puerta-fuente, y la fuente sigue a la señal."
+      - texto: "Baja"
+        porque: "Eso le pasa al canal P, cuya puerta va al revés."
+    escalera:
+      - "La puerta está a tensión fija. ¿Qué pasa con V_{GS} si la fuente sube?"
+    solucion: "V_{GS} baja y R_{on} sube: varía con la señal."
+
+  - id: porque-cmos
+    tipo: porque
+    titulo: "La llave CMOS"
+    texto: "Un canal N y otro P en paralelo, gobernados en oposición. ¿Por qué su resistencia queda casi plana?"
+    libro: [281, 282, 283]
+    widget:
+      tipo: figura
+      figura: fig-43.16
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [37, 20, 205, 165] }
+    opciones:
+      - texto: "Cuando la señal sube, el N conduce peor y el P mejor, y viceversa"
+        bien: true
+        porque: "Uno compensa al otro: la resistencia combinada es casi constante y la distorsión baja mucho."
+      - texto: "Porque dos en paralelo tienen la mitad de resistencia"
+        porque: "Dos iguales sí; pero lo decisivo es que cada uno es bueno donde el otro es malo."
+      - texto: "Porque el canal P no varía con la señal"
+        porque: "También varía, en sentido contrario al N: de ahí la compensación."
+    escalera:
+      - "Mire las dos curvas discontinuas: ¿suben en el mismo lado?"
+    solucion: "Uno conduce mejor justo donde el otro conduce peor: R_{on} casi plana."
+
+  - id: explore-inyeccion
+    tipo: explorar
+    titulo: "La inyección de carga"
+    texto: "Al abrir la llave, parte de la carga de su puerta pasa al condensador: un salto Q/C. Cambie el condensador."
+    libro: [278, "cap08#175", "cap08#197"]
+    widget:
+      tipo: circuito
+      esquema: muestreo-retencion
+      piezas: { entrada: V_sh, ron: R_on, ch: C_h, tm: tm_h, carga: Q_h }
+      lectura: { valor: ped, rotulo: "Salto al abrir" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000002, unidad: s, rotulo: "t" }
+        y: { min: 0.9, max: 1.15, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - ceil((t - tm_h)/1e9))*V_sh*(1 - exp(-t/tau_h)) + ceil((t - tm_h)/1e9)*(Vm_h + Q_h/C_h)", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: C_h, lista: [100e-12, 1e-9], rotulo: "Condensador" }
+    requiere: { mover: [C_h] }
+
+  - id: estime-banco
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Medirla en el banco"
+    texto: "Con 1 nF en la salida de la llave, el salto al conmutar es de 10 mV. ¿Cuánta carga inyecta?"
+    libro: [303, "cap08#197"]
+    estimar:
+      objetivo: "Q_b"
+      unidad: C
+      min: 0
+      max: 50e-12
+      paso: 1e-12
+      inicio: 40e-12
+      tol: 0.05
+      rotulo: "Carga inyectada"
+    exito: "10 pC: el salto por el condensador da la carga directamente."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.5e-12 }, texto: "Se ha pasado: multiplique 10 mV por 1 nF." }
+      - { texto: "Se ha quedado corto: 0,01 V por 1 nF." }
+    escalera:
+      - "Q = ΔV · C."
+    solucion: "10 mV · 1 nF = 10 pC."
+    comprobar:
+      - { Q_b: 10e-12, tol: 0.001 }
+
+  - id: empareje-limites
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres limitaciones del MOSFET"
+    texto: "Una cada limitación de la llave con lo que provoca."
+    libro: [277, 278, 279]
+    emparejar:
+      - ["R_{on} que varía con la señal", "Distorsión"]
+      - ["Inyección de carga", "Un salto de tensión al conmutar"]
+      - ["Acoplamiento en corte", "Señal que pasa con la llave abierta, peor en alta frecuencia"]
+    exito: "La CMOS resuelve la primera; las otras dos se eligen en la hoja de datos."
+    pistas:
+      - { texto: "La capacidad entre fuente y drenador deja pasar señal aunque la llave esté cortada." }
+    escalera:
+      - "Una pasa con la llave cerrada, otra al conmutar y otra con la llave abierta."
+    solucion: "R_{on} variable–distorsión, inyección–salto, acoplamiento en corte–fuga de señal en alta frecuencia."
+
+  - id: pregunta-margen
+    tipo: pregunta
+    titulo: "El margen de señal"
+    texto: "Una llave CMOS integrada con alimentación simple debe conmutar una señal bipolar. ¿Qué pasa?"
+    libro: [289, 290]
+    widget:
+      tipo: figura
+      figura: fig-43.16
+      zonas:
+        - { id: margen, rotulo: "Quinto recuadro", rect: [270, 176, 178, 35] }
+    opciones:
+      - texto: "No puede: la señal no puede exceder la alimentación, hace falta simétrica"
+        bien: true
+        porque: "Es la limitación más práctica. Las llaves con protección toleran señales fuera de margen sin destruirse."
+      - texto: "Funciona, con algo más de R_{on}"
+        porque: "Fuera de la alimentación no hay canal que conduzca bien: la parte negativa no pasa como debe."
+      - texto: "Funciona igual: la llave es bidireccional"
+        porque: "Ser bidireccional es conducir en los dos sentidos, no admitir tensiones fuera de su alimentación."
+    escalera:
+      - "¿Entre qué tensiones puede estar la señal en una llave alimentada a una sola tensión?"
+    solucion: "La señal debe estar dentro de la alimentación: con bipolar, alimentación simétrica."
+
+  - id: pregunta-bipolar
+    tipo: pregunta
+    titulo: "Y con un bipolar"
+    texto: "Un BJT también puede conmutar señal. ¿Qué inconvenientes tiene?"
+    libro: [292]
+    widget:
+      tipo: circuito
+      esquema: muestreo-retencion
+      piezas: { entrada: V_sh, ron: R_on, ch: C_h, tm: tm_h, carga: Q_h }
+      lectura: { valor: ped, rotulo: "Salto al abrir" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000002, unidad: s, rotulo: "t" }
+        y: { min: 0.9, max: 1.15, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - ceil((t - tm_h)/1e9))*V_sh*(1 - exp(-t/tau_h)) + ceil((t - tm_h)/1e9)*(Vm_h + Q_h/C_h)", color: naranja, rotulo: "v_{o}", mide: salida }
+    opciones:
+      - texto: "No es tan bidireccional, y la unión base-emisor mete corriente y offset en la señal"
+        bien: true
+        porque: "Por eso queda para casos concretos, como conmutar corriente en circuitos rápidos."
+      - texto: "Ninguno: es igual que un MOSFET"
+        porque: "El MOSFET conduce igual en los dos sentidos y su puerta no mete corriente en la señal."
+      - texto: "Que no puede conmutar deprisa"
+        porque: "Al contrario: se usa precisamente para conmutar corriente en circuitos rápidos."
+    escalera:
+      - "¿Qué corriente pide la base, y por dónde circula?"
+    solucion: "Menos bidireccional, y corriente y offset de la unión base-emisor en el camino de señal."
+
+  - id: empareje-usos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Dónde aparece"
+    texto: "Una cada uso de la llave analógica con su detalle."
+    libro: [295, 296, 298]
+    emparejar:
+      - ["Multiplexor de un convertidor", "La trampa de la carga residual"]
+      - ["Muestreo y retención", "La llave y el condensador que guarda la muestra"]
+      - ["Llave conmutada a frecuencia fija", "Un mezclador de muy buena linealidad"]
+    exito: "La misma llave, encaminando, muestreando o mezclando."
+    pistas:
+      - { texto: "Conmutar a frecuencia fija es multiplicar la señal por una cuadrada: mezclar." }
+    escalera:
+      - "¿Qué uso guarda una muestra en un condensador?"
+    solucion: "Multiplexor–carga residual, muestreo–llave y condensador, frecuencia fija–mezclador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [277, 282, 289, 303]
+    ideas:
+      - { titulo: "Un canal.", texto: "R_{on} varía con la señal: distorsión. Además inyecta carga y deja pasar señal en corte." }
+      - { titulo: "La llave CMOS.", texto: "N y P en paralelo: uno conduce mejor donde el otro peor, R_{on} casi plana." }
+      - { titulo: "El margen.", texto: "La señal no puede exceder la alimentación de la llave." }
+      - { titulo: "En el banco.", texto: "Salto por condensador = carga inyectada: 10 mV en 1 nF son 10 pC." }

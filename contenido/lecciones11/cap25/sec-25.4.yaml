@@ -1,0 +1,284 @@
+# Lección 1.2 de la sección 24.4 «Filtros Pasivos» (cap25). Formato: contenido/lecciones11/GUIA.md.
+# El RC es el de la práctica de la sección 21.5 (cap22#133). El diseño es el ejercicio 24.9 (cap25#312), con las
+# tolerancias de la serie E96 de la sección 2.4 (cap02#38, ± 1 %), exigidas en todas las esquinas.
+leccion: cap25/sec-25.4
+
+libro:
+  104: "Paso bajo: pasa lo lento, corta lo rápido."
+  105: "Bloqueo de continua"
+  106: "Sintonía de radio"
+  107: "eliminar el zumbido de red de 50 Hz"
+  109: "en el corte la señal ya está atenuada un 30 % en amplitud, no empieza a atenuarse ahí"
+  110: "20 dB por década y por orden"
+  115: '"orden" gt.eq'
+  116: "si la atenuación debe conseguirse a solo el doble de la frecuencia de corte, hacen falta 10 órdenes"
+  117: "separar bien la banda de paso de la de rechazo abarata enormemente el filtro"
+  121: "No puede separar señales que solapan en frecuencia."
+  125: "el retardo del filtro se suma al del sistema y reduce el margen de fase"
+  129: "La frecuencia de corte real, que rara vez coincide con la calculada por las tolerancias."
+  "cap22#133": "Con R = 1,6 kΩ y C = 100 nF"
+  "cap25#312": "Se quiere un filtro paso bajo RC de primer orden"
+  "cap02#38": "con el ±1 % hace falta la E96"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    R_f: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1600 }
+    C_f: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    A_at: { sim: "A", nombre: "atenuación pedida", unidad: dB, valor: 60 }
+    r_f: { sim: "f/f_{c}", nombre: "separación del corte", unidad: "", valor: 10 }
+  calculos:
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    x_c: { expr: "f_f/f_c", sim: "f/f_{c}", nombre: "frecuencia relativa", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{C}", nombre: "amplitud en C", unidad: V }
+    H: { expr: "A_c/V_p", sim: "|H|", nombre: "relación de amplitudes", unidad: "", cifras: 3 }
+    perdida: { expr: "(1 - H)*100", sim: "pérdida", nombre: "atenuación en amplitud", unidad: "%", cifras: 2 }
+    n_min: { expr: "A_at/(20*log10(r_f))", sim: "orden", nombre: "orden mínimo", unidad: "", cifras: 3 }
+    n_ent: { expr: "-floor(-n_min + 1e-9)", sim: "orden", nombre: "orden entero", unidad: "" }
+
+tarjetas:
+  - id: explore-dos
+    tipo: explorar
+    titulo: "Un RC, dos filtros"
+    texto: "Con la salida en el condensador, un paso bajo; en la resistencia, un paso alto. Cambie la resistencia y mire cómo se mueve el corte de los dos."
+    libro: [104, 105, "cap22#133"]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (nu/f_c)^2)", color: naranja, rotulo: "v_{C}: paso bajo", mide: vc_amp }
+          - { expr: "V_p*(nu/f_c)/sqrt(1 + (nu/f_c)^2)", color: azul, rotulo: "v_{R}: paso alto", mide: vr_amp }
+        marcas:
+          - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
+      mandos:
+        - { valor: R_f, lista: [160, 1600, 16000] }
+
+  - id: prediga-corte
+    tipo: predecir
+    titulo: "¿Empieza a atenuar en el corte?"
+    texto: "En la frecuencia de corte del paso bajo, ¿cuánto ha perdido ya la señal en amplitud?"
+    libro: [109]
+    fijar: { V_p: 1, R_f: 1600, C_f: 100e-9, f_f: 994.72 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: perdida, rotulo: "Atenuación en amplitud" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+    opciones:
+      - texto: "Un 30 %"
+        bien: true
+        porque: "Cae 3 dB: la potencia a la mitad y la amplitud a 0,707. La atenuación no empieza ahí: ya va avanzada."
+      - texto: "Nada: ahí empieza a atenuar"
+        porque: "Es la confusión típica. El corte se define donde ya ha caído 3 dB."
+      - texto: "Un 50 %"
+        porque: "La mitad es la potencia. En amplitud, la raíz: queda 0,707, un 30 % menos."
+    escalera:
+      - "−3 dB en tensión es multiplicar por 0,707."
+    solucion: "Queda 0,707 de la amplitud: un 30 % menos."
+    comprobar:
+      - { perdida: 29.3, H: 0.707, tol: 0.01 }
+
+  - id: regla-orden
+    tipo: formula
+    titulo: "El orden necesario"
+    texto: "Cada orden aporta 20 dB por década. Cambie la atenuación pedida y lo cerca del corte que debe conseguirse."
+    libro: [110, 115]
+    ec: 115
+    sustitucion: "{{A_at}} / (20 · log₁₀ {{r_f}}) = {{n_min}}"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 1, max: 10, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 100, unidad: dB, rotulo: "atenuación a f" }
+      curvas:
+        - { expr: "20*n*log10(r_f)", color: azul, rotulo: "lo que da cada orden" }
+        - { expr: "A_at", color: tinta, rotulo: "lo pedido", discontinua: true }
+      lectura: { valor: n_ent, rotulo: "Orden mínimo" }
+      mandos:
+        - { valor: A_at, lista: [40, 60, 72], rotulo: "Atenuación pedida" }
+        - { valor: r_f, lista: [2, 4, 8, 10, 32], rotulo: "f/f_{c}" }
+
+  - id: estime-orden
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "60 dB una década más arriba"
+    texto: "¿Cuántos órdenes hacen falta para atenuar 60 dB una década por encima del corte?"
+    libro: [115, 116]
+    fijar: { A_at: 60, r_f: 10 }
+    estimar:
+      objetivo: "n_ent"
+      unidad: ""
+      min: 1
+      max: 12
+      paso: 1
+      inicio: 10
+      tol: 0.1
+      rotulo: "Orden"
+    exito: "3 órdenes: 60/(20 · log₁₀ 10) = 3."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3 }, texto: "Demasiados: una década por encima, cada orden ya aporta 20 dB." }
+      - { texto: "Pocos: cada orden aporta 20 dB por década, y hacen falta 60." }
+    escalera:
+      - "Una década es log₁₀(f/f_{c}) = 1."
+    solucion: "60/20 = 3 órdenes."
+    comprobar:
+      - { n_ent: 3, n_min: 3 }
+
+  - id: doble
+    tipo: sorpresa
+    titulo: "Al doble del corte"
+    texto: "Pida los mismos 60 dB, pero a solo el doble de la frecuencia de corte. Mire el orden que hace falta."
+    libro: [116]
+    fijar: { A_at: 60 }
+    inicio: { r_f: 10 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 1, max: 12, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 100, unidad: dB, rotulo: "atenuación a f" }
+      curvas:
+        - { expr: "20*n*log10(r_f)", color: azul, rotulo: "lo que da cada orden" }
+        - { expr: "A_at", color: tinta, rotulo: "lo pedido", discontinua: true }
+      lectura: { valor: n_ent, rotulo: "Orden mínimo" }
+      mandos:
+        - { valor: r_f, lista: [2, 4, 8, 10], rotulo: "f/f_{c}" }
+    comprobar:
+      - { con: { r_f: 2 }, n_ent: 10 }
+
+  - id: por-que-separar
+    tipo: porque
+    titulo: "¿Qué se hace entonces?"
+    texto: "60 dB al doble del corte piden 10 órdenes, lo que ya no es razonable. ¿Cuál es la salida?"
+    libro: [116, 117]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 1, max: 12, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 100, unidad: dB, rotulo: "atenuación a f" }
+      curvas:
+        - { expr: "20*n*log10(r_f)", color: azul, rotulo: "lo que da cada orden" }
+        - { expr: "A_at", color: tinta, rotulo: "lo pedido", discontinua: true }
+    opciones:
+      - texto: "Separar la banda de paso de la de rechazo, por ejemplo sobremuestreando y filtrando en digital"
+        bien: true
+        porque: "El orden depende del logaritmo de la separación: separar las bandas abarata enormemente el filtro."
+      - texto: "Subir el orden hasta 10"
+        porque: "No es razonable. Cuando no se pueden separar las bandas, hay que cambiar de enfoque."
+      - texto: "Poner el corte justo en la frecuencia a rechazar"
+        porque: "En el corte la atenuación es solo de 3 dB: haría falta un corte mucho más bajo, con la señal dentro."
+    escalera:
+      - "La atenuación por orden crece con log₁₀(f/f_{c})."
+    solucion: "Separar las bandas (o sobremuestrear), no subir el orden."
+
+  - id: disene-rc
+    tipo: diseno
+    titulo: "Diseñe el paso bajo"
+    texto: "Un paso bajo RC con el corte en 1 kHz ± 5 %, con R y C de la serie E96 (± 1 %). Debe cumplir en todas las placas: elija los dos."
+    libro: ["cap25#312", "cap02#38", 129]
+    inicio: { R_f: 1000, C_f: 1e-8 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_amp: A_c }
+      mandos:
+        - { valor: R_f, rotulo: "R (E96)", lista: [1000, 1020, 1050, 1070, 1100, 1130, 1150, 1180, 1210, 1240, 1270, 1300, 1330, 1370, 1400, 1430, 1470, 1500, 1540, 1580, 1620, 1650, 1690, 1740, 1780, 1820, 1870, 1910, 1960, 2000, 2050, 2100, 2150, 2210, 2260, 2320, 2370, 2430, 2490, 2550, 2610, 2670, 2740, 2800, 2870, 2940, 3010, 3090, 3160, 3240, 3320, 3400, 3480, 3570, 3650, 3740, 3830, 3920, 4020, 4120, 4220, 4320, 4420, 4530, 4640, 4750, 4870, 4990, 5110, 5230, 5360, 5490, 5620, 5760, 5900, 6040, 6190, 6340, 6490, 6650, 6810, 6980, 7150, 7320, 7500, 7680, 7870, 8060, 8250, 8450, 8660, 8870, 9090, 9310, 9530, 9760] }
+        - { valor: C_f, rotulo: "C (E96)", lista: [10e-9, 10.2e-9, 10.5e-9, 10.7e-9, 11e-9, 11.3e-9, 11.5e-9, 11.8e-9, 12.1e-9, 12.4e-9, 12.7e-9, 13e-9, 13.3e-9, 13.7e-9, 14e-9, 14.3e-9, 14.7e-9, 15e-9, 15.4e-9, 15.8e-9, 16.2e-9, 16.5e-9, 16.9e-9, 17.4e-9, 17.8e-9, 18.2e-9, 18.7e-9, 19.1e-9, 19.6e-9, 20e-9, 20.5e-9, 21e-9, 21.5e-9, 22.1e-9, 22.6e-9, 23.2e-9, 23.7e-9, 24.3e-9, 24.9e-9, 25.5e-9, 26.1e-9, 26.7e-9, 27.4e-9, 28e-9, 28.7e-9, 29.4e-9, 30.1e-9, 30.9e-9, 31.6e-9, 32.4e-9, 33.2e-9, 34e-9, 34.8e-9, 35.7e-9, 36.5e-9, 37.4e-9, 38.3e-9, 39.2e-9, 40.2e-9, 41.2e-9, 42.2e-9, 43.2e-9, 44.2e-9, 45.3e-9, 46.4e-9, 47.5e-9, 48.7e-9, 49.9e-9, 51.1e-9, 52.3e-9, 53.6e-9, 54.9e-9, 56.2e-9, 57.6e-9, 59e-9, 60.4e-9, 61.9e-9, 63.4e-9, 64.9e-9, 66.5e-9, 68.1e-9, 69.8e-9, 71.5e-9, 73.2e-9, 75e-9, 76.8e-9, 78.7e-9, 80.6e-9, 82.5e-9, 84.5e-9, 86.6e-9, 88.7e-9, 90.9e-9, 93.1e-9, 95.3e-9, 97.6e-9] }
+    condiciones:
+      - { valor: f_c, objetivo: 1000, tol: 0.05, rotulo: "Corte: {{f_c}}" }
+    diseno:
+      tolerancias: { R_f: 0.01, C_f: 0.01 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal cumple, pero en alguna esquina de las tolerancias el corte se sale: acerque más el producto R·C a 159 µs."
+    exito: "El corte solo depende del producto R·C, unos 159 µs: con {{R_f}} y {{C_f}} cumplen todas las placas."
+    pistas:
+      - { cuando: { valor: f_c, mayor: 1050 }, texto: "El corte sale alto: suba R o C." }
+      - { cuando: { valor: f_c, menor: 950 }, texto: "El corte sale bajo: baje R o C." }
+    escalera:
+      - "f_{c} = 1/(2π·R·C): para 1 kHz, R·C ≈ 159 µs."
+      - "Elija primero un condensador, como 47,5 nF, y busque la resistencia E96 que da ese producto."
+    solucion: "3,32 kΩ con 47,5 nF da unos 1009 Hz; también 1,62 kΩ con 97,6 nF, unos 1007 Hz."
+    comprobar:
+      - { con: { R_f: 3320, C_f: 47.5e-9 }, f_c: 1009 }
+      - { con: { R_f: 1620, C_f: 97.6e-9 }, f_c: 1007 }
+
+  - id: tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los cuatro tipos"
+    texto: "Una cada tipo de filtro con un uso característico."
+    libro: [104, 105, 106, 107]
+    emparejar:
+      - ["Paso bajo", "Antialiasing, eliminación de ruido"]
+      - ["Paso alto", "Bloqueo de continua"]
+      - ["Paso banda", "Sintonía de radio"]
+      - ["Banda eliminada", "Eliminar el zumbido de red de 50 Hz"]
+    exito: "Paso bajo y alto cortan por un lado; paso banda deja un intervalo; el notch quita uno estrecho."
+    pistas:
+      - { texto: "Bloquear la continua es quitar la frecuencia cero: lo lento." }
+    escalera:
+      - "La continua es lo más lento que hay."
+    solucion: "Bajo–antialiasing, alto–continua, banda–sintonía, eliminada–50 Hz."
+
+  - id: solapan
+    tipo: pregunta
+    titulo: "Lo que un filtro no puede hacer"
+    texto: "El ruido está en la misma banda que la señal. ¿Qué puede hacer un filtro?"
+    libro: [121]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Nada: no separa señales que solapan en frecuencia"
+        bien: true
+        porque: "Ahí hacen falta otras técnicas: detección síncrona, correlación o promediado."
+      - texto: "Quitarlo con un orden alto"
+        porque: "Más orden da más pendiente fuera de la banda, pero la señal y el ruido siguen en la misma."
+      - texto: "Quitarlo con un notch estrecho"
+        porque: "Un notch se llevaría también la señal que esté en esa banda."
+    escalera:
+      - "Un filtro distingue por frecuencia."
+    solucion: "Ningún filtro lo quita: hacen falta otras técnicas."
+
+  - id: retardo
+    tipo: pregunta
+    titulo: "El retardo, que se olvida"
+    texto: "Se añade un filtro para reducir ruido dentro de un lazo de control que funcionaba. ¿Qué puede pasar?"
+    libro: [125]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Que el lazo se vuelva inestable"
+        bien: true
+        porque: "El retardo del filtro se suma al del sistema y reduce el margen de fase."
+      - texto: "Nada: el filtro solo quita ruido"
+        porque: "También retarda la señal, y en un lazo ese retardo cuenta."
+      - texto: "Que el lazo gane margen de fase"
+        porque: "Es al revés: el retardo añadido se come margen de fase."
+    escalera:
+      - "Un filtro retrasa la señal."
+    solucion: "Su retardo reduce el margen de fase: puede volverlo inestable."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [109, 110, 117, 129]
+    ideas:
+      - { titulo: "El corte.", texto: "Donde cae 3 dB: la amplitud ya ha perdido un 30 %." }
+      - { titulo: "El orden.", texto: "20 dB por década y por orden; separar las bandas abarata el filtro." }
+      - { titulo: "Diseñar.", texto: "Con R y C comerciales se cumple el nominal; las tolerancias mueven el corte real." }
+      - { titulo: "Sus límites.", texto: "No separa lo que solapa en frecuencia, y su retardo cuenta en un lazo." }

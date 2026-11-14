@@ -1,0 +1,196 @@
+# «Consolas por dentro» · Game Boy 6: el logotipo de Nintendo. La Game Boy no lleva CIC: la ROM de arranque de 256
+# bytes, dentro del SoC, pone y desplaza el logotipo leído del cartucho, compara sus $30 bytes con su copia, comprueba
+# la suma de la cabecera ($0134–$014C contra $014D), se desconecta y salta a $100. Si algo falla, se queda en un bucle.
+# Un circuito lógico y su tabla de «arranca el juego», el logotipo deformado de un cartucho sucio, por qué un logotipo
+# (una marca registrada: protección legal, no técnica) y la ausencia de bloqueo regional. Fuentes: los datos de la
+# consola (gb#n), la wiki de gbdev (Pan Docs: cabecera, secuencia de arranque, ROM de arranque), Wikipedia «Game Boy
+# Game Pak», iFixit y el libro (el cargador de arranque y lo que valida, 39.11).
+leccion: consola-gb/gb-bloqueo
+
+libro:
+  "gb#2": "la ROM de arranque de 256 bytes"
+  "gb#61": "Al arrancar, $0000–$00FF es la ROM de arranque interna"
+  "gb#74": "Los bytes $0104–$0133 del cartucho son el mapa de bits del logotipo de Nintendo que se ve al encender"
+  "gb#75": "La suma de comprobación de la cabecera, en $014D, se calcula con los bytes $0134–$014C"
+  "gb#76": "pone el logotipo de Nintendo arriba en la pantalla y lo desplaza hasta el centro"
+  "gb#77": "si uno no coincide, la Game Boy deja de comparar y se para"
+  "gb#78": "La ejecución del programa del cartucho empieza en la dirección $100"
+  "gb#80": "Compara $30 bytes del logotipo del cartucho con la copia que guarda"
+  "gb#81": "escribe en un registro especial que desconecta la ROM interna"
+  "gb#82": "no arranca si no es una copia exacta, píxel a píxel, de la que guarda"
+  "gb#83": "Nintendo podía demandar por uso no autorizado de su marca"
+  "gb#84": "salieron unos pocos cartuchos sin licencia"
+  "gb#85": "La Game Boy no tenía bloqueo regional"
+  "gb#97": "hay que comprobar que el cartucho no tiene suciedad y que entra del todo"
+  "cap38#336": "Un programa pequeño que se ejecuta al encender"
+  "cap38#339": "Debe validar lo que va a arrancar antes de hacerlo: comprobar una suma o una firma"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-arranque
+    tipo: explorar
+    titulo: "Sin chip de bloqueo"
+    texto: "La Game Boy no lleva un CIC. Toque el chip donde está su ROM de arranque y la ranura que lee."
+    libro: ["gb#2", "gb#61", "gb#74"]
+    requiere: { mover: [soc, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "SoC", texto: "Dentro: una ROM de arranque de 256 bytes en $0000–$00FF." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "El cartucho trae el logotipo en $0104–$0133." }
+
+  - id: prediga-quien
+    tipo: predecir
+    titulo: "¿Quién vigila el cartucho?"
+    texto: "Sin chip de bloqueo, ¿qué decide si un cartucho arranca?"
+    libro: ["gb#82", "gb#80", "cap38#336"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "SoC" }
+    opciones:
+      - texto: "Un programa: la ROM de arranque compara el logotipo de Nintendo."
+        bien: true
+        porque: "Es un cargador de arranque pequeño: si el logotipo no es una copia exacta, no arranca."
+      - texto: "Nadie: arranca cualquier cartucho."
+        porque: "Hay comprobación, pero por programa: la hace la ROM de arranque."
+      - texto: "Un chip escondido en el cartucho."
+        porque: "No hay chip de bloqueo: basta con que el cartucho traiga el logotipo exacto."
+    escalera:
+      - "¿Qué se ve en la pantalla al encender?"
+    solucion: "La ROM de arranque, comparando el logotipo."
+
+  - id: ordene-arranque
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Del encendido al juego"
+    texto: "Ordene lo que hace la ROM de arranque."
+    libro: ["gb#76", "gb#80", "gb#75", "gb#81", "gb#78", "cap38#339"]
+    ordenar:
+      - "Pone el logotipo del cartucho y lo desplaza."
+      - "Compara sus $30 bytes con su copia."
+      - "Comprueba la suma de la cabecera."
+      - "Se desconecta."
+      - "Salta a $100: el juego."
+    exito: "Validar antes de arrancar, como cualquier cargador de arranque."
+    pistas:
+      - { texto: "Lo que se ve primero es el logotipo bajando; desconectarse es lo último antes del juego." }
+    escalera:
+      - "El juego empieza en $100, al final."
+      - "Primero el logotipo, luego la suma de la cabecera."
+    solucion: "Logotipo, comparación, suma de la cabecera, desconexión y salto a $100."
+
+  - id: explore-condicion
+    tipo: explorar
+    titulo: "Dos condiciones"
+    texto: "El juego arranca solo si el logotipo coincide y la suma de la cabecera es correcta. Pruebe."
+    libro: ["gb#77", "gb#75"]
+    requiere: { mover: [LOGO, SUMA] }
+    widget:
+      tipo: logica
+      entradas: [{ id: LOGO, rotulo: "Logotipo igual", valor: 1 }, { id: SUMA, rotulo: "Suma correcta" }]
+      piezas:
+        - { id: y, tipo: and, entradas: [LOGO, SUMA] }
+      salidas:
+        - { id: JUEGO, de: y, rotulo: "Arranca el juego" }
+
+  - id: tabla-arranque
+    tipo: tabla
+    titulo: "La tabla del arranque"
+    texto: "Rellene la salida: ¿en qué filas arranca el juego?"
+    libro: ["gb#77", "gb#75", "gb#80"]
+    widget:
+      tipo: logica
+      entradas: [{ id: LOGO, rotulo: "Logotipo igual" }, { id: SUMA, rotulo: "Suma correcta" }]
+      piezas:
+        - { id: y, tipo: and, entradas: [LOGO, SUMA] }
+      salidas:
+        - { id: JUEGO, de: y, rotulo: "Arranca el juego" }
+      ocultar: true
+    tabla:
+      salidas: [JUEGO]
+    exito: "Una AND: cualquier fallo deja la consola parada."
+    escalera:
+      - "Con un byte del logotipo distinto, se para."
+    solucion: "Solo en la fila en que se cumplen las dos condiciones."
+
+  - id: prediga-deformado
+    tipo: predecir
+    titulo: "Un logotipo deformado"
+    texto: "Al encender, el logotipo baja deformado y la consola se queda ahí. ¿Qué ocurre?"
+    libro: ["gb#74", "gb#77", "gb#97"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura" }
+    opciones:
+      - texto: "Lee mal el cartucho: el logotipo que dibuja viene de él, y no coincide."
+        bien: true
+        porque: "El dibujo sale de $0104–$0133: si llega mal, la comparación falla y se para. Mire si el cartucho está sucio o mal metido."
+      - texto: "La pantalla está rota."
+        porque: "La pantalla dibuja lo que recibe: el logotipo llega mal desde el cartucho."
+      - texto: "La ROM de arranque se ha borrado."
+        porque: "Es una ROM dentro del SoC: el logotipo que se ve es el del cartucho."
+    escalera:
+      - "¿De dónde saca la consola el dibujo del logotipo?"
+    solucion: "Un fallo de lectura del cartucho: limpie y vuelva a meterlo."
+
+  - id: por-que-logotipo
+    tipo: porque
+    titulo: "¿Por qué un logotipo?"
+    texto: "Copiar $30 bytes es fácil. ¿Para qué sirve, entonces, comparar el logotipo?"
+    libro: ["gb#83", "gb#84", "gb#75", "gb#80"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Cartucho" }
+    opciones:
+      - texto: "Para poder demandar: copiarlo es usar la marca de Nintendo."
+        bien: true
+        porque: "Era una protección legal más que técnica, y aun así salieron unos pocos cartuchos sin licencia."
+      - texto: "Para detectar cartuchos con datos corruptos."
+        porque: "Eso es la suma de la cabecera. El logotipo es una marca registrada."
+      - texto: "Porque nadie puede copiarlo."
+        porque: "Cualquiera puede copiar $30 bytes: lo que lo protegía era la ley."
+    escalera:
+      - "¿Qué es el logotipo «Nintendo», además de un dibujo?"
+    solucion: "Una marca registrada: la protección era legal."
+
+  - id: prediga-region
+    tipo: predecir
+    titulo: "¿Y la región?"
+    texto: "Un cartucho japonés en una Game Boy europea, ¿arranca?"
+    libro: ["gb#85", "gb#80"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura" }
+    opciones:
+      - texto: "Sí: la Game Boy no tiene bloqueo regional."
+        bien: true
+        porque: "A diferencia de las consolas de sobremesa de Nintendo, solo mira el logotipo y la suma."
+      - texto: "No: el logotipo japonés es distinto."
+        porque: "El logotipo es el mismo: la comparación es con una sola copia."
+      - texto: "Solo con un adaptador."
+        porque: "No hace falta: el cartucho y la comprobación son iguales en todas partes."
+    escalera:
+      - "¿Comprueba la ROM de arranque algo de la región?"
+    solucion: "Sí: no hay bloqueo regional."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gb#80", "gb#75", "gb#83", "gb#85"]
+    ideas:
+      - { titulo: "Sin CIC.", texto: "La comprobación la hace la ROM de arranque." }
+      - { titulo: "Dos pruebas.", texto: "El logotipo exacto y la suma de la cabecera." }
+      - { titulo: "Una marca.", texto: "La protección era legal, no técnica." }
+      - { titulo: "Sin región.", texto: "Cualquier cartucho arranca en cualquier Game Boy." }

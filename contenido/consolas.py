@@ -188,17 +188,33 @@ MAQUINAS = [
         'huellas': 'snes/pcb/SNSP-CPU-01_huellas.json',
         'licencia_texto': ('snes/original/LICENSE', 'snes/LICENSE-nonSNES.txt'),
         'fotos': [
-            {'id': 'cara-a', 'titulo': 'Cara de componentes (sin chips)', 'origen': 'snes/fotos/nonSNES_front.jpg',
+            # the owner's NTSC photo (another board, with its chips): boxes given in pixels (SN.CARA_NTSC), no alignment.
+            # (owner 13-11: it is the MAIN photo, the tab the explorer opens on; the bare PAL face goes second and keeps
+            # its «where the part goes» boxes and its link to the PAL schematic)
+            {'id': 'ntsc', 'titulo': 'Cara de componentes · NTSC', 'origen': 'snes/fotos/usuario/placa-componentes-1.jpg',
+             'ancho': 1600, 'calidad': 78, 'credito': 'Foto: Yaca2671, Wikimedia Commons, CC BY-SA 3.0',
+             'revision': 'SNS-CPU-RGB-01 NTSC, otra placa (no la del esquema)', 'hotspots': SN.CARA_NTSC,
+             'nota': 'Una placa NTSC con todos sus chips (CIC F411A, cristal D21G4, S-RGB). Recomprimida, sin recortar; los '
+                     'recuadros, colocados por las marcas y la serigrafía que se leen en la foto.'},
+            # (1.2, consolas-A: the two nonSNES photos relabelled as what they are — a bare board and a solder side with
+            # some empty footprints — and without markers for the parts they do not show, SN.SIN_MARCADOR)
+            {'id': 'cara-a', 'titulo': 'Cara de componentes · PAL, sin piezas', 'origen': 'snes/fotos/nonSNES_front.jpg',
              'alineacion': 'snes/fotos/nonSNES_front.alineacion.json', 'ancho': 1600, 'calidad': 78,
              'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL, la del esquema', 'hotspots': SN.CARA_A,
-             'nota': 'Escaneo de la placa con los chips quitados: se ven sus pads y la serigrafía (U1, U2…).'},
-            {'id': 'cara-b', 'titulo': 'Cara de soldadura', 'origen': 'snes/fotos/nonSNES_back.jpg',
+             'sin_marcador': SN.SIN_MARCADOR['cara-a'],
+             'nota': 'Escaneo de la placa desnuda: en esta cara no hay ninguna pieza montada. Se ven los pads y la serigrafía '
+                     '(U1, U2…); cada recuadro marca dónde va una pieza, no la pieza.'},
+            {'id': 'cara-b', 'titulo': 'Cara de soldadura · PAL, incompleta', 'origen': 'snes/fotos/nonSNES_back.jpg',
              'alineacion': 'snes/fotos/nonSNES_back.alineacion.json', 'ancho': 1600, 'calidad': 78,
              'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL', 'hotspots': SN.CARA_B,
-             'nota': 'Vista desde abajo: la placa sale dada la vuelta (el puerto de expansión queda a la derecha).'},
+             'sin_marcador': SN.SIN_MARCADOR['cara-b'],
+             'nota': 'Vista desde abajo: la placa sale dada la vuelta (el puerto de expansión queda a la derecha). Faltan algunas '
+                     'piezas: las huellas vacías (R4–R6, R24, R32, R42, R45, R47, R108–R111, C4, C5 y C69) no llevan marcador.'},
         ],
         'aviso': 'Esquema de la recreación nonSNES de stonedDiscord: una copia «1:1» de la placa PAL SNSP-CPU-01 Rev5 (esquema '
-                 'de arzi84) para fabricarla hoy con los chips de una consola. Las fotos son de esa misma placa. nonSNES añade '
+                 'de arzi84) para fabricarla hoy con los chips de una consola. Las fotos PAL son de esa misma placa: la cara de '
+                 'componentes, desnuda, y la de soldadura, con alguna huella vacía. La foto NTSC es de otra placa, una '
+                 'SNS-CPU-RGB-01 con todos sus chips. nonSNES añade '
                  'algunas piezas (placa A/V y de mandos separables, otro supervisor de reset, otro pulsador y otro trimmer): '
                  'la tabla de abajo dice cuáles.',
     },
@@ -625,8 +641,9 @@ def preparar_fotos(m, problemas):
                         problemas.append('%s: el punto %s no tiene huellas en la foto %s' % (m['id'], hs['id'], fs['id']))
                 hs.pop('huellas', None)
             pos = {}
+            sin_marcador = set(fs.get('sin_marcador', []))
             for f in hu.values():
-                if f['side'] != cara or f['ref'].startswith(('H', 'FID')):
+                if f['side'] != cara or f['ref'].startswith(('H', 'FID')) or f['ref'] in sin_marcador:
                     continue
                 x, y = llevar(f['x'], f['y'])
                 if 0 <= x < w and 0 <= y < h:

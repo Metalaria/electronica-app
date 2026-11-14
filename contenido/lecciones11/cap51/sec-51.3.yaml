@@ -1,0 +1,291 @@
+# Lección 1.2 de la sección 52.3 «El Preamplificador y el Control de Tono» (cap51; etiqueta sec-51.3). Proyecto
+# detallado III. Formato: contenido/lecciones11/GUIA.md.
+# - El preamplificador A1, no inversor G = 1 + R_f/R_g (figura 52.4: R_g = R_f = 10 kΩ, ×2, 6 dB, bloque 94), en el
+#   esquema «ao-no-inversor» en continua; los 0,7 V de entrada son la sensibilidad de la especificación (bloque 10),
+#   usados aquí como nivel de prueba.
+# - El ejercicio 52.1 (bloque 377): ganancia 11 con R_g = 2,2 kΩ → R_f = 22 kΩ, como reto con R_f de la serie E24.
+# - El volumen lineal frente a la ley ideal en dB: la gráfica de la figura 52.6 (fig-51.5), con el lineal como
+#   20·log(giro) y la recta en dB de la figura (de −60 dB a 0); el tono Baxandall, sobre la misma figura con zonas.
+leccion: cap51/sec-51.3
+
+libro:
+  79: "es donde se decide buena parte del ruido"
+  81: "entrada alta para no cargar la fuente"
+  82: "Amplificar hasta el nivel que la etapa de potencia requiere"
+  83: "Controlar el volumen sin degradar la señal"
+  84: "Ajustar el tono, si el diseño lo incluye"
+  88: "por su ruido referido a la impedancia de la fuente"
+  89: "No amplificar más de lo necesario"
+  90: "es mejor dos etapas de ganancia moderada que una de ganancia enorme"
+  92: "casi todo el margen útil se concentra al principio del recorrido"
+  93: "los controles de volumen sean logarítmicos (curva A)"
+  94: "Con una ganancia tan modesta como la de A1 (×2, 6 dB)"
+  97: "En la posición central, la respuesta es plana"
+  99: "No atenúa en el centro, mientras que un control pasivo siempre pierde señal"
+  100: "El realce y la atenuación son simétricos"
+  101: "Su impedancia de salida es baja, porque es activo"
+  102: "la etapa invierte la polaridad de la señal"
+  106: "exige cables largos con señal pequeña"
+  113: "con la entrada cortocircuitada y el volumen al máximo"
+  114: "preamplificador no inversor (G = 1 + Rf/Rg)"
+  115: "Curva de un control de volumen lineal frente a logarítmico"
+  "cap51#10": "0,7 V eficaces para potencia nominal"
+  "cap51#377": "quieres una ganancia de 11. Si eliges Rg = 2,2 kΩ"
+
+modelo:
+  valores:
+    V_i: { sim: "v_{in}", nombre: "nivel de entrada", unidad: V, valor: 0.7 }
+    R_g: { sim: "R_{g}", nombre: "resistencia a masa", unidad: Ω, valor: 10000 }
+    R_f: { sim: "R_{f}", nombre: "resistencia de realimentación", unidad: Ω, valor: 10000 }
+    x_g: { sim: "giro", nombre: "giro del mando", unidad: "", valor: 0.2 }
+  calculos:
+    G_p: { expr: "1 + R_f/R_g", sim: "G", nombre: "ganancia del preamplificador", unidad: "", cifras: 3 }
+    G_db: { expr: "20*log10(G_p)", sim: "G", nombre: "ganancia en decibelios", unidad: dB, cifras: 2 }
+    V_op: { expr: "G_p*V_i", sim: "v_{o}", nombre: "salida del preamplificador", unidad: V }
+    I_g: { expr: "V_i/R_g", sim: "I", nombre: "corriente por R_g", unidad: A }
+    L_lin: { expr: "20*log10(x_g)", sim: "nivel", nombre: "nivel con potenciómetro lineal", unidad: dB, cifras: 2 }
+    L_id: { expr: "-60*(1 - x_g)", sim: "nivel", nombre: "nivel con la ley ideal", unidad: dB, cifras: 2 }
+
+tarjetas:
+  - id: explore-preamp
+    tipo: explorar
+    titulo: "El preamplificador A1"
+    texto: "Un no inversor: G = 1 + R_{f}/R_{g}. Cambie R_{f} y mire la ganancia; el proyecto usa ×2, 6 dB."
+    libro: [82, 94, 114, "cap51#10"]
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_g, r2: R_f }
+      lectura: { valor: G_p, rotulo: "Ganancia" }
+      datos:
+        - { valor: V_op, rotulo: "v_{o} = {{V_op}}" }
+        - { valor: G_db, rotulo: "{{G_db}}" }
+      corriente: I_g
+      mide: { vo: V_op, vmenos: V_i, i1: I_g }
+      mandos:
+        - { valor: R_f, lista: [10000, 22000, 47000], rotulo: "R_{f}" }
+    requiere: { mover: [R_f] }
+
+  - id: reto-ganancia-11
+    tipo: reto
+    titulo: "Un preamplificador de ganancia 11"
+    texto: "Con R_{g} = 2,2 kΩ, elija R_{f} de la serie E24 para una ganancia de 11."
+    libro: ["cap51#377"]
+    fijar: { R_g: 2200 }
+    inicio: { R_f: 10000 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_g, r2: R_f }
+      lectura: { valor: G_p, rotulo: "Ganancia" }
+      corriente: I_g
+      mide: { vo: V_op, vmenos: V_i, i1: I_g }
+      mandos:
+        - { valor: R_f, serie: E24, min: 10000, max: 47000, rotulo: "R_{f} (E24)" }
+    condiciones:
+      - { valor: G_p, objetivo: 11, tol: 0.02, rotulo: "Ganancia: {{G_p}}" }
+    exito: "R_{f} = 22 kΩ: 1 + 22/2,2 = 11."
+    pistas:
+      - { cuando: { valor: G_p, mayor: 11.22 }, texto: "Sobra ganancia: R_{f} debe ser menor." }
+      - { texto: "Falta ganancia: R_{f} debe ser mayor." }
+    escalera:
+      - "R_{f}/R_{g} debe valer 10."
+    solucion: "11 = 1 + R_{f}/2,2 kΩ → R_{f} = 22 kΩ."
+
+  - id: empareje-funciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que tiene que hacer"
+    texto: "Una cada tarea del preamplificador con cómo la cumple."
+    libro: [79, 81, 82, 83, 84]
+    emparejar:
+      - ["Adaptar impedancias", "Entrada alta y salida baja"]
+      - ["Amplificar", "Hasta el nivel que pide la etapa de potencia"]
+      - ["Controlar el volumen", "Sin degradar la señal"]
+      - ["Ajustar el tono", "Si el diseño lo incluye"]
+    exito: "Y, por ser la primera etapa, aquí se decide buena parte del ruido."
+    pistas:
+      - { texto: "Entrada alta para no cargar la fuente; salida baja para atacar la siguiente." }
+    escalera:
+      - "Piense en lo que necesitan la fuente, la etapa de potencia y el oyente."
+    solucion: "Impedancias–entrada alta y salida baja; amplificar–nivel de la potencia; volumen–sin degradar; tono–opcional."
+
+  - id: pregunta-ruido
+    tipo: pregunta
+    titulo: "El ruido se decide aquí"
+    texto: "¿Cuál de estas decisiones NO ayuda al ruido del preamplificador?"
+    libro: [88, 89, 90]
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_g, r2: R_f }
+      lectura: { valor: G_p, rotulo: "Ganancia" }
+      corriente: I_g
+      mide: { vo: V_op, vmenos: V_i, i1: I_g }
+    opciones:
+      - texto: "Una sola etapa de ganancia enorme"
+        bien: true
+        porque: "Mejor dos etapas de ganancia moderada: tanto por ruido como por ancho de banda."
+      - texto: "Elegir el operacional por su ruido con la impedancia de la fuente"
+        porque: "Esta sí ayuda: el ruido depende de la impedancia de la fuente."
+      - texto: "No amplificar más de lo necesario"
+        porque: "Esta sí ayuda: el ruido se amplifica con la señal."
+    escalera:
+      - "Dos de ellas las recomienda el libro; la otra es lo contrario de su tercera decisión."
+    solucion: "Una etapa de ganancia enorme: mejor repartirla en dos moderadas."
+
+  - id: explore-volumen
+    tipo: explorar
+    titulo: "El control de volumen"
+    texto: "El oído responde de forma casi logarítmica. Gire el mando y compare un potenciómetro lineal con la recta en dB."
+    libro: [92, 115]
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0.01, max: 1, unidad: "", rotulo: "giro del mando" }
+      y: { min: -60, max: 5, unidad: dB, rotulo: "nivel de salida" }
+      curvas:
+        - { expr: "max(-60, 20*log10(g))", color: naranja, rotulo: "lineal" }
+        - { expr: "-60*(1 - g)", color: tinta, rotulo: "ley ideal", discontinua: true }
+      marcas:
+        - { x: "x_g", y: "L_lin", rotulo: "{{L_lin}}" }
+      lectura: { valor: L_lin, rotulo: "Nivel con el lineal" }
+      datos:
+        - { valor: L_id, rotulo: "Ley ideal: {{L_id}}" }
+      mandos:
+        - { valor: x_g, min: 0.05, max: 1, paso: 0.05, rotulo: "Giro del mando" }
+    requiere: { mover: [x_g] }
+
+  - id: prediga-lineal
+    tipo: predecir
+    titulo: "Un volumen lineal"
+    texto: "Con un potenciómetro lineal como volumen, ¿dónde ocurre casi todo el ajuste que se oye?"
+    libro: [92, 93]
+    fijar: { x_g: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0.01, max: 1, unidad: "", rotulo: "giro del mando" }
+      y: { min: -60, max: 5, unidad: dB, rotulo: "nivel de salida" }
+      curvas:
+        - { expr: "-60*(1 - g)", color: tinta, rotulo: "ley ideal", discontinua: true }
+      lectura: { valor: L_lin, rotulo: "Nivel con el lineal" }
+      ocultar: true
+    opciones:
+      - texto: "Al principio del recorrido"
+        bien: true
+        porque: "En dB, el lineal sube deprisa al principio y casi nada después: por eso se usan logarítmicos, curva A."
+      - texto: "Repartido por igual"
+        porque: "Eso haría un mando que siguiese la recta en dB; el lineal no, porque el oído es logarítmico."
+      - texto: "Al final del recorrido"
+        porque: "Al final el lineal apenas cambia en dB: el margen útil se concentra al principio."
+    escalera:
+      - "Mire la curva del lineal en dB: ¿dónde sube deprisa?"
+    solucion: "Al principio: casi todo el margen útil se concentra en el primer tramo."
+
+  - id: explore-tono
+    tipo: explorar
+    titulo: "El tono Baxandall"
+    texto: "Una red que depende de la frecuencia, en la realimentación de un amplificador. Toque sus respuestas."
+    libro: [97, 115]
+    widget:
+      tipo: figura
+      figura: fig-51.5
+      zonas:
+        - { id: realce, rotulo: "Curvas de arriba", rect: [265, 20, 175, 42], texto: "Realce de graves y agudos con los mandos hacia un extremo." }
+        - { id: plana, rotulo: "Recta del centro", rect: [265, 68, 175, 36], texto: "Con los mandos al centro la red se compensa: respuesta plana." }
+        - { id: corte, rotulo: "Curvas de abajo", rect: [265, 108, 175, 45], texto: "Corte de graves y agudos hacia el otro extremo." }
+    requiere: { mover: [realce, plana, corte] }
+
+  - id: empareje-baxandall
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Frente a un control pasivo"
+    texto: "Una cada virtud del Baxandall con su razón."
+    libro: [99, 100, 101]
+    emparejar:
+      - ["En el centro", "No atenúa; el pasivo siempre pierde señal"]
+      - ["En los extremos", "Realce y atenuación simétricos"]
+      - ["A la salida", "Impedancia baja, porque es activo"]
+    exito: "Tres ventajas por ir dentro de un amplificador realimentado."
+    pistas:
+      - { texto: "Un control pasivo es una red de resistencias y condensadores: siempre pierde algo." }
+    escalera:
+      - "¿Qué aporta tener un amplificador en el circuito de tono?"
+    solucion: "Centro–no atenúa; extremos–simétricos; salida–baja impedancia."
+
+  - id: porque-polaridad
+    tipo: porque
+    titulo: "La polaridad"
+    texto: "Con el Baxandall, el amplificador completo invierte la polaridad de la señal. ¿Por qué?"
+    libro: [102]
+    widget:
+      tipo: figura
+      figura: fig-51.5
+      zonas:
+        - { id: plana, rotulo: "Recta del centro", rect: [265, 68, 175, 36] }
+    opciones:
+      - texto: "La red va en la realimentación de un inversor"
+        bien: true
+        porque: "No es audible; si se quiere conservar, basta otra etapa inversora o cruzar los cables de los dos altavoces."
+      - texto: "Porque el control de tono resta graves"
+        porque: "Restar graves cambia la respuesta, no el signo de toda la señal."
+      - texto: "Porque A1 es inversor"
+        porque: "A1 es no inversor; el que invierte es A2, el del tono."
+    escalera:
+      - "¿Qué tipo de amplificador lleva la red de tono?"
+    solucion: "Va en un inversor: toda la señal sale invertida."
+
+  - id: pregunta-entradas
+    tipo: pregunta
+    titulo: "Varias entradas"
+    texto: "¿Por qué conmutar las fuentes con relés o llaves analógicas y no con un conmutador en el panel?"
+    libro: [106]
+    widget:
+      tipo: figura
+      figura: fig-51.5
+      zonas:
+        - { id: plana, rotulo: "Recta del centro", rect: [265, 68, 175, 36] }
+    opciones:
+      - texto: "El conmutador del panel exige cables largos con señal pequeña"
+        bien: true
+        porque: "Cables largos con señal pequeña captan ruido y zumbido; el relé conmuta junto al circuito."
+      - texto: "Porque los relés amplifican"
+        porque: "No amplifican: solo permiten conmutar cerca del circuito."
+      - texto: "Porque un conmutador mecánico no conduce audio"
+        porque: "Lo conduce; el problema es el cableado largo que exige."
+    escalera:
+      - "Piense en el recorrido de la señal hasta el panel y de vuelta."
+    solucion: "Evitar cables largos con señal pequeña hasta el panel."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Medir el ruido del preamplificador"
+    texto: "¿En qué condiciones se mide el ruido de salida del preamplificador?"
+    libro: [113]
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_g, r2: R_f }
+      lectura: { valor: G_p, rotulo: "Ganancia" }
+      corriente: I_g
+      mide: { vo: V_op, vmenos: V_i, i1: I_g }
+    opciones:
+      - texto: "Con la entrada cortocircuitada y el volumen al máximo"
+        bien: true
+        porque: "Es el peor caso, y el que determina el ruido de fondo audible."
+      - texto: "Con el volumen al mínimo"
+        porque: "Así el ruido de las etapas anteriores apenas llega: no es el peor caso."
+      - texto: "Con la entrada al aire"
+        porque: "Al aire se capta interferencia, no se mide el ruido."
+    escalera:
+      - "¿Con qué volumen pasa más ruido a la salida?"
+    solucion: "Entrada en corto y volumen al máximo: el peor caso."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [90, 93, 97, 114]
+    ideas:
+      - { titulo: "A1.", texto: "No inversor, G = 1 + R_{f}/R_{g}: ×2, 6 dB en el proyecto." }
+      - { titulo: "Ruido.", texto: "Primera etapa: elegirla por su ruido y repartir la ganancia." }
+      - { titulo: "Volumen.", texto: "Logarítmico (curva A): con uno lineal, casi todo el ajuste al principio." }
+      - { titulo: "Baxandall.", texto: "Plano en el centro, simétrico, salida baja; invierte la polaridad." }

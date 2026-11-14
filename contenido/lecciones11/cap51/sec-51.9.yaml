@@ -1,0 +1,296 @@
+# Lección 1.2 de la sección 52.9 «Montaje, Puesta a Punto y Medidas» (cap51; etiqueta sec-51.9). Proyecto detallado III.
+# Formato: contenido/lecciones11/GUIA.md. El orden de montaje (bloques 295–302) como ordenar (siete de los ocho pasos:
+# ordenar admite siete) y sobre la figura 52.17 (fig-51.15, con la prueba del escalón con carga capacitiva) con zonas;
+# los problemas típicos y el cableado, emparejar; la validación, opciones.
+leccion: cap51/sec-51.9
+
+libro:
+  291: "evita destruir la etapa de salida, que es lo más caro del proyecto"
+  292: "repartido en cuatro placas"
+  295: "La alimentación sola"
+  296: "con el bias al mínimo y con lámpara serie o límite de corriente"
+  297: "Ajustar el bias"
+  298: "Comprobar la continua en la salida"
+  299: "Señal pequeña, con carga resistiva y sin altavoz"
+  300: "Subir el nivel hasta el recorte"
+  301: "El preamplificador, ya con la potencia validada"
+  302: "El altavoz, en último lugar"
+  303: "nunca antes"
+  306: "El objetivo son unidades de milivoltios"
+  307: "se reajustan tras media hora caliente"
+  309: "una resistencia de alambre de 100 W"
+  314: "con una amplitud de salida del 64 % de la alimentación, unos 31 W"
+  316: "falta la red Zobel, desacoplo insuficiente o realimentación mal encaminada"
+  317: "bucle de masa"
+  318: "Distorsión audible a bajo volumen: bias insuficiente"
+  319: "bias descompensado o un componente distinto"
+  320: "Golpe al encender: falta el retardo del altavoz"
+  324: "para reducir el área del bucle"
+  326: "Un amplificador con placas correctas y cableado descuidado zumba"
+  329: "Un condensador de 100 nF a 1 µF en paralelo con la carga resistiva"
+  330: "El orden de montaje de un amplificador y la prueba del escalón"
+  "cap51#159": "ambos necesitan sus 0,6 V para empezar"
+  "cap51#167": "una tensión de unos 1,2 V —dos caídas base-emisor—"
+  "cap51#177": "Con resistencias de 0,22 Ω y una corriente de reposo objetivo de 50 mA, la caída es de 11 mV"
+
+modelo:
+  valores:
+    Vcc: { sim: "V_{CC}", nombre: "alimentación simétrica", unidad: V, valor: 35 }
+    Ib: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.005 }
+    R1: { sim: "R₁", nombre: "resistencia de ajuste del multiplicador", unidad: Ω, valor: 1037 }
+    R2: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
+    pu: { tipo: interruptor, nombre: "multiplicador en cortocircuito", valor: 0 }
+    Re: { sim: "R_{E1}", nombre: "resistencia de emisor de Q₁", unidad: Ω, valor: 0.22 }
+    Re2: { sim: "R_{E2}", nombre: "resistencia de emisor de Q₂", unidad: Ω, valor: 0.22 }
+    RL: { sim: "R_{L}", nombre: "carga resistiva", unidad: Ω, valor: 8 }
+    b: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    Vbe: { sim: "V_{BE}", nombre: "caída base-emisor de los transistores de salida", unidad: V, valor: 0.6 }
+    Vbem: { sim: "V_{BE3}", nombre: "caída base-emisor del multiplicador", unidad: V, valor: 0.6 }
+    A: { sim: "A", nombre: "amplitud de la senoide pequeña", unidad: V, valor: 1 }
+    f: { sim: "f", nombre: "frecuencia de la senoide", unidad: Hz, valor: 1000 }
+  calculos:
+    Rs: { expr: "R1 + R2", sim: "R₁ + R₂", nombre: "resistencia del divisor del multiplicador", unidad: Ω }
+    Vbb_on: { expr: "Vbem*(1 + R1/R2)", sim: "V_{BB}", nombre: "bias con el multiplicador conduciendo", unidad: V }
+    Vbb_off: { expr: "(2*Vbe + (Re + Re2)*(b + 1)*Ib)/(1 + (Re + Re2)*(b + 1)/Rs)", sim: "V_{BB}", nombre: "bias con el multiplicador cortado", unidad: V }
+    Vbb: { expr: "(1 - pu)*min(Vbb_on, Vbb_off)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie0: { expr: "max(0, (Vbb - 2*Vbe)/(Re + Re2))", sim: "I_{E}", nombre: "corriente de reposo de emisor, sin filtrar", unidad: A }
+    Ie: { expr: "Ie0*ceil(max(0, Ie0 - 0.000001)/1e9)", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq: { expr: "b/(b + 1)*Ie", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir: { expr: "max(Iq, 0.0001)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin: { expr: "-Vbb/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    Vre: { expr: "Ie*Re", sim: "V_{RE1}", nombre: "caída en la resistencia de emisor de Q₁", unidad: V }
+    Vo: { expr: "0*Vbb", sim: "V_{o}", nombre: "continua en la salida", unidad: V }
+    sab: { expr: "ceil(max(0, Vbb - 2*Vbe)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
+
+tarjetas:
+  - id: explore-orden
+    tipo: explorar
+    titulo: "El orden que salva la etapa de salida"
+    texto: "Montar por partes evita destruir lo más caro del proyecto. Toque la lista y la prueba final."
+    libro: [291, 292, 330]
+    widget:
+      tipo: figura
+      figura: fig-51.15
+      zonas:
+        - { id: primeros, rotulo: "Los pasos de arriba", rect: [0, 22, 188, 70], texto: "Alimentación sola; potencia sin señal, bias al mínimo y con límite de corriente; ajustar el bias." }
+        - { id: ultimos, rotulo: "Los pasos de abajo", rect: [0, 92, 188, 112], texto: "Continua en la salida, señal pequeña con carga resistiva, recorte, preamplificador y, al final, el altavoz." }
+        - { id: escalon, rotulo: "La gráfica de la derecha", rect: [231, 19, 213, 162], texto: "El escalón con carga capacitiva: amortiguado está bien; una oscilación sostenida hay que corregirla." }
+    requiere: { mover: [primeros, ultimos, escalon] }
+
+  - id: ordene-montaje
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El montaje por partes"
+    texto: "Ordene los pasos de la puesta en marcha."
+    libro: [295, 296, 297, 298, 299, 300, 301, 302]
+    ordenar:
+      - "La alimentación sola: tensiones y rizado"
+      - "La etapa de potencia sin señal, bias al mínimo"
+      - "Ajustar el bias"
+      - "Comprobar la continua en la salida"
+      - "Señal pequeña con carga resistiva"
+      - "Subir hasta el recorte, vigilando la temperatura"
+      - "Conectar el altavoz"
+    exito: "Entre el recorte y el altavoz va el preamplificador, ya con la potencia validada."
+    pistas:
+      - { texto: "Sin bias ajustado no tiene sentido medir la continua de la salida con señal." }
+    escalera:
+      - "Primero lo que alimenta; lo último, lo que más sufre un fallo: el altavoz."
+    solucion: "Alimentación, potencia sin señal, bias, continua, señal pequeña, recorte, altavoz."
+
+  - id: porque-lampara
+    tipo: porque
+    titulo: "La primera vez, con red de seguridad"
+    texto: "La etapa de potencia se enciende por primera vez con el bias al mínimo y con lámpara serie o límite de corriente. ¿Por qué?"
+    libro: [291, 296]
+    widget:
+      tipo: figura
+      figura: fig-51.15
+      zonas:
+        - { id: primeros, rotulo: "Los pasos de arriba", rect: [0, 22, 188, 70] }
+    opciones:
+      - texto: "Si hay un error de montaje, la corriente queda limitada y la etapa no se destruye"
+        bien: true
+        porque: "La etapa de salida es lo más caro: un cortocircuito sin límite la quema al instante."
+      - texto: "Para que el bias se ajuste solo"
+        porque: "El bias se ajusta después, a mano; empezar en el mínimo evita una corriente de reposo excesiva."
+      - texto: "Para medir el rendimiento"
+        porque: "Aún no hay señal: se trata de comprobar que nada consume de más."
+    escalera:
+      - "¿Qué pasa si hay un cortocircuito y la fuente puede dar toda su corriente?"
+    solucion: "Limitar la corriente ante un error: proteger la etapa de salida."
+
+  - id: pregunta-altavoz
+    tipo: pregunta
+    titulo: "La regla que evita el desastre"
+    texto: "Todo parece funcionar con la carga resistiva. ¿Cuándo se conecta el altavoz?"
+    libro: [302, 303]
+    widget:
+      tipo: figura
+      figura: fig-51.15
+      zonas:
+        - { id: ultimos, rotulo: "Los pasos de abajo", rect: [0, 92, 188, 112] }
+    opciones:
+      - texto: "Cuando todo lo demás está comprobado, nunca antes"
+        bien: true
+        porque: "Continua en la salida, recorte, preamplificador: solo entonces el altavoz."
+      - texto: "Desde el primer encendido, para oír los fallos"
+        porque: "Un fallo con continua en la salida lo destruiría en segundos."
+      - texto: "Antes de ajustar el bias, para tener carga"
+        porque: "La carga es la resistiva de potencia; el altavoz va al final."
+    escalera:
+      - "¿Qué le pasa al altavoz si la salida tiene voltios de continua?"
+    solucion: "En último lugar, con todo comprobado."
+
+  - id: pregunta-offset
+    tipo: pregunta
+    titulo: "Los ajustes"
+    texto: "Se ajustan el bias y el offset de continua de la salida. ¿Qué objetivo tiene el offset y cuándo se repite?"
+    libro: [306, 307]
+    widget:
+      tipo: figura
+      figura: fig-51.15
+      zonas:
+        - { id: primeros, rotulo: "Los pasos de arriba", rect: [0, 22, 188, 70] }
+    opciones:
+      - texto: "Unidades de milivoltios, y se reajusta tras media hora caliente"
+        bien: true
+        porque: "Bias y offset derivan con la temperatura: el ajuste bueno es el de caliente."
+      - texto: "Cero exacto, una sola vez en frío"
+        porque: "En frío está bien, pero los dos derivan al calentarse: hay que reajustar."
+      - texto: "Unos voltios: el altavoz lo bloquea"
+        porque: "Voltios de continua quemarían el altavoz; el objetivo son milivoltios."
+    escalera:
+      - "¿Qué les pasa a los ajustes cuando el aparato se calienta?"
+    solucion: "Unidades de milivoltios, reajustado en caliente."
+
+  - id: averia-etapa
+    tipo: averia
+    titulo: "La etapa no se pone a punto"
+    texto: "Al ajustar el bias, esta etapa no responde. Mida en reposo y con una senoide pequeña, y diga qué pieza falla."
+    libro: [297, 298, 318, 319, "cap51#159", "cap51#167", "cap51#177"]
+    widget:
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, amplitud: A, f: f, ib: Ib, r1: R1, r2: R2, puente: pu, re: Re, re2: Re2, carga: RL, beta: b, vbe: Vbe, vbem: Vbem, iref: Ir }
+      mide: { iq: Iq, vbb: Vbb }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: q3, rotulo: "Q₃, el multiplicador" }
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "R₂" }
+        - { id: re1, rotulo: "R_{E1}, la de Q₁" }
+      sondas:
+        - { id: caida, rotulo: "Caída en R_{E1}, en reposo", valor: Vre }
+        - { id: bases, rotulo: "Tensión entre las bases", valor: Vbb }
+        - id: salida
+          rotulo: "Salida, con la senoide"
+          valor: Vo
+          curva:
+            expr: "sab*min((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + Re/RL), max((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + Re2/RL), ((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/Re + (A*sin(2*pi*f*t) - Vbb/2 + Vbe)/Re2)/(1/Re + 1/Re2 + 1/RL))) + (1 - sab)*(max((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + Re/RL), 0) + min((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + Re2/RL), 0))"
+            x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+            y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v_{o}" }
+      fallos:
+        - { id: q3-corto, pieza: q3, tipo: corto, con: { pu: 1 }, texto: "Q₃ en corto: no queda bias entre las bases, la caída es nula y la salida tiene el escalón de cruce." }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R2: 0.001 }, texto: "R₂ en corto: Q₃ se corta, la fuente de bias empuja la base de Q₁ y la corriente de reposo se dispara." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R1: 1e9 }, texto: "R₁ abierta: Q₃ no conduce, toda la fuente de bias va a la base de Q₁ y la corriente de reposo se dispara." }
+        - { id: re1-abierta, pieza: re1, tipo: abierta, con: { Re: 1e9 }, texto: "R_{E1} abierta: el bias es normal, pero Q₁ no conduce: falta el semiciclo positivo." }
+    escalera:
+      - "Una etapa sana da unos 1,2 V entre las bases y 11 mV en R_{E}."
+      - "Mida primero entre las bases: dice si el multiplicador da su tensión."
+    solucion: "Compare con la etapa sana: 1,2 V entre las bases, 11 mV en 0,22 Ω y la senoide entera, sin escalón."
+    comprobar:
+      - { Vbb: 1.2222, Vre: 0.0111, tol: 0.002 }
+
+  - id: empareje-problemas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los problemas típicos"
+    texto: "Una cada síntoma con su causa habitual."
+    libro: [316, 317, 318, 319, 320]
+    emparejar:
+      - ["Oscilación de alta frecuencia", "Falta la Zobel, desacoplo o realimentación mal encaminada"]
+      - ["Zumbido", "Bucle de masa o transformador cerca de la entrada"]
+      - ["Distorsión a bajo volumen", "Bias insuficiente"]
+      - ["Un canal más caliente", "Bias descompensado o un componente distinto"]
+      - ["Golpe al encender", "Falta el retardo del altavoz"]
+    exito: "Cinco síntomas, cinco causas que ya se han visto en el proyecto."
+    pistas:
+      - { texto: "La distorsión que empeora a bajo volumen es la de cruce." }
+    escalera:
+      - "Relacione cada síntoma con la sección del proyecto que lo trata: bias, masas, protecciones."
+    solucion: "Oscilación–Zobel/desacoplo; zumbido–masa/transformador; bajo volumen–bias; canal caliente–descompensación; golpe–retardo."
+
+  - id: empareje-cableado
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El cableado interno"
+    texto: "Con placas correctas y cableado descuidado, zumba. Una cada regla con lo que evita."
+    libro: [324, 326]
+    emparejar:
+      - ["Masa en estrella", "Corrientes de una etapa por la masa de otra"]
+      - ["Entrada apantallada y lejos del transformador", "El zumbido inducido en la señal pequeña"]
+      - ["Cables de altavoz trenzados", "Un bucle de área grande"]
+      - ["Alimentación de potencia separada de la de señal", "Que los picos lleguen al preamplificador"]
+    exito: "Ese es un fallo habitual en montajes caseros: las placas no lo arreglan."
+    pistas:
+      - { texto: "Trenzar o juntar dos cables reduce el área que encierran." }
+    escalera:
+      - "Todas buscan que nada ajeno se sume a la señal."
+    solucion: "Estrella–corrientes cruzadas; entrada apantallada–zumbido; trenzado–área; alimentación separada–picos."
+
+  - id: prediga-escalon
+    tipo: predecir
+    titulo: "La prueba que decide"
+    texto: "Con 100 nF a 1 µF en paralelo con la carga y un escalón pequeño, ¿qué respuesta da por bueno el amplificador?"
+    libro: [329]
+    widget:
+      tipo: figura
+      figura: fig-51.15
+      zonas:
+        - { id: escalon, rotulo: "La gráfica de la derecha", rect: [231, 19, 213, 162] }
+    opciones:
+      - texto: "Una sobreoscilación moderada y amortiguada"
+        bien: true
+        porque: "Si la oscilación se sostiene, el margen de fase es insuficiente: hay que corregirlo antes de usar altavoces."
+      - texto: "Una oscilación sostenida pequeña"
+        porque: "Sostenida, por pequeña que sea, delata un margen de fase insuficiente."
+      - texto: "Ninguna sobreoscilación: un escalón perfecto"
+        porque: "Una sobreoscilación moderada y que se amortigua es aceptable."
+    escalera:
+      - "Mire las dos respuestas de la figura: ¿cuál se apaga?"
+    solucion: "Moderada y amortiguada; sostenida, hay que corregir."
+
+  - id: pregunta-temperatura
+    tipo: pregunta
+    titulo: "La medida de temperatura"
+    texto: "Entre las medidas de validación está la temperatura del disipador. ¿A qué nivel de salida se mide?"
+    libro: [309, 314]
+    widget:
+      tipo: figura
+      figura: fig-51.15
+      zonas:
+        - { id: ultimos, rotulo: "Los pasos de abajo", rect: [0, 92, 188, 112] }
+    opciones:
+      - texto: "Con la salida al 64 % de la alimentación, unos 31 W"
+        bien: true
+        porque: "Es el punto de máxima disipación; la carga, una resistencia de alambre de 100 W."
+      - texto: "A plena potencia"
+        porque: "A plena potencia el transistor disipa menos que a media excursión."
+      - texto: "En reposo"
+        porque: "En reposo se comprueba el bias; la disipación máxima está con señal."
+    escalera:
+      - "¿Dónde estaba el máximo de la curva de disipación?"
+    solucion: "Al 64 % de la alimentación, unos 31 W en la carga."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [296, 303, 326, 329]
+    ideas:
+      - { titulo: "Por partes.", texto: "Alimentación, potencia sin señal con límite, bias, continua, señal, recorte, preamplificador, altavoz." }
+      - { titulo: "En caliente.", texto: "Bias y offset se reajustan tras media hora: unidades de milivoltios." }
+      - { titulo: "El cableado.", texto: "Masa en estrella, entrada apantallada y cables trenzados: si no, zumba." }
+      - { titulo: "La prueba.", texto: "Escalón con carga capacitiva: amortiguado, bien; sostenido, a corregir." }

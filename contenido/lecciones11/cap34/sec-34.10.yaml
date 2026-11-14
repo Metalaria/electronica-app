@@ -1,0 +1,237 @@
+# Lección 1.2 de la sección 35.10 «El Reloj de Muestreo: por qué su Jitter Limita al ADC» (cap34; etiqueta interna
+# sec-34.10). Formato: contenido/lecciones11/GUIA.md. La SNR limitada por el jitter es la ecuación del libro,
+# −20·log₁₀(2π·f·t_j); los valores de jitter del mando son los de la tabla de la sección (16 bits a 1 kHz, 100 kHz,
+# 1 MHz y 10 MHz), y el jitter máximo para medio LSB es Δt < 1/(2π·f·2ⁿ), de la sección 35.2.
+leccion: cap34/sec-34.10
+
+libro:
+  275: "la calidad del reloj limita más que el propio convertidor"
+  277: '"SNR"_("jitter") = - "20"'
+  278: "el jitter limita en proporción a la frecuencia de la señal, no a la de muestreo"
+  280: "0,24 ps"
+  284: "Su distribución es gaussiana, sin cota máxima"
+  285: "su firma en el espectro son espurios en lugar de un fondo elevado"
+  286: "el aleatorio exige un oscilador mejor; el determinista se elimina mejorando el trazado y el desacoplo"
+  291: "el ruido en la alimentación de un buffer se convierte directamente en jitter, porque desplaza su umbral de conmutación"
+  296: "Oscilador de bajo ruido de fase, que es lo caro y el último recurso"
+  297: "mucha gente compra el oscilador caro y lo estropea con el trazado"
+  300: "diez veces más estricto que el de una señal que ocupase la banda base de 0 a 11 MHz"
+  303: "Un suelo de ruido que sube al aumentar la frecuencia de la señal manteniendo todo lo demás es la firma inequívoca del jitter"
+  "cap34#53": "Δt < 1 / (2π · f · 2ⁿ)"
+
+modelo:
+  valores:
+    f_s: { sim: "f_{señal}", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000000 }
+    t_j: { sim: "t_{jitter}", nombre: "jitter del reloj", unidad: s, valor: 2.4e-12 }
+    n_j: { sim: "n", nombre: "bits", unidad: "", valor: 16 }
+    f_a: { sim: "f_{alta}", nombre: "frecuencia de la banda submuestreada", unidad: Hz, valor: 110000000 }
+    f_b: { sim: "f_{base}", nombre: "frecuencia de la banda base", unidad: Hz, valor: 11000000 }
+  calculos:
+    SNR_j: { expr: "-20*log10(2*pi*f_s*t_j)", sim: "SNR_{jitter}", nombre: "SNR limitada por el jitter", unidad: dB }
+    dt_m: { expr: "1/(2*pi*f_s*2^n_j)", sim: "Δt", nombre: "jitter máximo para medio LSB", unidad: s }
+    r_s: { expr: "f_a/f_b", sim: "relación", nombre: "cuánto más estricto", unidad: "" }
+
+tarjetas:
+  - id: explore-jitter
+    tipo: explorar
+    titulo: "El reloj manda"
+    texto: "La SNR que permite un reloj con jitter cae al subir la frecuencia de la señal. Cambie el jitter y la frecuencia."
+    libro: [275, 277]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 40, max: 160, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "Límite del jitter" }
+      marcas:
+        - { x: "f_s", y: "SNR_j", rotulo: "Su señal" }
+      lectura: { valor: SNR_j, rotulo: "SNR por jitter" }
+      mandos:
+        - { valor: t_j, lista: [2.4e-9, 24e-12, 2.4e-12], rotulo: "Jitter" }
+        - { valor: f_s, lista: [1000, 100000, 1000000, 10000000], rotulo: "Frecuencia de la señal" }
+    requiere: { mover: [t_j, f_s] }
+
+  - id: formula-jitter
+    tipo: formula
+    titulo: "La SNR del jitter"
+    texto: "El libro lo cuantifica directamente: cada década de frecuencia de señal cuesta 20 dB."
+    libro: [277]
+    ec: 277
+    sustitucion: "−20 · log₁₀(2π · {{f_s}} · {{t_j}}) = {{SNR_j}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 40, max: 160, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "Límite del jitter" }
+      marcas:
+        - { x: "f_s", y: "SNR_j", rotulo: "Su señal" }
+      lectura: { valor: SNR_j, rotulo: "SNR por jitter" }
+      mandos:
+        - { valor: f_s, lista: [1000, 100000, 1000000, 10000000], rotulo: "Frecuencia de la señal" }
+
+  - id: prediga-muestreo
+    tipo: predecir
+    titulo: "Muestrear más deprisa"
+    texto: "Con la misma señal y el mismo reloj ruidoso, se dobla la frecuencia de muestreo. ¿Qué le pasa al límite del jitter?"
+    libro: [278]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 40, max: 160, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "Límite del jitter" }
+      lectura: { valor: SNR_j, rotulo: "SNR por jitter" }
+      ocultar: true
+    opciones:
+      - { texto: "Nada: depende de la frecuencia de la señal, no de la de muestreo", bien: true, porque: "El error es la pendiente de la señal por el jitter: la frecuencia de muestreo no entra." }
+      - { texto: "Empeora: más muestras, más errores", porque: "La frecuencia de muestreo no aparece en la fórmula." }
+      - { texto: "Mejora, como con el sobremuestreo", porque: "Eso recuerda al sobremuestreo con el ruido de cuantificación; el jitter va con la frecuencia de la señal." }
+    escalera: ["Mire qué frecuencia aparece en la ecuación."]
+    solucion: "Nada: el jitter limita en proporción a la frecuencia de la señal."
+
+  - id: estime-diez
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "16 bits a 10 MHz"
+    texto: "¿Qué jitter máximo admite un convertidor de 16 bits con una señal de 10 MHz, para quedar bajo medio LSB?"
+    libro: [280, "cap34#53"]
+    fijar: { f_s: 10000000, n_j: 16 }
+    estimar:
+      objetivo: "dt_m"
+      unidad: s
+      min: 0
+      max: 1e-12
+      paso: 1e-14
+      inicio: 8e-13
+      tol: 0.06
+      rotulo: "Jitter máximo"
+    exito: "0,24 ps: diez veces menos que a 1 MHz. Un cristal común tiene picosegundos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.6e-13 }, texto: "Se ha pasado: a 1 MHz son 2,4 ps, y la frecuencia es diez veces mayor." }
+      - { texto: "Se ha quedado corto: es la décima parte de 2,4 ps, no la centésima." }
+    escalera: ["Δt es inversamente proporcional a la frecuencia."]
+    solucion: "1/(2π × 10 MHz × 2¹⁶) = 0,24 ps."
+    comprobar:
+      - { dt_m: 0.243e-12 }
+
+  - id: empareje-tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Dos clases de jitter"
+    texto: "Una cada rasgo con su clase de jitter."
+    libro: [284, 285, 286]
+    emparejar:
+      - ["Aleatorio", "Gaussiano, sin cota: un fondo de ruido elevado"]
+      - ["Determinista", "Acotado: espurios en el espectro"]
+      - ["Se cura con un oscilador mejor", "El aleatorio"]
+      - ["Se cura con trazado y desacoplo", "El determinista"]
+    exito: "La distinción orienta la solución."
+    pistas:
+      - { texto: "Las interferencias periódicas dejan espurios." }
+    escalera: ["El ruido de fase del oscilador es el aleatorio."]
+    solucion: "Aleatorio: fondo, oscilador; determinista: espurios, trazado."
+
+  - id: ordene-medidas
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Por orden de eficacia"
+    texto: "Ordene las medidas contra el jitter, de la más eficaz a la última."
+    libro: [296]
+    ordenar:
+      - "Alimentación limpia y dedicada para el oscilador y el buffer"
+      - "Trazado del reloj como señal crítica"
+      - "Distribuir el reloj lo menos posible"
+      - "Oscilador de bajo ruido de fase"
+    exito: "El oscilador caro es el último recurso."
+    pistas:
+      - { texto: "Lo caro va al final." }
+    escalera: ["La alimentación sucia de un buffer ya se convierte en jitter."]
+    solucion: "Alimentación, trazado, distribución mínima y, por último, el oscilador."
+
+  - id: porque-orden
+    tipo: porque
+    titulo: "El oscilador caro, al final"
+    texto: "¿Por qué el oscilador de bajo ruido de fase va el último?"
+    libro: [297]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 40, max: 160, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "Límite del jitter" }
+    opciones:
+      - { texto: "Porque se estropea con un mal trazado: el gasto no sirve de nada", bien: true, porque: "Casi nunca es el cristal; sin alimentación ni trazado limpios, el jitter viene de otro sitio." }
+      - { texto: "Porque no mejora el jitter", porque: "Lo mejora, pero solo si el resto del camino no añade el suyo." }
+      - { texto: "Porque es difícil de montar", porque: "El motivo es otro: mucha gente lo compra y lo estropea con el trazado." }
+    escalera: ["¿De dónde viene casi siempre el jitter en la práctica?"]
+    solucion: "Un mal trazado arruina el oscilador caro."
+
+  - id: pregunta-buffer
+    tipo: pregunta
+    titulo: "Un buffer con la alimentación sucia"
+    texto: "¿Por qué el ruido en la alimentación del buffer del reloj acaba como jitter?"
+    libro: [291]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 40, max: 160, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "Límite del jitter" }
+    opciones:
+      - { texto: "Desplaza su umbral de conmutación, y con él el instante del flanco", bien: true, porque: "Un umbral que se mueve adelanta o retrasa cada flanco." }
+      - { texto: "Porque cambia la frecuencia del cristal", porque: "El cristal sigue igual; lo que se mueve es dónde conmuta el buffer." }
+      - { texto: "No acaba como jitter", porque: "Sí: el libro lo señala como una de las fuentes habituales." }
+    escalera: ["¿Cuándo conmuta un buffer?"]
+    solucion: "El ruido desplaza el umbral y mueve los flancos."
+
+  - id: estime-submuestreo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Submuestrear la banda de 100 a 110 MHz"
+    texto: "Muestrear a 22 MS/s la banda de 100 a 110 MHz, frente a una de 0 a 11 MHz. ¿Cuántas veces más estricto es el jitter?"
+    libro: [300]
+    estimar:
+      objetivo: "r_s"
+      unidad: veces
+      min: 1
+      max: 50
+      paso: 0.5
+      inicio: 40
+      tol: 0.05
+      rotulo: "Veces más estricto"
+    exito: "Diez veces: el jitter admisible corresponde a la frecuencia de la señal, no a la de muestreo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.5 }, texto: "Se ha pasado: compare 110 MHz con 11 MHz." }
+      - { texto: "Se ha quedado corto: el reloj es el mismo, pero la señal es diez veces más rápida." }
+    escalera: ["Compare la frecuencia más alta de cada banda."]
+    solucion: "110/11 = 10 veces."
+    comprobar:
+      - { r_s: 10 }
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "La firma en el espectro"
+    texto: "Al subir la frecuencia de una senoide pura digitalizada, el suelo de ruido de la FFT sube con ella. ¿Qué es?"
+    libro: [303]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 40, max: 160, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "Límite del jitter" }
+    opciones:
+      - { texto: "Jitter: su firma inequívoca", bien: true, porque: "Si en vez de un fondo salen espurios simétricos alrededor de la portadora, es determinista." }
+      - { texto: "Ruido de cuantificación", porque: "El de cuantificación no depende de la frecuencia de la señal." }
+      - { texto: "Una interferencia de red", porque: "Una interferencia daría espurios, no un suelo que sube con la frecuencia." }
+    escalera: ["¿Qué error crece con la frecuencia de la señal?"]
+    solucion: "Jitter."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [275, 278, 286, 297]
+    ideas:
+      - { titulo: "La frecuencia de la señal.", texto: "El jitter limita en proporción a ella, no a la de muestreo." }
+      - { titulo: "Dos clases.", texto: "Aleatorio, un oscilador mejor; determinista, trazado y desacoplo." }
+      - { titulo: "El orden.", texto: "Alimentación, trazado y distribución antes que el oscilador caro." }

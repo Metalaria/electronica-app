@@ -1,0 +1,244 @@
+# Lección 1.2 de la sección 50.12 «Montaje, Puesta a Punto y Medidas» (cap49; etiquetas sec-49.N = impresas 50.N).
+# - La placa portadora del proyecto KiCad (figura 50.23, fig-new-49-placa): entrada de 5 V protegida, shunt de 0,1 Ω
+#   en el retorno con sus puntos de prueba, condensadores de reserva y la antena sin cobre debajo (bloque 388).
+# - El orden de montaje (bloques 391 a 396) y la validación en tres fases (bloque 417).
+# - Paso 3 del montaje, los buses: una línea I²C en reposo es un divisor entre la pull-up de 4,7 kΩ y lo que cuelga
+#   del bus (esquema «divisor»; la entrada del bus, 1 MΩ, es de ejemplo): sana, casi 3,3 V; pull-up abierta, la línea
+#   cae a cero sin corriente; un sensor que sujeta la línea en bajo (bus bloqueado, bloque 213), cero con los 0,7 mA de
+#   la pull-up (bloque 199). Las tensiones y corrientes de cada avería las da el modelo (comprobadas con ngspice).
+# Pasos prácticos: «averia» del bus en el paso 3 (orden fijo), «tocar» el shunt en la placa y «banco» opcional: la
+# meseta de la transmisión sobre el shunt de 0,1 Ω, unos 15 mV con 150 mA de media (± 30 %, de ejemplo: la media de la
+# transmisión es «unos 150 mA» y tiene picos).
+leccion: cap49/sec-49.12
+
+libro:
+  387: "La puesta a punto de la estación tiene un orden que evita destruir cosas y localizar problemas deprisa"
+  388: "un shunt de 0,1 Ω en el retorno con puntos de prueba para capturar el perfil de corriente de un ciclo"
+  389: "Cara superior de la placa portadora de la estación en el proyecto KiCad"
+  391: "1. La alimentación sola."
+  392: "2. El microcontrolador y el programa de parpadeo"
+  393: "3. Los buses, con un dispositivo cada vez"
+  394: "4. Los sensores, verificando lecturas plausibles antes de calibrar."
+  395: "5. La comunicación, primero por cable y después inalámbrica."
+  396: "6. La caja y el montaje final."
+  397: "Montarlo todo y encender es lo que convierte un problema localizable en una búsqueda"
+  399: "Tensiones de todos los raíles, en los pines de cada integrado"
+  400: "Consumo en cada modo: activo, durmiendo, transmitiendo"
+  401: "Lecturas de los sensores frente a una referencia conocida."
+  402: "Calidad de la señal inalámbrica en la posición definitiva, no en la mesa."
+  404: "linealizar y después calibrar"
+  411: "el sensor de temperatura lee alto porque la electrónica calienta la caja"
+  414: "Consumo mayor del previsto, por reintentos de conexión que no ocurrían en la mesa."
+  417: "funcional, en la mesa; de consumo"
+  418: "dejarlo instalado semanas antes de darlo por bueno"
+  420: "con una resistencia de sensado y el osciloscopio en disparo único"
+  422: "El orden de montaje y lo que aparece en campo y no en la mesa"
+  "cap49#199": "Con 3,3 V y 4,7 kΩ son 0,7 mA por línea"
+  "cap49#213": "Recuperación del bus bloqueado con los nueve pulsos"
+  "cap49#142": "unos 150 mA de media mientras se conecta y envía"
+
+modelo:
+  valores:
+    V_i: { sim: "3V3", nombre: "alimentación del bus", unidad: V, valor: 3.3 }
+    R_u: { sim: "R_{pull-up}", nombre: "pull-up de SDA", unidad: Ω, valor: 4700 }
+    R_d: { sim: "R_{bus}", nombre: "lo que cuelga de SDA", unidad: Ω, valor: 1e6 }
+    I_x: { sim: "I", nombre: "corriente media al transmitir", unidad: A, valor: 0.15 }
+    R_s: { sim: "R_{shunt}", nombre: "shunt de medida", unidad: Ω, valor: 0.1 }
+  calculos:
+    V_l: { expr: "V_i*R_d/(R_u + R_d)", sim: "V_{SDA}", nombre: "tensión de SDA en reposo", unidad: V }
+    I_d: { expr: "V_i/(R_u + R_d)", sim: "I_{pull-up}", nombre: "corriente de la pull-up", unidad: A }
+    V_h: { expr: "I_x*R_s", sim: "V_{shunt}", nombre: "caída en el shunt", unidad: V }
+
+tarjetas:
+  - id: explore-placa
+    tipo: explorar
+    titulo: "La placa portadora"
+    texto: "La placa del proyecto KiCad recibe la DevKit y los módulos, y añade lo que pide el capítulo. Toque la entrada, el shunt y la antena."
+    libro: [388, 389]
+    widget:
+      tipo: figura
+      figura: fig-new-49-placa
+      zonas:
+        - { id: entrada, rotulo: "Conector de abajo, en el centro", rect: [165, 150, 40, 45], texto: "J1: la entrada de 5 V, protegida con fusible rearmable, supresor y Schottky." }
+        - { id: shunt, rotulo: "Abajo a la derecha", rect: [196, 158, 36, 40], texto: "R10 y TP10: el shunt de 0,1 Ω en el retorno, para el perfil de corriente." }
+        - { id: antena, rotulo: "Hueco de arriba a la derecha", rect: [232, 18, 58, 42], texto: "La antena del ESP32 sobresale del borde, sin cobre debajo en ninguna cara." }
+        - { id: reserva, rotulo: "Condensadores grandes", rect: [195, 108, 40, 45], texto: "C2: reserva para los picos del wifi." }
+    requiere: { mover: [entrada, shunt, antena] }
+
+  - id: ordene-montaje
+    tipo: pregunta
+    titulo: "El orden de montaje"
+    texto: "Ordene el montaje de la estación."
+    libro: [387, 391, 392, 393, 394, 395, 396, 422]
+    widget:
+      tipo: figura
+      figura: fig-49.20
+      zonas:
+        - { id: orden, rotulo: "La figura", rect: [0, 0, 453, 226] }
+    ordenar:
+      - "La alimentación sola"
+      - "El microcontrolador y el parpadeo"
+      - "Los buses, un dispositivo cada vez"
+      - "Los sensores, con lecturas plausibles"
+      - "La comunicación, por cable y luego inalámbrica"
+      - "La caja y el montaje final"
+    exito: "Cada paso se verifica antes del siguiente: montarlo todo y encender convierte un problema en una búsqueda."
+    pistas:
+      - { texto: "Un error en la alimentación destruye todo lo demás: va primero." }
+    escalera:
+      - "Del raíl al núcleo, del núcleo al bus, del bus a los sensores, y la caja al final."
+    solucion: "Alimentación, micro, buses, sensores, comunicación, caja."
+
+  - id: averia-bus
+    tipo: averia
+    titulo: "El bus no responde"
+    texto: "Paso 3 del montaje: al añadir el sensor, el bus deja de responder. Mida SDA en reposo y la corriente de su pull-up, y encuentre la causa."
+    nota: "La carga del bus, 1 MΩ, es de ejemplo."
+    libro: [393, "cap49#199", "cap49#213"]
+    fijar: { V_i: 3.3, R_u: 4700, R_d: 1e6 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_i, arriba: R_u, abajo: R_d }
+      mide: { salida: V_l, corriente: I_d }
+      mandos: []
+    averia:
+      pasos: 2
+      eleccion: fija
+      preguntar_tipo: false
+      sospechosos:
+        - { id: arriba, rotulo: "La pull-up de SDA" }
+        - { id: abajo, rotulo: "El sensor recién añadido" }
+      sondas:
+        - { id: salida, rotulo: "SDA en reposo", valor: V_l }
+        - { id: corriente, rotulo: "Corriente de la pull-up", valor: I_d }
+      fallos:
+        - { id: sensor-sujeta, pieza: abajo, tipo: corto, con: { R_d: 0.001 }, texto: "El sensor sujeta SDA en bajo: la línea a cero con los 0,7 mA de la pull-up. Bus bloqueado: nueve pulsos de reloj, o reinicie el sensor." }
+        - { id: pullup-abierta, pieza: arriba, tipo: abierta, con: { R_u: 1e9 }, texto: "La pull-up no está: la línea cae a cero y no circula corriente. Nadie la sube." }
+    exito: "Las dos dejan SDA en bajo; la corriente las separa. Por eso se añade un dispositivo cada vez."
+    escalera:
+      - "Sano, SDA está casi en 3,3 V. Si está en cero, ¿circula corriente por la pull-up?"
+    solucion: "Con corriente, un sensor sujeta la línea; sin corriente, falta la pull-up."
+    comprobar:
+      - { V_l: 3.28, I_d: 3.28e-6, tol: 0.01 }
+      - { con: { R_d: 0.001 }, I_d: 0.0007, tol: 0.01 }
+
+  - id: empareje-medidas
+    tipo: pregunta
+    titulo: "Las medidas de puesta a punto"
+    texto: "Empareje cada medida de la puesta a punto con dónde o cómo se hace."
+    libro: [399, 400, 401, 402]
+    widget:
+      tipo: figura
+      figura: fig-49.20
+      zonas:
+        - { id: orden, rotulo: "La figura", rect: [0, 0, 453, 226] }
+    emparejar:
+      - ["Tensiones de los raíles", "En los pines de cada integrado"]
+      - ["Consumo", "Activo, durmiendo y transmitiendo"]
+      - ["Sensores", "Frente a una referencia conocida"]
+      - ["Señal inalámbrica", "En la posición definitiva"]
+    exito: "El consumo medido se compara con lo estimado: de ahí sale la autonomía real."
+    pistas:
+      - { texto: "La radio se mide donde va a quedar, no en la mesa." }
+    escalera:
+      - "Cada medida se hace donde de verdad importa."
+    solucion: "Raíles, en los pines; consumo, en cada modo; sensores, con referencia; radio, en su sitio."
+
+  - id: toque-shunt
+    tipo: tocar
+    titulo: "Dónde medir el perfil"
+    texto: "Para capturar el perfil de corriente de un ciclo hace falta una resistencia de sensado. Tóquela en la placa."
+    libro: [388, 420]
+    widget:
+      tipo: figura
+      figura: fig-new-49-placa
+      zonas:
+        - { id: entrada, rotulo: "Conector de abajo, en el centro", rect: [165, 150, 40, 45] }
+        - { id: shunt, rotulo: "Abajo a la derecha", rect: [196, 158, 36, 40] }
+        - { id: antena, rotulo: "Hueco de arriba a la derecha", rect: [232, 18, 58, 42] }
+        - { id: sensores, rotulo: "Conectores de la izquierda", rect: [15, 35, 30, 125] }
+    tocar:
+      bien: [shunt]
+      porque:
+        entrada: "Es la entrada de 5 V protegida: por ahí entra la corriente, pero no se mide."
+        antena: "Es el hueco de la antena: sin cobre debajo."
+        sensores: "Son los conectores de los módulos de sensores."
+    exito: "R10, de 0,1 Ω en el retorno, con TP10: la tensión en él es la corriente de la placa."
+    escalera:
+      - "Busque la resistencia con un punto de prueba al lado, en el retorno."
+    solucion: "R10 y TP10, abajo a la derecha."
+
+  - id: banco-perfil
+    tipo: banco
+    titulo: "La meseta de la transmisión"
+    texto: "Con el osciloscopio en disparo único sobre el shunt de 0,1 Ω, capture un ciclo y mida la meseta de la transmisión."
+    nota: "La tolerancia del ± 30 % es de ejemplo."
+    libro: [420, 388, "cap49#142"]
+    fijar: { I_x: 0.15, R_s: 0.1 }
+    banco:
+      piezas: ["La estación en la placa portadora", "Osciloscopio entre TP10 y masa", "Disparo único"]
+      medir: "La tensión media de la meseta de la transmisión, sin los picos."
+      esperado: V_h
+      unidad: V
+      tol: 0.3
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.3 }, texto: "Mide de más: ¿está midiendo los picos y no la meseta? Si no, la radio tarda en conectar: mire los reintentos." }
+        - { cuando: { valor: desviacion, menor: -0.3 }, texto: "Mide de menos: compruebe que captura la transmisión y no la medida." }
+        - { texto: "Dentro. Integre el perfil entero y compare la media con el presupuesto." }
+    comprobar:
+      - { V_h: 0.015 }
+
+  - id: pregunta-campo
+    tipo: predecir
+    titulo: "Lo que no aparece en la mesa"
+    texto: "Instalada, la estación consume más de lo previsto, y en la mesa no pasaba. ¿Causa más probable?"
+    libro: [414, 411]
+    widget:
+      tipo: figura
+      figura: fig-49.20
+      zonas:
+        - { id: orden, rotulo: "La figura", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Reintentos de conexión que no ocurrían en la mesa"
+        bien: true
+        porque: "En su posición real la señal es peor y la radio tarda más: la fase más cara se alarga."
+      - texto: "El sensor de temperatura"
+        porque: "El sensor lee alto por el calor de la caja, pero no dispara el consumo."
+      - texto: "Las pilas, por el frío"
+        porque: "El frío baja la capacidad, no sube el consumo."
+    escalera:
+      - "¿Qué fase del ciclo depende de la calidad de la señal?"
+    solucion: "Reintentos de conexión."
+
+  - id: porque-semanas
+    tipo: porque
+    titulo: "La prueba que no se salta"
+    texto: "Funciona en la mesa y el consumo cuadra. ¿Por qué dejarla instalada semanas antes de darla por buena?"
+    libro: [417, 418]
+    widget:
+      tipo: figura
+      figura: fig-49.20
+      zonas:
+        - { id: orden, rotulo: "La figura", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Es la única que descubre los fallos que dependen del tiempo y del ambiente"
+        bien: true
+        porque: "Condensación de madrugada, alcance real, insectos: saltársela es por qué muchos proyectos fallan en su sitio."
+      - texto: "Para gastar las pilas"
+        porque: "Lo que se busca son fallos de campo, no gastar energía."
+      - texto: "No hace falta si la mesa va bien"
+        porque: "La mesa no tiene ni sol, ni madrugadas, ni paredes."
+    escalera:
+      - "¿Qué cambia entre la mesa y el tejado a lo largo de semanas?"
+    solucion: "Los fallos de tiempo y ambiente solo aparecen en campo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [397, 404, 418, 420]
+    ideas:
+      - { titulo: "En orden.", texto: "Alimentación, micro, buses de uno en uno, sensores, comunicación y caja." }
+      - { titulo: "El bus.", texto: "SDA en bajo: con corriente, alguien la sujeta; sin ella, falta la pull-up." }
+      - { titulo: "El perfil.", texto: "Shunt y disparo único: el consumo medio real." }
+      - { titulo: "Campo.", texto: "Semanas instalada antes de darla por buena." }

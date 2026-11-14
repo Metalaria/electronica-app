@@ -1,0 +1,281 @@
+# Lección 1.2 de la sección 38.11 «Caso de Estudio: Recrear una Consola de 8 Bits en Lógica» (cap37; etiqueta
+# interna sec-37.11). Formato: contenido/lecciones11/GUIA.md (§11). La placa de la NES (foto de la figura 38.16,
+# 1600 × 1166 px; zonas ampliadas alrededor de las cajas X1, U6, U5 y P1 del explorador «Consolas», para que se puedan
+# tocar en un teléfono). Un solo dominio con habilitaciones (bloque
+# 336) se ve con el reloj de la PPU y un contador de módulo 3 que habilita la CPU un ciclo de cada tres. El espejado
+# (bloques 358–359) se ve con la selección de la RAM: en $0000–$1FFF las líneas A15, A14 y A13 valen 0, y A12 y A11
+# no se decodifican. Figuras 38.13 (450,72 × 263,52) y 38.15 (453,6 × 205,2).
+leccion: cap37/sec-37.11
+
+libro:
+  327: "una recreación que no sea precisa al ciclo falla de formas visibles"
+  330: "Todo el sistema cuelga de un único cristal de 21,477272 MHz"
+  331: '"CPU" = ("21,477272 MHz")/("12") = "1,789773 MHz"'
+  332: "PPU = 21,477272 MHz / 4 = 5,369318 MHz"
+  334: '("PPU")/("CPU") = "3" space "exactamente"'
+  335: "Tres ciclos de PPU por cada ciclo de CPU."
+  336: "señales de habilitación que activan cada bloque en su ciclo"
+  342: '("89 342")/("3") = "29 780,67"'
+  343: "Cualquier implementación que redondee acumula deriva."
+  358: "Espejo de la anterior, tres veces"
+  359: "la decodificación de direcciones es incompleta, se ignoran las líneas altas"
+  360: "49 120 de las 65 536 direcciones"
+  383: "El mapa de la CPU solo deja 32 kB para el programa"
+  384: "un circuito que conmuta bancos de memoria bajo el control del programa"
+  376: "Es un temporizador construido con el propio haz."
+  377: "la línea de corte se desplaza y el marcador tiembla"
+  421: "Los enemigos parpadean mal o desaparecen"
+  419: "La pantalla tiembla en la línea de corte"
+  420: "Columnas de gráficos desplazadas ocho píxeles"
+  422: "Algunos juegos no arrancan"
+  423: "El sonido suena metálico"
+  424: "Deriva lenta respecto al original"
+  415: "la cadena completa desde el botón hasta el píxel puede quedar por debajo de un cuadro"
+  416: "no hay capas de software entre el mando y la lógica"
+  428: "suele ser de dos a cuatro cuadros"
+  429: "Arquitectura del sistema, con el reloj maestro y la relación entera entre dominios."
+  431: "El impacto del objeto cero usado como temporizador para partir la pantalla."
+  432: "Placa base de la NES original"
+
+modelo:
+  valores:
+    f_x: { sim: "f_{cristal}", nombre: "cristal maestro", unidad: Hz, valor: 21477272 }
+  calculos:
+    f_cpu: { expr: "f_x/12", sim: "f_{CPU}", nombre: "reloj de la CPU", unidad: Hz, cifras: 7 }
+    f_ppu: { expr: "f_x/4", sim: "f_{PPU}", nombre: "reloj de la PPU", unidad: Hz, cifras: 7 }
+    relacion: { expr: "f_ppu/f_cpu", nombre: "ciclos de PPU por ciclo de CPU", cifras: 3 }
+
+tarjetas:
+  - id: toque-cristal
+    tipo: tocar
+    titulo: "Un único cristal"
+    texto: "En la placa de la NES, todo el sistema cuelga de un único cristal. Tóquelo."
+    libro: [330, 432]
+    widget:
+      tipo: figura
+      figura: fig-37.16
+      zonas:
+        - { id: cristal, rect: [400, 100, 140, 130], rotulo: "Pieza pequeña, arriba" }
+        - { id: cpu, rect: [100, 420, 390, 150], rotulo: "Chip largo, a la izquierda" }
+        - { id: ppu, rect: [640, 340, 390, 140], rotulo: "Chip largo, en el centro" }
+        - { id: cartucho, rect: [85, 775, 1010, 175], rotulo: "Conector ancho, abajo" }
+    tocar:
+      bien: [cristal]
+      porque:
+        cpu: "Es la CPU RP2A03G: recibe un reloj, no lo genera."
+        ppu: "Es la PPU RP2C02G-0: su reloj sale del mismo cristal."
+        cartucho: "Es el conector de cartuchos de 72 contactos."
+    exito: "El cristal maestro de 21,477272 MHz: de él salen la CPU y la PPU por división entera."
+    escalera: ["Busque un componente metálico pequeño cerca de la CPU."]
+    solucion: "Arriba: el cristal maestro X1, de 21,477272 MHz."
+
+  - id: prediga-relacion
+    tipo: predecir
+    titulo: "PPU y CPU"
+    texto: "La CPU recibe el cristal dividido entre 12 y la PPU, entre 4. ¿Qué relación hay entre sus ciclos?"
+    libro: [331, 332, 335]
+    widget:
+      tipo: figura
+      figura: fig-37.16
+      zonas:
+        - { id: cristal, rect: [400, 100, 140, 130], rotulo: "Pieza pequeña, arriba", texto: "Cristal maestro de 21,477272 MHz." }
+    opciones:
+      - { texto: "Tres ciclos de PPU por ciclo de CPU, exactamente", bien: true, porque: "Es una división del mismo reloj: fase fija, sin deriva, y el software lo aprovecha." }
+      - { texto: "Una relación no entera que deriva", porque: "Derivaría con dos cristales. Aquí los dos salen del mismo por división entera." }
+      - { texto: "Cuatro por cada uno", porque: "El 4 es el divisor de la PPU; la relación es 12 / 4." }
+    escalera: ["Divida un divisor entre el otro."]
+    solucion: "12 / 4 = 3 exactamente: tres ciclos de PPU por cada ciclo de CPU."
+
+  - id: formula-relacion
+    tipo: formula
+    titulo: "El número que lo gobierna todo"
+    texto: "Los dos relojes salen del mismo cristal: su cociente es exacto."
+    libro: [331, 332, 334, 429]
+    ec: 334
+    sustitucion: "{{f_ppu}} / {{f_cpu}} = {{relacion}}"
+    widget:
+      tipo: figura
+      figura: fig-37.13
+      zonas:
+        - { id: cristal, rotulo: "Recuadro naranja de la izquierda", rect: [4, 66, 76, 44], texto: "Cristal de 21,477272 MHz." }
+        - { id: cpu, rotulo: "Recuadro de arriba en el centro", rect: [143, 7, 107, 60], texto: "CPU: el cristal entre 12, 1,789773 MHz." }
+        - { id: ppu, rotulo: "Recuadro de abajo en el centro", rect: [143, 93, 107, 61], texto: "PPU: el cristal entre 4, 5,369318 MHz." }
+    comprobar:
+      - { f_cpu: 1789773, f_ppu: 5369318, relacion: 3 }
+
+  - id: explore-un-dominio
+    tipo: explorar
+    titulo: "Un solo dominio"
+    texto: "En la FPGA, un solo reloj (el de la PPU) y un contador que habilita la CPU un ciclo de cada tres. Mueva el cursor."
+    libro: [335, 336]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Reloj de PPU" }]
+      piezas:
+        - { id: cnt, tipo: contador, bits: 2, modulo: 3, entradas: [CLK], rotulo: "Cuenta de PPU" }
+      salidas:
+        - { id: ENCPU, de: cnt.q1, rotulo: "Habilita CPU" }
+      cronograma: { ciclos: 12, senales: [CLK, ENCPU] }
+
+  - id: porque-dos-relojes
+    tipo: porque
+    titulo: "Dos relojes derivados"
+    texto: "¿Por qué no se generan en la FPGA un reloj para la CPU y otro para la PPU?"
+    libro: [336, 429]
+    widget:
+      tipo: figura
+      figura: fig-37.13
+      zonas:
+        - { id: cuenta, rotulo: "Recuadro verde de abajo", rect: [4, 167, 443, 92], texto: "Un solo dominio de reloj con señales de habilitación." }
+    opciones:
+      - { texto: "Aparecerían cruces de dominio que el original no tiene", bien: true, porque: "Un solo dominio y habilitaciones reproducen la fase fija del original." }
+      - { texto: "Porque la FPGA solo admite un reloj", porque: "Admite varios, con sus PLL; el problema es crear cruces que no existían." }
+      - { texto: "Porque gastaría más LUT", porque: "No es por recursos: es por la relación de fase entre CPU y PPU." }
+    escalera: ["¿Qué hay que tratar cada vez que una señal pasa de un reloj a otro?"]
+    solucion: "Un reloj derivado crea cruces de dominio donde el original no los tiene: es el error de principiante."
+
+  - id: prediga-redondeo
+    tipo: predecir
+    titulo: "29 780,67 ciclos"
+    texto: "Un cuadro son 89 342 ciclos de PPU, 29 780,67 de CPU, y una recreación lo redondea a un entero. ¿Qué pasa?"
+    libro: [327, 342, 343]
+    widget:
+      tipo: figura
+      figura: fig-37.13
+      zonas:
+        - { id: cuenta, rotulo: "Recuadro verde de abajo", rect: [4, 167, 443, 92], texto: "Un número fraccionario de ciclos de CPU por cuadro." }
+    opciones:
+      - { texto: "Acumula deriva respecto al original", bien: true, porque: "La CPU no ejecuta un número entero de ciclos por cuadro, y el software contaba con ello." }
+      - { texto: "Nada: es un error de redondeo despreciable", porque: "No es un error de redondeo: cada cuadro se arrastra la diferencia." }
+      - { texto: "La imagen deja de sincronizar", porque: "La PPU sigue su barrido; lo que se desvía es la CPU respecto a él, poco a poco." }
+    escalera: ["¿Qué pasa con una pequeña diferencia repetida en cada cuadro?"]
+    solucion: "Acumula deriva: el síntoma es una deriva lenta respecto al original."
+
+  - id: explore-espejos
+    tipo: explorar
+    titulo: "Los espejos"
+    texto: "La RAM se elige con A15, A14 y A13 a cero; A12 y A11 no se miran. Mueva A11 y A12: la RAM sigue elegida."
+    libro: [358, 359]
+    widget:
+      tipo: logica
+      entradas: [A15, A14, A13, A12, A11]
+      piezas:
+        - { id: sel, tipo: nor, entradas: [A15, A14, A13], rotulo: "Decodificador" }
+      salidas:
+        - { id: RAM, de: sel }
+    requiere: { mover: [A11, A12] }
+
+  - id: pregunta-espejos
+    tipo: pregunta
+    titulo: "¿Por qué hay espejos?"
+    texto: "La RAM de 2 kB aparece repetida en el mapa, tres veces más. ¿Por qué?"
+    libro: [358, 359]
+    widget:
+      tipo: logica
+      entradas: [A15, A14, A13, A12, A11]
+      piezas:
+        - { id: sel, tipo: nor, entradas: [A15, A14, A13], rotulo: "Decodificador" }
+      salidas:
+        - { id: RAM, de: sel }
+    opciones:
+      - { texto: "La decodificación es incompleta: se ignoran las líneas altas", bien: true, porque: "Varias direcciones distintas eligen la misma celda. Y el software los usa: hay que reproducirlos." }
+      - { texto: "Para duplicar la RAM por seguridad", porque: "No hay más RAM: es la misma, vista en varias direcciones." }
+      - { texto: "Porque el cartucho la copia", porque: "El cartucho está de $4020 en adelante; el espejo sale del decodificador." }
+    escalera: ["¿Qué pasa con las líneas de dirección que el decodificador no mira?"]
+    solucion: "Decodificación incompleta: se ignoran líneas, y la misma RAM responde en varias direcciones."
+
+  - id: pregunta-mapeador
+    tipo: pregunta
+    titulo: "Lógica en el cartucho"
+    texto: "El mapa de la CPU solo deja 32 kB para el programa, y los juegos llegaron a ser mucho mayores. ¿Qué se hizo?"
+    libro: [360, 383, 384]
+    widget:
+      tipo: figura
+      figura: fig-37.13
+      zonas:
+        - { id: cartucho, rotulo: "Recuadro rojo de la derecha", rect: [360, 7, 87, 147], texto: "PRG-ROM, mapeador y CHR-ROM: casi tres cuartas partes del espacio de la CPU." }
+    opciones:
+      - { texto: "Un mapeador en el cartucho que conmuta bancos de memoria", bien: true, porque: "Bajo el control del programa: cada cartucho añade hardware a la máquina." }
+      - { texto: "Una CPU más potente en el cartucho", porque: "La CPU sigue siendo la de la consola; el cartucho añade lógica de bancos." }
+      - { texto: "Comprimir el programa", porque: "No hay descompresión: se conmutan bancos de memoria." }
+    escalera: ["Si no cabe todo a la vez, ¿cómo se ve una parte cada vez?"]
+    solucion: "Mapeadores: lógica en el cartucho que conmuta bancos de memoria."
+
+  - id: ordene-objeto-cero
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Un temporizador con el haz"
+    texto: "Ordene cómo parte la pantalla el programa con el impacto del objeto cero."
+    libro: [376, 431]
+    ordenar:
+      - "Coloca el objeto cero, invisible, en el borde de la línea de corte."
+      - "Espera en un bucle a que se active el bit de impacto."
+      - "Escribe el nuevo desplazamiento justo en ese instante."
+      - "La PPU sigue barriendo y el resto de la pantalla se mueve."
+    exito: "Un temporizador construido con el propio haz: un marcador fijo arriba y un fondo que se mueve abajo."
+    pistas:
+      - { texto: "El bit solo puede activarse si el objeto ya está colocado." }
+    escalera: ["Esperar el bit va antes de escribir el desplazamiento."]
+    solucion: "Colocar el objeto, esperar el bit, escribir el desplazamiento y dejar que la PPU siga."
+
+  - id: pregunta-tiembla
+    tipo: pregunta
+    titulo: "Un ciclo de desfase"
+    texto: "En una recreación, el bit del objeto cero se activa un ciclo tarde. ¿Qué se ve?"
+    libro: [377, 431]
+    widget:
+      tipo: figura
+      figura: fig-37.15
+      zonas:
+        - { id: marcador, rotulo: "Franja de arriba", rect: [19, 8, 186, 36], texto: "El marcador fijo, sobre la línea de corte." }
+    opciones:
+      - { texto: "La línea de corte se desplaza y el marcador tiembla", bien: true, porque: "Es el fallo que delata inmediatamente una implementación imprecisa." }
+      - { texto: "Nada: un ciclo no se nota", porque: "Es una consola exigente al ciclo: un ciclo mueve la línea de corte." }
+      - { texto: "El juego no arranca", porque: "Eso es un mapeador que falta; aquí arranca y tiembla." }
+    escalera: ["¿Qué marca el bit de impacto en la pantalla?"]
+    solucion: "La línea de corte se desplaza y el marcador tiembla."
+
+  - id: empareje-errores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los errores característicos"
+    texto: "Una cada síntoma de una recreación con su causa."
+    libro: [419, 420, 421, 422, 423, 424]
+    emparejar:
+      - ["Columnas desplazadas ocho píxeles", "Falta el adelanto del pipeline de fondo"]
+      - ["Algunos juegos no arrancan", "Falta su mapeador"]
+      - ["Enemigos que parpadean mal", "La evaluación de objetos por línea"]
+      - ["Sonido metálico", "La mezcla se ha hecho lineal"]
+      - ["Deriva lenta respecto al original", "Se ha redondeado la cuenta de ciclos por cuadro"]
+    exito: "Sirven de lista de comprobación de una recreación."
+    pistas:
+      - { texto: "La mezcla original era no lineal, con resistencias." }
+    escalera: ["Cada cartucho añade hardware: sin él, ese juego no arranca."]
+    solucion: "Columnas: pipeline. No arranca: mapeador. Metálico: mezcla lineal. Deriva: redondeo de ciclos."
+
+  - id: pregunta-latencia
+    tipo: pregunta
+    titulo: "En el banco: la latencia"
+    texto: "Con un mando instrumentado y un fotodiodo se mide del botón al píxel, en la recreación y en un emulador. ¿Qué diferencia espera?"
+    libro: [415, 416, 428]
+    widget:
+      tipo: figura
+      figura: fig-37.16
+      zonas:
+        - { id: cpu, rect: [100, 420, 390, 150], rotulo: "Chip largo, a la izquierda", texto: "La CPU original: lee el mando sin capas de software." }
+    opciones:
+      - { texto: "De dos a cuatro cuadros menos en la recreación", bien: true, porque: "No hay capas de software entre el mando y la lógica: puede quedar por debajo de un cuadro." }
+      - { texto: "Ninguna: los dos dibujan lo mismo", porque: "La imagen puede ser igual; el tiempo de respuesta no." }
+      - { texto: "El emulador responde antes, por ser más moderno", porque: "Un emulador sobre un sistema operativo raramente baja de tres o cuatro cuadros." }
+    escalera: ["¿Qué hay entre el botón y la lógica en un emulador sobre un sistema operativo?"]
+    solucion: "De dos a cuatro cuadros: el sistema responde cuando debe, sin capas de software."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [334, 336, 343, 359]
+    ideas:
+      - { titulo: "Un cristal.", texto: "CPU y PPU salen por división entera: tres ciclos de PPU por cada uno de CPU." }
+      - { titulo: "Un dominio.", texto: "En la FPGA, un reloj y habilitaciones, no relojes derivados." }
+      - { titulo: "Precisión al ciclo.", texto: "Redondear deriva; un ciclo de desfase hace temblar la pantalla." }
+      - { titulo: "Espejos y mapeadores.", texto: "Decodificación incompleta y lógica dentro del cartucho." }

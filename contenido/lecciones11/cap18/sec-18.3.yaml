@@ -1,0 +1,204 @@
+# Lección 1.2 de la sección 17.3 «Control del Hardware con Python» (cap18; etiquetas sec-18.N = impresas 17.N).
+# - La latencia al escribir un pin desde un sistema operativo y lo que se puede hacer bien, sobre la figura 17.7
+#   (fig-18.7, fichero 18.6.svg), con zonas.
+# - Sin modelo numérico.
+# Paso práctico: «tocar» la forma correcta de hablar con un periférico exigente (los buses en hardware).
+leccion: cap18/sec-18.3
+
+libro:
+  73: "la petición atraviesa la biblioteca, el sistema operativo y su controlador"
+  74: "normalmente decenas de microsegundos, y ocasionalmente milisegundos si el planificador decide otra cosa"
+  76: "nada que exija temporización estricta debe hacerse así"
+  78: "Leer y escribir pines a ritmos de kilohercios, sin problema"
+  79: "sirve para un pulsador, no para contar pulsos rápidos"
+  80: "Es la forma correcta de hablar con cualquier periférico exigente"
+  81: "el PWM por software tiene el mismo problema de temporización que todo lo demás"
+  84: "Ejecutarlo todo con privilegios de administrador funciona y es mala práctica"
+  87: "Sin eso, matar el programa deja un motor girando"
+  90: "Mover lo crítico a un microcontrolador"
+  93: "mucho más revelador, la irregularidad"
+  94: "Distribución de la latencia al escribir un pin desde un sistema operativo"
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-latencia
+    tipo: explorar
+    titulo: "La dispersión, no la lentitud"
+    texto: "Cien mil escrituras de un pin: microcontrolador frente a sistema operativo. Toque la gráfica y los recuadros."
+    libro: [73, 74, 94]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: micro, rotulo: "Barra verde, a la izquierda", rect: [50, 30, 36, 155], texto: "El microcontrolador escribe un registro: siempre lo mismo, nanosegundos." }
+        - { id: so, rotulo: "Pico rojo del centro", rect: [130, 55, 50, 130], texto: "Con sistema operativo, la petición atraviesa biblioteca, sistema y controlador: decenas de microsegundos." }
+        - { id: cola, rotulo: "Cola roja, a la derecha", rect: [185, 85, 55, 100], texto: "A veces, milisegundos: el planificador hizo otra cosa." }
+        - { id: bien, rotulo: "Recuadros verdes, a la derecha", rect: [267, 28, 170, 114], texto: "Pines a kilohercios, buses y PWM por hardware: eso se hace bien." }
+    requiere: { mover: [so, cola] }
+
+  - id: predecir-cola
+    tipo: predecir
+    titulo: "Lo preocupante"
+    texto: "Escribe un pin desde Python cien mil veces. ¿Qué es lo que impide la temporización estricta?"
+    libro: [74, 76]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [35, 18, 210, 170] }
+    opciones:
+      - texto: "Las escrituras ocasionales de milisegundos"
+        bien: true
+        porque: "La latencia es variable: nada que exija temporización estricta debe hacerse así."
+      - texto: "Que cada escritura tarde decenas de microsegundos"
+        porque: "Lento pero constante se podría compensar; lo que rompe es la dispersión."
+      - texto: "Que Python sea interpretado"
+        porque: "El problema es el planificador del sistema operativo, no el lenguaje."
+    escalera:
+      - "Mire la cola de la derecha de la gráfica."
+    solucion: "La dispersión: milisegundos de vez en cuando."
+
+  - id: toque-buses
+    tipo: tocar
+    titulo: "Un periférico exigente"
+    texto: "Debe hablar con un sensor de temporización exigente. Toque la forma correcta de hacerlo desde la Pi."
+    libro: [80, 94]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: pines, rotulo: "Primer recuadro verde", rect: [267, 28, 170, 36] }
+        - { id: buses, rotulo: "Segundo recuadro verde", rect: [267, 68, 170, 36] }
+        - { id: pwm, rotulo: "Tercer recuadro verde", rect: [267, 106, 170, 36] }
+        - { id: estricta, rotulo: "Recuadro rojo", rect: [267, 145, 170, 36] }
+    tocar:
+      bien: [buses]
+      porque:
+        pines: "Leer y escribir pines a kilohercios va bien, pero un protocolo exigente pide más."
+        pwm: "El PWM por hardware genera una señal, no habla con un sensor."
+        estricta: "Eso es justo lo que no se puede hacer por software."
+    exito: "Los buses, en hardware: dentro de cada transferencia la temporización la marca el periférico."
+    escalera:
+      - "Busque lo que hace el hardware, no el planificador."
+    solucion: "Los buses: I²C, SPI y serie."
+
+  - id: pregunta-interrupcion
+    tipo: pregunta
+    titulo: "Interrupciones de un pin"
+    texto: "Desde Python, atiende la interrupción de un pin. ¿Para qué sirve?"
+    libro: [79]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: cola, rotulo: "Cola roja, a la derecha", rect: [185, 85, 55, 100] }
+    opciones:
+      - texto: "Para un pulsador, no para contar pulsos rápidos"
+        bien: true
+        porque: "La latencia no está acotada: entre dos pulsos rápidos puede perderse alguno."
+      - texto: "Para contar pulsos de cualquier frecuencia"
+        porque: "La latencia no está acotada: los pulsos rápidos se pierden."
+      - texto: "Para nada: no hay interrupciones"
+        porque: "Sí las hay; lo que no hay es latencia garantizada."
+    escalera:
+      - "¿Está acotado lo que tarda en atenderla?"
+    solucion: "Para un pulsador."
+
+  - id: predecir-pwm
+    tipo: predecir
+    titulo: "PWM por software"
+    texto: "Genera un PWM con un bucle en Python. ¿Cómo sale?"
+    libro: [81]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: pwm, rotulo: "Tercer recuadro verde", rect: [267, 106, 170, 36] }
+    opciones:
+      - texto: "Irregular, con el mismo problema de temporización"
+        bien: true
+        porque: "Solo el PWM por hardware, en los pines que lo tienen, escapa del planificador."
+      - texto: "Igual que el de hardware"
+        porque: "El bucle depende del planificador: la señal sale irregular."
+      - texto: "Bien, si el bucle es corto"
+        porque: "Aunque sea corto, el planificador lo interrumpe cuando quiere."
+    escalera:
+      - "¿Quién decide cuándo corre el bucle?"
+    solucion: "Irregular: use el PWM por hardware."
+
+  - id: pregunta-permisos
+    tipo: pregunta
+    titulo: "Permisos"
+    texto: "El programa no puede abrir el pin por falta de permisos. ¿Qué hace?"
+    libro: [84]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: bien, rotulo: "Recuadros verdes, a la derecha", rect: [267, 28, 170, 114] }
+    opciones:
+      - texto: "Añadir el usuario al grupo adecuado"
+        bien: true
+        porque: "Ejecutarlo todo como administrador funciona y es mala práctica: es lo que aprovecharía un atacante."
+      - texto: "Ejecutarlo como administrador"
+        porque: "Funciona, pero si falla o está en la red, ese privilegio es lo que se aprovecha."
+      - texto: "Escribir en el registro directamente"
+        porque: "El acceso está restringido por el sistema: la vía es el grupo adecuado."
+    escalera:
+      - "El acceso al hardware está restringido a un grupo."
+    solucion: "Pertenecer al grupo adecuado, no ejecutar como administrador."
+
+  - id: porque-motor
+    tipo: porque
+    titulo: "Un motor girando"
+    texto: "Mata el programa que gobierna un motor y el motor sigue girando. ¿Por qué?"
+    libro: [87]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: bien, rotulo: "Recuadros verdes, a la derecha", rect: [267, 28, 170, 114] }
+    opciones:
+      - texto: "No liberó el pin ni apagó las salidas al terminar"
+        bien: true
+        porque: "Hay que usar construcciones que liberan aunque haya error y manejar la señal de terminación."
+      - texto: "El sistema operativo mantiene el motor por seguridad"
+        porque: "El sistema no sabe qué hay en el pin: queda como lo dejó el programa."
+      - texto: "Porque los GPIO no se pueden apagar"
+        porque: "Se pueden: el programa debía hacerlo antes de salir."
+    escalera:
+      - "¿Quién apaga las salidas si el programa muere?"
+    solucion: "No liberó los recursos: el pin se quedó como estaba."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Conmuta un pin lo más rápido posible y lo mira con el osciloscopio. ¿Qué es lo más revelador?"
+    libro: [90, 93]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [35, 18, 210, 170] }
+    opciones:
+      - texto: "Los pulsos que de vez en cuando duran mucho más"
+        bien: true
+        porque: "Esa dispersión es la razón de que el tiempo real no viva aquí: lo crítico, a un microcontrolador."
+      - texto: "La frecuencia máxima"
+        porque: "Se ve, pero lo revelador es la irregularidad."
+      - texto: "La amplitud de la señal"
+        porque: "La amplitud no dice nada del tiempo real; la irregularidad sí."
+    escalera:
+      - "¿Qué impide el tiempo real: la lentitud o la dispersión?"
+    solucion: "La irregularidad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [74, 78, 80, 87]
+    ideas:
+      - { titulo: "Pasa por el sistema.", texto: "Decenas de µs, y a veces ms: latencia variable." }
+      - { titulo: "Lo que va bien.", texto: "Pines a kilohercios, buses y PWM por hardware." }
+      - { titulo: "Lo que no.", texto: "Temporización estricta: a un microcontrolador." }
+      - { titulo: "Recursos.", texto: "Grupo adecuado, no administrador; liberar y apagar al salir." }

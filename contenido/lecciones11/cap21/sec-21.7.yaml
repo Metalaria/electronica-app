@@ -1,0 +1,270 @@
+# Lección 1.2 de la sección 20.7 «Acoplamiento de Entrada: AC, DC y GND» (cap21; etiqueta interna sec-21.7).
+# Formato: contenido/lecciones11/GUIA.md. La pantalla simulada (8 divisiones, ± 4 desde el centro, recortada) con la
+# fuente de 12 V y 20 mV de rizado de pico a pico del banco (bloque 168, figura 20.13); el rizado se dibuja con dos
+# ciclos en las 12 divisiones (el libro no da su frecuencia aquí). El paso alto del acoplamiento AC es el de corte en
+# 10 Hz del bloque 153 (τ = 1/(2π·10 Hz)); la cuadrada de 5 V, ya en régimen, salta su amplitud en cada flanco y decae
+# con τ: el valor tras el flanco es A/(1 + e^(−T/2τ)). El tren de pulsos del bloque 155 (5 V, ciclo del 10 %) en AC
+# es A·(pulso − D).
+leccion: cap21/sec-21.7
+
+libro:
+  142: "DC: pasa todo, continua y alterna"
+  143: "AC: intercala un condensador que bloquea la componente continua"
+  145: "Su equivalente de GND es tocar la punta de la sonda con su propia pinza de masa"
+  148: "El rizado de una fuente: 20 mV sobre 12 V"
+  151: "AC permite ampliar la escala vertical cien o mil veces"
+  153: "forman un paso alto con corte típico en unos 10 Hz"
+  154: "una cuadrada de 100 Hz aparece con la parte plana inclinada, porque el condensador se descarga durante ella"
+  155: "un pulso de 5 V se ve como si fuera de 4,5 V positivos y 0,5 negativos"
+  156: "no se puede saber si una señal digital cumple sus márgenes"
+  157: "AC para medir lo pequeño sobre lo grande; DC para todo lo demás"
+  159: "la posición vertical de la traza tiene un significado absoluto"
+  164: "medir 400 V de continua en AC destruye la entrada igual"
+  165: "el acoplamiento AC no sirva como protección"
+  168: "En AC a 5 mV/div aparece el rizado con su forma completa, ocupando cuatro divisiones"
+  171: "con una fuente de 12 V y 20 mV de rizado"
+  "cap21#114": "entre 4 y 6 de las 8 divisiones verticales"
+
+modelo:
+  valores:
+    acop: { sim: "acoplamiento", nombre: "acoplamiento de la entrada", unidad: "", valor: 0 }
+    v_div: { sim: "V/div", nombre: "escala vertical", unidad: V, valor: 5 }
+    V_dc: { sim: "V_{DC}", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    V_r: { sim: "V_{r}", nombre: "rizado de pico a pico", unidad: V, valor: 0.02 }
+    f_q: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 1000 }
+    A_q: { sim: "A", nombre: "amplitud de la cuadrada o del pulso", unidad: V, valor: 5 }
+    D_p: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.1 }
+  calculos:
+    V_c: { expr: "(1 - acop)*V_dc", sim: "V_{c}", nombre: "continua que llega a la pantalla", unidad: V }
+    d_pos: { expr: "V_c/v_div", sim: "div", nombre: "altura de la traza", unidad: div, cifras: 2 }
+    d_r: { expr: "V_r/v_div", sim: "div", nombre: "rizado en divisiones", unidad: div, cifras: 2 }
+    tau_a: { expr: "1/(2*pi*10)", sim: "τ", nombre: "constante del acoplo AC", unidad: s }
+    V_h: { expr: "A_q/(1 + exp(-1/(2*f_q*tau_a)))", sim: "V_{h}", nombre: "salto tras cada flanco", unidad: V }
+    V_alto: { expr: "A_q*(1 - D_p)", sim: "V_{+}", nombre: "lo que se ve del pulso por encima de cero", unidad: V }
+
+tarjetas:
+  - id: explore-acoplamiento
+    tipo: explorar
+    titulo: "20 mV sobre 12 V"
+    texto: "Una fuente de 12 V con 20 mV de rizado. Pruebe DC y AC, y suba la sensibilidad."
+    libro: [142, 143, 148, 171]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "max(-4, min(4, (V_c + V_r/2*sin(2*pi*d/6))/v_div))", color: naranja, rotulo: "CH1" }
+      lectura: { valor: d_r, rotulo: "Rizado en pantalla" }
+      datos:
+        - { valor: d_pos, rotulo: "Altura de la traza: {{d_pos}}" }
+      mandos:
+        - { valor: acop, lista: [0, 1], nombres: [DC, AC], rotulo: "Acoplamiento" }
+        - { valor: v_div, lista: [5, 1, 0.1, 0.02, 0.005], rotulo: "VOLT/DIV" }
+    requiere: { mover: [acop, v_div] }
+
+  - id: prediga-dc
+    tipo: predecir
+    titulo: "En DC a 5 mV/div"
+    texto: "Con acoplamiento DC, sube la escala a 5 mV/div para ver el rizado. ¿Qué pasa?"
+    libro: [148, 168]
+    fijar: { acop: 0, v_div: 0.005 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "max(-4, min(4, (V_c + V_r/2*sin(2*pi*d/6))/v_div))", color: naranja, rotulo: "CH1" }
+      lectura: { valor: d_pos, rotulo: "Altura de la traza" }
+      ocultar: true
+    opciones:
+      - texto: "La traza se sale de la pantalla"
+        bien: true
+        porque: "Los 12 V a 5 mV/div son miles de divisiones: la traza queda muy por encima del borde."
+      - texto: "Aparece el rizado ocupando cuatro divisiones"
+        porque: "Eso es en AC. En DC llega también la continua de 12 V, que se sale de la pantalla."
+      - texto: "Una línea recta a 12 V"
+        porque: "Eso se ve a 5 V/div: a esa escala el rizado es invisible."
+    escalera:
+      - "¿Cuántas divisiones son 12 V a 5 mV por división?"
+    solucion: "Se sale: 12 V a 5 mV/div no caben en ocho divisiones."
+    comprobar:
+      - { d_pos: 2400 }
+
+  - id: ajuste-rizado
+    tipo: ajuste
+    titulo: "Vea el rizado"
+    texto: "Ya en AC, baje VOLT/DIV hasta que el rizado ocupe entre 4 y 6 divisiones."
+    libro: [151, 168, "cap21#114"]
+    fijar: { acop: 1 }
+    inicio: { v_div: 1 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "max(-4, min(4, (V_c + V_r/2*sin(2*pi*d/6))/v_div))", color: naranja, rotulo: "CH1" }
+      lectura: { valor: d_r, rotulo: "Rizado en pantalla" }
+      mandos:
+        - { valor: v_div, lista: [1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002], rotulo: "VOLT/DIV" }
+    ajuste:
+      valor: d_r
+      min: 4
+      max: 6
+      rotulo: "Rizado en pantalla"
+      escala: { min: 0, max: 12 }
+      bajo: "El rizado ocupa poco: baje VOLT/DIV."
+      alto: "Se sale de la pantalla: suba VOLT/DIV."
+      dentro: "A 5 mV/div: el rizado con su forma completa, en cuatro divisiones."
+    comprobar:
+      - { con: { v_div: 0.005 }, d_r: 4 }
+
+  - id: sorpresa-cuadrada
+    tipo: sorpresa
+    titulo: "Lo que AC deforma"
+    texto: "Una cuadrada de 5 V entra con acoplamiento AC. Baje su frecuencia y mire la parte plana."
+    libro: [153, 154]
+    inicio: { f_q: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -6, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "(1 - 2*(floor(2*n) - 2*floor(n)))*V_h*exp(-(n - floor(2*n)/2)/(f_q*tau_a))", color: naranja, rotulo: "en AC" }
+      lectura: { valor: V_h, rotulo: "Salto en cada flanco" }
+      mandos:
+        - { valor: f_q, lista: [1, 10, 100, 1000], rotulo: "Frecuencia de la cuadrada" }
+    requiere: { mover: [f_q] }
+
+  - id: porque-inclinada
+    tipo: porque
+    titulo: "La parte plana, inclinada"
+    texto: "A 100 Hz, la parte plana de la cuadrada cae. ¿Por qué?"
+    libro: [153, 154]
+    fijar: { f_q: 100 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -6, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "(1 - 2*(floor(2*n) - 2*floor(n)))*V_h*exp(-(n - floor(2*n)/2)/(f_q*tau_a))", color: naranja, rotulo: "en AC" }
+    opciones:
+      - texto: "El condensador de acoplo se descarga durante ella"
+        bien: true
+        porque: "Con la resistencia de entrada forma un paso alto de unos 10 Hz: lo lento no pasa entero."
+      - texto: "La sonda está mal compensada"
+        porque: "Una sonda descompensada redondea o pica las esquinas; no inclina la meseta a 100 Hz."
+      - texto: "El generador pierde amplitud"
+        porque: "En DC la misma cuadrada sale plana: la inclinación la pone el acoplamiento."
+    escalera:
+      - "Un condensador en serie, ¿deja pasar una tensión constante?"
+    solucion: "El condensador se descarga durante la parte plana: es un paso alto de unos 10 Hz."
+
+  - id: estime-pulsos
+    tipo: pregunta
+    titulo: "Pulsos de ciclo bajo"
+    texto: "Un tren de pulsos de 5 V con un ciclo de trabajo del 10 %, en AC. ¿Qué altura positiva parece tener?"
+    libro: [155]
+    fijar: { A_q: 5, D_p: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
+      y: { min: -6, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_q*floor(1 + D_p - (n - floor(n)))", color: tinta, rotulo: "en DC", discontinua: true }
+    estimar:
+      objetivo: "V_alto"
+      unidad: V
+      min: 0
+      max: 6
+      paso: 0.1
+      inicio: 2
+      tol: 0.03
+      rotulo: "Por encima de cero"
+    exito: "4,5 V positivos y 0,5 V negativos: el condensador promedia a cero y baja la línea de base."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4.64 }, texto: "Se ha pasado: en AC la media es cero, así que la línea de base baja." }
+      - { texto: "Se ha quedado corto: solo baja la media, que es el 10 % de 5 V." }
+    escalera:
+      - "En AC la media de la señal queda en cero."
+    solucion: "La media de 5 V al 10 % es 0,5 V: se ve de −0,5 a 4,5 V."
+    comprobar:
+      - { V_alto: 4.5 }
+
+  - id: logica
+    tipo: pregunta
+    titulo: "Una señal lógica"
+    texto: "Quiere saber si una señal digital cumple sus márgenes. ¿Qué acoplamiento usa?"
+    libro: [156, 157]
+    fijar: { A_q: 5, D_p: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
+      y: { min: -6, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_q*floor(1 + D_p - (n - floor(n)))", color: tinta, rotulo: "en DC" }
+        - { expr: "A_q*(floor(1 + D_p - (n - floor(n))) - D_p)", color: naranja, rotulo: "en AC", discontinua: true }
+    opciones:
+      - texto: "DC"
+        bien: true
+        porque: "Los márgenes son niveles absolutos, y en AC el nivel absoluto no se ve."
+      - texto: "AC"
+        porque: "AC desplaza la línea de base: el nivel bajo deja de estar en cero y no se puede comparar con el margen."
+      - texto: "Da igual"
+        porque: "No da igual: AC es para lo pequeño sobre lo grande; DC para todo lo demás."
+    escalera:
+      - "¿Cuál de los dos deja ver el nivel absoluto?"
+    solucion: "DC: en las señales lógicas importa el nivel."
+
+  - id: gnd-2c53t
+    tipo: pregunta
+    titulo: "GND en el 2C53T"
+    texto: "El 2C53T solo tiene DC y AC. ¿Cómo sitúa la línea de cero antes de medir?"
+    libro: [145, 159]
+    widget:
+      tipo: figura
+      figura: fig-21.13
+      zonas:
+        - { id: pantallas, rotulo: "Las tres pantallas", rect: [0, 0, 448, 166] }
+    opciones:
+      - texto: "Tocando la punta con su propia pinza de masa"
+        bien: true
+        porque: "La traza que queda es el cero; se lleva a su división y se pasa a medir en DC."
+      - texto: "Poniendo el acoplamiento en AC"
+        porque: "AC quita la continua de la señal, pero no dice dónde está el cero."
+      - texto: "Desconectando la sonda del BNC"
+        porque: "La entrada al aire no es masa: puede recoger ruido."
+    escalera:
+      - "GND lleva la entrada a masa. ¿Qué hay a mano que esté a masa?"
+    solucion: "Tocar la punta con su pinza de masa: dos segundos que dan sentido absoluto a la posición."
+
+  - id: no-protege
+    tipo: porque
+    titulo: "AC no protege"
+    texto: "Con AC, 400 V de continua no se ven en la pantalla. ¿Por qué destruyen la entrada igual?"
+    libro: [164, 165]
+    widget:
+      tipo: figura
+      figura: fig-21.13
+      zonas:
+        - { id: pantallas, rotulo: "Las tres pantallas", rect: [0, 0, 448, 166] }
+    opciones:
+      - texto: "El condensador de acoplo soporta toda la continua"
+        bien: true
+        porque: "La continua no se ve, pero está aplicada: el límite de tensión es el mismo."
+      - texto: "No la destruyen: AC bloquea la continua"
+        porque: "La bloquea en la pantalla, no en la entrada: el condensador la soporta entera."
+      - texto: "Porque AC amplifica la continua"
+        porque: "No amplifica nada: la deja fuera de la imagen, pero aplicada a la entrada."
+    escalera:
+      - "¿Dónde se queda la continua que AC «bloquea»?"
+    solucion: "En el condensador de acoplo: la entrada la soporta completa. AC no sirve como protección."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [143, 154, 157, 159, 165]
+    ideas:
+      - { titulo: "AC.", texto: "Lo pequeño sobre lo grande: el rizado de una fuente, a 5 mV/div." }
+      - { titulo: "Lo que deforma.", texto: "Un paso alto de unos 10 Hz: inclina lo lento y desplaza los pulsos." }
+      - { titulo: "DC para lo demás.", texto: "Señales lógicas y todo donde importe el nivel." }
+      - { titulo: "No protege.", texto: "El condensador soporta la continua aunque no se vea." }

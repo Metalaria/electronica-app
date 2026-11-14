@@ -1,0 +1,288 @@
+# Lección 1.2 de la sección 36.8 «Linealizar, Calibrar y Filtrar» (cap35, sec-35.8). Formato: GUIA.md.
+# - El orden medir → linealizar → calibrar → filtrar (bloque 239, figura 36.14).
+# - Ejercicio 36.8 (bloque 345): calibración en dos puntos, 0,10 V a 0 °C y 1,30 V en agua hirviendo; 0,82 V son
+#   60 °C; a 650 m el agua hierve a 98,05 °C y la misma lectura vale 58,8 °C (1,2 °C de error si se supone 100 °C).
+#   La recta de calibración se dibuja como gráfica con la altitud como mando.
+# Paso práctico: «simular» la temperatura con la calibración hecha a 650 m (error típico: suponer 100 °C, 60 °C).
+leccion: cap35/sec-35.8
+
+libro:
+  224: "linealizar, calibrar y filtrar— cuyo orden importa"
+  227: "Es lo más exacto y lo más costoso en cálculo"
+  228: "es lo habitual en microcontroladores pequeños"
+  229: "puede dar resultados absurdos por extrapolación"
+  230: "sigue teniendo sentido cuando no hay procesador"
+  233: "Un punto corrige el offset"
+  234: "Dos puntos corrigen offset y ganancia, y es lo habitual"
+  236: "En EEPROM o FRAM del propio equipo"
+  238: "la corrección de offset se aplica a un valor que aún no está en unidades físicas"
+  239: "El orden es: medir → linealizar → calibrar → filtrar."
+  242: "Media móvil: simple, con respuesta al escalón lineal"
+  243: "una línea de código, memoria mínima"
+  244: "elimina por completo los valores atípicos"
+  245: "filtrar añade retardo, y en un lazo de control ese retardo es fase"
+  247: "Un sensor desconectado suele dar el extremo del margen"
+  251: "inyectando valores conocidos en el punto de entrada del cálculo"
+  252: "se localiza si el error está en la física o en las cuentas"
+  253: "El orden correcto del procesado y lo que más se hace mal"
+  "cap35#345": "da 0,10 V en hielo fundente (0,0 °C) y 1,30 V en agua hirviendo. Más tarde lee 0,82 V"
+
+modelo:
+  valores:
+    v_l: { sim: "v", nombre: "lectura del sensor", unidad: V, valor: 0.5 }
+    h_a: { sim: "h", nombre: "altitud de la calibración", unidad: m, valor: 0 }
+  calculos:
+    T_h: { expr: "100 - 0.3*h_a/100", sim: "T_{ebullición}", nombre: "punto de ebullición", unidad: "°C" }
+    T_l: { expr: "(v_l - 0.10)*T_h/1.2", sim: "T", nombre: "temperatura calibrada", unidad: "°C" }
+    T_c: { expr: "(v_l - 0.10)*100/1.2", sim: "T_{100}", nombre: "suponiendo 100 °C", unidad: "°C" }
+    v_50: { expr: "0.10 + 50*1.2/T_h", sim: "v(50 °C)", nombre: "tensión a 50 °C", unidad: V }
+
+tarjetas:
+  - id: explore-orden
+    tipo: explorar
+    titulo: "Del número bruto al valor útil"
+    texto: "Entre el número del convertidor y la magnitud hay tres operaciones, y su orden importa. Toque linealizar y calibrar."
+    libro: [224, 253]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: medir, rotulo: "Primer recuadro", rect: [6, 4, 93, 70], texto: "Medir: el número bruto del convertidor." }
+        - { id: linealizar, rotulo: "Segundo recuadro", rect: [121, 4, 93, 70], texto: "Linealizar: fórmula, tabla con interpolación o polinomio ajustado." }
+        - { id: calibrar, rotulo: "Tercer recuadro", rect: [236, 4, 93, 70], texto: "Calibrar: uno, dos o varios puntos para offset, ganancia y no linealidad." }
+        - { id: filtrar, rotulo: "Cuarto recuadro", rect: [351, 4, 95, 70], texto: "Filtrar: media móvil, exponencial o mediana." }
+    requiere: { mover: [linealizar, calibrar] }
+
+  - id: ordene-procesado
+    tipo: pregunta
+    titulo: "El orden correcto"
+    texto: "Ordene el procesado de una medida."
+    libro: [239]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: error, rotulo: "Recuadro rojo", rect: [6, 84, 440, 52] }
+    ordenar:
+      - "Medir"
+      - "Linealizar"
+      - "Calibrar"
+      - "Filtrar"
+    exito: "Es lo que más se hace mal: calibrar antes de linealizar."
+    pistas:
+      - { texto: "La calibración trabaja sobre unidades físicas." }
+    escalera:
+      - "Filtrar va al final; calibrar necesita el valor ya linealizado."
+    solucion: "Medir, linealizar, calibrar, filtrar."
+
+  - id: porque-orden
+    tipo: porque
+    titulo: "Calibrar antes de linealizar"
+    texto: "¿Por qué da resultados incorrectos calibrar antes de linealizar?"
+    libro: [238]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: error, rotulo: "Recuadro rojo", rect: [6, 84, 440, 52] }
+    opciones:
+      - texto: "El offset se corrige sobre un valor que aún no está en unidades físicas"
+        bien: true
+        porque: "La corrección queda deformada por la curva que se aplica después."
+      - texto: "Porque la calibración borra la linealización"
+        porque: "No la borra: se aplica sobre una escala que todavía no es la física."
+      - texto: "Da igual el orden"
+        porque: "Importa: es lo que más se hace mal."
+    escalera:
+      - "¿En qué unidades está el número antes de linealizar?"
+    solucion: "El offset se aplicaría a un valor sin unidades físicas."
+
+  - id: empareje-linealizar
+    tipo: pregunta
+    titulo: "Formas de linealizar"
+    texto: "Empareje cada forma de linealizar con su rasgo."
+    libro: [227, 228, 229, 230]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: linealizar, rotulo: "Segundo recuadro", rect: [121, 4, 93, 70] }
+    emparejar:
+      - ["Fórmula", "Lo más exacto y lo más costoso"]
+      - ["Tabla con interpolación", "Lo habitual en microcontroladores pequeños"]
+      - ["Polinomio ajustado", "Absurdo si se extrapola"]
+      - ["Red en el circuito", "Cuando no hay procesador"]
+    exito: "Steinhart-Hart para una NTC y Callendar-Van Dusen para un RTD son fórmulas."
+    pistas:
+      - { texto: "El de orden alto se porta mal fuera del margen ajustado." }
+    escalera:
+      - "Una calcula, otra interpola, otra ajusta, otra compensa con componentes."
+    solucion: "Fórmula, exacta; tabla, micro pequeño; polinomio, extrapola mal; circuito, sin procesador."
+
+  - id: explore-calibracion
+    tipo: explorar
+    titulo: "Una recta por dos puntos"
+    texto: "Un sensor da 0,10 V en hielo fundente y 1,30 V en agua hirviendo. Mueva la lectura y mire la temperatura."
+    libro: ["cap35#345", 234]
+    fijar: { h_a: 0 }
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 1.5, unidad: V, rotulo: "lectura" }
+      y: { min: 0, max: 120, unidad: "°C", rotulo: "temperatura" }
+      curvas:
+        - { expr: "(vv - 0.10)*T_h/1.2", color: azul, rotulo: "calibración" }
+      marcas:
+        - { x: "0.10", y: "0", rotulo: "Hielo" }
+        - { x: "1.30", y: "T_h", rotulo: "Ebullición" }
+        - { x: "v_l", y: "T_l", rotulo: "{{T_l}}" }
+      lectura: { valor: T_l, rotulo: "Temperatura" }
+      mandos:
+        - { valor: v_l, min: 0.1, max: 1.3, paso: 0.01, rotulo: "Lectura del sensor" }
+    requiere: { mover: [v_l] }
+
+  - id: estime-lectura
+    tipo: pregunta
+    titulo: "Una lectura de 0,82 V"
+    texto: "Con la calibración de 0,10 V a 0 °C y 1,30 V a 100 °C, el sensor lee 0,82 V. ¿Qué temperatura es?"
+    libro: ["cap35#345"]
+    fijar: { v_l: 0.82, h_a: 0 }
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: calibrar, rotulo: "Tercer recuadro", rect: [236, 4, 93, 70] }
+    estimar:
+      objetivo: "T_l"
+      unidad: "°C"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 82
+      tol: 0.02
+      rotulo: "Temperatura"
+    exito: "60 °C: 12 mV por grado desde los 0,10 V del hielo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 61 }, texto: "Demasiado: la recta no empieza en 0 V, sino en 0,10 V." }
+      - { texto: "Demasiado poco: el sensor sube 1,2 V en 100 °C." }
+    escalera:
+      - "Pendiente: 1,2 V en 100 °C, 12 mV por grado."
+    solucion: "(0,82 − 0,10) · 100 / 1,2 = 60 °C."
+    comprobar:
+      - { T_l: 60 }
+
+  - id: simule-altitud
+    tipo: simular
+    titulo: "Calibrado a 650 m"
+    texto: "La misma calibración se hizo a 650 m, donde el agua hierve unos 0,3 °C más baja por cada 100 m. ¿Qué temperatura son los 0,82 V?"
+    libro: ["cap35#345"]
+    fijar: { v_l: 0.82, h_a: 650 }
+    simular:
+      objetivo: T_l
+      unidad: "°C"
+      tol: 0.005
+      rotulo: "Temperatura"
+      errores:
+        - { expr: "T_c", texto: "Ha supuesto que el agua hervía a 100 °C: a 650 m, el segundo punto era 98,05 °C." }
+    exito: "58,8 °C: suponer 100 °C habría dejado un error de 1,2 °C."
+    escalera:
+      - "El segundo punto de la calibración no es 100 °C: réstele 0,3 por cada 100 m."
+    solucion: "0,72 · 98,05 / 1,2 ≈ 58,8 °C."
+    comprobar:
+      - { T_l: 58.8, T_c: 60, T_h: 98.05 }
+
+  - id: pregunta-puntos
+    tipo: pregunta
+    titulo: "Cuántos puntos"
+    texto: "La pendiente de un sensor no es de fiar entre unidades. ¿Con cuántos puntos se calibra como mínimo?"
+    libro: [233, 234]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: calibrar, rotulo: "Tercer recuadro", rect: [236, 4, 93, 70] }
+    opciones:
+      - texto: "Dos: corrigen offset y ganancia"
+        bien: true
+        porque: "Es lo habitual. Varios puntos corrigen además la no linealidad residual."
+      - texto: "Uno"
+        porque: "Uno solo corrige el offset: basta si la pendiente es fiable."
+      - texto: "Ninguno: basta linealizar"
+        porque: "Linealizar corrige la curva del modelo, no la desviación de cada unidad."
+    escalera:
+      - "Una recta necesita dos datos: dónde empieza y cuánto sube."
+    solucion: "Dos puntos."
+
+  - id: empareje-filtros
+    tipo: pregunta
+    titulo: "Tres filtros"
+    texto: "Empareje cada filtro digital con su rasgo."
+    libro: [242, 243, 244]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: filtrar, rotulo: "Cuarto recuadro", rect: [351, 4, 95, 70] }
+    emparejar:
+      - ["Media móvil", "Escalón lineal, poco selectiva"]
+      - ["Exponencial", "Una línea de código, memoria mínima"]
+      - ["Mediana", "Elimina los valores atípicos"]
+    exito: "Todos añaden retardo, y en un lazo de control ese retardo es fase."
+    pistas:
+      - { texto: "Contra interferencias impulsivas, la mediana." }
+    escalera:
+      - "El exponencial es un polo digital."
+    solucion: "Media móvil, lineal; exponencial, una línea; mediana, atípicos."
+
+  - id: pregunta-desconectado
+    tipo: predecir
+    titulo: "Un sensor suelto"
+    texto: "Un sensor se desconecta y el firmware no comprueba el margen. ¿Qué registra el sistema?"
+    libro: [247]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: olvidan, rotulo: "Recuadro de abajo", rect: [6, 147, 440, 68] }
+    opciones:
+      - texto: "El extremo del margen, como si fuera una medida real"
+        bien: true
+        porque: "Un sensor desconectado suele dar el extremo del margen: hay que detectarlo y señalarlo."
+      - texto: "Un aviso de error"
+        porque: "Sin comprobación de margen nadie lo señala: el valor se propaga como bueno."
+      - texto: "Nada: deja de registrar"
+        porque: "El convertidor sigue dando un número, el del extremo, y se registra."
+    escalera:
+      - "¿Qué número da un convertidor con la entrada al aire o en un raíl?"
+    solucion: "El extremo del margen: compruebe el margen y señale el fuera de escala."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Verificar las cuentas"
+    texto: "¿Cómo se verifica la cadena de procesado separándola del sensor?"
+    libro: [251, 252]
+    widget:
+      tipo: figura
+      figura: fig-35.14
+      zonas:
+        - { id: medir, rotulo: "Primer recuadro", rect: [6, 4, 93, 70] }
+    opciones:
+      - texto: "Inyectando valores conocidos en la entrada del cálculo"
+        bien: true
+        porque: "Así se sabe si el error está en la física o en las cuentas."
+      - texto: "Midiendo la magnitud real"
+        porque: "Eso mezcla el sensor con las cuentas: no separa los dos problemas."
+      - texto: "Leyendo el código"
+        porque: "Útil, pero la prueba es inyectar valores conocidos y ver qué sale."
+    escalera:
+      - "Para separar dos problemas hay que probar uno sin el otro."
+    solucion: "Valores conocidos en la entrada del cálculo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [234, 236, 239, 245]
+    ideas:
+      - { titulo: "El orden.", texto: "Medir, linealizar, calibrar y filtrar." }
+      - { titulo: "Dos puntos.", texto: "Offset y ganancia, con los coeficientes en EEPROM o FRAM." }
+      - { titulo: "Puntos de verdad.", texto: "El agua no hierve a 100 °C en altura." }
+      - { titulo: "Filtrar.", texto: "Menos ruido a cambio de retardo." }

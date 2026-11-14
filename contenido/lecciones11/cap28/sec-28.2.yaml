@@ -1,0 +1,306 @@
+# Lección 1.2 de la sección 27.2 «El Lazo de Enganche de Fase (PLL)» (cap28). Formato: contenido/lecciones11/GUIA.md.
+# El ajuste del ancho de banda usa ruidos de ejemplo con la forma de la figura 27.3: la referencia (ya × N) plana en
+# −130 dBc/Hz y el VCO libre en −60 dBc/Hz a 10 Hz, cayendo 20 dB por década (S = K/f²). Con un lazo de primer orden,
+# la salida hereda S_ref/(1 + (f/B)²) + S_VCO·(f/B)²/(1 + (f/B)²); su integral es (π/2)·(S_ref·B + K/B), mínima en
+# B = √(K/S_ref), donde las dos curvas se cruzan (unos 30 kHz, como en la figura). El exceso sobre ese mínimo se lee en
+# dB. El tiempo de enganche, t ≈ 1,4/BW, es el del problema 27.B (bloque 223).
+leccion: cap28/sec-28.2
+
+libro:
+  32: "compara la fase de una señal de entrada con la de un oscilador propio"
+  34: "promedia esa señal y determina la dinámica del conjunto"
+  36: "= N · f"
+  37: "Un cristal de 10 MHz y un divisor programable generan cualquier múltiplo, con la exactitud del cristal"
+  39: "Extraer el reloj de un flujo de datos sin línea de reloj"
+  40: "la tensión que lo controla reproduce la modulación"
+  43: "lo óptimo es situarlo donde ambas curvas se cruzan"
+  44: "Un lazo ancho engancha deprisa; uno estrecho, despacio"
+  45: "eso exige un lazo estrecho comparado con ella"
+  48: "el intervalo en el que el lazo, ya enganchado, se mantiene"
+  49: "un PLL que se mantiene enganchado en una frecuencia a la que no habría podido llegar solo"
+  50: "un lazo mal compensado oscila alrededor del punto de enganche en lugar de asentarse"
+  52: "para un paso de canal fino haría falta una referencia muy baja"
+  53: "alternando entre dos divisores para conseguir una división media no entera"
+  55: "si está en un extremo, el lazo ha perdido el enganche y el VCO está contra su límite"
+  "cap28#222": "≈ 70 µs"
+  "cap28#223": "inversamente proporcional al ancho de banda"
+  "cap28#227": "La regla práctica es no pasar de"
+
+modelo:
+  valores:
+    f_ref: { sim: "f_{ref}", nombre: "frecuencia de referencia", unidad: Hz, valor: 10000000 }
+    N_d: { sim: "N", nombre: "divisor", unidad: "", valor: 10 }
+    B_l: { sim: "BW", nombre: "ancho de banda del lazo", unidad: Hz, valor: 1000 }
+    S_r: { sim: "S_{ref}", nombre: "ruido de la referencia por N, potencia por hercio", unidad: "", valor: 1e-13 }
+    K_v: { sim: "K", nombre: "ruido del VCO, S·f²", unidad: "", valor: 1e-4 }
+  calculos:
+    f_out: { expr: "N_d*f_ref", sim: "f_{salida}", nombre: "frecuencia de salida", unidad: Hz }
+    N_8: { expr: "160000000/8000000", sim: "N", nombre: "divisor de 8 a 160 MHz", unidad: "" }
+    B_x: { expr: "sqrt(K_v/S_r)", sim: "f_{cruce}", nombre: "cruce de las dos curvas", unidad: Hz }
+    exc: { expr: "10*log10((S_r*B_l + K_v/B_l)/(2*sqrt(K_v*S_r)))", sim: "Δ", nombre: "ruido integrado sobre el mínimo", unidad: dB, cifras: 2 }
+    t_e: { expr: "1.4/B_l", sim: "t", nombre: "tiempo de enganche", unidad: s }
+
+tarjetas:
+  - id: explore-bloques
+    tipo: explorar
+    titulo: "Cuatro bloques"
+    texto: "El PLL compara la fase de la entrada con la de su oscilador y lo corrige hasta que coinciden. Toque el filtro de lazo y el VCO."
+    libro: [32, 34]
+    widget:
+      tipo: figura
+      figura: fig-28.2
+      zonas:
+        - { id: detector, rotulo: "Detector de fase", rect: [49, 32, 74, 44], texto: "Da una señal proporcional a la diferencia de fase entre la referencia y la realimentación." }
+        - { id: filtro, rotulo: "Filtro de lazo", rect: [161, 32, 73, 44], texto: "Promedia la señal del detector y fija la dinámica del conjunto." }
+        - { id: vco, rotulo: "VCO", rect: [273, 32, 73, 44], texto: "Oscilador cuya frecuencia depende de la tensión de control." }
+        - { id: divisor, rotulo: "Divisor por N", rect: [197, 114, 59, 35], texto: "Opcional, en la realimentación: el lazo engancha cuando f_{VCO}/N iguala a la referencia." }
+    requiere: { mover: [filtro, vco] }
+
+  - id: explore-sintesis
+    tipo: explorar
+    titulo: "Sintetizar frecuencias"
+    texto: "Enganchado, la salida vale N veces la referencia. Con un cristal de 10 MHz, cambie el divisor."
+    libro: [36, 37]
+    fijar: { f_ref: 10000000 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 20, unidad: "", rotulo: "N" }
+      y: { min: 0, max: 220000000, unidad: Hz, rotulo: "f_{salida}" }
+      curvas:
+        - { expr: "nn*f_ref", color: azul, rotulo: "N · f_{ref}" }
+      asas:
+        - { mueve: N_d, x: "N_d", y: "f_out", rotulo: "Su divisor" }
+      lectura: { valor: f_out, rotulo: "Frecuencia de salida" }
+      mandos:
+        - { valor: N_d, min: 1, max: 20, paso: 1, rotulo: "Divisor, N" }
+    requiere: { mover: [N_d] }
+
+  - id: estime-multiplicar
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Multiplicar el reloj"
+    texto: "Un microcontrolador saca 160 MHz de un cristal de 8 MHz con un PLL. ¿Qué divisor lleva en la realimentación?"
+    libro: [36, 39]
+    estimar:
+      objetivo: "N_8"
+      unidad: ""
+      min: 1
+      max: 40
+      paso: 1
+      inicio: 5
+      tol: 0.04
+      rotulo: "Divisor, N"
+    exito: "N = 20: el VCO a 160 MHz, dividido por 20, iguala los 8 MHz del cristal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 20 }, texto: "Se ha pasado: con ese N la salida superaría los 160 MHz." }
+      - { texto: "Se ha quedado corto: con ese N la salida no llega a 160 MHz." }
+    escalera:
+      - "f_{salida} = N · f_{referencia}."
+    solucion: "N = 160 MHz / 8 MHz = 20."
+    comprobar:
+      - { N_8: 20 }
+
+  - id: empareje-usos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Para qué se usa"
+    texto: "Una cada aplicación del PLL con cómo la consigue."
+    libro: [39]
+    emparejar:
+      - ["Síntesis de frecuencia", "Multiplicar una referencia por N programable"]
+      - ["Recuperación de reloj", "Extraer el reloj de datos sin línea de reloj"]
+      - ["Demodulación de FM", "La tensión de control del VCO es la señal"]
+      - ["Limpiar el jitter", "Un lazo lento promedia las fluctuaciones rápidas"]
+    exito: "El mismo lazo, cuatro usos: todos siguen la fase de una señal con un oscilador propio."
+    pistas:
+      - { texto: "La que no necesita salida del VCO, sino su tensión de control, es la de FM." }
+    escalera:
+      - "¿Cuál promedia? ¿Cuál no tiene línea de reloj?"
+    solucion: "Síntesis–N programable; reloj–flujo de datos; FM–tensión de control; jitter–lazo lento."
+
+  - id: por-que-fm
+    tipo: porque
+    titulo: "El demodulador es el lazo"
+    texto: "Un PLL sigue a una portadora de FM. ¿Por qué su tensión de control es la señal demodulada?"
+    libro: [40]
+    widget:
+      tipo: figura
+      figura: fig-28.2
+      zonas:
+        - { id: vco, rotulo: "VCO y su tensión de control", rect: [234, 32, 112, 44] }
+    opciones:
+      - texto: "Para seguir la frecuencia de la portadora, la tensión del VCO debe variar igual que la modulación"
+        bien: true
+        porque: "La frecuencia del VCO depende de su tensión: si sigue a la portadora, esa tensión copia la modulación."
+      - texto: "Porque el detector de fase convierte la amplitud en tensión"
+        porque: "En FM la información va en la frecuencia, no en la amplitud."
+      - texto: "Porque el divisor separa la modulación"
+        porque: "El divisor es opcional y solo escala la frecuencia; no extrae nada."
+    escalera:
+      - "¿De qué depende la frecuencia del VCO?"
+    solucion: "El VCO solo sigue a la portadora si su tensión de control reproduce la modulación."
+
+  - id: prediga-enganche
+    tipo: predecir
+    titulo: "Ancho o estrecho"
+    texto: "Un lazo de 100 kHz de ancho de banda engancha en unos 14 µs. ¿Cuánto tarda uno de 20 kHz?"
+    libro: [44, "cap28#222", "cap28#223"]
+    fijar: { B_l: 20000 }
+    widget:
+      tipo: grafica
+      x: { id: bw, min: 10000, max: 300000, unidad: Hz, rotulo: "ancho de banda del lazo" }
+      y: { min: 0, max: 0.00016, unidad: s, rotulo: "tiempo de enganche" }
+      curvas:
+        - { expr: "1.4/bw", color: azul, rotulo: "t ≈ 1,4/BW" }
+      lectura: { valor: t_e, rotulo: "Enganche con 20 kHz" }
+      ocultar: curvas
+    opciones:
+      - texto: "Unos 70 µs"
+        bien: true
+        porque: "El tiempo es inversamente proporcional al ancho de banda: cinco veces más estrecho, cinco veces más lento."
+      - texto: "Unos 3 µs"
+        porque: "Eso sería un lazo más ancho. Un lazo estrecho engancha despacio."
+      - texto: "Los mismos 14 µs"
+        porque: "El ancho de banda fija la velocidad de enganche: no es independiente."
+    escalera:
+      - "Un lazo ancho engancha deprisa; uno estrecho, despacio."
+    solucion: "t ≈ 1,4/BW: con 20 kHz, unos 70 µs."
+    comprobar:
+      - { t_e: 0.00007 }
+      - { con: { B_l: 100000 }, t_e: 0.000014 }
+      - { con: { B_l: 466667 }, t_e: 0.000003, tol: 0.01 }
+
+  - id: ajuste-ancho
+    tipo: ajuste
+    titulo: "El ancho de banda del lazo"
+    texto: "Dentro del ancho de banda se hereda el ruido de la referencia; fuera, el del VCO. Muévalo hasta el mínimo de ruido total."
+    nota: "Ruidos de ejemplo."
+    libro: [43, 44, "cap28#223"]
+    inicio: { B_l: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 10000000, unidad: Hz, rotulo: "distancia a la portadora", escala: log }
+      y: { min: -170, max: -40, unidad: dB, rotulo: "ruido de fase, dBc/Hz" }
+      curvas:
+        - { expr: "10*log10(K_v/nu^2)", color: naranja, rotulo: "VCO libre", discontinua: true }
+        - { expr: "10*log10(S_r)", color: verde, rotulo: "referencia × N", discontinua: true }
+        - { expr: "10*log10(S_r/(1 + (nu/B_l)^2) + K_v/nu^2*(nu/B_l)^2/(1 + (nu/B_l)^2))", color: azul, rotulo: "salida" }
+      marcas:
+        - { x: "B_l", y: "-165", rotulo: "BW" }
+      lectura: { valor: exc, rotulo: "Ruido total sobre el mínimo" }
+      datos:
+        - { valor: t_e, rotulo: "Enganche: {{t_e}}" }
+      mandos:
+        - { valor: B_l, lista: [1000, 3000, 10000, 30000, 100000, 300000], rotulo: "Ancho de banda del lazo" }
+    ajuste:
+      valor: exc
+      min: -1
+      max: 0.5
+      rotulo: "Ruido sobre el mínimo"
+      escala: { min: 0, max: 15 }
+      bajo: "Por debajo del mínimo no se puede bajar."
+      alto: "Sobra ruido: lleve el ancho de banda hacia donde se cruzan las dos curvas discontinuas."
+      dentro: "En el cruce. Mire el enganche: un lazo más ancho engancharía antes, pero con más ruido."
+
+  - id: espurios
+    tipo: pregunta
+    titulo: "El tope del ancho de banda"
+    texto: "¿Por qué no se ensancha el lazo hasta cerca de la frecuencia de comparación para enganchar aún más deprisa?"
+    libro: [45, "cap28#227"]
+    fijar: { B_l: 30000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 10000000, unidad: Hz, rotulo: "distancia a la portadora", escala: log }
+      y: { min: -170, max: -40, unidad: dB, rotulo: "ruido de fase, dBc/Hz" }
+      curvas:
+        - { expr: "10*log10(S_r/(1 + (nu/B_l)^2) + K_v/nu^2*(nu/B_l)^2/(1 + (nu/B_l)^2))", color: azul, rotulo: "salida" }
+    opciones:
+      - texto: "El filtro debe eliminar las componentes a esa frecuencia: el lazo ha de ser mucho más estrecho"
+        bien: true
+        porque: "El detector trabaja a la frecuencia de comparación. La regla práctica es no pasar de f_{ref}/10."
+      - texto: "Porque el VCO no puede cambiar tan deprisa"
+        porque: "El límite no está en el VCO, sino en el rizado del detector que el filtro tiene que quitar."
+      - texto: "No hay tope: cuanto más ancho, mejor"
+        porque: "Más ancho deja pasar los espurios de la comparación y hereda más ruido de la referencia."
+    escalera:
+      - "¿A qué frecuencia trabaja el detector de fase?"
+    solucion: "El filtro debe quitar los espurios de la comparación: no más de f_{ref}/10."
+
+  - id: captura
+    tipo: pregunta
+    titulo: "Enganchado donde no llegaría"
+    texto: "Un PLL sigue enganchado en una frecuencia desde la que, partiendo de cero, no habría conseguido engancharse. ¿Por qué?"
+    libro: [48, 49]
+    widget:
+      tipo: grafica
+      x: { id: xr, min: -2, max: 2, unidad: "", rotulo: "desviación de la entrada, relativa" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "" }
+      curvas:
+        - { expr: "1 - ceil((abs(xr) - 1)/1e9)", color: azul, rotulo: "margen de enganche" }
+        - { expr: "0.5*(1 - ceil((abs(xr) - 0.5)/1e9))", color: naranja, rotulo: "margen de captura" }
+    opciones:
+      - texto: "El margen de captura es más estrecho que el de enganche"
+        bien: true
+        porque: "Ya enganchado, se mantiene en todo el margen de enganche; para engancharse desde cero necesita estar en el de captura."
+      - texto: "Porque el lazo es inestable"
+        porque: "Un lazo inestable oscila alrededor del enganche en lugar de asentarse; aquí se mantiene estable."
+      - texto: "Porque la referencia ha cambiado de frecuencia"
+        porque: "La asimetría existe con la misma referencia: es propia del lazo."
+    escalera:
+      - "Compare el intervalo en que se mantiene con el intervalo desde el que llega."
+    solucion: "Captura más estrecha que enganche: se mantiene donde no habría podido llegar solo."
+
+  - id: fraccionario
+    tipo: pregunta
+    titulo: "El paso de canal fino"
+    texto: "Con divisor entero, un paso de canal fino exige una referencia muy baja, que estrecha el lazo. ¿Qué hace un sintetizador fraccionario?"
+    libro: [52, 53]
+    widget:
+      tipo: figura
+      figura: fig-28.2
+      zonas:
+        - { id: divisor, rotulo: "Divisor por N", rect: [197, 114, 59, 35] }
+    opciones:
+      - texto: "Alterna entre dos divisores: división media no entera, a cambio de espurios fraccionarios"
+        bien: true
+        porque: "Los espurios se combaten con modulación sigma-delta del divisor."
+      - texto: "Usa una referencia aún más baja"
+        porque: "Eso es justo lo que se quiere evitar: estrecha el lazo y empeora el ruido."
+      - texto: "Quita el filtro de lazo"
+        porque: "Sin filtro no se promedia la señal del detector ni se fija la dinámica: no hay lazo estable."
+    escalera:
+      - "¿Cómo se consigue una división media que no sea entera?"
+    solucion: "Alternando dos divisores; el precio son espurios, que se combaten con sigma-delta."
+
+  - id: banco-control
+    tipo: pregunta
+    titulo: "En el osciloscopio"
+    texto: "La tensión de control del VCO sube y se queda pegada así. ¿Qué indica?"
+    libro: [50, 55]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.5, unidad: V, rotulo: "tensión de control" }
+      curvas:
+        - { expr: "min(3.2, 1.5 + 20*t)", color: azul, rotulo: "control del VCO" }
+    opciones:
+      - texto: "El lazo ha perdido el enganche: el VCO está contra su límite"
+        bien: true
+        porque: "Enganchado, sería una continua estable dentro de su margen."
+      - texto: "Está enganchado: es una continua estable"
+        porque: "Es continua, pero en un extremo: el VCO no alcanza la frecuencia que pide el lazo."
+      - texto: "El lazo es inestable"
+        porque: "Un lazo inestable hace oscilar esa tensión alrededor del punto de enganche."
+    escalera:
+      - "¿Dónde debería quedarse esa tensión si el lazo engancha?"
+    solucion: "Pegada a un extremo: enganche perdido, VCO en su límite."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [34, 36, 43, 49]
+    ideas:
+      - { titulo: "El lazo.", texto: "Detector de fase, filtro de lazo, VCO y, si hace falta, divisor por N." }
+      - { titulo: "Síntesis.", texto: "Enganchado, f_{salida} = N · f_{referencia}, con la exactitud del cristal." }
+      - { titulo: "El ancho de banda.", texto: "Decide qué ruido se hereda, cuánto tarda en enganchar y cuánto espurio pasa: lo óptimo, en el cruce." }
+      - { titulo: "Enganche y captura.", texto: "Se mantiene en un margen más ancho que aquel desde el que llega solo." }

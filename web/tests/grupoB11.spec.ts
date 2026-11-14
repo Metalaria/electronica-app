@@ -556,9 +556,12 @@ test.describe('problema del día (sin navegador)', () => {
 
   test('conceptos.json: las secciones con algo que responder, al día con los datos', () => {
     const c = leerJson<{ version: number; total: number; partes: Record<string, string[]> }>('conceptos.json');
+    // 1.2 (consolas-A): the parts of the «Consolas por dentro» course are not in the book's index; the app merges them
+    // from lecciones11/partes.json (lib/datos.ts), and so does conceptos11.mjs
+    const cursoPropio = leerJson<{ partes: Indice['partes'] }>('lecciones11/partes.json').partes;
     let n = 0;
     for (const [p, labels] of Object.entries(c.partes)) {
-      const secs = (INDICE.partes[p]?.secciones ?? []).map((s) => s.label);
+      const secs = ((INDICE.partes[p] ?? cursoPropio[p])?.secciones ?? []).map((s) => s.label);
       for (const l of labels) expect(secs, `${p}/${l}`).toContain(l);
       n += labels.length;
     }

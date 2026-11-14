@@ -1,0 +1,290 @@
+# Lección 1.2 de la sección 51.8 «El Límite de Corriente» (cap50; etiquetas sec-50.N = impresas 51.N).
+# - La característica de la figura 51.13 (fig-50.12) como gráfica del modelo: tensión de salida frente a la carga,
+#   V = min(V_consigna, I_límite·R_L): tensión constante hasta el codo, corriente constante después. Consignas de 5 y
+#   12 V, límites de 0,5 a 2 A y la carga de 5 Ω son de ejemplo.
+# - El ejercicio 51.5 (umbral de 0,65 V y 2 A: 0,325 Ω; el comercial de 0,33 Ω; 1,3 W, así que de 2 W) como reto
+#   con resistencias de la serie E12 y el 2 % de la app.
+# Paso práctico: «banco» opcional: ajustar el límite de una fuente de laboratorio a 1 A (valor de ejemplo) y
+# cortocircuitar la salida a través del amperímetro (bloque 267).
+leccion: cap50/sec-50.8
+
+libro:
+  247: "Con él, un error de montaje se convierte en un aviso"
+  250: "50 a 100 mV a fondo de escala es lo habitual"
+  252: "En la rama alta: mide la corriente de salida real, y exige un amplificador que tolere el modo común."
+  253: "desplaza la masa de la salida respecto a la del circuito"
+  255: "la fuente pasa a corriente constante y baja la tensión lo que haga falta"
+  256: "puede quedarse enganchada en un punto de baja tensión y no arrancar nunca"
+  257: "Con corte y rearme: se desconecta y se reintenta periódicamente."
+  258: "constante en una fuente de laboratorio"
+  261: "el que pida menos, gana"
+  262: "cuya causa es un lazo mal compensado"
+  265: "no entender que la fuente está limitando corriente y funcionando correctamente"
+  267: "cortocircuitar la salida a través de un amperímetro y comprobar que la corriente es la ajustada"
+  269: "Característica de salida: tensión constante hasta el codo, luego corriente constante."
+  "cap50#536": "Quieres limitar la corriente a 2 A y tu lazo de límite actúa con un umbral de 0,65 V."
+
+modelo:
+  valores:
+    V_set: { sim: "V_{consigna}", nombre: "tensión ajustada", unidad: V, valor: 12 }
+    I_lim: { sim: "I_{límite}", nombre: "límite de corriente", unidad: A, valor: 1 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 20 }
+    V_th: { sim: "V_{umbral}", nombre: "umbral del lazo de corriente", unidad: V, valor: 0.65 }
+    R_s: { sim: "R_{sense}", nombre: "resistencia sensora", unidad: Ω, valor: 0.22 }
+    I_obj: { sim: "I", nombre: "límite pedido", unidad: A, valor: 2 }
+  calculos:
+    V_o: { expr: "min(V_set, I_lim*R_L)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_o: { expr: "V_o/R_L", sim: "I", nombre: "corriente de salida", unidad: A }
+    R_codo: { expr: "V_set/I_lim", sim: "R_{codo}", nombre: "carga del codo", unidad: Ω }
+    I_sense: { expr: "V_th/R_s", sim: "I_{límite}", nombre: "límite con esa sensora", unidad: A }
+    R_ideal: { expr: "V_th/I_obj", sim: "R_{sense}", nombre: "sensora exacta", unidad: Ω }
+    P_s: { expr: "I_obj^2*R_s", sim: "P", nombre: "potencia en la sensora", unidad: W }
+    V_rs: { expr: "I_obj*R_s", sim: "V", nombre: "caída en la sensora", unidad: V }
+
+tarjetas:
+  - id: explore-caracteristica
+    tipo: explorar
+    titulo: "Tensión o corriente constante"
+    texto: "Una fuente ajustada a 12 V con un límite. Baje la carga y mire cuándo deja de dar tensión constante."
+    libro: [255, 269]
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0, max: 30, unidad: Ω, rotulo: "R_{L}" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "min(V_set, I_lim*rx)", color: naranja, rotulo: "tensión de salida" }
+      marcas:
+        - { x: "R_L", y: "V_o", rotulo: "{{V_o}}" }
+        - { x: "R_codo", y: "V_set", rotulo: "codo" }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I_o, rotulo: "Corriente: {{I_o}}" }
+      mandos:
+        - { valor: R_L, lista: [2, 5, 10, 20, 30], rotulo: "Carga" }
+        - { valor: I_lim, lista: [0.5, 1, 2], rotulo: "Límite de corriente" }
+    requiere: { mover: [R_L] }
+    comprobar:
+      - { V_set: 12 }
+
+  - id: prediga-5ohm
+    tipo: predecir
+    titulo: "Ajustada a 12 V"
+    texto: "Se ajustan 12 V y un límite de 1 A, y se conecta una carga de 5 Ω. ¿Qué tensión marca la fuente?"
+    libro: [255, 265]
+    fijar: { V_set: 12, I_lim: 1, R_L: 5 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0, max: 30, unidad: Ω, rotulo: "R_{L}" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "min(V_set, I_lim*rx)", color: naranja, rotulo: "tensión de salida" }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      ocultar: true
+    opciones:
+      - texto: "5 V: está limitando a 1 A"
+        bien: true
+        porque: "12 V darían 2,4 A: la fuente pasa a corriente constante y baja la tensión. Funciona correctamente."
+      - texto: "12 V, lo ajustado"
+        porque: "Para 12 V sobre 5 Ω harían falta 2,4 A, más del límite."
+      - texto: "0 V: la fuente se protege y corta"
+        porque: "Eso haría una limitación con corte; la de laboratorio es constante."
+    escalera:
+      - "¿Qué corriente pediría la carga a 12 V? Compárela con el límite."
+    solucion: "1 A × 5 Ω = 5 V: modo de corriente constante."
+    comprobar:
+      - { V_o: 5, R_codo: 12 }
+      - { con: { I_lim: 100 }, I_o: 2.4 }
+
+  - id: indicador
+    tipo: pregunta
+    titulo: "Parece averiada"
+    texto: "Se ajusta la tensión, se conecta la carga y la fuente marca menos. ¿Qué evita el malentendido?"
+    libro: [265]
+    widget:
+      tipo: figura
+      figura: fig-50.12
+      zonas:
+        - { id: codo, rotulo: "La gráfica", rect: [0, 0, 338, 198] }
+    opciones:
+      - texto: "Un LED que distinga tensión constante de corriente constante"
+        bien: true
+        porque: "Dice que está limitando y funcionando correctamente."
+      - texto: "Subir el límite de corriente siempre al máximo"
+        porque: "Quitaría la protección; el problema es saber en qué modo está."
+      - texto: "Una pantalla con más cifras"
+        porque: "Más cifras no dicen el modo: hace falta un indicador."
+    escalera:
+      - "Lo que falta es saber en qué modo trabaja."
+    solucion: "Un indicador de modo: tensión constante o corriente constante."
+
+  - id: empareje-tipos
+    tipo: pregunta
+    titulo: "Tres limitaciones"
+    texto: "Empareje cada tipo de limitación con su comportamiento."
+    libro: [255, 256, 257]
+    widget:
+      tipo: figura
+      figura: fig-50.13
+      zonas:
+        - { id: tipos, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 220] }
+    emparejar:
+      - ["Constante", "Pasa a corriente constante y baja la tensión"]
+      - ["Replegada", "Al bajar la tensión, también baja el límite"]
+      - ["Con corte y rearme", "Se desconecta y reintenta periódicamente"]
+    exito: "En una fuente de laboratorio, constante; replegada o con corte, en una empotrada."
+    pistas:
+      - { texto: "La replegada protege mejor el paso en cortocircuito." }
+    escalera:
+      - "Una mantiene la corriente, otra la reduce, otra corta."
+    solucion: "Constante, corriente fija; replegada, el límite baja; corte, desconecta y reintenta."
+
+  - id: lampara
+    tipo: pregunta
+    titulo: "Una lámpara que no arranca"
+    texto: "Una fuente con limitación replegada alimenta una lámpara y se queda con muy poca tensión. ¿Por qué?"
+    libro: [256, 258]
+    widget:
+      tipo: figura
+      figura: fig-50.13
+      zonas:
+        - { id: tipos, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 220] }
+    opciones:
+      - texto: "Con cargas no lineales puede quedarse enganchada en baja tensión"
+        bien: true
+        porque: "Por eso en laboratorio se usa la constante."
+      - texto: "Porque la lámpara está fundida"
+        porque: "Es la limitación replegada la que se engancha con cargas como una lámpara o un motor."
+      - texto: "Porque el límite está bajo"
+        porque: "El problema es la forma de la limitación, no su valor."
+    escalera:
+      - "¿Qué hace el límite replegado cuando la tensión baja?"
+    solucion: "Se engancha en un punto de baja tensión: el inconveniente del foldback."
+
+  - id: rama
+    tipo: pregunta
+    titulo: "Dónde va el shunt"
+    texto: "¿Qué inconveniente tiene el shunt en la rama baja en una fuente de laboratorio?"
+    libro: [250, 252, 253]
+    widget:
+      tipo: figura
+      figura: fig-50.13
+      zonas:
+        - { id: lazo, rotulo: "La parte de la derecha", rect: [222, 0, 221, 220] }
+    opciones:
+      - texto: "Desplaza la masa de la salida respecto a la del circuito"
+        bien: true
+        porque: "Es más simple, pero en la rama alta se mide la corriente real con la masa en su sitio."
+      - texto: "Que no mide la corriente de salida"
+        porque: "La mide; el problema es la masa desplazada."
+      - texto: "Que necesita amplificador de modo común"
+        porque: "Eso lo exige la rama alta."
+    escalera:
+      - "Si el shunt está entre la carga y la masa, ¿dónde queda la masa de la salida?"
+    solucion: "Desplaza la masa de la salida."
+
+  - id: reto-sensora
+    tipo: reto
+    titulo: "La resistencia sensora"
+    texto: "El lazo de límite actúa con 0,65 V y se quiere limitar a 2 A. Elija la sensora de la serie E12."
+    libro: ["cap50#536"]
+    fijar: { V_th: 0.65, I_obj: 2 }
+    inicio: { R_s: 0.22 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0.1, max: 1, unidad: Ω, rotulo: "R_{sense}" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "I_{límite}" }
+      curvas:
+        - { expr: "V_th/rx", color: naranja, rotulo: "límite" }
+        - { expr: "I_obj", color: tinta, rotulo: "2 A", discontinua: true }
+      marcas:
+        - { x: "R_s", y: "I_sense", rotulo: "{{I_sense}}" }
+      lectura: { valor: I_sense, rotulo: "Límite de corriente" }
+      mandos:
+        - { valor: R_s, lista: [0.18, 0.22, 0.27, 0.33, 0.39, 0.47], rotulo: "R_{sense} (E12)" }
+    condiciones:
+      - { valor: I_sense, objetivo: 2, tol: 0.02, rotulo: "Límite: {{I_sense}}" }
+    exito: "0,33 Ω, el comercial más próximo a 0,325: limita a unos 1,97 A."
+    pistas:
+      - { cuando: { valor: I_sense, mayor: 2.04 }, texto: "Limita demasiado alto: hace falta más resistencia sensora." }
+      - { texto: "Limita demasiado bajo: hace falta menos resistencia sensora." }
+    escalera:
+      - "R_{sense} = V_{umbral} / I_{límite}."
+    solucion: "0,65 V / 2 A = 0,325 Ω: la E12 de 0,33 Ω."
+    comprobar:
+      - { R_ideal: 0.325 }
+      - { con: { R_s: 0.33 }, I_sense: 1.97, tol: 0.01 }
+
+  - id: potencia-sensora
+    tipo: pregunta
+    titulo: "Su potencia"
+    texto: "Por la sensora de 0,33 Ω pasan 2 A. ¿De qué potencia se elige?"
+    libro: ["cap50#536"]
+    fijar: { R_s: 0.33, I_obj: 2 }
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 3, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 3, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "ix^2*R_s", color: naranja, rotulo: "I²·R" }
+    opciones:
+      - texto: "De 2 W o más"
+        bien: true
+        porque: "Disipa unos 1,3 W: con margen, 2 W."
+      - texto: "De 0,66 W"
+        porque: "Eso es I·R en voltios; la potencia es I²·R."
+      - texto: "Basta una de señal"
+        porque: "Con 2 A disipa más de un vatio."
+    escalera:
+      - "P = I²·R."
+    solucion: "2² × 0,33 ≈ 1,3 W: una de 2 W o más."
+    comprobar:
+      - { P_s: 1.32, V_rs: 0.66, tol: 0.01 }
+
+  - id: por-que-ruido
+    tipo: porque
+    titulo: "Un ruido en el límite"
+    texto: "Aparece un ruido justo cuando la carga alcanza el límite: la fuente salta entre los dos modos. ¿Por qué?"
+    libro: [261, 262]
+    widget:
+      tipo: figura
+      figura: fig-50.13
+      zonas:
+        - { id: lazo, rotulo: "La parte de la derecha", rect: [222, 0, 221, 220] }
+    opciones:
+      - texto: "Un lazo mal compensado: la transición entre modos no es suave"
+        bien: true
+        porque: "El OR de diodos da el control al que pide menos; si los lazos no están compensados, el cruce oscila."
+      - texto: "La carga es defectuosa"
+        porque: "Es un fallo característico de la fuente: aparece justo en el cruce entre modos."
+      - texto: "El shunt está mal soldado"
+        porque: "Un shunt mal soldado daría error siempre, no solo en el cruce."
+    escalera:
+      - "¿Qué pasa en el punto donde el control pasa de un lazo al otro?"
+    solucion: "La transición es brusca porque el lazo está mal compensado."
+
+  - id: banco-limite
+    tipo: banco
+    titulo: "El límite de su fuente"
+    texto: "Ajuste el límite de corriente de una fuente de laboratorio a 1 A y cortocircuite la salida a través del amperímetro."
+    libro: [267]
+    fijar: { I_lim: 1 }
+    banco:
+      piezas: ["Una fuente de laboratorio con límite de corriente", "Brymen en A", "Cables de prueba gruesos"]
+      medir: "La corriente de cortocircuito, y si cambia al recorrer el mando."
+      esperado: I_lim
+      unidad: A
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Da más de lo ajustado: el límite no es el que indica el mando." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Da menos: compruebe el fusible y el rango del amperímetro." }
+        - { texto: "Limita en lo ajustado. Repita en todo el margen del mando." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [247, 255, 258, 261]
+    ideas:
+      - { titulo: "Un instrumento.", texto: "El límite convierte un error de montaje en un aviso." }
+      - { titulo: "CV y CC.", texto: "Tensión constante hasta el codo; luego corriente constante, con indicador." }
+      - { titulo: "Tres tipos.", texto: "Constante en laboratorio; replegada o con corte en fuentes empotradas." }
+      - { titulo: "R_{sense}.", texto: "Umbral entre límite: 0,65 V / 2 A ≈ 0,33 Ω, de 2 W." }

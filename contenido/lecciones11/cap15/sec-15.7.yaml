@@ -1,0 +1,228 @@
+# Lección 1.2 de la sección 14.7 «Alimentación y Desacoplo en el Protoboard» (cap15; etiqueta sec-15.7).
+# Formato: contenido/lecciones11/GUIA.md. La gráfica es la de la figura 14.10: reactancia del condensador de
+# desacoplo, 1/(2πfC), frente a la del bucle, 2πfL, con los números del bloque 178 (100 nF: 159 mΩ y 10 nH: 628 mΩ a
+# 10 MHz). El bucle de 5 nH de la sorpresa es un EJEMPLO de «acortar el bucle». El banco usa el factor de cinco a diez
+# del bloque 196 (centro 7,5) como relación entre el ruido sin y con desacoplo.
+leccion: cap15/sec-15.7
+
+libro:
+  172: "la consume a pulsos, uno por cada conmutación interna"
+  174: "El condensador de desacoplo resuelve eso siendo un depósito local de carga"
+  176: "no la limita la capacidad del condensador, sino la inductancia del bucle"
+  178: "159 mΩ"
+  179: "Poner uno de 10 µF en lugar de 100 nF no mejora nada"
+  180: "el desacoplo debe ir corto, no ser grande"
+  183: "100 nF cerámico junto a cada integrado"
+  184: "10 µF por raíl y por zona"
+  185: "100 µF o más en la entrada de la placa"
+  186: "un X7R de 10 µF a 5 V puede tener menos de la mitad de su capacidad"
+  193: "Todos ellos apuntan a la alimentación antes que al circuito"
+  195: "con la pinza de masa de muelle (no el latiguillo largo, que falsearía la medida)"
+  196: "La diferencia suele ser de un factor cinco o diez"
+
+modelo:
+  valores:
+    C_d: { sim: "C", nombre: "condensador de desacoplo", unidad: F, valor: 100e-9 }
+    L_d: { sim: "L", nombre: "inductancia del bucle", unidad: H, valor: 10e-9 }
+    f_10: { sim: "f", nombre: "frecuencia de referencia", unidad: Hz, valor: 10000000 }
+    r_n: { sim: "sin / con", nombre: "relación entre el ruido sin y con desacoplo", unidad: "", valor: 7.5 }
+  calculos:
+    X_C: { expr: "1/(2*pi*f_10*C_d)", sim: "X_{C}", nombre: "reactancia del condensador a 10 MHz", unidad: Ω }
+    X_L: { expr: "2*pi*f_10*L_d", sim: "X_{L}", nombre: "reactancia del bucle a 10 MHz", unidad: Ω }
+    k_LC: { expr: "X_L/X_C", sim: "X_{L}/X_{C}", nombre: "veces que el bucle supera al condensador", unidad: "", cifras: 2 }
+    f_x: { expr: "1/(2*pi*sqrt(L_d*C_d))", sim: "f_{cruce}", nombre: "frecuencia de cruce", unidad: Hz }
+    X_x: { expr: "sqrt(L_d/C_d)", sim: "X", nombre: "reactancia en el cruce", unidad: Ω }
+
+tarjetas:
+  - id: explore-reactancias
+    tipo: explorar
+    titulo: "El condensador frente al bucle"
+    texto: "Por encima del cruce manda la inductancia del bucle. Cambie el condensador y el bucle y mire a 10 MHz."
+    libro: [176, 178]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
+      marcas:
+        - { x: "f_x", y: "X_x", rotulo: "Cruce" }
+      lectura: { valor: X_L, rotulo: "Bucle a 10 MHz" }
+      datos:
+        - { valor: X_C, rotulo: "Condensador a 10 MHz: {{X_C}}" }
+      mandos:
+        - { valor: C_d, lista: [100e-9, 10e-6], rotulo: "Condensador" }
+        - { valor: L_d, lista: [5e-9, 10e-9], rotulo: "Bucle" }
+    requiere: { mover: [C_d] }
+
+  - id: prediga-diez-micro
+    tipo: predecir
+    titulo: "Un condensador más grande"
+    texto: "Con un bucle de 10 nH, cambia el de 100 nF por uno de 10 µF. ¿Mejora el desacoplo a 10 MHz?"
+    libro: [178, 179]
+    fijar: { L_d: 10e-9, C_d: 10e-6 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
+      lectura: { valor: X_L, rotulo: "Bucle a 10 MHz" }
+      ocultar: true
+    opciones:
+      - texto: "No: el bucle ya presenta cuatro veces más que el de 100 nF"
+        bien: true
+        porque: "A 10 MHz, 628 mΩ del bucle frente a 159 mΩ del condensador: lo que limita no es la capacidad."
+      - texto: "Sí: cien veces más capacidad, cien veces mejor"
+        porque: "Baja la reactancia del condensador, pero la del bucle sigue igual y es la que manda."
+      - texto: "Sí, un poco"
+        porque: "No mejora nada: el bucle no ha cambiado."
+    escalera:
+      - "Compare la reactancia del bucle con la del condensador a 10 MHz."
+    solucion: "No mejora: manda el bucle."
+    comprobar:
+      - { con: { C_d: 100e-9 }, X_C: 0.159, tol: 0.003 }
+      - { X_L: 0.628, tol: 0.003 }
+
+  - id: sorpresa-corto
+    tipo: sorpresa
+    titulo: "Corto, no grande"
+    texto: "Vuelva a 100 nF y acorte el bucle a la mitad. Mire la reactancia del bucle a 10 MHz."
+    nota: "El bucle de 5 nH es un ejemplo."
+    libro: [180]
+    fijar: { C_d: 100e-9 }
+    inicio: { L_d: 10e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
+      marcas:
+        - { x: "f_x", y: "X_x", rotulo: "Cruce" }
+      lectura: { valor: X_L, rotulo: "Bucle a 10 MHz" }
+      datos:
+        - { valor: f_x, rotulo: "Cruce: {{f_x}}" }
+      mandos:
+        - { valor: L_d, lista: [10e-9, 5e-9], rotulo: "Bucle" }
+    requiere: { mover: [L_d] }
+
+  - id: por-que-corto
+    tipo: porque
+    titulo: "¿Por qué la distancia importa más que el valor?"
+    texto: "En una placa el condensador va pegado al pin; en un protoboard, en la fila contigua. ¿Por qué?"
+    libro: [176, 180]
+    fijar: { C_d: 100e-9, L_d: 10e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
+      lectura: { valor: k_LC, rotulo: "Bucle / condensador a 10 MHz" }
+    opciones:
+      - texto: "La eficacia la limita la inductancia del bucle, que crece con la distancia"
+        bien: true
+        porque: "Condensador, pistas y chip forman un bucle: cuanto más corto, menos inductancia."
+      - texto: "Porque el condensador se calienta lejos del chip"
+        porque: "No es cuestión de calor: es la inductancia del camino."
+      - texto: "Por orden en el montaje"
+        porque: "La razón es eléctrica: la impedancia del bucle."
+    escalera:
+      - "¿Qué crece con la longitud del camino entre el condensador y el chip?"
+    solucion: "La inductancia del bucle."
+
+  - id: tres-niveles
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El esquema de desacoplo estándar"
+    texto: "Una cada nivel con lo que atiende."
+    libro: [183, 184, 185]
+    emparejar:
+      - ["100 nF cerámico junto a cada integrado", "Los pulsos rápidos"]
+      - ["10 µF por raíl y por zona", "Las variaciones lentas; recarga a los pequeños"]
+      - ["100 µF o más en la entrada", "Depósito general y transitorios de conexión"]
+    exito: "Tres niveles, cada uno para un rango de frecuencias."
+    pistas:
+      - { texto: "El pequeño y cercano es el de los pulsos rápidos." }
+    escalera:
+      - "El electrolítico grande va donde entra la alimentación."
+    solucion: "100 nF: pulsos; 10 µF: lentas; 100 µF: depósito y conexión."
+
+  - id: x7r
+    tipo: pregunta
+    titulo: "Un cerámico de clase 2"
+    texto: "Pone un X7R de 10 µF en un raíl de 5 V. ¿Cuánta capacidad tiene de verdad?"
+    libro: [186]
+    fijar: { C_d: 10e-6, L_d: 10e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+    opciones:
+      - texto: "Puede tener menos de la mitad"
+        bien: true
+        porque: "Si el cálculo lo necesita, hay que elegir tensión nominal con margen o contar con menos."
+      - texto: "Sus 10 µF"
+        porque: "Los cerámicos de clase 2 pierden capacidad con la tensión aplicada."
+      - texto: "Más de 10 µF"
+        porque: "Con tensión, pierde capacidad; no gana."
+    escalera:
+      - "Los cerámicos de clase 2 dependen de la tensión aplicada."
+    solucion: "Menos de la mitad, posiblemente."
+
+  - id: buscar-primero
+    tipo: pregunta
+    titulo: "Reinicios aleatorios"
+    texto: "Un microcontrolador se reinicia al accionar una salida de potencia. ¿Dónde busca primero?"
+    libro: [193, 172]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
+    opciones:
+      - texto: "En la alimentación y su desacoplo"
+        bien: true
+        porque: "Ese síntoma apunta a la alimentación antes que al circuito."
+      - texto: "En el programa"
+        porque: "Un programa no se reinicia según la carga que conmuta: es la alimentación."
+      - texto: "En el reloj del microcontrolador"
+        porque: "Primero la alimentación; es la causa de muchas horas perdidas."
+    escalera:
+      - "¿Qué comparte la salida de potencia con el microcontrolador?"
+    solucion: "En la alimentación."
+
+  - id: banco-desacoplo
+    tipo: banco
+    titulo: "El desacoplo, medido"
+    texto: "Mida el ruido en los pines de alimentación del integrado sin el condensador y con 100 nF en la fila contigua."
+    libro: [195, 196]
+    banco:
+      piezas: ["Un integrado funcionando en protoboard", "Cerámico de 100 nF de patillas cortas", "FNIRSI en AC con la pinza de masa de muelle"]
+      medir: "El ruido pico a pico sin condensador dividido entre el ruido con él."
+      esperado: r_n
+      unidad: ""
+      tol: 0.34
+      consejos:
+        - { cuando: { valor: desviacion, menor: -0.34 }, texto: "Apenas baja: el problema es el bucle. Acorte las patillas y acerque el condensador." }
+        - { texto: "Baja todavía más: bien. Compruebe que midió con la pinza de muelle y no con el latiguillo largo." }
+      ficha: { n: 9, titulo: "El desacoplo, medido" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [174, 176, 180, 183]
+    ideas:
+      - { titulo: "Un depósito local.", texto: "El condensador entrega los pulsos desde milímetros." }
+      - { titulo: "Manda el bucle.", texto: "A 10 MHz, 10 nH dan cuatro veces más impedancia que 100 nF." }
+      - { titulo: "Corto, no grande.", texto: "Acortar el bucle mejora; una capacidad mayor, no." }
+      - { titulo: "Tres niveles.", texto: "100 nF por integrado, 10 µF por zona y 100 µF a la entrada." }

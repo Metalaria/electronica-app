@@ -1,0 +1,140 @@
+# Lección 1.2 de la sección 39.15 «Ampliación: Arquitectura de Computadores» (cap38; etiqueta interna sec-38.15).
+# Formato: contenido/lecciones11/GUIA.md (§11). La sección no tiene figura propia: se usan la 39.19a (los dos espacios
+# de memoria del ATmega328P, Harvard; svg_vista 325,42 × 198,43) y la 39.2 (bus y mapa de un microcontrolador).
+leccion: cap38/sec-38.15
+
+libro:
+  470: "una lectura de dato compite con la búsqueda de la siguiente instrucción"
+  471: "un salto obliga a descartar las instrucciones ya empezadas"
+  472: "Registros, caché, RAM y Flash forman una jerarquía"
+  473: "el tiempo de ejecución no es determinista si hay caché"
+  "cap38#495": "Los dos espacios de memoria del ATmega328P"
+  "cap38#62": "comparten un mismo bus y un único mapa de direcciones"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-harvard
+    tipo: explorar
+    titulo: "Dos memorias, dos buses"
+    texto: "El ATmega328P es Harvard: programa y datos en espacios aparte. Toque cada uno."
+    libro: [470, "cap38#495"]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: datos, rotulo: "Columna de la izquierda", rect: [37, 39, 66, 123], texto: "Datos: registros, E/S y SRAM, en bytes." }
+        - { id: programa, rotulo: "Columna del centro", rect: [116, 39, 57, 111], texto: "Programa: vectores, código y cargador, en palabras." }
+    requiere: { mover: [datos, programa] }
+
+  - id: prediga-von-neumann
+    tipo: predecir
+    titulo: "Un solo bus"
+    texto: "En una arquitectura Von Neumann, una instrucción lee un dato de memoria. ¿Qué pasa con la búsqueda de la siguiente instrucción?"
+    libro: [470, "cap38#62"]
+    widget:
+      tipo: figura
+      figura: fig-38.2
+      zonas:
+        - { id: bus, rotulo: "Barra del centro", rect: [17, 98, 307, 36], texto: "Un bus interno compartido." }
+    opciones:
+      - { texto: "Compite con la lectura del dato por el mismo bus", bien: true, porque: "Instrucciones y datos comparten bus. En Harvard ocurren a la vez, y por eso casi todo va en un ciclo." }
+      - { texto: "Ocurre a la vez, por otro bus", porque: "Eso es Harvard: buses separados para programa y datos." }
+      - { texto: "No hace falta buscarla", porque: "Toda instrucción hay que traerla de la memoria antes de ejecutarla." }
+    escalera: ["¿Cuántos caminos hay a la memoria en Von Neumann?"]
+    solucion: "Compiten por el mismo bus."
+
+  - id: pregunta-saltos
+    tipo: pregunta
+    titulo: "El precio de la segmentación"
+    texto: "¿Por qué un código con muchos saltos condicionales es más lento de lo que dice el recuento de instrucciones?"
+    libro: [471, "cap38#495"]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: programa, rotulo: "Columna del centro", rect: [116, 39, 57, 111], texto: "El núcleo lee la siguiente instrucción mientras ejecuta una." }
+    opciones:
+      - { texto: "Cada salto descarta las instrucciones ya empezadas: ciclos perdidos", bien: true, porque: "Es el riesgo de la segmentación; por eso los compiladores reordenan para evitar saltos." }
+      - { texto: "Porque los saltos ocupan más Flash", porque: "No es el tamaño: es el trabajo que se tira al saltar." }
+      - { texto: "Porque los saltos desactivan la caché", porque: "La caché sigue; lo que se pierde son las instrucciones a medio ejecutar." }
+    escalera: ["Con segmentación, varias instrucciones están a medias a la vez."]
+    solucion: "El salto obliga a descartar lo que ya se había empezado."
+
+  - id: ordene-jerarquia
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La jerarquía de memoria"
+    texto: "Ordene de la más rápida y pequeña a la más lenta y grande."
+    libro: [472]
+    ordenar:
+      - "Registros"
+      - "Caché"
+      - "RAM"
+      - "Flash"
+    exito: "Cada nivel es unas diez veces más lento y mucho mayor que el anterior: lo rápido es caro y pequeño."
+    pistas:
+      - { texto: "Los registros están dentro del núcleo." }
+    escalera: ["La caché existe para acelerar el acceso a la RAM."]
+    solucion: "Registros, caché, RAM y Flash."
+
+  - id: empareje-localidad
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La localidad"
+    texto: "La jerarquía funciona gracias a la localidad. Una cada tipo con lo que hace el programa."
+    libro: [472]
+    emparejar:
+      - ["Localidad temporal", "Accede repetidamente a las mismas posiciones"]
+      - ["Localidad espacial", "Accede a posiciones vecinas"]
+    exito: "Por eso lo que acaba de usarse, y lo que está al lado, conviene tenerlo cerca."
+    pistas:
+      - { texto: "Temporal: en el tiempo, lo mismo otra vez." }
+    escalera: ["Espacial habla de direcciones cercanas."]
+    solucion: "Temporal, las mismas; espacial, las vecinas."
+
+  - id: porque-cache
+    tipo: porque
+    titulo: "Caché y tiempo real"
+    texto: "¿Por qué una caché rompe el análisis de un sistema de tiempo real duro?"
+    libro: [473]
+    widget:
+      tipo: figura
+      figura: fig-38.2
+      zonas:
+        - { id: ram, rotulo: "Arriba a la derecha", rect: [231, 37, 94, 42], texto: "La RAM." }
+    opciones:
+      - { texto: "El tiempo de ejecución depende de si el dato está o no en la caché", bien: true, porque: "Deja de ser determinista: en tiempo real, la previsibilidad vale más que la velocidad media." }
+      - { texto: "Porque la caché es más lenta que la RAM", porque: "Es más rápida; el problema es que unas veces acierta y otras no." }
+      - { texto: "Porque la caché consume mucha energía", porque: "No es cuestión de consumo, sino de tiempo predecible." }
+    escalera: ["¿Tarda siempre lo mismo leer un dato con caché?"]
+    solucion: "El tiempo depende de si hay acierto: no es determinista."
+
+  - id: pregunta-remedio
+    tipo: pregunta
+    titulo: "Para tiempo real crítico"
+    texto: "¿Qué hacen los microcontroladores para tiempo real crítico frente a la caché?"
+    libro: [473]
+    widget:
+      tipo: figura
+      figura: fig-38.2
+      zonas:
+        - { id: nucleo, rotulo: "Arriba a la izquierda", rect: [17, 37, 94, 42], texto: "El núcleo." }
+    opciones:
+      - { texto: "Usar memorias de acceso uniforme o bloquear líneas de caché", bien: true, porque: "Así cada acceso tarda lo mismo y el peor caso se puede calcular." }
+      - { texto: "Poner una caché más grande", porque: "Acierta más, pero sigue sin ser determinista." }
+      - { texto: "Subir la frecuencia", porque: "Más rápido no es más predecible." }
+    escalera: ["Lo que hay que conseguir es que cada acceso tarde siempre lo mismo."]
+    solucion: "Memorias de acceso uniforme o líneas de caché bloqueadas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [470, 471, 472, 473]
+    ideas:
+      - { titulo: "Harvard.", texto: "Buses separados: instrucción y dato a la vez." }
+      - { titulo: "Segmentación.", texto: "Los saltos tiran el trabajo empezado." }
+      - { titulo: "Jerarquía.", texto: "Registros, caché, RAM y Flash, gracias a la localidad." }
+      - { titulo: "Previsible.", texto: "En tiempo real, la previsibilidad vale más que la velocidad media." }

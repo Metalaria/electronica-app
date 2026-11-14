@@ -1,0 +1,196 @@
+# Lección 1.2 de la sección 9.3 «Puertas Lógicas» (cap09). Formato: contenido/lecciones11/GUIA.md (§11: circuito lógico vivo).
+leccion: cap09/sec-9.3
+
+libro:
+  40: "implementan físicamente las operaciones del álgebra de Boole"
+  41: "AND negada (puerta universal)"
+  42: "el 7400 contiene cuatro puertas NAND de dos entradas"
+  43: "una NAND con las entradas unidas es un inversor"
+  44: "La inversión es gratis en CMOS y la no inversión cuesta una etapa"
+  45: "en TTL tiende a leerse como un 1"
+  46: "aparecen pulsos espurios (glitches) durante la transición"
+  47: "La NAND como puerta universal"
+  "cap09#199": "Una puerta XOR recibe A=1 y B=1"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-siete
+    tipo: explorar
+    titulo: "Las siete puertas"
+    texto: "Toque A y B y mire qué LED se encienden con cada combinación."
+    libro: [40, 41]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: g-and, tipo: and, entradas: [A, B] }
+        - { id: g-or, tipo: or, entradas: [A, B] }
+        - { id: g-not, tipo: not, entradas: [A] }
+        - { id: g-nand, tipo: nand, entradas: [A, B] }
+        - { id: g-nor, tipo: nor, entradas: [A, B] }
+        - { id: g-xor, tipo: xor, entradas: [A, B] }
+        - { id: g-xnor, tipo: xnor, entradas: [A, B] }
+      salidas:
+        - { id: AND, de: g-and }
+        - { id: OR, de: g-or }
+        - { id: NOT, de: g-not, rotulo: "NOT A" }
+        - { id: NAND, de: g-nand }
+        - { id: NOR, de: g-nor }
+        - { id: XOR, de: g-xor }
+        - { id: XNOR, de: g-xnor }
+    requiere: { mover: [A, B] }
+
+  - id: prediga-xor
+    tipo: predecir
+    titulo: "Dos unos en una XOR"
+    texto: "Una XOR recibe A = 1 y B = 1. ¿Qué da?"
+    libro: [41, "cap09#199"]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, valor: 1 }, { id: B, valor: 1 }]
+      piezas:
+        - { id: x1, tipo: xor, entradas: [A, B] }
+      salidas:
+        - { id: Y, de: x1, rotulo: "XOR" }
+      ocultar: true
+    opciones:
+      - { texto: "0", bien: true, porque: "La XOR da 1 solo si las entradas son distintas: con dos unos son iguales, y da 0." }
+      - { texto: "1", porque: "Ese 1 sería el de la OR. La XOR detecta diferencias, y 1 y 1 no difieren." }
+    escalera: ["La XOR detecta diferencias."]
+    solucion: "Entradas iguales: la XOR da 0. Con A = 1 y B = 0 daría 1."
+
+  - id: explore-universal
+    tipo: explorar
+    titulo: "Todo con NAND"
+    texto: "Arriba, una NAND con las entradas unidas; abajo, una NAND seguida de otra que invierte. Pruebe las combinaciones."
+    libro: [43, 47]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, A] }
+        - { id: n2, tipo: nand, entradas: [A, B] }
+        - { id: n3, tipo: nand, entradas: [n2, n2] }
+      salidas:
+        - { id: Y1, de: n1, rotulo: "NAND unida" }
+        - { id: Y2, de: n3, rotulo: "NAND + inversor" }
+      tabla: true
+    requiere: { mover: [A, B] }
+
+  - id: disene-or-nand
+    tipo: diseno
+    titulo: "Una OR con un 7400"
+    texto: "Solo tiene puertas NAND. Haga Y = A + B con las menos posibles."
+    libro: [42, 43]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas: []
+      salidas:
+        - { id: Y, de: "0", rotulo: "A + B" }
+    diseno:
+      salida: Y
+      permitidas: [nand]
+      referencia:
+        - { tipo: nand, entradas: [A, A] }
+        - { tipo: nand, entradas: [B, B] }
+        - { tipo: nand, entradas: [p1, p2] }
+      exigir_minimo: true
+    exito: "Dos inversores en las entradas de una NAND dan una OR, por De Morgan."
+    escalera:
+      - "Una NAND con las entradas unidas es un inversor."
+      - "Invierta A y B, y únalas con una tercera NAND."
+    solucion: "p1 = NAND(A, A), p2 = NAND(B, B) e Y = NAND(p1, p2)."
+
+  - id: porque-cmos
+    tipo: porque
+    titulo: "¿Por qué la NAND es más barata?"
+    texto: "En CMOS, una NAND de dos entradas lleva cuatro transistores y una AND, seis. ¿Por qué?"
+    libro: [44]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, B] }
+        - { id: n2, tipo: not, entradas: [n1] }
+      salidas:
+        - { id: Y, de: n2, rotulo: "AND" }
+    opciones:
+      - { texto: "La salida invertida sale sola de la estructura; no invertir cuesta un inversor más", bien: true, porque: "Dos N en serie y dos P en paralelo dan la NAND; la AND añade una etapa inversora." }
+      - { texto: "Porque la AND tiene más entradas", porque: "Las dos tienen dos entradas. La diferencia es la etapa que deshace la inversión." }
+      - { texto: "Porque la NAND usa transistores bipolares", porque: "Se habla de CMOS: son MOSFET en las dos. La AND es una NAND más un inversor." }
+    escalera: ["Una AND es una NAND más un inversor."]
+    solucion: "La inversión es gratis en CMOS: AND = NAND + inversor, seis transistores."
+
+  - id: prediga-al-aire
+    tipo: predecir
+    titulo: "Una entrada al aire"
+    texto: "En esta NAND TTL, B quedó al aire. Con A = 1, ¿qué da la puerta?"
+    libro: [45]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, valor: 1 }, { id: B, valor: 1, rotulo: "B al aire" }]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, B] }
+      salidas:
+        - { id: Y, de: n1 }
+      ocultar: true
+    opciones:
+      - { texto: "0: TTL tiende a leer la entrada al aire como un 1", bien: true, porque: "La NAND ve 1 y 1, y da 0; pero con mucha sensibilidad al ruido, que no conviene." }
+      - { texto: "1: una entrada sin conectar vale 0", porque: "Al aire no hay un 0: en TTL tiende a leerse como un 1." }
+      - { texto: "Oscila sin remedio", porque: "Eso le pasa a una entrada CMOS flotante, que se queda en la zona prohibida. En TTL tiende a 1." }
+    escalera: ["¿Cómo tiende a leerse una entrada TTL sin conectar?"]
+    solucion: "TTL lee la entrada al aire como 1: NAND(1, 1) = 0."
+
+  - id: pregunta-sin-uso
+    tipo: pregunta
+    titulo: "La puerta sobrante"
+    texto: "Sobra una NAND de un 7400. ¿Qué se hace con sus entradas?"
+    libro: [42, 45]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, valor: 0 }, { id: B, valor: 0 }]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, B] }
+      salidas:
+        - { id: Y, de: n1 }
+    opciones:
+      - { texto: "Conectarlas a masa o a la alimentación, o unirlas a otra entrada", bien: true, porque: "Toda entrada sin uso va a un nivel definido, directamente o a través de una resistencia." }
+      - { texto: "Dejarlas al aire: no se usan", porque: "Al aire, en CMOS recogen ruido y pueden oscilar; en TTL se leen como 1 con mucha sensibilidad al ruido." }
+      - { texto: "Cortar la patilla", porque: "Cortarla la deja igualmente al aire. Hay que llevarla a un nivel definido." }
+    escalera: ["¿Qué nivel tiene una entrada que no está conectada a nada?"]
+    solucion: "A masa o a la alimentación (o a otra entrada): nunca al aire."
+
+  - id: pregunta-glitch
+    tipo: pregunta
+    titulo: "Dos caminos"
+    texto: "Una señal llega a la salida por dos caminos de distinta longitud. ¿Qué puede pasar durante la transición?"
+    libro: [46]
+    widget:
+      tipo: logica
+      entradas: [A]
+      piezas:
+        - { id: i1, tipo: not, entradas: [A] }
+        - { id: i2, tipo: not, entradas: [i1] }
+        - { id: x1, tipo: xor, entradas: [A, i2] }
+      salidas:
+        - { id: Y, de: x1 }
+    opciones:
+      - { texto: "Un pulso espurio, aunque la función final sea correcta", bien: true, porque: "Cada puerta tarda unos nanosegundos: mientras un camino ya cambió y el otro no, la salida da un glitch." }
+      - { texto: "Nada: la tabla de verdad lo garantiza", porque: "La tabla describe el estado estable. Durante la transición los retardos distintos producen pulsos." }
+      - { texto: "La puerta se estropea", porque: "No se daña: da un pulso espurio breve y vuelve a su valor." }
+    escalera: ["¿Cambian los dos caminos a la vez si sus retardos son distintos?"]
+    solucion: "Un glitch: un pulso breve mientras los caminos no coinciden."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [41, 43, 44, 45]
+    ideas:
+      - { titulo: "Siete puertas.", texto: "AND, OR, NOT y sus negadas; la XOR detecta diferencias." }
+      - { titulo: "Universal.", texto: "Solo con NAND (o solo con NOR) se hace cualquier función: la OR son tres NAND." }
+      - { titulo: "En CMOS.", texto: "La inversión es gratis: la NAND son cuatro transistores; la AND, seis." }
+      - { titulo: "Nunca al aire.", texto: "Toda entrada sin uso va a masa o a la alimentación." }

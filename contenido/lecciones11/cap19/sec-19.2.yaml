@@ -1,0 +1,253 @@
+# Lección 1.2 de la sección 18.2 «Métodos de Comunicación entre Placas» (cap19; sec-19.N = impresas 18.N).
+# - La tabla de los cuatro métodos (bloque 41) y la figura 18.3 (fig-19.3) con zonas en sus filas y en las cuatro
+#   decisiones; la figura 18.2 (fig-19.2, bloque 25 de la sección 18.1) para el divisor de la UART.
+# - La precaución de niveles (bloque 32): el divisor de 1 kΩ y 2 kΩ del problema 9.C (cap09#193) baja los 5 V del
+#   Arduino a 3,33 V en el RX de la Pi; esquema «divisor» vivo.
+# Paso práctico: «simular» la tensión en el RX de la Pi (3,33 V; errores típicos: la tensión de R₁, 1,67 V, y la
+# mitad, 2,5 V).
+leccion: cap19/sec-19.2
+
+libro:
+  28: "hay que elegir cómo se comunican"
+  30: "dos hilos, un protocolo propio"
+  31: "se puede intercalar un conversor USB-serie y ver todo el tráfico"
+  32: "Y la precaución de niveles: 3,3 V frente a 5 V"
+  34: "aparece como puerto serie"
+  35: "si el microcontrolador se reinicia, el puerto desaparece y reaparece"
+  37: "el ordenador tiene que ser el maestro"
+  39: "el protocolo suele ser MQTT o HTTP en lugar de uno propio"
+  41: "Centímetros (TTL); metros con RS-232 o RS-485"
+  43: "Lo primero es más simple; lo segundo, más eficiente con datos periódicos"
+  44: "plazos de espera y recuperación en ambos lados"
+  45: "el microcontrolador estará listo en milisegundos y el ordenador tardará medio minuto"
+  46: "si las masas pueden estar a potenciales distintos"
+  48: "Ver el tráfico real es lo que distingue un problema de protocolo de uno de nivel físico"
+  49: "Los cuatro métodos de enlace entre placas"
+  "cap19#25": "Se comunican por UART o I²C."
+  "cap09#193": "1 kΩ / 2 kΩ"
+  "cap09#187": "Problema 9.C"
+
+modelo:
+  valores:
+    V_tx: { sim: "V_{TX}", nombre: "nivel alto del TX del Arduino", unidad: V, valor: 5 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 1000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 2000 }
+  calculos:
+    V_rx: { expr: "V_tx*R_2/(R_1 + R_2)", sim: "V_{RX}", nombre: "tensión en el RX de la Pi", unidad: V }
+    V_r1: { expr: "V_tx*R_1/(R_1 + R_2)", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    V_mi: { expr: "V_tx/2", sim: "V/2", nombre: "la mitad del nivel alto", unidad: V }
+    I_d: { expr: "V_tx/(R_1 + R_2)", sim: "I", nombre: "corriente del divisor en nivel alto", unidad: A }
+
+tarjetas:
+  - id: explore-metodos
+    tipo: explorar
+    titulo: "Cuatro formas de hablar"
+    texto: "Cuando un microcontrolador y un ordenador de placa trabajan juntos, hay que elegir cómo se comunican. Toque cada fila de la tabla."
+    libro: [28, 30, 41, 49]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: uart, rotulo: "Primera fila", rect: [2, 20, 450, 25], texto: "UART: dos hilos y disponible en todo. Con un conversor USB-serie se ve todo el tráfico." }
+        - { id: usb, rotulo: "Segunda fila", rect: [2, 46, 450, 24], texto: "USB: el microcontrolador aparece como puerto serie, con velocidad y alimentación por el mismo cable." }
+        - { id: spi, rotulo: "Tercera fila", rect: [2, 71, 450, 24], texto: "SPI o I²C: rápidos y sencillos, con las placas juntas: distancias de centímetros." }
+        - { id: red, rotulo: "Cuarta fila", rect: [2, 96, 450, 23], texto: "Ethernet o wifi: placas separadas o más de dos; protocolo MQTT o HTTP." }
+    requiere: { mover: [uart, spi, red] }
+
+  - id: empareje-metodos
+    tipo: pregunta
+    titulo: "Cada método, su rasgo"
+    texto: "Empareje cada método con lo que lo caracteriza."
+    libro: [31, 35, 37, 39]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
+    emparejar:
+      - ["UART", "Un conversor USB-serie intercalado deja ver el tráfico"]
+      - ["USB", "Si el microcontrolador se reinicia, el puerto desaparece"]
+      - ["SPI o I²C", "El ordenador tiene que ser el maestro"]
+      - ["Ethernet o wifi", "Varios nodos, con MQTT o HTTP"]
+    exito: "Y la tabla los resume: velocidad, distancia y complejidad."
+    pistas:
+      - { texto: "El que depende de la enumeración es el del cable con alimentación." }
+    escalera:
+      - "Empiece por el de varios nodos: es el de la red."
+    solucion: "UART, tráfico visible; USB, puerto que desaparece; SPI o I²C, ordenador maestro; red, MQTT o HTTP."
+
+  - id: maestro
+    tipo: pregunta
+    titulo: "Quién manda en SPI o I²C"
+    texto: "Una Raspberry Pi y un Arduino, juntos en la misma caja, se comunican por I²C. ¿Quién debe ser el maestro?"
+    libro: [37]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
+    opciones:
+      - texto: "El ordenador de placa"
+        bien: true
+        porque: "Su sistema operativo no responde con la puntualidad que exige un esclavo."
+      - texto: "El microcontrolador, por ser determinista"
+        porque: "Precisamente por eso el esclavo ideal es él: responde a tiempo; el ordenador no."
+      - texto: "Da igual"
+        porque: "No da igual: un esclavo debe responder con puntualidad, y el ordenador no la garantiza."
+    escalera:
+      - "¿Cuál de los dos puede tardar en atender por culpa de su sistema operativo?"
+    solucion: "El ordenador de placa es el maestro."
+
+  - id: prediga-usb
+    tipo: predecir
+    titulo: "Un reinicio por USB"
+    texto: "El microcontrolador, unido por USB como puerto serie, se reinicia. ¿Qué ve la aplicación del ordenador?"
+    libro: [34, 35]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
+    opciones:
+      - texto: "El puerto desaparece y reaparece, y debe manejarlo"
+        bien: true
+        porque: "La enumeración tarda: la aplicación tiene que volver a abrir el puerto."
+      - texto: "Nada: el puerto sigue abierto"
+        porque: "Con USB, el dispositivo se va del bus al reiniciarse y vuelve a enumerarse."
+      - texto: "Un error de nivel de tensión"
+        porque: "El USB no tiene ese problema; lo que cambia es que el puerto se va y vuelve."
+    escalera:
+      - "Un dispositivo USB que se reinicia, ¿sigue conectado para el ordenador?"
+    solucion: "El puerto desaparece y reaparece."
+
+  - id: toque-niveles
+    tipo: tocar
+    titulo: "La precaución de niveles"
+    texto: "El Arduino trabaja a 5 V y la Pi a 3,3 V. Toque lo que protege el RX de la Pi en la UART."
+    libro: [32, "cap19#25"]
+    widget:
+      tipo: figura
+      figura: fig-19.2
+      zonas:
+        - { id: arduino, rotulo: "Bloque azul de la izquierda", rect: [94, 10, 80, 148] }
+        - { id: divisor, rotulo: "Recuadro naranja de arriba", rect: [201, 34, 48, 19] }
+        - { id: mosfet, rotulo: "Recuadro naranja de abajo", rect: [201, 113, 48, 19] }
+        - { id: pi, rotulo: "Bloque morado de la derecha", rect: [277, 10, 80, 148] }
+    tocar:
+      bien: [divisor]
+      porque:
+        arduino: "El Arduino es el que entrega los 5 V: el problema, no la protección."
+        mosfet: "Ese es el traductor del I²C, que es bidireccional; la UART va por arriba."
+        pi: "La Pi es la que hay que proteger: sus entradas no toleran 5 V."
+    exito: "El divisor: baja los 5 V del TX del Arduino a lo que admite la Pi."
+    escalera:
+      - "Busque la línea de la UART, la de arriba."
+    solucion: "El recuadro naranja de arriba, el divisor."
+
+  - id: simule-divisor
+    tipo: simular
+    titulo: "Lo que llega al RX"
+    texto: "El TX del Arduino da 5 V. Con R₁ = 1 kΩ arriba y R₂ = 2 kΩ abajo, ¿cuánto llega al RX de la Pi?"
+    libro: [32, "cap09#187", "cap09#193"]
+    fijar: { V_tx: 5, R_1: 1000, R_2: 2000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_tx, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_rx, rotulo: "Tensión en el RX" }
+      mide: { salida: V_rx, corriente: I_d }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_rx
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión en el RX, V_{RX}"
+      medida: salida
+      errores:
+        - { expr: "V_r1", texto: "Esa es la tensión de R₁, la de arriba. El RX está en el punto medio: mide la de R₂." }
+        - { expr: "V_mi", texto: "La mitad saldría con dos resistencias iguales; R₂ es el doble que R₁." }
+    exito: "3,33 V: R₂ se queda dos tercios de los 5 V. Es el divisor del problema 9.C."
+    escalera:
+      - "El RX mide la tensión de la resistencia de abajo."
+    solucion: "5 · 2 / (1 + 2) = 3,33 V."
+    comprobar:
+      - { V_rx: 3.33, V_r1: 1.67, V_mi: 2.5, tol: 0.01 }
+
+  - id: arranque
+    tipo: pregunta
+    titulo: "El arranque desacompasado"
+    texto: "Al encender, ¿qué debe tolerar el protocolo entre las dos placas?"
+    libro: [45]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: arranque, rotulo: "Recuadro rojo de abajo a la izquierda", rect: [2, 187, 222, 43] }
+    opciones:
+      - texto: "Que uno hable cuando el otro todavía no escucha"
+        bien: true
+        porque: "El microcontrolador está listo en milisegundos y el ordenador tarda medio minuto."
+      - texto: "Nada: arrancan a la vez"
+        porque: "No: el microcontrolador está listo en milisegundos y el ordenador tarda medio minuto."
+      - texto: "Que el ordenador arranque primero"
+        porque: "Es al revés: el ordenador es el lento, y el microcontrolador hablará antes."
+    escalera:
+      - "¿Cuánto tarda cada uno en estar listo?"
+    solucion: "Que uno hable cuando el otro no escucha."
+
+  - id: toque-decisiones
+    tipo: tocar
+    titulo: "Masas distintas"
+    texto: "Las dos placas están en sitios con masas que pueden estar a potenciales distintos. Toque la decisión que hay que tomar."
+    libro: [43, 44, 46]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: inicia, rotulo: "Recuadro de arriba a la izquierda", rect: [2, 142, 222, 42] }
+        - { id: responde, rotulo: "Recuadro de arriba a la derecha", rect: [228, 142, 224, 42] }
+        - { id: arranque, rotulo: "Recuadro de abajo a la izquierda", rect: [2, 187, 222, 43] }
+        - { id: aislamiento, rotulo: "Recuadro de abajo a la derecha", rect: [228, 187, 224, 43] }
+    tocar:
+      bien: [aislamiento]
+      porque:
+        inicia: "Quién inicia decide entre preguntar y responder o enviar por su cuenta; no protege de las masas."
+        responde: "Los plazos de espera resuelven un otro que calla, no una diferencia entre masas."
+        arranque: "El arranque desacompasado es cuestión de tiempos, no de potenciales."
+    exito: "El aislamiento: si las masas pueden estar a potenciales distintos, hay que aislar."
+    escalera:
+      - "¿Qué decisión habla de potenciales?"
+    solucion: "El recuadro de abajo a la derecha, el aislamiento."
+
+  - id: porque-observador
+    tipo: porque
+    titulo: "Intercalar un observador"
+    texto: "Ante un enlace que falla, se intercala un analizador lógico para ver el tráfico real. ¿Por qué es la mitad del diagnóstico?"
+    libro: [48]
+    widget:
+      tipo: figura
+      figura: fig-19.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
+    opciones:
+      - texto: "Distingue un problema de protocolo de uno de nivel físico"
+        bien: true
+        porque: "Si los bytes viajan bien y no se entienden, es el protocolo; si no viajan, es el nivel físico."
+      - texto: "Porque corrige los errores del enlace"
+        porque: "Solo observa: no corrige nada, pero dice dónde está el fallo."
+      - texto: "Porque acelera la comunicación"
+        porque: "No cambia la velocidad; está en paralelo con la línea, mirando."
+    escalera:
+      - "¿Qué dos clases de problema puede tener un enlace?"
+    solucion: "Distingue un problema de protocolo de uno de nivel físico."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [31, 32, 37, 45]
+    ideas:
+      - { titulo: "UART.", texto: "La más simple y la más usada; con un conversor USB-serie se ve todo el tráfico." }
+      - { titulo: "Los niveles.", texto: "5 V frente a 3,3 V: un divisor protege el RX de la Pi." }
+      - { titulo: "SPI o I²C.", texto: "Placas juntas, y el ordenador de maestro." }
+      - { titulo: "Además del medio.", texto: "Quién inicia, plazos, arranque desacompasado y aislamiento." }

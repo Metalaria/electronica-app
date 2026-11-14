@@ -1,0 +1,203 @@
+# «Consolas por dentro» · Game Boy 5: el camino de la imagen y del sonido. La imagen: VRAM por MA/MD → PPU del SoC →
+# 2 bits por píxel (LD0, LD1) con CP por el cable plano de 21 vías → drivers de columnas y filas → la matriz de
+# 160 × 144 de 4 tonos, con el contraste y el regulador de la placa DMG-LCD-06; la VRAM es de la PPU en el modo 3. El
+# sonido: SO1 y SO2 → C3/C4 → RV1 → IR3R40 → altavoz o auriculares, y VIN, el audio del cartucho. Fuentes: los datos
+# de la consola (gb#n).
+leccion: consola-gb/gb-video-audio
+
+libro:
+  "gb#6": "Amplifica SO1/SO2 para el altavoz y los auriculares, tras el potenciómetro de volumen"
+  "gb#8": "Potenciómetro doble de volumen"
+  "gb#15": "Desacoplan la continua de SO1 y SO2 antes del volumen"
+  "gb#25": "Genera las tensiones de polarización V1–V5 de la pantalla"
+  "gb#27": "Potenciómetro de contraste"
+  "gb#30": "Cable plano a la placa base. 21 vías"
+  "gb#31": "Altavoz de 8 Ω"
+  "gb#35": "Cristal líquido monocromo de 4 tonos"
+  "gb#53": "la PPU la lee mientras dibuja (modo 3) y la CPU, en el resto de modos"
+  "gb#54": "El SoC le manda 2 bits por píxel (LD0, LD1) con el reloj CP"
+  "gb#59": "VIN trae audio del cartucho"
+
+modelo:
+  valores:
+    b: { sim: "b", nombre: "bits por píxel", unidad: "", valor: 2 }
+  calculos:
+    tonos: { expr: "2^b", sim: "N", nombre: "tonos posibles", unidad: "", cifras: 3 }
+    tonos_mal: { expr: "2*b", sim: "2 b", nombre: "tonos sumando bits (error)", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-pantalla
+    tipo: explorar
+    titulo: "Pantalla y altavoz"
+    texto: "En la placa de la pantalla, toque el panel y el altavoz."
+    libro: ["gb#35", "gb#31"]
+    requiere: { mover: [lcd, ls] }
+    widget:
+      tipo: figura
+      consola: { maquina: gb, foto: lcd-f }
+      zonas:
+        - { id: lcd, hotspot: f-lcd, rotulo: "Pantalla", texto: "160 × 144, monocroma de 4 tonos, con sus drivers sobre el panel." }
+        - { id: ls, hotspot: f-ls, rotulo: "Altavoz", texto: "8 Ω." }
+
+  - id: ordene-imagen
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino de la imagen"
+    texto: "Ordene el camino de un píxel, desde la memoria hasta el cristal líquido."
+    libro: ["gb#53", "gb#54", "gb#30", "gb#35"]
+    ordenar:
+      - "La VRAM, por el bus MA/MD."
+      - "La PPU, dentro del SoC."
+      - "LD0, LD1 y CP, por el cable plano."
+      - "Los drivers de columnas y filas."
+      - "La matriz de 160 × 144."
+    exito: "Memoria, PPU, cable y drivers: la imagen nunca pasa por un televisor."
+    pistas:
+      - { texto: "Los drivers van sobre el propio panel, al final del cable." }
+    escalera:
+      - "Empieza en la memoria de la imagen y acaba en el cristal."
+    solucion: "VRAM, PPU, LD0/LD1 y CP por el cable, drivers y matriz."
+
+  - id: prediga-tonos
+    tipo: predecir
+    titulo: "Dos bits por píxel"
+    texto: "El SoC manda 2 bits por píxel. ¿Cuántos tonos puede tener cada píxel?"
+    libro: ["gb#54", "gb#35"]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 4, unidad: "", rotulo: "bits por píxel" }
+      y: { min: 0, max: 16, unidad: "", rotulo: "tonos" }
+      curvas:
+        - { expr: "2^k", color: azul, rotulo: "2^{bits}", palitos: true }
+      marcas:
+        - { x: "b", y: "tonos", rotulo: "{{tonos}}" }
+    opciones:
+      - texto: "4"
+        bien: true
+        porque: "Con 2 bits hay 2² = 4 combinaciones: los 4 tonos de la pantalla."
+      - texto: "2"
+        porque: "Eso sería 1 bit: blanco o negro."
+      - texto: "8"
+        porque: "Necesitaría 3 bits. Con 2 bits, 2² = 4."
+    escalera:
+      - "Cuente las combinaciones de dos bits: 00, 01…"
+    solucion: "2² = 4 tonos."
+    comprobar:
+      - { tonos: 4 }
+
+  - id: por-que-modo3
+    tipo: porque
+    titulo: "Prohibido escribir"
+    texto: "Mientras se dibuja una línea, el juego no puede tocar la VRAM. ¿Por qué?"
+    libro: ["gb#53", "gb#54"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: vram, hotspot: vram, rotulo: "VRAM" }
+    opciones:
+      - texto: "En el modo 3 el bus de la VRAM es de la PPU."
+        bien: true
+        porque: "La PPU la lee mientras dibuja; la CPU la usa en el resto de modos."
+      - texto: "La VRAM es de solo lectura mientras está encendida la pantalla."
+        porque: "Es RAM normal: lo que importa es quién tiene su bus."
+      - texto: "Para ahorrar pilas."
+        porque: "No es por consumo: un bus solo puede tener un dueño a la vez."
+    escalera:
+      - "¿Quién lee la VRAM mientras se dibuja?"
+    solucion: "La PPU tiene el bus de la VRAM en el modo 3."
+
+  - id: toque-contraste
+    tipo: tocar
+    titulo: "Muy clara o muy oscura"
+    texto: "La imagen sale casi blanca. Toque el mando que lo corrige, en el dorso de la placa de la pantalla."
+    libro: ["gb#27", "gb#25", "gb#30"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb, foto: lcd-b }
+      zonas:
+        - { id: vr, hotspot: l-vr, rotulo: "Rueda, arriba a la derecha" }
+        - { id: reg, hotspot: l-reg, rotulo: "Chip pequeño, arriba a la izquierda" }
+        - { id: cable, hotspot: l-cable, rotulo: "Cinta, arriba" }
+    tocar:
+      bien: [vr]
+      porque:
+        reg: "Es el IR3E02, que genera las tensiones de la pantalla; se ajusta con el contraste, no se toca."
+        cable: "Es el cable plano: lleva la imagen, no la ajusta."
+    exito: "VR1, el potenciómetro de contraste de 30 k."
+    escalera:
+      - "Es una rueda que el jugador mueve desde fuera."
+    solucion: "VR1, el contraste."
+
+  - id: ordene-sonido
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino del sonido"
+    texto: "Ordene el camino del sonido desde la APU hasta el altavoz."
+    libro: ["gb#59", "gb#15", "gb#8", "gb#6"]
+    ordenar:
+      - "SO1 y SO2 salen de la APU."
+      - "C3 y C4 quitan la continua."
+      - "El volumen, RV1."
+      - "El amplificador IR3R40."
+      - "El altavoz o los auriculares."
+    exito: "Desacoplar, regular el volumen y amplificar."
+    pistas:
+      - { texto: "Los condensadores van antes del volumen; el amplificador, después." }
+    escalera:
+      - "El amplificador es lo último antes del altavoz."
+    solucion: "APU, C3/C4, RV1, IR3R40 y altavoz o auriculares."
+
+  - id: toque-acoplo
+    tipo: tocar
+    titulo: "Quitar la continua"
+    texto: "Toque las piezas que dejan pasar el sonido pero no la continua de SO1 y SO2."
+    libro: ["gb#15", "gb#6", "gb#8"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: cso, hotspot: cso, rotulo: "Dos piezas negras, a la derecha del cristal" }
+        - { id: vol, hotspot: vol, rotulo: "Rueda, a la izquierda" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, a la derecha" }
+    tocar:
+      bien: [cso]
+      porque:
+        vol: "Es el volumen: atenúa, pero deja pasar la continua."
+        amp: "Es el amplificador: sube la señal que le llega, después del volumen."
+    exito: "C3 y C4, de 1 µF: condensadores de acoplo."
+    escalera:
+      - "Un condensador en serie bloquea la continua."
+    solucion: "C3 y C4."
+
+  - id: prediga-vin
+    tipo: predecir
+    titulo: "Sonido desde el cartucho"
+    texto: "La ranura tiene una patilla VIN que va al audio. ¿Para qué?"
+    libro: ["gb#59"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura" }
+    opciones:
+      - texto: "Para que el cartucho meta su propio audio."
+        bien: true
+        porque: "VIN trae audio del cartucho: un juego puede sumar sonido propio al de la consola."
+      - texto: "Para alimentar el cartucho."
+        porque: "La alimentación del cartucho es VDD; VIN es audio."
+      - texto: "Para sacar el sonido por el cartucho."
+        porque: "Es una entrada: trae audio del cartucho."
+    escalera:
+      - "VIN: «V in», tensión de entrada… de audio."
+    solucion: "Es una entrada de audio desde el cartucho."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gb#54", "gb#53", "gb#15", "gb#6"]
+    ideas:
+      - { titulo: "2 bits.", texto: "4 tonos por píxel, por LD0 y LD1." }
+      - { titulo: "El modo 3.", texto: "La VRAM es de la PPU mientras dibuja." }
+      - { titulo: "Acoplo.", texto: "C3 y C4 quitan la continua del sonido." }
+      - { titulo: "VIN.", texto: "El cartucho puede meter su propio audio." }

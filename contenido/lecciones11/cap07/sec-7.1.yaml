@@ -1,0 +1,281 @@
+# Lección 1.2 de la sección 7.1 «Estructura y Principio de Funcionamiento» (cap07). Formato: contenido/lecciones11/GUIA.md.
+# 1.2: el canal se ve en el esquema «mosfet» (circuito vivo): la carga de 6 Ω con 12 V es la del ejemplo de la
+# sección 7.5 (cap07#93) y k = 0,5 A/V², V_th = 2 V los de la figura 7.3 (cap07#40). El óxido sigue con gráficas.
+leccion: cap07/sec-7.1
+
+libro:
+  3: "controla la conductividad de un canal mediante un campo eléctrico"
+  4: "no consume corriente de mando en continua"
+  7: "es como dos diodos opuestos, y no circula corriente en ningún sentido"
+  11: "Primero repele los huecos de la superficie"
+  12: "de 1 a 2 V en los de nivel lógico, de 3 a 4 V en los estándar"
+  13: "sin tensión de puerta no hay canal, y la tensión lo crea"
+  15: "El óxido de 20 nm con 20 V aplicados soporta un campo de 10⁹ V/m"
+  17: "Cualquier sobretensión de puerta destruye el dispositivo, y de forma permanente"
+  18: "a veces el daño es latente"
+  19: "con 20 nm de óxido, unos 173 nF por centímetro cuadrado"
+  21: "llamado diodo de cuerpo"
+  25: "la RDS(on) crece aproximadamente con VDS elevado a 2,5"
+  28: "Conduce solo; VGS negativa lo corta"
+  32: "la caída del diodo de cuerpo (0,4 a 0,7 V) en el otro"
+  "cap07#40": "(k = 0,5 A/V², Vth = 2 V)"
+  "cap07#43": "RDS(on) ≈ 1/(k·Vov)"
+  "cap07#93": "la carga resistiva de 6 Ω"
+  "cap07#162": "Una lectura próxima a cero en ambos sentidos significa que el transistor está en cortocircuito"
+
+modelo:
+  valores:
+    V_gs: { sim: "V_{GS}", nombre: "tensión de puerta", unidad: V, valor: 0 }
+    V_th: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 2 }
+    k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
+    V_g: { sim: "V_{G}", nombre: "tensión en el óxido", unidad: V, valor: 5 }
+    t_ox: { sim: "t_{ox}", nombre: "espesor del óxido", unidad: m, valor: 20e-9 }
+    E_r: { sim: "E_{ruptura}", nombre: "campo de ruptura del óxido", unidad: "V/m", valor: 1e9 }
+    m_v: { sim: "×", nombre: "factor de tensión de ruptura", unidad: "", valor: 2 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación de la carga", unidad: V, valor: 12 }
+    R_d: { sim: "R_{D}", nombre: "carga", unidad: Ω, valor: 6 }
+  calculos:
+    V_ov: { expr: "max(0, V_gs - V_th)", sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V }
+    b_m: { expr: "k_m*V_ov + 1/R_d", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tri: { expr: "(b_m - sqrt(max(0, b_m^2 - 2*k_m*V_dd/R_d)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_sat: { expr: "V_dd - R_d*k_m*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_ds: { expr: "max(V_sat, min(V_ov, V_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    I_d: { expr: "(V_dd - V_ds)/R_d", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
+    G_c: { expr: "k_m*max(0, V_gs - V_th)", sim: "G_{canal}", nombre: "conductancia del canal", unidad: S }
+    E_ox: { expr: "V_g/t_ox", sim: "E", nombre: "campo en el óxido", unidad: "V/m" }
+    E_fr: { expr: "E_ox/E_r*100", sim: "E/E_{ruptura}", nombre: "fracción del campo de ruptura", unidad: "%", cifras: 3 }
+    R_x: { expr: "m_v^2.5", sim: "R_{DS(on)}", nombre: "factor de la resistencia en conducción", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-canal
+    tipo: explorar
+    titulo: "La tensión crea el canal"
+    texto: "Suba la tensión de puerta y mire la corriente de la carga. Cambie también el umbral."
+    nota: "Carga de 6 Ω del ejemplo del interruptor; k = 0,5 A/V², el de las curvas del libro."
+    libro: [3, 12, 13, "cap07#40", "cap07#43", "cap07#93"]
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de drenador" }
+      datos:
+        - { valor: V_ds, rotulo: "V_{DS} = {{V_ds}}" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds, vgs: V_gs, vd: V_ds }
+      mandos:
+        - { valor: V_gs, min: 0, max: 10, paso: 0.5, rotulo: "Tensión de puerta" }
+        - { valor: V_th, lista: [1, 2, 3, 4], rotulo: "Umbral" }
+
+  - id: prediga-reposo
+    tipo: predecir
+    titulo: "Sin tensión de puerta"
+    texto: "Un canal N de enriquecimiento, con la puerta unida a la fuente. ¿Circula corriente entre drenador y fuente?"
+    libro: [7, 13]
+    fijar: { V_gs: 0, V_th: 2 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de drenador" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds }
+      ocultar: true
+    opciones:
+      - texto: "No: en ningún sentido"
+        bien: true
+        porque: "La superficie sigue siendo tipo P: entre las dos regiones N⁺ hay dos diodos opuestos."
+      - texto: "Sí, como por una resistencia alta"
+        porque: "Eso sería un canal débil. En reposo no hay canal: la tensión de puerta es la que lo crea."
+      - texto: "Sí, pero en un solo sentido"
+        porque: "Un solo diodo conduciría en un sentido; aquí hay dos opuestos y ninguno deja pasar."
+    escalera:
+      - "¿Qué tipo tiene la superficie del sustrato en reposo?"
+    solucion: "No circula: es como dos diodos opuestos entre fuente y drenador."
+    comprobar:
+      - { I_d: 0 }
+
+  - id: ordene-inversion
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cómo se forma el canal"
+    texto: "Ponga en orden lo que hace el campo de la puerta al subir su tensión."
+    libro: [11]
+    ordenar:
+      - "Repele los huecos de la superficie."
+      - "Queda una zona de agotamiento con iones fijos."
+      - "Atrae electrones minoritarios hacia la superficie."
+      - "La superficie se invierte y pasa a ser tipo N."
+      - "Hay un canal continuo entre fuente y drenador."
+    exito: "La tensión a la que se invierte la superficie es la tensión umbral."
+    pistas:
+      - { texto: "Antes de atraer electrones, el campo tiene que apartar los huecos." }
+    escalera:
+      - "Lo primero que nota el sustrato P son sus huecos empujados."
+    solucion: "Repeler huecos, agotamiento, atraer electrones, inversión, canal."
+
+  - id: estime-campo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El campo en el óxido"
+    texto: "Un óxido de 20 nm con 20 V en la puerta. ¿Qué campo soporta?"
+    libro: [15]
+    fijar: { V_g: 20, t_ox: 20e-9 }
+    estimar:
+      objetivo: "E_ox"
+      unidad: "V/m"
+      min: 0
+      max: 3e9
+      paso: 1e8
+      inicio: 2.5e9
+      tol: 0.05
+      rotulo: "Campo en el óxido"
+    exito: "20 V sobre 20 nm: 10⁹ V/m, prácticamente el campo de ruptura del dióxido de silicio."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.05e9 }, texto: "Se ha pasado: divida la tensión entre el espesor, sin más." }
+      - { texto: "Se ha quedado corto: 20 nm son 20 · 10⁻⁹ m, un espesor ridículo." }
+    escalera:
+      - "Campo = tensión / espesor."
+    solucion: "20 / (20 · 10⁻⁹) = 10⁹ V/m."
+    comprobar:
+      - { E_ox: 1e9 }
+
+  - id: sorpresa-borde
+    tipo: sorpresa
+    titulo: "Al borde de la ruptura"
+    texto: "Suba la tensión de puerta con 20 nm de óxido y mire qué fracción del campo de ruptura alcanza."
+    libro: [15, 17]
+    fijar: { t_ox: 20e-9 }
+    inicio: { V_g: 5 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 1.5e9, unidad: "V/m", rotulo: "E" }
+      curvas:
+        - { expr: "vx/t_ox", color: azul, rotulo: "campo en el óxido" }
+        - { expr: "E_r", color: tinta, rotulo: "ruptura", discontinua: true }
+      asas:
+        - { mueve: V_g, x: "V_g", y: "E_ox", rotulo: "Su tensión" }
+      lectura: { valor: E_fr, rotulo: "Del campo de ruptura" }
+      mandos:
+        - { valor: V_g, min: 0, max: 30, paso: 1, rotulo: "Tensión de puerta" }
+    requiere: { mover: [V_g] }
+
+  - id: por-que-fino
+    tipo: porque
+    titulo: "¿Por qué tan fino?"
+    texto: "La puerta trabaja al borde de su límite dieléctrico por diseño. ¿Por qué no se hace el óxido más grueso?"
+    libro: [15, 19]
+    fijar: { t_ox: 20e-9 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 1.5e9, unidad: "V/m", rotulo: "E" }
+      curvas:
+        - { expr: "vx/t_ox", color: azul, rotulo: "campo en el óxido" }
+        - { expr: "E_r", color: tinta, rotulo: "ruptura", discontinua: true }
+    opciones:
+      - texto: "Bajaría la capacidad de puerta, y con ella la transconductancia"
+        bien: true
+        porque: "La puerta controla el canal como un condensador: menos capacidad, menos carga inducida por voltio."
+      - texto: "Porque un óxido grueso conduciría corriente"
+        porque: "Más grueso aísla igual o mejor. El precio es otro: menos capacidad y menos control."
+      - texto: "Porque el campo no depende del espesor"
+        porque: "Sí depende: campo = tensión / espesor. Precisamente por eso, uno fino trabaja al límite."
+    escalera:
+      - "La puerta, el óxido y el sustrato forman un condensador."
+    solucion: "Más grueso reduciría la capacidad y con ella la transconductancia."
+
+  - id: estatica
+    tipo: pregunta
+    titulo: "La estática"
+    texto: "Un cuerpo cargado a unos centenares de voltios toca la puerta y el transistor sigue funcionando. ¿Está a salvo?"
+    libro: [17, 18]
+    fijar: { t_ox: 20e-9 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 1.5e9, unidad: "V/m", rotulo: "E" }
+      curvas:
+        - { expr: "vx/t_ox", color: azul, rotulo: "campo en el óxido" }
+        - { expr: "E_r", color: tinta, rotulo: "ruptura", discontinua: true }
+    opciones:
+      - texto: "No necesariamente: el daño puede ser latente"
+        bien: true
+        porque: "Puede seguir funcionando con la vida reducida y fallar semanas después."
+      - texto: "Sí: si funciona, la puerta está intacta"
+        porque: "El óxido perforado no se recupera, y a veces el daño no se ve hasta semanas después."
+      - texto: "Sí: la puerta aguanta cualquier tensión breve"
+        porque: "Al contrario: el límite típico de ±20 V no admite márgenes."
+    escalera:
+      - "El fallo no siempre es inmediato."
+    solucion: "El daño puede ser latente: falla semanas después."
+
+  - id: variantes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las cuatro variantes"
+    texto: "Una cada MOSFET con su comportamiento."
+    libro: [28]
+    emparejar:
+      - ["N de enriquecimiento", "Sin canal en reposo; lo enciende V_{GS} positiva"]
+      - ["P de enriquecimiento", "Sin canal en reposo; lo enciende V_{GS} negativa"]
+      - ["N de empobrecimiento", "Conduce solo; V_{GS} negativa lo corta"]
+      - ["P de empobrecimiento", "Conduce solo; V_{GS} positiva lo corta"]
+    exito: "Los dos de enriquecimiento son casi todo lo que se usa."
+    pistas:
+      - { texto: "Enriquecimiento: hay que crear el canal. Empobrecimiento: ya existe y se corta." }
+    escalera:
+      - "En un canal N, la tensión positiva atrae electrones."
+    solucion: "N enriquecimiento con +, P enriquecimiento con −; los de empobrecimiento conducen solos."
+
+  - id: estime-vertical
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Doble tensión de ruptura"
+    texto: "En un MOSFET de potencia, la R_{DS(on)} crece con la tensión de ruptura elevada a 2,5. ¿Por cuánto se multiplica si esa tensión se dobla?"
+    libro: [25]
+    fijar: { m_v: 2 }
+    estimar:
+      objetivo: "R_x"
+      unidad: ""
+      min: 1
+      max: 10
+      paso: 0.1
+      inicio: 2
+      tol: 0.05
+      rotulo: "Factor de R_{DS(on)}"
+    exito: "2 elevado a 2,5 da 5,66: por eso, a cientos de voltios, el MOSFET pierde frente al IGBT."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5.94 }, texto: "Se ha pasado: es 2 elevado a 2,5, entre 4 y 8." }
+      - { texto: "Se ha quedado corto: no es proporcional; es 2 elevado a 2,5." }
+    escalera:
+      - "2² = 4 y 2³ = 8: el resultado está entre ambos."
+    solucion: "2^{2,5} = 5,66."
+    comprobar:
+      - { R_x: 5.657 }
+
+  - id: banco-diodo
+    tipo: banco
+    titulo: "Pruébelo con el Brymen"
+    texto: "Con la prueba de diodos, mida entre drenador y fuente en los dos sentidos. Anote la lectura que no es OL."
+    libro: [32, "cap07#162"]
+    banco:
+      piezas: ["Un MOSFET de canal N", "Brymen en prueba de diodos"]
+      medir: "Drenador contra fuente: en un sentido OL; en el otro, la caída del diodo de cuerpo."
+      esperado: "0.55"
+      unidad: V
+      tol: 0.28
+      consejos:
+        - { cuando: { valor: medida, menor: 0.1 }, texto: "Casi cero en ambos sentidos: el transistor está en cortocircuito." }
+        - { cuando: { valor: desviacion, mayor: 0.28 }, texto: "Demasiado alta para el diodo de cuerpo: ¿ha medido contra la puerta, que debe dar OL?" }
+        - { texto: "Algo baja: descargue la puerta uniéndola a la fuente y repita la medida." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 4, 13, 15, 21]
+    ideas:
+      - { titulo: "Control por campo.", texto: "La puerta, aislada por el óxido, crea el canal sin consumir corriente en continua." }
+      - { titulo: "Umbral.", texto: "Por encima de V_{th} la superficie se invierte; más tensión, canal más conductor." }
+      - { titulo: "Puerta frágil.", texto: "El óxido trabaja al borde de la ruptura: sobretensión y estática lo perforan." }
+      - { titulo: "Diodo de cuerpo.", texto: "Unir sustrato y fuente deja un diodo entre fuente y drenador." }

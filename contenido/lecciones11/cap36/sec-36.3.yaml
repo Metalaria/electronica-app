@@ -1,0 +1,322 @@
+# Lección 1.2 de la sección 37.4 «Los Parámetros S» (cap36, sec-36.3). Formato: GUIA.md.
+# - S11(dB) = 20·log|Γ| (bloque 151), VSWR = (1 + |Γ|)/(1 − |Γ|) y potencia reflejada |Γ|²: la tabla del bloque 153
+#   (−6, −10, −20 y −30 dB → 0,50/0,32/0,10/0,03; VSWR 3,0/1,9/1,22/1,07; 25/10/1/0,1 %).
+# - Acoplador (bloque 167): 20 dB toma el 1 % y cuesta −10·log(0,99) = 0,04 dB; una directividad de 25 dB hace que una
+#   carga perfecta parezca de 25 dB de pérdidas de retorno, VSWR 1,12.
+# Paso práctico: «simular» el VSWR mínimo medible con 25 dB de directividad (errores: dar |Γ|, usar 10·log).
+leccion: cap36/sec-36.3
+
+libro:
+  138: "la tensión depende de dónde se mida"
+  139: "puede hacer oscilar el dispositivo bajo prueba"
+  140: "ondas que entran y ondas que salen, con todos los puertos terminados en su impedancia característica (50 Ω)"
+  143: "Pérdida de retorno"
+  144: "Cada uno es un número complejo (módulo y fase) y depende de la frecuencia"
+  146: "Un S11 de −20 dB significa que se refleja el 1 % de la potencia"
+  147: "S21 es la ganancia si el dispositivo amplifica"
+  148: "la carga de salida afecta a la entrada, y el dispositivo puede oscilar"
+  151: 'S_("11") lr(( "dB" ))'
+  153: "−20 dB"
+  155: "un mismo dispositivo tiene parámetros distintos referidos a 50 o a 75 Ω"
+  157: "Diseñar redes de adaptación"
+  158: "Encadenar bloques"
+  159: "el factor K de Rollet"
+  160: "los ficheros Touchstone (.s2p)"
+  162: "un analizador de redes vectorial"
+  163: "traslada el plano de referencia hasta la punta del cable"
+  166: "el acoplador direccional"
+  167: "con 25 dB de directividad"
+
+modelo:
+  valores:
+    S_11: { sim: "S₁₁", nombre: "pérdida de retorno", unidad: dB, valor: -10 }
+    R_d: { sim: "D", nombre: "directividad del acoplador", unidad: dB, valor: 25 }
+    A_c: { sim: "C", nombre: "factor de acoplo", unidad: dB, valor: 20 }
+  calculos:
+    G_m: { expr: "10^(S_11/20)", sim: "|Γ|", nombre: "módulo del coeficiente de reflexión", unidad: "" }
+    VSWR: { expr: "(1 + G_m)/(1 - G_m)", sim: "VSWR", nombre: "razón de onda estacionaria", unidad: "" }
+    P_r: { expr: "100*G_m^2", sim: "P_{refl}", nombre: "potencia reflejada", unidad: "%" }
+    G_d: { expr: "10^(-R_d/20)", sim: "|Γ|", nombre: "Γ aparente de una carga perfecta", unidad: "" }
+    S_d: { expr: "(1 + G_d)/(1 - G_d)", sim: "VSWR", nombre: "VSWR mínimo medible", unidad: "" }
+    G_10: { expr: "10^(-R_d/10)", sim: "|Γ|", nombre: "Γ con 10·log", unidad: "" }
+    S_10: { expr: "(1 + G_10)/(1 - G_10)", sim: "VSWR", nombre: "VSWR con 10·log", unidad: "" }
+    F_c: { expr: "100*10^(-A_c/10)", sim: "fracción", nombre: "potencia extraída", unidad: "%" }
+    f_p: { expr: "1 - F_c/100", sim: "fracción", nombre: "fracción que pasa", unidad: "" }
+    P_p: { expr: "100 - F_c", sim: "pasa", nombre: "potencia que pasa", unidad: "%" }
+    P_1: { expr: "100*(1 - 10^(-0.1))", sim: "1 dB", nombre: "potencia que quita 1 dB", unidad: "%" }
+    L_c: { expr: "-10*log10(1 - F_c/100)", sim: "pérdida", nombre: "pérdida en la línea principal", unidad: dB }
+
+tarjetas:
+  - id: explore-cuatro
+    tipo: explorar
+    titulo: "Cuatro parámetros"
+    texto: "Un dispositivo de dos puertos: ondas que entran y ondas que salen. Toque los cuatro parámetros."
+    libro: [140, 143, 144]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: s21, rotulo: "Flecha azul, arriba", rect: [64, 42, 99, 35], texto: "S₂₁: lo que sale por la salida respecto a lo que entró. Ganancia o pérdida de inserción." }
+        - { id: s11, rotulo: "Arco rojo, a la izquierda", rect: [64, 79, 40, 50], texto: "S₁₁: lo que se refleja en la entrada. Pérdida de retorno." }
+        - { id: s22, rotulo: "Arco morado, a la derecha", rect: [128, 79, 40, 50], texto: "S₂₂: lo que se refleja en la salida. Adaptación de salida." }
+        - { id: s12, rotulo: "Flecha naranja, abajo", rect: [64, 126, 99, 35], texto: "S₁₂: lo que pasa de la salida a la entrada. Aislamiento." }
+    requiere: { mover: [s21, s11, s22, s12] }
+
+  - id: porque-ondas
+    tipo: porque
+    titulo: "Por qué no medir tensiones"
+    texto: "En baja frecuencia se miden tensiones con los puertos en abierto o en corto. ¿Por qué no en radiofrecuencia?"
+    libro: [138, 139, 140]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
+    opciones:
+      - texto: "La tensión depende de dónde se mida, y abrir o cortocircuitar puede hacerlo oscilar"
+        bien: true
+        porque: "Con todo terminado en 50 Ω no hay que abrir ni cortocircuitar nada."
+      - texto: "Porque los voltímetros no llegan a esas frecuencias"
+        porque: "El problema no es el instrumento: es que la medida es ambigua y altera el dispositivo."
+      - texto: "Porque en RF no hay tensiones"
+        porque: "Las hay, pero cambian a lo largo del circuito cuando es comparable a λ."
+    escalera:
+      - "Piense en un circuito comparable a la longitud de onda."
+    solucion: "Medida ambigua y riesgo de oscilar: por eso ondas con 50 Ω en todos los puertos."
+
+  - id: empareje-nombres
+    tipo: pregunta
+    titulo: "Sus nombres habituales"
+    texto: "Empareje cada parámetro con su nombre habitual."
+    libro: [143, 147]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
+    emparejar:
+      - ["S₁₁", "Pérdida de retorno"]
+      - ["S₂₁", "Ganancia o pérdida de inserción"]
+      - ["S₁₂", "Aislamiento"]
+      - ["S₂₂", "Adaptación de salida"]
+    exito: "El primer subíndice es el puerto por donde sale; el segundo, por donde entra."
+    pistas:
+      - { texto: "Los de subíndices repetidos son reflexiones." }
+    escalera:
+      - "S₂₁: entra por el primer puerto y sale por el segundo."
+    solucion: "S₁₁ retorno; S₂₁ ganancia; S₁₂ aislamiento; S₂₂ adaptación de salida."
+
+  - id: explore-conversion
+    tipo: explorar
+    titulo: "Tres formas de decir lo mismo"
+    texto: "S₁₁ en decibelios, |Γ|, VSWR y potencia reflejada son la misma medida. Mueva S₁₁."
+    libro: [146, 151, 153]
+    widget:
+      tipo: grafica
+      x: { id: s, min: -35, max: -3, unidad: dB, rotulo: "S₁₁" }
+      y: { min: 1, max: 4, unidad: "", rotulo: "VSWR" }
+      curvas:
+        - { expr: "(1 + 10^(s/20))/(1 - 10^(s/20))", color: naranja, rotulo: "VSWR" }
+      marcas:
+        - { x: "S_11", y: "VSWR", rotulo: "{{VSWR}}" }
+      lectura: { valor: VSWR, rotulo: "VSWR" }
+      datos:
+        - { valor: G_m, rotulo: "|Γ| = {{G_m}}" }
+        - { valor: P_r, rotulo: "Reflejada: {{P_r}}" }
+      mandos:
+        - { valor: S_11, lista: [-6, -10, -20, -30], rotulo: "S₁₁" }
+    requiere: { mover: [S_11] }
+
+  - id: formula-s11
+    tipo: formula
+    titulo: "S₁₁ es Γ en decibelios"
+    texto: "S₁₁ es el coeficiente de reflexión Γ, expresado en decibelios de tensión."
+    libro: [151, 153]
+    ec: 151
+    sustitucion: "20 · log₁₀ {{G_m}} = {{S_11}}"
+    widget:
+      tipo: grafica
+      x: { id: s, min: -35, max: -3, unidad: dB, rotulo: "S₁₁" }
+      y: { min: 0, max: 0.8, unidad: "", rotulo: "|Γ|" }
+      curvas:
+        - { expr: "10^(s/20)", color: azul, rotulo: "|Γ|" }
+      marcas:
+        - { x: "S_11", y: "G_m", rotulo: "{{G_m}}" }
+      lectura: { valor: G_m, rotulo: "|Γ|" }
+      mandos:
+        - { valor: S_11, lista: [-6, -10, -20, -30], rotulo: "S₁₁" }
+
+  - id: estime-reflejada
+    tipo: pregunta
+    titulo: "Un S₁₁ de −20 dB"
+    texto: "Una antena tiene un S₁₁ de −20 dB. ¿Qué porcentaje de la potencia se refleja?"
+    libro: [146, 153]
+    fijar: { S_11: -20 }
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: grafica, rotulo: "VSWR frente a S₁₁", rect: [235, 10, 205, 195] }
+    estimar:
+      objetivo: "P_r"
+      unidad: "%"
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 14
+      tol: 0.1
+      rotulo: "Potencia reflejada"
+    exito: "El 1 %: un valor excelente. Con −10 dB sería el 10 %, aceptable."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.1 }, texto: "Demasiado: −20 dB es una centésima de la potencia." }
+      - { texto: "Demasiado poco: −20 dB es la centésima, no la milésima." }
+    escalera:
+      - "−10 dB es una décima de potencia; −20 dB, una décima de una décima."
+    solucion: "|Γ| = 0,1, y su cuadrado es una centésima: el 1 %."
+    comprobar:
+      - { G_m: 0.1, P_r: 1, VSWR: 1.22 }
+
+  - id: predecir-s12
+    tipo: predecir
+    titulo: "Un amplificador que no aísla"
+    texto: "Un amplificador tiene un S₁₂ grande. ¿Qué puede pasar?"
+    libro: [148]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: s12, rotulo: "Flecha naranja, abajo", rect: [64, 126, 99, 35] }
+    opciones:
+      - texto: "La carga de salida afecta a la entrada y puede oscilar"
+        bien: true
+        porque: "Lo que se cuela hacia atrás es una realimentación: con fase y ganancia, oscila."
+      - texto: "Que amplifica más"
+        porque: "La ganancia es S₂₁; S₁₂ es lo que vuelve de la salida a la entrada."
+      - texto: "Que refleja más en la entrada"
+        porque: "La reflexión de entrada es S₁₁; S₁₂ es transmisión hacia atrás."
+    escalera:
+      - "S₁₂ es lo que pasa de la salida a la entrada."
+    solucion: "Realimentación sin querer: la salida mueve la entrada y puede oscilar."
+
+  - id: pregunta-referencia
+    tipo: pregunta
+    titulo: "50 o 75 Ω"
+    texto: "Le dan los parámetros S de un amplificador sin decir la impedancia de referencia. ¿Qué falta?"
+    libro: [155]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
+    opciones:
+      - texto: "Saber el sistema: referidos a 50 o a 75 Ω son distintos"
+        bien: true
+        porque: "Los parámetros S van referidos a una impedancia concreta; hay fórmulas de conversión."
+      - texto: "Nada: son propiedades del dispositivo"
+        porque: "Dependen también de los puertos terminados: un mismo dispositivo da otros con 75 Ω."
+      - texto: "Solo la frecuencia"
+        porque: "La frecuencia también hace falta, pero la referencia cambia todos los números."
+    escalera:
+      - "Los parámetros S se miden con los puertos terminados. ¿En qué?"
+    solucion: "La impedancia de referencia: 50 y 75 Ω dan parámetros distintos."
+
+  - id: empareje-usos
+    tipo: pregunta
+    titulo: "Qué se hace con ellos"
+    texto: "Empareje cada uso de los parámetros S con lo que permite."
+    libro: [157, 158, 159, 160]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
+    emparejar:
+      - ["Diseñar adaptación", "Llevar la entrada del dispositivo a 50 Ω"]
+      - ["Encadenar bloques", "Predecir la cadena desde cada bloque"]
+      - ["El factor K de Rollet", "Saber si el amplificador puede oscilar"]
+      - ["Ficheros Touchstone", "Importar lo medido en el simulador"]
+    exito: "K de Rollet es el margen de fase de la radiofrecuencia."
+    pistas:
+      - { texto: "Touchstone son los ficheros .s2p." }
+    escalera:
+      - "La estabilidad sale de los cuatro parámetros juntos."
+    solucion: "Adaptación, a 50 Ω; cadena, predecir; K, oscilar; Touchstone, simulador."
+
+  - id: pregunta-calibracion
+    tipo: pregunta
+    titulo: "Calibrar el analizador"
+    texto: "Se calibra el analizador de redes con abierto, cortocircuito, carga y paso. ¿Para qué?"
+    libro: [162, 163]
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
+    opciones:
+      - texto: "Para llevar el plano de referencia a la punta del cable"
+        bien: true
+        porque: "Elimina los cables y conectores: se mide el dispositivo, no el camino."
+      - texto: "Para ajustar la frecuencia del barrido"
+        porque: "Los patrones no tienen que ver con la frecuencia: corrigen el camino."
+      - texto: "Para medir sin 50 Ω"
+        porque: "Al contrario: la medida sigue referida a 50 Ω, ya sin los cables."
+    escalera:
+      - "Sin calibrar, ¿qué se mide además del dispositivo?"
+    solucion: "Traslada la referencia a la punta: fuera cables y conectores."
+
+  - id: simule-directividad
+    tipo: simular
+    titulo: "El límite del acoplador"
+    texto: "Con 25 dB de directividad, una carga perfecta parece tener 25 dB de pérdidas de retorno. ¿Qué VSWR marca?"
+    libro: [166, 167, 151]
+    fijar: { R_d: 25 }
+    simular:
+      objetivo: S_d
+      unidad: ""
+      tol: 0.005
+      rotulo: "VSWR aparente"
+      errores:
+        - { expr: "G_d", texto: "Eso es |Γ|, no el VSWR: falta (1 + |Γ|)/(1 − |Γ|)." }
+        - { expr: "S_10", texto: "Ha usado 10·log: S₁₁ es 20·log|Γ|, una relación de tensiones." }
+    exito: "1,12: una adaptación mejor que esa no se puede medir con ese acoplador."
+    escalera:
+      - "Primero |Γ| = 10^{−25/20}."
+      - "Luego VSWR = (1 + |Γ|)/(1 − |Γ|)."
+    solucion: "|Γ| = 0,056 y VSWR = 1,12."
+    comprobar:
+      - { G_d: 0.0562, S_d: 1.119, G_10: 0.00316, S_10: 1.0063 }
+
+  - id: pregunta-acoplo
+    tipo: pregunta
+    titulo: "Lo que cuesta mirar"
+    texto: "Un acoplador de 20 dB toma el 1 % de la potencia. ¿Cuánto le cuesta a la línea principal?"
+    libro: [167]
+    fijar: { A_c: 20 }
+    widget:
+      tipo: figura
+      figura: fig-36.4
+      zonas:
+        - { id: s21, rotulo: "Flecha azul, arriba", rect: [64, 42, 99, 35] }
+    opciones:
+      - texto: "0,04 dB"
+        bien: true
+        porque: "Quitar el 1 % es multiplicar por 0,99: −10·log(0,99), unas centésimas."
+      - texto: "20 dB"
+        porque: "Los 20 dB son lo que se extrae respecto a la línea, no lo que pierde la línea."
+      - texto: "1 dB"
+        porque: "1 dB sería quitar un 21 %; el 1 % cuesta mucho menos."
+    escalera:
+      - "Si se lleva el 1 %, pasa el 99 %."
+    solucion: "−10·log(0,99) = 0,04 dB."
+    comprobar:
+      - { F_c: 1, L_c: 0.0436, f_p: 0.99, P_p: 99, P_1: 20.57 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [140, 143, 151, 155, 163, 167]
+    ideas:
+      - { titulo: "Ondas, no tensiones.", texto: "Todo terminado en 50 Ω: medible y sin oscilar." }
+      - { titulo: "Cuatro parámetros.", texto: "S₁₁ y S₂₂ reflejan; S₂₁ transmite; S₁₂ aísla." }
+      - { titulo: "La misma medida.", texto: "−20 dB, |Γ| = 0,1, VSWR 1,22 y el 1 % reflejado." }
+      - { titulo: "El acoplador.", texto: "Su directividad limita la mejor adaptación medible." }

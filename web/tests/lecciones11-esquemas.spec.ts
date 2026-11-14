@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { generarLeccion, type ContextoLibro } from '../src/lib/leccion11/generar.ts';
 import { compararSimulacion, terminos, type ComprobacionSpice, type GraficaSim } from '../src/lib/leccion11/spice.ts';
 import { esquemaDe, nombresEsquemas, registrarEsquemas } from '../src/lib/leccion11/esquemas/registro.ts';
@@ -91,17 +91,22 @@ test.describe('registro de esquemas', () => {
 });
 
 test.describe('cada esquema frente a ngspice (la lección de catálogo)', () => {
-  test.setTimeout(240_000);
+  // (esquemas12: the catalogue's 272 simulations take about a minute, and the mutations run it eight times)
+  test.setTimeout(900_000);
 
   test('se genera y tiene comprobaciones de cada esquema en el estado inicial y en los extremos de cada mando', () => {
     const r = generar();
     expect(r.errores).toEqual([]);
     const l = r.leccion!;
+    const src = (parse(fuente()) as Fuente).tarjetas;
     for (const t of l.tarjetas) {
       if (t.widget?.tipo !== 'circuito') continue;
       const propias = r.spice.filter((c) => c.donde.includes(`tarjeta ${t.id} `));
       const estados = new Set(propias.map((c) => /estado (\d+)/.exec(c.donde)![1]));
-      expect(estados.size, t.id).toBe(1 + 2 * t.widget.mandos.length);
+      // (and one more per «comprobar» entry with «con», as generar.ts adds them: the induction motor's slips)
+      const comprobar = (src.find((x) => x.id === t.id)?.comprobar ?? []) as { con?: unknown }[];
+      const conEstado = comprobar.filter((x) => !!x && typeof x.con === 'object' && x.con !== null).length;
+      expect(estados.size, t.id).toBe(1 + 2 * t.widget.mandos.length + conEstado);
       // the analyses its readings and curves need
       const analisis = new Set(propias.map((c) => c.analisis));
       if (t.widget.grafica?.curvas.some((c) => c.mide)) expect(analisis.has(t.widget.grafica.x.unidad === 'Hz' ? 'ac' : 'tran'), t.id).toBe(true);
@@ -129,7 +134,12 @@ test.describe('cada esquema frente a ngspice (la lección de catálogo)', () => 
     fs.mkdirSync(path.join(dir, 'cap01'));
     for (const [nombre, a, b, esperado] of mutaciones) {
       expect(fuente().split(a).length, nombre).toBe(2);
-      fs.writeFileSync(path.join(dir, `${ID}.yaml`), fuente().replace(a, b));
+      // (esquemas12c: only the mutated card and the cards without a circuit — the whole catalogue, 400 checks with
+      // ngspice, took three and a half minutes for each of the eight mutations)
+      const f = parse(fuente().replace(a, b)) as Fuente;
+      const tarjeta = /tarjeta (\S+)/.exec(esperado.source)![1]!;
+      f.tarjetas = f.tarjetas.filter((t) => t.id === tarjeta || (t.widget as { tipo?: string } | undefined)?.tipo !== 'circuito');
+      fs.writeFileSync(path.join(dir, `${ID}.yaml`), stringify(f));
       const r = correr(dir);
       expect(r.status, nombre).toBe(1);
       expect(r.stderr, nombre).toMatch(esperado);

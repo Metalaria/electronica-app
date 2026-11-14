@@ -1,0 +1,233 @@
+# Lección 1.2 de la sección 28.8 «Diseño Síncrono: Setup, Hold, Skew y Frecuencia Máxima» (cap29; etiqueta interna sec-29.8). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap29/sec-29.8
+
+libro:
+  242: "todos los elementos de memoria capturan a la vez, con el mismo flanco de reloj"
+  246: 'T gt.eq t_("pd") + t_("lógica") + t_("su")'
+  247: "Con tpd = 8 ns, tlógica = 5 ns y tsu = 3 ns: T ≥ 16 ns, es decir, 62,5 MHz"
+  249: "partiéndola en dos etapas con un registro en medio (segmentación o pipeline)"
+  250: "El camino crítico es el más lento de todos, y es el único que limita"
+  254: "el periodo de reloj no aparece: es una condición independiente de la frecuencia"
+  255: "La cura es añadir retardo en el camino de datos, no bajar el reloj"
+  258: "Si el destino recibe el reloj más tarde, gana 2 ns de margen"
+  260: "un reloj con 200 ps de jitter reduce el periodo útil en esa cantidad"
+  263: "un reloj que sale de una puerta AND tiene glitches y skew impredecible"
+
+modelo:
+  valores:
+    t_pd: { sim: "t_{pd}", nombre: "retardo del flip-flop", unidad: s, valor: 8e-9 }
+    t_l: { sim: "t_{lógica}", nombre: "retardo de la lógica", unidad: s, valor: 5e-9 }
+    t_su: { sim: "t_{su}", nombre: "tiempo de setup", unidad: s, valor: 3e-9 }
+  calculos:
+    T_min: { expr: "t_pd + t_l + t_su", sim: "T", nombre: "periodo mínimo", unidad: s }
+    f_max: { expr: "1/T_min", sim: "f_{máx}", nombre: "frecuencia máxima", unidad: Hz }
+
+tarjetas:
+  - id: explore-fmax
+    tipo: explorar
+    titulo: "Cada nanosegundo cuenta"
+    texto: "Entre dos flip-flops hay lógica. Arrastre su retardo y mire la frecuencia máxima."
+    libro: [242, 247]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+      asas:
+        - { mueve: t_l, x: "t_l", y: "f_max", rotulo: "Su lógica" }
+      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
+      datos:
+        - { valor: T_min, rotulo: "Periodo mínimo: {{T_min}}" }
+      mandos:
+        - { valor: t_l, min: 0, max: 0.00000003, paso: 0.000000001, rotulo: "t_{lógica}" }
+    requiere: { mover: [t_l] }
+
+  - id: formula-periodo
+    tipo: formula
+    titulo: "La ecuación del periodo"
+    texto: "El dato sale del primero, atraviesa la lógica y llega al segundo antes de su setup."
+    libro: [246, 247]
+    ec: 246
+    sustitucion: "{{t_pd}} + {{t_l}} + {{t_su}} = {{T_min}}, es decir, {{f_max}}"
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+      asas:
+        - { mueve: t_l, x: "t_l", y: "f_max", rotulo: "Su lógica" }
+      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
+      mandos:
+        - { valor: t_l, min: 0, max: 0.00000003, paso: 0.000000001, rotulo: "t_{lógica}" }
+
+  - id: prediga-sin-logica
+    tipo: predecir
+    titulo: "Sin lógica entre medias"
+    texto: "Los mismos flip-flops (t_{pd} = 8 ns, t_{su} = 3 ns) sin ninguna lógica entre ellos. ¿Hasta qué frecuencia llegan?"
+    libro: [247]
+    fijar: { t_l: 0 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
+      ocultar: true
+    opciones:
+      - { texto: "Unos 91 MHz: 1/11 ns", bien: true, porque: "Sin lógica, T = 8 + 3 = 11 ns. Cada nanosegundo de lógica resta." }
+      - { texto: "Infinita: sin lógica no hay retardo", porque: "El flip-flop tarda en sacar el dato y el siguiente necesita su setup: 11 ns." }
+      - { texto: "62,5 MHz, como antes", porque: "Esos son con 5 ns de lógica. Sin ella, el periodo baja a 11 ns." }
+    escalera: ["T = t_{pd} + t_{su} cuando no hay lógica."]
+    solucion: "1/(8 + 3) ns ≈ 91 MHz."
+    comprobar:
+      - { T_min: 11e-9, f_max: 90.9e6 }
+
+  - id: ajuste-camino
+    tipo: ajuste
+    titulo: "Recorte el camino crítico"
+    texto: "El camino crítico tiene 20 ns de lógica. Recórtela hasta que el reloj llegue a 62,5 MHz."
+    libro: [247, 250]
+    inicio: { t_l: 0.00000002 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+      asas:
+        - { mueve: t_l, x: "t_l", y: "f_max", rotulo: "Su lógica" }
+      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
+      mandos:
+        - { valor: t_l, min: 0, max: 0.00000003, paso: 0.000000001, rotulo: "t_{lógica}" }
+    ajuste:
+      valor: f_max
+      objetivo: 62500000
+      tol: 0.02
+      rotulo: "Frecuencia máxima"
+      escala: { min: 0, max: 100000000 }
+      bajo: "Aún es lento: recorte más lógica."
+      alto: "Se ha pasado: con menos lógica sube por encima del objetivo."
+      dentro: "62,5 MHz: el periodo de 16 ns del libro."
+    comprobar:
+      - { t_l: 20e-9 }
+
+  - id: pregunta-segmentar
+    tipo: pregunta
+    titulo: "Subir la frecuencia"
+    texto: "¿Cuál es la forma más eficaz de subir la frecuencia de un circuito síncrono?"
+    libro: [249]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "Partir la lógica del camino crítico con un registro en medio", bien: true, porque: "Es la segmentación: se acerca al doble cuando la lógica domina, a cambio de un ciclo más de latencia." }
+      - { texto: "Usar una familia más rápida", porque: "Ayuda, porque reduce t_{pd} y t_{su}, pero es la segunda en eficacia." }
+      - { texto: "Simplificar la función a mano", porque: "Hoy eso lo hace la herramienta de síntesis; es la última de las tres." }
+    escalera: ["¿Qué término de la ecuación suele ser el más grande?"]
+    solucion: "La segmentación."
+
+  - id: porque-critico
+    tipo: porque
+    titulo: "¿Por qué solo uno?"
+    texto: "Acelerar cualquier camino que no sea el crítico no sirve de nada. ¿Por qué?"
+    libro: [250]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "Porque el periodo lo fija el camino más lento: los demás ya llegan a tiempo", bien: true, porque: "Por eso las herramientas informan del camino crítico y del margen (slack) que queda." }
+      - { texto: "Porque los demás caminos no tienen lógica", porque: "La tienen, pero se asientan antes: el que fija el periodo es el más lento." }
+      - { texto: "Porque el reloj solo llega al camino crítico", porque: "El reloj llega a todos los flip-flops; el límite lo pone el camino más lento." }
+    escalera: ["Todos deben llegar antes del flanco: ¿cuál llega el último?"]
+    solucion: "Solo el camino más lento limita el periodo."
+
+  - id: pregunta-hold
+    tipo: pregunta
+    titulo: "Un fallo de hold"
+    texto: "Un circuito con un fallo de hold no funciona ni a la frecuencia más baja. ¿Qué se hace?"
+    libro: [254, 255]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "Añadir retardo en el camino de datos", bien: true, porque: "El hold usa los retardos mínimos y no depende del periodo: el dato nuevo llega demasiado pronto." }
+      - { texto: "Bajar el reloj", porque: "El periodo no aparece en la condición de hold: bajar el reloj no lo arregla." }
+      - { texto: "Usar flip-flops más rápidos", porque: "Empeoraría: el problema es que el dato llega antes de tiempo." }
+    escalera: ["¿Aparece el periodo en la condición de hold?"]
+    solucion: "Añadir retardo en el camino de datos."
+
+  - id: pregunta-skew
+    tipo: pregunta
+    titulo: "Un skew de 2 ns"
+    texto: "El flip-flop destino recibe el reloj 2 ns más tarde que el origen. ¿Qué pasa con los márgenes?"
+    libro: [258]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "Gana 2 ns de setup y pierde 2 ns de hold", bien: true, porque: "Por eso el skew no es simplemente malo: favorable sube la frecuencia, desfavorable rompe el hold." }
+      - { texto: "Pierde 2 ns en los dos", porque: "Los efectos son opuestos: lo que gana el setup lo pierde el hold." }
+      - { texto: "Nada: el skew no afecta", porque: "Afecta a las dos condiciones, en sentidos opuestos." }
+    escalera: ["Si el flanco de captura llega más tarde, el dato tiene más tiempo… y el dato nuevo también."]
+    solucion: "+2 ns de setup, −2 ns de hold."
+
+  - id: pregunta-jitter
+    tipo: pregunta
+    titulo: "El jitter"
+    texto: "Un reloj tiene 200 ps de jitter. ¿Qué le hace al margen de setup?"
+    libro: [260]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "Lo reduce en esos 200 ps: el periodo útil es menor", bien: true, porque: "La variación aleatoria del periodo se resta directamente del margen de setup." }
+      - { texto: "Nada, porque se compensa de un ciclo a otro", porque: "Basta un ciclo corto para fallar: el jitter se resta del margen." }
+      - { texto: "Lo aumenta en 200 ps", porque: "Un periodo que a veces es más corto quita tiempo, no lo da." }
+    escalera: ["¿Qué pasa en el ciclo que sale más corto?"]
+    solucion: "Resta 200 ps del periodo útil."
+
+  - id: pregunta-reloj-and
+    tipo: pregunta
+    titulo: "Un reloj derivado"
+    texto: "Para parar un bloque, el reloj se pasa por una puerta AND con una señal de habilitación. ¿Qué regla rompe?"
+    libro: [263]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }, { id: EN, valor: 1 }]
+      piezas:
+        - { id: y1, tipo: and, entradas: [CLK, EN] }
+      salidas:
+        - { id: CLK2, de: y1, rotulo: "Reloj derivado" }
+    opciones:
+      - { texto: "Un solo reloj para todo el dominio, sin relojes derivados con lógica", bien: true, porque: "Un reloj que sale de una AND tiene glitches y skew impredecible." }
+      - { texto: "Ninguna: es la forma normal de parar un bloque", porque: "Es una de las cinco reglas rotas con más frecuencia: los glitches de la AND son flancos." }
+      - { texto: "La del reset", porque: "El reset es otra regla; aquí el problema es el reloj que sale de una puerta." }
+    escalera: ["Recuerde qué es un glitch para un biestable."]
+    solucion: "Nada de relojes derivados con lógica."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [246, 250, 254, 258]
+    ideas:
+      - { titulo: "Setup.", texto: "T ≥ t_{pd} + t_{lógica} + t_{su}: el camino crítico fija la frecuencia." }
+      - { titulo: "Hold.", texto: "Independiente del reloj: se arregla con retardo en los datos." }
+      - { titulo: "Skew.", texto: "Lo que gana el setup lo pierde el hold." }

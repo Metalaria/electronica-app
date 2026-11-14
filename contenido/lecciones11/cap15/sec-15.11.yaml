@@ -1,0 +1,283 @@
+# Lección 1.2 de la sección 14.11 «Problemas de Diseño» (cap15; etiqueta sec-15.11).
+# Formato: contenido/lecciones11/GUIA.md. Problema 14.A con sus números: dos contactos de 5 nH y medio centímetro de
+# patilla e hilo a 10 nH/cm, 15 nH; con 100 nF, el cruce cae en 4,11 MHz; a 100 MHz el bucle presenta 9,4 Ω. Las
+# longitudes de 1 y 2 cm del mando y el condensador de 1 µF de la sorpresa son un EJEMPLO. Problema 14.B: 2 A en
+# 20 ns sobre 15 nH dan 1,5 V y sobre 100 nH, 10 V (bloque 304).
+leccion: cap15/sec-15.11
+
+libro:
+  285: "Cada contacto de la protoboard aporta unos 5 nH, y hay medio centímetro de patilla e hilo, a unos 10 nH/cm."
+  288: "suman del orden de 15 nH"
+  289: "9,425 Ω"
+  291: 'f = ("1")/("2" π sqrt(L dot.op C)) = "4,11 MHz"'
+  292: "A 100 MHz presenta 9,4 Ω"
+  293: "en protoboard hay un mínimo que no se puede bajar"
+  294: "la inductancia del camino determina la frecuencia hasta la que el condensador sirve"
+  303: "Sí, con cuidado"
+  304: "2 A en 20 ns sobre los 15 nH de contactos e hilos cortos ya dan 1,5 V de rebote, y sobre los 100 nH de un cable de puente de 10 cm, 10 V"
+  305: "no sirve para caracterizar temporizaciones rápidas ni para medir consumos"
+  306: "el protoboard vale para verificar funcionalidad, no prestaciones"
+  309: "El criterio es el di/dt, no la frecuencia."
+
+modelo:
+  valores:
+    C_p: { sim: "C", nombre: "condensador de desacoplo", unidad: F, valor: 100e-9 }
+    L_k: { sim: "L_{contacto}", nombre: "inductancia de cada contacto", unidad: H, valor: 5e-9 }
+    l_h: { sim: "l", nombre: "patilla e hilo", unidad: m, valor: 0.005 }
+    L_pm: { sim: "L/l", nombre: "inductancia por longitud de hilo", unidad: "H/m", valor: 0.000001 }
+    f_100: { sim: "f", nombre: "frecuencia de comprobación", unidad: Hz, valor: 100000000 }
+    I_sw: { sim: "ΔI", nombre: "corriente que conmuta el convertidor", unidad: A, valor: 2 }
+    t_sw: { sim: "Δt", nombre: "duración del flanco del convertidor", unidad: s, valor: 20e-9 }
+    L_sw: { sim: "L", nombre: "inductancia del camino del convertidor", unidad: H, valor: 15e-9 }
+  calculos:
+    L_p: { expr: "2*L_k + l_h*L_pm", sim: "L", nombre: "inductancia del camino", unidad: H }
+    f_res: { expr: "1/(2*pi*sqrt(L_p*C_p))", sim: "f", nombre: "frecuencia del cruce", unidad: Hz }
+    X_xr: { expr: "sqrt(L_p/C_p)", sim: "X", nombre: "reactancia en el cruce", unidad: Ω }
+    X_L1: { expr: "2*pi*f_100*L_p", sim: "X_{L}", nombre: "reactancia del camino a 100 MHz", unidad: Ω }
+    X_C1: { expr: "1/(2*pi*f_100*C_p)", sim: "X_{C}", nombre: "reactancia del condensador a 100 MHz", unidad: Ω }
+    L_10: { expr: "1/((2*pi*10000000)^2*C_p)", sim: "L", nombre: "inductancia para llegar a 10 MHz", unidad: H }
+    v_sw: { expr: "L_sw*I_sw/t_sw", sim: "v", nombre: "rebote del convertidor", unidad: V }
+
+tarjetas:
+  - id: explore-camino
+    tipo: explorar
+    titulo: "Hasta dónde desacopla"
+    texto: "Dos contactos y un trozo de patilla e hilo hasta el condensador de 100 nF. Alargue el hilo y mire el cruce."
+    nota: "El libro toma medio centímetro; los demás son un ejemplo."
+    libro: [285, 288]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_p)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_p", color: naranja, rotulo: "camino" }
+      marcas:
+        - { x: "f_res", y: "X_xr", rotulo: "Cruce" }
+      lectura: { valor: f_res, rotulo: "Desacopla hasta" }
+      datos:
+        - { valor: L_p, rotulo: "Camino: {{L_p}}" }
+      mandos:
+        - { valor: l_h, lista: [0.005, 0.01, 0.02], rotulo: "Patilla e hilo" }
+    requiere: { mover: [l_h] }
+
+  - id: prediga-cruce
+    tipo: predecir
+    titulo: "El punto de cruce"
+    texto: "Con 15 nH de camino y 100 nF, ¿hasta qué frecuencia desacopla el condensador?"
+    libro: [288, 291]
+    fijar: { l_h: 0.005, C_p: 100e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_p)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_p", color: naranja, rotulo: "camino" }
+      lectura: { valor: f_res, rotulo: "Desacopla hasta" }
+      ocultar: true
+    opciones:
+      - texto: "Hasta unos 4 MHz"
+        bien: true
+        porque: "El cruce, la resonancia serie, cae en 4,11 MHz: por encima se comporta como una inductancia."
+      - texto: "Hasta unos 10 MHz"
+        porque: "Ese es el límite general del protoboard; el desacoplo deja de servir antes."
+      - texto: "Hasta 100 MHz"
+        porque: "A 100 MHz el camino ya presenta 9,4 Ω: no desacopla nada."
+    escalera:
+      - "Desacopla mientras la reactancia del condensador sea la que manda."
+    solucion: "Hasta 4,11 MHz."
+    comprobar:
+      - { L_p: 15e-9, f_res: 4110000, tol: 0.003 }
+
+  - id: formula-cruce
+    tipo: formula
+    titulo: "La resonancia serie"
+    texto: "Donde las dos reactancias se igualan. Cambie la longitud del hilo."
+    libro: [291]
+    ec: 291
+    sustitucion: "1 / (2π · √({{L_p}} · {{C_p}})) = {{f_res}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_p)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_p", color: naranja, rotulo: "camino" }
+      marcas:
+        - { x: "f_res", y: "X_xr", rotulo: "Cruce" }
+      lectura: { valor: f_res, rotulo: "Cruce" }
+      mandos:
+        - { valor: l_h, lista: [0.005, 0.01, 0.02], rotulo: "Patilla e hilo" }
+    comprobar:
+      - { con: { l_h: 0.005 }, f_res: 4110000, tol: 0.003 }
+
+  - id: estime-100mhz
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 100 MHz"
+    texto: "Con los 15 nH del camino, ¿qué reactancia presenta a 100 MHz?"
+    libro: [289, 292]
+    fijar: { l_h: 0.005 }
+    estimar:
+      objetivo: "X_L1"
+      unidad: Ω
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 18
+      tol: 0.05
+      rotulo: "Reactancia del camino"
+    exito: "9,4 Ω, cuando una red de alimentación debería quedar por debajo de decenas de miliohmios."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9.9 }, texto: "Se ha pasado: 2π · 100 MHz · 15 nH." }
+      - { texto: "Se ha quedado corto: 2π · 100 MHz · 15 nH son varios ohmios." }
+    escalera:
+      - "X_{L} = 2π · f · L."
+    solucion: "9,4 Ω."
+    comprobar:
+      - { X_L1: 9.425, X_C1: 0.0159, tol: 0.003 }
+
+  - id: estime-l10
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Para llegar a 10 MHz"
+    texto: "Con 100 nF, ¿qué inductancia de camino haría falta para que el cruce llegara a 10 MHz?"
+    libro: [294, 291]
+    estimar:
+      objetivo: "L_10"
+      unidad: H
+      min: 0
+      max: 0.00000002
+      paso: 0.0000000001
+      inicio: 0.000000015
+      tol: 0.1
+      rotulo: "Inductancia del camino"
+    exito: "Unos 2,5 nH: menos que un solo contacto de protoboard."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000000028 }, texto: "Más pequeña: despeje L de la resonancia con f = 10 MHz." }
+      - { texto: "Algo más grande: L = 1 / ((2π · f)² · C)." }
+    escalera:
+      - "Despeje L de f = 1 / (2π · √(L · C))."
+    solucion: "Unos 2,5 nH."
+    comprobar:
+      - { L_10: 2.53e-9, L_k: 5e-9, tol: 0.003 }
+
+  - id: sorpresa-condensador
+    tipo: sorpresa
+    titulo: "Un condensador más grande no ayuda"
+    texto: "Con el camino de 15 nH, cambie el condensador por uno mayor y mire hasta dónde desacopla."
+    nota: "El de 1 µF es un ejemplo."
+    libro: [293]
+    fijar: { l_h: 0.005 }
+    inicio: { C_p: 100e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_p)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_p", color: naranja, rotulo: "camino" }
+      marcas:
+        - { x: "f_res", y: "X_xr", rotulo: "Cruce" }
+      lectura: { valor: f_res, rotulo: "Desacopla hasta" }
+      mandos:
+        - { valor: C_p, lista: [100e-9, 1e-6], rotulo: "Condensador" }
+    requiere: { mover: [C_p] }
+
+  - id: por-que-minimo
+    tipo: porque
+    titulo: "¿Por qué el protoboard tiene un límite?"
+    texto: "Acortar el camino mejora el desacoplo. ¿Por qué en protoboard no se puede llegar muy lejos?"
+    libro: [293, 294]
+    fijar: { l_h: 0.005, C_p: 100e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_p)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_p", color: naranja, rotulo: "camino" }
+      lectura: { valor: f_res, rotulo: "Desacopla hasta" }
+    opciones:
+      - texto: "Porque los contactos ya aportan su inductancia: hay un mínimo que no se puede bajar"
+        bien: true
+        porque: "No es que el condensador sea malo: los hilos lo estropean, y en protoboard solo sirve hasta unos pocos megahercios."
+      - texto: "Porque los condensadores de protoboard son peores"
+        porque: "Es el mismo condensador: lo limita el camino."
+      - texto: "Porque el protoboard filtra las altas frecuencias"
+        porque: "No filtra: añade inductancia en serie."
+    escalera:
+      - "Aunque el hilo mida cero, ¿qué queda en el camino?"
+    solucion: "Los contactos imponen un mínimo de inductancia."
+
+  - id: explore-convertidor
+    tipo: explorar
+    titulo: "Un convertidor a 300 kHz"
+    texto: "Su frecuencia está muy por debajo de 10 MHz, pero conmuta 2 A en 20 ns. Cambie el camino y mire el rebote."
+    libro: [304]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-6, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 0, max: 12, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "min(12, L_sw*I_sw/tt)", color: naranja, rotulo: "rebote" }
+      marcas:
+        - { x: "t_sw", y: "v_sw", rotulo: "Su flanco" }
+      lectura: { valor: v_sw, rotulo: "Rebote" }
+      mandos:
+        - { valor: L_sw, lista: [15e-9, 100e-9], nombres: [contactos e hilos cortos, cable de puente largo], rotulo: "Camino" }
+    requiere: { mover: [L_sw] }
+    comprobar:
+      - { con: { L_sw: 15e-9 }, v_sw: 1.5 }
+      - { con: { L_sw: 100e-9 }, v_sw: 10 }
+
+  - id: tres-circuitos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué se puede montar"
+    texto: "Tres circuitos que hay que decidir si se prueban en protoboard. Una cada uno con su veredicto."
+    libro: [303, 309]
+    emparejar:
+      - ["Amplificador de audio", "Sí, sin problema"]
+      - ["Microcontrolador a 16 MHz con periféricos lentos", "Sí, con cuidado"]
+      - ["Convertidor conmutado a 300 kHz", "No"]
+    exito: "El criterio es el di/dt, no la frecuencia."
+    pistas:
+      - { texto: "El convertidor conmuta amperios en decenas de nanosegundos." }
+    escalera:
+      - "El audio no pasa de 20 kHz."
+    solucion: "Audio: sí; microcontrolador: con cuidado; convertidor: no."
+
+  - id: funcionalidad
+    tipo: pregunta
+    titulo: "Funcionalidad, no prestaciones"
+    texto: "Un microcontrolador funciona en el protoboard. ¿Para qué NO sirve ese montaje?"
+    libro: [305, 306]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-6, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 0, max: 12, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "min(12, L_sw*I_sw/tt)", color: naranja, rotulo: "rebote" }
+    opciones:
+      - texto: "Para caracterizar temporizaciones rápidas o medir consumos"
+        bien: true
+        porque: "La resistencia de los contactos falsea la corriente y la capacidad altera los flancos."
+      - texto: "Para probar la lógica del programa"
+        porque: "Para eso sirve perfectamente."
+      - texto: "Para comunicaciones lentas y sensores"
+        porque: "También sirve: verifica funcionalidad."
+    escalera:
+      - "¿«Funciona la idea» o «cumple la especificación»?"
+    solucion: "Para medir prestaciones: tiempos rápidos o consumos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [291, 293, 304, 306]
+    ideas:
+      - { titulo: "4,11 MHz.", texto: "Con 15 nH de camino, 100 nF dejan de desacoplar por encima." }
+      - { titulo: "El camino manda.", texto: "Un condensador mayor no ayuda; acortar sí, hasta el mínimo de los contactos." }
+      - { titulo: "El di/dt.", texto: "Un convertidor a 300 kHz no va en protoboard: 2 A en 20 ns." }
+      - { titulo: "La regla.", texto: "Protoboard para funcionalidad, no para prestaciones." }

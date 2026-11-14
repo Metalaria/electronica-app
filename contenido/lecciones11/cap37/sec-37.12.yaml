@@ -1,0 +1,256 @@
+# Lección 1.2 de la sección 38.12 «DSP en Hardware: el FIR y el CORDIC, Implementados» (cap37; etiqueta interna
+# sec-37.12). Formato: contenido/lecciones11/GUIA.md (§11). Los números del FIR (bloques 439, 444 y 454) y del CORDIC
+# (bloque 466) van en el modelo. El reto pone la regla del bloque 444 en una gráfica: ciclos necesarios por muestra
+# (N/M) frente a los multiplicadores M, con los ciclos disponibles (f_reloj / f_muestreo) como línea. Figuras 38.17
+# (450,72 × 220,32) y 38.18 (450,72 × 238,32).
+leccion: cap37/sec-37.12
+
+libro:
+  438: 'y lr([ n ]) = "Σ" h lr([ k ]) dot.op x lr([ n - k ])'
+  439: "Con N = 64 y 1 megamuestra por segundo, son 64 millones de multiplicaciones por segundo: cabe. Con 100 megamuestras, no."
+  441: "N multiplicadores trabajando a la vez"
+  442: "un solo multiplicador reutilizado, con los coeficientes en memoria"
+  443: "M multiplicadores durante N/M ciclos"
+  444: "Con reloj de 100 MHz y señal diezmada a 1 MHz hay 100 ciclos por muestra: un FIR de 64 coeficientes cabe con un multiplicador."
+  449: "Eso reduce los multiplicadores a la mitad sin cambiar el resultado, y es gratis."
+  450: "Un coeficiente que sea 2^m se implementa con un desplazamiento"
+  454: "Con datos de 16 bits, coeficientes de 16 y N = 64, hacen falta 38 bits de acumulador."
+  455: "truncar añade un sesgo de continua que aparece como un pico en el centro del espectro"
+  461: "cada iteración cuesta tres sumadores y ningún multiplicador"
+  463: "Es un generador de seno y coseno"
+  464: "x queda con el módulo √(x²+y²) y z con el ángulo arctan(y/x)"
+  466: "Olvidarlo produce una amplitud un 65 % mayor de lo esperado."
+  468: "Para 16 bits útiles hacen falta 16 iteraciones"
+  470: "Entrega un resultado por ciclo con 16 ciclos de latencia. Cuesta 48 sumadores"
+  471: "Cuesta 3 sumadores y 16 ciclos por resultado."
+  476: "casi todos los multiplicadores se gastan en el mezclador, que trabaja a la frecuencia completa"
+  479: "el problema está en el ancho del acumulador o en el escalado"
+  480: "Las tres arquitecturas de un FIR y la regla que decide entre ellas."
+  481: "Las rotaciones sucesivas del CORDIC y sus dos modos de funcionamiento."
+
+modelo:
+  valores:
+    N: { sim: "N", nombre: "coeficientes", valor: 64 }
+    f_s: { sim: "f_{muestreo}", nombre: "frecuencia de muestreo", unidad: Hz, valor: 1000000 }
+    f_clk: { sim: "f_{reloj}", nombre: "reloj", unidad: Hz, valor: 100000000 }
+    M: { sim: "M", nombre: "multiplicadores", valor: 64 }
+    B: { sim: "B", nombre: "bits de datos y coeficientes", valor: 16 }
+  calculos:
+    mult_s: { expr: "N*f_s", nombre: "multiplicaciones por segundo", unidad: "", cifras: 3 }
+    c_disp: { expr: "f_clk/f_s", nombre: "ciclos disponibles por muestra", cifras: 3 }
+    c_nec: { expr: "N/M", nombre: "ciclos necesarios por muestra", cifras: 3 }
+    b_acc: { expr: "2*B + ln(N)/ln(2)", nombre: "bits del acumulador", cifras: 2 }
+
+tarjetas:
+  - id: formula-fir
+    tipo: formula
+    titulo: "La ecuación y su coste"
+    texto: "N multiplicaciones por muestra. Cambie la frecuencia de muestreo: con 1 MS/s cabe, con 100 no."
+    libro: [438, 439]
+    ec: 438
+    sustitucion: "{{N}} × {{f_s}} = {{mult_s}} multiplicaciones por segundo"
+    widget:
+      tipo: grafica
+      x: { id: fs, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f_{muestreo}", escala: log }
+      y: { min: 1000000, max: 100000000000, rotulo: "multiplicaciones/s", escala: log }
+      curvas:
+        - { expr: "N*fs", color: azul, rotulo: "N × f_{muestreo}" }
+      asas:
+        - { mueve: f_s, x: "f_s", y: "mult_s", rotulo: "Su muestreo" }
+      lectura: { valor: mult_s, rotulo: "Multiplicaciones por segundo" }
+      mandos:
+        - { valor: f_s, lista: [1000000, 10000000, 100000000], rotulo: "f_{muestreo}" }
+    comprobar:
+      - { mult_s: 64000000 }
+
+  - id: explore-arquitecturas
+    tipo: explorar
+    titulo: "Espacio o tiempo"
+    texto: "La misma ecuación, repartida de tres formas. Toque la paralela y la serie."
+    libro: [441, 442, 443, 480]
+    widget:
+      tipo: figura
+      figura: fig-37.17
+      zonas:
+        - { id: paralela, rotulo: "Primer recuadro de la izquierda", rect: [4, 4, 220, 65], texto: "Paralela: N multiplicadores, una muestra por ciclo. Máximo caudal y máximo coste." }
+        - { id: semi, rotulo: "Segundo recuadro de la izquierda", rect: [4, 76, 220, 67], texto: "Semiparalela: M multiplicadores durante N/M ciclos." }
+        - { id: serie, rotulo: "Tercer recuadro de la izquierda", rect: [4, 149, 220, 66], texto: "Serie: un multiplicador, N ciclos por muestra. Lo adecuado tras el diezmado." }
+    requiere: { mover: [paralela, serie] }
+
+  - id: reto-multiplicadores
+    tipo: reto
+    titulo: "El mínimo de multiplicadores"
+    texto: "Reloj de 100 MHz y señal diezmada a 1 MHz: 100 ciclos por muestra. Elija el mínimo de multiplicadores para un FIR de 64 coeficientes."
+    libro: [443, 444]
+    inicio: { M: 64 }
+    widget:
+      tipo: grafica
+      x: { id: mm, min: 1, max: 64, rotulo: "M", escala: log }
+      y: { min: 0, max: 120, rotulo: "ciclos por muestra" }
+      curvas:
+        - { expr: "N/mm", color: azul, rotulo: "Necesarios, N/M" }
+        - { expr: "c_disp", color: tinta, rotulo: "Disponibles", discontinua: true }
+      asas:
+        - { mueve: M, x: "M", y: "c_nec", rotulo: "Su M" }
+      lectura: { valor: c_nec, rotulo: "Ciclos necesarios por muestra" }
+      mandos:
+        - { valor: M, lista: [1, 2, 4, 8, 16, 32, 64], rotulo: "Multiplicadores, M" }
+    condiciones:
+      - { valor: M, objetivo: 1, tol: 0.01, rotulo: "Multiplicadores: {{M}}" }
+    exito: "Con un multiplicador hacen falta 64 ciclos de los 100 que hay: la versión serie basta."
+    pistas:
+      - { cuando: { valor: M, mayor: 1.01 }, texto: "Le sobran ciclos: con 100 por muestra puede reutilizar menos multiplicadores durante más ciclos." }
+    escalera: ["Si f_{reloj} / f_{muestreo} ≥ N, basta la versión serie."]
+    solucion: "100 ≥ 64: un solo multiplicador, la versión serie."
+    comprobar:
+      - { c_disp: 100 }
+      - { con: { M: 1 }, c_nec: 64 }
+
+  - id: porque-simetria
+    tipo: porque
+    titulo: "La simetría, gratis"
+    texto: "Un FIR de fase lineal tiene h[k] = h[N−1−k]. ¿Por qué se suman las dos muestras antes de multiplicar?"
+    libro: [449, 450, 480]
+    widget:
+      tipo: figura
+      figura: fig-37.17
+      zonas:
+        - { id: optim, rotulo: "Recuadro naranja de la derecha", rect: [231, 89, 215, 76], texto: "Dos optimizaciones obligadas." }
+    opciones:
+      - { texto: "Comparten coeficiente: la mitad de multiplicadores, mismo resultado", bien: true, porque: "h·a + h·b = h·(a + b): una suma en lugar de un producto." }
+      - { texto: "Para que el filtro tenga fase lineal", porque: "La fase lineal ya la da la simetría de los coeficientes; sumar antes solo ahorra." }
+      - { texto: "Para reducir el ruido", porque: "El resultado es el mismo: lo que cambia es el coste." }
+    escalera: ["Mire dos productos con el mismo coeficiente."]
+    solucion: "Las muestras que comparten coeficiente se suman antes: mitad de multiplicadores, gratis."
+
+  - id: estime-acumulador
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El acumulador"
+    texto: "Datos de 16 bits, coeficientes de 16 y 64 coeficientes. ¿Cuántos bits necesita el acumulador para no desbordar?"
+    libro: [454]
+    estimar:
+      objetivo: "b_acc"
+      min: 0
+      max: 64
+      paso: 1
+      inicio: 32
+      tol: 0.02
+      rotulo: "Bits del acumulador"
+    exito: "38 bits: 16 + 16 del producto y log₂ 64 más por sumar los 64 productos."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 37.5 }, texto: "Falta el crecimiento de la suma: sumar N productos añade log₂ N bits." }
+      - { texto: "Sobran: el producto ocupa B + B bits y la suma de N añade log₂ N." }
+    escalera: ["B + B + log₂ N."]
+    solucion: "16 + 16 + log₂ 64 = 38 bits."
+    comprobar:
+      - { b_acc: 38 }
+
+  - id: pregunta-truncar
+    tipo: pregunta
+    titulo: "Truncar o redondear"
+    texto: "Al final, el resultado se recorta descartando los bits bajos, sin redondear. ¿Qué aparece?"
+    libro: [455]
+    widget:
+      tipo: figura
+      figura: fig-37.17
+      zonas:
+        - { id: acumulador, rotulo: "Recuadro rojo de la derecha", rect: [231, 173, 215, 43], texto: "El acumulador: B + B + log₂ N bits." }
+    opciones:
+      - { texto: "Un sesgo de continua: un pico en el centro del espectro", bien: true, porque: "Descartar bits redondea siempre hacia abajo: el error medio no es cero." }
+      - { texto: "Nada: los bits bajos no importan", porque: "Uno a uno no, pero siempre hacia el mismo lado suman un sesgo." }
+      - { texto: "Un desbordamiento", porque: "El desbordamiento viene de un acumulador corto; esto es el recorte final." }
+    escalera: ["¿Hacia qué lado se equivoca siempre descartar bits?"]
+    solucion: "Un sesgo de continua, visible como un pico en el centro del espectro: hay que redondear."
+
+  - id: explore-cordic
+    tipo: explorar
+    titulo: "El CORDIC, giro a giro"
+    texto: "Giros de ±arctan(2⁻ⁱ), cada vez más pequeños, hasta el ángulo pedido. Toque la tabla de giros y los dos modos."
+    libro: [461, 481]
+    widget:
+      tipo: figura
+      figura: fig-37.18
+      zonas:
+        - { id: giros, rotulo: "Tabla de arriba a la derecha", rect: [190, 5, 257, 98], texto: "Cada iteración suma o resta un giro fijo: tres sumadores y ningún multiplicador." }
+        - { id: modos, rotulo: "Recuadro verde de la derecha", rect: [192, 122, 255, 70], texto: "Rotación da seno y coseno; vectorización, módulo y ángulo." }
+        - { id: vectores, rotulo: "Dibujo de la izquierda", rect: [0, 20, 175, 190], texto: "El vector se acerca al ángulo pedido, pasándose a veces." }
+    requiere: { mover: [giros, modos] }
+
+  - id: empareje-cordic
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Modos y formas"
+    texto: "Una cada modo o forma de implementar el CORDIC con lo que da o lo que cuesta."
+    libro: [463, 464, 468, 470, 471]
+    emparejar:
+      - ["Rotación", "Seno y coseno"]
+      - ["Vectorización", "Módulo y ángulo: demodular AM y FM"]
+      - ["Desplegado", "Un resultado por ciclo, 48 sumadores"]
+      - ["Iterativo", "3 sumadores, 16 ciclos por resultado"]
+    exito: "Como en el FIR: si sobran ciclos entre muestras, iterativo."
+    pistas:
+      - { texto: "Desplegar es poner las 16 iteraciones en cadena, cada una con sus tres sumadores." }
+    escalera: ["La vectorización lleva y a cero: deja el módulo en x y el ángulo en z."]
+    solucion: "Rotación: seno y coseno. Vectorización: módulo y ángulo. Desplegado: 48 sumadores. Iterativo: 3 sumadores."
+
+  - id: prediga-ganancia
+    tipo: predecir
+    titulo: "La ganancia olvidada"
+    texto: "Cada iteración escala el módulo, y el producto converge a K ≈ 1,64676. Si no se compensa, ¿qué sale?"
+    libro: [466, 481]
+    widget:
+      tipo: figura
+      figura: fig-37.18
+      zonas:
+        - { id: vectores, rotulo: "Dibujo de la izquierda", rect: [0, 20, 175, 190], texto: "Los vectores girados acaban en el arco K, más allá del inicio." }
+    opciones:
+      - { texto: "Una amplitud un 65 % mayor de lo esperado", bien: true, porque: "Se compensa con 1/K ≈ 0,607, o absorbiendo la constante en la ganancia del sistema." }
+      - { texto: "Un ángulo equivocado", porque: "El ángulo sale bien: lo que crece es el módulo." }
+      - { texto: "Nada: el CORDIC solo gira", porque: "Cada giro alarga un poco el vector: no es una rotación pura." }
+    escalera: ["Si el módulo queda multiplicado por K, ¿cuánto de más es eso?"]
+    solucion: "Un 65 % de amplitud de más: se compensa con 1/K ≈ 0,607."
+
+  - id: pregunta-reparto
+    tipo: pregunta
+    titulo: "Dónde van los multiplicadores"
+    texto: "En una SDR, ¿qué bloque se lleva casi todos los multiplicadores?"
+    libro: [476]
+    widget:
+      tipo: figura
+      figura: fig-37.17
+      zonas:
+        - { id: regla, rotulo: "Recuadro verde de la derecha", rect: [231, 4, 215, 78], texto: "Si f_{reloj} / f_{muestreo} ≥ N, basta la versión serie." }
+    opciones:
+      - { texto: "El mezclador, que trabaja a la frecuencia completa", bien: true, porque: "Todo lo demás va después del diezmado, donde sobran ciclos." }
+      - { texto: "El FIR de canal", porque: "Va tras el diezmado: le basta la versión serie, con un multiplicador." }
+      - { texto: "El CIC", porque: "El CIC no tiene multiplicadores." }
+    escalera: ["¿Qué bloque con productos trabaja antes del diezmado?"]
+    solucion: "El mezclador, a la frecuencia completa; lo demás va tras el diezmado."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Se compara el módulo simulado con el mismo cálculo en coma flotante, y la diferencia supera el error de cuantificación. ¿Dónde busca?"
+    libro: [479]
+    widget:
+      tipo: figura
+      figura: fig-37.17
+      zonas:
+        - { id: acumulador, rotulo: "Recuadro rojo de la derecha", rect: [231, 173, 215, 43], texto: "El acumulador: B + B + log₂ N bits." }
+    opciones:
+      - { texto: "En el ancho del acumulador o en el escalado", bien: true, porque: "Son los dos sitios donde siempre está." }
+      - { texto: "En el simulador", porque: "El simulador hace lo que dice el código: el fallo está en la aritmética." }
+      - { texto: "En la frecuencia de reloj", porque: "Es una simulación funcional: los tiempos no cambian los números." }
+    escalera: ["¿Dónde se pierden bits en la aritmética entera?"]
+    solucion: "En el ancho del acumulador o en el escalado."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [444, 449, 454, 466]
+    ideas:
+      - { titulo: "FIR.", texto: "Paralelo, semiparalelo o serie: si f_{reloj}/f_{muestreo} ≥ N, basta uno." }
+      - { titulo: "Gratis.", texto: "La simetría reduce los multiplicadores a la mitad." }
+      - { titulo: "Bits.", texto: "Acumulador de B + B + log₂ N bits, y redondear al final." }
+      - { titulo: "CORDIC.", texto: "Sumas y desplazamientos; compense la ganancia K." }

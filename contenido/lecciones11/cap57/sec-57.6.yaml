@@ -1,0 +1,298 @@
+# Lección 1.2 de la sección 54.6 «Seguridad de los Robots Industriales» (cap57; etiquetas sec-57.N = impresas 54.N).
+# - Las normas, solo con lo que dice el libro (bloque 111): ISO 10218-1 y -2, edición de 2025; el anexo con un nivel
+#   por defecto para cada función (PL d para la parada de protección y la velocidad reducida, PL c para la parada de
+#   emergencia). Ninguna cifra de las normas que no esté en el libro (el propietario no las ha verificado).
+# - Las funciones de seguridad (bloque 113) y la cadena de seguridad con STO (bloque 114, figura 54.9a).
+# - La distancia de una cortina (ecuación del bloque 118; bloque 119): S = K·T + D_DS + Z, D_DS = 8·(d − 14) mm para
+#   d de 14 a 40 mm, K = 2 000 mm/s y, si S sale de más de 500 mm, 1 600 mm/s sin bajar de 500 mm. El modelo lo escribe
+#   sin «si»: S = min(S₂₀₀₀, max(500 mm, S₁₆₀₀)). Ejemplo del bloque 120 (632 mm) y ejercicio 54.7 (800 mm, cap57#176).
+#   Z = 0 (sin suplementos, como el ejemplo y el ejercicio).
+# - Los colaborativos (bloque 122) y la precaución del bloque 123: 11 kg·cm con 25 mm de brazo, más de 40 N (el modelo
+#   da 43,2 N con g = 9,81 m/s²).
+# Pasos prácticos: «ordenar» la cadena de seguridad, «tocar» la STO en la figura y «simular» la distancia del ejercicio
+# 54.7 (800 mm; errores: 988 mm sin recalcular con 1 600 mm/s, 940 mm sin el alcance a través del campo).
+# Duda del libro: la figura 54.9b escribe «S = K·T + C» y el texto, en la notación de 2024, «S = K·T + D_DS + Z».
+leccion: cap57/sec-57.6
+
+libro:
+  111: "da en un anexo un nivel por defecto para cada función (PL d, por ejemplo, para la parada de protección y la velocidad reducida, y PL c para la parada de emergencia)"
+  113: "la punta no puede pasar de 250 mm/s, vigilado por una función de seguridad, no por el programa"
+  114: "la función STO (safe torque off, IEC 61800-5-2) corta por dos canales independientes la alimentación de los drivers de puerta del inversor"
+  115: "La cadena de seguridad de una célula"
+  118: 'S = K dot.op T + D_("DS") + Z'
+  119: "el término de alcance a través del campo es 8·(d − 14) mm. K vale 2 000 mm/s; si con ella S sale mayor de 500 mm, se puede recalcular con 1 600 mm/s, sin bajar de 500 mm"
+  120: "Con K = 2 000 mm/s, S = 630 + 128 = 758 mm, más de 500: con K = 1 600 mm/s, S = 504 + 128 = 632 mm"
+  122: "La palabra «colaborativo» describe la aplicación, no el robot"
+  123: "un servo de 11 kg·cm que cierra una pinza con 25 mm de brazo aprieta un dedo con más de 40 N"
+  "cap57#176": "Una cortina vertical de 20 mm de resolución responde en 20 ms y protege un robot que tarda 450 ms en parar"
+
+modelo:
+  valores:
+    T_c: { sim: "T_{cortina}", nombre: "respuesta de la cortina", unidad: s, valor: 0.015 }
+    T_r: { sim: "T_{robot}", nombre: "tiempo de parada del robot", unidad: s, valor: 0.3 }
+    d_c: { sim: "d", nombre: "resolución de la cortina", unidad: m, valor: 0.03 }
+    K_1: { sim: "K", nombre: "velocidad de aproximación", unidad: "m/s", valor: 2 }
+    K_2: { sim: "K′", nombre: "velocidad de aproximación recalculada", unidad: "m/s", valor: 1.6 }
+    S_m: { sim: "S_{mín}", nombre: "distancia mínima absoluta", unidad: m, valor: 0.5 }
+    T_s: { sim: "T", nombre: "par del servo", unidad: "kg·cm", valor: 11 }
+    r_p: { sim: "r", nombre: "brazo de la pinza", unidad: m, valor: 0.025 }
+    g_0: { sim: "g", nombre: "gravedad", unidad: "m/s²", valor: 9.81 }
+  calculos:
+    T_t: { expr: "T_c + T_r", sim: "T", nombre: "tiempo total hasta la parada", unidad: s }
+    D_ds: { expr: "8*(d_c - 0.014)", sim: "D_{DS}", nombre: "alcance a través del campo", unidad: m }
+    S_1: { expr: "K_1*T_t + D_ds", sim: "S_{2000}", nombre: "distancia con 2 000 mm/s", unidad: m }
+    S_2: { expr: "max(S_m, K_2*T_t + D_ds)", sim: "S_{1600}", nombre: "distancia con 1 600 mm/s", unidad: m }
+    S_d: { expr: "min(S_1, S_2)", sim: "S", nombre: "distancia mínima", unidad: m }
+    S_sin: { expr: "K_1*T_t", sim: "K·T", nombre: "distancia sin el alcance", unidad: m }
+    KT_1: { expr: "K_1*T_t", sim: "K·T", nombre: "recorrido con 2 000 mm/s", unidad: m }
+    KT_2: { expr: "K_2*T_t", sim: "K′·T", nombre: "recorrido con 1 600 mm/s", unidad: m }
+    F_p: { expr: "T_s*g_0/100/r_p", sim: "F", nombre: "fuerza en el dedo", unidad: N }
+    T_n: { expr: "T_s*g_0/100", sim: "T", nombre: "par del servo en N·m", unidad: "N·m" }
+
+tarjetas:
+  - id: explore-cadena
+    tipo: explorar
+    titulo: "La cadena de seguridad"
+    texto: "Las funciones de seguridad no las ejecuta el controlador del robot. Toque el relé de seguridad y el controlador."
+    libro: [114, 115]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: seta, rotulo: "Arriba a la izquierda", rect: [5, 37, 62, 26], texto: "La seta de emergencia, por dos canales." }
+        - { id: cortina, rotulo: "En medio a la izquierda", rect: [5, 72, 62, 26], texto: "La cortina fotoeléctrica: provoca la parada de protección." }
+        - { id: validacion, rotulo: "Abajo a la izquierda", rect: [5, 106, 62, 26], texto: "El dispositivo de validación de la consola." }
+        - { id: rele, rotulo: "El recuadro del centro", rect: [90, 56, 58, 57], texto: "El relé o autómata de seguridad: recibe los dos canales y actúa sobre la potencia de los ejes." }
+        - { id: sto, rotulo: "Arriba a la derecha", rect: [164, 44, 52, 26], texto: "La STO del accionamiento: corta los drivers de puerta del inversor por dos canales." }
+        - { id: freno, rotulo: "Abajo a la derecha", rect: [164, 84, 52, 26], texto: "El freno de mantenimiento: sujeta los ejes con gravedad, que sin par caerían." }
+        - { id: controlador, rotulo: "La caja de abajo", rect: [5, 143, 143, 26], texto: "El controlador del robot solo recibe el estado: se entera, pero no decide." }
+    requiere: { mover: [rele, controlador] }
+
+  - id: empareje-funciones
+    tipo: pregunta
+    titulo: "Las funciones de seguridad"
+    texto: "Empareje cada función de seguridad de un robot con su rasgo."
+    libro: [113]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: dispositivos, rotulo: "Los dispositivos, a la izquierda", rect: [5, 37, 62, 95] }
+    emparejar:
+      - ["Parada de emergencia", "Por hardware, con prioridad sobre todo"]
+      - ["Parada de protección", "Resguardo o cortina; nunca pone en marcha el robot sola"]
+      - ["Velocidad reducida en manual", "La punta no pasa de 250 mm/s"]
+      - ["Dispositivo de validación", "Pulsador de tres posiciones: solo mueve en la media"]
+    exito: "La velocidad reducida la vigila una función de seguridad, no el programa."
+    pistas:
+      - { texto: "El pulsador de tres posiciones va en la consola de programación." }
+    escalera:
+      - "Piense en quién la provoca: la seta, un resguardo, el modo manual o el operario con la consola."
+    solucion: "Emergencia: hardware y prioridad. Protección: resguardo o cortina. Manual: 250 mm/s. Validación: tres posiciones."
+
+  - id: prediga-validacion
+    tipo: predecir
+    titulo: "Un susto con la consola"
+    texto: "Programando dentro de la célula, el operario se asusta y aprieta a fondo el dispositivo de validación. ¿Qué hace el robot?"
+    libro: [113]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: validacion, rotulo: "Abajo a la izquierda", rect: [5, 106, 62, 26] }
+    opciones:
+      - texto: "Para"
+        bien: true
+        porque: "Solo permite el movimiento en la posición media: suelto o a fondo, el robot para."
+      - texto: "Sigue, porque el pulsador está apretado"
+        porque: "Apretarlo a fondo es la reacción de un susto, y por eso también para."
+      - texto: "Va a velocidad normal"
+        porque: "En manual la punta no pasa de 250 mm/s, y además el pulsador a fondo lo para."
+    escalera:
+      - "¿Cuántas posiciones tiene el pulsador y en cuál permite moverse?"
+    solucion: "Para: solo se mueve con el pulsador en la posición media."
+
+  - id: ordene-cadena
+    tipo: pregunta
+    titulo: "De la cortina al motor"
+    texto: "Una persona interrumpe la cortina. Ordene lo que ocurre."
+    libro: [114, 115]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: distancia, rotulo: "La distancia, a la derecha", rect: [225, 30, 100, 110] }
+    ordenar:
+      - "La cortina detecta a la persona"
+      - "La señal llega por dos canales al relé de seguridad"
+      - "El relé actúa sobre la STO del accionamiento"
+      - "El motor ya no puede dar par; el freno sujeta los ejes con gravedad"
+    exito: "El controlador del robot solo se entera: la cadena no pasa por él."
+    pistas:
+      - { texto: "El relé de seguridad está entre los dispositivos y los accionamientos." }
+    escalera:
+      - "Dispositivo, relé de seguridad, accionamiento, motor."
+    solucion: "Cortina, dos canales al relé, STO, motor sin par y frenos."
+
+  - id: toque-sto
+    tipo: tocar
+    titulo: "Sin par aunque falle el procesador"
+    texto: "Toque lo que corta la alimentación de los drivers de puerta del inversor, para que el motor no pueda dar par."
+    libro: [114]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: rele, rotulo: "El recuadro del centro", rect: [90, 56, 58, 57] }
+        - { id: sto, rotulo: "Arriba a la derecha", rect: [164, 44, 52, 26] }
+        - { id: freno, rotulo: "Abajo a la derecha", rect: [164, 84, 52, 26] }
+        - { id: controlador, rotulo: "La caja de abajo", rect: [5, 143, 143, 26] }
+    tocar:
+      bien: [sto]
+      porque:
+        rele: "El relé decide; quien corta los drivers de puerta es la función del accionamiento."
+        freno: "El freno sujeta los ejes con gravedad; no corta el par del motor."
+        controlador: "El controlador solo recibe el estado: si fallara, la STO seguiría cortando."
+    exito: "La STO: dos canales independientes cortan los drivers de puerta. No hace falta abrir el contactor."
+    escalera:
+      - "Busque la función del accionamiento con nombre en inglés: safe torque off."
+    solucion: "Arriba a la derecha: la STO del accionamiento."
+
+  - id: formula-cortina
+    tipo: formula
+    titulo: "La distancia de una cortina"
+    texto: "Mientras el robot para, la persona avanza. Mueva el tiempo de parada y la resolución de la cortina."
+    libro: [118, 119, 120]
+    inicio: { T_r: 0.3, d_c: 0.03 }
+    fijar: { T_c: 0.015 }
+    ec: 118
+    sustitucion: "{{K_1}} · {{T_t}} + {{D_ds}} = {{S_1}}"
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.6, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 1.4, unidad: m, rotulo: "S" }
+      curvas:
+        - { expr: "K_1*tx + D_ds", color: naranja, rotulo: "con 2 000 mm/s", discontinua: true }
+        - { expr: "min(K_1*tx + D_ds, max(S_m, K_2*tx + D_ds))", color: azul, rotulo: "distancia mínima" }
+      marcas:
+        - { x: "T_t", y: "S_d", rotulo: "{{S_d}}" }
+      lectura: { valor: S_d, rotulo: "Distancia mínima" }
+      datos:
+        - { valor: D_ds, rotulo: "Alcance a través del campo: {{D_ds}}" }
+      mandos:
+        - { valor: T_r, min: 0.05, max: 0.5, paso: 0.005, rotulo: "Parada del robot" }
+        - { valor: d_c, lista: [0.014, 0.02, 0.03, 0.04], rotulo: "Resolución de la cortina" }
+    comprobar:
+      - { T_t: 0.315, D_ds: 0.128, S_1: 0.758, S_d: 0.632, KT_1: 0.63, KT_2: 0.504 }
+
+  - id: simule-cortina
+    tipo: simular
+    titulo: "Calcule la distancia"
+    texto: "Cortina vertical de 20 mm de resolución que responde en 20 ms, ante un robot que tarda 450 ms en parar. Sin suplementos, ¿distancia mínima?"
+    libro: ["cap57#176", 119]
+    fijar: { T_c: 0.02, T_r: 0.45, d_c: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.6, unidad: s, rotulo: "T" }
+      y: { min: 0, max: 1.4, unidad: m, rotulo: "S" }
+      curvas:
+        - { expr: "min(K_1*tx + D_ds, max(S_m, K_2*tx + D_ds))", color: azul, rotulo: "distancia mínima" }
+      lectura: { valor: S_d, rotulo: "Distancia mínima" }
+      ocultar: curvas
+    simular:
+      objetivo: S_d
+      unidad: m
+      tol: 0.02
+      rotulo: "Distancia mínima"
+      errores:
+        - { expr: "S_1", texto: "988 mm es con 2 000 mm/s: como sale de más de 500 mm, se recalcula con 1 600 mm/s." }
+        - { expr: "S_sin", texto: "Ha olvidado el alcance a través del campo, 8·(d − 14) = 48 mm." }
+    exito: "752 + 48 = 800 mm. Medir el tiempo de parada con la carga y la velocidad máximas es la mitad del trabajo."
+    escalera:
+      - "T = 20 + 450 ms; D_{DS} = 8·(20 − 14) mm."
+      - "Con 2 000 mm/s sale 988 mm, más de 500: recalcule con 1 600 mm/s."
+    solucion: "1 600 × 0,47 + 48 = 800 mm."
+    comprobar:
+      - { S_d: 0.8, S_1: 0.988, S_sin: 0.94, D_ds: 0.048, T_t: 0.47, KT_2: 0.752 }
+
+  - id: estime-pinza
+    tipo: pregunta
+    titulo: "Un brazo de modelismo"
+    texto: "Un servo de 11 kg·cm cierra una pinza con 25 mm de brazo sobre un dedo. ¿Con qué fuerza aprieta?"
+    libro: [123]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: seta, rotulo: "Arriba a la izquierda", rect: [5, 37, 62, 26] }
+    estimar:
+      objetivo: "F_p"
+      unidad: N
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 10
+      tol: 0.08
+      rotulo: "Fuerza en el dedo"
+    exito: "Unos 43,2 N: más de 40 N. Estos brazos no tienen ninguna función de seguridad: se prueban con las manos fuera."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 47 }, texto: "Se ha pasado: 11 kg·cm son 1,08 N·m." }
+      - { texto: "Se ha quedado corto: divida el par entre 0,025 m." }
+    escalera:
+      - "F = T/r, con el par en N·m: 11 kg·cm × 9,81 / 100."
+    solucion: "1,08 N·m / 0,025 m = 43,2 N."
+    comprobar:
+      - { F_p: 43.2, T_n: 1.08, g_0: 9.81, tol: 0.003 }
+
+  - id: empareje-colaborativo
+    tipo: pregunta
+    titulo: "Compartir espacio sin vallas"
+    texto: "Empareje cada manera de compartir espacio con una persona con cómo funciona."
+    libro: [122]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: distancia, rotulo: "La distancia, a la derecha", rect: [225, 30, 100, 110] }
+    emparejar:
+      - ["Guiado manual", "La persona lo mueve con un mando en la punta"]
+      - ["Vigilancia de velocidad y separación", "Frena o para antes de quedarse sin distancia para detenerse"]
+      - ["Limitación de potencia y fuerza", "Puede tocar, pero por debajo de unos límites de fuerza y presión"]
+    exito: "Los límites de fuerza y presión los tabula la norma por zonas del cuerpo."
+    pistas:
+      - { texto: "Los escáneres láser y las cámaras miden la distancia a la persona." }
+    escalera:
+      - "¿En cuál puede llegar a tocar el robot a la persona?"
+    solucion: "Guiado: un mando en la punta. Separación: sensores y frenado. Potencia y fuerza: contacto limitado."
+
+  - id: porque-cuchilla
+    tipo: porque
+    titulo: "Un colaborativo con cuchilla"
+    texto: "Un robot de los llamados colaborativos lleva una cuchilla en la punta. ¿Es una aplicación colaborativa?"
+    libro: [122, 111]
+    widget:
+      tipo: figura
+      figura: fig-57.9
+      zonas:
+        - { id: distancia, rotulo: "La distancia, a la derecha", rect: [225, 30, 100, 110] }
+    opciones:
+      - texto: "No: «colaborativo» describe la aplicación, no el robot"
+        bien: true
+        porque: "Lo que importa es el peligro de lo que hace el conjunto, y la evaluación de riesgos."
+      - texto: "Sí: el robot es colaborativo"
+        porque: "Que el robot lo sea no hace colaborativa una aplicación con una cuchilla."
+      - texto: "Sí, si va despacio"
+        porque: "La palabra describe la aplicación entera; una cuchilla no deja de serlo despacio."
+    escalera:
+      - "¿De qué depende el peligro: del brazo o de lo que lleva y hace?"
+    solucion: "No: la aplicación es la que es o no colaborativa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [113, 114, 118, 122]
+    ideas:
+      - { titulo: "Funciones.", texto: "Emergencia, protección, velocidad reducida y dispositivo de validación." }
+      - { titulo: "La cadena.", texto: "Dos canales, relé de seguridad y STO: el controlador solo se entera." }
+      - { titulo: "La cortina.", texto: "S = K·T + D_{DS} + Z: medir el tiempo de parada es la mitad del trabajo." }
+      - { titulo: "Colaborativo.", texto: "Describe la aplicación, no el robot." }

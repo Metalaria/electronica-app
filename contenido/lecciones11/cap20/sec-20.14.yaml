@@ -1,0 +1,311 @@
+# Lección 1.2 de la sección 19.13 «Problemas de Diseño» (cap20; sec-20.N = impresas 19.(N − 1)).
+# - 19.A (bloques 352 a 365): puente con una rama activa en el esquema «wheatstone», sin detector (voltímetro ideal):
+#   R₁ = R₃ = R₄ = R y R₂ = R·(1 + x) abajo a la izquierda, de modo que V_salida/V_exc = (R + ΔR)/(2R + ΔR) − ½ (ec.
+#   356). R = 1 kΩ y 1 V de excitación son de ejemplo (la tabla del libro va por voltio). Error de la aproximación
+#   lineal V·x/4 frente a la exacta: +0,05 %, +0,50 %, +2,50 % con x = 0,1 %, 1 %, 5 % (unos x/2).
+# - 19.B (bloques 368 a 377): 2 pF de 20 pF, y con 100 pF de cable en paralelo, de 120 pF: del 10 al 1,67 %.
+# - 19.C (bloques 380 a 393): V = I·R de lectura con 4 a 20 mA (1 a 5 V con 250 Ω); margen del transmisor
+#   24 − 5 − 0,034 ≈ 19 V.
+# Paso práctico: «simular» el error de la aproximación lineal con un 5 % de excursión (2,5 %; errores típicos: tomarlo
+# igual a ΔR/R, 5 %, o a ΔR/4R, 1,25 %).
+leccion: cap20/sec-20.14
+
+libro:
+  352: "Un sensor resistivo varía hasta un 5 % de su valor"
+  356: '(V_("out"))/(V_("exc")) = (R + "Δ" R)/("2" R + "Δ" R) - "½"'
+  357: "la aproximación habitual es (Vexc/4)·(ΔR/R)"
+  359: "+2,50 %"
+  360: "el error de linealidad es aproximadamente la mitad de ΔR/R"
+  362: "la no linealidad se cancela exactamente y además cuadruplica la señal"
+  365: "Con 5 % de excursión, 2,5 %"
+  368: "tiene 20 pF en reposo y varía 2 pF con la presencia de un objeto"
+  371: "Un cable coaxial corriente presenta unos 100 pF por metro"
+  372: "1,67 %"
+  373: "Un metro de cable divide la sensibilidad por seis."
+  374: "la capacidad del cable deja de cargar, aunque siga estando físicamente"
+  380: "Un sensor está a 50 metros del armario de control."
+  383: "hasta que aparece una diferencia de potencial entre masas"
+  384: "la magnitud transmitida es la misma en todo el bucle"
+  385: "1,72 Ω × 20 mA = 34 mV"
+  387: "1,00 a 5,00 V"
+  388: "Los 250 Ω son el valor clásico porque dan exactamente 1–5 V"
+  389: "al transmisor le quedan 19 V"
+  390: "una rotura del cable se distingue de una medida de cero"
+
+modelo:
+  valores:
+    V_e: { sim: "V_{exc}", nombre: "excitación de ejemplo", unidad: V, valor: 1 }
+    R_b: { sim: "R", nombre: "resistencia del puente, de ejemplo", unidad: Ω, valor: 1000 }
+    x_r: { sim: "ΔR/R", nombre: "excursión relativa del sensor", unidad: "", valor: 0.01 }
+    C_s: { sim: "C", nombre: "capacidad del sensor en reposo", unidad: F, valor: 20e-12 }
+    d_C: { sim: "ΔC", nombre: "variación con el objeto", unidad: F, valor: 2e-12 }
+    C_k: { sim: "C_{cable}", nombre: "capacidad del cable", unidad: F, valor: 0 }
+    I_b: { sim: "I", nombre: "corriente del bucle", unidad: A, valor: 0.02 }
+    R_l: { sim: "R_{lectura}", nombre: "resistencia de lectura", unidad: Ω, valor: 100 }
+    V_a: { sim: "V_{alim}", nombre: "alimentación del bucle", unidad: V, valor: 24 }
+    R_k: { sim: "R_{cable}", nombre: "resistencia de los 100 m de cable", unidad: Ω, valor: 1.72 }
+  calculos:
+    R_x: { expr: "R_b*(1 + x_r)", sim: "R + ΔR", nombre: "rama activa", unidad: Ω }
+    V_wa: { expr: "V_e*R_x/(R_b + R_x)", sim: "V_{a}", nombre: "punto medio de la rama activa", unidad: V }
+    V_wb: { expr: "V_e/2", sim: "V_{b}", nombre: "punto medio de la otra rama", unidad: V }
+    V_o: { expr: "V_wa - V_wb", sim: "V_{salida}", nombre: "salida exacta del puente", unidad: V, cifras: 4 }
+    V_l: { expr: "V_e*x_r/4", sim: "V_{lineal}", nombre: "aproximación lineal", unidad: V, cifras: 4 }
+    I_w: { expr: "(V_e - V_wa)/R_b + (V_e - V_wb)/R_b", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    e_l: { expr: "(V_l/V_o - 1)*100", sim: "error", nombre: "error de la aproximación lineal", unidad: "%", cifras: 3 }
+    e_a: { expr: "x_r*100", sim: "ΔR/R", nombre: "excursión en tanto por ciento", unidad: "%", cifras: 3 }
+    e_b: { expr: "x_r*100/4", sim: "ΔR/4R", nombre: "un cuarto de la excursión", unidad: "%", cifras: 3 }
+    s_c: { expr: "d_C/(C_s + C_k)*100", sim: "sensibilidad", nombre: "sensibilidad relativa", unidad: "%", cifras: 3 }
+    V_r: { expr: "I_b*R_l", sim: "V", nombre: "tensión en la resistencia de lectura", unidad: V }
+    V_k: { expr: "I_b*R_k", sim: "V_{cable}", nombre: "caída en el cable", unidad: V }
+    V_t: { expr: "V_a - I_b*R_l - I_b*R_k", sim: "V_{transmisor}", nombre: "lo que le queda al transmisor", unidad: V }
+
+tarjetas:
+  - id: explore-puente
+    tipo: explorar
+    titulo: "19.A — Una sola rama activa"
+    texto: "Un sensor resistivo en un puente de Wheatstone, en una sola rama. Aumente su excursión y compare la salida exacta con la aproximación lineal."
+    nota: "R y excitación de ejemplo."
+    libro: [352, 357]
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_e, r1: R_b, r2: R_x, r3: R_b, r4: R_b }
+      lectura: { valor: V_o, rotulo: "Salida exacta" }
+      datos:
+        - { valor: V_l, rotulo: "Lineal, V·x/4: {{V_l}}" }
+        - { valor: e_l, rotulo: "Error de la lineal: {{e_l}}" }
+      corriente: I_w
+      mide: { salida: V_o, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: x_r, lista: [0.001, 0.01, 0.05], nombres: ["0,1 %", "1 %", "5 %"], rotulo: "Excursión, ΔR/R" }
+    requiere: { mover: [x_r] }
+    comprobar:
+      - { e_l: 0.5, V_o: 0.002488, tol: 0.01 }
+      - { con: { x_r: 0.001 }, e_l: 0.05, tol: 0.02 }
+
+  - id: formula-puente
+    tipo: formula
+    titulo: "La salida exacta"
+    texto: "La diferencia entre la exacta y la lineal es la no linealidad del propio puente, que no tiene nada que ver con el sensor."
+    libro: [356, 357]
+    ec: 356
+    sustitucion: "({{R_b}} + {{R_x}} − {{R_b}}) / ({{R_b}} + {{R_x}}) − ½ = {{V_o}} por voltio"
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 0.05, unidad: "", rotulo: "ΔR/R" }
+      y: { min: 0, max: 0.014, unidad: V, rotulo: "salida por voltio" }
+      curvas:
+        - { expr: "(1 + u)/(2 + u) - 0.5", color: naranja, rotulo: "exacta" }
+        - { expr: "u/4", color: azul, rotulo: "lineal", discontinua: true }
+      marcas:
+        - { x: "x_r", y: "V_o", rotulo: "{{V_o}}" }
+      lectura: { valor: V_o, rotulo: "Salida exacta" }
+      mandos:
+        - { valor: x_r, lista: [0.001, 0.01, 0.05], nombres: ["0,1 %", "1 %", "5 %"], rotulo: "Excursión, ΔR/R" }
+    comprobar:
+      - { con: { x_r: 0.05 }, V_o: 0.012195, V_l: 0.0125, tol: 0.001 }
+
+  - id: simule-error
+    tipo: simular
+    titulo: "Con un 5 % de excursión"
+    texto: "El sensor varía un 5 %. ¿Qué error comete la aproximación lineal frente a la salida exacta del puente?"
+    libro: [359, 360, 365]
+    fijar: { x_r: 0.05, V_e: 1, R_b: 1000 }
+    simular:
+      objetivo: e_l
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Error de la aproximación lineal"
+      errores:
+        - { expr: "e_a", texto: "Ese es ΔR/R. El error de linealidad es aproximadamente la mitad." }
+        - { expr: "e_b", texto: "Ese es un cuarto de la excursión: el error es ΔR/2R." }
+    exito: "2,5 %: la mitad de ΔR/R. Con un termistor de gran excursión hay que corregirlo."
+    escalera:
+      - "Compare 0,0125 con 0,012195."
+    solucion: "0,0125/0,012195 − 1 = +2,50 %, unos ΔR/2R."
+    comprobar:
+      - { e_l: 2.5, e_a: 5, e_b: 1.25, tol: 0.01 }
+
+  - id: empareje-mejoras
+    tipo: pregunta
+    titulo: "Las tres mejoras"
+    texto: "Empareje cada mejora con lo que consigue."
+    libro: [362]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 0.05, unidad: "", rotulo: "ΔR/R" }
+      y: { min: 0, max: 0.014, unidad: V, rotulo: "salida por voltio" }
+      curvas:
+        - { expr: "(1 + u)/(2 + u) - 0.5", color: naranja, rotulo: "exacta" }
+        - { expr: "u/4", color: azul, rotulo: "lineal", discontinua: true }
+    emparejar:
+      - ["Puente completo, cuatro ramas activas", "Cancela la no linealidad y cuadruplica la señal"]
+      - ["Excitación por corriente, una rama", "Reduce el error a la mitad"]
+      - ["Linealizar por software", "Aplicar la expresión exacta"]
+    exito: "Por software no cuesta nada si ya hay microcontrolador."
+    pistas:
+      - { texto: "Con microcontrolador, basta usar la ecuación exacta." }
+    escalera:
+      - "¿Cuál cuadruplica además la señal?"
+    solucion: "Completo, cancela y cuadruplica; corriente, la mitad; software, la exacta."
+
+  - id: prediga-cable
+    tipo: predecir
+    titulo: "19.B — El cable se come el sensor"
+    texto: "Un sensor capacitivo de 20 pF varía 2 pF con un objeto, y se conecta con un metro de coaxial de 100 pF. ¿Qué sensibilidad queda?"
+    libro: [368, 371, 372, 373]
+    fijar: { C_s: 20e-12, d_C: 2e-12, C_k: 100e-12 }
+    widget:
+      tipo: grafica
+      x: { id: c, min: 0, max: 200e-12, unidad: F, rotulo: "C_{cable}" }
+      y: { min: 0, max: 12, unidad: "%", rotulo: "sensibilidad" }
+      curvas:
+        - { expr: "d_C/(C_s + c)*100", color: naranja, rotulo: "sensibilidad relativa" }
+      lectura: { valor: s_c, rotulo: "Sensibilidad" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "1,67 %: el cable la divide por seis"
+        bien: true
+        porque: "Los 100 pF quedan en paralelo: 2 pF de 120 en lugar de 2 de 20."
+      - texto: "10 %, como sin cable"
+        porque: "El cable añade 100 pF en paralelo con el sensor: la variación es una parte mucho menor."
+      - texto: "2 %: los 2 pF de 100"
+        porque: "El total es sensor más cable, 120 pF, no solo el cable."
+    escalera:
+      - "¿Qué capacidad total ve el circuito con el cable?"
+    solucion: "2/120 = 1,67 %, frente al 10 % sin cable."
+    comprobar:
+      - { s_c: 1.67, tol: 0.01 }
+      - { con: { C_k: 0 }, s_c: 10 }
+
+  - id: empareje-guarda
+    tipo: pregunta
+    titulo: "Salvar el sensor capacitivo"
+    texto: "Empareje cada solución con cómo actúa."
+    libro: [374]
+    widget:
+      tipo: grafica
+      x: { id: c, min: 0, max: 200e-12, unidad: F, rotulo: "C_{cable}" }
+      y: { min: 0, max: 12, unidad: "%", rotulo: "sensibilidad" }
+      curvas:
+        - { expr: "d_C/(C_s + c)*100", color: naranja, rotulo: "sensibilidad relativa" }
+    emparejar:
+      - ["Electrónica en el sensor", "Baja impedancia antes de salir al cable"]
+      - ["Apantallamiento activo (guarda)", "La malla a la misma tensión que el conductor"]
+      - ["Medir por oscilación", "Transmitir una frecuencia, inmune al cable"]
+    exito: "Con la guarda, la capacidad del cable deja de cargar, aunque siga estando físicamente."
+    pistas:
+      - { texto: "Si no hay diferencia de tensión entre malla y conductor, la capacidad no carga." }
+    escalera:
+      - "Empiece por la guarda: excita la malla con un seguidor."
+    solucion: "Electrónica, baja impedancia; guarda, misma tensión; oscilación, frecuencia."
+
+  - id: explore-bucle
+    tipo: explorar
+    titulo: "19.C — Medir en miliamperios"
+    texto: "En un bucle de corriente, la corriente es la misma en todo él. La resistencia de lectura la convierte en tensión: cambie su valor."
+    libro: [380, 384, 387]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.022, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "i*R_l", color: naranja, rotulo: "tensión en la lectura" }
+      marcas:
+        - { x: "0.004", y: "0.004*R_l", rotulo: "4 mA" }
+        - { x: "0.02", y: "0.02*R_l", rotulo: "20 mA" }
+      lectura: { valor: V_r, rotulo: "Tensión a 20 mA" }
+      mandos:
+        - { valor: R_l, lista: [100, 250], rotulo: "Resistencia de lectura" }
+    requiere: { mover: [R_l] }
+    comprobar:
+      - { con: { R_l: 250 }, V_r: 5 }
+      - { con: { R_l: 100 }, V_r: 2 }
+
+  - id: estime-margen
+    tipo: pregunta
+    titulo: "Lo que le queda al transmisor"
+    texto: "Bucle a 24 V, 250 Ω de lectura y 100 m de cable de 1,72 Ω. Con 20 mA, ¿cuánta tensión le queda al transmisor?"
+    libro: [385, 389]
+    fijar: { V_a: 24, R_l: 250, R_k: 1.72, I_b: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.022, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "i*R_l", color: naranja, rotulo: "tensión en la lectura" }
+    estimar:
+      objetivo: "V_t"
+      unidad: V
+      min: 0
+      max: 24
+      paso: 0.5
+      inicio: 3
+      tol: 0.03
+      rotulo: "Tensión para el transmisor"
+    exito: "19 V: de sobra, salvo que se encadenen varios receptores en el bucle."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 19.6 }, texto: "Demasiado: reste los 5 V de la lectura." }
+      - { texto: "Corto: solo se restan los 5 V de la lectura y 34 mV del cable." }
+    escalera:
+      - "A 20 mA, 250 Ω son 5 V."
+    solucion: "24 − 5 − 0,034 ≈ 19 V."
+    comprobar:
+      - { V_t: 18.97, V_r: 5, tol: 0.01 }
+      - { V_k: 0.034, tol: 0.02 }
+
+  - id: porque-cuatro
+    tipo: porque
+    titulo: "El cero desplazado"
+    texto: "¿Por qué el bucle va de 4 a 20 mA y no de 0 a 20?"
+    libro: [390]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.022, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "i*R_l", color: naranja, rotulo: "tensión en la lectura" }
+    opciones:
+      - texto: "Una rotura se distingue de un cero, y los 4 mA alimentan el transmisor"
+        bien: true
+        porque: "0 mA significa avería; y el transmisor funciona con solo dos hilos."
+      - texto: "Porque 0 mA no se puede medir"
+        porque: "Se puede; el problema es que no se distinguiría de un cable roto."
+      - texto: "Para tener más resolución"
+        porque: "No da más resolución: da diagnóstico de rotura y alimentación."
+    escalera:
+      - "¿Qué mide el receptor si el cable se corta?"
+    solucion: "Una rotura del cable se distingue de una medida de cero, y los 4 mA alimentan el transmisor."
+
+  - id: tension-o-corriente
+    tipo: pregunta
+    titulo: "Tensión o corriente"
+    texto: "A 50 metros, en una nave, ¿por qué la medida en corriente aguanta lo que la medida en tensión no?"
+    libro: [383, 384]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.022, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "i*R_l", color: naranja, rotulo: "tensión en la lectura" }
+    opciones:
+      - texto: "La corriente es la misma en todo el bucle: la resistencia del cable no la cambia"
+        bien: true
+        porque: "En tensión, la caída del cable y la diferencia entre masas se suman al error."
+      - texto: "Porque la corriente viaja más deprisa"
+        porque: "No es la velocidad: es que la magnitud transmitida no cambia a lo largo del bucle."
+      - texto: "Porque el cable de corriente es más grueso"
+        porque: "El cable es el mismo; la corriente simplemente no se ve afectada por su resistencia."
+    escalera:
+      - "¿Cambia la corriente a lo largo de un circuito en serie?"
+    solucion: "La corriente es la misma en todo el bucle, así que la resistencia del cable no afecta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [360, 373, 388, 390]
+    ideas:
+      - { titulo: "19.A.", texto: "El error del puente con una rama es unos ΔR/2R: 2,5 % con un 5 %." }
+      - { titulo: "19.B.", texto: "Un metro de cable divide por seis la sensibilidad: electrónica en el sensor o guarda." }
+      - { titulo: "19.C.", texto: "4 a 20 mA con 250 Ω: 1 a 5 V, inmune al cable, y 4 mA que delatan una rotura." }

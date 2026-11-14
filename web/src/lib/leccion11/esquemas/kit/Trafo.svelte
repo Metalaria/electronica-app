@@ -11,6 +11,7 @@
   const c = $derived((x1 + x2) / 2);
 </script>
 
-<path class="pieza azul" d={vueltas(x1, 1)}></path>
-<path class="pieza naranja" d={vueltas(x2, 0)}></path>
+<!-- (1.2: data-cuerpo, each winding's box, kept clear of the living circuit's particles) -->
+<path class="pieza azul" d={vueltas(x1, 1)} data-cuerpo={`${x1 - 2} ${y1} ${x1 + (y2 - y1) / 8 + 2} ${y2}`}></path>
+<path class="pieza naranja" d={vueltas(x2, 0)} data-cuerpo={`${x2 - (y2 - y1) / 8 - 2} ${y1} ${x2 + 2} ${y2}`}></path>
 <path class="hilo" d={`M${c - 4} ${y1 - 4} V${y2 + 4} M${c + 4} ${y1 - 4} V${y2 + 4}`}></path>

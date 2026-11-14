@@ -1,12 +1,12 @@
 <script lang="ts">
   // Live layer over the book's schematics: wires coloured by their node voltage, charge particles along the
-  // wires and through the parts (one canvas, one requestAnimationFrame loop for the whole figure, running
+  // wires and through the parts — 1.2: hidden inside the parts' bodies and off node dots (particulas.ts) — (one canvas, one requestAnimationFrame loop for the whole figure, running
   // only on screen), and hover/tap on a wire, node or part with its voltage, current and power. Without a
   // simulation it highlights the net under the pointer and its terminals (topology only).
   import { onMount, untrack } from 'svelte';
   import type { Caja } from '../tipos';
   import type { EstadoEsquema, Seleccion } from './modelo.svelte';
-  import { avanzar, dibujar, repartir } from './particulas';
+  import { avanzar, dibujar, ocultar, repartir } from './particulas';
   import { colorTension } from './color';
   import { movimiento, tactil } from '../carga.svelte';
   import Ficha from './Ficha.svelte';
@@ -37,7 +37,12 @@
   $effect(() => {
     const kk = k;
     untrack(() => {
-      for (const e of esquemas) if (e.simulable) repartir(e.caminos, kk);
+      for (const e of esquemas)
+        if (e.simulable) {
+          repartir(e.caminos, kk);
+          // 1.2 (fix12): not drawn inside the parts' bodies, nor on node dots and annotations
+          ocultar(e.caminos, kk);
+        }
       pintar();
     });
   });

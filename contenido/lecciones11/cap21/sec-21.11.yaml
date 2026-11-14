@@ -1,0 +1,230 @@
+# Lección 1.2 de la sección 20.11 «Cursores Manuales — Máxima Precisión» (cap21; etiqueta interna sec-21.11).
+# Formato: contenido/lecciones11/GUIA.md. Los cursores son asas que se arrastran sobre la traza. La senoide de 1 kHz
+# y 5 V de pico a pico es la de la figura 20.24; el flanco del reto es una subida exponencial con τ = 1 ms
+# (ilustrativa); el ruido del último paso (60 mV de pico a pico) también es ilustrativo.
+leccion: cap21/sec-21.11
+
+libro:
+  267: "Los cursores son manuales y el que decide es quien mide"
+  268: "los cursores son la única forma de medir exactamente lo que se quiere"
+  270: "dan Δt y su recíproco, 1/Δt, que es la frecuencia equivalente"
+  271: "Cursores de tensión (horizontales): dan ΔV"
+  275: "entre el 10 % y el 90 % de la amplitud, no entre los extremos"
+  276: "Anchura de pulso: al 50 % de la amplitud."
+  277: "en el mismo nivel relativo de ambas, normalmente el 50 %"
+  278: "Sobreoscilación: del valor final estable al pico, no de cero al pico."
+  281: "Confundir el retardo del sistema con el de la señal"
+  282: "aplicando la misma señal a ambos"
+  285: "Medir un pulso que ocupa un octavo de pantalla desperdicia siete octavos de resolución"
+  291: "dividida por unos seis da una estimación del valor eficaz"
+  295: "Los verticales (rojos) miden intervalos de tiempo (Δt) y calculan la frecuencia (1/Δt)"
+
+modelo:
+  valores:
+    A_c: { sim: "V_{p}", nombre: "tensión de pico de la senoide", unidad: V, valor: 2.5 }
+    f_c: { sim: "f", nombre: "frecuencia de la senoide", unidad: Hz, valor: 1000 }
+    t_A: { sim: "t_{A}", nombre: "cursor A", unidad: s, valor: 0.0005 }
+    t_B: { sim: "t_{B}", nombre: "cursor B", unidad: s, valor: 0.0025 }
+    tau_s: { sim: "τ", nombre: "constante de la subida", unidad: s, valor: 0.001 }
+    t_1: { sim: "t_{1}", nombre: "cursor del 10 %", unidad: s, valor: 0.0005 }
+    t_2: { sim: "t_{2}", nombre: "cursor del 90 %", unidad: s, valor: 0.004 }
+    V_n: { sim: "V_{ruido}", nombre: "ruido de pico a pico", unidad: V, valor: 0.06 }
+  calculos:
+    v_A: { expr: "A_c*sin(2*pi*f_c*t_A)", sim: "v_{A}", nombre: "tensión en el cursor A", unidad: V }
+    v_B: { expr: "A_c*sin(2*pi*f_c*t_B)", sim: "v_{B}", nombre: "tensión en el cursor B", unidad: V }
+    dt: { expr: "abs(t_B - t_A)", sim: "Δt", nombre: "intervalo entre cursores", unidad: s }
+    f_dt: { expr: "1/dt", sim: "1/Δt", nombre: "frecuencia equivalente", unidad: Hz }
+    v_1: { expr: "1 - exp(-t_1/tau_s)", sim: "v₁", nombre: "nivel en el primer cursor", unidad: "", cifras: 2 }
+    v_2: { expr: "1 - exp(-t_2/tau_s)", sim: "v₂", nombre: "nivel en el segundo cursor", unidad: "", cifras: 2 }
+    p_1: { expr: "100*v_1", sim: "v₁", nombre: "nivel en el primer cursor", unidad: "%", cifras: 2 }
+    p_2: { expr: "100*v_2", sim: "v₂", nombre: "nivel en el segundo cursor", unidad: "%", cifras: 2 }
+    t_r: { expr: "t_2 - t_1", sim: "t_{r}", nombre: "tiempo de subida medido", unidad: s }
+    V_ef: { expr: "V_n/6", sim: "V_{ef}", nombre: "valor eficaz estimado del ruido", unidad: V }
+
+tarjetas:
+  - id: explore-cursores
+    tipo: explorar
+    titulo: "Dos cursores de tiempo"
+    texto: "Arrastre los cursores A y B sobre la traza. Lea Δt y su recíproco, la frecuencia equivalente."
+    libro: [267, 270, 271, 295]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: -3, max: 3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_c*sin(2*pi*f_c*t)", color: azul, rotulo: "CH1" }
+      asas:
+        - { mueve: t_A, x: "t_A", y: "v_A", rotulo: "Cursor A" }
+        - { mueve: t_B, x: "t_B", y: "v_B", rotulo: "Cursor B" }
+      lectura: { valor: dt, rotulo: "Δt" }
+      datos:
+        - { valor: f_dt, rotulo: "1/Δt = {{f_dt}}" }
+      mandos:
+        - { valor: t_A, min: 0, max: 0.004, paso: 0.00005, rotulo: "Cursor A" }
+        - { valor: t_B, min: 0, max: 0.004, paso: 0.00005, rotulo: "Cursor B" }
+    requiere: { mover: [t_A, t_B] }
+
+  - id: reto-subida
+    tipo: reto
+    titulo: "Mida un tiempo de subida"
+    texto: "Coloque los cursores donde se mide un tiempo de subida: entre el 10 % y el 90 % del salto."
+    libro: [275]
+    inicio: { t_1: 0.0005, t_2: 0.004 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_s)", color: naranja, rotulo: "el flanco" }
+      asas:
+        - { mueve: t_1, x: "t_1", y: "v_1", rotulo: "Cursor de abajo" }
+        - { mueve: t_2, x: "t_2", y: "v_2", rotulo: "Cursor de arriba" }
+      lectura: { valor: t_r, rotulo: "Δt entre cursores" }
+      mandos:
+        - { valor: t_1, min: 0, max: 0.005, paso: 0.00002, rotulo: "Cursor de abajo" }
+        - { valor: t_2, min: 0, max: 0.005, paso: 0.00002, rotulo: "Cursor de arriba" }
+    condiciones:
+      - { valor: p_1, min: 8, max: 12, rotulo: "Cursor de abajo: {{p_1}}" }
+      - { valor: p_2, min: 88, max: 92, rotulo: "Cursor de arriba: {{p_2}}" }
+    exito: "Entre el 10 % y el 90 %: la definición estándar. Entre los extremos saldría mayor y no comparable."
+    pistas:
+      - { cuando: { valor: p_1, mayor: 12 }, texto: "El cursor de abajo está demasiado arriba: llévelo hacia el 10 %." }
+      - { cuando: { valor: p_1, menor: 8 }, texto: "El cursor de abajo está demasiado abajo: llévelo hacia el 10 %." }
+      - { cuando: { valor: p_2, mayor: 92 }, texto: "El cursor de arriba está demasiado arriba: llévelo hacia el 90 %." }
+      - { texto: "El cursor de arriba está demasiado abajo: llévelo hacia el 90 %." }
+    escalera:
+      - "No se mide entre los extremos del flanco."
+    solucion: "Cursor de abajo donde el flanco pasa por el 10 % del salto; cursor de arriba por el 90 %."
+
+  - id: prediga-extremos
+    tipo: predecir
+    titulo: "Entre los extremos"
+    texto: "Mide el mismo flanco poniendo los cursores en sus extremos. ¿Qué tiempo sale?"
+    libro: [275]
+    fijar: { t_1: 0, t_2: 0.005 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_s)", color: naranja, rotulo: "el flanco" }
+      lectura: { valor: t_r, rotulo: "Δt entre cursores" }
+      ocultar: true
+    opciones:
+      - texto: "Mayor, y no comparable con una especificación"
+        bien: true
+        porque: "Las colas del flanco son lentas: entre extremos el número crece y ya no sigue la definición estándar."
+      - texto: "El mismo"
+        porque: "Las partes del principio y el final del flanco son las más lentas: añaden mucho tiempo."
+      - texto: "Menor"
+        porque: "Se añaden los tramos de las puntas, no se quitan: sale mayor."
+    escalera:
+      - "¿Qué tramos del flanco se añaden al ir a los extremos?"
+    solucion: "Mayor y no comparable: se mide del 10 al 90 %."
+
+  - id: donde-colocarlos
+    tipo: pregunta
+    titulo: "Dónde colocarlos"
+    texto: "Empareje cada medida con dónde van los cursores."
+    libro: [275, 276, 277, 278]
+    widget:
+      tipo: figura
+      figura: fig-21.24
+      zonas:
+        - { id: cursores, rotulo: "Los cursores", rect: [0, 0, 378, 198] }
+    emparejar:
+      - ["Tiempo de subida", "Del 10 % al 90 % de la amplitud"]
+      - ["Anchura de pulso", "Al 50 % de la amplitud"]
+      - ["Retardo entre dos señales", "En el mismo nivel relativo de ambas"]
+      - ["Sobreoscilación", "Del valor final estable al pico"]
+    exito: "Respetar esas referencias hace la medida comparable con una especificación."
+    pistas:
+      - { texto: "La sobreoscilación se mide desde donde se queda la señal, no desde cero." }
+    escalera:
+      - "Anchura y retardo se miden a media altura."
+    solucion: "Subida 10–90 %; anchura al 50 %; retardo al mismo nivel relativo; sobreoscilación del final al pico."
+
+  - id: retardo-sistema
+    tipo: porque
+    titulo: "El retardo que no es de la señal"
+    texto: "Mide el retardo entre dos canales, uno con sonda ×10 y otro con ×1. ¿Por qué hay que aplicar antes la misma señal a ambos?"
+    libro: [281, 282]
+    widget:
+      tipo: figura
+      figura: fig-21.24
+      zonas:
+        - { id: cursores, rotulo: "Los cursores", rect: [0, 0, 378, 198] }
+    opciones:
+      - texto: "Para medir el desfase propio del sistema y restarlo"
+        bien: true
+        porque: "Sondas distintas retrasan la señal nanosegundos distintos; con la misma señal en ambas se lee ese error."
+      - texto: "Para compensar las sondas"
+        porque: "Compensar ajusta la forma, no el retardo entre canales."
+      - texto: "Para que el disparo funcione"
+        porque: "El disparo no tiene que ver: el error está en el retardo de cada sonda."
+    escalera:
+      - "Si la misma señal entra por los dos canales, ¿qué retardo debería verse?"
+    solucion: "Para leer el desfase del sistema y restarlo de la medida."
+
+  - id: expandir
+    tipo: pregunta
+    titulo: "Un octavo de pantalla"
+    texto: "Va a medir con cursores un pulso que ocupa un octavo de pantalla. ¿Qué hace primero?"
+    libro: [285]
+    widget:
+      tipo: figura
+      figura: fig-21.24
+      zonas:
+        - { id: cursores, rotulo: "Los cursores", rect: [0, 0, 378, 198] }
+    opciones:
+      - texto: "Expandirlo para que ocupe casi toda la pantalla"
+        bien: true
+        porque: "Un cursor no es más preciso que la pantalla: un octavo desperdicia siete octavos de resolución."
+      - texto: "Nada: el cursor da el número con todas sus cifras"
+        porque: "Las cifras no son precisión: el cursor salta de píxel en píxel."
+      - texto: "Pasar a la medida automática"
+        porque: "La automática mide la misma captura, con la misma resolución."
+    escalera:
+      - "¿De qué depende la precisión de un cursor?"
+    solucion: "Expandirlo antes de colocar los cursores."
+
+  - id: estime-ruido
+    tipo: pregunta
+    titulo: "Medir el ruido a propósito"
+    texto: "Con cursores en los extremos de la banda de ruido lee 60 mV de pico a pico. ¿Qué valor eficaz estima?"
+    libro: [291]
+    fijar: { V_n: 0.06 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 1, unidad: "", rotulo: "tiempo" }
+      y: { min: -0.05, max: 0.05, unidad: V, rotulo: "ruido" }
+      curvas:
+        - { expr: "V_n/2*sin(2*pi*t*37)*sin(2*pi*t*11.3)", color: azul, rotulo: "la banda de ruido" }
+    estimar:
+      objetivo: "V_ef"
+      unidad: V
+      min: 0
+      max: 0.03
+      paso: 0.0005
+      inicio: 0.025
+      tol: 0.1
+      rotulo: "Eficaz del ruido"
+    exito: "60 mV entre unos seis: unos 10 mV eficaces."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.011 }, texto: "Se ha pasado: divida el pico a pico por unos seis." }
+      - { texto: "Se ha quedado corto: divida por unos seis, no por más." }
+    escalera:
+      - "El pico a pico del ruido dividido por unos seis."
+    solucion: "60 mV entre unos seis ≈ 10 mV eficaces."
+    comprobar:
+      - { V_ef: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [268, 270, 275, 282]
+    ideas:
+      - { titulo: "Decide quien mide.", texto: "Con ruido, transitorios o un tramo concreto, los cursores." }
+      - { titulo: "Δt y 1/Δt.", texto: "Los de tiempo dan también la frecuencia; los de tensión, ΔV." }
+      - { titulo: "Del 10 al 90 %.", texto: "Y anchuras y retardos al 50 %, sobreoscilación desde el valor final." }
+      - { titulo: "El sistema también retrasa.", texto: "La misma señal en los dos canales da el error que hay que restar." }

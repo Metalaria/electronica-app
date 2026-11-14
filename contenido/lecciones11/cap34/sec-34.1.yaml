@@ -1,0 +1,276 @@
+# Lección 1.2 de la sección 35.1 «Cuantización: el Precio de lo Discreto» (cap34; etiqueta interna sec-34.1).
+# Formato: contenido/lecciones11/GUIA.md. La escalera es la de un ADC ideal que asigna el código más próximo, con el
+# fondo de escala de 3,3 V del ejercicio 35.1; se ven 3 o 4 bits para que los escalones se distingan (12 bits, los del
+# ejercicio, ya no se distinguen de la recta). El dibujo pide la escalera de 2 bits.
+leccion: cap34/sec-34.1
+
+libro:
+  4: "asigna a cada valor analógico el código más próximo"
+  5: "Su magnitud máxima es medio LSB"
+  6: '("LSB")/(sqrt("12"))'
+  8: "SNR = 6,02·n + 1,76 dB"
+  9: "Con 8 bits, 50 dB; con 12, 74; con 16, 98 dB"
+  13: "Con la señal a la mitad del margen se pierden 6 dB, es decir, un bit entero"
+  14: "Convertidor ideal, sin INL ni DNL"
+  15: "Error de cuantificación aleatorio"
+  16: "la cifra honesta sea el ENOB"
+  19: "en lugar de un fondo de ruido aparecen armónicos"
+  22: "añadir ruido a propósito"
+  23: "Un ruido de aproximadamente 1 LSB antes del convertidor descorrelaciona el error"
+  27: "sobremuestrear reparte el mismo ruido de cuantificación en una banda más ancha"
+  28: "Cada cuadruplicación de la frecuencia de muestreo gana un bit efectivo"
+  32: "Espectro de una señal pequeña sin dither y con él"
+  "cap34#377": "Un ADC de 12 bits tiene un fondo de escala de 3,3 V"
+  "cap34#343": "62,0 dB"
+
+modelo:
+  valores:
+    n_b: { sim: "n", nombre: "bits", unidad: "", valor: 3 }
+    V_fs: { sim: "V_{FS}", nombre: "fondo de escala", unidad: V, valor: 3.3 }
+    A_r: { sim: "A/A_{FS}", nombre: "amplitud respecto al fondo de escala", unidad: "", valor: 1 }
+    R_os: { sim: "OSR", nombre: "sobremuestreo", unidad: "", valor: 4 }
+    k_4: { sim: "4", nombre: "factor de una cuadruplicación", unidad: "", valor: 4 }
+  calculos:
+    LSB: { expr: "V_fs/2^n_b", sim: "LSB", nombre: "escalón", unidad: V }
+    e_max: { expr: "LSB/2", sim: "e_{máx}", nombre: "error máximo", unidad: V }
+    q_ef: { expr: "LSB/sqrt(12)", sim: "q_{ef}", nombre: "error eficaz", unidad: V }
+    SNR: { expr: "6.02*n_b + 1.76", sim: "SNR", nombre: "relación señal a ruido ideal", unidad: dB }
+    SNR_a: { expr: "6.02*n_b + 1.76 + 20*log10(A_r)", sim: "SNR", nombre: "relación señal a ruido con esa amplitud", unidad: dB }
+    b_p: { expr: "-20*log10(A_r)/6.02", sim: "bits", nombre: "bits perdidos", unidad: "", cifras: 2 }
+    b_g: { expr: "log10(R_os)/log10(k_4)", sim: "bits", nombre: "bits ganados", unidad: "", cifras: 2 }
+    L_2: { expr: "V_fs/k_4", sim: "LSB", nombre: "escalón con 2 bits", unidad: V }
+    u_1: { expr: "L_2/2", sim: "u₁", nombre: "primer salto", unidad: V }
+    u_2: { expr: "1.5*L_2", sim: "u₂", nombre: "segundo salto", unidad: V }
+    u_3: { expr: "2.5*L_2", sim: "u₃", nombre: "tercer salto", unidad: V }
+
+tarjetas:
+  - id: explore-escalera
+    tipo: explorar
+    titulo: "La escalera"
+    texto: "Un ADC con fondo de escala de 3,3 V asigna a cada tensión el código más próximo. Cambie los bits y compare con la recta."
+    libro: [4, "cap34#377"]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 3.3, unidad: V, rotulo: "v_{in}" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "código · LSB" }
+      curvas:
+        - { expr: "min(2^n_b - 1, floor(vx/LSB + 0.5))*LSB", color: azul, rotulo: "Salida" }
+        - { expr: "vx", color: tinta, rotulo: "Ideal continua", discontinua: true }
+      lectura: { valor: LSB, rotulo: "Un LSB" }
+      mandos:
+        - { valor: n_b, lista: [3, 4, 12], rotulo: "Bits" }
+    requiere: { mover: [n_b] }
+
+  - id: prediga-error
+    tipo: predecir
+    titulo: "El error más grande"
+    texto: "Con el código más próximo, ¿cuánto puede valer como mucho el error de cuantificación?"
+    libro: [4, 5]
+    fijar: { n_b: 3 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 3.3, unidad: V, rotulo: "v_{in}" }
+      y: { min: -0.3, max: 0.3, unidad: V, rotulo: "error" }
+      curvas:
+        - { expr: "min(2^n_b - 1, floor(vx/LSB + 0.5))*LSB - vx", color: naranja, rotulo: "Error" }
+      lectura: { valor: e_max, rotulo: "Error máximo" }
+      ocultar: true
+    opciones:
+      - { texto: "Medio LSB", bien: true, porque: "La tensión nunca está a más de medio escalón del código más próximo." }
+      - { texto: "Un LSB", porque: "Eso pasaría si se truncara al código de abajo; con el más próximo, la mitad." }
+      - { texto: "Depende de la señal: puede ser cero", porque: "Puede ser cero en un punto, pero el máximo, en el peor punto, es medio LSB." }
+    escalera: ["¿A qué distancia queda, como mucho, el código más próximo?"]
+    solucion: "Medio LSB: es el error irreducible de cuantificación."
+
+  - id: formula-eficaz
+    tipo: formula
+    titulo: "El error eficaz"
+    texto: "Si el error se reparte uniformemente entre ± medio LSB, su valor eficaz es LSB/√12. Cambie los bits."
+    libro: [6]
+    ec: 6
+    sustitucion: "{{LSB}} / √12 = {{q_ef}}"
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 3.3, unidad: V, rotulo: "v_{in}" }
+      y: { min: -0.3, max: 0.3, unidad: V, rotulo: "error" }
+      curvas:
+        - { expr: "min(2^n_b - 1, floor(vx/LSB + 0.5))*LSB - vx", color: naranja, rotulo: "Error" }
+        - { expr: "q_ef", color: tinta, rotulo: "Valor eficaz", discontinua: true }
+      lectura: { valor: q_ef, rotulo: "Error eficaz" }
+      mandos:
+        - { valor: n_b, lista: [3, 4], rotulo: "Bits" }
+
+  - id: explore-snr
+    tipo: explorar
+    titulo: "6 dB por bit"
+    texto: "Un convertidor ideal de n bits, con una senoide a fondo de escala, da SNR = 6,02 · n + 1,76 dB. Mueva los bits."
+    libro: [8, 9]
+    inicio: { n_b: 8 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 4, max: 18, unidad: "", rotulo: "bits" }
+      y: { min: 0, max: 120, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "6.02*nx + 1.76", color: azul, rotulo: "SNR ideal" }
+      marcas:
+        - { x: "n_b", y: "SNR", rotulo: "Sus bits" }
+      lectura: { valor: SNR, rotulo: "SNR ideal" }
+      mandos:
+        - { valor: n_b, lista: [8, 12, 16], rotulo: "Bits" }
+    requiere: { mover: [n_b] }
+
+  - id: estime-diez
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Diez bits"
+    texto: "¿Qué SNR ideal tiene un convertidor de 10 bits con una senoide a fondo de escala?"
+    libro: [8, "cap34#343"]
+    fijar: { n_b: 10 }
+    estimar:
+      objetivo: "SNR"
+      unidad: dB
+      min: 0
+      max: 120
+      paso: 0.5
+      inicio: 100
+      tol: 0.02
+      rotulo: "SNR ideal"
+    exito: "62,0 dB: 6,02 dB por bit más 1,76."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 63.3 }, texto: "Se ha pasado: son 6,02 dB por cada uno de los 10 bits, más 1,76." }
+      - { texto: "Se ha quedado corto: multiplique los bits por 6,02 y sume 1,76." }
+    escalera: ["6,02 · 10 + 1,76."]
+    solucion: "6,02 × 10 + 1,76 = 62,0 dB."
+    comprobar:
+      - { SNR: 61.96 }
+
+  - id: sorpresa-mitad
+    tipo: sorpresa
+    titulo: "Media escala, un bit menos"
+    texto: "La fórmula supone la señal a fondo de escala. Con 12 bits, baje la amplitud a la mitad y mire la SNR."
+    libro: [13]
+    fijar: { n_b: 12 }
+    inicio: { A_r: 1 }
+    widget:
+      tipo: grafica
+      x: { id: ax, min: 0.1, max: 1, unidad: "", rotulo: "A/A_{FS}", escala: log }
+      y: { min: 40, max: 80, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "6.02*n_b + 1.76 + 20*log10(ax)", color: azul, rotulo: "SNR" }
+      marcas:
+        - { x: "A_r", y: "SNR_a", rotulo: "Su señal" }
+      lectura: { valor: SNR_a, rotulo: "SNR" }
+      datos:
+        - { valor: b_p, rotulo: "Bits perdidos: {{b_p}}" }
+      mandos:
+        - { valor: A_r, lista: [1, 0.5], nombres: [fondo de escala, la mitad], rotulo: "Amplitud" }
+    requiere: { mover: [A_r] }
+
+  - id: porque-peor
+    tipo: porque
+    titulo: "La cifra real, siempre peor"
+    texto: "¿Por qué un convertidor real casi nunca alcanza los 6,02 · n + 1,76 dB?"
+    libro: [13, 14, 15, 16]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 4, max: 18, unidad: "", rotulo: "bits" }
+      y: { min: 0, max: 120, unidad: dB, rotulo: "SNR" }
+      curvas:
+        - { expr: "6.02*nx + 1.76", color: azul, rotulo: "SNR ideal" }
+    opciones:
+      - { texto: "Supone señal a fondo de escala, convertidor sin INL ni DNL y error aleatorio", bien: true, porque: "Casi nunca se cumplen las tres: por eso la cifra honesta es el ENOB." }
+      - { texto: "Porque la fórmula olvida el ruido térmico", porque: "La fórmula es solo la cuantificación ideal; lo que falla son sus tres suposiciones." }
+      - { texto: "Porque los bits nominales están mal contados", porque: "Los bits son los que son; lo que no se cumple son las condiciones de la fórmula." }
+    escalera: ["Repase qué supone la fórmula sobre la señal, el convertidor y el error."]
+    solucion: "Señal a fondo de escala, convertidor ideal y error aleatorio: de ahí el ENOB."
+
+  - id: pregunta-senal-pequena
+    tipo: pregunta
+    titulo: "Una señal que apenas se mueve"
+    texto: "Una señal recorre solo unos pocos códigos. ¿Qué hace entonces el error de cuantificación?"
+    libro: [19, 32]
+    widget:
+      tipo: figura
+      figura: fig-34.2
+      zonas:
+        - { id: izquierda, rotulo: "Mitad izquierda", rect: [0, 0, 220, 189] }
+        - { id: derecha, rotulo: "Mitad derecha", rect: [222, 0, 221, 189] }
+    opciones:
+      - { texto: "Se correlaciona con la señal y aparecen armónicos: distorsión", bien: true, porque: "Deja de ser un fondo de ruido: suena peor y estropea la medida." }
+      - { texto: "Se hace más pequeño", porque: "Su tamaño sigue siendo de hasta medio LSB; lo que cambia es que deja de ser aleatorio." }
+      - { texto: "Se reparte como ruido blanco", porque: "Eso pasa con señales que recorren muchos códigos; con pocos, el error es predecible." }
+    escalera: ["Si la señal es predecible, ¿lo es también el error?"]
+    solucion: "El error se correlaciona con la señal: armónicos en lugar de ruido."
+
+  - id: pregunta-dither
+    tipo: pregunta
+    titulo: "La solución contraintuitiva"
+    texto: "¿Qué se hace para que esos armónicos desaparezcan?"
+    libro: [22, 23, 32]
+    widget:
+      tipo: figura
+      figura: fig-34.2
+      zonas:
+        - { id: derecha, rotulo: "Mitad derecha", rect: [222, 0, 221, 189] }
+    opciones:
+      - { texto: "Añadir un ruido de aproximadamente 1 LSB antes del convertidor", bien: true, porque: "Descorrelaciona el error: los armónicos se convierten en un fondo de ruido, mucho más benigno." }
+      - { texto: "Filtrar la salida digital", porque: "Los armónicos caen dentro de la banda útil: un filtro no los separa de la señal." }
+      - { texto: "Amplificar menos la señal", porque: "Recorrería aún menos códigos: peor." }
+    escalera: ["La sección se titula «Cuándo el error deja de ser ruido»: ¿cómo se le devuelve el azar?"]
+    solucion: "Dither: ruido de aproximadamente 1 LSB antes de convertir."
+
+  - id: estime-sobremuestreo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Sobremuestrear 16 veces"
+    texto: "Se muestrea 16 veces más deprisa de lo necesario y se filtra. ¿Cuántos bits efectivos se ganan?"
+    libro: [27, 28]
+    fijar: { R_os: 16 }
+    estimar:
+      objetivo: "b_g"
+      unidad: bits
+      min: 0
+      max: 8
+      paso: 0.5
+      inicio: 7
+      tol: 0.05
+      rotulo: "Bits ganados"
+    exito: "Dos bits: 16 son dos cuadruplicaciones. Es la base del sigma-delta."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.1 }, texto: "Se ha pasado: no es un bit por duplicación, sino por cuadruplicación." }
+      - { texto: "Se ha quedado corto: 4 × 4 = 16, dos cuadruplicaciones." }
+    escalera: ["¿Cuántas veces hay que multiplicar por 4 para llegar a 16?"]
+    solucion: "16 = 4 × 4: dos bits."
+    comprobar:
+      - { b_g: 2, k_4: 4 }
+
+  - id: dibuje-escalera
+    tipo: dibujar
+    titulo: "Dibuje la escalera de 2 bits"
+    texto: "Un ADC de 2 bits y 3,3 V de fondo de escala recibe una rampa. Dibuje el código por LSB que entrega."
+    libro: [4, "cap34#377"]
+    fijar: { V_fs: 3.3 }
+    dibujar:
+      x: { id: r, min: 0, max: 3.3, unidad: V, rotulo: "v_{in}" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "código · LSB" }
+      curva: "min(3, floor(r/L_2 + 0.5))*L_2"
+      puntos: 33
+      tol: 0.04
+      holgura: 0.03
+      rotulo: "La salida frente a la entrada"
+    exito: "Cuatro escalones de 0,825 V; cada salto cae a medio escalón, donde cambia el código más próximo."
+    escalera:
+      - "Con 2 bits hay cuatro códigos: el escalón es 3,3/4."
+      - "El código cambia a medio escalón, no al llegar al siguiente."
+    solucion: "Escalones de 0,825 V que saltan a medio escalón: en 0,41, 1,24 y 2,06 V."
+    comprobar:
+      - { L_2: 0.825, k_4: 4, u_1: 0.4125, u_2: 1.2375, u_3: 2.0625 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [5, 8, 13, 23]
+    ideas:
+      - { titulo: "Medio LSB.", texto: "El error de cuantificación es irreducible; su valor eficaz, LSB/√12." }
+      - { titulo: "6,02 dB por bit.", texto: "SNR = 6,02 · n + 1,76 dB, con la señal a fondo de escala: media escala cuesta un bit." }
+      - { titulo: "Ruido que ayuda.", texto: "Con señales pequeñas, el dither convierte la distorsión en ruido." }

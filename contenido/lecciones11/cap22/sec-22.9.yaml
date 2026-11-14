@@ -1,0 +1,358 @@
+# Lección 1.2 de la sección 21.9 «Práctica 9 — Resonancia de un Circuito RLC y Factor Q» (cap22; etiqueta interna
+# sec-22.9). Formato: contenido/lecciones11/GUIA.md. El RLC serie de la práctica (10 mH, 100 nF, 100 Ω o 1 kΩ) con
+# 1 V de pico del generador; el canal 2 es la tensión de la resistencia. El ajuste a fase cero parte de 2 kHz.
+leccion: cap22/sec-22.9
+
+libro:
+  232: "Medirla una vez con las propias manos fija las tres magnitudes que la describen"
+  234: "Un circuito RLC serie: una resistencia, una bobina y un condensador en cadena"
+  235: "L = 10 mH, C = 100 nF, R = 100 Ω, con los que la resonancia cae en unos 5 kHz"
+  236: "el canal 2, la tensión sobre la resistencia, que es proporcional a la corriente del circuito"
+  238: 'f_("0") = ("1")/("2" π dot.op sqrt(L C))'
+  239: 'Z_("0") = sqrt((L)/(C))'
+  240: 'Q = (Z_("0"))/(R)'
+  241: '"BW" = (f_("0"))/(Q)'
+  242: "Anotar estos cuatro números antes de encender es parte del ejercicio"
+  244: "Debe pasar de casi +90° (el circuito es capacitivo, la corriente adelanta) a 0° en resonancia, a casi −90° (inductivo)"
+  246: "un 10 % de tolerancia en C son un 5 % en f₀, porque va con la raíz"
+  247: "El Q medido será menor que el calculado"
+  248: "La resistencia de la bobina (sección 4.8), que se suma a R."
+  249: "medir la resistencia de la bobina con el multímetro y rehacer el cálculo hace que predicción y medida coincidan"
+  251: "Al cambiar R de 100 Ω a 1 kΩ, la frecuencia de resonancia no se mueve y el Q cae de 3 a 0,3"
+  252: "la resonancia la fijan L y C; el amortiguamiento lo fija R"
+  254: "la impedancia es máxima en resonancia y la tensión sobre el tanque, también máxima"
+  256: "Con Q = 3 y 1 V de entrada, 3 V sobre cada uno, en oposición de fase, de modo que su suma es casi cero."
+  257: "hay más tensión sobre un componente que la que entrega la fuente"
+  "cap22#370": "con 20 Ω de resistencia de cobre"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud del generador", unidad: V, valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia del generador", unidad: Hz, valor: 2000 }
+    R_r: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 100 }
+    L_r: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    C_r: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+  calculos:
+    f_0: { expr: "1/(2*pi*sqrt(L_r*C_r))", sim: "f₀", nombre: "frecuencia de resonancia", unidad: Hz }
+    Z_0: { expr: "sqrt(L_r/C_r)", sim: "Z₀", nombre: "impedancia característica", unidad: Ω }
+    Q: { expr: "Z_0/R_r", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 3 }
+    BW: { expr: "f_0/Q", sim: "BW", nombre: "ancho de banda", unidad: Hz }
+    w_r: { expr: "2*pi*f_r", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    X_r: { expr: "w_r*L_r - 1/(w_r*C_r)", sim: "X", nombre: "reactancia total", unidad: Ω }
+    Z_r: { expr: "sqrt(R_r^2 + X_r^2)", sim: "|Z|", nombre: "impedancia", unidad: Ω }
+    I_a: { expr: "V_p/Z_r", sim: "I", nombre: "amplitud de la corriente", unidad: A }
+    ph_i: { expr: "-atan2(X_r, R_r)*180/pi", sim: "φ", nombre: "desfase de la corriente", unidad: "°" }
+    V_R: { expr: "I_a*R_r", sim: "V_{R}", nombre: "amplitud en R", unidad: V }
+    V_L: { expr: "I_a*w_r*L_r", sim: "V_{L}", nombre: "amplitud en la bobina", unidad: V }
+    V_C: { expr: "I_a/(w_r*C_r)", sim: "V_{C}", nombre: "amplitud en el condensador", unidad: V }
+
+tarjetas:
+  - id: explore-curva
+    tipo: explorar
+    titulo: "La curva de resonancia"
+    texto: "El canal 2 mide la tensión de R, proporcional a la corriente. Cambie R y mire el máximo."
+    libro: [232, 234, 235, 236]
+    inicio: { R_r: 100 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mide: { vr_amp: V_R }
+      grafica:
+        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
+        marcas:
+          - { x: "f_0", y: "V_p", rotulo: "f₀" }
+      mandos:
+        - { valor: R_r, lista: [100, 1000], rotulo: "R" }
+    requiere: { mover: [R_r] }
+
+  - id: formula-f0
+    tipo: formula
+    titulo: "Prediga antes de medir"
+    texto: "Con 10 mH y 100 nF, la resonancia cae en unos 5 kHz."
+    libro: [235, 238]
+    fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100 }
+    ec: 238
+    sustitucion: "1 / (2π · √({{L_r}} · {{C_r}})) = {{f_0}}"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mide: { vr_amp: V_R }
+      grafica:
+        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
+        marcas:
+          - { x: "f_0", y: "V_p", rotulo: "f₀" }
+    comprobar:
+      - { f_0: 5033 }
+
+  - id: formula-q
+    tipo: formula
+    titulo: "El factor de calidad"
+    texto: "Z₀ = √(L/C) son 316 Ω; con R = 100 Ω, Q = 3,16 y un ancho de banda de 1592 Hz."
+    libro: [239, 240, 241, 242]
+    fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100 }
+    ec: 240
+    sustitucion: "{{Z_0}} / {{R_r}} = {{Q}}"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q, rotulo: "Factor de calidad" }
+      datos:
+        - { valor: BW, rotulo: "BW = {{BW}}" }
+      mide: { vr_amp: V_R }
+      grafica:
+        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
+    comprobar:
+      - { Z_0: 316, Q: 3.16, BW: 1592 }
+
+  - id: prediga-r1k
+    tipo: predecir
+    titulo: "Prediga con 1 kΩ"
+    texto: "Se cambia R de 100 Ω a 1 kΩ. ¿Qué les pasa a la resonancia y al Q?"
+    libro: [251, 252]
+    fijar: { R_r: 1000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q, rotulo: "Factor de calidad" }
+      mide: { vr_amp: V_R }
+      grafica:
+        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
+      ocultar: true
+    opciones:
+      - texto: "f₀ no se mueve y Q cae de 3 a 0,3"
+        bien: true
+        porque: "La resonancia la fijan L y C; el amortiguamiento, R. La curva se aplana, pero su máximo sigue en f₀."
+      - texto: "f₀ baja a la décima parte"
+        porque: "R no entra en f₀ = 1/(2π√(LC)). Lo que cambia con R es el Q."
+      - texto: "Las dos se quedan igual"
+        porque: "Q = Z₀/R: con diez veces más R, diez veces menos Q."
+    escalera:
+      - "¿En cuál de las dos fórmulas, la de f₀ o la de Q, aparece R?"
+    solucion: "f₀ igual; Q de 3,16 a 0,316. R fija el amortiguamiento, no la resonancia."
+    comprobar:
+      - { Q: 0.316, f_0: 5033 }
+
+  - id: ajuste-fase
+    tipo: ajuste
+    titulo: "Busque el paso por cero"
+    texto: "Mueva el generador hasta que la tensión de R quede en fase con la entrada: es el criterio más preciso para f₀."
+    libro: [244]
+    fijar: { R_r: 100 }
+    inicio: { f_r: 2000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: ph_i, rotulo: "Desfase de la corriente" }
+      mide: { vr_amp: V_R, vr_fase: ph_i }
+      grafica:
+        x: { id: t, min: 0, max: 0.0004, unidad: s, rotulo: "t" }
+        y: { min: -1.1, max: 1.1, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_r*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "V_R*sin(w_r*t + ph_i*pi/180)", color: naranja, rotulo: "v_{R}", mide: vr }
+      mandos:
+        - { valor: f_r, min: 2000, max: 12000, paso: 10, rotulo: "Generador" }
+    ajuste:
+      valor: ph_i
+      min: -2
+      max: 2
+      rotulo: "Desfase"
+      escala: { min: -90, max: 90 }
+      bajo: "La corriente se retrasa: el circuito es inductivo. Baje la frecuencia."
+      alto: "La corriente adelanta: el circuito es capacitivo. Suba la frecuencia."
+      dentro: "En fase: está en f₀, unos 5 kHz."
+
+  - id: desfase
+    tipo: pregunta
+    titulo: "Bastante por debajo de f₀"
+    texto: "El generador está muy por debajo de la resonancia. ¿Cómo va la corriente respecto a la tensión aplicada?"
+    libro: [244]
+    fijar: { f_r: 1000, R_r: 100 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: ph_i, rotulo: "Desfase de la corriente" }
+      mide: { vr_fase: ph_i }
+    opciones:
+      - texto: "Adelantada, casi +90°: el circuito es capacitivo"
+        bien: true
+        porque: "A baja frecuencia manda el condensador, con mucha reactancia: la corriente adelanta."
+      - texto: "Retrasada, casi −90°: el circuito es inductivo"
+        porque: "Eso es muy por encima de f₀, donde manda la bobina."
+      - texto: "En fase"
+        porque: "En fase solo está en resonancia, donde las reactancias se cancelan."
+    escalera:
+      - "¿Qué reactancia es grande a baja frecuencia, la de L o la de C?"
+    solucion: "Adelantada, casi +90°: por debajo de f₀ el circuito es capacitivo."
+
+  - id: estime-q-real
+    tipo: pregunta
+    titulo: "El Q de verdad"
+    texto: "La bobina de 10 mH tiene 20 Ω de cobre y el generador 50 Ω de salida, en serie con R = 100 Ω. ¿Qué Q resulta?"
+    libro: [239, 240, 248, "cap22#370"]
+    fijar: { L_r: 0.01, C_r: 100e-9 }
+    estimar:
+      objetivo: "Z_0/170"
+      unidad: ""
+      min: 0.5
+      max: 4
+      paso: 0.01
+      inicio: 3.16
+      tol: 0.03
+      rotulo: "Q con todas las resistencias"
+    exito: "316 / 170 ≈ 1,86, muy lejos de 3,16: es la discrepancia que la práctica enseña a explicar."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.92 }, texto: "Se ha pasado: sume las tres resistencias en serie, no solo R." }
+      - { texto: "Se ha quedado corto: Z₀ sigue siendo 316 Ω; divídala entre la resistencia total." }
+    escalera:
+      - "Todas las resistencias en serie cuentan: 100 + 20 + 50."
+      - "Q = Z₀ / R_{total}, con Z₀ = 316 Ω."
+    solucion: "R_{total} = 170 Ω y Q = 316 / 170 ≈ 1,86."
+    comprobar:
+      - { Z_0: 316 }
+
+  - id: q-menor
+    tipo: pregunta
+    titulo: "Por qué sale menos Q"
+    texto: "El Q medido sale menor que el calculado con los 100 Ω. ¿Qué lo explica, por orden de importancia?"
+    libro: [247, 248, 249]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q, rotulo: "Q calculado" }
+      mide: { vr_amp: V_R }
+    opciones:
+      - texto: "La resistencia de la bobina, la del generador y las pérdidas del núcleo"
+        bien: true
+        porque: "Las tres se suman a R. Midiendo la de la bobina y rehaciendo el cálculo, predicción y medida coinciden."
+      - texto: "Que la resonancia se desplaza con R"
+        porque: "R no mueve f₀: solo aplana la curva. Lo que baja el Q es la resistencia que no se había contado."
+      - texto: "La capacidad de la sonda, únicamente"
+        porque: "La sonda influye poco aquí. Lo que pesa son 20 a 50 Ω de cobre y 50 Ω del generador."
+    escalera:
+      - "¿Qué resistencias hay en el circuito real además de los 100 Ω?"
+    solucion: "La resistencia de la bobina, la impedancia de salida del generador y las pérdidas del núcleo."
+
+  - id: sobretension
+    tipo: sorpresa
+    titulo: "Más tensión que la fuente"
+    texto: "En resonancia, con 1 V de entrada, mire la bobina y el condensador. Cambie R."
+    libro: [256, 257]
+    fijar: { f_r: 5032.92 }
+    inicio: { R_r: 100 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: V_L, rotulo: "Amplitud en la bobina" }
+      datos:
+        - { valor: V_C, rotulo: "En el condensador: {{V_C}}" }
+      mide: { vl_amp: V_L, vc_amp: V_C }
+      grafica:
+        x: { id: t, min: 0, max: 0.0004, unidad: s, rotulo: "t" }
+        y: { min: -3.5, max: 3.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_r*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "V_L*sin(w_r*t + (ph_i + 90)*pi/180)", color: azul, rotulo: "v_{L}", mide: vl }
+          - { expr: "V_C*sin(w_r*t + (ph_i - 90)*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
+      mandos:
+        - { valor: R_r, lista: [100, 1000], rotulo: "R" }
+    requiere: { mover: [R_r] }
+    comprobar:
+      - { V_L: 3.16, V_C: 3.16, tol: 0.01 }
+
+  - id: por-que-sobretension
+    tipo: porque
+    titulo: "¿De dónde sale?"
+    texto: "Bobina y condensador tienen cada uno el triple de la entrada, en un circuito pasivo. ¿Cómo cuadra con la fuente?"
+    libro: [256, 257]
+    fijar: { f_r: 5032.92, R_r: 100 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: V_L, rotulo: "Amplitud en la bobina" }
+      mide: { vl_amp: V_L, vc_amp: V_C }
+    opciones:
+      - texto: "Están en oposición de fase: su suma es casi cero"
+        bien: true
+        porque: "v_{L} y v_{C} valen Q veces la entrada y se restan: a la fuente solo le queda alimentar a R."
+      - texto: "El generador da más de 1 V en resonancia"
+        porque: "El generador da su 1 V. La sobretensión sale de L y C, que intercambian energía entre sí."
+      - texto: "Es un error de medida de la sonda"
+        porque: "Es real, y con Q alto puede ser de cientos de voltios: una causa real de averías."
+    escalera:
+      - "¿Qué desfase hay entre la tensión de la bobina y la del condensador?"
+    solucion: "v_{L} y v_{C}, de Q veces la entrada, en oposición de fase: se cancelan y la fuente solo ve R."
+
+  - id: paralelo
+    tipo: pregunta
+    titulo: "Con los componentes en paralelo"
+    texto: "Los mismos L y C, en paralelo y alimentados a través de una resistencia. ¿Qué pasa en resonancia?"
+    libro: [254]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mide: { vr_amp: V_R }
+    opciones:
+      - texto: "La impedancia es máxima, y la tensión del tanque también"
+        bien: true
+        porque: "Es el dual del serie: donde el serie tiene impedancia mínima, el paralelo la tiene máxima."
+      - texto: "La impedancia es mínima, como en el serie"
+        porque: "El paralelo es el dual: en resonancia su impedancia es máxima."
+      - texto: "La resonancia se va a otra frecuencia"
+        porque: "La fijan los mismos L y C: unos 5 kHz también."
+    escalera:
+      - "Serie y paralelo son duales."
+    solucion: "Impedancia máxima y tensión máxima sobre el tanque, a la misma f₀."
+
+  - id: banco-rlc
+    tipo: banco
+    titulo: "Mida la resonancia en el banco"
+    texto: "Monte el RLC, barra el generador y busque la frecuencia en que v_{R} queda en fase con la entrada."
+    libro: [244, 246]
+    fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100 }
+    banco:
+      piezas: ["Generador del FNIRSI", "L = 10 mH, C = 100 nF y R = 100 Ω", "Osciloscopio de dos canales"]
+      medir: "La frecuencia de resonancia."
+      esperado: f_0
+      unidad: Hz
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Sale alta: C o L reales son menores. Un 10 % en C son un 5 % en f₀." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Sale baja: C o L reales son mayores. Mídalos y recalcule." }
+        - { texto: "Dentro de la tolerancia. Mida ahora el ancho de banda y el Q, y compare con 3,16." }
+      ficha: { n: 33, titulo: "Práctica 9 · Resonancia de un RLC y factor Q" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [238, 240, 252, 256]
+    ideas:
+      - { titulo: "Prediga.", texto: "f₀ = 1/(2π√(LC)), Z₀ = √(L/C), Q = Z₀/R y BW = f₀/Q, antes de encender." }
+      - { titulo: "Independientes.", texto: "L y C fijan la resonancia; R, el amortiguamiento." }
+      - { titulo: "El Q real.", texto: "Sale menor: la bobina, el generador y el núcleo suman resistencia." }
+      - { titulo: "Sobretensión.", texto: "En resonancia, L y C tienen Q veces la entrada, en oposición de fase." }

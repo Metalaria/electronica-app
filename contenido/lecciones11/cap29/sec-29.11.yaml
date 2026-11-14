@@ -1,0 +1,243 @@
+# Lección 1.2 de la sección 28.11 «Problemas de Diseño» (cap29; etiqueta interna sec-29.11): problemas 28.A, 28.B y 28.C.
+# Formato: contenido/lecciones11/GUIA.md (§11).
+leccion: cap29/sec-29.11
+
+libro:
+  330: "Problema 28.A — Hasta dónde llega una máquina de estados"
+  332: "retardo de salida del biestable 8 ns, lógica combinacional del camino más largo 22 ns, tiempo de establecimiento 3 ns y desalineo de reloj 2 ns"
+  336: 'T_("reloj") gt.eq t_("ff") + t_("lógica") + t_("su") + t_("skew")'
+  338: '"28,57 MHz"'
+  339: "La lógica combinacional se lleva 22 de los 35 ns, el 63 %"
+  341: "41,67 MHz"
+  342: "los términos fijos (tff, tsu, tskew, que suman 13 ns) se pagan en cada etapa"
+  346: "Problema 28.B — Cuántos biestables necesita un sincronizador"
+  348: "entra en un sistema con reloj de 200 MHz"
+  355: "con un solo biestable el sistema falla cada ocho minutos. Con dos, más de un millón de años"
+  358: "A 50 MHz un solo biestable ya basta"
+  362: "Problema 28.C — Un decodificador que produce pulsos fantasma"
+  364: "Un contador binario de 4 bits ataca un decodificador que activa una salida en la cuenta 8"
+  368: "en 0111 → 1000, la transición con más bits, la salida no da ningún pulso falso"
+  370: "Código Gray. Solo cambia un bit en cada transición"
+
+modelo:
+  valores:
+    t_ff: { sim: "t_{ff}", nombre: "retardo del biestable", unidad: s, valor: 8e-9 }
+    t_lg: { sim: "t_{lógica}", nombre: "lógica del camino más largo", unidad: s, valor: 22e-9 }
+    t_su: { sim: "t_{su}", nombre: "tiempo de establecimiento", unidad: s, valor: 3e-9 }
+    t_sk: { sim: "t_{skew}", nombre: "desalineo de reloj", unidad: s, valor: 2e-9 }
+    n_e: { sim: "etapas", nombre: "etapas de segmentación", unidad: "", valor: 1 }
+  calculos:
+    T_r: { expr: "t_ff + t_lg/n_e + t_su + t_sk", sim: "T", nombre: "periodo mínimo", unidad: s }
+    f_r: { expr: "1/T_r", sim: "f_{máx}", nombre: "frecuencia máxima", unidad: Hz }
+    L_r: { expr: "n_e*T_r", sim: "latencia", nombre: "latencia", unidad: s }
+    T_f: { expr: "t_ff + t_su + t_sk", sim: "fijos", nombre: "términos fijos", unidad: s }
+
+tarjetas:
+  - id: explore-segmentar
+    tipo: explorar
+    titulo: "Problema 28.A: segmentar"
+    texto: "Parta los 22 ns de lógica en etapas con registros intermedios. Mire la frecuencia y la latencia."
+    libro: [330, 332, 341]
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 1, max: 4, unidad: "", rotulo: "etapas" }
+      y: { min: 0, max: 80000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_ff + t_lg/ex + t_su + t_sk)", color: azul, rotulo: "f_{máx}" }
+      asas:
+        - { mueve: n_e, x: "n_e", y: "f_r", rotulo: "Sus etapas" }
+      lectura: { valor: f_r, rotulo: "Frecuencia máxima" }
+      datos:
+        - { valor: T_r, rotulo: "Periodo: {{T_r}}" }
+        - { valor: L_r, rotulo: "Latencia: {{L_r}}" }
+      mandos:
+        - { valor: n_e, lista: [1, 2, 3], rotulo: "Etapas" }
+    requiere: { mover: [n_e] }
+
+  - id: formula-periodo
+    tipo: formula
+    titulo: "El periodo con el desalineo"
+    texto: "El dato sale del biestable, cruza la lógica y llega con su setup, contando el peor desalineo del reloj."
+    libro: [336]
+    fijar: { n_e: 1 }
+    ec: 336
+    sustitucion: "{{t_ff}} + {{t_lg}} + {{t_su}} + {{t_sk}} = {{T_r}}, es decir, {{f_r}}"
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 1, max: 4, unidad: "", rotulo: "etapas" }
+      y: { min: 0, max: 80000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_ff + t_lg/ex + t_su + t_sk)", color: azul, rotulo: "f_{máx}" }
+      lectura: { valor: f_r, rotulo: "Frecuencia máxima" }
+
+  - id: estime-fmax
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Sin segmentar"
+    texto: "Con 8 ns de biestable, 22 ns de lógica, 3 ns de setup y 2 ns de desalineo, ¿qué frecuencia máxima se obtiene?"
+    libro: [332, 338]
+    fijar: { n_e: 1 }
+    estimar:
+      objetivo: "f_r"
+      unidad: Hz
+      min: 0
+      max: 100000000
+      paso: 100000
+      inicio: 70000000
+      tol: 0.02
+      rotulo: "Frecuencia máxima"
+    exito: "28,57 MHz: un periodo de 35 ns."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 29150000 }, texto: "Se ha pasado: sume los cuatro términos, el desalineo incluido, y tome la inversa." }
+      - { texto: "Se ha quedado corto: el periodo son 35 ns; su inversa, unos 28 MHz." }
+    escalera: ["T = 8 + 22 + 3 + 2 ns."]
+    solucion: "T = 35 ns → 28,57 MHz."
+    comprobar:
+      - { T_r: 35e-9, f_r: 28.57e6 }
+
+  - id: pregunta-optimizar
+    tipo: pregunta
+    titulo: "Qué optimizar"
+    texto: "Para subir la frecuencia de esa máquina, ¿qué conviene atacar?"
+    libro: [339]
+    fijar: { n_e: 1 }
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 1, max: 4, unidad: "", rotulo: "etapas" }
+      y: { min: 0, max: 80000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_ff + t_lg/ex + t_su + t_sk)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "El camino combinacional más largo: se lleva 22 de los 35 ns", bien: true, porque: "El 63 % del periodo; optimizar el biestable o el reloj es perder el tiempo." }
+      - { texto: "El desalineo del reloj", porque: "Son solo 2 de los 35 ns: aunque se anulara, apenas cambiaría." }
+      - { texto: "Cualquier camino, da igual cuál", porque: "Solo el más largo fija la frecuencia: acelerar otro no sirve de nada." }
+    escalera: ["¿Qué término es el más grande de la suma?"]
+    solucion: "La lógica del camino crítico."
+
+  - id: prediga-dos-etapas
+    tipo: predecir
+    titulo: "Dos etapas"
+    texto: "Se parte la lógica en dos etapas con un registro en medio. ¿Qué frecuencia máxima se obtiene?"
+    libro: [341, 342]
+    fijar: { n_e: 2 }
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 1, max: 4, unidad: "", rotulo: "etapas" }
+      y: { min: 0, max: 80000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_ff + t_lg/ex + t_su + t_sk)", color: azul, rotulo: "f_{máx}" }
+      lectura: { valor: f_r, rotulo: "Frecuencia máxima" }
+      ocultar: true
+    opciones:
+      - { texto: "41,67 MHz: un periodo de 24 ns", bien: true, porque: "Cada etapa lleva la mitad de la lógica más los 13 ns fijos: se gana un 46 %, no el doble." }
+      - { texto: "El doble de 28,57 MHz", porque: "Solo se divide la lógica: t_{ff}, t_{su} y el desalineo se pagan en cada etapa." }
+      - { texto: "Lo mismo: el camino sigue teniendo 22 ns", porque: "Con el registro en medio, cada ciclo solo tiene que cruzar la mitad de la lógica." }
+    escalera: ["Divida solo la lógica entre dos; los 13 ns fijos se quedan."]
+    solucion: "13 + 22/2 = 24 ns → 41,67 MHz."
+    comprobar:
+      - { T_r: 24e-9, f_r: 41.67e6, T_f: 13e-9 }
+
+  - id: porque-rendimiento
+    tipo: porque
+    titulo: "¿Por qué no se dobla?"
+    texto: "De 1 a 2 etapas se gana un 46 %; de 2 a 3, solo un 18 %. ¿Por qué decrece tanto?"
+    libro: [342]
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 1, max: 4, unidad: "", rotulo: "etapas" }
+      y: { min: 0, max: 80000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_ff + t_lg/ex + t_su + t_sk)", color: azul, rotulo: "f_{máx}" }
+    opciones:
+      - { texto: "Los 13 ns fijos se pagan en cada etapa y acaban dominando el periodo", bien: true, porque: "Segmentar solo reparte la lógica; a cambio, la latencia crece linealmente." }
+      - { texto: "Porque los registros añaden lógica", porque: "Los registros añaden sus tiempos fijos, no lógica: t_{ff}, t_{su} y el desalineo." }
+      - { texto: "Porque el reloj no puede ir más deprisa", porque: "El reloj puede; lo que no baja son los términos fijos de cada etapa." }
+    escalera: ["¿Qué parte del periodo no se reparte entre las etapas?"]
+    solucion: "Los términos fijos, 13 ns por etapa."
+
+  - id: pregunta-sincronizador
+    tipo: pregunta
+    titulo: "Problema 28.B: cuántos biestables"
+    texto: "Una señal asíncrona entra en un sistema de 200 MHz. ¿Cuántos biestables necesita el sincronizador, y a 50 MHz?"
+    libro: [346, 348, 355, 358]
+    widget:
+      tipo: figura
+      figura: fig-9.11
+      zonas:
+        - { id: ff1, rotulo: "Primer flip-flop", rect: [115, 22, 65, 72], texto: "FF1." }
+    opciones:
+      - { texto: "Dos a 200 MHz; a 50 MHz basta uno", bien: true, porque: "Con uno a 200 MHz falla cada ocho minutos; con dos, más de un millón de años. A 50 MHz el tiempo de resolución basta." }
+      - { texto: "Siempre dos, sin excepción", porque: "La necesidad la impone la frecuencia: a 50 MHz un solo biestable ya basta." }
+      - { texto: "Uno a cualquier frecuencia", porque: "A 200 MHz un solo biestable falla cada ocho minutos." }
+    escalera: ["El tiempo disponible para resolverse está en un exponente."]
+    solucion: "Dos a 200 MHz; uno a 50 MHz."
+
+  - id: explore-decodificador
+    tipo: explorar
+    titulo: "Problema 28.C: decodificar la cuenta 8"
+    texto: "Un contador de 4 bits y una AND que detecta 1000. Dé pulsos de reloj hasta que se encienda la salida."
+    libro: [362, 364]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 4, entradas: [CLK] }
+        - { id: n0, tipo: not, entradas: [c1.q0] }
+        - { id: n1, tipo: not, entradas: [c1.q1] }
+        - { id: n2, tipo: not, entradas: [c1.q2] }
+        - { id: a1, tipo: and, entradas: [c1.q3, n2, n1, n0] }
+      salidas:
+        - { id: Q3, de: c1.q3 }
+        - { id: Q2, de: c1.q2 }
+        - { id: Q1, de: c1.q1 }
+        - { id: Q0, de: c1.q0 }
+        - { id: Y8, de: a1, rotulo: "Cuenta 8" }
+    requiere: { mover: [CLK] }
+
+  - id: pregunta-transicion
+    tipo: pregunta
+    titulo: "Sin pulso falso"
+    texto: "Los bits no conmutan exactamente a la vez. ¿En qué transición la salida de la cuenta 8 no da ningún pulso falso?"
+    libro: [368]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 4, entradas: [CLK] }
+        - { id: n0, tipo: not, entradas: [c1.q0] }
+        - { id: n1, tipo: not, entradas: [c1.q1] }
+        - { id: n2, tipo: not, entradas: [c1.q2] }
+        - { id: a1, tipo: and, entradas: [c1.q3, n2, n1, n0] }
+      salidas:
+        - { id: Y8, de: a1, rotulo: "Cuenta 8" }
+    opciones:
+      - { texto: "0111 → 1000, aunque cambien los cuatro bits", bien: true, porque: "El estado 1000 solo existe cuando han cambiado todos: la salida simplemente se activa al final." }
+      - { texto: "1001 → 1010", porque: "Si el bit 0 baja antes de que suba el bit 1, aparece 1000 de paso: un pulso falso." }
+      - { texto: "1111 → 0000", porque: "Si el bit 3 es el último en caer, el estado de paso puede ser 1000." }
+    escalera: ["¿En qué transiciones puede aparecer 1000 como estado de paso?"]
+    solucion: "0111 → 1000: 1000 es el destino, no un paso intermedio."
+
+  - id: ordene-soluciones
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Tres soluciones"
+    texto: "Ordene las soluciones a los pulsos fantasma de mejor a peor."
+    libro: [370]
+    ordenar:
+      - "Código Gray: solo cambia un bit por transición"
+      - "Registrar la salida del decodificador con el mismo reloj"
+      - "Filtrar con un paso bajo"
+    exito: "Gray ataca la causa; registrar cuesta un ciclo; filtrar degrada los flancos útiles."
+    pistas:
+      - { texto: "La peor no ataca la causa y degrada los flancos útiles." }
+    escalera: ["La mejor hace imposible el estado intermedio."]
+    solucion: "Gray, registrar la salida y, en último lugar, filtrar."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [338, 342, 348, 355, 368, 370]
+    ideas:
+      - { titulo: "28.A.", texto: "28,57 MHz; con dos etapas, 41,67 MHz: los 13 ns fijos se pagan en cada una." }
+      - { titulo: "28.B.", texto: "A 200 MHz, dos biestables; a 50 MHz basta uno." }
+      - { titulo: "28.C.", texto: "Pulsos fantasma por bits que no cambian a la vez: Gray o registrar la salida." }

@@ -1,0 +1,133 @@
+# «Consolas por dentro» · Game Boy Color 6: el arranque, por lo que cambia respecto a la Game Boy. Sigue sin CIC: la
+# ROM de arranque del CPU CGB comprueba la suma complementaria y el logotipo, pero solo sus primeros $18 bytes (la
+# mitad); lee el indicador CGB de $0143 ($80: las dos consolas; $C0: solo la Color), da paletas a los juegos de Game Boy
+# con licencia de Nintendo según un resumen de su título o a mano con los botones, y los cartuchos solo para Color
+# llevan un bloqueo mecánico: sin muesca, una Game Boy monocroma no se enciende. Fuentes: los datos de la consola
+# (gbc#n, gb#n), Pan Docs «The Cartridge Header», TCRF «Game Boy Color Bootstrap ROM», la wiki de gbdev y Wikipedia.
+leccion: consola-gbc/gbc-bloqueo
+
+libro:
+  "gbc#2": "puerto de infrarrojos y ROM de arranque"
+  "gbc#12": "Igual que en la Game Boy: A0–A15, D0–D7"
+  "gbc#75": "La CGB solo comprueba los primeros $18 bytes del logotipo de Nintendo"
+  "gbc#76": "Indicador CGB en $0143: $80, el juego usa las funciones de la CGB pero también funciona en las Game Boy anteriores; $C0, solo funciona en la CGB"
+  "gbc#77": "comprueba el cartucho con la suma de comprobación complementaria y buscando el logotipo de Nintendo"
+  "gbc#78": "Da paletas a los juegos de Game Boy calculando un resumen del título de la cabecera de cada juego con licencia de Nintendo"
+  "gbc#79": "La paleta también se puede elegir a mano con los botones"
+  "gbc#80": "sigue comparando solo la primera mitad del logotipo"
+  "gbc#81": "En el chip de la CGB hay tres ROM: una de 256 bytes, otra de 512 y otra de 1792"
+  "gbc#82": "Los cartuchos solo para Game Boy Color no tienen la muesca de la esquina superior derecha"
+  "gb#75": "La suma de comprobación de la cabecera"
+  "gb#80": "Compara $30 bytes del logotipo del cartucho con la copia que guarda"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-arranque
+    tipo: explorar
+    titulo: "Otra ROM de arranque"
+    texto: "Toque el chip donde está la ROM de arranque de la Color y la ranura que comprueba."
+    libro: ["gbc#2", "gbc#81", "gbc#77", "gbc#12"]
+    requiere: { mover: [soc, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "Dentro hay tres ROM: de 256, 512 y 1792 bytes." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Comprueba la suma de la cabecera y el logotipo, como la Game Boy." }
+
+  - id: prediga-mitad
+    tipo: predecir
+    titulo: "¿Todo el logotipo?"
+    texto: "La Game Boy compara $30 bytes del logotipo. ¿Cuántos compara la Color?"
+    libro: ["gbc#75", "gbc#80", "gb#80"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura" }
+    opciones:
+      - texto: "Solo los primeros $18: la mitad."
+        bien: true
+        porque: "La Color, y también la versión de la Game Boy Advance, solo comparan la primera mitad."
+      - texto: "Los $30, como la Game Boy."
+        porque: "Se queda en los primeros $18 bytes."
+      - texto: "Ninguno: la Color no lo comprueba."
+        porque: "Sí lo comprueba, junto con la suma complementaria, pero solo la mitad."
+    escalera:
+      - "$18 es la mitad de $30."
+    solucion: "Los primeros $18 bytes."
+
+  - id: empareje-cabecera
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que lee al arrancar"
+    texto: "Empareje cada caso con lo que hace la Color."
+    libro: ["gbc#76", "gbc#78", "gbc#79"]
+    emparejar:
+      - ["$80 en $0143", "Funciona en las dos consolas"]
+      - ["$C0 en $0143", "Solo funciona en la Color"]
+      - ["Juego de Game Boy con licencia", "Paleta según su título"]
+      - ["Botones al arrancar", "Paleta elegida a mano"]
+    exito: "Un byte de la cabecera y el título deciden el modo y los colores."
+    pistas:
+      - { texto: "$C0 es «solo Color»; $80, «también en las anteriores»." }
+    escalera:
+      - "Los juegos de Game Boy no tienen paletas: las pone la ROM de arranque."
+    solucion: "$80: las dos. $C0: solo Color. Título: paleta automática. Botones: a mano."
+
+  - id: prediga-colores
+    tipo: predecir
+    titulo: "Color para un juego monocromo"
+    texto: "Un juego de Game Boy de Nintendo sale en color en la Color. ¿De dónde salen sus colores?"
+    libro: ["gbc#78", "gbc#79"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB" }
+    opciones:
+      - texto: "La ROM de arranque elige una paleta según el título de la cabecera."
+        bien: true
+        porque: "Calcula un resumen del título de cada juego con licencia de Nintendo y le asigna su paleta."
+      - texto: "El cartucho trae sus colores escondidos."
+        porque: "Un juego de Game Boy no tiene paletas de color: se las pone la consola."
+      - texto: "Son siempre los mismos, al azar."
+        porque: "Dependen del título; y el jugador puede elegir otra con los botones."
+    escalera:
+      - "¿Qué parte de la cabecera distingue un juego de otro?"
+    solucion: "Una paleta según el título, o la que elija el jugador."
+
+  - id: por-que-muesca
+    tipo: porque
+    titulo: "Un bloqueo de plástico"
+    texto: "Un cartucho solo para Color en una Game Boy monocroma no llega a arrancar. ¿Qué lo impide?"
+    libro: ["gbc#82", "gb#80", "gb#75", "gbc#76"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura" }
+    opciones:
+      - texto: "Su forma: sin la muesca, no deja mover el interruptor de encendido."
+        bien: true
+        porque: "La Game Boy monocroma no interpreta $0143: el bloqueo es mecánico."
+      - texto: "La ROM de arranque de la Game Boy lee $0143 y lo rechaza."
+        porque: "Esa ROM solo compara el logotipo y la suma de la cabecera: no interpreta $0143."
+      - texto: "El logotipo de los juegos de Color es distinto."
+        porque: "El logotipo es el mismo: la Color incluso compara menos bytes."
+    escalera:
+      - "¿Qué comprueba la ROM de arranque de la Game Boy?"
+    solucion: "La forma del cartucho: sin muesca, la consola no se enciende."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gbc#75", "gbc#76", "gbc#78", "gbc#82"]
+    ideas:
+      - { titulo: "Media comprobación.", texto: "Solo los primeros $18 bytes del logotipo." }
+      - { titulo: "$0143.", texto: "Dice si el juego es para las dos o solo para la Color." }
+      - { titulo: "Paletas.", texto: "Por el título del juego, o a mano." }
+      - { titulo: "Plástico.", texto: "Sin muesca, una Game Boy monocroma no se enciende." }

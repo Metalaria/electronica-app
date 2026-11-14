@@ -64,9 +64,12 @@ test('unidad: equivalentes con prefijo pegado o con dos grafías', () => {
 
 test('otros valores: las variantes de los 40 ejercicios enlazados quedan en el régimen del enunciado (auditoría 10e)', () => {
   const its = enlazados();
-  expect(its.length).toBe(40);
-  // the linked Early-resistance formula for «una carga de 24 Ω alimentada a 12 V» is gone
+  // (1.2, book 4.1: 46 — the new ones keep to the generic rules below)
+  expect(its.length).toBe(46);
+  // the linked Early-resistance formula for «una carga de 24 Ω alimentada a 12 V» is gone, and (1.2) Euler's largest
+  // step linked to Ziegler-Nichols' T_i = T_u/2
   expect(its.some((x) => x.ejercicio!.label === 'prob-6.C')).toBe(false);
+  expect(its.some((x) => x.ejercicio!.label === 'ej-31.22')).toBe(false);
   const fallos: string[] = [];
   for (const it of its) {
     const vs = variantes(it);
@@ -108,6 +111,10 @@ test('otros valores: las variantes de los 40 ejercicios enlazados quedan en el r
           break;
         case 'prob-8.A':
           if (x.V_in! - x.V_out! < 2) fallos.push('prob-8.A: sin margen');
+          break;
+        case 'ej-56.7':
+          // (1.2) «un variador V/f de 8 V/Hz», 400 V at 50 Hz: the nominal frequency stays and the new one is below it
+          if (x.f_1 !== 50 || x.f_2! >= 50) fallos.push(`ej-56.7: ${x.f_2} Hz con nominal ${x.f_1} Hz`);
           break;
       }
     }

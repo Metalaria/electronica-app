@@ -1,0 +1,277 @@
+# Lección 1.2 de la sección 30.10 «Respuesta Temporal y Error en Régimen Permanente» (cap31, sec-new-31-respuesta).
+# Formato: GUIA.md.
+# - El segundo orden de referencia: y(t) = 1 − e^(−σt)/√(1 − ζ²)·sen(ω_d·t + θ), θ = arccos ζ (escrito con atan2), y
+#   las cuatro especificaciones del bloque 351, con el ejemplo del libro (ζ = 0,6, ω_n = 8,33 rad/s).
+# - Tipo 0 frente a tipo 1 con la planta del problema 30.B (bloque 368): P con K_p = 5 (lazo cerrado 0,8/(24·s + 1)) y
+#   PI con T_i = 120 s (lazo cerrado 1/(30·s + 1)), ante un escalón de 10 °C y una rampa de 2 °C/min (figura 30.20).
+# Pasos prácticos: «reto» de colocar los polos para M_p ≤ 10 % y t_s ≤ 0,8 s (la caja de ejemplo del libro) y
+# «simular» el tiempo de pico del ejemplo (0,471 s; errores: π/ω_n y el periodo entero).
+leccion: cap31/sec-new-31-respuesta
+
+libro:
+  344: "un integrador y un polo en lazo abierto"
+  345: 'T(s) = (L(s))/(1 + L(s))'
+  347: 'ω_"d" = ω_"n" sqrt(1 - ζ^2)'
+  348: "σ fija lo deprisa que decae la envolvente, ωd la frecuencia a la que oscila"
+  351: 't_"p" = π/(ω_"d")'
+  352: "El sobreimpulso Mp solo depende de ζ"
+  354: "4/ζ para ωn·ts"
+  356: "4/σ sobrestima hasta en un tercio: sirve para dimensionar"
+  357: "Se pide un sobreimpulso de 10 % como máximo y un tiempo de establecimiento al 2 % de 0,8 s como máximo"
+  360: "un cero a cinco veces lo sube al 18,0 %, y a dos veces, al 29,8 %"
+  362: "el error es E(s) = R(s)/(1 + L(s))"
+  366: "crece sin límite"
+  368: "Ante una rampa de 2 °C/min (0,0333 °C/s), Kv = 1/30 s−1 y el error es 1,0 °C"
+  370: "un escalón de 10 °C"
+  371: "un par de carga constante le deja error: el integrador del motor está después del par"
+  373: "Kv se mide con una triangular lenta como consigna"
+
+modelo:
+  valores:
+    z_s: { sim: "ζ", nombre: "amortiguamiento", unidad: "", valor: 0.6 }
+    w_n: { sim: "ω_{n}", nombre: "frecuencia natural", unidad: "rad/s", valor: 8.33 }
+    K_g: { sim: "K", nombre: "ganancia de la planta", unidad: "°C/W", valor: 0.8 }
+    T_p: { sim: "τ", nombre: "constante de tiempo de la planta", unidad: s, valor: 120 }
+    Kp_c: { sim: "K_{p}", nombre: "ganancia proporcional", unidad: "W/°C", valor: 5 }
+    A_e: { sim: "A", nombre: "escalón de consigna", unidad: "°C", valor: 10 }
+    a_r: { sim: "a", nombre: "pendiente de la rampa", unidad: "°C/s", valor: 0.033333 }
+    w_r: { sim: "consigna", nombre: "forma de la consigna", unidad: "", valor: 0 }
+  calculos:
+    sg: { expr: "z_s*w_n", sim: "σ", nombre: "parte real de los polos", unidad: "1/s" }
+    wd: { expr: "w_n*sqrt(1 - z_s^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    Mp: { expr: "100*exp(-pi*z_s/sqrt(1 - z_s^2))", sim: "M_{p}", nombre: "sobreimpulso", unidad: "%" }
+    tp: { expr: "pi/wd", sim: "t_{p}", nombre: "tiempo de pico", unidad: s }
+    ts: { expr: "4/sg", sim: "t_{s}", nombre: "tiempo de establecimiento", unidad: s }
+    tr: { expr: "1.8/w_n", sim: "t_{r}", nombre: "tiempo de subida", unidad: s }
+    tp_n: { expr: "pi/w_n", sim: "t", nombre: "π/ω_n", unidad: s }
+    tp_T: { expr: "2*pi/wd", sim: "t", nombre: "periodo de la oscilación", unidad: s }
+    K_v: { expr: "Kp_c*K_g/T_p", sim: "K_{v}", nombre: "constante de velocidad del PI", unidad: "1/s" }
+    e_r: { expr: "a_r/K_v", sim: "e_{∞}", nombre: "retraso ante la rampa", unidad: "°C" }
+    e_p: { expr: "100/(1 + Kp_c*K_g)", sim: "e", nombre: "error ante el escalón con solo P", unidad: "%" }
+
+tarjetas:
+  - id: explore-segundo-orden
+    tipo: explorar
+    titulo: "El segundo orden de referencia"
+    texto: "Un integrador y un polo, en lazo cerrado: dos polos. Cambie ζ y ω_{n} y mire el escalón."
+    libro: [344, 345, 348]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: naranja, rotulo: "respuesta" }
+        - { expr: "1.02", color: tinta, rotulo: "+2 %", discontinua: true }
+        - { expr: "0.98", color: tinta, rotulo: "−2 %", discontinua: true }
+      marcas:
+        - { x: "tp", y: "1 + Mp/100", rotulo: "t_{p}" }
+      lectura: { valor: Mp, rotulo: "Sobreimpulso" }
+      datos:
+        - { valor: tp, rotulo: "Pico: {{tp}}" }
+        - { valor: ts, rotulo: "Establecimiento: {{ts}}" }
+      mandos:
+        - { valor: z_s, lista: [0.3, 0.5, 0.6, 0.8], rotulo: "Amortiguamiento, ζ" }
+        - { valor: w_n, lista: [5, 8.33, 15], rotulo: "Frecuencia natural, ω_{n}" }
+    requiere: { mover: [z_s, w_n] }
+
+  - id: formula-especificaciones
+    tipo: formula
+    titulo: "Las cuatro especificaciones"
+    texto: "El sobreimpulso solo depende de ζ; el establecimiento, solo de σ = ζ·ω_{n}."
+    libro: [351, 352, 354, 356]
+    ec: 351
+    sustitucion: "M_{p} = {{Mp}}; t_{p} = π/{{wd}} = {{tp}}; t_{s} ≈ 4/{{sg}} = {{ts}}; t_{r} ≈ 1,8/{{w_n}} = {{tr}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: naranja, rotulo: "respuesta" }
+      mandos:
+        - { valor: z_s, lista: [0.3, 0.5, 0.6, 0.8], rotulo: "Amortiguamiento, ζ" }
+        - { valor: w_n, lista: [5, 8.33, 15], rotulo: "Frecuencia natural, ω_{n}" }
+
+  - id: reto-polos
+    tipo: reto
+    titulo: "Pida y coloque los polos"
+    texto: "Especificación: sobreimpulso de un 10 % como máximo y establecimiento al 2 % en 0,8 s como máximo. Elija ζ y ω_{n}."
+    libro: [357]
+    inicio: { z_s: 0.4, w_n: 5 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: naranja, rotulo: "respuesta" }
+        - { expr: "1.1", color: tinta, rotulo: "10 %", discontinua: true }
+      lectura: { valor: Mp, rotulo: "Sobreimpulso" }
+      datos:
+        - { valor: ts, rotulo: "Establecimiento: {{ts}}" }
+      mandos:
+        - { valor: z_s, lista: [0.4, 0.5, 0.6, 0.7], rotulo: "Amortiguamiento, ζ" }
+        - { valor: w_n, lista: [5, 8.33, 10], rotulo: "Frecuencia natural, ω_{n}" }
+    condiciones:
+      - { valor: Mp, max: 10, rotulo: "Sobreimpulso: {{Mp}}" }
+      - { valor: ts, max: 0.801, rotulo: "Establecimiento: {{ts}}" }
+    exito: "Hace falta ζ ≥ 0,591 y σ ≥ 5 s⁻¹: una cuña de polos a la izquierda de s = −5."
+    pistas:
+      - { cuando: { valor: Mp, mayor: 10 }, texto: "Se pasa más de un 10 %: suba ζ; el sobreimpulso solo depende de él." }
+      - { cuando: { valor: ts, mayor: 0.801 }, texto: "Tarda demasiado: σ = ζ·ω_{n} debe llegar a 5. Suba ω_{n}." }
+    escalera:
+      - "Primero ζ para el sobreimpulso; luego ω_{n} para que ζ·ω_{n} llegue a 5."
+    solucion: "ζ = 0,6 y ω_{n} = 8,33 rad/s, en el borde: 9,5 % y 0,8 s."
+    comprobar:
+      - { con: { z_s: 0.6, w_n: 8.33 }, Mp: 9.5, ts: 0.8, tol: 0.01 }
+
+  - id: simule-pico
+    tipo: simular
+    titulo: "El tiempo de pico"
+    texto: "Con ζ = 0,6 y ω_{n} = 8,33 rad/s, ¿cuándo llega la respuesta a su pico?"
+    libro: [347, 351, 357]
+    fijar: { z_s: 0.6, w_n: 8.33 }
+    simular:
+      objetivo: tp
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo de pico, t_{p}"
+      errores:
+        - { expr: "tp_n", texto: "Ha dividido entre ω_{n}: el pico es medio periodo de la oscilación amortiguada, π/ω_{d}." }
+        - { expr: "tp_T", texto: "Ese es el periodo entero; el pico llega a la mitad." }
+    exito: "0,471 s, con ω_{d} = 6,67 rad/s; la simulación del libro da lo mismo."
+    escalera:
+      - "Calcule primero ω_{d} = ω_{n}·√(1 − ζ²)."
+    solucion: "ω_{d} = 8,33 × 0,8 = 6,67 rad/s; t_{p} = π/6,67 = 0,471 s."
+    comprobar:
+      - { tp: 0.471, wd: 6.67, tp_n: 0.377, tp_T: 0.943, tol: 0.003 }
+
+  - id: predecir-cero
+    tipo: predecir
+    titulo: "Un cero cercano"
+    texto: "A un par de polos con ζ = 0,5, que se pasa un 16,3 %, se le añade un cero a dos veces su parte real. ¿Qué pasa?"
+    libro: [360]
+    fijar: { z_s: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: naranja, rotulo: "sin el cero" }
+    opciones:
+      - texto: "Se pasa mucho más: un 29,8 %"
+        bien: true
+        porque: "Un cero cercano siempre aumenta el sobreimpulso; a más de cinco veces se podría ignorar."
+      - texto: "Se pasa menos: un 8,1 %"
+        porque: "Eso hace un polo añadido a dos veces, no un cero."
+      - texto: "Nada: solo cuentan los polos dominantes"
+        porque: "Lo que esté a menos de cinco veces cuenta, y este está a dos."
+    escalera:
+      - "Polos añadidos frenan; ceros cercanos aceleran y empujan el pico."
+    solucion: "Sube al 29,8 %."
+
+  - id: explore-tipo
+    tipo: explorar
+    titulo: "Tipo 0 y tipo 1"
+    texto: "La planta del problema 30.B, con solo P y con PI. Cambie la consigna a una rampa y mire el error."
+    libro: [366, 368, 370]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 1200, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 45, unidad: "°C", rotulo: "temperatura" }
+      curvas:
+        - { expr: "(1 - w_r)*A_e + w_r*a_r*t", color: tinta, rotulo: "consigna", discontinua: true }
+        - { expr: "(1 - w_r)*A_e*0.8*(1 - exp(-t/24)) + w_r*0.8*a_r*(t - 24*(1 - exp(-t/24)))", color: azul, rotulo: "solo P" }
+        - { expr: "(1 - w_r)*A_e*(1 - exp(-t/30)) + w_r*a_r*(t - 30*(1 - exp(-t/30)))", color: naranja, rotulo: "PI" }
+      lectura: { valor: e_r, rotulo: "Retraso del PI en la rampa" }
+      mandos:
+        - { valor: w_r, lista: [0, 1], nombres: [escalón, rampa], rotulo: "Consigna" }
+    requiere: { mover: [w_r] }
+    comprobar:
+      - { e_p: 20, K_v: 0.033333, tol: 0.002 }
+
+  - id: estime-rampa
+    tipo: pregunta
+    titulo: "El error de seguimiento"
+    texto: "El PI hace el lazo de tipo 1, con K_{v} = 1/30 s⁻¹. ¿Con qué retraso sigue una rampa de 2 °C/min?"
+    libro: [366, 368, 373]
+    fijar: { w_r: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 1200, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 45, unidad: "°C", rotulo: "temperatura" }
+      curvas:
+        - { expr: "a_r*t", color: tinta, rotulo: "consigna", discontinua: true }
+        - { expr: "a_r*(t - 30*(1 - exp(-t/30)))", color: naranja, rotulo: "PI" }
+    estimar:
+      objetivo: "e_r"
+      unidad: "°C"
+      min: 0
+      max: 5
+      paso: 0.1
+      inicio: 3
+      tol: 0.06
+      rotulo: "Retraso"
+    exito: "1,0 °C: A/K_{v}, constante. El P, en cambio, se queda cada vez más atrás."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.06 }, texto: "Demasiado: el error es la pendiente entre K_{v}, en °C/s y s⁻¹." }
+      - { texto: "Se queda corto: 0,0333 °C/s entre 1/30 s⁻¹." }
+    escalera:
+      - "Rampa de pendiente A en un tipo 1: e = A/K_{v}."
+    solucion: "0,0333 × 30 = 1,0 °C."
+    comprobar:
+      - { e_r: 1.0, tol: 0.002 }
+
+  - id: empareje-tipos
+    tipo: pregunta
+    titulo: "La tabla de los tipos"
+    texto: "Empareje cada caso con su error en régimen permanente."
+    libro: [362, 366]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 1200, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 45, unidad: "°C", rotulo: "temperatura" }
+      curvas:
+        - { expr: "a_r*t", color: tinta, rotulo: "consigna", discontinua: true }
+    emparejar:
+      - ["Tipo 0, escalón", "A/(1 + K_{pos})"]
+      - ["Tipo 0, rampa", "Crece sin límite"]
+      - ["Tipo 1, rampa", "A/K_{v}"]
+      - ["Tipo 2, parábola", "A/K_{a}"]
+    exito: "Cada integrador hace infinita una constante y finita la siguiente."
+    pistas:
+      - { texto: "Un tipo 1 sigue un escalón sin error; con la rampa queda un retraso." }
+    escalera:
+      - "El tipo es el número de integradores de L(s)."
+    solucion: "Tipo 0: escalón A/(1 + K_{pos}), rampa sin límite; tipo 1, rampa A/K_{v}; tipo 2, parábola A/K_{a}."
+
+  - id: porque-perturbacion
+    tipo: porque
+    titulo: "Un servo que no llega"
+    texto: "Un servo de posición ya es de tipo 1 y con un P sigue un escalón sin error. ¿Por qué un par de carga constante le deja error?"
+    libro: [371]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 1200, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 45, unidad: "°C", rotulo: "temperatura" }
+      curvas:
+        - { expr: "a_r*t", color: tinta, rotulo: "consigna", discontinua: true }
+    opciones:
+      - texto: "Ante una perturbación cuentan los integradores antes de donde entra, y el del motor está después del par"
+        bien: true
+        porque: "Hace falta un integrador en el controlador."
+      - texto: "Porque el tipo 1 no sigue escalones"
+        porque: "Sí los sigue sin error: el problema es la perturbación, no la consigna."
+      - texto: "Porque el P tiene poca ganancia"
+        porque: "Más ganancia lo reduce, pero no lo anula: falta un integrador en el sitio adecuado."
+    escalera:
+      - "¿Dónde está el integrador del servo respecto al punto donde entra el par?"
+    solucion: "El integrador del motor está después del par; hace falta el del controlador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [351, 357, 360, 366, 368, 371]
+    ideas:
+      - { titulo: "Especificaciones.", texto: "M_{p} solo con ζ; t_{p} = π/ω_{d}; t_{s} ≈ 4/σ." }
+      - { titulo: "Polos.", texto: "Una cuña por el sobreimpulso y una vertical por el establecimiento." }
+      - { titulo: "Tipo.", texto: "Un integrador quita el error al escalón; ante la rampa deja A/K_{v}." }
+      - { titulo: "Perturbaciones.", texto: "Solo cuentan los integradores del controlador." }

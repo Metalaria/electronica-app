@@ -1,0 +1,315 @@
+# Lección 1.2 de la sección 48.17 «Problemas de Diseño» (cap47; etiqueta interna sec-47.15).
+# Formato: contenido/lecciones11/GUIA.md. Problema 48.A: la tabla del bloque 565 sale de sumar en cuadratura el
+# instrumento (1) y el patrón (1/TUR): la combinada es √(1 + 1/TUR²) y la parte del patrón, (1/TUR)/√(1 + 1/TUR²)
+# (10:1, 10,0 % y ×1,005; 4:1, 24,3 % y ×1,031; 1:1, 70,7 % y ×1,414). Problema 48.B: 15 W con 5,0, 1,5 y 0,7 °C/W.
+# Problema 48.C: la ranura de 2 mm de profundidad y 1 mm de anchura, que añade 4 mm de recorrido.
+leccion: cap47/sec-47.15
+
+libro:
+  559: "Problema 48.A"
+  572: "Problema 48.B"
+  586: "Problema 48.C"
+  561: "Se quiere verificar un multímetro de 0,02 % de exactitud"
+  564: "La relación entre la exactitud del patrón y la del instrumento verificado (TUR)"
+  565: "24,3 %"
+  566: "Con 1:1 la combinada empeora un 41 %"
+  567: "Comparar dos multímetros de la misma clase (TUR 1:1) no es calibrar"
+  568: "Requiere TUR ≥ 4."
+  574: "Un componente disipa 15 W"
+  577: "75,0 °C"
+  578: "Con 40 °C de ambiente eso sitúa el disipador en 115 °C"
+  580: "El ventilador es el componente que antes falla"
+  581: "un ventilador atascado por polvo lleva el componente a destrucción en minutos"
+  582: "disipador dimensionado para sobrevivir sin ventilador a potencia reducida"
+  584: "Ensaya el fallo del ventilador"
+  592: "Seguimiento superficial de suciedad y humedad"
+  593: "es la que limita en la mayoría de los diseños"
+  595: "una ranura de 2 mm de profundidad y 1 mm de anchura obliga a bajar, cruzar y subir, y añade 4 mm de recorrido"
+  598: "Mide con un calibre las distancias reales en la placa fabricada, no en el diseño"
+
+modelo:
+  valores:
+    TUR: { sim: "TUR", nombre: "relación de incertidumbres", unidad: "", valor: 10 }
+    P: { sim: "P", nombre: "potencia del componente", unidad: W, valor: 15 }
+    R_sa: { sim: "R_{sa}", nombre: "resistencia radiador-ambiente", unidad: "°C/W", valor: 5 }
+    T_a: { sim: "T_{a}", nombre: "temperatura ambiente", unidad: "°C", valor: 40 }
+    prof: { sim: "p", nombre: "profundidad de la ranura", unidad: m, valor: 0.002 }
+  calculos:
+    fac: { expr: "sqrt(1 + 1/TUR^2)", sim: "×", nombre: "factor de la combinada", unidad: "", cifras: 4 }
+    parte: { expr: "100*(1/TUR)/fac", sim: "parte", nombre: "parte del patrón en el error combinado", unidad: "%", cifras: 3 }
+    empeora: { expr: "100*(fac - 1)", sim: "Δ", nombre: "lo que empeora la combinada", unidad: "%", cifras: 2 }
+    dT: { expr: "P*R_sa", sim: "ΔT", nombre: "salto del disipador sobre el ambiente", unidad: "°C" }
+    T_dis: { expr: "T_a + dT", sim: "T_{disipador}", nombre: "temperatura del disipador", unidad: "°C" }
+    anade: { expr: "2*prof", sim: "Δ", nombre: "recorrido que añade la ranura", unidad: m }
+
+tarjetas:
+  - id: explore-tur
+    tipo: explorar
+    titulo: "48.A: cuánto contamina el patrón"
+    texto: "Baje la relación entre la tolerancia del instrumento y la incertidumbre del patrón, y mire cuánto empeora la combinada."
+    libro: [559, 561, 564, 565]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1, max: 10, unidad: "", rotulo: "TUR" }
+      y: { min: 0, max: 45, unidad: "%", rotulo: "empeora la combinada" }
+      curvas:
+        - { expr: "100*(sqrt(1 + 1/r^2) - 1)", color: naranja, rotulo: "en cuadratura" }
+      marcas:
+        - { x: "TUR", y: "empeora", rotulo: "{{empeora}}" }
+      lectura: { valor: fac, rotulo: "Combinada, multiplicada por" }
+      datos:
+        - { valor: parte, rotulo: "Parte del patrón: {{parte}}" }
+      mandos:
+        - { valor: TUR, lista: [10, 4, 2, 1], rotulo: "TUR" }
+    requiere: { mover: [TUR] }
+    comprobar:
+      - { con: { TUR: 4 }, fac: 1.031, parte: 24.3 }
+      - { con: { TUR: 10 }, fac: 1.005, parte: 10.0 }
+
+  - id: prediga-1a1
+    tipo: predecir
+    titulo: "Dos multímetros iguales"
+    texto: "Verifica un multímetro de 0,02 % con otro de la misma clase: TUR 1:1. ¿Cuánto empeora la combinada?"
+    libro: [566, 567]
+    fijar: { TUR: 1 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 2, max: 10, unidad: "", rotulo: "TUR" }
+      y: { min: 0, max: 45, unidad: "%", rotulo: "empeora la combinada" }
+      curvas:
+        - { expr: "100*(sqrt(1 + 1/r^2) - 1)", color: naranja, rotulo: "en cuadratura" }
+      lectura: { valor: empeora, rotulo: "Empeora" }
+      ocultar: true
+    opciones:
+      - texto: "Un 41 %: ya se mide la pareja"
+        bien: true
+        porque: "Con 1:1 no se mide el instrumento sino la pareja: si difieren, no se sabe cuál está mal."
+      - texto: "El doble"
+        porque: "Se suman en cuadratura: √2, un 41 % más, no el doble."
+      - texto: "Un 3 %"
+        porque: "Eso es con 4:1, la regla clásica."
+    escalera:
+      - "Dos contribuciones iguales en cuadratura: √2."
+    solucion: "√2 − 1 ≈ 41 %: comparar dos iguales no es calibrar."
+    comprobar:
+      - { empeora: 41.4, fac: 1.414 }
+
+  - id: tres-verbos
+    tipo: pregunta
+    titulo: "Comparar, verificar, calibrar"
+    texto: "Empareje cada operación con lo que exige."
+    libro: [568]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1, max: 10, unidad: "", rotulo: "TUR" }
+      y: { min: 0, max: 45, unidad: "%", rotulo: "empeora la combinada" }
+      curvas:
+        - { expr: "100*(sqrt(1 + 1/r^2) - 1)", color: naranja, rotulo: "en cuadratura" }
+    emparejar:
+      - ["Comparar", "Ver si dos coinciden, sin saber cuál acierta"]
+      - ["Verificar", "Un patrón con TUR ≥ 4"]
+      - ["Calibrar", "Además, cadena documentada hasta los patrones nacionales"]
+    exito: "Para verificar 0,02 % hace falta un patrón de 0,005 %."
+    pistas:
+      - { texto: "Solo una no necesita ningún patrón." }
+    escalera:
+      - "La que exige más es la que documenta con trazabilidad."
+    solucion: "Comparar, sin patrón; verificar, TUR ≥ 4; calibrar, además trazabilidad."
+
+  - id: explore-ventilador
+    tipo: explorar
+    titulo: "48.B: 15 W, tres opciones"
+    texto: "Cambie entre convección natural, ventilador lento y rápido. Mire el salto sobre el ambiente."
+    libro: [572, 574, 577]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 0, max: 20, unidad: W, rotulo: "potencia" }
+      y: { min: 0, max: 100, unidad: "°C", rotulo: "salto sobre el ambiente" }
+      curvas:
+        - { expr: "w*R_sa", color: naranja, rotulo: "salto del disipador" }
+      marcas:
+        - { x: "P", y: "dT", rotulo: "{{dT}}" }
+      lectura: { valor: dT, rotulo: "Salto con 15 W" }
+      mandos:
+        - { valor: R_sa, lista: [5, 1.5, 0.7], nombres: [convección natural, ventilador lento, ventilador rápido], rotulo: "Opción" }
+    requiere: { mover: [R_sa] }
+    comprobar:
+      - { con: { R_sa: 1.5 }, dT: 22.5 }
+      - { con: { R_sa: 0.7 }, dT: 10.5 }
+
+  - id: estime-disipador
+    tipo: pregunta
+    titulo: "Sin ventilador"
+    texto: "15 W con 5,0 °C/W en convección natural y 40 °C de ambiente. ¿A qué temperatura queda el disipador?"
+    libro: [574, 578]
+    fijar: { P: 15, R_sa: 5, T_a: 40 }
+    widget:
+      tipo: grafica
+      x: { id: w, min: 0, max: 20, unidad: W, rotulo: "potencia" }
+      y: { min: 0, max: 100, unidad: "°C", rotulo: "salto sobre el ambiente" }
+      curvas:
+        - { expr: "w*R_sa", color: naranja, rotulo: "salto del disipador" }
+    estimar:
+      objetivo: "T_dis"
+      unidad: "°C"
+      min: 0
+      max: 150
+      paso: 1
+      inicio: 75
+      tol: 0.02
+      rotulo: "Temperatura del disipador"
+    exito: "115 °C, y la unión bastante por encima: inviable sin un radiador enorme."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 117 }, texto: "Se ha pasado: 15 × 5 son 75 grados sobre el ambiente." }
+      - { texto: "Se ha quedado corto: 75 °C es el salto; súmele el ambiente." }
+    escalera:
+      - "Salto sobre el ambiente, más el ambiente."
+    solucion: "40 + 15 × 5 = 115 °C."
+    comprobar:
+      - { T_dis: 115, dT: 75 }
+
+  - id: criterios
+    tipo: pregunta
+    titulo: "No solo térmica"
+    texto: "Empareje cada criterio con lo que aporta el ventilador."
+    libro: [580]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    emparejar:
+      - ["Fiabilidad", "El componente que antes falla"]
+      - ["Ruido", "Molesto, sobre todo continuo"]
+      - ["Mantenimiento", "Filtro y limpieza"]
+      - ["Fallo", "Súbito y catastrófico"]
+    exito: "Sin ventilador: sin partes móviles, silencioso, sin mantenimiento y con degradación gradual."
+    pistas:
+      - { texto: "Es la única parte móvil." }
+    escalera:
+      - "¿Qué pasa con el polvo?"
+    solucion: "Fiabilidad, el primero en fallar; ruido; filtro y limpieza; fallo súbito."
+
+  - id: modo-fallo
+    tipo: porque
+    titulo: "El modo de fallo"
+    texto: "Si se usa ventilador, vigilar la temperatura y reducir potencia o apagar es obligatorio. ¿Por qué?"
+    libro: [581]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    opciones:
+      - texto: "Un ventilador atascado por polvo lleva el componente a destrucción en minutos"
+        bien: true
+        porque: "Un disipador pasivo sobredimensionado nunca falla; uno con ventilador, de golpe."
+      - texto: "Porque el ventilador consume mucho"
+        porque: "El consumo es una contrapartida; lo grave es el fallo súbito."
+      - texto: "Por el ruido"
+        porque: "El ruido molesta; lo que obliga a vigilar es que puede destruir el equipo."
+    escalera:
+      - "¿Qué pasa con 15 W si el ventilador se para?"
+    solucion: "Porque un ventilador parado destruye el componente en minutos."
+
+  - id: intermedia
+    tipo: pregunta
+    titulo: "La solución intermedia"
+    texto: "¿Cuál suele ser la mejor solución?"
+    libro: [582, 584]
+    widget:
+      tipo: figura
+      figura: fig-47.15
+      zonas:
+        - { id: curvas, rotulo: "La gráfica", rect: [25, 15, 210, 165] }
+    opciones:
+      - texto: "Disipador que aguanta sin ventilador a potencia reducida, y ventilador por temperatura"
+        bien: true
+        porque: "El fallo del ventilador degrada las prestaciones en lugar de destruir el equipo. Y se ensaya parándolo."
+      - texto: "El ventilador más rápido, siempre a tope"
+        porque: "Ruido, polvo y un fallo súbito: si se para, nada lo salva."
+      - texto: "Un radiador enorme sin ventilador"
+        porque: "Funciona, pero ocupa mucho: la intermedia degrada sin destruir con menos volumen."
+    escalera:
+      - "¿Qué debe pasar cuando el ventilador falle?"
+    solucion: "Disipador para sobrevivir a potencia reducida, ventilador por temperatura y protección térmica."
+
+  - id: dos-distancias
+    tipo: pregunta
+    titulo: "48.C: dos magnitudes"
+    texto: "Empareje cada distancia con su mecanismo de fallo."
+    libro: [586, 592, 593]
+    widget:
+      tipo: figura
+      figura: fig-47.17
+      zonas:
+        - { id: placa, rotulo: "La placa", rect: [12, 135, 236, 128] }
+    emparejar:
+      - ["Distancia en aire", "Ruptura del aire"]
+      - ["Línea de fuga", "Seguimiento superficial de suciedad y humedad"]
+    exito: "La de fuga suele ser mayor, y es la que limita en la mayoría de los diseños."
+    pistas:
+      - { texto: "Una va por el aire; la otra, por la superficie." }
+    escalera:
+      - "¿Qué se acumula en una superficie con el tiempo?"
+    solucion: "Aire, ruptura del aire; fuga, seguimiento superficial."
+
+  - id: estime-ranura
+    tipo: pregunta
+    titulo: "Lo que añade una ranura"
+    texto: "En un aislante grueso, una ranura de 2 mm de profundidad y 1 mm de anchura. ¿Cuánto recorrido añade a la línea de fuga?"
+    libro: [595]
+    widget:
+      tipo: figura
+      figura: fig-47.17
+      zonas:
+        - { id: ranura, rotulo: "La ranura", rect: [100, 155, 42, 95] }
+    estimar:
+      objetivo: "anade"
+      unidad: m
+      min: 0
+      max: 0.008
+      paso: 0.0005
+      inicio: 0.001
+      tol: 0.05
+      rotulo: "Recorrido añadido"
+    exito: "4 mm ocupando solo 1 mm: bajar, cruzar y subir."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0042 }, texto: "Se ha pasado: el ancho ya estaba en el recorrido." }
+      - { texto: "Se ha quedado corto: hay que bajar y volver a subir." }
+    escalera:
+      - "La línea de fuga baja por un lado y sube por el otro."
+    solucion: "2 + 2 = 4 mm más."
+    comprobar:
+      - { anade: 0.004 }
+
+  - id: calibre
+    tipo: pregunta
+    titulo: "Medir la placa fabricada"
+    texto: "¿Dónde se miden las distancias para comprobarlas?"
+    libro: [598]
+    widget:
+      tipo: figura
+      figura: fig-47.17
+      zonas:
+        - { id: placa, rotulo: "La placa", rect: [12, 135, 236, 128] }
+    opciones:
+      - texto: "Con un calibre, en la placa fabricada"
+        bien: true
+        porque: "El fresado tiene tolerancia; y la distancia en aire se mide al punto más cercano, sea cobre o hilo."
+      - texto: "En el diseño, que es exacto"
+        porque: "El fresado tiene tolerancia: hay que medir la placa real."
+      - texto: "No hace falta: la norma lo garantiza"
+        porque: "La norma fija las distancias; comprobar que se cumplen es trabajo de quien diseña."
+    escalera:
+      - "¿Sale la placa idéntica al diseño?"
+    solucion: "En la placa fabricada, con un calibre."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [559, 566, 572, 581, 586, 593, 595]
+    ideas:
+      - { titulo: "48.A.", texto: "4:1 empeora un 3 %; 1:1, un 41 %: comparar dos iguales no es calibrar." }
+      - { titulo: "48.B.", texto: "Ventilador por temperatura, con disipador que sobrevive sin él." }
+      - { titulo: "48.C.", texto: "La fuga manda y se alarga con una ranura; el aire no se reduce." }

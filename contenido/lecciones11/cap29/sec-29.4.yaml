@@ -1,0 +1,231 @@
+# Lección 1.2 de la sección 28.4 «Lógica Secuencial: la Memoria» (cap29; etiqueta interna sec-29.4). Formato: contenido/lecciones11/GUIA.md (§11).
+# El latch SR son dos NAND cruzadas con entradas activas a nivel bajo (S y R en reposo a 1); el latch D, el SR con
+# dos NAND de habilitación y un inversor. pregunta-latch-ff compara en un cronograma la pieza `latch` (motor12e, con EN =
+# reloj invertido: cambia medio ciclo antes) y el flip-flop D.
+leccion: cap29/sec-29.4
+
+libro:
+  106: "Un circuito secuencial depende además de lo que ocurrió antes"
+  107: "Dos inversores enfrentados se sostienen mutuamente en uno de dos estados estables"
+  108: "el latch SR con dos NAND cruzadas"
+  111: "Mientras esa señal está activa, la salida sigue a la entrada"
+  112: "Captura el valor de la entrada en el instante del flanco de reloj y lo mantiene hasta el siguiente"
+  113: "con un flip-flop, el instante de captura está definido y los tiempos se pueden analizar"
+  116: "Su estado con ambas activas es indeterminado"
+  117: "Un registro de n bits son n flip-flops D con el mismo reloj"
+  118: "definiendo el estado con ambas entradas activas como «conmutar»"
+  119: "es un JK con J = K = 1. Divide la frecuencia por dos"
+  122: "hasta 20 ns garantizados en un 74HC74 a 4,5 V"
+  123: "a menudo 0 ns garantizados"
+  125: "el tiempo disponible para la lógica es el periodo menos el clock-to-Q y menos el setup"
+  "cap29#39": "A+B"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-latch-sr
+    tipo: explorar
+    titulo: "Dos NAND cruzadas"
+    texto: "S y R son activas a nivel bajo. Ponga S a 0 y vuelva a 1; luego haga lo mismo con R."
+    libro: [106, 107, 108]
+    widget:
+      tipo: logica
+      entradas: [{ id: S, valor: 1, rotulo: "S̄" }, { id: R, valor: 1, rotulo: "R̄" }]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [S, n2] }
+        - { id: n2, tipo: nand, entradas: [R, n1] }
+      salidas:
+        - { id: Q, de: n1 }
+        - { id: NQ, de: n2, rotulo: "Q̄" }
+    requiere: { mover: [S, R] }
+
+  - id: prediga-prohibido
+    tipo: predecir
+    titulo: "Las dos activas"
+    texto: "En el latch de dos NAND se activan S̄ y R̄ a la vez, las dos a 0. ¿Qué dan las salidas?"
+    libro: [116, "cap29#39"]
+    widget:
+      tipo: logica
+      entradas: [{ id: S, valor: 0, rotulo: "S̄" }, { id: R, valor: 0, rotulo: "R̄" }]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [S, n2] }
+        - { id: n2, tipo: nand, entradas: [R, n1] }
+      salidas:
+        - { id: Q, de: n1 }
+        - { id: NQ, de: n2, rotulo: "Q̄" }
+      ocultar: true
+    opciones:
+      - { texto: "Q y Q̄ a 1 a la vez: un estado incómodo, indeterminado al soltarlas", bien: true, porque: "Una NAND con un 0 da 1: las dos salidas suben, dejan de ser complementarias y al soltarlas no se sabe cuál gana." }
+      - { texto: "Q = 1 y Q̄ = 0", porque: "Eso es poner a 1. Con las dos entradas activas, las dos NAND dan 1." }
+      - { texto: "Mantienen lo que tenían", porque: "Eso pasa con las dos a 1, en reposo. Con las dos a 0, las dos salidas suben." }
+    escalera: ["¿Qué da una NAND si una de sus entradas vale 0?"]
+    solucion: "Las dos NAND dan 1: Q = Q̄ = 1, el estado indeterminado del SR."
+
+  - id: explore-latch-d
+    tipo: explorar
+    titulo: "Un latch D, transparente"
+    texto: "Con EN = 1, mueva D y mire Q. Después ponga EN = 0 y vuelva a mover D."
+    libro: [111]
+    widget:
+      tipo: logica
+      entradas: [D, { id: EN, valor: 1 }]
+      piezas:
+        - { id: nd, tipo: not, entradas: [D] }
+        - { id: a1, tipo: nand, entradas: [D, EN] }
+        - { id: a2, tipo: nand, entradas: [nd, EN] }
+        - { id: q, tipo: nand, entradas: [a1, nq] }
+        - { id: nq, tipo: nand, entradas: [a2, q] }
+      salidas:
+        - { id: Q, de: q }
+    requiere: { mover: [D, EN] }
+
+  - id: explore-flip-flop
+    tipo: explorar
+    titulo: "Un flip-flop D, por flanco"
+    texto: "Mueva D: Q no se entera. Solo el pulso de reloj, en su flanco de subida, lo captura."
+    libro: [112]
+    widget:
+      tipo: logica
+      entradas: [D, { id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [D, CLK] }
+      salidas:
+        - { id: Q, de: f1.q }
+    requiere: { mover: [D, CLK] }
+
+  - id: pregunta-latch-ff
+    tipo: pregunta
+    titulo: "Latch y flip-flop"
+    texto: "Compare en el cronograma la Q del latch y la del flip-flop, con el mismo D. ¿Qué los distingue?"
+    nota: "El latch, habilitado con el reloj invertido."
+    libro: [111, 112]
+    widget:
+      tipo: logica
+      entradas: [D, { id: CLK, reloj: true }]
+      piezas:
+        # (motor12e) a level-sensitive D latch next to the edge-triggered flip-flop, as in figure 28.6
+        - { id: n1, tipo: not, entradas: [CLK] }
+        - { id: l1, tipo: latch, entradas: [D, n1] }
+        - { id: f1, tipo: d, entradas: [D, CLK] }
+      salidas:
+        - { id: QL, de: l1.q, rotulo: "Q del latch" }
+        - { id: Q, de: f1.q, rotulo: "Q del flip-flop" }
+      cronograma: { ciclos: 4, estimulo: { D: "0110" }, senales: [CLK, D, QL, Q] }
+      dibujo: false
+    opciones:
+      - { texto: "El latch es sensible al nivel; el flip-flop, al flanco", bien: true, porque: "Mientras el control está activo, el latch es transparente; el flip-flop solo mira la entrada en el flanco." }
+      - { texto: "El latch guarda un bit y el flip-flop dos", porque: "Los dos guardan un bit. Cambia cuándo miran la entrada." }
+      - { texto: "El flip-flop no necesita reloj", porque: "Es al revés: el flip-flop captura en el flanco de reloj." }
+    escalera: ["Recuerde qué pasaba al mover D con EN = 1 en el latch."]
+    solucion: "Latch, por nivel (transparente); flip-flop, por flanco."
+
+  - id: porque-sincrono
+    tipo: porque
+    titulo: "¿Por qué flip-flops?"
+    texto: "El diseño síncrono usa flip-flops, no latches. ¿Por qué?"
+    libro: [113]
+    widget:
+      tipo: logica
+      entradas: [D, { id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [D, CLK] }
+      salidas:
+        - { id: Q, de: f1.q }
+    opciones:
+      - { texto: "El instante de captura está definido y los tiempos se pueden analizar", bien: true, porque: "Con un latch, cualquier cambio durante el nivel activo pasa a la salida y las carreras no se pueden acotar." }
+      - { texto: "Porque los flip-flops son más baratos", porque: "No es el coste: es que el flanco hace inequívoco el momento de la captura." }
+      - { texto: "Porque los latches no guardan el dato", porque: "Lo guardan cuando el control se desactiva; el problema es lo que dejan pasar mientras está activo." }
+    escalera: ["¿Cuándo puede cambiar la salida de cada uno?"]
+    solucion: "El flanco define el instante de captura: los tiempos se pueden analizar."
+
+  - id: empareje-tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los cuatro tipos"
+    texto: "Una cada biestable con su rasgo."
+    libro: [116, 117, 118, 119]
+    emparejar:
+      - ["SR", "Poner y borrar; antirrebote con conmutador de dos contactos"]
+      - ["D", "Registra un valor: el que se usa casi siempre"]
+      - ["JK", "Con las dos entradas activas, conmuta"]
+      - ["T", "Conmuta en cada flanco: divide por dos"]
+    exito: "Un registro de n bits son n flip-flops D con el mismo reloj."
+    pistas:
+      - { texto: "El JK resuelve la indeterminación del SR; el T es un JK con las dos entradas a 1." }
+    escalera: ["El D es el de los registros."]
+    solucion: "SR antirrebote, D registros, JK conmuta con ambas activas, T divide por dos."
+
+  - id: dibuje-t
+    tipo: dibujar
+    titulo: "Un flip-flop T"
+    texto: "Con T = 1, el flip-flop conmuta en cada flanco. Dibuje su salida Q."
+    libro: [119]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: t1, tipo: t, entradas: ["1", CLK] }
+      salidas:
+        - { id: Q, de: t1.q }
+      cronograma: { ciclos: 6, senales: [CLK] }
+      dibujo: false
+    dibujar:
+      senal: Q
+    exito: "Divide la frecuencia por dos; encadenando varios se obtiene un contador."
+    escalera:
+      - "Q cambia en cada flanco de subida, y solo ahí."
+      - "Empieza en 0: sube en el primer flanco y baja en el segundo."
+    solucion: "Una onda cuadrada de la mitad de frecuencia que el reloj."
+
+  - id: pregunta-tiempos
+    tipo: pregunta
+    titulo: "Setup y hold de un 74HC74"
+    texto: "Según el libro, ¿qué garantiza un 74HC74 a 4,5 V?"
+    libro: [122, 123]
+    widget:
+      tipo: logica
+      entradas: [D, { id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [D, CLK] }
+      salidas:
+        - { id: Q, de: f1.q }
+      cronograma: { ciclos: 4, estimulo: { D: "0110" }, senales: [CLK, D, Q] }
+      dibujo: false
+    opciones:
+      - { texto: "Setup de hasta 20 ns y hold de 0 ns", bien: true, porque: "El hold es mucho menor que el setup, a menudo 0 ns y en muchos biestables modernos incluso negativo." }
+      - { texto: "Setup de 0 ns y hold de 20 ns", porque: "Está al revés: el dato tiene que llegar antes (setup), y después basta mucho menos." }
+      - { texto: "Los dos de 20 ns", porque: "El hold es mucho menor: a menudo 0 ns garantizados." }
+    escalera: ["¿Cuál de los dos tiempos es el grande?"]
+    solucion: "Setup hasta 20 ns; hold 0 ns."
+
+  - id: pregunta-presupuesto
+    tipo: pregunta
+    titulo: "El tiempo para la lógica"
+    texto: "Entre dos flip-flops, ¿cuánto tiempo queda para la lógica combinacional?"
+    libro: [125]
+    widget:
+      tipo: logica
+      entradas: [D, { id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [D, CLK] }
+        - { id: g1, tipo: not, entradas: [f1.q] }
+        - { id: f2, tipo: d, entradas: [g1, CLK] }
+      salidas:
+        - { id: Q2, de: f2.q }
+    opciones:
+      - { texto: "El periodo menos el clock-to-Q y menos el setup", bien: true, porque: "Esa resta es la que fija la frecuencia máxima." }
+      - { texto: "El periodo entero", porque: "El dato tarda en salir del primero (clock-to-Q) y debe llegar antes del setup del segundo." }
+      - { texto: "El periodo menos el hold", porque: "El hold no resta del periodo: es otra condición, la de no llegar demasiado pronto." }
+    escalera: ["El dato sale tarde del primero y debe llegar pronto al segundo."]
+    solucion: "T − t_{clock-to-Q} − t_{su}."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [107, 111, 112, 113, 125]
+    ideas:
+      - { titulo: "Memoria.", texto: "Dos inversores, o dos NAND, enfrentados: dos estados estables." }
+      - { titulo: "Latch y flip-flop.", texto: "Por nivel, transparente; por flanco, con el instante de captura definido." }
+      - { titulo: "Tiempos.", texto: "Setup y hold alrededor del flanco; la lógica cabe en el periodo menos clock-to-Q y setup." }

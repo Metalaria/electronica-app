@@ -1,0 +1,365 @@
+# Lección 1.2 de la sección 8.10 «Problemas de Diseño» (cap08): problemas 8.A, 8.B y 8.C. Formato: contenido/lecciones11/GUIA.md.
+# 8.C: el establecimiento se dibuja con el esquema «carga-rc» (R_on y los 30 pF del muestreador; escalón de fondo de
+# escala de 1 V como ejemplo) y el error estático con «thevenin» (R_on en serie con la entrada de 1 MΩ).
+# 1.2: 8.A empieza con el esquema «regulador-lineal» (12 a 5 V con 1 A: carga de 5 Ω; dropout de 2 V de los 78xx,
+# sección 8.4); 8.C, el muestreador de 30 pF con el esquema «muestreo-retencion» (sin retención dentro del eje).
+leccion: cap08/sec-8.10
+
+libro:
+  206: "Problema 8.A"
+  208: "El regulador es TO-220 con Rjc = 3 °C/W, se monta con pasta térmica (Rcs = 0,5 °C/W) y su unión admite 125 °C"
+  211: 'P = lr(( V_("in") - V_("out") )) dot.op I'
+  213: "Rsa = (Tj − Ta)/P − Rjc − Rcs"
+  214: "Tj ≤ 110 °C con 40 °C ambiente (derating) 6,50 °C/W"
+  215: "exige un radiador un 40 % mejor que el cálculo optimista"
+  216: "un convertidor reductor al 90 % disiparía 0,56 W en lugar de 7"
+  "cap08#67": "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
+  220: "Problema 8.B"
+  222: "exactitud inicial ±0,05 %, deriva 25 ppm/°C, regulación de línea 0,01 %, regulación de carga 0,01 % y envejecimiento 0,02 % al año"
+  225: "Deriva en 30 °C 0,0750 %"
+  226: "peor caso = 0,165 % cuadrático = 0,093 %"
+  227: "reducir el margen de temperatura a 10 °C lo bajaría a 0,061 %"
+  228: "Un error del 0,093 % equivale a 1 parte en 1070, es decir, unos 10 bits efectivos"
+  232: "Problema 8.C"
+  234: "Se multiplexan ocho sensores hacia un ADC de 12 bits con un multiplexor analógico de Ron = 100 Ω (300 Ω en el peor caso de temperatura)"
+  238: '"error" = ("100")/("100" + "1 MΩ")'
+  239: "Menos de medio bit de 12: aceptable"
+  240: "hacen falta ln(2¹²) = 8,3 constantes de tiempo"
+  241: "300 Ω (peor caso) 9,0 ns 75 ns"
+  242: "τ pasa a 3 µs y el tiempo necesario a 25 µs"
+  245: "Con fuentes de alta impedancia, interponer seguidores"
+
+modelo:
+  valores:
+    T_a: { sim: "T_{a}", nombre: "temperatura ambiente", unidad: "°C", valor: 25 }
+    T_j: { sim: "T_{j}", nombre: "temperatura de unión admitida", unidad: "°C", valor: 125 }
+    P_r: { sim: "P", nombre: "potencia disipada", unidad: W, valor: 7 }
+    R_jc: { sim: "R_{jc}", nombre: "unión-encapsulado", unidad: "°C/W", valor: 3 }
+    R_cs: { sim: "R_{cs}", nombre: "encapsulado-radiador", unidad: "°C/W", valor: 0.5 }
+    e_i: { sim: "inicial", nombre: "exactitud inicial", unidad: "%", valor: 0.05 }
+    d_T: { sim: "ΔT", nombre: "margen de temperatura", unidad: "°C", valor: 30 }
+    V_f: { sim: "V", nombre: "escalón de fondo de escala", unidad: V, valor: 1 }
+    R_on: { sim: "R_{on}", nombre: "resistencia del multiplexor", unidad: Ω, valor: 300 }
+    C_s: { sim: "C", nombre: "capacidad del muestreador", unidad: F, valor: 30e-12 }
+    R_ad: { sim: "R_{entrada}", nombre: "entrada del ADC", unidad: Ω, valor: 1000000 }
+    V_i8: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    V_r8: { sim: "V_{out}", nombre: "salida del regulador", unidad: V, valor: 5 }
+    V_d8: { sim: "V_{do}", nombre: "dropout", unidad: V, valor: 2 }
+    R_l8: { sim: "R_{L}", nombre: "carga de 1 A", unidad: Ω, valor: 5 }
+    on8: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    tm_8: { sim: "t_{m}", nombre: "instante de retención (fuera del eje)", unidad: s, valor: 1e-6 }
+  calculos:
+    V_o8: { expr: "min(V_r8, V_i8 - V_d8)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_8: { si: on8, entonces: "V_o8/R_l8", sino: "0", sim: "I", nombre: "corriente de la carga", unidad: A }
+    P_8: { expr: "(V_i8 - V_o8)*I_8", sim: "P", nombre: "potencia en el regulador", unidad: W }
+    ren8: { expr: "100*V_o8/V_i8", sim: "η", nombre: "rendimiento con carga", unidad: "%", cifras: 3 }
+    R_sa: { expr: "(T_j - T_a)/P_r - R_jc - R_cs", sim: "R_{sa}", nombre: "radiador admisible", unidad: "°C/W" }
+    e_d: { expr: "25*d_T/10000", sim: "deriva", nombre: "deriva en el margen", unidad: "%" }
+    e_wc: { expr: "e_i + e_d + 0.01 + 0.01 + 0.02", sim: "peor caso", nombre: "error en el peor caso", unidad: "%", cifras: 3 }
+    e_q: { expr: "sqrt(e_i^2 + e_d^2 + 0.01^2 + 0.01^2 + 0.02^2)", sim: "cuadrático", nombre: "error cuadrático", unidad: "%", cifras: 2 }
+    n_b: { expr: "log10(100/e_q)/log10(2)", sim: "bits", nombre: "bits efectivos", unidad: "", cifras: 3 }
+    p_n: { expr: "100/e_q", sim: "1 parte en", nombre: "partes", unidad: "", cifras: 4 }
+    tau_m: { expr: "R_on*C_s", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    t_e: { expr: "8.3*R_on*C_s", sim: "t_{establecimiento}", nombre: "tiempo de establecimiento", unidad: s }
+    v_e: { expr: "V_f*(1 - exp(-8.3))", sim: "v", nombre: "tensión a 8,3 τ", unidad: V }
+    V_l: { expr: "V_f*R_ad/(R_on + R_ad)", sim: "V_{ADC}", nombre: "tensión en el ADC", unidad: V }
+    I_l: { expr: "V_f/(R_on + R_ad)", sim: "I", nombre: "corriente", unidad: A }
+    V_ro: { expr: "I_l*R_on", sim: "V_{R_{on}}", nombre: "caída en R_on", unidad: V }
+    e_s: { expr: "100*R_on/(R_on + R_ad)", sim: "error", nombre: "error estático", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-regulador
+    tipo: explorar
+    titulo: "8.A: el calor que hay que evacuar"
+    texto: "El regulador del problema: 12 V de entrada, 5 V y 1 A de salida. Conecte la carga y mire lo que disipa."
+    libro: [206, 208, 211, 216, "cap08#67"]
+    fijar: { V_i8: 12, V_r8: 5, R_l8: 5 }
+    inicio: { on8: 0 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i8, ref: V_r8, dropout: V_d8, carga: R_l8, interruptor: on8 }
+      lectura: { valor: P_8, rotulo: "Disipa el regulador" }
+      datos:
+        - { valor: ren8, rotulo: "Rendimiento con carga: {{ren8}}" }
+      corriente: I_8
+      mide: { vout: V_o8, iin: I_8, icarga: I_8, p_paso: P_8 }
+      mandos:
+        - { valor: on8, tipo: interruptor, rotulo: "Carga de 1 A" }
+    requiere: { mover: [on8] }
+
+  - id: explore-radiador
+    tipo: explorar
+    titulo: "8.A: el radiador"
+    texto: "Un regulador de tres terminales disipa 7 W. Cambie el ambiente y la unión admitida, y mire qué radiador hace falta."
+    libro: [206, 208, 211, 213, 216]
+    fijar: { P_r: 7, R_jc: 3, R_cs: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: ta, min: 0, max: 60, unidad: "°C", rotulo: "T_{a}" }
+      y: { min: 0, max: 15, unidad: "°C/W", rotulo: "R_{sa}" }
+      curvas:
+        - { expr: "(T_j - ta)/P_r - R_jc - R_cs", color: azul, rotulo: "radiador admisible" }
+      asas:
+        - { mueve: T_a, x: "T_a", y: "R_sa", rotulo: "Su ambiente" }
+      lectura: { valor: R_sa, rotulo: "Radiador admisible" }
+      mandos:
+        - { valor: T_a, min: 0, max: 60, paso: 5, rotulo: "Temperatura ambiente" }
+        - { valor: T_j, lista: [110, 125], rotulo: "Unión admitida" }
+
+  - id: prediga-radiador
+    tipo: predecir
+    titulo: "El caso realista"
+    texto: "Equipo cerrado a 40 °C y unión limitada a 110 °C por derating. ¿Qué radiador hace falta?"
+    libro: [214, 215]
+    fijar: { P_r: 7, R_jc: 3, R_cs: 0.5, T_a: 40, T_j: 110 }
+    widget:
+      tipo: grafica
+      x: { id: ta, min: 0, max: 60, unidad: "°C", rotulo: "T_{a}" }
+      y: { min: 0, max: 15, unidad: "°C/W", rotulo: "R_{sa}" }
+      curvas:
+        - { expr: "(T_j - ta)/P_r - R_jc - R_cs", color: azul, rotulo: "radiador admisible" }
+      lectura: { valor: R_sa, rotulo: "Radiador admisible" }
+      ocultar: true
+    opciones:
+      - texto: "6,50 °C/W o mejor"
+        bien: true
+        porque: "(110 − 40)/7 − 3 − 0,5 = 6,50 °C/W: un 40 % mejor que el cálculo optimista."
+      - texto: "10,79 °C/W"
+        porque: "Ese es el optimista, con 25 °C de ambiente y la unión a 125 °C."
+      - texto: "10 °C/W"
+        porque: "Ha olvidado restar R_{jc} y R_{cs}: el radiador solo dispone de lo que dejan."
+    escalera:
+      - "R_{sa} = (T_{j} − T_{a})/P − R_{jc} − R_{cs}."
+    solucion: "(110 − 40)/7 − 3 − 0,5 = 6,5 °C/W."
+    comprobar:
+      - { R_sa: 6.5 }
+      - { con: { T_a: 25, T_j: 125 }, R_sa: 10.79, tol: 0.001 }
+      - { con: { R_jc: 0, R_cs: 0 }, R_sa: 10 }
+
+  - id: explore-referencia
+    tipo: explorar
+    titulo: "8.B: sumar errores"
+    texto: "Una referencia de 2,5 V con cinco contribuciones de error. Cambie el margen de temperatura y la exactitud inicial."
+    libro: [220, 222]
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 60, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.3, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "sqrt(e_i^2 + (25*dx/10000)^2 + 0.01^2 + 0.01^2 + 0.02^2)", color: azul, rotulo: "cuadrático" }
+        - { expr: "e_i + 25*dx/10000 + 0.04", color: naranja, rotulo: "peor caso" }
+      asas:
+        - { mueve: d_T, x: "d_T", y: "e_q", rotulo: "Su margen" }
+      lectura: { valor: e_q, rotulo: "Error cuadrático" }
+      datos:
+        - { valor: e_wc, rotulo: "Peor caso: {{e_wc}}" }
+      mandos:
+        - { valor: d_T, min: 0, max: 60, paso: 5, rotulo: "Margen de temperatura" }
+        - { valor: e_i, lista: [0.01, 0.05], rotulo: "Exactitud inicial" }
+
+  - id: prediga-cuadratico
+    tipo: predecir
+    titulo: "Peor caso o cuadrático"
+    texto: "Con 30 °C de margen, el peor caso suma 0,165 %. ¿Cuánto da la combinación cuadrática?"
+    libro: [226]
+    fijar: { e_i: 0.05, d_T: 30 }
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 60, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.3, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "e_i + 25*dx/10000 + 0.04", color: naranja, rotulo: "peor caso" }
+      lectura: { valor: e_q, rotulo: "Error cuadrático" }
+      ocultar: true
+    opciones:
+      - texto: "0,093 %"
+        bien: true
+        porque: "Raíz de la suma de cuadrados: los errores independientes rara vez se alinean todos."
+      - texto: "0,165 %"
+        porque: "Ese es el peor caso, con todas las contribuciones a la vez y en el mismo sentido."
+      - texto: "0,075 %, la mayor"
+        porque: "La deriva es la mayor, pero las demás también suman, aunque menos."
+    escalera:
+      - "Cuadrático = √(suma de los cuadrados)."
+    solucion: "√(0,05² + 0,075² + 0,01² + 0,01² + 0,02²) = 0,093 %."
+    comprobar:
+      - { e_q: 0.0934, e_wc: 0.165, e_d: 0.075, tol: 0.005 }
+
+  - id: sorpresa-domina
+    tipo: sorpresa
+    titulo: "¿Qué conviene mejorar?"
+    texto: "Pruebe a mejorar la exactitud inicial de 0,05 a 0,01 %, y después a reducir el margen de temperatura a 10 °C."
+    libro: [227]
+    inicio: { e_i: 0.05, d_T: 30 }
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 60, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.3, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "sqrt(e_i^2 + (25*dx/10000)^2 + 0.01^2 + 0.01^2 + 0.02^2)", color: azul, rotulo: "cuadrático" }
+      asas:
+        - { mueve: d_T, x: "d_T", y: "e_q", rotulo: "Su margen" }
+      lectura: { valor: e_q, rotulo: "Error cuadrático" }
+      mandos:
+        - { valor: e_i, lista: [0.01, 0.05], rotulo: "Exactitud inicial" }
+        - { valor: d_T, min: 0, max: 60, paso: 5, rotulo: "Margen de temperatura" }
+    requiere: { mover: [e_i, d_T] }
+    comprobar:
+      - { con: { e_i: 0.01 }, e_q: 0.080, tol: 0.01 }
+      - { con: { d_T: 10 }, e_q: 0.061, tol: 0.01 }
+
+  - id: por-que-deriva
+    tipo: porque
+    titulo: "La cifra de portada"
+    texto: "Mejorar la exactitud inicial, la que anuncia la portada, apenas baja el error total. ¿Por qué?"
+    libro: [225, 227]
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 60, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 0.3, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "sqrt(e_i^2 + (25*dx/10000)^2 + 0.01^2 + 0.01^2 + 0.02^2)", color: azul, rotulo: "cuadrático" }
+    opciones:
+      - texto: "Domina la deriva térmica, y en una suma cuadrática manda el término mayor"
+        bien: true
+        porque: "Con 30 °C, la deriva aporta 0,075 %: bajar el margen de temperatura ayuda mucho más."
+      - texto: "Porque la exactitud inicial no se puede mejorar"
+        porque: "Se puede, y además se corrige calibrando; simplemente no es el término mayor."
+      - texto: "Porque los errores se restan"
+        porque: "No se restan: se combinan; el más grande se lleva casi todo."
+    escalera:
+      - "¿Cuál de las cinco contribuciones es la mayor con 30 °C?"
+    solucion: "Manda la deriva térmica, el término mayor."
+
+  - id: estime-bits
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Cuántos bits tienen sentido?"
+    texto: "Con un error combinado del 0,093 %, ¿cuántos bits de exactitud da el sistema?"
+    libro: [228]
+    fijar: { e_i: 0.05, d_T: 30 }
+    estimar:
+      objetivo: "n_b"
+      unidad: ""
+      min: 6
+      max: 18
+      paso: 0.5
+      inicio: 16
+      tol: 0.05
+      rotulo: "Bits efectivos"
+    exito: "Una parte en 1070: unos 10 bits. Un ADC de 16 bits daría resolución, no exactitud."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.6 }, texto: "Se ha pasado: 2¹⁰ es casi mil, y el error es 1 parte en unas mil." }
+      - { texto: "Se ha quedado corto: 1 parte en mil es casi 2¹⁰." }
+    escalera:
+      - "0,093 % es 1 parte en 100/0,093."
+    solucion: "100/0,093 ≈ 1070 ≈ 2¹⁰: unos 10 bits."
+    comprobar:
+      - { n_b: 10.06, p_n: 1070, tol: 0.01 }
+
+  - id: explore-establecimiento
+    tipo: explorar
+    titulo: "8.C: establecerse tras cambiar de canal"
+    texto: "El muestreador de 30 pF se carga a través de R_{on}. Cambie R_{on} y mire cuánto tarda en llegar a 1 LSB de 12 bits."
+    nota: "Escalón de 1 V de ejemplo."
+    libro: [232, 234, 240]
+    fijar: { V_f: 1, C_s: 30e-12 }
+    widget:
+      tipo: circuito
+      esquema: muestreo-retencion
+      piezas: { entrada: V_f, ron: R_on, ch: C_s, tm: tm_8 }
+      lectura: { valor: t_e, rotulo: "Establecimiento a 1 LSB" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_f*(1 - exp(-t/tau_m))", color: naranja, rotulo: "v_{muestreador}", mide: vc }
+        marcas:
+          - { x: "t_e", y: "v_e", rotulo: "8,3 τ" }
+      mandos:
+        - { valor: R_on, lista: [100, 300], rotulo: "R_{on}" }
+
+  - id: prediga-establecimiento
+    tipo: predecir
+    titulo: "Con la R_{on} del peor caso"
+    texto: "Con R_{on} = 300 Ω y 30 pF, ¿cuánto hay que esperar tras cambiar de canal?"
+    libro: [240, 241]
+    fijar: { V_f: 1, C_s: 30e-12, R_on: 300 }
+    widget:
+      tipo: circuito
+      esquema: muestreo-retencion
+      piezas: { entrada: V_f, ron: R_on, ch: C_s, tm: tm_8 }
+      lectura: { valor: t_e, rotulo: "Establecimiento a 1 LSB" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_f*(1 - exp(-t/tau_m))", color: naranja, rotulo: "v_{muestreador}", mide: vc }
+    opciones:
+      - texto: "Unos 75 ns"
+        bien: true
+        porque: "τ = 300 Ω · 30 pF = 9,0 ns, y 1 LSB de 12 bits pide ln(2¹²) = 8,3 constantes de tiempo."
+      - texto: "9,0 ns"
+        porque: "Es una sola constante de tiempo: queda muy lejos de 1 LSB."
+      - texto: "25 ns"
+        porque: "Eso es con la R_{on} nominal de 100 Ω. En el peor caso de temperatura son 300 Ω."
+    escalera:
+      - "Primero τ = R · C; luego, 8,3 veces."
+    solucion: "8,3 · 9,0 ns ≈ 75 ns."
+    comprobar:
+      - { t_e: 75e-9, tau_m: 9e-9, tol: 0.005 }
+      - { con: { R_on: 100 }, t_e: 25e-9, tol: 0.005 }
+
+  - id: regla-estatico
+    tipo: formula
+    titulo: "El error estático"
+    texto: "R_{on} forma un divisor con la entrada del ADC. Cambie la entrada."
+    libro: [238, 239]
+    ec: 238
+    sustitucion: "{{R_on}} / ({{R_on}} + {{R_ad}}) = {{e_s}}"
+    fijar: { V_f: 1, R_on: 100 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_f, rth: R_on, carga: R_ad }
+      lectura: { valor: e_s, rotulo: "Error estático" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l, interna: V_ro }
+      mandos:
+        - { valor: R_ad, lista: [100000, 1000000], rotulo: "Entrada del ADC" }
+
+  - id: alta-impedancia
+    tipo: pregunta
+    titulo: "Un sensor de 100 kΩ"
+    texto: "Si cada sensor sale de un divisor de 100 kΩ, el tiempo de espera pasa de 75 ns a 25 µs. ¿Qué se hace?"
+    libro: [242, 245]
+    fijar: { V_f: 1, R_on: 100 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_f, rth: R_on, carga: R_ad }
+      lectura: { valor: e_s, rotulo: "Error estático" }
+      corriente: I_l
+      mide: { salida: V_l, corriente: I_l, interna: V_ro }
+    opciones:
+      - texto: "Interponer un seguidor por canal"
+        bien: true
+        porque: "La impedancia de la fuente domina sobre la del multiplexor; un seguidor la reduce y el problema se vuelve trivial."
+      - texto: "Un multiplexor de menor R_{on}"
+        porque: "La R_{on} es ahora lo de menos: manda la resistencia de la fuente."
+      - texto: "Un condensador de muestreo mayor"
+        porque: "Más capacidad alargaría todavía más el establecimiento."
+    escalera:
+      - "¿Qué resistencia domina ahora la constante de tiempo?"
+    solucion: "Un seguidor por canal."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [214, 216, 226, 228, 241]
+    ideas:
+      - { titulo: "8.A.", texto: "7 W exigen un radiador de 6,5 °C/W o mejor; un conmutado disiparía 0,56 W." }
+      - { titulo: "8.B.", texto: "Domina la deriva térmica: 0,093 %, unos 10 bits." }
+      - { titulo: "8.C.", texto: "Esperar 8,3 τ tras cambiar de canal; con fuentes de alta impedancia, seguidores." }

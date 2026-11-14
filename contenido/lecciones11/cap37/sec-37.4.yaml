@@ -1,0 +1,272 @@
+# Lección 1.2 de la sección 38.4 «Describir Hardware: VHDL y Verilog» (cap37; etiqueta interna sec-37.4).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 38.6 (svg_vista 453,6 × 183,6): las dos regiones y los tres
+# defectos. Tres asignaciones concurrentes = tres puertas que existen a la vez (bloque 98). El latch inferido
+# (bloque 107) se ve como lo que la herramienta construye cuando Y solo se asigna con EN = 1: un multiplexor que, con
+# EN = 0, devuelve su propia salida; con el valor por defecto (bloque 108) esa entrada pasa a ser una constante.
+leccion: cap37/sec-37.4
+
+libro:
+  97: "VHDL y Verilog no describen una secuencia de instrucciones, describen un circuito"
+  98: "las tres existen simultáneamente y para siempre"
+  99: "el error más común sea escribir HDL como si fuera C"
+  102: "el orden en que se escriben es irrelevante"
+  103: "ese orden describe cómo se calcula el resultado, no cómo se ejecuta en el tiempo"
+  104: "el reloj es lo único que hace avanzar el tiempo"
+  106: "Un proceso sensible a un flanco de reloj genera flip-flops"
+  107: "si una salida no se asigna en todos los caminos posibles, la herramienta deduce que debe conservar su valor, y para eso infiere un latch"
+  108: "asignar un valor por defecto al principio del proceso"
+  111: "Los glitches de la lógica combinacional no importan, porque solo se mira el valor en el flanco."
+  112: "relojes generados con lógica combinacional (producen glitches que actúan como flancos falsos)"
+  115: "Máquinas de estados (sección 28.5), escritas en tres bloques"
+  119: "Excluye retardos explícitos, bucles no acotados, ficheros"
+  120: "código que no se sintetiza y que existe para simular el diseño"
+  121: "escribir el testbench antes o a la vez que el diseño"
+  123: "VHDL es más verboso y fuertemente tipado"
+  124: "la forma de pensar en hardware"
+  126: "comprobar que un cambio pequeño en el código puede duplicarlos"
+  127: "ver en el informe la advertencia de latch inferido"
+  128: "Las dos regiones de un HDL y los tres defectos clásicos."
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-tres-asignaciones
+    tipo: explorar
+    titulo: "Tres asignaciones concurrentes"
+    texto: "En HDL, tres asignaciones seguidas son tres trozos de circuito que existen a la vez. Mueva A y B: las tres salidas cambian juntas."
+    libro: [97, 98]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: g1, tipo: and, entradas: [A, B] }
+        - { id: g2, tipo: or, entradas: [A, B] }
+        - { id: g3, tipo: xor, entradas: [A, B] }
+      salidas:
+        - { id: Y1, de: g1 }
+        - { id: Y2, de: g2 }
+        - { id: Y3, de: g3 }
+    requiere: { mover: [A, B] }
+
+  - id: prediga-orden
+    tipo: predecir
+    titulo: "Escritas en otro orden"
+    texto: "Las mismas tres asignaciones concurrentes se escriben en el orden inverso. ¿Qué circuito sale?"
+    libro: [99, 102]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: g1, tipo: and, entradas: [A, B] }
+        - { id: g2, tipo: or, entradas: [A, B] }
+        - { id: g3, tipo: xor, entradas: [A, B] }
+      salidas:
+        - { id: Y1, de: g1 }
+        - { id: Y2, de: g2 }
+        - { id: Y3, de: g3 }
+    opciones:
+      - { texto: "El mismo", bien: true, porque: "Cada sentencia concurrente es un trozo de hardware permanente: el orden en que se escriben es irrelevante." }
+      - { texto: "Otro: la última sentencia se evalúa primero", porque: "Eso sería un programa. Aquí no hay primero ni después: las tres puertas existen a la vez." }
+      - { texto: "Uno más lento, porque se encadenan", porque: "No se encadenan: ninguna usa la salida de otra." }
+    escalera: ["¿Hay algo que se «ejecute» antes en un circuito de tres puertas?"]
+    solucion: "El mismo: en la región concurrente el orden es irrelevante."
+
+  - id: explore-regiones
+    tipo: explorar
+    titulo: "Dos regiones"
+    texto: "Toque las dos regiones de un HDL y el reloj. Dentro de un proceso, el orden dice cómo se calcula, no cuándo ocurre."
+    libro: [102, 103, 104, 128]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: concurrente, rotulo: "Primer recuadro de la izquierda", rect: [2, 19, 222, 44], texto: "Concurrente: fuera de los procesos; cada sentencia es hardware permanente." }
+        - { id: secuencial, rotulo: "Segundo recuadro de la izquierda", rect: [2, 68, 222, 44], texto: "Secuencial: dentro de process o always; el hardware sigue siendo concurrente." }
+        - { id: reloj, rotulo: "Tercer recuadro de la izquierda", rect: [2, 117, 222, 44], texto: "El reloj: lo único que hace avanzar el tiempo." }
+    requiere: { mover: [concurrente, secuencial] }
+
+  - id: explore-latch
+    tipo: explorar
+    titulo: "Un latch que nadie pidió"
+    texto: "Un proceso combinacional asigna Y solo con EN a uno; para conservar su valor, la herramienta construye esto. Ponga EN a cero y mueva D."
+    libro: [107]
+    widget:
+      tipo: logica
+      entradas: [EN, D]
+      piezas:
+        - { id: m1, tipo: mux, bits: 1, entradas: [EN, m1, D] }
+      salidas:
+        - { id: Y, de: m1 }
+    requiere: { mover: [EN, D] }
+
+  - id: tabla-valor-defecto
+    tipo: tabla
+    titulo: "Con valor por defecto"
+    texto: "Ahora el proceso empieza con Y a cero y luego, con EN a uno, copia D. Rellene la tabla de Y."
+    libro: [107, 108]
+    widget:
+      tipo: logica
+      entradas: [EN, D]
+      piezas:
+        - { id: m1, tipo: mux, bits: 1, entradas: [EN, "0", D] }
+      salidas:
+        - { id: Y, de: m1 }
+      ocultar: true
+    tabla:
+      salidas: [Y]
+    exito: "Toda salida tiene siempre valor: sale lógica combinacional, sin latch."
+    escalera: ["Con EN a cero manda el valor por defecto; con EN a uno, D."]
+    solucion: "Y solo es uno con EN y D a uno: una AND, sin memoria."
+
+  - id: pregunta-latch
+    tipo: pregunta
+    titulo: "¿Cuándo sale un latch?"
+    texto: "¿Cuándo infiere un latch la herramienta en un proceso combinacional?"
+    libro: [106, 107, 108, 128]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: latch, rotulo: "Primer recuadro de la derecha", rect: [230, 19, 221, 44], texto: "Latch inferido: defensa, un valor por defecto al principio." }
+    opciones:
+      - { texto: "Cuando una salida no se asigna en todos los caminos", bien: true, porque: "La herramienta deduce que debe conservar su valor, y para eso necesita memoria: un latch." }
+      - { texto: "Cuando se usa un valor por defecto", porque: "Al revés: el valor por defecto es la defensa contra el latch." }
+      - { texto: "Cuando el proceso es sensible al reloj", porque: "Un proceso sensible al flanco genera flip-flops, no latches." }
+    escalera: ["¿Qué tiene que hacer el circuito con la salida en el camino que no la asigna?"]
+    solucion: "Cuando una salida no se asigna en todos los caminos: conserva su valor y sale un latch."
+
+  - id: toque-reloj-generado
+    tipo: tocar
+    titulo: "Un reloj con una puerta"
+    texto: "Un registro recibe como reloj la salida de una AND entre el reloj y otra señal. Toque el defecto."
+    libro: [112, 128]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: latch, rotulo: "Primer recuadro de la derecha", rect: [230, 19, 221, 44] }
+        - { id: generado, rotulo: "Segundo recuadro de la derecha", rect: [230, 68, 221, 44] }
+        - { id: sin-sincronizar, rotulo: "Tercer recuadro de la derecha", rect: [230, 117, 221, 44] }
+    tocar:
+      bien: [generado]
+      porque:
+        latch: "El latch sale de una salida sin asignar; aquí el problema está en el camino del reloj."
+        sin-sincronizar: "Es un solo reloj, con una puerta en medio: no hay dos relojes sin relación."
+    exito: "Una puerta en el camino del reloj: sus glitches actúan como flancos falsos."
+    escalera: ["¿Qué pasa con un glitch de la AND si esa señal es un reloj?"]
+    solucion: "El reloj generado con lógica: sus glitches son flancos falsos."
+
+  - id: porque-glitches
+    tipo: porque
+    titulo: "Los glitches no importan"
+    texto: "En el estilo síncrono, la lógica combinacional sigue teniendo glitches. ¿Por qué no importan?"
+    libro: [111]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: reloj, rotulo: "Tercer recuadro de la izquierda", rect: [2, 117, 222, 44], texto: "Todo cambia a la vez en el mismo flanco." }
+    opciones:
+      - { texto: "Porque solo se mira el valor en el flanco", bien: true, porque: "Cuando llega el flanco, la lógica ya se ha asentado: lo de antes no se registra." }
+      - { texto: "Porque la herramienta los elimina", porque: "No los elimina: siguen ahí, pero nadie los mira entre flancos." }
+      - { texto: "Porque en una FPGA no hay glitches", porque: "Los hay, como en toda lógica combinacional; el estilo síncrono los hace inofensivos." }
+    escalera: ["¿En qué instante copian los registros lo que reciben?"]
+    solucion: "Solo se mira el valor en el flanco: un glitch entre flancos no llega a ningún registro."
+
+  - id: empareje-estructuras
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las tres estructuras"
+    texto: "Casi todo el HDL se reduce a tres cosas. Una cada una con cómo se escribe."
+    libro: [115]
+    emparejar:
+      - ["Registros", "Procesos sensibles al reloj que guardan estado"]
+      - ["Lógica combinacional", "Procesos sensibles a las entradas, o asignaciones concurrentes"]
+      - ["Máquinas de estados", "Registro de estado, siguiente estado y salida"]
+    exito: "Escribirlo así hace el código legible y sintetizable."
+    pistas:
+      - { texto: "Lo que guarda estado necesita el reloj." }
+    escalera: ["La máquina de estados se escribe en tres bloques."]
+    solucion: "Registros: sensibles al reloj. Combinacional: sensible a las entradas. Máquina de estados: tres bloques."
+
+  - id: pregunta-sintetizable
+    tipo: pregunta
+    titulo: "Simular no es sintetizar"
+    texto: "¿Cuál de estas construcciones puede estar en un banco de pruebas pero no en el diseño sintetizable?"
+    libro: [119, 120]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: concurrente, rotulo: "Primer recuadro de la izquierda", rect: [2, 19, 222, 44], texto: "Lo sintetizable acaba siendo hardware." }
+    opciones:
+      - { texto: "Un retardo explícito", bien: true, porque: "El subconjunto sintetizable excluye retardos explícitos, bucles no acotados y ficheros." }
+      - { texto: "Un proceso sensible al reloj", porque: "Es un registro: lo más sintetizable que hay." }
+      - { texto: "Una asignación concurrente", porque: "Es un trozo de hardware permanente: se sintetiza." }
+    escalera: ["¿Qué pieza de hardware haría «esperar tantos nanosegundos»?"]
+    solucion: "El retardo explícito: el banco de pruebas lo usa, el hardware no."
+
+  - id: porque-testbench
+    tipo: porque
+    titulo: "El testbench, primero"
+    texto: "¿Por qué escribir el banco de pruebas antes o a la vez que el diseño?"
+    libro: [121]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: secuencial, rotulo: "Segundo recuadro de la izquierda", rect: [2, 68, 222, 44], texto: "Un proceso: se puede simular antes de sintetizar." }
+    opciones:
+      - { texto: "Simular antes de sintetizar ahorra más tiempo que depurar en la placa", bien: true, porque: "En la placa no hay puntos de ruptura; en la simulación se ve todo." }
+      - { texto: "Porque la herramienta no sintetiza sin él", porque: "Sintetiza sin él: el banco de pruebas no se sintetiza nunca." }
+      - { texto: "Porque el banco de pruebas acaba en el chip", porque: "No se sintetiza: existe solo para simular." }
+    escalera: ["¿Dónde es más barato encontrar un fallo?"]
+    solucion: "Simular un módulo antes de sintetizarlo ahorra mucho más tiempo que depurarlo en la placa."
+
+  - id: pregunta-vhdl-verilog
+    tipo: pregunta
+    titulo: "VHDL o Verilog"
+    texto: "¿Cuál detecta al compilar errores que en el otro aparecen en la simulación?"
+    libro: [123, 124]
+    widget:
+      tipo: figura
+      figura: fig-37.6
+      zonas:
+        - { id: concurrente, rotulo: "Primer recuadro de la izquierda", rect: [2, 19, 222, 44], texto: "assign y = a & b; es Verilog." }
+    opciones:
+      - { texto: "VHDL", bien: true, porque: "Es más verboso y fuertemente tipado: obliga a declarar y convertir." }
+      - { texto: "Verilog", porque: "Verilog es más conciso y permisivo: esos errores aparecen en simulación." }
+      - { texto: "Ninguno: los dos igual", porque: "Hacen lo mismo, pero el tipado fuerte de VHDL caza más errores al compilar." }
+    escalera: ["¿Cuál obliga a declararlo y convertirlo todo?"]
+    solucion: "VHDL, por su tipado fuerte. Lo que no cambia entre ellos es pensar en hardware."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Sintetiza un proceso combinacional sin valor por defecto y abre el informe de la herramienta. ¿Qué espera ver?"
+    libro: [126, 127]
+    widget:
+      tipo: logica
+      entradas: [EN, D]
+      piezas:
+        - { id: m1, tipo: mux, bits: 1, entradas: [EN, m1, D] }
+      salidas:
+        - { id: Y, de: m1 }
+    opciones:
+      - { texto: "La advertencia de latch inferido", bien: true, porque: "Es el segundo ejercicio del banco: ver el latch en el informe fija la idea." }
+      - { texto: "Un error que impide sintetizar", porque: "Sintetiza: el latch sale sin quejarse, solo con una advertencia." }
+      - { texto: "Nada: sale lógica combinacional", porque: "Sin valor por defecto, la salida debe conservar su valor: hace falta memoria." }
+    escalera: ["¿Qué necesita la herramienta para que la salida conserve su valor?"]
+    solucion: "La advertencia de latch inferido. Y mirando LUT y flip-flops, un cambio pequeño en el código puede duplicarlos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [97, 102, 107, 111]
+    ideas:
+      - { titulo: "Un circuito.", texto: "Un HDL describe hardware: las sentencias concurrentes existen a la vez y su orden no importa." }
+      - { titulo: "Latch.", texto: "Una salida sin asignar en algún camino lo infiere; el valor por defecto lo evita." }
+      - { titulo: "Síncrono.", texto: "Un reloj y todo registrado: sin carreras, y los glitches no importan." }
+      - { titulo: "Testbench.", texto: "No se sintetiza; se escribe antes o a la vez que el diseño." }

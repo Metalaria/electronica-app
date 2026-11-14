@@ -1,0 +1,356 @@
+# Lección 1.2 de la sección 30.19 «Problemas de Diseño» (cap31, sec-31.14). Formato: GUIA.md.
+# - 30.B: el error permanente del proporcional, 1/(1 + K_p·K) con K = 0,8 °C/W (tabla del libro: 20,0 % con 5,
+#   5,9 % con 20).
+# - 30.D: Ziegler-Nichols desde Routh (K_u = 572, T_u = 0,958 s) y la tabla de los tres PID; la forma paralela del
+#   diseño por colocación de ceros, K_p = K_c·(1 + T′_d/T′_i) con K_c = 133,7, T′_i = 1 s y T′_d = 1/3 s.
+# - 30.C: cuatro decibelios son multiplicar la potencia por 10^0,4 = 2,5. La curva de BPSK, Q(√(2·E_b/N₀)) =
+#   erfc(√(E_b/N₀))/2 (motor12e: `erfc`), en explore-ber (los tres puntos de la tabla) y en margen-enlace.
+# Paso práctico: «simular» la K_p de Ziegler-Nichols del problema 30.D (343; errores típicos: las filas del P y del PI).
+leccion: cap31/sec-31.14
+
+libro:
+  673: "Problema 30.A — Sintonizar un PID de verdad"
+  680: "se usan reglas más suaves (por ejemplo, Kp = 0,33·Ku en lugar de 0,6)"
+  682: "un sobreimpulso del 25 % ya corresponde a unos 40°, y uno del 40 % a menos de 30°, que es poco. Si necesitas 60°, baja Kp"
+  684: "Problema 30.B — Por qué hace falta el término integral"
+  686: "ganancia 0,8 °C/W y constante de tiempo 120 s"
+  690: "5,9 %"
+  692: "Subir Kp lo reduce pero no lo anula, y a cambio acerca la inestabilidad"
+  693: "el integrador añade 90° de retardo de fase"
+  697: "Problema 30.C — Cuánta potencia necesita un enlace digital"
+  699: "Un enlace digital debe alcanzar una tasa de error de 10⁻⁶ con modulación BPSK"
+  702: "Para BPSK, la probabilidad de error es Q(√(2·Eb/N₀))"
+  703: "7,7 × 10⁻⁴"
+  704: "Entre 7 y 11 dB, cuatro decibelios, la tasa de error mejora en tres órdenes de magnitud"
+  705: "Cuatro decibelios son multiplicar la potencia por 2,5"
+  706: "margen de enlace de al menos 6 a 10 dB sobre el mínimo teórico"
+  710: "Problema 30.D — Del papel al ajuste: un PID por márgenes"
+  715: "Ku = 572 y Tu = 2π/√43 = 0,958 s"
+  716: "54,2 % · 2,62 s"
+  717: "el cero del PI cae en 2,09 rad/s, por encima del polo lento de la planta (1 rad/s)"
+  718: "los ceros van sobre los dos polos lentos: T′i = 1 s y T′d = 1/3 s"
+  719: "una perturbación de carga se corrige con su constante de tiempo de 1 s"
+
+modelo:
+  valores:
+    K_g: { sim: "K", nombre: "ganancia de la planta térmica", unidad: "°C/W", valor: 0.8 }
+    Kp_b: { sim: "K_{p}", nombre: "ganancia proporcional", unidad: "W/°C", valor: 5 }
+    K_ud: { sim: "K_{u}", nombre: "ganancia crítica", unidad: "", valor: 572 }
+    Kc_d: { sim: "K_{c}", nombre: "ganancia del PID serie", unidad: "", valor: 133.7 }
+    Ti_s: { sim: "T′_{i}", nombre: "tiempo integral serie", unidad: s, valor: 1 }
+    Td_s: { sim: "T′_{d}", nombre: "tiempo derivativo serie", unidad: s, valor: 0.33333 }
+    dB_c: { sim: "Δ", nombre: "decibelios de más", unidad: dB, valor: 4 }
+    Eb_c: { sim: "E_{b}/N_{0}", nombre: "energía por bit frente al ruido", unidad: dB, valor: 7 }
+  calculos:
+    e_b: { expr: "100/(1 + Kp_b*K_g)", sim: "e", nombre: "error permanente", unidad: "%" }
+    Kp_zn: { expr: "0.6*K_ud", sim: "K_{p}", nombre: "K_p de Ziegler-Nichols", unidad: "" }
+    Kp_P: { expr: "0.5*K_ud", sim: "K_{p}", nombre: "fila del P", unidad: "" }
+    Kp_PI: { expr: "0.45*K_ud", sim: "K_{p}", nombre: "fila del PI", unidad: "" }
+    Kp_33: { expr: "0.33*K_ud", sim: "K_{p}", nombre: "regla suave", unidad: "" }
+    Kp_pz: { expr: "Kc_d*(1 + Td_s/Ti_s)", sim: "K_{p}", nombre: "K_p de la colocación de ceros", unidad: "" }
+    Ti_p: { expr: "Ti_s + Td_s", sim: "T_{i}", nombre: "T_i paralelo", unidad: s }
+    Td_p: { expr: "Ti_s*Td_s/(Ti_s + Td_s)", sim: "T_{d}", nombre: "T_d paralelo", unidad: s }
+    g_c: { expr: "10^(dB_c/10)", sim: "P₂/P₁", nombre: "razón de potencias", unidad: "" }
+    # (motor12e: erfc) BPSK, Q(√(2·E_b/N₀)) = erfc(√(E_b/N₀))/2, with E_b/N₀ in dB
+    ber: { expr: "0.5*erfc(sqrt(10^(Eb_c/10)))", sim: "BER", nombre: "tasa de error", unidad: "", cifras: 2 }
+    n_err: { expr: "1/ber", sim: "N", nombre: "bits por cada error", unidad: "", cifras: 4 }
+
+tarjetas:
+  - id: explore-30b
+    tipo: explorar
+    titulo: "30.B: el error que no se va"
+    texto: "La planta térmica de 0,8 °C/W con solo proporcional. Suba K_{p} y mire el error permanente."
+    libro: [684, 686, 692]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+      marcas:
+        - { x: "Kp_b", y: "e_b", rotulo: "{{e_b}}" }
+      lectura: { valor: e_b, rotulo: "Error permanente" }
+      mandos:
+        - { valor: Kp_b, lista: [1, 5, 20, 40], rotulo: "Ganancia proporcional" }
+    requiere: { mover: [Kp_b] }
+    comprobar:
+      - { e_b: 20 }
+
+  - id: estime-30b
+    tipo: pregunta
+    titulo: "30.B: con K_{p} = 20"
+    texto: "Con K_{p} = 20 W/°C y la planta de 0,8 °C/W, ¿qué error permanente queda?"
+    libro: [686, 690]
+    fijar: { Kp_b: 20 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    estimar:
+      objetivo: "e_b"
+      unidad: "%"
+      min: 0
+      max: 30
+      paso: 0.1
+      inicio: 15
+      tol: 0.05
+      rotulo: "Error permanente"
+    exito: "5,9 %: lo reduce, no lo anula, y acerca la inestabilidad."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 6.2 }, texto: "Demasiado: multiplique primero K_{p} por K." }
+      - { texto: "Demasiado poco: el error es 1/(1 + K_{p}·K)." }
+    escalera:
+      - "e = 1/(1 + K_{p}·K)."
+    solucion: "1/(1 + 20 × 0,8) = 5,9 %."
+    comprobar:
+      - { e_b: 5.88, tol: 0.003 }
+
+  - id: precio-integral
+    tipo: pregunta
+    titulo: "30.B: el precio de la integral"
+    texto: "La integral elimina el error estructural. ¿Qué cuesta en una planta lenta como esta?"
+    libro: [692, 693]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    opciones:
+      - texto: "90° de retardo de fase, y windup si el actuador satura"
+        bien: true
+        porque: "Por eso todo PID práctico lleva limitación anti-windup."
+      - texto: "Más error en régimen permanente"
+        porque: "Al contrario: el equilibrio solo se alcanza con error nulo."
+      - texto: "Nada: es gratis"
+        porque: "Consume margen de estabilidad y, con τ = 120 s, tarda mucho en descargarse."
+    escalera:
+      - "¿Qué fase añade un integrador?"
+    solucion: "90° de retardo y riesgo de windup."
+
+  - id: simule-30d
+    tipo: simular
+    titulo: "30.D: Ziegler-Nichols desde Routh"
+    texto: "La planta K/((s + 1)(s + 3)(s + 10)) tiene, por Routh, K_{u} = 572. ¿Qué K_{p} da la tabla para un PID?"
+    libro: [710, 715]
+    simular:
+      objetivo: Kp_zn
+      unidad: ""
+      tol: 0.01
+      rotulo: "K_{p} del PID"
+      errores:
+        - { expr: "Kp_P", texto: "Esa es la fila del P. El PID pone 0,6·K_{u}." }
+        - { expr: "Kp_PI", texto: "Esa es la fila del PI. El PID pone 0,6·K_{u}." }
+    exito: "K_{p} = 343, con T_{i} = 0,479 s y T_{d} = 0,120 s."
+    escalera:
+      - "Fila del PID: K_{p} = 0,6·K_{u}."
+    solucion: "0,6 × 572 = 343."
+    comprobar:
+      - { Kp_zn: 343, Kp_P: 286, Kp_PI: 257.4, tol: 0.003 }
+
+  - id: predecir-30d
+    tipo: predecir
+    titulo: "30.D: lo que da la receta"
+    texto: "Con ese PID de Ziegler-Nichols, ¿qué margen de fase y qué sobreimpulso tiene el lazo?"
+    libro: [716, 717]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    opciones:
+      - texto: "25,2° y un 54,2 %"
+        bien: true
+        porque: "Lo que advierte la sección 30.14: agresivo, un punto de partida."
+      - texto: "60° y menos de un 10 %"
+        porque: "Ese es el objetivo de diseño; Ziegler-Nichols no lo busca."
+      - texto: "Inestable"
+        porque: "Es estable, con poco margen."
+    escalera:
+      - "Ziegler-Nichols admite que cada pico sea la cuarta parte del anterior."
+    solucion: "25,2° de margen y un 54,2 % de sobreimpulso."
+
+  - id: porque-ti
+    tipo: porque
+    titulo: "30.D: dónde está el defecto"
+    texto: "Bajar K_{p} a 0,33·K_{u} apenas mejora el margen. ¿Por qué?"
+    libro: [680, 716, 717]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    opciones:
+      - texto: "El defecto está en T_{i}: el cero del PI cae en 2,09 rad/s, por encima del polo lento"
+        bien: true
+        porque: "Su retraso de fase llega al cruce; la ganancia no lo arregla."
+      - texto: "Porque 0,33 sigue siendo demasiada ganancia"
+        porque: "Con 189 da 27,1°: solo 2° más. No es la ganancia."
+      - texto: "Porque falta derivada"
+        porque: "T_{d} = 0,120 s ya está; lo que sobra es retraso del PI."
+    escalera:
+      - "Compare el cero del PI con el polo más lento de la planta."
+    solucion: "T_{i} demasiado pequeño: su retraso de fase llega al cruce."
+    comprobar:
+      - { Kp_33: 189, tol: 0.003 }
+
+  - id: formula-ceros
+    tipo: pregunta
+    titulo: "30.D: colocar los ceros"
+    texto: "Los ceros del PID van sobre los dos polos lentos: T′_{i} = 1 s y T′_{d} = 1/3 s, con K_{c} = 133,7. ¿Qué K_{p} paralela sale?"
+    libro: [718]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    opciones:
+      - texto: "178, con T_{i} = 1,333 s y T_{d} = 0,250 s"
+        bien: true
+        porque: "K_{p} = K_{c}·(1 + T′_{d}/T′_{i}): 63,1° de margen y un 5,0 % de sobreimpulso."
+      - texto: "133,7, la misma K_{c}"
+        porque: "La forma serie y la paralela no tienen la misma ganancia: se multiplica por 1 + T′_{d}/T′_{i}."
+      - texto: "343, la de Ziegler-Nichols"
+        porque: "Esa daba 25° de margen; esta busca 60°."
+    escalera:
+      - "K_{p} = K_{c}·(1 + T′_{d}/T′_{i})."
+    solucion: "133,7 × 4/3 = 178."
+    comprobar:
+      - { Kp_pz: 178.3, Ti_p: 1.333, Td_p: 0.25, tol: 0.003 }
+
+  - id: empareje-30d
+    tipo: pregunta
+    titulo: "30.D: tres PID, tres resultados"
+    texto: "Empareje cada sintonía con su sobreimpulso."
+    libro: [716, 719]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    emparejar:
+      - ["Ziegler-Nichols", "54,2 %"]
+      - ["K_{p} = 0,33·K_{u}", "48,8 %"]
+      - ["Colocación de ceros", "5,0 %"]
+    exito: "Y se establece tres veces antes; el precio, una cola de 1 s ante una perturbación de carga."
+    pistas:
+      - { texto: "Bajar K_{p} apenas mejora; mover los ceros, mucho." }
+    escalera:
+      - "El que pone los ceros sobre los polos lentos es el de 60° de margen."
+    solucion: "Ziegler-Nichols 54,2 %; 0,33·K_{u} 48,8 %; ceros 5,0 %."
+
+  - id: margen-30a
+    tipo: pregunta
+    titulo: "30.A: el sobreimpulso dice el margen"
+    texto: "Tras sintonizar, el escalón se pasa un 40 %. ¿Qué margen de fase tiene y qué se hace?"
+    libro: [673, 682]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 40, unidad: "W/°C", rotulo: "K_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "error permanente" }
+      curvas:
+        - { expr: "100/(1 + k*K_g)", color: naranja, rotulo: "1/(1 + K_{p}·K)" }
+    opciones:
+      - texto: "Menos de 30°, poco: si se necesitan 60°, se baja K_{p}"
+        bien: true
+        porque: "Un 25 % ya corresponde a unos 40°."
+      - texto: "Unos 60°: está bien"
+        porque: "60° dan menos de un 10 %."
+      - texto: "Unos 40°: se sube K_{p}"
+        porque: "40° son un 25 %; y subir K_{p} empeoraría el margen."
+    escalera:
+      - "Recuerde la tabla de margen y sobreimpulso de la sección 30.9."
+    solucion: "Menos de 30°: baje K_{p}."
+
+  - id: explore-ber
+    tipo: explorar
+    titulo: "30.C: una curva muy vertical"
+    texto: "BPSK: la tasa de error es Q(√(2·E_{b}/N_{0})). Recorra los tres puntos de la tabla y mire cuánto cambia la tasa de error con cada paso de 2 dB."
+    libro: [699, 702, 703, 704]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: dB, rotulo: "E_{b}/N_{0}" }
+      y: { min: 1e-8, max: 1, unidad: "", rotulo: "tasa de error", escala: log }
+      curvas:
+        - { expr: "0.5*erfc(sqrt(10^(d/10)))", color: naranja, rotulo: "BPSK" }
+      marcas:
+        - { x: "Eb_c", y: "ber", rotulo: "{{ber}}" }
+      lectura: { valor: ber, rotulo: "Tasa de error" }
+      datos:
+        - { valor: n_err, rotulo: "Un error cada {{n_err}} bits" }
+      mandos:
+        - { valor: Eb_c, lista: [7, 9, 11], rotulo: "E_{b}/N_{0}" }
+    requiere: { mover: [Eb_c] }
+    comprobar:
+      - { ber: 0.00077, n_err: 1294, tol: 0.005 }
+      - { con: { Eb_c: 9 }, ber: 0.0000336, n_err: 29738, tol: 0.01 }
+      - { con: { Eb_c: 11 }, ber: 0.00000026, n_err: 3826919, tol: 0.01 }
+
+  - id: estime-30c
+    tipo: pregunta
+    titulo: "30.C: cuatro decibelios"
+    texto: "Entre 7 y 11 dB de E_{b}/N_{0}, la tasa de error mejora tres órdenes de magnitud. ¿Por cuánto se multiplica la potencia con esos 4 dB?"
+    libro: [697, 704, 705]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 10, unidad: dB, rotulo: "decibelios" }
+      y: { min: 0, max: 10, unidad: "", rotulo: "razón de potencias" }
+      curvas:
+        - { expr: "10^(d/10)", color: naranja, rotulo: "10^{dB/10}" }
+    estimar:
+      objetivo: "g_c"
+      unidad: ""
+      min: 1
+      max: 10
+      paso: 0.1
+      inicio: 6
+      tol: 0.05
+      rotulo: "P₂/P₁"
+    exito: "Por 2,5: poca potencia compra muchísima fiabilidad, y poca pérdida la arruina."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.64 }, texto: "Demasiado: en potencia, 10 dB son por diez y 3 dB, por dos." }
+      - { texto: "Demasiado poco: 3 dB ya son el doble." }
+    escalera:
+      - "10^{4/10}."
+    solucion: "10^{0,4} = 2,5."
+    comprobar:
+      - { g_c: 2.51, tol: 0.003 }
+
+  - id: margen-enlace
+    tipo: porque
+    titulo: "30.C: margen de enlace"
+    texto: "¿Por qué un enlace digital se diseña con 6 a 10 dB por encima del mínimo teórico?"
+    libro: [702, 704, 705, 706]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: dB, rotulo: "E_{b}/N_{0}" }
+      y: { min: 1e-8, max: 1, unidad: "", rotulo: "tasa de error", escala: log }
+      curvas:
+        - { expr: "0.5*erfc(sqrt(10^(d/10)))", color: naranja, rotulo: "BPSK" }
+    opciones:
+      - texto: "La curva es tan vertical que perder 4 dB multiplica los errores por miles"
+        bien: true
+        porque: "De un error cada cuatro millones de bits a uno cada mil: lluvia o un conector sucio bastan."
+      - texto: "Para ahorrar potencia"
+        porque: "El margen gasta potencia: la compra fiabilidad ante degradaciones."
+      - texto: "Porque la tasa de error baja despacio con la potencia"
+        porque: "Al contrario: baja de golpe; por eso el borde es peligroso."
+    escalera:
+      - "¿Qué pasa si se trabaja justo en el punto teórico y se pierden unos decibelios?"
+    solucion: "Por lo abrupto de la curva: una pequeña degradación tumba el enlace."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [682, 692, 706, 716, 718]
+    ideas:
+      - { titulo: "30.A.", texto: "Ziegler-Nichols es un punto de partida; el sobreimpulso dice el margen." }
+      - { titulo: "30.B.", texto: "El P deja un error estructural; la integral lo quita a cambio de fase y windup." }
+      - { titulo: "30.C.", texto: "La tasa de error cae a pico: se diseña con 6 a 10 dB de margen." }
+      - { titulo: "30.D.", texto: "Ceros sobre los polos lentos: un 5 % de sobreimpulso frente al 54,2 % de Ziegler-Nichols." }

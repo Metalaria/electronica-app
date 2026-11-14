@@ -1,0 +1,253 @@
+# Lección 1.2 de la sección 11.2 «Los Símbolos Fundamentales» (cap11). Formato: contenido/lecciones11/GUIA.md.
+# Los símbolos se leen sobre esquemas del kit de la app. Valores de ejemplo (el libro no da números en la sección):
+# diodo con 5 V y 1 kΩ (caída de 0,7 V del libro, sección 5.3); transistor NPN con 12 V, 1 kΩ de colector, 5 V por
+# 100 kΩ en la base y β = 100; transformador de 230 V con 230 y 12 espiras y 12 Ω; resistencia de 100 Ω con la
+# potencia de un cuarto de vatio y de cincuenta (los dos extremos del bloque 27).
+leccion: cap11/sec-11.2
+
+libro:
+  27: "una resistencia de un cuarto de vatio y para una de cincuenta"
+  35: "Sin polaridad, sin orientación obligatoria."
+  36: "esa marca no es decorativa"
+  37: "continuas para núcleo de hierro y discontinuas para ferrita"
+  38: "los puntos de polaridad"
+  40: "apunta en el sentido de la corriente directa"
+  41: "su sentido distingue NPN de PNP"
+  42: "el diodo de cuerpo"
+  43: "se omiten con frecuencia"
+  45: "no son intercambiables"
+  49: "La potencia"
+  50: "no es suficiente para construir el circuito"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la pila", unidad: V, valor: 5 }
+    R_d: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 1000 }
+    V_D: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+    rev: { tipo: interruptor, nombre: "diodo al revés", valor: 0 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_c: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 1000 }
+    V_b: { sim: "V_{entrada}", nombre: "tensión de mando", unidad: V, valor: 5 }
+    R_b: { sim: "R_{B}", nombre: "resistencia de base", unidad: Ω, valor: 100000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+    V_1: { sim: "V₁", nombre: "tensión del primario", unidad: V, valor: 230 }
+    N_1: { sim: "N₁", nombre: "espiras del primario", unidad: "", valor: 230 }
+    N_2: { sim: "N₂", nombre: "espiras del secundario", unidad: "", valor: 12 }
+    R_t: { sim: "R_{L}", nombre: "carga del secundario", unidad: Ω, valor: 12 }
+    P_n: { sim: "P", nombre: "potencia de la resistencia", unidad: W, valor: 0.25 }
+    R_p: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 100 }
+  calculos:
+    I_dc: { expr: "(1 - rev)*max(0, (V_d - V_D)/R_d)", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_dc: { expr: "V_d - I_dc*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+    I_B: { expr: "max(0, (V_b - V_BE)/R_b)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_C: { expr: "min(beta*I_B, (V_cc - V_CEs)/R_c)", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_CE: { expr: "V_cc - I_C*R_c", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    V_2: { expr: "V_1*N_2/N_1", sim: "V₂", nombre: "tensión del secundario", unidad: V }
+    I_2: { expr: "V_2/R_t", sim: "I₂", nombre: "corriente del secundario", unidad: A }
+    I_1: { expr: "I_2*N_2/N_1", sim: "I₁", nombre: "corriente del primario", unidad: A }
+    V_p: { expr: "sqrt(P_n*R_p)", sim: "V", nombre: "tensión aplicada", unidad: V }
+    I_p: { expr: "V_p/R_p", sim: "I", nombre: "corriente", unidad: A }
+
+tarjetas:
+  - id: explore-diodo
+    tipo: explorar
+    titulo: "El triángulo señala el camino"
+    texto: "El triángulo del diodo apunta en el sentido de la corriente directa. Dé la vuelta al diodo y mire la corriente."
+    nota: "Valores de ejemplo."
+    libro: [40]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, vd: V_D, reves: rev }
+      lectura: { valor: I_dc, rotulo: "Corriente del diodo" }
+      corriente: I_dc
+      mide: { corriente: I_dc, vd: V_dc }
+      mandos:
+        - { valor: rev, tipo: interruptor, rotulo: "Diodo al revés" }
+    requiere: { mover: [rev] }
+
+  - id: prediga-npn
+    tipo: predecir
+    titulo: "¿NPN o PNP?"
+    texto: "En este transistor, la flecha del emisor apunta hacia fuera. ¿De qué tipo es?"
+    libro: [41]
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_c, entrada: V_b, rb: R_b, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_C, rotulo: "Corriente de colector" }
+      corriente: I_C
+      mide: { ib: I_B, ic: I_C, vce: V_CE }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "NPN"
+        bien: true
+        porque: "La regla mnemotécnica: en el NPN la flecha «no apunta hacia dentro». Su sentido es lo que distingue los dos tipos."
+      - texto: "PNP"
+        porque: "En el PNP la flecha del emisor apunta hacia dentro, hacia la base."
+      - texto: "La flecha no dice el tipo"
+        porque: "Sí lo dice: va en el emisor y su sentido distingue NPN de PNP."
+    escalera:
+      - "NPN: «no apunta hacia dentro»."
+    solucion: "NPN: su flecha sale del transistor."
+
+  - id: variantes-diodo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La barra cambia"
+    texto: "Una cada diodo con lo que distingue su símbolo."
+    libro: [40]
+    emparejar:
+      - ["Diodo", "Triángulo con barra"]
+      - ["Zener", "Barra con los extremos doblados en Z"]
+      - ["Schottky", "Barra en forma de S"]
+      - ["LED", "Flechas salientes"]
+    exito: "Las variantes modifican la barra; el LED añade las flechas de la luz que sale."
+    pistas:
+      - { texto: "La letra de la barra coincide con la inicial: Z de Zener, S de Schottky." }
+    escalera:
+      - "Las flechas salientes son luz que sale."
+    solucion: "Diodo–triángulo y barra; Zener–Z; Schottky–S; LED–flechas salientes."
+
+  - id: pasivos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las marcas de los pasivos"
+    texto: "Una cada detalle del símbolo con lo que significa."
+    libro: [35, 36, 37, 38]
+    emparejar:
+      - ["Resistencia", "Sin polaridad ni orientación obligatoria"]
+      - ["Placa curva o signo más", "Electrolítico o tántalo: al revés se destruye"]
+      - ["Líneas continuas junto a las espiras", "Núcleo de hierro"]
+      - ["Líneas discontinuas junto a las espiras", "Ferrita o polvo de hierro"]
+    exito: "Ninguna de esas marcas es decorativa: el núcleo cambia por completo el comportamiento de la bobina."
+    pistas:
+      - { texto: "Solo los condensadores polarizados llevan una placa distinta." }
+    escalera:
+      - "En la convención más extendida, las líneas continuas son de hierro."
+    solucion: "Resistencia–sin polaridad; placa curva–polarizado; continuas–hierro; discontinuas–ferrita."
+
+  - id: puntos-transformador
+    tipo: pregunta
+    titulo: "Los puntos del transformador"
+    texto: "El símbolo del transformador lleva un punto junto a un extremo de cada bobina. ¿Qué pasa si se ignoran?"
+    libro: [38]
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_t }
+      lectura: { valor: V_2, rotulo: "Secundario" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+      mandos: []
+    opciones:
+      - texto: "Se invierte la fase"
+        bien: true
+        porque: "Los puntos marcan los extremos por los que la corriente entrante produce flujos que se suman. Conectado al revés, la salida sale en contrafase."
+      - texto: "Nada: son decorativos"
+        porque: "Marcan la polaridad de cada bobina; ignorarlos invierte la fase."
+      - texto: "Cambia la tensión del secundario"
+        porque: "La relación de espiras no cambia: lo que se invierte es la fase."
+    escalera:
+      - "Los puntos marcan los extremos cuyos flujos se suman."
+    solucion: "Ignorarlos invierte la fase del secundario."
+
+  - id: activos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que dicen los activos"
+    texto: "Una cada detalle del símbolo con lo que indica."
+    libro: [41, 42, 43]
+    emparejar:
+      - ["Flecha en el emisor", "Su sentido distingue NPN de PNP"]
+      - ["Flecha en el sustrato del MOSFET", "Canal N o canal P"]
+      - ["MOSFET discreto", "Diodo de cuerpo, aunque no se dibuje"]
+      - ["Operacional sin alimentaciones", "Están, aunque no se vean"]
+    exito: "Omitir las alimentaciones del operacional es cómodo y una trampa para quien empieza: están."
+    pistas:
+      - { texto: "El hueco de la puerta es el aislante; la flecha del sustrato da el canal." }
+    escalera:
+      - "Dos de las parejas son lo que el dibujo calla: el diodo de cuerpo y las alimentaciones."
+    solucion: "Emisor–NPN o PNP; sustrato–canal; MOSFET–diodo de cuerpo; operacional–alimentaciones ocultas."
+
+  - id: sorpresa-potencia
+    tipo: sorpresa
+    titulo: "El mismo rectángulo"
+    texto: "Pase la resistencia de un cuarto de vatio a cincuenta. Mire el símbolo."
+    nota: "Valores de ejemplo."
+    libro: [27]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_p, r: R_p }
+      lectura: { valor: P_n, rotulo: "Potencia" }
+      corriente: I_p
+      mide: { corriente: I_p, tension: V_p }
+      mandos:
+        - { valor: P_n, lista: [0.25, 50], rotulo: "Potencia de la resistencia" }
+    requiere: { mover: [P_n] }
+
+  - id: por-que-no-avisa
+    tipo: porque
+    titulo: "¿Por qué no cambia?"
+    texto: "Doscientas veces más potencia y el símbolo es idéntico. ¿Por qué?"
+    libro: [27, 49, 50]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_p, r: R_p }
+      lectura: { valor: P_n, rotulo: "Potencia" }
+      corriente: I_p
+      mide: { corriente: I_p, tension: V_p }
+      mandos: []
+    opciones:
+      - texto: "El símbolo dice qué hace la pieza; la potencia va en las anotaciones"
+        bien: true
+        porque: "Es una abstracción funcional. Potencia, tensión, encapsulado y tolerancia hay que buscarlos en las anotaciones y en la lista de materiales."
+      - texto: "Porque la potencia no importa en un esquema"
+        porque: "Importa tanto que sin ella no se puede construir el circuito: por eso se anota."
+      - texto: "Porque se deduce del tamaño del dibujo"
+        porque: "El tamaño del símbolo no dice nada: el mismo vale para un cuarto de vatio y para cincuenta."
+    escalera:
+      - "Un símbolo representa el comportamiento, no el aspecto ni el encapsulado."
+    solucion: "El símbolo es funcional: la potencia va escrita junto a él."
+    comprobar:
+      - { con: { P_n: 50 }, P_n: 50 }
+
+  - id: masas
+    tipo: pregunta
+    titulo: "Tres masas distintas"
+    texto: "Masa de señal, masa de chasis y tierra de protección. ¿Se puede dibujar una por otra?"
+    libro: [45]
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_c, entrada: V_b, rb: R_b, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_C, rotulo: "Corriente de colector" }
+      corriente: I_C
+      mide: { ib: I_B, ic: I_C, vce: V_CE }
+      mandos: []
+    opciones:
+      - texto: "No: son tres cosas distintas"
+        bien: true
+        porque: "Confundirlas en el dibujo lleva a confundirlas en el montaje."
+      - texto: "Sí: todas son la misma referencia"
+        porque: "No son intercambiables: la de chasis va a la caja y la de protección al conductor de protección de la red."
+      - texto: "Solo en equipos de red"
+        porque: "La distinción vale siempre: cada símbolo es una red distinta."
+    escalera:
+      - "Piense en a qué se une cada una: el circuito, la caja, la red."
+    solucion: "No: señal, chasis y protección son redes distintas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [27, 36, 40, 50]
+    ideas:
+      - { titulo: "Qué hace, no cómo es.", texto: "El mismo símbolo vale para un cuarto de vatio y para cincuenta." }
+      - { titulo: "Marcas que importan.", texto: "Polaridad del electrolítico, núcleo, puntos del transformador, flecha del emisor." }
+      - { titulo: "Lo que no se ve.", texto: "Alimentaciones del operacional y diodo de cuerpo: están." }
+      - { titulo: "No basta.", texto: "Potencia, tensión, encapsulado y tolerancia van en las anotaciones." }

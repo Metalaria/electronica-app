@@ -203,7 +203,8 @@ test.describe('generador: cada regla, rota a propósito', () => {
     ['una clave mal escrita', (f) => (tarjetaFuente(f, 'explore-serie').txto = 'x'), /clave desconocida «txto»/],
     // motor fixes 1.1: a «lista» control with names
     ['nombres que no casan con la lista', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['uno'] }), /nombres: un texto por cada valor/],
-    ['nombres con cifras', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['rojo', 'marrón 1'] }), /nombres: sin cifras/],
+    // (1.2, peticiones motor12: names may carry digits, «Sn63Pb37», «0805»; one that is only a number may not)
+    ['un nombre que es su propio valor', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['rojo', '2000'] }), /nombres: un nombre que no sea su propio valor/],
     ['nombres repetidos', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['rojo', 'rojo'] }), /nombres repetidos/],
     ['nombres sin lista', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', min: 1000, max: 2000, paso: 1000, nombres: ['a', 'b'] }), /nombres: solo con «lista»/],
     ['una explicación demasiado larga', (f) => ((tarjetaFuente(f, 'por-que-baja').opciones as Record<string, unknown>[])[1]!.porque = `${'muy '.repeat(41)}larga`), /porque: \d+ palabras/],
@@ -350,7 +351,9 @@ test.describe('el script del generador', () => {
   /** A book folder that links the real parts and writes its own lessons. */
   function libroTemporal(): string {
     const d = fs.mkdtempSync(path.join(os.tmpdir(), 'epa-l11-'));
-    for (const f of ['indice.json', 'refs.json', 'partes']) fs.symlinkSync(path.join(libro, f), path.join(d, f));
+    // (img: the generator reads the size of the book photos a «figura» widget shows with «imagen», e.g. the FNIRSI
+    // photos of cap21; without it those lessons failed here though they are valid, autor-taller-D)
+    for (const f of ['indice.json', 'refs.json', 'partes', 'img']) fs.symlinkSync(path.join(libro, f), path.join(d, f));
     return d;
   }
   const correr = (env: Record<string, string>, args: string[] = []) => spawnSync('node', [path.join(web, 'scripts', 'lecciones11.mjs'), ...args], { cwd: web, env: { ...process.env, ...env }, encoding: 'utf8' });
@@ -387,7 +390,8 @@ test.describe('el script del generador', () => {
     // (motor fixes 1.1: each entry lists the cards «Práctica inteligente» asks on their own — no «por qué»)
     expect(JSON.parse(tres['indice.json']!).lecciones).toEqual({
       'cap01/sec-1.4': {
-        tarjetas: 12,
+        // 13 since the 1.2 Fundamentos revision (the home-bench step «banco», ficha 1)
+        tarjetas: 13,
         preguntas: [
           { id: 'prediga-salida', tipo: 'predecir' },
           { id: 'reto-33', tipo: 'reto' },
@@ -517,6 +521,82 @@ test.describe('Ejes de las gráficas: etiquetas que no se pisan (lib/leccion11/e
       }
     }
     expect(malas).toEqual([]);
+  });
+});
+
+// 1.2 (consolas-A): the lessons that are not book sections — «Consolas por dentro», parts consola-<maquina> — through
+// the synthetic blocks of scripts/consolas11.mjs (GUIA §12): the manifest, the citeable console data and its sources,
+// the published parts file, a published lesson up to date, and the generator's rules on console citations.
+test.describe('lecciones de consola (consolas11.mjs)', () => {
+  const cargarConsolas = async () => {
+    // @ts-expect-error (a plain .mjs module of the scripts: no types)
+    const { consolas11 } = await import('../scripts/consolas11.mjs');
+    // @ts-expect-error (a plain .mjs module of the scripts: no types)
+    const { recursosLibro } = await import('../scripts/recursos11.mjs');
+    const c = await consolas11({ fuentes: FUENTES, publico: path.join(web, 'public'), src: (p: string) => path.join(web, 'src', p) });
+    const ctx: ContextoLibro = {
+      bloques: (p) => c.bloques(p) ?? contexto.bloques(p),
+      recursos: recursosLibro(libro, path.join(web, 'public')),
+    };
+    return { c, ctx };
+  };
+
+  test('el manifiesto, los bloques de la consola y sus fuentes', async () => {
+    const { c } = await cargarConsolas();
+    expect(c.errores).toEqual([]);
+    // the console part: one h2 per lesson of the manifest, in its order
+    const h2 = c.bloques('consola-snes') as { t: string; label: string }[];
+    expect(h2.every((b) => b.t === 'h2')).toBe(true);
+    expect(h2.map((b) => b.label).slice(0, 2)).toEqual(['snes-placa', 'snes-alimentacion']);
+    // the console's data: the explorer's hotspots (the NTSC photo's CIC), the decoder and the external facts
+    const textos = (c.bloques('snes') as unknown[]).map((b) => textoDeBloque(b));
+    expect(textos.some((t) => t.includes('Nintendo F411A'))).toBe(true);
+    expect(textos.some((t) => t.startsWith('Decodificador, escritura en $7E0010'))).toBe(true);
+    expect(textos.some((t) => t.includes('1,5 A; no se debe poner uno lento'))).toBe(true);
+    // (consolas-C) a book number in the console data («Figura {{num:fig-37.16}}») is the printed one of refs.json,
+    // as the explorer shows it: never a hard-coded number that a renumbering of the book leaves stale
+    const nes = (c.bloques('nes') as unknown[]).map((b) => textoDeBloque(b));
+    const refs = JSON.parse(fs.readFileSync(path.join(libro, 'refs.json'), 'utf8')) as Record<string, { num: string }>;
+    expect(nes.some((t) => t.includes(`Figura ${refs['fig-37.16'].num} del libro`))).toBe(true);
+    expect(nes.some((t) => t.includes('{{num:'))).toBe(false);
+    // a book part or an unknown id is not the console module's
+    expect(c.bloques('cap01')).toBeUndefined();
+    // the parts file: the seven consoles in the explorer's order, tipo «consola», only the lessons already written
+    const p = c.partes();
+    expect(Object.keys(p.partes)).toEqual(['consola-nes', 'consola-neogeo', 'consola-sms', 'consola-megadrive', 'consola-gb', 'consola-gbc', 'consola-snes']);
+    for (const [id, info] of Object.entries(p.partes) as [string, { tipo: string; secciones: { label: string }[] }][]) {
+      expect(info.tipo).toBe('consola');
+      for (const s of info.secciones) expect(fs.existsSync(path.join(FUENTES, id, `${s.label}.yaml`)), `${id}/${s.label}`).toBe(true);
+    }
+    expect(fs.readFileSync(path.join(libro, 'lecciones11', 'partes.json'), 'utf8')).toBe(`${JSON.stringify(p)}\n`);
+  });
+
+  test('una lección de consola publicada está al día y cada cita lleva su fuente', async () => {
+    const { c, ctx } = await cargarConsolas();
+    const id = 'consola-snes/snes-placa';
+    const r = generarLeccion(fuente(id), ctx, 'prueba');
+    expect(r.errores).toEqual([]);
+    const l = c.completar(r.leccion!, (p: string) => ctx.bloques(p)) as Leccion11;
+    expect(l.consola).toBe('snes');
+    expect(fs.readFileSync(path.join(libro, 'lecciones11', `${id}.json`), 'utf8')).toBe(`${JSON.stringify(l)}\n`);
+    for (const cita of Object.values(l.libro)) expect(cita.fuente?.url, cita.cita).toBeTruthy();
+    // a book citation of a console lesson carries its section (the card's «Del libro» link)
+    const s = c.completar(generarLeccion(fuente('consola-snes/snes-alimentacion'), ctx, 'prueba').leccion!, (p: string) => ctx.bloques(p)) as Leccion11;
+    expect(s.libro['cap08#67']!.seccion).toBe('sec-8.4');
+    expect(s.libro['snes#110']!.fuente).toEqual({ titulo: 'ConsoleMods, «SNES:Power Supply Fuse»', url: 'https://consolemods.org/wiki/SNES:Power_Supply_Fuse' });
+  });
+
+  test('las reglas del generador valen también con los datos de la consola', async () => {
+    const { ctx } = await cargarConsolas();
+    const rota = (cambio: (f: Fuente) => void) => {
+      const f = copia(fuente('consola-snes/snes-placa')) as unknown as Fuente;
+      cambio(f);
+      return generarLeccion(f, ctx, 'prueba').errores.join('\n');
+    };
+    // a quote the console block does not have, a number the console data does not give, a section not in the manifest
+    expect(rota((f) => (f.libro['snes#38'] = 'un cristal de 20 MHz'))).toMatch(/el bloque no contiene/);
+    expect(rota((f) => ((tarjetaFuente(f, 'reloj-sonido').opciones as Record<string, unknown>[])[1]!.texto = '19,6 MHz'))).toMatch(/el número 19,6 no está/);
+    expect(rota((f) => ((f as unknown as { leccion: string }).leccion = 'consola-snes/snes-nada'))).toMatch(/no existe la sección/);
   });
 });
 

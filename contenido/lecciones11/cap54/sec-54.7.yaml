@@ -1,0 +1,297 @@
+# Lección 1.2 de la sección 56.7 «Señales Analógicas y de RF: Deducir la Arquitectura» (cap54; etiquetas sec-54.N =
+# impresas 56.N).
+# - El inventario de frecuencias (bloques 270 a 276; figura 56.9, fig-54.9), la fuente conmutada (279 a 283), el
+#   receptor (286 a 289), la etapa de audio (291 a 294), la respuesta en frecuencia (296 a 301), las precauciones (303 a
+#   305) y el cargador del banco (307 a 309).
+# - Estimar la inductancia por el rizado (bloque 280) con el esquema `reductor` del capítulo 33 (cap33#49, #54, #66:
+#   12 V a 5 V, D = 0,417, 300 kHz, 100 µF con 50 mΩ de ESR; 47 µH dan ΔI = 207 mA y unos 10 mV de rizado por la ESR).
+#   El lector mueve L hasta que el rizado de la salida, ΔI·ESR, quede en esos 10 mV (banda de 9,2 a 10,8 mV): 46 a 52 µH.
+# - La pendiente: 20 dB por década y por polo (bloque 298). La gráfica de dos polos en 1 kHz es de ejemplo (rotulado).
+# Pasos prácticos: «ajuste» de la inductancia por el rizado medido, «tocar» la forma de onda del flyback y «ordenar» el
+# ejercicio del cargador.
+leccion: cap54/sec-54.7
+
+libro:
+  268: "cada topología deja una firma reconocible en el dominio del tiempo o en el de la frecuencia"
+  270: "La medida más informativa de un equipo analógico desconocido es el inventario de sus frecuencias"
+  272: "50 o 100 Hz (60 o 120 Hz en América): la red, o su rectificación en doble onda, al doble de frecuencia."
+  273: "De decenas de kilohercios a unos pocos megahercios: conmutación de una fuente."
+  274: "Frecuencias audibles: señal de audio o resonancias mecánicas."
+  275: "Megahercios: relojes digitales, y sus armónicos."
+  276: "Una frecuencia fija que no es múltiplo de nada: un oscilador de referencia"
+  280: "Si se conoce el condensador de salida (su capacidad o su ESR), la amplitud de ese rizado da el rizado de corriente en la bobina, y con él, la frecuencia y las tensiones de entrada y salida se estima la inductancia."
+  281: "un flyback muestra el escalón de la tensión reflejada y su timbre característico"
+  282: "Si la frecuencia cambia con la carga, el convertidor trabaja en modo de frecuencia variable o entra en modo de ráfagas a baja carga."
+  286: "Si hay un oscilador cuya frecuencia difiere de la sintonizada en una cantidad fija, es un superheterodino, y esa diferencia es su frecuencia intermedia"
+  287: "Si el oscilador coincide con la señal, es de conversión directa."
+  293: "alta indica clase A, baja con distorsión de cruce indica clase B, y un valor intermedio estable, clase AB"
+  294: "si hay portadora de cientos de kilohercios, es clase D"
+  298: "La pendiente de caída, que da el orden: 20 dB por década y por polo"
+  301: "se puede reproducir el comportamiento del bloque aunque no se conozca ni uno solo de sus componentes"
+  303: "Una sonda de 10 pF desintoniza un tanque de radiofrecuencia y altera lo que se pretende medir"
+  308: "Medir el rizado de salida y su frecuencia, mirar la forma de onda, acercar la sonda de campo cercano para localizar el transformador, y observar cómo cambia la frecuencia con la carga."
+  309: "Y abriéndolo después se comprueba el acierto"
+  310: "Firmas de una fuente conmutada y el inventario de frecuencias."
+  "cap33#49": "Con 12 V de entrada y 5 de salida, D = 0,417."
+  "cap33#54": "Con Vout = 5 V, D = 0,417, L = 47 µH y fs = 300 kHz: ΔI = 207 mA."
+  "cap33#66": "Con ΔI = 207 mA y una ESR de 50 mΩ, la segunda da 10 mV"
+
+modelo:
+  valores:
+    Vi_bk: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    f_bk: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 300000 }
+    D_bk: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.417 }
+    L_bk: { sim: "L", nombre: "inductancia", unidad: H, valor: 22e-6 }
+    C_bk: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 100e-6 }
+    E_bk: { sim: "ESR", nombre: "resistencia serie del condensador", unidad: Ω, valor: 0.05 }
+    R_bk: { sim: "R", nombre: "carga", unidad: Ω, valor: 2.5 }
+    f_p: { sim: "f_{p}", nombre: "frecuencia de los polos", unidad: Hz, valor: 1000 }
+    n_p: { sim: "n", nombre: "número de polos", unidad: "", valor: 2 }
+  calculos:
+    Vo_bk: { expr: "D_bk*Vi_bk", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    Io_bk: { expr: "Vo_bk/R_bk", sim: "I_{out}", nombre: "corriente de salida", unidad: A }
+    dI_bk: { expr: "Vo_bk*(1 - D_bk)/(L_bk*f_bk)", sim: "ΔI", nombre: "rizado de la corriente", unidad: A }
+    dV_bk: { expr: "dI_bk*E_bk", sim: "ΔV", nombre: "rizado de la salida por la ESR", unidad: V }
+    Vc0_bk: { expr: "Vo_bk - dI_bk*(1 - 2*D_bk)/(12*f_bk*C_bk)", sim: "v_{C}(0)", nombre: "tensión del condensador al empezar el periodo", unidad: V }
+    G_10: { expr: "-10*n_p*log10(1 + 100)", sim: "G", nombre: "ganancia una década por encima", unidad: dB }
+    G_100: { expr: "-10*n_p*log10(1 + 10000)", sim: "G", nombre: "ganancia dos décadas por encima", unidad: dB }
+
+tarjetas:
+  - id: explore-firmas
+    tipo: explorar
+    titulo: "Cada topología deja su firma"
+    texto: "Un bloque analógico no tiene tramas, pero sí firma en el tiempo y en la frecuencia. Toque las tres formas de onda."
+    libro: [268, 310]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: reductor, rotulo: "Arriba a la izquierda", rect: [0, 2, 245, 75], texto: "Reductor: el nodo conmuta entre masa y la entrada." }
+        - { id: flyback, rotulo: "En medio a la izquierda", rect: [0, 80, 245, 80], texto: "Flyback: el escalón de la tensión reflejada y su timbre." }
+        - { id: salida, rotulo: "Abajo a la izquierda", rect: [0, 163, 245, 90], texto: "Rizado triangular en la salida: hay una bobina." }
+        - { id: inventario, rotulo: "A la derecha", rect: [255, 2, 188, 230], texto: "El inventario de frecuencias, con la FFT o una SDR." }
+    requiere: { mover: [reductor, flyback, salida] }
+
+  - id: empareje-frecuencias
+    tipo: pregunta
+    titulo: "El inventario de frecuencias"
+    texto: "La FFT de un equipo desconocido muestra varias frecuencias. Empareje cada una con su origen probable."
+    libro: [270, 272, 273, 274, 275, 276]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: inventario, rotulo: "A la derecha", rect: [255, 2, 188, 230] }
+    emparejar:
+      - ["100 Hz", "La red rectificada en doble onda"]
+      - ["Decenas de kHz a pocos MHz", "La conmutación de una fuente"]
+      - ["Audibles", "Audio o resonancias mecánicas"]
+      - ["Megahercios", "Relojes digitales y sus armónicos"]
+      - ["Fija, múltiplo de nada", "Un oscilador de referencia"]
+    exito: "El valor concreto de un oscilador de referencia suele identificar la aplicación."
+    pistas:
+      - { texto: "La rectificación en doble onda dobla la frecuencia de la red." }
+    escalera:
+      - "Cada frecuencia tiene un origen típico: red, conmutación, audio, relojes o referencia."
+    solucion: "100 Hz: red rectificada. kHz a MHz: conmutación. Audibles: audio. MHz: relojes. Fija: referencia."
+
+  - id: toque-flyback
+    tipo: tocar
+    titulo: "Un escalón y un timbre"
+    texto: "En el drenador del interruptor ve un escalón por encima de la entrada y, al acabar, una oscilación amortiguada. Toque esa firma."
+    libro: [281]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: reductor, rotulo: "Arriba a la izquierda", rect: [0, 2, 245, 75] }
+        - { id: flyback, rotulo: "En medio a la izquierda", rect: [0, 80, 245, 80] }
+        - { id: salida, rotulo: "Abajo a la izquierda", rect: [0, 163, 245, 90] }
+    tocar:
+      bien: [flyback]
+      porque:
+        reductor: "El nodo de un reductor conmuta limpio entre masa y la entrada, sin escalón por encima."
+        salida: "Es el rizado de la salida, no el nodo de conmutación."
+    exito: "Un flyback: el escalón es la tensión reflejada, y la oscilación, su timbre característico."
+    escalera:
+      - "¿Qué topología refleja una tensión desde el secundario?"
+    solucion: "En medio a la izquierda: el flyback."
+
+  - id: ajuste-bobina
+    tipo: ajuste
+    titulo: "Estimar la bobina por el rizado"
+    texto: "Un reductor de 12 a 5 V a 300 kHz da unos 10 mV de rizado triangular, y su condensador tiene 50 mΩ de ESR. Ajuste L hasta reproducirlo."
+    libro: [280, "cap33#49", "cap33#54", "cap33#66"]
+    inicio: { L_bk: 22e-6 }
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: Vi_bk, f: f_bk, ciclo: D_bk, l: L_bk, c: C_bk, esr: E_bk, carga: R_bk }
+      corriente: Io_bk
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t" }
+        y: { min: 4.96, max: 5.04, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "Vc0_bk + (dI_bk/C_bk)*(min((f_bk*t - floor(f_bk*t)), D_bk)/f_bk*(-1/2) + min((f_bk*t - floor(f_bk*t)), D_bk)^2/(2*D_bk*f_bk) + max(0, (f_bk*t - floor(f_bk*t)) - D_bk)/(2*f_bk) - max(0, (f_bk*t - floor(f_bk*t)) - D_bk)^2/(2*(1 - D_bk)*f_bk)) + E_bk*dI_bk*(min((f_bk*t - floor(f_bk*t))/D_bk, (1 - (f_bk*t - floor(f_bk*t)))/(1 - D_bk)) - 1/2)", color: verde, rotulo: "v_{o}", mide: salida }
+      datos:
+        - { valor: dI_bk, rotulo: "Rizado de la corriente: {{dI_bk}}" }
+      mandos:
+        - { valor: L_bk, min: 20e-6, max: 100e-6, paso: 1e-6, rotulo: "Inductancia supuesta" }
+    ajuste:
+      valor: dV_bk
+      min: 0.0092
+      max: 0.0108
+      rotulo: "Rizado de la salida"
+      bajo: "Sale menos rizado del medido: la bobina supuesta es demasiado grande."
+      alto: "Sale más rizado del medido: la bobina supuesta es demasiado pequeña."
+      dentro: "Unos 47 µH: el rizado da ΔI ≈ 207 mA, y con la frecuencia y las tensiones, la inductancia, sin abrir nada."
+    comprobar:
+      - { con: { L_bk: 47e-6 }, dI_bk: 0.207, dV_bk: 0.01035, tol: 0.005 }
+
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Una frecuencia que se mueve"
+    texto: "Al quitar carga a la fuente desconocida, su frecuencia de conmutación cambia. ¿Qué indica?"
+    libro: [282]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: salida, rotulo: "Abajo a la izquierda", rect: [0, 163, 245, 90] }
+    opciones:
+      - texto: "Frecuencia variable, o modo de ráfagas a baja carga"
+        bien: true
+        porque: "Es una de las cuatro observaciones que identifican la topología sin abrir el esquema."
+      - texto: "Que está averiada"
+        porque: "Muchos convertidores lo hacen a propósito para rendir mejor con poca carga."
+      - texto: "Que es una fuente lineal"
+        porque: "Una lineal no conmuta: no tendría frecuencia que cambiar."
+    escalera:
+      - "¿Qué hace un convertidor para ahorrar con poca carga?"
+    solucion: "Modo de frecuencia variable o de ráfagas."
+
+  - id: prediga-receptor
+    tipo: predecir
+    titulo: "El oscilador de un receptor"
+    texto: "En un receptor desconocido, un oscilador se mueve con la sintonía y siempre difiere de la emisora en la misma cantidad. ¿Qué es?"
+    libro: [286, 287]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: inventario, rotulo: "A la derecha", rect: [255, 2, 188, 230] }
+    opciones:
+      - texto: "Un superheterodino, y esa diferencia es su frecuencia intermedia"
+        bien: true
+        porque: "El valor de la FI identifica casi siempre la aplicación: son valores normalizados."
+      - texto: "Un receptor de conversión directa"
+        porque: "En conversión directa el oscilador coincide con la señal."
+      - texto: "Un oscilador de referencia"
+        porque: "El de referencia es fijo; este sigue a la sintonía."
+    escalera:
+      - "¿Qué receptor convierte a una frecuencia fija?"
+    solucion: "Un superheterodino; la diferencia es la FI."
+
+  - id: empareje-audio
+    tipo: pregunta
+    titulo: "La clase de una etapa de audio"
+    texto: "Sin señal, se mira la corriente de reposo y si hay conmutación. Empareje cada observación con la clase."
+    libro: [293, 294]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: inventario, rotulo: "A la derecha", rect: [255, 2, 188, 230] }
+    emparejar:
+      - ["Corriente de reposo alta", "Clase A"]
+      - ["Baja, con distorsión de cruce", "Clase B"]
+      - ["Intermedia y estable", "Clase AB"]
+      - ["Portadora de cientos de kilohercios", "Clase D"]
+    exito: "Con la ganancia, si invierte y la impedancia de salida, la etapa queda descrita."
+    pistas:
+      - { texto: "La distorsión de cruce aparece cuando los transistores no conducen en reposo." }
+    escalera:
+      - "¿Cuánto conducen los transistores sin señal en cada clase?"
+    solucion: "Alta: A. Baja con cruce: B. Intermedia: AB. Portadora: D."
+
+  - id: prediga-polos
+    tipo: predecir
+    titulo: "La pendiente dice el orden"
+    texto: "Barriendo la entrada, la salida de un bloque cae 40 dB por década por encima de su corte. ¿Cuántos polos tiene?"
+    nota: "La curva es de ejemplo."
+    libro: [298, 301]
+    fijar: { n_p: 2, f_p: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -90, max: 5, unidad: dB, rotulo: "G" }
+      curvas:
+        - { expr: "-10*n_p*log10(1 + (nu/f_p)^2)", color: azul, rotulo: "respuesta medida" }
+    opciones:
+      - texto: "Dos: 20 dB por década y por polo"
+        bien: true
+        porque: "Con eso, y los cortes y los picos, se reproduce el bloque sin conocer sus componentes."
+      - texto: "Cuatro, uno por cada 10 dB"
+        porque: "Cada polo aporta 20 dB por década, no 10."
+      - texto: "Uno"
+        porque: "Un polo cae 20 dB por década."
+    escalera:
+      - "¿Cuánto cae un polo por década?"
+    solucion: "Dos polos: 2 × 20 = 40 dB por década."
+    comprobar:
+      - { G_10: -40.1, G_100: -80, tol: 0.005 }
+
+  - id: porque-sonda
+    tipo: porque
+    titulo: "Medir sin desintonizar"
+    texto: "Una sonda de 10 pF sobre un tanque de radiofrecuencia. ¿Por qué falsea la medida?"
+    libro: [303]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: inventario, rotulo: "A la derecha", rect: [255, 2, 188, 230] }
+    opciones:
+      - texto: "Su capacidad se suma a la del tanque y lo desintoniza"
+        bien: true
+        porque: "Se mide un circuito alterado: sonda de baja capacidad, acoplo mínimo o campo cercano."
+      - texto: "Porque la sonda no llega a esas frecuencias"
+        porque: "El problema no es el ancho de banda: es la carga que añade al tanque."
+      - texto: "No la falsea: 10 pF es poco"
+        porque: "Para un tanque de radiofrecuencia, 10 pF es mucho."
+    escalera:
+      - "¿Qué fija la frecuencia de un tanque LC?"
+    solucion: "Porque su capacidad desplaza la resonancia del tanque."
+
+  - id: ordene-cargador
+    tipo: pregunta
+    titulo: "En el banco: un cargador de móvil"
+    texto: "Barato y prescindible: deduzca su topología sin abrirlo del todo. Ordene el ejercicio."
+    libro: [308, 309]
+    widget:
+      tipo: figura
+      figura: fig-54.9
+      zonas:
+        - { id: salida, rotulo: "Abajo a la izquierda", rect: [0, 163, 245, 90] }
+    ordenar:
+      - "Medir el rizado de salida y su frecuencia"
+      - "Mirar la forma de onda"
+      - "Localizar el transformador con la sonda de campo cercano"
+      - "Ver cómo cambia la frecuencia con la carga"
+      - "Abrirlo y comprobar el acierto"
+    exito: "Abrirlo al final es la mejor forma de calibrar el propio criterio."
+    pistas:
+      - { texto: "Abrirlo va al final: es la comprobación." }
+    escalera:
+      - "Primero lo que se mide desde fuera; la prueba, al final."
+    solucion: "Rizado y frecuencia, forma de onda, campo cercano, carga y, al final, abrirlo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [270, 280, 286, 298]
+    ideas:
+      - { titulo: "Frecuencias.", texto: "El inventario con la FFT dice qué hay: red, conmutación, audio, relojes." }
+      - { titulo: "Conmutadas.", texto: "Rizado, nodo de conmutación y frecuencia con la carga: la topología, y hasta la bobina." }
+      - { titulo: "Receptores.", texto: "Un oscilador a distancia fija de la señal: superheterodino." }
+      - { titulo: "Respuesta.", texto: "20 dB por década y por polo: el orden del bloque." }

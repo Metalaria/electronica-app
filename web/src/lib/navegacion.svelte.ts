@@ -188,9 +188,32 @@ function pasos(): { lista: Paso[]; pos: Map<string, number> } {
   return cachePasos;
 }
 
+let cacheConsolas: { indice: Indice; lista: Paso[]; pos: Map<string, number> } | null = null;
+
+/**
+ * 1.2 (consolas-A): the lessons of the «Consolas por dentro» parts (tipo «consola», lib/datos.ts mezclarPartes), one
+ * after another in the course's order: a sequence of their own, apart from the book's (the last section of the book is
+ * not followed by a console, nor a console lesson by the book). Each stop is a lesson (they have no page to read).
+ */
+function pasosConsola(): { lista: Paso[]; pos: Map<string, number> } {
+  const indice = obtenerIndice();
+  if (cacheConsolas?.indice === indice) return cacheConsolas;
+  const lista: Paso[] = [];
+  const pos = new Map<string, number>();
+  for (const [id, p] of Object.entries(indice.partes)) {
+    if (p.tipo !== 'consola') continue;
+    for (const s of p.secciones ?? []) {
+      pos.set(`${id}|${s.label}`, lista.length);
+      lista.push({ parte: id, label: s.label, num: s.num ?? null, titulo: s.titulo, href: `#/leccion/${id}/${encodeURIComponent(s.label)}` });
+    }
+  }
+  cacheConsolas = { indice, lista, pos };
+  return cacheConsolas;
+}
+
 /** The stop before (−1) or after (+1) a section of a part (label null: the part's start). */
 export function pasoVecino(parte: string, label: string | null, delta: -1 | 1): Paso | null {
-  const { lista, pos } = pasos();
+  const { lista, pos } = obtenerIndice().partes[parte]?.tipo === 'consola' ? pasosConsola() : pasos();
   const k = pos.get(`${parte}|${label ?? ''}`) ?? pos.get(`${parte}|`);
   if (k == null) return null;
   return lista[k + delta] ?? null;

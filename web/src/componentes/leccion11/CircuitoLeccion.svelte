@@ -7,6 +7,9 @@
   // the same circuit with the app's ngspice. A prediction hides the readings («¿?») until it is checked. Screen
   // readers get a description of the circuit and, a moment after the values stop changing, the reading in a polite
   // live region.
+  // 1.2: the drawing is wrapped in the living circuit (componentes/leccion12/CircuitoVivo.svelte: particles, wires by
+  // voltage with legend and values, direct manipulation of the parts on the drawing) and the big reading pulses when
+  // it changes.
   import './esquemas11.css';
   import { dibujoDe } from '../../lib/leccion11/esquemas/dibujos';
   import { esquemaDe } from '../../lib/leccion11/esquemas/registro';
@@ -14,8 +17,11 @@
   import { textoPlano } from '../../lib/leccion11/texto';
   import type { Valores } from '../../lib/leccion11/modelo';
   import type { Color, Leccion11, Mando, WidgetCircuito } from '../../lib/leccion11/tipos';
+  import { untrack } from 'svelte';
   import GraficaLeccion from './GraficaLeccion.svelte';
   import Mandos from './Mandos.svelte';
+  import CircuitoVivo from '../leccion12/CircuitoVivo.svelte';
+  import { movimiento } from '../figuras-vivas/carga.svelte';
   import TextoVivo from './TextoVivo.svelte';
 
   let {
@@ -27,6 +33,7 @@
     prefijo,
     valor,
     alMover,
+    manipular = true,
   }: {
     leccion: Leccion11;
     widget: WidgetCircuito;
@@ -38,6 +45,8 @@
     prefijo: string;
     valor: (id: string) => string;
     alMover: (valor: string, x: number) => void;
+    /** 1.2: the parts of the drawing whose value a control moves can be dragged / tapped (CircuitoVivo.svelte). */
+    manipular?: boolean;
   } = $props();
 
   const p = $derived(widget.piezas);
@@ -93,6 +102,19 @@
     return `${def ? def.describir(ctx) : widget.esquema}${lect}`;
   });
 
+  // 1.2: the big reading gives a short pulse when its value changes (the text is always the final value: the tests and
+  // screen readers read it; nothing with «reducir movimiento» or in a prediction)
+  const lecturaTexto = $derived(widget.lectura ? ver(widget.lectura.valor) : '');
+  let pulso = $state(0);
+  let lecturaPrevia = '';
+  $effect(() => {
+    const x = lecturaTexto;
+    untrack(() => {
+      if (lecturaPrevia && x !== lecturaPrevia && !oculto && !movimiento.reducido) pulso++;
+      lecturaPrevia = x;
+    });
+  });
+
   // the reading, spoken once the values settle (not at every step of a slider)
   let hablado = $state('');
   $effect(() => {
@@ -109,11 +131,13 @@
     {#if widget.lectura}
       <div class="cabecera">
         <span class="rot"><TextoVivo texto={widget.lectura.rotulo} {valor} /></span>
-        <span class="lectura" data-lectura={widget.lectura.valor}>{ver(widget.lectura.valor)}</span>
+        {#key pulso}<span class="lectura" class:pulso={pulso > 0} data-lectura={widget.lectura.valor}>{lecturaTexto}</span>{/key}
       </div>
     {/if}
     {#if Dibujo && def && widget.dibujo !== false}
-      <Dibujo c={ctx} {widget} vuelta={duracion} {dur} {descripcion} />
+      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} {manipular} {alMover}>
+        <Dibujo c={ctx} {widget} vuelta={duracion} {dur} {descripcion} />
+      </CircuitoVivo>
     {/if}
     {#if widget.barras?.length}
       <div class="barras">
@@ -177,6 +201,20 @@
     color: var(--v11-naranja-texto);
     font: 700 34px/1.1 var(--v11-titular);
     font-variant-numeric: tabular-nums;
+  }
+  /* 1.2: the reading's pulse when it changes */
+  .lectura.pulso {
+    animation: pulso11 0.32s ease-out;
+  }
+  @keyframes pulso11 {
+    from {
+      transform: scale(1.06);
+      color: var(--v11-tinta);
+    }
+  }
+  .lectura {
+    display: inline-block;
+    transform-origin: right center;
   }
   .barras {
     display: flex;

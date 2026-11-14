@@ -1,0 +1,222 @@
+# «Consolas por dentro» · Neo Geo AES 3: un cristal de 24 MHz. Los divisores del libro (sección 38.14: 68000 = 24 ÷ 2,
+# Z80 = 24 ÷ 6, píxel = 24 ÷ 4; 384 × 264 ciclos por cuadro y 59,19 Hz) y quién los genera en la placa de 1990 (un
+# 74LS161 y dos 74F74 para 12 y 6 MHz; el LSPC-A0 para 8 y 4 MHz). Fuentes: el libro (cap37) y los datos de la consola
+# (neogeo#n: explorador, arquitectura, esquemas MV4 de SNK).
+leccion: consola-neogeo/neogeo-relojes
+
+libro:
+  "neogeo#3": "Z80 a 4 MHz (reloj 4M del LSPC)"
+  "neogeo#4": "OPNB a 8 MHz"
+  "neogeo#5": "genera los relojes de 8 MHz (patilla 109, YM2610) y 4 MHz (patilla 112, Z80)"
+  "neogeo#18": "un 74LS161 y dos 74F74 dan 68KCLK (12 MHz, el 68000), 6MB (píxel, 6 MHz) y 1HB"
+  "neogeo#66": "Cristal de 24 MHz"
+  "cap37#543": "Y su reloj sale de un solo cristal de 24 MHz"
+  "cap37#544": "12 MHz"
+  "cap37#545": "4 MHz"
+  "cap37#546": "6 MHz"
+  "cap37#547": "Con 384 puntos por línea y 264 líneas"
+  "cap37#548": "384 × 264 = 101 376 ciclos por cuadro"
+  "cap37#549": "59,19 Hz"
+  "cap37#133": "Un contador que incrementa en cada flanco del reloj"
+  "cap37#557": "a seis millones de píxeles por segundo exige un cauce de datos que solo cabía integrándolo"
+  "neogeo#17": "Cristal «…79545» (3,579545 MHz, legible)"
+
+modelo:
+  valores:
+    X: { sim: "f_{X1}", nombre: "cristal maestro", unidad: Hz, valor: 24000000 }
+    n: { sim: "n", nombre: "divisor", unidad: "", valor: 2 }
+    H: { sim: "H", nombre: "puntos por línea", unidad: "", valor: 384 }
+    V: { sim: "V", nombre: "líneas por cuadro", unidad: "", valor: 264 }
+  calculos:
+    f_div: { expr: "X/n", sim: "f_{X1} / n", nombre: "reloj dividido", unidad: Hz, cifras: 3 }
+    f_cuadro: { expr: "X/4/(H*V)", sim: "f_{cuadro}", nombre: "cuadros por segundo", unidad: Hz, cifras: 4 }
+    f_mal1: { expr: "X/(H*V)", sim: "f_{X1} / (H V)", nombre: "cristal sin dividir entre ciclos (error)", unidad: Hz, cifras: 4 }
+    f_mal2: { expr: "X/2/(H*V)", sim: "12 MHz / (H V)", nombre: "reloj del 68000 entre ciclos (error)", unidad: Hz, cifras: 4 }
+    f_linea: { expr: "X/4/H", sim: "f_{línea}", nombre: "líneas por segundo (error)", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-reloj
+    tipo: explorar
+    titulo: "Un cristal, cuatro relojes"
+    texto: "Toque el cristal, el LSPC y los tres chips que reciben un reloj distinto."
+    libro: ["neogeo#66", "neogeo#18", "neogeo#5", "cap37#543"]
+    requiere: { mover: [reloj, lspc, m68k, z80, ym] }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: reloj, hotspot: reloj, rotulo: "Cristal X1", texto: "24 MHz; aquí queda bajo los cables." }
+        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0", texto: "Saca 8 MHz para el YM2610 y 4 MHz para el Z80." }
+        - { id: m68k, hotspot: 68k, rotulo: "68000", texto: "12 MHz, de un divisor TTL." }
+        - { id: z80, hotspot: z80, rotulo: "Z80", texto: "4 MHz, del LSPC." }
+        - { id: ym, hotspot: ym2610, rotulo: "YM2610", texto: "8 MHz, del LSPC." }
+
+  - id: prediga-z80
+    tipo: predecir
+    titulo: "¿Quién da el reloj del Z80?"
+    texto: "El 68000 recibe sus 12 MHz de un divisor TTL. ¿Y los 4 MHz del Z80?"
+    libro: ["neogeo#3", "neogeo#5", "neogeo#18"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0" }
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+    opciones:
+      - texto: "El LSPC-A0, el chip de vídeo."
+        bien: true
+        porque: "El LSPC-A0 genera los 8 MHz del YM2610 y los 4 MHz del Z80 por dos de sus patillas."
+      - texto: "El mismo divisor TTL del 68000."
+        porque: "El 74LS161 y los 74F74 dan 12 y 6 MHz. Los 8 y 4 MHz salen del LSPC."
+      - texto: "Un cristal propio, como el sonido de la SNES."
+        porque: "No hay cristal aparte: todo sale de los 24 MHz, y el de 4 MHz lo da el LSPC."
+    escalera:
+      - "Lea la ficha del LSPC-A0."
+    solucion: "El LSPC-A0: saca 4 MHz (patilla 112) para el Z80."
+
+  - id: formula-68000
+    tipo: formula
+    titulo: "El reloj del 68000"
+    texto: "Mueva el divisor: con 2 sale el reloj del 68000."
+    libro: ["cap37#544", "cap37#543", "cap37#133"]
+    ec: "cap37#544"
+    sustitucion: "{{X}} / {{n}} = {{f_div}}"
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 8, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 25000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "X/k", color: azul, rotulo: "24 MHz / divisor", palitos: true }
+      marcas:
+        - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
+      mandos: [ { valor: n, min: 1, max: 8, paso: 1, rotulo: "Divisor, n" } ]
+
+  - id: ajuste-pixel
+    tipo: ajuste
+    titulo: "El reloj de píxel"
+    texto: "Ajuste el divisor hasta el reloj de píxel: 6 MHz."
+    libro: ["cap37#546", "neogeo#18"]
+    inicio: { n: 2 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 8, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 25000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "X/k", color: azul, rotulo: "24 MHz / divisor", palitos: true }
+      marcas:
+        - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
+      mandos: [ { valor: n, min: 1, max: 8, paso: 1, rotulo: "Divisor, n" } ]
+    ajuste:
+      valor: f_div
+      objetivo: 6000000
+      tol: 0.005
+      rotulo: "Reloj de píxel"
+      bajo: "Demasiado lento: baje el divisor."
+      alto: "Demasiado rápido: suba el divisor."
+      dentro: "24 MHz ÷ 4: un píxel cada ciclo."
+    exito: "24 MHz ÷ 4 = 6 MHz: seis millones de píxeles por segundo."
+    escalera:
+      - "Es el doble de divisor que el del 68000."
+    solucion: "n = 4: 24 MHz ÷ 4 = 6 MHz."
+    comprobar:
+      - { con: { n: 4 }, f_div: 6000000 }
+
+  - id: simule-cuadro
+    tipo: simular
+    titulo: "Cuadros por segundo"
+    texto: "Cada cuadro son 384 puntos por línea y 264 líneas, a 6 MHz. ¿Cuántos cuadros por segundo?"
+    libro: ["cap37#547", "cap37#548", "cap37#549"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: v, min: 200, max: 320, unidad: "", rotulo: "líneas por cuadro" }
+      y: { min: 40, max: 80, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "X/4/(H*v)", color: azul, rotulo: "6 MHz ÷ (384 · líneas)" }
+    simular:
+      objetivo: f_cuadro
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Cuadros por segundo, f_{cuadro}"
+      errores:
+        - { expr: "X/(H*V)", texto: "Ha dividido el cristal de 24 MHz. Los puntos van al reloj de píxel, 6 MHz." }
+        - { expr: "X/2/(H*V)", texto: "Esos 12 MHz son los del 68000. Los puntos van a 6 MHz." }
+        - { expr: "X/4/H", texto: "Eso son líneas por segundo: falta dividir entre las 264 líneas." }
+    exito: "6 000 000 ÷ 101 376 = 59,19 Hz."
+    escalera:
+      - "Primero los ciclos por cuadro: 384 × 264."
+    solucion: "6 MHz ÷ (384 × 264) = 59,19 Hz."
+    comprobar:
+      - { f_cuadro: 59.19, f_mal1: 236.7, f_mal2: 118.4, f_linea: 15625 }
+
+  - id: por-que-asic
+    tipo: porque
+    titulo: "Seis millones de píxeles"
+    texto: "El reloj de píxel es de 6 MHz. ¿Por qué el vídeo tuvo que ir en chips a medida?"
+    libro: ["cap37#557", "cap37#546"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0" }
+    opciones:
+      - texto: "Elegir y escalar 96 sprites por línea a ese ritmo solo cabía integrado."
+        bien: true
+        porque: "Con lógica de catálogo habría ocupado una placa entera y gastado decenas de vatios."
+      - texto: "Porque 6 MHz es demasiado rápido para cualquier chip de 1990."
+        porque: "El 68000 ya iba a 12 MHz. El problema era la cantidad de trabajo por píxel, no la frecuencia."
+      - texto: "Para que nadie copiara la consola."
+        porque: "El libro da otra razón: el cauce de datos del vídeo solo cabía integrándolo."
+    escalera:
+      - "¿Cuántos sprites hay que evaluar en cada línea?"
+    solucion: "El cauce de datos del vídeo, a seis millones de píxeles por segundo, solo cabía en un ASIC."
+
+  - id: empareje-relojes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada reloj, su chip"
+    texto: "Empareje cada reloj con quien lo usa."
+    libro: ["cap37#544", "cap37#545", "cap37#546", "neogeo#4"]
+    emparejar:
+      - ["12 MHz", "El 68000"]
+      - ["4 MHz", "El Z80"]
+      - ["6 MHz", "Un píxel por ciclo"]
+      - ["8 MHz", "El YM2610"]
+    exito: "Cuatro relojes del mismo cristal de 24 MHz."
+    pistas:
+      - { texto: "El Z80 es la CPU más lenta; el 68000, la más rápida." }
+    escalera:
+      - "Divida 24 MHz entre 2, 3, 4 y 6."
+    solucion: "12 MHz: 68000. 4 MHz: Z80. 6 MHz: píxel. 8 MHz: YM2610."
+
+  - id: toque-cristal
+    tipo: tocar
+    titulo: "Un cristal escondido"
+    texto: "Toque dónde está el cristal de 24 MHz, aunque en la foto lo tapan los cables."
+    libro: ["neogeo#66", "neogeo#18", "neogeo#17"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: reloj, hotspot: reloj, rotulo: "Zona con cables, arriba a la izquierda" }
+        - { id: enc, hotspot: enc, rotulo: "Cristal pequeño, a la izquierda" }
+        - { id: pl241s, hotspot: pl241s, rotulo: "Placa añadida, a la derecha" }
+    tocar:
+      bien: [reloj]
+      porque:
+        enc: "Ese cristal es de 3,579545 MHz: la subportadora de color del codificador."
+        pl241s: "La PL241S lleva otro cristal; su función no está confirmada."
+    exito: "X1, bajo los cables: el cristal del que salen todos los relojes."
+    escalera:
+      - "Busque la serigrafía «X1»."
+    solucion: "Arriba a la izquierda, bajo los cables: X1, 24 MHz."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap37#543", "cap37#544", "cap37#549", "neogeo#5"]
+    ideas:
+      - { titulo: "Un cristal.", texto: "24 MHz para toda la consola." }
+      - { titulo: "Dividir.", texto: "12 MHz al 68000, 6 MHz al píxel, 8 y 4 MHz al sonido." }
+      - { titulo: "Dos divisores.", texto: "TTL para 12 y 6 MHz; el LSPC para 8 y 4 MHz." }
+      - { titulo: "El cuadro.", texto: "384 × 264 ciclos a 6 MHz: 59,19 Hz." }

@@ -1,0 +1,285 @@
+# Lección 1.2 de la sección 25.4 «El Transistor BJT por Dentro» (cap26; etiqueta interna sec-26.4).
+# Formato: contenido/lecciones11/GUIA.md. La exponencial de Ebers-Moll se explora como I_C = 1 mA · e^(ΔV_BE/V_T)
+# (V_T = 25,85 mV, bloque 119): así no hace falta inventar un I_S. La etapa en pequeña señal es el esquema
+# «fuente-controlada» (VCCS g_m·v con r_o, la mitad de salida del híbrido en π, figura 25.6) cargada con R_C; r_o = 1 GΩ
+# hace de «r_o mucho mayor que R_C» (condición del bloque 127). La ganancia se lee en módulo (el libro: A_v = −g_m·R_C;
+# el esquema dibuja la fuente hacia la salida). v = 1 mV de control es un ejemplo de señal pequeña. I_C = 0,5 mA del
+# reto es un ejemplo mío; la meta de unos 97 es la del libro (2,5 V en R_C).
+leccion: cap26/sec-26.4
+
+libro:
+  100: "Gummel-Poon"
+  101: "son aproximaciones sucesivas"
+  106: "la corriente de colector depende exponencialmente de V"
+  108: "en 60 mV multiplica por diez la corriente"
+  113: "β es alto porque la base es fina"
+  114: "la zona de agotamiento del colector invade la base y la estrecha"
+  115: "las dos zonas de agotamiento se tocan"
+  119: "vale 25,85 mV a 300 K"
+  121: 'g_(m) = (d I_("C"))/(d V_("BE"))'
+  122: "la transconductancia no depende del transistor, solo de la corriente"
+  124: 'r_("π") = (v_("be"))/(i_("b")) = (β)/(g_(m))'
+  126: "38,7 mS"
+  127: "la ganancia es de unos 97, sea cual sea el transistor"
+  129: "es el modelo que usa SPICE"
+
+modelo:
+  valores:
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    D_v: { sim: "ΔV_{BE}", nombre: "subida de V_BE", unidad: V, valor: 0 }
+    I_C: { sim: "I_{C}", nombre: "corriente de colector", unidad: A, valor: 0.001 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    R_C: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 2500 }
+    r_o: { sim: "r_{o}", nombre: "resistencia de salida", unidad: Ω, valor: 1000000000 }
+    v_c: { sim: "v_{be}", nombre: "señal de entrada", unidad: V, valor: 0.001 }
+  calculos:
+    I_x: { expr: "0.001*exp(D_v/V_T)", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    g_m: { expr: "I_C/V_T", sim: "g_{m}", nombre: "transconductancia", unidad: S }
+    r_pi: { expr: "beta/g_m", sim: "r_{π}", nombre: "resistencia de entrada", unidad: Ω }
+    r_1: { expr: "1/g_m", sim: "1/g_{m}", nombre: "inversa de g_m", unidad: Ω }
+    r_b: { expr: "beta*beta/g_m", sim: "β²/g_{m}", nombre: "β de más", unidad: Ω }
+    I_g: { expr: "g_m*v_c", sim: "g_{m} · v", nombre: "corriente controlada", unidad: A }
+    v_o: { expr: "I_g*par(r_o, R_C)", sim: "v_{o}", nombre: "señal de salida", unidad: V }
+    A_v: { expr: "v_o/v_c", sim: "|A_{v}|", nombre: "ganancia en módulo", unidad: "", cifras: 3 }
+    I_L: { expr: "v_o/R_C", sim: "i_{c}", nombre: "corriente por R_C", unidad: A }
+    I_ro: { expr: "v_o/r_o", sim: "i_{ro}", nombre: "corriente por r_o", unidad: A }
+    V_RC: { expr: "I_C*R_C", sim: "I_{C} · R_{C}", nombre: "caída en R_C", unidad: V }
+
+tarjetas:
+  - id: explore-exponencial
+    tipo: explorar
+    titulo: "La exponencial de la base"
+    texto: "Corriente de colector partiendo de 1 mA. Suba V_{BE} 60 mV y mire la corriente."
+    nota: "Escala logarítmica en el eje vertical."
+    libro: [106, 108, 119]
+    widget:
+      tipo: grafica
+      x: { id: dv, min: -0.12, max: 0.12, unidad: V, rotulo: "ΔV_{BE}" }
+      y: { min: 0.00001, max: 0.1, unidad: A, rotulo: "I_{C}", escala: log }
+      curvas:
+        - { expr: "0.001*exp(dv/V_T)", color: naranja, rotulo: "I_{C}" }
+      marcas:
+        - { x: "D_v", y: "I_x", rotulo: "{{I_x}}" }
+      lectura: { valor: I_x, rotulo: "Corriente de colector" }
+      mandos:
+        - { valor: D_v, min: -0.12, max: 0.12, paso: 0.01, rotulo: "Subida de V_{BE}" }
+    requiere: { mover: [D_v] }
+
+  - id: prediga-gm
+    tipo: predecir
+    titulo: "La transconductancia"
+    texto: "Un BJT trabaja con 1 mA de colector. ¿Cuánto vale su g_{m}?"
+    libro: [119, 122, 126]
+    fijar: { I_C: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: ic, min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 0.4, unidad: S, rotulo: "g_{m}" }
+      curvas:
+        - { expr: "ic/V_T", color: azul, rotulo: "g_{m}" }
+      lectura: { valor: g_m, rotulo: "g_{m} con 1 mA" }
+      ocultar: true
+    opciones:
+      - texto: "38,7 mS, sea cual sea el transistor"
+        bien: true
+        porque: "g_{m} = I_{C}/V_{T} = 1 mA/25,85 mV: solo depende de la corriente."
+      - texto: "Depende de su β"
+        porque: "La β entra en r_{π}, no en g_{m}. Dos BJT distintos a la misma corriente tienen la misma g_{m}."
+      - texto: "1 mS"
+        porque: "Eso sería dividir 1 mA entre 1 V. La tensión que manda es V_{T}, unos 26 mV."
+    escalera:
+      - "Derive la exponencial: g_{m} = dI_{C}/dV_{BE}."
+    solucion: "g_{m} = 1 mA / 25,85 mV = 38,7 mS."
+    comprobar:
+      - { g_m: 0.0387, tol: 0.001 }
+
+  - id: formula-gm
+    tipo: formula
+    titulo: "Derivar es linealizar"
+    texto: "g_{m} sale de derivar la exponencial en el punto de trabajo. Cambie la corriente."
+    libro: [121]
+    ec: 121
+    sustitucion: "{{I_C}} / {{V_T}} = {{g_m}}"
+    widget:
+      tipo: grafica
+      x: { id: ic, min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 0.4, unidad: S, rotulo: "g_{m}" }
+      curvas:
+        - { expr: "ic/V_T", color: azul, rotulo: "g_{m}" }
+      asas:
+        - { mueve: I_C, x: "I_C", y: "g_m", rotulo: "Su punto de trabajo" }
+      lectura: { valor: g_m, rotulo: "g_{m}" }
+      mandos:
+        - { valor: I_C, min: 0.0005, max: 0.01, paso: 0.0005, rotulo: "I_{C}" }
+
+  - id: prediga-rpi
+    tipo: predecir
+    titulo: "La resistencia de entrada"
+    texto: "Con 1 mA y β = 100, ¿cuánto vale r_{π}?"
+    libro: [124, 126]
+    fijar: { I_C: 0.001, beta: 100 }
+    widget:
+      tipo: grafica
+      x: { id: ic, min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 0.4, unidad: S, rotulo: "g_{m}" }
+      curvas:
+        - { expr: "ic/V_T", color: azul, rotulo: "g_{m}" }
+      lectura: { valor: r_pi, rotulo: "r_{π}" }
+      ocultar: true
+    opciones:
+      - texto: "2585 Ω"
+        bien: true
+        porque: "r_{π} = β/g_{m} = 100/38,7 mS: la base ve β veces la resistencia 1/g_{m}."
+      - texto: "25,85 Ω"
+        porque: "Eso es 1/g_{m}, lo que se ve desde el emisor. Desde la base se multiplica por β."
+      - texto: "258,5 kΩ"
+        porque: "Sobra una β: r_{π} = β/g_{m}, no β²/g_{m}."
+    escalera:
+      - "i_{b} = i_{c}/β, así que r_{π} = v_{be}/i_{b} = β/g_{m}."
+    solucion: "r_{π} = 100/38,7 mS ≈ 2585 Ω."
+    comprobar:
+      - { r_pi: 2585, r_1: 25.85, r_b: 258500, tol: 0.001 }
+
+  - id: explore-etapa
+    tipo: explorar
+    titulo: "Una etapa en pequeña señal"
+    texto: "La fuente g_{m} · v_{be} carga R_{C}. Cambie la corriente y R_{C}, y mire la caída I_{C} · R_{C} junto a la ganancia."
+    libro: [122, 127]
+    inicio: { I_C: 0.001, R_C: 1000 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C }
+      lectura: { valor: A_v, rotulo: "Ganancia, |v_{o}/v_{be}|" }
+      datos:
+        - { valor: V_RC, rotulo: "Caída en R_{C}: {{V_RC}}" }
+        - { valor: g_m, rotulo: "g_{m} = {{g_m}}" }
+      corriente: I_L
+      mide: { salida: v_o, carga: I_L, controlada: I_g, ro: I_ro }
+      mandos:
+        - { valor: I_C, lista: [0.0005, 0.001, 0.0025], rotulo: "I_{C}" }
+        - { valor: R_C, lista: [1000, 2500, 5000], rotulo: "R_{C}" }
+    requiere: { mover: [I_C, R_C] }
+
+  - id: reto-ganancia
+    tipo: reto
+    titulo: "Una ganancia de unos 97"
+    texto: "Con 0,5 mA de colector, elija R_{C} (E24) para una ganancia de unos 97."
+    libro: [127]
+    fijar: { I_C: 0.0005, beta: 100 }
+    inicio: { R_C: 2000 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C }
+      lectura: { valor: A_v, rotulo: "Ganancia, |v_{o}/v_{be}|" }
+      datos:
+        - { valor: V_RC, rotulo: "Caída en R_{C}: {{V_RC}}" }
+      corriente: I_L
+      mide: { salida: v_o, carga: I_L, controlada: I_g, ro: I_ro }
+      mandos:
+        - { valor: R_C, serie: E24, min: 1000, max: 10000, rotulo: "R_{C} (E24)" }
+    condiciones:
+      - { valor: A_v, objetivo: 97, tol: 0.02, rotulo: "Ganancia: {{A_v}}" }
+    exito: "La caída en R_{C} vuelve a ser de unos 2,5 V: es lo único que fija la ganancia."
+    pistas:
+      - { cuando: { valor: A_v, mayor: 98.94 }, texto: "Demasiada ganancia: sobra caída en R_{C}. Bájela." }
+      - { cuando: { valor: A_v, menor: 95.06 }, texto: "Falta ganancia: hace falta más caída en R_{C}. Súbala." }
+    escalera:
+      - "La ganancia es I_{C} · R_{C}/V_{T}: busque 2,5 V de caída."
+    solucion: "2,5 V/0,5 mA = 5 kΩ: en E24, 5,1 kΩ da {{A_v}}."
+    comprobar:
+      - { con: { R_C: 5100 }, A_v: 98.6, tol: 0.01 }
+      - { con: { R_C: 5000 }, R_C: 5000 }
+
+  - id: sorpresa-transistor
+    tipo: sorpresa
+    titulo: "Otro transistor, la misma ganancia"
+    texto: "Con 1 mA y 2,5 kΩ, cambie de transistor: su β. Mire la ganancia y r_{π}."
+    libro: [122, 127]
+    fijar: { I_C: 0.001, R_C: 2500 }
+    inicio: { beta: 100 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C }
+      lectura: { valor: A_v, rotulo: "Ganancia, |v_{o}/v_{be}|" }
+      datos:
+        - { valor: r_pi, rotulo: "r_{π} = {{r_pi}}" }
+      corriente: I_L
+      mide: { salida: v_o, carga: I_L, controlada: I_g, ro: I_ro }
+      mandos:
+        - { valor: beta, lista: [50, 100, 200], rotulo: "β del transistor" }
+    requiere: { mover: [beta] }
+    comprobar:
+      - { V_RC: 2.5, A_v: 96.7, tol: 0.01 }
+
+  - id: por-que-ganancia
+    tipo: porque
+    titulo: "¿Por qué no cambia?"
+    texto: "Con otro transistor, de otra β, la ganancia no cambia. ¿Por qué?"
+    libro: [122, 127]
+    fijar: { I_C: 0.001, R_C: 2500 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C }
+      lectura: { valor: A_v, rotulo: "Ganancia, |v_{o}/v_{be}|" }
+      corriente: I_L
+      mide: { salida: v_o, carga: I_L, controlada: I_g, ro: I_ro }
+    opciones:
+      - texto: "A_{v} = g_{m} · R_{C} = I_{C} · R_{C}/V_{T}: solo depende de la caída en R_{C}"
+        bien: true
+        porque: "Con 2,5 V de caída, unos 97 sea cual sea el transistor, mientras r_{o} y la carga sean mucho mayores que R_{C}."
+      - texto: "Porque la β de todos los transistores es igual"
+        porque: "La β varía entre unidades hasta un factor tres o cuatro. Simplemente no entra en la ganancia."
+      - texto: "Porque la ganancia la fija r_{π}"
+        porque: "r_{π} sí cambia con β; la ganancia de la etapa sale de g_{m}, que no la lleva."
+    escalera:
+      - "¿De qué depende g_{m}?"
+    solucion: "A_{v} = I_{C} · R_{C}/V_{T}: 2,5 V/25,85 mV ≈ 97."
+
+  - id: empareje-modelos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada modelo, para una pregunta"
+    texto: "Ninguno es «el verdadero». Una cada modelo con aquello para lo que sirve."
+    libro: [100, 101, 129]
+    emparejar:
+      - ["Interruptor", "Diseño digital y conmutación"]
+      - ["Corriente controlada por corriente, β", "Cálculo de polarización"]
+      - ["Híbrido en π", "Pequeña señal y alta frecuencia"]
+      - ["Gummel-Poon", "Simulación con precisión: SPICE"]
+    exito: "Son aproximaciones sucesivas; usar la equivocada es una fuente de confusión frecuente."
+    pistas:
+      - { texto: "La g_{m} vive en el modelo de pequeña señal." }
+    escalera:
+      - "SPICE usa el modelo más completo, el que añade la alta inyección y el efecto Early."
+    solucion: "Interruptor–digital, β–polarización, híbrido en π–pequeña señal, Gummel-Poon–SPICE."
+
+  - id: empareje-base
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que pasa en la base"
+    texto: "Una cada hecho con su causa en la base."
+    libro: [113, 114, 115]
+    emparejar:
+      - ["β alta", "La base es fina: pocos portadores se recombinan en ella"]
+      - ["Efecto Early", "La zona del colector invade la base y la estrecha"]
+      - ["Perforación (punch-through)", "Las dos zonas de agotamiento se tocan"]
+    exito: "Una base más fina da más β y más velocidad, hasta el límite de la perforación."
+    pistas:
+      - { texto: "Los portadores que se recombinan en la base son la corriente de base." }
+    escalera:
+      - "El Early y la perforación son la misma invasión, en pequeño y en extremo."
+    solucion: "β–base fina, Early–invade, perforación–se tocan."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [106, 108, 122, 127]
+    ideas:
+      - { titulo: "Ebers-Moll.", texto: "I_{C} depende exponencialmente de V_{BE}: 60 mV más, diez veces más corriente." }
+      - { titulo: "g_{m} = I_{C}/V_{T}.", texto: "Solo depende de la corriente: 38,7 mS con 1 mA." }
+      - { titulo: "r_{π} = β/g_{m}.", texto: "Aquí sí entra la β." }
+      - { titulo: "A_{v} = −I_{C} · R_{C}/V_{T}.", texto: "Con 2,5 V en R_{C}, unos 97, sea cual sea el transistor." }

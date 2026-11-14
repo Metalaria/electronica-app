@@ -1,0 +1,234 @@
+# Lección 1.2 de la sección 35.8 «Conversores en los Proyectos del Libro» (cap34; etiqueta interna sec-34.8).
+# Formato: contenido/lecciones11/GUIA.md (§10.6, «banco»). El escalón es V_ref/2ⁿ con las dos referencias del Arduino
+# (5 V y la interna de 1,1 V); el osciloscopio, 8 bits con la señal en una de ocho divisiones. El paso de banco es el
+# del libro: la entrada del Arduino a masa, mil muestras, la desviación típica y el ENOB; lo esperado son los 8 o 9 bits
+# que el libro dice que suelen quedar.
+leccion: cap34/sec-34.8
+
+libro:
+  219: "10 bits, aproximaciones sucesivas, con referencia igual a la alimentación por defecto"
+  220: "4,88 mV por paso con 5 V"
+  221: "Su limitación real no son los 10 bits sino la referencia"
+  222: "suele quedarse en 8 o 9 bits por el ruido del propio microcontrolador"
+  224: "su linealidad es mediocre, con un INL apreciable"
+  226: "12 bits con mala linealidad miden peor que 10 bien hechos"
+  228: "8 bits, que sorprende a quien espera más de un instrumento de medida"
+  229: "a cientos de megamuestras por segundo, 8 bits es lo que la tecnología permite a coste razonable"
+  230: "con la señal ocupando una división de las ocho, solo se usan 32 de los 256 niveles"
+  233: "integra durante un múltiplo del periodo de red"
+  234: "un multímetro de banco dé lecturas estables donde un osciloscopio muestra ruido"
+  236: "Sensores, con calibración"
+  239: "entrada a masa y mil muestras"
+  240: "el resultado suele estar dos bits por debajo del nominal"
+  241: "Los convertidores de los proyectos del libro situados por velocidad y bits efectivos"
+
+modelo:
+  valores:
+    V_ref: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 5 }
+    n_p: { sim: "n", nombre: "bits", unidad: "", valor: 10 }
+    d_v: { sim: "divisiones", nombre: "divisiones que ocupa la señal", unidad: "", valor: 1 }
+    E_a: { sim: "ENOB", nombre: "bits efectivos que suelen quedar", unidad: bits, valor: 8.5 }
+  calculos:
+    LSB: { expr: "V_ref/2^n_p", sim: "LSB", nombre: "escalón", unidad: V }
+    N_cod: { expr: "2^n_p", sim: "2ⁿ", nombre: "códigos", unidad: "" }
+    N_u: { expr: "2^n_p*d_v/8", sim: "niveles", nombre: "niveles usados", unidad: "" }
+
+tarjetas:
+  - id: explore-plataformas
+    tipo: explorar
+    titulo: "Cuatro convertidores"
+    texto: "Los proyectos del libro usan convertidores muy distintos. Toque cada uno: velocidad y bits efectivos."
+    libro: [241, 236]
+    widget:
+      tipo: figura
+      figura: fig-34.10
+      zonas:
+        - { id: multimetro, rotulo: "Arriba a la izquierda", rect: [52, 30, 90, 62], texto: "Multímetro: doble rampa o sigma-delta, de 4½ a 6½ dígitos, lento y exacto." }
+        - { id: arduino, rotulo: "Abajo, a la izquierda del centro", rect: [135, 118, 75, 42], texto: "Arduino: 10 bits SAR, de 8 a 9 efectivos; para sensores lentos." }
+        - { id: esp32, rotulo: "En el centro", rect: [195, 66, 92, 56], texto: "ESP32: 12 bits, más rápido, con mala linealidad: sensores, con calibración." }
+        - { id: osciloscopio, rotulo: "A la derecha", rect: [350, 105, 85, 72], texto: "Osciloscopio: 8 bits a gigamuestras, para ver formas de onda." }
+    requiere: { mover: [arduino, osciloscopio] }
+
+  - id: explore-escalon
+    tipo: explorar
+    titulo: "El escalón del Arduino"
+    texto: "Su referencia es la alimentación de 5 V por defecto, o la interna de 1,1 V. Cambie la referencia y los bits."
+    libro: [219, 220, 221]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 8, max: 12, unidad: "", rotulo: "bits" }
+      y: { min: 0.0001, max: 0.03, unidad: V, rotulo: "LSB", escala: log }
+      curvas:
+        - { expr: "V_ref/2^nx", color: azul, rotulo: "Escalón" }
+      marcas:
+        - { x: "n_p", y: "LSB", rotulo: "Su ADC" }
+      lectura: { valor: LSB, rotulo: "Un LSB" }
+      mandos:
+        - { valor: V_ref, lista: [1.1, 5], nombres: [interna, alimentación], rotulo: "Referencia" }
+        - { valor: n_p, lista: [8, 10, 12], rotulo: "Bits" }
+    requiere: { mover: [V_ref] }
+
+  - id: prediga-arduino
+    tipo: predecir
+    titulo: "10 bits con 5 V"
+    texto: "El ADC del Arduino tiene 10 bits y usa la alimentación de 5 V como referencia. ¿Cuánto vale un paso?"
+    libro: [219, 220]
+    fijar: { V_ref: 5, n_p: 10 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 8, max: 12, unidad: "", rotulo: "bits" }
+      y: { min: 0.0001, max: 0.03, unidad: V, rotulo: "LSB", escala: log }
+      curvas:
+        - { expr: "V_ref/2^nx", color: azul, rotulo: "Escalón" }
+      lectura: { valor: LSB, rotulo: "Un LSB" }
+      ocultar: true
+    opciones:
+      - { texto: "4,88 mV", bien: true, porque: "5 V entre 1 024 códigos." }
+      - { texto: "1,07 mV", porque: "Eso sería con la referencia interna de 1,1 V; por defecto es la alimentación, 5 V." }
+      - { texto: "19,5 mV", porque: "Eso sería con 8 bits, 256 códigos; con 10, cuatro veces menos." }
+    escalera: ["2¹⁰ = 1 024 códigos."]
+    solucion: "5 V / 1 024 = 4,88 mV."
+    comprobar:
+      - { LSB: 0.00488, N_cod: 1024 }
+      - { con: { n_p: 8 }, LSB: 0.0195 }
+      - { con: { V_ref: 1.1 }, LSB: 0.00107 }
+
+  - id: pregunta-referencia
+    tipo: pregunta
+    titulo: "Lo que limita al Arduino"
+    texto: "¿Cuál es la limitación real del ADC del Arduino?"
+    libro: [221]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 8, max: 12, unidad: "", rotulo: "bits" }
+      y: { min: 0.0001, max: 0.03, unidad: V, rotulo: "LSB", escala: log }
+      curvas:
+        - { expr: "V_ref/2^nx", color: azul, rotulo: "Escalón" }
+      lectura: { valor: LSB, rotulo: "Un LSB" }
+    opciones:
+      - { texto: "Su referencia: la alimentación, cuya variación pasa íntegra a la medida", bien: true, porque: "Con la referencia interna de 1,1 V mejora la estabilidad, a cambio de reducir el margen." }
+      - { texto: "Sus 10 bits", porque: "El libro dice que su limitación real no son los 10 bits." }
+      - { texto: "Su velocidad", porque: "Unas 10 000 conversiones por segundo bastan para sensores lentos." }
+    escalera: ["Si la alimentación varía, ¿qué le pasa a cada escalón?"]
+    solucion: "La referencia: es la alimentación."
+
+  - id: estime-osciloscopio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una división de ocho"
+    texto: "Un osciloscopio de 8 bits muestra una señal que ocupa una sola de sus ocho divisiones. ¿Cuántos niveles usa?"
+    libro: [228, 230]
+    fijar: { n_p: 8, d_v: 1 }
+    estimar:
+      objetivo: "N_u"
+      unidad: niveles
+      min: 0
+      max: 256
+      paso: 1
+      inicio: 200
+      tol: 0.05
+      rotulo: "Niveles usados"
+    exito: "32 de 256: escalar bien la señal multiplica por ocho la resolución efectiva."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 34 }, texto: "Se ha pasado: es una octava parte de los 256 niveles." }
+      - { texto: "Se ha quedado corto: 256 entre 8." }
+    escalera: ["2⁸ = 256 niveles en ocho divisiones."]
+    solucion: "256/8 = 32 niveles."
+    comprobar:
+      - { N_u: 32 }
+
+  - id: porque-ocho-bits
+    tipo: porque
+    titulo: "Solo 8 bits"
+    texto: "¿Por qué un instrumento como el osciloscopio se conforma con 8 bits?"
+    libro: [229]
+    widget:
+      tipo: figura
+      figura: fig-34.10
+      zonas:
+        - { id: osciloscopio, rotulo: "A la derecha", rect: [350, 105, 85, 72] }
+    opciones:
+      - { texto: "A cientos de megamuestras, 8 bits es lo que la tecnología permite a coste razonable", bien: true, porque: "Es el compromiso velocidad-resolución; y para ver formas de onda basta." }
+      - { texto: "Porque el ojo no distingue más", porque: "Escalar la señal multiplica la resolución efectiva: los bits sí se notan." }
+      - { texto: "Porque es un instrumento barato", porque: "Lo caro es la velocidad: a gigamuestras, más bits no son razonables." }
+    escalera: ["Recuerde la tabla de arquitecturas: ¿qué da gigamuestras?"]
+    solucion: "El compromiso velocidad-resolución."
+
+  - id: pregunta-esp32
+    tipo: pregunta
+    titulo: "12 bits que miden peor"
+    texto: "¿Por qué los 12 bits del ESP32 pueden medir peor que los 10 del Arduino?"
+    libro: [224, 226]
+    widget:
+      tipo: figura
+      figura: fig-34.10
+      zonas:
+        - { id: esp32, rotulo: "En el centro", rect: [195, 66, 92, 56] }
+    opciones:
+      - { texto: "Por su INL apreciable y distinto entre unidades", bien: true, porque: "12 bits con mala linealidad miden peor que 10 bien hechos: calibrar por tabla o un convertidor externo." }
+      - { texto: "Porque su referencia es de 5 V", porque: "El problema que señala el libro es la linealidad, no la referencia." }
+      - { texto: "Porque es más lento", porque: "Es más rápido; falla en la linealidad." }
+    escalera: ["¿Qué error no se corrige con dos constantes?"]
+    solucion: "Su linealidad mediocre."
+
+  - id: empareje-usos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Para qué sirve cada uno"
+    texto: "Una cada convertidor con su uso."
+    libro: [236]
+    emparejar:
+      - ["Arduino", "Sensores lentos"]
+      - ["ESP32", "Sensores, con calibración"]
+      - ["Osciloscopio", "Ver formas"]
+      - ["Multímetro", "Medir con exactitud"]
+    exito: "Ningún convertidor es bueno en todo: elegir el instrumento adecuado a la pregunta ahorra tiempo."
+    pistas:
+      - { texto: "El de mala linealidad necesita calibración." }
+    escalera: ["El más rápido es para ver; el más lento, para medir."]
+    solucion: "Arduino, sensores lentos; ESP32, con calibración; osciloscopio, ver; multímetro, medir."
+
+  - id: pregunta-multimetro
+    tipo: pregunta
+    titulo: "Estable donde el osciloscopio tiembla"
+    texto: "¿Por qué un multímetro de banco da una lectura estable donde el osciloscopio muestra ruido?"
+    libro: [233, 234]
+    widget:
+      tipo: figura
+      figura: fig-34.10
+      zonas:
+        - { id: multimetro, rotulo: "Arriba a la izquierda", rect: [52, 30, 90, 62] }
+    opciones:
+      - { texto: "Integra durante un múltiplo del periodo de red: el zumbido de 50 Hz se promedia a cero", bien: true, porque: "Son complementarios: uno mide con exactitud, el otro ve formas." }
+      - { texto: "Porque tiene más bits y por eso menos ruido", porque: "Los bits no quitan el zumbido; lo quita integrar un número entero de periodos de red." }
+      - { texto: "Porque filtra con un condensador grande", porque: "Lo que lo hace inmune es el tiempo de integración, no un filtro." }
+    escalera: ["¿Cuánto vale la media de una senoide en un número entero de periodos?"]
+    solucion: "Integra un múltiplo del periodo de red."
+
+  - id: banco-enob
+    tipo: banco
+    titulo: "El ENOB de su Arduino"
+    texto: "Con la entrada a masa, tome mil muestras y calcule la desviación típica en cuentas; de ahí, el ENOB."
+    nota: "Opcional. ENOB ≈ n − log₂(σ · √12)."
+    libro: [222, 239, 240]
+    banco:
+      piezas: ["Un Arduino", "Un cable de la entrada analógica a masa", "Un programa que tome mil lecturas"]
+      medir: "El ENOB a partir de la desviación típica de las mil lecturas."
+      esperado: E_a
+      unidad: bits
+      tol: 0.06
+      consejos:
+        - { cuando: { valor: medida, mayor: 9 }, texto: "Mejor de lo habitual: ¿usa el modo de reducción de ruido o promedia ya?" }
+        - { cuando: { valor: medida, menor: 8 }, texto: "Peor de lo habitual: revise la masa y el cable, y pruebe el modo de reducción de ruido." }
+        - { texto: "Lo habitual: unos dos bits por debajo de los 10 nominales." }
+    comprobar:
+      - { E_a: 8.5 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [221, 226, 230, 240]
+    ideas:
+      - { titulo: "Arduino.", texto: "10 bits, 4,88 mV por paso con 5 V; la referencia, su punto débil." }
+      - { titulo: "Bits no es exactitud.", texto: "12 bits con mala linealidad miden peor que 10 bien hechos." }
+      - { titulo: "Escalar.", texto: "Con una división de ocho, el osciloscopio usa 32 de sus 256 niveles." }

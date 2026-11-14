@@ -1,0 +1,251 @@
+# Lección 1.2 de la sección 36.4 «Movimiento: Acelerómetros, Giróscopos e IMU» (cap35, sec-35.4). Formato: GUIA.md.
+# - Las familias de posición y la fusión de acelerómetro y giróscopo (figura 36.7, fig-35.7, con zonas por filas).
+# - Ejercicio 36.9 (bloque 345): absolutos (potenciómetro, código Gray, LVDT) frente al incremental de cuadratura.
+# Sin fórmulas en la sección (aviso de secuencia «sin tarjeta de fórmula»).
+# Paso práctico: «banco» opcional, el acelerómetro quieto contra el patrón de 1 g de la gravedad (bloque 127); la
+# tolerancia del ± 5 % es de ejemplo.
+leccion: cap35/sec-35.4
+
+libro:
+  102: "absoluto o incremental, contacto o sin contacto, lineal o angular"
+  104: "Al encender, el sistema ya sabe dónde está"
+  105: "hace falta un procedimiento de referenciado"
+  106: "si pierde cuentas por ruido no lo sabe"
+  108: "su resolución la limita el ruido del contacto, no la pista"
+  110: "Gray, para que solo cambie un bit entre posiciones adyacentes y no haya estados espurios"
+  112: "absoluto, extremadamente robusto y preciso"
+  116: "en movimiento, no distingue la aceleración propia de la gravedad"
+  117: "esa integración acumula deriva"
+  118: "el acelerómetro da referencia absoluta a largo plazo pero es ruidoso en movimiento"
+  119: "dos sensores con defectos complementarios dan mejor resultado que cualquiera de los dos mejorado"
+  122: "Un encoder mide el eje donde está montado, no la carga"
+  126: "dar exactamente una vuelta y comprobar que la cuenta coincide con su resolución nominal"
+  127: "la gravedad es un patrón de 1 g disponible siempre"
+  128: "Familias de sensores de posición y la fusión de acelerómetro con giróscopo"
+  "cap35#345": "Son absolutos el potenciómetro, el encoder con código Gray y el LVDT"
+
+modelo:
+  valores:
+    g_1: { sim: "g", nombre: "aceleración de la gravedad", unidad: g, valor: 1 }
+  calculos: {}
+
+tarjetas:
+  - id: explore-familias
+    tipo: explorar
+    titulo: "Cuatro preguntas"
+    texto: "Absoluto o incremental, con o sin contacto, lineal o angular, y qué resolución. Toque el encoder incremental y la fusión."
+    libro: [102, 128]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: pot, rotulo: "Primera fila", rect: [0, 10, 453, 36], texto: "Potenciómetro: absoluto y barato, pero con contacto: se desgasta." }
+        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36], texto: "Encoder incremental: alta resolución, sin contacto; hay que referenciarlo al arrancar." }
+        - { id: lvdt, rotulo: "Quinta fila", rect: [0, 104, 453, 36], texto: "LVDT: absoluto, muy robusto, resolución prácticamente infinita; excitación alterna." }
+        - { id: fusion, rotulo: "Gráfica de abajo", rect: [35, 195, 280, 105], texto: "El acelerómetro, ruidoso; el giróscopo integrado, con deriva; la fusión, sobre el ángulo real." }
+    requiere: { mover: [incremental, fusion] }
+
+  - id: empareje-familias
+    tipo: pregunta
+    titulo: "Absoluto o incremental"
+    texto: "Empareje cada sensor de posición con su rasgo."
+    libro: [104, 105, 108, 110, 112, "cap35#345"]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 0, 453, 183] }
+    emparejar:
+      - ["Potenciómetro", "Absoluto y con contacto: se desgasta"]
+      - ["Encoder óptico de cuadratura", "Incremental: se referencia en cada arranque"]
+      - ["Encoder con código Gray", "Absoluto: un solo bit cambia entre posiciones"]
+      - ["LVDT", "Absoluto y robusto, con excitación alterna"]
+    exito: "Los absolutos saben dónde están al encender; el incremental mide cambios."
+    pistas:
+      - { texto: "Solo uno de los cuatro necesita ir a un final de carrera al arrancar." }
+    escalera:
+      - "El de cuadratura da dos señales que cuentan pasos, no posiciones."
+    solucion: "Potenciómetro, contacto; cuadratura, incremental; Gray, un bit; LVDT, robusto."
+
+  - id: predecir-ruido
+    tipo: predecir
+    titulo: "Cuentas perdidas"
+    texto: "Una máquina con encoders incrementales pierde unos pulsos por ruido. ¿Qué pasa?"
+    libro: [106]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36] }
+    opciones:
+      - texto: "Sigue trabajando con la posición equivocada, sin saberlo"
+        bien: true
+        porque: "Un incremental solo cuenta cambios: si pierde cuentas, no lo sabe. Uno absoluto, sí."
+      - texto: "Se para y avisa"
+        porque: "No tiene forma de saberlo: la cuenta perdida no deja rastro."
+      - texto: "Nada: se corrige sola en la siguiente vuelta"
+        porque: "Solo se corrige al volver a referenciar en un final de carrera o una marca de índice."
+    escalera:
+      - "¿Qué sabe un incremental al encender?"
+    solucion: "Trabaja desplazada sin saberlo, hasta que se referencie."
+
+  - id: pregunta-gray
+    tipo: pregunta
+    titulo: "El código del disco"
+    texto: "¿Por qué el disco de un encoder absoluto lleva código Gray y no binario natural?"
+    libro: [110]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: absoluto, rotulo: "Tercera fila", rect: [0, 56, 453, 36] }
+    opciones:
+      - texto: "Solo cambia un bit entre posiciones vecinas: no hay estados espurios"
+        bien: true
+        porque: "En binario varios bits cambian a la vez y, si no lo hacen a la vez, se leen posiciones falsas."
+      - texto: "Porque da más resolución"
+        porque: "La resolución la dan los bits del disco, no el código."
+      - texto: "Porque es más barato de leer"
+        porque: "Se lee igual; lo que evita son lecturas falsas en las transiciones."
+    escalera:
+      - "En binario, al pasar a la posición vecina a veces cambian varios bits a la vez."
+    solucion: "Un solo bit cambia: sin estados espurios."
+
+  - id: pregunta-potenciometro
+    tipo: pregunta
+    titulo: "El límite del potenciómetro"
+    texto: "¿Qué limita la resolución de un potenciómetro usado como sensor de posición?"
+    libro: [108]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: pot, rotulo: "Primera fila", rect: [0, 10, 453, 36] }
+    opciones:
+      - texto: "El ruido del contacto"
+        bien: true
+        porque: "No la pista: el cursor que roza. Y su vida, de decenas o cientos de miles de ciclos."
+      - texto: "La longitud de la pista"
+        porque: "La pista es continua; el límite es el ruido del contacto."
+      - texto: "El número de bits del disco"
+        porque: "Eso es de un encoder absoluto; el potenciómetro da una salida analógica."
+    escalera:
+      - "Tiene contacto: ¿qué hace un cursor que roza?"
+    solucion: "El ruido del contacto."
+
+  - id: predecir-movimiento
+    tipo: predecir
+    titulo: "Un inclinómetro en marcha"
+    texto: "Un acelerómetro quieto sirve de inclinómetro. ¿Y montado en un vehículo que acelera?"
+    libro: [116]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: fusion, rotulo: "Gráfica de abajo", rect: [35, 195, 280, 105] }
+    opciones:
+      - texto: "Se equivoca: no distingue la aceleración propia de la gravedad"
+        bien: true
+        porque: "Mide aceleración, incluida la gravedad: en movimiento, las dos se mezclan."
+      - texto: "Mide igual de bien"
+        porque: "Solo distingue la inclinación cuando lo único que mide es la gravedad."
+      - texto: "Mide la velocidad del vehículo"
+        porque: "Mide aceleración, no velocidad, y además la mezcla con la gravedad."
+    escalera:
+      - "Quieto, la única aceleración es la gravedad."
+    solucion: "Falla: mezcla la aceleración propia con la gravedad."
+
+  - id: porque-fusion
+    tipo: porque
+    titulo: "Acelerómetro y giróscopo"
+    texto: "¿Por qué se combinan acelerómetro y giróscopo en lugar de mejorar uno de los dos?"
+    libro: [117, 118, 119]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: fusion, rotulo: "Gráfica de abajo", rect: [35, 195, 280, 105] }
+    opciones:
+      - texto: "Sus defectos son complementarios: uno da la referencia, el otro la limpieza"
+        bien: true
+        porque: "El acelerómetro da la referencia a largo plazo; el giróscopo, la señal limpia a corto."
+      - texto: "Porque el giróscopo mide la gravedad"
+        porque: "Mide velocidad angular; integrándola da el ángulo, con deriva."
+      - texto: "Para tener un sensor de repuesto"
+        porque: "No es redundancia: un filtro complementario o de Kalman toma lo mejor de cada uno."
+    escalera:
+      - "Mire la gráfica: ¿cuál es ruidoso y cuál se va alejando?"
+    solucion: "Defectos complementarios: la fusión toma lo mejor de los dos."
+
+  - id: pregunta-montaje
+    tipo: pregunta
+    titulo: "El encoder y la carga"
+    texto: "Un encoder en el eje del motor mueve una carga a través de una transmisión con holgura. ¿Qué riesgo hay en un lazo de control?"
+    libro: [122]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36] }
+    opciones:
+      - texto: "La posición medida y la real difieren, y el lazo puede oscilar"
+        bien: true
+        porque: "El encoder mide el eje donde está montado, no la carga."
+      - texto: "Ninguno: el encoder es muy preciso"
+        porque: "Es preciso con su eje; la holgura está entre el eje y la carga."
+      - texto: "Que el encoder se desgaste"
+        porque: "No tiene contacto; el problema es lo que hay entre él y la carga."
+    escalera:
+      - "¿Qué mide exactamente el encoder?"
+    solucion: "Mide el eje, no la carga: con holgura, oscilación."
+
+  - id: pregunta-encoder
+    tipo: pregunta
+    titulo: "Verificar un encoder"
+    texto: "Da exactamente una vuelta al eje y la cuenta sale por debajo de la resolución nominal. ¿Qué pasa?"
+    libro: [126]
+    widget:
+      tipo: figura
+      figura: fig-35.7
+      zonas:
+        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36] }
+    opciones:
+      - texto: "Se pierden pulsos, por ruido o por velocidad excesiva"
+        bien: true
+        porque: "Un encoder se verifica contando: la vuelta entera debe dar su resolución."
+      - texto: "El disco está mal grabado"
+        porque: "Lo habitual es que se pierdan pulsos al leerlos, no un disco mal hecho."
+      - texto: "Nada: es normal perder alguno"
+        porque: "No: cada pulso perdido es un error de posición que el incremental no detecta."
+    escalera:
+      - "Una vuelta exacta debe dar exactamente su número de pulsos."
+    solucion: "Se pierden pulsos: ruido o demasiada velocidad."
+
+  - id: banco-gravedad
+    tipo: banco
+    titulo: "Un patrón de 1 g gratis"
+    texto: "Deje un acelerómetro quieto sobre la mesa, con su eje Z hacia arriba, y lea ese eje."
+    nota: "La tolerancia del ± 5 % es de ejemplo."
+    libro: [127]
+    banco:
+      piezas: ["Un acelerómetro (un módulo o el del móvil)", "Una superficie horizontal y quieta"]
+      medir: "La lectura del eje Z, con el acelerómetro quieto y cara arriba."
+      esperado: g_1
+      unidad: g
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Lee de más: dele la vuelta y lea cara abajo; la diferencia entre las dos da la ganancia y la suma, el offset." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Lee de menos: ¿está horizontal? Si lo está, compare cara arriba y cara abajo para separar offset y ganancia." }
+        - { texto: "Dentro. Con las seis orientaciones tendría el offset y la ganancia de los tres ejes." }
+    comprobar:
+      - { g_1: 1 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [104, 106, 119, 127]
+    ideas:
+      - { titulo: "Absoluto o incremental.", texto: "El incremental se referencia al arrancar y no sabe si pierde cuentas." }
+      - { titulo: "Gray.", texto: "Un solo bit cambia entre posiciones: sin estados espurios." }
+      - { titulo: "Fusión.", texto: "Acelerómetro y giróscopo, con defectos complementarios, mejor juntos." }
+      - { titulo: "Montaje.", texto: "El encoder mide su eje; el acelerómetro, su soporte." }

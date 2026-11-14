@@ -1,0 +1,286 @@
+# Lección 1.2 de la sección 22.1 «Conceptos Topológicos» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.1
+
+libro:
+  3: "un circuito es un grafo"
+  6: "Rama: cada elemento de dos terminales."
+  7: "todo lo unido por conductores ideales es el mismo nodo"
+  8: "Nodo esencial: uno donde concurren tres o más ramas"
+  14: "Los enlaces son r − n + 1, y ese número es también el de lazos independientes."
+  15: "ecuaciones de nodos + ecuaciones de lazos = número de ramas"
+  16: "Con un circuito de 6 ramas y 4 nodos: 3 ecuaciones de nodo y 3 de lazo"
+  20: "si salen más ecuaciones, alguna es combinación de las demás"
+  24: "Circuito abierto"
+  25: "resolver un circuito resuelve automáticamente su dual"
+  26: "Un circuito abierto es un camino interrumpido"
+  28: "la aproximación de parámetros concentrados"
+  29: "el concepto de nodo pierde sentido"
+  32: "el plano de masa es un solo nodo con decenas de ramas conectadas"
+
+modelo:
+  valores:
+    V_t: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_ti: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 4 }
+    R_tl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 4 }
+    V_k1: { sim: "V₁", nombre: "fuente de la izquierda", unidad: V, valor: 10 }
+    V_k2: { sim: "V₂", nombre: "fuente de la derecha", unidad: V, valor: 6 }
+    R_k1: { sim: "R₁", nombre: "resistencia de la izquierda", unidad: Ω, valor: 2 }
+    R_k2: { sim: "R₂", nombre: "resistencia de la derecha", unidad: Ω, valor: 3 }
+    R_k3: { sim: "R₃", nombre: "resistencia a masa", unidad: Ω, valor: 4 }
+    n_k: { sim: "n", nombre: "nodos", unidad: "", valor: 4 }
+    r_k: { sim: "r", nombre: "ramas", unidad: "", valor: 5 }
+  calculos:
+    V_to: { expr: "V_t*R_tl/(R_ti + R_tl)", sim: "V", nombre: "tensión en la carga", unidad: V }
+    I_t: { expr: "V_t/(R_ti + R_tl)", sim: "I", nombre: "corriente por la carga", unidad: A }
+    V_ti: { expr: "I_t*R_ti", sim: "V_{R}", nombre: "caída en la resistencia en serie", unidad: V }
+    V_kn: { expr: "(V_k1/R_k1 + V_k2/R_k2)/(1/R_k1 + 1/R_k2 + 1/R_k3)", sim: "V_{A}", nombre: "tensión del nodo A", unidad: V }
+    I_k3: { expr: "V_kn/R_k3", sim: "I₃", nombre: "corriente por R₃", unidad: A }
+    lazos: { expr: "r_k - n_k + 1", sim: "r − n + 1", nombre: "lazos independientes", unidad: "" }
+    ecs_n: { expr: "n_k - 1", sim: "n − 1", nombre: "ecuaciones de nodo", unidad: "" }
+    lazos6: { expr: "6 - n_k + 1", sim: "r − n + 1", nombre: "lazos con seis ramas", unidad: "" }
+
+tarjetas:
+  - id: explore-extremos
+    tipo: explorar
+    titulo: "Abierto y cortocircuito"
+    texto: "Lleve la carga a casi cero y luego a muy grande. Mire la tensión y la corriente en cada extremo."
+    libro: [24, 26]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: V_to, rotulo: "Tensión en la carga" }
+      datos:
+        - { valor: I_t, rotulo: "I = {{I_t}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_tl, lista: [0.001, 1, 4, 100, 1000000], rotulo: "Carga" }
+
+  - id: abierto-corto
+    tipo: pregunta
+    titulo: "Su dual"
+    texto: "Un circuito abierto tiene corriente nula y entre sus extremos cualquier tensión. ¿Qué tiene un cortocircuito?"
+    libro: [24, 26]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl }
+      lectura: { valor: V_to, rotulo: "Tensión en la carga" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+      mandos:
+        - { valor: R_tl, lista: [0.001, 1, 4, 100, 1000000], rotulo: "Carga" }
+    opciones:
+      - texto: "Resistencia nula, tensión nula y cualquier corriente"
+        bien: true
+        porque: "Es el dual exacto: se cambian tensión por corriente y resistencia infinita por nula."
+      - texto: "Resistencia nula, corriente nula y cualquier tensión"
+        porque: "Por un cortocircuito pasa la corriente que imponga el resto; lo que vale cero es su tensión."
+      - texto: "Resistencia infinita y tensión nula"
+        porque: "Resistencia infinita es la del abierto. El cortocircuito es su dual: resistencia nula."
+    escalera:
+      - "En la tabla de dualidad, la tensión se cambia por la corriente."
+    solucion: "Cortocircuito: resistencia nula, tensión nula y por él cualquier corriente."
+
+  - id: prediga-lazos
+    tipo: predecir
+    titulo: "Cuente los lazos"
+    texto: "Este circuito tiene 4 nodos y 5 ramas, una por elemento. ¿Cuántos lazos independientes tiene?"
+    libro: [6, 14]
+    fijar: { n_k: 4, r_k: 5 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "2"
+        bien: true
+        porque: "Los enlaces son r − n + 1 = 5 − 4 + 1 = 2: las dos ventanas del dibujo."
+      - texto: "3"
+        porque: "3 son las ecuaciones de nodo, n − 1. Los lazos independientes son r − n + 1."
+      - texto: "5"
+        porque: "5 son las ramas. Un árbol se queda n − 1 de ellas; los lazos los dan las que sobran."
+    escalera:
+      - "Un árbol une todos los nodos con n − 1 ramas; las demás son enlaces."
+    solucion: "r − n + 1 = 5 − 4 + 1 = 2 lazos independientes."
+    comprobar:
+      - { lazos: 2, ecs_n: 3 }
+
+  - id: cuenta-total
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Ecuaciones de lazo"
+    texto: "Un circuito de 6 ramas y 4 nodos. ¿Cuántas ecuaciones de lazo independientes tiene?"
+    libro: [14, 15, 16]
+    fijar: { n_k: 4 }
+    estimar:
+      objetivo: "lazos6"
+      unidad: ""
+      min: 0
+      max: 10
+      paso: 1
+      inicio: 6
+      tol: 0.1
+      rotulo: "Lazos independientes"
+    exito: "6 − 4 + 1 = 3 de lazo, y 3 de nodo: seis en total, tantas como ramas e incógnitas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3 }, texto: "Demasiadas: los lazos son r − n + 1." }
+      - { texto: "Muy pocas: con 6 ramas y 4 nodos, r − n + 1." }
+    escalera:
+      - "Nodos más lazos deben dar el número de ramas."
+    solucion: "r − n + 1 = 6 − 4 + 1 = 3."
+    comprobar:
+      - { lazos6: 3, ecs_n: 3 }
+
+  - id: nodo-esencial
+    tipo: pregunta
+    titulo: "Nodos esenciales"
+    texto: "Un nodo esencial reúne tres o más ramas. ¿Cuántos tiene este circuito?"
+    libro: [7, 8]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Dos: el nodo A y la masa"
+        bien: true
+        porque: "En A concurren R₁, R₂ y R₃; en la masa, las dos fuentes y R₃. Los demás unen solo dos elementos."
+      - texto: "Cuatro: todos los nodos"
+        porque: "Los puntos entre cada fuente y su resistencia unen solo dos elementos: lo que entra sale, sin ecuación."
+      - texto: "Uno: solo el nodo A"
+        porque: "La masa también reúne tres ramas, aunque se dibuje en varios puntos: todo lo unido por un conductor es un nodo."
+    escalera:
+      - "Cuente cuántos elementos llegan a cada punto de conexión."
+    solucion: "A y la masa, con tres ramas cada uno."
+
+  - id: por-que-dos
+    tipo: porque
+    titulo: "¿Por qué no cuentan?"
+    texto: "Los puntos entre cada fuente y su resistencia son nodos, pero no esenciales. ¿Por qué no aportan ecuación?"
+    libro: [8]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Unen solo dos elementos: la corriente que entra es la que sale"
+        bien: true
+        porque: "Su ley de corrientes solo dice que los dos elementos llevan la misma corriente, algo que ya se sabía."
+      - texto: "Porque su tensión vale cero"
+        porque: "Cero vale la referencia. Estos puntos tienen su tensión; lo que no dan es una ecuación nueva."
+      - texto: "Porque están junto a una fuente"
+        porque: "Lo que importa es cuántas ramas concurren, no qué elemento hay al lado."
+    escalera:
+      - "Escriba la ley de corrientes en un punto donde se unen solo dos elementos."
+    solucion: "Con dos elementos, lo que entra sale: la ecuación no dice nada nuevo."
+
+  - id: plano-masa
+    tipo: pregunta
+    titulo: "El plano de masa"
+    texto: "En una placa real, ¿qué efecto tiene el plano de masa en el recuento de nodos?"
+    libro: [7, 32]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Es un solo nodo con decenas de ramas: reduce mucho el recuento"
+        bien: true
+        porque: "Todo lo unido por conductores ideales es el mismo nodo, por muchos puntos de masa que se dibujen."
+      - texto: "Cada punto de masa dibujado es un nodo distinto"
+        porque: "Los símbolos de masa están unidos aunque no haya línea entre ellos: son un único nodo."
+      - texto: "No cuenta como nodo: es la referencia y no tiene ramas"
+        porque: "Es un nodo, el de referencia, y tiene muchas ramas. Lo especial es que su tensión vale cero."
+    escalera:
+      - "¿Qué une el plano de masa entre sí?"
+    solucion: "Un único nodo con decenas de ramas conectadas."
+
+  - id: dualidad
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La dualidad"
+    texto: "Una cada magnitud o elemento con su dual."
+    libro: [24, 25]
+    emparejar:
+      - ["Tensión", "Corriente"]
+      - ["Serie", "Paralelo"]
+      - ["Resistencia", "Conductancia"]
+      - ["Bobina", "Condensador"]
+      - ["Malla", "Nodo"]
+    exito: "Resolver un circuito resuelve su dual: de ahí las parejas Thévenin y Norton, supernodo y supermalla."
+    pistas:
+      - { texto: "Las ecuaciones de nodos de uno son las de mallas del otro." }
+    escalera:
+      - "Lo que en serie comparte la corriente, en paralelo comparte la tensión."
+    solucion: "Tensión–corriente, serie–paralelo, resistencia–conductancia, bobina–condensador, malla–nodo."
+
+  - id: demasiadas
+    tipo: pregunta
+    titulo: "Más ecuaciones de la cuenta"
+    texto: "Al plantear salen más ecuaciones que n − 1 de nodo más r − n + 1 de lazo. ¿Qué significa?"
+    libro: [15, 20]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Alguna es combinación de las demás"
+        bien: true
+        porque: "Las independientes son exactamente las que hacen falta. Una de más no aporta información nueva."
+      - texto: "El sistema no tiene solución única"
+        porque: "Eso pasa cuando salen menos. Con de más, alguna simplemente repite lo que dicen otras."
+      - texto: "El circuito no es plano"
+        porque: "Un circuito no plano no tiene mallas bien definidas, pero eso no cambia cuántas ecuaciones son independientes."
+    escalera:
+      - "Nodos más lazos independientes dan el número de ramas: ni una más."
+    solucion: "Sobra alguna: es combinación de las demás."
+
+  - id: limite
+    tipo: pregunta
+    titulo: "El límite de todo esto"
+    texto: "¿Cuándo deja de tener sentido hablar de nodos?"
+    libro: [28, 29]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Cuando el circuito deja de ser pequeño frente a la longitud de onda"
+        bien: true
+        porque: "Toda la maquinaria descansa en los parámetros concentrados. Fuera de ellos, la tensión depende de dónde se mida."
+      - texto: "Cuando el circuito tiene más de diez nodos"
+        porque: "Con muchos nodos las ecuaciones son más, no inválidas. El límite es físico, no de tamaño del sistema."
+      - texto: "Cuando hay fuentes de alterna"
+        porque: "Los métodos valen en alterna con impedancias. El problema llega cuando el circuito es grande frente a la longitud de onda."
+    escalera:
+      - "Piense en la aproximación en la que descansan los nodos."
+    solucion: "Fuera de la aproximación de parámetros concentrados el nodo pierde sentido."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 14, 15, 25]
+    ideas:
+      - { titulo: "Un grafo.", texto: "Ramas (elementos de dos terminales) que unen nodos; todo lo unido por un conductor ideal es un nodo." }
+      - { titulo: "Los números.", texto: "n − 1 ecuaciones de nodo y r − n + 1 de lazo: sumadas, el número de ramas." }
+      - { titulo: "La dualidad.", texto: "Tensión y corriente, serie y paralelo, abierto y cortocircuito: resolver uno resuelve su dual." }
+      - { titulo: "El límite.", texto: "Solo con parámetros concentrados: circuito pequeño frente a la longitud de onda." }

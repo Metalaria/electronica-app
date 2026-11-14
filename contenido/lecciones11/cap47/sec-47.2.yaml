@@ -1,0 +1,378 @@
+# Lección 1.2 de la sección 48.2 «Medir sin Falsear la Medida» (cap47; etiqueta interna sec-47.2).
+# Formato: contenido/lecciones11/GUIA.md. La carga del multímetro de 10 MΩ sobre una fuente de 1 MΩ (bloque 46) con el
+# esquema «thevenin» (10 V fijados para leer un número); la regla de los tiempos de subida (bloques 52–54) con
+# t = 0,35/BW; el paso de banco es el divisor de dos resistencias de 1 MΩ desde 10 V de la sección 1.11 (cap01#234),
+# ficha 1 del cuaderno.
+leccion: cap47/sec-47.2
+
+libro:
+  44: "toda medida perturba lo medido"
+  46: "Un multímetro de 10 MΩ sobre una fuente de 1 MΩ deja la lectura en 10/11 del valor real"
+  47: "el latiguillo de la sonda forma un bucle que capta y resuena"
+  48: "medir un flanco de 1 ns con un instrumento de 20 MHz da un flanco de 17,5 ns"
+  49: "Por el propio instrumento"
+  52: 't_("medido") = sqrt('
+  53: "al menos tres veces más rápido que la señal para que el error quede por debajo del 6 %"
+  54: "unos 57 MHz, sumando en cuadratura los tiempos de subida"
+  57: "el burden voltage"
+  59: "Shunt con medida diferencial"
+  60: "Pinza de efecto Hall"
+  63: "Nunca poner la pinza de masa en un punto que no sea masa"
+  64: "La resta de dos canales"
+  69: "Son errores de método, no de instrumento"
+  72: "Si el resultado cambia, la medida estaba afectada por el montaje"
+  74: "La sonda ×10 reduce la capacidad y la carga"
+  75: "las formas de falsear una medida"
+  "cap47#600": "de unos 100 pF a 10-20 pF"
+  "cap01#234": "montar el divisor de dos resistencias de 1 MΩ desde 10 V y medir el punto medio"
+
+modelo:
+  valores:
+    V_t: { sim: "V", nombre: "tensión real de la fuente", unidad: V, valor: 10 }
+    R_ti: { sim: "R_{fuente}", nombre: "resistencia de la fuente", unidad: Ω, valor: 1000000 }
+    R_in: { sim: "R_{in}", nombre: "impedancia de entrada del multímetro", unidad: Ω, valor: 10000000 }
+    t_on: { tipo: interruptor, nombre: "multímetro conectado", valor: 0 }
+    t_s: { sim: "t_{señal}", nombre: "tiempo de subida de la señal", unidad: s, valor: 0.000000001 }
+    BW_i: { sim: "BW", nombre: "ancho de banda del instrumento", unidad: Hz, valor: 20000000 }
+    BW_p: { sim: "BW_{sonda}", nombre: "ancho de banda de la sonda", unidad: Hz, valor: 60000000 }
+    BW_o: { sim: "BW_{osc}", nombre: "ancho de banda del osciloscopio", unidad: Hz, valor: 200000000 }
+    R_d: { sim: "R", nombre: "cada resistencia del divisor", unidad: Ω, valor: 1000000 }
+  calculos:
+    V_to: { si: t_on, entonces: "V_t*R_in/(R_ti + R_in)", sino: "V_t", sim: "V_{lectura}", nombre: "lectura", unidad: V }
+    I_t: { si: t_on, entonces: "V_t/(R_ti + R_in)", sino: "0", sim: "I", nombre: "corriente que toma el multímetro", unidad: A }
+    V_ti: { expr: "I_t*R_ti", sim: "V_{int}", nombre: "caída en la fuente", unidad: V }
+    pct: { expr: "100*V_to/V_t", sim: "lectura/real", nombre: "lectura frente a la real", unidad: "%", cifras: 3 }
+    V_mal: { expr: "V_t*(1 - R_ti/R_in)", sim: "V'", nombre: "lectura restando la décima parte", unidad: V }
+    V_mitad: { expr: "V_t/2", sim: "V'", nombre: "la mitad", unidad: V }
+    t_i: { expr: "0.35/BW_i", sim: "t_{instrumento}", nombre: "tiempo de subida del instrumento", unidad: s }
+    t_med: { expr: "sqrt(t_s^2 + t_i^2)", sim: "t_{medido}", nombre: "tiempo de subida medido", unidad: s }
+    err_t: { expr: "100*(t_med/t_s - 1)", sim: "error", nombre: "error del flanco medido", unidad: "%", cifras: 2 }
+    BW_suma: { expr: "BW_p + BW_o", sim: "Σ", nombre: "la suma", unidad: Hz }
+    BW_media: { expr: "(BW_p + BW_o)/2", sim: "media", nombre: "la media", unidad: Hz }
+    BW_sis: { expr: "1/sqrt(1/BW_p^2 + 1/BW_o^2)", sim: "BW_{conjunto}", nombre: "ancho de banda del conjunto", unidad: Hz }
+    V_d: { expr: "10*par(R_d, R_in)/(R_d + par(R_d, R_in))", sim: "V_{medio}", nombre: "punto medio con el voltímetro", unidad: V }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "El instrumento forma parte"
+    texto: "Una fuente de 1 MΩ y un multímetro de 10 MΩ. Conéctelo y mire cuánto baja lo que mide."
+    libro: [44, 46]
+    fijar: { V_t: 10, R_in: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_in, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Lectura" }
+      datos:
+        - { valor: pct, rotulo: "Lectura frente a la real: {{pct}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: t_on, tipo: conectar, boton: "Conectar el multímetro" }
+        - { valor: R_ti, lista: [1000, 100000, 1000000], rotulo: "Resistencia de la fuente" }
+    requiere: { conectar: [t_on] }
+
+  - id: simule-carga
+    tipo: simular
+    titulo: "Prediga la lectura"
+    texto: "Fuente de 10 V con 1 MΩ en serie, multímetro de 10 MΩ. ¿Cuánto marca?"
+    libro: [46]
+    fijar: { V_t: 10, R_ti: 1000000, R_in: 10000000, t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_in, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Lectura" }
+      mide: { salida: V_to }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_to
+      unidad: V
+      tol: 0.004
+      rotulo: "Lectura del multímetro"
+      medida: salida
+      errores:
+        - { expr: "V_t", texto: "Esos 10 V son la tensión real: el multímetro toma corriente y la resistencia de la fuente se queda una parte." }
+        - { expr: "V_mal", texto: "9 V es restar una décima parte. El divisor es 10/(1 + 10): 10/11 del valor real." }
+        - { expr: "V_mitad", texto: "La mitad sería con resistencias iguales. El multímetro tiene diez veces más que la fuente." }
+    exito: "10/11 de 10 V: 9,09 V, algo más de un 9 % por debajo."
+    escalera:
+      - "El multímetro y la fuente forman un divisor."
+      - "La lectura es V · R_{in}/(R_{fuente} + R_{in})."
+    solucion: "10 · 10/(1 + 10) = 9,09 V."
+    comprobar:
+      - { V_to: 9.091, V_mal: 9.0, V_mitad: 5.0, pct: 90.9 }
+
+  - id: cuatro-formas
+    tipo: pregunta
+    titulo: "Cuatro formas de falsear"
+    texto: "Empareje cada forma de falsear una medida con su ejemplo."
+    libro: [46, 47, 48, 49, 75]
+    widget:
+      tipo: figura
+      figura: fig-47.4
+      zonas:
+        - { id: formas, rotulo: "Las cajas de la derecha", rect: [257, 7, 177, 168] }
+    emparejar:
+      - ["Por carga", "Una sonda ×1 detiene un oscilador"]
+      - ["Por el camino de masa", "El latiguillo capta y resuena: timbre"]
+      - ["Por ancho de banda", "Un flanco de 1 ns se ve de 17,5 ns"]
+      - ["Por el propio instrumento", "Su ruido, su offset, su exactitud"]
+    exito: "Y una quinta que no es instrumental: el sesgo del observador."
+    pistas:
+      - { texto: "El bucle del latiguillo es una inductancia: resuena." }
+    escalera:
+      - "Empiece por el instrumento que consume o presenta capacidad."
+    solucion: "Carga, la ×1 sobre el oscilador; masa, el timbre; ancho de banda, el flanco; instrumento, ruido y offset."
+
+  - id: formula-subida
+    tipo: formula
+    titulo: "Los tiempos de subida se suman en cuadratura"
+    texto: "Cambie el ancho de banda del instrumento y el flanco de la señal."
+    libro: [52, 53]
+    ec: 52
+    sustitucion: "√({{t_s}}² + {{t_i}}²) = {{t_med}}"
+    widget:
+      tipo: grafica
+      x: { id: ts, min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{señal}", escala: log }
+      y: { min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{medido}", escala: log }
+      curvas:
+        - { expr: "sqrt(ts^2 + t_i^2)", color: naranja, rotulo: "lo que se mide" }
+        - { expr: "ts", color: tinta, rotulo: "medida ideal", discontinua: true }
+      marcas:
+        - { x: "t_s", y: "t_med", rotulo: "{{t_med}}" }
+      lectura: { valor: t_med, rotulo: "Flanco medido" }
+      datos:
+        - { valor: err_t, rotulo: "Error: {{err_t}}" }
+      mandos:
+        - { valor: BW_i, lista: [20000000, 60000000, 200000000], rotulo: "Ancho de banda" }
+        - { valor: t_s, lista: [0.000000001, 0.000000005, 0.00000001], rotulo: "Flanco de la señal" }
+    comprobar:
+      - { con: { BW_i: 200000000, t_s: 0.000000005 }, t_med: 0.0000000053, err_t: 5.95, tol: 0.01 }
+
+  - id: estime-flanco
+    tipo: pregunta
+    titulo: "Un flanco de 1 ns"
+    texto: "Mide un flanco de 1 ns con un instrumento de 20 MHz. ¿Qué flanco ve?"
+    libro: [48, 52]
+    fijar: { t_s: 0.000000001, BW_i: 20000000 }
+    widget:
+      tipo: grafica
+      x: { id: ts, min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{señal}", escala: log }
+      y: { min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{medido}", escala: log }
+      curvas:
+        - { expr: "ts", color: tinta, rotulo: "medida ideal", discontinua: true }
+    estimar:
+      objetivo: "t_med"
+      unidad: s
+      min: 0
+      max: 0.00000003
+      paso: 0.0000000005
+      inicio: 0.000000002
+      tol: 0.05
+      rotulo: "Flanco medido"
+    exito: "17,5 ns: el del instrumento, no el de la señal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000000184 }, texto: "Se ha pasado: 0,35/20 MHz son unos 17,5 ns, y 1 ns apenas añade." }
+      - { texto: "Se ha quedado corto: el instrumento solo ya tarda 0,35/BW." }
+    escalera:
+      - "El tiempo de subida del instrumento es 0,35/BW."
+    solucion: "0,35/20 MHz = 17,5 ns; en cuadratura con 1 ns, 17,5 ns."
+    comprobar:
+      - { t_med: 0.0000000175, t_i: 0.0000000175, tol: 0.003 }
+
+  - id: ajuste-osciloscopio
+    tipo: ajuste
+    titulo: "Elija el osciloscopio"
+    texto: "Un flanco de 5 ns. Suba el ancho de banda hasta que el error baje del 6 %."
+    libro: [53, 54]
+    fijar: { t_s: 0.000000005 }
+    inicio: { BW_i: 20000000 }
+    widget:
+      tipo: grafica
+      x: { id: ts, min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{señal}", escala: log }
+      y: { min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{medido}", escala: log }
+      curvas:
+        - { expr: "sqrt(ts^2 + t_i^2)", color: naranja, rotulo: "lo que se mide" }
+        - { expr: "ts", color: tinta, rotulo: "medida ideal", discontinua: true }
+      marcas:
+        - { x: "t_s", y: "t_med", rotulo: "{{t_med}}" }
+      lectura: { valor: err_t, rotulo: "Error del flanco" }
+      mandos:
+        - { valor: BW_i, lista: [20000000, 50000000, 100000000, 200000000, 350000000], rotulo: "Ancho de banda" }
+    ajuste:
+      valor: err_t
+      min: 0
+      max: 6
+      rotulo: "Error del flanco medido"
+      escala: { min: 0, max: 30 }
+      bajo: "Dentro."
+      alto: "El instrumento alarga demasiado el flanco: más ancho de banda."
+      dentro: "Unos 200 MHz: 1,75 ns, un tercio del flanco, que lo alarga hasta 5,3 ns."
+
+  - id: prediga-sonda
+    tipo: predecir
+    titulo: "Sonda y osciloscopio"
+    texto: "Una sonda de 60 MHz en un osciloscopio de 200 MHz. ¿Qué ancho de banda tiene el conjunto?"
+    libro: [54]
+    widget:
+      tipo: figura
+      figura: fig-47.4
+      zonas:
+        - { id: ancho, rotulo: "Por ancho de banda", rect: [257, 93, 177, 39] }
+    opciones:
+      - texto: "Algo menos de 60 MHz, unos 57"
+        bien: true
+        porque: "Los tiempos de subida se suman en cuadratura: manda el más lento, y el otro lo empeora un poco."
+      - texto: "200 MHz, el del osciloscopio"
+        porque: "El ancho de banda que manda es el del conjunto, sonda incluida."
+      - texto: "260 MHz, la suma"
+        porque: "Los anchos de banda no se suman: cada elemento añade su tiempo de subida."
+      - texto: "130 MHz, la media"
+        porque: "No se promedian: el conjunto es siempre más lento que el más lento de sus partes."
+    escalera:
+      - "Sume en cuadratura los tiempos de subida de los dos."
+    solucion: "1/√(1/60² + 1/200²) ≈ 57 MHz."
+    comprobar:
+      - { BW_sis: 57470000, BW_suma: 260000000, BW_media: 130000000, tol: 0.01 }
+
+  - id: sonda-x10
+    tipo: pregunta
+    titulo: "La sonda ×10"
+    texto: "¿Qué gana la sonda ×10 frente a la ×1, y qué cuesta?"
+    libro: [74, "cap47#600"]
+    widget:
+      tipo: figura
+      figura: fig-47.3
+      zonas:
+        - { id: x1, rotulo: "Arriba", rect: [0, 5, 447, 92] }
+        - { id: x10, rotulo: "Abajo", rect: [0, 100, 447, 97] }
+    opciones:
+      - texto: "Carga menos y amplía el ancho de banda, a costa de dividir la amplitud por diez"
+        bien: true
+        porque: "Menos capacidad en la punta; el osciloscopio recompone la amplitud en su escala."
+      - texto: "Multiplica la señal por diez"
+        porque: "Al revés: la divide por diez, y el osciloscopio lo compensa."
+      - texto: "Nada: solo cambia la escala"
+        porque: "Cambia la carga: de unos 100 pF a 10-20 pF en la punta."
+    escalera:
+      - "Compare la capacidad que ve el circuito arriba y abajo."
+    solucion: "Menos carga y más ancho de banda útil; a cambio, una décima parte de la amplitud."
+
+  - id: corriente
+    tipo: pregunta
+    titulo: "Medir corriente"
+    texto: "Empareje cada forma de medir corriente con lo que perturba."
+    libro: [57, 59, 60]
+    widget:
+      tipo: figura
+      figura: fig-47.4
+      zonas:
+        - { id: carga, rotulo: "Por carga", rect: [257, 7, 177, 39] }
+    emparejar:
+      - ["Amperímetro en serie", "Abrir el circuito y su caída, el burden voltage"]
+      - ["Shunt con medida diferencial", "Permite ver la forma de onda"]
+      - ["Pinza de efecto Hall", "No perturba nada y es menos exacta"]
+    exito: "Por eso un circuito de bajo consumo mide distinto con el amperímetro puesto."
+    pistas:
+      - { texto: "La pinza ni toca el conductor." }
+    escalera:
+      - "¿Cuál obliga a abrir el circuito?"
+    solucion: "Amperímetro, su caída; shunt, la forma de onda; Hall, sin perturbar y menos exacta."
+
+  - id: pinza-masa
+    tipo: pregunta
+    titulo: "Una medida flotante"
+    texto: "Quiere medir entre dos puntos que no son masa con un osciloscopio de red. ¿Qué hace?"
+    libro: [63, 64]
+    widget:
+      tipo: figura
+      figura: fig-47.3
+      zonas:
+        - { id: masa, rotulo: "La masa del osciloscopio", rect: [0, 150, 270, 45] }
+    opciones:
+      - texto: "Restar dos canales, con las dos pinzas a masa"
+        bien: true
+        porque: "La resta de dos canales resuelve la mayoría de los casos sin tocar la masa."
+      - texto: "Poner la pinza de masa en uno de los dos puntos"
+        porque: "Esa masa está unida a tierra: se produce un cortocircuito a través de la tierra del instrumento."
+      - texto: "Quitar la toma de tierra del osciloscopio"
+        porque: "Anula la protección del instrumento: nunca. Para eso están la resta, la sonda diferencial o el transformador."
+    escalera:
+      - "¿A qué está unida la pinza de masa del osciloscopio?"
+    solucion: "Con la resta de dos canales; o una sonda diferencial si el modo común es grande."
+
+  - id: sesgo
+    tipo: pregunta
+    titulo: "Medidas correctas, conclusión equivocada"
+    texto: "Ajusta la escala hasta que la señal parece correcta. ¿Qué tipo de error es?"
+    libro: [69]
+    widget:
+      tipo: figura
+      figura: fig-47.4
+      zonas:
+        - { id: sesgo, rotulo: "La caja de abajo", rect: [257, 180, 177, 67] }
+    opciones:
+      - texto: "De método: el sesgo del observador"
+        bien: true
+        porque: "Mirar solo donde se espera encontrar algo: medidas correctas, conclusiones equivocadas."
+      - texto: "De ancho de banda"
+        porque: "El instrumento mide bien: lo que falla es cómo se mira."
+      - texto: "De carga"
+        porque: "No se ha cambiado nada del circuito: es un error de quien mide."
+    escalera:
+      - "¿Falla el instrumento o quien lo mira?"
+    solucion: "Un error de método, no de instrumento: el sesgo del observador."
+
+  - id: repetir
+    tipo: porque
+    titulo: "Repetir cambiando algo"
+    texto: "Una medida delicada se repite con otro punto de masa, otra sonda u otra escala. ¿Qué dice si cambia?"
+    libro: [72]
+    widget:
+      tipo: figura
+      figura: fig-47.4
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [30, 20, 210, 200] }
+    opciones:
+      - texto: "Que la medida estaba afectada por el montaje"
+        bien: true
+        porque: "Si no cambia, hay razones para creerla. Es el control experimental del banco, y cuesta un minuto."
+      - texto: "Que el instrumento está averiado"
+        porque: "Lo que ha cambiado es el montaje, no el instrumento."
+      - texto: "Nada: basta con promediar las dos"
+        porque: "Promediar oculta el problema: la diferencia es la información."
+    escalera:
+      - "Si solo ha cambiado el montaje, ¿qué ha cambiado la medida?"
+    solucion: "Que el montaje la afectaba; si no cambia, hay razones para creerla."
+
+  - id: banco-divisor
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte el divisor de dos resistencias de 1 MΩ desde 10 V y mida el punto medio con el multímetro."
+    libro: ["cap01#234"]
+    fijar: { R_d: 1000000, R_in: 10000000 }
+    banco:
+      piezas: ["Fuente de 10 V", "Dos resistencias de 1 MΩ", "Multímetro en V⎓"]
+      medir: "La tensión del punto medio respecto a masa."
+      esperado: V_d
+      unidad: V
+      tol: 0.02
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.02 }, texto: "Mide de más: mida antes las dos resistencias y la fuente; con la de abajo algo mayor, el punto medio sube." }
+        - { texto: "Mide de menos: ¿está en el rango de mV? Ese rango no mantiene los 10 MΩ con varios voltios: use V⎓." }
+      ficha: { n: 1, titulo: "El voltímetro forma parte del circuito" }
+    comprobar:
+      - { V_d: 4.762 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [44, 46, 53, 72]
+    ideas:
+      - { titulo: "Toda medida perturba.", texto: "10 MΩ sobre 1 MΩ dejan la lectura en 10/11 de la real." }
+      - { titulo: "Cuadratura.", texto: "Los tiempos de subida se suman en cuadratura: instrumento tres veces más rápido." }
+      - { titulo: "El conjunto manda.", texto: "Sonda y osciloscopio juntos: 60 y 200 MHz dan unos 57." }
+      - { titulo: "Repetir cambiando algo.", texto: "Si la medida cambia con el montaje, estaba afectada." }

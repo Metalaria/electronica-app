@@ -1,0 +1,199 @@
+# «Consolas por dentro» · Mega Drive 7: averías típicas y reparación. Lo simple primero (libro, capítulo 55, y lo que
+# pide la guía antes de abrir), una consola que no enciende (adaptador, pista rota o IC17: búsqueda con el multímetro
+# sobre la foto, con los valores del manual PAL-G de Sega), un botón siempre pulsado (filtro EMI), las bandas de
+# colores de las VA0–VA3 que no son condensadores y un juego que se para tras la licencia (TMSS, no avería). Fuentes:
+# la guía de Retro Tech Wiki (manual PAL-G de Sega, VA4 y VA6.5), ConsoleMods «Genesis:Buying Guide», los datos de la
+# consola (megadrive#n) y el libro.
+leccion: consola-megadrive/megadrive-averias
+
+libro:
+  "megadrive#22": "Dos reguladores lineales de +5 V sobre el blindaje"
+  "megadrive#4": "lee los mandos"
+  "megadrive#19": "Filtros de cada línea de los puertos"
+  "megadrive#91": "manual de mantenimiento PAL-G de Sega, de agosto de 1992"
+  "megadrive#93": "da 10 V de continua y 1,2 A"
+  "megadrive#95": "Vcc1 y Vcc2 deben dar +5 V"
+  "megadrive#96": "una pista rota bajo los disipadores o en el interruptor, y un IC17 averiado"
+  "megadrive#97": "con la imagen en blanco y negro, se cambia el cristal"
+  "megadrive#98": "Si un filtro EMI de los mandos mide de 24 a 65 Ω a masa, el filtro está averiado"
+  "megadrive#99": "Sonido en el DIN pero no en los auriculares: IC12 (CXA1034)"
+  "megadrive#100": "algunos juegos muy antiguos no lo hacen y se paran tras la pantalla de licencia, sin que sea una avería"
+  "megadrive#101": "Antes de abrir la consola: cambiar el cable A/V, el adaptador y la entrada del televisor"
+  "megadrive#111": "lee la ROM del juego en la dirección $100 y busca la cadena «SEGA»"
+  "megadrive#119": "Las VA0 a VA3 tienen un vídeo compuesto flojo, con bandas de colores en toda la pantalla"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap53#92": "conviene confirmarlos con el óhmetro"
+
+modelo:
+  valores:
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 10 }
+    V_o: { sim: "V_{salida}", nombre: "salida de un 7805", unidad: V, valor: 5 }
+    ad: { tipo: interruptor, nombre: "adaptador sano", valor: 1 }
+    pt: { tipo: interruptor, nombre: "pista de la entrada sana", valor: 1 }
+    re: { tipo: interruptor, nombre: "IC17 sano", valor: 1 }
+  calculos:
+    V_clav: { expr: "V_ad*ad", sim: "V_{clavija}", nombre: "tensión en la clavija del adaptador", unidad: V, cifras: 3 }
+    R_pt: { si: pt, entonces: "0", sino: "1e9", sim: "R_{pista}", nombre: "resistencia de la pista de la entrada al interruptor", unidad: Ω }
+    V_1: { expr: "V_o*ad*pt", sim: "V_{cc1}", nombre: "salida de IC15", unidad: V, cifras: 3 }
+    V_2: { expr: "V_o*ad*pt*re", sim: "V_{cc2}", nombre: "salida de IC17", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-primero
+    tipo: explorar
+    titulo: "Lo primero, lo simple"
+    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
+    libro: ["cap53#39", "megadrive#22", "megadrive#101"]
+    requiere: { mover: [reg, cart, av] }
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "Reguladores 7805", texto: "Dan los 5 V de toda la lógica." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "Antes de abrir: limpie el cartucho y la ranura." }
+        - { id: av, hotspot: av, rotulo: "Conector A/V", texto: "Antes de abrir: pruebe otro cable A/V." }
+
+  - id: ordene-antes
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de abrirla"
+    texto: "No hay imagen. Ordene los pasos, de lo más simple a lo más difícil."
+    libro: ["megadrive#101", "cap53#39"]
+    ordenar:
+      - "Probar otro cable A/V, otro adaptador y otra entrada del televisor."
+      - "Limpiar el cartucho y la ranura."
+      - "Abrir la consola y medir los 5 V."
+    exito: "Lo de fuera primero: muchas «averías» son un cable o un contacto sucio."
+    pistas:
+      - { texto: "Abrir la consola es lo último: antes se cambia lo que se puede cambiar sin herramientas." }
+    escalera:
+      - "¿Qué se puede probar sin destornillador?"
+    solucion: "Cable, adaptador y televisor; después, cartucho y ranura; por último, abrir y medir."
+
+  - id: averia-no-enciende
+    tipo: averia
+    titulo: "No enciende"
+    texto: "La consola no enciende o le falta media placa. Mida y señale la pieza: el adaptador, la pista de la entrada o IC17."
+    libro: ["megadrive#93", "megadrive#95", "megadrive#96", "megadrive#91", "cap53#92"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "IC15 e IC17 (7805)" }
+        - { id: sw1, hotspot: sw1, rotulo: "Interruptor SW1" }
+    averia:
+      pasos: 3
+      eleccion: fija
+      sospechosos:
+        - { id: adaptador, rotulo: "Adaptador" }
+        - { id: pista, rotulo: "Pista de la entrada al interruptor" }
+        - { id: ic17, rotulo: "IC17 (7805)" }
+      sondas:
+        - { id: clavija, rotulo: "Clavija del adaptador", valor: V_clav }
+        - { id: pista, rotulo: "Pista de la entrada al SW1, apagada", valor: R_pt }
+        - { id: vcc1, rotulo: "Salida de IC15 (Vcc1)", valor: V_1 }
+        - { id: vcc2, rotulo: "Salida de IC17 (Vcc2)", valor: V_2 }
+      fallos:
+        - { id: pista-rota, pieza: pista, tipo: abierta, con: { pt: 0 }, texto: "La pista de la entrada está rota: sin continuidad, no llega nada a los 7805. El manual de Sega la busca en el interruptor y bajo los disipadores." }
+        - { id: ic17-muerto, pieza: ic17, tipo: abierta, con: { re: 0 }, texto: "IC15 da sus 5 V pero IC17 no: media placa se queda sin Vcc2." }
+        - { id: adaptador-muerto, pieza: adaptador, tipo: abierta, con: { ad: 0 }, texto: "El adaptador no da sus 10 V: la consola no tiene la culpa." }
+    exito: "Medir a lo largo del camino separa el adaptador, la pista y el regulador."
+    escalera:
+      - "Empiece por la clavija: si el adaptador no da tensión, la placa no tiene la culpa."
+      - "Vcc1 bien y Vcc2 a cero: el fallo está después del punto común, en IC17."
+    solucion: "Clavija sin tensión: el adaptador. Pista sin continuidad: la pista. Vcc1 con 5 V y Vcc2 a cero: IC17."
+    comprobar:
+      - { V_clav: 10, R_pt: 0, V_1: 5, V_2: 5 }
+
+  - id: toque-emi
+    tipo: tocar
+    titulo: "Un botón siempre pulsado"
+    texto: "Un botón del mando parece siempre pulsado. Toque la pieza del puerto que mide de 24 a 65 Ω a masa."
+    libro: ["megadrive#98", "megadrive#19", "megadrive#4"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: emi, hotspot: emi, rotulo: "Fila de piezas sobre los puertos" }
+        - { id: pad1, hotspot: pad1, rotulo: "Conector de abajo, a la izquierda" }
+        - { id: io, hotspot: io, rotulo: "Chip cuadrado, a la derecha" }
+    tocar:
+      bien: [emi]
+      porque:
+        pad1: "El conector solo lleva las líneas; con esa lectura a masa, la guía culpa al filtro."
+        io: "El 315-5433 lee los mandos, pero la medida de 24 a 65 Ω a masa es la de un filtro EMI averiado."
+    exito: "Un filtro EMI que mide de 24 a 65 Ω a masa está averiado: tira la línea abajo."
+    escalera:
+      - "Cada línea de los puertos pasa por un filtro, en la fila de encima."
+    solucion: "El filtro EMI de esa línea, en la fila sobre los puertos."
+
+  - id: por-que-bandas
+    tipo: porque
+    titulo: "Bandas de colores"
+    texto: "Una VA2 da bandas de colores en toda la pantalla por compuesto. ¿Cambiamos los condensadores?"
+    libro: ["megadrive#119"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: enc, hotspot: enc, rotulo: "Codificador" }
+    opciones:
+      - texto: "No: en las VA0 a VA3 viene del circuito de vídeo, no de condensadores."
+        bien: true
+        porque: "ConsoleMods lo dice: las VA0 a VA3 tienen un compuesto flojo; cambiar condensadores no lo quita."
+      - texto: "Sí: los condensadores viejos siempre dan bandas."
+        porque: "En estas revisiones las bandas son del diseño del circuito de vídeo, no del estado de los condensadores."
+      - texto: "Sí, y también el VDP."
+        porque: "Ni el VDP ni los condensadores: es el circuito de vídeo de esas revisiones."
+    escalera:
+      - "¿Es un fallo de una consola o de toda una revisión?"
+    solucion: "No: es el compuesto flojo de las VA0 a VA3, no los condensadores."
+
+  - id: prediga-licencia
+    tipo: predecir
+    titulo: "Se para tras la licencia"
+    texto: "Un juego muy antiguo muestra la pantalla de licencia de Sega y se queda ahí. ¿Avería?"
+    libro: ["megadrive#100", "megadrive#111", "megadrive#4"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: io, hotspot: io, rotulo: "315-5433" }
+    opciones:
+      - texto: "No: el juego no escribe «SEGA» como pide el TMSS."
+        bien: true
+        porque: "Algunos juegos muy antiguos no lo hacen y se paran tras la licencia. La guía dice que no es una avería."
+      - texto: "Sí: el VDP está estropeado."
+        porque: "El VDP funciona: ha dibujado la pantalla de licencia. Es el TMSS."
+      - texto: "Sí: la ranura está sucia."
+        porque: "El mensaje de licencia sale tras leer «SEGA» en la ROM del cartucho: la ranura ya ha leído el juego."
+    escalera:
+      - "¿Quién pone la pantalla de licencia?"
+    solucion: "No es avería: es el TMSS con un juego que no escribe «SEGA»."
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada síntoma, su sospechoso"
+    texto: "Empareje cada síntoma con lo que señala el manual de Sega."
+    libro: ["megadrive#97", "megadrive#99", "megadrive#98", "megadrive#96"]
+    emparejar:
+      - ["Imagen en blanco y negro", "El cristal"]
+      - ["Sonido en el DIN, no en auriculares", "IC12 (CXA1034)"]
+      - ["Un botón siempre pulsado", "Un filtro EMI"]
+      - ["Media placa sin 5 V", "IC17"]
+    exito: "El síntoma dice dónde mirar: color, audio, mando o alimentación."
+    pistas:
+      - { texto: "El color depende del cristal; los auriculares, del CXA1034." }
+    escalera:
+      - "Repase las tarjetas anteriores: cada pieza tiene su síntoma."
+    solucion: "B/N: cristal. Sin auriculares: IC12. Botón pulsado: filtro EMI. Sin Vcc2: IC17."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap53#39", "megadrive#101", "megadrive#96", "megadrive#100"]
+    ideas:
+      - { titulo: "Lo simple.", texto: "Cable, adaptador, televisor y ranura, antes de abrir." }
+      - { titulo: "El camino.", texto: "Clavija, pista y 7805: la medida dice dónde se corta." }
+      - { titulo: "Revisiones.", texto: "Algunos defectos son de toda una revisión, no de una pieza." }
+      - { titulo: "No toda falla es avería.", texto: "El TMSS para algunos juegos antiguos." }

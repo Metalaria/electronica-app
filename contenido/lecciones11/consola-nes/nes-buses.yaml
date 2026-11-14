@@ -1,0 +1,204 @@
+# «Consolas por dentro» · NES 4: el bus de la CPU y la decodificación de direcciones con el 74LS139 (U3). Un circuito
+# lógico con las dos mitades de U3 (con M2 alto), su tabla, los espejos por la decodificación incompleta y el mapa de
+# memoria. Fuentes: nes#n (explorador y arquitectura: el decodificador sobre sus direcciones de ejemplo) y la sección
+# 38.11 del libro (el mapa de memoria y los espejos).
+leccion: consola-nes/nes-buses
+
+libro:
+  "nes#4": "espejados hasta $1FFF porque A11 y A12 no se decodifican"
+  "nes#7": "La mitad B combina M2 y A15: da /ROMSEL ($8000–$FFFF) y habilita la mitad A para $0000–$7FFF"
+  "nes#34": "Mitad A: A13 y A14 → WRAM /CS ($0000–$1FFF) o PPU /CS ($2000–$3FFF)"
+  "nes#46": "$1B00 es la celda $0300 (espejo ×4)"
+  "nes#48": "$3FF2 es el registro $2002 (PPUSTATUS)"
+  "nes#50": "Ningún chip de la placa base se selecciona"
+  "nes#51": "/ROMSEL = NAND(M2, A15)"
+  "cap37#358": "2 kB de RAM interna"
+  "cap37#359": "aparecen porque la decodificación de direcciones es incompleta, se ignoran las líneas altas"
+  "cap37#360": "de $4020 a $FFFF, 49 120 de las 65 536 direcciones"
+  "cap29#76": "Decodificador: de n entradas a 2ⁿ salidas, con una sola activa"
+
+modelo:
+  valores:
+    cart: { sim: "N_{cartucho}", nombre: "direcciones del cartucho", unidad: "", valor: 49120 }
+    total: { sim: "N", nombre: "direcciones de la CPU", unidad: "", valor: 65536 }
+  calculos:
+    frac: { expr: "cart/total*100", sim: "f", nombre: "parte del espacio en el cartucho", unidad: "%", cifras: 4 }
+
+tarjetas:
+  - id: explore-dec
+    tipo: explorar
+    titulo: "Quién elige"
+    texto: "La CPU pone una dirección y U3 decide quién contesta. Toque la CPU, U3, la RAM y el cartucho."
+    libro: ["nes#7", "nes#4"]
+    requiere: { mover: [cpu, dec, wram, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cpu, hotspot: U6, rotulo: "CPU", texto: "Pone la dirección en A0–A15." }
+        - { id: dec, hotspot: U3, rotulo: "Decodificador U3", texto: "Doble decodificador 2 a 4: elige la RAM, la PPU o el cartucho." }
+        - { id: wram, hotspot: U1, rotulo: "RAM de trabajo", texto: "Contesta en $0000–$1FFF." }
+        - { id: cart, hotspot: P1, rotulo: "Cartucho", texto: "Su ROM contesta en $8000–$FFFF con /ROMSEL." }
+
+  - id: explore-logica
+    tipo: explorar
+    titulo: "U3 por dentro"
+    texto: "Con M2 alto: A15 elige el cartucho; si es 0, A14 y A13 eligen la RAM o la PPU. Mueva las tres."
+    libro: ["nes#7", "nes#34", "cap29#76"]
+    requiere: { mover: [A15, A14, A13] }
+    widget:
+      tipo: logica
+      entradas: [{ id: A15, rotulo: "A15" }, { id: A14, rotulo: "A14" }, { id: A13, rotulo: "A13" }]
+      piezas:
+        - { id: inv, tipo: not, entradas: [A15] }
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [A13, A14, inv] }
+        - { id: rom, tipo: buf, entradas: [A15] }
+      salidas:
+        - { id: WRAM, de: dec.y0 }
+        - { id: PPU, de: dec.y1 }
+        - { id: ROM, de: rom }
+      tabla: true
+
+  - id: tabla-dec
+    tipo: tabla
+    titulo: "La tabla de U3"
+    texto: "Rellene qué elige cada combinación de A15, A14 y A13 (1: elegido)."
+    libro: ["nes#7", "nes#34", "nes#50"]
+    widget:
+      tipo: logica
+      entradas: [{ id: A15, rotulo: "A15" }, { id: A14, rotulo: "A14" }, { id: A13, rotulo: "A13" }]
+      piezas:
+        - { id: inv, tipo: not, entradas: [A15] }
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [A13, A14, inv] }
+        - { id: rom, tipo: buf, entradas: [A15] }
+      salidas:
+        - { id: WRAM, de: dec.y0 }
+        - { id: PPU, de: dec.y1 }
+        - { id: ROM, de: rom }
+      ocultar: true
+    tabla:
+      salidas: [WRAM, PPU, ROM]
+    exito: "Con A15 = 1, el cartucho; si no, A14 y A13 eligen la RAM ($0000–$1FFF) o la PPU ($2000–$3FFF)."
+    escalera:
+      - "Con A15 = 1 solo se elige la ROM."
+      - "Con A15 = 0: A14 = 0 y A13 = 0, la RAM; A14 = 0 y A13 = 1, la PPU; A14 = 1, nadie."
+    solucion: "WRAM: 1 en 000. PPU: 1 en 001. ROM: 1 en las cuatro filas con A15 = 1."
+
+  - id: prediga-espejo
+    tipo: predecir
+    titulo: "Escribir en $1B00"
+    texto: "La CPU escribe en $1B00 y la RAM solo tiene 2 KB. ¿Qué celda cambia?"
+    libro: ["nes#46", "nes#4"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: wram, hotspot: U1, rotulo: "RAM de trabajo" }
+    opciones:
+      - texto: "La $0300"
+        bien: true
+        porque: "La RAM solo recibe A0–A10: $1B00 cae en la celda $0300. Es un espejo."
+      - texto: "La $1B00"
+        porque: "La RAM tiene 2 KB, hasta $07FF: no hay celda $1B00. Las líneas A11 y A12 no se decodifican."
+      - texto: "Ninguna: la dirección está fuera de la RAM"
+        porque: "U3 baja WRAM /CS en todo $0000–$1FFF: la escritura llega a la RAM."
+    escalera:
+      - "Quite los bits A11 y A12 de la dirección."
+    solucion: "$1B00 es la celda $0300: un espejo de la RAM."
+
+  - id: registro-espejo
+    tipo: pregunta
+    titulo: "Leer $3FF2"
+    texto: "La PPU solo mira A0–A2. ¿Qué registro lee la CPU en $3FF2?"
+    libro: ["nes#48"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: ppu, hotspot: U5, rotulo: "PPU" }
+    opciones:
+      - texto: "$2002, PPUSTATUS"
+        bien: true
+        porque: "Con solo A0–A2, $3FF2 es el registro $2002: los ocho registros se repiten hasta $3FFF."
+      - texto: "Ninguno: la PPU solo contesta en $2000–$2007"
+        porque: "U3 baja PPU /CS en todo $2000–$3FFF, y la PPU solo mira los tres bits bajos."
+      - texto: "Una celda de la RAM"
+        porque: "La RAM es $0000–$1FFF. $3FF2 tiene A13 = 1: es de la PPU."
+    escalera:
+      - "Quédese con los tres bits bajos de $3FF2."
+    solucion: "$3FF2 es el registro $2002 (PPUSTATUS)."
+
+  - id: empareje-mapa
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El mapa de memoria"
+    texto: "Empareje cada zona del mapa de la CPU con lo que hay en ella."
+    libro: ["cap37#358", "nes#51"]
+    emparejar:
+      - ["$0000–$07FF", "2 kB de RAM interna"]
+      - ["$2000–$2007", "Registros de la PPU"]
+      - ["$4000–$4017", "Sonido y mandos"]
+      - ["$8000–$FFFF", "La ROM del cartucho, con /ROMSEL"]
+    exito: "El mapa del libro, tal como lo decodifica U3."
+    pistas:
+      - { texto: "/ROMSEL baja con A15 = 1: la mitad alta del mapa." }
+    escalera:
+      - "La RAM empieza en $0000; la PPU, en $2000."
+    solucion: "RAM, PPU, sonido y mandos, y la ROM del cartucho."
+
+  - id: estime-cartucho
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Cuánto es del cartucho?"
+    texto: "De $4020 a $FFFF el espacio es del cartucho. ¿Qué porcentaje de las 65 536 direcciones?"
+    libro: ["cap37#360"]
+    estimar:
+      objetivo: frac
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 30
+      tol: 0.03
+      rotulo: "Direcciones del cartucho"
+    exito: "49 120 de las 65 536: casi tres cuartas partes del espacio son del cartucho."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 77.2 }, texto: "Se ha pasado: por debajo de $4020 está todo lo de la placa." }
+      - { texto: "Se ha quedado corto: desde $4020 hasta $FFFF es casi todo el mapa." }
+    escalera:
+      - "$4020 está poco por encima de la cuarta parte de $FFFF."
+    solucion: "49 120 ÷ 65 536 = 74,95 %: casi tres cuartas partes."
+    comprobar:
+      - { frac: 74.95 }
+
+  - id: por-que-espejos
+    tipo: porque
+    titulo: "Por qué hay espejos"
+    texto: "La RAM aparece cuatro veces en el mapa. ¿Por qué?"
+    libro: ["cap37#359", "nes#4"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: dec, hotspot: U3, rotulo: "Decodificador U3" }
+    opciones:
+      - texto: "La decodificación es incompleta: A11 y A12 no se miran."
+        bien: true
+        porque: "U3 elige la RAM con A13 a A15; la RAM usa A0–A10. A11 y A12 dan igual: cuatro copias."
+      - texto: "Nintendo copió la RAM cuatro veces."
+        porque: "Hay un solo chip de 2 KB: las copias salen de no decodificar A11 y A12."
+      - texto: "Para que los juegos tengan cuatro veces más RAM."
+        porque: "Siguen siendo 2 KB: las cuatro zonas llegan a las mismas celdas."
+    escalera:
+      - "¿Qué líneas de dirección no llegan ni a U3 ni a la RAM?"
+    solucion: "Decodificación incompleta: A11 y A12 no se decodifican y la RAM se repite cuatro veces."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["nes#7", "cap37#358", "cap37#359", "cap37#360"]
+    ideas:
+      - { titulo: "U3.", texto: "A15 elige el cartucho; A14 y A13, la RAM o la PPU." }
+      - { titulo: "El mapa.", texto: "RAM, PPU, sonido y mandos, y el cartucho." }
+      - { titulo: "Espejos.", texto: "Las líneas que no se decodifican repiten la RAM y los registros." }
+      - { titulo: "El cartucho manda.", texto: "Casi tres cuartas partes del espacio son suyas." }

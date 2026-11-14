@@ -204,8 +204,26 @@ export interface Encuadre {
 }
 
 /** Colours of the schematic's own lines and labels; any other colour on a text is an annotation of the book. */
-// (the grey #5d6d7e is the book's colour for side notes such as «V_R = 3 V»: an annotation)
-const NEUTROS = new Set(['#1a3a5c', '#000000', '#000']);
+// (the grey #5d6d7e is the book's colour for side notes such as «V_R = 3 V»: an annotation; 1.2: book 4.0/4.1 writes
+// every label in the ink #1b1f27, its grey for notes is #5b6472)
+const NEUTROS = new Set(['#1a3a5c', '#000000', '#000', '#1b1f27']);
+/**
+ * 1.2: book 4.0/4.1 recolours its figures (the book's figuras/roles40.py with herramientas/recolorear.csv), but the
+ * figure data keep the 3.0.2 colour of a highlighted part: its label is now written in the text shade of the new hue.
+ */
+const TEXTO_41: Record<string, string> = {
+  '#2e6ea6': '#2150c5',
+  '#a93226': '#a5231c',
+  '#1e8449': '#186840',
+  '#b7950b': '#964713',
+  '#6c3483': '#6642b8',
+  '#5d6d7e': '#5b6472',
+};
+/** The colours a part's own label may have in the figure: its colour in the data and, in a 4.x figure, its new shade. */
+export function coloresDeRotulo(color: string | null | undefined): string[] {
+  const c = color?.toLowerCase();
+  return c ? [c, ...(TEXTO_41[c] ? [TEXTO_41[c]!] : [])] : [];
+}
 /** A reading written as a label: «1,52 V», «I = 15,2 mA», «2,8 V / 50 mA» (a part's own value is not one). */
 const LECTURA = /\d\s*(?:[munµpk]|µ)?(?:V|A)\b/;
 const sinBlancos = (t: string) => t.replace(/[\s  $]/g, '');
@@ -285,9 +303,9 @@ export function encuadre(vista: Caja, esq: EsquemaEncuadre, objetos: ObjetosFigu
     const propias = (e.etiquetas ?? []).filter((et) => !LECTURA.test(et) || (v && sinBlancos(et).includes(v)));
     const lineas = propias.length ? propias.flatMap((et) => et.split('\n')) : e.valor_texto ? [e.valor_texto] : [];
     // a label is written in the part's colour, or in the schematic's (a red «I₁» is not R₁'s name)
-    const color = e.color?.toLowerCase();
+    const colores = coloresDeRotulo(e.color);
     for (const l of lineas) {
-      const mejor = cercanos(glifosDe(l), c).find((t) => !lecturas.has(t) && !rotulos.has(t) && (t.color === color || NEUTROS.has(t.color)));
+      const mejor = cercanos(glifosDe(l), c).find((t) => !lecturas.has(t) && !rotulos.has(t) && (colores.includes(t.color) || NEUTROS.has(t.color)));
       if (mejor) rotulos.add(mejor);
     }
   }

@@ -1,0 +1,264 @@
+# Lección 1.2 de la sección 13.4 «Soldadura de Montaje Superficial (SMD)» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# El circuito es el divisor del libro (sección 1.4: 12 V, 10 kΩ y 5 kΩ, 4,00 V) montado en SMD; el puente de estaño
+# entre las dos islas de R₂ se dibuja como una carga de 1 mΩ en paralelo con ella (valor de ejemplo de un corto).
+leccion: cap13/sec-13.4
+
+libro:
+  68: "soldar SMD a mano es más rápido que soldar componentes con patillas"
+  71: "Cómodo: el recomendado para prototipos"
+  72: "El 0805 es el punto dulce para trabajo manual"
+  74: "Estañar un solo pad, con poca cantidad."
+  75: "El paso 4 es el que más se olvida"
+  78: "Alinear el chip con cuidado"
+  79: "El resultado intermedio parece un desastre —un puente continuo— y no lo es."
+  82: "el mínimo que caliente, porque un caudal alto desplaza los componentes pequeños"
+  83: "proteger los componentes vecinos con cinta kapton o lámina de aluminio"
+  85: "se corrige recalentando ambos a la vez"
+  87: "se quitan igual, con malla y no rascando"
+  88: "Solo se comprueba por rayos X o por la temperatura en funcionamiento."
+  91: "Lo que no hace falta: pulso perfecto"
+  "cap01#83": "Con 12 V, 10 kΩ y 5 kΩ, la salida es 4,00 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_p: { sim: "puente", nombre: "puente de estaño", unidad: Ω, valor: 0.001 }
+    p_on: { tipo: interruptor, nombre: "puente de estaño entre las islas de R₂", valor: 1 }
+  calculos:
+    R_ab: { si: p_on, entonces: "par(R_2, R_p)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de abajo con el puente", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    I_2: { expr: "V_out/R_2", sim: "I₂", nombre: "corriente por R₂", unidad: A }
+    I_p: { si: p_on, entonces: "V_out/R_p", sino: "0", sim: "I_{puente}", nombre: "corriente por el puente", unidad: A }
+
+tarjetas:
+  - id: explore-puente
+    tipo: explorar
+    titulo: "Un puente entre islas"
+    texto: "Un puente de estaño une las dos islas de R₂. Quítelo con malla y mire la salida."
+    nota: "El divisor del libro, en SMD."
+    libro: [87, "cap01#83"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, abajo: I_2, carga: I_p }
+      mandos:
+        - { valor: p_on, tipo: interruptor, rotulo: "Puente de estaño" }
+    requiere: { mover: [p_on] }
+    comprobar:
+      - { con: { p_on: 0 }, V_out: 4.0 }
+
+  - id: mas-facil
+    tipo: pregunta
+    titulo: "Más fácil de lo que parece"
+    texto: "¿Por qué soldar SMD a mano es más rápido que soldar componentes con patillas?"
+    libro: [68, 91]
+    fijar: { p_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "No hay que insertar ni cortar patillas, y el calor llega antes"
+        bien: true
+        porque: "Lo que sí hace falta es cambiar la técnica, no el pulso."
+      - texto: "No lo es: hace falta pulso de cirujano"
+        porque: "Las pinzas sujetan: no hace falta pulso perfecto ni microscopio."
+      - texto: "Porque se suelda sin estaño"
+        porque: "Se suelda con estaño; lo que cambia es el procedimiento."
+    escalera:
+      - "Piense en los pasos de una junta THT que aquí desaparecen."
+    solucion: "Sin insertar ni cortar, y el calor llega antes."
+
+  - id: encapsulados
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Hasta dónde llega la mano"
+    texto: "Una cada encapsulado con lo que pide soldarlo a mano."
+    libro: [71, 72]
+    emparejar:
+      - ["0805", "Cómodo: el recomendado para prototipos"]
+      - ["0603", "Posible con lupa"]
+      - ["0402", "Difícil, con pinzas finas"]
+      - ["0201", "No a mano"]
+      - ["QFN, BGA", "Aire caliente o reflujo"]
+    exito: "El 0805 es el punto dulce: pequeño y aún manejable."
+    pistas:
+      - { texto: "Cuanto más pequeño el número, más pequeño el encapsulado." }
+    escalera:
+      - "Los de contactos ocultos no se alcanzan con la punta."
+    solucion: "0805 cómodo; 0603 lupa; 0402 pinzas finas; 0201 no; QFN y BGA, aire o reflujo."
+
+  - id: ordene-dos-terminales
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Un componente de dos terminales"
+    texto: "Ponga en orden la soldadura a mano de una resistencia SMD."
+    libro: [74]
+    ordenar:
+      - "Estañar un solo pad, con poca cantidad."
+      - "Calentar ese estaño y deslizar el componente con la pinza hasta su sitio."
+      - "Soldar el otro extremo con estaño nuevo."
+      - "Rehacer el primero, que quedó con poco estaño y sin flux fresco."
+    exito: "El cuarto paso evita una junta fría en el lado que sirvió para posicionar."
+    pistas:
+      - { texto: "Primero se fija con un solo pad; el otro se suelda ya con el componente en su sitio." }
+    escalera:
+      - "¿Qué junta queda peor: la que posiciona o la que se suelda después?"
+    solucion: "Estañar un pad, posicionar, soldar el otro y rehacer el primero."
+
+  - id: por-que-rehacer
+    tipo: porque
+    titulo: "¿Por qué rehacer el primero?"
+    texto: "El primer pad ya sujeta el componente. ¿Por qué hay que volver a él al final?"
+    libro: [74, 75]
+    fijar: { p_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Porque quedó con poco estaño y sin flux fresco: puede ser una junta fría"
+        bien: true
+        porque: "Sirvió para posicionar, no para soldar bien. Es el paso que más se olvida."
+      - texto: "Para que el componente quede recto"
+        porque: "Ya se alineó en el segundo paso, con la pinza quieta."
+      - texto: "No hace falta si ya conduce"
+        porque: "Una junta fría conduce al principio: por eso se rehace."
+    escalera:
+      - "¿Cuánto estaño y cuánto flux se puso en el primer pad?"
+    solucion: "Quedó con poco estaño y sin flux fresco."
+
+  - id: ordene-arrastre
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La técnica de arrastre"
+    texto: "Un QFP de paso 0,5 mm. Ordene la técnica que funciona."
+    libro: [78]
+    ordenar:
+      - "Alinear el chip con cuidado y fijar dos pines opuestos."
+      - "Aplicar flux líquido generosamente sobre toda la fila."
+      - "Arrastrar la punta de cincel, con algo de estaño, a lo largo de la fila."
+      - "Quitar los puentes con malla y más flux, y revisar con lupa."
+    exito: "Alinear es el paso crítico: una vez soldado un pin, alinear es rehacer."
+    pistas:
+      - { texto: "Lo que no tiene arreglo después es la alineación: va la primera." }
+    escalera:
+      - "Los puentes se aceptan: se quitan al final."
+    solucion: "Alinear y fijar, flux, arrastrar, quitar puentes con malla."
+
+  - id: prediga-desastre
+    tipo: predecir
+    titulo: "Tras arrastrar"
+    texto: "Tras arrastrar la punta, la fila es un puente continuo. ¿Qué significa?"
+    libro: [79, 87]
+    fijar: { p_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_p }
+      ocultar: true
+    opciones:
+      - texto: "Nada grave: es parte del método, la malla con flux se lo lleva"
+        bien: true
+        porque: "Con flux abundante, el estaño prefiere quedarse en el metal; el sobrante se acumula al final y la malla lo retira."
+      - texto: "Que el chip está perdido"
+        porque: "Parece un desastre y no lo es: así se sueldan pasos de 0,5 mm."
+      - texto: "Que hay que rascar el estaño con una punta fina"
+        porque: "Los puentes se quitan con malla y no rascando."
+    escalera:
+      - "¿Con qué se quitan los puentes en el último paso del arrastre?"
+    solucion: "Es parte del método: malla y flux."
+
+  - id: aire-caudal
+    tipo: pregunta
+    titulo: "El caudal del aire caliente"
+    texto: "Va a desoldar un QFN con aire caliente. ¿Qué caudal usa?"
+    libro: [82, 83]
+    fijar: { p_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "El mínimo que caliente, en movimiento circular"
+        bien: true
+        porque: "Un caudal alto desplaza los componentes pequeños. Y conviene proteger a los vecinos con kapton o aluminio."
+      - texto: "El máximo, para acabar antes"
+        porque: "Envía volando los componentes pequeños de alrededor."
+      - texto: "Medio, fijo sobre un punto"
+        porque: "El movimiento debe ser circular y continuo, nunca fijo en un punto."
+    escalera:
+      - "¿Qué les pasa a los componentes pequeños con un chorro fuerte?"
+    solucion: "El mínimo que caliente, moviéndolo."
+
+  - id: almohadilla-oculta
+    tipo: pregunta
+    titulo: "La almohadilla de debajo"
+    texto: "Un QFN parece bien soldado. ¿Cómo se sabe si su almohadilla inferior lo está?"
+    libro: [88]
+    fijar: { p_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Por rayos X o por su temperatura en funcionamiento"
+        bien: true
+        porque: "Sin soldar, su resistencia térmica es el doble o el triple de la prevista, y no se ve."
+      - texto: "Con lupa y luz rasante"
+        porque: "Queda debajo del encapsulado: la lupa no llega."
+      - texto: "Con el zumbador de continuidad"
+        porque: "Esa almohadilla es sobre todo térmica: la continuidad no dice cuánto calor saca."
+    escalera:
+      - "¿Qué se puede ver de algo que queda bajo el chip?"
+    solucion: "Rayos X o temperatura en funcionamiento."
+
+  - id: lapida
+    tipo: pregunta
+    titulo: "El efecto lápida a mano"
+    texto: "Una resistencia SMD se ha levantado de un extremo. ¿Cómo se corrige a mano?"
+    libro: [85]
+    fijar: { p_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Recalentando los dos extremos a la vez"
+        bien: true
+        porque: "Se levantó por calentar los extremos a destiempo; calentarlos juntos lo deja asentar."
+      - texto: "Empujándolo con la pinza en frío"
+        porque: "Sin fundir, se arranca el pad o se rompe el componente."
+      - texto: "Añadiendo estaño solo al extremo levantado"
+        porque: "Repite el desequilibrio: un extremo funde antes que el otro."
+    escalera:
+      - "¿Por qué se levantó: qué extremo fundió primero?"
+    solucion: "Recalentar ambos a la vez."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [68, 72, 75, 79]
+    ideas:
+      - { titulo: "Otra técnica.", texto: "Sin insertar ni cortar: más rápido que con patillas; el 0805 es el punto dulce." }
+      - { titulo: "Dos terminales.", texto: "Estañar un pad, posicionar, soldar el otro y rehacer el primero." }
+      - { titulo: "Arrastre.", texto: "Alinear, mucho flux, arrastrar y quitar los puentes con malla." }
+      - { titulo: "Aire caliente.", texto: "Caudal mínimo, movimiento circular y vecinos protegidos." }

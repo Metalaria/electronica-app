@@ -1,0 +1,266 @@
+# Lección 1.2 de la sección 35.4 «Arquitecturas de ADC» (cap34; etiqueta interna sec-34.4).
+# Formato: contenido/lecciones11/GUIA.md. El plano resolución-velocidad es la figura 35.6; los comparadores del flash
+# (2ⁿ − 1) y el asentamiento del SAR (ln(2ⁿ⁺¹) constantes de tiempo para un salto de fondo de escala) son las cuentas
+# del libro, en gráficas que se mueven.
+leccion: cap34/sec-34.4
+
+libro:
+  90: "Una escalera de 2ⁿ − 1 comparadores"
+  92: "8 bits son 255 comparadores y 10 bits serían 1 023"
+  93: "a costa de una latencia de varios ciclos"
+  95: "una búsqueda binaria que resuelve n bits en n ciclos"
+  96: "es la arquitectura más común"
+  97: "la entrada debe haberse establecido con una exactitud mejor que medio LSB"
+  98: "11,8 τ"
+  99: "el error inicial, de 2n LSB, tiene que caer por debajo de medio LSB"
+  100: "produzca lecturas erróneas que ningún promediado corrige"
+  103: "Su elegancia está en el conformado de ruido"
+  107: "si el tiempo de integración es un múltiplo del periodo de red, el ruido de 50 Hz se promedia a cero"
+  110: "Microcontroladores, control, uso general"
+  112: "Un sigma-delta de 24 bits a 1 kS/s puede ser inservible en un lazo de control por su retardo"
+  114: "si da megamuestras con 12 y el dato está listo en la misma muestra, es SAR"
+
+modelo:
+  valores:
+    n_f: { sim: "n", nombre: "bits del flash", unidad: "", valor: 8 }
+    n_s: { sim: "n", nombre: "bits del SAR", unidad: "", valor: 12 }
+  calculos:
+    N_c: { expr: "2^n_f - 1", sim: "comparadores", nombre: "comparadores del flash", unidad: "" }
+    k_t: { expr: "ln(2^(n_s + 1))", sim: "k", nombre: "constantes de tiempo para medio LSB", unidad: "τ", cifras: 3 }
+    N_p: { expr: "(2^8 - 1)*n_f/8", sim: "N", nombre: "comparadores si crecieran en proporción", unidad: "" }
+    N_d: { expr: "2*(2^8 - 1)", sim: "N", nombre: "el doble de 255", unidad: "" }
+    E_0: { expr: "2^n_s", sim: "error inicial", nombre: "error inicial", unidad: LSB }
+
+tarjetas:
+  - id: explore-plano
+    tipo: explorar
+    titulo: "Resolución contra velocidad"
+    texto: "Cada arquitectura ocupa su zona del plano. Toque las cinco."
+    libro: [96, 110]
+    widget:
+      tipo: figura
+      figura: fig-34.6
+      zonas:
+        - { id: rampa, rotulo: "Abajo a la izquierda", rect: [42, 96, 66, 36], texto: "Doble rampa: muy exacta y lenta, unas pocas medidas por segundo. La de los multímetros." }
+        - { id: sigma, rotulo: "Arriba en el centro", rect: [128, 20, 72, 36], texto: "Sigma-delta: de 16 a 24 bits, lenta, con latencia larga por su filtro." }
+        - { id: sar, rotulo: "En el centro", rect: [165, 124, 80, 36], texto: "SAR: de 8 a 18 bits, de kilomuestras a megamuestras. La más común." }
+        - { id: pipeline, rotulo: "A la derecha", rect: [310, 74, 82, 52], texto: "Pipeline: 12 o 14 bits a cientos de megamuestras, con varios ciclos de latencia." }
+        - { id: flash, rotulo: "Abajo a la derecha", rect: [362, 124, 62, 52], texto: "Flash: gigamuestras con 6 a 8 bits. Osciloscopios y radio." }
+    requiere: { mover: [sar, sigma] }
+
+  - id: explore-flash
+    tipo: explorar
+    titulo: "Comparar con todo a la vez"
+    texto: "Un flash tiene un comparador por cada nivel posible. Suba los bits y mire cuántos hacen falta."
+    libro: [90, 92]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 4, max: 12, unidad: "", rotulo: "bits" }
+      y: { min: 10, max: 5000, unidad: "", rotulo: "comparadores", escala: log }
+      curvas:
+        - { expr: "2^nx - 1", color: azul, rotulo: "Flash" }
+      marcas:
+        - { x: "n_f", y: "N_c", rotulo: "Sus bits" }
+      lectura: { valor: N_c, rotulo: "Comparadores" }
+      mandos:
+        - { valor: n_f, lista: [6, 8], rotulo: "Bits" }
+    requiere: { mover: [n_f] }
+
+  - id: prediga-diez
+    tipo: predecir
+    titulo: "Un flash de 10 bits"
+    texto: "Un flash de 8 bits lleva 255 comparadores. ¿Cuántos llevaría uno de 10 bits?"
+    libro: [92]
+    fijar: { n_f: 10 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 4, max: 12, unidad: "", rotulo: "bits" }
+      y: { min: 10, max: 5000, unidad: "", rotulo: "comparadores", escala: log }
+      curvas:
+        - { expr: "2^nx - 1", color: azul, rotulo: "Flash" }
+      lectura: { valor: N_c, rotulo: "Comparadores" }
+      ocultar: true
+    opciones:
+      - { texto: "1 023: cuatro veces más", bien: true, porque: "2¹⁰ − 1. Cada bit duplica los comparadores, el área, el consumo y la capacidad de entrada." }
+      - { texto: "319: en proporción a los bits", porque: "El precio no es proporcional a los bits sino exponencial: dos bits más, cuatro veces más." }
+      - { texto: "510: el doble", porque: "Eso sería un bit más. Con dos bits más, el cuádruple." }
+    escalera: ["2ⁿ − 1 con n = 10."]
+    solucion: "2¹⁰ − 1 = 1 023: por eso los flash rara vez pasan de 8 bits."
+    comprobar:
+      - { N_c: 1023, N_p: 318.75, N_d: 510 }
+
+  - id: ordene-sar
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La búsqueda binaria"
+    texto: "Un SAR tiene un comparador, un DAC y un registro. Ordene lo que hace con cada bit."
+    libro: [95]
+    ordenar:
+      - "Prueba el bit más significativo"
+      - "Compara la entrada con la salida del DAC"
+      - "Conserva el bit o lo descarta"
+      - "Pasa al bit siguiente"
+    exito: "Una búsqueda binaria: n bits en n ciclos."
+    pistas:
+      - { texto: "Antes de decidir un bit hay que compararlo." }
+    escalera: ["Empieza por el bit que más pesa."]
+    solucion: "Probar el MSB, comparar, conservar o descartar, y pasar al siguiente."
+
+  - id: explore-asentamiento
+    tipo: explorar
+    titulo: "La exigencia oculta del SAR"
+    texto: "Tras un salto de fondo de escala, el error de entrada, de 2ⁿ LSB, debe caer bajo medio LSB antes de convertir. Cambie los bits."
+    libro: [97, 99]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 16, unidad: "τ", rotulo: "t/τ" }
+      y: { min: 0.01, max: 300000, unidad: LSB, rotulo: "error", escala: log }
+      curvas:
+        - { expr: "2^n_s*exp(-tx)", color: azul, rotulo: "Error" }
+        - { expr: "0.5", color: tinta, rotulo: "Medio LSB", discontinua: true }
+      marcas:
+        - { x: "k_t", y: "0.5", rotulo: "Asentado" }
+      lectura: { valor: k_t, rotulo: "Constantes de tiempo" }
+      mandos:
+        - { valor: n_s, lista: [8, 12, 16], rotulo: "Bits" }
+    requiere: { mover: [n_s] }
+
+  - id: estime-dieciseis
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Dieciséis bits"
+    texto: "¿Cuántas constantes de tiempo necesita la entrada de un SAR de 16 bits tras un salto de fondo de escala?"
+    libro: [98, 99]
+    fijar: { n_s: 16 }
+    estimar:
+      objetivo: "k_t"
+      unidad: "τ"
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 3
+      tol: 0.02
+      rotulo: "Constantes de tiempo"
+    exito: "11,8 τ. Con 12 bits, 9,0; con 18, 13,2."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 12 }, texto: "Se ha pasado: ln(2¹⁷) es algo menos de 12." }
+      - { texto: "Se ha quedado corto: los cinco τ del 1 % no bastan; hacen falta ln(2ⁿ⁺¹)." }
+    escalera: ["Son ln(2ⁿ⁺¹) constantes de tiempo."]
+    solucion: "ln(2¹⁷) = 11,8 τ."
+    comprobar:
+      - { k_t: 11.78 }
+
+  - id: porque-buffer
+    tipo: porque
+    titulo: "Un sensor de alta impedancia"
+    texto: "Conectado directamente a un SAR, un sensor de alta impedancia da lecturas erróneas. ¿Por qué no se arreglan promediando?"
+    libro: [100]
+    fijar: { n_s: 16 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 16, unidad: "τ", rotulo: "t/τ" }
+      y: { min: 0.01, max: 300000, unidad: LSB, rotulo: "error", escala: log }
+      curvas:
+        - { expr: "2^n_s*exp(-tx)", color: azul, rotulo: "Error" }
+        - { expr: "0.5", color: tinta, rotulo: "Medio LSB", discontinua: true }
+    opciones:
+      - { texto: "El error no es aleatorio: la entrada no llega a asentarse y siempre se queda corta", bien: true, porque: "Promediar quita ruido, no un error sistemático. La solución es un buffer." }
+      - { texto: "Porque el SAR no permite promediar", porque: "Sí se puede promediar; lo que no se consigue es quitar un error que se repite igual en cada lectura." }
+      - { texto: "Porque el sensor es demasiado ruidoso", porque: "No es ruido: es una carga incompleta del condensador, siempre en el mismo sentido." }
+    escalera: ["¿Promediar corrige un error que es igual en todas las muestras?"]
+    solucion: "Es un error sistemático: hace falta un buffer, no un promedio."
+
+  - id: pregunta-sigma
+    tipo: pregunta
+    titulo: "24 bits con un comparador"
+    texto: "¿Cómo saca un sigma-delta 20 o 24 bits de un comparador de un solo bit?"
+    libro: [103]
+    widget:
+      tipo: figura
+      figura: fig-34.6
+      zonas:
+        - { id: sigma, rotulo: "Arriba en el centro", rect: [128, 20, 72, 36] }
+    opciones:
+      - { texto: "Su lazo empuja el ruido de cuantificación hacia frecuencias altas, y un filtro digital lo quita", bien: true, porque: "Es el conformado de ruido, con un muestreo de decenas o cientos de veces lo necesario." }
+      - { texto: "Con 2²⁴ comparadores muy pequeños", porque: "Eso sería un flash imposible: el sigma-delta usa uno solo." }
+      - { texto: "Repitiendo la conversión 24 veces", porque: "Eso se parece al SAR, bit a bit; el sigma-delta promedia y decima un flujo de un bit." }
+    escalera: ["¿Dónde acaba el ruido de cuantificación tras su lazo?"]
+    solucion: "Conformado de ruido y filtro digital que promedia y decima."
+
+  - id: pregunta-doble-rampa
+    tipo: pregunta
+    titulo: "20, 100 o 200 ms"
+    texto: "¿Por qué los multímetros de sobremesa integran durante 20, 100 o 200 ms?"
+    libro: [107]
+    widget:
+      tipo: figura
+      figura: fig-34.6
+      zonas:
+        - { id: rampa, rotulo: "Abajo a la izquierda", rect: [42, 96, 66, 36] }
+    opciones:
+      - { texto: "Son múltiplos del periodo de red: el zumbido de 50 Hz se promedia a cero", bien: true, porque: "Por eso su lectura es inmune a la red." }
+      - { texto: "Porque el condensador tarda eso en cargarse", porque: "El condensador se cancela: aparece en las dos fases. El tiempo se elige por la red." }
+      - { texto: "Para dar más bits cuanto más tiempo", porque: "Más tiempo ayuda, pero la clave de esos valores es que sean múltiplos de 20 ms." }
+    escalera: ["¿Cuánto dura un periodo de la red de 50 Hz?"]
+    solucion: "Múltiplos de 20 ms, el periodo de la red: el zumbido se promedia a cero."
+
+  - id: pregunta-latencia
+    tipo: pregunta
+    titulo: "Más bits, peor control"
+    texto: "Para un lazo de control, ¿por qué un sigma-delta de 24 bits a 1 kS/s puede ser peor que un SAR?"
+    libro: [112]
+    widget:
+      tipo: figura
+      figura: fig-34.6
+      zonas:
+        - { id: sar, rotulo: "En el centro", rect: [165, 124, 80, 36] }
+    opciones:
+      - { texto: "Por su latencia: el filtro digital necesita muchas muestras y retrasa el dato", bien: true, porque: "La latencia es tan importante como la velocidad; un SAR da el dato en la misma muestra." }
+      - { texto: "Porque 24 bits son demasiada resolución", porque: "La resolución no estorba; lo que estorba en un lazo es el retardo." }
+      - { texto: "Porque es menos lineal", porque: "Al contrario: su linealidad es excelente. Falla por el retardo." }
+    escalera: ["¿Qué introduce un retardo en un lazo?"]
+    solucion: "La latencia del filtro digital."
+
+  - id: empareje-usos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla de decisión"
+    texto: "Una cada arquitectura con su uso típico."
+    libro: [110]
+    emparejar:
+      - ["Flash", "Osciloscopios, radio"]
+      - ["Pipeline", "Vídeo, comunicaciones"]
+      - ["SAR", "Microcontroladores, control, uso general"]
+      - ["Sigma-delta", "Audio, básculas, temperatura"]
+      - ["Doble rampa", "Multímetros"]
+    exito: "Resolución y velocidad se intercambian: cada arquitectura elige un punto de esa curva."
+    pistas:
+      - { texto: "La más lenta es la de los multímetros; la más rápida, la de los osciloscopios." }
+    escalera: ["El SAR es el compromiso equilibrado: el de los microcontroladores."]
+    solucion: "Flash osciloscopios, pipeline vídeo, SAR microcontroladores, sigma-delta básculas, doble rampa multímetros."
+
+  - id: pregunta-identificar
+    tipo: pregunta
+    titulo: "Un integrado desconocido"
+    texto: "Un convertidor da megamuestras por segundo con 12 bits y el dato está listo en la misma muestra. ¿Qué es?"
+    libro: [114, 93]
+    widget:
+      tipo: figura
+      figura: fig-34.6
+      zonas:
+        - { id: pipeline, rotulo: "A la derecha", rect: [310, 74, 82, 52] }
+    opciones:
+      - { texto: "Un SAR", bien: true, porque: "Megamuestras, 12 bits y latencia de una muestra: el SAR." }
+      - { texto: "Un pipeline", porque: "El pipeline entrega el dato varios ciclos después." }
+      - { texto: "Un sigma-delta", porque: "Con 24 bits y miles de muestras sería sigma-delta; aquí no hay latencia larga." }
+    escalera: ["¿Cuál tiene latencia de una sola muestra con 12 bits?"]
+    solucion: "Un SAR."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [92, 95, 99, 112]
+    ideas:
+      - { titulo: "Flash.", texto: "2ⁿ − 1 comparadores: rapidísimo y exponencialmente caro." }
+      - { titulo: "SAR.", texto: "Búsqueda binaria: n bits en n ciclos, con la entrada asentada en ln(2ⁿ⁺¹) τ." }
+      - { titulo: "Sigma-delta y doble rampa.", texto: "Resolución a cambio de velocidad; la latencia cuenta tanto como la velocidad." }

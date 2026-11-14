@@ -1,0 +1,288 @@
+# Lección 1.2 de la sección 22.6 «Teorema de Thévenin» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.6
+
+libro:
+  146: "se comporta exactamente igual que una única fuente de tensión en serie con una única resistencia"
+  147: "es una equivalencia exacta para cualquier carga que se conecte"
+  149: "VTh es la tensión en circuito abierto entre los dos terminales"
+  151: "Aplicando una fuente de prueba de 1 V entre los terminales"
+  152: "VTh = 12 × 12/(4 + 12) = 9 V y, anulando la fuente, RTh = 4 ‖ 12 = 3 Ω"
+  156: "la tensión con carga sale de un divisor de dos resistencias"
+  162: 'R_("Th") = R_("L")'
+  165: "Y con la pila de 9 V de la sección 1.10, que cae a 8,1 V con 45 Ω (180 mA): RTh = 0,9/0,18 = 5 Ω."
+  167: "nunca se mide cortocircuitando"
+  170: "no la potencia disipada dentro"
+  174: "Con dos resistencias iguales de 10 kΩ, VTh es la mitad de la alimentación y RTh es 5 kΩ"
+
+modelo:
+  valores:
+    V_in: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia en serie", unidad: Ω, valor: 4 }
+    R_2: { sim: "R₂", nombre: "resistencia entre los terminales", unidad: Ω, valor: 12 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 6 }
+    carga: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+    V_t: { sim: "V_{vacío}", nombre: "tensión en vacío de la pila", unidad: V, valor: 9 }
+    R_ti: { sim: "R_{Th}", nombre: "resistencia interna de la pila", unidad: Ω, valor: 5 }
+    R_tl: { sim: "R_{L}", nombre: "carga de la pila", unidad: Ω, valor: 45 }
+    t_on: { tipo: interruptor, nombre: "carga de la pila conectada", valor: 1 }
+  calculos:
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia entre los terminales con la carga", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{ab}", nombre: "tensión en los terminales", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    V_th: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{Th}", nombre: "tensión de Thévenin", unidad: V }
+    R_th: { expr: "par(R_1, R_2)", sim: "R_{Th}", nombre: "resistencia de Thévenin", unidad: Ω }
+    R_serie: { expr: "R_1 + R_2", sim: "R₁ + R₂", nombre: "suma en serie", unidad: Ω }
+    V_eq: { si: carga, entonces: "V_th*R_L/(R_th + R_L)", sino: "V_th", sim: "V", nombre: "lo que predice el equivalente", unidad: V }
+    R_med: { expr: "R_L*(V_th/V_out - 1)", sim: "R_{Th}", nombre: "resistencia de Thévenin medida", unidad: Ω }
+    P_real: { expr: "V_in*I", sim: "P", nombre: "potencia dentro de la red real", unidad: W }
+    I_eq: { si: carga, entonces: "V_th/(R_th + R_L)", sino: "0", sim: "I", nombre: "corriente del equivalente", unidad: A }
+    P_eq: { expr: "V_th*I_eq - I_eq^2*R_L", sim: "P", nombre: "potencia dentro del equivalente", unidad: W }
+    V_to: { si: t_on, entonces: "V_t*R_tl/(R_ti + R_tl)", sino: "V_t", sim: "V_{carga}", nombre: "tensión en bornes de la pila", unidad: V }
+    I_t: { si: t_on, entonces: "V_t/(R_ti + R_tl)", sino: "0", sim: "I", nombre: "corriente de la pila", unidad: A }
+    V_ti: { expr: "I_t*R_ti", sim: "V_{int}", nombre: "caída interna", unidad: V }
+
+tarjetas:
+  - id: explore-equivalente
+    tipo: explorar
+    titulo: "Dos componentes bastan"
+    texto: "Conecte la carga y cámbiela. Compare la red de 12 V, 4 Ω y 12 Ω con lo que predice su equivalente de 9 V y 3 Ω."
+    libro: [146, 147, 152]
+    fijar: { V_in: 12, R_1: 4, R_2: 12 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión en los terminales" }
+      datos:
+        - { valor: V_eq, rotulo: "Según el equivalente: {{V_eq}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: conectar, boton: "Conectar la carga" }
+        - { valor: R_L, lista: [1, 3, 6, 12, 30, 100] }
+    requiere: { conectar: [carga] }
+
+  - id: prediga-vth
+    tipo: predecir
+    titulo: "Prediga V_{Th}"
+    texto: "Fuente de 12 V, R₁ = 4 Ω en serie y R₂ = 12 Ω entre los terminales. ¿Cuánto vale V_{Th}?"
+    libro: [149, 152]
+    fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión en vacío" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      ocultar: true
+    opciones:
+      - texto: "9 V"
+        bien: true
+        porque: "Es la tensión en circuito abierto: el divisor 12 × 12/(4 + 12) = 9 V."
+      - texto: "12 V"
+        porque: "Es la de la fuente. En vacío sigue circulando corriente por R₁ y R₂, y R₁ se queda su parte."
+      - texto: "3 V"
+        porque: "3 V es lo que cae en R₁. Los terminales están en los extremos de R₂."
+    escalera:
+      - "Quite la carga: lo que queda es un divisor."
+    solucion: "V_{Th} = 12 × 12/(4 + 12) = 9 V."
+    comprobar:
+      - { V_out: 9, V_th: 9 }
+
+  - id: estime-rth
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La resistencia que se ve"
+    texto: "Anule la fuente de 12 V: un cortocircuito. ¿Qué resistencia se ve entre los terminales, con R₁ = 4 Ω y R₂ = 12 Ω?"
+    libro: [151, 152]
+    fijar: { R_1: 4, R_2: 12 }
+    estimar:
+      objetivo: "R_th"
+      unidad: Ω
+      min: 0
+      max: 20
+      paso: 0.5
+      inicio: 16
+      tol: 0.05
+      rotulo: "R_{Th}"
+    exito: "Con la fuente en corto, R₁ y R₂ quedan en paralelo: 4 ‖ 12 = 3 Ω."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Se ha pasado: con la fuente en cortocircuito, R₁ y R₂ no están en serie sino en paralelo." }
+      - { texto: "Se ha quedado corto: el paralelo es menor que la menor, pero no tanto." }
+    escalera:
+      - "Desde los terminales, R₂ va directa y R₁ llega por el cortocircuito de la fuente."
+    solucion: "R_{Th} = 4 ‖ 12 = 3 Ω."
+    comprobar:
+      - { R_th: 3, R_serie: 16 }
+
+  - id: medir-rth
+    tipo: formula
+    titulo: "Medirla sin conocer el circuito"
+    texto: "Con la tensión en vacío y la tensión con una carga conocida se despeja R_{Th}. Cambie la carga: el resultado no cambia."
+    libro: [162]
+    fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 1 }
+    ec: 162
+    sustitucion: "{{R_L}} · ({{V_th}} / {{V_out}} − 1) = {{R_med}}"
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión con carga" }
+      datos:
+        - { valor: V_th, rotulo: "En vacío: {{V_th}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: R_L, lista: [1, 3, 6, 12, 30, 100] }
+
+  - id: simule-pila
+    tipo: simular
+    titulo: "Prediga la pila con carga"
+    texto: "Una pila de 9 V en vacío, con R_{Th} = 5 Ω, alimenta 45 Ω. ¿Qué tensión queda en sus bornes?"
+    libro: [156, 165]
+    fijar: { V_t: 9, R_ti: 5, R_tl: 45, t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_to
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión en bornes"
+      medida: salida
+      errores:
+        - { expr: "V_t", texto: "Esos son los de vacío. Con carga circula corriente y la resistencia interna se queda una parte." }
+        - { expr: "V_ti", texto: "Esa es la caída dentro de la pila. En los bornes queda el resto." }
+    exito: "Un divisor de dos resistencias: 9 × 45/(5 + 45) = 8,1 V, con 180 mA."
+    escalera:
+      - "Con el equivalente, la tensión con carga sale de un divisor de dos resistencias."
+    solucion: "9 × 45/(5 + 45) = 8,1 V: la pila pierde 0,9 V dentro."
+    comprobar:
+      - { V_to: 8.1, I_t: 0.18, V_ti: 0.9 }
+
+  - id: no-cortocircuitar
+    tipo: pregunta
+    titulo: "Medir una batería"
+    texto: "Para hallar la R_{Th} de una batería, ¿por qué no se mide la corriente de cortocircuito?"
+    libro: [167]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+    opciones:
+      - texto: "Es peligroso y daña la batería"
+        bien: true
+        porque: "Se usa una carga que pida una corriente comparable a la de uso, se mide rápido y se despeja."
+      - texto: "Porque la corriente de cortocircuito no depende de R_{Th}"
+        porque: "Sí depende: I_{cc} = V_{vacío}/R_{Th}. El problema no es teórico, es que es peligroso."
+      - texto: "Porque el Brymen no mide corrientes"
+        porque: "Mide corrientes. Lo que no se hace es cortocircuitar una batería."
+    escalera:
+      - "Piense en la corriente que circularía con una batería grande."
+    solucion: "Nunca se cortocircuita: es peligroso y daña la batería."
+
+  - id: potencia-dentro
+    tipo: sorpresa
+    titulo: "Lo que el equivalente no ve"
+    texto: "Con la carga desconectada, compare la potencia que se disipa dentro de la red real con la del equivalente."
+    libro: [170]
+    fijar: { V_in: 12, R_1: 4, R_2: 12 }
+    inicio: { carga: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: P_real, rotulo: "Potencia dentro de la red real" }
+      datos:
+        - { valor: P_eq, rotulo: "Dentro del equivalente: {{P_eq}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: carga, tipo: interruptor, rotulo: "Carga" }
+    requiere: { mover: [carga] }
+
+  - id: por-que-potencia
+    tipo: porque
+    titulo: "¿Por qué no coinciden?"
+    texto: "En vacío, el equivalente no disipa nada y la red real sí. ¿Por qué?"
+    libro: [170]
+    fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: P_real, rotulo: "Potencia dentro de la red real" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "El equivalente solo reproduce lo que se ve desde los terminales"
+        bien: true
+        porque: "Es exacto para cualquier carga, pero no describe lo que pasa dentro. Calcular el consumo con él es un error de diseño térmico."
+      - texto: "Porque el teorema es una aproximación"
+        porque: "Es una equivalencia exacta en los terminales. Simplemente no dice nada del interior."
+      - texto: "Porque R_{Th} está mal calculada"
+        porque: "R_{Th} = 3 Ω es correcta. Por bien que se calcule, el equivalente no reproduce la disipación interna."
+    escalera:
+      - "¿Qué promete exactamente el teorema: el interior o los terminales?"
+    solucion: "Solo describe los terminales: no la potencia disipada dentro."
+
+  - id: dependientes
+    tipo: pregunta
+    titulo: "Con fuentes dependientes"
+    texto: "Hay tres formas de hallar R_{Th}. ¿Cuál funciona aunque la red tenga fuentes dependientes?"
+    libro: [151]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+    opciones:
+      - texto: "Aplicar una fuente de prueba de 1 V y calcular la corriente que entrega"
+        bien: true
+        porque: "Es la forma general: no exige anular las dependientes, y es la que se usa en simulación."
+      - texto: "Anular todas las fuentes y calcular la resistencia vista"
+        porque: "Es la más rápida, pero no vale con dependientes: no se pueden anular."
+      - texto: "Medir la resistencia con el óhmetro entre los terminales"
+        porque: "Con las fuentes dentro, el óhmetro no mide bien. La forma general es la fuente de prueba."
+    escalera:
+      - "Una fuente dependiente no se puede anular."
+    solucion: "La fuente de prueba: R_{Th} = 1 V / I_{prueba}."
+
+  - id: banco-divisor
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Dos resistencias iguales de 10 kΩ sobre la pila de 9 V. Mida la tensión en vacío del punto medio: es V_{Th}."
+    libro: [165, 174]
+    fijar: { V_in: 9, R_1: 10000, R_2: 10000, carga: 0 }
+    banco:
+      piezas: ["Pila de 9 V", "Dos resistencias de 10 kΩ", "Brymen en V⎓"]
+      medir: "La tensión entre el punto medio y el negativo de la pila, sin nada conectado."
+      esperado: V_out
+      unidad: V
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: compruebe la tensión real de la pila; una nueva da algo más de 9 V." }
+        - { texto: "Mide de menos: ¿queda algo conectado al punto medio? R_{Th} es de 5 kΩ y cualquier carga lo hunde." }
+      ficha: { n: 37, titulo: "El equivalente de Thévenin, medido" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [146, 149, 162, 170]
+    ideas:
+      - { titulo: "Fuente y resistencia.", texto: "Cualquier red lineal vista desde dos terminales: V_{Th} en serie con R_{Th}, exacto para cualquier carga." }
+      - { titulo: "Cómo se halla.", texto: "V_{Th} en vacío; R_{Th} anulando fuentes, con V_{vacío}/I_{cc} o con una fuente de prueba." }
+      - { titulo: "Se mide.", texto: "Con la tensión en vacío y con una carga conocida, sin cortocircuitar nunca." }
+      - { titulo: "Su límite.", texto: "Describe los terminales, no la potencia disipada dentro." }

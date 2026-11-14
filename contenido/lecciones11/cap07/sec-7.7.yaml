@@ -1,0 +1,275 @@
+# Lección 1.2 de la sección 7.7 «El MOSFET en Pequeña Señal: Transconductancia» (cap07). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap07/sec-7.7
+
+libro:
+  115: "para una misma corriente de trabajo, suele ser bastante menor que la de un BJT"
+  116: "La resistencia de entrada de un MOSFET es prácticamente infinita"
+  118: "A la misma corriente de 1 mA, el bipolar da 39 mS y el MOSFET entre 4 y 10 mS"
+  119: "la ganancia se compra con área"
+  120: "un MOSFET de potencia con 3 nF de puerta presenta 53 Ω a 1 MHz"
+  121: "con fuentes de alta impedancia (un micrófono de condensador, un electrodo) manda el ruido de corriente y el MOSFET gana"
+  122: "un JFET o MOSFET a la entrada seguido de bipolares para ganar"
+  "cap07#48": "gm crece con la raíz de la corriente, mientras que en el BJT vale IC/VT"
+
+modelo:
+  valores:
+    I_q: { sim: "I", nombre: "corriente de polarización", unidad: A, valor: 0.001 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.026 }
+    V_ov: { sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V, valor: 0.5 }
+    f_g: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    C_g: { sim: "C_{gs}", nombre: "capacidad de puerta", unidad: F, valor: 3e-9 }
+  calculos:
+    gm_B: { expr: "I_q/V_T", sim: "g_{m}", nombre: "transconductancia del bipolar", unidad: S }
+    gm_M: { expr: "2*I_q/V_ov", sim: "g_{m}", nombre: "transconductancia del MOSFET", unidad: S }
+    gm_X: { expr: "I_q/V_ov", sim: "I/V_{ov}", nombre: "sin el factor dos", unidad: S }
+    r_g: { expr: "gm_M/gm_B", sim: "relación", nombre: "MOSFET frente a bipolar", unidad: "", cifras: 3 }
+    Z_g: { expr: "1/(2*pi*f_g*C_g)", sim: "|Z|", nombre: "impedancia de la puerta", unidad: Ω }
+
+tarjetas:
+  - id: explore-gm
+    tipo: explorar
+    titulo: "Dos transconductancias"
+    texto: "Arrastre la corriente de polarización y cambie la V_{ov} del MOSFET. Compare con el bipolar."
+    libro: [118, "cap07#48"]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.00001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 0.0001, max: 10, unidad: S, rotulo: "g_{m}", escala: log }
+      curvas:
+        - { expr: "ix/V_T", color: azul, rotulo: "bipolar, I/V_{T}" }
+        - { expr: "2*ix/V_ov", color: naranja, rotulo: "MOSFET, 2I/V_{ov}" }
+      asas:
+        - { mueve: I_q, x: "I_q", y: "gm_M", rotulo: "Su corriente" }
+      lectura: { valor: gm_M, rotulo: "g_{m} del MOSFET" }
+      datos:
+        - { valor: gm_B, rotulo: "Bipolar: {{gm_B}}" }
+      mandos:
+        - { valor: I_q, lista: [0.00001, 0.0001, 0.001, 0.01, 0.1], rotulo: "Corriente" }
+        - { valor: V_ov, lista: [0.2, 0.3, 0.5], rotulo: "V_{ov}" }
+
+  - id: prediga-gm
+    tipo: predecir
+    titulo: "A 1 mA"
+    texto: "Un MOSFET polarizado a 1 mA con V_{ov} = 0,5 V. ¿Qué transconductancia tiene?"
+    libro: [118]
+    fijar: { I_q: 0.001, V_ov: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.00001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 0.0001, max: 10, unidad: S, rotulo: "g_{m}", escala: log }
+      curvas:
+        - { expr: "ix/V_T", color: azul, rotulo: "bipolar, I/V_{T}" }
+        - { expr: "2*ix/V_ov", color: naranja, rotulo: "MOSFET, 2I/V_{ov}" }
+      lectura: { valor: gm_M, rotulo: "g_{m} del MOSFET" }
+      ocultar: true
+    opciones:
+      - texto: "4 mS"
+        bien: true
+        porque: "g_{m} = 2 · I_{D}/V_{ov} = 2 · 1 mA / 0,5 V: casi diez veces menos que el bipolar."
+      - texto: "39 mS"
+        porque: "Esa es la del bipolar, I_{C}/V_{T} con 26 mV."
+      - texto: "2 mS"
+        porque: "Ha olvidado el 2: de la ley cuadrática sale g_{m} = 2 · I_{D}/V_{ov}."
+    escalera:
+      - "Derivando ½ · k · V_{ov}² sale g_{m} = 2 · I_{D}/V_{ov}."
+    solucion: "2 · 0,001 / 0,5 = 4 mS."
+    comprobar:
+      - { gm_M: 0.004, gm_B: 0.0385, gm_X: 0.002, tol: 0.01 }
+
+  - id: por-que-menor
+    tipo: pregunta
+    titulo: "¿Por qué menos?"
+    texto: "A la misma corriente, el MOSFET da de cuatro a diez veces menos g_{m} que el bipolar. ¿De dónde sale la diferencia?"
+    libro: [115, 118]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.00001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 0.0001, max: 10, unidad: S, rotulo: "g_{m}", escala: log }
+      curvas:
+        - { expr: "ix/V_T", color: azul, rotulo: "bipolar, I/V_{T}" }
+        - { expr: "2*ix/V_ov", color: naranja, rotulo: "MOSFET, 2I/V_{ov}" }
+    opciones:
+      - texto: "Del denominador: 26 mV en el bipolar frente a V_{ov}, de 0,2 a 0,5 V"
+        bien: true
+        porque: "La exponencial del bipolar da I/V_{T}; la ley cuadrática del MOSFET, 2I/V_{ov}, con un V_{ov} mucho mayor."
+      - texto: "De que la puerta no consume corriente"
+        porque: "Esa es su virtud de entrada; la g_{m} la fija la relación entre corriente y tensión de mando."
+      - texto: "De que el MOSFET tiene menos corriente"
+        porque: "Se comparan a la misma corriente. La diferencia está en V_{T} frente a V_{ov}."
+    escalera:
+      - "Compare I/V_{T} con 2I/V_{ov}."
+    solucion: "26 mV fijos frente a una V_{ov} de 0,2 a 0,5 V."
+
+  - id: reto-igualar
+    tipo: reto
+    titulo: "Iguale al bipolar"
+    texto: "A 1 mA, baje la V_{ov} del MOSFET hasta que su g_{m} iguale la del bipolar."
+    libro: [118]
+    fijar: { I_q: 0.001 }
+    inicio: { V_ov: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.00001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 0.0001, max: 10, unidad: S, rotulo: "g_{m}", escala: log }
+      curvas:
+        - { expr: "ix/V_T", color: azul, rotulo: "bipolar, I/V_{T}" }
+        - { expr: "2*ix/V_ov", color: naranja, rotulo: "MOSFET, 2I/V_{ov}" }
+      lectura: { valor: gm_M, rotulo: "g_{m} del MOSFET" }
+      datos:
+        - { valor: gm_B, rotulo: "Bipolar: {{gm_B}}" }
+      mandos:
+        - { valor: V_ov, lista: [0.5, 0.3, 0.2, 0.1, 0.052], rotulo: "V_{ov}" }
+    condiciones:
+      - { valor: r_g, objetivo: 1, tol: 0.02, rotulo: "MOSFET / bipolar: {{r_g}}" }
+    exito: "Hace falta V_{ov} = 52 mV: es la región de subumbral, exponencial otra vez, con su precio en dispersión y velocidad."
+    pistas:
+      - { texto: "Todavía menos: g_{m} = 2I/V_{ov}, y el bipolar tiene 26 mV en el denominador." }
+    escalera:
+      - "Para igualar I/V_{T}, V_{ov} debe valer 2 · V_{T}."
+    solucion: "V_{ov} = 2 · 26 mV = 52 mV."
+    comprobar:
+      - { con: { V_ov: 0.052 }, r_g: 1 }
+
+  - id: sorpresa-puerta
+    tipo: sorpresa
+    titulo: "La entrada infinita"
+    texto: "Una puerta de 3 nF. Suba la frecuencia y mire la impedancia que presenta."
+    libro: [116, 120]
+    fijar: { C_g: 3e-9 }
+    inicio: { f_g: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 100, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*fx*C_g)", color: azul, rotulo: "impedancia de la puerta" }
+      asas:
+        - { mueve: f_g, x: "f_g", y: "Z_g", rotulo: "Su frecuencia" }
+      lectura: { valor: Z_g, rotulo: "Impedancia de la puerta" }
+      mandos:
+        - { valor: f_g, lista: [100, 1000, 10000, 100000, 1000000, 10000000], rotulo: "Frecuencia" }
+    requiere: { mover: [f_g] }
+
+  - id: por-que-baja
+    tipo: porque
+    titulo: "¿Por qué deja de ser infinita?"
+    texto: "En continua la puerta no toma corriente, pero en alta frecuencia su impedancia cae. ¿Por qué?"
+    libro: [120]
+    fijar: { C_g: 3e-9 }
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 100, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*fx*C_g)", color: azul, rotulo: "impedancia de la puerta" }
+    opciones:
+      - texto: "La puerta es un condensador: su reactancia baja al subir la frecuencia"
+        bien: true
+        porque: "C_{gs}, de picofaradios en señal a nanofaradios en potencia, pasa corriente en alterna."
+      - texto: "El óxido empieza a conducir"
+        porque: "El óxido sigue aislando; la corriente es la de carga y descarga de su capacidad."
+      - texto: "Aparece la corriente de base"
+        porque: "El MOSFET no tiene base. Lo que aparece es la corriente capacitiva de la puerta."
+    escalera:
+      - "¿Qué componente es la puerta, eléctricamente?"
+    solucion: "Es un condensador: 1/(2π · f · C) baja con la frecuencia."
+
+  - id: estime-z
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 1 MHz"
+    texto: "¿Qué impedancia presenta una puerta de 3 nF a 1 MHz?"
+    libro: [120]
+    fijar: { C_g: 3e-9, f_g: 1000000 }
+    estimar:
+      objetivo: "Z_g"
+      unidad: Ω
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.05
+      rotulo: "Impedancia"
+    exito: "53 Ω: menos que muchos bipolares. La entrada es infinita hasta donde la capacidad la deja."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 55.7 }, texto: "Se ha pasado: es 1/(2π · f · C), con 2π incluido." }
+      - { texto: "Se ha quedado corto: a 1 MHz la reactancia de 3 nF aún es de decenas de ohmios." }
+    escalera:
+      - "Reactancia de un condensador: 1/(2π · f · C)."
+    solucion: "1/(2π · 10⁶ · 3 · 10⁻⁹) = 53 Ω."
+    comprobar:
+      - { Z_g: 53.05, tol: 0.01 }
+
+  - id: electrodo
+    tipo: pregunta
+    titulo: "Una fuente de gigaohmios"
+    texto: "Hay que amplificar un electrodo de pH, una fuente de gigaohmios, en continua. ¿Qué transistor de entrada?"
+    libro: [116, 121]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 100, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*fx*C_g)", color: azul, rotulo: "impedancia de la puerta" }
+    opciones:
+      - texto: "Un MOSFET: su puerta no carga la fuente"
+        bien: true
+        porque: "Toma picoamperios de fuga; con fuentes de alta impedancia, además, su menor ruido de corriente gana."
+      - texto: "Un bipolar, por su mayor g_{m}"
+        porque: "Su corriente de base, de microamperios, sobre gigaohmios arruinaría la medida."
+      - texto: "Da igual: los dos tienen entrada infinita"
+        porque: "Solo el MOSFET la tiene en continua; el bipolar tiene una r_{π} finita."
+    escalera:
+      - "¿Qué corriente toma cada entrada de la fuente?"
+    solucion: "MOSFET: su entrada no carga la fuente."
+
+  - id: ruido
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Quién es más silencioso"
+    texto: "Una cada fuente de señal con el transistor de entrada que conviene."
+    libro: [121, 122]
+    emparejar:
+      - ["Micrófono dinámico o shunt", "Bipolar: fuente de baja impedancia"]
+      - ["Micrófono de condensador", "MOSFET: manda el ruido de corriente"]
+      - ["Operacional de precisión", "FET a la entrada y bipolares para ganar"]
+    exito: "El MOSFET tiene más ruido 1/f, pero menos ruido de corriente."
+    pistas:
+      - { texto: "Con fuente de alta impedancia, el ruido de corriente se convierte en tensión sobre ella." }
+    escalera:
+      - "Baja impedancia: manda el ruido de tensión."
+    solucion: "Dinámico–bipolar, condensador–MOSFET, precisión–FET y bipolares."
+
+  - id: area
+    tipo: pregunta
+    titulo: "Más g_{m} a la misma corriente"
+    texto: "En un circuito integrado, ¿cómo se sube la g_{m} de un MOSFET sin subir su corriente?"
+    libro: [119]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.00001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 0.0001, max: 10, unidad: S, rotulo: "g_{m}", escala: log }
+      curvas:
+        - { expr: "ix/V_T", color: azul, rotulo: "bipolar, I/V_{T}" }
+        - { expr: "2*ix/V_ov", color: naranja, rotulo: "MOSFET, 2I/V_{ov}" }
+    opciones:
+      - texto: "Con un transistor más ancho: mayor k y menor V_{ov}"
+        bien: true
+        porque: "Como g_{m} = 2I/V_{ov}, bajar V_{ov} la sube: la ganancia se compra con área."
+      - texto: "Subiendo la tensión de puerta"
+        porque: "Más V_{GS} sube V_{ov} y, a corriente fija, baja la g_{m}."
+      - texto: "No se puede: depende solo de la corriente"
+        porque: "En el bipolar sí; en el MOSFET también depende de V_{ov}, y esa se elige con el tamaño."
+    escalera:
+      - "En 2I/V_{ov}, ¿qué se puede cambiar si I está fija?"
+    solucion: "Más ancho, mayor k: menos V_{ov} y más g_{m}."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [116, 118, 119, 120]
+    ideas:
+      - { titulo: "Menos g_{m}.", texto: "2I/V_{ov} frente a I/V_{T}: de cuatro a diez veces menos a 1 mA." }
+      - { titulo: "Se compra con área.", texto: "Un MOSFET más ancho baja V_{ov} y sube g_{m}." }
+      - { titulo: "Entrada infinita, en continua.", texto: "Su capacidad de puerta baja la impedancia en alta frecuencia." }
+      - { titulo: "Ruido.", texto: "Fuente de alta impedancia, MOSFET; de baja impedancia, bipolar." }

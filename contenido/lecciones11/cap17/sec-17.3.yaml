@@ -1,0 +1,205 @@
+# Lección 1.2 de la sección 16.3 «Estructura de un Programa Arduino» (cap17; etiquetas sec-17.N = impresas 16.N).
+# - El arranque, setup() y loop() y dónde vive cada variable sobre la figura 16.6 (fig-17.6), con zonas.
+# - Sin modelo numérico: la sección es de estructura del programa.
+# Paso práctico: «tocar» el sitio donde se guarda el estado de una tarea (local estática).
+leccion: cap17/sec-17.3
+
+libro:
+  64: "setup() se ejecuta una vez al arrancar"
+  65: "loop() se ejecuta indefinidamente después"
+  66: "el programa no termina nunca"
+  69: "Se libera el reset y se ejecuta el código de arranque"
+  70: "modificarlo para cambiar la frecuencia del PWM altera todas las funciones de tiempo"
+  73: "las únicas que pueden compartirse con una interrupción"
+  74: "pierdan su valor entre llamadas"
+  75: "Es la forma correcta de guardar el estado de una tarea entre pasadas del bucle"
+  76: "Declararlas para que residan en Flash libera memoria"
+  78: "loop() no debe bloquear nunca"
+  80: "Leer las entradas que haya que atender"
+  81: "añadir una más no rompe las existentes"
+  83: "Usar delay() para todo, con lo que el programa deja de responder"
+  86: "Imprimir por serie dentro de un bucle rápido"
+  89: "una salida que conmute en cada pasada de loop(), mirada con el osciloscopio"
+  90: "si es de un segundo, hay un delay()"
+  91: "Estructura de un programa de Arduino y dónde vive cada tipo de variable."
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-estructura
+    tipo: explorar
+    titulo: "Un programa que nunca termina"
+    texto: "Arranque, setup() una vez y loop() para siempre. Toque los tres recuadros de la izquierda."
+    libro: [64, 65, 66, 91]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: arranque, rotulo: "Recuadro gris, arriba a la izquierda", rect: [25, 26, 180, 36], texto: "El arranque: la pila, las variables globales, millis(), el ADC y los temporizadores del PWM." }
+        - { id: setup, rotulo: "Recuadro verde, a la izquierda", rect: [25, 75, 180, 36], texto: "setup(), una sola vez: configura pines, inicia buses, lee la configuración guardada." }
+        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46], texto: "loop(), indefinidamente: al terminar, se vuelve a llamar. Leer, actualizar tareas, escribir." }
+    requiere: { mover: [setup, loop] }
+
+  - id: ordene-arranque
+    tipo: pregunta
+    titulo: "Antes de setup()"
+    texto: "Ordene lo que ocurre desde que se alimenta la placa."
+    libro: [65, 69]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: izquierda, rotulo: "Columna de la izquierda", rect: [5, 20, 210, 180] }
+    ordenar:
+      - "Se libera el reset y corre el código de arranque"
+      - "Se inician millis(), los temporizadores del PWM y el A/D"
+      - "Se llama a setup()"
+      - "Se llama a loop() una y otra vez"
+    exito: "Por eso millis() funciona desde el primer instante sin que nadie la configure."
+    pistas:
+      - { texto: "Lo primero es el reset; lo último, lo que se repite." }
+    escalera:
+      - "setup() ya encuentra millis() en marcha."
+    solucion: "Reset y arranque, temporizadores, setup() y loop()."
+
+  - id: predecir-temporizador
+    tipo: predecir
+    titulo: "Un temporizador ocupado"
+    texto: "Reconfigura el temporizador 0 para cambiar la frecuencia del PWM. ¿Qué más cambia?"
+    libro: [70]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: arranque, rotulo: "Recuadro gris, arriba a la izquierda", rect: [25, 26, 180, 36] }
+    opciones:
+      - texto: "Todas las funciones de tiempo, como millis()"
+        bien: true
+        porque: "El temporizador 0 es el de millis(): tocarlo altera todas las funciones de tiempo."
+      - texto: "Nada más: cada temporizador es independiente"
+        porque: "El entorno ya usa el temporizador 0 para millis(); no está libre."
+      - texto: "Solo el puerto serie"
+        porque: "El puerto serie no depende del temporizador 0; millis() y delay() sí."
+    escalera:
+      - "¿Qué inicia el entorno antes de setup()?"
+    solucion: "Todas las funciones de tiempo: millis() y delay()."
+
+  - id: toque-estatica
+    tipo: tocar
+    titulo: "El estado de una tarea"
+    texto: "Una tarea debe recordar su estado entre pasadas de loop(), y nadie más debe verlo. Toque cómo la declara."
+    libro: [74, 75, 91]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: globales, rotulo: "Recuadro violeta, arriba a la derecha", rect: [233, 26, 213, 40] }
+        - { id: locales, rotulo: "Recuadro naranja, a la derecha", rect: [233, 72, 213, 40] }
+        - { id: estaticas, rotulo: "Recuadro verde, a la derecha", rect: [233, 117, 213, 40] }
+        - { id: flash, rotulo: "Recuadro azul, abajo a la derecha", rect: [233, 162, 213, 40] }
+    tocar:
+      bien: [estaticas]
+      porque:
+        globales: "Recordaría el estado, pero la vería todo el programa y ocuparía RAM siempre."
+        locales: "Viven en la pila mientras dura la función: pierden su valor entre llamadas."
+        flash: "En Flash van constantes: el estado de una tarea cambia."
+    exito: "Local estática: vive como una global y solo se ve dentro de su función."
+    escalera:
+      - "Necesita la vida de una global con la visibilidad de una local."
+    solucion: "Local estática."
+
+  - id: empareje-variables
+    tipo: pregunta
+    titulo: "Dónde vive cada variable"
+    texto: "Empareje cada caso con su forma de declarar."
+    libro: [73, 74, 76]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: derecha, rotulo: "Columna de la derecha", rect: [230, 20, 220, 185] }
+    emparejar:
+      - ["Un dato que comparte con una interrupción", "Global y volátil"]
+      - ["Un cálculo intermedio dentro de una función", "Local"]
+      - ["Muchos mensajes de texto fijos", "Constantes en Flash"]
+    exito: "Con 2 KB de RAM, dónde se declara cada variable importa."
+    pistas:
+      - { texto: "Solo las globales pueden compartirse con una interrupción." }
+    escalera:
+      - "Los textos fijos ocupan RAM aunque no cambien, salvo que…"
+    solucion: "Interrupción, global volátil; cálculo, local; mensajes, Flash."
+
+  - id: ordene-pasada
+    tipo: pregunta
+    titulo: "La estructura que escala"
+    texto: "Ordene lo que hace loop() en cada pasada."
+    libro: [78, 80, 81]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46] }
+    ordenar:
+      - "Leer las entradas"
+      - "Actualizar cada tarea, si le toca por tiempo"
+      - "Escribir las salidas"
+    exito: "Miles de vueltas por segundo, y añadir una tarea no rompe las demás."
+    pistas:
+      - { texto: "Primero se mira el mundo; al final se actúa sobre él." }
+    escalera:
+      - "Las salidas dependen de lo que se ha leído."
+    solucion: "Leer, actualizar y escribir."
+
+  - id: pregunta-errores
+    tipo: pregunta
+    titulo: "Un pulsador ignorado"
+    texto: "Su programa deja de atender un pulsador en cuanto añade una segunda tarea. ¿Qué error característico sospecha?"
+    libro: [83, 86]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46] }
+    opciones:
+      - texto: "Usar delay() para todo"
+        bien: true
+        porque: "Con delay() el programa deja de responder: loop() no debe bloquear nunca."
+      - texto: "Demasiadas variables locales"
+        porque: "Las locales se crean y se destruyen: ahorran memoria, no bloquean."
+      - texto: "Haber declarado constantes en Flash"
+        porque: "Eso libera RAM; no hace que el programa deje de responder."
+    escalera:
+      - "¿Qué hace el programa mientras espera?"
+    solucion: "delay() para todo: el programa no mira el pulsador mientras espera."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco: el tiempo de ciclo"
+    texto: "En el osciloscopio, una salida que conmuta en cada pasada de loop() tiene un periodo de un segundo. ¿Qué indica?"
+    libro: [89, 90]
+    widget:
+      tipo: figura
+      figura: fig-17.6
+      zonas:
+        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46] }
+    opciones:
+      - texto: "Hay un delay() en el bucle"
+        bien: true
+        porque: "Un segundo por pasada es la firma de un delay(). Sin bloqueos serían microsegundos."
+      - texto: "Que el programa responde bien"
+        porque: "Responde bien si el periodo es de microsegundos, no de un segundo."
+      - texto: "Que el reloj del micro va lento"
+        porque: "Un reloj lento no multiplica el ciclo hasta un segundo: eso es un delay()."
+    escalera:
+      - "Microsegundos: responde; milisegundos: algo bloquea; un segundo: …"
+    solucion: "Un delay() dentro del bucle."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [64, 65, 75, 78]
+    ideas:
+      - { titulo: "setup() y loop().", texto: "Una vez al arrancar, y después para siempre: el programa no termina." }
+      - { titulo: "Antes de setup().", texto: "millis(), el PWM y el A/D ya funcionan; el temporizador 0 está ocupado." }
+      - { titulo: "Dónde vive cada variable.", texto: "Globales, locales, locales estáticas y constantes en Flash." }
+      - { titulo: "No bloquear.", texto: "Leer, actualizar tareas y escribir: el periodo de la pasada lo dice." }

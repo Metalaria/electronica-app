@@ -1,0 +1,187 @@
+# «Consolas por dentro» · Master System II 6: la cabecera «TMR SEGA» y la región. El SMS no tiene chip de bloqueo: la
+# ROM de arranque de los modelos de exportación busca la cabecera «TMR SEGA» en $7FF0 y compara la suma de
+# comprobación; los cartuchos japoneses son de 44 contactos y los occidentales de 50; y un juego de 60 Hz va más lento
+# en una PAL. Fuentes: SMS Power «ROM header», ConsoleMods «Master System:Region Information» y los datos de la consola
+# (sms#n).
+leccion: consola-sms/sms-bloqueo
+
+libro:
+  "sms#11": "CN1 (50 contactos)"
+  "sms#77": "Durante el arranque es la ROM de arranque (/CE0) la que responde a estas direcciones"
+  "sms#87": "Los ocho primeros bytes de la cabecera son el texto ASCII «TMR SEGA»; la cabecera está en $7FF0"
+  "sms#88": "Las BIOS de los Master System de exportación y de la Game Gear piden la cabecera para dar los datos por válidos"
+  "sms#89": "La palabra de $7FFA es la suma de comprobación de la ROM para las BIOS de exportación"
+  "sms#90": "$3, SMS Japón; $4, SMS exportación; $5, Game Gear Japón"
+  "sms#91": "Solo la BIOS de los SMS de exportación comprueba el código de región"
+  "sms#92": "La BIOS del SMS no distingue entre regiones para la mayoría de los juegos, pero sí comprueba que el juego tenga una cabecera"
+  "sms#93": "Los cartuchos japoneses tienen 44 contactos y los occidentales 50"
+  "sms#94": "Los juegos no optimizados para 50 Hz van más lentos en una consola PAL"
+  "sms#95": "con un adaptador que lleva una pequeña ROM de arranque con la cabecera"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-sin-chip
+    tipo: explorar
+    titulo: "Sin chip de bloqueo"
+    texto: "El SMS no lleva un CIC: quien mira el cartucho es la ROM de arranque. Toque la ROM y la ranura."
+    libro: ["sms#92", "sms#77", "sms#11"]
+    requiere: { mover: [bios, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "ROM de arranque", texto: "Contesta al encender y comprueba el cartucho." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "50 contactos, el formato occidental." }
+
+  - id: prediga-cabecera
+    tipo: predecir
+    titulo: "¿Qué busca la ROM de arranque?"
+    texto: "Antes de pasar al juego, la ROM de arranque de un SMS de exportación mira el cartucho. ¿Qué busca?"
+    libro: ["sms#87", "sms#88"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "ROM de arranque" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "El texto «TMR SEGA» en la cabecera, en $7FF0."
+        bien: true
+        porque: "Sin cabecera, no da los datos por válidos."
+      - texto: "Un chip de bloqueo en el cartucho."
+        porque: "El SMS no tiene chip de bloqueo: lo que mira es la cabecera del programa."
+      - texto: "Nada: arranca cualquier cosa."
+        porque: "La de exportación pide la cabecera: sin ella, no sigue."
+    escalera:
+      - "Son ocho letras en ASCII."
+    solucion: "«TMR SEGA», los ocho primeros bytes de la cabecera, en $7FF0."
+
+  - id: explore-comprobacion
+    tipo: explorar
+    titulo: "Dos comprobaciones"
+    texto: "La ROM de exportación pide la cabecera y una suma de comprobación correcta. Mueva las dos."
+    libro: ["sms#88", "sms#89"]
+    requiere: { mover: [TMR, SUMA] }
+    widget:
+      tipo: logica
+      entradas: [{ id: TMR, rotulo: "Cabecera «TMR SEGA»" }, { id: SUMA, rotulo: "Suma correcta" }]
+      piezas:
+        - { id: y1, tipo: and, entradas: [TMR, SUMA] }
+      salidas:
+        - { id: VALIDO, de: y1, rotulo: "Datos válidos" }
+
+  - id: tabla-comprobacion
+    tipo: tabla
+    titulo: "La tabla de la ROM de arranque"
+    texto: "Rellene cuándo da el cartucho por válido (1)."
+    libro: ["sms#88", "sms#89"]
+    widget:
+      tipo: logica
+      entradas: [{ id: TMR, rotulo: "Cabecera «TMR SEGA»" }, { id: SUMA, rotulo: "Suma correcta" }]
+      piezas:
+        - { id: y1, tipo: and, entradas: [TMR, SUMA] }
+      salidas:
+        - { id: VALIDO, de: y1, rotulo: "Datos válidos" }
+      ocultar: true
+    tabla:
+      salidas: [VALIDO]
+    exito: "Una AND: hacen falta las dos cosas."
+    escalera:
+      - "Con una de las dos mal, no sigue."
+    solucion: "Solo en la fila con las dos entradas a 1."
+
+  - id: empareje-regiones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El código de región"
+    texto: "Los 4 bits altos del byte 16 de la cabecera dicen para qué sistema es. Empareje."
+    libro: ["sms#90", "sms#91"]
+    emparejar:
+      - ["$3", "SMS Japón"]
+      - ["$4", "SMS exportación"]
+      - ["$5", "Game Gear Japón"]
+    exito: "Solo la ROM de los SMS de exportación mira este código."
+    pistas:
+      - { texto: "Los dos de SMS van seguidos: $3 y $4." }
+    escalera:
+      - "El primero de la lista es Japón."
+    solucion: "$3: SMS Japón. $4: SMS exportación. $5: Game Gear Japón."
+
+  - id: prediga-japones
+    tipo: predecir
+    titulo: "Un cartucho japonés"
+    texto: "Tiene un cartucho japonés de Master System. ¿Lo puede meter en el SMS II PAL?"
+    libro: ["sms#93", "sms#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "No: tiene 44 contactos y otra forma; la ranura es de 50."
+        bien: true
+        porque: "Los japoneses son más altos, más estrechos y más gruesos, con 44 contactos."
+      - texto: "Sí: la ranura es la misma en todo el mundo."
+        porque: "No lo es: los occidentales tienen 50 contactos y los japoneses 44."
+      - texto: "Sí, pero la ROM de arranque lo bloquea."
+        porque: "Ni siquiera entra: el formato del cartucho es otro."
+    escalera:
+      - "Cuente los contactos de la ranura del SMS II."
+    solucion: "No: el japonés tiene 44 contactos y la ranura occidental, 50."
+
+  - id: por-que-adaptador
+    tipo: porque
+    titulo: "El truco del adaptador"
+    texto: "Un adaptador con una pequeña ROM de arranque deja jugar juegos sin cabecera. ¿Por qué?"
+    libro: ["sms#95", "sms#88"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "ROM de arranque" }
+    opciones:
+      - texto: "Su ROM lleva la cabecera que pide la ROM de arranque de la consola."
+        bien: true
+        porque: "La consola encuentra una cabecera válida en el adaptador y sigue."
+      - texto: "Desactiva el chip de bloqueo de la consola."
+        porque: "No hay chip de bloqueo: lo que falta es la cabecera, y el adaptador la aporta."
+      - texto: "Convierte el juego a PAL."
+        porque: "No cambia la norma: solo le da a la ROM de arranque la cabecera que busca."
+    escalera:
+      - "¿Qué le falta a un juego sin cabecera?"
+    solucion: "Aporta la cabecera que la ROM de arranque necesita ver."
+
+  - id: lento-pal
+    tipo: pregunta
+    titulo: "Un juego que va lento"
+    texto: "Un juego norteamericano va más lento en el SMS II PAL que en su consola. ¿Qué pasa?"
+    libro: ["sms#94"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: vdp, hotspot: vdp, rotulo: "VDP" }
+    opciones:
+      - texto: "El juego no está optimizado para 50 Hz."
+        bien: true
+        porque: "Si cuenta cuadros, a 50 Hz avanza menos por segundo. No es una avería."
+      - texto: "El Z80 está estropeado."
+        porque: "Un Z80 averiado no daría un juego más lento y estable: es la frecuencia de cuadro."
+      - texto: "La ROM de arranque lo frena."
+        porque: "La ROM de arranque solo comprueba la cabecera y pasa al juego."
+    escalera:
+      - "¿Cuántos cuadros por segundo da una PAL?"
+    solucion: "Es la norma: un juego no optimizado para 50 Hz va más lento en una PAL."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["sms#92", "sms#87", "sms#93", "sms#94"]
+    ideas:
+      - { titulo: "Sin chip.", texto: "La ROM de arranque mira la cabecera, no un CIC." }
+      - { titulo: "«TMR SEGA».", texto: "Cabecera y suma correctas: los dos hacen falta." }
+      - { titulo: "Otro cartucho.", texto: "44 contactos en Japón, 50 en el resto." }
+      - { titulo: "50 Hz.", texto: "Un juego no optimizado para 50 Hz va más lento en una PAL." }

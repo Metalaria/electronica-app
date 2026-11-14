@@ -1,0 +1,204 @@
+# «Consolas por dentro» · Master System II 3: un oscilador para todo. El oscilador PAL de 53,203424 MHz (12 × la
+# subportadora), dividido por el 315-5237 entre 5 (10,64 MHz al VDP) y entre 12 (subportadora SC), y por el VDP entre 3
+# (3,546895 MHz al Z80); 228 ciclos por línea y 313 líneas; el mismo reloj que la Mega Drive PAL. Fuentes: los datos de
+# la consola (sms#n: explorador, arquitectura, SMS Power), los de la Mega Drive (megadrive#n) y el libro (el divisor
+# como contador, 37.5; la Q del cristal, 28.3).
+leccion: consola-sms/sms-relojes
+
+libro:
+  "sms#2": "Z80A a 3,546895 MHz en PAL (el reloj CLOCK del VDP, que divide entre 3 los 10,64 MHz que le da el 315-5237)"
+  "sms#6": "divide el oscilador de 53,2 MHz (10,64 MHz para el VDP y la subportadora SC)"
+  "sms#10": "El 315-5237 lo divide entre 5 (10,64 MHz al VDP) y entre 12 (subportadora)"
+  "sms#63": "53,203424 MHz, 228 ciclos por línea, 313 líneas PAL"
+  "sms#65": "12 veces la subportadora PAL (4,43361875 MHz). En NTSC, 53,693175 MHz (15 × 3,579545 MHz)"
+  "sms#68": "Saca CLOCK para el Z80 (÷ 3)"
+  "megadrive#5": "Z80 a MCLK ÷ 15 = 3,55 MHz en PAL"
+  "megadrive#11": "MCLK de 53,203424 MHz: 12 × la subportadora PAL"
+  "cap37#133": "Un contador que incrementa en cada flanco del reloj"
+  "cap28#64": "lo que separa una exactitud del 1 % de una de partes por millón"
+
+modelo:
+  valores:
+    OSC: { sim: "f_{OSC}", nombre: "oscilador PAL", unidad: Hz, valor: 53203424 }
+    n: { sim: "n", nombre: "divisor", unidad: "", valor: 5 }
+    L: { sim: "L", nombre: "líneas por cuadro", unidad: "", valor: 262 }
+  calculos:
+    f_div: { expr: "OSC/n", sim: "f_{OSC} / n", nombre: "oscilador dividido", unidad: Hz, cifras: 4 }
+    f_z80: { expr: "OSC/5/3", sim: "f_{Z80}", nombre: "reloj del Z80 en PAL", unidad: Hz, cifras: 7 }
+    f_cuadro: { expr: "OSC/15/(228*L)", sim: "f_{cuadro}", nombre: "cuadros por segundo (PAL)", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-osc
+    tipo: explorar
+    titulo: "Un oscilador, tres divisores"
+    texto: "Toque el oscilador y los chips que reparten su reloj, hasta el Z80."
+    libro: ["sms#10", "sms#6", "sms#68", "sms#2"]
+    requiere: { mover: [osc, io, vdp, z80] }
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: osc, hotspot: osc, rotulo: "Oscilador", texto: "53,203424 MHz en esta placa PAL." }
+        - { id: io, hotspot: io, rotulo: "315-5237", texto: "Divide entre 5 para el VDP y entre 12 para la subportadora." }
+        - { id: vdp, hotspot: vdp, rotulo: "VDP", texto: "Divide sus 10,64 MHz entre 3 para el Z80." }
+        - { id: z80, hotspot: z80, rotulo: "Z80", texto: "Va a 3,546895 MHz." }
+
+  - id: por-que-oscilador
+    tipo: porque
+    titulo: "Un número raro"
+    texto: "¿Por qué el oscilador es de 53,203424 MHz y no de un valor redondo?"
+    libro: ["sms#65", "sms#10", "cap28#64"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: osc, hotspot: osc, rotulo: "Oscilador" }
+    opciones:
+      - texto: "Es 12 veces la subportadora de color PAL."
+        bien: true
+        porque: "El 315-5237 lo divide entre 12 y saca la subportadora exacta que pide el color PAL."
+      - texto: "Es lo más rápido que aguanta el Z80."
+        porque: "El Z80 recibe 53,203424 MHz ÷ 15. El valor lo fija el color del vídeo."
+      - texto: "Cualquier valor cercano serviría."
+        porque: "No: el color pide una subportadora exacta, de partes por millón. Por eso es un oscilador de cristal."
+    escalera:
+      - "Divida 53,203424 MHz entre 12."
+    solucion: "53,203424 MHz = 12 × 4,43361875 MHz, la subportadora PAL."
+
+  - id: simule-z80
+    tipo: simular
+    titulo: "El reloj del Z80"
+    texto: "El 315-5237 divide el oscilador entre 5 y el VDP, entre 3. ¿A qué frecuencia va el Z80?"
+    libro: ["sms#2", "sms#10", "cap37#133"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: k, min: 2, max: 16, unidad: "", rotulo: "divisor total" }
+      y: { min: 0, max: 27000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "OSC/k", color: azul, rotulo: "f_{OSC} ÷ divisor", palitos: true }
+    simular:
+      objetivo: f_z80
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Reloj del Z80, f_{Z80}"
+      errores:
+        - { expr: "OSC/5", texto: "Esos 10,64 MHz son los del VDP. El VDP aún los divide entre 3." }
+        - { expr: "OSC/12", texto: "Ese es el divisor de la subportadora de color, no el del Z80." }
+        - { expr: "OSC/3", texto: "Ha dividido solo entre 3: falta el ÷ 5 del 315-5237." }
+    exito: "53,203424 MHz ÷ 5 ÷ 3 = 3,546895 MHz: dos divisores en cadena."
+    escalera:
+      - "Los dos divisores se multiplican: 5 × 3."
+    solucion: "53,203424 MHz ÷ 15 = 3,546895 MHz."
+    comprobar:
+      - { f_z80: 3546895 }
+
+  - id: ajuste-subportadora
+    tipo: ajuste
+    titulo: "La subportadora de color"
+    texto: "Ajuste el divisor hasta la subportadora PAL: 4,43 MHz."
+    libro: ["sms#10", "sms#65"]
+    inicio: { n: 5 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 2, max: 16, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 27000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "OSC/k", color: azul, rotulo: "f_{OSC} ÷ divisor", palitos: true }
+      marcas:
+        - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
+      mandos: [ { valor: n, min: 2, max: 16, paso: 1, rotulo: "Divisor, n" } ]
+    ajuste:
+      valor: f_div
+      objetivo: 4430000
+      tol: 0.005
+      rotulo: "Subportadora"
+      bajo: "Demasiado baja: baje el divisor."
+      alto: "Demasiado alta: suba el divisor."
+      dentro: "÷ 12: la subportadora de color PAL."
+    exito: "El 315-5237 divide entre 12: 4,43 MHz para el codificador."
+    escalera:
+      - "El oscilador es 12 veces la subportadora."
+    solucion: "n = 12: 53,203424 MHz ÷ 12 = 4,43 MHz."
+    comprobar:
+      - { con: { n: 12 }, f_div: 4433619 }
+
+  - id: ajuste-lineas
+    tipo: ajuste
+    titulo: "Cincuenta cuadros, casi"
+    texto: "Cada línea dura 228 ciclos del Z80. Ajuste las líneas por cuadro hasta 49,70 Hz."
+    libro: ["sms#63", "sms#2"]
+    inicio: { L: 262 }
+    widget:
+      tipo: grafica
+      x: { id: l, min: 200, max: 340, unidad: "", rotulo: "líneas por cuadro" }
+      y: { min: 40, max: 80, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "OSC/15/(228*l)", color: azul, rotulo: "f_{Z80} ÷ (228 · líneas)" }
+      marcas:
+        - { x: "L", y: "f_cuadro", rotulo: "{{f_cuadro}}" }
+      mandos: [ { valor: L, min: 200, max: 340, paso: 1, rotulo: "Líneas por cuadro, L" } ]
+    ajuste:
+      valor: f_cuadro
+      objetivo: 49.70
+      tol: 0.001
+      rotulo: "Cuadros por segundo"
+      bajo: "Demasiado lento: quite líneas."
+      alto: "Demasiado rápido: añada líneas."
+      dentro: "49,70 Hz: el televisor PAL engancha."
+    exito: "313 líneas de 228 ciclos: 49,70 Hz."
+    escalera:
+      - "Con 262 líneas el cuadro va demasiado rápido: añada líneas."
+    solucion: "L = 313: 3,546895 MHz ÷ (228 × 313) = 49,70 Hz."
+    comprobar:
+      - { con: { L: 313 }, f_cuadro: 49.70 }
+
+  - id: empareje-divisores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada divisor, su reloj"
+    texto: "Empareje cada división del oscilador con lo que alimenta."
+    libro: ["sms#10", "sms#68", "sms#2"]
+    emparejar:
+      - ["÷ 5 en el 315-5237", "10,64 MHz al VDP"]
+      - ["÷ 3 en el VDP", "3,546895 MHz al Z80"]
+      - ["÷ 12 en el 315-5237", "La subportadora de color"]
+    exito: "Un solo oscilador y tres divisiones: todo va en fase."
+    pistas:
+      - { texto: "El Z80 no recibe el oscilador directamente: le llega CLOCK del VDP." }
+    escalera:
+      - "El ÷ 3 lo hace el VDP con lo que le llega."
+    solucion: "÷ 5: VDP. ÷ 3: Z80. ÷ 12: subportadora."
+
+  - id: prediga-mega-drive
+    tipo: predecir
+    titulo: "Un reloj conocido"
+    texto: "La Mega Drive PAL lleva el mismo oscilador de 53,203424 MHz. ¿A qué va su Z80?"
+    libro: ["megadrive#11", "megadrive#5", "sms#2"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: osc, hotspot: osc, rotulo: "Oscilador" }
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+    opciones:
+      - texto: "Al mismo ritmo: el oscilador ÷ 15, unos 3,55 MHz."
+        bien: true
+        porque: "Las dos dividen 53,203424 MHz entre 15: el Z80 de la Mega Drive va como el del SMS II PAL."
+      - texto: "Al doble, porque la Mega Drive es de 16 bits."
+        porque: "Los 16 bits son del 68000. El Z80 de la Mega Drive divide el mismo reloj entre 15."
+      - texto: "Al mismo reloj que su 68000."
+        porque: "El 68000 va a ÷ 7; el Z80, a ÷ 15, como en el SMS II."
+    escalera:
+      - "¿Entre cuánto se divide el oscilador para el Z80 en el SMS II?"
+    solucion: "Igual: 53,203424 MHz ÷ 15 ≈ 3,55 MHz en las dos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["sms#65", "sms#10", "sms#2", "sms#63"]
+    ideas:
+      - { titulo: "Un oscilador.", texto: "53,203424 MHz: 12 × la subportadora PAL." }
+      - { titulo: "Tres divisores.", texto: "÷ 5 al VDP, ÷ 3 al Z80 y ÷ 12 al color." }
+      - { titulo: "El cuadro.", texto: "313 líneas de 228 ciclos del Z80 en PAL." }
+      - { titulo: "De familia.", texto: "El Z80 de la Mega Drive PAL va al mismo ritmo." }

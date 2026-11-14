@@ -1,0 +1,279 @@
+# Lección 1.2 de la sección 25.2 «La Unión PN» (cap26; etiqueta interna sec-26.2).
+# Formato: contenido/lecciones11/GUIA.md. Dopado sobre la figura 25.1 (fig-26.1: paneles tipo N y tipo P).
+# Portadores frente al dopado: n = 10¹⁰ + N_D (los dos extremos del bloque 40: de 10¹⁰ a 10¹⁶ cm⁻³).
+# La unión en el circuito: esquema «diodo» con el modelo de caída constante de 0,7 V (bloque 45) y 1 kΩ (ejemplo).
+# Prediga y simule (60 mV por década, bloque 63): esquema «diodo» con el modelo de Shockley (I_S = 1 pA, n = 1,
+# V_T = 25,85 mV, los de la calculadora del libro); la fuente se calcula para que circulen 1 mA o 10 mA exactos.
+leccion: cap26/sec-26.2
+
+libro:
+  35: "El silicio puro es un mal conductor y un mal aislante"
+  36: "se puede controlar añadiendo impurezas"
+  38: "Los portadores mayoritarios son electrones"
+  39: "Los mayoritarios son huecos"
+  40: "un átomo de impureza por cada cinco millones de silicio"
+  41: "la pureza del material de partida debe ser extraordinaria"
+  44: "Es difusión pura"
+  45: "una barrera de potencial de unos 0,7 V en silicio"
+  48: "en inversa, la ensancha y no pasa nada"
+  49: "eso es un varicap"
+  50: "con campo suficiente, los portadores se aceleran hasta ionizar por choque"
+  52: "la generación térmica de portadores crece con la temperatura"
+  54: "unas tres veces más movilidad"
+  55: "el N es el preferido"
+  56: "los transistores P se hacen más anchos"
+  59: "mucha más movilidad, para radiofrecuencia y optoelectrónica"
+  63: "debe dar una recta con la pendiente de los 60 mV por década"
+  "cap26#119": "25,85 mV a 300 K"
+
+modelo:
+  valores:
+    N_d: { sim: "N_{D}", nombre: "dopado", unidad: "cm⁻³", valor: 10000000000 }
+    V_d: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_d: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    V_D: { sim: "V_{D}", nombre: "barrera del silicio", unidad: V, valor: 0.7 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 1e-12 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    I_o: { sim: "I", nombre: "corriente deseada", unidad: A, valor: 0.001 }
+  calculos:
+    n_l: { expr: "10000000000 + N_d", sim: "n", nombre: "portadores libres", unidad: "cm⁻³", cifras: 2 }
+    f_s: { expr: "n_l/10000000000", sim: "×", nombre: "conductividad frente al cristal puro", unidad: "", cifras: 2 }
+    I_dc: { expr: "max(0, (V_d - V_D)/R_d)", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_dc: { expr: "V_d - I_dc*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+    V_x: { expr: "I_o*R_d + n_d*V_T*ln(I_o/I_S + 1)", sim: "V", nombre: "fuente para esa corriente", unidad: V }
+    I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_x + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_ds: { expr: "V_x - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 4 }
+    V_1m: { expr: "n_d*V_T*ln(0.001/I_S + 1)", sim: "V_{D}", nombre: "tensión con 1 mA", unidad: V, cifras: 4 }
+    V_lin: { expr: "10*V_1m", sim: "V", nombre: "diez veces la de 1 mA", unidad: V }
+
+tarjetas:
+  - id: explore-dopado
+    tipo: explorar
+    titulo: "Tipo N y tipo P"
+    texto: "Toque el electrón que sobra en el tipo N y el hueco del tipo P."
+    libro: [38, 39]
+    widget:
+      tipo: figura
+      figura: fig-26.1
+      zonas:
+        - { id: tipo-n, rotulo: "Arriba, en el centro", rect: [172, 16, 84, 35], texto: "Tipo N: fósforo o arsénico, con cinco electrones de valencia. Sobra uno, libre a temperatura ambiente: los mayoritarios son electrones." }
+        - { id: tipo-p, rotulo: "Abajo a la derecha", rect: [320, 126, 85, 36], texto: "Tipo P: boro, con tres. Falta un electrón, es decir, hay un hueco: los mayoritarios son huecos." }
+    requiere: { mover: [tipo-n, tipo-p] }
+
+  - id: explore-millon
+    tipo: explorar
+    titulo: "Una pizca de impureza"
+    texto: "El cristal puro tiene unos 10¹⁰ portadores por cm³. Suba el dopado y mire cuánto conduce."
+    libro: [35, 36, 40]
+    inicio: { N_d: 10000000000 }
+    widget:
+      tipo: grafica
+      x: { id: nd, min: 100000000, max: 1e18, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 1000000000, max: 1e18, unidad: "cm⁻³", rotulo: "n", escala: log }
+      curvas:
+        - { expr: "10000000000 + nd", color: naranja, rotulo: "portadores libres" }
+      marcas:
+        - { x: "N_d", y: "n_l", rotulo: "×{{f_s}}" }
+      lectura: { valor: f_s, rotulo: "Conductividad frente al cristal puro, ×" }
+      mandos:
+        - { valor: N_d, lista: [10000000000, 1000000000000, 100000000000000, 10000000000000000], rotulo: "Dopado" }
+    requiere: { mover: [N_d] }
+    comprobar:
+      - { con: { N_d: 0 }, n_l: 10000000000 }
+
+  - id: cuantos-atomos
+    tipo: pregunta
+    titulo: "Cuánta impureza es eso"
+    texto: "Un dopado típico de 10¹⁶ cm⁻³ multiplica la conductividad por un millón. ¿Cuántos átomos de impureza supone?"
+    libro: [40]
+    fijar: { N_d: 10000000000000000 }
+    widget:
+      tipo: grafica
+      x: { id: nd, min: 100000000, max: 1e18, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 1000000000, max: 1e18, unidad: "cm⁻³", rotulo: "n", escala: log }
+      curvas:
+        - { expr: "10000000000 + nd", color: naranja, rotulo: "portadores libres" }
+      marcas:
+        - { x: "N_d", y: "n_l", rotulo: "×{{f_s}}" }
+    opciones:
+      - texto: "Uno por cada cinco millones de átomos de silicio"
+        bien: true
+        porque: "Una proporción minúscula, y sin embargo los portadores pasan de 10¹⁰ a 10¹⁶ cm⁻³."
+      - texto: "Uno de cada mil"
+        porque: "Eso sería un dopado mil veces más pobre en silicio. El efecto llega con mucho menos."
+      - texto: "La mitad de los átomos"
+        porque: "Eso ya no sería silicio dopado sino otro material. Basta una impureza por cada cinco millones."
+    escalera:
+      - "Toda la electrónica de estado sólido sale de una desproporción enorme entre causa y efecto."
+    solucion: "Uno por cada cinco millones, y la conductividad cambia por un factor de un millón."
+
+  - id: por-que-pureza
+    tipo: porque
+    titulo: "¿Por qué tan puro?"
+    texto: "El silicio de partida debe ser extraordinariamente puro. ¿Por qué?"
+    libro: [40, 41]
+    fijar: { N_d: 10000000000000000 }
+    widget:
+      tipo: grafica
+      x: { id: nd, min: 100000000, max: 1e18, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 1000000000, max: 1e18, unidad: "cm⁻³", rotulo: "n", escala: log }
+      curvas:
+        - { expr: "10000000000 + nd", color: naranja, rotulo: "portadores libres" }
+    opciones:
+      - texto: "Una impureza no deseada al mismo nivel arruinaría el control"
+        bien: true
+        porque: "Si una parte en cinco millones cambia la conductividad un millón de veces, cualquier contaminación de ese orden manda tanto como el dopado."
+      - texto: "Porque el silicio impuro no forma cristal"
+        porque: "Forma cristal igual; lo que se pierde es el control de cuántos portadores hay."
+      - texto: "Porque las impurezas reducen la banda prohibida"
+        porque: "El gap es del material. Las impurezas añaden portadores, y eso es lo que hay que controlar."
+    escalera:
+      - "¿Qué haría una impureza accidental tan pequeña como el dopado?"
+    solucion: "Porque una impureza no deseada al nivel del dopado arruinaría el control."
+
+  - id: ordene-union
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cómo nace la zona de agotamiento"
+    texto: "Al juntar material P y N pasan cuatro cosas. Póngalas en orden."
+    libro: [44, 45]
+    ordenar:
+      - "Los electrones del lado N difunden hacia el P, y los huecos al revés."
+      - "Quedan atrás iones fijos: positivos en el N, negativos en el P."
+      - "Los iones crean un campo que se opone a la difusión."
+      - "Se llega al equilibrio cuando ambos efectos se compensan."
+    exito: "Queda una zona sin portadores libres, con un campo interno y una barrera de unos 0,7 V en silicio."
+    pistas:
+      - { texto: "Todo empieza por difusión pura: de donde hay muchos a donde hay pocos." }
+    escalera:
+      - "El campo es consecuencia de los iones, y los iones de la difusión."
+    solucion: "Difusión, iones fijos, campo y equilibrio."
+
+  - id: explore-polarizar
+    tipo: explorar
+    titulo: "La barrera en el circuito"
+    texto: "Una unión de silicio con 1 kΩ. Lleve la fuente de directa a inversa y mire la corriente."
+    libro: [45, 48]
+    inicio: { V_d: 5 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, vd: V_D }
+      lectura: { valor: I_dc, rotulo: "Corriente" }
+      datos:
+        - { valor: V_dc, rotulo: "En la unión: {{V_dc}}" }
+      corriente: I_dc
+      mide: { corriente: I_dc, vd: V_dc }
+      mandos:
+        - { valor: V_d, min: -5, max: 5, paso: 0.5, rotulo: "Fuente" }
+    requiere: { mover: [V_d] }
+    comprobar:
+      - { R_d: 1000 }
+
+  - id: prediga-inversa
+    tipo: predecir
+    titulo: "En inversa"
+    texto: "La misma unión con 1 kΩ y la fuente a −5 V. ¿Cuánta corriente circula?"
+    libro: [48]
+    fijar: { V_d: -5 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, vd: V_D }
+      lectura: { valor: I_dc, rotulo: "Corriente" }
+      corriente: I_dc
+      mide: { corriente: I_dc, vd: V_dc }
+      ocultar: true
+    opciones:
+      - texto: "Prácticamente ninguna"
+        bien: true
+        porque: "En inversa la tensión externa ensancha la barrera y no pasa nada: toda la tensión queda en la unión."
+      - texto: "4,3 mA, hacia el otro lado"
+        porque: "Eso daría la directa, con 0,7 V en la unión. En inversa la unión bloquea."
+      - texto: "5 mA: la unión se comporta como un cable"
+        porque: "La unión no es un cable en ningún sentido; en inversa, además, bloquea."
+    escalera:
+      - "¿Qué le hace la tensión inversa a la zona de agotamiento?"
+    solucion: "Casi nada: la barrera se ensancha y los −5 V quedan en la unión."
+    comprobar:
+      - { R_d: 1000, I_dc: 0, V_dc: -5 }
+      - { con: { V_d: 5 }, I_dc: 0.0043 }
+
+  - id: empareje-consecuencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Todo sale de la unión"
+    texto: "Una cada fenómeno con lo que pasa en la zona de agotamiento."
+    libro: [48, 49, 50, 52]
+    emparejar:
+      - ["Rectificación", "En directa la barrera baja; en inversa se ensancha"]
+      - ["Capacidad de unión", "Un aislante entre dos conductores, de anchura variable"]
+      - ["Ruptura", "Con campo suficiente, ionización por choque o efecto Zener"]
+      - ["Los −2 mV/°C", "La generación térmica crece con la temperatura"]
+    exito: "Por eso la unión PN conecta con media docena de capítulos: diodo, varicap, Zener, transistor."
+    pistas:
+      - { texto: "La zona de agotamiento sin portadores es un aislante: un condensador." }
+    escalera:
+      - "La ruptura es cosa del campo; la deriva térmica, de la generación."
+    solucion: "Rectificación–barrera, capacidad–aislante, ruptura–campo, −2 mV/°C–generación."
+
+  - id: simule-decada
+    tipo: simular
+    titulo: "Diez veces más corriente"
+    texto: "Este diodo cae {{V_1m}} con 1 mA. Con 10 mA, ¿cuánto caerá?"
+    libro: [63, "cap26#119"]
+    fijar: { I_o: 0.01, R_d: 1000, I_S: 1e-12, n_d: 1, V_T: 0.02585 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_x, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_ds
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión del diodo con 10 mA"
+      medida: vd
+      errores:
+        - { expr: "V_lin", texto: "Eso es multiplicar la tensión por diez. La relación es exponencial: la tensión crece con el logaritmo de la corriente." }
+        - { expr: "V_1m", texto: "No es constante: la caída sube un poco con cada década de corriente, unos 60 mV." }
+        - { expr: "V_D", texto: "Los 0,7 V del modelo de caída constante valen para estimar, no para ver una década." }
+    exito: "Sube unos 60 mV: una década de corriente por cada 60 mV. En escala logarítmica, una recta."
+    escalera:
+      - "Con n = 1, cada década de corriente añade V_{T} · ln 10 a la tensión."
+    solucion: "{{V_1m}} más unos 60 mV: unos 0,595 V."
+    comprobar:
+      - { V_ds: 0.5952, V_1m: 0.5357, tol: 0.002 }
+
+  - id: empareje-movilidad
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Electrones más rápidos"
+    texto: "Los electrones tienen unas tres veces más movilidad que los huecos. Una cada consecuencia con su caso."
+    libro: [54, 55, 56, 59]
+    emparejar:
+      - ["MOSFET de canal N", "Entre la mitad y un tercio de R_{DS(on)}"]
+      - ["MOSFET de canal P", "Donde simplifica el mando, en el lado alto"]
+      - ["Lógica CMOS", "Transistores P más anchos para igualar tiempos"]
+      - ["Arseniuro de galio", "Mucha más movilidad: radiofrecuencia"]
+    exito: "Por eso el N es el preferido, y el P se reserva para donde simplifica."
+    pistas:
+      - { texto: "A igual tamaño, el canal de más movilidad conduce mejor." }
+    escalera:
+      - "El P, peor conductor, se compensa haciéndolo más ancho."
+    solucion: "N–menos R_{DS(on)}, P–lado alto, CMOS–P más anchos, GaAs–RF."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [38, 39, 40, 45, 54]
+    ideas:
+      - { titulo: "Dopado.", texto: "N: sobran electrones. P: faltan, hay huecos. Una impureza entre cinco millones cambia la conductividad un millón de veces." }
+      - { titulo: "La unión.", texto: "Difusión, iones fijos, campo y equilibrio: una zona de agotamiento con una barrera de unos 0,7 V." }
+      - { titulo: "De ahí todo.", texto: "Rectificación, capacidad, ruptura, transistor y −2 mV/°C." }
+      - { titulo: "Movilidad.", texto: "Los electrones, unas tres veces más móviles: el canal N es el preferido." }

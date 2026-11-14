@@ -1,0 +1,312 @@
+# Lección 1.2 de la sección 17.11 «Problemas de Diseño» (cap18, etiqueta sec-18.10 = impresa 17.11).
+# - Problema 17.A en el esquema vivo «led»: el LED del optoacoplador (1,2 V) desde un GPIO de 3,3 V con su
+#   resistencia; con la CTR efectiva del 25 %, 5 mA de colector piden I_F = 20 mA, y R = 105 Ω. 20 mA > 16 mA del pin.
+#   El GPIO se modela como fuente ideal de 3,3 V.
+# - Problema 17.B: jitter relativo = jitter / periodo (200 µs a 1 kHz: 20 %).
+# - Problema 17.C: C = 2·P·t/(V₁² − V₂²) frente al tiempo de apagado (53 mF a 50 ms, 211 mF a 200 ms).
+# Paso práctico: «simular» la corriente del LED con 105 Ω (error típico: olvidar la caída del LED).
+leccion: cap18/sec-18.10
+
+libro:
+  294: "la CTR se degrada con la vida a la mitad"
+  297: "hay que diseñar con una CTR efectiva del 25 %"
+  298: 'I_("F") = (I_("C"))/("CTR"_("efectiva"))'
+  299: 'R = ("3,3" - "1,2")/("20 mA") = "105 Ω"'
+  300: "20 mA superan los 16 mA que admite el pin"
+  302: "Un transistor de excitación entre el GPIO y el LED del optoacoplador"
+  303: "Ocho salidas a 10 mA cada una suman 80 mA, por encima del total de 50 mA"
+  312: "200 % (imposible)"
+  313: "sirve hasta unos 100 Hz con holgura y hasta 1 kHz con dificultades"
+  314: "son picos ocasionales de milisegundos que aparecen justo cuando no toca"
+  321: "El sistema tolera bajar de 5 a 4,5 V"
+  325: 'C = ("2" dot.op P dot.op t)/(V_("1")^("2") - V_("2")^("2"))'
+  326: "53 mF"
+  327: "El resultado descarta el condensador convencional"
+  328: "Un solo componente de 1 F a 5,5 V da energía de sobra"
+  329: "vigilando la entrada antes del regulador"
+
+modelo:
+  valores:
+    V_g: { sim: "V_{GPIO}", nombre: "tensión del GPIO", unidad: V, valor: 3.3 }
+    V_f: { sim: "V_{F}", nombre: "caída del LED del optoacoplador", unidad: V, valor: 1.2 }
+    R_o: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 220 }
+    CTR: { sim: "CTR_{ef}", nombre: "CTR efectiva", unidad: "", valor: 0.25 }
+    I_cn: { sim: "I_{C}", nombre: "corriente de colector necesaria", unidad: A, valor: 0.005 }
+    jit: { sim: "jitter", nombre: "jitter observado", unidad: s, valor: 0.0002 }
+    f_t: { sim: "f", nombre: "frecuencia de la tarea", unidad: Hz, valor: 1000 }
+    P_s: { sim: "P", nombre: "consumo del equipo", unidad: W, valor: 2.5 }
+    t_s: { sim: "t", nombre: "tiempo de apagado", unidad: s, valor: 0.05 }
+    V_1: { sim: "V₁", nombre: "tensión inicial", unidad: V, valor: 5 }
+    V_2: { sim: "V₂", nombre: "tensión mínima", unidad: V, valor: 4.5 }
+  calculos:
+    I_F: { expr: "(V_g - V_f)/R_o", sim: "I_{F}", nombre: "corriente del LED", unidad: A }
+    I_C: { expr: "CTR*I_F", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    I_Fn: { expr: "I_cn/CTR", sim: "I_{F}", nombre: "corriente de LED necesaria", unidad: A }
+    I_sv: { expr: "V_g/R_o", sim: "I", nombre: "corriente sin la caída del LED", unidad: A }
+    j_r: { expr: "100*jit*f_t", sim: "jitter_{rel}", nombre: "jitter relativo", unidad: "%" }
+    C_n: { expr: "2*P_s*t_s/(V_1^2 - V_2^2)", sim: "C", nombre: "capacidad necesaria", unidad: F }
+
+tarjetas:
+  - id: explore-opto
+    tipo: explorar
+    titulo: "Un optoacoplador en un GPIO"
+    texto: "El GPIO de 3,3 V enciende el LED del optoacoplador, que cae 1,2 V. Cambie la resistencia y mire la corriente que pide al pin."
+    libro: [294, 300]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_g, r: R_o, vf: V_f }
+      lectura: { valor: I_F, rotulo: "Corriente del pin" }
+      datos:
+        - { valor: I_C, rotulo: "Colector, con CTR del 25 %: {{I_C}}" }
+      corriente: I_F
+      mide: { corriente: I_F, vf: V_f }
+      mandos:
+        - { valor: R_o, min: 50, max: 300, paso: 5, rotulo: "R" }
+    requiere: { mover: [R_o] }
+
+  - id: formula-if
+    tipo: formula
+    titulo: "Diseñar con la CTR degradada"
+    texto: "La CTR baja a la mitad con la vida: se diseña con el 25 %. Para 5 mA de colector, el LED necesita:"
+    libro: [297, 298]
+    ec: 298
+    sustitucion: "{{I_cn}} / 0,25 = {{I_Fn}}"
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_g, r: R_o, vf: V_f }
+      lectura: { valor: I_F, rotulo: "Corriente del pin" }
+      corriente: I_F
+      mide: { corriente: I_F }
+      mandos:
+        - { valor: R_o, min: 50, max: 300, paso: 5, rotulo: "R" }
+
+  - id: simule-105
+    tipo: simular
+    titulo: "Prediga con 105 Ω"
+    texto: "Con 105 Ω entre el GPIO de 3,3 V y el LED de 1,2 V, ¿cuánta corriente pide el LED al pin?"
+    libro: [299]
+    fijar: { V_g: 3.3, V_f: 1.2, R_o: 105 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_g, r: R_o, vf: V_f }
+      lectura: { valor: I_F, rotulo: "Corriente del pin" }
+      mide: { corriente: I_F }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_F
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente del LED, I_{F}"
+      medida: corriente
+      errores:
+        - { expr: "I_sv", texto: "Esos 31,4 mA salen de 3,3 V / 105 Ω: ha olvidado los 1,2 V que cae el LED." }
+    exito: "20 mA: lo que pide el LED con la CTR degradada, pero más de lo que admite el pin."
+    escalera:
+      - "En la resistencia caen 3,3 − 1,2 V."
+    solucion: "(3,3 − 1,2) V / 105 Ω = 20 mA."
+    comprobar:
+      - { I_F: 0.02, I_sv: 0.0314 }
+
+  - id: predecir-cabe
+    tipo: predecir
+    titulo: "¿Cabe en el pin?"
+    texto: "El diseño pide 20 mA al GPIO. ¿Cumple los límites de la Raspberry Pi?"
+    libro: [300]
+    fijar: { R_o: 105 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_g, r: R_o, vf: V_f }
+      lectura: { valor: I_F, rotulo: "Corriente del pin" }
+      corriente: I_F
+      mide: { corriente: I_F }
+      mandos: []
+    opciones:
+      - texto: "No: supera los 16 mA del pin"
+        bien: true
+        porque: "Y con 10 mA de colector harían falta 40 mA, dos veces y media el límite."
+      - texto: "Sí: está por debajo de 50 mA"
+        porque: "Los 50 mA son el total de todos los GPIO; por pin, 16 mA."
+      - texto: "Sí: el pin limita a 16 mA"
+        porque: "El pin no limita: entrega lo que pida la carga, y se pasa del límite."
+    escalera:
+      - "Compare con el límite por pin, no con el total."
+    solucion: "No: 20 mA frente a 16 mA."
+
+  - id: empareje-correcciones
+    tipo: pregunta
+    titulo: "Tres correcciones"
+    texto: "Empareje cada corrección con por qué resuelve el problema."
+    libro: [302]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_g, r: R_o, vf: V_f }
+      lectura: { valor: I_F, rotulo: "Corriente del pin" }
+      mide: { corriente: I_F }
+      mandos: []
+    emparejar:
+      - ["Un transistor de excitación", "El pin solo aporta la corriente de base"]
+      - ["Un optoacoplador de alta CTR", "Pide mucha menos corriente de LED"]
+      - ["Salida Darlington o de puerta lógica", "Necesita mucha menos corriente de entrada"]
+    exito: "El transistor de excitación es la solución estándar."
+    pistas:
+      - { texto: "Con el transistor, la corriente del LED sale de la alimentación." }
+    escalera:
+      - "Dos reducen la corriente que pide el optoacoplador; otra la saca del pin."
+    solucion: "Transistor, corriente de base; alta CTR, menos LED; Darlington, menos entrada."
+
+  - id: predecir-ocho
+    tipo: predecir
+    titulo: "Ocho salidas a 10 mA"
+    texto: "Ocho GPIO dan 10 mA cada uno, dentro del límite por pin. ¿Está bien el diseño?"
+    libro: [303]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_g, r: R_o, vf: V_f }
+      lectura: { valor: I_F, rotulo: "Corriente del pin" }
+      mide: { corriente: I_F }
+      mandos: []
+    opciones:
+      - texto: "No: suman 80 mA, más que los 50 mA del total"
+        bien: true
+        porque: "El raíl de 3,3 V se hunde y el chip puede acabar dañado. Hay que sumar, no solo mirar uno a uno."
+      - texto: "Sí: cada pin está por debajo de 16 mA"
+        porque: "Uno a uno sí, pero el conjunto queda fuera de especificación."
+      - texto: "Sí: 80 mA es poco para la placa"
+        porque: "El total de los GPIO es de 50 mA."
+    escalera:
+      - "Sume las ocho corrientes."
+    solucion: "No: 80 mA superan los 50 mA."
+
+  - id: estime-jitter
+    tipo: pregunta
+    titulo: "Hasta dónde llega Python"
+    texto: "Una lectura en Python sobre Linux tiene unos 200 µs de jitter. A 1 kHz, ¿qué parte del periodo es eso?"
+    libro: [312, 313]
+    fijar: { jit: 0.0002, f_t: 1000 }
+    estimar:
+      objetivo: "j_r"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 70
+      tol: 0.05
+      rotulo: "Jitter relativo"
+    exito: "Un 20 %: hasta 1 kHz, con dificultades; hasta 100 Hz, con holgura."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 21 }, texto: "Demasiado: a 1 kHz el periodo es de 1 ms." }
+      - { texto: "Se ha quedado corto: a 1 kHz el periodo es de 1 ms." }
+    escalera:
+      - "Divida el jitter entre el periodo."
+    solucion: "200 µs / 1 ms = 20 %."
+    comprobar:
+      - { j_r: 20 }
+
+  - id: porque-picos
+    tipo: porque
+    titulo: "Lo que ningún promedio revela"
+    texto: "La latencia media es buena y aun así una tarea a 10 kHz es imposible. ¿Por qué?"
+    libro: [312, 314]
+    widget:
+      tipo: figura
+      figura: fig-18.7
+      zonas:
+        - { id: cola, rotulo: "Cola roja de la gráfica", rect: [185, 85, 55, 100] }
+    opciones:
+      - texto: "El jitter son picos de milisegundos, no un promedio"
+        bien: true
+        porque: "Linux no es de tiempo real: el planificador desaloja el proceso justo cuando no toca. A 10 kHz, el 200 %."
+      - texto: "Python es demasiado lento de media"
+        porque: "El problema no es la media, sino los picos ocasionales."
+      - texto: "Los GPIO no conmutan a 10 kHz"
+        porque: "Los pines pueden; lo que falla es la temporización desde espacio de usuario."
+    escalera:
+      - "Mire la cola de la distribución."
+    solucion: "Picos ocasionales del planificador: lo crítico, a un microcontrolador."
+
+  - id: formula-apagado
+    tipo: formula
+    titulo: "Apagar sin corromper"
+    texto: "Un equipo de 2,5 W debe apagarse en orden al cortarse la red, bajando de 5 a 4,5 V. Cambie el tiempo de apagado."
+    libro: [321, 325, 326]
+    ec: 325
+    sustitucion: "2 · {{P_s}} · {{t_s}} / ({{V_1}}² − {{V_2}}²) = {{C_n}}"
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 0.25, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.3, unidad: F, rotulo: "C" }
+      curvas:
+        - { expr: "2*P_s*tt/(V_1^2 - V_2^2)", color: azul, rotulo: "capacidad necesaria" }
+      marcas:
+        - { x: "t_s", y: "C_n", rotulo: "{{C_n}}" }
+      lectura: { valor: C_n, rotulo: "Capacidad necesaria" }
+      mandos:
+        - { valor: t_s, lista: [0.05, 0.2], rotulo: "Tiempo de apagado" }
+
+  - id: pregunta-supercondensador
+    tipo: pregunta
+    titulo: "53 mF"
+    texto: "Para 50 ms hacen falta 53 mF. ¿Qué concluye el libro?"
+    libro: [326, 327, 328]
+    fijar: { t_s: 0.05 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 0.25, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.3, unidad: F, rotulo: "C" }
+      curvas:
+        - { expr: "2*P_s*tt/(V_1^2 - V_2^2)", color: azul, rotulo: "capacidad necesaria" }
+      marcas:
+        - { x: "t_s", y: "C_n", rotulo: "{{C_n}}" }
+    opciones:
+      - texto: "Descarta el electrolítico: solo lectura o supercondensador"
+        bien: true
+        porque: "Un supercondensador de 1 F a 5,5 V da energía de sobra; y un sistema de solo lectura elimina el problema."
+      - texto: "Basta un electrolítico de 4700 µF"
+        porque: "53 mF son 53 000 µF: once o doce electrolíticos, con su volumen y su irrupción."
+      - texto: "50 ms siempre bastan para apagar"
+        porque: "Suele ser insuficiente para que un sistema de ficheros cierre ordenadamente."
+    escalera:
+      - "Pase 53 mF a microfaradios."
+    solucion: "Descarta el condensador convencional: supercondensador o solo lectura."
+    comprobar:
+      - { C_n: 0.0526, tol: 0.01 }
+
+  - id: pregunta-deteccion
+    tipo: pregunta
+    titulo: "Avisar a tiempo"
+    texto: "¿Dónde se vigila la caída para avisar al sistema lo antes posible?"
+    libro: [329]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 0.25, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.3, unidad: F, rotulo: "C" }
+      curvas:
+        - { expr: "2*P_s*tt/(V_1^2 - V_2^2)", color: azul, rotulo: "capacidad necesaria" }
+    opciones:
+      - texto: "En la entrada, antes del regulador"
+        bien: true
+        porque: "Ahí la tensión empieza a bajar mucho antes que en los 5 V regulados: ese adelanto da tiempo."
+      - texto: "En los 5 V regulados"
+        porque: "Caen tarde: el regulador los mantiene hasta el final."
+      - texto: "En la tarjeta"
+        porque: "La tarjeta no avisa; hay que vigilar la alimentación de entrada."
+    escalera:
+      - "¿Qué tensión cae primero?"
+    solucion: "En la entrada, antes del regulador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [300, 303, 313, 327]
+    ideas:
+      - { titulo: "El optoacoplador.", texto: "Con CTR degradada, 20 mA: no caben en 16. Transistor u opto de alta CTR." }
+      - { titulo: "Sumar.", texto: "Ocho a 10 mA son 80 mA, más que los 50 del total." }
+      - { titulo: "El jitter.", texto: "200 µs de jitter: hasta 100 Hz con holgura; 1 kHz, con dificultades." }
+      - { titulo: "El apagado.", texto: "53 mF para 50 ms: solo lectura, o supercondensador y detección temprana." }

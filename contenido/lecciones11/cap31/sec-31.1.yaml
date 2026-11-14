@@ -1,0 +1,278 @@
+# Lección 1.2 de la sección 30.1 «Sistemas de Control» (cap31, sec-31.1). Formato: GUIA.md.
+# - La figura 30.1 con zonas (el lazo cerrado y sus términos) y una gráfica del efecto de una perturbación en lazo
+#   abierto y en lazo cerrado proporcional, con la planta térmica del problema 30.B (0,8 °C/W, 120 s): en lazo abierto
+#   la salida cae K·d·(1 − e^(−t/τ)); en lazo cerrado, K·d/(1 + K_p·K) con constante de tiempo τ/(1 + K_p·K).
+#   La perturbación de 10 W es un valor de ejemplo (lo dice la tarjeta).
+# Paso práctico: «tocar» en la figura 30.1 el bloque que pone el techo de exactitud (el sensor).
+leccion: cap31/sec-31.1
+
+libro:
+  4: "Controlar es hacer que una magnitud física tome el valor que se quiere"
+  5: "medir, comparar, decidir, actuar"
+  7: "Lazo abierto: se aplica una acción calculada y se confía"
+  8: "no puede volverse inestable, y no corrige nada"
+  9: "Lazo cerrado: se mide el resultado y se actúa sobre el error"
+  10: "a cambio puede oscilar"
+  11: "Ese intercambio es el mismo de la realimentación negativa"
+  13: "Consigna o referencia: lo que se quiere"
+  14: "Variable de proceso: lo que hay, medido"
+  15: "Error: la diferencia"
+  16: "Variable manipulada: lo que el controlador ajusta"
+  17: "Perturbación: lo que altera el proceso desde fuera"
+  18: "Planta: el proceso físico"
+  19: "seguimiento —que la salida siga una consigna cambiante— y regulación"
+  26: "el sensor es el techo del sistema"
+  29: "rápido con sobreoscilación, o lento sin ella"
+  30: "en un horno la sobreoscilación puede ser inaceptable; en un servo, la lentitud lo es"
+  32: "elegir un PID y ponerse a ajustar parámetros sin haber caracterizado la planta"
+  33: "Sin conocer la ganancia, la constante de tiempo y el retardo"
+  34: "Media hora midiendo la respuesta al escalón ahorra ese trabajo entero"
+  36: "caracterizar la planta en lazo abierto con un escalón"
+  38: "Sistema de control en lazo cerrado con realimentación negativa"
+  "cap31#686": "ganancia 0,8 °C/W y constante de tiempo 120 s"
+
+modelo:
+  valores:
+    K_g: { sim: "K", nombre: "ganancia de la planta", unidad: "°C/W", valor: 0.8 }
+    T_p: { sim: "τ", nombre: "constante de tiempo de la planta", unidad: s, valor: 120 }
+    K_p: { sim: "K_{p}", nombre: "ganancia proporcional", unidad: "W/°C", valor: 1 }
+    d_w: { sim: "d", nombre: "pérdida de calor de ejemplo", unidad: W, valor: 10 }
+  calculos:
+    caida_a: { expr: "K_g*d_w", sim: "Δy_{abierto}", nombre: "caída en lazo abierto", unidad: "°C" }
+    caida_c: { expr: "K_g*d_w/(1 + K_p*K_g)", sim: "Δy_{cerrado}", nombre: "caída en lazo cerrado", unidad: "°C" }
+    tau_c: { expr: "T_p/(1 + K_p*K_g)", sim: "τ_{c}", nombre: "constante de tiempo en lazo cerrado", unidad: s }
+
+tarjetas:
+  - id: explore-lazo
+    tipo: explorar
+    titulo: "Medir, comparar, decidir, actuar"
+    texto: "Toque cada bloque del lazo y lea qué hace."
+    libro: [5, 13, 14, 15, 16, 17, 18, 38]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: consigna, rotulo: "Entrada, a la izquierda", rect: [20, 30, 62, 40], texto: "Consigna o referencia: lo que se quiere." }
+        - { id: comparador, rotulo: "Círculo con Σ", rect: [88, 28, 44, 46], texto: "Compara: resta la medida a la consigna. Lo que sale es el error, la diferencia." }
+        - { id: controlador, rotulo: "Bloque azul", rect: [164, 33, 76, 37], texto: "El controlador decide la acción a partir del error: la variable manipulada, lo que ajusta." }
+        - { id: planta, rotulo: "Bloque naranja", rect: [309, 33, 75, 37], texto: "La planta: el proceso físico. La perturbación lo altera desde fuera." }
+        - { id: sensor, rotulo: "Bloque verde, abajo", rect: [233, 113, 79, 36], texto: "El sensor mide lo que hay: la variable de proceso, que vuelve al comparador." }
+    requiere: { mover: [comparador, controlador, planta, sensor] }
+
+  - id: empareje-terminos
+    tipo: pregunta
+    titulo: "Los términos, con precisión"
+    texto: "Empareje cada término con lo que es."
+    libro: [13, 14, 15, 16, 17, 18]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: todo, rotulo: "El lazo cerrado", rect: [0, 0, 450, 162] }
+    emparejar:
+      - ["Consigna", "Lo que se quiere"]
+      - ["Variable de proceso", "Lo que hay, medido"]
+      - ["Error", "La diferencia entre las dos"]
+      - ["Variable manipulada", "Lo que el controlador ajusta"]
+      - ["Perturbación", "Lo que altera el proceso desde fuera"]
+    exito: "Y la planta es el proceso físico: el horno, el motor, la fuente."
+    pistas:
+      - { texto: "El error sale del comparador; la variable manipulada, del controlador." }
+    escalera:
+      - "Siga la figura de izquierda a derecha: lo que entra, lo que sale de Σ, lo que sale del controlador."
+    solucion: "Consigna, lo que se quiere; variable de proceso, lo medido; error, la diferencia; manipulada, lo que se ajusta; perturbación, lo de fuera."
+
+  - id: explore-perturbacion
+    tipo: explorar
+    titulo: "Una perturbación, dos lazos"
+    texto: "Horno de 0,8 °C/W y 120 s; a t = 0 pierde 10 W. Suba K_{p} y compare las dos caídas."
+    nota: "Los 10 W son de ejemplo."
+    libro: ["cap31#686", 7, 9]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 600, unidad: s, rotulo: "t" }
+      y: { min: -9, max: 1, unidad: "°C", rotulo: "Δy" }
+      curvas:
+        - { expr: "-K_g*d_w*(1 - exp(-t/T_p))", color: azul, rotulo: "lazo abierto", discontinua: true }
+        - { expr: "-K_g*d_w/(1 + K_p*K_g)*(1 - exp(-t*(1 + K_p*K_g)/T_p))", color: naranja, rotulo: "lazo cerrado" }
+      lectura: { valor: caida_c, rotulo: "Caída en lazo cerrado" }
+      datos:
+        - { valor: caida_a, rotulo: "En lazo abierto: {{caida_a}}" }
+        - { valor: tau_c, rotulo: "Constante de tiempo cerrada: {{tau_c}}" }
+      mandos:
+        - { valor: K_p, lista: [1, 2, 5, 20], rotulo: "Ganancia proporcional" }
+    requiere: { mover: [K_p] }
+    comprobar:
+      - { d_w: 10, caida_a: 8 }
+
+  - id: predecir-corriente-aire
+    tipo: predecir
+    titulo: "Termostato o tiempo fijo"
+    texto: "Una corriente de aire enfría el horno. ¿Qué hace cada uno?"
+    libro: [7, 8, 9, 10, "cap31#686"]
+    fijar: { K_p: 5 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 600, unidad: s, rotulo: "t" }
+      y: { min: -9, max: 1, unidad: "°C", rotulo: "Δy" }
+      curvas:
+        - { expr: "-K_g*d_w*(1 - exp(-t/T_p))", color: azul, rotulo: "lazo abierto", discontinua: true }
+        - { expr: "-K_g*d_w/(1 + K_p*K_g)*(1 - exp(-t*(1 + K_p*K_g)/T_p))", color: naranja, rotulo: "lazo cerrado" }
+      lectura: { valor: caida_c, rotulo: "Caída con termostato" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "El termostato mide la caída y calienta más; el de tiempo fijo no se entera"
+        bien: true
+        porque: "El lazo cerrado corrige sin saber qué ha pasado: solo ve que la salida no es la que debe."
+      - texto: "Los dos compensan igual, porque la potencia es la misma"
+        porque: "El lazo abierto aplica una acción calculada y confía: no corrige ninguna perturbación."
+      - texto: "El de tiempo fijo compensa mejor, porque no puede oscilar"
+        porque: "Que no pueda volverse inestable es su ventaja, pero no corrige nada."
+    escalera:
+      - "¿Cuál de los dos mide la temperatura?"
+    solucion: "El termostato: con K_{p} = 5 la caída se queda en 1,6 °C frente a 8 °C."
+    comprobar:
+      - { caida_c: 1.6, caida_a: 8 }
+
+  - id: porque-oscilar
+    tipo: porque
+    titulo: "El precio del lazo cerrado"
+    texto: "El lazo cerrado corrige todo. ¿Por qué no se usa siempre sin pensarlo?"
+    libro: [8, 10, 11]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: todo, rotulo: "El lazo cerrado", rect: [0, 0, 450, 162] }
+    opciones:
+      - texto: "Porque a cambio puede oscilar: es el intercambio de la realimentación negativa"
+        bien: true
+        porque: "No es casualidad: el lazo de control es la misma realimentación negativa del amplificador."
+      - texto: "Porque necesita saber qué perturbación ha ocurrido"
+        porque: "Al revés: corrige sin saberlo, solo ve que la salida no es la que debe."
+      - texto: "Porque no compensa el envejecimiento de los componentes"
+        porque: "Eso es lo que no corrige el lazo abierto; el cerrado sí."
+    escalera:
+      - "¿Qué riesgo no tiene nunca un lazo abierto?"
+    solucion: "Puede oscilar: es el mismo intercambio de la realimentación negativa."
+
+  - id: ordene-estructura
+    tipo: pregunta
+    titulo: "La misma estructura siempre"
+    texto: "Un horno, un motor o una fuente: ordene lo que hace el lazo en cada vuelta."
+    libro: [5]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: todo, rotulo: "El lazo cerrado", rect: [0, 0, 450, 162] }
+    ordenar:
+      - "Medir"
+      - "Comparar"
+      - "Decidir"
+      - "Actuar"
+    exito: "Sea cual sea el proceso: medir, comparar, decidir, actuar."
+    pistas:
+      - { texto: "Sin medida no hay nada que comparar." }
+    escalera:
+      - "El sensor va primero; el actuador, al final."
+    solucion: "Medir, comparar, decidir y actuar."
+
+  - id: toque-techo
+    tipo: tocar
+    titulo: "El techo del sistema"
+    texto: "Toque el bloque cuya exactitud limita todo el lazo, por bueno que sea el controlador."
+    libro: [26, 38]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: controlador, rotulo: "Bloque azul", rect: [164, 33, 76, 37] }
+        - { id: planta, rotulo: "Bloque naranja", rect: [309, 33, 75, 37] }
+        - { id: sensor, rotulo: "Bloque verde, abajo", rect: [233, 113, 79, 36] }
+        - { id: comparador, rotulo: "Círculo con Σ", rect: [88, 28, 44, 46] }
+    tocar:
+      bien: [sensor]
+      porque:
+        controlador: "Un controlador mejor no compensa un mal sensor: corrige hacia lo que se mide."
+        planta: "La planta pone la rapidez posible, no la exactitud: el lazo la corrige."
+        comparador: "Resta sin error; lo que resta es la medida que le llega."
+    exito: "El sensor: un lazo no puede controlar mejor de lo que mide."
+    escalera:
+      - "El lazo lleva el error a cero. ¿El error frente a qué?"
+    solucion: "El sensor, bloque verde: el sensor es el techo del sistema."
+
+  - id: seguimiento-regulacion
+    tipo: pregunta
+    titulo: "Dos objetivos distintos"
+    texto: "Un horno que debe mantener su temperatura al abrir la puerta. ¿Qué objetivo es?"
+    libro: [19]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: todo, rotulo: "El lazo cerrado", rect: [0, 0, 450, 162] }
+    opciones:
+      - texto: "Regulación: mantenerse ante perturbaciones"
+        bien: true
+        porque: "La consigna no cambia; lo que llega es una perturbación."
+      - texto: "Seguimiento: seguir una consigna cambiante"
+        porque: "Eso sería un perfil de temperatura que cambia con el tiempo."
+      - texto: "Los dos son lo mismo; un buen lazo hace ambos igual de bien"
+        porque: "Son objetivos distintos: un lazo optimizado para uno no lo está para el otro."
+    escalera:
+      - "¿Cambia la consigna o llega algo de fuera?"
+    solucion: "Regulación; y un lazo optimizado para ella no lo está para el seguimiento."
+
+  - id: empareje-comportamiento
+    tipo: pregunta
+    titulo: "Rápido o sin sobreoscilación"
+    texto: "La última decisión no tiene respuesta universal. Empareje cada aplicación con lo que no tolera."
+    libro: [29, 30]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: todo, rotulo: "El lazo cerrado", rect: [0, 0, 450, 162] }
+    emparejar:
+      - ["Horno", "La sobreoscilación"]
+      - ["Servo", "La lentitud"]
+    exito: "Rápido con sobreoscilación, o lento sin ella: se decide antes de elegir el controlador."
+    pistas:
+      - { texto: "Pasarse de temperatura puede estropear lo que hay dentro." }
+    escalera:
+      - "¿Qué le cuesta más a un servo de posición: tardar o pasarse un poco?"
+    solucion: "Al horno no le vale pasarse; al servo no le vale tardar."
+
+  - id: primer-paso
+    tipo: pregunta
+    titulo: "El error más común"
+    texto: "Va a controlar un sistema lento que no conoce. ¿Qué hace primero?"
+    libro: [32, 33, 34, 36]
+    widget:
+      tipo: figura
+      figura: fig-31.1
+      zonas:
+        - { id: todo, rotulo: "El lazo cerrado", rect: [0, 0, 450, 162] }
+    opciones:
+      - texto: "Un escalón en lazo abierto, para medir ganancia, constante de tiempo y retardo"
+        bien: true
+        porque: "Media hora midiendo la respuesta al escalón ahorra horas de prueba y error."
+      - texto: "Poner un PID y ajustar sus parámetros hasta que funcione"
+        porque: "Es el error más común: con un sistema lento cada iteración son horas."
+      - texto: "Cerrar el lazo con mucha ganancia para que corrija todo"
+        porque: "Sin conocer la planta no sabe cuánta ganancia admite antes de oscilar."
+    escalera:
+      - "¿Qué tres números de la planta necesita el ajuste?"
+    solucion: "Caracterizar la planta en lazo abierto con un escalón."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [4, 9, 10, 26, 19, 36]
+    ideas:
+      - { titulo: "Controlar.", texto: "Medir, comparar, decidir, actuar, contra perturbaciones y componentes imperfectos." }
+      - { titulo: "Abierto o cerrado.", texto: "El abierto no corrige nada; el cerrado corrige todo y puede oscilar." }
+      - { titulo: "El sensor manda.", texto: "Un lazo no controla mejor de lo que mide." }
+      - { titulo: "Primero la planta.", texto: "Un escalón en lazo abierto antes de elegir el controlador." }

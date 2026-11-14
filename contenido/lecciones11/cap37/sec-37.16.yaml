@@ -1,0 +1,213 @@
+# Lección 1.2 de la sección 38.16 «El Cierre de Tiempos» (cap37; etiqueta interna sec-37.16).
+# Formato: contenido/lecciones11/GUIA.md (§11). La condición del bloque 640 se mueve con los números del problema
+# 38.B (bloques 720 y 723: t_ff = 0,4 ns, t_su = 0,2 ns, t_skew = 0,15 ns sumado como peor caso, según el bloque 641,
+# y el rutado dentro de los 6 ns del camino). Figura 38.24 (svg_vista 450,72 × 256,32).
+leccion: cap37/sec-37.16
+
+libro:
+  638: "ese resultado debe estar estable antes del flanco de reloj, con el margen de setup, y mantenerse después, con el margen de hold"
+  640: 'T_("reloj") gt.eq t_("clk" "-" "q") + t_("lógica") + t_("rutado") + t_("setup") - t_("skew")'
+  641: "en un cálculo de peor caso se toma en el sentido desfavorable, sumado, como en el problema 38.B"
+  644: "slack = tiempo disponible − tiempo requerido"
+  646: "Slack negativo: no cumple, y el diseño no funcionará a esa frecuencia."
+  650: "Un fallo de setup se arregla bajando la frecuencia"
+  651: "Un fallo de hold NO se arregla bajando la frecuencia."
+  652: "Los fallos de hold se corrigen añadiendo retardo en el camino"
+  653: "un diseño que sigue fallando por mucho que se baje el reloj tiene un problema de hold"
+  656: "El setup se comprueba en la esquina lenta"
+  659: "1. Reducir la lógica entre registros."
+  660: "2. Segmentar (pipelining)"
+  661: "3. Registrar las entradas y salidas de cada módulo"
+  662: "4. Guiar a la herramienta con restricciones de colocación"
+  663: "5. Revisar las restricciones"
+  664: "declarar un camino como falso sin que lo sea oculta un problema real"
+  668: "un diseño sin restricciones cierra tiempos siempre, porque no hay nada que cumplir"
+  670: "un camino que no cumple no funciona más lento: funciona mal"
+  673: "Si hay slack negativo, no hay nada que probar"
+  674: "si el diseño falla mucho antes, faltaba declarar algo"
+  675: "El camino entre dos registros con su condición de tiempo, y las cinco formas de cerrar tiempos."
+  "cap37#720": "La tecnología tiene tff = 0,4 ns, tsu = 0,2 ns y tskew = 0,15 ns."
+  "cap37#723": "148,1 MHz"
+
+modelo:
+  valores:
+    t_ff: { sim: "t_{clk-q}", nombre: "retardo del flip-flop", unidad: s, valor: 0.4e-9 }
+    t_l: { sim: "t_{lógica}", nombre: "lógica y rutado", unidad: s, valor: 6e-9 }
+    t_su: { sim: "t_{setup}", nombre: "setup", unidad: s, valor: 0.2e-9 }
+    t_sk: { sim: "t_{skew}", nombre: "skew, en el peor sentido", unidad: s, valor: 0.15e-9 }
+  calculos:
+    T_min: { expr: "t_ff + t_l + t_su + t_sk", sim: "T", nombre: "periodo mínimo", unidad: s }
+    f_max: { expr: "1/T_min", sim: "f_{máx}", nombre: "frecuencia máxima", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-camino
+    tipo: explorar
+    titulo: "El camino entre dos registros"
+    texto: "Toque los dos flip-flops y la lógica: el dato sale de FF1, cruza la lógica y debe llegar a FF2 antes del flanco."
+    libro: [638, 675]
+    widget:
+      tipo: figura
+      figura: fig-37.24
+      zonas:
+        - { id: ff1, rotulo: "Primer flip-flop", rect: [16, 40, 46, 56], texto: "FF1: el dato sale t_{clk-q} después del flanco." }
+        - { id: logica, rotulo: "Recuadro del centro", rect: [92, 41, 72, 39], texto: "Lógica combinacional: tarda t_{lógica}, y luego el rutado." }
+        - { id: ff2, rotulo: "Segundo flip-flop", rect: [203, 40, 46, 56], texto: "FF2: necesita el dato estable t_{setup} antes del flanco y t_{hold} después." }
+    requiere: { mover: [ff1, logica, ff2] }
+
+  - id: formula-cierre
+    tipo: formula
+    titulo: "La condición fundamental"
+    texto: "Con los números del problema 38.B, el skew sumado como peor caso. Arrastre la lógica: el camino crítico fija la frecuencia de todo el diseño."
+    libro: [640, 641, "cap37#720", "cap37#723"]
+    ec: 640
+    sustitucion: "{{t_ff}} + {{t_l}} + {{t_su}} + {{t_sk}} = {{T_min}}, es decir, {{f_max}}"
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.000000008, unidad: s, rotulo: "t_{lógica}" }
+      y: { min: 0, max: 1500000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_ff + tx + t_su + t_sk)", color: azul, rotulo: "f_{máx}" }
+      asas:
+        - { mueve: t_l, x: "t_l", y: "f_max", rotulo: "Su camino" }
+      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
+      mandos:
+        - { valor: t_l, min: 0.0000000005, max: 0.000000008, paso: 0.00000000025, rotulo: "t_{lógica}" }
+    comprobar:
+      - { T_min: 6.75e-9, f_max: 148.1e6, tol: 0.001 }
+
+  - id: pregunta-slack
+    tipo: pregunta
+    titulo: "El slack"
+    texto: "El informe de tiempos da un camino con slack negativo. ¿Qué significa?"
+    libro: [644, 646, 673]
+    widget:
+      tipo: figura
+      figura: fig-37.24
+      zonas:
+        - { id: logica, rotulo: "Recuadro del centro", rect: [92, 41, 72, 39], texto: "La lógica del camino." }
+    opciones:
+      - { texto: "Falta tiempo: el diseño no funcionará a esa frecuencia", bien: true, porque: "Slack = disponible − requerido: negativo es que el camino tarda más de lo que hay." }
+      - { texto: "Sobra margen", porque: "Eso es un slack positivo." }
+      - { texto: "Funcionará, pero más despacio", porque: "En hardware síncrono un camino que no cumple no va lento: captura datos incorrectos." }
+    escalera: ["Slack = tiempo disponible − tiempo requerido."]
+    solucion: "Falta tiempo: no funcionará. Con slack negativo no hay nada que probar en la placa."
+
+  - id: prediga-hold
+    tipo: predecir
+    titulo: "Bajar el reloj no sirve"
+    texto: "Un diseño falla, y sigue fallando por mucho que se baje la frecuencia del reloj. ¿Qué tiene?"
+    libro: [650, 651, 652, 653]
+    widget:
+      tipo: figura
+      figura: fig-37.24
+      zonas:
+        - { id: ff2, rotulo: "Segundo flip-flop", rect: [203, 40, 46, 56], texto: "FF2: setup antes del flanco, hold después." }
+    opciones:
+      - { texto: "Un fallo de hold: se corrige añadiendo retardo en el camino", bien: true, porque: "El hold no depende del periodo: un camino demasiado rápido cambia el dato antes de capturarlo." }
+      - { texto: "Un fallo de setup: hay que bajarla más", porque: "El setup sí se arregla bajando la frecuencia; si no se arregla, no es setup." }
+      - { texto: "Un camino demasiado lento: hay que segmentar", porque: "Un camino lento falla por setup, y bajar el reloj lo arreglaría." }
+    escalera: ["¿Cuál de las dos condiciones no contiene el periodo del reloj?"]
+    solucion: "Hold: no depende del periodo. Se corrige añadiendo retardo en el camino."
+
+  - id: empareje-esquinas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las esquinas"
+    texto: "Los retardos dependen del proceso, la tensión y la temperatura. Una cada comprobación con su esquina."
+    libro: [656]
+    emparejar:
+      - ["Setup", "Esquina lenta: proceso lento, tensión baja, temperatura alta"]
+      - ["Hold", "Esquina rápida: proceso rápido, tensión alta, temperatura baja"]
+      - ["Solo la esquina típica", "Funciona en el banco y falla un día de calor"]
+    exito: "Cada condición se comprueba donde es más difícil de cumplir."
+    pistas:
+      - { texto: "El hold lo rompe un camino que se adelanta: ¿en qué esquina van más deprisa?" }
+    escalera: ["El setup lo rompen los caminos lentos."]
+    solucion: "Setup en la esquina lenta, hold en la rápida; solo la típica no basta."
+
+  - id: ordene-cinco-formas
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Las cinco formas"
+    texto: "Ordene las formas de cerrar tiempos de lo que suele funcionar mejor a lo último."
+    libro: [659, 660, 661, 662, 663]
+    ordenar:
+      - "Reducir la lógica entre registros."
+      - "Segmentar: un registro en medio del camino."
+      - "Registrar entradas y salidas de cada módulo."
+      - "Guiar la colocación."
+      - "Revisar las restricciones."
+    exito: "Segmentar es la técnica más eficaz y la que más se usa, a costa de un ciclo de latencia."
+    pistas:
+      - { texto: "Revisar las restricciones es lo último, y con cuidado." }
+    escalera: ["Lo primero es atacar la causa: demasiados niveles de lógica."]
+    solucion: "Reducir lógica, segmentar, registrar E/S, guiar la colocación y revisar restricciones."
+
+  - id: toque-falso-camino
+    tipo: tocar
+    titulo: "Un camino que no importa"
+    texto: "El camino que no cumple es una señal de configuración que nunca cambia en marcha. Toque cómo se trata."
+    libro: [663, 664, 675]
+    widget:
+      tipo: figura
+      figura: fig-37.24
+      zonas:
+        - { id: reducir, rotulo: "Primer recuadro de la derecha", rect: [274, 20, 173, 42] }
+        - { id: segmentar, rotulo: "Segundo recuadro de la derecha", rect: [274, 66, 173, 42] }
+        - { id: registrar, rotulo: "Tercer recuadro de la derecha", rect: [274, 112, 173, 42] }
+        - { id: colocar, rotulo: "Cuarto recuadro de la derecha", rect: [274, 158, 173, 42] }
+        - { id: restricciones, rotulo: "Quinto recuadro de la derecha", rect: [274, 204, 173, 42] }
+    tocar:
+      bien: [restricciones]
+      porque:
+        reducir: "Optimizaría un camino que no importa, a costa de los que sí."
+        segmentar: "Gastaría registros y latencia en un camino irrelevante."
+        registrar: "Ayuda en las fronteras, pero el camino sigue siendo irrelevante."
+        colocar: "Obligaría a la herramienta a cuidar algo que no hace falta."
+    exito: "Declararlo como falso camino es lo correcto; declararlo sin serlo ocultaría un problema real."
+    escalera: ["¿Hace falta que este camino cumpla en un ciclo?"]
+    solucion: "Revisar las restricciones: declararlo falso camino, con criterio."
+
+  - id: porque-sin-restricciones
+    tipo: porque
+    titulo: "Un informe verde"
+    texto: "Un diseño sin restricciones da un informe de tiempos sin un solo fallo. ¿Por qué no dice nada?"
+    libro: [668]
+    widget:
+      tipo: figura
+      figura: fig-37.24
+      zonas:
+        - { id: restricciones, rotulo: "Quinto recuadro de la derecha", rect: [274, 204, 173, 42], texto: "Revisar las restricciones." }
+    opciones:
+      - { texto: "Sin restricciones no hay nada que cumplir: cierra tiempos siempre", bien: true, porque: "Un informe verde con restricciones incompletas no dice nada." }
+      - { texto: "Sí dice: el diseño es rápido", porque: "La herramienta no sabe a qué frecuencia debe ir: no lo ha comprobado." }
+      - { texto: "Porque la herramienta deduce el reloj", porque: "No sabe nada que no se le diga." }
+    escalera: ["¿Contra qué periodo ha comprobado la herramienta?"]
+    solucion: "Sin restricciones no hay nada que cumplir: un informe verde así no significa nada."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con el diseño funcionando, sube la frecuencia hasta que falla, y falla mucho antes de lo que predijo la herramienta. ¿Qué concluye?"
+    libro: [670, 674]
+    widget:
+      tipo: figura
+      figura: fig-37.24
+      zonas:
+        - { id: setuphold, rotulo: "Recuadro rojo de abajo", rect: [4, 189, 252, 62], texto: "Setup y hold no se arreglan igual." }
+    opciones:
+      - { texto: "Faltaba declarar algo en las restricciones", bien: true, porque: "Si coinciden razonablemente, las restricciones eran correctas; si no, faltaba algo." }
+      - { texto: "Que la FPGA es defectuosa", porque: "Lo habitual es que la herramienta no supiera algo que había que declararle." }
+      - { texto: "Nada: la predicción siempre es optimista", porque: "Si las restricciones son correctas, las dos cifras coinciden razonablemente." }
+    escalera: ["¿De dónde saca la herramienta su predicción?"]
+    solucion: "Faltaba declarar algo: la herramienta predijo sin saberlo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [640, 651, 660, 668]
+    ideas:
+      - { titulo: "La condición.", texto: "El camino crítico fija la frecuencia de todo el diseño." }
+      - { titulo: "Setup y hold.", texto: "El setup se arregla bajando el reloj; el hold, con retardo." }
+      - { titulo: "Cerrar tiempos.", texto: "Reducir lógica y, sobre todo, segmentar." }
+      - { titulo: "Restricciones.", texto: "Sin ellas, el informe verde no dice nada." }

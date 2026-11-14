@@ -1,0 +1,209 @@
+# «Consolas por dentro» · Mega Drive 4: el mapa del 68000 y la ventana del Z80. El decodificador del explorador
+# (arquitectura megadrive.ts sobre sus direcciones de ejemplo: genvdp.txt y el esquema), el mapa partido por VA23 y VA22
+# (circuito lógico y su tabla: los cuartos son los del mapa del explorador), el espejo de la RAM de trabajo, la
+# petición del bus del Z80 y la ventana con registro de banco. Fuentes: megadrive#n y el libro (decodificador, 28.3;
+# un bus compartido, 9.6; los espejos, 38.11).
+leccion: consola-megadrive/megadrive-buses
+
+libro:
+  "megadrive#2": "Bus de 23 bits de dirección (VA1–VA23 con /UDS y /LDS) y 16 de datos"
+  "megadrive#14": "2 × 32 contactos: bus del 68000 (VA1–VA23, VD0–VD15)"
+  "megadrive#15": "Bus del 68000 completo para el Mega CD ($400000–$7FFFFF)"
+  "megadrive#6": "8 KB en $0000–$1FFF del Z80"
+  "megadrive#64": "Direcciones del Z80 (ZA0–ZA15)"
+  "megadrive#67": "guarda el registro de banco de 9 bits con el que el Z80 ve 32 KB del espacio del 68000"
+  "megadrive#71": "ROM del juego en el bus del 68000 (16 bits). /CE0 la selecciona"
+  "megadrive#72": "espejada en $E00000–$FFFFFF"
+  "megadrive#81": "El 315-5402/5433 baja /CE0 y la ROM del cartucho entrega la palabra"
+  "megadrive#82": "RAM de trabajo ($E00000–$FFFFFF)"
+  "megadrive#83": "$E00010 es $FF0010"
+  "megadrive#84": "VDP ($C00000–$C0001F, espejado) Control del VDP"
+  "megadrive#85": "Datos del puerto 1: registro del 315-5402/5433"
+  "megadrive#86": "Escribir $0100 baja /BUSREQ del Z80; $0000 lo suelta"
+  "megadrive#87": "Solo con el bus del Z80 cedido ($A11100). Es la dirección $4000 del Z80: YM2612"
+  "megadrive#89": "nueve escrituras forman A15–A23 de la ventana"
+  "megadrive#90": "El árbitro pone al Z80 en espera, pide el bus del 68000"
+  "cap29#76": "Decodificador: de n entradas a 2ⁿ salidas, con una sola activa"
+  "cap37#359": "aparecen porque la decodificación de direcciones es incompleta"
+  "cap09#72": "si dos se habilitan a la vez se produce contención de bus"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-buses
+    tipo: explorar
+    titulo: "Un bus de 16 bits"
+    texto: "El 68000 pone 23 bits de dirección y 16 de datos. Toque la CPU, la ranura y el puerto de expansión."
+    libro: ["megadrive#2", "megadrive#14", "megadrive#15"]
+    requiere: { mover: [m68k, cart, exp] }
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: m68k, hotspot: m68k, rotulo: "CPU 68000", texto: "VA1–VA23 y VD0–VD15." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "Llega el bus del 68000: VA1–VA23 y VD0–VD15." }
+        - { id: exp, hotspot: exp, rotulo: "Puerto de expansión", texto: "El bus completo, para el Mega CD." }
+
+  - id: prediga-ram
+    tipo: predecir
+    titulo: "Escribir en $FF0010"
+    texto: "El 68000 escribe en $FF0010. ¿Quién contesta?"
+    libro: ["megadrive#82", "megadrive#81", "megadrive#84"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: wram-h, hotspot: wram-h, rotulo: "RAM, byte alto" }
+        - { id: wram-l, hotspot: wram-l, rotulo: "RAM, byte bajo" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "La RAM de trabajo: baja /RAS0."
+        bien: true
+        porque: "$FF0010 está en $E00000–$FFFFFF, la RAM de trabajo: el VDP genera /RAS0 y /CAS0 y cada PSRAM da un byte."
+      - texto: "El cartucho: baja /CE0."
+        porque: "/CE0 es para $000000–$3FFFFF, la ROM del cartucho. $FF0010 está al final del mapa."
+      - texto: "El VDP: es un registro de vídeo."
+        porque: "Los registros del VDP están en $C00000–$C0001F. $FF0010 es RAM."
+    escalera:
+      - "Las direcciones que empiezan por $FF son las más altas del mapa."
+    solucion: "La RAM de trabajo: $FF0010 está en $E00000–$FFFFFF y baja /RAS0."
+
+  - id: explore-mapa
+    tipo: explorar
+    titulo: "El mapa en cuatro cuartos"
+    texto: "Los dos bits altos, VA23 y VA22, dicen en qué cuarto del mapa cae la dirección. Muévalos."
+    libro: ["megadrive#71", "megadrive#15", "megadrive#87", "megadrive#84", "cap29#76"]
+    requiere: { mover: [VA23, VA22] }
+    widget:
+      tipo: logica
+      entradas: [{ id: VA23, rotulo: "VA23" }, { id: VA22, rotulo: "VA22" }]
+      piezas:
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [VA22, VA23] }
+      salidas:
+        - { id: CART, de: dec.y0, rotulo: "Cartucho" }
+        - { id: EXP, de: dec.y1, rotulo: "Expansión" }
+        - { id: Z80ES, de: dec.y2, rotulo: "Z80 y E/S" }
+        - { id: VDPRAM, de: dec.y3, rotulo: "VDP y RAM" }
+
+  - id: tabla-mapa
+    tipo: tabla
+    titulo: "La tabla del mapa"
+    texto: "Rellene cuándo quedan elegidos (1) el cartucho y la expansión."
+    libro: ["megadrive#71", "megadrive#15", "megadrive#87", "megadrive#84", "megadrive#82", "cap29#76"]
+    widget:
+      tipo: logica
+      entradas: [{ id: VA23, rotulo: "VA23" }, { id: VA22, rotulo: "VA22" }]
+      piezas:
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [VA22, VA23] }
+      salidas:
+        - { id: CART, de: dec.y0, rotulo: "Cartucho" }
+        - { id: EXP, de: dec.y1, rotulo: "Expansión" }
+        - { id: VDPRAM, de: dec.y3, rotulo: "VDP y RAM" }
+      ocultar: true
+    tabla:
+      salidas: [CART, EXP]
+    exito: "Cartucho en $000000–$3FFFFF, expansión en $400000–$7FFFFF; el Z80 y la E/S, en $A00000; VDP y RAM, arriba."
+    escalera:
+      - "Con VA23 = VA22 = 0, la dirección está entre $000000 y $3FFFFF: el cartucho."
+      - "Cada fila enciende un solo cuarto: el que dicen los dos bits leídos como un número de 0 a 3."
+    solucion: "Cartucho: los dos bits a 0. Expansión: solo VA22 a 1."
+
+  - id: empareje-direcciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada dirección, su selección"
+    texto: "Empareje cada acceso del 68000 con quien contesta."
+    libro: ["megadrive#81", "megadrive#82", "megadrive#84", "megadrive#85"]
+    emparejar:
+      - ["Leer $000200", "/CE0: la ROM del cartucho"]
+      - ["Escribir $FF0010", "/RAS0: la RAM de trabajo"]
+      - ["Escribir $C00004", "El control del VDP"]
+      - ["Leer $A10003", "El puerto del mando 1"]
+    exito: "Un decodificador: cada zona del mapa elige a uno solo."
+    pistas:
+      - { texto: "$A10003 es un registro del 315-5433; $C00004, del VDP." }
+    escalera:
+      - "Lo más bajo del mapa es el cartucho; lo más alto, la RAM."
+    solucion: "$000200: cartucho. $FF0010: RAM. $C00004: VDP. $A10003: mando 1."
+
+  - id: por-que-espejo
+    tipo: porque
+    titulo: "La misma RAM, dos direcciones"
+    texto: "Leer $E00010 da lo mismo que leer $FF0010. ¿Por qué?"
+    libro: ["megadrive#83", "megadrive#72", "cap37#359"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: wram-h, hotspot: wram-h, rotulo: "RAM, byte alto" }
+        - { id: wram-l, hotspot: wram-l, rotulo: "RAM, byte bajo" }
+    opciones:
+      - texto: "Los 64 KB se repiten en todo el bloque $E00000–$FFFFFF: es un espejo."
+        bien: true
+        porque: "La decodificación es incompleta: la RAM no mira los bits altos que distinguen $E00010 de $FF0010."
+      - texto: "Hay dos RAM con el mismo contenido."
+        porque: "Las dos PSRAM son el byte alto y el bajo de una sola RAM. El espejo sale del decodificador."
+      - texto: "El 68000 copia los datos de una zona a la otra."
+        porque: "Nadie copia nada: las dos direcciones llegan a la misma celda."
+    escalera:
+      - "¿Cuántos bits de dirección necesitan 64 KB? ¿Y cuántos tiene el bus?"
+    solucion: "Es un espejo: los 64 KB se ven en todo el bloque $E00000–$FFFFFF."
+
+  - id: busreq
+    tipo: predecir
+    titulo: "Hablar con el YM2612"
+    texto: "El 68000 quiere escribir en $A04000, el YM2612 del lado del Z80. ¿Qué hace antes?"
+    libro: ["megadrive#86", "megadrive#87", "cap09#72"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+        - { id: ym, hotspot: ym, rotulo: "YM2612" }
+        - { id: io, hotspot: io, rotulo: "315-5433" }
+    opciones:
+      - texto: "Pide el bus del Z80: escribe $0100 en $A11100."
+        bien: true
+        porque: "Así baja /BUSREQ del Z80. Con el bus cedido, el árbitro pasa la escritura al bus del Z80, de 8 bits."
+      - texto: "Nada: escribe directamente."
+        porque: "Ese espacio es del Z80: solo se puede usar con su bus cedido, o los dos lo usarían a la vez."
+      - texto: "Apaga el Z80 con el reset."
+        porque: "No hace falta resetearlo: basta con pedirle el bus en $A11100 y soltarlo después con $0000."
+    escalera:
+      - "Dos procesadores no pueden usar el mismo bus a la vez."
+    solucion: "Escribe $0100 en $A11100 para pedir el bus del Z80; después, $A04000."
+
+  - id: por-que-ventana
+    tipo: porque
+    titulo: "El Z80 lee el cartucho"
+    texto: "El Z80 solo tiene 16 bits de dirección. ¿Cómo lee el espacio del 68000?"
+    libro: ["megadrive#90", "megadrive#89", "megadrive#67", "megadrive#6", "megadrive#64"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+        - { id: io, hotspot: io, rotulo: "315-5433" }
+    opciones:
+      - texto: "Por una ventana de 32 KB, $8000–$FFFF; un registro de banco pone los bits altos."
+        bien: true
+        porque: "Nueve escrituras en $6000 forman A15–A23. El árbitro pone al Z80 en espera y pide el bus del 68000."
+      - texto: "No puede: solo ve su RAM de 8 KB."
+        porque: "Sí puede, por la ventana $8000–$FFFF, con el registro de banco de 9 bits del 315-5433."
+      - texto: "El 68000 le copia los datos en su RAM."
+        porque: "No hace falta copiar: el Z80 lee el espacio del 68000 por la ventana."
+    escalera:
+      - "Mire qué pasa al leer $8100 desde el Z80."
+    solucion: "Por la ventana $8000–$FFFF: el registro de banco de 9 bits da A15–A23."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["megadrive#2", "megadrive#83", "megadrive#86", "megadrive#89"]
+    ideas:
+      - { titulo: "El mapa.", texto: "Cartucho abajo, expansión, Z80 y E/S, y VDP y RAM arriba." }
+      - { titulo: "Espejos.", texto: "Los 64 KB de RAM se repiten en todo su bloque." }
+      - { titulo: "Pedir el bus.", texto: "El 68000 pide el del Z80 en $A11100 antes de usarlo." }
+      - { titulo: "La ventana.", texto: "El Z80 ve 32 KB del 68000 con un registro de banco." }

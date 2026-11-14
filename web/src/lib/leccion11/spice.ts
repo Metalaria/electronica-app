@@ -58,6 +58,12 @@ export interface CurvaEsperada {
   desfase: number;
   modelo: (x: number) => number;
   tol: (x: number) => number;
+  /**
+   * 1.2 (esquemas12): how far along the axis a switching edge may be (tipos.ts tran.bordes): the simulator's value is
+   * compared with the range the model covers within ± dx (sampled at nine points), so a jump the model draws at x
+   * matches the simulator's edge a step or two away; 0 or absent, a point-by-point comparison.
+   */
+  dx?: number;
 }
 
 export interface ComprobacionSpice {
@@ -141,7 +147,9 @@ export function compararSimulacion(c: ComprobacionSpice, graficas: readonly Graf
       }
     }
     if (roto) continue;
-    if (Math.abs(real - esperado) > v.tol)
+    // (esquemas12c: a phase reading wraps round like a curve's — an inverting stage's 184,6° is the simulator's −175,4°)
+    const dif = v.ac === 'fase' ? Math.abs(((esperado - real + 540) % 360) - 180) : Math.abs(real - esperado);
+    if (dif > v.tol)
       out.push(`${c.donde}: el modelo da ${v.esperado}${esperado !== v.esperado ? ` (${p4(esperado)} con la caída real del simulador)` : ''} y el simulador ${etiqueta(v.medida, v.ac)} = ${real}`);
   }
   const escala = g.vectores[0];
@@ -167,6 +175,19 @@ export function compararSimulacion(c: ComprobacionSpice, graficas: readonly Graf
       const m = cv.modelo(x);
       let d = Math.abs(m - s);
       if (cv.ac === 'fase') d = Math.abs(((m - s + 540) % 360) - 180);
+      else if (cv.dx && cv.dx > 0 && d > cv.tol(x)) {
+        // an edge: the distance to the range the model covers within ± dx
+        let lo = m;
+        let hi = m;
+        for (let j = -4; j <= 4; j++) {
+          const v = cv.modelo(x + (cv.dx * j) / 4);
+          if (Number.isFinite(v)) {
+            lo = Math.min(lo, v);
+            hi = Math.max(hi, v);
+          }
+        }
+        d = s < lo ? lo - s : s > hi ? s - hi : 0;
+      }
       const tol = cv.tol(x);
       if (!(d <= tol) && (!peor || d / tol > peor.d / peor.tol)) peor = { x, m, s, tol, d };
     }
@@ -260,7 +281,15 @@ export function comprobacionesCircuito(def: DefinicionEsquema, w: WidgetCircuito
       const fn = mc.funcion(cv.expr);
       const en = (e: Valores, x: number) => fn({ ...e, [xid]: x });
       const base = (m: number) =>
-        an === 'tran' ? TOL_TRAN * alto : ob!.ac === 'fase' ? TOL_AC_FASE : ob!.ac === 'db' ? TOL_AC_DB : TOL_AC * Math.abs(m) + 1e-4 * alto;
+        an === 'tran'
+          ? TOL_TRAN * alto
+          : ob!.ac === 'fase'
+            ? TOL_AC_FASE
+            : ob!.ac === 'db'
+              ? TOL_AC_DB
+              : // (esquemas12: on a log y axis the floor is 0,01 % of its bottom, not of its height — 0,01 to 10 kΩ of an
+                // impedance made the floor 1 Ω, more than the whole dip of a decoupling capacitor)
+                TOL_AC * Math.abs(m) + 1e-4 * (g.y.escala === 'log' ? Math.max(g.y.min, 0) : alto);
       return {
         medida: ob!.medida,
         ...(ob!.ac ? { ac: ob!.ac } : {}),
@@ -271,6 +300,7 @@ export function comprobacionesCircuito(def: DefinicionEsquema, w: WidgetCircuito
         desfase,
         modelo: (x) => en(r, x),
         tol: (x) => Math.max(base(en(r, x)) + holgura((e) => en(e, x)), ob!.ac === 'fase' ? 0 : (PISO[ob!.unidad] ?? 0)),
+        ...(an === 'tran' && def.tran?.bordes?.(c) ? { dx: def.tran.bordes(c) * ancho } : {}),
       };
     });
     out.push({ donde: dk, analisis: an, netlist: montarNetlist(def, c, an, tarjeta), valores: [], curvas });

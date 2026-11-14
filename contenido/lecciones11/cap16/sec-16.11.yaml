@@ -1,0 +1,312 @@
+# Lección 1.2 de la sección 15.11 «Alineación y Calibración con el FNIRSI 2C53T» (cap16; etiquetas sec-16.N = impresas
+# 15.N).
+# - Lo que se ve en el FNIRSI (figura 15.16, fig-16.16, con zonas) y el orden de la alineación (15.11.1 a 15.11.7).
+# - Modelo 1, la avería del ejercicio 15.13 (esquema «divisor»): la salida del 78L06 (6 V) llega a la patilla 9 del
+#   TA7358AP por L3; la resistencia de L3 (4 Ω) y el consumo del TA7358AP como resistencia equivalente (236 Ω) son de
+#   ejemplo, elegidos para dejar los 5,9 V del libro (25 mA). L3 abierta: patilla 9 a 0 V sin corriente; corto en el
+#   nudo de 5,9 V: 0 V con mucha corriente (en la placa real el 78L06 limitaría su corriente y su salida caería, como
+#   dice la solución del ejercicio). Las tensiones y corrientes de cada avería las da el modelo (comprobadas con
+#   ngspice).
+# - Modelo 2, el ajuste de W1 (esquema «divisor»): W1 = 20 kΩ entre los 6 V y masa (cap16#147); TP1 es su cursor,
+#   V = 6·x. Banda: 4,6 V ± 2 % (la de la app; el libro pide «4,6 V»).
+# Pasos prácticos: «averia» de la patilla 9 (orden fijo), «ajuste» de W1 y «banco» opcional de la patilla 9 del
+# TA7358AP (5,9 V; ±5 %, la tolerancia de las alimentaciones de la sección 15.21) con la ficha 11 del cuaderno.
+leccion: cap16/sec-16.11
+
+libro:
+  218: "deja K1 (AFC) y K2 (Mute) sin pulsar"
+  220: "verifica que NO hay cortocircuito entre +12 V y masa"
+  221: "Un consumo desbocado (varios cientos de mA en reposo) o un chip o regulador que se calienta enseguida delatan un cortocircuito"
+  223: "6 V a la salida del 78L06 (5,9 V en la patilla 9 del TA7358AP, tras L3)"
+  225: "gira el núcleo de la bobina de discriminador B2 hasta que TP3 marque 4,6 V"
+  226: "la presencia del metal altera la frecuencia y falsea el ajuste"
+  229: "ajusta la presintonía del oscilador C4B' hasta acercarte a 108 MHz"
+  231: "gira el potenciómetro W1 hasta que marque 4,6 V"
+  233: "si el lazo se engancha a un piloto, TP4 marca 38 kHz exactos sea cual sea la posición de W3"
+  236: "demasiada sensibilidad de silenciado «elimina» también emisoras débiles"
+  238: "Está dentro de los 50 MHz del FNIRSI; la RF de 88-108 MHz, en cambio, queda fuera de su alcance"
+  239: "Lo que verás en el FNIRSI"
+  "cap16#147": "la del cursor del potenciómetro W1 (conectado entre los 6 V y masa)"
+  "cap16#475": "Alimentaciones: ±5 %."
+  "cap16#530": "Mides 6 V a la salida del 78L06, pero el TA7358 está a 0 V en lugar de 5,9 V"
+
+modelo:
+  valores:
+    V_6: { sim: "78L06", nombre: "salida del 78L06", unidad: V, valor: 6 }
+    R_L3: { sim: "L₃", nombre: "resistencia de L3 (de ejemplo)", unidad: Ω, valor: 4 }
+    R_ic: { sim: "IC1", nombre: "consumo del TA7358AP como resistencia (de ejemplo)", unidad: Ω, valor: 236 }
+    R_w: { sim: "W₁", nombre: "potenciómetro W1", unidad: Ω, valor: 20000 }
+    x_w: { sim: "x", nombre: "posición del cursor de W1", unidad: "", valor: 0.5 }
+  calculos:
+    V_9: { expr: "V_6*R_ic/(R_L3 + R_ic)", sim: "V_{pin 9}", nombre: "tensión en la patilla 9 del TA7358AP", unidad: V }
+    I_9: { expr: "V_6/(R_L3 + R_ic)", sim: "I", nombre: "corriente por L3", unidad: A }
+    R_wa: { expr: "(1 - x_w)*R_w", sim: "W₁ arriba", nombre: "parte de W1 hacia los 6 V", unidad: Ω }
+    R_wb: { expr: "x_w*R_w", sim: "W₁ abajo", nombre: "parte de W1 hacia masa", unidad: Ω }
+    V_tp1: { expr: "V_6*R_wb/(R_wa + R_wb)", sim: "V_{TP1}", nombre: "tensión en TP1", unidad: V }
+    I_w: { expr: "V_6/(R_wa + R_wb)", sim: "I_{W1}", nombre: "corriente por W1", unidad: A }
+
+tarjetas:
+  - id: explore-fnirsi
+    tipo: explorar
+    titulo: "Lo que verá en el FNIRSI"
+    texto: "La alineación sigue el manual, midiendo de forma objetiva en cada punto. Toque las cuatro vistas."
+    libro: [218, 239]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: audio, rotulo: "Arriba a la izquierda", rect: [5, 5, 220, 140], texto: "El audio de salida, en el jack CZ3." }
+        - { id: mpx, rotulo: "Arriba a la derecha", rect: [228, 5, 225, 140], texto: "TP3 en acoplo AC: la señal MPX con el piloto superpuesto." }
+        - { id: fft, rotulo: "Abajo a la izquierda", rect: [5, 160, 220, 145], texto: "La FFT de TP3: el pico del piloto de 19 kHz." }
+        - { id: rizado, rotulo: "Abajo a la derecha", rect: [228, 160, 225, 145], texto: "El rizado del raíl de 12 V en acoplo AC." }
+    requiere: { mover: [audio, mpx, fft, rizado] }
+
+  - id: ordene-alineacion
+    tipo: pregunta
+    titulo: "El orden de la alineación"
+    texto: "Ordene los pasos de la alineación del FM7303."
+    libro: [220, 223, 225, 229, 231, 233, 236]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: vistas, rotulo: "Las cuatro vistas", rect: [5, 5, 448, 300] }
+    ordenar:
+      - "Comprobación en frío, sin alimentar"
+      - "Tensiones de alimentación"
+      - "Ajuste grueso de RF y FI, y B2"
+      - "Cobertura y seguimiento"
+      - "AFC con W1, en TP1"
+      - "Estéreo a 38 kHz con W3, en TP4"
+      - "Sensibilidad del Mute con W2"
+    exito: "Primero que nada se queme; después las tensiones; luego la señal, la banda y por último los automatismos."
+    pistas:
+      - { texto: "Sin alimentar va lo primero; el Mute, lo último." }
+    escalera:
+      - "El AFC se ajusta contra TP3, que ya quedó a 4,6 V con B2."
+    solucion: "Frío, tensiones, RF y FI, cobertura, AFC, estéreo, Mute."
+
+  - id: predecir-consumo
+    tipo: predecir
+    titulo: "Al encender"
+    texto: "Con el amperímetro en serie, la radio en reposo y sin volumen consume varios cientos de mA. ¿Qué hace?"
+    libro: [221]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: rizado, rotulo: "Abajo a la derecha", rect: [228, 160, 225, 145] }
+    opciones:
+      - texto: "Apagar de inmediato y revisar"
+        bien: true
+        porque: "Un consumo desbocado delata un cortocircuito o un componente mal orientado."
+      - texto: "Esperar a que se estabilice"
+        porque: "Lo normal es del orden de un centenar de mA como mucho: esperar puede quemar algo."
+      - texto: "Subir el volumen para comprobar el audio"
+        porque: "Primero hay que encontrar el cortocircuito; el volumen consumiría aún más."
+    escalera:
+      - "¿Cuánto debería consumir en reposo?"
+    solucion: "Apagar: hay un cortocircuito o algo al revés."
+
+  - id: averia-patilla9
+    tipo: averia
+    titulo: "El TA7358AP sin tensión"
+    texto: "La salida del 78L06 da 6 V, pero el front-end no funciona. Mida en la patilla 9 del TA7358AP y la corriente por L3."
+    nota: "La resistencia de L3 y el consumo del chip son de ejemplo."
+    libro: [223, "cap16#530"]
+    fijar: { V_6: 6, R_L3: 4, R_ic: 236 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_6, arriba: R_L3, abajo: R_ic }
+      mide: { salida: V_9, corriente: I_9 }
+      mandos: []
+    averia:
+      pasos: 2
+      eleccion: fija
+      preguntar_tipo: false
+      sospechosos:
+        - { id: arriba, rotulo: "La bobina de filtro L3" }
+        - { id: abajo, rotulo: "El nudo de 5,9 V" }
+      sondas:
+        - { id: salida, rotulo: "Patilla 9 del TA7358AP", valor: V_9 }
+        - { id: corriente, rotulo: "Corriente por L3", valor: I_9 }
+      fallos:
+        - { id: l3-abierta, pieza: arriba, tipo: abierta, con: { R_L3: 1e9 }, texto: "L3 abierta o mal soldada: la patilla 9 a 0 V y sin corriente. Se confirma sin alimentar, con continuidad del 78L06 a la patilla 9." }
+        - { id: nudo-corto, pieza: abajo, tipo: corto, con: { R_ic: 0.001 }, texto: "Corto en el nudo de 5,9 V: 0 V con mucha corriente. En la placa real arrastraría la salida del 78L06, que limita su corriente." }
+    exito: "Las dos dan 0 V en la patilla 9; la corriente las separa."
+    escalera:
+      - "Sano, la patilla 9 está a 5,9 V. Si marca 0 V, ¿circula corriente por L3?"
+    solucion: "Sin corriente, L3 abierta; con mucha corriente, un corto en el nudo de 5,9 V."
+    comprobar:
+      - { V_9: 5.9, I_9: 0.025 }
+
+  - id: empareje-ajustes
+    tipo: pregunta
+    titulo: "Cada ajuste, su señal"
+    texto: "Empareje cada ajuste con lo que se busca al hacerlo."
+    libro: [225, 229]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: vistas, rotulo: "Las cuatro vistas", rect: [5, 5, 448, 300] }
+    emparejar:
+      - ["Presintonía de RF C4A'", "El máximo del medidor de aguja"]
+      - ["Núcleo de B1", "El máximo del medidor, también"]
+      - ["Núcleo de B2", "TP3 a 4,6 V"]
+      - ["Presintonía del oscilador C4B'", "Cerca de 108 MHz en el display, arriba"]
+      - ["Espiras de L2", "Cerca de 88 MHz en el display, abajo"]
+    exito: "La regla de oro: en el extremo bajo, la bobina; en el alto, la presintonía."
+    pistas:
+      - { texto: "B2 es el discriminador: se centra con una tensión, no con un máximo." }
+    escalera:
+      - "Los de RF y FI buscan señal; los del oscilador, la frecuencia del display."
+    solucion: "C4A' y B1, máximo; B2, 4,6 V; C4B', 108 MHz; L2, 88 MHz."
+
+  - id: ajuste-w1
+    tipo: ajuste
+    titulo: "El AFC, en TP1"
+    texto: "W1, de 20 kΩ, va entre los 6 V y masa, y TP1 es su cursor. Gire W1 hasta que TP1 marque 4,6 V."
+    libro: [231, "cap16#147"]
+    fijar: { V_6: 6, R_w: 20000 }
+    inicio: { x_w: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_6, arriba: R_wa, abajo: R_wb }
+      lectura: { valor: V_tp1, rotulo: "TP1" }
+      mide: { salida: V_tp1, corriente: I_w }
+      mandos:
+        - { valor: x_w, min: 0.05, max: 0.95, paso: 0.01, rotulo: "Cursor de W1" }
+    ajuste:
+      valor: V_tp1
+      objetivo: 4.6
+      tol: 0.02
+      rotulo: "TP1"
+      escala: { min: 0, max: 6 }
+      bajo: "Falta tensión: lleve el cursor hacia los 6 V."
+      alto: "Sobra tensión: lleve el cursor hacia masa."
+      dentro: "4,6 V, como TP3: al pulsar o soltar K1 la emisora ya no se desplaza."
+    comprobar:
+      - { V_tp1: 3.0 }
+      - { con: { x_w: 0.77 }, V_tp1: 4.62 }
+
+  - id: porque-w3
+    tipo: porque
+    titulo: "W3, sin emisora estéreo"
+    texto: "El VCO se ajusta a 38 kHz en TP4 entre emisoras o con la antena recogida. ¿Por qué sin emisora estéreo?"
+    libro: [233]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: fft, rotulo: "Abajo a la izquierda", rect: [5, 160, 220, 145] }
+    opciones:
+      - texto: "Porque enganchado al piloto marca 38 kHz sea cual sea W3"
+        bien: true
+        porque: "Lo que se ajusta es la frecuencia libre del VCO, y solo se ve con el lazo sin enganchar."
+      - texto: "Porque la emisora estéreo satura el FNIRSI"
+        porque: "El FNIRSI mide 38 kHz sin problema; el problema es que el lazo enganchado oculta W3."
+      - texto: "Porque con emisora el VCO se detiene"
+        porque: "El VCO lo detiene K3 en mono, no la emisora."
+    escalera:
+      - "¿Qué hace un PLL cuando encuentra el piloto?"
+    solucion: "Enganchado, TP4 da 38 kHz exactos y no se ve el efecto de W3."
+
+  - id: pregunta-destornillador
+    tipo: pregunta
+    titulo: "La herramienta"
+    texto: "¿Por qué las bobinas y las presintonías se ajustan con un destornillador no metálico?"
+    libro: [226]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: vistas, rotulo: "Las cuatro vistas", rect: [5, 5, 448, 300] }
+    opciones:
+      - texto: "Porque el metal altera la frecuencia y falsea el ajuste"
+        bien: true
+        porque: "Use uno cerámico o de plástico; y no fuerce los núcleos de B1 y B2 más allá del tope."
+      - texto: "Para no dar calambre"
+        porque: "No hay tensiones peligrosas: el problema es que el metal cambia el circuito."
+      - texto: "Porque el metal raya el núcleo"
+        porque: "El núcleo es frágil, pero la razón es eléctrica: el metal desafina."
+    escalera:
+      - "¿Qué le pasa a una bobina cerca de un metal?"
+    solucion: "El metal cambia la frecuencia mientras se ajusta."
+
+  - id: pregunta-fnirsi
+    tipo: pregunta
+    titulo: "Hasta dónde llega el FNIRSI"
+    texto: "¿Qué señal del receptor puede ver el osciloscopio del FNIRSI y cuál no?"
+    libro: [238]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: mpx, rotulo: "Arriba a la derecha", rect: [228, 5, 225, 140] }
+    opciones:
+      - texto: "La FI de 10,7 MHz sí; la RF de 88-108 MHz, no"
+        bien: true
+        porque: "Los 10,7 MHz están dentro de sus 50 MHz; la banda de FM queda fuera."
+      - texto: "Las dos"
+        porque: "La RF de 88-108 MHz pasa de sus 50 MHz."
+      - texto: "Ninguna de las dos"
+        porque: "La FI de TP2 sí entra, con la sonda en ×10."
+    escalera:
+      - "Compare cada frecuencia con los 50 MHz del FNIRSI."
+    solucion: "La FI sí, la RF no."
+
+  - id: predecir-mute
+    tipo: predecir
+    titulo: "El Mute"
+    texto: "Con K2 pulsado, sube W2 mucho más de lo necesario para callar el siseo. ¿Qué pasa?"
+    libro: [236]
+    widget:
+      tipo: figura
+      figura: fig-16.16
+      zonas:
+        - { id: audio, rotulo: "Arriba a la izquierda", rect: [5, 5, 220, 140] }
+    opciones:
+      - texto: "Calla también emisoras débiles y baja las fuertes"
+        bien: true
+        porque: "No hay que pasarse: basta con que el ruido entre emisoras baje de forma satisfactoria."
+      - texto: "Nada: más sensibilidad es mejor"
+        porque: "Demasiada sensibilidad de silenciado elimina emisoras débiles."
+      - texto: "El estéreo se desengancha"
+        porque: "W2 actúa sobre el Mute, no sobre el decodificador."
+    escalera:
+      - "El Mute calla lo débil. ¿Qué más es débil?"
+    solucion: "Elimina emisoras débiles e incluso reduce las fuertes."
+
+  - id: banco-patilla9
+    tipo: banco
+    titulo: "Las tensiones de alimentación"
+    texto: "Con el multímetro en continua y la punta negra en masa, mida la patilla 9 del TA7358AP."
+    libro: [223, "cap16#475"]
+    fijar: { V_6: 6, R_L3: 4, R_ic: 236 }
+    banco:
+      piezas: ["Placa recién montada, alimentada con 9 a 12 V lineales", "Brymen en V⎓", "Punta negra en masa"]
+      medir: "La tensión en la patilla 9 del TA7358AP, tras L3."
+      esperado: V_9
+      unidad: V
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: medida, menor: 0.5 }, texto: "Casi cero: mida la salida del 78L06. Si da 6 V, el fallo está entre ambos: L3 o un corto en ese nudo." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Baja: compruebe los 6 V del 78L06 y su entrada desde los 12 V." }
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Alta: ¿mide en la patilla 9 o en la salida del 78L06?" }
+        - { texto: "Dentro del ±5 % de una alimentación: el front-end tiene su tensión." }
+      ficha: { n: 11, titulo: "Comprobación en frío y primer encendido" }
+    comprobar:
+      - { V_9: 5.9 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [221, 225, 231, 233]
+    ideas:
+      - { titulo: "En orden.", texto: "Frío, tensiones, RF y FI, cobertura y seguimiento, AFC, estéreo y Mute." }
+      - { titulo: "Las tensiones.", texto: "Una ausente localiza el problema: 6 V en el 78L06 y 0 V en el chip, entre ambos." }
+      - { titulo: "4,6 V.", texto: "B2 lleva TP3 a 4,6 V; W1 lleva TP1 a lo mismo." }
+      - { titulo: "38 kHz.", texto: "W3, con el lazo sin enganchar y el FNIRSI de frecuencímetro." }

@@ -1,0 +1,337 @@
+# Lección 1.2 de la sección 53.5 «El Front-End, Bloque a Bloque» (cap52, sec-new-52-frontend). Formato: GUIA.md.
+# - El tercer armónico del mezclador de conmutación (bloque 133): un tercio de amplitud, 20·log₁₀ 3 = 9,5 dB.
+# - La ganancia del amplificador de instrumentación de dos operacionales (bloques 146 y 147): G = 1 + R_a/R_b + 2R_a/R_G,
+#   31 con 4,99 kΩ y 499 Ω. En el canal Q, R_G = 453 Ω + trimmer de 100 Ω. El error relativo de ganancia
+#   ε = (G_Q − G_I)/G_I y el rechazo IRR ≈ 4/(ε² + φ²) (bloques 163 y 164), con un error de fase de 0,1° de ejemplo
+#   (el contador Johnson la deja «prácticamente exacta»). La figura XY: Q = ±(G_Q/G_I)·√(1 − I²) (una elipse si las
+#   ganancias difieren).
+# - El filtro Sallen-Key de la banda base como circuito vivo (esquema «sallen-key», con ngspice): R₁ = R₂ = 3,92 kΩ,
+#   C₁ = 2,2 nF hacia la salida y C₂ = 1 nF a masa (bloque 149): f₀ = 27,4 kHz y Q = ½·√(C₁/C₂) = 0,74.
+# - El presupuesto de ruido (bloque 156): −117 − (−140,2) = 23 dB de figura de ruido admisible.
+# Paso práctico: «ajuste» del trimmer del canal Q hasta 40 dB de rechazo de imagen, mirando la elipse XY (bloque 147).
+leccion: cap52/sec-new-52-frontend
+
+libro:
+  126: "aquí se convierten en un circuito concreto"
+  127: "atenuador conmutable, preselector, detector de muestreo en cuadratura"
+  128: "Cara superior de la placa del receptor"
+  130: "es la primera defensa contra la saturación"
+  131: "Cada filtro coloca sus dos ceros de transmisión donde está el enemigo"
+  133: "solo 9,5 dB por debajo, y sin filtro una emisora de 21 MHz aparecería sintonizando 7 MHz"
+  135: "a uno de cuatro condensadores de 22 nF"
+  137: 'I = V_("0°") - V_("180°")'
+  138: "Las restas cancelan la continua común y duplican la señal"
+  139: "un desfase de 90° exacto, que no depende de ningún componente ajustado"
+  142: "dos biestables D (74LVC74) en contador Johnson"
+  146: 'G = 1 + (R_("a"))/(R_("b"))'
+  147: "un trimmer de 100 Ω, que permite igualar las ganancias en un ±6 % mirando el círculo XY"
+  149: '"27,4 kHz"'
+  150: "Este filtro no es todo el antialiasing"
+  155: "La especificación pide 10 dB de relación señal a ruido con 1 µV en SSB"
+  156: "se admite una figura de ruido de hasta 23 dB"
+  158: '"NF" approx "15 dB"'
+  159: "la especificación se cumple con 8 dB de margen"
+  160: "un LNA no mejoraría la sensibilidad real: solo restaría margen dinámico"
+  163: '"IRR" approx (4)/(ε^(2) + φ^(2))'
+  164: "un 2 % de error de ganancia sin error de fase, o 1,15° de fase sin error de ganancia"
+  168: "Por bloques, midiendo cada uno antes de pasar al siguiente"
+  169: "Blindaje, el último, cuando todo lo de dentro funciona"
+  170: "si el espectro sale invertido, basta con intercambiar I y Q en el programa"
+
+modelo:
+  valores:
+    R_a: { sim: "R_{a}", nombre: "resistencia R_a", unidad: Ω, valor: 4990 }
+    R_b: { sim: "R_{b}", nombre: "resistencia R_b", unidad: Ω, valor: 499 }
+    R_g: { sim: "R_{G}", nombre: "R_G del canal I", unidad: Ω, valor: 499 }
+    R_f: { sim: "R_{fija}", nombre: "parte fija de R_G en Q", unidad: Ω, valor: 453 }
+    x_t: { sim: "trimmer", nombre: "trimmer del canal Q", unidad: Ω, valor: 0 }
+    e_f: { sim: "φ", nombre: "error de fase de ejemplo", unidad: "°", valor: 0.1 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_e: { sim: "f", nombre: "frecuencia de la entrada", unidad: Hz, valor: 10000 }
+    R_1: { sim: "R₁", nombre: "resistencia desde la entrada", unidad: Ω, valor: 3920 }
+    R_2: { sim: "R₂", nombre: "resistencia hacia la entrada +", unidad: Ω, valor: 3920 }
+    C_1: { sim: "C₁", nombre: "condensador a la salida", unidad: F, valor: 2.2e-9 }
+    C_2: { sim: "C₂", nombre: "condensador a masa", unidad: F, valor: 1e-9 }
+    S_u: { sim: "S", nombre: "señal de 1 µV", unidad: dBm, valor: -107 }
+    N_t: { sim: "N_{t}", nombre: "ruido térmico en 2,4 kHz", unidad: dBm, valor: -140.2 }
+  calculos:
+    G_i: { expr: "1 + R_a/R_b + 2*R_a/R_g", sim: "G_{I}", nombre: "ganancia del canal I", unidad: "" }
+    G_q: { expr: "1 + R_a/R_b + 2*R_a/(R_f + x_t)", sim: "G_{Q}", nombre: "ganancia del canal Q", unidad: "" }
+    e_g: { expr: "100*(G_q - G_i)/G_i", sim: "ε", nombre: "error de ganancia", unidad: "%", cifras: 2 }
+    irr: { expr: "10*log10(4/(((G_q - G_i)/G_i)^2 + (e_f*pi/180)^2))", sim: "IRR", nombre: "rechazo de imagen", unidad: dB }
+    a_3: { expr: "20*log10(3)", sim: "A_{3}", nombre: "atenuación del tercer armónico", unidad: dB, cifras: 2 }
+    f_0: { expr: "1/(2*pi*sqrt(R_1*R_2*C_1*C_2))", sim: "f_{0}", nombre: "frecuencia propia", unidad: Hz }
+    Q_f: { expr: "sqrt(C_1*C_2)/(2*C_2)", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 2 }
+    N_r: { expr: "S_u - 10", sim: "N_{máx}", nombre: "ruido admisible", unidad: dBm }
+    N_F: { expr: "S_u - 10 - N_t", sim: "NF", nombre: "figura de ruido admisible", unidad: dB }
+    N_0: { expr: "S_u - N_t", sim: "NF", nombre: "sin restar la S/R", unidad: dB }
+
+tarjetas:
+  - id: explore-placa
+    tipo: explorar
+    titulo: "De la antena a la tarjeta de sonido"
+    texto: "La placa del receptor en el proyecto KiCad. Toque el blindaje y la banda base."
+    libro: [126, 127, 128]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: entrada, rotulo: "Franja izquierda", rect: [28, 34, 55, 132], texto: "La entrada de antena con los atenuadores de 10 y 20 dB: la primera defensa contra la saturación." }
+        - { id: rf, rotulo: "Recuadro grande de arriba", rect: [88, 13, 144, 151], texto: "Bajo el blindaje: el preselector, el detector de muestreo en cuadratura y el oscilador local." }
+        - { id: bandabase, rotulo: "Zona de arriba a la derecha", rect: [235, 24, 131, 138], texto: "La banda base de I y Q: amplificador de instrumentación y filtro Sallen-Key, hacia la tarjeta de sonido." }
+        - { id: alimentacion, rotulo: "Abajo a la izquierda", rect: [30, 169, 131, 70], texto: "Tres alimentaciones separadas: la digital no llega a la banda base por el raíl." }
+        - { id: arduino, rotulo: "Abajo a la derecha", rect: [233, 169, 133, 61], texto: "El Arduino Nano que programa el Si5351A, el sintetizador del oscilador local." }
+    requiere: { mover: [rf, bandabase] }
+
+  - id: predecir-armonico
+    tipo: predecir
+    titulo: "Un mezclador de conmutación"
+    texto: "El mezclador multiplica por una onda cuadrada, cuyo tercer armónico tiene un tercio de amplitud. Sintonizando 7 MHz sin preselector, ¿qué más se oye?"
+    libro: [131, 133]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    opciones:
+      - texto: "Una emisora de 21 MHz, solo 9,5 dB por debajo"
+        bien: true
+        porque: "El receptor también escucha en torno a 3·f_{OL}; un tercio de amplitud son 9,5 dB. Por eso el paso bajo ataca esa banda."
+      - texto: "Nada: el tercer armónico es despreciable"
+        porque: "Un tercio de amplitud no es despreciable: solo 9,5 dB menos."
+      - texto: "Una emisora de 14 MHz"
+        porque: "La cuadrada solo tiene armónicos impares: el siguiente está en 3·f_{OL}, 21 MHz."
+    escalera:
+      - "¿En qué múltiplos de f_{OL} tiene armónicos una onda cuadrada?"
+    solucion: "21 MHz, a 9,5 dB: el preselector la atenúa más de 44 dB."
+    comprobar:
+      - { a_3: 9.54 }
+
+  - id: pregunta-tayloe
+    tipo: pregunta
+    titulo: "El detector de Tayloe"
+    texto: "Un conmutador 4:1 conecta la señal, un cuarto de periodo cada vez, a cuatro condensadores de 22 nF. ¿Por qué su desfase de 90° es exacto?"
+    libro: [135, 137, 138, 139, 142]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    opciones:
+      - texto: "Lo fija el contador Johnson que mueve el conmutador, no un componente ajustado"
+        bien: true
+        porque: "Cada flanco de 4·f_{OL} avanza un cuarto de periodo: cuadratura exacta a cualquier frecuencia."
+      - texto: "Por un desfasador RC muy bien ajustado"
+        porque: "Justo lo que evita: no hay red de desfase que ajustar."
+      - texto: "Porque los cuatro condensadores son al 1 %"
+        porque: "Su tolerancia afecta a la ganancia de cada canal, no al desfase, que es digital."
+    escalera:
+      - "¿Qué decide en qué instante se conecta cada condensador?"
+    solucion: "El contador Johnson: la fase sale de los flancos del reloj."
+
+  - id: formula-ganancia
+    tipo: formula
+    titulo: "La ganancia de cada canal"
+    texto: "Amplificador de instrumentación de dos operacionales, cuyas entradas no descargan los condensadores. Mueva R_{G}."
+    libro: [146, 147]
+    ec: 146
+    sustitucion: "1 + {{R_a}}/{{R_b}} + 2 · {{R_a}}/{{R_g}} = {{G_i}}"
+    widget:
+      tipo: grafica
+      x: { id: r, min: 300, max: 800, unidad: Ω, rotulo: "R_{G}" }
+      y: { min: 0, max: 50, unidad: "", rotulo: "G" }
+      curvas:
+        - { expr: "1 + R_a/R_b + 2*R_a/r", color: naranja, rotulo: "ganancia" }
+      marcas:
+        - { x: "R_g", y: "G_i", rotulo: "{{G_i}}" }
+      lectura: { valor: G_i, rotulo: "Ganancia" }
+      mandos:
+        - { valor: R_g, lista: [499, 453, 553], rotulo: "R_{G}" }
+    comprobar:
+      - { G_i: 31 }
+
+  - id: ajuste-trimmer
+    tipo: ajuste
+    titulo: "Iguale las ganancias"
+    texto: "En el canal Q, R_{G} es 453 Ω más un trimmer de 100 Ω. Gírelo hasta que la elipse sea un círculo y el rechazo pase de 40 dB."
+    nota: "Error de fase de 0,1°, de ejemplo."
+    libro: [147, 163, 164]
+    fijar: { R_g: 499 }
+    inicio: { x_t: 0 }
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: x, min: -1.4, max: 1.4, unidad: "", rotulo: "I, canal X" }
+      y: { min: -1.4, max: 1.4, unidad: "", rotulo: "Q, canal Y" }
+      curvas:
+        # (motor12e) parametric: the reference circle and the XY figure, I = cos θ, Q = (G_Q/G_I)·sen θ
+        - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "sin(th)", color: tinta, rotulo: "círculo", discontinua: true }
+        - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "G_q/G_i*sin(th)", color: naranja, rotulo: "figura XY" }
+      lectura: { valor: irr, rotulo: "Rechazo de imagen" }
+      datos:
+        - { valor: e_g, rotulo: "Error de ganancia: {{e_g}}" }
+      mandos:
+        - { valor: x_t, min: 0, max: 100, paso: 1, rotulo: "Trimmer del canal Q" }
+    ajuste:
+      valor: irr
+      min: 40
+      max: 70
+      rotulo: "Rechazo de imagen"
+      escala: { min: 20, max: 70 }
+      bajo: "La elipse aún no es un círculo: Q tiene otra ganancia. Gire el trimmer hacia donde se cierre."
+      alto: "Mejor de lo que se puede medir."
+      dentro: "Por encima de 40 dB: un error de ganancia de menos del 2 %. Lo que quede, lo corrige el programa."
+    comprobar:
+      - { con: { x_t: 46 }, G_q: 31, tol: 0.01 }
+
+  - id: pregunta-irr
+    tipo: pregunta
+    titulo: "Lo que piden 40 dB"
+    texto: "IRR ≈ 4/(ε² + φ²). ¿Qué error admiten los 40 dB de la especificación, si es solo de ganancia?"
+    libro: [163, 164]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    opciones:
+      - texto: "Un 2 % de error de ganancia"
+        bien: true
+        porque: "IRR = 10 000 pide ε² + φ² ≤ 4·10⁻⁴: un 2 % sin error de fase."
+      - texto: "Un 0,1 %, el de las resistencias"
+        porque: "Las resistencias son del 0,1 % para que sobre margen; los 40 dB admiten un 2 %."
+      - texto: "Un 6 %, lo que corrige el trimmer"
+        porque: "El trimmer cubre ±6 %, pero con un 6 % de error el rechazo se quedaría muy por debajo de 40 dB."
+    escalera:
+      - "40 dB son 10 000 veces: despeje ε con φ = 0."
+    solucion: "Un 2 %, o 1,15° de fase, sin el otro error."
+
+  - id: explore-sallen-key
+    tipo: explorar
+    titulo: "El filtro de la banda base"
+    texto: "Un Sallen-Key de segundo orden y ganancia unidad con 3,92 kΩ, 2,2 nF y 1 nF. Cambie C₁ y mire el pico y el corte."
+    libro: [149, 150]
+    widget:
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_e, r1: R_1, r2: R_2, c1: C_1, c2: C_2 }
+      lectura: { valor: f_0, rotulo: "Frecuencia propia" }
+      datos:
+        - { valor: Q_f, rotulo: "Q = {{Q_f}}" }
+      grafica:
+        x: { id: nu, min: 1000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.5, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p/sqrt((1 - (2*pi*nu)^2*R_1*R_2*C_1*C_2)^2 + (2*pi*nu*C_2*(R_1 + R_2))^2)", color: naranja, rotulo: "v_{o}", mide: salida_amp }
+      mandos:
+        - { valor: C_1, lista: [2.2e-9, 1e-9, 4.7e-9], rotulo: "C₁" }
+    requiere: { mover: [C_1] }
+    comprobar:
+      - { f_0: 27400, Q_f: 0.74, tol: 0.005 }
+
+  - id: estime-ruido
+    tipo: pregunta
+    titulo: "El presupuesto de ruido"
+    texto: "1 µV sobre 50 Ω son −107 dBm; el ruido térmico en 2,4 kHz, −140,2 dBm. Con 10 dB de S/R, ¿qué figura de ruido se admite?"
+    libro: [155, 156, 158]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    estimar:
+      objetivo: "N_F"
+      unidad: dB
+      min: 0
+      max: 50
+      paso: 0.5
+      inicio: 40
+      tol: 0.04
+      rotulo: "Figura de ruido admisible"
+    exito: "Unos 23 dB. El receptor sin LNA calcula unos 15 dB: cumple con 8 dB de margen."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 24.5 }, texto: "Demasiado: reste los 10 dB de S/R a la señal antes de compararla con el ruido térmico." }
+      - { texto: "Corto: el ruido del receptor puede llegar a −117 dBm." }
+    escalera:
+      - "Ruido admisible = −107 − 10 = −117 dBm."
+    solucion: "−117 − (−140,2) ≈ 23 dB."
+    comprobar:
+      - { N_F: 23.2, N_r: -117, N_0: 33.2 }
+
+  - id: porque-sin-lna
+    tipo: porque
+    titulo: "Por qué no hay LNA"
+    texto: "En 40 m, el ruido que capta la antena supera al térmico en 30 dB o más. ¿Qué haría un amplificador de bajo ruido?"
+    libro: [159, 160]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    opciones:
+      - texto: "Nada útil: el ruido del aire ya entierra el del receptor, y restaría margen dinámico"
+        bien: true
+        porque: "El margen dinámico es el problema de verdad en onda corta; la sensibilidad sobra."
+      - texto: "Mejorar mucho la sensibilidad real"
+        porque: "La sensibilidad real la fija el ruido del aire, decenas de dB por encima del térmico."
+      - texto: "Bajar el ruido de la antena"
+        porque: "Un amplificador amplifica lo que llega, ruido del aire incluido."
+    escalera:
+      - "¿Qué ruido domina cuando la antena está conectada?"
+    solucion: "Solo restaría margen dinámico."
+
+  - id: ordene-puesta
+    tipo: pregunta
+    titulo: "Montaje por bloques"
+    texto: "Ordene la puesta en marcha: cada bloque se mide antes de pasar al siguiente."
+    libro: [168, 169]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    ordenar:
+      - "Alimentación sola, con límite de corriente"
+      - "Referencias de 2,50 V"
+      - "Oscilador local: dos cuadradas desfasadas 90°"
+      - "Detector y banda base: 0 V de continua sin señal"
+      - "Preselector: bobinar y ajustar los toroides"
+      - "Blindaje, el último"
+    exito: "Y después, la prueba del círculo XY con un generador junto al oscilador."
+    pistas:
+      - { texto: "Sin alimentación no se mide nada; el blindaje tapa lo que hay que medir." }
+    escalera:
+      - "Empiece por lo que alimenta a todo y acabe por lo que lo tapa todo."
+    solucion: "Alimentación, referencias, oscilador, detector y banda base, preselector y blindaje."
+
+  - id: pregunta-invertido
+    tipo: pregunta
+    titulo: "El espectro sale al revés"
+    texto: "Conecta el jack a la tarjeta de sonido y el espectro sale invertido: lo de arriba, abajo. ¿Qué hace?"
+    libro: [170]
+    widget:
+      tipo: figura
+      figura: fig-new-52-placa
+      zonas:
+        - { id: todo, rotulo: "La placa del receptor", rect: [0, 0, 383, 253] }
+    opciones:
+      - texto: "Intercambiar I y Q en el programa"
+        bien: true
+        porque: "Cambiar los canales cambia el signo del desfase, y con él el de las frecuencias."
+      - texto: "Rehacer el contador Johnson"
+        porque: "La cuadratura está bien; solo están cruzados los canales."
+      - texto: "Bajar la ganancia de la banda base"
+        porque: "La ganancia no invierte el espectro: lo invierte el orden de I y Q."
+    escalera:
+      - "El signo de la frecuencia está en la relación de fase entre I y Q."
+    solucion: "Intercambiar I y Q en el programa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [130, 139, 147, 159, 164]
+    ideas:
+      - { titulo: "Entrada.", texto: "Atenuadores y un preselector que ataca la onda media y el tercer armónico." }
+      - { titulo: "Detector de Tayloe.", texto: "Cuatro condensadores y un contador Johnson: 90° exactos." }
+      - { titulo: "Banda base.", texto: "Ganancia 31 igualada con el trimmer, y un Sallen-Key de 27,4 kHz." }
+      - { titulo: "Sin LNA.", texto: "Cumple con 8 dB de margen; el problema real es el margen dinámico." }

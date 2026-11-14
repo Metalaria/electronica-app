@@ -1,0 +1,250 @@
+# Lección 1.2 de la sección 22.12 «El Teorema de Millman» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.12
+
+libro:
+  282: "calcula directamente la tensión de un nodo al que llegan varias ramas"
+  283: 'V = ((V_("1"))/(R_("1"))'
+  284: "la media de las tensiones, ponderada por las conductancias"
+  285: "es el análisis nodal (sección 22.3) aplicado a un solo nodo"
+  291: "12 V a través de 1 kΩ, 5 V a través de 2 kΩ y masa a través de 4,7 kΩ"
+  292: '"0,0145"'
+  293: '"0,001713"'
+  294: "V ≈ 8,47 V"
+  298: "Solo vale para un nodo."
+  299: "la tensión del nodo es simplemente la de esa fuente"
+  303: 'V = ("Σ" lr(( V_(i) dot.op Y_(i) )))/("Σ" Y_(i))'
+  304: "las admitancias en paralelo se suman directamente"
+  307: "comparar ese resultado con la medida es lo que dice si el circuito se comporta como debe"
+  "cap23#349": "Un nodo recibe 12 V a través de 2 kΩ y 5 V a través de 1 kΩ, y tiene 3 kΩ a masa"
+
+modelo:
+  valores:
+    V_k1: { sim: "V₁", nombre: "fuente de la izquierda", unidad: V, valor: 12 }
+    V_k2: { sim: "V₂", nombre: "fuente de la derecha", unidad: V, valor: 5 }
+    R_k1: { sim: "R₁", nombre: "resistencia de la izquierda", unidad: Ω, valor: 1000 }
+    R_k2: { sim: "R₂", nombre: "resistencia de la derecha", unidad: Ω, valor: 2000 }
+    R_k3: { sim: "R₃", nombre: "resistencia a masa", unidad: Ω, valor: 4700 }
+  calculos:
+    num: { expr: "V_k1/R_k1 + V_k2/R_k2", sim: "Σ V/R", nombre: "numerador", unidad: A }
+    den: { expr: "1/R_k1 + 1/R_k2 + 1/R_k3", sim: "Σ 1/R", nombre: "denominador", unidad: S }
+    V_kn: { expr: "num/den", sim: "V", nombre: "tensión del nodo", unidad: V }
+    I_k1: { expr: "(V_k1 - V_kn)/R_k1", sim: "I₁", nombre: "corriente de la izquierda", unidad: A }
+    I_k2: { expr: "(V_k2 - V_kn)/R_k2", sim: "I₂", nombre: "corriente de la derecha", unidad: A }
+    I_k3: { expr: "V_kn/R_k3", sim: "I₃", nombre: "corriente a masa", unidad: A }
+    V_r1: { expr: "V_k1 - V_kn", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    V_r2: { expr: "V_k2 - V_kn", sim: "V_{R2}", nombre: "tensión en R₂", unidad: V }
+    V_sin3: { expr: "(V_k1/R_k1 + V_k2/R_k2)/(1/R_k1 + 1/R_k2)", sim: "V", nombre: "nodo sin la rama a masa", unidad: V }
+    V_media: { expr: "(V_k1 + V_k2 + 0)/3", sim: "V", nombre: "media sin ponderar", unidad: V }
+
+tarjetas:
+  - id: explore-millman
+    tipo: explorar
+    titulo: "Un nodo, tres ramas"
+    texto: "12 V por 1 kΩ, 5 V por 2 kΩ y masa por 4,7 kΩ. Mueva las resistencias: la rama de menos resistencia tira más del nodo."
+    libro: [282, 291]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      mandos:
+        - { valor: R_k1, serie: E24, min: 100, max: 10000, rotulo: "R₁ (E24)" }
+        - { valor: R_k2, serie: E24, min: 100, max: 10000, rotulo: "R₂ (E24)" }
+    requiere: { mover: [R_k1, R_k2] }
+
+  - id: prediga-nodo
+    tipo: predecir
+    titulo: "Prediga el nodo"
+    texto: "Con 12 V por 1 kΩ, 5 V por 2 kΩ y 4,7 kΩ a masa, ¿cuánto vale la tensión del nodo?"
+    libro: [291, 292, 293, 294]
+    fijar: { V_k1: 12, V_k2: 5, R_k1: 1000, R_k2: 2000, R_k3: 4700 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+      ocultar: true
+    opciones:
+      - texto: "8,47 V"
+        bien: true
+        porque: "Media ponderada por las conductancias: 0,0145/0,001713 ≈ 8,47 V."
+      - texto: "9,67 V"
+        porque: "Es el nodo sin la rama de masa. Los 4,7 kΩ también cuentan, con tensión 0 y su conductancia en el denominador."
+      - texto: "5,67 V"
+        porque: "Es la media simple de 12, 5 y 0 V. Cada rama pesa según su conductancia, y la de 1 kΩ pesa más."
+    escalera:
+      - "Numerador: cada tensión entre su resistencia. Denominador: la suma de las conductancias."
+    solucion: "(12/1000 + 5/2000 + 0/4700)/(1/1000 + 1/2000 + 1/4700) = 0,0145/0,001713 ≈ 8,47 V."
+    comprobar:
+      - { V_kn: 8.47, V_sin3: 9.667, V_media: 5.667 }
+
+  - id: regla-millman
+    tipo: formula
+    titulo: "La media ponderada"
+    texto: "Cada rama aporta su tensión por su conductancia; se divide por la suma de las conductancias."
+    libro: [283, 284]
+    ec: 283
+    sustitucion: "({{V_k1}}/{{R_k1}} + {{V_k2}}/{{R_k2}} + 0/{{R_k3}}) / (1/{{R_k1}} + 1/{{R_k2}} + 1/{{R_k3}}) = {{V_kn}}"
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i3: I_k3 }
+      mandos:
+        - { valor: R_k3, serie: E24, min: 100, max: 10000, rotulo: "R₃ (E24)" }
+
+  - id: estime-ejercicio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Otro nodo"
+    texto: "Un nodo recibe 12 V a través de 2 kΩ y 5 V a través de 1 kΩ, y tiene 3 kΩ a masa. Estime su tensión."
+    libro: ["cap23#349"]
+    fijar: { V_k1: 12, V_k2: 5, R_k1: 2000, R_k2: 1000, R_k3: 3000 }
+    estimar:
+      objetivo: "V_kn"
+      unidad: V
+      min: 0
+      max: 12
+      paso: 0.1
+      inicio: 10
+      tol: 0.03
+      rotulo: "Tensión del nodo"
+    exito: "(6 + 5 + 0) mA/1,833 mS = 6,0 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 6.18 }, texto: "Se ha pasado: la rama de 5 V, con solo 1 kΩ, tira fuerte del nodo hacia abajo." }
+      - { texto: "Se ha quedado corto: la de 12 V también tira, aunque con 2 kΩ." }
+    escalera:
+      - "En kΩ: numerador 12/2 + 5/1 + 0/3; denominador 1/2 + 1/1 + 1/3."
+    solucion: "11/1,833 = 6,0 V."
+    comprobar:
+      - { V_kn: 6.0 }
+
+  - id: nodal-disfrazado
+    tipo: pregunta
+    titulo: "¿Un teorema nuevo?"
+    texto: "¿Qué es, en el fondo, el teorema de Millman?"
+    libro: [285, 298]
+    ec: 283
+    opciones:
+      - texto: "El análisis nodal aplicado a un solo nodo"
+        bien: true
+        porque: "Escrito de forma que se resuelve de un vistazo. Su valor es la rapidez, no la generalidad."
+      - texto: "Una forma de la superposición"
+        porque: "Se parece a una suma de aportaciones, pero sale de la ley de corrientes en un nodo."
+      - texto: "Un método para circuitos de muchos nodos"
+        porque: "Solo vale para un nodo. Con dos o más independientes hay que volver al nodal completo."
+    escalera:
+      - "Escriba la ley de corrientes en el nodo y despeje su tensión."
+    solucion: "Es el nodal en un solo nodo."
+
+  - id: fuente-ideal
+    tipo: sorpresa
+    titulo: "Una rama sin resistencia"
+    texto: "Baje R₁ hacia cero, como si la fuente de 12 V fuera ideal. Mire hacia dónde va el nodo."
+    libro: [299]
+    fijar: { V_k1: 12, V_k2: 5, R_k2: 2000, R_k3: 4700 }
+    inicio: { R_k1: 1000 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1 }
+      mandos:
+        - { valor: R_k1, lista: [1000, 100, 10, 1, 0.1], rotulo: "R₁" }
+
+  - id: por-que-ideal
+    tipo: porque
+    titulo: "¿Por qué se pega a 12 V?"
+    texto: "Con R₁ casi nula, el nodo vale casi exactamente los 12 V de esa fuente. ¿Por qué?"
+    libro: [299]
+    fijar: { V_k1: 12, V_k2: 5, R_k1: 0.1, R_k2: 2000, R_k3: 4700 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
+      corriente: I_k3
+      mide: { nodo: V_kn }
+    opciones:
+      - texto: "Su conductancia domina numerador y denominador: una fuente ideal impone la tensión del nodo"
+        bien: true
+        porque: "Con resistencia cero el término sería infinito; el resultado correcto es simplemente la tensión de esa fuente."
+      - texto: "Porque las otras ramas dejan de conducir"
+        porque: "Siguen conduciendo, pero su peso es ínfimo frente al de una rama de resistencia casi nula."
+      - texto: "Porque Millman deja de valer"
+        porque: "Vale hasta el límite, y en el límite da la tensión de la fuente ideal: lo mismo visto de otra manera."
+    escalera:
+      - "Compare 1/R₁ con las otras conductancias cuando R₁ es casi cero."
+    solucion: "La rama ideal domina: el nodo toma la tensión de esa fuente."
+
+  - id: averia-nodo
+    tipo: averia
+    titulo: "Busque la avería"
+    texto: "Este nodo debería dar 8,47 V y no los da. Mida y diga qué resistencia falla."
+    libro: [294, 307]
+    fijar: { V_k1: 12, V_k2: 5, R_k1: 1000, R_k2: 2000, R_k3: 4700 }
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      mandos: []
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: r1, rotulo: "R₁ (1 kΩ)" }
+        - { id: r2, rotulo: "R₂ (2 kΩ)" }
+        - { id: r3, rotulo: "R₃ (4,7 kΩ)" }
+      sondas:
+        - { id: nodo, rotulo: "Nodo respecto a masa", valor: V_kn }
+        - { id: r1, rotulo: "Extremos de R₁", valor: V_r1 }
+        - { id: r2, rotulo: "Extremos de R₂", valor: V_r2 }
+      fallos:
+        - { id: r3-abierta, pieza: r3, tipo: abierta, con: { R_k3: 1e9 }, texto: "R₃ abierta: el nodo queda entre las dos fuentes solas y sube." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_k1: 1e9 }, texto: "R₁ abierta: la fuente de 12 V deja de tirar y el nodo cae hacia la de 5 V." }
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_k2: 1e9 }, texto: "R₂ abierta: queda solo el divisor de 12 V con R₁ y R₃." }
+        - { id: r3-corto, pieza: r3, tipo: corto, con: { R_k3: 0.001 }, texto: "R₃ en corto: el nodo queda a masa." }
+    pistas:
+      - { texto: "Calcule con Millman lo que daría el nodo sin cada rama y compárelo con lo medido." }
+    escalera:
+      - "Mida primero el nodo: Millman dice cuánto debería dar."
+    solucion: "Compare la medida con lo que da Millman quitando cada rama: la que coincide es la abierta."
+    comprobar:
+      - { V_kn: 8.47 }
+
+  - id: alterna
+    tipo: pregunta
+    titulo: "En alterna"
+    texto: "Millman en alterna: ¿qué sustituye a las conductancias?"
+    libro: [303, 304]
+    ec: 303
+    opciones:
+      - texto: "Las admitancias"
+        bien: true
+        porque: "Resistencias por impedancias y conductancias por admitancias. Y las admitancias en paralelo se suman directamente."
+      - texto: "Las impedancias"
+        porque: "Las impedancias sustituyen a las resistencias. Lo que pesa en la media son sus inversas, las admitancias."
+      - texto: "Las reactancias"
+        porque: "La reactancia es solo la parte imaginaria de la impedancia. Hace falta la admitancia completa."
+    escalera:
+      - "En continua pesaba 1/R."
+    solucion: "Las admitancias Y_{i}, inversas de las impedancias."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [283, 284, 299, 307]
+    ideas:
+      - { titulo: "Media ponderada.", texto: "La tensión del nodo es la media de las tensiones, pesada por las conductancias." }
+      - { titulo: "Nodal en un nodo.", texto: "Solo para un nodo, con fuentes reales y en circuitos lineales." }
+      - { titulo: "Fuente ideal.", texto: "Con resistencia cero, el nodo toma su tensión." }
+      - { titulo: "De banco.", texto: "Da el valor esperado de un vistazo: compararlo con la medida localiza la avería." }

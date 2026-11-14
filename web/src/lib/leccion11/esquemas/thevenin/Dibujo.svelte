@@ -13,23 +13,24 @@
 </script>
 
 <Lienzo {descripcion} alto={250}>
-  {#if cerrado}<Flujo d="M50 230 V50 H320 V230 Z" {dur} />{/if}
+  {#if cerrado}<Flujo d="M50 230 V50 H320 V230 Z" {dur} medidor="vmed" />{/if}
   <rect class="cuerpo" x="12" y="18" width="188" height="226" rx="10" stroke-dasharray="6 5"></rect>
-  <Pila x={50} y1={230} y2={50} />
+  <Pila x={50} y1={230} y2={50} pieza="fuente" nodos={['0', 'fte']} />
   <Et x={66} y={150} t={c.val('fuente')} />
-  <path class="hilo" d="M50 50 H70"></path>
-  <R x1={70} y1={50} x2={190} y2={50} color="azul" />
+  <path class="hilo" d="M50 50 H70" data-red="fte"></path>
+  <R x1={70} y1={50} x2={190} y2={50} color="azul" pieza="rth" />
   <Et x={130} y={84} t={c.rot('rth')} ancla="middle" color="azul" />
-  <path class="hilo" d="M190 50 H230 M50 230 H320"></path>
+  <path class="hilo" d="M190 50 H230" data-red="s"></path>
+  <path class="hilo" d="M50 230 H320" data-red="0"></path>
   <circle class="borne" cx="215" cy="50" r="5"></circle>
   <circle class="borne" cx="215" cy="230" r="5"></circle>
   {#if c.tiene('interruptor')}
-    <Interruptor x1={230} y1={50} x2={290} y2={50} {cerrado} color="verde" />
+    <Interruptor x1={230} y1={50} x2={290} y2={50} {cerrado} color="verde" pieza="interruptor" />
   {:else}
-    <path class="hilo" d="M230 50 H290"></path>
+    <path class="hilo" d="M230 50 H290" data-red="s"></path>
   {/if}
-  <path class="hilo" d="M290 50 H320"></path>
-  <R x1={320} y1={50} x2={320} y2={230} color="verde" fantasma={!cerrado} />
+  <path class="hilo" d="M290 50 H320" data-red={cerrado ? 's' : undefined}></path>
+  <R x1={320} y1={50} x2={320} y2={230} color="verde" fantasma={!cerrado} pieza="carga" />
   {#if cerrado}
     <Et x={334} y={136} t={c.simT('carga')} color="verde" />
     <Et x={334} y={156} t={c.val('carga')} color="verde" peq />

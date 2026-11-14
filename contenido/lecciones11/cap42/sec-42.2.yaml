@@ -1,0 +1,285 @@
+# Lección 1.2 de la sección 43.2 «Tipos de Análisis» (cap42). Formato: contenido/lecciones11/GUIA.md.
+# El circuito es el del netlist del libro (cap42#103: R1 1k y C1 100n, «.ac dec 100 10 1Meg»), con su corte de
+# 1,59 kHz (cap24#94, el mismo RC). Las amplitudes de 1 V son las del netlist («AC 1»). La sección no tiene ecuación:
+# la fórmula cita la del corte de la práctica 5 (cap22#134).
+leccion: cap42/sec-42.2
+
+libro:
+  35: "con los condensadores abiertos y las bobinas cortocircuitadas"
+  36: "un circuito que no resuelve su punto de trabajo no puede simularse de ninguna otra forma"
+  39: "Barre una fuente y representa el resultado."
+  42: "Da directamente el Bode"
+  43: "es un análisis de pequeña señal. Ignora la saturación, el recorte y el slew rate"
+  46: "el único que muestra comportamiento de gran señal"
+  48: "demasiado grande pierde detalles y da resultados falsos; demasiado pequeño alarga la simulación sin aportar"
+  50: "separa las contribuciones, cosa imposible midiendo"
+  56: "Un oscilador simulado en AC no oscila, porque el análisis supone linealidad y pequeña señal."
+  57: "La regla: si la amplitud importa, transitorio."
+  60: "Bode con generador y osciloscopio"
+  "cap42#103": "R1 in out 1k"
+  "cap22#134": 'f_("c") = ("1")/("2" π dot.op R dot.op C)'
+  "cap24#94": "en f = 1/(2πRC) = 1,59 kHz para este RC"
+  "cap42#345": "Quieres ver cómo arranca una fuente conmutada y si oscila al encender"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1591.55 }
+    R_f: { sim: "R1", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    C_f: { sim: "C1", nombre: "capacidad", unidad: F, valor: 100e-9 }
+  calculos:
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{out}", nombre: "amplitud de la salida", unidad: V }
+    ph_c: { expr: "-atan(x_c)*180/pi", sim: "φ", nombre: "fase de la salida", unidad: "°" }
+    d_m: { expr: "20*log10(A_m/V_p)", sim: "|H|", nombre: "la mitad, en decibelios", unidad: dB, cifras: 2 }
+    A_m: { expr: "V_p/2", sim: "V_{out}", nombre: "la mitad de la entrada", unidad: V }
+    tau: { expr: "R_f*C_f", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    V_op: { expr: "V_p", sim: "V_{out}", nombre: "salida en el punto de trabajo", unidad: V }
+
+tarjetas:
+  - id: explore-ac
+    tipo: explorar
+    titulo: "El .ac: el Bode"
+    texto: "El netlist del libro, 1 kΩ y 100 nF con «.ac dec 100 10 1Meg»: el análisis AC da la respuesta en frecuencia. Cambie R1."
+    libro: [42, "cap42#103"]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -60, max: 5, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_db }
+      mandos:
+        - { valor: R_f, lista: [500, 1000, 2000] }
+
+  - id: explore-tran
+    tipo: explorar
+    titulo: "El .tran: el tiempo"
+    texto: "El mismo RC ante un escalón de 1 V, resuelto paso a paso en el tiempo. Cambie R1 y mire la constante de tiempo."
+    libro: [46]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_p, r: R_f, c: C_f }
+      lectura: { valor: tau, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
+      mandos:
+        - { valor: R_f, lista: [500, 1000, 2000] }
+
+  - id: prediga-op
+    tipo: predecir
+    titulo: "El punto de trabajo"
+    texto: "Se pide el .op del RC con 1 V de continua en la entrada. ¿Cuánto vale la tensión de salida?"
+    libro: [35]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_p, r: R_f, c: C_f }
+      lectura: { valor: V_op, rotulo: "v(out) en el .op" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
+    opciones:
+      - texto: "1 V: el condensador está abierto en continua"
+        bien: true
+        porque: "Sin corriente por R1, no cae nada en ella: la salida es la entrada."
+      - texto: "0 V: el condensador está descargado"
+        porque: "Eso es el instante inicial de un transitorio. El .op es el reposo, con C abierto."
+      - texto: "0,707 V"
+        porque: "Ese es el corte en alterna. En continua no hay atenuación."
+    escalera:
+      - "¿Qué hace el .op con los condensadores?"
+    solucion: "Condensador abierto: v(out) = 1 V."
+    comprobar:
+      - { V_op: 1 }
+
+  - id: formula-corte
+    tipo: formula
+    titulo: "Lo que el Bode debe dar"
+    texto: "Antes de simular, el corte esperado: con 1 kΩ y 100 nF, 1,59 kHz. Cambie R1."
+    libro: ["cap22#134", "cap24#94"]
+    ec: "cap22#134"
+    sustitucion: "1 / (2π · {{R_f}} · {{C_f}}) = {{f_c}}"
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_c }
+      mandos:
+        - { valor: R_f, lista: [500, 1000, 2000] }
+    comprobar:
+      - { con: { R_f: 1000 }, f_c: 1590 }
+
+  - id: simule-ac
+    tipo: simular
+    titulo: "Prediga el .ac en el corte"
+    texto: "Con «AC 1» en la entrada, ¿qué amplitud da el análisis AC en la salida a 1,59 kHz?"
+    libro: [42, "cap24#94"]
+    fijar: { V_p: 1, R_f: 1000, C_f: 100e-9, f_f: 1591.55 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: A_c, rotulo: "v(out)" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: A_c
+      unidad: V
+      tol: 0.03
+      rotulo: "Amplitud de v(out)"
+      medida: vc_amp
+      errores:
+        - { expr: "A_m", texto: "Ha tomado la mitad, −6 dB. En el corte, la salida es 1/√2 de la entrada: −3 dB." }
+        - { expr: "V_p", texto: "Eso es el .op, en continua. A 1,59 kHz el condensador ya atenúa." }
+    exito: "0,707 V: −3 dB y −45° en el corte."
+    escalera:
+      - "En el corte, ωRC = 1."
+      - "La salida es 1/√(1 + 1) de la entrada."
+    solucion: "1/√2 = 0,707 V."
+    comprobar:
+      - { A_c: 0.707, A_m: 0.5, ph_c: -45, d_m: -6.02 }
+
+  - id: equivalencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada análisis, una medida"
+    texto: "Una cada análisis con su medida equivalente en el banco."
+    libro: [39, 60]
+    emparejar:
+      - ["DC operating point", "Multímetro en reposo"]
+      - ["DC sweep", "Curva punto a punto"]
+      - ["AC", "Bode con generador y osciloscopio"]
+      - ["Transitorio", "Osciloscopio con escalón"]
+      - ["Ruido", "Medida con entrada terminada"]
+    exito: "Simular y medir lo mismo, y comparar, enseña a fiarse de ambos."
+    pistas:
+      - { texto: "El DC sweep barre una fuente: como levantar una curva a mano." }
+    escalera:
+      - "El transitorio es lo que se ve en el osciloscopio tras un cambio."
+    solucion: "OP: multímetro; sweep: curva; AC: Bode; tran: escalón; ruido: entrada terminada."
+
+  - id: arranque
+    tipo: pregunta
+    titulo: "El arranque de una fuente conmutada"
+    texto: "Quiere ver cómo arranca una fuente conmutada y si oscila al encender. ¿Qué análisis elige?"
+    libro: [43, 46, "cap42#345"]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_p, r: R_f, c: C_f }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
+    opciones:
+      - texto: "Transitorio"
+        bien: true
+        porque: "Es el único que muestra gran señal: conmutación, arranque, recorte. Es el obligado en fuentes conmutadas."
+      - texto: "AC"
+        porque: "El .ac linealiza alrededor del punto de trabajo: no ve la conmutación ni el arranque."
+      - texto: "DC operating point"
+        porque: "Da el reposo final, no cómo se llega a él."
+    escalera:
+      - "¿Importa la amplitud? ¿Hay algo no lineal?"
+    solucion: "Transitorio: si la amplitud importa."
+
+  - id: ruido
+    tipo: pregunta
+    titulo: "El análisis de ruido"
+    texto: "¿Qué hace el análisis de ruido de SPICE mucho mejor que una medida en el banco?"
+    libro: [50]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Separar la contribución de cada fuente de ruido"
+        bien: true
+        porque: "Midiendo solo se ve el total; el simulador lo reparte componente a componente."
+      - texto: "Medir menos ruido que el real"
+        porque: "No se trata de medir menos, sino de saber de dónde viene cada parte."
+      - texto: "Incluir la interferencia captada"
+        porque: "Al revés: solo ve el ruido que está en los modelos."
+    escalera:
+      - "¿Qué es imposible hacer con un solo instrumento sobre la salida?"
+    solucion: "Separar las contribuciones de cada fuente."
+
+  - id: paso
+    tipo: pregunta
+    titulo: "El paso del transitorio"
+    texto: "En el .tran se fija un paso máximo demasiado grande para los flancos del circuito. ¿Qué ocurre?"
+    libro: [48]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_p, r: R_f, c: C_f }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
+    opciones:
+      - texto: "Se pierden detalles y puede dar resultados falsos"
+        bien: true
+        porque: "Por eso conviene fijar un paso máximo cuando hay eventos rápidos."
+      - texto: "Tarda mucho más"
+        porque: "Eso pasa con un paso demasiado pequeño, que alarga la simulación sin aportar."
+      - texto: "No cambia nada: el simulador lo ajusta solo"
+        porque: "Lo ajusta dentro del máximo que se le permite: si ese máximo es grande, se salta los flancos."
+    escalera:
+      - "¿Qué pasa con un flanco más corto que el paso?"
+    solucion: "Pierde detalles: resultados falsos."
+
+  - id: por-que-oscilador
+    tipo: porque
+    titulo: "¿Por qué no oscila en AC?"
+    texto: "Se simula un oscilador con un análisis AC y no oscila. ¿Por qué?"
+    libro: [56, 57]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -60, max: 5, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_db }
+    opciones:
+      - texto: "Porque el AC supone linealidad y pequeña señal: la amplitud no existe para él"
+        bien: true
+        porque: "Un oscilador es gran señal: su amplitud la fija una no linealidad. Si la amplitud importa, transitorio."
+      - texto: "Porque le falta una fuente de AC"
+        porque: "Aun con ella, el .ac solo calcula la respuesta lineal a esa frecuencia."
+      - texto: "Porque el modelo del transistor está mal"
+        porque: "Con el mejor modelo seguiría sin oscilar: el análisis no es el adecuado."
+    escalera:
+      - "¿Qué ignora el análisis AC?"
+    solucion: "Es lineal y de pequeña señal: hace falta un transitorio."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [36, 42, 46, 57]
+    ideas:
+      - { titulo: "Punto de trabajo.", texto: "Primero de todo: C abiertos, L en corto. Si no resuelve, nada más funciona." }
+      - { titulo: "AC.", texto: "El Bode de pequeña señal: ignora saturación, recorte y slew rate." }
+      - { titulo: "Transitorio.", texto: "El único de gran señal: arranque, conmutación, osciladores." }
+      - { titulo: "La regla.", texto: "Si la amplitud importa, transitorio." }

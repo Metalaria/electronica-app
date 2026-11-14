@@ -1,0 +1,274 @@
+# Lección 1.2 de la sección 35.5 «Arquitecturas de DAC» (cap34; etiqueta interna sec-34.5).
+# Formato: contenido/lecciones11/GUIA.md (§5.4 bis, «ao-sumador»). El DAC de resistencias ponderadas es el sumador
+# inversor del libro con tres bits: R, 2R y 4R, y R_f = R/2, así que v_o = −V_ref · código/8. R = 10 kΩ es un valor de
+# ejemplo (el libro solo da R, 2R, 4R…); la referencia de 5 V es la del Arduino (sección 35.8). El glitch de 0111 a
+# 1000 se dibuja en unidades de tiempo arbitrarias: el libro no da su duración.
+leccion: cap34/sec-34.5
+
+libro:
+  120: "una resistencia por bit, con valores R, 2R, 4R, 8R… y un sumador"
+  121: "la relación entre la mayor y la menor es de 2 048 a 1"
+  123: "una red que solo usa dos valores, R y 2R, repetidos en escalera"
+  124: "en un integrado eso se hace por láser con precisión excelente"
+  128: "Su virtud es la monotonía garantizada"
+  129: "2¹² son 4 096, y 2¹⁶ serían 65 536"
+  134: "Sirve para ajustar un nivel lentamente, no para generar una señal"
+  139: "Monotonía garantizada"
+  144: "Un DAC de 16 bits con una referencia del 1 % da una salida con un 1 % de error"
+  146: "en la transición de 0111 a 1000"
+  147: "mantiene el valor anterior durante la transición, lo que se llama deglitcher"
+  "cap34#220": "4,88 mV por paso con 5 V"
+
+modelo:
+  valores:
+    V_r: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 5 }
+    R_a: { sim: "R", nombre: "resistencia del bit de más peso", unidad: Ω, valor: 10000 }
+    b_2: { tipo: interruptor, nombre: "bit 2 (MSB)", valor: 1 }
+    b_1: { tipo: interruptor, nombre: "bit 1", valor: 0 }
+    b_0: { tipo: interruptor, nombre: "bit 0 (LSB)", valor: 0 }
+    n_w: { sim: "n", nombre: "bits del DAC ponderado", unidad: "", valor: 12 }
+    g_l: { sim: "código", nombre: "código durante la transición", unidad: "", valor: 0 }
+  calculos:
+    v_2: { expr: "b_2*V_r", sim: "v₂", nombre: "tensión del bit 2", unidad: V }
+    v_1: { expr: "b_1*V_r", sim: "v₁", nombre: "tensión del bit 1", unidad: V }
+    v_0: { expr: "b_0*V_r", sim: "v₀", nombre: "tensión del bit 0", unidad: V }
+    R_b: { expr: "2*R_a", sim: "2R", nombre: "resistencia del bit 1", unidad: Ω }
+    R_c: { expr: "4*R_a", sim: "4R", nombre: "resistencia del bit 0", unidad: Ω }
+    R_fb: { expr: "R_a/2", sim: "R_{f}", nombre: "realimentación", unidad: Ω }
+    cod: { expr: "4*b_2 + 2*b_1 + b_0", sim: "código", nombre: "código", unidad: "" }
+    v_o: { expr: "-R_fb*(v_2/R_a + v_1/R_b + v_0/R_c)", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    i_2: { expr: "v_2/R_a", sim: "I₂", nombre: "corriente del bit 2", unidad: A }
+    i_1: { expr: "v_1/R_b", sim: "I₁", nombre: "corriente del bit 1", unidad: A }
+    i_0: { expr: "v_0/R_c", sim: "I₀", nombre: "corriente del bit 0", unidad: A }
+    r_w: { expr: "2^(n_w - 1)", sim: "relación", nombre: "relación entre la mayor y la menor", unidad: "" }
+
+tarjetas:
+  - id: explore-ponderadas
+    tipo: explorar
+    titulo: "Una resistencia por bit"
+    texto: "Cada bit entra por su resistencia, R, 2R o 4R, en un sumador: aporta su peso. Mueva los bits y lea la salida."
+    nota: "Sumador inversor: la salida sale negativa."
+    libro: [120, "cap34#220"]
+    widget:
+      tipo: circuito
+      esquema: ao-sumador
+      piezas: { entrada: v_2, r1: R_a, entrada2: v_1, r2: R_b, entrada3: v_0, r3: R_c, rf: R_fb }
+      lectura: { valor: v_o, rotulo: "v_{o}" }
+      datos:
+        - { valor: cod, rotulo: "Código: {{cod}}" }
+      mide: { vo: v_o }
+      mandos:
+        - { valor: b_2, tipo: interruptor, rotulo: "Bit 2 (MSB)" }
+        - { valor: b_1, tipo: interruptor, rotulo: "Bit 1" }
+        - { valor: b_0, tipo: interruptor, rotulo: "Bit 0 (LSB)" }
+    requiere: { mover: [b_1, b_0] }
+
+  - id: prediga-cinco
+    tipo: predecir
+    titulo: "Los bits 1, 0, 1"
+    texto: "Con 5 V de referencia, R_{f} = R/2 y los bits 1, 0, 1. ¿Qué da la salida?"
+    libro: [120]
+    fijar: { b_2: 1, b_1: 0, b_0: 1, V_r: 5 }
+    widget:
+      tipo: circuito
+      esquema: ao-sumador
+      piezas: { entrada: v_2, r1: R_a, entrada2: v_1, r2: R_b, entrada3: v_0, r3: R_c, rf: R_fb }
+      lectura: { valor: v_o, rotulo: "v_{o}" }
+      mide: { vo: v_o }
+      ocultar: true
+    opciones:
+      - { texto: "−3,13 V: cinco octavos de 5 V", bien: true, porque: "El bit 2 pesa 4 y el 0 pesa 1: código 5, y v_{o} = −5 · 5/8." }
+      - { texto: "−2,5 V", porque: "Eso es solo el bit de más peso. El bit 0 suma su octavo." }
+      - { texto: "−5 V", porque: "Eso sería la suma de los dos bits con el mismo peso; el bit 0 pesa cuatro veces menos." }
+    escalera: ["Código = 4 · b₂ + 2 · b₁ + b₀; la salida es −V_{ref} · código/8."]
+    solucion: "Código 5: −5 × 5/8 = −3,13 V."
+    comprobar:
+      - { v_o: -3.125, cod: 5 }
+      - { con: { b_0: 0 }, v_o: -2.5 }
+
+  - id: porque-no-ponderadas
+    tipo: porque
+    titulo: "La idea directa no se usa"
+    texto: "¿Por qué no se hacen DAC de 12 bits con resistencias ponderadas?"
+    libro: [121]
+    widget:
+      tipo: circuito
+      esquema: ao-sumador
+      piezas: { entrada: v_2, r1: R_a, entrada2: v_1, r2: R_b, entrada3: v_0, r3: R_c, rf: R_fb }
+      lectura: { valor: v_o, rotulo: "v_{o}" }
+      mide: { vo: v_o }
+    opciones:
+      - { texto: "Habría que aparear en el mismo chip resistencias de 2 048 a 1 con la misma tolerancia relativa", bien: true, porque: "Una de 1 kΩ y otra de 2 MΩ apareadas al 0,01 %: inviable." }
+      - { texto: "Porque el sumador no admite 12 entradas", porque: "El sumador admitiría las entradas; el problema es fabricar las resistencias apareadas." }
+      - { texto: "Porque serían demasiado lentas", porque: "La velocidad no es el problema; lo es la relación enorme entre resistencias." }
+    escalera: ["Compare la resistencia del bit de más peso con la del de menos."]
+    solucion: "2¹¹ = 2 048 a 1, todas con la misma tolerancia relativa: inviable."
+
+  - id: estime-relacion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Diez bits"
+    texto: "Con resistencias ponderadas, ¿qué relación hay entre la mayor y la menor en un DAC de 10 bits?"
+    libro: [121]
+    fijar: { n_w: 10 }
+    estimar:
+      objetivo: "r_w"
+      unidad: ""
+      min: 0
+      max: 3000
+      paso: 2
+      inicio: 2500
+      tol: 0.02
+      rotulo: "Relación"
+    exito: "512 a 1: con 12 bits, 2 048."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 523 }, texto: "Se ha pasado: con n bits la mayor es 2ⁿ⁻¹ · R." }
+      - { texto: "Se ha quedado corto: son nueve duplicaciones desde R." }
+    escalera: ["La menor es R; la mayor, 2ⁿ⁻¹ · R."]
+    solucion: "2⁹ = 512 a 1."
+    comprobar:
+      - { r_w: 512 }
+      - { con: { n_w: 12 }, r_w: 2048 }
+
+  - id: pregunta-r2r
+    tipo: pregunta
+    titulo: "La escalera R-2R"
+    texto: "¿Qué resuelve la escalera R-2R?"
+    libro: [123, 124]
+    widget:
+      tipo: circuito
+      esquema: ao-sumador
+      piezas: { entrada: v_2, r1: R_a, entrada2: v_1, r2: R_b, entrada3: v_0, r3: R_c, rf: R_fb }
+      lectura: { valor: v_o, rotulo: "v_{o}" }
+      mide: { vo: v_o }
+    opciones:
+      - { texto: "Da los pesos binarios con solo dos valores, R y 2R, fáciles de aparear", bien: true, porque: "Cada nodo divide por dos la contribución del siguiente: 12 o 16 bits ajustados por láser." }
+      - { texto: "Elimina los glitches", porque: "Al contrario: su limitación son los glitches al conmutar." }
+      - { texto: "Garantiza la monotonía", porque: "Eso lo garantiza la cadena de resistencias, por construcción." }
+    escalera: ["¿Cuántos valores distintos de resistencia usa?"]
+    solucion: "Pesos binarios con solo R y 2R."
+
+  - id: estime-cadena
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una cadena de 12 bits"
+    texto: "Un DAC de cadena de resistencias tiene 2ⁿ resistencias iguales. ¿Cuántas lleva uno de 12 bits?"
+    libro: [128, 129]
+    fijar: { n_w: 12 }
+    estimar:
+      objetivo: "2*r_w"
+      unidad: ""
+      min: 0
+      max: 8000
+      paso: 5
+      inicio: 7500
+      tol: 0.02
+      rotulo: "Resistencias"
+    exito: "4 096: monotonía garantizada, pero 16 bits serían 65 536. Por eso se combina con otra estructura."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4178 }, texto: "Se ha pasado: son 2¹² resistencias." }
+      - { texto: "Se ha quedado corto: 2¹² son más de cuatro mil." }
+    escalera: ["2¹²."]
+    solucion: "2¹² = 4 096 resistencias."
+    comprobar:
+      - { r_w: 2048 }
+
+  - id: empareje-arquitecturas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla de los DAC"
+    texto: "Una cada arquitectura con su rasgo."
+    libro: [139]
+    emparejar:
+      - ["R-2R", "Clásica; produce glitches"]
+      - ["Cadena", "Monotonía garantizada"]
+      - ["Corriente", "Vídeo y RF"]
+      - ["PWM + filtro", "Coste cero"]
+      - ["Sigma-delta", "Audio; máxima linealidad"]
+    exito: "La de corriente es la más rápida; la sigma-delta, la de los 24 bits baratos."
+    pistas:
+      - { texto: "La que no necesita componentes activos es la del microcontrolador." }
+    escalera: ["Una escalera física y creciente no puede bajar."]
+    solucion: "R-2R glitches, cadena monotonía, corriente vídeo, PWM coste cero, sigma-delta audio."
+
+  - id: sorpresa-glitch
+    tipo: explorar
+    titulo: "De 0111 a 1000"
+    texto: "Los interruptores no conmutan exactamente a la vez: durante el cambio, la salida pasa un instante por otro código. Elija cuál llega antes."
+    libro: [146]
+    inicio: { g_l: 0 }
+    widget:
+      tipo: grafica
+      x: { id: tq, min: 0, max: 10, unidad: "", rotulo: "tiempo" }
+      y: { min: 0, max: 16, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "7 + (g_l - 7)*ceil((tq - 4)/1e9) + (8 - g_l)*ceil((tq - 5)/1e9)", color: azul, rotulo: "Salida" }
+        - { expr: "7 + ceil((tq - 4.5)/1e9)", color: tinta, rotulo: "Ideal", discontinua: true }
+      lectura: { valor: g_l, rotulo: "Código durante el cambio" }
+      mandos:
+        - { valor: g_l, lista: [0, 15], nombres: [pasa por 0000, pasa por 1111], rotulo: "Lo que llega antes" }
+    requiere: { mover: [g_l] }
+
+  - id: porque-deglitcher
+    tipo: porque
+    titulo: "El deglitcher"
+    texto: "Un muestreo y retención a la salida del DAC elimina ese pico. ¿Cómo?"
+    libro: [147]
+    widget:
+      tipo: grafica
+      x: { id: tq, min: 0, max: 10, unidad: "", rotulo: "tiempo" }
+      y: { min: 0, max: 16, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "7 + (g_l - 7)*ceil((tq - 4)/1e9) + (8 - g_l)*ceil((tq - 5)/1e9)", color: azul, rotulo: "DAC" }
+        - { expr: "7 + ceil((tq - 5.5)/1e9)", color: naranja, rotulo: "Tras el deglitcher" }
+    opciones:
+      - { texto: "Mantiene el valor anterior durante la transición y suelta el nuevo ya asentado", bien: true, porque: "Retiene mientras los interruptores cambian: el pico no llega a la salida." }
+      - { texto: "Filtra el pico con un paso bajo", porque: "Un filtro lo suavizaría, no lo quitaría; el deglitcher retiene el valor anterior." }
+      - { texto: "Hace que los interruptores conmuten a la vez", porque: "No actúa sobre los interruptores: tapa la salida mientras cambian." }
+    escalera: ["¿Qué hace un muestreo y retención cuando está en retención?"]
+    solucion: "Retiene el valor anterior durante la transición."
+
+  - id: pregunta-referencia
+    tipo: pregunta
+    titulo: "16 bits y una referencia del 1 %"
+    texto: "¿Qué error tiene la salida de un DAC de 16 bits con una referencia del 1 %?"
+    libro: [144]
+    widget:
+      tipo: circuito
+      esquema: ao-sumador
+      piezas: { entrada: v_2, r1: R_a, entrada2: v_1, r2: R_b, entrada3: v_0, r3: R_c, rf: R_fb }
+      lectura: { valor: v_o, rotulo: "v_{o}" }
+      mide: { vo: v_o }
+    opciones:
+      - { texto: "Un 1 %, por muchos bits que tenga", bien: true, porque: "La exactitud del DAC es la de su referencia: la salida es proporcional a ella." }
+      - { texto: "Un 1 % dividido entre los 16 bits", porque: "La referencia multiplica a todo el código: su error pasa entero." }
+      - { texto: "Medio LSB", porque: "Eso es la resolución; la exactitud la fija la referencia." }
+    escalera: ["Mire la salida: ¿qué la multiplica?"]
+    solucion: "Un 1 %: la exactitud es la de la referencia."
+
+  - id: pregunta-pwm
+    tipo: pregunta
+    titulo: "PWM más filtro"
+    texto: "Un PWM de microcontrolador con un paso bajo da una tensión analógica sin componentes activos. ¿Para qué sirve?"
+    libro: [134]
+    widget:
+      tipo: grafica
+      x: { id: tq, min: 0, max: 10, unidad: "", rotulo: "tiempo" }
+      y: { min: 0, max: 16, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "7 + ceil((tq - 4.5)/1e9)", color: azul, rotulo: "Nivel" }
+    opciones:
+      - { texto: "Para ajustar un nivel lentamente, no para generar una señal", bien: true, porque: "Rizado y velocidad tiran en sentidos opuestos, y con un PWM lento el compromiso es malo." }
+      - { texto: "Para generar audio de calidad", porque: "Eso pide velocidad y poco rizado a la vez: justo lo que el filtro no da." }
+      - { texto: "Para cualquier uso: es un DAC de 16 bits", porque: "Su resolución puede ser alta, pero su velocidad de respuesta es muy baja." }
+    escalera: ["Un filtro más lento quita rizado, pero ¿qué le pasa a la respuesta?"]
+    solucion: "Un nivel que se ajusta despacio."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [121, 123, 128, 147]
+    ideas:
+      - { titulo: "Ponderadas.", texto: "Directas pero inviables: 2 048 a 1 con 12 bits." }
+      - { titulo: "R-2R y cadena.", texto: "Dos valores fáciles de aparear; o monotonía garantizada con 2ⁿ resistencias." }
+      - { titulo: "Después del DAC.", texto: "Buffer, filtro de reconstrucción, referencia y, contra el glitch, un deglitcher." }

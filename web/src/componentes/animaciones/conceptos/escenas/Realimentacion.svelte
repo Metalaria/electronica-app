@@ -1,7 +1,9 @@
 <script lang="ts">
   // Negative feedback and the gain–bandwidth trade-off (book 26.2, 26.5, 8.6): A_f = A/(1 + A·β) ≈ 1/β when the
   // loop gain A·β ≫ 1. Every defect of the amplifier is divided by the desensitisation factor F = 1 + A·β; with
-  // A = 10⁵ and β = 1/11, F = 9092 and a 50 % change of A moves the gain only 0,0055 %. With one dominant pole
+  // A = 10⁵ and β = 1/11, F = 9092: halving A moves the gain only 0,011 % (10,9988 → 10,9976, the exact change the
+  // scene shows); the linear sensitivity, 50 %/9092 = 0,0055 %, falls short by half because F itself drops to 4546
+  // (book 26.2, erratum 4.1.2 G). With one dominant pole
   // the gain–bandwidth product is constant: GBW = 1 MHz and gain 11 give 91 kHz. The loop is drawn as a block
   // diagram with the signals moving round it; the error at the input is microvolts.
   import Escena from '../../ui/Escena.svelte';

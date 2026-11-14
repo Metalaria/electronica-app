@@ -1,0 +1,256 @@
+# Lección 1.2 de la sección 45.3 «SPI: Rápido y Sencillo» (cap44; etiqueta interna sec-44.3).
+# Formato: contenido/lecciones11/GUIA.md (§11). El intercambio simultáneo (bloque 83) se ve en pequeño: el registro
+# del maestro y el del esclavo, de dos bits cada uno (para que se lean en un teléfono), forman un anillo (MOSI del bit alto del maestro al bajo del
+# esclavo, MISO del alto del esclavo al bajo del maestro); tras dos flancos se han intercambiado. La tabla de los
+# modos (bloque 89) es una tabla de verdad: se captura en el flanco de subida cuando CPOL y CPHA son iguales (XNOR).
+# Figura 45.5 (svg_vista 438,36 × 197,46): CS, SCLK, MOSI y MISO en modo 0.
+leccion: cap44/sec-44.3
+
+libro:
+  75: "cuatro hilos y ningún protocolo de direcciones"
+  77: "SCLK: el reloj, generado siempre por el maestro."
+  78: "MOSI (Master Out, Slave In): datos del maestro al esclavo."
+  79: "MISO: datos del esclavo al maestro."
+  80: "CS o SS: selección de esclavo, activa a nivel bajo, una línea por dispositivo."
+  81: "con n dispositivos hacen falta n líneas de selección"
+  83: "leer un byte del esclavo exige enviarle uno, aunque sea basura"
+  84: "la trama la define el dispositivo, no el bus"
+  87: "CPOL: si el reloj está en reposo a nivel bajo (0) o alto (1)."
+  88: "CPHA: si el dato se captura en el primer flanco (0) o en el segundo (1)."
+  89: "Flanco de subida"
+  90: "La primera comprobación ante un SPI que no funciona es el modo."
+  93: "las salidas son push-pull y las cargan directamente"
+  94: "a alta velocidad puede exceder medio periodo"
+  95: "SPI es un bus de placa, de decenas de centímetros como mucho."
+  97: "Algunos dispositivos permiten conectar MISO de uno a MOSI del siguiente"
+  100: "dos esclavos hablando en MISO simultáneamente"
+  101: "MISO flotante cuando ningún esclavo está seleccionado"
+  102: "Velocidad excesiva para la longitud de las pistas, con flancos que timbran"
+  104: "3 + 1 por esclavo"
+  105: "SPI cuando importa la velocidad y hay pocos dispositivos; I²C cuando hay muchos y son lentos."
+  107: "en qué flanco cambia MOSI y en cuál lo captura el esclavo según su hoja de datos"
+  109: "Una transacción SPI de un byte en modo 0."
+
+modelo:
+  valores:
+    n_esc: { sim: "n", nombre: "esclavos", valor: 5 }
+  calculos:
+    hilos_spi: { expr: "3 + n_esc", sim: "hilos", nombre: "hilos del SPI", cifras: 2 }
+
+tarjetas:
+  - id: explore-lineas
+    tipo: explorar
+    titulo: "Las cuatro líneas"
+    texto: "SPI: cuatro hilos y ningún protocolo de direcciones. Toque cada línea de esta transacción de un byte."
+    libro: [75, 77, 78, 79, 80, 109]
+    widget:
+      tipo: figura
+      figura: fig-44.5
+      zonas:
+        - { id: cs, rotulo: "Línea de arriba", rect: [0, 8, 438, 36], texto: "CS: selección del esclavo, activa a nivel bajo. Una línea por dispositivo." }
+        - { id: sclk, rotulo: "Segunda línea", rect: [0, 48, 438, 40], texto: "SCLK: el reloj, siempre del maestro. En modo 0 se captura en la subida." }
+        - { id: mosi, rotulo: "Tercera línea", rect: [0, 92, 438, 40], texto: "MOSI: datos del maestro al esclavo." }
+        - { id: miso, rotulo: "Línea de abajo", rect: [0, 135, 438, 42], texto: "MISO: datos del esclavo al maestro; en alta impedancia sin selección." }
+    requiere: { mover: [cs, miso] }
+
+  - id: prediga-intercambio
+    tipo: predecir
+    titulo: "Un bit en cada sentido"
+    texto: "El maestro (M) y el esclavo (E) desplazan sus registros con el mismo reloj, en anillo por MOSI y MISO. Tras dos flancos, ¿qué guarda el maestro?"
+    libro: [83]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: m1, tipo: d, entradas: [m0.q, CLK], inicial: 1, rotulo: "M1" }
+        - { id: m0, tipo: d, entradas: [e1.q, CLK], inicial: 0, rotulo: "M0" }
+        - { id: e1, tipo: d, entradas: [e0.q, CLK], inicial: 0, rotulo: "E1" }
+        - { id: e0, tipo: d, entradas: [m1.q, CLK], inicial: 1, rotulo: "E0" }
+      salidas:
+        - { id: M1, de: m1.q }
+        - { id: M0, de: m0.q }
+        - { id: E1, de: e1.q }
+        - { id: E0, de: e0.q }
+      ocultar: true
+    opciones:
+      - { texto: "Lo que tenía el esclavo", bien: true, porque: "Cada flanco pasa un bit en cada sentido: tras dos, los dos registros de dos bits se han intercambiado." }
+      - { texto: "Lo mismo que tenía", porque: "Sus bits han salido por MOSI y en su lugar han entrado los del esclavo por MISO." }
+      - { texto: "Ceros: ha enviado su dato y queda vacío", porque: "No queda vacío: lo que sale por MOSI se sustituye por lo que entra por MISO." }
+    escalera: ["Siga un solo flanco: ¿qué bit entra en M0 y de dónde viene?"]
+    solucion: "Lo que tenía el esclavo: SPI intercambia un bit en cada sentido en cada pulso."
+
+  - id: explore-intercambio
+    tipo: explorar
+    titulo: "El intercambio"
+    texto: "Dé dos pulsos de reloj y mire los LED: el dato del maestro pasa al esclavo y el del esclavo, al maestro."
+    libro: [83]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: m1, tipo: d, entradas: [m0.q, CLK], inicial: 1, rotulo: "M1" }
+        - { id: m0, tipo: d, entradas: [e1.q, CLK], inicial: 0, rotulo: "M0" }
+        - { id: e1, tipo: d, entradas: [e0.q, CLK], inicial: 0, rotulo: "E1" }
+        - { id: e0, tipo: d, entradas: [m1.q, CLK], inicial: 1, rotulo: "E0" }
+      salidas:
+        - { id: M1, de: m1.q }
+        - { id: M0, de: m0.q }
+        - { id: E1, de: e1.q }
+        - { id: E0, de: e0.q }
+    nota: "Leer un byte del esclavo exige enviarle uno, aunque sea basura."
+
+  - id: estime-hilos
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El precio de no tener direcciones"
+    texto: "Un SPI con 5 esclavos: reloj, MOSI, MISO y una selección por dispositivo. ¿Cuántos hilos de señal?"
+    libro: [81, 104]
+    fijar: { n_esc: 5 }
+    estimar:
+      objetivo: "hilos_spi"
+      min: 0
+      max: 16
+      paso: 1
+      inicio: 4
+      tol: 0.02
+      rotulo: "Hilos"
+    exito: "8 hilos, frente a los 2 del I²C con cualquier número de dispositivos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8.5 }, texto: "Demasiados: reloj y datos son comunes, solo la selección va una por esclavo." }
+      - { texto: "Faltan: cada esclavo lleva su propia línea CS." }
+    escalera: ["Tres líneas comunes y una de selección por cada esclavo."]
+    solucion: "3 + 5 = 8 hilos."
+    comprobar:
+      - { hilos_spi: 8 }
+
+  - id: tabla-modos
+    tipo: tabla
+    titulo: "Los cuatro modos"
+    texto: "CPOL es el reposo del reloj; CPHA, si se captura en el primer flanco o en el segundo. Rellene: 1 si se captura en el de subida."
+    libro: [87, 88, 89]
+    widget:
+      tipo: logica
+      entradas: [CPOL, CPHA]
+      piezas:
+        - { id: modo, tipo: xnor, entradas: [CPOL, CPHA], rotulo: "Modo" }
+      salidas:
+        - { id: SUBIDA, de: modo }
+      ocultar: true
+    tabla:
+      salidas: [SUBIDA]
+    exito: "Los modos 0 y 3 capturan en la subida; el 1 y el 2, en la bajada."
+    escalera:
+      - "Con el reloj en reposo bajo, el primer flanco es de subida."
+      - "Con el reposo alto, el primer flanco es de bajada y el segundo, de subida."
+    solucion: "Con CPOL y CPHA iguales se captura en la subida (1); distintos, en la bajada (0)."
+
+  - id: pregunta-modo
+    tipo: pregunta
+    titulo: "Una lectura casi correcta"
+    texto: "Un sensor SPI devuelve datos que casi cuadran: desplazados un bit. ¿Qué se comprueba primero?"
+    libro: [84, 90]
+    widget:
+      tipo: figura
+      figura: fig-44.5
+      zonas:
+        - { id: sclk, rotulo: "Segunda línea", rect: [0, 48, 438, 40], texto: "El flanco en que se captura." }
+    opciones:
+      - { texto: "El modo, CPOL y CPHA", bien: true, porque: "Maestro y esclavo en modos distintos se entienden a medias: datos desplazados un bit o invertidos." }
+      - { texto: "La dirección del esclavo", porque: "SPI no tiene direcciones: se elige con CS." }
+      - { texto: "La paridad", porque: "SPI no tiene paridad ni confirmación: la trama la define el dispositivo." }
+    escalera: ["¿Qué fija en qué flanco se captura el dato?"]
+    solucion: "El modo: es la fuente de casi todos los problemas del SPI."
+
+  - id: empareje-fallos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los fallos característicos"
+    texto: "Una cada fallo con su síntoma."
+    libro: [90, 100, 101, 102]
+    emparejar:
+      - ["Modo equivocado", "Datos desplazados un bit o invertidos"]
+      - ["Dos CS activos a la vez", "Dos esclavos hablan en MISO a la vez"]
+      - ["Ningún esclavo seleccionado", "MISO flotante: lecturas basura sin pull-up"]
+      - ["Velocidad excesiva", "Flancos que timbran en pistas largas"]
+    exito: "Cuatro fallos, todos de nivel físico o de configuración."
+    pistas:
+      - { texto: "MISO queda al aire cuando nadie lo conduce." }
+    escalera: ["¿Cuál de ellos tiene que ver con la longitud de las pistas?"]
+    solucion: "Modo, datos desplazados; dos CS, choque en MISO; sin selección, MISO flotante; velocidad, timbre."
+
+  - id: porque-limite
+    tipo: porque
+    titulo: "Lo que limita la velocidad"
+    texto: "SPI llega a decenas de megabits por segundo. ¿Por qué no más, a lo largo de pistas largas?"
+    libro: [93, 94, 95]
+    widget:
+      tipo: figura
+      figura: fig-44.5
+      zonas:
+        - { id: miso, rotulo: "Línea de abajo", rect: [0, 135, 438, 42], texto: "MISO llega con el retardo del esclavo." }
+    opciones:
+      - { texto: "El retardo del esclavo hasta MISO puede pasar de medio periodo", bien: true, porque: "Con la capacidad de las líneas y la longitud: es un bus de placa, de decenas de centímetros." }
+      - { texto: "Las direcciones ocupan demasiados bits", porque: "SPI no tiene direcciones: por eso es el más rápido de placa." }
+      - { texto: "Las resistencias de pull-up", porque: "Las salidas de SPI son push-pull, sin pull-up; eso es del I²C." }
+    escalera: ["¿Cuándo debe estar MISO listo, respecto al flanco del reloj?"]
+    solucion: "El retardo del esclavo, la capacidad y la longitud: más allá de la placa hacen falta drivers diferenciales."
+
+  - id: pregunta-cadena
+    tipo: pregunta
+    titulo: "El encadenamiento"
+    texto: "Varios dispositivos con MISO de uno a MOSI del siguiente, compartiendo CS y reloj. ¿Qué se ahorra?"
+    libro: [97]
+    widget:
+      tipo: figura
+      figura: fig-44.5
+      zonas:
+        - { id: cs, rotulo: "Línea de arriba", rect: [0, 8, 438, 36], texto: "Una sola CS para toda la cadena." }
+    opciones:
+      - { texto: "Líneas de selección", bien: true, porque: "Los datos atraviesan todos como un registro de desplazamiento largo, con una sola CS." }
+      - { texto: "El reloj", porque: "El reloj se sigue compartiendo; lo que se ahorra son las CS." }
+      - { texto: "Tiempo: cada dispositivo recibe antes", porque: "Al revés: los datos deben atravesar toda la cadena." }
+    escalera: ["¿Cuántas CS hay si todos la comparten?"]
+    solucion: "Líneas de selección: es lo que hacen las tiras APA102 o el MAX7219."
+
+  - id: pregunta-spi-i2c
+    tipo: pregunta
+    titulo: "SPI o I²C"
+    texto: "Una memoria y un ADC rápidos, solos en la placa. ¿Qué bus?"
+    libro: [104, 105]
+    widget:
+      tipo: figura
+      figura: fig-44.5
+      zonas:
+        - { id: sclk, rotulo: "Segunda línea", rect: [0, 48, 438, 40], texto: "Decenas de Mbit/s." }
+    opciones:
+      - { texto: "SPI", bien: true, porque: "Importa la velocidad y hay pocos dispositivos: memorias, displays y ADC rápidos." }
+      - { texto: "I²C", porque: "Va de 0,1 a 1 Mbit/s: para muchos dispositivos lentos, como sensores." }
+    escalera: ["¿Qué importa más aquí: pocos hilos o velocidad?"]
+    solucion: "SPI: velocidad con pocos dispositivos."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con el analizador lógico sobre una transacción, ¿qué se mira primero?"
+    libro: [107]
+    widget:
+      tipo: figura
+      figura: fig-44.5
+      zonas:
+        - { id: mosi, rotulo: "Tercera línea", rect: [0, 92, 438, 40], texto: "Cambia en la bajada; se captura en la subida." }
+    opciones:
+      - { texto: "En qué flanco cambia MOSI y en cuál captura el esclavo", bien: true, porque: "Si no coinciden con la hoja de datos, el modo está mal." }
+      - { texto: "El número de bits de parada", porque: "SPI no tiene bits de inicio ni de parada." }
+      - { texto: "La resistencia de terminación", porque: "SPI es de placa: lo primero es el modo." }
+    escalera: ["¿Qué es lo que más falla en un SPI?"]
+    solucion: "El flanco en que cambia MOSI frente al que usa el esclavo: así se ve el modo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [81, 83, 90, 105]
+    ideas:
+      - { titulo: "Cuatro hilos.", texto: "Reloj, MOSI, MISO y una CS por esclavo: sin direcciones." }
+      - { titulo: "Intercambio.", texto: "Un bit en cada sentido por pulso: leer exige enviar." }
+      - { titulo: "El modo.", texto: "CPOL y CPHA: la primera comprobación ante un SPI que falla." }
+      - { titulo: "Cuándo.", texto: "SPI para velocidad con pocos dispositivos; I²C para muchos y lentos." }

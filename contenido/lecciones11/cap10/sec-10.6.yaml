@@ -1,0 +1,329 @@
+# Lección 1.2 de la sección 10.6 «Snubbers: Domar los Transitorios de Conmutación» (cap10). Formato: GUIA.md.
+# - El pico al cortar la corriente de una inductancia (bloque 137, V = L·di/dt) en el esquema «mosfet» con carga
+#   inductiva (esquemas12b): 12 V, devanado de 10 Ω y 1 mH, puerta de 5 V a 1 kHz; con el diodo de rueda libre el
+#   drenador sube a V_DD + V_F, sin él hasta la avalancha (BV = 60 V). Los valores son los de la tarjeta probada del
+#   catálogo; el texto no da números del dibujo salvo los del modelo.
+# - El coste del snubber RC, P = C·V²·f (bloque 141: 1 nF, 400 V, 100 kHz → 16 W), en una gráfica del modelo con
+#   la frecuencia en escala logarítmica, como la figura 10.11 (fig-10.10).
+# Paso práctico: «simular» (sin circuito) esos 16 W; el error típico es usar ½·C·V²·f.
+# - 1.2 (esquemas12d): el esquema `snubber` (figura 10.11) en la nueva explore-oscila: 400 V, 10 A y 100 nH del bloque
+#   137, con C_oss = 250 pF y R_p = 200 Ω de ejemplo (no del libro): 585 V de pico sin snubber. Con el snubber
+#   conectado el circuito es de tercer orden y no tiene curva cerrada: no se compara. El nuevo «ajuste» de R_s usa el
+#   criterio del bloque 140 (R = Z₀ = √(L/C_oss) = 20 Ω; C de dos a cuatro veces C_oss: 1 nF) sobre la curva sin
+#   snubber, la que hay que domar.
+leccion: cap10/sec-10.6
+
+libro:
+  137: "Con 100 nH y una corriente de 10 A cortada en 50 ns, 20 V que se suman a la alimentación"
+  139: "El condensador absorbe la energía del pico y la resistencia la disipa"
+  140: "tomar C entre dos y cuatro veces la capacidad de salida del transistor, y R igual a la impedancia característica"
+  141: "Con 1 nF, 400 V y 100 kHz: 16 W"
+  143: "porque la resistencia solo ve la descarga"
+  144: "Es el circuito estándar en el primario de un flyback"
+  146: "En alterna no se puede usar un diodo (conduciría medio ciclo)"
+  149: "Es la primera medida y la más eficaz"
+  150: "Es un snubber «gratis» en componentes, no en rendimiento."
+  151: "los circuitos de sujeción activa devuelven la energía del pico a la alimentación"
+  153: "comprobando en cada caso la temperatura de la resistencia, que es donde se está pagando"
+  154: "Efecto de un snubber sobre el transitorio de apagado"
+
+modelo:
+  valores:
+    VDD_i: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_i: { sim: "R", nombre: "resistencia del devanado", unidad: Ω, valor: 10 }
+    L_i: { sim: "L", nombre: "inductancia de la carga", unidad: H, valor: 0.001 }
+    Vg_i: { sim: "V_{G}", nombre: "nivel alto de la puerta", unidad: V, valor: 5 }
+    k_i: { sim: "k", nombre: "parámetro de transconductancia", unidad: "A/V²", valor: 20 }
+    Vth_i: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 1.5 }
+    f_i: { sim: "f", nombre: "frecuencia de la puerta", unidad: Hz, valor: 1000 }
+    BV_i: { sim: "BV", nombre: "tensión de avalancha", unidad: V, valor: 60 }
+    Vf_i: { sim: "V_{F}", nombre: "caída del diodo de rueda libre", unidad: V, valor: 0.7 }
+    rueda_i: { tipo: interruptor, nombre: "diodo de rueda libre conectado", valor: 1 }
+    L_p: { sim: "L", nombre: "inductancia parásita del lazo", unidad: H, valor: 100e-9 }
+    I_p: { sim: "I", nombre: "corriente cortada", unidad: A, valor: 10 }
+    t_p: { sim: "Δt", nombre: "tiempo de corte", unidad: s, valor: 50e-9 }
+    C_s: { sim: "C", nombre: "condensador del snubber", unidad: F, valor: 1e-9 }
+    V_s: { sim: "V", nombre: "tensión conmutada", unidad: V, valor: 400 }
+    f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+    Vb_sn: { sim: "V_{B}", nombre: "tensión del bus", unidad: V, valor: 400 }
+    I0_sn: { sim: "I₀", nombre: "corriente cortada", unidad: A, valor: 10 }
+    Co_sn: { sim: "C_{oss}", nombre: "capacidad de salida del transistor (ejemplo)", unidad: F, valor: 250e-12 }
+    Rp_sn: { sim: "R_{p}", nombre: "pérdidas del lazo (ejemplo)", unidad: Ω, valor: 200 }
+    Rs_sn: { sim: "R_{s}", nombre: "resistencia del snubber", unidad: Ω, valor: 60 }
+  calculos:
+    t1_sn: { expr: "Vb_sn*Co_sn/I0_sn", sim: "t₁", nombre: "carga de C_oss hasta el bus", unidad: s }
+    Z0_sn: { expr: "sqrt(L_p/Co_sn)", sim: "Z₀", nombre: "impedancia característica", unidad: Ω }
+    al_sn: { expr: "1/(2*Rp_sn*Co_sn)", sim: "α", nombre: "amortiguamiento", unidad: "1/s" }
+    wd_sn: { expr: "sqrt(1/(L_p*Co_sn) - al_sn^2)", sim: "ω_{d}", nombre: "pulsación de la oscilación", unidad: "rad/s" }
+    tp_sn: { expr: "atan(wd_sn/al_sn)/wd_sn", sim: "t_{p}", nombre: "del bus al pico", unidad: s }
+    Vpk_sn: { expr: "Vb_sn + I0_sn/(Co_sn*wd_sn)*exp(-al_sn*tp_sn)*sin(wd_sn*tp_sn)", sim: "V_{pico}", nombre: "pico del drenador sin snubber", unidad: V }
+    Cr_sn: { expr: "C_s/Co_sn", sim: "C_{s}/C_{oss}", nombre: "condensador del snubber frente a C_oss", unidad: "" }
+    b_i: { expr: "k_i*(Vg_i - Vth_i) + 1/R_i", sim: "b", nombre: "coeficiente", unidad: "" }
+    Von_i: { expr: "(b_i - sqrt(b_i^2 - 2*k_i*VDD_i/R_i))/k_i", sim: "V_{DS(on)}", nombre: "V_DS conduciendo", unidad: V }
+    I0_i: { expr: "(VDD_i - Von_i)/R_i", sim: "I_{0}", nombre: "corriente al apagar", unidad: A }
+    to_i: { expr: "1/(2*f_i)", sim: "t_{off}", nombre: "instante del apagado", unidad: s }
+    Vx_i: { expr: "rueda_i*Vf_i + (1 - rueda_i)*(BV_i - VDD_i)", sim: "V_{ext}", nombre: "tensión de extinción", unidad: V }
+    Vpk_i: { expr: "VDD_i + Vx_i", sim: "V_{pico}", nombre: "pico del drenador al apagar", unidad: V }
+    V_pico: { expr: "L_p*I_p/t_p", sim: "V", nombre: "tensión de la inductancia parásita", unidad: V }
+    P_s: { expr: "C_s*V_s^2*f_s", sim: "P", nombre: "potencia en la resistencia del snubber", unidad: W }
+    P_mitad: { expr: "C_s*V_s^2*f_s/2", sim: "P", nombre: "½·C·V²·f (error)", unidad: W }
+
+tarjetas:
+  - id: explore-pico
+    tipo: explorar
+    titulo: "El pico al cortar"
+    texto: "Quite el diodo y mire el drenador al apagar: la inductancia no deja que su corriente se corte de golpe."
+    libro: [137]
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      lectura: { valor: Vpk_i, rotulo: "Pico del drenador" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-(t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      mandos:
+        - { valor: rueda_i, tipo: interruptor, rotulo: "Diodo de rueda libre" }
+    requiere: { mover: [rueda_i] }
+
+  - id: estime-parasita
+    tipo: pregunta
+    titulo: "Cien nanohenrios"
+    texto: "El lazo de conmutación tiene 100 nH y se cortan 10 A en 50 ns. ¿Cuánta tensión se suma a la alimentación?"
+    libro: [137]
+    widget:
+      tipo: figura
+      figura: fig-10.10
+      zonas:
+        - { id: apagado, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 203] }
+    estimar:
+      objetivo: "V_pico"
+      unidad: V
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 60
+      tol: 0.05
+      rotulo: "Tensión añadida"
+    exito: "20 V. Con di/dt mayores, mucho más, y con oscilación, porque la inductancia resuena con las capacidades del transistor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 21 }, texto: "Se ha pasado: V = L·di/dt = 100 nH × 10 A / 50 ns." }
+      - { texto: "Se ha quedado corto: divida la corriente por el tiempo de corte y multiplique por L." }
+    escalera:
+      - "V = L·di/dt."
+    solucion: "100 nH × 10 A / 50 ns = 20 V."
+    comprobar:
+      - { V_pico: 20 }
+
+  - id: explore-oscila
+    tipo: explorar
+    titulo: "Oscila al abrir"
+    texto: "Al abrirse el transistor, la corriente carga su capacidad de salida y después oscila con la inductancia del lazo. Cambie la corriente cortada."
+    libro: [137]
+    fijar: { L_p: 100e-9 }
+    widget:
+      tipo: circuito
+      esquema: snubber
+      piezas: { vb: Vb_sn, i0: I0_sn, l: L_p, rp: Rp_sn, coss: Co_sn }
+      lectura: { valor: Vpk_sn, rotulo: "Pico del drenador" }
+      corriente: I0_sn
+      grafica:
+        x: { id: t, min: 0, max: 3e-7, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 740, unidad: V, rotulo: "v_{DS}" }
+        curvas:
+          - { expr: "(1 - ceil((t - t1_sn)/1e9))*I0_sn*t/Co_sn + ceil((t - t1_sn)/1e9)*(Vb_sn + I0_sn/(Co_sn*wd_sn)*exp(-al_sn*max(0, t - t1_sn))*sin(wd_sn*max(0, t - t1_sn)))", color: naranja, rotulo: "v_{DS}", mide: drenador }
+      mandos:
+        - { valor: I0_sn, min: 2, max: 10, paso: 2, rotulo: "Corriente cortada, I₀" }
+    comprobar:
+      - { Vpk_sn: 585, tol: 0.01 }
+
+  - id: antes-despues
+    tipo: explorar
+    titulo: "Antes y después"
+    texto: "Toque las dos curvas del apagado y el punto de la derecha: el snubber amortigua el pico, pero cuesta."
+    libro: [139, 141, 154]
+    widget:
+      tipo: figura
+      figura: fig-10.10
+      zonas:
+        - { id: sin, rotulo: "La curva que oscila", rect: [35, 20, 90, 60], texto: "Sin snubber: un pico con oscilación amortiguada que radia interferencia y estresa el transistor." }
+        - { id: con, rotulo: "La curva suave", rect: [55, 70, 80, 80], texto: "Con snubber RC: subida más lenta, pico menor y sin oscilación." }
+        - { id: coste, rotulo: "El punto azul", rect: [362, 42, 40, 36], texto: "Con 1 nF, 400 V y 100 kHz: 16 W en la resistencia." }
+    requiere: { mover: [sin, con, coste] }
+
+  - id: explore-coste
+    tipo: explorar
+    titulo: "Lo que cuesta"
+    texto: "Cambie el condensador y la frecuencia. Cada ciclo se disipa la energía del condensador cargado: P = C·V²·f."
+    libro: [141]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.01, max: 200, unidad: W, rotulo: "P", escala: log }
+      curvas:
+        - { expr: "C_s*V_s^2*nu", color: naranja, rotulo: "P = C·V²·f" }
+      marcas:
+        - { x: "f_s", y: "P_s", rotulo: "{{P_s}}" }
+      lectura: { valor: P_s, rotulo: "Potencia en la resistencia" }
+      mandos:
+        - { valor: C_s, lista: [100e-12, 470e-12, 1e-9], rotulo: "Condensador" }
+        - { valor: f_s, lista: [10000, 100000, 1000000], rotulo: "Frecuencia" }
+    requiere: { mover: [C_s, f_s] }
+
+  - id: simule-16w
+    tipo: simular
+    titulo: "Prediga la disipación"
+    texto: "Un snubber RC de 1 nF conmuta 400 V a 100 kHz. ¿Cuánto disipa su resistencia?"
+    libro: [141]
+    fijar: { C_s: 1e-9, V_s: 400, f_s: 100000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.01, max: 200, unidad: W, rotulo: "P", escala: log }
+      curvas:
+        - { expr: "C_s*V_s^2*nu", color: naranja, rotulo: "P = C·V²·f" }
+      lectura: { valor: P_s, rotulo: "Potencia en la resistencia" }
+      ocultar: true
+    simular:
+      objetivo: P_s
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en la resistencia"
+      errores:
+        - { expr: "P_mitad", texto: "Ha usado ½·C·V²·f. El libro da P = C·V²·f: con 1 nF, 400 V y 100 kHz, 16 W." }
+    exito: "16 W: por eso los snubbers no se ponen «por si acaso». Cuestan rendimiento."
+    escalera:
+      - "P = C·V²·f, con la tensión al cuadrado."
+    solucion: "1 nF × 400² × 100 kHz = 16 W."
+    comprobar:
+      - { P_s: 16, P_mitad: 8 }
+
+  - id: por-que-rcd
+    tipo: porque
+    titulo: "El diodo del RCD"
+    texto: "En el primario de un flyback se añade un diodo al snubber. ¿Por qué limita el pico igual de bien disipando mucho menos?"
+    libro: [143, 144]
+    widget:
+      tipo: figura
+      figura: fig-10.10
+      zonas:
+        - { id: apagado, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 203] }
+    opciones:
+      - texto: "El condensador se carga rápido por el diodo y se descarga despacio por la resistencia, que solo ve la descarga"
+        bien: true
+        porque: "Así el pico queda limitado y la resistencia no trabaja en la carga."
+      - texto: "El diodo disipa la energía en lugar de la resistencia"
+        porque: "El diodo solo da un camino rápido para cargar el condensador; la energía sigue yendo a la resistencia."
+      - texto: "El diodo elimina la inductancia de dispersión"
+        porque: "La dispersión del transformador sigue ahí: el snubber trata su pico, no la quita."
+    escalera:
+      - "¿Por dónde se carga y por dónde se descarga el condensador?"
+    solucion: "Carga rápida por el diodo, descarga lenta por la resistencia: esta solo ve la descarga."
+
+  - id: alterna
+    tipo: predecir
+    titulo: "Un contactor en alterna"
+    texto: "¿Qué snubber lleva un contactor o un TRIAC con carga inductiva en alterna?"
+    libro: [146]
+    widget:
+      tipo: figura
+      figura: fig-10.10
+      zonas:
+        - { id: apagado, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 203] }
+    opciones:
+      - texto: "Una red RC en paralelo con el contacto o la carga"
+        bien: true
+        porque: "Evita el arco al abrir y el disparo por dv/dt del TRIAC."
+      - texto: "Un diodo de rueda libre"
+        porque: "En alterna conduciría medio ciclo: sería un cortocircuito."
+      - texto: "Un RCD, como en el flyback"
+        porque: "Lleva un diodo, y en alterna no se puede usar."
+    escalera:
+      - "¿Qué haría un diodo cuando la tensión cambia de signo?"
+    solucion: "La red RC: en alterna no se puede usar un diodo."
+
+  - id: alternativas
+    tipo: pregunta
+    titulo: "Antes de poner un snubber"
+    texto: "Empareje cada alternativa con lo que cuesta o lo que gana."
+    libro: [149, 150, 151]
+    widget:
+      tipo: figura
+      figura: fig-10.10
+      zonas:
+        - { id: coste, rotulo: "La gráfica de la derecha", rect: [230, 0, 218, 203] }
+    emparejar:
+      - ["Acortar el lazo de conmutación", "La primera medida y la más eficaz"]
+      - ["Subir la resistencia de puerta", "Gratis en componentes, no en rendimiento"]
+      - ["Sujeción activa", "Devuelve la energía del pico a la alimentación"]
+    exito: "Menos inductancia es menos energía almacenada: menos pico y nada que disipar."
+    pistas:
+      - { texto: "Subir la resistencia de puerta ralentiza el flanco." }
+    escalera:
+      - "¿Cuál quita el problema en lugar de tratarlo?"
+    solucion: "Acortar el lazo: la mejor. Resistencia de puerta: cuesta pérdidas de conmutación. Sujeción activa: recupera la energía."
+
+  - id: ajuste-rs
+    tipo: ajuste
+    titulo: "Ajuste la resistencia"
+    texto: "Para domar esta oscilación, C_{s} = 1 nF, cuatro veces C_{oss}. Lleve R_{s} a la impedancia característica √(L/C_{oss}) del lazo."
+    libro: [140]
+    fijar: { L_p: 100e-9, I0_sn: 10, C_s: 1e-9, Co_sn: 250e-12 }
+    inicio: { Rs_sn: 60 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 3e-7, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 740, unidad: V, rotulo: "v_{DS}" }
+      curvas:
+          - { expr: "(1 - ceil((t - t1_sn)/1e9))*I0_sn*t/Co_sn + ceil((t - t1_sn)/1e9)*(Vb_sn + I0_sn/(Co_sn*wd_sn)*exp(-al_sn*max(0, t - t1_sn))*sin(wd_sn*max(0, t - t1_sn)))", color: naranja, rotulo: "sin snubber", discontinua: true }
+      mandos:
+        - { valor: Rs_sn, min: 2, max: 100, paso: 2, rotulo: "Resistencia del snubber, R_{s}" }
+    ajuste:
+      valor: Rs_sn
+      objetivo: 20
+      tol: 0.1
+      rotulo: "R_{s}"
+      escala: { min: 0, max: 100 }
+      bajo: "Por debajo de √(L/C_{oss}): el condensador apenas amortigua. Suba R_{s}."
+      alto: "Por encima de √(L/C_{oss}): casi desconecta el condensador. Baje R_{s}."
+      dentro: "R_{s} igual a Z₀: amortiguamiento crítico, el punto de partida del banco."
+    exito: "√(100 nH / 250 pF) = 20 Ω. En el banco se prueba alrededor, mirando la oscilación y la temperatura de R_{s}."
+    escalera:
+      - "Z₀ = √(L/C_{oss}), con 100 nH y 250 pF."
+    solucion: "20 Ω, la impedancia característica del lazo."
+    comprobar:
+      - { Z0_sn: 20, Cr_sn: 4 }
+
+  - id: banco-ajuste
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con el osciloscopio en el drenador, ¿cómo se ajusta un snubber?"
+    libro: [140, 153]
+    widget:
+      tipo: figura
+      figura: fig-10.10
+      zonas:
+        - { id: apagado, rotulo: "La gráfica de la izquierda", rect: [0, 0, 215, 203] }
+    opciones:
+      - texto: "Desde el valor calculado, probando resistencias hasta quitar la oscilación sin redondear de más"
+        bien: true
+        porque: "Y en cada prueba, la temperatura de la resistencia: es donde se está pagando."
+      - texto: "Con el condensador más grande que quepa"
+        porque: "Más C es más C·V²·f: disipa más de lo necesario."
+      - texto: "Sin calcular: a ojo, con cualquier pareja R–C"
+        porque: "Se parte del cálculo: C de dos a cuatro veces la de salida, R la impedancia característica."
+    escalera:
+      - "Hay un punto de partida calculado y un criterio en la pantalla."
+    solucion: "Desde el cálculo, probando un par de resistencias, mirando la oscilación y la temperatura de la resistencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [137, 141, 143, 149]
+    ideas:
+      - { titulo: "Origen.", texto: "La inductancia parásita da V = L·di/dt al cortar, y oscila con las capacidades." }
+      - { titulo: "RC.", texto: "Amortigua el pico, pero cuesta P = C·V²·f." }
+      - { titulo: "RCD.", texto: "La resistencia solo ve la descarga: menos disipación." }
+      - { titulo: "Antes, el lazo.", texto: "Acortarlo es lo primero y lo más eficaz." }

@@ -1,0 +1,304 @@
+# Lección 1.2 de la sección 18.10 «Problemas de Diseño» (cap19; sec-19.N = impresas 18.N).
+# - 18.A (bloques 255 a 266): mil tramas por segundo, una de cada cien dañada; el CRC de c bytes deja pasar 2^(−8c) de
+#   las dañadas: con CRC-8, 1 000 · 0,01 · 3 600/256 ≈ 140 erróneas aceptadas por hora; con CRC-16, una cada dos
+#   horas. Sobrecarga del CRC c/(N + c) y total (c + 2)/(N + c + 2): 11,1 % (8 + CRC-8), 5,9 % y 11,1 % (32 + CRC-16).
+# - 18.B (bloques 269 a 277): el jitter de Linux (200 µs) es el 20 % de 1 ms; decimar 1 000 muestras/s a 25 tramas/s
+#   es una media cada 40 muestras.
+# - 18.C (bloques 280 a 291): dos cristales de ±20 ppm divergen 40 ppm: 2,40 ms por minuto y 144 ms por hora; con un
+#   resonador de ±0,5 %, 18 s por hora. La gráfica es la divergencia acumulada frente al tiempo.
+# Paso práctico: «simular» las tramas erróneas aceptadas por hora con CRC-8 (unas 140; errores típicos: olvidar que
+# solo una de cada cien está dañada, o contarlas por segundo).
+leccion: cap19/sec-19.10
+
+libro:
+  255: "el enlace lleva mil tramas por segundo y el ruido daña una de cada cien"
+  258: "32 bytes + CRC-16"
+  259: "son unas 140 tramas erróneas aceptadas cada hora"
+  262: "funcionan perfectamente hasta el primer error, y a partir de ahí no se recuperan"
+  266: "la sobrecarga total es del 11,1 % (4 de cada 36 bytes)"
+  269: "El jitter de Linux es de unos 200 µs, y la gráfica se refresca a 25 Hz."
+  272: "El jitter de Linux (200 µs) sería el 20 %"
+  273: "sino de previsibilidad"
+  274: "enviar una media cada 40 muestras"
+  280: "Las dos bases de tiempo son cristales de ±20 ppm."
+  284: "144 ms"
+  285: "en una hora la divergencia llega a 18 segundos"
+  286: "No hay forma de evitarlo, solo de corregirlo."
+  288: "marca en el microcontrolador, cuyo periodo es mucho más regular"
+  291: "Marcar en el ordenador de placa si importa la hora absoluta"
+
+modelo:
+  valores:
+    N_u: { sim: "N", nombre: "bytes de datos", unidad: "", valor: 8 }
+    c_b: { sim: "c", nombre: "bytes del CRC", unidad: "", valor: 1 }
+    f_t: { sim: "f_{t}", nombre: "tramas por segundo", unidad: "", valor: 1000 }
+    p_d: { sim: "p", nombre: "fracción de tramas dañadas", unidad: "", valor: 0.01 }
+    t_h: { sim: "t", nombre: "segundos de una hora", unidad: s, valor: 3600 }
+    f_l: { sim: "f", nombre: "lecturas por segundo", unidad: Hz, valor: 1000 }
+    f_g: { sim: "f_{g}", nombre: "refresco de la gráfica", unidad: Hz, valor: 25 }
+    j_l: { sim: "jitter", nombre: "jitter de Linux", unidad: s, valor: 0.0002 }
+    p_r: { sim: "Δ", nombre: "diferencia relativa entre los relojes", unidad: "", valor: 0.00004 }
+  calculos:
+    p_p: { expr: "2^(-8*c_b)", sim: "pasan", nombre: "fracción de tramas dañadas que pasan", unidad: "", cifras: 2 }
+    A_h: { expr: "f_t*p_d*t_h*2^(-8*c_b)", sim: "aceptadas", nombre: "tramas erróneas aceptadas por hora", unidad: "", cifras: 3 }
+    A_x: { expr: "f_t*t_h*2^(-8*c_b)", sim: "aceptadas", nombre: "lo que sale sin la fracción dañada", unidad: "", cifras: 3 }
+    A_s: { expr: "f_t*p_d*2^(-8*c_b)", sim: "aceptadas", nombre: "tramas erróneas aceptadas por segundo", unidad: "", cifras: 2 }
+    T_a: { expr: "1/A_h", sim: "T", nombre: "horas entre dos tramas erróneas aceptadas", unidad: "", cifras: 2 }
+    s_c: { expr: "c_b/(N_u + c_b)*100", sim: "CRC", nombre: "sobrecarga del CRC", unidad: "%", cifras: 3 }
+    s_t: { expr: "(c_b + 2)/(N_u + c_b + 2)*100", sim: "total", nombre: "sobrecarga total con inicio y longitud", unidad: "%", cifras: 3 }
+    j_p: { expr: "j_l*f_l*100", sim: "jitter", nombre: "jitter frente al periodo", unidad: "%", cifras: 2 }
+    n_d: { expr: "f_l/f_g", sim: "muestras", nombre: "muestras por media", unidad: "", cifras: 2 }
+    D_m: { expr: "p_r*60", sim: "minuto", nombre: "divergencia en un minuto", unidad: s }
+    D_h: { expr: "p_r*t_h", sim: "hora", nombre: "divergencia en una hora", unidad: s }
+    D_1: { expr: "p_r/2*t_h", sim: "hora", nombre: "divergencia de un solo cristal en una hora", unidad: s }
+
+tarjetas:
+  - id: explore-crc
+    tipo: explorar
+    titulo: "Lo que deja pasar el CRC"
+    texto: "Mil tramas por segundo, una de cada cien dañada por el ruido. Cambie el CRC y mire cuántas tramas erróneas se aceptan."
+    libro: [255, 258, 259]
+    inicio: { c_b: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 7200, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: "", rotulo: "tramas erróneas aceptadas" }
+      curvas:
+        - { expr: "f_t*p_d*t*2^(-8*c_b)", color: naranja, rotulo: "acumuladas" }
+      marcas:
+        - { x: "t_h", y: "A_h", rotulo: "{{A_h}} en una hora" }
+      lectura: { valor: A_h, rotulo: "Erróneas aceptadas por hora" }
+      datos:
+        - { valor: p_p, rotulo: "Dañadas que pasan: {{p_p}}" }
+      mandos:
+        - { valor: c_b, lista: [1, 2], nombres: [CRC-8, CRC-16], rotulo: "Verificación" }
+    requiere: { mover: [c_b] }
+    comprobar:
+      - { p_p: 0.0039, tol: 0.01 }
+      - { con: { c_b: 2 }, p_p: 0.000015, T_a: 1.82, tol: 0.03 }
+
+  - id: simule-crc8
+    tipo: simular
+    titulo: "Con CRC-8, en una hora"
+    texto: "El CRC-8 deja pasar una de cada 256 tramas dañadas. Con mil tramas por segundo y una de cada cien dañada, ¿cuántas erróneas acepta en una hora?"
+    libro: [255, 259]
+    fijar: { c_b: 1, f_t: 1000, p_d: 0.01, t_h: 3600 }
+    simular:
+      objetivo: A_h
+      unidad: ""
+      tol: 0.05
+      rotulo: "Tramas erróneas aceptadas en una hora"
+      errores:
+        - { expr: "A_x", texto: "Ha tomado todas las tramas como dañadas: solo lo está una de cada cien." }
+        - { expr: "A_s", texto: "Eso es por segundo: una hora son 3 600 segundos." }
+    exito: "Unas 140 por hora: inaceptable para medidas. Con CRC-16 pasa una cada dos horas."
+    escalera:
+      - "Tramas dañadas por hora: 1 000 · 0,01 · 3 600."
+    solucion: "1 000 · 0,01 · 3 600 / 256 ≈ 140 tramas erróneas aceptadas cada hora."
+    comprobar:
+      - { A_h: 140.6, A_x: 14062, A_s: 0.039, tol: 0.01 }
+
+  - id: sobrecarga
+    tipo: pregunta
+    titulo: "La sobrecarga total"
+    texto: "Trama con marca de inicio, longitud, 32 bytes de datos y CRC-16. ¿Qué sobrecarga tiene sobre los bytes totales?"
+    libro: [258, 266]
+    fijar: { N_u: 32, c_b: 2 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 4, max: 64, unidad: "", rotulo: "bytes de datos" }
+      y: { min: 0, max: 50, unidad: "%", rotulo: "sobrecarga" }
+      curvas:
+        - { expr: "(c_b + 2)/(n + c_b + 2)*100", color: naranja, rotulo: "total" }
+        - { expr: "c_b/(n + c_b)*100", color: azul, rotulo: "solo el CRC", discontinua: true }
+    opciones:
+      - texto: "11,1 %: 4 de cada 36 bytes"
+        bien: true
+        porque: "CRC, inicio y longitud son 4 bytes de los 36 de la trama."
+      - texto: "5,9 %"
+        porque: "Eso es solo el CRC; faltan la marca de inicio y la longitud."
+      - texto: "12,5 %"
+        porque: "Así se cuenta sobre los datos; el problema la cuenta sobre los bytes totales."
+    escalera:
+      - "Sume los bytes que no son datos y divida entre el total."
+    solucion: "4 / 36 = 11,1 %."
+    comprobar:
+      - { s_t: 11.1, s_c: 5.88, tol: 0.01 }
+      - { con: { N_u: 28 }, s_t: 12.5, tol: 0.01 }
+
+  - id: porque-inicio
+    tipo: porque
+    titulo: "El fallo de los protocolos caseros"
+    texto: "Un protocolo sin marca de inicio funciona perfectamente hasta el primer error. ¿Por qué no se recupera después?"
+    libro: [262]
+    widget:
+      tipo: figura
+      figura: fig-19.7
+      zonas:
+        - { id: todo, rotulo: "La trama y sus mecanismos", rect: [4, 3, 443, 156] }
+    opciones:
+      - texto: "Un byte perdido desalinea esa trama y todas las siguientes"
+        bien: true
+        porque: "Sin una marca reconocible, nada vuelve a sincronizar el receptor."
+      - texto: "Porque el CRC deja de funcionar"
+        porque: "El CRC sigue funcionando: rechaza tramas, pero todas salen mal porque están desalineadas."
+      - texto: "Porque el emisor se bloquea"
+        porque: "El emisor sigue enviando; es el receptor el que lee desplazado."
+    escalera:
+      - "¿Qué usa el receptor para saber dónde empieza una trama?"
+    solucion: "Un byte perdido desalinea la trama y todas las siguientes salen mal."
+
+  - id: empareje-tareas
+    tipo: pregunta
+    titulo: "Repartir las tareas"
+    texto: "Acelerómetro a 1 kHz, PID a 200 Hz, gráfica, almacenamiento y red. Empareje cada tarea con el motivo de su destino."
+    libro: [269, 272]
+    widget:
+      tipo: figura
+      figura: fig-19.6
+      zonas:
+        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192] }
+    emparejar:
+      - ["Lectura a 1 kHz, en el microcontrolador", "El jitter de Linux sería el 20 %"]
+      - ["Lazo PID, en el microcontrolador", "Un plazo perdido desestabiliza el lazo"]
+      - ["Gráfica, en el ordenador", "Necesita pantalla y recursos"]
+      - ["Almacenamiento, en el ordenador", "Sistema de ficheros"]
+    exito: "Lo que tenga plazo va al microcontrolador; lo que necesite recursos, al ordenador de placa."
+    pistas:
+      - { texto: "200 µs frente a 1 ms es el 20 %." }
+    escalera:
+      - "Empiece por las dos tareas con plazo estricto."
+    solucion: "Lectura, jitter; PID, plazo; gráfica, recursos; almacenamiento, ficheros."
+    comprobar:
+      - { j_p: 20 }
+
+  - id: estime-decimar
+    tipo: pregunta
+    titulo: "Decimar antes de enviar"
+    texto: "El microcontrolador lee 1 000 muestras por segundo y la gráfica se refresca a 25 Hz. ¿De cuántas muestras es cada media que envía?"
+    libro: [269, 274]
+    widget:
+      tipo: figura
+      figura: fig-19.6
+      zonas:
+        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192] }
+    estimar:
+      objetivo: "n_d"
+      unidad: ""
+      min: 1
+      max: 100
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "Muestras por media"
+    exito: "40 muestras: el enlace baja a 25 tramas por segundo, sin perder nada que la gráfica pueda mostrar."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 42 }, texto: "Demasiadas: divida las muestras por segundo entre los refrescos por segundo." }
+      - { texto: "Pocas: 1 000 entre 25." }
+    escalera:
+      - "Muestras por segundo entre refrescos por segundo."
+    solucion: "1 000 / 25 = 40 muestras por media."
+    comprobar:
+      - { n_d: 40 }
+
+  - id: porque-previsible
+    tipo: porque
+    titulo: "No es cuestión de potencia"
+    texto: "El ordenador de placa es cien veces más rápido. ¿Por qué no lleva el lazo PID?"
+    libro: [273]
+    widget:
+      tipo: figura
+      figura: fig-19.6
+      zonas:
+        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192] }
+    opciones:
+      - texto: "Lo que decide es la previsibilidad, no la velocidad"
+        bien: true
+        porque: "Un lazo necesita cada plazo cumplido; el sistema operativo no lo garantiza."
+      - texto: "Porque el PID necesita poca potencia"
+        porque: "Eso es cierto, pero no es la razón: un ordenador rápido que llega tarde no sirve."
+      - texto: "Porque el ordenador no sabe calcular un PID"
+        porque: "Sabe de sobra; lo que no garantiza es hacerlo a tiempo."
+    escalera:
+      - "¿Qué le pasa a un lazo si un cálculo llega tarde?"
+    solucion: "No es potencia de cálculo, sino previsibilidad."
+
+  - id: explore-deriva
+    tipo: explorar
+    titulo: "Dos relojes que divergen"
+    texto: "Microcontrolador y ordenador marcan el tiempo con sus propios relojes. Compare dos cristales de ±20 ppm con un resonador cerámico."
+    libro: [280, 285, 286]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 3600, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 20, unidad: s, rotulo: "divergencia" }
+      curvas:
+        - { expr: "p_r*t", color: naranja, rotulo: "divergencia acumulada" }
+      marcas:
+        - { x: "t_h", y: "D_h", rotulo: "{{D_h}}" }
+      lectura: { valor: D_h, rotulo: "Divergencia en una hora" }
+      mandos:
+        - { valor: p_r, lista: [0.00004, 0.005], nombres: [dos cristales, resonador], rotulo: "Relojes" }
+    requiere: { mover: [p_r] }
+    comprobar:
+      - { con: { p_r: 0.005 }, D_h: 18 }
+
+  - id: prediga-hora
+    tipo: predecir
+    titulo: "Una hora con cristales"
+    texto: "Las dos bases de tiempo son cristales de ±20 ppm. ¿Cuánto pueden divergir sus marcas en una hora?"
+    libro: [280, 284]
+    fijar: { p_r: 0.00004, t_h: 3600 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 3600, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.2, unidad: s, rotulo: "divergencia" }
+      curvas:
+        - { expr: "p_r*t", color: naranja, rotulo: "divergencia acumulada" }
+      lectura: { valor: D_h, rotulo: "Divergencia en una hora" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "144 ms"
+        bien: true
+        porque: "Uno puede adelantar 20 ppm y el otro atrasar 20: 40 ppm de 3 600 s."
+      - texto: "72 ms"
+        porque: "Eso es un solo cristal; los dos se desvían, y en el peor caso en sentidos opuestos."
+      - texto: "2,40 ms"
+        porque: "Eso es en un minuto; en una hora, sesenta veces más."
+    escalera:
+      - "Sume las dos desviaciones y multiplique por los segundos de una hora."
+    solucion: "40 ppm · 3 600 s = 144 ms."
+    comprobar:
+      - { D_h: 0.144, D_1: 0.072, D_m: 0.0024 }
+
+  - id: donde-marcar
+    tipo: pregunta
+    titulo: "Dónde marcar el tiempo"
+    texto: "Los datos se usarán para calcular una FFT, que necesita un intervalo entre muestras regular. ¿Dónde se ponen las marcas?"
+    libro: [288, 291]
+    widget:
+      tipo: figura
+      figura: fig-19.6
+      zonas:
+        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192] }
+    opciones:
+      - texto: "En el microcontrolador"
+        bien: true
+        porque: "Su periodo es mucho más regular, aunque su hora absoluta se desvíe."
+      - texto: "En el ordenador de placa, al recibir"
+        porque: "Eso conviene si importa la hora absoluta; la latencia del enlace estropea el intervalo."
+      - texto: "Da igual"
+        porque: "No da igual: para el intervalo manda la regularidad del microcontrolador."
+    escalera:
+      - "¿Importa aquí la hora absoluta o el intervalo?"
+    solucion: "En el microcontrolador: importa el intervalo, no la hora absoluta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [259, 266, 274, 284]
+    ideas:
+      - { titulo: "18.A.", texto: "CRC-16, no CRC-8: con CRC-8 pasan unas 140 tramas erróneas por hora. Sobrecarga total, 11,1 %." }
+      - { titulo: "18.B.", texto: "Lo que tiene plazo, al microcontrolador; decimar antes de enviar." }
+      - { titulo: "18.C.", texto: "Dos cristales de 20 ppm: 144 ms por hora. Marcar donde importe: hora o intervalo." }

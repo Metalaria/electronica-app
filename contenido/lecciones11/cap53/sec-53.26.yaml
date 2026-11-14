@@ -1,0 +1,323 @@
+# Lección 1.2 de la sección 55.27 «Amplificadores de Audio: Procedimiento Específico» (cap53; etiqueta interna
+# sec-53.26). Formato: contenido/lecciones11/GUIA.md. La figura 55.48 (fig-53.37, 450,7 × 281,5) con una zona por paso;
+# la continua de la salida sobre el altavoz con `resistencia` (ejercicio 55.18: 0,8 V sobre 4 Ω); la corriente de
+# reposo por la caída en R_E (ejercicio 55.19: 9,9 mV en 0,33 Ω). Paso práctico: «averia» de la etapa de salida
+# (`etapa-clase-ab`, el modelo de la lección 52.9: ±35 V, 0,22 Ω, carga de 8 Ω, β = 100, V_BE = 0,6 V) con la corriente
+# de reposo del libro: 30 mA, 6,6 mV en 0,22 Ω (R₁ = 1 022 Ω y R₂ = 1 000 Ω). Averías: el ajustable de bias bajado
+# (R₁ = 700 Ω, distorsión de cruce), R₂ en corto (Q₃ cortado, reposo disparado) y R_E2 abierta (falta el semiciclo
+# negativo). Los valores de la etapa son de ejemplo (los de la lección 52.9 con el reposo de la tabla del bloque 826).
+leccion: cap53/sec-53.26
+
+libro:
+  820: "un fallo en la etapa de salida puede destruir el altavoz, así que el orden importa"
+  822: "debe ser inferior a 50 mV"
+  823: "Transistor de salida en corto: destruiría el altavoz"
+  824: "Si hay voltios en la salida, no se conecta nada"
+  825: "Se mide sin desoldar nada"
+  826: "6,6 mV"
+  827: "Se ajusta en caliente, tras un cuarto de hora, porque deriva con la temperatura"
+  828: "Una asimetría de más de un 5 % apunta a un electrolítico de filtro seco en un rail"
+  831: "Empezar por los 100 Hz, que es una avería; los 50 Hz suelen ser diseño"
+  832: "Si el zumbido desaparece, viene de fuera del amplificador o de su cableado de entrada"
+  834: "Distorsión de cruce (un escalón en el paso por cero, visible a baja amplitud) indica corriente de reposo insuficiente"
+  836: "se sustituyen por parejas apareadas, nunca uno solo"
+  838: "Una resistencia de 8 Ω y 10 W hace de carga para las pruebas."
+  839: "Procedimiento de comprobación de un amplificador de audio, en orden."
+  "cap53#962": "Un amplificador presenta 0,8 V de continua en la salida"
+
+modelo:
+  valores:
+    V_dc: { sim: "V_{off}", nombre: "continua en la salida", unidad: V, valor: 0.8 }
+    R_al: { sim: "R_{altavoz}", nombre: "altavoz", unidad: Ω, valor: 4 }
+    V_q: { sim: "V_{RE}", nombre: "caída medida en la resistencia de emisor", unidad: V, valor: 0.0099 }
+    R_q: { sim: "R_{E}", nombre: "resistencia de emisor del ejercicio", unidad: Ω, valor: 0.33 }
+    Vcc: { sim: "V_{CC}", nombre: "alimentación simétrica", unidad: V, valor: 35 }
+    Ib: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.005 }
+    R1: { sim: "R₁", nombre: "ajustable del multiplicador", unidad: Ω, valor: 1022 }
+    R2: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
+    Re: { sim: "R_{E1}", nombre: "resistencia de emisor de Q₁", unidad: Ω, valor: 0.22 }
+    Re2: { sim: "R_{E2}", nombre: "resistencia de emisor de Q₂", unidad: Ω, valor: 0.22 }
+    RL: { sim: "R_{L}", nombre: "carga de pruebas", unidad: Ω, valor: 8 }
+    b: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    Vbe: { sim: "V_{BE}", nombre: "caída base-emisor de los transistores de salida", unidad: V, valor: 0.6 }
+    Vbem: { sim: "V_{BE3}", nombre: "caída base-emisor del multiplicador", unidad: V, valor: 0.6 }
+    A: { sim: "A", nombre: "amplitud de la senoide pequeña", unidad: V, valor: 1 }
+    f: { sim: "f", nombre: "frecuencia de la senoide", unidad: Hz, valor: 1000 }
+  calculos:
+    I_al: { expr: "V_dc/R_al", sim: "I", nombre: "corriente continua por el altavoz", unidad: A }
+    P_al: { expr: "V_dc^2/R_al", sim: "P", nombre: "potencia continua en la bobina", unidad: W }
+    I_8: { expr: "V_dc/8", sim: "I", nombre: "corriente si fuera de 8 Ω", unidad: A }
+    I_qe: { expr: "V_q/R_q", sim: "I_{Q}", nombre: "corriente de reposo del ejercicio", unidad: A }
+    Rs: { expr: "R1 + R2", sim: "R₁ + R₂", nombre: "resistencia del divisor del multiplicador", unidad: Ω }
+    Vbb_on: { expr: "Vbem*(1 + R1/R2)", sim: "V_{BB}", nombre: "bias con el multiplicador conduciendo", unidad: V }
+    Vbb_off: { expr: "(2*Vbe + (Re + Re2)*(b + 1)*Ib)/(1 + (Re + Re2)*(b + 1)/Rs)", sim: "V_{BB}", nombre: "bias con el multiplicador cortado", unidad: V }
+    Vbb: { expr: "min(Vbb_on, Vbb_off)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie0: { expr: "max(0, (Vbb - 2*Vbe)/(Re + Re2))", sim: "I_{E}", nombre: "corriente de reposo de emisor, sin filtrar", unidad: A }
+    Ie: { expr: "Ie0*ceil(max(0, Ie0 - 0.000001)/1e9)", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq: { expr: "b/(b + 1)*Ie", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir: { expr: "max(Iq, 0.0001)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin: { expr: "-Vbb/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    Vre: { expr: "Ie*Re", sim: "V_{RE1}", nombre: "caída en la resistencia de emisor de Q₁", unidad: V }
+    Vo: { expr: "0*Vbb", sim: "V_{o}", nombre: "continua en la salida", unidad: V }
+    sab: { expr: "ceil(max(0, Vbb - 2*Vbe)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
+
+tarjetas:
+  - id: explore-orden
+    tipo: explorar
+    titulo: "El orden salva el altavoz"
+    texto: "Un fallo en la etapa de salida puede destruir el altavoz: el orden importa. Toque los pasos."
+    libro: [820, 839]
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p1, rotulo: "Primer paso", rect: [3, 24, 444, 38], texto: "Continua en la salida, sin altavoz: menos de 50 mV. Si hay voltios, a la etapa de salida." }
+        - { id: p2, rotulo: "Segundo paso", rect: [3, 62, 444, 38], texto: "Corriente de reposo, por la caída en la resistencia de emisor; ajustada en caliente." }
+        - { id: p3, rotulo: "Tercer paso", rect: [3, 100, 444, 38], texto: "Simetría de las alimentaciones: más de un 5 % apunta a un electrolítico seco." }
+        - { id: p4, rotulo: "Cuarto paso", rect: [3, 138, 444, 38], texto: "Zumbido con la entrada en corto, y su frecuencia con la FFT." }
+        - { id: p5, rotulo: "Quinto paso", rect: [3, 176, 444, 38], texto: "Seguir la señal: la prueba del dedo y la inyección etapa a etapa." }
+        - { id: p6, rotulo: "Sexto paso", rect: [3, 214, 444, 38], texto: "Forma de onda a plena potencia, con la carga de pruebas." }
+    requiere: { mover: [p1, p2, p6] }
+
+  - id: simule-offset
+    tipo: simular
+    titulo: "0,8 V de continua en la salida"
+    texto: "Un amplificador tiene 0,8 V de continua en la salida. ¿Qué corriente continua pasaría por un altavoz de 4 Ω?"
+    libro: ["cap53#962", 823]
+    fijar: { V_dc: 0.8, R_al: 4 }
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_dc, r: R_al }
+      lectura: { valor: I_al, rotulo: "Corriente por el altavoz" }
+      mide: { corriente: I_al, tension: V_dc }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_al
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente continua, I"
+      medida: corriente
+      errores:
+        - { expr: "I_8", texto: "Esos 100 mA serían con un altavoz de 8 Ω; este es de 4 Ω: el doble de corriente." }
+    exito: "200 mA y 160 mW continuos en la bobina: no se conecta el altavoz."
+    escalera:
+      - "La bobina del altavoz es, en continua, una resistencia."
+    solucion: "0,8 V / 4 Ω = 200 mA; 0,8 V · 0,2 A = 160 mW."
+    comprobar:
+      - { I_al: 0.2, P_al: 0.16, I_8: 0.1 }
+
+  - id: voltios-salida
+    tipo: pregunta
+    titulo: "Varios voltios en la salida"
+    texto: "Sin altavoz, el Brymen mide varios voltios de continua en la salida. ¿Qué se hace?"
+    libro: [823, 824]
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p1, rotulo: "Primer paso", rect: [3, 24, 444, 38] }
+        - { id: p2, rotulo: "Segundo paso", rect: [3, 62, 444, 38] }
+    opciones:
+      - texto: "No conectar nada e ir directamente a la etapa de salida"
+        bien: true
+        porque: "Varios voltios son un transistor de salida en corto: amperios por el altavoz."
+      - texto: "Conectar el altavoz con poco volumen"
+        porque: "La continua no depende del volumen: destruiría el altavoz igual."
+      - texto: "Ajustar la corriente de reposo"
+        porque: "Eso es el paso siguiente, con la salida ya por debajo de 50 mV."
+    escalera:
+      - "¿Qué corriente pasaría por 8 Ω con varios voltios?"
+    solucion: "No conectar nada: a la etapa de salida."
+
+  - id: estime-reposo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La corriente de reposo, sin desoldar"
+    texto: "Sobre una resistencia de emisor de 0,33 Ω mide 9,9 mV. ¿Cuál es la corriente de reposo de esa rama?"
+    libro: ["cap53#962", 825, 826]
+    fijar: { V_q: 0.0099, R_q: 0.33 }
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p2, rotulo: "Segundo paso", rect: [3, 62, 444, 38] }
+    estimar:
+      objetivo: "I_qe"
+      unidad: A
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.08
+      tol: 0.05
+      rotulo: "I = V / R_{E}"
+    exito: "30 mA: dentro de los 20–50 mA típicos de una pareja en clase AB."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0315 }, texto: "Se ha pasado: 9,9 mV entre 0,33 Ω son unas decenas de miliamperios." }
+      - { texto: "Se ha quedado corto: dividir entre 0,33 multiplica por tres." }
+    escalera:
+      - "I = V / R, con la caída en voltios."
+    solucion: "0,0099 V / 0,33 Ω = 30 mA."
+    comprobar:
+      - { I_qe: 0.03 }
+
+  - id: averia-etapa
+    tipo: averia
+    titulo: "La etapa de salida, en el banco"
+    texto: "Carga de pruebas de 8 Ω, sin altavoz. Mida en reposo y con una senoide pequeña, y diga qué pieza falla."
+    nota: "Sana: 6,6 mV en R_{E1} y la senoide entera."
+    libro: [825, 826, 834, 838]
+    widget:
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, amplitud: A, f: f, ib: Ib, r1: R1, r2: R2, re: Re, re2: Re2, carga: RL, beta: b, vbe: Vbe, vbem: Vbem, iref: Ir }
+      mide: { vbb: Vbb }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "R₁, el ajustable de bias" }
+        - { id: r2, rotulo: "R₂" }
+        - { id: re2, rotulo: "R_{E2}, la de Q₂" }
+      sondas:
+        - { id: continua, rotulo: "Continua en la salida", valor: Vo }
+        - { id: caida, rotulo: "Caída en R_{E1}, en reposo", valor: Vre }
+        - { id: bases, rotulo: "Tensión entre las bases", valor: Vbb }
+        - id: salida
+          rotulo: "Salida, con la senoide"
+          valor: Vo
+          curva:
+            expr: "sab*min((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + Re/RL), max((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + Re2/RL), ((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/Re + (A*sin(2*pi*f*t) - Vbb/2 + Vbe)/Re2)/(1/Re + 1/Re2 + 1/RL))) + (1 - sab)*(max((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + Re/RL), 0) + min((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + Re2/RL), 0))"
+            x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+            y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v_{o}" }
+      fallos:
+        - { id: r1-baja, pieza: r1, tipo: bajo, con: { R1: 700 }, texto: "El ajustable de bias, bajado: falta tensión entre las bases, no hay corriente de reposo y aparece el escalón de cruce." }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R2: 0.001 }, texto: "R₂ en corto: Q₃ se corta, la fuente de bias empuja las bases y la corriente de reposo se dispara." }
+        - { id: re2-abierta, pieza: re2, tipo: abierta, con: { Re2: 1e9 }, texto: "R_{E2} abierta: el bias es normal, pero Q₂ no conduce: falta el semiciclo negativo." }
+    escalera:
+      - "La continua en la salida es lo primero, pero aquí está bien en todos los casos."
+      - "Sana: 6,6 mV en R_{E1}, unos 1,21 V entre las bases y la senoide entera."
+    solucion: "Escalón de cruce y bases bajas: el ajustable. Caída disparada: R₂. Falta medio ciclo con bases normales: R_{E2}."
+    comprobar:
+      - { Vre: 0.0066, Vbb: 1.2132, Iq: 0.0297, tol: 0.003 }
+      - { con: { R1: 700 }, Vbb: 1.02, Vre: 0, tol: 0.003 }
+
+  - id: en-caliente
+    tipo: pregunta
+    titulo: "Cuándo se ajusta el reposo"
+    texto: "Va a retocar el ajustable de la corriente de reposo. ¿Cuándo?"
+    libro: [827]
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p2, rotulo: "Segundo paso", rect: [3, 62, 444, 38] }
+        - { id: p6, rotulo: "Sexto paso", rect: [3, 214, 444, 38] }
+    opciones:
+      - texto: "En caliente, tras un cuarto de hora funcionando"
+        bien: true
+        porque: "La corriente de reposo deriva con la temperatura: ajustada en frío, en caliente sería otra."
+      - texto: "Nada más encender, antes de que se caliente"
+        porque: "En frío el valor no es el de trabajo: deriva al calentarse."
+      - texto: "Con el altavoz conectado y música"
+        porque: "Se ajusta sin señal y con la carga de pruebas; con música la caída no es la de reposo."
+    escalera:
+      - "¿Qué le pasa a V_{BE} al calentarse el transistor?"
+    solucion: "En caliente, tras un cuarto de hora."
+
+  - id: empareje-zumbido
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El zumbido, por su frecuencia"
+    texto: "Una cada frecuencia del zumbido con su origen."
+    libro: [831]
+    emparejar:
+      - ["50 Hz", "Inducción del transformador o bucle de masa"]
+      - ["100 Hz", "Rizado de la fuente: electrolíticos secos"]
+      - ["Ambas mezcladas", "Los dos problemas: empezar por los 100 Hz"]
+    exito: "Los 100 Hz son una avería; los 50 Hz suelen ser diseño."
+    pistas:
+      - { texto: "El rectificador de onda completa duplica la frecuencia de la red." }
+    escalera:
+      - "La red es de 50 Hz; su rectificado, del doble."
+    solucion: "50 Hz: transformador o masa; 100 Hz: rizado; ambas: primero los 100 Hz."
+
+  - id: entrada-corto
+    tipo: pregunta
+    titulo: "La entrada en corto"
+    texto: "Une los dos contactos del conector de entrada y el zumbido desaparece. ¿Dónde está?"
+    libro: [832]
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p4, rotulo: "Cuarto paso", rect: [3, 138, 444, 38] }
+        - { id: p3, rotulo: "Tercer paso", rect: [3, 100, 444, 38] }
+    opciones:
+      - texto: "Fuera del amplificador, o en su cableado de entrada"
+        bien: true
+        porque: "Con la entrada en corto, el amplificador queda solo: si calla, el zumbido entraba por ahí."
+      - texto: "Dentro, en la fuente"
+        porque: "Si fuera la fuente seguiría sonando con la entrada en corto."
+      - texto: "En la etapa de salida"
+        porque: "Un zumbido de la etapa de salida no depende de la entrada."
+    escalera:
+      - "¿Qué queda conectado al amplificador con la entrada en corto?"
+    solucion: "Viene de fuera o del cableado de entrada."
+
+  - id: asimetria
+    tipo: pregunta
+    titulo: "Dos raíles que no son iguales"
+    texto: "Mide +V y −V y no son iguales en valor absoluto: se separan más de un 5 %. ¿Qué se sospecha?"
+    libro: [828]
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p3, rotulo: "Tercer paso", rect: [3, 100, 444, 38] }
+        - { id: p4, rotulo: "Cuarto paso", rect: [3, 138, 444, 38] }
+    opciones:
+      - texto: "Un electrolítico de filtro seco en el raíl bajo"
+        bien: true
+        porque: "Además explica el zumbido: ese raíl tiene más rizado."
+      - texto: "Un transistor de salida en corto"
+        porque: "Eso daría voltios de continua en la salida, el primer paso."
+      - texto: "La corriente de reposo desajustada"
+        porque: "El reposo no cambia las alimentaciones; se ve en la caída de las resistencias de emisor."
+    escalera:
+      - "¿Qué componente de cada raíl envejece y deja pasar rizado?"
+    solucion: "Un electrolítico de filtro seco en ese raíl."
+
+  - id: por-que-parejas
+    tipo: porque
+    titulo: "Nunca uno solo"
+    texto: "Un transistor de salida en corto. ¿Por qué se cambia la pareja entera, apareada?"
+    libro: [836]
+    widget:
+      tipo: figura
+      figura: fig-53.37
+      zonas:
+        - { id: p1, rotulo: "Primer paso", rect: [3, 24, 444, 38] }
+        - { id: p2, rotulo: "Segundo paso", rect: [3, 62, 444, 38] }
+    opciones:
+      - texto: "Una pareja desapareada desplaza el punto de reposo"
+        bien: true
+        porque: "Y rara vez muere uno solo: el corto arrastra a su pareja, a los excitadores y a las resistencias de emisor."
+      - texto: "Porque el repuesto se vende por parejas"
+        porque: "Es una razón eléctrica: el reposo depende de que los dos sean iguales."
+      - texto: "Porque el otro siempre está en corto"
+        porque: "No siempre; pero aunque esté sano, una pareja desapareada desplaza el reposo."
+    escalera:
+      - "¿Qué fija el punto de reposo de una etapa complementaria?"
+    solucion: "Una pareja desapareada desplaza el punto de reposo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [822, 826, 831, 836]
+    ideas:
+      - { titulo: "Primero la continua.", texto: "Menos de 50 mV en la salida antes de conectar ningún altavoz." }
+      - { titulo: "El reposo.", texto: "Por la caída en la resistencia de emisor, ajustado en caliente." }
+      - { titulo: "El zumbido.", texto: "Entrada en corto; 100 Hz es avería, 50 Hz suele ser diseño." }
+      - { titulo: "Los transistores.", texto: "Por parejas apareadas, y con la lámpara en serie al volver a encender." }

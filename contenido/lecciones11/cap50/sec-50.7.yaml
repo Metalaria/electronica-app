@@ -1,0 +1,285 @@
+# Lección 1.2 de la sección 51.7 «La Disipación: el Talón de Aquiles del Lineal» (cap50; sec-50.N = impresas 51.N).
+# - El ejemplo del bloque 219 (26 V de entrada, 5 V y 2 A: 42 W, un 19 % de rendimiento) en el esquema
+#   «regulador-lineal» vivo: la referencia hace de consigna y la carga es la que pide la corriente elegida
+#   (R_L = V_out/I). Las salidas de 15 y 25 V y la corriente de 1 A del mando son de ejemplo.
+# - El cortocircuito con la tensión alta del bloque 233 (26 V y 3 A: 78 W) en una gráfica de P = (26 − V_out)·I.
+# Paso práctico: «simular» la potencia del paso con ngspice (42 W; errores: los 10 W entregados o 52 W de entrada).
+leccion: cap50/sec-50.7
+
+libro:
+  217: 'P = lr(( V_("entrada") - V_("salida") )) times I'
+  218: "el caso peor no es a plena tensión"
+  219: "Con 26 V de entrada, salida ajustada a 5 V y 2 A:"
+  220: '"42 W"'
+  221: "El rendimiento es del 19 %"
+  223: "La disipación es máxima con la salida más baja y la corriente más alta"
+  225: "dimensionar el disipador para el caso de 30 V de salida"
+  227: "Disipador grande y ventilación"
+  228: "se conmuta el secundario según la tensión de salida ajustada"
+  229: "manteniendo unos pocos voltios de caída sobre el lineal"
+  230: "los 42 W del ejemplo se convierten en 6 W"
+  232: "un transistor bipolar en zona lineal tiene un SOA restringido por la segunda ruptura"
+  233: "Con 26 V y 3 A son 78 W en un solo componente"
+  234: "reducen también la corriente límite, con lo que la disipación baja drásticamente"
+  239: "un disipador que funciona al aire libre puede no bastar dentro"
+  242: "Si el elemento de paso se calienta hasta el límite, hace falta foldback."
+  243: "La disipación en el transistor de paso es máxima con la salida baja."
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "entrada", unidad: V, valor: 26 }
+    V_s: { sim: "V_{out}", nombre: "salida ajustada", unidad: V, valor: 25 }
+    I_s: { sim: "I", nombre: "corriente de la carga", unidad: A, valor: 2 }
+    V_hr: { sim: "ΔV", nombre: "caída con prerregulador", unidad: V, valor: 3 }
+  calculos:
+    R_L: { expr: "V_s/I_s", sim: "R_{L}", nombre: "carga", unidad: Ω }
+    I_o: { expr: "V_s/R_L", sim: "I", nombre: "corriente de salida", unidad: A }
+    P_q: { expr: "(V_in - V_s)*I_o", sim: "P", nombre: "potencia en el paso", unidad: W }
+    P_o: { expr: "V_s*I_o", sim: "P_{out}", nombre: "potencia entregada", unidad: W }
+    P_i: { expr: "V_in*I_o", sim: "P_{in}", nombre: "potencia de entrada", unidad: W }
+    eta: { expr: "V_s/V_in*100", sim: "η", nombre: "rendimiento", unidad: "%", cifras: 2 }
+    P_pre: { expr: "V_hr*I_s", sim: "P", nombre: "potencia con prerregulador", unidad: W }
+    P_cc: { expr: "V_in*I_s", sim: "P", nombre: "potencia en cortocircuito", unidad: W }
+    V_q: { expr: "V_in - V_s", sim: "V_{paso}", nombre: "tensión que sobra", unidad: V }
+
+tarjetas:
+  - id: explore-salida
+    tipo: explorar
+    titulo: "La entrada es fija"
+    texto: "26 V de entrada y la salida ajustable. Baje la salida y suba la corriente: mire el calor del paso."
+    libro: [218, 223]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el paso" }
+      datos:
+        - { valor: eta, rotulo: "Rendimiento: {{eta}}" }
+      corriente: I_o
+      mide: { vout: V_s, iin: I_o, p_paso: P_q }
+      mandos:
+        - { valor: V_s, lista: [5, 15, 25], rotulo: "Salida ajustada" }
+        - { valor: I_s, lista: [1, 2, 3], rotulo: "Corriente de la carga" }
+    requiere: { mover: [V_s, I_s] }
+
+  - id: formula-p
+    tipo: formula
+    titulo: "Lo que sobra por la corriente"
+    texto: "El lineal disipa la diferencia entre entrada y salida por la corriente."
+    libro: [217, 219, 220]
+    fijar: { V_s: 5, I_s: 2 }
+    ec: 217
+    sustitucion: "({{V_in}} − {{V_s}}) × {{I_o}} = {{P_q}}"
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el paso" }
+      corriente: I_o
+      mide: { vout: V_s, p_paso: P_q }
+      mandos: []
+    comprobar:
+      - { P_q: 42 }
+
+  - id: simule-42
+    tipo: simular
+    titulo: "Para entregar diez vatios"
+    texto: "Entrada de 26 V, salida ajustada a 5 V con 2 A. ¿Cuánto disipa el elemento de paso?"
+    libro: [219, 221]
+    fijar: { V_s: 5, I_s: 2 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el paso" }
+      corriente: I_o
+      mide: { vout: V_s, iin: I_o, p_paso: P_q }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: P_q
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en el elemento de paso"
+      medida: p_paso
+      errores:
+        - { expr: "P_o", texto: "Esos 10 W son los que llegan a la carga. El paso se queda la tensión que sobra por la corriente." }
+        - { expr: "P_i", texto: "Esos 52 W son los que entran. Al paso le toca la diferencia: 21 V por 2 A." }
+    exito: "Cuarenta y dos vatios de calor para entregar diez: un rendimiento del 19 %."
+    escalera:
+      - "Tensión que sobra: 26 − 5. Por la corriente."
+    solucion: "(26 − 5) V × 2 A = 42 W."
+    comprobar:
+      - { P_q: 42, P_o: 10, P_i: 52, eta: 19.2, V_q: 21 }
+
+  - id: disipador-para
+    tipo: predecir
+    titulo: "El error clásico"
+    texto: "Una fuente lineal de 30 V y 3 A. ¿Para qué caso se calcula el disipador?"
+    libro: [223, 225, 243]
+    widget:
+      tipo: figura
+      figura: fig-50.10
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 334, 185] }
+    opciones:
+      - texto: "Salida baja con la corriente máxima"
+        bien: true
+        porque: "Ahí la tensión que sobra es mayor: es también como la mayoría usa la fuente, a 3,3 o 5 V."
+      - texto: "30 V de salida y 3 A, la máxima potencia"
+        porque: "Es el caso más cómodo de imaginar y el que menos calienta: el error clásico."
+      - texto: "La mitad de la tensión"
+        porque: "Con la corriente fijada al máximo, el peor caso es la salida más baja."
+    escalera:
+      - "Con la corriente al máximo, ¿cuándo sobra más tensión?"
+    solucion: "Con la salida baja y la corriente máxima."
+
+  - id: empareje-soluciones
+    tipo: pregunta
+    titulo: "Las tres soluciones"
+    texto: "Empareje cada solución al calor del lineal con su rasgo."
+    libro: [227, 228, 229]
+    widget:
+      tipo: figura
+      figura: fig-50.11
+      zonas:
+        - { id: soluciones, rotulo: "La parte de la derecha", rect: [230, 0, 210, 209] }
+    emparejar:
+      - ["Disipador grande y ventilación", "La directa; el aparato abulta"]
+      - ["Transformador con tomas", "Se conmuta el secundario según la salida"]
+      - ["Prerregulador conmutado", "Deja unos pocos voltios sobre el lineal"]
+    exito: "Las fuentes lineales de calidad llevan dos o tres tomas conmutadas por relé; la solución moderna es el prerregulador."
+    pistas:
+      - { texto: "La moderna combina el rendimiento del conmutado con el ruido bajo del lineal." }
+    escalera:
+      - "Una evacúa el calor; las otras dos reducen la tensión que sobra."
+    solucion: "Disipador, voluminoso; tomas, conmuta el secundario; prerregulador, pocos voltios."
+
+  - id: estime-pre
+    tipo: pregunta
+    titulo: "Con prerregulador"
+    texto: "El mismo ejemplo de 5 V y 2 A, con un prerregulador que deja 3 V sobre el lineal. ¿Cuánto disipa?"
+    libro: [230]
+    fijar: { I_s: 2 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 26, unidad: V, rotulo: "V_{out}" }
+      y: { min: 0, max: 60, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "(V_in - vx)*I_s", color: tinta, rotulo: "lineal solo", discontinua: true }
+        - { expr: "V_hr*I_s", color: naranja, rotulo: "con prerregulador" }
+    estimar:
+      objetivo: "P_pre"
+      unidad: W
+      min: 0
+      max: 50
+      paso: 0.5
+      inicio: 40
+      tol: 0.05
+      rotulo: "Calor con prerregulador"
+    exito: "6 W en lugar de 42: la caída sobre el lineal ya no depende de la salida."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 6.3 }, texto: "Se ha pasado: ahora sobran solo 3 V sobre el lineal." }
+      - { texto: "Se ha quedado corto: 3 V por 2 A." }
+    escalera:
+      - "La caída sobre el lineal es la que deja el prerregulador."
+    solucion: "3 V × 2 A = 6 W."
+    comprobar:
+      - { P_pre: 6 }
+
+  - id: sorpresa-corto
+    tipo: sorpresa
+    titulo: "El cortocircuito"
+    texto: "La salida está ajustada alta y alguien la cortocircuita: toda la entrada cae sobre el paso. Suba la corriente límite y mire."
+    libro: [233]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 26, unidad: V, rotulo: "V_{out}" }
+      y: { min: 0, max: 90, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "(V_in - vx)*I_s", color: naranja, rotulo: "calor en el paso" }
+      marcas:
+        - { x: "0", y: "P_cc", rotulo: "{{P_cc}}" }
+      lectura: { valor: P_cc, rotulo: "En cortocircuito" }
+      mandos:
+        - { valor: I_s, lista: [1, 2, 3], rotulo: "Corriente límite" }
+    requiere: { mover: [I_s] }
+    nota: "Con 3 A son 78 W en un solo componente."
+    comprobar:
+      - { con: { I_s: 3 }, P_cc: 78 }
+
+  - id: por-que-soa
+    tipo: porque
+    titulo: "Más allá de la potencia"
+    texto: "La potencia media del cortocircuito parece aceptable para el transistor. ¿Por qué puede destruirlo igual?"
+    libro: [232, 233, 234]
+    widget:
+      tipo: figura
+      figura: fig-50.11
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 209] }
+    opciones:
+      - texto: "Queda fuera de su SOA: la segunda ruptura limita al bipolar con mucha tensión"
+        bien: true
+        porque: "Por eso las fuentes serias llevan foldback: en cortocircuito bajan también la corriente límite."
+      - texto: "Por la corriente, que es excesiva"
+        porque: "La corriente es la límite; el problema es la tensión alta a la vez."
+      - texto: "Porque la potencia media no cuenta en continua"
+        porque: "Cuenta, pero no basta: el SOA limita la combinación de tensión y corriente."
+    escalera:
+      - "¿Qué área de la hoja de datos combina tensión y corriente?"
+    solucion: "El área de operación segura: con tensión alta, la segunda ruptura la recorta."
+
+  - id: dentro-caja
+    tipo: pregunta
+    titulo: "Dentro de la caja"
+    texto: "El disipador calculado funciona al aire libre. ¿Qué cuidado falta al montarlo dentro de la caja?"
+    libro: [239]
+    widget:
+      tipo: figura
+      figura: fig-50.11
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 209] }
+    opciones:
+      - texto: "Contar con que dentro hace más calor que fuera"
+        bien: true
+        porque: "La temperatura interior es mayor que la ambiente: puede no bastar dentro."
+      - texto: "Nada: el disipador es el mismo"
+        porque: "El disipador sí, pero el aire que lo enfría está más caliente."
+      - texto: "Quitar el aislante para que disipe mejor"
+        porque: "El aislante hay que incluirlo si la lengüeta está a un potencial que no debe tocarse."
+    escalera:
+      - "¿A qué temperatura está el aire que enfría el disipador?"
+    solucion: "La temperatura interior de la caja, mayor que la ambiente."
+
+  - id: banco-corto
+    tipo: pregunta
+    titulo: "La prueba que muchas no superan"
+    texto: "Con la salida al máximo y la limitación activa, se cortocircuita la salida y el paso llega a su límite. ¿Qué hace falta?"
+    libro: [242]
+    widget:
+      tipo: figura
+      figura: fig-50.11
+      zonas:
+        - { id: soluciones, rotulo: "La parte de la derecha", rect: [230, 0, 210, 209] }
+    opciones:
+      - texto: "Limitación replegada (foldback)"
+        bien: true
+        porque: "Al detectar el corto baja también la corriente, y con ella la disipación."
+      - texto: "Un fusible más grande"
+        porque: "No es cuestión de fusible: el paso disipa sin que nada se funda."
+      - texto: "Más tensión de entrada"
+        porque: "Al revés: más entrada es más calor en el corto."
+    escalera:
+      - "¿Cómo se baja el calor si la tensión que sobra no se puede bajar?"
+    solucion: "Foldback: reducir la corriente límite en cortocircuito."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [217, 223, 230, 233]
+    ideas:
+      - { titulo: "P = (V_{in} − V_{out})·I.", texto: "De 26 V a 5 V con 2 A: 42 W de calor para entregar diez." }
+      - { titulo: "El peor caso.", texto: "Salida baja y corriente máxima, no los 30 V." }
+      - { titulo: "Soluciones.", texto: "Disipador y ventilación, tomas conmutadas o prerregulador." }
+      - { titulo: "SOA.", texto: "El corto con la tensión alta destruye; el foldback lo evita." }

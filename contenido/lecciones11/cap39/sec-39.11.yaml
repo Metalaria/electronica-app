@@ -1,0 +1,345 @@
+# Lección 1.2 de la sección 40.11 «Problemas de Diseño» (cap39; etiquetas sec-39.N = impresas 40.N).
+# - Problema 40.A: celdas de 3,6 V y 3,4 Ah (12,24 Wh); 240 Wh en el equipo; convertidor del 92 % y capacidad real del
+#   92 %: la batería debe guardar unos 284 Wh nominales. Reto: elegir S y P con energía útil ≥ 240 Wh, tensión del pack
+#   descargado ≥ 12 V (3,0 V por celda: «con 4S va de 16,8 a 12 V») y 24 celdas como mucho: 4S6P.
+# - Problema 40.B: el paquete de 20,4 Ah; 0,5 C da 2,60 h y 1 C 1,80 h; corte en 0,05 C = 1,0 A.
+# - Problema 40.C: masas para 240 Wh y la química de cada aplicación.
+# Pasos prácticos: «simular» la corriente que sale de la batería en 4S (4,5 A; errores: sin el rendimiento, 4,17 A, o
+# la del equipo, 5 A); «dibujar» la corriente de carga a 1 C. Modelo de la fase CV (de ejemplo): una exponencial que
+# baja de 20,4 A a 1,0 A en una hora, τ = 1 h / ln 20,4; la forma la da el bloque 143 («decae exponencialmente»), los
+# tiempos la tabla del bloque 369.
+leccion: cap39/sec-39.11
+
+libro:
+  349: "Problema 40.A"
+  364: "Problema 40.B"
+  378: "Problema 40.C"
+  351: "Un equipo portátil consume 5 A a 12 V y debe funcionar 4 horas"
+  354: "12 V × 5 A × 4 h = 240 Wh"
+  355: "La batería debe almacenar, por tanto, unos 240 / (0,92 × 0,92) ≈ 284 Wh nominales, es decir, 24 celdas."
+  356: "unos 6,0 A con 3S y 4,5 A con 4S"
+  357: "245 Wh (no basta)"
+  358: "se quedan en unas 3,4 a 3,6 horas reales"
+  359: "Con 4S va de 16,8 a 12 V, y basta un reductor de baja caída"
+  363: "4S6P con 24 celdas, 20,4 Ah, 294 Wh nominales"
+  366: "la de tensión constante dura cerca de una hora sea cual sea la corriente"
+  369: "1,80 h"
+  370: "sino que lo reduce solo un 31 %"
+  373: "aquí 1,0 A"
+  383: "Masa para 240 Wh"
+  384: "0,96 kg frente a 6,86 kg"
+  385: "Respaldo que espera años → NiMH de baja autodescarga"
+  386: "Con NMC (400 ciclos) duraría poco más de un año; con LiFePO4 (3000 ciclos), más de ocho."
+  "cap39#143": "la corriente empieza a decaer exponencialmente por sí sola"
+
+modelo:
+  valores:
+    S: { sim: "S", nombre: "celdas en serie", unidad: "", valor: 4 }
+    P: { sim: "P", nombre: "celdas en paralelo", unidad: "", valor: 6 }
+    E_cel: { sim: "E_{celda}", nombre: "energía de una celda", unidad: Wh, valor: 12.24 }
+    V_cel: { sim: "V", nombre: "tensión nominal de la celda", unidad: V, valor: 3.6 }
+    V_cor: { sim: "V_{corte}", nombre: "tensión de la celda descargada", unidad: V, valor: 3 }
+    eta: { sim: "η", nombre: "rendimiento del convertidor", unidad: "", valor: 0.92 }
+    k_cap: { sim: "k", nombre: "capacidad real sobre la nominal", unidad: "", valor: 0.92 }
+    P_eq: { sim: "P", nombre: "potencia del equipo", unidad: W, valor: 60 }
+    V_eq: { sim: "V", nombre: "tensión del equipo", unidad: V, valor: 12 }
+    t_eq: { sim: "t", nombre: "autonomía pedida", unidad: h, valor: 4 }
+    Q_p: { sim: "C", nombre: "capacidad del paquete", unidad: Ah, valor: 20.4 }
+    r_c: { sim: "tasa", nombre: "tasa de carga en C", unidad: "", valor: 1 }
+    E_es: { sim: "e", nombre: "energía específica", unidad: "Wh/kg", valor: 35 }
+  calculos:
+    E_nec: { expr: "P_eq*t_eq", sim: "E", nombre: "energía necesaria", unidad: Wh }
+    N: { expr: "S*P", sim: "N", nombre: "celdas", unidad: "", cifras: 2 }
+    E_nom: { expr: "N*E_cel", sim: "E_{nom}", nombre: "energía nominal del paquete", unidad: Wh }
+    E_ut: { expr: "E_nom*eta*k_cap", sim: "E_{útil}", nombre: "energía que llega al equipo", unidad: Wh }
+    V_min: { expr: "S*V_cor", sim: "V_{mín}", nombre: "paquete descargado", unidad: V }
+    E_req: { expr: "E_nec/(eta*k_cap)", sim: "E", nombre: "energía nominal necesaria", unidad: Wh }
+    t_real: { expr: "E_ut/P_eq", sim: "t", nombre: "autonomía real", unidad: h, cifras: 2 }
+    I_bat: { expr: "P_eq/(S*V_cel*eta)", sim: "I", nombre: "corriente de la batería", unidad: A }
+    I_sin: { expr: "P_eq/(S*V_cel)", sim: "I", nombre: "sin el rendimiento", unidad: A }
+    I_eq: { expr: "P_eq/V_eq", sim: "I", nombre: "corriente del equipo", unidad: A }
+    I_cc: { expr: "r_c*Q_p", sim: "I_{CC}", nombre: "corriente de carga", unidad: A }
+    I_cut: { expr: "0.05*Q_p", sim: "I_{corte}", nombre: "corriente de corte", unidad: A }
+    t_cc: { expr: "0.8/r_c", sim: "t_{CC}", nombre: "fase de corriente constante", unidad: h, cifras: 2 }
+    t_tot: { expr: "t_cc + 1", sim: "t", nombre: "tiempo total de carga", unidad: h, cifras: 3 }
+    tau_cv: { expr: "1/ln(I_cc/I_cut)", sim: "τ", nombre: "constante de la fase CV", unidad: h, cifras: 3 }
+    m_kg: { expr: "E_nec/E_es", sim: "m", nombre: "masa para 240 Wh", unidad: kg }
+
+tarjetas:
+  - id: formula-energia
+    tipo: formula
+    titulo: "40.A: la energía"
+    texto: "Un portátil consume 5 A a 12 V durante 4 horas. Es la energía que debe llegar al equipo."
+    libro: [349, 351, 354]
+    ec: 354
+    sustitucion: "{{V_eq}} × {{I_eq}} × {{t_eq}} = {{E_nec}}"
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 5, unidad: h, rotulo: "t" }
+      y: { min: 0, max: 300, unidad: Wh, rotulo: "E" }
+      curvas:
+        - { expr: "P_eq*tx", color: naranja, rotulo: "energía consumida" }
+      marcas:
+        - { x: "t_eq", y: "E_nec", rotulo: "{{E_nec}}" }
+      lectura: { valor: E_nec, rotulo: "Energía necesaria" }
+    comprobar:
+      - { E_nec: 240, I_eq: 5 }
+
+  - id: explore-paquete
+    tipo: explorar
+    titulo: "Celdas en serie y en paralelo"
+    texto: "Cada celda aporta 12,24 Wh. Combine serie y paralelo y mire la energía que de verdad llega al equipo."
+    libro: [355, 357]
+    widget:
+      tipo: grafica
+      x: { id: px, min: 4, max: 9, unidad: "", rotulo: "en paralelo" }
+      y: { min: 0, max: 400, unidad: Wh, rotulo: "E" }
+      curvas:
+        - { expr: "S*px*E_cel", color: azul, rotulo: "nominal" }
+        - { expr: "S*px*E_cel*eta*k_cap", color: naranja, rotulo: "útil" }
+        - { expr: "E_nec", color: tinta, rotulo: "240 Wh", discontinua: true }
+      marcas:
+        - { x: "P", y: "E_ut", rotulo: "{{E_ut}}" }
+      lectura: { valor: E_ut, rotulo: "Energía útil" }
+      datos:
+        - { valor: E_nom, rotulo: "Nominal: {{E_nom}}" }
+      mandos:
+        - { valor: S, lista: [3, 4], nombres: ["3S", "4S"], rotulo: "En serie" }
+        - { valor: P, lista: [5, 6, 7, 8], nombres: ["5P", "6P", "7P", "8P"], rotulo: "En paralelo" }
+    requiere: { mover: [P] }
+
+  - id: prediga-20
+    tipo: predecir
+    titulo: "Veinte celdas"
+    texto: "240 / 12,24 = 19,6: parece que bastan 20 celdas. Con 4S5P, ¿cuánto dura de verdad el equipo?"
+    libro: [355, 357, 358]
+    fijar: { S: 4, P: 5 }
+    widget:
+      tipo: grafica
+      x: { id: px, min: 4, max: 9, unidad: "", rotulo: "en paralelo" }
+      y: { min: 0, max: 400, unidad: Wh, rotulo: "E" }
+      curvas:
+        - { expr: "S*px*E_cel*eta*k_cap", color: naranja, rotulo: "útil" }
+        - { expr: "E_nec", color: tinta, rotulo: "240 Wh", discontinua: true }
+      lectura: { valor: t_real, rotulo: "Autonomía real" }
+      ocultar: true
+    opciones:
+      - texto: "Unas 3,5 horas: no basta"
+        bien: true
+        porque: "Los 245 Wh nominales pierden el convertidor y la capacidad real: unas 3,4 a 3,6 horas."
+      - texto: "Las 4 horas justas"
+        porque: "Esos 240 Wh son los que deben llegar al equipo, no los que salen de la batería."
+      - texto: "Algo más de 4 horas"
+        porque: "Entre la batería y el equipo se pierde algo en el convertidor y en la capacidad real."
+    escalera:
+      - "Multiplique los 245 Wh por 0,92 dos veces y divida entre 60 W."
+    solucion: "245 × 0,92 × 0,92 ≈ 207 Wh útiles: unas 3,5 horas."
+    comprobar:
+      - { E_nom: 244.8, E_ut: 207.2, t_real: 3.45 }
+
+  - id: reto-paquete
+    tipo: reto
+    titulo: "Elija el paquete"
+    texto: "Energía útil de 240 Wh, el paquete descargado sin bajar de 12 V y 24 celdas como mucho."
+    libro: [355, 359, 363]
+    inicio: { S: 3, P: 7 }
+    widget:
+      tipo: grafica
+      x: { id: px, min: 4, max: 9, unidad: "", rotulo: "en paralelo" }
+      y: { min: 0, max: 400, unidad: Wh, rotulo: "E" }
+      curvas:
+        - { expr: "S*px*E_cel*eta*k_cap", color: naranja, rotulo: "útil" }
+        - { expr: "E_nec", color: tinta, rotulo: "240 Wh", discontinua: true }
+      marcas:
+        - { x: "P", y: "E_ut", rotulo: "{{E_ut}}" }
+      lectura: { valor: E_ut, rotulo: "Energía útil" }
+      datos:
+        - { valor: V_min, rotulo: "Descargado: {{V_min}}" }
+        - { valor: N, rotulo: "Celdas: {{N}}" }
+      mandos:
+        - { valor: S, lista: [3, 4], nombres: ["3S", "4S"], rotulo: "En serie" }
+        - { valor: P, lista: [5, 6, 7, 8], nombres: ["5P", "6P", "7P", "8P"], rotulo: "En paralelo" }
+    condiciones:
+      - { valor: E_ut, min: 240, rotulo: "Útil: {{E_ut}}" }
+      - { valor: V_min, min: 12, rotulo: "Descargado: {{V_min}}" }
+      - { valor: N, max: 24, rotulo: "Celdas: {{N}}" }
+    exito: "4S6P: 294 Wh nominales; con 4S el paquete va de 16,8 a 12 V y basta un reductor de baja caída."
+    pistas:
+      - { cuando: { valor: V_min, menor: 12 }, texto: "Con 3S el paquete baja a 9 V: el equipo de 12 V necesitaría un elevador." }
+      - { cuando: { valor: E_ut, menor: 240 }, texto: "No llega: tras el convertidor y la capacidad real quedan menos de 240 Wh. Más celdas en paralelo." }
+      - { texto: "Sobran celdas: con menos ya llega." }
+    escalera:
+      - "Primero la tensión: ¿cuántas en serie para no bajar de 12 V?"
+      - "Luego cuente: hacen falta unos 284 Wh nominales, 24 celdas."
+    solucion: "4S6P: 24 celdas, 294 Wh nominales, unos 249 Wh útiles."
+    comprobar:
+      - { con: { S: 4, P: 6 }, E_nom: 293.8, E_ut: 248.6, V_min: 12, N: 24 }
+      - { con: { S: 3, P: 8 }, V_min: 9 }
+      - { E_req: 283.6 }
+
+  - id: simule-corriente
+    tipo: simular
+    titulo: "La corriente de la batería"
+    texto: "El equipo pide 60 W y el convertidor rinde un 92 %. ¿Qué corriente sale de un paquete 4S de 14,4 V?"
+    libro: [356]
+    fijar: { S: 4 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 9, max: 17, unidad: V, rotulo: "V_{paquete}" }
+      y: { min: 0, max: 8, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "P_eq/(vx*eta)", color: naranja, rotulo: "corriente de la batería" }
+      lectura: { valor: I_bat, rotulo: "Corriente de la batería" }
+      ocultar: true
+    simular:
+      objetivo: I_bat
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente que sale del paquete"
+      errores:
+        - { expr: "I_sin", texto: "Ha olvidado el convertidor: para dar 60 W tiene que tomar 60/0,92 de la batería." }
+        - { expr: "I_eq", texto: "Esos 5 A son los del equipo, a 12 V. La batería da la potencia a su tensión." }
+    exito: "Unos 4,5 A, frente a 6,0 A con 3S: un 25 % menos de pérdidas en cables, fusible y MOSFET."
+    escalera:
+      - "Potencia que sale de la batería: 60 W / 0,92. Divídala entre 14,4 V."
+    solucion: "60 / (14,4 × 0,92) ≈ 4,5 A."
+    comprobar:
+      - { I_bat: 4.53, I_sin: 4.17, I_eq: 5, tol: 0.01 }
+      - { con: { S: 3 }, I_bat: 6.04, tol: 0.01 }
+
+  - id: dibuje-carga
+    tipo: dibujar
+    titulo: "40.B: dibuje la carga a 1 C"
+    texto: "El paquete de 20,4 Ah se carga a 1 C. Dibuje la corriente: CC hasta el 80 %, CV de cerca de una hora y corte en 0,05 C."
+    libro: [364, 366, 369, 373, "cap39#143"]
+    fijar: { r_c: 1 }
+    dibujar:
+      x: { id: tx, min: 0, max: 2.2, unidad: h, rotulo: "t" }
+      y: { min: 0, max: 25, unidad: A, rotulo: "I" }
+      curva: "I_cc*exp(-max(0, tx - t_cc)/tau_cv)*min(1, max(0, floor(t_tot - tx) + 1))"
+      puntos: 23
+      tol: 0.1
+      holgura: 0.04
+      rotulo: "Corriente de carga"
+    exito: "20,4 A hasta 0,80 h; luego cae sola hasta 1,0 A y corta a las 1,80 h."
+    pistas:
+      - { cuando: { valor: media, mayor: 0.1 }, texto: "La ha dibujado alta: en la fase CV la corriente cae sola hasta 1,0 A." }
+      - { cuando: { valor: media, menor: -0.1 }, texto: "La ha dibujado baja: durante la fase CC son los 20,4 A de 1 C." }
+      - { texto: "Plana en 20,4 A hasta 0,80 h, cae en exponencial y corta a 1,80 h." }
+    escalera:
+      - "1 C de 20,4 Ah son 20,4 A; el 80 % entra en 0,80 h."
+    solucion: "Recta en 20,4 A hasta 0,80 h, caída exponencial hasta 1,0 A y cero desde 1,80 h."
+    comprobar:
+      - { I_cc: 20.4, I_cut: 1.02, t_cc: 0.8, t_tot: 1.8, tol: 0.03 }
+
+  - id: duplicar
+    tipo: pregunta
+    titulo: "Carga rápida"
+    texto: "Pasar de 0,5 C a 1 C duplica la corriente de carga. ¿Cuánto se acorta la carga?"
+    libro: [369, 370]
+    fijar: { r_c: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0.25, max: 1.5, unidad: "", rotulo: "tasa (C)" }
+      y: { min: 0, max: 5, unidad: h, rotulo: "t" }
+      curvas:
+        - { expr: "0.8/rx + 1", color: naranja, rotulo: "tiempo total" }
+      marcas:
+        - { x: "r_c", y: "t_tot", rotulo: "{{t_tot}}" }
+    opciones:
+      - texto: "Solo un 31 %: de 2,60 h a 1,80 h"
+        bien: true
+        porque: "Solo se acorta la fase CC; la CV dura cerca de una hora sea cual sea la corriente."
+      - texto: "A la mitad"
+        porque: "Así sería si toda la carga fuera a corriente constante, pero la fase CV no se acelera."
+      - texto: "Nada"
+        porque: "La fase CC sí se acorta: pasa de 1,60 h a 0,80 h."
+    escalera:
+      - "¿Qué fase depende de la corriente del cargador y cuál no?"
+    solucion: "De 2,60 h a 1,80 h: un 31 % menos."
+    comprobar:
+      - { t_tot: 2.6, t_cc: 1.6 }
+      - { con: { r_c: 1 }, t_tot: 1.8, t_cc: 0.8 }
+
+  - id: por-que-cv
+    tipo: porque
+    titulo: "La fase que no se acelera"
+    texto: "El cargador podría dar 20 A en la fase CV. ¿Por qué no la acorta?"
+    libro: [370]
+    widget:
+      tipo: figura
+      figura: fig-39.10
+      zonas:
+        - { id: cv, rotulo: "Mitad derecha", rect: [137, 0, 160, 175] }
+    opciones:
+      - texto: "La corriente la impone la celda, limitada por la difusión de iones"
+        bien: true
+        porque: "La celda solo acepta lo que su química permite: por eso se anuncia «80 % en X minutos»."
+      - texto: "Porque el cargador limita para no calentarse"
+        porque: "No es el cargador: en CV la corriente la decide la celda."
+      - texto: "Porque la tensión está ya en el máximo y no hace falta"
+        porque: "Sí hace falta: el último 20 % entra en esa fase, al ritmo de la celda."
+    escalera:
+      - "En la fase CV, ¿quién decide la corriente: el cargador o la celda?"
+    solucion: "La impone la celda: la difusión de iones en el electrodo."
+
+  - id: empareje-quimica
+    tipo: pregunta
+    titulo: "40.C: la química de cada caso"
+    texto: "Empareje cada aplicación con su química y el parámetro que manda."
+    libro: [378, 384, 385, 386]
+    widget:
+      tipo: figura
+      figura: fig-39.20
+      zonas:
+        - { id: curva, rotulo: "La gráfica", rect: [30, 0, 300, 200] }
+    emparejar:
+      - ["Portátil de mano", "Li-ion NMC: manda la energía específica"]
+      - ["Respaldo que espera años", "NiMH de baja autodescarga: manda la autodescarga"]
+      - ["Banco solar con ciclado diario", "LiFePO4: mandan los ciclos"]
+    exito: "No hay una química mejor: elegir por el parámetro equivocado es el error habitual."
+    pistas:
+      - { texto: "Un ciclo al día son 365 al año: ¿qué química aguanta miles?" }
+    escalera:
+      - "Busque el parámetro dominante de cada caso: peso, autodescarga o ciclos."
+    solucion: "Portátil, NMC; respaldo, NiMH de baja autodescarga; solar, LiFePO4."
+
+  - id: estime-plomo
+    tipo: pregunta
+    titulo: "El peso del plomo"
+    texto: "El plomo AGM da 35 Wh/kg. ¿Cuánto pesan los 240 Wh?"
+    libro: [383, 384]
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 20, max: 260, unidad: "Wh/kg", rotulo: "energía específica" }
+      y: { min: 0, max: 12, unidad: kg, rotulo: "m" }
+      curvas:
+        - { expr: "E_nec/ex", color: naranja, rotulo: "masa para 240 Wh" }
+    estimar:
+      objetivo: "m_kg"
+      unidad: kg
+      min: 0
+      max: 12
+      paso: 0.05
+      inicio: 1
+      tol: 0.04
+      rotulo: "Masa"
+    exito: "6,86 kg, frente a 0,96 kg con NMC: siete veces más."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 7.14 }, texto: "Se ha pasado: divida 240 Wh entre 35 Wh/kg." }
+      - { texto: "Se ha quedado corto: con 35 Wh/kg hacen falta casi siete kilos." }
+    escalera:
+      - "Masa = energía / energía específica."
+    solucion: "240 / 35 ≈ 6,86 kg."
+    comprobar:
+      - { m_kg: 6.86 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [355, 359, 370, 386]
+    ideas:
+      - { titulo: "Lo que llega.", texto: "Los 240 Wh son del equipo: con convertidor y capacidad real, unos 284 Wh nominales." }
+      - { titulo: "La tensión decide.", texto: "4S6P: el paquete no baja de 12 V y la corriente es menor." }
+      - { titulo: "Carga rápida.", texto: "Solo acorta la fase CC: la CV dura cerca de una hora siempre." }
+      - { titulo: "Sin química mejor.", texto: "Peso, autodescarga o ciclos: cada caso tiene su parámetro." }

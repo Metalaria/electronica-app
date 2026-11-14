@@ -1,0 +1,311 @@
+# Lección 1.2 de la sección 39.16 «Ampliación: Ensamblador y Modos de Direccionamiento» (cap38; etiqueta interna
+# sec-new-38-ensamblador). Formato: contenido/lecciones11/GUIA.md (§10.7, §11). Todo lo que se dice del código es lo que
+# el libro da de sus listados, comprobados en simavr (Complementos/codigo/cap38/ensamblador_isr). Figura 39.19
+# (svg_vista 325,42 × 198,43): (a) los dos espacios de memoria, (b) los ciclos de la interrupción. El dibujo es la
+# trama de un LED WS2812 (bloque 499): un 1 (0,8 µs en alto) y un 0 (0,4 µs en alto), 1,25 µs por bit.
+leccion: cap38/sec-new-38-ensamblador
+
+libro:
+  476: "el procesador no ejecuta C: ejecuta las instrucciones que el compilador elige"
+  478: "Tiene 32 registros de trabajo, r0 a r31"
+  481: "Indirecto con post-incremento o pre-decremento"
+  482: "leer un byte de una tabla en Flash cuesta un ciclo más que de la RAM, y que una variable global cuesta dos"
+  485: "uint8_t bandera;"
+  487: "lds   r24, bandera  ; read ONCE, before the loop"
+  488: "Su bucle cuesta 9 ciclos por byte"
+  492: "la primera instrucción de la rutina se ejecuta siete ciclos después de que llegue el evento"
+  494: "de 54–57 ciclos (3,4 a 3,6 µs a 16 MHz) se pasa a 42–43 (2,6 a 2,7 µs): un 23 % menos"
+  495: "Ciclos de la interrupción del encoder cuando cuenta hacia arriba"
+  496: "las dos dejan la cuenta en 15"
+  498: "El bucle de suma() se puede escribir a mano en 7 ciclos por byte en lugar de 9"
+  499: "1,25 µs por bit, 20 ciclos a 16 MHz"
+  500: "ARM da una latencia de 12 ciclos en el Cortex-M3 y el M4"
+  501: "sbi de un pin libre en la primera instrucción y cbi en la última"
+  "cap38#548": "Escribe un bucle equivalente con ld r18, Z+, add, adc, dec y brne"
+
+modelo:
+  valores:
+    n_b: { sim: "n", nombre: "bytes que se suman", unidad: "", valor: 100 }
+    f_cpu: { sim: "f", nombre: "reloj del AVR", unidad: Hz, valor: 16000000 }
+    c_resto: { sim: "resto", nombre: "ciclos que le quedan al call", unidad: "", valor: 3 }
+    c_resp: { sim: "respuesta", nombre: "ciclos de respuesta a la interrupción", unidad: "", valor: 4 }
+    c_jmp: { sim: "jmp", nombre: "ciclos del jmp del vector", unidad: "", valor: 3 }
+    T_bit: { sim: "T_{bit}", nombre: "duración de un bit del WS2812", unidad: s, valor: 0.00000125 }
+    T_uno: { sim: "T_{1}", nombre: "nivel alto de un 1", unidad: s, valor: 0.0000008 }
+    T_cero: { sim: "T_{0}", nombre: "nivel alto de un 0", unidad: s, valor: 0.0000004 }
+  calculos:
+    cic_c: { expr: "9*n_b + 2", sim: "ciclos", nombre: "ciclos del bucle del compilador", unidad: "" }
+    cic_m: { expr: "7*n_b - 1", sim: "ciclos", nombre: "ciclos del bucle a mano", unidad: "" }
+    t_c: { expr: "cic_c/f_cpu", sim: "t", nombre: "tiempo del bucle del compilador", unidad: s }
+    t_m: { expr: "cic_m/f_cpu", sim: "t", nombre: "tiempo del bucle a mano", unidad: s }
+    ahorro: { expr: "(1 - cic_m/cic_c)*100", sim: "ahorro", nombre: "ahorro del bucle a mano", unidad: "%", cifras: 2 }
+    n_1: { expr: "n_b - 1", sim: "n − 1", nombre: "bytes en los que brne salta", unidad: "" }
+    t_fin0: { expr: "T_bit + T_cero", sim: "t", nombre: "fin del alto del segundo bit", unidad: s }
+    t_fin: { expr: "2*T_bit", sim: "t", nombre: "fin de los dos bits", unidad: s }
+    lat: { expr: "c_resto + c_resp + c_jmp", sim: "latencia", nombre: "ciclos hasta la primera instrucción", unidad: "" }
+    lat_t: { expr: "lat/f_cpu", sim: "t", nombre: "latencia en tiempo", unidad: s }
+
+tarjetas:
+  - id: explore-avr
+    tipo: explorar
+    titulo: "El AVR por dentro"
+    texto: "El procesador no ejecuta C, sino instrucciones. Toque los dos espacios de memoria del ATmega328P y los ciclos."
+    libro: [476, 478, 495]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: registros, rotulo: "Datos, arriba", rect: [37, 38, 66, 60], texto: "32 registros r0 a r31, y los de E/S: las primeras direcciones de datos." }
+        - { id: sram, rotulo: "Datos, abajo", rect: [37, 100, 66, 62], texto: "SRAM de 2 KB, desde 0x0100; la pila baja desde el final." }
+        - { id: programa, rotulo: "Columna del centro", rect: [116, 39, 57, 111], texto: "Programa, en la Flash: vectores, código y cargador." }
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "Ciclos de la interrupción del encoder: en C y a mano." }
+    requiere: { mover: [registros, programa] }
+
+  - id: empareje-modos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Modos de direccionamiento"
+    texto: "Una cada modo con su instrucción de ejemplo."
+    libro: [481]
+    emparejar:
+      - ["Inmediato", "ldi r24, 42"]
+      - ["E/S directo", "in r24, PIND"]
+      - ["Datos directo", "lds r24, 0x0100"]
+      - ["Indirecto con post-incremento", "ld r18, Z+"]
+      - ["Indirecto con desplazamiento", "ldd r24, Y+5"]
+      - ["Memoria de programa", "lpm r24, Z"]
+    exito: "Cada modo dice dónde está el operando, y cuesta sus ciclos: de 1 el inmediato a 3 el de memoria de programa."
+    pistas:
+      - { texto: "lpm lee de la Flash: «load program memory»." }
+    escalera: ["El «+» después del puntero indica que avanza tras leer."]
+    solucion: "ldi inmediato; in E/S; lds datos directo; ld Z+ post-incremento; ldd Y+5 desplazamiento; lpm programa."
+
+  - id: empareje-c
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Del C a la instrucción"
+    texto: "Una cada lectura en C con cómo la hace el AVR y sus ciclos."
+    libro: [482, "cap38#548"]
+    emparejar:
+      - ["Una variable global de un byte", "lds: datos directo, 2 ciclos"]
+      - ["El campo a 5 bytes de una estructura apuntada por Y", "ldd r24, Y+5: 2 ciclos"]
+      - ["Un elemento de una tabla constante en Flash", "lpm: memoria de programa, 3 ciclos"]
+      - ["*p++ en un bucle", "ld r24, X+: post-incremento, 2 ciclos"]
+    exito: "Sin mirar el ensamblador: leer de una tabla en Flash cuesta un ciclo más que de la RAM."
+    pistas:
+      - { texto: "La Flash es la memoria de programa." }
+    escalera: ["Una global está en una dirección fija: directo."]
+    solucion: "Global, lds; campo, ldd Y+5; tabla en Flash, lpm; *p++, ld X+."
+
+  - id: prediga-espera
+    tipo: predecir
+    titulo: "Una bandera sin volatile"
+    texto: "bandera no es volatile. Con -Os, ¿qué escribe el compilador para este bucle?"
+    libro: [485, 488]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          uint8_t bandera;
+
+          void espera(void)
+          {
+              while (!bandera) { }
+          }
+      resaltar: [1, 5]
+    opciones:
+      - { texto: "Lee la bandera una vez antes del bucle; si vale 0, salta sobre sí mismo para siempre", bien: true, porque: "Un rjmp a sí mismo: cambie lo que cambie la interrupción, no sale. Con volatile, el lds pasa dentro del bucle." }
+      - { texto: "Lee la bandera de memoria en cada vuelta", porque: "Eso hace con volatile; sin él, la lee una sola vez." }
+      - { texto: "Quita el bucle entero", porque: "No lo quita: si la bandera valía 0, deja un bucle infinito." }
+    escalera: ["Para el compilador, ¿quién puede cambiar bandera dentro del bucle?"]
+    solucion: "lds una vez, y rjmp .L8 sobre sí mismo: el fallo de la sección 39.4 a la vista."
+
+  - id: porque-sbi
+    tipo: porque
+    titulo: "Una sola instrucción"
+    texto: "PORTB |= (1u << PB5) se compila en sbi 0x05, 5. ¿Por qué aquí no hay problema de lectura-modificación-escritura?"
+    libro: [487, 488]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: asm
+        texto: |
+          led_on:                     ; PORTB |= (1u << PB5);
+                  sbi   0x05, 5       ; one instruction, 2 cycles
+                  ret
+      resaltar: [2]
+    opciones:
+      - { texto: "sbi es una sola instrucción atómica: una interrupción no puede colarse", bien: true, porque: "Solo porque PORTB está entre las 32 primeras de E/S y el bit es constante; si no, salen in, or y out." }
+      - { texto: "Porque PORTB es volatile", porque: "volatile no hace atómico nada: lo atómico es que sea una sola instrucción." }
+      - { texto: "Porque las interrupciones están deshabilitadas", porque: "No lo están: no hace falta, porque no hay hueco entre leer y escribir." }
+    escalera: ["¿Cuántas instrucciones hay entre leer el puerto y escribirlo?"]
+    solucion: "Una sola, sbi: atómica. Con una máscara variable o un registro alto vuelve el problema."
+
+  - id: ordene-bucle
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El bucle a mano"
+    texto: "Escriba el bucle de suma() con ld, add, adc, dec y brne: ponga las instrucciones en orden."
+    libro: ["cap38#548", 498]
+    ordenar:
+      - "ld r18, Z+"
+      - "add r24, r18"
+      - "adc r25, r1"
+      - "dec r22"
+      - "brne al principio"
+    exito: "7 ciclos por byte en lugar de 9: ld (2), add, adc, dec (1 cada una) y brne (2 si salta)."
+    pistas:
+      - { texto: "brne mira la bandera Z del dec: entre los dos no puede haber otra suma." }
+    escalera: ["Primero hay que leer el byte para poder sumarlo."]
+    solucion: "ld, add, adc, dec y brne."
+
+  - id: estime-bucle
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Cien bytes"
+    texto: "El bucle a mano cuesta 7 ciclos por byte y 6 en el último, en el que brne no salta. ¿Cuántos ciclos para sumar 100 bytes?"
+    libro: [498, "cap38#548"]
+    fijar: { n_b: 100 }
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "Cada instrucción tiene sus ciclos." }
+    estimar:
+      objetivo: "cic_m"
+      unidad: ""
+      min: 0
+      max: 1200
+      paso: 1
+      inicio: 1000
+      tol: 0.01
+      rotulo: "Ciclos para 100 bytes"
+    exito: "699 ciclos, 43,7 µs, frente a los 902 del compilador, 56,4 µs: un 22 % menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 699 }, texto: "Se ha pasado: 99 bytes a 7 ciclos y el último a 6." }
+      - { texto: "Se ha quedado corto: 99 bytes a 7 ciclos y el último a 6." }
+    escalera: ["99 × 7 + 6."]
+    solucion: "99 × 7 + 6 = 699 ciclos."
+    comprobar:
+      - { cic_m: 699, cic_c: 902, t_m: 0.0000437, t_c: 0.0000564, tol: 0.001 }
+      - { ahorro: 22.5, tol: 0.01, n_1: 99 }
+
+  - id: estime-latencia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Hasta la primera instrucción"
+    texto: "Llega una interrupción tras el primer ciclo de un call de 4 ciclos; la respuesta son 4 ciclos y el jmp del vector, 3. ¿Cuántos ciclos hasta la rutina?"
+    libro: [492, "cap38#548"]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "En gris, la entrada y el salto al vector." }
+    estimar:
+      objetivo: "lat"
+      unidad: ""
+      min: 0
+      max: 20
+      paso: 1
+      inicio: 17
+      tol: 0.01
+      rotulo: "Ciclos de latencia"
+    exito: "10 ciclos, 0,63 µs a 16 MHz. Una sección crítica de 50 ciclos los subiría a unos 60."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10 }, texto: "Se ha pasado: al call solo le quedan 3 ciclos." }
+      - { texto: "Se ha quedado corto: la instrucción en curso termina antes." }
+    escalera: ["Primero termina el call: le quedan 3 ciclos."]
+    solucion: "3 del call + 4 de respuesta + 3 del jmp = 10 ciclos."
+    comprobar:
+      - { lat: 10, lat_t: 0.000000625, tol: 0.01 }
+
+  - id: pregunta-a-mano
+    tipo: pregunta
+    titulo: "La interrupción a mano"
+    texto: "La rutina del encoder pasa de 54–57 ciclos en C a 42–43 escrita a mano. ¿De dónde sale el ahorro?"
+    libro: [492, 494, 495, 496]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "En rojo, guardar y restaurar: 12 y 11 en C, 7 y 7 a mano." }
+    opciones:
+      - { texto: "Guarda solo los registros que usa, sin el prólogo fijo de r0, r1 y SREG", bien: true, porque: "El trabajo útil es casi el mismo: se recorta guardar y restaurar. Las dos dejan la cuenta en 15." }
+      - { texto: "Hace menos trabajo: cuenta solo hacia arriba", porque: "Cuenta en los dos sentidos, como la de C, y llega a la misma cuenta." }
+      - { texto: "Usa instrucciones más rápidas que el compilador no conoce", porque: "Usa instrucciones corrientes; el ahorro está en lo que no guarda." }
+    escalera: ["Compare las barras rojas de las dos versiones."]
+    solucion: "El prólogo y el epílogo: guarda solo lo necesario, un 23 % menos."
+
+  - id: dibuje-ws2812
+    tipo: dibujar
+    titulo: "Un 1 y un 0 de un WS2812"
+    texto: "Cada bit dura 1,25 µs; un 1 está 0,8 µs en alto y un 0, 0,4 µs. Dibuje un 1 seguido de un 0."
+    libro: [499]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "Ciclos contados uno a uno." }
+    dibujar:
+      x: { id: tw, min: 0, max: 0.0000025, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "dato" }
+      curva: "max(0, ceil((T_uno - tw)/T_bit)) + max(0, ceil((tw - T_bit)/T_bit))*max(0, ceil((T_cero - (tw - T_bit))/T_bit))"
+      puntos: 41
+      tol: 0.12
+      holgura: 0.03
+      rotulo: "Señal de datos del WS2812"
+    exito: "Un 0 y un 1 solo se distinguen por la duración del alto: 6 o 13 ciclos con ± 2. Por eso se escribe en ensamblador."
+    pistas:
+      - { cuando: { valor: media, mayor: 0.05 }, texto: "Ha dibujado alto de más: el 1 baja a 0,8 µs y el 0 a 0,4 µs de empezar su bit." }
+      - { texto: "Ha dibujado bajo de más: cada bit empieza en alto." }
+    escalera:
+      - "Los dos bits empiezan en alto: en 0 y en 1,25 µs."
+      - "El primero baja a 0,8 µs; el segundo, a 0,4 µs de empezar."
+    solucion: "Alto de 0 a 0,8 µs, bajo hasta 1,25 µs, alto hasta 1,65 µs y bajo hasta 2,5 µs."
+    comprobar:
+      - { T_bit: 0.00000125, T_uno: 0.0000008, T_cero: 0.0000004, t_fin0: 0.00000165, t_fin: 0.0000025 }
+
+  - id: pregunta-cortex
+    tipo: pregunta
+    titulo: "¿Y en un Cortex-M?"
+    texto: "¿Merece la pena escribir en ensamblador una rutina de interrupción de un Cortex-M?"
+    libro: [500]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "En el AVR, el prólogo pesa." }
+    opciones:
+      - { texto: "Casi nunca: el hardware guarda ocho registros y la rutina es una función de C corriente", bien: true, porque: "Con 12 ciclos de latencia en el M3 y el M4, no hay prólogo que recortar." }
+      - { texto: "Siempre: ahorra lo mismo que en el AVR", porque: "En el AVR se ahorra el prólogo; en el Cortex-M no lo hay." }
+      - { texto: "Solo si la rutina usa coma flotante", porque: "El libro deja el ensamblador del Cortex-M para el arranque, el RTOS y las instrucciones especiales." }
+    escalera: ["¿Quién guarda los registros al entrar en un Cortex-M?"]
+    solucion: "Casi nunca: queda para el arranque, el RTOS y las instrucciones especiales."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Medirla sin simulador"
+    texto: "¿Cómo se mide en el banco la duración real de la rutina?"
+    libro: [501]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: ciclos, rotulo: "Barras de la derecha", rect: [195, 45, 110, 65], texto: "Los ciclos, medidos en simavr." }
+    opciones:
+      - { texto: "sbi de un pin al empezar y cbi al terminar, y el osciloscopio", bien: true, porque: "Se descuentan sus dos ciclos; el retardo respecto al flanco del encoder es la latencia." }
+      - { texto: "Con un printf al entrar y otro al salir", porque: "Cada printf dura milisegundos: falsearía la medida." }
+      - { texto: "Con el multímetro en el pin", porque: "Un multímetro promedia: no ve pulsos de microsegundos." }
+    escalera: ["Es la técnica del pin de depuración."]
+    solucion: "Un pin con sbi y cbi, mirado con el osciloscopio."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [476, 482, 488, 498]
+    ideas:
+      - { titulo: "Modos.", texto: "Cada construcción de C es un modo: global, puntero, *p++, campo, tabla en Flash." }
+      - { titulo: "Leer el ensamblador.", texto: "Ahí se ve el volatile olvidado y lo atómico." }
+      - { titulo: "Ciclos.", texto: "Entrada, prólogo, trabajo y reti: se cuentan con el manual." }
+      - { titulo: "Cuándo escribirlo.", texto: "Temporización exacta, cambio de contexto y lo que C no expresa." }

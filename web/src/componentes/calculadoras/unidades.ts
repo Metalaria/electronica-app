@@ -11,6 +11,9 @@ const SIN_PREFIJO = new Set([
   'Ω·m', 'V/µs', 'mm²', 'cm', 'mm', '1/°C', 'cm⁻³', 'ppm/°C', 'rpm', 'palabras', 'µε', '€', 'días',
   // 0.11 (QA): units that already carry a prefix or are counts («960 mkg» was printed for 0,96 kg)
   'kg', 'mm/ns', 'FIT',
+  // 1.2 (esquemas12d): a motor's inertia («100 µkg·m²» was printed for 10⁻⁴ kg·m²) and autor-analogica-D's units
+  // («500 mcm²» for 0,05 cm²)
+  'kg·m²', 'cm²', 'dBc/Hz', 'dBµV/m', 'A²·s',
 ]);
 
 export function conPrefijo(unidad: string): boolean {

@@ -1,0 +1,260 @@
+# Lección 1.2 de la sección 20.20 «Ancho de Banda, Frecuencia de Muestreo y Aliasing» (cap21; etiqueta interna
+# sec-21.20). Formato: contenido/lecciones11/GUIA.md. El muestreo real del 2C53T: 1000 puntos en 12 divisiones,
+# f_s = 1000/(12·s/div) (ecuación del bloque 581). Lo que se ve de una senoide de f es otra de frecuencia
+# |f − f_s·round(f/f_s)|: la propia f si f < f_s/2, un alias si no (251 kHz a 1 ms/div dan 1 kHz, figura 20.44; la
+# cuadrada de 10 kHz a 5 ms/div, 6,7 kHz, ficha 24 del cuaderno). El tiempo de subida y su suma en cuadratura los
+# trabaja la Práctica 10 (cap22, sec-22.11): aquí no se repiten.
+leccion: cap21/sec-21.20
+
+libro:
+  568: "Tres parámetros determinan qué se pierde por el camino"
+  570: "No es una frontera: es el punto de una caída progresiva"
+  571: "Amplitud mostrada (osciloscopio de 50 MHz)"
+  572: "Un instrumento de 50 MHz mide bien hasta unos 10 MHz"
+  579: "por debajo de eso, una señal rápida se convierte en una lenta que no existe"
+  581: '"puntos de memoria"'
+  583: "Máxima frecuencia sin alias"
+  584: "Es el engaño más peligroso del instrumento, porque el resultado parece razonable"
+  585: "Una señal real mantiene su frecuencia; un alias la cambia"
+  586: "Resolución vertical: 8 bits"
+  590: "un osciloscopio no es un voltímetro"
+  593: "solo vale para señales repetitivas y estables"
+  597: "con el generador produciendo una cuadrada de 10 kHz, mirarla a 20 µs/div (se ve bien) y a 5 ms/div"
+  598: "a 1 ms/div, con 1 000 puntos en 12 divisiones, el muestreo cae a 83,3 kS/s y aparece un alias de 1 kHz que no existe"
+
+modelo:
+  valores:
+    f_x: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 251000 }
+    s_div: { sim: "s/div", nombre: "base de tiempos", unidad: s, valor: 0.000004 }
+    BW: { sim: "BW", nombre: "ancho de banda", unidad: Hz, valor: 50000000 }
+    f_b: { sim: "f", nombre: "frecuencia de la senoide", unidad: Hz, valor: 25000000 }
+  calculos:
+    f_s: { expr: "1000/(12*s_div)", sim: "f_{muestreo}", nombre: "muestreo real", unidad: "S/s" }
+    f_a: { expr: "abs(f_x - f_s*round(f_x/f_s))", sim: "f_{aparente}", nombre: "frecuencia que se ve", unidad: Hz }
+    nyq: { expr: "f_s/(2*f_x)", sim: "f_{s}/2f", nombre: "margen de muestreo", unidad: "", cifras: 2 }
+    A_b: { expr: "100/sqrt(1 + (f_b/BW)^2)", sim: "A", nombre: "amplitud mostrada", unidad: "%", cifras: 2 }
+    f_5: { expr: "BW/5", sim: "f_{máx}", nombre: "frecuencia máxima con la regla de los cinco", unidad: Hz }
+
+tarjetas:
+  - id: explore-alias
+    tipo: explorar
+    titulo: "Una conmutada de 251 kHz"
+    texto: "La misma conmutada a distintas bases de tiempos. Alárguela y mire qué frecuencia parece tener."
+    libro: [579, 584, 598]
+    inicio: { s_div: 0.000004 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: f_a, rotulo: "Frecuencia que parece tener" }
+      datos:
+        - { valor: f_s, rotulo: "Muestreo real: {{f_s}}" }
+      mandos:
+        - { valor: s_div, lista: [0.000004, 0.00001, 0.0001, 0.001], rotulo: "TIME/DIV" }
+    requiere: { mover: [s_div] }
+
+  - id: formula-muestreo
+    tipo: formula
+    titulo: "El muestreo real"
+    texto: "Con memoria limitada, el muestreo real es el de repartir los 1000 puntos en las 12 divisiones."
+    libro: [581, 583]
+    ec: 581
+    sustitucion: "1000 / (12 · {{s_div}}) = {{f_s}}"
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: f_s, rotulo: "Muestreo real" }
+      mandos:
+        - { valor: s_div, lista: [0.000004, 0.00001, 0.0001, 0.001], rotulo: "TIME/DIV" }
+    comprobar:
+      - { con: { s_div: 0.001 }, f_s: 83333 }
+
+  - id: estime-alias
+    tipo: pregunta
+    titulo: "¿Qué frecuencia aparece?"
+    texto: "La conmutada de 251 kHz a 1 ms/div: el muestreo cae a 83,3 kS/s. ¿Qué frecuencia parece tener?"
+    libro: [598]
+    fijar: { s_div: 0.001, f_x: 251000 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
+    estimar:
+      objetivo: "f_a"
+      unidad: Hz
+      min: 0
+      max: 10000
+      paso: 100
+      inicio: 8000
+      tol: 0.1
+      rotulo: "Frecuencia aparente"
+    exito: "251 − 3 × 83,3 ≈ 1 kHz: una señal falsa de baja frecuencia que parece perfectamente real."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1100 }, texto: "Se ha pasado: reste a 251 kHz el múltiplo del muestreo más cercano." }
+      - { texto: "Se ha quedado corto: tres veces 83,3 kS/s quedan a 1 kHz de los 251 kHz." }
+    escalera:
+      - "Busque el múltiplo de 83,3 kHz más cercano a 251 kHz."
+    solucion: "251 − 3 × 83,3 ≈ 1 kHz."
+    comprobar:
+      - { f_a: 1000, tol: 0.01 }
+
+  - id: ajuste-base
+    tipo: ajuste
+    titulo: "Sin alias"
+    texto: "Acorte la base de tiempos hasta que el muestreo real pase del doble de los 251 kHz."
+    libro: [579, 583, 585]
+    fijar: { f_x: 251000 }
+    inicio: { s_div: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: f_a, rotulo: "Frecuencia que parece tener" }
+      mandos:
+        - { valor: s_div, lista: [0.001, 0.0005, 0.0002, 0.0001, 0.00005, 0.00002, 0.00001, 0.000004], rotulo: "TIME/DIV" }
+    ajuste:
+      valor: nyq
+      min: 1
+      max: 100
+      rotulo: "Muestreo frente al doble de la señal"
+      escala: { min: 0, max: 5 }
+      bajo: "Muestreo por debajo del doble: lo que ve puede ser un alias. Acorte la base de tiempos."
+      alto: "Margen de sobra."
+      dentro: "Ya no hay alias: la frecuencia que se ve es la de verdad."
+
+  - id: detectar
+    tipo: pregunta
+    titulo: "¿Real o alias?"
+    texto: "Ve una senoide lenta donde esperaba una conmutación. ¿Cómo sabe si es un alias?"
+    libro: [585]
+    fijar: { s_div: 0.001, f_x: 251000 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
+    opciones:
+      - texto: "Cambiando la base de tiempos: un alias cambia de frecuencia"
+        bien: true
+        porque: "Una señal real mantiene su frecuencia; un alias la cambia al cambiar el muestreo."
+      - texto: "Mirando si la forma es razonable"
+        porque: "Ese es el peligro: un alias parece perfectamente razonable."
+      - texto: "Subiendo el disparo"
+        porque: "El disparo estabiliza lo que se ve, sea real o alias."
+    escalera:
+      - "¿Qué depende de la base de tiempos, la señal o el muestreo?"
+    solucion: "Cambiar la base de tiempos: si la frecuencia aparente cambia, es alias."
+
+  - id: estime-cinco
+    tipo: pregunta
+    titulo: "La regla de los cinco"
+    texto: "Para medir la amplitud de una senoide con menos del 2 % de error, ¿hasta qué frecuencia sirve un instrumento de 50 MHz?"
+    libro: [570, 571, 572]
+    fijar: { BW: 50000000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 200000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 110, unidad: "%", rotulo: "amplitud mostrada" }
+      curvas:
+        - { expr: "100/sqrt(1 + (nu/BW)^2)", color: naranja, rotulo: "lo que muestra" }
+    estimar:
+      objetivo: "f_5"
+      unidad: Hz
+      min: 0
+      max: 50000000
+      paso: 500000
+      inicio: 40000000
+      tol: 0.05
+      rotulo: "Frecuencia máxima"
+    exito: "Unos 10 MHz: el ancho de banda debe ser al menos cinco veces la frecuencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10500000 }, texto: "Se ha pasado: a 25 MHz ya muestra solo el 89 %." }
+      - { texto: "Se ha quedado corto: hasta la quinta parte del ancho de banda el error es menor del 2 %." }
+    escalera:
+      - "La regla de los cinco."
+    solucion: "50 MHz / 5 = 10 MHz."
+
+  - id: voltimetro
+    tipo: porque
+    titulo: "No es un voltímetro"
+    texto: "Para saber cuánto vale una tensión continua, ¿por qué el multímetro y no el osciloscopio?"
+    libro: [586, 590]
+    widget:
+      tipo: figura
+      figura: fig-21.45
+      zonas:
+        - { id: limites, rotulo: "Los tres límites", rect: [0, 0, 450, 189] }
+    opciones:
+      - texto: "El osciloscopio resuelve, en el mejor caso, una parte en 256"
+        bien: true
+        porque: "Y su ruido lo deja en unos 7 bits reales; el Brymen resuelve una parte en 500 000."
+      - texto: "El osciloscopio no mide continua"
+        porque: "Sí la mide en DC; lo que no tiene es resolución."
+      - texto: "El multímetro tiene más ancho de banda"
+        porque: "Al revés: el osciloscopio es el rápido; el multímetro es el que resuelve."
+    escalera:
+      - "¿Cuántos niveles tiene un convertidor de 8 bits?"
+    solucion: "Una parte en 256 frente a una en 500 000: el osciloscopio dice cómo cambia; el multímetro, cuánto vale."
+
+  - id: equivalente
+    tipo: pregunta
+    titulo: "Muestreo equivalente"
+    texto: "Un instrumento con muestreo equivalente ve señales rápidas con un convertidor lento. ¿Cuándo no sirve?"
+    libro: [593]
+    widget:
+      tipo: figura
+      figura: fig-21.45
+      zonas:
+        - { id: limites, rotulo: "Los tres límites", rect: [0, 0, 450, 189] }
+    opciones:
+      - texto: "Con un evento único o una señal que cambia"
+        bien: true
+        porque: "Reconstruye la forma con muestras de muchas repeticiones: solo vale para señales repetitivas y estables."
+      - texto: "Con señales periódicas lentas"
+        porque: "Esas las ve sin problema; ni siquiera lo necesita."
+      - texto: "Con cualquier señal rápida"
+        porque: "Es justo para lo rápido, siempre que se repita igual."
+    escalera:
+      - "¿De dónde saca las muestras que le faltan?"
+    solucion: "Con un evento único o una señal que cambia: ahí manda el tiempo real."
+
+  - id: banco-alias
+    tipo: banco
+    titulo: "Provoque un alias"
+    texto: "La cuadrada de 10 kHz del generador a 5 ms/div. Anote la frecuencia aparente de su fundamental."
+    libro: [597]
+    fijar: { f_x: 10000, s_div: 0.005 }
+    banco:
+      piezas: ["FNIRSI 2C53T con la sonda compensada", "Salida DDS: cuadrada de 10 kHz"]
+      medir: "La frecuencia aparente a 5 ms/div, con cursores o con PRM."
+      esperado: f_a
+      unidad: Hz
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: medida, mayor: 9000 }, texto: "Ve los 10 kHz: ¿está de verdad a 5 ms/div? A 20 µs/div no hay alias." }
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: compruebe la base de tiempos y lea la fundamental, no un armónico." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Mide de menos: ¿una base de tiempos aún más larga? El alias cambia con ella." }
+        - { texto: "Ese alias no existe: compruébelo volviendo a 20 µs/div." }
+      ficha: { n: 24, titulo: "Puesta a punto del FNIRSI: sonda, medidas automáticas y aliasing" }
+    comprobar:
+      - { f_s: 16667, f_a: 6667, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [568, 572, 581, 585, 586]
+    ideas:
+      - { titulo: "Ancho de banda.", texto: "Una caída progresiva: para la amplitud, cinco veces la frecuencia." }
+      - { titulo: "Muestreo real.", texto: "1000 puntos en 12 divisiones: baja al alargar la base de tiempos." }
+      - { titulo: "El alias.", texto: "Parece razonable; se delata al cambiar la base de tiempos." }
+      - { titulo: "8 bits.", texto: "Un osciloscopio no es un voltímetro." }

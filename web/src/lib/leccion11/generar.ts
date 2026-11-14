@@ -21,6 +21,15 @@ import { barajarFijo, compilarModelo, enRango, objetivoEstimar, posicionMasCerca
 import { esquemaDe, nombresEsquemas } from './esquemas/registro';
 import type { DefinicionEsquema } from './esquemas/tipos';
 import { comprobacionesCircuito, type ComprobacionSpice } from './spice';
+// 1.2: the learning-by-doing step types (their own checks), the one-idea-per-screen warnings (ui12)
+import { actividadDe, esTipoActividad, FASE12, VARIABLES_PISTA } from '../leccion12/generar12';
+import { esComprobable12 } from '../leccion12/motor12';
+import { TIPOS_ACTIVIDAD } from '../leccion12/tipos';
+import type { Ejecucion } from '../leccion12/sql/ejecutar';
+import { avisosUnaIdea } from '../leccion12/una-idea';
+// 1.2 (motor12c): the «figura» and «logica» widgets and their steps (GUIA §11)
+import { widgetFiguraDe, widgetLogicaDe, type ContextoDigital, type RecursosLibro } from '../leccion12/digital/generar-digital';
+import { interactivos } from '../leccion12/digital/motor-digital';
 import type {
   Asa, Barra, CalculoModelo, CitaLibro, Color, Condicion, Curva, Ecuacion, Emparejar, Estimar, Grafica, Idea, Leccion11, Lectura, Mando,
   Marca, Modelo, Opcion, Ordenar, Pista, Rango, Tarjeta, Texto, TipoTarjeta, ValorModelo, Widget, WidgetCircuito, WidgetGrafica,
@@ -35,8 +44,9 @@ export const MAX_PALABRAS_ROTULO = 14;
 /** Positions a challenge's search may visit (product of its controls' positions). */
 export const MAX_COMBINACIONES = 250_000;
 
-export const TIPOS: readonly TipoTarjeta[] = ['explorar', 'predecir', 'pregunta', 'formula', 'reto', 'sorpresa', 'porque', 'resumen'];
+export const TIPOS: readonly TipoTarjeta[] = ['explorar', 'predecir', 'pregunta', 'formula', 'reto', 'sorpresa', 'porque', 'resumen', ...TIPOS_ACTIVIDAD];
 export const FASE: Record<TipoTarjeta, string> = {
+  ...FASE12,
   explorar: 'Explorar',
   predecir: 'Predecir',
   pregunta: 'Pregunta',
@@ -51,6 +61,10 @@ const COLORES: readonly string[] = ['azul', 'naranja', 'verde'];
 /** What the generator needs from the book (web/public/libro/partes/*.json). */
 export interface ContextoLibro {
   bloques(parte: string): unknown[] | null;
+  /** 1.2: runs SQL on the sample database of section 17.10 (the script passes sql.js); without it SQL cards fail. */
+  sql?: (consulta: string) => Ejecucion;
+  /** 1.2: figures by label, image sizes and the consoles' data, for the «figura» widget (scripts/recursos11.mjs). */
+  recursos?: RecursosLibro;
 }
 
 export interface ResultadoGeneracion {
@@ -80,8 +94,13 @@ export function planoHtml(h: string): string {
 
 const NO_TEXTO = new Set(['t', 'svg', 'src', 'label', 'datos', 'tipo', 'tipo_figura', 'align', 'num', 'svg_vista', 'credito', 'w', 'h', 'ancho', 'cols', 'cabecera', 'ordenada']);
 
-/** All the text of a book block (paragraphs, list items, table cells, boxes, derivations, exercises and solutions). */
-export function textoDeBloque(b: unknown): string {
+/**
+ * All the text of a book block (paragraphs, list items, table cells, boxes, derivations, exercises and solutions),
+ * its pieces joined by `sep`. The quotes are looked for with a space; the numbers with « | » (motor12e,
+ * autor-placas-B, autor-digital-C): a table's neighbouring cells «4», «5», «5», «100» joined by spaces read as the
+ * grouped number «5 100», and the 4, 5 and 100 of the table could not be cited.
+ */
+export function textoDeBloque(b: unknown, sep = ' '): string {
   const out: string[] = [];
   const andar = (x: unknown, clave = ''): void => {
     if (typeof x === 'string') {
@@ -90,7 +109,7 @@ export function textoDeBloque(b: unknown): string {
     else if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) if (!NO_TEXTO.has(k)) andar(v, k);
   };
   andar(b);
-  return out.join(' ').replace(/\s+/g, ' ').trim();
+  return out.join(sep).replace(/\s+/g, ' ').trim();
 }
 
 const normal = (s: string) => s.replace(/[\s   ]+/g, ' ').trim();
@@ -102,7 +121,9 @@ const esNumero = (x: unknown): x is number => typeof x === 'number' && Number.is
 const ID = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 /** E12/E24 values between min and max (as teoria10.mjs: the app's own aSerie, so the values are the app's). */
-export function valoresSerie(min: number, max: number, serie: 'E12' | 'E24'): number[] {
+export function valoresSerie(min: number, max: number, serie: 'E6' | 'E12' | 'E24'): number[] {
+  // (motor12e, autor-proyectos-A: E6, the electrolytics' series at ± 20 % — every other E12 value)
+  if (serie === 'E6') return valoresSerie(min, max, 'E12').filter((v) => [1, 1.5, 2.2, 3.3, 4.7, 6.8].some((m) => Math.abs(v / 10 ** Math.floor(Math.log10(v) + 1e-9) - m) < 1e-6));
   const out = new Set<number>();
   const d0 = Math.floor(Math.log10(min)) - 1;
   const d1 = Math.ceil(Math.log10(max)) + 1;
@@ -234,10 +255,10 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (!cita.trim()) err('libro', `${clave}: falta la cita literal`);
       else if (!normal(texto).includes(normal(cita))) err('libro', `${clave}: el bloque no contiene «${cita}» (¿ha cambiado el índice del bloque?)`);
       citas[clave] = { parte: p, bloque: nb, cita };
-      textoLibro.push(texto);
+      textoLibro.push(textoDeBloque(b, ' | '));
     }
   }
-  const numerosLibro = numerosDe(textoLibro.join(' '));
+  const numerosLibro = numerosDe(textoLibro.join(' | '));
 
   // ---- the model
   const antesModelo = errores.length;
@@ -351,7 +372,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     /** No error in this card so far (the checks that evaluate the model need a sound card). */
     const sana = () => errores.length === antes;
     if (!esObjeto(ft)) return e('no es un objeto');
-    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar']);
+    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar', 'escalera', 'solucion', ...TIPOS_ACTIVIDAD]);
     for (const k of Object.keys(ft)) if (!CLAVES.has(k)) e(`clave desconocida «${k}»`);
     if (!/^[a-z0-9][a-z0-9-]*$/.test(tid)) e('«id» debe ser corto, en minúsculas y con guiones («prediga-salida»)');
     if (ids.has(tid)) e('«id» repetido');
@@ -415,14 +436,26 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
 
     // widget
     let mandos: Mando[] = [];
+    // (motor12c: the author texts of a figure's zones go through the numbers rule too)
+    const textosWidget: [string, Texto][] = [];
+    const digital: ContextoDigital = { parte, bloques: (p) => libro.bloques(p), ...(libro.recursos ? { recursos: libro.recursos } : {}), e, aviso: (m) => aviso(donde, m), texto, textos: textosWidget };
     if (ft.widget != null) {
-      const w = widgetDe(ft.widget, t, e);
+      const w = widgetDe(ft.widget, t, e, digital);
       if (w) {
         t.widget = w;
         mandos = w.mandos;
+        // (peticiones motor12, autor-taller-A: a hidden widget without a reading hides nothing; the walker waits for «¿?»)
+        // (motor12e: hidden curves or marks, `ocultar: curvas` or a curve's `oculta`, do hide something)
+        const g = w.tipo === 'grafica' ? w : w.tipo === 'circuito' ? w.grafica : undefined;
+        const ocultas = !!g && (g.curvas.some((c) => c.oculta) || !!g.marcas?.some((m) => m.oculta));
+        if ((w.tipo === 'circuito' || w.tipo === 'grafica') && w.ocultar && !w.lectura && !ocultas) aviso(donde, '«widget.ocultar: true» sin «lectura»: no hay ninguna lectura que salga «¿?» hasta responder');
+        if ((w.tipo === 'circuito' || w.tipo === 'grafica') && !w.ocultar && ocultas) e('«oculta» en una curva o marca de un widget sin «ocultar»: no se ocultaría nunca');
       }
     }
     const valoresMando = new Set(mandos.map((x) => x.valor));
+    // (a figure's zones, a logic circuit's switches or its timing diagram's cursor are what an explore card moves)
+    const widget12 = t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? t.widget : null;
+    const movibles = new Set([...valoresMando, ...(widget12 ? interactivos(widget12) : [])]);
     for (const k of Object.keys(t.inicio)) {
       const md = mandos.find((x) => x.valor === k);
       if (!md) e(`«inicio.${k}»: solo se ponen al empezar valores que la tarjeta deja mover`);
@@ -436,13 +469,15 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     for (const k of modelo.orden) if (!Number.isFinite(ev0[k]!)) e(`con los valores de esta tarjeta, «${k}» no da un número (${ev0[k]})`);
 
     // gating
+    // (1.2: an «ajuste» opens «Continuar» inside its band, an optional «banco» always: lib/leccion12/motor12.ts)
+    for (const k of TIPOS_ACTIVIDAD) if (ft[k] != null && k !== tipo) e(`«${k}» solo va en una tarjeta «tipo: ${k}»`);
     if (tipo === 'explorar' || tipo === 'sorpresa' || ft.requiere != null) {
-      if (!mandos.length) e('una tarjeta para explorar necesita un widget con mandos');
+      if (!mandos.length && !widget12) e('una tarjeta para explorar necesita un widget con mandos');
       const rq = esObjeto(ft.requiere) ? ft.requiere : {};
       if (ft.requiere != null && !esObjeto(ft.requiere)) e('«requiere» debe ser { mover: [...], conectar: [...] }');
       const mover = Array.isArray(rq.mover) ? rq.mover.map(String) : [];
       const conectar = Array.isArray(rq.conectar) ? rq.conectar.map(String) : [];
-      for (const k of mover) if (!valoresMando.has(k)) e(`«requiere.mover»: «${k}» no tiene mando en esta tarjeta`);
+      for (const k of mover) if (!movibles.has(k)) e(`«requiere.mover»: «${k}» no tiene mando en esta tarjeta`);
       for (const k of conectar) if (!mandos.some((x) => x.valor === k && x.tipo !== 'deslizador')) e(`«requiere.conectar»: «${k}» no es un interruptor de esta tarjeta`);
       // a «conectar» button is always something to do before going on
       for (const x of mandos) if (x.tipo === 'conectar' && !conectar.includes(x.valor)) conectar.push(x.valor);
@@ -455,7 +490,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     const pregunta = tipo === 'predecir' || tipo === 'pregunta' || tipo === 'porque';
     if (pregunta && respuestas.filter((k) => k !== 'condiciones').length !== 1) e('una pregunta lleva exactamente una de: opciones, estimar, ordenar, emparejar');
     if (tipo === 'porque' && ft.opciones == null) e('«porque» lleva opciones');
-    if (!pregunta && tipo !== 'reto' && respuestas.length) e(`una tarjeta «${tipo}» no lleva ${respuestas.join(', ')}`);
+    if (esTipoActividad(tipo) && respuestas.filter((k) => !(k === 'condiciones' && tipo === 'diseno')).length) e(`una tarjeta «${tipo}» no lleva ${respuestas.join(', ')} (lleva su bloque «${tipo}»)`);
+    else if (!pregunta && tipo !== 'reto' && !esTipoActividad(tipo) && respuestas.length) e(`una tarjeta «${tipo}» no lleva ${respuestas.join(', ')}`);
     if (Array.isArray(ft.opciones)) {
       const ops: Opcion[] = [];
       ft.opciones.forEach((o: unknown, k: number) => {
@@ -501,6 +537,11 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
             if (obj < est.min || obj > est.max) e(`el objetivo (${obj}) cae fuera del deslizador`);
             if (!pos.some((p) => puntuarEstimacion(p, obj, est.tol).bien)) e('ninguna posición del deslizador cae dentro de la tolerancia');
             if (puntuarEstimacion(est.inicio, obj, est.tol).bien) e('la estimación empieza ya acertada');
+            // (peticiones motor12, autor-analisis-B: from the end farthest from the target the slider cannot move away
+            // from it, so a first wrong try has to cross towards the answer; the lesson walker cannot fail it first)
+            const medio = (est.min + est.max) / 2;
+            if ((Math.abs(est.inicio - est.min) < est.paso * 1e-6 && obj > medio) || (Math.abs(est.inicio - est.max) < est.paso * 1e-6 && obj < medio))
+              aviso(donde, '«estimar.inicio» está en el extremo más alejado del objetivo: póngalo en una posición desde la que se pueda fallar por los dos lados');
             cifrasModelo.push(obj);
           }
         }
@@ -535,7 +576,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         return null;
       }
       // (an estimate's hints may look at the reader's estimate itself: «estimacion»)
-      if (!enModelo(x.valor) && !(x.valor === 'estimacion' && ft.estimar != null)) e(`${d}: «${x.valor}» no está en el modelo`);
+      if (!enModelo(x.valor) && !(x.valor === 'estimacion' && ft.estimar != null) && !(esTipoActividad(tipo) && VARIABLES_PISTA[tipo]?.includes(x.valor))) e(`${d}: «${x.valor}» no está en el modelo`);
       const r: Rango = { valor: x.valor };
       if (esNumero(x.objetivo)) {
         const tol = esNumero(x.tol) ? x.tol : 0.02;
@@ -553,7 +594,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       return r;
     };
     if (ft.condiciones != null) {
-      if (tipo !== 'reto') e('solo un reto lleva «condiciones»');
+      if (tipo !== 'reto' && tipo !== 'diseno') e('solo un reto o un diseño lleva «condiciones»');
       if (!Array.isArray(ft.condiciones) || !ft.condiciones.length) e('«condiciones» es una lista');
       else {
         t.condiciones = [];
@@ -566,7 +607,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       }
     }
     if (tipo === 'reto' && !t.condiciones) e('un reto lleva «condiciones»');
-    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar);
+    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql' || tipo === 'tocar' || tipo === 'tabla');
     if (exito) {
       t.exito = exito;
       if (contarPalabras(exito) > MAX_PALABRAS_EXPLICACION) e(`«exito»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
@@ -585,19 +626,88 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         });
       }
     }
-    if ((tipo === 'reto' || t.estimar || t.ordenar || t.emparejar) && !t.pistas?.length) e('falta «pistas»: qué decir cuando no está bien');
+    if ((tipo === 'reto' || (tipo === 'diseno' && t.widget?.tipo !== 'logica') || t.estimar || t.ordenar || t.emparejar) && !t.pistas?.length) e('falta «pistas»: qué decir cuando no está bien');
     const ayuda = texto(ft.ayuda, 'ayuda');
     if (ayuda) {
       t.ayuda = ayuda;
       if (contarPalabras(ayuda) > MAX_PALABRAS_EXPLICACION) e(`«ayuda»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
     }
+    // 1.2: the hint ladder (pista 1, pista 2, the solution), on any card that is answered
+    if (ft.escalera != null) {
+      const lista = Array.isArray(ft.escalera) ? ft.escalera : [ft.escalera];
+      if (!lista.length || lista.length > 2) e('«escalera»: una o dos pistas, de la más suave a la más directa (la solución va en «solucion»)');
+      t.escalera = lista.map((x: unknown, k: number) => {
+        const p = texto(x, `escalera ${k + 1}`, true) ?? [];
+        if (contarPalabras(p) > MAX_PALABRAS_EXPLICACION) e(`escalera ${k + 1}: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
+        return p;
+      });
+    }
+    const solucion = texto(ft.solucion, 'solucion');
+    if (solucion) {
+      t.solucion = solucion;
+      if (contarPalabras(solucion) > MAX_PALABRAS_EXPLICACION) e(`«solucion»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
+      if (t.ayuda) aviso(donde, '«ayuda» y «solucion» a la vez: la escalera ya termina en la solución');
+    }
+    // 1.2: the step type's own block and checks (lib/leccion12/generar12.ts)
+    const textos12: [string, Texto][] = [];
+    const estados12: Valores[] = [];
+    if (esTipoActividad(tipo)) {
+      if (ft[tipo] == null) e(`una tarjeta «${tipo}» lleva su bloque «${tipo}:» (GUIA §10)`);
+      else if (sana()) {
+        const r12 = actividadDe(tipo, ft[tipo], {
+          semilla: `${id}/${tid}`,
+          t,
+          mc,
+          inicial,
+          mandos,
+          widget: t.widget,
+          mide: t.widget ? (medidas.get(t.widget) ?? {}) : {},
+          enModelo,
+          texto,
+          variables,
+          rango,
+          e,
+          aviso: (m) => aviso(donde, m),
+          // (motor12e: the values moved by a «lista» control — a catalogue, not an E series)
+          listas: (esObjeto(ft.widget) && Array.isArray(ft.widget.mandos) ? ft.widget.mandos : []).filter((m: unknown) => esObjeto(m) && Array.isArray(m.lista)).map((m: unknown) => String((m as { valor?: unknown }).valor)),
+          ...(libro.sql ? { sql: libro.sql } : {}),
+          digital,
+        });
+        if (r12.actividad) t.actividad = r12.actividad;
+        textos12.push(...r12.textos);
+        cifrasModelo.push(...r12.cifras);
+        estados12.push(...r12.estados);
+      }
+    }
     // formula
     if (ft.ec != null) {
-      const clave = claveLibro(ft.ec);
+      // (motor12e, autor-taller-F: «338.2» or «cap53#338.2» is the second equation inside block 338, a review
+      // «tarjeta» that gathers the section's key expressions)
+      // (an unquoted «338.2» comes as a number: «338.10» would lose its 0, so the guide asks for quotes)
+      const fe = esNumero(ft.ec) && !Number.isInteger(ft.ec) ? String(ft.ec) : ft.ec;
+      const m = typeof fe === 'string' ? /^(.*)\.(\d+)$/.exec(fe) : null;
+      const clave = claveLibro(m ? m[1] : fe);
       const c = clave ? citas[clave] : null;
-      const b = c ? (c.parte === parte ? bloques : libro.bloques(c.parte))?.[c.bloque] : null;
+      const b0 = c ? (c.parte === parte ? bloques : libro.bloques(c.parte))?.[c.bloque] : null;
+      let b = b0;
+      if (m && clave && c) {
+        const dentro: unknown[] = [];
+        const buscar = (x: unknown): void => {
+          if (Array.isArray(x)) for (const y of x) buscar(y);
+          else if (esObjeto(x)) {
+            if (x.t === 'ec' && x !== b0) dentro.push(x);
+            else for (const [k, v] of Object.entries(x)) if (k !== 'svg' && k !== 'fuente') buscar(v);
+          }
+        };
+        buscar(b0);
+        const n = Number(m[2]);
+        b = n >= 1 ? dentro[n - 1] : undefined;
+        if (!b) e(`«ec»: el bloque ${clave} tiene ${dentro.length} ecuaciones dentro (de ${clave}.1 a ${clave}.${dentro.length})`);
+      }
       if (!clave || !c) e(`«ec»: ${String(ft.ec)} no está en la lista «libro»`);
-      else if (!esObjeto(b) || b.t !== 'ec') e(`«ec»: el bloque ${clave} no es una ecuación`);
+      else if (m && !b) {
+        // (said above)
+      } else if (!esObjeto(b) || b.t !== 'ec') e(`«ec»: el bloque ${clave} no es una ecuación${m ? '' : ' (una ecuación dentro de un bloque: «n.k», la k-ésima)'}`);
       else {
         t.ec = { libro: clave, svg: String(b.svg), fuente: String(b.fuente ?? ''), w: Number(b.w), h: Number(b.h) } satisfies Ecuacion;
         if (!t.libro.includes(clave)) t.libro.push(clave);
@@ -664,6 +774,10 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       ...(t.ordenar?.elementos ?? []).map((x, k): [string, Texto] => [`ordenar ${k + 1}`, x]),
       ...(t.emparejar?.parejas ?? []).flatMap((x, k): [string, Texto][] => [[`emparejar ${k + 1}`, x[0]], [`emparejar ${k + 1}`, x[1]]]),
       ...(t.condiciones ?? []).map((x, k): [string, Texto] => [`condicion ${k + 1}`, x.rotulo]),
+      ...(t.escalera ?? []).map((x, k): [string, Texto] => [`escalera ${k + 1}`, x]),
+      ['solucion', t.solucion],
+      ...textos12,
+      ...textosWidget,
     ];
     for (const [campo, tx] of textos)
       for (const n of numerosDeTexto(tx)) {
@@ -705,6 +819,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       const estados: Valores[] = [inicial];
       for (const x of mandos) for (const v of [x.valores[0]!, x.valores[x.valores.length - 1]!]) estados.push({ ...inicial, [x.valor]: v });
       for (const x of comprobar) if (esObjeto(x) && esObjeto(x.con)) estados.push({ ...inicial, ...(x.con as Valores) });
+      // (1.2: each hidden fault of an «averia» is simulated too: what the probes read is what ngspice reads)
+      estados.push(...estados12);
       spice.push(...comprobacionesCircuito(def, w, medidas.get(w) ?? {}, mc, estados, `${origen}: ${donde}`));
     }
 
@@ -716,7 +832,12 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
   if (tarjetas.length && tarjetas[tarjetas.length - 1]!.tipo !== 'resumen') err('tarjetas', 'la última tarjeta es el resumen');
   if (tarjetas.filter((t) => t.tipo === 'resumen').length > 1) err('tarjetas', 'un solo resumen');
   if (!tarjetas.some((t) => t.tipo === 'explorar')) err('tarjetas', 'falta al menos una tarjeta «explorar»');
-  if (!tarjetas.some((t) => t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones)) err('tarjetas', 'falta algo que responder (predecir, pregunta, reto o porque)');
+  if (!tarjetas.some((t) => t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad)))) err('tarjetas', 'falta algo que responder (predecir, pregunta, reto o porque)');
+  // 1.2: every answered card should carry its hint ladder (warning, so the 1.1 lessons still publish)
+  const sinEscalera = tarjetas.filter((t) => (t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad))) && !t.escalera?.length && !t.pistas?.length && !t.ayuda && !t.solucion).map((t) => t.id);
+  if (sinEscalera.length) aviso('pistas', `preguntas sin pistas («escalera» y «solucion»): ${sinEscalera.join(', ')}`);
+  // 1.2 (ui12): one idea per screen
+  for (const t of tarjetas) for (const m of avisosUnaIdea(t)) aviso(`tarjeta ${t.id}`, m);
   // the approved sequence: explore → predict → formalise → apply → surprise → why → summary
   const orden = ['explorar', 'predecir', 'formula', 'reto', 'sorpresa', 'porque', 'resumen'];
   const vistos = tarjetas.map((t) => t.tipo).filter((x) => orden.includes(x));
@@ -773,18 +894,23 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (o.nombres != null) {
         // a name for each position, in the order of «lista» (the colours of the colour code, materials…)
         const nombres = o.nombres;
-        if (!Array.isArray(nombres) || nombres.length !== o.lista.length || !nombres.every((x) => typeof x === 'string' && x.trim() !== ''))
-          e(`${d}.nombres: un texto por cada valor de «lista», en el mismo orden`);
+        if (!Array.isArray(nombres) || nombres.length !== o.lista.length || !nombres.every((x) => typeof x === 'string' && x.trim() !== '')) {
+          // (motor12e, autor-analogica-C: in a YAML flow list «[2 m de 0,5 mm², …]» splits at the decimal comma)
+          const coma = Array.isArray(nombres) && nombres.length > o.lista.length && nombres.some((x, k) => k > 0 && /\d$/.test(String(nombres[k - 1]).trim()) && /^\d/.test(String(x)));
+          e(`${d}.nombres: un texto por cada valor de «lista», en el mismo orden${coma ? ' (¿una coma decimal sin comillas? En una lista entre corchetes, «2 m de 0,5 mm²» se parte en dos: escríbalo entre comillas)' : ''}`);
+        }
         else if (md.valores.length !== o.lista.length) e(`${d}.nombres: «lista» tiene valores repetidos`);
         else if (new Set(nombres.map((x) => (x as string).trim())).size !== nombres.length) e(`${d}.nombres: hay nombres repetidos`);
-        else if (nombres.some((x) => /\d/.test(x as string))) e(`${d}.nombres: sin cifras (el valor ya se ve entre paréntesis: «rojo (2)»)`);
+        // (peticiones motor12, autor-taller-B: names may carry digits — «Sn63Pb37», «SAC305», «0805», «12-0-12» —
+        // but a name that is just its own value says nothing the value in brackets does not)
+        else if (nombres.some((x, k) => Number(String(x).trim().replace(',', '.').replace('−', '-')) === (o.lista as number[])[k])) e(`${d}.nombres: un nombre que no sea su propio valor (el valor ya se ve entre paréntesis: «rojo (2)»)`);
         else if (nombres.some((x) => (x as string).trim().length > 24)) e(`${d}.nombres: como mucho 24 caracteres cada uno`);
         else {
           const de = new Map((o.lista as number[]).map((v, k) => [v, (nombres[k] as string).trim()]));
           md.nombres = md.valores.map((v) => de.get(v)!);
         }
       }
-    } else if (o.serie === 'E12' || o.serie === 'E24') {
+    } else if (o.serie === 'E6' || o.serie === 'E12' || o.serie === 'E24') {
       if (!esNumero(o.min) || !esNumero(o.max) || !(o.min > 0) || !(o.min < o.max)) e(`${d}: una serie necesita 0 < min < max`);
       else md.valores = valoresSerie(o.min, o.max, o.serie);
       md.serie = o.serie;
@@ -792,7 +918,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (!(o.min < o.max) || !(o.paso > 0)) e(`${d}: min < max y paso > 0`);
       else if ((o.max - o.min) / o.paso > 2000) e(`${d}: más de 2000 posiciones`);
       else md.valores = valoresLineales(o.min, o.max, o.paso);
-    } else e(`${d}: falta el recorrido (min, max y paso; serie E12/E24 con min y max; o lista)`);
+    } else e(`${d}: falta el recorrido (min, max y paso; serie E6/E12/E24 con min y max; o lista)`);
     if (o.nombres != null && !Array.isArray(o.lista)) e(`${d}.nombres: solo con «lista»`);
     if (md.valores.length && !(o.valor in t.inicio)) {
       // the value the control starts at must be one of its positions
@@ -813,15 +939,23 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     return { valor: o.valor, rotulo: typeof o.rotulo === 'string' ? analizarTexto(o.rotulo) : [{ t: 'txt', s: mag.nombre }] };
   }
 
-  function widgetDe(x: unknown, t: Tarjeta, e: (m: string) => void): Widget | null {
+  function widgetDe(x: unknown, t: Tarjeta, e: (m: string) => void, digital: ContextoDigital): Widget | null {
     const antesWidget = errores.length;
     if (!esObjeto(x)) {
-      e('«widget» debe ser { tipo: circuito | grafica, … }');
+      e('«widget» debe ser { tipo: circuito | grafica | figura | logica, … }');
       return null;
     }
+    // 1.2 (motor12c): a book figure or photo with zones, a logic circuit (lib/leccion12/digital/generar-digital.ts)
+    if (x.tipo === 'figura') return widgetFiguraDe(x, digital);
     const mandos = (Array.isArray(x.mandos) ? x.mandos : []).map((m, k) => mandoDe(m, `mando ${k + 1}`, e, t)).filter((m): m is Mando => !!m);
     if (new Set(mandos.map((m) => m.valor)).size !== mandos.length) e('dos mandos para el mismo valor');
-    const ocultar = x.ocultar === true;
+    // (motor12e: «ocultar: curvas» hides the readings and also every curve and mark of the graph until answered)
+    const ocultarCurvas = x.ocultar === 'curvas';
+    const ocultar = x.ocultar === true || ocultarCurvas;
+    if (x.ocultar != null && typeof x.ocultar !== 'boolean' && !ocultarCurvas) e('«widget.ocultar»: true, false o curvas');
+    if (ocultarCurvas && x.tipo !== 'grafica' && !(x.tipo === 'circuito' && x.grafica != null)) e('«widget.ocultar: curvas» necesita una gráfica');
+    const conCurvasOcultas = (g: Grafica): Grafica => (ocultarCurvas ? { ...g, curvas: g.curvas.map((c) => ({ ...c, oculta: true })), ...(g.marcas ? { marcas: g.marcas.map((m) => ({ ...m, oculta: true })) } : {}) } : g);
+    if (x.tipo === 'logica') return widgetLogicaDe(x, digital, ocultar, mandos);
     if (x.tipo === 'circuito') {
       const def = typeof x.esquema === 'string' ? esquemaDe(x.esquema) : undefined;
       if (!def) {
@@ -864,7 +998,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       }
       if (x.grafica != null) {
         const g = graficaDe(x.grafica, 'widget.grafica', mandos, t, e, antesWidget, def, tiene);
-        if (g) w.grafica = g;
+        if (g) w.grafica = conCurvasOcultas(g);
       }
       if (x.dibujo === false) w.dibujo = false;
       else if (x.dibujo != null && x.dibujo !== true) e('«widget.dibujo»: true o false');
@@ -889,15 +1023,16 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       return w;
     }
     if (x.tipo === 'grafica') {
-      const g = graficaDe(x, 'widget', mandos, t, e, antesWidget, null);
-      if (!g) return null;
-      const w: WidgetGrafica = { tipo: 'grafica', x: g.x, y: g.y, curvas: g.curvas, asas: g.asas, ...(g.marcas ? { marcas: g.marcas } : {}), mandos, ocultar };
+      const g0 = graficaDe(x, 'widget', mandos, t, e, antesWidget, null);
+      if (!g0) return null;
+      const g = conCurvasOcultas(g0);
+      const w: WidgetGrafica = { tipo: 'grafica', x: g.x, y: g.y, curvas: g.curvas, asas: g.asas, ...(g.marcas ? { marcas: g.marcas } : {}), ...(g.aspecto ? { aspecto: g.aspecto } : {}), mandos, ocultar };
       if (x.lectura != null) w.lectura = lecturaDe(x.lectura, 'widget.lectura', e) ?? undefined;
       if (Array.isArray(x.datos)) w.datos = x.datos.map((d, k) => lecturaDe(d, `widget.datos ${k + 1}`, e)).filter((d): d is Lectura => !!d);
-      for (const k of Object.keys(x)) if (!['tipo', 'x', 'y', 'curvas', 'asas', 'marcas', 'mandos', 'lectura', 'datos', 'ocultar'].includes(k)) e(`«widget.${k}»: clave desconocida`);
+      for (const k of Object.keys(x)) if (!['tipo', 'x', 'y', 'curvas', 'asas', 'marcas', 'mandos', 'lectura', 'datos', 'ocultar', 'aspecto'].includes(k)) e(`«widget.${k}»: clave desconocida`);
       return w;
     }
-    e('«widget.tipo» debe ser circuito o grafica');
+    e('«widget.tipo» debe ser circuito, grafica, figura o logica');
     return null;
   }
 
@@ -915,8 +1050,10 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (conId && (typeof o.id !== 'string' || !ID.test(o.id) || enModelo(o.id))) e(`«${d}.${de}.id»: un nombre que no esté en el modelo («t»)`);
       if (o.escala != null && o.escala !== 'log' && o.escala !== 'lineal') e(`«${d}.${de}.escala»: lineal o log`);
       if (o.escala === 'log' && !(o.min > 0)) e(`«${d}.${de}»: un eje logarítmico empieza por encima de 0`);
-      for (const k of Object.keys(o)) if (!['id', 'min', 'max', 'unidad', 'rotulo', 'escala'].includes(k)) e(`«${d}.${de}.${k}»: clave desconocida`);
-      return { id: conId ? String(o.id) : undefined, min: o.min, max: o.max, unidad: typeof o.unidad === 'string' ? o.unidad : '', rotulo: analizarTexto(String(o.rotulo ?? '')), ...(o.escala === 'log' ? { escala: 'log' as const } : {}) };
+      for (const k of Object.keys(o)) if (!['id', 'min', 'max', 'unidad', 'rotulo', 'escala', 'muestras'].includes(k)) e(`«${d}.${de}.${k}»: clave desconocida`);
+      // (esquemas12c: «muestras», the points a curve is drawn with — a carrier of a hundred cycles needs thousands)
+      if (o.muestras != null && !(typeof o.muestras === 'number' && Number.isInteger(o.muestras) && o.muestras >= 2 && o.muestras <= 4000)) e(`«${d}.${de}.muestras»: un entero de 2 a 4000`);
+      return { id: conId ? String(o.id) : undefined, min: o.min, max: o.max, unidad: typeof o.unidad === 'string' ? o.unidad : '', rotulo: analizarTexto(String(o.rotulo ?? '')), ...(o.escala === 'log' ? { escala: 'log' as const } : {}), ...(o.muestras != null ? { muestras: Number(o.muestras) } : {}) };
     };
     const ex = eje(x.x, 'x', true);
     const ey = eje(x.y, 'y', false);
@@ -925,10 +1062,47 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     const analisis = new Set<string>();
     const curvas: Curva[] = (Array.isArray(x.curvas) ? x.curvas : []).map((c, k) => {
       const o = esObjeto(c) ? c : {};
-      variables(`${d}.curvas ${k + 1}`, o.expr, [xid]);
+      const dc = `${d}.curvas ${k + 1}`;
+      // 1.2 (motor12e): a parametric curve — x(p) and y(p) of a parameter p that is not the axis (`y` or `expr`)
+      const pm = esObjeto(o.param) ? o.param : null;
+      if (o.param != null && !pm) e(`${dc}.param: { id, min, max } (el parámetro de la curva)`);
+      const pid = pm && typeof pm.id === 'string' ? pm.id : '';
+      if (pm) {
+        if (!ID.test(pid) || enModelo(pid) || pid === xid) e(`${dc}.param.id: un nombre que no esté en el modelo ni sea el del eje («th»)`);
+        for (const q of Object.keys(pm)) if (!['id', 'min', 'max', 'muestras'].includes(q)) e(`${dc}.param.${q}: clave desconocida`);
+        if (pm.muestras != null && !(typeof pm.muestras === 'number' && Number.isInteger(pm.muestras) && pm.muestras >= 2 && pm.muestras <= 4000)) e(`${dc}.param.muestras: un entero de 2 a 4000`);
+        for (const q of ['min', 'max'] as const) if (!esNumero(pm[q]) && typeof pm[q] !== 'string') e(`${dc}.param.${q}: un número o una expresión del modelo («2*pi»)`);
+        else if (typeof pm[q] === 'string') variables(`${dc}.param.${q}`, pm[q]);
+        if (o.y != null && o.expr != null) e(`${dc}: «y» o «expr», no las dos`);
+        variables(`${dc}.x`, o.x, [pid]);
+      } else if (o.x != null || o.y != null) e(`${dc}: «x» e «y» solo en una curva paramétrica (con «param»)`);
+      const yExpr = pm && o.y != null ? o.y : o.expr;
+      variables(dc, yExpr, pm ? [pid] : [xid]);
       const color = typeof o.color === 'string' ? o.color : 'azul';
-      if (![...COLORES, 'tinta'].includes(color)) e(`${d}.curvas ${k + 1}: color ${color}`);
-      const cv: Curva = { expr: String(o.expr ?? ''), color: color as Curva['color'], rotulo: analizarTexto(String(o.rotulo ?? '')), discontinua: o.discontinua === true };
+      if (![...COLORES, 'tinta'].includes(color)) e(`${dc}: color ${color}`);
+      const cv: Curva = { expr: String(yExpr ?? ''), color: color as Curva['color'], rotulo: analizarTexto(String(o.rotulo ?? '')), discontinua: o.discontinua === true };
+      if (pm) {
+        cv.x = String(o.x ?? '');
+        cv.param = { id: pid, min: String(pm.min ?? '0'), max: String(pm.max ?? '1'), muestras: esNumero(pm.muestras) ? pm.muestras : 240 };
+      }
+      // 1.2 (motor12e): a discrete sequence as stems at x = k·paso
+      if (o.palitos != null) {
+        if (o.palitos !== true && o.palitos !== false) e(`${dc}.palitos: true o false`);
+        if (o.palitos === true) {
+          const paso = o.paso == null ? 1 : o.paso;
+          if (!esNumero(paso) || !(paso > 0)) e(`${dc}.paso: el paso de la secuencia (1 por defecto), mayor que 0`);
+          else if ((ex.max - ex.min) / paso > 400) e(`${dc}: más de 400 palitos en el eje (suba «paso» o acorte el eje)`);
+          if (pm) e(`${dc}: «palitos» no va con una curva paramétrica`);
+          if (ex.escala === 'log') e(`${dc}: «palitos» en un eje x lineal`);
+          if (o.discontinua === true) e(`${dc}: «palitos» no va con «discontinua»`);
+          if (esNumero(paso) && paso > 0) cv.palitos = { paso };
+        }
+      } else if (o.paso != null) e(`${dc}.paso: solo con «palitos: true»`);
+      if (o.oculta != null) {
+        if (typeof o.oculta !== 'boolean') e(`${dc}.oculta: true o false`);
+        else if (o.oculta) cv.oculta = true;
+      }
+      if (o.mide != null && (pm || cv.palitos)) e(`${dc}: «mide» solo en una curva frente al eje (no paramétrica ni de palitos)`);
       if (o.mide != null) {
         const ob = def && typeof o.mide === 'string' ? def.observables[o.mide] : undefined;
         if (ob?.requiere?.some((q) => !piezasDe(q))) e(`${d}.curvas ${k + 1}: «${String(o.mide)}» necesita la pieza ${ob.requiere.filter((q) => !piezasDe(q)).join(', ')}`);
@@ -939,7 +1113,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
           cv.mide = String(o.mide);
         }
       }
-      for (const q of Object.keys(o)) if (!['expr', 'color', 'rotulo', 'discontinua', 'mide'].includes(q)) e(`${d}.curvas ${k + 1}.${q}: clave desconocida`);
+      for (const q of Object.keys(o)) if (!['expr', 'color', 'rotulo', 'discontinua', 'mide', 'x', 'y', 'param', 'palitos', 'paso', 'oculta'].includes(q)) e(`${d}.curvas ${k + 1}.${q}: clave desconocida`);
       return cv;
     });
     if (!curvas.length) e(`«${d}.curvas»: al menos una`);
@@ -962,8 +1136,9 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (!rot.length) e(`${d}.marcas ${k + 1}: falta «rotulo»`);
       for (const v of valoresDeTexto(rot)) if (!enModelo(v)) e(`${d}.marcas ${k + 1}.rotulo: {{${v}}} no está en el modelo`);
       if (contarPalabras(rot) > MAX_PALABRAS_ROTULO) e(`${d}.marcas ${k + 1}.rotulo: más de ${MAX_PALABRAS_ROTULO} palabras`);
-      for (const q of Object.keys(o)) if (!['x', 'y', 'rotulo', 'guias'].includes(q)) e(`${d}.marcas ${k + 1}.${q}: clave desconocida`);
-      return { x: String(o.x ?? ''), y: String(o.y ?? ''), rotulo: rot, guias: o.guias !== false };
+      for (const q of Object.keys(o)) if (!['x', 'y', 'rotulo', 'guias', 'oculta'].includes(q)) e(`${d}.marcas ${k + 1}.${q}: clave desconocida`);
+      if (o.oculta != null && typeof o.oculta !== 'boolean') e(`${d}.marcas ${k + 1}.oculta: true o false`);
+      return { x: String(o.x ?? ''), y: String(o.y ?? ''), rotulo: rot, guias: o.guias !== false, ...(o.oculta === true ? { oculta: true } : {}) };
     });
     if (x.marcas != null && !Array.isArray(x.marcas)) e(`«${d}.marcas» es una lista`);
     // the curves must be numbers over the axis with the card's values
@@ -972,15 +1147,51 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       const enEje = (j: number) => (ex.escala === 'log' ? ex.min * (ex.max / ex.min) ** (j / 8) : ex.min + ((ex.max - ex.min) * j) / 8);
       for (const [k, c] of curvas.entries()) {
         const f = mc.funcion(c.expr);
-        for (let j = 0; j <= 8; j++) {
-          const y = f({ ...st, [xid]: enEje(j) });
+        if (c.param) {
+          // a parametric curve: numbers over its parameter's range, and something of it inside the axes
+          const p0 = mc.funcion(c.param.min)(st);
+          const p1 = mc.funcion(c.param.max)(st);
+          if (!Number.isFinite(p0) || !Number.isFinite(p1) || !(p0 < p1)) {
+            e(`${d}.curvas ${k + 1}.param: min < max (da ${p0} y ${p1})`);
+            continue;
+          }
+          const fx = mc.funcion(c.x!);
+          let dentro = 0;
+          for (let j = 0; j <= 32; j++) {
+            const v = { ...st, [c.param.id]: p0 + ((p1 - p0) * j) / 32 };
+            const px = fx(v);
+            const py = f(v);
+            if (!Number.isFinite(px) || !Number.isFinite(py)) {
+              e(`${d}.curvas ${k + 1}: no da un número en ${c.param.id} = ${v[c.param.id]}`);
+              break;
+            }
+            if (px >= ex.min && px <= ex.max && py >= ey.min && py <= ey.max) dentro++;
+          }
+          if (!dentro) e(`${d}.curvas ${k + 1}: la curva paramétrica queda fuera de los ejes`);
+          continue;
+        }
+        // (stems: at their own positions k·paso)
+        const xs = c.palitos
+          ? Array.from({ length: Math.floor(ex.max / c.palitos.paso + 1e-9) - Math.ceil(ex.min / c.palitos.paso - 1e-9) + 1 }, (_, j) => (Math.ceil(ex.min / c.palitos!.paso - 1e-9) + j) * c.palitos!.paso)
+          : Array.from({ length: 9 }, (_, j) => enEje(j));
+        if (c.palitos && !xs.length) e(`${d}.curvas ${k + 1}: ningún palito cae en el eje x`);
+        for (const xj of xs) {
+          const y = f({ ...st, [xid]: xj });
           if (!Number.isFinite(y)) {
-            e(`${d}.curvas ${k + 1}: no da un número en ${xid} = ${enEje(j)}`);
+            e(`${d}.curvas ${k + 1}: no da un número en ${xid} = ${xj}`);
             break;
           }
         }
       }
     }
-    return { x: ex as Grafica['x'], y: ey, curvas, asas, ...(marcas.length ? { marcas } : {}) };
+    // 1.2 (motor12e): the same length per unit on both axes (a circle drawn round: the unit circle, Nyquist, Smith)
+    let aspecto: 'igual' | undefined;
+    if (x.aspecto != null) {
+      if (x.aspecto !== 'igual') e(`«${d}.aspecto»: igual (o nada)`);
+      else if (ex.escala === 'log' || ey.escala === 'log') e(`«${d}.aspecto: igual» necesita los dos ejes lineales`);
+      else if (ex.unidad !== ey.unidad) e(`«${d}.aspecto: igual» necesita la misma unidad en los dos ejes (${ex.unidad || '—'} y ${ey.unidad || '—'})`);
+      else aspecto = 'igual';
+    }
+    return { x: ex as Grafica['x'], y: ey, curvas, asas, ...(marcas.length ? { marcas } : {}), ...(aspecto ? { aspecto } : {}) };
   }
 }

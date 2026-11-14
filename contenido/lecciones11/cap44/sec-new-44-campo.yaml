@@ -1,0 +1,344 @@
+# Lección 1.2 de la sección 45.7 «Buses de Campo, Ethernet Industrial y Supervisión» (cap44; etiqueta interna
+# sec-new-44-campo). Formato: contenido/lecciones11/GUIA.md (§11). La terminación activa de PROFIBUS (bloque 221) es un
+# divisor de tres resistencias: 390 Ω de B a 5 V, 220 Ω entre B y A y 390 Ω de A a masa; se dibuja con el esquema
+# «serie» (V_BA es la tensión de la del medio). Las dos terminaciones iguales en paralelo son el mismo divisor con la
+# mitad de cada resistencia; las n cargas unidad (2 × 12 kΩ/n entre hilos, como en la sección 45.6) quedan en paralelo
+# con la del medio. EtherCAT: la trama del ejemplo (852 bytes, 68,2 µs) más 1 µs de paso por esclavo, la cifra de
+# Beckhoff que da el libro 4.1.
+# 1.2 (esquemas12d): la terminación activa con el esquema `rs485` (`activa`: la polarización en los dos extremos,
+# 390 Ω, 220 Ω entre hilos en cada uno) en simule-profibus, explore-cargas-profibus y pregunta-banco: 1,1 V y 0,99 V.
+leccion: cap44/sec-new-44-campo
+
+libro:
+  218: "diez conmutadores en línea suman, en el peor caso, 1,23 ms de incertidumbre, más que el ciclo entero"
+  220: "Su nivel físico es un RS-485 con reglas propias"
+  221: "En reposo, 5 × 220/1 000 = 1,1 V, y 0,99 V con 32 cargas unidad"
+  223: "con ciclos desde 31,25 µs y jitter por debajo de 1 µs"
+  225: "cada esclavo lee los datos que le corresponden y escribe los suyos mientras la trama pasa"
+  226: "Con 1 µs de paso por esclavo, el orden de magnitud que da Beckhoff para un esclavo con puertos Ethernet, la vuelta dura unos 108 µs"
+  228: "Tres maneras de dar acceso a muchos equipos."
+  229: "decenas a cientos de µs"
+  231: "un ciclo con dos bytes de datos de proceso ocupa cinco caracteres, 1,43 ms en COM2"
+  232: "un sensor de repuesto recibe la configuración del anterior sin intervención"
+  234: "No cierra lazos rápidos; los cierra el autómata, y el SCADA le cambia consignas."
+  235: "Modbus no se describe a sí mismo"
+  238: "un sensor roto no debe dar 0, que es una medida posible"
+  239: "la gasta en 27,8 horas"
+  241: "En PROFIBUS, con el bus alimentado y en reposo, unos 1,1 V entre B y A"
+
+modelo:
+  valores:
+    t_sf: { sim: "t_{trama}", nombre: "trama máxima en la línea", unidad: s, valor: 0.000123 }
+    n_sw: { sim: "n", nombre: "conmutadores en línea", valor: 10 }
+    V_5: { sim: "V", nombre: "alimentación de la terminación", unidad: V, valor: 5 }
+    R_up: { sim: "R_{arriba}", nombre: "resistencia de B a 5 V", unidad: Ω, valor: 390 }
+    R_ba: { sim: "R_{BA}", nombre: "resistencia entre B y A", unidad: Ω, valor: 220 }
+    R_dn: { sim: "R_{abajo}", nombre: "resistencia de A a masa", unidad: Ω, valor: 390 }
+    n_pb: { sim: "n", nombre: "cargas unidad", valor: 0 }
+    act: { tipo: interruptor, nombre: "terminación activa en los dos extremos", valor: 1 }
+    bytes_ec: { sim: "bytes", nombre: "bytes de la trama EtherCAT", valor: 852 }
+    n_esc: { sim: "n", nombre: "esclavos", valor: 40 }
+    t_paso: { sim: "t_{paso}", nombre: "paso por esclavo", unidad: s, valor: 0.000001 }
+    v_io: { sim: "v", nombre: "velocidad de COM2", unidad: "bit/s", valor: 38400 }
+    ciclos_ee: { sim: "N", nombre: "ciclos de la EEPROM", valor: 100000 }
+    s_hora: { sim: "s/h", nombre: "segundos por hora", valor: 3600 }
+  calculos:
+    t_incert: { expr: "n_sw*t_sf", sim: "t", nombre: "incertidumbre en el peor caso", unidad: s, cifras: 3 }
+    I_t1: { expr: "V_5/(R_up + R_ba + R_dn)", sim: "I", nombre: "corriente de la terminación", unidad: A }
+    V_up1: { expr: "I_t1*R_up", sim: "V_{arriba}", nombre: "tensión en la de arriba", unidad: V }
+    V_ba1: { expr: "I_t1*R_ba", sim: "V_{BA}", nombre: "tensión entre B y A", unidad: V, cifras: 3 }
+    V_dn1: { expr: "I_t1*R_dn", sim: "V_{abajo}", nombre: "tensión en la de abajo", unidad: V }
+    V_mal: { expr: "V_5*R_ba/(R_up + R_ba)", nombre: "olvidando la de abajo", unidad: V, cifras: 3 }
+    R_up2: { expr: "R_up/2", sim: "R_{arriba}", nombre: "las dos de arriba en paralelo", unidad: Ω }
+    R_dn2: { expr: "R_dn/2", sim: "R_{abajo}", nombre: "las dos de abajo en paralelo", unidad: Ω }
+    Z_pb: { expr: "1/(2/R_ba + n_pb/24000)", sim: "Z_{d}", nombre: "entre B y A, con las cargas", unidad: Ω }
+    I_t2: { expr: "V_5/(R_up2 + Z_pb + R_dn2)", sim: "I", nombre: "corriente de las terminaciones", unidad: A }
+    V_up2: { expr: "I_t2*R_up2", nombre: "tensión arriba", unidad: V }
+    V_ba2: { expr: "I_t2*Z_pb", sim: "V_{BA}", nombre: "tensión entre B y A", unidad: V, cifras: 3 }
+    V_dn2: { expr: "I_t2*R_dn2", nombre: "tensión abajo", unidad: V }
+    V_bp: { expr: "V_5*Z_pb/(2*R_up/(1 + act) + Z_pb)", sim: "V_{BA}", nombre: "tensión entre B y A de PROFIBUS", unidad: V, cifras: 3 }
+    t_trama_ec: { expr: "bytes_ec*8/100000000", sim: "t_{trama}", nombre: "trama EtherCAT en la línea", unidad: s, cifras: 3 }
+    t_vuelta: { expr: "bytes_ec*8/100000000 + n_esc*t_paso", sim: "t_{vuelta}", nombre: "vuelta de la trama", unidad: s, cifras: 3 }
+    t_iol: { expr: "5*11/v_io", sim: "t", nombre: "ciclo IO-Link en COM2", unidad: s, cifras: 3 }
+    bits_iol: { expr: "5*11", nombre: "bits de un ciclo", cifras: 2 }
+    horas_ee: { expr: "ciclos_ee/s_hora", sim: "t", nombre: "vida de la EEPROM", unidad: "h", cifras: 3 }
+
+tarjetas:
+  - id: explore-tres-maneras
+    tipo: explorar
+    titulo: "Tres maneras"
+    texto: "Leer doscientos equipos cada milisegundo, siempre a la vez, pide determinismo. Toque las tres maneras de dar acceso a muchos equipos."
+    libro: [228]
+    widget:
+      tipo: figura
+      figura: fig-new-44-ethernet
+      zonas:
+        - { id: maestro, rotulo: "Columna de la izquierda", rect: [0, 0, 145, 155], texto: "Bus con maestro: cada dato cuesta una pregunta y una respuesta." }
+        - { id: conmutada, rotulo: "Columna del centro", rect: [150, 0, 145, 155], texto: "Ethernet conmutada: cada equipo envía sus tramas; el determinismo depende de los conmutadores." }
+        - { id: vuelo, rotulo: "Columna de la derecha", rect: [300, 0, 153, 155], texto: "Procesado al vuelo: una sola trama recoge y entrega los datos de todos en una vuelta." }
+    requiere: { mover: [maestro, vuelo] }
+
+  - id: estime-conmutadores
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La Ethernet de oficina"
+    texto: "Cada conmutador almacena la trama antes de reenviarla, y una trama máxima ocupa la línea 123 µs. ¿Cuánta incertidumbre suman diez en línea, en el peor caso?"
+    libro: [218]
+    fijar: { t_sf: 0.000123, n_sw: 10 }
+    estimar:
+      objetivo: "t_incert"
+      unidad: s
+      min: 0
+      max: 0.002
+      paso: 0.00001
+      inicio: 0.0004
+      tol: 0.03
+      rotulo: "Incertidumbre"
+    exito: "1,23 ms: más que un ciclo de 1 ms entero. Por eso el control no usa la Ethernet de oficina tal cual."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00127 }, texto: "Demasiado: diez veces 123 µs." }
+      - { texto: "Se queda corto: cada conmutador puede añadir una trama entera de espera." }
+    escalera: ["Multiplique los 123 µs de una trama por los diez conmutadores."]
+    solucion: "10 × 123 µs = 1,23 ms."
+    comprobar:
+      - { t_incert: 0.00123 }
+
+  - id: simule-profibus
+    tipo: simular
+    titulo: "La terminación activa de PROFIBUS"
+    texto: "Cada extremo lleva 390 Ω de B a 5 V, 220 Ω entre B y A y 390 Ω de A a masa. Sin estaciones, ¿qué tensión hay entre B y A?"
+    libro: [220, 221]
+    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390, n_pb: 0, act: 1 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_5, rp: R_up, rt: R_ba, n: n_pb, activa: act }
+      lectura: { valor: V_bp, rotulo: "V_{BA} en reposo" }
+      mide: { vba: V_bp }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_ba1
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión entre B y A, V_{BA}"
+      medida: vba
+      errores:
+        - { expr: "V_mal", texto: "Ha dejado fuera la resistencia de A a masa: la corriente pasa por las tres, 1 000 Ω en total." }
+        - { expr: "V_5", texto: "Esos son los 5 V de la alimentación; entre B y A solo cae la parte de los 220 Ω." }
+    exito: "1,1 V: cada terminación es un divisor, y las dos iguales en paralelo dan lo mismo."
+    escalera: ["Las tres resistencias están en serie entre 5 V y masa."]
+    solucion: "5 × 220 / 1 000 = 1,1 V."
+    comprobar:
+      - { V_ba1: 1.1, V_mal: 1.80, V_bp: 1.1 }
+
+  - id: explore-cargas-profibus
+    tipo: explorar
+    titulo: "Con las estaciones"
+    texto: "Las dos terminaciones en paralelo son el mismo divisor con la mitad de cada resistencia. Añada cargas unidad y mire V_{BA}."
+    libro: [221]
+    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390, act: 1 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_5, rp: R_up, rt: R_ba, n: n_pb, activa: act }
+      lectura: { valor: V_bp, rotulo: "V_{BA} en reposo" }
+      corriente: I_t2
+      mide: { vba: V_bp }
+      mandos:
+        - { valor: n_pb, lista: [0, 8, 16, 32], rotulo: "Cargas unidad" }
+    requiere: { mover: [n_pb] }
+    nota: "Terminación y polarización van juntas."
+    comprobar:
+      - { V_ba2: 1.1, V_bp: 1.1 }
+      - { con: { n_pb: 32 }, V_ba2: 0.99, V_bp: 0.987, tol: 0.005 }
+
+  - id: empareje-acceso
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cómo reparte cada uno"
+    texto: "Una cada sistema con su forma de dar el turno."
+    libro: [218, 223, 225, 229]
+    emparejar:
+      - ["PROFIBUS DP", "Un maestro con el testigo interroga a sus esclavos"]
+      - ["PROFINET IRT", "Franjas reservadas en conmutadores específicos"]
+      - ["EtherCAT", "Una trama recorre todos los esclavos y vuelve"]
+    exito: "PROFINET IRT llega a ciclos desde 31,25 µs con jitter por debajo de 1 µs."
+    pistas:
+      - { texto: "Solo uno de los tres no usa conmutadores entre los esclavos." }
+    escalera: ["¿Cuál es un bus RS-485 y no Ethernet?"]
+    solucion: "PROFIBUS, testigo y maestro; PROFINET IRT, franjas reservadas; EtherCAT, una trama al vuelo."
+
+  - id: estime-ethercat
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una vuelta de EtherCAT"
+    texto: "Cuarenta servoaccionamientos: una trama de 852 bytes a 100 Mbit/s y 1 µs de paso por esclavo. ¿Cuánto dura la vuelta?"
+    libro: [226]
+    fijar: { bytes_ec: 852, n_esc: 40, t_paso: 0.000001 }
+    estimar:
+      objetivo: "t_vuelta"
+      unidad: s
+      min: 0
+      max: 0.0002
+      paso: 0.000001
+      inicio: 0.00016
+      tol: 0.03
+      rotulo: "Vuelta de la trama"
+    exito: "Unos 108 µs: cabe en un ciclo de 125 µs."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000112 }, texto: "Demasiado: 852 bytes son 68,2 µs; súmeles 40 pasos de 1 µs." }
+      - { cuando: { valor: estimacion, menor: 0.00007 }, texto: "Muy corto: la trama sola ya ocupa 68,2 µs de línea." }
+      - { texto: "Falta el paso por los 40 esclavos, 1 µs cada uno." }
+    escalera: ["La trama en la línea: 852 × 8 bits a 100 Mbit/s."]
+    solucion: "68,2 µs de trama + 40 × 1 µs = unos 108 µs."
+    comprobar:
+      - { t_vuelta: 0.000108, t_trama_ec: 0.0000682 }
+
+  - id: porque-ethercat
+    tipo: porque
+    titulo: "Por qué aprovecha tanto"
+    texto: "Con EtherCAT, el 94 % de lo transmitido son datos; con una trama por equipo y sentido, el 12 %. ¿Por qué?"
+    libro: [225, 226]
+    widget:
+      tipo: figura
+      figura: fig-new-44-ethernet
+      zonas:
+        - { id: vuelo, rotulo: "Columna de la derecha", rect: [300, 0, 153, 155], texto: "Una sola trama para todos." }
+    opciones:
+      - { texto: "Una sola trama recorre todos los esclavos, que leen y escriben al pasar", bien: true, porque: "Las cabeceras se pagan una vez para todos; con una trama por equipo, cada uno paga las suyas." }
+      - { texto: "Porque reserva franjas en los conmutadores", porque: "Eso es PROFINET IRT; EtherCAT no usa conmutadores normales entre esclavos." }
+      - { texto: "Porque comprime los datos", porque: "No comprime nada: comparte una trama entre todos." }
+    escalera: ["¿Cuántas cabeceras viajan con una trama para todos?"]
+    solucion: "Una sola trama, procesada al vuelo: las cabeceras se pagan una vez."
+
+  - id: estime-iolink
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "IO-Link en COM2"
+    texto: "IO-Link usa caracteres UART de 11 bits, y un ciclo con dos bytes de proceso son cinco a 38,4 kbit/s. ¿Cuánto dura?"
+    libro: [231]
+    fijar: { v_io: 38400 }
+    estimar:
+      objetivo: "t_iol"
+      unidad: s
+      min: 0
+      max: 0.004
+      paso: 0.00001
+      inicio: 0.003
+      tol: 0.03
+      rotulo: "Ciclo"
+    exito: "1,43 ms, más el tiempo de respuesta del dispositivo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00148 }, texto: "Demasiado: son 55 bits a 38,4 kbit/s." }
+      - { texto: "Se queda corto: cada carácter son 11 bits, no 8." }
+    escalera: ["Cinco caracteres de 11 bits: 55 bits."]
+    solucion: "55 / 38 400 = 1,43 ms."
+    comprobar:
+      - { t_iol: 0.00143, bits_iol: 55 }
+
+  - id: pregunta-iolink
+    tipo: pregunta
+    titulo: "El último metro"
+    texto: "Un detector IO-Link se avería y se cambia por otro igual. ¿Qué hay que configurar?"
+    libro: [232]
+    widget:
+      tipo: figura
+      figura: fig-new-44-ethernet
+      zonas:
+        - { id: maestro, rotulo: "Columna de la izquierda", rect: [0, 0, 145, 155], texto: "El maestro, arriba del bus." }
+    opciones:
+      - { texto: "Nada: el maestro guarda los parámetros y se los da", bien: true, porque: "Un fichero IODD describe el sensor y el maestro guarda su configuración." }
+      - { texto: "Su dirección en el bus", porque: "IO-Link no es un bus: cada sensor tiene su puerto, sin direcciones." }
+      - { texto: "La terminación del cable", porque: "Es punto a punto, sin terminaciones." }
+    escalera: ["¿Quién guarda los parámetros de cada puerto?"]
+    solucion: "Nada: el repuesto recibe la configuración del anterior sin intervención."
+
+  - id: pregunta-opcua
+    tipo: pregunta
+    titulo: "Modbus no se describe"
+    texto: "Qué significa un registro Modbus lo dice un PDF del fabricante. ¿Qué cambia OPC UA?"
+    libro: [234, 235]
+    widget:
+      tipo: figura
+      figura: fig-new-44-ethernet
+      zonas:
+        - { id: conmutada, rotulo: "Columna del centro", rect: [150, 0, 145, 155], texto: "Ethernet conmutada." }
+    opciones:
+      - { texto: "Un árbol de nodos con tipo, unidades y rango que el cliente recorre", bien: true, porque: "Un modelo de información: el cliente descubre qué ofrece el equipo, con seguridad incluida." }
+      - { texto: "Ciclos más rápidos para cerrar lazos", porque: "La supervisión no cierra lazos rápidos: los cierra el autómata." }
+      - { texto: "Un CRC más largo", porque: "La ventaja es describirse a sí mismo, no detectar errores." }
+    escalera: ["¿Qué le falta a un registro Modbus para entenderse sin el PDF?"]
+    solucion: "Un modelo de información: nodos con tipo, unidades y rango que el cliente descubre."
+
+  - id: pregunta-estado
+    tipo: pregunta
+    titulo: "Lo que debe dar el equipo de campo"
+    texto: "Un sensor de temperatura se rompe. ¿Qué debe ver el SCADA?"
+    libro: [238]
+    widget:
+      tipo: figura
+      figura: fig-new-44-ethernet
+      zonas:
+        - { id: maestro, rotulo: "Columna de la izquierda", rect: [0, 0, 145, 155], texto: "Los nodos de campo." }
+    opciones:
+      - { texto: "El estado junto al valor, que diga que está roto", bien: true, porque: "Un 0 es una medida posible: el estado distingue la avería, como el 4–20 mA con NAMUR NE 43." }
+      - { texto: "Un 0", porque: "Un sensor roto no debe dar 0, que es una medida posible." }
+      - { texto: "El último valor bueno", porque: "Ocultaría la avería: el SCADA seguiría creyendo la medida." }
+    escalera: ["¿Cómo distingue el SCADA un 0 real de un sensor roto?"]
+    solucion: "El estado junto al valor: un 0 es una medida posible."
+
+  - id: estime-eeprom
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La consigna que no cambia"
+    texto: "Un SCADA escribe la consigna cada segundo aunque no cambie, y el firmware la guarda en una EEPROM de unos 100 000 ciclos. ¿Cuánto dura?"
+    libro: [239]
+    fijar: { ciclos_ee: 100000, s_hora: 3600 }
+    estimar:
+      objetivo: "horas_ee"
+      unidad: "h"
+      min: 0
+      max: 100
+      paso: 0.5
+      inicio: 80
+      tol: 0.03
+      rotulo: "Vida de la EEPROM"
+    exito: "27,8 horas: hay que guardar solo cuando el valor cambia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 28.6 }, texto: "Demasiado: 100 000 s entre 3 600 s por hora." }
+      - { texto: "Se queda corto: 100 000 escrituras de una por segundo." }
+    escalera: ["Una escritura por segundo: 100 000 segundos. Páselos a horas."]
+    solucion: "100 000 / 3 600 = 27,8 horas."
+    comprobar:
+      - { horas_ee: 27.8 }
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Un PROFIBUS alimentado y en reposo da cero entre B y A. ¿Qué pasa?"
+    libro: [241]
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_5, rp: R_up, rt: R_ba, n: n_pb, activa: act }
+      lectura: { valor: V_bp, rotulo: "V_{BA} esperada" }
+      mide: { vba: V_bp }
+      mandos: []
+    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390, n_pb: 0, act: 1 }
+    opciones:
+      - { texto: "La estación que alimenta la terminación está apagada, o el interruptor del conector mal puesto", bien: true, porque: "La terminación toma los 5 V de la estación del extremo: sin ellos no hay 1,1 V." }
+      - { texto: "Nada: en reposo debe dar cero", porque: "En reposo la terminación activa deja unos 1,1 V entre B y A." }
+      - { texto: "Que sobra una estación", porque: "Las cargas bajan la tensión a 0,99 V con 32, no a cero." }
+    escalera: ["¿De dónde salen los 5 V de la terminación activa?"]
+    solucion: "Sin los 5 V de la estación del extremo, o con el interruptor de terminación mal puesto."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [218, 221, 226, 238]
+    ideas:
+      - { titulo: "Determinismo.", texto: "El control pide saber cuánto tarda cada dato, como mucho." }
+      - { titulo: "PROFIBUS.", texto: "RS-485 con terminación activa: 1,1 V en reposo." }
+      - { titulo: "EtherCAT.", texto: "Una trama al vuelo para todos: cuarenta accionamientos en unos 108 µs." }
+      - { titulo: "El equipo de campo.", texto: "Mapa estable, estado junto al valor y diagnóstico." }

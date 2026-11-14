@@ -1,0 +1,225 @@
+# Lección 1.2 de la sección 32.17 «La Temperatura de Ruido y el Suelo de Ruido» (cap32). Formato: GUIA.md.
+# T_e = T₀·(F − 1) con T₀ = 290 K (bloque 545); P = kTB con k = 1,380649·10⁻²³ J/K (bloques 541 y 558).
+leccion: cap32/sec-32.17
+
+libro:
+  540: "la temperatura de una resistencia que produciría el mismo ruido"
+  541: "P = k dot.op T dot.op B"
+  542: "las contribuciones se suman directamente, sin cuadraturas"
+  545: 'T_("e") = T_("0") dot.op lr(( F - "1" ))'
+  546: "2 610 K"
+  547: "la diferencia entre 0,5 y 1 dB de figura de ruido es de 40 K"
+  550: "hacia el cielo frío, unos pocos kelvin; hacia el suelo o hacia una ciudad, cientos"
+  551: "Un cable de 3 dB de pérdida delante del receptor suma 3 dB a su figura de ruido, es decir, duplica el factor de ruido"
+  553: "el amplificador de bajo ruido va en la antena, no en el equipo"
+  556: "solo se justifica cuando la señal es tan débil que no hay alternativa"
+  558: "De P = kTB con T = 290 K y B = 1 Hz salen exactamente los −174 dBm"
+  560: "cuántos bits por segundo se pueden transmitir"
+  564: "comparar la salida con la entrada terminada y con la antena conectada apuntando al cielo"
+
+modelo:
+  valores:
+    N_f: { sim: "NF", nombre: "figura de ruido", unidad: dB, valor: 3 }
+    T_s: { sim: "T", nombre: "temperatura", unidad: K, valor: 290 }
+    B_t: { sim: "B", nombre: "ancho de banda", unidad: Hz, valor: 1 }
+  calculos:
+    F_t: { expr: "10^(N_f/10)", sim: "F", nombre: "factor de ruido", unidad: "" }
+    T_e: { expr: "290*(F_t - 1)", sim: "T_{e}", nombre: "temperatura equivalente", unidad: K }
+    d_t: { expr: "290*(10^0.1 - 10^0.05)", sim: "ΔT", nombre: "de 0,5 a 1 dB", unidad: K }
+    k_t: { expr: "1.380649e-23*T_s*B_t", sim: "kTB", nombre: "potencia de ruido en vatios", unidad: W }
+    P_k: { expr: "10*log10(1.380649e-23*T_s*B_t/0.001)", sim: "P", nombre: "potencia de ruido", unidad: dBm, cifras: 3 }
+
+tarjetas:
+  - id: explore-temperatura
+    tipo: explorar
+    titulo: "El ruido como temperatura"
+    texto: "Cualquier ruido se describe por la temperatura de una resistencia que daría el mismo. Cambie la figura de ruido y mire su temperatura."
+    libro: [540, 545, 546]
+    widget:
+      tipo: grafica
+      x: { id: nf, min: 0, max: 10, unidad: dB, rotulo: "figura de ruido" }
+      y: { min: 0, max: 3000, unidad: K, rotulo: "temperatura equivalente" }
+      curvas:
+        - { expr: "290*(10^(nf/10) - 1)", color: azul, rotulo: "T_{e}" }
+      marcas:
+        - { x: "N_f", y: "T_e", rotulo: "{{T_e}}" }
+      lectura: { valor: T_e, rotulo: "Temperatura equivalente" }
+      mandos:
+        - { valor: N_f, lista: [0, 1, 3, 6, 10], rotulo: "NF" }
+    requiere: { mover: [N_f] }
+
+  - id: formula-temperatura
+    tipo: formula
+    titulo: "Equivalentes"
+    texto: "Las dos descripciones son la misma: el factor de ruido F, menos uno, por 290 K."
+    libro: [545, 546]
+    ec: 545
+    sustitucion: "290 K · ({{F_t}} − 1) = {{T_e}}"
+    widget:
+      tipo: grafica
+      x: { id: nf, min: 0, max: 10, unidad: dB, rotulo: "figura de ruido" }
+      y: { min: 0, max: 3000, unidad: K, rotulo: "temperatura equivalente" }
+      curvas:
+        - { expr: "290*(10^(nf/10) - 1)", color: azul, rotulo: "T_{e}" }
+      marcas:
+        - { x: "N_f", y: "T_e", rotulo: "{{T_e}}" }
+      lectura: { valor: T_e, rotulo: "T_{e}" }
+      mandos:
+        - { valor: N_f, lista: [0, 1, 3, 6, 10], rotulo: "NF" }
+    comprobar:
+      - { con: { N_f: 1 }, T_e: 75, tol: 0.01 }
+      - { con: { N_f: 3 }, T_e: 289, tol: 0.01 }
+
+  - id: prediga-medio-db
+    tipo: predecir
+    titulo: "De 0,5 a 1 dB"
+    texto: "En decibelios, pasar de 0,5 a 1 dB de figura de ruido parece una fracción despreciable. ¿Cuántos kelvin son?"
+    libro: [547]
+    widget:
+      tipo: grafica
+      x: { id: nf, min: 0, max: 1.2, unidad: dB, rotulo: "figura de ruido" }
+      y: { min: 0, max: 100, unidad: K, rotulo: "temperatura equivalente" }
+      curvas:
+        - { expr: "290*(10^(nf/10) - 1)", color: azul, rotulo: "T_{e}" }
+      lectura: { valor: d_t, rotulo: "Diferencia" }
+      ocultar: curvas
+    opciones:
+      - texto: "Unos 40 K, un número manejable"
+        bien: true
+        porque: "Por eso se usa la temperatura en receptores muy sensibles: resuelve donde los decibelios no."
+      - texto: "Medio kelvin"
+        porque: "Los decibelios no son kelvin: hay que pasar por el factor de ruido."
+      - texto: "Unos 290 K"
+        porque: "290 K es la temperatura de referencia; 3 dB serían unos 289 K, no medio decibelio."
+    escalera:
+      - "Calcule T_{e} = 290 · (F − 1) con F = 10^(NF/10) para los dos."
+    solucion: "75 K − 35 K ≈ 40 K."
+    comprobar:
+      - { d_t: 40, tol: 0.03 }
+      - { con: { N_f: 1 }, T_e: 75, tol: 0.01 }
+      - { con: { N_f: 0.5 }, T_e: 35, tol: 0.015 }
+
+  - id: antena
+    tipo: pregunta
+    titulo: "A dónde apunta la antena"
+    texto: "La temperatura de un sistema suma antena, cable y receptor, sin cuadraturas. ¿Cuándo es mayor la de la antena?"
+    libro: [542, 550]
+    widget:
+      tipo: figura
+      figura: fig-32.19
+      zonas:
+        - { id: todo, rotulo: "La figura", rect: [0, 0, 449, 241] }
+    opciones:
+      - texto: "Apuntando al suelo o a una ciudad: cientos de kelvin"
+        bien: true
+        porque: "Hacia el cielo frío, unos pocos kelvin."
+      - texto: "Apuntando al cielo"
+        porque: "El cielo frío da unos pocos kelvin: es lo más silencioso."
+      - texto: "Siempre la misma: 290 K"
+        porque: "290 K es la referencia; la antena ve lo que tiene delante."
+    escalera:
+      - "¿Qué está más caliente, el cielo o el suelo?"
+    solucion: "Hacia el suelo o una ciudad: cientos de kelvin."
+
+  - id: cable-antena
+    tipo: pregunta
+    titulo: "El LNA en la antena"
+    texto: "Un cable de 3 dB de pérdida va entre la antena y el receptor. ¿Dónde pone el amplificador de bajo ruido?"
+    libro: [551, 553]
+    widget:
+      tipo: figura
+      figura: fig-32.19
+      zonas:
+        - { id: todo, rotulo: "La figura", rect: [0, 0, 449, 241] }
+    opciones:
+      - texto: "En la antena, delante del cable"
+        bien: true
+        porque: "Delante del receptor, el cable duplica el factor de ruido: cada decibelio de cable delante se paga íntegro."
+      - texto: "En el equipo, donde está protegido"
+        porque: "Ahí el cable queda delante y suma sus 3 dB enteros a la figura de ruido."
+      - texto: "Da igual"
+        porque: "Lo que precede a la primera etapa cuenta entero."
+    escalera:
+      - "¿Qué divide el ruido de lo que va delante del amplificador?"
+    solucion: "En la antena: así el cable queda detrás y apenas cuenta."
+
+  - id: estime-suelo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El suelo, otra vez"
+    texto: "Con P = kTB, T = 290 K y B = 1 Hz, ¿cuántos dBm de ruido salen?"
+    libro: [541, 558]
+    fijar: { T_s: 290, B_t: 1 }
+    estimar:
+      objetivo: "P_k"
+      unidad: dBm
+      min: -200
+      max: -100
+      paso: 1
+      inicio: -120
+      tol: 0.01
+      rotulo: "Potencia de ruido"
+    exito: "−174 dBm: la misma cifra de la sección 32.1 vista desde la otra descripción."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: -172 }, texto: "Se ha pasado por arriba: kT a 290 K, en 1 Hz, es una potencia diminuta." }
+      - { texto: "Se ha quedado bajo: pase los vatios a milivatios antes del logaritmo." }
+    escalera:
+      - "P = kTB en vatios; dBm = 10 · log₁₀(P / 1 mW)."
+    solucion: "k · 290 K · 1 Hz, pasado a milivatios y a decibelios: −174 dBm."
+    comprobar:
+      - { P_k: -174, tol: 0.001 }
+
+  - id: por-que-enfriar
+    tipo: porque
+    titulo: "Por qué se enfría"
+    texto: "Los receptores de radioastronomía llevan su primera etapa a temperaturas criogénicas. ¿Por qué no todos?"
+    libro: [556, 560]
+    widget:
+      tipo: grafica
+      x: { id: nf, min: 0, max: 10, unidad: dB, rotulo: "figura de ruido" }
+      y: { min: 0, max: 3000, unidad: K, rotulo: "temperatura equivalente" }
+      curvas:
+        - { expr: "290*(10^(nf/10) - 1)", color: azul, rotulo: "T_{e}" }
+    opciones:
+      - texto: "Es la única forma de bajar el suelo, y solo se justifica cuando la señal no deja alternativa"
+        bien: true
+        porque: "El ruido depende de T: bajarla lo reduce, a un coste enorme."
+      - texto: "Porque el frío solo funciona con antenas grandes"
+        porque: "El frío baja el ruido térmico en cualquier receptor; el límite es el coste."
+      - texto: "Porque enfriar sube la figura de ruido"
+        porque: "La baja: el ruido térmico es proporcional a T."
+    escalera:
+      - "¿De qué depende el ruido térmico?"
+    solucion: "Enfriar baja el suelo, pero solo compensa con señales extremadamente débiles."
+
+  - id: banco-dos-cargas
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Sin equipo especializado, ¿cómo estima la temperatura de ruido de su receptor?"
+    libro: [564]
+    widget:
+      tipo: figura
+      figura: fig-32.19
+      zonas:
+        - { id: todo, rotulo: "La figura", rect: [0, 0, 449, 241] }
+    opciones:
+      - texto: "Comparando la salida con la entrada terminada y con la antena apuntando al cielo"
+        bien: true
+        porque: "Es la versión doméstica del método de las dos cargas y su factor Y."
+      - texto: "Midiendo la temperatura del receptor con un termómetro"
+        porque: "La temperatura de ruido no es la del aparato."
+      - texto: "Con la entrada al aire"
+        porque: "Al aire capta interferencias; hacen falta dos cargas conocidas."
+    escalera:
+      - "Hacen falta dos fuentes de ruido conocidas."
+    solucion: "Dos cargas: terminada a temperatura ambiente y antena al cielo frío."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [542, 545, 547, 553, 558]
+    ideas:
+      - { titulo: "En kelvin.", texto: "El ruido como temperatura se suma directamente: antena, cable y receptor." }
+      - { titulo: "Equivalencia.", texto: "T_{e} = 290 K · (F − 1): 3 dB son unos 289 K." }
+      - { titulo: "Resolución.", texto: "De 0,5 a 1 dB son 40 K: por eso se usa en receptores sensibles." }
+      - { titulo: "Instalación.", texto: "El LNA en la antena; enfriar, solo si no hay alternativa." }

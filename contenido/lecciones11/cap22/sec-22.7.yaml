@@ -1,0 +1,312 @@
+# Lección 1.2 de la sección 21.7 «Práctica 7 — Oscilador Astable con el 555» (cap22; etiqueta interna sec-22.7).
+# Formato: contenido/lecciones11/GUIA.md. El astable del libro (R_A = 10 kΩ, R_B = 47 kΩ, C = 1 µF) a 9 V, con el
+# esquema «ne555-astable» (comparadores a ⅓ y ⅔ de V_CC). Las R_B de 10 kΩ y 22 kΩ del primer mando son ilustrativas;
+# el ajuste usa el ejercicio 21.7 (R_A = 4,7 kΩ, C = 470 nF: R_B = 22 kΩ da 62,9 Hz).
+leccion: cap22/sec-22.7
+
+libro:
+  189: "contiene en ocho patillas casi todo el capítulo 8: dos comparadores, un divisor resistivo, un biestable y un transistor de descarga"
+  192: "El divisor interno de tres resistencias iguales fija dos umbrales: 1/3 y 2/3 de la alimentación."
+  193: "El condensador se carga a través de RA + RB."
+  195: 't_("alto") = "0,693"'
+  196: 't_("bajo")'
+  197: 'f = ("1,44")'
+  198: "Con RA = 10 kΩ, RB = 47 kΩ y C = 1 µF: f = 13,9 Hz (T = 72,1 ms: talto = 39,5 ms, tbajo = 32,6 ms), con un ciclo de trabajo del 55 %."
+  200: "el condensador recorre siempre la mitad del camino restante"
+  201: "la frecuencia no depende de la tensión de alimentación"
+  203: "Con el astable clásico no se puede bajar del 50 %"
+  204: "un diodo en paralelo con RB para que la carga lo evite"
+  207: "Un pico de corriente en cada conmutación, de decenas o cientos de miliamperios"
+  208: "Consumo apreciable, de unos 3 a 10 mA."
+  209: "consumo de microamperios y sin pico de conmutación. La contrapartida es menos corriente de salida."
+  210: "salvo que hagan falta los 200 mA de salida del bipolar"
+  212: "Aplicándole una tensión se modifican ambos umbrales, y con ello la frecuencia"
+  213: "debe llevar un condensador de 10 nF a masa. Dejarlo al aire hace que capte ruido y la frecuencia fluctúe"
+  215: "medir la frecuencia y compararla con la fórmula"
+  216: "Variar la alimentación entre 5 y 12 V y comprobar que la frecuencia apenas cambia"
+  217: "se pueden identificar 1/3 y 2/3 de VCC en la pantalla"
+  "cap22#370": "Un 555 en astable lleva"
+
+modelo:
+  valores:
+    Vcc_5: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 9 }
+    Ra_5: { sim: "R_{A}", nombre: "resistencia A", unidad: Ω, valor: 10000 }
+    Rb_5: { sim: "R_{B}", nombre: "resistencia B", unidad: Ω, valor: 47000 }
+    C_5: { sim: "C", nombre: "condensador", unidad: F, valor: 1e-6 }
+  calculos:
+    th_5: { expr: "ln(2)*(Ra_5 + Rb_5)*C_5", sim: "t_{alto}", nombre: "tiempo en alto", unidad: s }
+    tl_5: { expr: "ln(2)*Rb_5*C_5", sim: "t_{bajo}", nombre: "tiempo en bajo", unidad: s }
+    T_5: { expr: "th_5 + tl_5", sim: "T", nombre: "periodo", unidad: s }
+    f_5: { expr: "1/T_5", sim: "f", nombre: "frecuencia", unidad: Hz }
+    f_144: { expr: "1.44/((Ra_5 + 2*Rb_5)*C_5)", sim: "f", nombre: "frecuencia con 1,44", unidad: Hz }
+    d_5: { expr: "th_5/T_5*100", sim: "D", nombre: "ciclo de trabajo", unidad: "%" }
+    u_1: { expr: "Vcc_5/3", sim: "V_{CC}/3", nombre: "umbral inferior", unidad: V }
+    u_2: { expr: "2*Vcc_5/3", sim: "2V_{CC}/3", nombre: "umbral superior", unidad: V }
+
+tarjetas:
+  - id: explore-astable
+    tipo: explorar
+    titulo: "Entre dos umbrales"
+    texto: "El condensador se carga por R_{A} + R_{B} y se descarga por R_{B}, entre 1/3 y 2/3 de V_{CC}. Cambie R_{B}."
+    libro: [189, 192, 193]
+    inicio: { Rb_5: 47000 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: f_5, rotulo: "Frecuencia" }
+      datos:
+        - { valor: d_5, rotulo: "Ciclo de trabajo: {{d_5}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 13, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "Vcc_5*(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))", color: azul, rotulo: "salida", mide: salida, discontinua: true }
+          - { expr: "u_2", color: tinta, rotulo: "2/3", discontinua: true }
+          - { expr: "u_1", color: tinta, rotulo: "1/3", discontinua: true }
+      mandos:
+        - { valor: Rb_5, lista: [10000, 22000, 47000], rotulo: "R_{B}" }
+    requiere: { mover: [Rb_5] }
+
+  - id: formula-tiempos
+    tipo: formula
+    titulo: "Los dos tiempos"
+    texto: "Con 10 kΩ, 47 kΩ y 1 µF: 39,5 ms en alto y 32,6 ms en bajo, 13,9 Hz y un ciclo de trabajo del 55 %."
+    libro: [195, 196, 198]
+    fijar: { Vcc_5: 9, Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    ec: 195
+    sustitucion: "0,693 · ({{Ra_5}} + {{Rb_5}}) · {{C_5}} = {{th_5}}"
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: th_5, rotulo: "Tiempo en alto" }
+      datos:
+        - { valor: tl_5, rotulo: "t_{bajo} = {{tl_5}}" }
+        - { valor: f_5, rotulo: "f = {{f_5}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "Vcc_5*(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))", color: azul, rotulo: "salida", mide: salida, discontinua: true }
+    comprobar:
+      - { th_5: 0.0395, tl_5: 0.0326, T_5: 0.0721, f_5: 13.9, d_5: 55, tol: 0.01 }
+
+  - id: prediga-vcc
+    tipo: predecir
+    titulo: "Prediga con otra alimentación"
+    texto: "La alimentación del astable sube de 5 a 12 V. ¿Qué hace la frecuencia?"
+    libro: [201, 216]
+    fijar: { Vcc_5: 12, Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: f_5, rotulo: "Frecuencia" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 13, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+      ocultar: true
+    opciones:
+      - texto: "Apenas cambia"
+        bien: true
+        porque: "Los umbrales suben en la misma proporción que V_{CC}, y la exponencial es más rápida en esa proporción: se cancelan."
+      - texto: "Sube en proporción a la alimentación"
+        porque: "El condensador se carga más deprisa, sí, pero tiene que llegar a un umbral más alto. Se compensa."
+      - texto: "Baja, porque el condensador tiene que subir más"
+        porque: "Sube más, pero hacia una V_{CC} mayor y con la misma constante: tarda lo mismo."
+    escalera:
+      - "¿Dónde están los umbrales si V_{CC} se duplica?"
+    solucion: "Apenas cambia: umbrales y velocidad de carga escalan juntos con V_{CC}."
+
+  - id: sorpresa-vcc
+    tipo: sorpresa
+    titulo: "De 5 a 12 V"
+    texto: "Mueva la alimentación entre 5 y 12 V. Los umbrales se mueven; la frecuencia, no."
+    libro: [201, 216, 217]
+    fijar: { Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    inicio: { Vcc_5: 5 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: f_5, rotulo: "Frecuencia" }
+      datos:
+        - { valor: u_2, rotulo: "Umbral superior: {{u_2}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 13, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "Vcc_5*(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))", color: azul, rotulo: "salida", mide: salida, discontinua: true }
+          - { expr: "u_2", color: tinta, rotulo: "2/3", discontinua: true }
+          - { expr: "u_1", color: tinta, rotulo: "1/3", discontinua: true }
+      mandos:
+        - { valor: Vcc_5, min: 5, max: 12, paso: 1, rotulo: "V_{CC}" }
+    requiere: { mover: [Vcc_5] }
+
+  - id: por-que-ln2
+    tipo: porque
+    titulo: "¿Por qué 0,693?"
+    texto: "El 0,693 de la fórmula es ln 2. ¿De dónde sale?"
+    libro: [200, 201]
+    fijar: { Vcc_5: 9, Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: th_5, rotulo: "Tiempo en alto" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "u_2", color: tinta, rotulo: "2/3", discontinua: true }
+          - { expr: "u_1", color: tinta, rotulo: "1/3", discontinua: true }
+    opciones:
+      - texto: "De 1/3 a 2/3 de V_{CC} es la mitad del camino que falta"
+        bien: true
+        porque: "Una exponencial tarda ln 2 constantes en recorrer la mitad de lo que le falta. Y en la descarga, igual."
+      - texto: "Es una constante del integrado, ajustada en fábrica"
+        porque: "No es un ajuste: sale de los umbrales a 1/3 y 2/3, fijados por tres resistencias iguales."
+      - texto: "Es una constante de tiempo entera"
+        porque: "En un τ se recorre bastante más de la mitad del camino. La mitad lleva menos: 0,693·τ."
+    escalera:
+      - "Desde 1/3 de V_{CC}, ¿cuánto le falta al condensador para llegar a V_{CC}? ¿Y a 2/3?"
+    solucion: "Le falta 2/3 y recorre 1/3: la mitad del camino restante, que cuesta ln 2 = 0,693 constantes."
+
+  - id: ciclo-trabajo
+    tipo: pregunta
+    titulo: "Un ciclo de trabajo del 30 %"
+    texto: "¿Se puede conseguir un ciclo de trabajo del 30 % con el astable clásico?"
+    libro: [203, 204]
+    fijar: { Vcc_5: 9, Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: d_5, rotulo: "Ciclo de trabajo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "Vcc_5*(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))", color: azul, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "No: t_{alto} es siempre mayor que t_{bajo}"
+        bien: true
+        porque: "La carga va por R_{A} + R_{B} y la descarga solo por R_{B}: nunca baja del 50 %. Hace falta un diodo en R_{B}."
+      - texto: "Sí, haciendo R_{A} mayor que R_{B}"
+        porque: "Una R_{A} mayor alarga la carga: el ciclo de trabajo sube, no baja."
+      - texto: "Sí, bajando la alimentación"
+        porque: "La alimentación no cambia los tiempos: ni la frecuencia ni el ciclo de trabajo."
+    escalera:
+      - "¿Por qué resistencias pasa la carga y por cuáles la descarga?"
+    solucion: "No: R_{A} + R_{B} > R_{B}, así que t_{alto} > t_{bajo}. Hace falta un diodo en paralelo con R_{B} u otra topología."
+
+  - id: ajuste-ejercicio
+    tipo: ajuste
+    titulo: "Ajuste la frecuencia"
+    texto: "Con R_{A} = 4,7 kΩ, C = 470 nF y 9 V, mueva R_{B} hasta 62,9 Hz."
+    libro: [197, "cap22#370"]
+    fijar: { Vcc_5: 9, Ra_5: 4700, C_5: 470e-9 }
+    inicio: { Rb_5: 47000 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: f_5, rotulo: "Frecuencia" }
+      grafica:
+        x: { id: t, min: 0, max: 0.05, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "Vcc_5*(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))", color: azul, rotulo: "salida", mide: salida, discontinua: true }
+      mandos:
+        - { valor: Rb_5, min: 10000, max: 47000, paso: 100, rotulo: "R_{B}" }
+    ajuste:
+      valor: f_5
+      objetivo: 62.9
+      tol: 0.02
+      rotulo: "Frecuencia"
+      escala: { min: 30, max: 120 }
+      bajo: "Frecuencia baja: reduzca R_{B}."
+      alto: "Frecuencia alta: aumente R_{B}."
+      dentro: "En la banda: unos 22 kΩ, como el ejercicio."
+
+  - id: cmos
+    tipo: pregunta
+    titulo: "Bipolar o CMOS"
+    texto: "Empareje cada versión del 555 con su rasgo."
+    libro: [207, 208, 209, 210]
+    emparejar:
+      - ["El bipolar, al conmutar", "Un pico de decenas o cientos de miliamperios"]
+      - ["El bipolar, en reposo", "Un consumo de 3 a 10 mA"]
+      - ["El CMOS, como el 7555", "Microamperios y sin pico de conmutación"]
+      - ["La salida del bipolar", "Hasta 200 mA, más que el CMOS"]
+    exito: "Use el CMOS salvo que hagan falta los 200 mA del bipolar, y desacople junto al chip."
+    pistas:
+      - { texto: "Los defectos del bipolar son el pico y el consumo; su ventaja, la corriente de salida." }
+    escalera:
+      - "El CMOS resuelve los dos defectos del bipolar a cambio de menos corriente de salida."
+    solucion: "Bipolar: pico al conmutar, 3 a 10 mA, 200 mA de salida. CMOS: microamperios y sin pico."
+
+  - id: pin-control
+    tipo: pregunta
+    titulo: "El pin de control"
+    texto: "En un astable, el pin 5 se ha dejado al aire. ¿Qué se observa?"
+    libro: [212, 213]
+    fijar: { Vcc_5: 9, Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    widget:
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      lectura: { valor: u_2, rotulo: "Umbral superior" }
+      grafica:
+        x: { id: t, min: 0, max: 0.15, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "u_2", color: tinta, rotulo: "2/3", discontinua: true }
+    opciones:
+      - texto: "Capta ruido y la frecuencia fluctúa"
+        bien: true
+        porque: "El pin 5 da acceso al umbral superior. Sin uso, lleva 10 nF a masa; al aire, el ruido mueve los umbrales."
+      - texto: "Nada: si no se usa, da igual"
+        porque: "Es un fallo frecuente y desconcertante: al aire capta ruido. Por eso lleva un condensador de 10 nF a masa."
+      - texto: "El 555 deja de oscilar"
+        porque: "Sigue oscilando, pero con la frecuencia moviéndose al ritmo del ruido."
+    escalera:
+      - "¿Qué umbral controla el pin 5?"
+    solucion: "Capta ruido y la frecuencia fluctúa: lleva 10 nF a masa cuando no se usa."
+
+  - id: banco-555
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte el astable del libro y mida su frecuencia con el osciloscopio."
+    libro: [198, 215]
+    fijar: { Vcc_5: 9, Ra_5: 10000, Rb_5: 47000, C_5: 1e-6 }
+    banco:
+      piezas: ["Un 555 y una fuente de 9 V", "R_{A} = 10 kΩ, R_{B} = 47 kΩ y C = 1 µF", "Osciloscopio en la salida"]
+      medir: "La frecuencia de la salida."
+      esperado: f_5
+      unidad: Hz
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Sale alta: el condensador real puede ser menor que el nominal. Mídalo y recalcule." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Sale baja: compruebe R_{B} y C reales; un electrolítico suele ser mayor que lo marcado." }
+        - { texto: "Coincide. Ahora cambie la alimentación entre 5 y 12 V: la frecuencia apenas debe moverse." }
+      ficha: { n: 31, titulo: "Práctica 7 · Oscilador astable con el 555" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [192, 198, 201, 203]
+    ideas:
+      - { titulo: "Dos umbrales.", texto: "C oscila entre 1/3 y 2/3 de V_{CC}: carga por R_{A} + R_{B}, descarga por R_{B}." }
+      - { titulo: "Los tiempos.", texto: "t = 0,693·R·C: con 10 kΩ, 47 kΩ y 1 µF, 13,9 Hz." }
+      - { titulo: "Sin V_{CC}.", texto: "La frecuencia no depende de la alimentación: umbrales y carga escalan juntos." }
+      - { titulo: "Más del 50 %.", texto: "El astable clásico siempre da t_{alto} > t_{bajo}." }

@@ -191,7 +191,10 @@ export function ordenConceptos(): Map<string, number> {
   } catch {
     return r;
   }
-  ordenLectura().forEach((p, i) => {
+  const partes = ordenLectura();
+  // (1.2, consolas-A: then the parts of «Consolas por dentro», which are not in the reading order: lib/partes-extra.ts)
+  for (const [p, info] of Object.entries(indice.partes)) if (info.tipo === 'consola') partes.push(p);
+  partes.forEach((p, i) => {
     (indice.partes[p]?.secciones ?? []).forEach((s, k) => r.set(`${p}/${s.label}`, i * 1000 + k));
   });
   return r;

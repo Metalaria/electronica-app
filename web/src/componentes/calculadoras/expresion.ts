@@ -46,6 +46,50 @@ export function wright(x: number): number {
   return w;
 }
 
+/**
+ * The complementary error function, erfc(x) = 1 − erf(x), with a relative error below 1,2 × 10⁻⁷ everywhere (the
+ * Chebyshev fit of Numerical Recipes' erfcc): small tails stay exact, so a BPSK bit error rate Q(√(2·E_b/N₀)) =
+ * ½·erfc(√(E_b/N₀)) of 10⁻⁹ is right to its last shown figure (1.2 lessons, motor12e).
+ */
+export function erfc(x: number): number {
+  if (Number.isNaN(x)) return NaN;
+  const z = Math.abs(x);
+  const t = 1 / (1 + 0.5 * z);
+  const r =
+    t *
+    Math.exp(
+      -z * z - 1.26551223 +
+        t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))),
+    );
+  return x >= 0 ? r : 2 - r;
+}
+
+// the bits of a double, for the noise's hash (one buffer: the function is pure, its result depends only on its arguments)
+const BITS = new DataView(new ArrayBuffer(8));
+function mezclar(h: number): number {
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/**
+ * Seeded pseudo-random noise: a standard normal value (mean 0, standard deviation 1) for each pair (x, semilla), the
+ * same on every device and in the generator — white noise along any axis it is sampled on (each x its own draw), so
+ * `0.1*ruido(t, 7)` is a noise of 0,1 V rms on a signal, and a sequence x[n] + ruido(n, 3) a noisy one (1.2
+ * lessons, motor12e: the buried pulse of a correlation, a spectrum's noise floor). A hash of the double's bits and
+ * the seed gives two uniforms, Box–Muller turns them into a normal.
+ */
+export function ruido(x: number, semilla: number): number {
+  if (!Number.isFinite(x) || !Number.isFinite(semilla)) return NaN;
+  BITS.setFloat64(0, x === 0 ? 0 : x);
+  const s = Math.round(semilla) | 0;
+  let h = mezclar(BITS.getUint32(0) ^ mezclar(s ^ 0x9e3779b9));
+  h = mezclar(h ^ BITS.getUint32(4));
+  const u1 = (h + 1) / 4294967297;
+  const u2 = mezclar(h ^ 0x68e31da4) / 4294967296;
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
 /** Functions and their number of arguments (−1: any number). */
 const FUNCIONES: Record<string, [number, (...a: number[]) => number]> = {
   sqrt: [1, Math.sqrt],
@@ -74,6 +118,10 @@ const FUNCIONES: Record<string, [number, (...a: number[]) => number]> = {
   max: [-1, Math.max],
   par: [-1, par],
   wright: [1, wright],
+  // (1.2 lessons, motor12e; not in contenido/formulas_expr.py, as wright: the calculators' formulas do not use them)
+  erf: [1, (x) => 1 - erfc(x)],
+  erfc: [1, erfc],
+  ruido: [2, ruido],
 };
 
 export type Nodo =

@@ -1,0 +1,238 @@
+# Lección 1.2 de la sección 54.1 «Arquitectura de un Robot: Sensores, Actuadores y Lazos» (cap57; etiquetas sec-57.N =
+# impresas 54.N).
+# - Qué es un robot para la electrónica y los grados de libertad (bloque 4).
+# - La jerarquía de lazos y sus frecuencias (bloque 7, figura 54.1, fig-57.1); el reparto entre procesadores (bloque 9).
+# - Sensores propioceptivos y exteroceptivos (bloque 11) y el presupuesto de ciclo (bloque 12).
+# - Modelo: los ciclos de un ATmega328P a 16 MHz en un milisegundo (16 000, bloque 9).
+# Pasos prácticos: «ordenar» los lazos de fuera adentro y «tocar» en la figura el lazo que de verdad mueve el motor.
+leccion: cap57/sec-57.1
+
+libro:
+  4: "hacen falta seis para colocar una herramienta en cualquier posición y orientación del espacio, tres para llevar un punto a cualquier sitio de un volumen, dos para mover un robot sobre el suelo"
+  6: "sus lazos de control están anidados y trabajan a frecuencias muy distintas"
+  7: "de cinco a diez veces como regla práctica"
+  8: "La parada de emergencia no pasa por ningún lazo."
+  9: "un ATmega328P a 16 MHz tiene 16 000 ciclos en cada milisegundo"
+  11: "Los propioceptivos miden el estado del propio robot"
+  12: "Si la suma pasa de la mitad del procesador, el diseño no tiene margen para lo que se añadirá después."
+  "cap57#114": "con lo que el motor no puede dar par aunque el procesador del accionamiento falle"
+
+modelo:
+  valores:
+    f_c: { sim: "f_{reloj}", nombre: "reloj del ATmega328P", unidad: Hz, valor: 16000000 }
+    T_l: { sim: "T", nombre: "periodo del lazo", unidad: s, valor: 0.001 }
+  calculos:
+    N_c: { expr: "f_c*T_l", sim: "N", nombre: "ciclos en cada periodo", unidad: ciclos }
+
+tarjetas:
+  - id: explore-lazos
+    tipo: explorar
+    titulo: "Lazos dentro de lazos"
+    texto: "Lo que distingue a un robot son sus lazos anidados, a frecuencias muy distintas. Toque la planificación y el lazo de corriente."
+    libro: [6, 8]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: plan, rotulo: "Arriba del todo", rect: [16, 8, 160, 27], texto: "Planificación: qué hacer y por dónde ir, a unos pocos hercios." }
+        - { id: trayectoria, rotulo: "La segunda caja", rect: [16, 48, 160, 27], texto: "Generador de trayectoria: consignas con velocidad y aceleración limitadas, de 100 Hz a 1 kHz." }
+        - { id: posicion, rotulo: "La tercera caja", rect: [16, 88, 160, 27], texto: "Lazo de posición de cada eje: compara la consigna con el encoder." }
+        - { id: velocidad, rotulo: "La cuarta caja", rect: [16, 128, 160, 27], texto: "Lazo de velocidad, dentro del de posición." }
+        - { id: corriente, rotulo: "La quinta caja", rect: [16, 167, 160, 27], texto: "Lazo de corriente y puente: vive en el driver, al ritmo de la PWM." }
+        - { id: externos, rotulo: "A la derecha, arriba", rect: [237, 33, 76, 52], texto: "Sensores externos: IMU, cámara, distancia y contacto, para la planificación." }
+    requiere: { mover: [plan, corriente] }
+
+  - id: empareje-grados
+    tipo: pregunta
+    titulo: "Grados de libertad"
+    texto: "Cada eje independiente es un grado de libertad. Empareje cada tarea con los que necesita."
+    libro: [4]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: cadena, rotulo: "La cadena de abajo", rect: [16, 218, 296, 26] }
+    emparejar:
+      - ["Seis", "Colocar una herramienta en cualquier posición y orientación"]
+      - ["Tres", "Llevar un punto a cualquier sitio de un volumen"]
+      - ["Dos", "Mover un robot sobre el suelo"]
+    exito: "Para la electrónica, un robot es un conjunto de ejes, cada uno con actuador, transmisión y sensor de posición."
+    pistas:
+      - { texto: "La orientación añade ejes a la posición." }
+    escalera:
+      - "Un punto en el espacio tiene tres coordenadas; una orientación, tres ángulos más."
+    solucion: "Seis: posición y orientación. Tres: un punto en un volumen. Dos: sobre el suelo."
+
+  - id: ordene-lazos
+    tipo: pregunta
+    titulo: "De fuera adentro"
+    texto: "Ordene los lazos del más lento, el exterior, al más rápido, el interior."
+    libro: [7]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: externos, rotulo: "A la derecha, arriba", rect: [237, 33, 76, 52] }
+    ordenar:
+      - "Planificación"
+      - "Generador de trayectoria"
+      - "Lazo de posición"
+      - "Lazo de velocidad"
+      - "Lazo de corriente"
+    exito: "Cada lazo interior tiene que ser de cinco a diez veces más rápido que el que lo contiene."
+    pistas:
+      - { texto: "El de corriente es el más interior: vive en el driver, al ritmo de la PWM." }
+    escalera:
+      - "La posición manda velocidad; la velocidad manda corriente."
+    solucion: "Planificación, trayectoria, posición, velocidad y corriente."
+
+  - id: toque-corriente
+    tipo: tocar
+    titulo: "El lazo que mueve el motor"
+    texto: "Toque el lazo que de verdad mueve el motor."
+    libro: [7]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: trayectoria, rotulo: "La segunda caja", rect: [16, 48, 160, 27] }
+        - { id: posicion, rotulo: "La tercera caja", rect: [16, 88, 160, 27] }
+        - { id: velocidad, rotulo: "La cuarta caja", rect: [16, 128, 160, 27] }
+        - { id: corriente, rotulo: "La quinta caja", rect: [16, 167, 160, 27] }
+    tocar:
+      bien: [corriente]
+      porque:
+        trayectoria: "Genera consignas en el tiempo; no toca el motor."
+        posicion: "Pide velocidad o par a los lazos de dentro."
+        velocidad: "Pide corriente al lazo de dentro."
+    exito: "La corriente es el par: el lazo de corriente es el que mueve el motor."
+    escalera:
+      - "¿Qué magnitud eléctrica es proporcional al par?"
+    solucion: "La quinta caja: el lazo de corriente y el puente."
+
+  - id: estime-ciclos
+    tipo: pregunta
+    titulo: "Ciclos en un milisegundo"
+    texto: "El lazo de posición trabaja a 1 kHz. ¿Cuántos ciclos tiene un ATmega328P a 16 MHz en cada milisegundo?"
+    libro: [9]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: posicion, rotulo: "La tercera caja", rect: [16, 88, 160, 27] }
+    estimar:
+      objetivo: "N_c"
+      unidad: ciclos
+      min: 0
+      max: 40000
+      paso: 500
+      inicio: 30000
+      tol: 0.05
+      rotulo: "Ciclos por milisegundo"
+    exito: "16 000: bastan para la posición de tres ejes y su trayectoria, no para planificar con visión."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 16800 }, texto: "Se ha pasado: 16 MHz son 16 millones de ciclos por segundo." }
+      - { texto: "Se ha quedado corto: divida 16 millones entre mil." }
+    escalera:
+      - "Ciclos = frecuencia del reloj × tiempo."
+    solucion: "16·10⁶ × 0,001 = 16 000 ciclos."
+    comprobar:
+      - { N_c: 16000, T_l: 0.001 }
+
+  - id: prediga-reparto
+    tipo: predecir
+    titulo: "Arriba y abajo"
+    texto: "Un robot real tiene casi siempre un ordenador arriba y microcontroladores abajo, unidos por un bus. ¿Qué lo permite?"
+    libro: [9, 6]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: lazos, rotulo: "La columna de cajas", rect: [16, 8, 160, 187] }
+    opciones:
+      - texto: "La separación de frecuencias entre los lazos"
+        bien: true
+        porque: "La planificación, lenta, va en el ordenador; los lazos rápidos de cada eje, en los micros o en los drivers."
+      - texto: "Que el ordenador no sabe mover motores"
+        porque: "Lo que lo decide es el ritmo de cada lazo, no una incapacidad del ordenador."
+      - texto: "Que los micros son más rápidos que el ordenador"
+        porque: "No lo son; pero sus lazos son pequeños y periódicos, y la planificación con visión es pesada."
+    escalera:
+      - "¿A qué ritmo trabaja cada nivel de la figura?"
+    solucion: "La separación de frecuencias: cada nivel puede vivir en un procesador distinto."
+
+  - id: empareje-sensores
+    tipo: pregunta
+    titulo: "Sensores propios y del entorno"
+    texto: "Empareje cada sensor con su familia."
+    libro: [11]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: externos, rotulo: "A la derecha, arriba", rect: [237, 33, 76, 52] }
+    emparejar:
+      - ["Encoder de un eje", "Propioceptivo: cierra los lazos"]
+      - ["IMU que da la orientación", "Propioceptivo: cierra los lazos"]
+      - ["Ultrasonidos o tiempo de vuelo", "Exteroceptivo: alimenta la planificación"]
+      - ["Cámara", "Exteroceptivo: alimenta la planificación"]
+    exito: "Los propioceptivos miden el propio robot; los exteroceptivos, el entorno."
+    pistas:
+      - { texto: "La IMU mide la orientación del propio robot." }
+    escalera:
+      - "¿Mide el sensor algo del robot o algo de fuera?"
+    solucion: "Encoder e IMU: propioceptivos. Ultrasonidos y cámara: exteroceptivos."
+
+  - id: porque-emergencia
+    tipo: porque
+    titulo: "Fuera de todos los lazos"
+    texto: "La parada de emergencia no pasa por ningún lazo: corta la potencia del puente por hardware. ¿Por qué?"
+    libro: [8, "cap57#114"]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: nota, rotulo: "La línea de abajo del todo", rect: [80, 234, 230, 26] }
+    opciones:
+      - texto: "Para que pare aunque falle el procesador"
+        bien: true
+        porque: "Sin potencia el motor no puede dar par, haga lo que haga el programa."
+      - texto: "Porque los lazos son demasiado lentos"
+        porque: "El de corriente es rápido; el problema es que todos dependen de un procesador que puede fallar."
+      - texto: "Para ahorrar una entrada del microcontrolador"
+        porque: "El programa sí se entera por otra entrada; pero la parada no depende de él."
+    escalera:
+      - "¿Qué pasa con una parada que pasa por el programa si el programa se cuelga?"
+    solucion: "Para que funcione aunque falle el procesador: corta la potencia por hardware."
+
+  - id: pregunta-presupuesto
+    tipo: pregunta
+    titulo: "El presupuesto de ciclo"
+    texto: "Antes de escribir el controlador se suman las interrupciones de los encoders y los lazos. ¿Qué límite deja margen?"
+    libro: [12]
+    widget:
+      tipo: figura
+      figura: fig-57.1
+      zonas:
+        - { id: lazos, rotulo: "La columna de cajas", rect: [16, 8, 160, 187] }
+    opciones:
+      - texto: "No pasar de la mitad del procesador"
+        bien: true
+        porque: "Por encima de la mitad no hay sitio para lo que se añadirá después."
+      - texto: "Llegar justo al cien por cien"
+        porque: "Sin margen, cualquier añadido rompe los tiempos de los lazos."
+      - texto: "No hace falta contar: el micro va sobrado"
+        porque: "Con tres ejes y encoders rápidos, las interrupciones se comen el procesador."
+    escalera:
+      - "Cuente a la velocidad máxima: interrupciones por segundo por ciclos de cada rutina."
+    solucion: "La mitad del procesador como máximo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [4, 7, 9, 11]
+    ideas:
+      - { titulo: "Ejes.", texto: "Seis grados de libertad para posición y orientación; dos sobre el suelo." }
+      - { titulo: "Lazos anidados.", texto: "Planificación, trayectoria, posición, velocidad y corriente, cada uno más rápido." }
+      - { titulo: "Reparto.", texto: "Ordenador arriba, microcontroladores abajo, unidos por un bus." }
+      - { titulo: "Margen.", texto: "El presupuesto de ciclo no pasa de la mitad del procesador." }

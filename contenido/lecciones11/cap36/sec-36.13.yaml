@@ -1,0 +1,335 @@
+# Lección 1.2 de la sección 37.14 «Problemas de Diseño» (cap36, sec-36.13). Formato: GUIA.md.
+# - 37.A: red en L de 50 Ω a R_L a 100 MHz, con L = Q·R_L/ω en serie con la carga y C = Q/(50·ω) en paralelo en el lado
+#   de 50 Ω (bloques 499 a 502: Q = 2, 20,0 Ω → 31,8 nH, 25,0 Ω → 63,7 pF). Pérdida por desadaptación
+#   −10·log(1 − |Γ|²) = −10·log(4·y_r/((1 + y_r)² + y_i²)), con y = 50·(G + jB) de la entrada; la banda de 1 dB es ≈ 1/Q
+#   (tabla del bloque 504: 50, 33,3 y 14,3 MHz con 10, 5 y 1 Ω).
+#   El diseño E12 pide VSWR ≤ 1,5 («muy bueno», tabla del bloque 121 de la 37.3) a 100 MHz con ± 5 % en L y en C (de
+#   ejemplo: el libro solo dice que las tolerancias a 100 MHz «son grandes»); 33 nH y 68 pF (el resultado del libro) dan
+#   1,21 nominal y 1,48 en la peor esquina.
+# - 37.B: presupuesto 114 dB; alcance d = 10^((L − 32,44 − 20·log 2400)/20) km: 4986, 1577 y 499 m con 0, 10 y 20 dB de
+#   margen (bloque 516).
+# - 37.C: l = t_r·v/2 con v = 165 mm/ns (bloques 530 y 533): 17 mm con 0,2 ns.
+# Pasos prácticos: «diseno» de la red en L con valores E12 y tolerancias, y «simular» el alcance con 20 dB de margen.
+leccion: cap36/sec-36.13
+
+libro:
+  493: "Adaptar una antena y quedarse sin banda"
+  495: "Hay que adaptar un transmisor de 50 Ω a una antena que presenta 10 Ω a 100 MHz, con una red en L"
+  498: "El factor de calidad de una red en L no se elige: lo impone la relación de impedancias"
+  499: '"2,000"'
+  501: '"31,8 nH"'
+  502: '"63,7 pF"'
+  503: "la banda con menos de 1 dB de pérdida por desadaptación"
+  504: "14,3 MHz"
+  505: "Adaptar 50 a 1 Ω deja solo un 14 % de banda"
+  506: "transformando 50 → 22 → 10"
+  508: "las tolerancias de bobinas y condensadores a 100 MHz son grandes"
+  509: "Resultado: L = 33 nH y C = 68 pF (valores comerciales), Q = 2, banda de 50 MHz"
+  510: "Cuánto alcanza de verdad un enlace de 2,4 GHz"
+  512: "Un módulo transmite 20 dBm con antenas de 2 dBi en ambos extremos, y el receptor tiene una sensibilidad de −90 dBm"
+  515: '"114 dB"'
+  516: "Alcance en espacio libre"
+  517: "cada 20 dB de pérdida adicional dividen el alcance por diez"
+  519: "3 muros (12 dB cada uno)"
+  520: "De 4986 metros teóricos a 8 reales"
+  521: "cada 3 dB en cada extremo son 6 dB al presupuesto"
+  525: "Cuándo una pista deja de ser un cable"
+  527: "Un diseño lleva señales de 100 MHz y otras digitales con flancos de 0,2 ns"
+  530: "la velocidad es c/√3,3 ≈ 165 mm/ns"
+  532: "165 mm"
+  534: "17 mm"
+  536: "solo 17 mm, diez veces menos, aunque su frecuencia de reloj sea mucho más baja"
+  538: "En caso de duda, el del flanco es siempre el más restrictivo"
+  "cap36#121": "Muy bueno"
+
+modelo:
+  valores:
+    R_d: { sim: "R_{L}", nombre: "resistencia de la antena", unidad: Ω, valor: 10 }
+    f_0: { sim: "f₀", nombre: "frecuencia de trabajo", unidad: Hz, valor: 100000000 }
+    L_e: { sim: "L", nombre: "bobina en serie", unidad: H, valor: 33e-9 }
+    C_e: { sim: "C", nombre: "condensador en paralelo", unidad: F, valor: 68e-12 }
+    M_b: { sim: "margen", nombre: "margen aplicado", unidad: dB, valor: 20 }
+    O_b: { sim: "obstáculos", nombre: "pérdida de los obstáculos", unidad: dB, valor: 0 }
+    t_f: { sim: "t_{r}", nombre: "tiempo de subida", unidad: s, valor: 0.0000000002 }
+  calculos:
+    Q_d: { expr: "sqrt(50/R_d - 1)", sim: "Q", nombre: "Q de la red en L", unidad: "" }
+    B_d: { expr: "f_0/Q_d", sim: "BW", nombre: "banda de 1 dB", unidad: Hz }
+    L_d: { expr: "Q_d*R_d/(2*pi*f_0)", sim: "L", nombre: "bobina calculada", unidad: H }
+    C_d: { expr: "Q_d/(50*2*pi*f_0)", sim: "C", nombre: "condensador calculado", unidad: F }
+    X_e: { expr: "2*pi*f_0*L_e", sim: "X_{L}", nombre: "reactancia de la bobina", unidad: Ω }
+    G_e: { expr: "10/(100 + X_e^2)", sim: "G", nombre: "conductancia de la rama serie", unidad: S }
+    B_e: { expr: "2*pi*f_0*C_e - X_e/(100 + X_e^2)", sim: "B", nombre: "susceptancia total", unidad: S }
+    g_e: { expr: "sqrt(((1 - 50*G_e)^2 + (50*B_e)^2)/((1 + 50*G_e)^2 + (50*B_e)^2))", sim: "|Γ|", nombre: "reflexión a 100 MHz", unidad: "" }
+    S_e: { expr: "(1 + g_e)/(1 - g_e)", sim: "VSWR", nombre: "VSWR a 100 MHz", unidad: "" }
+    L_ad: { expr: "114 - M_b - O_b", sim: "L_{adm}", nombre: "pérdida admisible", unidad: dB }
+    d_b: { expr: "1000*10^((L_ad - 32.44 - 20*log10(2400))/20)", sim: "d", nombre: "alcance en espacio libre", unidad: m }
+    d_0: { expr: "1000*10^((114 - 32.44 - 20*log10(2400))/20)", sim: "d", nombre: "alcance sin margen", unidad: m }
+    d_10: { expr: "1000*10^((104 - 32.44 - 20*log10(2400))/20)", sim: "d", nombre: "alcance con 10 dB", unidad: m }
+    l_f: { expr: "t_f*165000000/2", sim: "l", nombre: "longitud crítica por el flanco", unidad: m }
+
+tarjetas:
+  - id: explore-banda
+    tipo: explorar
+    titulo: "37.A: adaptar y quedarse sin banda"
+    texto: "Red en L de 50 Ω a la antena, calculada para 100 MHz. Baje la resistencia de la antena y mire la banda de 1 dB."
+    libro: [493, 495, 498, 503, 504]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 50000000, max: 150000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 6, unidad: dB, rotulo: "pérdida" }
+      curvas:
+        - { expr: "-10*log10(4*50*R_d/(R_d^2 + (2*pi*nu*L_d)^2)/((1 + 50*R_d/(R_d^2 + (2*pi*nu*L_d)^2))^2 + (50*(2*pi*nu*C_d - 2*pi*nu*L_d/(R_d^2 + (2*pi*nu*L_d)^2)))^2))", color: naranja, rotulo: "pérdida por desadaptación" }
+        - { expr: "1", color: tinta, rotulo: "1 dB", discontinua: true }
+      lectura: { valor: B_d, rotulo: "Banda de 1 dB (≈ f₀/Q)" }
+      datos:
+        - { valor: Q_d, rotulo: "Q = {{Q_d}}" }
+      mandos:
+        - { valor: R_d, lista: [10, 5, 1], rotulo: "Antena, R_{L}" }
+    requiere: { mover: [R_d] }
+
+  - id: formula-q
+    tipo: formula
+    titulo: "El Q que impone el salto"
+    texto: "El Q de una red en L no se elige: lo impone la relación de impedancias."
+    libro: [498, 499, 501, 502]
+    ec: 499
+    sustitucion: "√(50/{{R_d}} − 1) = {{Q_d}}"
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0.5, max: 25, unidad: Ω, rotulo: "R_{L}", escala: log }
+      y: { min: 0, max: 10, unidad: "", rotulo: "Q" }
+      curvas:
+        - { expr: "sqrt(50/r - 1)", color: naranja, rotulo: "Q" }
+      marcas:
+        - { x: "R_d", y: "Q_d", rotulo: "Q = {{Q_d}}" }
+      lectura: { valor: Q_d, rotulo: "Q" }
+      datos:
+        - { valor: L_d, rotulo: "L = {{L_d}}" }
+        - { valor: C_d, rotulo: "C = {{C_d}}" }
+      mandos:
+        - { valor: R_d, lista: [10, 5, 1], rotulo: "Antena, R_{L}" }
+
+  - id: disene-red
+    tipo: diseno
+    titulo: "Con valores comerciales"
+    texto: "Antena de 10 Ω, 100 MHz. Elija L y C de la serie E12 para un VSWR muy bueno, de 1,5 como mucho, aun con ± 5 % en cada pieza."
+    nota: "Tolerancias de ejemplo."
+    libro: [501, 502, 508, 509, "cap36#121"]
+    fijar: { R_d: 10, f_0: 100000000 }
+    inicio: { L_e: 22e-9, C_e: 47e-12 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 50000000, max: 150000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 6, unidad: dB, rotulo: "pérdida" }
+      curvas:
+        - { expr: "-10*log10(4*500/(100 + (2*pi*nu*L_e)^2)/((1 + 500/(100 + (2*pi*nu*L_e)^2))^2 + (50*(2*pi*nu*C_e - 2*pi*nu*L_e/(100 + (2*pi*nu*L_e)^2)))^2))", color: naranja, rotulo: "pérdida por desadaptación" }
+      lectura: { valor: S_e, rotulo: "VSWR a 100 MHz" }
+      mandos:
+        - { valor: L_e, serie: E12, min: 10e-9, max: 100e-9, rotulo: "L (E12)" }
+        - { valor: C_e, serie: E12, min: 10e-12, max: 100e-12, rotulo: "C (E12)" }
+    condiciones:
+      - { valor: S_e, max: 1.5, rotulo: "VSWR: {{S_e}}" }
+    diseno:
+      tolerancias: { L_e: 0.05, C_e: 0.05 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal cumple, pero alguna esquina pasa de 1,5: acérquese al cálculo, 31,8 nH y 63,7 pF."
+    exito: "33 nH y 68 pF, como el libro: 31,8 nH son unos centímetros de pista, que forman parte del componente."
+    pistas:
+      - { texto: "El VSWR a 100 MHz es alto: el cálculo da 31,8 nH y 63,7 pF. Busque los E12 más cercanos." }
+    escalera:
+      - "Q = 2: X_{serie} = 20 Ω y X_{paralelo} = 25 Ω."
+      - "31,8 nH y 63,7 pF: los E12 más cercanos."
+    solucion: "33 nH y 68 pF."
+    comprobar:
+      - { L_d: 31.83e-9, C_d: 63.66e-12, Q_d: 2 }
+      - { con: { L_e: 33e-9, C_e: 68e-12 }, S_e: 1.21, tol: 0.01 }
+
+  - id: predecir-un-ohmio
+    tipo: predecir
+    titulo: "Adaptar 50 a 1 Ω"
+    texto: "Con la misma red en L, la antena baja a 1 Ω. ¿Qué banda queda a 100 MHz?"
+    libro: [504, 505]
+    fijar: { R_d: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 50000000, max: 150000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 6, unidad: dB, rotulo: "pérdida" }
+      curvas:
+        - { expr: "-10*log10(4*50*R_d/(R_d^2 + (2*pi*nu*L_d)^2)/((1 + 50*R_d/(R_d^2 + (2*pi*nu*L_d)^2))^2 + (50*(2*pi*nu*C_d - 2*pi*nu*L_d/(R_d^2 + (2*pi*nu*L_d)^2)))^2))", color: naranja, rotulo: "pérdida por desadaptación" }
+      lectura: { valor: B_d, rotulo: "Banda de 1 dB" }
+      ocultar: true
+    opciones:
+      - texto: "14,3 MHz: Q = 7"
+        bien: true
+        porque: "Un 14 % de banda: en muchas aplicaciones, inservible."
+      - texto: "50 MHz, como con 10 Ω"
+        porque: "La banda depende del salto: con 1 Ω el Q sube de 2 a 7."
+      - texto: "Más banda, porque la antena es más baja"
+        porque: "Al revés: cuanto mayor la transformación, más estrecha la banda."
+    escalera:
+      - "Q = √(50/1 − 1)."
+    solucion: "Q = 7 y banda ≈ 100 MHz/7 = 14,3 MHz."
+    comprobar:
+      - { Q_d: 7, B_d: 14286000, tol: 0.001 }
+
+  - id: empareje-remedios
+    tipo: pregunta
+    titulo: "Para transformaciones mayores"
+    texto: "Empareje cada remedio con cómo consigue más banda o más libertad."
+    libro: [506]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0.5, max: 25, unidad: Ω, rotulo: "R_{L}", escala: log }
+      y: { min: 0, max: 10, unidad: "", rotulo: "Q" }
+      curvas:
+        - { expr: "sqrt(50/r - 1)", color: naranja, rotulo: "Q de la red en L" }
+    emparejar:
+      - ["Red en T o en π", "Un grado de libertad: Q distinto, nunca menor"]
+      - ["Dos etapas, 50 → 22 → 10", "Dos saltos pequeños, cada uno con menos Q"]
+      - ["Transformador de ferrita", "Adapta por espiras, no por resonancia"]
+    exito: "Dos saltos pequeños son más anchos que uno grande: el truco clásico."
+    pistas:
+      - { texto: "La ferrita es de banda ancha porque no resuena." }
+    escalera:
+      - "La media geométrica de 50 y 10 está cerca de 22."
+    solucion: "T/π, otro Q; dos etapas, menos Q cada una; ferrita, espiras."
+
+  - id: simule-alcance
+    tipo: simular
+    titulo: "37.B: cuánto alcanza a 2,4 GHz"
+    texto: "Presupuesto de 114 dB a 2,4 GHz. Con 20 dB de margen, ¿qué alcance hay en espacio libre?"
+    libro: [510, 512, 515, 516, 517]
+    fijar: { M_b: 20, O_b: 0 }
+    simular:
+      objetivo: d_b
+      unidad: m
+      tol: 0.03
+      rotulo: "Alcance con 20 dB de margen"
+      errores:
+        - { expr: "d_0", texto: "Ese es el alcance sin margen, el que anuncia el fabricante." }
+        - { expr: "d_10", texto: "Ese sale con 10 dB de margen; con 20 dB el alcance baja otra vez a la raíz de una décima." }
+    exito: "499 m: cada 20 dB dividen el alcance por diez."
+    escalera:
+      - "Pérdida admisible: 114 − 20 = 94 dB."
+      - "Despeje la distancia de la pérdida en espacio libre con 94 dB a 2,4 GHz."
+    solucion: "d ≈ 0,499 km: 499 m."
+    comprobar:
+      - { L_ad: 94, d_b: 499, d_0: 4986, d_10: 1577, tol: 0.003 }
+
+  - id: predecir-muros
+    tipo: predecir
+    titulo: "Tres muros"
+    texto: "El mismo enlace, con 20 dB de margen, atraviesa 3 muros de 12 dB cada uno. ¿Qué alcance queda?"
+    libro: [519, 520]
+    fijar: { M_b: 20, O_b: 36 }
+    widget:
+      tipo: grafica
+      x: { id: o, min: 0, max: 40, unidad: dB, rotulo: "obstáculos" }
+      y: { min: 1, max: 1000, unidad: m, rotulo: "d", escala: log }
+      curvas:
+        - { expr: "1000*10^((94 - o - 32.44 - 20*log10(2400))/20)", color: naranja, rotulo: "alcance" }
+      lectura: { valor: d_b, rotulo: "Alcance" }
+      ocultar: true
+    opciones:
+      - texto: "Unos 8 m"
+        bien: true
+        porque: "36 dB dividen el alcance por 63: de 499 m a unos 8."
+      - texto: "Casi los mismos 499 m: tres muros apenas restan"
+        porque: "Restan 36 dB, y en espacio libre eso divide la distancia por 63."
+      - texto: "Cero: no pasa"
+        porque: "Pasa, pero muy poco: unos 8 m."
+    escalera:
+      - "Cada 20 dB dividen por diez; 36 dB, por algo más de sesenta."
+    solucion: "Unos 8 m: el margen y los obstáculos dominan."
+    comprobar:
+      - { L_ad: 58, d_b: 7.9, tol: 0.02 }
+      - { con: { O_b: 0 }, d_b: 499, tol: 0.003 }
+
+  - id: porque-antenas
+    tipo: porque
+    titulo: "La mejora más barata"
+    texto: "¿Por qué subir 3 dB la ganancia de antena en cada extremo rinde tanto?"
+    libro: [521]
+    widget:
+      tipo: grafica
+      x: { id: o, min: 0, max: 40, unidad: dB, rotulo: "obstáculos" }
+      y: { min: 1, max: 1000, unidad: m, rotulo: "d", escala: log }
+      curvas:
+        - { expr: "1000*10^((94 - o - 32.44 - 20*log10(2400))/20)", color: naranja, rotulo: "alcance" }
+    opciones:
+      - texto: "Porque cuenta dos veces: son 6 dB al presupuesto"
+        bien: true
+        porque: "Una antena en cada extremo: dos sumas, sin gastar más potencia."
+      - texto: "Porque amplifica la señal"
+        porque: "Una antena pasiva no amplifica: concentra en una dirección."
+      - texto: "Porque reduce el ruido del receptor"
+        porque: "La ganancia de antena entra en el presupuesto; la figura de ruido es otra cosa."
+    escalera:
+      - "Hay antena en los dos extremos."
+    solucion: "3 dB en cada extremo son 6 dB al presupuesto."
+
+  - id: estime-flanco
+    tipo: pregunta
+    titulo: "37.C: cuándo una pista deja de ser un cable"
+    texto: "Flancos de 0,2 ns en microstrip sobre FR4, a 165 mm/ns. Con ida y vuelta igual al tiempo de subida, ¿cuál es la longitud crítica?"
+    libro: [525, 527, 530, 534]
+    fijar: { t_f: 0.0000000002 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0.0000000001, max: 0.000000002, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0, max: 0.2, unidad: m, rotulo: "l" }
+      curvas:
+        - { expr: "t*165000000/2", color: naranja, rotulo: "l = t_{r}·v/2" }
+    estimar:
+      objetivo: "l_f"
+      unidad: m
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.08
+      tol: 0.05
+      rotulo: "Longitud crítica"
+    exito: "17 mm: diez veces menos que los 165 mm de la señal de 100 MHz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0174 }, texto: "Demasiado: el flanco recorre 33 mm, y hay que ir y volver." }
+      - { texto: "Demasiado poco: 0,2 ns × 165 mm/ns, entre dos." }
+    escalera:
+      - "l = t_{r}·v/2."
+    solucion: "0,2 × 165 / 2 = 16,5 mm: unos 17 mm."
+    comprobar:
+      - { l_f: 0.0165, tol: 0.001 }
+
+  - id: pregunta-criterio
+    tipo: pregunta
+    titulo: "Qué criterio aplicar"
+    texto: "Una señal de 100 MHz admite pistas de 165 mm; una digital con flancos de 0,2 ns, 17 mm. ¿Qué se decide?"
+    libro: [532, 536, 538]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0.0000000001, max: 0.000000002, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0, max: 0.2, unidad: m, rotulo: "l" }
+      curvas:
+        - { expr: "t*165000000/2", color: naranja, rotulo: "l = t_{r}·v/2" }
+    opciones:
+      - texto: "El del flanco a toda señal digital: es el más restrictivo"
+        bien: true
+        porque: "Un reloj de 10 MHz con flancos de 0,2 ns pide el mismo cuidado que una señal de gigahercios."
+      - texto: "El de frecuencia a todas"
+        porque: "Dejaría pasar como cables pistas digitales que ya reflejan."
+      - texto: "El que dé la longitud mayor"
+        porque: "Al revés: en caso de duda, el más restrictivo, el del flanco."
+    escalera:
+      - "¿Qué importa más, la frecuencia de reloj o el flanco?"
+    solucion: "Flanco para lo digital; frecuencia solo para la radio pura."
+    comprobar:
+      - { l_f: 0.0165, tol: 0.03 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [493, 505, 509, 510, 517, 520, 525, 536]
+    ideas:
+      - { titulo: "37.A.", texto: "33 nH y 68 pF, Q = 2 y 50 MHz; para saltos mayores, dos etapas." }
+      - { titulo: "37.B.", texto: "De 4986 m teóricos a 499 m con margen, y 8 m tras tres muros." }
+      - { titulo: "37.C.", texto: "Flancos de 0,2 ns: cualquier pista de más de 17 mm es una línea." }

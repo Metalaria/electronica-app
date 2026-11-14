@@ -1,0 +1,319 @@
+# Lección 1.2 de la sección 46.12 «Problemas de Diseño» (cap45, sec-45.12). Formato: GUIA.md.
+# - 46.A (esquema «led»): LED de 3,2 V y 700 mA; R = (V − 3,2)/0,7: 12,6 Ω desde 12 V y 1,14 Ω desde 4 V (bloques 346 y
+#   353). Caliente, V_f cae 60 mV: la corriente sube 4,8 mA (0,7 %) desde 12 V y 52 mA (7,5 %) desde 4 V. Potencias:
+#   6,16 W en R y 2,24 W en el LED (bloques 347 y 348); 8,40 W en total frente a 2,49 W con driver (bloque 354).
+# - 46.B: pico por dígito = 15 mA × 4 × 8 segmentos = 480 mA (bloque 364); barrido de 60 × 4 = 240 Hz (bloque 368).
+# - 46.C (esquema «filtro-rc», la salida en el condensador): el polo de la capacidad de salida del optoacoplador, unos
+#   2 nF, con la resistencia de carga: 7,96 kHz con 10 kΩ y 79,6 kHz con 1 kΩ (bloque 385). La dispersión del CTR,
+#   300/50 = 6 veces = 15,6 dB (bloque 379).
+# Paso práctico: «simular» la potencia en la resistencia (errores: la del LED, la total).
+leccion: cap45/sec-45.12
+
+libro:
+  341: "Un LED de potencia con resistencia es un calefactor"
+  343: "Un LED de potencia de 3,2 V y 700 mA se alimenta desde 12 V"
+  346: '"12,6 Ω"'
+  347: '"6,16 W"'
+  348: '"2,24 W"'
+  350: "esa resistencia debe ser de 10 W"
+  351: "al calentarse 30 °C cae 60 mV"
+  352: '"4,8 mA"'
+  353: "Si se alimentara desde 4 V, la resistencia sería de 1,14 Ω y la misma deriva daría +52 mA, un +7,5 %, con realimentación positiva"
+  354: "Driver conmutado"
+  358: "Resultado: con resistencia, 26,7 % de rendimiento y 6,16 W de calor"
+  359: "Multiplexar un display sin quemarlo"
+  361: "Un display de 4 dígitos de siete segmentos debe verse con un brillo equivalente a 15 mA por segmento"
+  364: "I de pico por dígito (8 segmentos)"
+  365: "Este es el que más se subestima"
+  368: '"240 Hz"'
+  369: "Conviene subir bastante más (1 kHz de barrido)"
+  374: "Un optoacoplador dentro de un lazo de realimentación"
+  376: "cuya CTR está especificada entre el 50 % y el 300 %"
+  379: '"15,6 dB"'
+  383: "hay que compensar para el peor caso de CTR alta"
+  384: "del orden de 1 a 3 nF en un optoacoplador común"
+  385: "7,96 kHz"
+  386: "Bajar la resistencia de carga lo aleja, a costa de necesitar más corriente y por tanto más CTR"
+  387: "elegir un optoacoplador con CTR binada"
+
+modelo:
+  valores:
+    V_a: { sim: "V", nombre: "alimentación", unidad: V, valor: 12 }
+    V_f: { sim: "V_{f}", nombre: "tensión directa del LED", unidad: V, valor: 3.2 }
+    n_d: { sim: "n", nombre: "dígitos", unidad: "", valor: 4 }
+    I_s: { sim: "I_{seg}", nombre: "corriente media por segmento", unidad: A, valor: 0.015 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 1 }
+    f_o: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 7960 }
+    R_o: { sim: "R_{carga}", nombre: "resistencia de carga", unidad: Ω, valor: 10000 }
+    C_o: { sim: "C", nombre: "capacidad de salida del optoacoplador", unidad: F, valor: 2e-9 }
+    r_c: { sim: "CTR_{máx}/CTR_{mín}", nombre: "dispersión del CTR", unidad: "", valor: 6 }
+  calculos:
+    R_a: { expr: "(V_a - 3.2)/0.7", sim: "R", nombre: "resistencia calculada", unidad: Ω }
+    I_a: { expr: "max(0, (V_a - V_f)/R_a)", sim: "I", nombre: "corriente del LED", unidad: A }
+    d_I: { expr: "100*(I_a/0.7 - 1)", sim: "ΔI", nombre: "variación de la corriente", unidad: "%" }
+    P_R: { expr: "(V_a - 3.2)*0.7", sim: "P_{R}", nombre: "potencia en la resistencia", unidad: W }
+    P_L: { expr: "3.2*0.7", sim: "P_{LED}", nombre: "potencia en el LED", unidad: W }
+    P_T: { expr: "V_a*0.7", sim: "P", nombre: "potencia total", unidad: W }
+    I_pd: { expr: "I_s*n_d*8", sim: "I_{pico}", nombre: "pico por dígito", unidad: A }
+    I_ps: { expr: "I_s*n_d", sim: "I_{pico}", nombre: "pico por segmento", unidad: A }
+    f_b: { expr: "60*n_d", sim: "f_{barrido}", nombre: "barrido mínimo", unidad: Hz }
+    f_p: { expr: "1/(2*pi*R_o*C_o)", sim: "f_{polo}", nombre: "polo del optoacoplador", unidad: Hz }
+    x_o: { expr: "2*pi*f_o*R_o*C_o", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_o: { expr: "V_p/sqrt(1 + x_o^2)", sim: "V_{C}", nombre: "amplitud en el condensador", unidad: V }
+    G_d: { expr: "20*log10(r_c)", sim: "ΔG", nombre: "dispersión de la ganancia del lazo", unidad: dB }
+
+tarjetas:
+  - id: explore-calefactor
+    tipo: explorar
+    titulo: "46.A: una resistencia que es un calefactor"
+    texto: "LED de potencia de 3,2 V y 700 mA con resistencia. Cambie la alimentación y caliente el LED: su V_{f} cae 60 mV."
+    libro: [341, 343, 351, 353]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_a, r: R_a, vf: V_f }
+      lectura: { valor: d_I, rotulo: "Variación de la corriente" }
+      datos:
+        - { valor: I_a, rotulo: "I = {{I_a}}" }
+        - { valor: R_a, rotulo: "R = {{R_a}}" }
+      corriente: I_a
+      mide: { corriente: I_a, vf: V_f }
+      mandos:
+        - { valor: V_a, lista: [12, 4], rotulo: "Alimentación" }
+        - { valor: V_f, lista: [3.2, 3.14], nombres: [en frío, caliente], rotulo: "Estado del LED" }
+    requiere: { mover: [V_a, V_f] }
+    comprobar:
+      - { con: { V_a: 12, V_f: 3.14 }, R_a: 12.57, d_I: 0.68 }
+      - { con: { V_a: 4, V_f: 3.14 }, R_a: 1.143, d_I: 7.5 }
+
+  - id: formula-r
+    tipo: formula
+    titulo: "La resistencia desde 12 V"
+    texto: "Lo que sobra de los 12 V, al ritmo de los 700 mA."
+    libro: [346, 343]
+    fijar: { V_f: 3.2 }
+    ec: 346
+    sustitucion: "({{V_a}} − 3,2) / 0,7 = {{R_a}}"
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_a, r: R_a, vf: V_f }
+      lectura: { valor: R_a, rotulo: "Resistencia" }
+      corriente: I_a
+      mide: { corriente: I_a, vf: V_f }
+      mandos:
+        - { valor: V_a, lista: [12, 4], rotulo: "Alimentación" }
+
+  - id: simule-potencia
+    tipo: simular
+    titulo: "Cuánto calienta la resistencia"
+    texto: "Desde 12 V, con 12,6 Ω y 700 mA. ¿Qué potencia disipa la resistencia?"
+    libro: [347, 348, 350]
+    fijar: { V_a: 12, V_f: 3.2 }
+    simular:
+      objetivo: P_R
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en la resistencia"
+      errores:
+        - { expr: "P_L", texto: "Esa es la del LED, la útil: 3,2 V por 0,7 A." }
+        - { expr: "P_T", texto: "Esa es la total de la fuente; a la resistencia le tocan los 8,8 V que caen en ella." }
+    exito: "6,16 W: una resistencia de 10 W, y el rendimiento se queda en el 26,7 %."
+    escalera:
+      - "En la resistencia caen 12 − 3,2 = 8,8 V."
+    solucion: "8,8 V × 0,7 A = 6,16 W."
+    comprobar:
+      - { P_R: 6.16, P_L: 2.24, P_T: 8.4 }
+
+  - id: predecir-4v
+    tipo: predecir
+    titulo: "Desde 4 V"
+    texto: "Al calentarse 30 °C, V_{f} cae 60 mV y, desde 12 V, la corriente sube un 0,7 %. ¿Y desde 4 V, con 1,14 Ω?"
+    libro: [351, 352, 353]
+    fijar: { V_a: 4, V_f: 3.14 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_a, r: R_a, vf: V_f }
+      lectura: { valor: d_I, rotulo: "Variación de la corriente" }
+      corriente: I_a
+      mide: { corriente: I_a, vf: V_f }
+      ocultar: true
+    opciones:
+      - texto: "Un 7,5 %, y con realimentación positiva"
+        bien: true
+        porque: "En R cae muy poca tensión y los 60 mV pesan mucho más: más corriente, más calor, más corriente."
+      - texto: "El mismo 0,7 %"
+        porque: "La variación es 60 mV frente a lo que cae en R: con 4 V cae mucho menos."
+      - texto: "Baja la corriente"
+        porque: "Al caer V_{f}, sobra más tensión para R: la corriente sube."
+    escalera:
+      - "ΔI = 60 mV / R."
+    solucion: "52 mA más: un 7,5 %."
+    comprobar:
+      - { d_I: 7.5 }
+
+  - id: pregunta-driver
+    tipo: pregunta
+    titulo: "Con driver conmutado"
+    texto: "Con resistencia, el conjunto consume 8,40 W; con un driver conmutado, 2,49 W. ¿Qué más gana el driver?"
+    libro: [354, 358]
+    widget:
+      tipo: figura
+      figura: fig-45.2
+      zonas:
+        - { id: todo, rotulo: "LED con su resistencia", rect: [0, 0, 349, 169] }
+    opciones:
+      - texto: "Regula corriente: la deriva térmica desaparece y el brillo es estable"
+        bien: true
+        porque: "Además ahorra el 70 % de la energía."
+      - texto: "Nada más: solo ahorra energía"
+        porque: "También estabiliza el brillo, porque no depende de V_{f}."
+      - texto: "Permite quitar el disipador del LED"
+        porque: "El LED disipa lo mismo; lo que desaparece es el calor de la resistencia."
+    escalera:
+      - "¿Qué fija un driver de corriente?"
+    solucion: "Corriente constante: sin deriva y con brillo estable."
+
+  - id: estime-pico-digito
+    tipo: pregunta
+    titulo: "46.B: multiplexar sin quemarlo"
+    texto: "4 dígitos con 15 mA medios por segmento. ¿Qué corriente de pico conmuta el driver de cada dígito, con sus 8 segmentos encendidos?"
+    libro: [359, 361, 364, 365]
+    fijar: { n_d: 4, I_s: 0.015 }
+    widget:
+      tipo: figura
+      figura: fig-45.12
+      zonas:
+        - { id: todo, rotulo: "Secuencia y corriente de pico", rect: [0, 0, 453, 213] }
+    estimar:
+      objetivo: "I_pd"
+      unidad: A
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.85
+      tol: 0.05
+      rotulo: "Pico por dígito"
+    exito: "480 mA: el driver que más se subestima. Cada segmento lleva 60 mA de pico."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.505 }, texto: "Demasiado: 15 mA × 4 por segmento, por 8 segmentos." }
+      - { texto: "Demasiado poco: el común suma los ocho segmentos de 60 mA." }
+    escalera:
+      - "Pico por segmento: 15 mA × 4."
+      - "Por dígito, ocho segmentos a la vez."
+    solucion: "60 mA × 8 = 480 mA."
+    comprobar:
+      - { I_ps: 0.06, I_pd: 0.48 }
+
+  - id: pregunta-barrido
+    tipo: pregunta
+    titulo: "La frecuencia de barrido"
+    texto: "Cada dígito debe refrescarse 60 veces por segundo. Con 4 dígitos, ¿qué barrido hace falta?"
+    libro: [368, 369]
+    fijar: { n_d: 4 }
+    widget:
+      tipo: figura
+      figura: fig-45.12
+      zonas:
+        - { id: todo, rotulo: "Secuencia y corriente de pico", rect: [0, 0, 453, 213] }
+    opciones:
+      - texto: "240 Hz como mínimo, y conviene 1 kHz"
+        bien: true
+        porque: "El ojo ve el parpadeo al mover la vista aunque no lo vea con la mirada fija."
+      - texto: "60 Hz"
+        porque: "Eso es por dígito; el barrido pasa por los cuatro."
+      - texto: "15 Hz"
+        porque: "Ha dividido en vez de multiplicar: el barrido es más rápido que cada dígito."
+    escalera:
+      - "60 × el número de dígitos."
+    solucion: "240 Hz; mejor 1 kHz."
+    comprobar:
+      - { f_b: 240 }
+
+  - id: explore-polo
+    tipo: explorar
+    titulo: "46.C: el polo del optoacoplador"
+    texto: "La capacidad de salida del optoacoplador, unos 2 nF, forma un polo con la resistencia de carga. Cámbiela."
+    libro: [374, 384, 385, 386]
+    fijar: { C_o: 2e-9, V_p: 1 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_o, r: R_o, c: C_o }
+      lectura: { valor: f_p, rotulo: "Frecuencia del polo" }
+      mide: { vc_amp: A_o }
+      grafica:
+        x: { id: nu, min: 100, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -30, max: 3, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "-10*log10(1 + (2*pi*nu*R_o*C_o)^2)", color: naranja, rotulo: "respuesta", mide: vc_db }
+        marcas:
+          - { x: "f_p", y: "-3.01", rotulo: "{{f_p}}" }
+      mandos:
+        - { valor: R_o, lista: [10000, 1000], rotulo: "Resistencia de carga" }
+    requiere: { mover: [R_o] }
+    comprobar:
+      - { con: { R_o: 10000 }, f_p: 7958 }
+      - { con: { R_o: 1000 }, f_p: 79580 }
+
+  - id: estime-dispersion
+    tipo: pregunta
+    titulo: "La dispersión del CTR"
+    texto: "El CTR del optoacoplador del lazo va del 50 % al 300 %. ¿Cuánto varía la ganancia del lazo, en decibelios?"
+    libro: [376, 379]
+    fijar: { r_c: 6 }
+    widget:
+      tipo: figura
+      figura: fig-45.8
+      zonas:
+        - { id: todo, rotulo: "Envejecimiento del CTR", rect: [0, 0, 449, 220] }
+    estimar:
+      objetivo: "G_d"
+      unidad: dB
+      min: 0
+      max: 40
+      paso: 0.5
+      inicio: 32
+      tol: 0.05
+      rotulo: "Dispersión de la ganancia"
+    exito: "15,6 dB, y aún hay que sumar el envejecimiento y la temperatura."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 16.4 }, texto: "Demasiado: 20·log de seis." }
+      - { texto: "Demasiado poco: seis veces de ganancia son más de 15 dB." }
+    escalera:
+      - "300/50 = 6 veces; en decibelios, 20·log 6."
+    solucion: "20·log 6 = 15,6 dB."
+    comprobar:
+      - { G_d: 15.56 }
+
+  - id: porque-peor-caso
+    tipo: porque
+    titulo: "Compensar para el peor caso"
+    texto: "¿Por qué el lazo se compensa para el CTR alto y no para el típico?"
+    libro: [383, 386, 387]
+    widget:
+      tipo: figura
+      figura: fig-45.8
+      zonas:
+        - { id: todo, rotulo: "Envejecimiento del CTR", rect: [0, 0, 449, 220] }
+    opciones:
+      - texto: "Con CTR alto el cruce sube a donde hay más retardo de fase y el margen puede desaparecer"
+        bien: true
+        porque: "Las unidades de CTR bajo irán más lentas, pero estables; ayuda un CTR binado."
+      - texto: "Porque el CTR alto es el más frecuente"
+        porque: "No es cuestión de frecuencia: es la unidad que puede oscilar."
+      - texto: "Porque con CTR bajo el lazo oscila"
+        porque: "Con CTR bajo el lazo es lento pero estable."
+    escalera:
+      - "Más ganancia sube la frecuencia de cruce del lazo."
+    solucion: "La unidad de CTR alto es la que pierde el margen de fase."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [341, 353, 358, 359, 365, 374, 385, 383]
+    ideas:
+      - { titulo: "46.A.", texto: "6,16 W en R y 26,7 % de rendimiento; desde 4 V, la deriva se realimenta." }
+      - { titulo: "46.B.", texto: "60 mA por segmento y 480 mA por dígito; barrido de 1 kHz." }
+      - { titulo: "46.C.", texto: "15,6 dB de dispersión y un polo de 7,96 kHz con 10 kΩ." }

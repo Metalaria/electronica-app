@@ -1,0 +1,259 @@
+# Lección 1.2 de la sección 55.12 «Fallos Intermitentes: los Difíciles» (cap53; etiqueta interna sec-53.11).
+# Formato: contenido/lecciones11/GUIA.md. Las figuras 55.28 (las cinco técnicas y las sospechas) y 55.27 (el registro
+# de media hora) con zonas en su svg_vista; en la 55.27, los minutos 0, 9, 20 y 27 caen en x ≈ 31,5 + 12,38·minuto.
+# Circuito de EJEMPLO para provocar el fallo: una salida de 5 V sobre una carga de 1 kΩ a través de una junta que, en
+# caliente, se abre parcialmente (923 Ω: la salida cae a 2,6 V, como en la figura 55.27); el aire caliente la abre y
+# el aerosol la cierra (esquema divisor).
+leccion: cap53/sec-53.11
+
+libro:
+  417: "las herramientas de medida requieren que el fallo esté presente"
+  418: "hacer el fallo reproducible"
+  420: "su firma es que el fallo responde a la vibración o a la presión mecánica"
+  421: "aparece tras minutos de funcionamiento o al arrancar en frío"
+  422: "pero afecta a un componente concreto"
+  423: "Su firma es que el fallo coincide con un evento externo"
+  426: "Es la técnica más productiva y la primera que hay que probar."
+  428: "si el fallo aparece al calentar una zona, el culpable está ahí"
+  429: "la condensación puede provocar fallos nuevos, así que hay que secar antes de sacar conclusiones"
+  431: "aplicarlas por zonas, una cada vez"
+  434: "Captura el evento con su forma completa cuando ocurra"
+  435: "un glitch que ocurra una vez cada mil ciclos queda dibujado en pantalla"
+  436: "si la alimentación cae momentáneamente, el mínimo lo delata"
+  438: "registrar la causa del reinicio"
+  441: "Conectores: limpiar, reasentar, medir continuidad moviendo."
+  444: "Si tras la reparación el fallo ya no se puede provocar con lo que antes lo provocaba, la reparación es buena."
+  446: "desconectar y volver a conectar todos los conectores varias veces"
+  447: "«falla a veces» no permite nada"
+  448: "la caída de tensión sigue a la temperatura del componente"
+  449: "Las cinco técnicas para provocar un fallo intermitente y las sospechas por orden."
+
+modelo:
+  valores:
+    V_5: { sim: "V", nombre: "salida de 5 V", unidad: V, valor: 5 }
+    R_j0: { sim: "R_{j}", nombre: "junta en frío", unidad: Ω, valor: 0.001 }
+    R_jh: { sim: "ΔR_{j}", nombre: "lo que se abre la junta en caliente", unidad: Ω, valor: 923 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1000 }
+    h_on: { tipo: interruptor, nombre: "aire caliente en la zona", valor: 0 }
+    f_on: { tipo: interruptor, nombre: "aerosol en el componente", valor: 0 }
+  calculos:
+    R_j: { expr: "R_j0 + h_on*(1 - f_on)*R_jh", sim: "R_{j}", nombre: "junta", unidad: Ω }
+    I_j: { expr: "V_5/(R_j + R_L)", sim: "I", nombre: "corriente", unidad: A }
+    V_o: { expr: "I_j*R_L", sim: "V_{salida}", nombre: "tensión en la carga", unidad: V }
+
+tarjetas:
+  - id: explore-tecnicas
+    tipo: explorar
+    titulo: "Hacerlo reproducible"
+    texto: "Medir exige que el fallo esté presente: primero hay que provocarlo. Toque las técnicas."
+    libro: [417, 418, 449]
+    widget:
+      tipo: figura
+      figura: fig-53.19
+      zonas:
+        - { id: presion, rotulo: "Primera técnica", rect: [2, 2, 85, 150], texto: "Presión y flexión con una punta de plástico: la más productiva y la primera." }
+        - { id: calor, rotulo: "Segunda técnica", rect: [92, 2, 85, 150], texto: "Aire caliente localizado, a temperatura baja: el semiconductor marginal falla." }
+        - { id: frio, rotulo: "Tercera técnica", rect: [183, 2, 85, 150], texto: "Frío localizado: enfriar uno cada vez señala al culpable." }
+        - { id: golpe, rotulo: "Cuarta técnica", rect: [273, 2, 85, 150], texto: "Golpear suave, zona por zona, nunca al azar." }
+        - { id: tension, rotulo: "Quinta técnica", rect: [364, 2, 87, 150], texto: "Variar la tensión y la carga: revela circuitos con poco margen." }
+    requiere: { mover: [presion, calor, frio] }
+
+  - id: firmas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las cuatro causas y su firma"
+    texto: "Una cada causa de un fallo intermitente con su firma."
+    libro: [420, 421, 422, 423]
+    emparejar:
+      - ["Mecánica (contactos)", "Responde a la vibración o a la presión"]
+      - ["Térmica (dilatación)", "Aparece tras minutos o al arrancar en frío"]
+      - ["Eléctrica (degradado)", "Térmica, pero de un componente concreto"]
+      - ["Ambiental o externa", "Coincide con un evento externo"]
+    exito: "La mecánica es la más frecuente con diferencia."
+    pistas:
+      - { texto: "La eléctrica también depende de la temperatura, pero señala a un componente." }
+    escalera:
+      - "La ambiental es la más difícil: el evento pasa desapercibido."
+    solucion: "Mecánica: presión; térmica: tiempo o frío; eléctrica: un componente; ambiental: un evento externo."
+
+  - id: sorpresa-calor-frio
+    tipo: sorpresa
+    titulo: "Caliente una zona, enfríe un componente"
+    texto: "La salida de 5 V cae a ratos. Caliente la zona con aire a baja temperatura y luego enfríe el componente con aerosol."
+    nota: "Circuito de ejemplo: la junta sospechosa, como una resistencia."
+    libro: [428, 429]
+    fijar: { V_5: 5, R_L: 1000 }
+    inicio: { h_on: 0, f_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_5, arriba: R_j, abajo: R_L }
+      lectura: { valor: V_o, rotulo: "Salida" }
+      corriente: I_j
+      mide: { salida: V_o, corriente: I_j, abajo: I_j }
+      mandos:
+        - { valor: h_on, tipo: interruptor, rotulo: "Aire caliente en la zona" }
+        - { valor: f_on, tipo: interruptor, rotulo: "Aerosol en el componente" }
+    requiere: { mover: [h_on, f_on] }
+
+  - id: toque-aerosol
+    tipo: tocar
+    titulo: "El registro de media hora"
+    texto: "La tensión de salida y la temperatura del componente, registradas. Toque el momento en que se le aplicó el aerosol."
+    libro: [448]
+    widget:
+      tipo: figura
+      figura: fig-53.18
+      zonas:
+        - { id: inicio, rotulo: "Al empezar", rect: [32, 15, 34, 155] }
+        - { id: falla, rotulo: "Hacia el primer tercio", rect: [126, 15, 34, 155] }
+        - { id: aerosol, rotulo: "Hacia los dos tercios", rect: [262, 15, 34, 155] }
+        - { id: recae, rotulo: "Cerca del final", rect: [349, 15, 34, 155] }
+    tocar:
+      bien: [aerosol]
+      porque:
+        inicio: "Es el encendido: el componente está frío y la salida, bien."
+        falla: "Aquí empieza a caer, cuando el componente se calienta: es el fallo, no el aerosol."
+        recae: "Se ha recalentado y falla otra vez: confirma la causa."
+    exito: "Al enfriarlo, la temperatura cae de golpe y la tensión vuelve: el fallo sigue a la temperatura."
+    escalera:
+      - "Busque el salto brusco hacia abajo de la temperatura."
+    solucion: "Hacia los dos tercios: la temperatura cae y la salida vuelve."
+
+  - id: presionar
+    tipo: pregunta
+    titulo: "Responde a la presión"
+    texto: "El fallo aparece y desaparece al presionar la placa con una punta de plástico. ¿De qué tipo es?"
+    libro: [420, 426]
+    widget:
+      tipo: figura
+      figura: fig-53.19
+      zonas:
+        - { id: tecnicas, rotulo: "Las técnicas", rect: [2, 2, 449, 150] }
+        - { id: sospechas, rotulo: "Las sospechas", rect: [2, 175, 449, 110] }
+    opciones:
+      - texto: "Mecánico: una soldadura o un contacto"
+        bien: true
+        porque: "Es la causa más frecuente con diferencia, y su firma es la respuesta a la presión."
+      - texto: "Térmico"
+        porque: "Su firma es la temperatura: aparece tras minutos o al arrancar en frío."
+      - texto: "Ambiental"
+        porque: "Coincidiría con un evento externo, no con su punta de plástico."
+    escalera:
+      - "¿Qué responde a una presión mecánica?"
+    solucion: "Mecánico."
+
+  - id: registrar
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Registrar cuando no se puede vigilar"
+    texto: "Una cada herramienta con lo que deja registrado."
+    libro: [434, 435, 436, 438]
+    emparejar:
+      - ["Disparo único", "El evento con su forma completa"]
+      - ["Persistencia", "Un glitch de una vez cada mil ciclos"]
+      - ["Brymen en REC", "El mínimo de horas de alimentación"]
+      - ["El propio microcontrolador", "La causa de cada reinicio"]
+    exito: "Convierte un fallo misterioso en uno clasificado."
+    pistas:
+      - { texto: "La persistencia acumula todas las trazas." }
+    escalera:
+      - "El microcontrolador sabe si actuó el watchdog o hubo brown-out."
+    solucion: "Disparo único: la forma; persistencia: glitches; REC: mínimos; micro: causa del reinicio."
+
+  - id: ordene-sospechas
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Las sospechas por orden"
+    texto: "Sin ninguna pista, ordene las sospechas."
+    libro: [441, 446, 449]
+    ordenar:
+      - "Conectores: limpiar, reasentar, medir moviendo."
+      - "Soldaduras de componentes pesados y conectores."
+      - "Electrolíticos."
+      - "Semiconductores de potencia."
+      - "Alimentación marginal."
+    exito: "Lo primero, sin instrumentos: reconectar varias veces los conectores y resoldar los componentes grandes."
+    pistas:
+      - { texto: "La causa es mecánica en la mayoría de los casos: va primero." }
+    escalera:
+      - "Los electrolíticos van antes que los semiconductores."
+    solucion: "Conectores, soldaduras, electrolíticos, potencia y alimentación."
+
+  - id: condensacion
+    tipo: pregunta
+    titulo: "Después del aerosol"
+    texto: "Tras enfriar con aerosol aparece un fallo nuevo. ¿Qué se hace antes de concluir?"
+    libro: [429]
+    fijar: { V_5: 5, R_L: 1000, h_on: 1, f_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_5, arriba: R_j, abajo: R_L }
+      lectura: { valor: V_o, rotulo: "Salida" }
+      mide: { salida: V_o, corriente: I_j, abajo: I_j }
+    opciones:
+      - texto: "Secar: la condensación provoca fallos nuevos"
+        bien: true
+        porque: "El frío condensa humedad sobre la placa, y esa humedad conduce."
+      - texto: "Sustituir el componente enfriado"
+        porque: "Antes hay que descartar la condensación: secar y repetir."
+      - texto: "Enfriar más"
+        porque: "Más frío, más condensación."
+    escalera:
+      - "¿Qué deja el frío sobre una superficie?"
+    solucion: "Secar antes de sacar conclusiones."
+
+  - id: dar-por-bueno
+    tipo: porque
+    titulo: "El error de método más común"
+    texto: "Se cambian los sospechosos y el fallo, que salía una vez al día, no vuelve en la hora siguiente. ¿Por qué eso no demuestra nada?"
+    libro: [444]
+    widget:
+      tipo: figura
+      figura: fig-53.18
+      zonas:
+        - { id: registro, rotulo: "El registro", rect: [32, 15, 370, 155] }
+    opciones:
+      - texto: "Porque la reparación solo es buena si ya no se puede provocar como antes"
+        bien: true
+        porque: "Provocarlo antes de reparar, reparar y volver a intentarlo con las mismas técnicas."
+      - texto: "Porque hay que esperar un mes"
+        porque: "No se trata de esperar: se trata de provocarlo con lo que antes lo provocaba."
+      - texto: "Sí lo demuestra: no ha vuelto"
+        porque: "Con un fallo diario, una hora sin él no dice nada."
+    escalera:
+      - "¿Con qué frecuencia aparecía el fallo?"
+    solucion: "Solo vale si ya no se puede provocar con lo que antes lo provocaba."
+
+  - id: anotar-condicion
+    tipo: pregunta
+    titulo: "La condición exacta"
+    texto: "¿Qué descripción del fallo sirve como prueba de aceptación?"
+    libro: [447]
+    widget:
+      tipo: figura
+      figura: fig-53.18
+      zonas:
+        - { id: registro, rotulo: "El registro", rect: [32, 15, 370, 155] }
+    opciones:
+      - texto: "«Falla al presionar sobre el conector J3»"
+        bien: true
+        porque: "Dice cómo provocarlo: permite verificar la reparación."
+      - texto: "«Falla a veces»"
+        porque: "No permite nada: no hay cómo comprobar que ya no falla."
+      - texto: "«Parece un problema de temperatura»"
+        porque: "Es una sospecha, no una condición que se pueda reproducir."
+    escalera:
+      - "¿Con cuál podría comprobar mañana que está reparado?"
+    solucion: "La que dice exactamente cómo provocarlo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [418, 420, 431, 444]
+    ideas:
+      - { titulo: "Reproducible primero.", texto: "Sin el fallo presente no hay medida que valga." }
+      - { titulo: "Provocar.", texto: "Presión, calor, frío, golpes y tensión: por zonas, una cada vez." }
+      - { titulo: "Registrar.", texto: "Disparo único, persistencia, REC y la causa del reinicio." }
+      - { titulo: "Confirmar.", texto: "Reparado es cuando ya no se puede provocar como antes." }

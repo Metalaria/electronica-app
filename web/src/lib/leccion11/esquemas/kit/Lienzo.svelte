@@ -1,7 +1,9 @@
 <script lang="ts">
   // 1.1 schematic kit: the drawing's <svg> (the schematic's viewBox, its description for screen readers).
   import type { Snippet } from 'svelte';
-  let { ancho = 380, alto = 240, descripcion, children }: { ancho?: number; alto?: number; descripcion: string; children: Snippet } = $props();
+  // (esquemas12d: `nodos`, when a schematic's node «voltages» are another quantity — a thermal chain's temperatures in
+  // °C —: the living circuit labels and keys them with it)
+  let { ancho = 380, alto = 240, descripcion, nodos, children }: { ancho?: number; alto?: number; descripcion: string; nodos?: { magnitud: string; unidad: string }; children: Snippet } = $props();
   // Review 11c: on a phone the drawing scales down and its 13 px labels rendered at about 10 px; `--k` enlarges the
   // labels (esquemas11.css) just enough to render at 11 px or more (at most 25 %), and is 1 on wider screens.
   let svg: SVGSVGElement | undefined = $state();
@@ -18,6 +20,6 @@
   });
 </script>
 
-<svg bind:this={svg} class="e11" viewBox={`0 0 ${ancho} ${alto}`} width="100%" role="img" aria-label={descripcion} data-descripcion style:--k={k}>
+<svg bind:this={svg} class="e11" viewBox={`0 0 ${ancho} ${alto}`} width="100%" role="img" aria-label={descripcion} data-descripcion data-unidad-nodos={nodos?.unidad} data-magnitud-nodos={nodos?.magnitud} style:--k={k}>
   {@render children()}
 </svg>

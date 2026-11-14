@@ -33,7 +33,8 @@ test('lección: «Seguir en la lección» tras la X deja la dirección en la tar
   await leccion14HastaTarjeta4(page);
   await page.locator('[data-cerrar]').click();
   const d = page.getByRole('alertdialog');
-  await expect(d).toContainText('Va por la tarjeta 4 de 12');
+  // (1.2: sec 1.4 has 13 cards, with the bench card)
+  await expect(d).toContainText('Va por la tarjeta 4 de 13');
   await d.getByRole('button', { name: 'Seguir en la lección' }).click();
   expect(await tarjetaN(page)).toBe('3');
   // reviewed: the address had gone back to #/leccion/cap01/sec-1.4 (card 1) while card 4 was on screen
@@ -322,20 +323,21 @@ test('etapa del SDR: ver el diseño de referencia deja la etapa sin XP aunque lu
     .toBeGreaterThan(0);
 });
 
-test('cursos: los dos capítulos nuevos de las ampliaciones están en su curso, con «Aún no en el libro»', async ({ page }) => {
+test('cursos: los dos capítulos nuevos de las ampliaciones están en su curso (1.2: ya del libro, sin «Aún no en el libro»)', async ({ page }) => {
   await limpio(page);
-  for (const [curso, parte, antes] of [['digital', 'cap-new-automatas', 'cap29'], ['potencia', 'cap-new-maquinas', 'cap33']] as const) {
+  for (const [curso, parte, antes] of [['digital', 'cap55', 'cap29'], ['potencia', 'cap56', 'cap33']] as const) {
     await page.goto(`#/cursos/${curso}`);
     const tramo = page.locator(`[data-tramo="${parte}"]`);
     await expect(tramo).toBeVisible({ timeout: 30_000 });
-    await expect(tramo.locator('h2 [data-nuevo]')).toHaveText('Aún no en el libro');
+    await expect(tramo.locator('h2 [data-nuevo]')).toHaveCount(0);
     expect(await tramo.locator('[data-nodo]').count()).toBeGreaterThan(3);
     // where the book places it: right after the chapter it follows
     const orden = await page.locator('[data-tramo]').evaluateAll((ts) => ts.map((t) => t.getAttribute('data-tramo')));
     expect(orden[orden.indexOf(parte) - 1], curso).toBe(antes);
     // the list view too
     await page.locator('[data-vista="lista"]').click();
-    await expect(page.locator(`[data-capitulo="${parte}"] [data-nuevo]`)).toHaveText('Aún no en el libro');
+    await expect(page.locator(`[data-capitulo="${parte}"]`)).toBeVisible();
+    await expect(page.locator(`[data-capitulo="${parte}"] [data-nuevo]`)).toHaveCount(0);
     await page.locator('[data-vista="camino"]').click();
   }
 });

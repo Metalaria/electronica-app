@@ -188,6 +188,15 @@ export function fotosDe(d: DatosMaquina): FotoExtra[] {
   return [principal, ...(d.fotos ?? [])];
 }
 
+/**
+ * The hotspots of every photo, the main one's first. A hotspot's id is unique across a machine's photos, and the one
+ * linked to the schematic need not be on the main photo (SNES, owner 13-11: the NTSC photo of another board opens
+ * first; the bare PAL face, second, carries the schematic links).
+ */
+export function hotspotsDe(d: DatosMaquina): Hotspot[] {
+  return fotosDe(d).flatMap((f) => f.hotspots);
+}
+
 export function cargarDibujo(h: Hoja): Promise<ArrayBuffer> {
   return pedir<ArrayBuffer>(`consolas/${h.archivo}.bin`, true);
 }

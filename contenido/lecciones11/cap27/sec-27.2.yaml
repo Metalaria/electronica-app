@@ -1,0 +1,294 @@
+# Lección 1.2 de la sección 26.2 «La Realimentación Negativa» (cap27; etiqueta interna sec-27.2).
+# Formato: contenido/lecciones11/GUIA.md. A_f = A/(1 + A·β) en el esquema «ao-no-inversor» con la pieza a0 (A de 10⁴,
+# 5·10⁴ y 10⁵) y β = 1/11 (1 kΩ y 10 kΩ): los números del bloque 53 (10,9988), 54 (0,11 %) y 57 (0,011 %).
+# Entrada de 1 V: la salida es la ganancia. Al pasar A de 10⁵ a 5·10⁴ la ganancia cambia un 0,011 % (10,9988 →
+# 10,9976, el cambio exacto del bloque 57 desde la errata 4.1.2, G); el 0,0055 % que el bloque cita aparte es la
+# sensibilidad lineal (50 %/9 092), que se queda en la mitad: las tarjetas no usan esa cifra. La masa virtual, en
+# «ao-inversor» de 1 kΩ y 10 kΩ con 0,5 V (ejemplo).
+leccion: cap27/sec-27.2
+
+libro:
+  43: "restar de la entrada una fracción de la salida"
+  47: 'A_("f") = (A)/("1" + A dot.op β)'
+  50: "la ganancia del conjunto ya no depende del amplificador, solo de la red de realimentación"
+  53: '"10,9988"'
+  54: "Un error del 0,011 % respecto al 11 ideal"
+  55: "se llama factor de desensibilización"
+  57: "pasa de 10,9988 a 10,9976, un cambio del 0,011 %"
+  58: "la realimentación la divide por el mismo factor"
+  61: "Con GBW de 1 MHz y ganancia 11, el ancho de banda es 91 kHz"
+  65: "El ruido de la primera etapa no se reduce"
+  66: "El offset tampoco"
+  67: "La saturación no"
+  68: "El slew rate no"
+  72: "Tensión-serie (no inversor)"
+  73: "muestrear tensión baja la impedancia de salida"
+  82: "la inversora está a masa sin estarlo"
+  99: "su impedancia de salida de 100 Ω baja a 0,1 Ω"
+
+modelo:
+  valores:
+    V_i: { sim: "v_{in}", nombre: "tensión de entrada", unidad: V, valor: 1 }
+    R_1: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 1000 }
+    R_2: { sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω, valor: 10000 }
+    A_0: { sim: "A", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    V_s: { sim: "V_{sat}", nombre: "salida máxima", unidad: V, valor: 12 }
+    V_n: { sim: "v_{in}", nombre: "entrada del inversor", unidad: V, valor: 0.5 }
+    GBW: { sim: "GBW", nombre: "producto ganancia por ancho de banda", unidad: Hz, valor: 1000000 }
+    R_o: { sim: "R_{o}", nombre: "impedancia de salida en lazo abierto", unidad: Ω, valor: 100 }
+    T_l: { sim: "A · β", nombre: "ganancia de lazo", unidad: "", valor: 1000 }
+  calculos:
+    b_r: { expr: "R_1/(R_1 + R_2)", sim: "β", nombre: "fracción realimentada", unidad: "" }
+    G_i: { expr: "1/b_r", sim: "1/β", nombre: "ganancia ideal", unidad: "" }
+    A_f: { expr: "A_0/(1 + A_0*b_r)", sim: "A_{f}", nombre: "ganancia realimentada", unidad: "", cifras: 6 }
+    V_o: { expr: "V_i*A_f", sim: "v_{o}", nombre: "tensión de salida", unidad: V, cifras: 6 }
+    V_m: { expr: "V_o*b_r", sim: "v_{−}", nombre: "tensión de la entrada −", unidad: V }
+    I_1: { expr: "V_m/R_1", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+    e_r: { expr: "100*(G_i - A_f)/G_i", sim: "error", nombre: "error frente a la ganancia ideal", unidad: "%", cifras: 2 }
+    T_b: { expr: "A_0*b_r", sim: "A · β", nombre: "ganancia de lazo", unidad: "" }
+    F_z: { expr: "1 + T_l", sim: "1 + A · β", nombre: "factor", unidad: "" }
+    F_d: { expr: "1 + A_0*b_r", sim: "1 + A · β", nombre: "factor de desensibilización", unidad: "", cifras: 4 }
+    d_A: { expr: "100*(A_0/(1 + A_0*b_r) - 50000/(1 + 50000*b_r))/(A_0/(1 + A_0*b_r))", sim: "ΔA_{f}", nombre: "cambio de la ganancia al pasar de 5·10⁴ a A", unidad: "%", cifras: 2 }
+    B_w: { expr: "GBW/G_i", sim: "BW", nombre: "ancho de banda", unidad: Hz }
+    V_on: { expr: "-R_2/R_1*V_n*A_0/(A_0 + 1 + R_2/R_1)", sim: "v_{o}", nombre: "salida del inversor", unidad: V }
+    V_mn: { expr: "(V_n*R_2 + V_on*R_1)/(R_1 + R_2)", sim: "v_{−}", nombre: "entrada − del inversor", unidad: V }
+    I_n: { expr: "(V_n - V_mn)/R_1", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+    Z_o: { expr: "R_o/(1 + T_l)", sim: "Z_{o}", nombre: "impedancia de salida realimentada", unidad: Ω }
+
+tarjetas:
+  - id: explore-ganancia
+    tipo: explorar
+    titulo: "Una ganancia que no depende del amplificador"
+    texto: "Red de ganancia 11 y 1 V a la entrada. Cambie la ganancia en lazo abierto y mire la del conjunto."
+    libro: [43, 50]
+    inicio: { A_0: 10000 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
+      datos:
+        - { valor: e_r, rotulo: "Error frente a 11: {{e_r}}" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+      mandos:
+        - { valor: A_0, lista: [10000, 50000, 100000], rotulo: "Ganancia en lazo abierto, A" }
+    requiere: { mover: [A_0] }
+    comprobar:
+      - { G_i: 11 }
+
+  - id: prediga-ganancia
+    tipo: predecir
+    titulo: "Con A = 10⁵"
+    texto: "Un operacional de A = 10⁵ con una red que fija ganancia 11. ¿Qué ganancia da de verdad?"
+    libro: [53, 54]
+    fijar: { A_0: 100000 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+      ocultar: true
+    opciones:
+      - texto: "10,9988: un 0,011 % por debajo"
+        bien: true
+        porque: "10⁵/(1 + 10⁵/11): no hace falta que A valga nada exacto, solo que sea mucho mayor que 1/β."
+      - texto: "Exactamente 11"
+        porque: "Eso es con A infinita. Con A finita queda un error pequeño, 1/(1 + A · β)."
+      - texto: "10⁵, la del operacional"
+        porque: "Esa es la ganancia sin realimentación. El lazo la cambia por la de la red."
+    escalera:
+      - "A_{f} = A/(1 + A · β) con β = 1/11."
+    solucion: "10⁵/(1 + 9091) = 10,9988."
+    comprobar:
+      - { A_f: 10.9988, e_r: 0.011, T_b: 9091, tol: 0.01 }
+      - { con: { A_0: 10000 }, e_r: 0.11, tol: 0.01 }
+
+  - id: formula-af
+    tipo: formula
+    titulo: "La ecuación fundamental"
+    texto: "Cambie A: A · β, la ganancia de lazo, gobierna el error."
+    libro: [47, 55]
+    ec: 47
+    sustitucion: "{{A_0}} / (1 + {{A_0}} · {{b_r}}) = {{A_f}}"
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
+      datos:
+        - { valor: F_d, rotulo: "1 + A · β = {{F_d}}" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+      mandos:
+        - { valor: A_0, lista: [10000, 50000, 100000], rotulo: "A" }
+
+  - id: sorpresa-medio
+    tipo: sorpresa
+    titulo: "El operacional pierde la mitad"
+    texto: "Por temperatura o por cambiar el transistor, A cae de 10⁵ a la mitad. Pruébelo y mire la ganancia del conjunto."
+    libro: [57]
+    inicio: { A_0: 100000 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
+      datos:
+        - { valor: d_A, rotulo: "Diferencia entre las dos: {{d_A}}" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+      mandos:
+        - { valor: A_0, lista: [50000, 100000], rotulo: "A" }
+    requiere: { mover: [A_0] }
+    comprobar:
+      - { d_A: 0.011, tol: 0.05 }
+
+  - id: por-que-estable
+    tipo: porque
+    titulo: "¿Por qué casi no cambia?"
+    texto: "A ha cambiado un 50 % y la ganancia del conjunto apenas lo nota. ¿Por qué?"
+    libro: [55, 57, 58]
+    fijar: { A_0: 50000 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
+      corriente: I_1
+      mide: { vo: V_o, vmenos: V_m, i1: I_1 }
+    opciones:
+      - texto: "Cualquier variación de A se divide por el factor (1 + A · β)"
+        bien: true
+        porque: "Con un factor de 9 092, un 50 % de A queda en centésimas de por ciento. La distorsión se divide igual."
+      - texto: "Porque las resistencias compensan a A"
+        porque: "Las resistencias no cambian: fijan β, y con ella la ganancia, que es 1/β."
+      - texto: "Porque el operacional estaba saturado"
+        porque: "Saturado, el lazo se abre y no corregiría nada."
+    escalera:
+      - "¿Por qué número se dividen todos los defectos del amplificador?"
+    solucion: "Por el factor de desensibilización, 1 + A · β: unos 9 092."
+
+  - id: estime-banda
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Más ancho de banda"
+    texto: "Con GBW de 1 MHz y ganancia 11, ¿qué ancho de banda queda?"
+    libro: [61]
+    estimar:
+      objetivo: "B_w"
+      unidad: Hz
+      min: 0
+      max: 500000
+      paso: 1000
+      inicio: 400000
+      tol: 0.05
+      rotulo: "Ancho de banda"
+    exito: "91 kHz: la ganancia se baja y la banda se multiplica, porque su producto se conserva."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 95500 }, texto: "Se ha pasado: es GBW dividido entre la ganancia." }
+      - { texto: "Se ha quedado corto: 1 MHz entre 11." }
+    escalera:
+      - "BW = GBW/G."
+    solucion: "1 MHz / 11 ≈ 91 kHz."
+    comprobar:
+      - { B_w: 90909 }
+
+  - id: empareje-limites
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que no mejora"
+    texto: "La realimentación no es una panacea. Una cada límite con su razón."
+    libro: [65, 66, 67, 68]
+    emparejar:
+      - ["Ruido de la primera etapa", "Es indistinguible de la señal y se amplifica con ella"]
+      - ["Offset", "Se amplifica como una señal legítima"]
+      - ["Saturación", "En los raíles el lazo se abre"]
+      - ["Slew rate", "Lo impone la corriente interna; el lazo no lo acelera"]
+    exito: "El lazo no puede corregir lo que no ve."
+    pistas:
+      - { texto: "Lo que entra junto con la señal se amplifica con ella." }
+    escalera:
+      - "Saturada, la salida ya no puede seguir lo que pide la red."
+    solucion: "Ruido–indistinguible, offset–señal, saturación–lazo abierto, slew rate–corriente interna."
+
+  - id: empareje-topologias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Muestrear y comparar"
+    texto: "Una cada forma de realimentar con su efecto sobre las impedancias."
+    libro: [72, 73]
+    emparejar:
+      - ["Muestrear la tensión de salida", "Baja la impedancia de salida"]
+      - ["Muestrear la corriente de salida", "Sube la impedancia de salida"]
+      - ["Comparar en serie con la entrada", "Sube la impedancia de entrada"]
+      - ["Comparar en paralelo con la entrada", "Baja la impedancia de entrada"]
+    exito: "Por eso el no inversor, tensión-serie, ofrece las mejores impedancias; el seguidor es su caso extremo."
+    pistas:
+      - { texto: "Muestrear tensión: el lazo mantiene la tensión pese a la carga." }
+    escalera:
+      - "En el inversor la red llega al mismo nodo que la señal: en paralelo."
+    solucion: "Tensión–baja Z_{salida}, corriente–la sube; serie–sube Z_{entrada}, paralelo–la baja."
+
+  - id: masa-virtual
+    tipo: pregunta
+    titulo: "La masa virtual"
+    texto: "Un inversor de 1 kΩ y 10 kΩ con 0,5 V a la entrada. ¿Cuánto vale la entrada −?"
+    libro: [82]
+    widget:
+      tipo: circuito
+      esquema: ao-inversor
+      piezas: { entrada: V_n, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
+      lectura: { valor: V_on, rotulo: "v_{o}" }
+      corriente: I_n
+      mide: { vo: V_on, vmenos: V_mn, i1: I_n }
+    opciones:
+      - texto: "Prácticamente 0 V, aunque no esté conectada a masa"
+        bien: true
+        porque: "La + está a masa y la realimentación iguala las entradas: la corriente de R₁ solo puede seguir por R₂."
+      - texto: "0,5 V, la de la entrada"
+        porque: "Entre la entrada y la − está R₁, que se queda los 0,5 V."
+      - texto: "−5 V, la de la salida"
+        porque: "La salida está al otro lado de R₂; la − queda en medio, a masa virtual."
+    escalera:
+      - "¿A qué potencial está la entrada +?"
+    solucion: "Casi 0 V: la inversora está a masa sin estarlo."
+    comprobar:
+      - { V_on: -5, V_n: 0.5, tol: 0.01 }
+
+  - id: estime-zo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una salida casi ideal"
+    texto: "Un operacional con 100 Ω de salida en lazo abierto y una ganancia de lazo de 1000, muestreando tensión. ¿Qué impedancia de salida queda?"
+    libro: [99]
+    estimar:
+      objetivo: "Z_o"
+      unidad: Ω
+      min: 0
+      max: 2
+      paso: 0.05
+      inicio: 1.5
+      tol: 0.1
+      rotulo: "Impedancia de salida"
+    exito: "Unos 0,1 Ω: el operacional realimentado se comporta como una fuente de tensión casi ideal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.11 }, texto: "Se ha pasado: se divide por (1 + A · β), unos mil." }
+      - { texto: "Se ha quedado corto: 100 Ω entre mil, no entre un millón." }
+    escalera:
+      - "Muestrear tensión divide la impedancia de salida por (1 + A · β)."
+    solucion: "100/1001 ≈ 0,1 Ω."
+    comprobar:
+      - { Z_o: 0.0999, F_z: 1001, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [47, 50, 55, 65]
+    ideas:
+      - { titulo: "A_{f} = A/(1 + A · β).", texto: "Con A · β ≫ 1, la ganancia es 1/β: la de las resistencias." }
+      - { titulo: "Desensibilización.", texto: "Variaciones, distorsión e impedancias mejoran por (1 + A · β)." }
+      - { titulo: "Lo que no.", texto: "Ruido de entrada, offset, saturación y slew rate." }
+      - { titulo: "Masa virtual.", texto: "En el inversor, la entrada − está a masa sin estarlo." }

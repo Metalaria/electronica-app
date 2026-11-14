@@ -25,10 +25,14 @@ test('un enlace del libro como hash abre la lección, con la grafía del libro y
   // «Atrás» goes to the page before, not to the link (it was replaced)
   await page.goBack();
   await expect(page).toHaveURL(/#\/cap01$/);
-  // a section without a 1.1 lesson: the classic one; percent-encoded and with the other slash form
+  // a section without a 1.1 lesson: the classic one; percent-encoded and with the other slash form (1.2: every chapter
+  // section has a hand-made lesson, so an appendix's; cap10/sec-10.1 opens its new one)
+  await page.goto('/#/epa%3A%2F%2Fleccion%2FapB%2Fsec-B.1');
+  await expect(page).toHaveURL(/#\/leccion\/apB\/sec-B\.1$/);
+  await expect(page.locator('[data-leccion="apB/sec-B.1"]')).toBeVisible({ timeout: 60_000 });
   await page.goto('/#/epa%3A%2F%2Fleccion%2Fcap10%2Fsec-10.1');
   await expect(page).toHaveURL(/#\/leccion\/cap10\/sec-10\.1$/);
-  await expect(page.locator('[data-leccion="cap10/sec-10.1"]')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('[data-leccion11="cap10/sec-10.1"]')).toBeVisible({ timeout: 60_000 });
   // an appendix written in another case: the book's spelling
   await page.goto('/#EPA://LECCION/APA/SEC-A.1');
   await expect(page).toHaveURL(/#\/leccion\/apA\/sec-A\.1$/, { timeout: 30_000 });

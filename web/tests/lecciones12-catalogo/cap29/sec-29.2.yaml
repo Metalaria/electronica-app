@@ -1,0 +1,248 @@
+# Catálogo de pruebas de los widgets «figura» y «logica» y sus pasos (contenido/lecciones11/GUIA.md §11): circuito
+# lógico vivo con su tabla, predecir con los LED ocultos, rellenar la tabla de verdad, diseñar una OR con el mínimo de
+# NAND, buscar la avería con la sonda lógica, el cronograma de un divisor por dos y dibujarlo, y la figura 13.5 y una
+# foto de consola con zonas que se tocan. NO se publica: tests/lecciones12-digital.spec.ts la genera y la sirve en
+# lugar de la lección publicada (la sección 28.2 todavía no tiene lección). Cópiela y cambie lo que haga falta.
+leccion: cap29/sec-29.2
+
+libro:
+  37: "las variables solo valen 0 o 1"
+  39: "A+B"
+  40: "NAND y NOR, que son las básicas invertidas"
+  49: "una NAND con las entradas invertidas es una OR"
+  66: "entradas que no pueden quedar al aire"
+  68: "montar una OR con tres NAND —dos como inversores y una tercera—"
+  "cap09#43": "una NAND con las entradas unidas es un inversor"
+  "cap09#45": "en TTL tiende a leerse como un 1"
+  "cap09#56": "una onda cuadrada de la mitad de la frecuencia del reloj"
+  "cap13#64": "los cinco defectos más comunes"
+  "cap53#58": "sonda lógica, que indica con LED si un punto está a nivel alto o bajo"
+  "cap09#40": "implementan físicamente las operaciones del álgebra de Boole"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  # --- the logic circuit: tap the switches, the truth table marks the row
+  - id: explore-nand
+    tipo: explorar
+    titulo: "Una puerta NAND"
+    texto: "Toque A y B y mire el LED y la fila de la tabla."
+    libro: [37, 40]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, B] }
+      salidas:
+        - { id: Y, de: n1 }
+      tabla: true
+    requiere: { mover: [A, B] }
+
+  # --- predict the output: the LED says «?» and the switches stay as they are
+  - id: prediga-nand
+    tipo: predecir
+    titulo: "Con las dos entradas a 1"
+    texto: "Con A = 1 y B = 1, ¿qué da la NAND?"
+    libro: [39, 40]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, valor: 1 }, { id: B, valor: 1 }]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, B] }
+      salidas:
+        - { id: Y, de: n1 }
+      ocultar: true
+    opciones:
+      - { texto: "0", bien: true, porque: "La AND daría 1, y la NAND la invierte: 0." }
+      - { texto: "1", porque: "Ese 1 es el de la AND. La NAND es la AND invertida." }
+    escalera: ["Piense primero en la AND con las dos entradas a 1."]
+    solucion: "La AND de 1 y 1 es 1; invertida, 0."
+
+  # --- fill the truth table (the LED hidden: the reader reasons it out)
+  - id: tabla-or-nand
+    tipo: tabla
+    titulo: "Tres NAND"
+    texto: "Rellene la columna Y: dos NAND hacen de inversores y la tercera las une."
+    libro: [68, "cap09#43"]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, A] }
+        - { id: n2, tipo: nand, entradas: [B, B] }
+        - { id: n3, tipo: nand, entradas: [n1, n2] }
+      salidas:
+        - { id: Y, de: n3 }
+      ocultar: true
+    tabla:
+      salidas: [Y]
+    exito: "Es la OR: una NAND con las entradas invertidas."
+    escalera: ["Una NAND con las entradas unidas es un inversor."]
+    solucion: "Y vale 0 solo con A = 0 y B = 0: es la OR."
+
+  # --- design: the OR with the fewest NAND
+  - id: disene-or
+    tipo: diseno
+    titulo: "Una OR con NAND"
+    texto: "Haga Y = A + B solo con puertas NAND, con las menos posibles."
+    libro: [49, 68]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas: []
+      salidas:
+        - { id: Y, de: "0" }
+    diseno:
+      salida: Y
+      permitidas: [nand]
+      referencia:
+        - { tipo: nand, entradas: [A, A] }
+        - { tipo: nand, entradas: [B, B] }
+        - { tipo: nand, entradas: [p1, p2] }
+      exigir_minimo: true
+    exito: "Dos inversores y una tercera NAND: la OR del banco."
+    escalera: ["Invierta las dos entradas antes de la última NAND."]
+    solucion: "p1 = NAND(A, A), p2 = NAND(B, B) e Y = NAND(p1, p2)."
+
+  # --- fault finding with the logic probe
+  - id: averia-or
+    tipo: averia
+    titulo: "La OR no funciona"
+    texto: "Pruebe combinaciones, mida con la sonda lógica y diga qué puerta falla."
+    libro: [66, 68, "cap09#45", "cap53#58"]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, A], rotulo: "N1" }
+        - { id: n2, tipo: nand, entradas: [B, B], rotulo: "N2" }
+        - { id: n3, tipo: nand, entradas: [n1, n2], rotulo: "N3" }
+      salidas:
+        - { id: Y, de: n3 }
+    averia:
+      eleccion: fija
+      sospechosos:
+        - { id: n1, rotulo: "N1 (invierte A)" }
+        - { id: n2, rotulo: "N2 (invierte B)" }
+        - { id: n3, rotulo: "N3 (la de salida)" }
+      fallos:
+        - { id: n3-al-aire, pieza: n3, tipo: sin-conexion, pin: 1, texto: "La entrada de N3 que viene de N1 está al aire: en TTL tiende a leerse como un 1." }
+        - { id: n1-a-cero, pieza: n1, tipo: atascada-0, texto: "La salida de N1 está siempre a 0: N3 da 1 sea cual sea A." }
+        - { id: n2-a-cero, pieza: n2, tipo: atascada-0, texto: "La salida de N2 está siempre a 0: N3 da 1 sea cual sea B." }
+    escalera: ["Ponga las dos entradas a 0: la OR debe dar 0."]
+    solucion: "Mida a la entrada y a la salida de cada NAND: la que no cuadra es la averiada."
+
+  # --- the timing diagram of a divide-by-two (move the cursor)
+  - id: explore-divisor
+    tipo: explorar
+    titulo: "Un biestable D que se divide"
+    texto: "Con Q̄ en su propia D, cambia en cada flanco: mueva el cursor y compare Q con el reloj."
+    libro: ["cap09#56"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [f1.nq, CLK] }
+      salidas:
+        - { id: Q, de: f1.q }
+      cronograma: { ciclos: 4, senales: [CLK, Q] }
+
+  # --- draw it (digital mode: levels snap to the clock edges)
+  - id: dibuje-divisor
+    tipo: dibujar
+    titulo: "Dibuje Q"
+    texto: "Dibuje la salida Q del divisor por dos, tramo a tramo."
+    libro: ["cap09#56"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [f1.nq, CLK] }
+      salidas:
+        - { id: Q, de: f1.q }
+      cronograma: { ciclos: 4, senales: [CLK] }
+      dibujo: false
+    dibujar:
+      senal: Q
+    exito: "Una onda cuadrada de la mitad de la frecuencia del reloj."
+    escalera: ["Q solo cambia en los flancos de subida del reloj."]
+    solucion: "Q cambia en cada flanco de subida: un ciclo de Q por cada dos del reloj."
+
+  # --- a book figure with zones: touch to see, then «toque el defecto»
+  - id: explore-soldaduras
+    tipo: explorar
+    titulo: "Los cinco defectos"
+    texto: "Toque cada unión de la figura para ver qué le pasa."
+    libro: ["cap13#64"]
+    widget:
+      tipo: figura
+      figura: fig-13.5
+      zonas:
+        - { id: correcta, rotulo: "Arriba a la izquierda", rect: [8, 2, 136, 126], texto: "Correcta: cono brillante." }
+        - { id: fria, rotulo: "Arriba en el centro", rect: [159, 2, 136, 126], texto: "Fría: mate y grumosa." }
+        - { id: insuficiente, rotulo: "Arriba a la derecha", rect: [310, 2, 136, 126], texto: "Insuficiente: poco estaño." }
+        - { id: exceso, rotulo: "Abajo a la izquierda", rect: [8, 138, 136, 132], texto: "Exceso: una bola." }
+        - { id: puente, rotulo: "Abajo en el centro", rect: [159, 138, 136, 132], texto: "Puente: cortocircuita islas adyacentes." }
+        - { id: sin-mojado, rotulo: "Abajo a la derecha", rect: [310, 138, 136, 132], texto: "Sin mojado: el estaño no se adhiere." }
+    requiere: { mover: [fria, puente] }
+
+  - id: toque-puente
+    tipo: tocar
+    titulo: "Un cortocircuito"
+    texto: "Toque la unión que cortocircuita dos islas."
+    libro: ["cap13#64"]
+    widget:
+      tipo: figura
+      figura: fig-13.5
+      zonas:
+        - { id: correcta, rotulo: "Arriba a la izquierda", rect: [8, 2, 136, 126] }
+        - { id: fria, rotulo: "Arriba en el centro", rect: [159, 2, 136, 126] }
+        - { id: insuficiente, rotulo: "Arriba a la derecha", rect: [310, 2, 136, 126] }
+        - { id: exceso, rotulo: "Abajo a la izquierda", rect: [8, 138, 136, 132] }
+        - { id: puente, rotulo: "Abajo en el centro", rect: [159, 138, 136, 132] }
+        - { id: sin-mojado, rotulo: "Abajo a la derecha", rect: [310, 138, 136, 132] }
+    tocar:
+      bien: [puente]
+      porque:
+        correcta: "Es la buena: un cono brillante en una sola isla."
+        fria: "Está mate y grumosa, pero en una sola isla."
+        insuficiente: "Le falta estaño; no une nada más."
+        exceso: "Es una bola en una sola patilla."
+        sin-mojado: "El estaño no se adhiere; no toca la isla vecina."
+    exito: "El puente une dos islas vecinas: un cortocircuito."
+    escalera: ["Busque la que toca dos patillas."]
+    solucion: "Abajo en el centro: el estaño une las dos islas."
+
+  # --- a console photo: its hotspots are the zones
+  - id: toque-decodificador
+    tipo: tocar
+    titulo: "El decodificador de la NES"
+    texto: "En la placa de la NES, toque el decodificador de direcciones."
+    libro: ["cap09#40"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: decodificador, hotspot: U3, rotulo: "Chip pequeño, arriba a la izquierda" }
+        - { id: cpu, hotspot: U6, rotulo: "Chip largo, a la izquierda" }
+        - { id: ppu, hotspot: U5, rotulo: "Chip largo, en el centro" }
+        - { id: cic, hotspot: U10, rotulo: "Chip pequeño, a la derecha" }
+    tocar:
+      bien: [decodificador]
+      porque:
+        cpu: "Es la CPU: la que pone las direcciones, no la que las decodifica."
+        ppu: "Es la PPU, la del vídeo."
+        cic: "Es el chip de bloqueo (CIC)."
+    exito: "Es el SN74LS139N (U3): el que decodifica las direcciones."
+    escalera: ["Es un integrado pequeño, cerca de la CPU."]
+    solucion: "Arriba a la izquierda: el SN74LS139N (U3)."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [40, 68]
+    ideas:
+      - { titulo: "NAND.", texto: "La AND invertida: con ella sola se hace cualquier función." }
+      - { titulo: "Tres NAND.", texto: "Dos inversores y una tercera dan la OR." }

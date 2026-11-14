@@ -1,0 +1,252 @@
+# Lección 1.2 de la sección 50.11 «Los Datos a la Nube: MQTT y Panel» (cap49; etiquetas sec-49.N = impresas 50.N).
+# - La cadena MQTT y quién pone la marca de tiempo (figura 50.22, fig-49.19; las horas de la figura son de ejemplo);
+#   el flujo de la figura 50.21 (fig-49.18).
+# - Ejercicio 50.5 (bloque 265): ESP32, broker y panel.
+# Sin números ni fórmulas: sin modelo (aviso de secuencia «sin tarjeta de fórmula»).
+# Paso práctico: «tocar» en la figura 50.22 la fila en la que los datos del corte conservan su hora.
+leccion: cap49/sec-49.11
+
+libro:
+  345: "las decisiones de esta parte tienen más consecuencias de las que parecen"
+  348: "cabeceras de pocos bytes, frente a los cientos de una petición HTTP"
+  349: "encaja con un sistema que despierta, envía y vuelve a dormir"
+  350: "quien publica no sabe quién consume"
+  352: "QoS 0 pierde mensajes si la red falla, y QoS 1 puede duplicarlos"
+  355: "estacion/exterior/temperatura"
+  358: "para poder suscribirse con comodines a una rama entera"
+  359: "permite consumir solo lo que interesa"
+  360: "Sin espacios ni caracteres raros, y en minúsculas."
+  362: "un mensaje que el servidor publicará si la conexión se pierde sin despedida"
+  363: "un panel puede mostrar «sin conexión» automáticamente"
+  367: "Un dato guardado durante un corte de red llegaría con la hora de llegada, no la de medida"
+  369: "la marca tiene que venir del dispositivo"
+  371: "Base de datos de series temporales"
+  372: "guardar todos los datos recientes y agregados de los antiguos"
+  379: "aparece en los buscadores de dispositivos expuestos en cuestión de horas"
+  382: "Si los datos aparecen todos con la hora de reconexión, la marca la está poniendo el servidor"
+  383: "Flujo de datos a la nube por MQTT, del ESP32 al panel"
+  384: "La cadena MQTT y la decisión sobre quién pone la marca de tiempo"
+  "cap49#265": "El broker (por ejemplo Mosquitto) recibe todas las publicaciones y las distribuye a quien esté suscrito"
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-mqtt
+    tipo: explorar
+    titulo: "Del sensor al panel"
+    texto: "Publicar, guardar, consultar. Toque los cuatro eslabones de la cadena."
+    libro: [345, 384]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: dispositivo, rotulo: "Primer recuadro", rect: [4, 5, 88, 58], texto: "El dispositivo mide, y almacena durante los cortes." }
+        - { id: servidor, rotulo: "Segundo recuadro", rect: [123, 5, 88, 58], texto: "El servidor MQTT: quien publica no sabe quién consume." }
+        - { id: base, rotulo: "Tercer recuadro", rect: [242, 5, 88, 58], texto: "Base de datos de series temporales, con retención escalonada." }
+        - { id: panel, rotulo: "Cuarto recuadro", rect: [360, 5, 88, 58], texto: "El panel: gráficas y avisos." }
+    requiere: { mover: [dispositivo, servidor, base, panel] }
+
+  - id: empareje-mqtt
+    tipo: pregunta
+    titulo: "Por qué MQTT"
+    texto: "Empareje cada rasgo de MQTT con su ventaja para la estación."
+    libro: [348, 349, 350, 352]
+    widget:
+      tipo: figura
+      figura: fig-49.18
+      zonas:
+        - { id: flujo, rotulo: "El flujo", rect: [0, 0, 453, 151] }
+    emparejar:
+      - ["Ligero", "Cabeceras de pocos bytes"]
+      - ["Publica y no espera", "Despierta, envía y vuelve a dormir"]
+      - ["Desacoplado", "Añadir un consumidor no toca el dispositivo"]
+      - ["Calidad de servicio", "Elegir garantía de entrega"]
+    exito: "Un protocolo pensado para dispositivos con recursos limitados."
+    pistas:
+      - { texto: "El desacoplo es que quien publica no sabe quién consume." }
+    escalera:
+      - "Piense en una estación que duerme casi siempre."
+    solucion: "Ligero, pocos bytes; publica, despierta y duerme; desacoplado, consumidores; QoS, garantía."
+
+  - id: predecir-qos
+    tipo: predecir
+    titulo: "QoS 0 o QoS 1"
+    texto: "La red falla en mitad de un envío con QoS 1. ¿Qué puede pasar?"
+    libro: [352]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: servidor, rotulo: "Segundo recuadro", rect: [123, 5, 88, 58] }
+    opciones:
+      - texto: "Que el mensaje llegue duplicado"
+        bien: true
+        porque: "QoS 1 confirma y reenvía; QoS 0 lo perdería. Para medidas periódicas, tolerable; para un contador acumulado, no."
+      - texto: "Que se pierda"
+        porque: "Ese es el riesgo de QoS 0, que no confirma."
+      - texto: "Nada: QoS 1 es exactamente una vez"
+        porque: "Exactamente una vez es otro nivel; QoS 1 puede duplicar."
+    escalera:
+      - "Con confirmación, si la confirmación se pierde, se reenvía."
+    solucion: "Un duplicado."
+
+  - id: pregunta-temas
+    tipo: pregunta
+    titulo: "La estructura de los temas"
+    texto: "¿Qué estructura de temas conviene, sabiendo que cambiarla después rompe a quien consume los datos?"
+    libro: [355, 358, 359, 360]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: temas, rotulo: "Texto bajo los recuadros", rect: [40, 65, 380, 40] }
+    opciones:
+      - texto: "Jerárquica y un valor por tema: estacion/exterior/temperatura"
+        bien: true
+        porque: "Se suscribe con comodines a una rama y se consume solo lo que interesa."
+      - texto: "Un solo tema con un objeto con todo"
+        porque: "Obliga a recibir todo para usar una parte."
+      - texto: "«Estación Exterior Temperatura»"
+        porque: "Sin espacios ni caracteres raros, y en minúsculas."
+    escalera:
+      - "De lo general a lo particular."
+    solucion: "Jerárquica, un valor por tema, en minúsculas."
+
+  - id: porque-voluntad
+    tipo: porque
+    titulo: "El mensaje de última voluntad"
+    texto: "¿Para qué declara la estación, al conectarse, un mensaje de última voluntad?"
+    libro: [362, 363]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: servidor, rotulo: "Segundo recuadro", rect: [123, 5, 88, 58] }
+    opciones:
+      - texto: "Para que el servidor lo publique si la conexión se pierde sin despedida"
+        bien: true
+        porque: "El panel muestra «sin conexión» solo, sin lógica de vigilancia."
+      - texto: "Para despedirse al dormir"
+        porque: "Al contrario: se publica cuando no hubo despedida."
+      - texto: "Para guardar los datos del corte"
+        porque: "Los datos se guardan en el dispositivo; el mensaje avisa de que se perdió."
+    escalera:
+      - "¿Quién publica ese mensaje, y cuándo?"
+    solucion: "Para avisar de una desconexión sin despedida."
+
+  - id: toque-marca
+    tipo: tocar
+    titulo: "Quién pone la hora"
+    texto: "Un corte de red de unos minutos. Toque la fila en la que cada dato del corte conserva la hora en que se midió."
+    libro: [367, 369, 384]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: servidor, rotulo: "Fila de arriba", rect: [0, 158, 450, 40] }
+        - { id: dispositivo, rotulo: "Fila de abajo", rect: [0, 200, 450, 40] }
+    tocar:
+      bien: [dispositivo]
+      porque:
+        servidor: "Si la pone el servidor al recibir, los cuatro datos del corte llegan con la hora de reconexión."
+    exito: "La marca tiene que venir del dispositivo, o los datos quedan mal ordenados justo cuando más importa."
+    escalera:
+      - "Busque la fila en la que los círculos del corte están repartidos en el tiempo."
+    solucion: "La de abajo: la pone el dispositivo al medir."
+
+  - id: empareje-roles
+    tipo: pregunta
+    titulo: "Tres papeles"
+    texto: "Empareje cada parte del envío por MQTT con su papel."
+    libro: ["cap49#265", 383]
+    widget:
+      tipo: figura
+      figura: fig-49.18
+      zonas:
+        - { id: flujo, rotulo: "El flujo", rect: [0, 0, 453, 151] }
+    emparejar:
+      - ["ESP32", "Publica cada lectura en su tema"]
+      - ["Broker", "Recibe y distribuye a los suscritos"]
+      - ["Panel", "Se suscribe y representa los datos"]
+    exito: "Así se desacopla quien mide de quien observa."
+    pistas:
+      - { texto: "El broker es el distribuidor central." }
+    escalera:
+      - "Emisor, distribuidor y visualizador."
+    solucion: "ESP32, emisor; broker, distribuidor; panel, visualizador."
+
+  - id: pregunta-retencion
+    tipo: pregunta
+    titulo: "Que la base no crezca sin fin"
+    texto: "¿Cómo se evita que la base de datos de la estación crezca indefinidamente?"
+    libro: [371, 372]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: base, rotulo: "Tercer recuadro", rect: [242, 5, 88, 58] }
+    opciones:
+      - texto: "Con retención escalonada: todo lo reciente y agregados de lo antiguo"
+        bien: true
+        porque: "Una base de series temporales lo hace con consultas por intervalo."
+      - texto: "Borrando todo cada mes"
+        porque: "Se perdería el histórico: se agregan los datos antiguos."
+      - texto: "Midiendo menos"
+        porque: "El periodo lo fija la especificación; el crecimiento se controla con la retención."
+    escalera:
+      - "¿Hace falta cada medida de hace dos años, o basta su media?"
+    solucion: "Retención escalonada."
+
+  - id: pregunta-abierto
+    tipo: pregunta
+    titulo: "Un servidor abierto"
+    texto: "Se monta un servidor MQTT accesible desde internet sin autenticación. ¿Qué pasa?"
+    libro: [379]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: servidor, rotulo: "Segundo recuadro", rect: [123, 5, 88, 58] }
+    opciones:
+      - texto: "Aparece en los buscadores de dispositivos expuestos en cuestión de horas"
+        bien: true
+        porque: "Cifrado, autenticación y credenciales fuera del código: no son opcionales."
+      - texto: "Nada, mientras nadie conozca la dirección"
+        porque: "Los buscadores lo encuentran solos, en horas."
+      - texto: "Solo lo ven otros dispositivos de la casa"
+        porque: "Si es accesible desde internet, lo es desde cualquier sitio."
+    escalera:
+      - "¿Hace falta conocer la dirección para encontrar un servidor expuesto?"
+    solucion: "Lo encuentran en horas."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Una hora sin red"
+    texto: "Se desconecta la red una hora y, al volver, todos los datos del corte aparecen con la hora de reconexión. ¿Qué falla?"
+    libro: [382]
+    widget:
+      tipo: figura
+      figura: fig-49.19
+      zonas:
+        - { id: servidor, rotulo: "Fila de arriba", rect: [0, 158, 450, 40] }
+    opciones:
+      - texto: "La marca de tiempo la pone el servidor"
+        bien: true
+        porque: "Hay que corregirlo: que la ponga el dispositivo al medir."
+      - texto: "El dispositivo no guardó los datos"
+        porque: "Los guardó: llegaron todos, pero con la hora equivocada."
+      - texto: "El reloj del panel"
+        porque: "El panel muestra lo que recibe; la hora la puso quien recibió."
+    escalera:
+      - "Si todos tienen la misma hora, ¿quién se la puso?"
+    solucion: "La marca la pone el servidor: debe ponerla el dispositivo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [349, 359, 369, 379]
+    ideas:
+      - { titulo: "MQTT.", texto: "Ligero y desacoplado: encaja con un sistema que duerme." }
+      - { titulo: "Temas.", texto: "Jerárquicos, un valor por tema, en minúsculas." }
+      - { titulo: "La hora.", texto: "La pone el dispositivo al medir, no el servidor al recibir." }
+      - { titulo: "Seguridad.", texto: "Un servidor abierto se encuentra en horas." }

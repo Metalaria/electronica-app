@@ -1,0 +1,254 @@
+# Lección 1.2 de la sección 38.10 «Recreación de Sistemas Digitales: Vídeo, Tiempo y Memoria» (cap37; etiqueta
+# interna sec-37.10). Formato: contenido/lecciones11/GUIA.md (§11). La temporización VGA 640×480 a 60 Hz de la tabla
+# (bloque 290) va en el modelo; la ecuación de la comprobación (bloque 292) se mueve con la frecuencia de cuadro frente
+# al reloj de píxel de 25,175 MHz. Figura 38.12 (svg_vista 434,2 × 240,02).
+leccion: cap37/sec-37.10
+
+libro:
+  279: "emulación por software frente a recreación en lógica"
+  282: "Una recreación en FPGA es el circuito"
+  285: "funcionan sin casos especiales, porque no se han imitado: se han reconstruido"
+  288: "un contador horizontal y otro vertical, y de su valor sale todo lo demás"
+  289: "Para VGA a 640×480 y 60 Hz, con reloj de píxel de 25,175 MHz:"
+  290: "Front porch"
+  292: "800 × 525 × 60 Hz = 25,2 MHz"
+  293: "25,175 MHz / (800 × 525) = 59,94 Hz"
+  294: "un contador horizontal que cuenta hasta 799 y reinicia, incrementando el vertical"
+  298: "reduce la memoria en un orden de magnitud"
+  299: "hay que entregar un píxel por ciclo, sin excepción"
+  303: "Robo de ciclo: el vídeo tiene prioridad y el procesador espera."
+  304: "Exige memoria del doble de rápida y elimina el conflicto."
+  305: "Memoria dedicada para vídeo"
+  306: "una FIFO que se llena por ráfagas durante los periodos de borrado y se vacía a ritmo de píxel"
+  308: "se genera con un PLL interno"
+  309: "o aparecen cruces de dominio que hay que tratar explícitamente"
+  312: "Generador de sincronismos solo, mostrando un color plano."
+  320: "casi siempre falla ahí, no en la lógica"
+  321: "Temporización de un barrido VGA de 640×480"
+
+modelo:
+  valores:
+    H_vis: { nombre: "píxeles visibles por línea", valor: 640 }
+    H_fp: { nombre: "front porch horizontal", valor: 16 }
+    H_sync: { nombre: "sincronismo horizontal", valor: 96 }
+    H_bp: { nombre: "back porch horizontal", valor: 48 }
+    V_tot: { nombre: "líneas por cuadro", valor: 525 }
+    f_px: { sim: "f_{píxel}", nombre: "reloj de píxel", unidad: Hz, valor: 25175000 }
+    f_cuadro: { sim: "f_{cuadro}", nombre: "frecuencia de cuadro", unidad: Hz, valor: 60 }
+  calculos:
+    H_tot: { expr: "H_vis + H_fp + H_sync + H_bp", nombre: "puntos por línea", cifras: 3 }
+    f_req: { expr: "H_tot*V_tot*f_cuadro", sim: "f", nombre: "reloj de píxel necesario", unidad: Hz }
+    f_real: { expr: "f_px/(H_tot*V_tot)", sim: "f_{cuadro}", nombre: "frecuencia de cuadro exacta", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-barrido
+    tipo: explorar
+    titulo: "Un barrido"
+    texto: "Una señal de vídeo es un contador horizontal y otro vertical. Toque la línea y el cuadro: lo visible es solo una parte."
+    libro: [288, 289, 294, 321]
+    widget:
+      tipo: figura
+      figura: fig-37.12
+      zonas:
+        - { id: linea, rotulo: "Mitad de arriba", rect: [0, 0, 434, 105], texto: "Una línea: 640 píxeles visibles, front porch, sincronismo y back porch." }
+        - { id: cuadro, rotulo: "Mitad de abajo", rect: [0, 112, 434, 98], texto: "Un cuadro: 480 líneas visibles, front porch, sincronismo y back porch." }
+    requiere: { mover: [linea, cuadro] }
+
+  - id: pregunta-recrear
+    tipo: pregunta
+    titulo: "Recrear, no emular"
+    texto: "Un juego usa un truco de temporización sobre la señal de vídeo. ¿Qué necesita una recreación en FPGA para que funcione?"
+    libro: [279, 282, 285]
+    widget:
+      tipo: figura
+      figura: fig-37.12
+      zonas:
+        - { id: linea, rotulo: "Mitad de arriba", rect: [0, 0, 434, 105], texto: "Los contadores del barrido, reconstruidos en el silicio." }
+    opciones:
+      - { texto: "Nada especial: funciona porque se ha reconstruido el circuito", bien: true, porque: "Cada registro y cada contador existen en el silicio con la misma relación temporal que los originales." }
+      - { texto: "Un caso especial para ese truco", porque: "Eso le pasa a un emulador, que aproxima los tiempos. La recreación no imita: reconstruye." }
+      - { texto: "Un procesador más rápido", porque: "No ejecuta nada: es el circuito, con sus tiempos." }
+    escalera: ["¿Imita los tiempos o tiene los mismos circuitos que el original?"]
+    solucion: "Nada: los efectos que dependían del tiempo exacto funcionan sin casos especiales, porque se han reconstruido."
+
+  - id: estime-linea
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Puntos por línea"
+    texto: "En VGA 640×480 a 60 Hz, ¿cuántos puntos tiene cada línea en total, con borrado y sincronismo?"
+    libro: [289, 290]
+    estimar:
+      objetivo: "H_tot"
+      min: 0
+      max: 1200
+      paso: 1
+      inicio: 640
+      tol: 0.01
+      rotulo: "Puntos por línea"
+    exito: "800: 640 visibles, 16 de front porch, 96 de sincronismo y 48 de back porch."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 792 }, texto: "Le faltan los puntos invisibles: front porch, sincronismo y back porch también cuentan." }
+      - { texto: "Se ha pasado: sume solo las cuatro columnas de la fila horizontal." }
+    escalera: ["Sume las cuatro partes de la fila horizontal de la tabla."]
+    solucion: "640 + 16 + 96 + 48 = 800 puntos."
+    comprobar:
+      - { H_tot: 800, H_vis: 640, H_fp: 16, H_sync: 96, H_bp: 48 }
+
+  - id: formula-comprobacion
+    tipo: formula
+    titulo: "La comprobación"
+    texto: "Puntos por línea, líneas por cuadro y cuadros por segundo dan el reloj de píxel. Mueva la frecuencia de cuadro hasta cruzar el reloj de 25,175 MHz."
+    libro: [292, 293]
+    ec: 292
+    sustitucion: "{{H_tot}} × {{V_tot}} × {{f_cuadro}} = {{f_req}}"
+    widget:
+      tipo: grafica
+      x: { id: fc, min: 58, max: 62, unidad: Hz, rotulo: "f_{cuadro}" }
+      y: { min: 24500000, max: 26000000, unidad: Hz, rotulo: "f_{píxel}" }
+      curvas:
+        - { expr: "H_tot*V_tot*fc", color: azul, rotulo: "800 × 525 × f_{cuadro}" }
+        - { expr: "f_px", color: tinta, rotulo: "Reloj de 25,175 MHz", discontinua: true }
+      asas:
+        - { mueve: f_cuadro, x: "f_cuadro", y: "f_req", rotulo: "Su cuadro" }
+      lectura: { valor: f_req, rotulo: "Reloj necesario" }
+      mandos:
+        - { valor: f_cuadro, min: 58, max: 62, paso: 0.01, rotulo: "f_{cuadro}" }
+    comprobar:
+      - { con: { f_cuadro: 60 }, f_req: 25200000 }
+
+  - id: estime-cuadro
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El 0,1 % que falta"
+    texto: "Con el reloj de píxel de 25,175 MHz exacto, ¿cuál es de verdad la frecuencia de cuadro?"
+    libro: [293]
+    estimar:
+      objetivo: "f_real"
+      unidad: Hz
+      min: 59
+      max: 61
+      paso: 0.01
+      inicio: 60.5
+      tol: 0.0005
+      rotulo: "Frecuencia de cuadro"
+    exito: "59,94 Hz: por eso la comprobación da 25,2 MHz y no 25,175. La diferencia es del 0,1 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 59.97 }, texto: "Demasiado: divida 25,175 MHz entre 800 × 525." }
+      - { texto: "Se ha quedado corto: la diferencia es solo del 0,1 %." }
+    escalera: ["f_{cuadro} = 25,175 MHz / (800 × 525)."]
+    solucion: "25,175 MHz / (800 × 525) = 59,94 Hz."
+    comprobar:
+      - { f_real: 59.94, tol: 0.0005 }
+
+  - id: pregunta-no-sincroniza
+    tipo: pregunta
+    titulo: "El monitor no sincroniza"
+    texto: "En el banco, con solo los sincronismos y un color plano, el monitor no sincroniza. ¿Qué se comprueba primero?"
+    libro: [312, 320]
+    widget:
+      tipo: figura
+      figura: fig-37.12
+      zonas:
+        - { id: comprobacion, rotulo: "Línea de abajo", rect: [60, 206, 320, 34], texto: "800 × 525 × 60 Hz = 25,2 MHz frente al reloj de píxel." }
+    opciones:
+      - { texto: "La multiplicación de puntos, líneas y cuadros frente al reloj de píxel", bien: true, porque: "Casi siempre falla ahí, no en la lógica." }
+      - { texto: "La memoria de vídeo", porque: "Con un color plano no se lee ninguna memoria: el fallo es de temporización." }
+      - { texto: "El generador de caracteres", porque: "Todavía no existe: el primer paso es solo sincronismos y un color." }
+    escalera: ["Con un color plano, lo único que hay es temporización."]
+    solucion: "La comprobación 800 × 525 × 60 Hz frente al reloj de píxel: si no da, la temporización está mal."
+
+  - id: prediga-mosaicos
+    tipo: predecir
+    titulo: "Mapa de bits o mosaicos"
+    texto: "La memoria guarda los píxeles, o guarda índices y una memoria de patrones con el dibujo de cada uno. ¿Qué ahorra la segunda?"
+    libro: [298, 299]
+    widget:
+      tipo: figura
+      figura: fig-37.12
+      zonas:
+        - { id: linea, rotulo: "Mitad de arriba", rect: [0, 0, 434, 105], texto: "Un píxel por ciclo durante los 640 visibles." }
+    opciones:
+      - { texto: "Memoria, en un orden de magnitud", bien: true, porque: "Por eso la usaban casi todos los sistemas de los años ochenta." }
+      - { texto: "Ciclos: puede entregar menos píxeles", porque: "Sigue entregando un píxel por ciclo, sin excepción." }
+      - { texto: "Nada: ocupan lo mismo", porque: "Un índice por mosaico ocupa mucho menos que todos sus píxeles." }
+    escalera: ["¿Cuántos píxeles describe un solo índice?"]
+    solucion: "Memoria: los mosaicos la reducen en un orden de magnitud."
+
+  - id: porque-sin-esperar
+    tipo: porque
+    titulo: "No hay esperar un poco"
+    texto: "Un procesador puede esperar a que llegue un dato. ¿Por qué el generador de imagen no?"
+    libro: [299]
+    widget:
+      tipo: figura
+      figura: fig-37.12
+      zonas:
+        - { id: linea, rotulo: "Mitad de arriba", rect: [0, 0, 434, 105], texto: "El barrido avanza un píxel por ciclo." }
+    opciones:
+      - { texto: "Porque el barrido no se detiene: hay que entregar un píxel por ciclo", bien: true, porque: "El tiempo es un recurso: si el dato llega tarde, ese píxel ya pasó." }
+      - { texto: "Porque la FPGA no tiene memoria", porque: "La tiene; el problema es que el barrido no espera a nadie." }
+      - { texto: "Sí puede: el monitor espera", porque: "El monitor sigue su sincronismo: no hay forma de pararlo." }
+    escalera: ["¿Quién marca el ritmo: el generador o el barrido?"]
+    solucion: "El barrido no se detiene: un píxel por ciclo, sin excepción."
+
+  - id: empareje-memoria
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El acceso a memoria"
+    texto: "Vídeo y procesador quieren la misma memoria. Una cada solución con cómo funciona."
+    libro: [303, 304, 305, 306]
+    emparejar:
+      - ["Robo de ciclo", "El vídeo tiene prioridad y el procesador espera"]
+      - ["Reparto por fases", "Media fase cada uno, con memoria el doble de rápida"]
+      - ["Memoria dedicada", "Una memoria de vídeo aparte"]
+      - ["FIFO", "Se llena por ráfagas en el borrado y se vacía a ritmo de píxel"]
+    exito: "La FIFO es la solución práctica en una FPGA moderna."
+    pistas:
+      - { texto: "El robo de ciclo explica por qué algunos sistemas iban más lentos con la pantalla activa." }
+    escalera: ["Los periodos de borrado son tiempo en que el vídeo no lee: la FIFO los aprovecha."]
+    solucion: "Robo de ciclo: prioridad al vídeo. Fases: doble velocidad. Dedicada: aparte. FIFO: ráfagas en el borrado."
+
+  - id: pregunta-pll
+    tipo: pregunta
+    titulo: "El reloj de píxel"
+    texto: "El reloj de 25,175 MHz no coincide con el oscilador de la placa. ¿Cómo se obtiene?"
+    libro: [289, 308, 309]
+    widget:
+      tipo: figura
+      figura: fig-37.12
+      zonas:
+        - { id: comprobacion, rotulo: "Línea de abajo", rect: [60, 206, 320, 34], texto: "Reloj de píxel de 25,175 MHz." }
+    opciones:
+      - { texto: "Con un PLL interno, y todo el diseño en ese dominio", bien: true, porque: "Si no, aparecen cruces de dominio que hay que tratar explícitamente." }
+      - { texto: "Con un divisor del oscilador, sea cual sea", porque: "Un divisor entero rara vez da la frecuencia exacta, y el monitor tolera un margen estrecho." }
+      - { texto: "No hace falta: el monitor se adapta", porque: "El monitor tolera un margen estrecho antes de perder el sincronismo." }
+    escalera: ["¿Qué bloque dedicado de la FPGA genera y multiplica relojes?"]
+    solucion: "Un PLL interno; y conviene que todo el diseño trabaje en ese dominio."
+
+  - id: ordene-pasos
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cómo se aborda"
+    texto: "Ordene las partes verificables, cada una comprobable antes de la siguiente."
+    libro: [312]
+    ordenar:
+      - "Generador de sincronismos con un color plano."
+      - "Barras de color según el contador horizontal."
+      - "Generador de caracteres desde memoria interna."
+      - "Memoria externa con su FIFO."
+      - "El resto del sistema, con el vídeo funcionando."
+    exito: "Cada paso se ve en la pantalla: la mejor realimentación posible."
+    pistas:
+      - { texto: "Lo primero es que el monitor sincronice." }
+    escalera: ["La memoria externa es más difícil que la interna: va después."]
+    solucion: "Sincronismos, barras, caracteres, memoria externa y el resto del sistema."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [282, 292, 299, 306]
+    ideas:
+      - { titulo: "Recrear.", texto: "La FPGA reconstruye el circuito: los tiempos no se imitan." }
+      - { titulo: "Barrido.", texto: "800 × 525 × 60 Hz debe dar el reloj de píxel." }
+      - { titulo: "Un píxel por ciclo.", texto: "El barrido no espera: el tiempo es un recurso." }
+      - { titulo: "Memoria.", texto: "Robo de ciclo, fases, memoria dedicada o una FIFO." }

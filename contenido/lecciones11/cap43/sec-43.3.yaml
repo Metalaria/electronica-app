@@ -1,0 +1,414 @@
+# Lección 1.2 de la sección 44.3 «Las Tres Configuraciones Básicas» (cap43; etiqueta sec-43.3).
+# Formato: contenido/lecciones11/GUIA.md. La etapa de ejemplo del libro (bloque 67: 12 V, 47 kΩ y 10 kΩ, R_C = 3,3 kΩ,
+# R_E = 1 kΩ, β = 150, I_C = 1,324 mA, g_m = 51,2 mS, r_e = 19,5 Ω):
+# - la etapa viva «emisor-comun» (1.2, esquemas12c; C_E = 100 µF de ejemplo) para la ganancia y la medida de Z_in con la
+#   resistencia en serie; el emisor común en pequeña señal con «fuente-controlada» invertida (g_m·v con r_o = 75 kΩ del
+#   bloque 74 y R_C de carga: la salida sale con su signo);
+# - Z_in del emisor común (ecuación del bloque 72) sobre «bjt-polarizacion», con g_m = I_C/V_T de su punto de trabajo
+#   (V_T = 25,86 mV: la que da los 51,2 mS del libro con 1,324 mA);
+# - el seguidor como fuente de tensión controlada (Thévenin): A_v = R_E/(r_e + R_E) y r_o = Z_out = r_e + R_fuente/β
+#   (ecuación del bloque 81); las cargas del mando son de ejemplo;
+# - la medida de Z_in del bloque 102 (resistencia en serie que deja la mitad) como reto sobre «divisor», con Z_in de
+#   abajo (2,16 kΩ) y una señal de 1 V de ejemplo.
+leccion: cap43/sec-43.3
+
+libro:
+  66: "según cuál sea común a la entrada y a la salida"
+  67: "gm = IC/VT = 51,2 mS y re ≈ 1/gm = 19,5 Ω"
+  69: "Entrada por la base, salida por el colector"
+  70: "Av = −gm·RC = −RC/re = −169"
+  71: "unos 2,9 kΩ con β = 150"
+  72: 'Z_("in") = R_("1") "‖" R_("2") "‖" β dot.op r_("e")'
+  73: "es también quien más carga la entrada"
+  74: "unos 75 kΩ"
+  77: "Entrada por la base, salida por el emisor"
+  78: "vale 0,981"
+  79: "la reduce a unos 7,8 kΩ"
+  81: 'Z_("out") approx r_("e") + (R_("fuente"))/(β)'
+  82: "con una fuente de 1 kΩ y β = 150 da 26 Ω"
+  83: "porque no hay efecto Miller"
+  86: "Entrada por el emisor, salida por el colector"
+  89: "unos 19,5 Ω"
+  90: "diez o veinte veces el de la misma etapa en emisor común"
+  92: "Adaptación de impedancias"
+  94: "La elección se hace por lo que falta"
+  97: "la impedancia de entrada es prácticamente infinita en continua"
+  99: "da nombre a la configuración"
+  100: "es un seguidor"
+  102: "si con 2,2 kΩ en serie la amplitud cae a la mitad, la entrada son 2,2 kΩ"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_C: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_E: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02586 }
+    g_0: { sim: "g_{m}", nombre: "transconductancia", unidad: S, valor: 0.0512 }
+    r_o: { sim: "r_{o}", nombre: "resistencia de salida del transistor", unidad: Ω, valor: 75000 }
+    v_c: { sim: "v", nombre: "señal entre base y emisor", unidad: V, valor: 0.005 }
+    v_f: { sim: "v", nombre: "señal en la base", unidad: V, valor: 1 }
+    R_s: { sim: "R_{fuente}", nombre: "resistencia de la fuente", unidad: Ω, valor: 1000 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1000 }
+    c_on: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+    V_g: { sim: "v_{g}", nombre: "señal del generador", unidad: V, valor: 1 }
+    R_x: { sim: "R_{serie}", nombre: "resistencia en serie", unidad: Ω, valor: 1000 }
+    V_t1: { sim: "v", nombre: "tensión de prueba", unidad: V, valor: 1 }
+    inv: { tipo: interruptor, nombre: "fuente invertida (emisor común)", valor: 1 }
+    C_E: { sim: "C_{E}", nombre: "condensador de desvío", unidad: F, valor: 100e-6 }
+    des: { tipo: interruptor, nombre: "R_E desviada", valor: 1 }
+    A_e: { sim: "v_{s}", nombre: "amplitud de la señal", unidad: V, valor: 0.005 }
+    f_e: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+  calculos:
+    V_th: { expr: "V_cc*R_2/(R_1 + R_2)", sim: "V_{Th}", nombre: "tensión del divisor en vacío", unidad: V }
+    I_B: { expr: "(V_th - V_BE)/(par(R_1, R_2) + (beta + 1)*R_E)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_C: { expr: "beta*I_B", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_E: { expr: "(beta + 1)*I_B*R_E", sim: "V_{E}", nombre: "tensión de emisor", unidad: V }
+    V_B: { expr: "V_E + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_C: { expr: "V_cc - I_C*R_C", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_CE: { expr: "V_C - V_E", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    g_q: { expr: "I_C/V_T", sim: "g_{m}", nombre: "transconductancia en el punto", unidad: S }
+    r_q: { expr: "1/g_q", sim: "r_{e}", nombre: "resistencia de emisor intrínseca", unidad: Ω }
+    b_re: { expr: "beta*r_q", sim: "β · r_{e}", nombre: "lo que presenta la base", unidad: Ω }
+    Z_q: { expr: "par(R_1, R_2, b_re)", sim: "Z_{in}", nombre: "impedancia de entrada", unidad: Ω }
+    I_g: { expr: "(1 - 2*inv)*g_0*v_c", sim: "−g_{m} · v", nombre: "corriente controlada (hacia la salida)", unidad: A }
+    V_o: { expr: "I_g*par(r_o, R_C)", sim: "v_{o}", nombre: "señal de salida", unidad: V }
+    I_Lc: { expr: "V_o/R_C", sim: "i_{C}", nombre: "corriente por R_C", unidad: A }
+    I_ro: { expr: "V_o/r_o", sim: "i_{ro}", nombre: "corriente por r_o", unidad: A }
+    A_ce: { expr: "abs(V_o/v_c)", sim: "|A_{v}|", nombre: "ganancia en módulo", unidad: "", cifras: 3 }
+    A_id: { expr: "g_0*R_C", sim: "g_{m} · R_{C}", nombre: "ganancia sin r_o", unidad: "", cifras: 3 }
+    Z_qq: { expr: "par(r_o, R_C)", sim: "r_{o} ‖ R_{C}", nombre: "salida del emisor común", unidad: Ω }
+    Z_sum: { expr: "R_d + Z_b", sim: "R", nombre: "suma en serie equivocada", unidad: Ω }
+    r_e: { expr: "1/g_0", sim: "r_{e}", nombre: "resistencia de emisor intrínseca", unidad: Ω }
+    A_cc: { expr: "R_E/(r_e + R_E)", sim: "A_{v}", nombre: "ganancia del seguidor", unidad: "", cifras: 3 }
+    Z_o: { expr: "r_e + R_s/beta", sim: "Z_{out}", nombre: "impedancia de salida del seguidor", unidad: Ω }
+    I_L: { si: c_on, entonces: "A_cc*v_f/(Z_o + R_L)", sino: "0", sim: "i_{L}", nombre: "corriente por la carga", unidad: A }
+    V_f: { expr: "A_cc*v_f - I_L*Z_o", sim: "v_{o}", nombre: "salida del seguidor", unidad: V }
+    Z_b: { expr: "beta*(r_e + R_E)", sim: "Z_{base}", nombre: "impedancia en la base del seguidor", unidad: Ω }
+    R_d: { expr: "par(R_1, R_2)", sim: "R₁ ‖ R₂", nombre: "el divisor", unidad: Ω }
+    Z_cc: { expr: "par(R_d, Z_b)", sim: "Z_{in}", nombre: "impedancia de entrada del seguidor", unidad: Ω }
+    I_t1: { expr: "V_t1/Z_cc", sim: "I", nombre: "corriente de prueba", unidad: A }
+    I_d1: { expr: "V_t1/R_d", sim: "I_{divisor}", nombre: "corriente por el divisor", unidad: A }
+    I_b1: { expr: "V_t1/Z_b", sim: "I_{base}", nombre: "corriente por la base", unidad: A }
+    Z_ce: { expr: "par(R_1, R_2, beta*r_e)", sim: "Z_{in}", nombre: "impedancia de entrada del emisor común", unidad: Ω }
+    g_e: { expr: "I_C/0.02585", sim: "g_{m}", nombre: "transconductancia (V_T = 25,85 mV)", unidad: S }
+    rpi_e: { expr: "beta/g_e", sim: "r_{π}", nombre: "resistencia de entrada de la base", unidad: Ω }
+    B_e: { expr: "(beta + 1)*R_E", sim: "(β + 1)·R_{E}", nombre: "R_E vista desde la base", unidad: Ω }
+    wt_e: { expr: "2*pi*f_e*des*R_E*C_E", sim: "ωτ", nombre: "ωτ del desvío", unidad: "" }
+    G_e: { expr: "beta*R_C*sqrt(1 + wt_e^2)/sqrt((rpi_e + B_e)^2 + (wt_e*rpi_e)^2)", sim: "|A_{v}|", nombre: "ganancia de la etapa", unidad: "" }
+    Vo_e: { expr: "A_e*G_e", sim: "v_{o}", nombre: "amplitud de salida", unidad: V }
+    Ph_e: { expr: "180 + (atan(wt_e) - atan(wt_e*rpi_e/(rpi_e + B_e)))*180/pi", sim: "φ", nombre: "fase de la salida", unidad: "°" }
+    D_e: { expr: "(rpi_e + B_e)^2 + (wt_e*rpi_e)^2", sim: "D", nombre: "denominador", unidad: "" }
+    Yr_e: { expr: "1/R_d + (rpi_e + B_e + wt_e^2*rpi_e)/D_e", sim: "Re Y", nombre: "parte real de la admitancia de entrada", unidad: S }
+    Yi_e: { expr: "wt_e*B_e/D_e", sim: "Im Y", nombre: "parte imaginaria de la admitancia de entrada", unidad: S }
+    k_m: { expr: "1/sqrt((1 + R_x*Yr_e)^2 + (R_x*Yi_e)^2)", sim: "v_{b}/v_{s}", nombre: "fracción que queda en la base", unidad: "", cifras: 3 }
+    V_m: { expr: "A_e*k_m", sim: "v_{b}", nombre: "señal que queda en la base", unidad: V }
+
+tarjetas:
+  - id: explore-tres
+    tipo: explorar
+    titulo: "El terminal común"
+    texto: "Un transistor, tres terminales. Toque cada configuración: el terminal que no es entrada ni salida le da nombre."
+    libro: [66, 69, 77, 86]
+    widget:
+      tipo: figura
+      figura: fig-43.11
+      zonas:
+        - { id: ec, rotulo: "Emisor común", rect: [10, 10, 125, 170], texto: "Entra por la base, sale por el colector; el emisor a masa. Gana tensión e invierte." }
+        - { id: cc, rotulo: "Colector común", rect: [160, 0, 130, 180], texto: "Entra por la base, sale por el emisor; el colector a la alimentación, masa en alterna. Ganancia ≈ 1." }
+        - { id: bc, rotulo: "Base común", rect: [330, 10, 123, 170], texto: "Entra por el emisor, sale por el colector; la base a masa. Alta frecuencia, sin efecto Miller." }
+    requiere: { mover: [ec, cc, bc] }
+
+  - id: explore-emisor-comun
+    tipo: explorar
+    titulo: "La ganancia del emisor común"
+    texto: "La etapa del libro, con R_{E} desviada. Mueva la señal y R_{C}: la salida es g_{m}·R_{C} veces mayor, e invertida."
+    libro: [67, 69, 70]
+    widget:
+      tipo: circuito
+      esquema: emisor-comun
+      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, ce: C_E, desvio: des, beta: beta, vbe: V_BE, fuente: A_e, f: f_e }
+      lectura: { valor: Vo_e, rotulo: "Amplitud de salida" }
+      datos:
+        - { valor: G_e, rotulo: "|A_{v}| = {{G_e}}" }
+        - { valor: Ph_e, rotulo: "Fase: {{Ph_e}}" }
+      corriente: I_C
+      mide: { ic: I_C, vc: V_C, salida_amp: Vo_e, salida_fase: Ph_e }
+      mandos:
+        - { valor: A_e, min: 0.001, max: 0.01, paso: 0.001, rotulo: "Señal, v_{s}" }
+        - { valor: R_C, lista: [1000, 2200, 3300, 4700] }
+    requiere: { mover: [A_e, R_C] }
+
+  - id: pregunta-ro
+    tipo: pregunta
+    titulo: "¿Y r_{o}?"
+    texto: "Con R_{C} = 3,3 kΩ, el libro da −169 sin contar r_{o}; con ella, 162. ¿Por qué apenas influye?"
+    libro: [70, 74]
+    fijar: { R_C: 3300 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_0, ro: r_o, carga: R_C, invierte: inv }
+      lectura: { valor: V_o, rotulo: "Señal de salida" }
+      datos:
+        - { valor: A_ce, rotulo: "|A_{v}| = {{A_ce}}" }
+      corriente: I_Lc
+      mide: { salida: V_o, carga: I_Lc, controlada: I_g, ro: I_ro }
+    opciones:
+      - texto: "r_{o}, unos 75 kΩ, queda en paralelo con 3,3 kΩ, mucho menor"
+        bien: true
+        porque: "En paralelo manda la menor: Z_{out} ≈ R_{C} = 3,3 kΩ."
+      - texto: "Porque r_{o} está en serie con la entrada"
+        porque: "r_{o} está en la salida, en paralelo con R_{C}, no en la entrada."
+      - texto: "Porque r_{o} es muy pequeña"
+        porque: "Al revés: es grande, y por eso su paralelo con R_{C} casi no la cambia."
+    escalera:
+      - "¿Cómo están r_{o} y R_{C}: en serie o en paralelo?"
+    solucion: "75 kΩ ‖ 3,3 kΩ ≈ 3,16 kΩ: la ganancia baja de 169 a 162."
+    comprobar:
+      - { A_ce: 161.8, A_id: 169, R_C: 3300, r_o: 75000, tol: 0.005 }
+      - { con: { r_o: 75000 }, Z_qq: 3161 }
+
+  - id: formula-zin
+    tipo: formula
+    titulo: "La impedancia de entrada"
+    texto: "La base presenta β·r_{e}, en paralelo con el divisor. Cambie β y mire quién manda."
+    libro: [71, 72, 73]
+    ec: 72
+    sustitucion: "{{R_1}} ‖ {{R_2}} ‖ {{b_re}} = {{Z_q}}"
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, beta: beta, vbe: V_BE }
+      lectura: { valor: Z_q, rotulo: "Z_{in}" }
+      datos:
+        - { valor: b_re, rotulo: "β · r_{e} = {{b_re}}" }
+      corriente: I_C
+      mide: { ib: I_B, ic: I_C, vb: V_B, ve: V_E, vc: V_C, vce: V_CE }
+      mandos:
+        - { valor: beta, lista: [50, 100, 150, 200, 300] }
+
+  - id: prediga-seguidor-zin
+    tipo: predecir
+    titulo: "La entrada del seguidor"
+    texto: "En un seguidor la base presenta β·(r_{e} + R_{E}) ≈ 153 kΩ. Con el divisor de 47 kΩ y 10 kΩ, ¿qué ve la fuente?"
+    libro: [79]
+    fijar: { beta: 150 }
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_t1, r1: R_d, r2: Z_b }
+      lectura: { valor: Z_cc, rotulo: "Z_{in}" }
+      barras:
+        - { valor: I_d1, rotulo: "Por el divisor: {{I_d1}}", color: azul }
+        - { valor: I_b1, rotulo: "Por la base: {{I_b1}}", color: naranja }
+      corriente: I_t1
+      mide: { total: I_t1, i1: I_d1, i2: I_b1 }
+      ocultar: true
+    opciones:
+      - texto: "Unos 7,8 kΩ"
+        bien: true
+        porque: "Los 153 kΩ quedan en paralelo con los 8,2 kΩ del divisor: el divisor vuelve a mandar."
+      - texto: "Unos 153 kΩ"
+        porque: "Esa es la base sola. La fuente ve también el divisor, en paralelo y mucho menor."
+      - texto: "Unos 161 kΩ"
+        porque: "Ha sumado en serie: el divisor y la base están en paralelo para la señal."
+    escalera:
+      - "R₁ ‖ R₂ son unos 8,2 kΩ. ¿Cómo se combinan con la base?"
+    solucion: "8,2 kΩ ‖ 153 kΩ ≈ 7,8 kΩ."
+    comprobar:
+      - { Z_cc: 7824, Z_b: 152930, R_d: 8246, tol: 0.01 }
+      - { con: { beta: 150 }, Z_sum: 161176, tol: 0.01 }
+
+  - id: formula-zout
+    tipo: formula
+    titulo: "La salida del seguidor"
+    texto: "Convierte la resistencia de la fuente en una β veces menor. Cambie la fuente y conecte una carga."
+    libro: [78, 81, 82]
+    fijar: { beta: 150 }
+    ec: 81
+    sustitucion: "{{r_e}} + {{R_s}} / {{beta}} = {{Z_o}}"
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_f, av: A_cc, ro: Z_o, carga: R_L, interruptor: c_on }
+      lectura: { valor: V_f, rotulo: "Salida del seguidor" }
+      datos:
+        - { valor: Z_o, rotulo: "Z_{out} = {{Z_o}}" }
+      corriente: I_L
+      mide: { salida: V_f, carga: I_L, controlada: I_L }
+      mandos:
+        - { valor: R_s, lista: [100, 1000, 10000] }
+        - { valor: c_on, tipo: conectar, boton: "Conectar la carga" }
+        - { valor: R_L, lista: [100, 1000, 10000] }
+    requiere: { mover: [R_s] }
+
+  - id: prediga-base-comun
+    tipo: predecir
+    titulo: "Entrar por el emisor"
+    texto: "En base común la señal entra por el emisor. Con la misma etapa (r_{e} = 19,5 Ω), ¿qué impedancia de entrada presenta?"
+    libro: [86, 89]
+    widget:
+      tipo: figura
+      figura: fig-43.6
+      zonas:
+        - { id: bc, rotulo: "Circuito de la derecha", rect: [310, 0, 143, 180] }
+    opciones:
+      - texto: "Muy baja: unos 19,5 Ω"
+        bien: true
+        porque: "Mirando al emisor se ve r_{e} ≈ 1/g_{m}. Es justo lo que pide una línea de 50 Ω o una antena."
+      - texto: "Media: unos 2,16 kΩ"
+        porque: "Esa es la del emisor común, que entra por la base y ve β·r_{e} con el divisor."
+      - texto: "Alta: unos 153 kΩ"
+        porque: "Esa es la de la base del seguidor. Por el emisor no se multiplica por β."
+    escalera:
+      - "Desde la base se ve β·r_{e}. ¿Y desde el emisor?"
+    solucion: "r_{e} ≈ 1/g_{m} = 19,5 Ω: muy baja."
+
+  - id: porque-miller
+    tipo: porque
+    titulo: "La virtud de la base común"
+    texto: "Su ancho de banda puede ser diez o veinte veces el del emisor común. ¿Por qué?"
+    libro: [83, 90]
+    widget:
+      tipo: figura
+      figura: fig-43.11
+      zonas:
+        - { id: bc, rotulo: "Base común", rect: [330, 10, 123, 170] }
+    opciones:
+      - texto: "Con la base a masa, la capacidad base-colector une la salida con masa, no con la entrada"
+        bien: true
+        porque: "Sin efecto Miller esa capacidad no se multiplica por la ganancia."
+      - texto: "Porque su ganancia es menor"
+        porque: "Su ganancia es la misma, +169: lo que cambia es dónde queda la capacidad."
+      - texto: "Porque su impedancia de entrada es alta"
+        porque: "Es muy baja, unos 19,5 Ω; la banda ancha viene de no tener efecto Miller."
+    escalera:
+      - "¿Entre qué dos nodos queda la capacidad base-colector si la base está a masa?"
+    solucion: "No hay efecto Miller: la capacidad base-colector va de la salida a masa."
+
+  - id: empareje-tabla
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla"
+    texto: "Una cada configuración con su uso típico."
+    libro: [92]
+    emparejar:
+      - ["Emisor común", "Ganancia general: alta e invierte"]
+      - ["Colector común", "Adaptación de impedancias: ganancia ≈ 1"]
+      - ["Base común", "Radiofrecuencia y cascodo: ancho de banda muy alto"]
+    exito: "Ganar tensión, entregar corriente o ganar banda: cada una hace una."
+    pistas:
+      - { texto: "El seguidor no amplifica tensión: amplifica corriente." }
+    escalera:
+      - "¿Cuál no tiene efecto Miller y entra por el emisor?"
+    solucion: "Emisor común–ganancia, colector común–adaptación, base común–radiofrecuencia y cascodo."
+
+  - id: pregunta-elegir
+    tipo: pregunta
+    titulo: "Se elige por lo que falta"
+    texto: "Una señal delicada debe atacar una carga pesada, y no falta ganancia de tensión. ¿Qué configuración?"
+    libro: [82, 94]
+    widget:
+      tipo: figura
+      figura: fig-43.11
+      zonas:
+        - { id: cc, rotulo: "Colector común", rect: [160, 0, 130, 180] }
+    opciones:
+      - texto: "Colector común: el seguidor"
+        bien: true
+        porque: "Falta capacidad de entregar corriente: entrada alta, salida de 26 Ω."
+      - texto: "Emisor común"
+        porque: "Da ganancia de tensión, que no falta, y su salida es alta: la carga pesada le bajaría la ganancia."
+      - texto: "Base común"
+        porque: "Su entrada muy baja cargaría la señal delicada, y su salida es alta, R_{C}."
+    escalera:
+      - "Hace falta entrada alta y salida baja."
+    solucion: "El seguidor: entrada alta, salida baja, ganancia de corriente."
+
+  - id: toque-cb
+    tipo: tocar
+    titulo: "Cómo reconocerla"
+    texto: "En las tres etapas dibujadas, toque el condensador que pone la base a masa para la señal."
+    libro: [86, 99, 100]
+    widget:
+      tipo: figura
+      figura: fig-43.6
+      zonas:
+        - { id: cent, rotulo: "Condensador a la izquierda, en la entrada", rect: [16, 75, 36, 36] }
+        - { id: ce, rotulo: "Condensador abajo, en el primer circuito", rect: [87, 124, 36, 36] }
+        - { id: cout, rotulo: "Condensador a la derecha del centro", rect: [232, 104, 36, 36] }
+        - { id: cb, rotulo: "Condensador abajo, en el último circuito", rect: [312, 112, 36, 36] }
+        - { id: csal, rotulo: "Condensador arriba a la derecha", rect: [384, 48, 36, 36] }
+    tocar:
+      bien: [cb]
+      porque:
+        cent: "Es el de acoplo de la entrada: deja pasar la señal a la base, no la pone a masa."
+        ce: "Este pone a masa el emisor, no la base: es el C_{E} del emisor común."
+        cout: "Es el de acoplo de la salida del seguidor, en su emisor."
+        csal: "Es el de acoplo de la salida, en el colector de la base común."
+    exito: "C_{B}: con la base a masa en alterna, el terminal común es la base."
+    escalera:
+      - "Busque el circuito en el que la señal entra por el emisor."
+    solucion: "El condensador C_{B} del tercer circuito, de la base a masa."
+
+  - id: reto-medir-zin
+    tipo: reto
+    titulo: "Mida la impedancia de entrada"
+    texto: "Intercale una resistencia en serie con el generador. La que deja la mitad de la señal es la impedancia de entrada."
+    libro: [102]
+    fijar: { beta: 150, R_C: 3300, des: 1 }
+    inicio: { R_x: 1000 }
+    widget:
+      tipo: circuito
+      esquema: emisor-comun
+      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, ce: C_E, desvio: des, beta: beta, vbe: V_BE, fuente: A_e, f: f_e, rs: R_x }
+      lectura: { valor: V_m, rotulo: "Señal en la base" }
+      corriente: I_C
+      mide: { ic: I_C, base_amp: V_m }
+      mandos:
+        - { valor: R_x, serie: E24, min: 1000, max: 4700, rotulo: "R_{serie} (E24)" }
+    condiciones:
+      - { valor: k_m, objetivo: 0.5, tol: 0.02, rotulo: "Queda {{k_m}} de la señal" }
+    exito: "2,2 kΩ: la entrada del emisor común son unos 2,2 kΩ, como los 2,16 kΩ calculados."
+    pistas:
+      - { cuando: { valor: k_m, mayor: 0.51 }, texto: "Queda más de la mitad: la resistencia en serie es menor que la entrada. Súbala." }
+      - { texto: "Queda menos de la mitad: la resistencia en serie es mayor que la entrada. Bájela." }
+    escalera:
+      - "Con la mitad de la señal, la resistencia en serie y la entrada se reparten igual."
+    solucion: "Con 2,2 kΩ en serie la señal cae a la mitad: Z_{in} ≈ 2,2 kΩ."
+
+  - id: pregunta-mosfet
+    tipo: pregunta
+    titulo: "Con MOSFET"
+    texto: "Fuente común, drenador común y puerta común tienen las mismas propiedades, con dos diferencias. ¿Cuáles?"
+    libro: [97]
+    widget:
+      tipo: figura
+      figura: fig-43.11
+      zonas:
+        - { id: ec, rotulo: "Emisor común", rect: [10, 10, 125, 170] }
+    opciones:
+      - texto: "Entrada casi infinita en continua y menos g_{m}: menos ganancia"
+        bien: true
+        porque: "Para la misma corriente, un MOSFET tiene menos transconductancia que un BJT."
+      - texto: "Más ganancia y entrada más baja"
+        porque: "Al revés: la puerta aislada da entrada altísima, y la g_{m} menor da menos ganancia."
+      - texto: "Ninguna: son idénticas"
+        porque: "Las propiedades son las mismas, pero la entrada y la transconductancia cambian."
+    escalera:
+      - "La puerta está aislada. ¿Qué corriente pide en continua?"
+    solucion: "Impedancia de entrada casi infinita y menos g_{m}, así que un fuente común gana menos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [70, 82, 90, 94]
+    ideas:
+      - { titulo: "Emisor común.", texto: "Gana tensión e invierte: −g_{m}·R_{C} = −169; entrada media, salida R_{C}." }
+      - { titulo: "Seguidor.", texto: "Ganancia ≈ 1, entrada alta, salida baja: de 1 kΩ a 26 Ω." }
+      - { titulo: "Base común.", texto: "Entrada muy baja, sin efecto Miller: banda diez o veinte veces mayor." }
+      - { titulo: "Se elige por lo que falta.", texto: "El terminal que no es entrada ni salida da nombre a la configuración." }

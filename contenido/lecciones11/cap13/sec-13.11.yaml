@@ -1,0 +1,280 @@
+# Lección 1.2 de la sección 13.11 «Criterios Cuantitativos» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# El balance de energía de una junta con los números del libro (bloque 291): 50 mg de estaño-plomo (0,167 J/g·K,
+# 40 J/g de calor latente), 15 mg de cobre (0,385 J/g·K), de 25 a 220 °C: 1,63 + 2,00 + 1,13 = 4,75 J; con los 65 W de
+# la ATTEN ST-965, 73 ms; en la práctica 2 o 3 s, unos 2 W. Los otros pesos de estaño del mando (25 y 100 mg) son
+# un ejemplo para ver la proporción.
+leccion: cap13/sec-13.11
+
+libro:
+  289: "Hay que fundir el estaño y calentar el metal"
+  290: 'E = m_("estaño") dot.op lr(( c_("e") dot.op "Δ" T + L_("f") )) + m_("cobre") dot.op c_("cu") dot.op "Δ" T'
+  291: "Con una junta típica de 50 mg de estaño-plomo"
+  292: "4,75 J"
+  293: "el cuello de botella no es la potencia sino la resistencia térmica del contacto punta-junta"
+  294: "duplica el área de contacto"
+  295: "ya no es un balance de energía sino de potencia"
+  296: "la especificación habitual es 260 °C durante 10 s como máximo en la patilla"
+  297: "la función de reposo"
+
+modelo:
+  valores:
+    m_e: { sim: "m_{estaño}", nombre: "masa de estaño", unidad: g, valor: 0.05 }
+    c_e: { sim: "c_{e}", nombre: "calor específico del estaño-plomo", unidad: "J/(g·K)", valor: 0.167 }
+    L_f: { sim: "L_{f}", nombre: "calor latente de fusión", unidad: "J/g", valor: 40 }
+    m_cu: { sim: "m_{cobre}", nombre: "masa de cobre de pad y patilla", unidad: g, valor: 0.015 }
+    c_cu: { sim: "c_{cu}", nombre: "calor específico del cobre", unidad: "J/(g·K)", valor: 0.385 }
+    T_j: { sim: "T", nombre: "temperatura final de la junta", unidad: "°C", valor: 220 }
+    T_a: { sim: "T_{amb}", nombre: "temperatura inicial", unidad: "°C", valor: 25 }
+    P_st: { sim: "P", nombre: "potencia de la estación", unidad: W, valor: 65 }
+    t_r: { sim: "t", nombre: "tiempo real de la soldadura", unidad: s, valor: 2.5 }
+  calculos:
+    dT: { expr: "T_j - T_a", sim: "ΔT", nombre: "salto de temperatura", unidad: K }
+    E_1: { expr: "m_e*c_e*dT", sim: "E_{estaño}", nombre: "calentar el estaño", unidad: J }
+    E_2: { expr: "m_e*L_f", sim: "E_{fusión}", nombre: "fundirlo", unidad: J }
+    E_3: { expr: "m_cu*c_cu*dT", sim: "E_{cobre}", nombre: "calentar pad y patilla", unidad: J }
+    E_t: { expr: "E_1 + E_2 + E_3", sim: "E", nombre: "energía total", unidad: J }
+    t_65: { expr: "E_t/P_st", sim: "t_{ideal}", nombre: "tiempo con toda la potencia", unidad: s }
+    P_m: { expr: "E_t/t_r", sim: "P_{media}", nombre: "potencia media que llega a la junta", unidad: W }
+
+tarjetas:
+  - id: explore-energia
+    tipo: explorar
+    titulo: "Lo que cuesta una junta"
+    texto: "Hay que calentar el estaño, fundirlo y calentar el cobre. Cambie el estaño de la junta y mire el reparto."
+    nota: "Los 50 mg son los del libro; los otros, un ejemplo."
+    libro: [289, 291, 292]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+      marcas:
+        - { x: "T_j", y: "E_t", rotulo: "A 220 °C" }
+      lectura: { valor: E_t, rotulo: "Energía a 220 °C" }
+      datos:
+        - { valor: E_1, rotulo: "Calentar el estaño: {{E_1}}" }
+        - { valor: E_2, rotulo: "Fundirlo: {{E_2}}" }
+        - { valor: E_3, rotulo: "Calentar el cobre: {{E_3}}" }
+      mandos:
+        - { valor: m_e, lista: [0.025, 0.05, 0.1], rotulo: "Estaño de la junta" }
+    requiere: { mover: [m_e] }
+
+  - id: prediga-mayor
+    tipo: predecir
+    titulo: "¿Qué se lleva más?"
+    texto: "La junta típica del libro, de 25 a 220 °C. ¿Qué parte se lleva más energía?"
+    libro: [291, 292]
+    fijar: { m_e: 0.05 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+      lectura: { valor: E_t, rotulo: "Energía a 220 °C" }
+      datos:
+        - { valor: E_2, rotulo: "Fundirlo: {{E_2}}" }
+      ocultar: true
+    opciones:
+      - texto: "Fundir el estaño: el calor latente"
+        bien: true
+        porque: "2,00 J de 4,75: más que calentar el estaño (1,63 J) o el cobre (1,13 J)."
+      - texto: "Calentar el estaño"
+        porque: "Calentarlo hasta 220 °C cuesta 1,63 J; fundirlo, 2,00 J."
+      - texto: "Calentar pad y patilla"
+        porque: "Son solo 15 mg de cobre: 1,13 J."
+    escalera:
+      - "El calor latente es de 40 J por gramo, y hay 50 mg de estaño."
+    solucion: "Fundirlo: 2,00 J."
+    comprobar:
+      - { E_1: 1.63, E_2: 2.00, E_3: 1.13, E_t: 4.75, tol: 0.004 }
+
+  - id: formula-energia
+    tipo: formula
+    titulo: "El balance de energía"
+    texto: "Fundir el estaño y calentar el metal. Cambie la temperatura final de la junta."
+    libro: [290]
+    ec: 290
+    sustitucion: "{{m_e}} · ({{c_e}} · {{dT}} + {{L_f}}) + {{m_cu}} · {{c_cu}} · {{dT}} = {{E_t}}"
+    fijar: { m_e: 0.05 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+      marcas:
+        - { x: "T_j", y: "E_t", rotulo: "Junta" }
+      lectura: { valor: E_t, rotulo: "Energía" }
+      mandos:
+        - { valor: T_j, lista: [200, 220, 260], rotulo: "Temperatura final" }
+    comprobar:
+      - { con: { T_j: 220 }, E_t: 4.75, tol: 0.003 }
+
+  - id: estime-65w
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Con toda la potencia"
+    texto: "Si los 65 W de la estación llegaran enteros a la junta de 4,75 J, ¿cuánto tardaría?"
+    libro: [292, 293]
+    fijar: { m_e: 0.05, T_j: 220 }
+    estimar:
+      objetivo: "t_65"
+      unidad: s
+      min: 0
+      max: 0.5
+      paso: 0.001
+      inicio: 0.4
+      tol: 0.1
+      rotulo: "Tiempo con 65 W"
+    exito: "73 ms: 4,75 J entre 65 W."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.081 }, texto: "Mucho menos: divida 4,75 J entre 65 W." }
+      - { texto: "Algo más: 4,75 / 65 son unas centésimas de segundo." }
+    escalera:
+      - "Tiempo = energía / potencia."
+    solucion: "4,75 / 65 = 73 ms."
+    comprobar:
+      - { t_65: 0.073, tol: 0.003 }
+
+  - id: sorpresa-dos-vatios
+    tipo: sorpresa
+    titulo: "A la junta llegan unos 2 W"
+    texto: "En la práctica una junta tarda 2 o 3 segundos. Cambie ese tiempo y mire cuánta potencia llega de verdad."
+    libro: [293]
+    fijar: { m_e: 0.05, T_j: 220 }
+    inicio: { t_r: 2 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+      lectura: { valor: P_m, rotulo: "Potencia media en la junta" }
+      datos:
+        - { valor: t_65, rotulo: "Con 65 W bastarían {{t_65}}" }
+      mandos:
+        - { valor: t_r, lista: [2, 2.5, 3], rotulo: "Tiempo real" }
+    requiere: { mover: [t_r] }
+
+  - id: por-que-cuello
+    tipo: porque
+    titulo: "¿Dónde se queda la potencia?"
+    texto: "La estación da 65 W y a la junta llegan unos 2. ¿Por qué?"
+    libro: [293]
+    fijar: { m_e: 0.05, T_j: 220, t_r: 2.5 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+      lectura: { valor: P_m, rotulo: "Potencia media en la junta" }
+    opciones:
+      - texto: "En la resistencia térmica del contacto entre la punta y la junta"
+        bien: true
+        porque: "El cuello de botella no es la potencia sino ese contacto; la estación no es débil."
+      - texto: "Porque la estación es débil"
+        porque: "Tiene treinta o cuarenta veces más potencia de la que llega: no es eso."
+      - texto: "Porque el estaño refleja el calor"
+        porque: "El calor llega por conducción, y el contacto es lo que lo frena."
+    escalera:
+      - "Si sobra potencia y falta calor, el problema está en el camino."
+    solucion: "En el contacto punta-junta."
+
+  - id: tres-reglas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las tres reglas, justificadas"
+    texto: "Una cada regla con la razón que da el balance."
+    libro: [294]
+    emparejar:
+      - ["Mojar la punta con estaño", "Un puente líquido que baja la resistencia de contacto"]
+      - ["Tocar pad y patilla a la vez", "Duplica el área de contacto"]
+      - ["Punta gruesa en juntas grandes", "La fina no falla por potencia, sino por área"]
+    exito: "Las tres atacan el mismo cuello de botella: el contacto."
+    pistas:
+      - { texto: "Mojar la punta no es para limpiar: es para conducir." }
+    escalera:
+      - "Todas mejoran el paso del calor de la punta a la junta."
+    solucion: "Mojar: puente líquido; pad y patilla: doble área; punta gruesa: más área."
+
+  - id: plano-potencia
+    tipo: pregunta
+    titulo: "Un plano de masa"
+    texto: "El pad va a un plano de masa que se lleva el calor sin parar. ¿Qué cambia en el cálculo?"
+    libro: [295]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+    opciones:
+      - texto: "Deja de ser un balance de energía: hay que aportar más potencia de la que el plano evacua"
+        bien: true
+        porque: "Es la razón de ser de los alivios térmicos, que al menos duplican la resistencia hacia el cobre."
+      - texto: "Nada: basta esperar más tiempo"
+        porque: "El plano evacua de forma continua: esperando no se gana si entra menos de lo que sale."
+      - texto: "Que hace falta menos energía"
+        porque: "Hace falta más: lo que se va por el plano."
+    escalera:
+      - "Si algo se lleva calor continuamente, ¿importa la energía o el ritmo?"
+    solucion: "Balance de potencia: aportar más de lo que evacua el plano."
+
+  - id: ventana
+    tipo: pregunta
+    titulo: "El límite de arriba"
+    texto: "¿Quién pone el límite superior de la ventana de proceso?"
+    libro: [296]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+    opciones:
+      - texto: "El componente: 260 °C durante 10 s como máximo en la patilla"
+        bien: true
+        porque: "Sin plomo hay que subir la punta a 350-380 °C y la ventana se estrecha: por eso es más difícil."
+      - texto: "La soldadura: el estaño se estropea"
+        porque: "El límite no lo pone la soldadura sino el componente."
+      - texto: "La estación: su máximo de 450 °C"
+        porque: "La estación llega más alto de lo que la patilla tolera."
+    escalera:
+      - "¿Qué se daña primero si se calienta de más?"
+    solucion: "El componente: 260 °C durante 10 s."
+
+  - id: reposo
+    tipo: pregunta
+    titulo: "La función de reposo"
+    texto: "La ATTEN ST-965 baja la punta tras un rato sin uso. ¿Para qué?"
+    libro: [297]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 183, max: 300, unidad: "°C", rotulo: "T final" }
+      y: { min: 0, max: 12, unidad: J, rotulo: "E" }
+      curvas:
+        - { expr: "m_e*(c_e*(th - T_a) + L_f) + m_cu*c_cu*(th - T_a)", color: naranja, rotulo: "energía de la junta" }
+    opciones:
+      - texto: "Para evitar la oxidación acelerada de una punta dejada a 380 °C"
+        bien: true
+        porque: "Y su estabilidad de ±1 °C permite trabajar cerca del límite superior sin pasarse."
+      - texto: "Para ahorrar energía, nada más"
+        porque: "El motivo del libro es la punta: se oxida deprisa si espera caliente."
+      - texto: "Para que la junta se enfríe antes"
+        porque: "Actúa cuando no se suelda: protege la punta."
+    escalera:
+      - "¿Qué le pasa a una punta que espera mucho rato muy caliente?"
+    solucion: "Evitar que la punta se oxide."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [292, 293, 294, 296]
+    ideas:
+      - { titulo: "4,75 J.", texto: "Calentar, fundir y calentar el cobre: con 65 W bastarían 73 ms." }
+      - { titulo: "El contacto.", texto: "Llegan unos 2 W: el cuello de botella es el contacto punta-junta." }
+      - { titulo: "Las reglas.", texto: "Mojar la punta, tocar pad y patilla, punta gruesa." }
+      - { titulo: "La ventana.", texto: "La pone el componente: 260 °C durante 10 s en la patilla." }

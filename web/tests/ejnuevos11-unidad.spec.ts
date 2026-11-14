@@ -1,11 +1,15 @@
-// 1.1: the new exercises of chapters 22, 25 and 35 (printed 21, 24 and 34) that the book does not have yet
-// (contenido/ejercicios_nuevos11/, merged by contenido/ejercicios_nuevos.py; ESQUEMA.md «Ejercicios nuevos (1.1)»).
-// In Node, no browser: every numeric answer reproduced from the statement's data by a second, independent method
-// (complex arithmetic, numeric integration, Fourier coefficients, the exact bridge… and, for the ones measured on the
-// test bench, the bench's own circuit simulated with the app's ngspice); every answer accepted as written and a wrong
-// one rejected; the choice questions with an explanation per wrong option; the «Aún no en el libro» flag; the merge
-// (the book wins on the same label, idempotent, order-stable); the design checker (valid designs accepted, invalid
-// ones rejected with a useful hint), the exam grading and the teacher-mode PDFs; the Typst text for the book.
+// 1.1: the new exercises of chapters 22, 25 and 35 that the book did not have yet (contenido/ejercicios_nuevos11/,
+// merged by contenido/ejercicios_nuevos.py; ESQUEMA.md «Ejercicios nuevos (1.1)»).
+// 1.2 (motor12b): book 4.0/4.1 prints the thirty with the same labels, so they are now the book's own exercises (their
+// statement and solution in the part, `pos`; their answers and hints curated in ejercicios_curado.txt) and the merge
+// step drops all of them. What this spec checked of the 1.1 layer is ported to that native content: no «Aún no en el
+// libro» flag anywhere (data, search, teacher-mode bank and PDFs); the merge leaves the files byte-identical and says
+// why; and, as before, in Node, no browser: every numeric answer reproduced from the statement's data by a second,
+// independent method (complex arithmetic, numeric integration, Fourier coefficients, the exact bridge… and, for the
+// ones measured on the test bench, the bench's own circuit simulated with the app's ngspice) and written in the book's
+// solution; every answer accepted as written and a wrong one rejected; the choice questions with an explanation per
+// wrong option; the design checker (valid designs accepted, invalid ones rejected with a useful hint), the exam grading
+// and the teacher-mode PDFs; the Typst text the 1.1 tool wrote for the book.
 //   EPA_SIN_SERVIDOR=1 PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c playwright.ejnuevos11.config.ts tests/ejnuevos11-unidad.spec.ts
 import fs from 'node:fs';
 import os from 'node:os';
@@ -27,7 +31,7 @@ import { simular } from '../src/simulador/motor/simular.ts';
 import { todasLasMedidas } from '../src/simulador/motor/salida.ts';
 import { CIRCUITOS } from '../src/componentes/instrumentos/practicas/circuitos.ts';
 import type { DatosEjercicios, ItemEjercicio } from '../src/lib/ejercicios.svelte';
-import type { DocBusqueda } from '../src/lib/tipos';
+import type { BEjercicios, Bloque, DocBusqueda, Parte } from '../src/lib/tipos';
 
 const web = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const raiz = path.join(web, '..');
@@ -35,9 +39,33 @@ const L = cargarLibro();
 const ctx: ContextoExamen = L.libro;
 const datos = JSON.parse(fs.readFileSync(path.join(LIBRO, 'ejercicios.json'), 'utf8')) as DatosEjercicios;
 const busqueda = JSON.parse(fs.readFileSync(path.join(LIBRO, 'busqueda.json'), 'utf8')) as (DocBusqueda & { nuevo?: boolean })[];
-const nuevos = Object.entries(datos.items).filter(([, it]) => it.nuevo);
+// the thirty exercises of the 1.1, by chapter (1.2: the book's own, same labels)
+const ESPERADOS: Record<string, number> = { cap22: 10, cap25: 11, cap35: 9 };
+const nuevos = Object.entries(ESPERADOS)
+  .flatMap(([parte, n]) => Array.from({ length: n }, (_, k) => `ej-${Number(parte.slice(3))}.${k + 1}`))
+  .map((l) => [l, datos.items[l]!] as [string, ItemEjercicio]);
 const item = (label: string): ItemEjercicio => datos.items[label]!;
-const plano = (h: string | undefined) => (h ?? '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+// (the math images keep their Typst source in `alt`: a number of the solution may be inside one)
+const plano = (h: string | undefined) =>
+  (h ?? '')
+    .replace(/<img\b[^>]*\balt="([^"]*)"[^>]*>/g, ' $1 ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+const partes = new Map<string, Parte>();
+/** Statement and solution of an exercise, from its part (the book's, `pos`). */
+const bloques = (l: string) => {
+  const it = item(l);
+  if (!partes.has(it.parte)) partes.set(it.parte, JSON.parse(fs.readFileSync(path.join(LIBRO, 'partes', `${it.parte}.json`), 'utf8')) as Parte);
+  // (as lib/ejercicios.svelte.ts bloquesEjercicio, which Node cannot import: its module state is a rune)
+  const b = partes.get(it.parte)!.bloques[it.pos[0] ?? -1] as BEjercicios | undefined;
+  const e = b?.t === 'ejercicios' ? b.items[it.pos[1] ?? -1] : undefined;
+  if (it.tipo !== 'ej' || !e) throw new Error(`${l}: sin enunciado en su parte`);
+  return { enunciado: e.bloques, solucion: e.solucion ?? [] };
+};
+const textoDe = (bs: Bloque[]) => bs.map((b) => (b.t === 'p' ? plano(b.html) : '')).join(' ');
 const sp = (t: string) => t.replace(/[  ]/g, ' ');
 
 let simularTexto: (t: string) => ReturnType<typeof simular>;
@@ -57,52 +85,51 @@ test.beforeAll(async () => {
   simularTexto = (t) => simular(modulo, t, undefined, 'xspice');
 });
 
-// ------------------------------------------------------------------ the data and the «Aún no en el libro» flag
+// ------------------------------------------------------------------ the data: the book's own, without the flag
 
-const ESPERADOS: Record<string, number> = { cap22: 10, cap25: 11, cap35: 9 };
-
-test('30 ejercicios nuevos en los capítulos 22, 25 y 35, marcados, con enunciado, solución, pistas y algo que comprobar', () => {
+test('los 30 ejercicios nuevos de la 1.1 (capítulos 22, 25 y 35) son del libro: misma etiqueta, curados y sin la marca', () => {
   expect(nuevos).toHaveLength(30);
-  const ej = datos.resumen as unknown as { nuevos11: { total: number; disenos: number; banco: number; descartados: string[] } };
-  expect(ej.nuevos11).toMatchObject({ total: 30, disenos: 3, banco: 5, descartados: [] });
+  // no exercise is «Aún no en el libro» any more (the merge step adds none: test «fusión» below)
+  expect(Object.values(datos.items).filter((it) => it.nuevo || it.ampliacion)).toHaveLength(0);
+  expect((datos.resumen as unknown as Record<string, unknown>).nuevos11).toBeUndefined();
   for (const [parte, n] of Object.entries(ESPERADOS)) {
     const cap = datos.capitulos.find((c) => c.parte === parte)!;
     const num = L.indice.partes[parte]!.num;
     expect(cap.items, parte).toEqual(Array.from({ length: n }, (_, k) => `ej-${Number(parte.slice(3))}.${k + 1}`));
     cap.items.forEach((l, k) => {
       const it = item(l);
-      expect(it, l).toMatchObject({ nuevo: true, tipo: 'ej', parte, num: `${num}.${k + 1}`, modo: 'auto', pos: [] });
-      expect(it.enunciado!.length, l).toBeGreaterThan(0);
-      expect(it.solucion!.length, l).toBeGreaterThan(0);
+      expect(it.nuevo, l).toBeUndefined();
+      expect(it, l).toMatchObject({ tipo: 'ej', parte, num: `${num}.${k + 1}`, modo: 'auto', origen: 'curado' });
+      // the statement and the solution are the book's, in the part
+      expect(it.enunciado, l).toBeUndefined();
+      const b = bloques(l);
+      expect(b.enunciado.length, l).toBeGreaterThan(0);
+      expect(b.solucion.length, l).toBeGreaterThan(0);
       expect(it.pistas, l).toHaveLength(2);
       expect(it.respuestas.length + (it.preguntas?.length ?? 0), l).toBeGreaterThan(0);
       expect(L.indice.partes[parte]!.secciones.some((s) => s.label === it.seccion), l).toBe(true);
-      // the statement asks something («Se pide») and the app's own texts never claim to be the book's
-      expect(it.enunciado!.map((b) => (b.t === 'p' ? b.html : '')).join(' '), l).toContain('Se pide');
-      for (const q of it.preguntas ?? []) expect(q.calculo, `${l} ${q.id}`).toBe(true);
+      // the statement asks something («Se pide»)
+      expect(textoDe(b.enunciado), l).toContain('Se pide');
     });
-    // in book order: after the previous chapters' items (the capitulos list follows the index)
   }
   const orden = L.indice.tomos.flatMap((t) => t.partes);
   const posiciones = datos.capitulos.map((c) => orden.indexOf(c.parte));
   expect(posiciones).toEqual([...posiciones].sort((a, b) => a - b));
-  // the book's own items are untouched: 486, none flagged
-  // (and the expansions' own exercises, also «Aún no en el libro»: tests/ampliaciones11-unidad.spec.ts)
-  expect(Object.values(datos.items).filter((it) => !it.nuevo && !it.ampliacion)).toHaveLength(486);
+  // all the book's exercises and problems of 4.1: 518 + 119
+  expect(Object.keys(datos.items)).toHaveLength(637);
 });
 
-test('la búsqueda encuentra cada ejercicio nuevo, con la marca en el título, y el banco del modo docente los marca', () => {
-  for (const [l, it] of nuevos) {
-    const d = busqueda.find((x) => x.id === l);
-    expect(d, l).toMatchObject({ parte: it.parte, nuevo: true, titulo: `Ejercicio ${it.num} · Aún no en el libro` });
-    expect(d!.texto).toContain(plano(it.enunciado![0]!.t === 'p' ? it.enunciado![0]!.html : '').slice(0, 40));
-  }
-  expect(busqueda.filter((x) => x.nuevo)).toHaveLength(30);
+test('ni la búsqueda ni el banco del modo docente los marcan «Aún no en el libro»', () => {
+  // (the book's exercises are searched in their section's text, like every exercise of the book)
+  expect(busqueda.filter((x) => x.nuevo || /Aún no en el libro/.test(x.titulo))).toHaveLength(0);
+  for (const [l] of nuevos) expect(busqueda.some((x) => x.id === l), l).toBe(false);
   expect(new Set(busqueda.map((x) => x.id)).size).toBe(busqueda.length);
   const banco = bancoDe(L.banco).filter((e) => e.k === 'ejercicio');
-  expect(banco.filter((e) => e.nuevo && !L.ejercicios.items[e.ref]?.ampliacion).map((e) => e.ref).sort()).toEqual(nuevos.map(([l]) => l).sort());
+  for (const [l] of nuevos) expect(banco.find((e) => e.ref === l), l).toMatchObject({ auto: true });
+  expect(banco.filter((e) => e.nuevo)).toHaveLength(0);
   // the design questions are checked by the app (simulation): in «solo lo que se corrige solo»
-  expect(banco.find((e) => e.ref === 'ej-25.9')).toMatchObject({ auto: true, concepto: 'cap25/sec-25.4' });
+  // (its concept is the book's section that prints it, as for every exercise of the book)
+  expect(banco.find((e) => e.ref === 'ej-25.9')).toMatchObject({ auto: true, concepto: `cap25/${item('ej-25.9').seccion}` });
 });
 
 // ------------------------------------------------------------------ every answer, by a second method
@@ -323,9 +350,9 @@ test('cada respuesta numérica sale de los datos del enunciado por un segundo ca
     }
   }
   expect(n).toBe(80);
-  // the solution text writes each answer's value (the worked development leads to it)
+  // the book's solution writes each answer's value (the worked development leads to it)
   for (const [l, it] of nuevos) {
-    const sol = it.solucion!.map((b) => (b.t === 'p' ? plano(b.html) : '')).join(' ');
+    const sol = textoDe(bloques(l).solucion);
     for (const r of it.respuestas) {
       const num = r.texto.replace(/\s.*$/, '').replace(/^−/, '');
       expect(sol.replace(/\s/g, ''), `${l} ${r.texto}`).toContain(num.replace(/\s/g, ''));
@@ -498,7 +525,7 @@ test('lo simulado se guarda con sus valores: sin volver a simular lo mismo, y ca
   expect(nl).toMatch(/\.control\n[\s\S]*meas ac fc WHEN gdb=-3.0103 FALL=1\n\.endc\n\.end\n$/);
 });
 
-test('modo docente: el examen califica el diseño con lo simulado al entregar, y los PDF marcan «aún no en el libro»', async () => {
+test('modo docente: el examen califica el diseño con lo simulado al entregar, y los PDF los dan como del libro', async () => {
   const def = { items: [{ k: 'ejercicio' as const, ref: 'ej-25.9', puntos: 2 }, { k: 'ejercicio' as const, ref: 'ej-22.5', puntos: 1 }], minutos: 0, variantes: false, barajar: false, semilla: 7, espacio: 'corto' as const };
   const ex = montarExamen(def, ctx, 0);
   expect(ex.faltan).toEqual([]);
@@ -516,69 +543,33 @@ test('modo docente: el examen califica el diseño con lo simulado al entregar, y
     return planoPdf((await leerPdf(r.bytes)).texto.join(' ').replace(/[  ]/g, ' '));
   };
   const examen = await texto(documentoExamen(ex, L.libro, O));
-  expect(examen).toContain('aún no en el libro');
+  expect(examen).not.toContain('aún no en el libro');
   expect(examen).toContain('Se quiere un filtro paso bajo RC de primer orden');
   expect(examen).toContain('(serie E12)');
   const soluciones = await texto(documentoSoluciones(ex, L.libro, O));
-  expect(soluciones).toContain('Solución 24.9 (aún no en el libro)');
+  expect(soluciones).not.toContain('aún no en el libro');
+  expect(soluciones).toContain(`Solución ${item('ej-25.9').num} del libro`);
   expect(soluciones).toContain('cualquier diseño que cumpla');
   expect(soluciones).toContain('3,3 kΩ');
-  expect(soluciones).not.toContain('Solución 24.9 del libro');
 });
 
-// ------------------------------------------------------------------ the merge: the book wins, idempotent, order-stable
+// ------------------------------------------------------------------ the merge: the book wins, idempotent
 
-test('fusión: el ejercicio del libro gana con la misma etiqueta, y repetir el paso deja los ficheros idénticos', () => {
+test('fusión: el libro ya trae los 30 con la misma etiqueta, así que el paso los descarta todos y deja los ficheros idénticos', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ejnuevos11-'));
   try {
     for (const f of ['ejercicios.json', 'busqueda.json', 'indice.json', 'refs.json']) fs.copyFileSync(path.join(LIBRO, f), path.join(tmp, f));
     const correr = () => execFileSync('python3', [path.join(raiz, 'contenido', 'ejercicios_nuevos.py')], { env: { ...process.env, EPA_LIBRO: tmp }, encoding: 'utf8' });
     const leer = (f: string) => fs.readFileSync(path.join(tmp, f), 'utf8');
     const original = { ej: leer('ejercicios.json'), bu: leer('busqueda.json') };
-    // running it again changes nothing
-    expect(correr()).toContain('sin cambios');
-    expect(leer('ejercicios.json')).toBe(original.ej);
-    expect(leer('busqueda.json')).toBe(original.bu);
-    // as contenido/ejercicios.py writes the file (no new exercises) and generar.py the search index: the same result
-    // (stripped in Python, which writes numbers as those scripts do: 500000.0 stays a float)
-    const quitar = `import json,sys
-d=json.load(open(sys.argv[1],encoding='utf-8'))
-nv={k for k,v in d['items'].items() if v.get('nuevo')}
-d['items']={k:v for k,v in d['items'].items() if k not in nv}
-d['capitulos']=[c for c in ({'parte':c['parte'],'items':[x for x in c['items'] if x not in nv]} for c in d['capitulos']) if c['items']]
-d['resumen'].pop('nuevos11',None)
-json.dump(d,open(sys.argv[1],'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
-b=json.load(open(sys.argv[2],encoding='utf-8'))
-json.dump([x for x in b if not x.get('nuevo')],open(sys.argv[2],'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))`;
-    execFileSync('python3', ['-c', quitar, path.join(tmp, 'ejercicios.json'), path.join(tmp, 'busqueda.json')]);
-    expect(JSON.parse(leer('ejercicios.json')).items['ej-25.1']).toBeUndefined();
-    const libro = JSON.parse(leer('ejercicios.json')) as DatosEjercicios;
-    correr();
-    expect(leer('ejercicios.json')).toBe(original.ej);
-    expect(leer('busqueda.json')).toBe(original.bu);
-    // the author pastes ej-25.1 and ej-25.2 into the book: the book's items win, the app's are dropped
-    const conLibro = JSON.parse(JSON.stringify(libro)) as DatosEjercicios;
-    for (const [k, l] of ['ej-25.1', 'ej-25.2'].entries()) {
-      conLibro.items[l] = { ...datos.items['ej-24.3']!, parte: 'cap25', num: `24.${k + 1}`, seccion: 'sec-25.9', pos: [311 + 1, k], resumen: `del libro ${l}` };
+    for (let k = 0; k < 2; k++) {
+      const salida = correr();
+      expect(salida).toContain('0 ejercicios nuevos añadidos');
+      expect(salida).toContain(`30 descartados porque el libro ya los trae: ${nuevos.map(([l]) => l).join(', ')}`);
+      expect(salida).toContain('sin cambios');
+      expect(leer('ejercicios.json')).toBe(original.ej);
+      expect(leer('busqueda.json')).toBe(original.bu);
     }
-    const orden = L.indice.tomos.flatMap((t) => t.partes);
-    conLibro.capitulos.push({ parte: 'cap25', items: ['ej-25.1', 'ej-25.2'] });
-    conLibro.capitulos.sort((a, b) => orden.indexOf(a.parte) - orden.indexOf(b.parte));
-    fs.writeFileSync(path.join(tmp, 'ejercicios.json'), JSON.stringify(conLibro));
-    expect(correr()).toContain('2 descartados porque el libro ya los trae: ej-25.1, ej-25.2');
-    const r = JSON.parse(leer('ejercicios.json')) as DatosEjercicios & { resumen: { nuevos11: { total: number; descartados: string[] } } };
-    expect(r.items['ej-25.1']!.nuevo).toBeUndefined();
-    expect(r.items['ej-25.1']!.resumen).toBe('del libro ej-25.1');
-    expect(r.items['ej-25.3']!.nuevo).toBe(true);
-    expect(r.capitulos.find((c) => c.parte === 'cap25')!.items).toEqual(['ej-25.1', 'ej-25.2', ...Array.from({ length: 9 }, (_, k) => `ej-25.${k + 3}`)]);
-    expect(r.resumen.nuevos11).toMatchObject({ total: 28, descartados: ['ej-25.1', 'ej-25.2'] });
-    const bu = JSON.parse(leer('busqueda.json')) as { id: string; nuevo?: boolean }[];
-    expect(bu.some((x) => x.id === 'ej-25.1')).toBe(false);
-    expect(bu.filter((x) => x.nuevo)).toHaveLength(28);
-    // and again: stable
-    const una = leer('ejercicios.json');
-    correr();
-    expect(leer('ejercicios.json')).toBe(una);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

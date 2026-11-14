@@ -3,7 +3,8 @@
 
     cd /home/claude/app && python3 contenido/generar.py [--comprobar-figuras]
 
-Reads /home/claude/v3 (never writes there) and writes web/public/libro/: indice.json, refs.json,
+Reads the book's sources (contenido/fuentes.py: env EPA_FUENTES, the book's Fuentes/ folder; never writes there) and
+writes web/public/libro/: indice.json, refs.json,
 glosario.json, busqueda.json, partes/<stem>.json, ec/*.svg, fig/*.svg, img/*. Equations and figures are
 cached (contenido/.cache), so a rerun only renders what changed. The contract is ESQUEMA.md.
 """
@@ -16,15 +17,17 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
-V3 = '/home/claude/v3'
-LIB = os.path.join(V3, 'libro')
+sys.path.insert(0, HERE)
+import fuentes                       # noqa: E402
+
+V3 = fuentes.FUENTES
+LIB = fuentes.LIB
 OUT = os.path.join(APP, 'web/public/libro')
 CACHE = os.path.join(HERE, '.cache')
 
-sys.path.insert(0, HERE)
-# reuse the book's own numbering and aliases; never leave bytecode in the v3 tree
+# reuse the book's own numbering and aliases; never leave bytecode in the book's tree
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.join(V3, 'herramientas'))
+sys.path.insert(0, fuentes.HERRAMIENTAS)
 import construir                     # noqa: E402
 sys.dont_write_bytecode = False
 
@@ -34,6 +37,7 @@ import ecuaciones                    # noqa: E402
 import figuras                       # noqa: E402
 import validar                       # noqa: E402
 import datos_figuras                 # noqa: E402
+import datos_figuras_recolocar       # noqa: E402
 import spice                         # noqa: E402
 import consolas                      # noqa: E402
 import fm7303                        # noqa: E402
@@ -148,9 +152,9 @@ def main():
     alias = construir.load_alias()
     order = reading_order()
 
-    style = ecuaciones.template_style(os.path.join(V3, 'plantilla/libro.typ'))
+    style = ecuaciones.template_style(os.path.join(fuentes.PLANTILLA, 'libro.typ'))
     nums, _ = construir.numbering()
-    ecs = ecuaciones.Registro(os.path.join(OUT, 'ec'), CACHE, style, os.path.join(V3, 'fonts'), nums)
+    ecs = ecuaciones.Registro(os.path.join(OUT, 'ec'), CACHE, style, fuentes.FONTS, nums)
     figs = figuras.Registro(V3, OUT, CACHE)
     libro = convertir.Libro(ecs, figs)
 
@@ -164,6 +168,14 @@ def main():
         kind = part_kind(stem)
         num = str(caps.index(f)) if kind == 'capitulo' else (chr(ord('A') + aps.index(f)) if kind == 'apendice' else None)
         text = open(os.path.join(LIB, f), encoding='utf-8').read()
+        if f == 'glosario.typ':
+            # 4.1: 29 entries follow the previous one without a blank line (the sorting of the integration dropped
+            # it), so Typst — and the converter — run them into the previous entry's paragraph; each entry is its
+            # own paragraph here (reported to the author: the printed glossary has them run together too). The book
+            # fixed them in fix-4.1.1 (F1, its construir.py now checks it): this finds none, and stays as a guard
+            text, juntas = re.subn(r'(?m)^(?!\s*$)(.*)\n(?=#strong\[[^\n]*?:\])', r'\1\n\n', text)
+            if juntas:
+                print(f'glosario.typ: {juntas} entradas sin línea en blanco delante, separadas')
         nodes, probs = typst_parser.parse(text, f)
         for line, msg, sample in probs:
             libro.problems.append((stem, line, msg, sample))
@@ -204,7 +216,10 @@ def main():
             for v in o:
                 fill_ec(v)
 
-    # figure data for the interactive layer (ESQUEMA.md, «Datos de figuras»)
+    # figure data for the interactive layer (ESQUEMA.md, «Datos de figuras»): 1.2, the book has no figuras/datos any
+    # more; the published files are moved onto the redrawn figures first (datos_figuras_recolocar.py)
+    if not os.path.isdir(os.path.join(fuentes.FIGURAS, 'datos')):
+        datos_figuras_recolocar.main(OUT)
     datos_figuras.aplicar(V3, OUT, [b for _, b, _ in parts.values()], libro.problems)
 
     # write the parts
@@ -254,9 +269,15 @@ def main():
     ok = validar.run(OUT, LIB, [f for f, _ in order], indice, refs, libro, nums, ec_stats, fig_stats,
                      busqueda, glosario, time.time() - t0)
     ok = datos_figuras.validar(OUT) and ok
-    # 1.1: the book's expansions that are not in the book yet (contenido/ampliaciones11/), merged into the parts,
-    # the index, the references and the search, renumbered, before everything that is derived from them
-    ok = ampliaciones.fase_partes() == 0 and ok
+    # 1.2: the 1.1 expansions (contenido/ampliaciones11/) are all in book 4.0/4.1, so they are no longer merged (their
+    # registry goes; README «Ampliaciones del libro»). What the app's own sources quote by printed number (curated
+    # answers, review questions, lessons: «sección 31.10») follows the book's numbering, label by label
+    # (ampliaciones11/numeracion.json, ampliaciones.renumerar_fuentes)
+    if os.path.exists(os.path.join(OUT, 'ampliaciones.json')):
+        os.remove(os.path.join(OUT, 'ampliaciones.json'))
+    cambiadas = ampliaciones.renumerar_fuentes(refs)
+    if cambiadas:
+        print('números impresos al día en ' + ', '.join(cambiadas))
     ok = spice.main() == 0 and ok    # netlists for the simulator: spice/, spice.json (cached validation)
     ok = consolas.main() == 0 and ok  # NES and Neo Geo mainboards: web/public/consolas/
     ok = proyectos_kicad.main() == 0 and ok  # KiCad boards of chapters 48-51: web/public/proyectos/ (needs spice.json)
@@ -266,8 +287,7 @@ def main():
     ok = ejercicios.main([]) == 0 and ok  # self-checking exercises and problems: ejercicios.json (needs partes/)
     ok = pasos.main([]) == 0 and ok   # 1.0 guided steps reviewed by hand: pasos.json (needs ejercicios.json)
     ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
-    ok = ampliaciones.fase_derivados() == 0 and ok  # 1.1: the expansions' netlists and review questions
-    ok = practica() and ok             # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
+    ok = practica() and ok            # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
     ok = miniaturas() and ok           # 0.10 list thumbnails: web/public/miniaturas/ (needs spice.json, ejercicios.json)
     ok = proporciones() and ok         # 0.12: size of each netlist's drawing (needs spice.json and the figures' data)
     if check_figs:

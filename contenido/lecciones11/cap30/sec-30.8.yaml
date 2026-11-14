@@ -1,0 +1,290 @@
+# Lección 1.2 de la sección 29.8 «Correlación y el Filtro Adaptado» (cap30, sec-30.8). Formato: GUIA.md.
+# - La correlación con una forma conocida (bloques 247 y 248): un pulso rectangular de 1 ms que llega con un retardo de
+#   3 ms y ruido de ejemplo (motor12e: `ruido(t, 7)`, normal con semilla fija, 0,4 eficaces). La réplica
+#   desplazada τ; su parecido con el pulso, el solape normalizado ρ = max(0, 1 − |τ − d|/W): el pico de la correlación
+#   en el retardo. Pulso, retardo y ruido son de ejemplo.
+# - Ganancia del filtro adaptado: 10·log₁₀(T·B), 30 dB con 1 ms y 1 MHz (bloque 251). GPS: −130 dBm frente a −111 dBm
+#   (19 dB por debajo) y 43 dB de ganancia de proceso (bloque 254). Promediado: el ruido baja con √N (bloque 273);
+#   explore-promedio lo enseña con `ruido`: la media de N capturas de ruido blanco es ruido blanco con σ/√N.
+# Paso práctico: «ajuste» de la réplica hasta alinearla con el pulso escondido (correlar a mano).
+leccion: cap30/sec-30.8
+
+libro:
+  247: "correlacionar lo recibido con esa forma hace emerger la señal aunque esté enterrada en ruido"
+  248: "La señal, en cambio, se correlaciona plenamente cuando el desplazamiento es el correcto, y produce un pico"
+  250: "la señal buscada invertida en el tiempo"
+  251: "Con una señal de 1 ms y 1 MHz de banda, la ganancia es de mil"
+  252: "usan señales largas y de banda ancha en lugar de pulsos cortos y potentes"
+  253: "Se obtiene la resolución del pulso corto con la energía del largo"
+  254: "unos −130 dBm, frente a unos −111 dBm de ruido térmico"
+  255: "resulta el filtro adaptado al pulso"
+  257: "la autocorrelación tiene un pico en T"
+  260: "un pico secundario en el retardo del eco"
+  263: "la posición del pico da el retardo"
+  264: "el retardo entre ellos determina la dirección de la fuente"
+  266: "la convolución invierte una de las señales antes de deslizarla"
+  267: "la correlación se puede calcular con la FFT"
+  269: "que es exactamente correlacionar con una senoide"
+  270: "se pueden medir señales muy por debajo del ruido"
+  273: "reduce el ruido por la raíz del número de promedios"
+  274: "La correlación hace emerger una señal conocida enterrada en ruido"
+
+modelo:
+  valores:
+    d_0: { sim: "d", nombre: "retardo del pulso, de ejemplo", unidad: s, valor: 0.003 }
+    W_p: { sim: "W", nombre: "duración del pulso, de ejemplo", unidad: s, valor: 0.001 }
+    t_r: { sim: "τ", nombre: "desplazamiento de la réplica", unidad: s, valor: 0.0005 }
+    T_s: { sim: "T", nombre: "duración de la señal", unidad: s, valor: 0.001 }
+    B_s: { sim: "B", nombre: "ancho de banda de la señal", unidad: Hz, valor: 1000000 }
+    N_p: { sim: "N", nombre: "número de promedios", unidad: "", valor: 100 }
+  calculos:
+    rho: { expr: "max(0, 1 - abs(t_r - d_0)/W_p)", sim: "ρ", nombre: "parecido de la réplica", unidad: "", cifras: 2 }
+    TB: { expr: "T_s*B_s", sim: "T·B", nombre: "producto tiempo-ancho de banda", unidad: "" }
+    G_a: { expr: "10*log10(T_s*B_s)", sim: "G", nombre: "ganancia del filtro adaptado", unidad: dB }
+    d_g: { expr: "-111 - (-130)", sim: "Δ", nombre: "margen bajo el ruido del GPS", unidad: dB }
+    s_g: { expr: "43 - 19", sim: "S/N", nombre: "relación tras correlacionar", unidad: dB }
+    r_n: { expr: "sqrt(N_p)", sim: "√N", nombre: "reducción del ruido", unidad: "" }
+
+tarjetas:
+  - id: ajuste-alinear
+    tipo: ajuste
+    titulo: "Encuentre el pulso"
+    texto: "Arriba, un pulso de forma conocida con ruido encima; abajo, su réplica. Deslícela hasta que el parecido sea máximo: eso es correlar."
+    nota: "Pulso, retardo y ruido de ejemplo."
+    libro: [247, 248, 274]
+    inicio: { t_r: 0.0005 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: -2.6, max: 2.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "min(max((t - d_0)*1000000, 0), 1) - min(max((t - d_0 - W_p)*1000000, 0), 1) + 0.4*ruido(t, 7)", color: azul, rotulo: "recibido" }
+        - { expr: "min(max((t - t_r)*1000000, 0), 1) - min(max((t - t_r - W_p)*1000000, 0), 1) - 2", color: naranja, rotulo: "réplica" }
+      lectura: { valor: rho, rotulo: "Parecido con el pulso" }
+      mandos:
+        - { valor: t_r, min: 0, max: 0.007, paso: 0.0001, rotulo: "Desplazamiento, τ" }
+    ajuste:
+      valor: rho
+      min: 0.95
+      rotulo: "Parecido"
+      escala: { min: 0, max: 1 }
+      bajo: "Aún no coinciden: el ruido no se parece a la réplica. Siga deslizando hasta que el parecido suba."
+      dentro: "Ahí está: el ruido no se correlaciona con la réplica, y el pulso sí, de lleno. Ese desplazamiento es el retardo."
+
+  - id: explore-pico
+    tipo: explorar
+    titulo: "La correlación entera"
+    texto: "El parecido para cada desplazamiento: eso es la correlación. Mueva la réplica: el pico marca el retardo del pulso."
+    libro: [248, 263]
+    widget:
+      tipo: grafica
+      x: { id: s, min: 0, max: 0.007, unidad: s, rotulo: "τ" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "ρ" }
+      curvas:
+        - { expr: "max(0, 1 - abs(s - d_0)/W_p)", color: naranja, rotulo: "correlación" }
+      marcas:
+        - { x: "t_r", y: "rho", rotulo: "{{rho}}" }
+      lectura: { valor: rho, rotulo: "Parecido" }
+      mandos:
+        - { valor: t_r, min: 0, max: 0.007, paso: 0.0001, rotulo: "Desplazamiento, τ" }
+    requiere: { mover: [t_r] }
+    comprobar:
+      - { con: { t_r: 0.003 }, rho: 1 }
+
+  - id: pregunta-adaptado
+    tipo: predecir
+    titulo: "El filtro adaptado"
+    texto: "Ningún filtro lineal consigue mejor relación señal a ruido. ¿Cuál es su respuesta al impulso?"
+    libro: [250, 255, 266]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    opciones:
+      - texto: "La señal buscada, invertida en el tiempo"
+        bien: true
+        porque: "La convolución invierte una señal antes de deslizarla: con h invertida, filtrar es correlacionar."
+      - texto: "La señal buscada, tal cual"
+        porque: "Filtrar es convolucionar, y la convolución la invertiría: para correlacionar hay que invertirla antes."
+      - texto: "Un paso bajo del ancho de banda de la señal"
+        porque: "Eso limita el ruido, pero no aprovecha la forma conocida: el adaptado sí."
+    escalera:
+      - "Correlación y convolución se diferencian solo en una inversión."
+    solucion: "La señal invertida en el tiempo."
+
+  - id: estime-ganancia
+    tipo: pregunta
+    titulo: "Más larga y más ancha"
+    texto: "La ganancia del filtro adaptado crece con el producto tiempo-ancho de banda. Una señal de 1 ms y 1 MHz: ¿cuántos dB?"
+    libro: [251, 252]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    estimar:
+      objetivo: "G_a"
+      unidad: dB
+      min: 0
+      max: 60
+      paso: 1
+      inicio: 50
+      tol: 0.05
+      rotulo: "Ganancia de proceso"
+    exito: "Mil veces, 30 dB. Por eso se emiten señales largas y de banda ancha en lugar de pulsos cortos y potentes."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 31.5 }, texto: "Demasiado: 1 ms × 1 MHz es mil, y mil son 30 dB." }
+      - { texto: "Corto: el producto es mil, y una ganancia de mil son 30 dB." }
+    escalera:
+      - "Multiplique la duración por el ancho de banda."
+    solucion: "1 ms × 1 MHz = 1 000: 30 dB."
+    comprobar:
+      - { TB: 1000, G_a: 30 }
+
+  - id: pregunta-gps
+    tipo: pregunta
+    titulo: "Por debajo del ruido"
+    texto: "La señal GPS llega a unos −130 dBm y el ruido térmico en su banda es de unos −111 dBm. ¿Cómo se detecta?"
+    libro: [253, 254]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    opciones:
+      - texto: "Correlacionando con un código pseudoaleatorio conocido: unos 43 dB de ganancia"
+        bien: true
+        porque: "Llega 19 dB por debajo del ruido; la ganancia de proceso la deja 24 dB por encima."
+      - texto: "Con un amplificador de muy bajo ruido"
+        porque: "Amplificar sube la señal y el ruido por igual: seguiría 19 dB por debajo."
+      - texto: "Filtrando hasta una banda muy estrecha"
+        porque: "La señal ocupa sus 2 MHz; lo que la rescata es conocer su forma, no estrechar la banda."
+    escalera:
+      - "Ningún amplificador separa la señal del ruido que llega con ella. ¿Qué sabe el receptor de la señal?"
+    solucion: "Por correlación con el código conocido: 43 dB de ganancia de proceso."
+    comprobar:
+      - { d_g: 19, s_g: 24 }
+
+  - id: empareje-usos
+    tipo: pregunta
+    titulo: "Correlar para medir"
+    texto: "Empareje cada técnica con lo que da su pico."
+    libro: [257, 260, 263, 264]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    emparejar:
+      - ["Autocorrelación de una señal periódica", "Un pico en su periodo"]
+      - ["Autocorrelación con un eco", "Un pico secundario en el retardo del eco"]
+      - ["Emitida frente a eco recibido", "El tiempo de vuelo: la distancia"]
+      - ["Dos receptores", "La dirección de la fuente"]
+    exito: "Es el principio del sónar, del radar y de los telémetros ultrasónicos."
+    pistas:
+      - { texto: "La autocorrelación compara una señal consigo misma; la cruzada, dos distintas." }
+    escalera:
+      - "Una señal que se repite con periodo T se parece a sí misma desplazada T."
+    solucion: "Periódica, su periodo; con eco, el retardo del eco; eco recibido, el tiempo de vuelo; dos receptores, la dirección."
+
+  - id: porque-fft
+    tipo: porque
+    titulo: "Correlar con la FFT"
+    texto: "Para señales largas, la correlación se calcula transformando, multiplicando y antitransformando. ¿Por qué se puede?"
+    libro: [266, 267]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    opciones:
+      - texto: "Es casi una convolución: solo cambia que no se invierte una señal (se conjuga en frecuencia)"
+        bien: true
+        porque: "Y la convolución es un producto en frecuencia: con la FFT, mucho más rápido que la suma directa."
+      - texto: "Porque la correlación solo trabaja con señales periódicas"
+        porque: "Vale para cualquier señal; lo que la hace calculable con la FFT es su cercanía a la convolución."
+      - texto: "Porque la FFT elimina el ruido antes de correlacionar"
+        porque: "La FFT no quita ruido: solo hace más barato el mismo cálculo."
+    escalera:
+      - "¿En qué se diferencian correlación y convolución?"
+    solucion: "Por su cercanía a la convolución: producto en frecuencia, con una de las dos conjugada."
+
+  - id: pregunta-lockin
+    tipo: pregunta
+    titulo: "El amplificador lock-in"
+    texto: "Multiplica la señal recibida por una referencia a la frecuencia de interés y promedia. ¿Qué está haciendo?"
+    libro: [269, 270]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    opciones:
+      - texto: "Correlacionar con una senoide"
+        bien: true
+        porque: "Rechaza todo lo que no está a esa frecuencia y en esa fase: mide muy por debajo del ruido."
+      - texto: "Un filtro paso alto"
+        porque: "No deja pasar una banda: busca una frecuencia y una fase concretas."
+      - texto: "Amplificar el ruido para restarlo"
+        porque: "No resta nada: multiplicar y promediar es correlacionar con la referencia."
+    escalera:
+      - "Multiplicar punto a punto y sumar: ¿le suena?"
+    solucion: "Una correlación con una senoide."
+
+  - id: estime-promedio
+    tipo: pregunta
+    titulo: "Promediar capturas"
+    texto: "El osciloscopio promedia 100 capturas de una señal repetitiva, sincronizadas con el disparo. ¿Cuántas veces baja el ruido?"
+    libro: [273]
+    widget:
+      tipo: figura
+      figura: fig-30.14
+      zonas:
+        - { id: todo, rotulo: "Correlación con una señal enterrada", rect: [0, 0, 439, 234] }
+    estimar:
+      objetivo: "r_n"
+      unidad: ""
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "El ruido baja (veces)"
+    exito: "Diez veces: por la raíz del número de promedios. La señal, sincronizada, no baja."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.5 }, texto: "Demasiado: el ruido no baja con el número de promedios, sino con su raíz." }
+      - { texto: "Corto: la raíz de 100." }
+    escalera:
+      - "El ruido de cada captura es distinto; la señal, la misma."
+    solucion: "√100 = 10."
+    comprobar:
+      - { r_n: 10, N_p: 100 }
+
+  - id: explore-promedio
+    tipo: explorar
+    titulo: "El ruido baja con √N"
+    texto: "La misma señal repetitiva, promediando N capturas. Suba N: la señal se queda y el ruido baja por la raíz del número de promedios."
+    nota: "Pulso y ruido de ejemplo."
+    libro: [273]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: -1.5, max: 2.5, unidad: "", rotulo: "señal" }
+      curvas:
+        # (motor12e) the mean of N captures of white noise is white noise with σ/√N
+        - { expr: "min(max((t - d_0)*1000000, 0), 1) - min(max((t - d_0 - W_p)*1000000, 0), 1) + 0.4*ruido(t, 11)/sqrt(N_p)", color: azul, rotulo: "promedio de N capturas" }
+      lectura: { valor: r_n, rotulo: "El ruido baja (veces)" }
+      mandos:
+        - { valor: N_p, lista: [1, 4, 16, 100], rotulo: "Capturas promediadas, N" }
+    requiere: { mover: [N_p] }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [247, 250, 251, 266, 273]
+    ideas:
+      - { titulo: "Correlación.", texto: "El parecido al desplazar: el ruido se cancela y la forma conocida da un pico." }
+      - { titulo: "Filtro adaptado.", texto: "h = la señal invertida; su ganancia crece con el producto tiempo-ancho de banda." }
+      - { titulo: "Medir con el pico.", texto: "Periodo, eco, tiempo de vuelo y dirección." }
+      - { titulo: "Lock-in y promediado.", texto: "Correlacionar con una senoide; promediar baja el ruido con √N." }

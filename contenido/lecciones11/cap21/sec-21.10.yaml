@@ -1,0 +1,214 @@
+# Lección 1.2 de la sección 20.10 «Medidas Automáticas (botón PRM)» (cap21; etiqueta interna sec-21.10). Formato:
+# contenido/lecciones11/GUIA.md. La pantalla simulada (± 4 divisiones, recortada) con la cuadrada de 1 kHz y 3 V del
+# generador (la de la ficha 24 del cuaderno), centrada: el pico a pico automático es el de la traza en pantalla,
+# min(V_pp, 8·V/div), y los niveles del convertidor que usa son 32 por división. La foto de la figura 20.23 se toca en
+# píxeles (1600 × 676).
+leccion: cap21/sec-21.10
+
+libro:
+  253: "tensiones (pico a pico, máxima, mínima, media y eficaz) y tiempos (frecuencia y periodo"
+  255: "Las medidas automáticas no miden la señal: miden los puntos de la captura que está en pantalla"
+  256: "si la señal se sale de la pantalla, el pico a pico sale recortado"
+  257: "un alias siempre sale por debajo de la frecuencia real"
+  260: "un solo punto ruidoso fija el máximo"
+  262: "un pico a pico de 5 V en una traza que ocupa dos divisiones de 1 V"
+  264: "primero con la señal ocupando media pantalla, después con una sola división, y por último con medio ciclo en pantalla"
+  "cap21#58": "una señal de una división usa solo 32"
+
+modelo:
+  valores:
+    V_pp: { sim: "V_{pp}", nombre: "tensión de pico a pico de la cuadrada", unidad: V, valor: 3 }
+    f_g: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 1000 }
+    v_div: { sim: "V/div", nombre: "escala vertical", unidad: V, valor: 0.2 }
+  calculos:
+    V_prm: { expr: "min(V_pp, 8*v_div)", sim: "V_{pp, PRM}", nombre: "pico a pico automático", unidad: V, cifras: 2 }
+    d_alto: { expr: "V_pp/v_div", sim: "div", nombre: "alto de la señal", unidad: div, cifras: 2 }
+    niveles: { expr: "32*min(8, d_alto)", sim: "N", nombre: "niveles del convertidor que usa", unidad: "" }
+
+tarjetas:
+  - id: explore-prm
+    tipo: explorar
+    titulo: "Mide lo que hay en pantalla"
+    texto: "Una cuadrada de 3 V de pico a pico. Cambie VOLT/DIV y mire qué dice la medida automática."
+    libro: [253, 255, 256, "cap21#58"]
+    inicio: { v_div: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "max(-4, min(4, V_pp/2*(1 - 2*(floor(2*d/5) - 2*floor(d/5)))/v_div))", color: naranja, rotulo: "CH1" }
+      lectura: { valor: V_prm, rotulo: "PRM, pico a pico" }
+      datos:
+        - { valor: niveles, rotulo: "Niveles que usa: {{niveles}}" }
+      mandos:
+        - { valor: v_div, lista: [0.2, 0.5, 1, 2], rotulo: "VOLT/DIV" }
+    requiere: { mover: [v_div] }
+    comprobar:
+      - { V_pp: 3 }
+
+  - id: prediga-recorte
+    tipo: predecir
+    titulo: "A 0,2 V/div"
+    texto: "La cuadrada de 3 V se sale de la pantalla a 0,2 V/div. ¿Qué pico a pico da PRM?"
+    libro: [255, 256]
+    fijar: { v_div: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "max(-4, min(4, V_pp/2*(1 - 2*(floor(2*d/5) - 2*floor(d/5)))/v_div))", color: naranja, rotulo: "CH1" }
+      lectura: { valor: V_prm, rotulo: "PRM, pico a pico" }
+      ocultar: true
+    opciones:
+      - texto: "Menos de 3 V, sin avisar"
+        bien: true
+        porque: "Mide los puntos de la pantalla: 8 divisiones de 0,2 V, 1,6 V. El pico a pico sale recortado."
+      - texto: "3 V, porque mide la señal"
+        porque: "No mide la señal: mide los puntos de la captura que está en pantalla."
+      - texto: "Un aviso de recorte"
+        porque: "No avisa: ese es el peligro."
+    escalera:
+      - "¿Cuántos voltios caben en las 8 divisiones a 0,2 V/div?"
+    solucion: "1,6 V: lo que cabe en pantalla."
+    comprobar:
+      - { V_prm: 1.6, V_pp: 3 }
+
+  - id: toque-contador
+    tipo: tocar
+    titulo: "La frecuencia que miente"
+    texto: "La misma senoide de unos 99 Hz, a dos bases de tiempos. Toque la captura cuya frecuencia automática es falsa."
+    libro: [256, 257]
+    widget:
+      tipo: figura
+      imagen: img/foto_fnirsi_alias.jpg
+      zonas:
+        - { id: corta, rotulo: "A la izquierda", rect: [0, 240, 790, 436] }
+        - { id: larga, rotulo: "A la derecha", rect: [810, 280, 790, 396] }
+    tocar:
+      bien: [larga]
+      porque:
+        corta: "A 2 ms/div se ven dos ciclos y la frecuencia automática es correcta."
+    exito: "A 50 ms/div caben unos sesenta ciclos con muy pocas muestras cada uno: el contador falla y da unos 202 Hz."
+    escalera: ["¿En cuál hay tantos ciclos que la traza es una banda?"]
+    solucion: "A la derecha: 50 ms/div, unos sesenta ciclos y unos 202 Hz."
+
+  - id: no-alias
+    tipo: porque
+    titulo: "No es un alias"
+    texto: "La senoide de unos 99 Hz se lee como unos 202 Hz a 50 ms/div. ¿Por qué eso no es un alias?"
+    libro: [256, 257]
+    widget:
+      tipo: figura
+      imagen: img/foto_fnirsi_alias.jpg
+      zonas:
+        - { id: larga, rotulo: "La captura a 50 ms/div", rect: [810, 280, 790, 396] }
+    opciones:
+      - texto: "Un alias siempre aparece por debajo de la frecuencia real"
+        bien: true
+        porque: "Esta lectura sale casi el doble: es el contador del instrumento fallando con muy pocas muestras por ciclo."
+      - texto: "Porque los alias solo afectan a las cuadradas"
+        porque: "El aliasing afecta a cualquier señal; lo que lo descarta es que la cifra sale por encima."
+      - texto: "Porque el 2C53T no puede tener alias"
+        porque: "Sí puede, y lo tiene a bases de tiempos lentas. Pero un alias sale por debajo."
+    escalera:
+      - "¿Un alias sale por encima o por debajo de la frecuencia real?"
+    solucion: "Un alias sale siempre por debajo; esto es el contador automático fallando."
+
+  - id: medio-ciclo
+    tipo: pregunta
+    titulo: "Medio ciclo en pantalla"
+    texto: "Con solo medio ciclo en pantalla, ¿qué da la frecuencia automática?"
+    libro: [256]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "max(-4, min(4, V_pp/2*(1 - 2*(floor(2*d/24) - 2*floor(d/24)))/0.5))", color: naranja, rotulo: "CH1" }
+    opciones:
+      - texto: "Un valor sin sentido o guiones"
+        bien: true
+        porque: "Necesita al menos un par de ciclos completos: con menos de uno no tiene dónde medir."
+      - texto: "La frecuencia correcta, con menos precisión"
+        porque: "Sin un ciclo completo no hay periodo que medir: no da un valor peor, da uno sin sentido."
+      - texto: "El doble de la real"
+        porque: "Eso le pasa con demasiados ciclos y pocas muestras, no con medio ciclo."
+    escalera:
+      - "La frecuencia sale del periodo. ¿Hay un periodo entero en pantalla?"
+    solucion: "Un valor sin sentido o guiones: hacen falta un par de ciclos completos."
+
+  - id: ruido-pico
+    tipo: pregunta
+    titulo: "El rizado de pocos milivoltios"
+    texto: "El pico a pico automático de un rizado de pocos milivoltios sale mayor de lo esperado. ¿Por qué?"
+    libro: [260]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "2*sin(2*pi*d/6) + 0.4*sin(2*pi*d*7.3)*sin(2*pi*d*3.1)", color: naranja, rotulo: "con ruido" }
+    opciones:
+      - texto: "Un solo punto ruidoso fija el máximo"
+        bien: true
+        porque: "Las medidas de pico son las más sensibles al ruido. Lea la amplitud con los cursores sobre la traza."
+      - texto: "Porque PRM mide el valor eficaz"
+        porque: "PRM da el pico a pico por separado; el problema es que el ruido fija sus extremos."
+      - texto: "Porque la escala está mal elegida"
+        porque: "Puede estar bien escalada y aun así el ruido del propio instrumento domina los picos."
+    escalera:
+      - "¿Qué punto de la traza decide el máximo?"
+    solucion: "Un punto ruidoso fija el máximo; mejor los cursores."
+
+  - id: no-cuadra
+    tipo: pregunta
+    titulo: "Un número que no cuadra"
+    texto: "PRM da 5 V de pico a pico en una traza que ocupa dos divisiones de 1 V. ¿Dónde está el error?"
+    libro: [262]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
+      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
+      curvas:
+        - { expr: "sin(2*pi*d/6)", color: naranja, rotulo: "CH1" }
+    opciones:
+      - texto: "En la captura: escala, disparo o ventana"
+        bien: true
+        porque: "Las automáticas son la primera lectura, no la última: si no cuadran con la pantalla, falla la captura."
+      - texto: "En el circuito"
+        porque: "La traza dice 2 V; si el número no cuadra con lo que se ve, el circuito no tiene la culpa."
+      - texto: "En la pantalla, que dibuja mal"
+        porque: "La pantalla enseña los puntos capturados; el número es el que hay que revisar."
+    escalera:
+      - "Dos divisiones de 1 V son 2 V. ¿Quién se equivoca?"
+    solucion: "En la captura: escala, disparo o ventana mal elegidos."
+
+  - id: banco-prm
+    tipo: banco
+    titulo: "Cuándo fiarse de PRM"
+    texto: "Con la cuadrada de 1 kHz y 3 V del generador ocupando media pantalla, lea la frecuencia con PRM."
+    libro: [264]
+    fijar: { f_g: 1000, V_pp: 3 }
+    banco:
+      piezas: ["FNIRSI 2C53T con la sonda compensada", "Salida DDS: cuadrada de 1 kHz y 3 V"]
+      medir: "La frecuencia automática con la señal en media pantalla; luego en una división y con medio ciclo."
+      esperado: f_g
+      unidad: Hz
+      tol: 0.01
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.01 }, texto: "Sale alta: ¿caben demasiados ciclos en pantalla? Acorte la base de tiempos." }
+        - { cuando: { valor: desviacion, menor: -0.01 }, texto: "Sale baja: compruebe la frecuencia del generador y que haya un par de ciclos completos." }
+        - { texto: "Bien. Ahora repita con una división y con medio ciclo, y mire cómo se degrada." }
+      ficha: { n: 24, titulo: "Puesta a punto del FNIRSI: sonda, medidas automáticas y aliasing" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [255, 256, 260, 262]
+    ideas:
+      - { titulo: "La pantalla, no la señal.", texto: "Recortada o mal escalada, la medida falla sin avisar." }
+      - { titulo: "Los ciclos justos.", texto: "Un par de ciclos completos; con decenas y pocas muestras, el contador falla." }
+      - { titulo: "Los picos y el ruido.", texto: "Un punto ruidoso fija el máximo: mejor los cursores." }
+      - { titulo: "Primera lectura.", texto: "Si no cuadra con lo que se ve, el error está en la captura." }

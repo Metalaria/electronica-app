@@ -1,0 +1,421 @@
+# Lección 1.2 de la sección 34.8 «Problemas de Diseño» (cap56; etiqueta sec-56.8): el problema 34.A, el polipasto.
+# Formato: contenido/lecciones11/GUIA.md.
+# - Las cuentas del libro en el modelo (bloques 135–143): 500 kg a 0,6 m/s, tambor de 0,30 m, reductora de
+#   rendimiento 0,90, motor de 4 polos a 1 449 rpm: 2 943 W en la carga, 3 270 W en el motor, i = 37,9 → 38,
+#   21,5 N·m al subir y 17,4 al bajar, J = 0,0212 kg·m² y 24,8 N·m en la rampa; resistencia de frenado de como mucho
+#   780²/2 870 = 212 Ω y 41,0 kJ cada 120 s, 341 W de media. El resultado de la simulación del libro (tabla del
+#   bloque 141, la apertura del freno a 2 Hz) se cita, no se recalcula.
+# Paso práctico: «simular» (sin circuito) la potencia del motor; el error típico es olvidar el rendimiento de la
+# reductora o aplicarlo al revés.
+# - 1.2 (esquemas12d): «freno» con el esquema `induccion` a 2 Hz y parado (ley V/f con refuerzo de 16,5 V, fn = 50 Hz):
+#   25,1 N·m y 8,03 A del bloque 139 salen con R_Fe proporcional a f (100 Ω a 2 Hz); con R_Fe fija, 25,3 N·m y
+#   8,00 A (duda anotada en revision12/cap56.md). Nuevo «ajuste» del ejercicio 34.3 con el esquema `motor-cc` (180 V,
+#   10 A, 1 500 rpm, 1,2 Ω: 124,0 V para 1 000 rpm con el par nominal); L y J de ese motor son de ejemplo (no
+#   intervienen en continua).
+leccion: cap56/sec-56.8
+
+libro:
+  133: "Un polipasto debe subir y bajar 500 kg (carga y gancho) a 0,6 m/s con un tambor de 0,30 m de diámetro, a través de una reductora de rendimiento 0,90, con rampas de 1 s"
+  135: "La carga pide m·g·v = 500 × 9,81 × 0,6 = 2 943 W, y el motor, con la reductora, 2 943/0,90 = 3 270 W: el de 4 kW"
+  136: "i = 151,8/4 = 37,9, y se toma i = 38"
+  137: "m·g·r/(i·η) = 500 × 9,81 × 0,15/(38 × 0,90) = 21,5 N·m, el 81,6 % del nominal"
+  138: "J = 0,0212 kg·m²"
+  139: "a 2 Hz el motor parado da 25,1 N·m con 8,03 A, más que los 21,5 N·m de la carga"
+  141: "1 529 rpm"
+  142: "al subir el motor desliza por debajo de 1 500 rpm y al bajar por encima, como generador"
+  143: "la resistencia no puede pasar de 780²/2 870 = 212 Ω"
+  146: "El variador no sustituye al freno mecánico ni es una función de seguridad: si falla, la carga cae."
+  148: "Al bajar, la potencia es negativa: el motor genera."
+  149: "Un motor de continua de imanes tiene en su placa 180 V, 10 A y 1 500 rpm, y su inducido mide 1,2 Ω"
+
+modelo:
+  valores:
+    m: { sim: "m", nombre: "masa", unidad: kg, valor: 500 }
+    g: { sim: "g", nombre: "gravedad", unidad: "m/s²", valor: 9.81 }
+    v: { sim: "v", nombre: "velocidad del gancho", unidad: "m/s", valor: 0.6 }
+    r_t: { sim: "r", nombre: "radio del tambor", unidad: m, valor: 0.15 }
+    eta: { sim: "η", nombre: "rendimiento de la reductora", unidad: "", valor: 0.9 }
+    n_m: { sim: "n", nombre: "velocidad del motor a 50 Hz", unidad: rpm, valor: 1449 }
+    i_r: { sim: "i", nombre: "relación de la reductora", unidad: "", valor: 38 }
+    J_r: { sim: "J_{rotor}", nombre: "inercia del rotor", unidad: "kg·m²", valor: 0.013 }
+    J_t: { sim: "J_{tambor}", nombre: "inercia del tambor", unidad: "kg·m²", valor: 0.6 }
+    alfa: { sim: "α", nombre: "aceleración de la rampa", unidad: "rad/s²", valor: 157 }
+    V_ch: { sim: "V_{chopper}", nombre: "umbral del chopper", unidad: V, valor: 780 }
+    P_fr: { sim: "P", nombre: "potencia de frenado máxima", unidad: W, valor: 2870 }
+    E_b: { sim: "E", nombre: "energía de cada bajada", unidad: J, valor: 41000 }
+    t_c: { sim: "t", nombre: "una bajada cada", unidad: s, valor: 120 }
+    f_2: { sim: "f", nombre: "frecuencia al abrir el freno", unidad: Hz, valor: 2 }
+    f_n: { sim: "f_{n}", nombre: "frecuencia de las reactancias", unidad: Hz, valor: 50 }
+    R_1: { sim: "R₁", nombre: "resistencia del estátor", unidad: Ω, valor: 1.4 }
+    R_2: { sim: "R₂′", nombre: "resistencia del rotor", unidad: Ω, valor: 1.1 }
+    X_1: { sim: "X₁", nombre: "reactancia del estátor a 50 Hz", unidad: Ω, valor: 2 }
+    X_2: { sim: "X₂′", nombre: "reactancia del rotor a 50 Hz", unidad: Ω, valor: 2 }
+    X_m: { sim: "X_{m}", nombre: "magnetizante a 50 Hz", unidad: Ω, valor: 55 }
+    R_fe: { sim: "R_{Fe}", nombre: "pérdidas del hierro a 50 Hz", unidad: Ω, valor: 2500 }
+    s_0: { sim: "s", nombre: "deslizamiento parado", unidad: "", valor: 1 }
+    V_c: { sim: "V", nombre: "tensión del inducido", unidad: V, valor: 180 }
+    R_c: { sim: "R", nombre: "resistencia del inducido", unidad: Ω, valor: 1.2 }
+    k_c: { sim: "k", nombre: "constante del motor", unidad: "V·s/rad", valor: 1.07 }
+    I_n: { sim: "I_{n}", nombre: "corriente nominal", unidad: A, valor: 10 }
+    L_c: { sim: "L", nombre: "inductancia del inducido (ejemplo)", unidad: H, valor: 0.01 }
+    J_c: { sim: "J", nombre: "inercia (ejemplo)", unidad: "kg·m²", valor: 0.01 }
+  calculos:
+    V_2: { expr: "(16.5 + 383.5*f_2/50)/sqrt(3)", sim: "V", nombre: "tensión de fase a 2 Hz con refuerzo", unidad: V }
+    w_2: { expr: "pi*f_2", sim: "ω_{s}", nombre: "velocidad síncrona a 2 Hz", unidad: "rad/s" }
+    rf_2: { expr: "R_fe*f_2/f_n", sim: "R_{Fe}", nombre: "pérdidas del hierro a 2 Hz", unidad: Ω }
+    x1_2: { expr: "X_1*f_2/f_n", sim: "X₁", nombre: "reactancia del estátor a 2 Hz", unidad: Ω }
+    x2_2: { expr: "X_2*f_2/f_n", sim: "X₂′", nombre: "reactancia del rotor a 2 Hz", unidad: Ω }
+    xm_2: { expr: "X_m*f_2/f_n", sim: "X_{m}", nombre: "magnetizante a 2 Hz", unidad: Ω }
+    am_2: { expr: "rf_2*xm_2^2/(rf_2^2 + xm_2^2)", sim: "R_{m}", nombre: "rama paralelo, parte real", unidad: Ω }
+    bm_2: { expr: "rf_2^2*xm_2/(rf_2^2 + xm_2^2)", sim: "X_{m}", nombre: "rama paralelo, parte imaginaria", unidad: Ω }
+    c2_2: { expr: "R_2/s_0", sim: "R₂′/s", nombre: "resistencia del rotor vista", unidad: Ω }
+    pr_2: { expr: "am_2*c2_2 - bm_2*x2_2", sim: "p", nombre: "auxiliar", unidad: "" }
+    pi_2: { expr: "am_2*x2_2 + bm_2*c2_2", sim: "p", nombre: "auxiliar", unidad: "" }
+    qd_2: { expr: "(am_2 + c2_2)^2 + (bm_2 + x2_2)^2", sim: "q", nombre: "auxiliar", unidad: "" }
+    zr_2: { expr: "(pr_2*(am_2 + c2_2) + pi_2*(bm_2 + x2_2))/qd_2", sim: "R_{p}", nombre: "rotor y rama paralelo, parte real", unidad: Ω }
+    zi_2: { expr: "(pi_2*(am_2 + c2_2) - pr_2*(bm_2 + x2_2))/qd_2", sim: "X_{p}", nombre: "rotor y rama paralelo, parte imaginaria", unidad: Ω }
+    I1_2: { expr: "V_2/sqrt((R_1 + zr_2)^2 + (x1_2 + zi_2)^2)", sim: "I₁", nombre: "corriente de línea a 2 Hz", unidad: A, cifras: 3 }
+    E_2: { expr: "I1_2*sqrt(zr_2^2 + zi_2^2)", sim: "E", nombre: "tensión del entrehierro", unidad: V }
+    I2_2: { expr: "E_2/sqrt(c2_2^2 + x2_2^2)", sim: "I₂′", nombre: "corriente del rotor", unidad: A }
+    Im_2: { expr: "E_2/xm_2", sim: "I_{m}", nombre: "corriente magnetizante", unidad: A }
+    T_2: { expr: "3*I2_2^2*c2_2/w_2", sim: "T", nombre: "par a 2 Hz, parado", unidad: "N·m" }
+    T_n3: { expr: "k_c*I_n", sim: "T_{n}", nombre: "par nominal", unidad: "N·m" }
+    w_c: { expr: "(V_c - R_c*I_n)/k_c", sim: "ω", nombre: "velocidad con el par nominal", unidad: "rad/s" }
+    n_c: { expr: "w_c*60/(2*pi)", sim: "n", nombre: "velocidad con el par nominal", unidad: rpm, cifras: 4 }
+    E_c: { expr: "k_c*w_c", sim: "E", nombre: "fuerza electromotriz", unidad: V }
+    w_1000: { expr: "2*pi*1000/60", sim: "ω", nombre: "1 000 rpm", unidad: "rad/s", cifras: 4 }
+    P_c: { expr: "m*g*v", sim: "P_{carga}", nombre: "potencia de la carga", unidad: W, cifras: 4 }
+    P_mot: { expr: "m*g*v/eta", sim: "P_{motor}", nombre: "potencia en el motor", unidad: W, cifras: 4 }
+    P_mal: { expr: "m*g*v*eta", sim: "P", nombre: "con el rendimiento al revés (error)", unidad: W, cifras: 4 }
+    w_t: { expr: "v/r_t", sim: "ω_{tambor}", nombre: "velocidad del tambor", unidad: "rad/s" }
+    w_m: { expr: "2*pi*n_m/60", sim: "ω_{motor}", nombre: "velocidad del motor", unidad: "rad/s", cifras: 4 }
+    i_c: { expr: "w_m/w_t", sim: "i", nombre: "relación necesaria", unidad: "" }
+    T_sub: { expr: "m*g*r_t/(i_r*eta)", sim: "T_{subir}", nombre: "par al subir", unidad: "N·m" }
+    T_baj: { expr: "m*g*r_t*eta/i_r", sim: "T_{bajar}", nombre: "par al bajar", unidad: "N·m" }
+    J_tot: { expr: "m*r_t^2/i_r^2 + J_t/i_r^2 + J_r", sim: "J", nombre: "inercia vista desde el motor", unidad: "kg·m²" }
+    T_rampa: { expr: "T_sub + J_tot*alfa", sim: "T", nombre: "par en la rampa", unidad: "N·m" }
+    R_max: { expr: "V_ch^2/P_fr", sim: "R_{máx}", nombre: "resistencia de frenado máxima", unidad: Ω }
+    P_med: { expr: "E_b/t_c", sim: "P_{media}", nombre: "potencia media en la resistencia", unidad: W }
+
+tarjetas:
+  - id: explore-polipasto
+    tipo: explorar
+    titulo: "El polipasto simulado"
+    texto: "Toque las dos mitades de la figura: al subir el motor toma potencia de la red; al bajar, la devuelve."
+    libro: [133, 148]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: subida, rotulo: "Mitad izquierda", rect: [0, 0, 162, 187], texto: "Subida: el motor desliza por debajo de 1 500 rpm y absorbe potencia." }
+        - { id: bajada, rotulo: "Mitad derecha", rect: [163, 0, 162, 187], texto: "Bajada: la carga arrastra al motor por encima de la síncrona; la potencia es negativa, genera." }
+    requiere: { mover: [subida, bajada] }
+
+  - id: simule-potencia
+    tipo: simular
+    titulo: "La potencia del motor"
+    texto: "500 kg a 0,6 m/s a través de una reductora de rendimiento 0,90. ¿Qué potencia tiene que dar el motor?"
+    libro: [133, 135]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: subida, rotulo: "Mitad izquierda", rect: [0, 0, 162, 187] }
+    simular:
+      objetivo: P_mot
+      unidad: W
+      tol: 0.02
+      rotulo: "Potencia del motor"
+      errores:
+        - { expr: "P_c", texto: "Esos 2 943 W son los de la carga: la reductora pierde, y el motor tiene que dar más." }
+        - { expr: "P_mal", texto: "Ha multiplicado por el rendimiento: al subir, el motor da la potencia de la carga dividida entre 0,90." }
+    exito: "3 270 W: el motor de 4 kW. El de 3 kW no basta, y subir es servicio continuo mientras dura."
+    escalera:
+      - "Potencia de la carga, m·g·v; la reductora divide por su rendimiento."
+    solucion: "500 × 9,81 × 0,6 / 0,90 = 3 270 W."
+    comprobar:
+      - { P_mot: 3270, P_c: 2943, P_mal: 2649 }
+
+  - id: estime-i
+    tipo: pregunta
+    titulo: "La reductora"
+    texto: "El tambor de 0,30 m debe girar a 4 rad/s, y el motor gira a 1 449 rpm (151,8 rad/s). ¿Qué relación de reductora?"
+    libro: [136]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: subida, rotulo: "Mitad izquierda", rect: [0, 0, 162, 187] }
+    estimar:
+      objetivo: "i_c"
+      unidad: ""
+      min: 0
+      max: 100
+      paso: 0.1
+      inicio: 80
+      tol: 0.01
+      rotulo: "Relación, i"
+    exito: "37,9, y se toma i = 38."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 38.3 }, texto: "Se ha pasado: divida la velocidad del motor entre la del tambor." }
+      - { texto: "Se ha quedado corto: 151,8 entre 4." }
+    escalera:
+      - "i = ω_{motor}/ω_{tambor}, con ω_{tambor} = v/r."
+    solucion: "151,8/4 = 37,9: i = 38."
+    comprobar:
+      - { i_c: 37.9, w_t: 4, w_m: 151.7 }
+
+  - id: estime-par
+    tipo: pregunta
+    titulo: "El par al subir"
+    texto: "Con i = 38 y η = 0,90, ¿qué par pide la carga en el eje del motor al subir?"
+    libro: [137]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: subida, rotulo: "Mitad izquierda", rect: [0, 0, 162, 187] }
+    estimar:
+      objetivo: "T_sub"
+      unidad: "N·m"
+      min: 0
+      max: 50
+      paso: 0.1
+      inicio: 40
+      tol: 0.02
+      rotulo: "Par al subir"
+    exito: "21,5 N·m, el 81,6 % del par nominal del motor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 22 }, texto: "Se ha pasado: m·g·r entre i·η." }
+      - { texto: "Se ha quedado corto: al subir, la reductora divide por su rendimiento, no multiplica." }
+    escalera:
+      - "T = m·g·r/(i·η)."
+    solucion: "500 × 9,81 × 0,15/(38 × 0,90) = 21,5 N·m."
+    comprobar:
+      - { T_sub: 21.5 }
+
+  - id: prediga-bajar
+    tipo: predecir
+    titulo: "Al bajar"
+    texto: "Al bajar la carga, ¿qué par aparece en el eje del motor y quién lo da?"
+    libro: [137, 142]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: bajada, rotulo: "Mitad derecha", rect: [163, 0, 162, 187] }
+    opciones:
+      - texto: "17,4 N·m que la carga impone y el motor retiene como generador"
+        bien: true
+        porque: "Al bajar, la carga mueve el motor y la reductora multiplica: m·g·r·η/i."
+      - texto: "Los mismos 21,5 N·m que al subir"
+        porque: "La reductora pierde en los dos sentidos: al bajar el par que llega al motor es menor."
+      - texto: "Ninguno: la carga baja sola"
+        porque: "Bajaría en caída libre: el motor tiene que retenerla."
+    escalera:
+      - "Al bajar, ¿quién mueve a quién a través de la reductora?"
+    solucion: "17,4 N·m, retenidos por el motor como generador."
+    comprobar:
+      - { T_baj: 17.4 }
+
+  - id: estime-rampa
+    tipo: pregunta
+    titulo: "Acelerar en 1 s"
+    texto: "La inercia vista desde el motor es 0,0212 kg·m², y llegar a 1 500 rpm en 1 s son 157 rad/s². ¿Qué par total pide la rampa al subir?"
+    libro: [137, 138]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: subida, rotulo: "Mitad izquierda", rect: [0, 0, 162, 187] }
+    estimar:
+      objetivo: "T_rampa"
+      unidad: "N·m"
+      min: 0
+      max: 50
+      paso: 0.1
+      inicio: 40
+      tol: 0.02
+      rotulo: "Par en la rampa"
+    exito: "24,8 N·m, el 94,3 % del nominal: el variador no necesita su sobrecarga."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 25.3 }, texto: "Se ha pasado: J·α son unos 3,33 N·m; súmelos a los 21,5." }
+      - { texto: "Se ha quedado corto: a los 21,5 N·m de la carga hay que sumar J·α." }
+    escalera:
+      - "Par de la carga más J·α."
+    solucion: "21,5 + 0,0212 × 157 = 24,8 N·m."
+    comprobar:
+      - { T_rampa: 24.8, J_tot: 0.0212, tol: 0.006 }
+
+  - id: freno
+    tipo: pregunta
+    titulo: "Cuándo abrir el freno"
+    texto: "El polipasto lleva un freno mecánico de muelle. ¿Cuándo debe abrirlo el variador?"
+    libro: [139]
+    widget:
+      tipo: circuito
+      esquema: induccion
+      piezas: { fuente: V_2, f: f_2, fn: f_n, r1: R_1, x1: X_1, xm: X_m, rfe: rf_2, x2: X_2, r2: R_2, s: s_0 }
+      lectura: { valor: T_2, rotulo: "Par a 2 Hz, parado" }
+      datos:
+        - { valor: I1_2, rotulo: "Corriente: {{I1_2}}" }
+      corriente: I1_2
+      mide: { linea_amp: I1_2, rotor_amp: I2_2, entrehierro_amp: E_2, magnetizante_amp: Im_2 }
+      mandos: []
+    opciones:
+      - texto: "Cuando el motor ya da par para sostener la carga: a 2 Hz, 25,1 N·m"
+        bien: true
+        porque: "Más que los 21,5 N·m de la carga: se abre ahí y la rampa arranca desde 2 Hz."
+      - texto: "Antes de arrancar, con el motor sin tensión"
+        porque: "La carga caería: el motor aún no da par."
+      - texto: "Al llegar a 50 Hz"
+        porque: "Arrastraría el motor contra el freno toda la rampa."
+    escalera:
+      - "¿Qué tiene que poder hacer el motor en el instante en que se suelta el freno?"
+    solucion: "Cuando ya sostiene la carga: a 2 Hz da 25,1 N·m, más que 21,5."
+    comprobar:
+      - { T_2: 25.1, I1_2: 8.03, T_sub: 21.5 }
+
+  - id: por-que-baja-rapido
+    tipo: porque
+    titulo: "Baja más deprisa"
+    texto: "A la misma frecuencia, 50 Hz, el gancho baja un 4,75 % más deprisa de lo que sube. ¿Por qué?"
+    libro: [141, 142]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: bajada, rotulo: "Mitad derecha", rect: [163, 0, 162, 187] }
+    opciones:
+      - texto: "Al subir desliza por debajo de la síncrona; al bajar, como generador, por encima"
+        bien: true
+        porque: "1 460 rpm subiendo y 1 529 bajando: la compensación de deslizamiento del variador lo corrige."
+      - texto: "Por el rendimiento de la reductora"
+        porque: "El rendimiento cambia la potencia, no la velocidad."
+      - texto: "Porque al bajar el variador sube la frecuencia"
+        porque: "La frecuencia es la misma; lo que cambia es el signo del deslizamiento."
+    escalera:
+      - "¿De qué lado de la síncrona gira un motor de inducción que genera?"
+    solucion: "Por el deslizamiento: por debajo de 1 500 rpm al subir, por encima al bajar."
+
+  - id: estime-rfrenado
+    tipo: pregunta
+    titulo: "La resistencia de frenado"
+    texto: "En la rampa de parada llegan al bus hasta 2,87 kW, y el chopper actúa a 780 V. ¿Qué resistencia máxima?"
+    libro: [143]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: bajada, rotulo: "Mitad derecha", rect: [163, 0, 162, 187] }
+    estimar:
+      objetivo: "R_max"
+      unidad: Ω
+      min: 0
+      max: 500
+      paso: 1
+      inicio: 400
+      tol: 0.02
+      rotulo: "Resistencia máxima"
+    exito: "212 Ω: se toma 180 Ω, que absorbe hasta 3,38 kW, y por encima de la mínima que admita el chopper."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 216 }, texto: "Se ha pasado: con más resistencia no absorbería los 2,87 kW a 780 V." }
+      - { texto: "Se ha quedado corto: es el máximo, V²/P." }
+    escalera:
+      - "P = V²/R: despeje R."
+    solucion: "780²/2 870 = 212 Ω."
+    comprobar:
+      - { R_max: 212 }
+
+  - id: estime-media
+    tipo: pregunta
+    titulo: "La potencia media"
+    texto: "Cada bajada de 10 m deja 41,0 kJ en la resistencia, y hay una cada 120 s. ¿Qué potencia media disipa?"
+    libro: [143]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: bajada, rotulo: "Mitad derecha", rect: [163, 0, 162, 187] }
+    estimar:
+      objetivo: "P_med"
+      unidad: W
+      min: 0
+      max: 1000
+      paso: 1
+      inicio: 800
+      tol: 0.02
+      rotulo: "Potencia media"
+    exito: "341 W: una resistencia de unos 400 W continuos que admita los 3,4 kW durante 17 s."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 348 }, texto: "Se ha pasado: reparta la energía en los 120 s del ciclo." }
+      - { texto: "Se ha quedado corto: 41,0 kJ entre 120 s." }
+    escalera:
+      - "Energía de cada ciclo entre su duración."
+    solucion: "41,0 kJ / 120 s = 341 W."
+    comprobar:
+      - { P_med: 341 }
+
+  - id: seguridad
+    tipo: pregunta
+    titulo: "El variador y la seguridad"
+    texto: "El variador retiene la carga al bajar. ¿Puede sustituir al freno mecánico?"
+    libro: [146]
+    widget:
+      tipo: figura
+      figura: fig-56.9
+      zonas:
+        - { id: bajada, rotulo: "Mitad derecha", rect: [163, 0, 162, 187] }
+    opciones:
+      - texto: "No: no es una función de seguridad; si falla, la carga cae"
+        bien: true
+        porque: "Retención, finales de carrera y parada de emergencia tienen normas propias."
+      - texto: "Sí, con control vectorial"
+        porque: "El control no cambia que, si el variador falla, la carga cae."
+      - texto: "Sí, si la resistencia de frenado es grande"
+        porque: "La resistencia disipa la energía; no sostiene la carga si el variador falla."
+    escalera:
+      - "¿Qué pasa con la carga si el variador se apaga?"
+    solucion: "No: el freno mecánico sigue haciendo falta."
+
+  - id: ajuste-34-3
+    tipo: ajuste
+    titulo: "Ejercicio 34.3: a 1 000 rpm"
+    texto: "Motor de imanes de 180 V, 10 A y 1 500 rpm, con 1,2 Ω (k = 1,070 V·s/rad). Con el par nominal, baje la tensión hasta 1 000 rpm."
+    libro: [149]
+    fijar: { I_n: 10 }
+    inicio: { V_c: 180 }
+    widget:
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_c, r: R_c, l: L_c, k: k_c, j: J_c, carga: T_n3 }
+      lectura: { valor: n_c, rotulo: "Velocidad" }
+      corriente: I_n
+      mide: { ia: I_n, omega: w_c, par: T_n3, fem: E_c }
+      mandos:
+        - { valor: V_c, min: 60, max: 180, paso: 1, rotulo: "Tensión del inducido" }
+    ajuste:
+      valor: n_c
+      objetivo: 1000
+      tol: 0.01
+      rotulo: "Velocidad"
+      bajo: "Va despacio: suba la tensión."
+      alto: "Va deprisa: baje la tensión."
+      dentro: "La corriente sigue en 10 A: el par nominal no depende de la tensión."
+    exito: "124,0 V: V = k·ω + R·I = 1,070 × 104,7 + 12. La caída en R no baja con la velocidad."
+    escalera:
+      - "Con el par nominal la corriente es 10 A: la caída en R son 12 V."
+    solucion: "1,070 × 104,7 + 12 = 124,0 V."
+    comprobar:
+      - { con: { V_c: 124 }, n_c: 999.6, w_1000: 104.7, tol: 0.002 }
+      - { T_n3: 10.7, n_c: 1500, tol: 0.003 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [135, 137, 142, 143]
+    ideas:
+      - { titulo: "Potencia.", texto: "m·g·v entre el rendimiento de la reductora: 3 270 W, motor de 4 kW." }
+      - { titulo: "Pares.", texto: "21,5 N·m al subir; 17,4 al bajar, retenidos como generador." }
+      - { titulo: "Arranque.", texto: "24,8 N·m en la rampa; el freno se abre cuando el motor ya sostiene." }
+      - { titulo: "Frenado.", texto: "Como mucho 212 Ω; se dimensiona por el pico y por la media." }

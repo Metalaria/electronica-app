@@ -1,0 +1,262 @@
+# Lección 1.2 de la sección 48.6 «La Impedancia Térmica Transitoria: Pulsos de Potencia» (cap47; etiqueta interna
+# sec-47.5). Formato: contenido/lecciones11/GUIA.md. El ejemplo del libro (bloques 191–199): 200 W durante 100 µs con
+# ciclo del 1 %, Zth ≈ 0,08 °C/W en la curva de pulso único, Rjc = 1 °C/W, cadena de 3,5 °C/W, 40 °C. El tren de pulsos
+# se dibuja con un periodo de 10 ms (100 µs al 1 %).
+leccion: cap47/sec-47.5
+
+libro:
+  182: "usar la resistencia térmica sobrestima enormemente el calentamiento"
+  183: "la resistencia térmica efectiva para un pulso de duración t"
+  186: "solo se calienta el silicio"
+  187: "la curva sube por tramos"
+  188: "Zth converge a Rth"
+  189: "puede tener Zth de 0,08 °C/W para un pulso de 100 µs"
+  191: "Un MOSFET que conduce 200 W durante 100 µs, con ciclo de trabajo del 1 %."
+  192: "ΔT = 200 × 1 = 200 °C. Inadmisible."
+  193: "las curvas por ciclo de trabajo ya incluyen el calentamiento medio"
+  194: '"16 °C"'
+  195: "hay que sumar el calentamiento medio"
+  196: '"2 W"'
+  197: '"7 °C"'
+  198: '"63 °C"'
+  201: "una cadena de resistencias y capacidades térmicas"
+  202: "se calcula la temperatura ante cualquier forma de onda de potencia"
+  205: "Arranque de cargas capacitivas o de motores"
+  206: "Su supervivencia depende de que la protección actúe dentro de la ventana que Zth permite"
+  207: "su efecto térmico es el promedio, no el pico"
+  208: "se especifican por energía en julios"
+  210: "la de continua es la más restrictiva precisamente porque Zth ha llegado a Rth"
+  213: "misma energía en 1 ms, 10 ms, 100 ms y 1 s"
+  214: "con el pulso largo, la misma energía la calienta claramente"
+  215: "Impedancia térmica frente a la duración del pulso"
+
+modelo:
+  valores:
+    P_pk: { sim: "P", nombre: "potencia del pulso", unidad: W, valor: 200 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.01 }
+    Z_th: { sim: "Z_{th}", nombre: "impedancia térmica del pulso", unidad: "°C/W", valor: 0.08 }
+    R_jc: { sim: "R_{jc}", nombre: "resistencia unión-cápsula", unidad: "°C/W", valor: 1 }
+    R_tot: { sim: "R_{jc} + R_{cs} + R_{sa}", nombre: "cadena completa", unidad: "°C/W", valor: 3.5 }
+    T_a: { sim: "T_{a}", nombre: "temperatura ambiente", unidad: "°C", valor: 40 }
+    T_p: { sim: "T", nombre: "periodo de los pulsos", unidad: s, valor: 0.01 }
+  calculos:
+    dT_pk: { expr: "P_pk*Z_th", sim: "ΔT_{pico}", nombre: "salto de pico", unidad: "°C" }
+    dT_est: { expr: "P_pk*R_jc", sim: "ΔT", nombre: "salto con el modelo estacionario", unidad: "°C" }
+    P_med: { expr: "P_pk*D", sim: "P_{media}", nombre: "potencia media", unidad: W }
+    dT_med: { expr: "P_med*R_tot", sim: "ΔT_{media}", nombre: "calentamiento medio", unidad: "°C" }
+    dT_medjc: { expr: "P_med*R_jc", sim: "ΔT", nombre: "media con solo R_{jc}", unidad: "°C" }
+    T_j: { expr: "T_a + dT_med + dT_pk", sim: "T_{j}", nombre: "temperatura de pico de la unión", unidad: "°C" }
+
+tarjetas:
+  - id: explore-zth
+    tipo: explorar
+    titulo: "La curva que hay que saber leer"
+    texto: "Toque los tramos de la curva de pulso único: de los microsegundos a los segundos."
+    libro: [183, 186, 187, 188, 215]
+    widget:
+      tipo: figura
+      figura: fig-47.8
+      zonas:
+        - { id: corto, rotulo: "Abajo a la izquierda", rect: [30, 105, 70, 60], texto: "Pulsos de microsegundos: Z_{th} es una fracción pequeña de R_{th}; solo se calienta el silicio." }
+        - { id: medio, rotulo: "En medio", rect: [100, 55, 70, 65], texto: "Al crecer el pulso, el calor alcanza la cápsula, la interfaz y el disipador: la curva sube por tramos." }
+        - { id: largo, rotulo: "Arriba a la derecha", rect: [170, 25, 55, 45], texto: "Pulsos de segundos: Z_{th} converge a R_{th} y vuelve el modelo estacionario." }
+    requiere: { mover: [corto, medio, largo] }
+
+  - id: simule-pico
+    tipo: simular
+    titulo: "Prediga el salto de pico"
+    texto: "Un MOSFET con R_{th(j-c)} de 1 °C/W conduce 200 W durante 100 µs; la curva de pulso único da 0,08 °C/W. ¿Cuánto sube la unión en el pulso?"
+    libro: [189, 191, 192, 194]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.03, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 250, unidad: W, rotulo: "potencia" }
+      curvas:
+        - { expr: "P_pk*max(0, min(1, (D - (t/T_p - floor(t/T_p)))*1000000))", color: naranja, rotulo: "pulsos de 200 W" }
+      lectura: { valor: dT_pk, rotulo: "Salto de pico" }
+      ocultar: true
+    simular:
+      objetivo: dT_pk
+      unidad: "°C"
+      tol: 0.05
+      rotulo: "Salto de pico de la unión"
+      errores:
+        - { expr: "dT_est", texto: "200 °C es el modelo estacionario, con R_{th}: inadmisible, y falso. En 100 µs el calor no ha salido del silicio." }
+        - { expr: "P_med*Z_th", texto: "Ha usado la potencia media con Z_{th}. El pico usa la potencia del pulso; la media, R_{th}." }
+    exito: "16 °C: más de diez veces menos que el modelo estacionario."
+    escalera:
+      - "Para un pulso, Z_{th} hace el papel de la resistencia térmica."
+    solucion: "200 W × 0,08 °C/W = 16 °C."
+    comprobar:
+      - { dT_pk: 16, dT_est: 200 }
+
+  - id: estime-media
+    tipo: pregunta
+    titulo: "El calentamiento medio"
+    texto: "Sobre la punta se suma el calentamiento medio, con la potencia media y toda la cadena de 3,5 °C/W. ¿Cuánto es?"
+    libro: [195, 196, 197]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.03, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 250, unidad: W, rotulo: "potencia" }
+      curvas:
+        - { expr: "P_pk*max(0, min(1, (D - (t/T_p - floor(t/T_p)))*1000000))", color: naranja, rotulo: "pulsos" }
+        - { expr: "P_med", color: azul, rotulo: "potencia media", discontinua: true }
+    estimar:
+      objetivo: "dT_med"
+      unidad: "°C"
+      min: 0
+      max: 30
+      paso: 0.5
+      inicio: 20
+      tol: 0.05
+      rotulo: "Calentamiento medio"
+    exito: "200 W al 1 % son 2 W; con 3,5 °C/W, 7 °C."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 7.35 }, texto: "Se ha pasado: la potencia media es el 1 % de 200 W." }
+      - { texto: "Se ha quedado corto: la media pasa por toda la cadena, no solo por R_{jc}." }
+    escalera:
+      - "Primero la potencia media: 200 W por el ciclo de trabajo."
+    solucion: "P_{media} = 2 W; ΔT = 2 × 3,5 = 7 °C."
+    comprobar:
+      - { dT_med: 7, P_med: 2 }
+
+  - id: formula-union
+    tipo: formula
+    titulo: "Pico más media"
+    texto: "La unión llega a la ambiente más la media más el pico. Cambie el ciclo de trabajo."
+    libro: [198]
+    ec: 198
+    sustitucion: "{{T_a}} + {{dT_med}} + {{dT_pk}} = {{T_j}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.03, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 250, unidad: W, rotulo: "potencia" }
+      curvas:
+        - { expr: "P_pk*max(0, min(1, (D - (t/T_p - floor(t/T_p)))*1000000))", color: naranja, rotulo: "pulsos" }
+        - { expr: "P_med", color: azul, rotulo: "potencia media", discontinua: true }
+      lectura: { valor: T_j, rotulo: "Unión, en el pico" }
+      mandos:
+        - { valor: D, lista: [0.01, 0.05, 0.1], rotulo: "Ciclo de trabajo" }
+    comprobar:
+      - { con: { D: 0.01 }, T_j: 63 }
+
+  - id: curvas-ciclo
+    tipo: predecir
+    titulo: "Las curvas por ciclo de trabajo"
+    texto: "Si en lugar de la curva de pulso único lee la de D = 0,01, ¿qué hace con el calentamiento medio?"
+    libro: [193]
+    widget:
+      tipo: figura
+      figura: fig-47.8
+      zonas:
+        - { id: curvas, rotulo: "Las curvas", rect: [30, 15, 195, 150] }
+    opciones:
+      - texto: "No sumarlo aparte: esas curvas ya lo incluyen"
+        bien: true
+        porque: "Las curvas por ciclo de trabajo ya incluyen el calentamiento medio: sumarlo sería contarlo dos veces."
+      - texto: "Sumarlo igual, como con el pulso único"
+        porque: "Lo contaría dos veces: la curva de D = 0,01 ya lo lleva dentro."
+      - texto: "Restarlo"
+        porque: "No hay nada que restar: simplemente ya está incluido."
+    escalera:
+      - "¿Por qué las curvas de D alto quedan por encima de la de pulso único?"
+    solucion: "No se suma: las curvas por ciclo de trabajo ya incluyen el calentamiento medio."
+
+  - id: red-rc
+    tipo: pregunta
+    titulo: "Un perfil irregular"
+    texto: "El arranque de un motor no es un pulso rectangular. ¿Cómo se calcula la temperatura de la unión?"
+    libro: [201, 202]
+    widget:
+      tipo: figura
+      figura: fig-47.6
+      zonas:
+        - { id: cadena, rotulo: "La cadena", rect: [10, 40, 300, 140] }
+    opciones:
+      - texto: "Simulando la red RC térmica que publica el fabricante"
+        bien: true
+        porque: "Cada par R y C es una capa física; la red da la temperatura ante cualquier forma de onda."
+      - texto: "Con R_{th} y la potencia de pico"
+        porque: "Es el modelo estacionario: sobrestima enormemente un transitorio."
+      - texto: "No se puede calcular"
+        porque: "Se puede: para eso publican los fabricantes los valores de la red."
+    escalera:
+      - "Detrás de la curva de Z_{th} hay un circuito."
+    solucion: "Con la red RC del fabricante, simulada con la forma de onda de potencia real."
+
+  - id: donde-importa
+    tipo: pregunta
+    titulo: "Dónde importa de verdad"
+    texto: "Empareje cada caso con lo que decide."
+    libro: [205, 206, 207, 208]
+    widget:
+      tipo: figura
+      figura: fig-47.8
+      zonas:
+        - { id: barras, rotulo: "Los dos cálculos", rect: [250, 15, 190, 150] }
+    emparejar:
+      - ["Cortocircuito en una fuente", "Que la protección actúe dentro de la ventana de Z_{th}"]
+      - ["Pérdidas de conmutación", "Su efecto térmico es el promedio, no el pico"]
+      - ["Snubbers y resistencias de descarga", "Se especifican por energía en julios"]
+      - ["Arranque de un motor", "Corriente inicial de varias veces la nominal"]
+    exito: "En todos manda la duración del pulso, no solo su potencia."
+    pistas:
+      - { texto: "Un pulso muy corto y repetido calienta por su media." }
+    escalera:
+      - "El que se mide en julios es el que disipa pulsos sueltos."
+    solucion: "Cortocircuito, la ventana de Z_{th}; conmutación, la media; snubbers, julios; arranque, la corriente inicial."
+
+  - id: soa
+    tipo: porque
+    titulo: "El SOA es lo mismo"
+    texto: "En el área de operación segura, cada línea es una duración de pulso. ¿Por qué la de continua es la más restrictiva?"
+    libro: [210]
+    widget:
+      tipo: figura
+      figura: fig-47.8
+      zonas:
+        - { id: largo, rotulo: "Arriba a la derecha", rect: [170, 25, 55, 45] }
+    opciones:
+      - texto: "Porque en continua Z_{th} ha llegado a R_{th}"
+        bien: true
+        porque: "Con pulsos cortos Z_{th} es pequeña y se admiten potencias enormes; en continua, ya no."
+      - texto: "Porque en continua la tensión es mayor"
+        porque: "La tensión no cambia con la duración: lo que cambia es la impedancia térmica."
+      - texto: "Por el ruido de conmutación"
+        porque: "En continua no hay conmutación: es la física térmica de la curva."
+    escalera:
+      - "¿A qué converge Z_{th} con pulsos largos?"
+    solucion: "Porque Z_{th} ha llegado a R_{th}: es el caso térmico más duro."
+
+  - id: misma-energia
+    tipo: pregunta
+    titulo: "La misma energía"
+    texto: "Pulsos de la misma energía en 1 ms, 10 ms, 100 ms y 1 s sobre una resistencia de potencia. ¿Cuál la calienta más?"
+    libro: [213, 214]
+    widget:
+      tipo: figura
+      figura: fig-47.8
+      zonas:
+        - { id: curva, rotulo: "La curva de pulso único", rect: [30, 15, 195, 150] }
+    opciones:
+      - texto: "El de 1 s"
+        bien: true
+        porque: "Con pulsos cortos su masa absorbe la energía; con el largo, el calor la calienta claramente."
+      - texto: "El de 1 ms, el de más potencia"
+        porque: "La potencia instantánea es enorme, pero la propia masa absorbe esa energía."
+      - texto: "Todos igual: es la misma energía"
+        porque: "Calienta distinto según cuánto tiempo tiene el calor para llegar a la superficie."
+    escalera:
+      - "¿Con qué pulso tiene el calor tiempo de alcanzar la superficie?"
+    solucion: "El de 1 s: por lo mismo coexisten un fusible rápido y uno lento."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [182, 188, 192, 198, 210]
+    ideas:
+      - { titulo: "Z_{th}(t).", texto: "La resistencia térmica efectiva de un pulso: pequeña en microsegundos, R_{th} en segundos." }
+      - { titulo: "Pico más media.", texto: "200 W × 0,08 = 16 °C, más 2 W × 3,5 = 7 °C: 63 °C, no 200." }
+      - { titulo: "Red RC.", texto: "Para perfiles irregulares, la red del fabricante simulada." }
+      - { titulo: "SOA.", texto: "La línea de continua es la más dura porque Z_{th} ha llegado a R_{th}." }

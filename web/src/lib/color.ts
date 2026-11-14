@@ -23,7 +23,7 @@ export const FONDO: Record<TemaEfectivo, string> = {
 
 /** The darkest surface a chapter accent is written on in each theme (--superficie-2 in app.css; in the dark theme the
  * lightest one). 1.1: the accent must read on it too, not only on the page. */
-const PANEL: Record<TemaEfectivo, string> = { claro: 'F5F7FA', sepia: 'EFE5CF', oscuro: '262D36' };
+const PANEL: Record<TemaEfectivo, string> = { claro: 'F3F4F6', sepia: 'EFE5CF', oscuro: '262D36' };
 
 /** 1.1: the book's navy (the default outside the chapters) becomes the mock-up's blue (--v11-azul and its tint). */
 const AZUL11: Record<TemaEfectivo, { acento: string; tinte: string }> = {

@@ -400,8 +400,8 @@ caso('c12·7 · la copia lleva todos los almacenes y lápidas, y nunca el token 
   const texto = await textoCopia(tab(A), T0 + 2 * M);
   const o = JSON.parse(texto) as { formato: string; version: number; app: string; dispositivo: string; almacenes: Record<string, Record<string, { t: number; x?: 1 }>> };
   igual(o.formato, 'epa-copia-seguridad');
-  // (1.0: format 2 — lib/esquemas.ts FORMATO_DATOS)
-  igual(o.version, 2);
+  // (1.0: format 2; 1.2: format 3 — lib/esquemas.ts FORMATO_DATOS)
+  igual(o.version, 3);
   igual(Object.keys(o.almacenes).sort(), ['marcadores', 'notas', 'progreso-diario']);
   assert.ok(o.almacenes.notas!.n2 && esLapida(o.almacenes.notas!.n2 as never), 'la lápida de n2 viaja');
   for (const prohibido of ['token', 'sinc-ajustes', 'dispositivo-local', 'credencial', 'x/y']) assert.ok(!texto.includes(prohibido), prohibido);

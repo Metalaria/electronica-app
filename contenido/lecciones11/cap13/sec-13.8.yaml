@@ -1,0 +1,267 @@
+# Lección 1.2 de la sección 13.8 «Flux: Tipos, Función y Limpieza» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# El circuito es un EJEMPLO para el residuo no-clean del bloque 204 («caminos de fuga de gigaohmios» en circuitos de
+# muy alta impedancia): un divisor de 12 V con dos resistencias iguales (10 kΩ, 1 MΩ o 100 MΩ) y la fuga del residuo,
+# 1 GΩ, en paralelo con la de abajo.
+leccion: cap13/sec-13.8
+
+libro:
+  198: "Disuelve los óxidos existentes sobre el cobre y sobre el propio estaño."
+  199: "Impide que se formen nuevos."
+  200: "Reduce la tensión superficial del estaño fundido"
+  201: "el flux se agota"
+  203: "feo pero inofensivo"
+  204: "puede formar caminos de fuga de gigaohmios que sí importan"
+  205: "Si no se limpia, la placa se corroe en semanas."
+  206: "Nunca se usa en electrónica."
+  208: "insuficiente para desoldar, para retrabajos y para la técnica de arrastre"
+  210: "el más práctico para SMD"
+  213: "Con soldadura normal de componentes nuevos, el del hilo basta."
+  216: "poder inspeccionar la junta"
+  218: "alcohol isopropílico y un cepillo de cerdas duras"
+
+modelo:
+  valores:
+    V_in: { sim: "V", nombre: "tensión de alimentación", unidad: V, valor: 12 }
+    R_h: { sim: "R", nombre: "resistencia de cada rama", unidad: Ω, valor: 10000 }
+    R_f: { sim: "R_{fuga}", nombre: "fuga del residuo", unidad: Ω, valor: 1000000000 }
+    f_on: { tipo: interruptor, nombre: "residuo de flux sin limpiar", valor: 0 }
+  calculos:
+    R_ab: { si: f_on, entonces: "par(R_h, R_f)", sino: "R_h", sim: "R_{abajo}", nombre: "rama de abajo con la fuga", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_h + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_h + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    I_f: { si: f_on, entonces: "V_out/R_f", sino: "0", sim: "I_{fuga}", nombre: "corriente de fuga", unidad: A }
+    e_f: { expr: "(V_in/2 - V_out)/(V_in/2)*100", sim: "error", nombre: "error por la fuga", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-residuo
+    tipo: explorar
+    titulo: "Un residuo que conduce un poco"
+    texto: "El residuo no-clean deja una fuga de gigaohmios en paralelo con R. Póngalo y quítelo, y mire la salida."
+    nota: "Divisor de ejemplo."
+    libro: [204]
+    fijar: { R_h: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: e_f, rotulo: "Error: {{e_f}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_f }
+      mandos:
+        - { valor: f_on, tipo: interruptor, rotulo: "Residuo de flux" }
+    requiere: { mover: [f_on] }
+
+  - id: prediga-alta-impedancia
+    tipo: predecir
+    titulo: "En alta impedancia"
+    texto: "Ahora cada rama es de 100 MΩ y queda el residuo de 1 GΩ. ¿Cuánto error pone en la salida?"
+    libro: [204]
+    fijar: { R_h: 100000000, f_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: e_f, rotulo: "Error: {{e_f}}" }
+      mide: { salida: V_out, corriente: I, carga: I_f }
+      ocultar: true
+    opciones:
+      - texto: "Casi un 5 %"
+        bien: true
+        porque: "La rama de abajo baja de 100 a 90,9 MΩ: la salida cae de 6 a 5,71 V, un 4,76 %."
+      - texto: "Nada: el residuo es no-clean"
+        porque: "No-clean quiere decir que no corroe; su residuo sigue ahí y conduce un poco."
+      - texto: "La mitad de la salida"
+        porque: "La fuga es diez veces mayor que la rama: la baja, pero no a la mitad."
+    escalera:
+      - "Compare la fuga con la rama de abajo: ¿cuántas veces mayor es?"
+    solucion: "Un 4,76 %: 5,71 V en lugar de 6 V."
+    comprobar:
+      - { e_f: 4.76, V_out: 5.71, R_ab: 90909091, tol: 0.002 }
+      - { con: { f_on: 0 }, V_out: 6 }
+
+  - id: sorpresa-impedancia
+    tipo: sorpresa
+    titulo: "Solo importa en alta impedancia"
+    texto: "Con el residuo puesto, suba la resistencia de las ramas y mire el error."
+    libro: [204, 216]
+    fijar: { f_on: 1 }
+    inicio: { R_h: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: e_f, rotulo: "Error por la fuga" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_f }
+      mandos:
+        - { valor: R_h, lista: [10000, 1000000, 100000000], rotulo: "R de cada rama" }
+    requiere: { mover: [R_h] }
+
+  - id: tres-funciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las tres funciones del flux"
+    texto: "El flux es un agente reductor con tres funciones a la vez. Una cada una con su efecto."
+    libro: [198, 199, 200]
+    emparejar:
+      - ["Disuelve los óxidos", "Un metal oxidado no moja"]
+      - ["Impide que se formen nuevos", "Barrera contra el oxígeno al soldar"]
+      - ["Reduce la tensión superficial", "Cono cóncavo en lugar de bola"]
+    exito: "No es pegamento ni lubricante: hace posible el mojado."
+    pistas:
+      - { texto: "La forma de cono o de bola depende de la tensión superficial." }
+    escalera:
+      - "A temperatura de soldar, la oxidación es rapidísima."
+    solucion: "Óxidos: deja mojar; barrera: sin óxido nuevo; tensión superficial: el cono."
+
+  - id: tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cuatro tipos, cuatro consecuencias"
+    texto: "Una cada flux con lo que deja en la placa."
+    libro: [203, 204, 205, 206]
+    emparejar:
+      - ["Colofonia", "Residuo ambarino, feo pero inofensivo"]
+      - ["No-clean", "Residuo mínimo; se limpia en alta impedancia"]
+      - ["Soluble en agua", "Corrosivo: lavado completo con agua desionizada"]
+      - ["De fontanería", "Ácido: nunca en electrónica"]
+    exito: "Cuanto más agresivo el flux, más obligatoria la limpieza."
+    pistas:
+      - { texto: "El de fontanería destruye placa y componentes en poco tiempo." }
+    escalera:
+      - "¿Cuál suelda mejor sobre superficies difíciles y por eso es más agresivo?"
+    solucion: "Colofonia: inofensivo; no-clean: casi nada; agua: corrosivo; fontanería: nunca."
+
+  - id: se-agota
+    tipo: pregunta
+    titulo: "Una junta que no moja"
+    texto: "Lleva tres segundos calentando y la junta no moja. ¿Qué hace?"
+    libro: [201]
+    fijar: { R_h: 10000, f_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Retirar, limpiar y aplicar flux fresco"
+        bien: true
+        porque: "El flux se consume con los óxidos y se evapora con el calor; agotado, ya no moja."
+      - texto: "Seguir calentando hasta que moje"
+        porque: "Una junta que no moja tras dos o tres segundos no va a mojar."
+      - texto: "Subir la temperatura de la punta"
+        porque: "Más calor agota antes el flux."
+    escalera:
+      - "¿Qué le pasa al flux con el calor y el tiempo?"
+    solucion: "Retirar, limpiar y flux fresco."
+
+  - id: flux-adicional
+    tipo: pregunta
+    titulo: "¿Cuándo basta el del hilo?"
+    texto: "¿En cuál de estos casos basta el flux que trae el hilo de estaño?"
+    libro: [208, 213]
+    fijar: { R_h: 10000, f_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Soldar componentes nuevos de la forma normal"
+        bien: true
+        porque: "Ahí basta. Hace falta añadir al desoldar, retrabajar, arrastrar o sobre superficies oxidadas."
+      - texto: "Arrastrar en un integrado de paso fino"
+        porque: "El del hilo es insuficiente para la técnica de arrastre."
+      - texto: "Retrabajar una junta ya hecha"
+        porque: "Su flux ya se consumió: hay que añadir."
+    escalera:
+      - "El hilo lleva un 1 a 3 % de flux: ¿para qué trabajo alcanza?"
+    solucion: "Soldar componentes nuevos de forma normal."
+
+  - id: gel
+    tipo: pregunta
+    titulo: "Flux para SMD"
+    texto: "Va a soldar componentes SMD. ¿Qué presentación de flux es la más práctica?"
+    libro: [210]
+    fijar: { R_h: 10000, f_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "En gel, con jeringa"
+        bien: true
+        porque: "Se queda donde se pone y ayuda a sujetar el componente antes de soldar."
+      - texto: "Líquido con pincel"
+        porque: "Va bien en zonas amplias, pero se extiende y se evapora deprisa."
+      - texto: "Solo el del hilo"
+        porque: "Para SMD y arrastre se queda corto."
+    escalera:
+      - "¿Cuál se queda quieto donde se aplica?"
+    solucion: "En gel, con jeringa."
+
+  - id: por-que-limpiar
+    tipo: porque
+    titulo: "¿Por qué limpiar un no-clean?"
+    texto: "Su nombre dice que no hace falta limpiarlo. ¿Por qué merece hacerlo a veces?"
+    libro: [204, 216]
+    fijar: { R_h: 100000000, f_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: e_f, rotulo: "Error por la fuga" }
+      mide: { salida: V_out, corriente: I, carga: I_f }
+    opciones:
+      - texto: "Por la fuga en alta impedancia y para poder inspeccionar la junta"
+        bien: true
+        porque: "El residuo sigue ahí: conduce gigaohmios y tapa grietas y poros."
+      - texto: "Porque corroe la placa en semanas"
+        porque: "Ese es el soluble en agua; el no-clean no es corrosivo."
+      - texto: "Porque es conductor como un cable"
+        porque: "Conduce muy poco: solo importa donde las resistencias son enormes."
+    escalera:
+      - "Recuerde el error con ramas pequeñas y con ramas de 100 MΩ."
+    solucion: "Fugas en alta impedancia e inspección."
+
+  - id: limpieza
+    tipo: pregunta
+    titulo: "Cómo se limpia"
+    texto: "¿Con qué limpia los restos de flux de una placa con conectores?"
+    libro: [218]
+    fijar: { R_h: 10000, f_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_h, abajo: R_h, carga: R_f, interruptor: f_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Alcohol isopropílico y un cepillo duro, sin arrastrar residuo a los conectores"
+        bien: true
+        porque: "Insistiendo bajo los componentes y secando con aire o papel sin pelusa."
+      - texto: "Un aerosol limpiador cualquiera"
+        porque: "Algunos atacan los plásticos de conectores y marcados."
+      - texto: "Agua del grifo"
+        porque: "El agua solo va con el soluble en agua, y desionizada."
+    escalera:
+      - "¿Qué disolvente es seguro con prácticamente todo?"
+    solucion: "Alcohol isopropílico y cepillo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [198, 201, 204, 205]
+    ideas:
+      - { titulo: "Tres funciones.", texto: "Disuelve óxidos, impide los nuevos y baja la tensión superficial." }
+      - { titulo: "Se agota.", texto: "Si no moja en dos o tres segundos: retirar, limpiar y flux fresco." }
+      - { titulo: "Los tipos.", texto: "Colofonia y no-clean, limpieza opcional; soluble en agua, obligatoria; el ácido, nunca." }
+      - { titulo: "Alta impedancia.", texto: "Hasta el residuo no-clean cuenta: allí se limpia." }

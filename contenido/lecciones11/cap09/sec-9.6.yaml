@@ -1,0 +1,204 @@
+# Lección 1.2 de la sección 9.6 «Salidas Tri-Estado, Colector Abierto y Buses» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# El flanco de subida de la línea de drenador abierto es la carga del condensador de la línea (100 pF) a través del
+# pull-up desde 3,3 V: el esquema «carga-rc» (la tabla del bloque 86 da 2,2 · R · C del 10 al 90 %).
+leccion: cap09/sec-9.6
+
+libro:
+  68: "Conectar dos de esas salidas es un cortocircuito"
+  71: "la salida queda en alta impedancia: eléctricamente desconectada del cable"
+  72: "si dos se habilitan a la vez se produce contención de bus"
+  74: "Todo bus tri-estado necesita resistencias de terminación o de polarización"
+  77: "el nivel alto lo proporciona una resistencia de pull-up externa"
+  78: "Eso implementa una AND cableada sin ninguna puerta"
+  84: "La subida es, por tanto, mucho más lenta que la bajada"
+  86: "Flanco de subida con 100 pF"
+  87: "Un pull-up alto consume poco y sube lento; uno bajo, al revés"
+  91: "una de colector abierto se hunde, porque su pull-up no puede con ella"
+
+modelo:
+  valores:
+    V_bus: { sim: "V", nombre: "alimentación del bus", unidad: V, valor: 3.3 }
+    R_pu: { sim: "R_{pull-up}", nombre: "resistencia de pull-up", unidad: Ω, valor: 10000 }
+    C_bus: { sim: "C", nombre: "capacidad de la línea", unidad: F, valor: 100e-12 }
+  calculos:
+    tau_b: { expr: "R_pu*C_bus", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    t_sub: { expr: "2.2*R_pu*C_bus", sim: "t_{r}", nombre: "flanco de subida del 10 al 90 %", unidad: s }
+    I_baj: { expr: "V_bus/R_pu", sim: "I", nombre: "consumo con la línea en bajo", unidad: A }
+    t_90: { expr: "R_pu*C_bus*ln(10)", sim: "t_{90}", nombre: "instante del 90 %", unidad: s }
+    v_90: { expr: "0.9*V_bus", sim: "v_{90}", nombre: "el 90 % de la alimentación", unidad: V }
+
+tarjetas:
+  - id: explore-pullup
+    tipo: explorar
+    titulo: "El flanco de subida"
+    texto: "La línea se suelta en t = 0 y sube por el pull-up. Cambie la resistencia y mire el flanco y el consumo."
+    libro: [77, 84, 86]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_bus, r: R_pu, c: C_bus }
+      lectura: { valor: t_sub, rotulo: "Flanco de subida, del 10 al 90 %" }
+      datos:
+        - { valor: I_baj, rotulo: "Consumo con la línea en bajo: {{I_baj}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000006, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_bus*(1 - exp(-t/tau_b))", color: azul, rotulo: "tensión de la línea", mide: vc }
+        marcas:
+          - { x: "t_90", y: "v_90", rotulo: "90 %" }
+      mandos:
+        - { valor: R_pu, lista: [1000, 4700, 10000], rotulo: "Pull-up" }
+    requiere: { mover: [R_pu] }
+
+  - id: porque-lenta
+    tipo: porque
+    titulo: "¿Por qué sube despacio?"
+    texto: "En una salida de colector abierto la bajada es rápida y la subida, lenta. ¿Por qué?"
+    libro: [84]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_bus, r: R_pu, c: C_bus }
+      grafica:
+        x: { id: t, min: 0, max: 0.000006, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_bus*(1 - exp(-t/tau_b))", color: azul, rotulo: "tensión de la línea", mide: vc }
+      dibujo: false
+    opciones:
+      - { texto: "Baja un transistor de ohmios; sube una resistencia de kilohmios con la capacidad de la línea", bien: true, porque: "La constante de la subida es R_{pull-up} por la capacidad de la línea: mucho mayor que la de bajada." }
+      - { texto: "El transistor tarda más en cortarse que en conducir", porque: "Al subir, el transistor ya no hace nada: es el pull-up el que carga la línea." }
+      - { texto: "El nivel alto está más lejos que el bajo", porque: "Las dos excursiones son de la misma tensión; lo que cambia es la resistencia que carga la capacidad." }
+    escalera: ["¿Quién lleva la línea a 1: el transistor o la resistencia?"]
+    solucion: "La sube el pull-up: R_{pull-up} · C, mucho más lenta que la bajada por el transistor."
+
+  - id: prediga-totem
+    tipo: predecir
+    titulo: "Dos salidas en un cable"
+    texto: "Dos salidas normales, tótem-pole, se unen al mismo cable: una pone 1 y la otra 0. ¿Qué pasa?"
+    libro: [68]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, valor: 1 }, { id: B, valor: 0 }]
+      piezas:
+        - { id: s1, tipo: buf, entradas: [A], rotulo: "Salida 1" }
+        - { id: s2, tipo: buf, entradas: [B], rotulo: "Salida 2" }
+      salidas:
+        - { id: Y1, de: s1, rotulo: "Salida 1" }
+        - { id: Y2, de: s2, rotulo: "Salida 2" }
+      ocultar: true
+    opciones:
+      - { texto: "Un cortocircuito de la alimentación a masa a través de las dos", bien: true, porque: "Cada una tiene un transistor conduciendo: decenas o cientos de miliamperios que calientan y a menudo destruyen." }
+      - { texto: "Gana el 1, que es más fuerte", porque: "Ninguna gana: las dos imponen su nivel activamente y la corriente circula entre ellas." }
+      - { texto: "La línea queda a media tensión, sin más", porque: "Queda a media tensión, pero con una corriente de cortocircuito que calienta y destruye." }
+    escalera: ["Una salida tótem-pole siempre tiene un transistor conduciendo."]
+    solucion: "Un cortocircuito: la corriente va de la alimentación a masa por los dos transistores."
+
+  - id: pregunta-alta-z
+    tipo: pregunta
+    titulo: "El tercer estado"
+    texto: "Una salida tri-estado tiene su habilitación inactiva. ¿Cómo queda?"
+    libro: [71, 72]
+    widget:
+      tipo: figura
+      figura: fig-9.7
+      zonas:
+        - { id: tri, rotulo: "Columna del tri-estado", rect: [100, 205, 115, 92], texto: "Tri-estado: nivel alto activo y rápido; varios a la vez, prohibido." }
+    opciones:
+      - { texto: "En alta impedancia: desconectada del cable", bien: true, porque: "Sus dos transistores se cortan. Así n dispositivos comparten el bus si solo uno está habilitado." }
+      - { texto: "En nivel bajo", porque: "Eso sería una salida activa a 0. Deshabilitada no impone ningún nivel." }
+      - { texto: "Con el último nivel que tuvo", porque: "No guarda nada: los dos transistores se cortan y queda eléctricamente desconectada." }
+    escalera: ["Piense en los dos transistores de la salida: ¿cuál conduce?"]
+    solucion: "Ninguno conduce: alta impedancia."
+
+  - id: pregunta-flota
+    tipo: pregunta
+    titulo: "Nadie habla"
+    texto: "En un bus tri-estado, ningún dispositivo está habilitado. ¿Qué necesita el bus?"
+    libro: [74]
+    widget:
+      tipo: figura
+      figura: fig-9.7
+      zonas:
+        - { id: tri, rotulo: "Columna del tri-estado", rect: [100, 205, 115, 92], texto: "Tri-estado: necesita habilitación exclusiva." }
+    opciones:
+      - { texto: "Resistencias que lo mantengan en un nivel conocido", bien: true, porque: "Sin nadie que lo gobierne, flota: recoge ruido, oscila y puede dejar las entradas en su zona prohibida." }
+      - { texto: "Nada: se queda a 0", porque: "Una línea en alta impedancia no tiene nivel definido. Hacen falta resistencias de polarización." }
+      - { texto: "Habilitar todos los dispositivos a la vez", porque: "Eso es la contención de bus: un cortocircuito con corrientes destructivas." }
+    escalera: ["¿Qué nivel tiene un cable al que nadie conduce?"]
+    solucion: "Resistencias de terminación o de polarización."
+
+  - id: explore-and-cableada
+    tipo: explorar
+    titulo: "Una AND sin puertas"
+    texto: "Tres salidas de colector abierto en una línea con pull-up: 0 tira de ella, 1 la suelta. La puerta dibujada representa ese cable compartido."
+    libro: [78]
+    widget:
+      tipo: logica
+      entradas: [{ id: S1, valor: 1 }, { id: S2, valor: 1 }, { id: S3, valor: 1 }]
+      piezas:
+        - { id: linea, tipo: and, entradas: [S1, S2, S3], rotulo: "Línea con pull-up" }
+      salidas:
+        - { id: L, de: linea, rotulo: "Línea" }
+      tabla: true
+    requiere: { mover: [S1, S2] }
+
+  - id: reto-pullup
+    tipo: reto
+    titulo: "Elija el pull-up"
+    texto: "Busque un pull-up que suba más deprisa que el de 10 kΩ y consuma menos que el de 1 kΩ."
+    libro: [86, 87]
+    inicio: { R_pu: 10000 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_bus, r: R_pu, c: C_bus }
+      lectura: { valor: t_sub, rotulo: "Flanco de subida" }
+      datos:
+        - { valor: I_baj, rotulo: "Consumo en bajo: {{I_baj}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000006, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_bus*(1 - exp(-t/tau_b))", color: azul, rotulo: "tensión de la línea", mide: vc }
+      mandos:
+        - { valor: R_pu, lista: [1000, 4700, 10000], rotulo: "Pull-up" }
+    condiciones:
+      - { valor: t_sub, max: 0.000002, rotulo: "Flanco: {{t_sub}}" }
+      - { valor: I_baj, max: 0.003, rotulo: "Consumo: {{I_baj}}" }
+    exito: "Con 4,7 kΩ: 1,0 µs de flanco y 0,70 mA en bajo. Es el compromiso de todo bus de drenador abierto."
+    pistas:
+      - { cuando: { valor: t_sub, min: 0.000002 }, texto: "Demasiado lento: un pull-up alto consume poco pero sube despacio." }
+      - { texto: "Consume demasiado: un pull-up bajo sube deprisa a costa de corriente." }
+    escalera: ["Un pull-up alto consume poco y sube lento; uno bajo, al revés."]
+    solucion: "El intermedio, 4,7 kΩ: 1,0 µs y 0,70 mA."
+    comprobar:
+      - { con: { R_pu: 4700 }, t_sub: 0.000001034, I_baj: 0.000702, tol: 0.01 }
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Una salida en alto se hunde al conectarle 1 kΩ a masa. ¿Qué tipo de salida es?"
+    libro: [91]
+    widget:
+      tipo: figura
+      figura: fig-9.7
+      zonas:
+        - { id: dren, rotulo: "Columna del drenador abierto", rect: [215, 205, 230, 92], texto: "Drenador abierto: nivel alto por resistencia, lento." }
+    opciones:
+      - { texto: "De colector abierto: su pull-up no puede con la carga", bien: true, porque: "Su alto lo da una resistencia de kilohmios; 1 kΩ a masa forma un divisor y la hunde." }
+      - { texto: "Tri-estado habilitada", porque: "Esa mantiene el alto aunque se le cargue 1 kΩ: lo impone un transistor." }
+      - { texto: "Cualquiera: 1 kΩ hunde todas", porque: "Una salida activa sostiene 1 kΩ sin problema. La que se hunde es la del pull-up." }
+    escalera: ["¿Quién da el nivel alto en cada tipo de salida?"]
+    solucion: "La de colector abierto: el alto lo da una resistencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [71, 78, 84, 87]
+    ideas:
+      - { titulo: "Tri-estado.", texto: "Habilitada, una salida normal; si no, alta impedancia. Solo una a la vez." }
+      - { titulo: "Colector abierto.", texto: "Solo tira hacia abajo: varias en un cable hacen una AND cableada." }
+      - { titulo: "El precio.", texto: "El alto lo da un pull-up: la subida es lenta, R_{pull-up} · C." }
+      - { titulo: "El compromiso.", texto: "Un pull-up alto consume poco y sube lento; uno bajo, al revés." }

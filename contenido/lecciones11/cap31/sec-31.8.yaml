@@ -1,0 +1,248 @@
+# Lección 1.2 de la sección 30.8 «El Final del Camino» (cap31, sec-31.8). Formato: GUIA.md.
+# - La característica de un actuador con zona muerta y saturación (bloques 282 y 284): salida = min(max(u − z, 0), s)
+#   frente a la orden u, en fracción del fondo de escala. La zona muerta y la saturación de los mandos son de ejemplo.
+# Paso práctico: «ajuste» de la orden, subiéndola poco a poco hasta que el actuador empieza a moverse (el banco del
+# libro, bloque 295: así se mide la zona muerta).
+leccion: cap31/sec-31.8
+
+libro:
+  272: "ese último eslabón es el que más veces limita el conjunto"
+  274: "Su desventaja son las escobillas"
+  275: "conmutación electrónica"
+  276: "pueden perder pasos en silencio si el par no basta, y el sistema no se entera"
+  277: "motor, reductora, sensor y electrónica de control en un solo bloque"
+  279: "lentos y con mucha inercia"
+  280: "recorrido de micras con resolución nanométrica"
+  282: "si el actuador se satura, el lazo pierde el control por mucho que el error crezca"
+  283: "Un actuador más lento que la planta domina la dinámica"
+  284: "produce oscilación de ciclo límite alrededor de la consigna"
+  285: "la ganancia del lazo cambie con el punto de trabajo"
+  288: "Medida de corriente, que a menudo es la variable que de verdad se controla"
+  290: "elegir el actuador por el régimen permanente y no por el transitorio"
+  291: "Un motor que mantiene una carga con 2 A puede necesitar 8 A para acelerarla"
+  292: "El dimensionado sale del peor caso dinámico, no del estático"
+  295: "subiendo la consigna poco a poco hasta que empieza a moverse"
+  296: "Las familias de actuador, lo que hay que mirar en cualquiera y el error de dimensionado"
+
+modelo:
+  valores:
+    u_a: { sim: "u", nombre: "orden al actuador", unidad: "", valor: 0.5 }
+    z_a: { sim: "z", nombre: "zona muerta de ejemplo", unidad: "", valor: 0.15 }
+    s_a: { sim: "s", nombre: "saturación de ejemplo", unidad: "", valor: 0.7 }
+  calculos:
+    y_a: { expr: "min(max(u_a - z_a, 0), s_a)", sim: "y", nombre: "respuesta del actuador", unidad: "" }
+
+tarjetas:
+  - id: explore-actuador
+    tipo: explorar
+    titulo: "Lo que de verdad hace un actuador"
+    texto: "Respuesta frente a la orden, en fracción del fondo de escala. Cambie la zona muerta y la saturación."
+    nota: "Valores de ejemplo."
+    libro: [282, 284]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 1, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 1, unidad: "", rotulo: "respuesta" }
+      curvas:
+        - { expr: "min(max(u - z_a, 0), s_a)", color: naranja, rotulo: "actuador real" }
+        - { expr: "u", color: tinta, rotulo: "ideal", discontinua: true }
+      mandos:
+        - { valor: z_a, lista: [0, 0.15, 0.3], rotulo: "Zona muerta" }
+        - { valor: s_a, lista: [0.5, 0.7, 1], rotulo: "Saturación" }
+    requiere: { mover: [z_a, s_a] }
+
+  - id: ajuste-zona-muerta
+    tipo: ajuste
+    titulo: "Mida la zona muerta"
+    texto: "Como en el banco: suba la orden poco a poco hasta que el actuador empiece a moverse."
+    libro: [295]
+    fijar: { z_a: 0.15, s_a: 0.7 }
+    inicio: { u_a: 0 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 1, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 1, unidad: "", rotulo: "respuesta" }
+      curvas:
+        - { expr: "min(max(u - z_a, 0), s_a)", color: naranja, rotulo: "actuador" }
+      marcas:
+        - { x: "u_a", y: "y_a", rotulo: "orden actual" }
+      lectura: { valor: y_a, rotulo: "Respuesta" }
+      mandos:
+        - { valor: u_a, min: 0, max: 1, paso: 0.01, rotulo: "Orden" }
+    ajuste:
+      valor: y_a
+      min: 0.005
+      max: 0.03
+      rotulo: "Respuesta"
+      escala: { min: 0, max: 0.2 }
+      bajo: "Todavía no se mueve: está dentro de la zona muerta. Suba la orden."
+      alto: "Se ha pasado: ya responde con soltura. Baje hasta el primer movimiento."
+      dentro: "Empieza a moverse: la orden de ahora es la zona muerta."
+
+  - id: ciclo-limite
+    tipo: pregunta
+    titulo: "Corregir eternamente"
+    texto: "Un posicionador con holgura en la reductora oscila alrededor de la consigna sin llegar nunca. ¿Qué lo causa?"
+    libro: [284]
+    fijar: { z_a: 0.15, s_a: 0.7 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 1, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 1, unidad: "", rotulo: "respuesta" }
+      curvas:
+        - { expr: "min(max(u - z_a, 0), s_a)", color: naranja, rotulo: "actuador" }
+    opciones:
+      - texto: "La zona muerta: no responde a órdenes pequeñas y aparece un ciclo límite"
+        bien: true
+        porque: "Rozamiento u holgura: el sistema corrige eternamente sin llegar."
+      - texto: "La saturación"
+        porque: "La saturación aparece con órdenes grandes; cerca de la consigna las órdenes son pequeñas."
+      - texto: "Un controlador demasiado lento"
+        porque: "Un controlador lento llegaría tarde, pero llegaría; aquí el actuador no responde a lo pequeño."
+    escalera:
+      - "Cerca de la consigna, ¿son grandes o pequeñas las órdenes?"
+    solucion: "La zona muerta del actuador: un ciclo límite."
+
+  - id: predecir-saturacion
+    tipo: predecir
+    titulo: "El actuador a tope"
+    texto: "El error crece y el controlador pide más, pero el actuador ya está saturado. ¿Qué pasa con el lazo?"
+    libro: [282]
+    widget:
+      tipo: figura
+      figura: fig-31.15
+      zonas:
+        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Pierde el control: por mucho que crezca el error, no hay más acción"
+        bien: true
+        porque: "Y la integral sigue acumulando: es lo que produce el windup. Hay que preverlo."
+      - texto: "El controlador lo compensa subiendo su ganancia"
+        porque: "Pida lo que pida, el actuador no da más."
+      - texto: "Oscila más deprisa"
+        porque: "Saturado, el lazo está de hecho abierto: no corrige."
+    escalera:
+      - "¿Qué hace un actuador saturado con una orden mayor?"
+    solucion: "El lazo pierde el control mientras dure la saturación."
+
+  - id: empareje-familias
+    tipo: pregunta
+    titulo: "Las familias"
+    texto: "Empareje cada actuador con su rasgo."
+    libro: [274, 275, 276, 277, 279, 280]
+    widget:
+      tipo: figura
+      figura: fig-31.15
+      zonas:
+        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
+    emparejar:
+      - ["Motor de continua", "Escobillas que se desgastan y hacen ruido"]
+      - ["Motor sin escobillas", "Conmutación electrónica y posición del rotor"]
+      - ["Paso a paso", "Posiciona sin realimentación"]
+      - ["Servo", "Motor, reductora, sensor y control en un bloque"]
+      - ["Elemento térmico", "Lento y con mucha inercia"]
+      - ["Piezoeléctrico", "Micras con resolución nanométrica"]
+    exito: "El actuador es el eslabón que más veces limita el conjunto."
+    pistas:
+      - { texto: "El servo recibe una consigna de posición y se ocupa de todo." }
+    escalera:
+      - "El que no necesita realimentación gira en incrementos definidos."
+    solucion: "Continua, escobillas; sin escobillas, conmutación electrónica; paso a paso, sin realimentación; servo, todo en uno; térmico, lento; piezo, micras."
+
+  - id: pasos-perdidos
+    tipo: pregunta
+    titulo: "Pasos perdidos"
+    texto: "Una impresora con motores paso a paso desplaza una capa si el par no basta. ¿Por qué no se corrige sola?"
+    libro: [276]
+    widget:
+      tipo: figura
+      figura: fig-31.15
+      zonas:
+        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Posiciona sin realimentación: pierde pasos en silencio y no se entera"
+        bien: true
+        porque: "Lo que simplifica el sistema es lo que le impide enterarse."
+      - texto: "Porque el controlador satura"
+        porque: "No hay controlador que se entere: no hay medida de la posición."
+      - texto: "Porque el motor tiene zona muerta"
+        porque: "El problema es que nadie mide la posición, no la respuesta a órdenes pequeñas."
+    escalera:
+      - "¿Qué mide la posición real en un paso a paso?"
+    solucion: "No hay realimentación: los pasos perdidos no se ven."
+
+  - id: velocidad
+    tipo: pregunta
+    titulo: "Más lento que la planta"
+    texto: "El actuador responde más despacio que el proceso que gobierna. ¿Qué consecuencia tiene?"
+    libro: [283, 285]
+    widget:
+      tipo: figura
+      figura: fig-31.15
+      zonas:
+        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Domina la dinámica del lazo"
+        bien: true
+        porque: "El lazo no puede ir más deprisa que su eslabón más lento."
+      - texto: "Ninguna, el controlador la compensa"
+        porque: "Pedir más deprisa no hace más rápido al actuador."
+      - texto: "Cambia la ganancia con el punto de trabajo"
+        porque: "Eso es la falta de linealidad, otra cosa que mirar."
+    escalera:
+      - "¿Qué eslabón marca el ritmo?"
+    solucion: "Domina la dinámica."
+
+  - id: dimensionado
+    tipo: pregunta
+    titulo: "El error de dimensionado"
+    texto: "Un motor mantiene la carga con 2 A y necesita 8 A para acelerarla en el tiempo pedido. ¿Para cuánto se dimensionan el driver y la fuente?"
+    libro: [290, 291, 292, 296]
+    widget:
+      tipo: figura
+      figura: fig-31.15
+      zonas:
+        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Para 8 A: el peor caso dinámico"
+        bien: true
+        porque: "Con 2 A el lazo satura constantemente sin que se entienda por qué."
+      - texto: "Para 2 A: el régimen permanente"
+        porque: "Es el error más frecuente: no alcanza el comportamiento especificado."
+      - texto: "Para la media de los dos"
+        porque: "El transitorio pide los 8 A enteros mientras dura."
+    escalera:
+      - "¿Cuándo pide más corriente el motor?"
+    solucion: "8 A: el dimensionado sale del peor caso dinámico."
+
+  - id: porque-corriente
+    tipo: porque
+    titulo: "El driver es parte del actuador"
+    texto: "¿Por qué el driver de un motor suele medir la corriente?"
+    libro: [288]
+    widget:
+      tipo: figura
+      figura: fig-31.15
+      zonas:
+        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
+    opciones:
+      - texto: "Porque la corriente es a menudo la variable que de verdad se controla"
+        bien: true
+        porque: "En un motor de continua, el par es proporcional a la corriente."
+      - texto: "Solo para saber cuánto consume"
+        porque: "Es más que un consumo: suele ser la variable controlada."
+      - texto: "Para aislar el controlador"
+        porque: "El aislamiento es otra exigencia del driver, distinta de la medida."
+    escalera:
+      - "¿Qué magnitud es proporcional al par en un motor de continua?"
+    solucion: "Porque la corriente suele ser la variable que se controla."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [272, 282, 284, 292, 295]
+    ideas:
+      - { titulo: "El último eslabón.", texto: "El actuador limita rapidez, exactitud y potencia." }
+      - { titulo: "Qué mirar.", texto: "Saturación, velocidad, zona muerta y linealidad." }
+      - { titulo: "Dimensionar.", texto: "Por el peor caso dinámico, no por el estático." }
+      - { titulo: "En el banco.", texto: "Un escalón y una orden que sube poco a poco: velocidad, zona muerta y saturación." }

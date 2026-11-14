@@ -1,0 +1,253 @@
+# Lección 1.2 de la sección 40.8 «Alimentación por USB-C y Power Delivery» (cap39; sec-39.N = impresas 40.N).
+# - El pin CC del bloque 252 en el esquema «divisor» vivo: R_p de la fuente hacia 5 V (56, 22 o 10 kΩ) sobre la R_d
+#   de 5,1 kΩ del consumidor: 0,42, 0,94 o 1,69 V.
+# - La caída en el cable del bloque 262 (a 20 V, la cuarta parte de corriente y la dieciseisava parte de pérdidas).
+# Paso práctico: «averia» de una placa propia que «no arranca con este cargador»: falta R_d (el pin CC queda a 5 V y la
+# fuente no la detecta, bloques 254 y 277) o la fuente no presenta R_p (el pin queda a 0 V).
+leccion: cap39/sec-39.8
+
+libro:
+  243: "la tensión no está fijada por el conector, se acuerda"
+  245: "USB clásico: 5 V, con 100 mA garantizados al conectar"
+  246: "con la corriente disponible anunciada mediante resistencias en el pin CC"
+  247: "un protocolo completo sobre ese mismo pin, que negocia tensión y corriente"
+  248: "Un dispositivo que espere más sin negociarlo se queda con 5 V."
+  251: "La fuente presenta una resistencia hacia su alimentación"
+  252: "que sobre los 5,1 kΩ del consumidor dejan en el pin CC unos 0,42, 0,94 o 1,69 V"
+  253: "Comparar cuál de los dos responde indica la orientación"
+  254: "si faltan esas resistencias, el dispositivo no se alimenta"
+  256: "Una sola no basta, porque entonces solo funcionaría en una de las dos orientaciones."
+  260: "Un cable puede limitar a 3 A aunque la fuente y el consumidor acuerden 5 A."
+  262: "a 20 V, la misma potencia circula con la cuarta parte de corriente y las pérdidas caen a la dieciseisava parte"
+  266: "Proteger la entrada para la tensión máxima que el conector puede llegar a presentar"
+  269: "las dos resistencias y nada más"
+  277: "el cargador no entrega absolutamente nada"
+  278: "La negociación de tensión y las tres funciones del pin CC"
+
+modelo:
+  valores:
+    V_cc: { sim: "5 V", nombre: "alimentación de la fuente", unidad: V, valor: 5 }
+    R_p: { sim: "R_{p}", nombre: "resistencia de la fuente", unidad: Ω, valor: 56000 }
+    R_d: { sim: "R_{d}", nombre: "resistencia del consumidor", unidad: Ω, valor: 5100 }
+  calculos:
+    V_pin: { expr: "V_cc*R_d/(R_p + R_d)", sim: "V_{CC}", nombre: "tensión del pin CC", unidad: V }
+    I_cc: { expr: "V_cc/(R_p + R_d)", sim: "I", nombre: "corriente del pin CC", unidad: A }
+
+tarjetas:
+  - id: explore-cc
+    tipo: explorar
+    titulo: "El pin CC"
+    texto: "La fuente pone R_{p} hacia 5 V; el consumidor, R_{d} a masa. Cambie lo que anuncia la fuente y mire el pin."
+    libro: [251, 252, 278]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_cc, arriba: R_p, abajo: R_d }
+      lectura: { valor: V_pin, rotulo: "Tensión en el pin CC" }
+      corriente: I_cc
+      mide: { salida: V_pin, corriente: I_cc }
+      mandos:
+        - { valor: R_p, lista: [56000, 22000, 10000], nombres: ["por defecto", "1,5 A", "3 A"], rotulo: "Lo que ofrece la fuente" }
+    requiere: { mover: [R_p] }
+    comprobar:
+      - { con: { R_p: 56000 }, V_pin: 0.42, tol: 0.01 }
+      - { con: { R_p: 10000 }, V_pin: 1.69, tol: 0.01 }
+
+  - id: prediga-15
+    tipo: predecir
+    titulo: "Lo que lee el consumidor"
+    texto: "La fuente ofrece 1,5 A con R_{p} de 22 kΩ hacia 5 V. ¿Qué tensión ve el consumidor en su R_{d} de 5,1 kΩ?"
+    libro: [252]
+    fijar: { R_p: 22000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_cc, arriba: R_p, abajo: R_d }
+      lectura: { valor: V_pin, rotulo: "Tensión en el pin CC" }
+      mide: { salida: V_pin }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Unos 0,94 V"
+        bien: true
+        porque: "5 × 5,1/(22 + 5,1): información analógica, sin protocolo, que entiende cualquier consumidor."
+      - texto: "Unos 0,42 V"
+        porque: "Esa es la de 56 kΩ, la corriente por defecto."
+      - texto: "Unos 1,69 V"
+        porque: "Esa es la de 10 kΩ, la de 3 A."
+    escalera:
+      - "Es un divisor: R_{d}/(R_{p} + R_{d}) de los 5 V."
+    solucion: "5 V × 5,1/(22 + 5,1) ≈ 0,94 V: la fuente ofrece 1,5 A."
+    comprobar:
+      - { V_pin: 0.94, tol: 0.01 }
+
+  - id: dos-resistencias
+    tipo: porque
+    titulo: "Una en cada pin"
+    texto: "Un consumidor de 5 V lleva una R_{d} de 5,1 kΩ en cada uno de sus dos pines CC. ¿Por qué no basta una?"
+    libro: [253, 256, 269]
+    widget:
+      tipo: figura
+      figura: fig-39.16
+      zonas:
+        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
+    opciones:
+      - texto: "Con una sola, solo funcionaría en una orientación del conector"
+        bien: true
+        porque: "Según cómo entra el cable, queda conectado un pin CC u otro."
+      - texto: "Porque una sola no aguanta la corriente"
+        porque: "Por el pin CC apenas circula corriente: es un divisor de detección."
+      - texto: "Para pedir más corriente"
+        porque: "La corriente la anuncia la R_{p} de la fuente, no el número de R_{d}."
+    escalera:
+      - "El conector USB-C es reversible: ¿qué cambia al darle la vuelta?"
+    solucion: "Hay dos pines CC y solo uno queda conectado: con una R_{d}, una orientación no funciona."
+
+  - id: averia-placa
+    tipo: averia
+    titulo: "No arranca con este cargador"
+    texto: "Una placa propia de 5 V no se alimenta con un cargador USB-C. Mida el pin CC y encuentre la causa."
+    libro: [254, 277]
+    fijar: { R_p: 56000, R_d: 5100 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_cc, arriba: R_p, abajo: R_d }
+      mide: { salida: V_pin, corriente: I_cc }
+      mandos: []
+    averia:
+      pasos: 2
+      eleccion: fija
+      preguntar_tipo: false
+      sospechosos:
+        - { id: arriba, rotulo: "R_{p}, en la fuente" }
+        - { id: abajo, rotulo: "R_{d}, en la placa" }
+      sondas:
+        - { id: pin, rotulo: "Pin CC", valor: V_pin }
+        - { id: corriente, rotulo: "Corriente del pin", valor: I_cc }
+      fallos:
+        - { id: sin-rd, pieza: abajo, tipo: abierta, con: { R_d: 1e9 }, texto: "Falta R_{d}: el pin CC se queda en 5 V, la fuente no ve a nadie y no entrega nada." }
+        - { id: sin-rp, pieza: arriba, tipo: abierta, con: { R_p: 1e9 }, texto: "La fuente no presenta R_{p}: el pin queda a 0 V y el consumidor no ve fuente." }
+    exito: "El fallo más común en montajes propios: sin R_{d} no es que llegue poca corriente, es que no llega nada."
+    escalera:
+      - "Sana, el pin marca unos 0,42 V. ¿Hacia dónde se va si falta la de abajo? ¿Y la de arriba?"
+    solucion: "Pin CC en 5 V: falta R_{d} en la placa."
+
+  - id: empareje-niveles
+    tipo: pregunta
+    titulo: "Tres niveles"
+    texto: "Empareje cada nivel con cómo decide la alimentación."
+    libro: [245, 246, 247]
+    widget:
+      tipo: figura
+      figura: fig-39.16
+      zonas:
+        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
+    emparejar:
+      - ["USB clásico", "5 V; 100 mA al conectar, hasta 500 mA pidiéndolos"]
+      - ["USB-C sin Power Delivery", "5 V; la corriente, por resistencias en el pin CC"]
+      - ["Power Delivery", "Un protocolo que negocia tensión y corriente"]
+    exito: "Con USB-C la tensión no la fija el conector: se acuerda."
+    pistas:
+      - { texto: "Solo uno usa un protocolo digital." }
+    escalera:
+      - "Uno pide en la enumeración; otro lee una resistencia; otro conversa."
+    solucion: "Clásico, enumeración; USB-C, resistencias en CC; PD, protocolo que negocia."
+
+  - id: espera-20
+    tipo: pregunta
+    titulo: "Esperaba 20 V"
+    texto: "Un dispositivo que necesita 20 V se conecta a un cargador USB-C de 20 V sin negociar nada. ¿Qué recibe?"
+    libro: [248]
+    widget:
+      tipo: figura
+      figura: fig-39.16
+      zonas:
+        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
+    opciones:
+      - texto: "5 V: el cargador arranca así y solo sube si se lo piden"
+        bien: true
+        porque: "Un cargador USB-C no entrega 20 V por defecto."
+      - texto: "20 V, la tensión del cargador"
+        porque: "Solo sube si alguien se lo pide correctamente."
+      - texto: "Nada, si tiene sus resistencias en CC"
+        porque: "Con las resistencias sí recibe algo: 5 V. Lo que no hay es negociación para más."
+    escalera:
+      - "¿A qué tensión arranca siempre un cargador USB-C?"
+    solucion: "5 V: sin negociar, no sube."
+
+  - id: cable-20v
+    tipo: pregunta
+    titulo: "La caída en el cable"
+    texto: "La misma potencia pasa de 5 V a 20 V por el mismo cable. ¿Qué les pasa a las pérdidas en el cable?"
+    libro: [262]
+    widget:
+      tipo: figura
+      figura: fig-39.16
+      zonas:
+        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
+    opciones:
+      - texto: "Caen a la dieciseisava parte"
+        bien: true
+        porque: "La corriente es la cuarta parte, y las pérdidas van con su cuadrado."
+      - texto: "Caen a la cuarta parte"
+        porque: "Esa es la corriente; las pérdidas, I²·R, bajan con el cuadrado."
+      - texto: "No cambian: la potencia es la misma"
+        porque: "La potencia entregada sí, pero la corriente baja, y con ella las pérdidas."
+    escalera:
+      - "Pérdidas en el cable: I²·R. ¿Qué le pasa a I?"
+    solucion: "Cuarta parte de corriente: dieciseisava parte de pérdidas."
+
+  - id: cable-chip
+    tipo: pregunta
+    titulo: "Un cable sin chip"
+    texto: "Fuente y consumidor acuerdan 5 A, pero el cable no lleva chip identificador. ¿Qué corriente circula?"
+    libro: [260]
+    widget:
+      tipo: figura
+      figura: fig-39.16
+      zonas:
+        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
+    opciones:
+      - texto: "Como mucho 3 A: el límite conservador"
+        bien: true
+        porque: "Los cables de más corriente declaran sus capacidades con un chip; sin él, 3 A."
+      - texto: "5 A: lo que se ha acordado"
+        porque: "El cable también cuenta: sin chip, el sistema se queda en 3 A."
+      - texto: "Nada: no conecta"
+        porque: "Conecta, pero limitado al valor conservador."
+    escalera:
+      - "¿Cómo sabe el sistema que el cable aguanta más?"
+    solucion: "Como mucho 3 A."
+
+  - id: proteger
+    tipo: pregunta
+    titulo: "Proteger la entrada"
+    texto: "Una placa propia negocia solo 5 V. ¿Para qué tensión hay que proteger su entrada?"
+    libro: [266]
+    widget:
+      tipo: figura
+      figura: fig-39.16
+      zonas:
+        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
+    opciones:
+      - texto: "Para la máxima que el conector puede llegar a presentar"
+        bien: true
+        porque: "Un cable o adaptador mal hecho puede aplicar una tensión que el equipo no espera."
+      - texto: "Para 5 V, que es lo que negocia"
+        porque: "Ha habido accesorios que presentaban tensiones altas a equipos de 5 V."
+      - texto: "No hace falta: el protocolo lo impide"
+        porque: "El protocolo no protege de un accesorio mal cableado."
+    escalera:
+      - "¿Qué puede hacer un adaptador mal fabricado?"
+    solucion: "Para la máxima que el conector puede presentar, no para la negociada."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [243, 252, 254, 262]
+    ideas:
+      - { titulo: "Se acuerda.", texto: "La tensión no la fija el conector: arranca en 5 V y se negocia." }
+      - { titulo: "El pin CC.", texto: "R_{p} y R_{d} forman un divisor: detectan, anuncian la corriente y la orientación." }
+      - { titulo: "Dos R_{d}.", texto: "Sin ellas el cargador no entrega nada." }
+      - { titulo: "Tensión alta.", texto: "A 20 V, la cuarta parte de corriente y la dieciseisava de pérdidas." }

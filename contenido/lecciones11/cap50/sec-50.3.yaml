@@ -1,0 +1,274 @@
+# Lección 1.2 de la sección 51.3 «Arquitectura» (cap50; etiquetas sec-50.N = impresas 51.N).
+# - El ejemplo de los bloques 78–81 (30 V de entrada, 3 V y 3 A de salida: 81 W en el lineal solo; con un
+#   prerregulador que deja 3 V, 9 W) en el esquema «regulador-lineal» vivo: la entrada del lineal es 30 V o, con el
+#   prerregulador, la salida más 3 V. Salida sin divisor (la referencia hace de consigna) y carga de 1 Ω (3 A).
+# - Los bloques y los dos lazos unidos por diodos de la figura 51.4 (fig-48.3), con zonas.
+# Paso práctico: «tocar» el bloque que sigue a la salida.
+leccion: cap50/sec-50.3
+
+libro:
+  71: "Prerregulador conmutado, que sigue a la salida manteniendo una diferencia pequeña sobre ella."
+  73: "con el que esté más limitado tomando el control"
+  78: "Un lineal solo, con 30 V de entrada dando 3 V a 3 A, disipa:"
+  79: '"81 W"'
+  81: '"9 W"'
+  82: "todo el ruido del conmutado queda filtrado por el lineal, que tiene un PSRR excelente"
+  85: "unos 3,5 V con el TIP142 de este diseño"
+  87: "Suficiente margen para que el lineal nunca entre en dropout"
+  88: "Lazo más lento que el del lineal, o ambos interactúan y oscilan."
+  89: "por eso su comportamiento con la salida baja es el que hay que verificar"
+  92: "el que pida menos tensión de control gobierna"
+  94: "Una fuente en modo corriente con la tensión hundida parece averiada"
+  97: "Una fuente sin descarga activa baja de 20 a 5 V en varios segundos"
+  100: "que es su impedancia de salida"
+  101: "donde debe verse si el lineal está filtrando bien el conmutado"
+  102: "La respuesta a un escalón de carga, que revela el margen de fase del lazo"
+  105: "Fuente de banco con prerregulador conmutado, regulador lineal y dos lazos de control"
+
+modelo:
+  valores:
+    V_raw: { sim: "V_{in}", nombre: "entrada sin prerregulador", unidad: V, valor: 30 }
+    V_s: { sim: "V_{out}", nombre: "salida ajustada", unidad: V, valor: 3 }
+    V_hr: { sim: "ΔV", nombre: "caída que deja el prerregulador", unidad: V, valor: 3 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1 }
+    pre: { tipo: interruptor, nombre: "prerregulador", valor: 0 }
+  calculos:
+    V_in: { si: pre, entonces: "V_s + V_hr", sino: "V_raw", sim: "V_{in}", nombre: "entrada del lineal", unidad: V }
+    I_o: { expr: "V_s/R_L", sim: "I", nombre: "corriente de salida", unidad: A }
+    P_q: { expr: "(V_in - V_s)*I_o", sim: "P", nombre: "potencia en el lineal", unidad: W }
+    r_p: { expr: "(V_raw - V_s)/V_hr", sim: "×", nombre: "veces menos con prerregulador", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-pre
+    tipo: explorar
+    titulo: "Lineal solo o con prerregulador"
+    texto: "30 V de entrada, 3 V y 3 A de salida. Active el prerregulador, que deja solo 3 V sobre el lineal, y mire el calor."
+    libro: [71, 78]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el lineal" }
+      datos:
+        - { valor: V_in, rotulo: "Entrada del lineal: {{V_in}}" }
+      corriente: I_o
+      mide: { vout: V_s, iin: I_o, p_paso: P_q }
+      mandos:
+        - { valor: pre, tipo: interruptor, rotulo: "Prerregulador" }
+    requiere: { mover: [pre] }
+    comprobar:
+      - { con: { pre: 0 }, P_q: 81, I_o: 3 }
+      - { con: { pre: 1 }, P_q: 9, V_in: 6 }
+
+  - id: formula-lineal
+    tipo: formula
+    titulo: "El lineal solo"
+    texto: "Disipa lo que sobra por la corriente: un disipador enorme y un ventilador."
+    libro: [78, 79]
+    fijar: { pre: 0 }
+    ec: 79
+    sustitucion: "({{V_in}} − {{V_s}}) × {{I_o}} = {{P_q}}"
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el lineal" }
+      corriente: I_o
+      mide: { vout: V_s, p_paso: P_q }
+      mandos: []
+    comprobar:
+      - { P_q: 81 }
+
+  - id: prediga-9w
+    tipo: predecir
+    titulo: "Con prerregulador"
+    texto: "El prerregulador mantiene 3 V sobre el lineal. ¿Cuánto disipa ahora el lineal con 3 A?"
+    libro: [81]
+    fijar: { pre: 1 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el lineal" }
+      corriente: I_o
+      mide: { vout: V_s, p_paso: P_q }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "9 W: nueve veces menos"
+        bien: true
+        porque: "3 V × 3 A: la caída sobre el lineal ya no depende de la entrada."
+      - texto: "81 W, igual"
+        porque: "La entrada del lineal ya no es 30 V: el prerregulador la baja a la salida más 3 V."
+      - texto: "Nada: el prerregulador no disipa"
+        porque: "El lineal sigue teniendo 3 V encima con 3 A."
+    escalera:
+      - "Ahora sobran solo 3 V sobre el lineal."
+    solucion: "3 V × 3 A = 9 W, nueve veces menos."
+    comprobar:
+      - { P_q: 9, r_p: 9 }
+
+  - id: por-que-ruido
+    tipo: porque
+    titulo: "¿Y el ruido del conmutado?"
+    texto: "El prerregulador conmuta y hace ruido. ¿Por qué no llega a la salida?"
+    libro: [82]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: lineal, rotulo: "Tercer bloque de arriba", rect: [188, 26, 84, 48] }
+    opciones:
+      - texto: "El lineal lo filtra: tiene un PSRR excelente"
+        bien: true
+        porque: "Es lo mejor de ambos: rendimiento del conmutado y ruido bajo del lineal."
+      - texto: "Porque el prerregulador no hace ruido"
+        porque: "Sí lo hace; el lineal que va detrás lo rechaza."
+      - texto: "Porque el transformador lo bloquea"
+        porque: "El transformador está antes; quien lo filtra es el lineal."
+    escalera:
+      - "¿Qué bloque va entre el conmutado y la salida?"
+    solucion: "El lineal lo rechaza con su PSRR."
+
+  - id: toque-sigue
+    tipo: tocar
+    titulo: "El que sigue a la salida"
+    texto: "Toque el bloque que ajusta su salida para dejar unos 3 V sobre el elemento lineal."
+    libro: [71, 105]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: entrada, rotulo: "Primer bloque de arriba", rect: [5, 26, 74, 48] }
+        - { id: pre, rotulo: "Segundo bloque de arriba", rect: [95, 26, 76, 48] }
+        - { id: lineal, rotulo: "Tercer bloque de arriba", rect: [188, 26, 84, 48] }
+        - { id: tension, rotulo: "Bloque azul de abajo", rect: [222, 179, 96, 37] }
+    tocar:
+      bien: [pre]
+      porque:
+        entrada: "Transforma, rectifica y filtra: no sigue a la salida."
+        lineal: "Es el que recibe esos 3 V encima; quien los fija es el anterior."
+        tension: "Es el lazo de tensión del lineal, no el seguimiento."
+    exito: "El prerregulador: su lazo mide la caída sobre el lineal y la mantiene en unos 3 a 4 V."
+    escalera:
+      - "Busque la flecha discontinua que vuelve atrás."
+    solucion: "El prerregulador conmutado."
+
+  - id: dos-lazos
+    tipo: pregunta
+    titulo: "Dos lazos anidados"
+    texto: "El prerregulador tiene su lazo y el lineal el suyo. ¿Cómo deben ser sus velocidades?"
+    libro: [87, 88]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: pre, rotulo: "Segundo bloque de arriba", rect: [95, 26, 76, 48] }
+    opciones:
+      - texto: "El del prerregulador, más lento que el del lineal"
+        bien: true
+        porque: "Si no, interactúan y oscilan: el lazo interno debe ser mucho más rápido."
+      - texto: "Iguales, para que vayan sincronizados"
+        porque: "Con velocidades parecidas interactúan y oscilan."
+      - texto: "El del prerregulador, más rápido"
+        porque: "Al revés: el rápido debe ser el del lineal."
+    escalera:
+      - "¿Cuál de los dos es el lazo interno, el que da la salida final?"
+    solucion: "El del prerregulador, más lento."
+
+  - id: salida-baja
+    tipo: pregunta
+    titulo: "Con la salida baja"
+    texto: "Con 1 V y 3 A, el prerregulador no consigue bajar lo suficiente. ¿Qué pasa?"
+    libro: [85, 89]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: pre, rotulo: "Segundo bloque de arriba", rect: [95, 26, 76, 48] }
+    opciones:
+      - texto: "El lineal recibe casi toda la entrada y vuelve a disipar como si estuviera solo"
+        bien: true
+        porque: "Por eso hay que verificar el seguimiento en el extremo bajo."
+      - texto: "Nada: el lineal sigue con sus 3,5 V encima"
+        porque: "Solo si el prerregulador baja lo bastante; si no, la caída crece."
+      - texto: "La salida no puede bajar de 3,5 V"
+        porque: "La salida la fija el lineal; lo que crece es su calor."
+    escalera:
+      - "¿Qué tensión queda sobre el lineal si su entrada no baja?"
+    solucion: "Casi toda la entrada cae en el lineal: la disipación vuelve a la del lineal solo."
+
+  - id: transicion
+    tipo: pregunta
+    titulo: "Tensión o corriente"
+    texto: "Los amplificadores de error de tensión y de corriente se unen por diodos. ¿Cuál gobierna?"
+    libro: [73, 92, 94]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: diodos, rotulo: "Los dos diodos, a la izquierda", rect: [195, 95, 35, 115] }
+    opciones:
+      - texto: "El que pida menos tensión de control"
+        bien: true
+        porque: "Un OR analógico: manda el lazo más limitado. Y conviene un indicador del modo activo."
+      - texto: "Siempre el de tensión"
+        porque: "Cuando la corriente llega al límite, manda el de corriente."
+      - texto: "El que pida más"
+        porque: "Al revés: con los diodos, el que pide menos se impone."
+    escalera:
+      - "Por los diodos, el amplificador que baja más la tensión de control se lleva el nodo."
+    solucion: "El que pida menos: el lazo más limitado."
+
+  - id: empareje-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Empareje cada medida de la fuente con lo que revela."
+    libro: [100, 101, 102]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: todo, rotulo: "La figura", rect: [0, 0, 448, 268] }
+    emparejar:
+      - ["Regulación de carga", "La impedancia de salida"]
+      - ["Rizado y ruido en AC", "Si el lineal filtra bien el conmutado"]
+      - ["Escalón de carga", "El margen de fase del lazo"]
+    exito: "Y la transición entre modos, la que más se olvida: cargar hasta pasar a corriente constante."
+    pistas:
+      - { texto: "Lo que cae de vacío a plena carga es una resistencia vista desde fuera." }
+    escalera:
+      - "Una es estática, otra mira el ruido, otra mira el lazo en movimiento."
+    solucion: "Carga, impedancia; rizado, el filtrado; escalón, el margen de fase."
+
+  - id: descarga
+    tipo: pregunta
+    titulo: "Bajar la consigna"
+    texto: "Se baja la consigna de 20 a 5 V sin carga conectada. ¿Qué hace una fuente sin descarga activa?"
+    libro: [97]
+    widget:
+      tipo: figura
+      figura: fig-48.3
+      zonas:
+        - { id: salida, rotulo: "La salida, a la derecha", rect: [380, 30, 65, 45] }
+    opciones:
+      - texto: "Tarda varios segundos en bajar"
+        bien: true
+        porque: "El condensador de salida no tiene por dónde descargarse: incómodo y peligroso si se supone que ya está en 5 V."
+      - texto: "Baja al instante"
+        porque: "Sin carga, el condensador de salida mantiene la tensión: tarda segundos."
+      - texto: "Se queda en 20 V hasta apagarla"
+        porque: "Baja, pero despacio: varios segundos."
+    escalera:
+      - "Sin carga, ¿por dónde se descarga el condensador de salida?"
+    solucion: "Tarda varios segundos: un pequeño circuito de descarga lo resuelve."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [78, 81, 88, 92]
+    ideas:
+      - { titulo: "Prerregulador más lineal.", texto: "De 81 W a 9 W, con el ruido filtrado por el lineal." }
+      - { titulo: "Seguimiento.", texto: "Unos 3 a 4 V sobre el lineal, también con la salida baja." }
+      - { titulo: "Lazos anidados.", texto: "El del prerregulador, más lento que el del lineal." }
+      - { titulo: "OR de diodos.", texto: "Manda el lazo que pide menos, con indicador de modo." }

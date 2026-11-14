@@ -1,0 +1,209 @@
+# Lección 1.2 de la sección 16.9 «millis() frente a delay(): Programar sin Bloquear» (cap17; sec-17.N = impresas 16.N).
+# - La figura 16.14 (fig-17.14): delay() bloquea y pierde la pulsación; millis() atiende varias tareas a la vez.
+# - El desbordamiento de millis(): 2³² ms = 49,7 días, como estimación.
+# - Sin paso práctico aparte: la sección es de estructura del programa (la medida del bucle ya está en la 16.3).
+leccion: cap17/sec-17.9
+
+libro:
+  232: "Durante ese segundo el microcontrolador no hace absolutamente nada más"
+  233: "el pulsador se pulsó durante el delay() y nadie lo miró"
+  235: "se anota cuándo ocurrió la última vez y se comprueba si ya toca"
+  236: "ultimaVez = millis();"
+  237: "se obtiene concurrencia cooperativa sin sistema operativo"
+  239: "se desborda a los 49,7 días y vuelve a cero"
+  240: "porque el desbordamiento de la resta compensa el del contador"
+  241: "if (millis() >= ultimaVez + intervalo)    // FRÁGIL"
+  242: "la tarea se dispara en ráfaga, en cada pasada del bucle"
+  244: "una variable que guarda en qué paso se está"
+  249: "Es razonable en tres casos"
+  255: "Programación bloqueante con delay() frente a comprobación de tiempo con millis()"
+
+modelo:
+  valores:
+    n_bit: { sim: "n", nombre: "bits del contador", unidad: "", valor: 32 }
+  calculos:
+    dias: { expr: "2^n_bit/1000/86400", sim: "T_{vuelta}", nombre: "tiempo hasta el desbordamiento", unidad: "días", cifras: 3 }
+    ms_d: { expr: "1000*86400", sim: "ms", nombre: "milisegundos de un día", unidad: "" }
+
+tarjetas:
+  - id: explore-bloqueo
+    tipo: explorar
+    titulo: "Bloquear o comprobar"
+    texto: "Arriba, un parpadeo con delay(1000); abajo, tres tareas con millis(). Toque las dos pulsaciones."
+    libro: [232, 237, 255]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: delay, rotulo: "Fila de arriba, programa", rect: [48, 18, 360, 36], texto: "Con delay(1000) el programa pasa casi todo el tiempo bloqueado: no lee, no atiende, no actualiza." }
+        - { id: perdida, rotulo: "Pulsación de arriba", rect: [170, 55, 60, 38], texto: "La pulsación llega durante el delay() y nadie la mira: se pierde." }
+        - { id: tareas, rotulo: "Filas del LED y del sensor", rect: [48, 132, 360, 55], texto: "Cada tarea, con su variable de tiempo y su intervalo: LED cada 500 ms, sensor cada 2 s." }
+        - { id: atendida, rotulo: "Pulsación de abajo", rect: [170, 190, 60, 36], texto: "El bucle da miles de vueltas por segundo: la pulsación se atiende al instante." }
+    requiere: { mover: [perdida, atendida] }
+
+  - id: predecir-pulsador
+    tipo: predecir
+    titulo: "Un pulsador y un delay()"
+    texto: "Un LED parpadea con delay(1000) y alguien pulsa un instante a mitad de la espera. ¿Qué ve el programa?"
+    libro: [232, 233]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: arriba, rotulo: "Mitad de arriba", rect: [0, 0, 410, 105] }
+    opciones:
+      - texto: "Nada: la pulsación se pierde"
+        bien: true
+        porque: "Durante ese segundo no hace absolutamente nada más: nadie mira el pulsador."
+      - texto: "La atiende al acabar el delay()"
+        porque: "Al acabar, el pulsador ya está suelto: no queda rastro de la pulsación."
+      - texto: "La atiende al instante"
+        porque: "Eso ocurre con millis(); con delay() el programa está detenido."
+    escalera:
+      - "¿Qué hace el micro durante delay(1000)?"
+    solucion: "Nada: la pulsación se pierde."
+
+  - id: ordene-millis
+    tipo: pregunta
+    titulo: "Comprobar el reloj"
+    texto: "Ordene las líneas de la tarea periódica sin bloquear."
+    libro: [235, 236]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: abajo, rotulo: "Mitad de abajo", rect: [0, 110, 410, 140] }
+    ordenar:
+      - "if (millis() - ultimaVez >= intervalo) {"
+      - "ultimaVez = millis();"
+      - "// aquí va la tarea periódica"
+      - "}"
+    exito: "Se anota cuándo ocurrió y se comprueba si ya toca: el bucle no se detiene."
+    pistas:
+      - { texto: "La comprobación va primero y abre el bloque." }
+    escalera:
+      - "Dentro, primero se anota el instante y después se hace la tarea."
+    solucion: "La comprobación, anotar el instante, la tarea y cerrar."
+
+  - id: estime-desborde
+    tipo: pregunta
+    titulo: "El contador da la vuelta"
+    texto: "millis() devuelve un entero de 32 bits sin signo, en milisegundos. ¿Al cabo de cuántos días vuelve a cero?"
+    libro: [239]
+    estimar:
+      objetivo: "dias"
+      unidad: "días"
+      min: 0
+      max: 100
+      paso: 0.1
+      inicio: 80
+      tol: 0.03
+      rotulo: "Días hasta el desbordamiento"
+    exito: "49,7 días: casi dos meses, justo cuando nadie lo espera."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 51.2 }, texto: "Demasiado: 2³² ms entre los milisegundos de un día." }
+      - { texto: "Se ha quedado corto: 2³² ms entre los milisegundos de un día." }
+    escalera:
+      - "2³² ms son algo más de cuatro mil millones de milisegundos."
+      - "Un día tiene 86 400 000 ms."
+    solucion: "2³² ms / 86 400 000 ms = 49,7 días."
+    comprobar:
+      - { dias: 49.71, ms_d: 86400000 }
+
+  - id: predecir-fragil
+    tipo: predecir
+    titulo: "La forma ingenua"
+    texto: "Escribe if (millis() >= ultimaVez + intervalo). ¿Qué hace al acercarse el desbordamiento?"
+    libro: [241, 242]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: abajo, rotulo: "Mitad de abajo", rect: [0, 110, 410, 140] }
+    opciones:
+      - texto: "Dispara la tarea en ráfaga en cada pasada"
+        bien: true
+        porque: "La suma da la vuelta antes que el contador: la condición se cumple de inmediato hasta que millis() también da la vuelta."
+      - texto: "Nada raro: funciona igual"
+        porque: "Funciona hasta el desbordamiento; ahí falla."
+      - texto: "Se reinicia el microcontrolador"
+        porque: "No hay reinicio: la comparación da un resultado equivocado."
+    escalera:
+      - "¿Qué pasa con ultimaVez + intervalo cerca del final de la cuenta?"
+    solucion: "La suma da la vuelta primero y la tarea se dispara en cada pasada."
+
+  - id: porque-resta
+    tipo: porque
+    titulo: "Por qué la resta no falla"
+    texto: "Con millis() - ultimaVez >= intervalo la tarea sigue bien tras el desbordamiento. ¿Por qué?"
+    libro: [240]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: abajo, rotulo: "Mitad de abajo", rect: [0, 110, 410, 140] }
+    opciones:
+      - texto: "El desbordamiento de la resta compensa el del contador"
+        bien: true
+        porque: "Con aritmética sin signo, la diferencia sale correcta incluso a través del desbordamiento."
+      - texto: "Porque millis() nunca se desborda"
+        porque: "Sí se desborda, a los 49,7 días; la resta es inmune a eso."
+      - texto: "Porque la resta es más rápida"
+        porque: "La velocidad no tiene nada que ver: es la aritmética sin signo."
+    escalera:
+      - "Los dos números dan la vuelta con la misma aritmética."
+    solucion: "La resta sin signo compensa el desbordamiento del contador."
+
+  - id: pregunta-estados
+    tipo: pregunta
+    titulo: "Una secuencia"
+    texto: "Esperar, encender, esperar, apagar e informar, sin bloquear. ¿Qué estructura usa?"
+    libro: [244]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: abajo, rotulo: "Mitad de abajo", rect: [0, 110, 410, 140] }
+    opciones:
+      - texto: "Una máquina de estados"
+        bien: true
+        porque: "Una variable guarda en qué paso está, y en cada pasada se comprueba si toca avanzar."
+      - texto: "Código seguido con un delay() entre pasos"
+        porque: "Bloquea: mientras espera, no atiende nada más."
+      - texto: "Un paso por interrupción"
+        porque: "Las rutinas de interrupción deben ser brevísimas; la secuencia va en una máquina de estados."
+    escalera:
+      - "Es la misma idea que la de los circuitos secuenciales."
+    solucion: "Una máquina de estados."
+
+  - id: pregunta-aceptable
+    tipo: pregunta
+    titulo: "Cuándo vale delay()"
+    texto: "¿En cuál de estos casos es razonable usar delay()?"
+    libro: [249]
+    widget:
+      tipo: figura
+      figura: fig-17.14
+      zonas:
+        - { id: arriba, rotulo: "Mitad de arriba", rect: [0, 0, 410, 105] }
+    opciones:
+      - texto: "En la inicialización, antes de tener nada que atender"
+        bien: true
+        porque: "Es uno de los tres casos razonables, con las esperas muy cortas de un componente y los programas de una tarea."
+      - texto: "Para el parpadeo de un equipo con pulsador"
+        porque: "Con dos responsabilidades, la comprobación de tiempo es la estructura correcta."
+      - texto: "Para leer un sensor cada 2 s mientras se atiende una pantalla"
+        porque: "Dos tareas: con delay() una bloquea a la otra."
+    escalera:
+      - "Pregúntese si en ese momento hay algo más que atender."
+    solucion: "En la inicialización."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [233, 236, 240, 244]
+    ideas:
+      - { titulo: "delay() es un muro.", texto: "Mientras espera, no lee, no atiende y pierde pulsaciones." }
+      - { titulo: "Comprobar el reloj.", texto: "Cada tarea con su ultimaVez y su intervalo: concurrencia sin sistema operativo." }
+      - { titulo: "Siempre por diferencia.", texto: "millis() - ultimaVez sobrevive al desbordamiento de los 49,7 días." }
+      - { titulo: "Secuencias.", texto: "Máquina de estados: una variable dice en qué paso se está." }

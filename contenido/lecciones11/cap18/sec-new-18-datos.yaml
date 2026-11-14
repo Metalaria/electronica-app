@@ -1,0 +1,290 @@
+# Lección 1.2 de la sección 17.10 «Registrar Datos: Ficheros, SQLite y el Lenguaje SQL» (cap18, sec-new-18-datos;
+# añadido CIN/351/2009).
+# - Las dos tablas y lo que se escribe en la tarjeta sobre la figura 17.14 (fig-new-18-datos).
+# - Seis pasos «sql» sobre la base de ejemplo de la app (lib/leccion12/sql/muestra.ts: el esquema del libro con datos
+#   de ejemplo, cuatro sensores cada 10 minutos del 25 de febrero al 3 de abril de 2026; no son medidas reales): SELECT,
+#   WHERE con un agregado, la consulta de la máxima diaria del libro con huecos, el orden de las cláusulas, el JOIN del
+#   libro (con una fecha de marzo en lugar de 'now') y el ejercicio 17.9 (media, mínimo y máximo por sensor y hora).
+# Paso práctico: los pasos «sql».
+leccion: cap18/sec-new-18-datos
+
+libro:
+  256: "un fichero de texto al que se van añadiendo líneas funciona el primer día y se vuelve inmanejable al cabo de unos meses"
+  259: "Consultar es leerlo todo"
+  260: "Una base de datos resuelve las cuatro"
+  262: "cada fila es un elemento y cada columna, uno de sus atributos"
+  263: "la base no admite dos filas con la misma"
+  264: "Una clave ajena es una columna que guarda la clave primaria de otra tabla"
+  265: "se dice qué datos se quieren, no cómo buscarlos"
+  267: "La clave primaria (sensor, t) hace a la vez de índice"
+  269: "Casi todas las preguntas que se hacen a un registro son una sola orden SELECT"
+  271: "Devuelve 31 filas"
+  272: "se juntan por la clave ajena con un JOIN"
+  275: "nunca a medias"
+  277: "402 MB"
+  278: "Agrupar diez minutos de medidas en una transacción divide lo escrito por dieciséis"
+  279: "La base de datos del registro."
+  282: "es la inyección de SQL, y los marcadores la hacen imposible"
+  290: "La copia de seguridad se hace con la orden .backup de la consola sqlite3"
+  "cap18#333": "para cada sensor y cada hora del 1 de marzo de 2026, la media, el mínimo y el máximo"
+
+modelo: { valores: {}, calculos: {} }
+
+tarjetas:
+  - id: explore-tablas
+    tipo: explorar
+    titulo: "Dos tablas"
+    texto: "Cada sensor aparece una vez en la suya; cada medida guarda solo el sensor, el instante y el valor. Toque las dos tablas."
+    libro: [262, 264, 279]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: sensores, rotulo: "Tabla azul, a la izquierda", rect: [6, 31, 101, 70], texto: "sensores: id, nombre, magnitud y unidad. El nombre y la unidad no se repiten en cada medida." }
+        - { id: medidas, rotulo: "Tabla naranja, en el centro", rect: [124, 31, 101, 57], texto: "medidas: sensor, t y valor. «sensor» es una clave ajena: guarda el id de la otra tabla." }
+        - { id: clave, rotulo: "Texto bajo la tabla naranja", rect: [124, 100, 100, 42], texto: "La clave primaria (sensor, t) es también el índice que ordena las medidas." }
+        - { id: escritura, rotulo: "La gráfica de la derecha", rect: [272, 20, 175, 140], texto: "Lo que se escribe al día en la tarjeta, según cuántas muestras van en cada transacción." }
+    requiere: { mover: [sensores, medidas] }
+
+  - id: empareje-csv
+    tipo: pregunta
+    titulo: "Lo que un fichero de texto no resuelve"
+    texto: "Empareje cada problema del fichero CSV con lo que lo causa."
+    libro: [256, 259, 260]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: tablas, rotulo: "Las dos tablas", rect: [4, 20, 225, 125] }
+    emparejar:
+      - ["La máxima de cada día de marzo", "Hay que leer el fichero entero"]
+      - ["Un corte a mitad de escritura", "Una línea a medias"]
+      - ["Dos programas a la vez", "Se pisan"]
+      - ["Una línea sin valor", "Nada lo impide"]
+    exito: "Una base de datos resuelve las cuatro."
+    pistas:
+      - { texto: "En el fichero, nada dice dónde empieza marzo." }
+    escalera:
+      - "Uno es de búsqueda, otro de cortes, otro de accesos y otro de datos imposibles."
+    solucion: "Consultar, leerlo todo; corte, línea a medias; dos programas, se pisan; dato imposible, nada lo impide."
+
+  - id: sql-select
+    tipo: sql
+    titulo: "Su primera consulta"
+    texto: "Escriba una consulta que dé el nombre y la unidad de cada sensor."
+    libro: [262, 265]
+    sql:
+      modo: consulta
+      inicial: "SELECT \nFROM sensores"
+      solucion: "SELECT nombre, unidad FROM sensores"
+    exito: "SELECT dice qué columnas; FROM, de qué tabla. Se dice qué datos se quieren, no cómo buscarlos."
+    pistas:
+      - { texto: "Escriba las dos columnas tras SELECT, separadas por una coma." }
+    escalera:
+      - "Las columnas de la tabla sensores son id, nombre, magnitud y unidad."
+
+  - id: sql-maximo
+    tipo: sql
+    titulo: "Filtrar con WHERE"
+    texto: "¿Cuál es la máxima concentración de CO₂ de todo el registro? El número del SCD41 está en la tabla sensores."
+    libro: [264, 269]
+    sql:
+      modo: consulta
+      inicial: "SELECT max(valor)\nFROM medidas\n"
+      solucion: "SELECT max(valor) FROM medidas WHERE sensor = 4"
+    exito: "WHERE elige las filas de un sensor y max() se queda con la mayor."
+    pistas:
+      - { texto: "Sin WHERE, max() mira las medidas de los cuatro sensores." }
+    escalera:
+      - "Mire primero el id del SCD41 con SELECT * FROM sensores."
+      - "Añada WHERE sensor = 4."
+
+  - id: pregunta-clave
+    tipo: pregunta
+    titulo: "La clave primaria"
+    texto: "La tabla medidas tiene la clave primaria (sensor, t). ¿Qué consigue?"
+    libro: [263, 267]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: clave, rotulo: "Texto bajo la tabla naranja", rect: [124, 100, 100, 42] }
+    opciones:
+      - texto: "Identifica cada medida y hace de índice"
+        bien: true
+        porque: "No admite dos filas iguales, y encontrar el principio de marzo cuesta unas pocas lecturas."
+      - texto: "Solo impide medidas repetidas"
+        porque: "Además hace de índice: un árbol ordenado por sensor y por instante."
+      - texto: "Ordena los sensores por nombre"
+        porque: "Ordena las medidas por sensor y por instante, no los nombres."
+    escalera:
+      - "Es a la vez una restricción y un orden."
+    solucion: "Identifica la fila y hace de índice."
+
+  - id: sql-maxima-diaria
+    tipo: sql
+    titulo: "La máxima de cada día"
+    texto: "Complete la consulta del libro: la máxima de cada día de marzo del sensor de temperatura, con su hora."
+    libro: [269, 271]
+    sql:
+      modo: rellenar
+      plantilla: "SELECT date(t, 'unixepoch') AS dia, time(t, 'unixepoch') AS hora,\n       [[1]](valor) AS maxima\nFROM medidas\nWHERE sensor = 1\n  AND t >= strftime('%s', '2026-03-01') AND t < strftime('%s', '2026-04-01')\nGROUP BY [[2]]\nORDER BY dia;"
+      huecos:
+        - { solucion: max, opciones: [max, min, avg, count] }
+        - { solucion: dia, opciones: [dia, hora, valor, sensor] }
+    exito: "31 filas. La hora sale de la fila que tiene el máximo: una particularidad de SQLite."
+    pistas:
+      - { texto: "Se pide una fila por día: agrupe por el día." }
+    escalera:
+      - "La máxima es una función de agregado."
+      - "Una fila por día: GROUP BY dia."
+
+  - id: sql-orden
+    tipo: sql
+    titulo: "El orden de las cláusulas"
+    texto: "Ordene la consulta que da la humedad media de cada día de la primera semana de marzo."
+    libro: [269]
+    sql:
+      modo: ordenar
+      clausulas:
+        - "SELECT date(t, 'unixepoch') AS dia, round(avg(valor), 1) AS media"
+        - "FROM medidas"
+        - "WHERE sensor = 2 AND t >= strftime('%s', '2026-03-01') AND t < strftime('%s', '2026-03-08')"
+        - "GROUP BY dia"
+        - "ORDER BY dia;"
+    exito: "Qué columnas, de qué tabla, qué filas, cómo agruparlas y en qué orden."
+    pistas:
+      - { texto: "WHERE filtra filas antes de agrupar; el orden del resultado va al final." }
+    escalera:
+      - "SELECT y FROM van siempre primero."
+
+  - id: sql-join
+    tipo: sql
+    titulo: "Juntar las dos tablas"
+    texto: "Complete la consulta del libro: junte medidas con sensores por la clave ajena y agrupe por sensor."
+    libro: [264, 272]
+    sql:
+      modo: consulta
+      inicial: "SELECT s.nombre, s.unidad, count(*) AS n, round(avg(m.valor), 2) AS media\nFROM medidas AS m\n\nWHERE m.t >= strftime('%s', '2026-03-31')\n"
+      solucion: "SELECT s.nombre, s.unidad, count(*) AS n, round(avg(m.valor), 2) AS media FROM medidas AS m JOIN sensores AS s ON s.id = m.sensor WHERE m.t >= strftime('%s', '2026-03-31') GROUP BY s.id"
+    exito: "JOIN … ON s.id = m.sensor trae el nombre y la unidad; GROUP BY, una fila por sensor."
+    pistas:
+      - { texto: "Falta el JOIN tras FROM, con su condición ON, y el GROUP BY al final." }
+    escalera:
+      - "Tras FROM medidas AS m: JOIN sensores AS s ON s.id = m.sensor."
+      - "Al final: GROUP BY s.id."
+
+  - id: sql-horas
+    tipo: sql
+    titulo: "Por sensor y por hora"
+    texto: "Para cada sensor y cada hora del 1 de marzo de 2026: la media, el mínimo y el máximo, con el nombre y la unidad."
+    libro: ["cap18#333"]
+    sql:
+      modo: consulta
+      inicial: "SELECT s.nombre, s.unidad, strftime('%H', m.t, 'unixepoch') AS hora,\n       avg(m.valor), min(m.valor), max(m.valor)\nFROM medidas AS m JOIN sensores AS s ON s.id = m.sensor\n"
+      solucion: "SELECT s.nombre, s.unidad, strftime('%H', m.t, 'unixepoch') AS hora, avg(m.valor), min(m.valor), max(m.valor) FROM medidas AS m JOIN sensores AS s ON s.id = m.sensor WHERE m.t >= strftime('%s', '2026-03-01') AND m.t < strftime('%s', '2026-03-02') GROUP BY m.sensor, hora"
+      ordenado: false
+    exito: "Cuatro sensores por veinticuatro horas: 96 filas. Las horas son UTC."
+    pistas:
+      - { texto: "Falta elegir el día con WHERE y agrupar por sensor y por hora." }
+    escalera:
+      - "El día: m.t desde el 1 de marzo y antes del 2."
+      - "Agrupe por dos columnas: GROUP BY m.sensor, hora."
+
+  - id: porque-indice
+    tipo: porque
+    titulo: "Una guía telefónica"
+    texto: "Esa consulta no aprovecha la clave (sensor, t) y recorre la tabla entera. ¿Por qué?"
+    libro: [267, "cap18#333"]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: clave, rotulo: "Texto bajo la tabla naranja", rect: [124, 100, 100, 42] }
+    opciones:
+      - texto: "Está ordenada primero por sensor y la consulta no lo fija"
+        bien: true
+        porque: "Como una guía por apellido y nombre: sirve para un instante dentro de un sensor. Con m.sensor IN (…) ya busca por la clave."
+      - texto: "Porque usa JOIN"
+        porque: "El JOIN no lo impide: falta una condición sobre el sensor."
+      - texto: "Porque las horas están en UTC"
+        porque: "La zona horaria no cambia el plan; el orden de la clave sí."
+    escalera:
+      - "¿Qué columna va primero en la clave?"
+    solucion: "La clave empieza por el sensor: hay que fijarlo en el WHERE."
+
+  - id: pregunta-transacciones
+    tipo: pregunta
+    titulo: "Cuánto se escribe en la tarjeta"
+    texto: "Con una transacción por muestra y el diario clásico se escriben 402 MB al día. ¿Qué cambia agrupar diez minutos de medidas?"
+    libro: [275, 277, 278]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: escritura, rotulo: "La gráfica de la derecha", rect: [272, 20, 175, 140] }
+    opciones:
+      - texto: "Divide lo escrito por dieciséis"
+        bien: true
+        porque: "A cambio de perder como mucho esos diez minutos en un corte sin aviso."
+      - texto: "Nada: se escriben los mismos datos"
+        porque: "Cada transacción reescribe páginas completas y el diario: agrupar escribe mucho menos."
+      - texto: "Arriesga dejar la base dañada"
+        porque: "La transacción se aplica entera o nada: nunca a medias."
+    escalera:
+      - "Cada transacción reescribe páginas enteras, aunque añada pocas filas."
+    solucion: "Divide lo escrito por dieciséis."
+
+  - id: porque-marcadores
+    tipo: porque
+    titulo: "Los marcadores ?"
+    texto: "El programa inserta los valores con marcadores ?, nunca pegándolos al texto de la orden. ¿Por qué?"
+    libro: [282]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: tablas, rotulo: "Las dos tablas", rect: [4, 20, 225, 125] }
+    opciones:
+      - texto: "Hacen imposible la inyección de SQL"
+        bien: true
+        porque: "El motor recibe los valores aparte de la orden: un texto de fuera no puede cambiarla."
+      - texto: "Para que vaya más rápido"
+        porque: "El motivo es la seguridad: la inyección de SQL."
+      - texto: "Porque SQLite no admite números en la orden"
+        porque: "Los admite; el peligro es un texto que venga de fuera."
+    escalera:
+      - "¿Qué pasa si el nombre de un sensor llega por la red con trozos de SQL?"
+    solucion: "Hacen imposible la inyección de SQL."
+
+  - id: pregunta-copia
+    tipo: pregunta
+    titulo: "En el banco: la copia"
+    texto: "¿Cómo copia la base mientras el programa sigue registrando?"
+    libro: [290]
+    widget:
+      tipo: figura
+      figura: fig-new-18-datos
+      zonas:
+        - { id: tablas, rotulo: "Las dos tablas", rect: [4, 20, 225, 125] }
+    opciones:
+      - texto: "Con la orden .backup de la consola sqlite3"
+        bien: true
+        porque: "Copia una base en uso de forma coherente."
+      - texto: "Copiando el fichero"
+        porque: "Con el programa en marcha puede salir dañada, sobre todo en WAL, con datos aún en el fichero -wal."
+      - texto: "Con VACUUM"
+        porque: "VACUUM devuelve espacio reescribiendo la base; no hace copias."
+    escalera:
+      - "En WAL, una parte de los datos aún no está en el fichero de la base."
+    solucion: "Con .backup."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [260, 267, 269, 278]
+    ideas:
+      - { titulo: "Tablas y claves.", texto: "Sensores una vez; medidas con su clave (sensor, t), que es el índice." }
+      - { titulo: "Una sola orden.", texto: "SELECT, FROM, WHERE, GROUP BY, ORDER BY; y JOIN por la clave ajena." }
+      - { titulo: "Transacciones.", texto: "Todo o nada; agrupar diez minutos divide lo escrito por dieciséis." }
+      - { titulo: "Seguridad.", texto: "Marcadores contra la inyección y .backup para copiar en marcha." }

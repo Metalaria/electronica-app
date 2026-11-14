@@ -1,0 +1,23 @@
+* P10 (cap57, sections 57.3 and 57.4): the 12 V gearmotor of the chapter (k = 0.011575 V*s/rad, R = 6 ohm, L = 2 mH)
+* with the turntable of the axis example reflected to the motor shaft (J = 3.722e-6 kg*m^2), no friction.
+* Run: ngspice -b motorreductor.cir. Expected: 2.0 A with the rotor blocked (first 10 ms), 9 900 rpm with no load,
+* 63 % of it about tau_m = J*R/k^2 = 166.7 ms after the release (ngspice: 166.2 ms).
+VA   a 0 DC 12
+VSEN a b DC 0
+RA   b c 6
+LA   c d 2m
+BE   d 0 V = 0.011575*v(w)
+* mechanics: J dw/dt = k*i (node w: 1 V = 1 rad/s); rotor held for the first 10 ms
+BT   0 w I = 0.011575*i(VSEN)*(time > 10m ? 1 : 0)
+CJ   w 0 3.722e-6
+.tran 20u 1.5 0 20u uic
+.control
+run
+let rpm = v(w)*60/(2*pi)
+meas tran i_bloqueo FIND i(VSEN) AT=9m
+meas tran rpm_final FIND rpm AT=1.5
+meas tran t63 WHEN rpm=6253.6 RISE=1
+let tau = t63 - 10m
+print i_bloqueo rpm_final tau
+.endc
+.end

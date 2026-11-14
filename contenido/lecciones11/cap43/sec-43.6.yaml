@@ -1,0 +1,363 @@
+# Lección 1.2 de la sección 44.6 «Etapas Múltiples y el Par Diferencial» (cap43; etiqueta sec-43.6).
+# Formato: contenido/lecciones11/GUIA.md.
+# - Etapas que se cargan: el emisor común de la sección 44.3 (ganancia 169, Z_out ≈ R_C = 3,3 kΩ) como fuente de
+#   tensión controlada (Thévenin) en «fuente-controlada», y la entrada de una segunda etapa igual (Z_in = 2,16 kΩ) como
+#   su carga: 169 · 2,16/(3,3 + 2,16) ≈ 67 (invertida, `invierte` 1.2). «prediga-comun» va sobre el «par-diferencial»
+#   vivo (cola ideal de 2 mA, R_C = 10 kΩ y ±12 V de ejemplo).
+# - La banda de n etapas iguales (bloque 178): gráfica normalizada a f/f_c de cada etapa.
+# - El CMRR frente a la impedancia de la fuente de cola: la gráfica de la figura 44.12 (fig-43.10, bloque 206), con su
+#   fórmula CMRR ≈ g_m·R_EE a 1 mA por transistor (g_m = 1 mA / 25,9 mV, sección 44.4); sus tres puntos (5,6 kΩ, 50 kΩ y
+#   5 MΩ) son los de la figura.
+leccion: cap43/sec-43.6
+
+libro:
+  176: "es el producto de sus ganancias, lo que en decibelios es una suma"
+  177: "se intercala un seguidor"
+  178: "con tres etapas, la mitad"
+  181: "su precio es un corte inferior de frecuencia"
+  182: "una deriva en la primera se amplifica en todas las siguientes"
+  185: "Dos transistores con los emisores unidos a una fuente de corriente común"
+  187: "el reparto no cambia y la salida tampoco"
+  188: "sus derivas se cancelan"
+  189: "No necesita condensador de desvío"
+  192: "el CMRR es aproximadamente proporcional a ella"
+  193: "Cualquier asimetría hace que una señal común se convierta parcialmente en diferencial"
+  194: "el amplificador de instrumentación se compre y no se haga"
+  196: "Sustituyendo las resistencias de colector por un espejo de corriente"
+  197: "tenga ganancia de mil o más"
+  198: "convierte la salida diferencial en salida única"
+  203: "Su cociente es el CMRR"
+  204: "El CMRR cae drásticamente"
+  206: "dependencia del CMRR con la impedancia de la fuente de corriente"
+  "cap43#70": "Av = −gm·RC = −RC/re = −169"
+  "cap43#72": '"2,16 kΩ"'
+  "cap43#74": "Zout ≈ 3,3 kΩ"
+  "cap43#116": "Con IC = 1 mA y VT = 25,9 mV, gm = 38,6 mS"
+
+modelo:
+  valores:
+    v_1: { sim: "v", nombre: "señal de entrada", unidad: V, valor: 0.001 }
+    A_1: { sim: "A_{v}", nombre: "ganancia en vacío de la primera etapa", unidad: "", valor: 169 }
+    R_o1: { sim: "Z_{out}", nombre: "salida de la primera etapa", unidad: Ω, valor: 3300 }
+    Z_2: { sim: "Z_{in}", nombre: "entrada de la segunda etapa", unidad: Ω, valor: 2160 }
+    c_on: { tipo: interruptor, nombre: "segunda etapa conectada", valor: 0 }
+    n_e: { sim: "n", nombre: "número de etapas iguales", unidad: "", valor: 1 }
+    g_d: { sim: "g_{m}", nombre: "transconductancia a 1 mA", unidad: S, valor: 0.0386 }
+    R_EE: { sim: "R_{EE}", nombre: "impedancia de la fuente de cola", unidad: Ω, valor: 5000000 }
+    inv: { tipo: interruptor, nombre: "fuente invertida (emisor común)", valor: 1 }
+    Vcc6: { sim: "V_{CC}", nombre: "alimentación positiva", unidad: V, valor: 12 }
+    Vee6: { sim: "V_{EE}", nombre: "alimentación negativa", unidad: V, valor: 12 }
+    Rc6: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 10000 }
+    I6: { sim: "I", nombre: "corriente de la fuente de cola", unidad: A, valor: 0.002 }
+    b6: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    Vbe6: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    v06: { sim: "V_{B}", nombre: "continua de las bases", unidad: V, valor: 0 }
+    acm6: { sim: "v_{cm}", nombre: "lo que suben a la vez las dos bases", unidad: V, valor: 0.1 }
+    f6: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+  calculos:
+    I_L: { si: c_on, entonces: "(1 - 2*inv)*A_1*v_1/(R_o1 + Z_2)", sino: "0", sim: "i", nombre: "corriente hacia la segunda etapa", unidad: A }
+    V_o: { expr: "(1 - 2*inv)*A_1*v_1 - I_L*R_o1", sim: "v_{o}", nombre: "salida de la primera etapa", unidad: V }
+    A_t: { expr: "abs(V_o/v_1)", sim: "|A_{v}|", nombre: "ganancia real de la primera etapa", unidad: "", cifras: 3 }
+    Ic6: { expr: "b6/(b6 + 1)*I6/2", sim: "I_{C}", nombre: "corriente de cada colector", unidad: A }
+    Vc6: { expr: "Vcc6 - Ic6*Rc6", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    Vcm6: { expr: "0*acm6", sim: "v_{c}", nombre: "señal de modo común en cada colector", unidad: V }
+    k_n: { expr: "sqrt(2^(1/n_e) - 1)", sim: "f_{c,total}/f_{c}", nombre: "fracción del corte que queda", unidad: "", cifras: 3 }
+    f_40: { expr: "Z_2/(R_o1 + Z_2)*100", sim: "fracción", nombre: "parte de la tensión en vacío que llega", unidad: "%", cifras: 2 }
+    r_3: { expr: "2^(1/n_e)", sim: "2^{1/n}", nombre: "raíz n-ésima de dos", unidad: "", cifras: 3 }
+    C_dB: { expr: "20*log10(g_d*R_EE)", sim: "CMRR", nombre: "rechazo de modo común", unidad: dB, cifras: 3 }
+
+tarjetas:
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Dos etapas en cascada"
+    texto: "El emisor común gana 169 en vacío, con salida de 3,3 kΩ; se le conecta otro igual, de entrada 2,16 kΩ. ¿Cuánto gana ahora el primero?"
+    libro: ["cap43#70", "cap43#72", "cap43#74", 177]
+    fijar: { c_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on, invierte: inv }
+      lectura: { valor: A_t, rotulo: "Ganancia de la primera etapa" }
+      corriente: I_L
+      mide: { salida: V_o, carga: I_L, controlada: I_L }
+      ocultar: true
+    opciones:
+      - texto: "Unos 67: la entrada de la segunda carga su salida"
+        bien: true
+        porque: "3,3 kΩ y 2,16 kΩ forman un divisor: solo llega el 40 % de la tensión en vacío."
+      - texto: "169, como en vacío"
+        porque: "Eso exigiría que la entrada siguiente fuese mucho mayor que 3,3 kΩ, y es menor."
+      - texto: "Más de 169: se suman"
+        porque: "Las ganancias de las etapas se multiplican, pero cada una puede perder por la carga de la siguiente."
+    escalera:
+      - "La salida de 3,3 kΩ y la entrada de 2,16 kΩ forman un divisor."
+    solucion: "169 · 2,16/(3,3 + 2,16) ≈ 67."
+    comprobar:
+      - { A_t: 66.86, tol: 0.01 }
+      - { con: { c_on: 1 }, Z_2: 2160, R_o1: 3300, f_40: 39.56, tol: 0.03 }
+
+  - id: sorpresa-carga
+    tipo: sorpresa
+    titulo: "Conecte la segunda etapa"
+    texto: "La ganancia calculada aislada no es la real. Conecte la entrada siguiente y mire la salida."
+    libro: [177]
+    inicio: { c_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on, invierte: inv }
+      lectura: { valor: V_o, rotulo: "Salida de la primera etapa" }
+      datos:
+        - { valor: A_t, rotulo: "Ganancia: {{A_t}}" }
+      corriente: I_L
+      mide: { salida: V_o, carga: I_L, controlada: I_L }
+      mandos:
+        - { valor: c_on, tipo: conectar, boton: "Conectar la segunda etapa" }
+    requiere: { conectar: [c_on] }
+
+  - id: pregunta-seguidor
+    tipo: pregunta
+    titulo: "El remedio"
+    texto: "La entrada de la siguiente no es mucho mayor que la salida de la anterior. ¿Qué se hace?"
+    libro: [177]
+    fijar: { c_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on, invierte: inv }
+      lectura: { valor: V_o, rotulo: "Salida de la primera etapa" }
+      corriente: I_L
+      mide: { salida: V_o, carga: I_L, controlada: I_L }
+    opciones:
+      - texto: "Intercalar un seguidor"
+        bien: true
+        porque: "Entrada alta y salida baja: la primera ve una carga ligera y la segunda una fuente fuerte."
+      - texto: "Subir R_{C} de la primera etapa"
+        porque: "Sube la ganancia en vacío, pero también su salida, y la carga pesa aún más."
+      - texto: "Añadir otra etapa de emisor común"
+        porque: "Tendría el mismo problema: entrada media frente a salida alta."
+    escalera:
+      - "¿Qué configuración tiene entrada alta y salida baja?"
+    solucion: "Un seguidor entre las dos etapas."
+
+  - id: explore-banda
+    tipo: explorar
+    titulo: "La banda se estrecha"
+    texto: "Cada etapa aporta su corte. Añada etapas iguales y mire dónde cae el corte del conjunto."
+    libro: [178]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0.05, max: 5, unidad: "", rotulo: "f / f_{c}", escala: log }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "ganancia relativa" }
+      curvas:
+        - { expr: "1/sqrt(1 + q^2)", color: tinta, rotulo: "una etapa", discontinua: true }
+        - { expr: "(1 + q^2)^(-n_e/2)", color: naranja, rotulo: "n etapas" }
+      marcas:
+        - { x: "k_n", y: "0.7071", rotulo: "corte" }
+      lectura: { valor: k_n, rotulo: "Corte del conjunto, en f_{c}" }
+      mandos:
+        - { valor: n_e, lista: [1, 2, 3, 4, 5], rotulo: "Etapas" }
+    requiere: { mover: [n_e] }
+
+  - id: estime-tres
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Tres etapas"
+    texto: "n etapas iguales de corte f_{c} cortan juntas en f_{c}·√(2^{1/n} − 1). Con tres, ¿qué fracción del corte queda?"
+    libro: [178]
+    fijar: { n_e: 3 }
+    estimar:
+      objetivo: "k_n"
+      unidad: ""
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.9
+      tol: 0.05
+      rotulo: "Fracción de f_{c}"
+    exito: "La mitad: por eso se sobredimensiona la banda de cada etapa."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.54 }, texto: "Se ha pasado: con tres etapas la banda se estrecha más." }
+      - { texto: "Se ha quedado corto: la raíz cúbica de 2 es algo más de 1,26." }
+    escalera:
+      - "2^{1/3} ≈ 1,26; réstele 1 y saque la raíz."
+    solucion: "√(1,26 − 1) ≈ 0,51: la mitad."
+    comprobar:
+      - { k_n: 0.51, tol: 0.01 }
+      - { con: { n_e: 3 }, r_3: 1.26, tol: 0.01 }
+
+  - id: empareje-acoplo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El acoplamiento entre etapas"
+    texto: "Una cada forma de acoplar con su ventaja y su precio."
+    libro: [181, 182]
+    emparejar:
+      - ["Por condensador", "Cada etapa conserva su punto de trabajo"]
+      - ["Precio del condensador", "Un corte inferior de frecuencia"]
+      - ["Directo", "Amplifica continua con menos piezas"]
+      - ["Precio del directo", "La deriva de la primera se amplifica en todas"]
+    exito: "El par diferencial resuelve el precio del acoplamiento directo."
+    pistas:
+      - { texto: "El condensador bloquea la continua: eso aísla los puntos de trabajo y corta las frecuencias bajas." }
+    escalera:
+      - "Sin condensador, la continua de una etapa entra en la siguiente."
+    solucion: "Condensador–puntos independientes, con corte inferior. Directo–continua, con deriva acumulada."
+
+  - id: explore-par
+    tipo: explorar
+    titulo: "El par diferencial"
+    texto: "Dos transistores con los emisores unidos a una fuente de corriente. Toque cada parte."
+    libro: [185, 196, 198, 206]
+    widget:
+      tipo: figura
+      figura: fig-43.10
+      zonas:
+        - { id: q1, rotulo: "Transistor de la izquierda, abajo", rect: [20, 100, 45, 45], texto: "Q₁: su base es una entrada. La corriente de la fuente se reparte según la diferencia entre las bases." }
+        - { id: q2, rotulo: "Transistor de la derecha, abajo", rect: [115, 100, 45, 45], texto: "Q₂: la otra entrada." }
+        - { id: fuente, rotulo: "Fuente de abajo", rect: [70, 168, 45, 40], texto: "La fuente de corriente común: cuanto mayor su impedancia, mejor rechaza lo común." }
+        - { id: espejo, rotulo: "Recuadro de arriba", rect: [22, 22, 140, 58], texto: "La carga activa, un espejo de corriente: carga altísima, mucha ganancia y salida única." }
+    requiere: { mover: [q1, fuente, espejo] }
+
+  - id: prediga-comun
+    tipo: predecir
+    titulo: "Las dos bases a la vez"
+    texto: "Las dos bases suben a la vez lo mismo. ¿Qué hace la salida?"
+    libro: [185, 187]
+    widget:
+      tipo: circuito
+      esquema: par-diferencial
+      piezas: { vcc: Vcc6, vee: Vee6, rc: Rc6, icola: I6, beta: b6, vbe: Vbe6, v1: v06, v2: v06, acm: acm6, f: f6 }
+      lectura: { valor: Vcm6, rotulo: "Señal en cada colector" }
+      corriente: Ic6
+      mide: { ic1: Ic6, ic2: Ic6, vc1: Vc6, vc2: Vc6, salida1_amp: Vcm6, salida2_amp: Vcm6 }
+      ocultar: true
+    opciones:
+      - texto: "No cambia: el reparto de la corriente es el mismo"
+        bien: true
+        porque: "Amplifica la diferencia y rechaza lo común: eso es el rechazo de modo común."
+      - texto: "Sube el doble"
+        porque: "Lo que suben juntas no altera el reparto, y la salida depende del reparto."
+      - texto: "Baja, como en un emisor común"
+        porque: "Un emisor común solo invertiría la señal de su base; aquí manda la diferencia."
+    escalera:
+      - "La corriente total la fija la fuente. ¿Cambia el reparto si las dos bases suben igual?"
+    solucion: "No cambia: solo cuenta la diferencia entre las bases."
+
+  - id: porque-deriva
+    tipo: porque
+    titulo: "Continua sin deriva"
+    texto: "¿Por qué un par diferencial permite el acoplamiento directo sin que se acumule deriva?"
+    libro: [188, 189]
+    widget:
+      tipo: figura
+      figura: fig-43.10
+      zonas:
+        - { id: par, rotulo: "Los dos transistores de abajo", rect: [20, 100, 140, 45] }
+    opciones:
+      - texto: "Los dos derivan igual, en el mismo chip y a la misma temperatura, y se cancelan"
+        bien: true
+        porque: "Por eso un operacional amplifica continua con offset de microvoltios."
+      - texto: "Porque lleva condensador de desvío"
+        porque: "No lo necesita: el punto medio es una masa virtual para la señal diferencial."
+      - texto: "Porque no amplifica la continua"
+        porque: "Sí la amplifica; lo que cancela es la deriva común a los dos."
+    escalera:
+      - "La deriva es igual en los dos transistores. ¿Cómo se ve eso desde la diferencia?"
+    solucion: "Las derivas iguales son una señal común: se cancelan."
+
+  - id: explore-cmrr
+    tipo: explorar
+    titulo: "De qué depende el CMRR"
+    texto: "Una señal común no cambia la corriente total si la fuente es ideal. Pruebe tres fuentes de cola reales."
+    libro: [192, 204, 206, "cap43#116"]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1000, max: 100000000, unidad: Ω, rotulo: "R_{EE}", escala: log }
+      y: { min: 20, max: 140, unidad: dB, rotulo: "CMRR" }
+      curvas:
+        - { expr: "20*log10(g_d*r)", color: azul, rotulo: "g_{m}·R_{EE}" }
+      marcas:
+        - { x: "R_EE", y: "C_dB", rotulo: "{{C_dB}}" }
+      lectura: { valor: C_dB, rotulo: "CMRR" }
+      mandos:
+        - { valor: R_EE, lista: [5600, 50000, 5000000], nombres: [resistencia, espejo simple, espejo cascodo], rotulo: "Fuente de cola" }
+    requiere: { mover: [R_EE] }
+
+  - id: pregunta-cmrr
+    tipo: pregunta
+    titulo: "El par con transistores sueltos"
+    texto: "Un par diferencial con dos transistores sueltos y una buena fuente de cola da un CMRR modesto. ¿Qué falla?"
+    libro: [193, 194]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1000, max: 100000000, unidad: Ω, rotulo: "R_{EE}", escala: log }
+      y: { min: 20, max: 140, unidad: dB, rotulo: "CMRR" }
+      curvas:
+        - { expr: "20*log10(g_d*r)", color: azul, rotulo: "g_{m}·R_{EE}" }
+    opciones:
+      - texto: "El apareamiento: cualquier asimetría convierte lo común en diferencial"
+        bien: true
+        porque: "Por eso hay parejas apareadas en un encapsulado, y el amplificador de instrumentación se compra."
+      - texto: "La ganancia diferencial es demasiado alta"
+        porque: "El CMRR es el cociente entre la diferencial y la común: una diferencial alta lo mejora."
+      - texto: "Que no lleva condensador de desvío"
+        porque: "El par no lo necesita: el punto medio es masa virtual para la señal diferencial."
+    escalera:
+      - "El CMRR depende de dos cosas: la fuente de cola y…"
+    solucion: "El apareamiento de dos transistores sueltos, mediocre frente al de un chip."
+
+  - id: pregunta-carga-activa
+    tipo: pregunta
+    titulo: "La carga activa"
+    texto: "Un espejo de corriente en lugar de las resistencias de colector. ¿Qué consigue?"
+    libro: [196, 197, 198]
+    widget:
+      tipo: figura
+      figura: fig-43.10
+      zonas:
+        - { id: espejo, rotulo: "Recuadro de arriba", rect: [22, 22, 140, 58] }
+    opciones:
+      - texto: "Una carga altísima: ganancia de mil o más en una etapa, y salida única"
+        bien: true
+        porque: "Por eso un operacional llega a 10^{5} con solo dos etapas."
+      - texto: "Menos consumo con la misma ganancia"
+        porque: "Lo que cambia es la impedancia de carga, y con ella la ganancia."
+      - texto: "Más ancho de banda"
+        porque: "Más ganancia en una etapa no da más banda; el espejo se pone por la ganancia."
+    escalera:
+      - "Recuerde el techo V_{RC}/V_{T} de la carga resistiva. ¿Qué lo rompe?"
+    solucion: "Impedancia de carga altísima: ganancia de mil o más y salida única."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Medir el CMRR en el banco"
+    texto: "Se mide la ganancia con señal en una base y la otra a masa, y con las dos bases unidas. ¿Qué es el CMRR?"
+    libro: [203, 204]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1000, max: 100000000, unidad: Ω, rotulo: "R_{EE}", escala: log }
+      y: { min: 20, max: 140, unidad: dB, rotulo: "CMRR" }
+      curvas:
+        - { expr: "20*log10(g_d*r)", color: azul, rotulo: "g_{m}·R_{EE}" }
+    opciones:
+      - texto: "La ganancia diferencial dividida por la de modo común"
+        bien: true
+        porque: "Y sustituyendo la fuente por una resistencia cae drásticamente: lo que aporta la fuente."
+      - texto: "La suma de las dos ganancias"
+        porque: "Es un cociente: cuántas veces amplifica más la diferencia que lo común."
+      - texto: "La ganancia de modo común dividida por la diferencial"
+        porque: "Al revés: así saldría un número pequeño para un buen par."
+    escalera:
+      - "Un buen par amplifica mucho la diferencia y casi nada lo común."
+    solucion: "CMRR = ganancia diferencial / ganancia de modo común."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [176, 177, 187, 192]
+    ideas:
+      - { titulo: "En cascada.", texto: "Las ganancias se multiplican, pero cada entrada carga la salida anterior; con tres etapas, la mitad de banda." }
+      - { titulo: "El par diferencial.", texto: "Amplifica la diferencia, rechaza lo común y permite acoplar en continua sin deriva." }
+      - { titulo: "El CMRR.", texto: "Proporcional a la impedancia de la fuente de cola, y limitado por el apareamiento." }
+      - { titulo: "La carga activa.", texto: "Un espejo da ganancia de mil o más por etapa." }

@@ -28,7 +28,10 @@ test('Super Nintendo: sus pestañas, con «Un fotograma»', async ({ page }) => 
 });
 
 test('Super Nintendo: un chip de la foto salta al esquema y a la arquitectura', async ({ page }) => {
+  // (owner 13-11: the NTSC photo opens first; the PAL cara A, second, keeps the links to the PAL schematic)
   await page.goto('#/consolas/snes/foto');
+  await page.locator('button[data-foto="cara-a"]').click();
+  await expect(page.locator('button[data-foto="cara-a"]')).toHaveAttribute('aria-selected', 'true');
   await page.locator('button[data-hotspot="cpu"]').click();
   const ficha = page.locator('.foto-vista .ficha');
   await expect(ficha).toContainText('5A22');
@@ -54,6 +57,50 @@ test('Super Nintendo: cualquier componente se marca en la foto de su cara por su
   // a hotspot of the solder side
   await page.goto('#/consolas/snes/foto/foto%3Ab-rgb');
   await expect(page.locator('.foto-vista .ficha')).toContainText('Q3');
+});
+
+// 1.2 (consolas-A, owner 12-11): the PAL photos say what they are (a bare board, a solder side with empty footprints)
+// and have no marker for a part they do not show; the owner's NTSC photo, with its chips, its credit and its sources
+test('Super Nintendo: las fotos PAL dicen lo que son y la NTSC tiene sus chips y su crédito', async ({ page }) => {
+  await page.goto('#/consolas/snes/foto');
+  const tabs = page.getByRole('tablist', { name: 'Foto' });
+  // (owner 13-11) the NTSC photo with its chips is the main tab and opens by default; the bare PAL face comes second
+  await expect(tabs.getByRole('tab')).toHaveText(['Cara de componentes · NTSC', 'Cara de componentes · PAL, sin piezas', 'Cara de soldadura · PAL, incompleta']);
+  await expect(page.locator('button[data-foto="ntsc"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.foto-vista img')).toHaveAttribute('src', /foto-ntsc\.jpg$/);
+  await page.locator('button[data-foto="cara-a"]').click();
+  await expect(page.locator('.foto-vista .credito')).toContainText('placa desnuda');
+  // the schematic's U1 still finds its PAL footprint on cara A, the second tab
+  await page.goto('#/consolas/snes/esquema/U1');
+  // (the button names the hotspot of the second photo: before the fix it looked only at the main photo's)
+  await page.locator('.esquema .ficha').getByRole('button', { name: 'Ver en la foto: CPU 5A22 (S-CPU)' }).click();
+  await expect(page.locator('button[data-foto="cara-a"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.foto-vista .ficha')).toContainText('5A22');
+  // and the architecture finds the block of a cara A hotspot
+  await page.goto('#/consolas/snes/arquitectura/foto%3Acpu');
+  await expect(page.locator('.arquitectura .ficha').last()).toContainText('65C816');
+  // no marker for a part nonSNES adds (P6) nor for an empty footprint of the solder side (R4); R30 keeps its marker
+  for (const ref of ['P6', 'SW1', 'J3', 'R4', 'R109', 'C69']) {
+    await page.goto(`#/consolas/snes/foto/${ref}`);
+    await expect(page.locator('.foto-vista .marcador'), ref).toHaveCount(0);
+  }
+  await page.goto('#/consolas/snes/foto/R30');
+  await expect(page.locator('.foto-vista .marcador')).toHaveAttribute('data-ref', 'R30');
+  // the NTSC photo: its own chips, read on the photo
+  await page.goto('#/consolas/snes/foto/foto%3An-cic');
+  await expect(page.locator('button[data-foto="ntsc"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.foto-vista img')).toHaveAttribute('src', /foto-ntsc\.jpg$/);
+  await expect(page.locator('.foto-vista .ficha')).toContainText('F411A');
+  await expect(page.locator('.foto-vista .credito')).toContainText('Foto: Yaca2671, Wikimedia Commons, CC BY-SA 3.0');
+  await expect(page.locator('.foto-vista .lista button')).toHaveCount(22);
+  // a part whose marking does not read is drawn dashed («posición»)
+  await page.locator('button[data-hotspot="n-smp"]').click();
+  await expect(page.locator('.foto-vista .ficha')).toContainText('la marca no se lee');
+  await page.goto('#/consolas/snes/fuentes');
+  const f = page.locator('.fuentes');
+  await expect(f).toContainText('Yaca2671');
+  await expect(f.locator('a[href="https://commons.wikimedia.org/wiki/File:SNES-CPU-RGB01_01.jpg"]')).toHaveCount(1);
+  await expect(f).toContainText('sin recortar');
 });
 
 test('Super Nintendo: el decodificador distingue el bus A, el bus B y los registros internos', async ({ page }) => {

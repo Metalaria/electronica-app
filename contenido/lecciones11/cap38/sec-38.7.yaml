@@ -1,0 +1,198 @@
+# Lección 1.2 de la sección 39.7 «El Reloj del Sistema y el Watchdog» (cap38; etiqueta interna sec-38.7).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.11 (svg_vista 433,41 × 227,52): exactitud de las fuentes de
+# reloj y las reglas del watchdog. El watchdog vivo es un contador con borrado (el refresco) cuya cuenta llena enciende
+# el LED de reinicio (bloque 213: «un contador que reinicia el sistema si el programa no lo refresca a tiempo»).
+leccion: cap38/sec-38.7
+
+libro:
+  202: "Oscilador RC interno: arranca al instante"
+  203: "Cristal externo: partes por millón, arranque de milisegundos"
+  204: "arranque lento: uno o dos segundos"
+  205: "evita los problemas de arranque y de capacidad de carga"
+  206: "multiplica cualquiera de las anteriores hasta la frecuencia de trabajo"
+  210: "una velocidad de comunicación equivocada por un factor exacto"
+  211: "Dejar el reloj activo en periféricos que no se usan, que es consumo regalado"
+  213: "Un contador que reinicia el sistema si el programa no lo refresca a tiempo"
+  215: "Refrescarlo dentro de un temporizador periódico lo convierte en inútil"
+  216: "para que sobreviva a un fallo del reloj principal"
+  217: "Registrar la causa del reinicio"
+  218: "refrescar demasiado pronto también dispara"
+  221: "mantiene el reset mientras la alimentación esté por debajo del umbral"
+  225: "provocar deliberadamente un bucle infinito"
+  227: "Exactitud de las fuentes de reloj y las reglas del watchdog"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-fuentes
+    tipo: explorar
+    titulo: "Cuatro fuentes de reloj"
+    texto: "Exactitud frente a arranque. Toque cada fuente de reloj."
+    libro: [227, 202, 203, 204, 205]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: rc, rotulo: "Primera fila de la izquierda", rect: [0, 30, 230, 36], texto: "RC interno: arranca al instante; del 1 al 5 %, con deriva térmica." }
+        - { id: cristal, rotulo: "Segunda fila de la izquierda", rect: [0, 68, 230, 36], texto: "Cristal externo: partes por millón, arranque de milisegundos." }
+        - { id: reloj32, rotulo: "Tercera fila de la izquierda", rect: [0, 106, 230, 36], texto: "Cristal de 32 768 Hz: consumo mínimo, arranque de uno o dos segundos." }
+        - { id: xo, rotulo: "Cuarta fila de la izquierda", rect: [0, 144, 230, 36], texto: "Oscilador XO: un módulo completo, sin problemas de arranque." }
+    requiere: { mover: [rc, cristal] }
+
+  - id: toque-uart
+    tipo: tocar
+    titulo: "Una UART exigente"
+    texto: "Toque la fuente de reloj cuyo error pasa del límite típico de una UART."
+    libro: [202, 227]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: rc, rotulo: "Primera fila de la izquierda", rect: [0, 30, 230, 36] }
+        - { id: cristal, rotulo: "Segunda fila de la izquierda", rect: [0, 68, 230, 36] }
+        - { id: reloj32, rotulo: "Tercera fila de la izquierda", rect: [0, 106, 230, 36] }
+        - { id: xo, rotulo: "Cuarta fila de la izquierda", rect: [0, 144, 230, 36] }
+    tocar:
+      bien: [rc]
+      porque:
+        cristal: "Un cristal externo da partes por millón: muy por debajo del límite."
+        reloj32: "El de 32 768 Hz es exacto; su problema es el arranque lento, no el error."
+        xo: "El XO es el más exacto de los cuatro."
+    exito: "El RC interno, del 1 al 5 %: suficiente para la lógica, insuficiente para comunicación asíncrona exigente."
+    escalera: ["Busque la caja que cae a la derecha de la línea discontinua."]
+    solucion: "El RC interno: su error, del 1 al 5 %, pasa de la línea del límite de la UART."
+
+  - id: empareje-arranque
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que tarda en arrancar"
+    texto: "Una cada fuente de reloj con su arranque."
+    libro: [202, 203, 204, 205, 206]
+    emparejar:
+      - ["Oscilador RC interno", "Al instante"]
+      - ["Cristal externo", "Milisegundos"]
+      - ["Cristal de reloj de 32 768 Hz", "Uno o dos segundos"]
+      - ["Oscilador externo (XO)", "Un módulo completo, sin problemas de arranque"]
+    exito: "Y el PLL multiplica cualquiera de ellas hasta la frecuencia de trabajo, añadiendo su propio jitter."
+    pistas:
+      - { texto: "El más lento es el del reloj de tiempo real." }
+    escalera: ["El que no tiene nada que hacer oscilar fuera del chip arranca antes."]
+    solucion: "RC, al instante; cristal, milisegundos; 32 768 Hz, uno o dos segundos; XO, sin problemas."
+
+  - id: pregunta-divisor
+    tipo: pregunta
+    titulo: "Un divisor mal puesto"
+    texto: "Un divisor del árbol de reloj está mal configurado. ¿Qué síntoma lo delata?"
+    libro: [210, 211]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: cristal, rotulo: "Segunda fila de la izquierda", rect: [0, 68, 230, 36], texto: "Un cristal: el reloj es exacto; el divisor, no." }
+    opciones:
+      - { texto: "Una velocidad de comunicación equivocada por un factor exacto", bien: true, porque: "El periférico funciona a otra frecuencia; es de las averías más fáciles de diagnosticar cuando se sospecha." }
+      - { texto: "Un error de unas pocas partes por millón", porque: "Eso es la exactitud de un cristal; un divisor equivocado da un factor exacto." }
+      - { texto: "Un consumo algo mayor", porque: "Eso lo da el otro error: dejar el reloj activo en periféricos que no se usan." }
+    escalera: ["Un divisor divide por un número entero."]
+    solucion: "Un factor exacto en la velocidad de comunicación."
+
+  - id: explore-watchdog
+    tipo: explorar
+    titulo: "Un watchdog"
+    texto: "Un contador cuenta pulsos de reloj; el refresco lo pone a cero. Mueva el cursor: si el refresco falta, la cuenta llega al final y pide el reinicio."
+    libro: [213]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }, { id: RF, rotulo: "Refresco" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK, RF] }
+        - { id: a1, tipo: and, entradas: [c1.q1, c1.q0] }
+      salidas:
+        - { id: WDT, de: a1, rotulo: "Reinicio" }
+      cronograma: { ciclos: 8, estimulo: { RF: "01001000" }, senales: [CLK, RF, WDT] }
+
+  - id: prediga-temporizador
+    tipo: predecir
+    titulo: "Refrescar desde un temporizador"
+    texto: "El watchdog se refresca en la interrupción de un temporizador periódico y el programa principal se cuelga. ¿Qué pasa?"
+    libro: [215, 227]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: refrescar, rotulo: "Primera regla de la derecha", rect: [245, 19, 184, 39], texto: "Refrescar desde un solo sitio, y solo si todas las tareas están vivas." }
+    opciones:
+      - { texto: "Nada: el watchdog sigue refrescándose y no reinicia", bien: true, porque: "La interrupción sigue llegando aunque el principal esté colgado: el watchdog queda inútil." }
+      - { texto: "El watchdog reinicia el sistema", porque: "Para eso el refresco tendría que faltar; el temporizador lo sigue dando." }
+      - { texto: "El temporizador también se cuelga", porque: "Es hardware con su interrupción: sigue funcionando." }
+    escalera: ["¿Deja de llegar el refresco cuando se cuelga el bucle principal?"]
+    solucion: "Sigue refrescándose: refrescarlo desde un temporizador lo convierte en inútil."
+
+  - id: toque-ventana
+    tipo: tocar
+    titulo: "Un bucle rápido"
+    texto: "El programa se queda en un bucle rápido que refresca el watchdog sin parar. Toque la regla que lo detecta."
+    libro: [216, 217, 218, 227]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: refrescar, rotulo: "Primera regla de la derecha", rect: [245, 19, 184, 39] }
+        - { id: independiente, rotulo: "Segunda regla de la derecha", rect: [245, 64, 184, 37] }
+        - { id: causa, rotulo: "Tercera regla de la derecha", rect: [245, 107, 184, 37] }
+        - { id: ventana, rotulo: "Cuarta regla de la derecha", rect: [245, 150, 184, 38] }
+    tocar:
+      bien: [ventana]
+      porque:
+        refrescar: "Ayuda, pero un bucle que pasa por ese sitio seguiría refrescando."
+        independiente: "Sirve si falla el reloj principal; el bucle rápido sigue con reloj."
+        causa: "Registrar la causa dice qué pasó después; no provoca el reinicio."
+    exito: "Con ventana, refrescar demasiado pronto también dispara: el bucle rápido queda al descubierto."
+    escalera: ["¿Qué regla castiga refrescar antes de tiempo?"]
+    solucion: "La ventana de refresco."
+
+  - id: porque-brownout
+    tipo: porque
+    titulo: "Mejor parado"
+    texto: "Con la alimentación bajo el umbral, el brown-out mantiene el microcontrolador en reset. ¿Por qué es mejor que dejarlo funcionar?"
+    libro: [221]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: independiente, rotulo: "Segunda regla de la derecha", rect: [245, 64, 184, 37], texto: "El watchdog, con reloj independiente." }
+    opciones:
+      - { texto: "Con poca tensión ejecuta de forma errática, que es mucho peor que pararse", bien: true, porque: "Parado no hace nada; con poca tensión puede ejecutar cualquier cosa, y eso es mucho peor." }
+      - { texto: "Porque así gasta menos la pila", porque: "No es por ahorrar: es para no ejecutar mal." }
+      - { texto: "Porque el watchdog no funciona con poca tensión", porque: "Es complementario del watchdog, pero su motivo es evitar la ejecución errática." }
+    escalera: ["¿Qué es peor, pararse o ejecutar mal?"]
+    solucion: "Sin él, el chip ejecuta de forma errática en lugar de pararse."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Probar el watchdog"
+    texto: "¿Cómo se comprueba en el banco que el watchdog funciona?"
+    libro: [225, 227]
+    widget:
+      tipo: figura
+      figura: fig-38.11
+      zonas:
+        - { id: causa, rotulo: "Tercera regla de la derecha", rect: [245, 107, 184, 37], texto: "Registrar la causa del reinicio." }
+    opciones:
+      - { texto: "Provocar un bucle infinito y ver que reinicia a tiempo y registra la causa", bien: true, porque: "Un watchdog que nunca se ha probado no se sabe si funciona." }
+      - { texto: "Leer su registro de configuración", porque: "Dice cómo está configurado, no si de verdad reinicia." }
+      - { texto: "Dejar el sistema funcionando un día sin fallos", porque: "Si no se cuelga, el watchdog nunca actúa: no se prueba." }
+    escalera: ["Para ver si actúa, hay que darle un motivo."]
+    solucion: "Un bucle infinito a propósito: debe reiniciar en el tiempo esperado y registrar la causa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [202, 210, 213, 218]
+    ideas:
+      - { titulo: "Fuentes.", texto: "RC al instante y poco exacto; cristales exactos y lentos en arrancar." }
+      - { titulo: "Divisores.", texto: "Un divisor mal puesto da un factor exacto." }
+      - { titulo: "Watchdog.", texto: "Desde un solo sitio, con reloj propio, con causa registrada y ventana." }
+      - { titulo: "Brown-out.", texto: "Mejor en reset que ejecutando a medias." }

@@ -12,8 +12,9 @@ The generator refuses to write anything when a single check fails:
     the referenced label (Typst markup removed, whitespace and case ignored; «[…]» separates pieces
     that must appear in order);
   - numeric questions: `valor_texto` (the number as the book writes it) must be part of the quote and
-    must parse to `valor`;
-  - 10-20 questions per chapter, 5-20 per appendix, unique ids.
+    must parse to `valor` (1.2: with `"paratexto": true`, part of the book's own solution of that question in
+    Fuentes/paratexto/<stem>.typ instead: the self-assessment answers the chapter computes but does not write);
+  - 10-32 questions per chapter (20 before 1.2), 5-20 per appendix, unique ids.
 
 Input (one file per part, written by hand):
   { "parte": "cap05",
@@ -37,12 +38,17 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
-LIB = '/home/claude/v3/libro'
+sys.path.insert(0, HERE)
+import fuentes  # noqa: E402
+
+LIB = fuentes.LIB
 SRC = os.path.join(HERE, 'repaso')
 OUT_LIBRO = os.path.join(APP, 'web/public/libro')
 OUT = os.path.join(OUT_LIBRO, 'repaso')
 
-LIMITES = {'capitulo': (10, 20), 'apendice': (5, 20)}
+# (1.2: up to 32 in a chapter: since 4.0 the chapters that took in a 1.1 expansion carry its questions too — 31.x has
+# P05 and P06, 31 questions)
+LIMITES = {'capitulo': (10, 32), 'apendice': (5, 20)}
 HTML_PERMITIDO = {'sub', 'sup', 'em', 'strong', 'code', 'br'}
 TIPOS_REF = {'sec': 'Sección', 'subsec': 'Apartado', 'fig': 'Figura', 'tab': 'Tabla', 'cap': 'Capítulo',
              'ap': 'Apéndice', 'ej': 'Ejercicio', 'prob': 'Problema'}
@@ -94,11 +100,36 @@ def numero_es(texto):
 
 # ------------------------------------------------------------------ sources
 
+def solucion_paratexto(stem, qid):
+    """The book's solution of self-assessment question `qid` (its answer and explanation, Typst), or None."""
+    ruta = os.path.join(fuentes.PARATEXTO, stem + '.typ')
+    if not os.path.exists(ruta):
+        return None
+    with open(ruta, encoding='utf-8') as f:
+        m = re.search(r'\("' + re.escape(qid) + r'", \[(.*?)\], \[(.*?)\], "', f.read())
+    return m and m.group(1) + ' ' + m.group(2)
+
+
 def tramos_h2(fuente):
     """[(start, end)] of every level-2 section of a .typ source (preamble first)."""
     cortes = [m.start() for m in re.finditer(r'(?m)^(== |#heading\(level: 2)', fuente)]
     bordes = [0] + cortes + [len(fuente)]
     return [(bordes[k], bordes[k + 1]) for k in range(len(bordes) - 1)]
+
+
+def retirada_de(label, stem):
+    """The label an alias of the book (libro/alias/*.json) stands for, when the alias is named after part `stem`
+    (`sec-33.13` of cap33): a section the book moved out of that part. Else None."""
+    import glob
+    if not isinstance(label, str):
+        return None
+    m = re.fullmatch(r'(?:sec|fig|tab|ej|prob)-(\d+)\.[\w.]+', label)
+    if not m or stem != f'cap{int(m.group(1)):02d}':
+        return None
+    alias = {}
+    for f in sorted(glob.glob(os.path.join(LIB, 'alias', '*.json'))):
+        alias.update(load_json(f))
+    return alias.get(label)
 
 
 def tramo_de(fuente, label, info_parte):
@@ -190,7 +221,7 @@ def validar_parte(stem, datos, indice, refs, ids_vistos):
             errores.append(f'{donde}: id repetido')
         ids_vistos.add(qid)
         extra = set(q) - {'id', 'tipo', 'enunciado', 'respuesta', 'distractores', 'valor', 'unidad',
-                          'tolerancia', 'valor_texto', 'explicacion', 'ref', 'cita'}
+                          'tolerancia', 'valor_texto', 'explicacion', 'ref', 'cita', 'paratexto', 'retirada'}
         if extra:
             errores.append(f'{donde}: campos desconocidos {sorted(extra)}')
         enunciado = texto(q, 'enunciado', errores, donde, 500)
@@ -205,11 +236,16 @@ def validar_parte(stem, datos, indice, refs, ids_vistos):
         sec_sin_num = next((s for s in info.get('secciones', []) if s['label'] == ref), None)
         if r is None and sec_sin_num is None:
             errores.append(f'{donde}: la referencia {ref!r} no existe en refs.json ni en las secciones de {stem}')
-        elif r is not None and r['parte'] != stem:
-            errores.append(f'{donde}: la referencia {ref} es de {r["parte"]}, no de {stem}')
+        elif r is not None and r['parte'] != stem and retirada_de(q.get('retirada'), stem) is None:
+            errores.append(f'{donde}: la referencia {ref} es de {r["parte"]}, no de {stem}'
+                           + (f' («retirada» {q.get("retirada")} no es una sección que el libro sacó de {stem})' if 'retirada' in q else ''))
         else:
             if ref not in cache_tramos:
-                t = tramo_de(fuente, ref, info)
+                # 1.2: a question written for a section the book moved out of this part (4.0: the old 32.13 of cap33,
+                # «retirada»: sec-33.13, now an alias of sec-56.3) keeps its id here and cites where its topic went
+                otra = r is not None and r['parte'] != stem
+                t = (tramo_de(open(os.path.join(LIB, r['parte'] + '.typ'), encoding='utf-8').read(), ref,
+                              indice['partes'][r['parte']]) if otra else tramo_de(fuente, ref, info))
                 cache_tramos[ref] = normalizar_typst(t, refs) if t is not None else None
             tramo = cache_tramos[ref]
             if tramo is None:
@@ -259,7 +295,17 @@ def validar_parte(stem, datos, indice, refs, ids_vistos):
                         errores.append(f'{donde}: «valor_texto» {vt} no vale {valor}')
                 except ValueError as e:
                     errores.append(f'{donde}: {e}')
-                if cita and normalizar(vt) not in normalizar(cita):
+                if q.get('paratexto') is True:
+                    # 1.2: a self-assessment question of the book's paratext whose answer the chapter computes but
+                    # does not write (31.4: «50 %» of the pulses, the chapter's simulator sees 51 %): the value must
+                    # be in the book's own solution of that question (Fuentes/paratexto/<stem>.typ), the quote
+                    # still in the chapter
+                    sol = solucion_paratexto(stem, qid)
+                    if sol is None:
+                        errores.append(f'{donde}: «paratexto» sin la solución {qid} en paratexto/{stem}.typ')
+                    elif normalizar(vt) not in normalizar_typst(sol, refs):
+                        errores.append(f'{donde}: «valor_texto» {vt} no está en la solución del paratexto')
+                elif cita and normalizar(vt) not in normalizar(cita):
                     errores.append(f'{donde}: «valor_texto» {vt} no está en la cita')
             for campo in ('respuesta', 'distractores'):
                 if campo in q:

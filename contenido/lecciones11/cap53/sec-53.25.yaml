@@ -1,0 +1,286 @@
+# Lección 1.2 de la sección 55.26 «Sistemas con Microcontrolador: No Arranca, se Reinicia o se Cuelga» (cap53;
+# etiqueta interna sec-53.25). Formato: contenido/lecciones11/GUIA.md. La figura 55.47 (fig-53.36, 450,7 × 202,3) con
+# zonas; los cuatro requisitos como un circuito lógico vivo (una AND de cuatro: es la idea del bloque 807, «necesita
+# cuatro cosas», no un circuito del libro); la caída por debajo del brown-out con `regulador-lineal`: un LDO de 3,3 V
+# (sin divisor, V_out = V_ref) con 0,5 V de caída mínima y 220 Ω de carga (unos 15 mA, dentro de los 10–20 mA del
+# libro). La caída mínima y la carga son de ejemplo. Paso práctico: la predicción del reinicio con la entrada hundida.
+leccion: cap53/sec-53.25
+
+libro:
+  804: "Lo primero es decidir cuál de las tres es."
+  805: "Ejecuta y algo lo devuelve al principio"
+  807: "se comprueban en este orden porque cada una condiciona la siguiente"
+  808: "en reset permanente el consumo suele ser anormalmente bajo (medio miliamperio donde se esperan diez)"
+  809: "la corriente dice mucho antes de medir nada"
+  810: "Cortocircuito interno o pin en conflicto"
+  812: "típicamente 2,7 V en un sistema de 3,3 V"
+  813: "una rampa lenta es la fuente que no da la corriente; un pico estrecho es un motor o un relé que conmuta"
+  815: "Un dispositivo I²C que se queda con SDA en bajo bloquea el bus entero"
+  817: "Empieza midiendo el consumo"
+  818: "el consumo clasifica el fallo"
+
+modelo:
+  valores:
+    V_e: { sim: "V_{in}", nombre: "entrada del regulador", unidad: V, valor: 5 }
+    V_ref: { sim: "V_{ref}", nombre: "tensión del regulador", unidad: V, valor: 3.3 }
+    V_do: { sim: "V_{do}", nombre: "caída mínima", unidad: V, valor: 0.5 }
+    R_mc: { sim: "R_{µC}", nombre: "consumo del sistema, como resistencia", unidad: Ω, valor: 220 }
+    V_bo: { sim: "V_{BOR}", nombre: "umbral de brown-out", unidad: V, valor: 2.7 }
+  calculos:
+    V_s: { expr: "min(V_ref, V_e - V_do)", sim: "V_{DD}", nombre: "alimentación del micro", unidad: V }
+    I_mc: { expr: "V_s/R_mc", sim: "I", nombre: "consumo", unidad: A }
+    P_ldo: { expr: "(V_e - V_s)*I_mc", sim: "P", nombre: "potencia en el regulador", unidad: W }
+    m_bo: { expr: "V_s - V_bo", sim: "margen", nombre: "margen sobre el brown-out", unidad: V }
+
+tarjetas:
+  - id: explore-arbol
+    tipo: explorar
+    titulo: "Tres fallos que se parecen desde fuera"
+    texto: "No arranca, se reinicia o se cuelga: se buscan distinto. Toque el árbol, empezando por el consumo."
+    libro: [804, 818]
+    widget:
+      tipo: figura
+      figura: fig-53.36
+      zonas:
+        - { id: consumo, rotulo: "Arriba en el centro", rect: [80, 2, 226, 52], texto: "Primero, el consumo con la fuente de laboratorio: la corriente clasifica el fallo." }
+        - { id: alto, rotulo: "Arriba a la derecha", rect: [336, 2, 112, 52], texto: "Alto y caliente: corto interno o pin en conflicto." }
+        - { id: arranca, rotulo: "Abajo a la izquierda", rect: [4, 102, 146, 96], texto: "No arranca: alimentación, reset, reloj y pines de arranque." }
+        - { id: reinicia, rotulo: "Abajo en el centro", rect: [154, 102, 145, 96], texto: "Se reinicia: causa de reset, caídas de alimentación, watchdog." }
+        - { id: cuelga, rotulo: "Abajo a la derecha", rect: [304, 102, 144, 96], texto: "Se cuelga: el reset, el bus I²C, un pin en conflicto, la prueba del generador." }
+    requiere: { mover: [consumo, arranca, reinicia, cuelga] }
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué significa cada síntoma"
+    texto: "Una cada síntoma con el primer lugar donde mirar."
+    libro: [805]
+    emparejar:
+      - ["No arranca nunca", "Alimentación del núcleo, reset, reloj"]
+      - ["Se reinicia solo", "Caídas de alimentación, watchdog, brown-out"]
+      - ["Se cuelga", "Firmware, periférico bloqueado, bus colgado"]
+    exito: "No arranca: el núcleo no ejecuta. Se reinicia: ejecuta y vuelve. Se cuelga: ejecuta y deja de responder."
+    pistas:
+      - { texto: "Volver al principio es un reset: alguien lo provoca." }
+    escalera:
+      - "Sin reloj o sin reset liberado, el núcleo no llega a ejecutar."
+    solucion: "No arranca: alimentación, reset, reloj. Reinicio: caídas o watchdog. Cuelgue: firmware o bus."
+
+  - id: explore-requisitos
+    tipo: explorar
+    titulo: "Cuatro cosas para la primera instrucción"
+    texto: "El núcleo ejecuta solo con las cuatro a la vez. Quite cualquiera y mire el LED."
+    libro: [807]
+    widget:
+      tipo: logica
+      entradas:
+        - { id: VDD, valor: 1, rotulo: "Alimentación" }
+        - { id: RST, valor: 1, rotulo: "Reset liberado" }
+        - { id: OSC, valor: 1, rotulo: "Reloj activo" }
+        - { id: BOOT, valor: 1, rotulo: "BOOT en su nivel" }
+      piezas:
+        - { id: nucleo, tipo: and, entradas: [VDD, RST, OSC, BOOT], rotulo: "Núcleo" }
+      salidas:
+        - { id: EJ, de: nucleo }
+    requiere: { mover: [VDD, RST, OSC, BOOT] }
+
+  - id: ordene-requisitos
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "En qué orden se comprueban"
+    texto: "Cada requisito condiciona al siguiente. Ordénelos."
+    libro: [807]
+    ordenar:
+      - "Tensión en los pines de alimentación"
+      - "Reset liberado"
+      - "Reloj activo"
+      - "Pines de arranque en su nivel"
+    exito: "Sin alimentación no hay reset que valga; sin reset liberado, el reloj no sirve de nada."
+    pistas:
+      - { texto: "Lo primero es que haya tensión en los pines." }
+    escalera:
+      - "El reset y el reloj necesitan alimentación para funcionar."
+    solucion: "Alimentación, reset, reloj y pines de arranque."
+
+  - id: empareje-consumo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El consumo como firma"
+    texto: "Una cada consumo con el estado probable del micro."
+    libro: [809, 810]
+    emparejar:
+      - ["Casi cero", "Sin alimentación o núcleo sin tensión"]
+      - ["Muy bajo y estable", "En reset permanente o en reposo profundo"]
+      - ["Normal", "Ejecuta: fallo de firmware o periférico"]
+      - ["Alto y caliente", "Corto interno o pin en conflicto"]
+    exito: "Por eso se empieza midiendo el consumo: clasifica el fallo más rápido que nada."
+    pistas:
+      - { texto: "En reset el núcleo está parado: consume muy poco, pero algo." }
+    escalera:
+      - "Consumo normal quiere decir que el núcleo está ejecutando."
+    solucion: "Cero: sin tensión; muy bajo: reset; normal: firmware o periférico; alto: corto o conflicto."
+
+  - id: medio-miliamperio
+    tipo: pregunta
+    titulo: "Medio miliamperio"
+    texto: "Un aparato que no arranca consume medio miliamperio donde se esperan diez. ¿Qué se mide primero?"
+    libro: [808]
+    widget:
+      tipo: figura
+      figura: fig-53.36
+      zonas:
+        - { id: arranca, rotulo: "Abajo a la izquierda", rect: [4, 102, 146, 96] }
+        - { id: consumo, rotulo: "Arriba en el centro", rect: [80, 2, 226, 52] }
+    opciones:
+      - texto: "La línea de reset, con el Brymen"
+        bien: true
+        porque: "En reset permanente el consumo es anormalmente bajo: un condensador con fugas, un supervisor que no libera o un pulsador atascado."
+      - texto: "El firmware, reprogramándolo"
+        porque: "Con consumo normal sí; con medio miliamperio el núcleo ni siquiera ejecuta."
+      - texto: "Un pin en conflicto, con el termopar"
+        porque: "Un conflicto daría consumo alto y calor, no bajo."
+    escalera:
+      - "¿En qué estado consume tan poco un micro alimentado?"
+    solucion: "La línea de reset: en reset permanente el consumo es muy bajo."
+
+  - id: explore-brownout
+    tipo: explorar
+    titulo: "Una caída por debajo del umbral"
+    texto: "El micro se reinicia si su alimentación baja de {{V_bo}}. Baje la entrada del regulador y mire el margen."
+    libro: [812]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_e, ref: V_ref, dropout: V_do, carga: R_mc }
+      lectura: { valor: V_s, rotulo: "Alimentación del micro" }
+      datos:
+        - { valor: m_bo, rotulo: "Margen sobre el brown-out: {{m_bo}}" }
+      corriente: I_mc
+      mide: { vout: V_s, iin: I_mc, icarga: I_mc, p_paso: P_ldo }
+      mandos:
+        - { valor: V_e, min: 2.5, max: 5.5, paso: 0.1, rotulo: "Entrada del regulador" }
+
+  - id: prediga-reinicio
+    tipo: predecir
+    titulo: "Una caída de la entrada"
+    texto: "La entrada de este regulador de 3,3 V, con 0,5 V de caída mínima, baja un instante a 3,0 V. ¿Se reinicia el micro?"
+    libro: [812]
+    fijar: { V_e: 3.0, V_ref: 3.3, V_do: 0.5, R_mc: 220, V_bo: 2.7 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_e, ref: V_ref, dropout: V_do, carga: R_mc }
+      lectura: { valor: V_s, rotulo: "Alimentación del micro" }
+      mide: { vout: V_s, icarga: I_mc }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Sí: su alimentación baja a 2,5 V"
+        bien: true
+        porque: "El regulador ya no tiene margen: entrada menos caída mínima, por debajo de 2,7 V."
+      - texto: "No: el regulador mantiene 3,3 V"
+        porque: "Solo mientras la entrada supere la salida en la caída mínima; con 3,0 V no llega."
+      - texto: "No: 3,0 V está por encima de 2,7 V"
+        porque: "Esos 3,0 V son la entrada; el micro ve la salida, medio voltio menos."
+    escalera:
+      - "Sin margen, la salida es la entrada menos la caída mínima."
+    solucion: "3,0 − 0,5 = 2,5 V, por debajo de 2,7 V: se reinicia."
+    comprobar:
+      - { V_s: 2.5, m_bo: -0.2 }
+
+  - id: por-que-no-se-ve
+    tipo: porque
+    titulo: "Una caída que el multímetro no ve"
+    texto: "El aparato se reinicia y el multímetro marca siempre 3,3 V. ¿Por qué no ve la caída?"
+    libro: [812]
+    widget:
+      tipo: figura
+      figura: fig-53.36
+      zonas:
+        - { id: reinicia, rotulo: "Abajo en el centro", rect: [154, 102, 145, 96] }
+        - { id: consumo, rotulo: "Arriba en el centro", rect: [80, 2, 226, 52] }
+    opciones:
+      - texto: "Bastan decenas de microsegundos por debajo del umbral"
+        bien: true
+        porque: "El multímetro en modo normal promedia: una caída tan breve no llega a la pantalla."
+      - texto: "Porque el reinicio no es de alimentación"
+        porque: "La mayoría de las veces lo es: solo que la caída es demasiado breve."
+      - texto: "Porque el multímetro carga la línea"
+        porque: "Con 10 MΩ no carga una alimentación; lo que le falta es velocidad."
+    escalera:
+      - "¿Cuánto dura la caída que basta para reiniciar el micro?"
+    solucion: "Bastan decenas de microsegundos: ningún multímetro en modo normal la ve."
+
+  - id: empareje-captura
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cazar la caída"
+    texto: "Una cada método con lo que puede ver."
+    libro: [813]
+    emparejar:
+      - ["Brymen con REC", "El mínimo, si dura más que su muestreo de 350 ms"]
+      - ["Brymen con CREST", "Caídas de 0,7 ms o más"]
+      - ["FNIRSI en disparo único", "La caída con su forma y su duración"]
+      - ["Reinicio siempre tras el mismo intervalo", "El watchdog"]
+    exito: "El disparo único, en flanco descendente y justo por debajo de la nominal, es el método definitivo."
+    pistas:
+      - { texto: "Una caída de microsegundos se escapa de los dos modos del Brymen." }
+    escalera:
+      - "Cuanto más corta la caída, más rápido tiene que mirar el instrumento."
+    solucion: "REC: 350 ms; CREST: 0,7 ms; disparo único: forma y duración; intervalo fijo: watchdog."
+
+  - id: forma-caida
+    tipo: pregunta
+    titulo: "La forma dice la causa"
+    texto: "El disparo único captura la caída como un pico estrecho. ¿Qué la provoca?"
+    libro: [813]
+    widget:
+      tipo: figura
+      figura: fig-53.36
+      zonas:
+        - { id: reinicia, rotulo: "Abajo en el centro", rect: [154, 102, 145, 96] }
+        - { id: alto, rotulo: "Arriba a la derecha", rect: [336, 2, 112, 52] }
+    opciones:
+      - texto: "Un motor o un relé que conmuta"
+        bien: true
+        porque: "Un pico estrecho es una conmutación; una rampa lenta sería la fuente que no da la corriente."
+      - texto: "Una fuente que no da la corriente"
+        porque: "Esa caída es una rampa lenta, no un pico estrecho."
+      - texto: "El watchdog"
+        porque: "El watchdog reinicia sin que caiga la alimentación, siempre tras el mismo intervalo."
+    escalera:
+      - "Rápido y breve: algo que conmuta."
+    solucion: "Un motor o un relé que conmuta."
+
+  - id: bus-colgado
+    tipo: pregunta
+    titulo: "Se cuelga y el reset lo revive"
+    texto: "El reset lo revive, y el FNIRSI muestra SDA plantada en bajo, sin actividad. ¿Qué pasa?"
+    libro: [815]
+    widget:
+      tipo: figura
+      figura: fig-53.36
+      zonas:
+        - { id: cuelga, rotulo: "Abajo a la derecha", rect: [304, 102, 144, 96] }
+        - { id: reinicia, rotulo: "Abajo en el centro", rect: [154, 102, 145, 96] }
+    opciones:
+      - texto: "Un dispositivo I²C se ha quedado con SDA en bajo"
+        bien: true
+        porque: "Bloquea el bus entero y el micro espera para siempre; el hardware básico está bien."
+      - texto: "El micro está averiado"
+        porque: "Si el reset lo revive, el hardware básico funciona: es el bus o el firmware."
+      - texto: "Falta el reloj"
+        porque: "Sin reloj no arrancaría, ni siquiera tras el reset."
+    escalera:
+      - "Una línea plantada en bajo sin actividad: ¿quién la sujeta?"
+    solucion: "Un dispositivo I²C con SDA en bajo bloquea el bus."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [804, 807, 812, 817]
+    ideas:
+      - { titulo: "Primero, el consumo.", texto: "Cero, muy bajo, normal o alto: clasifica el fallo." }
+      - { titulo: "No arranca.", texto: "Alimentación, reset, reloj y BOOT, en ese orden." }
+      - { titulo: "Se reinicia.", texto: "Una caída bajo el brown-out: disparo único en VDD; o el watchdog." }
+      - { titulo: "Se cuelga.", texto: "Si el reset lo revive, es firmware o un periférico: mire el bus." }

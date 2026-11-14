@@ -1,0 +1,362 @@
+# Lección 1.2 de la sección 35.12 «Problemas de Diseño» (cap34; etiqueta interna sec-34.12): los problemas 35.A (el
+# convertidor de una báscula), 35.B (ganar bits sobremuestreando) y 35.C (la entrada del convertidor no es infinita).
+# Formato: contenido/lecciones11/GUIA.md (§10.5, «ajuste»). Los números son los de las verificaciones del libro; el ajuste
+# busca el tiempo de adquisición de 16 bits con 10 kΩ y 20 pF (2,36 µs: el error de un salto de fondo de escala,
+# 2¹⁶ · e^(−t/τ), cae bajo medio LSB).
+leccion: cap34/sec-34.12
+
+libro:
+  339: "4,555 V a la entrada de un ADC con referencia de 5 V; resolución objetivo 1 gramo sobre 5 kg"
+  342: "Un gramo sobre 5 kg es 1 parte en 5000, es decir, 12,3 bits de resolución"
+  344: "Con 12 bits el escalón es de 1,22 mV, que son 1,34 g"
+  345: "quedan unos 0,19 µV a la entrada y 89 µV a la salida (0,1 g eficaces), todavía por encima del LSB"
+  346: "Promediando 16 lecturas independientes"
+  352: "hace falta 14 bits efectivos"
+  355: "Cada duplicación de la frecuencia de muestreo mejora 3 dB, y cada 6,02 dB es un bit"
+  357: "Para dos bits hace falta OSR = 16"
+  358: "promediar mil lecturas dará ese mismo código mil veces: no se gana nada"
+  360: "dieciséis lecturas son 160 µs por resultado"
+  366: "presenta un condensador de muestreo de 20 pF"
+  369: "9,0 τ con 12 bits y 11,8 τ con 16"
+  370: "200 ns"
+  371: "con una fuente de 10 kΩ y 16 bits hacen falta 2,36 µs de adquisición"
+  372: "presenta 100 kΩ, da τ = 2 µs y exige 24 µs de adquisición con 16 bits"
+  373: "interponer un seguidor de tensión, que presenta al ADC una impedancia de salida de miliohmios"
+  375: "un divisor de 100 kΩ en total, con dos mitades de 50 kΩ, presenta 25 kΩ"
+  376: "configurar al menos 2,5 µs de adquisición"
+
+modelo:
+  valores:
+    n_b: { sim: "n", nombre: "bits", unidad: "", valor: 12 }
+    V_r: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 5 }
+    V_m: { sim: "V_{5 kg}", nombre: "tensión con 5 kg", unidad: V, valor: 4.555 }
+    M_g: { sim: "M", nombre: "carga máxima en gramos", unidad: g, valor: 5000 }
+    s_o: { sim: "σ", nombre: "ruido a la salida", unidad: V, valor: 89e-6 }
+    N_p: { sim: "N", nombre: "lecturas promediadas", unidad: "", valor: 16 }
+    O_s: { sim: "OSR", nombre: "sobremuestreo", unidad: "", valor: 16 }
+    t_c: { sim: "t_{conv}", nombre: "tiempo de una conversión", unidad: s, valor: 10e-6 }
+    R_s: { sim: "R_{fuente}", nombre: "impedancia de fuente", unidad: Ω, valor: 10000 }
+    C_s: { sim: "C_{m}", nombre: "condensador de muestreo", unidad: F, valor: 20e-12 }
+    t_q: { sim: "t_{adq}", nombre: "tiempo de adquisición", unidad: s, valor: 2e-7 }
+    n_q: { sim: "n", nombre: "bits del SAR", unidad: "", valor: 16 }
+  calculos:
+    c_12: { expr: "2^12", sim: "2¹²", nombre: "partes con 12 bits", unidad: "" }
+    LSB: { expr: "V_r/2^n_b", sim: "LSB", nombre: "escalón", unidad: V }
+    v_g: { expr: "V_m/M_g", sim: "v_{g}", nombre: "tensión por gramo", unidad: V }
+    g_L: { expr: "LSB/v_g", sim: "g/LSB", nombre: "gramos por escalón", unidad: g, cifras: 3 }
+    b_n: { expr: "log10(M_g)/log10(2)", sim: "bits", nombre: "bits necesarios", unidad: "", cifras: 3 }
+    s_N: { expr: "s_o/sqrt(N_p)", sim: "σ_{N}", nombre: "ruido tras promediar", unidad: V }
+    b_g: { expr: "log10(O_s)/log10(4)", sim: "bits", nombre: "bits ganados", unidad: "", cifras: 2 }
+    T_r: { expr: "O_s*t_c", sim: "t", nombre: "tiempo por resultado", unidad: s }
+    tau: { expr: "R_s*C_s", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    t_n: { expr: "R_s*C_s*ln(2^(n_q + 1))", sim: "t_{adq}", nombre: "adquisición necesaria", unidad: s }
+    e_q: { expr: "2^n_q*exp(-t_q/(R_s*C_s))", sim: "error", nombre: "error al final de la adquisición", unidad: LSB, cifras: 3 }
+
+tarjetas:
+  - id: explore-bascula
+    tipo: explorar
+    titulo: "Un gramo sobre 5 kg"
+    texto: "La báscula entrega 4,555 V con 5 kg a un ADC con referencia de 5 V. Cambie los bits y mire cuántos gramos vale un escalón."
+    libro: [339, 344]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 10, max: 16, unidad: "", rotulo: "bits" }
+      y: { min: 0.05, max: 10, unidad: g, rotulo: "g por escalón", escala: log }
+      curvas:
+        - { expr: "V_r/2^nx/v_g", color: azul, rotulo: "Escalón" }
+        - { expr: "1", color: tinta, rotulo: "Un gramo", discontinua: true }
+      marcas:
+        - { x: "n_b", y: "g_L", rotulo: "Su ADC" }
+      lectura: { valor: g_L, rotulo: "Gramos por escalón" }
+      mandos:
+        - { valor: n_b, lista: [10, 12, 16], rotulo: "Bits" }
+    requiere: { mover: [n_b] }
+
+  - id: estime-bits
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Bits para un gramo"
+    texto: "Un gramo sobre 5 kg es 1 parte en 5000. ¿Cuántos bits de resolución son?"
+    libro: [342]
+    estimar:
+      objetivo: "b_n"
+      unidad: bits
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 18
+      tol: 0.02
+      rotulo: "Bits"
+    exito: "12,3 bits: hacen falta 13 enteros."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 12.6 }, texto: "Se ha pasado: 2¹³ ya son más de 5 000 partes." }
+      - { texto: "Se ha quedado corto: 2¹² son 4 096 partes, menos de 5 000." }
+    escalera: ["log₂(5000)."]
+    solucion: "log₂(5000) = 12,3 bits."
+    comprobar:
+      - { b_n: 12.29, c_12: 4096 }
+
+  - id: prediga-doce
+    tipo: predecir
+    titulo: "Con 12 bits"
+    texto: "Con un ADC de 12 bits, ¿llega la báscula al gramo?"
+    libro: [344]
+    fijar: { n_b: 12 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 10, max: 16, unidad: "", rotulo: "bits" }
+      y: { min: 0.05, max: 10, unidad: g, rotulo: "g por escalón", escala: log }
+      curvas:
+        - { expr: "V_r/2^nx/v_g", color: azul, rotulo: "Escalón" }
+        - { expr: "1", color: tinta, rotulo: "Un gramo", discontinua: true }
+      lectura: { valor: g_L, rotulo: "Gramos por escalón" }
+      ocultar: true
+    opciones:
+      - { texto: "No: el escalón es de 1,34 g", bien: true, porque: "1,22 mV de escalón entre 0,911 mV por gramo. Con 16 bits baja a 0,08 g." }
+      - { texto: "Sí: 12 bits son 4 096 partes", porque: "Los 5 kg no ocupan los 5 V enteros sino 4,555 V; y 4 096 partes son menos de 5 000." }
+      - { texto: "Justo: un gramo exacto", porque: "Haría falta un escalón de 0,911 mV; el de 12 bits es de 1,22 mV." }
+    escalera: ["Escalón: 5 V/4 096; tensión por gramo: 4,555 V/5 000."]
+    solucion: "1,22 mV/0,911 mV = 1,34 g: no llega."
+    comprobar:
+      - { g_L: 1.34, LSB: 0.00122, v_g: 0.000911, c_12: 4096 }
+      - { con: { n_b: 16 }, g_L: 0.0838 }
+
+  - id: pregunta-ruido
+    tipo: pregunta
+    titulo: "16 bits y 89 µV de ruido"
+    texto: "Con 16 bits el escalón es de 76 µV, pero a la salida del amplificador quedan 89 µV de ruido. ¿Qué fija la resolución útil?"
+    libro: [345]
+    fijar: { n_b: 16 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 10, max: 16, unidad: "", rotulo: "bits" }
+      y: { min: 0.05, max: 10, unidad: g, rotulo: "g por escalón", escala: log }
+      curvas:
+        - { expr: "V_r/2^nx/v_g", color: azul, rotulo: "Escalón" }
+      lectura: { valor: LSB, rotulo: "Un LSB" }
+    opciones:
+      - { texto: "El ruido: los bits por debajo de él no informan", bien: true, porque: "89 µV es más que un LSB de 16 bits: para aprovecharlo hay que promediar." }
+      - { texto: "El convertidor: 16 bits son 16 bits", porque: "Resolución no es exactitud: lo que cae bajo el ruido no se distingue." }
+      - { texto: "La referencia de 5 V", porque: "La referencia fija la escala; aquí lo que limita es el ruido frente al escalón." }
+    escalera: ["Compare el ruido con un LSB."]
+    solucion: "El ruido, 89 µV, por encima del LSB de 76 µV."
+    comprobar:
+      - { LSB: 76.3e-6 }
+
+  - id: estime-promedio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Promediar 16 lecturas"
+    texto: "Se promedian 16 lecturas independientes de un ruido de 89 µV. ¿Cuánto ruido queda, como mucho?"
+    libro: [345, 346]
+    fijar: { s_o: 89e-6, N_p: 16 }
+    estimar:
+      objetivo: "s_N"
+      unidad: V
+      min: 0
+      max: 0.0001
+      paso: 0.0000005
+      inicio: 0.00008
+      tol: 0.05
+      rotulo: "Ruido tras promediar"
+    exito: "Unos 22 µV, bajo el LSB: la mejora es √N, un factor 4."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000234 }, texto: "Se ha pasado: el ruido baja con √16, no con 2." }
+      - { texto: "Se ha quedado corto: baja con √N, no con N." }
+    escalera: ["El ruido aleatorio baja con la raíz del número de lecturas."]
+    solucion: "89/√16 = 22 µV."
+    comprobar:
+      - { s_N: 22.25e-6 }
+
+  - id: explore-osr
+    tipo: explorar
+    titulo: "Un ADC de 12 bits que debe dar 14"
+    texto: "Cada duplicación del muestreo mejora 3 dB, y 6,02 dB son un bit. Cambie el sobremuestreo y mire los bits ganados."
+    libro: [352, 355, 357]
+    widget:
+      tipo: grafica
+      x: { id: ox, min: 1, max: 100, unidad: "", rotulo: "OSR", escala: log }
+      y: { min: 0, max: 4, unidad: bits, rotulo: "bits ganados" }
+      curvas:
+        - { expr: "log10(ox)/log10(4)", color: azul, rotulo: "Bits ganados" }
+      marcas:
+        - { x: "O_s", y: "b_g", rotulo: "Su OSR" }
+      lectura: { valor: b_g, rotulo: "Bits ganados" }
+      datos:
+        - { valor: T_r, rotulo: "Tiempo por resultado: {{T_r}}" }
+      mandos:
+        - { valor: O_s, lista: [4, 16, 64], rotulo: "OSR" }
+    requiere: { mover: [O_s] }
+
+  - id: prediga-condicion
+    tipo: predecir
+    titulo: "Una señal demasiado limpia"
+    texto: "La señal es tan limpia que el ADC devuelve siempre exactamente el mismo código. ¿Qué da promediar mil lecturas?"
+    libro: [358]
+    fijar: { O_s: 16 }
+    widget:
+      tipo: grafica
+      x: { id: ox, min: 1, max: 100, unidad: "", rotulo: "OSR", escala: log }
+      y: { min: 0, max: 4, unidad: bits, rotulo: "bits ganados" }
+      curvas:
+        - { expr: "log10(ox)/log10(4)", color: azul, rotulo: "Con ruido" }
+      lectura: { valor: b_g, rotulo: "Bits ganados" }
+      ocultar: true
+    opciones:
+      - { texto: "El mismo código: no se gana nada", bien: true, porque: "El sobremuestreo necesita al menos un LSB de ruido; si falta, se añade dither de uno o dos LSB." }
+      - { texto: "Cinco bits más", porque: "Eso suponen las cuentas con ruido aleatorio; sin él, mil códigos iguales promedian a ese código." }
+      - { texto: "Un valor intermedio entre dos códigos", porque: "Para eso las lecturas tendrían que repartirse entre códigos vecinos." }
+    escalera: ["¿Cuál es la media de mil números iguales?"]
+    solucion: "El mismo código mil veces: hace falta dither."
+
+  - id: estime-tiempo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Tiempo por resultado"
+    texto: "El ADC convierte en 10 µs y cada resultado promedia 16 lecturas. ¿Cuánto tarda cada resultado?"
+    libro: [360]
+    fijar: { O_s: 16, t_c: 10e-6 }
+    estimar:
+      objetivo: "T_r"
+      unidad: s
+      min: 0
+      max: 0.0005
+      paso: 0.000001
+      inicio: 0.00045
+      tol: 0.02
+      rotulo: "Tiempo por resultado"
+    exito: "160 µs: para una temperatura, irrelevante."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000164 }, texto: "Se ha pasado: son 16 conversiones de 10 µs." }
+      - { texto: "Se ha quedado corto: 16 × 10 µs." }
+    escalera: ["Lecturas por resultado por tiempo de conversión."]
+    solucion: "16 × 10 µs = 160 µs."
+    comprobar:
+      - { T_r: 160e-6 }
+
+  - id: estime-tau
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "20 pF y 10 kΩ"
+    texto: "Un SAR presenta 20 pF de muestreo y la fuente tiene 10 kΩ. ¿Cuál es la constante de tiempo?"
+    libro: [366, 369, 370]
+    fijar: { R_s: 10000, C_s: 20e-12 }
+    estimar:
+      objetivo: "tau"
+      unidad: s
+      min: 0
+      max: 0.000001
+      paso: 0.000000005
+      inicio: 0.0000009
+      tol: 0.03
+      rotulo: "τ"
+    exito: "200 ns; con 16 bits hacen falta 11,8 τ: 2,36 µs."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000000206 }, texto: "Se ha pasado: 10 kΩ × 20 pF." }
+      - { texto: "Se ha quedado corto: 10⁴ × 20 · 10⁻¹² s." }
+    escalera: ["τ = R · C."]
+    solucion: "10 kΩ × 20 pF = 200 ns."
+    comprobar:
+      - { tau: 200e-9 }
+
+  - id: ajuste-adquisicion
+    tipo: ajuste
+    titulo: "Adquirir 16 bits con 10 kΩ"
+    texto: "Alargue el tiempo de adquisición hasta que el error de un salto de fondo de escala quede bajo medio LSB de 16 bits."
+    libro: [370, 371, 376]
+    fijar: { R_s: 10000, C_s: 20e-12, n_q: 16 }
+    inicio: { t_q: 2e-7 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.000004, unidad: s, rotulo: "t" }
+      y: { min: 0.01, max: 100000, unidad: LSB, rotulo: "error", escala: log }
+      curvas:
+        - { expr: "2^n_q*exp(-tx/(R_s*C_s))", color: azul, rotulo: "Error" }
+        - { expr: "0.5", color: tinta, rotulo: "Medio LSB", discontinua: true }
+      marcas:
+        - { x: "t_q", y: "e_q", rotulo: "Su adquisición" }
+      lectura: { valor: e_q, rotulo: "Error al convertir" }
+      mandos:
+        - { valor: t_q, min: 2e-7, max: 4e-6, paso: 2e-8, rotulo: "Tiempo de adquisición" }
+    ajuste:
+      valor: e_q
+      min: 0.05
+      max: 0.5
+      rotulo: "Error al convertir"
+      escala: { min: 0, max: 3 }
+      bajo: "Sobra tiempo: puede acortar algo la adquisición."
+      alto: "Todavía no: alargue la adquisición."
+      dentro: "Bajo medio LSB: hacen falta 2,36 µs. El libro recomienda configurar al menos 2,5 µs."
+
+  - id: pregunta-divisor
+    tipo: pregunta
+    titulo: "Un divisor de dos 200 kΩ"
+    texto: "Un divisor de dos resistencias de 200 kΩ parece razonable para no cargar el sensor. ¿Qué adquisición exige con 16 bits?"
+    libro: [369, 372]
+    fijar: { R_s: 100000, C_s: 20e-12, n_q: 16 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00003, unidad: s, rotulo: "t" }
+      y: { min: 0.01, max: 100000, unidad: LSB, rotulo: "error", escala: log }
+      curvas:
+        - { expr: "2^n_q*exp(-tx/(R_s*C_s))", color: azul, rotulo: "Error" }
+        - { expr: "0.5", color: tinta, rotulo: "Medio LSB", discontinua: true }
+      lectura: { valor: t_n, rotulo: "Adquisición necesaria" }
+    opciones:
+      - { texto: "Unos 24 µs: presenta 100 kΩ y τ = 2 µs", bien: true, porque: "Las dos en paralelo dan 100 kΩ; 11,8 τ son unos 24 µs." }
+      - { texto: "Unos 94 µs: presenta 400 kΩ", porque: "Visto desde la salida, las dos resistencias quedan en paralelo, no en serie." }
+      - { texto: "2,36 µs, como con 10 kΩ", porque: "La constante de tiempo crece con la impedancia de fuente: diez veces más." }
+    escalera: ["¿Qué impedancia ve el ADC desde el punto medio del divisor?"]
+    solucion: "200 ‖ 200 = 100 kΩ, τ = 2 µs: unos 24 µs."
+    comprobar:
+      - { tau: 2e-6, t_n: 23.6e-6 }
+      - { con: { R_s: 400000 }, t_n: 94.3e-6 }
+
+  - id: pregunta-mitades
+    tipo: pregunta
+    titulo: "La impedancia que de verdad tiene"
+    texto: "Un divisor de 100 kΩ en total, con dos mitades de 50 kΩ. ¿Qué impedancia ve el convertidor?"
+    libro: [375]
+    fijar: { R_s: 25000, C_s: 20e-12, n_q: 16 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.00003, unidad: s, rotulo: "t" }
+      y: { min: 0.01, max: 100000, unidad: LSB, rotulo: "error", escala: log }
+      curvas:
+        - { expr: "2^n_q*exp(-tx/(R_s*C_s))", color: azul, rotulo: "Error" }
+        - { expr: "0.5", color: tinta, rotulo: "Medio LSB", discontinua: true }
+    opciones:
+      - { texto: "25 kΩ: las dos mitades en paralelo", bien: true, porque: "Hay que medir la impedancia real de la fuente, no la que se cree tener." }
+      - { texto: "100 kΩ: el total del divisor", porque: "El total es la serie; el convertidor ve las dos mitades en paralelo." }
+      - { texto: "50 kΩ: la mitad de abajo", porque: "La de arriba también llega al punto medio, a través de la fuente: quedan en paralelo." }
+    escalera: ["Con la fuente como un cortocircuito, ¿cómo quedan las dos mitades?"]
+    solucion: "50 ‖ 50 = 25 kΩ."
+
+  - id: porque-seguidor
+    tipo: porque
+    titulo: "La solución"
+    texto: "Con fuentes por encima de 1 kΩ, el libro interpone un seguidor de tensión. ¿Por qué lo arregla?"
+    libro: [373]
+    fijar: { R_s: 10000, C_s: 20e-12, n_q: 16 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.000004, unidad: s, rotulo: "t" }
+      y: { min: 0.01, max: 100000, unidad: LSB, rotulo: "error", escala: log }
+      curvas:
+        - { expr: "2^n_q*exp(-tx/(R_s*C_s))", color: azul, rotulo: "Error" }
+        - { expr: "0.5", color: tinta, rotulo: "Medio LSB", discontinua: true }
+    opciones:
+      - { texto: "Presenta al ADC una impedancia de miliohmios: la adquisición vuelve a depender solo del ADC", bien: true, porque: "La constante de tiempo de la fuente desaparece; el sensor ve la entrada altísima del seguidor." }
+      - { texto: "Porque amplifica la señal", porque: "Un seguidor tiene ganancia uno: lo que cambia es la impedancia." }
+      - { texto: "Porque filtra el ruido", porque: "No es un filtro: es un cambio de impedancia." }
+    escalera: ["¿Qué impedancia de salida tiene un seguidor?"]
+    solucion: "Impedancia de salida de miliohmios."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [345, 357, 369, 371, 373]
+    ideas:
+      - { titulo: "Báscula.", texto: "16 bits, pero la resolución útil la fija el ruido: hay que promediar." }
+      - { titulo: "Sobremuestreo.", texto: "OSR = 16 para dos bits, y solo con un LSB de ruido en la entrada." }
+      - { titulo: "La entrada.", texto: "11,8 τ con 16 bits: con fuentes altas, un seguidor." }

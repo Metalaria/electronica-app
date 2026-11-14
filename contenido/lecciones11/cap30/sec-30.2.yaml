@@ -1,0 +1,264 @@
+# Lección 1.2 de la sección 29.2 «Sistemas LTI y la Respuesta al Impulso» (cap30, sec-30.2). Formato: GUIA.md.
+# - La prueba de linealidad del banco (bloques 65 y 66) con un amplificador de ejemplo de ganancia uno que recorta en
+#   ±1: y = min(max(A·sen ωt, −1), 1). Mientras A ≤ 1 la salida es la entrada; por encima, recorta y aparecen armónicos.
+# - Las exponenciales como autofunciones (bloques 47 a 50) con un paso bajo RC de ejemplo a la frecuencia relativa
+#   u = f/f_c: |H| = 1/√(1 + u²) y fase −atan u. La senoide sale con la misma frecuencia, escalada y desplazada.
+# - La estabilidad (bloque 60) con h(t) = e^(σt) de un polo real σ de ejemplo.
+# Paso práctico: «ajuste» de la amplitud hasta el borde de la linealidad (el banco del libro).
+leccion: cap30/sec-30.2
+
+libro:
+  38: "Un sistema es lineal si cumple superposición"
+  39: "la misma entrada aplicada mañana da la misma salida, retrasada"
+  40: "Un sistema que cumple ambas se llama LTI"
+  42: "cualquier señal se puede descomponer en una suma de impulsos escalados y desplazados"
+  43: "conociendo la respuesta a un solo impulso, se conoce la respuesta a cualquier entrada"
+  45: "h(t), la respuesta al impulso, contiene toda la información del sistema"
+  47: "No cambia de forma ni de frecuencia: solo de amplitud y fase"
+  48: "las exponenciales complejas son las autofunciones de los sistemas LTI"
+  49: "La convolución en el tiempo se convierte en un producto en frecuencia"
+  50: 'Y lr(( ω )) = X lr(( ω )) dot.op H lr(( ω ))'
+  51: "las respuestas de bloques en cascada se sumen en decibelios"
+  53: "un filtro digital de coeficientes constantes"
+  55: "Un sistema LTI no puede crear frecuencias nuevas"
+  56: "la distorsión armónica es la firma de la no linealidad"
+  59: "pasando el filtro hacia delante y luego hacia atrás"
+  60: "Estabilidad: una entrada acotada produce una salida acotada"
+  62: "se puede caracterizar por completo con una sola medida"
+  63: "Sin linealidad e invarianza, cada entrada exigiría una medida nueva"
+  65: "aplicar una senoide pura y mirar el espectro de la salida con la FFT"
+  66: "Repetir la prueba subiendo la amplitud muestra el momento exacto en que el sistema deja de ser lineal"
+  67: "Las dos propiedades de un sistema LTI"
+
+modelo:
+  valores:
+    A_s: { sim: "A", nombre: "amplitud de la entrada", unidad: V, valor: 0.3 }
+    u_f: { sim: "f/f_{c}", nombre: "frecuencia relativa al corte", unidad: "", valor: 1 }
+    s_p: { sim: "σ", nombre: "polo real de ejemplo", unidad: "1/s", valor: -1 }
+  calculos:
+    y_p: { expr: "min(A_s, 1)", sim: "V_{pico}", nombre: "pico de la salida", unidad: V }
+    r_c: { expr: "100*(A_s - min(A_s, 1))/A_s", sim: "recorte", nombre: "parte de la cresta recortada", unidad: "%", cifras: 2 }
+    H_m: { expr: "1/sqrt(1 + u_f^2)", sim: "|H|", nombre: "módulo de H", unidad: "" }
+    H_f: { expr: "-atan(u_f)*180/pi", sim: "φ", nombre: "fase de H", unidad: "°" }
+    Y_a: { expr: "1*H_m", sim: "|Y|", nombre: "amplitud de la salida", unidad: V }
+
+tarjetas:
+  - id: explore-lti
+    tipo: explorar
+    titulo: "Dos propiedades"
+    texto: "Toque los dos recuadros de arriba: lineal e invariante en el tiempo. Un sistema que cumple ambas es LTI."
+    libro: [38, 39, 40, 67]
+    widget:
+      tipo: figura
+      figura: fig-30.3
+      zonas:
+        - { id: lineal, rotulo: "Recuadro azul, arriba", rect: [6, 5, 215, 101], texto: "Lineal: la respuesta a la suma de dos entradas es la suma de las respuestas, y escalar la entrada escala la salida." }
+        - { id: invariante, rotulo: "Recuadro verde, arriba", rect: [229, 5, 215, 101], texto: "Invariante en el tiempo: la misma entrada aplicada mañana da la misma salida, retrasada." }
+        - { id: impulso, rotulo: "Recuadro naranja", rect: [6, 115, 215, 84], texto: "Con las dos, la respuesta a un impulso basta para conocer la respuesta a cualquier entrada." }
+        - { id: autofunciones, rotulo: "Recuadro violeta", rect: [229, 115, 215, 84], texto: "Una exponencial compleja sale igual, solo multiplicada por un número complejo." }
+        - { id: no-lti, rotulo: "Recuadro rojo, abajo", rect: [6, 209, 438, 55], texto: "Lo que satura, lo que cambia con el tiempo y un mezclador no son LTI." }
+    requiere: { mover: [lineal, invariante] }
+
+  - id: pregunta-impulso
+    tipo: pregunta
+    titulo: "Lo que basta saber"
+    texto: "De un sistema LTI conoce solo su respuesta a un impulso. ¿Qué puede predecir?"
+    libro: [42, 43, 45]
+    widget:
+      tipo: figura
+      figura: fig-30.3
+      zonas:
+        - { id: todo, rotulo: "Las propiedades de un sistema LTI", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "Su respuesta a cualquier entrada"
+        bien: true
+        porque: "Toda entrada es una suma de impulsos escalados y desplazados; la salida, la suma de sus respuestas: la convolución."
+      - texto: "Solo su respuesta a otros impulsos"
+        porque: "La linealidad y la invarianza llevan esa respuesta a cualquier señal, que es una suma de impulsos."
+      - texto: "Solo su respuesta en frecuencia, no en el tiempo"
+        porque: "h(t) da las dos: contiene toda la información del sistema."
+    escalera:
+      - "Piense en la entrada como una fila de impulsos de distinta altura."
+    solucion: "Cualquier entrada: y(t) = x(t) ∗ h(t)."
+
+  - id: explore-autofuncion
+    tipo: explorar
+    titulo: "Una senoide entra, una senoide sale"
+    texto: "Una senoide atraviesa un paso bajo RC de ejemplo. Cambie su frecuencia relativa al corte: ¿cambia la forma o la frecuencia de la salida?"
+    libro: [47, 48]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*t)", color: azul, rotulo: "entrada" }
+        - { expr: "H_m*sin(2*pi*t - atan(u_f))", color: naranja, rotulo: "salida" }
+      lectura: { valor: H_m, rotulo: "Módulo de H" }
+      datos:
+        - { valor: H_f, rotulo: "Fase: {{H_f}}" }
+      mandos:
+        - { valor: u_f, lista: [0.5, 1, 2, 4], rotulo: "f/f_{c}" }
+    requiere: { mover: [u_f] }
+
+  - id: formula-producto
+    tipo: formula
+    titulo: "Un producto en frecuencia"
+    texto: "Cada exponencial se multiplica por un número, H(ω). La convolución en el tiempo se vuelve un producto."
+    libro: [49, 50, 51]
+    ec: 50
+    sustitucion: "|Y| = 1 V · {{H_m}} = {{Y_a}}"
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f_{c}", escala: log }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "|H|" }
+      curvas:
+        - { expr: "1/sqrt(1 + u^2)", color: naranja, rotulo: "|H| del RC" }
+      marcas:
+        - { x: "u_f", y: "H_m", rotulo: "{{H_m}}" }
+      lectura: { valor: Y_a, rotulo: "Amplitud de la salida" }
+      mandos:
+        - { valor: u_f, lista: [0.5, 1, 2, 4], rotulo: "f/f_{c}" }
+
+  - id: predecir-frecuencias
+    tipo: predecir
+    titulo: "Frecuencias que no estaban"
+    texto: "Entra una senoide pura y la FFT de la salida enseña armónicos que no había en la entrada. ¿Qué indica?"
+    libro: [55, 56, 65]
+    widget:
+      tipo: figura
+      figura: fig-30.3
+      zonas:
+        - { id: todo, rotulo: "Las propiedades de un sistema LTI", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "Que el sistema no es lineal"
+        bien: true
+        porque: "Un LTI solo cambia amplitud y fase de cada frecuencia; no puede crear ninguna."
+      - texto: "Que es un LTI con una resonancia"
+        porque: "Una resonancia realza frecuencias que ya estaban; no inventa armónicos nuevos."
+      - texto: "Que el sistema es inestable"
+        porque: "La inestabilidad hace crecer la salida; los armónicos nuevos son la firma de la no linealidad."
+    escalera:
+      - "¿Qué le hace un LTI a cada exponencial que entra?"
+    solucion: "No es lineal: la distorsión armónica es su firma."
+
+  - id: ajuste-linealidad
+    tipo: ajuste
+    titulo: "Hasta dónde es lineal"
+    texto: "Un amplificador de ejemplo que recorta en ±1 V. Suba la amplitud de la entrada todo lo posible sin que la salida deje de ser una senoide."
+    libro: [65, 66]
+    inicio: { A_s: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      y: { min: -2.2, max: 2.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_s*sin(2*pi*t)", color: azul, rotulo: "entrada", discontinua: true }
+        - { expr: "min(max(A_s*sin(2*pi*t), -1), 1)", color: naranja, rotulo: "salida" }
+      lectura: { valor: y_p, rotulo: "Pico de la salida" }
+      datos:
+        - { valor: r_c, rotulo: "Cresta recortada: {{r_c}}" }
+      mandos:
+        - { valor: A_s, min: 0.1, max: 2, paso: 0.05, rotulo: "Amplitud de la entrada, A" }
+    ajuste:
+      valor: A_s
+      min: 0.9
+      max: 1
+      rotulo: "Amplitud de la entrada"
+      escala: { min: 0, max: 2 }
+      bajo: "Todavía es lineal y queda margen: suba la amplitud."
+      alto: "Recorta: aparecen armónicos que no estaban. Ya no es LTI: baje."
+      dentro: "Justo en el borde: casi todo circuito es LTI hasta cierto nivel, y el diseño consiste en no pasar de ahí."
+    comprobar:
+      - { con: { A_s: 1 }, y_p: 1, r_c: 0 }
+
+  - id: empareje-lti
+    tipo: pregunta
+    titulo: "LTI o no"
+    texto: "Empareje cada sistema con lo que es."
+    libro: [53, 55]
+    widget:
+      tipo: figura
+      figura: fig-30.3
+      zonas:
+        - { id: todo, rotulo: "Las propiedades de un sistema LTI", rect: [0, 0, 450, 270] }
+    emparejar:
+      - ["Red RC de valores fijos", "LTI"]
+      - ["Amplificador que recorta", "No lineal"]
+      - ["Control automático de ganancia", "Cambia con el tiempo"]
+      - ["Mezclador", "Crea frecuencias nuevas a propósito"]
+    exito: "Por eso un diodo o un transistor se linealizan alrededor de su punto de trabajo: así valen las herramientas LTI."
+    pistas:
+      - { texto: "El control de ganancia cambia sus parámetros mientras funciona." }
+    escalera:
+      - "Busque primero el único que cumple las dos propiedades."
+    solucion: "RC, LTI; el que recorta, no lineal; el control de ganancia, variante; el mezclador, frecuencias nuevas."
+
+  - id: explore-estabilidad
+    tipo: explorar
+    titulo: "Acotada o no"
+    texto: "La respuesta al impulso de un polo real de ejemplo. Lleve el polo al semiplano derecho y mire si la salida sigue acotada."
+    libro: [60]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 8, unidad: "", rotulo: "h(t)" }
+      curvas:
+        - { expr: "exp(s_p*t)", color: naranja, rotulo: "h(t)" }
+      lectura: { valor: s_p, rotulo: "Polo, σ" }
+      mandos:
+        - { valor: s_p, lista: [-1, -0.5, 0, 0.5], rotulo: "Polo, σ" }
+    requiere: { mover: [s_p] }
+
+  - id: pregunta-fase-nula
+    tipo: pregunta
+    titulo: "Un filtro sin retardo"
+    texto: "Todo sistema físico es causal. ¿Cómo consigue un filtro digital fase nula, sin retardo alguno?"
+    libro: [59]
+    widget:
+      tipo: figura
+      figura: fig-30.3
+      zonas:
+        - { id: todo, rotulo: "Las propiedades de un sistema LTI", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "Sobre datos ya grabados, pasándolo hacia delante y luego hacia atrás"
+        bien: true
+        porque: "Con los datos grabados puede usar muestras «futuras»: deja de ser causal, y el retardo de ida se deshace a la vuelta."
+      - texto: "Con un FIR simétrico, en tiempo real"
+        porque: "Ese da fase lineal sin dejar de ser causal, pero a costa de un retardo constante."
+      - texto: "Muestreando más deprisa"
+        porque: "Acorta el retardo, pero un filtro causal en tiempo real nunca lo anula."
+    escalera:
+      - "Para no retrasar nada hay que mirar entradas futuras. ¿Cuándo las tiene?"
+    solucion: "Sobre datos grabados: hacia delante y hacia atrás."
+
+  - id: porque-una-medida
+    tipo: porque
+    titulo: "Una sola medida"
+    texto: "Se levanta el Bode de un filtro y se sabe qué hará con cualquier señal. ¿Por qué basta esa medida?"
+    libro: [62, 63]
+    widget:
+      tipo: figura
+      figura: fig-30.3
+      zonas:
+        - { id: todo, rotulo: "Las propiedades de un sistema LTI", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "Porque es LTI: la respuesta en frecuencia lo caracteriza por completo"
+        bien: true
+        porque: "Linealidad e invarianza dejan predecir cualquier entrada desde una sola medida."
+      - texto: "Porque el Bode se mide con muchas frecuencias"
+        porque: "Muchas frecuencias no bastarían si el sistema no fuera LTI: cada entrada exigiría una medida nueva."
+      - texto: "Porque los filtros no tienen respuesta al impulso"
+        porque: "La tienen, y dice lo mismo que el Bode: son dos caras de la misma información."
+    escalera:
+      - "¿Qué pasaría con un sistema que no fuera lineal ni invariante?"
+    solucion: "Por ser LTI: una medida lo describe entero."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [40, 45, 48, 55, 60]
+    ideas:
+      - { titulo: "LTI.", texto: "Lineal e invariante en el tiempo: dos propiedades que bastan." }
+      - { titulo: "Respuesta al impulso.", texto: "h(t) lo dice todo; la salida es la convolución x ∗ h." }
+      - { titulo: "Autofunciones.", texto: "Una exponencial sale igual, multiplicada por H(ω): la convolución se vuelve producto." }
+      - { titulo: "La prueba.", texto: "Un LTI no crea frecuencias: si aparecen armónicos, no es lineal." }

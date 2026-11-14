@@ -1,0 +1,284 @@
+# Lección 1.2 de la sección 37.7 «Filtros Trazados en Cobre: Stubs y Líneas Acopladas» (cap36, sec-36.6).
+# Formato: GUIA.md.
+# - Stub de 50 Ω: en corto Z_in = j·Z0·tan(βl), en abierto −j·Z0·cot(βl) (bloques 238 y 239), con βl = 2π·l/λ.
+# - λ en el sustrato = c/(f·√ε_eff) (bloque 244): 68,7 mm con 2,4 GHz y ε_eff = 3,3; λ/4 = 17,2 mm (bloques 246 y 247).
+# - Una vía de 1 nH a 2,4 GHz: X = 2π·f·L = 15 Ω (bloque 267).
+# Paso práctico: «simular» el cuarto de onda en FR4 (errores: λ entera, el del aire, ε_r en lugar de ε_eff) y «tocar»
+# en la foto 37.11 el paso bajo de stubs.
+leccion: cap36/sec-36.6
+
+libro:
+  235: "su autorresonancia cae dentro de la banda de trabajo"
+  237: "presenta a su entrada una reactancia que depende de su longitud eléctrica"
+  238: 'Z_("in") = j dot.op Z_("0") dot.op op("tan")'
+  239: 'op("cot")'
+  241: "Un tramo corto en cortocircuito (l < λ/4) es una bobina"
+  242: "Un tramo corto en abierto es un condensador"
+  244: 'λ = (c)/(f dot.op sqrt(ε_("eff")))'
+  245: "Con FR4 (εr = 4,5, εeff ≈ 3,3 en microstrip) y 2,4 GHz"
+  246: '"68,7 mm"'
+  247: "un cuarto de onda son 17,2 mm"
+  249: "Un stub en abierto de λ/4 presenta un cortocircuito en el punto de conexión a su frecuencia de diseño"
+  250: "Encadenando varios se construye un paso banda"
+  251: "Stepped impedance"
+  255: "λ/4 a la frecuencia central"
+  256: "separaciones pequeñas dan acoplo fuerte y banda ancha"
+  257: "cada resonador añade aproximadamente 20 dB por década de caída"
+  258: "más secciones dan más selectividad y más pérdida de inserción"
+  261: "La tangente de pérdidas del FR4 es de unos 0,02"
+  262: "del 4,2 al 4,8"
+  264: "en FR4, filtros de banda relativamente ancha y pocas secciones"
+  267: "la inductancia de una vía —1 nH— a 2,4 GHz son 15 Ω, que no es un cortocircuito"
+  271: "Añadir margen de ajuste"
+  272: "la tolerancia del sustrato lo hace inevitable"
+
+modelo:
+  valores:
+    l_s: { sim: "l/λ", nombre: "longitud del stub en longitudes de onda", unidad: "", valor: 0.1 }
+    f_s: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 2400000000 }
+    e_f: { sim: "ε_{eff}", nombre: "permitividad efectiva", unidad: "", valor: 3.3 }
+    L_v: { sim: "L", nombre: "inductancia de la vía", unidad: H, valor: 0.000000001 }
+  calculos:
+    X_c: { expr: "50*tan(2*pi*l_s)", sim: "X_{corto}", nombre: "reactancia del stub en corto", unidad: Ω }
+    X_a: { expr: "-50/tan(2*pi*l_s)", sim: "X_{abierto}", nombre: "reactancia del stub en abierto", unidad: Ω }
+    lam: { expr: "300000000/(f_s*sqrt(e_f))", sim: "λ", nombre: "longitud de onda en el sustrato", unidad: m }
+    l_4: { expr: "lam/4", sim: "λ/4", nombre: "cuarto de onda en el sustrato", unidad: m }
+    l_aire: { expr: "300000000/f_s/4", sim: "λ/4", nombre: "cuarto de onda en el aire", unidad: m }
+    l_er: { expr: "300000000/(f_s*sqrt(4.5))/4", sim: "λ/4", nombre: "cuarto de onda con ε_r", unidad: m }
+    X_v: { expr: "2*pi*f_s*L_v", sim: "X_{vía}", nombre: "reactancia de la vía", unidad: Ω }
+
+tarjetas:
+  - id: explore-stub
+    tipo: explorar
+    titulo: "Un tramo de línea es un componente"
+    texto: "Un stub de 50 Ω en corto o en abierto presenta una reactancia que depende de su longitud. Alárguelo."
+    libro: [237, 238, 239, 241, 242]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.02, max: 0.23, unidad: "", rotulo: "l/λ" }
+      y: { min: -300, max: 300, unidad: Ω, rotulo: "X" }
+      curvas:
+        - { expr: "50*tan(2*pi*x)", color: naranja, rotulo: "en corto" }
+        - { expr: "-50/tan(2*pi*x)", color: azul, rotulo: "en abierto" }
+      marcas:
+        - { x: "l_s", y: "X_c", rotulo: "{{X_c}}" }
+        - { x: "l_s", y: "X_a", rotulo: "{{X_a}}" }
+      lectura: { valor: X_c, rotulo: "En corto (bobina)" }
+      datos:
+        - { valor: X_a, rotulo: "En abierto (condensador): {{X_a}}" }
+      mandos:
+        - { valor: l_s, lista: [0.05, 0.1, 0.15, 0.2], rotulo: "Longitud, l/λ" }
+    requiere: { mover: [l_s] }
+
+  - id: formula-lambda
+    tipo: formula
+    titulo: "El número que hay que calcular primero"
+    texto: "En el sustrato la onda va más despacio y λ encoge. Cambie la frecuencia y el medio."
+    libro: [244, 245, 246]
+    ec: 244
+    sustitucion: "3 × 10⁸ / ({{f_s}} · √{{e_f}}) = {{lam}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000000, max: 10000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 3, unidad: m, rotulo: "λ", escala: log }
+      curvas:
+        - { expr: "300000000/(nu*sqrt(e_f))", color: naranja, rotulo: "λ en el medio" }
+      marcas:
+        - { x: "f_s", y: "lam", rotulo: "{{lam}}" }
+      lectura: { valor: lam, rotulo: "Longitud de onda" }
+      mandos:
+        - { valor: f_s, lista: [433000000, 868000000, 2400000000], rotulo: "Frecuencia" }
+        - { valor: e_f, lista: [1, 3.3], nombres: [aire, microstrip en FR4], rotulo: "Medio" }
+
+  - id: predecir-stub-abierto
+    tipo: predecir
+    titulo: "Un stub abierto de λ/4"
+    texto: "Una línea de 50 Ω con un stub en abierto de un cuarto de onda colgando. ¿Qué ve la línea en la unión, a esa frecuencia?"
+    libro: [249]
+    widget:
+      tipo: figura
+      figura: fig-36.7
+      zonas:
+        - { id: stub, rotulo: "Stub en abierto, a la izquierda", rect: [12, 40, 195, 90] }
+    opciones:
+      - texto: "Un cortocircuito: un filtro elimina-banda"
+        bien: true
+        porque: "El cuarto de onda convierte el abierto del extremo en un corto en la unión: suprime esa frecuencia."
+      - texto: "Un circuito abierto: no afecta"
+        porque: "Eso pasa en su extremo; un cuarto de onda lo invierte en la unión."
+      - texto: "Una bobina"
+        porque: "Un tramo en abierto más corto que λ/4 es un condensador; justo en λ/4 es un corto."
+    escalera:
+      - "Un cuarto de onda es media vuelta en la carta: el abierto pasa al otro extremo."
+    solucion: "Un corto en la unión: la forma más barata de suprimir un armónico."
+
+  - id: simule-cuarto
+    tipo: simular
+    titulo: "Un cuarto de onda en FR4"
+    texto: "Microstrip sobre FR4, ε_{eff} ≈ 3,3, a 2,4 GHz. ¿Cuánto mide un cuarto de onda?"
+    libro: [244, 245, 247]
+    fijar: { f_s: 2400000000, e_f: 3.3 }
+    simular:
+      objetivo: l_4
+      unidad: m
+      tol: 0.03
+      rotulo: "Cuarto de onda en el sustrato"
+      errores:
+        - { expr: "lam", texto: "Esa es la longitud de onda entera; falta dividir por cuatro." }
+        - { expr: "l_aire", texto: "Ese es el cuarto de onda en el aire: en el sustrato la onda va √3,3 veces más despacio." }
+        - { expr: "l_er", texto: "Ha usado ε_{r} = 4,5; en microstrip parte del campo va por el aire y cuenta ε_{eff}." }
+    exito: "17,2 mm: perfectamente trazable en una placa."
+    escalera:
+      - "λ = c/(f·√ε_{eff}), y luego un cuarto."
+    solucion: "λ = 68,7 mm; λ/4 = 17,2 mm."
+    comprobar:
+      - { l_4: 0.0172, lam: 0.0687, l_aire: 0.03125, l_er: 0.01473 }
+
+  - id: empareje-familias
+    tipo: pregunta
+    titulo: "Tres familias en cobre"
+    texto: "Empareje cada estructura con el filtro que forma."
+    libro: [249, 250, 251]
+    widget:
+      tipo: figura
+      figura: fig-36.7
+      zonas:
+        - { id: todo, rotulo: "Stub y líneas acopladas", rect: [0, 0, 450, 227] }
+    emparejar:
+      - ["Stub en abierto de λ/4", "Elimina-banda de un solo elemento"]
+      - ["Líneas acopladas", "Paso banda"]
+      - ["Tramos anchos y estrechos alternados", "Paso bajo"]
+    exito: "El paso bajo de impedancia escalonada está en la salida de casi cualquier transmisor."
+    pistas:
+      - { texto: "Ancho es capacitivo; estrecho, inductivo: L y C en escalera." }
+    escalera:
+      - "Cada par acoplado es un resonador."
+    solucion: "Stub, elimina-banda; acopladas, paso banda; escalonada, paso bajo."
+
+  - id: empareje-diseno
+    tipo: pregunta
+    titulo: "El paso banda de líneas acopladas"
+    texto: "Empareje cada parámetro de diseño con lo que fija."
+    libro: [255, 256, 257]
+    widget:
+      tipo: figura
+      figura: fig-36.7
+      zonas:
+        - { id: acopladas, rotulo: "Líneas acopladas, a la derecha", rect: [230, 30, 215, 110] }
+    emparejar:
+      - ["Longitud de cada sección, λ/4", "La frecuencia central"]
+      - ["Separación entre líneas", "El ancho de banda"]
+      - ["Número de resonadores", "La pendiente: 20 dB por década cada uno"]
+    exito: "Separación pequeña: acoplo fuerte y banda ancha."
+    pistas:
+      - { texto: "La separación fija el acoplo." }
+    escalera:
+      - "λ/4 a la frecuencia central."
+    solucion: "Longitud, frecuencia; separación, banda; resonadores, pendiente."
+
+  - id: estime-via
+    tipo: pregunta
+    titulo: "Una vía no es un corto"
+    texto: "El extremo de un stub en corto va a masa por una vía de 1 nH. ¿Qué reactancia tiene a 2,4 GHz?"
+    libro: [267]
+    fijar: { f_s: 2400000000, L_v: 0.000000001 }
+    widget:
+      tipo: figura
+      figura: fig-36.7
+      zonas:
+        - { id: stub, rotulo: "Stub en abierto, a la izquierda", rect: [12, 40, 195, 90] }
+    estimar:
+      objetivo: "X_v"
+      unidad: Ω
+      min: 0
+      max: 50
+      paso: 0.5
+      inicio: 40
+      tol: 0.05
+      rotulo: "Reactancia de la vía"
+    exito: "15 Ω: no es un cortocircuito. De ahí las vías abundantes."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 15.8 }, texto: "Demasiado: 2π × 2,4 GHz × 1 nH." }
+      - { texto: "Demasiado poco: a 2,4 GHz un nanohenrio pesa." }
+    escalera:
+      - "X = 2π·f·L."
+    solucion: "2π × 2,4 × 10⁹ × 10⁻⁹ = 15 Ω."
+    comprobar:
+      - { X_v: 15.08 }
+
+  - id: porque-fr4
+    tipo: porque
+    titulo: "Por qué el FR4 limita"
+    texto: "¿Por qué en FR4 conviene un filtro de banda ancha y pocas secciones?"
+    libro: [258, 261, 262, 264]
+    widget:
+      tipo: figura
+      figura: fig-36.7
+      zonas:
+        - { id: caja, rotulo: "Recuadro de abajo", rect: [5, 155, 440, 68] }
+    opciones:
+      - texto: "Pierde mucho y su ε_{r} varía del 4,2 al 4,8: un filtro estrecho se sale de banda"
+        bien: true
+        porque: "Con tangente de pérdidas de 0,02 cada resonador pierde; y la frecuencia central se desplaza."
+      - texto: "Porque no se puede grabar una pista de λ/4"
+        porque: "Sí se puede: 17,2 mm a 2,4 GHz. El problema son las pérdidas y la dispersión."
+      - texto: "Porque el FR4 no deja pasar la radiofrecuencia"
+        porque: "La deja pasar, con pérdidas: por encima de 3 GHz ya hacen falta sustratos de RF."
+    escalera:
+      - "Cada sección añade su pérdida, y ε_{r} no es fija entre lotes."
+    solucion: "Pérdidas y ε_{r} variable: banda ancha y pocas secciones."
+
+  - id: toque-paso-bajo
+    tipo: tocar
+    titulo: "En una placa de microondas"
+    texto: "Toque el paso bajo de stubs en la foto."
+    libro: [249, 251]
+    widget:
+      tipo: figura
+      figura: fig-36.8
+      zonas:
+        - { id: horquillas, rotulo: "Arriba, la serpentina", rect: [112, 176, 928, 224] }
+        - { id: stubs, rotulo: "Arriba a la derecha, la escalera", rect: [1056, 160, 448, 192] }
+        - { id: acopladas, rotulo: "Abajo, las pistas paralelas", rect: [320, 848, 1216, 240] }
+    tocar:
+      bien: [stubs]
+      porque:
+        horquillas: "Es el filtro de horquillas (hairpin), un paso banda; el paso bajo va después."
+        acopladas: "Es el paso banda de líneas acopladas en paralelo, sobre sustrato de microondas."
+    exito: "La escalera de stubs que sigue a las horquillas es el paso bajo."
+    escalera:
+      - "Busque tramos cortos que cuelgan perpendiculares a la línea."
+    solucion: "Arriba a la derecha: la escalera de stubs."
+
+  - id: ordene-procedimiento
+    tipo: pregunta
+    titulo: "El procedimiento realista"
+    texto: "Ordene los pasos para hacer un filtro en cobre."
+    libro: [271, 272]
+    widget:
+      tipo: figura
+      figura: fig-36.7
+      zonas:
+        - { id: todo, rotulo: "Stub y líneas acopladas", rect: [0, 0, 450, 227] }
+    ordenar:
+      - "Calcular la anchura para 50 Ω con el apilado real."
+      - "Sintetizar el filtro con tablas o un simulador."
+      - "Simular con las pérdidas del sustrato."
+      - "Añadir almohadillas de recorte en los stubs."
+      - "Medir y retocar."
+    exito: "Retocar no es un apaño: la tolerancia del sustrato lo hace inevitable."
+    pistas:
+      - { texto: "Sin la anchura de 50 Ω no hay línea de la que partir." }
+    escalera:
+      - "Se calcula, se simula, se deja margen y se mide."
+    solucion: "Anchura, síntesis, simulación con pérdidas, margen de ajuste, medir."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [235, 241, 247, 249, 264, 267]
+    ideas:
+      - { titulo: "Cobre que es componente.", texto: "Un tramo corto en corto es bobina; en abierto, condensador." }
+      - { titulo: "λ primero.", texto: "c/(f·√ε_{eff}): 17,2 mm de cuarto de onda a 2,4 GHz." }
+      - { titulo: "Tres familias.", texto: "Stub elimina-banda, acopladas paso banda, escalonada paso bajo." }
+      - { titulo: "FR4.", texto: "Banda ancha, pocas secciones, vías abundantes y margen de ajuste." }

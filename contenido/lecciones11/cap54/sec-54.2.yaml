@@ -1,0 +1,257 @@
+# Lección 1.2 de la sección 56.2 «Identificar los Componentes de una Placa Desconocida» (cap54; etiquetas sec-54.N =
+# impresas 56.N).
+# - Lo que dice el marcado (bloques 46 a 50): código de fecha de cuatro cifras, códigos de dos o tres caracteres, SMD sin
+#   marca, el código de las resistencias («la última es el número de ceros»).
+# - Sin marca (53 a 57), por comportamiento y por posición (60 a 65; figura 56.2, fig-54.2), los componentes a medida
+#   (68 a 71) y la tabla de designadores (73, 74). El comprobador LCR-T4 (figura 56.3, foto img/foto_lcrt4.jpg; zonas en
+#   píxeles de la foto).
+# - Modelo: el código de tres cifras de una resistencia, R = (10·a + b)·10^c. El código «472» es de ejemplo (rotulado).
+# Pasos prácticos: «tocar» en la figura la zona del procesador y «tocar» en la foto del comprobador dónde da la ganancia.
+leccion: cap54/sec-54.2
+
+libro:
+  46: "La referencia incluye sufijos que importan: encapsulado, rango de temperatura y a veces velocidad o tolerancia."
+  47: "El código de fecha suele ser de cuatro cifras: dos de año y dos de semana"
+  48: "Un mismo código puede corresponder a piezas distintas según el fabricante, así que conviene confirmarlo por medida."
+  50: "tres o cuatro cifras, donde la última es el número de ceros"
+  52: "algunos fabricantes borran deliberadamente la serigrafía para dificultar precisamente esto"
+  54: "Un integrado de ocho patillas con dos a alimentación y dos que van a un conector de dos hilos con resistencias de pull-up es, casi con seguridad, algo de I²C"
+  55: "Un regulador de tres patillas, en cambio, no está entre lo que sabe reconocer, y se identifica mejor en circuito, por su tensión de salida"
+  60: "Un integrado cuya salida sigue a su entrada con ganancia es un operacional o un amplificador."
+  61: "Uno cuya salida conmuta entre dos niveles es un comparador o lógica."
+  62: "Uno con un cristal al lado contiene un oscilador"
+  63: "Uno que se calienta y tiene una bobina cerca es un convertidor conmutado."
+  65: "lo que está en el centro rodeado de desacoplos, el procesador"
+  68: "Un componente estándar remarcado con la referencia del cliente"
+  69: "Un ASIC de verdad (sección 38.13), que no se identificará nunca"
+  70: "Un microcontrolador programado con firmware propio, reconocible por el encapsulado y por llevar cristal y líneas de programación."
+  71: "un estándar remarcado se sustituye; un ASIC, no"
+  73: "hacer desde el principio una tabla de designadores con la referencia, la función deducida y el grado de certeza"
+  74: "sin ella el trabajo de las secciones siguientes se vuelve inmanejable en cuanto la placa pasa de treinta componentes"
+  76: "fotografiar ambas caras a alta resolución y, sobre esas fotos, numerar todos los componentes y rellenar la tabla"
+  78: "Identificación por zona funcional y por comportamiento."
+  79: "Comprobador de componentes LCR-T4 identificando un transistor PNP"
+
+modelo:
+  valores:
+    c_a: { sim: "a", nombre: "primera cifra", unidad: "", valor: 4 }
+    c_b: { sim: "b", nombre: "segunda cifra", unidad: "", valor: 7 }
+    c_c: { sim: "c", nombre: "número de ceros", unidad: "", valor: 2 }
+  calculos:
+    R_c: { expr: "(10*c_a + c_b)*10^c_c", sim: "R", nombre: "valor de la resistencia", unidad: Ω }
+    R_mal: { expr: "100*c_a + 10*c_b + c_c", sim: "R", nombre: "las tres cifras leídas tal cual", unidad: Ω }
+    d_2: { expr: "10*c_a + c_b", sim: "ab", nombre: "las dos primeras cifras", unidad: "" }
+
+tarjetas:
+  - id: explore-zonas
+    tipo: explorar
+    titulo: "La posición informa"
+    texto: "La posición en la placa informa tanto como el propio componente. Toque la entrada de alimentación y el procesador."
+    libro: [65, 78]
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: entrada, rotulo: "Arriba a la izquierda", rect: [18, 28, 76, 104], texto: "Junto a la entrada de alimentación: protección y filtrado." }
+        - { id: conversion, rotulo: "Abajo a la izquierda", rect: [18, 138, 76, 104], texto: "Conversión: la bobina cerca y algo que se calienta." }
+        - { id: procesador, rotulo: "La columna del centro", rect: [101, 28, 74, 214], texto: "En el centro, rodeado de desacoplos y con un cristal al lado: el procesador." }
+        - { id: interfaz, rotulo: "La columna de la derecha", rect: [183, 28, 58, 214], texto: "Junto al conector externo: la interfaz." }
+    requiere: { mover: [entrada, procesador] }
+
+  - id: estime-codigo
+    tipo: pregunta
+    titulo: "Una resistencia marcada «472»"
+    texto: "En las resistencias de tres cifras, la última es el número de ceros. ¿Cuánto vale una marcada 472?"
+    nota: "El código es de ejemplo."
+    libro: [50]
+    fijar: { c_a: 4, c_b: 7, c_c: 2 }
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: procesador, rotulo: "La columna del centro", rect: [101, 28, 74, 214] }
+    estimar:
+      objetivo: "R_c"
+      unidad: Ω
+      min: 0
+      max: 10000
+      paso: 100
+      inicio: 8000
+      tol: 0.02
+      rotulo: "Valor de la resistencia"
+    exito: "4,7 kΩ: 47 seguido de dos ceros."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4800 }, texto: "Se ha pasado: son dos ceros detrás de 47, no tres." }
+      - { texto: "Se ha quedado corto: la última cifra no se lee, dice cuántos ceros añadir." }
+    escalera:
+      - "Dos primeras cifras, y tantos ceros como diga la última."
+    solucion: "47 y dos ceros: 4 700 Ω."
+    comprobar:
+      - { R_c: 4700, R_mal: 472, d_2: 47 }
+
+  - id: prediga-fecha
+    tipo: predecir
+    titulo: "El código de fecha"
+    texto: "Un integrado lleva un código de fecha de cuatro cifras. ¿Qué dice, y para qué sirve?"
+    libro: [47, 46]
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: procesador, rotulo: "La columna del centro", rect: [101, 28, 74, 214] }
+    opciones:
+      - texto: "Año y semana: fecha el equipo y delata reparaciones o falsificaciones"
+        bien: true
+        porque: "Una fecha incoherente con el resto de la placa delata una reparación previa o un componente falsificado."
+      - texto: "El lote de fabricación: no sirve para nada al reparar"
+        porque: "El lote es otro código; el de fecha sí da pistas."
+      - texto: "El rango de temperatura"
+        porque: "Eso va en los sufijos de la referencia, no en el código de fecha."
+    escalera:
+      - "Dos cifras y dos cifras."
+    solucion: "Dos cifras de año y dos de semana: fecha el equipo y detecta incoherencias."
+
+  - id: prediga-i2c
+    tipo: predecir
+    titulo: "Ocho patillas sin marca"
+    texto: "Un integrado de ocho patillas, borrado, tiene dos a la alimentación y dos hacia un conector de dos hilos con pull-ups. ¿Qué es, casi con seguridad?"
+    libro: [54, 52]
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: interfaz, rotulo: "La columna de la derecha", rect: [183, 28, 58, 214] }
+    opciones:
+      - texto: "Algo de I²C"
+        bien: true
+        porque: "Dos hilos con pull-ups: el contexto identifica la función aunque no la referencia."
+      - texto: "Un regulador"
+        porque: "Un regulador no va a un conector de dos hilos con pull-ups."
+      - texto: "Un operacional"
+        porque: "Las pull-ups en dos hilos son la firma de un bus, no de un amplificador."
+    escalera:
+      - "¿Qué bus lleva dos hilos con resistencias de pull-up?"
+    solucion: "Algo de I²C: lo dice dónde está conectado."
+
+  - id: tocar-ganancia
+    tipo: tocar
+    titulo: "El comprobador de componentes"
+    texto: "El LCR-T4 identifica un transistor en segundos. Toque dónde da su ganancia."
+    libro: [79, 55, 48]
+    widget:
+      tipo: figura
+      figura: fig-54.3
+      zonas:
+        - { id: simbolo, rotulo: "El dibujo de la pantalla", rect: [270, 420, 270, 230] }
+        - { id: hfe, rotulo: "Texto de arriba a la derecha", rect: [560, 470, 300, 85] }
+        - { id: uf, rotulo: "Texto de abajo a la derecha", rect: [560, 560, 320, 85] }
+        - { id: zocalo, rotulo: "El zócalo azul", rect: [160, 720, 350, 180] }
+    tocar:
+      bien: [hfe]
+      porque:
+        simbolo: "Es el patillaje: el símbolo PNP con el número de cada patilla."
+        uf: "Es la tensión base-emisor."
+        zocalo: "El zócalo es donde se pincha el componente."
+    exito: "hFE: la ganancia. Da también el patillaje y la tensión base-emisor; así se confirma por medida un código de marcado dudoso."
+    escalera:
+      - "La ganancia de un bipolar se escribe hFE."
+    solucion: "Arriba a la derecha de la pantalla: hFE."
+
+  - id: empareje-comportamiento
+    tipo: pregunta
+    titulo: "Identificar por comportamiento"
+    texto: "Cuando la marca no dice nada, queda lo que hace. Empareje cada observación con lo que es."
+    libro: [60, 61, 62, 63]
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: tabla, rotulo: "La tabla de la derecha", rect: [262, 28, 190, 220] }
+    emparejar:
+      - ["Su salida sigue a la entrada con ganancia", "Operacional o amplificador"]
+      - ["Su salida conmuta entre dos niveles", "Comparador o lógica"]
+      - ["Tiene un cristal al lado", "Microcontrolador, reloj o generador"]
+      - ["Se calienta y tiene una bobina cerca", "Convertidor conmutado"]
+    exito: "Lo que hace cada pieza basta para dibujar el bloque, aunque no se sepa la referencia."
+    pistas:
+      - { texto: "El cristal delata un oscilador." }
+    escalera:
+      - "Piense en la forma de la salida: proporcional, a saltos, periódica o de potencia."
+    solucion: "Ganancia: operacional. Dos niveles: comparador. Cristal: oscilador. Calor y bobina: conmutado."
+
+  - id: toque-procesador
+    tipo: tocar
+    titulo: "Rodeado de desacoplos"
+    texto: "Un integrado grande en el centro de la placa, con un cristal al lado y condensadores de desacoplo alrededor. Toque su zona."
+    libro: [65, 62]
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: entrada, rotulo: "Arriba a la izquierda", rect: [18, 28, 76, 104] }
+        - { id: conversion, rotulo: "Abajo a la izquierda", rect: [18, 138, 76, 104] }
+        - { id: procesador, rotulo: "La columna del centro", rect: [101, 28, 74, 214] }
+        - { id: interfaz, rotulo: "La columna de la derecha", rect: [183, 28, 58, 214] }
+    tocar:
+      bien: [procesador]
+      porque:
+        entrada: "Junto a la entrada va la protección y el filtrado."
+        conversion: "Ahí está lo que se calienta junto a una bobina: la conversión."
+        interfaz: "Junto al conector externo va la interfaz."
+    exito: "El procesador: en el centro, rodeado de desacoplos y con su cristal."
+    escalera:
+      - "¿Dónde pondría el diseñador lo que necesita más desacoplos?"
+    solucion: "La columna del centro: el procesador."
+
+  - id: empareje-medida
+    tipo: pregunta
+    titulo: "Componentes a medida"
+    texto: "Un integrado lleva la referencia del fabricante del equipo. Empareje cada posibilidad con cómo se trata."
+    libro: [68, 69, 70, 71]
+    widget:
+      tipo: figura
+      figura: fig-54.2
+      zonas:
+        - { id: procesador, rotulo: "La columna del centro", rect: [101, 28, 74, 214] }
+    emparejar:
+      - ["Un estándar remarcado", "Encapsulado, patillaje y medida: se sustituye"]
+      - ["Un ASIC de verdad", "Solo se caracteriza por su comportamiento"]
+      - ["Un microcontrolador con firmware propio", "Cristal y líneas de programación"]
+    exito: "Distinguirlos decide si el equipo es reparable: un estándar remarcado se sustituye; un ASIC, no."
+    pistas:
+      - { texto: "Un ASIC no se identificará nunca." }
+    escalera:
+      - "¿Cuál de los tres es en realidad un integrado común?"
+    solucion: "Remarcado: se sustituye. ASIC: comportamiento. Microcontrolador: cristal y programación."
+
+  - id: porque-tabla
+    tipo: porque
+    titulo: "La tabla de designadores"
+    texto: "Desde el principio se hace una tabla: designador, referencia, función deducida y grado de certeza. ¿Por qué no dejarla para el final?"
+    libro: [73, 74, 76]
+    widget:
+      tipo: figura
+      figura: fig-54.3
+      zonas:
+        - { id: zocalo, rotulo: "El zócalo azul", rect: [160, 720, 350, 180] }
+    opciones:
+      - texto: "Sin ella, en cuanto la placa pasa de treinta componentes, el trabajo es inmanejable"
+        bien: true
+        porque: "Es la lista de materiales del trabajo: se corrige sobre la marcha y la usan todas las secciones siguientes."
+      - texto: "Porque al final ya no hace falta"
+        porque: "Hace falta todo el tiempo: es el mapa del esquema."
+      - texto: "Porque el comprobador la rellena solo"
+        porque: "El comprobador identifica piezas sueltas; la tabla la lleva usted."
+    escalera:
+      - "¿Qué se pierde si cada pieza identificada no se anota?"
+    solucion: "Porque sin ella el trabajo se vuelve inmanejable: es método, no burocracia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [47, 50, 65, 73]
+    ideas:
+      - { titulo: "El marcado.", texto: "Referencia con sufijos, fecha de año y semana, y códigos que se confirman midiendo." }
+      - { titulo: "Sin marca.", texto: "Patillas, encapsulado, conexiones, el comprobador y el comportamiento." }
+      - { titulo: "La posición.", texto: "Entrada: protección; conectores: interfaz; centro con desacoplos: procesador." }
+      - { titulo: "La tabla.", texto: "Designador, referencia, función y certeza, desde el principio." }

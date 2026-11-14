@@ -1,0 +1,266 @@
+# Lección 1.2 de la sección 31.6 «GRAFCET (IEC 60848)» (cap55; etiqueta interna sec-55.6).
+# Formato: contenido/lecciones11/GUIA.md (§11). La traducción del libro (una variable por etapa; transiciones con las
+# etapas del principio de la vuelta, luego desactivaciones y activaciones) es una máquina de estados con un biestable D
+# por etapa y el reloj de la vuelta: franquea una transición por vuelta. Con 0 → 1 → 2 y las dos receptividades a la
+# vez, la etapa 1 dura una vuelta en la traducción y cero en el GRAFCET (la evolución fugaz del libro).
+leccion: cap55/sec-55.6
+
+libro:
+  90: "describe un automatismo secuencial antes de programarlo"
+  91: "Las iniciales, de cuadrado doble, son las activas al arrancar"
+  92: "Es una máquina de estados de tipo Moore"
+  94: "una etapa que debe activarse y desactivarse a la vez queda activa"
+  96: "las receptividades de una divergencia en O tienen que ser excluyentes"
+  98: "Con 0 → 1 → 2 y las dos receptividades verdaderas a la vez"
+  101: "Transiciones: cada una, la Y de sus etapas anteriores y su receptividad"
+  102: "Esta traducción franquea una transición por vuelta"
+  "cap55#81": "N (mientras la etapa esté activa), S y R (memorizar y borrar), L (limitada en el tiempo), D (retardada), P (un impulso al activarse)"
+  "cap55#138": "t5 no está validada sin la 4"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-elementos
+    tipo: explorar
+    titulo: "Los elementos del GRAFCET"
+    texto: "Toque la etapa inicial, una acción y los cuatro trazos de divergencia y convergencia."
+    libro: [90, 91, 96]
+    widget:
+      tipo: figura
+      figura: fig-55.6
+      zonas:
+        - { id: inicial, rotulo: "Arriba a la izquierda", rect: [48, 8, 30, 30], texto: "Etapa inicial, de cuadrado doble: activa al arrancar." }
+        - { id: accion, rotulo: "Recuadro junto a la etapa 1", rect: [76, 44, 30, 28], texto: "Acción continua KM1: vale 1 mientras la etapa 1 está activa." }
+        - { id: div-o, rotulo: "Bajo la etapa 1", rect: [10, 66, 105, 26], texto: "Divergencia en O: se sigue la rama cuya receptividad se cumpla. Deben ser excluyentes." }
+        - { id: conv-o, rotulo: "Sobre la etapa 4", rect: [20, 110, 85, 28], texto: "Convergencia en O: cualquiera de las dos ramas lleva a la etapa 4." }
+        - { id: div-y, rotulo: "Trazo doble de arriba", rect: [192, 34, 75, 28], texto: "Divergencia en Y: una transición activa las dos ramas, que avanzan por su cuenta." }
+        - { id: conv-y, rotulo: "Trazo doble de abajo", rect: [192, 108, 75, 28], texto: "Convergencia en Y: solo está validada cuando han terminado las dos ramas. Sincroniza." }
+    requiere: { mover: [inicial, conv-y] }
+
+  - id: toque-sincroniza
+    tipo: tocar
+    titulo: "Esperar a las dos ramas"
+    texto: "Toque el elemento que solo deja seguir cuando han terminado todas las ramas."
+    libro: [96]
+    widget:
+      tipo: figura
+      figura: fig-55.6
+      zonas:
+        - { id: div-o, rotulo: "Bajo la etapa 1", rect: [10, 66, 105, 26] }
+        - { id: conv-o, rotulo: "Sobre la etapa 4", rect: [20, 110, 85, 28] }
+        - { id: div-y, rotulo: "Trazo doble de arriba", rect: [192, 34, 75, 28] }
+        - { id: conv-y, rotulo: "Trazo doble de abajo", rect: [192, 108, 75, 28] }
+    tocar:
+      bien: [conv-y]
+      porque:
+        div-o: "Es una divergencia en O: elige una rama, no espera a ninguna."
+        conv-o: "Una convergencia en O deja pasar a la rama que llegue; no sincroniza."
+        div-y: "Es la divergencia en Y: arranca las dos ramas, pero no espera a que terminen."
+    exito: "La convergencia en Y, bajo trazo doble: solo está validada con las dos ramas terminadas."
+    escalera: ["Busque el trazo doble que recoge ramas."]
+    solucion: "El trazo doble de abajo: la convergencia en Y."
+
+  - id: explore-traduccion
+    tipo: explorar
+    titulo: "Un biestable por etapa"
+    texto: "La secuencia 0 → 1 → 2 traducida: cada etapa es un biestable y el reloj es la vuelta. Ponga a = 1, dé una vuelta; luego b."
+    libro: [101, 102]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, rotulo: "a" }, { id: B, rotulo: "b" }, { id: CLK, reloj: true, rotulo: "Vuelta" }]
+      piezas:
+        - { id: na, tipo: not, entradas: [A] }
+        - { id: nb, tipo: not, entradas: [B] }
+        - { id: t01, tipo: and, entradas: [x0.q, A], rotulo: "t01" }
+        - { id: t12, tipo: and, entradas: [x1.q, B], rotulo: "t12" }
+        - { id: h0, tipo: and, entradas: [x0.q, na] }
+        - { id: h1, tipo: and, entradas: [x1.q, nb] }
+        - { id: s1, tipo: or, entradas: [t01, h1] }
+        - { id: s2, tipo: or, entradas: [t12, x2.q] }
+        - { id: x0, tipo: d, entradas: [h0, CLK], inicial: 1, rotulo: "X0" }
+        - { id: x1, tipo: d, entradas: [s1, CLK], rotulo: "X1" }
+        - { id: x2, tipo: d, entradas: [s2, CLK], rotulo: "X2" }
+      salidas:
+        - { id: X0, de: x0.q }
+        - { id: X1, de: x1.q }
+        - { id: X2, de: x2.q }
+    requiere: { mover: [A, B] }
+
+  - id: prediga-fugaz
+    tipo: predecir
+    titulo: "Las dos a la vez"
+    texto: "Con la etapa 0 activa, a y b pasan a 1 a la vez. En la traducción, ¿qué etapa queda activa tras una vuelta?"
+    libro: [98, 102]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, valor: 1, rotulo: "a" }, { id: B, valor: 1, rotulo: "b" }, { id: CLK, reloj: true, rotulo: "Vuelta" }]
+      piezas:
+        - { id: na, tipo: not, entradas: [A] }
+        - { id: nb, tipo: not, entradas: [B] }
+        - { id: t01, tipo: and, entradas: [x0.q, A], rotulo: "t01" }
+        - { id: t12, tipo: and, entradas: [x1.q, B], rotulo: "t12" }
+        - { id: h0, tipo: and, entradas: [x0.q, na] }
+        - { id: h1, tipo: and, entradas: [x1.q, nb] }
+        - { id: s1, tipo: or, entradas: [t01, h1] }
+        - { id: s2, tipo: or, entradas: [t12, x2.q] }
+        - { id: x0, tipo: d, entradas: [h0, CLK], inicial: 1, rotulo: "X0" }
+        - { id: x1, tipo: d, entradas: [s1, CLK], rotulo: "X1" }
+        - { id: x2, tipo: d, entradas: [s2, CLK], rotulo: "X2" }
+      salidas:
+        - { id: X0, de: x0.q }
+        - { id: X1, de: x1.q }
+        - { id: X2, de: x2.q }
+      ocultar: true
+    opciones:
+      - { texto: "La 1: la traducción franquea una transición por vuelta", bien: true, porque: "t12 se calcula con las etapas del principio de la vuelta, cuando la 1 aún no estaba activa." }
+      - { texto: "La 2, como manda el GRAFCET", porque: "El GRAFCET sí llegaría a la 2 en el mismo instante; la traducción necesita otra vuelta." }
+      - { texto: "Ninguna: se pierde el estado", porque: "La etapa 0 se desactiva y la 1 se activa a la vez: siempre hay una activa." }
+    escalera: ["Las transiciones se calculan con las etapas como estaban al empezar la vuelta."]
+    solucion: "Tras una vuelta, la 1; tras la siguiente, la 2."
+
+  - id: dibuje-fugaz
+    tipo: dibujar
+    titulo: "Dibuje X1"
+    texto: "a y b suben a la vez. Dibuje la etapa 1, X1, vuelta a vuelta."
+    libro: [98, 102]
+    widget:
+      tipo: logica
+      entradas: [{ id: A, rotulo: "a" }, { id: B, rotulo: "b" }, { id: CLK, reloj: true, rotulo: "Vuelta" }]
+      piezas:
+        - { id: na, tipo: not, entradas: [A] }
+        - { id: nb, tipo: not, entradas: [B] }
+        - { id: t01, tipo: and, entradas: [x0.q, A], rotulo: "t01" }
+        - { id: t12, tipo: and, entradas: [x1.q, B], rotulo: "t12" }
+        - { id: h0, tipo: and, entradas: [x0.q, na] }
+        - { id: h1, tipo: and, entradas: [x1.q, nb] }
+        - { id: s1, tipo: or, entradas: [t01, h1] }
+        - { id: s2, tipo: or, entradas: [t12, x2.q] }
+        - { id: x0, tipo: d, entradas: [h0, CLK], inicial: 1, rotulo: "X0" }
+        - { id: x1, tipo: d, entradas: [s1, CLK], rotulo: "X1" }
+        - { id: x2, tipo: d, entradas: [s2, CLK], rotulo: "X2" }
+      salidas:
+        - { id: X1, de: x1.q }
+        - { id: X2, de: x2.q }
+      cronograma: { ciclos: 5, estimulo: { A: "01111", B: "01111" }, senales: [CLK, A, B, X2] }
+      dibujo: false
+    dibujar:
+      senal: X1
+    exito: "X1 vale 1 una sola vuelta: la evolución fugaz dura un ciclo en lugar de cero."
+    escalera:
+      - "En el flanco en que a ya vale 1, la etapa 0 pasa a la 1."
+      - "En el flanco siguiente, b franquea t12."
+    solucion: "X1 sube en el primer flanco con a = 1 y baja en el siguiente."
+
+  - id: porque-fugaz
+    tipo: porque
+    titulo: "Una vuelta de más"
+    texto: "En el GRAFCET la etapa 1 tiene actividad de duración nula. ¿Qué cambia que dure una vuelta en la traducción?"
+    libro: [98, 102]
+    widget:
+      tipo: figura
+      figura: fig-55.6
+      zonas:
+        - { id: accion, rotulo: "Recuadro junto a la etapa 1", rect: [76, 44, 30, 28] }
+    opciones:
+      - { texto: "Sus acciones continuas aparecen durante ese ciclo, aunque no deberían", bien: true, porque: "En una evolución fugaz no se ejecutan. Casi nunca importa; si importa, se repiten las transiciones hasta la estabilidad." }
+      - { texto: "Nada: el resultado final es el mismo", porque: "La situación estable sí, pero mientras tanto la acción de la etapa 1 sale una vuelta." }
+      - { texto: "Que se salta la etapa 2", porque: "Llega a la 2, solo que una vuelta después." }
+    escalera: ["¿Qué hace una acción continua mientras su etapa está activa?"]
+    solucion: "Durante esa vuelta la acción continua de la etapa 1 vale 1."
+
+  - id: ordene-traduccion
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Los cuatro bloques"
+    texto: "Ordene los bloques que la traducción ejecuta en cada vuelta."
+    libro: [101]
+    ordenar:
+      - "Inicialización, en la primera vuelta"
+      - "Todas las transiciones, con las etapas del principio"
+      - "Desactivaciones y, después, activaciones"
+      - "Las acciones, con las etapas ya actualizadas"
+    exito: "Calcular todas las transiciones antes de tocar etapas respeta la regla 4; desactivar antes de activar, la 5."
+    pistas:
+      - { texto: "Las acciones van al final: dependen de las etapas ya actualizadas." }
+    escalera: ["Si una etapa cambiara antes de calcular las transiciones, se franquearían dos en una vuelta."]
+    solucion: "Inicialización, transiciones, evolución (desactivar, activar) y acciones."
+
+  - id: pregunta-divergencia
+    tipo: pregunta
+    titulo: "Dos ramas que se cumplen"
+    texto: "En una divergencia en O, las dos receptividades se hacen verdaderas a la vez. ¿Qué pasa?"
+    libro: [96]
+    widget:
+      tipo: figura
+      figura: fig-55.6
+      zonas:
+        - { id: div-o, rotulo: "Bajo la etapa 1", rect: [10, 66, 105, 26] }
+    opciones:
+      - { texto: "Se franquean las dos y se activan las dos ramas", bien: true, porque: "La regla 4 franquea a la vez todo lo franqueable: por eso deben ser excluyentes." }
+      - { texto: "Se sigue la rama de la izquierda", porque: "Eso admite el SFC; el GRAFCET franquea las dos." }
+      - { texto: "No se franquea ninguna", porque: "Las dos están validadas y son verdaderas: se franquean, obligatoriamente." }
+    escalera: ["Mire la regla de los franqueos simultáneos."]
+    solucion: "Las dos ramas: la regla 4. Garantizar que son excluyentes es cosa de quien diseña."
+
+  - id: pregunta-convergencia
+    tipo: pregunta
+    titulo: "Una convergencia que espera"
+    texto: "Activas las etapas 2 y 3, la convergencia en Y t5 lleva de 2 y 4 a la 0. Con c = 1, ¿qué queda activo?"
+    libro: ["cap55#138"]
+    widget:
+      tipo: figura
+      figura: fig-55.6
+      zonas:
+        - { id: conv-y, rotulo: "Trazo doble de abajo", rect: [192, 108, 75, 28] }
+    opciones:
+      - { texto: "Las etapas 2 y 3", bien: true, porque: "t5 no está validada sin la 4: falta que b lleve la 3 a la 4." }
+      - { texto: "La etapa 0", porque: "Para eso t5 tiene que estar validada, con 2 y 4 activas; la 4 aún no lo está." }
+      - { texto: "Las etapas 2 y 4", porque: "La 4 se activa con b, no con c." }
+    escalera: ["Una transición está validada cuando todas sus etapas anteriores están activas."]
+    solucion: "2 y 3: t5 espera a la 4."
+
+  - id: pregunta-regla5
+    tipo: pregunta
+    titulo: "Activar y desactivar a la vez"
+    texto: "Una etapa debe activarse por una transición y desactivarse por otra en el mismo instante. ¿Cómo queda?"
+    libro: [94]
+    widget:
+      tipo: figura
+      figura: fig-55.6
+      zonas:
+        - { id: inicial, rotulo: "Arriba a la izquierda", rect: [48, 8, 30, 30] }
+    opciones:
+      - { texto: "Activa", bien: true, porque: "Es la regla 5. Por eso la traducción desactiva primero y activa después." }
+      - { texto: "Inactiva", porque: "La regla 5 dice lo contrario: gana la activación." }
+      - { texto: "Indeterminada", porque: "El GRAFCET no deja nada al azar: la regla 5 la deja activa." }
+    escalera: ["¿En qué orden hace la traducción desactivaciones y activaciones?"]
+    solucion: "Queda activa (regla 5)."
+
+  - id: empareje-calificadores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Calificadores del SFC"
+    texto: "Las acciones del SFC llevan un calificador. Una cada uno con lo que hace."
+    libro: ["cap55#81"]
+    emparejar:
+      - ["N", "Mientras la etapa esté activa"]
+      - ["S", "Memoriza"]
+      - ["L", "Limitada en el tiempo"]
+      - ["D", "Retardada"]
+      - ["P", "Un impulso al activarse"]
+    exito: "Y R borra lo que memorizó S."
+    pistas:
+      - { texto: "D de retardo; L de límite." }
+    escalera: ["N es la acción normal, la continua."]
+    solucion: "N continua, S memoriza, L limitada, D retardada, P impulso."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [91, 92, 96, 102]
+    ideas:
+      - { titulo: "Una máquina de Moore.", texto: "Etapas, transiciones y acciones, con varias etapas activas a la vez." }
+      - { titulo: "Divergencias.", texto: "En O, receptividades excluyentes; en Y, ramas que se sincronizan al converger." }
+      - { titulo: "La traducción.", texto: "Un biestable por etapa y una transición por vuelta: lo fugaz dura un ciclo." }

@@ -1,0 +1,220 @@
+# Lección 1.2 de la sección 42.9 «Pares Diferenciales y el Encaminamiento Acoplado» (cap41, sec-41.9). Formato: GUIA.md.
+# - La figura 42.13 (fig-41.13) con zonas: las dos pistas con ruido, su diferencia limpia y las cinco reglas.
+# - El skew del bloque 266: unos 6 ps por milímetro en microstrip; 1 mm en un enlace de 5 Gbit/s (200 ps por bit) es el
+#   3 %. Con 2 mm (valor de ejemplo, rotulado), 12 ps, el 6 %.
+# Paso práctico: «simular» esa fracción del bit (6 %; errores: el ejemplo de 1 mm, la fracción de un nanosegundo).
+leccion: cap41/sec-41.9
+
+libro:
+  253: "su valor es la diferencia entre ambos, con las dos pistas llevando tensiones opuestas"
+  255: "Cualquier interferencia que afecte por igual a ambos conductores (modo común) se cancela al restar"
+  256: "Las dos corrientes son iguales y opuestas, y sus campos se cancelan a distancia"
+  257: "lo que permite cables largos entre equipos"
+  258: "USB, Ethernet, HDMI, LVDS, CAN, RS-485"
+  261: "exactamente el doble de la de modo impar, unos 100 Ω"
+  262: "Al acercarlas, la impedancia diferencial baja"
+  264: "Mantener la separación constante en todo el recorrido"
+  265: "durante ese intervalo la señal deja de ser diferencial y aparece modo común"
+  266: "En FR4 la señal tarda unos 6 ps por milímetro en microstrip (unos 7 en stripline), de modo que 1 mm de diferencia son 6 ps. Con un enlace de 5 Gbit/s (200 ps por bit), 6 ps es el 3 % del periodo"
+  267: "Compensar el skew cerca de donde se produce, no al final"
+  268: "es preferible mover ambas juntas"
+  269: "Aunque la señal sea diferencial, el modo común necesita retorno"
+  270: "ambas pistas deben hacerlo en el mismo punto y con vías idénticas"
+  273: "Una interferencia que afecte de forma distinta a cada conductor sí pasa"
+  274: "su terminación es una resistencia entre ambas pistas, del valor de la impedancia diferencial"
+  275: "El modo común tiene que ir a alguna parte"
+  277: "el ruido que aparece en cada uno por separado desaparece en la resta"
+  278: "el skew se mide como el desfase entre ambos canales en los cruces"
+  279: "Cancelación del ruido de modo común en un par diferencial"
+
+modelo:
+  valores:
+    dl: { sim: "Δl", nombre: "diferencia de longitud (ejemplo)", unidad: mm, valor: 2 }
+    tps: { sim: "t/mm", nombre: "retardo por milímetro en microstrip", unidad: "ps/mm", valor: 6 }
+    br: { sim: "velocidad", nombre: "velocidad del enlace", unidad: "bit/s", valor: 5e9 }
+  calculos:
+    sk: { expr: "dl*tps*1e-12", sim: "skew", nombre: "desfase entre las pistas", unidad: s }
+    T_b: { expr: "1/br", sim: "T_{bit}", nombre: "duración de un bit", unidad: s }
+    fr_sk: { expr: "sk/T_b*100", sim: "skew/T", nombre: "fracción del bit", unidad: "%" }
+    fr_1mm: { expr: "tps*1e-12/T_b*100", sim: "skew/T", nombre: "con 1 mm", unidad: "%" }
+    fr_ns: { expr: "sk/1e-9*100", sim: "skew/1 ns", nombre: "frente a un nanosegundo", unidad: "%" }
+
+tarjetas:
+  - id: explore-resta
+    tipo: explorar
+    titulo: "El ruido común desaparece al restar"
+    texto: "Cada pista lleva ruido; su diferencia sale limpia. Toque las dos pistas y la diferencia."
+    libro: [253, 255, 279]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: mas, rotulo: "Traza de arriba", rect: [30, 15, 225, 60], texto: "Pista +: la señal más el ruido que capta." }
+        - { id: menos, rotulo: "Traza del centro", rect: [30, 82, 225, 62], texto: "Pista −: la señal opuesta más el mismo ruido." }
+        - { id: diferencia, rotulo: "Traza de abajo", rect: [30, 150, 225, 60], texto: "La diferencia: el ruido de modo común se cancela al restar." }
+    requiere: { mover: [mas, menos, diferencia] }
+
+  - id: empareje-cambios
+    tipo: pregunta
+    titulo: "Lo que cambia una señal diferencial"
+    texto: "Empareje cada ventaja con su causa."
+    libro: [255, 256, 257, 258]
+    emparejar:
+      - ["Inmunidad al ruido", "El modo común se cancela al restar"]
+      - ["Menos emisión", "Corrientes opuestas: sus campos se cancelan"]
+      - ["Referencia propia", "Cables largos entre equipos"]
+    exito: "Por eso casi todo lo rápido y lo que sale de la caja es diferencial."
+    pistas:
+      - { texto: "El receptor no depende de que las masas estén al mismo potencial." }
+    escalera:
+      - "Dos corrientes iguales y opuestas casi no radian."
+    solucion: "Inmunidad, resta; emisión, campos opuestos; referencia propia, cables largos."
+
+  - id: predecir-acercar
+    tipo: predecir
+    titulo: "La impedancia diferencial"
+    texto: "La impedancia diferencial es el doble de la de modo impar, unos 100 Ω. ¿Qué pasa si se acercan las dos pistas?"
+    libro: [261, 262]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: regla1, rotulo: "Primera regla", rect: [300, 24, 126, 38] }
+    opciones:
+      - texto: "Baja, porque se acoplan entre sí"
+        bien: true
+        porque: "Por eso anchura y separación se calculan juntas, con las herramientas del fabricante."
+      - texto: "Sube"
+        porque: "Al acercarlas el acoplamiento la baja."
+      - texto: "No cambia: es el doble de una pista aislada"
+        porque: "No es simplemente el doble de una aislada: el acoplamiento cuenta."
+    escalera:
+      - "Dos pistas cercanas se acoplan."
+    solucion: "Baja."
+
+  - id: simule-skew
+    tipo: simular
+    titulo: "Prediga el skew"
+    texto: "Una curva alarga 2 mm (valor de ejemplo) una pista de un par a 5 Gbit/s, en microstrip. ¿Qué fracción del bit es el desfase?"
+    libro: [265, 266]
+    fijar: { dl: 2, tps: 6, br: 5e9 }
+    widget:
+      tipo: grafica
+      x: { id: ll, min: 0, max: 5, unidad: mm, rotulo: "Δl" }
+      y: { min: 0, max: 20, unidad: "%", rotulo: "skew / bit" }
+      curvas:
+        - { expr: "ll*tps*1e-12*br*100", color: naranja, rotulo: "fracción del bit" }
+      lectura: { valor: fr_sk, rotulo: "Fracción del bit" }
+      datos:
+        - { valor: T_b, rotulo: "Un bit: {{T_b}}" }
+      ocultar: true
+    simular:
+      objetivo: fr_sk
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Skew frente al bit"
+      errores:
+        - { expr: "fr_1mm", texto: "Eso es con 1 mm: aquí son 2 mm, 12 ps." }
+        - { expr: "fr_ns", texto: "Ha comparado con un nanosegundo: a 5 Gbit/s un bit dura 200 ps." }
+    exito: "12 ps de 200: un 6 %. Mientras dura, la señal no es diferencial y aparece modo común."
+    escalera:
+      - "6 ps por milímetro; un bit a 5 Gbit/s dura 200 ps."
+    solucion: "2 × 6 ps = 12 ps; 12/200 = 6 %."
+    comprobar:
+      - { fr_sk: 6, sk: 12e-12, T_b: 200e-12, fr_1mm: 3, fr_ns: 1.2 }
+
+  - id: toque-capa
+    tipo: tocar
+    titulo: "Un par que cambia de capa"
+    texto: "El par tiene que pasar a otra capa. Toque la regla que lo rige."
+    libro: [264, 267, 269, 270]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: regla1, rotulo: "Primera regla", rect: [300, 24, 126, 38] }
+        - { id: regla2, rotulo: "Segunda regla", rect: [300, 66, 126, 38] }
+        - { id: regla3, rotulo: "Tercera regla", rect: [300, 108, 126, 38] }
+        - { id: regla4, rotulo: "Cuarta regla", rect: [300, 150, 126, 38] }
+        - { id: regla5, rotulo: "Quinta regla", rect: [300, 192, 126, 38] }
+    tocar:
+      bien: [regla5]
+      porque:
+        regla1: "Separación constante: importa en todo el recorrido, pero no habla del cambio de capa."
+        regla2: "Igualar longitudes evita el skew; no dice cómo cambiar de capa."
+        regla3: "Compensar cerca del origen va con igualar longitudes."
+        regla4: "La referencia continua importa siempre; la del cambio de capa es otra."
+    exito: "Cambios simétricos: las dos pistas en el mismo punto, con vías idénticas y vías de masa próximas."
+    escalera:
+      - "Busque la que habla de vías."
+    solucion: "La última: cambios de capa simétricos."
+
+  - id: pregunta-compensar
+    tipo: pregunta
+    titulo: "Dónde compensar"
+    texto: "Una de las pistas se alarga al tomar una curva. ¿Dónde se compensa la diferencia?"
+    libro: [267, 268]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: regla3, rotulo: "Tercera regla", rect: [300, 108, 126, 38] }
+    opciones:
+      - texto: "Justo después de la curva"
+        bien: true
+        porque: "Para que el par vuelva a estar equilibrado cuanto antes."
+      - texto: "Al final, junto al receptor"
+        porque: "Todo el recorrido intermedio iría desequilibrado, con modo común."
+      - texto: "Separando las pistas"
+        porque: "Separarlas cambia la impedancia; mejor mover ambas juntas."
+    escalera:
+      - "Cuanto antes se compense, menos tramo desequilibrado."
+    solucion: "Justo después de la curva que crea el skew."
+
+  - id: empareje-no-hace
+    tipo: pregunta
+    titulo: "Lo que no hace la señal diferencial"
+    texto: "Empareje cada idea falsa con la realidad."
+    libro: [273, 274, 275]
+    emparejar:
+      - ["Inmuniza contra cualquier ruido", "El ruido distinto en cada pista sí pasa"]
+      - ["No necesita terminación", "Una resistencia entre las pistas, de la impedancia diferencial"]
+      - ["No necesita buena masa", "El modo común necesita retorno"]
+    exito: "Por eso se mantienen juntas, se terminan y llevan plano debajo."
+    pistas:
+      - { texto: "Un par sin terminar refleja igual que una línea simple." }
+    escalera:
+      - "Solo se cancela lo que es igual en las dos."
+    solucion: "Ruido distinto pasa; terminación entre pistas; masa para el modo común."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Dos canales del osciloscopio, uno en cada pista, y la función de resta. ¿Qué se ve?"
+    libro: [277, 278]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: diferencia, rotulo: "Traza de abajo", rect: [30, 150, 225, 60] }
+    opciones:
+      - texto: "El ruido de cada canal desaparece en la resta"
+        bien: true
+        porque: "Es la demostración directa del principio; y el skew se mide en los cruces."
+      - texto: "El doble de ruido"
+        porque: "El ruido común se resta, no se suma."
+      - texto: "Nada útil: hace falta una sonda diferencial"
+        porque: "Con dos canales y la resta basta para verlo."
+    escalera:
+      - "¿Qué pasa con lo que es igual en las dos pistas al restarlas?"
+    solucion: "La señal limpia: el ruido común desaparece."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [255, 261, 266, 270]
+    ideas:
+      - { titulo: "La resta.", texto: "El modo común se cancela; las corrientes opuestas apenas radian." }
+      - { titulo: "100 Ω.", texto: "El doble de la de modo impar; baja al acercar las pistas." }
+      - { titulo: "Skew.", texto: "6 ps por mm: 1 mm es el 3 % de un bit a 5 Gbit/s." }
+      - { titulo: "Reglas.", texto: "Separación constante, longitudes iguales, cambios de capa simétricos." }

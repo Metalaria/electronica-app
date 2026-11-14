@@ -1,0 +1,312 @@
+# Lección 1.2 de la sección 36.3 «Fuerza y Deformación: la Galga y el Puente» (cap35, sec-35.3). Formato: GUIA.md.
+# - El puente de Wheatstone vivo (esquema «wheatstone», voltímetro ideal): galgas de 350 Ω, GF = 2 y 5 V (bloques 71,
+#   78 y figura 36.5). La galga activa del cuarto de puente es R₂ (abajo a la izquierda); en el medio puente trabaja
+#   además R₁ en oposición; en el completo, las cuatro (R₁ y R₄ comprimidas, R₂ y R₃ estiradas). A 1 000 µε:
+#   2,5 / 5 / 10 mV (tabla del bloque 78; el cuarto de puente da algo menos, 2,497 mV: su pequeña no linealidad, bloque 91).
+# - El calentamiento común de las galgas (interruptor «calentar») sube un 1 % la resistencia de cada galga activa: es un
+#   valor de ejemplo (rotulado) para el «mucho más que con la deformación» del bloque 80; las resistencias de
+#   completar del cuarto de puente no se calientan.
+# - Ejercicio 36.4 (bloque 345): galgas de 120 Ω, GF 2,1, 500 µε y 10 V: 2,62 mV en cuarto de puente; ganancia de 190.
+# Paso práctico: «averia» del puente completo en reposo (bloque 96: la salida en vacío debe ser de pocos milivoltios):
+# una galga abierta lleva el detector a ± 2,5 V; las tensiones de cada avería las da el modelo (comprobadas con ngspice).
+leccion: cap35/sec-35.3
+
+libro:
+  69: '("Δ" R)/(R) = "GF" dot.op ε'
+  70: "GF es el factor de galga, típicamente 2 en las metálicas"
+  71: "Sobre una galga de 350 Ω, 0,7 Ω"
+  74: "Medir la resistencia directamente no sirve"
+  75: "Con la galga sin deformar, el puente está equilibrado y la salida es cero"
+  76: "se puede amplificar sin saturar"
+  78: "Salida a 1 000 µε con 5 V"
+  80: "Es la razón principal, más importante que doblar la señal"
+  84: "hace falta una ganancia de unas 500 veces"
+  90: "Un puente de 350 Ω con 5 V consume 14 mA"
+  91: "No linealidad del puente, pequeña pero existente en el cuarto de puente"
+  94: "la resistencia de calibración (shunt calibration)"
+  96: "la salida en vacío debe ser de pocos milivoltios"
+  98: "El puente de Wheatstone con galgas y la salida según la configuración"
+  "cap35#345": "Unas galgas de 120 Ω con factor de galga 2,1 sufren 500 µε, en un puente alimentado con 10 V"
+
+modelo:
+  valores:
+    V_b: { sim: "V", nombre: "excitación del puente", unidad: V, valor: 5 }
+    R_g: { sim: "R", nombre: "resistencia de la galga", unidad: Ω, valor: 350 }
+    G_F: { sim: "GF", nombre: "factor de galga", unidad: "", valor: 2 }
+    e_p: { sim: "ε", nombre: "deformación", unidad: "µε", valor: 0 }
+    c_f: { sim: "n", nombre: "galgas activas", unidad: "", valor: 1 }
+    cal: { tipo: interruptor, nombre: "galgas calentadas", valor: 0 }
+    x_t: { sim: "x_{T}", nombre: "subida de las galgas al calentarse", unidad: "", valor: 0.01 }
+    R_1: { sim: "R₁", nombre: "rama izquierda, arriba", unidad: Ω, valor: 350 }
+    R_2: { sim: "R₂", nombre: "rama izquierda, abajo", unidad: Ω, valor: 350 }
+    R_3: { sim: "R₃", nombre: "rama derecha, arriba", unidad: Ω, valor: 350 }
+    R_4: { sim: "R₄", nombre: "rama derecha, abajo", unidad: Ω, valor: 350 }
+  calculos:
+    d_R: { expr: "R_g*G_F*e_p*1e-6", sim: "ΔR", nombre: "cambio de resistencia de una galga", unidad: Ω }
+    k_2: { expr: "min(1, max(0, c_f - 1))", sim: "k₂", nombre: "R₁ activa", unidad: "" }
+    k_4: { expr: "max(0, (c_f - 2)/2)", sim: "k₄", nombre: "R₃ y R₄ activas", unidad: "" }
+    h_t: { si: cal, entonces: "x_t", sino: "0", sim: "h", nombre: "calentamiento", unidad: "" }
+    r_1: { expr: "(R_g - d_R*k_2)*(1 + h_t*k_2)", sim: "R₁", nombre: "rama izquierda, arriba", unidad: Ω }
+    r_2: { expr: "(R_g + d_R)*(1 + h_t)", sim: "R₂", nombre: "rama izquierda, abajo (la galga activa)", unidad: Ω }
+    r_3: { expr: "(R_g + d_R*k_4)*(1 + h_t*k_4)", sim: "R₃", nombre: "rama derecha, arriba", unidad: Ω }
+    r_4: { expr: "(R_g - d_R*k_4)*(1 + h_t*k_4)", sim: "R₄", nombre: "rama derecha, abajo", unidad: Ω }
+    v_a: { expr: "V_b*r_2/(r_1 + r_2)", sim: "V_{a}", nombre: "punto medio izquierdo", unidad: V }
+    v_b: { expr: "V_b*r_4/(r_3 + r_4)", sim: "V_{b}", nombre: "punto medio derecho", unidad: V }
+    V_s: { expr: "v_a - v_b", sim: "V_{salida}", nombre: "salida del puente", unidad: V }
+    I_b: { expr: "V_b/(r_1 + r_2) + V_b/(r_3 + r_4)", sim: "I", nombre: "corriente de la excitación", unidad: A }
+    a_1: { expr: "V_b*R_2/(R_1 + R_2)", sim: "V_{a}", nombre: "punto medio izquierdo", unidad: V }
+    b_1: { expr: "V_b*R_4/(R_3 + R_4)", sim: "V_{b}", nombre: "punto medio derecho", unidad: V }
+    S_1: { expr: "a_1 - b_1", sim: "V_{salida}", nombre: "salida del puente", unidad: V }
+    I_1: { expr: "V_b/(R_1 + R_2) + V_b/(R_3 + R_4)", sim: "I", nombre: "corriente de la excitación", unidad: A }
+    G_n: { expr: "2/0.0105", sim: "G", nombre: "ganancia necesaria", unidad: "" }
+
+tarjetas:
+  - id: explore-galga
+    tipo: explorar
+    titulo: "Una galga en el puente"
+    texto: "Una galga de 350 Ω en un puente de 5 V, sin deformar: salida cero. Deforme la pieza."
+    libro: [71, 75]
+    fijar: { c_f: 1, cal: 0, V_b: 5, R_g: 350, G_F: 2 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_b, r1: r_1, r2: r_2, r3: r_3, r4: r_4 }
+      lectura: { valor: V_s, rotulo: "Salida del puente" }
+      datos:
+        - { valor: d_R, rotulo: "La galga cambia {{d_R}}" }
+      corriente: I_b
+      mide: { salida: V_s, va: v_a, vb: v_b, corriente: I_b }
+      mandos:
+        - { valor: e_p, min: 0, max: 1200, paso: 50, rotulo: "Deformación" }
+    requiere: { mover: [e_p] }
+
+  - id: formula-galga
+    tipo: formula
+    titulo: "El factor de galga"
+    texto: "El cambio relativo de resistencia es el factor de galga por la deformación: diminuto."
+    libro: [69, 70, 71]
+    ec: 69
+    sustitucion: "ΔR = {{R_g}} · {{G_F}} · {{e_p}} = {{d_R}}"
+    fijar: { c_f: 1, cal: 0, V_b: 5, R_g: 350, G_F: 2 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_b, r1: r_1, r2: r_2, r3: r_3, r4: r_4 }
+      lectura: { valor: d_R, rotulo: "Cambio de la galga" }
+      corriente: I_b
+      mide: { salida: V_s, va: v_a, vb: v_b, corriente: I_b }
+      mandos:
+        - { valor: e_p, min: 0, max: 1200, paso: 50, rotulo: "Deformación" }
+    comprobar:
+      - { con: { e_p: 1000 }, d_R: 0.7 }
+
+  - id: porque-puente
+    tipo: porque
+    titulo: "Restar en el circuito"
+    texto: "¿Por qué no se mide la resistencia de la galga directamente, en lugar de usar un puente?"
+    libro: [74, 76]
+    widget:
+      tipo: figura
+      figura: fig-35.5
+      zonas:
+        - { id: puente, rotulo: "Esquema de la izquierda", rect: [5, 5, 140, 175] }
+    opciones:
+      - texto: "El puente da una señal pequeña alrededor de cero, que se amplifica sin saturar"
+        bien: true
+        porque: "Directamente habría que extraer 0,7 Ω de 350,7 Ω con exactitud de partes por millón."
+      - texto: "Porque el multímetro no mide 350 Ω"
+        porque: "Los mide, pero la diferencia útil es diminuta frente al total."
+      - texto: "Porque el puente amplifica la deformación"
+        porque: "No amplifica: resta los dos divisores y deja solo el desequilibrio."
+    escalera:
+      - "Compare medir 0,7 Ω sobre 350 con medir algo alrededor de cero."
+    solucion: "Resta en el propio circuito: queda una señal pequeña sobre cero."
+
+  - id: explore-configuraciones
+    tipo: explorar
+    titulo: "Una, dos o cuatro galgas"
+    texto: "A 1 000 µε, cambie el número de galgas activas y mire la salida."
+    libro: [78, 98]
+    fijar: { e_p: 1000, cal: 0, V_b: 5, R_g: 350, G_F: 2 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_b, r1: r_1, r2: r_2, r3: r_3, r4: r_4 }
+      lectura: { valor: V_s, rotulo: "Salida del puente" }
+      corriente: I_b
+      mide: { salida: V_s, va: v_a, vb: v_b, corriente: I_b }
+      mandos:
+        - { valor: c_f, lista: [1, 2, 4], nombres: ["cuarto de puente", "medio puente", "puente completo"], rotulo: "Galgas activas" }
+    requiere: { mover: [c_f] }
+
+  - id: sorpresa-calor
+    tipo: sorpresa
+    titulo: "Sin deformar, calentando"
+    texto: "Sin deformación, caliente las galgas. Hágalo con una sola galga y con las cuatro."
+    nota: "La subida del 1 % es de ejemplo."
+    libro: [80, 91]
+    fijar: { e_p: 0, V_b: 5, R_g: 350, G_F: 2, x_t: 0.01 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_b, r1: r_1, r2: r_2, r3: r_3, r4: r_4 }
+      lectura: { valor: V_s, rotulo: "Salida del puente" }
+      corriente: I_b
+      mide: { salida: V_s, va: v_a, vb: v_b, corriente: I_b }
+      mandos:
+        - { valor: c_f, lista: [1, 2, 4], nombres: ["cuarto de puente", "medio puente", "puente completo"], rotulo: "Galgas activas" }
+        - { valor: cal, tipo: interruptor, rotulo: "Galgas calientes" }
+    requiere: { mover: [cal, c_f] }
+
+  - id: porque-compensacion
+    tipo: porque
+    titulo: "La razón de las cuatro galgas"
+    texto: "Una célula de carga lleva siempre puente completo. ¿Cuál es la razón principal?"
+    libro: [80]
+    widget:
+      tipo: figura
+      figura: fig-35.5
+      zonas:
+        - { id: puente, rotulo: "Esquema de la izquierda", rect: [5, 5, 140, 175] }
+    opciones:
+      - texto: "La compensación térmica: la temperatura cambia las cuatro por igual"
+        bien: true
+        porque: "Es la razón principal, más importante que doblar la señal: el puente sigue equilibrado."
+      - texto: "Cuadruplicar la señal"
+        porque: "Ayuda, pero la razón principal es que la temperatura se cancela."
+      - texto: "Repartir el autocalentamiento"
+        porque: "Las cuatro siguen calentándose; lo que importa es que les afecta por igual."
+    escalera:
+      - "¿Qué pasaba con la salida al calentar las cuatro galgas a la vez?"
+    solucion: "La compensación térmica."
+
+  - id: predecir-ejercicio
+    tipo: predecir
+    titulo: "Cuarto de puente con 10 V"
+    texto: "Galgas de 120 Ω, factor 2,1, 500 µε y 10 V de excitación, en cuarto de puente. ¿Qué salida da?"
+    libro: ["cap35#345"]
+    fijar: { V_b: 10, R_g: 120, G_F: 2.1, e_p: 500, c_f: 1, cal: 0 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_b, r1: r_1, r2: r_2, r3: r_3, r4: r_4 }
+      lectura: { valor: V_s, rotulo: "Salida del puente" }
+      corriente: I_b
+      mide: { salida: V_s, va: v_a, vb: v_b, corriente: I_b }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Unos 2,62 mV"
+        bien: true
+        porque: "La galga cambia un 0,105 %, y un cuarto de puente da la excitación por eso entre cuatro."
+      - texto: "10,5 mV"
+        porque: "Esa es la del puente completo, con las cuatro galgas activas: cuatro veces más."
+      - texto: "5,25 mV"
+        porque: "Esa sería la del medio puente, con dos galgas en oposición."
+    escalera:
+      - "Salida ≈ excitación · (ΔR/R) / 4 en un cuarto de puente."
+    solucion: "10 V · 0,105 % / 4 ≈ 2,62 mV."
+    comprobar:
+      - { V_s: 0.00262, tol: 0.01 }
+      - { con: { c_f: 4 }, V_s: 0.0105 }
+      - { con: { c_f: 2 }, V_s: 0.00525 }
+
+  - id: estime-ganancia
+    tipo: pregunta
+    titulo: "Hasta el convertidor"
+    texto: "El puente completo del ejercicio da 10,5 mV. ¿Qué ganancia la lleva a 2 V?"
+    libro: [84, "cap35#345"]
+    widget:
+      tipo: figura
+      figura: fig-35.5
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la derecha", rect: [205, 5, 225, 205] }
+    estimar:
+      objetivo: "G_n"
+      unidad: ""
+      min: 0
+      max: 500
+      paso: 5
+      inicio: 400
+      tol: 0.05
+      rotulo: "Ganancia"
+    exito: "Unas 190 veces, sobre un modo común de media excitación: el trabajo de un amplificador de instrumentación."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 200 }, texto: "Demasiada: la salida pasaría de 2 V." }
+      - { texto: "Poca: no llega a 2 V." }
+    escalera:
+      - "Divida 2 V entre 0,0105 V."
+    solucion: "2 / 0,0105 ≈ 190."
+    comprobar:
+      - { G_n: 190 }
+
+  - id: pregunta-shunt
+    tipo: pregunta
+    titulo: "Verificar sin carga"
+    texto: "En una báscula industrial se quiere verificar toda la cadena electrónica sin poner masas. ¿Cómo?"
+    libro: [94]
+    widget:
+      tipo: figura
+      figura: fig-35.5
+      zonas:
+        - { id: puente, rotulo: "Esquema de la izquierda", rect: [5, 5, 140, 175] }
+    opciones:
+      - texto: "Con una resistencia grande y conocida en paralelo con una rama"
+        bien: true
+        porque: "Produce un desequilibrio calculable, equivalente a una deformación concreta."
+      - texto: "Cortocircuitando una galga"
+        porque: "Eso es un desequilibrio enorme, no una deformación concreta y conocida."
+      - texto: "Bajando la excitación"
+        porque: "No desequilibra el puente: solo cambia su sensibilidad."
+    escalera:
+      - "Se llama calibración por shunt."
+    solucion: "Una resistencia de calibración en paralelo con una rama."
+
+  - id: averia-puente
+    tipo: averia
+    titulo: "Un puente que no da cero"
+    texto: "Una célula de carga en reposo, con 5 V: la salida debería ser de pocos milivoltios y marca mucho más. Mida y encuentre la galga."
+    libro: [96, 90]
+    fijar: { V_b: 5, R_1: 350, R_2: 350, R_3: 350, R_4: 350 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_b, r1: R_1, r2: R_2, r3: R_3, r4: R_4 }
+      mide: { salida: S_1, va: a_1, vb: b_1, corriente: I_1 }
+      mandos: []
+    averia:
+      pasos: 3
+      eleccion: fija
+      preguntar_tipo: false
+      sospechosos:
+        - { id: r1, rotulo: "Galga de arriba a la izquierda" }
+        - { id: r2, rotulo: "Galga de abajo a la izquierda" }
+        - { id: r3, rotulo: "Galga de arriba a la derecha" }
+        - { id: r4, rotulo: "Galga de abajo a la derecha" }
+      sondas:
+        - { id: salida, rotulo: "Salida", valor: S_1 }
+        - { id: va, rotulo: "Punto medio izquierdo", valor: a_1 }
+        - { id: vb, rotulo: "Punto medio derecho", valor: b_1 }
+        - { id: corriente, rotulo: "Corriente de la excitación", valor: I_1 }
+      fallos:
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_2: 1e9 }, texto: "La de abajo a la izquierda, abierta: su punto medio sube a la excitación y la corriente cae a la mitad." }
+        - { id: r4-abierta, pieza: r4, tipo: abierta, con: { R_4: 1e9 }, texto: "La de abajo a la derecha, abierta: el punto medio derecho sube a la excitación." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "La de arriba a la izquierda, abierta: el punto medio izquierdo cae a cero." }
+        - { id: r3-abierta, pieza: r3, tipo: abierta, con: { R_3: 1e9 }, texto: "La de arriba a la derecha, abierta: el punto medio derecho cae a cero." }
+    exito: "Por eso la comprobación empieza midiendo: una rama abierta deja medio puente sin corriente y un punto medio en un extremo."
+    escalera:
+      - "Sano, cada punto medio está en la mitad de la excitación. ¿Cuál se ha ido a un extremo?"
+    solucion: "Mire qué punto medio se aleja de la mitad y hacia dónde: abierta la de arriba lo baja; la de abajo lo sube."
+    comprobar:
+      - { S_1: 0, a_1: 2.5, I_1: 0.0143 }
+      - { con: { R_2: 1e9 }, a_1: 5, S_1: 2.5, tol: 0.001 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [69, 76, 80, 84]
+    ideas:
+      - { titulo: "Diminuto.", texto: "ΔR/R = GF·ε: a 1 000 µε, 0,7 Ω sobre 350." }
+      - { titulo: "El puente.", texto: "Resta en el circuito: una señal pequeña alrededor de cero." }
+      - { titulo: "Cuatro galgas.", texto: "Sobre todo, compensación térmica; además, cuatro veces la señal." }
+      - { titulo: "Después.", texto: "Un amplificador de instrumentación de unas 500 veces." }

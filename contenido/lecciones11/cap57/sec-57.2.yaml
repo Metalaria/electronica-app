@@ -1,0 +1,386 @@
+# Lección 1.2 de la sección 54.2 «Cinemática de un Brazo de Tres Ejes» (cap57; etiquetas sec-57.N = impresas 54.N).
+# - El brazo plano de la figura 54.2 dibujado en vivo en el plano (r, z), con curvas paramétricas: el primer segmento
+#   del hombro al codo, el segundo del codo a la punta y el alcance de 220 mm (L1 + L2). Asas en el codo (mueve θ2) y en
+#   la punta (mueve θ3). Cinemática directa del bloque 16: r = L1·cos θ2 + L2·cos(θ2 + θ3), z = L1·sen θ2 +
+#   L2·sen(θ2 + θ3), con L1 = 120 mm y L2 = 100 mm (bloque 15); ángulos en grados en el modelo (·π/180).
+# - El ejemplo del bloque 21: (r, z) = (150, 50) mm con θ2 = 57,65° y θ3 = −88,57° (codo arriba).
+# - Denavit-Hartenberg (bloques 28 a 32, tabla 54.1, figura 54.3).
+# - El jacobiano (bloque 37): det J = L1·L2·sen θ3; para mover la punta hacia fuera a v con ż = 0,
+#   θ̇2 = L2·cos(θ2 + θ3)·v/det J y θ̇3 = −r·v/det J: −20,5 y 35,8 °/s en el ejemplo; −684 y 1 505 °/s con
+#   θ2 = 2° y θ3 = −2° (el brazo casi estirado en horizontal, θ2 + θ3 = 0: reproduce las cifras del libro).
+# - La resolución en la punta, ρ·Δθ (bloques 38, 39) y el par estático del hombro (ecuación del bloque 43, 0,428 N·m).
+# Pasos prácticos: «simular» la punta con θ2 = 90° y θ3 = −90° (la postura del ejercicio 54.9: r = 100 mm; errores:
+# 220 mm sumando los segmentos, 120 mm confundiendo r con z) y «ajuste» del codo con el hombro en 57,65° hasta que la
+# punta llegue a r = 150 mm (el deslizador va de −150° a −40°, codo arriba, donde solo hay una solución).
+leccion: cap57/sec-57.2
+
+libro:
+  15: "con longitudes L1 = 120 mm y L2 = 100 mm"
+  16: 'r = L_("1") dot.op cos θ_("2") + L_("2") dot.op cos (θ_("2") + θ_("3"))'
+  17: "y la base gira ese plano: x = r·cos θ1, y = r·sen θ1"
+  20: "más lejos que L1 + L2 = 220 mm o más cerca que |L1 − L2| = 20 mm"
+  21: "Con el codo arriba, θ3 = −88,57° y θ2 = atan2(50, 150) − atan2(100·sen θ3, 120 + 100·cos θ3) = 18,43° + 39,22° = 57,65°; con el codo abajo, θ3 = +88,57° y θ2 = −20,78°"
+  22: "El brazo plano visto de lado, con las dos soluciones de la cinemática inversa para el punto (r, z) = (150, 50) mm"
+  26: "se encadenan multiplicando"
+  28: "girar θi alrededor de zi−1, avanzar di a lo largo de zi−1, avanzar ai a lo largo del nuevo xi y girar αi alrededor de xi"
+  30: "En una articulación de giro, θi es la variable y di, ai y αi son constantes de la mecánica; en una lineal, la variable es di"
+  31: "Articulación"
+  34: "Los sistemas de coordenadas de Denavit-Hartenberg del brazo"
+  35: "una tabla de parámetros por eje, que la calibración de fábrica corrige con las desviaciones medidas de cada unidad"
+  37: "En el punto del ejemplo, mover la punta hacia fuera a 50 mm/s pide −20,5 °/s al hombro y 35,8 °/s al codo; con el brazo casi estirado en horizontal (θ3 = −2°), la misma velocidad pide −684 °/s y 1 505 °/s"
+  38: "En el ejemplo esa distancia es 158 mm"
+  39: "Servo de modelismo (banda muerta de 5 µs)"
+  40: "La última fila es la resolución, no la exactitud"
+  43: 'T_("hombro") = g dot.op'
+  44: "Son 0,047 + 0,065 + 0,100 + 0,216 = 0,428 N·m (4,36 kg·cm, en las unidades de las hojas de los servos), y la mitad la pone la carga de la punta"
+  "cap57#176": "escribe A1, A2 y A3 para θ1 = 0, θ2 = 90° y θ3 = −90°"
+
+modelo:
+  valores:
+    L_1: { sim: "L₁", nombre: "longitud del primer segmento", unidad: m, valor: 0.12 }
+    L_2: { sim: "L₂", nombre: "longitud del segundo segmento", unidad: m, valor: 0.1 }
+    th2: { sim: "θ₂", nombre: "ángulo del hombro", unidad: "°", valor: 45 }
+    th3: { sim: "θ₃", nombre: "ángulo del codo", unidad: "°", valor: -60 }
+    v_p: { sim: "v", nombre: "velocidad de la punta hacia fuera", unidad: "m/s", valor: 0.05 }
+    dth: { sim: "Δθ", nombre: "resolución del hombro", unidad: "°", valor: 0.45 }
+    g_0: { sim: "g", nombre: "gravedad", unidad: "m/s²", valor: 9.81 }
+    m_1: { sim: "m₁", nombre: "masa del primer segmento", unidad: kg, valor: 0.08 }
+    m_c: { sim: "m_{codo}", nombre: "masa del servo del codo", unidad: kg, valor: 0.055 }
+    m_2: { sim: "m₂", nombre: "masa del segundo segmento con la pinza", unidad: kg, valor: 0.06 }
+    m_k: { sim: "m_{carga}", nombre: "masa de la carga", unidad: kg, valor: 0.1 }
+  calculos:
+    r_c: { expr: "L_1*cos(th2*pi/180)", sim: "r_{codo}", nombre: "distancia horizontal del codo", unidad: m }
+    z_c: { expr: "L_1*sin(th2*pi/180)", sim: "z_{codo}", nombre: "altura del codo", unidad: m }
+    r_p: { expr: "r_c + L_2*cos((th2 + th3)*pi/180)", sim: "r", nombre: "distancia horizontal de la punta", unidad: m }
+    z_p: { expr: "z_c + L_2*sin((th2 + th3)*pi/180)", sim: "z", nombre: "altura de la punta", unidad: m }
+    rho: { expr: "sqrt(r_p^2 + z_p^2)", sim: "ρ", nombre: "distancia del hombro a la punta", unidad: m }
+    L_s: { expr: "L_1 + L_2", sim: "L₁ + L₂", nombre: "alcance", unidad: m }
+    detJ: { expr: "L_1*L_2*sin(th3*pi/180)", sim: "det J", nombre: "determinante del jacobiano", unidad: "m²" }
+    w_2: { expr: "L_2*cos((th2 + th3)*pi/180)*v_p/detJ*180/pi", sim: "θ̇₂", nombre: "velocidad del hombro", unidad: "°/s" }
+    w_3: { expr: "-r_p*v_p/detJ*180/pi", sim: "θ̇₃", nombre: "velocidad del codo", unidad: "°/s" }
+    d_p: { expr: "rho*dth*pi/180", sim: "Δp", nombre: "desplazamiento de la punta", unidad: m }
+    T_h: { expr: "g_0*(m_1*L_1/2 + m_c*L_1 + m_2*(L_1 + L_2/2) + m_k*(L_1 + L_2))", sim: "T_{hombro}", nombre: "par estático del hombro", unidad: "N·m" }
+    T_k: { expr: "g_0*m_k*(L_1 + L_2)", sim: "T_{carga}", nombre: "par que pone la carga", unidad: "N·m" }
+    T_hkgcm: { expr: "T_h/g_0*100", sim: "T", nombre: "par del hombro en kg·cm", unidad: "kg·cm" }
+
+tarjetas:
+  - id: explore-brazo
+    tipo: explorar
+    titulo: "El brazo, visto de lado"
+    texto: "Arrastre el codo y la punta, o mueva los ángulos: la cinemática directa da dónde está la punta."
+    libro: [15, 22]
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: rx, min: -0.1, max: 0.25, unidad: m, rotulo: "r" }
+      y: { min: -0.1, max: 0.25, unidad: m, rotulo: "z" }
+      curvas:
+        - { param: { id: p, min: 0, max: 1 }, x: "p*r_c", y: "p*z_c", color: azul, rotulo: "L₁" }
+        - { param: { id: q, min: 0, max: 1 }, x: "r_c + q*(r_p - r_c)", y: "z_c + q*(z_p - z_c)", color: naranja, rotulo: "L₂" }
+        - { param: { id: a, min: -1.6, max: 1.6 }, x: "L_s*cos(a)", y: "L_s*sin(a)", color: tinta, rotulo: "alcance", discontinua: true }
+      asas:
+        - { mueve: th2, x: "r_c", y: "z_c", rotulo: "Codo: ángulo del hombro" }
+        - { mueve: th3, x: "r_p", y: "z_p", rotulo: "Punta: ángulo del codo" }
+      lectura: { valor: r_p, rotulo: "Distancia horizontal de la punta, r" }
+      datos:
+        - { valor: z_p, rotulo: "Altura de la punta, z: {{z_p}}" }
+      mandos:
+        - { valor: th2, min: -30, max: 120, paso: 1, rotulo: "Hombro, θ₂" }
+        - { valor: th3, min: -150, max: 150, paso: 1, rotulo: "Codo, θ₃" }
+    requiere: { mover: [th2, th3] }
+
+  - id: formula-directa
+    tipo: formula
+    titulo: "La cinemática directa"
+    texto: "La distancia de la punta es la del codo más la proyección del segundo segmento, que lleva el ángulo acumulado θ₂ + θ₃."
+    libro: [16, 17]
+    ec: 16
+    sustitucion: "{{L_1}} · cos {{th2}} + {{L_2}} · cos ({{th2}} + {{th3}}) = {{r_p}}"
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: rx, min: -0.1, max: 0.25, unidad: m, rotulo: "r" }
+      y: { min: -0.1, max: 0.25, unidad: m, rotulo: "z" }
+      curvas:
+        - { param: { id: p, min: 0, max: 1 }, x: "p*r_c", y: "p*z_c", color: azul, rotulo: "L₁" }
+        - { param: { id: q, min: 0, max: 1 }, x: "r_c + q*(r_p - r_c)", y: "z_c + q*(z_p - z_c)", color: naranja, rotulo: "L₂" }
+      marcas:
+        - { x: "r_p", y: "z_p", rotulo: "punta" }
+      lectura: { valor: r_p, rotulo: "Distancia horizontal, r" }
+      datos:
+        - { valor: z_p, rotulo: "Altura, z: {{z_p}}" }
+      mandos:
+        - { valor: th2, min: -30, max: 120, paso: 1, rotulo: "Hombro, θ₂" }
+        - { valor: th3, min: -150, max: 150, paso: 1, rotulo: "Codo, θ₃" }
+
+  - id: simule-postura
+    tipo: simular
+    titulo: "Prediga la punta"
+    texto: "Hombro vertical, θ₂ = 90°, y codo doblado θ₃ = −90°. ¿A qué distancia horizontal r del eje queda la punta?"
+    libro: [16, "cap57#176"]
+    fijar: { th2: 90, th3: -90 }
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: rx, min: -0.1, max: 0.25, unidad: m, rotulo: "r" }
+      y: { min: -0.1, max: 0.25, unidad: m, rotulo: "z" }
+      curvas:
+        - { param: { id: p, min: 0, max: 1 }, x: "p*r_c", y: "p*z_c", color: azul, rotulo: "L₁" }
+        - { param: { id: q, min: 0, max: 1 }, x: "r_c + q*(r_p - r_c)", y: "z_c + q*(z_p - z_c)", color: naranja, rotulo: "L₂" }
+      lectura: { valor: r_p, rotulo: "Distancia horizontal, r" }
+      ocultar: curvas
+    simular:
+      objetivo: r_p
+      unidad: m
+      tol: 0.03
+      rotulo: "Distancia horizontal de la punta, r"
+      errores:
+        - { expr: "L_s", texto: "220 mm sería con el brazo estirado en horizontal: con el codo doblado no se suman las longitudes." }
+        - { expr: "z_p", texto: "120 mm es la altura z de la punta, que se queda a la del codo. La distancia horizontal la da el antebrazo." }
+    exito: "100 mm a 120 mm de altura: el brazo vertical y el antebrazo horizontal."
+    escalera:
+      - "cos 90° = 0: el primer segmento no aporta distancia horizontal."
+      - "El ángulo acumulado del antebrazo es θ₂ + θ₃ = 0°."
+    solucion: "r = 120·cos 90° + 100·cos 0° = 100 mm."
+    comprobar:
+      - { r_p: 0.1, z_p: 0.12, L_s: 0.22, tol: 0.002 }
+
+  - id: ajuste-codo
+    tipo: ajuste
+    titulo: "Lleve la punta a 150 mm"
+    texto: "Con el hombro en 57,65°, doble el codo hasta que la punta quede a r = 150 mm del eje."
+    libro: [21, 22]
+    fijar: { th2: 57.65 }
+    inicio: { th3: -40 }
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: rx, min: -0.1, max: 0.25, unidad: m, rotulo: "r" }
+      y: { min: -0.1, max: 0.25, unidad: m, rotulo: "z" }
+      curvas:
+        - { param: { id: p, min: 0, max: 1 }, x: "p*r_c", y: "p*z_c", color: azul, rotulo: "L₁" }
+        - { param: { id: q, min: 0, max: 1 }, x: "r_c + q*(r_p - r_c)", y: "z_c + q*(z_p - z_c)", color: naranja, rotulo: "L₂" }
+      asas:
+        - { mueve: th3, x: "r_p", y: "z_p", rotulo: "Punta: ángulo del codo" }
+      datos:
+        - { valor: z_p, rotulo: "Altura de la punta, z: {{z_p}}" }
+      mandos:
+        - { valor: th3, min: -150, max: -40, paso: 0.5, rotulo: "Codo, θ₃" }
+    ajuste:
+      valor: r_p
+      objetivo: 0.15
+      tol: 0.01
+      rotulo: "Distancia horizontal, r"
+      bajo: "Se ha quedado cerca del eje: doble menos el codo."
+      alto: "Está demasiado lejos: doble más el codo."
+      dentro: "θ₃ cerca de −88,57° y la punta también a unos 50 mm de altura: es el punto (150, 50) del ejemplo, con el codo arriba."
+    comprobar:
+      - { con: { th3: -88.57 }, r_p: 0.15, z_p: 0.05, tol: 0.003 }
+
+  - id: prediga-dos
+    tipo: predecir
+    titulo: "Cuántas posturas"
+    texto: "¿Cuántas posturas del brazo plano llevan la punta al punto (150, 50) mm?"
+    libro: [21, 22]
+    widget:
+      tipo: figura
+      figura: fig-57.2
+      zonas:
+        - { id: lado, rotulo: "El brazo visto de lado", rect: [30, 15, 160, 145] }
+    opciones:
+      - texto: "Dos: codo arriba y codo abajo"
+        bien: true
+        porque: "El arcocoseno da ±θ₃: −88,57° con el codo arriba y +88,57° con el codo abajo."
+      - texto: "Una sola"
+        porque: "El teorema del coseno fija el ángulo del codo salvo el signo: hay dos."
+      - texto: "Infinitas"
+        porque: "En el plano, con dos segmentos rígidos, solo hay dos triángulos posibles."
+    escalera:
+      - "El triángulo hombro-codo-punta tiene sus tres lados fijos. ¿De cuántas maneras se puede dibujar?"
+    solucion: "Dos: codo arriba (θ₃ = −88,57°) y codo abajo (θ₃ = +88,57°)."
+
+  - id: porque-dominio
+    tipo: porque
+    titulo: "Un punto fuera del alcance"
+    texto: "Se pide a la cinemática inversa un punto a 250 mm del hombro. ¿Qué pasa y qué debe hacer el código?"
+    libro: [20]
+    widget:
+      tipo: figura
+      figura: fig-57.2
+      zonas:
+        - { id: lado, rotulo: "El brazo visto de lado", rect: [30, 15, 160, 145] }
+    opciones:
+      - texto: "El coseno sale fuera de [−1, 1]: comprobarlo antes de llamar a la función"
+        bien: true
+        porque: "El alcance va de 20 a 220 mm; con un argumento fuera de rango la función devuelve NaN y manda el motor a donde no debe."
+      - texto: "El brazo se estira al máximo y queda en 220 mm"
+        porque: "La función no recorta: devuelve NaN, y ese número llega al motor."
+      - texto: "Nada: el servo ignora el ángulo"
+        porque: "El servo recibe lo que se le mande; el código tiene que filtrarlo antes."
+    escalera:
+      - "¿Hasta dónde llegan 120 + 100 mm?"
+    solucion: "Fuera del alcance: el cociente sale de [−1, 1]; se comprueba antes y no se manda nada."
+
+  - id: empareje-dh
+    tipo: pregunta
+    titulo: "Los cuatro movimientos de Denavit-Hartenberg"
+    texto: "Pasar del sistema i − 1 al i son cuatro movimientos elementales. Empareje cada parámetro con el suyo."
+    libro: [28, 34, 26, 35]
+    widget:
+      tipo: figura
+      figura: fig-57.3
+      zonas:
+        - { id: tabla, rotulo: "La tabla, arriba a la derecha", rect: [215, 8, 107, 80] }
+    emparejar:
+      - ["θᵢ", "Girar alrededor de z_{i−1}"]
+      - ["dᵢ", "Avanzar a lo largo de z_{i−1}"]
+      - ["aᵢ", "Avanzar a lo largo del nuevo xᵢ"]
+      - ["αᵢ", "Girar alrededor de xᵢ"]
+    exito: "Cuatro números por eje, y las matrices se encadenan multiplicando. La calibración de fábrica corrige la tabla de cada unidad."
+    pistas:
+      - { texto: "Las letras griegas son giros; las latinas, avances." }
+    escalera:
+      - "z_{i−1} es el eje de la articulación i: sobre él se gira θ y se avanza d."
+    solucion: "θ: giro en z_{i−1}; d: avance en z_{i−1}; a: avance en xᵢ; α: giro en xᵢ."
+
+  - id: toque-alfa
+    tipo: tocar
+    titulo: "El α de 90°"
+    texto: "En la tabla 54.1 una sola articulación tiene α = 90°. Tóquela en el brazo."
+    libro: [30, 31, 34]
+    widget:
+      tipo: figura
+      figura: fig-57.3
+      zonas:
+        - { id: hombro, rotulo: "Abajo a la izquierda", rect: [36, 128, 40, 40] }
+        - { id: codo, rotulo: "Arriba en el centro", rect: [102, 30, 40, 40] }
+        - { id: punta, rotulo: "A la derecha", rect: [190, 82, 40, 40] }
+    tocar:
+      bien: [hombro]
+      porque:
+        codo: "El codo gira sobre un eje paralelo al del hombro: α = 0."
+        punta: "La punta lleva el sistema 3, a lo largo del antebrazo: α = 0."
+    exito: "La base: z₀ es vertical y z₁, el eje del hombro, horizontal. De uno a otro hay 90°."
+    escalera:
+      - "Busque dónde un eje de giro vertical pasa a uno horizontal."
+    solucion: "Abajo a la izquierda: la base y el hombro, α₁ = 90°."
+
+  - id: prediga-singular
+    tipo: predecir
+    titulo: "Casi estirado"
+    texto: "Mover la punta hacia fuera a 50 mm/s pide −20,5 °/s al hombro en el ejemplo. ¿Y con el brazo casi estirado en horizontal, θ₃ = −2°?"
+    libro: [37]
+    fijar: { th2: 2, th3: -2 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: -180, max: 0, unidad: "°", rotulo: "θ₃" }
+      y: { min: -0.013, max: 0.001, unidad: "m²", rotulo: "det J" }
+      curvas:
+        - { expr: "L_1*L_2*sin(tx*pi/180)", color: azul, rotulo: "det J" }
+      marcas:
+        - { x: "th3", y: "detJ", rotulo: "θ₃ = −2°" }
+      lectura: { valor: w_2, rotulo: "Velocidad del hombro" }
+      datos:
+        - { valor: w_3, rotulo: "Velocidad del codo: {{w_3}}" }
+      ocultar: true
+    opciones:
+      - texto: "−684 °/s al hombro y 1 505 °/s al codo"
+        bien: true
+        porque: "det J = L₁·L₂·sen θ₃ casi se anula: cerca de una singularidad los ejes se disparan."
+      - texto: "Lo mismo, −20,5 °/s"
+        porque: "La relación entre velocidades depende de la postura a través del jacobiano."
+      - texto: "Menos, porque el brazo está más lejos"
+        porque: "Al revés: estirado, la punta casi no puede moverse hacia fuera y los motores tienen que correr."
+    escalera:
+      - "¿Cuánto vale sen θ₃ con θ₃ = −2°?"
+    solucion: "−684 y 1 505 °/s: det J casi es cero. El generador debe limitar la velocidad de los ejes."
+    comprobar:
+      - { w_2: -684, w_3: 1505, tol: 0.003 }
+      - { con: { th2: 57.65, th3: -88.57 }, w_2: -20.5, w_3: 35.8, tol: 0.005 }
+
+  - id: estime-resolucion
+    tipo: pregunta
+    titulo: "Lo que se nota en la punta"
+    texto: "Un servo de modelismo en el hombro resuelve 0,45°. Con la punta a 158 mm del hombro, ¿cuánto se mueve la punta por esa resolución?"
+    libro: [38, 39, 40]
+    fijar: { th2: 57.65, th3: -88.57, dth: 0.45 }
+    widget:
+      tipo: figura
+      figura: fig-57.2
+      zonas:
+        - { id: lado, rotulo: "El brazo visto de lado", rect: [30, 15, 160, 145] }
+    estimar:
+      objetivo: "d_p"
+      unidad: m
+      min: 0
+      max: 0.005
+      paso: 0.0001
+      inicio: 0.004
+      tol: 0.05
+      rotulo: "Desplazamiento de la punta"
+    exito: "1,24 mm: el error del eje por su distancia a la punta. Y es resolución, no exactitud."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0013 }, texto: "Se ha pasado: pase los grados a radianes antes de multiplicar." }
+      - { texto: "Se ha quedado corto: la distancia es 158 mm, no la del codo." }
+    escalera:
+      - "Δp ≈ ρ·Δθ, con Δθ en radianes."
+    solucion: "0,158 m × 0,45 × π/180 = 1,24 mm."
+    comprobar:
+      - { d_p: 0.00124, rho: 0.158, tol: 0.005 }
+
+  - id: formula-par
+    tipo: formula
+    titulo: "El par del hombro"
+    texto: "El peor caso es el brazo horizontal: cada masa, por su distancia al eje. Cambie la carga de la punta."
+    libro: [43, 44]
+    inicio: { m_k: 0.1 }
+    ec: 43
+    sustitucion: "{{g_0}} · ({{m_1}} · {{L_1}}/2 + {{m_c}} · {{L_1}} + {{m_2}} · ({{L_1}} + {{L_2}}/2) + {{m_k}} · ({{L_1}} + {{L_2}})) = {{T_h}}"
+    widget:
+      tipo: grafica
+      x: { id: mx, min: 0, max: 0.3, unidad: kg, rotulo: "m_{carga}" }
+      y: { min: 0, max: 1.2, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "g_0*(m_1*L_1/2 + m_c*L_1 + m_2*(L_1 + L_2/2) + mx*(L_1 + L_2))", color: naranja, rotulo: "par del hombro" }
+      marcas:
+        - { x: "m_k", y: "T_h", rotulo: "{{T_h}}" }
+      lectura: { valor: T_h, rotulo: "Par estático del hombro" }
+      datos:
+        - { valor: T_hkgcm, rotulo: "En kg·cm: {{T_hkgcm}}" }
+      mandos:
+        - { valor: m_k, min: 0, max: 0.3, paso: 0.01, rotulo: "Carga en la punta" }
+    comprobar:
+      - { T_h: 0.428, T_k: 0.216, T_hkgcm: 4.36, tol: 0.004 }
+
+  - id: porque-margen
+    tipo: porque
+    titulo: "Margen de 2,5 veces"
+    texto: "Un servo de 11 kg·cm de par de bloqueo da 2,5 veces los 4,36 kg·cm del hombro. ¿Por qué no basta con que el par supere al estático?"
+    libro: [44]
+    widget:
+      tipo: grafica
+      x: { id: mx, min: 0, max: 0.3, unidad: kg, rotulo: "m_{carga}" }
+      y: { min: 0, max: 1.2, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "g_0*(m_1*L_1/2 + m_c*L_1 + m_2*(L_1 + L_2/2) + mx*(L_1 + L_2))", color: naranja, rotulo: "par del hombro" }
+    opciones:
+      - texto: "El de bloqueo es el máximo parado, que no se aguanta, y acelerar pide más"
+        bien: true
+        porque: "Por eso el par estático del peor caso no debe pasar de la mitad del de bloqueo."
+      - texto: "Porque la hoja de datos siempre exagera"
+        porque: "El libro no habla de exagerar: el de bloqueo es real, pero solo con la corriente de bloqueo y parado."
+      - texto: "Basta: con más par que el estático el brazo se mueve"
+        porque: "Se sostiene, pero para acelerar hace falta par además del estático."
+    escalera:
+      - "¿Puede el servo estar en su corriente de bloqueo de forma continua?"
+    solucion: "Porque el de bloqueo no es continuo y la aceleración pide más: estático ≤ la mitad del de bloqueo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [16, 21, 28, 37]
+    ideas:
+      - { titulo: "Directa.", texto: "r = L₁·cos θ₂ + L₂·cos(θ₂ + θ₃); z, con senos." }
+      - { titulo: "Inversa.", texto: "Dos soluciones, codo arriba y codo abajo, y un alcance que hay que comprobar." }
+      - { titulo: "Denavit-Hartenberg.", texto: "Cuatro números por eje y matrices que se encadenan." }
+      - { titulo: "Singularidades.", texto: "Con det J casi cero, los ejes se disparan: limitar su velocidad." }

@@ -1,0 +1,240 @@
+# Lección 1.2 de la sección 24.9 «Fase y Retardo de Grupo» (cap25). Formato: contenido/lecciones11/GUIA.md.
+# La primera gráfica es una señal de dos componentes (fundamental y tercer armónico) retrasada igual (fase lineal) o
+# girada la misma fase en las dos (fase no lineal); el RC del retardo de grupo es el de la práctica de la sección
+# 21.5 (cap22#133, 1,6 kΩ y 100 nF).
+leccion: cap25/sec-25.9
+
+libro:
+  287: "también su fase"
+  289: "Si todas las componentes de una señal se retrasan el mismo tiempo, la forma se conserva íntegra"
+  290: 'τ_("g") = - (d φ)/(d ω)'
+  291: "Si es plano, la forma se conserva"
+  294: "Pulsos digitales"
+  295: "el oído es bastante insensible a la fase absoluta"
+  298: "Máximamente plano"
+  299: "un corte abrupto exige polos con Q alto, y esos polos producen una fase que varía deprisa"
+  303: "Un Chebyshev de orden alto puede sobreoscilar un 20 % o más"
+  306: "un circuito que no cambia la amplitud en absoluto y sí la fase"
+  307: "tiene retardo de grupo exactamente constante por construcción"
+  310: "aplicar una onda cuadrada a un Bessel y a un Chebyshev del mismo orden"
+  "cap22#133": "Con R = 1,6 kΩ y C = 100 nF"
+
+modelo:
+  valores:
+    k_lin: { tipo: interruptor, nombre: "fase lineal", valor: 0 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 100 }
+    R_f: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1600 }
+    C_f: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+  calculos:
+    w_f: { expr: "2*pi*f_f", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    x_c: { expr: "w_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{C}", nombre: "amplitud en C", unidad: V }
+    ph_c: { expr: "-atan(x_c)*180/pi", sim: "φ", nombre: "fase", unidad: "°", cifras: 3 }
+    tau_g: { expr: "R_f*C_f/(1 + x_c^2)", sim: "τ_{g}", nombre: "retardo de grupo", unidad: s }
+    tau_0: { expr: "R_f*C_f", sim: "R · C", nombre: "retardo a baja frecuencia", unidad: s }
+
+tarjetas:
+  - id: explore-forma
+    tipo: explorar
+    titulo: "Retrasar sin deformar"
+    texto: "Una señal con su fundamental y su tercer armónico. Active la fase lineal (las dos se retrasan el mismo tiempo) y desactívela (giran la misma fase)."
+    libro: [287, 289]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*500*t) + sin(2*pi*1500*t)/3", color: tinta, rotulo: "entrada", discontinua: true }
+        - { expr: "k_lin*(sin(2*pi*500*(t - 0.0005)) + sin(2*pi*1500*(t - 0.0005))/3) + (1 - k_lin)*(sin(2*pi*500*t - pi/2) + sin(2*pi*1500*t - pi/2)/3)", color: naranja, rotulo: "salida" }
+      mandos:
+        - { valor: k_lin, tipo: interruptor, rotulo: "Fase lineal" }
+    requiere: { mover: [k_lin] }
+
+  - id: prediga-condicion
+    tipo: pregunta
+    titulo: "¿Qué conserva la forma?"
+    texto: "¿Qué condición debe cumplir la fase de un filtro para que la forma de onda salga igual, solo más tarde?"
+    libro: [289, 291]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*500*t) + sin(2*pi*1500*t)/3", color: tinta, rotulo: "entrada", discontinua: true }
+    opciones:
+      - texto: "Que varíe linealmente con la frecuencia: retardo de grupo constante"
+        bien: true
+        porque: "Entonces todas las componentes se retrasan el mismo tiempo y la forma se conserva íntegra."
+      - texto: "Que sea la misma para todas las frecuencias"
+        porque: "La misma fase es un retraso distinto en cada frecuencia: el armónico se adelanta respecto a la fundamental."
+      - texto: "Que sea cero"
+        porque: "Fase cero no retrasa nada; pero basta con que el retraso sea igual para todas, sea cual sea."
+    escalera:
+      - "Un mismo retraso en tiempo es más fase cuanto mayor es la frecuencia."
+    solucion: "Fase lineal con la frecuencia: retardo de grupo constante."
+
+  - id: prediga-rc
+    tipo: predecir
+    titulo: "Prediga el retardo del RC"
+    texto: "El paso bajo de 1,6 kΩ y 100 nF. ¿Retrasa lo mismo una componente de 10 kHz que una de 100 Hz?"
+    libro: [291, "cap22#133"]
+    fijar: { V_p: 1, R_f: 1600, C_f: 100e-9, f_f: 10000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: tau_g, rotulo: "Retardo de grupo a esta frecuencia" }
+      datos:
+        - { valor: tau_0, rotulo: "A baja frecuencia: {{tau_0}}" }
+      mide: { vc_fase: ph_c }
+      ocultar: true
+    opciones:
+      - texto: "No: la de 10 kHz se retrasa mucho menos"
+        bien: true
+        porque: "Su retardo de grupo no es plano: cae por encima del corte. Las componentes llegan en instantes distintos."
+      - texto: "Sí: es el mismo circuito"
+        porque: "El retardo depende de la pendiente de la fase en cada frecuencia, y en un RC esa pendiente cambia."
+      - texto: "No: la de 10 kHz se retrasa más, porque se atenúa más"
+        porque: "Atenuar no es retrasar. Muy por encima del corte la fase ya casi no gira y el retardo es pequeño."
+    escalera:
+      - "Mire cuánto gira la fase de un polo cerca del corte y lejos de él."
+    solucion: "Mucho menos: el retardo de grupo del RC cae al subir la frecuencia por encima del corte."
+
+  - id: regla-retardo
+    tipo: formula
+    titulo: "El retardo de grupo"
+    texto: "Es la derivada de la fase respecto a la frecuencia. En un RC no es constante: mire cómo cambia con la frecuencia."
+    libro: [290, 291, "cap22#133"]
+    ec: 290
+    sustitucion: "R·C / (1 + (ωRC)²) = {{tau_g}}"
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: tau_g, rotulo: "Retardo de grupo" }
+      datos:
+        - { valor: ph_c, rotulo: "Fase: {{ph_c}}" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      mandos:
+        - { valor: f_f, lista: [100, 300, 1000, 3000, 10000] }
+
+  - id: compromiso
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El retardo de cada aproximación"
+    texto: "Una cada aproximación con su retardo de grupo."
+    libro: [298]
+    emparejar:
+      - ["Bessel", "Máximamente plano"]
+      - ["Butterworth", "Intermedio"]
+      - ["Chebyshev", "Muy variable"]
+      - ["Elíptico", "El peor"]
+    exito: "Cuanto más abrupto el corte, peor el comportamiento en el tiempo."
+    pistas:
+      - { texto: "El más abrupto es el que peor trata la fase." }
+    escalera:
+      - "Bessel se elige justo por su fase."
+    solucion: "Bessel plano, Butterworth intermedio, Chebyshev muy variable, elíptico el peor."
+
+  - id: por-que-abrupto
+    tipo: porque
+    titulo: "¿Por qué van juntos?"
+    texto: "Un corte abrupto siempre trae un retardo de grupo muy variable. ¿Por qué no es casualidad?"
+    libro: [299]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: tau_g, rotulo: "Retardo de grupo" }
+      mide: { vc_fase: ph_c }
+    opciones:
+      - texto: "Un corte abrupto exige polos con Q alto, y esos polos dan una fase que varía deprisa"
+        bien: true
+        porque: "Es una consecuencia de la relación entre frecuencia y tiempo, no un defecto de las tablas."
+      - texto: "Porque los filtros abruptos tienen más componentes"
+        porque: "Con el mismo orden tienen los mismos; lo que cambia es dónde están los polos."
+      - texto: "Porque el rizado retrasa la señal"
+        porque: "El rizado es de amplitud. El retardo variable viene de polos de Q alto."
+    escalera:
+      - "Piense en dónde coloca los polos un filtro abrupto."
+    solucion: "Polos de Q alto: fase que gira deprisa cerca del corte."
+
+  - id: audio
+    tipo: pregunta
+    titulo: "¿Y en audio?"
+    texto: "¿Por qué los filtros de audio no suelen priorizar el retardo de grupo constante?"
+    libro: [294, 295]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*500*t) + sin(2*pi*1500*t)/3", color: tinta, rotulo: "entrada", discontinua: true }
+    opciones:
+      - texto: "El oído es bastante insensible a la fase absoluta"
+        bien: true
+        porque: "Importa cuando la forma es la información: pulsos digitales, vídeo, medida, radar y sonar."
+      - texto: "Porque el audio no tiene armónicos"
+        porque: "Los tiene, y muchos. Lo que pasa es que el oído apenas nota cómo se desfasan."
+      - texto: "Porque el retardo de grupo no afecta al audio"
+        porque: "Le afecta igual que a cualquier señal; simplemente se oye poco."
+    escalera:
+      - "¿Quién recibe la señal de audio al final?"
+    solucion: "El oído apenas distingue la fase absoluta."
+
+  - id: sobreoscilacion
+    tipo: pregunta
+    titulo: "Una onda cuadrada"
+    texto: "Una onda cuadrada entra en un Bessel y en un Chebyshev del mismo orden. ¿Qué se ve en el osciloscopio?"
+    libro: [303, 310]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*500*t) + sin(2*pi*1500*t)/3", color: tinta, rotulo: "entrada", discontinua: true }
+    opciones:
+      - texto: "El Bessel conserva la forma; el Chebyshev sobreoscila y timbra"
+        bien: true
+        porque: "Un Chebyshev de orden alto puede sobreoscilar un 20 % o más; en una medida, eso se confunde con el circuito bajo prueba."
+      - texto: "Los dos salen iguales: tienen el mismo orden"
+        porque: "El orden fija la pendiente final, no la fase: el retardo de grupo de cada uno es muy distinto."
+      - texto: "El Chebyshev conserva mejor la forma, porque corta más"
+        porque: "Cortar más abrupto empeora el comportamiento en el tiempo."
+    escalera:
+      - "¿Cuál de los dos tiene el retardo de grupo plano?"
+    solucion: "Bessel limpio; Chebyshev con sobreoscilación y timbre."
+
+  - id: correccion
+    tipo: pregunta
+    titulo: "Corte abrupto y fase decente"
+    texto: "Hace falta un corte abrupto y también conservar la forma de onda. ¿Qué filtro tiene retardo de grupo exactamente constante?"
+    libro: [306, 307]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.004, unidad: s, rotulo: "t" }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*500*t) + sin(2*pi*1500*t)/3", color: tinta, rotulo: "entrada", discontinua: true }
+    opciones:
+      - texto: "Un filtro digital FIR simétrico"
+        bien: true
+        porque: "Lo tiene por construcción, algo que ningún filtro analógico consigue. La otra salida es un ecualizador de fase."
+      - texto: "Un elíptico de orden alto"
+        porque: "Es el más abrupto, pero su retardo de grupo es el peor."
+      - texto: "Un ecualizador de fase solo, sin filtro"
+        porque: "No cambia la amplitud: no filtra nada. Se añade al filtro para compensar su fase."
+    escalera:
+      - "Una de las razones de peso para filtrar en digital."
+    solucion: "El FIR simétrico; o un all-pass que compense la fase del analógico."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [289, 290, 299, 307]
+    ideas:
+      - { titulo: "Retardo de grupo.", texto: "τ_{g} = −dφ/dω: si es constante, la forma de onda se conserva." }
+      - { titulo: "Cuándo importa.", texto: "Pulsos, vídeo, medida, radar; en audio, mucho menos." }
+      - { titulo: "El compromiso.", texto: "Corte abrupto, retardo variable y sobreoscilación: Bessel frente a Chebyshev y elíptico." }
+      - { titulo: "La corrección.", texto: "Un ecualizador de fase, o un FIR simétrico en digital." }

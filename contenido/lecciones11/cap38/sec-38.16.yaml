@@ -1,0 +1,305 @@
+# Lección 1.2 de la sección 39.17 «Problemas de Diseño» (cap38; etiqueta interna sec-38.16).
+# Formato: contenido/lecciones11/GUIA.md (§5.2, §11). Los tres problemas del libro: 39.A (autonomía con autodescarga:
+# 2 400 mAh, 5 ms a 8 mA y 20 ms a 35 mA por despertar, 3 µA en reposo; la capacidad va en A·h), 39.B (planificabilidad
+# y bloqueo por el bus) y 39.C (índices de 16 bits no atómicos).
+leccion: cap38/sec-38.16
+
+libro:
+  503: "Problema 39.A — Cuando la pila se descarga sola"
+  505: "Un nodo con batería de 2400 mAh despierta, mide durante 5 ms a 8 mA y transmite 20 ms a 35 mA; en reposo consume 3 µA"
+  508: "742,9 µA"
+  509: "Espaciar los despertares de 1 a 60 segundos multiplica la autonomía por 48"
+  510: "3 %/año (8,2 µA)"
+  511: "la autonomía cae de 17,9 a 11,6 años"
+  512: "hay un suelo de consumo impuesto por la química de la batería"
+  514: "los picos de 35 mA duran 20 ms y un multímetro los promedia mal"
+  516: "Problema 39.B — Un sistema que cumple la cota y falla igual"
+  518: "sensor (0,5 ms cada 10 ms), control (2 ms cada 20 ms) y registro en tarjeta (8 ms cada 100 ms)"
+  521: 'U = ("0,5")/("10") + ("2")/("20") + ("8")/("100") = "23,0" \%'
+  522: "cota para 3 tareas = 78,0 %"
+  524: "El motivo es la inversión de prioridad"
+  525: "Además, el control desplaza al registro"
+  526: "La cota de Liu y Layland supone tareas independientes"
+  528: "El bloqueo queda en 8 ms y el sensor responde en 8,5 ms: cumple, aunque con poco margen"
+  532: "Problema 39.C — Un buffer circular que se corrompe"
+  538: "La ventana de riesgo es de unos dos ciclos, es decir, 125 ns a 16 MHz"
+  540: "uno cada 0,8 s"
+  543: "Índices de 8 bits con buffer de tamaño potencia de dos y máscara"
+  544: "cada índice lo escribe uno solo"
+
+modelo:
+  valores:
+    T_w: { sim: "T", nombre: "periodo de despertar", unidad: s, valor: 1 }
+    ad: { sim: "autodescarga", nombre: "autodescarga anual", unidad: "%", valor: 0 }
+    C_bat: { sim: "C", nombre: "capacidad de la batería", unidad: "A·h", valor: 2.4 }
+    C1: { sim: "C_{sensor}", nombre: "duración del sensor", unidad: s, valor: 0.0005 }
+    T1: { sim: "T_{sensor}", nombre: "periodo del sensor", unidad: s, valor: 0.01 }
+    C2: { sim: "C_{control}", nombre: "duración del control", unidad: s, valor: 0.002 }
+    T2: { sim: "T_{control}", nombre: "periodo del control", unidad: s, valor: 0.02 }
+    C3: { sim: "C_{registro}", nombre: "duración del registro", unidad: s, valor: 0.008 }
+    T3: { sim: "T_{registro}", nombre: "periodo del registro", unidad: s, valor: 0.1 }
+    f_c: { sim: "f", nombre: "reloj", unidad: Hz, valor: 16000000 }
+    n_cic: { sim: "ciclos", nombre: "ciclos de la ventana", unidad: "", valor: 2 }
+  calculos:
+    I_id: { expr: "(0.005*0.008 + 0.02*0.035)/T_w + 0.000003*(T_w - 0.025)/T_w", sim: "I_{media}", nombre: "corriente media ideal", unidad: A }
+    I_ad: { expr: "C_bat*ad/100/8760", sim: "I_{autodescarga}", nombre: "corriente equivalente de la autodescarga", unidad: A }
+    anos: { expr: "C_bat/(I_id + I_ad)/8760", sim: "autonomía", nombre: "autonomía", unidad: "años", cifras: 3 }
+    u1: { expr: "C1/T1*100", sim: "U_{sensor}", nombre: "utilización del sensor", unidad: "%" }
+    u2: { expr: "C2/T2*100", sim: "U_{control}", nombre: "utilización del control", unidad: "%" }
+    u3: { expr: "C3/T3*100", sim: "U_{registro}", nombre: "utilización del registro", unidad: "%" }
+    U_b: { expr: "u1 + u2 + u3", sim: "U", nombre: "utilización total", unidad: "%" }
+    I_desp: { expr: "(0.005*0.008 + 0.02*0.035)/T_w", sim: "I", nombre: "parte de los despertares", unidad: A }
+    resp: { expr: "C3 + C2 + C1", sim: "t_{respuesta}", nombre: "respuesta del sensor sin herencia", unidad: s }
+    resp_h: { expr: "C3 + C1", sim: "t_{respuesta}", nombre: "respuesta del sensor con herencia", unidad: s }
+    vent: { expr: "n_cic/f_c", sim: "ventana", nombre: "ventana de riesgo", unidad: s }
+
+tarjetas:
+  - id: explore-autonomia
+    tipo: explorar
+    titulo: "Problema 39.A: cada cuánto despertar"
+    texto: "El nodo del problema, con 2400 mAh. Cambie el periodo de despertar y la autodescarga, y mire la autonomía."
+    libro: [503, 505, 509, 510]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
+      y: { min: 0, max: 20, unidad: "años", rotulo: "autonomía" }
+      curvas:
+        - { expr: "C_bat/(((0.005*0.008 + 0.02*0.035)/tt + 0.000003*(tt - 0.025)/tt) + I_ad)/8760", color: azul, rotulo: "autonomía" }
+      marcas:
+        - { x: "T_w", y: "anos", rotulo: "{{anos}}" }
+      lectura: { valor: anos, rotulo: "Autonomía" }
+      mandos:
+        - { valor: T_w, lista: [1, 60], rotulo: "Periodo de despertar" }
+        - { valor: ad, lista: [0, 1, 3], rotulo: "Autodescarga por año" }
+    requiere: { mover: [T_w, ad] }
+
+  - id: estime-corriente
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La corriente media cada minuto"
+    texto: "Despertando cada 60 s, sin autodescarga, ¿cuál es la corriente media del nodo?"
+    libro: [505, 508]
+    fijar: { T_w: 60, ad: 0 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
+      y: { min: 0, max: 20, unidad: "años", rotulo: "autonomía" }
+      curvas:
+        - { expr: "C_bat/(((0.005*0.008 + 0.02*0.035)/tt + 0.000003*(tt - 0.025)/tt))/8760", color: azul, rotulo: "autonomía ideal" }
+    estimar:
+      objetivo: "I_id"
+      unidad: A
+      min: 0
+      max: 0.00005
+      paso: 0.0000001
+      inicio: 0.00004
+      tol: 0.05
+      rotulo: "Corriente media"
+    exito: "15,3 µA: 12,3 de los despertares y 3 del reposo. Cada segundo serían 742,9 µA."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000153 }, texto: "Se ha pasado: 5 ms × 8 mA + 20 ms × 35 mA, repartido en 60 s, más los 3 µA." }
+      - { texto: "Se ha quedado corto: no olvide los 3 µA del reposo." }
+    escalera: ["Carga por despertar: 5 ms × 8 mA + 20 ms × 35 mA = 0,74 mA·s."]
+    solucion: "0,74 mA·s / 60 s ≈ 12,3 µA, más 3 µA de reposo: 15,3 µA."
+    comprobar:
+      - { I_id: 0.0000153, tol: 0.005, I_desp: 0.0000123, n_cic: 2 }
+      - { con: { T_w: 1 }, I_id: 0.0007429, tol: 0.001 }
+      - { con: { T_w: 1 }, I_id: 0.00074, tol: 0.01 }
+
+  - id: prediga-autodescarga
+    tipo: predecir
+    titulo: "La pila se descarga sola"
+    texto: "Cada 60 s, con una autodescarga del 3 % al año, 8,2 µA. ¿Qué autonomía queda de los 17,9 años ideales?"
+    libro: [510, 511]
+    fijar: { T_w: 60, ad: 3 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
+      y: { min: 0, max: 20, unidad: "años", rotulo: "autonomía" }
+      curvas:
+        - { expr: "C_bat/(((0.005*0.008 + 0.02*0.035)/tt + 0.000003*(tt - 0.025)/tt) + I_ad)/8760", color: azul, rotulo: "autonomía" }
+      lectura: { valor: anos, rotulo: "Autonomía" }
+      ocultar: true
+    opciones:
+      - { texto: "11,6 años", bien: true, porque: "La autodescarga se lleva más de un tercio del presupuesto: 8,2 de 23,6 µA." }
+      - { texto: "17,9 años: la autodescarga es despreciable", porque: "Lo es despertando cada segundo; cada minuto, el nodo consume tan poco que pesa mucho." }
+      - { texto: "0,37 años", porque: "Esa es la autonomía despertando cada segundo." }
+    escalera: ["Sume los 8,2 µA a los 15,3 µA del nodo."]
+    solucion: "15,3 + 8,2 = 23,6 µA: 11,6 años."
+    comprobar:
+      - { anos: 11.63, tol: 0.005, I_ad: 0.0000082 }
+      - { con: { ad: 0 }, anos: 17.87, tol: 0.005 }
+      - { con: { T_w: 1, ad: 0 }, anos: 0.37, tol: 0.01 }
+
+  - id: pregunta-suelo
+    tipo: pregunta
+    titulo: "Un suelo de consumo"
+    texto: "Despertando cada minuto, ¿por qué apenas sirve seguir optimizando el firmware?"
+    libro: [511, 512]
+    fijar: { T_w: 60, ad: 3 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
+      y: { min: 0, max: 20, unidad: "años", rotulo: "autonomía" }
+      curvas:
+        - { expr: "C_bat/(((0.005*0.008 + 0.02*0.035)/tt + 0.000003*(tt - 0.025)/tt) + I_ad)/8760", color: azul, rotulo: "con autodescarga" }
+    opciones:
+      - { texto: "La química de la batería impone un suelo: la autodescarga no baja", bien: true, porque: "Llegado ahí, lo que queda es otra química, como el litio primario, o una batería mayor." }
+      - { texto: "Porque el firmware ya no consume nada", porque: "Consume, pero la pila se agota sola al mismo ritmo." }
+      - { texto: "Porque el microcontrolador no puede dormir más", porque: "No es el micro: es la autodescarga de la batería." }
+    escalera: ["¿Qué parte del consumo no depende del firmware?"]
+    solucion: "La autodescarga es un suelo: bajar el consumo muy por debajo no sirve."
+
+  - id: pregunta-medir
+    tipo: pregunta
+    titulo: "Medir la media de verdad"
+    texto: "¿Por qué la corriente media de este nodo no se mide con un multímetro?"
+    libro: [514]
+    widget:
+      tipo: figura
+      figura: fig-38.9
+      zonas:
+        - { id: perfil, rotulo: "Gráfica del perfil", rect: [41, 11, 240, 167], texto: "Picos cortos de actividad sobre el sueño profundo." }
+    opciones:
+      - { texto: "Los picos de 35 mA duran 20 ms y el multímetro los promedia mal", bien: true, porque: "Hace falta un integrador o un analizador de consumo; el multímetro, para el reposo en su rango bajo." }
+      - { texto: "Porque no tiene rango de miliamperios", porque: "Lo tiene: el problema son los picos breves." }
+      - { texto: "Porque la corriente es alterna", porque: "Es continua a pulsos: el multímetro no integra bien los pulsos." }
+    escalera: ["¿Cuánto duran los picos frente al tiempo que mide un multímetro?"]
+    solucion: "Picos de 20 ms que el multímetro promedia mal: integrador o analizador de consumo."
+
+  - id: formula-utilizacion
+    tipo: formula
+    titulo: "Problema 39.B: la utilización"
+    texto: "Sensor, 0,5 ms cada 10 ms; control, 2 ms cada 20 ms; registro, 8 ms cada 100 ms. Cada tarea ocupa duración entre periodo."
+    libro: [516, 518, 521, 522]
+    ec: 521
+    sustitucion: "{{u1}} + {{u2}} + {{u3}} = {{U_b}}"
+    widget:
+      tipo: figura
+      figura: fig-38.17
+      zonas:
+        - { id: expulsivo, rotulo: "Panel de abajo", rect: [25, 118, 404, 98], texto: "Expulsivo con rate monotonic." }
+    comprobar:
+      - { U_b: 23, u1: 5, u2: 10, u3: 8 }
+
+  - id: prediga-cumple
+    tipo: predecir
+    titulo: "Muy por debajo de la cota"
+    texto: "Usa el 23 %, frente a una cota del 78,0 % para tres tareas, y el registro y el sensor comparten el bus SPI. ¿Cumple siempre?"
+    libro: [522, 524, 526]
+    widget:
+      tipo: figura
+      figura: fig-38.18
+      zonas:
+        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "Inversión de prioridad sin herencia." }
+    opciones:
+      - { texto: "No: la inversión de prioridad puede hacerle perder plazos", bien: true, porque: "La cota supone tareas independientes; en cuanto comparten un recurso, deja de aplicarse." }
+      - { texto: "Sí: usa menos de un tercio de lo permitido", porque: "La cuenta de carga no ve el bloqueo por el recurso compartido." }
+      - { texto: "Sí, porque el sensor es el más prioritario", porque: "Aun así espera si el registro tiene el bus." }
+    escalera: ["¿Qué supone la cota de Liu y Layland sobre las tareas?"]
+    solucion: "No: con un recurso compartido la cota no garantiza nada."
+
+  - id: estime-respuesta
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El peor caso del sensor"
+    texto: "El registro retiene el bus 8 ms y el control lo desplaza 2 ms más. Con los 0,5 ms del sensor, ¿cuánto tarda en responder?"
+    libro: [525]
+    widget:
+      tipo: figura
+      figura: fig-38.18
+      zonas:
+        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "La media desplaza a la baja." }
+    estimar:
+      objetivo: "resp"
+      unidad: s
+      min: 0
+      max: 0.02
+      paso: 0.0005
+      inicio: 0.0175
+      tol: 0.02
+      rotulo: "Tiempo de respuesta"
+    exito: "10,5 ms con un plazo de 10 ms: falla, aunque «funcione» casi siempre."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado: sume el bloqueo, el desplazamiento y la propia tarea." }
+      - { texto: "Se ha quedado corto: el sensor espera los 8 ms del registro más los 2 del control." }
+    escalera: ["8 + 2 de bloqueo, y luego su propio trabajo."]
+    solucion: "8 + 2 + 0,5 = 10,5 ms: pierde el plazo de 10 ms."
+    comprobar:
+      - { resp: 0.0105 }
+
+  - id: pregunta-solucion-b
+    tipo: pregunta
+    titulo: "La solución del 39.B"
+    texto: "¿Qué deja al sensor dentro de su plazo sin cambiar el hardware?"
+    libro: [516, 528]
+    widget:
+      tipo: figura
+      figura: fig-38.18
+      zonas:
+        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Con herencia de prioridad." }
+    opciones:
+      - { texto: "Herencia de prioridad: el control ya no desplaza al registro", bien: true, porque: "El bloqueo queda en 8 ms y el sensor responde en 8,5 ms: cumple, con poco margen. Trocear la escritura da más." }
+      - { texto: "Subir la prioridad del control", porque: "Empeora: el control desplazaría al registro aún más." }
+      - { texto: "Bajar la utilización", porque: "Ya es del 23 %: el problema no es la carga sino el bloqueo." }
+    escalera: ["Es lo que faltó en el Mars Pathfinder."]
+    solucion: "Herencia de prioridad (8,5 ms) y trocear la escritura larga."
+    comprobar:
+      - { resp_h: 0.0085 }
+
+  - id: estime-ventana
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Problema 39.C: la ventana"
+    texto: "Leer un índice de 16 bits en un micro de 8 bits ocupa unos dos ciclos a 16 MHz. ¿Cuánto dura la ventana de riesgo?"
+    libro: [532, 538, 540]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "Un búfer circular con sus dos índices." }
+    estimar:
+      objetivo: "vent"
+      unidad: s
+      min: 0
+      max: 0.0000005
+      paso: 0.000000005
+      inicio: 0.0000004
+      tol: 0.05
+      rotulo: "Ventana de riesgo"
+    exito: "125 ns. Con 10 kHz de interrupciones y mil accesos por segundo, un fallo cada 0,8 s: no es raro."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000000125 }, texto: "Se ha pasado: un ciclo a 16 MHz dura 62,5 ns." }
+      - { texto: "Se ha quedado corto: son dos ciclos de 62,5 ns." }
+    escalera: ["Un ciclo a 16 MHz dura 1/16 µs."]
+    solucion: "2 / 16 MHz = 125 ns."
+    comprobar:
+      - { vent: 0.000000125 }
+      - { con: { n_cic: 1 }, vent: 0.0000000625 }
+
+  - id: porque-solucion-c
+    tipo: porque
+    titulo: "La solución elegante"
+    texto: "¿Por qué índices de 8 bits, con un búfer de tamaño potencia de dos, eliminan el fallo sin coste?"
+    libro: [543, 544]
+    widget:
+      tipo: figura
+      figura: fig-K.1
+      zonas:
+        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "Índices de 8 bits que cuentan libremente." }
+    opciones:
+      - { texto: "Un byte se lee y se escribe en una sola instrucción: es atómico por construcción", bien: true, porque: "La interrupción no puede caer en medio. Y cada índice lo escribe un solo lado." }
+      - { texto: "Porque deshabilitan las interrupciones", porque: "Eso es la sección crítica, que añade latencia; los índices de un byte no la necesitan." }
+      - { texto: "Porque el búfer ocupa menos", porque: "El tamaño no importa: importa que el índice quepa en un byte." }
+    escalera: ["¿Cuántas instrucciones necesita un AVR para escribir un byte?"]
+    solucion: "Un índice de un byte se lee en una instrucción: no hay ventana de riesgo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [503, 516, 532, 512, 526, 528, 543]
+    ideas:
+      - { titulo: "39.A.", texto: "La autodescarga pone un suelo: por debajo, el firmware ya no rinde." }
+      - { titulo: "39.B.", texto: "Cumplir la cota no basta si se comparten recursos: herencia de prioridad." }
+      - { titulo: "39.C.", texto: "Índices de 16 bits en un micro de 8: índices de un byte." }
+      - { titulo: "Medir.", texto: "El peor caso y la media de verdad, no lo que dicen las cuentas." }

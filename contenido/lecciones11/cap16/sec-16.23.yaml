@@ -1,0 +1,250 @@
+# Lección 1.2 de la sección 15.23 «Problemas de Diseño» (cap16; etiquetas sec-16.N = impresas 15.N).
+# - Problema 15.A, por qué el ajuste de la FI es tan delicado. Modelo: el circuito de FI como tanque LC en paralelo
+#   (esquema «rlc-paralelo») con L = 1 µH y C = 220 pF (10,730 MHz); el núcleo cambia L en tanto por ciento. La fuente
+#   inyecta 10,7 MHz (el método del bloque 513) con 1 V y una resistencia de 2,6 kΩ, de ejemplo, elegida para el ancho
+#   de banda de unos 280 kHz (B = 1/(2π·R·C) = 278 kHz). La tabla del bloque 509: +1 % de L, −53,3 kHz.
+# - Problema 15.B, el diagnóstico por etapas desde la salida hacia la entrada (tabla del bloque 524).
+# Pasos prácticos: «simular» el desplazamiento con un 1 % más de L (−53,3 kHz; error típico: desplazar la frecuencia un
+# 1 %, −107 kHz), «ajuste» del núcleo hasta el máximo de la señal a 10,7 MHz (banda del 95 % al 100 %, de ejemplo) y
+# «ordenar» el diagnóstico del problema 15.B.
+leccion: cap16/sec-16.23
+
+libro:
+  505: "con un ancho de banda de unos 280 kHz"
+  508: "Con L = 1 µH y C = 220 pF, la resonancia cae en 10,730 MHz"
+  509: "−53,3 kHz"
+  510: "un 1 % de variación en la inductancia desplaza la frecuencia 53 kHz, casi el 20 % de esa banda"
+  511: "un cuarto de vuelta ya es un desplazamiento apreciable"
+  512: "Se ajusta a un valor y al soltar queda en otro"
+  513: "inyectar 10,7 MHz modulado, observar la salida de audio o la tensión de un detector, y buscar el máximo"
+  515: "Marca la posición inicial del núcleo antes de tocarlo"
+  516: "Resultado: 1 % de variación en L desplaza 53 kHz, el 19 % del ancho de banda"
+  522: "conviene ir desde la salida hacia la entrada"
+  524: "Tocar la entrada con el dedo: debe oírse zumbido"
+  525: "Es una comprobación que cuesta un segundo y descarta media placa"
+  526: "el display cuenta el oscilador local, así que si muestra una cifra que cambia al girar el dial, el oscilador funciona"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud inyectada (de ejemplo)", unidad: V, valor: 1 }
+    f_s: { sim: "f", nombre: "frecuencia inyectada", unidad: Hz, valor: 10700000 }
+    R_s: { sim: "R_{s}", nombre: "resistencia de la fuente (de ejemplo)", unidad: Ω, valor: 2600 }
+    L_0: { sim: "L₀", nombre: "inductancia sin tocar el núcleo", unidad: H, valor: 1e-6 }
+    p_n: { sim: "ΔL", nombre: "cambio de inductancia con el núcleo", unidad: "%", valor: 0 }
+    C_f: { sim: "C", nombre: "capacidad del circuito de FI", unidad: F, valor: 220e-12 }
+  calculos:
+    L_n: { expr: "L_0*(1 + p_n/100)", sim: "L", nombre: "inductancia con el núcleo", unidad: H }
+    f_0: { expr: "1/(2*pi*sqrt(L_n*C_f))", sim: "f₀", nombre: "resonancia", unidad: Hz, cifras: 5 }
+    f_00: { expr: "1/(2*pi*sqrt(L_0*C_f))", sim: "f₀", nombre: "resonancia sin tocar el núcleo", unidad: Hz, cifras: 5 }
+    d_f: { expr: "f_0 - f_00", sim: "Δf", nombre: "desplazamiento de la resonancia", unidad: Hz }
+    d_x: { expr: "-0.01*f_00", sim: "−1 % de f₀", nombre: "un 1 % de la frecuencia", unidad: Hz }
+    A_t: { expr: "V_p/sqrt(1 + (R_s*(2*pi*f_s*C_f - 1/(2*pi*f_s*L_n)))^2)", sim: "V_{FI}", nombre: "señal a 10,7 MHz", unidad: V }
+    B_w: { expr: "1/(2*pi*R_s*C_f)", sim: "B", nombre: "ancho de banda", unidad: Hz }
+
+tarjetas:
+  - id: explore-nucleo
+    tipo: explorar
+    titulo: "Un circuito de FI"
+    texto: "Con 1 µH y 220 pF, la resonancia cae en 10,730 MHz, con unos 280 kHz de banda. Mueva el núcleo."
+    nota: "La fuente es de ejemplo."
+    libro: [505, 508]
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      datos:
+        - { valor: d_f, rotulo: "Desplazamiento: {{d_f}}" }
+      mide: { vt_amp: A_t }
+      grafica:
+        x: { id: nu, min: 9700000, max: 11700000, unidad: Hz, rotulo: "f" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{FI}" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (R_s*(2*pi*nu*C_f - 1/(2*pi*nu*L_n)))^2)", color: verde, rotulo: "|v_{FI}|", mide: vt_amp }
+        marcas:
+          - { x: "f_0", y: "V_p", rotulo: "f₀" }
+      mandos:
+        - { valor: p_n, lista: [0, 1, 5, 10], rotulo: "Cambio de L con el núcleo" }
+    comprobar:
+      - { f_0: 10730000, B_w: 278000, tol: 0.01 }
+
+  - id: simule-uno
+    tipo: simular
+    titulo: "Un 1 % más de inductancia"
+    texto: "El núcleo sube la inductancia un 1 %. ¿Cuánto se desplaza la resonancia de 10,730 MHz?"
+    libro: [508, 509]
+    fijar: { p_n: 1 }
+    simular:
+      objetivo: d_f
+      unidad: Hz
+      tol: 0.05
+      rotulo: "Desplazamiento"
+      errores:
+        - { expr: "d_x", texto: "Ha desplazado la frecuencia un 1 %. Pero va con 1/√L: un 1 % de L la mueve la mitad." }
+        - { razon: { min: -1.05, max: -0.95 }, texto: "Más inductancia baja la frecuencia: el desplazamiento es negativo." }
+    exito: "−53,3 kHz: casi el 20 % de los 280 kHz de la banda."
+    escalera:
+      - "f₀ va con 1/√(L·C): un cambio de L mueve f₀ más o menos la mitad, en tanto por ciento."
+    solucion: "10,730 MHz pasa a 10,677 MHz: −53,3 kHz."
+    comprobar:
+      - { d_f: -53300, d_x: -107300, tol: 0.01 }
+
+  - id: empareje-tabla
+    tipo: pregunta
+    titulo: "La sensibilidad del ajuste"
+    texto: "Empareje cada variación de la inductancia con el desplazamiento de la resonancia."
+    libro: [509, 510]
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      mide: { vt_amp: A_t }
+      mandos: []
+    emparejar:
+      - ["+1 %", "−53,3 kHz"]
+      - ["+5 %", "−258,6 kHz"]
+      - ["+10 %", "−499,4 kHz"]
+    exito: "Un 5 % la desplaza casi una banda entera, y un núcleo cambia varios por ciento por vuelta."
+    pistas:
+      - { texto: "Cerca de la mitad del cambio de L, en tanto por ciento de la frecuencia." }
+    escalera:
+      - "Cuanto más cambia L, más baja la frecuencia."
+    solucion: "+1 %, −53,3 kHz; +5 %, −258,6 kHz; +10 %, −499,4 kHz."
+
+  - id: ajuste-nucleo
+    tipo: ajuste
+    titulo: "Centre el núcleo"
+    texto: "Se inyectan 10,7 MHz. Mueva el núcleo, en fracciones de vuelta, hasta el máximo de la señal."
+    nota: "La banda del ajuste es de ejemplo."
+    libro: [511, 513]
+    inicio: { p_n: 3 }
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      lectura: { valor: A_t, rotulo: "Señal a 10,7 MHz" }
+      mide: { vt_amp: A_t }
+      grafica:
+        x: { id: nu, min: 9700000, max: 11700000, unidad: Hz, rotulo: "f" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{FI}" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (R_s*(2*pi*nu*C_f - 1/(2*pi*nu*L_n)))^2)", color: verde, rotulo: "|v_{FI}|", mide: vt_amp }
+        marcas:
+          - { x: "f_s", y: "A_t", rotulo: "10,7 MHz" }
+      mandos:
+        - { valor: p_n, min: -4, max: 4, paso: 0.25, rotulo: "Cambio de L con el núcleo" }
+    ajuste:
+      valor: A_t
+      min: 0.95
+      max: 1.0
+      rotulo: "Señal a 10,7 MHz"
+      escala: { min: 0, max: 1.05 }
+      bajo: "Todavía no está en el máximo: siga girando el núcleo, siempre desde el mismo lado."
+      alto: "Ese es el máximo."
+      dentro: "En el máximo: la resonancia cae sobre los 10,7 MHz. Verifique con la herramienta retirada."
+    comprobar:
+      - { A_t: 0.74, tol: 0.01 }
+
+  - id: porque-plastico
+    tipo: porque
+    titulo: "No es superstición"
+    texto: "¿Por qué el núcleo se ajusta con destornillador de plástico, y no metálico?"
+    libro: [512, 515]
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      mide: { vt_amp: A_t }
+      mandos: []
+    opciones:
+      - texto: "Porque el metal añade su inductancia y capacidad al campo de la bobina"
+        bien: true
+        porque: "La frecuencia cambia al acercar la herramienta y vuelve al retirarla: se ajusta a un valor y queda en otro."
+      - texto: "Porque el metal raya el núcleo"
+        porque: "El núcleo es frágil, pero la razón es eléctrica."
+      - texto: "Porque el plástico gira mejor"
+        porque: "La diferencia está en el campo de la bobina, no en el giro."
+    escalera:
+      - "¿Qué le pasa al tanque mientras el metal está dentro?"
+    solucion: "El metal cambia la frecuencia mientras está cerca."
+
+  - id: ordene-diagnostico
+    tipo: pregunta
+    titulo: "El diagnóstico por etapas"
+    texto: "El receptor no recibe ninguna emisora y las alimentaciones están bien. Ordene el diagnóstico, de la salida hacia la entrada."
+    libro: [522, 524]
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      mide: { vt_amp: A_t }
+      mandos: []
+    ordenar:
+      - "Etapa de audio: tocar la entrada con el dedo"
+      - "Decodificador: el VCO de 38 kHz en TP4"
+      - "Demodulador: 10,7 MHz modulado, y oír audio"
+      - "Cadena de FI: 10,7 MHz atenuado en su entrada"
+      - "Mezclador y oscilador local"
+      - "Etapa de RF y antena: inyectar en la banda"
+    exito: "Cada etapa se verifica inyectando su señal característica; las de salida son las más fáciles."
+    pistas:
+      - { texto: "La primera es la que cuesta un segundo." }
+    escalera:
+      - "Desde el altavoz hacia la antena."
+    solucion: "Audio, decodificador, demodulador, FI, mezclador y oscilador, RF."
+
+  - id: predecir-dedo
+    tipo: predecir
+    titulo: "La prueba del dedo"
+    texto: "Toca la entrada de audio con el dedo y se oye zumbido. ¿Qué ha comprobado?"
+    libro: [524, 525]
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      mide: { vt_amp: A_t }
+      mandos: []
+    opciones:
+      - texto: "Que toda la cadena de audio funciona: el fallo está por delante"
+        bien: true
+        porque: "El dedo inyecta el zumbido de red que capta el cuerpo: cuesta un segundo y descarta media placa."
+      - texto: "Que hay un problema de masas"
+        porque: "El zumbido lo pone el dedo a propósito: es la señal de prueba."
+      - texto: "Que la FI funciona"
+        porque: "El dedo entra después de la FI: solo comprueba el audio."
+    escalera:
+      - "¿Qué etapas recorre lo que entra por la entrada de audio?"
+    solucion: "La cadena de audio funciona."
+
+  - id: pregunta-oscilador
+    tipo: pregunta
+    titulo: "El paso que más falla"
+    texto: "En los kits, el oscilador local es lo que más falla. ¿Cuál es la comprobación más directa en el FM7303?"
+    libro: [526]
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_s, rs: R_s, l: L_n, c: C_f }
+      mide: { vt_amp: A_t }
+      mandos: []
+    opciones:
+      - texto: "Que el display muestre una cifra que cambia al girar el dial"
+        bien: true
+        porque: "El display cuenta el oscilador local: si la cifra cambia, el oscilador funciona."
+      - texto: "Medirlo con el osciloscopio del FNIRSI"
+        porque: "El oscilador local queda fuera del alcance de su osciloscopio."
+      - texto: "Tocar la antena con el dedo"
+        porque: "Eso no dice si el oscilador oscila ni a qué frecuencia."
+    escalera:
+      - "¿Qué bloque del kit cuenta el oscilador?"
+    solucion: "El display."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [510, 513, 516, 522, 525]
+    ideas:
+      - { titulo: "Delicado.", texto: "Un 1 % de L desplaza 53 kHz, el 19 % de la banda." }
+      - { titulo: "El método.", texto: "Inyectar 10,7 MHz, buscar el máximo, desde el mismo lado y con plástico." }
+      - { titulo: "Diagnóstico.", texto: "De la salida hacia la entrada, inyectando la señal de cada etapa." }
+      - { titulo: "Un segundo.", texto: "El dedo en la entrada de audio descarta media placa." }

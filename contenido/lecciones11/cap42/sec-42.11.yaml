@@ -1,0 +1,274 @@
+# Lección 1.2 de la sección 43.11 «Problemas de Diseño» (cap42): los problemas 43.A, 43.B y 43.C y los ejercicios
+# 43.1 y 43.5 (bloque 345). Formato: contenido/lecciones11/GUIA.md. Las esquinas (2ⁿ: 8, 32, 256, 4096) y las 1000
+# muestras de Monte Carlo son del libro. La curva de rendimiento frente a la carga es ilustrativa (5 V de salida,
+# consumo fijo de 0,2 W y 0,1 Ω de pérdidas I²R, de ejemplo) para la regla del bloque 343. El RC de los ejercicios es el
+# del netlist de la 43.4 (cap42#103). Sin ecuaciones: sin tarjeta «fórmula».
+leccion: cap42/sec-42.11
+
+libro:
+  313: "No converger significa que ese proceso no encuentra un punto fijo."
+  314: "Buscar nodos flotantes primero"
+  315: "Convergencia no es corrección."
+  325: "8"
+  326: "Con ocho parámetros son 256 simulaciones, y con doce serían 4096."
+  327: "con 1000 muestras cubre el espacio independientemente del número de parámetros"
+  329: "Casi siempre dos o tres dominan"
+  332: "Monte Carlo con 1000 muestras para el rendimiento, más las 4 u 8 esquinas de los parámetros dominantes."
+  335: "Un convertidor simula con un rendimiento del 98 % y en la realidad da el 91 %."
+  338: "La discrepancia no es un error de SPICE: es que el esquema simulado no es el circuito construido."
+  339: "Pérdidas de conducción adicionales"
+  341: "una simulación es tan buena como su peor modelo"
+  343: "Si cae a baja carga, es consumo fijo; si cae a alta, es I²R."
+  345: "barre la frecuencia de una fuente y entrega módulo y fase de la respuesta"
+  "cap42#103": "R1 in out 1k"
+  "cap42#169": "unos miliohmios en serie con fuentes de tensión ideales"
+
+modelo:
+  valores:
+    n_q: { sim: "n", nombre: "parámetros con tolerancia", unidad: "", valor: 3 }
+    V_o: { sim: "V_{o}", nombre: "tensión de salida (ejemplo)", unidad: V, valor: 5 }
+    P_0: { sim: "P_{0}", nombre: "consumo fijo (ejemplo)", unidad: W, valor: 0.2 }
+    R_p: { sim: "R", nombre: "resistencia de pérdidas (ejemplo)", unidad: Ω, valor: 0.1 }
+    V_p: { sim: "V1", nombre: "fuente AC 1", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1591.55 }
+    R_f: { sim: "R1", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    C_f: { sim: "C1", nombre: "capacidad", unidad: F, valor: 100e-9 }
+  calculos:
+    n_e: { expr: "2^n_q", sim: "esquinas", nombre: "esquinas que simular", unidad: "" }
+    n_8: { expr: "2^8", sim: "esquinas", nombre: "esquinas con ocho parámetros", unidad: "" }
+    n_12: { expr: "2^12", sim: "esquinas", nombre: "esquinas con doce parámetros", unidad: "" }
+    n_mc: { expr: "1000", sim: "muestras", nombre: "muestras de Monte Carlo", unidad: "" }
+    x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "v(out)", nombre: "amplitud de la salida", unidad: V }
+
+tarjetas:
+  - id: explore-esquinas
+    tipo: explorar
+    titulo: "Esquinas frente a Monte Carlo"
+    texto: "Las esquinas son todas las combinaciones de extremos, 2ⁿ; Monte Carlo, 1000 muestras sean cuantos sean. Arrastre el número de parámetros."
+    libro: [325, 327]
+    widget:
+      tipo: grafica
+      x: { id: m, min: 1, max: 12, unidad: "", rotulo: "parámetros" }
+      y: { min: 1, max: 10000, unidad: "", rotulo: "simulaciones", escala: log }
+      curvas:
+        - { expr: "2^m", color: naranja, rotulo: "esquinas, 2ⁿ" }
+        - { expr: "1000", color: azul, rotulo: "Monte Carlo, 1000", discontinua: true }
+      asas:
+        - { mueve: n_q, x: "n_q", y: "n_e", rotulo: "Número de parámetros" }
+      lectura: { valor: n_e, rotulo: "Esquinas" }
+      mandos:
+        - { valor: n_q, min: 1, max: 12, paso: 1, rotulo: "Parámetros" }
+
+  - id: prediga-ocho
+    tipo: predecir
+    titulo: "Ocho parámetros"
+    texto: "Un circuito tiene ocho parámetros con tolerancia. ¿Cuántas esquinas hay que simular?"
+    libro: [326]
+    fijar: { n_q: 8 }
+    widget:
+      tipo: grafica
+      x: { id: m, min: 1, max: 12, unidad: "", rotulo: "parámetros" }
+      y: { min: 1, max: 10000, unidad: "", rotulo: "simulaciones", escala: log }
+      curvas:
+        - { expr: "1000", color: azul, rotulo: "Monte Carlo, 1000", discontinua: true }
+      lectura: { valor: n_e, rotulo: "Esquinas" }
+      ocultar: true
+    opciones:
+      - texto: "256"
+        bien: true
+        porque: "2⁸: cada parámetro en sus dos extremos, combinados con todos los demás."
+      - texto: "16"
+        porque: "Eso sería dos por parámetro sin combinarlos. Las esquinas son todas las combinaciones."
+      - texto: "64"
+        porque: "Ocho al cuadrado no: es dos elevado a ocho."
+    escalera:
+      - "Cada parámetro tiene dos extremos y se combinan todos con todos."
+    solucion: "2⁸ = 256."
+    comprobar:
+      - { n_e: 256, n_8: 256 }
+      - { con: { n_q: 4 }, n_e: 16 }
+      - { con: { n_q: 6 }, n_e: 64 }
+
+  - id: estime-doce
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Doce parámetros"
+    texto: "Con doce parámetros, ¿cuántas esquinas serían?"
+    libro: [326]
+    estimar:
+      objetivo: "n_12"
+      unidad: ""
+      min: 0
+      max: 10000
+      paso: 8
+      inicio: 1000
+      tol: 0.02
+      rotulo: "Esquinas"
+    exito: "2¹² = 4096: el crecimiento es exponencial y llega un punto en que no es viable."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4178 }, texto: "Demasiado: cada parámetro más duplica, no hace mucho más." }
+      - { texto: "Poco: cada parámetro más duplica las 256 de ocho parámetros." }
+    escalera:
+      - "256 × 2 × 2 × 2 × 2."
+    solucion: "4096."
+    comprobar:
+      - { n_12: 4096 }
+
+  - id: decision
+    tipo: pregunta
+    titulo: "Esquinas o Monte Carlo"
+    texto: "Ocho parámetros, y hay que verificar el diseño en serio. ¿Qué propone el libro?"
+    libro: [329, 332]
+    widget:
+      tipo: grafica
+      x: { id: m, min: 1, max: 12, unidad: "", rotulo: "parámetros" }
+      y: { min: 1, max: 10000, unidad: "", rotulo: "simulaciones", escala: log }
+      curvas:
+        - { expr: "2^m", color: naranja, rotulo: "esquinas" }
+        - { expr: "1000", color: azul, rotulo: "Monte Carlo", discontinua: true }
+    opciones:
+      - texto: "Monte Carlo con 1000 muestras, más las 4 u 8 esquinas de los parámetros dominantes"
+        bien: true
+        porque: "Un análisis de sensibilidad previo los ordena: casi siempre dos o tres dominan."
+      - texto: "Las 256 esquinas, sin más"
+        porque: "Es garantía, pero pesimista y cara; y no da el rendimiento de producción."
+      - texto: "Solo Monte Carlo"
+        porque: "Falta verificar los casos límite de los parámetros críticos con unas pocas esquinas."
+    escalera:
+      - "Cada método responde a una pregunta: ¿cuál de las dos se necesita aquí?"
+    solucion: "Las dos: Monte Carlo y pocas esquinas seleccionadas."
+    comprobar:
+      - { n_mc: 1000 }
+
+  - id: metodo-convergencia
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cuando no converge: el método"
+    texto: "Un convertidor no converge en el punto de trabajo. Ordene el método de resolución del libro."
+    libro: [313, 314]
+    ordenar:
+      - "Buscar nodos flotantes: 1 GΩ a masa"
+      - "Suavizar las discontinuidades"
+      - "Ayudar al arranque con condiciones iniciales"
+      - "Relajar tolerancias, solo al final"
+    exito: "Relajar tolerancias es lo primero que todo el mundo hace y lo último que debería hacerse."
+    pistas:
+      - { texto: "Lo primero es gratis y resuelve la mayoría de los casos." }
+    escalera:
+      - "El que sacrifica exactitud, al final."
+    solucion: "Nodos flotantes, discontinuidades, arranque, tolerancias."
+
+  - id: lo-que-falta
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que el modelo no incluye"
+    texto: "El convertidor simula un 98 % y da un 91 %. Una cada elemento ausente del modelo con su efecto."
+    libro: [335, 339]
+    emparejar:
+      - ["Resistencia de pistas y vías", "Pérdidas de conducción adicionales"]
+      - ["Inductancia del bucle de conmutación", "Picos, oscilación y más pérdidas de conmutación"]
+      - ["ESR y ESL de los condensadores", "Rizado y pérdidas"]
+      - ["Consumo del controlador y del driver", "Constante: importa a baja carga"]
+    exito: "En potencia, el peor modelo es casi siempre el trazado."
+    pistas:
+      - { texto: "Lo que no depende de la carga pesa más cuando la carga es pequeña." }
+    escalera:
+      - "¿Cuál produce picos al conmutar?"
+    solucion: "Pistas: conducción; bucle: picos; condensadores: rizado; controlador: baja carga."
+
+  - id: curva-rendimiento
+    tipo: sorpresa
+    titulo: "La forma de la curva delata las pérdidas"
+    texto: "Rendimiento frente a la carga (valores de ejemplo). Quite el consumo fijo y luego las pérdidas I²R: cada una hunde un extremo distinto."
+    libro: [343]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.05, max: 5, unidad: A, rotulo: "corriente de carga" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "rendimiento" }
+      curvas:
+        - { expr: "100*V_o*i/(V_o*i + P_0 + i^2*R_p)", color: naranja, rotulo: "η" }
+      mandos:
+        - { valor: P_0, lista: [0, 0.2, 0.5], rotulo: "Consumo fijo" }
+        - { valor: R_p, lista: [0, 0.1, 0.3], rotulo: "Resistencia de pérdidas" }
+
+  - id: por-que-discrepa
+    tipo: porque
+    titulo: "¿Error de SPICE?"
+    texto: "Un 98 % simulado frente a un 91 % medido. ¿Se ha equivocado el simulador?"
+    libro: [338, 341]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.05, max: 5, unidad: A, rotulo: "corriente de carga" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "rendimiento" }
+      curvas:
+        - { expr: "100*V_o*i/(V_o*i + P_0 + i^2*R_p)", color: naranja, rotulo: "η" }
+    opciones:
+      - texto: "No: el esquema simulado no es el circuito construido"
+        bien: true
+        porque: "Una simulación es tan buena como su peor modelo; en potencia, el trazado que no aparece en el esquema."
+      - texto: "Sí: SPICE no sabe calcular rendimientos"
+        porque: "Calcula bien el rendimiento del modelo que tiene; le faltan pérdidas."
+      - texto: "Sí: hay que relajar las tolerancias"
+        porque: "La exactitud numérica no es el problema: faltan elementos en el modelo."
+    escalera:
+      - "¿Están en el netlist las pistas, la ESR y el núcleo?"
+    solucion: "El esquema no es el circuito construido."
+
+  - id: bode-ac
+    tipo: pregunta
+    titulo: "El Bode de un filtro"
+    texto: "Quiere el diagrama de Bode de un filtro pasivo. ¿Qué análisis usa y qué le entrega?"
+    libro: [345, "cap42#103"]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_amp }
+    opciones:
+      - texto: ".ac: barre la frecuencia y entrega módulo y fase"
+        bien: true
+        porque: "Para un filtro pasivo lineal es directo; conviene comprobar que el punto de trabajo es válido."
+      - texto: ".tran con una senoide"
+        porque: "Daría un punto por simulación y con el transitorio incluido: el .ac da toda la curva de una vez."
+      - texto: ".op"
+        porque: "El .op da el reposo en continua, no una respuesta en frecuencia."
+    escalera:
+      - "¿Qué análisis barre la frecuencia?"
+    solucion: ".ac: módulo y fase, el Bode."
+
+  - id: lazo-fuentes
+    tipo: pregunta
+    titulo: "Un lazo de fuentes ideales"
+    texto: "SPICE no converge en un circuito con un lazo de fuentes de tensión ideales. ¿Qué prueba primero?"
+    libro: ["cap42#169", 315]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Unos miliohmios en serie con las fuentes"
+        bien: true
+        porque: "Rompe el lazo de tensión sin resistencia sin cambiar el circuito."
+      - texto: "Relajar mucho las tolerancias"
+        porque: "Podría converger dando un resultado falso: convergencia no es corrección."
+      - texto: "Quitar una de las fuentes"
+        porque: "Cambia el circuito: el problema es numérico, no de diseño."
+    escalera:
+      - "¿Qué le falta a un lazo de fuentes ideales para que el sistema tenga solución?"
+    solucion: "Resistencias serie pequeñas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [315, 326, 332, 341]
+    ideas:
+      - { titulo: "Sin convergencia.", texto: "Nodos flotantes, discontinuidades, arranque y, al final, tolerancias: convergencia no es corrección." }
+      - { titulo: "Esquinas o Monte Carlo.", texto: "Las esquinas crecen como 2ⁿ (256 con ocho); Monte Carlo, 1000 muestras, más pocas esquinas." }
+      - { titulo: "Lo que falta.", texto: "Lo que el modelo no incluye: el trazado, la ESR, el núcleo." }

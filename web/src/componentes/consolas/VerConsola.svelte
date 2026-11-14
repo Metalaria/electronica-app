@@ -1,6 +1,6 @@
 <script lang="ts">
   // «Explorar la placa» button that the reader shows under the two mainboard photos of the book
-  // (figures 36.16 and 36.22, labels fig-37.16 and fig-37.22).
+  // (labels fig-37.16 and fig-37.22; their printed numbers come from refs.json and are never written by hand).
   import Gamepad from '@lucide/svelte/icons/gamepad-2';
   import { app } from '../../lib/estado.svelte';
   import { prepararSalto } from '../../lib/ruta.svelte';
