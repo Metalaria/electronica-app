@@ -5,6 +5,10 @@
 # - El divisor de 100 kΩ sobre 3,3 V (33 µA, bloque 17) como sorpresa.
 # Paso práctico: «simular» la corriente media (45,4 µA; errores típicos: solo el dormido, o la media sin pesar por el
 # tiempo).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se alarga el ciclo a una hora (objetivo: transmitir menos
+# veces), se calculan la parte de la transmisión, el consumo diario y la corriente media, y se conecta el divisor
+# (sorpresa con objetivo). Quedan dos preguntas (la primaria de litio y el reposo); la primera decisión, las químicas
+# y la recolección pasan a explicaciones y resumen.
 leccion: cap39/sec-39.1
 
 libro:
@@ -42,14 +46,17 @@ modelo:
     Q_dia: { expr: "Q_c*n_dia", sim: "Q_{día}", nombre: "consumo diario", unidad: Ah }
     I_med: { expr: "Q_c*3600/T_c", sim: "I_{media}", nombre: "corriente media", unidad: A }
     p_tx: { expr: "Q_tx/Q_c*100", sim: "tx", nombre: "parte de la transmisión", unidad: "%" }
+    p_t: { expr: "100*t_tx/T_c", sim: "t_{tx}/T", nombre: "fracción de tiempo transmitiendo", unidad: "%" }
     I_ar: { expr: "(I_s + I_w + I_tx)/3", sim: "I", nombre: "media sin pesar por el tiempo", unidad: A }
 
 tarjetas:
   - id: explore-ciclo
     tipo: explorar
     titulo: "Un sensor que duerme"
-    texto: "Duerme, despierta, mide y transmite. Cambie cada cuánto se repite el ciclo y mire la corriente media."
+    texto: "Duerme, despierta, mide y transmite. La primera decisión es transmitir menos veces: alargue el ciclo todo lo posible y mire la corriente media."
     libro: [9, 10]
+    fijar: { div: 0 }
+    inicio: { T_c: 60 }
     widget:
       tipo: grafica
       x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
@@ -64,12 +71,22 @@ tarjetas:
         - { valor: p_tx, rotulo: "La transmisión pone el {{p_tx}}" }
       mandos:
         - { valor: T_c, lista: [60, 600, 3600], nombres: ["cada minuto", "cada diez minutos", "cada hora"], rotulo: "Periodo del ciclo" }
-    requiere: { mover: [T_c] }
+    objetivo:
+      condiciones:
+        - { valor: T_c, min: 3600, rotulo: "Un ciclo cada {{T_c}}" }
+      logrado: "Cada hora, {{I_med}} de media: la transmisión domina, y cada envío que se ahorra pesa más que cualquier otra mejora."
+      pistas:
+        - { texto: "Alargue más el ciclo." }
+    escalera:
+      - "Menos ciclos, menos transmisiones."
+    solucion: "Un ciclo cada hora: unos 12 µA."
+    comprobar:
+      - { con: { T_c: 3600 }, I_med: 11.7e-6, tol: 0.01 }
 
   - id: prediga-quien
-    tipo: predecir
+    tipo: simular
     titulo: "¿Quién gasta más?"
-    texto: "Un ciclo cada diez minutos: dormido el 99 % del tiempo, 50 ms midiendo, 200 ms transmitiendo. ¿Qué fase gasta más carga?"
+    texto: "Un ciclo cada diez minutos: dormido casi todo el tiempo, 50 ms midiendo, 200 ms transmitiendo. ¿Qué porcentaje de la carga del ciclo pone la transmisión?"
     libro: [9, 10]
     fijar: { T_c: 600, div: 0 }
     widget:
@@ -77,44 +94,51 @@ tarjetas:
       x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
       y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
       curvas:
-        - { expr: "I_tx*t_tx/per", color: azul, rotulo: "parte de la transmisión" }
+        - { expr: "(I_tx*t_tx + I_w*t_w + I_s*(per - t_w - t_tx))/per", color: naranja, rotulo: "corriente media" }
+        - { expr: "I_tx*t_tx/per", color: azul, rotulo: "parte de la transmisión", discontinua: true }
       lectura: { valor: p_tx, rotulo: "Parte de la transmisión" }
       ocultar: true
-    opciones:
-      - texto: "Transmitir"
-        bien: true
-        porque: "120 mA durante 200 ms: el {{p_tx}} de la carga del ciclo, más que todo lo demás junto."
-      - texto: "Dormir, porque ocupa el 99 % del tiempo"
-        porque: "Ocupa casi todo el tiempo, pero con 5 µA: su carga es unas ocho veces menor que la de transmitir."
-      - texto: "Despertar y medir"
-        porque: "5 mA durante 50 ms es la fase que menos carga gasta de las tres."
+    simular:
+      objetivo: p_tx
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Parte de la transmisión"
+      errores:
+        - { expr: "p_t", texto: "Esa es la fracción de tiempo. La carga es corriente por duración: 120 mA pesan mucho." }
+    exito: "Un 88 %: más que todo lo demás junto, aunque ocupe una fracción minúscula del tiempo."
     escalera:
-      - "Compare corriente por duración de cada fase, no solo la duración."
-    solucion: "Transmitir: 120 mA × 200 ms pesa más que 5 µA durante casi diez minutos."
+      - "Carga de cada fase: corriente × duración; compare la de transmitir con la suma."
+    solucion: "120 mA × 200 ms frente a la carga del ciclo entero: el 88 %."
     comprobar:
-      - { p_tx: 88.1, Q_tx: 6.667e-6, Q_s: 8.33e-7, Q_w: 6.94e-8 }
+      - { p_tx: 88.1, Q_tx: 6.667e-6, Q_s: 8.33e-7, Q_w: 6.94e-8, p_t: 0.0333 }
 
   - id: formula-diario
-    tipo: formula
+    tipo: simular
     titulo: "El presupuesto energético"
-    texto: "La carga de un ciclo por los ciclos de un día: el consumo diario. Cambie el periodo y mire cómo se mueve."
+    texto: "Energía por ciclo × ciclos por día = consumo diario. Con un ciclo cada diez minutos, ¿cuánta carga gasta al día?"
     libro: [7]
-    fijar: { div: 0 }
-    ec: 7
-    sustitucion: "{{Q_c}} × {{n_dia}} = {{Q_dia}}"
+    fijar: { div: 0, T_c: 600 }
     widget:
       tipo: grafica
       x: { id: per, min: 60, max: 3600, unidad: s, rotulo: "T" }
       y: { min: 0, max: 0.0005, unidad: A, rotulo: "I_{media}" }
       curvas:
         - { expr: "(I_tx*t_tx + I_w*t_w + I_s*(per - t_w - t_tx))/per", color: naranja, rotulo: "corriente media" }
-      marcas:
-        - { x: "T_c", y: "I_med", rotulo: "{{I_med}}" }
       lectura: { valor: Q_dia, rotulo: "Consumo diario" }
-      mandos:
-        - { valor: T_c, lista: [60, 600, 3600], nombres: ["cada minuto", "cada diez minutos", "cada hora"], rotulo: "Periodo del ciclo" }
+      ocultar: true
+    simular:
+      objetivo: Q_dia
+      unidad: Ah
+      tol: 0.03
+      rotulo: "Consumo diario"
+      errores:
+        - { expr: "Q_c", texto: "Esa es la de un ciclo: multiplíquela por los 144 ciclos del día." }
+    exito: "Unos 1,09 mAh al día: el presupuesto se hace al principio del diseño, no al final."
+    escalera:
+      - "144 ciclos al día."
+    solucion: "7,57 µAh × 144 ≈ 1,09 mAh."
     comprobar:
-      - { con: { T_c: 600 }, Q_c: 7.569e-6, n_dia: 144, Q_dia: 1.09e-3 }
+      - { Q_c: 7.569e-6, n_dia: 144, Q_dia: 1.09e-3 }
 
   - id: simule-media
     tipo: simular
@@ -149,7 +173,7 @@ tarjetas:
     tipo: sorpresa
     titulo: "El divisor olvidado"
     texto: "Para medir la batería se deja un divisor de 100 kΩ sobre 3,3 V. Conéctelo y mire la corriente media."
-    libro: [16, 17]
+    libro: [15, 16, 17]
     fijar: { T_c: 600 }
     widget:
       tipo: grafica
@@ -164,54 +188,17 @@ tarjetas:
         - { valor: I_dv, rotulo: "Divisor: {{I_dv}}" }
       mandos:
         - { valor: div, tipo: conectar, boton: "Conectar el divisor" }
-    requiere: { conectar: [div] }
-    nota: "33 µA continuos: más que el microcontrolador dormido."
+    objetivo:
+      condiciones:
+        - { valor: div, min: 1, rotulo: "Divisor conectado" }
+      logrado: "33 µA continuos, más que el microcontrolador dormido: la media sube a {{I_med}}."
+      pistas:
+        - { texto: "Conecte el divisor." }
+    escalera:
+      - "El divisor consume siempre, no solo al medir."
+    solucion: "Conectado: la media casi se duplica."
     comprobar:
       - { con: { div: 1 }, I_dv: 33e-6, I_med: 78.4e-6 }
-
-  - id: primera-decision
-    tipo: pregunta
-    titulo: "La primera decisión"
-    texto: "La transmisión domina el presupuesto del sensor. ¿Qué conviene optimizar antes que nada?"
-    libro: [10]
-    widget:
-      tipo: figura
-      figura: fig-39.1
-      zonas:
-        - { id: fases, rotulo: "Gráfica de la izquierda", rect: [0, 0, 225, 191] }
-    opciones:
-      - texto: "Transmitir menos veces, o menos datos"
-        bien: true
-        porque: "Es la fase que más gasta: cada envío que se ahorra pesa más que cualquier otra mejora."
-      - texto: "Bajar la corriente del microcontrolador dormido"
-        porque: "Ayuda poco mientras la transmisión ponga la mayor parte de la carga del ciclo."
-      - texto: "Medir más deprisa al despertar"
-        porque: "La medida es la fase que menos carga gasta: acortarla casi no se nota."
-    escalera:
-      - "Ataque primero la fase que pone más carga en cada ciclo."
-    solucion: "Transmitir menos veces o menos datos, antes de optimizar nada más."
-
-  - id: empareje-quimicas
-    tipo: pregunta
-    titulo: "Lo que aporta cada química"
-    texto: "Empareje cada química con su rasgo."
-    libro: [12]
-    widget:
-      tipo: figura
-      figura: fig-39.1
-      zonas:
-        - { id: quimicas, rotulo: "Gráfica de la derecha", rect: [225, 0, 225, 191] }
-    emparejar:
-      - ["Alcalina", "Barata, no recargable, resistencia interna alta"]
-      - ["Litio primaria", "Larga vida, autodescarga mínima"]
-      - ["Ion-litio", "Recargable, exige BMS"]
-      - ["LiFePO₄", "Más segura y con muchos más ciclos"]
-    exito: "Y la NiMH: recargable, con autodescarga apreciable."
-    pistas:
-      - { texto: "La que exige electrónica de protección es la recargable de más energía." }
-    escalera:
-      - "Dos no se recargan: la barata y la de larga vida."
-    solucion: "Alcalina, barata; litio primaria, larga vida; ion-litio, BMS; LiFePO₄, segura y con ciclos."
 
   - id: por-que-primaria
     tipo: porque
@@ -257,34 +244,12 @@ tarjetas:
       - "¿Qué consume aunque el microcontrolador esté dormido?"
     solucion: "En el consumo en reposo de todo el circuito, no solo del microcontrolador."
 
-  - id: recolectar
-    tipo: pregunta
-    titulo: "Sin batería"
-    texto: "La energía del entorno llega en microvatios y de forma irregular. ¿Cuál es la arquitectura correcta?"
-    libro: [21]
-    widget:
-      tipo: figura
-      figura: fig-39.1
-      zonas:
-        - { id: fases, rotulo: "Gráfica de la izquierda", rect: [0, 0, 225, 191] }
-    opciones:
-      - texto: "Acumular en un condensador y trabajar en ráfagas"
-        bien: true
-        porque: "Se junta energía hasta tener bastante y entonces se hace el trabajo."
-      - texto: "Alimentar el circuito de forma continua"
-        porque: "Con microvatios no se puede hacer nada continuamente."
-      - texto: "Conectar el transductor directamente al microcontrolador"
-        porque: "Sin almacenamiento, la irregularidad de la fuente lo apagaría a cada momento."
-    escalera:
-      - "Si llega poco y a ratos, hay que guardarlo antes de gastarlo."
-    solucion: "Un condensador o supercondensador que se carga, y trabajo en ráfagas cuando hay energía."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [3, 7, 10, 16]
+    libro: [3, 7, 10, 12, 13, 16, 21, 24]
     ideas:
       - { titulo: "Restricción principal.", texto: "Con batería, la energía decide el resto, y el presupuesto se hace al principio." }
       - { titulo: "Por fases.", texto: "Energía por ciclo × ciclos por día; la transmisión suele dominar." }
       - { titulo: "El reposo.", texto: "Divisores, reguladores y LED consumen siempre: midan el reposo del circuito entero." }
-      - { titulo: "Medir.", texto: "La prueba definitiva es dejarlo funcionando y ver cuánto dura." }
+      - { titulo: "Química y medida.", texto: "Para años sin tocarlo, litio primaria; sin batería, acumular y trabajar en ráfagas. Y dejarlo funcionando para ver cuánto dura." }

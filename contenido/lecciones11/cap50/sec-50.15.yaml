@@ -5,6 +5,11 @@
 #   0,1 a 0,3 A) y su solución (Darlington con BD139 y fuente de corriente de unos 7 mA desde V_raw).
 # - Sin modelo numérico: todas las cifras se citan.
 # Pasos prácticos: «tocar» lo que hace la transición CV/CC en el esquema y la estrella de masas en la placa.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la excitación de la base del bloque 497 pasa a modelo con
+# valores de ejemplo (V_BE de 0,7 V; ganancias de 30 para el TIP35C, «unas decenas», y de 40 para el BD139): se calcula
+# la corriente de base con 470 Ω (unos 4,9 mA) y se consigue llegar a 5 A con el Darlington y la fuente de 7 mA
+# (objetivo). Se calcula la R₁ del diferencial (120 kΩ). Quedan dos preguntas (los diodos dentro del lazo y Kelvin);
+# la lista de materiales, al resumen.
 leccion: cap50/sec-50.15
 
 libro:
@@ -17,25 +22,88 @@ libro:
   505: "22 000 µF / 63 V"
   509: "REF5025 (2,5 V, 3 ppm/°C)"
   "cap50#455": '"110 kΩ"'
+  "cap50#457": '"120 kΩ"'
   "cap50#514": "El puente de 25 A no es exagerado sino consecuencia de la corriente de pico"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    V_m: { sim: "V_{margen}", nombre: "margen del prerregulador", unidad: V, valor: 3 }
+    V_be: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    R_drv: { sim: "R_{drv}", nombre: "resistencia de excitación", unidad: Ω, valor: 470 }
+    b_1: { sim: "β₁", nombre: "ganancia del TIP35C a 5 A", unidad: "", valor: 30 }
+    b_2: { sim: "β₂", nombre: "ganancia del BD139", unidad: "", valor: 40 }
+    I_f: { sim: "I_{drv}", nombre: "fuente de corriente de base", unidad: A, valor: 0.007 }
+    dar: { tipo: interruptor, nombre: "Darlington con fuente de corriente", valor: 0 }
+    V_max: { sim: "V_{máx}", nombre: "fondo de escala", unidad: V, valor: 30 }
+    V_ref: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 2.5 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 10000 }
+  calculos:
+    I_b1: { expr: "(V_m - V_be)/R_drv", sim: "I_{B}", nombre: "corriente de base con 470 Ω", unidad: A }
+    I_b6: { expr: "V_m/R_drv", sim: "I_{B}", nombre: "sin la V_BE (error)", unidad: A }
+    I_bact: { si: dar, entonces: "I_f", sino: "I_b1", sim: "I_{B}", nombre: "corriente de excitación", unidad: A }
+    I_max: { si: dar, entonces: "I_f*b_1*b_2", sino: "I_b1*b_1", sim: "I_{máx}", nombre: "corriente máxima de salida", unidad: A }
+    R_1d: { expr: "R_2*V_max/V_ref", sim: "R₁", nombre: "R₁ del diferencial", unidad: Ω }
+    R_1v: { expr: "R_2*(V_max/V_ref - 1)", sim: "R₁", nombre: "R₁ del divisor a masa", unidad: Ω }
 
 tarjetas:
+  - id: simule-base
+    tipo: simular
+    titulo: "La corriente de base"
+    texto: "En el esquema, R_{drv} de 470 Ω lleva a la base de Q1 lo que queda del margen de 3 V. Con 0,7 V de V_{BE} (valor de ejemplo), ¿cuánta corriente?"
+    libro: [493, 497]
+    fijar: { dar: 0 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 100, max: 1000, unidad: Ω, rotulo: "R_{drv}" }
+      y: { min: 0, max: 0.03, unidad: A, rotulo: "I_{B}" }
+      curvas:
+        - { expr: "(V_m - V_be)/rx", color: naranja, rotulo: "corriente de base" }
+      lectura: { valor: I_b1, rotulo: "Corriente de base" }
+      ocultar: true
+    simular:
+      objetivo: I_b1
+      unidad: A
+      tol: 0.04
+      rotulo: "Corriente de base"
+      errores:
+        - { expr: "I_b6", texto: "Le falta restar la V_{BE}: a R_{drv} no le llegan los 3 V enteros." }
+    exito: "Unos 4,9 mA: los «4 o 5 mA» del libro."
+    escalera:
+      - "(3 − 0,7) V / 470 Ω."
+    solucion: "(3 − 0,7) V / 470 Ω ≈ 4,9 mA."
+    comprobar:
+      - { I_b1: 0.00489, I_b6: 0.00638, V_be: 0.7, tol: 0.01 }
+
   - id: explore-esquema
     tipo: explorar
-    titulo: "El núcleo de regulación"
-    texto: "Dos lazos y un paso serie en un esquema. Toque sus piezas en el orden en que conviene leerlo."
-    libro: [493, 497]
+    titulo: "470 Ω no alcanzan"
+    texto: "Valores de ejemplo: el TIP35C tiene una ganancia de 30 a 5 A, y el BD139, de 40. Consiga que la fuente pueda dar sus 5 A."
+    libro: [497, 509]
+    inicio: { dar: 0 }
     widget:
-      tipo: figura
-      figura: fig-50.22
-      zonas:
-        - { id: q1, rotulo: "Transistor de arriba", rect: [100, 35, 80, 45], texto: "Q1, el camino de potencia: absorbe la diferencia, y toda la corriente pasa por él y por el shunt." }
-        - { id: divisor, rotulo: "Resistencias verticales de la derecha", rect: [240, 100, 55, 65], texto: "R1 y R2: la muestra de la tensión medida en la carga, por S+ y S−, para el lazo de tensión." }
-        - { id: shunt, rotulo: "Resistencia de abajo", rect: [175, 280, 50, 40], texto: "El shunt, tomado en conexión Kelvin, para el lazo de corriente." }
-        - { id: diodos, rotulo: "Diodos de la izquierda", rect: [55, 130, 40, 105], texto: "D1 y D2: el OR que da el control al que pide menos corriente de base." }
-    requiere: { mover: [q1, diodos] }
+      tipo: grafica
+      x: { id: ib, min: 0, max: 0.01, unidad: A, rotulo: "corriente de excitación" }
+      y: { min: 0, max: 10, unidad: A, rotulo: "I_{máx}" }
+      curvas:
+        - { expr: "b_1*ib", color: tinta, rotulo: "TIP35C solo", discontinua: true }
+        - { expr: "b_1*b_2*ib", color: naranja, rotulo: "Darlington con BD139" }
+      marcas:
+        - { x: "I_bact", y: "I_max", rotulo: "{{I_max}}" }
+      lectura: { valor: I_max, rotulo: "Corriente máxima" }
+      mandos:
+        - { valor: dar, tipo: interruptor, rotulo: "Darlington con fuente de 7 mA" }
+    objetivo:
+      condiciones:
+        - { valor: I_max, min: 5, rotulo: "Hasta: {{I_max}}" }
+      logrado: "Con el BD139 en Darlington y una fuente de corriente de unos 7 mA desde V_{raw}, la base admite {{I_max}}. Y no depende del margen del prerregulador."
+      pistas:
+        - { texto: "Con 470 Ω, el TIP35C entrega de 0,1 a 0,3 A: falta ganancia y excitación." }
+    escalera:
+      - "Con dos transistores en Darlington las ganancias se multiplican."
+    solucion: "Darlington con BD139 y fuente de 7 mA: 7 mA × 40 × 30 ≈ 8,4 A."
+    comprobar:
+      - { con: { dar: 1 }, I_max: 8.4, I_f: 0.007, tol: 0.01 }
+      - { con: { dar: 0 }, I_max: 0.147, tol: 0.01 }
 
   - id: toque-transicion
     tipo: tocar
@@ -83,49 +151,33 @@ tarjetas:
       - "Lo que está dentro del lazo, ¿lo ve la salida o lo corrige la realimentación?"
     solucion: "Quedan dentro del lazo y su ganancia los corrige."
 
-  - id: excitacion
-    tipo: pregunta
-    titulo: "470 Ω no alcanzan"
-    texto: "Con 3 V de margen, R_{drv} de 470 Ω da unos 4 o 5 mA de base, y el TIP35C entrega con eso de 0,1 a 0,3 A. ¿Cómo se resuelve en el montaje?"
-    libro: [497]
-    widget:
-      tipo: figura
-      figura: fig-50.22
-      zonas:
-        - { id: q1, rotulo: "Transistor de arriba", rect: [100, 35, 80, 45] }
-    opciones:
-      - texto: "Darlington con un BD139 y una fuente de corriente de unos 7 mA desde V_{raw}"
-        bien: true
-        porque: "No depende del margen del prerregulador y no se convierte en corrientes que los operacionales no podrían absorber."
-      - texto: "Bajando R_{drv} hasta dar la corriente necesaria"
-        porque: "Si el prerregulador pierde el seguimiento, la corriente crecería hasta lo que los operacionales no absorben."
-      - texto: "Subiendo la ganancia del lazo"
-        porque: "El lazo no da corriente de base: hace falta más excitación."
-    escalera:
-      - "Falta corriente de base, y no conviene que dependa del margen."
-    solucion: "Q1 en Darlington con un BD139 y una fuente de corriente de unos 7 mA."
-
   - id: diferencial
-    tipo: pregunta
+    tipo: simular
     titulo: "El divisor del esquema"
-    texto: "El esquema dibuja R1 y R2 como un divisor. ¿Qué se monta en realidad, y por qué?"
-    libro: [497, "cap50#455"]
+    texto: "El esquema dibuja R1-R2 como un divisor, pero se monta un diferencial porque S− no está a masa. Con R2 de 10 kΩ y 2,5 V para 30 V, ¿qué R1?"
+    libro: [497, "cap50#455", "cap50#457"]
     widget:
-      tipo: figura
-      figura: fig-50.22
-      zonas:
-        - { id: divisor, rotulo: "Resistencias verticales de la derecha", rect: [240, 100, 55, 65] }
-    opciones:
-      - texto: "Un amplificador diferencial de 120 kΩ y 10 kΩ, porque S− no está a masa"
-        bien: true
-        porque: "Mide S+ − S− en la carga, como pide el sensado remoto."
-      - texto: "El mismo divisor de 110 kΩ y 10 kΩ"
-        porque: "Con S− en la carga, el divisor a masa metería la caída del retorno multiplicada."
-      - texto: "Nada: el sensado no necesita divisor"
-        porque: "Hace falta escalar la salida; con sensado remoto, con un diferencial."
+      tipo: grafica
+      x: { id: vx, min: 5, max: 30, unidad: V, rotulo: "V_{máx}" }
+      y: { min: 0, max: 150000, unidad: Ω, rotulo: "R₁" }
+      curvas:
+        - { expr: "R_2*vx/V_ref", color: naranja, rotulo: "diferencial" }
+        - { expr: "R_2*(vx/V_ref - 1)", color: tinta, rotulo: "divisor a masa", discontinua: true }
+      lectura: { valor: R_1d, rotulo: "R₁" }
+      ocultar: true
+    simular:
+      objetivo: R_1d
+      unidad: Ω
+      tol: 0.03
+      rotulo: "R₁ del diferencial"
+      errores:
+        - { expr: "R_1v", texto: "Esos 110 kΩ son los del divisor a masa; el diferencial de ganancia R₂/R₁ pide R₂·V_{máx}/V_{ref}." }
+    exito: "120 kΩ, con R3 = R1 y R4 = R2: mide S+ − S− en la carga, como pide el sensado remoto."
     escalera:
-      - "¿Está S− en la masa de la placa?"
-    solucion: "Un diferencial de 120 kΩ / 10 kΩ."
+      - "R₁ = R₂ · V_{máx}/V_{ref}."
+    solucion: "10 kΩ × 30/2,5 = 120 kΩ."
+    comprobar:
+      - { R_1d: 120000, R_1v: 110000 }
 
   - id: toque-estrella
     tipo: tocar
@@ -173,33 +225,12 @@ tarjetas:
       - "Con 0,01 Ω, ¿cuánto pesa un trozo de pista?"
     solucion: "Del interior de las islas del shunt."
 
-  - id: empareje-bom
-    tipo: pregunta
-    titulo: "La lista, con razones"
-    texto: "Empareje cada pieza de la lista de materiales con su razón."
-    libro: [505, 509, "cap50#514"]
-    widget:
-      tipo: figura
-      figura: fig-50.23
-      zonas:
-        - { id: placa, rotulo: "La placa", rect: [5, 50, 345, 200] }
-    emparejar:
-      - ["REF5025", "Fija la exactitud del conjunto"]
-      - ["Condensador de 22 000 µF", "Sale del rizado admisible"]
-      - ["Puente de 25 A", "La corriente de pico, no la media"]
-    exito: "Cada valor de la tabla procede de un número calculado."
-    pistas:
-      - { texto: "El puente no se dimensiona por la corriente media." }
-    escalera:
-      - "Una pieza da la exactitud; otra, el rizado; otra aguanta picos."
-    solucion: "Referencia, exactitud; condensador, rizado; puente, picos."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [497, 498, 501, 502]
+    libro: [497, 498, 501, 502, 505, 509, "cap50#514"]
     ideas:
       - { titulo: "Leer el esquema.", texto: "Potencia, lazo CV, lazo CC, OR de diodos y excitación de la base." }
       - { titulo: "El OR.", texto: "Gobierna el que pide menos; sus diodos quedan dentro del lazo." }
       - { titulo: "La placa.", texto: "Zonas separadas, ranura de red y masas unidas en la estrella." }
-      - { titulo: "Dos reglas.", texto: "Shunt en Kelvin y par de sensado trenzado." }
+      - { titulo: "Dos reglas.", texto: "Shunt en Kelvin y par de sensado trenzado. Y cada pieza de la lista sale de un cálculo: REF5025, 22 000 µF, puente de 25 A por los picos." }

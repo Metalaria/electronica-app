@@ -5,6 +5,11 @@
 # Pasos prácticos: «tocar» lo único que puede cruzar la barrera; «banco» del bloque 64: la resistencia entre la carcasa
 # y el pin de tierra del enchufe de un equipo de clase I, con el equipo desenchufado y las puntas anuladas en modo
 # relativo; debe ser inferior a 0,1 Ω (esperado 0,055 Ω ± 80 %, es decir, hasta 0,099 Ω).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): sección de reglas. Se añade la descarga del condensador X en el
+# esquema «carga-rc» vivo (valores de ejemplo: 0,47 µF desde el pico de 325 V del bloque cap10#168; resistencias de
+# 10 MΩ, 1 MΩ y 330 kΩ): se calcula lo que queda al segundo con 1 MΩ y se elige la que baja a unos pocos voltios
+# (objetivo). La pinza del osciloscopio pasa a «tocar». Quedan dos preguntas (lámpara serie y la alternativa);
+# el orden del primario y la tierra, al resumen y al banco.
 leccion: cap50/sec-50.2
 
 libro:
@@ -24,33 +29,28 @@ libro:
   57: "hay que medir con el multímetro que el condensador está por debajo de unos pocos voltios"
   61: "es una decisión de ingeniería sensata, no una renuncia"
   64: "debe ser inferior a 0,1 Ω"
+  "cap10#168": "Conectando la red de 230 V en su pico, 325 V"
   65: "Las dos zonas de un equipo conectado a la red y la barrera de aislamiento que las separa."
 
 modelo:
   valores:
     R_t: { sim: "R_{tierra}", nombre: "resistencia de tierra esperada", unidad: Ω, valor: 0.055 }
-  calculos: {}
+    V_pk: { sim: "V_{pico}", nombre: "pico de la red al desenchufar", unidad: V, valor: 325 }
+    V_z: { sim: "0 V", nombre: "red desenchufada", unidad: V, valor: 0 }
+    C_x: { sim: "C_{X}", nombre: "condensador X del filtro", unidad: F, valor: 0.47e-6 }
+    R_x: { sim: "R_{desc}", nombre: "resistencia de descarga", unidad: Ω, valor: 1e6 }
+    t_1: { sim: "t", nombre: "un segundo después", unidad: s, valor: 1 }
+  calculos:
+    tau_x: { expr: "R_x*C_x", sim: "τ", nombre: "constante de tiempo de la descarga", unidad: s }
+    V_1s: { expr: "V_pk*exp(-t_1/tau_x)", sim: "V", nombre: "tensión en las patillas un segundo después", unidad: V }
+    V_tau: { expr: "V_pk*exp(-1)", sim: "V", nombre: "tras una constante de tiempo (error)", unidad: V }
 
 tarjetas:
-  - id: explore-zonas
-    tipo: explorar
-    titulo: "Dos zonas y una barrera"
-    texto: "Es el primer proyecto conectado a la red: un error ya no quema un componente, puede electrocutar. Toque las zonas."
-    libro: [36, 40, 42, 65]
-    widget:
-      tipo: figura
-      figura: fig-50.2
-      zonas:
-        - { id: primario, rotulo: "Recuadro rojo de la izquierda", rect: [5, 8, 185, 135], texto: "Primario: tensión de red. Todo es peligroso, y el condensador lo sigue siendo minutos después de desenchufar." }
-        - { id: barrera, rotulo: "Franja rayada del centro", rect: [189, 5, 80, 140], texto: "La barrera de aislamiento: una separación física con distancias mínimas." }
-        - { id: secundario, rotulo: "Recuadro verde de la derecha", rect: [268, 8, 177, 135], texto: "Secundario: baja tensión, separado por el transformador." }
-    requiere: { mover: [primario, barrera] }
-
   - id: toque-cruza
     tipo: tocar
     titulo: "Lo que cruza la barrera"
-    texto: "Toque lo único que puede cruzar la barrera de aislamiento, además del transformador."
-    libro: [42, 43]
+    texto: "Primer proyecto conectado a la red: un error ya no quema un componente, puede electrocutar. Toque lo único que cruza la barrera, además del transformador."
+    libro: [36, 40, 42, 43, 65]
     widget:
       tipo: figura
       figura: fig-50.2
@@ -70,94 +70,91 @@ tarjetas:
       - "Una señal que deba cruzar, ¿cómo lo hace sin cobre?"
     solucion: "El optoacoplador."
 
-  - id: ordene-primario
-    tipo: pregunta
-    titulo: "Lo que lleva el primario"
-    texto: "Ordene lo que lleva el primario, desde la entrada de red."
-    libro: [46, 47, 48, 49, 50]
-    widget:
-      tipo: figura
-      figura: fig-50.2
-      zonas:
-        - { id: primario, rotulo: "Recuadro rojo de la izquierda", rect: [5, 8, 185, 135] }
-    ordenar:
-      - "Fusible"
-      - "Varistor o TVS"
-      - "Filtro de red con condensadores X e Y"
-      - "Limitación de irrupción"
-      - "Resistencias de descarga"
-    exito: "El fusible va antes de cualquier otra cosa, para que proteja incluso al filtro."
-    pistas:
-      - { texto: "Lo primero es lo que protege a todo lo demás." }
-    escalera:
-      - "Empiece por lo que corta y termine por lo que descarga."
-    solucion: "Fusible, varistor, filtro, irrupción y descarga."
-
-  - id: condensador-x
-    tipo: pregunta
+  - id: simule-descarga
+    tipo: simular
     titulo: "Un condensador X"
-    texto: "El filtro de red lleva más de unos 0,1 µF de capacidad X. ¿Qué exige?"
-    libro: [48, 50]
+    texto: "Valores de ejemplo: 0,47 µF de X, cargados al pico de 325 V, con una resistencia de descarga de 1 MΩ. ¿Qué queda en el enchufe un segundo después?"
+    libro: [50, "cap10#168"]
+    fijar: { R_x: 1e6 }
     widget:
-      tipo: figura
-      figura: fig-50.2
-      zonas:
-        - { id: primario, rotulo: "Recuadro rojo de la izquierda", rect: [5, 8, 185, 135] }
-    opciones:
-      - texto: "Una resistencia de descarga en paralelo"
-        bien: true
-        porque: "Para que las patillas del enchufe no conserven tensión peligrosa un segundo después de desenchufar."
-      - texto: "Cambiarlo por uno normal del mismo valor"
-        porque: "Los X e Y son de seguridad certificada: no se sustituyen por otros del mismo valor."
-      - texto: "Nada: al desenchufar se descarga solo"
-        porque: "Sin resistencia de descarga el enchufe puede conservar tensión peligrosa."
+      tipo: grafica
+      x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 350, unidad: V, rotulo: "v_{X}" }
+      curvas:
+        - { expr: "V_pk*exp(-t/tau_x)", color: naranja, rotulo: "tensión en las patillas" }
+      lectura: { valor: V_1s, rotulo: "Al cabo de un segundo" }
+      ocultar: true
+    simular:
+      objetivo: V_1s
+      unidad: V
+      tol: 0.04
+      rotulo: "Tensión al cabo de un segundo"
+      errores:
+        - { expr: "V_tau", texto: "Eso es tras una constante de tiempo, R·C = 0,47 s; un segundo son más de dos." }
+    exito: "Unos 39 V todavía, un segundo después: la norma exige la resistencia en cuanto la capacidad X pasa de unos 0,1 µF."
     escalera:
-      - "¿Qué queda en las patillas del enchufe al desenchufar?"
-    solucion: "Una resistencia de descarga en paralelo, que la norma exige."
+      - "τ = R·C; queda V·e^{−t/τ}."
+    solucion: "325 × e^{−1/0,47} ≈ 39 V."
+    comprobar:
+      - { tau_x: 0.47, V_1s: 38.6, V_tau: 119.6, tol: 0.01 }
 
-  - id: tierra
-    tipo: pregunta
-    titulo: "La tierra de protección"
-    texto: "La carcasa metálica de la fuente va a tierra. ¿Cómo debe ser esa conexión?"
-    libro: [52, 53]
+  - id: explore-descarga
+    tipo: explorar
+    titulo: "La resistencia de descarga"
+    texto: "Mismos valores de ejemplo. Elija la resistencia de descarga para que, un segundo después, queden solo unos pocos voltios."
+    libro: [50, 57, "cap10#168"]
+    fijar: { V_z: 0 }
+    inicio: { R_x: 10e6 }
     widget:
-      tipo: figura
-      figura: fig-50.2
-      zonas:
-        - { id: secundario, rotulo: "Recuadro verde de la derecha", rect: [268, 8, 177, 135] }
-    opciones:
-      - texto: "Directa al borne, con tornillo y arandela dentada, la última en ceder"
-        bien: true
-        porque: "Cada punto va directo al borne de tierra; si un tirón arranca cables, el de tierra cede el último."
-      - texto: "En serie de una pieza a otra hasta el borne"
-        porque: "Nunca en serie con otra: cada punto va directo al borne."
-      - texto: "Con un cable fino, que no estorbe"
-        porque: "Debe ser de baja resistencia y la más difícil de soltar del equipo."
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_z, r: R_x, c: C_x, v0: V_pk }
+      lectura: { valor: tau_x, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 350, unidad: V, rotulo: "v_{X}" }
+        curvas:
+          - { expr: "V_pk*exp(-t/tau_x)", color: naranja, rotulo: "v_{X}", mide: vc }
+        marcas:
+          - { x: "t_1", y: "V_1s", rotulo: "{{V_1s}}" }
+      mandos:
+        - { valor: R_x, lista: [10e6, 1e6, 330e3], rotulo: "Resistencia de descarga" }
+    objetivo:
+      condiciones:
+        - { valor: V_1s, max: 5, rotulo: "Al segundo: {{V_1s}}" }
+      logrado: "Con {{R_x}}, τ = {{tau_x}}: al segundo quedan {{V_1s}}. El enchufe ya no guarda tensión peligrosa."
+      pistas:
+        - { texto: "Todavía queda mucha: la descarga necesita una constante de tiempo más corta." }
     escalera:
-      - "Si un tirón arranca cables, ¿cuál debe soltarse el último?"
-    solucion: "Directa, de baja resistencia, con tornillo y arandela dentada, y la más difícil de soltar."
+      - "Al cabo de cinco constantes de tiempo queda menos del 1 %."
+    solucion: "330 kΩ: τ ≈ 0,155 s y queda alrededor de medio voltio."
+    comprobar:
+      - { con: { R_x: 330e3 }, tau_x: 0.155, V_1s: 0.51, tol: 0.02 }
+      - { con: { R_x: 10e6 }, V_1s: 262, tol: 0.01 }
 
-  - id: prediga-pinza
-    tipo: predecir
+  - id: toque-pinza
+    tipo: tocar
     titulo: "La pinza del osciloscopio"
-    texto: "Sin transformador de aislamiento, se conecta la pinza de masa de un osciloscopio a un punto del primario. ¿Qué pasa?"
+    texto: "Sin transformador de aislamiento, ¿dónde provoca un cortocircuito la pinza de masa de un osciloscopio de red? Toque la zona."
     libro: [55]
     widget:
       tipo: figura
       figura: fig-50.2
       zonas:
         - { id: primario, rotulo: "Recuadro rojo de la izquierda", rect: [5, 8, 185, 135] }
-    opciones:
-      - texto: "Un cortocircuito a través del instrumento"
-        bien: true
-        porque: "Desde un fusible fundido hasta un incendio: por eso se mide en el primario con transformador de aislamiento."
-      - texto: "Nada: el osciloscopio mide en alta impedancia"
-        porque: "La punta sí; la pinza de masa no es de alta impedancia."
-      - texto: "Una lectura con ruido"
-        porque: "No es una cuestión de ruido: es un cortocircuito."
+        - { id: transformador, rotulo: "Recuadro de arriba de la franja", rect: [193, 41, 72, 50] }
+        - { id: opto, rotulo: "Recuadro de abajo de la franja", rect: [193, 100, 72, 45] }
+        - { id: secundario, rotulo: "Recuadro verde de la derecha", rect: [268, 8, 177, 135] }
+    tocar:
+      bien: [primario]
+      porque:
+        transformador: "Es la barrera, no un punto donde medir."
+        opto: "Es la barrera, no un punto donde medir."
+        secundario: "Ahí la tensión es baja y el transformador la separa de la red."
+    exito: "En el primario: un cortocircuito a través del instrumento, de un fusible fundido a un incendio. Para medir ahí, transformador de aislamiento."
     escalera:
-      - "¿A qué está unida la pinza de masa de un osciloscopio de red?"
-    solucion: "Un cortocircuito a través del osciloscopio."
+      - "¿A qué está unida la pinza de masa de un osciloscopio de red? ¿Y qué zona está unida a la red?"
+    solucion: "El primario."
 
   - id: lampara
     tipo: pregunta
@@ -222,9 +219,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [36, 43, 55, 64]
+    libro: [36, 43, 46, 47, 48, 49, 52, 53, 55, 64]
     ideas:
       - { titulo: "La barrera.", texto: "Nada la cruza salvo el transformador y los optoacopladores." }
-      - { titulo: "El primario.", texto: "Fusible primero; varistor, filtro, irrupción y descarga." }
+      - { titulo: "El primario.", texto: "Fusible primero, para que proteja incluso al filtro; varistor, filtro con X e Y certificados, irrupción y descarga." }
       - { titulo: "En el banco.", texto: "Transformador de aislamiento, lámpara serie, medir antes de tocar." }
-      - { titulo: "La tierra.", texto: "Menos de 0,1 Ω entre la carcasa y el pin de tierra." }
+      - { titulo: "La tierra.", texto: "Directa al borne, nunca en serie con otra, la última en ceder: menos de 0,1 Ω entre la carcasa y el pin de tierra." }

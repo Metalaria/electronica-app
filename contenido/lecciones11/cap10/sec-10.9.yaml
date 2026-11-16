@@ -4,6 +4,11 @@
 # - 1.2 (esquemas12d): el esquema `crowbar` vivo en la nueva explore-crowbar, por-que-scr y dos-condiciones (el raíl
 #   de 3,3 V que recibe 12 V del bloque 208). Se comparan las corrientes del fusible y del SCR, no la tensión del raíl.
 #   Valores de ejemplo, no del libro: V_Z 3,9 V, R_s = R_f = 50 mΩ, carga 10 Ω, R_G 100 Ω, V_T 1 V, I²t de 1 a 10 A²·s.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se toca en la figura 10.16 la capa que protege también al
+# semiconductor, se toca en el esquema la pieza que cortocircuita el raíl, se lee la corriente del cortocircuito, se
+# calcula cuánto tarda en fundir el fusible y se elige el que menos castiga al SCR (objetivo). Quedan dos preguntas (la
+# virtud del SCR y la ventaja del eFuse); qué protege cada uno, sus límites, el orden de las capas y la prueba en el
+# banco pasan a explicaciones y resumen.
 leccion: cap10/sec-10.9
 
 libro:
@@ -44,48 +49,129 @@ modelo:
 
 tarjetas:
   - id: explore-capas
-    tipo: explorar
+    tipo: tocar
     titulo: "Capas de protección"
-    texto: "Toque cada capa. Un equipo bien protegido no elige entre ellas: las combina."
-    libro: [220, 221, 224]
+    texto: "Un equipo bien protegido combina capas. Toque la que corta en microsegundos y protege también a los semiconductores."
+    libro: [215, 216, 220, 224]
     widget:
       tipo: figura
       figura: fig-10.15
       zonas:
-        - { id: fusible, rotulo: "Primera caja", rect: [5, 150, 80, 36], texto: "Fusible en la entrada de red, con la capacidad de ruptura adecuada." }
-        - { id: varistor, rotulo: "Segunda caja", rect: [96, 150, 80, 36], texto: "Varistor o TVS contra la sobretensión." }
-        - { id: efuse, rotulo: "Tercera caja", rect: [186, 150, 80, 36], texto: "eFuse en cada raíl interno, con arranque suave." }
-        - { id: crowbar, rotulo: "Cuarta caja", rect: [276, 150, 80, 36], texto: "Crowbar donde la carga es valiosa o la sobretensión probable." }
-        - { id: regulador, rotulo: "Quinta caja", rect: [367, 150, 82, 36], texto: "La protección térmica y de corriente de cada regulador." }
-    requiere: { mover: [fusible, efuse, crowbar] }
+        - { id: fusible, rotulo: "Primera caja", rect: [5, 150, 80, 36] }
+        - { id: varistor, rotulo: "Segunda caja", rect: [96, 150, 80, 36] }
+        - { id: efuse, rotulo: "Tercera caja", rect: [186, 150, 80, 36] }
+        - { id: crowbar, rotulo: "Cuarta caja", rect: [276, 150, 80, 36] }
+        - { id: regulador, rotulo: "Quinta caja", rect: [367, 150, 82, 36] }
+    tocar:
+      bien: [efuse]
+      porque:
+        fusible: "El fusible, en la entrada de red, tarda de ms a s: protege el cableado, no el semiconductor."
+        varistor: "El varistor o el TVS van contra la sobretensión, no contra la sobrecorriente."
+        crowbar: "El crowbar protege la carga ante una sobretensión, a costa del fusible."
+        regulador: "Es la protección térmica y de corriente de cada regulador, la última capa."
+    exito: "El eFuse, en cada raíl interno: limita la I²t que llega al fallo y, con arranque suave, sustituye a la NTC."
+    escalera:
+      - "Busque el que tiene medida de corriente y un MOSFET."
+    solucion: "La tercera caja, el eFuse."
 
   - id: prediga-crowbar
-    tipo: predecir
-    titulo: "El regulador falla"
-    texto: "El regulador de un microcontrolador de 3,3 V falla en cortocircuito y le llegan 12 V. ¿Qué hace el crowbar?"
-    libro: [207, 208, 211, "cap10#285"]
+    tipo: elegir
+    titulo: "La palanqueta"
+    texto: "Al microcontrolador de 3,3 V le llegan 12 V. El crowbar cortocircuita deliberadamente el raíl: toque la pieza que lo hace."
+    libro: [207, 208, 210, "cap10#285"]
     widget:
-      tipo: figura
-      figura: fig-10.15
-      zonas:
-        - { id: crowbar, rotulo: "Cuarta caja", rect: [276, 150, 80, 36] }
-    opciones:
-      - texto: "Dispara un SCR que cortocircuita el raíl y funde el fusible"
-        bien: true
-        porque: "Se pierde el fusible y quizá el regulador, pero se salva todo lo demás."
-      - texto: "Recorta el raíl a 3,3 V, como un Zener"
-        porque: "No recorta: cortocircuita deliberadamente la alimentación."
-      - texto: "Desconecta la carga y se rearma"
-        porque: "Eso lo haría un eFuse; el crowbar se queda en cortocircuito."
+      tipo: circuito
+      esquema: crowbar
+      piezas: { fuente: V_n, falla: V_f, t0: t_0, rs: R_s, rf: R_f, i2t: I2t, carga: R_L, vz: V_Z, rg: R_G, vt: V_T }
+      corriente: I_cc
+      mide: { vo: V_o, ifus: I_o }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 120, unidad: A, rotulo: "i" }
+        curvas:
+          - { expr: "I_o + (I_cc - I_o)*ceil((t - t_0)/1e9) - I_cc*ceil((t - t_f)/1e9)", color: azul, rotulo: "i_{fusible}", mide: fusible }
+          - { expr: "I_cc*ceil((t - t_0)/1e9) - I_cc*ceil((t - t_f)/1e9)", color: naranja, rotulo: "i_{SCR}", discontinua: true, mide: scr }
+      mandos: []
+    elegir:
+      zonas: [fuente, i2t, vz, rg, scr, carga]
+      bien: [scr]
+      porque:
+        fuente: "Es la fuente, con el regulador que ha fallado."
+        i2t: "Es el fusible: el cortocircuito lo funde, pero no lo provoca."
+        vz: "El Zener fija el umbral de detección: decide cuándo, no cortocircuita."
+        rg: "La resistencia lleva la corriente a la puerta del SCR."
+        carga: "Es lo que se quiere salvar."
+    exito: "El SCR: se pierde el fusible y quizá el regulador, pero se salva todo lo demás."
     escalera:
-      - "El nombre viene de arrojar una palanqueta sobre las barras."
-    solucion: "Cortocircuita el raíl con un SCR y el fusible funde."
+      - "El que cortocircuita es el que puede conducir mucha corriente y no soltar."
+    solucion: "El SCR."
+
+  - id: lea-cortocircuito
+    tipo: leer
+    titulo: "La corriente del cortocircuito"
+    texto: "Valores de ejemplo. Lea en la gráfica la corriente que pasa por el fusible mientras el SCR cortocircuita el raíl."
+    libro: [208, 210]
+    widget:
+      tipo: circuito
+      esquema: crowbar
+      piezas: { fuente: V_n, falla: V_f, t0: t_0, rs: R_s, rf: R_f, i2t: I2t, carga: R_L, vz: V_Z, rg: R_G, vt: V_T }
+      corriente: I_cc
+      mide: { vo: V_o, ifus: I_o }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 120, unidad: A, rotulo: "i" }
+        curvas:
+          - { expr: "I_o + (I_cc - I_o)*ceil((t - t_0)/1e9) - I_cc*ceil((t - t_f)/1e9)", color: azul, rotulo: "i_{fusible}", mide: fusible }
+          - { expr: "I_cc*ceil((t - t_0)/1e9) - I_cc*ceil((t - t_f)/1e9)", color: naranja, rotulo: "i_{SCR}", discontinua: true, mide: scr }
+      mandos: []
+    leer:
+      objetivo: I_cc
+      unidad: A
+      tol: 0.05
+      rotulo: "Corriente del cortocircuito"
+      errores:
+        - { expr: "I_o", texto: "Esa es la corriente normal del raíl, antes de la avería." }
+    exito: "Unos {{I_cc}}: solo los frenan las resistencias de la fuente y del fusible. Eso funde el fusible."
+    escalera:
+      - "Mire la altura de la azul entre la avería y la fusión."
+    solucion: "Unos 109 A."
+    comprobar:
+      - { I_cc: 108.9, tol: 0.01 }
+
+  - id: simule-fusion
+    tipo: simular
+    titulo: "Cuánto tarda en fundir"
+    texto: "Valores de ejemplo: un fusible de I²t = 2 A²·s con esa corriente. ¿Cuánto tiempo sostiene el SCR el cortocircuito?"
+    libro: [210]
+    fijar: { I2t: 2 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 120, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "I_cc*ceil((t - t_0)/1e9) - I_cc*ceil((t - t_f)/1e9)", color: naranja, rotulo: "i_{SCR}" }
+      lectura: { valor: d_f, rotulo: "El SCR conduce durante" }
+      ocultar: true
+    simular:
+      objetivo: d_f
+      unidad: s
+      tol: 0.05
+      rotulo: "Tiempo hasta fundir"
+      errores:
+        - { expr: "I2t/I_cc", texto: "La corriente va al cuadrado: t = I²t / I²." }
+    exito: "Unos {{d_f}}: ese es el tiempo que el SCR debe aguantar. Su I²t tiene que ser mayor que la del fusible."
+    escalera:
+      - "t = I²t / I²."
+    solucion: "2 / 109² ≈ 0,17 ms."
+    comprobar:
+      - { d_f: 0.000169, tol: 0.01 }
 
   - id: explore-crowbar
     tipo: explorar
-    titulo: "El crowbar en marcha"
-    texto: "El regulador falla y llegan 12 V: el SCR cortocircuita el raíl. Cambie el fusible y mire cuánto aguanta el SCR esa corriente."
+    titulo: "El fusible que menos castiga"
+    texto: "El fusible debe fundir antes de que el SCR se destruya. Elija el fusible que deja al SCR conduciendo menos tiempo."
     libro: [208, 210]
+    inicio: { I2t: 5 }
     widget:
       tipo: circuito
       esquema: crowbar
@@ -101,6 +187,17 @@ tarjetas:
           - { expr: "I_cc*ceil((t - t_0)/1e9) - I_cc*ceil((t - t_f)/1e9)", color: naranja, rotulo: "i_{SCR}", discontinua: true, mide: scr }
       mandos:
         - { valor: I2t, min: 1, max: 10, paso: 1, rotulo: "Fusible, I²t" }
+    objetivo:
+      condiciones:
+        - { valor: d_f, max: 0.0001, rotulo: "El SCR conduce: {{d_f}}" }
+      logrado: "Con I²t = {{I2t}}, el SCR solo conduce {{d_f}}: cuanto menor la I²t del fusible, menos sufre el tiristor."
+      pistas:
+        - { texto: "El SCR todavía conduce mucho rato: un fusible de menos I²t." }
+    escalera:
+      - "El tiempo es proporcional a la I²t del fusible."
+    solucion: "El de I²t = 1 A²·s: unos 0,08 ms."
+    comprobar:
+      - { con: { I2t: 1 }, d_f: 0.0000843, tol: 0.01 }
 
   - id: por-que-scr
     tipo: porque
@@ -130,53 +227,6 @@ tarjetas:
       - "¿Qué pasaría si soltara en cuanto la tensión baja?"
     solucion: "Porque el cortocircuito debe mantenerse: una vez disparado, el SCR no suelta."
 
-  - id: dos-condiciones
-    tipo: pregunta
-    titulo: "Dos condiciones a la vez"
-    texto: "Un crowbar es un Zener, una resistencia a la puerta y un SCR. ¿Qué dos condiciones debe cumplir?"
-    libro: [210]
-    widget:
-      tipo: circuito
-      esquema: crowbar
-      piezas: { fuente: V_n, falla: V_f, t0: t_0, rs: R_s, rf: R_f, i2t: I2t, carga: R_L, vz: V_Z, rg: R_G, vt: V_T }
-      lectura: { valor: d_f, rotulo: "El SCR conduce durante" }
-      corriente: I_cc
-      mide: { vo: V_o, ifus: I_o }
-      mandos:
-        - { valor: I2t, min: 1, max: 10, paso: 1, rotulo: "Fusible, I²t" }
-    opciones:
-      - texto: "Disparar antes de que la carga se dañe, y que el fusible funda antes de que el SCR se destruya"
-        bien: true
-        porque: "La segunda exige comparar la I²t del fusible con la del tiristor."
-      - texto: "Disparar con cualquier transitorio, y no fundir nunca el fusible"
-        porque: "Fundir el fusible es lo que se busca; y dispararse sin motivo sería un problema."
-      - texto: "Que el SCR se apague solo y que la carga no note nada"
-        porque: "El SCR no debe apagarse: el cortocircuito se mantiene hasta que se interviene."
-    escalera:
-      - "Piense en quién debe sobrevivir: la carga y el SCR."
-    solucion: "Disparar antes del daño, y fundir el fusible antes de que el SCR se destruya (las I²t)."
-
-  - id: quien-protege
-    tipo: pregunta
-    titulo: "Qué protege cada uno"
-    texto: "Empareje cada protección con lo que protege de verdad."
-    libro: [208, 213, 215]
-    widget:
-      tipo: figura
-      figura: fig-10.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla", rect: [0, 0, 453, 130] }
-    emparejar:
-      - ["Fusible", "El cableado, no el semiconductor"]
-      - ["Crowbar", "La carga ante una sobretensión"]
-      - ["eFuse", "También al semiconductor: limita la I²t"]
-    exito: "Cortar en microsegundos limita la I²t a una fracción minúscula de la que deja pasar un fusible."
-    pistas:
-      - { texto: "Solo uno corta en microsegundos con medida de corriente." }
-    escalera:
-      - "¿Cuál limita la energía que llega al fallo?"
-    solucion: "Fusible: el cableado. Crowbar: la carga. eFuse: también el semiconductor."
-
   - id: ventaja
     tipo: pregunta
     titulo: "La ventaja decisiva"
@@ -190,88 +240,21 @@ tarjetas:
     opciones:
       - texto: "La velocidad: limita la I²t que llega al fallo"
         bien: true
-        porque: "Y además suele traer arranque suave, que sustituye a la NTC y a su problema en caliente."
+        porque: "Eso protege a los semiconductores, lo que un fusible no consigue."
       - texto: "El rearme automático"
         porque: "Cómodo, pero el libro dice que lo decisivo no es el rearme sino la velocidad."
       - texto: "Su capacidad de ruptura"
-        porque: "Es un semiconductor: no la tiene como un fusible cerámico."
+        porque: "Es un semiconductor: no la tiene como un fusible cerámico. Por eso no va en la red."
     escalera:
       - "¿Qué consigue cortar en microsegundos?"
     solucion: "La velocidad: corta en microsegundos y limita la I²t."
 
-  - id: limites
-    tipo: pregunta
-    titulo: "Dónde no va"
-    texto: "¿Por qué un eFuse no sustituye al fusible de la entrada de red?"
-    libro: [217]
-    widget:
-      tipo: figura
-      figura: fig-10.15
-      zonas:
-        - { id: fusible, rotulo: "Primera caja", rect: [5, 150, 80, 36] }
-    opciones:
-      - texto: "Es un semiconductor de tensión y corriente moderadas, sin capacidad de ruptura"
-        bien: true
-        porque: "Pertenece a los raíles internos; en la red hace falta un fusible de verdad."
-      - texto: "Porque es demasiado lento para la red"
-        porque: "Corta en microsegundos: es mucho más rápido que un fusible."
-      - texto: "Porque no se puede rearmar"
-        porque: "Se rearma, automáticamente o por señal."
-    escalera:
-      - "¿Qué corta un fusible cerámico y un semiconductor no?"
-    solucion: "No tiene capacidad de ruptura y maneja tensiones y corrientes moderadas."
-
-  - id: ordene-capas
-    tipo: pregunta
-    titulo: "En orden, desde la red"
-    texto: "Ordene las capas de un equipo bien protegido, desde la entrada de red hacia dentro."
-    libro: [220]
-    widget:
-      tipo: figura
-      imagen: img/potencia_foto.jpg
-      zonas:
-        - { id: fotos, rotulo: "Las cuatro fotos", rect: [0, 0, 1600, 1200] }
-    ordenar:
-      - "Fusible en la entrada de red"
-      - "Varistor o TVS"
-      - "eFuse en cada raíl interno"
-      - "Crowbar si la carga es valiosa"
-      - "Protección térmica y de corriente del regulador"
-    exito: "Cada capa cubre lo que la anterior no puede: un fallo queda en avería localizada."
-    pistas:
-      - { texto: "Lo primero es el fusible, para acotar cualquier fallo posterior." }
-    escalera:
-      - "La protección del propio regulador va al final, dentro."
-    solucion: "Fusible, varistor o TVS, eFuse, crowbar y la protección del regulador."
-
-  - id: banco-crowbar
-    tipo: pregunta
-    titulo: "Probar un crowbar"
-    texto: "¿Cómo se prueba un crowbar en el banco sin gastar un fusible en cada prueba?"
-    libro: [223]
-    widget:
-      tipo: figura
-      figura: fig-10.15
-      zonas:
-        - { id: crowbar, rotulo: "Cuarta caja", rect: [276, 150, 80, 36] }
-    opciones:
-      - texto: "Con la fuente en corriente limitada, subiendo despacio hasta que dispara"
-        bien: true
-        porque: "Se comprueba el umbral, y la corriente la limita la fuente, no el fusible."
-      - texto: "Con un fusible de mucho más valor"
-        porque: "Cambiaría lo que se prueba: y el SCR podría no aguantar."
-      - texto: "Puenteando el fusible"
-        porque: "Sin límite de corriente, el SCR cortocircuitaría la fuente sin protección."
-    escalera:
-      - "¿Quién puede limitar la corriente en lugar del fusible?"
-    solucion: "Con la fuente en corriente limitada, subiendo la tensión hasta el disparo."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [207, 209, 215, 221]
+    libro: [207, 209, 215, 217, 220, 221, 223, 211, 213]
     ideas:
-      - { titulo: "Crowbar.", texto: "Ante una sobretensión cortocircuita el raíl y funde el fusible: el mal menor." }
-      - { titulo: "El SCR.", texto: "Que no suelte es su virtud aquí." }
-      - { titulo: "eFuse.", texto: "Corta en microsegundos y protege también al semiconductor; no va en la red." }
-      - { titulo: "En capas.", texto: "Cada una cubre lo que la anterior no puede." }
+      - { titulo: "Crowbar.", texto: "Ante una sobretensión cortocircuita el raíl y funde el fusible: el mal menor. Se prueba con la fuente en corriente limitada." }
+      - { titulo: "El SCR.", texto: "Que no suelte es su virtud aquí; el fusible debe fundir antes de que se destruya." }
+      - { titulo: "eFuse.", texto: "Corta en microsegundos y protege también al semiconductor; sin capacidad de ruptura, no va en la red." }
+      - { titulo: "En capas.", texto: "Fusible, varistor o TVS, eFuse, crowbar y regulador: cada una cubre lo que la anterior no puede." }

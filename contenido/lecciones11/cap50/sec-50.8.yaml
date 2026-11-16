@@ -6,6 +6,10 @@
 #   con resistencias de la serie E12 y el 2 % de la app.
 # Paso práctico: «banco» opcional: ajustar el límite de una fuente de laboratorio a 1 A (valor de ejemplo) y
 # cortocircuitar la salida a través del amperímetro (bloque 267).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): primero se calcula lo que marca la fuente con 12 V, 1 A y 5 Ω
+# (5 V, limitando), y después se sube el límite hasta que la carga de 5 Ω reciba los 12 V (objetivo; el límite de 3 A
+# del mando es de ejemplo). La potencia de la sensora pasa a cálculo. Quedan dos preguntas (el indicador y el ruido en
+# el cruce); los tipos de limitación, la lámpara y la rama del shunt, al resumen.
 leccion: cap50/sec-50.8
 
 libro:
@@ -40,13 +44,44 @@ modelo:
     R_ideal: { expr: "V_th/I_obj", sim: "R_{sense}", nombre: "sensora exacta", unidad: Ω }
     P_s: { expr: "I_obj^2*R_s", sim: "P", nombre: "potencia en la sensora", unidad: W }
     V_rs: { expr: "I_obj*R_s", sim: "V", nombre: "caída en la sensora", unidad: V }
+    I_pide: { expr: "V_set/R_L", sim: "I", nombre: "corriente que pediría la carga", unidad: A }
 
 tarjetas:
+  - id: prediga-5ohm
+    tipo: simular
+    titulo: "Ajustada a 12 V"
+    texto: "Valores de ejemplo: se ajustan 12 V y un límite de 1 A, y se conecta una carga de 5 Ω. ¿Qué tensión marca la fuente?"
+    libro: [255, 265]
+    fijar: { V_set: 12, I_lim: 1, R_L: 5 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0, max: 30, unidad: Ω, rotulo: "R_{L}" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "min(V_set, I_lim*rx)", color: naranja, rotulo: "tensión de salida" }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      ocultar: true
+    simular:
+      objetivo: V_o
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión que marca"
+      errores:
+        - { expr: "V_set", texto: "Eso es lo ajustado; para 12 V sobre 5 Ω harían falta 2,4 A, más del límite." }
+    exito: "5 V: la fuente pasa a corriente constante y baja la tensión. No está averiada: está limitando."
+    escalera:
+      - "¿Qué corriente pediría la carga a 12 V? Compárela con el límite."
+    solucion: "1 A × 5 Ω = 5 V: modo de corriente constante."
+    comprobar:
+      - { V_o: 5, R_codo: 12, I_pide: 2.4 }
+
   - id: explore-caracteristica
     tipo: explorar
     titulo: "Tensión o corriente constante"
-    texto: "Una fuente ajustada a 12 V con un límite. Baje la carga y mire cuándo deja de dar tensión constante."
+    texto: "La misma fuente a 12 V y la carga de 5 Ω. Suba el límite hasta que la carga reciba los 12 V ajustados."
     libro: [255, 269]
+    fijar: { V_set: 12, R_L: 5 }
+    inicio: { I_lim: 0.5 }
     widget:
       tipo: grafica
       x: { id: rx, min: 0, max: 30, unidad: Ω, rotulo: "R_{L}" }
@@ -60,40 +95,18 @@ tarjetas:
       datos:
         - { valor: I_o, rotulo: "Corriente: {{I_o}}" }
       mandos:
-        - { valor: R_L, lista: [2, 5, 10, 20, 30], rotulo: "Carga" }
-        - { valor: I_lim, lista: [0.5, 1, 2], rotulo: "Límite de corriente" }
-    requiere: { mover: [R_L] }
-    comprobar:
-      - { V_set: 12 }
-
-  - id: prediga-5ohm
-    tipo: predecir
-    titulo: "Ajustada a 12 V"
-    texto: "Se ajustan 12 V y un límite de 1 A, y se conecta una carga de 5 Ω. ¿Qué tensión marca la fuente?"
-    libro: [255, 265]
-    fijar: { V_set: 12, I_lim: 1, R_L: 5 }
-    widget:
-      tipo: grafica
-      x: { id: rx, min: 0, max: 30, unidad: Ω, rotulo: "R_{L}" }
-      y: { min: 0, max: 14, unidad: V, rotulo: "V_{out}" }
-      curvas:
-        - { expr: "min(V_set, I_lim*rx)", color: naranja, rotulo: "tensión de salida" }
-      lectura: { valor: V_o, rotulo: "Tensión de salida" }
-      ocultar: true
-    opciones:
-      - texto: "5 V: está limitando a 1 A"
-        bien: true
-        porque: "12 V darían 2,4 A: la fuente pasa a corriente constante y baja la tensión. Funciona correctamente."
-      - texto: "12 V, lo ajustado"
-        porque: "Para 12 V sobre 5 Ω harían falta 2,4 A, más del límite."
-      - texto: "0 V: la fuente se protege y corta"
-        porque: "Eso haría una limitación con corte; la de laboratorio es constante."
+        - { valor: I_lim, lista: [0.5, 1, 3], rotulo: "Límite de corriente" }
+    objetivo:
+      condiciones:
+        - { valor: V_o, min: 11.99, rotulo: "Salida: {{V_o}}" }
+      logrado: "Con {{I_lim}} el codo está en {{R_codo}}: la carga de 5 Ω queda en la zona de tensión constante y toma {{I_o}}."
+      pistas:
+        - { texto: "La carga pide 2,4 A a 12 V: el límite tiene que pasar de ahí." }
     escalera:
-      - "¿Qué corriente pediría la carga a 12 V? Compárela con el límite."
-    solucion: "1 A × 5 Ω = 5 V: modo de corriente constante."
+      - "El codo está en V_{consigna}/I_{límite}: la carga debe quedar por encima."
+    solucion: "3 A: el codo baja a 4 Ω y la carga toma 2,4 A a 12 V."
     comprobar:
-      - { V_o: 5, R_codo: 12 }
-      - { con: { I_lim: 100 }, I_o: 2.4 }
+      - { con: { I_lim: 3 }, V_o: 12, R_codo: 4, I_o: 2.4, I_pide: 2.4 }
 
   - id: indicador
     tipo: pregunta
@@ -116,71 +129,6 @@ tarjetas:
     escalera:
       - "Lo que falta es saber en qué modo trabaja."
     solucion: "Un indicador de modo: tensión constante o corriente constante."
-
-  - id: empareje-tipos
-    tipo: pregunta
-    titulo: "Tres limitaciones"
-    texto: "Empareje cada tipo de limitación con su comportamiento."
-    libro: [255, 256, 257]
-    widget:
-      tipo: figura
-      figura: fig-50.13
-      zonas:
-        - { id: tipos, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 220] }
-    emparejar:
-      - ["Constante", "Pasa a corriente constante y baja la tensión"]
-      - ["Replegada", "Al bajar la tensión, también baja el límite"]
-      - ["Con corte y rearme", "Se desconecta y reintenta periódicamente"]
-    exito: "En una fuente de laboratorio, constante; replegada o con corte, en una empotrada."
-    pistas:
-      - { texto: "La replegada protege mejor el paso en cortocircuito." }
-    escalera:
-      - "Una mantiene la corriente, otra la reduce, otra corta."
-    solucion: "Constante, corriente fija; replegada, el límite baja; corte, desconecta y reintenta."
-
-  - id: lampara
-    tipo: pregunta
-    titulo: "Una lámpara que no arranca"
-    texto: "Una fuente con limitación replegada alimenta una lámpara y se queda con muy poca tensión. ¿Por qué?"
-    libro: [256, 258]
-    widget:
-      tipo: figura
-      figura: fig-50.13
-      zonas:
-        - { id: tipos, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 220] }
-    opciones:
-      - texto: "Con cargas no lineales puede quedarse enganchada en baja tensión"
-        bien: true
-        porque: "Por eso en laboratorio se usa la constante."
-      - texto: "Porque la lámpara está fundida"
-        porque: "Es la limitación replegada la que se engancha con cargas como una lámpara o un motor."
-      - texto: "Porque el límite está bajo"
-        porque: "El problema es la forma de la limitación, no su valor."
-    escalera:
-      - "¿Qué hace el límite replegado cuando la tensión baja?"
-    solucion: "Se engancha en un punto de baja tensión: el inconveniente del foldback."
-
-  - id: rama
-    tipo: pregunta
-    titulo: "Dónde va el shunt"
-    texto: "¿Qué inconveniente tiene el shunt en la rama baja en una fuente de laboratorio?"
-    libro: [250, 252, 253]
-    widget:
-      tipo: figura
-      figura: fig-50.13
-      zonas:
-        - { id: lazo, rotulo: "La parte de la derecha", rect: [222, 0, 221, 220] }
-    opciones:
-      - texto: "Desplaza la masa de la salida respecto a la del circuito"
-        bien: true
-        porque: "Es más simple, pero en la rama alta se mide la corriente real con la masa en su sitio."
-      - texto: "Que no mide la corriente de salida"
-        porque: "La mide; el problema es la masa desplazada."
-      - texto: "Que necesita amplificador de modo común"
-        porque: "Eso lo exige la rama alta."
-    escalera:
-      - "Si el shunt está entre la carga y la masa, ¿dónde queda la masa de la salida?"
-    solucion: "Desplaza la masa de la salida."
 
   - id: reto-sensora
     tipo: reto
@@ -215,9 +163,9 @@ tarjetas:
       - { con: { R_s: 0.33 }, I_sense: 1.97, tol: 0.01 }
 
   - id: potencia-sensora
-    tipo: pregunta
+    tipo: simular
     titulo: "Su potencia"
-    texto: "Por la sensora de 0,33 Ω pasan 2 A. ¿De qué potencia se elige?"
+    texto: "Por la sensora de 0,33 Ω pasan 2 A. ¿Cuánto disipa?"
     libro: ["cap50#536"]
     fijar: { R_s: 0.33, I_obj: 2 }
     widget:
@@ -226,14 +174,16 @@ tarjetas:
       y: { min: 0, max: 3, unidad: W, rotulo: "P" }
       curvas:
         - { expr: "ix^2*R_s", color: naranja, rotulo: "I²·R" }
-    opciones:
-      - texto: "De 2 W o más"
-        bien: true
-        porque: "Disipa unos 1,3 W: con margen, 2 W."
-      - texto: "De 0,66 W"
-        porque: "Eso es I·R en voltios; la potencia es I²·R."
-      - texto: "Basta una de señal"
-        porque: "Con 2 A disipa más de un vatio."
+      lectura: { valor: P_s, rotulo: "Potencia en la sensora" }
+      ocultar: true
+    simular:
+      objetivo: P_s
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en la sensora"
+      errores:
+        - { expr: "V_rs", texto: "Eso es I·R, la caída en voltios; la potencia es I²·R." }
+    exito: "Unos 1,3 W: con margen, una de 2 W o más."
     escalera:
       - "P = I²·R."
     solucion: "2² × 0,33 ≈ 1,3 W: una de 2 W o más."
@@ -282,9 +232,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [247, 255, 258, 261]
+    libro: [247, 253, 255, 256, 257, 258, 261, 250, 252]
     ideas:
       - { titulo: "Un instrumento.", texto: "El límite convierte un error de montaje en un aviso." }
       - { titulo: "CV y CC.", texto: "Tensión constante hasta el codo; luego corriente constante, con indicador." }
-      - { titulo: "Tres tipos.", texto: "Constante en laboratorio; replegada o con corte en fuentes empotradas." }
+      - { titulo: "Tres tipos.", texto: "Constante en laboratorio; replegada, que con una lámpara se engancha en baja tensión, o con corte, en fuentes empotradas. El shunt, en la rama alta." }
       - { titulo: "R_{sense}.", texto: "Umbral entre límite: 0,65 V / 2 A ≈ 0,33 Ω, de 2 W." }

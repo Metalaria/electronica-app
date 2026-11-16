@@ -5,6 +5,9 @@
 #   en una gráfica del modelo frente al entrehierro; la figura 34.1 (fig-56.1) con zonas en su circuito equivalente.
 # - No se dibuja con un esquema eléctrico: la analogía cambiaría las unidades (V y Ω por A·v y A/Wb).
 # Paso práctico: «simular» (sin circuito) el ejercicio 56.1; el error típico es olvidar el entrehierro (0,127 A).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se busca el entrehierro y la chapa con los que el aire se
+# lleva el 93 % (objetivo), se lee la corriente, se toca la reluctancia mayor y se calculan la fuerza, el ejercicio
+# y el par. Quedan dos preguntas (entrehierros mínimos y la misma k).
 leccion: cap56/sec-56.1
 
 libro:
@@ -46,14 +49,17 @@ modelo:
     E_g: { expr: "Phi^2*R_g/2", sim: "W_{g}", nombre: "energía en el entrehierro", unidad: J }
     E_fe: { expr: "Phi^2*R_fe/2", sim: "W_{fe}", nombre: "energía en el hierro", unidad: J }
     k_m: { expr: "2*N_k*B_k*l_k*r_k", sim: "k", nombre: "constante de la máquina", unidad: "V·s/rad" }
+    F_mal: { expr: "B_g^2*A_n/(4*pi*1e-7)", sim: "F", nombre: "sin el 2 (error)", unidad: N }
+    E_480: { expr: "k_m*480", sim: "E", nombre: "tensión a 480 rad/s", unidad: V }
     T_k: { expr: "k_m*I_k", sim: "T", nombre: "par", unidad: "N·m" }
 
 tarjetas:
   - id: explore-entrehierro
     tipo: explorar
     titulo: "Un milímetro de aire"
-    texto: "Mueva el entrehierro y la chapa. Mire cuánta corriente pide 1 T en el aire y qué parte se gasta en cruzarlo."
+    texto: "Para 1 T en el aire, los amperios-vuelta se reparten entre la chapa y el entrehierro. Busque el entrehierro y la chapa con los que el aire se lleva el 93 %."
     libro: [4, 6]
+    inicio: { g_n: 0.0002, mu_r: 4000 }
     widget:
       tipo: grafica
       x: { id: gx, min: 0, max: 0.002, unidad: m, rotulo: "entrehierro" }
@@ -69,32 +75,48 @@ tarjetas:
       mandos:
         - { valor: g_n, lista: [0.0002, 0.0005, 0.001, 0.002], rotulo: "Entrehierro" }
         - { valor: mu_r, lista: [1000, 4000], rotulo: "µ_{r} de la chapa" }
-    requiere: { mover: [g_n] }
+    objetivo:
+      condiciones:
+        - { valor: frac, objetivo: 93, tol: 0.01, rotulo: "En el aire: {{frac}}" }
+      logrado: "Con {{g_n}} de aire y µ_{r} = {{mu_r}}, el aire se lleva {{frac}}: su reluctancia es mucho mayor aunque sea trescientas veces más corto."
+      pistas:
+        - { cuando: { valor: frac, mayor: 93 }, texto: "Demasiado aire: menos entrehierro." }
+        - { texto: "Todavía pesa mucho el hierro: más entrehierro o mejor chapa." }
+    escalera:
+      - "Compare ℛ = l/(µ₀·µ_{r}·A) del hierro y del aire."
+    solucion: "1 mm con la chapa de µ_{r} = 4 000: 795,8 frente a 59,7 kA/Wb."
+    comprobar:
+      - { con: { g_n: 0.001, mu_r: 4000 }, frac: 93.0, R_fe: 59700, R_g: 795800, tol: 0.003 }
+      - { frac: 72.7, tol: 0.005 }
 
   - id: prediga-aire
-    tipo: predecir
-    titulo: "Dónde se gastan"
-    texto: "30 cm de chapa de µr = 4 000 y un entrehierro de 1 mm. ¿Qué parte de los amperios-vuelta se gasta en el aire?"
+    tipo: leer
+    titulo: "La corriente"
+    texto: "Con 1 mm de aire y la chapa de µ_{r} = 4 000, lea en la gráfica los amperios-vuelta y escriba la corriente con 200 espiras."
     libro: [6]
     fijar: { g_n: 0.001, mu_r: 4000 }
     widget:
-      tipo: figura
-      figura: fig-56.1
-      zonas:
-        - { id: nucleo, rotulo: "El núcleo", rect: [0, 15, 160, 120] }
-    opciones:
-      - texto: "Casi todos: el 93 %"
-        bien: true
-        porque: "La reluctancia del entrehierro es 13,3 veces la del hierro con una longitud trescientas veces menor."
-      - texto: "Muy pocos: el aire es trescientas veces más corto"
-        porque: "Es más corto, pero su permeabilidad es 4 000 veces menor: pesa mucho más."
-      - texto: "La mitad, porque están en serie"
-        porque: "En serie el flujo es el mismo; la caída se reparte según las reluctancias."
+      tipo: grafica
+      x: { id: gx, min: 0, max: 0.002, unidad: m, rotulo: "entrehierro" }
+      y: { min: 0, max: 2000, unidad: "A·v", rotulo: "N·I" }
+      curvas:
+        - { expr: "Phi*(R_fe + gx/(4*pi*1e-7*A_n))", color: naranja, rotulo: "N·I para 1 T" }
+      marcas:
+        - { x: "g_n", y: "NI", rotulo: "{{NI}}" }
+      mandos: []
+    leer:
+      objetivo: I_e
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de la bobina"
+      errores:
+        - { expr: "NI", texto: "Esos son los amperios-vuelta, N·I: divídalos por las 200 espiras." }
+    exito: "4,28 A: 855 amperios-vuelta, el 93 % para cruzar el milímetro de aire. La inductancia queda en 46,8 mH."
     escalera:
-      - "Compare ℛ = l/(µ₀·µ_{r}·A) del hierro y del aire."
-    solucion: "El 93 %: 795,8 frente a 59,7 kA/Wb."
+      - "I = N·I / N."
+    solucion: "855/200 = 4,28 A."
     comprobar:
-      - { frac: 93.0, R_fe: 59700, R_g: 795800, NI: 855, I_e: 4.28, tol: 0.003 }
+      - { I_e: 4.28, NI: 855, L_b: 0.0468, tol: 0.003 }
 
   - id: toque-reluctancia
     tipo: tocar
@@ -119,22 +141,30 @@ tarjetas:
     solucion: "La de la derecha, la del entrehierro."
 
   - id: formula-fuerza
-    tipo: formula
+    tipo: simular
     titulo: "La fuerza sale de la energía"
-    texto: "La energía está en el aire; al cerrarse el entrehierro, baja, y esa diferencia es la fuerza entre las caras."
+    texto: "La energía está en el aire, y al cerrarse el entrehierro baja: esa es la fuerza, F = B²·A/(2·µ₀). ¿Cuánta con 1 T sobre 10 cm²?"
     libro: [9, 10, 11]
-    fijar: { B_g: 1, A_n: 0.001 }
-    ec: 10
-    sustitucion: "{{B_g}}² · {{A_n}} / (2 · µ₀) = {{F_c}}"
+    fijar: { B_g: 1, A_n: 0.001, g_n: 0.001, mu_r: 4000 }
     widget:
       tipo: grafica
       x: { id: bx, min: 0, max: 1.5, unidad: T, rotulo: "B" }
       y: { min: 0, max: 1000, unidad: N, rotulo: "F" }
       curvas:
         - { expr: "bx^2*A_n/(2*4*pi*1e-7)", color: naranja, rotulo: "F" }
-      marcas:
-        - { x: "B_g", y: "F_c", rotulo: "{{F_c}}" }
       lectura: { valor: F_c, rotulo: "Fuerza en cada cara" }
+      ocultar: true
+    simular:
+      objetivo: F_c
+      unidad: N
+      tol: 0.03
+      rotulo: "Fuerza en cada cara"
+      errores:
+        - { expr: "F_mal", texto: "Le falta el 2 del denominador: F = B²·A/(2·µ₀)." }
+    exito: "398 N, el peso de 40,6 kg, en cada cara: la fuerza de un electroimán, de un relé o de un contactor."
+    escalera:
+      - "1² × 10⁻³ / (2 × 4π·10⁻⁷)."
+    solucion: "398 N."
     comprobar:
       - { F_c: 398, E_g: 0.398, E_fe: 0.030, tol: 0.01 }
 
@@ -189,34 +219,31 @@ tarjetas:
     solucion: "Porque la corriente magnetizante depende sobre todo del entrehierro."
 
   - id: estime-par
-    tipo: pregunta
+    tipo: simular
     titulo: "Par y fuerza electromotriz"
     texto: "Rotor de 100 espiras, lados de 4 cm a 12,5 mm del eje, 0,5 T: k = 0,05 V·s/rad. ¿Qué par da con 5 A?"
-    libro: [13, 15]
+    libro: [13, 14, 15]
     widget:
       tipo: grafica
       x: { id: ix, min: 0, max: 10, unidad: A, rotulo: "I" }
       y: { min: 0, max: 0.6, unidad: "N·m", rotulo: "T" }
       curvas:
         - { expr: "k_m*ix", color: naranja, rotulo: "T = k·I" }
-    estimar:
-      objetivo: "T_k"
+      lectura: { valor: T_k, rotulo: "Par" }
+      ocultar: true
+    simular:
+      objetivo: T_k
       unidad: "N·m"
-      min: 0
-      max: 0.6
-      paso: 0.01
-      inicio: 0.5
-      tol: 0.04
+      tol: 0.03
       rotulo: "Par"
+      errores:
+        - { expr: "E_480", texto: "Esos 24 son los voltios que genera girando a 480 rad/s. El par es T = k·I." }
     exito: "0,25 N·m. Y la misma k da la tensión: girando a 480 rad/s genera 24 V."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.26 }, texto: "Se ha pasado: T = k·I = 0,05 × 5." }
-      - { texto: "Se ha quedado corto: T = k·I = 0,05 × 5." }
     escalera:
       - "T = k·I."
     solucion: "0,05 × 5 = 0,25 N·m."
     comprobar:
-      - { T_k: 0.25, k_m: 0.05 }
+      - { T_k: 0.25, k_m: 0.05, E_480: 24 }
 
   - id: misma-k
     tipo: pregunta

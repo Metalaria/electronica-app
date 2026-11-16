@@ -7,6 +7,10 @@
 # Paso práctico: «ajuste» de la compensación de un lazo de segundo orden de ejemplo (amortiguamiento ζ) hasta el
 # sobreimpulso del 9,5 %, el de 60° de margen de fase (criterio del capítulo 30 citado en el bloque 487); el modelo es
 # la respuesta normalizada a un escalón, 1 − e^{−ζt}(cos(ω_d t) + ζ/√(1 − ζ²)·sin(ω_d t)), con ω_d = √(1 − ζ²).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se sube la ganancia hasta un error de una milésima (objetivo),
+# se calculan la variación real con A·β = 1 000 y con el Zener, se lee el sobreimpulso del lazo de ejemplo con margen
+# escaso (ζ = 0,2: 52,7 %) y se ajusta la compensación. Quedan dos preguntas (la carga y el tántalo); los bloques, el
+# arranque y el windup, al resumen; el explorar del escalón se funde con la lectura.
 leccion: cap50/sec-50.6
 
 libro:
@@ -21,6 +25,7 @@ libro:
   192: "más ganancia regula mejor y acerca la inestabilidad"
   196: "tiene que ser estable con cualquier carga"
   198: "sustituir su condensador de tántalo por un cerámico moderno de ESR bajísima los hace oscilar"
+  200: "al cambiar la carga bruscamente, la salida se hunde y se recupera"
   202: "un hueco seguido de sobreoscilación indica margen escaso"
   206: "Un arranque suave —cargando la referencia lentamente— lo evita."
   207: "Es el mismo windup del integrador"
@@ -50,14 +55,18 @@ modelo:
     I_o: { expr: "V_o/R_L + V_o/(R_1 + R_2)", sim: "I", nombre: "corriente de salida", unidad: A }
     dV_cl: { expr: "dV_ol/(1 + T)", sim: "ΔV", nombre: "variación real", unidad: V }
     dV_z: { expr: "dV_ol/(1 + T_z)", sim: "ΔV", nombre: "variación con el Zener", unidad: V }
+    dV_A: { expr: "dV_ol/A_0", sim: "ΔV", nombre: "dividida por A sola (error)", unidad: V }
+    dV_T: { expr: "dV_ol/T_z", sim: "ΔV", nombre: "dividida por A·β (error)", unidad: V }
     OS: { expr: "100*exp(-pi*zeta/sqrt(1 - zeta^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+    pico: { expr: "100 + OS", sim: "pico", nombre: "pico entero (error)", unidad: "%" }
 
 tarjetas:
   - id: explore-ganancia
     tipo: explorar
     titulo: "Un lazo de control"
-    texto: "El amplificador compara la salida escalada con la referencia y gobierna el paso. Suba su ganancia y mire cuánto se acerca la salida a 30 V."
+    texto: "El amplificador compara la salida escalada con la referencia y gobierna el paso. Suba su ganancia hasta que la salida se aparte de 30 V una milésima o menos."
     libro: [180, 183, 184, "cap50#455", "cap50#279"]
+    inicio: { A_0: 120 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -70,32 +79,48 @@ tarjetas:
       mide: { vout: V_o, iout: I_o }
       mandos:
         - { valor: A_0, lista: [120, 1200, 12000, 120000], rotulo: "Ganancia del amplificador de error" }
-    requiere: { mover: [A_0] }
+    objetivo:
+      condiciones:
+        - { valor: err, max: 0.1, rotulo: "Error: {{err}}" }
+      logrado: "Con A·β = {{T}} la salida queda en {{V_o}}: el error es 1/(1 + A·β). Más ganancia, mejor regulación."
+      pistas:
+        - { texto: "El error es 1/(1 + A·β): hace falta más ganancia." }
+    escalera:
+      - "β = 10/120 = 1/12; el error es 1/(1 + A·β)."
+    solucion: "12 000: A·β = 1 000 y un error de una milésima."
     comprobar:
-      - { con: { A_0: 12000 }, T: 1000, V_set: 30, beta: 0.0833 }
+      - { con: { A_0: 12000 }, T: 1000, V_set: 30, beta: 0.0833, err: 0.0999 }
 
   - id: formula-lazo
-    tipo: formula
+    tipo: simular
     titulo: "Lo que corrige el lazo"
-    texto: "Una variación que en lazo abierto sería de 1 V queda dividida por 1 + A·β."
+    texto: "Con esa ganancia, A·β = 1 000. Una variación que en lazo abierto sería de 1 V, ¿en cuánto queda?"
     libro: [188, 189]
-    fijar: { dV_ol: 1 }
-    ec: 188
-    sustitucion: "{{dV_ol}} / (1 + {{T}}) = {{dV_cl}}"
+    fijar: { dV_ol: 1, A_0: 12000 }
     widget:
-      tipo: circuito
-      esquema: regulador-lineal
-      piezas: { entrada: V_in, ref: V_ref, r1: R_1, r2: R_2, carga: R_L, a0: A_0 }
+      tipo: grafica
+      x: { id: tx, min: 0.5, max: 10000, unidad: "", rotulo: "A·β", escala: log }
+      y: { min: 0.0001, max: 1, unidad: V, rotulo: "ΔV", escala: log }
+      curvas:
+        - { expr: "dV_ol/(1 + tx)", color: naranja, rotulo: "variación real" }
       lectura: { valor: dV_cl, rotulo: "Variación real" }
-      corriente: I_o
-      mide: { vout: V_o }
-      mandos:
-        - { valor: A_0, lista: [120, 1200, 12000, 120000], rotulo: "Ganancia del amplificador de error" }
+      ocultar: true
+    simular:
+      objetivo: dV_cl
+      unidad: V
+      tol: 0.03
+      rotulo: "Variación real"
+      errores:
+        - { expr: "dV_A", texto: "Ha dividido por la ganancia del amplificador sola; la que cuenta es la del lazo, A·β." }
+    exito: "1 mV: el lazo divide la variación por 1 + A·β."
+    escalera:
+      - "1 V / (1 + 1 000)."
+    solucion: "1 V / (1 + 1 000) ≈ 1 mV."
     comprobar:
-      - { con: { A_0: 12000 }, dV_cl: 0.001, tol: 0.002 }
+      - { dV_cl: 0.000999, T: 1000, dV_A: 0.0000833, tol: 0.01 }
 
   - id: prediga-zener
-    tipo: predecir
+    tipo: simular
     titulo: "Un seguidor con Zener"
     texto: "En un seguidor con Zener la ganancia de lazo es prácticamente uno. ¿Qué queda de 1 V de variación en lazo abierto?"
     libro: [188, 190]
@@ -108,41 +133,19 @@ tarjetas:
         - { expr: "dV_ol/(1 + tx)", color: naranja, rotulo: "variación real" }
       lectura: { valor: dV_z, rotulo: "Variación real con el Zener" }
       ocultar: true
-    opciones:
-      - texto: "La mitad, 0,5 V"
-        bien: true
-        porque: "1/(1 + 1): por eso el amplificador de error de ganancia alta regula mucho mejor."
-      - texto: "1 mV"
-        porque: "Eso es con una ganancia de lazo de 1 000."
-      - texto: "Nada: el Zener la fija"
-        porque: "Con ganancia de lazo uno, el lazo solo corrige la mitad."
+    simular:
+      objetivo: dV_z
+      unidad: V
+      tol: 0.03
+      rotulo: "Variación real con el Zener"
+      errores:
+        - { expr: "dV_T", texto: "Ha dividido por A·β; es por 1 + A·β." }
+    exito: "La mitad, 0,5 V: por eso el amplificador de error de ganancia alta regula mucho mejor."
     escalera:
       - "Ponga A·β = 1 en la fórmula."
     solucion: "1 V / (1 + 1) = 0,5 V."
     comprobar:
-      - { dV_z: 0.5 }
-
-  - id: empareje-bloques
-    tipo: pregunta
-    titulo: "Los cuatro bloques"
-    texto: "Empareje cada bloque del lazo con lo que hace."
-    libro: [182, 183, 184, 185]
-    widget:
-      tipo: figura
-      figura: fig-50.9
-      zonas:
-        - { id: bloques, rotulo: "La parte de la derecha", rect: [250, 0, 196, 220] }
-    emparejar:
-      - ["Referencia", "El patrón: fija la exactitud"]
-      - ["Divisor de realimentación", "Escala la salida para compararla"]
-      - ["Amplificador de error", "Amplifica la diferencia"]
-      - ["Elemento de paso", "Disipa la diferencia entre entrada y salida"]
-    exito: "La exactitud no puede ser mejor que la de la referencia."
-    pistas:
-      - { texto: "El que se calienta es el que está en el camino de la potencia." }
-    escalera:
-      - "Uno da el patrón, otro mide, otro compara, otro actúa."
-    solucion: "Referencia, patrón; divisor, escala; amplificador, diferencia; paso, disipa."
+      - { dV_z: 0.5, dV_T: 1 }
 
   - id: carga-polo
     tipo: pregunta
@@ -189,10 +192,11 @@ tarjetas:
     solucion: "Puede oscilar: esos LDO necesitan una ESR mínima."
 
   - id: explore-escalon
-    tipo: explorar
+    tipo: leer
     titulo: "La respuesta al escalón"
-    texto: "Así se recupera un lazo tras un escalón, según su margen de fase. Cambie el amortiguamiento y mire la sobreoscilación."
-    libro: [202, 213]
+    texto: "Así se recupera tras un escalón un lazo de ejemplo con margen escaso. Lea en la gráfica cuánto se pasa de la consigna, en porcentaje."
+    libro: [200, 202, 213]
+    fijar: { zeta: 0.2 }
     nota: "Modelo de ejemplo: un lazo de segundo orden."
     widget:
       tipo: grafica
@@ -200,11 +204,20 @@ tarjetas:
       y: { min: 0, max: 1.8, unidad: "", rotulo: "salida (relativa)" }
       curvas:
         - { expr: "1 - exp(-zeta*tx)*(cos(sqrt(1 - zeta^2)*tx) + zeta/sqrt(1 - zeta^2)*sin(sqrt(1 - zeta^2)*tx))", color: naranja, rotulo: "recuperación" }
-        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
-      lectura: { valor: OS, rotulo: "Sobreimpulso" }
-      mandos:
-        - { valor: zeta, lista: [0.2, 0.6, 0.9], nombres: ["margen escaso", "unos 60°", "holgado"], rotulo: "Margen de fase" }
-    requiere: { mover: [zeta] }
+        - { expr: "1 + 0*tx", color: tinta, rotulo: "consigna", discontinua: true }
+    leer:
+      objetivo: OS
+      unidad: "%"
+      tol: 0.06
+      rotulo: "Sobreimpulso"
+      errores:
+        - { expr: "pico", texto: "Ha leído el pico entero; el sobreimpulso es lo que pasa de la consigna." }
+    exito: "Más de la mitad del escalón: un hueco seguido de sobreoscilación indica margen escaso."
+    escalera:
+      - "Pico menos consigna, sobre la consigna."
+    solucion: "Un 53 % de sobreimpulso: el pico pasa de la consigna en algo más de la mitad."
+    comprobar:
+      - { OS: 52.7, pico: 152.7, tol: 0.01 }
 
   - id: ajuste-compensacion
     tipo: ajuste
@@ -234,56 +247,12 @@ tarjetas:
     comprobar:
       - { con: { zeta: 0.6 }, OS: 9.48, tol: 0.01 }
 
-  - id: arranque
-    tipo: pregunta
-    titulo: "Al encender"
-    texto: "Al encender, el lazo parte de cero y la salida puede pasarse. ¿Qué lo evita?"
-    libro: [206]
-    widget:
-      tipo: figura
-      figura: fig-50.9
-      zonas:
-        - { id: escalon, rotulo: "La gráfica de la izquierda", rect: [0, 0, 250, 220] }
-    opciones:
-      - texto: "Un arranque suave, cargando la referencia lentamente"
-        bien: true
-        porque: "La consigna sube despacio y el lazo la sigue sin pasarse."
-      - texto: "Más ganancia en el amplificador de error"
-        porque: "Más ganancia acerca la inestabilidad: no evita el sobrepaso."
-      - texto: "Un condensador de salida enorme"
-        porque: "Añade un polo y almacena energía; el remedio es una referencia que suba despacio."
-    escalera:
-      - "¿Qué pasa si la consigna aparece de golpe?"
-    solucion: "Un arranque suave: la referencia se carga lentamente."
-
-  - id: windup
-    tipo: pregunta
-    titulo: "Tras una sobrecarga"
-    texto: "Una sobrecarga impide alcanzar la consigna; al desaparecer, la salida tarda en recuperarse. ¿Por qué?"
-    libro: [207]
-    widget:
-      tipo: figura
-      figura: fig-50.9
-      zonas:
-        - { id: bloques, rotulo: "La parte de la derecha", rect: [250, 0, 196, 220] }
-    opciones:
-      - texto: "El amplificador de error se ha saturado: el windup del integrador"
-        bien: true
-        porque: "Salir de la saturación lleva tiempo, como en un integrador con windup."
-      - texto: "Porque el transformador se ha calentado"
-        porque: "No es térmico: es la saturación del amplificador de error."
-      - texto: "Porque la referencia se ha descargado"
-        porque: "La referencia no cambia; el que se satura es el amplificador."
-    escalera:
-      - "¿Qué hace el amplificador cuando no consigue corregir el error?"
-    solucion: "El amplificador de error se satura y tarda en recuperarse (windup)."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [180, 188, 192, 212]
+    libro: [180, 182, 183, 184, 185, 188, 192, 206, 207, 212]
     ideas:
-      - { titulo: "Un lazo.", texto: "Referencia, divisor, amplificador de error y elemento de paso." }
+      - { titulo: "Un lazo.", texto: "Referencia, el patrón; divisor, escala; amplificador de error, compara; elemento de paso, disipa." }
       - { titulo: "Ganancia.", texto: "La variación se divide por 1 + A·β: con 1 000, de 1 V a 1 mV." }
-      - { titulo: "Estabilidad.", texto: "Más ganancia acerca la inestabilidad; la carga no se controla." }
+      - { titulo: "Estabilidad.", texto: "Más ganancia acerca la inestabilidad; la carga no se controla. Arranque suave y cuidado con el windup." }
       - { titulo: "El escalón.", texto: "Su recuperación dice el margen de fase: 60° son un 9,5 % de sobreimpulso." }

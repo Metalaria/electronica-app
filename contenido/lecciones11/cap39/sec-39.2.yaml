@@ -4,6 +4,11 @@
 # - Sin modelo numérico: la sección es descriptiva; sus números (1,5 a 0,9 V, 4,2 a 3,4 V, 1,0 V por célula) salen de
 #   los bloques citados.
 # Paso práctico: «tocar» la curva peor para estimar la carga y la batería de arranque en la foto.
+# - 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): las curvas de la figura 40.5 en el modelo, ajustadas a sus
+#   datos (datos/39.5.json; error de 0,04 V en el ion-litio, 0,07 V en la LiFePO₄ y 0,001 V en la alcalina):
+#   A + B·q + C·e^(−q/D) + E·e^((q − 100)/F). Se descarga el ion-litio hasta dejar la meseta de 3,4 V (objetivo), se
+#   lee la alcalina a mitad de descarga, se tocan la curva más plana y la batería de arranque, y se calcula la tensión
+#   de un pack NiCd de seis células (ejemplo) al corregir la memoria. Quedan dos preguntas (culombios y el tionilo).
 leccion: cap39/sec-39.2
 
 libro:
@@ -22,22 +27,81 @@ libro:
   55: "Curvas de descarga de tres químicas y el criterio de elección"
   56: "batería de plomo-ácido sellada (VRLA) de 12 V"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    q: { sim: "q", nombre: "descarga", unidad: "%", valor: 10 }
+    n_c: { sim: "n", nombre: "células del pack (ejemplo)", unidad: "", valor: 6 }
+  calculos:
+    V_li: { expr: "3.92821 - 0.00468*q + 0.27961*exp(-q/4.16268) - 0.57205*exp((q - 100)/8.62476)", sim: "V_{Li-ion}", nombre: "tensión del ion-litio", unidad: V }
+    V_lf: { expr: "3.31825 - 0.00189*q + 0.23967*exp(-q/2.48584) - 0.52566*exp((q - 100)/4.74273)", sim: "V_{LiFePO₄}", nombre: "tensión de la LiFePO₄", unidad: V }
+    V_al: { expr: "1.50353 - 0.00423*q + 0.0825*exp(-q/3.21415) - 0.18133*exp((q - 100)/30.50579)", sim: "V_{alcalina}", nombre: "tensión de la alcalina", unidad: V }
+    V_pk: { expr: "1.0*n_c", sim: "V_{pack}", nombre: "tensión del pack a 1,0 V por célula", unidad: V }
 
 tarjetas:
   - id: explore-curvas
     tipo: explorar
     titulo: "La curva de descarga"
-    texto: "Es el dato que más afecta al diseño y menos se mira. Toque las tres curvas."
+    texto: "Es el dato que más afecta al diseño y menos se mira. Descargue el ion-litio hasta que salga de su meseta, por debajo de 3,4 V."
     libro: [31, 44, 45, 46, 55]
+    inicio: { q: 10 }
     widget:
-      tipo: figura
-      figura: fig-39.5
-      zonas:
-        - { id: liion, rotulo: "Curva de arriba", rect: [50, 28, 150, 35], texto: "Ion-litio: casi plana entre 4,2 y 3,4 V, con caída brusca al final." }
-        - { id: lfp, rotulo: "Curva del medio", rect: [50, 64, 150, 35], texto: "LiFePO₄: aún más plana." }
-        - { id: alcalina, rotulo: "Curva de abajo", rect: [50, 135, 150, 36], texto: "Alcalina: baja de forma continua de 1,5 a 0,9 V. El circuito debe funcionar en todo ese margen." }
-    requiere: { mover: [liion, alcalina] }
+      tipo: grafica
+      x: { id: x, min: 0, max: 100, unidad: "%", rotulo: "descarga" }
+      y: { min: 0.5, max: 4.6, unidad: V, rotulo: "tensión de celda" }
+      curvas:
+        - { expr: "3.92821 - 0.00468*x + 0.27961*exp(-x/4.16268) - 0.57205*exp((x - 100)/8.62476)", color: naranja, rotulo: "ion-litio" }
+        - { expr: "3.31825 - 0.00189*x + 0.23967*exp(-x/2.48584) - 0.52566*exp((x - 100)/4.74273)", color: verde, rotulo: "LiFePO₄" }
+        - { expr: "1.50353 - 0.00423*x + 0.0825*exp(-x/3.21415) - 0.18133*exp((x - 100)/30.50579)", color: azul, rotulo: "alcalina" }
+      marcas:
+        - { x: "q", y: "V_li", rotulo: "{{V_li}}" }
+      lectura: { valor: V_li, rotulo: "Ion-litio" }
+      datos:
+        - { valor: V_al, rotulo: "Alcalina: {{V_al}}" }
+      mandos:
+        - { valor: q, min: 0, max: 100, paso: 2, rotulo: "Descarga" }
+    objetivo:
+      condiciones:
+        - { valor: V_li, max: 3.4, rotulo: "Ion-litio: {{V_li}}" }
+      logrado: "Al {{q}} de descarga baja de 3,4 V, y desde ahí cae en picado: la rodilla, donde hay que cortar. La alcalina, en cambio, baja de forma continua."
+      pistas:
+        - { texto: "Todavía está en la meseta: siga descargando." }
+    escalera:
+      - "La meseta llega casi hasta el final."
+    solucion: "Hacia el 88 % de descarga."
+    comprobar:
+      - { con: { q: 88 }, V_li: 3.37, tol: 0.01 }
+      - { V_li: 3.92, tol: 0.01 }
+
+  - id: lea-alcalina
+    tipo: leer
+    titulo: "La alcalina dice su carga"
+    texto: "A mitad de descarga, lea la tensión de la alcalina en la gráfica."
+    libro: [31, 44]
+    fijar: { q: 50 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 100, unidad: "%", rotulo: "descarga" }
+      y: { min: 0.5, max: 4.6, unidad: V, rotulo: "tensión de celda" }
+      curvas:
+        - { expr: "3.92821 - 0.00468*x + 0.27961*exp(-x/4.16268) - 0.57205*exp((x - 100)/8.62476)", color: naranja, rotulo: "ion-litio" }
+        - { expr: "3.31825 - 0.00189*x + 0.23967*exp(-x/2.48584) - 0.52566*exp((x - 100)/4.74273)", color: verde, rotulo: "LiFePO₄" }
+        - { expr: "1.50353 - 0.00423*x + 0.0825*exp(-x/3.21415) - 0.18133*exp((x - 100)/30.50579)", color: azul, rotulo: "alcalina" }
+      marcas:
+        - { x: "q", y: "V_al", rotulo: "50 %" }
+      mandos: []
+    leer:
+      objetivo: V_al
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión de la alcalina"
+      errores:
+        - { expr: "V_li", texto: "Esa es la del ion-litio. La alcalina es la curva de abajo." }
+    exito: "Unos 1,26 V: entre 1,5 y 0,9 V la tensión dice cuánta carga queda. El circuito tiene que funcionar en todo ese margen."
+    escalera:
+      - "Mire la curva de abajo en el 50 %."
+    solucion: "Unos 1,26 V."
+    comprobar:
+      - { V_al: 1.257, V_li: 3.692, tol: 0.005 }
 
   - id: toque-plana
     tipo: tocar
@@ -83,29 +147,6 @@ tarjetas:
       - "¿Cuánto cambia la tensión del ion-litio en la mayor parte de la descarga?"
     solucion: "La meseta casi plana: la tensión no sigue a la carga; la corriente integrada, sí."
 
-  - id: empareje-criterio
-    tipo: pregunta
-    titulo: "El criterio de elección"
-    texto: "Empareje cada prioridad con la química que elige."
-    libro: [49]
-    widget:
-      tipo: figura
-      figura: fig-39.5
-      zonas:
-        - { id: tabla, rotulo: "Tabla de la derecha", rect: [260, 0, 187, 220] }
-    emparejar:
-      - ["Décadas sin cambiar", "Litio-tionilo"]
-      - ["Densidad de energía", "Litio-ion"]
-      - ["Vida y seguridad", "LiFePO₄"]
-      - ["Corriente de arranque", "Plomo"]
-      - ["Muchos ciclos rápidos", "Supercondensador"]
-    exito: "Y por coste y disponibilidad, la alcalina."
-    pistas:
-      - { texto: "El supercondensador no es una batería: gana en ciclos y potencia." }
-    escalera:
-      - "La de arranque es la pesada y robusta; la de décadas, la de los contadores."
-    solucion: "Décadas, tionilo; densidad, litio-ion; vida, LiFePO₄; arranque, plomo; ciclos, supercondensador."
-
   - id: tionilo-picos
     tipo: pregunta
     titulo: "Veinte años en un contador"
@@ -129,26 +170,28 @@ tarjetas:
     solucion: "Un condensador que cubra los picos de transmisión."
 
   - id: efecto-memoria
-    tipo: pregunta
+    tipo: simular
     titulo: "El efecto memoria"
-    texto: "Una NiCd descargada siempre hasta el mismo punto muestra un escalón de tensión ahí. ¿Cómo se corrige?"
+    texto: "Una NiCd descargada siempre hasta el mismo punto se corrige con una descarga completa, hasta 1,0 V por célula. Valores de ejemplo: ¿hasta qué tensión se descarga un pack de seis células?"
     libro: [38]
     widget:
       tipo: figura
       figura: fig-39.5
       zonas:
         - { id: alcalina, rotulo: "Curva de abajo", rect: [50, 135, 150, 36] }
-    opciones:
-      - texto: "Con uno o dos ciclos de descarga completa hasta 1,0 V por célula"
-        bien: true
-        porque: "Es reversible así, y nunca descargando a cero: invertir una célula de un pack la daña."
-      - texto: "Descargándola del todo, hasta cero"
-        porque: "A cero no: invertir una célula de un pack la daña. Se para en 1,0 V por célula."
-      - texto: "No se corrige: la célula queda dañada"
-        porque: "Es reversible con uno o dos ciclos de descarga completa."
+    simular:
+      objetivo: V_pk
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión del pack"
+      errores:
+        - { expr: "0", texto: "A cero no: invertir una célula de un pack la daña. Se para en 1,0 V por célula." }
+    exito: "6 V: uno o dos ciclos así, y nunca a cero. La NiCd ha desaparecido del consumo por el cadmio."
     escalera:
-      - "Es reversible, pero hay un límite que no se debe pasar."
-    solucion: "Uno o dos ciclos de descarga completa, hasta 1,0 V por célula y nunca a cero."
+      - "1,0 V por cada célula."
+    solucion: "6 × 1,0 = 6 V."
+    comprobar:
+      - { V_pk: 6 }
 
   - id: toque-arranque
     tipo: tocar
@@ -174,78 +217,12 @@ tarjetas:
       - "Busque la más pesada de las cuatro."
     solucion: "La caja negra: plomo-ácido sellada (VRLA) de 12 V."
 
-  - id: zinc-aire
-    tipo: pregunta
-    titulo: "La pila del audífono"
-    texto: "La zinc-aire tiene la mayor densidad de todas. ¿Qué la distingue al usarla?"
-    libro: [34]
-    widget:
-      tipo: figura
-      figura: fig-39.6
-      zonas:
-        - { id: aa, rotulo: "Pila mediana, a la izquierda", rect: [140, 165, 125, 330] }
-    opciones:
-      - texto: "Empieza a agotarse en cuanto se abre, se use o no"
-        bien: true
-        porque: "Así es: abrirla la pone en marcha, esté o no en uso."
-      - texto: "Que se puede recargar muchas veces"
-        porque: "No es una secundaria: es una primaria de densidad muy alta."
-      - texto: "Que dura décadas guardada"
-        porque: "Esa es la litio-tionilo; la zinc-aire se agota en cuanto se abre."
-    escalera:
-      - "Su nombre dice qué necesita para funcionar."
-    solucion: "Se agota en cuanto se abre, esté o no en uso."
-
-  - id: lfp-cuando
-    tipo: pregunta
-    titulo: "Cuándo LiFePO₄"
-    texto: "La LiFePO₄ tiene menos densidad que el ion-litio. ¿Cuándo es la elección?"
-    libro: [40]
-    widget:
-      tipo: figura
-      figura: fig-39.5
-      zonas:
-        - { id: lfp, rotulo: "Curva del medio", rect: [50, 64, 150, 35] }
-    opciones:
-      - texto: "Cuando la seguridad y la longevidad importan más que el peso"
-        bien: true
-        porque: "Da miles de ciclos y no entra en fuga térmica con facilidad."
-      - texto: "Cuando hay que estimar la carga por tensión"
-        porque: "Al revés: su meseta, aún más plana, lo hace más difícil."
-      - texto: "Cuando el peso es lo que más importa"
-        porque: "Entonces gana el ion-litio, de más densidad de energía."
-    escalera:
-      - "¿Qué gana a cambio de su menor densidad?"
-    solucion: "Cuando la seguridad y la vida importan más que el peso."
-
-  - id: banco-rodilla
-    tipo: pregunta
-    titulo: "Una tarde de medida"
-    texto: "Se descarga una celda a corriente constante registrando la tensión. ¿Qué dice el punto de rodilla de la curva?"
-    libro: [52]
-    widget:
-      tipo: figura
-      figura: fig-39.5
-      zonas:
-        - { id: liion, rotulo: "Curva de arriba", rect: [50, 28, 150, 35] }
-    opciones:
-      - texto: "Dónde hay que cortar la descarga"
-        bien: true
-        porque: "Pasada la rodilla la tensión cae en picado: ahí se corta."
-      - texto: "La capacidad nominal del fabricante"
-        porque: "La curva da la capacidad real, que es lo que interesa; la rodilla marca el corte."
-      - texto: "La tensión nominal"
-        porque: "La nominal es la de la meseta; la rodilla está al final."
-    escalera:
-      - "Mire qué hace la tensión justo después de la rodilla."
-    solucion: "El punto donde hay que cortar la descarga."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [44, 45, 47, 49]
+    libro: [34, 40, 44, 45, 47, 49, 52]
     ideas:
       - { titulo: "Primarias y secundarias.", texto: "La química fija tensión, densidad, vida y comportamiento." }
       - { titulo: "La curva decide.", texto: "La alcalina cae de 1,5 a 0,9 V; el litio es casi plano hasta el final." }
       - { titulo: "Culombios.", texto: "En litio la carga se estima integrando la corriente, no por tensión." }
-      - { titulo: "Sin química mejor.", texto: "Cada prioridad elige la suya: décadas, densidad, vida, arranque o ciclos." }
+      - { titulo: "Sin química mejor.", texto: "Décadas, tionilo; densidad, ion-litio; vida y seguridad, LiFePO₄; arranque, plomo. La zinc-aire se gasta en cuanto se abre." }

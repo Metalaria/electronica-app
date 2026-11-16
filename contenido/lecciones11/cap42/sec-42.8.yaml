@@ -4,6 +4,11 @@
 # 1 GΩ con 1 y 5 pF parásitos, son ejemplos: la sección no da esos valores. Se dibujan con los esquemas rlc-serie (su
 # impedancia, z_amp: ESR, ESL y C en serie) y filtro-rc (no hay esquema de placa). Sin ecuación propia: la fórmula
 # cita la de la resonancia (cap24#154).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la autorresonancia se baja de 5 MHz con la inductancia del
+# montaje (objetivo); la de 1,3 nH se marca en el mínimo de |Z|; la de dos vías y la inductancia de la estimación manual
+# se escriben; la capacidad parásita sobre 1 GΩ se sube hasta que la señal casi desaparezca (objetivo). Quedan dos
+# preguntas de opciones (lo que le falta al esquema del reductor y la radiación); los parásitos emparejados pasan al
+# resumen.
 leccion: cap42/sec-42.8
 
 libro:
@@ -45,9 +50,10 @@ tarjetas:
   - id: explore-desacoplo
     tipo: explorar
     titulo: "El condensador y sus vías"
-    texto: "Un condensador de desacoplo de 100 nF (ejemplo) con la inductancia de su montaje. Cambie la inductancia: por encima de su resonancia, se comporta como una bobina."
+    texto: "Un condensador de desacoplo de 100 nF (ejemplo) con la inductancia de su montaje. Súbala hasta que su autorresonancia baje a unos 3,6 MHz."
     libro: [224, 234]
     fijar: { C_d: 100e-9 }
+    inicio: { L_v: 1.3e-9 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -62,94 +68,112 @@ tarjetas:
           - { expr: "1/(2*pi*nu*C_d)", color: tinta, rotulo: "condensador ideal", discontinua: true }
       mandos:
         - { valor: L_v, lista: [1.3e-9, 2.6e-9, 20e-9] }
+    objetivo:
+      condiciones:
+        - { valor: f_0, max: 4000000, rotulo: "Autorresonancia: {{f_0}}" }
+      logrado: "Con {{L_v}}, {{f_0}}: por encima, el condensador se comporta como una bobina y deja de desacoplar."
+      pistas:
+        - { texto: "Todavía resuena alto: más inductancia de montaje." }
+    escalera:
+      - "f₀ = 1/(2π√(LC)): más L, menos f₀."
+    solucion: "Con 20 nH: unos 3,6 MHz."
+    comprobar:
+      - { con: { L_v: 20e-9 }, f_0: 3559000, tol: 0.003 }
 
   - id: prediga-ideal
-    tipo: predecir
-    titulo: "Sin modelar la vía"
-    texto: "Si se simula el desacoplo sin la inductancia de las vías, ¿hasta dónde parece que funciona el condensador?"
+    tipo: marcar
+    titulo: "Donde deja de ser condensador"
+    texto: "Con una vía, 1,3 nH. Marque en la curva naranja la autorresonancia: el mínimo de impedancia, donde el real se separa del ideal."
     libro: [234]
+    fijar: { L_v: 1.3e-9, C_d: 100e-9 }
     widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_e, l: L_v, c: C_d }
-      lectura: { valor: f_0, rotulo: "Autorresonancia" }
-      mide: { z_amp: Z_f }
-      ocultar: true
-    opciones:
-      - texto: "Parece perfecto hasta gigahercios"
-        bien: true
-        porque: "La reactancia del condensador ideal baja sin fin. Con la vía, a partir de su resonancia la impedancia vuelve a subir."
-      - texto: "Hasta su frecuencia de autorresonancia"
-        porque: "Esa es la placa real. Sin la inductancia en el esquema, la simulación no tiene autorresonancia."
-      - texto: "Solo en continua"
-        porque: "Un condensador ideal desacopla mejor cuanto más sube la frecuencia: ese es el engaño."
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "sqrt(R_e^2 + (2*pi*nu*L_v - 1/(2*pi*nu*C_d))^2)", color: naranja, rotulo: "|Z| real" }
+        - { expr: "1/(2*pi*nu*C_d)", color: tinta, rotulo: "condensador ideal", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_0"
+      tol: 0.015
+      inicio: { x: 300000, y: 1 }
+      rotulo: "La autorresonancia"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 13960000 }, texto: "Más a la izquierda: ahí ya sube, es la bobina la que manda." }
+      - { texto: "Más a la derecha: ahí todavía baja, como el condensador ideal." }
+    exito: "Unos 14 MHz. Sin la vía en el esquema, la curva ideal seguiría bajando: el condensador parecería perfecto hasta gigahercios."
     escalera:
-      - "¿Qué hace la reactancia de un condensador ideal al subir la frecuencia?"
-    solucion: "Hasta gigahercios: el engaño del esquema ideal."
+      - "Busque el fondo de la curva naranja."
+    solucion: "En unos 14 MHz."
+    comprobar:
+      - { f_0: 13960000, tol: 0.003 }
 
   - id: formula-autorresonancia
-    tipo: formula
-    titulo: "Dónde deja de ser condensador"
-    texto: "La inductancia del montaje resuena con la capacidad. Cambie la inductancia y mire la sustitución."
-    libro: ["cap24#154", 234]
+    tipo: leer
+    titulo: "Con dos vías"
+    texto: "La inductancia del montaje resuena con la capacidad. Con dos vías, 2,6 nH, escriba la autorresonancia del condensador de 100 nF."
+    libro: ["cap24#154", 224, 234]
     ec: "cap24#154"
-    sustitucion: "1 / (2π · √({{L_v}} · {{C_d}})) = {{f_0}}"
+    fijar: { L_v: 2.6e-9, C_d: 100e-9 }
     widget:
       tipo: circuito
       esquema: rlc-serie
       piezas: { fuente: V_p, f: f_r, r: R_e, l: L_v, c: C_d }
-      lectura: { valor: f_0, rotulo: "Autorresonancia" }
       mide: { z_amp: Z_f }
-      mandos:
-        - { valor: L_v, lista: [1.3e-9, 2.6e-9, 20e-9] }
+      grafica:
+        x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.001, max: 100, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_e^2 + (2*pi*nu*L_v - 1/(2*pi*nu*C_d))^2)", color: naranja, rotulo: "|Z| real", mide: z_amp }
+          - { expr: "1/(2*pi*nu*C_d)", color: tinta, rotulo: "condensador ideal", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: f_0
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Autorresonancia"
+      errores:
+        - { expr: "1/sqrt(L_v*C_d)", texto: "Eso es ω₀, en rad/s: divida por 2π." }
+    exito: "Unos 9,9 MHz: doblar la inductancia baja la resonancia √2 veces."
+    escalera:
+      - "f₀ = 1/(2π√(LC))."
+    solucion: "1/(2π√(2,6 nH · 100 nF)) ≈ 9,9 MHz."
+    comprobar:
+      - { f_0: 9870000, tol: 0.005 }
 
   - id: estime-l
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Contar centímetros y vías"
-    texto: "La estimación manual: dos vías de placa de 1,6 mm y 2 cm de pista hasta el condensador. Estime la inductancia que añadir al esquema."
+    texto: "La estimación manual: dos vías de placa de 1,6 mm y 2 cm de pista hasta el condensador. Escriba la inductancia que hay que añadir al esquema."
     libro: [224, 229]
-    estimar:
-      objetivo: "L_e"
+    widget:
+      tipo: grafica
+      x: { id: cm, min: 0, max: 5, unidad: "cm", rotulo: "pista" }
+      y: { min: 0, max: 60e-9, unidad: H, rotulo: "inductancia" }
+      curvas:
+        - { expr: "n_v*1.3e-9 + cm*10e-9", color: azul, rotulo: "dos vías + pista" }
+      mandos: []
+    leer:
+      objetivo: L_e
       unidad: H
-      min: 0
-      max: 50e-9
-      paso: 0.1e-9
-      inicio: 5e-9
-      tol: 0.05
+      tol: 0.02
       rotulo: "Inductancia parásita"
+      errores:
+        - { expr: "n_v*1.3e-9", texto: "Solo ha contado las vías. Cada centímetro de pista son unos 10 nH." }
     exito: "2 × 1,3 + 2 × 10 = 22,6 nH: la pista pesa mucho más que las vías."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 23.7e-9 }, texto: "Demasiado: unos 10 nH por centímetro y 1,3 nH por vía." }
-      - { texto: "Poco: cada centímetro de pista son unos 10 nH." }
     escalera:
       - "Pista: 10 nH/cm. Vía: 1,3 nH."
     solucion: "22,6 nH."
     comprobar:
       - { L_e: 22.6e-9 }
 
-  - id: parasitos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Qué parásitos importan"
-    texto: "Una cada parásito de la placa con su efecto."
-    libro: [223, 224, 225, 226]
-    emparejar:
-      - ["Resistencia de las pistas", "Caídas en alimentación de corriente alta"]
-      - ["Inductancia", "La dominante en conmutación"]
-      - ["Capacidad a planos y entre pistas", "Carga las señales y produce diafonía"]
-      - ["Acoplamiento mutuo", "Entre pistas paralelas"]
-    exito: "La estimación manual de los pocos críticos da casi todo el beneficio."
-    pistas:
-      - { texto: "En una fuente conmutada manda la inductancia." }
-    escalera:
-      - "¿Cuál depende de la corriente que circula en continua?"
-    solucion: "Resistencia: caídas; inductancia: conmutación; capacidad: diafonía; mutuo: pistas paralelas."
-
   - id: alta-impedancia
     tipo: sorpresa
     titulo: "Unos picofaradios sobre gigaohmios"
-    texto: "Una señal de 1 kHz desde una fuente de 1 GΩ (ejemplo). Añada capacidad parásita: con 1 pF el corte cae a 159 Hz y la señal casi desaparece."
+    texto: "Una señal de 1 kHz desde una fuente de 1 GΩ (ejemplo). Añada capacidad parásita hasta que llegue menos de una quinta parte de la señal."
     libro: [236]
     inicio: { C_g: 1e-15 }
     widget:
@@ -162,8 +186,17 @@ tarjetas:
       mide: { vc_amp: A_g }
       mandos:
         - { valor: C_g, lista: [1e-15, 1e-12, 5e-12], rotulo: "Capacidad parásita" }
+    objetivo:
+      condiciones:
+        - { valor: A_g, max: 0.2, rotulo: "Llega: {{A_g}}" }
+      logrado: "Con {{C_g}}, el corte cae a {{f_cg}} y llegan {{A_g}}: unos picofaradios sobre gigaohmios cambian la respuesta por completo."
+      pistas:
+        - { texto: "Todavía llega casi todo: más capacidad parásita." }
+    escalera:
+      - "f_{c} = 1/(2π · 1 GΩ · C)."
+    solucion: "Con 1 pF: corte en 159 Hz y 0,157 V."
     comprobar:
-      - { con: { C_g: 1e-12 }, f_cg: 159 }
+      - { con: { C_g: 1e-12 }, f_cg: 159, A_g: 0.157, tol: 0.01 }
 
   - id: por-que-limpio
     tipo: porque
@@ -214,9 +247,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [220, 224, 229, 236]
+    libro: [220, 223, 224, 225, 226, 229, 236]
     ideas:
       - { titulo: "La placa, no el esquema.", texto: "Post-layout: el netlist con los parásitos del trazado." }
-      - { titulo: "Las cifras.", texto: "Unos 10 nH por centímetro de pista y 1,3 nH por vía." }
+      - { titulo: "Los parásitos.", texto: "Resistencia (caídas), inductancia (10 nH/cm y 1,3 nH por vía), capacidad (diafonía) y acoplamiento mutuo." }
       - { titulo: "Donde cambia.", texto: "Conmutación, desacoplo, circuitos rápidos, alta impedancia y RF." }
       - { titulo: "A mano.", texto: "Contar centímetros y vías da casi todo el beneficio en proyectos pequeños." }

@@ -7,6 +7,10 @@
 #   baja a 12 V: la velocidad cae despacio hacia 240 rad/s).
 # Pasos prácticos: «dibujar» la recta de 24 V y «ajuste» de la tensión (el PWM del puente) para 2 000 rpm con
 # 0,25 N·m: 13,0 V, el 54,0 % (bloque 51).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se carga el eje hasta 5 A (objetivo), se lee la velocidad con
+# 0,1 N·m, se calculan la corriente de bloqueo, la de la rampa y la del frenado, se baja la tensión de arranque hasta
+# un pico de 20 A como mucho (objetivo; el pico es proporcional a V), se dibuja la recta y se ajustan las 2 000 rpm.
+# Queda una pregunta (la potencia máxima); la excitación en serie y el lazo de corriente pasan al resumen.
 leccion: cap56/sec-56.3
 
 libro:
@@ -60,8 +64,9 @@ tarjetas:
   - id: explore-recta
     tipo: explorar
     titulo: "La recta par-velocidad"
-    texto: "Cargue el eje y baje la tensión. La velocidad cae en recta con el par; bajar la tensión desplaza la recta sin cambiar su pendiente."
-    libro: [42, 43]
+    texto: "Con 24 V, la velocidad cae en recta con el par que pide la carga. Cargue el eje hasta que el motor tome 5 A."
+    libro: [39, 42, 43]
+    inicio: { T_l: 0.1, V_a: 24 }
     widget:
       tipo: circuito
       esquema: motor-cc
@@ -75,16 +80,27 @@ tarjetas:
       mandos:
         - { valor: T_l, min: 0, max: 1.2, paso: 0.05, rotulo: "Par de la carga" }
         - { valor: V_a, lista: [6, 12, 18, 24], rotulo: "Tensión del inducido" }
-    requiere: { mover: [T_l, V_a] }
+    objetivo:
+      condiciones:
+        - { valor: V_a, min: 24, rotulo: "Tensión: {{V_a}}" }
+        - { valor: I_m, objetivo: 5, tol: 0.01, rotulo: "Corriente: {{I_m}}" }
+      logrado: "Con {{T_l}}, {{I_m}} y {{n_m}}: T = k·I, y cada newton-metro quita 1 910 rpm. Bajar la tensión desplaza la recta."
+      pistas:
+        - { cuando: { valor: V_a, menor: 24 }, texto: "Deje la tensión en 24 V." }
+        - { cuando: { valor: I_m, mayor: 5 }, texto: "Demasiado par: aligere el eje." }
+        - { texto: "Falta par: cargue más el eje." }
+    escalera:
+      - "I = T/k: 5 A con k = 0,05."
+    solucion: "0,25 N·m: 4 106 rpm."
+    comprobar:
+      - { con: { T_l: 0.25, V_a: 24 }, I_m: 5, n_m: 4106, eta_m: 89.6, tol: 0.003 }
 
   - id: formula-recta
-    tipo: formula
+    tipo: leer
     titulo: "La ecuación de la recta"
-    texto: "En régimen, el par que pide la carga fija la corriente, y la caída en R quita velocidad."
-    libro: [41, 42]
+    texto: "ω = V/k − R/k²·T: el par fija la corriente y la caída en R quita velocidad. Con 0,1 N·m, lea la velocidad en la gráfica."
+    libro: [41, 42, 43]
     fijar: { V_a: 24, T_l: 0.1 }
-    ec: 41
-    sustitucion: "{{V_a}} / {{k_m}} − {{R_a}} / {{k_m}}² · {{T_l}} = {{w_m}}"
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 2.5, unidad: "N·m", rotulo: "T" }
@@ -92,32 +108,42 @@ tarjetas:
       curvas:
         - { expr: "max(0, (V_a/k_m - R_a/k_m^2*tx)*60/(2*pi))", color: naranja, rotulo: "recta" }
       marcas:
-        - { x: "T_l", y: "n_m", rotulo: "{{n_m}}" }
-      lectura: { valor: n_m, rotulo: "Velocidad" }
+        - { x: "T_l", y: "n_m", rotulo: "0,1 N·m" }
+      mandos: []
+    leer:
+      objetivo: n_m
+      unidad: rpm
+      tol: 0.02
+      rotulo: "Velocidad"
+      errores:
+        - { expr: "w_m", texto: "Eso parece la velocidad en rad/s. La gráfica está en revoluciones por minuto." }
+    exito: "4 393 rpm, con 2 A y un 95,8 % de rendimiento: el rendimiento es E/V."
+    escalera:
+      - "Mire la marca."
+    solucion: "Unos 4 393 rpm."
     comprobar:
       - { n_m: 4393, I_m: 2, eta_m: 95.8 }
-      - { con: { T_l: 0.25 }, n_m: 4106 }
       - { con: { T_l: 0 }, n_m: 4584 }
 
   - id: prediga-arranque
-    tipo: predecir
+    tipo: simular
     titulo: "Conectado a pelo"
     texto: "El motor de 24 V, parado, se conecta directamente a la fuente. ¿Qué corriente pide?"
-    libro: [39, 42, 48]
+    libro: [39, 42, 47, 48]
     fijar: { V_a: 24 }
     widget:
       tipo: figura
       figura: fig-56.4
       zonas:
         - { id: arranques, rotulo: "Las dos gráficas", rect: [0, 0, 325, 130] }
-    opciones:
-      - texto: "Unos 48 A: parado, E = 0 y solo la limita R"
-        bien: true
-        porque: "24 V entre 0,5 Ω: veinticuatro veces la de 2 A. La simulación da 47,0 A de pico."
-      - texto: "La de trabajo, unos 2 A"
-        porque: "Esa es con el rotor girando, cuando E casi iguala a V."
-      - texto: "Nada hasta que gire"
-        porque: "Al revés: parado no hay fuerza electromotriz que se oponga."
+    simular:
+      objetivo: I_b
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de arranque"
+      errores:
+        - { expr: "2", texto: "Esa es la de trabajo, con el rotor girando y E casi igual a V. Parado, E = 0." }
+    exito: "48 A: parado, E = 0 y solo la limita R. Veinticuatro veces la de 2 A, con 2,4 N·m de par de bloqueo."
     escalera:
       - "Con el rotor parado, ¿cuánto vale E = k·ω?"
     solucion: "24/0,5 = 48 A."
@@ -127,7 +153,7 @@ tarjetas:
   - id: explore-arranque
     tipo: explorar
     titulo: "El arranque en directo"
-    texto: "Parado, E = 0: la corriente sube casi a la de bloqueo antes de que el rotor se mueva, y cae mientras acelera."
+    texto: "En directo, la corriente sube casi a la de bloqueo antes de que el rotor se mueva. Baje la tensión de arranque hasta que el pico no pase de 20 A."
     libro: [47, 48, 49]
     inicio: { V_a: 24 }
     widget:
@@ -144,8 +170,18 @@ tarjetas:
           - { expr: "(w0_m + w0_m*(s2_m*exp(s1_m*t) - s1_m*exp(s2_m*t))/(s1_m - s2_m))/12", color: azul, rotulo: "ω/12", discontinua: true }
       mandos:
         - { valor: V_a, min: 6, max: 24, paso: 1, rotulo: "Tensión del inducido" }
+    objetivo:
+      condiciones:
+        - { valor: Ip_m, max: 20, rotulo: "Pico: {{Ip_m}}" }
+      logrado: "Con {{V_a}}, el pico baja a {{Ip_m}}: es proporcional a la tensión. Por eso se arranca con una rampa de tensión o con un lazo de corriente."
+      pistas:
+        - { texto: "El pico sigue alto: baje la tensión." }
+    escalera:
+      - "El pico es proporcional a V: 46,96 A con 24 V."
+    solucion: "10 V o menos: unos 19,6 A."
     comprobar:
       - { Ip_m: 46.96, tol: 0.002 }
+      - { con: { V_a: 10 }, Ip_m: 19.57, tol: 0.005 }
 
   - id: dibuje-recta
     tipo: dibujar
@@ -222,7 +258,7 @@ tarjetas:
       - { con: { V_a: 13 }, n_m: 2005, ciclo: 54.2, tol: 0.005 }
 
   - id: estime-rampa
-    tipo: pregunta
+    tipo: simular
     titulo: "Arrancar con una rampa"
     texto: "Rampa de 0 a 24 V en 0,2 s: el rotor acelera a 2 400 rad/s². Con J = 10⁻⁴ kg·m², ¿qué corriente pide?"
     libro: [47]
@@ -231,19 +267,14 @@ tarjetas:
       figura: fig-56.4
       zonas:
         - { id: arranques, rotulo: "Las dos gráficas", rect: [0, 0, 325, 130] }
-    estimar:
-      objetivo: "I_r"
+    simular:
+      objetivo: I_r
       unidad: A
-      min: 0
-      max: 48
-      paso: 0.2
-      inicio: 30
-      tol: 0.04
+      tol: 0.03
       rotulo: "Corriente en la rampa"
+      errores:
+        - { expr: "J_r*a_r", texto: "Ese es el par, J·α = 0,24 N·m. La corriente es T/k." }
     exito: "4,8 A durante toda la rampa, frente a 47 A conectando a pelo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 5 }, texto: "Se ha pasado: el par es J·α = 0,24 N·m, y I = T/k." }
-      - { texto: "Se ha quedado corto: 0,24 N·m entre 0,05 V·s/rad." }
     escalera:
       - "Par para acelerar: J·α; corriente: T/k."
     solucion: "J·α = 0,24 N·m; 0,24/0,05 = 4,8 A."
@@ -251,62 +282,39 @@ tarjetas:
       - { I_r: 4.8 }
 
   - id: frenado
-    tipo: pregunta
+    tipo: simular
     titulo: "Bajar la tensión de golpe"
-    texto: "El motor gira en vacío a 480 rad/s (E = 24 V) y el puente baja de golpe a 12 V. ¿Qué pasa en ese instante?"
+    texto: "El motor gira en vacío a 480 rad/s, con E = 24 V, y el puente baja de golpe a 12 V. ¿Qué corriente circula en ese instante?"
     libro: [53]
     fijar: { V_f: 12, w_0: 480 }
     widget:
-      tipo: circuito
-      esquema: motor-cc
-      piezas: { fuente: V_f, r: R_a, l: L_r, k: k_m, j: J_r, w0: w_0 }
-      grafica:
-        x: { id: t, min: 0, max: 0.1, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 500, unidad: "rad/s", rotulo: "ω" }
-        curvas:
-          - { expr: "w_0 + dw_f*(1 + (s2_m*exp(s1_m*t) - s1_m*exp(s2_m*t))/(s1_m - s2_m))", color: azul, rotulo: "ω", mide: velocidad }
-      mandos: []
-    opciones:
-      - texto: "La corriente se invierte, −24 A, y frena con −1,2 N·m devolviendo energía"
-        bien: true
-        porque: "Con V < E funciona como generador: por eso los accionamientos llevan resistencia de frenado."
-      - texto: "La corriente cae a cero y el motor sigue girando libre"
-        porque: "E = 24 V frente a 12 V: la diferencia hace circular corriente al revés."
-      - texto: "La velocidad baja a la mitad al instante"
-        porque: "La inercia no lo permite: la velocidad baja con el par de frenado."
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.1, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 500, unidad: "rad/s", rotulo: "ω" }
+      curvas:
+        - { expr: "w_0 + dw_f*(1 + (s2_m*exp(s1_m*t) - s1_m*exp(s2_m*t))/(s1_m - s2_m))", color: azul, rotulo: "ω" }
+      lectura: { valor: I_fr, rotulo: "Corriente" }
+      ocultar: true
+    simular:
+      objetivo: I_fr
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente al bajar a 12 V"
+      errores:
+        - { expr: "V_f/R_a", texto: "Le falta la fuerza electromotriz: I = (V − E)/R, y E = 24 V supera a los 12 V." }
+    exito: "−24 A: la corriente se invierte y frena con −1,2 N·m devolviendo energía. La velocidad baja despacio hacia 240 rad/s."
     escalera:
       - "I = (V − E)/R."
-    solucion: "(12 − 24)/0,5 = −24 A: frena con −1,2 N·m."
+    solucion: "(12 − 24)/0,5 = −24 A."
     comprobar:
       - { I_fr: -24, T_fr: -1.2, wf_f: 240 }
-
-  - id: tipos
-    tipo: pregunta
-    titulo: "Excitación y control"
-    texto: "Empareje cada variante con su comportamiento."
-    libro: [36, 52, 54]
-    widget:
-      tipo: figura
-      figura: fig-56.3
-      zonas:
-        - { id: rectas, rotulo: "Las rectas", rect: [160, 0, 165, 147] }
-    emparejar:
-      - ["Excitación en serie", "Par de arranque enorme; se dispara en vacío"]
-      - ["Imanes o derivación", "La velocidad varía poco con la carga"]
-      - ["Lazo interno de corriente", "Limita el par y protege el puente"]
-    exito: "El motor serie alimentado en alterna es el universal de taladros y aspiradoras."
-    pistas:
-      - { texto: "En serie, el par crece con el cuadrado de la corriente." }
-    escalera:
-      - "¿Cuál se dispara sin carga?"
-    solucion: "Serie: arranque enorme. Imanes: velocidad casi fija. Lazo de corriente: limita el par."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [41, 42, 47, 51]
+    libro: [41, 42, 47, 51, 52, 54, 36]
     ideas:
       - { titulo: "La recta.", texto: "ω = V/k − R/k²·T: vacío en V/k, bloqueo en k·V/R." }
       - { titulo: "Par y corriente.", texto: "T = k·I: limitar la corriente es limitar el par." }
       - { titulo: "Arranque.", texto: "Parado solo frena R: rampa de tensión o lazo de corriente." }
-      - { titulo: "Control.", texto: "Bajar V desplaza la recta: 13,0 V para 2 000 rpm con 0,25 N·m." }
+      - { titulo: "Control.", texto: "Bajar V desplaza la recta; lazo interno de corriente y externo de velocidad. En serie: arranque enorme, se dispara en vacío." }

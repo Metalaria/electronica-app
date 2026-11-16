@@ -7,6 +7,10 @@
 # máximo, la entrada entera), R₂ abierta (la salida se queda en la referencia, 2,5 V) o la referencia muerta (0 V).
 # Las tensiones de cada avería las da el modelo y las comprueba ngspice; no las da el libro. La avería sale al azar
 # (`eleccion: azar`, motor12e): la sonda «Salida» ya separa las tres.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): antes de la avería se cierra el lazo eligiendo R₂ para que la
+# salida dé 30 V (objetivo; las R₂ de 5,1 y 22 kΩ del mando son de ejemplo), y las pruebas de esfuerzo se tocan desde
+# el síntoma que cada una busca. Quedan dos preguntas (el instrumento mejor y los LED); el orden del montaje, los
+# ajustes y la documentación, al resumen.
 leccion: cap50/sec-50.11
 
 libro:
@@ -22,6 +26,7 @@ libro:
   356: "Escala de corriente, con una carga conocida."
   357: "Límite máximo de tensión y de corriente"
   358: "Calibrar con el mismo multímetro que se va a usar después no aporta exactitud, solo coherencia."
+  360: "las que separan un montaje que funciona de uno en el que se puede confiar"
   361: "Cortocircuito prolongado con la tensión al máximo y la corriente al máximo"
   362: "comprobando que no hay oscilación en la transición entre modos"
   363: "Carga capacitiva, que es lo que más veces hace oscilar una fuente"
@@ -49,47 +54,40 @@ modelo:
 tarjetas:
   - id: explore-montaje
     tipo: explorar
-    titulo: "Un orden que salva el paso"
-    texto: "La puesta a punto tiene un orden que evita destruir el elemento de paso. Toque el montaje, los ajustes y las pruebas."
-    libro: [345, 371]
+    titulo: "Cerrar el lazo"
+    texto: "Paso 3 del montaje: se cierra el lazo de tensión con la referencia de 2,5 V y R₁ de 110 kΩ. Elija R₂ para que la salida dé 30 V."
+    libro: [345, 349, "cap50#279", "cap50#455"]
+    inicio: { R_2: 22000 }
+    fijar: { R_1: 110000, V_ref: 2.5 }
     widget:
-      tipo: figura
-      figura: fig-50.16
-      zonas:
-        - { id: montaje, rotulo: "La lista numerada", rect: [3, 25, 210, 150], texto: "Seis bloques, de la red con lámpara serie a la caja final." }
-        - { id: ajustes, rotulo: "Recuadro naranja", rect: [5, 193, 207, 62], texto: "Los ajustes, en orden, contra un instrumento mejor." }
-        - { id: pruebas, rotulo: "Los cuatro recuadros de la derecha", rect: [228, 25, 222, 195], texto: "Las pruebas de esfuerzo: las que separan un montaje que funciona de uno fiable." }
-    requiere: { mover: [montaje, pruebas] }
-
-  - id: ordene-montaje
-    tipo: pregunta
-    titulo: "El montaje por bloques"
-    texto: "Ordene el montaje de la fuente."
-    libro: [347, 348, 349, 350, 351, 352]
-    widget:
-      tipo: figura
-      figura: fig-50.16
-      zonas:
-        - { id: pruebas, rotulo: "Los cuatro recuadros de la derecha", rect: [228, 25, 222, 195] }
-    ordenar:
-      - "La etapa de red, con lámpara serie y sin carga"
-      - "El paso con el lazo abierto y un mando fijo"
-      - "Cerrar el lazo de tensión"
-      - "El lazo de corriente, con la salida en corto"
-      - "La medida y la indicación"
-      - "La caja y el montaje final"
-    exito: "Cada bloque se prueba antes de añadir el siguiente."
-    pistas:
-      - { texto: "El lazo de corriente se prueba cuando el de tensión ya regula." }
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_ref, r1: R_1, r2: R_2, carga: R_L }
+      lectura: { valor: V_o, rotulo: "V_{out}" }
+      corriente: I_o
+      mide: { vout: V_o, iout: I_o }
+      mandos:
+        - { valor: R_2, lista: [5100, 10000, 22000], rotulo: "R₂" }
+    objetivo:
+      condiciones:
+        - { valor: V_o, objetivo: 30, tol: 0.01, rotulo: "Salida: {{V_o}}" }
+      logrado: "Con R₂ de {{R_2}}, la salida es la referencia por (1 + R₁/R₂): {{V_o}}. El lazo, cerrado con una carga fija y midiendo."
+      pistas:
+        - { cuando: { valor: V_o, mayor: 31 }, texto: "Se pasa, hasta donde da la entrada: R₂ demasiado pequeña. Súbala." }
+        - { texto: "Se queda corta: R₂ demasiado grande. Bájela." }
     escalera:
-      - "Se empieza por la red y se termina por la caja."
-    solucion: "Red, paso en lazo abierto, lazo de tensión, lazo de corriente, medida, caja."
+      - "V_{out} = V_{ref}·(1 + R₁/R₂): 30 V son 2,5 V multiplicados por 1 + R₁/R₂."
+    solucion: "10 kΩ: 2,5 × (1 + 110/10) = 30 V."
+    comprobar:
+      - { con: { R_2: 10000 }, V_o: 30, V_set: 30 }
+      - { con: { R_2: 5100 }, V_o: 39.5 }
 
   - id: averia-lazo
     tipo: averia
     titulo: "El lazo recién cerrado"
-    texto: "Se cierra el lazo de tensión para dar 30 V sobre 10 Ω, y la salida no es la esperada. Mida y encuentre la pieza."
+    texto: "En otra placa, el mismo lazo cerrado para 30 V sobre 10 Ω da una salida que no es la esperada. Mida y encuentre la pieza."
     libro: [349, "cap50#279", "cap50#455"]
+    fijar: { R_1: 110000, R_2: 10000, V_ref: 2.5 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -120,28 +118,6 @@ tarjetas:
       - { con: { R_1: 1e9 }, V_o: 39.5 }
       - { con: { R_2: 1e9 }, V_o: 2.5, tol: 0.001 }
 
-  - id: ordene-ajustes
-    tipo: pregunta
-    titulo: "Los ajustes, en orden"
-    texto: "Ordene los ajustes de la fuente."
-    libro: [354, 355, 356, 357]
-    widget:
-      tipo: figura
-      figura: fig-50.16
-      zonas:
-        - { id: ajustes, rotulo: "Recuadro naranja", rect: [5, 193, 207, 62] }
-    ordenar:
-      - "Cero de la medida de corriente, sin carga"
-      - "Escala de tensión, con una referencia conocida"
-      - "Escala de corriente, con una carga conocida"
-      - "Límites máximos de tensión y de corriente"
-    exito: "Los límites protegen contra un giro accidental del mando."
-    pistas:
-      - { texto: "El cero va antes que cualquier escala." }
-    escalera:
-      - "Primero el cero, luego las escalas, al final los límites."
-    solucion: "Cero de corriente, escala de tensión, escala de corriente, límites."
-
   - id: por-que-mejor
     tipo: porque
     titulo: "Contra un instrumento mejor"
@@ -164,27 +140,77 @@ tarjetas:
       - "Si los dos fallan igual, ¿lo notaría al compararlos?"
     solucion: "Solo da coherencia; la exactitud pide un instrumento mejor."
 
-  - id: empareje-esfuerzo
-    tipo: pregunta
-    titulo: "Las pruebas de esfuerzo"
-    texto: "Empareje cada prueba de esfuerzo con lo que vigila."
-    libro: [361, 362, 363, 364]
+  - id: toque-capacitiva
+    tipo: tocar
+    titulo: "Oscila con un circuito real"
+    texto: "La fuente va bien con resistencias, pero oscila al alimentar un circuito con condensadores grandes a la entrada. Toque la prueba de esfuerzo que lo habría detectado."
+    libro: [360, 363, 371]
     widget:
       tipo: figura
       figura: fig-50.16
       zonas:
-        - { id: pruebas, rotulo: "Los cuatro recuadros de la derecha", rect: [228, 25, 222, 195] }
-    emparejar:
-      - ["Cortocircuito prolongado", "Las temperaturas, con todo al máximo"]
-      - ["Escalón de carga repetido", "La oscilación en la transición de modos"]
-      - ["Carga capacitiva", "Lo que más veces hace oscilar una fuente"]
-      - ["Arranque y parada repetidos", "El sobreimpulso en la salida"]
-    exito: "La última importa más de lo que parece: un sobreimpulso al encender puede destruir lo que se alimenta."
-    pistas:
-      - { texto: "La de encender y apagar mira lo que pasa en la salida en ese momento." }
+        - { id: corto, rotulo: "Primer recuadro de la derecha", rect: [229, 26, 220, 43] }
+        - { id: escalon, rotulo: "Segundo recuadro de la derecha", rect: [229, 75, 220, 44] }
+        - { id: capacitiva, rotulo: "Tercer recuadro de la derecha", rect: [229, 125, 220, 44] }
+        - { id: arranque, rotulo: "Cuarto recuadro de la derecha", rect: [229, 175, 220, 44] }
+    tocar:
+      bien: [capacitiva]
+      porque:
+        corto: "Esa vigila las temperaturas con todo al máximo."
+        escalon: "Esa busca la oscilación en el cruce entre modos, con escalones de carga."
+        arranque: "Esa busca el sobreimpulso al encender y apagar."
+    exito: "La carga capacitiva: lo que más veces hace oscilar una fuente, y lo que un circuito real presenta."
     escalera:
-      - "Una mide calor, otra el cruce de modos, otra la estabilidad, otra el encendido."
-    solucion: "Corto, temperaturas; escalón, cruce de modos; capacitiva, oscilación; arranque, sobreimpulso."
+      - "¿Qué tiene de especial ese circuito?"
+    solucion: "La de carga capacitiva."
+
+  - id: toque-arranque
+    tipo: tocar
+    titulo: "Lo destruye al encender"
+    texto: "Ajustada a poca tensión, la fuente destruye el circuito que alimenta justo al encenderla. Toque la prueba que busca ese fallo."
+    libro: [364, 365]
+    widget:
+      tipo: figura
+      figura: fig-50.16
+      zonas:
+        - { id: corto, rotulo: "Primer recuadro de la derecha", rect: [229, 26, 220, 43] }
+        - { id: escalon, rotulo: "Segundo recuadro de la derecha", rect: [229, 75, 220, 44] }
+        - { id: capacitiva, rotulo: "Tercer recuadro de la derecha", rect: [229, 125, 220, 44] }
+        - { id: arranque, rotulo: "Cuarto recuadro de la derecha", rect: [229, 175, 220, 44] }
+    tocar:
+      bien: [arranque]
+      porque:
+        corto: "Esa vigila las temperaturas en un corto mantenido."
+        escalon: "Esa mira el cruce entre modos con la fuente ya encendida."
+        capacitiva: "Esa busca oscilaciones con cargas capacitivas."
+    exito: "Arranque y parada repetidos: un sobreimpulso al encender es un fallo que solo aparece si se busca."
+    escalera:
+      - "¿En qué momento exacto falla?"
+    solucion: "La de arranque y parada repetidos."
+
+  - id: toque-escalon
+    tipo: tocar
+    titulo: "Un ruido en el límite"
+    texto: "Al conectar y desconectar una carga que llega justo al límite, la salida salta entre los dos modos. Toque la prueba que busca ese fallo."
+    libro: [362]
+    widget:
+      tipo: figura
+      figura: fig-50.16
+      zonas:
+        - { id: corto, rotulo: "Primer recuadro de la derecha", rect: [229, 26, 220, 43] }
+        - { id: escalon, rotulo: "Segundo recuadro de la derecha", rect: [229, 75, 220, 44] }
+        - { id: capacitiva, rotulo: "Tercer recuadro de la derecha", rect: [229, 125, 220, 44] }
+        - { id: arranque, rotulo: "Cuarto recuadro de la derecha", rect: [229, 175, 220, 44] }
+    tocar:
+      bien: [escalon]
+      porque:
+        corto: "Con la salida en corto la fuente está siempre en corriente constante: no cruza."
+        capacitiva: "Esa busca oscilaciones del lazo de tensión con cargas capacitivas."
+        arranque: "Esa mira el encendido, no el cruce entre modos."
+    exito: "Escalón de carga repetido, comprobando que no hay oscilación en la transición entre modos."
+    escalera:
+      - "¿Qué cambia bruscamente en esa situación?"
+    solucion: "La de escalón de carga repetido."
 
   - id: prueba-led
     tipo: pregunta
@@ -208,34 +234,12 @@ tarjetas:
       - "¿Qué se prefiere perder si la fuente falla?"
     solucion: "Para descubrir los fallos con un circuito barato."
 
-  - id: documentar
-    tipo: pregunta
-    titulo: "La documentación"
-    texto: "Al terminar se documenta la fuente. ¿Qué no puede faltar junto a los valores de calibración?"
-    libro: [367]
-    widget:
-      tipo: figura
-      figura: fig-50.16
-      zonas:
-        - { id: ajustes, rotulo: "Recuadro naranja", rect: [5, 193, 207, 62] }
-    opciones:
-      - texto: "Su fecha"
-        bien: true
-        porque: "Con el esquema modificado, las medidas de validación y las peculiaridades encontradas."
-      - texto: "El precio de los componentes"
-        porque: "Lo que se documenta es el esquema, la calibración con su fecha y las medidas."
-      - texto: "Nada: el esquema basta"
-        porque: "El esquema con sus cambios, sí, y además la calibración, las medidas y las peculiaridades."
-    escalera:
-      - "Una calibración sin cuándo, ¿cuánto vale dentro de un año?"
-    solucion: "La fecha de los valores de calibración."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [345, 358, 365, 370]
+    libro: [345, 347, 348, 350, 351, 352, 354, 357, 358, 365, 367, 370, 355, 356, 361]
     ideas:
-      - { titulo: "Por bloques.", texto: "Red, paso en lazo abierto, lazos, medida y caja, probando cada uno." }
-      - { titulo: "Calibrar.", texto: "Cero, escalas y límites, contra un instrumento mejor." }
+      - { titulo: "Por bloques.", texto: "Red con lámpara serie, paso en lazo abierto, lazo de tensión, lazo de corriente, medida y caja, probando cada uno." }
+      - { titulo: "Calibrar.", texto: "Cero de corriente, escalas y límites, contra un instrumento mejor; y los valores, con su fecha." }
       - { titulo: "Esfuerzo.", texto: "Corto prolongado, escalones, carga capacitiva y arranques." }
       - { titulo: "Prueba final.", texto: "Unos LED antes que algo valioso." }

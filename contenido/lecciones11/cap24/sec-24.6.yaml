@@ -2,6 +2,10 @@
 # El RLC es el del recuadro de deducción (bloque 160: 50 Ω, 10 mH, 100 nF); el de la radio, el del bloque 158
 # (100 µH, 100 pF, 10 Ω, Q = 100); el del banco, el de la práctica 9 (cap22#235: 100 Ω, 10 mH, 100 nF), ficha 33.
 # El sobreimpulso del 78 % se ve con el esquema «rlc-escalon» y un escalón de 1 V (EJEMPLO: el libro no da tensión).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): Q ≥ 30 se consigue con R; R × 10 hunde Q sin mover f₀
+# (objetivo); f₀ se lleva a 7,3 kHz con C; el corte inferior de −3 dB y la resonancia se marcan en la curva (f₀, media
+# geométrica de los cortes); f₀, BW y la atenuación de la emisora adyacente del sintonizado de radio se escriben. Queda
+# una pregunta de opciones (por qué timbra), los resonadores del FM7303 emparejados y el banco.
 leccion: cap24/sec-24.6
 
 libro:
@@ -50,21 +54,25 @@ modelo:
     BW_m: { expr: "f_0m/Q_m", sim: "BW", nombre: "ancho de banda del sintonizado", unidad: Hz }
     I_m: { expr: "V_p/sqrt(R_m^2 + (2*pi*f_m*L_m - 1/(2*pi*f_m*C_m))^2)", sim: "I", nombre: "corriente del sintonizado", unidad: A }
     f_9: { expr: "f_0m + 9000", sim: "f", nombre: "emisora adyacente", unidad: Hz }
+    I_0m: { expr: "V_p/R_m", sim: "I_{máx}", nombre: "corriente del sintonizado en resonancia", unidad: A }
+    I_9: { expr: "V_p/sqrt(R_m^2 + (2*pi*f_9*L_m - 1/(2*pi*f_9*C_m))^2)", sim: "I", nombre: "corriente con la emisora adyacente", unidad: A }
     a_9: { expr: "20*log10(sqrt(R_m^2 + (2*pi*f_9*L_m - 1/(2*pi*f_9*C_m))^2)/R_m)", sim: "a", nombre: "atenuación de la adyacente", unidad: dB, cifras: 2 }
 
 tarjetas:
   - id: explore-resonancia
     tipo: explorar
     titulo: "Donde las reactancias se cancelan"
-    texto: "La corriente de un RLC serie de 10 mH y 100 nF frente a la frecuencia. Cambie R: el pico no se mueve, pero se estrecha o se ensancha."
+    texto: "La corriente de un RLC serie de 10 mH y 100 nF frente a la frecuencia. Cambie R hasta que el pico sea muy agudo, con Q de 30 o más."
     libro: [153, 155]
+    fijar: { L_r: 0.01, C_r: 100e-9 }
+    inicio: { R_r: 100 }
     widget:
       tipo: circuito
       esquema: rlc-serie
       piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: f_0, rotulo: "Resonancia" }
+      lectura: { valor: Q_r, rotulo: "Factor de calidad Q" }
       datos:
-        - { valor: Q_r, rotulo: "Q = {{Q_r}}" }
+        - { valor: f_0, rotulo: "f₀ = {{f_0}}" }
         - { valor: BW, rotulo: "Ancho de banda: {{BW}}" }
       mide: { i_amp: I_f }
       grafica:
@@ -76,13 +84,25 @@ tarjetas:
           - { x: "f_0", y: "I_0", rotulo: "f₀" }
       mandos:
         - { valor: R_r, lista: [10, 50, 100, 1000] }
+    objetivo:
+      condiciones:
+        - { valor: Q_r, min: 30, rotulo: "Q: {{Q_r}}" }
+      logrado: "Con {{R_r}}, Q = {{Q_r}} y una banda de {{BW}}: en resonancia la impedancia es solo R, y la corriente, máxima."
+      pistas:
+        - { texto: "El pico todavía es ancho: menos resistencia." }
+    escalera:
+      - "Q = √(L/C)/R = 316/R."
+    solucion: "R = 10 Ω: Q = 31,6."
+    comprobar:
+      - { con: { R_r: 10 }, Q_r: 31.6, BW: 159.2, tol: 0.003 }
 
   - id: prediga-r
-    tipo: predecir
+    tipo: explorar
     titulo: "Si se multiplica R por diez"
-    texto: "Un RLC serie de 10 mH y 100 nF pasa de R = 100 Ω a 1 kΩ. ¿Qué le ocurre a su resonancia?"
+    texto: "El RLC de la práctica, 100 Ω, 10 mH y 100 nF, tiene Q = 3,16. Multiplique R por diez y mire la resonancia."
     libro: ["cap22#235", "cap22#251"]
-    fijar: { R_r: 1000, L_r: 0.01, C_r: 100e-9, f_r: 5032.92 }
+    fijar: { L_r: 0.01, C_r: 100e-9 }
+    inicio: { R_r: 100 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -91,29 +111,33 @@ tarjetas:
       datos:
         - { valor: Q_r, rotulo: "Q = {{Q_r}}" }
       mide: { i_amp: I_f }
-      ocultar: true
-    opciones:
-      - texto: "f₀ no se mueve; Q cae de 3 a 0,3 y la curva se aplana"
-        bien: true
-        porque: "La resonancia la fijan L y C; el amortiguamiento, R. Son dos propiedades independientes."
-      - texto: "f₀ baja a la décima parte"
-        porque: "R no aparece en f₀ = 1/(2π√(LC)). Confundir frecuencia y amortiguamiento es un error conceptual frecuente."
-      - texto: "Q sube a 30: la curva se afila"
-        porque: "Al revés: Q = √(L/C)/R, así que más resistencia es menos Q."
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        curvas:
+          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+      mandos:
+        - { valor: R_r, lista: [10, 50, 100, 1000] }
+    objetivo:
+      condiciones:
+        - { valor: R_r, min: 1000, rotulo: "R: {{R_r}}" }
+      logrado: "f₀ sigue en {{f_0}} y Q cae a {{Q_r}}: la resonancia la fijan L y C; el amortiguamiento, R."
+      pistas:
+        - { texto: "Elija 1 kΩ." }
     escalera:
-      - "¿Aparece R en la fórmula de f₀?"
-    solucion: "La misma f₀; Q diez veces menor."
+      - "¿Aparece R en f₀ = 1/(2π√(LC))?"
+    solucion: "Con 1 kΩ: la misma f₀ y Q = 0,316."
     comprobar:
-      - { f_0: 5033, Q_r: 0.316 }
-      - { con: { R_r: 100 }, Q_r: 3.16 }
+      - { f_0: 5033, Q_r: 3.16 }
+      - { con: { R_r: 1000 }, Q_r: 0.316 }
 
   - id: formula-f0
-    tipo: formula
+    tipo: explorar
     titulo: "La frecuencia de resonancia"
-    texto: "Las reactancias se igualan cuando ωL = 1/(ωC). Cambie C y vea moverse el pico."
+    texto: "Las reactancias se igualan cuando ωL = 1/(ωC): f₀ = 1/(2π√(LC)). Cambie C hasta llevar el pico a unos 7,3 kHz."
     libro: [154]
-    ec: 154
-    sustitucion: "1 / (2π · √({{L_r}} · {{C_r}})) = {{f_0}}"
+    fijar: { R_r: 50, L_r: 0.01 }
+    inicio: { C_r: 100e-9 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -127,49 +151,70 @@ tarjetas:
           - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
       mandos:
         - { valor: C_r, lista: [47e-9, 100e-9, 220e-9] }
+    objetivo:
+      condiciones:
+        - { valor: f_0, objetivo: 7341, tol: 0.02, rotulo: "f₀: {{f_0}}" }
+      logrado: "Con {{C_r}}, {{f_0}}: menos capacidad, más frecuencia, con la raíz. Un 10 % de tolerancia en C son un 5 % en f₀."
+      pistas:
+        - { texto: "Para subir f₀, menos capacidad." }
+    escalera:
+      - "f₀ va con 1/√C."
+    solucion: "47 nF: 7,34 kHz."
+    comprobar:
+      - { con: { C_r: 47e-9 }, f_0: 7341 }
 
   - id: formula-q
-    tipo: formula
+    tipo: marcar
     titulo: "Q y el ancho de banda"
-    texto: "Q mide la nitidez: el ancho de banda entre los puntos de −3 dB es f₀/Q. Cambie R."
-    libro: [155, 156]
-    ec: 156
-    sustitucion: "Q = √({{L_r}}/{{C_r}}) / {{R_r}} = {{Q_r}}; BW = {{BW}}"
-    fijar: { L_r: 0.01, C_r: 100e-9 }
+    texto: "Con 50 Ω, Q = 6,32. Marque en la curva el corte inferior de −3 dB, la línea de trazos."
+    libro: [155, 156, 160]
+    fijar: { R_r: 50, L_r: 0.01, C_r: 100e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 3500, max: 7000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 0.022, unidad: A, rotulo: "|i|" }
+      curvas:
+        - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|" }
+        - { expr: "I_1", color: tinta, rotulo: "−3 dB", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_1"
+      tol: 0.02
+      inicio: { x: 3800, y: 0 }
+      rotulo: "El corte inferior"
+      pasos: 175
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 4800 }, texto: "Más a la izquierda: busque donde la curva cruza la línea de −3 dB por su lado bajo." }
+      - { texto: "Más a la derecha: ahí la curva aún está por debajo de la línea de −3 dB." }
+    exito: "4650,74 Hz. El otro corte cae en 5446,51 Hz: BW = f₀/Q = 796 Hz."
+    escalera:
+      - "Busque donde la curva naranja corta la línea de trazos, a la izquierda del pico."
+    solucion: "En 4650,74 Hz."
+    comprobar:
+      - { f_1: 4650.74, f_2: 5446.51, BW: 795.8, Q_r: 6.3246 }
+
+  - id: estime-f0
+    tipo: leer
+    titulo: "Un sintonizado de radio"
+    texto: "Un circuito sintonizado tiene L = 100 µH y C = 100 pF. Escriba su frecuencia de resonancia."
+    libro: [154, "cap24#329"]
     widget:
       tipo: circuito
       esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: BW, rotulo: "Ancho de banda" }
-      mide: { i_amp: I_f }
-      grafica:
-        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
-        curvas:
-          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
-          - { expr: "I_1", color: tinta, rotulo: "−3 dB", discontinua: true }
-      mandos:
-        - { valor: R_r, lista: [10, 50, 100, 1000] }
-
-  - id: estime-f0
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "Un sintonizado de radio"
-    texto: "Un circuito sintonizado tiene L = 100 µH y C = 100 pF. Estime su frecuencia de resonancia."
-    libro: [154, "cap24#329"]
-    estimar:
-      objetivo: "f_0m"
+      piezas: { fuente: V_p, f: f_m, r: R_m, l: L_m, c: C_m }
+      lectura: { valor: I_0m, rotulo: "Corriente en resonancia" }
+      mide: { i_amp: I_m }
+      mandos: []
+    leer:
+      objetivo: f_0m
       unidad: Hz
-      min: 0
-      max: 5000000
-      paso: 10000
-      inicio: 500000
-      tol: 0.05
+      tol: 0.02
       rotulo: "Resonancia"
+      errores:
+        - { expr: "1/sqrt(L_m*C_m)", texto: "Eso es ω₀, en rad/s. La frecuencia es ω₀/(2π)." }
     exito: "1/(2π·√(10⁻⁴ × 10⁻¹⁰)) = 1/(2π × 10⁻⁷) ≈ 1,59 MHz: la parte alta de la onda media."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1670000 }, texto: "Demasiado: √(LC) = 10⁻⁷ s, y luego divida 1 entre 2π veces eso." }
-      - { texto: "Poco: √(10⁻⁴ × 10⁻¹⁰) = 10⁻⁷, y 1/(2π × 10⁻⁷) pasa del megahercio." }
     escalera:
       - "LC = 10⁻¹⁴; su raíz, 10⁻⁷ s."
     solucion: "1/(2π × 10⁻⁷) ≈ 1,59 MHz."
@@ -177,24 +222,25 @@ tarjetas:
       - { f_0m: 1591549 }
 
   - id: estime-bw
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Su ancho de banda"
-    texto: "Ese sintonizado de 1,59 MHz, con 10 Ω de resistencia, tiene Q = 100. Estime su ancho de banda."
+    texto: "Ese sintonizado de 1,59 MHz, con 10 Ω de resistencia, tiene Q = 100. Escriba su ancho de banda."
     libro: [156, 158]
-    estimar:
-      objetivo: "BW_m"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_m, r: R_m, l: L_m, c: C_m }
+      lectura: { valor: Q_m, rotulo: "Factor de calidad Q" }
+      mide: { i_amp: I_m }
+      mandos: []
+    leer:
+      objetivo: BW_m
       unidad: Hz
-      min: 0
-      max: 100000
-      paso: 100
-      inicio: 50000
-      tol: 0.05
+      tol: 0.02
       rotulo: "Ancho de banda"
+      errores:
+        - { expr: "f_0m*Q_m", texto: "Ha multiplicado. Cuanto más Q, más estrecha la banda: BW = f₀/Q." }
     exito: "1,59 MHz / 100 ≈ 15,9 kHz: estrecho frente a la onda media, de 531 a 1602 kHz."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 16700 }, texto: "Demasiado: es la centésima parte de f₀." }
-      - { texto: "Poco: 1,59 MHz entre 100." }
     escalera:
       - "BW = f₀/Q."
     solucion: "1,59 MHz / 100 ≈ 15,9 kHz."
@@ -202,15 +248,15 @@ tarjetas:
       - { Q_m: 100, BW_m: 15915 }
 
   - id: adyacente
-    tipo: pregunta
+    tipo: leer
     titulo: "La emisora de al lado"
-    texto: "Con ese sintonizado de Q = 100, una emisora a 9 kHz de la sintonizada, ¿queda rechazada?"
+    texto: "Una emisora a 9 kHz de la sintonizada da la corriente de la lectura; en resonancia hay 100 mA. Escriba cuántos decibelios cae."
     libro: [158]
     widget:
       tipo: circuito
       esquema: rlc-serie
       piezas: { fuente: V_p, f: f_m, r: R_m, l: L_m, c: C_m }
-      lectura: { valor: a_9, rotulo: "Atenuación a 9 kHz" }
+      lectura: { valor: I_9, rotulo: "Corriente a +9 kHz" }
       mide: { i_amp: I_m }
       grafica:
         x: { id: nu, min: 1500000, max: 1700000, unidad: Hz, rotulo: "f" }
@@ -218,49 +264,53 @@ tarjetas:
         curvas:
           - { expr: "V_p/sqrt(R_m^2 + (2*pi*nu*L_m - 1/(2*pi*nu*C_m))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
         marcas:
-          - { x: "f_9", y: "V_p/sqrt(R_m^2 + (2*pi*f_9*L_m - 1/(2*pi*f_9*C_m))^2)", rotulo: "+9 kHz" }
-    opciones:
-      - texto: "No: solo cae unos 3,6 dB"
-        bien: true
-        porque: "Atenúa mucho las alejadas, pero no separa dos adyacentes: los receptores encadenan sintonizados o usan la frecuencia intermedia."
-      - texto: "Sí: queda fuera de la banda y desaparece"
-        porque: "Fuera de la banda de −3 dB no significa desaparecer: la curva cae despacio cerca de f₀."
-      - texto: "Sí, porque Q = 100 es muy alto"
-        porque: "Q = 100 da 16 kHz de banda: una emisora a 9 kHz está casi en el borde."
+          - { x: "f_9", y: "I_9", rotulo: "+9 kHz" }
+      mandos: []
+    leer:
+      objetivo: a_9
+      unidad: dB
+      tol: 0.03
+      rotulo: "Lo que cae a 9 kHz"
+      errores:
+        - { expr: "10*log10(I_0m/I_9)", texto: "Eso es en potencia sobre corrientes: para corrientes, 20·log₁₀." }
+    exito: "Solo unos 3,6 dB: atenúa mucho las alejadas, pero no separa dos adyacentes. Los receptores encadenan sintonizados o usan la frecuencia intermedia."
     escalera:
-      - "La banda es de unos 16 kHz: ¿dónde cae una emisora a 9 kHz?"
-    solucion: "Cae unos 3,6 dB: no basta para separarla."
+      - "20·log₁₀(100 mA / la lectura)."
+    solucion: "20·log₁₀(0,1/0,066) ≈ 3,6 dB."
     comprobar:
-      - { a_9: 3.6, BW_m: 15915, tol: 0.02 }
+      - { a_9: 3.6, BW_m: 15915, I_0m: 0.1, I_9: 0.0661, tol: 0.02 }
 
   - id: media-geometrica
-    tipo: sorpresa
+    tipo: marcar
     titulo: "f₀ no está en el centro"
-    texto: "Los cortes del RLC de 50 Ω caen en 4650,74 y 5446,51 Hz; f₀ no es su media aritmética, sino la geométrica. Cambie R."
+    texto: "Los cortes del RLC de 50 Ω caen en 4650,74 y 5446,51 Hz. Marque en la curva la resonancia: no está en su media aritmética."
     libro: [160]
-    fijar: { L_r: 0.01, C_r: 100e-9 }
-    inicio: { R_r: 50 }
+    fijar: { R_r: 50, L_r: 0.01, C_r: 100e-9 }
     widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: f_g, rotulo: "Media geométrica" }
-      datos:
-        - { valor: f_a, rotulo: "Media aritmética: {{f_a}}" }
-        - { valor: f_0, rotulo: "f₀ = {{f_0}}" }
-      mide: { i_amp: I_f }
-      grafica:
-        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
-        curvas:
-          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
-        marcas:
-          - { x: "f_1", y: "I_1", rotulo: "f₁" }
-          - { x: "f_2", y: "I_1", rotulo: "f₂" }
-      mandos:
-        - { valor: R_r, lista: [10, 50, 100, 1000] }
+      tipo: grafica
+      x: { id: nu, min: 4400, max: 5700, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 0.022, unidad: A, rotulo: "|i|" }
+      curvas:
+        - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|" }
+        - { expr: "I_1", color: tinta, rotulo: "−3 dB", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_0"
+      tol: 0.008
+      inicio: { x: 5500, y: 0 }
+      rotulo: "La resonancia"
+      pasos: 130
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 5045 }, texto: "Más a la izquierda: busque la cima exacta. La media aritmética, 5048,62 Hz, se pasa." }
+      - { texto: "Más a la derecha: la cima está más cerca del corte superior que del inferior en hercios." }
+    exito: "5032,92 Hz = √(4650,74 × 5446,51): la media geométrica. La curva es simétrica en escala logarítmica."
+    escalera:
+      - "Busque la cima de la curva."
+    solucion: "En 5032,92 Hz, no en 5048,62 Hz."
     comprobar:
-      - { con: { R_r: 50 }, f_1: 4650.74, f_2: 5446.51, f_g: 5032.92, f_a: 5048.62 }
+      - { f_1: 4650.74, f_2: 5446.51, f_g: 5032.92, f_a: 5048.62, f_0: 5032.92 }
 
   - id: por-que-oscila
     tipo: porque

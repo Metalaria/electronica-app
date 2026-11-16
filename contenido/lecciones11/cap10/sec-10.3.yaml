@@ -2,6 +2,11 @@
 # - Sección sin ecuaciones ni circuito: las curvas tiempo-corriente se leen en la figura 10.5 (fig-10.4) y los fusibles
 #   reales en la foto de la figura 10.6 (img/foto_fusible.jpg, 1600 × 318: tres fotos de unos 533 px).
 # - Reutiliza el ejercicio 10.2 (el procedimiento ante un fusible fundido) como «ordenar».
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): sección sin circuito; un explorar busca el consumo para el que
+# el cerámico de 10 A queda en la banda de 1,5 a 2 veces (objetivo); se toca en la curva tiempo-corriente
+# la irrupción y la sobrecarga sostenida, se toca en las fotos el fundido y el cerámico del multímetro, y se escribe
+# el valor máximo del fusible (modelo: 1 A de consumo). Quedan dos preguntas (el rápido con 4700 µF y el de 32 V);
+# los tipos por velocidad, el procedimiento ante un fundido y los otros fusibles pasan a explicaciones y resumen.
 leccion: cap10/sec-10.3
 
 libro:
@@ -18,23 +23,94 @@ libro:
   "cap10#285": "Medir con el multímetro la resistencia entre los puntos del circuito alimentados por el fusible"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    I_n: { sim: "I", nombre: "consumo normal", unidad: A, valor: 1 }
+  calculos:
+    I_fmax: { expr: "2*I_n", sim: "I_{fusible}", nombre: "valor máximo del fusible", unidad: A }
+    I_fmin: { expr: "1.5*I_n", sim: "I_{fusible}", nombre: "valor mínimo del fusible", unidad: A }
 
 tarjetas:
-  - id: explore-curvas
+  - id: explore-banda
     tipo: explorar
-    titulo: "Cuánto aguanta y cuánto tarda"
-    texto: "Toque los puntos de la curva. Cuanto más supera la corriente al valor nominal, antes funde."
+    titulo: "Un fusible de 10 A"
+    texto: "El fusible va entre 1,5 y 2 veces la corriente normal. Busque un consumo para el que el cerámico de 10 A quede dentro de esa banda."
+    libro: [85, 89]
+    inicio: { I_n: 1 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 8, unidad: A, rotulo: "consumo" }
+      y: { min: 0, max: 16, unidad: A, rotulo: "fusible" }
+      curvas:
+        - { expr: "1.5*i", color: azul, rotulo: "1,5 veces" }
+        - { expr: "2*i", color: naranja, rotulo: "2 veces" }
+        - { expr: "10 + 0*i", color: tinta, rotulo: "10 A", discontinua: true }
+      marcas:
+        - { x: "I_n", y: "I_fmin", rotulo: "{{I_fmin}}" }
+        - { x: "I_n", y: "I_fmax", rotulo: "{{I_fmax}}" }
+      lectura: { valor: I_fmax, rotulo: "Valor máximo" }
+      datos:
+        - { valor: I_fmin, rotulo: "Valor mínimo: {{I_fmin}}" }
+      mandos:
+        - { valor: I_n, min: 0.5, max: 8, paso: 0.5, rotulo: "Consumo normal" }
+    objetivo:
+      condiciones:
+        - { valor: I_fmin, max: 10, rotulo: "Mínimo: {{I_fmin}}" }
+        - { valor: I_fmax, min: 10, rotulo: "Máximo: {{I_fmax}}" }
+      logrado: "Con {{I_n}} de consumo, el de 10 A queda entre {{I_fmin}} y {{I_fmax}}: margen sin perder la protección."
+      pistas:
+        - { cuando: { valor: I_fmax, menor: 10 }, texto: "El de 10 A está por encima de la banda: suba el consumo." }
+        - { texto: "El de 10 A queda por debajo de la banda: baje el consumo." }
+    escalera:
+      - "La línea de 10 A debe pasar entre las dos rectas."
+    solucion: "Entre 5 y unos 6,5 A: por ejemplo, 6 A da de 9 a 12 A."
+    comprobar:
+      - { con: { I_n: 6 }, I_fmin: 9, I_fmax: 12 }
+      - { con: { I_n: 5 }, I_fmin: 7.5, I_fmax: 10 }
+      - { con: { I_n: 6.5 }, I_fmin: 9.75 }
+
+  - id: explore-curvas
+    tipo: tocar
+    titulo: "La irrupción"
+    texto: "Un pico de diez veces la corriente nominal durante 10 ms, como al cargar los condensadores. Toque el punto donde el lento aguanta y el rápido funde."
     libro: [83, 88]
     widget:
       tipo: figura
       figura: fig-10.4
       zonas:
-        - { id: nominal, rotulo: "Arriba a la izquierda", rect: [50, 25, 40, 45], texto: "Cerca de su corriente nominal, el fusible aguanta indefinidamente." }
-        - { id: doble, rotulo: "Los dos puntos azules", rect: [117, 72, 40, 46], texto: "Al doble, sobrecarga sostenida: el rápido funde en torno a un segundo, el lento en segundos." }
-        - { id: irrupcion, rotulo: "El rombo naranja", rect: [326, 140, 42, 36], texto: "Diez veces durante 10 ms, la irrupción típica: el rápido funde y el lento aguanta." }
-    requiere: { mover: [nominal, doble, irrupcion] }
+        - { id: nominal, rotulo: "Arriba a la izquierda", rect: [50, 25, 40, 45] }
+        - { id: doble, rotulo: "Los dos puntos azules", rect: [117, 72, 40, 46] }
+        - { id: irrupcion, rotulo: "El rombo naranja", rect: [326, 140, 42, 36] }
+    tocar:
+      bien: [irrupcion]
+      porque:
+        nominal: "Cerca de su corriente nominal el fusible aguanta indefinidamente: ahí no funde ninguno."
+        doble: "Es el doble sostenido, una sobrecarga: el rápido funde en torno a un segundo y el lento en segundos."
+    exito: "Diez veces durante 10 ms: el rápido funde y el lento aguanta. Por eso el lento, marca T, va en motores y fuentes."
+    escalera:
+      - "Busque el punto de mucha corriente y muy poco tiempo."
+    solucion: "El rombo naranja, abajo a la derecha."
+
+  - id: toque-doble
+    tipo: tocar
+    titulo: "La sobrecarga sostenida"
+    texto: "Un fusible rápido de 1 A recibe 2 A sin parar. Toque el punto que dice cuánto tarda en fundir."
+    libro: [83, 88]
+    widget:
+      tipo: figura
+      figura: fig-10.4
+      zonas:
+        - { id: nominal, rotulo: "Arriba a la izquierda", rect: [50, 25, 40, 45] }
+        - { id: doble, rotulo: "Los dos puntos azules", rect: [117, 72, 40, 46] }
+        - { id: irrupcion, rotulo: "El rombo naranja", rect: [326, 140, 42, 36] }
+    tocar:
+      bien: [doble]
+      porque:
+        nominal: "Ahí la corriente está en su valor nominal: lo aguanta indefinidamente."
+        irrupcion: "Es la irrupción, diez veces durante 10 ms: un pico breve, no el doble sostenido."
+    exito: "En torno a un segundo: ambos tipos cortan la sobrecarga sostenida, el lento solo tarda algo más."
+    escalera:
+      - "El doble es 2 en el eje horizontal."
+    solucion: "Los dos puntos azules, al doble de la nominal."
 
   - id: toque-fundido
     tipo: tocar
@@ -53,16 +129,38 @@ tarjetas:
       porque:
         portafusibles: "Es un cartucho de vidrio en su portafusibles; nada indica que esté fundido."
         ceramico: "Es cerámico y opaco: no deja ver el hilo. Es el de alta capacidad de ruptura."
-    exito: "A trasluz se ve el hilo cortado. Y recuerde: el fusible fundido es casi siempre un síntoma."
+    exito: "A trasluz se ve el hilo cortado. Y es casi siempre un síntoma: busque la causa antes de reponerlo."
     escalera:
       - "En un fusible de vidrio se ve el hilo calibrado."
     solucion: "El de la derecha, de vidrio: el hilo está cortado."
+
+  - id: toque-ruptura
+    tipo: tocar
+    titulo: "La entrada del multímetro"
+    texto: "Los de cristal cortan de 35 a 100 A; los cerámicos rellenos de arena, kiloamperios. Toque el que exige la entrada de corriente de un multímetro."
+    libro: [84, 89]
+    widget:
+      tipo: figura
+      imagen: img/foto_fusible.jpg
+      zonas:
+        - { id: portafusibles, rotulo: "Foto de la izquierda", rect: [0, 0, 530, 318] }
+        - { id: ceramico, rotulo: "Foto del centro", rect: [536, 0, 530, 318] }
+        - { id: fundido, rotulo: "Foto de la derecha", rect: [1072, 0, 528, 318] }
+    tocar:
+      bien: [ceramico]
+      porque:
+        portafusibles: "Es de cartucho de vidrio: su capacidad de ruptura no basta para la entrada de un multímetro."
+        fundido: "Es de vidrio, y además está fundido."
+    exito: "El cerámico de 10 A y 6 × 32 mm: debe cortar el cortocircuito posible, no solo fundir."
+    escalera:
+      - "Busque el opaco, el relleno de arena."
+    solucion: "El del centro, cerámico."
 
   - id: prediga-4700
     tipo: predecir
     titulo: "Fusible rápido en una fuente"
     texto: "Una fuente con condensadores de 4700 µF lleva un fusible rápido de valor correcto. ¿Qué pasa?"
-    libro: [85]
+    libro: [80, 85]
     widget:
       tipo: figura
       figura: fig-10.4
@@ -71,58 +169,39 @@ tarjetas:
     opciones:
       - texto: "Funde cada pocos encendidos"
         bien: true
-        porque: "La corriente de irrupción de los condensadores lo funde: ahí va uno lento."
+        porque: "La corriente de irrupción de los condensadores lo funde: ahí va uno lento, marca T."
       - texto: "Nada: el valor es el correcto"
         porque: "El valor sí, el tipo no: el rápido no tolera la irrupción."
       - texto: "No protege la fuente ante un cortocircuito"
         porque: "La protege de sobra; el problema es que funde sin fallo."
     escalera:
       - "¿Qué pide un condensador grande al conectar?"
-    solucion: "Funde cada tres encendidos, por la irrupción: hace falta uno lento."
-
-  - id: tipos
-    tipo: pregunta
-    titulo: "Los tipos por velocidad"
-    texto: "Empareje cada marca con su aplicación."
-    libro: [80]
-    widget:
-      tipo: figura
-      figura: fig-10.4
-      zonas:
-        - { id: curvas, rotulo: "Las curvas", rect: [45, 5, 395, 180] }
-    emparejar:
-      - ["F, rápido", "Electrónica sensible"]
-      - ["T, lento", "Motores, fuentes (arranque)"]
-      - ["FF, ultrarrápido", "Diodos, tiristores"]
-      - ["M, medio", "Uso general"]
-    exito: "El tipo se elige por la carga, igual que el valor."
-    pistas:
-      - { texto: "El lento tolera picos breves: los del arranque." }
-    escalera:
-      - "Empiece por el que tolera picos breves."
-    solucion: "F: electrónica; T: motores y fuentes; FF: semiconductores de potencia; M: uso general."
+    solucion: "Funde por la irrupción: hace falta uno lento."
 
   - id: valor
-    tipo: pregunta
+    tipo: simular
     titulo: "Elegir el valor"
-    texto: "Un circuito consume 1 A en régimen normal. ¿Qué valor de fusible?"
-    libro: [83, 85]
+    texto: "Un circuito consume 1 A en régimen normal. Escriba el mayor valor de fusible que aconseja el libro."
+    libro: [85]
     widget:
       tipo: figura
       figura: fig-10.4
       zonas:
         - { id: curvas, rotulo: "Las curvas", rect: [45, 5, 395, 180] }
-    opciones:
-      - texto: "Entre 1,5 y 2 veces la corriente normal"
-        bien: true
-        porque: "Con margen: cerca de su valor el hilo se degrada, y el calor ambiente rebaja lo que admite."
-      - texto: "Exactamente 1 A"
-        porque: "Trabajaría cerca de su valor: el hilo se recristaliza y acaba fundiendo sin motivo."
-      - texto: "Diez veces más, por si acaso"
-        porque: "Ya no protege: una sobrecarga sostenida no lo fundiría."
+    simular:
+      objetivo: I_fmax
+      unidad: A
+      tol: 0.03
+      rotulo: "Valor máximo del fusible"
+      errores:
+        - { expr: "I_n", texto: "Exactamente el consumo: trabajaría cerca de su valor, el hilo se recristaliza y acaba fundiendo sin motivo." }
+        - { expr: "10*I_n", texto: "Así ya no protege: una sobrecarga sostenida no lo fundiría." }
+    exito: "Entre 1,5 y 2 veces la corriente normal: margen sin perder la protección. El calor ambiente rebaja lo que admite."
     escalera:
-      - "¿Qué le pasa a un fusible que trabaja siempre cerca de su valor?"
-    solucion: "Entre 1,5 y 2 A: margen sin perder la protección."
+      - "Por encima del consumo, con margen, pero no tanto que no funda una sobrecarga."
+    solucion: "2 A."
+    comprobar:
+      - { I_fmax: 2 }
 
   - id: por-que-tension
     tipo: porque
@@ -146,56 +225,12 @@ tarjetas:
       - "¿Qué queda entre los extremos del hilo justo al fundirse?"
     solucion: "El arco no se extingue: el fusible sigue conduciendo y puede arder."
 
-  - id: ordene-fundido
-    tipo: pregunta
-    titulo: "Ante un fusible fundido"
-    texto: "Ordene el procedimiento antes de reponerlo."
-    libro: [81, 87, "cap10#285"]
-    widget:
-      tipo: figura
-      imagen: img/foto_fusible.jpg
-      zonas:
-        - { id: fundido, rotulo: "Foto de la derecha", rect: [1072, 0, 528, 318] }
-    ordenar:
-      - "Desconectar el equipo de la red"
-      - "Medir la resistencia entre los terminales de alimentación"
-      - "Probar rectificador y transistor con la prueba de diodos"
-      - "Primer encendido con lámpara en serie"
-      - "Fusible nuevo idéntico: tipo, valor, tensión y ruptura"
-    exito: "Primero la causa; solo entonces el fusible, y del mismo tipo: cualquier otro cambia lo que protege."
-    pistas:
-      - { texto: "El fusible nuevo es lo último." }
-    escalera:
-      - "Antes de medir, el equipo sin red."
-    solucion: "Desconectar, medir resistencia, prueba de diodos, encendido con lámpara y, al final, el fusible idéntico."
-
-  - id: otros
-    tipo: pregunta
-    titulo: "Los otros fusibles"
-    texto: "Empareje cada uno con lo que hace."
-    libro: [86]
-    widget:
-      tipo: figura
-      imagen: img/foto_fusible.jpg
-      zonas:
-        - { id: fotos, rotulo: "Las tres fotos", rect: [0, 0, 1600, 318] }
-    emparejar:
-      - ["PTC rearmable", "Sobrecargas moderadas; USB y baterías"]
-      - ["Fusible térmico", "Funde por temperatura: un fallo de ventilación"]
-      - ["Fusible electrónico", "Corta en microsegundos y se rearma"]
-    exito: "Ninguno sustituye en la red al fusible de verdad, con su capacidad de ruptura."
-    pistas:
-      - { texto: "Solo uno reacciona a la temperatura y no a la corriente." }
-    escalera:
-      - "¿Cuál se restablece solo con segundos de retraso?"
-    solucion: "PTC: USB y baterías. Térmico: temperatura. Electrónico: microsegundos y rearme."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [81, 83, 84, 85]
+    libro: [80, 81, 83, 84, 85, 86, 87, 285]
     ideas:
-      - { titulo: "Curva.", texto: "Cuanto más supera la corriente al valor nominal, antes funde; el lento tolera la irrupción." }
-      - { titulo: "Valor y tipo.", texto: "Entre 1,5 y 2 veces la corriente normal; lento o rápido según la carga." }
-      - { titulo: "Tensión y ruptura.", texto: "Debe apagar el arco y cortar el cortocircuito posible." }
-      - { titulo: "Síntoma.", texto: "Antes de reponerlo, busque la causa." }
+      - { titulo: "Curva y tipo.", texto: "Cuanto más supera la corriente al valor nominal, antes funde; el lento (T) tolera la irrupción, el rápido (F) protege electrónica." }
+      - { titulo: "Valor.", texto: "Entre 1,5 y 2 veces la corriente normal, con tensión y capacidad de ruptura suficientes." }
+      - { titulo: "Síntoma.", texto: "Antes de reponerlo: sin red, resistencia de la alimentación, prueba de diodos, lámpara en serie y uno idéntico." }
+      - { titulo: "Los otros.", texto: "PTC rearmable para USB y baterías; térmico por temperatura; electrónico, en microsegundos." }

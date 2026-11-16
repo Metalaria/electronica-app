@@ -6,6 +6,9 @@
 # - La disipación (bloques 288–292), el disipador (296–298), el shunt (300) y la coherencia (303).
 # Pasos prácticos: «reto» del disipador con 12 W y 60 °C sobre ambiente (R_sa ≤ 3,5 °C/W); «simular» la potencia del
 # transformador (unos 160 VA; error típico: los 90 W entregados, sin el 1,8 de los pulsos).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se pone la red en el peor caso bajo (objetivo) y se calculan,
+# en lugar de elegirlos, los 39,5 V, los 48 V del peor caso alto, el secundario de 30 V y los 129 W sin prerregulador.
+# Quedan dos preguntas (el shunt y la corriente de rizado del condensador).
 leccion: cap50/sec-50.9
 
 libro:
@@ -68,14 +71,17 @@ modelo:
     V_sh: { expr: "I_max*R_sh", sim: "V", nombre: "caída en el shunt", unidad: V }
     P_sh: { expr: "I_max^2*R_sh", sim: "P", nombre: "potencia en el shunt", unidad: W }
     P_ent: { expr: "V_max*I_max", sim: "P", nombre: "potencia entregada máxima", unidad: W }
+    V_nod: { expr: "V_p - dV/2", sim: "V", nombre: "sin los diodos (error)", unidad: V }
+    V_s9: { expr: "(V_max + 3.5 + 3 + 2*V_d)/1.414", sim: "V_{sec}", nombre: "sin la red baja (error)", unidad: V }
     S_tr: { expr: "V_max*I_max*k_ef", sim: "S", nombre: "potencia del transformador", unidad: VA }
 
 tarjetas:
   - id: explore-continua
     tipo: explorar
     titulo: "La continua, con la red real"
-    texto: "Secundario de 30 V eficaces, puente, 10 000 µF y 3 A. Mueva la red y mire la continua."
+    texto: "Secundario de 30 V eficaces, puente, 10 000 µF y 3 A. Ponga la red en el peor caso para el regulador y mire la continua."
     libro: [275, 279, 284]
+    inicio: { red: 1 }
     widget:
       tipo: circuito
       esquema: puente
@@ -88,37 +94,52 @@ tarjetas:
           - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: red, lista: [0.9, 1], nombres: ["red al −10 %", "red nominal"], rotulo: "Red" }
-    requiere: { mover: [red] }
+    objetivo:
+      condiciones:
+        - { valor: red, max: 0.95, rotulo: "El peor caso para el regulador" }
+      logrado: "Con la red al −10 %, la continua cae a {{V_cc}}: con eso tiene que seguir dando 30 V con su caída y el valle del rizado."
+      pistas:
+        - { texto: "Para el regulador, lo peor es que le llegue poca tensión." }
+    escalera:
+      - "¿Cuándo le queda menos margen al regulador?"
+    solucion: "La red al −10 %: unos 35,3 V."
     comprobar:
       - { con: { red: 1 }, V_cc: 39.5, V_p: 42.4, tol: 0.01 }
       - { con: { red: 0.9 }, V_cc: 35.3, tol: 0.01 }
 
   - id: formula-continua
-    tipo: formula
+    tipo: simular
     titulo: "Los 39,5 V"
-    texto: "El pico menos dos diodos menos medio rizado, con la red nominal y plena carga."
-    libro: [276, 277]
+    texto: "Con la red nominal y plena carga: 3 V de rizado. ¿Qué continua queda tras el filtro?"
+    libro: [276, 277, 283]
     fijar: { red: 1 }
-    ec: 277
-    sustitucion: "{{V_p}} − 2 × {{V_d}} − {{dV}}/2 = {{V_cc}}"
     widget:
-      tipo: circuito
-      esquema: puente
-      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_f, carga: R_L }
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 50, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida" }
       lectura: { valor: V_cc, rotulo: "Continua a plena carga" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 50, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
-      mandos: []
+      ocultar: true
+    simular:
+      objetivo: V_cc
+      unidad: V
+      tol: 0.02
+      rotulo: "Continua a plena carga"
+      errores:
+        - { expr: "V_pk", texto: "Le falta restar medio rizado." }
+        - { expr: "V_nod", texto: "Le faltan los dos diodos del puente." }
+    exito: "39,5 V: el pico menos dos diodos menos medio rizado."
+    escalera:
+      - "Pico de 42,4 V, menos 1,4 V de los diodos, menos la mitad de los 3 V de rizado."
+    solucion: "42,4 − 1,4 − 1,5 ≈ 39,5 V."
     comprobar:
-      - { V_cc: 39.5, dV: 3, tol: 0.01 }
+      - { V_cc: 39.5, dV: 3, V_p: 42.4, V_pk: 41, V_nod: 40.9, tol: 0.01 }
 
   - id: prediga-48
-    tipo: predecir
+    tipo: simular
     titulo: "Lo que hay que soportar"
-    texto: "Red un 10 % alta y sin carga. ¿Qué tensión deben soportar el regulador y el condensador?"
+    texto: "Red un 10 % alta y sin carga, y el transformador sube en vacío un 5 %. ¿Qué tensión deben soportar el regulador y el condensador?"
     libro: [280]
     fijar: { red: 1.1 }
     widget:
@@ -129,22 +150,22 @@ tarjetas:
         - { expr: "(V_sec*1.414*rx - 2*V_d)*1.05", color: naranja, rotulo: "en vacío" }
       lectura: { valor: V_vac, rotulo: "En vacío, red alta" }
       ocultar: true
-    opciones:
-      - texto: "Unos 48 V"
-        bien: true
-        porque: "45,3 V de pico con la red alta, más el 5 % que sube en vacío un transformador de este tamaño."
-      - texto: "39,5 V, la nominal"
-        porque: "Esa es con la red nominal y plena carga; el peor caso alto es en vacío y con la red alta."
-      - texto: "45,3 V justos"
-        porque: "Falta lo que sube en vacío el transformador: un 5 % más."
+    simular:
+      objetivo: V_vac
+      unidad: V
+      tol: 0.03
+      rotulo: "Peor caso alto"
+      errores:
+        - { expr: "V_pk", texto: "Esos 45,3 V son el pico con la red alta; falta el 5 % que sube en vacío." }
+    exito: "Unos 48 V: por eso el condensador es de 63 V."
     escalera:
-      - "Red alta, sin rizado que restar, y el transformador sube en vacío."
-    solucion: "Unos 48 V: por eso el condensador es de 63 V."
+      - "Red alta, sin rizado que restar, y un 5 % más en vacío."
+    solucion: "45,3 V más un 5 %: unos 48 V."
     comprobar:
       - { V_vac: 47.6, V_pk: 45.3, tol: 0.01 }
 
   - id: estime-secundario
-    tipo: pregunta
+    tipo: simular
     titulo: "Hacia atrás"
     texto: "30 V de salida, 3,5 V de caída mínima, 3 V de rizado y dos diodos, con la red al −10 %. ¿Qué secundario eficaz hace falta?"
     libro: [281]
@@ -154,28 +175,25 @@ tarjetas:
       y: { min: 20, max: 55, unidad: V, rotulo: "pico con red baja" }
       curvas:
         - { expr: "0.9*1.414*vx", color: naranja, rotulo: "pico con la red al −10 %" }
-        - { expr: "37.9", color: tinta, rotulo: "37,9 V necesarios", discontinua: true }
-    estimar:
-      objetivo: "V_sreq"
+        - { expr: "37.9 + 0*vx", color: tinta, rotulo: "37,9 V necesarios", discontinua: true }
+      lectura: { valor: V_sreq, rotulo: "Secundario eficaz" }
+      ocultar: true
+    simular:
+      objetivo: V_sreq
       unidad: V
-      min: 20
-      max: 40
-      paso: 0.5
-      inicio: 24
       tol: 0.03
       rotulo: "Secundario eficaz"
+      errores:
+        - { expr: "V_s9", texto: "Le falta la red baja: el pico necesario hay que tenerlo con un 10 % menos." }
     exito: "Unos 30 V eficaces. Con 24 V la fuente no pasaría de unos 26 V a 3 A."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 30.8 }, texto: "Se ha pasado: el pico necesario es 37,9 V con la red al −10 %." }
-      - { texto: "Se ha quedado corto: 24 V parecen bastar para 30 V, pero no dejan caída en el valle con la red baja." }
     escalera:
       - "Pico necesario: 30 + 3,5 + 3 + 1,4 = 37,9 V. Divídalo entre 0,9 × 1,414."
     solucion: "37,9 / (0,9 × 1,414) ≈ 30 V eficaces."
     comprobar:
-      - { V_sreq: 29.8, tol: 0.01 }
+      - { V_sreq: 29.8, V_s9: 26.8, tol: 0.01 }
 
   - id: pregunta-disipacion
-    tipo: pregunta
+    tipo: simular
     titulo: "El peor caso, sin prerregulador"
     texto: "Con 48 V de entrada y la salida a 5 V con 3 A, ¿cuánto disipa el paso?"
     libro: [287, 288, 289, 290, 307]
@@ -186,15 +204,18 @@ tarjetas:
       y: { min: 0, max: 160, unidad: W, rotulo: "P" }
       curvas:
         - { expr: "(V_alta - vx)*I_max", color: naranja, rotulo: "sin prerregulador" }
-        - { expr: "V_hr*I_max", color: azul, rotulo: "con prerregulador" }
-    opciones:
-      - texto: "129 W: con dos transistores, 65 W cada uno"
-        bien: true
-        porque: "(48 − 5) × 3. Una cota algo pesimista: con carga la entrada baja a unos 44 V."
-      - texto: "144 W"
-        porque: "Esa es con la salida cortocircuitada, a 0 V."
-      - texto: "15 W"
-        porque: "Eso es lo que se entrega a 5 V; el paso disipa lo que sobra."
+        - { expr: "V_hr*I_max + 0*vx", color: azul, rotulo: "con prerregulador" }
+      lectura: { valor: P_5, rotulo: "Calor en el paso" }
+      ocultar: true
+    simular:
+      objetivo: P_5
+      unidad: W
+      tol: 0.03
+      rotulo: "Calor en el paso"
+      errores:
+        - { expr: "P_0", texto: "Esa es con la salida cortocircuitada, a 0 V." }
+        - { expr: "P_o5", texto: "Eso es lo que se entrega a 5 V; el paso disipa lo que sobra." }
+    exito: "129 W: con dos transistores, 65 W cada uno. Una cota algo pesimista: con carga la entrada baja a unos 44 V."
     escalera:
       - "Lo que sobra, 48 − 5, por los 3 A."
     solucion: "(48 − 5) × 3 = 129 W; con prerregulador de 4 V, 12 W."
@@ -213,7 +234,7 @@ tarjetas:
       y: { min: 0, max: 120, unidad: "°C", rotulo: "ΔT" }
       curvas:
         - { expr: "P_pre*(R_jc + R_cs + rx)", color: naranja, rotulo: "unión sobre ambiente" }
-        - { expr: "dT", color: tinta, rotulo: "60 °C", discontinua: true }
+        - { expr: "dT + 0*rx", color: tinta, rotulo: "60 °C", discontinua: true }
       marcas:
         - { x: "R_sa", y: "dT_j", rotulo: "{{dT_j}}" }
       lectura: { valor: dT_j, rotulo: "Unión sobre ambiente" }

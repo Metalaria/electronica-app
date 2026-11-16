@@ -4,6 +4,10 @@
 # La banda se ve con el esquema «transformador-real»: el altavoz de 8 Ω con 10:1 (800 Ω reflejados), la dispersión
 # L₁·(1 − k²) del bloque 225 con k = 0,95 y la magnetizante tomada como L₁. EJEMPLO: 1 kΩ de fuente y L₁ = 1 H (la
 # sección no da valores): límite inferior (1 k ‖ 800)/(2π·1 H) = 70,7 Hz; superior (1 k + 800)/(2π·L_disp).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la red se lleva a ver 200 Ω con las espiras (objetivo); la
+# tensión del secundario 10:1 se mide; la impedancia del altavoz, la del 3:1 y k medido se escriben; la banda baja se
+# hunde bajando la frecuencia y la alta se ensancha subiendo k (objetivos). Quedan dos preguntas de opciones (los
+# puntos de polaridad y por qué con el cuadrado), los usos emparejados y, en el resumen, las tres relaciones.
 leccion: cap24/sec-24.9
 
 libro:
@@ -50,14 +54,18 @@ modelo:
     f_m0: { expr: "par(R_m, R_p)/(2*pi*L_m)", sim: "f_{inf}", nombre: "límite inferior de la banda", unidad: Hz }
     f_m1: { expr: "(R_m + R_p)/(2*pi*L_d)", sim: "f_{sup}", nombre: "límite superior de la banda", unidad: Hz }
     d_k: { expr: "1 - k_c^2", sim: "L_{disp}/L₁", nombre: "fracción de dispersión", unidad: "" }
+    Z_mal: { expr: "R_2l*N_1/N_2", sim: "n·R_{L}", nombre: "carga por la relación sin cuadrado", unidad: Ω }
+    A_med: { expr: "N_b/N_a*V_m*R_p/(R_m + R_p)", sim: "V_{2}", nombre: "amplitud en el centro de la banda", unidad: V }
     k_med: { expr: "sqrt(1 - 0.0975)", sim: "k", nombre: "acoplamiento medido", unidad: "", cifras: 3 }
 
 tarjetas:
   - id: explore-trafo
     tipo: explorar
     titulo: "Tensión, corriente e impedancia"
-    texto: "Un transformador ideal con 230 V en el primario y un altavoz de 8 Ω. Cambie las espiras del primario y mire qué impedancia ve la red."
-    libro: [218, 219, "cap24#24"]
+    texto: "Un transformador ideal con 230 V en el primario y un altavoz de 8 Ω. Cambie las espiras del primario hasta que la red vea 200 Ω."
+    libro: [218, 219, 220, "cap24#24"]
+    fijar: { N_2: 100, tr_on: 1 }
+    inicio: { N_1: 100 }
     widget:
       tipo: circuito
       esquema: transformador
@@ -71,97 +79,103 @@ tarjetas:
       mide: { secundario: V_2, i1: I_1, i2: I_2 }
       mandos:
         - { valor: N_1, lista: [100, 200, 300, 500, 1000], rotulo: "Espiras del primario" }
+    objetivo:
+      condiciones:
+        - { valor: Z_r, objetivo: 200, tol: 0.02, rotulo: "Z vista: {{Z_r}}" }
+      logrado: "Con {{N_1}} espiras, relación 5: la tensión baja 5 veces, la corriente sube 5 y la impedancia cambia con n²."
+      pistas:
+        - { texto: "Divida 200 entre 8: ¿de qué relación es ese número el cuadrado?" }
+    escalera:
+      - "Z_{primario} = n² · Z_{carga}."
+    solucion: "500 espiras: 5² × 8 = 200 Ω."
+    comprobar:
+      - { con: { N_1: 500 }, Z_r: 200, n_r: 5 }
 
   - id: prediga-altavoz
-    tipo: predecir
+    tipo: leer
     titulo: "El altavoz visto desde el primario"
-    texto: "Un altavoz de 8 Ω en el secundario de un transformador 10:1. ¿Qué impedancia ve el primario?"
-    libro: [221]
+    texto: "Un altavoz de 8 Ω en el secundario de un transformador 10:1, con 230 V. Lea la corriente del primario y escriba la impedancia que ve, V₁/I₁."
+    libro: [221, 222]
     fijar: { N_1: 1000, N_2: 100, R_2l: 8, tr_on: 1 }
     widget:
       tipo: circuito
       esquema: transformador
       piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
-      lectura: { valor: Z_r, rotulo: "Impedancia vista desde el primario" }
+      lectura: { valor: I_1, rotulo: "Corriente del primario" }
       corriente: I_2
       mide: { secundario: V_2, i1: I_1, i2: I_2 }
-      ocultar: true
-    opciones:
-      - texto: "800 Ω"
-        bien: true
-        porque: "Con el cuadrado de la relación: 8 × 10² = 800 Ω. La tensión sube 10 veces y la corriente baja 10."
-      - texto: "80 Ω"
-        porque: "Ha usado la relación sin elevarla al cuadrado. La impedancia es tensión entre corriente, y las dos cambian."
-      - texto: "0,08 Ω"
-        porque: "Al revés: desde el lado de más espiras la impedancia se ve mayor, no menor."
+      mandos: []
+    leer:
+      objetivo: Z_r
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Impedancia vista desde el primario"
+      errores:
+        - { expr: "Z_mal", texto: "Ha usado la relación sin elevarla al cuadrado. La impedancia es tensión entre corriente, y las dos cambian." }
+        - { expr: "R_2l/(N_1/N_2)^2", texto: "Al revés: desde el lado de más espiras la impedancia se ve mayor, no menor." }
+    exito: "230 V / 0,2875 A = 800 Ω = 8 × 10². Así una válvula, que quiere miles de ohmios, mueve un altavoz de ocho."
     escalera:
-      - "Visto desde el primario, V₁ es 10 veces V₂ e I₁ es la décima parte de I₂."
+      - "Divida los 230 V por la corriente de la lectura."
     solucion: "8 × 10² = 800 Ω."
     comprobar:
-      - { Z_r: 800, n_r: 10 }
-      - { con: { N_1: 316.23 }, Z_r: 80 }
+      - { Z_r: 800, n_r: 10, I_1: 0.2875, Z_mal: 80 }
 
-  - id: formula-reflejada
-    tipo: formula
-    titulo: "Con el cuadrado de la relación"
-    texto: "Un transformador transforma impedancias con n². Cambie las espiras del primario."
-    libro: [220]
-    ec: 220
-    sustitucion: "{{R_2l}} / ({{N_2}}/{{N_1}})² = {{Z_r}}"
-    fijar: { N_2: 100, tr_on: 1 }
+  - id: mida-secundario
+    tipo: medir
+    titulo: "La tensión del secundario"
+    texto: "Con el 10:1 y 230 V en el primario, ponga las puntas donde mediría la tensión que recibe el altavoz."
+    libro: [218, "cap24#24"]
+    fijar: { N_1: 1000, N_2: 100, R_2l: 8, tr_on: 1 }
     widget:
       tipo: circuito
       esquema: transformador
       piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
-      lectura: { valor: Z_r, rotulo: "Z reflejada" }
       corriente: I_2
       mide: { secundario: V_2, i1: I_1, i2: I_2 }
-      mandos:
-        - { valor: N_1, lista: [100, 200, 300, 500, 1000], rotulo: "Espiras del primario" }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [s, "0"]
+      valor: V_2
+      porque:
+        fte: "Esa punta está en el primario: mide los 230 V de la red."
+    exito: "23 V: la tensión escala con las vueltas, V₂/V₁ = N₂/N₁."
+    escalera:
+      - "El altavoz está en el secundario, a la derecha."
+    solucion: "Roja en el secundario y negra abajo: 23 V."
+    comprobar:
+      - { V_2: 23 }
 
   - id: estime-72
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El ejercicio del 3:1"
-    texto: "Una carga de 8 Ω en el secundario de un transformador 3:1, primario a secundario. Estime la impedancia que ve el primario."
+    texto: "Una carga de 8 Ω en el secundario de un transformador 3:1, primario a secundario. Escriba la impedancia que ve el primario."
     libro: ["cap24#329", 220]
-    fijar: { N_1: 300, N_2: 100, R_2l: 8 }
-    estimar:
-      objetivo: "Z_r"
+    fijar: { N_1: 300, N_2: 100, R_2l: 8, tr_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: V_2, rotulo: "Tensión del secundario" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+      mandos: []
+    leer:
+      objetivo: Z_r
       unidad: Ω
-      min: 0
-      max: 200
-      paso: 1
-      inicio: 24
-      tol: 0.05
+      tol: 0.02
       rotulo: "Impedancia en el primario"
+      errores:
+        - { expr: "Z_mal", texto: "Ha usado 3 en lugar de 3²." }
     exito: "(3/1)² × 8 = 9 × 8 = 72 Ω."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 68 }, texto: "Poco: ¿ha usado 3 en lugar de 3²?" }
-      - { texto: "Demasiado: 8 Ω por el cuadrado de 3." }
     escalera:
       - "Z_{primario} = n² · Z_{carga}, con n = 3."
     solucion: "9 × 8 = 72 Ω."
     comprobar:
-      - { Z_r: 72 }
-
-  - id: tres-relaciones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Las relaciones del transformador"
-    texto: "Una cada magnitud con cómo la cambia el transformador o cómo se calcula."
-    libro: [211, 218, 219, 220]
-    emparejar:
-      - ["La tensión", "Escala con las vueltas, n"]
-      - ["La corriente", "Al revés, 1/n"]
-      - ["La impedancia", "Con el cuadrado de la relación"]
-      - ["La inductancia mutua", "k · √(L₁ · L₂)"]
-    exito: "Lo que sube la tensión lo baja la corriente; la impedancia, cociente de ambas, cambia con el cuadrado."
-    pistas:
-      - { texto: "La potencia se conserva en el transformador ideal: si sube la tensión, baja la corriente." }
-    escalera:
-      - "Z = V/I: ¿cómo cambia si V se multiplica por n y I se divide por n?"
-    solucion: "Tensión ×n, corriente ×1/n, impedancia con n², M = k√(L₁L₂)."
+      - { Z_r: 72, Z_mal: 24 }
 
   - id: puntos
     tipo: pregunta
@@ -187,25 +201,28 @@ tarjetas:
     solucion: "Fase invertida: la realimentación negativa se vuelve positiva."
 
   - id: estime-k
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El acoplamiento, medido"
-    texto: "Con el secundario en corto, el primario mide el 9,75 % de su inductancia en abierto. Estime el coeficiente de acoplamiento k."
-    libro: [225, 238]
-    estimar:
-      objetivo: "k_med"
+    texto: "Con el secundario en corto, el primario mide el 9,75 % de su inductancia en abierto. Escriba el coeficiente de acoplamiento k."
+    libro: [211, 225, 238]
+    widget:
+      tipo: grafica
+      x: { id: kk, min: 0.8, max: 1, unidad: "", rotulo: "k" }
+      y: { min: 0, max: 0.4, unidad: "", rotulo: "L_{cc}/L_{ab}" }
+      curvas:
+        - { expr: "1 - kk^2", color: azul, rotulo: "1 − k²" }
+        - { expr: "0.0975", color: naranja, rotulo: "lo medido", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: k_med
       unidad: ""
-      min: 0
-      max: 1
-      paso: 0.005
-      inicio: 0.5
-      tol: 0.01
+      tol: 0.005
       rotulo: "Coeficiente k"
-    exito: "k = √(1 − 0,0975) = 0,95. La dispersión, L₁·(1 − k²), es casi el 10 % de L₁."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 0.94 }, texto: "Poco: la dispersión es pequeña, así que el acoplamiento es casi perfecto." }
-      - { texto: "Demasiado: k = 1 sería sin ninguna dispersión." }
+      errores:
+        - { expr: "1 - 0.0975", texto: "Eso es 1 − k², no k: falta la raíz." }
+    exito: "k = √(1 − 0,0975) = 0,95. La dispersión, L₁·(1 − k²), es casi el 10 % de L₁; la mutua, M = k·√(L₁L₂)."
     escalera:
+      - "Busque dónde la curva cruza lo medido."
       - "k = √(1 − L_{cc}/L_{ab})."
     solucion: "√(1 − 0,0975) = 0,95."
     comprobar:
@@ -214,8 +231,8 @@ tarjetas:
   - id: banda-baja
     tipo: sorpresa
     titulo: "Por abajo no pasa la señal"
-    texto: "La magnetizante queda en paralelo con el primario. Baje la frecuencia: su reactancia cortocircuita la fuente."
-    nota: "Ejemplo: fuente de 1 kΩ y L₁ = 1 H, con k = 0,95."
+    texto: "La magnetizante va en paralelo con el primario. Baje la frecuencia hasta que al altavoz llegue mucho menos que en el centro."
+    nota: "Ejemplo: 1 kΩ de fuente, L₁ = 1 H y k = 0,95."
     libro: [226, 230]
     fijar: { R_2l: 8, k_c: 0.95 }
     inicio: { f_m: 1000 }
@@ -225,7 +242,7 @@ tarjetas:
       piezas: { fuente: V_m, f: f_m, rs: R_m, lm: L_m, ld: L_d, n1: N_a, n2: N_b, carga: R_2l }
       lectura: { valor: A_m, rotulo: "Lo que llega al altavoz" }
       datos:
-        - { valor: f_m0, rotulo: "Límite inferior: {{f_m0}}" }
+        - { valor: A_med, rotulo: "En el centro de la banda: {{A_med}}" }
       mide: { salida_amp: A_m }
       grafica:
         x: { id: nu, min: 1, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
@@ -234,13 +251,23 @@ tarjetas:
           - { expr: "20*log10(N_b/N_a*V_m*2*pi*nu*L_m*R_p/sqrt((R_m*R_p - (2*pi*nu)^2*L_d*L_m)^2 + (2*pi*nu*(L_m*(R_m + R_p) + L_d*R_p))^2))", color: naranja, rotulo: "v_{2} en dB", mide: salida_db }
       mandos:
         - { valor: f_m, lista: [20, 50, 200, 1000], rotulo: "Frecuencia" }
+    objetivo:
+      condiciones:
+        - { valor: A_m, max: 0.0314, rotulo: "Llega: {{A_m}}" }
+      logrado: "A {{f_m}}, por debajo de los {{f_m0}} del límite inferior, ωL es tan pequeña que cortocircuita la fuente."
+      pistas:
+        - { texto: "Todavía llega casi todo: baje más la frecuencia." }
+    escalera:
+      - "El límite inferior es (1 kΩ ‖ 800 Ω)/(2π · 1 H)."
+    solucion: "A 50 Hz o menos."
     comprobar:
-      - { f_m0: 70.7, R_p: 800, tol: 0.005 }
+      - { f_m0: 70.7, R_p: 800, A_med: 0.04444, tol: 0.005 }
+      - { con: { f_m: 50 }, A_m: 0.0257, tol: 0.02 }
 
   - id: banda-alta
     tipo: explorar
     titulo: "Por arriba manda la dispersión"
-    texto: "La dispersión, L₁·(1 − k²), queda en serie. Suba el acoplamiento k: la dispersión baja y la banda se ensancha por arriba."
+    texto: "La dispersión, L₁·(1 − k²), queda en serie. Suba el acoplamiento k hasta llevar el límite superior por encima de 100 kHz."
     libro: [225, 230, 232]
     fijar: { R_2l: 8, f_m: 1000 }
     inicio: { k_c: 0.95 }
@@ -259,8 +286,18 @@ tarjetas:
           - { expr: "20*log10(N_b/N_a*V_m*2*pi*nu*L_m*R_p/sqrt((R_m*R_p - (2*pi*nu)^2*L_d*L_m)^2 + (2*pi*nu*(L_m*(R_m + R_p) + L_d*R_p))^2))", color: naranja, rotulo: "v_{2} en dB", mide: salida_db }
       mandos:
         - { valor: k_c, lista: [0.95, 0.99, 0.999], rotulo: "Acoplamiento k" }
+    objetivo:
+      condiciones:
+        - { valor: f_m1, min: 100000, rotulo: "Límite superior: {{f_m1}}" }
+      logrado: "Con k = {{k_c}}, la dispersión baja a {{L_d}} y la banda llega a {{f_m1}}. Entrelazar los bobinados reduce la dispersión."
+      pistas:
+        - { texto: "Todavía hay mucha dispersión: más acoplamiento." }
+    escalera:
+      - "El límite superior es (1 kΩ + 800 Ω)/(2π · L_{disp})."
+    solucion: "k = 0,999: unos 143 kHz."
     comprobar:
       - { L_d: 0.0975, f_m1: 2938, tol: 0.005 }
+      - { con: { k_c: 0.999 }, f_m1: 143300, tol: 0.003 }
 
   - id: por-que-cuadrado
     tipo: porque
@@ -314,9 +351,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [215, 220, 222, 225, 230]
+    libro: [211, 215, 220, 222, 225, 230]
     ideas:
-      - { titulo: "Tres relaciones.", texto: "Tensión con n, corriente con 1/n, impedancia con n²: 8 Ω con 10:1 son 800 Ω." }
+      - { titulo: "Tres relaciones.", texto: "Tensión con n, corriente con 1/n, impedancia con n²: 8 Ω con 10:1 son 800 Ω. M = k√(L₁L₂)." }
       - { titulo: "Polaridad.", texto: "Los puntos marcan el signo de M; cambiarlos invierte la fase." }
       - { titulo: "El real.", texto: "Dispersión L₁(1 − k²) en serie; magnetizante en paralelo." }
       - { titulo: "La banda.", texto: "Por abajo la limita la magnetizante; por arriba, la dispersión y la capacidad." }

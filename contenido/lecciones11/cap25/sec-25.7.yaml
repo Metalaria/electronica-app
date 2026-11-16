@@ -1,6 +1,11 @@
 # Lección 1.2 de la sección 24.7 «Orden, Pendiente y Polos de un Filtro» (cap25). Formato: contenido/lecciones11/GUIA.md.
 # Las curvas de orden 4 son las de la figura 24.11: Butterworth, Chebyshev de 1 dB (corte en el borde del rizado) y
 # Bessel (polinomio de orden 4 escalado a −3 dB en el corte); los comprobar fijan las cifras del libro (bloques 234 y 243).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): −80 dB/década se consigue con el orden (objetivo); la atenuación
+# de orden 4 a una década y el orden para media década se escriben; se busca la separación con la que basta orden 3
+# (objetivo); las tres aproximaciones se comparan llevando la frecuencia al doble del corte (objetivo; lo que define a
+# cada una, en su «logrado»). Quedan dos preguntas de opciones (el compromiso de Bessel y los polos en el plano s); las
+# secciones y el 2π pasan al resumen.
 leccion: cap25/sec-25.7
 
 libro:
@@ -42,8 +47,9 @@ tarjetas:
   - id: explore-orden
     tipo: explorar
     titulo: "Cada orden, 20 dB más por década"
-    texto: "Paso bajo de orden n. Súbalo y mire la pendiente por encima del corte."
-    libro: [205, 207]
+    texto: "Paso bajo de orden n: un RC es orden 1; un RLC o dos RC, orden 2. Súbalo hasta que la pendiente sea de −80 dB por década."
+    libro: [205, 207, 209]
+    inicio: { n_o: 1 }
     widget:
       tipo: grafica
       x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f_{c}", escala: log }
@@ -53,11 +59,23 @@ tarjetas:
       lectura: { valor: pend, rotulo: "Pendiente" }
       mandos:
         - { valor: n_o, lista: [1, 2, 4, 8], rotulo: "Orden" }
+    objetivo:
+      condiciones:
+        - { valor: pend, objetivo: -80, tol: 0.01, rotulo: "Pendiente: {{pend}}" }
+      logrado: "Orden {{n_o}}: −20 dB por década y por orden, y −90° de fase por orden en un paso bajo."
+      pistas:
+        - { cuando: { valor: pend, mayor: -80 }, texto: "Poca pendiente: más orden." }
+        - { texto: "Demasiada: menos orden." }
+    escalera:
+      - "80/20 = 4."
+    solucion: "Orden 4."
+    comprobar:
+      - { con: { n_o: 4 }, pend: -80 }
 
   - id: prediga-cuatro
-    tipo: predecir
-    titulo: "Prediga la atenuación"
-    texto: "Un paso bajo de orden 4, una década por encima del corte. ¿Por cuánto multiplica la amplitud?"
+    tipo: leer
+    titulo: "La atenuación de orden 4"
+    texto: "Un paso bajo de orden 4, una década por encima del corte. Escriba por cuánto multiplica la amplitud."
     libro: [208]
     fijar: { n_o: 4 }
     widget:
@@ -66,16 +84,16 @@ tarjetas:
       y: { min: -100, max: 5, unidad: dB, rotulo: "|H|" }
       curvas:
         - { expr: "-10*log10(1 + u^(2*n_o))", color: azul, rotulo: "orden n" }
-      lectura: { valor: at_dec, rotulo: "Atenuación una década más allá" }
-      ocultar: true
-    opciones:
-      - texto: "×0,0001"
-        bien: true
-        porque: "Cuatro órdenes son −80 dB por década: cuatro veces ×0,1."
-      - texto: "×0,4"
-        porque: "Las atenuaciones de cada orden no se suman: se multiplican. Es 0,1 cuatro veces: 0,1⁴."
-      - texto: "×0,01"
-        porque: "Eso es orden 2, −40 dB por década. Con orden 4 se duplica la pendiente."
+      mandos: []
+    leer:
+      objetivo: at_dec
+      unidad: ""
+      tol: 0.05
+      rotulo: "Factor de la amplitud"
+      errores:
+        - { expr: "at_suma", texto: "Las atenuaciones de cada orden no se suman: se multiplican. Es 0,1 cuatro veces." }
+        - { expr: "0.01", texto: "Eso es orden 2, −40 dB por década. Con orden 4 se duplica la pendiente." }
+    exito: "×0,0001: cuatro órdenes son −80 dB por década, cuatro veces ×0,1."
     escalera:
       - "Cada orden multiplica por 0,1 una década más allá."
     solucion: "0,1⁴ = 0,0001: −80 dB."
@@ -83,12 +101,13 @@ tarjetas:
       - { at_dec: 0.0001, pend: -80, at_suma: 0.4 }
 
   - id: regla-orden
-    tipo: formula
+    tipo: explorar
     titulo: "Atenuación entre separación"
-    texto: "La exigencia no la fija la atenuación sola: la fija la atenuación dividida por la separación en frecuencia."
+    texto: "La exigencia la fija la atenuación dividida por la separación en frecuencia. Para 60 dB, elija la separación con la que basta orden 3."
     libro: [213, 215]
     ec: 213
-    sustitucion: "{{A_r}} / (20 · {{d_s}}) = {{n_min}}"
+    fijar: { A_r: 60 }
+    inicio: { d_s: 0.5 }
     widget:
       tipo: grafica
       x: { id: n, min: 1, max: 12, unidad: "", rotulo: "orden" }
@@ -98,58 +117,52 @@ tarjetas:
         - { expr: "A_r", color: tinta, rotulo: "lo requerido", discontinua: true }
       lectura: { valor: n_ent, rotulo: "Orden mínimo" }
       mandos:
-        - { valor: A_r, lista: [40, 60, 80], rotulo: "Atenuación requerida" }
         - { valor: d_s, lista: [0.5, 1, 2], rotulo: "Décadas de separación" }
+    objetivo:
+      condiciones:
+        - { valor: n_ent, max: 3, rotulo: "Orden: {{n_ent}}" }
+      logrado: "Con {{d_s}} décadas de separación, orden {{n_ent}}: separar las bandas es lo que abarata el filtro."
+      pistas:
+        - { texto: "Todavía hace falta más orden: separe más las bandas." }
+    escalera:
+      - "60/(20 · décadas) ≤ 3."
+    solucion: "Una década: orden 3."
+    comprobar:
+      - { con: { d_s: 1 }, n_ent: 3 }
 
   - id: estime-media
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Media década"
-    texto: "60 dB de atenuación, pero a solo media década del corte. ¿Qué orden mínimo hace falta?"
+    texto: "60 dB de atenuación, pero a solo media década del corte. Escriba el orden mínimo que hace falta."
     libro: [213, 214]
     fijar: { A_r: 60, d_s: 0.5 }
-    estimar:
-      objetivo: "n_ent"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 1, max: 12, unidad: "", rotulo: "orden" }
+      y: { min: 0, max: 120, unidad: dB, rotulo: "atenuación" }
+      curvas:
+        - { expr: "20*n*d_s", color: azul, rotulo: "lo que da cada orden" }
+        - { expr: "A_r", color: tinta, rotulo: "lo requerido", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: n_ent
       unidad: ""
-      min: 1
-      max: 12
-      paso: 1
-      inicio: 3
-      tol: 0.1
-      rotulo: "Orden"
+      tol: 0.01
+      rotulo: "Orden mínimo"
+      errores:
+        - { expr: "3", texto: "Tres sería con una década entera. Con media década, cada orden aporta solo 10 dB." }
     exito: "60/(20 · 0,5) = 6: el doble que con una década de separación."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 6 }, texto: "Demasiados: media década da 10 dB por orden." }
-      - { texto: "Pocos: con media década, cada orden aporta solo 10 dB." }
     escalera:
       - "Cada orden da 20 dB por década: con media década, 10 dB."
     solucion: "60/10 = 6."
     comprobar:
       - { n_ent: 6 }
 
-  - id: aproximaciones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Las aproximaciones"
-    texto: "Con el mismo orden, cada aproximación optimiza algo. Una cada una con lo que la define."
-    libro: [218]
-    emparejar:
-      - ["Butterworth", "Banda de paso máximamente plana"]
-      - ["Chebyshev I", "Rizado en la banda de paso, transición más abrupta"]
-      - ["Elíptico (Cauer)", "La transición más abrupta, la peor respuesta al escalón"]
-      - ["Bessel", "Casi sin sobreoscilación, fase casi lineal"]
-    exito: "Cuanto más abrupta la transición, peor el comportamiento en el tiempo."
-    pistas:
-      - { texto: "Bessel optimiza la fase, no la amplitud." }
-    escalera:
-      - "El elíptico tiene rizado en las dos bandas."
-    solucion: "Butterworth–plana, Chebyshev–rizado y más abrupta, elíptico–la más abrupta, Bessel–fase lineal."
-
   - id: tres-curvas
     tipo: sorpresa
     titulo: "Tres filtros de orden 4"
-    texto: "Mueva la frecuencia hasta el doble del corte, una octava, y compare la atenuación de los tres."
-    libro: [234, 243]
+    texto: "Butterworth, Chebyshev de 1 dB y Bessel, los tres de orden 4. Lleve la frecuencia al doble del corte y compare la atenuación de los tres."
+    libro: [218, 234, 243]
     inicio: { u_f: 1 }
     widget:
       tipo: grafica
@@ -167,6 +180,15 @@ tarjetas:
         - { valor: Be_4, rotulo: "Bessel: {{Be_4}}" }
       mandos:
         - { valor: u_f, lista: [0.5, 1, 1.5, 2, 3], rotulo: "f/f_{c}" }
+    objetivo:
+      condiciones:
+        - { valor: u_f, min: 2, max: 2, rotulo: "f/f_{c}: {{u_f}}" }
+      logrado: "Chebyshev {{C_4}}, con rizado y transición abrupta; Butterworth {{B_4}}, máximamente plano; Bessel {{Be_4}}, casi sin sobreoscilación. El elíptico, aún más abrupto."
+      pistas:
+        - { texto: "Lleve la frecuencia a f/f_{c} = 2." }
+    escalera:
+      - "Una octava es el doble de la frecuencia."
+    solucion: "f/f_{c} = 2: −34, −24 y −13 dB."
     comprobar:
       - { con: { u_f: 2 }, C_4: -34, B_4: -24, B_2: -12, tol: 0.03 }
       - { con: { u_f: 2 }, Be_4: -13.4, tol: 0.01 }
@@ -218,60 +240,12 @@ tarjetas:
       - "Más cerca del eje imaginario significa Q más alto."
     solucion: "Más abrupto y más oscilante."
 
-  - id: secciones
-    tipo: pregunta
-    titulo: "Por secciones"
-    texto: "¿Por qué un filtro de orden 8 se construye con cuatro secciones de segundo orden y no con una sola red?"
-    libro: [224]
-    widget:
-      tipo: grafica
-      x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f_{c}", escala: log }
-      y: { min: -100, max: 5, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10(1 + u^(2*n_o))", color: azul, rotulo: "orden n" }
-      mandos:
-        - { valor: n_o, lista: [1, 2, 4, 8], rotulo: "Orden" }
-    opciones:
-      - texto: "Por la sensibilidad: en cada sección, una tolerancia solo mueve sus propios polos"
-        bien: true
-        porque: "En una red de orden alto, un error desplaza todos los polos a la vez. Además, cada sección se ajusta y mide por separado."
-      - texto: "Porque una red de orden 8 no existe"
-        porque: "Existe, pero es tan sensible a las tolerancias que no se usa."
-      - texto: "Para tener más pendiente"
-        porque: "La pendiente la da el orden total, igual en los dos casos."
-    escalera:
-      - "Piense en qué desplaza un pequeño error de un componente."
-    solucion: "Sensibilidad: cada sección aísla sus polos."
-
-  - id: dos-pi
-    tipo: pregunta
-    titulo: "El detalle que se olvida"
-    texto: "Las tablas dan valores normalizados para corte en 1 rad/s. ¿Cuál es el error más frecuente al usarlas?"
-    libro: [250]
-    widget:
-      tipo: grafica
-      x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f_{c}", escala: log }
-      y: { min: -100, max: 5, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10(1 + u^(2*n_o))", color: azul, rotulo: "orden n" }
-    opciones:
-      - texto: "Equivocarse en el factor 2π entre hercios y radianes por segundo"
-        bien: true
-        porque: "Convertir es una escala directa, pero con ω = 2π·f: olvidarlo desplaza el corte."
-      - texto: "Usar condensadores de la serie E12"
-        porque: "Al revés: se eligen primero los condensadores comerciales y luego las resistencias."
-      - texto: "Ordenar las secciones de menor a mayor Q"
-        porque: "Esa es la regla correcta de montaje, no un error."
-    escalera:
-      - "1 rad/s no es 1 Hz."
-    solucion: "El factor 2π entre Hz y rad/s."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [207, 209, 213, 219, 224]
+    libro: [207, 209, 213, 219, 224, 250]
     ideas:
       - { titulo: "El orden.", texto: "Polos o elementos reactivos: −20 dB por década y −90° por orden." }
-      - { titulo: "Elegirlo.", texto: "Atenuación requerida entre 20 veces las décadas de separación." }
+      - { titulo: "Elegirlo.", texto: "Atenuación requerida entre 20 veces las décadas de separación. Las tablas van en rad/s: ojo al 2π." }
       - { titulo: "Las aproximaciones.", texto: "Más abrupta la transición, peor en el tiempo: Chebyshev y elíptico frente a Bessel; Butterworth en medio." }
-      - { titulo: "Por secciones.", texto: "De segundo orden, de menor a mayor Q." }
+      - { titulo: "Por secciones.", texto: "De segundo orden: una tolerancia solo mueve los polos de su sección." }

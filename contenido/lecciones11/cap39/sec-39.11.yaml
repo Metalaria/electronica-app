@@ -8,6 +8,9 @@
 # la del equipo, 5 A); «dibujar» la corriente de carga a 1 C. Modelo de la fase CV (de ejemplo): una exponencial que
 # baja de 20,4 A a 1,0 A en una hora, τ = 1 h / ln 20,4; la forma la da el bloque 143 («decae exponencialmente»), los
 # tiempos la tabla del bloque 369.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se calculan la energía del equipo, la autonomía real de 4S5P y
+# la masa del plomo; el explorar pide llegar a 240 Wh útiles antes del reto con las tres condiciones. Quedan dos
+# preguntas (la carga rápida y por qué no se acelera la CV); la química de cada aplicación, al resumen.
 leccion: cap39/sec-39.11
 
 libro:
@@ -64,32 +67,43 @@ modelo:
     t_tot: { expr: "t_cc + 1", sim: "t", nombre: "tiempo total de carga", unidad: h, cifras: 3 }
     tau_cv: { expr: "1/ln(I_cc/I_cut)", sim: "τ", nombre: "constante de la fase CV", unidad: h, cifras: 3 }
     m_kg: { expr: "E_nec/E_es", sim: "m", nombre: "masa para 240 Wh", unidad: kg }
+    m_nom: { expr: "E_req/E_es", sim: "m", nombre: "masa con la energía nominal (error)", unidad: kg }
+    t_nom: { expr: "E_nom/P_eq", sim: "t", nombre: "autonomía con la energía nominal (error)", unidad: h, cifras: 2 }
 
 tarjetas:
   - id: formula-energia
-    tipo: formula
+    tipo: simular
     titulo: "40.A: la energía"
-    texto: "Un portátil consume 5 A a 12 V durante 4 horas. Es la energía que debe llegar al equipo."
+    texto: "Un portátil consume 5 A a 12 V y debe funcionar 4 horas. ¿Qué energía debe llegar al equipo?"
     libro: [349, 351, 354]
-    ec: 354
-    sustitucion: "{{V_eq}} × {{I_eq}} × {{t_eq}} = {{E_nec}}"
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 5, unidad: h, rotulo: "t" }
       y: { min: 0, max: 300, unidad: Wh, rotulo: "E" }
       curvas:
         - { expr: "P_eq*tx", color: naranja, rotulo: "energía consumida" }
-      marcas:
-        - { x: "t_eq", y: "E_nec", rotulo: "{{E_nec}}" }
       lectura: { valor: E_nec, rotulo: "Energía necesaria" }
+      ocultar: true
+    simular:
+      objetivo: E_nec
+      unidad: Wh
+      tol: 0.03
+      rotulo: "Energía que llega al equipo"
+      errores:
+        - { expr: "P_eq", texto: "Eso es la potencia, en vatios: falta multiplicar por las 4 horas." }
+    exito: "240 Wh: lo que debe llegar al equipo, no lo que sale de la batería."
+    escalera:
+      - "Energía = tensión × corriente × tiempo."
+    solucion: "12 V × 5 A × 4 h = 240 Wh."
     comprobar:
-      - { E_nec: 240, I_eq: 5 }
+      - { E_nec: 240, I_eq: 5, P_eq: 60 }
 
   - id: explore-paquete
     tipo: explorar
     titulo: "Celdas en serie y en paralelo"
-    texto: "Cada celda aporta 12,24 Wh. Combine serie y paralelo y mire la energía que de verdad llega al equipo."
+    texto: "Cada celda aporta 12,24 Wh. Combine serie y paralelo hasta que lleguen al equipo los 240 Wh."
     libro: [355, 357]
+    inicio: { S: 4, P: 5 }
     widget:
       tipo: grafica
       x: { id: px, min: 4, max: 9, unidad: "", rotulo: "en paralelo" }
@@ -106,10 +120,20 @@ tarjetas:
       mandos:
         - { valor: S, lista: [3, 4], nombres: ["3S", "4S"], rotulo: "En serie" }
         - { valor: P, lista: [5, 6, 7, 8], nombres: ["5P", "6P", "7P", "8P"], rotulo: "En paralelo" }
-    requiere: { mover: [P] }
+    objetivo:
+      condiciones:
+        - { valor: E_ut, min: 240, rotulo: "Útil: {{E_ut}}" }
+      logrado: "Con {{N}} celdas, {{E_nom}} nominales dan {{E_ut}} útiles: el convertidor y la capacidad real se llevan su parte."
+      pistas:
+        - { texto: "Todavía no llega: más celdas en paralelo." }
+    escalera:
+      - "Útil = nominal × 0,92 × 0,92."
+    solucion: "Hacen falta 24 celdas, 4S6P o 3S8P: unos 249 Wh útiles."
+    comprobar:
+      - { con: { S: 3, P: 8 }, E_ut: 248.6, N: 24, tol: 0.01 }
 
   - id: prediga-20
-    tipo: predecir
+    tipo: simular
     titulo: "Veinte celdas"
     texto: "240 / 12,24 = 19,6: parece que bastan 20 celdas. Con 4S5P, ¿cuánto dura de verdad el equipo?"
     libro: [355, 357, 358]
@@ -123,19 +147,19 @@ tarjetas:
         - { expr: "E_nec", color: tinta, rotulo: "240 Wh", discontinua: true }
       lectura: { valor: t_real, rotulo: "Autonomía real" }
       ocultar: true
-    opciones:
-      - texto: "Unas 3,5 horas: no basta"
-        bien: true
-        porque: "Los 245 Wh nominales pierden el convertidor y la capacidad real: unas 3,4 a 3,6 horas."
-      - texto: "Las 4 horas justas"
-        porque: "Esos 240 Wh son los que deben llegar al equipo, no los que salen de la batería."
-      - texto: "Algo más de 4 horas"
-        porque: "Entre la batería y el equipo se pierde algo en el convertidor y en la capacidad real."
+    simular:
+      objetivo: t_real
+      unidad: h
+      tol: 0.04
+      rotulo: "Autonomía real"
+      errores:
+        - { expr: "t_nom", texto: "Ha usado los 245 Wh nominales: el convertidor y la capacidad real se llevan su parte." }
+    exito: "Unas 3,5 horas: los 245 Wh nominales se quedan en unas 3,4 a 3,6 horas reales. No basta."
     escalera:
       - "Multiplique los 245 Wh por 0,92 dos veces y divida entre 60 W."
     solucion: "245 × 0,92 × 0,92 ≈ 207 Wh útiles: unas 3,5 horas."
     comprobar:
-      - { E_nom: 244.8, E_ut: 207.2, t_real: 3.45 }
+      - { E_nom: 244.8, E_ut: 207.2, t_real: 3.45, t_nom: 4.08, tol: 0.01 }
 
   - id: reto-paquete
     tipo: reto
@@ -283,63 +307,39 @@ tarjetas:
       - "En la fase CV, ¿quién decide la corriente: el cargador o la celda?"
     solucion: "La impone la celda: la difusión de iones en el electrodo."
 
-  - id: empareje-quimica
-    tipo: pregunta
-    titulo: "40.C: la química de cada caso"
-    texto: "Empareje cada aplicación con su química y el parámetro que manda."
-    libro: [378, 384, 385, 386]
-    widget:
-      tipo: figura
-      figura: fig-39.20
-      zonas:
-        - { id: curva, rotulo: "La gráfica", rect: [30, 0, 300, 200] }
-    emparejar:
-      - ["Portátil de mano", "Li-ion NMC: manda la energía específica"]
-      - ["Respaldo que espera años", "NiMH de baja autodescarga: manda la autodescarga"]
-      - ["Banco solar con ciclado diario", "LiFePO4: mandan los ciclos"]
-    exito: "No hay una química mejor: elegir por el parámetro equivocado es el error habitual."
-    pistas:
-      - { texto: "Un ciclo al día son 365 al año: ¿qué química aguanta miles?" }
-    escalera:
-      - "Busque el parámetro dominante de cada caso: peso, autodescarga o ciclos."
-    solucion: "Portátil, NMC; respaldo, NiMH de baja autodescarga; solar, LiFePO4."
-
   - id: estime-plomo
-    tipo: pregunta
-    titulo: "El peso del plomo"
+    tipo: simular
+    titulo: "40.C: el peso del plomo"
     texto: "El plomo AGM da 35 Wh/kg. ¿Cuánto pesan los 240 Wh?"
-    libro: [383, 384]
+    libro: [378, 383, 384]
     widget:
       tipo: grafica
       x: { id: ex, min: 20, max: 260, unidad: "Wh/kg", rotulo: "energía específica" }
       y: { min: 0, max: 12, unidad: kg, rotulo: "m" }
       curvas:
         - { expr: "E_nec/ex", color: naranja, rotulo: "masa para 240 Wh" }
-    estimar:
-      objetivo: "m_kg"
+      lectura: { valor: m_kg, rotulo: "Masa" }
+      ocultar: true
+    simular:
+      objetivo: m_kg
       unidad: kg
-      min: 0
-      max: 12
-      paso: 0.05
-      inicio: 1
-      tol: 0.04
-      rotulo: "Masa"
+      tol: 0.03
+      rotulo: "Masa del plomo"
+      errores:
+        - { expr: "m_nom", texto: "Ha usado los 284 Wh nominales; la comparación del libro es para 240 Wh." }
     exito: "6,86 kg, frente a 0,96 kg con NMC: siete veces más."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 7.14 }, texto: "Se ha pasado: divida 240 Wh entre 35 Wh/kg." }
-      - { texto: "Se ha quedado corto: con 35 Wh/kg hacen falta casi siete kilos." }
     escalera:
       - "Masa = energía / energía específica."
     solucion: "240 / 35 ≈ 6,86 kg."
     comprobar:
-      - { m_kg: 6.86 }
+      - { m_kg: 6.86, m_nom: 8.1, tol: 0.01 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [355, 359, 370, 386]
+    libro: [355, 359, 370, 385, 386]
     ideas:
       - { titulo: "Lo que llega.", texto: "Los 240 Wh son del equipo: con convertidor y capacidad real, unos 284 Wh nominales." }
       - { titulo: "La tensión decide.", texto: "4S6P: el paquete no baja de 12 V y la corriente es menor." }
       - { titulo: "Carga rápida.", texto: "Solo acorta la fase CC: la CV dura cerca de una hora siempre." }
-      - { titulo: "Sin química mejor.", texto: "Peso, autodescarga o ciclos: cada caso tiene su parámetro." }
+      - { titulo: "Sin química mejor.", texto: "Portátil, NMC por el peso; respaldo que espera años, NiMH de baja autodescarga; ciclado diario, LiFePO4 por los ciclos." }

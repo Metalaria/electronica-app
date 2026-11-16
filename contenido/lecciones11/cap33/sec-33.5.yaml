@@ -5,6 +5,10 @@
 #   Cada puerta está alta media periodo menos t_m, centrada en su semiperiodo.
 # Sin paso práctico: sección de arquitecturas sin cálculo; el «en el banco» (bloques 167–168) es la gráfica del
 # tiempo muerto que el lector abre y cierra.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se toca el cortocircuito en la figura, se calculan con un bus de
+# 400 V (valor de ejemplo) la tensión de un interruptor del push-pull y la del primario del medio puente, se quita el
+# solape de las puertas (objetivo) y se lee el tiempo muerto como en el banco. Quedan dos preguntas (el solape y el
+# bootstrap); los límites, las arquitecturas, el dominio del puente, las defensas y el desequilibrio, al resumen.
 leccion: cap33/sec-33.5
 
 libro:
@@ -25,6 +29,7 @@ libro:
   162: "Alimentación aislada con su propio convertidor"
   164: "el núcleo acumula un pequeño desplazamiento en cada ciclo y acaba saturando"
   165: "un condensador en serie con el primario"
+  167: "el tiempo muerto, con dos canales del osciloscopio en las señales de puerta de una misma rama"
   168: "Debe haber un intervalo claro en que ambas están inactivas"
   169: "Las topologías de potencia comparadas"
 
@@ -32,117 +37,90 @@ modelo:
   valores:
     T_p: { sim: "T", nombre: "periodo de conmutación", unidad: s, valor: 1e-5 }
     t_m: { sim: "t_{m}", nombre: "tiempo muerto", unidad: s, valor: 5e-7 }
+    V_b: { sim: "V_{in}", nombre: "tensión del bus (ejemplo)", unidad: V, valor: 400 }
   calculos:
     solape: { expr: "max(0, -t_m)", sim: "solape", nombre: "tiempo con las dos puertas activas", unidad: s }
     muerto: { expr: "max(0, t_m)", sim: "t_{m}", nombre: "tiempo con las dos apagadas", unidad: s }
+    V_pp: { expr: "2*V_b", sim: "V_{interruptor}", nombre: "tensión que soporta un interruptor del push-pull", unidad: V }
+    V_mp: { expr: "V_b/2", sim: "V_{primario}", nombre: "tensión en el primario del medio puente", unidad: V }
 
 tarjetas:
   - id: explore-figura
-    tipo: explorar
-    titulo: "Más potencia"
-    texto: "Toque las tres partes de la figura: la tabla de topologías, el cortocircuito y su defensa."
+    tipo: tocar
+    titulo: "El riesgo común"
+    texto: "Si los dos interruptores de una rama conducen a la vez, aunque sea nanosegundos, cortocircuitan la alimentación. Toque dónde lo dibuja la figura."
     libro: [149, 153, 155, 169]
     widget:
       tipo: figura
       figura: fig-33.6
       zonas:
-        - { id: tabla, rotulo: "Arriba", rect: [0, 0, 451, 105], texto: "Más interruptores, menos tensión en cada uno: el puente completo soporta solo V_{in}." }
-        - { id: cruzada, rotulo: "Abajo a la izquierda", rect: [20, 145, 160, 165], texto: "Si conducen los dos de una rama, cortocircuitan la alimentación: cientos de amperios." }
-        - { id: muerto, rotulo: "Abajo a la derecha", rect: [205, 145, 240, 140], texto: "El tiempo muerto: un intervalo con las dos puertas apagadas." }
-    requiere: { mover: [tabla, cruzada, muerto] }
-
-  - id: limites
-    tipo: pregunta
-    titulo: "Por qué una rama no basta"
-    texto: "¿Qué dos cosas limitan a unos cientos de vatios las topologías de un interruptor?"
-    libro: [141, 142]
-    widget:
-      tipo: figura
-      figura: fig-33.6
-      zonas:
-        - { id: tabla, rotulo: "La tabla", rect: [0, 0, 451, 105] }
-    opciones:
-      - texto: "El núcleo en un solo cuadrante y la corriente de pico de un solo interruptor"
-        bien: true
-        porque: "Se desaprovecha la mitad del núcleo y un interruptor carga con toda la corriente."
-      - texto: "La frecuencia de conmutación y el tamaño del condensador"
-        porque: "No son el límite que da el libro: lo son el núcleo en un cuadrante y el pico de corriente."
-      - texto: "El ruido y el rizado de salida"
-        porque: "Son el precio de conmutar en cualquier topología, no lo que limita la potencia."
+        - { id: tabla, rotulo: "Arriba", rect: [0, 0, 451, 105] }
+        - { id: cruzada, rotulo: "Abajo a la izquierda", rect: [20, 145, 160, 165] }
+        - { id: muerto, rotulo: "Abajo a la derecha", rect: [205, 145, 240, 140] }
+    tocar:
+      bien: [cruzada]
+      porque:
+        tabla: "Es la tabla de topologías: interruptores, tensión que soportan y potencia típica."
+        muerto: "Es la defensa: el tiempo muerto, con las dos puertas apagadas un intervalo."
+    exito: "La conducción cruzada: cientos de amperios y destrucción inmediata, en todas las topologías de rama."
     escalera:
-      - "Piense en cómo se magnetiza el núcleo y en quién lleva la corriente."
-    solucion: "Núcleo en un solo cuadrante (hay que desmagnetizar) y pico de corriente en un solo interruptor."
+      - "Busque los dos interruptores de una rama conduciendo."
+    solucion: "Abajo a la izquierda."
 
   - id: arquitecturas
-    tipo: pregunta
-    titulo: "Tres arquitecturas"
-    texto: "Empareje cada topología con su rasgo."
-    libro: [145, 146, 147]
+    tipo: simular
+    titulo: "El push-pull en la red"
+    texto: "Valores de ejemplo: un bus de 400 V. ¿Qué tensión soporta cada interruptor de un push-pull?"
+    libro: [145, 149]
     widget:
       tipo: figura
       figura: fig-33.6
       zonas:
         - { id: tabla, rotulo: "La tabla", rect: [0, 0, 451, 105] }
-    emparejar:
-      - ["Push-pull", "Primario con toma central; los dos interruptores a masa"]
-      - ["Medio puente", "Transformador entre dos interruptores y dos condensadores"]
-      - ["Puente completo", "Cuatro interruptores; tensión completa en ambos sentidos"]
-    exito: "Las tres usan el núcleo en los dos cuadrantes y reparten la corriente."
-    pistas:
-      - { texto: "La toma central es la que deja los dos interruptores referidos a masa." }
+    simular:
+      objetivo: V_pp
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión de un interruptor"
+      errores:
+        - { expr: "V_b", texto: "Esa es la del medio puente y el puente completo. En el push-pull, la toma central dobla la tensión." }
+    exito: "800 V, el doble de la entrada: poco adecuado para alimentación de red. A cambio, los dos interruptores van a masa."
     escalera:
-      - "Empiece por la de cuatro interruptores."
-    solucion: "Push-pull: toma central. Medio puente: punto medio de dos condensadores. Puente completo: cuatro interruptores."
+      - "La tabla: 2 × V_{in}."
+    solucion: "2 × 400 = 800 V."
+    comprobar:
+      - { V_pp: 800 }
 
   - id: medio-puente
-    tipo: pregunta
+    tipo: simular
     titulo: "El primario del medio puente"
-    texto: "En un medio puente, cada interruptor soporta solo la tensión de entrada. ¿Qué tensión recibe el primario?"
+    texto: "Con el mismo bus de 400 V, cada interruptor del medio puente soporta solo la entrada. ¿Qué tensión recibe el primario?"
     libro: [146, 147]
     widget:
       tipo: figura
       figura: fig-33.6
       zonas:
         - { id: cruzada, rotulo: "La rama", rect: [20, 145, 160, 165] }
-    opciones:
-      - texto: "La mitad de la entrada"
-        bien: true
-        porque: "El otro extremo va al punto medio de los condensadores; el puente completo aplica la entera y da el doble de potencia."
-      - texto: "La entrada completa"
-        porque: "Eso es el puente completo, con cuatro interruptores."
-      - texto: "El doble de la entrada"
-        porque: "El doble es lo que soporta cada interruptor de un push-pull, no el primario del medio puente."
+    simular:
+      objetivo: V_mp
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión del primario"
+      errores:
+        - { expr: "V_b", texto: "Esa la aplica el puente completo, con cuatro interruptores." }
+    exito: "200 V, la mitad: el otro extremo va al punto medio de los condensadores. El puente completo aplica la entera y da el doble de potencia."
     escalera:
       - "¿A qué tensión está el punto medio de dos condensadores iguales entre los raíles?"
-    solucion: "La mitad de la entrada: por eso el puente completo da el doble de potencia."
-
-  - id: domina-puente
-    tipo: pregunta
-    titulo: "Por qué domina el puente"
-    texto: "Sus interruptores soportan la tensión mínima posible. ¿Qué gana con eso?"
-    libro: [149, 150]
-    widget:
-      tipo: figura
-      figura: fig-33.6
-      zonas:
-        - { id: tabla, rotulo: "La tabla", rect: [0, 0, 451, 105] }
-    opciones:
-      - texto: "Puede usar dispositivos de menor R_{DS(on)}: menos pérdidas"
-        bien: true
-        porque: "Un interruptor de menos tensión tiene menos resistencia en conducción."
-      - texto: "Puede conmutar sin tiempo muerto"
-        porque: "La conducción cruzada amenaza a todas las ramas, también a las del puente."
-      - texto: "No necesita transformador"
-        porque: "Lo sigue necesitando para aislar; la ventaja está en los interruptores."
-    escalera:
-      - "¿Qué parámetro de un MOSFET empeora cuanto más tensión soporta?"
-    solucion: "Interruptores de menos tensión, con menos R_{DS(on)} y menos pérdidas."
+    solucion: "400/2 = 200 V."
+    comprobar:
+      - { V_mp: 200 }
 
   - id: explore-tiempo-muerto
     tipo: explorar
     titulo: "El tiempo muerto"
-    texto: "Las dos puertas de una rama. Haga negativo el tiempo muerto y mire cuándo conducen las dos."
+    texto: "Las dos puertas de una rama se solapan: conducen a la vez. Ajuste el tiempo muerto para dejar un intervalo claro con las dos apagadas."
     libro: [153, 155, 168]
+    inicio: { t_m: -3e-7 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.00002, unidad: s, rotulo: "t", muestras: 1600 }
@@ -156,7 +134,48 @@ tarjetas:
         - { valor: muerto, rotulo: "Las dos apagadas: {{muerto}}" }
       mandos:
         - { valor: t_m, min: -1e-6, max: 1e-6, paso: 1e-7, rotulo: "Tiempo muerto" }
-    requiere: { mover: [t_m] }
+    objetivo:
+      condiciones:
+        - { valor: solape, max: 0, rotulo: "Solape: {{solape}}" }
+        - { valor: muerto, min: 1e-7, rotulo: "Las dos apagadas: {{muerto}}" }
+      logrado: "{{muerto}} con las dos apagadas: la rama ya no cortocircuita. Debe cubrir el peor retardo de los drivers."
+      pistas:
+        - { cuando: { valor: solape, mayor: 0 }, texto: "Todavía se solapan: la línea de abajo marca cuándo conducen las dos." }
+        - { texto: "Sin solape, pero sin margen: deje un intervalo claro." }
+    escalera:
+      - "Un tiempo muerto positivo apaga una antes de encender la otra."
+    solucion: "Cualquier tiempo muerto positivo, por ejemplo 0,5 µs."
+    comprobar:
+      - { con: { t_m: 5e-7 }, solape: 0, muerto: 5e-7 }
+      - { solape: 3e-7 }
+
+  - id: lea-muerto
+    tipo: leer
+    titulo: "Mídalo en el banco"
+    texto: "Lo primero que se mide en un puente: las dos puertas de una rama con dos canales del osciloscopio. Lea el intervalo con las dos inactivas."
+    libro: [167, 168]
+    fijar: { t_m: 5e-7 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0.000004, max: 0.000006, unidad: s, rotulo: "t", muestras: 1600 }
+      y: { min: -0.2, max: 2.8, unidad: "", rotulo: "puertas" }
+      curvas:
+        - { expr: "1.5 + min(1, max(0, ceil(0.5 - t_m/T_p - (t/T_p - t_m/(2*T_p) - floor(t/T_p - t_m/(2*T_p))))))", color: naranja, rotulo: "G₁" }
+        - { expr: "min(1, max(0, ceil(0.5 - t_m/T_p - (t/T_p - 0.5 - t_m/(2*T_p) - floor(t/T_p - 0.5 - t_m/(2*T_p))))))", color: azul, rotulo: "G₂" }
+      mandos: []
+    leer:
+      objetivo: muerto
+      unidad: s
+      tol: 0.1
+      rotulo: "Tiempo muerto"
+      errores:
+        - { expr: "T_p/2", texto: "Ese es medio periodo. El tiempo muerto es el hueco entre que baja una y sube la otra." }
+    exito: "Medio microsegundo con las dos inactivas. Si se solaparan aunque sea un poco, el convertidor estaría a un transitorio de destruirse."
+    escalera:
+      - "Del flanco de bajada de G₁ al de subida de G₂."
+    solucion: "0,5 µs."
+    comprobar:
+      - { muerto: 5e-7 }
 
   - id: prediga-cruzada
     tipo: predecir
@@ -181,27 +200,6 @@ tarjetas:
       - "Siga el camino de V_{in} a masa por los dos interruptores de la rama."
     solucion: "Un cortocircuito de la alimentación: cientos de amperios."
 
-  - id: defensas
-    tipo: pregunta
-    titulo: "Tres defensas"
-    texto: "Empareje cada defensa contra la conducción cruzada con cómo actúa."
-    libro: [155, 156, 157]
-    widget:
-      tipo: figura
-      figura: fig-33.6
-      zonas:
-        - { id: muerto, rotulo: "Abajo a la derecha", rect: [205, 145, 240, 140] }
-    emparejar:
-      - ["Tiempo muerto", "Lo genera el controlador; cubre el peor retardo de los drivers"]
-      - ["Enclavamiento", "El driver impide por hardware la conducción simultánea"]
-      - ["Detección de saturación", "Corta si el interruptor conduce con tensión alta"]
-    exito: "La primera evita el solape; las otras dos lo atrapan si ocurre."
-    pistas:
-      - { texto: "La que mira la tensión del interruptor conduciendo es la detección de saturación." }
-    escalera:
-      - "Una es del controlador, otra del driver y otra vigila el propio interruptor."
-    solucion: "Tiempo muerto: controlador. Enclavamiento: driver. Saturación: corta si conduce con tensión alta."
-
   - id: bootstrap
     tipo: pregunta
     titulo: "El interruptor de arriba"
@@ -224,34 +222,12 @@ tarjetas:
       - "¿Cuándo se recarga el condensador del bootstrap?"
     solucion: "Necesita que el nodo baje periódicamente para recargarse."
 
-  - id: por-que-desequilibrio
-    tipo: porque
-    titulo: "Semiciclos casi iguales"
-    texto: "Si los dos semiciclos de un puente difieren un poco, el núcleo acaba saturando. ¿Por qué?"
-    libro: [164, 165]
-    widget:
-      tipo: figura
-      figura: fig-33.6
-      zonas:
-        - { id: tabla, rotulo: "La tabla", rect: [0, 0, 451, 105] }
-    opciones:
-      - texto: "Acumula un pequeño desplazamiento en cada ciclo"
-        bien: true
-        porque: "Lo bloquea un condensador en serie con el primario, o lo equilibra el modo corriente."
-      - texto: "Porque el núcleo se calienta con la diferencia"
-        porque: "No es calor: es una componente continua que se suma ciclo a ciclo."
-      - texto: "Porque se usa en un solo cuadrante"
-        porque: "Al revés: las simétricas usan los dos cuadrantes; el riesgo es la asimetría que se acumula."
-    escalera:
-      - "Si cada ciclo deja un poco de flujo de más, ¿qué pasa tras miles de ciclos?"
-    solucion: "Cada ciclo deja un pequeño desplazamiento que se acumula hasta saturar: condensador en serie o modo corriente."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [143, 150, 155, 161, 164]
+    libro: [141, 142, 143, 150, 155, 156, 157, 161, 164, 165]
     ideas:
-      - { titulo: "Dos cuadrantes.", texto: "Push-pull, medio puente y puente completo aprovechan el núcleo y reparten la corriente." }
+      - { titulo: "Dos cuadrantes.", texto: "Una sola rama usa el núcleo en un cuadrante y carga un interruptor; push-pull y puentes reparten." }
       - { titulo: "El puente domina.", texto: "Sus interruptores soportan solo V_{in}: menos R_{DS(on)}, menos pérdidas." }
-      - { titulo: "Conducción cruzada.", texto: "Tiempo muerto, enclavamiento y detección de saturación." }
+      - { titulo: "Conducción cruzada.", texto: "Tiempo muerto del controlador, enclavamiento del driver y detección de saturación." }
       - { titulo: "El de arriba y el núcleo.", texto: "Bootstrap o alimentación aislada; condensador en serie contra el desequilibrio." }

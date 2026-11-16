@@ -1,5 +1,9 @@
 # Lección 1.2 de la sección 24.1 «El Circuito como Caja de Dos Puertos» (cap25). Formato: contenido/lecciones11/GUIA.md.
 # El bloque que se mide es el RC de la práctica de la sección 21.5 (cap22#133: 1,6 kΩ y 100 nF).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la caja se mide desde fuera, como dice el libro: se busca la
+# frecuencia de −3 dB y la de una décima (objetivos), la sonda se pone en el puerto de salida, y la relación de
+# amplitudes y el desfase se leen en la gráfica y se escriben. Quedan dos preguntas de opciones (ABCD en cascada y los S
+# en radiofrecuencia); los juegos emparejados, las magnitudes independientes, h_fe y la reciprocidad pasan al resumen.
 leccion: cap25/sec-25.1
 
 libro:
@@ -28,14 +32,17 @@ modelo:
     x_c: { expr: "w_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
     A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{salida}", nombre: "amplitud de la salida", unidad: V }
     ph_c: { expr: "-atan(x_c)*180/pi", sim: "φ", nombre: "desfase de la salida", unidad: "°" }
+    H_c: { expr: "1/sqrt(2)", sim: "1/√2", nombre: "relación en el corte", unidad: "" }
+    x_cs: { expr: "x_c", sim: "ωRC", nombre: "ωRC", unidad: "" }
     H: { expr: "A_c/V_p", sim: "|H|", nombre: "relación de amplitudes", unidad: "", cifras: 3 }
 
 tarjetas:
   - id: explore-caja
     tipo: explorar
     titulo: "Medir la caja desde fuera"
-    texto: "Un bloque con entrada y salida. Recorra las frecuencias y anote, en cada una, la relación de amplitudes y el desfase."
+    texto: "Un bloque con entrada y salida: se describe por lo que hace en sus terminales. Recorra las frecuencias hasta que la salida caiga a 0,707 veces la entrada."
     libro: [4, 25, "cap22#133"]
+    inicio: { f_f: 100 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -52,49 +59,150 @@ tarjetas:
           - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "salida", mide: vc }
       mandos:
         - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000] }
-    requiere: { mover: [f_f] }
+    objetivo:
+      condiciones:
+        - { valor: H, objetivo: 0.707, tol: 0.02, rotulo: "Salida / entrada: {{H}}" }
+      logrado: "A {{f_f}}: relación {{H}} y desfase {{ph_c}}. Sin abrir la caja, ya se sabe dónde corta."
+      pistas:
+        - { cuando: { valor: H, mayor: 0.72 }, texto: "Todavía pasa casi todo: suba la frecuencia." }
+        - { texto: "Se ha pasado: baje la frecuencia." }
+    escalera:
+      - "La salida baja al subir la frecuencia."
+    solucion: "A 1 kHz: 0,705 y −45°."
+    comprobar:
+      - { con: { f_f: 1000 }, H: 0.7052, ph_c: -45.2, tol: 0.003 }
+      - { V_p: 1, H_c: 0.707 }
 
   - id: cuatro-magnitudes
-    tipo: predecir
-    titulo: "¿Cuántas son independientes?"
-    texto: "Tensión y corriente de entrada, tensión y corriente de salida. ¿Cuántas de las cuatro son independientes?"
-    libro: [7]
+    tipo: medir
+    titulo: "El puerto de salida"
+    texto: "A 1 kHz, ponga la sonda del osciloscopio en el puerto de salida del bloque."
+    libro: [4, 7]
+    fijar: { f_f: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      grafica:
+        x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "salida", mide: vc }
+      instrumento:
+        tipo: osciloscopio
+        puntos: { fte: "Puerto de entrada", c: "Puerto de salida" }
+        curvas: { fte: 0, c: 1 }
+      mandos: []
+    medir:
+      magnitud: senal
+      punto: c
+      porque:
+        fte: "Esa es la entrada: la señal que se aplica, la referencia."
+    exito: "Más pequeña y retrasada. Entrada y salida tienen cada una su tensión y su corriente: cuatro magnitudes, de las que dos son independientes."
+    escalera:
+      - "La salida está entre la resistencia y el condensador."
+    solucion: "La sonda entre R y C, el puerto de salida."
+
+  - id: juegos
+    tipo: leer
+    titulo: "La relación de amplitudes"
+    texto: "A 2 kHz, mida en la gráfica la amplitud de la salida y escriba la relación salida / entrada."
+    libro: [25]
+    fijar: { f_f: 2000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      grafica:
+        x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "salida", mide: vc }
+      mandos: []
+    leer:
+      objetivo: H
+      unidad: ""
+      tol: 0.03
+      rotulo: "Salida / entrada"
+      errores:
+        - { expr: "1/H", texto: "Ha dividido al revés: entrada entre salida. La relación es salida / entrada." }
+    exito: "Unos 0,45: a 2 kHz el bloque deja pasar menos de la mitad. Con varias frecuencias se tiene su descripción completa."
+    escalera:
+      - "La entrada tiene un voltio de pico: la relación es el pico de la curva naranja."
+    solucion: "0,445."
+    comprobar:
+      - { H: 0.445, x_cs: 2.01, tol: 0.005 }
+
+  - id: desfase
+    tipo: leer
+    titulo: "El desfase"
+    texto: "A 500 Hz, el desfase entre entrada y salida es la otra mitad de la medida. Escríbalo con su signo, en grados."
+    libro: [25]
+    fijar: { f_f: 500 }
     widget:
       tipo: circuito
       esquema: filtro-rc
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
       lectura: { valor: H, rotulo: "Salida / entrada" }
-      mide: { vc_amp: A_c }
-      ocultar: true
-    opciones:
-      - texto: "Dos"
-        bien: true
-        porque: "Fijadas dos, el bloque determina las otras dos. Según cuáles se elijan, sale un juego de parámetros distinto."
-      - texto: "Cuatro"
-        porque: "El bloque relaciona las magnitudes entre sí: conocidas dos, las otras dos ya no son libres."
-      - texto: "Una"
-        porque: "Con una sola no basta: entrada y salida dependen también de lo que se conecte a cada puerto."
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      grafica:
+        x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "salida", mide: vc }
+      mandos: []
+    leer:
+      objetivo: ph_c
+      unidad: "°"
+      tol: 0.04
+      rotulo: "Desfase de la salida"
+      errores:
+        - { expr: "-ph_c - 90", texto: "Ese es el complemento. El desfase es −arctan(ωRC)." }
+    exito: "Unos −27°: la salida va retrasada. Relación de amplitudes y desfase, a cada frecuencia, describen el bloque sin abrirlo."
     escalera:
-      - "Cada juego de parámetros elige qué pareja se toma como independiente."
-    solucion: "Dos: por eso hay varios juegos de parámetros."
+      - "ωRC ≈ 0,50 a 500 Hz; φ = −arctan(ωRC)."
+    solucion: "−26,7°."
+    comprobar:
+      - { ph_c: -26.7, x_cs: 0.503, tol: 0.005 }
 
-  - id: juegos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los juegos de parámetros"
-    texto: "Una cada juego con sus magnitudes independientes."
-    libro: [8, 9]
-    emparejar:
-      - ["Z (impedancia)", "Las dos corrientes"]
-      - ["Y (admitancia)", "Las dos tensiones"]
-      - ["h (híbridos)", "I entrada, V salida"]
-      - ["S (dispersión)", "Ondas"]
-    exito: "Todos describen lo mismo y se convierten unos en otros: se elige el que haga fácil el problema."
-    pistas:
-      - { texto: "Una impedancia es tensión entre corriente: con las corrientes como datos, los Z dan las tensiones." }
+  - id: decima
+    tipo: explorar
+    titulo: "Una décima"
+    texto: "Busque la frecuencia con la que el bloque deja pasar solo una décima de la entrada."
+    libro: [23, 25]
+    inicio: { f_f: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: H, rotulo: "Salida / entrada" }
+      datos:
+        - { valor: ph_c, rotulo: "Desfase: {{ph_c}}" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      grafica:
+        x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "salida", mide: vc }
+      mandos:
+        - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000] }
+    objetivo:
+      condiciones:
+        - { valor: H, max: 0.1, rotulo: "Salida / entrada: {{H}}" }
+      logrado: "A {{f_f}}, {{H}} con {{ph_c}}. Cuatro números por frecuencia describen el bloque: predecir qué hará en un sistema es aritmética."
+      pistas:
+        - { texto: "Todavía pasa más: suba la frecuencia." }
     escalera:
-      - "Los híbridos mezclan: una corriente y una tensión."
-    solucion: "Z: corrientes; Y: tensiones; h: I de entrada y V de salida; S: ondas."
+      - "La relación es 1/√(1 + (ωRC)²): una décima pide ωRC ≈ 10."
+    solucion: "A 10 kHz: 0,099."
+    comprobar:
+      - { con: { f_f: 10000 }, H: 0.099, tol: 0.01 }
 
   - id: abcd
     tipo: pregunta
@@ -107,6 +215,7 @@ tarjetas:
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
       lectura: { valor: H, rotulo: "Salida / entrada" }
       mide: { vc_amp: A_c }
+      mandos: []
     opciones:
       - texto: "Al encadenar bloques, sus matrices se multiplican"
         bien: true
@@ -130,6 +239,7 @@ tarjetas:
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
       lectura: { valor: H, rotulo: "Salida / entrada" }
       mide: { vc_amp: A_c }
+      mandos: []
     opciones:
       - texto: "Los otros exigen abrir o cortocircuitar terminales, imposible a frecuencias altas"
         bien: true
@@ -142,85 +252,12 @@ tarjetas:
       - "¿Cómo se mide cada parámetro Z o h?"
     solucion: "Abrir o cortocircuitar no es realizable en RF; terminar en 50 Ω, sí."
 
-  - id: hfe
-    tipo: pregunta
-    titulo: "Los parámetros h"
-    texto: "En una hoja de datos antigua de un transistor aparece h_{fe}. ¿Qué es?"
-    libro: [11]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: H, rotulo: "Salida / entrada" }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "La β en pequeña señal"
-        bien: true
-        porque: "h_{ie} es la impedancia de entrada. Cada h se mide con una condición sencilla, fácil en baja frecuencia."
-      - texto: "La impedancia de entrada"
-        porque: "Esa es h_{ie}. h_{fe} es una relación de corrientes: la β."
-      - texto: "Un parámetro S"
-        porque: "Es de los híbridos, los de las hojas de datos de baja frecuencia."
-    escalera:
-      - "La f es de «forward»: lo que pasa de la entrada a la salida."
-    solucion: "h_{fe} es la β en pequeña señal."
-
-  - id: reciproca
-    tipo: pregunta
-    titulo: "Recíproca y pasiva"
-    texto: "Una red recíproca transmite igual en los dos sentidos. ¿Cuál de estas no lo es, aunque sea pasiva?"
-    libro: [18, 20]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: H, rotulo: "Salida / entrada" }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Un circulador, con ferritas magnetizadas"
-        bien: true
-        porque: "Las ferritas magnetizadas rompen la reciprocidad aunque no haya elementos activos."
-      - texto: "Un filtro de resistencias y condensadores"
-        porque: "Cualquier red de R, C, L y transformadores es recíproca."
-      - texto: "Un transformador"
-        porque: "Los transformadores están en la lista de elementos recíprocos."
-    escalera:
-      - "La reciprocidad la cumplen R, L, C y transformadores."
-    solucion: "El circulador: pasivo pero no recíproco. En una red recíproca y simétrica, los cuatro parámetros se reducen a dos."
-
-  - id: para-que
-    tipo: pregunta
-    titulo: "Lo que aporta"
-    texto: "Se compra un filtro y se mide en sus terminales. ¿Qué se consigue?"
-    libro: [23, 25]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: H, rotulo: "Salida / entrada" }
-      datos:
-        - { valor: ph_c, rotulo: "Desfase: {{ph_c}}" }
-      mide: { vc_amp: A_c, vc_fase: ph_c }
-      mandos:
-        - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000] }
-    opciones:
-      - texto: "Queda descrito por cuatro números por frecuencia, sin saber qué lleva dentro"
-        bien: true
-        porque: "Con eso, predecir qué hará en un sistema es aritmética."
-      - texto: "Saber qué componentes lleva dentro"
-        porque: "La medida en los terminales no dice qué hay dentro, y no hace falta para usarlo."
-      - texto: "Nada útil: hay que conocer el esquema"
-        porque: "Precisamente se trata de no necesitarlo: el bloque se describe por lo que hace en sus terminales."
-    escalera:
-      - "¿Hace falta saber qué hay dentro para usarlo en un cálculo?"
-    solucion: "Cuatro números por frecuencia que bastan para usarlo en cualquier cálculo."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [4, 7, 12, 15]
+    libro: [4, 7, 8, 9, 11, 12, 15, 18, 20]
     ideas:
-      - { titulo: "Una caja.", texto: "Un bloque se describe por lo que hace en sus cuatro terminales, sin abrirlo." }
-      - { titulo: "Juegos.", texto: "Z, Y, h, ABCD y S eligen dos magnitudes independientes; se convierten unos en otros." }
-      - { titulo: "Cada uno, para algo.", texto: "h en transistores, ABCD en cascadas (se multiplican), S en radiofrecuencia." }
+      - { titulo: "Una caja.", texto: "Cuatro terminales, cuatro magnitudes, dos independientes. Recíproca si transmite igual en los dos sentidos (un circulador, no)." }
+      - { titulo: "Juegos.", texto: "Z toma las corrientes; Y, las tensiones; h, I de entrada y V de salida; S, ondas. Se convierten unos en otros." }
+      - { titulo: "Cada uno, para algo.", texto: "h en transistores (h_{fe} es la β), ABCD en cascadas (se multiplican), S en radiofrecuencia." }
       - { titulo: "Se mide.", texto: "Relación de amplitudes y desfase a varias frecuencias, con la carga real." }

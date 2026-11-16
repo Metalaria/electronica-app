@@ -7,6 +7,10 @@
 # - La comparación de pérdidas de la figura 10.12 (fig-10.11) en una gráfica: 0,7·I, 0,35·I (Schottky, 0,3–0,4 V)
 #   e I²·30 mΩ.
 # Paso práctico: «simular» la tensión que llega al equipo de 3,3 V tras el diodo; el error típico es olvidar la caída.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se invierte la fuente hasta cortar la corriente (objetivo),
+# se mide la caída del diodo a 12 V, se predice lo que llega a 3,3 V, se busca el equipo de 1 A en el diodo ideal
+# (objetivo), se calcula la pérdida del MOSFET y se marca dónde el Schottky iguala al silicio. Quedan dos preguntas
+# (el arranque por el diodo de cuerpo y el fusible en paralelo); canal N y lo que no protege, al resumen.
 leccion: cap10/sec-10.7
 
 libro:
@@ -43,14 +47,16 @@ modelo:
     Ron_p: { expr: "1/(k_p*Vov_p)", sim: "R_{DS(on)}", nombre: "resistencia del canal", unidad: Ω }
     P_dio: { expr: "V_D*I_g", sim: "P_{diodo}", nombre: "pérdida del diodo de silicio", unidad: W }
     P_sch: { expr: "0.35*I_g", sim: "P_{Schottky}", nombre: "pérdida del Schottky", unidad: W }
+    I_sch: { expr: "P_dio/0.35", sim: "I", nombre: "corriente a la que el Schottky pierde lo del silicio a 1 A", unidad: A }
     P_mos: { expr: "I_g^2*Ron_p", sim: "P_{MOSFET}", nombre: "pérdida del MOSFET", unidad: W }
 
 tarjetas:
   - id: explore-diodo
     tipo: explorar
     titulo: "Un diodo en serie"
-    texto: "Invierta la alimentación: el diodo no deja pasar corriente. Con la polaridad correcta, cuesta su caída."
+    texto: "Un diodo en serie solo deja pasar la corriente en el sentido correcto. Invierta la alimentación y deje el equipo sin corriente."
     libro: [156, 159]
+    inicio: { V_s: 12 }
     widget:
       tipo: circuito
       esquema: diodo
@@ -62,36 +68,46 @@ tarjetas:
       mide: { corriente: I_d, vd: V_dd, vr: V_e }
       mandos:
         - { valor: V_s, lista: [-12, 12], nombres: [invertida, correcta], rotulo: "Polaridad" }
-    requiere: { mover: [V_s] }
+    objetivo:
+      condiciones:
+        - { valor: I_d, max: 0.000001, rotulo: "Corriente: {{I_d}}" }
+      logrado: "Invertida, el diodo bloquea: {{I_d}}. Con la polaridad correcta pasa, pero se queda con su caída."
+      pistas:
+        - { texto: "Con la polaridad correcta el diodo conduce: inviértala." }
+    escalera:
+      - "Un diodo en serie conduce en un solo sentido."
+    solucion: "Polaridad invertida: corriente nula."
+    comprobar:
+      - { con: { V_s: -12 }, I_d: 0 }
+      - { I_d: 0.0942, tol: 0.01 }
 
   - id: prediga-33
-    tipo: predecir
-    titulo: "En un circuito de 3,3 V"
-    texto: "A 12 V la caída de 0,7 V es un 6 %. ¿Y en un circuito de 3,3 V?"
+    tipo: medir
+    titulo: "Lo que se queda en el diodo"
+    texto: "Con 12 V y la polaridad correcta, ponga las puntas donde se pierde la tensión de la protección."
     libro: [159]
-    fijar: { V_s: 3.3 }
+    fijar: { V_s: 12 }
     widget:
       tipo: circuito
       esquema: diodo
       piezas: { fuente: V_s, r: R_e, vd: V_D }
-      lectura: { valor: perd, rotulo: "Se queda en el diodo" }
       corriente: I_d
-      mide: { corriente: I_d, vr: V_e }
-      ocultar: true
-    opciones:
-      - texto: "El 21 %, probablemente inadmisible"
-        bien: true
-        porque: "0,7 V de 3,3 V: la caída no baja con la tensión de alimentación."
-      - texto: "El mismo 6 %"
-        porque: "La caída es fija, unos 0,7 V: pesa más cuanto menor es la alimentación."
-      - texto: "Menos, porque circula menos corriente"
-        porque: "La caída del diodo apenas cambia con la corriente: es la misma tensión sobre menos voltios."
+      mide: { corriente: I_d, vd: V_dd, vr: V_e }
+      instrumento: { tipo: multimetro, modos: [V] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [an, "0"]
+      valor: V_dd
+      porque:
+        fte: "Esa punta está en la fuente: mide los 12 V enteros."
+        "fte/an": "Así mide lo que le llega al equipo, no lo que se pierde."
+    exito: "Unos 0,7 V: a 12 V, un 6 %. A 1 A disiparía 0,7 W."
     escalera:
-      - "Divida 0,7 V entre 3,3 V."
-    solucion: "0,7/3,3 = 21 %."
+      - "Lo que se pierde cae en el diodo, entre la resistencia y la masa."
+    solucion: "Las puntas en el diodo: unos 0,7 V."
     comprobar:
-      - { perd: 21.2 }
-      - { con: { V_s: 12 }, perd: 5.83 }
+      - { V_dd: 0.7, perd: 5.83 }
 
   - id: simule-equipo
     tipo: simular
@@ -116,7 +132,7 @@ tarjetas:
       medida: vr
       errores:
         - { expr: "V_s", texto: "Esos son los 3,3 V de la fuente: ha olvidado los 0,7 V que se quedan en el diodo." }
-    exito: "2,6 V: un 21 % menos. En 3,3 V el diodo de silicio sobra; hace falta otra solución."
+    exito: "2,6 V: un 21 % menos, probablemente inadmisible. La caída no baja con la alimentación: pesa más cuanto menor es."
     escalera:
       - "Al equipo le llega la alimentación menos la caída del diodo."
     solucion: "3,3 − 0,7 = 2,6 V."
@@ -126,8 +142,9 @@ tarjetas:
   - id: explore-mosfet
     tipo: explorar
     titulo: "El MOSFET como diodo ideal"
-    texto: "Un canal P en el positivo, con la puerta a masa: la fuente queda positiva respecto a la puerta y el canal conduce. Mire lo que cae."
+    texto: "Un canal P en el positivo, con la puerta a masa: con la polaridad correcta el canal conduce. Elija el equipo que consume 1 A."
     libro: [161]
+    inicio: { RL_p: 48 }
     widget:
       tipo: circuito
       esquema: mosfet-p
@@ -139,7 +156,17 @@ tarjetas:
       mide: { id: ID_p, vsd: VSD_p }
       mandos:
         - { valor: RL_p, lista: [12, 24, 48], rotulo: "Equipo" }
-    requiere: { mover: [RL_p] }
+    objetivo:
+      condiciones:
+        - { valor: ID_p, min: 0.95, rotulo: "Corriente: {{ID_p}}" }
+      logrado: "Con {{ID_p}} caen {{VSD_p}} y disipa {{P_p}}: solo I·R_{DS(on)}."
+      pistas:
+        - { texto: "Ese equipo consume menos: pruebe una resistencia menor." }
+    escalera:
+      - "1 A con 12 V es un equipo de 12 Ω."
+    solucion: "El de 12 Ω: 1 A, unos 30 mV y 30 mW."
+    comprobar:
+      - { con: { RL_p: 12 }, ID_p: 1, P_p: 0.03, tol: 0.03 }
 
   - id: por-que-arranca
     tipo: porque
@@ -166,7 +193,7 @@ tarjetas:
     solucion: "Por el diodo de cuerpo: conduce hasta que el canal se abre."
 
   - id: compare
-    tipo: pregunta
+    tipo: simular
     titulo: "Veinte veces menos"
     texto: "Con 1 A, ¿cuánto disipa el MOSFET de 30 mΩ?"
     libro: [161, 164]
@@ -180,14 +207,17 @@ tarjetas:
         - { expr: "0.35*i", color: verde, rotulo: "Schottky", discontinua: true }
       marcas:
         - { x: "I_g", y: "P_dio", rotulo: "{{P_dio}}" }
-    opciones:
-      - texto: "30 mW"
-        bien: true
-        porque: "I²·R = 1 × 30 mΩ: veinte veces menos que los 0,7 W del silicio."
-      - texto: "0,7 W, como el diodo"
-        porque: "El canal no tiene caída fija: cae solo I·R_{DS(on)}."
-      - texto: "Unos 0,35 W, como un Schottky"
-        porque: "El Schottky baja a la mitad; el MOSFET, mucho más."
+      lectura: { valor: P_mos, rotulo: "Pérdida del MOSFET" }
+      ocultar: true
+    simular:
+      objetivo: P_mos
+      unidad: W
+      tol: 0.05
+      rotulo: "Pérdida del MOSFET a 1 A"
+      errores:
+        - { expr: "P_dio", texto: "Esa es la del diodo de silicio: el canal no tiene caída fija, solo I·R_{DS(on)}." }
+        - { expr: "P_sch", texto: "Esa es la del Schottky: el MOSFET baja mucho más." }
+    exito: "30 mW, veinte veces menos que los 0,7 W del silicio."
     escalera:
       - "Pérdida del MOSFET: I²·R_{DS(on)}."
     solucion: "1² × 30 mΩ = 30 mW."
@@ -195,28 +225,37 @@ tarjetas:
       - { P_mos: 0.03, P_dio: 0.7, P_sch: 0.35, tol: 0.01 }
 
   - id: schottky
-    tipo: pregunta
+    tipo: marcar
     titulo: "El Schottky"
-    texto: "Un Schottky cae 0,3–0,4 V y disipa la mitad. ¿Qué dos inconvenientes tiene?"
+    texto: "Un Schottky cae 0,3–0,4 V: la mitad de disipación. Marque la corriente a la que pierde lo mismo que el silicio a 1 A."
     libro: [159]
+    fijar: { I_g: 1 }
     widget:
       tipo: grafica
-      x: { id: i, min: 0, max: 2, unidad: A, rotulo: "I" }
+      x: { id: i, min: 0, max: 3, unidad: A, rotulo: "I" }
       y: { min: 0, max: 1.5, unidad: W, rotulo: "P" }
       curvas:
         - { expr: "V_D*i", color: azul, rotulo: "diodo de silicio" }
         - { expr: "0.35*i", color: verde, rotulo: "Schottky", discontinua: true }
-    opciones:
-      - texto: "Más fuga en inversa, que crece con la temperatura, y menos tensión inversa admisible"
-        bien: true
-        porque: "Por eso es la solución para corrientes pequeñas, donde manda su simplicidad."
-      - texto: "Más caída y más disipación"
-        porque: "Al revés: cae la mitad que el silicio."
-      - texto: "No protege de la polaridad inversa"
-        porque: "Sí protege: bloquea en inversa, aunque con más fuga."
+      marcas:
+        - { x: "I_g", y: "P_dio", rotulo: "{{P_dio}}" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 1
+      x: "I_sch"
+      tol: 0.03
+      inicio: { x: 0.5, y: 0 }
+      rotulo: "La corriente del Schottky"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 2 }, texto: "Más a la izquierda: ahí ya pierde más de 0,7 W." }
+      - { texto: "Más a la derecha: siga la verde hasta la altura de la marca." }
+    exito: "El doble, 2 A. A cambio, más fuga en inversa, que crece con la temperatura, y menos tensión inversa admisible."
     escalera:
-      - "Piense en cómo bloquea en inversa."
-    solucion: "Más fuga en inversa (que crece con la temperatura) y menos tensión inversa admisible."
+      - "Busque en la verde la altura de la marca del silicio."
+    solucion: "2 A: la mitad de caída, el doble de corriente."
+    comprobar:
+      - { I_sch: 2 }
 
   - id: paralelo-fusible
     tipo: pregunta
@@ -240,56 +279,12 @@ tarjetas:
       - "¿Qué hace falta para que el fusible funda?"
     solucion: "Cuando la fuente no puede dar la corriente que funde el fusible."
 
-  - id: canal-n
-    tipo: pregunta
-    titulo: "Con canal N en el retorno"
-    texto: "El mismo principio en la masa, con canal N, de menos R_{DS(on)} por el mismo precio. ¿Qué inconveniente tiene?"
-    libro: [162]
-    widget:
-      tipo: figura
-      figura: fig-10.11
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 441, 207] }
-    opciones:
-      - texto: "La masa del circuito queda separada de la del conector"
-        bien: true
-        porque: "Molesta si hay otras conexiones a masa: un cable de datos, un chasis."
-      - texto: "Cae más tensión que el de canal P"
-        porque: "Al contrario: suele tener menos R_{DS(on)}."
-      - texto: "No protege si se invierte la polaridad"
-        porque: "Protege igual: es el mismo principio en la otra línea."
-    escalera:
-      - "¿Qué queda entre la masa del conector y la del circuito?"
-    solucion: "El transistor separa la masa del circuito de la del conector."
-
-  - id: lo-que-no
-    tipo: pregunta
-    titulo: "Lo que ninguna protege"
-    texto: "¿Contra qué no protege ninguna de estas soluciones?"
-    libro: [163]
-    widget:
-      tipo: figura
-      figura: fig-10.11
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 441, 207] }
-    opciones:
-      - texto: "Una alimentación de más tensión que la prevista"
-        bien: true
-        porque: "Para eso hacen falta el TVS y el fusible, o un circuito de sobretensión activo."
-      - texto: "Conectar la batería al revés"
-        porque: "Es justo lo que evitan."
-      - texto: "Un cable de alimentación invertido"
-        porque: "Es la polaridad inversa, la que todas resuelven."
-    escalera:
-      - "Todas miran el signo de la tensión, no su valor."
-    solucion: "Una tensión mayor que la prevista."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [156, 157, 159, 161]
+    libro: [156, 157, 159, 161, 162, 163]
     ideas:
-      - { titulo: "Diodo en serie.", texto: "Sencillo, pero su caída pesa: 6 % a 12 V, 21 % a 3,3 V." }
+      - { titulo: "Diodo en serie.", texto: "Sencillo, pero su caída pesa: 6 % a 12 V, 21 % a 3,3 V. El Schottky, la mitad, con más fuga." }
       - { titulo: "Paralelo con fusible.", texto: "Sin pérdidas, si la fuente puede fundir el fusible." }
-      - { titulo: "Diodo ideal.", texto: "Un MOSFET de canal P: solo I·R_{DS(on)}, veinte veces menos." }
-      - { titulo: "Puente.", texto: "Para funcionar con cualquier polaridad, a costa de dos caídas." }
+      - { titulo: "Diodo ideal.", texto: "Canal P: solo I·R_{DS(on)}, veinte veces menos. Con canal N en el retorno, la masa queda separada." }
+      - { titulo: "Puente y límites.", texto: "Puente para cualquier polaridad, con dos caídas. Ninguna protege de una tensión mayor de la prevista." }

@@ -7,6 +7,10 @@
 #   justo en el 50 % del libro. DUDA para el propietario: esa razón de pendientes es la explicación clásica del
 #   umbral del 50 %, pero el libro no la escribe; la uso solo en el modelo de la gráfica y en el mando, no en el texto.
 # Paso práctico: «ajuste» de la rampa de compensación hasta que la perturbación se amortigüe con D = 0,6.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se busca el mayor D con el que la perturbación aún se
+# amortigua (objetivo), se compensa la pendiente (ajuste), se tocan en la figura la traza que se enmascara, la que dice
+# cuándo se apaga el transistor y la columna del modo de los transitorios. Quedan dos preguntas (el tipo III y la
+# carga casi nula); las ventajas del modo corriente y el COT pasan al resumen y a las explicaciones.
 leccion: cap33/sec-33.6
 
 libro:
@@ -22,6 +26,7 @@ libro:
   189: "La frecuencia no es fija"
   190: "Su respuesta a los transitorios es la mejor de las tres"
   191: "fijan el tiempo de conducción y consiguen frecuencia casi constante"
+  193: "La mejor"
   194: "El modo corriente es el estándar para la mayoría de las aplicaciones"
   196: "con sus pérdidas de conmutación fijas, y el rendimiento se hundiría"
   197: "saltan ciclos y bajan la frecuencia efectiva"
@@ -41,20 +46,6 @@ modelo:
     I_v: { expr: "I_p - kT*(1 - D + c)*D", sim: "I_{valle}", nombre: "valle de la corriente en régimen", unidad: A }
 
 tarjetas:
-  - id: explore-figura
-    tipo: explorar
-    titulo: "Un convertidor es un lazo"
-    texto: "Mide su salida, la compara con una referencia y ajusta el ciclo de trabajo. Toque las partes de la figura."
-    libro: [172, 181, 201]
-    widget:
-      tipo: figura
-      figura: fig-33.7
-      zonas:
-        - { id: corriente, rotulo: "Arriba", rect: [43, 20, 394, 107], texto: "Modo corriente: el transistor se apaga cuando la corriente de la bobina llega al umbral que pide el lazo de tensión." }
-        - { id: puerta, rotulo: "En medio", rect: [43, 130, 394, 37], texto: "La puerta: cada pulso termina justo en el pico de corriente." }
-        - { id: tabla, rotulo: "Abajo", rect: [13, 200, 430, 107], texto: "Los tres modos: tensión, corriente e histéresis." }
-    requiere: { mover: [corriente, tabla] }
-
   - id: modo-tension
     tipo: pregunta
     titulo: "El problema del modo tensión"
@@ -77,56 +68,13 @@ tarjetas:
       - "¿Cuántos elementos que almacenan energía tiene el filtro de salida?"
     solucion: "El filtro LC aporta dos polos: hace falta un tipo III para tener margen de fase."
 
-  - id: ventajas-corriente
-    tipo: pregunta
-    titulo: "El segundo lazo"
-    texto: "El modo corriente controla la corriente de la bobina ciclo a ciclo. Empareje cada ventaja con su razón."
-    libro: [182, 184]
-    widget:
-      tipo: figura
-      figura: fig-33.7
-      zonas:
-        - { id: corriente, rotulo: "Arriba", rect: [43, 20, 394, 107] }
-    emparejar:
-      - ["Compensación sencilla", "La bobina pasa a ser una fuente de corriente: un polo"]
-      - ["Respuesta a la entrada", "La corriente de la bobina reacciona al instante"]
-      - ["Límite de corriente", "El propio control es un tope ciclo a ciclo"]
-      - ["Fuentes en paralelo", "Reparten la corriente de forma natural"]
-    exito: "Por eso el modo corriente es el estándar en la mayoría de las aplicaciones."
-    pistas:
-      - { texto: "El tope de corriente sale gratis: el apagado ya es un umbral de corriente." }
-    escalera:
-      - "De dos polos a uno: esa es la compensación sencilla."
-    solucion: "Un polo, reacción inmediata, límite ciclo a ciclo y reparto en paralelo."
-
-  - id: prediga-subarmonica
-    tipo: predecir
-    titulo: "Por encima del 50 %"
-    texto: "Modo corriente por encima del 50 %, sin nada más: una pequeña perturbación altera un ciclo. ¿Qué pasa después?"
-    libro: [186]
-    widget:
-      tipo: figura
-      figura: fig-33.7
-      zonas:
-        - { id: corriente, rotulo: "Arriba", rect: [43, 20, 394, 107] }
-    opciones:
-      - texto: "Se amplifica ciclo a ciclo: oscila a la mitad de la frecuencia de conmutación"
-        bien: true
-        porque: "Es la inestabilidad subarmónica: por encima del 50 % la perturbación no se amortigua."
-      - texto: "Se amortigua en unos pocos ciclos"
-        porque: "Eso pasa por debajo del 50 %. Por encima, cada ciclo la devuelve mayor y con el signo cambiado."
-      - texto: "Se queda igual para siempre"
-        porque: "No se queda: crece ciclo a ciclo, alternando de signo."
-    escalera:
-      - "El libro pone un umbral en el ciclo de trabajo para este fenómeno."
-    solucion: "Se amplifica: inestabilidad subarmónica, a la mitad de la frecuencia de conmutación."
-
   - id: explore-subarmonica
     tipo: explorar
     titulo: "La perturbación, ciclo a ciclo"
-    texto: "Una perturbación pequeña en el primer ciclo. Mueva D por encima y por debajo del 50 %."
-    libro: [186]
+    texto: "Modo corriente sin rampa: una pequeña perturbación en el primer ciclo crece ciclo a ciclo. Busque el mayor D con el que se amortigua."
+    libro: [181, 186]
     fijar: { c: 0 }
+    inicio: { D: 0.6 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.000032, unidad: s, rotulo: "t", muestras: 1600 }
@@ -137,7 +85,20 @@ tarjetas:
       lectura: { valor: a_f, rotulo: "Crece cada ciclo ×" }
       mandos:
         - { valor: D, min: 0.3, max: 0.7, paso: 0.05, rotulo: "Ciclo de trabajo, D" }
-    requiere: { mover: [D] }
+    objetivo:
+      condiciones:
+        - { valor: a_f, max: 0.95, rotulo: "Crece ×{{a_f}}" }
+        - { valor: D, min: 0.45, rotulo: "D: {{D}}" }
+      logrado: "Con D = {{D}} se amortigua. Por encima del 50 % se amplifica y oscila a la mitad de la frecuencia de conmutación: inestabilidad subarmónica."
+      pistas:
+        - { cuando: { valor: a_f, mayor: 0.95 }, texto: "Todavía no se amortigua: baje D." }
+        - { texto: "Se amortigua, pero se puede subir más D." }
+    escalera:
+      - "El libro pone el umbral en el 50 %."
+    solucion: "D = 0,45, justo por debajo del 50 %."
+    comprobar:
+      - { con: { D: 0.45 }, a_f: 0.818, tol: 0.01 }
+      - { con: { D: 0.5 }, a_f: 1 }
 
   - id: ajuste-pendiente
     tipo: ajuste
@@ -166,69 +127,48 @@ tarjetas:
       dentro: "Amortigua: la rampa restaura el amortiguamiento. Es obligatoria por encima del 50 %."
 
   - id: ruido-corriente
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una señal pequeña y sucia"
-    texto: "La señal de corriente lleva un pico al encender el transistor. ¿Qué se hace con él?"
-    libro: [187]
+    texto: "La señal de corriente lleva un pico al encender que apagaría el transistor antes de tiempo. Toque la traza en la que se ignoran los primeros nanosegundos."
+    libro: [187, 201]
     widget:
       tipo: figura
       figura: fig-33.7
       zonas:
+        - { id: corriente, rotulo: "Arriba", rect: [43, 20, 394, 107] }
         - { id: puerta, rotulo: "En medio", rect: [43, 130, 394, 37] }
-    opciones:
-      - texto: "Enmascararlo: se ignoran los primeros nanosegundos tras el encendido"
-        bien: true
-        porque: "Es el leading edge blanking; con filtrado, evita que el pico apague el transistor antes de tiempo."
-      - texto: "Nada: el lazo exterior lo corrige"
-        porque: "El apagado es ciclo a ciclo: el pico lo dispararía en ese mismo ciclo."
-      - texto: "Subir la frecuencia"
-        porque: "No ayuda: el pico de cada encendido sigue ahí."
+        - { id: tabla, rotulo: "Abajo", rect: [13, 200, 430, 107] }
+    tocar:
+      bien: [corriente]
+      porque:
+        puerta: "La puerta es la orden de encendido; el pico está en la medida de corriente."
+        tabla: "La tabla compara los tres modos: ahí no hay ninguna señal."
+    exito: "En la corriente de la bobina: filtrado y leading edge blanking, para que el pico no dispare el umbral."
     escalera:
-      - "Si el pico llega al umbral, ¿cuándo se apagaría el transistor?"
-    solucion: "Filtrado y leading edge blanking: se ignoran los primeros nanosegundos."
+      - "¿Qué señal compara el modo corriente con el umbral?"
+    solucion: "La de arriba, la corriente de la bobina."
 
   - id: tres-modos
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cada modo, su sitio"
-    texto: "Empareje cada modo con donde se elige."
-    libro: [189, 190, 194]
+    texto: "Donde los transitorios mandan, el modo que reacciona antes porque no tiene lazo que compensar. Toque su columna en la tabla."
+    libro: [189, 190, 193, 194]
     widget:
       tipo: figura
       figura: fig-33.7
       zonas:
-        - { id: tabla, rotulo: "Abajo", rect: [13, 200, 430, 107] }
-    emparejar:
-      - ["Modo corriente", "El estándar en la mayoría de las aplicaciones"]
-      - ["Modo tensión", "Donde el ruido en la señal de corriente es inaceptable"]
-      - ["Modo histéresis", "Donde mandan los transitorios"]
-    exito: "Las otras dos ocupan los extremos de la tabla."
-    pistas:
-      - { texto: "La histéresis no tiene lazo que compensar: reacciona la primera." }
+        - { id: tension, rotulo: "Columna izquierda", rect: [125, 200, 95, 107] }
+        - { id: corriente, rotulo: "Columna central", rect: [232, 200, 95, 107] }
+        - { id: histeresis, rotulo: "Columna derecha", rect: [338, 200, 100, 107] }
+    tocar:
+      bien: [histeresis]
+      porque:
+        tension: "El modo tensión responde lento: su corrección llega con el retardo del lazo. Va donde el ruido manda."
+        corriente: "El modo corriente responde bien y es el estándar, pero tiene dos lazos que compensar."
+    exito: "Histéresis: la mejor respuesta, a costa de frecuencia variable. Su variante COT fija el tiempo de conducción y la deja casi constante."
     escalera:
-      - "El que tiene un solo lazo y poco ruido es el de tensión."
-    solucion: "Corriente: el estándar. Tensión: ruido. Histéresis: transitorios."
-
-  - id: cot
-    tipo: pregunta
-    titulo: "Histéresis con frecuencia casi fija"
-    texto: "El modo histéresis tiene frecuencia variable. ¿Qué hace su variante COT?"
-    libro: [190, 191]
-    widget:
-      tipo: figura
-      figura: fig-33.7
-      zonas:
-        - { id: tabla, rotulo: "Abajo", rect: [13, 200, 430, 107] }
-    opciones:
-      - texto: "Fija el tiempo de conducción: frecuencia casi constante y respuesta rápida"
-        bien: true
-        porque: "Es lo que se usa en los convertidores de punto de carga de los procesadores."
-      - texto: "Añade un compensador de tipo III"
-        porque: "COT sigue sin compensador: fija el tiempo de conducción."
-      - texto: "Fija la frecuencia con un reloj, como el modo tensión"
-        porque: "No hay reloj: es el tiempo de conducción constante el que deja la frecuencia casi fija."
-    escalera:
-      - "COT son las siglas en inglés de «tiempo de conducción constante»."
-    solucion: "Fija el tiempo de conducción: frecuencia casi constante conservando la respuesta rápida."
+      - "Busque la fila de la respuesta a transitorios."
+    solucion: "La columna derecha, histéresis."
 
   - id: por-que-vacio
     tipo: porque
@@ -253,33 +193,33 @@ tarjetas:
     solucion: "Las pérdidas de conmutación son fijas: saltar ciclos baja la frecuencia efectiva."
 
   - id: banco-modo
-    tipo: pregunta
+    tipo: tocar
     titulo: "Identificar el modo"
-    texto: "En el osciloscopio, el apagado de la puerta coincide siempre con el mismo valor de pico de la corriente. ¿Qué modo es?"
-    libro: [199]
+    texto: "En el banco, el modo se identifica comparando la corriente de la bobina con la señal que apaga el transistor. Toque esa señal."
+    libro: [199, 201]
     widget:
       tipo: figura
       figura: fig-33.7
       zonas:
         - { id: corriente, rotulo: "Arriba", rect: [43, 20, 394, 107] }
-    opciones:
-      - texto: "Modo corriente"
-        bien: true
-        porque: "El apagado lo dispara la corriente de la bobina al alcanzar el umbral."
-      - texto: "Modo tensión"
-        porque: "En modo tensión el apagado coincide con un punto fijo de la rampa interna, no de la corriente."
-      - texto: "Modo histéresis"
-        porque: "La histéresis conmuta cuando la salida cruza sus dos umbrales, no por la corriente de pico."
+        - { id: puerta, rotulo: "En medio", rect: [43, 130, 394, 37] }
+        - { id: tabla, rotulo: "Abajo", rect: [13, 200, 430, 107] }
+    tocar:
+      bien: [puerta]
+      porque:
+        corriente: "Esa es la corriente de la bobina, la otra traza que se mira."
+        tabla: "La tabla no es una medida: compara los tres modos."
+    exito: "Cada bajada de la puerta coincide con el mismo pico de corriente: modo corriente. En modo tensión, coincidiría con un punto de la rampa."
     escalera:
-      - "¿Qué señal decide el apagado en cada modo?"
-    solucion: "Modo corriente: el apagado coincide con un valor concreto de corriente de pico."
+      - "Busque la traza cuadrada."
+    solucion: "La de en medio, la puerta."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [178, 182, 186, 194]
+    libro: [178, 182, 184, 186, 191, 194, 172]
     ideas:
       - { titulo: "Modo tensión.", texto: "Un lazo y poco ruido; dos polos del LC y compensador de tipo III." }
-      - { titulo: "Modo corriente.", texto: "Dos lazos, un polo y límite ciclo a ciclo: el estándar." }
+      - { titulo: "Modo corriente.", texto: "Dos lazos, un polo, respuesta inmediata a la entrada, límite ciclo a ciclo y reparto en paralelo: el estándar." }
       - { titulo: "Por encima del 50 %.", texto: "Inestabilidad subarmónica: compensación de pendiente obligatoria." }
       - { titulo: "Histéresis y COT.", texto: "La mejor respuesta a transitorios; frecuencia variable o casi fija." }

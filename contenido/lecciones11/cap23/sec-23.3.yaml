@@ -1,4 +1,9 @@
 # Lección 1.2 de la sección 22.3 «Análisis por Nodos» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el nodo A se lleva a los 6 V de la fuente derecha (objetivo: sin
+# corriente por R₂); V_A se predice y se simula; la corriente al revés se arregla subiendo la fuente y se explica
+# midiendo V_A; el ejemplo mínimo del libro (2 A, 10 Ω, 5 Ω y 20 Ω) se monta como un Norton cuya carga son los 5 + 20 Ω
+# en serie: se escribe el término fuera de la diagonal y se comprueba midiendo la corriente de los 10 Ω. Queda una
+# pregunta de opciones (el supernodo) y el orden del procedimiento.
 leccion: cap23/sec-23.3
 
 libro:
@@ -10,6 +15,7 @@ libro:
   71: "va la conductancia que une los nodos i y j, con signo negativo"
   75: "su corriente es desconocida"
   78: "se usa el supernodo"
+  80: "Una fuente de corriente de 2 A inyecta en el nodo 1"
   81: 'V_("1") - V_("2")'
   83: "fuera de ella −0,2 S en ambas posiciones"
   84: "ambas suman los 2 A de la fuente"
@@ -28,37 +34,61 @@ modelo:
     R_k2: { sim: "R₂", nombre: "resistencia de la derecha", unidad: Ω, valor: 3 }
     R_k3: { sim: "R₃", nombre: "resistencia a masa", unidad: Ω, valor: 4 }
     n_nod: { sim: "n", nombre: "nodos del circuito", unidad: "", valor: 4 }
+    I_e: { sim: "I", nombre: "fuente de corriente del ejemplo", unidad: A, valor: 2 }
+    R_e1: { sim: "R", nombre: "resistencia del nodo 1 a masa", unidad: Ω, valor: 10 }
+    R_e12: { sim: "R", nombre: "resistencia entre los nodos 1 y 2", unidad: Ω, valor: 5 }
+    R_e2: { sim: "R", nombre: "resistencia del nodo 2 a masa", unidad: Ω, valor: 20 }
   calculos:
     V_kn: { expr: "(V_k1/R_k1 + V_k2/R_k2)/(1/R_k1 + 1/R_k2 + 1/R_k3)", sim: "V_{A}", nombre: "tensión del nodo A", unidad: V }
     I_k1: { expr: "(V_k1 - V_kn)/R_k1", sim: "I₁", nombre: "corriente que llega por R₁", unidad: A }
     I_k2: { expr: "(V_k2 - V_kn)/R_k2", sim: "I₂", nombre: "corriente que llega por R₂", unidad: A }
     I_k3: { expr: "V_kn/R_k3", sim: "I₃", nombre: "corriente que baja por R₃", unidad: A }
     V_sin3: { expr: "(V_k1/R_k1 + V_k2/R_k2)/(1/R_k1 + 1/R_k2)", sim: "V_{A}", nombre: "nodo sin la rama a masa", unidad: V }
+    R_ec: { expr: "R_e12 + R_e2", sim: "R", nombre: "camino del nodo 1 a masa por el nodo 2", unidad: Ω }
+    V_e1: { expr: "I_e*par(R_e1, R_ec)", sim: "V₁", nombre: "tensión del nodo 1", unidad: V }
+    V_e2: { expr: "V_e1*R_e2/R_ec", sim: "V₂", nombre: "tensión del nodo 2", unidad: V }
+    I_e10: { expr: "V_e1/R_e1", sim: "I_{10}", nombre: "corriente por los 10 Ω", unidad: A }
+    I_e5: { expr: "V_e1/R_ec", sim: "I_{5}", nombre: "corriente por los 5 Ω", unidad: A }
+    G_12: { expr: "-1/R_e12", sim: "G_{12}", nombre: "término (1, 2) de la matriz", unidad: S }
+    G_11: { expr: "1/R_e1 + 1/R_e12", sim: "G_{11}", nombre: "diagonal del nodo 1", unidad: S }
+    V_med: { expr: "(V_k1 + V_k2)/2", sim: "V", nombre: "media de las dos fuentes", unidad: V }
     n_ecs: { expr: "n_nod - 1", sim: "n − 1", nombre: "ecuaciones de nodo", unidad: "" }
 
 tarjetas:
   - id: explore-nodo
     tipo: explorar
     titulo: "Un nodo, una incógnita"
-    texto: "Tome la masa como referencia: solo queda una tensión por hallar, la del nodo A. Mueva R₁ y R₃ y mírela."
+    texto: "Con la masa de referencia, solo queda por hallar V_{A}. Mueva R₁ y R₃ hasta que por R₂ no pase corriente."
     libro: [65, 90]
+    inicio: { R_k1: 2, R_k3: 4 }
     widget:
       tipo: circuito
       esquema: kirchhoff
       piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
       lectura: { valor: V_kn, rotulo: "Tensión del nodo A" }
       datos:
-        - { valor: I_k1, rotulo: "I₁ = {{I_k1}}" }
-        - { valor: I_k3, rotulo: "I₃ = {{I_k3}}" }
+        - { valor: I_k2, rotulo: "I₂ = {{I_k2}}" }
       corriente: I_k3
       mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
       mandos:
         - { valor: R_k1, min: 1, max: 10, paso: 1 }
         - { valor: R_k3, min: 1, max: 10, paso: 1 }
-    requiere: { mover: [R_k1, R_k3] }
+    objetivo:
+      condiciones:
+        - { valor: I_k2, min: -0.005, max: 0.005, rotulo: "I₂: {{I_k2}}" }
+      logrado: "V_{A} = {{V_kn}}, la tensión de la fuente derecha: sin diferencia entre los extremos de R₂ no hay corriente."
+      pistas:
+        - { cuando: { valor: I_k2, menor: -0.005 }, texto: "A está por encima de 6 V: suba R₁ o baje R₃." }
+        - { texto: "A está por debajo de 6 V: baje R₁ o suba R₃." }
+    escalera:
+      - "Por R₂ no pasa corriente cuando V_{A} vale 6 V."
+      - "Con R₂ sin corriente, lo que llega por R₁ baja todo por R₃: (10 − 6)/R₁ = 6/R₃."
+    solucion: "Por ejemplo, R₁ = 2 Ω y R₃ = 3 Ω: V_{A} = 6 V."
+    comprobar:
+      - { con: { R_k1: 2, R_k3: 3 }, V_kn: 6, I_k2: 0 }
 
   - id: prediga-nodo
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga la tensión de A"
     texto: "10 V por 2 Ω, 4 Ω a masa y 6 V por 3 Ω. ¿Cuánto vale V_{A}?"
     libro: [89, 90]
@@ -71,25 +101,28 @@ tarjetas:
       corriente: I_k3
       mide: { nodo: V_kn }
       ocultar: true
-    opciones:
-      - texto: "6,46 V"
-        bien: true
-        porque: "Una sola ecuación KCL: V_{A} · (1/2 + 1/4 + 1/3) = 10/2 + 6/3, de donde V_{A} = 84/13 = 6,4615 V."
-      - texto: "8,4 V"
-        porque: "Eso daría el nodo sin la rama de 4 Ω a masa. Esa rama también se lleva corriente y baja la tensión."
-      - texto: "8 V"
-        porque: "Es la media simple de 10 y 6 V. Cada fuente pesa según su conductancia, y además está la rama a masa."
+      mandos: []
+    simular:
+      objetivo: V_kn
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión del nodo, V_{A}"
+      medida: nodo
+      errores:
+        - { expr: "V_sin3", texto: "Eso daría el nodo sin la rama de 4 Ω a masa. Esa rama también se lleva corriente y baja la tensión." }
+        - { expr: "V_med", texto: "Es la media de 10 y 6 V. Cada fuente pesa según su conductancia, y además está la rama a masa." }
+    exito: "Una sola ecuación KCL: V_{A} · (1/2 + 1/4 + 1/3) = 10/2 + 6/3, de donde V_{A} = 84/13 = 6,4615 V."
     escalera:
       - "Escriba la suma de las corrientes que salen de A, cada una como (V_{A} − V_{vecino})/R."
       - "Agrupe: V_{A} · (1/2 + 1/4 + 1/3) = 10/2 + 6/3."
     solucion: "V_{A} = 7/(13/12) = 84/13 = 6,4615 V."
     comprobar:
-      - { V_kn: 6.4615, V_sin3: 8.4 }
+      - { V_kn: 6.4615, V_sin3: 8.4, V_med: 8 }
 
   - id: regla-nodo
     tipo: formula
     titulo: "Cada corriente, con tensiones"
-    texto: "En cada nodo, la suma de las corrientes que salen es cero. Cada corriente se escribe con la ley de Ohm."
+    texto: "Lo que acaba de calcular: en cada nodo, la suma de las corrientes que salen es cero, cada una con la ley de Ohm. Mueva R₃."
     libro: [66, 89]
     ec: 66
     sustitucion: "({{V_kn}} − {{V_k1}})/{{R_k1}} + {{V_kn}}/{{R_k3}} + ({{V_kn}} − {{V_k2}})/{{R_k2}} = 0"
@@ -106,7 +139,7 @@ tarjetas:
   - id: corriente-negativa
     tipo: sorpresa
     titulo: "Una corriente al revés"
-    texto: "Con 10 V, 2 Ω, 4 Ω, 3 Ω y la fuente derecha en 6 V, mire I₂. Después suba esa fuente a 12 V."
+    texto: "Con la fuente derecha en 6 V, I₂ sale negativa. Cambie esa fuente hasta que su corriente llegue de verdad al nodo A."
     libro: [89]
     fijar: { V_k1: 10, R_k1: 2, R_k2: 3, R_k3: 4 }
     inicio: { V_k2: 6 }
@@ -121,33 +154,46 @@ tarjetas:
       mide: { nodo: V_kn, i2: I_k2 }
       mandos:
         - { valor: V_k2, lista: [6, 12], rotulo: "Fuente de la derecha" }
+    objetivo:
+      condiciones:
+        - { valor: I_k2, min: 0, rotulo: "I₂: {{I_k2}}" }
+      logrado: "Con {{V_k2}} la fuente queda por encima de A ({{V_kn}}) y su corriente entra en el nodo: {{I_k2}}."
+      pistas:
+        - { texto: "La fuente sigue por debajo de V_{A}: súbala." }
+    escalera:
+      - "La corriente va del lado de más tensión al de menos."
+    solucion: "La fuente derecha en 12 V."
     comprobar:
       - { I_k2: -0.1538, V_kn: 6.4615 }
+      - { con: { V_k2: 12 }, V_kn: 8.3077, tol: 0.001 }
 
   - id: por-que-negativa
-    tipo: porque
-    titulo: "¿Por qué sale negativa?"
-    texto: "Con la fuente derecha en 6 V, la corriente I₂ que llega a A sale negativa. ¿Qué significa?"
-    libro: [89, "cap23#48"]
+    tipo: medir
+    titulo: "¿Por qué salía negativa?"
+    texto: "Vuelva a 6 V en la fuente derecha. Mida la tensión del nodo A respecto a masa y compárela con esos 6 V."
+    libro: [88, 89, "cap23#48"]
     fijar: { V_k1: 10, V_k2: 6, R_k1: 2, R_k2: 3, R_k3: 4 }
     widget:
       tipo: circuito
       esquema: kirchhoff
       piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3 }
-      lectura: { valor: I_k2, rotulo: "Corriente que llega por R₂" }
       corriente: I_k3
       mide: { nodo: V_kn, i2: I_k2 }
-    opciones:
-      - texto: "A está a 6,46 V, por encima de los 6 V: la corriente va de A hacia la fuente"
-        bien: true
-        porque: "El signo negativo es información, no un error: esa rama no aporta corriente al nodo, se la lleva."
-      - texto: "Hay un error de signo y hay que cambiar el convenio"
-        porque: "El convenio se fija al principio y no se cambia. Un resultado negativo solo dice que el sentido real es el contrario."
-      - texto: "La fuente de 6 V está dibujada al revés"
-        porque: "La fuente está bien. Lo que manda es la diferencia V_{A} − 6 V, y aquí V_{A} es mayor."
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [n, "0"]
+      valor: V_kn
+      porque:
+        f1: "Esa punta está en la fuente de 10 V: mide la fuente, no el nodo."
+        f2: "Esa punta está en la fuente de 6 V: mide sus 6 V, no el nodo A."
+    exito: "6,46 V, por encima de los 6 V: por R₂ la corriente va de A hacia la fuente. El signo negativo era información, no un error."
     escalera:
-      - "Compare la tensión del nodo con la de la fuente de la derecha."
-    solucion: "V_{A} = 6,4615 V supera los 6 V: por R₂ circula corriente desde A hacia la fuente."
+      - "El nodo A es el de arriba, donde se unen las tres resistencias; la referencia, la masa."
+    solucion: "Roja en el nodo de arriba y negra en masa: 6,46 V."
     comprobar:
       - { I_k2: -0.1538, V_kn: 6.4615 }
 
@@ -173,7 +219,7 @@ tarjetas:
       medida: nodo
       errores:
         - { expr: "V_sin3", texto: "Ha olvidado la rama de 2 Ω a masa: también saca corriente del nodo." }
-        - { expr: "(V_k1 + V_k2)/2", texto: "Es la media simple. Cada fuente pesa según la conductancia de su rama." }
+        - { expr: "V_med", texto: "Es la media simple. Cada fuente pesa según la conductancia de su rama." }
     exito: "(V_{A} − 10)/2 + V_{A}/2 + (V_{A} − 5)/1 = 0: V_{A} = 5 V."
     escalera:
       - "Escriba las tres corrientes que salen de A y súmelas."
@@ -183,22 +229,63 @@ tarjetas:
       - { V_kn: 5 }
 
   - id: fuera-diagonal
-    tipo: pregunta
+    tipo: leer
     titulo: "La matriz por inspección"
-    texto: "Nodo 1 y nodo 2 unidos por 5 Ω. ¿Qué va en la posición (1, 2) de la matriz de conductancias?"
-    libro: [71, 81, 83]
-    ec: 81
-    opciones:
-      - texto: "−0,2 S"
-        bien: true
-        porque: "Fuera de la diagonal va la conductancia que une los dos nodos, 1/5 = 0,2 S, con signo negativo."
-      - texto: "0,2 S"
-        porque: "El valor es ese, pero fuera de la diagonal lleva signo negativo: la corriente de 1 a 2 resta V₂."
-      - texto: "0,3 S"
-        porque: "Eso es la diagonal del nodo 1: la suma de todas sus conductancias, 0,1 + 0,2 S."
+    texto: "El ejemplo del libro: 2 A en el nodo 1, 10 Ω a masa y 5 Ω hasta el nodo 2, que baja por 20 Ω. Escriba el término (1, 2) de la matriz."
+    libro: [71, 80, 81, 83]
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_e, rn: R_e1, carga: R_ec }
+      lectura: { valor: V_e1, rotulo: "Tensión del nodo 1" }
+      corriente: I_e10
+      mide: { salida: V_e1, carga: I_e5, paralelo: I_e10 }
+      mandos: []
+    leer:
+      objetivo: G_12
+      unidad: S
+      tol: 0.02
+      rotulo: "Término (1, 2) de la matriz"
+      errores:
+        - { expr: "G_11", texto: "Eso es la diagonal del nodo 1: la suma de sus conductancias, 0,1 + 0,2 S." }
+    exito: "−0,2 S: fuera de la diagonal va la conductancia que une los dos nodos, con signo negativo, y también en la (2, 1)."
     escalera:
-      - "La diagonal suma; fuera de la diagonal, la conductancia compartida con signo menos."
-    solucion: "1/5 Ω = 0,2 S, con signo negativo: −0,2 S en ambas posiciones."
+      - "La conductancia de 5 Ω es 1/5 S."
+      - "Fuera de la diagonal, con signo menos."
+    solucion: "−1/5 = −0,2 S en ambas posiciones."
+    comprobar:
+      - { G_12: -0.2, G_11: 0.3 }
+
+  - id: comprobacion
+    tipo: leer
+    titulo: "La comprobación"
+    texto: "Resuelto, V₁ = 14,3 V. Compruébelo como en el libro: mida la corriente que baja por los 10 Ω y escríbala."
+    libro: [83, 84, 88]
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_e, rn: R_e1, carga: R_ec }
+      corriente: I_e10
+      mide: { salida: V_e1, carga: I_e5, paralelo: I_e10 }
+      instrumento:
+        tipo: multimetro
+        modos: [A]
+      mandos: []
+    leer:
+      objetivo: I_e10
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente por los 10 Ω"
+      medida: { rama: vr }
+      errores:
+        - { expr: "I_e5", texto: "Esos 0,57 A van por los 5 Ω hacia el nodo 2: el amperímetro estaba en la otra rama." }
+        - { expr: "I_e", texto: "Eso es la fuente entera: se reparte entre las dos ramas." }
+    exito: "1,43 A por los 10 Ω y 0,57 A por los 5 Ω: suman los 2 A de la fuente. Es la KCL con los resultados."
+    escalera:
+      - "Abra la rama de la resistencia en paralelo con la fuente."
+    solucion: "14,29/10 = 1,43 A."
+    comprobar:
+      - { V_e1: 14.2857, V_e2: 11.4286, I_e10: 1.4286, I_e5: 0.5714, R_ec: 25 }
 
   - id: supernodo
     tipo: pregunta
@@ -219,24 +306,26 @@ tarjetas:
     solucion: "Supernodo: KCL alrededor de los dos nodos y la ecuación V_{a} − V_{b} = V_{fuente}."
 
   - id: cuantas-ecuaciones
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "¿Cuántas ecuaciones?"
-    texto: "Un circuito con seis mallas y cuatro nodos. ¿Cuántas ecuaciones pide el análisis nodal?"
+    texto: "Un circuito con seis mallas y cuatro nodos. Escriba cuántas ecuaciones pide el análisis nodal."
     libro: [68, 86]
-    estimar:
-      objetivo: "n_ecs"
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 2, max: 10, unidad: "", rotulo: "nodos, n" }
+      y: { min: 0, max: 10, unidad: "", rotulo: "ecuaciones" }
+      curvas:
+        - { expr: "nn - 1", color: azul, rotulo: "ecuaciones de nodo" }
+      mandos: []
+    leer:
+      objetivo: n_ecs
       unidad: ""
-      min: 0
-      max: 10
-      paso: 1
-      inicio: 6
-      tol: 0.1
+      tol: 0.01
       rotulo: "Ecuaciones de nodo"
+      errores:
+        - { expr: "6", texto: "Seis son las de mallas. El nodal pide una por nodo, salvo la referencia." }
+        - { expr: "n_nod", texto: "Un nodo es la referencia: su tensión es cero y no es incógnita." }
     exito: "Tres, n − 1, frente a las seis de mallas. En electrónica hay pocos nodos y muchas mallas: el nodal gana casi siempre."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3 }, texto: "Demasiadas: una ecuación por nodo, salvo la referencia." }
-      - { texto: "Muy pocas: cada nodo que no es la referencia tiene su tensión incógnita." }
     escalera:
       - "Un nodo es la referencia: su tensión es cero."
     solucion: "Con 4 nodos, n − 1 = 3 ecuaciones."
@@ -260,24 +349,6 @@ tarjetas:
     escalera:
       - "Antes de escribir ninguna ecuación hay que saber respecto a qué se miden las tensiones."
     solucion: "Referencia, incógnitas, KCL en cada nodo y resolver."
-
-  - id: comprobacion
-    tipo: pregunta
-    titulo: "La comprobación"
-    texto: "2 A inyectados en el nodo 1; resuelto, V₁ = 14,3 V y V₂ = 11,4 V. ¿Cómo se comprueba?"
-    libro: [83, 84, 88]
-    ec: 81
-    opciones:
-      - texto: "Las corrientes que salen del nodo 1 deben sumar los 2 A de la fuente"
-        bien: true
-        porque: "Por 10 Ω salen 1,43 A y por 5 Ω, 0,57 A: suman los 2 A. Es la KCL con los resultados."
-      - texto: "V₁ y V₂ deben sumar la tensión de la fuente"
-        porque: "Aquí la fuente es de corriente, y las tensiones de nodo no se suman: se comprueba con corrientes."
-      - texto: "No hace falta: el sistema ya es exacto"
-        porque: "El procedimiento no ve un error de signo o de aritmética. Sustituir cuesta segundos."
-    escalera:
-      - "Use la ley de la que sale el método: la de corrientes."
-    solucion: "14,29/10 = 1,43 A y (14,29 − 11,43)/5 = 0,57 A: suman 2 A."
 
   - id: resumen
     tipo: resumen

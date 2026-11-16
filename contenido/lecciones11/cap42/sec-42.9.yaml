@@ -2,6 +2,10 @@
 # La familia de curvas es el RLC serie de la práctica 9 (cap22#235: 10 mH y 100 nF) con la salida en el condensador y
 # R barrida de 20 Ω a 632 Ω (valores de ejemplo). Las dos curvas de «óptimo agudo» y «óptimo plano» son ilustrativas
 # (una lorentziana estrecha y una meseta de 0,9): el libro las describe sin números (bloque 274).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el barrido de R se lleva hasta Q ≥ 5 (objetivo) y el pico de
+# esa curva se marca; el Q con 200 Ω y los casos del barrido triple se escriben; el componente se desvía hasta que el
+# óptimo agudo cae por debajo del plano (objetivo). Quedan dos preguntas de opciones (la sensibilidad y por qué el
+# plano); barrido frente a Monte Carlo y la temperatura sin coeficiente pasan al resumen.
 leccion: cap42/sec-42.9
 
 libro:
@@ -38,14 +42,18 @@ modelo:
     n_s: { expr: "n_v^n_p", sim: "casos", nombre: "simulaciones del barrido", unidad: "" }
     P_ag: { expr: "1/(1 + (d_v/0.05)^2)", sim: "agudo", nombre: "prestación del óptimo agudo", unidad: "", cifras: 2 }
     P_pl: { expr: "0.9/(1 + (d_v/0.4)^4)", sim: "plano", nombre: "prestación del óptimo plano", unidad: "", cifras: 2 }
+    dP: { expr: "P_pl - P_ag", sim: "plano − agudo", nombre: "ventaja del óptimo plano", unidad: "", cifras: 2 }
+    pk_r: { expr: "Q_r/sqrt(1 - 1/(4*Q_r^2))", sim: "pico", nombre: "altura del pico en C", unidad: V, cifras: 3 }
+    Z0: { expr: "sqrt(L_r/C_r)", sim: "√(L/C)", nombre: "impedancia característica", unidad: Ω }
     u_d: { expr: "1 + d_v", sim: "x", nombre: "valor relativo del componente", unidad: "" }
 
 tarjetas:
   - id: explore-familia
     tipo: explorar
     titulo: "Una familia de curvas"
-    texto: "Un RLC con la salida en el condensador. Barra R: cada valor es una simulación, y las curvas a trazos son dos de la familia."
+    texto: "Un RLC con la salida en el condensador. Barra R, cada valor una simulación, hasta que el pico dé un Q de 5 o más."
     libro: [252, 253, "cap22#235"]
+    inicio: { R_r: 632 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -61,6 +69,17 @@ tarjetas:
           - { expr: "V_p/(2*pi*nu*C_r)/sqrt(632^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: tinta, rotulo: "R = 632 Ω", discontinua: true }
       mandos:
         - { valor: R_r, lista: [32, 63.2, 100, 200, 632], rotulo: "R" }
+    objetivo:
+      condiciones:
+        - { valor: Q_r, min: 4.99, rotulo: "Q: {{Q_r}}" }
+      logrado: "Con {{R_r}}, Q = {{Q_r}}: el barrido dibuja la familia entera, desde la curva plana a la que resuena."
+      pistas:
+        - { texto: "Todavía poco pico: menos R." }
+    escalera:
+      - "Q = √(L/C)/R = 316/R."
+    solucion: "R = 63,2 Ω o menos."
+    comprobar:
+      - { con: { R_r: 63.2 }, Q_r: 5, Z0: 316 }
 
   - id: prediga-sensible
     tipo: predecir
@@ -87,42 +106,91 @@ tarjetas:
     solucion: "Tolerancia estrecha solo en los sensibles."
 
   - id: formula-q
-    tipo: formula
+    tipo: leer
     titulo: "Lo que mueve el barrido"
-    texto: "Barrer R es barrer Q: con L y C fijas, el pico de resonancia sube o desaparece."
+    texto: "Barrer R es barrer Q: con L y C fijas, el pico sube o desaparece. Con R = 200 Ω, escriba Q."
     libro: ["cap24#156"]
     ec: "cap24#156"
-    sustitucion: "Q = (1/{{R_r}}) · √({{L_r}}/{{C_r}}) = {{Q_r}}"
+    fijar: { R_r: 200 }
     widget:
       tipo: circuito
       esquema: rlc-serie
       piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: Q_r, rotulo: "Q" }
       mide: { vc_amp: A_c }
-      mandos:
-        - { valor: R_r, lista: [32, 63.2, 100, 200, 632], rotulo: "R" }
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 12, unidad: V, rotulo: "|v_{C}|" }
+        curvas:
+          - { expr: "V_p/(2*pi*nu*C_r)/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "R elegida", mide: vc_amp }
+          - { expr: "V_p/(2*pi*nu*C_r)/sqrt(63.2^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "R = 63,2 Ω", discontinua: true }
+          - { expr: "V_p/(2*pi*nu*C_r)/sqrt(632^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: tinta, rotulo: "R = 632 Ω", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: Q_r
+      unidad: ""
+      tol: 0.02
+      rotulo: "Q"
+      errores:
+        - { expr: "1/Q_r", texto: "Ha dividido al revés: Q = √(L/C)/R." }
+    exito: "√(10 mH/100 nF)/200 = 316/200 = 1,58."
+    escalera:
+      - "√(L/C) = 316 Ω."
+    solucion: "Q = 1,58."
+    comprobar:
+      - { Q_r: 1.58, Z0: 316 }
+
+  - id: marque-pico
+    tipo: marcar
+    titulo: "El pico de la familia"
+    texto: "Con R = 63,2 Ω, Q = 5. Marque con la línea la altura del pico de la curva naranja, con 1 V a la entrada."
+    libro: [253]
+    fijar: { R_r: 63.2 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 12, unidad: V, rotulo: "|v_{C}|" }
+      curvas:
+        - { expr: "V_p/(2*pi*nu*C_r)/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "R = 63,2 Ω" }
+      mandos: []
+    marcar:
+      modo: y
+      y: "pk_r"
+      tol: 0.02
+      inicio: { x: 5000, y: 1 }
+      rotulo: "La altura del pico"
+    pistas:
+      - { cuando: { valor: marca_y, mayor: 5.3 }, texto: "Más abajo: la línea en la cima." }
+      - { texto: "Más arriba: en resonancia, el condensador tiene unas Q veces la entrada." }
+    exito: "Unos 5 V: Q veces la entrada. Cada valor de R es una curva de la familia, con su pico."
+    escalera:
+      - "En resonancia, V_{C} ≈ Q · V."
+    solucion: "≈ 5 V."
+    comprobar:
+      - { pk_r: 5.03, Q_r: 5, tol: 0.01 }
 
   - id: estime-casos
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El coste del barrido múltiple"
-    texto: "Se barren tres parámetros con veinte valores cada uno. ¿Cuántas simulaciones son?"
+    texto: "Se barren tres parámetros con veinte valores cada uno. Escriba cuántas simulaciones son."
     libro: [267, 278]
-    estimar:
-      objetivo: "n_s"
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 4, unidad: "", rotulo: "parámetros barridos" }
+      y: { min: 1, max: 1000000, unidad: "", rotulo: "simulaciones", escala: log }
+      curvas:
+        - { expr: "n_v^k", color: azul, rotulo: "20 valores por parámetro" }
+      mandos: []
+    leer:
+      objetivo: n_s
       unidad: ""
-      min: 0
-      max: 20000
-      paso: 100
-      inicio: 100
-      tol: 0.05
+      tol: 0.01
       rotulo: "Simulaciones"
-    exito: "20³ = 8000: en el banco no se hacen; en el ordenador, unos minutos. Con dos parámetros, 400."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 8400 }, texto: "Demasiado: son 20 × 20 × 20." }
-      - { texto: "Poco: no se suman, se multiplican: 20 × 20 × 20." }
+      errores:
+        - { expr: "n_v*n_p", texto: "No se suman: cada valor de uno se combina con todos los de los otros." }
+        - { expr: "n_2", texto: "Esas son las de dos parámetros. Con tres, otra vez por veinte." }
+    exito: "20³ = 8000: en el banco no se hacen; en el ordenador, unos minutos."
     escalera:
-      - "Cada valor de uno se combina con todos los de los otros."
+      - "20 × 20 × 20."
     solucion: "20³ = 8000."
     comprobar:
       - { n_s: 8000, n_2: 400, n_v: 20 }
@@ -130,7 +198,7 @@ tarjetas:
   - id: agudo-plano
     tipo: sorpresa
     titulo: "El óptimo agudo se cae"
-    texto: "Dos diseños (curvas de ejemplo): uno con un máximo agudo y otro con uno plano y algo peor. Desvíe el componente: el agudo se hunde."
+    texto: "Dos diseños (curvas de ejemplo): uno con un máximo agudo y otro con uno plano y algo peor. Desvíe el componente hasta que el agudo quede por debajo del plano."
     libro: [274]
     inicio: { d_v: 0 }
     widget:
@@ -147,6 +215,17 @@ tarjetas:
         - { valor: P_pl, rotulo: "Plano: {{P_pl}}" }
       mandos:
         - { valor: d_v, min: 0, max: 0.3, paso: 0.01, rotulo: "Desviación" }
+    objetivo:
+      condiciones:
+        - { valor: dP, min: 0, rotulo: "Plano − agudo: {{dP}}" }
+      logrado: "Con una desviación de {{d_v}}, el agudo da {{P_ag}} y el plano sigue en {{P_pl}}: cualquier tolerancia desplaza un óptimo agudo."
+      pistas:
+        - { texto: "Desvíe un poco más el componente." }
+    escalera:
+      - "Basta una desviación de unos pocos tantos por ciento."
+    solucion: "Con una desviación de 0,02 ya cae por debajo."
+    comprobar:
+      - { con: { d_v: 0.02 }, P_ag: 0.86, P_pl: 0.9, tol: 0.01 }
 
   - id: por-que-plano
     tipo: porque
@@ -173,53 +252,12 @@ tarjetas:
       - "¿Qué unidad se fabrica: la nominal o una desviada?"
     solucion: "Robusto frente a las tolerancias."
 
-  - id: barrido-mc
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Barridos y Monte Carlo"
-    texto: "Una cada análisis con la pregunta que responde."
-    libro: [262, 266, 270, 271]
-    emparejar:
-      - ["Barrido paramétrico", "Qué pasa con cada valor: para diseñar"]
-      - ["Monte Carlo", "Qué proporción cumple: si es fabricable"]
-      - ["Barrido de temperatura", "Derivas de −40 a +85 °C"]
-      - ["Barrido múltiple", "Las interacciones entre dos componentes"]
-    exito: "El barrido es para el diseñador; Monte Carlo, para decidir si se fabrica."
-    pistas:
-      - { texto: "El sistemático y el estadístico responden a preguntas distintas." }
-    escalera:
-      - "¿Cuál usa valores aleatorios dentro de las tolerancias?"
-    solucion: "Paramétrico: cada valor; Monte Carlo: proporción; temperatura: derivas; múltiple: interacciones."
-
-  - id: temperatura
-    tipo: pregunta
-    titulo: "Un barrido de temperatura sin deriva"
-    texto: "Se barre la temperatura de −40 a +85 °C y este RLC, hecho con componentes ideales, no cambia nada. ¿Por qué?"
-    libro: [263]
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: Q_r, rotulo: "Q" }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Porque los pasivos ideales no derivan sin un coeficiente térmico explícito"
-        bien: true
-        porque: "El simulador solo modela la temperatura de lo que tiene coeficiente térmico en su modelo."
-      - texto: "Porque un RLC no depende de la temperatura"
-        porque: "Sus componentes reales sí derivan; el modelo ideal no lo sabe."
-      - texto: "Porque el barrido estaba mal configurado"
-        porque: "Está bien: es el modelo el que no tiene nada que derivar."
-    escalera:
-      - "¿Qué hace falta en el modelo para que la temperatura cambie algo?"
-    solucion: "Sin coeficiente térmico, nada deriva."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [252, 256, 274, 278]
+    libro: [252, 256, 262, 263, 266, 270, 271, 274, 278]
     ideas:
-      - { titulo: "Explorar.", texto: "Un barrido repite un análisis variando un valor: una familia de curvas." }
+      - { titulo: "Explorar.", texto: "El barrido explora sistemáticamente, para diseñar; Monte Carlo, estadísticamente, para fabricar." }
       - { titulo: "Sensibilidad.", texto: "Dice dónde gastar en precisión y dónde basta el 5 %." }
       - { titulo: "Plano mejor que agudo.", texto: "Mejor funcionar bien siempre que perfecto solo en el nominal." }
-      - { titulo: "La escala.", texto: "Tres parámetros con veinte valores: ocho mil casos, minutos en el ordenador." }
+      - { titulo: "Temperatura y escala.", texto: "Sin coeficiente térmico, nada deriva al barrerla. Tres parámetros con veinte valores: ocho mil casos." }

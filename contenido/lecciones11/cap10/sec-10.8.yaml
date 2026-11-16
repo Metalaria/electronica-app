@@ -4,13 +4,22 @@
 #   La conexión en el pico se modela como un escalón de 325 V: es el peor caso del libro (bloque 176).
 # - Sin paso práctico propio: el ajuste del retardo del relé y la simulación de la NTC van en la lección de los
 #   problemas (sec-10.11, problemas 10.A y 10.C).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se baja el pico a la décima parte (objetivo), se marca el
+# pico de 325 A, se busca el instante de conexión del peor caso (objetivo; el pico como V_p·sen θ/R, el escalón del
+# instante), se calcula la energía con 10 Ω (la misma) y lo que disipa la NTC caliente (2 W del bloque 181). Quedan
+# dos preguntas (el rearranque con NTC y el fusible); las tres soluciones pasan al resumen.
 leccion: cap10/sec-10.8
 
 libro:
   167: "un condensador descargado es un cortocircuito"
   168: "Conectando la red de 230 V en su pico, 325 V, con 1 Ω de resistencia total"
+  170: "quedan decenas o cientos de amperios durante unos milisegundos"
   171: "Fundir un fusible sano, si es rápido."
+  177: "el limitador puede no haberse recuperado, y entonces no limita nada"
+  179: "en frío presenta varios ohmios y limita"
+  181: "con 0,5 Ω y 2 A son 2 W dentro de la caja"
   176: "La corriente de irrupción es máxima conectando en el pico de la onda de red"
+  182: "Trabaja caliente, del orden de 100 a 200 °C"
   183: "No protege en un rearranque rápido"
   185: "debe cerrar después de que los condensadores estén cargados y no antes"
   186: "permite fijar la corriente máxima con precisión"
@@ -29,17 +38,23 @@ modelo:
     V_p: { sim: "V_{pico}", nombre: "pico de la red", unidad: V, valor: 325 }
     R_a: { sim: "R", nombre: "resistencia del camino", unidad: Ω, valor: 1 }
     C_f: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 470e-6 }
+    th_c: { sim: "θ", nombre: "instante de conexión en la onda", unidad: "°", valor: 30 }
+    R_ntc: { sim: "R_{NTC}", nombre: "NTC caliente", unidad: Ω, valor: 0.5 }
+    I_t: { sim: "I", nombre: "corriente de trabajo", unidad: A, valor: 2 }
   calculos:
     tau: { expr: "R_a*C_f", sim: "τ", nombre: "constante de tiempo", unidad: s }
     I_pico: { expr: "V_p/R_a", sim: "I_{pico}", nombre: "pico de la irrupción", unidad: A }
     E_R: { expr: "C_f*V_p^2/2", sim: "E", nombre: "energía en la resistencia", unidad: J, cifras: 3 }
+    I_th: { expr: "V_p*sin(th_c*pi/180)/R_a", sim: "I_{pico}", nombre: "pico según el instante de conexión", unidad: A }
+    P_ntc: { expr: "I_t^2*R_ntc", sim: "P", nombre: "lo que disipa la NTC en funcionamiento", unidad: W }
 
 tarjetas:
   - id: explore-irrupcion
     tipo: explorar
     titulo: "Un cortocircuito de milisegundos"
-    texto: "Se conecta la red en su pico sobre el condensador descargado. Suba la resistencia del camino y mire el pico de corriente."
+    texto: "Se conecta la red en su pico sobre el condensador descargado. Elija la resistencia del camino que baja el pico de corriente a la décima parte."
     libro: [167, 168, 202]
+    inicio: { R_a: 1 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -54,118 +69,140 @@ tarjetas:
           - { expr: "V_p/R_a*exp(-t/tau)", color: naranja, rotulo: "i", mide: i }
       mandos:
         - { valor: R_a, lista: [1, 10, 47], rotulo: "Resistencia del camino" }
-    requiere: { mover: [R_a] }
+    objetivo:
+      condiciones:
+        - { valor: I_pico, objetivo: 32.5, tol: 0.02, rotulo: "Pico: {{I_pico}}" }
+      logrado: "Con {{R_a}}, {{I_pico}}: diez veces menos. Pero τ = {{tau}}: la carga dura diez veces más."
+      pistas:
+        - { cuando: { valor: I_pico, mayor: 33 }, texto: "Más resistencia: el pico sigue alto." }
+        - { texto: "Se ha pasado: baje la resistencia." }
+    escalera:
+      - "El pico es V/R: para la décima parte, diez veces la resistencia."
+    solucion: "10 Ω: 32,5 A de pico."
+    comprobar:
+      - { con: { R_a: 10 }, I_pico: 32.5, tau: 0.0047 }
 
   - id: formula-pico
-    tipo: formula
+    tipo: marcar
     titulo: "El pico"
-    texto: "En el primer instante el condensador es un cortocircuito: solo frena la resistencia."
+    texto: "En el primer instante el condensador es un cortocircuito: solo frena el ohmio del camino. Marque la altura del pico de corriente."
     libro: [168, 189]
     fijar: { R_a: 1 }
-    ec: 189
-    sustitucion: "{{V_p}} / {{R_a}} = {{I_pico}}"
     widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_p, r: R_a, c: C_f }
-      lectura: { valor: I_pico, rotulo: "Pico de corriente" }
-      grafica:
-        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 350, unidad: A, rotulo: "i" }
-        curvas:
-          - { expr: "V_p/R_a*exp(-t/tau)", color: naranja, rotulo: "i", mide: i }
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 350, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "V_p/R_a*exp(-t/tau)", color: naranja, rotulo: "i" }
+      mandos: []
+    marcar:
+      modo: y
+      y: "I_pico"
+      tol: 0.02
+      inicio: { x: 0.0015, y: 100 }
+      rotulo: "El pico de corriente"
+    pistas:
+      - { cuando: { valor: marca_y, mayor: 325 }, texto: "Más abajo: la línea en el arranque de la curva." }
+      - { texto: "Más arriba: el pico está en t = 0." }
+    exito: "325 A: 325 V entre 1 Ω. En la práctica, la inductancia de la línea lo deja en decenas o cientos de amperios."
+    escalera:
+      - "I_{pico} = V_{pico}/R."
+    solucion: "325 A."
     comprobar:
       - { I_pico: 325 }
 
-  - id: prediga-energia
-    tipo: predecir
-    titulo: "Diez veces más resistencia"
-    texto: "Con 10 Ω en lugar de 1 Ω, el pico baja diez veces. ¿Y la energía que se disipa en la resistencia?"
-    libro: [168, 190, 191]
-    fijar: { R_a: 10 }
+  - id: peor-caso
+    tipo: explorar
+    titulo: "El peor caso"
+    texto: "El condensador se encuentra la tensión de la red del instante de conexión. Busque el instante de la onda que da la mayor irrupción."
+    libro: [176]
+    fijar: { R_a: 1 }
+    inicio: { th_c: 30 }
     widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_p, r: R_a, c: C_f }
-      lectura: { valor: E_R, rotulo: "Energía en la resistencia" }
-      ocultar: true
-      grafica:
-        x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 350, unidad: A, rotulo: "i" }
-        curvas:
-          - { expr: "V_p/R_a*exp(-t/tau)", color: naranja, rotulo: "i", mide: i }
-    opciones:
-      - texto: "La misma"
-        bien: true
-        porque: "Es independiente de R: ½·C·V². El limitador reparte la energía en más tiempo."
-      - texto: "Diez veces menos"
-        porque: "La corriente baja diez veces, pero dura diez veces más: la energía no cambia."
-      - texto: "Diez veces más"
-        porque: "Más R no acumula más energía: la que se disipa es la que acaba en el condensador."
+      tipo: grafica
+      x: { id: th, min: 0, max: 180, unidad: "°", rotulo: "instante de conexión" }
+      y: { min: 0, max: 350, unidad: A, rotulo: "I_{pico}" }
+      curvas:
+        - { expr: "V_p*sin(th*pi/180)/R_a", color: naranja, rotulo: "pico de irrupción" }
+      marcas:
+        - { x: "th_c", y: "I_th", rotulo: "{{I_th}}" }
+      lectura: { valor: I_th, rotulo: "Pico de irrupción" }
+      mandos:
+        - { valor: th_c, min: 0, max: 180, paso: 15, rotulo: "Instante en la onda, θ" }
+    objetivo:
+      condiciones:
+        - { valor: I_th, objetivo: 325, tol: 0.01, rotulo: "Pico: {{I_th}}" }
+      logrado: "En el pico de la onda, {{I_th}}; en el paso por cero, casi nada. Como el instante es aleatorio, se diseña para el pico."
+      pistas:
+        - { texto: "Busque el instante en que la red tiene más tensión." }
     escalera:
-      - "Fíjese en la fórmula de la energía: ¿aparece R?"
-    solucion: "La misma: ½·C·V², independiente de R."
+      - "En el paso por cero, el condensador no se encuentra tensión."
+    solucion: "θ = 90°, el pico de la onda: 325 A."
+    comprobar:
+      - { con: { th_c: 90 }, I_th: 325 }
+      - { con: { th_c: 0 }, I_th: 0 }
 
   - id: estime-energia
-    tipo: pregunta
-    titulo: "Cuántos julios"
-    texto: "Con 470 µF y 325 V de pico, ¿qué energía se disipa en la resistencia de arranque en cada conexión?"
-    libro: [190, 192, 193]
+    tipo: simular
+    titulo: "Diez veces más resistencia"
+    texto: "Con 470 µF y 325 V, la resistencia de arranque pasa de 1 Ω a 10 Ω: el pico baja diez veces. ¿Qué energía se disipa en ella en cada conexión?"
+    libro: [190, 191, 192, 193]
+    fijar: { R_a: 10 }
     widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_p, r: R_a, c: C_f }
-      lectura: { valor: tau, rotulo: "Constante de tiempo" }
-      grafica:
-        x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 350, unidad: V, rotulo: "v_{C}" }
-        curvas:
-          - { expr: "V_p*(1 - exp(-t/tau))", color: verde, rotulo: "v_{C}", mide: vc }
-    estimar:
-      objetivo: "E_R"
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 350, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "V_p*(1 - exp(-t/tau))", color: verde, rotulo: "v_{C}" }
+      lectura: { valor: E_R, rotulo: "Energía en la resistencia" }
+      ocultar: true
+    simular:
+      objetivo: E_R
       unidad: J
-      min: 0
-      max: 60
-      paso: 0.5
-      inicio: 50
-      tol: 0.04
-      rotulo: "Energía"
-    exito: "24,8 J: hace falta una resistencia de pulso, no una de película del mismo valor."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 25.8 }, texto: "Se ha pasado: es la mitad de C·V²." }
-      - { texto: "Se ha quedado corto: la tensión va al cuadrado." }
+      tol: 0.03
+      rotulo: "Energía en la resistencia"
+      errores:
+        - { expr: "E_R/10", texto: "La corriente baja diez veces, pero dura diez veces más: la energía no cambia." }
+        - { expr: "2*E_R", texto: "Es la mitad de C·V²: E = ½·C·V²." }
+    exito: "24,8 J, los mismos que con 1 Ω: independiente de R. Hace falta una resistencia de pulso, no una de película."
     escalera:
-      - "E = ½ · C · V²."
-    solucion: "½ × 470 µF × 325² = 24,8 J."
+      - "E = ½ · C · V². ¿Aparece R?"
+    solucion: "½ × 470 µF × 325² = 24,8 J, sea cual sea R."
     comprobar:
       - { E_R: 24.8 }
 
-  - id: soluciones
-    tipo: pregunta
-    titulo: "Tres soluciones"
-    texto: "Empareje cada limitador con lo que hay que vigilar."
-    libro: [183, 185, 186]
+  - id: simule-ntc
+    tipo: simular
+    titulo: "La NTC caliente"
+    texto: "En funcionamiento la NTC caliente baja a 0,5 Ω y pasan 2 A de trabajo. ¿Cuánto disipa dentro de la caja?"
+    libro: [179, 181, 182]
     widget:
-      tipo: figura
-      figura: fig-10.13
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 446, 202] }
-    emparejar:
-      - ["NTC", "No protege en un rearranque rápido"]
-      - ["Resistencia con relé", "Que cierre después de cargarse los condensadores"]
-      - ["Arranque suave activo", "Un MOSFET que fija la corriente máxima"]
-    exito: "La NTC es la más barata; el relé y el MOSFET funcionan igual en frío que en caliente."
-    pistas:
-      - { texto: "La NTC caliente tiene poca resistencia." }
+      tipo: grafica
+      x: { id: i, min: 0, max: 3, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 5, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "i^2*R_ntc", color: naranja, rotulo: "P = I²·R" }
+      lectura: { valor: P_ntc, rotulo: "Disipación de la NTC" }
+      ocultar: true
+    simular:
+      objetivo: P_ntc
+      unidad: W
+      tol: 0.03
+      rotulo: "Disipación de la NTC"
+      errores:
+        - { expr: "I_t*R_ntc", texto: "Esa es la caída en voltios, I·R. La potencia es I²·R." }
+    exito: "2 W permanentes, y trabaja a 100 o 200 °C: necesita espacio y no puede tocar nada. El relé de puenteo elimina esa pérdida."
     escalera:
-      - "¿Cuál depende de su temperatura?"
-    solucion: "NTC: el rearranque. Relé: cerrar tras la carga. Activo: fija la corriente."
+      - "P = I²·R."
+    solucion: "2² × 0,5 = 2 W."
+    comprobar:
+      - { P_ntc: 2 }
 
   - id: por-que-ntc
     tipo: porque
     titulo: "Apagar y encender"
     texto: "Un equipo con NTC se apaga y se enciende en un segundo, y el fusible funde. ¿Por qué?"
-    libro: [183, 201]
+    libro: [177, 183, 201]
     widget:
       tipo: figura
       figura: fig-10.13
@@ -174,7 +211,7 @@ tarjetas:
     opciones:
       - texto: "La NTC sigue caliente, su resistencia es baja y la corriente pasa entera"
         bien: true
-        porque: "Es su limitación más seria: limita en frío, no en caliente."
+        porque: "Es su limitación más seria. El relé de puenteo y el arranque activo funcionan igual en frío que en caliente."
       - texto: "Los condensadores siguen cargados y piden más corriente"
         porque: "Algo cargados, ayudan; el problema es que la NTC ya no limita."
       - texto: "La NTC se ha abierto"
@@ -182,28 +219,6 @@ tarjetas:
     escalera:
       - "¿Qué resistencia tiene una NTC caliente?"
     solucion: "La NTC caliente casi no limita: la irrupción llega entera."
-
-  - id: peor-caso
-    tipo: pregunta
-    titulo: "El peor caso"
-    texto: "¿Cuándo es máxima la corriente de irrupción?"
-    libro: [176]
-    widget:
-      tipo: figura
-      figura: fig-10.12
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 443, 210] }
-    opciones:
-      - texto: "Conectando en el pico de la onda de red"
-        bien: true
-        porque: "Y casi nula en el paso por cero. Como el instante es aleatorio, se diseña para el pico."
-      - texto: "Conectando en el paso por cero"
-        porque: "Ahí es prácticamente nula: el condensador sube con la onda."
-      - texto: "Siempre igual"
-        porque: "Depende del instante: por eso las pruebas se repiten muchas veces."
-    escalera:
-      - "¿Con qué tensión se encuentra el condensador descargado en cada instante?"
-    solucion: "En el pico de la onda; casi nula en el paso por cero."
 
   - id: fusible
     tipo: pregunta
@@ -230,9 +245,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [167, 189, 191, 196]
+    libro: [167, 176, 183, 185, 186, 189, 191, 196, 170]
     ideas:
-      - { titulo: "Irrupción.", texto: "Un condensador descargado es un cortocircuito: solo frena la resistencia del camino." }
+      - { titulo: "Irrupción.", texto: "Un condensador descargado es un cortocircuito: solo frena la resistencia del camino, peor conectando en el pico." }
       - { titulo: "Energía.", texto: "½·C·V² en la resistencia, sea cual sea R: el limitador reparte, no reduce." }
-      - { titulo: "Soluciones.", texto: "NTC (no en rearranque), resistencia con relé o arranque activo." }
+      - { titulo: "Soluciones.", texto: "NTC (no en rearranque), resistencia con relé que cierre tras la carga, o MOSFET que fija la corriente." }
       - { titulo: "Fusible.", texto: "Lento, con la I²t de la irrupción por debajo de la suya." }

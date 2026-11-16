@@ -2,6 +2,11 @@
 # Repaso del capítulo con sus propios ejemplos: el RC de 1 kΩ y 100 nF a 1 kHz (23.4), el RLC de 50 Ω, 10 mH y
 # 100 nF (23.6, ζ = 0,079) y el transformador ideal con el altavoz de 8 Ω (23.9). El escalón del RLC, con el esquema
 # «rlc-escalon» y 1 V (EJEMPLO: el libro no da tensión).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): repaso haciendo. El condensador se lleva a quedarse casi toda la
+# tensión (objetivo); el pico del 78 % se marca; el eficaz de la red y lo que falta a 5τ se escriben; la suma de
+# amplitudes se lleva por encima de 1,4 V; el elemento que limita la banda por abajo se toca en el transformador real
+# (los valores del ejemplo de la 23.9: 1 kΩ de fuente, L₁ = 1 H, k = 0,95). Quedan dos preguntas de opciones (la media
+# geométrica y cables frente a factura); los errores característicos emparejados pasan al resumen.
 leccion: cap24/sec-24.10
 
 libro:
@@ -35,6 +40,10 @@ modelo:
     N_2: { sim: "N₂", nombre: "espiras del secundario", unidad: "", valor: 100 }
     R_2l: { sim: "R_{L}", nombre: "altavoz", unidad: Ω, valor: 8 }
     V_pk: { sim: "V_{pico}", nombre: "pico de la red", unidad: V, valor: 325.27 }
+    f_t: { sim: "f", nombre: "frecuencia del generador del transformador", unidad: Hz, valor: 1000 }
+    R_t: { sim: "R", nombre: "resistencia del generador", unidad: Ω, valor: 1000 }
+    L_t: { sim: "L_{m}", nombre: "inductancia magnetizante", unidad: H, valor: 1 }
+    L_dt: { sim: "L_{disp}", nombre: "inductancia de dispersión", unidad: H, valor: 0.0975 }
   calculos:
     w_f: { expr: "2*pi*f_f", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
     X_c: { expr: "1/(w_f*C_f)", sim: "X_{C}", nombre: "reactancia", unidad: Ω }
@@ -59,14 +68,18 @@ modelo:
     I_1: { expr: "I_2*N_2/N_1", sim: "I₁", nombre: "corriente del primario", unidad: A }
     Z_r: { expr: "R_2l*(N_1/N_2)^2", sim: "Z_{refl}", nombre: "impedancia vista desde el primario", unidad: Ω }
     V_ef: { expr: "V_pk/sqrt(2)", sim: "V_{ef}", nombre: "eficaz de la red", unidad: V }
+    R_pt: { expr: "R_2l*(N_1/N_2)^2", sim: "R′_{L}", nombre: "altavoz visto desde el primario", unidad: Ω }
+    A_t: { expr: "N_2/N_1*V_p*2*pi*f_t*L_t*R_pt/sqrt((R_t*R_pt - (2*pi*f_t)^2*L_dt*L_t)^2 + (2*pi*f_t*(L_t*(R_t + R_pt) + L_dt*R_pt))^2)", sim: "V_{2}", nombre: "amplitud en el altavoz", unidad: V }
+    OSu: { expr: "OS/100", sim: "SO", nombre: "sobreimpulso en tanto por uno", unidad: "" }
     f5: { expr: "100*exp(-5)", sim: "falta", nombre: "lo que falta a 5τ", unidad: "%", cifras: 3 }
 
 tarjetas:
   - id: explore-repaso
     tipo: explorar
     titulo: "El capítulo en un RC"
-    texto: "El RC de 1 kΩ y 100 nF. Cambie la frecuencia: la misma senoide sale con otra amplitud y otra fase, y R y C se reparten la tensión en cuadratura."
+    texto: "El RC de 1 kΩ y 100 nF: la senoide sale con otra amplitud y otra fase. Cambie la frecuencia hasta que el condensador se quede más de 0,9 V."
     libro: [321, "cap24#87"]
+    inicio: { f_f: 1000 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -78,69 +91,95 @@ tarjetas:
       mide: { vr_amp: A_r, vc_amp: A_c }
       mandos:
         - { valor: f_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: A_c, min: 0.9, rotulo: "V_{C}: {{A_c}}" }
+      logrado: "A {{f_f}}, X_{C} = {{X_c}}: el condensador se queda {{A_c}} y R, {{A_r}}, repartidos en cuadratura."
+      pistas:
+        - { texto: "Para que el condensador se quede más, su reactancia tiene que crecer: baje la frecuencia." }
+    escalera:
+      - "X_{C} = 1/(ωC) sube al bajar la frecuencia."
+    solucion: "A 500 Hz: 0,954 V en C."
+    comprobar:
+      - { con: { f_f: 500 }, A_c: 0.954, X_c: 3183, tol: 0.003 }
 
   - id: prediga-78
-    tipo: predecir
+    tipo: marcar
     titulo: "El RLC del capítulo"
-    texto: "El RLC de 50 Ω, 10 mH y 100 nF tiene Q = 6,32. Ante un escalón, ¿cuánto se pasa la tensión del condensador?"
+    texto: "El RLC de 50 Ω, 10 mH y 100 nF tiene Q = 6,32, ζ = 0,079. Ante el escalón de 1 V, marque con la línea la altura de su primer pico."
     libro: [320, "cap24#160"]
-    nota: "Solo la subida: el pico llega después."
     widget:
-      tipo: circuito
-      esquema: rlc-escalon
-      piezas: { fuente: V_e, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: OS, rotulo: "Sobreimpulso" }
-      datos:
-        - { valor: z_r, rotulo: "ζ = {{z_r}}" }
-      grafica:
-        x: { id: t, min: 0, max: 0.00004, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
-        curvas:
-          - { expr: "V_e*(1 - exp(-a_r*t)*(cos(wd_r*t) + a_r/wd_r*sin(wd_r*t)))", color: verde, rotulo: "v_{C} tras un escalón de 1 V", mide: vc }
-      ocultar: true
-    opciones:
-      - texto: "Un 78 %"
-        bien: true
-        porque: "ζ = 1/(2Q) = 0,079: muy poco amortiguado. El que más resuena es el que más se pasa."
-      - texto: "Nada: Q alto es un circuito estable"
-        porque: "Q alto es ζ bajo: el circuito oscila mucho antes de asentarse."
-      - texto: "Un 6,32 %"
-        porque: "Q no es el sobreimpulso. Con ζ = 0,079, e^{−πζ/√(1−ζ²)} da un 78 %."
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "V_e*(1 - exp(-a_r*t)*(cos(wd_r*t) + a_r/wd_r*sin(wd_r*t)))", color: verde, rotulo: "v_{C} tras un escalón de 1 V" }
+        - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
+      mandos: []
+    marcar:
+      modo: y
+      y: "V_e*(1 + OSu)"
+      tol: 0.03
+      inicio: { x: 0.001, y: 1 }
+      rotulo: "El primer pico"
+    pistas:
+      - { cuando: { valor: marca_y, mayor: 1.84 }, texto: "Más abajo: la línea en la cresta más alta." }
+      - { texto: "Más arriba: la primera cresta pasa mucho del valor final." }
+    exito: "Un 78 % por encima: ζ = 1/(2Q) = 0,079, muy poco amortiguado. El que más resuena es el que más se pasa."
     escalera:
-      - "Pase de Q a ζ con ζ = 1/(2Q)."
-    solucion: "ζ = 0,079: un 78 % de sobreimpulso."
+      - "Busque la primera cresta, la más alta."
+    solucion: "En 1,78 V: un 78 % de sobreimpulso."
     comprobar:
-      - { Q_r: 6.32, z_r: 0.079, OS: 78 }
+      - { Q_r: 6.32, z_r: 0.079, OS: 78, OSu: 0.78 }
 
   - id: formula-eficaz
-    tipo: formula
+    tipo: leer
     titulo: "El eficaz de una senoide"
-    texto: "Pico entre √2. Solo para senoides: con otra forma cambia el factor de cresta."
+    texto: "La red tiene 325 V de pico. Escriba su valor eficaz: solo para senoides vale pico entre √2."
     libro: [322, "cap24#22"]
     ec: "cap24#22"
-    sustitucion: "{{V_pk}} / √2 = {{V_ef}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -400, max: 400, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_pk*sin(2*pi*50*t)", color: azul, rotulo: "red" }
+      mandos: []
+    leer:
+      objetivo: V_ef
+      unidad: V
+      tol: 0.02
+      rotulo: "Valor eficaz"
+      errores:
+        - { expr: "V_pk*sqrt(2)", texto: "Ha multiplicado por √2: el eficaz es menor que el pico." }
+    exito: "325/√2 = 230 V. Con otra forma cambia el factor de cresta, y el multímetro de valor medio deja de acertar."
+    escalera:
+      - "V_{ef} = V_{pico}/√2."
+    solucion: "325/√2 = 230 V."
     comprobar:
       - { V_ef: 230 }
+      - { V_pk: 325, tol: 0.001 }
 
   - id: estime-5tau
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Lo que falta a 5τ"
-    texto: "Un transitorio de primer orden, a cinco constantes de tiempo. Estime qué fracción del recorrido falta todavía."
+    texto: "Un transitorio de primer orden, a cinco constantes de tiempo. Lea en la curva qué fracción del recorrido falta todavía y escríbala."
     libro: [319]
-    estimar:
-      objetivo: "f5"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 10, unidad: "", rotulo: "t/τ" }
+      y: { min: 0.0001, max: 100, unidad: "%", rotulo: "lo que falta", escala: log }
+      curvas:
+        - { expr: "100*exp(-n)", color: azul, rotulo: "100·e^{−t/τ}" }
+      mandos: []
+    leer:
+      objetivo: f5
       unidad: "%"
-      min: 0
-      max: 5
-      paso: 0.01
-      inicio: 2
-      tol: 0.05
-      rotulo: "Lo que falta"
+      tol: 0.03
+      rotulo: "Lo que falta a 5τ"
+      errores:
+        - { expr: "100*exp(-1)", texto: "Eso es a una sola τ. A cinco, e⁻⁵." }
     exito: "e⁻⁵ = 0,674 %. Para 12 bits hacen falta unas 8,3τ."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.71 }, texto: "Demasiado: a 5τ casi ha terminado." }
-      - { texto: "Poco: no es cero; la exponencial no llega nunca." }
     escalera:
       - "Falta e^{−t/τ} del recorrido."
     solucion: "e⁻⁵ = 0,674 %."
@@ -150,7 +189,7 @@ tarjetas:
   - id: catetos
     tipo: sorpresa
     titulo: "Lo que no suma"
-    texto: "La suma de las dos amplitudes pasa de la fuente de 1 V; como catetos, en cambio, cuadra. Cambie la frecuencia."
+    texto: "La suma de las dos amplitudes pasa de la fuente de 1 V; como catetos, en cambio, cuadra. Cambie la frecuencia hasta que la suma pase de 1,4 V."
     libro: [321, 327]
     inicio: { f_f: 1000 }
     widget:
@@ -163,6 +202,17 @@ tarjetas:
       mide: { vr_amp: A_r, vc_amp: A_c }
       mandos:
         - { valor: f_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: S_ab, min: 1.4, rotulo: "Suma: {{S_ab}}" }
+      logrado: "Suman {{S_ab}} con 1 V de fuente; como catetos, {{S_q}}. Sumar como números lo que está en cuadratura es el error del capítulo."
+      pistas:
+        - { texto: "Pruebe otra frecuencia y mire la suma." }
+    escalera:
+      - "La suma como números es mayor cuanto más se parecen las dos amplitudes."
+    solucion: "A 2 kHz: 1,405 V."
+    comprobar:
+      - { con: { f_f: 2000 }, S_ab: 1.405, S_q: 1, tol: 0.003 }
 
   - id: por-que-geometrica
     tipo: porque
@@ -197,25 +247,6 @@ tarjetas:
     comprobar:
       - { f_1: 4650.74, f_2: 5446.51, f_0: 5032.92 }
 
-  - id: errores
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los errores característicos"
-    texto: "Una cada error del capítulo con lo que hay que hacer en su lugar."
-    libro: [327]
-    emparejar:
-      - ["Sumar como números tensiones en cuadratura", "Sumarlas como catetos"]
-      - ["Suponer G = 1/R con reactancia en serie", "Invertir Z completa: G = R/(R² + X²)"]
-      - ["Medir corriente no senoidal con valor medio", "Usar verdadero valor eficaz"]
-      - ["Corregir con condensadores una carga electrónica", "Corrección activa (PFC)"]
-      - ["Aplicar fasores a un transitorio", "Dominio del tiempo o Laplace"]
-    exito: "Los cinco errores del libro, cada uno con su remedio."
-    pistas:
-      - { texto: "Un condensador corrige desfase, no armónicos." }
-    escalera:
-      - "Cada error viola una condición: cuadratura, inversión, forma de onda, armónicos o régimen permanente."
-    solucion: "Catetos; invertir Z; verdadero eficaz; PFC; dominio del tiempo."
-
   - id: dimensionar
     tipo: pregunta
     titulo: "Cables y factura"
@@ -246,37 +277,38 @@ tarjetas:
     solucion: "Cable por S; factura por P."
 
   - id: banda-trafo
-    tipo: pregunta
+    tipo: elegir
     titulo: "La banda del transformador"
-    texto: "El transformador del altavoz de 8 Ω, 10:1. ¿Qué limita su banda pasante por abajo?"
+    texto: "El transformador del altavoz de 8 Ω, 10:1, con sus elementos reales. Toque el que limita la banda pasante por abajo."
     libro: [325, "cap24#221"]
     widget:
       tipo: circuito
-      esquema: transformador
-      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l }
-      lectura: { valor: Z_r, rotulo: "Impedancia vista desde el primario" }
-      corriente: I_2
-      mide: { secundario: V_2, i1: I_1, i2: I_2 }
-    opciones:
-      - texto: "La inductancia magnetizante, que a baja frecuencia cortocircuita la fuente"
-        bien: true
-        porque: "Su reactancia ωL baja con la frecuencia. Por arriba limitan la dispersión y la capacidad."
-      - texto: "La inductancia de dispersión"
-        porque: "La dispersión, en serie, limita por arriba."
-      - texto: "La relación de espiras"
-        porque: "La relación fija tensión, corriente e impedancia (800 Ω aquí), no la banda."
+      esquema: transformador-real
+      piezas: { fuente: V_p, f: f_t, rs: R_t, lm: L_t, ld: L_dt, n1: N_1, n2: N_2, carga: R_2l }
+      lectura: { valor: A_t, rotulo: "Lo que llega al altavoz" }
+      mide: { salida_amp: A_t }
+      mandos: []
+    elegir:
+      zonas: [rs, ld, lm, trafo, carga]
+      bien: [lm]
+      porque:
+        ld: "La dispersión va en serie: limita por arriba, junto con la capacidad."
+        rs: "La resistencia del generador no depende de la frecuencia."
+        trafo: "El transformador ideal escala con n, 1/n y n² a cualquier frecuencia."
+        carga: "El altavoz se ve como 800 Ω a cualquier frecuencia."
+    exito: "La magnetizante, en paralelo: a baja frecuencia su ωL es tan pequeña que cortocircuita la fuente."
     escalera:
-      - "¿Qué reactancia se hace pequeña al bajar la frecuencia?"
-    solucion: "La magnetizante, por abajo; dispersión y capacidad, por arriba."
+      - "¿Qué reactancia se hace pequeña al bajar la frecuencia y está en paralelo?"
+    solucion: "La inductancia magnetizante."
     comprobar:
-      - { Z_r: 800 }
+      - { R_pt: 800 }
 
   - id: resumen
     tipo: resumen
     titulo: "Capítulo repasado"
-    libro: [319, 320, 321, 323, 325]
+    libro: [319, 320, 321, 323, 325, 327]
     ideas:
       - { titulo: "Transitorio.", texto: "Natural + forzada; a 5τ falta un 0,674 %. ζ y Q = 1/(2ζ) son lo mismo." }
-      - { titulo: "Fasores.", texto: "R, jωL y 1/(jωC) como resistencias; en cuadratura, catetos." }
+      - { titulo: "Fasores.", texto: "R, jωL y 1/(jωC) como resistencias; en cuadratura, catetos, no números; G no es 1/R; un transitorio no es un fasor." }
       - { titulo: "Potencia.", texto: "P, Q y S; cables por S, factura por P; el condensador no corrige armónicos." }
       - { titulo: "Resonancia y transformador.", texto: "f₀ en la media geométrica; el transformador escala con n, 1/n y n²." }

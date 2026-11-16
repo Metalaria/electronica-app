@@ -3,6 +3,11 @@
 # 100 nF). El tanque usa la misma L y C con unas pérdidas de 63,2 kΩ para el Q propio de 200 del libro (bloque 179) y
 # resistencias de fuente de 1 MΩ, 70 kΩ y 7 kΩ, ilustrativas, hasta el Q cargado de 20. La admitancia es la del
 # bloque 199 (R = 100 Ω, X = +140 Ω), con la bobina de 22,28 mH a 1 kHz que da esos 140 Ω (ilustrativa).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la frecuencia que el tanque bloquea se busca (objetivo); el
+# cociente entre la corriente de la bobina y la de entrada, la conductancia del RL y los ciclos del timbre se escriben;
+# la fase se ajusta a cero; el Q se lleva de 188 a 20 cargando el tanque. Quedan dos preguntas de opciones (la forma más
+# precisa y por qué acoplar ligeramente); las causas de pérdidas y los duales emparejados pasan a los «logrado» y al
+# resumen, y la fórmula de la admitancia, al éxito de G.
 leccion: cap24/sec-24.7
 
 libro:
@@ -67,9 +72,38 @@ tarjetas:
   - id: explore-tanque
     tipo: explorar
     titulo: "El tanque rechaza su frecuencia"
-    texto: "Una bobina y un condensador en paralelo, alimentados a través de una resistencia. Mueva la frecuencia de la fuente y mire la corriente de entrada y la de la bobina."
-    libro: [166]
+    texto: "Una bobina y un condensador en paralelo, alimentados a través de una resistencia. Busque la frecuencia con la que el tanque presenta más impedancia."
+    libro: [165, 166, 200]
     fijar: { R_ps: 1000000, R_pp: 63245.6 }
+    inicio: { f_p: 2000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_p, rs: R_ps, l: L_p, c: C_p, r: R_pp }
+      lectura: { valor: A_t, rotulo: "Tensión en el tanque" }
+      datos:
+        - { valor: I_l, rotulo: "Por la bobina: {{I_l}}" }
+      mide: { vt_amp: A_t, i_amp: I_e, il_amp: I_l }
+      mandos:
+        - { valor: f_p, lista: [2000, 4000, 5032.92, 6000, 12000], rotulo: "Frecuencia" }
+    objetivo:
+      condiciones:
+        - { valor: A_t, min: 0.05, rotulo: "Tanque: {{A_t}}" }
+      logrado: "En {{f_p}} la impedancia es máxima: el tanque es un rechazador. El serie es su dual, un aceptador; en paralelo se suman admitancias."
+      pistas:
+        - { texto: "Todavía deja pasar: pruebe la frecuencia en que ωL = 1/(ωC)." }
+    escalera:
+      - "Con 10 mH y 100 nF, la resonancia está cerca de 5 kHz."
+    solucion: "5032,92 Hz, la resonancia."
+    comprobar:
+      - { con: { f_p: 5032.92 }, f_0: 5032.92, A_t: 0.0595, tol: 0.003 }
+
+  - id: prediga-circula
+    tipo: leer
+    titulo: "Dentro del tanque"
+    texto: "En resonancia, el tanque apenas toma corriente de la fuente. Lea las dos corrientes y escriba cuántas veces mayor es la de la bobina."
+    libro: [167]
+    fijar: { R_ps: 1000000, R_pp: 63245.6, f_p: 5032.92 }
     widget:
       tipo: circuito
       esquema: rlc-paralelo
@@ -77,82 +111,49 @@ tarjetas:
       lectura: { valor: I_e, rotulo: "Corriente de entrada" }
       datos:
         - { valor: I_l, rotulo: "Por la bobina: {{I_l}}" }
-      mide: { vt_amp: A_t, i_amp: I_e, il_amp: I_l }
-      mandos:
-        - { valor: f_p, lista: [2000, 4000, 5032.92, 6000, 12000], rotulo: "Frecuencia" }
-
-  - id: prediga-circula
-    tipo: predecir
-    titulo: "Dentro del tanque"
-    texto: "En resonancia, el tanque apenas toma corriente de la fuente. ¿Cuánta circula entre la bobina y el condensador?"
-    libro: [167]
-    fijar: { R_ps: 1000000, R_pp: 63245.6, f_p: 5032.92 }
-    widget:
-      tipo: circuito
-      esquema: rlc-paralelo
-      piezas: { fuente: V_p, f: f_p, rs: R_ps, l: L_p, c: C_p, r: R_pp }
-      lectura: { valor: k_i, rotulo: "I_{L} / I de entrada" }
       mide: { i_amp: I_e, il_amp: I_l }
-      ocultar: true
-    opciones:
-      - texto: "Q veces la de entrada: aquí, unas 200 veces"
-        bien: true
-        porque: "Las corrientes de L y C se cancelan en la entrada, no dentro: la energía da vueltas entre ambos."
-      - texto: "Ninguna: se cancelan"
-        porque: "Se cancelan en el punto de entrada. Entre L y C circula una corriente Q veces mayor."
-      - texto: "La misma que la de entrada"
-        porque: "Eso sería sin resonancia. En ella, la de dentro es Q veces la de fuera."
+      mandos: []
+    leer:
+      objetivo: k_i
+      unidad: ""
+      tol: 0.03
+      rotulo: "I_{L} / I de entrada"
+      errores:
+        - { expr: "1", texto: "No son iguales: compare las dos lecturas." }
+    exito: "Q veces la de entrada, unas 200: las corrientes de L y C se cancelan en la entrada, no dentro. La energía da vueltas entre ambos."
     escalera:
-      - "¿Dónde se cancelan las corrientes de L y de C?"
-    solucion: "Q veces la de entrada: con Q = 200, doscientas veces."
+      - "Divida la corriente de la bobina por la de entrada."
+    solucion: "Unas 200 veces: el Q propio del tanque."
     comprobar:
       - { Q_0: 200, k_i: 200 }
 
-  - id: formula-admitancia
-    tipo: formula
-    titulo: "La admitancia de un RL"
-    texto: "Invertir Z = R + jX mezcla las dos partes. Con R = 100 Ω y X = +140 Ω, cambie la frecuencia y mire G y B."
+  - id: estime-g
+    tipo: leer
+    titulo: "No es 1/R"
+    texto: "R = 100 Ω en serie con una bobina de X = +140 Ω. Escriba la conductancia G del conjunto."
     libro: [198, 199]
     ec: 198
-    sustitucion: "G = {{R_g}} / ({{R_g}}² + {{X_l}}²) = {{G_y}}; B = {{B_y}}"
+    fijar: { R_g: 100, f_g: 1000, L_g: 0.022282 }
     widget:
       tipo: circuito
       esquema: filtro-rl
       piezas: { fuente: V_p, f: f_g, r: R_g, l: L_g }
-      lectura: { valor: G_y, rotulo: "Conductancia G" }
-      datos:
-        - { valor: B_y, rotulo: "Susceptancia B: {{B_y}}" }
+      lectura: { valor: X_l, rotulo: "Reactancia de la bobina" }
       mide: { i_amp: I_g }
-      mandos:
-        - { valor: f_g, lista: [500, 1000, 2000] }
-    comprobar:
-      - { con: { f_g: 1000 }, X_l: 140, G_y: 0.00338, B_y: -0.00473 }
-
-  - id: estime-g
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "No es 1/R"
-    texto: "R = 100 Ω en serie con una bobina de X = +140 Ω. Estime la conductancia G del conjunto, en siemens."
-    libro: [199]
-    fijar: { R_g: 100, f_g: 1000, L_g: 0.022282 }
-    estimar:
-      objetivo: "G_y"
+      mandos: []
+    leer:
+      objetivo: G_y
       unidad: S
-      min: 0
-      max: 0.012
-      paso: 0.00005
-      inicio: 0.01
-      tol: 0.05
+      tol: 0.02
       rotulo: "Conductancia G"
-    exito: "3,38 mS, no los 10 mS de 1/R: solo el módulo y el ángulo se invierten limpiamente."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00355 }, texto: "Demasiado: ha usado 1/R. Con reactancia en serie, G = R/(R² + X²)." }
-      - { texto: "Poco: G = 100/(100² + 140²)." }
+      errores:
+        - { expr: "G_mal", texto: "Ha usado 1/R. Con reactancia en serie, invertir mezcla las dos partes: G = R/(R² + X²)." }
+    exito: "3,38 mS, no los 10 mS de 1/R; y B = −4,73 mS. Solo el módulo y el ángulo se invierten limpiamente."
     escalera:
       - "G = R/(R² + X²)."
     solucion: "100/(10 000 + 19 600) = 3,38 mS."
     comprobar:
-      - { G_y: 0.00338, G_mal: 0.01, X_2: 19600, R_2: 10000 }
+      - { G_y: 0.00338, G_mal: 0.01, X_2: 19600, R_2: 10000, B_y: -0.00473, X_l: 140 }
 
   - id: ajuste-fase
     tipo: ajuste
@@ -213,26 +214,29 @@ tarjetas:
     solucion: "El cruce de fase por cero."
 
   - id: timbre
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "La prueba de timbre"
-    texto: "Se excita con un pulso un tanque de Q = 100. ¿En cuántos ciclos cae la amplitud de su oscilación a 1/e?"
+    texto: "Se excita con un pulso un tanque de Q = 100. Lea en la curva tras cuántos ciclos su amplitud cae a 1/e y escríbalo."
     libro: [171, 189]
-    estimar:
-      objetivo: "n_e"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 80, unidad: "", rotulo: "ciclos" }
+      y: { min: 0, max: 1.05, unidad: "", rotulo: "amplitud relativa" }
+      curvas:
+        - { expr: "exp(-pi*n/Q_t)", color: verde, rotulo: "envolvente" }
+        - { expr: "exp(-1)", color: tinta, rotulo: "1/e", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: n_e
       unidad: ""
-      min: 0
-      max: 100
-      paso: 0.5
-      inicio: 60
-      tol: 0.05
-      rotulo: "Ciclos"
+      tol: 0.04
+      rotulo: "Ciclos hasta 1/e"
+      errores:
+        - { expr: "Q_t", texto: "No son Q ciclos: son Q/π." }
     exito: "Q/π ≈ 32 ciclos. Una espira en corto hunde el Q y la oscilación muere en pocos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 33.4 }, texto: "Demasiado: son Q/π ciclos, no Q." }
-      - { texto: "Poco: con Q = 100 timbra bastante." }
     escalera:
-      - "La amplitud cae a 1/e en Q/π ciclos."
+      - "Busque donde la envolvente cruza la línea de 1/e."
+      - "O calcule: Q/π."
     solucion: "100/π ≈ 32 ciclos."
     comprobar:
       - { n_e: 31.8 }
@@ -240,8 +244,8 @@ tarjetas:
   - id: q-cargado
     tipo: sorpresa
     titulo: "Del Q propio al Q cargado"
-    texto: "Un tanque de Q propio 200. Baje la resistencia de la etapa que lo alimenta: la curva se ensancha y el Q cae hasta 20."
-    libro: [179]
+    texto: "Un tanque de Q propio 200. Baje la resistencia de la etapa que lo alimenta hasta que su Q caiga a 20."
+    libro: [176, 177, 178, 179]
     fijar: { R_pp: 63245.6, f_p: 5032.92 }
     inicio: { R_ps: 1000000 }
     widget:
@@ -257,6 +261,15 @@ tarjetas:
           - { expr: "1/sqrt(1 + (Q_c*(nu/f_0 - f_0/nu))^2)", color: verde, rotulo: "|v_{t}| / máximo" }
       mandos:
         - { valor: R_ps, lista: [1000000, 70000, 7000], rotulo: "Resistencia de la etapa" }
+    objetivo:
+      condiciones:
+        - { valor: Q_c, max: 20.5, rotulo: "Q: {{Q_c}}" }
+      logrado: "Con {{R_ps}}, Q = {{Q_c}}. Bobinado (efecto pelicular), núcleo y dieléctrico suman pérdidas, pero la carga conectada suele dominar."
+      pistas:
+        - { texto: "La curva todavía es estrecha: baje más la resistencia de la etapa." }
+    escalera:
+      - "Una resistencia en paralelo con el tanque se suma a sus pérdidas."
+    solucion: "Con 7 kΩ: Q = 20."
     comprobar:
       - { con: { R_ps: 7000 }, Q_c: 20, tol: 0.01 }
       - { con: { R_ps: 1000000 }, Q_c: 188 }
@@ -285,48 +298,12 @@ tarjetas:
       - "Una resistencia en paralelo con el tanque, ¿suma o quita pérdidas?"
     solucion: "La carga baja el Q: acoplando poco se conserva la selectividad."
 
-  - id: limites-q
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que limita el Q"
-    texto: "Una cada causa de pérdidas con su origen."
-    libro: [176, 177, 178, 179]
-    emparejar:
-      - ["El bobinado", "Su resistencia crece con el efecto pelicular"]
-      - ["El núcleo de la bobina", "Sus pérdidas, si lo tiene"]
-      - ["El dieléctrico del condensador", "Su factor de disipación"]
-      - ["La carga conectada", "El Q cargado, que a menudo domina"]
-    exito: "Las cuatro suman pérdidas; la carga suele ser la mayor."
-    pistas:
-      - { texto: "El factor de disipación es propio del condensador." }
-    escalera:
-      - "Dos son de la bobina, una del condensador y una de fuera."
-    solucion: "Bobinado: pelicular; núcleo: sus pérdidas; dieléctrico: disipación; carga: Q cargado."
-
-  - id: duales
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Serie y paralelo, duales"
-    texto: "Una cada circuito o asociación con lo que le corresponde en resonancia."
-    libro: [165, 166, 200]
-    emparejar:
-      - ["RLC serie en resonancia", "Impedancia mínima: deja pasar su frecuencia"]
-      - ["Tanque paralelo en resonancia", "Impedancia máxima: bloquea su frecuencia"]
-      - ["Elementos en serie", "Se suman las impedancias"]
-      - ["Elementos en paralelo", "Se suman las admitancias"]
-    exito: "Cambiando Z por Y, el análisis del paralelo es el del serie."
-    pistas:
-      - { texto: "El serie es un aceptador; el paralelo, un rechazador." }
-    escalera:
-      - "En serie quedan solo las pérdidas en serie: impedancia mínima."
-    solucion: "Serie: mínima, aceptador; paralelo: máxima, tanque; serie suma Z; paralelo suma Y."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
     libro: [167, 179, 188, 199]
     ideas:
-      - { titulo: "Duales.", texto: "Serie: impedancia mínima. Paralelo: máxima, con Q veces la corriente dando vueltas dentro." }
+      - { titulo: "Duales.", texto: "Serie: impedancia mínima, aceptador. Paralelo: máxima, tanque, con Q veces la corriente dentro." }
       - { titulo: "Admitancia.", texto: "Y = 1/Z: G no es 1/R si hay reactancia en serie (3,38 mS, no 10)." }
       - { titulo: "El Q que importa.", texto: "El cargado: una etapa de baja impedancia baja un 200 a 20." }
       - { titulo: "En el banco.", texto: "La fase por cero localiza la resonancia; el timbre mide el Q." }

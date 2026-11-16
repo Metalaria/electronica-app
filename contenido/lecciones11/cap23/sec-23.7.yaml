@@ -1,4 +1,8 @@
 # Lección 1.2 de la sección 22.7 «Teorema de Norton» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la recta de los terminales se lleva a la red del libro (9 V,
+# 3 Ω) con sus dos puntos; I_N se predice y se simula; R_N se elige para que el Norton dé 9 V en vacío; el reto del
+# reparto se queda; la carga que deja la mitad se busca comparando con el Thévenin. Quedan dos preguntas de opciones
+# (por qué no se distinguen y el límite del diodo); cuándo conviene y el transistor pasan a las explicaciones.
 leccion: cap23/sec-23.7
 
 libro:
@@ -41,8 +45,9 @@ tarjetas:
   - id: explore-recta
     tipo: explorar
     titulo: "La recta de los terminales"
-    texto: "Arrastre el punto de vacío y el de cortocircuito. La pendiente de la recta es la resistencia del equivalente."
-    libro: [182]
+    texto: "Una red lineal da una recta en sus terminales. Arrastre el punto de vacío y el de cortocircuito hasta la red de 9 V y 3 Ω."
+    libro: [180, 182]
+    inicio: { V_g: 12, I_g: 2 }
     widget:
       tipo: grafica
       x: { id: i, min: 0, max: 6, unidad: A, rotulo: "I" }
@@ -56,10 +61,23 @@ tarjetas:
       mandos:
         - { valor: V_g, min: 1, max: 14, paso: 1, rotulo: "V_{Th}" }
         - { valor: I_g, min: 0.5, max: 6, paso: 0.5, rotulo: "I_{N}" }
-    requiere: { mover: [V_g, I_g] }
+    objetivo:
+      condiciones:
+        - { valor: V_g, objetivo: 9, tol: 0.01, rotulo: "Vacío: {{V_g}}" }
+        - { valor: R_g, objetivo: 3, tol: 0.02, rotulo: "Pendiente: {{R_g}}" }
+      logrado: "Vacío en 9 V y cortocircuito en {{I_g}}: la pendiente es {{R_g}}. Dos puntos fijan la recta entera."
+      pistas:
+        - { cuando: { valor: V_g, menor: 8.9 }, texto: "El punto de vacío está bajo: súbalo a 9 V." }
+        - { cuando: { valor: V_g, mayor: 9.1 }, texto: "El punto de vacío está alto: bájelo a 9 V." }
+        - { texto: "Ahora mueva el punto de cortocircuito hasta que la pendiente sea 3 Ω." }
+    escalera:
+      - "La pendiente es V_{Th}/I_{N}: con 9 V y 3 Ω, ¿dónde corta el eje de corrientes?"
+    solucion: "Vacío en 9 V y cortocircuito en 3 A."
+    comprobar:
+      - { con: { V_g: 9, I_g: 3 }, R_g: 3 }
 
   - id: prediga-in
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga I_{N}"
     texto: "Fuente de 12 V, 4 Ω en serie y 12 Ω entre los terminales. Se cortocircuitan los terminales: ¿qué corriente circula por el corto?"
     libro: [178, 183]
@@ -72,14 +90,17 @@ tarjetas:
       corriente: I
       mide: { salida: V_out, corriente: I, carga: I_cc }
       ocultar: true
-    opciones:
-      - texto: "3 A"
-        bien: true
-        porque: "El cortocircuito deja a R₂ sin tensión: solo limita R₁. 12/4 = 3 A, lo mismo que V_{Th}/R_{Th} = 9/3."
-      - texto: "0,75 A"
-        porque: "Sería la corriente por R₁ y R₂ en serie. En cortocircuito, R₂ queda puenteada."
-      - texto: "1 A"
-        porque: "Es 12/12, como si limitara R₂. El corto la puentea y solo queda R₁."
+      mandos: []
+    simular:
+      objetivo: I_cc
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente por el cortocircuito"
+      medida: carga
+      errores:
+        - { expr: "I_serie", texto: "Sería la corriente por R₁ y R₂ en serie. En cortocircuito, R₂ queda puenteada." }
+        - { expr: "I_r2", texto: "Es 12/12, como si limitara R₂. El corto la puentea y solo queda R₁." }
+    exito: "El cortocircuito deja a R₂ sin tensión: solo limita R₁. 12/4 = 3 A, lo mismo que V_{Th}/R_{Th} = 9/3."
     escalera:
       - "Un cortocircuito en paralelo con R₂: ¿cuánta corriente queda para R₂?"
     solucion: "R₂ queda puenteada: I_{N} = 12/4 = 3 A."
@@ -87,13 +108,12 @@ tarjetas:
       - { I_cc: 3, I_serie: 0.75, I_r2: 1 }
 
   - id: regla-norton
-    tipo: formula
+    tipo: explorar
     titulo: "La misma red, la otra forma"
-    texto: "Norton toma el punto de cortocircuito; Thévenin, el de vacío. La resistencia es la misma."
-    libro: [179, 180]
+    texto: "Norton toma el punto de cortocircuito: 3 A. Elija la resistencia en paralelo para que, en vacío, dé los 9 V de Thévenin."
+    libro: [179, 180, 185]
     fijar: { n_on: 0 }
-    ec: 179
-    sustitucion: "{{V_th}} / {{R_n}} = {{I_n}}"
+    inicio: { R_n: 1 }
     widget:
       tipo: circuito
       esquema: norton
@@ -103,6 +123,18 @@ tarjetas:
       mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
       mandos:
         - { valor: R_n, lista: [1, 2, 3, 4, 6] }
+    objetivo:
+      condiciones:
+        - { valor: V_no, objetivo: 9, tol: 0.02, rotulo: "En vacío: {{V_no}}" }
+      logrado: "Con {{R_n}}, la misma R_{Th}: I_{N} = V_{Th}/R_{Th}. Un transistor en pequeña señal es esto, una fuente de corriente con su resistencia en paralelo."
+      pistas:
+        - { cuando: { valor: V_no, mayor: 9.18 }, texto: "Sobra tensión: menos resistencia en paralelo." }
+        - { texto: "Falta tensión: más resistencia en paralelo." }
+    escalera:
+      - "En vacío, toda I_{N} pasa por R_{N}: V = I_{N} · R_{N}."
+    solucion: "R_{N} = 3 Ω: 3 A × 3 Ω = 9 V."
+    comprobar:
+      - { con: { R_n: 3 }, V_no: 9, V_th: 9 }
 
   - id: reto-reparto
     tipo: reto
@@ -124,7 +156,7 @@ tarjetas:
         - { valor: I_n, min: 0.5, max: 5, paso: 0.5, rotulo: "I_{N}" }
     condiciones:
       - { valor: V_no, objetivo: 8, tol: 0.02, rotulo: "Carga: {{V_no}}" }
-    exito: "I_{N} = 12/4 = 3 A; por la carga circula 3 × 4/(4 + 8) = 1 A, y sobre 8 Ω son 8 V."
+    exito: "I_{N} = 12/4 = 3 A; por la carga, 3 × 4/(4 + 8) = 1 A, y sobre 8 Ω son 8 V. Con cargas en paralelo, Norton lo resuelve con un divisor de corriente."
     pistas:
       - { cuando: { valor: V_no, mayor: 8.16 }, texto: "Sobra tensión: baje la corriente de la fuente." }
       - { cuando: { valor: V_no, menor: 7.84 }, texto: "Falta tensión: suba la corriente de la fuente." }
@@ -137,9 +169,10 @@ tarjetas:
   - id: indistinguibles
     tipo: sorpresa
     titulo: "Nadie los distingue"
-    texto: "Cambie la carga del Norton de 3 A y 3 Ω. Compare con lo que daría el Thévenin de 9 V y 3 Ω."
+    texto: "El Norton de 3 A y 3 Ω frente al Thévenin de 9 V y 3 Ω. Busque la carga que deja la mitad, 4,5 V, y compare los dos."
     libro: [180, 182]
     fijar: { I_n: 3, R_n: 3, n_on: 1 }
+    inicio: { R_nl: 30 }
     widget:
       tipo: circuito
       esquema: norton
@@ -151,6 +184,18 @@ tarjetas:
       mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
       mandos:
         - { valor: R_nl, lista: [1, 3, 8, 12, 30] }
+    objetivo:
+      condiciones:
+        - { valor: V_no, objetivo: 4.5, tol: 0.02, rotulo: "Carga: {{V_no}}" }
+      logrado: "Con {{R_nl}}, el Norton da {{V_no}} y el Thévenin {{V_thev}}. Pruebe otras cargas: coinciden con todas."
+      pistas:
+        - { cuando: { valor: V_no, mayor: 4.59 }, texto: "Sobra tensión: una carga menor." }
+        - { texto: "Ha bajado de más: una carga mayor." }
+    escalera:
+      - "La mitad cae en la carga cuando vale lo mismo que la resistencia del equivalente."
+    solucion: "Con 3 Ω: 4,5 V en los dos."
+    comprobar:
+      - { con: { R_nl: 3 }, V_no: 4.5, V_thev: 4.5 }
 
   - id: por-que-iguales
     tipo: porque
@@ -165,6 +210,7 @@ tarjetas:
       lectura: { valor: V_no, rotulo: "Tensión en la carga" }
       corriente: I_nl
       mide: { salida: V_no, carga: I_nl }
+      mandos: []
     opciones:
       - texto: "Los dos dan la misma recta tensión-corriente en los terminales"
         bien: true
@@ -177,54 +223,6 @@ tarjetas:
       - "¿Cuántos puntos hacen falta para fijar una recta?"
     solucion: "Su característica en los terminales es la misma recta: indistinguibles desde fuera."
 
-  - id: cuando-norton
-    tipo: pregunta
-    titulo: "Cuándo ahorra trabajo"
-    texto: "¿En qué caso es Norton el camino natural en lugar de Thévenin?"
-    libro: [184]
-    widget:
-      tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
-      lectura: { valor: V_no, rotulo: "Tensión en la carga" }
-      corriente: I_nl
-      mide: { salida: V_no, carga: I_nl }
-    opciones:
-      - texto: "Con la carga, o varias cargas, en paralelo con la red"
-        bien: true
-        porque: "La corriente de la fuente se reparte con el divisor de corriente en un solo paso."
-      - texto: "Con la carga en serie con la red"
-        porque: "Con elementos en serie conviene Thévenin: la tensión sale de un divisor de tensión."
-      - texto: "Cuando la red no es lineal"
-        porque: "Ninguno de los dos vale entonces: una característica que no es recta no la describen dos puntos."
-    escalera:
-      - "Norton tiene la resistencia en paralelo con la fuente."
-    solucion: "Con cargas en paralelo: un divisor de corriente y listo."
-
-  - id: transistor
-    tipo: pregunta
-    titulo: "Dónde aparece"
-    texto: "Un transistor en pequeña señal: una fuente de corriente controlada con una resistencia de salida en paralelo. ¿Qué es eso?"
-    libro: [185]
-    widget:
-      tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
-      lectura: { valor: V_no, rotulo: "Tensión en la carga" }
-      corriente: I_nl
-      mide: { salida: V_no, carga: I_nl }
-    opciones:
-      - texto: "Un equivalente Norton"
-        bien: true
-        porque: "Por eso una etapa amplificadora cargada se analiza como un divisor de corriente."
-      - texto: "Un equivalente Thévenin"
-        porque: "Thévenin es una fuente de tensión con resistencia en serie. Aquí la fuente es de corriente, en paralelo."
-      - texto: "Ninguno: el transistor no es lineal"
-        porque: "En gran señal no lo es, pero el modelo de pequeña señal sí: alrededor del punto de trabajo es un Norton."
-    escalera:
-      - "Fuente de corriente y resistencia en paralelo."
-    solucion: "Un equivalente Norton."
-
   - id: diodo
     tipo: pregunta
     titulo: "El límite"
@@ -236,6 +234,7 @@ tarjetas:
       y: { min: 0, max: 15, unidad: V, rotulo: "V" }
       curvas:
         - { expr: "max(0, V_g - R_g*i)", color: azul, rotulo: "Red lineal: una recta" }
+      mandos: []
     opciones:
       - texto: "Su característica no es una recta y dos puntos no la describen"
         bien: true
@@ -251,9 +250,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [178, 179, 182, 184]
+    libro: [178, 179, 182, 184, 185]
     ideas:
-      - { titulo: "El dual.", texto: "Fuente de corriente I_{N} en paralelo con R_{N} = R_{Th}." }
+      - { titulo: "El dual.", texto: "Fuente de corriente I_{N} en paralelo con R_{N} = R_{Th}; un transistor en pequeña señal es uno." }
       - { titulo: "I_{N}.", texto: "La corriente de cortocircuito de los terminales, o V_{Th}/R_{Th}." }
       - { titulo: "La misma recta.", texto: "Vacío y cortocircuito fijan la característica: desde fuera, Thévenin y Norton son iguales." }
       - { titulo: "Cuándo.", texto: "Con cargas en paralelo, un divisor de corriente; solo en redes lineales." }

@@ -4,6 +4,11 @@
 # - La figura 40.17 (fig-39.17) con zonas.
 # Paso práctico: «banco» del bloque 307: medir la resistencia interna de una 18650 en vacío y con una carga conocida;
 # sana, de 50 a 100 mΩ (esperado 75 mΩ ± 33 %); el doble o más indica degradación.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se busca la temperatura a la que envejece la mitad de deprisa
+# (objetivo), se calcula el factor a 45 °C, se elige cómo guardarla para perder menos del 4 % en un año (objetivo; las
+# tres curvas de la figura 40.17 siguen 100 − p·√(meses/12) con p = 20, 4 y 2 %, ajuste exacto a sus datos) y se calculan
+# las cargas completas equivalentes con ciclos del 50 % (2 600 ciclos de la figura; la curva dibujada es un ajuste
+# cuadrático en logaritmos a sus seis puntos, error < 5 %). Quedan dos preguntas; los dos caminos y el diagnóstico, al resumen.
 leccion: cap39/sec-39.9
 
 libro:
@@ -13,6 +18,7 @@ libro:
   286: "El criterio habitual de fin de vida es el 80 % de la capacidad nominal."
   287: "Es la explicación de que un teléfono viejo se apague al 30 %."
   290: "cada 10 °C de más multiplica por dos la velocidad de degradación"
+  291: "Una celda guardada al 100 % se degrada mucho más rápido que una al 50 %"
   292: "dos ciclos del 50 % dañan menos que uno del 100 %"
   296: "Una celda guardada a 25 °C y al 100 % puede perder un 20 % de capacidad en un año; guardada a 15 °C y al 40 %, menos del 4 %."
   298: "Nunca dejar una batería descargada mucho tiempo"
@@ -26,15 +32,23 @@ modelo:
     T_c: { sim: "T", nombre: "temperatura de la celda", unidad: "°C", valor: 25 }
     T_ref: { sim: "T_{ref}", nombre: "temperatura de referencia", unidad: "°C", valor: 25 }
     R_san: { sim: "R_{int}", nombre: "resistencia interna de una 18650 sana", unidad: Ω, valor: 0.075 }
+    caso: { sim: "caso", nombre: "cómo se guarda", unidad: "", valor: 1 }
+    N_50: { sim: "N_{50}", nombre: "ciclos hasta el 80 % con descargas del 50 %", unidad: "", valor: 2600 }
+    N_100: { sim: "N_{100}", nombre: "ciclos hasta el 80 % con descargas del 100 %", unidad: "", valor: 500 }
   calculos:
     f_ar: { expr: "2^((T_c - T_ref)/10)", sim: "×", nombre: "velocidad de degradación relativa", unidad: "", cifras: 3 }
+    f_un: { expr: "2^((T_c - T_ref)/20)", sim: "×", nombre: "un solo doble (error)", unidad: "", cifras: 3 }
+    p_12: { expr: "20 - 16*min(1, max(0, caso - 1)) - 2*max(0, caso - 2)", sim: "pérdida", nombre: "capacidad perdida en un año", unidad: "%" }
+    C_12: { expr: "100 - p_12", sim: "C_{12}", nombre: "capacidad conservada al año", unidad: "%" }
+    E_50: { expr: "N_50*50/100", sim: "E", nombre: "cargas completas equivalentes con ciclos del 50 %", unidad: "" }
 
 tarjetas:
   - id: explore-arrhenius
     tipo: explorar
     titulo: "El factor dominante"
-    texto: "La temperatura acelera la degradación más que nada. Cambie la temperatura de la celda y mire cuánto más deprisa envejece."
+    texto: "La temperatura acelera la degradación más que nada. Busque la temperatura a la que la celda envejece la mitad de deprisa que a 25 °C."
     libro: [290]
+    inicio: { T_c: 25 }
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 60, unidad: "°C", rotulo: "T" }
@@ -46,12 +60,23 @@ tarjetas:
       lectura: { valor: f_ar, rotulo: "Envejece más deprisa por" }
       mandos:
         - { valor: T_c, min: 5, max: 55, paso: 10, rotulo: "Temperatura" }
-    requiere: { mover: [T_c] }
+    objetivo:
+      condiciones:
+        - { valor: f_ar, objetivo: 0.5, tol: 0.05, rotulo: "Velocidad: ×{{f_ar}}" }
+      logrado: "A {{T_c}}, ×{{f_ar}}: cada 10 °C de menos, la mitad de deprisa. Es el factor dominante con diferencia."
+      pistas:
+        - { cuando: { valor: f_ar, mayor: 1 }, texto: "Más calor, más deprisa: vaya hacia el frío." }
+        - { cuando: { valor: f_ar, menor: 0.4 }, texto: "Se ha pasado: ahí es la cuarta parte o menos." }
+    escalera:
+      - "Cada 10 °C multiplican o dividen por dos."
+    solucion: "A 15 °C, diez grados menos: la mitad."
+    comprobar:
+      - { con: { T_c: 15 }, f_ar: 0.5 }
 
   - id: prediga-45
-    tipo: predecir
+    tipo: simular
     titulo: "A 45 °C"
-    texto: "Una celda trabaja a 45 °C en lugar de a 25 °C. ¿Cuánto más deprisa se degrada?"
+    texto: "Una celda trabaja a 45 °C en lugar de a 25 °C. ¿Cuántas veces más deprisa se degrada?"
     libro: [290]
     fijar: { T_c: 45 }
     widget:
@@ -62,83 +87,78 @@ tarjetas:
         - { expr: "2^((tx - T_ref)/10)", color: naranja, rotulo: "degradación frente a 25 °C" }
       lectura: { valor: f_ar, rotulo: "Envejece más deprisa por" }
       ocultar: true
-    opciones:
-      - texto: "Unas cuatro veces"
-        bien: true
-        porque: "Son 20 °C más: dos veces el doble."
-      - texto: "Unas dos veces"
-        porque: "El doble es por cada 10 °C; aquí son 20 °C."
-      - texto: "Un 80 % más, en proporción a la temperatura"
-        porque: "No es proporcional: cada 10 °C multiplican por dos."
+    simular:
+      objetivo: f_ar
+      unidad: ""
+      tol: 0.03
+      rotulo: "Veces más deprisa"
+      errores:
+        - { expr: "f_un", texto: "El doble es por cada 10 °C, y aquí son 20 °C: dos veces el doble." }
+    exito: "Cuatro veces: el doble del doble."
     escalera:
       - "Cuente cuántos escalones de 10 °C hay de 25 a 45 °C."
     solucion: "Dos escalones de 10 °C: el doble del doble, cuatro veces."
     comprobar:
-      - { f_ar: 4 }
-
-  - id: empareje-caminos
-    tipo: pregunta
-    titulo: "Dos envejecimientos"
-    texto: "Empareje cada camino de degradación con su causa."
-    libro: [282, 283]
-    widget:
-      tipo: figura
-      figura: fig-39.17
-      zonas:
-        - { id: grafica, rotulo: "La figura", rect: [0, 0, 446, 199] }
-    emparejar:
-      - ["Por calendario", "La capa SEI crece con el tiempo, se use o no"]
-      - ["Por ciclado", "Los electrodos se dilatan y contraen en cada ciclo"]
-    exito: "Los dos actúan a la vez: una batería guardada también envejece."
-    pistas:
-      - { texto: "Uno no necesita usar la batería." }
-    escalera:
-      - "¿Cuál ocurre aunque la batería esté en un cajón?"
-    solucion: "Calendario, la SEI con el tiempo; ciclado, la dilatación de los electrodos."
+      - { f_ar: 4, f_un: 2 }
 
   - id: almacenar
-    tipo: pregunta
+    tipo: explorar
     titulo: "Guardarla un año"
-    texto: "Hay que guardar una celda de litio un año. ¿Cómo pierde menos?"
-    libro: [296, 298, 309]
+    texto: "Hay que guardar una celda de litio un año. Elija cómo para que pierda menos del 4 % de su capacidad."
+    libro: [291, 296, 309]
+    inicio: { caso: 1 }
     widget:
-      tipo: figura
-      figura: fig-39.17
-      zonas:
-        - { id: izquierda, rotulo: "Gráfica de la izquierda", rect: [0, 0, 223, 199] }
-    opciones:
-      - texto: "Al 40 % y en fresco, a unos 15 °C"
-        bien: true
-        porque: "Así pierde menos del 4 % en un año."
-      - texto: "Llena, para que dure más"
-        porque: "Al 100 % y a 25 °C puede perder un 20 % en un año: la tensión alta acelera la degradación."
-      - texto: "Vacía del todo"
-        porque: "Descargada mucho tiempo puede caer por debajo del umbral de seguridad y no deber recargarse."
+      tipo: grafica
+      x: { id: mes, min: 0, max: 24, unidad: meses, rotulo: "Almacenamiento" }
+      y: { min: 65, max: 101, unidad: "%", rotulo: "Capacidad conservada" }
+      curvas:
+        - { expr: "100 - p_12*sqrt(mes/12)", color: naranja, rotulo: "capacidad conservada" }
+        - { expr: "80 + 0*mes", color: tinta, rotulo: "fin de vida", discontinua: true }
+      marcas:
+        - { x: "12", y: "C_12", rotulo: "{{C_12}}" }
+      lectura: { valor: C_12, rotulo: "Al cabo de un año" }
+      mandos:
+        - { valor: caso, lista: [1, 2, 3], nombres: ["25 °C al 100 %", "25 °C al 40 %", "15 °C al 40 %"], rotulo: "Cómo se guarda" }
+    objetivo:
+      condiciones:
+        - { valor: C_12, min: 96.5, rotulo: "Conserva: {{C_12}}" }
+      logrado: "Conserva {{C_12}} al año: al 40-60 % y en fresco. Llena y a 25 °C pierde un 20 %."
+      pistas:
+        - { cuando: { valor: caso, menor: 1.5 }, texto: "Al 100 % la tensión alta acelera las reacciones parásitas." }
+        - { texto: "Ya no está llena; falta el otro factor: la temperatura." }
     escalera:
       - "Dos factores: el estado de carga y la temperatura."
-    solucion: "Al 40-60 % y en un sitio fresco: menos del 4 % en un año."
+    solucion: "A 15 °C y al 40 %: menos del 4 % en un año."
+    comprobar:
+      - { con: { caso: 1 }, C_12: 80, p_12: 20 }
+      - { con: { caso: 2 }, p_12: 4 }
 
   - id: profundidad
-    tipo: pregunta
+    tipo: simular
     titulo: "Ciclos parciales"
-    texto: "Dos ciclos del 50 % frente a uno del 100 %, con la misma energía. ¿Cuál daña menos la celda?"
-    libro: [292]
+    texto: "Con descargas del 50 % la celda da 2 600 ciclos hasta el 80 %. ¿Cuántas cargas completas equivalentes entrega?"
+    libro: [292, 309]
     widget:
-      tipo: figura
-      figura: fig-39.17
-      zonas:
-        - { id: derecha, rotulo: "Gráfica de la derecha", rect: [223, 0, 223, 199] }
-    opciones:
-      - texto: "Los dos ciclos del 50 %"
-        bien: true
-        porque: "Es contraintuitivo pero está bien medido: los ciclos parciales degradan mucho menos."
-      - texto: "El ciclo del 100 %, porque es uno solo"
-        porque: "Contar ciclos engaña: la profundidad pesa más que el número."
-      - texto: "Igual: es la misma energía"
-        porque: "La misma energía, pero la descarga profunda daña mucho más."
+      tipo: grafica
+      x: { id: dod, min: 10, max: 100, unidad: "%", rotulo: "Profundidad de descarga" }
+      y: { min: 300, max: 30000, unidad: ciclos, rotulo: "Ciclos hasta el 80 %", escala: log }
+      curvas:
+        - { expr: "exp(8.33464 + 1.75717*ln(dod) - 0.48084*ln(dod)^2)", color: naranja, rotulo: "ciclos hasta el 80 %" }
+      lectura: { valor: E_50, rotulo: "Cargas completas equivalentes" }
+      ocultar: true
+    simular:
+      objetivo: E_50
+      unidad: ""
+      tol: 0.03
+      rotulo: "Cargas completas equivalentes"
+      errores:
+        - { expr: "N_50", texto: "Esos son ciclos, y cada uno solo usa la mitad de la carga." }
+    exito: "Unas 1 300, frente a 500 con ciclos completos: dos ciclos del 50 % dañan menos que uno del 100 %."
     escalera:
-      - "¿Qué pesa más en el desgaste: el número de ciclos o lo profundos que son?"
-    solucion: "Los dos del 50 %."
+      - "Cada ciclo del 50 % vale media carga completa."
+    solucion: "2 600 × 0,5 = 1 300 cargas completas."
+    comprobar:
+      - { E_50: 1300, N_50: 2600, N_100: 500 }
 
   - id: telefono-30
     tipo: porque
@@ -161,28 +181,6 @@ tarjetas:
     escalera:
       - "¿Qué segundo efecto, además de perder capacidad, trae el envejecimiento?"
     solucion: "La resistencia interna alta hunde la tensión bajo carga y el equipo se apaga."
-
-  - id: empareje-diagnostico
-    tipo: pregunta
-    titulo: "El diagnóstico"
-    texto: "Empareje cada comprobación con lo que dice de la batería."
-    libro: [305]
-    widget:
-      tipo: figura
-      figura: fig-39.18
-      zonas:
-        - { id: foto, rotulo: "La foto", rect: [0, 0, 1411, 900] }
-    emparejar:
-      - ["Tensión en reposo", "Si es muy baja o las celdas difieren, hay un problema"]
-      - ["Capacidad real", "La medida definitiva"]
-      - ["Resistencia interna", "El mejor indicador temprano"]
-      - ["Inspección física", "Hinchazón o fugas: retirada inmediata"]
-    exito: "La de la foto no necesita más análisis: hinchada, se retira."
-    pistas:
-      - { texto: "La definitiva es la que mide lo que de verdad entrega." }
-    escalera:
-      - "Una se mira, otra se mide en reposo, otra descargando y otra con un escalón de corriente."
-    solucion: "Reposo, problema; capacidad, definitiva; resistencia, temprana; inspección, retirada."
 
   - id: banco-rint
     tipo: banco
@@ -228,9 +226,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [284, 287, 290, 296]
+    libro: [282, 283, 284, 287, 290, 296, 305, 298]
     ideas:
-      - { titulo: "Dos caminos.", texto: "Calendario y ciclado, a la vez: guardada también envejece." }
-      - { titulo: "Temperatura.", texto: "Cada 10 °C de más, el doble de deprisa." }
-      - { titulo: "Ni llena ni vacía.", texto: "Guardar al 40-60 % y en fresco; usar entre el 20 y el 80 %." }
+      - { titulo: "Dos caminos.", texto: "Calendario, la SEI crece con el tiempo; ciclado, los electrodos se dilatan. A la vez: guardada también envejece." }
+      - { titulo: "Temperatura.", texto: "Cada 10 °C de más, el doble de deprisa. Guardar al 40-60 % y en fresco." }
+      - { titulo: "Diagnóstico.", texto: "Tensión en reposo, capacidad real (la definitiva), resistencia interna (el aviso temprano) e inspección física: hinchada, se retira." }
       - { titulo: "Resistencia interna.", texto: "Su aumento avisa antes que nada; una 18650 sana, de 50 a 100 mΩ." }

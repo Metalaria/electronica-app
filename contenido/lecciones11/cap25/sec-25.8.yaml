@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 24.8 «Filtros de Banda: Paso-Banda, Banda Eliminada y el Factor de Calidad» (cap25).
 # Formato: contenido/lecciones11/GUIA.md. El paso banda es un RLC en serie con la salida en R, con los cortes del
 # ejercicio 24.5 (cap25#312: 1,8 y 2,2 kHz): L = 10 mH, C = 639,66 nF y R = 25,13 Ω.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): Q = 2 se consigue con R (objetivo); el centro se marca en la
+# curva (media geométrica, no aritmética); el ancho, el Q del ejercicio y la banda del tanque de radio se escriben; el
+# notch se desplaza un 2 % y su rechazo se hunde (objetivo). Quedan dos preguntas de opciones (paso alto más paso bajo y
+# el notch como último recurso).
 leccion: cap25/sec-25.8
 
 libro:
@@ -49,8 +53,9 @@ tarjetas:
   - id: explore-banda
     tipo: explorar
     titulo: "Dos cortes y un centro"
-    texto: "RLC en serie con la salida en la resistencia: un paso banda. Cambie R y mire cómo se estrecha la banda y sube el Q."
+    texto: "RLC en serie con la salida en la resistencia: un paso banda. Cambie R hasta que el Q valga 2."
     libro: [259, 260, 267]
+    inicio: { R_r: 25.133 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -69,41 +74,58 @@ tarjetas:
           - { x: "f_2", y: "V_p*0.7071", rotulo: "f₂" }
       mandos:
         - { valor: R_r, lista: [25.133, 62.83, 125.66], rotulo: "R" }
+    objetivo:
+      condiciones:
+        - { valor: Q_b, objetivo: 2, tol: 0.02, rotulo: "Q: {{Q_b}}" }
+      logrado: "Con {{R_r}}, B = {{B}} y Q = f₀/B = {{Q_b}}: el centro, {{f_0}}, no se ha movido."
+      pistas:
+        - { cuando: { valor: Q_b, mayor: 2.04 }, texto: "Banda demasiado estrecha: más R." }
+        - { texto: "Banda demasiado ancha: menos R." }
+    escalera:
+      - "Q = ω₀L/R: más R, banda más ancha."
+    solucion: "R = 62,83 Ω: Q = 2."
+    comprobar:
+      - { con: { R_r: 62.83 }, Q_b: 1.99, tol: 0.01 }
 
   - id: prediga-centro
-    tipo: predecir
-    titulo: "Prediga el centro"
-    texto: "Un paso banda con los cortes a −3 dB en 1,8 kHz y en 2,2 kHz. ¿Cuál es su frecuencia central?"
+    tipo: marcar
+    titulo: "Marque el centro"
+    texto: "Un paso banda con los cortes a −3 dB en 1,8 kHz y en 2,2 kHz. Marque en la curva su frecuencia central, la cima."
     libro: [257, "cap25#312"]
     fijar: { R_r: 25.133 }
     widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: f_0, rotulo: "Frecuencia central" }
-      mide: { vr_amp: A_r }
-      ocultar: true
-    opciones:
-      - texto: "1,99 kHz"
-        bien: true
-        porque: "Es la media geométrica: √(1,8 · 2,2) kHz. La aritmética, 2 000 Hz, se queda un poco alta."
-      - texto: "2 kHz"
-        porque: "Es la media aritmética. En una banda la frecuencia central es la geométrica."
-      - texto: "400 Hz"
-        porque: "400 Hz es el ancho de banda, f₂ − f₁, no el centro."
+      tipo: grafica
+      x: { id: nu, min: 1500, max: 2600, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+      curvas:
+        - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "v_{R}" }
+        - { expr: "V_p*0.7071", color: tinta, rotulo: "−3 dB", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_0"
+      tol: 0.005
+      inicio: { x: 2500, y: 0 }
+      rotulo: "La frecuencia central"
+      pasos: 220
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1996 }, texto: "Un poco a la izquierda: la media aritmética, 2000 Hz, se queda alta." }
+      - { texto: "Más a la derecha: busque la cima." }
+    exito: "1,99 kHz = √(1,8 · 2,2) kHz, la media geométrica de los cortes, no la aritmética."
     escalera:
-      - "En escala logarítmica, el centro de dos frecuencias es su media geométrica."
-    solucion: "√(1,8 · 2,2) = 1,99 kHz."
+      - "Busque la cima de la curva."
+    solucion: "En 1 990 Hz."
     comprobar:
       - { f_0: 1990, f_1: 1800, f_2: 2200, f_ar: 2000, B: 400, tol: 0.01 }
 
   - id: regla-centro
-    tipo: formula
-    titulo: "La media geométrica"
-    texto: "El centro es la media geométrica de los cortes, y Q = f₀/B. Cambie R: el centro no se mueve."
-    libro: [258, 260]
+    tipo: leer
+    titulo: "El ancho de banda"
+    texto: "Los cortes están marcados en la curva. Escriba el ancho de banda, B = f₂ − f₁."
+    libro: [258, 259]
     ec: 258
-    sustitucion: "√({{f_1}} · {{f_2}}) = {{f_0}};  Q = {{f_0}} / {{B}} = {{Q_b}}"
+    fijar: { R_r: 25.133 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -115,31 +137,55 @@ tarjetas:
         y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
         curvas:
           - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "v_{R}", mide: vr_amp }
-      mandos:
-        - { valor: R_r, lista: [25.133, 62.83, 125.66], rotulo: "R" }
+        marcas:
+          - { x: "f_1", y: "V_p*0.7071", rotulo: "f₁" }
+          - { x: "f_2", y: "V_p*0.7071", rotulo: "f₂" }
+      mandos: []
+    leer:
+      objetivo: B
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Ancho de banda"
+      errores:
+        - { expr: "f_ar", texto: "Esa es la media de los cortes. El ancho es su diferencia." }
+    exito: "2,2 − 1,8 kHz = 400 Hz."
+    escalera:
+      - "Reste el corte inferior del superior."
+    solucion: "B = 400 Hz."
+    comprobar:
+      - { B: 400, f_1: 1800, f_2: 2200, tol: 0.01 }
 
   - id: estime-q
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El factor de calidad"
-    texto: "Cortes en 1,8 y 2,2 kHz, centro en 1,99 kHz. Estime su factor de calidad."
+    texto: "Cortes en 1,8 y 2,2 kHz, centro en 1,99 kHz. Escriba su factor de calidad."
     libro: [260, "cap25#312"]
     fijar: { R_r: 25.133 }
-    estimar:
-      objetivo: "Q_b"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Frecuencia central" }
+      mide: { vr_amp: A_r }
+      grafica:
+        x: { id: nu, min: 200, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "v_{R}", mide: vr_amp }
+        marcas:
+          - { x: "f_1", y: "V_p*0.7071", rotulo: "f₁" }
+          - { x: "f_2", y: "V_p*0.7071", rotulo: "f₂" }
+      mandos: []
+    leer:
+      objetivo: Q_b
       unidad: ""
-      min: 0
-      max: 20
-      paso: 0.1
-      inicio: 15
-      tol: 0.05
+      tol: 0.02
       rotulo: "Q"
+      errores:
+        - { expr: "B/f_0", texto: "Ha dividido al revés: Q = f₀/B." }
     exito: "B = 400 Hz y Q = 1 990/400 ≈ 5."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 5.2 }, texto: "Se ha pasado: la banda mide 400 Hz, no tan estrecha." }
-      - { texto: "Se ha quedado corto: Q = f₀/B, con B = 2,2 − 1,8 kHz." }
     escalera:
-      - "Primero el ancho de banda: f₂ − f₁."
+      - "Q = f₀/B."
     solucion: "Q = 1 990 Hz / 400 Hz ≈ 5."
     comprobar:
       - { Q_b: 4.97, B: 400, tol: 0.01 }
@@ -170,7 +216,7 @@ tarjetas:
   - id: notch
     tipo: sorpresa
     titulo: "Un notch muy fino"
-    texto: "Notch de Q 50 para el zumbido de 50 Hz. Mueva su centro un 2 %, como lo haría un error de los componentes, y mire el rechazo a 50 Hz."
+    texto: "Notch de Q 50 para el zumbido de 50 Hz: 1 Hz de ancho. Mueva su centro un 2 %, como lo haría un error de los componentes, hasta que el zumbido se le escape."
     libro: [268]
     fijar: { Q_n: 50 }
     inicio: { f_n: 50 }
@@ -187,8 +233,19 @@ tarjetas:
         - { valor: B_n, rotulo: "Ancho: {{B_n}}" }
       mandos:
         - { valor: f_n, lista: [49, 50, 51], rotulo: "Centro del notch" }
+    objetivo:
+      condiciones:
+        - { valor: N_50, min: -3, rotulo: "Rechazo: {{N_50}}" }
+      logrado: "Con el centro en {{f_n}}, el zumbido de 50 Hz solo cae {{N_50}}: un 2 % de error lo saca de un notch de 1 Hz."
+      pistas:
+        - { texto: "Bien centrado lo borra: desplace el centro." }
+    escalera:
+      - "Pruebe 49 o 51 Hz."
+    solucion: "A 49 o 51 Hz, el rechazo cae a menos de 1 dB."
     comprobar:
       - { B_n: 1 }
+      - { con: { f_n: 51 }, N_50: -0.95, tol: 0.05 }
+      - { con: { f_n: 49 }, f_n: 49 }
 
   - id: ultimo-recurso
     tipo: porque
@@ -214,25 +271,26 @@ tarjetas:
     solucion: "Quita la señal de esa banda y gira la fase: mejor masas, apantallamiento o entrada diferencial."
 
   - id: radio
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El paso banda de una radio"
-    texto: "Un tanque LC con Q de unos 100 y una portadora de 1 MHz. ¿Qué ancho de banda deja pasar?"
+    texto: "Un tanque LC con Q de unos 100 y una portadora de 1 MHz. Escriba el ancho de banda que deja pasar."
     libro: [280]
     fijar: { Q_t: 100, f_p: 1000000 }
-    estimar:
-      objetivo: "B_t"
+    widget:
+      tipo: grafica
+      x: { id: qq, min: 10, max: 1000, unidad: "", rotulo: "Q", escala: log }
+      y: { min: 1000, max: 100000, unidad: Hz, rotulo: "B a 1 MHz", escala: log }
+      curvas:
+        - { expr: "f_p/qq", color: azul, rotulo: "B = f₀/Q" }
+      mandos: []
+    leer:
+      objetivo: B_t
       unidad: Hz
-      min: 0
-      max: 50000
-      paso: 500
-      inicio: 40000
-      tol: 0.05
+      tol: 0.02
       rotulo: "Ancho de banda"
+      errores:
+        - { expr: "f_p*Q_t", texto: "Ha multiplicado: B = f₀/Q." }
     exito: "1 MHz/100 = 10 kHz, lo que ocupa una emisora de AM. A frecuencias mayores ese Q no basta: de ahí la frecuencia intermedia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 10500 }, texto: "Se ha pasado: B = f₀/Q." }
-      - { texto: "Se ha quedado corto: B = f₀/Q, con 1 MHz y 100." }
     escalera:
       - "Despeje B de Q = f₀/B."
     solucion: "B = 1 MHz/100 = 10 kHz."

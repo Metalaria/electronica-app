@@ -6,6 +6,10 @@
 #   Con la potencia fija, P = ½·L_p·I_pico²·f, el pico no depende de V_in: el control acorta D (deducción del
 #   modelo del libro, bloques 521–522; el libro no lo dice con estas palabras).
 # Pasos prácticos: «simular» la corriente de pico (1,24 A) y «ajuste» del entrehierro hasta L_p ± 10 % (bloque 560).
+# - 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se busca la entrada del peor caso, con D = 0,45 (objetivo);
+#   se calculan L_p, el pico, n y la potencia del snubber; el ajuste del entrehierro se queda. Quedan dos preguntas
+#   (las espiras del secundario y la rampa en el banco); el hilo, el bobinado, el factor del snubber y las
+#   comprobaciones pasan a explicaciones y resumen.
 leccion: cap33/sec-33.15
 
 libro:
@@ -28,6 +32,7 @@ libro:
   548: "Primero medio primario, después el secundario, después la otra mitad del primario"
   550: "es un requisito de seguridad, no una recomendación"
   554: "con 556 µH, entre 6 y 17 µH"
+  556: '"7,7 µJ"'
   557: '"0,5 W"'
   558: "el factor está entre 2 y 1,5"
   560: "debe coincidir con la calculada dentro del 10 %"
@@ -58,6 +63,8 @@ modelo:
     I_pk_vx: { expr: "V_max*D_max/(L_p*f)", sim: "I", nombre: "pico con la entrada máxima y D_máx", unidad: A }
     I_pk_sd: { expr: "V_min/(L_p*f)", sim: "I", nombre: "pico sin el ciclo de trabajo", unidad: A }
     D_v: { expr: "sqrt(2*P_in*L_p*f)/V_in", sim: "D", nombre: "ciclo de trabajo a esa entrada", unidad: "" }
+    Lp_sin2: { expr: "(V_min*D_max)^2/(P_in*f)", sim: "L_{p}", nombre: "sin el 2 del denominador (error)", unidad: H }
+    E_d: { expr: "0.5*L_d*I_pk^2", sim: "E_{disp}", nombre: "energía de la dispersión por ciclo", unidad: J }
     n_t: { expr: "V_r/(V_o + V_D)", sim: "n", nombre: "relación de espiras", unidad: "" }
     E_c: { expr: "0.5*L_p*I_pk^2", sim: "E", nombre: "energía por ciclo", unidad: J }
     Np_c: { expr: "L_p*I_pk/(B_m*A_e)", sim: "N_{p}", nombre: "espiras del primario calculadas", unidad: "" }
@@ -68,8 +75,9 @@ tarjetas:
   - id: explore-corriente
     tipo: explorar
     titulo: "Cargar y descargar el núcleo"
-    texto: "La corriente del primario sube en rampa hasta el pico y cae a cero: el secundario descarga el núcleo. Cambie la entrada con la misma potencia."
-    libro: [521, 522, 524]
+    texto: "La corriente del primario sube en rampa y cae a cero: el secundario descarga el núcleo. Con la misma potencia, busque la entrada del peor caso, D = 0,45."
+    libro: [521, 522, 524, 525]
+    inicio: { V_in: 300 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.00003, unidad: s, rotulo: "t", muestras: 1200 }
@@ -79,25 +87,43 @@ tarjetas:
       lectura: { valor: D_v, rotulo: "Ciclo de trabajo" }
       mandos:
         - { valor: V_in, min: 100, max: 370, paso: 10, rotulo: "Entrada, V_{in}" }
-    requiere: { mover: [V_in] }
+    objetivo:
+      condiciones:
+        - { valor: D_v, objetivo: 0.45, tol: 0.02, rotulo: "D: {{D_v}}" }
+      logrado: "Con {{V_in}}, la entrada mínima, D = {{D_v}}: el peor caso. Con más entrada el control acorta D y el pico es el mismo."
+      pistas:
+        - { texto: "Con esa entrada la rampa sube deprisa y D es corto: baje la entrada." }
+    escalera:
+      - "Con la potencia fija, D es máximo con la entrada mínima."
+    solucion: "100 V, la entrada mínima."
+    comprobar:
+      - { con: { V_in: 100 }, D_v: 0.45, tol: 0.003 }
+      - { D_v: 0.15, tol: 0.003 }
 
   - id: formula-lp
-    tipo: formula
+    tipo: simular
     titulo: "La inductancia del primario"
-    texto: "Se fija en el peor caso, la entrada mínima, con D_{máx} = 0,45 y 28 W de entrada."
+    texto: "Se fija en el peor caso: 100 V, D_{máx} = 0,45, 28 W de entrada y 65 kHz, en discontinuo. ¿Qué inductancia de primario?"
     libro: [525, 527, 528, 529]
-    ec: 528
-    sustitucion: "({{V_min}} · {{D_max}})² / (2 · {{P_in}} · {{f}}) = {{Lp_c}}"
     widget:
       tipo: grafica
       x: { id: p, min: 5, max: 60, unidad: W, rotulo: "P_{in}" }
       y: { min: 0, max: 0.004, unidad: H, rotulo: "L_{p}" }
       curvas:
         - { expr: "(V_min*D_max)^2/(2*p*f)", color: naranja, rotulo: "L_{p} necesaria" }
-      marcas:
-        - { x: "P_in", y: "Lp_c", rotulo: "{{Lp_c}}" }
-      mandos:
-        - { valor: P_in, min: 5, max: 60, paso: 1, rotulo: "Potencia de entrada" }
+      lectura: { valor: Lp_c, rotulo: "L_{p}" }
+      ocultar: true
+    simular:
+      objetivo: Lp_c
+      unidad: H
+      tol: 0.02
+      rotulo: "Inductancia del primario"
+      errores:
+        - { expr: "Lp_sin2", texto: "Le falta el 2 del denominador: la energía por ciclo es ½·L_{p}·I²_{pico}." }
+    exito: "556 µH. La potencia de entrada sale de los 24 W de salida con un rendimiento estimado del 85 %."
+    escalera:
+      - "L_{p} = (V_{in,mín}·D_{máx})²/(2·P_{in}·f)."
+    solucion: "(100 × 0,45)²/(2 × 28 × 65 000) = 556 µH."
     comprobar:
       - { Lp_c: 0.000556, tol: 0.003 }
 
@@ -122,30 +148,25 @@ tarjetas:
       - { I_pk: 1.245, I_pk_vx: 4.61, I_pk_sd: 2.77, tol: 0.003 }
 
   - id: estime-n
-    tipo: pregunta
+    tipo: simular
     titulo: "La relación de espiras"
-    texto: "Se fija la tensión reflejada en 100 V; la salida y el diodo suman 12,7 V. ¿Qué relación de espiras?"
+    texto: "Se fija la tensión reflejada en 100 V; la salida de 12 V y el diodo suman 12,7 V. ¿Qué relación de espiras?"
     libro: [532, 533, 567]
     widget:
       tipo: figura
       figura: fig-33.16
       zonas:
         - { id: todo, rotulo: "El transformador", rect: [0, 0, 450, 231] }
-    estimar:
-      objetivo: "n_t"
+    simular:
+      objetivo: n_t
       unidad: ""
-      min: 1
-      max: 20
-      paso: 0.1
-      inicio: 15
-      tol: 0.04
+      tol: 0.02
       rotulo: "Relación de espiras, n"
+      errores:
+        - { expr: "V_r/V_o", texto: "Ha olvidado la caída del diodo: el secundario impone V_{out} + V_{D}." }
     exito: "7,9, que se redondea a 8: el MOSFET verá 370 + 100 V más los picos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 8.2 }, texto: "Se ha pasado: divida los 100 V reflejados entre 12,7 V." }
-      - { texto: "Se ha quedado corto: n = V_{reflejada}/(V_{out} + V_{D})." }
     escalera:
-      - "Sume la salida y la caída del diodo."
+      - "n = V_{reflejada}/(V_{out} + V_{D})."
     solucion: "100/12,7 = 7,9 ≈ 8."
     comprobar:
       - { n_t: 7.87, tol: 0.003 }
@@ -200,123 +221,29 @@ tarjetas:
       alto: "Sobra inductancia: abra el entrehierro."
       dentro: "Dentro del 10 %: hacia 0,23 mm, repartido entre las dos mitades del núcleo."
 
-  - id: hilo
-    tipo: pregunta
-    titulo: "El hilo"
-    texto: "El primario lleva 0,48 A eficaces: con 4 A/mm² basta hilo de 0,4 mm, pero a 65 kHz el pelicular es de 0,26 mm. ¿Qué se usa?"
-    libro: [545]
-    widget:
-      tipo: figura
-      figura: fig-33.16
-      zonas:
-        - { id: todo, rotulo: "El transformador", rect: [0, 0, 450, 231] }
-    opciones:
-      - texto: "Dos hilos de 0,3 mm en paralelo"
-        bien: true
-        porque: "El de 0,4 mm está en el límite del pelicular; dos más finos aprovechan mejor el cobre."
-      - texto: "Un hilo de 1 mm, por si acaso"
-        porque: "Más grueso no ayuda: el centro del hilo apenas conduce a 65 kHz."
-      - texto: "El de 0,4 mm sin más"
-        porque: "Está en el límite: su diámetro es más del doble de la profundidad pelicular."
-    escalera:
-      - "Compare el radio del hilo con la profundidad pelicular."
-    solucion: "Dos hilos de 0,3 mm en paralelo."
-
-  - id: bobinado
-    tipo: pregunta
-    titulo: "El orden de bobinar"
-    texto: "Ordene el bobinado intercalado, del núcleo hacia fuera."
-    libro: [548, 550]
-    widget:
-      tipo: figura
-      figura: fig-33.16
-      zonas:
-        - { id: todo, rotulo: "El transformador", rect: [0, 0, 450, 231] }
-    ordenar:
-      - "Medio primario"
-      - "Tres capas de cinta aislante"
-      - "El secundario"
-      - "Otras tres capas de cinta aislante"
-      - "La otra mitad del primario"
-    exito: "Menos dispersión y menos proximidad; y el aislamiento es un requisito de seguridad."
-    pistas:
-      - { texto: "El secundario queda entre las dos mitades del primario." }
-    escalera:
-      - "Entre primario y secundario siempre hay aislamiento."
-    solucion: "Medio primario, aislamiento, secundario, aislamiento y la otra mitad."
-
   - id: estime-snubber
-    tipo: pregunta
+    tipo: simular
     titulo: "Lo que cuesta la dispersión"
     texto: "Una dispersión de 10 µH con 1,24 A de pico a 65 kHz. ¿Cuánto disipa, como mínimo, la resistencia del snubber?"
-    libro: [554, 557]
+    libro: [554, 556, 557, 558]
     widget:
       tipo: figura
       figura: fig-33.16
       zonas:
         - { id: todo, rotulo: "El transformador", rect: [0, 0, 450, 231] }
-    estimar:
-      objetivo: "P_sn"
+    simular:
+      objetivo: P_sn
       unidad: W
-      min: 0
-      max: 3
-      paso: 0.05
-      inicio: 2.5
-      tol: 0.06
+      tol: 0.05
       rotulo: "Potencia del snubber"
-    exito: "Medio vatio: ½·L_{disp}·I²_{pico} en cada ciclo, 65 000 veces por segundo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.53 }, texto: "Se ha pasado: ½ × 10 µH × 1,24² son unos 7,7 µJ por ciclo." }
-      - { texto: "Se ha quedado corto: multiplique la energía por ciclo por la frecuencia." }
+      errores:
+        - { expr: "E_d", texto: "Esa es la energía de cada ciclo, 7,7 µJ: multiplíquela por la frecuencia." }
+    exito: "Medio vatio como mínimo; en la práctica, entre 1,5 y 2 veces, porque la magnetizante sigue entregando energía al enclavamiento."
     escalera:
       - "E_{disp} = ½·L_{disp}·I²_{pico}; P = E·f."
     solucion: "½ × 10 µH × 1,24² × 65 kHz ≈ 0,5 W."
     comprobar:
-      - { P_sn: 0.5, tol: 0.01 }
-
-  - id: por-que-mas
-    tipo: porque
-    titulo: "Más de medio vatio"
-    texto: "En la práctica el snubber disipa entre 1,5 y 2 veces ese medio vatio. ¿Por qué?"
-    libro: [558]
-    widget:
-      tipo: figura
-      figura: fig-33.16
-      zonas:
-        - { id: todo, rotulo: "El transformador", rect: [0, 0, 450, 231] }
-    opciones:
-      - texto: "Mientras se frena la dispersión, la magnetizante sigue entregando energía al enclavamiento"
-        bien: true
-        porque: "Solo dispone de V_{clamp} − V_{reflejada} para frenarla: la potencia se multiplica por V_{clamp}/(V_{clamp} − V_{reflejada})."
-      - texto: "Porque la resistencia se calienta y sube su valor"
-        porque: "El motivo es la energía que llega al enclavamiento, no la deriva de la resistencia."
-      - texto: "Porque el diodo del snubber pierde la otra mitad"
-        porque: "El diodo pierde poco; lo que crece es la energía que entra al condensador."
-    escalera:
-      - "¿Qué otra corriente sigue llegando al condensador del snubber mientras se descarga la dispersión?"
-    solucion: "La magnetizante entrega energía al enclavamiento en lugar de al secundario: factor de 1,5 a 2."
-
-  - id: comprobaciones
-    tipo: pregunta
-    titulo: "Antes de montar"
-    texto: "Empareje cada comprobación con cómo se hace o qué debe dar."
-    libro: [560, 561]
-    widget:
-      tipo: figura
-      figura: fig-33.16
-      zonas:
-        - { id: todo, rotulo: "El transformador", rect: [0, 0, 450, 231] }
-    emparejar:
-      - ["Inductancia del primario", "La calculada, dentro del 10 %"]
-      - ["Dispersión", "Primario con el secundario en cortocircuito; menos del 5 %"]
-      - ["Relación de espiras", "Alterna baja en el primario, medir el secundario"]
-      - ["Aislamiento", "Óhmetro y, si se puede, rigidez dieléctrica"]
-    exito: "Si la dispersión pasa del 5 % de L_{p}, el bobinado está mal hecho."
-    pistas:
-      - { texto: "La dispersión es lo que queda con el secundario en cortocircuito." }
-    escalera:
-      - "Empiece por la inductancia: es la del cálculo."
-    solucion: "L_{p} al 10 %; dispersión con el secundario en corto; n con alterna; aislamiento con óhmetro."
+      - { P_sn: 0.5, E_d: 7.7e-6, tol: 0.01 }
 
   - id: banco-rampa
     tipo: predecir
@@ -344,9 +271,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [521, 529, 531, 543, 557]
+    libro: [521, 529, 531, 543, 545, 548, 550, 557, 560, 561]
     ideas:
       - { titulo: "Almacena.", texto: "E = ½·L_{p}·I²_{pico} por ciclo: necesita entrehierro." }
       - { titulo: "Los números.", texto: "556 µH, 1,24 A, n = 8, 44 espiras y 0,23 mm de entrehierro." }
-      - { titulo: "El bobinado.", texto: "Intercalado y con aislamiento: decide tanto como el cálculo." }
-      - { titulo: "La dispersión.", texto: "Al menos medio vatio en el snubber; medirla y la rampa en el banco." }
+      - { titulo: "El bobinado.", texto: "Medio primario, secundario y la otra mitad, con aislamiento; dos hilos de 0,3 mm por el pelicular." }
+      - { titulo: "Comprobar.", texto: "L_{p} al 10 %; dispersión con el secundario en corto, menos del 5 %; la rampa a cero en el banco." }
