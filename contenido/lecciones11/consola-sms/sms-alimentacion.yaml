@@ -2,6 +2,10 @@
 # JV → interruptor → diodo D2 → 7805 IC8 → red VCC), el adaptador de 9 V, el 7805 atornillado al blindaje, la potencia
 # que disipa y su dropout (libro, sección 8.4). Fuentes: los datos de la consola (sms#n), ConsoleMods «Comparison of
 # Power Supplies» y el libro.
+# 1.2.1: el camino se toca en orden en la foto; el 7805 es un circuito vivo (esquema «regulador-lineal», como en la
+# piloto de la SNES): se mide la caída con los 9 V del adaptador (sin contar el diodo D2), se escribe el calor con una
+# carga de ejemplo de 0,5 A, se toca la pieza que lo disipa y se sube la entrada hasta que regula. Quedan dos preguntas:
+# el adaptador y lo que se apaga si muere el 7805.
 leccion: consola-sms/sms-alimentacion
 
 libro:
@@ -21,45 +25,46 @@ modelo:
     V_in: { sim: "V_{entrada}", nombre: "tensión en la entrada del 7805", unidad: V, valor: 5 }
     V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 9 }
     V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
-    I: { sim: "I", nombre: "corriente de la consola", unidad: A, valor: 0.5 }
+    I: { sim: "I", nombre: "corriente de la consola (ejemplo)", unidad: A, valor: 0.5 }
+    V_dr: { sim: "V_{do}", nombre: "dropout del 78xx", unidad: V, valor: 2 }
+    R_c: { sim: "R_{L}", nombre: "carga de ejemplo: la que pide 0,5 A a 5 V", unidad: Ω, valor: 10 }
+    on_c: { tipo: interruptor, nombre: "consola encendida", valor: 1 }
   calculos:
+    I_reg: { si: on_c, entonces: "V_reg/R_c", sino: "0", sim: "I", nombre: "corriente del 7805 al subir la entrada", unidad: A }
+    V_sa: { expr: "min(V_o, V_ad - V_dr)", sim: "V_{salida}", nombre: "salida del 7805 con el adaptador", unidad: V }
+    I_a: { si: on_c, entonces: "V_sa/R_c", sino: "0", sim: "I", nombre: "corriente con el adaptador", unidad: A }
+    V_pa: { expr: "V_ad - V_sa", sim: "V_{entrada} − V_{salida}", nombre: "caída en el 7805", unidad: V }
+    P_a: { expr: "V_pa*I_a", sim: "P_{disipada}", nombre: "calor que disipa el 7805 con el adaptador", unidad: W, cifras: 3 }
+    P_mal: { expr: "V_ad*I_a", sim: "V · I", nombre: "los 9 V enteros por la corriente", unidad: W }
     V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida del 7805 (modelo)", unidad: V, cifras: 3 }
     P_d: { expr: "(V_ad - V_o)*I", sim: "P_{disipada}", nombre: "potencia que disipa el 7805", unidad: W, cifras: 3 }
 
 tarjetas:
-  - id: explore-alim
-    tipo: explorar
-    titulo: "La alimentación en la foto"
-    texto: "Toque la toma de corriente, el interruptor y el regulador 7805."
-    libro: ["sms#17", "sms#19", "sms#16"]
-    requiere: { mover: [dc, power, reg] }
+  - id: ordene-camino
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Según el esquema del manual, toque en el orden de la corriente: la toma, el interruptor y el regulador."
+    libro: ["sms#17", "sms#19", "sms#104", "sms#76", "sms#16"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: dc, hotspot: dc, rotulo: "Toma CN4", texto: "Entran 9 V de continua." }
-        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Corta la entrada antes del diodo y el regulador." }
-        - { id: reg, hotspot: reg, rotulo: "Regulador 7805", texto: "Atornillado al blindaje, que hace de disipador." }
-
-  - id: ordene-camino
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El camino de la corriente"
-    texto: "Ordene el camino desde la toma hasta los 5 V de la placa, según el esquema del manual."
-    libro: ["sms#17", "sms#104", "sms#76"]
-    ordenar:
-      - "Toma CN4: 9 V de continua."
-      - "Ferrita JV."
-      - "Interruptor."
-      - "Diodo D2."
-      - "Regulador 7805 (IC8)."
-    exito: "Un solo regulador da los 5 V de toda la placa."
+        - { id: dc, hotspot: dc, rotulo: "Conector, arriba a la izquierda" }
+        - { id: power, hotspot: power, rotulo: "Interruptor, abajo a la izquierda" }
+        - { id: reg, hotspot: reg, rotulo: "Pieza atornillada, a la izquierda" }
+        - { id: pausa, hotspot: pausa, rotulo: "Pulsador, a la izquierda" }
+    tocar:
+      bien: [dc, power, reg]
+      orden: true
+      porque:
+        pausa: "Es el botón de pausa: lleva /NMI-IN a masa, no la corriente."
     pistas:
-      - { texto: "El interruptor corta la entrada antes del diodo y el regulador." }
+      - { texto: "Lo primero, la toma; lo último, el regulador." }
+    exito: "CN4, la ferrita JV, el interruptor, el diodo D2 y el 7805 (IC8): un solo regulador para los 5 V de toda la placa."
     escalera:
-      - "El regulador es lo último; la toma, lo primero."
-      - "La ferrita va nada más entrar."
-    solucion: "CN4, ferrita JV, interruptor, D2 e IC8."
+      - "El interruptor corta la entrada antes del diodo y el regulador."
+    solucion: "Toma CN4, interruptor y 7805."
 
   - id: prediga-adaptador
     tipo: predecir
@@ -83,70 +88,115 @@ tarjetas:
       - "El regulador necesita más tensión en la entrada que los 5 V que da."
     solucion: "9 V de continua, 1 A, punta negativa."
 
-  - id: formula-disipa
-    tipo: formula
-    titulo: "Lo que sobra, en calor"
-    texto: "Sin contar lo que cae en el diodo, el 7805 quema la diferencia entre 9 V y 5 V por la corriente. Mueva la corriente."
-    libro: ["cap08#65", "cap08#66", "sms#96"]
-    ec: "cap08#65"
-    sustitucion: "({{V_ad}} − {{V_o}}) · {{I}} = {{P_d}}"
+  - id: mida-caida
+    tipo: medir
+    titulo: "Lo que sobra"
+    texto: "Sin contar el diodo, al 7805 le llegan los 9 V del adaptador y da 5 V. Mida lo que cae en él."
+    nota: "El 7805 por dentro: elemento de paso, referencia y amplificador de error."
+    libro: ["sms#96", "sms#16", "cap08#67"]
+    fijar: { V_ad: 9, V_o: 5, on_c: 1 }
     widget:
-      tipo: grafica
-      x: { id: i, min: 0, max: 1, unidad: A, rotulo: "I" }
-      y: { min: 0, max: 5, unidad: W, rotulo: "P_{disipada}" }
-      curvas:
-        - { expr: "(V_ad - V_o)*i", color: naranja, rotulo: "P_{disipada}" }
-      marcas:
-        - { x: "I", y: "P_d", rotulo: "{{P_d}}" }
-      mandos: [ { valor: I, min: 0.05, max: 1, paso: 0.05, rotulo: "Corriente, I" } ]
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_ad, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      corriente: I_a
+      mide: { vout: V_sa, iin: I_a, iout: I_a, icarga: I_a, vpaso: V_pa, p_paso: P_a }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+        puntos: { in: "Entrada del 7805", out: "Salida del 7805", "0": "Masa" }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [in, out]
+      valor: V_pa
+      porque:
+        "in/0": "Así mide la entrada respecto a masa: los 9 V del adaptador."
+        "out/0": "Así mide la salida respecto a masa: los 5 V regulados."
+    exito: "4 V: lo que sobra entre los 9 V del adaptador y los 5 V de la placa."
+    escalera:
+      - "Lo que cae en el 7805 se mide entre sus dos patas: la entrada y la salida."
+    solucion: "Roja en la entrada y negra en la salida del 7805."
+
+  - id: formula-disipa
+    tipo: leer
+    titulo: "Lo que sobra, en calor"
+    texto: "Con una carga de ejemplo que pide 0,5 A, mida la corriente que pasa por el 7805 y escriba el calor que disipa."
+    libro: ["cap08#65", "cap08#66", "sms#96"]
+    fijar: { V_ad: 9, V_o: 5, on_c: 1 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_ad, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      corriente: I_a
+      mide: { vout: V_sa, iin: I_a, iout: I_a, icarga: I_a, vpaso: V_pa, p_paso: P_a }
+      instrumento:
+        tipo: multimetro
+        puntos: { in: "Entrada del 7805", out: "Salida del 7805", "0": "Masa" }
+        ramas: { vmi: "Entre el adaptador y el 7805", vml: "Hacia la consola" }
+      mandos: []
+    leer:
+      objetivo: P_a
+      unidad: W
+      rotulo: "Calor en el 7805"
+      errores:
+        - { expr: "P_mal", texto: "Ha multiplicado los 9 V enteros. El 7805 solo quema la diferencia entre entrada y salida." }
+    exito: "(9 − 5) V · 0,5 A = 2 W: más de la mitad de la energía se convierte en calor."
+    escalera:
+      - "El calor es la caída en el 7805 por la corriente que lo atraviesa."
+    solucion: "(9 − 5) V · 0,5 A = 2 W."
+    comprobar:
+      - { P_a: 2, I_a: 0.5, V_pa: 4, P_mal: 4.5 }
 
   - id: por-que-blindaje
-    tipo: porque
-    titulo: "Atornillado al blindaje"
-    texto: "¿Por qué el 7805 va atornillado a la chapa del blindaje?"
-    libro: ["sms#16", "cap08#66"]
+    tipo: elegir
+    titulo: "¿Quién se calienta?"
+    texto: "Ese calor sale de una sola pieza: la que va en serie con la consola y se queda la diferencia. Tóquela en el esquema."
+    libro: ["sms#16", "cap08#66", "cap08#65"]
+    fijar: { V_ad: 9, V_o: 5, on_c: 1 }
     widget:
-      tipo: figura
-      consola: { maquina: sms }
-      zonas:
-        - { id: reg, hotspot: reg, rotulo: "Regulador 7805" }
-    opciones:
-      - texto: "La chapa le hace de disipador: saca el calor que produce."
-        bien: true
-        porque: "Un regulador lineal convierte en calor lo que sobra: el blindaje hace de disipador."
-      - texto: "Para que no se mueva con los golpes."
-        porque: "Lo sujeta, sí, pero el motivo es el calor: el blindaje hace de disipador."
-      - texto: "Para conectarlo a los 9 V."
-        porque: "La entrada le llega por la placa, por el diodo D2. La chapa es para el calor."
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_ad, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      corriente: I_a
+      mide: { vout: V_sa, iin: I_a, iout: I_a, icarga: I_a, vpaso: V_pa, p_paso: P_a }
+      mandos: []
+    elegir:
+      zonas: { paso: "Transistor de arriba", ao: "Triángulo del centro", entrada: "Fuente de la izquierda", carga: "Resistencia de la derecha" }
+      bien: [paso]
+      porque:
+        ao: "Es el amplificador de error: compara la salida con la referencia y gobierna el paso, pero apenas lleva corriente."
+        entrada: "Es el adaptador: entrega la energía, no la quema."
+        carga: "Es la consola: la que usa los 5 V."
+    exito: "El elemento de paso del 7805: por eso va atornillado al blindaje, que le hace de disipador."
     escalera:
-      - "¿Qué hace un regulador lineal con la tensión que le sobra?"
-    solucion: "El blindaje es su disipador: saca el calor de lo que sobra."
+      - "Busque la pieza que está entre la entrada y la salida, por la que pasa toda la corriente."
+    solucion: "El transistor de arriba, el elemento de paso."
 
   - id: ajuste-dropout
-    tipo: ajuste
+    tipo: explorar
     titulo: "¿Cuánta entrada necesita?"
-    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que regule."
+    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que el 7805 dé sus 5 V."
     libro: ["cap08#67", "sms#16"]
+    fijar: { V_o: 5, on_c: 1 }
     inicio: { V_in: 5 }
     widget:
-      tipo: grafica
-      x: { id: v, min: 0, max: 10, unidad: V, rotulo: "V_{entrada}" }
-      y: { min: 0, max: 6, unidad: V, rotulo: "V_{salida}" }
-      curvas:
-        - { expr: "min(V_o, max(0, v - 2))", color: azul, rotulo: "salida del 7805 (modelo)" }
-      marcas:
-        - { x: "V_in", y: "V_reg", rotulo: "{{V_reg}}" }
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      lectura: { valor: V_reg, rotulo: "Salida del 7805" }
+      corriente: I_reg
+      mide: { vout: V_reg, iin: I_reg, iout: I_reg, icarga: I_reg }
       mandos: [ { valor: V_in, min: 5, max: 10, paso: 0.5, rotulo: "Entrada, V_{entrada}" } ]
-    ajuste:
-      valor: V_reg
-      min: 4.99
-      rotulo: "Salida del 7805"
-      bajo: "Todavía no regula: le faltan voltios en la entrada. Súbala."
-      dentro: "Ya da sus 5 V: la entrada supera la salida en unos 2 V."
-    exito: "Con unos 2 V de margen, el 7805 da sus 5 V."
+    objetivo:
+      condiciones:
+        - { valor: V_reg, mayor: 4.99, rotulo: "Salida: {{V_reg}}" }
+      logrado: "Con {{V_in}} en la entrada ya da sus 5 V: la entrada supera la salida en unos 2 V. Los 9 V del adaptador sobran."
+      pistas:
+        - { texto: "Todavía no regula: a la entrada le faltan voltios. Súbala." }
     escalera:
-      - "Súmele a los 5 V de salida el margen que pide el 78xx."
-    solucion: "Unos 7 V en la entrada: 5 V de salida más unos 2 V de margen."
+      - "Salida + margen: 5 + 2."
+    solucion: "Con unos 7 V o más en la entrada."
     comprobar:
       - { con: { V_in: 7 }, V_reg: 5 }
 

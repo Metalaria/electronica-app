@@ -2,6 +2,8 @@
 # colores), sus 16 KB de VRAM en dos PSRAM que retienen la dirección (bus AD multiplexado), el PSG dentro del VDP, el
 # CXA1145 con la subportadora SC y el modulador, la única salida. Fuentes: los datos de la consola (sms#n: explorador,
 # arquitectura y la comprobación con el KiCad del SMS1).
+# 1.2.1: los colores son un explorar con meta (64 con 2 bits por canal); el camino de la imagen se toca en orden en la
+# foto; se tocan el chip que genera el sonido y la única salida. Queda una pregunta: la PSRAM.
 leccion: consola-sms/sms-video-audio
 
 libro:
@@ -22,52 +24,19 @@ modelo:
     suma_niveles: { expr: "3*2^b", sim: "3 · 2^b", nombre: "niveles sumados (error)", unidad: "", cifras: 3 }
 
 tarjetas:
-  - id: explore-video
-    tipo: explorar
-    titulo: "El camino de la imagen"
-    texto: "Toque el VDP, sus dos VRAM, el codificador y el modulador."
-    libro: ["sms#74", "sms#9", "sms#15", "sms#7"]
-    requiere: { mover: [vdp, vram1, enc, rf] }
-    widget:
-      tipo: figura
-      consola: { maquina: sms }
-      zonas:
-        - { id: vdp, hotspot: vdp, rotulo: "VDP 315-5246", texto: "Saca R, G y B analógicos, /SYNC y el audio del PSG." }
-        - { id: vram1, hotspot: vram1, rotulo: "VRAM, byte bajo", texto: "8K × 8: los bytes pares." }
-        - { id: vram2, hotspot: vram2, rotulo: "VRAM, byte alto", texto: "Los bytes impares." }
-        - { id: enc, hotspot: enc, rotulo: "Codificador CXA1145", texto: "Del RGB al compuesto PAL, con la subportadora SC." }
-        - { id: rf, hotspot: rf, rotulo: "Modulador de RF", texto: "La única salida: antena." }
-
-  - id: ordene-video
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Del chip a la antena"
-    texto: "Ordene el camino de la imagen hasta el televisor."
-    libro: ["sms#74", "sms#9", "sms#15"]
-    ordenar:
-      - "El VDP saca R, G y B y el sincronismo."
-      - "El CXA1145 hace el vídeo compuesto PAL."
-      - "El modulador lo convierte en señal de antena."
-    exito: "RGB, compuesto y antena: la única salida del SMS II."
-    pistas:
-      - { texto: "El codificador necesita la subportadora SC; el modulador trabaja con el compuesto." }
-    escalera:
-      - "Empieza en el chip de vídeo y acaba en el cable de antena."
-    solucion: "VDP, CXA1145 y modulador de RF."
-
   - id: prediga-colores
-    tipo: predecir
+    tipo: explorar
     titulo: "Dos bits por canal"
-    texto: "El VDP da R, G y B con 2 bits cada uno. ¿Cuántos colores puede formar?"
+    texto: "El VDP saca R, G y B analógicos; su modo 4 tiene 64 colores. Elija los bits por canal que los dan."
     libro: ["sms#74", "sms#5"]
-    opciones:
-      - texto: "64."
-        bien: true
-        porque: "4 niveles por canal y tres canales: 4 × 4 × 4 = 64, los 64 colores del modo 4."
-      - texto: "6."
-        porque: "Ha sumado los bits. Los niveles se multiplican: 4 × 4 × 4."
-      - texto: "12."
-        porque: "Ha sumado los niveles. Cada combinación de R, G y B es un color: se multiplican."
+    inicio: { b: 1 }
+    objetivo:
+      condiciones:
+        - { valor: colores, objetivo: 64, tol: 0.001, rotulo: "Colores: {{colores}}" }
+      logrado: "{{b}} bits por canal: 4 niveles, y tres canales que se multiplican: 4 × 4 × 4 = 64."
+      pistas:
+        - { cuando: { valor: colores, mayor: 65 }, texto: "Demasiados: quite un bit por canal." }
+        - { texto: "Pocos: más bits por canal." }
     escalera:
       - "Con 2 bits hay 4 niveles por canal."
     solucion: "(2²)³ = 64 colores."
@@ -75,11 +44,42 @@ tarjetas:
       tipo: grafica
       x: { id: k, min: 1, max: 4, unidad: "", rotulo: "bits por canal" }
       y: { min: 0, max: 4100, unidad: "", rotulo: "colores" }
-      ocultar: curvas
       curvas:
         - { expr: "(2^k)^3", color: azul, rotulo: "(2^{bits})^3", palitos: true }
+      marcas:
+        - { x: "b", y: "colores", rotulo: "{{colores}}" }
+      lectura: { valor: colores, rotulo: "Colores" }
+      mandos: [ { valor: b, min: 1, max: 4, paso: 1, rotulo: "Bits por canal, b" } ]
     comprobar:
-      - { colores: 64, suma_bits: 6, suma_niveles: 12 }
+      - { con: { b: 2 }, colores: 64, suma_bits: 6, suma_niveles: 12 }
+
+  - id: ordene-video
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Del chip a la antena"
+    texto: "Toque, en orden, el camino de la imagen: el chip que saca el RGB, el que hace el compuesto y la salida al televisor."
+    libro: ["sms#74", "sms#9", "sms#15"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: enc, hotspot: enc, rotulo: "Chip mediano, arriba en el centro" }
+        - { id: rf, hotspot: rf, rotulo: "Caja abierta, arriba a la izquierda" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [vdp, enc, rf]
+      orden: true
+      porque:
+        z80: "El Z80 manda al VDP qué dibujar, pero la señal no pasa por él."
+        cart: "El cartucho trae el juego; la señal de vídeo no pasa por él."
+    pistas:
+      - { texto: "VDP, codificador y modulador." }
+    exito: "El VDP saca R, G y B y el sincronismo; el CXA1145 hace el compuesto PAL con la subportadora SC; el modulador lo lleva a la antena."
+    escalera:
+      - "Empieza en el chip de vídeo y acaba en el cable de antena."
+    solucion: "VDP, CXA1145 y modulador de RF."
 
   - id: toque-codificador
     tipo: tocar
@@ -104,27 +104,30 @@ tarjetas:
     solucion: "Arriba en el centro: Sony CXA1145P (IC9)."
 
   - id: prediga-psg
-    tipo: predecir
+    tipo: tocar
     titulo: "¿Dónde está el sonido?"
-    texto: "El SMS II no tiene un chip de sonido aparte. ¿Quién genera el sonido?"
+    texto: "El SMS II no tiene un chip de sonido aparte. Toque el que genera el sonido."
     libro: ["sms#5", "sms#84", "sms#74"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: vdp, hotspot: vdp, rotulo: "VDP" }
-        - { id: z80, hotspot: z80, rotulo: "Z80" }
-    opciones:
-      - texto: "El SN76489 que va dentro del VDP."
-        bien: true
-        porque: "Escribir en $7F manda el byte al SN76489 del VDP, que saca su audio con el vídeo."
-      - texto: "El Z80, moviendo un altavoz."
-        porque: "El Z80 programa el sonido, pero lo genera el SN76489 del VDP."
-      - texto: "El CXA1145."
-        porque: "El codificador solo pasa el audio: lo genera el PSG del VDP."
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: enc, hotspot: enc, rotulo: "Chip mediano, arriba en el centro" }
+        - { id: rf, hotspot: rf, rotulo: "Caja abierta, arriba a la izquierda" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [vdp]
+      porque:
+        enc: "El codificador solo pasa el audio: no lo genera."
+        rf: "El modulador lo lleva a la antena con la imagen."
+        z80: "El Z80 programa el sonido, pero lo genera otro chip."
+        cart: "El cartucho trae el programa, no genera el sonido."
+    exito: "El VDP 315-5246: lleva dentro el generador de sonido SN76489. Escribir en $7F le manda el byte."
     escalera:
       - "Recuerde qué puerto lleva al PSG."
-    solucion: "El PSG SN76489, integrado en el VDP 315-5246."
+    solucion: "El VDP, con el SN76489 dentro."
 
   - id: por-que-psram
     tipo: porque
@@ -150,26 +153,30 @@ tarjetas:
     solucion: "La PSRAM se queda la dirección al bajar /CE; luego, las líneas AD llevan el dato."
 
   - id: prediga-salida
-    tipo: predecir
+    tipo: tocar
     titulo: "¿Y el cable A/V?"
-    texto: "Quiere conectar el SMS II por vídeo compuesto. ¿Qué conector usa?"
+    texto: "Quiere sacar la imagen del SMS II hacia un televisor. Toque la única salida que tiene."
     libro: ["sms#15", "sms#9"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: rf, hotspot: rf, rotulo: "Modulador de RF" }
-    opciones:
-      - texto: "Ninguno: el SMS II solo tiene salida de antena."
-        bien: true
-        porque: "El compuesto del CXA1145 va al modulador: el SMS II solo saca señal de antena."
-      - texto: "El conector A/V de la parte de atrás."
-        porque: "El SMS II no lo tiene: solo el modulador de RF."
-      - texto: "El puerto de expansión."
-        porque: "Tampoco tiene puerto de expansión: solo salida de antena."
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: enc, hotspot: enc, rotulo: "Chip mediano, arriba en el centro" }
+        - { id: rf, hotspot: rf, rotulo: "Caja abierta, arriba a la izquierda" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [rf]
+      porque:
+        vdp: "El VDP saca el RGB a la placa, no fuera."
+        enc: "El codificador hace el compuesto, pero no sale de la consola: va al modulador."
+        z80: "Es la CPU."
+        cart: "Es la ranura del cartucho."
+    exito: "El modulador de RF: el SMS II solo tiene salida de antena. El compuesto del CXA1145 va al modulador."
     escalera:
       - "Mire adónde van las salidas del CXA1145."
-    solucion: "Ninguno: solo hay salida de antena, por el modulador."
+    solucion: "El modulador de RF."
 
   - id: resumen
     tipo: resumen

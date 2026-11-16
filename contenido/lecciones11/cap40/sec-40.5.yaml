@@ -4,6 +4,11 @@
 # - El condensador gratuito: 20 pF/cm² con 0,2 mm de FR4 (bloque 153); los 100 cm² del plano son un valor de ejemplo
 #   (rotulado): 2 nF.
 # - Sin fórmula del libro (la sección no tiene ecuaciones) ni paso práctico: sección de criterio, con «tocar» la ranura.
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): el retorno «como una sombra» y el rodeo de la ranura se tocan en
+# la figura 41.8, el área se divide con una meta (12 dB), el cruce entre zonas se toca en la figura 41.13, y la
+# capacidad entre planos y la separación de las vías de costura se escriben (1 GHz es un ejemplo; la velocidad, unos
+# 16,5 cm/ns en microstrip, de la sección 42.2). Quedan dos preguntas de opciones (la razón del plano y las masas
+# separadas) y el emparejamiento de los efectos del área.
 leccion: cap40/sec-40.5
 
 libro:
@@ -22,6 +27,7 @@ libro:
   154: "ese condensador distribuido cubre el rango de cientos de megahercios"
   156: "dar caminos cortos al retorno cuando una señal cambia de capa, y evitar que las zonas de plano actúen como resonadores"
   157: "una vía cada λ/20 de la frecuencia más alta de interés"
+  "cap41#43": "unos 16,5 cm/ns"
   160: "El camino de retorno con plano continuo y con una ranura"
 
 modelo:
@@ -29,46 +35,36 @@ modelo:
     k_a: { sim: "k", nombre: "factor de reducción del área", unidad: "", valor: 4 }
     A_pl: { sim: "A", nombre: "área enfrentada de los planos (ejemplo)", unidad: "cm²", valor: 100 }
     c_pl: { sim: "c", nombre: "capacidad por cm² con 0,2 mm", unidad: F, valor: 20e-12 }
+    f_m: { sim: "f", nombre: "frecuencia más alta de interés (ejemplo)", unidad: Hz, valor: 1000000000 }
+    v_m: { sim: "v", nombre: "velocidad en microstrip sobre FR4", unidad: "m/s", valor: 165000000 }
   calculos:
     dB_a: { expr: "20*log10(k_a)", sim: "Δ", nombre: "reducción de la emisión", unidad: dB }
     C_pl: { expr: "c_pl*A_pl", sim: "C", nombre: "capacidad entre planos", unidad: F }
+    lam: { expr: "v_m/f_m", sim: "λ", nombre: "longitud de onda en la placa", unidad: m }
+    s_v: { expr: "lam/20", sim: "λ/20", nombre: "separación entre vías de costura", unidad: m }
 
 tarjetas:
-  - id: explore-retorno
-    tipo: explorar
-    titulo: "Por dónde vuelve la corriente"
-    texto: "Compare el retorno con plano continuo y con una ranura. Toque las tres zonas."
-    libro: [136, 143, 160]
-    widget:
-      tipo: figura
-      figura: fig-40.8
-      zonas:
-        - { id: continuo, rotulo: "Panel de la izquierda", rect: [5, 25, 210, 125], texto: "El retorno va justo debajo de la pista, como una sombra: área del bucle casi nula." }
-        - { id: ranura, rotulo: "Rectángulo rojo vertical", rect: [356, 34, 48, 108], texto: "Una ranura en el plano bajo la pista: el retorno no puede seguir su camino natural." }
-        - { id: area, rotulo: "Texto de abajo a la derecha", rect: [235, 148, 215, 37], texto: "El retorno rodea la ranura: el área del bucle crece, y con ella la inductancia y la emisión." }
-    requiere: { mover: [continuo, ranura, area] }
-
   - id: predecir-sombra
-    tipo: predecir
+    tipo: tocar
     titulo: "A unos pocos kilohercios"
-    texto: "Una pista sobre un plano de masa lleva una señal de varios kilohercios. ¿Por dónde vuelve la corriente?"
+    texto: "Una pista sobre un plano de masa lleva una señal de varios kilohercios. Toque por dónde vuelve su corriente."
     libro: [136, 137]
     widget:
       tipo: figura
       figura: fig-40.8
       zonas:
-        - { id: continuo, rotulo: "Panel de la izquierda", rect: [5, 25, 210, 125] }
-    opciones:
-      - texto: "Justo debajo de la pista de ida"
-        bien: true
-        porque: "Vuelve por donde la inductancia del bucle es mínima: el área más pequeña."
-      - texto: "Por el camino más corto entre receptor y emisor"
-        porque: "Eso es en continua, abriéndose en abanico; a partir de unos kilohercios sigue a la pista."
-      - texto: "Repartida por todo el plano por igual"
-        porque: "Se concentra bajo la pista; el plano solo le deja hacerlo."
+        - { id: pista, rotulo: "Línea de arriba", rect: [37, 62, 146, 10] }
+        - { id: retorno, rotulo: "Línea de abajo", rect: [37, 73, 146, 11] }
+        - { id: abanico, rotulo: "Zona baja del plano", rect: [10, 95, 200, 50] }
+    tocar:
+      bien: [retorno]
+      porque:
+        pista: "Esa es la ida, la pista de señal."
+        abanico: "En continua se abriría en abanico por el camino más directo; a partir de unos kilohercios sigue a la pista."
+    exito: "Justo debajo de la pista, como una sombra: el bucle de menor inductancia. Con un plano continuo, eso ocurre solo."
     escalera:
-      - "La corriente busca el bucle de menor inductancia."
-    solucion: "Justo debajo de la pista, como una sombra."
+      - "La corriente busca el bucle de menor área."
+    solucion: "La línea de abajo, justo bajo la pista."
 
   - id: porque-plano
     tipo: porque
@@ -93,35 +89,36 @@ tarjetas:
     solucion: "Baja inductancia y retorno óptimo para cada corriente."
 
   - id: estime-db
-    tipo: pregunta
+    tipo: explorar
+    fase: "Consiga"
     titulo: "El área y la emisión"
-    texto: "La emisión radiada es proporcional al área del bucle. Si el área se divide por cuatro, ¿cuántos dB baja?"
+    texto: "La emisión radiada es proporcional al área del bucle. Reduzca el área hasta que la emisión baje 12 dB."
     libro: [140]
-    fijar: { k_a: 4 }
+    inicio: { k_a: 1 }
     widget:
       tipo: grafica
       x: { id: kk, min: 1, max: 10, unidad: "", rotulo: "área dividida por" }
       y: { min: 0, max: 22, unidad: dB, rotulo: "menos emisión" }
       curvas:
         - { expr: "20*log10(kk)", color: naranja, rotulo: "20·log₁₀" }
-    estimar:
-      objetivo: "dB_a"
-      unidad: dB
-      min: 0
-      max: 20
-      paso: 0.5
-      inicio: 4
-      tol: 0.05
-      rotulo: "Reducción"
-    exito: "12 dB: el área es la palanca más rentable."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 12.5 }, texto: "Se ha pasado: lea la curva en 4." }
-      - { texto: "Se ha quedado corto: lea la curva en 4." }
+      marcas:
+        - { x: "k_a", y: "dB_a", rotulo: "{{dB_a}}" }
+      lectura: { valor: dB_a, rotulo: "Reducción de la emisión" }
+      mandos:
+        - { valor: k_a, min: 1, max: 10, paso: 1, rotulo: "Área dividida por" }
+    objetivo:
+      condiciones:
+        - { valor: dB_a, objetivo: 12, tol: 0.02, rotulo: "Menos emisión: {{dB_a}}" }
+      logrado: "Dividir el área por {{k_a}} son {{dB_a}}: el área es la palanca."
+      pistas:
+        - { cuando: { valor: dB_a, mayor: 12.3 }, texto: "Se ha pasado: divida el área por menos." }
+        - { texto: "Todavía no: divida el área por más." }
     escalera:
-      - "Busque en la curva el punto de abscisa 4."
-    solucion: "12 dB."
+      - "Cada vez que se divide el área por dos, la emisión baja unos 6 dB."
+    solucion: "Dividir el área por cuatro: 12 dB."
     comprobar:
-      - { dB_a: 12, tol: 0.01 }
+      - { con: { k_a: 4 }, dB_a: 12, tol: 0.01 }
+      - { con: { k_a: 2 }, dB_a: 6, tol: 0.01 }
 
   - id: empareje-area
     tipo: pregunta
@@ -144,7 +141,7 @@ tarjetas:
     tipo: tocar
     titulo: "El error que destruye el plano"
     texto: "Toque lo que obliga al retorno a dar un rodeo."
-    libro: [143, 144]
+    libro: [143, 144, 160]
     widget:
       tipo: figura
       figura: fig-40.8
@@ -163,26 +160,26 @@ tarjetas:
     solucion: "La ranura vertical."
 
   - id: pregunta-ranura
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una ranura bajo una línea rápida"
-    texto: "Una ranura de unos centímetros queda bajo una línea rápida. ¿Qué cabe esperar?"
+    texto: "Con la ranura, toque el tramo del retorno que hace crecer el área del bucle."
     libro: [144, 145]
     widget:
       tipo: figura
       figura: fig-40.8
       zonas:
-        - { id: area, rotulo: "Texto de abajo a la derecha", rect: [235, 148, 215, 37] }
-    opciones:
-      - texto: "Hasta 20 dB más de emisión y reflexiones visibles"
-        bien: true
-        porque: "Por eso ninguna señal debe cruzar una discontinuidad del plano de retorno."
-      - texto: "Nada, si la ranura es estrecha"
-        porque: "Lo que cuenta es el rodeo del retorno, no la anchura de la ranura."
-      - texto: "Solo algo más de resistencia"
-        porque: "El efecto es de área: inductancia, emisión y diafonía."
+        - { id: pista, rotulo: "Línea de arriba, a la derecha", rect: [268, 62, 95, 10] }
+        - { id: tramo, rotulo: "Línea de abajo, a la izquierda", rect: [268, 74, 95, 10] }
+        - { id: rodeo, rotulo: "Tramo que baja y sube", rect: [366, 98, 34, 40] }
+    tocar:
+      bien: [rodeo]
+      porque:
+        pista: "Es la ida, la pista de señal."
+        tramo: "Ahí el retorno aún va bajo la pista: el área es casi nula."
+    exito: "El rodeo alrededor de la ranura: hasta 20 dB más de emisión y reflexiones visibles. Ninguna señal debe cruzar un corte del plano."
     escalera:
-      - "Mire el rodeo que da el retorno en la figura."
-    solucion: "Hasta 20 dB más de emisión y reflexiones."
+      - "Busque dónde el retorno se separa de la pista."
+    solucion: "El tramo que baja y sube alrededor de la ranura."
 
   - id: pregunta-masas
     tipo: pregunta
@@ -206,11 +203,37 @@ tarjetas:
       - "Una masa dividida, ¿a qué se parece?"
     solucion: "Un plano continuo, particionado por colocación."
 
+  - id: toque-cruce
+    tipo: tocar
+    titulo: "Por un punto acordado"
+    texto: "Un solo plano, y cada parte en su zona. Toque por dónde cruzan las señales de la zona analógica a la digital."
+    libro: [150, 151]
+    widget:
+      tipo: figura
+      figura: fig-40.13
+      zonas:
+        - { id: interfaz, rotulo: "Recuadro de la izquierda", rect: [15, 26, 87, 57] }
+        - { id: analogico, rotulo: "Recuadro verde", rect: [119, 26, 100, 57] }
+        - { id: ad, rotulo: "Recuadro morado", rect: [220, 44, 69, 33] }
+        - { id: digital, rotulo: "Recuadro azul", rect: [290, 26, 148, 57] }
+        - { id: potencia, rotulo: "Recuadro rojo", rect: [265, 102, 173, 28] }
+    tocar:
+      bien: [ad]
+      porque:
+        interfaz: "Es la entrada de la placa: conectores y protecciones."
+        analogico: "Es una de las dos zonas; las señales salen de ella por un punto acordado."
+        digital: "Es la otra zona; las señales llegan a ella por un punto acordado."
+        potencia: "La alimentación no es un camino de señal."
+    exito: "El convertidor, en la frontera: se separa dónde están las cosas, no el cobre, y los retornos no se solapan."
+    escalera:
+      - "Busque la pieza que está entre las dos zonas."
+    solucion: "El A/D, en la frontera."
+
   - id: estime-condensador
-    tipo: pregunta
+    tipo: leer
     titulo: "El condensador gratuito"
-    texto: "Un plano de alimentación frente a uno de masa, a 0,2 mm en FR4, con 100 cm² enfrentados (valor de ejemplo). ¿Qué capacidad forman?"
-    libro: [153]
+    texto: "Un plano de alimentación frente a uno de masa, a 0,2 mm en FR4, con 100 cm² enfrentados (ejemplo). Escriba la capacidad que forman."
+    libro: [153, 154]
     fijar: { A_pl: 100, c_pl: 20e-12 }
     widget:
       tipo: grafica
@@ -218,69 +241,47 @@ tarjetas:
       y: { min: 0, max: 4.5e-9, unidad: F, rotulo: "C" }
       curvas:
         - { expr: "c_pl*aa", color: naranja, rotulo: "20 pF/cm²" }
-    estimar:
-      objetivo: "C_pl"
+      mandos: []
+    leer:
+      objetivo: C_pl
       unidad: F
-      min: 0
-      max: 4e-9
-      paso: 1e-10
-      inicio: 3.5e-9
-      tol: 0.05
+      tol: 0.03
       rotulo: "Capacidad entre planos"
-    exito: "2 nF: poca capacidad, y sin pistas ni terminales."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.1e-9 }, texto: "Se ha pasado: 20 pF por cada centímetro cuadrado." }
-      - { texto: "Se ha quedado corto: 20 pF por cada centímetro cuadrado." }
+      errores:
+        - { expr: "c_pl", texto: "20 pF es un solo centímetro cuadrado: multiplique por el área." }
+    exito: "2 nF: poca capacidad, pero sin pistas ni terminales su inductancia es casi nula, y cubre cientos de megahercios."
     escalera:
       - "Multiplique el área por 20 pF."
     solucion: "100 × 20 pF = 2 nF."
     comprobar:
       - { C_pl: 2e-9 }
 
-  - id: porque-condensador
-    tipo: porque
-    titulo: "Poca capacidad, mucho efecto"
-    texto: "¿Por qué ese condensador entre planos actúa donde los discretos fallan?"
-    libro: [153, 154]
+  - id: pregunta-costura
+    tipo: leer
+    titulo: "Vías de costura"
+    texto: "Una vía de costura cada λ/20 de la frecuencia más alta. Con 1 GHz (ejemplo) y unos 16,5 cm/ns en la placa, escriba la separación."
+    libro: [156, 157, "cap41#43"]
+    fijar: { f_m: 1000000000, v_m: 165000000 }
     widget:
       tipo: grafica
-      x: { id: aa, min: 0, max: 200, unidad: "cm²", rotulo: "área" }
-      y: { min: 0, max: 4.5e-9, unidad: F, rotulo: "C" }
+      x: { id: nu, min: 100000000, max: 10000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 0.1, unidad: m, rotulo: "λ/20", escala: log }
       curvas:
-        - { expr: "c_pl*aa", color: naranja, rotulo: "20 pF/cm²" }
-    opciones:
-      - texto: "Su inductancia es prácticamente nula: no hay pistas ni terminales"
-        bien: true
-        porque: "Por eso cubre cientos de megahercios, por encima de las autorresonancias de los discretos."
-      - texto: "Porque tiene más capacidad que los discretos"
-        porque: "Tiene muy poca; su virtud es la inductancia."
-      - texto: "Porque el FR4 es un dieléctrico excelente"
-        porque: "La clave no es el dieléctrico sino la ausencia de conexiones."
+        - { expr: "v_m/nu/20", color: naranja, rotulo: "una vía cada λ/20" }
+      mandos: []
+    leer:
+      objetivo: s_v
+      unidad: m
+      tol: 0.03
+      rotulo: "Separación entre vías"
+      errores:
+        - { expr: "lam", texto: "Esa es la longitud de onda entera: la regla pide una vía cada veinteava parte." }
+    exito: "Unos 8 mm: retornos cortos al cambiar de capa y zonas de plano que no resuenan."
     escalera:
-      - "¿Qué limita a un condensador discreto a alta frecuencia?"
-    solucion: "La inductancia casi nula de un condensador distribuido."
-
-  - id: pregunta-costura
-    tipo: pregunta
-    titulo: "Vías de costura"
-    texto: "Varios planos de masa unidos con vías repartidas. ¿Para qué?"
-    libro: [156, 157]
-    widget:
-      tipo: figura
-      figura: fig-40.8
-      zonas:
-        - { id: continuo, rotulo: "Panel de la izquierda", rect: [5, 25, 210, 125] }
-    opciones:
-      - texto: "Caminos cortos al retorno y que el plano no resuene"
-        bien: true
-        porque: "La regla habitual: una vía cada λ/20 de la frecuencia más alta de interés."
-      - texto: "Para llevar más corriente de continua"
-        porque: "Unen planos de masa para el retorno de las señales, no para potencia."
-      - texto: "Para disipar calor"
-        porque: "Eso son las vías térmicas, bajo un componente."
-    escalera:
-      - "Una señal que cambia de capa necesita que su retorno también cambie."
-    solucion: "Retornos cortos y planos sin resonancias, una vía cada λ/20."
+      - "λ = velocidad / frecuencia: 16,5 cm/ns son 16,5 cm en cada nanosegundo de un periodo de 1 GHz."
+    solucion: "λ = 16,5 cm; λ/20 = 8,25 mm."
+    comprobar:
+      - { lam: 0.165, s_v: 0.00825 }
 
   - id: resumen
     tipo: resumen

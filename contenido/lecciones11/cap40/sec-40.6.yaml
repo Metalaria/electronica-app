@@ -7,6 +7,11 @@
 # - Sin fórmula propia de la sección (se cita la del problema 42.B en la tarjeta «simular»).
 # Paso práctico: «simular» la resonancia del 100 nF con pista corta y vía (2 nH): 11,3 MHz (errores: solo la vía,
 # 0,8 nH; sin el 2π).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): en la figura 41.9 se toca lo que inutiliza el montaje lejano,
+# de dónde toma el integrado sus pulsos y dónde se pone la sonda; el montaje se cambia con una meta (la resonancia por
+# encima de 15 MHz: solo la vía junto a la almohadilla, 17,8 MHz) y la capacidad de los planos con 0,1 mm se escribe
+# (la de un condensador plano, inversa a la distancia, a partir de los 20 pF/cm² de 0,2 mm). Quedan una pregunta de
+# opciones (valores iguales) y el emparejamiento del bucle.
 leccion: cap40/sec-40.6
 
 libro:
@@ -23,6 +28,7 @@ libro:
   179: "100 nF para el grueso, 1 nF o 10 nF para frecuencias más altas"
   180: "puede crear antirresonancias entre ellos"
   181: "tiende a usar varios del mismo valor en lugar de valores escalonados"
+  183: "forman un condensador distribuido sin ninguna inductancia de conexión"
   184: "Con un dieléctrico de 0,1 mm, la capacidad es de aproximadamente 40 pF por centímetro cuadrado"
   186: "el condensador acaba a dos centímetros con una pista fina"
   187: "colocarlo antes que nada al empezar el trazado"
@@ -40,74 +46,67 @@ modelo:
     C_d: { sim: "C", nombre: "condensador de desacoplo", unidad: F, valor: 100e-9 }
     L_m: { sim: "L", nombre: "inductancia del lazo", unidad: H, valor: 2e-9 }
     esr: { sim: "ESR", nombre: "resistencia serie de un cerámico", unidad: Ω, valor: 0.02 }
+    h_d: { sim: "h", nombre: "dieléctrico entre los planos", unidad: m, valor: 0.0001 }
+    f_obj: { sim: "f", nombre: "frecuencia hasta la que debe desacoplar (ejemplo)", unidad: Hz, valor: 15000000 }
   calculos:
     f_r: { expr: "1/(2*pi*sqrt(L_m*C_d))", sim: "f_{r}", nombre: "autorresonancia", unidad: Hz }
     fr_via: { expr: "1/(2*pi*sqrt(0.8e-9*C_d))", sim: "f_{r}", nombre: "con solo la vía", unidad: Hz }
     fr_sin2pi: { expr: "1/sqrt(L_m*C_d)", sim: "f", nombre: "sin el 2π", unidad: Hz }
+    c_h: { expr: "20e-12*0.0002/h_d", sim: "c", nombre: "capacidad de cada cm² de planos", unidad: F }
+    c_mal: { expr: "20e-12*h_d/0.0002", sim: "c", nombre: "con la distancia al revés", unidad: F }
 
 tarjetas:
   - id: explore-lazo
-    tipo: explorar
+    tipo: tocar
     titulo: "Lejos o pegado"
-    texto: "El mismo condensador, lejos del integrado y pegado a sus pines. Toque los dos lazos."
-    libro: [167, 191]
+    texto: "Este condensador es el mismo que en el montaje bueno, pero aquí no sirve a alta frecuencia. Toque lo que lo inutiliza."
+    libro: [167, 186, 187, 191]
     widget:
       tipo: figura
       figura: fig-40.9
       zonas:
-        - { id: lejos, rotulo: "Lazo de la izquierda", rect: [92, 84, 108, 56], texto: "Pistas largas y finas: el lazo encierra mucha área, añade inductancia y anula el desacoplo a alta frecuencia." }
-        - { id: pegado, rotulo: "Lazo de la derecha", rect: [312, 78, 60, 40], texto: "Vía junto a la almohadilla y condensador pegado: lazo mínimo, baja inductancia, desacoplo eficaz." }
-    requiere: { mover: [lejos, pegado] }
+        - { id: ci, rotulo: "Recuadro de arriba", rect: [63, 30, 95, 47] }
+        - { id: area, rotulo: "Zona sombreada", rect: [96, 86, 100, 42] }
+        - { id: c, rotulo: "Pieza de abajo", rect: [146, 130, 40, 16] }
+    tocar:
+      bien: [area]
+      porque:
+        ci: "El integrado es el mismo en los dos montajes."
+        c: "El condensador es el mismo: lo que cambia es el lazo que forma con el integrado."
+    exito: "El área del lazo: pistas largas y finas, más inductancia. Es el error más frecuente: colóquelo antes que nada, pegado a los pines."
+    escalera:
+      - "Lo que importa no es la capacidad, sino la inductancia del bucle."
+    solucion: "La zona sombreada, el área del lazo."
 
   - id: pregunta-deposito
-    tipo: pregunta
+    tipo: tocar
     titulo: "Qué hace realmente"
-    texto: "Un integrado digital toma corriente en pulsos de nanosegundos. ¿Por qué no puede tomarla de la fuente?"
+    texto: "El integrado toma corriente en pulsos de nanosegundos. En el montaje bueno, toque de dónde la toma."
     libro: [165, 166]
     widget:
       tipo: figura
       figura: fig-40.9
       zonas:
-        - { id: pegado, rotulo: "Lazo de la derecha", rect: [312, 78, 60, 40] }
-    opciones:
-      - texto: "El camino hasta la fuente tiene inductancia y no responde en nanosegundos"
-        bien: true
-        porque: "El condensador es un depósito local que la suministra y luego se recarga despacio."
-      - texto: "La fuente no da tanta corriente"
-        porque: "La corriente media la da; lo que no puede es seguir los pulsos rápidos."
-      - texto: "Sí puede, si las pistas son anchas"
-        porque: "Una pista ancha tiene menos resistencia, pero el camino sigue teniendo inductancia."
+        - { id: ci, rotulo: "Recuadro de arriba", rect: [294, 30, 93, 47] }
+        - { id: c, rotulo: "Pieza entre las dos vías", rect: [319, 90, 44, 18] }
+        - { id: via, rotulo: "Círculo de la izquierda", rect: [302, 92, 14, 14] }
+    tocar:
+      bien: [c]
+      porque:
+        via: "Por la vía se llega al plano y a la fuente: ese camino tiene inductancia y no responde en nanosegundos."
+        ci: "Es el integrado: el que pide la corriente."
+    exito: "Del condensador: un depósito local que la suministra y luego se recarga despacio desde la alimentación."
     escalera:
-      - "¿Qué se opone a los cambios rápidos de corriente?"
-    solucion: "La inductancia del camino: por eso hace falta un depósito local."
-
-  - id: porque-bucle
-    tipo: porque
-    titulo: "Lo que importa"
-    texto: "¿Qué decide si un condensador de desacoplo sirve?"
-    libro: [167]
-    widget:
-      tipo: figura
-      figura: fig-40.9
-      zonas:
-        - { id: lejos, rotulo: "Lazo de la izquierda", rect: [92, 84, 108, 56] }
-    opciones:
-      - texto: "La inductancia del bucle que forma con el integrado"
-        bien: true
-        porque: "Condensador, vías, planos y pines: todo está en serie con la capacidad."
-      - texto: "Su capacidad: cuanto más grande, mejor"
-        porque: "No es la capacidad: con mucha inductancia en el bucle, la capacidad no llega."
-      - texto: "Su tensión nominal"
-        porque: "La tensión nominal debe bastar, pero no decide el desacoplo a alta frecuencia."
-    escalera:
-      - "Mire el área encerrada por el lazo de la izquierda."
-    solucion: "La inductancia del bucle, no la capacidad."
+      - "¿Qué se opone a los cambios rápidos de corriente en el camino hasta la fuente?"
+    solucion: "Del condensador, el depósito local."
 
   - id: explore-montajes
     tipo: explorar
+    fase: "Consiga"
     titulo: "Tres montajes del mismo 100 nF"
-    texto: "Cambie el lazo del condensador y mire dónde queda su resonancia. Por encima, es una bobina."
+    texto: "Por encima de su resonancia, el condensador es una bobina. Cambie el montaje hasta que siga siendo condensador por encima de {{f_obj}}."
     libro: [178, 192, "cap41#335"]
+    inicio: { L_m: 10e-9 }
     widget:
       tipo: grafica
       x: { id: nu, min: 100000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
@@ -119,7 +118,18 @@ tarjetas:
       lectura: { valor: f_r, rotulo: "Autorresonancia" }
       mandos:
         - { valor: L_m, lista: [0.8e-9, 2e-9, 10e-9], nombres: ["vía junto", "pista corta y vía", "a dos centímetros"], rotulo: "Montaje" }
-    requiere: { mover: [L_m] }
+    objetivo:
+      condiciones:
+        - { valor: f_r, min: 15000000, rotulo: "Resonancia: {{f_r}}" }
+      logrado: "Con la vía junto a la almohadilla, {{f_r}}: menos lazo, la resonancia sube y el condensador cubre más banda."
+      pistas:
+        - { texto: "Todavía resuena demasiado abajo: acorte el lazo." }
+    escalera:
+      - "Menos inductancia de lazo, resonancia más alta."
+    solucion: "La vía junto a la almohadilla: 17,8 MHz."
+    comprobar:
+      - { con: { L_m: 0.8e-9 }, f_r: 17.8e6, tol: 0.01 }
+      - { con: { L_m: 10e-9 }, f_r: 5.03e6, tol: 0.01 }
 
   - id: simule-resonancia
     tipo: simular
@@ -213,70 +223,58 @@ tarjetas:
     solucion: "Para evitar antirresonancias entre valores distintos."
 
   - id: pregunta-plano
-    tipo: predecir
+    tipo: leer
     titulo: "El plano como desacoplo"
-    texto: "Con 0,2 mm de dieléctrico, los planos dan unos 20 pF por cm². ¿Y con 0,1 mm?"
-    libro: [184, "cap40#153"]
+    texto: "Con 0,2 mm de dieléctrico, los planos dan unos 20 pF por cm². Acérquelos a 0,1 mm: escriba la capacidad de cada cm²."
+    libro: [183, 184, "cap40#153"]
+    fijar: { h_d: 0.0001 }
     widget:
-      tipo: figura
-      figura: fig-40.10
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [35, 20, 210, 180] }
-    opciones:
-      - texto: "Unos 40 pF por cm²"
-        bien: true
-        porque: "Más cerca los planos, más capacidad; y sin ninguna inductancia de conexión."
-      - texto: "Unos 10 pF por cm²"
-        porque: "Al acercar los planos la capacidad sube, no baja."
-      - texto: "Lo mismo: depende solo del área"
-        porque: "Depende del área y de la distancia entre los planos."
+      tipo: grafica
+      x: { id: hh, min: 0.00005, max: 0.0004, unidad: m, rotulo: "dieléctrico" }
+      y: { min: 0, max: 0.0000000001, unidad: F, rotulo: "C por cm²" }
+      curvas:
+        - { expr: "20e-12*0.0002/hh", color: naranja, rotulo: "capacidad por cm²" }
+      marcas:
+        - { x: "0.0002", y: "20e-12", rotulo: "0,2 mm" }
+      mandos: []
+    leer:
+      objetivo: c_h
+      unidad: F
+      tol: 0.05
+      rotulo: "Capacidad de cada cm²"
+      errores:
+        - { expr: "c_mal", texto: "Al acercar los planos la capacidad sube, no baja: es inversa a la distancia." }
+    exito: "Unos 40 pF por cm²: modesta en valor, sin ninguna inductancia de conexión, y actúa donde ningún discreto llega."
     escalera:
       - "Un condensador plano: capacidad inversa a la distancia."
-    solucion: "Unos 40 pF por centímetro cuadrado."
-
-  - id: pregunta-error
-    tipo: pregunta
-    titulo: "El error más frecuente"
-    texto: "En el esquema el condensador está junto al integrado; en la placa, a dos centímetros. ¿Cómo se evita?"
-    libro: [186, 187]
-    widget:
-      tipo: figura
-      figura: fig-40.9
-      zonas:
-        - { id: lejos, rotulo: "Lazo de la izquierda", rect: [92, 84, 108, 56] }
-    opciones:
-      - texto: "Colocándolo antes que nada al empezar el trazado"
-        bien: true
-        porque: "Y dibujándolo junto a su integrado en el esquema, para que quien trace lo recuerde."
-      - texto: "Con una pista ancha hasta él"
-        porque: "Sigue lejos: el lazo encierra la misma área."
-      - texto: "Con un condensador más grande"
-        porque: "Lo que falla es la inductancia del lazo, no la capacidad."
-    escalera:
-      - "El esquema no impone posiciones."
-    solucion: "Colocarlo primero, pegado al pin."
+    solucion: "La mitad de distancia, el doble: unos 40 pF por cm²."
+    comprobar:
+      - { c_h: 40e-12, c_mal: 10e-12 }
 
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: tocar
+    fase: "En el banco"
     titulo: "En el banco"
-    texto: "¿Cómo se comprueba si el desacoplo cumple?"
+    texto: "Para ver si el desacoplo cumple se mide el ruido de conmutación con el osciloscopio en AC y masa corta. Toque dónde pone la punta."
     libro: [189, 190]
     widget:
       tipo: figura
       figura: fig-40.9
       zonas:
-        - { id: pegado, rotulo: "Lazo de la derecha", rect: [312, 78, 60, 40] }
-    opciones:
-      - texto: "Osciloscopio en AC sobre el pin de alimentación, con masa corta"
-        bien: true
-        porque: "Aparece el ruido de conmutación; con el condensador cerca y a dos centímetros la diferencia es clara."
-      - texto: "Midiendo la capacidad con el polímetro"
-        porque: "La capacidad no dice nada del lazo."
-      - texto: "Con el multímetro en continua en el pin"
-        porque: "La continua no ve los pulsos de nanosegundos."
+        - { id: vcc, rotulo: "Patilla izquierda del integrado", rect: [319, 76, 13, 12] }
+        - { id: c, rotulo: "Pieza entre las dos vías", rect: [319, 90, 44, 18] }
+        - { id: via, rotulo: "Círculo de la izquierda", rect: [302, 92, 14, 14] }
+        - { id: ci, rotulo: "Recuadro de arriba", rect: [294, 30, 93, 47] }
+    tocar:
+      bien: [vcc]
+      porque:
+        c: "En el condensador se ve su lado del lazo; el ruido que importa es el que recibe el integrado."
+        via: "En la vía se ve el plano, no lo que llega al chip."
+        ci: "Se mide en un punto concreto: el pin de alimentación."
+    exito: "En el pin de alimentación del integrado. Con el condensador cerca y a dos centímetros la diferencia es clara."
     escalera:
       - "Se mide el ruido donde lo ve el integrado."
-    solucion: "Osciloscopio en AC en el pin, con masa corta."
+    solucion: "El pin V_{CC} del integrado."
 
   - id: resumen
     tipo: resumen

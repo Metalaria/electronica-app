@@ -5,6 +5,11 @@
 #   unas siete veces (7,4 en el modelo).
 # - El ejercicio 47.2 (condensadores de 25 V en un raíl de 24 V) como pregunta.
 # Paso práctico: «tocar» el solape de las dos distribuciones en la figura 47.5.
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la unión se baja con una meta hasta que Arrhenius (0,7 eV)
+# multiplique la vida por siete (110 °C) y se escribe lo que da la regla de los 10 °C (16); el solape y el panel del
+# 50 % se tocan en la figura 47.5 y los componentes de «la mitad» en la 47.6; la tensión nominal mínima para el raíl de
+# 24 V (≤ 80 %: 30 V) y el uso de un condensador por su pico (25 V, picos de 24 V: valores de ejemplo) se escriben.
+# Quedan dos preguntas de opciones (el mínimo del electrolítico y los tres estreses juntos).
 leccion: cap46/sec-46.3
 
 libro:
@@ -26,24 +31,51 @@ modelo:
     T_max: { sim: "T_{máx}", nombre: "límite de la unión", unidad: "°C", valor: 150 }
     T_d: { sim: "T_{j}", nombre: "unión con derating", unidad: "°C", valor: 110 }
     E_a: { sim: "E_{a}", nombre: "energía de activación", unidad: eV, valor: 0.7 }
+    V_rail: { sim: "V", nombre: "tensión del raíl", unidad: V, valor: 24 }
+    k_el: { sim: "uso", nombre: "uso máximo del electrolítico", unidad: "", valor: 0.8 }
+    V_c25: { sim: "V_{nom}", nombre: "tensión nominal del condensador (ejemplo)", unidad: V, valor: 25 }
+    V_med: { sim: "V_{media}", nombre: "tensión media sobre él (ejemplo)", unidad: V, valor: 20 }
+    V_pic: { sim: "V_{pico}", nombre: "picos sobre él (ejemplo)", unidad: V, valor: 24 }
   calculos:
     F_10: { expr: "2^((T_max - T_d)/10)", sim: "F", nombre: "vida multiplicada, regla de los 10 °C", unidad: "", cifras: 3 }
+    V_nmin: { expr: "V_rail/k_el", sim: "V_{nom}", nombre: "tensión nominal mínima", unidad: V }
+    V_mal: { expr: "V_rail*k_el", sim: "V", nombre: "el 80 % del raíl", unidad: V }
+    u_pic: { expr: "V_pic/V_c25*100", sim: "uso", nombre: "uso por los picos", unidad: "%" }
+    u_med: { expr: "V_med/V_c25*100", sim: "uso", nombre: "uso por la media", unidad: "%" }
     F_ar: { expr: "exp(E_a*q_e/k_B*(1/(T_d + 273.15) - 1/(T_max + 273.15)))", sim: "F", nombre: "vida multiplicada, Arrhenius", unidad: "", cifras: 2 }
 
 tarjetas:
-  - id: explore-solape
+  - id: explore-union
     tipo: explorar
-    titulo: "Estrés frente a resistencia"
-    texto: "El estrés aplicado y la resistencia del componente tienen dispersión. Toque las curvas de cada panel."
-    libro: [75, 76, 98]
+    fase: "Consiga"
+    titulo: "La unión a 110 °C, no a 150"
+    texto: "Un semiconductor admite 150 °C de unión. Baje la temperatura hasta que, con Arrhenius y 0,7 eV, la vida se multiplique por siete."
+    libro: [78, 81, 99]
+    fijar: { T_max: 150, E_a: 0.7 }
+    inicio: { T_d: 150 }
     widget:
-      tipo: figura
-      figura: fig-46.5
-      zonas:
-        - { id: estres90, rotulo: "Curva izquierda, panel izquierdo", rect: [80, 80, 36, 45], texto: "Estrés aplicado al 90 % del máximo absoluto: su cola llega a la resistencia." }
-        - { id: resistencia, rotulo: "Curva derecha, panel izquierdo", rect: [130, 76, 36, 44], texto: "La resistencia real del componente: también tiene dispersión." }
-        - { id: estres50, rotulo: "Curva alta, panel derecho", rect: [268, 35, 36, 70], texto: "Al 50 %: el estrés se aleja del límite y el solape desaparece." }
-    requiere: { mover: [estres90, estres50] }
+      tipo: grafica
+      x: { id: tt, min: 80, max: 150, unidad: "°C", rotulo: "T_{j}" }
+      y: { min: 0, max: 130, unidad: "", rotulo: "vida multiplicada" }
+      curvas:
+        - { expr: "exp(E_a*q_e/k_B*(1/(tt + 273.15) - 1/(T_max + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
+        - { expr: "2^((T_max - tt)/10)", color: azul, rotulo: "el doble cada 10 °C", discontinua: true }
+      marcas:
+        - { x: "T_d", y: "F_ar", rotulo: "× {{F_ar}}" }
+      lectura: { valor: F_ar, rotulo: "Vida multiplicada (Arrhenius)" }
+      mandos:
+        - { valor: T_d, min: 80, max: 150, paso: 5, rotulo: "Temperatura de unión, T_{j}" }
+    objetivo:
+      condiciones:
+        - { valor: F_ar, min: 7, rotulo: "Vida: × {{F_ar}}" }
+      logrado: "A {{T_d}}: × {{F_ar}}. Es el derating de la tabla: unión a 110 °C o menos, no a 150."
+      pistas:
+        - { texto: "Todavía no llega: baje más la unión." }
+    escalera:
+      - "Pruebe 40 °C por debajo del límite."
+    solucion: "110 °C: unas siete veces más vida."
+    comprobar:
+      - { con: { T_d: 110 }, F_ar: 7.4, tol: 0.02 }
 
   - id: toque-solape
     tipo: tocar
@@ -70,70 +102,83 @@ tarjetas:
     solucion: "La mancha donde se cruzan las dos curvas."
 
   - id: prediga-cae
-    tipo: predecir
-    titulo: "Del 90 al 50 %"
-    texto: "Un componente pasa de trabajar al 90 % de su máximo al 50 %. ¿Cómo cambia su tasa de fallos?"
-    libro: [76, 98]
+    tipo: tocar
+    titulo: "Lejos del límite"
+    texto: "El mismo componente, al 90 % y al 50 % de su máximo. Toque el panel en el que casi no falla ninguno."
+    libro: [75, 76, 98]
     widget:
       tipo: figura
       figura: fig-46.5
       zonas:
-        - { id: solape, rotulo: "Mancha bajo las dos curvas", rect: [116, 120, 36, 35] }
-    opciones:
-      - texto: "Cae mucho más deprisa que proporcionalmente"
-        bien: true
-        porque: "Las distribuciones dejan de solaparse: la fracción que falla casi desaparece."
-      - texto: "Se reduce más o menos a la mitad"
-        porque: "Eso sería proporcional; la caída depende del solape, y el solape desaparece."
-      - texto: "Igual: el componente es el mismo"
-        porque: "No falla por trabajar, sino por trabajar cerca de su límite."
+        - { id: p90, rotulo: "Panel de la izquierda", rect: [20, 20, 190, 140] }
+        - { id: p50, rotulo: "Panel de la derecha", rect: [230, 20, 200, 140] }
+    tocar:
+      bien: [p50]
+      porque:
+        p90: "Al 90 % la cola del estrés llega a la de la resistencia: falla una fracción apreciable."
+    exito: "Al 50 %: las distribuciones se separan y la tasa de fallos cae mucho más deprisa que proporcionalmente."
     escalera:
-      - "¿Qué le pasa al solape de las dos curvas al alejar el estrés del límite?"
-    solucion: "Cae mucho más deprisa que proporcionalmente: el solape desaparece."
+      - "Busque el panel sin solape entre las dos curvas."
+    solucion: "El de la derecha, al 50 %."
 
   - id: pregunta-rail
-    tipo: pregunta
-    titulo: "25 V en un raíl de 24 V"
-    texto: "Un diseño usa condensadores de 25 V en un raíl de 24 V y falla pronto en campo. ¿Qué corrige el problema?"
-    libro: ["cap46#646", 92, 99]
+    tipo: leer
+    titulo: "Un raíl de 24 V"
+    texto: "Un diseño usa electrolíticos de 25 V en un raíl de 24 V y falla pronto. La tabla pide como mucho el 80 %: escriba la tensión nominal mínima."
+    libro: [78, 92, 93, "cap46#646"]
+    fijar: { V_rail: 24, k_el: 0.8 }
     widget:
       tipo: figura
       figura: fig-46.6
       zonas:
-        - { id: tabla, rotulo: "Barras de la tabla", rect: [97, 15, 290, 185] }
-    opciones:
-      - texto: "Condensadores de 50 V"
-        bien: true
-        porque: "Así trabajan holgadamente por debajo de su máximo: eso es el derating."
-      - texto: "Condensadores de 25 V de mejor marca"
-        porque: "El problema no es la calidad: es trabajar casi en el límite."
-      - texto: "Dos condensadores de 25 V en paralelo"
-        porque: "En paralelo cada uno sigue soportando los 24 V: el estrés no baja."
+        - { id: rp, rotulo: "Primera fila", rect: [0, 21, 320, 16] }
+        - { id: rt, rotulo: "Segunda fila", rect: [0, 42, 320, 16] }
+        - { id: cer, rotulo: "Tercera fila", rect: [0, 63, 320, 16] }
+        - { id: ele, rotulo: "Cuarta fila", rect: [0, 84, 320, 16] }
+        - { id: st, rotulo: "Quinta fila", rect: [0, 105, 320, 16] }
+        - { id: rel, rotulo: "Séptima fila", rect: [0, 146, 320, 16] }
+        - { id: con, rotulo: "Octava fila", rect: [0, 167, 320, 16] }
+    leer:
+      objetivo: V_nmin
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión nominal mínima"
+      errores:
+        - { expr: "V_mal", texto: "Ha multiplicado: el raíl debe ser como mucho el 80 % de la nominal, así que la nominal es el raíl entre 0,8." }
+    exito: "30 V: 24 es el 80 % de 30. El derating no es gratis (más tamaño y precio): fuerte donde el fallo es caro, moderado en el resto."
     escalera:
-      - "¿Qué fracción de su tensión nominal soportan?"
-    solucion: "Condensadores de 50 V: trabajar por debajo del máximo frena la degradación."
+      - "24 V tienen que ser como mucho el 80 % de la nominal."
+    solucion: "24 / 0,8 = 30 V."
+    comprobar:
+      - { V_nmin: 30, V_mal: 19.2 }
 
   - id: empareje-tabla
-    tipo: pregunta
+    tipo: tocar
     titulo: "Las cifras habituales"
-    texto: "Empareje cada componente con su uso recomendado."
+    texto: "En la tabla de derating, toque todas las filas en las que se recomienda usar la mitad del nominal."
     libro: [78, 99]
     widget:
       tipo: figura
       figura: fig-46.6
       zonas:
-        - { id: tabla, rotulo: "Barras de la tabla", rect: [97, 15, 290, 185] }
-    emparejar:
-      - ["Resistencia: potencia", "50 % del nominal"]
-      - ["Electrolítico: tensión", "≤ 80 %, sin mínimo"]
-      - ["Semiconductor: tensión", "70 – 80 %"]
-      - ["Semiconductor: temperatura de unión", "≤ 110 °C, no 150"]
-    exito: "La unión no va en porcentaje: se fija en 110 °C en lugar de 150 °C."
-    pistas:
-      - { texto: "La temperatura de unión no es un porcentaje." }
+        - { id: rp, rotulo: "Primera fila", rect: [0, 21, 320, 16] }
+        - { id: rt, rotulo: "Segunda fila", rect: [0, 42, 320, 16] }
+        - { id: cer, rotulo: "Tercera fila", rect: [0, 63, 320, 16] }
+        - { id: ele, rotulo: "Cuarta fila", rect: [0, 84, 320, 16] }
+        - { id: st, rotulo: "Quinta fila", rect: [0, 105, 320, 16] }
+        - { id: rel, rotulo: "Séptima fila", rect: [0, 146, 320, 16] }
+        - { id: con, rotulo: "Octava fila", rect: [0, 167, 320, 16] }
+    tocar:
+      bien: [rp, cer, rel, con]
+      todas: true
+      porque:
+        rt: "La tensión de una resistencia, al 80 %."
+        ele: "El electrolítico, como mucho al 80 %, y sin mínimo."
+        st: "La tensión de un semiconductor, del 70 al 80 %."
+    exito: "La potencia de una resistencia, la tensión de un cerámico, la corriente de un relé y la de cada pin de un conector: el 50 %."
     escalera:
-      - "La resistencia, a la mitad de su potencia."
-    solucion: "Resistencia 50 %; electrolítico ≤ 80 %; semiconductor 70 – 80 %; unión ≤ 110 °C."
+      - "Busque las barras que llegan a la mitad del eje."
+    solucion: "Resistencia (potencia), cerámico, relé y conector."
 
   - id: pregunta-minimo
     tipo: pregunta
@@ -158,35 +203,33 @@ tarjetas:
     solucion: "No tiene mínimo: con menos tensión, menos fuga y más vida."
 
   - id: estime-union
-    tipo: pregunta
-    titulo: "110 °C en lugar de 150"
-    texto: "Con la regla de duplicar la vida cada 10 °C, ¿por cuánto se multiplica al llevar la unión de 150 a 110 °C?"
+    tipo: leer
+    titulo: "La regla de los 10 °C"
+    texto: "Con la regla práctica de duplicar la vida cada 10 °C, escriba por cuánto se multiplica al llevar la unión de 150 a 110 °C."
     libro: [81]
-    fijar: { T_max: 150, T_d: 110 }
+    fijar: { T_max: 150, T_d: 110, E_a: 0.7 }
     widget:
-      tipo: figura
-      figura: fig-46.6
-      zonas:
-        - { id: union, rotulo: "Última fila", rect: [0, 180, 290, 32] }
-    estimar:
-      objetivo: "F_10"
+      tipo: grafica
+      x: { id: tt, min: 80, max: 150, unidad: "°C", rotulo: "T_{j}" }
+      y: { min: 0, max: 130, unidad: "", rotulo: "vida multiplicada" }
+      curvas:
+        - { expr: "exp(E_a*q_e/k_B*(1/(tt + 273.15) - 1/(T_max + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
+        - { expr: "2^((T_max - tt)/10)", color: azul, rotulo: "el doble cada 10 °C", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: F_10
       unidad: ""
-      min: 1
-      max: 40
-      paso: 1
-      inicio: 30
-      tol: 0.05
-      rotulo: "Vida multiplicada por"
-    exito: "Por 16 con la regla; Arrhenius con 0,7 eV da unas siete veces. Las dos, mucho."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 17 }, texto: "Demasiado: son 40 °C, cuatro saltos de 10 °C; cada uno duplica." }
-      - { texto: "Demasiado poco: cuatro saltos de 10 °C, y cada uno duplica: no suman, multiplican." }
+      tol: 0.02
+      rotulo: "Vida multiplicada (regla de los 10 °C)"
+      errores:
+        - { expr: "F_ar", texto: "Eso es con Arrhenius y 0,7 eV; la regla práctica duplica cada 10 °C." }
+        - { expr: "4", texto: "Ha contado los escalones de 10 °C; cada uno duplica: dos multiplicado cuatro veces." }
+    exito: "Dieciséis con la regla práctica; unas siete con Arrhenius y 0,7 eV. Las dos dicen lo mismo: bajar la unión multiplica la vida."
     escalera:
-      - "¿Cuántos saltos de 10 °C hay entre 150 y 110 °C?"
-      - "Cada salto multiplica por dos: 2 × 2 × 2 × 2."
-    solucion: "Cuatro saltos: 2⁴ = 16."
+      - "40 °C son cuatro escalones de 10 °C, y cada uno duplica."
+    solucion: "2⁴ = 16."
     comprobar:
-      - { F_10: 16, F_ar: 7.4 }
+      - { F_10: 16 }
 
   - id: prediga-juntos
     tipo: predecir
@@ -210,49 +253,37 @@ tarjetas:
       - "¿Se suman o se multiplican los efectos?"
     solucion: "Órdenes de magnitud: el efecto de los tres estreses es multiplicativo."
 
-  - id: porque-criterio
-    tipo: porque
-    titulo: "Con criterio"
-    texto: "¿Por qué no se aplica un derating fuerte a todos los componentes por igual?"
-    libro: [92, 93]
-    widget:
-      tipo: figura
-      figura: fig-46.6
-      zonas:
-        - { id: tabla, rotulo: "Barras de la tabla", rect: [97, 15, 290, 185] }
-    opciones:
-      - texto: "Cuesta: piezas mayores, más caras o con más R_{DS(on)}"
-        bien: true
-        porque: "Por eso es fuerte donde el fallo es caro o peligroso y moderado en el resto."
-      - texto: "Porque el derating fuerte reduce la fiabilidad"
-        porque: "No la reduce; el problema es su coste en tamaño, precio y prestaciones."
-      - texto: "Porque las normas lo prohíben"
-        porque: "Las normas publican tablas de derating; no lo prohíben."
-    escalera:
-      - "¿Qué tiene un condensador de 50 V frente a uno de 25 V?"
-    solucion: "No es gratis; un análisis de modos de fallo dice dónde merece la pena."
-
   - id: pregunta-picos
-    tipo: pregunta
-    titulo: "Verificar midiendo"
-    texto: "Se verifica el derating de un condensador en el banco. ¿Qué tensión hay que comparar con su nominal?"
+    tipo: leer
+    fase: "En el banco"
+    titulo: "En el banco"
+    texto: "Un condensador de 25 V ve 20 V de media y picos de 24 V (valores de ejemplo). El derating se mide con los picos: escriba su porcentaje de uso."
     libro: [97]
+    fijar: { V_c25: 25, V_med: 20, V_pic: 24 }
     widget:
       tipo: figura
       figura: fig-46.6
       zonas:
-        - { id: ceramico, rotulo: "Tercera barra", rect: [0, 57, 240, 32] }
-    opciones:
-      - texto: "La real, incluyendo los picos"
-        bien: true
-        porque: "Un pico también estresa el dieléctrico; comparar solo la media da un estrés falso."
-      - texto: "El valor medio"
-        porque: "El libro pide los picos, no solo el valor medio."
-      - texto: "La del esquema"
-        porque: "La real suele sorprender: el más estresado rara vez es el esperado."
+        - { id: rp, rotulo: "Primera fila", rect: [0, 21, 320, 16] }
+        - { id: rt, rotulo: "Segunda fila", rect: [0, 42, 320, 16] }
+        - { id: cer, rotulo: "Tercera fila", rect: [0, 63, 320, 16] }
+        - { id: ele, rotulo: "Cuarta fila", rect: [0, 84, 320, 16] }
+        - { id: st, rotulo: "Quinta fila", rect: [0, 105, 320, 16] }
+        - { id: rel, rotulo: "Séptima fila", rect: [0, 146, 320, 16] }
+        - { id: con, rotulo: "Octava fila", rect: [0, 167, 320, 16] }
+    leer:
+      objetivo: u_pic
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Uso del condensador"
+      errores:
+        - { expr: "u_med", texto: "Esa es la media; el derating se comprueba con los picos, no solo con el valor medio." }
+    exito: "Un 96 %: muy por encima del 80 %. Con la media habría parecido que cumplía."
     escalera:
-      - "¿Qué ve el dieléctrico en un transitorio?"
-    solucion: "La tensión real, con sus picos."
+      - "Pico entre nominal."
+    solucion: "24 / 25 = 96 %."
+    comprobar:
+      - { u_pic: 96, u_med: 80 }
 
   - id: resumen
     tipo: resumen

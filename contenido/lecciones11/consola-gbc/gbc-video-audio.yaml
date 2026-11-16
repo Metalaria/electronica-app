@@ -3,6 +3,9 @@
 # grupo, índice 00–3F), 18 bits de color en el conector del panel (6 por canal, con el bit bajo repetido), el camino
 # hasta el panel TFT con el CGB-REG, y un sonido que no cambia con la doble velocidad. Fuentes: los datos de la consola
 # (gbc#n) y Pan Docs «Video Display» y «CGB Registers».
+# 1.2.1: los colores de 15 bits son un explorar con meta (32 768 con 5 bits por canal); se escriben los bits por
+# canal del conector (18 / 3); el camino del color se toca en orden en la foto (el SoC, con la VRAM y la PPU dentro, y
+# el conector del panel). Queda una pregunta: el sonido en doble velocidad.
 leccion: consola-gbc/gbc-video-audio
 
 libro:
@@ -31,25 +34,12 @@ modelo:
     bpc: { expr: "N18/3", sim: "bits por canal", nombre: "bits por canal en el conector", unidad: "", cifras: 2 }
 
 tarjetas:
-  - id: explore-video
-    tipo: explorar
-    titulo: "El color, en la placa"
-    texto: "Toque el chip que hace la imagen, el conector del panel y el regulador del panel."
-    libro: ["gbc#2", "gbc#7", "gbc#6"]
-    requiere: { mover: [soc, ffc, reg] }
-    widget:
-      tipo: figura
-      consola: { maquina: gbc }
-      zonas:
-        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "PPU con paletas de 15 bits y la VRAM dentro." }
-        - { id: ffc, hotspot: ffc, rotulo: "Conector P2", texto: "50 vías: 18 bits de color y los pulsos del panel." }
-        - { id: reg, hotspot: reg, rotulo: "CGB-REG", texto: "Las tensiones del panel TFT." }
-
   - id: prediga-colores
-    tipo: predecir
+    tipo: explorar
     titulo: "Cinco bits por canal"
-    texto: "Cada color usa 5 bits de rojo, 5 de verde y 5 de azul. ¿Cuántos colores hay?"
+    texto: "Cada color tiene tres canales: rojo, verde y azul. Elija los bits por canal que dan los 32 768 colores de la Game Boy Color."
     libro: ["gbc#71", "gbc#2"]
+    inicio: { b: 1 }
     widget:
       tipo: grafica
       x: { id: k, min: 1, max: 6, unidad: "", rotulo: "bits por canal" }
@@ -58,19 +48,20 @@ tarjetas:
         - { expr: "(2^k)^3", color: azul, rotulo: "(2^{bits})^3", palitos: true }
       marcas:
         - { x: "b", y: "colores", rotulo: "{{colores}}" }
-    opciones:
-      - texto: "32 768"
-        bien: true
-        porque: "32 niveles por canal, multiplicados: 32 × 32 × 32 = 2¹⁵."
-      - texto: "96"
-        porque: "Eso es sumar los niveles: los canales se combinan, así que se multiplican."
-      - texto: "15"
-        porque: "15 son los bits; las combinaciones son 2¹⁵."
+      lectura: { valor: colores, rotulo: "Colores" }
+      mandos: [ { valor: b, min: 1, max: 6, paso: 1, rotulo: "Bits por canal, b" } ]
+    objetivo:
+      condiciones:
+        - { valor: colores, objetivo: 32768, tol: 0.001, rotulo: "Colores: {{colores}}" }
+      logrado: "{{b}} bits por canal: 32 niveles de cada uno, multiplicados, 2¹⁵ colores. Las paletas son de 15 bits."
+      pistas:
+        - { cuando: { valor: colores, mayor: 33000 }, texto: "Demasiados: quite un bit por canal." }
+        - { texto: "Pocos: más bits por canal." }
     escalera:
       - "Con 5 bits hay 32 niveles de cada color."
     solucion: "2¹⁵ = 32 768 colores."
     comprobar:
-      - { colores: 32768, niveles: 96 }
+      - { con: { b: 5 }, colores: 32768, niveles: 96 }
 
   - id: simule-paletas
     tipo: simular
@@ -101,46 +92,55 @@ tarjetas:
       - { bytes: 64 }
 
   - id: por-que-18
-    tipo: porque
+    tipo: leer
     titulo: "15 bits dentro, 18 fuera"
-    texto: "Los colores son de 15 bits, pero por el conector del panel salen 18. ¿Por qué?"
+    texto: "Los colores son de 15 bits, pero por el conector del panel salen 18, repartidos entre los tres canales. Escriba cuántos bits lleva cada canal."
     libro: ["gbc#7", "gbc#44", "gbc#71"]
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
         - { id: ffc, hotspot: ffc, rotulo: "Conector P2" }
-    opciones:
-      - texto: "El panel tiene 6 bits por canal: se repite el bit bajo."
-        bien: true
-        porque: "LDR, LDG y LDB 0–5: 6 bits por canal, con el bit bajo repetido para completar los 5 del color."
-      - texto: "Los 3 bits que sobran son de brillo."
-        porque: "No hay bits de brillo: cada canal se completa repitiendo su bit bajo."
-      - texto: "El panel tiene más colores que la consola."
-        porque: "El panel acepta 6 bits por canal, pero la consola solo da 5: el sexto es una copia."
+    leer:
+      objetivo: bpc
+      unidad: ""
+      tol: 0.01
+      rotulo: "Bits por canal en el conector"
+      errores:
+        - { expr: "b", texto: "Esos son los bits del color dentro del chip; el panel recibe uno más por canal." }
+    exito: "6: LDR, LDG y LDB 0–5. El panel tiene 6 bits por canal y la consola da 5: se repite el bit bajo."
     escalera:
-      - "18 entre 3 canales: ¿cuántos bits por canal?"
-    solucion: "6 bits por canal en el panel; el bit bajo se repite."
+      - "18 entre 3 canales."
+    solucion: "6 bits por canal."
     comprobar:
       - { bpc: 6 }
 
   - id: ordene-imagen
-    tipo: pregunta
+    tipo: tocar
     fase: "Ordene"
     titulo: "El camino del color"
-    texto: "Ordene el camino de un píxel en color."
+    texto: "La VRAM interna guarda el píxel y la PPU le aplica la paleta; luego salen 18 bits hacia el panel. Toque, en orden, dónde pasa lo primero y por dónde sale."
     libro: ["gbc#52", "gbc#2", "gbc#44"]
-    ordenar:
-      - "La VRAM interna, con su banco de VBK."
-      - "La PPU, que aplica la paleta."
-      - "18 bits por el conector de 50 vías."
-      - "El panel TFT."
-    exito: "Todo pasa dentro del CPU CGB hasta el conector."
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: ffc, hotspot: ffc, rotulo: "Conector ancho, arriba" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, a la izquierda del grande" }
+        - { id: reg, hotspot: reg, rotulo: "Chip pequeño, arriba del todo a la izquierda" }
+    tocar:
+      bien: [soc, ffc]
+      orden: true
+      porque:
+        wram: "Es la WRAM: la VRAM ya no es un chip de la placa, está dentro del SoC."
+        reg: "El CGB-REG da las tensiones del panel, no los píxeles."
     pistas:
       - { texto: "La VRAM ya no está fuera: el primer tramo es interno." }
+    exito: "Dentro del CPU CGB, la VRAM y la PPU con la paleta; después, el conector de 50 vías hacia el panel TFT."
     escalera:
-      - "La paleta convierte un número de color en 15 bits."
-    solucion: "VRAM interna, PPU con la paleta, conector de 50 vías y panel."
+      - "La paleta convierte un número de color en 15 bits, dentro del chip."
+    solucion: "El SoC y luego el conector P2."
 
   - id: toque-regulador
     tipo: tocar

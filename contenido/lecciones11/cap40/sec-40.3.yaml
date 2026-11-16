@@ -5,6 +5,11 @@
 # - Ejercicio 41.3 (ej-40.3): 3 A con 10 °C, 1,37 mm por fuera y unos 3,6 mm por dentro, como «estimar».
 # - La caída: 0,491 mΩ por cuadro (bloque 82) × longitud/anchura (bloque 83): 0,5 × 50 mm con 3 A, 147 mV (bloque 84).
 # Paso práctico: «simular» la caída de 147 mV (errores: con 1 A, 49 mV; cuadros al revés, anchura/longitud).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la ampacidad se explora con una meta (3,95 A por fuera con
+# 10 °C: 2,0 mm), el factor de 1,65 se lee entre dos marcas, la anchura de 3 A se marca en la curva, la capa interior
+# se ensancha hasta recuperar 1,45 A (unas 2,6 veces la anchura), los cuadros se cuentan con una meta (100), y el
+# porcentaje del raíl y la caída de ida y vuelta se escriben. Quedan la fórmula, el orden del procedimiento y el
+# emparejamiento de las otras consideraciones; ninguna pregunta de opciones.
 leccion: cap40/sec-40.3
 
 libro:
@@ -38,6 +43,7 @@ modelo:
     I_p: { sim: "I", nombre: "corriente de la pista", unidad: A, valor: 1 }
     L_p: { sim: "L", nombre: "longitud de la pista", unidad: mm, valor: 50 }
     rho_c: { sim: "R_{□}", nombre: "resistencia por cuadro", unidad: Ω, valor: 0.000491, cifras: 3 }
+    V_rail: { sim: "V_{raíl}", nombre: "tensión del raíl", unidad: V, valor: 3.3 }
   calculos:
     A_mil: { expr: "w/0.0254*e_cu/25.4", sim: "A", nombre: "sección en mils cuadrados", unidad: "mils²", cifras: 3 }
     I_adm: { expr: "k_p*dT^0.44*A_mil^0.725", sim: "I", nombre: "corriente admisible", unidad: A }
@@ -49,13 +55,18 @@ modelo:
     V_c: { expr: "R_p*I_p", sim: "ΔV", nombre: "caída en la pista", unidad: V }
     V_un: { expr: "R_p*1", sim: "ΔV", nombre: "caída con 1 A", unidad: V }
     V_inv: { expr: "rho_c*w/L_p*I_p", sim: "ΔV", nombre: "con los cuadros al revés", unidad: V }
+    V_tot: { expr: "2*V_c", sim: "ΔV_{total}", nombre: "caída de ida y vuelta", unidad: V }
+    pct: { expr: "V_c/V_rail*100", sim: "ΔV/V", nombre: "caída en tanto por ciento del raíl", unidad: "%", cifras: 2 }
+    pct_24: { expr: "V_c/24*100", sim: "ΔV/V", nombre: "la caída en un raíl de 24 V", unidad: "%", cifras: 2 }
+    pct_1: { expr: "V_c/V_rail", sim: "ΔV/V", nombre: "la caída en tanto por uno", unidad: "", cifras: 2 }
 
 tarjetas:
   - id: explore-ampacidad
     tipo: explorar
     titulo: "¿Se calentará demasiado?"
-    texto: "Mueva la anchura y la subida de temperatura, y pase la pista de exterior a interior."
+    texto: "Una pista exterior debe llevar 3,95 A con 10 °C de subida. Ajuste la anchura, la subida y la capa hasta conseguirlo."
     libro: [70, 76, 77]
+    inicio: { w: 0.5, dT: 20, k_p: 0.024 }
     widget:
       tipo: grafica
       x: { id: a, min: 0, max: 5, unidad: mm, rotulo: "anchura" }
@@ -70,7 +81,22 @@ tarjetas:
         - { valor: w, min: 0.25, max: 5, paso: 0.05, rotulo: "Anchura, w" }
         - { valor: dT, lista: [10, 20], rotulo: "Subida, ΔT" }
         - { valor: k_p, lista: [0.024, 0.048], nombres: [interior, exterior], rotulo: "Capa" }
-    requiere: { mover: [w, k_p] }
+    objetivo:
+      condiciones:
+        - { valor: I_adm, objetivo: 3.95, tol: 0.02, rotulo: "Admite: {{I_adm}}" }
+        - { valor: dT, max: 10, rotulo: "Subida: {{dT}}" }
+        - { valor: k_p, min: 0.048, rotulo: "k = {{k_p}}" }
+      logrado: "{{w}} por fuera con 10 °C: {{I_adm}}, como en la tabla de la norma."
+      pistas:
+        - { cuando: { valor: k_p, menor: 0.048 }, texto: "La pista es exterior: cambie la capa." }
+        - { cuando: { valor: dT, mayor: 10 }, texto: "Se pide con 10 °C de subida, no con 20." }
+        - { cuando: { valor: I_adm, mayor: 4.03 }, texto: "Admite de más: estreche la pista." }
+        - { texto: "Admite de menos: ensanche la pista." }
+    escalera:
+      - "Primero capa exterior y 10 °C; luego, la anchura."
+    solucion: "2,0 mm por fuera con 10 °C: 3,95 A."
+    comprobar:
+      - { con: { w: 2, dT: 10, k_p: 0.048 }, I_adm: 3.95, tol: 0.01 }
 
   - id: formula-ipc
     tipo: formula
@@ -94,9 +120,9 @@ tarjetas:
       - { con: { w: 0.25, dT: 10, k_p: 0.048 }, I_adm: 0.88, tol: 0.01 }
 
   - id: predecir-doble
-    tipo: predecir
+    tipo: leer
     titulo: "El doble de anchura"
-    texto: "Una pista exterior pasa a tener el doble de anchura. ¿Cuánta corriente más admite?"
+    texto: "La pista exterior pasa de 1 mm a 2 mm. Lea las dos corrientes y escriba por cuánto se multiplica."
     libro: [77, 79]
     fijar: { w: 1, dT: 10, k_p: 0.048 }
     widget:
@@ -105,27 +131,28 @@ tarjetas:
       y: { min: 0, max: 11, unidad: A, rotulo: "I" }
       curvas:
         - { expr: "k_p*dT^0.44*(a/0.0254*e_cu/25.4)^0.725", color: naranja, rotulo: "Exterior, 10 °C" }
-      lectura: { valor: r_doble, rotulo: "Factor de corriente" }
-      ocultar: true
+      marcas:
+        - { x: "w", y: "I_adm", rotulo: "{{I_adm}}" }
+        - { x: "2*w", y: "I_doble", rotulo: "{{I_doble}}" }
       mandos: []
-    opciones:
-      - texto: "La multiplica por 1,65"
-        bien: true
-        porque: "El exponente de la sección es 0,725: para el doble de corriente hace falta casi el triple de anchura."
-      - texto: "El doble"
-        porque: "Sería así si la relación fuera lineal; con el exponente 0,725 no lo es."
-      - texto: "Cuatro veces más"
-        porque: "Eso sería con un exponente 2; aquí es menor que 1, y crece menos que la anchura."
+    leer:
+      objetivo: r_doble
+      unidad: ""
+      tol: 0.02
+      rotulo: "Factor de corriente"
+      errores:
+        - { expr: "2", texto: "Sería el doble si la relación fuera lineal. Divida las dos corrientes: crece menos que la anchura." }
+    exito: "La multiplica por 1,65: el exponente es 0,725. Para el doble de corriente hace falta casi el triple de anchura."
     escalera:
-      - "Mire la forma de la curva: se dobla hacia abajo."
-    solucion: "2^{0,725} = 1,65 veces la corriente."
+      - "Divida la corriente de 2 mm entre la de 1 mm."
+    solucion: "3,95 A / 2,39 A = 1,65."
     comprobar:
       - { r_doble: 1.65 }
 
   - id: estime-3a
-    tipo: pregunta
+    tipo: marcar
     titulo: "Tres amperios por fuera"
-    texto: "Se necesitan 3 A por una pista exterior de cobre de 35 µm, con 10 °C de subida. ¿Qué anchura?"
+    texto: "Se necesitan 3 A por una pista exterior de cobre de 35 µm, con 10 °C de subida. Marque en la curva la anchura."
     libro: [76, "cap40#400"]
     fijar: { I_p: 3, dT: 10, k_p: 0.048 }
     widget:
@@ -135,18 +162,18 @@ tarjetas:
       curvas:
         - { expr: "k_p*dT^0.44*(a/0.0254*e_cu/25.4)^0.725", color: naranja, rotulo: "Exterior, 10 °C" }
         - { expr: "I_p + 0*a", color: tinta, rotulo: "3 A", discontinua: true }
-    estimar:
-      objetivo: "w_nec"
-      unidad: mm
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 3
-      tol: 0.05
-      rotulo: "Anchura necesaria"
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "w_nec"
+      tol: 0.02
+      inicio: { x: 4, y: 0 }
+      rotulo: "La anchura que lleva 3 A"
+      pasos: 100
     exito: "1,37 mm por fuera. Por dentro, con k = 0,024, harían falta unos 3,6 mm."
     pistas:
-      - { cuando: { valor: estimacion, mayor: 1.44 }, texto: "Demasiado: busque dónde la curva corta la línea de 3 A." }
+      - { cuando: { valor: marca_x, mayor: 1.47 }, texto: "Ahí sobra pista: busque dónde la curva corta la línea de 3 A." }
       - { texto: "Se ha quedado corto: con esa anchura la pista no llega a 3 A." }
     escalera:
       - "Lea en la gráfica la anchura donde la curva cruza los 3 A."
@@ -156,34 +183,44 @@ tarjetas:
       - { con: { k_p: 0.024 }, w_nec: 3.6, tol: 0.02 }
 
   - id: pregunta-interna
-    tipo: pregunta
+    tipo: explorar
+    fase: "Consiga"
     titulo: "La alimentación por dentro"
-    texto: "Se encamina la alimentación por una capa interna con la misma anchura. ¿Qué admite?"
-    libro: [76, 80]
+    texto: "Una pista exterior de 0,5 mm lleva 1,45 A. Pasa a una capa interna: ensánchela hasta que vuelva a admitirlos."
+    libro: [76, 77, 79, 80]
+    fijar: { k_p: 0.024, dT: 10 }
+    inicio: { w: 0.5 }
     widget:
       tipo: grafica
       x: { id: a, min: 0, max: 5, unidad: mm, rotulo: "anchura" }
       y: { min: 0, max: 11, unidad: A, rotulo: "I" }
       curvas:
-        - { expr: "0.048*10^0.44*(a/0.0254*e_cu/25.4)^0.725", color: naranja, rotulo: "Exterior" }
-        - { expr: "0.024*10^0.44*(a/0.0254*e_cu/25.4)^0.725", color: azul, rotulo: "Interior", discontinua: true }
-    opciones:
-      - texto: "Aproximadamente la mitad"
-        bien: true
-        porque: "El coeficiente pasa de 0,048 a 0,024: rodeadas de sustrato, disipan peor."
-      - texto: "Lo mismo: la anchura es la misma"
-        porque: "La anchura es la misma, pero el calor sale peor por dentro de la placa."
-      - texto: "El doble, porque está protegida"
-        porque: "Al revés: rodeada de sustrato se calienta más con la misma corriente."
+        - { expr: "0.048*10^0.44*(a/0.0254*e_cu/25.4)^0.725", color: tinta, rotulo: "Exterior", discontinua: true }
+        - { expr: "k_p*dT^0.44*(a/0.0254*e_cu/25.4)^0.725", color: azul, rotulo: "Interior" }
+      marcas:
+        - { x: "w", y: "I_adm", rotulo: "{{I_adm}}" }
+      lectura: { valor: I_adm, rotulo: "Corriente admisible por dentro" }
+      mandos:
+        - { valor: w, min: 0.25, max: 5, paso: 0.05, rotulo: "Anchura, w" }
+    objetivo:
+      condiciones:
+        - { valor: I_adm, min: 1.44, rotulo: "Admite: {{I_adm}}" }
+      logrado: "Con {{w}} por dentro: las internas admiten la mitad, y recuperar la corriente pide unas 2,6 veces la anchura."
+      pistas:
+        - { texto: "Por dentro, con k = 0,024, la misma anchura admite la mitad: ensanche." }
     escalera:
-      - "Compare los dos coeficientes k."
-    solucion: "La mitad, aproximadamente: k = 0,024 frente a 0,048."
+      - "Compare los dos coeficientes k: 0,024 es la mitad de 0,048."
+    solucion: "Unos 1,3 mm: unas 2,6 veces los 0,5 mm."
+    comprobar:
+      - { con: { w: 0.5, k_p: 0.048, dT: 10 }, I_adm: 1.45, tol: 0.01 }
+      - { con: { w: 1.3 }, I_adm: 1.45, tol: 0.01 }
 
   - id: explore-caida
     tipo: explorar
     titulo: "¿Caerá demasiada tensión?"
-    texto: "La resistencia es la de un cuadro por el número de cuadros, longitud entre anchura. Mueva anchura, longitud y corriente."
-    libro: [71, 82, 83]
+    texto: "La resistencia es la de un cuadro por el número de cuadros, longitud entre anchura. Consiga una pista de 100 cuadros."
+    libro: [71, 82, 83, 84]
+    inicio: { w: 0.5, L_p: 100, I_p: 1 }
     widget:
       tipo: grafica
       x: { id: lo, min: 0, max: 200, unidad: mm, rotulo: "longitud" }
@@ -200,6 +237,18 @@ tarjetas:
         - { valor: w, min: 0.25, max: 5, paso: 0.05, rotulo: "Anchura, w" }
         - { valor: L_p, min: 10, max: 200, paso: 5, rotulo: "Longitud, L" }
         - { valor: I_p, min: 0.5, max: 5, paso: 0.5, rotulo: "Corriente, I" }
+    objetivo:
+      condiciones:
+        - { valor: n_c, objetivo: 100, tol: 0.01, rotulo: "Cuadros: {{n_c}}" }
+      logrado: "{{L_p}} entre {{w}}: 100 cuadros de 0,491 mΩ, {{R_p}}."
+      pistas:
+        - { cuando: { valor: n_c, mayor: 101 }, texto: "Demasiados cuadros: acorte la pista o ensánchela." }
+        - { texto: "Faltan cuadros: alargue la pista o estréchela." }
+    escalera:
+      - "Cuadros = longitud / anchura: con 0,5 mm de ancho, ¿qué longitud da 100?"
+    solucion: "Por ejemplo, 0,5 mm de ancho y 50 mm de largo."
+    comprobar:
+      - { con: { w: 0.5, L_p: 50 }, n_c: 100, R_p: 0.049, tol: 0.01 }
 
   - id: simule-caida
     tipo: simular
@@ -231,11 +280,11 @@ tarjetas:
       - { V_c: 0.147, V_un: 0.049, n_c: 100, R_p: 0.049, tol: 0.01 }
 
   - id: pregunta-rail
-    tipo: pregunta
+    tipo: leer
     titulo: "La misma pista, dos raíles"
-    texto: "Esos 147 mV, ¿en qué raíl son aceptables?"
+    texto: "Esos 147 mV caen en un raíl de 3,3 V. Escriba qué tanto por ciento del raíl se pierden en la pista."
     libro: [85]
-    fijar: { w: 0.5, L_p: 50, I_p: 3 }
+    fijar: { w: 0.5, L_p: 50, I_p: 3, V_rail: 3.3 }
     widget:
       tipo: grafica
       x: { id: lo, min: 0, max: 200, unidad: mm, rotulo: "longitud" }
@@ -244,40 +293,50 @@ tarjetas:
         - { expr: "rho_c*lo/w*I_p", color: naranja, rotulo: "caída" }
       marcas:
         - { x: "L_p", y: "V_c", rotulo: "{{V_c}}" }
-    opciones:
-      - texto: "En uno de 24 V: el 0,6 %; en uno de 3,3 V son el 4,5 %"
-        bien: true
-        porque: "La misma pista con la misma corriente es válida o no según la tensión del raíl."
-      - texto: "En los dos: la pista cumple la ampacidad"
-        porque: "La ampacidad dice si se calienta; la caída es otra pregunta, y en 3,3 V falla."
-      - texto: "En ninguno: 147 mV siempre es demasiado"
-        porque: "En 24 V es el 0,6 %, irrelevante."
+      mandos: []
+    leer:
+      objetivo: pct
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Caída, en % del raíl"
+      errores:
+        - { expr: "pct_24", texto: "Ese 0,6 % sería en un raíl de 24 V; este es de 3,3 V." }
+        - { expr: "pct_1", texto: "Eso es en tanto por uno: multiplique por 100." }
+    exito: "El 4,5 %, probablemente inaceptable; en 24 V serían el 0,6 %. La misma pista es válida o no según el raíl."
     escalera:
-      - "Divida la caída entre la tensión del raíl."
-    solucion: "Vale en 24 V (0,6 %); en 3,3 V es el 4,5 %, probablemente inaceptable."
+      - "Divida la caída entre la tensión del raíl y multiplique por 100."
+    solucion: "147 mV entre 3,3 V: el 4,5 %."
+    comprobar:
+      - { pct: 4.45, pct_24: 0.61, tol: 0.01 }
 
   - id: porque-retorno
-    tipo: porque
+    tipo: leer
     titulo: "La ida cuidada, el retorno olvidado"
-    texto: "La pista de ida está bien calculada, pero el retorno va por una pista estrecha. ¿Por qué falla la caída?"
-    libro: [88, 89]
+    texto: "El retorno no va por un plano, sino por otra pista igual: 0,5 mm, 50 mm y 3 A. Escriba la caída total."
+    libro: [84, 88, 89]
+    fijar: { w: 0.5, L_p: 50, I_p: 3 }
     widget:
       tipo: grafica
       x: { id: lo, min: 0, max: 200, unidad: mm, rotulo: "longitud" }
       y: { min: 0, max: 1.2, unidad: V, rotulo: "ΔV" }
       curvas:
         - { expr: "rho_c*lo/w*I_p", color: naranja, rotulo: "ida" }
-    opciones:
-      - texto: "La caída total es la suma de la ida y del retorno"
-        bien: true
-        porque: "La corriente recorre los dos caminos; con plano de masa el problema desaparece."
-      - texto: "El retorno no lleva corriente"
-        porque: "Lleva la misma que la ida: es el mismo bucle."
-      - texto: "Solo cuenta la pista más ancha"
-        porque: "Están en serie: la estrecha suma su caída, y suele ser la mayor."
+      marcas:
+        - { x: "L_p", y: "V_c", rotulo: "Ida: {{V_c}}" }
+      mandos: []
+    leer:
+      objetivo: V_tot
+      unidad: V
+      tol: 0.03
+      rotulo: "Caída de ida y vuelta"
+      errores:
+        - { expr: "V_c", texto: "Esa es solo la ida. La corriente vuelve por la otra pista, en serie: su caída se suma." }
+    exito: "Ida y retorno están en serie: la caída total es la suma. Con plano de masa, el problema desaparece."
     escalera:
       - "¿Por dónde vuelve la corriente a la fuente?"
-    solucion: "Ida y retorno están en serie: sus caídas se suman."
+    solucion: "147 mV de ida más 147 mV de vuelta: 294 mV."
+    comprobar:
+      - { V_tot: 0.294, tol: 0.01 }
 
   - id: ordene-procedimiento
     tipo: pregunta

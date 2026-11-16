@@ -3,6 +3,11 @@
 # - MTBF de 100 000 h (bloque 10): λ = 1/MTBF por hora; en un año de uso continuo (8 760 h) falla un 8,76 % de una
 #   población grande (el «≈ 8 %» de la figura 47.2).
 # Paso práctico: «tocar» en la figura 47.1 el tramo que elimina el burn-in.
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la vida se duplica bajando la temperatura con una meta (la regla
+# de Arrhenius de la sección 47.4: el doble cada 10 °C, en una gráfica 2^(ΔT/10)); la fracción que falla en un año y la
+# tasa en FIT se escriben; el burn-in, el tramo de un equipo con un mes y la palanca que se mide en el banco se tocan en
+# las figuras 47.1 y 47.2. Quedan una pregunta de opciones (qué significa el MTBF) y el emparejamiento de la
+# definición.
 leccion: cap46/sec-46.1
 
 libro:
@@ -26,6 +31,7 @@ libro:
   29: "Bajar diez grados la temperatura suele hacer más."
   31: "La fiabilidad no se mide en un banco: se mide con poblaciones y tiempo."
   32: "que es el predictor más directo"
+  33: "Comprobar el derating de los más solicitados"
   34: "revela soldaduras marginales y conexiones débiles mucho antes que el tiempo"
   35: "La curva de la bañera"
   36: "La curva de bañera y las palancas reales de fiabilidad."
@@ -34,25 +40,47 @@ modelo:
   valores:
     MTBF: { sim: "MTBF", nombre: "tiempo medio entre fallos", unidad: h, valor: 100000 }
     h_a: { sim: "t", nombre: "horas de un año de uso continuo", unidad: h, valor: 8760 }
+    T_c: { sim: "T", nombre: "temperatura del componente (ejemplo)", unidad: "°C", valor: 70 }
+    T_0: { sim: "T₀", nombre: "temperatura de partida (ejemplo)", unidad: "°C", valor: 70 }
   calculos:
     lam: { expr: "1/MTBF", sim: "λ", nombre: "tasa de fallos por hora", unidad: "1/h", cifras: 3 }
     f_a: { expr: "h_a/MTBF*100", sim: "F", nombre: "fracción que falla en un año", unidad: "%", cifras: 3 }
+    f_1: { expr: "h_a/MTBF", sim: "F", nombre: "fracción en tanto por uno", unidad: "", cifras: 3 }
+    FIT: { expr: "1e9/MTBF", sim: "λ", nombre: "tasa de fallos en FIT", unidad: "" }
+    FIT_mal: { expr: "1e6/MTBF", sim: "λ", nombre: "por millón de horas", unidad: "" }
+    vida: { expr: "2^((T_0 - T_c)/10)", sim: "vida", nombre: "vida relativa", unidad: "", cifras: 3 }
 
 tarjetas:
-  - id: explore-banera
+  - id: explore-vida
     tipo: explorar
-    titulo: "La curva de bañera"
-    texto: "La tasa de fallos frente al tiempo tiene tres tramos. Toque cada uno."
-    libro: [35, 17, 18, 19, 20]
+    fase: "Consiga"
+    titulo: "La palanca de verdad"
+    texto: "Un componente trabaja a 70 °C. En lugar de comprar uno de gama superior, baje su temperatura hasta duplicar su vida."
+    libro: [24, 28, 29, 36]
+    fijar: { T_0: 70 }
+    inicio: { T_c: 70 }
     widget:
-      tipo: figura
-      figura: fig-46.1
-      zonas:
-        - { id: infantil, rotulo: "Tramo rojo de la izquierda", rect: [0, 0, 67, 132], texto: "Mortalidad infantil: tasa alta al principio, por defectos de fabricación, y decreciente." }
-        - { id: util, rotulo: "Tramo verde del centro", rect: [67, 0, 193, 160], texto: "Vida útil: tasa casi constante, con fallos aleatorios. Es la zona plana." }
-        - { id: desgaste, rotulo: "Tramo naranja de la derecha", rect: [260, 0, 84, 160], texto: "Desgaste: tasa creciente, cuando el envejecimiento se manifiesta." }
-        - { id: burnin, rotulo: "Flecha de abajo a la izquierda", rect: [0, 132, 67, 28], texto: "Burn-in: hacer funcionar el equipo unas horas antes de entregarlo." }
-    requiere: { mover: [infantil, util, desgaste] }
+      tipo: grafica
+      x: { id: tt, min: 30, max: 80, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 18, unidad: "", rotulo: "vida relativa" }
+      curvas:
+        - { expr: "2^((T_0 - tt)/10)", color: naranja, rotulo: "el doble cada 10 °C" }
+      marcas:
+        - { x: "T_c", y: "vida", rotulo: "× {{vida}}" }
+      lectura: { valor: vida, rotulo: "Vida relativa" }
+      mandos:
+        - { valor: T_c, min: 30, max: 80, paso: 5, rotulo: "Temperatura, T" }
+    objetivo:
+      condiciones:
+        - { valor: vida, min: 2, rotulo: "Vida: × {{vida}}" }
+      logrado: "A {{T_c}}: × {{vida}}. Bajar diez grados suele hacer más que comprar mejores componentes: la temperatura es la primera palanca."
+      pistas:
+        - { texto: "Todavía no llega al doble: baje más la temperatura." }
+    escalera:
+      - "Por Arrhenius, cada 10 °C menos puede duplicar la vida."
+    solucion: "60 °C: diez grados menos, el doble de vida."
+    comprobar:
+      - { con: { T_c: 60 }, vida: 2 }
 
   - id: toque-burnin
     tipo: tocar
@@ -115,142 +143,107 @@ tarjetas:
     solucion: "Una tasa de fallos de la población, no la vida de un equipo."
 
   - id: estime-ano
-    tipo: pregunta
+    tipo: leer
     titulo: "Un año de uso"
-    texto: "Con un MTBF de 100 000 horas, ¿qué fracción de una población grande falla en un año de uso continuo, 8 760 horas?"
+    texto: "Con un MTBF de 100 000 horas, escriba qué parte de una población grande falla en un año de uso continuo, 8 760 horas."
     libro: [10, 12, 36]
     fijar: { MTBF: 100000, h_a: 8760 }
     widget:
-      tipo: figura
-      figura: fig-46.2
-      zonas:
-        - { id: meseta, rotulo: "Zona plana de la curva", rect: [53, 17, 117, 148] }
-    estimar:
-      objetivo: "f_a"
+      tipo: grafica
+      x: { id: hh, min: 0, max: 20000, unidad: h, rotulo: "horas de uso" }
+      y: { min: 0, max: 25, unidad: "%", rotulo: "fallan" }
+      curvas:
+        - { expr: "hh/MTBF*100", color: naranja, rotulo: "t/MTBF" }
+      mandos: []
+    leer:
+      objetivo: f_a
       unidad: "%"
-      min: 0
-      max: 30
-      paso: 0.1
-      inicio: 20
-      tol: 0.1
+      tol: 0.03
       rotulo: "Fallan en un año"
-    exito: "Un 8,76 %: casi uno de cada diez, aunque el MTBF sea de once años."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 9.6 }, texto: "Demasiado: 8 760 entre 100 000 es menos de una décima." }
-      - { texto: "Demasiado poco: divida las 8 760 horas del año entre el MTBF de 100 000." }
+      errores:
+        - { expr: "f_1", texto: "Eso es en tanto por uno: multiplique por 100." }
+    exito: "Un 8,76 %: casi uno de cada diez en un año, aunque el MTBF sean «once años». El equipo concreto puede fallar mañana."
     escalera:
-      - "La tasa por hora es la inversa del MTBF."
-      - "Divida las 8 760 horas del año entre 100 000."
-    solucion: "8 760/100 000 = 8,76 % de la población en un año."
+      - "La tasa por hora es la inversa del MTBF: divida las horas del año entre él."
+    solucion: "8 760 / 100 000: el 8,76 %."
     comprobar:
-      - { f_a: 8.76 }
+      - { f_a: 8.76, f_1: 0.0876 }
 
   - id: pregunta-fit
-    tipo: pregunta
+    tipo: leer
     titulo: "La tasa de fallos"
-    texto: "La tasa de fallos se mide en FIT, fallos por mil millones de horas. ¿Por qué es más cómoda que el MTBF?"
+    texto: "La tasa de fallos es la inversa del MTBF y se mide en FIT, fallos por mil millones de horas. Escriba la de un equipo con un MTBF de 100 000 horas."
     libro: [12, 13]
+    fijar: { MTBF: 100000 }
     widget:
-      tipo: figura
-      figura: fig-46.2
-      zonas:
-        - { id: meseta, rotulo: "Zona plana de la curva", rect: [53, 17, 117, 148] }
-    opciones:
-      - texto: "Las tasas se suman: la del sistema es la suma de las de sus componentes"
-        bien: true
-        porque: "Es la inversa del MTBF, y sumar tasas es inmediato; los MTBF no se suman."
-      - texto: "Porque mide la vida útil del equipo"
-        porque: "La vida útil es otro concepto: el tiempo hasta que empieza el desgaste."
-      - texto: "Porque vale también en el tramo de desgaste"
-        porque: "Igual que el MTBF, describe la zona plana; en el desgaste la tasa crece."
+      tipo: grafica
+      x: { id: mm, min: 10000, max: 1000000, unidad: h, rotulo: "MTBF", escala: log }
+      y: { min: 100, max: 1000000, unidad: "", rotulo: "FIT", escala: log }
+      curvas:
+        - { expr: "1e9/mm", color: naranja, rotulo: "FIT = 10⁹/MTBF" }
+      mandos: []
+    leer:
+      objetivo: FIT
+      unidad: ""
+      tol: 0.02
+      rotulo: "Tasa de fallos (FIT)"
+      errores:
+        - { expr: "FIT_mal", texto: "Eso son fallos por millón de horas: un FIT es por mil millones." }
+    exito: "10 000 FIT. Es más cómoda que el MTBF porque las tasas se suman: la de un sistema es la suma de las de sus componentes."
     escalera:
-      - "¿Qué operación hace falta para combinar los componentes de un sistema?"
-    solucion: "Las tasas se suman; la del sistema es la suma de las de sus componentes."
-
-  - id: ordene-palancas
-    tipo: pregunta
-    titulo: "Las palancas reales"
-    texto: "Ordene lo que de verdad determina la fiabilidad, de más a menos eficaz."
-    libro: [24, 25, 26, 27, 28]
-    ordenar:
-      - "La temperatura"
-      - "El derating de los componentes"
-      - "El número de componentes"
-      - "Las conexiones: conectores y soldaduras"
-      - "El diseño térmico y mecánico"
-    exito: "La temperatura, con diferencia: por Arrhenius, cada 10 °C menos puede duplicar la vida."
-    pistas:
-      - { texto: "La primera es la temperatura; la segunda, usar los componentes por debajo de sus límites." }
-    escalera:
-      - "Empiece por la temperatura y siga por el derating."
-      - "Menos piezas antes que las conexiones."
-    solucion: "Temperatura, derating, número de componentes, conexiones y diseño térmico y mecánico."
+      - "Mil millones de horas entre el MTBF."
+    solucion: "10⁹ / 100 000 = 10 000 FIT."
+    comprobar:
+      - { FIT: 10000, FIT_mal: 10 }
 
   - id: porque-mes
-    tipo: porque
+    tipo: tocar
     titulo: "Un mes funcionando"
-    texto: "¿Por qué un equipo que lleva un mes funcionando es más fiable que uno recién sacado de la caja?"
-    libro: [17, 20, 21]
+    texto: "Un equipo lleva un mes funcionando y es más fiable que uno recién sacado de la caja. Toque el tramo en el que está."
+    libro: [17, 18, 19, 20, 21]
     widget:
       tipo: figura
       figura: fig-46.1
       zonas:
         - { id: infantil, rotulo: "Tramo de la izquierda", rect: [0, 0, 67, 160] }
-    opciones:
-      - texto: "Ya ha pasado la mortalidad infantil y está en la zona plana"
-        bien: true
-        porque: "Los defectos de fabricación fallan pronto; el que sobrevive al principio ya está en la vida útil."
-      - texto: "Porque sus componentes se han asentado y son mejores"
-        porque: "Los componentes no mejoran con el uso: lo que ha desaparecido son las unidades defectuosas."
-      - texto: "No lo es: el desgaste empieza desde el primer día"
-        porque: "El desgaste llega al final; al principio la tasa es alta y decreciente."
+        - { id: util, rotulo: "Tramo del centro", rect: [67, 0, 193, 160] }
+        - { id: desgaste, rotulo: "Tramo de la derecha", rect: [260, 0, 84, 160] }
+    tocar:
+      bien: [util]
+      porque:
+        infantil: "Ese es el recién sacado de la caja: aún puede fallar por un defecto de fabricación."
+        desgaste: "Un mes no basta para que el envejecimiento se manifieste."
+    exito: "En la vida útil: ya pasó la mortalidad infantil y está en la zona plana, con fallos aleatorios."
     escalera:
-      - "Mire cómo cambia la tasa de fallos al principio de la curva."
-    solucion: "Ha superado la mortalidad infantil: está ya en la zona plana."
+      - "¿Qué tramo ha dejado atrás?"
+    solucion: "El del centro, la vida útil."
 
-  - id: pregunta-calidad
-    tipo: pregunta
-    titulo: "Mejores componentes o menos calor"
-    texto: "Se quiere que un equipo dure más. ¿Qué suele hacer más por su fiabilidad?"
-    libro: [28, 29]
+  - id: pregunta-banco
+    tipo: tocar
+    fase: "En el banco"
+    titulo: "En el banco"
+    texto: "La fiabilidad se mide con poblaciones y tiempo, no en un banco. Toque la palanca cuyo predictor sí se mide en él, componente a componente."
+    libro: [24, 25, 26, 27, 31, 32, 33, 34, 36]
     widget:
       tipo: figura
       figura: fig-46.2
       zonas:
-        - { id: curva, rotulo: "La curva de bañera", rect: [20, 17, 200, 148] }
-    opciones:
-      - texto: "Bajar diez grados la temperatura"
-        bien: true
-        porque: "La temperatura es la primera palanca; el diseño térmico pesa más que la calidad de cada pieza."
-      - texto: "Comprar componentes de gama superior"
-        porque: "Rara vez es la palanca más eficaz: un buen componente caliente envejece igual de deprisa."
-      - texto: "Añadir más componentes de protección"
-        porque: "Más piezas son más cosas que fallen: el número de componentes es una palanca en contra."
+        - { id: p1, rotulo: "Primera palanca", rect: [242, 79, 205, 10] }
+        - { id: p2, rotulo: "Segunda palanca", rect: [242, 89, 205, 9] }
+        - { id: p3, rotulo: "Tercera palanca", rect: [242, 98, 205, 9] }
+        - { id: p4, rotulo: "Cuarta palanca", rect: [242, 107, 205, 9] }
+        - { id: p5, rotulo: "Quinta palanca", rect: [242, 116, 205, 9] }
+    tocar:
+      bien: [p1]
+      porque:
+        p2: "El derating también se comprueba en el banco, pero el predictor más directo es otro."
+        p3: "El número de piezas se cuenta en el esquema."
+        p4: "Las conexiones se ponen a prueba con un ciclado térmico, no con una medida directa."
+        p5: "El diseño térmico se juzga por lo que se mide: otra palanca."
+    exito: "La temperatura de cada componente en funcionamiento continuo: el predictor más directo. Y un ciclado térmico revela soldaduras marginales."
     escalera:
-      - "¿Cuál es la primera de las palancas reales?"
-    solucion: "Bajar diez grados la temperatura suele hacer más."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "La fiabilidad se mide con poblaciones y tiempo, no en un banco. ¿Qué es lo más útil que sí se puede medir en él?"
-    libro: [31, 32, 34]
-    widget:
-      tipo: figura
-      figura: fig-46.1
-      zonas:
-        - { id: util, rotulo: "Tramo del centro", rect: [67, 0, 193, 160] }
-    opciones:
-      - texto: "La temperatura de todos los componentes en funcionamiento continuo"
-        bien: true
-        porque: "Es el predictor más directo; el derating y el ciclado térmico completan la comprobación."
-      - texto: "El MTBF del equipo, dejándolo encendido una semana"
-        porque: "Una unidad y una semana no son una población ni un tiempo: el MTBF no sale de ahí."
-      - texto: "Nada: la fiabilidad solo se calcula"
-        porque: "Sí se mide algo útil: temperaturas, derating y un ciclado térmico improvisado."
-    escalera:
-      - "¿Qué gobierna casi todos los mecanismos de fallo?"
-    solucion: "Las temperaturas de todos los componentes en funcionamiento continuo."
+      - "La primera palanca, con diferencia."
+    solucion: "La primera: la temperatura."
 
   - id: resumen
     tipo: resumen

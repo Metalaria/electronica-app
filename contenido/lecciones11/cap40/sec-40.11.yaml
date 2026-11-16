@@ -2,6 +2,10 @@
 # - La figura 41.15 (fig-40.15) con zonas: las seis ideas y la comprobación de los Gerbers.
 # - «0,8 nH por milímetro» (bloque 336) en una gráfica L = 0,8·h: con 1,6 mm, 1,28 nH (el libro: unos 1,3 nH).
 # Paso práctico: «tocar» la idea que resuelve un plano cortado bajo una señal.
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la inductancia de la vía se consigue con una meta (L = 0,8·h,
+# 1,6 mm); tres ideas del capítulo se aplican tocando la figura 41.15 (el retorno que rodea, el SMD caliente, el
+# trazado que no arregla nada); tres comprobaciones de la lista final (bloques 343-348, como listado) se tocan para su
+# caso. Quedan una pregunta de opciones (el error que no ve el DRC) y el emparejamiento de las herramientas.
 leccion: cap40/sec-40.11
 
 libro:
@@ -20,8 +24,11 @@ libro:
   340: "Huella con patillaje equivocado, que ningún DRC detecta."
   343: "DRC en cero con las reglas del fabricante concreto."
   344: "Gerbers en visor externo, capa por capa."
+  345: "Taladros comprobados, con sus diámetros."
   346: "Impresión 1:1 con los componentes reales encima."
+  347: "Vista 3D y comprobación mecánica."
   348: "Serigrafía legible y sin quedar bajo los componentes."
+  350: "abrir los Gerbers en un visor independiente y recorrer las capas una a una"
   351: "pistas que no llegan, máscaras que cubren almohadillas, taladros descolocados y textos invertidos"
   352: "Las seis ideas del diseño de placas"
 
@@ -33,22 +40,37 @@ modelo:
     L_l: { expr: "k_l*h_l", sim: "L", nombre: "inductancia de la vía", unidad: nH }
 
 tarjetas:
-  - id: explore-ideas
+  - id: estime-via
     tipo: explorar
-    titulo: "Las seis ideas"
-    texto: "El capítulo en seis recuadros. Toque al menos tres."
-    libro: [333, 334, 335, 336, 337, 338, 352]
+    fase: "Consiga"
+    titulo: "Las vías son inductancia"
+    texto: "Del orden de 0,8 nH por milímetro de longitud. Cambie el espesor de la placa hasta que la vía pasante tenga unos 1,3 nH."
+    libro: [336]
+    fijar: { k_l: 0.8 }
+    inicio: { h_l: 3.2 }
     widget:
-      tipo: figura
-      figura: fig-40.15
-      zonas:
-        - { id: componente, rotulo: "Arriba a la izquierda", rect: [5, 4, 142, 44], texto: "La placa es un componente, no un soporte." }
-        - { id: colocacion, rotulo: "Arriba en el centro", rect: [154, 4, 142, 44], texto: "La colocación decide el 80 % del resultado." }
-        - { id: plano, rotulo: "Arriba a la derecha", rect: [303, 4, 142, 44], texto: "El plano de masa continuo resuelve por sí solo la mayoría de los retornos." }
-        - { id: vias, rotulo: "Abajo a la izquierda", rect: [5, 54, 142, 44], texto: "Las vías son inductancia: unos 1,3 nH una pasante en 1,6 mm." }
-        - { id: termico, rotulo: "Abajo en el centro", rect: [154, 54, 142, 44], texto: "Lo térmico se diseña, con cobre, vías térmicas y área." }
-        - { id: gerbers, rotulo: "Abajo a la derecha", rect: [303, 54, 142, 44], texto: "Se fabrican los Gerbers, no lo que se dibujó." }
-    requiere: { mover: [plano, vias, gerbers] }
+      tipo: grafica
+      x: { id: hh, min: 0, max: 3.2, unidad: mm, rotulo: "h" }
+      y: { min: 0, max: 3, unidad: nH, rotulo: "L" }
+      curvas:
+        - { expr: "k_l*hh", color: naranja, rotulo: "0,8 nH/mm" }
+      marcas:
+        - { x: "h_l", y: "L_l", rotulo: "{{L_l}}" }
+      lectura: { valor: L_l, rotulo: "Inductancia de la vía" }
+      mandos:
+        - { valor: h_l, min: 0.8, max: 3.2, paso: 0.1, rotulo: "Espesor de la placa, h" }
+    objetivo:
+      condiciones:
+        - { valor: L_l, objetivo: 1.28, tol: 0.03, rotulo: "Inductancia: {{L_l}}" }
+      logrado: "{{h_l}}, la placa estándar: {{L_l}}, unos 1,3 nH. Parece nada, y en el desacoplo pesa más que el condensador."
+      pistas:
+        - { cuando: { valor: L_l, mayor: 1.32 }, texto: "Demasiada inductancia: una placa más fina." }
+        - { texto: "Poca: una placa más gruesa." }
+    escalera:
+      - "1,3 nH entre 0,8 nH por milímetro."
+    solucion: "1,6 mm: 0,8 × 1,6 ≈ 1,3 nH."
+    comprobar:
+      - { con: { h_l: 1.6 }, L_l: 1.28 }
 
   - id: toque-plano
     tipo: tocar
@@ -74,36 +96,61 @@ tarjetas:
       - "¿Qué da a cada corriente su camino de vuelta?"
     solucion: "El plano de masa continuo."
 
-  - id: estime-via
-    tipo: pregunta
-    titulo: "Las vías son inductancia"
-    texto: "Del orden de 0,8 nH por milímetro de longitud. ¿Cuánto tiene una vía pasante en una placa de 1,6 mm?"
-    libro: [336]
-    fijar: { k_l: 0.8, h_l: 1.6 }
+  - id: toque-termico
+    tipo: tocar
+    titulo: "Un SMD que se calienta"
+    texto: "Un regulador SMD se calienta demasiado y no hay sitio para un disipador. Toque la idea que lo resuelve."
+    libro: [337, 352]
     widget:
-      tipo: grafica
-      x: { id: hh, min: 0, max: 3.2, unidad: mm, rotulo: "h" }
-      y: { min: 0, max: 3, unidad: nH, rotulo: "L" }
-      curvas:
-        - { expr: "k_l*hh", color: naranja, rotulo: "0,8 nH/mm" }
-    estimar:
-      objetivo: "L_l"
-      unidad: nH
-      min: 0
-      max: 3
-      paso: 0.05
-      inicio: 2.5
-      tol: 0.05
-      rotulo: "Inductancia de la vía"
-    exito: "Unos 1,3 nH: parece nada, y en el desacoplo pesa más que el condensador."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.35 }, texto: "Se ha pasado: 0,8 por 1,6." }
-      - { texto: "Se ha quedado corto: 0,8 por 1,6." }
+      tipo: figura
+      figura: fig-40.15
+      zonas:
+        - { id: componente, rotulo: "Arriba a la izquierda", rect: [5, 4, 142, 44] }
+        - { id: colocacion, rotulo: "Arriba en el centro", rect: [154, 4, 142, 44] }
+        - { id: plano, rotulo: "Arriba a la derecha", rect: [303, 4, 142, 44] }
+        - { id: vias, rotulo: "Abajo a la izquierda", rect: [5, 54, 142, 44] }
+        - { id: termico, rotulo: "Abajo en el centro", rect: [154, 54, 142, 44] }
+        - { id: gerbers, rotulo: "Abajo a la derecha", rect: [303, 54, 142, 44] }
+    tocar:
+      bien: [termico]
+      porque:
+        componente: "Es la idea de fondo; el remedio concreto es otro."
+        colocacion: "Separarlo de los sensibles ayuda a los vecinos, pero no lo enfría a él."
+        plano: "El plano resuelve los retornos; el calor se diseña aparte."
+        vias: "Las vías térmicas son parte del remedio, pero la idea completa es otra."
+        gerbers: "Es de fabricación, no de calor."
+    exito: "Lo térmico se diseña: cobre, vías térmicas y área bajo el componente. La placa es su disipador."
     escalera:
-      - "Multiplique la inductancia por milímetro por el espesor."
-    solucion: "0,8 × 1,6 ≈ 1,3 nH."
-    comprobar:
-      - { L_l: 1.28 }
+      - "Busque la idea que habla de cobre y área."
+    solucion: "Abajo en el centro: lo térmico se diseña."
+
+  - id: toque-colocacion
+    tipo: tocar
+    titulo: "Un trazado excelente"
+    texto: "El trazado está hecho con todo cuidado y la placa sigue llena de bucles largos y cruces. Toque la idea que se olvidó."
+    libro: [334]
+    widget:
+      tipo: figura
+      figura: fig-40.15
+      zonas:
+        - { id: componente, rotulo: "Arriba a la izquierda", rect: [5, 4, 142, 44] }
+        - { id: colocacion, rotulo: "Arriba en el centro", rect: [154, 4, 142, 44] }
+        - { id: plano, rotulo: "Arriba a la derecha", rect: [303, 4, 142, 44] }
+        - { id: vias, rotulo: "Abajo a la izquierda", rect: [5, 54, 142, 44] }
+        - { id: termico, rotulo: "Abajo en el centro", rect: [154, 54, 142, 44] }
+        - { id: gerbers, rotulo: "Abajo a la derecha", rect: [303, 54, 142, 44] }
+    tocar:
+      bien: [colocacion]
+      porque:
+        componente: "Explica por qué importa, pero lo que se olvidó es una decisión previa."
+        plano: "El plano acorta los retornos, pero no ordena dónde va cada pieza."
+        vias: "Las vías son un detalle del trazado, no lo que lo condiciona."
+        termico: "Es del calor, no de la longitud de las conexiones."
+        gerbers: "Es de fabricación."
+    exito: "La colocación decide el 80 %: un trazado excelente no arregla una colocación mala."
+    escalera:
+      - "Lo que se decide antes de tirar la primera pista."
+    solucion: "Arriba en el centro: la colocación."
 
   - id: empareje-herramientas
     tipo: pregunta
@@ -146,43 +193,94 @@ tarjetas:
     solucion: "La huella con el patillaje equivocado."
 
   - id: empareje-lista
-    tipo: pregunta
+    tipo: tocar
     titulo: "La lista final antes de enviar"
-    texto: "Empareje cada comprobación con cómo se hace."
-    libro: [343, 344, 346, 348]
-    emparejar:
-      - ["DRC", "En cero, con las reglas del fabricante concreto"]
-      - ["Gerbers", "En visor externo, capa por capa"]
-      - ["Impresión 1:1", "Con los componentes reales encima"]
-      - ["Serigrafía", "Legible y no bajo los componentes"]
-    exito: "Más taladros con sus diámetros, y la vista 3D."
-    pistas:
-      - { texto: "Las reglas son las del fabricante que va a hacer la placa." }
-    escalera:
-      - "La impresión se comprueba con las piezas de verdad."
-    solucion: "DRC, reglas del fabricante; Gerbers, visor; 1:1, componentes; serigrafía, legible."
-
-  - id: porque-gerbers
-    tipo: porque
-    titulo: "Diez minutos que evitan devoluciones"
-    texto: "¿Por qué recorrer los Gerbers capa a capa en un visor, si el editor ya enseña la placa?"
-    libro: [338, 351]
+    texto: "Una huella del tamaño equivocado pasa el DRC. Toque la comprobación de la lista final que la descubre."
+    libro: [343, 344, 345, 346, 347, 348]
     widget:
       tipo: figura
-      figura: fig-40.15
+      codigo:
+        lenguaje: "lista final"
+        texto: "DRC en cero con las reglas del fabricante concreto.\nGerbers en visor externo, capa por capa.\nTaladros comprobados, con sus diámetros.\nImpresión 1:1 con los componentes reales encima.\nVista 3D y comprobación mecánica.\nSerigrafía legible y sin quedar bajo los componentes."
       zonas:
-        - { id: comprobacion, rotulo: "Recuadro de abajo", rect: [5, 106, 440, 80] }
-    opciones:
-      - texto: "El visor enseña lo que verá el fabricante: lo que el editor esconde"
-        bien: true
-        porque: "Pistas que no llegan, máscaras sobre almohadillas, taladros descolocados, textos invertidos."
-      - texto: "Porque el editor no dibuja las capas"
-        porque: "Las dibuja; pero enseña lo que se dibujó, no lo que se exportó."
-      - texto: "Para medir la impedancia"
-        porque: "La impedancia se mide en la placa, con reflectometría."
+        - { id: drc, lineas: [1], rotulo: "Primera línea" }
+        - { id: visor, lineas: [2], rotulo: "Segunda línea" }
+        - { id: taladros, lineas: [3], rotulo: "Tercera línea" }
+        - { id: impresion, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: vista3d, lineas: [5], rotulo: "Quinta línea" }
+        - { id: serigrafia, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [impresion]
+      porque:
+        drc: "El DRC mira separaciones y anchuras con las reglas del fabricante, no si la huella es la del componente."
+        visor: "El visor enseña los ficheros como los verá la fábrica; la huella se compara con la pieza real."
+        taladros: "Comprueba diámetros; una almohadilla de otro tamaño se le escapa."
+        vista3d: "Ve colisiones mecánicas; el tamaño de la huella se ve mejor con la pieza real encima."
+        serigrafia: "Comprueba los textos, no las huellas."
+    exito: "La impresión 1:1 con los componentes reales encima: huellas, tamaños y acceso a los conectores."
+    escalera:
+      - "¿Con qué se compara una huella?"
+    solucion: "La cuarta: la impresión 1:1."
+
+  - id: toque-mecanica
+    tipo: tocar
+    titulo: "Un choque con la tapa"
+    texto: "Montada la placa, un electrolítico choca con la tapa de la caja. Toque la comprobación de la lista que lo habría visto."
+    libro: [331, 347]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: "lista final"
+        texto: "DRC en cero con las reglas del fabricante concreto.\nGerbers en visor externo, capa por capa.\nTaladros comprobados, con sus diámetros.\nImpresión 1:1 con los componentes reales encima.\nVista 3D y comprobación mecánica.\nSerigrafía legible y sin quedar bajo los componentes."
+      zonas:
+        - { id: drc, lineas: [1], rotulo: "Primera línea" }
+        - { id: visor, lineas: [2], rotulo: "Segunda línea" }
+        - { id: taladros, lineas: [3], rotulo: "Tercera línea" }
+        - { id: impresion, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: vista3d, lineas: [5], rotulo: "Quinta línea" }
+        - { id: serigrafia, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [vista3d, impresion]
+      porque:
+        drc: "El DRC no sabe nada de alturas ni de cajas."
+        visor: "El visor enseña capas planas: no hay alturas."
+        taladros: "Los diámetros no dicen nada de la altura."
+        serigrafia: "Es de los textos impresos."
+    exito: "La vista 3D y la comprobación mecánica detectan colisiones antes de fabricar; la impresión 1:1 metida en la caja, también."
+    escalera:
+      - "Hace falta ver alturas."
+    solucion: "La quinta: vista 3D y comprobación mecánica."
+
+  - id: porque-gerbers
+    tipo: tocar
+    fase: "En el banco"
+    titulo: "Diez minutos que evitan devoluciones"
+    texto: "Pistas que no llegan, máscaras sobre almohadillas, textos invertidos: invisibles en el editor. Toque la comprobación que los descubre."
+    libro: [338, 344, 350, 351]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: "lista final"
+        texto: "DRC en cero con las reglas del fabricante concreto.\nGerbers en visor externo, capa por capa.\nTaladros comprobados, con sus diámetros.\nImpresión 1:1 con los componentes reales encima.\nVista 3D y comprobación mecánica.\nSerigrafía legible y sin quedar bajo los componentes."
+      zonas:
+        - { id: drc, lineas: [1], rotulo: "Primera línea" }
+        - { id: visor, lineas: [2], rotulo: "Segunda línea" }
+        - { id: taladros, lineas: [3], rotulo: "Tercera línea" }
+        - { id: impresion, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: vista3d, lineas: [5], rotulo: "Quinta línea" }
+        - { id: serigrafia, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [visor]
+      porque:
+        drc: "El DRC trabaja sobre el dibujo del editor: no ve lo que el editor esconde."
+        taladros: "Mira los diámetros, no las máscaras ni los textos."
+        impresion: "Compara huellas con piezas; una máscara mal exportada no se ve en papel."
+        vista3d: "Ve la mecánica, no las capas una a una."
+        serigrafia: "Es solo una de las capas."
+    exito: "Los Gerbers en un visor externo, capa a capa: se ve lo que verá el fabricante. Cuesta diez minutos y evita la mayoría de las devoluciones."
     escalera:
       - "Se fabrican los ficheros, no el dibujo."
-    solucion: "Porque solo el visor enseña lo que se va a fabricar."
+    solucion: "La segunda: los Gerbers en un visor externo."
 
   - id: resumen
     tipo: resumen

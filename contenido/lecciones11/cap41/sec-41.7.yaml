@@ -3,6 +3,11 @@
 #   inductancias de la figura 42.11 (fig-41.11): 5 nH con patillas, 1,5 nH QFN y 0,4 nH BGA.
 # - El margen en bajo de LVCMOS de 3,3 V, 0,6 V (bloque 201): 400 mV son dos tercios.
 # Paso práctico: «simular» el rebote del ejemplo del libro antes de la fórmula (400 mV; error: una sola salida).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): con dieciséis salidas se busca el encapsulado que deja el
+# rebote bajo el margen de 0,6 V (meta); el rebote de un byte se reparte hasta la mitad (meta: escalonar); la parte del
+# margen y el rebote con BGA se escriben; en la figura 42.11 se toca dónde el encapsulado con patillas se come todo el
+# margen y la defensa que no llega a los pines. Quedan una pregunta de opciones (el banco), la fórmula y el
+# emparejamiento de las consecuencias.
 leccion: cap41/sec-41.7
 
 libro:
@@ -36,13 +41,18 @@ modelo:
     v_g: { expr: "N_s*L_g*i_g/t_g", sim: "v", nombre: "rebote de masa", unidad: V }
     v_1g: { expr: "L_g*i_g/t_g", sim: "v", nombre: "con una sola salida", unidad: V }
     f_m: { expr: "v_g/m_g*100", sim: "fracción", nombre: "fracción del margen", unidad: "%" }
+    f_inv: { expr: "m_g/v_g*100", sim: "fracción", nombre: "con la división al revés", unidad: "%" }
+    v_byte: { expr: "8*L_g*i_g/t_g", sim: "v", nombre: "rebote de un byte entero", unidad: V }
 
 tarjetas:
   - id: explore-rebote
     tipo: explorar
+    fase: "Consiga"
     titulo: "La masa no está en todas partes"
-    texto: "Las salidas que conmutan a la vez devuelven su corriente por los mismos pines de masa. Cambie cuántas y el encapsulado."
-    libro: [195, 221]
+    texto: "Dieciséis salidas conmutan a la vez y devuelven su corriente por los mismos pines de masa. Sin quitar salidas, deje el rebote por debajo del margen en bajo."
+    libro: [195, 201, 205, 221]
+    fijar: { i_g: 0.02, t_g: 2e-9, m_g: 0.6 }
+    inicio: { N_s: 16, L_g: 5e-9 }
     widget:
       tipo: grafica
       x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
@@ -56,7 +66,20 @@ tarjetas:
       mandos:
         - { valor: N_s, min: 1, max: 16, paso: 1, rotulo: "Salidas a la vez, N" }
         - { valor: L_g, lista: [0.4e-9, 1.5e-9, 5e-9], nombres: ["BGA", "QFN", "con patillas"], rotulo: "Encapsulado" }
-    requiere: { mover: [N_s, L_g] }
+    objetivo:
+      condiciones:
+        - { valor: v_g, max: 0.59, rotulo: "Rebote: {{v_g}}" }
+        - { valor: N_s, min: 16, rotulo: "Salidas: {{N_s}}" }
+      logrado: "Con {{L_g}} por pin, {{v_g}}: menos inductancia por pin y más pines de masa. Por eso un BGA es mucho mejor que un DIP a alta velocidad."
+      pistas:
+        - { cuando: { valor: N_s, menor: 16 }, texto: "Las dieciséis salidas tienen que seguir conmutando." }
+        - { texto: "Se come todo el margen: un encapsulado con menos inductancia por pin." }
+    escalera:
+      - "La inductancia del encapsulado es el otro factor de la fórmula."
+    solucion: "QFN o BGA: 240 mV o 64 mV."
+    comprobar:
+      - { con: { N_s: 16, L_g: 1.5e-9 }, v_g: 0.24 }
+      - { con: { N_s: 16, L_g: 0.4e-9 }, v_g: 0.064 }
 
   - id: simule-rebote
     tipo: simular
@@ -107,9 +130,9 @@ tarjetas:
         - { valor: t_g, lista: [1e-9, 2e-9, 4e-9], rotulo: "Flanco, Δt" }
 
   - id: estime-margen
-    tipo: pregunta
+    tipo: leer
     titulo: "Lo que se come del margen"
-    texto: "En LVCMOS de 3,3 V el margen en nivel bajo es de unos 0,6 V. ¿Qué parte se comen esos 400 mV?"
+    texto: "En LVCMOS de 3,3 V el margen en nivel bajo es de unos 0,6 V. Escriba qué parte de él se comen esos 400 mV."
     libro: [198, 201]
     fijar: { N_s: 8, L_g: 5e-9, i_g: 0.02, t_g: 2e-9, m_g: 0.6 }
     widget:
@@ -117,26 +140,24 @@ tarjetas:
       x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
       y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
       curvas:
-        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "Rebote" }
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "v = N·L·Δi/Δt" }
         - { expr: "m_g + 0*nn", color: verde, rotulo: "Margen en bajo", discontinua: true }
-    estimar:
-      objetivo: "f_m"
+      marcas:
+        - { x: "N_s", y: "v_g", rotulo: "{{v_g}}" }
+      mandos: []
+    leer:
+      objetivo: f_m
       unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 20
-      tol: 0.05
+      tol: 0.03
       rotulo: "Parte del margen"
-    exito: "Dos tercios: queda muy poco para el ruido de verdad."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 70 }, texto: "Se ha pasado: 0,4 entre 0,6." }
-      - { texto: "Se ha quedado corto: 0,4 entre 0,6." }
+      errores:
+        - { expr: "f_inv", texto: "Ha dividido al revés: es el rebote entre el margen." }
+    exito: "Dos tercios: queda muy poco para el ruido de verdad, y una entrada en reposo puede cruzar el umbral."
     escalera:
       - "Divida el rebote entre el margen."
     solucion: "0,4 / 0,6: dos tercios, un 67 %."
     comprobar:
-      - { f_m: 66.7, v_g: 0.4 }
+      - { f_m: 66.7, v_g: 0.4, f_inv: 150 }
 
   - id: empareje-consecuencias
     tipo: pregunta
@@ -153,6 +174,28 @@ tarjetas:
     escalera:
       - "Un pulso que no existe hace contar de más."
     solucion: "Margen, señal desplazada; falsas, contadores y resets; salidas quietas, lo transmiten."
+
+  - id: toque-margen
+    tipo: tocar
+    titulo: "Todo el margen"
+    texto: "En la gráfica, toque el punto a partir del cual el encapsulado con patillas se come todo el margen en bajo."
+    libro: [201, 221]
+    widget:
+      tipo: figura
+      figura: fig-41.11
+      zonas:
+        - { id: n8, rotulo: "Punto marcado con un círculo", rect: [124, 114, 14, 14] }
+        - { id: n12, rotulo: "Punto rojo sobre la línea verde", rect: [176, 76, 14, 14] }
+        - { id: qfn, rotulo: "Final de la recta naranja", rect: [229, 146, 14, 14] }
+    tocar:
+      bien: [n12]
+      porque:
+        n8: "Ocho salidas son 400 mV: dos tercios del margen, todavía no todo."
+        qfn: "Es el QFN: con dieciséis salidas aún no llega al margen."
+    exito: "Doce salidas con patillas ya llegan a los 0,6 V del margen. Lo que importa es la simultaneidad."
+    escalera:
+      - "Busque dónde la recta roja cruza la línea discontinua."
+    solucion: "Doce salidas: la recta roja corta los 0,6 V."
 
   - id: toque-defensa
     tipo: tocar
@@ -183,48 +226,64 @@ tarjetas:
     solucion: "La 2, el desacoplo."
 
   - id: predecir-bga
-    tipo: predecir
+    tipo: leer
     titulo: "BGA frente a DIP"
-    texto: "El mismo circuito en un encapsulado DIP y en un BGA, a alta velocidad. ¿Cuál rebota menos?"
-    libro: [208]
+    texto: "Las mismas ocho salidas de 20 mA en 2 ns, ahora en un BGA de 0,4 nH. Escriba el rebote."
+    libro: [208, 221]
+    fijar: { N_s: 8, L_g: 0.4e-9, i_g: 0.02, t_g: 2e-9, m_g: 0.6 }
     widget:
-      tipo: figura
-      figura: fig-41.11
-      zonas:
-        - { id: pines, rotulo: "Defensa 1", rect: [267, 31, 170, 35] }
-    opciones:
-      - texto: "El BGA: sus contactos son cortos y numerosos"
-        bien: true
-        porque: "Muchos pines de masa en paralelo: la defensa número 1."
-      - texto: "El DIP: sus patillas son más gruesas"
-        porque: "Son largas, y eso es más inductancia por pin."
-      - texto: "Igual: el chip es el mismo"
-        porque: "El rebote depende de la inductancia del encapsulado."
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
+      y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "v = N·L·Δi/Δt" }
+        - { expr: "m_g + 0*nn", color: verde, rotulo: "Margen en bajo", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: v_g
+      unidad: V
+      tol: 0.03
+      rotulo: "Rebote con BGA"
+      errores:
+        - { expr: "v_byte*5e-9/L_g", texto: "Esos son los 5 nH del encapsulado con patillas." }
+    exito: "32 mV: sus contactos son cortos y numerosos. El BGA es mucho mejor que un DIP a alta velocidad."
     escalera:
-      - "¿Qué encapsulado tiene más pines de masa y más cortos?"
-    solucion: "El BGA."
+      - "8 × 0,4 nH × 0,02 A / 2 ns."
+    solucion: "8 × 0,4 nH × 20 mA / 2 ns = 32 mV."
+    comprobar:
+      - { v_g: 0.032 }
 
   - id: pregunta-byte
-    tipo: pregunta
+    tipo: explorar
+    fase: "Consiga"
     titulo: "Lo que importa es la simultaneidad"
-    texto: "¿Cuándo se da el peor caso de rebote en un bus de 8 bits?"
-    libro: [205, 206]
+    texto: "Escribir un byte cambia los ocho bits a la vez: 400 mV con patillas. Escalone la escritura hasta quedarse en la mitad."
+    libro: [205, 206, 212]
+    fijar: { L_g: 5e-9, i_g: 0.02, t_g: 2e-9, m_g: 0.6 }
+    inicio: { N_s: 8 }
     widget:
-      tipo: figura
-      figura: fig-41.11
-      zonas:
-        - { id: escalonar, rotulo: "Defensa 5", rect: [267, 137, 170, 35] }
-    opciones:
-      - texto: "Al escribir un byte que cambia los ocho bits a la vez"
-        bien: true
-        porque: "El rebote es proporcional a N: todo a la vez es el peor caso."
-      - texto: "Cuando el bus está quieto"
-        porque: "Sin conmutar no hay di/dt."
-      - texto: "Cuando cambia un solo bit muy deprisa"
-        porque: "Un bit rápido rebota, pero ocho a la vez rebotan ocho veces más."
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas a la vez" }
+      y: { min: 0, max: 0.9, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "nn*L_g*i_g/t_g", color: naranja, rotulo: "v = N·L·Δi/Δt" }
+        - { expr: "m_g + 0*nn", color: verde, rotulo: "Margen en bajo", discontinua: true }
+      marcas:
+        - { x: "N_s", y: "v_g", rotulo: "{{v_g}}" }
+      lectura: { valor: v_g, rotulo: "Rebote de masa" }
+      mandos:
+        - { valor: N_s, min: 1, max: 16, paso: 1, rotulo: "Bits que cambian a la vez" }
+    objetivo:
+      condiciones:
+        - { valor: v_g, max: 0.2, rotulo: "Rebote: {{v_g}}" }
+      logrado: "{{N_s}} a la vez: {{v_g}}. Algunos controladores de memoria escalonan las conmutaciones a propósito."
+      pistas:
+        - { texto: "Todavía cambian demasiados a la vez: el rebote es proporcional a N." }
     escalera:
-      - "Mire el factor N de la fórmula."
-    solucion: "Cuando los ocho bits cambian a la vez."
+      - "La mitad de N, la mitad de rebote."
+    solucion: "Cuatro bits a la vez o menos: 200 mV."
+    comprobar:
+      - { con: { N_s: 4 }, v_g: 0.2 }
 
   - id: pregunta-banco
     tipo: pregunta

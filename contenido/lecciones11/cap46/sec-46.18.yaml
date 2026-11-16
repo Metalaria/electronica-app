@@ -5,6 +5,10 @@
 #   60 °C, unos 13 años (bloque 627; 8 760 h por año).
 # - Problema 47.C: causas de rechazo en montaje y sus correcciones (bloque 638).
 # Paso práctico: «ajuste» de la temperatura de trabajo para que un electrolítico de 5 000 h dure diez años.
+# 1.2.1: el explorar pide el electrolítico que pasa de diez años a 65 °C (6 000 h, antes «pregunta-alternativa»);
+#   se leen los diez mil euros (figura 47.10, fig-46.10, con n fases tras el diseño) y los veinte años; se toca en la
+#   figura 47.10 la fase en que actúa la verificación automática. «En el banco» (montar a mano) va en el éxito del
+#   emparejar.
 leccion: cap46/sec-46.18
 
 libro:
@@ -30,7 +34,9 @@ modelo:
     h_a: { sim: "t_{año}", nombre: "horas de un año", unidad: h, valor: 8760 }
     E_a: { sim: "E_{a}", nombre: "energía de activación", unidad: eV, valor: 0.7 }
     V_5: { sim: "V", nombre: "vida a 85 °C", unidad: "años", valor: 5 }
+    n_f: { sim: "n", nombre: "fases después del diseño", unidad: "", valor: 4 }
   calculos:
+    C_f: { expr: "10^n_f", sim: "C", nombre: "coste de un error de un euro en el esquema", unidad: "", cifras: 5 }
     L_e: { expr: "L_0*2^((105 - T_w)/10)", sim: "L", nombre: "vida del electrolítico", unidad: h, cifras: 3 }
     Y_e: { expr: "L_e/h_a", sim: "L", nombre: "vida en años", unidad: "años", cifras: 2 }
     F_s: { expr: "exp(E_a*q_e/k_B*(1/(T_w + 273.15) - 1/358.15))", sim: "F", nombre: "vida de los semiconductores frente a 85 °C", unidad: "", cifras: 2 }
@@ -41,9 +47,10 @@ tarjetas:
   - id: explore-vida
     tipo: explorar
     titulo: "El electrolítico manda"
-    texto: "Problema 47.B: la vida de un equipo la fija el componente que antes falla, casi siempre el electrolítico. Cambie su temperatura y sus horas."
+    texto: "Problema 47.B: la vida la fija el componente que antes falla, casi siempre el electrolítico. A 65 °C, elija uno que pase de diez años."
     libro: [619, 627]
-    fijar: { h_a: 8760 }
+    fijar: { h_a: 8760, T_w: 65 }
+    inicio: { L_0: 2000 }
     widget:
       tipo: grafica
       x: { id: tt, min: 50, max: 90, unidad: "°C", rotulo: "T" }
@@ -57,57 +64,80 @@ tarjetas:
         - { valor: L_e, rotulo: "En horas: {{L_e}}" }
       mandos:
         - { valor: L_0, lista: [2000, 5000, 6000], rotulo: "Vida a 105 °C" }
-        - { valor: T_w, min: 55, max: 85, paso: 5, rotulo: "Temperatura de trabajo" }
-    requiere: { mover: [L_0, T_w] }
+    objetivo:
+      condiciones:
+        - { valor: Y_e, min: 10, rotulo: "Vida: {{Y_e}}" }
+      logrado: "{{L_0}} a 105 °C dan {{L_e}} a 65 °C, {{Y_e}}. Y eso manda sobre cualquier cálculo de MTBF de los semiconductores."
+      pistas:
+        - { cuando: { valor: L_0, menor: 3000 }, texto: "El de 2000 h dura unos 3,7 años: muy lejos." }
+        - { texto: "El de 5 000 h no basta por poco: unos 9 años." }
+    escalera:
+      - "Cada hora a 105 °C son 16 horas a 65 °C."
+    solucion: "Uno de 6 000 h o más: 96 000 h, unos 11 años."
+    comprobar:
+      - { Y_e: 3.65 }
+      - { con: { L_0: 6000 }, L_e: 96000, Y_e: 11 }
+      - { con: { L_0: 5000 }, L_e: 80000, Y_e: 9.13 }
 
   - id: prediga-coste
-    tipo: predecir
+    tipo: leer
     titulo: "Cuándo cuesta corregir"
-    texto: "Problema 47.A: un error que cuesta un euro corregir en el esquema llega al cliente. ¿Cuánto cuesta entonces?"
+    texto: "Problema 47.A: un error que cuesta un euro corregir en el esquema llega al cliente. Escriba cuántos euros cuesta entonces."
     libro: [609, 610]
     widget:
       tipo: figura
       figura: fig-46.10
       zonas:
-        - { id: barras, rotulo: "Las barras", rect: [40, 25, 320, 140] }
-    opciones:
-      - texto: "Unos diez mil"
-        bien: true
-        porque: "Un factor diez por fase, cuatro órdenes de magnitud, y además reputación y quizá responsabilidad legal."
-      - texto: "Unos cien"
-        porque: "Ese es el coste en preserie; en el campo son dos órdenes de magnitud más."
-      - texto: "Lo mismo: un euro"
-        porque: "Cada fase multiplica por diez: reparar, transportar y sustituir no son gratis."
+        - { id: diseno, rotulo: "Barra del diseño", rect: [50, 140, 50, 45] }
+        - { id: desnuda, rotulo: "Barra de la placa desnuda", rect: [116, 118, 50, 67] }
+        - { id: montada, rotulo: "Barra de la placa montada", rect: [172, 88, 60, 97] }
+        - { id: montaje, rotulo: "Barra del montaje del equipo", rect: [248, 58, 50, 127] }
+        - { id: cliente, rotulo: "Barra del cliente", rect: [314, 28, 50, 157] }
+    leer:
+      objetivo: C_f
+      unidad: ""
+      tol: 0.01
+      rotulo: "Euros"
+      errores:
+        - { expr: "10^(n_f - 2)", texto: "Ese es el de la placa montada: en el cliente son dos órdenes de magnitud más." }
+        - { expr: "10^(n_f - 1)", texto: "Ese es el del montaje del equipo: falta el último salto." }
+    exito: "Unos diez mil: cuatro órdenes de magnitud, y además reputación y, si el fallo es de seguridad, responsabilidad legal."
     escalera:
-      - "Cuente las fases del diseño al campo, cada una por diez."
-    solucion: "Unos diez mil: ×10 000 en el campo."
+      - "Cuente las fases del diseño al cliente, cada una por diez."
+    solucion: "×10 000: unos diez mil euros."
+    comprobar:
+      - { C_f: 10000 }
 
   - id: porque-ahora
-    tipo: porque
+    tipo: tocar
     titulo: "Corregirlo ahora"
-    texto: "Un error se detecta en diseño y parece menor. ¿Por qué corregirlo ya, aunque retrase la entrega?"
+    texto: "La verificación automática (ERC, DRC, simulación) vale su peso en oro. Toque la fase en que actúa."
     libro: [612, 613]
     widget:
       tipo: figura
       figura: fig-46.10
       zonas:
-        - { id: barras, rotulo: "Las barras", rect: [40, 25, 320, 140] }
-    opciones:
-      - texto: "El multiplicador crece mientras se espera"
-        bien: true
-        porque: "Nunca «ya lo arreglaré en la siguiente versión»: el cálculo siempre sale a favor de ahora."
-      - texto: "Porque los errores menores no existen"
-        porque: "Existen; el problema es lo que cuestan más tarde, no su tamaño ahora."
-      - texto: "Porque el cliente lo exige"
-        porque: "No hace falta que lo exija: el gradiente de coste lo decide."
+        - { id: diseno, rotulo: "Barra del diseño", rect: [50, 140, 50, 45] }
+        - { id: desnuda, rotulo: "Barra de la placa desnuda", rect: [116, 118, 50, 67] }
+        - { id: montada, rotulo: "Barra de la placa montada", rect: [172, 88, 60, 97] }
+        - { id: montaje, rotulo: "Barra del montaje del equipo", rect: [248, 58, 50, 127] }
+        - { id: cliente, rotulo: "Barra del cliente", rect: [314, 28, 50, 157] }
+    tocar:
+      bien: [diseno]
+      porque:
+        desnuda: "Ahí ya hay placa: el ERC y el DRC actúan antes, sobre el esquema y el trazado."
+        montada: "Demasiado tarde: la verificación automática actúa en el diseño."
+        montaje: "Demasiado tarde: la verificación automática actúa en el diseño."
+        cliente: "Ahí el error ya cuesta ×10 000."
+    exito: "En la fase ×1. Y si el error se detecta en diseño, se corrige ahora, aunque parezca menor y aunque retrase la entrega: el multiplicador crece mientras se espera."
     escalera:
-      - "¿Cuánto costará en la fase siguiente?"
-    solucion: "El multiplicador crece mientras se espera."
+      - "¿Sobre qué trabajan el ERC y el DRC: sobre placas o sobre el esquema y el trazado?"
+    solucion: "La primera barra: el diseño."
 
   - id: prediga-veinte
-    tipo: predecir
+    tipo: leer
     titulo: "De 85 a 65 °C"
-    texto: "Un equipo debía durar 5 años a 85 °C, limitado por sus electrolíticos; con disipador y ventilación trabaja a 65 °C. ¿Cuánto dura?"
+    texto: "Un equipo debía durar 5 años a 85 °C, limitado por sus electrolíticos. Con disipador y ventilación trabaja a 65 °C: escriba cuántos años dura."
     libro: [623, 625, 626]
     fijar: { T_w: 65, V_5: 5, E_a: 0.7 }
     widget:
@@ -117,16 +147,16 @@ tarjetas:
       curvas:
         - { expr: "2^((85 - tt)/10)", color: naranja, rotulo: "electrolíticos" }
         - { expr: "exp(E_a*q_e/k_B*(1/(tt + 273.15) - 1/358.15))", color: azul, rotulo: "semiconductores, 0,7 eV" }
-      lectura: { valor: V_n, rotulo: "Vida a 65 °C" }
-      ocultar: true
-    opciones:
-      - texto: "Unos veinte años"
-        bien: true
-        porque: "Bajar 20 °C multiplica por 4 la vida de los electrolíticos, y por 3,8 la de los semiconductores."
-      - texto: "Unos diez años: el doble"
-        porque: "El doble sería con 10 °C; con 20 °C son dos duplicaciones, ×4."
-      - texto: "Unos siete años"
-        porque: "La vida no crece sumando años: se multiplica por cada 10 °C."
+      mandos: []
+    leer:
+      objetivo: V_n
+      unidad: "años"
+      tol: 0.03
+      rotulo: "Vida a 65 °C"
+      errores:
+        - { expr: "V_5*2", texto: "El doble sería con 10 °C; con 20 °C son dos duplicaciones." }
+        - { expr: "V_5 + 2", texto: "La vida no crece sumando años: se multiplica por cada 10 °C." }
+    exito: "Unos veinte años: bajar 20 °C multiplica por 4 la vida de los electrolíticos, y por 3,8 la de los semiconductores."
     escalera:
       - "Cada 10 °C menos duplican la vida; aquí son 20 °C."
     solucion: "5 años × 4 = 20 años."
@@ -164,47 +194,18 @@ tarjetas:
       - { con: { T_w: 65 }, Y_e: 9.13, L_e: 80000 }
       - { con: { T_w: 60 }, Y_e: 12.9 }
 
-  - id: pregunta-alternativa
-    tipo: pregunta
-    titulo: "La otra salida"
-    texto: "Si la temperatura no puede bajar de 65 °C, ¿qué electrolítico hace falta para pasar de diez años?"
-    libro: [627]
-    fijar: { T_w: 65, L_0: 6000, h_a: 8760 }
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 50, max: 90, unidad: "°C", rotulo: "T" }
-      y: { min: 0.5, max: 50, unidad: "años", rotulo: "vida", escala: log }
-      curvas:
-        - { expr: "L_0*2^((105 - tt)/10)/h_a", color: naranja, rotulo: "vida continua" }
-      lectura: { valor: Y_e, rotulo: "Vida a 65 °C" }
-      ocultar: true
-    opciones:
-      - texto: "Uno de 6 000 h o más"
-        bien: true
-        porque: "A 65 °C, 6 000 h a 105 °C dan 96 000 h, unos 11 años."
-      - texto: "Uno de 5 000 h"
-        porque: "No basta por poco: 80 000 h, unos 9 años."
-      - texto: "Da igual: el MTBF de los semiconductores manda"
-        porque: "Al revés: el electrolítico manda sobre cualquier cálculo de MTBF de los semiconductores."
-    escalera:
-      - "Cada hora a 105 °C son 16 horas a 65 °C."
-    solucion: "Uno de 6 000 h o más."
-    comprobar:
-      - { L_e: 96000, Y_e: 11 }
-      - { con: { L_0: 5000 }, L_e: 80000, Y_e: 9.13 }
-
   - id: empareje-montaje
     tipo: pregunta
     titulo: "Un 8 % de rechazos"
     texto: "Problema 47.C: empareje cada causa de rechazo en montaje con su corrección."
-    libro: [634, 638]
+    libro: [634, 638, 644]
     emparejar:
       - ["Componentes demasiado juntos para la boquilla", "Respetar la separación mínima del proceso"]
       - ["Pads sin alivio térmico junto a vertidos", "Alivio térmico"]
       - ["Polarizados sin marca clara", "Serigrafía con el pin 1 y el positivo"]
       - ["Mezcla de alturas", "Agrupar por altura"]
       - ["Referencias tapadas por los componentes", "Serigrafía en el borde, no bajo la pieza"]
-    exito: "Todo cuesta cero en la fase de diseño."
+    exito: "Todo cuesta cero en la fase de diseño. Y montar uno mismo el primer prototipo a mano descubre en media hora todo lo que se hizo difícil."
     pistas:
       - { texto: "La pantalla de pasta no pasa si hay alturas mezcladas." }
     escalera:
@@ -232,28 +233,6 @@ tarjetas:
     escalera:
       - "¿Qué cuesta cero al dibujar la placa y ahorra horas después?"
     solucion: "Puntos de prueba en las señales críticas y las alimentaciones."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Antes de enviar a fabricar en serie, ¿qué comprobación descubre en media hora lo que se hizo difícil de montar?"
-    libro: [644]
-    widget:
-      tipo: figura
-      figura: fig-46.10
-      zonas:
-        - { id: barras, rotulo: "Las barras", rect: [40, 25, 320, 140] }
-    opciones:
-      - texto: "Montar uno mismo el primer prototipo a mano"
-        bien: true
-        porque: "Quien monta descubre las separaciones, alturas y marcas que faltan."
-      - texto: "Repasar el esquema eléctrico"
-        porque: "El esquema no dice nada del montaje: separaciones, alturas y serigrafía están en la placa."
-      - texto: "Esperar a los rechazos del taller"
-        porque: "Eso es descubrirlo en producción, diez o cien veces más caro."
-    escalera:
-      - "¿Quién descubre antes lo que es difícil de montar?"
-    solucion: "Montar el primer prototipo a mano."
 
   - id: resumen
     tipo: resumen

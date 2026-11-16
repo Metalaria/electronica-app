@@ -3,6 +3,8 @@
 # largo del camino del esquema, con los 3 V de las pilas y los +5 V de U5; no se presenta como la avería más común) y
 # los síntomas de iFixit (pantalla, altavoz, cartucho). Fuentes: los datos de la consola (gbc#n), iFixit «Game Boy
 # Color Troubleshooting» y el libro. No he encontrado una fuente de averías típicas de la placa CGB que se pueda citar.
+# 1.2.1: un circuito lógico con meta (los +5 V llegan si las pilas, el interruptor y U5 están bien); el orden de iFixit
+# y el juego que se cuelga se tocan en la foto. Quedan dos preguntas: medir antes la entrada y el LED que luce.
 leccion: consola-gbc/gbc-averias
 
 libro:
@@ -37,33 +39,51 @@ tarjetas:
   - id: explore-simple
     tipo: explorar
     titulo: "Lo primero, lo simple"
-    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
-    libro: ["cap53#39", "gbc#11", "gbc#15", "gbc#88"]
-    requiere: { mover: [sw, dcj, cart] }
+    texto: "La corriente va de las pilas al interruptor y del interruptor, por VCC, al convertidor U5. Consiga que lleguen los +5 V."
+    libro: ["cap53#39", "gbc#11", "gbc#97", "gbc#21"]
+    widget:
+      tipo: logica
+      entradas: [{ id: BT, rotulo: "Pilas cargadas" }, { id: SW, rotulo: "Interruptor sano" }, { id: DC, rotulo: "U5 sano" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [BT, SW, DC] }
+      salidas:
+        - { id: CINCO, de: a1, rotulo: "Red +5V" }
+    objetivo:
+      condiciones:
+        - { led: CINCO, valor: 1, rotulo: "Red +5V" }
+      logrado: "Las tres en serie: con que falle una, no hay +5 V. Por eso se mide a lo largo del camino, desde las pilas."
+      pistas:
+        - { texto: "Todavía falla una pieza del camino." }
+    escalera:
+      - "Pilas, interruptor y U5: los tres bien."
+    solucion: "Pilas, interruptor y U5, los tres sanos."
+
+  - id: ordene-antes
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Antes de abrirla"
+    texto: "La consola no enciende. Con pilas AA nuevas, toque, en el orden de iFixit, lo que revisaría antes de abrirla: el interruptor y el cartucho."
+    libro: ["gbc#84", "gbc#88", "cap53#39"]
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
-        - { id: sw, hotspot: sw, rotulo: "Interruptor SW1", texto: "Compruebe que está en «on»." }
-        - { id: dcj, hotspot: dcj, rotulo: "Toma P4", texto: "Entrada externa de 3 V." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Cartucho metido hasta el clic y sin polvo." }
-
-  - id: ordene-antes
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Antes de abrirla"
-    texto: "La consola no enciende. Ordene los pasos, de lo más simple a lo más difícil."
-    libro: ["gbc#84", "gbc#88", "cap53#39"]
-    ordenar:
-      - "Interruptor en «on» y pilas AA nuevas."
-      - "Volver a meter el cartucho y quitarle el polvo."
-      - "Abrir la consola y medir VCC y los +5 V."
-    exito: "Lo de fuera primero: muchas «averías» son unas pilas viejas."
+        - { id: sw, hotspot: sw, rotulo: "Pieza alargada, a la izquierda" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, debajo del grande" }
+    tocar:
+      bien: [sw, cart]
+      orden: true
+      porque:
+        soc: "Un chip va al final, después de abrir y medir."
+        amp: "Un chip va al final, después de abrir y medir."
     pistas:
       - { texto: "iFixit empieza por el interruptor y las pilas." }
+    exito: "Interruptor en «on» y pilas nuevas; después, el cartucho hasta el clic y sin polvo; por último, abrir y medir."
     escalera:
       - "¿Qué se puede probar sin destornillador?"
-    solucion: "Interruptor y pilas; después, el cartucho; por último, abrir y medir."
+    solucion: "El interruptor y luego la ranura."
 
   - id: averia-no-enciende
     tipo: averia
@@ -166,22 +186,26 @@ tarjetas:
     solucion: "El altavoz SP1."
 
   - id: empareje-sintomas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada síntoma, su sospechoso"
-    texto: "Empareje cada síntoma con lo que señala iFixit."
-    libro: ["gbc#85", "gbc#86", "gbc#87", "gbc#88", "gbc#20"]
-    emparejar:
-      - ["LED encendido, sin imagen", "La pantalla"]
-      - ["Suenan los auriculares, no el altavoz", "El altavoz"]
-      - ["Manchas con la pantalla apagada", "Pantalla rota"]
-      - ["El juego se cuelga", "Cartucho mal metido o con polvo"]
-    exito: "El LED dice que hay alimentación; los auriculares, que hay sonido."
-    pistas:
-      - { texto: "Si el LED luce, la consola recibe corriente." }
+    tipo: tocar
+    titulo: "El juego se cuelga"
+    texto: "La consola enciende, pero el juego se cuelga. Toque lo que revisaría."
+    libro: ["gbc#88", "gbc#87", "gbc#85"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: ffc, hotspot: ffc, rotulo: "Conector ancho, arriba" }
+    tocar:
+      bien: [cart]
+      porque:
+        soc: "Antes de sospechar del chip, lo simple: el cartucho."
+        ffc: "Es el conector de la pantalla: un fallo de pantalla da manchas o falta de imagen, no cuelgues."
+    exito: "La ranura: volver a meter el cartucho hasta el clic y quitarle el polvo. Las manchas que se ven incluso con la pantalla apagada son de una pantalla rota."
     escalera:
-      - "Cada prueba descarta una parte: alimentación, sonido o cartucho."
-    solucion: "Sin imagen: pantalla. Sin altavoz: altavoz. Manchas: pantalla rota. Cuelgues: cartucho."
+      - "El juego vive en el cartucho."
+    solucion: "La ranura del cartucho."
 
   - id: resumen
     tipo: resumen

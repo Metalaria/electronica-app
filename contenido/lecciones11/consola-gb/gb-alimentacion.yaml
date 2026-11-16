@@ -3,6 +3,9 @@
 # dropout de la sección 8.4 del libro frente a lo que dan cuatro pilas AA, medido por nitro2k01), qué alimenta cada red
 # y por qué el LED se apaga antes que el juego. Fuentes: los datos de la consola (gb#n: explorador y redes del
 # esquema), el blog de nitro2k01 y el libro.
+# 1.2.1: el camino de la corriente se toca en orden en la foto (toma, interruptor, condensador de los +5 V); el 7805
+# es un explorar con meta; se tocan el LED con su Zener y las piezas de la red VDD (el amplificador, en VCC, es la
+# trampa). Queda una pregunta: por qué un convertidor conmutado.
 leccion: consola-gb/gb-alimentacion
 
 libro:
@@ -34,44 +37,33 @@ modelo:
     V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida de un 7805 (modelo)", unidad: V, cifras: 3 }
 
 tarjetas:
-  - id: explore-alim
-    tipo: explorar
-    titulo: "La alimentación en la foto"
-    texto: "Toque el interruptor, la toma de corriente y el condensador grande de la alimentación."
-    libro: ["gb#11", "gb#12", "gb#14"]
-    requiere: { mover: [sw, dc, c1] }
+  - id: ordene-camino
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Según las redes del esquema, toque en el orden de la corriente: la toma por la que entran las pilas, el interruptor y el condensador de los +5 V."
+    libro: ["gb#103", "gb#104", "gb#105", "gb#106", "gb#107", "gb#60", "gb#11", "gb#12", "gb#14"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: sw, hotspot: sw, rotulo: "Interruptor SW1", texto: "Un conmutador doble." }
-        - { id: dc, hotspot: dc, rotulo: "Toma DC1", texto: "6 V de fuera: al enchufar, desconecta las pilas." }
-        - { id: c1, hotspot: c1, rotulo: "C1, 100 µF", texto: "El desacoplo general de los +5 V." }
-
-  - id: ordene-camino
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El camino de la corriente"
-    texto: "Ordene el camino desde las pilas hasta los +5 V de la lógica, según las redes del esquema."
-    libro: ["gb#103", "gb#104", "gb#105", "gb#106", "gb#107", "gb#60"]
-    ordenar:
-      - "Las pilas, por la toma DC1."
-      - "El diodo D1."
-      - "El interruptor SW1."
-      - "VCC, hasta el conector J1."
-      - "La placa DC-DC: +5 V en VDD."
-    exito: "Elegir la fuente, proteger, encender y convertir: en ese orden."
+        - { id: dc, hotspot: dc, rotulo: "Conector, arriba a la derecha" }
+        - { id: sw, hotspot: sw, rotulo: "Pieza alargada, arriba a la derecha" }
+        - { id: c1, hotspot: c1, rotulo: "Cilindro, arriba a la izquierda" }
+    tocar:
+      bien: [dc, sw, c1]
+      orden: true
     pistas:
-      - { texto: "BT+ llega a la toma; la red de después del diodo llega al interruptor." }
+      - { texto: "BT+ llega a la toma; la red de después del diodo D1, al interruptor; VDD, al condensador C1." }
+    exito: "Pilas por la toma DC1 (que las desconecta si se enchufan 6 V de fuera), el diodo D1, el interruptor SW1, VCC hasta J1 y la placa DC-DC, que da VDD: el C1 de 100 µF la desacopla."
     escalera:
-      - "Lo último es la conversión: VDD sale de J1, el conector de la placa DC-DC."
-      - "El interruptor separa SW1-VCC de VCC."
-    solucion: "Pilas y toma DC1, D1, SW1, VCC hasta J1 y la placa DC-DC, que da VDD."
+      - "Lo primero es la toma; lo último, los +5 V."
+    solucion: "DC1, SW1 y C1."
 
   - id: ajuste-7805
-    tipo: ajuste
+    tipo: explorar
     titulo: "¿Y con un 7805?"
-    texto: "Si un 7805 sustituyera al convertidor, ¿cuánta tensión pediría? Suba la entrada hasta que dé sus 5 V."
+    texto: "Si un 7805 sustituyera al convertidor de la Game Boy, ¿cuánta tensión pediría? Suba la entrada hasta que dé sus 5 V."
     libro: ["cap08#67", "cap08#83", "gb#91"]
     inicio: { V_in: 4.5 }
     widget:
@@ -83,15 +75,12 @@ tarjetas:
       marcas:
         - { x: "V_in", y: "V_reg", rotulo: "{{V_reg}}" }
       mandos: [ { valor: V_in, min: 3, max: 9, paso: 0.1, rotulo: "Tensión de entrada" } ]
-    ajuste:
-      valor: V_reg
-      objetivo: 5
-      tol: 0.01
-      rotulo: "Salida del 7805"
-      bajo: "Le falta tensión: el 7805 necesita unos 2 V por encima de la salida."
-      alto: "No puede dar más de 5 V."
-      dentro: "5 V, pero a partir de 7 V de entrada."
-    exito: "Un 7805 pide unos 7 V: lo que cuatro pilas AA no dan."
+    objetivo:
+      condiciones:
+        - { valor: V_reg, objetivo: 5, tol: 0.01, rotulo: "Salida: {{V_reg}}" }
+      logrado: "5 V, pero a partir de {{V_in}} de entrada: unos 2 V por encima de la salida. Cuatro pilas AA no dan razonablemente más de 7 V, y bajan al gastarse."
+      pistas:
+        - { texto: "Le falta tensión: el 7805 necesita unos 2 V por encima de la salida." }
     escalera:
       - "El 7805 necesita unos 2 V más que su salida."
     solucion: "Unos 7 V: 5 V más los 2 V de su caída."
@@ -122,66 +111,50 @@ tarjetas:
     solucion: "Mantiene 5 V con las pilas cada vez más gastadas, y sin calentar."
 
   - id: prediga-led
-    tipo: predecir
+    tipo: tocar
     titulo: "El LED se apaga antes"
-    texto: "Con las pilas gastadas, el LED de encendido se apaga y el juego sigue. ¿Por qué?"
+    texto: "Con las pilas gastadas, el LED de encendido se apaga y el juego sigue. En la placa de la pantalla, toque lo que lo hace."
     libro: ["gb#32", "gb#100", "gb#87"]
     widget:
       tipo: figura
       consola: { maquina: gb, foto: lcd-b }
       zonas:
-        - { id: led, hotspot: l-led, rotulo: "LED y su resistencia" }
-    opciones:
-      - texto: "El LED toma VCC, la tensión de las pilas, por un Zener de 3,6 V."
-        bien: true
-        porque: "La lógica tiene sus 5 V del convertidor, que aguanta hasta 3 V; el LED ve la tensión de las pilas sin regular."
-      - texto: "El SoC apaga el LED para ahorrar."
-        porque: "El LED no depende del SoC: cuelga de VCC, a través de R1 y del Zener."
-      - texto: "El LED se ha fundido."
-        porque: "Con pilas nuevas vuelve a lucir: es un aviso de pilas gastadas."
+        - { id: led, hotspot: l-led, rotulo: "Piezas pequeñas, arriba a la derecha" }
+        - { id: reg, hotspot: l-reg, rotulo: "Chip pequeño, arriba en el centro" }
+        - { id: q1, hotspot: l-q1, rotulo: "Transistor, en el centro" }
+    tocar:
+      bien: [led]
+      porque:
+        reg: "Es el regulador de la pantalla: da V1–V5, no enciende el LED."
+        q1: "Q1 es parte de la fuente de polarización de la pantalla."
+    exito: "R1 y el Zener D1 de 3,6 V: el LED toma VCC, la tensión de las pilas sin regular. La lógica sigue con los 5 V del convertidor, que aguanta hasta 3 V."
     escalera:
-      - "¿De qué red cuelga el LED: de VCC o de los +5 V?"
-    solucion: "Es un indicador de pilas: VCC por un Zener de 3,6 V."
+      - "Busque el LED: a su lado está lo que lo apaga."
+    solucion: "El LED con R1 y el Zener D1."
 
   - id: empareje-redes
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada red, su papel"
-    texto: "Empareje cada red del esquema con lo que lleva."
-    libro: ["gb#103", "gb#106", "gb#107", "gb#108", "gb#60"]
-    emparejar:
-      - ["BT+", "El positivo de las pilas"]
-      - ["VCC", "Las pilas tras el interruptor"]
-      - ["VDD", "+5 V del SoC y las memorias"]
-      - ["VEE", "La tensión negativa de la pantalla"]
-    exito: "Pilas, interruptor y convertidor: tres redes antes de los 5 V."
-    pistas:
-      - { texto: "VDD llega a U1, U2, U3 y al cartucho; VEE solo a J1 y J2." }
-    escalera:
-      - "VCC llega a SW1: está detrás del interruptor."
-    solucion: "BT+: pilas. VCC: tras el interruptor. VDD: +5 V. VEE: pantalla."
-
-  - id: prediga-amplificador
-    tipo: predecir
-    titulo: "¿De dónde come el amplificador?"
-    texto: "La red VCC llega a U4, el amplificador. ¿De qué se alimenta, entonces?"
-    libro: ["gb#106", "gb#107", "gb#6"]
+    tipo: tocar
+    titulo: "Quién come de los +5 V"
+    texto: "La red VDD, los +5 V del convertidor, llega al SoC, a las dos memorias y al cartucho. Tóquelos."
+    libro: ["gb#106", "gb#107", "gb#108", "gb#60", "gb#6"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: amp, hotspot: amp, rotulo: "Amplificador U4" }
-    opciones:
-      - texto: "De las pilas tras el interruptor, sin pasar por el convertidor."
-        bien: true
-        porque: "VCC es la red de después de SW1: el amplificador toma la tensión de las pilas."
-      - texto: "De los +5 V, como el SoC."
-        porque: "Los +5 V son VDD; U4 está en VCC."
-      - texto: "De la tensión negativa de la pantalla."
-        porque: "VEE solo llega a J1 y J2, los conectores."
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: vram, hotspot: vram, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, en el centro a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, a la derecha" }
+    tocar:
+      bien: [soc, vram, wram, cart]
+      todas: true
+      porque:
+        amp: "El amplificador U4 está en VCC: toma las pilas tras el interruptor, sin pasar por el convertidor."
+    exito: "U1, U2, U3 y P1: VDD. El amplificador come de VCC, y VEE, la tensión negativa de la pantalla, solo llega a J1 y J2."
     escalera:
-      - "Mire qué red llega a U4 y dónde nace."
-    solucion: "De VCC: las pilas, después del interruptor."
+      - "Todos los chips digitales y el cartucho; el de audio, no."
+    solucion: "El SoC, la VRAM, la WRAM y la ranura."
 
   - id: resumen
     tipo: resumen

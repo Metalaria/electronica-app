@@ -2,11 +2,15 @@
 # → SW1 → dos 1SR35-100A → IC15), la polaridad del modelo 1, la potencia que disipa un 7805 y su dropout (libro,
 # sección 8.4) y qué alimenta cada 7805 según las redes VCC y VCCQ del esquema. Fuentes: los datos de la consola
 # (megadrive#n), la guía de Retro Tech Wiki basada en el manual de Sega, ConsoleMods «Genesis:Buying Guide» y el libro.
+# 1.2.1: el camino se toca en orden en la foto; el 7805 es un circuito vivo (esquema «regulador-lineal», como en la
+# piloto de la SNES), con los 10 V del adaptador PAL-G sin contar los diodos y una carga de ejemplo de 0,5 A: se mide
+# Vcc1, se escribe el calor y se sube la entrada hasta que regula; se tocan los chips de la red VCCQ que se apagan si
+# falla IC17 (redes del esquema, megadrive#126/127). Queda el emparejar de las clavijas.
 leccion: consola-megadrive/megadrive-alimentacion
 
 libro:
   "megadrive#2": "Bus de 23 bits de dirección (VA1–VA23 con /UDS y /LDS) y 16 de datos"
-  "megadrive#4": "Decodifica el mapa del 68000"
+  "megadrive#4": "Decodifica el mapa del 68000, arbitra el bus entre 68000, Z80 y VDP"
   "megadrive#22": "Dos reguladores lineales de +5 V sobre el blindaje"
   "megadrive#23": "Interruptor deslizante"
   "megadrive#92": "La clavija del adaptador del modelo 1 tiene el centro negativo"
@@ -27,44 +31,47 @@ modelo:
     V_in: { sim: "V_{entrada}", nombre: "tensión en la entrada del 7805", unidad: V, valor: 5 }
     V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 10 }
     V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
-    I: { sim: "I", nombre: "corriente del regulador", unidad: A, valor: 0.5 }
+    I: { sim: "I", nombre: "corriente del regulador (ejemplo)", unidad: A, valor: 0.5 }
+    V_dr: { sim: "V_{do}", nombre: "dropout del 78xx", unidad: V, valor: 2 }
+    R_c: { sim: "R_{L}", nombre: "carga de ejemplo: la que pide 0,5 A a 5 V", unidad: Ω, valor: 10 }
+    on_c: { tipo: interruptor, nombre: "consola encendida", valor: 1 }
   calculos:
+    I_reg: { si: on_c, entonces: "V_reg/R_c", sino: "0", sim: "I", nombre: "corriente del 7805 al subir la entrada", unidad: A }
+    V_sa: { expr: "min(V_o, V_ad - V_dr)", sim: "V_{salida}", nombre: "salida del 7805 con el adaptador", unidad: V }
+    I_a: { si: on_c, entonces: "V_sa/R_c", sino: "0", sim: "I", nombre: "corriente con el adaptador", unidad: A }
+    V_pa: { expr: "V_ad - V_sa", sim: "V_{entrada} − V_{salida}", nombre: "caída en el 7805", unidad: V }
+    P_a: { expr: "V_pa*I_a", sim: "P_{disipada}", nombre: "calor que disipa el 7805 con el adaptador", unidad: W, cifras: 3 }
+    P_mal: { expr: "V_ad*I_a", sim: "V · I", nombre: "los 10 V enteros por la corriente", unidad: W }
     V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida del 7805 (modelo)", unidad: V, cifras: 3 }
     P_d: { expr: "(V_ad - V_o)*I", sim: "P_{disipada}", nombre: "potencia que disipa el 7805", unidad: W, cifras: 3 }
 
 tarjetas:
-  - id: explore-alim
-    tipo: explorar
-    titulo: "La alimentación en la foto"
-    texto: "Toque los dos reguladores 7805 y el interruptor de encendido."
-    libro: ["megadrive#22", "megadrive#23", "megadrive#95"]
-    requiere: { mover: [reg, sw1] }
+  - id: ordene-camino
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Los 10 V del adaptador pasan por la ferrita FB1, el interruptor y dos diodos hasta los 7805. Toque, en ese orden, el interruptor y los reguladores."
+    libro: ["megadrive#94", "megadrive#93", "megadrive#22", "megadrive#23"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: reg, hotspot: reg, rotulo: "Reguladores 7805", texto: "IC15 e IC17: cada uno da +5 V a media placa." }
-        - { id: sw1, hotspot: sw1, rotulo: "Interruptor SW1", texto: "Un interruptor deslizante en la entrada." }
-
-  - id: ordene-camino
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El camino de la corriente"
-    texto: "Ordene el camino desde el adaptador hasta el primer regulador, según el manual de Sega."
-    libro: ["megadrive#94", "megadrive#93"]
-    ordenar:
-      - "Adaptador: 10 V de continua."
-      - "Ferrita FB1."
-      - "Interruptor SW1."
-      - "Dos diodos 1SR35-100A."
-      - "Regulador IC15 (7805)."
-    exito: "Filtrar, encender, proteger y regular: en ese orden."
+        - { id: sw1, hotspot: sw1, rotulo: "Interruptor, abajo a la izquierda" }
+        - { id: reg, hotspot: reg, rotulo: "Piezas con disipador, arriba a la izquierda" }
+        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, en el centro" }
+        - { id: ym, hotspot: ym, rotulo: "Chip largo, a la izquierda" }
+    tocar:
+      bien: [sw1, reg]
+      orden: true
+      porque:
+        osc: "Es el oscilador maestro: da el reloj, no la alimentación."
+        ym: "Es el YM2612: recibe los 5 V, no los genera."
     pistas:
-      - { texto: "La ferrita está nada más entrar; los diodos, justo antes del regulador." }
+      - { texto: "El interruptor está en la entrada; los reguladores, al final." }
+    exito: "Adaptador, FB1, SW1, los dos 1SR35-100A e IC15: filtrar, encender, proteger y regular."
     escalera:
-      - "El regulador es lo último: da los 5 V."
-      - "Entre el interruptor y el regulador van los dos diodos."
-    solucion: "Adaptador, FB1, SW1, los dos 1SR35-100A e IC15."
+      - "Lo último son los dos 7805, sobre el blindaje."
+    solucion: "SW1 y luego IC15 e IC17."
 
   - id: empareje-clavijas
     tipo: pregunta
@@ -83,95 +90,117 @@ tarjetas:
     solucion: "Modelo 1: 5,5 × 2,1 mm, punta negativa. Modelo 2: EIAJ-03, punta positiva. No son intercambiables."
 
   - id: prediga-vcc
-    tipo: predecir
-    titulo: "Dos salidas"
-    texto: "Con la consola sana, ¿qué mide a la salida de IC15 (Vcc1) y de IC17 (Vcc2)?"
+    tipo: medir
+    titulo: "Vcc1"
+    texto: "El manual de Sega pide comprobar la salida de cada 7805. Ponga las puntas para medir Vcc1, la salida de IC15."
+    nota: "El 7805 por dentro: elemento de paso, referencia y amplificador de error."
     libro: ["megadrive#95", "megadrive#93"]
+    fijar: { V_ad: 10, V_o: 5, on_c: 1 }
     widget:
-      tipo: figura
-      consola: { maquina: megadrive }
-      zonas:
-        - { id: reg, hotspot: reg, rotulo: "IC15 e IC17" }
-    opciones:
-      - texto: "+5 V en las dos."
-        bien: true
-        porque: "Los dos son 7805: el manual de Sega pide +5 V en Vcc1 y en Vcc2."
-      - texto: "10 V en IC15 y 5 V en IC17."
-        porque: "Los 10 V son los del adaptador, en la entrada. A la salida de los dos 7805 hay 5 V."
-      - texto: "La mitad de 5 V en cada una: se reparten la tensión."
-        porque: "No se reparten la tensión: cada 7805 da sus 5 V a su red."
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_ad, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      corriente: I_a
+      mide: { vout: V_sa, iin: I_a, iout: I_a, icarga: I_a, vpaso: V_pa, p_paso: P_a }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+        puntos: { in: "Entrada del 7805", out: "Salida del 7805", "0": "Masa" }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [out, "0"]
+      valor: V_sa
+      porque:
+        "in/0": "Esa es la entrada: los 10 V del adaptador."
+        "in/out": "Eso es lo que cae en el 7805, no lo que da."
+    exito: "+5 V: Vcc1 y Vcc2 deben dar +5 V. Si no los da con la entrada bien, el regulador está mal."
     escalera:
-      - "«05» en 7805 son los voltios de salida."
-    solucion: "+5 V en Vcc1 (IC15) y +5 V en Vcc2 (IC17)."
+      - "La salida respecto a masa."
+    solucion: "Roja en la salida del 7805 y negra en masa."
 
   - id: formula-disipa
-    tipo: formula
+    tipo: leer
     titulo: "Lo que sobra, en calor"
-    texto: "Sin contar lo que caen los diodos, un 7805 quema la diferencia entre 10 V y 5 V por su corriente. Mueva la corriente."
+    texto: "Sin contar los diodos, con 10 V a la entrada y una carga de ejemplo de 0,5 A, mida la corriente del 7805 y escriba el calor que disipa."
     libro: ["cap08#65", "cap08#66", "megadrive#93"]
-    ec: "cap08#65"
-    sustitucion: "({{V_ad}} − {{V_o}}) · {{I}} = {{P_d}}"
+    fijar: { V_ad: 10, V_o: 5, on_c: 1 }
     widget:
-      tipo: grafica
-      x: { id: i, min: 0, max: 1.2, unidad: A, rotulo: "I" }
-      y: { min: 0, max: 7, unidad: W, rotulo: "P_{disipada}" }
-      curvas:
-        - { expr: "(V_ad - V_o)*i", color: naranja, rotulo: "P_{disipada}" }
-      marcas:
-        - { x: "I", y: "P_d", rotulo: "{{P_d}}" }
-      mandos: [ { valor: I, min: 0.05, max: 1.2, paso: 0.05, rotulo: "Corriente, I" } ]
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_ad, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      corriente: I_a
+      mide: { vout: V_sa, iin: I_a, iout: I_a, icarga: I_a, vpaso: V_pa, p_paso: P_a }
+      instrumento:
+        tipo: multimetro
+        puntos: { in: "Entrada del 7805", out: "Salida del 7805", "0": "Masa" }
+        ramas: { vmi: "Entre el adaptador y el 7805", vml: "Hacia la consola" }
+      mandos: []
+    leer:
+      objetivo: P_a
+      unidad: W
+      rotulo: "Calor en el 7805"
+      errores:
+        - { expr: "P_mal", texto: "Ha multiplicado los 10 V enteros. El 7805 solo quema la diferencia entre entrada y salida." }
+    exito: "(10 − 5) V · 0,5 A = 2,5 W: por eso van sobre el blindaje."
+    escalera:
+      - "El calor es la caída en el 7805 por la corriente que lo atraviesa."
+    solucion: "(10 − 5) V · 0,5 A = 2,5 W."
+    comprobar:
+      - { P_a: 2.5, I_a: 0.5, V_pa: 5, P_mal: 5 }
 
   - id: ajuste-dropout
-    tipo: ajuste
+    tipo: explorar
     titulo: "¿Cuánta entrada necesita?"
-    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que regule."
+    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que el 7805 dé sus 5 V."
     libro: ["cap08#67", "megadrive#22"]
+    fijar: { V_o: 5, on_c: 1 }
     inicio: { V_in: 5 }
     widget:
-      tipo: grafica
-      x: { id: v, min: 0, max: 10, unidad: V, rotulo: "V_{entrada}" }
-      y: { min: 0, max: 6, unidad: V, rotulo: "V_{salida}" }
-      curvas:
-        - { expr: "min(V_o, max(0, v - 2))", color: azul, rotulo: "salida del 7805 (modelo)" }
-      marcas:
-        - { x: "V_in", y: "V_reg", rotulo: "{{V_reg}}" }
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_dr, carga: R_c, interruptor: on_c }
+      lectura: { valor: V_reg, rotulo: "Salida del 7805" }
+      corriente: I_reg
+      mide: { vout: V_reg, iin: I_reg, iout: I_reg, icarga: I_reg }
       mandos: [ { valor: V_in, min: 5, max: 10, paso: 0.5, rotulo: "Entrada, V_{entrada}" } ]
-    ajuste:
-      valor: V_reg
-      min: 4.99
-      rotulo: "Salida del 7805"
-      bajo: "Todavía no regula: le faltan voltios en la entrada. Súbala."
-      dentro: "Ya da sus 5 V: la entrada supera la salida en unos 2 V."
-    exito: "Con unos 2 V de margen, el 7805 da sus 5 V."
+    objetivo:
+      condiciones:
+        - { valor: V_reg, mayor: 4.99, rotulo: "Salida: {{V_reg}}" }
+      logrado: "Con {{V_in}} en la entrada ya da sus 5 V: la entrada supera la salida en unos 2 V."
+      pistas:
+        - { texto: "Todavía no regula: a la entrada le faltan voltios. Súbala." }
     escalera:
-      - "Súmele a los 5 V de salida el margen que pide el 78xx."
-    solucion: "Unos 7 V en la entrada: 5 V de salida más unos 2 V de margen."
+      - "Salida + margen: 5 + 2."
+    solucion: "Con unos 7 V o más en la entrada."
     comprobar:
       - { con: { V_in: 7 }, V_reg: 5 }
 
   - id: por-que-ic17
-    tipo: porque
+    tipo: tocar
     titulo: "Media placa sin 5 V"
-    texto: "IC17 se ha averiado, pero el 68000 sigue con sus 5 V. ¿Por qué?"
+    texto: "Cada 7805 tiene su red: IC15 da la VCC e IC17, la VCCQ. IC17 se ha averiado: toque los chips de la foto que se quedan sin sus 5 V."
     libro: ["megadrive#126", "megadrive#127", "megadrive#96", "megadrive#2", "megadrive#4"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: reg, hotspot: reg, rotulo: "IC15 e IC17" }
-        - { id: z80, hotspot: z80, rotulo: "Z80" }
-        - { id: m68k, hotspot: m68k, rotulo: "68000" }
-    opciones:
-      - texto: "El 68000 cuelga de la red VCC, la de IC15; IC17 da la VCCQ."
-        bien: true
-        porque: "Cada 7805 tiene su red. La VCCQ llega a las RAM, al 315-5433, al Z80 y su RAM, al YM2612 y al mezclador: eso es lo que se apaga."
-      - texto: "Porque el 68000 tiene su propio regulador dentro."
-        porque: "No lo tiene: recibe los 5 V de la red VCC, que da IC15."
-      - texto: "Porque los dos 7805 están en paralelo y IC15 lo cubre todo."
-        porque: "No están en paralelo: sin IC17, la red VCCQ se queda sin sus 5 V."
+        - { id: z80, hotspot: z80, rotulo: "Chip largo, abajo en el centro" }
+        - { id: zram, hotspot: zram, rotulo: "Chip, abajo a la izquierda del Z80" }
+        - { id: ym, hotspot: ym, rotulo: "Chip largo, a la izquierda" }
+        - { id: io, hotspot: io, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: m68k, hotspot: m68k, rotulo: "Chip largo, arriba a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+    tocar:
+      bien: [z80, zram, ym, io]
+      todas: true
+      porque:
+        m68k: "El 68000 (U1) está en la red VCC, la de IC15: sigue con sus 5 V."
+        vdp: "El VDP (U8) está en la red VCC, la de IC15."
+    exito: "El Z80 y su RAM, el YM2612 y el árbitro (y también la RAM del 68000 y el mezclador): la red VCCQ. Un IC17 averiado es una de las causas de que no encienda."
     escalera:
-      - "Busque en qué red está el 68000 (U1) y en cuál el Z80 (U6)."
-    solucion: "El 68000 está en la VCC (IC15). IC17 solo alimenta la VCCQ: RAM de trabajo, 315-5433, Z80, YM2612 y mezclador."
+      - "La VCCQ llega a U2, U3, U4, U6, U7, U11 y U12; la VCC, a U1, U8, U9 y U10."
+    solucion: "El Z80, su RAM, el YM2612 y el árbitro de E/S."
 
   - id: resumen
     tipo: resumen

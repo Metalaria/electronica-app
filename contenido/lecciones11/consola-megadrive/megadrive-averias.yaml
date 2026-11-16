@@ -4,11 +4,15 @@
 # colores de las VA0–VA3 que no son condensadores y un juego que se para tras la licencia (TMSS, no avería). Fuentes:
 # la guía de Retro Tech Wiki (manual PAL-G de Sega, VA4 y VA6.5), ConsoleMods «Genesis:Buying Guide», los datos de la
 # consola (megadrive#n) y el libro.
+# 1.2.1: un circuito lógico con meta (Vcc1 llega si el adaptador y la pista están bien; Vcc2, además, con IC17: el
+# modelo de la avería); lo de antes de abrir se toca en orden en la foto; el juego que se para tras la licencia se toca
+# en el chip del TMSS. Queda una pregunta: las bandas de las VA0–VA3.
 leccion: consola-megadrive/megadrive-averias
 
 libro:
   "megadrive#22": "Dos reguladores lineales de +5 V sobre el blindaje"
   "megadrive#4": "lee los mandos"
+  "megadrive#117": "La VA6 lleva un chip de E/S con TMSS"
   "megadrive#19": "Filtros de cada línea de los puertos"
   "megadrive#91": "manual de mantenimiento PAL-G de Sega, de agosto de 1992"
   "megadrive#93": "da 10 V de continua y 1,2 A"
@@ -41,33 +45,54 @@ tarjetas:
   - id: explore-primero
     tipo: explorar
     titulo: "Lo primero, lo simple"
-    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
-    libro: ["cap53#39", "megadrive#22", "megadrive#101"]
-    requiere: { mover: [reg, cart, av] }
+    texto: "Los 10 V del adaptador pasan por la pista de la entrada hasta IC15, que da Vcc1, y de ahí también a IC17, que da Vcc2. Consiga las dos."
+    libro: ["cap53#39", "megadrive#22", "megadrive#95", "megadrive#96"]
+    widget:
+      tipo: logica
+      entradas: [{ id: AD, rotulo: "Adaptador con sus 10 V" }, { id: PT, rotulo: "Pista de la entrada sana" }, { id: R17, rotulo: "IC17 sano" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [AD, PT] }
+        - { id: a2, tipo: and, entradas: [a1, R17] }
+      salidas:
+        - { id: VCC1, de: a1, rotulo: "Vcc1, +5 V" }
+        - { id: VCC2, de: a2, rotulo: "Vcc2, +5 V" }
+    objetivo:
+      condiciones:
+        - { led: VCC1, valor: 1, rotulo: "Vcc1" }
+        - { led: VCC2, valor: 1, rotulo: "Vcc2" }
+      logrado: "Las dos a +5 V. Si solo falta Vcc2, el fallo está después del punto común: IC17."
+      pistas:
+        - { cuando: { led: VCC1, valor: 0 }, texto: "Sin Vcc1 falla algo común a las dos: el adaptador o la pista." }
+        - { texto: "Vcc1 sí, Vcc2 no: falta lo que solo está en su rama." }
+    escalera:
+      - "Adaptador y pista para las dos; IC17, además, para Vcc2."
+    solucion: "Adaptador, pista e IC17, los tres sanos."
+
+  - id: ordene-antes
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Antes de abrirla"
+    texto: "No hay imagen. Toque, de lo más simple a lo más difícil: el cable que se cambia primero, lo que se limpia después y lo que se mide al abrir."
+    libro: ["megadrive#101", "cap53#39", "megadrive#22"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: reg, hotspot: reg, rotulo: "Reguladores 7805", texto: "Dan los 5 V de toda la lógica." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "Antes de abrir: limpie el cartucho y la ranura." }
-        - { id: av, hotspot: av, rotulo: "Conector A/V", texto: "Antes de abrir: pruebe otro cable A/V." }
-
-  - id: ordene-antes
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Antes de abrirla"
-    texto: "No hay imagen. Ordene los pasos, de lo más simple a lo más difícil."
-    libro: ["megadrive#101", "cap53#39"]
-    ordenar:
-      - "Probar otro cable A/V, otro adaptador y otra entrada del televisor."
-      - "Limpiar el cartucho y la ranura."
-      - "Abrir la consola y medir los 5 V."
-    exito: "Lo de fuera primero: muchas «averías» son un cable o un contacto sucio."
+        - { id: av, hotspot: av, rotulo: "Conector redondo, arriba a la izquierda" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, arriba en el centro" }
+        - { id: reg, hotspot: reg, rotulo: "Piezas con disipador, arriba a la izquierda" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+    tocar:
+      bien: [av, cart, reg]
+      orden: true
+      porque:
+        vdp: "Un chip va al final: antes, el cable, la ranura y los 5 V."
     pistas:
-      - { texto: "Abrir la consola es lo último: antes se cambia lo que se puede cambiar sin herramientas." }
+      - { texto: "Lo que se cambia sin destornillador va antes." }
+    exito: "Otro cable A/V (y otro adaptador y otra entrada del televisor); después, limpiar el cartucho y la ranura; por último, abrir y medir los 5 V."
     escalera:
       - "¿Qué se puede probar sin destornillador?"
-    solucion: "Cable, adaptador y televisor; después, cartucho y ranura; por último, abrir y medir."
+    solucion: "El conector A/V, la ranura y los 7805."
 
   - id: averia-no-enciende
     tipo: averia
@@ -149,26 +174,26 @@ tarjetas:
     solucion: "No: es el compuesto flojo de las VA0 a VA3, no los condensadores."
 
   - id: prediga-licencia
-    tipo: predecir
+    tipo: tocar
     titulo: "Se para tras la licencia"
-    texto: "Un juego muy antiguo muestra la pantalla de licencia de Sega y se queda ahí. ¿Avería?"
-    libro: ["megadrive#100", "megadrive#111", "megadrive#4"]
+    texto: "Un juego muy antiguo muestra la pantalla de licencia de Sega y se queda ahí. No es avería: toque el chip que lo para."
+    libro: ["megadrive#100", "megadrive#111", "megadrive#4", "megadrive#117"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: io, hotspot: io, rotulo: "315-5433" }
-    opciones:
-      - texto: "No: el juego no escribe «SEGA» como pide el TMSS."
-        bien: true
-        porque: "Algunos juegos muy antiguos no lo hacen y se paran tras la licencia. La guía dice que no es una avería."
-      - texto: "Sí: el VDP está estropeado."
-        porque: "El VDP funciona: ha dibujado la pantalla de licencia. Es el TMSS."
-      - texto: "Sí: la ranura está sucia."
-        porque: "El mensaje de licencia sale tras leer «SEGA» en la ROM del cartucho: la ranura ya ha leído el juego."
+        - { id: io, hotspot: io, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, arriba en el centro" }
+    tocar:
+      bien: [io]
+      porque:
+        vdp: "El VDP funciona: ha dibujado la pantalla de licencia."
+        cart: "La ranura ha leído el juego: el mensaje sale tras leer «SEGA» en su ROM."
+    exito: "El 315-5433, con el TMSS: algunos juegos muy antiguos no escriben «SEGA» como pide y se paran tras la licencia, sin que sea una avería."
     escalera:
-      - "¿Quién pone la pantalla de licencia?"
-    solucion: "No es avería: es el TMSS con un juego que no escribe «SEGA»."
+      - "¿Qué chip trae el TMSS desde la VA6?"
+    solucion: "El 315-5433."
 
   - id: empareje-sintomas
     tipo: pregunta

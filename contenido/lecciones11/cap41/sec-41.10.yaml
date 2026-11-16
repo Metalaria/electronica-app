@@ -4,6 +4,10 @@
 # - El ancho de banda del osciloscopio, al menos tres veces 0,35/t_r (bloque 302): con flancos de 1 ns (los del bloque
 #   6, cap41#6), 1,05 GHz.
 # Paso práctico: «simular» ese ancho de banda (1,05 GHz; error: sin el factor tres).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): con un osciloscopio de 350 MHz (ejemplo) se busca el flanco más
+# rápido que mide bien (meta: 3 × 0,35/t_r ≤ 350 MHz, 3 ns); el flanco lento, un síntoma y el muelle de masa se tocan
+# en la figura 42.14 (la reducción del flanco se cuenta en su éxito). Quedan una pregunta de opciones (los 33 Ω) y el
+# emparejamiento de las herramientas.
 leccion: cap41/sec-41.10
 
 libro:
@@ -17,7 +21,7 @@ libro:
   293: "a menudo basta una resistencia serie de 33 Ω"
   297: "reducir la velocidad de flanco"
   298: "resuelve problemas de integridad y de emisión (sección 32.12) sin añadir un solo componente"
-  300: "Fallos que aparecen al subir la velocidad."
+  300: "Fallos que cambian al tocar la placa."
   302: "un osciloscopio con ancho de banda al menos tres veces el equivalente del flanco, 0,35/tr"
   303: "las conclusiones que se saquen de ellas serán sobre la sonda y no sobre el circuito"
   304: "El efecto de reducir la velocidad de flanco y los síntomas de integridad de señal"
@@ -26,6 +30,7 @@ libro:
 modelo:
   valores:
     t_rb: { sim: "t_{r}", nombre: "tiempo de subida", unidad: s, valor: 1e-9 }
+    B_tengo: { sim: "B", nombre: "ancho de banda del osciloscopio (ejemplo)", unidad: Hz, valor: 350000000 }
   calculos:
     B_eq: { expr: "0.35/t_rb", sim: "B_{flanco}", nombre: "ancho de banda equivalente del flanco", unidad: Hz }
     B_osc: { expr: "3*B_eq", sim: "B", nombre: "ancho de banda mínimo del osciloscopio", unidad: Hz }
@@ -33,18 +38,35 @@ modelo:
 tarjetas:
   - id: explore-cierre
     tipo: explorar
-    titulo: "Reducir la velocidad de flanco"
-    texto: "El mismo circuito con un flanco rápido y con uno lento. Toque la gráfica, los síntomas y el instrumental."
-    libro: [297, 300, 302, 304]
+    fase: "Consiga"
+    titulo: "El instrumental mínimo"
+    texto: "El osciloscopio necesita al menos tres veces el ancho de banda del flanco, 0,35/t_{r}. Con uno de {{B_tengo}}, busque el flanco más rápido que mide bien."
+    libro: [302, 303]
+    fijar: { B_tengo: 350000000 }
+    inicio: { t_rb: 1e-9 }
     widget:
-      tipo: figura
-      figura: fig-41.14
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [40, 18, 182, 155], texto: "Con el flanco rápido, timbre; con el lento, limpio. No añade ningún componente." }
-        - { id: sintomas, rotulo: "Lista naranja", rect: [232, 22, 205, 74], texto: "Timbre, errores según el patrón de datos, fallos al subir la velocidad o al tocar la placa." }
-        - { id: despista, rotulo: "Recuadro rojo", rect: [232, 98, 205, 36], texto: "El que despista: funciona con el osciloscopio conectado." }
-        - { id: instrumental, rotulo: "Recuadro azul", rect: [232, 146, 205, 50], texto: "Osciloscopio con ancho de banda suficiente y sonda con muelle de masa." }
-    requiere: { mover: [grafica, sintomas, instrumental] }
+      tipo: grafica
+      x: { id: tt, min: 2e-10, max: 5e-9, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0, max: 5e9, unidad: Hz, rotulo: "B" }
+      curvas:
+        - { expr: "3*0.35/tt", color: naranja, rotulo: "3 × 0,35/t_{r}" }
+        - { expr: "B_tengo + 0*tt", color: tinta, rotulo: "su osciloscopio", discontinua: true }
+      marcas:
+        - { x: "t_rb", y: "B_osc", rotulo: "{{B_osc}}" }
+      lectura: { valor: B_osc, rotulo: "Ancho de banda necesario" }
+      mandos:
+        - { valor: t_rb, min: 5e-10, max: 5e-9, paso: 5e-10, rotulo: "Flanco, t_{r}" }
+    objetivo:
+      condiciones:
+        - { valor: B_osc, max: 350000000, rotulo: "Necesita: {{B_osc}}" }
+      logrado: "Flancos de {{t_rb}} o más lentos: con más rapidez, lo que vería sería el osciloscopio, no el flanco."
+      pistas:
+        - { texto: "Ese flanco pide más ancho de banda del que tiene: uno más lento." }
+    escalera:
+      - "El flanco puede ocupar un tercio de su ancho de banda: busque dónde la curva baja hasta la línea."
+    solucion: "Unos 3 ns."
+    comprobar:
+      - { con: { t_rb: 3e-9 }, B_osc: 350000000 }
 
   - id: empareje-herramientas
     tipo: pregunta
@@ -95,7 +117,7 @@ tarjetas:
   - id: toque-lento
     tipo: tocar
     titulo: "La alternativa que se olvida"
-    texto: "Toque la traza que llega limpia sin añadir ningún componente."
+    texto: "El mismo circuito con dos velocidades de flanco. Toque la traza que llega limpia sin añadir ningún componente."
     libro: [297, 298, 304]
     widget:
       tipo: figura
@@ -107,7 +129,7 @@ tarjetas:
       bien: [lento]
       porque:
         rapido: "Es el flanco rápido: sobreoscilación y timbre."
-    exito: "El flanco lento: integridad y emisión resueltas sin un solo componente."
+    exito: "El flanco lento: se configura en el microcontrolador o la FPGA y resuelve integridad y emisión sin un solo componente. La más barata."
     escalera:
       - "Busque la subida más suave."
     solucion: "La rampa verde, el flanco lento."
@@ -134,49 +156,52 @@ tarjetas:
       - "La terminación más usada en digital."
     solucion: "Una resistencia serie de 33 Ω."
 
-  - id: porque-flanco
-    tipo: porque
-    titulo: "La más barata"
-    texto: "¿Por qué reducir la velocidad de flanco es la alternativa más barata?"
-    libro: [297, 298, 290]
+  - id: toque-sintoma
+    tipo: tocar
+    titulo: "Los síntomas, para reconocerlos"
+    texto: "Un fallo aparece o desaparece cuando alguien apoya la mano en la placa, porque la mano modifica capacidades. Toque el síntoma en la lista."
+    libro: [300, 304]
     widget:
       tipo: figura
       figura: fig-41.14
       zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [40, 18, 182, 155] }
-    opciones:
-      - texto: "Se configura en el microcontrolador y resuelve integridad y emisión sin componentes"
-        bien: true
-        porque: "Muchos microcontroladores y FPGA la permiten configurar."
-      - texto: "Porque baja la frecuencia de reloj"
-        porque: "No toca el reloj: lo decide el flanco, no la frecuencia."
-      - texto: "Porque elimina la necesidad de plano de masa"
-        porque: "El plano sigue haciendo falta; el flanco lento da margen."
+        - { id: timbre, rotulo: "Primera línea de síntomas", rect: [233, 26, 200, 16] }
+        - { id: patron, rotulo: "Segunda línea", rect: [233, 45, 200, 16] }
+        - { id: velocidad, rotulo: "Tercera línea", rect: [233, 63, 200, 16] }
+        - { id: tocar, rotulo: "Cuarta línea", rect: [233, 82, 200, 16] }
+        - { id: sonda, rotulo: "Quinta línea", rect: [233, 100, 200, 22] }
+    tocar:
+      bien: [tocar]
+      porque:
+        timbre: "El timbre se ve en los flancos, toque quien toque la placa."
+        patron: "Depende de los datos: diafonía o ruido de conmutación."
+        velocidad: "Aparece al subir la velocidad y desaparece al bajarla."
+        sonda: "Ese cambia al conectar la sonda, no la mano."
+    exito: "Fallos que cambian al tocar la placa: un síntoma característico de integridad de señal."
     escalera:
-      - "¿Qué hay que comprar para cambiar un registro?"
-    solucion: "No añade ningún componente."
+      - "Busque el que habla de tocar la placa."
+    solucion: "La cuarta línea."
 
   - id: pregunta-sonda
-    tipo: pregunta
+    tipo: tocar
+    fase: "En el banco"
     titulo: "Sin muelle de masa"
-    texto: "Se mide un flanco rápido con el latiguillo de masa largo de la sonda. ¿Qué vale la medida?"
-    libro: [302, 303]
+    texto: "Se mide un flanco rápido con el latiguillo de masa largo de la sonda, y la medida habla de la sonda, no del circuito. Toque lo que falta."
+    libro: [288, 302, 303]
     widget:
       tipo: figura
       figura: fig-41.14
       zonas:
-        - { id: instrumental, rotulo: "Recuadro azul", rect: [232, 146, 205, 50] }
-    opciones:
-      - texto: "Habla de la sonda, no del circuito"
-        bien: true
-        porque: "Sin muelle de masa, las medidas están dominadas por el propio montaje."
-      - texto: "Lo mismo que con muelle"
-        porque: "El latiguillo largo añade su bucle y su timbre."
-      - texto: "Más que con muelle: capta más señal"
-        porque: "Capta más, sí: lo que añade el propio montaje."
+        - { id: osc, rotulo: "Abajo, primera línea", rect: [233, 158, 200, 13] }
+        - { id: muelle, rotulo: "Abajo, segunda línea", rect: [233, 172, 200, 22] }
+    tocar:
+      bien: [muelle]
+      porque:
+        osc: "El ancho de banda puede sobrar; el latiguillo largo es un bucle más."
+    exito: "La sonda con muelle de masa: el instrumento más importante del capítulo y el más barato."
     escalera:
       - "El latiguillo largo es un bucle más."
-    solucion: "Mide la sonda, no el circuito."
+    solucion: "La sonda con muelle de masa."
 
   - id: resumen
     tipo: resumen

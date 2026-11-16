@@ -3,9 +3,14 @@
 # 160 × 144 de 4 tonos, con el contraste y el regulador de la placa DMG-LCD-06; la VRAM es de la PPU en el modo 3. El
 # sonido: SO1 y SO2 → C3/C4 → RV1 → IR3R40 → altavoz o auriculares, y VIN, el audio del cartucho. Fuentes: los datos
 # de la consola (gb#n).
+# 1.2.1: los 2 bits por píxel son un explorar con meta (los 4 tonos); el camino del sonido se toca en orden en la foto
+# y la entrada VIN, en la ranura. El camino de la imagen pasa por dos placas: queda como ordenar. Queda una pregunta:
+# el modo 3.
 leccion: consola-gb/gb-video-audio
 
 libro:
+  "gb#2": "APU de 4 canales"
+  "gb#13": "A0–A15, D0–D7, /RD, /WR, /CS, /RES, PHI y VIN"
   "gb#6": "Amplifica SO1/SO2 para el altavoz y los auriculares, tras el potenciómetro de volumen"
   "gb#8": "Potenciómetro doble de volumen"
   "gb#15": "Desacoplan la continua de SO1 y SO2 antes del volumen"
@@ -26,19 +31,6 @@ modelo:
     tonos_mal: { expr: "2*b", sim: "2 b", nombre: "tonos sumando bits (error)", unidad: "", cifras: 3 }
 
 tarjetas:
-  - id: explore-pantalla
-    tipo: explorar
-    titulo: "Pantalla y altavoz"
-    texto: "En la placa de la pantalla, toque el panel y el altavoz."
-    libro: ["gb#35", "gb#31"]
-    requiere: { mover: [lcd, ls] }
-    widget:
-      tipo: figura
-      consola: { maquina: gb, foto: lcd-f }
-      zonas:
-        - { id: lcd, hotspot: f-lcd, rotulo: "Pantalla", texto: "160 × 144, monocroma de 4 tonos, con sus drivers sobre el panel." }
-        - { id: ls, hotspot: f-ls, rotulo: "Altavoz", texto: "8 Ω." }
-
   - id: ordene-imagen
     tipo: pregunta
     fase: "Ordene"
@@ -59,10 +51,11 @@ tarjetas:
     solucion: "VRAM, PPU, LD0/LD1 y CP por el cable, drivers y matriz."
 
   - id: prediga-tonos
-    tipo: predecir
+    tipo: explorar
     titulo: "Dos bits por píxel"
-    texto: "El SoC manda 2 bits por píxel. ¿Cuántos tonos puede tener cada píxel?"
+    texto: "La pantalla es monocroma de 4 tonos, y el SoC manda los píxeles por LD0 y LD1. Elija los bits por píxel que dan esos 4 tonos."
     libro: ["gb#54", "gb#35"]
+    inicio: { b: 1 }
     widget:
       tipo: grafica
       x: { id: k, min: 1, max: 4, unidad: "", rotulo: "bits por píxel" }
@@ -71,19 +64,20 @@ tarjetas:
         - { expr: "2^k", color: azul, rotulo: "2^{bits}", palitos: true }
       marcas:
         - { x: "b", y: "tonos", rotulo: "{{tonos}}" }
-    opciones:
-      - texto: "4"
-        bien: true
-        porque: "Con 2 bits hay 2² = 4 combinaciones: los 4 tonos de la pantalla."
-      - texto: "2"
-        porque: "Eso sería 1 bit: blanco o negro."
-      - texto: "8"
-        porque: "Necesitaría 3 bits. Con 2 bits, 2² = 4."
+      lectura: { valor: tonos, rotulo: "Tonos por píxel" }
+      mandos: [ { valor: b, min: 1, max: 4, paso: 1, rotulo: "Bits por píxel, b" } ]
+    objetivo:
+      condiciones:
+        - { valor: tonos, objetivo: 4, tol: 0.01, rotulo: "Tonos: {{tonos}}" }
+      logrado: "{{b}} bits: 2² = 4 combinaciones, los 4 tonos de la pantalla."
+      pistas:
+        - { cuando: { valor: tonos, mayor: 4.5 }, texto: "Sobran bits: con 3 ya serían 8 tonos." }
+        - { texto: "Con 1 bit, solo blanco o negro: falta uno." }
     escalera:
       - "Cuente las combinaciones de dos bits: 00, 01…"
     solucion: "2² = 4 tonos."
     comprobar:
-      - { tonos: 4 }
+      - { con: { b: 2 }, tonos: 4 }
 
   - id: por-que-modo3
     tipo: porque
@@ -130,23 +124,28 @@ tarjetas:
     solucion: "VR1, el contraste."
 
   - id: ordene-sonido
-    tipo: pregunta
+    tipo: tocar
     fase: "Ordene"
     titulo: "El camino del sonido"
-    texto: "Ordene el camino del sonido desde la APU hasta el altavoz."
-    libro: ["gb#59", "gb#15", "gb#8", "gb#6"]
-    ordenar:
-      - "SO1 y SO2 salen de la APU."
-      - "C3 y C4 quitan la continua."
-      - "El volumen, RV1."
-      - "El amplificador IR3R40."
-      - "El altavoz o los auriculares."
-    exito: "Desacoplar, regular el volumen y amplificar."
+    texto: "Toque, en orden, el camino del sonido: el chip con la APU, los condensadores que quitan la continua, el volumen y el amplificador."
+    libro: ["gb#59", "gb#15", "gb#8", "gb#6", "gb#2", "gb#31"]
+    widget:
+      tipo: figura
+      consola: { maquina: gb }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: cso, hotspot: cso, rotulo: "Dos piezas negras, a la derecha del cristal" }
+        - { id: vol, hotspot: vol, rotulo: "Rueda, a la izquierda" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, a la derecha" }
+    tocar:
+      bien: [soc, cso, vol, amp]
+      orden: true
     pistas:
       - { texto: "Los condensadores van antes del volumen; el amplificador, después." }
+    exito: "SO1 y SO2 salen de la APU del SoC, C3 y C4 quitan la continua, RV1 regula el volumen y el IR3R40 amplifica para el altavoz de 8 Ω o los auriculares."
     escalera:
       - "El amplificador es lo último antes del altavoz."
-    solucion: "APU, C3/C4, RV1, IR3R40 y altavoz o auriculares."
+    solucion: "SoC, C3/C4, RV1 e IR3R40."
 
   - id: toque-acoplo
     tipo: tocar
@@ -171,26 +170,26 @@ tarjetas:
     solucion: "C3 y C4."
 
   - id: prediga-vin
-    tipo: predecir
+    tipo: tocar
     titulo: "Sonido desde el cartucho"
-    texto: "La ranura tiene una patilla VIN que va al audio. ¿Para qué?"
-    libro: ["gb#59"]
+    texto: "La patilla VIN trae audio de fuera y lo suma al de la consola. Toque por dónde entra."
+    libro: ["gb#59", "gb#13"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: cart, hotspot: cart, rotulo: "Ranura" }
-    opciones:
-      - texto: "Para que el cartucho meta su propio audio."
-        bien: true
-        porque: "VIN trae audio del cartucho: un juego puede sumar sonido propio al de la consola."
-      - texto: "Para alimentar el cartucho."
-        porque: "La alimentación del cartucho es VDD; VIN es audio."
-      - texto: "Para sacar el sonido por el cartucho."
-        porque: "Es una entrada: trae audio del cartucho."
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+        - { id: link, hotspot: link, rotulo: "Conector, arriba a la izquierda" }
+        - { id: dc, hotspot: dc, rotulo: "Conector, arriba a la derecha" }
+    tocar:
+      bien: [cart]
+      porque:
+        link: "Es el puerto de enlace: SCK, SIN, SOUT y P14, datos en serie."
+        dc: "Es la toma de alimentación de 6 V."
+    exito: "La ranura: VIN es una entrada de audio desde el cartucho; un juego puede sumar su propio sonido."
     escalera:
-      - "VIN: «V in», tensión de entrada… de audio."
-    solucion: "Es una entrada de audio desde el cartucho."
+      - "VIN: «V in», tensión de entrada… del juego."
+    solucion: "La ranura del cartucho."
 
   - id: resumen
     tipo: resumen

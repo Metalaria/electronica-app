@@ -3,6 +3,8 @@
 # (3,546895 MHz al Z80); 228 ciclos por línea y 313 líneas; el mismo reloj que la Mega Drive PAL. Fuentes: los datos de
 # la consola (sms#n: explorador, arquitectura, SMS Power), los de la Mega Drive (megadrive#n) y el libro (el divisor
 # como contador, 37.5; la Q del cristal, 28.3).
+# 1.2.1: el camino del reloj se toca en orden en la foto; la subportadora es un explorar con meta; se escriben los
+# 10,64 MHz del VDP (÷ 5). Quedan dos preguntas: por qué ese oscilador y el Z80 de la Mega Drive.
 leccion: consola-sms/sms-relojes
 
 libro:
@@ -24,24 +26,37 @@ modelo:
     L: { sim: "L", nombre: "líneas por cuadro", unidad: "", valor: 262 }
   calculos:
     f_div: { expr: "OSC/n", sim: "f_{OSC} / n", nombre: "oscilador dividido", unidad: Hz, cifras: 4 }
+    f_vdp: { expr: "OSC/5", sim: "f_{VDP}", nombre: "reloj del VDP", unidad: Hz, cifras: 4 }
     f_z80: { expr: "OSC/5/3", sim: "f_{Z80}", nombre: "reloj del Z80 en PAL", unidad: Hz, cifras: 7 }
     f_cuadro: { expr: "OSC/15/(228*L)", sim: "f_{cuadro}", nombre: "cuadros por segundo (PAL)", unidad: Hz, cifras: 4 }
 
 tarjetas:
   - id: explore-osc
-    tipo: explorar
+    tipo: tocar
+    fase: "Ordene"
     titulo: "Un oscilador, tres divisores"
-    texto: "Toque el oscilador y los chips que reparten su reloj, hasta el Z80."
+    texto: "Siga el reloj hasta la CPU: toque, en orden, el oscilador, el chip que lo divide entre 5, el que lo divide entre 3 y el que lo recibe."
     libro: ["sms#10", "sms#6", "sms#68", "sms#2"]
-    requiere: { mover: [osc, io, vdp, z80] }
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: osc, hotspot: osc, rotulo: "Oscilador", texto: "53,203424 MHz en esta placa PAL." }
-        - { id: io, hotspot: io, rotulo: "315-5237", texto: "Divide entre 5 para el VDP y entre 12 para la subportadora." }
-        - { id: vdp, hotspot: vdp, rotulo: "VDP", texto: "Divide sus 10,64 MHz entre 3 para el Z80." }
-        - { id: z80, hotspot: z80, rotulo: "Z80", texto: "Va a 3,546895 MHz." }
+        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, abajo a la derecha" }
+        - { id: io, hotspot: io, rotulo: "Chip largo, a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: enc, hotspot: enc, rotulo: "Chip, arriba en el centro" }
+    tocar:
+      bien: [osc, io, vdp, z80]
+      orden: true
+      porque:
+        enc: "Es el codificador CXA1145: recibe la subportadora, no lleva el reloj al Z80."
+    pistas:
+      - { texto: "Oscilador, 315-5237, VDP y Z80." }
+    exito: "53,203424 MHz; el 315-5237 divide entre 5 (10,64 MHz al VDP) y el VDP entre 3: 3,546895 MHz al Z80."
+    escalera:
+      - "El Z80 no recibe el oscilador directamente: le llega CLOCK del VDP."
+    solucion: "Oscilador, 315-5237, VDP y Z80."
 
   - id: por-que-oscilador
     tipo: porque
@@ -94,9 +109,9 @@ tarjetas:
       - { f_z80: 3546895 }
 
   - id: ajuste-subportadora
-    tipo: ajuste
+    tipo: explorar
     titulo: "La subportadora de color"
-    texto: "Ajuste el divisor hasta la subportadora PAL: 4,43 MHz."
+    texto: "El 315-5237 también saca la subportadora de color. Elija el divisor del oscilador que da la subportadora PAL: 4,43 MHz."
     libro: ["sms#10", "sms#65"]
     inicio: { n: 5 }
     widget:
@@ -108,15 +123,13 @@ tarjetas:
       marcas:
         - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
       mandos: [ { valor: n, min: 2, max: 16, paso: 1, rotulo: "Divisor, n" } ]
-    ajuste:
-      valor: f_div
-      objetivo: 4430000
-      tol: 0.005
-      rotulo: "Subportadora"
-      bajo: "Demasiado baja: baje el divisor."
-      alto: "Demasiado alta: suba el divisor."
-      dentro: "÷ 12: la subportadora de color PAL."
-    exito: "El 315-5237 divide entre 12: 4,43 MHz para el codificador."
+    objetivo:
+      condiciones:
+        - { valor: f_div, objetivo: 4430000, tol: 0.005, rotulo: "Subportadora: {{f_div}}" }
+      logrado: "÷ {{n}}: {{f_div}}, la subportadora de color PAL para el codificador."
+      pistas:
+        - { cuando: { valor: f_div, mayor: 4460000 }, texto: "Demasiado alta: suba el divisor." }
+        - { texto: "Demasiado baja: baje el divisor." }
     escalera:
       - "El oscilador es 12 veces la subportadora."
     solucion: "n = 12: 53,203424 MHz ÷ 12 = 4,43 MHz."
@@ -154,21 +167,30 @@ tarjetas:
       - { con: { L: 313 }, f_cuadro: 49.70 }
 
   - id: empareje-divisores
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada divisor, su reloj"
-    texto: "Empareje cada división del oscilador con lo que alimenta."
-    libro: ["sms#10", "sms#68", "sms#2"]
-    emparejar:
-      - ["÷ 5 en el 315-5237", "10,64 MHz al VDP"]
-      - ["÷ 3 en el VDP", "3,546895 MHz al Z80"]
-      - ["÷ 12 en el 315-5237", "La subportadora de color"]
-    exito: "Un solo oscilador y tres divisiones: todo va en fase."
-    pistas:
-      - { texto: "El Z80 no recibe el oscilador directamente: le llega CLOCK del VDP." }
+    tipo: leer
+    titulo: "El reloj del VDP"
+    texto: "El 315-5237 divide el oscilador de 53,203424 MHz entre 5 para el VDP. Escriba a qué frecuencia le llega."
+    libro: ["sms#10", "sms#68", "sms#6"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: vdp, hotspot: vdp, rotulo: "VDP" }
+        - { id: io, hotspot: io, rotulo: "315-5237" }
+    leer:
+      objetivo: f_vdp
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Reloj del VDP"
+      errores:
+        - { expr: "f_z80", texto: "Ese es el del Z80: el VDP aún divide entre 3 lo que le llega." }
+        - { expr: "OSC/12", texto: "Ese es el divisor de la subportadora de color." }
+    exito: "10,64 MHz: ÷ 5 al VDP, ÷ 3 en el VDP para el Z80 y ÷ 12 para el color. Un solo oscilador: todo va en fase."
     escalera:
-      - "El ÷ 3 lo hace el VDP con lo que le llega."
-    solucion: "÷ 5: VDP. ÷ 3: Z80. ÷ 12: subportadora."
+      - "53,203424 MHz ÷ 5."
+    solucion: "10,64 MHz."
+    comprobar:
+      - { f_vdp: 10640685 }
 
   - id: prediga-mega-drive
     tipo: predecir

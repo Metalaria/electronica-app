@@ -3,6 +3,8 @@
 # A7 y A6 (circuito lógico y su tabla), /CSRAM = /MREQ · A15 · A14 (una AND), el espejo de la RAM por no decodificar
 # A13, el paginador en $FFFF y el puerto $3E que pasa de la ROM de arranque al cartucho. Fuentes: sms#n y el libro
 # (decodificador, 28.3; los espejos, 38.11).
+# 1.2.1: se tocan los dos chips que deciden y quién contesta al encender; los dos circuitos lógicos tienen meta (los
+# mandos; la RAM, subiendo A14); el espejo y la celda de $FFFF se escriben en hexadecimal.
 leccion: consola-sms/sms-buses
 
 libro:
@@ -29,26 +31,38 @@ modelo:
 
 tarjetas:
   - id: explore-buses
-    tipo: explorar
-    titulo: "Un bus de 8 bits"
-    texto: "El Z80 pone A0–A15 y D0–D7 en el bus. Toque la CPU, la ranura y los dos chips que deciden."
+    tipo: tocar
+    titulo: "Quién decide"
+    texto: "El Z80 pone A0–A15 y D0–D7 en el bus, que llega entero a la ranura. Toque los dos chips que deciden quién contesta."
     libro: ["sms#11", "sms#5", "sms#67", "sms#2"]
-    requiere: { mover: [z80, cart, vdp, io] }
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: z80, hotspot: z80, rotulo: "Z80", texto: "A0–A15 y D0–D7." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "Lleva el bus completo del Z80." }
-        - { id: vdp, hotspot: vdp, rotulo: "VDP", texto: "Decodifica sus propios puertos." }
-        - { id: io, hotspot: io, rotulo: "315-5237", texto: "Elige ROM de arranque, RAM o cartucho." }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: bios, hotspot: bios, rotulo: "Chip vertical, arriba a la derecha" }
+        - { id: ram, hotspot: ram, rotulo: "Chip vertical, arriba del todo a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: io, hotspot: io, rotulo: "Chip largo, a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [vdp, io]
+      todas: true
+      porque:
+        z80: "El Z80 pone la dirección; deciden otros."
+        bios: "La ROM de arranque contesta cuando la eligen."
+        ram: "La RAM contesta cuando la eligen."
+        cart: "El cartucho recibe el bus y contesta cuando lo eligen."
+    exito: "El VDP decodifica sus propios puertos y baja /CSRAM; el 315-5237, con el puerto $3E, elige la ROM de arranque, la RAM o el cartucho."
+    escalera:
+      - "Uno es el de vídeo; el otro, el de E/S."
+    solucion: "El VDP y el 315-5237."
 
   - id: explore-puertos
     tipo: explorar
     titulo: "Los puertos, por dos bits"
-    texto: "En una instrucción IN u OUT, A7 y A6 eligen quién contesta. Muévalos."
+    texto: "En una instrucción IN u OUT, A7 y A6 eligen quién contesta. Consiga leer los mandos."
     libro: ["sms#82", "sms#84", "sms#85", "sms#86", "cap29#76"]
-    requiere: { mover: [A7, A6] }
     widget:
       tipo: logica
       entradas: [{ id: A7, rotulo: "A7" }, { id: A6, rotulo: "A6" }]
@@ -59,6 +73,16 @@ tarjetas:
         - { id: PSG, de: dec.y1, rotulo: "PSG" }
         - { id: VDP, de: dec.y2, rotulo: "VDP" }
         - { id: MANDOS, de: dec.y3, rotulo: "Mandos" }
+    objetivo:
+      condiciones:
+        - { led: MANDOS, valor: 1, rotulo: "Contestan los mandos" }
+      logrado: "A7 y A6 a 1: puertos $C0–$FF, como $DC y $DD."
+      pistas:
+        - { cuando: { led: VDP, valor: 1 }, texto: "Con A7 = 1 y A6 = 0 contesta el VDP: suba A6." }
+        - { texto: "Los mandos están arriba del todo: A7 y A6 a 1." }
+    escalera:
+      - "Los mandos son $DC y $DD: mire sus dos bits altos."
+    solucion: "A7 = 1, A6 = 1."
 
   - id: tabla-puertos
     tipo: tabla
@@ -101,9 +125,9 @@ tarjetas:
     solucion: "$BE: VDP. $7F: PSG. $DC: mando 1. $3E: control de memoria."
 
   - id: prediga-ram
-    tipo: predecir
+    tipo: explorar
     titulo: "¿Se elige la RAM?"
-    texto: "El VDP elige la RAM con /MREQ, A15 y A14. Si el Z80 lee $8123, ¿se elige la RAM?"
+    texto: "El VDP elige la RAM con /MREQ, A15 y A14; el Z80 lee $8123, del cartucho. Consiga que se elija la RAM."
     libro: ["sms#79", "sms#67", "sms#78"]
     widget:
       tipo: logica
@@ -112,86 +136,84 @@ tarjetas:
         - { id: y1, tipo: and, entradas: [MREQ, A15, A14] }
       salidas:
         - { id: RAM, de: y1, rotulo: "RAM elegida" }
-      ocultar: true
-    opciones:
-      - texto: "No: $8123 tiene A14 a 0."
-        bien: true
-        porque: "/CSRAM pide A15 y A14 a 1: solo $C000–$FFFF. $8123 es del cartucho."
-      - texto: "Sí: A15 está a 1."
-        porque: "Hace falta también A14 a 1. Con A14 a 0, la AND da 0."
-      - texto: "Sí: toda lectura de memoria elige la RAM."
-        porque: "Solo las de $C000 en adelante: la AND necesita A15 y A14."
+    objetivo:
+      condiciones:
+        - { led: RAM, valor: 1, rotulo: "RAM elegida" }
+      logrado: "Acceso a memoria con A15 y A14 a 1: $C000–$FFFF. En $8123, A14 = 0 y contesta el cartucho."
+      pistas:
+        - { texto: "/CSRAM pide A15 y A14 a 1, y un acceso a memoria." }
     escalera:
       - "Escriba $8123 en binario: ¿cómo son los dos bits altos?"
-    solucion: "No: en $8123, A15 = 1 pero A14 = 0; /CSRAM no baja y contesta el cartucho."
+    solucion: "Suba A14: la AND necesita los tres a 1."
 
   - id: por-que-espejo
-    tipo: porque
+    tipo: leer
     titulo: "La misma RAM, dos direcciones"
-    texto: "Leer $E010 da lo mismo que leer $C010. ¿Por qué?"
+    texto: "La RAM no ve A13, así que se repite en $E000–$FFFF. Escriba en hexadecimal la celda a la que llega $E010."
     libro: ["sms#80", "sms#71", "cap37#359"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
         - { id: ram, hotspot: ram, rotulo: "RAM de trabajo" }
-    opciones:
-      - texto: "La RAM no ve A13: $E010 y $C010 solo se distinguen en ese bit."
-        bien: true
-        porque: "La decodificación es incompleta: los 8 KB se repiten en $E000–$FFFF."
-      - texto: "Hay dos RAM con el mismo contenido."
-        porque: "Solo hay una RAM de 8 KB. El espejo sale de no decodificar A13."
-      - texto: "El Z80 copia los datos de una zona a la otra."
-        porque: "Nadie copia nada: las dos direcciones llegan a la misma celda."
+    leer:
+      objetivo: "0xC010"
+      base: 16
+      cifras: 16
+      rotulo: "Celda de la RAM"
+    exito: "$C010: las dos direcciones solo se distinguen en A13, que la RAM no ve. Decodificación incompleta."
     escalera:
-      - "Compare $C010 y $E010 en binario."
-    solucion: "Es un espejo: no se decodifica A13."
+      - "Ponga A13 a 0 en $E010."
+    solucion: "$C010."
 
   - id: escribir-ffff
-    tipo: pregunta
+    tipo: leer
     titulo: "Escribir en $FFFF"
-    texto: "El Z80 escribe en $FFFF. ¿Qué pasa?"
-    libro: ["sms#81", "sms#71"]
+    texto: "El Z80 escribe en $FFFF, en el espejo de la RAM. Escriba en hexadecimal la celda de $C000–$DFFF que guarda el dato."
+    libro: ["sms#81", "sms#71", "sms#80"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
         - { id: ram, hotspot: ram, rotulo: "RAM" }
         - { id: cart, hotspot: cart, rotulo: "Cartucho" }
-    opciones:
-      - texto: "Se escribe en la RAM y, a la vez, el paginador lo toma como banco de la ventana 2."
-        bien: true
-        porque: "$FFFF es espejo de la RAM ($DFFF) y registro del paginador: los dos se quedan con el dato."
-      - texto: "Solo cambia el banco del cartucho."
-        porque: "La RAM también contesta: $FFFF está en su espejo y guarda el dato en $DFFF."
-      - texto: "Nada: la ROM no se escribe."
-        porque: "La ROM no, pero su paginador sí: $FFFF es el registro de banco de la ventana 2."
+    leer:
+      objetivo: "0xDFFF"
+      base: 16
+      cifras: 16
+      rotulo: "Celda de la RAM"
+    exito: "$DFFF. Y a la vez, el paginador del cartucho (o el de la ROM de arranque) toma el dato como registro de banco de la ventana 2: los dos se quedan con él."
     escalera:
-      - "$FFFF está en el espejo de la RAM. ¿Y para el cartucho?"
-    solucion: "Las dos cosas: la RAM guarda el dato en $DFFF y el paginador cambia el banco de la ventana 2."
+      - "Ponga A13 a 0 en $FFFF."
+    solucion: "$DFFF."
 
   - id: prediga-arranque
-    tipo: predecir
+    tipo: tocar
     titulo: "Al encender"
-    texto: "Nada más encender, el Z80 lee $0100. ¿Quién contesta?"
+    texto: "Nada más encender, el Z80 lee $0100. Toque lo que contesta."
     libro: ["sms#77", "sms#67"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: bios, hotspot: bios, rotulo: "ROM de arranque" }
-        - { id: cart, hotspot: cart, rotulo: "Cartucho" }
-    opciones:
-      - texto: "La ROM de arranque, con /CE0."
-        bien: true
-        porque: "Durante el arranque responde la ROM de arranque. Después, el puerto $3E pasa esas direcciones al cartucho (/CE3)."
-      - texto: "El cartucho, con /CE3."
-        porque: "Eso es después del arranque. Al encender contesta la ROM de arranque."
-      - texto: "La RAM."
-        porque: "La RAM está en $C000–$DFFF; $0100 es zona de ROM."
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: bios, hotspot: bios, rotulo: "Chip vertical, arriba a la derecha" }
+        - { id: ram, hotspot: ram, rotulo: "Chip vertical, arriba del todo a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: io, hotspot: io, rotulo: "Chip largo, a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [bios]
+      porque:
+        z80: "El Z80 es quien lee."
+        ram: "La RAM está en $C000–$DFFF; $0100 es zona de ROM."
+        vdp: "El VDP contesta en puertos de E/S, no en $0100."
+        io: "El 315-5237 elige quién contesta; no guarda el programa."
+        cart: "Eso es después del arranque: el puerto $3E pasa entonces esas direcciones al cartucho (/CE3)."
+    exito: "La ROM de arranque, con /CE0. Después, el puerto $3E pasa esas direcciones al cartucho (/CE3)."
     escalera:
       - "¿Qué programa se ejecuta antes que el juego?"
-    solucion: "La ROM de arranque (/CE0); tras el arranque, el cartucho (/CE3)."
+    solucion: "La ROM de arranque."
 
   - id: resumen
     tipo: resumen

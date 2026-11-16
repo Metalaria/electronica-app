@@ -3,6 +3,8 @@
 # NEO-AES, el watchdog (circuito lógico y su tabla), «el clic de la muerte» de 3,7 Hz (estimar su periodo) y por qué
 # se desactiva el watchdog para buscar averías. Fuentes: NeoGeo Development Wiki («Power requirements», «Power
 # supply», «Watchdog»), los datos de la consola (neogeo#n) y el libro.
+# 1.2.1: el circuito del watchdog tiene meta (que no reinicie); se escribe el periodo del clic de la muerte (1 ÷ 3,7 Hz);
+# se toca el chip del watchdog. Lo simple primero va en el texto de la avería. Queda una pregunta: el adaptador flojo.
 leccion: consola-neogeo/neogeo-averias
 
 libro:
@@ -36,25 +38,33 @@ modelo:
     T_r: { expr: "1/f_r", sim: "T_{RESET}", nombre: "periodo del bucle de reset", unidad: s, cifras: 2 }
 
 tarjetas:
-  - id: explore-primero
+  - id: explore-watchdog
     tipo: explorar
-    titulo: "Lo primero, lo simple"
-    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
-    libro: ["cap53#39", "neogeo#30", "neogeo#28"]
-    requiere: { mover: [power, prot, cart] }
+    titulo: "El watchdog"
+    texto: "El watchdog reinicia la consola si el juego no le escribe a tiempo, salvo que DOGE esté a masa. Consiga que no reinicie."
+    libro: ["neogeo#104", "neogeo#105", "neogeo#107", "neogeo#7"]
     widget:
-      tipo: figura
-      consola: { maquina: neogeo }
-      zonas:
-        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Deslizante, a la entrada." }
-        - { id: prot, hotspot: prot, rotulo: "Protección", texto: "Actúa por encima de 5,4 V." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "El juego entero pasa por aquí." }
+      tipo: logica
+      entradas: [{ id: ESCRIBE, rotulo: "Escribe en REG_DIPSW" }, { id: DOGE, rotulo: "DOGE a masa" }]
+      piezas:
+        - { id: n1, tipo: nor, entradas: [ESCRIBE, DOGE] }
+      salidas:
+        - { id: RESET, de: n1, rotulo: "Reinicia" }
+    objetivo:
+      condiciones:
+        - { led: RESET, valor: 0, rotulo: "No reinicia" }
+      logrado: "O el juego le escribe a tiempo en REG_DIPSW, o DOGE está a masa y el watchdog no actúa."
+      pistas:
+        - { texto: "Sin escribir y con DOGE suelto, el contador de cuadros pasa del límite y reinicia." }
+    escalera:
+      - "Basta con una de las dos."
+    solucion: "Que el juego escriba en REG_DIPSW, o DOGE a masa."
 
   - id: averia-no-enciende
     tipo: averia
     titulo: "No enciende"
-    texto: "La consola no enciende. Mida y señale la pieza: el adaptador PRO-POW o el interruptor."
-    libro: ["neogeo#102", "neogeo#30", "cap53#92"]
+    texto: "La consola no enciende. Lo simple primero: mida y señale la pieza, el adaptador PRO-POW o el interruptor."
+    libro: ["neogeo#102", "neogeo#30", "cap53#92", "cap53#39"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
@@ -85,7 +95,7 @@ tarjetas:
     tipo: predecir
     titulo: "Un adaptador flojo"
     texto: "Con un adaptador flojo que da, por ejemplo, 4,7 V, ¿qué puede pasar en la NEO-AES?"
-    libro: ["neogeo#97", "neogeo#96"]
+    libro: ["neogeo#97", "neogeo#96", "neogeo#28"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
@@ -104,20 +114,6 @@ tarjetas:
     solucion: "Fallos de imagen o reinicios: 4,7 V está por debajo de 4,8 V."
     comprobar:
       - { V_flojo: 4.7 }
-
-  - id: explore-watchdog
-    tipo: explorar
-    titulo: "El watchdog"
-    texto: "El watchdog reinicia la consola si el juego no le escribe a tiempo, salvo que DOGE esté a masa. Mueva las dos."
-    libro: ["neogeo#104", "neogeo#105", "neogeo#107", "neogeo#7"]
-    requiere: { mover: [ESCRIBE, DOGE] }
-    widget:
-      tipo: logica
-      entradas: [{ id: ESCRIBE, rotulo: "Escribe en REG_DIPSW" }, { id: DOGE, rotulo: "DOGE a masa" }]
-      piezas:
-        - { id: n1, tipo: nor, entradas: [ESCRIBE, DOGE] }
-      salidas:
-        - { id: RESET, de: n1, rotulo: "Reinicia" }
 
   - id: tabla-watchdog
     tipo: tabla
@@ -141,23 +137,23 @@ tarjetas:
     solucion: "Reinicia solo si el juego no escribe y DOGE no está a masa."
 
   - id: estime-clic
-    tipo: pregunta
+    tipo: leer
     titulo: "El clic de la muerte"
-    texto: "Una consola que se reinicia sin parar da un RESET de 3,7 Hz y un clic audible. ¿Cada cuánto suena?"
+    texto: "Una consola que se reinicia sin parar da un RESET de 3,7 Hz y un clic audible. Escriba cada cuántos segundos suena."
     libro: ["neogeo#106"]
-    estimar:
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: reset, hotspot: reset, rotulo: "Botón de reset" }
+    leer:
       objetivo: T_r
       unidad: s
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.8
-      tol: 0.05
+      tol: 0.03
       rotulo: "Periodo del clic"
-    exito: "1 ÷ 3,7 Hz ≈ 0,27 s: unos cuatro clics por segundo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.3 }, texto: "Demasiado lento: a 3,7 Hz hay casi cuatro clics por segundo." }
-      - { texto: "Demasiado rápido: el periodo es la inversa de 3,7 Hz." }
+      errores:
+        - { expr: "f_r", texto: "Esa es la frecuencia: el periodo es su inversa." }
+    exito: "1 ÷ 3,7 Hz ≈ 0,27 s: unos cuatro clics por segundo. Ayuda a diagnosticar los problemas de arranque."
     escalera:
       - "El periodo es 1 ÷ f."
     solucion: "T = 1 ÷ 3,7 Hz ≈ 0,27 s."
@@ -165,26 +161,26 @@ tarjetas:
       - { T_r: 0.27 }
 
   - id: por-que-doge
-    tipo: porque
+    tipo: tocar
     titulo: "Apagar el watchdog"
-    texto: "¿Por qué se lleva DOGE a masa para buscar una avería de arranque?"
-    libro: ["neogeo#107", "neogeo#104", "neogeo#106"]
+    texto: "Para buscar una avería de arranque se desactiva el watchdog llevando DOGE a masa, y así la placa deja de reiniciarse. Toque el chip que lleva el watchdog."
+    libro: ["neogeo#107", "neogeo#104", "neogeo#106", "neogeo#7"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
       zonas:
-        - { id: proc0, hotspot: proc0, rotulo: "PRO-C0 (watchdog)" }
-    opciones:
-      - texto: "Para que no reinicie cada fracción de segundo y se pueda ver dónde se queda."
-        bien: true
-        porque: "Con el watchdog activo, un fallo de arranque se ve como un bucle de resets; desactivado, la placa se queda quieta y se puede medir."
-      - texto: "Para que la consola vaya más rápida."
-        porque: "El watchdog no frena nada: solo reinicia cuando el programa no le escribe."
-      - texto: "Para siempre: el watchdog sobra."
-        porque: "Es un recurso para buscar averías; en uso normal evita que los juegos se cuelguen."
+        - { id: proc0, hotspot: proc0, rotulo: "Chip cuadrado, abajo a la derecha" }
+        - { id: prob0, hotspot: prob0, rotulo: "Chip cuadrado, abajo en el centro" }
+        - { id: lspc, hotspot: lspc, rotulo: "Chip cuadrado, a la izquierda" }
+    tocar:
+      bien: [proc0]
+      porque:
+        prob0: "El PRO-B0 lleva la paleta, los mandos y el buzón del sonido."
+        lspc: "El LSPC-A0 es el vídeo."
+    exito: "El PRO-C0: además de decodificar, lleva el watchdog (DOGE, con el puente «CUT DOG»). Desactivado, un fallo de arranque deja de ser un bucle de resets y se puede medir."
     escalera:
-      - "¿Qué hace el watchdog si el programa se cuelga?"
-    solucion: "Para quitar el bucle de resets mientras se busca la avería."
+      - "Es el chip que decodifica las direcciones del 68000."
+    solucion: "El PRO-C0."
 
   - id: empareje-sintomas
     tipo: pregunta

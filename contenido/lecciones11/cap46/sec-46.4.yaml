@@ -6,6 +6,11 @@
 #   serie, 0,904 (bloques 108, 109, 111). Coffin–Manson con exponente 2: (100/25)² = 16 (bloque 123).
 # Paso práctico: «simular» el factor de +20 °C con Arrhenius (errores típicos: la regla de los 10 °C, ×4; sumar dos
 # factores de +10 °C, 4,8).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la vida se divide por 25 subiendo la temperatura (meta, +40 °C);
+# se simula el +20 °C y se escriben el factor de 85 a 125 °C, el tiempo entre fallos de la flota, la fiabilidad en
+# serie, el daño por ciclo de Coffin–Manson y la vida del electrolítico a 45 °C (la regla de los 10 °C desde 2 000 h a
+# 105 °C: 128 000 h, «más de catorce» años). Quedan dos preguntas de opciones (sobrevivir un MTBF y por qué no sirve
+# mejorar los buenos).
 leccion: cap46/sec-46.4
 
 libro:
@@ -37,6 +42,8 @@ modelo:
     n_c: { sim: "n", nombre: "componentes en serie", unidad: "", valor: 10 }
     dT_e: { sim: "ΔT_{ensayo}", nombre: "amplitud del ciclo de ensayo", unidad: "°C", valor: 100 }
     dT_u: { sim: "ΔT_{uso}", nombre: "amplitud del ciclo de uso", unidad: "°C", valor: 25 }
+    L_105: { sim: "L_{105}", nombre: "vida del electrolítico a 105 °C", unidad: h, valor: 2000 }
+    T_el: { sim: "T", nombre: "temperatura de trabajo del electrolítico", unidad: "°C", valor: 45 }
   calculos:
     V_ar: { expr: "exp(-E_a*q_e/k_B*(1/(T_r + 273.15) - 1/(T_w + 273.15)))", sim: "V", nombre: "vida relativa (1 a la referencia)", unidad: "", cifras: 3 }
     D_ar: { expr: "1/V_ar", sim: "÷", nombre: "la vida se divide por", unidad: "", cifras: 2 }
@@ -46,14 +53,21 @@ modelo:
     t_f: { expr: "MTBF/N_f", sim: "t", nombre: "tiempo entre fallos de la flota", unidad: h }
     S_m: { expr: "exp(-1)*100", sim: "S", nombre: "sobreviven un MTBF", unidad: "%", cifras: 2 }
     R_s: { expr: "R_c^n_c", sim: "R_{serie}", nombre: "fiabilidad del conjunto en serie", unidad: "", cifras: 3 }
+    L_el: { expr: "L_105*2^((105 - T_el)/10)", sim: "L", nombre: "vida del electrolítico", unidad: h }
+    L_85: { expr: "L_105*2^((105 - 85)/10)", sim: "L", nombre: "vida del electrolítico a 85 °C", unidad: h }
+    R_1: { expr: "R_c", sim: "R", nombre: "una sola pieza", unidad: "" }
+    K_lin: { expr: "dT_e/dT_u", sim: "K", nombre: "sin elevar al cuadrado", unidad: "" }
     K_cm: { expr: "(dT_e/dT_u)^2", sim: "K", nombre: "daño por ciclo, ensayo frente a uso", unidad: "" }
 
 tarjetas:
   - id: explore-arrhenius
     tipo: explorar
+    fase: "Consiga"
     titulo: "Más calor, menos vida"
-    texto: "La degradación es química y sigue a Arrhenius. Suba la temperatura de trabajo y mire por cuánto se divide la vida."
+    texto: "La degradación es química y sigue a Arrhenius, con 0,7 eV desde 25 °C. Suba la temperatura de trabajo hasta que la vida se divida por 25."
     libro: [115, 116, 118, 134]
+    fijar: { T_r: 25, E_a: 0.7 }
+    inicio: { T_w: 35 }
     widget:
       tipo: grafica
       x: { id: tt, min: 20, max: 90, unidad: "°C", rotulo: "T" }
@@ -68,7 +82,17 @@ tarjetas:
         - { valor: D_re, rotulo: "Regla de los 10 °C: ÷{{D_re}}" }
       mandos:
         - { valor: T_w, min: 25, max: 85, paso: 5, rotulo: "Temperatura de trabajo" }
-    requiere: { mover: [T_w] }
+    objetivo:
+      condiciones:
+        - { valor: D_ar, min: 24, rotulo: "La vida ÷ {{D_ar}}" }
+      logrado: "A {{T_w}}: ÷{{D_ar}}. Cuarenta grados más y la vida es la vigésima quinta parte: la mejor inversión en fiabilidad es térmica."
+      pistas:
+        - { texto: "Todavía no: más temperatura." }
+    escalera:
+      - "Cada 10 °C la divide por unas 2,4."
+    solucion: "65 °C, 40 grados por encima de la referencia: ÷25."
+    comprobar:
+      - { con: { T_w: 65 }, D_ar: 25, tol: 0.04 }
 
   - id: simule-veinte
     tipo: simular
@@ -93,60 +117,57 @@ tarjetas:
       - { D_ar: 5.54, D_re: 4, D_10: 2.42 }
 
   - id: prediga-alta
-    tipo: predecir
-    titulo: "El mismo salto, más arriba"
-    texto: "De 25 a 65 °C la vida se divide por 25. ¿Y de 85 a 125 °C, también 40 grados?"
+    tipo: leer
+    titulo: "Arriba pesa algo menos"
+    texto: "Cuarenta grados por encima de 25 °C dividen la vida por 25. Escriba por cuánto la dividen de 85 a 125 °C, también 40 grados."
     libro: [116, 117]
-    fijar: { T_w: 65 }
+    fijar: { T_r: 25, E_a: 0.7 }
     widget:
       tipo: grafica
-      x: { id: tt, min: 20, max: 130, unidad: "°C", rotulo: "T" }
-      y: { min: 0.0005, max: 1.5, unidad: "", rotulo: "vida relativa", escala: log }
+      x: { id: tt, min: 20, max: 90, unidad: "°C", rotulo: "T" }
+      y: { min: 0.005, max: 1.5, unidad: "", rotulo: "vida relativa", escala: log }
       curvas:
         - { expr: "exp(-E_a*q_e/k_B*(1/(T_r + 273.15) - 1/(tt + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
-      lectura: { valor: D_hi, rotulo: "De 85 a 125 °C, se divide por" }
-      ocultar: true
-    opciones:
-      - texto: "Por unos 10: a temperaturas altas el salto pesa menos"
-        bien: true
-        porque: "Cuenta la inversa de la temperatura absoluta: arriba, 40 grados la cambian menos."
-      - texto: "Por 25, igual: son los mismos 40 grados"
-        porque: "La ley no va con la diferencia en °C, sino con la inversa de la temperatura en kelvin."
-      - texto: "Por más de 25, porque hace más calor"
-        porque: "Al revés: a temperaturas altas el mismo salto pesa algo menos."
+        - { expr: "2^(-(tt - T_r)/10)", color: tinta, rotulo: "×2 cada 10 °C", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: D_hi
+      unidad: ""
+      tol: 0.1
+      rotulo: "Factor de 85 a 125 °C"
+      errores:
+        - { expr: "25", texto: "Esos 25 son desde 25 °C. Cuenta la inversa de la temperatura absoluta: arriba, el mismo salto pesa menos." }
+    exito: "Unos 10, no 25: la ley va con la inversa de la temperatura absoluta."
     escalera:
-      - "¿Qué temperatura usa la ley: en grados Celsius o la inversa de la absoluta?"
-    solucion: "Por unos 10, no 25."
+      - "En la ley entra la inversa de la temperatura absoluta: a 85 y 125 °C las inversas se parecen más."
+    solucion: "Unos 10."
     comprobar:
-      - { D_hi: 9.76 }
+      - { D_hi: 10, tol: 0.1 }
 
   - id: estime-flota
-    tipo: pregunta
+    tipo: leer
     titulo: "Una flota de mil"
-    texto: "Mil equipos con un MTBF de 100 000 horas funcionan a la vez. ¿Cada cuánto cabe esperar un fallo en el conjunto?"
+    texto: "Mil equipos con un MTBF de 100 000 horas funcionan a la vez. Escriba cada cuántas horas cabe esperar un fallo en el conjunto."
     libro: [104, 108]
     fijar: { MTBF: 100000, N_f: 1000 }
     widget:
-      tipo: figura
-      figura: fig-46.8
-      zonas:
-        - { id: util, rotulo: "Tramo central de la bañera", rect: [55, 15, 80, 135] }
-    estimar:
-      objetivo: "t_f"
+      tipo: grafica
+      x: { id: nn, min: 1, max: 2000, unidad: "", rotulo: "equipos" }
+      y: { min: 10, max: 100000, unidad: h, rotulo: "entre fallos", escala: log }
+      curvas:
+        - { expr: "MTBF/nn", color: naranja, rotulo: "MTBF / N" }
+      mandos: []
+    leer:
+      objetivo: t_f
       unidad: h
-      min: 0
-      max: 1000
-      paso: 10
-      inicio: 600
-      tol: 0.05
-      rotulo: "Un fallo cada"
-    exito: "Cada 100 horas: el MTBF es una tasa de la población, en su zona plana."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 105 }, texto: "Demasiado: con mil equipos, los fallos llegan mil veces más a menudo." }
-      - { texto: "Demasiado poco: divida 100 000 horas entre mil equipos." }
+      tol: 0.02
+      rotulo: "Horas entre fallos de la flota"
+      errores:
+        - { expr: "MTBF", texto: "Eso es el MTBF de uno; con mil funcionando a la vez, las tasas se suman." }
+    exito: "Un fallo cada 100 horas en el conjunto: el MTBF es un parámetro estadístico, no la vida de un equipo."
     escalera:
-      - "Mil equipos acumulan mil horas de funcionamiento por cada hora."
-    solucion: "100 000/1 000 = 100 horas."
+      - "La tasa de la flota es mil veces la de un equipo."
+    solucion: "100 000 / 1 000 = 100 h."
     comprobar:
       - { t_f: 100 }
 
@@ -175,26 +196,28 @@ tarjetas:
       - { S_m: 36.8 }
 
   - id: estime-serie
-    tipo: pregunta
+    tipo: leer
     titulo: "Diez piezas en serie"
-    texto: "Un sistema falla si falla cualquiera de sus diez componentes, cada uno de fiabilidad 0,99. ¿Qué fiabilidad tiene el conjunto?"
+    texto: "Un sistema falla si falla cualquiera de sus diez componentes, cada uno de fiabilidad 0,99. Escriba la fiabilidad del conjunto."
     libro: [111, 112]
     fijar: { R_c: 0.99, n_c: 10 }
-    estimar:
-      objetivo: "R_s"
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 30, unidad: "", rotulo: "componentes en serie" }
+      y: { min: 0.7, max: 1, unidad: "", rotulo: "fiabilidad" }
+      curvas:
+        - { expr: "R_c^nn", color: naranja, rotulo: "0,99ⁿ" }
+      mandos: []
+    leer:
+      objetivo: R_s
       unidad: ""
-      min: 0.8
-      max: 1
-      paso: 0.001
-      inicio: 0.97
-      tol: 0.004
+      tol: 0.005
       rotulo: "Fiabilidad del conjunto"
-    exito: "0,904: casi un 10 % de fallos aunque cada pieza sea buena al 99 %."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.91 }, texto: "Demasiado: las fiabilidades se multiplican, y diez veces 0,99 baja bastante." }
-      - { texto: "Demasiado poco: 0,99 multiplicado por sí mismo diez veces." }
+      errores:
+        - { expr: "R_1", texto: "Esa es la de una sola pieza: en serie, las fiabilidades se multiplican." }
+    exito: "0,904: casi un 10 % de fallo aunque cada pieza sea del 99 %. Reducir el número de componentes es de primer orden."
     escalera:
-      - "En serie, las fiabilidades se multiplican."
+      - "Multiplique 0,99 por sí mismo diez veces."
     solucion: "0,99¹⁰ = 0,904."
     comprobar:
       - { R_s: 0.904 }
@@ -222,51 +245,60 @@ tarjetas:
     solucion: "El componente peor domina el conjunto."
 
   - id: pregunta-ciclos
-    tipo: pregunta
+    tipo: leer
     titulo: "La excepción: las soldaduras"
-    texto: "Una semana a 125 °C apenas fatiga una soldadura. ¿Por qué los ensayos de soldaduras son de ciclado térmico?"
+    texto: "La fatiga de las soldaduras no sigue a Arrhenius: la gobierna la amplitud de cada ciclo, con exponente 2. Escriba cuánto más daña un ciclo de ensayo de 100 °C que uno diario de 25 °C."
     libro: [122, 123]
     fijar: { dT_e: 100, dT_u: 25 }
     widget:
-      tipo: figura
-      figura: fig-46.8
-      zonas:
-        - { id: arrhenius, rotulo: "Panel de la derecha", rect: [245, 15, 180, 150] }
-    opciones:
-      - texto: "La fatiga depende de la amplitud ΔT de cada ciclo, no de la temperatura"
-        bien: true
-        porque: "Coffin–Manson: con exponente 2, ciclos de 100 °C dañan (100/25)² = 16 veces más que los de 25 °C."
-      - texto: "Porque a 125 °C el estaño se funde"
-        porque: "No se funde; simplemente, sin ciclos no se acumula daño mecánico."
-      - texto: "Porque la fatiga también sigue a Arrhenius"
-        porque: "Es la excepción: no es una reacción química, sino daño mecánico ciclo a ciclo."
+      tipo: grafica
+      x: { id: dd, min: 0, max: 120, unidad: "°C", rotulo: "ΔT del ciclo" }
+      y: { min: 0, max: 25, unidad: "", rotulo: "daño frente al de 25 °C" }
+      curvas:
+        - { expr: "(dd/dT_u)^2", color: naranja, rotulo: "(ΔT/25)²" }
+      mandos: []
+    leer:
+      objetivo: K_cm
+      unidad: ""
+      tol: 0.02
+      rotulo: "Daño por ciclo, ensayo frente a uso"
+      errores:
+        - { expr: "K_lin", texto: "Le falta el exponente 2: (100/25) al cuadrado." }
+    exito: "16 veces: mil ciclos de ensayo equivalen a unos 16 000 encendidos. Por eso los ensayos de soldaduras son de ciclado."
     escalera:
-      - "¿Es la fatiga un proceso químico o mecánico?"
-    solucion: "Lo gobierna la amplitud del ciclo: Coffin–Manson, no Arrhenius."
+      - "(100/25)²."
+    solucion: "(100/25)² = 16."
     comprobar:
-      - { K_cm: 16 }
+      - { K_cm: 16, K_lin: 4 }
 
   - id: pregunta-electrolitico
-    tipo: pregunta
+    tipo: leer
+    fase: "En el banco"
     titulo: "En el banco"
-    texto: "Un electrolítico de 2 000 h a 105 °C trabaja a 85 °C; otro igual, a 45 °C. ¿Qué les espera?"
-    libro: [119, 132]
+    texto: "Un electrolítico de 2 000 h a 105 °C trabaja a 45 °C. Con la regla de los 10 °C, escriba cuántas horas durará."
+    libro: [118, 119, 132]
+    fijar: { L_105: 2000, T_el: 45 }
     widget:
-      tipo: figura
-      figura: fig-46.8
-      zonas:
-        - { id: arrhenius, rotulo: "Panel de la derecha", rect: [245, 15, 180, 150] }
-    opciones:
-      - texto: "Menos de un año el primero; más de catorce el segundo"
-        bien: true
-        porque: "Cuarenta grados de diferencia: la mejor inversión en fiabilidad es térmica."
-      - texto: "Los dos, unas 2 000 horas"
-        porque: "Esas horas son a 105 °C; por debajo, la vida crece con cada grado que se enfría."
-      - texto: "Lo mismo: el condensador es el mismo"
-        porque: "La vida depende de la temperatura de trabajo: es lo que dice Arrhenius."
+      tipo: grafica
+      x: { id: tt, min: 40, max: 110, unidad: "°C", rotulo: "T" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_105*2^((105 - tt)/10)", color: naranja, rotulo: "×2 cada 10 °C menos" }
+      mandos: []
+    leer:
+      objetivo: L_el
+      unidad: h
+      tol: 0.05
+      rotulo: "Vida a 45 °C"
+      errores:
+        - { expr: "L_85", texto: "Esa es la vida a 85 °C, menos de un año." }
+        - { expr: "L_105", texto: "Esas 2 000 h son a 105 °C; a 45 °C se duplican seis veces." }
+    exito: "Unas 128 000 h, más de catorce años; a 85 °C, menos de uno. Esa comparación componente a componente es el análisis de fiabilidad más útil sin herramientas."
     escalera:
-      - "Cada 10 °C menos duplican la vida de un electrolítico."
-    solucion: "Menos de un año a 85 °C; más de catorce a 45 °C."
+      - "De 105 a 45 °C hay seis escalones de 10 °C."
+    solucion: "2 000 h × 2⁶ = 128 000 h."
+    comprobar:
+      - { L_el: 128000, L_85: 8000 }
 
   - id: resumen
     tipo: resumen

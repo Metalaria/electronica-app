@@ -6,6 +6,11 @@
 #   (12 V, 10 kΩ y 5 kΩ, 4,00 V): con las dos resistencias derivando juntas la salida no se mueve.
 # Paso práctico: «simular» lo que queda con la suma en cuadratura (errores típicos: la suma lineal, 40 %; solo la
 # tolerancia de compra, 90 %).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): el divisor vivo se hace derivar un 5 % sin que la salida se mueva
+# (meta: las dos juntas); la desviación que más resta, el método del 100 % y el que da la proporción que cumple se
+# tocan en la figura 47.12; lo que queda en el peor caso se escribe sobre las cuatro desviaciones en palitos (sin la
+# respuesta a la vista) y la cuadratura se simula. Quedan una pregunta de opciones (la distribución bimodal) y el
+# emparejamiento de las variaciones.
 leccion: cap46/sec-46.7
 
 libro:
@@ -17,8 +22,11 @@ libro:
   231: "da un número accionable —el 99,7 % cumple—"
   235: "dejando una distribución bimodal: las del 10 % tienden a estar en los extremos, no en el centro"
   236: "Suponer una normal en ese caso da un resultado optimista y equivocado."
+  230: "Es lo que hace Monte Carlo"
+  239: "la tolerancia de compra no es toda la variación"
   240: "Deriva térmica, en ppm/°C sobre el margen de temperatura."
   242: "Variación con la tensión aplicada, notable en cerámicos de clase 2"
+  241: "Envejecimiento, que en algunos componentes es apreciable"
   243: "Efecto de la soldadura, que desplaza permanentemente el valor de algunos componentes."
   244: "Un condensador X7R del 10 % puede acabar, sumando todo eso, al 40 % de su valor nominal en condiciones extremas."
   247: "Gastar en precisión solo en esos, y usar tolerancias corrientes en el resto."
@@ -53,48 +61,87 @@ modelo:
     I_d: { expr: "V_in/(R_a + R_b)", sim: "I", nombre: "corriente", unidad: A }
 
 tarjetas:
-  - id: explore-acumulacion
+  - id: explore-relacion
     tipo: explorar
-    titulo: "La tolerancia de compra no es todo"
-    texto: "Un X7R del 10 % suma más desviaciones con el uso. Toque cada una."
-    libro: [223, 244, 253, 240, 242]
+    fase: "Consiga"
+    titulo: "La relación, no el valor"
+    texto: "Un divisor con valores de ejemplo: 12 V, 10 kΩ y 5 kΩ. Haga derivar las resistencias un 5 % sin que la salida se mueva de 4 V."
+    libro: [223, 247, 248, 249, "cap01#83"]
+    fijar: { V_in: 12, R_1n: 10000, R_2n: 5000 }
+    inicio: { dr: 0, jun: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_a, abajo: R_b }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d }
+      mandos:
+        - { valor: dr, min: -5, max: 5, paso: 1, rotulo: "Deriva de las resistencias" }
+        - { valor: jun, tipo: interruptor, rotulo: "Las dos derivan juntas" }
+    objetivo:
+      condiciones:
+        - { valor: dr, min: 5, rotulo: "Deriva: {{dr}}" }
+        - { valor: V_out, objetivo: 4, tol: 0.001, rotulo: "Salida: {{V_out}}" }
+      logrado: "Las dos derivan juntas y el cociente no cambia: {{V_out}}. Dos resistencias del mismo lote derivan juntas; dentro de un chip, las relaciones son excelentes."
+      pistas:
+        - { cuando: { valor: dr, menor: 5 }, texto: "Haga derivar las resistencias un 5 %." }
+        - { texto: "Si solo deriva R₁, el cociente cambia: haga que deriven las dos juntas." }
+    escalera:
+      - "En un divisor importa el cociente de las dos resistencias, no su valor."
+    solucion: "Deriva del 5 % con las dos juntas: la salida sigue en 4,00 V."
+    comprobar:
+      - { con: { dr: 5, jun: 1 }, V_out: 4 }
+
+  - id: explore-acumulacion
+    tipo: tocar
+    titulo: "Lo que se olvida"
+    texto: "La tolerancia de compra no es toda la variación de un X7R del 10 %. Toque la desviación que más le resta."
+    libro: [239, 240, 241, 242, 243, 253]
     widget:
       tipo: figura
       figura: fig-46.12
       zonas:
-        - { id: inicial, rotulo: "Primera barra", rect: [36, 15, 35, 36], texto: "La tolerancia de compra: el 10 % del condensador." }
-        - { id: termica, rotulo: "Segunda barra", rect: [76, 30, 35, 36], texto: "La deriva térmica sobre el margen de temperatura." }
-        - { id: tension, rotulo: "Tercera barra", rect: [117, 50, 35, 50], texto: "La variación con la tensión aplicada, notable en los cerámicos de clase 2." }
-        - { id: peor, rotulo: "Barra rayada", rect: [197, 85, 35, 62], texto: "Sumando todo en el peor sentido, queda el 40 % del nominal." }
-    requiere: { mover: [inicial, tension, peor] }
+        - { id: inicial, rotulo: "Primera barra", rect: [36, 15, 35, 36] }
+        - { id: termica, rotulo: "Segunda barra", rect: [76, 30, 35, 36] }
+        - { id: tension, rotulo: "Tercera barra", rect: [117, 50, 35, 50] }
+        - { id: edad, rotulo: "Cuarta barra", rect: [157, 85, 35, 25] }
+    tocar:
+      bien: [tension]
+      porque:
+        inicial: "Es la tolerancia de compra, la que se ve en la hoja: no es la mayor."
+        termica: "La deriva térmica resta, pero menos."
+        edad: "El envejecimiento es la menor de las cuatro."
+    exito: "La variación con la tensión aplicada, notable en los cerámicos de clase 2. Contar solo con el 10 % da circuitos que funcionan en el prototipo y fallan en producción."
+    escalera:
+      - "Busque la barra más alta."
+    solucion: "La tercera: la tensión aplicada."
 
   - id: estime-peor
-    tipo: pregunta
-    titulo: "El peor caso"
-    texto: "Un X7R: −10 % inicial, −15 % de deriva térmica, −30 % por la tensión y −5 % por envejecimiento. En el peor caso, ¿qué fracción del nominal queda?"
-    libro: [225, 244]
+    tipo: leer
+    titulo: "En el peor caso"
+    texto: "Las cuatro desviaciones del X7R, en el peor sentido a la vez. Súmelas y escriba qué fracción del nominal queda."
+    libro: [225, 228, 244]
     fijar: { d_i: 10, d_t: 15, d_v: 30, d_e: 5 }
     widget:
-      tipo: figura
-      figura: fig-46.12
-      zonas:
-        - { id: barras, rotulo: "Las cuatro primeras barras", rect: [36, 15, 152, 90] }
-    estimar:
-      objetivo: "Q_pc"
+      tipo: grafica
+      x: { id: q, min: 1, max: 4, unidad: "", rotulo: "inicial · térmica · tensión · edad" }
+      y: { min: 0, max: 35, unidad: "%", rotulo: "desviación" }
+      curvas:
+        - { expr: "10*(q-2)*(q-3)*(q-4)/(-6) + 15*(q-1)*(q-3)*(q-4)/2 + 30*(q-1)*(q-2)*(q-4)/(-2) + 5*(q-1)*(q-2)*(q-3)/6", palitos: true, color: naranja, rotulo: "desviación de cada fuente" }
+      mandos: []
+    leer:
+      objetivo: Q_pc
       unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 85
-      tol: 0.05
+      tol: 0.02
       rotulo: "Queda del nominal"
-    exito: "El 40 %: diseñar contando solo con el 10 % falla en producción."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 42 }, texto: "Demasiado: en el peor caso se suman todas las desviaciones, no solo la de compra." }
-      - { texto: "Demasiado poco: sume 10 + 15 + 30 + 5 y réstelo del 100 %." }
+      errores:
+        - { expr: "D_s", texto: "Esa es la suma de las desviaciones; se pide lo que queda del nominal." }
+        - { expr: "Q_in", texto: "Solo ha contado la tolerancia de compra." }
+    exito: "El 40 %: si el circuito pasa con eso, funciona el 100 % de las unidades, pero es extremadamente conservador."
     escalera:
-      - "En el peor caso, todas las desviaciones van a la vez en el mismo sentido."
-    solucion: "10 + 15 + 30 + 5 = 60 %: queda el 40 %."
+      - "10 + 15 + 30 + 5, y réstelo de 100."
+    solucion: "100 − 60 = 40 %."
     comprobar:
       - { Q_pc: 40, D_s: 60 }
 
@@ -121,27 +168,24 @@ tarjetas:
       - { Q_rs: 64.6, S_q: 35.4, SS: 1250, Q_pc: 40, Q_in: 90 }
 
   - id: pregunta-virtud
-    tipo: pregunta
+    tipo: tocar
     titulo: "Peor caso o estadístico"
-    texto: "El peor caso garantiza que, si pasa, funciona el 100 % de las unidades. ¿Cuál es su defecto?"
-    libro: [226, 227, 231]
+    texto: "Un equipo debe funcionar en el 100 % de las unidades, cueste lo que cueste. Toque el método de análisis."
+    libro: [226, 227, 253]
     widget:
       tipo: figura
       figura: fig-46.12
       zonas:
-        - { id: peor, rotulo: "Recuadro rojo", rect: [287, 5, 159, 77] }
-        - { id: estadistico, rotulo: "Recuadro azul", rect: [287, 97, 159, 77] }
-    opciones:
-      - texto: "Es extremadamente conservador y encarece el diseño"
-        bien: true
-        porque: "Que diez piezas estén a la vez en su extremo peor es minúsculo; el estadístico da un rendimiento accionable."
-      - texto: "Que no garantiza nada"
-        porque: "Garantiza el 100 %: ese es justo su virtud."
-      - texto: "Que necesita conocer la distribución real"
-        porque: "Esa es la condición del estadístico; el peor caso solo usa los extremos."
+        - { id: peor, rotulo: "Recuadro de arriba a la derecha", rect: [288, 6, 156, 76] }
+        - { id: estad, rotulo: "Recuadro de abajo a la derecha", rect: [288, 97, 156, 76] }
+    tocar:
+      bien: [peor]
+      porque:
+        estad: "El estadístico dice qué proporción cumple, no garantiza el 100 %."
+    exito: "El peor caso: si pasa, funciona el 100 %. Su defecto: es extremadamente conservador y encarece."
     escalera:
-      - "¿Qué probabilidad hay de que todo esté a la vez en su peor extremo?"
-    solucion: "Es extremadamente conservador: encarece innecesariamente."
+      - "¿Cuál combina todas las tolerancias en el sentido más desfavorable?"
+    solucion: "Arriba a la derecha: el peor caso."
 
   - id: prediga-bimodal
     tipo: predecir
@@ -165,51 +209,6 @@ tarjetas:
       - "¿Dónde han ido a parar las resistencias más cercanas al nominal?"
     solucion: "Bimodales, hacia los extremos: la normal sería optimista."
 
-  - id: explore-relacion
-    tipo: explorar
-    titulo: "La relación, no el valor"
-    texto: "Un divisor con valores de ejemplo: 12 V, 10 kΩ y 5 kΩ. Haga derivar las resistencias, juntas o solo R₁."
-    libro: [248, "cap01#83"]
-    fijar: { V_in: 12, R_1n: 10000, R_2n: 5000 }
-    widget:
-      tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_in, arriba: R_a, abajo: R_b }
-      lectura: { valor: V_out, rotulo: "Tensión de salida" }
-      corriente: I_d
-      mide: { salida: V_out, corriente: I_d }
-      mandos:
-        - { valor: dr, min: -5, max: 5, paso: 1, rotulo: "Deriva de las resistencias" }
-        - { valor: jun, tipo: interruptor, rotulo: "Las dos derivan juntas" }
-    requiere: { mover: [dr, jun] }
-
-  - id: porque-relacion
-    tipo: porque
-    titulo: "Por qué la relación"
-    texto: "En el divisor, si R₁ y R₂ derivan juntas la salida no se mueve. ¿Por qué conviene una topología así?"
-    libro: [247, 248, 249]
-    fijar: { V_in: 12, R_1n: 10000, R_2n: 5000, dr: 5, jun: 1 }
-    widget:
-      tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_in, arriba: R_a, abajo: R_b }
-      lectura: { valor: V_out, rotulo: "Tensión de salida" }
-      mide: { salida: V_out }
-      mandos: []
-    opciones:
-      - texto: "Importa el cociente, y dos del mismo lote derivan juntas"
-        bien: true
-        porque: "Es lo que hace posible la precisión integrada: valores absolutos malos, relaciones excelentes."
-      - texto: "Porque las resistencias no derivan"
-        porque: "Derivan, pero juntas: la salida depende de su cociente, que no cambia."
-      - texto: "Porque la fuente compensa la deriva"
-        porque: "La fuente no sabe nada de las resistencias; es el cociente el que se mantiene."
-    escalera:
-      - "¿De qué depende la salida de un divisor: del valor de cada una o de su cociente?"
-    solucion: "Del cociente: dos resistencias del mismo lote derivan juntas."
-    comprobar:
-      - { V_out: 4.0 }
-
   - id: empareje-variaciones
     tipo: pregunta
     titulo: "Además de la tolerancia inicial"
@@ -232,26 +231,25 @@ tarjetas:
     solucion: "Térmica, ppm/°C; tensión, cerámicos de clase 2; soldadura, desplazamiento permanente."
 
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: tocar
+    fase: "En el banco"
     titulo: "En el banco"
-    texto: "Hay varias unidades montadas. ¿Qué prueba dice más sobre la variación real que cualquier análisis?"
-    libro: [251, 252]
+    texto: "Con varias unidades montadas se mide el mismo parámetro en todas. Esa dispersión real responde mejor que nadie a la pregunta de un método: tóquelo."
+    libro: [230, 231, 251, 252, 253]
     widget:
       tipo: figura
       figura: fig-46.12
       zonas:
-        - { id: estadistico, rotulo: "Barra azul", rect: [235, 45, 35, 102] }
-    opciones:
-      - texto: "Medir el mismo parámetro en todas"
-        bien: true
-        porque: "La dispersión real incluye todo lo que el cálculo no contempló."
-      - texto: "Medir una sola, con mucho cuidado"
-        porque: "Una unidad no tiene dispersión: hacen falta varias."
-      - texto: "Repetir el Monte Carlo con más muestras"
-        porque: "Más muestras no añaden lo que el modelo no contempla; la medida, sí."
+        - { id: peor, rotulo: "Recuadro de arriba a la derecha", rect: [288, 6, 156, 76] }
+        - { id: estad, rotulo: "Recuadro de abajo a la derecha", rect: [288, 97, 156, 76] }
+    tocar:
+      bien: [estad]
+      porque:
+        peor: "El peor caso no pregunta cuántas cumplen: supone todas en su extremo."
+    exito: "El estadístico pregunta qué proporción cumple; la dispersión medida lo dice con todo lo que el cálculo no contempló. Y para la sensibilidad, cambiar cada pieza por una del extremo de su tolerancia."
     escalera:
-      - "¿Qué incluye una medida que un modelo no tiene?"
-    solucion: "Medir el mismo parámetro en todas: la dispersión real."
+      - "¿Qué método habla de proporciones de unidades?"
+    solucion: "Abajo a la derecha: el estadístico."
 
   - id: resumen
     tipo: resumen
