@@ -433,6 +433,41 @@ test.describe('circuitos lógicos: líneas, objetivo, elegir, cronograma y hexad
   });
 });
 
+// cierre121: a goal on a logic circuit with a timing diagram. Before 1.2.1 closed, the diagram took over the circuit
+// (cursor only, no clock-pulse button) and the goal read the diagram's moment, so a goal that needs pulses could never
+// be reached in the app although the generator found its way (20.10, 35.4 and 45.6 had to drop their diagrams).
+test.describe('objetivo con cronograma en un circuito lógico (cierre121)', () => {
+  test('el objetivo mira el circuito vivo, no el cursor del cronograma; sin dibujo es un error', async () => {
+    const { variablesLogica, cronogramaManda, estadoDelWidget } = await import('../src/lib/leccion12/digital/objetivo-logico.ts');
+    const { interactivos } = await import('../src/lib/leccion12/digital/motor-digital.ts');
+    const { pulso: pulsoLogica, relojDe } = await import('../src/lib/leccion12/digital/logica.ts');
+    const f = copia(DIG) as F;
+    tarjetaDe(f, 'explore-contador').widget.cronograma = { ciclos: 4, senales: ['CLK', 'Q0'] };
+    const r = generar(f);
+    expect(r.errores).toEqual([]);
+    const t = (r.leccion as Leccion11).tarjetas.find((x) => x.id === 'explore-contador')!;
+    const w = t.widget as Parameters<typeof variablesLogica>[0];
+    expect(w.cronograma).toBeTruthy();
+    expect(cronogramaManda(w, true)).toBe(false);
+    expect(cronogramaManda(w, false)).toBe(true);
+    // (the switches and the clock, not the cursor, are what a goal card moves)
+    expect(interactivos(w, true)).toEqual(['CLK']);
+    expect(interactivos(w, false)).toEqual(['tramo']);
+    // five pulses as the widget gives them: the goal's variables read the count, whatever the diagram's cursor says
+    const c = w.circuito;
+    let s = estadoDelWidget(w, undefined, true);
+    for (let k = 0; k < 5; k++) s = pulsoLogica(c, s, relojDe(c)!);
+    const w12 = { zona: null, niveles: { CLK: 0 as const }, logica: s, pulsos: 5, tramo: 7 };
+    expect(variablesLogica(w, w12)['contador:c1']).toBe(5);
+    expect(t.objetivo!.condiciones.every((q) => q.min! <= variablesLogica(w, w12)[q.valor]! && variablesLogica(w, w12)[q.valor]! <= q.max!)).toBe(true);
+    // (a card without a goal still follows the cursor: at slot 7 of a 4-cycle diagram the counter has had 4 edges)
+    expect(estadoDelWidget(w, w12).senales['c1.q2']).toBe(1);
+    expect(estadoDelWidget(w, w12).senales['c1.q0']).toBe(0);
+    // a goal on a diagram-only widget cannot be reached: the generator says so
+    expect(erroresDig((g) => Object.assign(tarjetaDe(g, 'explore-contador').widget, { cronograma: { ciclos: 4, senales: ['CLK', 'Q0'] }, dibujo: false }))).toMatch(/objetivo.*necesita el circuito a la vista/);
+  });
+});
+
 test.describe('circuitos lógicos con un lazo de puertas (autor121-digital)', () => {
   test('un cerrojo de dos NAND guarda su estado: el objetivo «a 0 y en reposo» se alcanza', async () => {
     const { tieneLazo, conMemoria, circuitoSecuencial } = await import('../src/lib/leccion12/digital/logica.ts');

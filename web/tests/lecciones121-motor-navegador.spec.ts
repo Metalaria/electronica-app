@@ -128,6 +128,31 @@ function conInstrumento(fichero: string, id: string): Leccion11 {
 }
 const CATALOGOS = [conInstrumento(path.join(web, 'tests', 'lecciones11-catalogo', 'cap01', 'sec-1.5.yaml'), 'widgets'), conInstrumento(rutaFuenteCongelada('cap01/sec-1.4'), 'divisor')];
 
+// cierre121: a goal on a logic circuit that also has a timing diagram keeps the clock-pulse button (the diagram is a
+// reference drawing without a cursor); before, the diagram took the circuit over and the goal could not be reached.
+test('objetivo con cronograma: el botón de pulso sigue y el objetivo se consigue con cinco pulsos', async ({ page }) => {
+  const f = parse(fs.readFileSync(path.join(web, 'tests', 'lecciones12-catalogo', 'cap09', 'sec-9.6.yaml'), 'utf8')) as { tarjetas: Record<string, any>[] };
+  f.tarjetas.find((t) => t.id === 'explore-contador')!.widget.cronograma = { ciclos: 4, senales: ['CLK', 'Q0'] };
+  const r = generarLeccion(f, contexto, 'catalogo-cierre121-digital');
+  expect(r.errores).toEqual([]);
+  const l = r.leccion as Leccion11;
+  await servir(page.context(), [l]);
+  await page.addInitScript(() => localStorage.setItem('epa:sinc-ajustes', JSON.stringify({ auto: false })));
+  await ir(page, l, 'explore-contador');
+  const tarjeta = page.locator('[data-tarjeta="explore-contador"]');
+  await expect(tarjeta.locator('[data-cronograma]')).toBeVisible();
+  await expect(tarjeta.locator('[data-cronograma-referencia]')).toBeVisible();
+  await expect(tarjeta.locator('[data-tramo]')).toHaveCount(0);
+  const boton = tarjeta.locator('[data-pulso]');
+  await expect(boton).toBeVisible();
+  await expect(page.locator('[data-objetivo]')).not.toHaveAttribute('data-objetivo', 'logrado');
+  for (let k = 0; k < 5; k++) await boton.click();
+  await expect(boton).toContainText('(5)');
+  await expect(page.locator('[data-led="Q2"]')).toHaveAttribute('data-encendido', 'si');
+  await expect(page.locator('[data-led="Q1"]')).toHaveAttribute('data-encendido', 'no');
+  await expect(page.locator('[data-objetivo]')).toHaveAttribute('data-objetivo', 'logrado');
+});
+
 test('cada esquema: sus puntos y ramas en el dibujo, y el multímetro marca lo que da ngspice', async ({ browser }) => {
   test.setTimeout(900_000);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });

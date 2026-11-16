@@ -14,11 +14,20 @@ import { circuitoSecuencial, conMemoria, cronograma, ficha, iniciar, leer, poner
 const FICHA: Record<string, number> = { '0': 0, '1': 1, Z: 2, X: 3 };
 import type { EstadoWidget12, WidgetLogica } from './tipos';
 
+/**
+ * Whether the timing diagram drives the circuit (its cursor sets the moment shown, switches and clock locked). Not on a
+ * card with a goal: the goal is reached with the switches and clock pulses (`buscarObjetivo`), so there the circuit stays
+ * live and the diagram is a reference drawing without a cursor (cierre121: 20.10, 35.4 and 45.6 had to drop theirs).
+ */
+export function cronogramaManda(w: WidgetLogica, conObjetivo: boolean): boolean {
+  return !!w.cronograma && !conObjetivo;
+}
+
 /** The state of the widget's circuit as the card shows it (the same as componentes/leccion12/Logica.svelte). */
-export function estadoDelWidget(w: WidgetLogica, w12: EstadoWidget12 | undefined): EstadoLogico {
+export function estadoDelWidget(w: WidgetLogica, w12: EstadoWidget12 | undefined, conObjetivo = false): EstadoLogico {
   const c = w.circuito;
   const niveles = w12?.niveles ?? Object.fromEntries(c.entradas.map((x) => [x.id, x.valor]));
-  if (w.cronograma) {
+  if (w.cronograma && cronogramaManda(w, conObjetivo)) {
     const cr = cronograma(c, w.cronograma.ciclos, w.cronograma.estimulo);
     const k = Math.min(w12?.tramo ?? 0, cr.tramos.length - 1);
     return { senales: cr.tramos[k] ?? {}, internos: {}, relojes: {}, estable: cr.estable };
@@ -43,9 +52,9 @@ export function variablesDeEstado(c: CircuitoLogico, s: EstadoLogico): Valores {
   return v;
 }
 
-/** The logic variables of a card's widget now (none when the widget is not a logic circuit). */
-export function variablesLogica(w: WidgetLogica, w12: EstadoWidget12 | undefined): Valores {
-  return variablesDeEstado(w.circuito, estadoDelWidget(w, w12));
+/** The logic variables a card's goal looks at now (the live circuit: a goal keeps it live even under a cronograma). */
+export function variablesLogica(w: WidgetLogica, w12: EstadoWidget12 | undefined, conObjetivo = true): Valores {
+  return variablesDeEstado(w.circuito, estadoDelWidget(w, w12, conObjetivo));
 }
 
 /** A condition of a logic goal as the author writes it → an ordinary condition on its variable (or an error). */

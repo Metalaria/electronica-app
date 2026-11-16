@@ -458,7 +458,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     const valoresMando = new Set(mandos.map((x) => x.valor));
     // (a figure's zones, a logic circuit's switches or its timing diagram's cursor are what an explore card moves)
     const widget12 = t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? t.widget : null;
-    const movibles = new Set([...valoresMando, ...(widget12 ? interactivos(widget12) : [])]);
+    const movibles = new Set([...valoresMando, ...(widget12 ? interactivos(widget12, esObjeto(ft) && ft.objetivo != null) : [])]);
     for (const k of Object.keys(t.inicio)) {
       const md = mandos.find((x) => x.valor === k);
       if (!md) e(`«inicio.${k}»: solo se ponen al empezar valores que la tarjeta deja mover`);

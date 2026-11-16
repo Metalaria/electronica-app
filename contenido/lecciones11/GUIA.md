@@ -3410,7 +3410,11 @@ modelo (0/1) con `min: 1`. Tarjeta `explore-objetivo`.
 `{ senal: f1.q, valor: 0 }` (también `valor: Z` o `X` en una línea, §11.2), `{ contador: c1, valor: 5 }` (o
 `min`/`max`), con su `rotulo` en texto («Cuenta: cinco»; sin `{{…}}`). Las pistas pueden mirar lo mismo en `cuando`.
 El generador busca, desde el encendido, conmutando interruptores y dando pulsos de reloj, el camino más corto al
-objetivo: debe existir y el encendido no debe cumplirlo ya. No hace falta `requiere`. Un circuito con un **lazo entre puertas** (dos NAND
+objetivo: debe existir y el encendido no debe cumplirlo ya. No hace falta `requiere`. Con `cronograma` (1.2.1, cierre121)
+el circuito sigue vivo —interruptores y «Pulso de reloj»— y el cronograma se dibuja debajo como referencia, sin cursor:
+antes el cronograma mandaba en el circuito, quitaba el botón de pulso y un objetivo que pedía pulsos no se podía
+conseguir (20.10, 35.4 y 45.6 tuvieron que quitar el suyo; ya pueden volver a llevarlo). Con `dibujo: false` no hay
+nada que tocar: un `objetivo` es un error. Un circuito con un **lazo entre puertas** (dos NAND
 cruzadas, una autorretención) guarda su estado como un biestable: el widget y la búsqueda lo asientan desde el estado
 anterior al cambiar un interruptor. Tarjetas `explore-and-cableada`,
 `explore-contador` (cinco pulsos) y `explore-contencion` de `web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`.

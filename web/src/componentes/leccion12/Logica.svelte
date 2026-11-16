@@ -12,6 +12,7 @@
   import type { Tarjeta } from '../../lib/leccion11/tipos';
   import { circuitoSecuencial, conMemoria, cronograma, entradasTabla, ficha, iniciar, leer, NOMBRE_PIEZA, poner, pulso, relojDe, sondear, tablaVerdad, type EstadoLogico, type Nivel, type PiezaLogica } from '../../lib/leccion12/digital/logica';
   import { circuitoEnUso, falloEnUso } from '../../lib/leccion12/digital/motor-digital';
+  import { cronogramaManda } from '../../lib/leccion12/digital/objetivo-logico';
   import { planoDe, type PiezaPlano } from '../../lib/leccion12/digital/plano';
   import type { ActividadDigital, EstadoActividadDigital, EstadoWidget12, WidgetLogica } from '../../lib/leccion12/digital/tipos';
   import TextoSvg from '../leccion11/TextoSvg.svelte';
@@ -60,16 +61,19 @@
   const memoria = $derived(conMemoria(c));
   const reloj = $derived(relojDe(c));
   const cron = $derived(w.cronograma ? cronograma(c, w.cronograma.ciclos, w.cronograma.estimulo, fallo) : null);
+  // (cierre121: on a card with a goal the circuit stays live — switches and the clock-pulse button — and the diagram is
+  // a reference drawing without a cursor: a goal that needs pulses could not be reached with the cursor alone)
+  const manda = $derived(!!cron && cronogramaManda(w, !!t.objetivo));
   const tramo = $derived(Math.min(w12.tramo, (cron?.tramos.length ?? 1) - 1));
   const estado = $derived.by((): EstadoLogico => {
-    if (cron) return { senales: cron.tramos[tramo] ?? {}, internos: {}, relojes: {}, estable: cron.estable };
+    if (cron && manda) return { senales: cron.tramos[tramo] ?? {}, internos: {}, relojes: {}, estable: cron.estable };
     if (memoria && w12.logica) return w12.logica;
     return iniciar(c, fallo, w12.niveles);
   });
   // a drawing card hides the signal it asks for until it is answered
   const senalOculta = $derived(a?.tipo === 'dibujar-digital' && !e.resuelta && !e.cerrada ? (c.salidas.find((s) => s.id === a.senal)?.de ?? a.senal) : null);
   const neutros = $derived(oculto || !!averia);
-  const bloqueadas = $derived((oculto && t.tipo !== 'tabla') || !!cron);
+  const bloqueadas = $derived((oculto && t.tipo !== 'tabla') || manda);
   const nivel = (s: string): Nivel => leer(estado, s);
   // (motor121: a line let go is «Z», two drivers fighting «X»: written as such, the wire dashed)
   const simbolo = (s: string): string => String(ficha(estado, s));
@@ -260,7 +264,7 @@
     </div>
     <p class="a12-solo-lector" aria-live="polite" data-leds>{leds}</p>
 
-    {#if !cron}
+    {#if !manda}
       <div class="a12-fila d12-entradas" role="group" aria-label="Entradas del circuito">
         {#each c.entradas as x (x.id)}
           {#if x.reloj}
@@ -280,7 +284,12 @@
     <ElegirEsquema a={elegir.a} ea={elegir.ea} resuelta={e.resuelta} tocar={elegirZona} />
   {/if}
   {#if cron && w.cronograma}
-    <Cronograma filas={filasCron} {tramo} {prefijo} mover={moverTramo} etiquetas={w.cronograma.etiquetas} />
+    {#if manda}
+      <Cronograma filas={filasCron} {tramo} {prefijo} mover={moverTramo} etiquetas={w.cronograma.etiquetas} />
+    {:else}
+      <p class="a12-suave" data-cronograma-referencia>Cronograma de referencia: la secuencia de entradas y lo que hace el circuito con ella. Los interruptores y el pulso de reloj de arriba mueven el circuito.</p>
+      <Cronograma filas={filasCron} tramo={0} {prefijo} etiquetas={w.cronograma.etiquetas} />
+    {/if}
   {/if}
   {#if tabla}
     <TablaVerdad entradas={tabla.tv.entradas} salidas={c.salidas.map((s) => ({ id: s.id, rotulo: s.rotulo }))} filas={tabla.tv.filas.map((f) => ({ e: f.e, s: oculto ? null : f.s }))} actual={tabla.actual} />

@@ -659,7 +659,9 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
   }
   const o: Objetivo = { condiciones, logrado, pistas };
   if (condiciones.length && c.logica) {
-    // a logic circuit: reachable from power-on with the switches and the clock, not reached at power-on
+    // a logic circuit: reachable from power-on with the switches and the clock, not reached at power-on (with a
+    // cronograma the circuit stays live on a goal card; without its drawing there is nothing to toggle)
+    if (t.widget?.tipo === 'logica' && t.widget.dibujo === false) e('un «objetivo» en un circuito lógico necesita el circuito a la vista (quite «dibujo: false»): sin él no hay interruptores ni pulso de reloj');
     const b = buscarObjetivo(c.logica, condiciones);
     if (b.inicial) e('el objetivo se cumple ya al encender el circuito (cambie el valor inicial de una entrada)');
     else if (!b.camino) e(`el objetivo no se alcanza con las entradas y el reloj (${b.estados} estados del circuito probados)`);

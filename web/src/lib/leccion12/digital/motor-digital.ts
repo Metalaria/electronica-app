@@ -35,10 +35,13 @@ export function nuevoEstadoWidget(t: Tarjeta): EstadoWidget12 | undefined {
   return { zona: null, niveles, logica: null, pulsos: 0, tramo: 0 };
 }
 
-/** The ids a widget's interaction marks as «moved» (an explore card's `requiere.mover`): zones, switches or the cursor. */
-export function interactivos(w: WidgetFigura | WidgetLogica): string[] {
+/**
+ * The ids a widget's interaction marks as «moved» (an explore card's `requiere.mover`): zones, switches or the cursor.
+ * On a card with a goal a timing diagram has no cursor (the circuit stays live: objetivo-logico.ts `cronogramaManda`).
+ */
+export function interactivos(w: WidgetFigura | WidgetLogica, conObjetivo = false): string[] {
   if (w.tipo === 'figura') return w.zonas.map((z) => z.id);
-  if (w.cronograma) return ['tramo'];
+  if (w.cronograma && !conObjetivo) return ['tramo'];
   return w.circuito.entradas.map((e) => e.id);
 }
 
