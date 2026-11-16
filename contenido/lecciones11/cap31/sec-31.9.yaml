@@ -8,6 +8,12 @@
 # Pasos prácticos: «ajuste» del margen de fase hasta que el sobreimpulso baje del 10 % (la regla de los 60°) y
 # «simular» el margen de retardo del ejemplo (0,44 s; errores típicos: grados en vez de radianes, hercios en vez de
 # rad/s).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): el margen se baja hasta un lazo nervioso (más del 30 %);
+# la curva de Nyquist se aleja hasta M_s ≈ 1,4; la parte del muestreo en el presupuesto de retardo se predice; K se
+# sube hasta ζ = 0,5 en el lugar de las raíces; el rechazo de las perturbaciones lentas de un lazo de ejemplo
+# (L = K/(s(s + 1)), |S| a 0,1 rad/s) se mejora subiendo K mientras crece el pico de |S|; y el techo del cruce con un
+# cero de ejemplo a 10 rad/s se predice. Quedan dos preguntas de opciones (M_s y el tercer polo) y los cuatro márgenes
+# por emparejar.
 leccion: cap31/sec-31.9
 
 libro:
@@ -39,6 +45,10 @@ modelo:
     MF_r: { sim: "MF", nombre: "margen de fase", unidad: "°", valor: 50 }
     w_c: { sim: "ω_{c}", nombre: "frecuencia de cruce", unidad: "rad/s", valor: 2 }
     K_r: { sim: "K", nombre: "ganancia del lazo", unidad: "", valor: 0 }
+    T_sm: { sim: "T_{s}", nombre: "periodo de muestreo", unidad: s, valor: 0.1 }
+    K_s: { sim: "K", nombre: "ganancia del lazo de ejemplo", unidad: "", valor: 0.5 }
+    w_z: { sim: "ω_{z}", nombre: "cero en el semiplano derecho, de ejemplo", unidad: "rad/s", valor: 10 }
+    w_l: { sim: "ω_{lenta}", nombre: "frecuencia de las perturbaciones lentas", unidad: "rad/s", valor: 0.1 }
   calculos:
     z_m: { expr: "MF/100", sim: "ζ", nombre: "amortiguamiento aproximado", unidad: "", cifras: 2 }
     M_p: { expr: "100*exp(-pi*z_m/sqrt(1 - z_m^2))", sim: "M_{p}", nombre: "sobreimpulso", unidad: "%" }
@@ -50,13 +60,18 @@ modelo:
     re_2: { expr: "-2 - sqrt(max(0, 1 - K_r))", sim: "σ₂", nombre: "parte real del segundo polo", unidad: "" }
     im_r: { expr: "sqrt(max(0, K_r - 1))", sim: "ω", nombre: "parte imaginaria", unidad: "" }
     z_r: { expr: "2/sqrt(3 + K_r)", sim: "ζ", nombre: "amortiguamiento", unidad: "", cifras: 2 }
+    f_m: { expr: "100*(T_sm/2)/T_mx", sim: "parte", nombre: "parte del margen de retardo que se lleva el muestreo", unidad: "%" }
+    f_m2: { expr: "100*T_sm/T_mx", sim: "parte", nombre: "con el periodo entero", unidad: "%" }
+    S_01: { expr: "w_l*sqrt(1 + w_l^2)/sqrt((K_s - w_l^2)^2 + w_l^2)", sim: "|S(0,1)|", nombre: "sensibilidad a 0,1 rad/s", unidad: "", cifras: 2 }
+    w_cz: { expr: "w_z/2", sim: "ω_{c}", nombre: "techo de la frecuencia de cruce", unidad: "rad/s" }
 
 tarjetas:
   - id: explore-margen
     tipo: explorar
     titulo: "Margen de fase y sobreimpulso"
-    texto: "Con ζ ≈ MF/100, cada margen de fase da una respuesta al escalón. Cambie el margen y mire cuánto se pasa."
+    texto: "Con ζ ≈ MF/100, cada margen de fase da una respuesta al escalón. Baje el margen hasta un lazo nervioso, que se pasa más de un 30 %."
     libro: [300, 301, 303]
+    inicio: { MF: 76 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 15, unidad: "", rotulo: "tiempo normalizado" }
@@ -69,7 +84,17 @@ tarjetas:
         - { valor: z_m, rotulo: "ζ ≈ {{z_m}}" }
       mandos:
         - { valor: MF, lista: [30, 45, 60, 76], rotulo: "Margen de fase" }
-    requiere: { mover: [MF] }
+    objetivo:
+      condiciones:
+        - { valor: M_p, min: 30, rotulo: "Se pasa {{M_p}}" }
+      logrado: "Con {{MF}} de margen: oscila y sobrepasa antes de asentarse. Lo habitual es de 45 a 60 grados."
+      pistas:
+        - { texto: "Aún se pasa poco: menos margen." }
+    escalera:
+      - "Menos margen, menos amortiguamiento."
+    solucion: "30°."
+    comprobar:
+      - { con: { MF: 30 }, M_p: 37.2, tol: 0.01 }
 
   - id: ajuste-60
     tipo: ajuste
@@ -123,12 +148,11 @@ tarjetas:
     solucion: "Fase, la fase extra; ganancia, la ganancia extra; M_{s}, la distancia al −1; retardo, el retardo que admite."
 
   - id: formula-ms
-    tipo: formula
+    tipo: explorar
     titulo: "Un solo número de robustez"
-    texto: "El pico de sensibilidad es la inversa de la distancia mínima de la curva de Nyquist al punto −1. Acérquela."
+    texto: "El pico de sensibilidad, M_{s} = 1/d_{min}, es la inversa de la distancia de la curva de Nyquist al punto −1. Llévelo al objetivo habitual."
     libro: [309, 310, 311]
-    ec: 310
-    sustitucion: "1 / {{d_m}} = {{M_s}}"
+    inicio: { d_m: 0.33 }
     widget:
       tipo: grafica
       x: { id: d, min: 0.25, max: 1, unidad: "", rotulo: "d_{min}" }
@@ -140,6 +164,17 @@ tarjetas:
         - { x: "d_m", y: "M_s", rotulo: "{{M_s}}" }
       mandos:
         - { valor: d_m, lista: [0.33, 0.5, 0.71, 0.83], rotulo: "Distancia al punto −1" }
+      lectura: { valor: M_s, rotulo: "M_{s}" }
+    objetivo:
+      condiciones:
+        - { valor: M_s, objetivo: 1.4, tol: 0.02, rotulo: "M_{s} = {{M_s}}" }
+      logrado: "Robusto: la curva se queda a {{d_m}} del punto −1."
+      pistas:
+        - { cuando: { valor: M_s, mayor: 1.43 }, texto: "Pasa demasiado cerca del −1: aléjela." }
+        - { texto: "Más lejos de lo necesario: acérquela un poco." }
+    escalera:
+      - "1/1,4 ≈ 0,71."
+    solucion: "d_{min} = 0,71."
     comprobar:
       - { con: { d_m: 0.71 }, M_s: 1.41, tol: 0.01 }
 
@@ -187,34 +222,36 @@ tarjetas:
       - { T_mx: 0.436, T_gr: 25, T_hz: 0.0694, tol: 0.003 }
 
   - id: muestreo-presupuesto
-    tipo: pregunta
+    tipo: simular
     titulo: "El muestreo gasta el presupuesto"
-    texto: "Ese mismo lazo se programa con T_{s} de 100 ms. ¿Qué parte de su margen de retardo se lleva el muestreo?"
+    texto: "Ese mismo lazo, con 0,44 s de margen de retardo, se programa con T_{s} de 100 ms. ¿Qué parte del margen se lleva el muestreo?"
     libro: [320, 321]
+    fijar: { MF_r: 50, w_c: 2 }
     widget:
       tipo: figura
       figura: fig-31.18
       zonas:
         - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
-    opciones:
-      - texto: "Un 11 %: medio periodo, 50 ms"
-        bien: true
-        porque: "Y se suma a la latencia de la red y al tiempo de transporte."
-      - texto: "Un 23 %: el periodo entero, 100 ms"
-        porque: "El retardo medio del muestreo es medio periodo, no el periodo entero."
-      - texto: "Nada: el muestreo no es un retardo"
-        porque: "Entre muestras el lazo está abierto: un retardo medio de medio periodo."
+    simular:
+      objetivo: f_m
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Parte del margen de retardo"
+      errores:
+        - { expr: "f_m2", texto: "El retardo medio del muestreo es medio periodo, 50 ms, no el periodo entero." }
+    exito: "Un 11 %: 50 ms de 0,44 s. Y se suma a la latencia de la red y al tiempo de transporte."
     escalera:
       - "¿Cuánto retardo medio introduce el muestreo?"
-    solucion: "50 ms de 0,44 s: el 11 % del presupuesto."
+    solucion: "50 ms / 0,44 s ≈ 11 %."
     comprobar:
-      - { con: { MF_r: 50, w_c: 2 }, T_mx: 0.436, tol: 0.003 }
+      - { T_mx: 0.436, f_m: 11.5, T_sm: 0.1, tol: 0.01 }
 
   - id: explore-raices
     tipo: explorar
     titulo: "Ver moverse los polos"
-    texto: "Lazo con polos en −1 y −3: en lazo cerrado, s² + 4s + 3 + K. Suba K y siga los dos polos."
+    texto: "Lazo con polos en −1 y −3: en lazo cerrado, s² + 4s + 3 + K. Suba K hasta que los polos tengan ζ = 0,5."
     libro: [328]
+    inicio: { K_r: 0 }
     widget:
       tipo: grafica
       aspecto: igual
@@ -231,7 +268,17 @@ tarjetas:
       lectura: { valor: z_r, rotulo: "Amortiguamiento, ζ" }
       mandos:
         - { valor: K_r, lista: [0, 0.5, 1, 5, 13], rotulo: "Ganancia, K" }
-    requiere: { mover: [K_r] }
+    objetivo:
+      condiciones:
+        - { valor: z_r, max: 0.5, rotulo: "ζ = {{z_r}}" }
+      logrado: "Con K = {{K_r}}: se juntan en −2, se separan en vertical y la parte real no pasa de −2. Más ganancia, menos amortiguamiento, pero nunca inestable."
+      pistas:
+        - { texto: "Aún muy amortiguado: más ganancia." }
+    escalera:
+      - "ζ = 2/√(3 + K)."
+    solucion: "K = 13."
+    comprobar:
+      - { con: { K_r: 13 }, z_r: 0.5, re_1: -2, im_r: 3.46, tol: 0.01 }
 
   - id: tercer-polo
     tipo: pregunta
@@ -260,48 +307,57 @@ tarjetas:
     solucion: "Un tercer polo: aparece una ganancia crítica."
 
   - id: porque-sensibilidad
-    tipo: porque
+    tipo: explorar
     titulo: "El reparto inevitable"
-    texto: "Un lazo rechaza muy bien las perturbaciones lentas. ¿Por qué amplifica algo las rápidas?"
+    texto: "|S| de un lazo de ejemplo: por debajo de 1 rechaza, por encima amplifica. Suba K hasta rechazar bien las perturbaciones lentas, a 0,1 rad/s."
+    nota: "Lazo de ejemplo."
     libro: [324]
+    inicio: { K_s: 0.5 }
     widget:
-      tipo: figura
-      figura: fig-31.18
-      zonas:
-        - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
-    opciones:
-      - texto: "La integral de la sensibilidad está acotada: lo que se gana a unas frecuencias se pierde en otras"
-        bien: true
-        porque: "Ningún controlador lo evita: solo se elige dónde poner la mejora."
-      - texto: "Porque está mal sintonizado"
-        porque: "Pasa con cualquier sintonía: es un límite, no un error."
-      - texto: "Porque el sensor es ruidoso"
-        porque: "Sin ruido pasaría igual: es una propiedad del lazo."
+      tipo: grafica
+      x: { id: w, min: 0.01, max: 100, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0.001, max: 10, unidad: "", rotulo: "|S|", escala: log }
+      curvas:
+        - { expr: "w*sqrt(1 + w^2)/sqrt((K_s - w^2)^2 + w^2)", color: naranja, rotulo: "|S|" }
+        - { expr: "1", color: tinta, rotulo: "sin lazo", discontinua: true }
+      lectura: { valor: S_01, rotulo: "|S| a 0,1 rad/s" }
+      mandos:
+        - { valor: K_s, lista: [0.5, 1, 2, 5, 10], rotulo: "Ganancia, K" }
+    objetivo:
+      condiciones:
+        - { valor: S_01, max: 0.02, rotulo: "|S| = {{S_01}}" }
+      logrado: "Abajo rechaza cincuenta veces, pero mire el pico por encima de 1: lo que se gana a unas frecuencias se pierde en otras. Ningún controlador lo evita."
+      pistas:
+        - { texto: "Aún rechaza poco lo lento: más ganancia." }
     escalera:
-      - "¿Se puede reducir el error a todas las frecuencias a la vez?"
-    solucion: "Reducir el error en unas frecuencias lo aumenta en otras."
+      - "A baja frecuencia, |S| ≈ ω/K."
+    solucion: "K = 5 o más."
+    comprobar:
+      - { con: { K_s: 5 }, S_01: 0.02, w_l: 0.1, tol: 0.02 }
 
   - id: cero-derecho
-    tipo: predecir
+    tipo: simular
     titulo: "La caldera que baja antes de subir"
-    texto: "Un proceso con un cero en el semiplano derecho. ¿Hasta dónde puede llevarse la frecuencia de cruce?"
+    texto: "Un proceso con un cero en el semiplano derecho a 10 rad/s, de ejemplo. ¿Hasta qué frecuencia de cruce se puede llevar el lazo?"
     libro: [332]
     widget:
       tipo: figura
       figura: fig-31.18
       zonas:
         - { id: todo, rotulo: "Sensibilidad y retardo", rect: [0, 0, 445, 220] }
-    opciones:
-      - texto: "Hasta la mitad de la frecuencia del cero, más o menos"
-        bien: true
-        porque: "Ningún ajuste de ganancia lo supera: hay que cambiar el proceso o aceptar la lentitud."
-      - texto: "Sin límite, si se sube la ganancia"
-        porque: "Intentarlo produce un lazo que oscila."
-      - texto: "Hasta la frecuencia del cero"
-        porque: "El techo está por debajo: aproximadamente la mitad."
+    simular:
+      objetivo: w_cz
+      unidad: "rad/s"
+      tol: 0.05
+      rotulo: "Techo de la frecuencia de cruce"
+      errores:
+        - { expr: "w_z", texto: "El techo está por debajo de la frecuencia del cero: aproximadamente la mitad." }
+    exito: "Unos 5 rad/s: ningún ajuste de ganancia lo supera. Hay que cambiar el proceso o aceptar la lentitud."
     escalera:
-      - "Es el mismo techo que en las fuentes conmutadas."
-    solucion: "Aproximadamente la mitad de la frecuencia del cero."
+      - "El techo es aproximadamente la mitad de la frecuencia del cero."
+    solucion: "10/2 = 5 rad/s."
+    comprobar:
+      - { w_cz: 5, w_z: 10 }
 
   - id: resumen
     tipo: resumen

@@ -2,6 +2,10 @@
 # - Longitud crítica = t_subida·v/6 (bloque 82), con 18 cm/ns de la tabla (coaxial) o 15 cm/ns en FR4 (bloque 83):
 #   30, 15, 3 y 1,5 cm con 10, 5, 1 y 0,5 ns; 2,5 cm con 1 ns en FR4.
 # Sin paso práctico aparte: sección de criterios (el banco del libro es mirar timbre o escalones con el osciloscopio).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): el flanco se acorta hasta que la longitud crítica baja de
+# 5 cm; con 5 ns se pasa del coaxial al FR4 (12,5 cm); la de FR4 con 1 ns, el límite a 2,4 GHz y la Z₀ de una pista
+# alargada se predicen; y en las barras de la figura 37.4 se tocan la impedancia del vídeo, la de USB y el compromiso
+# de 50 Ω. Quedan dos preguntas de opciones (el reloj lento y el sexto) y los síntomas, por emparejar.
 leccion: cap36/sec-36.1
 
 libro:
@@ -27,15 +31,21 @@ modelo:
   valores:
     t_r: { sim: "t_{subida}", nombre: "tiempo de subida", unidad: s, valor: 0.000000005 }
     v_s: { sim: "v", nombre: "velocidad de la señal", unidad: "m/s", valor: 180000000 }
+    l_F: { sim: "λ", nombre: "longitud de onda a 2,4 GHz en FR4", unidad: m, valor: 0.069 }
+    l_A: { sim: "λ", nombre: "longitud de onda a 2,4 GHz en el aire", unidad: m, valor: 0.125 }
+    Z_0: { sim: "Z₀", nombre: "impedancia característica de la pista", unidad: Ω, valor: 50 }
   calculos:
     l_c: { expr: "t_r*v_s/6", sim: "l_{crítica}", nombre: "longitud crítica", unidad: m }
+    l_10: { expr: "l_F/10", sim: "λ/10", nombre: "límite de línea a 2,4 GHz", unidad: m }
+    r_f: { expr: "t_r*v_s", sim: "recorrido", nombre: "lo que recorre el flanco", unidad: m }
 
 tarjetas:
   - id: explore-longitud
     tipo: explorar
     titulo: "Lo que decide es el flanco"
-    texto: "Una pista deja de ser un nudo cuando es larga frente a lo que recorre el flanco. Acorte el tiempo de subida."
+    texto: "Una pista deja de ser un nudo cuando es larga frente a lo que recorre el flanco. Acorte el tiempo de subida hasta que la longitud crítica baje de 5 cm."
     libro: [80, 81, 84]
+    inicio: { t_r: 0.00000001 }
     widget:
       tipo: grafica
       x: { id: tt, min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{subida}", escala: log }
@@ -47,7 +57,17 @@ tarjetas:
       lectura: { valor: l_c, rotulo: "Longitud crítica" }
       mandos:
         - { valor: t_r, lista: [0.00000001, 0.000000005, 0.000000001, 0.0000000005], rotulo: "Tiempo de subida" }
-    requiere: { mover: [t_r] }
+    objetivo:
+      condiciones:
+        - { valor: l_c, max: 0.05, rotulo: "l_{crítica} = {{l_c}}" }
+      logrado: "Con flancos de {{t_r}}, {{l_c}}: con los dispositivos actuales, casi todas las pistas son líneas de transmisión."
+      pistas:
+        - { texto: "Aún cabe una pista larga: acorte el flanco." }
+    escalera:
+      - "La longitud crítica es proporcional al tiempo de subida."
+    solucion: "1 ns: 3 cm."
+    comprobar:
+      - { con: { t_r: 0.000000001 }, l_c: 0.03 }
 
   - id: predecir-reloj-lento
     tipo: predecir
@@ -72,12 +92,12 @@ tarjetas:
     solucion: "Las dos piden lo mismo: decide el flanco de 1 ns."
 
   - id: formula-longitud
-    tipo: formula
+    tipo: explorar
     titulo: "La longitud crítica"
-    texto: "Lo que recorre el flanco, dividido por seis. Cambie el medio y el tiempo de subida."
+    texto: "La longitud crítica es lo que recorre el flanco, dividido por seis. Con flancos de 5 ns, pase del coaxial a una pista de FR4."
     libro: [82, 83]
-    ec: 82
-    sustitucion: "{{t_r}} × {{v_s}} / 6 = {{l_c}}"
+    fijar: { t_r: 0.000000005 }
+    inicio: { v_s: 180000000 }
     widget:
       tipo: grafica
       x: { id: tt, min: 0.0000000001, max: 0.0000001, unidad: s, rotulo: "t_{subida}", escala: log }
@@ -88,11 +108,21 @@ tarjetas:
         - { x: "t_r", y: "l_c", rotulo: "{{l_c}}" }
       lectura: { valor: l_c, rotulo: "Longitud crítica" }
       mandos:
-        - { valor: t_r, lista: [0.00000001, 0.000000005, 0.000000001, 0.0000000005], rotulo: "Tiempo de subida" }
         - { valor: v_s, lista: [180000000, 150000000], nombres: [coaxial, pista en FR4], rotulo: "Medio" }
+    objetivo:
+      condiciones:
+        - { valor: l_c, max: 0.13, rotulo: "l_{crítica} = {{l_c}}" }
+      logrado: "{{t_r}} × {{v_s}} / 6 = {{l_c}}: en FR4 la señal va a unos 15 cm/ns y la longitud crítica se acorta."
+      pistas:
+        - { texto: "Sigue en el coaxial, a 18 cm/ns." }
+    escalera:
+      - "En FR4 la señal es más lenta."
+    solucion: "Pista en FR4: 12,5 cm."
+    comprobar:
+      - { con: { v_s: 150000000 }, l_c: 0.125 }
 
   - id: estime-fr4
-    tipo: pregunta
+    tipo: simular
     titulo: "Una pista en FR4"
     texto: "En FR4 la señal va a unos 15 cm/ns. Con flancos de 1 ns, ¿cuál es la longitud crítica?"
     libro: [82, 83]
@@ -102,24 +132,20 @@ tarjetas:
       figura: fig-36.1
       zonas:
         - { id: grafica, rotulo: "Longitud crítica y flanco", rect: [0, 0, 213, 197] }
-    estimar:
-      objetivo: "l_c"
+    simular:
+      objetivo: l_c
       unidad: m
-      min: 0
-      max: 0.1
-      paso: 0.001
-      inicio: 0.08
-      tol: 0.05
+      tol: 0.04
       rotulo: "Longitud crítica"
+      errores:
+        - { expr: "r_f", texto: "Ese es el recorrido entero del flanco: divida por seis." }
+        - { expr: "0.03", texto: "Esos 3 cm son del coaxial, a 18 cm/ns; en FR4 va más despacio." }
     exito: "2,5 cm: un sexto más corta que los 3 cm del coaxial."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0263 }, texto: "Demasiado: ha usado el recorrido entero. Divida por seis." }
-      - { texto: "Demasiado corta: 1 ns a 15 cm/ns son 15 cm de recorrido; un sexto." }
     escalera:
       - "Recorrido del flanco: 1 ns × 15 cm/ns."
     solucion: "15 cm / 6 = 2,5 cm."
     comprobar:
-      - { l_c: 0.025 }
+      - { l_c: 0.025, r_f: 0.15 }
 
   - id: porque-un-sexto
     tipo: porque
@@ -144,7 +170,7 @@ tarjetas:
     solucion: "Por encima de 15 cm hay escalones; un sexto, 5 cm, deja margen."
 
   - id: pregunta-24ghz
-    tipo: pregunta
+    tipo: simular
     titulo: "Una señal de 2,4 GHz"
     texto: "Con senoides, es línea todo conductor de más de λ/10. A 2,4 GHz, con λ de unos 6,9 cm en FR4, ¿dónde está el límite?"
     libro: [88]
@@ -153,17 +179,20 @@ tarjetas:
       figura: fig-36.1
       zonas:
         - { id: grafica, rotulo: "Longitud crítica y flanco", rect: [0, 0, 213, 197] }
-    opciones:
-      - texto: "En poco menos de 7 mm"
-        bien: true
-        porque: "Una décima de 6,9 cm: casi cualquier pista de una placa de 2,4 GHz es una línea."
-      - texto: "En 12,5 cm"
-        porque: "Esa es λ entera, y en el aire; el límite es una décima de λ en FR4."
-      - texto: "En 16 cm"
-        porque: "Ese es el límite a 100 MHz; a 2,4 GHz baja mucho."
+    simular:
+      objetivo: l_10
+      unidad: m
+      tol: 0.04
+      rotulo: "Límite de línea"
+      errores:
+        - { expr: "l_A", texto: "Esa es λ entera, y en el aire; el límite es una décima de λ en FR4." }
+        - { expr: "l_F", texto: "Esa es λ entera: el límite es una décima." }
+    exito: "Poco menos de 7 mm: casi cualquier pista de una placa de 2,4 GHz es una línea."
     escalera:
       - "Divida la λ en FR4 por diez."
     solucion: "6,9 cm / 10: poco menos de 7 mm."
+    comprobar:
+      - { l_10: 0.0069, l_A: 0.125, l_F: 0.069 }
 
   - id: empareje-sintomas
     tipo: pregunta
@@ -188,83 +217,92 @@ tarjetas:
     solucion: "Timbre, bits duplicados; escalones, un ramal; al alargar, línea larga; montado, otras longitudes."
 
   - id: explore-impedancias
-    tipo: explorar
+    tipo: tocar
     titulo: "La impedancia característica"
-    texto: "La inductancia y la capacidad repartidas fijan Z₀ = √(L/C). Toque la zona sombreada y las impedancias habituales."
+    texto: "La inductancia y la capacidad repartidas fijan Z₀ = √(L/C), y cada uso tiene su valor redondo. Toque la barra del vídeo."
     libro: [101, 104, 86]
     widget:
       tipo: figura
       figura: fig-36.1
-      zonas:
-        - { id: actuales, rotulo: "Zona sombreada de la gráfica", rect: [31, 14, 61, 153], texto: "Los flancos actuales son de fracciones de nanosegundo: casi todas las pistas son líneas de transmisión." }
-        - { id: barras, rotulo: "Barras de la derecha", rect: [232, 14, 203, 160], texto: "50 Ω en RF e instrumentación, 75 Ω en vídeo; 90 y 100 Ω diferenciales en USB y Ethernet." }
-    requiere: { mover: [actuales, barras] }
+      zonas: &zonas-z0
+        - { id: z50, rotulo: "Primera barra", rect: [291, 10, 143, 36] }
+        - { id: z75, rotulo: "Segunda barra", rect: [291, 46, 143, 36] }
+        - { id: z90, rotulo: "Tercera barra", rect: [291, 82, 143, 36] }
+        - { id: z100, rotulo: "Cuarta barra", rect: [291, 118, 143, 36] }
+    tocar:
+      bien: [z75]
+      porque:
+        z50: "50 Ω es la de instrumentación y radiofrecuencia."
+        z90: "90 Ω diferencial es la de USB."
+        z100: "100 Ω diferencial, Ethernet y casi todos los buses rápidos."
+    exito: "75 Ω: el cable de la antena de la televisión."
+    escalera:
+      - "Busque la segunda de las impedancias habituales."
+    solucion: "La segunda barra, 75 Ω."
 
   - id: empareje-impedancias
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cada uso, su impedancia"
-    texto: "Empareje cada impedancia con dónde se usa."
+    texto: "Toque la impedancia diferencial de USB."
     libro: [104]
     widget:
       tipo: figura
       figura: fig-36.1
-      zonas:
-        - { id: barras, rotulo: "Barras de la derecha", rect: [232, 14, 203, 160] }
-    emparejar:
-      - ["50 Ω", "Instrumentación y radiofrecuencia"]
-      - ["75 Ω", "Vídeo"]
-      - ["90 Ω diferencial", "USB"]
-      - ["100 Ω diferencial", "Ethernet y casi todos los buses rápidos"]
-    exito: "Valores redondos, y no por casualidad."
-    pistas:
-      - { texto: "Los dos diferenciales son de buses de datos." }
+      zonas: *zonas-z0
+    tocar:
+      bien: [z90]
+      porque:
+        z50: "50 Ω no es diferencial: instrumentación y radiofrecuencia."
+        z75: "75 Ω, vídeo."
+        z100: "100 Ω diferencial es Ethernet; USB va algo por debajo."
+    exito: "90 Ω diferencial, USB; 100 Ω, Ethernet. Valores redondos, y no por casualidad."
     escalera:
-      - "El cable de la antena de la televisión es el de vídeo."
-    solucion: "50, RF; 75, vídeo; 90 dif., USB; 100 dif., Ethernet."
+      - "Los dos diferenciales son los dos de abajo."
+    solucion: "La tercera barra, 90 Ω."
 
   - id: porque-50
-    tipo: porque
+    tipo: tocar
     titulo: "Por qué 50 Ω"
-    texto: "En un coaxial, la máxima potencia se lograría con 30 Ω y la mínima atenuación con 77 Ω. ¿Por qué se usa 50?"
+    texto: "En un coaxial, la máxima potencia se lograría con 30 Ω y la mínima atenuación con 77 Ω. Toque el compromiso entre los dos."
     libro: [105]
     widget:
       tipo: figura
       figura: fig-36.1
-      zonas:
-        - { id: barras, rotulo: "Barras de la derecha", rect: [232, 14, 203, 160] }
-    opciones:
-      - texto: "Es un compromiso entre esos dos óptimos"
-        bien: true
-        porque: "Ni el mejor para potencia ni el mejor para pérdidas: razonable para los dos."
-      - texto: "Es la media exacta entre 30 y 77"
-        porque: "No es una media: es un compromiso redondo entre dos criterios."
-      - texto: "Es la impedancia de una antena"
-        porque: "No viene de las antenas: viene del propio cable coaxial."
+      zonas: *zonas-z0
+    tocar:
+      bien: [z50]
+      porque:
+        z75: "75 Ω está cerca de la mínima atenuación: por eso el vídeo, con poca potencia, la usa."
+        z90: "90 Ω es diferencial, de USB."
+        z100: "100 Ω es diferencial, de Ethernet."
+    exito: "50 Ω: ni el mejor para potencia ni el mejor para pérdidas, razonable para los dos."
     escalera:
-      - "Ninguno de los dos óptimos es 50."
-    solucion: "Un compromiso entre máxima potencia (30) y mínima atenuación (77)."
+      - "Busque el valor que queda entre 30 y 77."
+    solucion: "La primera barra, 50 Ω."
 
   - id: pregunta-z0
-    tipo: pregunta
+    tipo: simular
     titulo: "De qué depende Z₀"
-    texto: "Una pista de 50 Ω se alarga al doble. ¿Qué le pasa a su impedancia característica?"
+    texto: "Una pista de 50 Ω se alarga al doble. ¿Qué impedancia característica tiene ahora?"
     libro: [101, 103]
     widget:
       tipo: figura
       figura: fig-36.1
-      zonas:
-        - { id: barras, rotulo: "Barras de la derecha", rect: [232, 14, 203, 160] }
-    opciones:
-      - texto: "Nada: depende de la geometría y del dieléctrico"
-        bien: true
-        porque: "Es el cociente tensión/corriente de la onda que viaja, no una resistencia."
-      - texto: "Se duplica"
-        porque: "Eso haría una resistencia; Z₀ no disipa ni depende de la longitud."
-      - texto: "Se reduce a la mitad"
-        porque: "La longitud no entra en Z₀: solo la anchura, el espesor y el plano."
+      zonas: *zonas-z0
+    simular:
+      objetivo: Z_0
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Z₀ de la pista larga"
+      errores:
+        - { expr: "2*Z_0", texto: "Eso haría una resistencia; Z₀ no disipa ni depende de la longitud." }
+        - { expr: "Z_0/2", texto: "La longitud no entra en Z₀: solo la anchura, el espesor y el plano." }
+    exito: "50 Ω: L y C por metro son las mismas. Z₀ es el cociente tensión/corriente de la onda que viaja."
     escalera:
       - "Z₀ = √(L/C) con L y C por unidad de longitud."
-    solucion: "No cambia: L y C por metro son las mismas."
+    solucion: "La misma, 50 Ω."
+    comprobar:
+      - { Z_0: 50 }
 
   - id: resumen
     tipo: resumen

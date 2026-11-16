@@ -7,6 +7,9 @@
 # Pasos prácticos: «simular» la desviación de la patilla 9 del TA7358AP con 3,0 V medidos frente a 5,9 V (−49 %; error
 # típico: dividir por la medida, 97 %) y «banco» opcional de la salida del 78L06 (6 V ±5 %) con la ficha 17. Los 3,0 V
 # medidos son de ejemplo.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 15.28 se toca la fila de la alimentación; la pequeña
+# desviación de TP3 se calcula; se mueve el núcleo de B1 hasta 10,7 MHz (los datos de las bobinas y la posición del
+# núcleo van a su logro). Queda una pregunta de opciones (medir con el aparato sano) y las tolerancias, por emparejar.
 leccion: cap16/sec-16.21
 
 libro:
@@ -36,22 +39,32 @@ modelo:
     d_v: { expr: "(V_m - V_e)/V_e*100", sim: "desviación", nombre: "desviación respecto al mapa", unidad: "%", cifras: 2 }
     d_x: { expr: "(V_e - V_m)/V_m*100", sim: "desviación mal", nombre: "dividiendo por la medida", unidad: "%", cifras: 2 }
     f_b: { expr: "1/(2*pi*sqrt(L_b*C_13))", sim: "f_{B1}", nombre: "resonancia del primario de B1", unidad: Hz, cifras: 3 }
+    d_y: { expr: "(V_e - V_m)/V_m*100", sim: "Δ", nombre: "sobre la medida", unidad: "%" }
 
 tarjetas:
   - id: explore-mapa
-    tipo: explorar
+    tipo: tocar
     titulo: "Lo que hace diagnosticable el receptor"
-    texto: "Un mapa de tensiones convierte el diagnóstico en comparar en lugar de deducir. Toque sus filas y los datos de las bobinas."
-    libro: [452, 459, 483]
+    texto: "Un mapa de tensiones convierte el diagnóstico en comparar en lugar de deducir. Toque la fila de la alimentación, antes y después del regulador."
+    libro: [452, 455, 459, 483]
     widget:
       tipo: figura
       figura: fig-16.28
       zonas:
-        - { id: entrada, rotulo: "Las dos primeras filas", rect: [5, 10, 440, 60], texto: "La entrada, antes y después de cada regulador, y la alimentación de cada integrado en sus pines." }
-        - { id: sintonia, rotulo: "Las filas tercera y cuarta", rect: [5, 70, 440, 46], texto: "La tensión del varicap (TP1) y la intensidad de señal, con y sin antena." }
-        - { id: audio, rotulo: "Las filas quinta y sexta", rect: [5, 116, 440, 46], texto: "La salida de audio en reposo, a media alimentación, y los puntos de prueba del kit." }
-        - { id: bobinas, rotulo: "La tabla de abajo", rect: [5, 212, 440, 95], texto: "Los datos de las bobinas: espiras, hilo, núcleo y bobinado." }
-    requiere: { mover: [entrada, sintonia, bobinas] }
+        - { id: entrada, rotulo: "Primera fila", rect: [5, 10, 440, 60] }
+        - { id: sintonia, rotulo: "Segunda fila", rect: [5, 70, 440, 46] }
+        - { id: audio, rotulo: "Tercera fila", rect: [5, 116, 440, 46] }
+        - { id: bobinas, rotulo: "Datos de las bobinas", rect: [5, 212, 440, 95] }
+    tocar:
+      bien: [entrada]
+      porque:
+        sintonia: "Es la fila de la sintonía y la FI."
+        audio: "Es la fila del audio, donde la salida debe estar a media alimentación o a cero."
+        bobinas: "Son los datos de construcción de las bobinas."
+    exito: "La entrada de alimentación, antes y después del regulador: lo primero que se mide."
+    escalera:
+      - "¿Dónde empieza todo?"
+    solucion: "La primera fila."
 
   - id: empareje-tolerancias
     tipo: pregunta
@@ -75,29 +88,24 @@ tarjetas:
     solucion: "Alimentaciones ±5 %, polarizaciones ±10 %, señal muy variable."
 
   - id: predecir-tp3
-    tipo: predecir
+    tipo: simular
     titulo: "Una pequeña diferencia"
-    texto: "Su mapa dice 4,6 V en TP3 y hoy mide 4,4 V. ¿Qué significa?"
+    texto: "Su mapa dice 4,6 V en TP3 y hoy mide 4,4 V. ¿Qué desviación es, en tanto por ciento?"
     libro: [476, 478]
     fijar: { V_e: 4.6, V_m: 4.4 }
-    widget:
-      tipo: figura
-      figura: fig-16.28
-      zonas:
-        - { id: puntos, rotulo: "Las filas quinta y sexta", rect: [5, 116, 440, 46] }
-    opciones:
-      - texto: "Nada: está dentro del ±10 % de una polarización"
-        bien: true
-        porque: "Es un −4,35 %: una desviación pequeña no significa nada."
-      - texto: "Que el detector está averiado"
-        porque: "Un 4 % de diferencia entra en la tolerancia: no señala nada."
-      - texto: "Que hay que reajustar B2 enseguida"
-        porque: "Ajustar sin motivo estropea el ajuste: la medida está en tolerancia."
+    simular:
+      objetivo: d_v
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Desviación"
+      errores:
+        - { expr: "d_y", texto: "Se calcula sobre el valor del mapa, la referencia, y con su signo." }
+    exito: "−4,35 %: dentro del ±10 % de una polarización. Una desviación pequeña no significa nada."
     escalera:
-      - "Calcule la desviación y compárela con el ±10 %."
-    solucion: "−4,35 %: dentro de tolerancia."
+      - "(medida − mapa)/mapa."
+    solucion: "(4,4 − 4,6)/4,6 = −4,35 %."
     comprobar:
-      - { d_v: -4.35, tol: 0.01 }
+      - { d_v: -4.35, d_y: 4.55, tol: 0.01 }
 
   - id: simule-desviacion
     tipo: simular
@@ -144,55 +152,37 @@ tarjetas:
     solucion: "Es la referencia para comparar."
 
   - id: estime-b1
-    tipo: pregunta
+    tipo: explorar
     titulo: "Los datos de B1"
-    texto: "El primario de B1 tiene 3 µH y resuena con C13, de 75 pF. ¿A qué frecuencia?"
-    libro: ["cap16#501"]
+    texto: "El primario de B1, de unos 3 µH, resuena con C13, de 75 pF. Mueva el núcleo hasta la FI de 10,7 MHz."
+    libro: ["cap16#501", 471, 472]
+    fijar: { C_13: 75e-12 }
+    inicio: { L_b: 3.4e-6 }
     widget:
-      tipo: figura
-      figura: fig-16.28
-      zonas:
-        - { id: bobinas, rotulo: "La tabla de abajo", rect: [5, 212, 440, 95] }
-    estimar:
-      objetivo: "f_b"
-      unidad: Hz
-      min: 1000000
-      max: 30000000
-      paso: 100000
-      inicio: 25000000
-      tol: 0.03
-      rotulo: "Resonancia de B1"
-    exito: "Unos 10,6 MHz: cerca de los 10,7 MHz de la FI; el núcleo la lleva a su sitio."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 10930000 }, texto: "Demasiado alta: f = 1/(2π·√(L·C))." }
-      - { texto: "Demasiado baja: revise los prefijos de µH y pF." }
+      tipo: grafica
+      x: { id: l, min: 2.5e-6, max: 3.5e-6, unidad: H, rotulo: "L" }
+      y: { min: 9000000, max: 12000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "1/(2*pi*sqrt(l*C_13))", color: naranja, rotulo: "resonancia de B1" }
+        - { expr: "10700000", color: tinta, rotulo: "10,7 MHz", discontinua: true }
+      marcas:
+        - { x: "L_b", y: "f_b", rotulo: "{{f_b}}" }
+      lectura: { valor: f_b, rotulo: "Resonancia" }
+      mandos:
+        - { valor: L_b, min: 2.5e-6, max: 3.5e-6, paso: 0.01e-6, rotulo: "Núcleo de B1" }
+    objetivo:
+      condiciones:
+        - { valor: f_b, objetivo: 10700000, tol: 0.005, rotulo: "f = {{f_b}}" }
+      logrado: "Con {{L_b}}, la FI. Anote la posición del núcleo; y con espiras, hilo, diámetro y longitud, una bobina dañada se rehace."
+      pistas:
+        - { cuando: { valor: f_b, mayor: 10700000 }, texto: "Resuena por encima: más inductancia." }
+        - { texto: "Resuena por debajo: menos inductancia." }
     escalera:
-      - "f = 1/(2π·√(3 µH · 75 pF))."
-    solucion: "1/(2π·√(3 µH · 75 pF)) = 10,6 MHz."
+      - "f = 1/(2π·√(L·C))."
+    solucion: "Unos 2,95 µH."
     comprobar:
-      - { f_b: 10610000, tol: 0.002 }
-
-  - id: pregunta-datos
-    tipo: pregunta
-    titulo: "Para qué los datos de las bobinas"
-    texto: "Anota espiras, hilo, diámetro, longitud y núcleo de cada bobina. ¿Para qué sirve?"
-    libro: [471, 472]
-    widget:
-      tipo: figura
-      figura: fig-16.28
-      zonas:
-        - { id: bobinas, rotulo: "La tabla de abajo", rect: [5, 212, 440, 95] }
-    opciones:
-      - texto: "Para rehacerla si se daña o se pierde"
-        bien: true
-        porque: "No son componentes comerciales: sin esos datos el kit queda inservible. Y la posición del núcleo permite volver al ajuste."
-      - texto: "Para calcular el consumo"
-        porque: "Las bobinas no deciden el consumo; los datos sirven para reproducirlas."
-      - texto: "Para el inventario de la lista de materiales"
-        porque: "Sirven para rehacerlas: a menudo no se pueden comprar."
-    escalera:
-      - "¿Se puede comprar una bobina de aire como L1?"
-    solucion: "Para rehacerla."
+      - { con: { L_b: 2.95e-6 }, f_b: 10700000, tol: 0.005 }
+      - { con: { L_b: 3e-6 }, f_b: 10610000, tol: 0.002 }
 
   - id: banco-78l06
     tipo: banco

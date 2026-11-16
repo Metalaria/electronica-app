@@ -3,6 +3,10 @@
 # - Corte del silicio: λ = 1240/1,12 = 1107 nm, el «1 100 nm» del bloque 16.
 # Paso práctico: «simular» el corte del silicio (error: multiplicar en vez de dividir) y «tocar» en la figura 46.1 el
 # diagrama de bandas que emite.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca el fotón de 2,0 eV; la energía del azul se calcula
+# («simular», error: invertir la fórmula); en la figura 46.1 se toca la región que el silicio no ve. La tarjeta de la
+# fórmula se quita (su bloque 4 va a la primera) y la del LED que detecta se funde en el éxito de «toque-directa».
+# Quedan dos preguntas de opciones: por qué el silicio no emite y el filtro para luz visible.
 leccion: cap45/sec-45.1
 
 libro:
@@ -31,13 +35,15 @@ modelo:
     E_f: { expr: "1240/(l_n*1000000000)", sim: "E", nombre: "energía del fotón", unidad: eV }
     l_c: { expr: "1240/E_g/1000000000", sim: "λ_{corte}", nombre: "longitud de onda de corte", unidad: m }
     l_x: { expr: "1240*E_g/1000000000", sim: "λ", nombre: "multiplicando en vez de dividir", unidad: m }
+    E_x: { expr: "l_n*1000000000/1240", sim: "E", nombre: "fórmula invertida", unidad: eV }
 
 tarjetas:
   - id: explore-energia
     tipo: explorar
     titulo: "Un fotón, un salto de bandas"
-    texto: "La energía del fotón es la del salto entre bandas. Cambie la longitud de onda."
-    libro: [3, 6, 7, 16]
+    texto: "La energía del fotón, E = h·f, es la del salto entre bandas. Busque la luz del LED de 2,0 eV."
+    libro: [3, 4, 6, 7, 16]
+    inicio: { l_n: 0.00000045 }
     widget:
       tipo: grafica
       x: { id: x, min: 0.00000035, max: 0.0000014, unidad: m, rotulo: "λ" }
@@ -49,78 +55,60 @@ tarjetas:
       lectura: { valor: E_f, rotulo: "Energía del fotón" }
       mandos:
         - { valor: l_n, lista: [0.00000045, 0.00000062, 0.0000011], nombres: [azul, rojo, corte del silicio], rotulo: "Longitud de onda" }
-    requiere: { mover: [l_n] }
-
-  - id: formula-ev
-    tipo: formula
-    titulo: "En unidades prácticas"
-    texto: "E = h·c/λ, con λ en nanómetros y E en electronvoltios, se queda en 1240/λ."
-    libro: [4, 6]
-    ec: 6
-    sustitucion: "1240 / {{l_n}} = {{E_f}}"
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0.00000035, max: 0.0000014, unidad: m, rotulo: "λ" }
-      y: { min: 0.5, max: 3.6, unidad: eV, rotulo: "E" }
-      curvas:
-        - { expr: "1240/(x*1000000000)", color: azul, rotulo: "E ≈ 1240/λ" }
-      marcas:
-        - { x: "l_n", y: "E_f", rotulo: "{{E_f}}" }
-      lectura: { valor: E_f, rotulo: "Energía del fotón" }
-      mandos:
-        - { valor: l_n, lista: [0.00000045, 0.00000062, 0.0000011], nombres: [azul, rojo, corte del silicio], rotulo: "Longitud de onda" }
+    objetivo:
+      condiciones:
+        - { valor: E_f, objetivo: 2, tol: 0.02, rotulo: "E = {{E_f}}" }
+      logrado: "{{l_n}}, rojo: {{E_f}}. Con λ en nanómetros, E ≈ 1240/λ en electronvoltios."
+      pistas:
+        - { cuando: { valor: E_f, mayor: 2.04 }, texto: "Demasiada energía: λ más larga." }
+        - { texto: "Poca energía: λ más corta." }
+    escalera:
+      - "Más λ, menos energía."
+    solucion: "620 nm, el rojo."
+    comprobar:
+      - { con: { l_n: 0.00000062 }, E_f: 2 }
 
   - id: estime-azul
-    tipo: pregunta
+    tipo: simular
     titulo: "Un LED azul"
     texto: "Un LED azul emite a 450 nm. ¿Qué salto de bandas tiene?"
     libro: [6, 7]
     fijar: { l_n: 0.00000045 }
-    widget:
-      tipo: figura
-      figura: fig-45.1
-      zonas:
-        - { id: grafica, rotulo: "Energía frente a λ", rect: [0, 0, 250, 209] }
-    estimar:
-      objetivo: "E_f"
+    simular:
+      objetivo: E_f
       unidad: eV
-      min: 0.5
-      max: 4
-      paso: 0.01
-      inicio: 1.2
-      tol: 0.03
+      tol: 0.02
       rotulo: "Salto de bandas"
+      errores:
+        - { expr: "E_x", texto: "Ha invertido la fórmula: E ≈ 1240/λ, no λ/1240." }
     exito: "2,76 eV: más que el rojo, y su tensión directa sigue el mismo orden."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.84 }, texto: "Demasiado: 1240 entre 450." }
-      - { texto: "Demasiado poco: λ más corta es más energía. 1240/450." }
     escalera:
       - "E ≈ 1240/λ, con λ en nm."
     solucion: "1240/450 = 2,76 eV."
     comprobar:
-      - { E_f: 2.756 }
+      - { E_f: 2.756, E_x: 0.363 }
 
   - id: predecir-termico
-    tipo: predecir
+    tipo: tocar
     titulo: "El infrarrojo térmico"
-    texto: "Un fotodiodo de silicio apunta a un objeto caliente que solo emite infrarrojo térmico, más allá de 1 100 nm. ¿Qué detecta?"
+    texto: "Un fotodiodo de silicio apunta a un objeto caliente que solo emite infrarrojo térmico, más allá de 1 100 nm. Toque la región donde cae ese fotón."
     libro: [14, 15, 16]
     widget:
       tipo: figura
       figura: fig-45.1
       zonas:
+        - { id: visible, rotulo: "Región visible", rect: [41, 20, 62, 161] }
+        - { id: cercano, rotulo: "Infrarrojo cercano", rect: [103, 20, 83, 161] }
         - { id: sombra, rotulo: "Zona gris de la gráfica", rect: [186, 20, 61, 161] }
-    opciones:
-      - texto: "Nada: el fotón no tiene energía para crear un par"
-        bien: true
-        porque: "Por encima del corte, el detector no ve nada; hacen falta InGaAs o detectores térmicos."
-      - texto: "Poco, pero algo, como con luz débil"
-        porque: "No es cuestión de cantidad: cada fotón, por sí solo, no llega a la banda prohibida."
-      - texto: "Mucho, porque el silicio ve el infrarrojo"
-        porque: "Ve el infrarrojo cercano, hasta el corte; el térmico queda más allá."
+    tocar:
+      bien: [sombra]
+      porque:
+        visible: "Ahí el fotón tiene energía de sobra para crear un par."
+        cercano: "El infrarrojo cercano sí lo ve: está antes del corte."
+    exito: "Más allá del corte el silicio no ve nada: cada fotón, por sí solo, no llega a 1,12 eV. Hacen falta InGaAs o detectores térmicos."
     escalera:
-      - "Compare la energía del fotón con los 1,12 eV del silicio."
-    solucion: "Nada: λ por encima del corte, fotón sin energía suficiente."
+      - "Busque la región por encima de la longitud de onda de corte."
+    solucion: "La zona gris: el Si no detecta."
 
   - id: simule-corte
     tipo: simular
@@ -168,7 +156,7 @@ tarjetas:
     tipo: tocar
     titulo: "El material que emite"
     texto: "Toque el diagrama de bandas del material que emite luz con eficiencia."
-    libro: [11, 12]
+    libro: [11, 12, 22, 23]
     widget:
       tipo: figura
       figura: fig-45.1
@@ -181,7 +169,7 @@ tarjetas:
       porque:
         indirecta: "Es el silicio, de banda indirecta: hace falta un fonón y la energía acaba en calor."
         grafica: "Es la energía del fotón frente a λ, no el diagrama de bandas de un material."
-    exito: "Banda directa: GaAs, GaN, InGaP. El GaN dio el LED azul."
+    exito: "Banda directa: GaAs, GaN, InGaP. Un LED apagado también detecta, mal: con luz algo más energética genera una pequeña corriente."
     escalera:
       - "Busque el mínimo justo encima del máximo."
     solucion: "El del centro, banda directa."
@@ -207,28 +195,6 @@ tarjetas:
     escalera:
       - "¿Dónde tiene su máximo un fotodiodo de silicio?"
     solucion: "Un filtro que quite el infrarrojo cercano."
-
-  - id: pregunta-led-detector
-    tipo: pregunta
-    titulo: "Un LED que detecta"
-    texto: "Un LED apagado recibe luz de longitud de onda algo menor que la que emite. ¿Qué ocurre?"
-    libro: [22, 23]
-    widget:
-      tipo: figura
-      figura: fig-45.1
-      zonas:
-        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [0, 0, 250, 209] }
-    opciones:
-      - texto: "Genera una pequeña corriente: hace de detector, aunque mal"
-        bien: true
-        porque: "Los dos sentidos en el mismo dispositivo; en un multiplexado puede falsear lecturas."
-      - texto: "Nada: un LED solo emite"
-        porque: "Toda unión con fotones de energía suficiente genera pares."
-      - texto: "Se enciende"
-        porque: "No: genera una corriente pequeñísima, no la que hace falta para lucir."
-    escalera:
-      - "Un fotón algo más energético que su salto, ¿qué crea?"
-    solucion: "Una pequeña corriente: un sensor rudimentario."
 
   - id: resumen
     tipo: resumen

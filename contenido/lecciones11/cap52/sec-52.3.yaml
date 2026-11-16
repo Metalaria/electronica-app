@@ -7,6 +7,9 @@
 #   efectivos (SNR − 1,76)/6,02 = 10,3.
 # Paso práctico: «simular» el techo que pone el jitter (64 dB; errores típicos: 10·log en lugar de 20·log, y olvidar el
 # 2π).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se lleva la señal a la zona 2, la invertida; dónde aparece la de
+# la zona 3, el muestreo mínimo directo de 100 MHz y la velocidad de cada canal I/Q para una banda de 48 kHz (de ejemplo)
+# se calculan («simular»). Queda una pregunta de opciones (lo habitual en una SDR) y los ejercicios, por emparejar.
 leccion: cap52/sec-52.3
 
 libro:
@@ -21,6 +24,7 @@ modelo:
     f_m: { sim: "f_{s}", nombre: "frecuencia de muestreo de la figura", unidad: Hz, valor: 200000000 }
     f_r: { sim: "f", nombre: "frecuencia de la entrada", unidad: Hz, valor: 100000000 }
     t_j: { sim: "t_{j}", nombre: "jitter del reloj", unidad: s, valor: 1e-12 }
+    B_b: { sim: "B", nombre: "ancho de la banda", unidad: Hz, valor: 48000 }
   calculos:
     f_a: { expr: "abs(f_x - f_m*round(f_x/f_m))", sim: "f_{zona 1}", nombre: "dónde aparece", unidad: Hz }
     z_n: { expr: "floor(f_x/(f_m/2)) + 1", sim: "zona", nombre: "zona de Nyquist", unidad: "" }
@@ -29,12 +33,15 @@ modelo:
     s_10: { expr: "-10*log10(2*pi*f_r*t_j)", sim: "SNR", nombre: "techo con 10·log", unidad: dB }
     s_p: { expr: "-20*log10(f_r*t_j)", sim: "SNR", nombre: "techo sin el 2π", unidad: dB }
     b_j: { expr: "(-20*log10(2*pi*f_r*t_j) - 1.76)/6.02", sim: "ENOB", nombre: "bits efectivos", unidad: "", cifras: 3 }
+    f_h2: { expr: "f_x - f_m/2", sim: "f", nombre: "restando f_s/2", unidad: Hz }
+    r_iq: { expr: "B_b", sim: "f_{s}", nombre: "muestreo de cada canal I/Q", unidad: Hz }
+    r_re: { expr: "2*B_b", sim: "f_{s}", nombre: "muestreo de una señal real", unidad: Hz }
 
 tarjetas:
   - id: explore-zonas
     tipo: explorar
     titulo: "Zonas de Nyquist"
-    texto: "Muestreando a 200 MS/s, cada señal aparece en la primera zona, entre 0 y f_{s}/2. Mueva la señal de zona en zona."
+    texto: "Muestreando a 200 MS/s, cada señal aparece en la primera zona, entre 0 y f_{s}/2. Lleve la señal a la zona 2."
     nota: "Los valores de la figura 53.7."
     libro: [87, 90]
     widget:
@@ -50,15 +57,25 @@ tarjetas:
         - { valor: z_n, rotulo: "Zona de Nyquist: {{z_n}}" }
       mandos:
         - { valor: f_x, lista: [50000000, 150000000, 250000000, 350000000], rotulo: "Frecuencia de la señal, f" }
-    requiere: { mover: [f_x] }
+    inicio: { f_x: 50000000 }
+    objetivo:
+      condiciones:
+        - { valor: z_n, objetivo: 2, tol: 0.01, rotulo: "Zona {{z_n}}" }
+      logrado: "{{f_x}} aparece en {{f_a}}, y en las zonas pares, invertida: al subir la señal, su réplica baja."
+      pistas:
+        - { cuando: { valor: z_n, mayor: 2 }, texto: "Se ha pasado de zona: baje la señal." }
+        - { texto: "Aún en la primera zona: suba la señal." }
+    escalera:
+      - "La zona 2 va de f_{s}/2 a f_{s}."
+    solucion: "150 MHz: aparece en 50 MHz."
     comprobar:
       - { con: { f_x: 250000000 }, f_a: 50000000, z_n: 3 }
       - { con: { f_x: 150000000 }, f_a: 50000000, z_n: 2 }
 
   - id: predecir-zona3
-    tipo: predecir
+    tipo: simular
     titulo: "El aliasing como herramienta"
-    texto: "Una señal estrecha en la zona 3, tras un filtro paso banda que solo deja pasar esa zona, muestreada a 200 MS/s. ¿Qué se obtiene?"
+    texto: "Una señal estrecha a 250 MHz, en la zona 3, tras un filtro paso banda de esa zona y muestreada a 200 MS/s. ¿En qué frecuencia aparece?"
     libro: [87, 90]
     fijar: { f_x: 250000000 }
     widget:
@@ -66,44 +83,35 @@ tarjetas:
       figura: fig-52.5
       zonas:
         - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
-    opciones:
-      - texto: "Una réplica limpia en la primera zona, que es la que se procesa"
-        bien: true
-        porque: "Es el muestreo en banda: por debajo de Nyquist, usando el aliasing a propósito tras el filtro."
-      - texto: "Basura: muestrea por debajo de Nyquist"
-        porque: "Sin filtro lo sería; con el paso banda, la réplica cae sola y limpia en la zona 1."
-      - texto: "Nada: la señal está por encima de f_{s}"
-        porque: "Lo que pasa de f_{s}/2 no desaparece: se pliega a la primera zona."
+    simular:
+      objetivo: f_a
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia en la zona 1"
+      errores:
+        - { expr: "f_x", texto: "Lo que pasa de f_{s}/2 no se queda donde está: se pliega a la primera zona." }
+        - { expr: "f_h2", texto: "Se resta el múltiplo de f_{s} más próximo, no f_{s}/2." }
+    exito: "50 MHz, una réplica limpia: el muestreo en banda usa el aliasing a propósito, tras el filtro."
     escalera:
-      - "¿Dónde aparece algo que está por encima de f_{s}/2?"
-    solucion: "Una réplica en la zona 1."
+      - "|f − k·f_{s}|, con k el múltiplo más próximo."
+    solucion: "|250 − 200| = 50 MHz."
     comprobar:
-      - { f_a: 50000000, z_n: 3 }
+      - { f_a: 50000000, z_n: 3, f_h2: 150000000 }
 
   - id: estime-directo
-    tipo: pregunta
+    tipo: simular
     titulo: "Muestrear la FM directamente"
     texto: "Una emisora de FM a 100 MHz, muestreada directamente. ¿Qué frecuencia de muestreo exige, como mínimo?"
     libro: [87, 89]
     fijar: { f_r: 100000000 }
-    widget:
-      tipo: figura
-      figura: fig-52.5
-      zonas:
-        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
-    estimar:
-      objetivo: "f_2"
+    simular:
+      objetivo: f_2
       unidad: Hz
-      min: 0
-      max: 500000000
-      paso: 10000000
-      inicio: 450000000
-      tol: 0.03
+      tol: 0.02
       rotulo: "Muestreo mínimo"
+      errores:
+        - { expr: "f_r", texto: "Nyquist pide más del doble de la frecuencia máxima." }
     exito: "Más de 200 millones de muestras por segundo: caro y exigente. La SDR traslada antes la banda a frecuencias bajas."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 206000000 }, texto: "Demasiado: Nyquist pide más del doble de la frecuencia máxima, no más." }
-      - { texto: "Corto: hace falta más del doble de 100 MHz." }
     escalera:
       - "Nyquist: más de 2·f_{máx}."
     solucion: "Más de 200 MS/s."
@@ -133,26 +141,25 @@ tarjetas:
     solucion: "Trasladar a frecuencias bajas y muestrear después."
 
   - id: porque-dos-canales
-    tipo: porque
+    tipo: simular
     titulo: "¿Datos duplicados?"
-    texto: "Muestrear I y Q parece duplicar los datos. ¿Por qué no es un desperdicio?"
+    texto: "Una banda de 48 kHz como señal real pide 2B muestras por segundo. Con I y Q, ¿a qué velocidad va cada canal?"
+    nota: "Banda de ejemplo."
     libro: [88, 89]
-    widget:
-      tipo: figura
-      figura: fig-52.5
-      zonas:
-        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
-    opciones:
-      - texto: "Cada canal va a B en lugar de 2B: las mismas muestras, y se conserva el signo de la frecuencia"
-        bien: true
-        porque: "Por eso la cuadratura separa la banda lateral superior de la inferior y una real no."
-      - texto: "Porque los dos canales llevan la misma información y se promedian"
-        porque: "No llevan lo mismo: van en cuadratura, y juntos forman el número complejo I + jQ."
-      - texto: "Sí lo es, pero simplifica el hardware"
-        porque: "No sobra nada: el total de muestras por segundo es el mismo que con una señal real."
+    fijar: { B_b: 48000 }
+    simular:
+      objetivo: r_iq
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Muestreo de cada canal"
+      errores:
+        - { expr: "r_re", texto: "Eso es con una señal real; cada componente compleja va a B." }
+    exito: "48 kHz por canal: el mismo total de muestras, y además se conserva el signo de la frecuencia."
     escalera:
-      - "Una señal real de ancho B pide 2B. ¿Y cada componente compleja?"
-    solucion: "Mismo total de muestras y, además, el signo de la frecuencia."
+      - "Cada canal, B en lugar de 2B."
+    solucion: "48 kHz cada uno."
+    comprobar:
+      - { r_iq: 48000, r_re: 96000 }
 
   - id: simule-jitter
     tipo: simular

@@ -3,6 +3,11 @@
 #   optoacoplador del problema 46.C (CTR del 50 % al 300 %) y los 11,5 mA de la figura 46.7 (valores de ejemplo de la
 #   figura), la corriente de colector garantizada es 0,25 × 11,5 mA = 2,875 mA.
 # Paso práctico: «simular» la corriente de colector garantizada (errores: el CTR máximo, el mínimo sin envejecer).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 46.7 se tocan el LED y la barrera por la que no
+# debe pasar nada (la placa certificada que no aísla va a su éxito); la corriente que inyecta un salto de modo común se
+# calcula con valores de ejemplo (1 pF, 50 kV/µs); con el CTR de final de vida se busca la corriente de LED que iguala
+# al mínimo nuevo (y el aislador digital va a su éxito). Queda una pregunta de opciones (las tensiones de la hoja) y
+# los dos usos, por emparejar.
 leccion: cap45/sec-45.4
 
 libro:
@@ -30,26 +35,40 @@ modelo:
     I_F: { sim: "I_{F}", nombre: "corriente del LED", unidad: A, valor: 0.0115 }
     C_min: { sim: "CTR_{mín}", nombre: "CTR mínimo de la hoja", unidad: "%", valor: 50 }
     C_max: { sim: "CTR_{máx}", nombre: "CTR máximo de la hoja", unidad: "%", valor: 300 }
+    C_p: { sim: "C_{p}", nombre: "capacidad entre los lados", unidad: F, valor: 1e-12 }
+    S_v: { sim: "dV/dt", nombre: "salto de modo común", unidad: "V/s", valor: 50000000000 }
+    C_u: { sim: "CTR", nombre: "CTR con el que se diseña", unidad: "%", valor: 300 }
   calculos:
     I_C: { expr: "I_F*C_min/100/2", sim: "I_{C}", nombre: "corriente de colector garantizada", unidad: A }
     I_Cmax: { expr: "I_F*C_max/100", sim: "I_{C}", nombre: "con el CTR máximo", unidad: A }
     I_Cnuevo: { expr: "I_F*C_min/100", sim: "I_{C}", nombre: "con el mínimo sin envejecer", unidad: A }
     C_fin: { expr: "C_min/2", sim: "CTR", nombre: "CTR de final de vida", unidad: "%" }
+    I_p: { expr: "C_p*S_v", sim: "i", nombre: "corriente inyectada", unidad: A }
+    I_px: { expr: "C_p*S_v/1000", sim: "i", nombre: "con V/µs en vez de kV/µs", unidad: A }
+    I_u: { expr: "I_F*C_u/100", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
 
 tarjetas:
   - id: explore-opto
-    tipo: explorar
+    tipo: tocar
     titulo: "Aislar con luz"
-    texto: "Un LED y un detector en el mismo encapsulado, sin conexión eléctrica. Toque sus partes."
+    texto: "Un LED y un detector en el mismo encapsulado, sin conexión eléctrica. Toque lo que convierte la corriente de entrada en luz."
     libro: [103, 127]
     widget:
       tipo: figura
       figura: fig-45.7
-      zonas:
-        - { id: led, rotulo: "Triángulo a la izquierda de la caja", rect: [130, 95, 40, 40], texto: "El LED del lado de entrada: convierte la corriente en luz." }
-        - { id: barrera, rotulo: "Línea discontinua del centro", rect: [176, 66, 28, 90], texto: "La barrera de aislamiento: la dan la distancia y el material, no un circuito." }
-        - { id: transistor, rotulo: "Círculo a la derecha de la caja", rect: [202, 92, 36, 36], texto: "El fototransistor del lado de salida, con su propia masa." }
-    requiere: { mover: [led, barrera, transistor] }
+      zonas: &zonas-opto
+        - { id: led, rotulo: "Triángulo a la izquierda de la caja", rect: [130, 90, 44, 44] }
+        - { id: barrera, rotulo: "Línea discontinua del centro", rect: [176, 66, 28, 90] }
+        - { id: transistor, rotulo: "Círculo a la derecha de la caja", rect: [204, 90, 44, 44] }
+    tocar:
+      bien: [led]
+      porque:
+        barrera: "Es la barrera de aislamiento: la dan la distancia y el material, no un circuito."
+        transistor: "Es el fototransistor del lado de salida, con su propia masa."
+    exito: "El LED: la señal cruza como luz y la barrera es física."
+    escalera:
+      - "Busque el símbolo de diodo del lado de entrada."
+    solucion: "El triángulo de la izquierda, el LED."
 
   - id: empareje-usos
     tipo: pregunta
@@ -93,49 +112,25 @@ tarjetas:
       - "¿Cuánto dura el ensayo?"
     solucion: "No: la permanente es la tensión de trabajo continua."
 
-  - id: predecir-placa
-    tipo: predecir
-    titulo: "Un optoacoplador certificado"
-    texto: "Se monta un optoacoplador certificado en una placa con pistas de los dos lados muy juntas. ¿Aísla?"
-    libro: [111, 112]
-    widget:
-      tipo: figura
-      figura: fig-45.7
-      zonas:
-        - { id: barrera, rotulo: "Línea discontinua del centro", rect: [176, 66, 28, 90] }
-    opciones:
-      - texto: "No: las distancias de fuga y de aire deben cumplirse también en la placa"
-        bien: true
-        porque: "De ahí la ranura fresada bajo el componente: alarga la distancia superficial."
-      - texto: "Sí: el certificado lo garantiza"
-        porque: "Certifica el componente, no la placa en la que va."
-      - texto: "Solo si la tensión es continua"
-        porque: "La placa mal diseñada falla en continua y en alterna."
-    escalera:
-      - "¿Por dónde puede saltar la tensión si no es por el componente?"
-    solucion: "No: la placa debe respetar las distancias, o con una ranura."
-
   - id: porque-cmti
-    tipo: porque
+    tipo: simular
     titulo: "Disparos espurios con potencia"
-    texto: "En un puente de potencia, un driver aislado conmuta solo, sin señal. ¿Por qué?"
+    texto: "En un puente de potencia, la masa de un lado salta 50 kV/µs respecto a la otra, con 1 pF entre los lados. ¿Qué corriente inyecta esa capacidad?"
+    nota: "Valores de ejemplo."
     libro: [114, 115, 116]
-    widget:
-      tipo: figura
-      figura: fig-45.7
-      zonas:
-        - { id: barrera, rotulo: "Línea discontinua del centro", rect: [176, 66, 28, 90] }
-    opciones:
-      - texto: "CMTI insuficiente: la capacidad entre los lados inyecta corriente en cada salto"
-        bien: true
-        porque: "Los dos lados se mueven bruscamente uno respecto al otro; solo aparece con potencia."
-      - texto: "El LED se ha fundido"
-        porque: "Un LED fundido no conmutaría nunca; aquí conmuta de más."
-      - texto: "Falta tensión de aislamiento"
-        porque: "Eso es seguridad; los disparos sin señal son de modo común transitorio."
+    simular:
+      objetivo: I_p
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente inyectada"
+      errores:
+        - { expr: "I_px", texto: "Ha tomado kilovoltios por voltios: son 50 kV/µs." }
+    exito: "50 mA, más que la del LED: el driver conmuta sin señal, y solo con potencia. Hace falta más CMTI."
     escalera:
-      - "¿Qué cruza la barrera cuando la masa de un lado salta cientos de voltios?"
-    solucion: "Corriente por la capacidad parásita: hace falta más CMTI, en kV/µs."
+      - "i = C·dV/dt."
+    solucion: "1 pF × 50 kV/µs = 50 mA."
+    comprobar:
+      - { I_p: 0.05, I_px: 0.00005, C_p: 1e-12, S_v: 50000000000 }
 
   - id: simule-ctr
     tipo: simular
@@ -162,59 +157,55 @@ tarjetas:
   - id: explore-envejecimiento
     tipo: explorar
     titulo: "El CTR envejece"
-    texto: "El envejecimiento se acelera con la corriente del LED. Toque las dos gráficas."
-    libro: [118, 121, 128]
+    texto: "Nuevo, el mínimo de la hoja da 5,75 mA con 11,5 mA en el LED. Con el CTR de final de vida, busque la corriente de LED que garantiza lo mismo."
+    libro: [118, 121, 122, 123, 128]
+    inicio: { C_u: 300, I_F: 0.0115 }
     widget:
-      tipo: figura
-      figura: fig-45.8
-      zonas:
-        - { id: ctr, rotulo: "Gráfica de la izquierda", rect: [0, 0, 224, 220], texto: "Cuanta más corriente en el LED, antes cae el CTR." }
-        - { id: aislador, rotulo: "Gráfica de la derecha", rect: [224, 0, 225, 220], texto: "El aislador digital no tiene esa debilidad: no envejece como un LED." }
-    requiere: { mover: [ctr, aislador] }
-
-  - id: pregunta-aislador
-    tipo: pregunta
-    titulo: "El aislador digital"
-    texto: "Los aisladores digitales no envejecen y son más rápidos. ¿Qué inconveniente tienen?"
-    libro: [121, 122, 123]
-    widget:
-      tipo: figura
-      figura: fig-45.8
-      zonas:
-        - { id: aislador, rotulo: "Gráfica de la derecha", rect: [224, 0, 225, 220] }
-    opciones:
-      - texto: "Necesitan alimentación en los dos lados"
-        bien: true
-        porque: "El optoacoplador funciona con la corriente del LED; hay versiones con convertidor aislado, más caras."
-      - texto: "Peor CMTI"
-        porque: "Al contrario: tienen mejor CMTI."
-      - texto: "Consumen más"
-        porque: "Consumen menos que un optoacoplador."
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.03, unidad: A, rotulo: "I_{F}" }
+      y: { min: 0, max: 0.03, unidad: A, rotulo: "I_{C}" }
+      curvas:
+        - { expr: "x*C_u/100", color: naranja, rotulo: "I_{C} = CTR·I_{F}" }
+        - { expr: "0.00575", color: tinta, rotulo: "mínimo nuevo con 11,5 mA", discontinua: true }
+      marcas:
+        - { x: "I_F", y: "I_u", rotulo: "{{I_u}}" }
+      lectura: { valor: I_u, rotulo: "Corriente de colector" }
+      mandos:
+        - { valor: C_u, lista: [300, 50, 25], nombres: [máximo, mínimo, final de vida], rotulo: "CTR de diseño" }
+        - { valor: I_F, min: 0.005, max: 0.03, paso: 0.0005, rotulo: "Corriente del LED" }
+    objetivo:
+      condiciones:
+        - { valor: C_u, max: 25, rotulo: "CTR de final de vida" }
+        - { valor: I_u, min: 0.00575, rotulo: "I_{C} = {{I_u}}" }
+      logrado: "{{I_F}}, el doble; pero más corriente acelera el envejecimiento. Un aislador digital no envejece, aunque necesita alimentación en ambos lados."
+      pistas:
+        - { cuando: { valor: C_u, mayor: 25 }, texto: "Diseñe con el CTR de final de vida." }
+        - { texto: "Aún no llega: suba la corriente del LED." }
     escalera:
-      - "¿Qué necesita el lado de salida de un optoacoplador para funcionar?"
-    solucion: "Alimentación en ambos lados."
+      - "Con la mitad de CTR hace falta el doble de corriente."
+    solucion: "CTR del 25 % y 23 mA."
+    comprobar:
+      - { con: { C_u: 25, I_F: 0.023 }, I_u: 0.00575 }
+      - { con: { C_u: 50, I_F: 0.0115 }, I_u: 0.00575 }
 
   - id: pregunta-fuga
-    tipo: pregunta
+    tipo: tocar
     titulo: "La fuga a través de la barrera"
-    texto: "Con el óhmetro entre los dos lados de un optoacoplador se lee una resistencia medible. ¿Qué indica?"
-    libro: [126]
+    texto: "Con el óhmetro entre los dos lados de un optoacoplador se lee una resistencia medible. Toque por dónde no debería pasar nada."
+    libro: [126, 111, 112]
     widget:
       tipo: figura
       figura: fig-45.7
-      zonas:
-        - { id: barrera, rotulo: "Línea discontinua del centro", rect: [176, 66, 28, 90] }
-    opciones:
-      - texto: "Componente dañado o contaminación en la placa entre ambos lados"
-        bien: true
-        porque: "Debe ser inmensurable: cualquier lectura es un camino que no debería existir."
-      - texto: "Que funciona bien"
-        porque: "Entre los dos lados no debe haber nada medible."
-      - texto: "Que el LED está encendido"
-        porque: "El óhmetro mide entre los dos lados, no el LED."
+      zonas: *zonas-opto
+    tocar:
+      bien: [barrera]
+      porque:
+        led: "El LED está en un solo lado; la medida es entre los dos."
+        transistor: "El fototransistor está en un solo lado; la medida es entre los dos."
+    exito: "Debe ser inmensurable: daño o contaminación. Y una placa mal diseñada no aísla: de ahí la ranura fresada bajo el componente."
     escalera:
-      - "¿Qué resistencia debe haber a través de una barrera de aislamiento?"
-    solucion: "Algo está mal: daño o suciedad entre los lados."
+      - "¿Qué separa los dos lados?"
+    solucion: "La barrera del centro."
 
   - id: resumen
     tipo: resumen

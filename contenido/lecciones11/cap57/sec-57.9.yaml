@@ -11,6 +11,9 @@
 # Pasos prácticos: «simular» la corriente de cada motor en la rampa con el motor-cc (0,32 A; errores: sin la
 # reductora, 6,7 A, o sin su rendimiento, 0,22 A), «ajuste» de la tensión de la batería y «banco» opcional (la corriente
 # subiendo la rampa, ± 25 % de ejemplo; ficha 8 del cuaderno).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se sube la rampa hasta que cada motor pasa de 0,3 A; la fuerza
+# total, la autonomía, la carga del encoder de 500 líneas y el giro de 120° se calculan («simular», con sus errores
+# típicos). Queda una pregunta de opciones (el TVS).
 leccion: cap57/sec-57.9
 
 libro:
@@ -80,12 +83,15 @@ modelo:
     f_ex: { expr: "n_e/60*4*N_l", sim: "f", nombre: "cuentas por segundo del ejercicio", unidad: "cuentas/s" }
     q_ex: { expr: "100*f_ex*c_i/f_c", sim: "carga", nombre: "parte del procesador del ejercicio", unidad: "%" }
     T_ex: { expr: "th_e/v_e + v_e/a_e", sim: "T", nombre: "duración del giro del ejercicio", unidad: s }
+    F_x: { expr: "F_g + F_c", sim: "F", nombre: "sin la aceleración", unidad: N }
+    q_x: { expr: "100*n_e/60*N_l*c_i/f_c", sim: "carga", nombre: "sin los cuatro flancos", unidad: "%" }
+    T_x: { expr: "th_e/v_e", sim: "T", nombre: "sin las rampas", unidad: s }
 
 tarjetas:
   - id: explore-motor
     tipo: explorar
     titulo: "El motorreductor en la rampa"
-    texto: "El motor del capítulo, de 12 V. Suba la pendiente de la rampa y mire la corriente y la velocidad a la salida."
+    texto: "El motor del capítulo, de 12 V. Suba la pendiente de la rampa hasta que cada motor pase de 0,3 A."
     nota: "La inductancia del dibujo, 1 mH, es de ejemplo."
     libro: [165, 169, "cap57#85"]
     inicio: { ang: 0 }
@@ -101,39 +107,37 @@ tarjetas:
         - { valor: T_w, rotulo: "Par de cada rueda: {{T_w}}" }
       mandos:
         - { valor: ang, min: 0, max: 15, paso: 1, rotulo: "Pendiente de la rampa" }
-    requiere: { mover: [ang] }
+    objetivo:
+      condiciones:
+        - { valor: I_m, min: 0.3, rotulo: "Motor: {{I_m}}" }
+      logrado: "Con {{ang}} de pendiente, {{I_m}} por motor, y la salida aún a {{n_o}}: sobra velocidad."
+      pistas:
+        - { texto: "Aún es poca pendiente: súbala." }
+    escalera:
+      - "Más pendiente, más par, más corriente."
+    solucion: "Unos 10°: 0,32 A."
     comprobar:
       - { con: { ang: 10 }, n_o: 277, I_m: 0.32, T_w: 0.078, tol: 0.01 }
 
   - id: estime-fuerza
-    tipo: pregunta
+    tipo: simular
     titulo: "Las fuerzas en la rampa"
     texto: "Robot de 2 kg en una rampa de 10°, acelerando a 0,5 m/s²: el peso tira con 3,41 N y la rodadura con 0,39 N. ¿Fuerza total que deben dar las ruedas?"
     libro: [165, 167]
     fijar: { ang: 10 }
-    widget:
-      tipo: figura
-      figura: fig-57.8
-      zonas:
-        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
-    estimar:
-      objetivo: "F_t"
-      unidad: N
-      min: 0
-      max: 10
-      paso: 0.05
-      inicio: 8
-      tol: 0.03
+    simular:
+      objetivo: F_t
+      unidad: "N"
+      tol: 0.02
       rotulo: "Fuerza total"
+      errores:
+        - { expr: "F_x", texto: "Falta la fuerza para acelerar: m·a = 1,0 N." }
     exito: "4,79 N: 3,41 de peso, 0,39 de rodadura y 1,0 para acelerar. En llano, con 1 m/s², solo 2,39 N."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4.94 }, texto: "Se ha pasado: en la rampa acelera a la mitad, 0,5 m/s²." }
-      - { texto: "Se ha quedado corto: falta la fuerza para acelerar, m·a = 1,0 N." }
     escalera:
-      - "Sume peso, rodadura y m·a."
+      - "Peso, rodadura y m·a."
     solucion: "3,41 + 0,39 + 1,0 = 4,79 N."
     comprobar:
-      - { F_t: 4.79, F_g: 3.41, F_a: 1, tol: 0.005 }
+      - { F_t: 4.79, F_g: 3.41, F_a: 1, F_x: 3.79, tol: 0.005 }
 
   - id: simule-corriente
     tipo: simular
@@ -242,87 +246,62 @@ tarjetas:
       - { I_m: 0.32, tol_b: 25, tol: 0.01 }
 
   - id: estime-autonomia
-    tipo: pregunta
+    tipo: simular
     titulo: "Horas rodando"
     texto: "En llano, los motores toman 0,24 W y la electrónica 1,5 W, de una batería de 11,1 V y 2,5 Ah usada al 80 %. ¿Autonomía?"
     libro: [172]
-    widget:
-      tipo: figura
-      figura: fig-57.8
-      zonas:
-        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
-    estimar:
-      objetivo: "t_a"
-      unidad: h
-      min: 0
-      max: 40
-      paso: 0.1
-      inicio: 30
-      tol: 0.04
+    simular:
+      objetivo: t_a
+      unidad: "h"
+      tol: 0.02
       rotulo: "Autonomía"
-    exito: "Unas 12,8 h: 22,2 Wh entre 1,74 W. La electrónica, que no para nunca, pesa más que los motores."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 13.3 }, texto: "Se ha pasado: ¿ha usado toda la batería, o ha olvidado la electrónica?" }
-      - { texto: "Se ha quedado corto: 27,8 Wh × 0,8 = 22,2 Wh, entre 1,74 W." }
+      errores:
+        - { expr: "t_100", texto: "Esa sería con la batería entera; se usa el 80 %." }
+        - { expr: "t_sine", texto: "Falta la electrónica, que no para nunca y pesa más que los motores." }
+    exito: "Unas 12,8 h: 22,2 Wh entre 1,74 W. La electrónica pesa más que los motores."
     escalera:
-      - "Energía útil = 11,1 × 2,5 × 0,8 Wh."
+      - "80 % de la energía entre la potencia total."
     solucion: "22,2 Wh / 1,74 W = 12,8 h."
     comprobar:
-      - { t_a: 12.8, E_b: 27.8, P_t: 1.74, tol: 0.005 }
+      - { t_a: 12.8, E_b: 27.8, P_t: 1.74, t_100: 15.95, tol: 0.005 }
 
   - id: prediga-encoder
-    tipo: predecir
+    tipo: simular
     titulo: "Un encoder de 500 líneas"
-    texto: "Un motorreductor 1:10 con un encoder de 500 líneas en el motor, ×4, gira a 3 000 rpm. Con 57 ciclos por cuenta, ¿cuánto procesador se come?"
-    libro: ["cap57#176", "cap57#77"]
-    widget:
-      tipo: figura
-      figura: fig-57.8
-      zonas:
-        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
-    opciones:
-      - texto: "El 36 %: hace falta un contador por hardware"
-        bien: true
-        porque: "100 000 cuentas por segundo por 57 ciclos son 5,7 millones de ciclos de 16."
-      - texto: "Un 2,7 %, como el del capítulo"
-        porque: "El del capítulo tiene 11 líneas; con 500 llegan muchas más cuentas."
-      - texto: "Más del cien por cien"
-        porque: "No llega: son 5,7 millones de ciclos de 16 millones."
+    texto: "Un motorreductor 1:10 con un encoder de 500 líneas en el motor, ×4, gira a 3 000 rpm. Con 57 ciclos por cuenta, ¿cuánto procesador de 16 MHz se come?"
+    libro: ['cap57#176', 'cap57#77']
+    simular:
+      objetivo: q_ex
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Parte del procesador"
+      errores:
+        - { expr: "q_x", texto: "Cuente los cuatro flancos de cada línea." }
+    exito: "El 36 %: 100 000 cuentas por segundo. Hace falta un contador por hardware."
     escalera:
-      - "Cuentas por segundo = 3 000/60 × 4 × 500."
-    solucion: "100 000 × 57 = 5,7·10⁶ ciclos/s: el 36 %."
+      - "Cuentas por segundo por ciclos, entre el reloj."
+    solucion: "100 000 × 57 / 16·10⁶ = 36 %."
     comprobar:
-      - { f_ex: 100000, q_ex: 35.6, tol: 0.01 }
+      - { f_ex: 100000, q_ex: 35.6, q_x: 8.9, tol: 0.01 }
 
   - id: estime-giro
-    tipo: pregunta
+    tipo: simular
     titulo: "Un giro de 120°"
     texto: "Un eje gira 120° con 180 °/s de velocidad máxima y 600 °/s² de aceleración, por encima del umbral del triángulo, 54°. ¿Cuánto dura?"
-    libro: ["cap57#176"]
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 0, max: 1.2, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 200, unidad: "°/s", rotulo: "v" }
-      curvas:
-        - { expr: "max(0, min(a_e*tt, v_e, a_e*(T_ex - tt)))", color: azul, rotulo: "velocidad" }
-    estimar:
-      objetivo: "T_ex"
-      unidad: s
-      min: 0
-      max: 1.2
-      paso: 0.005
-      inicio: 0.4
-      tol: 0.03
+    libro: ['cap57#176']
+    simular:
+      objetivo: T_ex
+      unidad: "s"
+      tol: 0.02
       rotulo: "Duración del giro"
+      errores:
+        - { expr: "T_x", texto: "Faltan las rampas: el trapecio añade v/a." }
     exito: "Trapecio: 0,3 s acelerando, 0,367 s a velocidad constante y 0,3 s frenando: 0,967 s."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1 }, texto: "Se ha pasado: T = θ/v + v/a." }
-      - { texto: "Se ha quedado corto: 120° es más que el umbral, y tiene meseta." }
     escalera:
-      - "T = θ/v_{máx} + v_{máx}/a_{máx}."
+      - "θ/v + v/a."
     solucion: "120/180 + 180/600 = 0,967 s."
     comprobar:
-      - { T_ex: 0.967, tol: 0.003 }
+      - { T_ex: 0.967, T_x: 0.667, tol: 0.003 }
 
   - id: resumen
     tipo: resumen

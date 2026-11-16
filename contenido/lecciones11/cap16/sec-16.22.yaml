@@ -5,6 +5,10 @@
 #   datos del kit (bloque 501).
 # Paso práctico: «simular» la imagen de una emisora de 98,0 MHz (119,4 MHz; errores típicos: el oscilador, 108,7 MHz,
 # y restar, 76,6 MHz).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca la emisora cuya imagen cae en 129,4 MHz (el origen de la
+# Ec. 1 va a su logro); se marca la emisora de imagen 109,4 MHz; con una FI de 455 kHz (la de AM de la 15.19) frente a
+# 10,7 MHz se busca la que saca la imagen de la banda. La tabla de la banda y los datos del kit se funden en esas
+# tarjetas y en el resumen. Queda una pregunta de opciones (el VCO lejos de 38 kHz).
 leccion: cap16/sec-16.22
 
 libro:
@@ -16,6 +20,7 @@ libro:
   497: "Transmitiendo la suma (L+R) en banda base, un receptor mono la recibe y reproduce el programa completo"
   500: "cuanto más lejos de 38 kHz oscila libre el VCO, mayor es el desfase con que queda enganchado"
   501: "Bobina del discriminador B2: 18 espiras entre las patillas 1 y 3 (7,6 µH)"
+  "cap16#418": "sintonizando 1 MHz el oscilador está en 1,455 MHz y la imagen es 1,91 MHz"
 
 modelo:
   valores:
@@ -31,8 +36,9 @@ tarjetas:
   - id: explore-ec1
     tipo: explorar
     titulo: "El principio superheterodino"
-    texto: "Mueva la emisora por la banda: el oscilador va siempre 10,7 MHz por encima, y la imagen, otra FI más arriba."
-    libro: [487, 490]
+    texto: "El oscilador va siempre 10,7 MHz por encima de la emisora, y la imagen, otra FI más arriba. Busque la emisora cuya imagen cae en 129,4 MHz."
+    libro: [487, 488, 490, 491]
+    inicio: { f_e: 88000000 }
     widget:
       tipo: grafica
       x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
@@ -49,28 +55,48 @@ tarjetas:
         - { valor: f_o, rotulo: "Oscilador: {{f_o}}" }
       mandos:
         - { valor: f_e, min: 88000000, max: 108000000, paso: 100000, rotulo: "Emisora" }
+    objetivo:
+      condiciones:
+        - { valor: f_im, objetivo: 129400000, tol: 0.001, rotulo: "Imagen: {{f_im}}" }
+      logrado: "{{f_e}}, el extremo alto. La Ec. 1 no es una ley física: es la condición de diseño, una FI fija para amplificar y filtrar."
+      pistas:
+        - { cuando: { valor: f_im, mayor: 129400000 }, texto: "Imagen demasiado alta: baje la emisora." }
+        - { texto: "Imagen demasiado baja: suba la emisora." }
+    escalera:
+      - "Imagen = emisora + 21,4 MHz."
+    solucion: "108,0 MHz."
+    comprobar:
+      - { con: { f_e: 108000000 }, f_im: 129400000 }
 
   - id: formula-imagen
-    tipo: formula
+    tipo: marcar
     titulo: "La imagen, a 2·FI"
-    texto: "Si lo que importa es la diferencia, dos emisoras dan la misma FI: una por debajo del oscilador y otra por encima."
+    texto: "Dos emisoras dan la misma FI: una por debajo del oscilador y otra por encima. Marque la emisora cuya imagen está en 109,4 MHz."
     libro: [490, 492]
-    ec: 490
-    sustitucion: "{{f_o}} + {{f_F}} = {{f_im}}"
     widget:
       tipo: grafica
       x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
-      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      y: { min: 105000000, max: 130000000, unidad: Hz, rotulo: "imagen" }
       curvas:
-        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
-        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
-      marcas:
-        - { x: "f_e", y: "f_im", rotulo: "{{f_im}}" }
-      lectura: { valor: f_d, rotulo: "Imagen menos emisora" }
-      mandos:
-        - { valor: f_e, min: 88000000, max: 108000000, paso: 100000, rotulo: "Emisora" }
+        - { expr: "fx + 2*f_F", color: naranja, rotulo: "imagen" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "88000000"
+      tol: 0.004
+      inicio: { x: 100000000, y: 121400000 }
+      rotulo: "109,4 MHz"
+      pasos: 200
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 88000000 }, texto: "Ahí la imagen es más alta: baje." }
+      - { texto: "Ahí la imagen es más baja: suba." }
+    exito: "88,0 MHz, el extremo bajo: siempre 21,4 MHz por encima, así que basta un circuito sintonizado antes del mezclador."
+    escalera:
+      - "Emisora = imagen − 21,4 MHz."
+    solucion: "88,0 MHz."
     comprobar:
-      - { f_d: 21400000 }
+      - { con: { f_e: 88000000 }, f_im: 109400000, f_d: 21400000 }
 
   - id: simule-imagen
     tipo: simular
@@ -93,74 +119,35 @@ tarjetas:
     comprobar:
       - { f_im: 119400000, f_o: 108700000, f_r: 76600000 }
 
-  - id: empareje-tabla
-    tipo: pregunta
-    titulo: "La tabla de la banda"
-    texto: "Empareje cada emisora con su frecuencia imagen."
-    libro: [491, 492]
-    widget:
-      tipo: grafica
-      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
-      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
-      curvas:
-        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
-    emparejar:
-      - ["88,0 MHz", "109,4 MHz"]
-      - ["98,0 MHz", "119,4 MHz"]
-      - ["108,0 MHz", "129,4 MHz"]
-    exito: "Siempre 21,4 MHz por encima: por eso basta un circuito sintonizado antes del mezclador."
-    pistas:
-      - { texto: "Sume dos veces 10,7 MHz." }
-    escalera:
-      - "La imagen está a 2·FI de la emisora."
-    solucion: "88,0 con 109,4; 98,0 con 119,4; 108,0 con 129,4."
-
-  - id: porque-origen
-    tipo: porque
-    titulo: "El origen de la Ec. 1"
-    texto: "f_oscilador − f_emisora = 10,7 MHz. ¿Es una ley física?"
-    libro: [487, 488]
-    widget:
-      tipo: grafica
-      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
-      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
-      curvas:
-        - { expr: "fx + f_F", color: naranja, rotulo: "oscilador" }
-    opciones:
-      - texto: "No: es la condición de diseño del superheterodino"
-        bien: true
-        porque: "Se elige convertir cualquier emisora a una FI fija, para amplificar y filtrar siempre a la misma frecuencia."
-      - texto: "Sí: la impone el mezclador"
-        porque: "El mezclador da suma y diferencia; el valor de 10,7 MHz es una elección de diseño."
-      - texto: "Sí: la fija la banda de FM"
-        porque: "La banda va de 88 a 108 MHz; la FI se elige."
-    escalera:
-      - "¿Quién decide cuánto vale la FI?"
-    solucion: "Es una condición de diseño."
-
   - id: pregunta-fi-alta
-    tipo: pregunta
+    tipo: explorar
     titulo: "Por qué 10,7 MHz"
-    texto: "¿Por qué se eligió 10,7 MHz como FI y no un valor menor?"
-    libro: [492]
+    texto: "La imagen cae a 2·FI de la emisora. Pruebe la FI de 455 kHz de la AM y busque la que deja la imagen fuera de la banda, de 88 a 108 MHz."
+    libro: [492, "cap16#418"]
+    fijar: { f_e: 98000000 }
+    inicio: { f_F: 455000 }
     widget:
       tipo: grafica
       x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
-      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      y: { min: 0, max: 25000000, unidad: Hz, rotulo: "imagen − emisora" }
       curvas:
-        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
-        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
-    opciones:
-      - texto: "Porque cuanto mayor la FI, más lejos cae la imagen y más fácil es filtrarla"
-        bien: true
-        porque: "Es un compromiso: la imagen pide FI alta; la selectividad entre vecinas, baja."
-      - texto: "Porque da más selectividad"
-        porque: "Al revés: la selectividad entre emisoras vecinas pide una FI baja."
-      - texto: "Porque coincide con el piloto estéreo"
-        porque: "El piloto está en la señal de audio MPX: no tiene que ver con la FI."
+        - { expr: "2*f_F + 0*fx", color: naranja, rotulo: "2·FI" }
+        - { expr: "20000000", color: tinta, rotulo: "anchura de la banda", discontinua: true }
+      lectura: { valor: f_d, rotulo: "Imagen menos emisora" }
+      mandos:
+        - { valor: f_F, lista: [455000, 10700000], rotulo: "FI" }
+    objetivo:
+      condiciones:
+        - { valor: f_d, min: 20000000, rotulo: "Separación: {{f_d}}" }
+      logrado: "Con {{f_F}}, la imagen queda a {{f_d}}, fuera de la banda y fácil de filtrar. La selectividad entre vecinas pediría una FI baja: es un compromiso."
+      pistas:
+        - { texto: "La imagen cae dentro de la banda: suba la FI." }
     escalera:
-      - "¿A qué distancia está la imagen si la FI crece?"
-    solucion: "Aleja la imagen."
+      - "Separación = 2·FI."
+    solucion: "10,7 MHz: 21,4 MHz de separación."
+    comprobar:
+      - { con: { f_F: 10700000 }, f_d: 21400000 }
+      - { con: { f_F: 455000 }, f_d: 910000 }
 
   - id: predecir-w3
     tipo: predecir
@@ -185,32 +172,10 @@ tarjetas:
       - "Mire la matriz: ¿qué pasa si L−R llega desfasada?"
     solucion: "La separación estéreo."
 
-  - id: empareje-datos
-    tipo: pregunta
-    titulo: "Datos del kit"
-    texto: "Empareje cada pieza con sus datos de la tarjeta de repaso."
-    libro: [501]
-    widget:
-      tipo: grafica
-      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
-      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
-      curvas:
-        - { expr: "fx + f_F", color: naranja, rotulo: "oscilador" }
-    emparejar:
-      - ["Transformador de FI B1", "11 espiras, 3 µH, con C13 de 75 pF"]
-      - ["Bobina del discriminador B2", "18 espiras, 7,6 µH"]
-      - ["Alimentación del display", "AMS1117-3.3, luego D3: unos 3,1 V"]
-    exito: "Con estos datos, cada pieza crítica se comprueba o se rehace."
-    pistas:
-      - { texto: "B1 es la bobina de la FI, con menos espiras." }
-    escalera:
-      - "El discriminador tiene más espiras que el transformador de FI."
-    solucion: "B1, 11 espiras y 3 µH; B2, 18 espiras y 7,6 µH; display, AMS1117 y D3."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [488, 492, 497, 500]
+    libro: [488, 492, 497, 500, "cap16#501"]
     ideas:
       - { titulo: "Ec. 1.", texto: "Oscilador menos emisora, 10,7 MHz: una condición de diseño." }
       - { titulo: "La imagen.", texto: "Siempre 21,4 MHz por encima: la rechaza un circuito antes del mezclador." }

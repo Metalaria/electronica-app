@@ -8,6 +8,11 @@
 # restar) y «tocar» en la figura 30.22 el punto del margen de fase.
 # - 1.2 (motor12e): explore-nyquist-vivo dibuja la curva de Nyquist con ω como parámetro y `aspecto: igual`; con
 #   K = 572 pasa por el −1 y con 1000 lo rodea (dos raíces a la derecha, como Routh).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): K se sube hasta que la primera columna avisa de raíces a la
+# derecha; tras predecir K_u, se marca en la gráfica de los coeficientes dónde 30 + K alcanza a 602 (la tarjeta de
+# fórmula pasa detrás del «simular»); el periodo crítico y el margen de ganancia se predicen; K se sube hasta que la
+# curva de Nyquist pasa por el −1; y los puntos del margen de ganancia y de fase se tocan en la figura 30.22. Quedan dos
+# preguntas de opciones (el margen que engaña y el retardo) y los casos especiales, por emparejar.
 leccion: cap31/sec-new-31-estabilidad
 
 libro:
@@ -53,8 +58,9 @@ tarjetas:
   - id: explore-routh
     tipo: explorar
     titulo: "La primera columna"
-    texto: "Polos en −1, −3 y −10. Suba K y mire la fila de s¹ de la tabla de Routh: cuando cambia de signo, hay raíces a la derecha."
+    texto: "Polos en −1, −3 y −10: cada cambio de signo de la primera columna de Routh es una raíz a la derecha. Suba K hasta que la tabla lo avise."
     libro: [381, 384, 385]
+    inicio: { K_r: 100 }
     widget:
       tipo: grafica
       x: { id: k, min: 0, max: 1200, unidad: "", rotulo: "K" }
@@ -68,29 +74,18 @@ tarjetas:
       datos:
         - { valor: s_0, rotulo: "Fila de s⁰: {{s_0}}" }
       mandos:
-        - { valor: K_r, lista: [100, 560, 572, 1000], rotulo: "Ganancia, K" }
-    requiere: { mover: [K_r] }
-
-  - id: formula-tercer-grado
-    tipo: formula
-    titulo: "En tercer grado, de una vez"
-    texto: "Todos los coeficientes positivos y el producto de los centrales mayor que el último."
-    libro: [377, 382, 385]
-    ec: 382
-    sustitucion: "a₂·a₁ = 14 · 43 = {{pr}} frente a a₀ = 30 + K = {{s_0}}"
-    widget:
-      tipo: grafica
-      x: { id: k, min: 0, max: 1200, unidad: "", rotulo: "K" }
-      y: { min: 0, max: 1300, unidad: "", rotulo: "coeficientes" }
-      curvas:
-        - { expr: "a_2*a_1", color: azul, rotulo: "a₂·a₁" }
-        - { expr: "a_0 + k", color: naranja, rotulo: "a₀ = 30 + K" }
-      marcas:
-        - { x: "K_r", y: "s_0", rotulo: "{{s_0}}" }
-      mandos:
-        - { valor: K_r, lista: [100, 560, 572, 1000], rotulo: "Ganancia, K" }
+        - { valor: K_r, lista: [100, 560, 1000], rotulo: "Ganancia, K" }
+    objetivo:
+      condiciones:
+        - { valor: n_c, min: 2, rotulo: "Raíces a la derecha: {{n_c}}" }
+      logrado: "Con K = {{K_r}} la fila de s¹ se vuelve negativa: dos cambios de signo, dos raíces en el semiplano derecho. La columna solo cambia en esa fila."
+      pistas:
+        - { texto: "La fila de s¹ sigue positiva: suba K." }
+    escalera:
+      - "La fila de s¹ es (14·43 − 30 − K)/14."
+    solucion: "K = 1000."
     comprobar:
-      - { pr: 602 }
+      - { con: { K_r: 1000 }, n_c: 2 }
 
   - id: simule-ku
     tipo: simular
@@ -112,8 +107,39 @@ tarjetas:
     comprobar:
       - { K_u: 572, K_e1: 602, K_e2: 20.07, tol: 0.002 }
 
+  - id: formula-tercer-grado
+    tipo: marcar
+    titulo: "En tercer grado, de una vez"
+    texto: "En tercer grado basta con todos los coeficientes positivos y a₂·a₁ > a₀. Marque la K donde a₀ = 30 + K alcanza a a₂·a₁."
+    libro: [377, 382, 385]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 1200, unidad: "", rotulo: "K" }
+      y: { min: 0, max: 1300, unidad: "", rotulo: "coeficientes" }
+      curvas:
+        - { expr: "a_0 + k", color: naranja, rotulo: "a₀ = 30 + K" }
+        - { expr: "a_2*a_1", color: azul, rotulo: "a₂·a₁" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "K_u"
+      tol: 0.02
+      inicio: { x: 1100, y: 0 }
+      rotulo: "Donde se cruzan"
+      pasos: 120
+    pistas:
+      - { cuando: { valor: marca_x, menor: 572 }, texto: "Ahí a₀ aún es menor que 602: estable. Más a la derecha." }
+      - { texto: "Ahí a₀ ya supera 602: inestable. Más a la izquierda." }
+    exito: "K = {{K_u}}: a₂·a₁ = 14 · 43 = {{pr}} frente a 30 + K. Por debajo, estable."
+    escalera:
+      - "Busque dónde se cruzan las dos rectas."
+    solucion: "En K = 572."
+    comprobar:
+      - { pr: 602, K_u: 572 }
+
   - id: periodo-critico
-    tipo: pregunta
+    tipo: simular
     titulo: "¿A qué frecuencia oscila?"
     texto: "Con K = 572 la fila de s¹ se anula y la anterior da el polinomio auxiliar 14·s² + 602 = 0. ¿Qué periodo tiene la oscilación?"
     libro: [388]
@@ -124,14 +150,16 @@ tarjetas:
       y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación" }
       curvas:
         - { expr: "sin(w_u*t)", color: naranja, rotulo: "oscilación sostenida" }
-    opciones:
-      - texto: "0,958 s: s = ±j6,56 rad/s"
-        bien: true
-        porque: "Es T_{u}, el periodo que Ziegler-Nichols mide en la planta."
-      - texto: "6,56 s"
-        porque: "6,56 es la pulsación en rad/s; el periodo es 2π entre ella."
-      - texto: "0,15 s: la inversa de 6,56"
-        porque: "6,56 son radianes por segundo, no hercios: falta el 2π."
+      mandos: []
+    simular:
+      objetivo: T_u
+      unidad: s
+      tol: 0.02
+      rotulo: "Periodo, T_{u}"
+      errores:
+        - { expr: "w_u", texto: "6,56 es la pulsación en rad/s; el periodo es 2π entre ella." }
+        - { expr: "T_i", texto: "6,56 son radianes por segundo, no hercios: falta el 2π." }
+    exito: "0,958 s, con s = ±j6,56 rad/s: es T_{u}, el periodo que Ziegler-Nichols mide en la planta."
     escalera:
       - "s² = −602/14 = −43: ω = √43."
     solucion: "ω = 6,56 rad/s y T_{u} = 2π/6,56 = 0,958 s."
@@ -140,9 +168,9 @@ tarjetas:
       - { T_i: 0.15, tol: 0.02 }
 
   - id: margen-ganancia
-    tipo: pregunta
+    tipo: simular
     titulo: "El margen de una ganancia"
-    texto: "El lazo trabaja con K = 100. ¿Qué margen de ganancia tiene?"
+    texto: "El lazo trabaja con K = 100. ¿Por cuánto se puede multiplicar la ganancia antes de oscilar?"
     libro: [387, 388]
     fijar: { K_r: 100 }
     widget:
@@ -153,17 +181,19 @@ tarjetas:
         - { expr: "(a_2*a_1 - a_0 - k)/a_2", color: naranja, rotulo: "primera columna, s¹" }
       marcas:
         - { x: "K_r", y: "s_1", rotulo: "K = 100" }
-    opciones:
-      - texto: "5,72, o 15,1 dB"
-        bien: true
-        porque: "572/100: la ganancia puede multiplicarse por 5,72 antes de oscilar; el Bode da lo mismo a 6,56 rad/s."
-      - texto: "472"
-        porque: "El margen de ganancia es un factor, no una diferencia."
-      - texto: "33,7, el valor de la fila de s¹"
-        porque: "Ese número solo dice que la columna es positiva, no cuánto margen queda."
+      mandos: []
+    simular:
+      objetivo: M_g
+      unidad: ""
+      tol: 0.02
+      rotulo: "Margen de ganancia"
+      errores:
+        - { expr: "d_K", texto: "El margen de ganancia es un factor, no una diferencia." }
+        - { expr: "s_1", texto: "Ese es el valor de la fila de s¹: solo dice que la columna es positiva." }
+    exito: "5,72, o 15,1 dB: el Bode da lo mismo a 6,56 rad/s."
     escalera:
-      - "¿Por cuánto se puede multiplicar K = 100 antes de llegar a 572?"
-    solucion: "572/100 = 5,72, es decir, 15,1 dB."
+      - "¿Por cuánto hay que multiplicar 100 para llegar a 572?"
+    solucion: "572/100 = 5,72."
     comprobar:
       - { M_g: 5.72, s_1: 33.7, d_K: 472, tol: 0.003 }
       - { M_gdb: 15.1, tol: 0.005 }
@@ -193,8 +223,9 @@ tarjetas:
   - id: explore-nyquist-vivo
     tipo: explorar
     titulo: "La curva crece con K"
-    texto: "La curva de Nyquist de K/((s + 1)(s + 3)(s + 10)). Suba K y mire cuándo la curva rodea el punto −1."
+    texto: "La curva de Nyquist de K/((s + 1)(s + 3)(s + 10)): estable si no rodea el punto −1. Suba K hasta que la curva pase justo por él."
     libro: [396, 397, 399, 400]
+    inicio: { K_r: 100 }
     widget:
       tipo: grafica
       aspecto: igual
@@ -209,22 +240,42 @@ tarjetas:
       lectura: { valor: n_c, rotulo: "Raíces en el semiplano derecho" }
       mandos:
         - { valor: K_r, lista: [100, 572, 1000], rotulo: "Ganancia, K" }
-    requiere: { mover: [K_r] }
+    objetivo:
+      condiciones:
+        - { valor: d_K, min: -1, max: 1, rotulo: "Justo en el −1" }
+      logrado: "Con K = 572 la curva toca el −1: oscilación sostenida, lo mismo que dice Routh. Con más, lo rodea dos veces: dos raíces a la derecha."
+      pistas:
+        - { cuando: { valor: K_r, mayor: 600 }, texto: "Ya lo rodea: se ha pasado." }
+        - { texto: "La curva aún corta el semieje negativo antes del −1: más ganancia." }
+    escalera:
+      - "La ganancia crítica de Routh."
+    solucion: "K = 572."
+    comprobar:
+      - { con: { K_r: 572 }, d_K: 0 }
 
   - id: explore-nyquist
-    tipo: explorar
+    tipo: tocar
     titulo: "Los márgenes en la curva de Nyquist"
-    texto: "La curva de 100/((s + 1)(s + 3)(s + 10)). Toque cada punto marcado."
+    texto: "La curva de 100/((s + 1)(s + 3)(s + 10)) corta el semieje negativo en −0,175. Toque el punto donde se lee el margen de ganancia."
     libro: [396, 397, 399, 400]
     widget:
       tipo: figura
       figura: fig-new-31-nyquist
-      zonas:
-        - { id: menos-uno, rotulo: "La cruz roja", rect: [30, 53, 38, 36], texto: "El punto −1. Con lazo abierto estable, el lazo cerrado es estable si la curva no lo rodea." }
-        - { id: corte, rotulo: "Punto naranja", rect: [72, 52, 36, 36], texto: "Corte con el semieje negativo, en −0,175: la ganancia puede multiplicarse por 5,72 antes de llegar al −1." }
-        - { id: cruce, rotulo: "Punto verde", rect: [52, 92, 36, 36], texto: "Cruce con la circunferencia unidad: le faltan 61,7° de giro para llegar al −1, el margen de fase." }
-        - { id: distancia, rotulo: "Rótulo violeta", rect: [14, 100, 36, 36], texto: "La distancia mínima al −1, 0,640: M_{s} = 1,56." }
-    requiere: { mover: [corte, cruce, distancia] }
+      zonas: &zonas-nyq
+        - { id: menos-uno, rotulo: "La cruz roja", rect: [30, 53, 38, 36] }
+        - { id: corte, rotulo: "Punto naranja", rect: [72, 52, 36, 36] }
+        - { id: cruce, rotulo: "Punto verde", rect: [52, 92, 36, 36] }
+        - { id: distancia, rotulo: "Rótulo violeta", rect: [14, 100, 36, 36] }
+    tocar:
+      bien: [corte]
+      porque:
+        menos-uno: "Es el punto crítico, la referencia de todos los márgenes."
+        cruce: "El cruce con la circunferencia unidad da el margen de fase."
+        distancia: "La distancia mínima al −1, 0,640, da M_{s} = 1,56."
+    exito: "El corte con el semieje negativo, en −0,175: la ganancia puede multiplicarse por 5,72 antes de llegar al −1."
+    escalera:
+      - "El margen de ganancia se lee sobre el semieje real negativo."
+    solucion: "El punto naranja."
 
   - id: toque-margen-fase
     tipo: tocar
@@ -234,11 +285,7 @@ tarjetas:
     widget:
       tipo: figura
       figura: fig-new-31-nyquist
-      zonas:
-        - { id: menos-uno, rotulo: "La cruz roja", rect: [30, 53, 38, 36] }
-        - { id: corte, rotulo: "Punto naranja", rect: [72, 52, 36, 36] }
-        - { id: cruce, rotulo: "Punto verde", rect: [52, 92, 36, 36] }
-        - { id: distancia, rotulo: "Rótulo violeta", rect: [14, 100, 36, 36] }
+      zonas: *zonas-nyq
     tocar:
       bien: [cruce]
       porque:

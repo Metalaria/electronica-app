@@ -6,6 +6,11 @@
 #   PI con T_i = 120 s (lazo cerrado 1/(30·s + 1)), ante un escalón de 10 °C y una rampa de 2 °C/min (figura 30.20).
 # Pasos prácticos: «reto» de colocar los polos para M_p ≤ 10 % y t_s ≤ 0,8 s (la caja de ejemplo del libro) y
 # «simular» el tiempo de pico del ejemplo (0,471 s; errores: π/ω_n y el periodo entero).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): ζ y ω_n se eligen para que apenas se pase (menos de un 2 %);
+# el pico de un segundo orden con ζ = 0,3 y ω_n = 5 rad/s se marca (t_p = π/ω_d); el cero se acerca a los polos con
+# las filas del libro (ninguno, a cinco veces, a dos veces: 16,3, 18,0 y 29,8 %; la curva es y + y′/(a·σ)) hasta pasar
+# del 25 %; la consigna se cambia a rampa para ver el tipo; y el retraso ante la rampa se predice. Quedan una pregunta
+# de opciones (el par de carga) y la tabla de los tipos, por emparejar.
 leccion: cap31/sec-new-31-respuesta
 
 libro:
@@ -36,6 +41,7 @@ modelo:
     A_e: { sim: "A", nombre: "escalón de consigna", unidad: "°C", valor: 10 }
     a_r: { sim: "a", nombre: "pendiente de la rampa", unidad: "°C/s", valor: 0.033333 }
     w_r: { sim: "consigna", nombre: "forma de la consigna", unidad: "", valor: 0 }
+    i_z: { sim: "cero", nombre: "posición del cero", unidad: "", valor: 0 }
   calculos:
     sg: { expr: "z_s*w_n", sim: "σ", nombre: "parte real de los polos", unidad: "1/s" }
     wd: { expr: "w_n*sqrt(1 - z_s^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
@@ -48,13 +54,18 @@ modelo:
     K_v: { expr: "Kp_c*K_g/T_p", sim: "K_{v}", nombre: "constante de velocidad del PI", unidad: "1/s" }
     e_r: { expr: "a_r/K_v", sim: "e_{∞}", nombre: "retraso ante la rampa", unidad: "°C" }
     e_p: { expr: "100/(1 + Kp_c*K_g)", sim: "e", nombre: "error ante el escalón con solo P", unidad: "%" }
+    c_z: { expr: "max(0, 1 - abs(i_z - 1))/5 + max(0, 1 - abs(i_z - 2))/2", sim: "1/a", nombre: "inversa de la distancia del cero en partes reales", unidad: "" }
+    Mp_z: { expr: "16.3*max(0, 1 - abs(i_z)) + 18.0*max(0, 1 - abs(i_z - 1)) + 29.8*max(0, 1 - abs(i_z - 2))", sim: "M_{p}", nombre: "sobreimpulso con el cero", unidad: "%" }
+    e_a: { expr: "a_r", sim: "a", nombre: "la pendiente sola", unidad: "°C" }
+    e_60: { expr: "2*30", sim: "e", nombre: "con la rampa en °C/min", unidad: "°C" }
 
 tarjetas:
   - id: explore-segundo-orden
     tipo: explorar
     titulo: "El segundo orden de referencia"
-    texto: "Un integrador y un polo, en lazo cerrado: dos polos. Cambie ζ y ω_{n} y mire el escalón."
-    libro: [344, 345, 348]
+    texto: "Un integrador y un polo, en lazo cerrado: dos polos. Elija ζ y ω_{n} para que el escalón apenas se pase, menos de un 2 %."
+    libro: [344, 345, 348, 352]
+    inicio: { z_s: 0.3, w_n: 5 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
@@ -72,24 +83,48 @@ tarjetas:
       mandos:
         - { valor: z_s, lista: [0.3, 0.5, 0.6, 0.8], rotulo: "Amortiguamiento, ζ" }
         - { valor: w_n, lista: [5, 8.33, 15], rotulo: "Frecuencia natural, ω_{n}" }
-    requiere: { mover: [z_s, w_n] }
+    objetivo:
+      condiciones:
+        - { valor: Mp, max: 2, rotulo: "Se pasa {{Mp}}" }
+      logrado: "Con ζ = {{z_s}}: el sobreimpulso solo depende de ζ. ω_{n} cambia la rapidez, no cuánto se pasa."
+      pistas:
+        - { texto: "Se pasa demasiado: más amortiguamiento. ω_{n} no lo arregla." }
+    escalera:
+      - "σ fija lo deprisa que decae la envolvente; ζ, cuánto se pasa."
+    solucion: "ζ = 0,8."
+    comprobar:
+      - { con: { z_s: 0.8 }, Mp: 1.52, tol: 0.01 }
 
   - id: formula-especificaciones
-    tipo: formula
+    tipo: marcar
     titulo: "Las cuatro especificaciones"
-    texto: "El sobreimpulso solo depende de ζ; el establecimiento, solo de σ = ζ·ω_{n}."
+    texto: "Pico t_{p} = π/ω_{d}, sobreimpulso, subida y establecimiento al 2 %, de unos 4/σ. Con ζ = 0,3 y ω_{n} = 5 rad/s, marque el pico."
     libro: [351, 352, 354, 356]
-    ec: 351
-    sustitucion: "M_{p} = {{Mp}}; t_{p} = π/{{wd}} = {{tp}}; t_{s} ≈ 4/{{sg}} = {{ts}}; t_{r} ≈ 1,8/{{w_n}} = {{tr}}"
+    fijar: { z_s: 0.3, w_n: 5 }
     widget:
       tipo: grafica
-      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
+      x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t", muestras: 600 }
+      y: { min: 0, max: 1.6, unidad: "", rotulo: "salida" }
       curvas:
         - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: naranja, rotulo: "respuesta" }
-      mandos:
-        - { valor: z_s, lista: [0.3, 0.5, 0.6, 0.8], rotulo: "Amortiguamiento, ζ" }
-        - { valor: w_n, lista: [5, 8.33, 15], rotulo: "Frecuencia natural, ω_{n}" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "tp"
+      tol: 0.02
+      inicio: { x: 2.6, y: 1 }
+      rotulo: "El pico"
+      pasos: 150
+    pistas:
+      - { cuando: { valor: marca_x, menor: 0.6 }, texto: "Ahí aún sube: más a la derecha." }
+      - { texto: "Ahí ya baja: el pico es el primer máximo." }
+    exito: "t_{p} = π/{{wd}} = {{tp}}, con un {{Mp}} de sobreimpulso. 4/σ = {{ts}} sobrestima el establecimiento hasta en un tercio: sirve para dimensionar."
+    escalera:
+      - "El primer máximo de la curva."
+    solucion: "En {{tp}}."
+    comprobar:
+      - { tp: 0.659, Mp: 37.2, tol: 0.01 }
 
   - id: reto-polos
     tipo: reto
@@ -145,34 +180,41 @@ tarjetas:
       - { tp: 0.471, wd: 6.67, tp_n: 0.377, tp_T: 0.943, tol: 0.003 }
 
   - id: predecir-cero
-    tipo: predecir
+    tipo: explorar
     titulo: "Un cero cercano"
-    texto: "A un par de polos con ζ = 0,5, que se pasa un 16,3 %, se le añade un cero a dos veces su parte real. ¿Qué pasa?"
+    texto: "Un par de polos con ζ = 0,5 se pasa un 16,3 %. Acérqueles un cero hasta que se pase más de la cuarta parte."
+    nota: "Sobreimpulsos de la tabla del libro."
     libro: [360]
-    fijar: { z_s: 0.5 }
+    fijar: { z_s: 0.5, w_n: 8.33 }
+    inicio: { i_z: 0 }
     widget:
       tipo: grafica
-      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t" }
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t", muestras: 600 }
       y: { min: 0, max: 1.5, unidad: "", rotulo: "salida" }
       curvas:
-        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: naranja, rotulo: "sin el cero" }
-    opciones:
-      - texto: "Se pasa mucho más: un 29,8 %"
-        bien: true
-        porque: "Un cero cercano siempre aumenta el sobreimpulso; a más de cinco veces se podría ignorar."
-      - texto: "Se pasa menos: un 8,1 %"
-        porque: "Eso hace un polo añadido a dos veces, no un cero."
-      - texto: "Nada: solo cuentan los polos dominantes"
-        porque: "Lo que esté a menos de cinco veces cuenta, y este está a dos."
+        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s)) + c_z/sg*w_n/sqrt(1 - z_s^2)*exp(-sg*t)*sin(wd*t)", color: naranja, rotulo: "con el cero" }
+        - { expr: "1 - exp(-sg*t)/sqrt(1 - z_s^2)*sin(wd*t + atan2(sqrt(1 - z_s^2), z_s))", color: tinta, rotulo: "sin el cero", discontinua: true }
+      lectura: { valor: Mp_z, rotulo: "Sobreimpulso" }
+      mandos:
+        - { valor: i_z, lista: [0, 1, 2], nombres: [sin cero, a cinco veces, a dos veces], rotulo: "Cero, en partes reales" }
+    objetivo:
+      condiciones:
+        - { valor: Mp_z, min: 25, rotulo: "Se pasa {{Mp_z}}" }
+      logrado: "A dos veces, un 29,8 %: un cero cercano siempre aumenta el sobreimpulso. A más de cinco veces se puede ignorar."
+      pistas:
+        - { texto: "A cinco veces apenas cambia: acérquelo más." }
     escalera:
-      - "Polos añadidos frenan; ceros cercanos aceleran y empujan el pico."
-    solucion: "Sube al 29,8 %."
+      - "Polos añadidos frenan; ceros cercanos empujan el pico."
+    solucion: "El cero a dos veces la parte real."
+    comprobar:
+      - { con: { i_z: 2 }, Mp_z: 29.8, c_z: 0.5 }
 
   - id: explore-tipo
     tipo: explorar
     titulo: "Tipo 0 y tipo 1"
-    texto: "La planta del problema 30.B, con solo P y con PI. Cambie la consigna a una rampa y mire el error."
+    texto: "La planta del problema 30.B ante un escalón de 10 °C, con solo P y con PI. Cambie la consigna a una rampa y mire quién se queda atrás."
     libro: [366, 368, 370]
+    inicio: { w_r: 0 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 1200, unidad: s, rotulo: "t" }
@@ -184,12 +226,20 @@ tarjetas:
       lectura: { valor: e_r, rotulo: "Retraso del PI en la rampa" }
       mandos:
         - { valor: w_r, lista: [0, 1], nombres: [escalón, rampa], rotulo: "Consigna" }
-    requiere: { mover: [w_r] }
+    objetivo:
+      condiciones:
+        - { valor: w_r, min: 1, rotulo: "Consigna en rampa" }
+      logrado: "Con el escalón, el P se quedaba un 20 % abajo y el PI llegaba. Con la rampa, el P se queda cada vez más atrás: tipo 0. El PI la sigue con un retraso fijo: tipo 1."
+      pistas:
+        - { texto: "Con el escalón ya se ve el tipo 0; ponga la rampa." }
+    escalera:
+      - "El tipo es el número de integradores del lazo."
+    solucion: "Consigna en rampa."
     comprobar:
       - { e_p: 20, K_v: 0.033333, tol: 0.002 }
 
   - id: estime-rampa
-    tipo: pregunta
+    tipo: simular
     titulo: "El error de seguimiento"
     texto: "El PI hace el lazo de tipo 1, con K_{v} = 1/30 s⁻¹. ¿Con qué retraso sigue una rampa de 2 °C/min?"
     libro: [366, 368, 373]
@@ -201,24 +251,21 @@ tarjetas:
       curvas:
         - { expr: "a_r*t", color: tinta, rotulo: "consigna", discontinua: true }
         - { expr: "a_r*(t - 30*(1 - exp(-t/30)))", color: naranja, rotulo: "PI" }
-    estimar:
-      objetivo: "e_r"
+      mandos: []
+    simular:
+      objetivo: e_r
       unidad: "°C"
-      min: 0
-      max: 5
-      paso: 0.1
-      inicio: 3
-      tol: 0.06
+      tol: 0.04
       rotulo: "Retraso"
-    exito: "1,0 °C: A/K_{v}, constante. El P, en cambio, se queda cada vez más atrás."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.06 }, texto: "Demasiado: el error es la pendiente entre K_{v}, en °C/s y s⁻¹." }
-      - { texto: "Se queda corto: 0,0333 °C/s entre 1/30 s⁻¹." }
+      errores:
+        - { expr: "e_60", texto: "Ha usado la rampa en °C/min con K_{v} en s⁻¹: pásela a 0,0333 °C/s." }
+        - { expr: "e_a", texto: "Falta dividir entre K_{v}: e = A/K_{v}." }
+    exito: "1,0 °C: A/K_{v}, constante. Se mide con una triangular lenta como consigna."
     escalera:
       - "Rampa de pendiente A en un tipo 1: e = A/K_{v}."
     solucion: "0,0333 × 30 = 1,0 °C."
     comprobar:
-      - { e_r: 1.0, tol: 0.002 }
+      - { e_r: 1.0, e_60: 60, tol: 0.002 }
 
   - id: empareje-tipos
     tipo: pregunta

@@ -5,6 +5,10 @@
 # - La red de retraso con β = 11,7 del servo: el retraso de fase a 7 rad/s según dónde se ponga ω_z (ω_p = ω_z/β).
 # Pasos prácticos: «simular» la α que da 42° (5,05; error típico: olvidar los 10° de reserva) y «dibujar» la fase de
 # la red del servo (ω_z = 20,9 y ω_p = 105,4 rad/s) sobre un eje logarítmico.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): α se elige para un adelanto de más de 50° (α = 10, 54,9°);
+# la subida √α en ω_m (10 dB) y el máximo del PD filtrado con N = 10 (56,4°) se predicen; α se baja hasta que el ruido
+# salga como mucho cinco veces mayor; el cero del retraso se pone donde quite poca fase en el cruce (0,7 rad/s). Quedan
+# dos preguntas de opciones (adelanto o retraso, y cancelar un polo) y las cuatro opciones del servo, por emparejar.
 leccion: cap31/sec-new-31-compensacion
 
 libro:
@@ -42,13 +46,16 @@ modelo:
     al_e: { expr: "(1 + sin(phi_e*pi/180))/(1 - sin(phi_e*pi/180))", sim: "α", nombre: "α sin reserva", unidad: "" }
     w_pr: { expr: "w_zr/be", sim: "ω_{p}", nombre: "polo del retraso", unidad: "rad/s" }
     lag7: { expr: "(atan(7/w_pr) - atan(7/w_zr))*180/pi", sim: "Δφ", nombre: "retraso de fase a 7 rad/s", unidad: "°" }
+    G_x: { expr: "20*log10(al)", sim: "|C|", nombre: "con α en lugar de √α", unidad: dB }
+    phi_N: { expr: "asin((al - 2)/al)*180/pi", sim: "φ_{m}", nombre: "con α = N", unidad: "°" }
 
 tarjetas:
   - id: explore-adelanto
     tipo: explorar
     titulo: "La red de adelanto"
-    texto: "Un cero por debajo de un polo, centrados en 46,9 rad/s. Cambie α y mire cuánta fase adelanta."
-    libro: [407, 409, 417]
+    texto: "Un cero por debajo de un polo, centrados en 46,9 rad/s. Elija la α que adelanta más de 50° sin pasar de 60°."
+    libro: [407, 409, 413, 417]
+    inicio: { al: 2 }
     widget:
       tipo: grafica
       x: { id: w, min: 1, max: 10000, unidad: "rad/s", rotulo: "ω", escala: log }
@@ -62,50 +69,74 @@ tarjetas:
         - { valor: G_m, rotulo: "Ganancia en ω_{m}: {{G_m}}" }
       mandos:
         - { valor: al, lista: [2, 3, 5, 10, 20], rotulo: "α = ω_{p}/ω_{z}" }
-    requiere: { mover: [al] }
+    objetivo:
+      condiciones:
+        - { valor: phi_m, min: 50, max: 60, rotulo: "Adelanto: {{phi_m}}" }
+      logrado: "α = {{al}}: {{phi_m}} en el centro logarítmico, ω_{m} = √(ω_{z}·ω_{p})."
+      pistas:
+        - { cuando: { valor: phi_m, mayor: 60 }, texto: "Demasiado adelanto: baje α." }
+        - { texto: "Poco adelanto: separe más el cero del polo." }
+    escalera:
+      - "Cuanto más separados cero y polo, más adelanto."
+    solucion: "α = 10: 54,9°."
+    comprobar:
+      - { con: { al: 10 }, phi_m: 54.9, tol: 0.002 }
 
   - id: formula-adelanto
-    tipo: formula
+    tipo: simular
     titulo: "El máximo y dónde está"
-    texto: "El máximo está en el centro logarítmico del tramo, y allí la red sube √α."
+    texto: "El máximo está en el centro logarítmico, ω_{m} = √(ω_{z}·ω_{p}), y allí la red sube √α. Con α = 10, ¿cuántos dB sube?"
     libro: [411, 413]
-    ec: 411
-    sustitucion: "α = {{al}}: φ_{m} = {{phi_m}}, ganancia {{G_m}}"
+    fijar: { al: 10 }
     widget:
       tipo: grafica
       x: { id: a, min: 1, max: 25, unidad: "", rotulo: "α" }
       y: { min: 0, max: 80, unidad: "°", rotulo: "φ_{m}" }
       curvas:
         - { expr: "asin((a - 1)/(a + 1))*180/pi", color: naranja, rotulo: "adelanto máximo" }
-      marcas:
-        - { x: "al", y: "phi_m", rotulo: "{{phi_m}}" }
-      mandos:
-        - { valor: al, lista: [2, 3, 5, 10, 20], rotulo: "α" }
+      mandos: []
+    simular:
+      objetivo: G_m
+      unidad: dB
+      tol: 0.03
+      rotulo: "Ganancia en ω_{m}"
+      errores:
+        - { expr: "G_x", texto: "Esos son α veces; en ω_{m} la red sube √α, la mitad en decibelios." }
+    exito: "10 dB: √10 veces. Por eso, al añadir la red, el cruce sube."
+    escalera:
+      - "√α en decibelios es 20·log₁₀ √α = 10·log₁₀ α."
+    solucion: "10·log₁₀ 10 = 10 dB."
     comprobar:
-      - { con: { al: 10 }, phi_m: 54.9, tol: 0.002 }
+      - { G_m: 10, G_x: 20 }
 
   - id: precio-ruido
-    tipo: predecir
+    tipo: explorar
     titulo: "El precio del adelanto"
-    texto: "Por encima de ω_{p}, la red amplifica α veces. ¿Qué se nota en un servo con motor?"
+    texto: "Por encima de ω_{p}, la red amplifica α veces: en un motor se oye como un siseo. Baje α hasta que el ruido salga como mucho cinco veces mayor."
     libro: [410, 441]
+    inicio: { al: 20 }
     widget:
       tipo: grafica
       x: { id: w, min: 1, max: 10000, unidad: "rad/s", rotulo: "ω", escala: log }
-      y: { min: 0, max: 70, unidad: "°", rotulo: "fase" }
+      y: { min: 0, max: 28, unidad: dB, rotulo: "|C|" }
       curvas:
-        - { expr: "(atan(w/w_z) - atan(w/w_p))*180/pi", color: naranja, rotulo: "adelanto" }
-    opciones:
-      - texto: "Un siseo y un driver más caliente: el ruido de alta frecuencia sale multiplicado por α"
-        bien: true
-        porque: "Si molesta, se baja α o se añade un polo por encima del cruce."
-      - texto: "Más error en régimen permanente"
-        porque: "Con K_{c} = 1 el adelanto no toca K_{v}: el error no cambia."
-      - texto: "Un cruce más lento"
-        porque: "Al contrario: el adelanto lleva el cruce más arriba."
+        - { expr: "20*log10(sqrt(1 + (w/w_z)^2)/sqrt(1 + (w/w_p)^2))", color: naranja, rotulo: "ganancia de la red" }
+      lectura: { valor: al, rotulo: "Ruido de alta frecuencia, veces" }
+      datos:
+        - { valor: phi_m, rotulo: "Adelanto que queda: {{phi_m}}" }
+      mandos:
+        - { valor: al, lista: [2, 3, 5, 10, 20], rotulo: "α" }
+    objetivo:
+      condiciones:
+        - { valor: al, max: 5, rotulo: "Ruido × {{al}}" }
+      logrado: "Menos siseo y menos calor en el driver, a cambio de menos adelanto: {{phi_m}}. La otra salida es un polo por encima del cruce."
+      pistas:
+        - { texto: "El ruido aún sale demasiado amplificado: baje α." }
     escalera:
-      - "¿Qué frecuencias sube la red α veces?"
-    solucion: "El ruido de alta frecuencia, multiplicado por α: siseo y calor."
+      - "A alta frecuencia la red vale α."
+    solucion: "α = 5 o menos."
+    comprobar:
+      - { con: { al: 5 }, phi_m: 41.8, tol: 0.01 }
 
   - id: simule-alfa
     tipo: simular
@@ -157,8 +188,9 @@ tarjetas:
   - id: explore-retraso
     tipo: explorar
     titulo: "La red de retraso"
-    texto: "El polo por debajo del cero baja la ganancia β = 11,7 veces. Mueva el cero y mire cuánta fase quita en el cruce, a 7 rad/s."
+    texto: "El polo por debajo del cero baja la ganancia β = 11,7 veces. Ponga el cero donde quite poca fase en el cruce, a 7 rad/s, sin alejarlo de más."
     libro: [423]
+    inicio: { w_zr: 7 }
     widget:
       tipo: grafica
       x: { id: w, min: 0.001, max: 100, unidad: "rad/s", rotulo: "ω", escala: log }
@@ -168,9 +200,18 @@ tarjetas:
       lectura: { valor: lag7, rotulo: "Retraso de fase a 7 rad/s" }
       mandos:
         - { valor: w_zr, lista: [0.07, 0.7, 7], rotulo: "Cero, ω_{z}" }
-    requiere: { mover: [w_zr] }
+    objetivo:
+      condiciones:
+        - { valor: lag7, min: 1, max: 6, rotulo: "Quita {{lag7}}" }
+      logrado: "Una década por debajo del cruce: con ω_{z} = 0,700 y ω_{p} = 0,060 rad/s cruza a 7,03 rad/s con 49,7°."
+      pistas:
+        - { cuando: { valor: lag7, mayor: 6 }, texto: "Encima del cruce quita demasiada fase: bájelo." }
+        - { texto: "Tan abajo, la cola lenta se alarga sin ganar nada: súbalo." }
+    escalera:
+      - "Una década por debajo del cruce."
+    solucion: "ω_{z} = 0,7 rad/s."
     comprobar:
-      - { con: { w_zr: 0.7 }, w_pr: 0.06, tol: 0.003 }
+      - { con: { w_zr: 0.7 }, w_pr: 0.06, lag7: 5.2, tol: 0.02 }
 
   - id: empareje-opciones
     tipo: pregunta
@@ -217,7 +258,7 @@ tarjetas:
     solucion: "Solo falta ganancia a baja frecuencia: retraso."
 
   - id: pid-redes
-    tipo: pregunta
+    tipo: simular
     titulo: "El PID visto como redes"
     texto: "Un PD con el filtro de la derivada es un adelanto con α = N + 1. Con N = 10, ¿cuánto adelanta como mucho?"
     libro: [414, 431, 433]
@@ -228,19 +269,21 @@ tarjetas:
       y: { min: 0, max: 80, unidad: "°", rotulo: "φ_{m}" }
       curvas:
         - { expr: "asin((a - 1)/(a + 1))*180/pi", color: naranja, rotulo: "adelanto máximo" }
-    opciones:
-      - texto: "56,4°"
-        bien: true
-        porque: "α = 11: algo más que los 54,9° de α = 10."
-      - texto: "90°, como una derivada pura"
-        porque: "El filtro limita α: la derivada pura sería α infinita."
-      - texto: "54,9°, el de α = 10"
-        porque: "α es N + 1 = 11, no N."
+      mandos: []
+    simular:
+      objetivo: phi_m
+      unidad: "°"
+      tol: 0.01
+      rotulo: "Adelanto máximo"
+      errores:
+        - { expr: "phi_N", texto: "Ha tomado α = N; es N + 1 = 11." }
+        - { expr: "90", texto: "90° sería la derivada pura, con α infinita; el filtro la limita." }
+    exito: "56,4°: algo más que los 54,9° de α = 10. Un PI, en cambio, es un retraso con el polo en el origen."
     escalera:
-      - "Calcule α = N + 1 y busque su φ_{m} en la curva."
+      - "φ_{m} = arcsen((α − 1)/(α + 1)) con α = 11."
     solucion: "α = 11: 56,4°."
     comprobar:
-      - { phi_m: 56.4, tol: 0.002 }
+      - { phi_m: 56.4, phi_N: 54.9, tol: 0.002 }
 
   - id: cancelar-inestable
     tipo: pregunta

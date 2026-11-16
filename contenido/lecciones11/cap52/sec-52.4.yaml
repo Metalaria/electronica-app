@@ -4,6 +4,9 @@
 # - El par I/Q en el plano complejo (figura 53.9 izquierda): una marca en (I, Q) y el círculo de radio uno.
 # Pasos prácticos: «tocar» en la figura 53.9 las dos emisiones reales del espectro con desequilibrio, y «banco»
 # opcional: medir el rechazo de imagen de un receptor (bloque 121: unos 40 dB en una SDR barata).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca el par I/Q de fase 90°; la fase de (0,6; 0,8) se
+# calcula; en la figura 53.9 se toca el pico del offset de continua (el emparejar de defectos va a su éxito) y las dos
+# emisiones reales. La pregunta del signo se funde en la de cómo se obtienen I y Q. Quedan dos preguntas de opciones.
 leccion: cap52/sec-52.4
 
 libro:
@@ -39,12 +42,13 @@ modelo:
   calculos:
     A_v: { expr: "sqrt(I_v^2 + Q_v^2)", sim: "amplitud", nombre: "amplitud", unidad: "", cifras: 3 }
     p_v: { expr: "atan2(Q_v, I_v)*180/pi", sim: "φ", nombre: "fase", unidad: "°" }
+    p_x: { expr: "atan2(I_v, Q_v)*180/pi", sim: "φ", nombre: "con I y Q cambiados", unidad: "°" }
 
 tarjetas:
   - id: explore-iq
     tipo: explorar
     titulo: "Dos números, una señal"
-    texto: "La señal es I·cos ωt − Q·sen ωt. Cambie I y Q: cambian a la vez la amplitud y la fase de la portadora."
+    texto: "La señal es I·cos ωt − Q·sen ωt: I y Q cambian a la vez amplitud y fase. Busque la portadora de amplitud uno adelantada 90°."
     nota: "Portadora de ejemplo."
     libro: [93, 94, 95]
     widget:
@@ -60,15 +64,26 @@ tarjetas:
       mandos:
         - { valor: I_v, lista: [1, 0.6, 0, -0.6], rotulo: "I" }
         - { valor: Q_v, lista: [0, 0.8, 1, -0.8], rotulo: "Q" }
-    requiere: { mover: [I_v, Q_v] }
+    inicio: { I_v: 1, Q_v: 0 }
+    objetivo:
+      condiciones:
+        - { valor: p_v, objetivo: 90, tol: 0.01, rotulo: "Fase: {{p_v}}" }
+        - { valor: A_v, objetivo: 1, tol: 0.01, rotulo: "Amplitud: {{A_v}}" }
+      logrado: "I = {{I_v}} y Q = {{Q_v}}: toda la señal en cuadratura. Juntas contienen toda la información."
+      pistas:
+        - { texto: "Pruebe a quitar I y dejar solo Q." }
+    escalera:
+      - "Fase 90°: el punto sobre el eje Q."
+    solucion: "I = 0 y Q = 1."
+    comprobar:
+      - { con: { I_v: 0, Q_v: 1 }, p_v: 90, A_v: 1 }
 
   - id: formula-amplitud
-    tipo: formula
+    tipo: simular
     titulo: "Amplitud y fase"
-    texto: "El par (I, Q) es un punto del plano complejo: su distancia al origen es la amplitud y su ángulo, la fase."
+    texto: "El par (I, Q) es un punto del plano complejo: su distancia al origen es la amplitud y su ángulo, la fase. ¿Qué fase tiene I = 0,6, Q = 0,8?"
     libro: [96, 97, 116]
-    ec: 96
-    sustitucion: "√({{I_v}}² + {{Q_v}}²) = {{A_v}}; φ = {{p_v}}"
+    fijar: { I_v: 0.6, Q_v: 0.8 }
     widget:
       tipo: grafica
       x: { id: x, min: -1.3, max: 1.3, unidad: "", rotulo: "I" }
@@ -78,20 +93,25 @@ tarjetas:
         - { expr: "-sqrt(max(0, 1 - x^2))", color: tinta, rotulo: "radio uno", discontinua: true }
       marcas:
         - { x: "I_v", y: "Q_v", rotulo: "I + jQ" }
-      lectura: { valor: A_v, rotulo: "Amplitud" }
-      datos:
-        - { valor: p_v, rotulo: "Fase: {{p_v}}" }
-      mandos:
-        - { valor: I_v, lista: [1, 0.6, 0, -0.6], rotulo: "I" }
-        - { valor: Q_v, lista: [0, 0.8, 1, -0.8], rotulo: "Q" }
+    simular:
+      objetivo: p_v
+      unidad: "°"
+      tol: 0.02
+      rotulo: "Fase"
+      errores:
+        - { expr: "p_x", texto: "Ha invertido el cociente: la fase es arctan(Q/I)." }
+    exito: "53,1°, con amplitud 1: el punto está sobre el círculo de radio uno."
+    escalera:
+      - "φ = arctan(Q/I)."
+    solucion: "arctan(0,8/0,6) = 53,1°."
     comprobar:
-      - { con: { I_v: 0.6, Q_v: 0.8 }, A_v: 1 }
+      - { p_v: 53.13, p_x: 36.87, A_v: 1 }
 
   - id: pregunta-obtener
     tipo: pregunta
     titulo: "Cómo se obtienen I y Q"
     texto: "¿Qué hace falta para sacar I y Q de la señal de antena?"
-    libro: [98, 100]
+    libro: [98, 100, 101, 102, 103]
     widget:
       tipo: figura
       figura: fig-52.6
@@ -105,52 +125,36 @@ tarjetas:
         porque: "Es el mismo oscilador: lo que cambia entre los dos canales es la fase, 90°."
       - texto: "Un solo mezclador y un filtro que separa I de Q"
         porque: "Un solo producto da una sola señal real: la fase se pierde."
+    exito: "Y cada canal se muestrea a la mitad: el signo de la frecuencia queda en la fase entre ambos, y distingue lo de arriba y abajo del oscilador."
     escalera:
       - "I va en fase y Q en cuadratura: ¿respecto a qué?"
     solucion: "Dos mezcladores con el mismo oscilador, uno desfasado 90°, y sus paso bajo."
 
-  - id: predecir-signo
-    tipo: predecir
-    titulo: "10 kHz por encima o por debajo"
-    texto: "Dos señales, una 10 kHz por encima del oscilador local y otra 10 kHz por debajo. ¿Qué las distingue tras el muestreo en cuadratura?"
-    libro: [101, 102, 103]
-    widget:
-      tipo: figura
-      figura: fig-52.6
-      zonas:
-        - { id: todo, rotulo: "La señal como número complejo", rect: [0, 0, 450, 173] }
-    opciones:
-      - texto: "La relación de fase entre I y Q, que cambia de signo"
-        bien: true
-        porque: "Un muestreo real da la misma frecuencia para las dos; con I/Q el signo se conserva."
-      - texto: "La amplitud de I"
-        porque: "I es igual en los dos casos: lo que cambia es el signo de Q respecto a I."
-      - texto: "Nada: caen en la misma frecuencia"
-        porque: "Eso pasa con un solo canal real; la cuadratura las separa."
-    escalera:
-      - "Una de las dos gira en un sentido en el plano complejo; la otra, en el contrario."
-    solucion: "El signo del desfase entre I y Q."
-
   - id: empareje-desequilibrio
-    tipo: pregunta
+    tipo: tocar
     titulo: "El defecto característico"
-    texto: "Empareje cada defecto de una SDR de bajo coste con su síntoma en la pantalla."
+    texto: "Espectro de una SDR barata. Toque la raya que no es ni emisión ni imagen: la del offset de continua."
     libro: [105, 107, 108, 109, 110]
     widget:
       tipo: figura
       figura: fig-52.7
-      zonas:
-        - { id: todo, rotulo: "Plano complejo y la firma del desequilibrio", rect: [0, 0, 446, 187] }
-    emparejar:
-      - ["Error de ganancia entre I y Q", "Réplicas espejadas: la imagen"]
-      - ["Desfase distinto de 90°", "También la imagen"]
-      - ["Offset de continua", "Un pico fijo en el centro"]
-    exito: "Se corrigen en digital: se estima el desequilibrio y se compensa."
-    pistas:
-      - { texto: "El offset de continua no produce imagen." }
+      zonas: &zonas-esp
+        - { id: img17, rotulo: "Primera raya por la izquierda", rect: [226, 30, 36, 106] }
+        - { id: img8, rotulo: "Segunda raya por la izquierda", rect: [269, 30, 36, 106] }
+        - { id: centro, rotulo: "Raya del centro", rect: [307, 30, 36, 106] }
+        - { id: real8, rotulo: "Segunda raya por la derecha", rect: [346, 30, 36, 106] }
+        - { id: real17, rotulo: "Primera raya por la derecha", rect: [389, 30, 36, 106] }
+    tocar:
+      bien: [centro]
+      porque:
+        img17: "Es una imagen, réplica espejada de una emisión."
+        img8: "Es una imagen, réplica espejada de una emisión."
+        real8: "Es una emisión real."
+        real17: "Es una emisión real."
+    exito: "Pico fijo en el centro. Error de ganancia o desfase distinto de 90° dan, en cambio, las imágenes; todo se estima y se compensa en digital."
     escalera:
-      - "Los dos primeros son desequilibrios entre los canales; el tercero, no."
-    solucion: "Ganancia y fase, la imagen; offset, el pico central."
+      - "El offset de continua es frecuencia cero: el centro."
+    solucion: "La raya del centro."
 
   - id: toque-reales
     tipo: tocar
@@ -160,12 +164,7 @@ tarjetas:
     widget:
       tipo: figura
       figura: fig-52.7
-      zonas:
-        - { id: img17, rotulo: "Primera raya por la izquierda", rect: [226, 30, 36, 106] }
-        - { id: img8, rotulo: "Segunda raya por la izquierda", rect: [269, 30, 36, 106] }
-        - { id: centro, rotulo: "Raya del centro", rect: [307, 30, 36, 106] }
-        - { id: real8, rotulo: "Segunda raya por la derecha", rect: [346, 30, 36, 106] }
-        - { id: real17, rotulo: "Primera raya por la derecha", rect: [389, 30, 36, 106] }
+      zonas: *zonas-esp
     tocar:
       bien: [real8, real17]
       todas: true

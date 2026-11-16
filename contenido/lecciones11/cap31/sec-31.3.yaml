@@ -6,6 +6,13 @@
 #   K_d = 0,05 s, N = 10, T_s = 10 ms: T_f = 5 ms y n = 1,5).
 # Paso práctico: «simular» la K_p de Ziegler-Nichols en lazo abierto del ejemplo del libro (6; errores típicos: la
 # fila del P o la del PI, y la razón invertida).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): K_p se sube hasta dejar el error del P por debajo del 10 %
+# (y aun así queda); el segundo pico de Ziegler-Nichols (la cuarta parte de un primero del 60 %), el T_i del problema
+# 30.A y la n del filtro se calculan (simular sobre el modelo); N se elige para que el filtro empiece a cortar por
+# encima de 1 000 rad/s; la derivada se pasa del error a la medida para quitar el pico de un escalón de consigna
+# (planta de ejemplo de 1 s y filtro de 50 ms); y el PID se mueve del bucle principal a una interrupción hasta que el
+# periodo deja de bailar (jitter de ejemplo). Quedan dos preguntas de opciones (el error del P y el windup) y el
+# emparejamiento de los métodos.
 leccion: cap31/sec-31.3
 
 libro:
@@ -51,6 +58,11 @@ modelo:
     Kd_f: { sim: "K_{d}", nombre: "ganancia derivativa", unidad: s, valor: 0.05 }
     N_f: { sim: "N", nombre: "factor del filtro", unidad: "", valor: 10 }
     Ts_f: { sim: "T_{s}", nombre: "periodo de muestreo", unidad: s, valor: 0.01 }
+    M_1: { sim: "M_{1}", nombre: "primer pico de la sobreoscilación", unidad: "%", valor: 60 }
+    k_dm: { sim: "D", nombre: "derivada sobre la medida", unidad: "", valor: 0 }
+    T_y: { sim: "τ_{y}", nombre: "respuesta de la medida, de ejemplo", unidad: s, valor: 1 }
+    T_fk: { sim: "T_{f}", nombre: "filtro de la derivada, de ejemplo", unidad: s, valor: 0.05 }
+    k_int: { sim: "dónde", nombre: "el PID va en una interrupción", unidad: "", valor: 0 }
   calculos:
     y_P: { expr: "Kp_c*K_g/(1 + Kp_c*K_g)", sim: "y_{P}", nombre: "salida final con solo P", unidad: "" }
     e_P: { expr: "100/(1 + Kp_c*K_g)", sim: "e", nombre: "error permanente con solo P", unidad: "%" }
@@ -64,14 +76,19 @@ modelo:
     Kp_inv: { expr: "1.2*L_z/T_z", sim: "K_{p}", nombre: "K_p con la razón invertida", unidad: "" }
     Tf_f: { expr: "Kd_f/(N_f*Kp_f)", sim: "T_{f}", nombre: "constante de tiempo del filtro", unidad: s }
     n_f: { expr: "1 + Tf_f/Ts_f", sim: "n", nombre: "filtro en muestras", unidad: "" }
+    M_2: { expr: "M_1/4", sim: "M_{2}", nombre: "segundo pico", unidad: "%" }
+    w_f: { expr: "1/Tf_f", sim: "1/T_{f}", nombre: "donde el filtro empieza a cortar", unidad: "rad/s" }
+    D_pk: { expr: "(1 - k_dm)*(Kd_f/T_fk) + k_dm*(Kd_f/T_y)", sim: "D_{máx}", nombre: "pico del término derivativo", unidad: "", cifras: 2 }
+    j_s: { expr: "1 - k_int", sim: "jitter", nombre: "el periodo baila", unidad: "" }
 
 tarjetas:
   - id: explore-p-pi
     tipo: explorar
     titulo: "Lo que añade la integral"
-    texto: "La planta del horno con solo P y con PI. Suba K_{p}: ¿alguna vez llega el P a la consigna?"
+    texto: "La planta del horno con solo P y con PI. Suba K_{p} hasta que el error permanente del P baje del 10 %."
     nota: "El PI tiene aquí T_{i} = τ."
     libro: ["cap31#686", 83, 84]
+    inicio: { Kp_c: 1 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 600, unidad: s, rotulo: "t" }
@@ -83,7 +100,17 @@ tarjetas:
       lectura: { valor: e_P, rotulo: "Error permanente con solo P" }
       mandos:
         - { valor: Kp_c, lista: [1, 2, 5, 20], rotulo: "Ganancia proporcional" }
-    requiere: { mover: [Kp_c] }
+    objetivo:
+      condiciones:
+        - { valor: e_P, max: 10, rotulo: "Error del P: {{e_P}}" }
+      logrado: "Con K_{p} = {{Kp_c}} el P se queda a {{e_P}} de la consigna: menos, pero nunca cero. El PI llega."
+      pistas:
+        - { texto: "El P aún se queda lejos: más ganancia." }
+    escalera:
+      - "El error del P es 1/(1 + K_{p}·K)."
+    solucion: "K_{p} = 20."
+    comprobar:
+      - { con: { Kp_c: 20 }, e_P: 5.88, tol: 0.01 }
 
   - id: porque-p-error
     tipo: porque
@@ -151,47 +178,54 @@ tarjetas:
       - { Kp_ol: 6, Kp_olP: 5, Kp_olPI: 4.5, Kp_inv: 0.24 }
 
   - id: zn-agresivo
-    tipo: pregunta
+    tipo: simular
     titulo: "Un punto de partida"
-    texto: "Con esa planta y el PID de la tabla, ¿cómo es la respuesta al escalón de consigna?"
+    texto: "Ziegler-Nichols busca que cada pico sea la cuarta parte del anterior. Con la planta del ejemplo se pasa más de un 60 %: ¿cuánto se pasa el segundo pico?"
     libro: [89, 90]
     widget:
       tipo: figura
       figura: fig-31.5
       zonas:
         - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
-    opciones:
-      - texto: "Se pasa más de un 60 %: sintoniza agresivo"
-        bien: true
-        porque: "Busca que cada pico sea la cuarta parte del anterior: es un punto de partida, no un resultado."
-      - texto: "Llega sin pasarse: la tabla está optimizada"
-        porque: "Esa respuesta suave es la del método lambda, no la de Ziegler-Nichols."
-      - texto: "Oscila sin parar"
-        porque: "Oscila amortiguado: cada pico, la cuarta parte del anterior."
+    simular:
+      objetivo: M_2
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Segundo pico"
+      errores:
+        - { expr: "M_1/2", texto: "No es la mitad: cada pico es la cuarta parte del anterior." }
+        - { expr: "M_1/16", texto: "Esa sería la cuarta parte de la cuarta parte: el tercer pico." }
+    exito: "Un 15 %: oscila amortiguado y agresivo. Ziegler-Nichols sirve como punto de partida, no como resultado final."
     escalera:
-      - "¿Qué busca el método entre un pico y el siguiente?"
-    solucion: "Más de un 60 % de sobreoscilación: luego se afina."
+      - "Cuarta parte de 60."
+    solucion: "60 / 4 = 15 %."
+    comprobar:
+      - { M_2: 15 }
 
   - id: formula-zn-cerrado
-    tipo: formula
+    tipo: simular
     titulo: "Ziegler-Nichols en lazo cerrado"
-    texto: "Se sube K_{p} hasta la oscilación sostenida y se anotan K_{u} y T_{u}. Pruebe los del problema 30.A."
+    texto: "Se sube K_{p} hasta la oscilación sostenida y se anotan K_{u} y T_{u}; la tabla da T_{i} = T_{u}/2. Con los del problema 30.A, calcule T_{i}."
     libro: [91, 92, "cap31#673", "cap31#675", "cap31#678"]
-    ec: 92
-    sustitucion: "0,6 · {{K_u}} = {{Kp_zn}}; {{T_u}}/2 = {{Ti_zn}}; {{T_u}}/8 = {{Td_zn}}"
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
       y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación" }
       curvas:
-        - { expr: "sin(2*pi*t/T_u)", color: naranja, rotulo: "oscilación sostenida" }
-      lectura: { valor: Kp_zn, rotulo: "K_{p} del PID" }
-      datos:
-        - { valor: Ti_zn, rotulo: "T_{i} = {{Ti_zn}}" }
-        - { valor: Td_zn, rotulo: "T_{d} = {{Td_zn}}" }
-      mandos:
-        - { valor: K_u, lista: [4, 6, 8], rotulo: "Ganancia crítica, K_{u}" }
-        - { valor: T_u, lista: [1, 1.5, 2], rotulo: "Periodo, T_{u}" }
+        - { expr: "sin(2*pi*t/T_u)", color: naranja, rotulo: "oscilación sostenida, T_{u} = 1,5 s" }
+      mandos: []
+    simular:
+      objetivo: Ti_zn
+      unidad: s
+      tol: 0.02
+      rotulo: "Tiempo integral, T_{i}"
+      errores:
+        - { expr: "Td_zn", texto: "Ese es T_{d} = T_{u}/8; el integral es T_{u}/2." }
+        - { expr: "T_u", texto: "Falta dividir: T_{i} = T_{u}/2." }
+    exito: "0,750 s; con K_{p} = 0,6·K_{u} = {{Kp_zn}} y T_{d} = T_{u}/8 = {{Td_zn}}."
+    escalera:
+      - "T_{u} = 1,5 s."
+    solucion: "1,5 / 2 = 0,750 s."
     comprobar:
       - { Kp_zn: 3.6, Ti_zn: 0.75, Td_zn: 0.1875, tol: 0.002 }
 
@@ -242,8 +276,9 @@ tarjetas:
   - id: explore-filtro-d
     tipo: explorar
     titulo: "La derivada, siempre con un polo"
-    texto: "Ganancia de la derivada pura y de la filtrada frente a la frecuencia. Cambie N y mire dónde deja de crecer."
+    texto: "La derivada pura amplifica el ruido sin límite; la filtrada deja de crecer en 1/T_{f}. De lo habitual, N entre 8 y 20, elija el que corta más arriba."
     libro: [105, 107, 111]
+    inicio: { N_f: 8 }
     widget:
       tipo: grafica
       x: { id: w, min: 1, max: 100000, unidad: "rad/s", rotulo: "ω", escala: log }
@@ -251,13 +286,25 @@ tarjetas:
       curvas:
         - { expr: "Kd_f*w", color: azul, rotulo: "derivada pura", discontinua: true }
         - { expr: "Kd_f*w/sqrt(1 + (w*Tf_f)^2)", color: naranja, rotulo: "con filtro" }
-      lectura: { valor: Tf_f, rotulo: "T_{f} = K_{d}/(N·K_{p})" }
+      lectura: { valor: w_f, rotulo: "Empieza a cortar en 1/T_{f}" }
+      datos:
+        - { valor: Tf_f, rotulo: "T_{f} = K_{d}/(N·K_{p}) = {{Tf_f}}" }
       mandos:
         - { valor: N_f, lista: [8, 10, 20], rotulo: "N" }
-    requiere: { mover: [N_f] }
+    objetivo:
+      condiciones:
+        - { valor: w_f, min: 400, rotulo: "Corta en {{w_f}}" }
+      logrado: "Con N = {{N_f}}, T_{f} = {{Tf_f}}: un N mayor filtra menos y deja más derivada. Entre 8 y 20 es lo habitual."
+      pistas:
+        - { texto: "Corta demasiado pronto: suba N." }
+    escalera:
+      - "1/T_{f} = N·K_{p}/K_{d}."
+    solucion: "N = 20: 1/T_{f} = {{w_f}}."
+    comprobar:
+      - { con: { N_f: 20 }, w_f: 400, Tf_f: 0.0025 }
 
   - id: estime-n
-    tipo: pregunta
+    tipo: simular
     titulo: "No es el mismo N"
     texto: "Con N = 10, K_{p} = 1, K_{d} = 0,05 s y T_{s} = 10 ms, el código usa n = 1 + T_{f}/T_{s}. ¿Cuánto vale n?"
     libro: [111]
@@ -268,19 +315,16 @@ tarjetas:
       y: { min: 0.01, max: 10000, unidad: "", rotulo: "|D|", escala: log }
       curvas:
         - { expr: "Kd_f*w/sqrt(1 + (w*Tf_f)^2)", color: naranja, rotulo: "con filtro" }
-    estimar:
-      objetivo: "n_f"
+      mandos: []
+    simular:
+      objetivo: n_f
       unidad: ""
-      min: 0
-      max: 12
-      paso: 0.1
-      inicio: 6
-      tol: 0.05
+      tol: 0.03
       rotulo: "n"
+      errores:
+        - { expr: "N_f", texto: "Ese es el N de la fórmula; n es la constante del filtro medida en muestras." }
+        - { expr: "Tf_f/Ts_f", texto: "Falta sumar 1: n = 1 + T_{f}/T_{s}." }
     exito: "T_{f} = 5 ms y n = 1,5: la constante del filtro medida en muestras, no el N de la fórmula."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.6 }, texto: "Demasiado: ¿ha puesto N? Calcule primero T_{f} = K_{d}/(N·K_{p})." }
-      - { texto: "Se ha quedado corto: n es 1 más T_{f}/T_{s}." }
     escalera:
       - "T_{f} = 0,05/(10 × 1)."
     solucion: "T_{f} = 5 ms; n = 1 + 5/10 = 1,5."
@@ -288,48 +332,59 @@ tarjetas:
       - { Tf_f: 0.005, n_f: 1.5 }
 
   - id: derivative-kick
-    tipo: pregunta
+    tipo: explorar
     titulo: "Un pico al cambiar la consigna"
-    texto: "Cada escalón de consigna produce un pico enorme en la salida del controlador. ¿Qué se cambia?"
+    texto: "Cada escalón de consigna, aquí en t = 1 s, da un pico enorme en el término derivativo. Elimínelo sin tocar las ganancias."
+    nota: "Planta y filtro de ejemplo."
     libro: [108, 120]
+    inicio: { k_dm: 0 }
     widget:
-      tipo: figura
-      figura: fig-31.5
-      zonas:
-        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
-    opciones:
-      - texto: "Derivar la medida, con el signo cambiado, en lugar del error"
-        bien: true
-        porque: "Ante perturbaciones se comporta igual y el derivative kick desaparece."
-      - texto: "Filtrar más la derivada, con N mayor"
-        porque: "Un N mayor filtra menos; y el filtro va contra el ruido, no contra el salto de consigna."
-      - texto: "Quitar el anti-windup"
-        porque: "El anti-windup protege la integral; el pico es de la derivada del error."
+      tipo: grafica
+      x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t", muestras: 1000 }
+      y: { min: -0.2, max: 1.1, unidad: "", rotulo: "término D" }
+      curvas:
+        - { expr: "(1 - k_dm)*Kd_f/T_fk*exp(-max(0, t - 1)/T_fk)*min(1, max(0, (t - 1)*1000000)) - Kd_f/T_y*exp(-max(0, t - 1)/T_y)*min(1, max(0, (t - 1)*1000000))", color: naranja, rotulo: "salida del término derivativo" }
+      lectura: { valor: D_pk, rotulo: "Pico del término D" }
+      mandos:
+        - { valor: k_dm, lista: [0, 1], nombres: [derivar el error, derivar la medida], rotulo: "Qué se deriva" }
+    objetivo:
+      condiciones:
+        - { valor: D_pk, max: 0.1, rotulo: "Pico: {{D_pk}}" }
+      logrado: "Derivando la medida con el signo cambiado, el salto desaparece y ante perturbaciones se comporta igual."
+      pistas:
+        - { texto: "El error salta de golpe con la consigna, y su derivada es enorme: derive otra señal." }
     escalera:
-      - "¿Qué señal salta de golpe al cambiar la consigna: el error o la medida?"
-    solucion: "Derivar la medida, no el error."
+      - "¿Qué salta de golpe al cambiar la consigna: el error o la medida?"
+    solucion: "Derivar la medida."
+    comprobar:
+      - { con: { k_dm: 1 }, D_pk: 0.05 }
 
   - id: muestreo-irregular
-    tipo: pregunta
+    tipo: explorar
     titulo: "Un error fuera del código"
-    texto: "El PID va en el bucle principal y en el equipo la sintonía cambia sola. ¿Por qué?"
+    texto: "Las ganancias I y D dependen de T_{s}, y este es el periodo con que se ejecuta el PID, vuelta a vuelta. Haga que deje de bailar."
+    nota: "Variación de ejemplo."
     libro: [101, 113, 115]
+    inicio: { k_int: 0 }
     widget:
-      tipo: figura
-      figura: fig-31.5
-      zonas:
-        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
-    opciones:
-      - texto: "El periodo es irregular, y las ganancias I y D dependen de T_{s}"
-        bien: true
-        porque: "Por eso el PID va en una interrupción de temporizador."
-      - texto: "El periodo es demasiado corto para la planta"
-        porque: "Más rápido no mejora y amplifica el ruido, pero no cambia la sintonía de una vez a otra."
-      - texto: "Tiene el sentido de la acción al revés"
-        porque: "Con el signo equivocado el lazo es realimentación positiva: no funcionaría nunca."
+      tipo: grafica
+      x: { id: n, min: 0, max: 30, unidad: "", rotulo: "vuelta" }
+      y: { min: 0, max: 0.02, unidad: s, rotulo: "T_{s}" }
+      curvas:
+        - { expr: "Ts_f*(1 + (1 - k_int)*0.4*ruido(n, 3))", palitos: true, color: naranja, rotulo: "periodo de cada vuelta" }
+      mandos:
+        - { valor: k_int, lista: [0, 1], nombres: [bucle principal, interrupción], rotulo: "Dónde se llama el PID" }
+    objetivo:
+      condiciones:
+        - { valor: j_s, max: 0, rotulo: "Periodo fijo" }
+      logrado: "En una interrupción de temporizador, T_{s} es fijo y la sintonía no cambia sola. Y con el signo de la acción al revés no funcionaría nunca."
+      pistas:
+        - { texto: "Desde el bucle principal, cada vuelta tarda distinto: la sintonía cambia sola." }
     escalera:
-      - "¿Qué cambia cada vez que el bucle principal tarda distinto?"
-    solucion: "T_{s} irregular: la sintonía cambia sola. Va en una interrupción de temporizador."
+      - "¿Qué ejecuta código a intervalos exactos?"
+    solucion: "Una interrupción de temporizador."
+    comprobar:
+      - { con: { k_int: 1 }, j_s: 0 }
 
   - id: resumen
     tipo: resumen

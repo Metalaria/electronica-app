@@ -7,6 +7,11 @@
 #   escribe el libro: dibuja su afirmación de los ceros).
 # Paso práctico: «simular» el orden del Butterworth a 44,1 kHz (45,7; errores típicos: f_s en lugar de f_s − f_máx,
 # y los 16 bits). Además un reto: elegir N para anular los 50 Hz.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): primero se predice el orden a 44,1 kHz; luego se buscan
+# muestreo y bits con los que el filtro se puede construir (orden 8 o menos: 96 kHz y 12 bits, 6,4); el corte de la
+# recta con la atenuación exigida se marca con 16 bits a 96 kHz; los coeficientes del FIR y la a del recursivo se
+# calculan; la transición y la ventana se eligen hasta un FIR de 132 coeficientes (×2,5). Se quita la pregunta de
+# 96 kHz (su contenido va al objetivo). Quedan dos preguntas de opciones: la elección para el sensor y el elíptico.
 leccion: cap30/sec-30.10
 
 libro:
@@ -60,47 +65,6 @@ modelo:
     r_g: { expr: "(N_m - 1)/2", sim: "retardo", nombre: "retardo de grupo en muestras", unidad: "" }
 
 tarjetas:
-  - id: explore-orden
-    tipo: explorar
-    titulo: "El filtro antialiasing imposible"
-    texto: "Audio de 20 kHz: el filtro debe hundir f_{s} − f_{máx} bajo el ruido de cuantificación. Cambie el muestreo y los bits y mire el orden necesario."
-    libro: [303, 306, 307]
-    widget:
-      tipo: grafica
-      x: { id: n, min: 0, max: 70, unidad: "", rotulo: "orden, n" }
-      y: { min: 0, max: 160, unidad: dB, rotulo: "atenuación en f_{stop}" }
-      curvas:
-        - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
-        - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
-      marcas:
-        - { x: "n_r", y: "A_r", rotulo: "n = {{n_r}}" }
-      lectura: { valor: n_r, rotulo: "Orden necesario" }
-      datos:
-        - { valor: f_st, rotulo: "Primera que se pliega: {{f_st}}" }
-      mandos:
-        - { valor: f_a, lista: [44100, 96000], rotulo: "Muestreo, f_{s}" }
-        - { valor: n_b, lista: [12, 16], rotulo: "Bits, N" }
-    requiere: { mover: [f_a, n_b] }
-
-  - id: formula-orden
-    tipo: formula
-    titulo: "Atenuación y pendiente"
-    texto: "La atenuación exigida por los bits y la pendiente de un Butterworth con el corte en f_{máx}: 20·n dB por década."
-    libro: [307, 308, 310]
-    ec: 307
-    sustitucion: "n ≥ {{A_r}} / (20 · log₁₀({{f_st}} / {{f_mx}})) = {{n_r}}"
-    widget:
-      tipo: grafica
-      x: { id: n, min: 0, max: 70, unidad: "", rotulo: "orden, n" }
-      y: { min: 0, max: 160, unidad: dB, rotulo: "atenuación en f_{stop}" }
-      curvas:
-        - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
-        - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
-      lectura: { valor: n_r, rotulo: "Orden necesario" }
-      mandos:
-        - { valor: f_a, lista: [44100, 96000], rotulo: "Muestreo, f_{s}" }
-        - { valor: n_b, lista: [12, 16], rotulo: "Bits, N" }
-
   - id: simule-orden
     tipo: simular
     titulo: "El orden a 44,1 kHz"
@@ -122,12 +86,12 @@ tarjetas:
     comprobar:
       - { n_r: 45.7, n_16: 60.6, A_r: 74.0, f_st: 24100, n_e: 10.8, tol: 0.005 }
 
-  - id: predecir-96k
-    tipo: predecir
-    titulo: "Muestrear a 96 kHz"
-    texto: "Mismo audio y mismos 12 bits, pero muestreando a 96 kHz. ¿Qué orden hace falta ahora?"
-    libro: [314, 315, 316]
-    fijar: { f_a: 96000, n_b: 12 }
+  - id: explore-orden
+    tipo: explorar
+    titulo: "El filtro antialiasing imposible"
+    texto: "El filtro debe hundir f_{s} − f_{máx} bajo el ruido de cuantificación, y nadie pasa de orden 8 en analógico. Elija muestreo y bits que lo hagan construible."
+    libro: [303, 306, 307, 312, 314, 315, 316]
+    inicio: { f_a: 44100, n_b: 16 }
     widget:
       tipo: grafica
       x: { id: n, min: 0, max: 70, unidad: "", rotulo: "orden, n" }
@@ -135,26 +99,63 @@ tarjetas:
       curvas:
         - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
         - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
+      marcas:
+        - { x: "n_r", y: "A_r", rotulo: "n = {{n_r}}" }
       lectura: { valor: n_r, rotulo: "Orden necesario" }
-      ocultar: true
-    opciones:
-      - texto: "Orden 7"
-        bien: true
-        porque: "La transición pasa de 20 a 76 kHz y basta n ≥ 6,4: realizable."
-      - texto: "Orden 46, como antes"
-        porque: "El orden depende de la banda de transición, que ahora es mucho más ancha."
-      - texto: "Orden 2"
-        porque: "Ese pediría un muestreo mucho más alto; a 96 kHz aún hacen falta 6,4."
+      datos:
+        - { valor: f_st, rotulo: "Primera que se pliega: {{f_st}}" }
+      mandos:
+        - { valor: f_a, lista: [44100, 96000], rotulo: "Muestreo, f_{s}" }
+        - { valor: n_b, lista: [12, 16], rotulo: "Bits, N" }
+    objetivo:
+      condiciones:
+        - { valor: n_r, max: 8, rotulo: "Orden: {{n_r}}" }
+      logrado: "A 96 kHz la transición pasa de 20 a 76 kHz: basta n ≥ 6,4, orden 7 para los 12 bits. Después, filtrado digital y diezmado."
+      pistas:
+        - { cuando: { valor: f_a, max: 50000 }, texto: "A 44,1 kHz la transición es estrechísima: ningún analógico razonable llega. Suba el muestreo." }
+        - { texto: "Con 16 bits se exigen 98,1 dB y el orden pasa de 8: pruebe con 12." }
     escalera:
-      - "f_{stop} = 96 − 20 = 76 kHz."
-    solucion: "n ≥ 6,4: orden 7, y después filtrado digital y diezmado."
+      - "El orden depende de la banda de transición y de la atenuación exigida."
+    solucion: "96 kHz y 12 bits: orden 6,4."
     comprobar:
-      - { n_r: 6.4, f_st: 76000, tol: 0.01 }
+      - { con: { f_a: 96000, n_b: 12 }, n_r: 6.4, f_st: 76000, tol: 0.01 }
+
+  - id: formula-orden
+    tipo: marcar
+    titulo: "Atenuación y pendiente"
+    texto: "A 96 kHz, pero con 16 bits: la atenuación exigida es 6,02·N + 1,76 dB y el Butterworth gana 20·n dB por década. Marque el orden donde se cruzan."
+    libro: [307, 308, 310]
+    fijar: { f_a: 96000, n_b: 16 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 20, unidad: "", rotulo: "orden, n" }
+      y: { min: 0, max: 160, unidad: dB, rotulo: "atenuación en f_{stop}" }
+      curvas:
+        - { expr: "20*n*log10((f_a - f_mx)/f_mx)", color: naranja, rotulo: "Butterworth de orden n" }
+        - { expr: "6.02*n_b + 1.76", color: azul, rotulo: "atenuación exigida", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "n_r"
+      tol: 0.02
+      inicio: { x: 18, y: 0 }
+      rotulo: "El orden necesario"
+      pasos: 100
+    pistas:
+      - { cuando: { valor: marca_x, menor: 8.4 }, texto: "Ahí la recta aún no llega a la atenuación exigida: más a la derecha." }
+      - { texto: "Ahí sobra atenuación: más a la izquierda, donde se cruzan." }
+    exito: "n = {{n_r}}: los 16 bits exigen {{A_r}} y vuelven a pasar de orden 8. Cada bit son 6,02 dB más que hundir."
+    escalera:
+      - "El orden es donde la recta naranja alcanza la línea azul."
+    solucion: "En n = {{n_r}}."
+    comprobar:
+      - { n_r: 8.46, A_r: 98.1, tol: 0.01 }
 
   - id: estime-coeficientes
-    tipo: pregunta
+    tipo: simular
     titulo: "Cuánto cuesta un FIR"
-    texto: "FIR por ventanas a 8 kHz, transición de 500 Hz, ventana de Hamming. ¿Cuántos coeficientes?"
+    texto: "FIR por ventanas a 8 kHz, transición de 500 Hz, ventana de Hamming. N ≈ k·f_{s}/Δf: ¿cuántos coeficientes?"
     libro: [322, 326, 327, 331]
     fijar: { k_w: 3.3, t_w: 500 }
     widget:
@@ -164,19 +165,16 @@ tarjetas:
       curvas:
         - { expr: "3.3*f_8/d", color: naranja, rotulo: "Hamming" }
         - { expr: "5.5*f_8/d", color: azul, rotulo: "Blackman", discontinua: true }
-    estimar:
-      objetivo: "N_c"
+      mandos: []
+    simular:
+      objetivo: N_c
       unidad: ""
-      min: 0
-      max: 200
-      paso: 1
-      inicio: 150
       tol: 0.03
       rotulo: "Coeficientes, N"
+      errores:
+        - { expr: "5.5*f_8/t_w", texto: "Ese k = 5,5 es el de Blackman; Hamming tiene 3,3." }
+        - { expr: "f_8/t_w", texto: "Falta la constante de la ventana: k = 3,3 para Hamming." }
     exito: "53 coeficientes: 424 000 MAC/s. Con Blackman, 88; con 200 Hz de transición, 132."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 55 }, texto: "Demasiados: f_{s}/Δf = 16, y Hamming tiene k = 3,3." }
-      - { texto: "Pocos: N ≈ k·f_{s}/Δf, con k = 3,3." }
     escalera:
       - "f_{s}/Δf = 8 000/500."
     solucion: "3,3 × 16 ≈ 53."
@@ -186,25 +184,35 @@ tarjetas:
       - { con: { t_w: 200 }, N_c: 132 }
 
   - id: empareje-leyes
-    tipo: pregunta
+    tipo: explorar
     titulo: "Dos leyes del coste"
-    texto: "Empareje cada cambio del FIR con lo que cuesta."
+    texto: "Cada coeficiente es una multiplicación-acumulación por muestra. Elija ventana y transición hasta un filtro de 132 coeficientes."
     libro: [328, 329, 332]
+    inicio: { k_w: 3.3, t_w: 500 }
     widget:
-      tipo: figura
-      figura: fig-30.12
-      zonas:
-        - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
-    emparejar:
-      - ["Transición de 500 a 200 Hz", "Multiplica el filtro por 2,5"]
-      - ["De Hamming a Blackman", "Un 66 % más de coeficientes"]
-      - ["Cada coeficiente", "Una multiplicación-acumulación por muestra"]
-    exito: "El diseño del filtro y la elección del procesador son la misma decisión."
-    pistas:
-      - { texto: "El coste es inversamente proporcional a la anchura de la transición." }
+      tipo: grafica
+      x: { id: d, min: 100, max: 1000, unidad: Hz, rotulo: "transición, Δf" }
+      y: { min: 0, max: 300, unidad: "", rotulo: "N" }
+      curvas:
+        - { expr: "k_w*f_8/d", color: naranja, rotulo: "N ≈ k·f_{s}/Δf" }
+      marcas:
+        - { x: "t_w", y: "N_c", rotulo: "{{N_c}}" }
+      lectura: { valor: N_c, rotulo: "Coeficientes" }
+      mandos:
+        - { valor: k_w, lista: [3.3, 5.5], nombres: [Hamming, Blackman], rotulo: "Ventana" }
+        - { valor: t_w, lista: [500, 300, 200], rotulo: "Transición, Δf" }
+    objetivo:
+      condiciones:
+        - { valor: N_c, objetivo: 132, tol: 0.01, rotulo: "N = {{N_c}}" }
+      logrado: "Estrechar la transición de 500 a 200 Hz multiplica el filtro por 2,5; Blackman añade un 66 %. El diseño del filtro y la elección del procesador son la misma decisión."
+      pistas:
+        - { cuando: { valor: N_c, mayor: 134 }, texto: "Demasiados: con Blackman y transición estrecha se pasa." }
+        - { texto: "Aún pocos: el coste crece al estrechar la transición." }
     escalera:
-      - "500/200 = 2,5."
-    solucion: "Estrechar, ×2,5; Blackman, +66 %; cada coeficiente, un MAC por muestra."
+      - "132 / 53 = 2,5: lo que da pasar de 500 a 200 Hz."
+    solucion: "Hamming con 200 Hz de transición."
+    comprobar:
+      - { con: { k_w: 3.3, t_w: 200 }, N_c: 132 }
 
   - id: reto-red
     tipo: reto
@@ -237,7 +245,7 @@ tarjetas:
       - { con: { N_m: 10 }, z_1: 50 }
 
   - id: estime-recursivo
-    tipo: pregunta
+    tipo: simular
     titulo: "Media móvil o recursivo"
     texto: "Una media móvil de 8 muestras y un recursivo de primer orden con el mismo retardo en continua. ¿Qué a le corresponde?"
     libro: [338, 341, 343, 344]
@@ -248,19 +256,16 @@ tarjetas:
       y: { min: 0, max: 0.7, unidad: "", rotulo: "a" }
       curvas:
         - { expr: "2/(n + 1)", color: naranja, rotulo: "a ≈ 2/(N + 1)" }
-    estimar:
-      objetivo: "a_q"
+      mandos: []
+    simular:
+      objetivo: a_q
       unidad: ""
-      min: 0
-      max: 0.6
-      paso: 0.001
-      inicio: 0.5
       tol: 0.03
       rotulo: "Coeficiente, a"
+      errores:
+        - { expr: "1/N_m", texto: "Eso sería el peso de cada muestra de la media; el recursivo equivalente es a ≈ 2/(N + 1)." }
+        - { expr: "2/N_m", texto: "Casi: el denominador es N + 1, no N." }
     exito: "0,222: los dos retrasan 3,5 muestras. El recursivo lo hace con una variable y una operación."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.229 }, texto: "Demasiado: a ≈ 2/(N + 1), con N = 8." }
-      - { texto: "Poco: a ≈ 2/(N + 1) = 2/9." }
     escalera:
       - "Use la equivalencia a ≈ 2/(N + 1)."
     solucion: "a ≈ 2/9 = 0,222; retardo (8 − 1)/2 = 3,5 muestras."

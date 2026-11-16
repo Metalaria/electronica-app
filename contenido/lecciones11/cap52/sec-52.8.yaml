@@ -4,6 +4,11 @@
 #   por dB). El margen útil es la señal menos lo peor de los dos: −60 − max(−45 − 2A, −95 + A); máximo en
 #   A = 50/3 ≈ 17 dB, el óptimo de la figura. Las rectas son las de la figura (el texto no da los números).
 # Paso práctico: «ajuste» del atenuador hasta el óptimo (atenuar mejora, bloque 296).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 53.17 se tocan la antena (con las tres decisiones en
+# su éxito) y el recuadro del ruido del ordenador; cuánto sobresale la intermodulación sin atenuar se calcula; se atenúa
+# hasta sacar al receptor de la saturación y después se busca el óptimo. La pregunta de la antena y el emparejar de sus
+# decisiones se funden en la primera tarjeta. Queda una pregunta de opciones (la corrección de I/Q) y los receptores,
+# por emparejar.
 leccion: cap52/sec-52.8
 
 libro:
@@ -35,21 +40,31 @@ modelo:
     N_p: { expr: "-95 + A_t", sim: "N", nombre: "ruido propio referido a la antena", unidad: dBm }
     m_u: { expr: "S_d - max(-45 - 2*A_t, -95 + A_t)", sim: "margen", nombre: "margen útil sobre lo peor", unidad: dB, cifras: 3 }
     A_o: { expr: "50/3", sim: "A_{óptima}", nombre: "atenuación óptima", unidad: dB }
+    d_im: { expr: "I_m - S_d", sim: "Δ", nombre: "intermodulación sobre la señal", unidad: dB }
+    d_ns: { expr: "S_d - N_p", sim: "Δ", nombre: "señal sobre el ruido", unidad: dB }
 
 tarjetas:
   - id: explore-resultado
-    tipo: explorar
+    tipo: tocar
     titulo: "Lo que más cambia el resultado"
-    texto: "Montar una SDR utilizable no exige diseñar el receptor: exige cuidar unos pocos elementos. Toque los dos primeros."
-    libro: [277, 284, 310]
+    texto: "Montar una SDR utilizable exige cuidar unos pocos elementos. Toque el que determina más el resultado que el propio receptor."
+    libro: [277, 284, 287, 288, 289, 309, 310]
     widget:
       tipo: figura
       figura: fig-52.14
-      zonas:
-        - { id: antena, rotulo: "Recuadro verde, a la derecha", rect: [280, 24, 164, 52], texto: "La antena: tipo, ubicación y cable. Determina más el resultado que el receptor." }
-        - { id: filtrado, rotulo: "Recuadro naranja, a la derecha", rect: [280, 91, 164, 43], texto: "El filtrado de entrada: paso banda, notch y atenuador contra la saturación." }
-        - { id: ordenador, rotulo: "Recuadro rojo, a la derecha", rect: [280, 149, 164, 44], texto: "El ruido del ordenador: fuentes y cables emiten y entran por la antena." }
-    requiere: { mover: [antena, filtrado] }
+      zonas: &zonas-rec
+        - { id: antena, rotulo: "Recuadro verde, a la derecha", rect: [280, 24, 164, 52] }
+        - { id: filtrado, rotulo: "Recuadro naranja, a la derecha", rect: [280, 91, 164, 43] }
+        - { id: ordenador, rotulo: "Recuadro rojo, a la derecha", rect: [280, 149, 164, 44] }
+    tocar:
+      bien: [antena]
+      porque:
+        filtrado: "El filtrado protege de la saturación, pero no capta lo que la antena no capta."
+        ordenador: "El ruido del ordenador importa, pero la antena manda más."
+    exito: "La antena: más que un receptor cuatro veces más caro. Tipo según banda y polarización, alta y lejos del ruido, y un cable que no pierda."
+    escalera:
+      - "¿Qué capta la señal?"
+    solucion: "El recuadro verde, la antena."
 
   - id: empareje-receptores
     tipo: pregunta
@@ -73,48 +88,55 @@ tarjetas:
     solucion: "Llave USB, lo barato; gama media, más margen; muestreo directo, sin mezclador."
 
   - id: predecir-urbano
-    tipo: predecir
+    tipo: simular
     titulo: "En la ciudad"
-    texto: "Elige receptor para un entorno urbano lleno de emisiones fuertes. ¿Qué cifra importa más?"
-    libro: [282, 291]
-    widget:
-      tipo: figura
-      figura: fig-52.14
-      zonas:
-        - { id: todo, rotulo: "Atenuación de entrada y lo que más cambia", rect: [0, 0, 450, 237] }
-    opciones:
-      - texto: "El margen dinámico"
-        bien: true
-        porque: "El problema no es oír poco sino saturarse con lo que hay al lado."
-      - texto: "La sensibilidad"
-        porque: "En la ciudad sobra señal: lo que falla es no saturar."
-      - texto: "El ancho de banda instantáneo"
-        porque: "Más banda deja entrar más emisoras fuertes: no protege de la saturación."
+    texto: "Con una emisora fuerte cerca y sin atenuador, la intermodulación queda en −45 dBm y la señal deseada en −60 dBm. ¿Cuántos dB sobresale la intermodulación?"
+    nota: "Las rectas de la figura del libro."
+    libro: [282, 291, 310]
+    fijar: { A_t: 0, S_d: -60 }
+    simular:
+      objetivo: d_im
+      unidad: dB
+      tol: 0.02
+      rotulo: "Intermodulación sobre la señal"
+      errores:
+        - { expr: "d_ns", texto: "Esa es la señal sobre el ruido propio: ahí sobra margen. El problema es la intermodulación." }
+    exito: "15 dB por encima: en la ciudad importa más el margen dinámico que la sensibilidad."
     escalera:
-      - "¿Cuál es el problema dominante con emisiones fuertes cerca?"
-    solucion: "El margen dinámico."
+      - "−45 − (−60)."
+    solucion: "15 dB."
+    comprobar:
+      - { d_im: 15, d_ns: 35, I_m: -45, N_p: -95 }
 
   - id: predecir-atenuar
-    tipo: predecir
+    tipo: explorar
     titulo: "Atenuar la entrada"
-    texto: "Con una emisora de FM cercana, el receptor satura. ¿Qué pasa si intercala un atenuador en la antena?"
-    libro: [295, 296]
+    texto: "Parece contraproducente: intercale atenuación en la antena hasta que la señal deseada quede por encima de la intermodulación."
+    nota: "Las rectas de la figura del libro."
+    libro: [295, 296, 310]
+    inicio: { A_t: 0 }
     widget:
-      tipo: figura
-      figura: fig-52.14
-      zonas:
-        - { id: todo, rotulo: "Atenuación de entrada y lo que más cambia", rect: [0, 0, 450, 237] }
-    opciones:
-      - texto: "A menudo mejora: saca al receptor de la saturación"
-        bien: true
-        porque: "Parece contraproducente, y es el hallazgo típico: enseña la diferencia entre sensibilidad y margen dinámico."
-      - texto: "Empeora siempre: llega menos señal"
-        porque: "Llega menos señal, pero los productos de la saturación bajan mucho más deprisa."
-      - texto: "Nada: el atenuador no afecta a la saturación"
-        porque: "Es justo lo que más le afecta: es la primera defensa contra ella."
+      tipo: grafica
+      x: { id: a, min: 0, max: 30, unidad: dB, rotulo: "atenuación" }
+      y: { min: -110, max: -35, unidad: dBm, rotulo: "nivel en la antena" }
+      curvas:
+        - { expr: "S_d", color: verde, rotulo: "señal deseada" }
+        - { expr: "-45 - 2*a", color: naranja, rotulo: "intermodulación" }
+        - { expr: "-95 + a", color: azul, rotulo: "ruido propio", discontinua: true }
+      lectura: { valor: m_u, rotulo: "Margen sobre lo peor" }
+      mandos:
+        - { valor: A_t, min: 0, max: 30, paso: 1, rotulo: "Atenuación de entrada" }
+    objetivo:
+      condiciones:
+        - { valor: m_u, min: 0, rotulo: "Margen: {{m_u}}" }
+      logrado: "Con {{A_t}}, la señal ya sobresale: la intermodulación baja el doble de deprisa que lo que se atenúa la señal."
+      pistas:
+        - { texto: "La intermodulación aún tapa la señal: atenúe más." }
     escalera:
-      - "¿Qué baja más deprisa al atenuar: la señal o lo que genera la saturación?"
-    solucion: "Suele mejorar."
+      - "Cada dB atenuado baja la intermodulación dos."
+    solucion: "Unos 8 dB o más."
+    comprobar:
+      - { con: { A_t: 8 }, m_u: 1 }
 
   - id: ajuste-atenuador
     tipo: ajuste
@@ -152,70 +174,24 @@ tarjetas:
       - { con: { A_t: 0 }, m_u: -15 }
       - { con: { A_t: 17 }, m_u: 18 }
 
-  - id: pregunta-antena
-    tipo: pregunta
-    titulo: "Lo que más cambia"
-    texto: "Tiene el montaje mínimo: receptor, la antena que venía y el software. ¿Qué mejora más el resultado?"
-    libro: [284, 309]
-    widget:
-      tipo: figura
-      figura: fig-52.14
-      zonas:
-        - { id: todo, rotulo: "Atenuación de entrada y lo que más cambia", rect: [0, 0, 450, 237] }
-    opciones:
-      - texto: "Una antena adecuada a la banda y bien situada"
-        bien: true
-        porque: "La diferencia suele ser mayor que la de un receptor cuatro veces más caro."
-      - texto: "Un receptor cuatro veces más caro"
-        porque: "La antena determina más el resultado que el receptor."
-      - texto: "Un programa con más opciones"
-        porque: "El programa no oye lo que la antena no capta."
-    escalera:
-      - "¿Qué determina más el resultado, según el libro?"
-    solucion: "La antena."
-
-  - id: empareje-antena
-    tipo: pregunta
-    titulo: "Las tres decisiones de la antena"
-    texto: "Empareje cada decisión con su criterio."
-    libro: [287, 288, 289]
-    widget:
-      tipo: figura
-      figura: fig-52.14
-      zonas:
-        - { id: todo, rotulo: "Atenuación de entrada y lo que más cambia", rect: [0, 0, 450, 237] }
-    emparejar:
-      - ["El tipo", "Según la banda y la polarización"]
-      - ["La ubicación", "Alta, despejada y lejos de fuentes de ruido"]
-      - ["El cable", "Su atenuación, apreciable a frecuencias altas"]
-    exito: "Fuentes conmutadas, cargadores e iluminación LED barata: lejos."
-    pistas:
-      - { texto: "Las fuentes de ruido deciden dónde poner la antena." }
-    escalera:
-      - "¿Cuál de las tres pierde señal por el camino?"
-    solucion: "Tipo, banda y polarización; ubicación, alta y lejos de ruido; cable, su atenuación."
-
   - id: pregunta-ordenador
-    tipo: pregunta
+    tipo: tocar
     titulo: "El ruido del ordenador"
-    texto: "Sospecha que parte del ruido de fondo lo pone el propio ordenador. ¿Cómo lo comprueba?"
+    texto: "Apaga el ordenador, escucha con otro receptor y parte del ruido de fondo desaparece. Toque el recuadro que trata ese problema."
     libro: [298, 299, 300]
     widget:
       tipo: figura
       figura: fig-52.14
-      zonas:
-        - { id: todo, rotulo: "Atenuación de entrada y lo que más cambia", rect: [0, 0, 450, 237] }
-    opciones:
-      - texto: "Apagando el ordenador y escuchando con otro receptor"
-        bien: true
-        porque: "El ruido de fondo que desaparece era del ordenador. Defensas: cable apantallado con ferritas, distancia y alimentación limpia."
-      - texto: "Subiendo la ganancia hasta que destaque"
-        porque: "Subir la ganancia no distingue de dónde viene el ruido; y puede saturar."
-      - texto: "Cambiando de programa"
-        porque: "El ruido entra por la antena: el programa no lo crea ni lo quita."
+      zonas: *zonas-rec
+    tocar:
+      bien: [ordenador]
+      porque:
+        antena: "La antena capta ese ruido, pero no lo produce."
+        filtrado: "El filtrado es contra la saturación, no contra el ruido que emite el ordenador."
+    exito: "Fuentes y cables emiten y entran por la antena: cable apantallado con ferritas, distancia y alimentación limpia."
     escalera:
-      - "¿Cómo se quita una fuente de ruido sin quitar el receptor?"
-    solucion: "Apagar el ordenador y escuchar con otro receptor."
+      - "¿De dónde venía el ruido que desapareció?"
+    solucion: "El recuadro rojo."
 
   - id: porque-iq
     tipo: porque

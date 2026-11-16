@@ -8,6 +8,10 @@
 #   (rotulado); los 15 mV son la deriva del bloque 141.
 # Pasos prácticos: «simular» la resolución de 16 bits (0,46 mV; errores: 12 bits, 7,32 mV, o dividir entre 16) y
 # «simular» un presupuesto de error en cuadratura (15,8 mV; error: la suma, 20 mV).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se buscan los bits que bajan el escalón de 10 mV; la deriva del
+# divisor se calcula (por qué escribir la exactitud va a su éxito); se sube la segunda contribución hasta la mitad de la
+# dominante (los tres presupuestos van a su logro). La tabla de la fuente ampliada se funde en el éxito de los 16 bits y
+# la SDR frente al FM7303 se quita (está en el capítulo 53). Quedan dos preguntas de opciones.
 leccion: cap48/sec-48.9
 
 libro:
@@ -38,12 +42,13 @@ modelo:
     e_s: { expr: "e_1 + e_2", sim: "e₁ + e₂", nombre: "suma directa", unidad: V }
     V_d: { expr: "V_f*d_r/100", sim: "ΔV_{deriva}", nombre: "deriva sobre el fondo de escala", unidad: V }
     P_f: { expr: "V_f*I_f", sim: "P", nombre: "potencia máxima de salida", unidad: W }
+    V_x: { expr: "V_f*d_r", sim: "V", nombre: "sin pasar el tanto por ciento", unidad: V }
 
 tarjetas:
   - id: explore-bits
     tipo: explorar
     titulo: "La especificación, en números"
-    texto: "Una línea de la especificación es la resolución de la consigna. Cambie los bits y mire el escalón sobre 30 V."
+    texto: "Una línea de la especificación es la resolución de la consigna. Busque los bits que bajan el escalón sobre 30 V de 10 mV."
     libro: [139, 140]
     inicio: { n_b: 8 }
     widget:
@@ -59,6 +64,18 @@ tarjetas:
         - { valor: dI, rotulo: "Escalón de corriente, sobre 5 A: {{dI}}" }
       mandos:
         - { valor: n_b, lista: [8, 10, 12], rotulo: "Bits de la consigna" }
+    objetivo:
+      condiciones:
+        - { valor: dV, max: 0.01, rotulo: "Escalón: {{dV}}" }
+      logrado: "Con {{n_b}} bits, {{dV}}: cada bit parte el escalón por la mitad."
+      pistas:
+        - { texto: "Aún es grueso: más bits." }
+    escalera:
+      - "Cada bit más parte el escalón por la mitad."
+    solucion: "12 bits: 7,3 mV."
+    comprobar:
+      - { con: { n_b: 12 }, dV: 0.00732 }
+      - { con: { n_b: 8 }, dV: 0.117 }
 
   - id: simule-16
     tipo: simular
@@ -82,109 +99,40 @@ tarjetas:
       errores:
         - { expr: "dV12", texto: "Eso son 12 bits: 30 V entre 4 096. Con 16 bits son 65 536 escalones." }
         - { expr: "dVn", texto: "Ha dividido entre 16; hay que dividir entre 2 elevado a 16." }
-    exito: "0,46 mV, y sobre 5 A, 76 µA: la tabla del libro."
+    exito: "0,46 mV, y sobre 5 A, 76 µA. La fuente ampliada: 0–30 V y 0–5 A (150 W), regulación < 0,01 %, rizado < 1 mV, hasta 40 °C."
     escalera:
       - "Escalón = fondo de escala / 2ⁿ."
     solucion: "30 V / 65 536 = 0,46 mV."
     comprobar:
       - { dV: 0.000458, dI: 0.0000763, dV12: 0.00732, dVn: 1.875, tol: 0.003 }
       - { N16: 65536, N12: 4096, b_12: 12 }
-
-  - id: empareje-tabla
-    tipo: pregunta
-    titulo: "La especificación de la fuente ampliada"
-    texto: "Empareje cada concepto con su cifra en la fuente de banco ampliada."
-    libro: [140]
-    emparejar:
-      - ["Rango de salida", "0–30 V, 0–5 A (150 W)"]
-      - ["Regulación de carga y línea", "< 0,01 % (3 mV sobre 30 V)"]
-      - ["Rizado y ruido", "< 1 mV eficaz"]
-      - ["Condiciones ambientales", "Hasta 40 °C"]
-    exito: "Cada línea fija algo medible: sin ella no se sabe cuándo está terminada."
-    pistas:
-      - { texto: "La regulación se da en tanto por ciento; el rizado, en milivoltios eficaces." }
-    escalera:
-      - "150 W son 30 V por 5 A."
-    solucion: "Rango 0–30 V y 0–5 A; regulación < 0,01 %; rizado < 1 mV; hasta 40 °C."
-    comprobar:
       - { P_f: 150 }
 
   - id: estime-deriva
-    tipo: pregunta
+    tipo: simular
     titulo: "La línea que falta"
     texto: "La deriva del divisor de realimentación es del 0,05 % en 20 °C. ¿Cuántos milivoltios son sobre 30 V?"
     libro: [141]
-    widget:
-      tipo: grafica
-      x: { id: dx, min: 0, max: 0.1, unidad: "%", rotulo: "deriva" }
-      y: { min: 0, max: 0.03, unidad: V, rotulo: "ΔV" }
-      curvas:
-        - { expr: "V_f*dx/100", color: naranja, rotulo: "deriva sobre 30 V" }
-        - { expr: "0.003 + 0*dx", color: tinta, rotulo: "regulación especificada", discontinua: true }
-    estimar:
-      objetivo: "V_d"
+    fijar: { V_f: 30, d_r: 0.05 }
+    simular:
+      objetivo: V_d
       unidad: V
-      min: 0
-      max: 0.03
-      paso: 0.0005
-      inicio: 0.003
-      tol: 0.05
+      tol: 0.03
       rotulo: "Deriva sobre 30 V"
-    exito: "15 mV: cinco veces la regulación especificada, 3 mV."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.016 }, texto: "Se ha pasado: 0,05 % es cinco diezmilésimas." }
-      - { texto: "Se ha quedado corto: eso sería la regulación, 0,01 %; la deriva es cinco veces más." }
+      errores:
+        - { expr: "V_x", texto: "Es un 0,05 %: divida por cien." }
+    exito: "15 mV, cinco veces la regulación de 3 mV. La tabla da la regulación y no la exactitud: sin esa cifra, nadie decide si vale."
     escalera:
-      - "0,05 % de 30 V = 30 × 0,0005."
+      - "Un 0,05 % de 30 V."
     solucion: "30 × 0,0005 = 15 mV."
     comprobar:
-      - { V_d: 0.015, f_r: 0.0005 }
-
-  - id: porque-exactitud
-    tipo: porque
-    titulo: "Exactitud no es regulación"
-    texto: "La tabla da la regulación, pero no la exactitud. ¿Por qué conviene escribir también esa cifra?"
-    libro: [141]
-    widget:
-      tipo: grafica
-      x: { id: dx, min: 0, max: 0.1, unidad: "%", rotulo: "deriva" }
-      y: { min: 0, max: 0.03, unidad: V, rotulo: "ΔV" }
-      curvas:
-        - { expr: "V_f*dx/100", color: naranja, rotulo: "deriva sobre 30 V" }
-        - { expr: "0.003 + 0*dx", color: tinta, rotulo: "regulación especificada", discontinua: true }
-    opciones:
-      - texto: "Sin una cifra, nadie decide cuánta deriva es aceptable"
-        bien: true
-        porque: "La deriva ya es cinco veces la regulación, y nada en la especificación dice si eso vale."
-      - texto: "Porque la regulación ya la incluye"
-        porque: "No: la regulación mide cómo cambia la salida con la carga y la red, no cuánto se aparta del valor."
-      - texto: "No hace falta: con 16 bits la salida es exacta"
-        porque: "La resolución no es exactitud: el escalón es fino, pero el divisor deriva con la temperatura."
-    escalera:
-      - "¿Qué línea de la tabla dice cuánto puede apartarse la salida del valor pedido?"
-    solucion: "Porque sin una cifra de exactitud nadie decide cuánta deriva se acepta."
-
-  - id: empareje-presupuestos
-    tipo: pregunta
-    titulo: "Tres presupuestos"
-    texto: "Antes de dibujar nada se hacen tres presupuestos. Empareje cada uno con lo que suma."
-    libro: [144]
-    emparejar:
-      - ["De potencia (39 y 40)", "Corriente media, autonomía, disipación"]
-      - ["De error (0 y 48)", "Contribuciones en cuadratura"]
-      - ["De tiempo (9 y 38)", "Camino crítico, latencias, márgenes de setup"]
-    exito: "Los tres aparecen a lo largo del libro y se hacen antes del esquema."
-    pistas:
-      - { texto: "La autonomía es cosa de energía; el camino crítico, de tiempo." }
-    escalera:
-      - "Cada presupuesto reparte un recurso: energía, error o tiempo."
-    solucion: "Potencia: corriente, autonomía, disipación. Error: cuadratura. Tiempo: camino crítico y setup."
+      - { V_d: 0.015, f_r: 0.0005, V_x: 1.5 }
 
   - id: explore-cuadratura
     tipo: explorar
     titulo: "Los errores en cuadratura"
-    texto: "Con la deriva de 15 mV como término dominante, suba la segunda contribución y compare la suma en cuadratura con la suma directa."
-    libro: [144, 141]
+    texto: "Con la deriva de 15 mV como término dominante, suba la segunda contribución hasta la mitad de la dominante."
+    libro: [141, 144]
     fijar: { e_1: 0.015 }
     inicio: { e_2: 0.002 }
     widget:
@@ -199,6 +147,17 @@ tarjetas:
       lectura: { valor: e_t, rotulo: "Error total" }
       mandos:
         - { valor: e_2, min: 0, max: 0.015, paso: 0.0005, rotulo: "Segunda contribución, e₂" }
+    objetivo:
+      condiciones:
+        - { valor: e_2, min: 0.0075, rotulo: "e₂ = {{e_2}}" }
+      logrado: "En cuadratura, {{e_t}}, frente a {{e_s}} en suma directa. Es el presupuesto de error; con el de potencia y el de tiempo, se hace antes del esquema."
+      pistas:
+        - { texto: "Suba más la segunda contribución." }
+    escalera:
+      - "La mitad de 15 mV."
+    solucion: "e₂ de 7,5 mV: 16,8 mV en cuadratura."
+    comprobar:
+      - { con: { e_2: 0.0075 }, e_t: 0.01677, e_s: 0.0225, tol: 0.003 }
 
   - id: simule-cuadratura
     tipo: simular
@@ -273,28 +232,6 @@ tarjetas:
     escalera:
       - "¿Qué etapa mueve el altavoz?"
     solucion: "Por la corriente: la etapa de potencia maneja corrientes grandes con caída, y P = V·I."
-
-  - id: prediga-sdr
-    tipo: predecir
-    titulo: "La SDR y el FM7303"
-    texto: "Una SDR y el receptor FM7303 hacen la misma función. ¿En qué se diferencian?"
-    libro: [145]
-    widget:
-      tipo: figura
-      figura: fig-48.10
-      zonas:
-        - { id: sdr, rotulo: "La cuarta columna", rect: [341, 2, 111, 168] }
-    opciones:
-      - texto: "La SDR muestrea cuanto antes y filtra y demodula por software"
-        bien: true
-        porque: "Cambia hardware por cálculo: el FM7303 lo hace con mezclador, filtros cerámicos y discriminador."
-      - texto: "La SDR no traslada la señal en frecuencia"
-        porque: "También capta, traslada y demodula: cambia cómo lo hace."
-      - texto: "El FM7303 es digital y la SDR analógica"
-        porque: "Al revés: el FM7303 usa circuitos analógicos dedicados."
-    escalera:
-      - "¿Dónde está el filtro de FI en cada uno?"
-    solucion: "La SDR muestrea pronto y hace el filtrado y la demodulación por software."
 
   - id: resumen
     tipo: resumen

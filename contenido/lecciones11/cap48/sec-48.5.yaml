@@ -5,6 +5,10 @@
 #   dando 3 V a 3 A, 81 W (cap50#78, cap50#79). La gráfica es esa recta frente a la tensión de salida.
 # Paso práctico: «simular» la disipación del lineal (81 W; errores: la potencia entregada, 9 W, o la entrada entera,
 # 90 W).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 49.10 se tocan el proyecto cuya dificultad es
+# disipar, el que atraviesa discretos, ruido y térmica (los capítulos de cada uno y el I²C van a sus explicaciones) y el
+# del convertidor (el reloj crítico va a su éxito); se baja la salida del lineal hasta que se come más de lo que
+# entrega. Quedan dos preguntas de opciones (la cobertura y construir por bloques).
 leccion: cap48/sec-48.5
 
 libro:
@@ -45,66 +49,87 @@ modelo:
     P_d: { expr: "(V_e - V_s)*I_s", sim: "P", nombre: "potencia que disipa el lineal", unidad: W }
     P_u: { expr: "V_s*I_s", sim: "P_{salida}", nombre: "potencia que entrega", unidad: W }
     P_e: { expr: "V_e*I_s", sim: "P_{entrada}", nombre: "potencia que toma de la entrada", unidad: W }
+    r_d: { expr: "P_d - P_u", sim: "Δ", nombre: "disipa menos entrega", unidad: W }
 
 tarjetas:
   - id: explore-mapa
-    tipo: explorar
+    tipo: tocar
     titulo: "Cuatro recorridos por el libro"
-    texto: "Cada proyecto atraviesa el libro por un camino distinto. Toque la dificultad real de cada uno."
-    libro: [5, 7, 35]
+    texto: "Cada proyecto atraviesa el libro por un camino distinto, y su dificultad real no es la que parecía. Toque el proyecto cuyo problema no es regular, sino disipar."
+    libro: [5, 7, 11, 13, 27, 35]
     widget:
       tipo: figura
       figura: fig-48.10
-      zonas:
-        - { id: iot, rotulo: "Abajo, la primera columna", rect: [5, 110, 101, 56], texto: "Estación IoT: no es el sensor, es el consumo. Cada decisión depende de las anteriores." }
-        - { id: fuente, rotulo: "Abajo, la segunda columna", rect: [119, 110, 101, 56], texto: "Fuente de laboratorio: no es regular, es disipar." }
-        - { id: hifi, rotulo: "Abajo, la tercera columna", rect: [232, 110, 101, 56], texto: "Amplificador Hi-Fi: no es amplificar, es estabilizar y no zumbar." }
-        - { id: sdr, rotulo: "Abajo, la cuarta columna", rect: [346, 110, 101, 56], texto: "SDR: no es procesar, es lo que llega al convertidor, del equilibrio I/Q al reloj." }
-    requiere: { mover: [iot, fuente, hifi, sdr] }
+      zonas: &zonas-pr
+        - { id: iot, rotulo: "Primera columna", rect: [5, 110, 101, 56] }
+        - { id: fuente, rotulo: "Segunda columna", rect: [119, 110, 101, 56] }
+        - { id: hifi, rotulo: "Tercera columna", rect: [232, 110, 101, 56] }
+        - { id: sdr, rotulo: "Cuarta columna", rect: [346, 110, 101, 56] }
+    tocar:
+      bien: [fuente]
+      porque:
+        iot: "La estación IoT: no el sensor, sino el consumo."
+        hifi: "El amplificador: no amplificar, sino estabilizar y no zumbar."
+        sdr: "La SDR: no procesar, sino lo que llega al convertidor."
+    exito: "La fuente de 30 V y 3 A: el rizado bajo pide un lineal, y con la salida baja tiene que disipar más de 100 W."
+    escalera:
+      - "¿Qué proyecto lleva un regulador lineal?"
+    solucion: "La segunda columna, la fuente."
 
   - id: empareje-capitulos
-    tipo: pregunta
+    tipo: tocar
     titulo: "Lo que integra cada uno"
-    texto: "Empareje cada proyecto con tres de los capítulos que atraviesa."
-    libro: [8, 12, 16, 20, 35]
+    texto: "Toque el proyecto que atraviesa los discretos (44), el ruido (32) y la térmica (48)."
+    libro: [8, 12, 16, 20, 35, "cap48#145"]
     widget:
       tipo: figura
       figura: fig-48.10
-      zonas:
-        - { id: integra, rotulo: "Las cuatro columnas", rect: [5, 30, 445, 75] }
-    emparejar:
-      - ["Estación IoT", "Sensores (36), buses (45), bajo consumo (39)"]
-      - ["Fuente de laboratorio", "Reguladores (8), conmutación (33), protecciones (10)"]
-      - ["Amplificador Hi-Fi", "Discretos (44), ruido (32), térmica (48)"]
-      - ["SDR", "Radiofrecuencia (37), muestreo (29 y 35), FPGA (38)"]
-    exito: "Juntos cubren casi todo lo tratado en el libro."
-    pistas:
-      - { texto: "La radiofrecuencia solo la necesita la radio; la térmica de una etapa de salida, el amplificador." }
+      zonas: *zonas-pr
+    tocar:
+      bien: [hifi]
+      porque:
+        iot: "La estación IoT: sensores (36) leídos por I²C, buses (45) y bajo consumo (39)."
+        fuente: "La fuente: reguladores (8), conmutación (33) y protecciones (10)."
+        sdr: "La SDR: radiofrecuencia (37), muestreo (29 y 35) y FPGA (38)."
+    exito: "El amplificador Hi-Fi. Juntos, los cuatro cubren casi todo el libro."
     escalera:
-      - "Piense en la pieza central de cada aparato: un sensor, un regulador, unos transistores de salida, un mezclador."
-    solucion: "IoT: sensores, buses, bajo consumo. Fuente: reguladores, conmutación, protecciones. Hi-Fi: discretos, ruido, térmica. SDR: RF, muestreo, FPGA."
+      - "¿Qué proyecto lleva transistores de potencia y le preocupa el zumbido?"
+    solucion: "La tercera columna, el amplificador."
 
   - id: prediga-fuente
-    tipo: predecir
+    tipo: explorar
     titulo: "La fuente de 30 V y 3 A"
-    texto: "El rizado bajo pide un regulador lineal. ¿Dónde está el problema difícil de esta fuente?"
-    libro: [11, 13, 27]
+    texto: "Un lineal con 30 V de entrada y 3 A de salida se come la diferencia. Baje la salida hasta que disipe más de lo que entrega."
+    libro: [11, 13, 27, "cap50#78", "cap50#79", "cap50#217"]
+    fijar: { V_e: 30, I_s: 3 }
+    inicio: { V_s: 25 }
     widget:
-      tipo: figura
-      figura: fig-48.10
-      zonas:
-        - { id: fuente, rotulo: "La segunda columna", rect: [115, 2, 108, 168] }
-    opciones:
-      - texto: "En disipar: con 3 A y la salida baja, más de 100 W"
-        bien: true
-        porque: "La entrada debe superar 30 V incluso con la red al −10 %, y el lineal se come la diferencia."
-      - texto: "En regular la tensión con precisión"
-        porque: "Regular lo hace un lineal sin esfuerzo; lo difícil es el calor que produce mientras lo hace."
-      - texto: "En el rizado de la salida"
-        porque: "El rizado bajo es justo lo que el lineal resuelve bien; el precio es la disipación."
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{salida}" }
+      y: { min: 0, max: 100, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "(V_e - vx)*I_s", color: naranja, rotulo: "disipa el lineal" }
+        - { expr: "vx*I_s", color: azul, rotulo: "entrega a la carga" }
+      marcas:
+        - { x: "V_s", y: "P_d", rotulo: "{{P_d}}" }
+      lectura: { valor: P_d, rotulo: "Disipación" }
+      datos:
+        - { valor: P_u, rotulo: "Entrega: {{P_u}}" }
+      mandos:
+        - { valor: V_s, min: 1, max: 29, paso: 1, rotulo: "Tensión de salida" }
+    objetivo:
+      condiciones:
+        - { valor: r_d, min: 0, rotulo: "Disipa {{P_d}}, entrega {{P_u}}" }
+      logrado: "Por debajo de la mitad de la entrada, el lineal calienta más de lo que alimenta. Con 3 V de salida disipa 81 W para entregar 9."
+      pistas:
+        - { texto: "Aún entrega más de lo que disipa: baje la salida." }
     escalera:
-      - "Un lineal deja caer sobre sí la diferencia entre entrada y salida. ¿Cuándo es mayor esa diferencia?"
-    solucion: "Disipar: con la salida baja y 3 A, el lineal tiene que disipar más de 100 W."
+      - "El cruce está en la mitad de la entrada."
+    solucion: "15 V o menos."
+    comprobar:
+      - { con: { V_s: 15 }, r_d: 0 }
+      - { con: { V_s: 25 }, r_d: -60 }
+      - { con: { V_s: 3 }, P_d: 81, P_u: 9 }
 
   - id: simule-lineal
     tipo: simular
@@ -138,48 +163,24 @@ tarjetas:
       - { P_d: 81, P_u: 9, P_e: 90 }
 
   - id: empareje-dificultad
-    tipo: pregunta
+    tipo: tocar
     titulo: "El problema que no parecía"
-    texto: "En todos, el problema difícil no es el que parecía. Empareje cada proyecto con el suyo."
-    libro: [27, 9, 15, 17, 21]
+    texto: "En un proyecto, el problema difícil no es procesar, sino lo que llega al convertidor. Tóquelo."
+    libro: [27, 9, 15, 17, 19, 21]
     widget:
       tipo: figura
       figura: fig-48.10
-      zonas:
-        - { id: dificultad, rotulo: "Las cuatro dificultades", rect: [5, 110, 445, 56] }
-    emparejar:
-      - ["Estación IoT", "No el sensor, sino el consumo"]
-      - ["Fuente", "No regular, sino disipar"]
-      - ["Amplificador", "No amplificar, sino estabilizar y no zumbar"]
-      - ["SDR", "No procesar, sino lo que llega al convertidor"]
-    exito: "Ninguno es difícil por su esquema: las dificultades son físicas, calor, ruido, masas y consumo."
-    pistas:
-      - { texto: "El que funciona con pilas un año tiene un problema de energía." }
+      zonas: *zonas-pr
+    tocar:
+      bien: [sdr]
+      porque:
+        iot: "La estación IoT: el consumo y la fiabilidad en campo."
+        fuente: "La fuente: disipar."
+        hifi: "El amplificador: masas, zumbido y estabilidad con carga reactiva."
+    exito: "La SDR. Si muestrea cerca de la radiofrecuencia, el reloj pasa a ser crítico: el jitter admisible lo fija la frecuencia de la señal."
     escalera:
-      - "Busque en cada uno la magnitud física que manda: energía, calor, masas, reloj."
-    solucion: "IoT, consumo; fuente, disipar; amplificador, estabilizar y no zumbar; SDR, lo que llega al convertidor."
-
-  - id: prediga-reloj
-    tipo: predecir
-    titulo: "Muestrear cerca de la radiofrecuencia"
-    texto: "Si la SDR muestrea directamente la radiofrecuencia, ¿qué componente pasa a ser el crítico?"
-    libro: [19, 21]
-    widget:
-      tipo: figura
-      figura: fig-48.10
-      zonas:
-        - { id: sdr, rotulo: "La cuarta columna", rect: [341, 2, 111, 168] }
-    opciones:
-      - texto: "El oscilador del reloj"
-        bien: true
-        porque: "El jitter admisible corresponde a la frecuencia de la señal, no a la de muestreo."
-      - texto: "El procesador que hace la FFT"
-        porque: "Procesar no es el problema de la SDR: lo es lo que llega al convertidor."
-      - texto: "La tarjeta de sonido"
-        porque: "Esa es la versión del capítulo 53; con muestreo directo, el reloj manda."
-    escalera:
-      - "¿De qué depende el error de muestrear una señal rápida en un instante algo equivocado?"
-    solucion: "El reloj: el jitter admisible lo fija la frecuencia de la señal."
+      - "¿Qué proyecto tiene un convertidor delante de todo?"
+    solucion: "La cuarta columna, la SDR."
 
   - id: pregunta-cobertura
     tipo: pregunta
@@ -202,28 +203,6 @@ tarjetas:
     escalera:
       - "¿Qué necesita cualquier aparato, sea de la especialidad que sea, para existir?"
     solucion: "Realización: placa, montaje y térmica, en los cuatro."
-
-  - id: pregunta-i2c
-    tipo: pregunta
-    titulo: "Los sensores de la estación"
-    texto: "¿Por qué leer los sensores digitales por un bus I²C y no con una entrada analógica cada uno?"
-    libro: ["cap48#145", 8]
-    widget:
-      tipo: figura
-      figura: fig-48.10
-      zonas:
-        - { id: iot, rotulo: "La primera columna", rect: [2, 2, 108, 168] }
-    opciones:
-      - texto: "Dos líneas compartidas, cada sensor con su dirección y la medida ya calibrada"
-        bien: true
-        porque: "Ahorra pines y canales, y una señal digital no recoge el ruido de los cables."
-      - texto: "Porque el I²C es más rápido que cualquier convertidor"
-        porque: "La velocidad no es la razón: lo son los pines, el ruido y la calibración."
-      - texto: "Porque los sensores analógicos consumen más"
-        porque: "El ejercicio no habla de consumo: habla de pines, ruido en los cables y escalabilidad."
-    escalera:
-      - "Cuente pines: ¿cuántos hacen falta con diez sensores en cada caso?"
-    solucion: "Por el bus: dos líneas para todos, sin ruido analógico en los cables y con la medida calibrada."
 
   - id: porque-bloques
     tipo: porque

@@ -3,6 +3,12 @@
 #   frente a la orden u, en fracción del fondo de escala. La zona muerta y la saturación de los mandos son de ejemplo.
 # Paso práctico: «ajuste» de la orden, subiéndola poco a poco hasta que el actuador empieza a moverse (el banco del
 # libro, bloque 295: así se mide la zona muerta).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la característica se ajusta hasta que una orden de 0,5 dé
+# 0,2; la orden se sube hasta saturar; la holgura se quita hasta que el ciclo límite desaparece (dibujo esquemático);
+# un encoder se añade al paso a paso para que se entere de los pasos perdidos (tres pasos perdidos a partir del
+# décimo, de ejemplo); se elige un actuador más rápido que la planta (dos primeros órdenes en serie, planta de 1 s, de
+# ejemplo); y el dimensionado de 8 A se predice. Quedan una pregunta de opciones (la corriente) y las familias por
+# emparejar.
 leccion: cap31/sec-31.8
 
 libro:
@@ -29,16 +35,26 @@ modelo:
     u_a: { sim: "u", nombre: "orden al actuador", unidad: "", valor: 0.5 }
     z_a: { sim: "z", nombre: "zona muerta de ejemplo", unidad: "", valor: 0.15 }
     s_a: { sim: "s", nombre: "saturación de ejemplo", unidad: "", valor: 0.7 }
+    h_g: { sim: "holgura", nombre: "holgura de la reductora, de ejemplo", unidad: "", valor: 0.3 }
+    k_e: { sim: "encoder", nombre: "realimentación de posición", unidad: "", valor: 0 }
+    t_ac: { sim: "τ_{a}", nombre: "constante del actuador", unidad: s, valor: 2 }
+    t_pl: { sim: "τ_{p}", nombre: "constante de la planta, de ejemplo", unidad: s, valor: 1 }
+    I_m: { sim: "I_{mantener}", nombre: "corriente para mantener la carga", unidad: A, valor: 2 }
+    I_a: { sim: "I_{acelerar}", nombre: "corriente para acelerarla", unidad: A, valor: 8 }
   calculos:
     y_a: { expr: "min(max(u_a - z_a, 0), s_a)", sim: "y", nombre: "respuesta del actuador", unidad: "" }
+    y_h: { expr: "min(max(0.5 - z_a, 0), s_a)", sim: "y(0,5)", nombre: "respuesta a una orden de 0,5", unidad: "" }
+    p_l: { expr: "3*(1 - k_e)", sim: "pasos perdidos", nombre: "pasos perdidos sin corregir", unidad: "" }
+    I_d: { expr: "max(I_m, I_a)", sim: "I", nombre: "corriente de dimensionado", unidad: A }
 
 tarjetas:
   - id: explore-actuador
     tipo: explorar
     titulo: "Lo que de verdad hace un actuador"
-    texto: "Respuesta frente a la orden, en fracción del fondo de escala. Cambie la zona muerta y la saturación."
+    texto: "Respuesta frente a la orden, en fracción del fondo de escala. Ponga un actuador que, con una orden de 0,5, solo dé 0,2."
     nota: "Valores de ejemplo."
     libro: [282, 284]
+    inicio: { z_a: 0, s_a: 1 }
     widget:
       tipo: grafica
       x: { id: u, min: 0, max: 1, unidad: "", rotulo: "orden" }
@@ -49,7 +65,18 @@ tarjetas:
       mandos:
         - { valor: z_a, lista: [0, 0.15, 0.3], rotulo: "Zona muerta" }
         - { valor: s_a, lista: [0.5, 0.7, 1], rotulo: "Saturación" }
-    requiere: { mover: [z_a, s_a] }
+      lectura: { valor: y_h, rotulo: "Respuesta a una orden de 0,5" }
+    objetivo:
+      condiciones:
+        - { valor: y_h, objetivo: 0.2, tol: 0.01, rotulo: "Responde {{y_h}}" }
+      logrado: "Una zona muerta de {{z_a}}: las órdenes pequeñas se pierden. Arriba, la saturación pone el techo."
+      pistas:
+        - { texto: "Responde más de lo pedido: hace falta más zona muerta." }
+    escalera:
+      - "La respuesta es la orden menos la zona muerta, hasta la saturación."
+    solucion: "Zona muerta de 0,3."
+    comprobar:
+      - { con: { z_a: 0.3, s_a: 1 }, y_h: 0.2, u_a: 0.5 }
 
   - id: ajuste-zona-muerta
     tipo: ajuste
@@ -80,50 +107,63 @@ tarjetas:
       dentro: "Empieza a moverse: la orden de ahora es la zona muerta."
 
   - id: ciclo-limite
-    tipo: pregunta
+    tipo: explorar
     titulo: "Corregir eternamente"
-    texto: "Un posicionador con holgura en la reductora oscila alrededor de la consigna sin llegar nunca. ¿Qué lo causa?"
+    texto: "Un posicionador con holgura en la reductora oscila alrededor de la consigna sin llegar nunca. Quite la holgura hasta que llegue."
+    nota: "Dibujo esquemático."
     libro: [284]
+    inicio: { h_g: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 10, unidad: s, rotulo: "t", muestras: 800 }
+      y: { min: 0, max: 1.6, unidad: "", rotulo: "posición" }
+      curvas:
+        - { expr: "(1 - exp(-t)) + h_g*min(1, t/3)*sin(2*pi*0.6*t)", color: naranja, rotulo: "posición" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: h_g, rotulo: "Holgura" }
+      mandos:
+        - { valor: h_g, lista: [0.3, 0.15, 0], rotulo: "Holgura" }
+    objetivo:
+      condiciones:
+        - { valor: h_g, max: 0, rotulo: "Holgura: {{h_g}}" }
+      logrado: "Sin zona muerta llega. Con ella, el actuador no responde a las órdenes pequeñas de cerca de la consigna: ciclo límite."
+      pistas:
+        - { texto: "Mientras haya holgura, el sistema corrige eternamente sin llegar." }
+    escalera:
+      - "Cerca de la consigna, ¿son grandes o pequeñas las órdenes?"
+    solucion: "Holgura nula."
+    comprobar:
+      - { con: { h_g: 0 }, h_g: 0 }
+
+  - id: predecir-saturacion
+    tipo: explorar
+    titulo: "El actuador a tope"
+    texto: "El error crece y el controlador pide más. Suba la orden hasta que pedir más ya no dé más respuesta."
+    libro: [282]
     fijar: { z_a: 0.15, s_a: 0.7 }
+    inicio: { u_a: 0.3 }
     widget:
       tipo: grafica
       x: { id: u, min: 0, max: 1, unidad: "", rotulo: "orden" }
       y: { min: 0, max: 1, unidad: "", rotulo: "respuesta" }
       curvas:
         - { expr: "min(max(u - z_a, 0), s_a)", color: naranja, rotulo: "actuador" }
-    opciones:
-      - texto: "La zona muerta: no responde a órdenes pequeñas y aparece un ciclo límite"
-        bien: true
-        porque: "Rozamiento u holgura: el sistema corrige eternamente sin llegar."
-      - texto: "La saturación"
-        porque: "La saturación aparece con órdenes grandes; cerca de la consigna las órdenes son pequeñas."
-      - texto: "Un controlador demasiado lento"
-        porque: "Un controlador lento llegaría tarde, pero llegaría; aquí el actuador no responde a lo pequeño."
+      marcas:
+        - { x: "u_a", y: "y_a", rotulo: "orden actual" }
+      lectura: { valor: y_a, rotulo: "Respuesta" }
+      mandos:
+        - { valor: u_a, min: 0, max: 1, paso: 0.05, rotulo: "Orden" }
+    objetivo:
+      condiciones:
+        - { valor: y_a, min: 0.7, rotulo: "Respuesta: {{y_a}}" }
+      logrado: "Saturado: por mucho que crezca el error, no hay más acción y el lazo pierde el control. La integral sigue acumulando: windup."
+      pistas:
+        - { texto: "Aún responde más al pedir más: siga subiendo." }
     escalera:
-      - "Cerca de la consigna, ¿son grandes o pequeñas las órdenes?"
-    solucion: "La zona muerta del actuador: un ciclo límite."
-
-  - id: predecir-saturacion
-    tipo: predecir
-    titulo: "El actuador a tope"
-    texto: "El error crece y el controlador pide más, pero el actuador ya está saturado. ¿Qué pasa con el lazo?"
-    libro: [282]
-    widget:
-      tipo: figura
-      figura: fig-31.15
-      zonas:
-        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
-    opciones:
-      - texto: "Pierde el control: por mucho que crezca el error, no hay más acción"
-        bien: true
-        porque: "Y la integral sigue acumulando: es lo que produce el windup. Hay que preverlo."
-      - texto: "El controlador lo compensa subiendo su ganancia"
-        porque: "Pida lo que pida, el actuador no da más."
-      - texto: "Oscila más deprisa"
-        porque: "Saturado, el lazo está de hecho abierto: no corrige."
-    escalera:
-      - "¿Qué hace un actuador saturado con una orden mayor?"
-    solucion: "El lazo pierde el control mientras dure la saturación."
+      - "Busque dónde la curva se aplana."
+    solucion: "Orden de 0,85 o más."
+    comprobar:
+      - { con: { u_a: 0.85 }, y_a: 0.7 }
 
   - id: empareje-familias
     tipo: pregunta
@@ -150,70 +190,87 @@ tarjetas:
     solucion: "Continua, escobillas; sin escobillas, conmutación electrónica; paso a paso, sin realimentación; servo, todo en uno; térmico, lento; piezo, micras."
 
   - id: pasos-perdidos
-    tipo: pregunta
+    tipo: explorar
     titulo: "Pasos perdidos"
-    texto: "Una impresora con motores paso a paso desplaza una capa si el par no basta. ¿Por qué no se corrige sola?"
+    texto: "Un paso a paso posiciona sin realimentación: si el par no basta, pierde pasos en silencio. Haga que el sistema se entere."
+    nota: "Pasos perdidos de ejemplo."
     libro: [276]
+    inicio: { k_e: 0 }
     widget:
-      tipo: figura
-      figura: fig-31.15
-      zonas:
-        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
-    opciones:
-      - texto: "Posiciona sin realimentación: pierde pasos en silencio y no se entera"
-        bien: true
-        porque: "Lo que simplifica el sistema es lo que le impide enterarse."
-      - texto: "Porque el controlador satura"
-        porque: "No hay controlador que se entere: no hay medida de la posición."
-      - texto: "Porque el motor tiene zona muerta"
-        porque: "El problema es que nadie mide la posición, no la respuesta a órdenes pequeñas."
+      tipo: grafica
+      x: { id: n, min: 0, max: 30, unidad: "", rotulo: "pasos ordenados" }
+      y: { min: 0, max: 32, unidad: "", rotulo: "posición" }
+      curvas:
+        - { expr: "n", color: tinta, rotulo: "ordenada", discontinua: true }
+        - { expr: "n - p_l*min(1, max(0, n - 10))", color: naranja, rotulo: "real" }
+      lectura: { valor: p_l, rotulo: "Pasos perdidos sin corregir" }
+      mandos:
+        - { valor: k_e, lista: [0, 1], nombres: [sin encoder, con encoder], rotulo: "Realimentación" }
+    objetivo:
+      condiciones:
+        - { valor: p_l, max: 0, rotulo: "Perdidos: {{p_l}}" }
+      logrado: "Midiendo la posición, el lazo ve los pasos perdidos y los repone. Sin medida, la impresora desplaza la capa y no se entera."
+      pistas:
+        - { texto: "Nadie mide la posición real: los pasos perdidos no se ven." }
     escalera:
-      - "¿Qué mide la posición real en un paso a paso?"
-    solucion: "No hay realimentación: los pasos perdidos no se ven."
+      - "¿Qué mide la posición real?"
+    solucion: "Con encoder."
+    comprobar:
+      - { con: { k_e: 1 }, p_l: 0 }
 
   - id: velocidad
-    tipo: pregunta
+    tipo: explorar
     titulo: "Más lento que la planta"
-    texto: "El actuador responde más despacio que el proceso que gobierna. ¿Qué consecuencia tiene?"
+    texto: "Actuador y planta en serie ante un escalón. Elija un actuador que no frene la planta: cinco veces más rápido que ella."
+    nota: "Planta de ejemplo."
     libro: [283, 285]
+    inicio: { t_ac: 2 }
     widget:
-      tipo: figura
-      figura: fig-31.15
-      zonas:
-        - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
-    opciones:
-      - texto: "Domina la dinámica del lazo"
-        bien: true
-        porque: "El lazo no puede ir más deprisa que su eslabón más lento."
-      - texto: "Ninguna, el controlador la compensa"
-        porque: "Pedir más deprisa no hace más rápido al actuador."
-      - texto: "Cambia la ganancia con el punto de trabajo"
-        porque: "Eso es la falta de linealidad, otra cosa que mirar."
+      tipo: grafica
+      x: { id: t, min: 0, max: 15, unidad: s, rotulo: "t", muestras: 600 }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-t/t_pl)", color: tinta, rotulo: "la planta sola", discontinua: true }
+        - { expr: "1 - (t_ac*exp(-t/t_ac) - t_pl*exp(-t/t_pl))/(t_ac - t_pl)", color: naranja, rotulo: "actuador y planta" }
+      lectura: { valor: t_ac, rotulo: "Constante del actuador" }
+      mandos:
+        - { valor: t_ac, lista: [2, 0.5, 0.2, 5], rotulo: "Constante del actuador" }
+    objetivo:
+      condiciones:
+        - { valor: t_ac, max: 0.2, rotulo: "Actuador: {{t_ac}}" }
+      logrado: "El conjunto sigue a la planta. Un actuador más lento que ella domina la dinámica: el lazo no va más deprisa que su eslabón más lento."
+      pistas:
+        - { texto: "El actuador marca el ritmo: elija uno más rápido." }
     escalera:
-      - "¿Qué eslabón marca el ritmo?"
-    solucion: "Domina la dinámica."
+      - "Cinco veces más rápido que 1 s."
+    solucion: "τ_{a} = 0,2 s."
+    comprobar:
+      - { con: { t_ac: 0.2 }, t_ac: 0.2, t_pl: 1 }
 
   - id: dimensionado
-    tipo: pregunta
+    tipo: simular
     titulo: "El error de dimensionado"
-    texto: "Un motor mantiene la carga con 2 A y necesita 8 A para acelerarla en el tiempo pedido. ¿Para cuánto se dimensionan el driver y la fuente?"
+    texto: "Un motor mantiene la carga con 2 A y necesita 8 A para acelerarla en el tiempo pedido. ¿Para cuántos amperios se dimensionan el driver y la fuente?"
     libro: [290, 291, 292, 296]
     widget:
       tipo: figura
       figura: fig-31.15
       zonas:
         - { id: todo, rotulo: "Actuadores", rect: [0, 0, 453, 226] }
-    opciones:
-      - texto: "Para 8 A: el peor caso dinámico"
-        bien: true
-        porque: "Con 2 A el lazo satura constantemente sin que se entienda por qué."
-      - texto: "Para 2 A: el régimen permanente"
-        porque: "Es el error más frecuente: no alcanza el comportamiento especificado."
-      - texto: "Para la media de los dos"
-        porque: "El transitorio pide los 8 A enteros mientras dura."
+    simular:
+      objetivo: I_d
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente del driver"
+      errores:
+        - { expr: "I_m", texto: "Es el error más frecuente: con el régimen permanente el lazo satura en cada aceleración." }
+        - { expr: "(I_m + I_a)/2", texto: "El transitorio pide los 8 A enteros mientras dura: no vale la media." }
+    exito: "8 A: el dimensionado sale del peor caso dinámico, no del estático."
     escalera:
       - "¿Cuándo pide más corriente el motor?"
-    solucion: "8 A: el dimensionado sale del peor caso dinámico."
+    solucion: "8 A."
+    comprobar:
+      - { I_d: 8, I_m: 2, I_a: 8 }
 
   - id: porque-corriente
     tipo: porque

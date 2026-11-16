@@ -5,6 +5,11 @@
 # - La fracción de potencia de la portadora en AM, 1/(1 + m²/2): dos tercios con m = 1, más del 95 % con m = 0,3.
 # Pasos prácticos: «simular» el ancho de banda de Carson de la FM comercial (180 kHz; errores típicos: olvidar f_max,
 # olvidar el 2, la AM) y «banco» opcional: las bandas laterales de la AM en la FFT (ficha 35 del cuaderno).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la AM se lleva al 100 % (envolvente a cero); la FM se desvía
+# hasta que la frecuencia instantánea baja a la mitad de la portadora; λ a 100 MHz y la banda de la AM se predicen;
+# Carson se explora hasta 120 kHz; el umbral de la FM se busca bajando la señal a ruido de entrada (la mejora de 15 dB
+# de la FM sobre el umbral es de ejemplo); la potencia de la portadora con m = 0,3 se lee en su curva. Quedan una
+# pregunta de opciones (el ruido de la FM) y dos emparejamientos (parámetros y variantes).
 leccion: cap31/sec-31.4
 
 libro:
@@ -40,6 +45,9 @@ modelo:
     D_f: { sim: "Δf", nombre: "desviación", unidad: Hz, valor: 25000 }
     f_x: { sim: "f_{max}", nombre: "frecuencia máxima del audio", unidad: Hz, valor: 5000 }
     f_t: { sim: "f", nombre: "frecuencia de la portadora", unidad: Hz, valor: 100000000 }
+    s_in: { sim: "S/N_{entrada}", nombre: "relación señal a ruido a la entrada", unidad: dB, valor: 30 }
+    G_fm: { sim: "mejora", nombre: "mejora de la FM sobre el umbral, de ejemplo", unidad: dB, valor: 15 }
+    u_fm: { sim: "umbral", nombre: "umbral de la FM", unidad: dB, valor: 10 }
   calculos:
     BW: { expr: "2*(D_f + f_x)", sim: "BW", nombre: "ancho de banda de Carson", unidad: Hz }
     BW_a: { expr: "2*D_f", sim: "BW", nombre: "Carson sin el audio", unidad: Hz }
@@ -47,14 +55,18 @@ modelo:
     BW_am: { expr: "2*f_x", sim: "BW", nombre: "ancho de banda en AM", unidad: Hz }
     lam: { expr: "300000000/f_t", sim: "λ", nombre: "longitud de onda", unidad: m }
     P_c: { expr: "100/(1 + m_a^2/2)", sim: "P_{c}/P", nombre: "potencia de la portadora", unidad: "%" }
+    e_min: { expr: "1 - m_a", sim: "envolvente mínima", nombre: "mínimo de la envolvente", unidad: V }
+    f_mn: { expr: "f_c - d_f", sim: "f_{mín}", nombre: "frecuencia instantánea mínima", unidad: Hz }
+    fm_ok: { expr: "max(0, min(1, s_in - u_fm))", sim: "FM", nombre: "la FM se oye", unidad: "" }
 
 tarjetas:
   - id: explore-am
     tipo: explorar
     titulo: "Variar la amplitud"
-    texto: "Una portadora cuya amplitud sigue a la señal: AM. Cambie el índice de modulación y mire la envolvente."
+    texto: "Una portadora cuya amplitud sigue a la señal: AM. Module al 100 %, hasta que la envolvente toque cero."
     nota: "Portadora de 20 kHz y moduladora de 1 kHz, de ejemplo."
     libro: [128, 129, 130, 167]
+    inicio: { m_a: 0.3 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t", muestras: 2000 }
@@ -64,15 +76,26 @@ tarjetas:
         - { expr: "1 + m_a*sin(2*pi*f_m*t)", color: naranja, rotulo: "envolvente", discontinua: true }
       mandos:
         - { valor: m_a, lista: [0.3, 0.5, 1], rotulo: "Índice de modulación, m" }
-    requiere: { mover: [m_a] }
+      lectura: { valor: e_min, rotulo: "Mínimo de la envolvente" }
+    objetivo:
+      condiciones:
+        - { valor: e_min, max: 0.001, rotulo: "Envolvente mínima: {{e_min}}" }
+      logrado: "m = 1: la amplitud de la portadora sigue a la señal entera, de cero al doble."
+      pistas:
+        - { texto: "La envolvente aún no baja a cero: suba el índice." }
+    escalera:
+      - "La envolvente es 1 + m·sen 2πf_{m}t."
+    solucion: "m = 1."
     comprobar:
       - { f_c: 20000, f_m: 1000 }
+      - { con: { m_a: 1 }, e_min: 0 }
 
   - id: explore-fm
     tipo: explorar
     titulo: "Variar la frecuencia"
-    texto: "Ahora la amplitud no cambia y es la frecuencia la que sigue a la señal: FM. Suba la desviación."
+    texto: "Ahora la amplitud no cambia y es la frecuencia la que sigue a la señal: FM. Desvíela hasta que baje a la mitad de la portadora."
     libro: [128, 130, 131, 167]
+    inicio: { d_f: 2000 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t", muestras: 2000 }
@@ -80,10 +103,20 @@ tarjetas:
       curvas:
         - { expr: "cos(2*pi*f_c*t + d_f/f_m*sin(2*pi*f_m*t))", color: azul, rotulo: "señal de FM" }
         - { expr: "sin(2*pi*f_m*t)", color: naranja, rotulo: "moduladora", discontinua: true }
-      lectura: { valor: d_f, rotulo: "Desviación" }
+      lectura: { valor: f_mn, rotulo: "Frecuencia instantánea mínima" }
       mandos:
         - { valor: d_f, lista: [2000, 5000, 10000], rotulo: "Desviación, Δf" }
-    requiere: { mover: [d_f] }
+    objetivo:
+      condiciones:
+        - { valor: f_mn, max: 10000, rotulo: "Mínima: {{f_mn}}" }
+      logrado: "Con Δf = {{d_f}}, la onda se estira y se comprime al ritmo de la moduladora, con la amplitud intacta."
+      pistas:
+        - { texto: "La frecuencia aún se mueve poco: más desviación." }
+    escalera:
+      - "La frecuencia instantánea va de f_{c} − Δf a f_{c} + Δf."
+    solucion: "Δf = 10 kHz."
+    comprobar:
+      - { con: { d_f: 10000 }, f_mn: 10000 }
 
   - id: empareje-parametros
     tipo: pregunta
@@ -107,28 +140,24 @@ tarjetas:
     solucion: "Amplitud, AM y ASK; frecuencia, FM y FSK; fase, PM y PSK."
 
   - id: estime-antena
-    tipo: pregunta
+    tipo: simular
     titulo: "La antena"
-    texto: "Para 1 kHz, λ vale 300 km. ¿Cuánto vale λ si se traslada la señal a 100 MHz?"
+    texto: "Para 1 kHz, λ vale 300 km: no se puede transmitir directamente por radio. ¿Cuánto vale λ si se traslada la señal a 100 MHz?"
     libro: [123, 124]
     widget:
       tipo: figura
       figura: fig-31.6
       zonas:
         - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
-    estimar:
-      objetivo: "lam"
+    simular:
+      objetivo: lam
       unidad: m
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 8
-      tol: 0.05
+      tol: 0.03
       rotulo: "λ a 100 MHz"
+      errores:
+        - { expr: "30", texto: "Ha dividido entre diez mil: la frecuencia sube cien mil veces." }
+        - { expr: "300", texto: "Ha dividido entre mil: de 1 kHz a 100 MHz hay cien mil veces." }
     exito: "3 m: la antena cabe en un tejado; una de 3 km para 1 kHz sería «pequeña»."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Demasiado larga: λ es inversa a la frecuencia." }
-      - { texto: "Demasiado corta: la frecuencia sube cien mil veces y λ baja cien mil veces." }
     escalera:
       - "Multiplicar la frecuencia por cien mil divide λ por cien mil."
     solucion: "300 km entre cien mil: 3 m."
@@ -136,34 +165,36 @@ tarjetas:
       - { lam: 3 }
 
   - id: banda-am
-    tipo: pregunta
+    tipo: simular
     titulo: "Cuánta banda ocupa la AM"
     texto: "Una emisora de AM transmite 5 kHz de audio. ¿Qué ancho de banda ocupa?"
     libro: [134]
+    fijar: { f_x: 5000 }
     widget:
       tipo: figura
       figura: fig-31.6
       zonas:
         - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
-    opciones:
-      - texto: "10 kHz"
-        bien: true
-        porque: "Dos bandas laterales alrededor de la portadora: el doble de la moduladora."
-      - texto: "5 kHz"
-        porque: "Eso es una sola banda lateral; la AM clásica tiene dos."
-      - texto: "Depende del índice de modulación"
-        porque: "El índice cambia la amplitud de las bandas laterales, no dónde están."
+    simular:
+      objetivo: BW_am
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Ancho de banda"
+      errores:
+        - { expr: "f_x", texto: "Eso es una sola banda lateral; la AM clásica tiene dos, a cada lado de la portadora." }
+    exito: "10 kHz: dos bandas laterales alrededor de la portadora. El índice cambia su amplitud, no dónde están."
     escalera:
       - "Cada componente del audio aparece a cada lado de la portadora."
     solucion: "El doble del audio: 10 kHz."
+    comprobar:
+      - { BW_am: 10000 }
 
   - id: formula-carson
-    tipo: formula
+    tipo: explorar
     titulo: "La regla de Carson"
-    texto: "En FM, el ancho de banda lo dan la desviación y la frecuencia máxima del audio. Muévalas."
+    texto: "En FM, BW ≈ 2·(Δf + f_{max}): lo dan la desviación y el audio. Consiga una emisora que ocupe 120 kHz."
     libro: [134, 136]
-    ec: 136
-    sustitucion: "2 · ({{D_f}} + {{f_x}}) = {{BW}}"
+    inicio: { D_f: 25000, f_x: 5000 }
     widget:
       tipo: grafica
       x: { id: d, min: 0, max: 100000, unidad: Hz, rotulo: "Δf" }
@@ -176,6 +207,18 @@ tarjetas:
       mandos:
         - { valor: D_f, lista: [25000, 50000], rotulo: "Desviación, Δf" }
         - { valor: f_x, lista: [5000, 10000], rotulo: "Audio, f_{max}" }
+    objetivo:
+      condiciones:
+        - { valor: BW, objetivo: 120000, tol: 0.01, rotulo: "BW = {{BW}}" }
+      logrado: "2 · ({{D_f}} + {{f_x}}) = {{BW}}: más desviación o más audio, más banda."
+      pistas:
+        - { cuando: { valor: BW, mayor: 121000 }, texto: "Se pasa." }
+        - { texto: "Le falta banda: suba la desviación o el audio." }
+    escalera:
+      - "La mitad de la banda es Δf + f_{max}."
+    solucion: "Δf = 50 kHz y f_{max} = 10 kHz."
+    comprobar:
+      - { con: { D_f: 50000, f_x: 10000 }, BW: 120000 }
 
   - id: simule-carson
     tipo: simular
@@ -222,31 +265,40 @@ tarjetas:
     solucion: "El limitador quita las variaciones de amplitud, donde va el ruido."
 
   - id: predecir-umbral
-    tipo: predecir
+    tipo: explorar
     titulo: "Una emisora lejana"
-    texto: "Se aleja de una emisora de AM y de una de FM. ¿Cómo se pierden?"
+    texto: "Al alejarse de las emisoras baja la señal a ruido de entrada. Baje hasta que la FM se pierda."
+    nota: "La mejora de la FM sobre el umbral es de ejemplo."
     libro: [143, 144]
+    inicio: { s_in: 30 }
     widget:
-      tipo: figura
-      figura: fig-31.6
-      zonas:
-        - { id: todo, rotulo: "AM y FM de la misma señal", rect: [0, 0, 443, 277] }
-    opciones:
-      - texto: "La AM se oye con ruido creciente; la FM se oye bien hasta un punto y desaparece"
-        bien: true
-        porque: "Por debajo de unos 10 dB de señal a ruido, el receptor de FM pierde el enganche."
-      - texto: "Las dos van empeorando poco a poco igual"
-        porque: "La ventaja de la FM no es gradual: tiene umbral, como las digitales."
-      - texto: "La FM se oye con ruido creciente; la AM desaparece de golpe"
-        porque: "Al revés: el umbral es de la FM."
+      tipo: grafica
+      x: { id: s, min: 0, max: 40, unidad: dB, rotulo: "S/N a la entrada" }
+      y: { min: 0, max: 60, unidad: dB, rotulo: "S/N del audio" }
+      curvas:
+        - { expr: "s", color: azul, rotulo: "AM" }
+        - { expr: "max(0, min(1, s - u_fm))*(s + G_fm)", color: naranja, rotulo: "FM" }
+      marcas:
+        - { x: "s_in", y: "s_in", rotulo: "usted" }
+      lectura: { valor: s_in, rotulo: "S/N a la entrada" }
+      mandos:
+        - { valor: s_in, min: 0, max: 40, paso: 2, rotulo: "S/N a la entrada" }
+    objetivo:
+      condiciones:
+        - { valor: fm_ok, max: 0, rotulo: "La FM se ha perdido" }
+      logrado: "Por debajo de unos 10 dB el receptor de FM pierde el enganche: se oye bien hasta un punto y desaparece. La AM solo va ganando ruido."
+      pistas:
+        - { texto: "La FM aún suena mejor que la AM: siga bajando." }
     escalera:
-      - "La ventaja de la FM no es gratuita ni gradual."
-    solucion: "AM, ruido creciente; FM, todo o nada por debajo de unos 10 dB."
+      - "La ventaja de la FM no es gradual: tiene umbral."
+    solucion: "Por debajo de unos 10 dB."
+    comprobar:
+      - { con: { s_in: 10 }, fm_ok: 0, u_fm: 10 }
 
   - id: potencia-portadora
-    tipo: pregunta
+    tipo: leer
     titulo: "Una portadora que no informa"
-    texto: "Fracción de la potencia de AM que se lleva la portadora. Con el 30 % habitual en la voz, ¿cuánto es?"
+    texto: "Fracción de la potencia de AM que se lleva la portadora: dos tercios al 100 %. Lea en la curva cuánto se lleva con el 30 % habitual en la voz."
     libro: [154]
     fijar: { m_a: 0.3 }
     widget:
@@ -257,17 +309,19 @@ tarjetas:
         - { expr: "100/(1 + m^2/2)", color: naranja, rotulo: "portadora" }
       marcas:
         - { x: "1", y: "100/1.5", rotulo: "2/3" }
-    opciones:
-      - texto: "Más del 95 %"
-        bien: true
-        porque: "Casi toda la potencia va en algo que no lleva información."
-      - texto: "Dos tercios"
-        porque: "Ese es el mínimo, con modulación del 100 %; con menos, se lleva más."
-      - texto: "La mitad"
-        porque: "La portadora se lleva al menos dos tercios incluso al 100 %."
+        - { x: "m_a", y: "P_c", rotulo: "m = 0,3" }
+      mandos: []
+    leer:
+      objetivo: P_c
+      unidad: "%"
+      tol: 0.01
+      rotulo: "Potencia de la portadora"
+      errores:
+        - { expr: "100/1.5", texto: "Esos dos tercios son el mínimo, con modulación del 100 %; con menos, se lleva más." }
+    exito: "Más del 95 %: casi toda la potencia va en algo que no lleva información. Por eso existen DSB-SC y SSB."
     escalera:
       - "Mire la curva en m = 0,3."
-    solucion: "Más del 95 %; por eso existen DSB-SC y SSB."
+    solucion: "{{P_c}}."
     comprobar:
       - { P_c: 95.7, tol: 0.002 }
 

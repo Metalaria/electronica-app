@@ -6,6 +6,10 @@
 #   418; el ejemplo de AM: 1 MHz, OL en 1,455 MHz, imagen en 1,91 MHz).
 # Pasos prácticos: «simular» la imagen del ejemplo de AM (1,91 MHz; errores típicos: el oscilador, 1,455 MHz, y restar
 # en lugar de sumar, 0,09 MHz) y «tocar» el preselector en la figura.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 15.24 se tocan los bloques en orden (la ganancia a
+# frecuencia fija va a su éxito); se busca el Q que daría un canal de 200 kHz a 108 MHz; el Q a 88 MHz y la imagen de una
+# emisora de 98 MHz se calculan (medir el oscilador va al éxito de la imagen). Queda una pregunta de opciones (la SDR) y
+# la elección de la FI, por emparejar.
 leccion: cap16/sec-16.19
 
 libro:
@@ -37,29 +41,39 @@ modelo:
     f_OL: { expr: "f_s + f_F", sim: "f_{OL}", nombre: "oscilador local", unidad: Hz, cifras: 4 }
     f_im: { expr: "f_OL + f_F", sim: "f_{imagen}", nombre: "frecuencia imagen", unidad: Hz, cifras: 4 }
     f_ma: { expr: "f_s - 2*f_F", sim: "f_{s} − 2·f_{FI}", nombre: "restando en lugar de sumar", unidad: Hz, cifras: 3 }
+    Q_h: { expr: "f_0/(2*B_c)", sim: "Q", nombre: "con medio canal", unidad: "" }
 
 tarjetas:
   - id: explore-cadena
-    tipo: explorar
+    tipo: tocar
     titulo: "Mover la señal a una frecuencia fija"
-    texto: "El superheterodino traslada la señal a una FI fija y hace allí el trabajo pesado. Toque la cadena y las dos señales."
-    libro: [409, 412, 436]
+    texto: "El superheterodino traslada la señal a una FI fija y hace allí el trabajo pesado. Toque los cuatro bloques de la cadena en orden."
+    libro: [409, 412, 430, 436]
     widget:
       tipo: figura
       figura: fig-16.24
       zonas:
-        - { id: preselector, rotulo: "Arriba, el primero", rect: [32, 12, 66, 42], texto: "El preselector solo rechaza la imagen." }
-        - { id: mezclador, rotulo: "Arriba, el segundo", rect: [107, 12, 67, 42], texto: "El mezclador y el oscilador local trasladan la señal." }
-        - { id: filtro, rotulo: "Arriba, el tercero", rect: [183, 12, 66, 42], texto: "El filtro de FI define la selectividad." }
-        - { id: amplificador, rotulo: "Arriba, el cuarto", rect: [258, 12, 66, 42], texto: "El amplificador de FI da casi toda la ganancia, a frecuencia fija." }
-        - { id: deseada, rotulo: "El pico verde", rect: [145, 130, 40, 125], texto: "La emisora deseada." }
-        - { id: imagen, rotulo: "El pico rojo de la derecha", rect: [312, 150, 40, 105], texto: "La imagen: a dos veces la FI de la deseada, produce la misma FI." }
-    requiere: { mover: [preselector, mezclador, imagen] }
+        - { id: preselector, rotulo: "Primer bloque", rect: [32, 12, 66, 42] }
+        - { id: mezclador, rotulo: "Segundo bloque", rect: [107, 12, 67, 42] }
+        - { id: filtro, rotulo: "Tercer bloque", rect: [183, 12, 66, 42] }
+        - { id: amplificador, rotulo: "Cuarto bloque", rect: [258, 12, 66, 42] }
+        - { id: deseada, rotulo: "Señal deseada", rect: [145, 130, 40, 125] }
+        - { id: imagen, rotulo: "Señal imagen", rect: [312, 150, 40, 105] }
+    tocar:
+      bien: [preselector, mezclador, filtro, amplificador]
+      orden: true
+      porque:
+        deseada: "Es la señal deseada en el espectro, no un bloque."
+        imagen: "Es la imagen en el espectro, no un bloque."
+    exito: "Filtro y amplificador de FI son fijos: a frecuencia fija se da casi toda la ganancia sin que oscile."
+    escalera:
+      - "De la antena a la FI, de izquierda a derecha."
+    solucion: "Preselector, mezclador, filtro y amplificador."
 
   - id: explore-q
     tipo: explorar
     titulo: "El receptor directo"
-    texto: "Sintonizar en la propia frecuencia de la emisora exige un ancho de banda de f₀/Q. Mueva la sintonía y el Q."
+    texto: "Sintonizar en la propia frecuencia de la emisora exige un ancho de banda de f₀/Q. A 108 MHz, busque el Q que dejaría solo un canal de 200 kHz."
     libro: [404, 405]
     widget:
       tipo: grafica
@@ -74,60 +88,61 @@ tarjetas:
       mandos:
         - { valor: f_0, min: 88000000, max: 108000000, paso: 1000000, rotulo: "Sintonía" }
         - { valor: Q_r, lista: [100, 440, 540], rotulo: "Q del resonante" }
+    inicio: { f_0: 88000000, Q_r: 100 }
+    objetivo:
+      condiciones:
+        - { valor: f_0, min: 108000000, rotulo: "Sintonía: {{f_0}}" }
+        - { valor: B_r, max: 201000, rotulo: "Ancho: {{B_r}}" }
+      logrado: "Haría falta Q = {{Q_r}}, y otro distinto en cada punto de la banda: ningún circuito variable lo consigue."
+      pistas:
+        - { cuando: { valor: f_0, menor: 108000000 }, texto: "Lleve la sintonía a 108 MHz." }
+        - { texto: "Aún demasiado ancho: más Q." }
+    escalera:
+      - "Ancho = f₀/Q."
+    solucion: "Q = 540."
     comprobar:
       - { B_r: 880000 }
+      - { con: { f_0: 108000000, Q_r: 540 }, B_r: 200000 }
 
   - id: estime-q
-    tipo: pregunta
+    tipo: simular
     titulo: "El Q que haría falta"
-    texto: "Un canal de FM ocupa 200 kHz. ¿Qué Q necesitaría un resonante sintonizado en 108 MHz?"
+    texto: "Un canal de FM ocupa 200 kHz. ¿Qué Q necesitaría el resonante sintonizado en el otro extremo, 88 MHz?"
     libro: [405]
-    fijar: { f_0: 108000000, B_c: 200000 }
-    widget:
-      tipo: figura
-      figura: fig-16.24
-      zonas:
-        - { id: deseada, rotulo: "El pico verde", rect: [145, 130, 40, 125] }
-    estimar:
-      objetivo: "Q_n"
+    fijar: { f_0: 88000000, B_c: 200000 }
+    simular:
+      objetivo: Q_n
       unidad: ""
-      min: 0
-      max: 1000
-      paso: 10
-      inicio: 100
-      tol: 0.05
+      tol: 0.02
       rotulo: "Q necesario"
-    exito: "540 en un extremo y 440 en el otro, ajustado a la vez que se sintoniza: ningún circuito variable lo consigue."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 567 }, texto: "Demasiado: Q = f₀/B." }
-      - { texto: "Se queda corto: divida 108 MHz entre 200 kHz." }
+      errores:
+        - { expr: "Q_h", texto: "Ha usado el doble del canal; el ancho que se quiere es el canal entero." }
+    exito: "440 aquí y 540 arriba, cambiando a la vez que se sintoniza: imposible. De ahí el superheterodino."
     escalera:
-      - "B = f₀/Q, así que Q = f₀/B."
-    solucion: "108 MHz / 200 kHz = 540."
+      - "Q = f₀/ancho."
+    solucion: "88 MHz / 200 kHz = 440."
     comprobar:
-      - { Q_n: 540 }
-      - { con: { f_0: 88000000 }, Q_n: 440 }
+      - { Q_n: 440, Q_h: 220 }
 
   - id: formula-imagen
-    tipo: formula
+    tipo: simular
     titulo: "La frecuencia imagen"
-    texto: "El mezclador no distingue el signo de la diferencia: otra señal, por encima del oscilador, da la misma FI. Mueva la emisora."
-    libro: [417, 423]
-    ec: 417
-    sustitucion: "{{f_OL}} + {{f_F}} = {{f_im}}"
-    widget:
-      tipo: grafica
-      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
-      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
-      curvas:
-        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
-        - { expr: "fx + f_F", color: naranja, rotulo: "oscilador local" }
-        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
-      marcas:
-        - { x: "f_s", y: "f_im", rotulo: "{{f_im}}" }
-      lectura: { valor: f_im, rotulo: "Imagen" }
-      mandos:
-        - { valor: f_s, min: 88000000, max: 108000000, paso: 100000, rotulo: "Emisora" }
+    texto: "El mezclador no distingue el signo de la diferencia: f_{imagen} = f_{OL} + f_{FI}. Con una emisora de 98 MHz, ¿dónde está la imagen?"
+    libro: [417, 423, 435]
+    fijar: { f_s: 98000000, f_F: 10700000 }
+    simular:
+      objetivo: f_im
+      unidad: Hz
+      tol: 0.003
+      rotulo: "Frecuencia imagen"
+      errores:
+        - { expr: "f_OL", texto: "Ese es el oscilador local; la imagen está otra FI por encima." }
+    exito: "119,4 MHz, 21,4 MHz por encima: fuera de la banda. El oscilador, de 98,7 a 118,7 MHz, se mide con un frecuencímetro de más de 120 MHz."
+    escalera:
+      - "Oscilador = emisora + FI; imagen = oscilador + FI."
+    solucion: "98 + 10,7 + 10,7 = 119,4 MHz."
+    comprobar:
+      - { f_im: 119400000, f_OL: 108700000 }
 
   - id: simule-am
     tipo: simular
@@ -195,28 +210,6 @@ tarjetas:
       - "Una FI alta aleja la imagen; una baja facilita el filtro."
     solucion: "Alta, imagen fácil; baja, selectividad fácil; doble, las dos cosas."
 
-  - id: porque-ganancia
-    tipo: porque
-    titulo: "La ganancia, en la FI"
-    texto: "¿Por qué el amplificador de FI puede dar casi toda la ganancia sin que el receptor oscile?"
-    libro: [430]
-    widget:
-      tipo: figura
-      figura: fig-16.24
-      zonas:
-        - { id: amplificador, rotulo: "Arriba, el cuarto", rect: [258, 12, 66, 42] }
-    opciones:
-      - texto: "Porque trabaja a una frecuencia fija"
-        bien: true
-        porque: "A frecuencia fija se optimiza de una vez, sin problemas de estabilidad: cada bloque hace una sola cosa."
-      - texto: "Porque la FI es más alta que la señal"
-        porque: "La FI de 10,7 MHz es más baja que la emisora; lo que importa es que no cambia."
-      - texto: "Porque el preselector ya amplifica"
-        porque: "El preselector solo rechaza la imagen."
-    escalera:
-      - "¿Qué tiene de especial la frecuencia a la que trabaja?"
-    solucion: "Frecuencia fija: sin problemas de estabilidad."
-
   - id: pregunta-sdr
     tipo: pregunta
     titulo: "Lo que sigue vigente"
@@ -238,28 +231,6 @@ tarjetas:
     escalera:
       - "¿Dónde pone su oscilador local?"
     solucion: "Un superheterodino con FI cero."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Medir el oscilador local"
-    texto: "Quiere comprobar que el oscilador está siempre 10,7 MHz por encima de la emisora. ¿Con qué lo mide?"
-    libro: [435]
-    widget:
-      tipo: figura
-      figura: fig-16.24
-      zonas:
-        - { id: oscilador, rotulo: "Debajo del mezclador", rect: [100, 62, 82, 38] }
-    opciones:
-      - texto: "Con un frecuencímetro de más de 120 MHz en la salida del buffer BG1"
-        bien: true
-        porque: "Es lo que hace el display del kit. Medirlo en dos posiciones del dial demuestra el principio."
-      - texto: "Con el osciloscopio del FNIRSI"
-        porque: "El oscilador va de 98,7 a 118,7 MHz, fuera de sus 50 MHz."
-      - texto: "Con el multímetro en TP1"
-        porque: "TP1 es la polarización del varicap, una continua."
-    escalera:
-      - "¿Hasta qué frecuencia llega cada instrumento?"
-    solucion: "Un frecuencímetro de más de 120 MHz en BG1."
 
   - id: resumen
     tipo: resumen

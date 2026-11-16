@@ -3,6 +3,11 @@
 #   mismo ruido) y 30.13 (la cadena completa) con zonas.
 # Paso práctico: «tocar» en la figura 30.12 la constelación que antes confunde un punto con su vecino; el diagnóstico
 # de la constelación (tabla del libro) se empareja.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la PSK se toca en la figura 30.11; se elige la modulación de
+# 6 bits por símbolo; la ventaja de 256-QAM se predice; E_b/N_0 se sube hasta una BER de 10⁻⁶ (BPSK y QPSK,
+# 0,5·erfc(√(E_b/N_0)), 10,5 dB); con un enlace de ejemplo de 16 dB se elige la constelación más rápida que aguanta
+# (los 10,5, 14,4 y 18,8 dB de la tabla del libro); y el error de fase de una QPSK se corrige girándola (ángulo de
+# ejemplo). Quedan dos preguntas de opciones (coseno alzado y EVM) y la cadena completa por ordenar.
 leccion: cap31/sec-31.6
 
 libro:
@@ -30,30 +35,45 @@ libro:
 modelo:
   valores:
     M_c: { sim: "M", nombre: "puntos de la constelación", unidad: "", valor: 2 }
+    E_n: { sim: "E_{b}/N_{0}", nombre: "relación energía por bit a ruido", unidad: dB, valor: 6 }
+    S_l: { sim: "S/N", nombre: "margen del enlace, de ejemplo", unidad: dB, valor: 16 }
+    p_e: { sim: "φ_{e}", nombre: "error de fase, de ejemplo", unidad: "°", valor: 20 }
   calculos:
     n_b: { expr: "log10(M_c)/log10(2)", sim: "n", nombre: "bits por símbolo", unidad: "", cifras: 2 }
     r_p: { expr: "M_c/2", sim: "M/2", nombre: "puntos frente a BPSK", unidad: "" }
+    r_b: { expr: "n_b/1", sim: "veces", nombre: "bits por símbolo frente a BPSK", unidad: "" }
+    BER: { expr: "0.5*erfc(sqrt(10^(E_n/10)))", sim: "BER", nombre: "tasa de error de bit", unidad: "", cifras: 2 }
+    E_q: { expr: "10.5*max(0, 1 - abs(M_c - 4)/12) + 14.4*max(0, 1 - abs(M_c - 16)/12)*max(0, min(1, (64 - M_c)/48)) + 18.8*max(0, min(1, (M_c - 16)/48))", sim: "E_{b}/N_{0}", nombre: "lo que pide la modulación", unidad: dB }
 
 tarjetas:
   - id: explore-ask-fsk-psk
-    tipo: explorar
+    tipo: tocar
     titulo: "Los mismos tres parámetros"
-    texto: "Los mismos bits modulan amplitud, frecuencia o fase. Toque cada fila."
+    texto: "Los mismos bits modulan amplitud, frecuencia o fase. Toque la fila en que la portadora salta media vuelta al cambiar el bit."
     libro: [235]
     widget:
       tipo: figura
       figura: fig-31.11
       zonas:
-        - { id: ask, rotulo: "Segunda fila, azul", rect: [0, 56, 435, 40], texto: "ASK: la amplitud. Un bit a cero apaga la portadora." }
-        - { id: fsk, rotulo: "Tercera fila, violeta", rect: [0, 103, 435, 42], texto: "FSK: la frecuencia. Cada bit tiene la suya." }
-        - { id: psk, rotulo: "Cuarta fila, naranja", rect: [0, 150, 435, 42], texto: "PSK: la fase. La portadora salta media vuelta al cambiar el bit." }
-    requiere: { mover: [ask, fsk, psk] }
+        - { id: ask, rotulo: "Segunda fila, azul", rect: [0, 56, 435, 40] }
+        - { id: fsk, rotulo: "Tercera fila, violeta", rect: [0, 103, 435, 42] }
+        - { id: psk, rotulo: "Cuarta fila, naranja", rect: [0, 150, 435, 42] }
+    tocar:
+      bien: [psk]
+      porque:
+        ask: "Esa es la ASK: un bit a cero apaga la portadora."
+        fsk: "Esa es la FSK: cada bit tiene su frecuencia."
+    exito: "La PSK: la fase. La portadora salta media vuelta al cambiar el bit."
+    escalera:
+      - "Busque la portadora que no cambia ni de amplitud ni de ritmo."
+    solucion: "La cuarta fila, naranja: PSK."
 
   - id: explore-bits
     tipo: explorar
     titulo: "Bits por símbolo"
-    texto: "Cada símbolo es un punto de la constelación. Elija cuántos puntos hay y mire cuántos bits lleva cada símbolo."
+    texto: "Cada símbolo es un punto de la constelación y lleva log₂ M bits. Elija la modulación que lleva 6 bits por símbolo."
     libro: [206, 208]
+    inicio: { M_c: 2 }
     widget:
       tipo: grafica
       x: { id: m, min: 2, max: 256, unidad: "", rotulo: "puntos, M", escala: log }
@@ -65,12 +85,23 @@ tarjetas:
       lectura: { valor: n_b, rotulo: "Bits por símbolo" }
       mandos:
         - { valor: M_c, lista: [2, 4, 16, 64, 256], nombres: [BPSK, QPSK, 16-QAM, 64-QAM, 256-QAM], rotulo: "Modulación" }
-    requiere: { mover: [M_c] }
+    objetivo:
+      condiciones:
+        - { valor: n_b, objetivo: 6, tol: 0.01, rotulo: "{{n_b}} bits por símbolo" }
+      logrado: "64-QAM: 64 puntos, 2⁶. Cada punto de más dobla los puntos para un solo bit más."
+      pistas:
+        - { cuando: { valor: n_b, mayor: 6.1 }, texto: "Demasiados puntos." }
+        - { texto: "Pocos puntos: cada bit más dobla la constelación." }
+    escalera:
+      - "Seis bits son 2⁶ puntos."
+    solucion: "64-QAM."
+    comprobar:
+      - { con: { M_c: 64 }, n_b: 6 }
 
   - id: ocho-veces
-    tipo: pregunta
+    tipo: simular
     titulo: "En la misma banda"
-    texto: "Con el mismo ancho de banda, ¿cuánto más transmite 256-QAM que BPSK?"
+    texto: "Con el mismo ancho de banda, ¿cuántas veces más transmite 256-QAM que BPSK?"
     libro: [208, 209]
     fijar: { M_c: 256 }
     widget:
@@ -79,19 +110,21 @@ tarjetas:
       y: { min: 0, max: 9, unidad: "", rotulo: "bits por símbolo" }
       curvas:
         - { expr: "log10(m)/log10(2)", color: naranja, rotulo: "log₂ M" }
-    opciones:
-      - texto: "Ocho veces más"
-        bien: true
-        porque: "Ocho bits por símbolo frente a uno."
-      - texto: "128 veces más"
-        porque: "Tiene 128 veces más puntos, pero los bits son el logaritmo en base 2: 8 frente a 1."
-      - texto: "Lo mismo: la banda manda"
-        porque: "La banda fija los símbolos por segundo; cada símbolo de 256-QAM lleva más bits."
+      mandos: []
+    simular:
+      objetivo: r_b
+      unidad: ""
+      tol: 0.02
+      rotulo: "Veces más"
+      errores:
+        - { expr: "r_p", texto: "Tiene 128 veces más puntos, pero los bits son el logaritmo en base 2: 8 frente a 1." }
+        - { expr: "M_c", texto: "Esos son los puntos de la constelación; lo que cuenta son los bits de cada símbolo." }
+    exito: "Ocho veces: la banda fija los símbolos por segundo, y cada símbolo de 256-QAM lleva 8 bits frente a 1."
     escalera:
       - "Bits por símbolo = log₂ M."
     solucion: "8 bits frente a 1: ocho veces más."
     comprobar:
-      - { n_b: 8, r_p: 128 }
+      - { n_b: 8, r_p: 128, r_b: 8 }
 
   - id: toque-constelacion
     tipo: tocar
@@ -116,48 +149,69 @@ tarjetas:
     solucion: "La de la derecha, 64-QAM: necesita 18,8 dB frente a 10,5 dB."
 
   - id: predecir-qpsk
-    tipo: predecir
+    tipo: explorar
     titulo: "Un caso eficiente"
-    texto: "Para una tasa de error de 10⁻⁶, BPSK necesita 10,5 dB de E_{b}/N_{0}. ¿Cuánto necesita QPSK, que transmite el doble?"
+    texto: "La tasa de error de BPSK y QPSK frente a E_{b}/N_{0}. Suba la señal hasta un bit equivocado de cada millón."
     libro: [211, 213, 214]
+    inicio: { E_n: 6 }
     widget:
-      tipo: figura
-      figura: fig-31.12
-      zonas:
-        - { id: todo, rotulo: "Las tres constelaciones", rect: [0, 0, 430, 177] }
-    opciones:
-      - texto: "Lo mismo, 10,5 dB"
-        bien: true
-        porque: "Sus cuatro puntos siguen a la máxima distancia posible: por eso QPSK es tan usada."
-      - texto: "Unos 4 a 6 dB más"
-        porque: "Eso cuesta cada salto a partir de QPSK: 16-QAM pide 14,4 dB."
-      - texto: "El doble de decibelios"
-        porque: "Los decibelios no se duplican con los bits; y QPSK es el caso especial."
+      tipo: grafica
+      x: { id: e, min: 0, max: 14, unidad: dB, rotulo: "E_{b}/N_{0}" }
+      y: { min: 0.0000000001, max: 0.1, unidad: "", rotulo: "BER", escala: log }
+      curvas:
+        - { expr: "0.5*erfc(sqrt(10^(e/10)))", color: naranja, rotulo: "BPSK y QPSK" }
+      marcas:
+        - { x: "E_n", y: "BER", rotulo: "{{BER}}" }
+      lectura: { valor: BER, rotulo: "Tasa de error" }
+      mandos:
+        - { valor: E_n, min: 6, max: 14, paso: 0.5, rotulo: "E_{b}/N_{0}" }
+    objetivo:
+      condiciones:
+        - { valor: BER, max: 0.0000011, rotulo: "BER: {{BER}}" }
+      logrado: "Con {{E_n}}, del orden de 10⁻⁶. QPSK necesita lo mismo que BPSK transmitiendo el doble: sus cuatro puntos siguen a la máxima distancia."
+      pistas:
+        - { texto: "Aún demasiados errores: más señal." }
     escalera:
-      - "Mire la tabla: BPSK y QPSK."
-    solucion: "Lo mismo, 10,5 dB, transmitiendo el doble."
+      - "Una BER de 10⁻⁶ es un bit equivocado de cada millón."
+    solucion: "10,5 dB."
+    comprobar:
+      - { con: { E_n: 10.5 }, BER: 0.00000108, tol: 0.05 }
 
   - id: adaptativa
-    tipo: pregunta
+    tipo: explorar
     titulo: "Al alejarse del router"
-    texto: "Un enlace con modulación adaptativa pierde calidad. ¿Qué hace?"
-    libro: [215, 218, 219]
+    texto: "Lejos del router, el enlace solo tiene 16 dB. Elija la modulación más rápida que aún cumple."
+    nota: "Enlace de ejemplo."
+    libro: [213, 215, 218, 219]
+    inicio: { M_c: 64 }
     widget:
-      tipo: figura
-      figura: fig-31.12
-      zonas:
-        - { id: todo, rotulo: "Las tres constelaciones", rect: [0, 0, 430, 177] }
-    opciones:
-      - texto: "Baja a una constelación menor: se hace más lento, no se cae"
-        bien: true
-        porque: "De 256-QAM a 64-QAM, 16-QAM y QPSK: cambia caudal por relación señal a ruido."
-      - texto: "Sube a 256-QAM para compensar"
-        porque: "Al revés: la constelación grande pide más señal a ruido."
-      - texto: "Mantiene la modulación y se cae"
-        porque: "Eso es lo que evita la modulación adaptativa."
+      tipo: grafica
+      x: { id: m, min: 2, max: 128, unidad: "", rotulo: "puntos, M", escala: log }
+      y: { min: 0, max: 25, unidad: dB, rotulo: "E_{b}/N_{0}" }
+      curvas:
+        - { expr: "S_l", color: azul, rotulo: "lo que da el enlace", discontinua: true }
+      marcas:
+        - { x: "M_c", y: "E_q", rotulo: "pide {{E_q}}" }
+      lectura: { valor: E_q, rotulo: "Lo que pide la modulación" }
+      datos:
+        - { valor: n_b, rotulo: "Bits por símbolo: {{n_b}}" }
+      mandos:
+        - { valor: M_c, lista: [4, 16, 64], nombres: [QPSK, 16-QAM, 64-QAM], rotulo: "Modulación" }
+    objetivo:
+      condiciones:
+        - { valor: E_q, max: 16, rotulo: "Pide {{E_q}}" }
+        - { valor: n_b, min: 4, rotulo: "{{n_b}} bits por símbolo" }
+      logrado: "16-QAM: el enlace no se cae, se hace más lento. Cada salto de constelación cuesta unos 4 a 6 dB."
+      pistas:
+        - { cuando: { valor: E_q, mayor: 16 }, texto: "64-QAM pide 18,8 dB: el enlace no llega. Baje de modulación." }
+        - { texto: "QPSK cumple de sobra: puede ir más rápido." }
     escalera:
-      - "¿Qué constelación aguanta más ruido?"
-    solucion: "Baja de modulación: más lento, pero sigue funcionando."
+      - "Busque la mayor constelación que pida menos de 16 dB."
+    solucion: "16-QAM, que pide 14,4 dB."
+    comprobar:
+      - { con: { M_c: 16 }, E_q: 14.4, n_b: 4 }
+      - { con: { M_c: 64 }, E_q: 18.8 }
+      - { con: { M_c: 4 }, E_q: 10.5 }
 
   - id: coseno-alzado
     tipo: pregunta
@@ -182,27 +236,38 @@ tarjetas:
     solucion: "Un 35 % por encima del mínimo."
 
   - id: empareje-diagnostico
-    tipo: pregunta
+    tipo: explorar
     titulo: "Leer una constelación"
-    texto: "Cada defecto tiene su firma. Empareje lo que se ve con su causa."
+    texto: "Cada defecto deja su firma: rotada un ángulo fijo es error de fase; girando, de frecuencia. Corrija la fase de esta QPSK."
+    nota: "Error de ejemplo."
     libro: [227, 228]
+    inicio: { p_e: 20 }
     widget:
-      tipo: figura
-      figura: fig-31.12
-      zonas:
-        - { id: todo, rotulo: "Las tres constelaciones", rect: [0, 0, 430, 177] }
-    emparejar:
-      - ["Puntos dispersos como nubes", "Ruido"]
-      - ["Constelación girando", "Error de frecuencia del oscilador local"]
-      - ["Rotada un ángulo fijo", "Error de fase"]
-      - ["Puntos exteriores hacia el centro", "Compresión: el amplificador satura"]
-      - ["Rectangular en lugar de cuadrada", "Desequilibrio I/Q"]
-    exito: "Es el diagrama de ojo de las modulaciones digitales: la dispersión mide el margen."
-    pistas:
-      - { texto: "Un error de frecuencia acumula fase sin parar; uno de fase es fijo." }
+      tipo: grafica
+      aspecto: igual
+      x: { id: x, min: -1.3, max: 1.3, unidad: "", rotulo: "I" }
+      y: { min: -1.3, max: 1.3, unidad: "", rotulo: "Q" }
+      curvas:
+        - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "sin(th)", color: tinta, rotulo: "amplitud", discontinua: true }
+      marcas:
+        - { x: "cos((45 + p_e)*pi/180)", y: "sin((45 + p_e)*pi/180)", rotulo: "00" }
+        - { x: "cos((135 + p_e)*pi/180)", y: "sin((135 + p_e)*pi/180)", rotulo: "01" }
+        - { x: "cos((225 + p_e)*pi/180)", y: "sin((225 + p_e)*pi/180)", rotulo: "11" }
+        - { x: "cos((315 + p_e)*pi/180)", y: "sin((315 + p_e)*pi/180)", rotulo: "10" }
+      lectura: { valor: p_e, rotulo: "Error de fase" }
+      mandos:
+        - { valor: p_e, min: -30, max: 30, paso: 5, rotulo: "Corrección de fase" }
+    objetivo:
+      condiciones:
+        - { valor: p_e, objetivo: 0, tol: 0.001, rotulo: "Fase: {{p_e}}" }
+      logrado: "Los cuatro puntos, en sus diagonales. Nubes serían ruido; los exteriores hacia el centro, compresión; un rectángulo, desequilibrio I/Q."
+      pistas:
+        - { texto: "Los puntos siguen fuera de las diagonales: gire la constelación." }
     escalera:
-      - "Solo el amplificador que satura afecta a los puntos de mayor amplitud."
-    solucion: "Nubes, ruido; giro, frecuencia; ángulo fijo, fase; exteriores, compresión; rectángulo, I/Q."
+      - "En QPSK cada punto va a medio camino entre los dos ejes."
+    solucion: "Fase a 0°."
+    comprobar:
+      - { con: { p_e: 0 }, p_e: 0 }
 
   - id: evm
     tipo: pregunta

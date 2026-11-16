@@ -12,6 +12,10 @@
 # (2,84 A; errores: 5 A sin convertir a 12 V, 2,5 A sin el rendimiento), «tocar» K1 en la figura y «banco» opcional de
 # la etapa 1 (el reductor con 2,4 Ω, entre 5,8 y 6,0 V; la cota superior de la banda, 6,2 V, es de ejemplo: el libro
 # solo dice «no baja de 5,8 V»).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 58.10 se toca el PCA9685 (las cinco etapas van a su
+# éxito); se elige el preescalador que da 50 Hz («explore-pca», nueva); las cuentas de 1 500 µs, los micropasos por
+# segundo de la base (el referenciado va a su éxito) y la carga de la cinemática inversa se calculan. Quedan dos
+# preguntas de opciones (el USB y la coma fija) y las pruebas, por emparejar.
 leccion: cap57/sec-57.8
 
 libro:
@@ -44,6 +48,7 @@ modelo:
     u_m: { sim: "m", nombre: "micropasos por paso", unidad: "", valor: 16 }
     i_c: { sim: "i", nombre: "relación de la correa", unidad: "", valor: 4 }
     w_b: { sim: "ω_{base}", nombre: "velocidad de la base", unidad: "°/s", valor: 90 }
+    p_x: { sim: "PRE", nombre: "preescalador elegido", unidad: "", valor: 100 }
   calculos:
     P_s: { expr: "n_s*I_s*V_s", sim: "P", nombre: "potencia de los servos bloqueados", unidad: W }
     I_12: { expr: "P_s/e_r/V_b", sim: "I_{12 V}", nombre: "corriente de la línea de 12 V", unidad: A }
@@ -61,47 +66,70 @@ modelo:
     f_mp: { expr: "w_b*i_c/360*p_m*u_m", sim: "f", nombre: "micropasos por segundo", unidad: "1/s" }
     f_sin: { expr: "w_b/360*p_m*u_m", sim: "f", nombre: "micropasos sin la correa", unidad: "1/s" }
     T_mp: { expr: "1/f_mp", sim: "T", nombre: "intervalo entre micropasos", unidad: s }
+    f_x: { expr: "f_o/(4096*(p_x + 1))", sim: "f", nombre: "frecuencia con ese preescalador", unidad: Hz }
+    f_sx: { expr: "w_b/360*p_m*u_m", sim: "f", nombre: "sin la correa", unidad: "1/s" }
+    u_ik: { expr: "100*0.00108/0.02", sim: "uso", nombre: "parte del procesador", unidad: "%" }
+    u_x: { expr: "100*0.00108/0.001", sim: "uso", nombre: "cada milisegundo", unidad: "%" }
 
 tarjetas:
   - id: explore-bloques
-    tipo: explorar
+    tipo: tocar
     titulo: "El brazo por bloques"
-    texto: "Base con paso a paso y correa 1:4; hombro, codo y pinza con servos; todo desde un Arduino UNO. Toque K1 y el PCA9685."
-    libro: [140, 141]
+    texto: "Base con paso a paso y correa 1:4; hombro, codo y pinza con servos; todo desde un Arduino UNO. Toque lo que mueve los servos por I²C."
+    libro: [140, 141, 148, 150, 158, 160]
     widget:
       tipo: figura
       figura: fig-57.10
       zonas:
-        - { id: fuente, rotulo: "Arriba a la izquierda", rect: [5, 22, 52, 30], texto: "La fuente de 12 V y 5 A." }
-        - { id: k1, rotulo: "Arriba, la segunda caja", rect: [74, 22, 46, 30], texto: "K1: el contactor que abren la seta de emergencia y su rearme." }
-        - { id: drv, rotulo: "Arriba en el centro", rect: [170, 4, 62, 30], texto: "El DRV8825 del paso a paso de la base." }
-        - { id: reductor, rotulo: "En el centro", rect: [170, 56, 62, 30], texto: "El reductor: 6 V para los servos." }
-        - { id: pca, rotulo: "Abajo en el centro", rect: [170, 101, 62, 30], texto: "El PCA9685: genera los pulsos de los servos, mandado por I²C." }
-        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86], texto: "El Arduino UNO, alimentado del USB: manda los pasos y lee el final de carrera y la seta." }
-    requiere: { mover: [k1, pca] }
-
-  - id: ordene-etapas
-    tipo: pregunta
-    titulo: "Las cinco etapas"
-    texto: "Ordene las etapas del proyecto."
-    libro: [141, 148, 150, 158, 160]
-    widget:
-      tipo: figura
-      figura: fig-57.10
-      zonas:
-        - { id: todo, rotulo: "Los bloques", rect: [5, 4, 310, 172] }
-    ordenar:
-      - "Alimentación y parada de emergencia"
-      - "Los servos por I²C"
-      - "La base con el paso a paso"
-      - "Cinemática y trayectorias"
-      - "Pruebas"
-    exito: "Primero lo que protege, después cada eje por separado, y la cinemática cuando todos responden."
-    pistas:
-      - { texto: "La parada de emergencia va antes de conectar ningún motor." }
+        - { id: fuente, rotulo: "Fuente", rect: [5, 22, 52, 30] }
+        - { id: k1, rotulo: "K1", rect: [74, 22, 46, 30] }
+        - { id: drv, rotulo: "Driver", rect: [170, 4, 62, 30] }
+        - { id: reductor, rotulo: "Reductor", rect: [170, 56, 62, 30] }
+        - { id: pca, rotulo: "PCA9685", rect: [170, 101, 62, 30] }
+        - { id: uno, rotulo: "Arduino UNO", rect: [5, 90, 85, 86] }
+    tocar:
+      bien: [pca]
+      porque:
+        fuente: "Es la fuente de 12 V."
+        k1: "Es el contactor de la emergencia."
+        drv: "Es el driver del paso a paso de la base."
+        reductor: "Es el reductor que da 6 V a los servos."
+        uno: "El UNO manda las órdenes, pero no genera los pulsos de los servos."
+    exito: "El PCA9685. Etapas: alimentación y emergencia, servos, base, cinemática y pruebas: primero lo que protege."
     escalera:
-      - "¿Qué hace falta para probar un eje sin peligro? ¿Y para coordinar los tres?"
-    solucion: "Alimentación y emergencia, servos, base, cinemática y pruebas."
+      - "Busque el que genera los pulsos de los servos."
+    solucion: "El PCA9685."
+
+  - id: explore-pca
+    tipo: explorar
+    titulo: "El preescalador del PCA9685"
+    texto: "El PCA9685 divide su oscilador de 25 MHz entre 4 096 pasos y su preescalador más uno. Elija el preescalador que da los 50 Hz de los servos."
+    libro: [147]
+    inicio: { p_x: 100 }
+    widget:
+      tipo: grafica
+      x: { id: q, min: 90, max: 160, unidad: "", rotulo: "preescalador" }
+      y: { min: 30, max: 70, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "f_o/(4096*(q + 1))", color: naranja, rotulo: "frecuencia de los pulsos" }
+        - { expr: "50", color: tinta, rotulo: "50 Hz", discontinua: true }
+      marcas:
+        - { x: "p_x", y: "f_x", rotulo: "{{f_x}}" }
+      lectura: { valor: f_x, rotulo: "Frecuencia" }
+      mandos:
+        - { valor: p_x, lista: [100, 121, 150], rotulo: "Preescalador" }
+    objetivo:
+      condiciones:
+        - { valor: f_x, objetivo: 50, tol: 0.005, rotulo: "f = {{f_x}}" }
+      logrado: "Con {{p_x}}, {{f_x}}: un periodo de 20 ms partido en 4 096 pasos."
+      pistas:
+        - { cuando: { valor: f_x, mayor: 50.3 }, texto: "Demasiado rápido: preescalador mayor." }
+        - { texto: "Demasiado lento: preescalador menor." }
+    escalera:
+      - "25 MHz / (4 096 × 50) − 1."
+    solucion: "121: 50,03 Hz."
+    comprobar:
+      - { con: { p_x: 121 }, f_x: 50.03, tol: 0.002 }
 
   - id: simule-presupuesto
     tipo: simular
@@ -197,62 +225,42 @@ tarjetas:
       - { I_r: 2.5, V_o: 6, P_r: 15, V_hi: 6.2 }
 
   - id: estime-pca
-    tipo: pregunta
+    tipo: simular
     titulo: "El pulso central en el PCA9685"
     texto: "Con el preescalador en 121, el PCA9685 da 50,03 Hz en 4 096 pasos. ¿Cuántas cuentas son 1 500 µs?"
     libro: [147]
-    widget:
-      tipo: figura
-      figura: fig-57.10
-      zonas:
-        - { id: pca, rotulo: "Abajo en el centro", rect: [170, 101, 62, 30] }
-    estimar:
-      objetivo: "N_p"
+    simular:
+      objetivo: N_p
       unidad: cuentas
-      min: 0
-      max: 1000
-      paso: 1
-      inicio: 600
       tol: 0.01
       rotulo: "Cuentas para 1 500 µs"
+      errores:
+        - { expr: "N_t1", texto: "Esos son pasos de 0,5 µs, los del Timer1; los del PCA9685 son de 4,88 µs." }
     exito: "307 cuentas de 4,88 µs: diez veces peor que el Timer1, pero por debajo de la banda muerta del servo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 310 }, texto: "Se ha pasado: cada cuenta es de 4,88 µs, no de 1 µs." }
-      - { texto: "Se ha quedado corto: 20 ms entre 4 096 son 4,88 µs por cuenta." }
     escalera:
-      - "Paso = periodo / 4 096 = 4,88 µs."
+      - "Cada cuenta, 20 ms / 4 096."
     solucion: "1 500 / 4,88 = 307 cuentas."
     comprobar:
-      - { pre: 121, f_r: 50.03, N_p: 307, tol: 0.003 }
+      - { pre: 121, f_r: 50.03, N_p: 307, N_t1: 3000, tol: 0.003 }
 
   - id: estime-base
-    tipo: pregunta
+    tipo: simular
     titulo: "Micropasos de la base"
     texto: "La base tiene 200 × 16 × 4 = 12 800 micropasos por vuelta. Para girarla a 90 °/s, ¿cuántos micropasos por segundo da el motor?"
-    libro: [150]
-    widget:
-      tipo: figura
-      figura: fig-57.10
-      zonas:
-        - { id: drv, rotulo: "Arriba en el centro", rect: [170, 4, 62, 30] }
-    estimar:
-      objetivo: "f_mp"
+    libro: [150, 154]
+    simular:
+      objetivo: f_mp
       unidad: "1/s"
-      min: 0
-      max: 6000
-      paso: 50
-      inicio: 5000
-      tol: 0.03
+      tol: 0.02
       rotulo: "Micropasos por segundo"
-    exito: "3 200 por segundo, uno cada 312,5 µs: el motor va a 360 °/s, muy lejos de la caída de par."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3300 }, texto: "Se ha pasado: 90 °/s es un cuarto de vuelta por segundo." }
-      - { texto: "Se ha quedado corto: no olvide la correa 1:4." }
+      errores:
+        - { expr: "f_sx", texto: "Falta la correa 1:4: el motor gira cuatro veces más que la base." }
+    exito: "3 200, uno cada 312,5 µs. Al arrancar, la base se referencia: buscar el final de carrera, retroceder y buscarlo más despacio."
     escalera:
-      - "Un cuarto de vuelta de base por segundo × 12 800 micropasos por vuelta."
+      - "Un cuarto de vuelta por segundo de 12 800."
     solucion: "12 800 / 4 = 3 200 micropasos por segundo."
     comprobar:
-      - { N_v: 12800, f_mp: 3200, T_mp: 0.0003125, f_sin: 800 }
+      - { N_v: 12800, f_mp: 3200, T_mp: 0.0003125, f_sin: 800, f_sx: 800 }
 
   - id: porque-q8
     tipo: porque
@@ -276,49 +284,24 @@ tarjetas:
       - "¿Qué le pasa a un entero si cada vez se le resta menos de una unidad?"
     solucion: "Porque los decrementos son menores que una cuenta y en enteros no se acumularían."
 
-  - id: ordene-referenciado
-    tipo: pregunta
-    titulo: "El cero de la base"
-    texto: "Al arrancar se referencia la base contra el final de carrera. Ordene el procedimiento."
-    libro: [154]
-    widget:
-      tipo: figura
-      figura: fig-57.10
-      zonas:
-        - { id: final, rotulo: "Abajo a la izquierda", rect: [5, 189, 40, 26] }
-    ordenar:
-      - "Girar hacia el final de carrera hasta que se active"
-      - "Retroceder unos pasos"
-      - "Volver a buscarlo más despacio todavía"
-      - "Tomar esa posición como el cero"
-    exito: "La repetibilidad del cero es la del final de carrera a baja velocidad, no la de su rebote."
-    pistas:
-      - { texto: "La segunda aproximación es la lenta." }
-    escalera:
-      - "Primero deprisa para encontrarlo, después despacio para medirlo."
-    solucion: "Buscar, retroceder, buscar despacio y tomar el cero."
-
   - id: prediga-ik
-    tipo: predecir
+    tipo: simular
     titulo: "Cada cuánto la cinemática inversa"
-    texto: "En el ATmega328P, sin coma flotante en hardware, la cinemática inversa tarda 17 229 ciclos, 1,08 ms. ¿Cada cuánto conviene calcularla?"
+    texto: "Sin coma flotante en hardware, la cinemática inversa tarda 1,08 ms en el ATmega328P. Calculada cada 20 ms, el periodo de los servos, ¿qué parte del procesador ocupa?"
     libro: [158]
-    widget:
-      tipo: figura
-      figura: fig-57.10
-      zonas:
-        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86] }
-    opciones:
-      - texto: "Cada 20 ms, el periodo de los servos"
-        bien: true
-        porque: "El generador interpola en el espacio de los ejes, con perfiles sincronizados."
-      - texto: "Cada milisegundo, con el lazo"
-        porque: "1,08 ms no cabe en cada milisegundo junto con todo lo demás."
-      - texto: "Una vez al arrancar"
-        porque: "Hace falta en cada punto de destino y en los intermedios de una recta."
+    simular:
+      objetivo: u_ik
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Parte del procesador"
+      errores:
+        - { expr: "u_x", texto: "Eso sería calcularla cada milisegundo: no cabría." }
+    exito: "Un 5,4 %: cada 20 ms basta, y el generador interpola en el espacio de los ejes."
     escalera:
-      - "¿Cada cuánto aceptan los servos una posición nueva?"
-    solucion: "Cada 20 ms, que es el periodo de los servos."
+      - "1,08 entre 20."
+    solucion: "1,08/20 = 5,4 %."
+    comprobar:
+      - { u_ik: 5.4, u_x: 108 }
 
   - id: empareje-pruebas
     tipo: pregunta

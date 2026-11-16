@@ -3,6 +3,12 @@
 #   fila con un índice c = 0, 1, 2 (P, PI, PID); el modelo usa los pesos (1 − c)(2 − c)/2, c(2 − c) y c(c − 1)/2,
 #   que valen 1 en su fila y 0 en las otras (el lenguaje del modelo no tiene condicionales).
 # Paso práctico: «simular» el T_i del PI del problema 30.A (1,25 s; errores típicos: la fila del PID, multiplicar).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se elige el controlador que repone margen (el PID, la mayor
+# K_p); con solo P se sube K_p hasta la oscilación mantenida (la envolvente e^(0,3·(K_p − K_u)·t) es esquemática); el
+# error del P se baja a 0,20 como en la figura 30.26 (e = 1/(1 + K_p)); la derivada se sube hasta menos del 5 % de
+# sobreoscilación (ζ = 0,2 + 0,4·K_d, de ejemplo); el retardo aparente se marca en una curva de reacción de ejemplo
+# (L = 3 s, τ = 2 s); y el integrador que sigue acumulando se toca en la figura. Quedan dos preguntas de opciones (por
+# qué baja la K_p del PI y por qué sintonizar con margen); el ajuste fino se hace con el objetivo del error.
 leccion: cap31/sec-31.11
 
 libro:
@@ -32,6 +38,11 @@ modelo:
     K_u: { sim: "K_{u}", nombre: "ganancia crítica", unidad: "", valor: 6 }
     T_u: { sim: "T_{u}", nombre: "periodo de la oscilación", unidad: s, valor: 1.5 }
     c_t: { sim: "c", nombre: "controlador", unidad: "", valor: 0 }
+    K_q: { sim: "K_{p}", nombre: "ganancia proporcional de prueba", unidad: "", valor: 2 }
+    K_P1: { sim: "K_{p}", nombre: "ganancia del control P de la figura", unidad: "", valor: 1 }
+    K_dd: { sim: "K_{d}", nombre: "acción derivativa, de ejemplo", unidad: "", valor: 0 }
+    L_r: { sim: "L", nombre: "retardo aparente, de ejemplo", unidad: s, valor: 3 }
+    t_r: { sim: "τ", nombre: "constante de tiempo, de ejemplo", unidad: s, valor: 2 }
   calculos:
     Kp_t: { expr: "K_u*(0.5*(1 - c_t)*(2 - c_t)/2 + 0.45*c_t*(2 - c_t) + 0.6*c_t*(c_t - 1)/2)", sim: "K_{p}", nombre: "ganancia proporcional", unidad: "", cifras: 3 }
     Ti_t: { expr: "T_u*(c_t*(2 - c_t)/1.2 + c_t*(c_t - 1)/4)", sim: "T_{i}", nombre: "tiempo integral (0: sin integral)", unidad: s }
@@ -39,13 +50,18 @@ modelo:
     Ti_pi: { expr: "T_u/1.2", sim: "T_{i}", nombre: "T_i del PI", unidad: s }
     Ti_e1: { expr: "T_u/2", sim: "T_{i}", nombre: "T_i de la fila del PID", unidad: s }
     Ti_e2: { expr: "T_u*1.2", sim: "T_{i}", nombre: "T_i multiplicando", unidad: s }
+    d_o: { expr: "abs(K_q - K_u)", sim: "|K_{p} − K_{u}|", nombre: "distancia a la ganancia crítica", unidad: "" }
+    e_1: { expr: "1/(1 + K_P1)", sim: "e", nombre: "error permanente del control P", unidad: "" }
+    z_d: { expr: "0.2 + 0.4*K_dd", sim: "ζ", nombre: "amortiguamiento", unidad: "", cifras: 2 }
+    M_d: { expr: "100*exp(-pi*z_d/sqrt(1 - z_d^2))", sim: "M_{p}", nombre: "sobreoscilación", unidad: "%" }
 
 tarjetas:
   - id: explore-tabla
     tipo: explorar
     titulo: "La tabla de la ganancia crítica"
-    texto: "El problema 30.A oscila con K_{u} = 6,0 y T_{u} = 1,5 s. Elija el controlador y mire sus constantes."
-    libro: ["cap31#673", "cap31#675", 475]
+    texto: "El problema 30.A oscila con K_{u} = 6,0 y T_{u} = 1,5 s. Elija en la tabla el controlador con la K_{p} más alta."
+    libro: ["cap31#673", "cap31#675", "cap31#678", "cap31#679", 475]
+    inicio: { c_t: 0 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
@@ -58,34 +74,47 @@ tarjetas:
         - { valor: Td_t, rotulo: "T_{d} = {{Td_t}}" }
       mandos:
         - { valor: c_t, lista: [0, 1, 2], nombres: [P, PI, PID], rotulo: "Controlador" }
-    requiere: { mover: [c_t] }
+    objetivo:
+      condiciones:
+        - { valor: Kp_t, min: 3.5, rotulo: "K_{p} = {{Kp_t}}" }
+      logrado: "El PID: 0,6·K_{u} = {{Kp_t}}, con T_{i} = {{Ti_t}} y T_{d} = {{Td_t}}. El PI la baja a 2,70 y el P se queda en 3,00."
+      pistas:
+        - { texto: "Hay una fila con más ganancia: la que tiene derivada." }
+    escalera:
+      - "La derivada aporta adelanto de fase y deja subir la ganancia."
+    solucion: "PID: K_{p} = 3,6."
     comprobar:
       - { Kp_t: 3 }
       - { con: { c_t: 1 }, Kp_t: 2.7, Ti_t: 1.25 }
       - { con: { c_t: 2 }, Kp_t: 3.6, Ti_t: 0.75, Td_t: 0.1875 }
 
   - id: ordene-procedimiento
-    tipo: pregunta
+    tipo: explorar
     titulo: "El método, paso a paso"
-    texto: "Ordene el método de la ganancia crítica."
+    texto: "Con la integral y la derivada anuladas, suba K_{p} hasta una oscilación que ni crece ni se apaga: esa es K_{u}."
+    nota: "Envolvente esquemática."
     libro: [471, 474]
+    inicio: { K_q: 2 }
     widget:
       tipo: grafica
-      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación con K_{u}" }
+      x: { id: t, min: 0, max: 6, unidad: s, rotulo: "t", muestras: 600 }
+      y: { min: -3, max: 3, unidad: "", rotulo: "salida" }
       curvas:
-        - { expr: "sin(2*pi*t/T_u)", color: naranja, rotulo: "oscilación mantenida" }
-    ordenar:
-      - "Anular las acciones integral y derivativa"
-      - "Subir K_{p} hasta una oscilación mantenida: K_{u}"
-      - "Medir el periodo de esa oscilación, T_{u}"
-      - "Aplicar la tabla"
-    exito: "No necesita modelo; a cambio, hay que llevar el sistema a oscilar."
-    pistas:
-      - { texto: "El periodo solo se puede medir cuando ya oscila." }
+        - { expr: "sin(2*pi*t/T_u)*exp(0.3*(K_q - K_u)*t)", color: naranja, rotulo: "respuesta con solo P" }
+      mandos:
+        - { valor: K_q, lista: [2, 4, 6, 8], rotulo: "K_{p}" }
+    objetivo:
+      condiciones:
+        - { valor: d_o, max: 0.01, rotulo: "Oscilación mantenida" }
+      logrado: "K_{u} = {{K_u}}; ahora se mide el periodo de esa oscilación, T_{u} = {{T_u}}, y se aplica la tabla. No necesita modelo, pero hay que llevar el sistema a oscilar."
+      pistas:
+        - { cuando: { valor: K_q, mayor: 6 }, texto: "Crece: se ha pasado de la ganancia crítica." }
+        - { texto: "Se apaga: aún no es la ganancia crítica. Súbala." }
     escalera:
-      - "Primero se deja solo el proporcional."
-    solucion: "Solo P, subir hasta K_{u}, medir T_{u}, tabla."
+      - "Ni se apaga ni crece: amplitud constante."
+    solucion: "K_{p} = 6."
+    comprobar:
+      - { con: { K_q: 6 }, d_o: 0, K_u: 6, T_u: 1.5 }
 
   - id: simule-ti
     tipo: simular
@@ -130,93 +159,117 @@ tarjetas:
     solucion: "La integral retrasa la fase (menos K_{p}); la derivada la adelanta (más K_{p})."
 
   - id: empareje-ajuste
-    tipo: pregunta
+    tipo: explorar
     titulo: "El ajuste fino"
-    texto: "Tras la receta, se afina con un escalón de consigna. Empareje cada síntoma con su corrección."
-    libro: [482]
+    texto: "Tras la receta, se afina con un escalón de consigna. Con solo P, respuesta lenta: suba K_{p} hasta que el error permanente baje a 0,20."
+    libro: [482, 495]
+    inicio: { K_P1: 1 }
     widget:
-      tipo: figura
-      figura: fig-31.20
-      zonas:
-        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
-    emparejar:
-      - ["Respuesta lenta", "Subir K_{p}"]
-      - ["Oscilación mantenida", "Bajar K_{p} claramente"]
-      - ["Error permanente que no desaparece", "Bajar T_{i}: más integral"]
-      - ["Oscilación lenta que no cesa", "Subir T_{i}: menos integral"]
-      - ["Salida nerviosa por el ruido", "Bajar T_{d} o filtrar la derivada"]
-    exito: "Es donde se gana: la receta solo da el punto de partida."
-    pistas:
-      - { texto: "Bajar T_{i} es más integral, no menos." }
+      tipo: grafica
+      x: { id: t, min: 0, max: 25, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "variable controlada" }
+      curvas:
+        - { expr: "K_P1/(1 + K_P1)*(1 - exp(-t*(1 + K_P1)/4))", color: naranja, rotulo: "control P" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: e_1, rotulo: "Error permanente" }
+      mandos:
+        - { valor: K_P1, lista: [1, 2, 4], rotulo: "K_{p}" }
+    objetivo:
+      condiciones:
+        - { valor: e_1, max: 0.2, rotulo: "Error: {{e_1}}" }
+      logrado: "Más K_{p}, menos error, pero en la figura ya sobreoscila. El error que queda lo quita la integral: bajar T_{i}. Con ruido, bajar T_{d}."
+      pistas:
+        - { texto: "Aún lento y lejos de la consigna: más K_{p}." }
     escalera:
-      - "La integral manda en el error permanente y en las oscilaciones lentas."
-    solucion: "Lenta, más K_{p}; oscila, menos K_{p}; error, menos T_{i}; oscilación lenta, más T_{i}; ruido, menos T_{d}."
+      - "Con solo P, e = 1/(1 + K_{p})."
+    solucion: "K_{p} = 4."
+    comprobar:
+      - { con: { K_P1: 4 }, e_1: 0.2 }
+      - { con: { K_P1: 2 }, e_1: 0.333 }
 
   - id: predecir-kd
-    tipo: predecir
+    tipo: explorar
     titulo: "Más derivada"
-    texto: "En un lazo sin apenas ruido de medida se sube K_{d}. ¿Qué le pasa a la respuesta al escalón?"
+    texto: "Un lazo sin apenas ruido de medida que se pasa demasiado. Suba la acción derivativa hasta que apenas se pase de la consigna."
+    nota: "Efecto de la derivada, de ejemplo."
     libro: [484, 488]
+    inicio: { K_dd: 0 }
     widget:
-      tipo: figura
-      figura: fig-31.20
-      zonas:
-        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
-    opciones:
-      - texto: "Baja la sobreoscilación y mejora la estabilidad; el tiempo de subida apenas cambia"
-        bien: true
-        porque: "Con ruido sería otra cosa: un PI bien ajustado es mejor que un PID con la derivada nerviosa."
-      - texto: "Desaparece el error permanente"
-        porque: "Eso lo hace la integral; la derivada no tiene efecto sobre él."
-      - texto: "Se vuelve más rápida y oscila más"
-        porque: "Eso es subir K_{p}."
+      tipo: grafica
+      x: { id: t, min: 0, max: 15, unidad: "", rotulo: "tiempo normalizado", muestras: 600 }
+      y: { min: 0, max: 1.6, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z_d*t)*(cos(sqrt(1 - z_d^2)*t) + z_d/sqrt(1 - z_d^2)*sin(sqrt(1 - z_d^2)*t))", color: naranja, rotulo: "respuesta" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: M_d, rotulo: "Sobreoscilación" }
+      mandos:
+        - { valor: K_dd, lista: [0, 0.5, 1, 1.5], rotulo: "Acción derivativa" }
+    objetivo:
+      condiciones:
+        - { valor: M_d, max: 5, rotulo: "Se pasa {{M_d}}" }
+      logrado: "La derivada frena: menos sobreoscilación y más estabilidad, y el tiempo de subida apenas cambia. Con ruido, un PI bien ajustado sería mejor."
+      pistas:
+        - { texto: "Aún se pasa: más derivada." }
     escalera:
-      - "La derivada responde a la tendencia: frena."
-    solucion: "Menos sobreoscilación y más estabilidad, si no hay ruido."
+      - "La derivada responde a la tendencia de la subida."
+    solucion: "La mayor de las cuatro."
+    comprobar:
+      - { con: { K_dd: 1.5 }, M_d: 1.52, tol: 0.05 }
 
   - id: curva-reaccion
-    tipo: pregunta
+    tipo: marcar
     titulo: "Sin llevarlo a oscilar"
-    texto: "Un proceso no admite oscilar. ¿Qué método se usa y qué avisa su curva?"
+    texto: "Si el proceso no admite oscilar, se usa la curva de reacción: un escalón en lazo abierto. Marque el retardo aparente, lo que tarda en empezar a responder."
+    nota: "Proceso de ejemplo."
     libro: [476, 478, 479]
     widget:
-      tipo: figura
-      figura: fig-31.20
-      zonas:
-        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
-    opciones:
-      - texto: "La curva de reacción: un escalón en lazo abierto; un retardo grande frente a τ avisa de que será difícil"
-        bien: true
-        porque: "De ella salen el retardo aparente L y la pendiente máxima R, y otra tabla."
-      - texto: "La ganancia crítica con poca ganancia"
-        porque: "Sin llegar a oscilar no hay K_{u} ni T_{u}."
-      - texto: "Ninguno: sin oscilar no se puede sintonizar"
-        porque: "La curva de reacción existe precisamente para eso."
+      tipo: grafica
+      x: { id: t, min: 0, max: 16, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "respuesta" }
+      curvas:
+        - { expr: "1 - exp(-max(0, t - L_r)/t_r)", color: naranja, rotulo: "curva de reacción" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "L_r"
+      tol: 0.02
+      inicio: { x: 12, y: 0 }
+      rotulo: "El retardo aparente"
+      pasos: 160
+    pistas:
+      - { cuando: { valor: marca_x, menor: 3 }, texto: "Ahí aún no responde: más a la derecha." }
+      - { texto: "Ahí ya sube: más a la izquierda, donde arranca." }
+    exito: "L = {{L_r}}, más que su τ = {{t_r}}: un retardo grande frente a la constante avisa de que será difícil de controlar. Con L y la pendiente máxima R, otra tabla."
     escalera:
-      - "¿Qué ensayo no cierra el lazo?"
-    solucion: "La curva de reacción, en lazo abierto."
+      - "Busque el final del tramo plano."
+    solucion: "En {{L_r}}."
+    comprobar:
+      - { L_r: 3, t_r: 2 }
 
   - id: windup-arranque
-    tipo: pregunta
+    tipo: tocar
     titulo: "Funciona mal solo al arrancar"
-    texto: "Un lazo bien sintonizado se pasa mucho de la consigna solo en cada arranque, con el actuador al 100 %. ¿Qué es?"
+    texto: "Un lazo bien sintonizado se pasa mucho solo al arrancar, con el actuador al 100 %. Toque en la figura el término que lo provoca mientras la salida está saturada."
     libro: [486, 487, 495]
     widget:
       tipo: figura
       figura: fig-31.20
       zonas:
-        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
-    opciones:
-      - texto: "Windup: la integral acumula mientras el actuador satura"
-        bien: true
-        porque: "Limitar, congelar o back-calculation: el problema práctico más frecuente."
-      - texto: "Demasiada derivada"
-        porque: "La derivada amplifica ruido; el síntoma del arranque con saturación es la integral."
-      - texto: "K_{p} demasiado baja"
-        porque: "Con poca K_{p} sería lenta, no se pasaría."
+        - { id: p, rotulo: "Gráfica de la izquierda", rect: [31, 15, 179, 185] }
+        - { id: pico, rotulo: "Arriba a la derecha, el pico", rect: [335, 2, 70, 40] }
+        - { id: integral, rotulo: "Abajo a la derecha, la curva que sube", rect: [345, 110, 95, 40] }
+        - { id: saturada, rotulo: "Abajo a la derecha, zona sombreada", rect: [286, 160, 54, 40] }
+    tocar:
+      bien: [integral]
+      porque:
+        p: "Eso es el control P con tres ganancias: sin integral no hay windup."
+        pico: "Ese pico es el síntoma, no la causa."
+        saturada: "Esa es la saturación; la causa es lo que hace la integral durante ella."
+    exito: "El término integral sigue acumulando y tarda en descargar: windup. Se arregla congelando la integral; es el problema práctico más frecuente."
     escalera:
-      - "¿Qué hace la integral mientras la salida está al 100 %?"
-    solucion: "Windup del integrador."
+      - "¿Qué sigue creciendo aunque la salida no pueda?"
+    solucion: "La curva del término integral que sube, abajo a la derecha."
 
   - id: porque-margen
     tipo: porque

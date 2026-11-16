@@ -8,6 +8,11 @@
 # - El alargamiento del bloque 77: un pulso de 1 ms por una respuesta rectangular de 2 ms da un trapecio de 3 ms,
 #   y(t) = max(0, min(t, 1 ms, 3 ms − t)) normalizada a su máximo (la forma rectangular de h es de ejemplo).
 # Paso práctico: «dibujar» esa salida (la forma importa más que un número).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): los pulsos se acercan hasta que la segunda copia sube 1,5
+# veces lo de una sola; la suma discreta se explora hasta y[2] = 1; y[1] y la duración se predicen (simular sobre el
+# modelo); la convolución con un pulso, un impulso o un impulso desplazado se elige sobre una senoide con su quinto
+# armónico (de ejemplo; la media de 0,2 s anula ese armónico) hasta dejarla intacta; el coste se explora con N hasta
+# que la FFT ahorre más de cien veces (N/log₂N). Quedan dos preguntas de opciones: la ventana y los coeficientes FIR.
 leccion: cap30/sec-30.3
 
 libro:
@@ -40,12 +45,22 @@ modelo:
     x_1: { sim: "x[1]", nombre: "segunda muestra de la entrada", unidad: "", valor: 1 }
     h_0: { sim: "h[0]", nombre: "primera muestra de h", unidad: "", valor: 1 }
     h_1: { sim: "h[1]", nombre: "segunda muestra de h", unidad: "", valor: 0.5 }
+    k_h: { sim: "h", nombre: "respuesta al impulso elegida", unidad: "", valor: 0 }
+    W_m: { sim: "W", nombre: "anchura del pulso rectangular de ejemplo", unidad: s, valor: 0.2 }
+    D_r: { sim: "D", nombre: "desplazamiento de ejemplo", unidad: s, valor: 0.25 }
+    N_p: { sim: "N", nombre: "número de muestras", unidad: "", valor: 16 }
+    T_x: { sim: "T_{x}", nombre: "duración del pulso de entrada", unidad: s, valor: 0.001 }
+    T_h: { sim: "T_{h}", nombre: "duración de la respuesta al impulso", unidad: s, valor: 0.002 }
   calculos:
     r_1: { expr: "1 - exp(-w_p/tau)", sim: "v_{pico}", nombre: "pico de una respuesta", unidad: V, cifras: 3 }
     y_0: { expr: "x_0*h_0", sim: "y[0]", nombre: "primera muestra de la salida", unidad: "" }
     y_1: { expr: "x_0*h_1 + x_1*h_0", sim: "y[1]", nombre: "segunda muestra de la salida", unidad: "" }
     y_2: { expr: "x_1*h_1", sim: "y[2]", nombre: "tercera muestra de la salida", unidad: "" }
     y_m: { expr: "x_0*h_0 + x_1*h_1", sim: "y", nombre: "producto sin deslizar", unidad: "" }
+    s_r: { expr: "1 + exp(-(d_p - w_p)/tau)", sim: "v_{2}/v_{1}", nombre: "pico de la salida frente al de una copia", unidad: "", cifras: 2 }
+    i_h: { expr: "max(0, 1 - abs(k_h - 1))", sim: "δ", nombre: "la h elegida es el impulso", unidad: "" }
+    a_f: { expr: "N_p/log2(N_p)", sim: "N/log₂N", nombre: "ahorro de la FFT", unidad: "", cifras: 3 }
+    T_y: { expr: "T_x + T_h", sim: "T_{y}", nombre: "duración de la salida", unidad: s }
 
 tarjetas:
   - id: explore-solape
@@ -65,17 +80,26 @@ tarjetas:
       lectura: { valor: d_p, rotulo: "Separación de los pulsos" }
       mandos:
         - { valor: d_p, lista: [0.004, 0.002, 0.001, 0.0005], rotulo: "Separación, d" }
-    requiere: { mover: [d_p] }
+    inicio: { d_p: 0.004 }
+    objetivo:
+      condiciones:
+        - { valor: s_r, min: 1.5, rotulo: "Segundo pico: {{s_r}} veces el primero" }
+      logrado: "Las copias se solapan y se suman: el segundo pico monta sobre la cola del primero. Eso es convolucionar."
+      pistas:
+        - { texto: "Aún caen separadas: acerque más los pulsos." }
+    escalera:
+      - "La cola de la respuesta dura unas pocas τ."
+    solucion: "d = 0,5 ms: el segundo pulso llega con la primera copia aún alta."
     comprobar:
       - { tau: 0.001, w_p: 0.0001 }
+      - { con: { d_p: 0.0005 }, s_r: 1.67, tol: 0.01 }
 
   - id: formula-discreta
-    tipo: formula
+    tipo: explorar
     titulo: "La convolución discreta"
-    texto: "Con muestras, la integral es una suma. Respuesta al impulso {1; 0,5}: cambie la entrada y mire cada muestra de la salida."
+    texto: "Con muestras, la integral es la suma y[n] = Σ x[k]·h[n − k]. Con h = {1; 0,5}, elija x[1] para que y[2] valga 1."
     libro: [72, 89, 90, "cap30#350"]
-    ec: 90
-    sustitucion: "y[1] = {{x_0}} · {{h_1}} + {{x_1}} · {{h_0}} = {{y_1}}"
+    inicio: { x_1: 0 }
     widget:
       tipo: grafica
       x: { id: k, min: 0, max: 4, unidad: "", rotulo: "n" }
@@ -88,11 +112,22 @@ tarjetas:
         - { valor: y_2, rotulo: "y[2] = {{y_2}}" }
       mandos:
         - { valor: x_1, lista: [0, 1, 2], rotulo: "x[1]" }
+    objetivo:
+      condiciones:
+        - { valor: y_2, objetivo: 1, tol: 0.01, rotulo: "y[2] = {{y_2}}" }
+      logrado: "y[2] = x[1]·h[1] = {{x_1}} · {{h_1}}: solo la cola de la segunda copia llega a n = 2."
+      pistas:
+        - { texto: "y[2] es x[1] por h[1]: con h[1] = 0,5, ¿qué x[1] da 1?" }
+    escalera:
+      - "En n = 2 solo queda la cola de la copia de x[1]."
+    solucion: "x[1] = 2."
+    comprobar:
+      - { con: { x_1: 2 }, y_2: 1 }
 
   - id: estime-y1
-    tipo: pregunta
+    tipo: simular
     titulo: "Una convolución a mano"
-    texto: "h[n] = {1; 0,5} y entrada x[n] = {1; 1}. ¿Cuánto vale y[1]?"
+    texto: "h[n] = {1; 0,5} y entrada x[n] = {1; 1}. Calcule y[1] antes de comprobarlo."
     libro: ["cap30#350"]
     fijar: { x_0: 1, x_1: 1 }
     widget:
@@ -100,19 +135,15 @@ tarjetas:
       figura: fig-30.5
       zonas:
         - { id: todo, rotulo: "Suma de copias de la respuesta al impulso", rect: [0, 0, 437, 276] }
-    estimar:
-      objetivo: "y_1"
+    simular:
+      objetivo: y_1
       unidad: ""
-      min: 0
-      max: 3
-      paso: 0.1
-      inicio: 0.5
       tol: 0.02
       rotulo: "y[1]"
+      errores:
+        - { expr: "x_0*h_1", texto: "Esa es solo la cola de la primera copia: falta el comienzo de la segunda, x[1]·h[0]." }
+        - { expr: "x_1*h_0 + x_0*h_0", texto: "Ha usado h[0] dos veces: la primera copia llega a n = 1 retrasada, con h[1]." }
     exito: "1,5: la copia de x[0] retrasada (0,5) más la de x[1] (1). La salida completa es {1; 1,5; 0,5}."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.53 }, texto: "Demasiado: solo dos productos suman en n = 1." }
-      - { texto: "Corto: en n = 1 coinciden la cola de la primera copia y el comienzo de la segunda." }
     escalera:
       - "y[1] = x[0]·h[1] + x[1]·h[0]."
     solucion: "1 × 0,5 + 1 × 1 = 1,5."
@@ -120,7 +151,7 @@ tarjetas:
       - { y_0: 1, y_1: 1.5, y_2: 0.5, y_m: 1.5 }
 
   - id: predecir-duracion
-    tipo: predecir
+    tipo: simular
     titulo: "La salida se alarga"
     texto: "Un pulso de 1 ms atraviesa un sistema cuya respuesta al impulso dura 2 ms. ¿Cuánto dura la salida?"
     libro: [77]
@@ -129,17 +160,20 @@ tarjetas:
       figura: fig-30.4
       zonas:
         - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
-    opciones:
-      - texto: "3 ms: la suma de las duraciones"
-        bien: true
-        porque: "La primera copia empieza con el pulso y la última termina 2 ms después de que acabe: 1 + 2 ms."
-      - texto: "2 ms, lo que dura la respuesta"
-        porque: "Las copias empiezan a lo largo de todo el pulso: la última acaba 1 ms más tarde."
-      - texto: "1 ms, lo que dura el pulso"
-        porque: "Cada instante del pulso deja una cola de 2 ms: la salida dura más que la entrada."
+    simular:
+      objetivo: T_y
+      unidad: s
+      tol: 0.02
+      rotulo: "Duración de la salida"
+      errores:
+        - { expr: "T_h", texto: "Eso dura la respuesta, pero las copias empiezan a lo largo de todo el pulso: la última acaba 1 ms más tarde." }
+        - { expr: "T_x", texto: "Eso dura el pulso. Cada instante del pulso deja una cola de 2 ms: la salida dura más." }
+    exito: "3 ms: la primera copia empieza con el pulso y la última termina 2 ms después de que acabe. Con muestras, N + M − 1."
     escalera:
       - "¿Cuándo empieza la primera copia y cuándo acaba la última?"
-    solucion: "3 ms; con muestras, N + M − 1."
+    solucion: "1 + 2 = 3 ms."
+    comprobar:
+      - { T_y: 0.003 }
 
   - id: dibuje-trapecio
     tipo: dibujar
@@ -171,26 +205,33 @@ tarjetas:
     solucion: "Rampa de 0 a 1 ms, meseta de 1 a 2 ms y bajada hasta 3 ms."
 
   - id: empareje-efectos
-    tipo: pregunta
+    tipo: explorar
     titulo: "Lo que hace en la práctica"
-    texto: "Empareje cada convolución con su efecto."
+    texto: "Esta señal se convoluciona con la h que elija. Busque la que la deja intacta."
+    nota: "Señal y respuestas de ejemplo."
     libro: [76, 78, 79]
+    inicio: { k_h: 0 }
     widget:
-      tipo: figura
-      figura: fig-30.4
-      zonas:
-        - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
-    emparejar:
-      - ["Con un pulso rectangular", "Promedia: un paso bajo"]
-      - ["Con un impulso", "Deja la señal intacta"]
-      - ["Con un impulso desplazado", "La desplaza sin alterarla"]
-      - ["Con una h centrada en un instante", "Lleva la salida a ese instante"]
-    exito: "El impulso es el elemento neutro de la convolución."
-    pistas:
-      - { texto: "Promediar es sumar las muestras de una ventana: eso hace el pulso rectangular." }
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t", muestras: 800 }
+      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "x(t)" }
+      curvas:
+        - { expr: "sin(2*pi*t) + 0.3*sin(10*pi*t)", color: tinta, rotulo: "entrada", discontinua: true }
+        - { expr: "max(0, 1 - abs(k_h))*((cos(2*pi*(t - W_m)) - cos(2*pi*t))/(2*pi*W_m) + 0.3*(cos(10*pi*(t - W_m)) - cos(10*pi*t))/(10*pi*W_m)) + max(0, 1 - abs(k_h - 1))*(sin(2*pi*t) + 0.3*sin(10*pi*t)) + max(0, 1 - abs(k_h - 2))*(sin(2*pi*(t - D_r)) + 0.3*sin(10*pi*(t - D_r)))", color: naranja, rotulo: "salida" }
+      mandos:
+        - { valor: k_h, lista: [0, 2, 1], nombres: [pulso rectangular, impulso desplazado, impulso], rotulo: "Respuesta al impulso, h" }
+    objetivo:
+      condiciones:
+        - { valor: i_h, min: 1, rotulo: "Salida igual a la entrada" }
+      logrado: "El impulso es el elemento neutro. El desplazado la retrasa sin alterarla; el pulso rectangular promedia: un paso bajo que alisa el rizado."
+      pistas:
+        - { cuando: { valor: k_h, max: 0 }, texto: "El pulso promedia: ha alisado el rizado. Pruebe otra h." }
+        - { texto: "Ese la desplaza sin cambiar su forma. Falta quitar el retardo." }
     escalera:
-      - "Empiece por el impulso: una sola copia, de altura uno."
-    solucion: "Pulso, promedia; impulso, intacta; desplazado, desplaza; centrada, retarda."
+      - "¿Qué h deja una sola copia, de altura uno y sin retardo?"
+    solucion: "El impulso."
+    comprobar:
+      - { con: { k_h: 1 }, i_h: 1 }
 
   - id: pregunta-ventana
     tipo: pregunta
@@ -237,26 +278,34 @@ tarjetas:
     solucion: "La respuesta al impulso."
 
   - id: porque-fft
-    tipo: porque
+    tipo: explorar
     titulo: "El truco de la FFT"
-    texto: "Para convoluciones largas se transforma, se multiplica y se antitransforma. ¿Por qué compensa ese rodeo?"
+    texto: "Directa, la convolución cuesta N² operaciones; por la FFT, del orden de N·log N. Suba N hasta que el rodeo ahorre más de cien veces."
     libro: [82, 94]
+    inicio: { N_p: 16 }
     widget:
-      tipo: figura
-      figura: fig-30.4
-      zonas:
-        - { id: todo, rotulo: "La entrada convolucionada con h", rect: [0, 0, 446, 154] }
-    opciones:
-      - texto: "Directa cuesta N² operaciones; por la FFT, del orden de N·log N"
-        bien: true
-        porque: "Para N grande la diferencia es enorme, y el producto en frecuencia sustituye a la convolución."
-      - texto: "Porque la FFT da un resultado aproximado, más rápido"
-        porque: "No es una aproximación: da el mismo resultado, solo que con muchas menos operaciones."
-      - texto: "Porque en frecuencia no hay que guardar muestras"
-        porque: "Sigue haciendo falta el bloque entero; la ventaja es el número de operaciones."
+      tipo: grafica
+      x: { id: n, min: 8, max: 8192, unidad: "", rotulo: "N", escala: log }
+      y: { min: 10, max: 100000000, unidad: "", rotulo: "operaciones", escala: log }
+      curvas:
+        - { expr: "n^2", color: naranja, rotulo: "directa, N²" }
+        - { expr: "n*log2(n)", color: azul, rotulo: "por la FFT, N·log₂N" }
+      marcas:
+        - { x: "N_p", y: "N_p^2", rotulo: "N²" }
+      lectura: { valor: a_f, rotulo: "Ahorro" }
+      mandos:
+        - { valor: N_p, lista: [16, 64, 256, 1024, 4096], rotulo: "Muestras, N" }
+    objetivo:
+      condiciones:
+        - { valor: a_f, min: 100, rotulo: "Ahorro: {{a_f}} veces" }
+      logrado: "Con N = {{N_p}}, {{a_f}} veces menos operaciones, y el mismo resultado: no es una aproximación."
+      pistas:
+        - { texto: "Todavía compensa poco: suba N." }
     escalera:
-      - "Compare cómo crecen N² y N·log N."
-    solucion: "N² frente a N·log N: el producto en frecuencia es mucho más barato."
+      - "El ahorro es N²/(N·log₂N) = N/log₂N."
+    solucion: "N = 1024: log₂ 1024 son diez, así que unas cien veces."
+    comprobar:
+      - { con: { N_p: 1024 }, a_f: 102.4 }
 
   - id: resumen
     tipo: resumen

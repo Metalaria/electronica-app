@@ -9,6 +9,10 @@
 # Pasos prácticos: «diseno» del LED blanco con la tolerancia de V_f (la alimentación de 12 V es la única que cumple; con
 # 5 V y 100 Ω cumple en nominal y no con ± 0,3 V: la trampa, con su «si_tolerancias») y
 # «banco» opcional: la corriente de un LED rojo desde 5 V con 300 Ω.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca la R E24 de 10 mA justos; la R para 10 mA desde 12 V,
+# la variación con 3,3 V (+150 %) y el calor del 74 % se calculan («simular»); se busca la alimentación con menos de
+# ± 5 % de variación (de ejemplo). La pregunta de los dos LED en paralelo se quita (su bloque 62 queda en el resumen).
+# Quedan dos preguntas de opciones: el PWM y la vida con la temperatura.
 leccion: cap45/sec-45.2
 
 libro:
@@ -49,14 +53,19 @@ modelo:
     P_R: { expr: "(12 - 3.1)*0.35", sim: "P_{R}", nombre: "potencia en la resistencia", unidad: W }
     P_L: { expr: "3.1*0.35", sim: "P_{LED}", nombre: "potencia en el LED", unidad: W }
     e_c: { expr: "100*P_R/(P_R + P_L)", sim: "calor", nombre: "fracción que se va en calor", unidad: "%" }
+    R_n: { expr: "(V_a - V_f)/0.01", sim: "R", nombre: "resistencia para 10 mA", unidad: Ω }
+    R_x: { expr: "V_a/0.01", sim: "R", nombre: "sin restar V_f", unidad: Ω }
+    d_x: { expr: "0.3/V_g*100", sim: "ΔI", nombre: "dividiendo por la alimentación", unidad: "%" }
+    e_x: { expr: "100*P_L/(P_R + P_L)", sim: "LED", nombre: "fracción que se queda el LED", unidad: "%" }
 
 tarjetas:
   - id: explore-led
     tipo: explorar
     titulo: "Un LED se alimenta con corriente"
-    texto: "Un LED rojo de 2 V desde 5 V: la resistencia fija la corriente. Cámbiela."
+    texto: "Un LED rojo de 2 V desde 5 V: la resistencia fija la corriente. Busque la R de la serie E24 que da 10 mA justos."
     libro: [32, 66]
     fijar: { V_f: 2, V_a: 5 }
+    inicio: { R_e: 150 }
     widget:
       tipo: circuito
       esquema: led
@@ -66,25 +75,43 @@ tarjetas:
       mide: { corriente: I_e, vf: V_f }
       mandos:
         - { valor: R_e, serie: E24, min: 100, max: 1000, rotulo: "R (E24)" }
-    requiere: { mover: [R_e] }
+    objetivo:
+      condiciones:
+        - { valor: I_e, objetivo: 0.01, tol: 0.01, rotulo: "I = {{I_e}}" }
+      logrado: "{{R_e}}: {{I_e}}. Lo que sobra de la alimentación cae en la resistencia."
+      pistas:
+        - { cuando: { valor: I_e, mayor: 0.0101 }, texto: "Demasiada corriente: suba R." }
+        - { texto: "Poca corriente: baje R." }
+    escalera:
+      - "En R caen 5 − 2 = 3 V."
+    solucion: "300 Ω."
+    comprobar:
+      - { con: { R_e: 300 }, I_e: 0.01 }
 
   - id: formula-r
-    tipo: formula
+    tipo: simular
     titulo: "La resistencia en serie"
-    texto: "Lo que sobra de la alimentación cae en la resistencia, al ritmo de la corriente."
+    texto: "R = (V − V_{f})/I. El mismo LED rojo de 2 V, ahora desde 12 V: ¿qué R da 10 mA?"
     libro: [33, 66]
-    ec: 33
-    sustitucion: "({{V_a}} − {{V_f}}) / {{R_e}} = {{I_e}}"
+    fijar: { V_a: 12, V_f: 2 }
     widget:
-      tipo: circuito
-      esquema: led
-      piezas: { fuente: V_a, r: R_e, vf: V_f }
-      lectura: { valor: I_e, rotulo: "Corriente del LED" }
-      corriente: I_e
-      mide: { corriente: I_e, vf: V_f }
-      mandos:
-        - { valor: V_a, lista: [5, 12], rotulo: "Alimentación" }
-        - { valor: R_e, serie: E24, min: 100, max: 1000, rotulo: "R (E24)" }
+      tipo: figura
+      figura: fig-45.2
+      zonas:
+        - { id: todo, rotulo: "LED con su resistencia", rect: [0, 0, 349, 169] }
+    simular:
+      objetivo: R_n
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Resistencia"
+      errores:
+        - { expr: "R_x", texto: "Falta restar la tensión del LED: en R solo cae lo que sobra." }
+    exito: "1 kΩ: en R caen 10 de los 12 V."
+    escalera:
+      - "En R caen 12 − 2 = 10 V."
+    solucion: "10 V / 10 mA = 1 kΩ."
+    comprobar:
+      - { R_n: 1000, R_x: 1200 }
 
   - id: reto-330
     tipo: reto
@@ -119,7 +146,8 @@ tarjetas:
   - id: explore-caida
     tipo: explorar
     titulo: "Cuánta tensión cae en R"
-    texto: "Un LED blanco de 3,1 V a 350 mA, con R calculada para cada alimentación. Su V_{f} varía: mire cuánto cambia la corriente."
+    texto: "Un LED blanco de 3,1 V a 350 mA, con R calculada para cada alimentación; su V_{f} varía ± 0,3 V. Busque la alimentación con menos de ± 5 % de corriente."
+    nota: "El ± 5 % es de ejemplo."
     libro: [35, 36, 39]
     widget:
       tipo: grafica
@@ -133,33 +161,45 @@ tarjetas:
         - { valor: R_g, rotulo: "R = {{R_g}}" }
       mandos:
         - { valor: V_g, lista: [12, 5, 3.3], rotulo: "Alimentación" }
-    requiere: { mover: [V_g] }
+    inicio: { V_g: 5 }
+    objetivo:
+      condiciones:
+        - { valor: d_I, max: 5, rotulo: "± {{d_I}}" }
+      logrado: "Con {{V_g}}, ± {{d_I}}: cuanto más cae en R, menos depende la corriente del LED."
+      pistas:
+        - { texto: "Aún varía demasiado: que caiga más tensión en R." }
+    escalera:
+      - "La variación es 0,3 V entre lo que cae en R."
+    solucion: "12 V: ± 3,4 %."
     comprobar:
       - { con: { V_g: 12 }, d_I: 3.37 }
       - { con: { V_g: 5 }, d_I: 15.8 }
       - { con: { V_g: 3.3 }, d_I: 150 }
 
   - id: predecir-33
-    tipo: predecir
+    tipo: simular
     titulo: "Un LED blanco desde 3,3 V"
-    texto: "Se alimenta un LED blanco de 3,1 V desde 3,3 V con una resistencia. ¿Qué tal funciona?"
+    texto: "Un LED blanco de 3,1 V desde 3,3 V con resistencia. Si su V_{f} baja 0,3 V, ¿cuánto sube la corriente?"
     libro: [35, 37]
+    fijar: { V_g: 3.3 }
     widget:
       tipo: figura
       figura: fig-45.3
       zonas:
         - { id: izquierda, rotulo: "Gráfica de la izquierda", rect: [0, 0, 222, 198] }
-    opciones:
-      - texto: "Es inviable: +150 % o apagado según el LED"
-        bien: true
-        porque: "En R caen 0,2 V; una variación de 0,3 V en V_{f} la dispara o la anula."
-      - texto: "Bien: sobra tensión"
-        porque: "Sobran solo 0,2 V: la corriente depende entera de V_{f}."
-      - texto: "Regular: ± 16 %"
-        porque: "Eso es con 5 V, donde en R caen 1,9 V."
+    simular:
+      objetivo: d_I
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Subida de corriente"
+      errores:
+        - { expr: "d_x", texto: "Ha dividido por la alimentación: la variación se reparte sobre lo que cae en R, 0,2 V." }
+    exito: "+150 %, o apagado si sube: inviable. R debe dejar caer al menos un 20 o 30 % de la alimentación."
     escalera:
-      - "Compare 0,3 V de variación con lo que cae en R."
-    solucion: "Inviable: R debe dejar caer al menos un 20 o 30 % de la alimentación."
+      - "En R caen 3,3 − 3,1 = 0,2 V."
+    solucion: "0,3/0,2 = +150 %."
+    comprobar:
+      - { d_I: 150, d_x: 9.09 }
 
   - id: disene-blanco
     tipo: diseno
@@ -198,7 +238,7 @@ tarjetas:
       - { con: { V_b: 12, R_b: 470 }, I_w: 0.0189 }
 
   - id: estime-calor
-    tipo: pregunta
+    tipo: simular
     titulo: "El rendimiento con resistencia"
     texto: "LED de 3,1 V a 350 mA desde 12 V con resistencia. ¿Qué parte de la energía acaba en calor en R?"
     libro: [39, 40, 41, 42, 46]
@@ -207,24 +247,19 @@ tarjetas:
       figura: fig-45.3
       zonas:
         - { id: izquierda, rotulo: "Gráfica de la izquierda", rect: [0, 0, 222, 198] }
-    estimar:
-      objetivo: "e_c"
+    simular:
+      objetivo: e_c
       unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 20
-      tol: 0.04
+      tol: 0.02
       rotulo: "Energía perdida en R"
+      errores:
+        - { expr: "e_x", texto: "Esa es la parte que se queda el LED; la pregunta es la de R." }
     exito: "El 74 %: 3,12 W en R frente a 1,09 W en el LED. Para iluminación, un driver conmutado."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 77 }, texto: "Demasiado: el LED se queda 3,1 de los 12 V." }
-      - { texto: "Demasiado poco: en R caen 8,9 de los 12 V." }
     escalera:
       - "Con la misma corriente, la potencia se reparte como las tensiones."
     solucion: "8,9/12 = 74 %."
     comprobar:
-      - { P_R: 3.115, P_L: 1.085, e_c: 74.2 }
+      - { P_R: 3.115, P_L: 1.085, e_c: 74.2, e_x: 25.8 }
 
   - id: porque-pwm
     tipo: porque
@@ -290,28 +325,6 @@ tarjetas:
     escalera:
       - "Un LED indicador se da en milicandelas; una bombilla, en lúmenes."
     solucion: "Lumen, total; candela, dirección; lux, superficie."
-
-  - id: predecir-paralelo
-    tipo: predecir
-    titulo: "Dos LED con una resistencia"
-    texto: "Dos LED iguales en paralelo con una sola resistencia. ¿Qué pasa con el tiempo?"
-    libro: [62]
-    widget:
-      tipo: figura
-      figura: fig-45.2
-      zonas:
-        - { id: todo, rotulo: "LED con su resistencia", rect: [0, 0, 349, 169] }
-    opciones:
-      - texto: "El de menor V_{f} se lleva más corriente, se calienta y agrava el desequilibrio"
-        bien: true
-        porque: "Al calentarse baja más su V_{f}: una cada rama, su resistencia."
-      - texto: "Se reparten la corriente a medias"
-        porque: "Sus curvas exponenciales no son idénticas: nunca a medias."
-      - texto: "Lucen la mitad pero bien"
-        porque: "Uno lucirá más que otro, y la diferencia crece al calentarse."
-    escalera:
-      - "Dos exponenciales casi iguales en paralelo."
-    solucion: "Desequilibrio que se realimenta: una resistencia por rama."
 
   - id: banco-led
     tipo: banco

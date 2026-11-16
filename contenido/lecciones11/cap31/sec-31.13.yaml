@@ -5,6 +5,10 @@
 # - La sobrecarga, 1 − k/n = r/(k + r), con los casos del libro (CRC de 16 bits en 100 bytes, Hamming de 4 en 8).
 # Pasos prácticos: «tabla» del generador de paridad (A ⊕ B ⊕ C) y el comprobador vivo de paridad con uno y dos bits
 # cambiados.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): el comprobador se hace saltar cambiando un bit y se engaña
+# cambiando dos; la sobrecarga se baja del 1 % con mensajes largos; la del CRC se predice; y en las barras de la figura
+# 30.28 se tocan la paridad de un byte (11 %) y el código corrector caro (33 %, Hamming). Quedan dos preguntas de
+# opciones: detectar o corregir en una sonda y por qué comprobar el CRC.
 leccion: cap31/sec-31.13
 
 libro:
@@ -39,7 +43,7 @@ tarjetas:
   - id: explore-paridad
     tipo: explorar
     titulo: "Un bit de paridad"
-    texto: "Llega una palabra con paridad par correcta. Cambie un bit y luego otro, y mire el LED de error."
+    texto: "Llega una palabra con paridad par correcta. Corrómpala cambiando un solo bit, como en el banco, hasta que salte el LED de error."
     libro: [653, 669, 670]
     widget:
       tipo: logica
@@ -48,32 +52,40 @@ tarjetas:
         - { id: x1, tipo: xor, entradas: [D1, D2, D3, P], rotulo: "Comprobador" }
       salidas:
         - { id: ERR, de: x1, rotulo: "Error" }
-    requiere: { mover: [D1, D2] }
+    objetivo:
+      condiciones:
+        - { led: ERR, valor: 1, rotulo: "Error detectado" }
+      logrado: "Un bit cambiado deja impar el número de unos: el comprobador lo ve."
+      pistas:
+        - { texto: "La palabra sigue intacta: cambie un bit." }
+    escalera:
+      - "Cualquier bit vale, también el de paridad."
+    solucion: "Cambie uno cualquiera."
+
 
   - id: predecir-dos-bits
-    tipo: predecir
+    tipo: explorar
     titulo: "Dos bits cambiados"
-    texto: "El canal cambia dos bits de la palabra. ¿Lo detecta la paridad?"
+    texto: "Ahora el canal cambia dos bits, D1 y D2, de la misma palabra correcta. Hágalo y mire si el comprobador se entera."
     libro: [653, 654, 666]
     widget:
       tipo: logica
-      entradas: [{ id: D1, valor: 0 }, { id: D2, valor: 1 }, { id: D3, valor: 1 }, { id: P, valor: 0 }]
+      entradas: [{ id: D1, valor: 1 }, { id: D2, valor: 0 }, { id: D3, valor: 1 }, { id: P, valor: 0 }]
       piezas:
         - { id: x1, tipo: xor, entradas: [D1, D2, D3, P], rotulo: "Comprobador" }
       salidas:
         - { id: ERR, de: x1, rotulo: "Error" }
-      ocultar: true
-    opciones:
-      - texto: "No: dos cambios dejan par el número de unos"
-        bien: true
-        porque: "La paridad detecta un número impar de errores, y las ráfagas suelen venir en números pares."
-      - texto: "Sí: cualquier cambio enciende el LED"
-        porque: "Cada cambio invierte la paridad; dos cambios la dejan como estaba."
-      - texto: "Sí, y además dice qué bits son"
-        porque: "La paridad no localiza nada: eso es un código corrector, como Hamming."
+    objetivo:
+      condiciones:
+        - { senal: D1, valor: 0, rotulo: "D1 cambiado" }
+        - { senal: D2, valor: 1, rotulo: "D2 cambiado" }
+        - { led: ERR, valor: 0, rotulo: "LED de error" }
+      logrado: "Dos cambios dejan par el número de unos: la paridad no lo ve. Y las ráfagas suelen venir en números pares."
+      pistas:
+        - { texto: "Falta cambiar uno de los dos bits." }
     escalera:
-      - "¿Cuántas veces se invierte la paridad con dos cambios?"
-    solucion: "No lo detecta: por eso no se confía en la paridad para datos importantes."
+      - "Cada cambio invierte la paridad; dos la dejan como estaba."
+    solucion: "Cambie D1 y D2: el LED no se enciende."
 
   - id: tabla-generador
     tipo: tabla
@@ -99,8 +111,9 @@ tarjetas:
   - id: explore-sobrecarga
     tipo: explorar
     titulo: "Lo que cuesta la redundancia"
-    texto: "Sobrecarga: la fracción de los bits enviados que es redundancia. Cambie los bits de datos y los de redundancia."
+    texto: "Sobrecarga: la fracción de los bits enviados que es redundancia, 1 − k/n. Consiga bajarla del 1 %."
     libro: [646, 660]
+    inicio: { k_d: 8, r_d: 4 }
     widget:
       tipo: grafica
       x: { id: k, min: 4, max: 1000, unidad: "", rotulo: "bits de datos, k", escala: log }
@@ -113,13 +126,23 @@ tarjetas:
       mandos:
         - { valor: k_d, lista: [8, 64, 800], rotulo: "Bits de datos" }
         - { valor: r_d, lista: [1, 4, 16], rotulo: "Bits de redundancia" }
-    requiere: { mover: [k_d, r_d] }
+    objetivo:
+      condiciones:
+        - { valor: s_o, max: 1, rotulo: "Sobrecarga: {{s_o}}" }
+      logrado: "{{r_d}} de redundancia en {{n_t}} bits: en un mensaje largo, la protección sale casi gratis. Más redundancia, más protección y menos caudal útil."
+      pistas:
+        - { texto: "La redundancia aún pesa mucho: más datos por cada bit de redundancia." }
+    escalera:
+      - "Reparta pocos bits de redundancia en muchos de datos."
+    solucion: "800 bits de datos con 1 o 4 de redundancia."
+    comprobar:
+      - { con: { k_d: 800, r_d: 4 }, s_o: 0.498, tol: 0.01 }
 
   - id: estime-crc
-    tipo: pregunta
+    tipo: simular
     titulo: "Un CRC casi gratis"
     texto: "Un CRC de 16 bits protege un mensaje de 100 bytes. ¿Qué sobrecarga tiene?"
-    libro: [661]
+    libro: [655, 661]
     fijar: { k_d: 800, r_d: 16 }
     widget:
       tipo: grafica
@@ -127,19 +150,15 @@ tarjetas:
       y: { min: 0, max: 100, unidad: "%", rotulo: "sobrecarga" }
       curvas:
         - { expr: "100*r_d/(k + r_d)", color: naranja, rotulo: "sobrecarga" }
-    estimar:
-      objetivo: "s_o"
+      mandos: []
+    simular:
+      objetivo: s_o
       unidad: "%"
-      min: 0
-      max: 20
-      paso: 0.1
-      inicio: 10
       tol: 0.1
       rotulo: "Sobrecarga"
-    exito: "Un 2 %: prácticamente gratis."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.2 }, texto: "Demasiado: cien bytes son ochocientos bits." }
-      - { texto: "Demasiado poco: dieciséis de algo más de ochocientos." }
+      errores:
+        - { expr: "16", texto: "Ha dividido 16 bits entre 100 bytes: cien bytes son ochocientos bits." }
+    exito: "Un 2 %: prácticamente gratis. Es lo que usan CAN, Ethernet y cualquier protocolo serio."
     escalera:
       - "Cien bytes son ochocientos bits de datos."
     solucion: "16/(800 + 16): un 2 %."
@@ -147,55 +166,56 @@ tarjetas:
       - { s_o: 1.96, tol: 0.003 }
 
   - id: hamming-caro
-    tipo: pregunta
+    tipo: tocar
     titulo: "Corregir cuesta"
-    texto: "Un Hamming que corrige un error en 8 bits añade 4 de redundancia. ¿Qué sobrecarga es?"
-    libro: [662, 664]
-    fijar: { k_d: 8, r_d: 4 }
-    widget:
-      tipo: grafica
-      x: { id: k, min: 4, max: 1000, unidad: "", rotulo: "bits de datos, k", escala: log }
-      y: { min: 0, max: 100, unidad: "%", rotulo: "sobrecarga" }
-      curvas:
-        - { expr: "100*r_d/(k + r_d)", color: naranja, rotulo: "sobrecarga" }
-      marcas:
-        - { x: "k_d", y: "s_o", rotulo: "Hamming" }
-    opciones:
-      - texto: "Un 33 %"
-        bien: true
-        porque: "4 de cada 12 bits enviados: detectar es barato, corregir es caro."
-      - texto: "Un 50 %"
-        porque: "Eso sería dividir 4 entre 8; la sobrecarga se mide sobre los bits enviados, 12."
-      - texto: "Un 2 %, como el CRC"
-        porque: "El CRC reparte 16 bits en un mensaje largo; aquí son 4 entre 8."
-    escalera:
-      - "Sobrecarga = r/(k + r)."
-    solucion: "4/12: un 33 %."
-    comprobar:
-      - { s_o: 33.3, n_t: 12, r_k: 50, tol: 0.003 }
-
-  - id: empareje-tecnicas
-    tipo: pregunta
-    titulo: "Cada técnica, su sitio"
-    texto: "Empareje cada técnica con dónde se usa o qué hace."
-    libro: [653, 655, 656, 657, 658, 671]
+    texto: "Un Hamming que corrige un error en 8 bits necesita 4 de redundancia. Toque su barra en la figura."
+    libro: [656, 657, 658, 662, 664, 671]
     widget:
       tipo: figura
       figura: fig-31.22
-      zonas:
-        - { id: todo, rotulo: "Técnicas de codificación", rect: [0, 0, 446, 256] }
-    emparejar:
-      - ["Paridad", "Lo que lleva un UART"]
-      - ["CRC", "CAN, Ethernet y cualquier protocolo serio"]
-      - ["Hamming", "Las memorias ECC"]
-      - ["Reed-Solomon", "Las ráfagas de un disco rayado"]
-      - ["LDPC y turbo", "Cerca del límite de Shannon"]
-    exito: "De menos a más capacidad: detectar uno, detectar casi todo, corregir uno, corregir ráfagas."
-    pistas:
-      - { texto: "ECC corrige un error por palabra de memoria." }
+      zonas: &zonas-barras
+        - { id: b0, rotulo: "Primera barra", rect: [31, 25, 40, 186] }
+        - { id: b1, rotulo: "Segunda barra", rect: [69, 25, 40, 186] }
+        - { id: b2, rotulo: "Tercera barra", rect: [108, 25, 40, 186] }
+        - { id: b3, rotulo: "Cuarta barra", rect: [146, 25, 40, 186] }
+        - { id: b4, rotulo: "Quinta barra", rect: [184, 25, 40, 186] }
+    tocar:
+      bien: [b3]
+      porque:
+        b0: "Esa es del 11 %: un bit de paridad en un byte."
+        b1: "Esa es del 2 %: detecta, pero no corrige."
+        b2: "Esa es del 2 %: detecta, pero no corrige."
+        b4: "Esa es Reed-Solomon, que corrige ráfagas."
+    exito: "Un 33 %, 4 de cada 12 bits enviados: lo que llevan las memorias ECC. Detectar es barato, corregir es caro; LDPC y turbo se acercan al límite de Shannon."
     escalera:
-      - "Lo mínimo es un bit; lo serio, una división polinómica."
-    solucion: "Paridad, UART; CRC, CAN y Ethernet; Hamming, ECC; Reed-Solomon, discos; LDPC y turbo, Shannon."
+      - "Sobrecarga = 4/(8 + 4)."
+    solucion: "La cuarta barra, la más alta: 33 %."
+    comprobar:
+      - { s_o: 33.3, n_t: 12, r_k: 50, tol: 0.003 }
+      - { con: { k_d: 8, r_d: 1 }, s_o: 11.1, tol: 0.01 }
+
+  - id: empareje-tecnicas
+    tipo: tocar
+    titulo: "Cada técnica, su sitio"
+    texto: "La paridad, lo que lleva un UART: un bit añadido a cada byte. Toque su barra."
+    libro: [653, 671]
+    widget:
+      tipo: figura
+      figura: fig-31.22
+      zonas: *zonas-barras
+    tocar:
+      bien: [b0]
+      porque:
+        b1: "Esa es del 2 %: un bit por byte pesa mucho más."
+        b2: "Esa es del 2 %: un bit por byte pesa mucho más."
+        b3: "Esa es del 33 %: un código corrector."
+        b4: "Esa corrige ráfagas: es mucho más que un bit."
+    exito: "Un 11 %: uno de cada nueve bits. Y aun así solo detecta un número impar de errores."
+    escalera:
+      - "Un bit de cada nueve."
+    solucion: "La primera barra: 11 %."
+    comprobar:
+      - { con: { k_d: 8, r_d: 1 }, s_o: 11.1, tol: 0.01 }
 
   - id: detectar-o-corregir
     tipo: pregunta
