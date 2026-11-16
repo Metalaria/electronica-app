@@ -2,6 +2,9 @@
 # (§11.6). Las operaciones sobre un bit (bloque 9) se ven como puertas: un bit del registro (R) y el mismo bit de la
 # máscara (M). El ejemplo del campo es el del libro: los bits 6 a 4 de 0xB5 (181) valen 3. Código comprobado en
 # Complementos/codigo/apK/bits.
+# 1.2.1 («aprender haciendo», GUIA §13): las tres operaciones son un objetivo (OR y AND a uno, XOR a cero); el mayor
+# int del AVR, el campo leído y el registro escrito se escriben en hexadecimal o en binario; el tipo del registro se
+# toca en un listado. Quedan dos preguntas de opciones: la constante del bit 15 y la comprobación de ancho.
 leccion: apK/sec-K.1
 
 libro:
@@ -20,13 +23,15 @@ modelo:
     reg_b: { sim: "reg", nombre: "valor del registro", unidad: "", valor: 181 }
     pos: { sim: "pos", nombre: "bit de comienzo del campo", unidad: "", valor: 4 }
   calculos:
+    int_max: { expr: "2^15 - 1", nombre: "mayor int del AVR", unidad: "" }
+    uint_max: { expr: "2^16 - 1", nombre: "mayor unsigned int del AVR", unidad: "" }
     campo: { expr: "floor(reg_b/2^pos) - 8*floor(reg_b/2^(pos + 3))", sim: "campo", nombre: "campo de 3 bits", unidad: "" }
 
 tarjetas:
   - id: explore-bits
     tipo: explorar
     titulo: "Bits con máscaras"
-    texto: "Un bit del registro y el mismo bit de la máscara 1u << n: poner es una OR, invertir una XOR y probar una AND. Muévalos."
+    texto: "Un bit del registro y el mismo bit de la máscara 1u << n: poner es una OR, invertir una XOR y probar una AND. Consiga que poner y probar den uno e invertir, cero."
     libro: [9]
     widget:
       tipo: logica
@@ -40,7 +45,17 @@ tarjetas:
         - { id: T, de: x1, rotulo: "reg ^= m" }
         - { id: P, de: a1, rotulo: "reg & m" }
       tabla: true
-    requiere: { mover: [R, M] }
+    objetivo:
+      condiciones:
+        - { led: S, valor: 1, rotulo: "Poner da uno" }
+        - { led: T, valor: 0, rotulo: "Invertir da cero" }
+        - { led: P, valor: 1, rotulo: "Probar da uno" }
+      logrado: "Bit a uno y máscara a uno: la OR lo deja en uno, la XOR lo invierte a cero y la AND dice que estaba puesto."
+      pistas:
+        - { cuando: { senal: M, valor: 0 }, texto: "Sin máscara, ninguna operación toca el bit: ponga M a uno." }
+        - { texto: "La AND solo da uno si el bit del registro también lo es." }
+    escalera: ["R y M a uno."]
+    solucion: "R = 1 y M = 1."
 
   - id: disene-borrar
     tipo: diseno
@@ -64,63 +79,63 @@ tarjetas:
     escalera: ["Primero invierta la máscara, como hace ~."]
     solucion: "p1 = NOT(M) y C = AND(R, p1)."
 
-  - id: empareje-tamanos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los tamaños en el AVR"
-    texto: "Una cada tipo con lo que ocupa en el avr-gcc del Arduino."
-    libro: [4, 5]
-    emparejar:
-      - ["int", "2 bytes: de −32 768 a 32 767"]
-      - ["long", "4 bytes"]
-      - ["double", "4 bytes: un float, unas siete cifras"]
-      - ["Un puntero", "2 bytes"]
-    exito: "En un Cortex-M el int y el puntero tienen 4 bytes, y el double, 8: el mismo código se comporta distinto."
-    pistas:
-      - { texto: "Dos casillas sorprenden: el int y el double." }
-    escalera: ["El C solo garantiza mínimos: un int, al menos 16 bits."]
-    solucion: "int, 2; long, 4; double, 4; puntero, 2."
-
   - id: prediga-int
-    tipo: predecir
+    tipo: leer
     titulo: "Un programa del PC en el Arduino"
-    texto: "Un contador int funciona en el PC hasta cien mil. ¿Y en el Arduino UNO?"
-    libro: [3, 5]
+    texto: "El C solo garantiza que un int tenga al menos 16 bits, y en el AVR tiene justo esos, con signo. Escriba en hexadecimal el mayor int del AVR."
+    libro: [3, 4, 5]
     widget:
-      tipo: logica
-      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
-      piezas:
-        - { id: a1, tipo: and, entradas: [R, M] }
-      salidas:
-        - { id: P, de: a1, rotulo: "reg & m" }
-      ocultar: true
-    opciones:
-      - { texto: "Se desborda al pasar de 32 767", bien: true, porque: "En el AVR un int tiene 16 bits: el PC lo hace de 32. Por eso se usan int32_t y sus parientes." }
-      - { texto: "Funciona igual: int es int", porque: "El C solo garantiza 16 bits: cada compilador elige el resto." }
-      - { texto: "No compila", porque: "Compila sin quejarse; falla al ejecutar." }
-    escalera: ["¿Cuántos bits tiene un int en el avr-gcc?"]
-    solucion: "Se desborda: el int del AVR llega a 32 767."
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          #include <stdint.h>
+
+          int16_t  a;   /* what an int is in the AVR: 16 bits, signed */
+          uint16_t b;   /* 16 bits, unsigned */
+          int32_t  c;   /* what an int is in a Cortex-M or a PC */
+      resaltar: [3]
+    leer:
+      objetivo: int_max
+      base: 16
+      cifras: 16
+      rotulo: "Mayor int del AVR"
+      errores:
+        - { expr: "uint_max", texto: "Ese es el mayor sin signo: el int lleva el bit de más peso para el signo." }
+    exito: "0x7FFF, 32 767: un contador que en el PC llega a cien mil se desborda en el Arduino. Además, allí un double es un float de 32 bits."
+    escalera: ["Quince unos detrás del bit de signo, que queda a cero."]
+    solucion: "0x7FFF = 32 767."
     comprobar:
-      - { reg_b: 181 }
+      - { int_max: 32767, uint_max: 65535 }
 
   - id: pregunta-stdint
-    tipo: pregunta
+    tipo: tocar
     titulo: "El tipo de un registro"
-    texto: "Un registro de un periférico tiene 32 bits. ¿Qué tipo usa para él?"
-    libro: [6]
+    texto: "Un registro de un periférico tiene 32 bits. Toque la declaración que le da ese tamaño en cualquier procesador."
+    libro: [4, 6]
     widget:
-      tipo: logica
-      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
-      piezas:
-        - { id: o1, tipo: or, entradas: [R, M] }
-      salidas:
-        - { id: S, de: o1, rotulo: "reg |= m" }
-    opciones:
-      - { texto: "uint32_t", bien: true, porque: "Dice su tamaño en el nombre: 32 bits en cualquier procesador." }
-      - { texto: "unsigned int", porque: "En el AVR serían 16 bits: el tamaño no está garantizado." }
-      - { texto: "long", porque: "En el PC son 8 bytes; además lleva signo." }
-    escalera: ["Los tipos de stdint.h llevan el tamaño en el nombre."]
-    solucion: "uint32_t."
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          unsigned int r1;
+          long         r2;
+          uint32_t     r3;
+          uint8_t      r4;
+      zonas:
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+    tocar:
+      bien: [l3]
+      porque:
+        l1: "En el AVR serían 16 bits: el tamaño no está garantizado."
+        l2: "En el PC son 8 bytes, y además lleva signo."
+        l4: "Dice su tamaño, pero son 8 bits."
+    exito: "uint32_t: los tipos de stdint.h dicen su tamaño en el nombre. Se usan siempre que el tamaño importe."
+    escalera: ["¿Qué tipo lleva el tamaño en el nombre?"]
+    solucion: "La tercera: uint32_t."
 
   - id: pregunta-constantes
     tipo: pregunta
@@ -142,10 +157,9 @@ tarjetas:
     solucion: "1u << 15: 32 768."
 
   - id: estime-campo
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Leer un campo"
-    texto: "0xB5 es 1011 0101 en binario. ¿Cuánto vale campo_lee(0xB5, 4, 3), los bits 6 a 4?"
+    texto: "0xB5 es 1011 0101 en binario. Escriba en binario campo_lee(0xB5, 4, 3), los bits 6 a 4."
     libro: [10, 11]
     widget:
       tipo: figura
@@ -161,40 +175,45 @@ tarjetas:
               return (reg >> pos) & mascara;
           }
       resaltar: [6, 7, 8]
-    estimar:
-      objetivo: "campo"
-      unidad: ""
-      min: 0
-      max: 7
-      paso: 1
-      inicio: 6
-      tol: 0.01
+    leer:
+      objetivo: campo
+      base: 2
+      cifras: 3
       rotulo: "Valor del campo"
-    exito: "3: desplazar 4 bits a la derecha y enmascarar los tres bits bajos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3 }, texto: "Se ha pasado: los bits 6 a 4 de 1011 0101 son 011." }
-      - { texto: "Se ha quedado corto: los bits 6 a 4 de 1011 0101 son 011." }
+    exito: "011, que vale 3: desplazar 4 bits a la derecha y enmascarar los tres bits bajos."
     escalera: ["Cuente desde la derecha: el bit 0 es el último."]
     solucion: "Los bits 6 a 4 son 011, que vale 3."
     comprobar:
       - { campo: 3, reg_b: 181, pos: 4 }
 
   - id: pregunta-escribir
-    tipo: pregunta
+    tipo: leer
     titulo: "Escribir un campo"
-    texto: "Escribe 6 (110) en los bits 6 a 4 de 0xB5, borrando antes el campo. ¿Qué queda?"
+    texto: "Escribe 6 (110) en los bits 6 a 4 de 0xB5, borrando antes el campo. Escriba en hexadecimal lo que queda."
     libro: [11]
     widget:
-      tipo: logica
-      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
-      piezas:
-        - { id: o1, tipo: or, entradas: [R, M] }
-      salidas:
-        - { id: S, de: o1, rotulo: "reg |= m" }
-    opciones:
-      - { texto: "0xE5", bien: true, porque: "El 011 de los bits 6 a 4 pasa a 110 y el resto no cambia." }
-      - { texto: "0xF5", porque: "Sería hacer una OR sin borrar antes el campo: el 011 y el 110 se mezclan." }
-      - { texto: "0x65", porque: "Se ha perdido el bit de más a la izquierda, que no es del campo y no debe cambiar." }
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          static inline uint32_t campo_escribe(uint32_t reg, unsigned pos,
+                                               unsigned ancho, uint32_t valor)
+          {
+              uint32_t mascara = (ancho < 32u)
+                                 ? ((1ul << ancho) - 1u) : 0xFFFFFFFFul;
+              return (reg & ~(mascara << pos))
+                     | ((valor & mascara) << pos);
+          }
+      resaltar: [6, 7]
+    leer:
+      objetivo: "0xE5"
+      base: 16
+      cifras: 8
+      rotulo: "Registro tras escribir"
+      errores:
+        - { expr: "245", texto: "Ha hecho la OR sin borrar antes el campo: el 011 y el 110 se mezclan." }
+        - { expr: "101", texto: "Se ha perdido el bit de más a la izquierda, que no es del campo y no debe cambiar." }
+    exito: "0xE5: el campo pasa de 011 a 110 y el resto no cambia."
     escalera: ["Borre los bits 6 a 4 de 1011 0101 y meta 110."]
     solucion: "0xE5: el campo pasa de 011 a 110."
 
@@ -224,31 +243,12 @@ tarjetas:
     escalera: ["¿Qué dice el estándar de desplazar 32 bits un valor de 32 bits?"]
     solucion: "Es comportamiento indefinido: un PC y un ARM dan cosas distintas."
 
-  - id: pregunta-campos-bits
-    tipo: pregunta
-    titulo: "Campos de bits"
-    texto: "¿Sirve una estructura con unsigned modo : 3; para describir un registro de un periférico?"
-    libro: [12]
-    widget:
-      tipo: logica
-      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
-      piezas:
-        - { id: a1, tipo: and, entradas: [R, M] }
-      salidas:
-        - { id: P, de: a1, rotulo: "reg & m" }
-    opciones:
-      - { texto: "No: cada compilador coloca esos bits a su manera", bien: true, porque: "Orden y relleno no están fijados: sirven para banderas propias; un registro se describe con máscaras." }
-      - { texto: "Sí: es la forma más clara", porque: "Es clara, pero no portable: el orden de los bits lo decide el compilador." }
-      - { texto: "Sí, si se usa volatile", porque: "volatile no fija dónde van los bits." }
-    escalera: ["¿Quién decide en qué orden quedan los bits de un campo de bits?"]
-    solucion: "No: registros y tramas, con máscaras."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [5, 6, 7, 9]
+    libro: [5, 6, 7, 9, 12]
     ideas:
       - { titulo: "Tamaños.", texto: "En el AVR, int de 16 bits y double de 32: use los tipos de stdint.h." }
       - { titulo: "Constantes.", texto: "Máscaras sin signo, y con ul si pasan del bit 15." }
       - { titulo: "Bits.", texto: "OR pone, AND con ~ borra, XOR invierte, AND prueba." }
-      - { titulo: "Campos.", texto: "Desplazar y enmascarar; borrar antes de escribir." }
+      - { titulo: "Campos.", texto: "Desplazar y enmascarar; borrar antes de escribir. Un registro, con máscaras, nunca con campos de bits." }

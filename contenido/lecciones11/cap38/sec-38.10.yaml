@@ -1,6 +1,12 @@
 # Lección 1.2 de la sección 39.10 «Depuración: Ver Dentro del Chip» (cap38; etiqueta interna sec-38.10).
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.14 (svg_vista 453,6 × 252): herramientas ordenadas por su
 # perturbación. Sus filas son estrechas para tocarlas en un teléfono, así que las zonas agrupan dos filas.
+# 1.2.1 («aprender haciendo», GUIA §13): el watchpoint se explora como el comparador de la unidad de depuración (bloque
+# 322): una escritura en la dirección vigilada detiene el programa (la dirección, A1 encendida y A0 apagada, es de
+# ejemplo); en la
+# figura se tocan las herramientas para un fallo de tiempo real, para el desbordamiento de pila y para el fallo que
+# cambia al observarlo. Queda una pregunta de opciones: el pin de depuración. El printf, la tabla de herramientas y el
+# análisis post mortem van en los textos y el resumen.
 leccion: cap38/sec-38.10
 
 libro:
@@ -15,6 +21,9 @@ libro:
   316: "antes de depurar, formular la hipótesis"
   317: "del printf al pin, del pin a la traza"
   318: "Herramientas de depuración ordenadas por su perturbación del sistema"
+  320: "uno por dato la detiene cuando una dirección de memoria cambia, sin importar quién la escribió"
+  321: "el depurador detiene el programa en la instrucción culpable"
+  322: "Su implementación está en hardware"
   323: "sobre el final de una pila, para cazar un desbordamiento"
   324: "reservar una zona de RAM que el arranque no borre, y escribir en ella antes de morir"
   326: "La causa del reinicio"
@@ -29,70 +38,50 @@ modelo:
 tarjetas:
   - id: explore-perturbacion
     tipo: explorar
-    titulo: "Ver sin alterar"
-    texto: "Cada herramienta observa el chip a costa de perturbarlo. Toque los grupos, de más a menos perturbación."
-    libro: [291, 318]
+    titulo: "Un watchpoint"
+    texto: "La unidad de depuración compara cada escritura con la dirección vigilada: A1 encendida y A0 apagada. Provoque una escritura que detenga el programa."
+    libro: [296, 320, 321, 322]
+    widget:
+      tipo: logica
+      entradas:
+        - { id: A1, rotulo: "A1" }
+        - { id: A0, rotulo: "A0" }
+        - { id: W, rotulo: "Escritura" }
+      piezas:
+        - { id: n0, tipo: not, entradas: [A0] }
+        - { id: eq, tipo: and, entradas: [A1, n0], rotulo: "Dirección vigilada" }
+        - { id: st, tipo: and, entradas: [eq, W], rotulo: "Detener" }
+      salidas:
+        - { id: STOP, de: st, rotulo: "Programa detenido" }
+    objetivo:
+      condiciones:
+        - { led: STOP, valor: 1, rotulo: "Detenido" }
+      logrado: "Se detiene en la instrucción que escribió, sin importar quién fuera. Es hardware: no ralentiza nada, y es la forma razonable de encontrar quién corrompe una variable."
+      pistas:
+        - { texto: "Ponga la dirección vigilada y escriba." }
+    escalera: ["A1 encendida, A0 apagada, y una escritura."]
+    solucion: "A1 encendida, A0 apagada y escritura."
+
+  - id: toque-tiempo-real
+    tipo: tocar
+    titulo: "Falla solo en tiempo real"
+    texto: "Un fallo desaparece en cuanto se pone un punto de ruptura. Toque el grupo de herramientas que lo ve."
+    libro: [297, 312, 318]
     widget:
       tipo: figura
       figura: fig-38.14
       zonas:
-        - { id: detienen, rotulo: "Primeras dos filas", rect: [50, 26, 400, 49], texto: "Depurador y watchpoint: detienen la ejecución, pero el mundo real no se para." }
-        - { id: lentas, rotulo: "Filas tercera y cuarta", rect: [50, 76, 400, 47], texto: "printf por serie y registro en buffer: cambian la temporización, más o menos." }
-        - { id: ligeras, rotulo: "Filas quinta y sexta", rect: [50, 124, 400, 46], texto: "Pin de depuración y traza: no detienen nada." }
-        - { id: consejo, rotulo: "Recuadro de abajo", rect: [2, 205, 450, 45], texto: "Si el fallo cambia al observarlo, la observación es parte del problema." }
-    requiere: { mover: [detienen, ligeras] }
-
-  - id: empareje-herramienta
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada problema, su herramienta"
-    texto: "Una cada problema con la herramienta que lo resuelve."
-    libro: [314]
-    emparejar:
-      - ["El programa no llega donde debería", "Depurador, punto de ruptura"]
-      - ["Una variable se corrompe", "Watchpoint"]
-      - ["Algo tarda demasiado", "Pin de depuración y osciloscopio"]
-      - ["Un bus no comunica", "Analizador lógico"]
-      - ["Falla una vez cada mil", "Registro en buffer circular, contadores"]
-    exito: "Con la herramienta adecuada, cada hipótesis se comprueba en lugar de adivinarse."
-    pistas:
-      - { texto: "El watchpoint para cuando una variable cambia." }
-    escalera: ["¿Qué herramienta decodifica I²C, SPI o UART?"]
-    solucion: "No llega, punto de ruptura; se corrompe, watchpoint; tarda, pin; bus, analizador; una de cada mil, buffer circular."
-
-  - id: prediga-printf
-    tipo: predecir
-    titulo: "Un printf en la interrupción"
-    texto: "Para ver un fallo esporádico, pone un printf dentro de la interrupción. ¿Qué puede pasar?"
-    libro: [300, 318]
-    widget:
-      tipo: figura
-      figura: fig-38.14
-      zonas:
-        - { id: lentas, rotulo: "Filas tercera y cuarta", rect: [50, 76, 400, 47], texto: "printf por serie: milisegundos por línea." }
-    opciones:
-      - { texto: "Que el fallo desaparezca al intentar observarlo", bien: true, porque: "Imprimir una línea lleva milisegundos: cambia el comportamiento del programa." }
-      - { texto: "Que se vea el fallo con todo detalle", porque: "El printf altera la temporización: el fallo puede esconderse." }
-      - { texto: "Nada: un printf no afecta al programa", porque: "A 115 200 baudios, una línea es una eternidad para el sistema." }
-    escalera: ["¿Cuánto tarda en salir una línea por el puerto serie?"]
-    solucion: "El fallo puede desaparecer: la observación lo altera."
-
-  - id: pregunta-watchpoint
-    tipo: pregunta
-    titulo: "¿Quién la corrompe?"
-    texto: "Una variable aparece con un valor imposible y no sabe qué parte del programa la escribe. ¿Qué usa?"
-    libro: [296, 314, 318]
-    widget:
-      tipo: figura
-      figura: fig-38.14
-      zonas:
-        - { id: detienen, rotulo: "Primeras dos filas", rect: [50, 26, 400, 49], texto: "Detienen la ejecución." }
-    opciones:
-      - { texto: "Un watchpoint sobre la variable", bien: true, porque: "Detiene la ejecución en la instrucción que la escribe, sin importar quién sea." }
-      - { texto: "Un punto de ruptura en cada función", porque: "Sería buscar por eliminación, y puede llevar días." }
-      - { texto: "Un analizador lógico", porque: "Ve los pines y los buses, no las escrituras en la RAM." }
-    escalera: ["¿Qué herramienta para cuando cambia un dato, no al llegar a una línea?"]
-    solucion: "Un watchpoint: el depurador para en la instrucción culpable."
+        - { id: detienen, rotulo: "Primeras dos filas", rect: [50, 26, 400, 49] }
+        - { id: lentas, rotulo: "Filas tercera y cuarta", rect: [50, 76, 400, 47] }
+        - { id: ligeras, rotulo: "Filas quinta y sexta", rect: [50, 124, 400, 46] }
+    tocar:
+      bien: [ligeras]
+      porque:
+        detienen: "Detienen la ejecución: el mundo real no se para y el fallo se esconde."
+        lentas: "Cambian la temporización: el fallo puede esconderse igual."
+    exito: "El pin y la traza no detienen nada. La traza reconstruye el historial sin parar; su límite es el ancho de banda del canal."
+    escalera: ["¿Cuáles no paran el programa?"]
+    solucion: "Pin de depuración y traza."
 
   - id: porque-pin
     tipo: porque
@@ -111,63 +100,54 @@ tarjetas:
     escalera: ["¿Qué le pasa a un motor cuando un punto de ruptura para el programa?"]
     solucion: "Perturba unos nanosegundos y no detiene el sistema."
 
-  - id: ordene-postmortem
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Antes de morir"
-    texto: "Una zona de RAM que el arranque no borra guarda el fallo. Ordene qué guardar, de más a menos útil."
-    libro: [324, 326, 327, 328, 329]
-    ordenar:
-      - "La causa del reinicio."
-      - "El contador de programa y la pila en el fallo."
-      - "Las últimas variables de estado."
-      - "Un contador de ocurrencias."
-    exito: "Un sistema que registra por qué murió se depura en una iteración; uno que no, por hipótesis."
-    pistas:
-      - { texto: "Lo primero: watchdog, brown-out, fallo o reinicio normal." }
-    escalera: ["El contador de ocurrencias solo distingue un fallo aislado de uno recurrente."]
-    solucion: "Causa, contador de programa y pila, variables de estado y contador de ocurrencias."
-
   - id: pregunta-pila
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cazar un desbordamiento"
-    texto: "¿Dónde pone un watchpoint para cazar un desbordamiento de pila en el instante en que ocurre?"
-    libro: [323, 318]
+    texto: "Quiere cazar un desbordamiento de pila en el instante en que ocurre, no cuando aparecen sus consecuencias. Toque el grupo de la herramienta."
+    libro: [314, 318, 323]
     widget:
       tipo: figura
       figura: fig-38.14
       zonas:
-        - { id: detienen, rotulo: "Primeras dos filas", rect: [50, 26, 400, 49], texto: "Watchpoint: detiene al cambiar una variable." }
-    opciones:
-      - { texto: "Sobre el final de la pila", bien: true, porque: "Salta en cuanto la pila llega ahí, no cuando aparecen las consecuencias." }
-      - { texto: "Sobre la primera variable global", porque: "Saltaría cuando se escribe esa variable, no al desbordarse la pila." }
-      - { texto: "En la función main()", porque: "Un punto en main() no dice nada de cuánto crece la pila." }
-    escalera: ["¿Qué dirección escribe la pila justo cuando se desborda?"]
-    solucion: "Sobre el final de la pila."
+        - { id: detienen, rotulo: "Primeras dos filas", rect: [50, 26, 400, 49] }
+        - { id: lentas, rotulo: "Filas tercera y cuarta", rect: [50, 76, 400, 47] }
+        - { id: ligeras, rotulo: "Filas quinta y sexta", rect: [50, 124, 400, 46] }
+    tocar:
+      bien: [detienen]
+      porque:
+        lentas: "Un printf o un registro cuentan lo que pasó; no paran en el instante."
+        ligeras: "El pin mide tiempos; no ve qué dirección se escribe."
+    exito: "Un watchpoint sobre el final de la pila: salta en cuanto la pila llega ahí."
+    escalera: ["¿Qué herramienta para cuando se escribe una dirección?"]
+    solucion: "Las primeras filas: el watchpoint."
 
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: tocar
     titulo: "Si el fallo cambia al mirarlo"
-    texto: "El fallo cambia de forma al poner un printf. ¿Qué hace?"
-    libro: [312, 316, 317, 318]
+    texto: "Pone un printf dentro de la interrupción y el fallo cambia de forma. Toque el grupo al que hay que pasar."
+    libro: [300, 316, 317, 318]
     widget:
       tipo: figura
       figura: fig-38.14
       zonas:
-        - { id: consejo, rotulo: "Recuadro de abajo", rect: [2, 205, 450, 45], texto: "La observación es parte del problema." }
-    opciones:
-      - { texto: "Pasar a una técnica menos intrusiva: del printf al pin, del pin a la traza", bien: true, porque: "Si observar lo altera, hay que observar perturbando menos." }
-      - { texto: "Poner más printf para verlo mejor", porque: "Cada printf altera más los tiempos: el fallo se esconde aún más." }
-      - { texto: "Parar con un punto de ruptura", porque: "Parar es la técnica que más perturba." }
-    escalera: ["Mire el orden de la figura: de más a menos perturbación."]
-    solucion: "Bajar en la escala de perturbación: printf, pin, traza."
+        - { id: detienen, rotulo: "Primeras dos filas", rect: [50, 26, 400, 49] }
+        - { id: lentas, rotulo: "Filas tercera y cuarta", rect: [50, 76, 400, 47] }
+        - { id: ligeras, rotulo: "Filas quinta y sexta", rect: [50, 124, 400, 46] }
+    tocar:
+      bien: [ligeras]
+      porque:
+        detienen: "Parar es lo que más perturba."
+        lentas: "Ahí está el printf: milisegundos por línea, que alteran la temporización."
+    exito: "La observación es parte del problema: del printf al pin, del pin a la traza. Y antes de depurar, una hipótesis comprobable."
+    escalera: ["Baje en la escala de perturbación."]
+    solucion: "Pin de depuración y traza."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [291, 296, 305, 316]
+    libro: [291, 305, 316, 324, 326, 327, 328, 329]
     ideas:
       - { titulo: "Observar altera.", texto: "Cada herramienta paga en perturbación lo que da en visibilidad." }
-      - { titulo: "Watchpoint.", texto: "La única forma razonable de saber quién corrompe una variable." }
+      - { titulo: "Post mortem.", texto: "Una RAM que el arranque no borra guarda la causa, el contador de programa y el estado." }
       - { titulo: "Pin de depuración.", texto: "Unos nanosegundos, sin detener nada." }
       - { titulo: "Hipótesis.", texto: "Antes de depurar, una hipótesis que se pueda comprobar." }

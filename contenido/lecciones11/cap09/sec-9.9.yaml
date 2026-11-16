@@ -1,16 +1,20 @@
-# Lección 1.2 de la sección 9.9 «Metaestabilidad, Sincronización y Entradas Limpias» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 9.9 «Metaestabilidad, Sincronización y Entradas Limpias» (cap09). Formato: contenido/lecciones11/GUIA.md.
 # Los números del MTBF son los del problema 28.B (cap29), que usa la expresión de esta sección.
+# 1.2.1 («aprender haciendo», GUIA §13): se elige el sincronizador que pasa del millón de años y se marca en la curva
+# el tiempo de resolución que hace falta; el MTBF de un biestable se calcula y se escribe; la salida del sincronizador y
+# el reset sincronizado se dibujan; el cable que no se reutiliza se toca en la figura 9.10. Quedan dos preguntas de
+# opciones: por qué basta un flip-flop más y el contador entre dominios (Gray).
 leccion: cap09/sec-9.9
 
 libro:
-  138: "como una moneda de canto"
   139: "no se puede eliminar"
   142: 'T_(0) dot.op f_("reloj") dot.op f_("datos")'
   141: "El tiempo medio entre fallos crece exponencialmente con el tiempo que se le conceda al flip-flop para resolverse"
   143: "se pasa de un fallo cada pocos minutos a uno cada millón de años"
   146: "dispone de un ciclo de reloj completo para resolverse antes de que el segundo lea su salida"
   148: "La salida del primer flip-flop no se usa para nada más"
-  152: "Un disparador de Schmitt en la entrada convierte cualquier rampa en un flanco limpio"
+  158: "el primero absorbe la metaestabilidad"
+  154: "soltarlo cerca de un flanco de reloj puede provocar metaestabilidad"
   155: "activar el reset de forma asíncrona (para que funcione aunque no haya reloj) y soltarlo de forma síncrona"
   "cap29#348": "Los biestables tienen constante de resolución τ = 0,2 ns, T₀ = 1 ns y 1 ns de establecimiento"
   "cap29#354": "485 s = 8,1 minutos"
@@ -30,8 +34,9 @@ tarjetas:
   - id: explore-mtbf
     tipo: explorar
     titulo: "Tiempo para decidirse"
-    texto: "Reloj de 200 MHz y una señal que cambia 5 millones de veces por segundo. Conceda al biestable más tiempo para resolverse y mire el MTBF."
-    libro: [141, "cap29#348"]
+    texto: "La metaestabilidad no se elimina: se hace improbable. Con 200 MHz de reloj, elija el sincronizador que falla menos de una vez cada millón de años."
+    libro: [139, 141, 143, "cap29#348"]
+    inicio: { t_res: 0.000000004 }
     widget:
       tipo: grafica
       x: { id: tx, min: 0.000000001, max: 0.000000015, unidad: s, rotulo: "t_{r}" }
@@ -45,87 +50,72 @@ tarjetas:
         - { valor: MTBF, rotulo: "En segundos: {{MTBF}}" }
       mandos:
         - { valor: t_res, lista: [0.000000004, 0.000000009, 0.000000014], nombres: ["un biestable", "dos biestables", "tres biestables"], rotulo: "Sincronizador" }
-    requiere: { mover: [t_res] }
-
-  - id: prediga-eliminar
-    tipo: predecir
-    titulo: "¿Se puede eliminar?"
-    texto: "Una señal asíncrona entra en un sistema síncrono. ¿Puede un buen diseño eliminar del todo la metaestabilidad?"
-    libro: [138, 139]
-    widget:
-      tipo: grafica
-      x: { id: tx, min: 0.000000001, max: 0.000000015, unidad: s, rotulo: "t_{r}" }
-      y: { min: 0.001, max: 1e30, unidad: s, rotulo: "MTBF", escala: log }
-      curvas:
-        - { expr: "exp(tx/tau_m)/(T_0*f_clk*f_dat)", color: azul, rotulo: "MTBF" }
-      lectura: { valor: MTBF_a, rotulo: "Tiempo medio entre fallos" }
-      ocultar: true
-    opciones:
-      - { texto: "No: solo se puede reducir su probabilidad hasta que sea irrelevante", bien: true, porque: "Siempre hay una probabilidad no nula de que el cambio llegue justo en la ventana: el MTBF crece, pero nunca es infinito." }
-      - { texto: "Sí, con un flip-flop más rápido", porque: "Un flip-flop más rápido reduce la probabilidad, pero no la anula: la ventana sigue existiendo." }
-      - { texto: "Sí, respetando el setup", porque: "Con una señal asíncrona no se puede garantizar el setup: puede cambiar en cualquier instante." }
-    escalera: ["¿Puede controlar cuándo cambia una señal que no conoce el reloj?"]
-    solucion: "No se puede eliminar: se reduce hasta que sea irrelevante."
-
-  - id: formula-mtbf
-    tipo: formula
-    titulo: "La expresión del MTBF"
-    texto: "El tiempo concedido, t_{r}, está en el exponente."
-    libro: [142, "cap29#348"]
-    ec: 142
-    sustitucion: "exp({{t_res}} / {{tau_m}}) / ({{T_0}} · {{f_clk}} · {{f_dat}}) = {{MTBF}}"
-    widget:
-      tipo: grafica
-      x: { id: tx, min: 0.000000001, max: 0.000000015, unidad: s, rotulo: "t_{r}" }
-      y: { min: 0.001, max: 1e30, unidad: s, rotulo: "MTBF", escala: log }
-      curvas:
-        - { expr: "exp(tx/tau_m)/(T_0*f_clk*f_dat)", color: azul, rotulo: "MTBF" }
-      asas:
-        - { mueve: t_res, x: "t_res", y: "MTBF", rotulo: "Su tiempo de resolución" }
-      lectura: { valor: MTBF_a, rotulo: "Tiempo medio entre fallos" }
-      mandos:
-        - { valor: t_res, lista: [0.000000004, 0.000000009, 0.000000014], nombres: ["un biestable", "dos biestables", "tres biestables"], rotulo: "Sincronizador" }
+    objetivo:
+      condiciones:
+        - { valor: MTBF_a, min: 1000000, rotulo: "MTBF: {{MTBF_a}}" }
+      logrado: "Con {{t_res}} para resolverse, {{MTBF_a}}: de un fallo cada pocos minutos a uno cada millón de años. Pero nunca infinito."
+      pistas:
+        - { texto: "Con un solo biestable falla cada pocos minutos: conceda un ciclo más." }
+    escalera: ["Cada biestable más concede un ciclo entero para resolverse."]
+    solucion: "Dos biestables: unos 9 ns para resolverse."
+    comprobar:
+      - { con: { t_res: 0.000000009 }, MTBF_a: 1100000, tol: 0.05 }
 
   - id: estime-un-biestable
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Con un solo biestable"
-    texto: "Con un solo biestable quedan 4 ns para resolverse. ¿Cada cuánto falla el sistema, de media?"
-    libro: ["cap29#348", "cap29#354"]
+    texto: "Con un solo biestable quedan 4 ns para resolverse. Calcule con la expresión cada cuánto falla el sistema, de media, y escríbalo."
+    libro: [142, "cap29#348", "cap29#354"]
     fijar: { t_res: 0.000000004 }
-    estimar:
-      objetivo: "MTBF"
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0.000000001, max: 0.000000015, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0.001, max: 1e30, unidad: s, rotulo: "MTBF", escala: log }
+      curvas:
+        - { expr: "exp(tx/tau_m)/(T_0*f_clk*f_dat)", color: azul, rotulo: "MTBF" }
+      mandos: []
+    leer:
+      objetivo: MTBF
       unidad: s
-      min: 0
-      max: 2000
-      paso: 5
-      inicio: 1500
-      tol: 0.05
+      tol: 0.03
       rotulo: "MTBF"
-    exito: "485 s: un fallo cada ocho minutos. Inservible."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 510 }, texto: "Se ha pasado: e elevado a 4/0,2 entre el denominador de 10⁶ por segundo." }
-      - { texto: "Se ha quedado corto: e elevado a 4/0,2 ronda los 485 millones, entre 10⁶." }
-    escalera: ["El denominador vale 1 ns · 200 MHz · 5 MHz = 10⁶ por segundo."]
+    exito: "{{MTBF}}: un fallo cada ocho minutos. Inservible."
+    escalera:
+      - "MTBF = e^{t_{r}/τ} / (T₀ · f_{reloj} · f_{datos}); el denominador vale 10⁶ por segundo."
     solucion: "e^{20}/10⁶ = 485 s: unos 8,1 minutos."
     comprobar:
       - { MTBF: 485 }
 
-  - id: explore-sincronizador
-    tipo: explorar
-    titulo: "El sincronizador de dos flip-flops"
-    texto: "La señal asíncrona A entra en FF1; FF2 lee FF1 un ciclo después. Mueva el cursor y compare A con la salida."
-    libro: [146]
+  - id: marque-millon
+    tipo: marcar
+    titulo: "Un millón de años"
+    texto: "Marque en la curva el tiempo de resolución mínimo para que el MTBF llegue a un millón de años."
+    libro: [142, 143, "cap29#348"]
     widget:
-      tipo: logica
-      entradas: [{ id: A, rotulo: "A asíncrona" }, { id: CLK, reloj: true }]
-      piezas:
-        - { id: f1, tipo: d, entradas: [A, CLK], rotulo: "FF1" }
-        - { id: f2, tipo: d, entradas: [f1.q, CLK], rotulo: "FF2" }
-      salidas:
-        - { id: Q1, de: f1.q, rotulo: "FF1" }
-        - { id: S, de: f2.q, rotulo: "Salida" }
-      cronograma: { ciclos: 8, estimulo: { A: "01110010" }, senales: [CLK, A, Q1, S] }
+      tipo: grafica
+      x: { id: tx, min: 0.000000001, max: 0.000000015, unidad: s, rotulo: "t_{r}" }
+      y: { min: 0.001, max: 1e30, unidad: s, rotulo: "MTBF", escala: log }
+      curvas:
+        - { expr: "exp(tx/tau_m)/(T_0*f_clk*f_dat)", color: azul, rotulo: "MTBF" }
+        - { expr: "31557600000000 + 0*tx", color: naranja, rotulo: "un millón de años", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "tau_m*ln(31557600000000*T_0*f_clk*f_dat)"
+      tol: 0.03
+      inicio: { x: 0.000000003, y: 0.001 }
+      rotulo: "El tiempo que hace falta"
+      pasos: 140
+    pistas:
+      - { cuando: { valor: marca_x, menor: 0.000000009 }, texto: "Ahí el MTBF aún no llega a la línea naranja: más a la derecha." }
+      - { texto: "Ahí ya sobra: más a la izquierda, donde la curva cruza la línea." }
+    exito: "Unos 9 ns: lo que concede un segundo biestable a 200 MHz. El tiempo está en un exponente."
+    escalera:
+      - "Busque el cruce de la curva azul con la línea naranja."
+    solucion: "Donde la curva cruza el millón de años: unos 9 ns."
+    comprobar:
+      - { con: { t_res: 0.000000009 }, MTBF_a: 1100000, tol: 0.05 }
 
   - id: dibuje-salida
     tipo: dibujar
@@ -170,21 +160,27 @@ tarjetas:
     solucion: "t_{r} está en un exponente: un ciclo más multiplica el MTBF por un factor enorme."
 
   - id: pregunta-regla
-    tipo: pregunta
+    tipo: tocar
     titulo: "La salida del primero"
-    texto: "La salida de FF1 alimenta a FF2 y, además, a otra lógica. ¿Qué puede pasar?"
-    libro: [148]
+    texto: "Toque el cable del sincronizador que no se debe llevar a ninguna otra lógica."
+    libro: [148, 158]
     widget:
       tipo: figura
       figura: fig-9.11
       zonas:
-        - { id: q1, rotulo: "El cable entre los dos flip-flops", rect: [178, 25, 72, 38], texto: "Puede quedar metaestable." }
-    opciones:
-      - { texto: "Esa lógica puede ver el valor metaestable y decidir distinto que FF2", bien: true, porque: "Las dos ramas pueden resolverse de forma distinta: el sistema queda en un estado incoherente." }
-      - { texto: "Nada: el valor es el mismo", porque: "No necesariamente: mientras está indeciso, cada rama puede leerlo de una manera." }
-      - { texto: "FF2 deja de funcionar", porque: "FF2 sigue funcionando; el problema es la otra lógica, que lee un valor sin resolver." }
-    escalera: ["¿Qué vale la salida de FF1 mientras está metaestable?"]
-    solucion: "La otra lógica lee un valor sin resolver: estados incoherentes."
+        - { id: entrada, rotulo: "Cable de la izquierda", rect: [28, 20, 86, 38] }
+        - { id: q1, rotulo: "Cable entre los dos", rect: [176, 18, 74, 50] }
+        - { id: salida, rotulo: "Cable de la derecha", rect: [308, 20, 112, 38] }
+        - { id: reloj, rotulo: "Cable de abajo", rect: [28, 104, 202, 38] }
+    tocar:
+      bien: [q1]
+      porque:
+        entrada: "Es la señal asíncrona: la que se quiere sincronizar."
+        salida: "Es la salida sincronizada y limpia: para eso está, para usarla."
+        reloj: "Es el reloj del destino, común a los dos flip-flops."
+    exito: "La salida de FF1 puede estar metaestable: otra lógica que la lea podría decidir distinto que FF2 y dejar el sistema incoherente."
+    escalera: ["¿Qué salida puede estar todavía indecisa?"]
+    solucion: "El cable entre FF1 y FF2."
 
   - id: pregunta-bus
     tipo: pregunta
@@ -204,10 +200,10 @@ tarjetas:
     solucion: "Código Gray (o una FIFO asíncrona, o petición y acuse)."
 
   - id: pregunta-reset
-    tipo: pregunta
+    tipo: dibujar
     titulo: "El reset"
-    texto: "¿Cómo debe tratarse el reset asíncrono de un sistema síncrono?"
-    libro: [155]
+    texto: "El reset R se activa de forma asíncrona y se suelta de forma síncrona, por dos flip-flops. Dibuje el reset sincronizado RS."
+    libro: [154, 155]
     widget:
       tipo: logica
       entradas: [{ id: R, rotulo: "Reset" }, { id: CLK, reloj: true }]
@@ -216,29 +212,14 @@ tarjetas:
         - { id: f2, tipo: d, entradas: [f1.q, CLK], rotulo: "FF2" }
       salidas:
         - { id: RS, de: f2.q, rotulo: "Reset sincronizado" }
-    opciones:
-      - { texto: "Activarlo de forma asíncrona y soltarlo de forma síncrona, por un sincronizador", bien: true, porque: "Así funciona aunque no haya reloj, y su liberación no cae cerca de un flanco." }
-      - { texto: "Activarlo y soltarlo de forma asíncrona", porque: "Soltarlo cerca de un flanco puede provocar metaestabilidad, igual que un dato." }
-      - { texto: "Activarlo y soltarlo de forma síncrona", porque: "Un reset síncrono no funciona si no hay reloj; hay que activarlo de forma asíncrona." }
-    escalera: ["Piense en las dos mitades por separado: activar y soltar."]
-    solucion: "Activar asíncrono, soltar síncrono."
-
-  - id: pregunta-flanco-lento
-    tipo: pregunta
-    titulo: "Un flanco lento"
-    texto: "Una entrada de reloj atraviesa despacio la zona prohibida. ¿Qué se le pone delante?"
-    libro: [152]
-    widget:
-      tipo: figura
-      figura: fig-9.2
-      zonas:
-        - { id: prohibida, rotulo: "Zona roja de la CMOS HC", rect: [161, 107, 40, 71], texto: "La zona prohibida." }
-    opciones:
-      - { texto: "Un disparador de Schmitt, que convierte la rampa en un flanco limpio", bien: true, porque: "Por eso las entradas de reloj y de reset de los microcontroladores suelen llevarlo integrado." }
-      - { texto: "Un sincronizador de dos flip-flops", porque: "El sincronizador trata la metaestabilidad; antes hace falta un flanco aceptable." }
-      - { texto: "Un condensador a masa", porque: "Un condensador hace la rampa aún más lenta: es lo contrario de lo que hace falta." }
-    escalera: ["Hace falta convertir una rampa en un escalón."]
-    solucion: "Un disparador de Schmitt."
+      cronograma: { ciclos: 8, estimulo: { R: "11110000" }, senales: [CLK, R] }
+      dibujo: false
+    dibujar:
+      senal: RS
+    exito: "RS se suelta dos flancos después que R, alineado con el reloj: su liberación nunca cae cerca de un flanco."
+    escalera:
+      - "Cada flip-flop retrasa la señal un flanco."
+    solucion: "RS es R capturado y retrasado dos flancos: baja dos flancos después que R."
 
   - id: resumen
     tipo: resumen

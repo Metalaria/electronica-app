@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 39.15 «Ampliación: Arquitectura de Computadores» (cap38; etiqueta interna sec-38.15).
 # Formato: contenido/lecciones11/GUIA.md (§11). La sección no tiene figura propia: se usan la 39.19a (los dos espacios
 # de memoria del ATmega328P, Harvard; svg_vista 325,42 × 198,43) y la 39.2 (bus y mapa de un microcontrolador).
+# 1.2.1 («aprender haciendo», GUIA §13): la jerarquía de memoria se explora con la regla del libro, cada nivel unas
+# diez veces más lento (objetivo: el nivel cien veces más lento que los registros), y se escribe cuántas veces más
+# lenta es la Flash; se tocan el bus compartido de Von Neumann y el espacio de programa del ATmega328P, y se lee en
+# hexadecimal dónde empieza su SRAM. Quedan dos preguntas de opciones: los saltos y la caché en tiempo real.
 leccion: cap38/sec-38.15
 
 libro:
@@ -12,39 +16,127 @@ libro:
   "cap38#62": "comparten un mismo bus y un único mapa de direcciones"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    niv: { sim: "nivel", nombre: "nivel de la jerarquía", unidad: "", valor: 0 }
+  calculos:
+    rel: { expr: "10^niv", sim: "t/t_{registros}", nombre: "veces más lento que los registros", unidad: "" }
 
 tarjetas:
   - id: explore-harvard
     tipo: explorar
-    titulo: "Dos memorias, dos buses"
-    texto: "El ATmega328P es Harvard: programa y datos en espacios aparte. Toque cada uno."
-    libro: [470, "cap38#495"]
+    titulo: "La jerarquía de memoria"
+    texto: "Registros, caché, RAM y Flash: cada nivel es unas diez veces más lento y mucho mayor que el anterior. Busque el que es unas cien veces más lento que los registros."
+    libro: [472]
+    inicio: { niv: 0 }
     widget:
-      tipo: figura
-      figura: fig-new-38-asm
-      zonas:
-        - { id: datos, rotulo: "Columna de la izquierda", rect: [37, 39, 66, 123], texto: "Datos: registros, E/S y SRAM, en bytes." }
-        - { id: programa, rotulo: "Columna del centro", rect: [116, 39, 57, 111], texto: "Programa: vectores, código y cargador, en palabras." }
-    requiere: { mover: [datos, programa] }
+      tipo: grafica
+      x: { id: nx, min: 0, max: 3, unidad: "", rotulo: "registros · caché · RAM · Flash" }
+      y: { min: 1, max: 2000, unidad: "", rotulo: "veces más lento", escala: log }
+      curvas:
+        - { expr: "10^nx", color: azul, rotulo: "Tiempo de acceso relativo" }
+      marcas:
+        - { x: "niv", y: "rel", rotulo: "Su nivel" }
+      lectura: { valor: rel, rotulo: "Veces más lento" }
+      mandos:
+        - { valor: niv, lista: [0, 1, 2, 3], nombres: [Registros, Caché, RAM, Flash], rotulo: "Nivel" }
+    objetivo:
+      condiciones:
+        - { valor: rel, objetivo: 100, tol: 0.01, rotulo: "{{rel}} veces" }
+      logrado: "La RAM, dos niveles por debajo. Funciona gracias a la localidad: el programa vuelve a las mismas posiciones y a las vecinas."
+      pistas:
+        - { cuando: { valor: rel, mayor: 101 }, texto: "Ese es más lento aún: suba un nivel." }
+        - { texto: "Baje un nivel más." }
+    escalera: ["Diez veces por nivel: cien son dos niveles."]
+    solucion: "La RAM."
+    comprobar:
+      - { con: { niv: 2 }, rel: 100 }
+
+  - id: leer-flash
+    tipo: leer
+    titulo: "Hasta la Flash"
+    texto: "Con esa regla, calcule cuántas veces más lento es leer de la Flash que de los registros, y escríbalo."
+    libro: [472]
+    fijar: { niv: 3 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 3, unidad: "", rotulo: "registros · caché · RAM · Flash" }
+      y: { min: 1, max: 2000, unidad: "", rotulo: "veces más lento", escala: log }
+      curvas:
+        - { expr: "10^nx", color: azul, rotulo: "Tiempo de acceso relativo" }
+      mandos: []
+    leer:
+      objetivo: rel
+      unidad: ""
+      tol: 0.02
+      rotulo: "Veces más lento"
+      errores:
+        - { expr: "10*niv", texto: "Los niveles no suman diez: cada uno multiplica por diez." }
+    exito: "Unas {{rel}} veces: lo rápido es caro y pequeño, y lo grande, lento."
+    escalera: ["Tres niveles: diez por diez por diez."]
+    solucion: "Diez por diez por diez: {{rel}}."
 
   - id: prediga-von-neumann
-    tipo: predecir
+    tipo: tocar
     titulo: "Un solo bus"
-    texto: "En una arquitectura Von Neumann, una instrucción lee un dato de memoria. ¿Qué pasa con la búsqueda de la siguiente instrucción?"
+    texto: "En Von Neumann, una lectura de dato compite con la búsqueda de la siguiente instrucción. Toque por dónde compiten."
     libro: [470, "cap38#62"]
     widget:
       tipo: figura
       figura: fig-38.2
       zonas:
-        - { id: bus, rotulo: "Barra del centro", rect: [17, 98, 307, 36], texto: "Un bus interno compartido." }
-    opciones:
-      - { texto: "Compite con la lectura del dato por el mismo bus", bien: true, porque: "Instrucciones y datos comparten bus. En Harvard ocurren a la vez, y por eso casi todo va en un ciclo." }
-      - { texto: "Ocurre a la vez, por otro bus", porque: "Eso es Harvard: buses separados para programa y datos." }
-      - { texto: "No hace falta buscarla", porque: "Toda instrucción hay que traerla de la memoria antes de ejecutarla." }
-    escalera: ["¿Cuántos caminos hay a la memoria en Von Neumann?"]
-    solucion: "Compiten por el mismo bus."
+        - { id: nucleo, rotulo: "Arriba a la izquierda", rect: [17, 37, 94, 42] }
+        - { id: flash, rotulo: "Arriba en el centro", rect: [124, 37, 95, 42] }
+        - { id: ram, rotulo: "Arriba a la derecha", rect: [231, 37, 94, 42] }
+        - { id: bus, rotulo: "Barra del centro", rect: [17, 98, 307, 36] }
+    tocar:
+      bien: [bus]
+      porque:
+        nucleo: "El núcleo pide las dos cosas; compiten por el camino."
+        flash: "La Flash guarda las instrucciones; el conflicto está en el camino compartido."
+        ram: "La RAM guarda los datos; el conflicto está en el camino compartido."
+    exito: "Un solo bus: instrucción y dato se turnan. En Harvard hay buses separados y ambas cosas ocurren a la vez."
+    escalera: ["¿Qué comparten instrucciones y datos?"]
+    solucion: "El bus interno."
+
+  - id: toque-harvard
+    tipo: tocar
+    titulo: "Dos memorias, dos buses"
+    texto: "El ATmega328P es Harvard: programa y datos en espacios aparte. Toque el espacio donde están los vectores y el código."
+    libro: [470, "cap38#495"]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: datos, rotulo: "Columna de la izquierda", rect: [37, 39, 66, 123] }
+        - { id: programa, rotulo: "Columna del centro", rect: [116, 39, 57, 111] }
+    tocar:
+      bien: [programa]
+      porque:
+        datos: "Ahí están los registros, la E/S y la SRAM, en bytes: los datos."
+    exito: "El espacio de programa, en palabras: buscar una instrucción no compite con leer un dato. Por eso casi todo va en un ciclo."
+    escalera: ["Los vectores son direcciones de código."]
+    solucion: "La columna del centro: el programa."
+
+  - id: leer-sram
+    tipo: leer
+    titulo: "Dónde empieza la SRAM"
+    texto: "Lea en el espacio de datos del ATmega328P la dirección en que empieza la SRAM y escríbala en hexadecimal."
+    libro: ["cap38#495"]
+    widget:
+      tipo: figura
+      figura: fig-new-38-asm
+      zonas:
+        - { id: datos, rotulo: "Columna de la izquierda", rect: [37, 39, 66, 123] }
+    leer:
+      objetivo: "0x0100"
+      base: 16
+      cifras: 16
+      rotulo: "Comienzo de la SRAM"
+      errores:
+        - { expr: "96", texto: "Esa es la E/S ampliada; la SRAM empieza encima." }
+    exito: "0x0100: debajo quedan los registros del núcleo y los de E/S. La pila baja desde el final de la SRAM."
+    escalera: ["Mire la dirección a la izquierda del bloque grande."]
+    solucion: "0x0100."
 
   - id: pregunta-saltos
     tipo: pregunta
@@ -63,38 +155,6 @@ tarjetas:
     escalera: ["Con segmentación, varias instrucciones están a medias a la vez."]
     solucion: "El salto obliga a descartar lo que ya se había empezado."
 
-  - id: ordene-jerarquia
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "La jerarquía de memoria"
-    texto: "Ordene de la más rápida y pequeña a la más lenta y grande."
-    libro: [472]
-    ordenar:
-      - "Registros"
-      - "Caché"
-      - "RAM"
-      - "Flash"
-    exito: "Cada nivel es unas diez veces más lento y mucho mayor que el anterior: lo rápido es caro y pequeño."
-    pistas:
-      - { texto: "Los registros están dentro del núcleo." }
-    escalera: ["La caché existe para acelerar el acceso a la RAM."]
-    solucion: "Registros, caché, RAM y Flash."
-
-  - id: empareje-localidad
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La localidad"
-    texto: "La jerarquía funciona gracias a la localidad. Una cada tipo con lo que hace el programa."
-    libro: [472]
-    emparejar:
-      - ["Localidad temporal", "Accede repetidamente a las mismas posiciones"]
-      - ["Localidad espacial", "Accede a posiciones vecinas"]
-    exito: "Por eso lo que acaba de usarse, y lo que está al lado, conviene tenerlo cerca."
-    pistas:
-      - { texto: "Temporal: en el tiempo, lo mismo otra vez." }
-    escalera: ["Espacial habla de direcciones cercanas."]
-    solucion: "Temporal, las mismas; espacial, las vecinas."
-
   - id: porque-cache
     tipo: porque
     titulo: "Caché y tiempo real"
@@ -106,28 +166,11 @@ tarjetas:
       zonas:
         - { id: ram, rotulo: "Arriba a la derecha", rect: [231, 37, 94, 42], texto: "La RAM." }
     opciones:
-      - { texto: "El tiempo de ejecución depende de si el dato está o no en la caché", bien: true, porque: "Deja de ser determinista: en tiempo real, la previsibilidad vale más que la velocidad media." }
+      - { texto: "El tiempo de ejecución depende de si el dato está o no en la caché", bien: true, porque: "Deja de ser determinista. Por eso se usan memorias de acceso uniforme o se bloquean líneas de caché." }
       - { texto: "Porque la caché es más lenta que la RAM", porque: "Es más rápida; el problema es que unas veces acierta y otras no." }
       - { texto: "Porque la caché consume mucha energía", porque: "No es cuestión de consumo, sino de tiempo predecible." }
     escalera: ["¿Tarda siempre lo mismo leer un dato con caché?"]
     solucion: "El tiempo depende de si hay acierto: no es determinista."
-
-  - id: pregunta-remedio
-    tipo: pregunta
-    titulo: "Para tiempo real crítico"
-    texto: "¿Qué hacen los microcontroladores para tiempo real crítico frente a la caché?"
-    libro: [473]
-    widget:
-      tipo: figura
-      figura: fig-38.2
-      zonas:
-        - { id: nucleo, rotulo: "Arriba a la izquierda", rect: [17, 37, 94, 42], texto: "El núcleo." }
-    opciones:
-      - { texto: "Usar memorias de acceso uniforme o bloquear líneas de caché", bien: true, porque: "Así cada acceso tarda lo mismo y el peor caso se puede calcular." }
-      - { texto: "Poner una caché más grande", porque: "Acierta más, pero sigue sin ser determinista." }
-      - { texto: "Subir la frecuencia", porque: "Más rápido no es más predecible." }
-    escalera: ["Lo que hay que conseguir es que cada acceso tarde siempre lo mismo."]
-    solucion: "Memorias de acceso uniforme o líneas de caché bloqueadas."
 
   - id: resumen
     tipo: resumen

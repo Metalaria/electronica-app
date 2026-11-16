@@ -4,6 +4,10 @@
 # metaestabilidad no se simula: el circuito lógico de la app es ideal). El contador en Gray (bloque 689) se ve junto al
 # binario: G1 = Q1 y G0 = Q1 XOR Q0, la conversión usual de dos bits (la fórmula no está en el libro; solo se afirma
 # lo que dice el libro, que en Gray cambia un bit en cada incremento). Figura 38.25 (svg_vista 450,72 × 285,12).
+# 1.2.1 («aprender haciendo», GUIA §13): el flip-flop que puede quedar metaestable y el valor que nunca existió se
+# tocan en la figura; el sincronizador se lleva con pulsos hasta la salida (objetivo sobre el LED); la salida
+# sincronizada y G0 se dibujan. Quedan dos preguntas de opciones: el tipo de fallo y el origen combinacional. El MTBF,
+# las tres soluciones, el falso camino y el banco van en los textos.
 leccion: cap37/sec-37.17
 
 libro:
@@ -11,6 +15,7 @@ libro:
   679: "El resultado es un fallo raro, irreproducible y que aparece cada muchas horas"
   681: "dos flip-flops en cascada en el dominio de destino"
   682: "No elimina la probabilidad de fallo: la reduce a valores despreciables"
+  684: "sincronizar cada bit de un bus por separado no funciona"
   685: "el receptor leería una combinación que nunca existió en el origen"
   686: "una lectura a medias puede dar cualquier valor entre 0 y 255"
   688: "Es la solución general para flujos de datos."
@@ -29,30 +34,38 @@ modelo:
 
 tarjetas:
   - id: explore-dominios
-    tipo: explorar
+    tipo: tocar
     titulo: "Dos dominios"
-    texto: "Toque el dominio A y el sincronizador del dominio B: entre relojes distintos, nada garantiza que la señal llegue a tiempo."
-    libro: [678, 701]
+    texto: "Entre relojes distintos, nada garantiza que la señal llegue a tiempo. Toque el flip-flop que puede quedar metaestable."
+    libro: [678, 681, 701]
     widget:
       tipo: figura
       figura: fig-37.25
       zonas:
-        - { id: a, rotulo: "Recuadro azul de arriba", rect: [5, 5, 119, 129], texto: "Dominio A: la señal sale de un registro con su propio reloj." }
-        - { id: sinc, rotulo: "Recuadro discontinuo de arriba", rect: [171, 38, 129, 81], texto: "Dos flip-flops con el reloj de B: el primero puede quedar metaestable y tiene un ciclo para resolverse." }
-    requiere: { mover: [a, sinc] }
+        - { id: reg, rotulo: "Flip-flop del dominio A", rect: [58, 55, 36, 40] }
+        - { id: ff1, rotulo: "Primer flip-flop del dominio B", rect: [176, 55, 36, 40] }
+        - { id: ff2, rotulo: "Segundo flip-flop del dominio B", rect: [255, 55, 36, 40] }
+    tocar:
+      bien: [ff1]
+      porque:
+        reg: "Va con su propio reloj, el de A: su dato llega a tiempo dentro de su dominio."
+        ff2: "Recibe la salida de FF1 un ciclo después, cuando ya se ha resuelto."
+    exito: "FF1 captura una señal que puede cambiar justo en su flanco. Dispone de un ciclo completo para resolverse antes de que FF2 la lea."
+    escalera: ["¿Cuál captura directamente la señal del otro dominio?"]
+    solucion: "El primer flip-flop del dominio B."
 
   - id: prediga-metaestable
     tipo: predecir
     titulo: "Justo en el flanco"
     texto: "Una señal del dominio A cambia exactamente cuando el dominio B la captura, sin sincronizador. ¿Qué tipo de fallo produce?"
-    libro: [678, 679]
+    libro: [678, 679, 699, 700]
     widget:
       tipo: figura
       figura: fig-37.25
       zonas:
         - { id: a, rotulo: "Recuadro azul de arriba", rect: [5, 5, 119, 129], texto: "Dominio A, con su propio reloj." }
     opciones:
-      - { texto: "Uno raro, irreproducible, cada muchas horas", bien: true, porque: "Se viola setup o hold y el flip-flop entra en metaestabilidad: la peor clase de fallo." }
+      - { texto: "Uno raro, irreproducible, cada muchas horas", bien: true, porque: "Metaestabilidad: la peor clase de fallo. Se busca contando eventos en los dos dominios durante horas de estrés." }
       - { texto: "Uno inmediato y fácil de ver", porque: "La coincidencia exacta es rara: por eso el fallo aparece de tarde en tarde." }
       - { texto: "Ninguno: el análisis de tiempos lo cubre", porque: "Solo dentro de un dominio; entre relojes sin relación no hay garantía." }
     escalera: ["¿Cada cuánto coincide un cambio con el flanco de otro reloj?"]
@@ -61,8 +74,8 @@ tarjetas:
   - id: explore-sincronizador
     tipo: explorar
     titulo: "El sincronizador"
-    texto: "S llega del dominio A; FF1 y FF2 van con el reloj de B. Mueva el cursor: la salida sincronizada sigue a S dos flancos después."
-    libro: [681]
+    texto: "S llega del dominio A; FF1 y FF2 van con el reloj de B. Encienda S y dé pulsos del reloj de B hasta que la salida sincronizada se encienda."
+    libro: [681, 682]
     widget:
       tipo: logica
       entradas: [{ id: S, rotulo: "Señal de A" }, { id: CLK, reloj: true, rotulo: "clk B" }]
@@ -71,13 +84,21 @@ tarjetas:
         - { id: ff2, tipo: d, entradas: [ff1.q, CLK], rotulo: "FF2" }
       salidas:
         - { id: SINC, de: ff2.q, rotulo: "Sincronizada" }
-      cronograma: { ciclos: 8, estimulo: { S: "00111000" }, senales: [CLK, S, SINC] }
+    objetivo:
+      condiciones:
+        - { led: SINC, valor: 1, rotulo: "Sincronizada encendida" }
+      logrado: "Dos flancos después. No elimina el fallo: lo reduce a valores despreciables, con un MTBF de años o siglos."
+      pistas:
+        - { cuando: { senal: S, valor: 0 }, texto: "Primero encienda S." }
+        - { texto: "Un pulso más: FF2 copia a FF1 en el flanco siguiente." }
+    escalera: ["FF1 copia S en un flanco; FF2 copia FF1 en el siguiente."]
+    solucion: "S encendida y dos pulsos del reloj de B."
 
   - id: dibuje-sincronizada
     tipo: dibujar
     titulo: "Dibuje la salida sincronizada"
-    texto: "Ahora la señal de A cambia otra vez. Dibuje la salida de FF2."
-    libro: [681]
+    texto: "Ahora la señal de A cambia varias veces. Dibuje la salida de FF2."
+    libro: [681, 695, 697]
     widget:
       tipo: logica
       entradas: [{ id: S, rotulo: "Señal de A" }, { id: CLK, reloj: true, rotulo: "clk B" }]
@@ -90,51 +111,38 @@ tarjetas:
       dibujo: false
     dibujar:
       senal: SINC
-    exito: "La señal de A, retrasada por los dos flip-flops: solo cambia en los flancos del reloj de B."
+    exito: "La señal de A, retrasada por los dos flip-flops y en los flancos de B. Lo que se sincroniza debe salir de un registro, no de lógica; y el reset también."
     escalera:
       - "FF1 copia S en cada flanco de subida; FF2 copia FF1 en el siguiente."
       - "Cada cambio de S aparece en la salida dos flancos después."
     solucion: "La misma forma que S, desplazada a los flancos del reloj de B y dos flancos después."
 
-  - id: pregunta-mtbf
-    tipo: pregunta
-    titulo: "¿Lo elimina?"
-    texto: "¿Elimina el sincronizador de dos flip-flops la probabilidad de fallo?"
-    libro: [682]
-    widget:
-      tipo: figura
-      figura: fig-37.25
-      zonas:
-        - { id: sinc, rotulo: "Recuadro discontinuo de arriba", rect: [171, 38, 129, 81], texto: "Un ciclo para resolverse." }
-    opciones:
-      - { texto: "No: la reduce a valores despreciables, con un MTBF de años o siglos", bien: true, porque: "El MTBF crece exponencialmente con el tiempo disponible para resolver." }
-      - { texto: "Sí, por completo", porque: "Nunca es cero: el primer flip-flop puede tardar más de un ciclo, aunque sea rarísimo." }
-      - { texto: "No: no cambia nada", porque: "Darle un ciclo completo para resolverse lo cambia todo: de horas a años o siglos." }
-    escalera: ["¿Qué gana el primer flip-flop con un ciclo entero antes de que el segundo lo lea?"]
-    solucion: "La reduce a valores despreciables: con un ciclo completo, años o siglos de MTBF."
-
   - id: pregunta-bus
-    tipo: pregunta
+    tipo: tocar
     titulo: "Un bus, bit a bit"
-    texto: "¿Por qué no basta sincronizar cada bit de un bus con su propio par de flip-flops?"
-    libro: [685, 686, 701]
+    texto: "Los ocho bits de un bus pasan de 0111 1111 a 1000 0000 justo antes de un flanco, cada uno con su sincronizador. Toque lo que lee el dominio B que nunca existió en A."
+    libro: [684, 685, 686, 701]
     widget:
       tipo: figura
       figura: fig-37.25
       zonas:
-        - { id: bus, rotulo: "Cronograma de abajo", rect: [40, 165, 280, 105], texto: "De 0111 1111 a 1000 0000: el receptor lee 1111 0000, que nunca existió." }
-    opciones:
-      - { texto: "Cada bit se resuelve en un instante distinto y se lee una combinación que nunca existió", bien: true, porque: "Unos bits nuevos y otros viejos: cualquier valor entre 0 y 255." }
-      - { texto: "Porque gasta demasiados flip-flops", porque: "El coste no es el problema: el resultado es incorrecto." }
-      - { texto: "Sí basta, si el bus es corto", porque: "Con dos bits ya puede leerse una mezcla de valores." }
-    escalera: ["¿Se resuelven todos los bits en el mismo ciclo?"]
-    solucion: "Cada bit se resuelve en un ciclo distinto: el receptor puede leer una mezcla que nunca existió."
+        - { id: viejo, rotulo: "Primer valor de abajo", rect: [80, 225, 110, 36] }
+        - { id: mezcla, rotulo: "Segundo valor de abajo", rect: [192, 225, 54, 36] }
+        - { id: nuevo, rotulo: "Tercer valor de abajo", rect: [248, 225, 66, 36] }
+    tocar:
+      bien: [mezcla]
+      porque:
+        viejo: "Es el valor anterior: existió en A."
+        nuevo: "Es el valor nuevo: también existió."
+    exito: "Cada bit se resuelve en un ciclo distinto: unos nuevos y otros viejos. Para varios bits: FIFO asíncrona, código Gray o una señal de validez sincronizada."
+    escalera: ["Busque el valor entre los dos que sí existieron."]
+    solucion: "El valor del medio: una mezcla de bits viejos y nuevos."
 
   - id: explore-gray
-    tipo: explorar
+    tipo: dibujar
     titulo: "Un contador en Gray"
-    texto: "El mismo contador en binario (Q1 Q0) y en Gray (G1 G0). Mueva el cursor: en Gray solo cambia un bit en cada incremento."
-    libro: [689]
+    texto: "El mismo contador en binario (Q1 Q0) y en Gray (G1 G0); en Gray solo cambia un bit en cada incremento. Dibuje G0."
+    libro: [688, 689, 690]
     widget:
       tipo: logica
       entradas: [{ id: CLK, reloj: true }]
@@ -146,46 +154,21 @@ tarjetas:
         - { id: Q0, de: cnt.q0 }
         - { id: G1, de: cnt.q1 }
         - { id: G0, de: x0 }
-      cronograma: { ciclos: 8, senales: [CLK, Q1, Q0, G1, G0] }
-
-  - id: empareje-soluciones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Para varios bits"
-    texto: "Una cada solución correcta con el caso para el que sirve."
-    libro: [688, 689, 690]
-    emparejar:
-      - ["FIFO asíncrona", "Un flujo continuo de datos"]
-      - ["Código Gray", "Un contador, como los punteros de la FIFO"]
-      - ["Señal de validez sincronizada", "Una transferencia esporádica"]
-    exito: "Con Gray, una lectura a medias da el valor anterior o el nuevo, nunca uno intermedio."
-    pistas:
-      - { texto: "La señal de validez es la más sencilla: los datos esperan quietos." }
-    escalera: ["¿Cuál de las tres es una memoria con escritura en un dominio y lectura en el otro?"]
-    solucion: "FIFO: flujos. Gray: contadores y punteros. Validez: transferencias esporádicas."
-
-  - id: porque-falso-camino
-    tipo: porque
-    titulo: "Declararlo no basta"
-    texto: "El camino entre los dos dominios se declara como falso camino. ¿Por qué eso solo no arregla nada?"
-    libro: [693]
-    widget:
-      tipo: figura
-      figura: fig-37.25
-      zonas:
-        - { id: sinc, rotulo: "Recuadro discontinuo de arriba", rect: [171, 38, 129, 81], texto: "El sincronizador tiene que estar ahí." }
-    opciones:
-      - { texto: "Solo le dice a la herramienta que no lo analice: el sincronizador tiene que estar", bien: true, porque: "La declaración evita optimizar lo imposible; la metaestabilidad la trata el circuito." }
-      - { texto: "Porque la herramienta ignora los falsos caminos", porque: "Los respeta: precisamente deja de analizarlos, y nada más." }
-      - { texto: "Sí lo arregla", porque: "No: sin sincronizador, el fallo raro sigue ahí." }
-    escalera: ["¿Qué cambia en el circuito al declarar un falso camino?"]
-    solucion: "Nada en el circuito: solo que la herramienta no lo analice. El sincronizador tiene que estar."
+      cronograma: { ciclos: 8, senales: [CLK, Q1, Q0, G1] }
+      dibujo: false
+    dibujar:
+      senal: G0
+    exito: "G0 cambia justo cuando G1 no: un solo bit por incremento. Una lectura a medias da el valor anterior o el nuevo, por eso los punteros de la FIFO van en Gray."
+    escalera:
+      - "Entre dos cuentas seguidas, en Gray solo cambia un bit."
+      - "Cuando G1 cambia, G0 se queda; cuando G1 se queda, G0 cambia."
+    solucion: "G0 se enciende en la segunda cuenta, se apaga en la cuarta y repite: siempre en los flancos en que G1 no cambia."
 
   - id: pregunta-errores
     tipo: pregunta
     titulo: "Los errores característicos"
     texto: "Se sincroniza una señal que sale directamente de una puerta AND del dominio A. ¿Qué está mal?"
-    libro: [695, 697]
+    libro: [693, 695, 697]
     widget:
       tipo: logica
       entradas: [{ id: S, rotulo: "Señal de A" }, { id: CLK, reloj: true, rotulo: "clk B" }]
@@ -200,23 +183,6 @@ tarjetas:
       - { texto: "Que falta sincronizar el reset", porque: "También es un error característico, pero aquí el problema es el origen combinacional." }
     escalera: ["¿Qué hace una puerta mientras sus entradas cambian?"]
     solucion: "Sincronizar la salida de un registro, nunca la de lógica combinacional."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Un fallo de cruce de dominios es raro por definición. ¿Cómo se busca?"
-    libro: [699, 700]
-    widget:
-      tipo: figura
-      figura: fig-37.25
-      zonas:
-        - { id: varios, rotulo: "Recuadro verde de abajo a la derecha", rect: [326, 158, 120, 120], texto: "FIFO asíncrona, código Gray o señal de validez." }
-    opciones:
-      - { texto: "Contando eventos en los dos dominios y comparando, durante horas de estrés", bien: true, porque: "Si difieren, hay pérdidas o duplicaciones; los datos cambiando deprisa hacen más probable la coincidencia." }
-      - { texto: "Mirando una vez con el osciloscopio", porque: "Un fallo cada muchas horas no se ve en una captura." }
-      - { texto: "Con el informe de tiempos", porque: "Entre dominios sin relación el análisis no garantiza nada." }
-    escalera: ["¿Qué hace más probable que un cambio coincida con un flanco?"]
-    solucion: "Contadores separados en cada dominio, comparados, y horas de prueba con los datos cambiando lo más deprisa posible."
 
   - id: resumen
     tipo: resumen

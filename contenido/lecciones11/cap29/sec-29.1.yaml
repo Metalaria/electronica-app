@@ -1,4 +1,9 @@
-# Lección 1.2 de la sección 28.1 «Del Mundo Analógico al Digital» (cap29; etiqueta interna sec-29.1). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 28.1 «Del Mundo Analógico al Digital» (cap29; etiqueta interna sec-29.1). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 («aprender haciendo», GUIA §13): el límite de la regeneración se busca subiendo una interferencia sobre una
+# señal digital (niveles de 0 y 1 V y una interferencia senoidal, de ejemplo) hasta que el receptor aún decide bien; la
+# traza que ya no se recupera se toca en la figura 28.1; el flujo de un canal de CD y el de la pareja estéreo se
+# calculan y se escriben. Sección de conceptos (por qué digital, qué se paga, la frontera): se queda en 4 de 7 tarjetas
+# haciendo, con dos preguntas de opciones y un emparejamiento.
 leccion: cap29/sec-29.1
 
 libro:
@@ -21,24 +26,46 @@ modelo:
   valores:
     f_m: { sim: "f_{m}", nombre: "frecuencia de muestreo", unidad: Hz, valor: 44100 }
     n_b: { sim: "n", nombre: "bits por muestra", unidad: "", valor: 16 }
+    V_sep: { sim: "ΔV", nombre: "separación entre niveles", unidad: V, valor: 1 }
+    a_r: { sim: "a", nombre: "amplitud de la interferencia", unidad: V, valor: 0.1 }
   calculos:
     R_b: { expr: "f_m*n_b", sim: "R", nombre: "flujo de un canal", unidad: "bit/s" }
+    R_e: { expr: "2*f_m*n_b", sim: "R", nombre: "flujo de la pareja estéreo", unidad: "bit/s" }
+    bien: { expr: "min(1, floor(V_sep/(2*a_r)))", sim: "ok", nombre: "el receptor decide bien (1) o no (0)", unidad: "" }
+    mitad: { expr: "V_sep/2", sim: "ΔV/2", nombre: "media separación entre niveles", unidad: V }
 
 tarjetas:
   - id: explore-regeneracion
     tipo: explorar
-    titulo: "Cuatro etapas"
-    texto: "Arriba, una señal analógica pasa por cuatro etapas; abajo, una digital. Toque la cuarta etapa de cada una."
-    libro: [7, 8, 34]
+    titulo: "Hasta dónde se regenera"
+    texto: "Una señal digital llega con una interferencia y el receptor decide con el umbral. Súbala todo lo que el receptor aguante sin equivocarse."
+    nota: "Niveles e interferencia de ejemplo."
+    libro: [7, 8]
+    inicio: { a_r: 0.1 }
     widget:
-      tipo: figura
-      figura: fig-29.1
-      zonas:
-        - { id: ana0, rotulo: "Arriba, la primera traza", rect: [31, 6, 367, 36], texto: "La original analógica." }
-        - { id: ana4, rotulo: "Arriba, la última traza", rect: [31, 111, 367, 36], texto: "Cada etapa atenúa y suma ruido: la degradación es irreversible." }
-        - { id: dig0, rotulo: "Abajo, la primera traza", rect: [31, 166, 367, 34], texto: "La original digital." }
-        - { id: dig4, rotulo: "Abajo, la última traza", rect: [31, 269, 367, 36], texto: "Llega con ruido, pero el receptor decide con el umbral y la regenera tal cual." }
-    requiere: { mover: [ana4, dig4] }
+      tipo: grafica
+      x: { id: tb, min: 0, max: 8, unidad: "", rotulo: "tiempo, en bits" }
+      y: { min: -1, max: 2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_sep*(floor(tb) - 2*floor(tb/2)) + a_r*sin(2*pi*3.7*tb)", color: azul, rotulo: "recibida" }
+        - { expr: "V_sep*min(1, max(0, floor((V_sep*(floor(tb) - 2*floor(tb/2)) + a_r*sin(2*pi*3.7*tb))/V_sep + 0.5)))", color: naranja, rotulo: "regenerada" }
+        - { expr: "V_sep/2 + 0*tb", color: tinta, rotulo: "umbral", discontinua: true }
+      lectura: { valor: a_r, rotulo: "Amplitud de la interferencia" }
+      mandos:
+        - { valor: a_r, min: 0.05, max: 0.9, paso: 0.05, rotulo: "Interferencia" }
+    objetivo:
+      condiciones:
+        - { valor: a_r, min: 0.45, rotulo: "Interferencia: {{a_r}}" }
+        - { valor: bien, min: 1, rotulo: "Sin errores" }
+      logrado: "Hasta {{mitad}}, la mitad de la separación entre niveles, cada bit cae del lado correcto del umbral y se reconstruye exacto."
+      pistas:
+        - { cuando: { valor: bien, max: 0 }, texto: "Se ha pasado: la regenerada ya no coincide con la original. Baje un poco." }
+        - { texto: "El receptor aún decide bien: suba más la interferencia." }
+    escalera: ["El umbral está en medio de los dos niveles."]
+    solucion: "Hasta la mitad de la separación entre niveles, 0,5 V."
+    comprobar:
+      - { con: { a_r: 0.5 }, bien: 1 }
+      - { con: { a_r: 0.55 }, bien: 0 }
 
   - id: toque-irrecuperable
     tipo: tocar
@@ -63,28 +90,11 @@ tarjetas:
     escalera: ["¿Cuál de las dos tiene un umbral con el que decidir?"]
     solucion: "Arriba, la última traza: la degradación analógica es irreversible."
 
-  - id: prediga-limite
-    tipo: predecir
-    titulo: "¿Hasta cuándo se regenera?"
-    texto: "Un receptor digital decide con un umbral. ¿Hasta qué ruido reconstruye exactamente la señal?"
-    libro: [8]
-    widget:
-      tipo: figura
-      figura: fig-29.1
-      zonas:
-        - { id: dig4, rotulo: "Abajo, la última traza", rect: [31, 269, 367, 36], texto: "Señal recibida con ruido y la regenerada." }
-    opciones:
-      - { texto: "Mientras no llegue a la mitad de la separación entre niveles", bien: true, porque: "Hasta ahí, cada muestra cae del lado correcto del umbral y se decide bien." }
-      - { texto: "Con cualquier ruido: lo digital no se degrada", porque: "Tiene un límite: si el ruido cruza el umbral, el receptor decide mal." }
-      - { texto: "Solo si no hay ruido", porque: "Ese es el caso analógico. El digital tolera ruido hasta media separación entre niveles." }
-    escalera: ["El umbral está en medio de los dos niveles."]
-    solucion: "Hasta la mitad de la separación entre niveles."
-
   - id: pregunta-razon
     tipo: pregunta
     titulo: "La razón real"
     texto: "¿Por qué se ha vuelto digital casi todo?"
-    libro: [10, 13]
+    libro: [10, 11, 12, 13]
     widget:
       tipo: figura
       figura: fig-29.1
@@ -97,45 +107,56 @@ tarjetas:
     escalera: ["Piense en lo que la figura muestra tras cuatro etapas."]
     solucion: "No se degrada."
 
-  - id: empareje-consecuencias
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Tres consecuencias"
-    texto: "Una cada acción con lo que permite la regeneración."
-    libro: [10, 11, 12]
-    emparejar:
-      - ["Copiar", "Sin pérdida, indefinidamente"]
-      - ["Transmitir", "Con repetidores que regeneran en lugar de amplificar"]
-      - ["Almacenar", "Sin degradación"]
-    exito: "Las tres definen la electrónica moderna."
-    pistas:
-      - { texto: "Los repetidores son cosa de la distancia." }
-    escalera: ["Un repetidor está en medio de una línea larga."]
-    solucion: "Copiar sin pérdida; transmitir con repetidores que regeneran; almacenar sin degradación."
-
   - id: estime-cd
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Un canal de CD"
-    texto: "Un canal de audio con la calidad de un CD: 44,1 kHz y 16 bits por muestra. ¿Cuántos bits por segundo son?"
+    texto: "Un canal de audio con la calidad de un CD: 44,1 kHz y 16 bits por muestra. Calcule cuántos bits por segundo son y escríbalo."
     libro: [15]
-    estimar:
-      objetivo: "R_b"
+    widget:
+      tipo: grafica
+      x: { id: nb, min: 1, max: 24, unidad: "", rotulo: "bits por muestra" }
+      y: { min: 0, max: 1200000, unidad: "bit/s", rotulo: "flujo" }
+      curvas:
+        - { expr: "f_m*nb", color: azul, rotulo: "un canal a 44,1 kHz" }
+      mandos: []
+    leer:
+      objetivo: R_b
       unidad: "bit/s"
-      min: 0
-      max: 2000000
-      paso: 1000
-      inicio: 1500000
       tol: 0.02
       rotulo: "Flujo de un canal"
-    exito: "706 kbit/s, frente a los 20 kHz del canal analógico; la pareja estéreo pasa de 1,4 Mbit/s."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 720000 }, texto: "Se ha pasado: es un solo canal, no la pareja estéreo." }
-      - { texto: "Se ha quedado corto: cada muestra, 44,1 mil por segundo, lleva 16 bits." }
+      errores:
+        - { expr: "R_e", texto: "Esa es la pareja estéreo. Aquí se pide un solo canal." }
+    exito: "{{R_b}}, frente a los 20 kHz del canal analógico: n bits exigen transmitir n veces más información."
     escalera: ["Bits por segundo = muestras por segundo × bits por muestra."]
     solucion: "44,1 kHz × 16 bits = 706 kbit/s."
     comprobar:
       - { R_b: 705600 }
+
+  - id: lea-estereo
+    tipo: leer
+    titulo: "La pareja estéreo"
+    texto: "Y los dos canales de un CD, sin comprimir. Escriba el flujo total."
+    libro: [15]
+    widget:
+      tipo: grafica
+      x: { id: nb, min: 1, max: 24, unidad: "", rotulo: "bits por muestra" }
+      y: { min: 0, max: 2400000, unidad: "bit/s", rotulo: "flujo" }
+      curvas:
+        - { expr: "f_m*nb", color: azul, rotulo: "un canal" }
+        - { expr: "2*f_m*nb", color: naranja, rotulo: "estéreo" }
+      mandos: []
+    leer:
+      objetivo: R_e
+      unidad: "bit/s"
+      tol: 0.02
+      rotulo: "Flujo estéreo"
+      errores:
+        - { expr: "R_b", texto: "Ese es un solo canal: el estéreo son dos." }
+    exito: "{{R_e}}: pasa de 1,4 Mbit/s. Es el precio en ancho de banda de no degradarse."
+    escalera: ["Dos canales, el doble."]
+    solucion: "Dos canales de 706 kbit/s: {{R_e}}."
+    comprobar:
+      - { R_e: 1411200 }
 
   - id: empareje-precio
     tipo: pregunta
@@ -171,29 +192,12 @@ tarjetas:
     escalera: ["¿Qué es un flanco, físicamente?"]
     solucion: "Flancos, umbrales, ruido y tiempos: problemas analógicos disfrazados."
 
-  - id: pregunta-frontera
-    tipo: pregunta
-    titulo: "Dónde convertir"
-    texto: "¿Qué tendencia sigue el diseño al decidir cuánto hacer en analógico antes de convertir?"
-    libro: [30]
-    widget:
-      tipo: figura
-      figura: fig-29.1
-      zonas:
-        - { id: ana4, rotulo: "Arriba, la última traza", rect: [31, 111, 367, 36], texto: "El analógico deriva y se degrada." }
-    opciones:
-      - { texto: "Convertir lo antes posible, con el acondicionamiento imprescindible", bien: true, porque: "El procesado digital es exacto y reproducible; el analógico deriva." }
-      - { texto: "Hacer todo en analógico y convertir al final", porque: "Más circuito analógico es más deriva y más tolerancias." }
-      - { texto: "Convertir sin ningún acondicionamiento", porque: "Hay un acondicionamiento imprescindible que no se puede evitar." }
-    escalera: ["¿Cuál de los dos dominios deriva?"]
-    solucion: "Lo antes posible, con el acondicionamiento imprescindible."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [8, 13, 15, 26]
+    libro: [8, 13, 15, 26, 30]
     ideas:
       - { titulo: "Regeneración.", texto: "Mientras el ruido no pase de media separación entre niveles, se reconstruye exacta." }
       - { titulo: "La razón.", texto: "Lo digital no se degrada: copiar, transmitir y almacenar sin pérdida." }
       - { titulo: "El precio.", texto: "Ancho de banda, cuantificación, convertidores y latencia." }
-      - { titulo: "Por dentro.", texto: "Circuitos analógicos que se interpretan como digitales." }
+      - { titulo: "Por dentro y la frontera.", texto: "Circuitos analógicos que se interpretan como digitales; se convierte lo antes posible." }

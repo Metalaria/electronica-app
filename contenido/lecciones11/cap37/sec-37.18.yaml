@@ -3,6 +3,9 @@
 # asíncrona), con sus números en el modelo. Formato: contenido/lecciones11/GUIA.md (§11). Los ciclos usados con M
 # multiplicadores son N/M redondeado hacia arriba (tabla del bloque 712). Figuras 38.17, 38.24 y 38.25 de las
 # secciones 38.12, 38.16 y 38.17.
+# 1.2.1 («aprender haciendo», GUIA §13): la memoria del FIR, el techo de la segmentación, la acumulación de la FIFO y
+# sus posiciones con margen se escriben; las dos etapas son el objetivo de la exploración. Quedan dos preguntas de
+# opciones: dónde parar de segmentar y los punteros en Gray. El redondeo hacia arriba va en un error típico.
 leccion: cap37/sec-37.18
 
 libro:
@@ -45,6 +48,7 @@ modelo:
     f_r: { sim: "f_{lectura}", nombre: "reloj de lectura", unidad: Hz, valor: 40000000 }
   calculos:
     c_disp: { expr: "f_clk/f_s", nombre: "ciclos por muestra", cifras: 3 }
+    mem: { expr: "2*N_c", nombre: "palabras de memoria", cifras: 3 }
     c_usados: { expr: "floor((N_c + M - 1)/M)", nombre: "ciclos usados por muestra", cifras: 3 }
     f_k: { expr: "1/(t_l/k + t_fijo)", sim: "f_{máx}", nombre: "frecuencia con k etapas", unidad: Hz, cifras: 4 }
     f_lim: { expr: "1/t_fijo", sim: "f_{límite}", nombre: "techo de la segmentación", unidad: Hz, cifras: 4 }
@@ -83,46 +87,62 @@ tarjetas:
       - { con: { M: 1 }, c_usados: 53 }
 
   - id: pregunta-memoria-fir
-    tipo: pregunta
+    tipo: leer
     titulo: "38.A: la memoria"
-    texto: "Con un solo multiplicador, ¿cuánta memoria necesita el filtro de 53 coeficientes?"
+    texto: "Con un solo multiplicador, el filtro de 53 coeficientes guarda coeficientes y muestras de historia. Calcule cuántas palabras de memoria necesita."
     libro: [703, 714, "cap37#480"]
     widget:
-      tipo: figura
-      figura: fig-37.17
-      zonas:
-        - { id: serie, rotulo: "Tercer recuadro de la izquierda", rect: [4, 149, 220, 66], texto: "Serie: un multiplicador, los coeficientes en memoria." }
-    opciones:
-      - { texto: "106 palabras: 53 coeficientes y 53 muestras de historia", bien: true, porque: "Caben en un solo bloque de memoria interna." }
-      - { texto: "53 palabras: solo los coeficientes", porque: "Falta la historia: el FIR necesita las 53 últimas muestras." }
-      - { texto: "Ninguna: van en los multiplicadores", porque: "El multiplicador no guarda nada: coeficientes y muestras viven en memoria." }
-    escalera: ["¿Qué dos cosas lee el FIR en cada producto?"]
-    solucion: "53 coeficientes más 53 muestras: 106 palabras, un bloque de memoria interna."
+      tipo: grafica
+      x: { id: mm, min: 1, max: 64, rotulo: "M", escala: log }
+      y: { min: 0, max: 120, rotulo: "ciclos por muestra" }
+      curvas:
+        - { expr: "floor((N_c + mm - 1)/mm)", color: azul, rotulo: "Usados" }
+        - { expr: "c_disp", color: tinta, rotulo: "Disponibles", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: mem
+      unidad: ""
+      tol: 0.005
+      rotulo: "Palabras de memoria"
+      errores:
+        - { expr: "N_c", texto: "Esos son solo los coeficientes: falta la historia de 53 muestras." }
+    exito: "{{mem}} palabras: caben en un solo bloque de memoria interna."
+    escalera: ["Un coeficiente y una muestra por cada producto."]
+    solucion: "53 + 53 = {{mem}} palabras."
+    comprobar:
+      - { mem: 106 }
 
   - id: prediga-techo
-    tipo: predecir
+    tipo: leer
     titulo: "38.B: segmentar sin fin"
-    texto: "Un camino de 6 ns, con 0,75 ns de términos fijos por etapa. Si se parte en cada vez más etapas, ¿qué pasa con la frecuencia?"
+    texto: "Un camino de 6 ns, con 0,75 ns de términos fijos por etapa que se pagan siempre. Calcule el techo de frecuencia por muchas etapas que se añadan."
     libro: [718, 720, 724, 725, "cap37#675"]
     widget:
-      tipo: figura
-      figura: fig-37.24
-      zonas:
-        - { id: logica, rotulo: "Recuadro del centro", rect: [92, 41, 72, 39], texto: "La lógica del camino: es lo que se reparte entre etapas." }
-    opciones:
-      - { texto: "Sube cada vez menos, hacia un techo de 1333 MHz", bien: true, porque: "Los términos fijos se pagan en cada etapa: f_{límite} = 1 / 0,75 ns." }
-      - { texto: "Sube sin límite", porque: "La lógica se reparte, pero biestable, setup y skew se pagan siempre." }
-      - { texto: "Se duplica con cada etapa", porque: "Solo la primera división la duplica casi; después los rendimientos decrecen." }
-    escalera: ["¿Qué parte del periodo no se reduce al segmentar?"]
-    solucion: "Tiende a 1 / 0,75 ns = 1333 MHz, por muchas etapas que se añadan."
+      tipo: grafica
+      x: { id: kk, min: 1, max: 32, rotulo: "etapas", escala: log }
+      y: { min: 0, max: 1500000000, unidad: Hz, rotulo: "f_{máx}" }
+      curvas:
+        - { expr: "1/(t_l/kk + t_fijo)", color: azul, rotulo: "f_{máx}" }
+      mandos: []
+    leer:
+      objetivo: f_lim
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Techo de frecuencia"
+      errores:
+        - { expr: "1/(t_l + t_fijo)", texto: "Esa es la frecuencia sin segmentar; el techo queda cuando la lógica por etapa tiende a cero." }
+    exito: "{{f_lim}}: biestable, setup y skew no se parten. La frecuencia se acerca a ese techo sin llegar."
+    escalera: ["Con infinitas etapas, solo queda el término fijo."]
+    solucion: "1 / 0,75 ns = {{f_lim}}."
     comprobar:
-      - { f_lim: 1333e6, tol: 0.001 }
+      - { f_lim: 1333e6 }
 
   - id: explore-segmentar
     tipo: explorar
     titulo: "38.B: etapas y frecuencia"
-    texto: "Parta el camino en más etapas y mire la frecuencia frente al techo."
-    libro: [718, 724, 725, 726]
+    texto: "Parta el camino en etapas iguales hasta casi duplicar la frecuencia de partida, que es de 148,1 MHz."
+    libro: [718, 723, 724, 725, 726]
+    inicio: { k: 1 }
     widget:
       tipo: grafica
       x: { id: kk, min: 1, max: 32, rotulo: "etapas", escala: log }
@@ -135,32 +155,17 @@ tarjetas:
       lectura: { valor: f_k, rotulo: "Frecuencia máxima" }
       mandos:
         - { valor: k, lista: [1, 2, 4, 8, 16, 32], rotulo: "Etapas" }
-    requiere: { mover: [k] }
-
-  - id: estime-dos-etapas
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "38.B: dos etapas"
-    texto: "Con el camino de 6 ns partido en dos etapas, ¿a qué frecuencia llega?"
-    libro: [718, 720, 723, 724]
-    fijar: { k: 2 }
-    estimar:
-      objetivo: "f_k"
-      unidad: Hz
-      min: 0
-      max: 600000000
-      paso: 1000000
-      inicio: 450000000
-      tol: 0.01
-      rotulo: "Frecuencia con dos etapas"
-    exito: "266,7 MHz: 3 ns de lógica más los 0,75 ns fijos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 269300000 }, texto: "Demasiado: los 0,75 ns fijos no se parten; solo la lógica." }
-      - { texto: "Poco: cada etapa tiene 3 ns de lógica, no 6." }
-    escalera: ["Periodo = 6 ns / 2 + 0,75 ns."]
-    solucion: "3 ns + 0,75 ns = 3,75 ns: 266,7 MHz."
+    objetivo:
+      condiciones:
+        - { valor: f_k, objetivo: 266.7e6, tol: 0.01, rotulo: "Frecuencia: {{f_k}}" }
+      logrado: "{{k}} etapas: {{f_k}}, un 80 % más. La siguiente división solo aporta un 67 %, y la latencia crece cada vez."
+      pistas:
+        - { cuando: { valor: f_k, mayor: 270000000 }, texto: "Se ha pasado: eso es más que duplicar." }
+        - { texto: "Parta el camino." }
+    escalera: ["Periodo = 6 ns / etapas + 0,75 ns."]
+    solucion: "Dos etapas: 3,75 ns, {{f_k}}."
     comprobar:
-      - { f_k: 266.7e6, tol: 0.001 }
+      - { con: { k: 2 }, f_k: 266.7e6 }
 
   - id: pregunta-dos-etapas
     tipo: pregunta
@@ -180,57 +185,50 @@ tarjetas:
     solucion: "Dos etapas es el punto razonable: más allá, la ganancia no compensa la latencia."
 
   - id: formula-fifo
-    tipo: formula
+    tipo: leer
     titulo: "38.C: la profundidad"
-    texto: "Durante la ráfaga se escribe más deprisa de lo que se lee: la FIFO acumula la diferencia."
+    texto: "Ráfagas de 64 palabras escritas a 100 MHz y leídas a 40 MHz: la FIFO acumula la diferencia. Calcule cuántas palabras acumula."
     libro: [731, 733, 737, 738]
-    ec: 737
-    sustitucion: "{{rafaga}} · (1 − {{f_r}} / {{f_w}}) = {{acum}}"
     widget:
       tipo: figura
       figura: fig-37.25
       zonas:
-        - { id: varios, rotulo: "Recuadro verde de abajo a la derecha", rect: [326, 158, 120, 120], texto: "Para varios bits: FIFO asíncrona." }
+        - { id: varios, rotulo: "Recuadro verde de abajo a la derecha", rect: [326, 158, 120, 120] }
+    leer:
+      objetivo: acum
+      unidad: ""
+      tol: 0.005
+      rotulo: "Palabras acumuladas"
+      errores:
+        - { expr: "rafaga*f_r/f_w", texto: "Esas son las que se leen durante la ráfaga; se acumula el resto." }
+    exito: "{{acum}}: profundidad ≥ ráfaga · (1 − f_{lectura}/f_{escritura})."
+    escalera: ["64 · (1 − 40/100)."]
+    solucion: "64 · (1 − 40/100) = {{acum}}."
     comprobar:
       - { acum: 38.4 }
 
-  - id: prediga-redondeo
-    tipo: predecir
-    titulo: "38.C: 38,4 posiciones"
-    texto: "La cuenta da 38,4 posiciones. ¿Cómo se redondea?"
-    libro: [731, 738]
-    widget:
-      tipo: figura
-      figura: fig-37.25
-      zonas:
-        - { id: varios, rotulo: "Recuadro verde de abajo a la derecha", rect: [326, 158, 120, 120], texto: "FIFO asíncrona." }
-    opciones:
-      - { texto: "Hacia arriba: 39", bien: true, porque: "Hacia abajo, la FIFO quedaría una palabra corta en el peor caso." }
-      - { texto: "Hacia abajo: 38", porque: "En el peor caso faltaría una posición y se perdería un dato." }
-      - { texto: "Al más cercano: 38", porque: "No es una cuestión de cercanía: una profundidad nunca puede quedarse corta." }
-    escalera: ["¿Qué pasa si falta una sola posición en el peor caso?"]
-    solucion: "Hacia arriba: 39 posiciones."
-    comprobar:
-      - { pos_abajo: 38 }
-
   - id: pregunta-tamano
-    tipo: pregunta
-    titulo: "38.C: el tamaño final"
-    texto: "A las 39 posiciones se suman cuatro de margen por los sincronizadores de los punteros. ¿Qué tamaño se elige?"
-    libro: [731, 741, 745, "cap37#701"]
+    tipo: leer
+    titulo: "38.C: posiciones con margen"
+    texto: "A la acumulación, redondeada, se suman cuatro posiciones por los sincronizadores de los punteros. Calcule cuántas hacen falta."
+    libro: [731, 738, 741, 745, "cap37#701"]
     widget:
       tipo: figura
       figura: fig-37.25
       zonas:
-        - { id: sinc, rotulo: "Recuadro discontinuo de arriba", rect: [171, 38, 129, 81], texto: "Dos flip-flops: el otro lado ve el puntero con retraso." }
-    opciones:
-      - { texto: "64 palabras, la potencia de dos siguiente a 43", bien: true, porque: "Cada lado ve el puntero del otro con dos ciclos de retraso: de ahí el margen." }
-      - { texto: "43 palabras exactas", porque: "Es la necesidad; el tamaño se toma en potencia de dos." }
-      - { texto: "39 palabras", porque: "Falta el margen del sincronizador, que distingue la FIFO asíncrona de la síncrona." }
-    escalera: ["39 + 4, y luego la potencia de dos que lo contenga."]
-    solucion: "39 + 4 = 43, y se elige 64 palabras."
+        - { id: sinc, rotulo: "Recuadro discontinuo de arriba", rect: [171, 38, 129, 81] }
+    leer:
+      objetivo: pos_total
+      unidad: ""
+      tol: 0.01
+      rotulo: "Posiciones"
+      errores:
+        - { expr: "pos_abajo + 4", texto: "Ha redondeado hacia abajo: la FIFO quedaría una palabra corta en el peor caso." }
+    exito: "{{pos_total}}: cada lado ve el puntero del otro con dos ciclos de retraso. Se elige la potencia de dos: 64 palabras."
+    escalera: ["38,4 redondeado hacia arriba, más 4."]
+    solucion: "39 + 4 = {{pos_total}}."
     comprobar:
-      - { pos_total: 43 }
+      - { pos_total: 43, pos_abajo: 38 }
 
   - id: porque-gray-punteros
     tipo: porque

@@ -1,23 +1,24 @@
-# Lección 1.2 de la sección 35.3 «Los Errores de un DAC: Monotonía, Glitch y Parámetros Dinámicos» (cap34; etiqueta
+# Lección de la sección 35.3 «Los Errores de un DAC: Monotonía, Glitch y Parámetros Dinámicos» (cap34; etiqueta
 # interna sec-34.3). Formato: contenido/lecciones11/GUIA.md. El DAC de ejemplo es de 3 bits (códigos 0 a 7, salida en
 # LSB) con un error de escalón (DNL) en el código 4; los valores del mando (0, −0,5 y −1,5 LSB) son de ejemplo, a uno y
 # otro lado del umbral de −1 LSB del libro. La caída de la retención es la de un retenedor de orden cero, |sen(πx)/(πx)|:
 # 3,9 dB en fs/2, como dice el libro.
+# 1.2.1 («aprender haciendo», GUIA §13): se busca el DNL que rompe la monotonía; el escalón con −1,5 LSB y el tiempo de
+# recorrer 12 bits se escriben; la caída de 3,9 dB se consigue acercándose a fs/2; la rampa se dibuja. Quedan dos
+# preguntas de opciones: por qué la no monotonía es peor en un lazo y cómo se compensa la caída.
 leccion: cap34/sec-34.3
 
 libro:
   63: "su medida es más directa porque la entrada se controla exactamente"
-  64: "Offset y ganancia, que se calibran con dos constantes"
+  75: "su espectro contiene la señal más sus imágenes"
+  82: "recorrer todos los códigos, medir la salida con un multímetro de precisión"
   65: "Con DNL menor que −1 LSB, la salida no es monótona: un código mayor produce una tensión menor"
   68: "la realimentación actúa en sentido contrario y el sistema puede oscilar"
   69: "con monotonía garantizada por construcción"
-  71: "Tiempo de establecimiento: cuánto tarda la salida en quedarse dentro de medio LSB"
   72: "Se especifica como un área, en nanovoltios·segundo"
-  73: "SFDR: el mayor espurio del espectro"
   77: "con una caída de 3,9 dB en el extremo. Se compensa con una preacentuación digital"
   83: "Con 12 bits son 4 096 medidas, lo que a un segundo cada una son más de una hora"
   84: "Una rampa limpia significa monotonía"
-  "cap34#123": "R y 2R"
 
 modelo:
   valores:
@@ -40,8 +41,9 @@ tarjetas:
   - id: explore-dnl
     tipo: explorar
     titulo: "Un escalón que falla"
-    texto: "Un DAC de 3 bits con un error en el escalón que lleva al código 4. Cambie ese error y mire la escalera."
+    texto: "Un DAC de 3 bits con un error en el escalón que lleva al código 4. Busque el error con el que la salida deja de ser monótona."
     libro: [63, 65]
+    inicio: { d_n: 0 }
     widget:
       tipo: grafica
       x: { id: cx, min: 0, max: 8, unidad: "", rotulo: "código" }
@@ -52,14 +54,22 @@ tarjetas:
       lectura: { valor: p_4, rotulo: "Escalón del 3 al 4" }
       mandos:
         - { valor: d_n, lista: [0, -0.5, -1.5], rotulo: "DNL del código 4" }
-    requiere: { mover: [d_n] }
+    objetivo:
+      condiciones:
+        - { valor: p_4, max: -0.01, rotulo: "Escalón: {{p_4}}" }
+      logrado: "Con un DNL de {{d_n}}, el escalón mide {{p_4}}: un código mayor da una tensión menor. Por debajo de −1 LSB, la salida no es monótona."
+      pistas:
+        - { texto: "Ese escalón aún sube: pruebe un error más negativo." }
+    escalera: ["El escalón ideal mide 1 LSB; súmele el DNL."]
+    solucion: "−1,5 LSB: el escalón baja medio LSB."
     comprobar:
       - { k_3: 3, k_4: 4 }
+      - { con: { d_n: -1.5 }, p_4: -0.5 }
 
   - id: prediga-monotonia
-    tipo: predecir
+    tipo: leer
     titulo: "Un DNL de −1,5 LSB"
-    texto: "El escalón que lleva al código 4 tiene un DNL de −1,5 LSB. ¿Qué hace la salida al pasar de 3 a 4?"
+    texto: "El escalón que lleva al código 4 tiene un DNL de −1,5 LSB. Escriba cuánto mide ese escalón, con su signo."
     libro: [65]
     fijar: { d_n: -1.5 }
     widget:
@@ -68,14 +78,17 @@ tarjetas:
       y: { min: 0, max: 8, unidad: LSB, rotulo: "salida" }
       curvas:
         - { expr: "floor(cx) + d_n*ceil((floor(cx) - 3.5)/1e9)", color: azul, rotulo: "Salida" }
-      lectura: { valor: p_4, rotulo: "Escalón del 3 al 4" }
-      ocultar: true
-    opciones:
-      - { texto: "Baja: un código mayor da una tensión menor", bien: true, porque: "El escalón mide 1 − 1,5 = −0,5 LSB: con DNL menor que −1 LSB, la salida no es monótona." }
-      - { texto: "Sube medio LSB", porque: "Eso sería con −0,5 LSB. Con −1,5 el escalón es negativo." }
-      - { texto: "Se queda igual", porque: "Eso pasa justo con −1 LSB; por debajo, baja." }
+      mandos: []
+    leer:
+      objetivo: p_4
+      unidad: LSB
+      tol: 0.02
+      rotulo: "Escalón del 3 al 4"
+      errores:
+        - { expr: "d_n", texto: "Ese es el error del escalón, no el escalón: súmele el LSB ideal." }
+    exito: "{{p_4}}: la salida baja al pasar de 3 a 4."
     escalera: ["El escalón ideal mide 1 LSB; súmele el DNL."]
-    solucion: "1 + (−1,5) = −0,5 LSB: la salida baja. No es monótona."
+    solucion: "1 + (−1,5) = −0,5 LSB."
     comprobar:
       - { p_4: -0.5, k_3: 3, k_4: 4 }
 
@@ -83,7 +96,7 @@ tarjetas:
     tipo: porque
     titulo: "Más grave en un DAC"
     texto: "En un ADC, un código faltante es solo resolución perdida. ¿Por qué la no monotonía de un DAC es peor dentro de un lazo de control?"
-    libro: [68]
+    libro: [68, 69]
     fijar: { d_n: -1.5 }
     widget:
       tipo: grafica
@@ -92,70 +105,18 @@ tarjetas:
       curvas:
         - { expr: "floor(cx) + d_n*ceil((floor(cx) - 3.5)/1e9)", color: azul, rotulo: "Salida" }
     opciones:
-      - { texto: "Al subir el código baja la salida: la realimentación actúa al revés y puede oscilar", bien: true, porque: "El lazo corrige en el sentido equivocado en ese tramo: se desestabiliza." }
+      - { texto: "Al subir el código baja la salida: la realimentación actúa al revés y puede oscilar", bien: true, porque: "El lazo corrige en el sentido equivocado en ese tramo. Por eso vale tanto la cadena de resistencias, monótona por construcción." }
       - { texto: "Porque el DAC se calienta", porque: "No es térmico: es el signo de la respuesta, que se invierte en ese escalón." }
       - { texto: "Porque se pierde un bit de resolución", porque: "Eso sería lo del ADC. En el DAC el problema es el sentido de la respuesta." }
     escalera: ["Un lazo sube el código si la salida es baja. ¿Y si al subirlo baja?"]
     solucion: "La realimentación empuja al revés en ese tramo y el sistema puede oscilar."
 
-  - id: pregunta-cadena
-    tipo: pregunta
-    titulo: "Monotonía por construcción"
-    texto: "Para un lazo de control, ¿qué arquitectura de DAC garantiza la monotonía?"
-    libro: [69, "cap34#123"]
-    widget:
-      tipo: grafica
-      x: { id: cx, min: 0, max: 8, unidad: "", rotulo: "código" }
-      y: { min: 0, max: 8, unidad: LSB, rotulo: "salida" }
-      curvas:
-        - { expr: "floor(cx)", color: azul, rotulo: "Monótona" }
-    opciones:
-      - { texto: "La cadena de resistencias", bien: true, porque: "Una escalera física y creciente: un código mayor siempre da una tensión mayor." }
-      - { texto: "La R-2R", porque: "Es la clásica, pero su monotonía depende del apareamiento; la cadena la garantiza por construcción." }
-      - { texto: "Cualquiera bien calibrada", porque: "La calibración corrige offset y ganancia, no un escalón negativo." }
-    escalera: ["¿En cuál cada código es un nodo más alto de la misma escalera?"]
-    solucion: "La cadena de resistencias."
-
-  - id: empareje-parametros
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los parámetros de un DAC"
-    texto: "Una cada parámetro con lo que mide."
-    libro: [64, 71, 72, 73]
-    emparejar:
-      - ["Offset y ganancia", "Se calibran con dos constantes"]
-      - ["Tiempo de establecimiento", "Cuánto tarda en quedarse dentro de medio LSB"]
-      - ["Glitch", "La energía del pico en una transición"]
-      - ["SFDR", "El mayor espurio del espectro"]
-    exito: "El tiempo de establecimiento lo suele dominar el amplificador de salida, no el DAC."
-    pistas:
-      - { texto: "Solo uno se mide en el espectro." }
-    escalera: ["El glitch se especifica como un área."]
-    solucion: "Offset y ganancia, calibrables; establecimiento, medio LSB; glitch, energía; SFDR, espurio."
-
-  - id: pregunta-glitch
-    tipo: pregunta
-    titulo: "Las unidades del glitch"
-    texto: "¿En qué unidades se especifica el glitch de un DAC?"
-    libro: [72]
-    opciones:
-      - { texto: "En nanovoltios·segundo: un área", bien: true, porque: "Es la energía del pico: tensión por tiempo. En los DAC rápidos, picovoltios·segundo." }
-      - { texto: "En voltios: la altura del pico", porque: "La altura sola no basta: un pico alto y estrecho puede importar menos que uno bajo y ancho." }
-      - { texto: "En LSB", porque: "En LSB se dan el DNL y el INL; el glitch es un área." }
-    escalera: ["¿Qué magnitud tiene el área bajo un pico de tensión?"]
-    solucion: "nV·s, un área."
-    widget:
-      tipo: grafica
-      x: { id: cx, min: 0, max: 8, unidad: "", rotulo: "código" }
-      y: { min: 0, max: 8, unidad: LSB, rotulo: "salida" }
-      curvas:
-        - { expr: "floor(cx)", color: azul, rotulo: "Salida" }
-
   - id: explore-retencion
     tipo: explorar
     titulo: "La escalera también filtra"
-    texto: "Mantener cada muestra hasta la siguiente atenúa las frecuencias altas de la banda útil. Acérquese a la mitad de la frecuencia de muestreo."
-    libro: [77]
+    texto: "Mantener cada muestra hasta la siguiente atenúa las frecuencias altas de la banda útil. Lleve la señal al extremo de la banda, la mitad de f_{s}, y mire cuánto cae."
+    libro: [75, 77]
+    inicio: { f_r: 0.1 }
     widget:
       tipo: grafica
       x: { id: fx, min: 0.01, max: 0.5, unidad: "", rotulo: "f/f_{s}" }
@@ -167,12 +128,19 @@ tarjetas:
       lectura: { valor: c_r, rotulo: "Caída" }
       mandos:
         - { valor: f_r, lista: [0.1, 0.25, 0.5], rotulo: "f/f_{s}" }
-    requiere: { mover: [f_r] }
+    objetivo:
+      condiciones:
+        - { valor: c_r, max: -3.5, rotulo: "Caída: {{c_r}}" }
+      logrado: "En la mitad de f_{s}, {{c_r}}: la propia escalera filtra. En una aplicación exigente, hay que corregirlo."
+      pistas:
+        - { texto: "Aún cae poco: más cerca de la mitad de la frecuencia de muestreo." }
+    escalera: ["La caída crece hacia la mitad de f_{s}."]
+    solucion: "f/f_{s} = 0,5: 3,9 dB."
     comprobar:
       - { con: { f_r: 0.5 }, c_r: -3.92 }
 
   - id: pregunta-compensar
-    tipo: pregunta
+    tipo: porque
     titulo: "Los 3,9 dB del extremo"
     texto: "¿Cómo se corrige la caída de 3,9 dB que la retención produce en el extremo de la banda?"
     libro: [77]
@@ -196,27 +164,28 @@ tarjetas:
       - { c_r: -3.92 }
 
   - id: estime-medidas
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Recorrer todos los códigos"
-    texto: "Caracterizar un DAC de 12 bits midiendo cada código, a un segundo por medida. ¿Cuánto se tarda?"
-    libro: [83]
+    texto: "Caracterizar un DAC de 12 bits midiendo cada código, a un segundo por medida. Calcule cuánto se tarda y escríbalo."
+    libro: [82, 83]
     fijar: { n_c: 12, t_1: 1 }
-    estimar:
-      objetivo: "t_t"
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 4, max: 16, unidad: "", rotulo: "bits" }
+      y: { min: 1, max: 100000, unidad: s, rotulo: "tiempo", escala: log }
+      curvas:
+        - { expr: "2^nx*t_1", color: azul, rotulo: "una medida por código" }
+      mandos: []
+    leer:
+      objetivo: t_t
       unidad: s
-      min: 0
-      max: 10000
-      paso: 10
-      inicio: 9000
-      tol: 0.03
+      tol: 0.02
       rotulo: "Tiempo total"
-    exito: "4 096 s, más de una hora: por eso se automatiza. Con 8 bits son 256 medidas, minutos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4220 }, texto: "Se ha pasado: 12 bits son 2¹² códigos, un segundo cada uno." }
-      - { texto: "Se ha quedado corto: 2¹² son 4 096 códigos." }
+      errores:
+        - { expr: "n_c*t_1", texto: "Eso sería una medida por bit; hay una por código, y son 2¹²." }
+    exito: "{{t_t}}, más de una hora: por eso se automatiza. Con 8 bits son 256 medidas, minutos."
     escalera: ["¿Cuántos códigos tiene un DAC de 12 bits?"]
-    solucion: "2¹² = 4 096 medidas: 4 096 s, más de una hora."
+    solucion: "2¹² = 4 096 medidas: 4 096 s."
     comprobar:
       - { t_t: 4096 }
 

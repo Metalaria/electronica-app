@@ -2,6 +2,10 @@
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 38.4 (svg_vista 453,6 × 198) para el arranque y el nicho del
 # CPLD; la «matriz de suma de productos» de la tabla (bloque 42) se ve como dos AND y una OR (forma de suma de
 # productos, sin función concreta del libro). Figura 38.1 (450,72 × 241,86) en la predicción.
+# 1.2.1 («aprender haciendo», GUIA §13): las tres filas de la figura 38.4 se tocan en el orden en que son válidas; la
+# suma de productos se enciende con un solo producto (objetivo sobre el LED) y se toca la puerta que suma; la fila que
+# debe quedar segura y el recuadro de la memoria que falla se tocan. Quedan dos preguntas de opciones: el arranque y el
+# nicho; la tabla, la FPGA que hace falta y la convergencia van en los textos y en el resumen.
 leccion: cap37/sec-37.2
 
 libro:
@@ -44,22 +48,28 @@ tarjetas:
     solucion: "En un CPLD, microsegundos; en una FPGA, decenas o cientos de milisegundos."
 
   - id: explore-arranque
-    tipo: explorar
+    tipo: tocar
     titulo: "Lo que se ve en el osciloscopio"
-    texto: "Toque las salidas del CPLD y las de la FPGA desde el encendido."
+    texto: "Toque las tres filas en el orden en que llegan a ser válidas desde el encendido."
     libro: [56, 63, 64]
     widget:
       tipo: figura
       figura: fig-37.4
       zonas:
-        - { id: cpld, rotulo: "Fila del centro", rect: [35, 62, 237, 40], texto: "CPLD: salidas válidas casi en cuanto llega la alimentación." }
-        - { id: fpga, rotulo: "Fila de abajo", rect: [35, 104, 237, 42], texto: "FPGA: mientras carga, alta impedancia o indefinidas; válidas decenas o cientos de milisegundos después." }
-    requiere: { mover: [cpld, fpga] }
+        - { id: alimentacion, rotulo: "Fila de arriba", rect: [35, 20, 237, 38] }
+        - { id: cpld, rotulo: "Fila del centro", rect: [35, 62, 237, 40] }
+        - { id: fpga, rotulo: "Fila de abajo", rect: [35, 104, 237, 42] }
+    tocar:
+      bien: [alimentacion, cpld, fpga]
+      orden: true
+    exito: "La alimentación, el CPLD casi al instante y la FPGA decenas o cientos de milisegundos después: hasta entonces, solo el CPLD gobierna."
+    escalera: ["La FPGA tiene que cargar su configuración antes de ser nada."]
+    solucion: "Alimentación, CPLD, FPGA."
 
   - id: explore-suma-productos
     tipo: explorar
     titulo: "Suma de productos"
-    texto: "La arquitectura de un CPLD son matrices de suma de productos: varias AND que entran en una OR. Mueva las entradas."
+    texto: "La arquitectura de un CPLD son matrices de suma de productos: varias AND que entran en una OR. Encienda Y con A apagada."
     libro: [40, 42]
     widget:
       tipo: logica
@@ -70,31 +80,45 @@ tarjetas:
         - { id: o1, tipo: or, entradas: [a1, a2] }
       salidas:
         - { id: Y, de: o1 }
-    requiere: { mover: [A, C] }
+    objetivo:
+      condiciones:
+        - { led: Y, valor: 1, rotulo: "Y encendida" }
+        - { senal: A, valor: 0, rotulo: "A apagada" }
+      logrado: "Basta un producto encendido para encender la suma: Y = A·B + C·D."
+      pistas:
+        - { texto: "Sin A, el producto de arriba no sirve: use el de abajo." }
+    escalera: ["Cada AND es un producto; la OR los suma."]
+    solucion: "C y D encendidas."
 
-  - id: empareje-tabla
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que las separa"
-    texto: "Una cada fila con lo que dice la tabla del libro."
-    libro: [42, 43]
-    emparejar:
-      - ["Estructura de un CPLD", "Matrices de suma de productos"]
-      - ["Estructura de una FPGA", "LUT y biestables"]
-      - ["Configuración de una FPGA", "Volátil, desde memoria externa"]
-      - ["Arranque de un CPLD", "Instantáneo"]
-      - ["Retardos de una FPGA", "Dependen del encaminamiento"]
-    exito: "La diferencia es de arquitectura, no de tamaño, y de ella salen los usos."
-    pistas:
-      - { texto: "El CPLD guarda su configuración dentro y no la pierde; la FPGA la carga." }
-    escalera: ["Una FPGA es LUT y biestables unidos por una malla configurable."]
-    solucion: "CPLD: suma de productos, arranque instantáneo. FPGA: LUT y biestables, configuración volátil externa, retardos según el encaminamiento."
+  - id: elija-suma
+    tipo: elegir
+    titulo: "La que suma"
+    texto: "En una matriz de suma de productos, toque la puerta que hace la suma."
+    libro: [42]
+    widget:
+      tipo: logica
+      entradas: [A, B, C, D]
+      piezas:
+        - { id: a1, tipo: and, entradas: [A, B] }
+        - { id: a2, tipo: and, entradas: [C, D] }
+        - { id: o1, tipo: or, entradas: [a1, a2] }
+      salidas:
+        - { id: Y, de: o1 }
+    elegir:
+      zonas: { a1: "Puerta de arriba", a2: "Puerta de abajo", o1: "Puerta de la derecha" }
+      bien: [o1]
+      porque:
+        a1: "Es una AND: un producto de A y B."
+        a2: "Es una AND: el producto de C y D."
+    exito: "La OR suma los productos. Una FPGA, en cambio, usa LUT y biestables."
+    escalera: ["La suma lógica es la OR."]
+    solucion: "La puerta de la derecha, la OR."
 
   - id: pregunta-nicho
     tipo: pregunta
     titulo: "El adulto responsable"
     texto: "¿Qué función puede cumplir un CPLD que una FPGA basada en SRAM no puede?"
-    libro: [45, 46, 47, 48]
+    libro: [45, 46, 47, 48, 52]
     widget:
       tipo: logica
       entradas: [A, B, C, D]
@@ -106,7 +130,7 @@ tarjetas:
         - { id: Y, de: o1 }
     opciones:
       - { texto: "Supervisar el arranque: secuenciar alimentaciones y generar resets", bien: true, porque: "Está disponible al instante, antes de que arranque el resto. La FPGA necesita que alguien la configure." }
-      - { texto: "Alojar un procesador empotrado", porque: "Eso pide una FPGA: no cabe en un CPLD." }
+      - { texto: "Alojar un procesador empotrado", porque: "Eso pide una FPGA, como los multiplicadores, la memoria interna o los transceptores: no cabe en un CPLD." }
       - { texto: "Procesar señal con multiplicadores", porque: "En cuanto aparecen multiplicadores hace falta una FPGA." }
     escalera: ["¿Qué tiene que existir antes de que el resto del sistema arranque?"]
     solucion: "Vigilar el arranque: secuenciar alimentaciones, resets en orden, decodificar desde el primer ciclo, supervisar."
@@ -132,63 +156,31 @@ tarjetas:
     escalera: ["¿Qué salidas pasan un rato sin un valor definido?"]
     solucion: "La de abajo: las salidas de la FPGA, mientras carga su configuración."
 
-  - id: pregunta-cuando-fpga
-    tipo: pregunta
-    titulo: "Cuando ya no cabe"
-    texto: "¿Cuál de estas necesidades obliga a pasar de un CPLD a una FPGA?"
-    libro: [46, 52]
-    widget:
-      tipo: figura
-      figura: fig-37.4
-      zonas:
-        - { id: nicho, rotulo: "Recuadro de arriba a la derecha", rect: [285, 4, 164, 73], texto: "Lo que hace el CPLD: existir antes que el resto." }
-    opciones:
-      - { texto: "Procesar señal con multiplicadores", bien: true, porque: "Con multiplicadores, memoria interna, transceptores o un procesador, la lógica no cabe en un CPLD." }
-      - { texto: "Generar los resets en orden", porque: "Es justo el nicho del CPLD: disponible al encender." }
-      - { texto: "Decodificar direcciones desde el primer ciclo", porque: "También es del CPLD: no espera a cargar nada." }
-    escalera: ["¿Qué tipo de bloque dedicado no tiene un CPLD?"]
-    solucion: "El procesado de señal con multiplicadores: eso ya no cabe en un CPLD."
-
   - id: pregunta-memoria-config
-    tipo: pregunta
+    tipo: tocar
     titulo: "La memoria de configuración"
-    texto: "En una placa con FPGA falla la memoria de la que carga su configuración. ¿Qué pasa?"
-    libro: [49, 55]
+    texto: "En una placa con FPGA falla la memoria de la que carga su configuración. Toque el recuadro que dice qué pasa."
+    libro: [49, 55, 64]
     widget:
       tipo: figura
       figura: fig-37.4
       zonas:
-        - { id: no-puede, rotulo: "Recuadro de abajo a la derecha", rect: [285, 88, 164, 63], texto: "La FPGA necesita que alguien la configure." }
-    opciones:
-      - { texto: "El sistema no arranca", bien: true, porque: "Es un componente crítico: sin configuración, la FPGA no es ningún circuito." }
-      - { texto: "Arranca con la última configuración", porque: "La configuración de la mayoría es volátil: al apagar se pierde." }
-      - { texto: "Nada: el CPLD la sustituye", porque: "El CPLD no lleva la lógica de la FPGA; solo vigila el arranque." }
-    escalera: ["¿Dónde guarda la FPGA su configuración cuando está apagada?"]
-    solucion: "No arranca: por eso el CPLD, sin memoria de configuración, ahorra un componente y un modo de fallo."
-
-  - id: porque-convergencia
-    tipo: porque
-    titulo: "Se llame como se llame"
-    texto: "Hay FPGA pequeñas con configuración interna. ¿Por qué una de ellas sí puede vigilar el arranque?"
-    libro: [59, 60]
-    widget:
-      tipo: figura
-      figura: fig-37.4
-      zonas:
-        - { id: nicho, rotulo: "Recuadro de arriba a la derecha", rect: [285, 4, 164, 73], texto: "Existir antes que el resto." }
-    opciones:
-      - { texto: "Porque es no volátil: está disponible en el instante del encendido", bien: true, porque: "Lo que decide es la arquitectura: esa función necesita un dispositivo no volátil, se llame como se llame." }
-      - { texto: "Porque es más pequeña", porque: "El tamaño no decide: lo que importa es que no tenga que cargar nada." }
-      - { texto: "No puede: solo un CPLD sirve", porque: "Las que tienen configuración interna se comportan como CPLD." }
-    escalera: ["¿Qué tiene en común con un CPLD?"]
-    solucion: "Su configuración es no volátil e interna: lógica disponible al encender."
+        - { id: nicho, rotulo: "Recuadro de arriba a la derecha", rect: [285, 4, 164, 73] }
+        - { id: no-puede, rotulo: "Recuadro de abajo a la derecha", rect: [285, 88, 164, 63] }
+    tocar:
+      bien: [no-puede]
+      porque:
+        nicho: "Es lo que hace el CPLD, que no tiene memoria de configuración."
+    exito: "No arranca: es un componente crítico. El CPLD, sin ella, ahorra un componente y un modo de fallo."
+    escalera: ["Busque lo que la FPGA no puede hacer."]
+    solucion: "Abajo a la derecha: si falla su memoria, no arranca."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [42, 47, 56, 60]
+    libro: [42, 43, 47, 56, 59, 60]
     ideas:
       - { titulo: "Arquitectura.", texto: "CPLD: suma de productos no volátil. FPGA: LUT y biestables, configuración volátil externa." }
       - { titulo: "Nicho del CPLD.", texto: "Disponible al encender: secuencia, resets y supervisión." }
       - { titulo: "La FPGA carga.", texto: "Mientras carga, salidas indefinidas: deben quedar seguras." }
-      - { titulo: "La decisión.", texto: "Lógica en el instante del encendido: un dispositivo no volátil." }
+      - { titulo: "La decisión.", texto: "Lógica en el instante del encendido: un dispositivo no volátil, se llame CPLD o FPGA." }

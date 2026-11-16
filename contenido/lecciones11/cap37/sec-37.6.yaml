@@ -5,6 +5,10 @@
 # (a1: count1 = 0 y duty_r1 = 1; a2: count1 = duty_r1, count0 = 0 y duty_r0 = 1). El registro sombra empieza con
 # duty_r = 2 (inicial de r1). En el dibujo, duty pasa de 2 a 3 a mitad de periodo (bloque 184). Figura 38.8
 # (svg_vista 450,72 × 234,72) para las cinco partes del banco de pruebas.
+# 1.2.1 («aprender haciendo», GUIA §13): el pwm_gen en pequeño se lleva con pulsos hasta apagar PWM (objetivo sobre el
+# LED); PWM con el cambio de duty se dibuja; en los listados (fragmentos de los bloques 162 y 168) se tocan la línea
+# que hace síncrono el reset y la que pide «=»; la comprobación se toca en la figura 38.8. Quedan dos preguntas de
+# opciones: la predicción y los casos límite. La sombra, lo observable y el hábito van en los textos y el resumen.
 leccion: cap37/sec-37.6
 
 libro:
@@ -67,7 +71,7 @@ tarjetas:
   - id: explore-pwm
     tipo: explorar
     titulo: "El pwm_gen, en pequeño"
-    texto: "El módulo del libro con dos bits: contador, registro sombra y la salida count < duty_r. Mueva el cursor y compare PWM con la cuenta."
+    texto: "El módulo del libro con dos bits: contador, registro sombra y la salida count < duty_r. Dé pulsos hasta que PWM se apague."
     libro: [160, 162, 164]
     widget:
       tipo: logica
@@ -89,7 +93,14 @@ tarjetas:
         - { id: Q1, de: cnt.q1, rotulo: "count1" }
         - { id: Q0, de: cnt.q0, rotulo: "count0" }
         - { id: PWM, de: lt }
-      cronograma: { ciclos: 8, senales: [CLK, Q1, Q0, PWM] }
+    objetivo:
+      condiciones:
+        - { led: PWM, valor: 0, rotulo: "PWM apagada" }
+      logrado: "PWM se apaga cuando count deja de ser menor que duty_r: el ciclo de trabajo es duty_r entre cuatro."
+      pistas:
+        - { texto: "Dé otro pulso y mire count." }
+    escalera: ["PWM vale uno mientras count < duty_r."]
+    solucion: "Dos pulsos: count llega a duty_r."
 
   - id: dibuje-sombra
     tipo: dibujar
@@ -120,33 +131,16 @@ tarjetas:
       dibujo: false
     dibujar:
       senal: PWM
-    exito: "El pulso en curso sigue con el duty viejo; el nuevo entra cuando count vuelve a cero. Sin sombra, ese pulso saldría deforme."
+    exito: "El pulso en curso sigue con el duty viejo; el nuevo entra cuando count vuelve a cero. Para eso está el registro sombra: sin él, ese pulso saldría deforme."
     escalera:
       - "PWM vale uno mientras count < duty_r, y duty_r solo cambia en el flanco en que count vale cero."
       - "Hasta que count vuelve a cero, compare con 2; desde ahí, con 3."
     solucion: "Pulsos de dos cuentas hasta que count vuelve a cero tras el cambio; desde ahí, de tres."
 
-  - id: porque-sombra
-    tipo: porque
-    titulo: "El registro sombra"
-    texto: "¿Para qué copia el módulo duty en duty_r solo cuando el contador vale cero?"
-    libro: [166, 184]
-    widget:
-      tipo: figura
-      figura: fig-37.8
-      zonas:
-        - { id: estimulos, rotulo: "Recuadro naranja de la izquierda", rect: [16, 120, 76, 65], texto: "Los estímulos cambian duty: 0, 1, 128 y 255." }
-    opciones:
-      - { texto: "Para que un cambio de duty a mitad de periodo no deforme el pulso en curso", bien: true, porque: "El nuevo ciclo de trabajo empieza con el periodo siguiente." }
-      - { texto: "Para evitar un latch", porque: "El latch lo evita separar el proceso de la salida concurrente; la sombra es otra cosa." }
-      - { texto: "Para ahorrar flip-flops", porque: "Al contrario: gasta un registro más, a cambio de pulsos sin deformar." }
-    escalera: ["¿Qué pasaría si duty cambia cuando el pulso ya está alto?"]
-    solucion: "Sin él, cambiar duty a mitad de periodo produce un pulso deforme."
-
   - id: pregunta-reset
-    tipo: pregunta
+    tipo: tocar
     titulo: "El reset del módulo"
-    texto: "El proceso del pwm_gen: la comprobación de rst_n va dentro de if rising_edge(clk). ¿Qué reset es?"
+    texto: "El reset del pwm_gen es síncrono y activo a nivel bajo. Toque la línea que lo hace síncrono."
     libro: [162, 165]
     widget:
       tipo: figura
@@ -161,54 +155,62 @@ tarjetas:
                       duty_r <= (others => '0');
                   else
                       count <= count + 1;
-      resaltar: [3, 4]
-    opciones:
-      - { texto: "Síncrono y activo a nivel bajo", bien: true, porque: "Solo actúa en el flanco del reloj, y con rst_n a cero." }
-      - { texto: "Asíncrono y activo a nivel alto", porque: "Está dentro del rising_edge: espera al flanco. Y actúa con rst_n a cero." }
-      - { texto: "Síncrono y activo a nivel alto", porque: "La _n del nombre y el '0' del if dicen que es activo a nivel bajo." }
-    escalera: ["¿Se mira rst_n en cualquier momento o solo en el flanco?"]
-    solucion: "Síncrono y activo a nivel bajo. Uno asíncrono exigiría liberarlo de forma sincronizada."
+      zonas:
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: l8, lineas: [8], rotulo: "Octava línea" }
+    tocar:
+      bien: [l3]
+      porque:
+        l1: "La lista de sensibilidad no basta: lo que cuenta es dónde se mira rst_n."
+        l4: "Esta dice que es activo a nivel bajo; síncrono lo hace ir dentro del flanco."
+        l8: "Es el contador, que avanza en cada flanco."
+    exito: "rst_n se mira dentro de rising_edge(clk): solo actúa en el flanco. Uno asíncrono exigiría liberarlo de forma sincronizada."
+    escalera: ["¿Qué línea hace esperar al flanco del reloj?"]
+    solucion: "La tercera: if rising_edge(clk) then."
 
   - id: pregunta-asignaciones
-    tipo: pregunta
+    tipo: tocar
     titulo: "<= o ="
-    texto: "En Verilog, ¿qué asignación va en los bloques secuenciales y cuál en los combinacionales?"
+    texto: "En Verilog, <= va en los bloques secuenciales y = en los combinacionales. Toque la línea que pide =."
     libro: [168, 170]
     widget:
       tipo: figura
-      figura: fig-37.8
-      zonas:
-        - { id: dut, rotulo: "Recuadro marrón del centro", rect: [116, 74, 59, 79], texto: "El módulo: un always @(posedge clk) y una salida assign." }
-    opciones:
-      - { texto: "<= en secuenciales; = en combinacionales", bien: true, porque: "Es la regla que evita el error más común en Verilog." }
-      - { texto: "= en secuenciales; <= en combinacionales", porque: "Al revés: el módulo usa count <= count + 1'b1 en el always @(posedge clk)." }
-      - { texto: "Da igual, se pueden mezclar", porque: "Mezclarlos produce circuitos que simulan de una forma y sintetizan de otra." }
-    escalera: ["Mire la línea del contador dentro de always @(posedge clk)."]
-    solucion: "<= (no bloqueante) en los bloques secuenciales, = en los combinacionales."
+      codigo:
+        lenguaje: verilog
+        texto: |
+          always @(posedge clk) begin
+              if (!rst_n) begin
+                  count  <= 0;
+                  duty_r <= 0;
+              end else begin
+                  count <= count + 1'b1;
+                  if (count == 0) duty_r <= duty;   // shadow register
+              end
+          end
 
-  - id: empareje-partes
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Las cinco partes del banco"
-    texto: "Una cada parte del banco de pruebas con lo que hace."
-    libro: [173, 189]
-    emparejar:
-      - ["DUT", "El módulo bajo prueba"]
-      - ["Reloj", "Un periodo de 10 ns"]
-      - ["Estímulos", "Reset y luego cada duty"]
-      - ["Comprobación", "Mide el tiempo en alto y lo compara con assert"]
-      - ["Fin", "Informe y parada del reloj"]
-    exito: "Genera estímulos, comprueba sola y termina diciendo si pasó."
-    pistas:
-      - { texto: "El assert está en la parte que compara lo medido con lo esperado." }
-    escalera: ["La parte que se prueba es el DUT: device under test."]
-    solucion: "DUT: el módulo. Reloj: 10 ns. Estímulos: reset y duty. Comprobación: tiempo en alto y assert. Fin: informe y parada."
+          assign pwm_out = (count < duty_r);
+      zonas:
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l6, lineas: [6], rotulo: "Sexta línea" }
+        - { id: l7, lineas: [7], rotulo: "Séptima línea" }
+        - { id: l11, lineas: [11], rotulo: "Última línea" }
+    tocar:
+      bien: [l11]
+      porque:
+        l1: "Abre el bloque secuencial: dentro, todo con <=."
+        l6: "Está dentro de always @(posedge clk): secuencial, con <=."
+        l7: "El registro sombra también es secuencial: <=."
+    exito: "La salida combinacional, fuera del bloque. Mezclar <= y = produce circuitos que simulan de una forma y sintetizan de otra."
+    escalera: ["Busque lo que va fuera del always."]
+    solucion: "La última: assign pwm_out = (count < duty_r);"
 
   - id: toque-se-comprueba
     tipo: tocar
     titulo: "Se comprueba solo"
     texto: "Toque la parte que hace que el banco falle ruidosamente, sin mirar formas de onda, cuando algo se rompe."
-    libro: [176, 189]
+    libro: [176, 178, 189]
     widget:
       tipo: figura
       figura: fig-37.8
@@ -225,7 +227,7 @@ tarjetas:
         dut: "Es el módulo que se prueba, no el que comprueba."
         estimulos: "Pone los valores de entrada; no compara nada."
         fin: "Informa y para el reloj, pero el fallo lo detecta la comprobación."
-    exito: "La comprobación con assert: es lo que permite reejecutar el banco tras cada cambio."
+    exito: "La comprobación con assert permite reejecutar el banco tras cada cambio. Mide el tiempo en alto, no el contador: sigue valiendo si se rediseña el módulo."
     escalera: ["¿Dónde se compara lo medido con lo esperado?"]
     solucion: "La comprobación: mide el tiempo en alto y hace assert."
 
@@ -246,46 +248,12 @@ tarjetas:
     escalera: ["¿Dónde suele fallar un contador comparado con un valor?"]
     solucion: "Casos límite (cero, uno, el máximo) y la mitad: casi todos los errores viven en los bordes."
 
-  - id: porque-observable
-    tipo: porque
-    titulo: "Lo observable"
-    texto: "El banco mide el tiempo en alto de la salida, no el valor interno del contador. ¿Por qué?"
-    libro: [178]
-    widget:
-      tipo: figura
-      figura: fig-37.8
-      zonas:
-        - { id: comprobacion, rotulo: "Recuadro verde del centro", rect: [200, 74, 84, 62], texto: "Mide el tiempo en alto y hace assert = duty." }
-    opciones:
-      - { texto: "Para que siga valiendo si se rediseña el módulo", bien: true, porque: "No depende de la implementación: comprueba lo que el módulo promete." }
-      - { texto: "Porque el contador no se puede leer en simulación", porque: "Se puede; precisamente no se hace, para no atarse a la implementación." }
-      - { texto: "Porque es más rápido de simular", porque: "No es por velocidad: es para que el banco sobreviva a un rediseño." }
-    escalera: ["¿Qué cambia si mañana el módulo cuenta hacia abajo?"]
-    solucion: "Mide el comportamiento observable: así el banco sigue valiendo si se rediseña el módulo."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "El hábito que propone el libro es escribir el testbench antes que el módulo. ¿Qué gana con ello?"
-    libro: [179, 187, 188]
-    widget:
-      tipo: figura
-      figura: fig-37.8
-      zonas:
-        - { id: bueno, rotulo: "Recuadro verde de la derecha", rect: [300, 4, 147, 182], texto: "Se comprueba solo, cubre los límites, mide lo observable, termina y es determinista." }
-    opciones:
-      - { texto: "Definir qué se espera y poder repetir la prueba tras cada cambio", bien: true, porque: "Cuando el módulo pasa, está terminado; y se puede tocar un diseño grande sin miedo." }
-      - { texto: "Un módulo más pequeño", porque: "El banco no se sintetiza: no cambia el tamaño del módulo." }
-      - { texto: "Ahorrarse la simulación", porque: "Al contrario: el banco es la simulación." }
-    escalera: ["¿Qué obliga a decidir escribir primero la prueba?"]
-    solucion: "Obliga a definir qué se espera exactamente, y reejecutarlo tras cada cambio permite tocar el diseño sin miedo."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [164, 166, 170, 176]
+    libro: [164, 166, 170, 176, 179, 187, 188]
     ideas:
       - { titulo: "El módulo.", texto: "Un proceso con rising_edge y la salida concurrente: sin latches." }
       - { titulo: "Sombra.", texto: "duty_r se carga con count a cero: el pulso en curso no se deforma." }
       - { titulo: "Verilog.", texto: "<= en secuenciales, = en combinacionales." }
-      - { titulo: "Banco.", texto: "Se comprueba solo, cubre los límites, mide lo observable y termina." }
+      - { titulo: "Banco.", texto: "Se comprueba solo, cubre los límites, mide lo observable y termina; mejor escrito antes que el módulo." }

@@ -3,6 +3,9 @@
 # con un dither de un LSB de pico a pico (uniforme), la media sigue a la entrada en línea recta: es el mecanismo del
 # libro («el ruido hace que lo cruce aproximadamente en esa proporción de las muestras»). El promediado gana un bit por
 # cada cuatro muestras.
+# 1.2.1 («aprender haciendo», GUIA §13): la media de una entrada de un cuarto de LSB se consigue resolver con el dither;
+# la fracción de cruces y las muestras para 12 bits se escriben; los cuatro bits del libro se consiguen con el
+# promediado; en la figura 35.11 se toca lo que dice si el dither corrige el INL. Quedan dos preguntas de opciones.
 leccion: cap34/sec-34.9
 
 libro:
@@ -18,6 +21,7 @@ libro:
   257: "Comprobar si hay al menos un LSB de ruido es el primer paso"
   258: "con una salida PWM filtrada, o con un DAC que inyecte una secuencia pseudoaleatoria"
   261: "Con señales rápidas que ya recorren muchos códigos, no aporta nada"
+  262: "Si no se puede promediar, la ganancia de resolución desaparece"
   263: "reparte el error de cuantificación, no el de linealidad"
   270: "si la lectura no cambia nunca, no hay dither natural"
 
@@ -30,6 +34,8 @@ modelo:
     k_4: { sim: "4", nombre: "muestras por bit", unidad: "", valor: 4 }
   calculos:
     f_c: { expr: "p_u", sim: "fracción", nombre: "fracción de muestras que cruzan", unidad: "", cifras: 2 }
+    m_d: { expr: "(1 - d_t)*floor(p_u + 0.5) + d_t*p_u", sim: "media", nombre: "media de la entrada", unidad: LSB, cifras: 2 }
+    e_m: { expr: "abs(m_d - p_u)", sim: "error", nombre: "error de la media", unidad: LSB, cifras: 2 }
     b_g: { expr: "log10(N_m)/log10(k_4)", sim: "bits", nombre: "bits ganados", unidad: "", cifras: 2 }
     N_r: { expr: "k_4^b_o", sim: "N", nombre: "muestras necesarias", unidad: "" }
 
@@ -37,8 +43,9 @@ tarjetas:
   - id: explore-media
     tipo: explorar
     titulo: "La media de muchas lecturas"
-    texto: "Una entrada lenta sube de 0 a 4 LSB y se promedian muchas lecturas. Compare la media sin dither y con un dither de un LSB."
-    libro: [247, 250]
+    texto: "Se promedian muchas lecturas de una entrada de un cuarto de LSB; sin dither, la media se queda en el código de abajo. Consiga que la resuelva."
+    libro: [247, 250, 255]
+    inicio: { d_t: 0 }
     widget:
       tipo: grafica
       x: { id: vx, min: 0, max: 4, unidad: LSB, rotulo: "entrada" }
@@ -46,16 +53,26 @@ tarjetas:
       curvas:
         - { expr: "(1 - d_t)*floor(vx + 0.5) + d_t*vx", color: azul, rotulo: "Media" }
         - { expr: "vx", color: tinta, rotulo: "Entrada", discontinua: true }
+      marcas:
+        - { x: "p_u", y: "m_d", rotulo: "Su entrada" }
       mandos:
         - { valor: d_t, lista: [0, 1], nombres: [sin dither, con dither], rotulo: "Dither" }
-    requiere: { mover: [d_t] }
+    objetivo:
+      condiciones:
+        - { valor: e_m, max: 0.01, rotulo: "Error de la media: {{e_m}}" }
+      logrado: "Con dither, la media sigue a la entrada en línea recta. Cuánto: del orden de un LSB; bastante menos no descorrelaciona, mucho más degrada la SNR."
+      pistas:
+        - { texto: "Sin ruido, todas las lecturas dan el mismo código." }
+    escalera: ["Añada el dither de un LSB."]
+    solucion: "Con dither: la media vale {{m_d}}."
     comprobar:
       - { k_4: 4 }
+      - { con: { d_t: 1 }, m_d: 0.25, e_m: 0 }
 
   - id: prediga-cuarto
-    tipo: predecir
+    tipo: leer
     titulo: "Un cuarto de LSB"
-    texto: "Una señal está a un cuarto de LSB por encima de un umbral, con dither. ¿En qué proporción de las muestras sale el código de arriba?"
+    texto: "Con dither, una señal está a un cuarto de LSB por encima de un umbral. Escriba qué fracción de las muestras sale con el código de arriba."
     libro: [251]
     fijar: { p_u: 0.25, d_t: 1 }
     widget:
@@ -64,14 +81,17 @@ tarjetas:
       y: { min: 0, max: 4, unidad: LSB, rotulo: "media" }
       curvas:
         - { expr: "(1 - d_t)*floor(vx + 0.5) + d_t*vx", color: azul, rotulo: "Media" }
-      lectura: { valor: f_c, rotulo: "Fracción que cruza" }
-      ocultar: true
-    opciones:
-      - { texto: "Aproximadamente una de cada cuatro", bien: true, porque: "El ruido le hace cruzar en esa proporción; promediando, se recupera el cuarto de LSB." }
-      - { texto: "En ninguna: está por debajo del siguiente código", porque: "Eso pasa sin dither. Con él, el ruido la lleva a veces por encima." }
-      - { texto: "En la mitad", porque: "La mitad sería si estuviera justo en medio; aquí está a un cuarto." }
-    escalera: ["¿Qué fracción de LSB le falta y cuál le sobra?"]
-    solucion: "En torno a una de cada cuatro muestras: la proporción es su valor."
+      mandos: []
+    leer:
+      objetivo: f_c
+      unidad: ""
+      tol: 0.05
+      rotulo: "Fracción que cruza (de 0 a 1)"
+      errores:
+        - { expr: "1 - p_u", texto: "Esa es la fracción que se queda en el código de abajo." }
+    exito: "Una de cada cuatro: promediando, esa proporción devuelve el cuarto de LSB."
+    escalera: ["El ruido le hace cruzar en la misma proporción que su distancia al umbral."]
+    solucion: "{{f_c}}: una de cada cuatro muestras."
     comprobar:
       - { f_c: 0.25 }
 
@@ -97,8 +117,9 @@ tarjetas:
   - id: explore-promediado
     tipo: explorar
     titulo: "Un bit por cada cuatro"
-    texto: "Con dither, promediar N muestras gana bits efectivos a costa de dividir la velocidad entre N. Cambie N."
+    texto: "Con dither, promediar N muestras gana bits efectivos y divide la velocidad entre N. Gane los cuatro bits del libro."
     libro: [252]
+    inicio: { N_m: 4 }
     widget:
       tipo: grafica
       x: { id: nq, min: 1, max: 300, unidad: "", rotulo: "N", escala: log }
@@ -110,48 +131,42 @@ tarjetas:
       lectura: { valor: b_g, rotulo: "Bits ganados" }
       mandos:
         - { valor: N_m, lista: [4, 16, 64, 256], rotulo: "Muestras promediadas" }
-    requiere: { mover: [N_m] }
+    objetivo:
+      condiciones:
+        - { valor: b_g, objetivo: 4, tol: 0.01, rotulo: "Bits ganados: {{b_g}}" }
+      logrado: "{{N_m}} muestras: {{b_g}} bits más, con la velocidad dividida entre {{N_m}}. Vale para señales lentas."
+      pistas:
+        - { texto: "Cada cuadruplicación de N da un bit." }
+    escalera: ["Cuatro bits son cuatro cuadruplicaciones."]
+    solucion: "N = {{N_m}}."
+    comprobar:
+      - { con: { N_m: 256 }, b_g: 4 }
 
   - id: estime-muestras
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "De 10 a 12 bits"
-    texto: "Un convertidor de 10 bits con dither debe dar 12 bits efectivos de una señal lenta. ¿Cuántas muestras hay que promediar?"
+    texto: "Un convertidor de 10 bits con dither debe dar 12 bits efectivos de una señal lenta. Escriba cuántas muestras hay que promediar."
     libro: [252, 253]
     fijar: { b_o: 2 }
-    estimar:
-      objetivo: "N_r"
-      unidad: muestras
-      min: 0
-      max: 300
-      paso: 1
-      inicio: 250
-      tol: 0.05
+    widget:
+      tipo: grafica
+      x: { id: nq, min: 1, max: 300, unidad: "", rotulo: "N", escala: log }
+      y: { min: 0, max: 5, unidad: bits, rotulo: "bits ganados" }
+      curvas:
+        - { expr: "log10(nq)/log10(k_4)", color: azul, rotulo: "Bits ganados" }
+      mandos: []
+    leer:
+      objetivo: N_r
+      unidad: ""
+      tol: 0.02
       rotulo: "Muestras"
-    exito: "16: dos bits son dos cuadruplicaciones. La velocidad cae en la misma proporción."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 17 }, texto: "Se ha pasado: cada cuatro muestras dan un bit; dos bits, 4 × 4." }
-      - { texto: "Se ha quedado corto: no basta con dos ni con ocho; son 4 × 4." }
+      errores:
+        - { expr: "k_4*b_o", texto: "Los bits no suman muestras: cada bit multiplica por cuatro." }
+    exito: "{{N_r}}: dos bits son dos cuadruplicaciones. La velocidad cae en la misma proporción."
     escalera: ["Cuatro muestras por bit, y los bits se multiplican."]
-    solucion: "4² = 16 muestras."
+    solucion: "4 × 4 = {{N_r}} muestras."
     comprobar:
       - { N_r: 16, k_4: 4 }
-
-  - id: empareje-cuanto
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuánto ruido, y de qué tipo"
-    texto: "Una cada dither con lo que hace."
-    libro: [255, 256]
-    emparejar:
-      - ["Bastante menos de un LSB", "No descorrelaciona del todo"]
-      - ["Mucho más de un LSB", "Degrada la SNR sin ganar nada"]
-      - ["Triangular de 2 LSB de pico a pico", "Quita además la modulación del ruido"]
-    exito: "Lo típico: del orden de un LSB; el triangular es el del audio profesional."
-    pistas:
-      - { texto: "El de audio profesional es el triangular." }
-    escalera: ["El tamaño bueno es del orden de un LSB."]
-    solucion: "Poco no descorrelaciona; mucho degrada; el triangular quita la modulación."
 
   - id: pregunta-origen
     tipo: pregunta
@@ -172,22 +187,27 @@ tarjetas:
     solucion: "Comprobar si ya hay un LSB de ruido."
 
   - id: pregunta-inl
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cuándo no sirve"
-    texto: "Un convertidor tiene un INL apreciable. ¿Lo corrige el dither?"
-    libro: [263, 261]
+    texto: "Su convertidor tiene un INL apreciable. Toque en la figura lo que le dice si el dither se lo corregirá."
+    libro: [263, 261, 262]
     widget:
-      tipo: grafica
-      x: { id: vx, min: 0, max: 4, unidad: LSB, rotulo: "entrada" }
-      y: { min: 0, max: 4, unidad: LSB, rotulo: "media" }
-      curvas:
-        - { expr: "vx", color: azul, rotulo: "Con dither" }
-    opciones:
-      - { texto: "No: reparte el error de cuantificación, no el de linealidad", bien: true, porque: "Tampoco aporta nada con señales rápidas que ya recorren muchos códigos." }
-      - { texto: "Sí: promediando se endereza la curva", porque: "Promediar quita lo aleatorio; la curva torcida del INL es sistemática." }
-      - { texto: "Solo con dither triangular", porque: "El tipo de dither no cambia esto: la no linealidad sigue ahí." }
-    escalera: ["¿El INL es aleatorio o sistemático?"]
-    solucion: "No: el dither no corrige la no linealidad."
+      tipo: figura
+      figura: fig-34.11
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [20, 15, 215, 175] }
+        - { id: cuanto, rotulo: "Arriba a la derecha", rect: [258, 8, 185, 55] }
+        - { id: nosirve, rotulo: "En medio a la derecha", rect: [258, 72, 185, 80] }
+        - { id: principio, rotulo: "Abajo a la derecha", rect: [258, 160, 185, 50] }
+    tocar:
+      bien: [nosirve]
+      porque:
+        grafica: "La gráfica da los bits que se ganan promediando, no cuándo falla."
+        cuanto: "Dice cuánto ruido añadir, no si corrige el INL."
+        principio: "Es la idea general del umbral con ruido."
+    exito: "No lo corrige: reparte el error de cuantificación, no el de linealidad. Tampoco aporta con señales rápidas, ni da bits sin promediar."
+    escalera: ["Busque el recuadro de las limitaciones."]
+    solucion: "El recuadro «Cuándo no sirve»."
 
   - id: dibuje-media
     tipo: dibujar
@@ -214,8 +234,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [247, 251, 252, 263]
+    libro: [247, 251, 252, 255, 256, 263]
     ideas:
       - { titulo: "Descorrelacionar.", texto: "Un LSB de ruido convierte la distorsión en ruido." }
       - { titulo: "Bajo un LSB.", texto: "Con dither y promediado: un bit por cada cuatro muestras." }
       - { titulo: "Límites.", texto: "No ayuda con señales rápidas ni corrige el INL." }
+      - { titulo: "Cuánto.", texto: "Del orden de un LSB; el triangular de 2 LSB de pico a pico, en audio profesional." }

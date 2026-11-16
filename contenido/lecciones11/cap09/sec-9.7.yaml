@@ -1,4 +1,8 @@
-# Lección 1.2 de la sección 9.7 «Márgenes de Ruido, Fan-out y Retardo de Propagación» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 9.7 «Márgenes de Ruido, Fan-out y Retardo de Propagación» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 («aprender haciendo», GUIA §13): el margen de la HC se consigue eligiendo salida y entrada; el margen en bajo,
+# el de TTL atacando HC y la potencia de conmutación se calculan y se escriben; el fan-out TTL se busca añadiendo
+# entradas hasta el límite de corriente; el CMOS, ajustando el flanco a medio periodo. Quedan dos preguntas de
+# opciones: el retardo a 3 V y por qué en CMOS limita la capacidad.
 leccion: cap09/sec-9.7
 
 libro:
@@ -22,6 +26,7 @@ modelo:
     R_o: { sim: "R_{o}", nombre: "impedancia de salida", unidad: Ω, valor: 50 }
     C_in: { sim: "C_{in}", nombre: "capacidad de cada entrada", unidad: F, valor: 5e-12 }
     n_e: { sim: "n", nombre: "entradas conectadas", unidad: "", valor: 20 }
+    n_t: { sim: "n", nombre: "entradas TTL conectadas", unidad: "", valor: 10 }
     C_l: { sim: "C", nombre: "capacidad de la línea", unidad: F, valor: 100e-12 }
     V_s: { sim: "V", nombre: "alimentación", unidad: V, valor: 5 }
     f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 10000000 }
@@ -29,6 +34,7 @@ modelo:
     NM_H: { expr: "V_OH - V_IH", sim: "NM_{H}", nombre: "margen de ruido en alto", unidad: V }
     NM_L: { expr: "V_IL - V_OL", sim: "NM_{L}", nombre: "margen de ruido en bajo", unidad: V }
     N_fo: { expr: "I_OL/I_IL", sim: "N", nombre: "fan-out TTL", unidad: "", cifras: 2 }
+    I_tot: { expr: "n_t*I_IL", sim: "n · I_{IL}", nombre: "corriente que piden las entradas en bajo", unidad: A }
     t_r: { expr: "2.2*R_o*n_e*C_in", sim: "t_{r}", nombre: "flanco de subida del 10 al 90 %", unidad: s }
     P_d: { expr: "C_l*V_s^2*f_s", sim: "P", nombre: "potencia de conmutación", unidad: W }
 
@@ -36,8 +42,9 @@ tarjetas:
   - id: explore-margen
     tipo: explorar
     titulo: "El colchón del ruido"
-    texto: "La salida en alto pierde tensión por el ruido. Mientras quede por encima de V_{IH} no hay error: cambie la familia y mire cuánto ruido aguanta."
+    texto: "El alto que llega pierde tensión por el ruido; hay error si baja de V_{IH}. Elija salida y entrada hasta conseguir el margen de la HC con HC."
     libro: [94, 97, "cap09#102"]
+    inicio: { V_OH: 2.4, V_IH: 2 }
     widget:
       tipo: grafica
       x: { id: vr, min: 0, max: 2, unidad: V, rotulo: "ruido" }
@@ -51,37 +58,49 @@ tarjetas:
       mandos:
         - { valor: V_OH, lista: [2.4, 4.4], rotulo: "V_{OH} (TTL o HC)" }
         - { valor: V_IH, lista: [2, 3.5], rotulo: "V_{IH} (TTL o HC)" }
-    requiere: { mover: [V_OH] }
+    objetivo:
+      condiciones:
+        - { valor: NM_H, objetivo: 0.9, tol: 0.01, rotulo: "Margen en alto: {{NM_H}}" }
+      logrado: "4,4 − 3,5 = {{NM_H}}: casi un voltio de ruido sin error. Con TTL a los dos lados eran solo 0,4 V."
+      pistas:
+        - { cuando: { valor: NM_H, menor: 0 }, texto: "Margen negativo: esa salida no llega al alto que exige esa entrada. Cambie una de las dos." }
+        - { texto: "Ese es otro margen: ponga la salida y la entrada de la HC, 4,4 y 3,5 V." }
+    escalera: ["NM_{H} = V_{OH} − V_{IH}."]
+    solucion: "V_{OH} = 4,4 V y V_{IH} = 3,5 V: 0,9 V."
+    comprobar:
+      - { con: { V_OH: 4.4, V_IH: 3.5 }, NM_H: 0.9 }
 
   - id: estime-nml
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El margen en bajo"
-    texto: "Una CMOS HC a 5 V entrega como mucho 0,33 V en bajo y acepta como bajo hasta 1,5 V. ¿Qué margen tiene en bajo?"
+    texto: "Una CMOS HC a 5 V entrega como mucho 0,33 V en bajo y acepta como bajo hasta 1,5 V. Calcule su margen en bajo y escríbalo."
     libro: [97]
     fijar: { V_IL: 1.5, V_OL: 0.33 }
-    estimar:
-      objetivo: "NM_L"
+    widget:
+      tipo: grafica
+      x: { id: vr, min: 0, max: 2, unidad: V, rotulo: "ruido" }
+      y: { min: 0, max: 2.5, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "V_OL + vr", color: azul, rotulo: "bajo que llega" }
+        - { expr: "V_IL + 0*vr", color: naranja, rotulo: "V_{IL}", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: NM_L
       unidad: V
-      min: 0
-      max: 2
-      paso: 0.01
-      inicio: 0.4
       tol: 0.02
       rotulo: "NM_{L}"
-    exito: "1,17 V: un ruido de casi un voltio sobre la línea no produce error."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.2 }, texto: "Se ha pasado: reste lo que la salida garantiza (0,33 V) a lo que la entrada admite (1,5 V)." }
-      - { texto: "Se ha quedado corto: esos 0,4 V son los de TTL. La HC tiene más margen." }
+      errores:
+        - { expr: "V_IL + V_OL", texto: "Ha sumado. El margen es lo que le queda a la salida hasta el umbral: una resta." }
+    exito: "{{NM_L}}: un ruido de casi un voltio sobre la línea no produce error. En la gráfica, donde la azul cruza la naranja."
     escalera: ["NM_{L} = V_{IL} − V_{OL}."]
     solucion: "1,5 − 0,33 = 1,17 V."
     comprobar:
       - { NM_L: 1.17 }
 
   - id: prediga-ttl-hc
-    tipo: predecir
+    tipo: leer
     titulo: "TTL atacando HC"
-    texto: "Una salida TTL garantiza 2,4 V en alto; una entrada CMOS HC exige 3,5 V. ¿Qué margen en alto queda?"
+    texto: "Una salida TTL garantiza 2,4 V en alto; una entrada CMOS HC exige 3,5 V. Escriba el margen en alto, con su signo."
     libro: [103, "cap09#102"]
     fijar: { V_OH: 2.4, V_IH: 3.5 }
     widget:
@@ -91,40 +110,51 @@ tarjetas:
       curvas:
         - { expr: "V_OH - vr", color: azul, rotulo: "alto que llega" }
         - { expr: "V_IH + 0*vr", color: naranja, rotulo: "V_{IH}", discontinua: true }
-      lectura: { valor: NM_H, rotulo: "Margen en alto, NM_{H}" }
-      ocultar: true
-    opciones:
-      - { texto: "−1,10 V: incompatible", bien: true, porque: "Negativo: no es que falle a veces, es que el fabricante no garantiza nada. Para eso existe la HCT." }
-      - { texto: "+0,40 V", porque: "Ese es el margen de TTL con TTL. Aquí la entrada es HC y exige 3,5 V." }
-      - { texto: "+0,90 V", porque: "Ese es el de HC con HC, con 4,4 V a la salida. TTL solo garantiza 2,4 V." }
+      mandos: []
+    leer:
+      objetivo: NM_H
+      unidad: V
+      tol: 0.02
+      rotulo: "NM_{H}"
+      errores:
+        - { expr: "2.4 - 2", texto: "Ese es el margen de TTL con TTL. Aquí la entrada es HC y exige 3,5 V." }
+        - { expr: "4.4 - 3.5", texto: "Ese es el de HC con HC, con 4,4 V a la salida. TTL solo garantiza 2,4 V." }
+    exito: "{{NM_H}}: negativo, incompatible. No es que falle a veces: el fabricante no garantiza nada. Para eso existe la HCT."
     escalera: ["NM_{H} = V_{OH} − V_{IH}, con la salida de una familia y la entrada de la otra."]
     solucion: "2,4 − 3,5 = −1,10 V: incompatible."
     comprobar:
       - { NM_H: -1.1 }
 
   - id: estime-fanout
-    tipo: pregunta
-    fase: "Estime"
+    tipo: explorar
     titulo: "El fan-out de TTL"
-    texto: "Una salida TTL entrega 16 mA en bajo y cada entrada toma 1,6 mA. ¿Cuántas entradas puede atacar?"
+    texto: "Una salida TTL absorbe 16 mA en bajo y cada entrada toma 1,6 mA. Conecte el máximo de entradas que puede atacar."
     libro: [98]
-    estimar:
-      objetivo: "N_fo"
-      unidad: ""
-      min: 1
-      max: 20
-      paso: 1
-      inicio: 4
-      tol: 0.01
-      rotulo: "Entradas"
-    exito: "Diez: en TTL el fan-out lo limita la corriente."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 10 }, texto: "Se ha pasado: con más entradas la salida no podría absorber su corriente en bajo." }
-      - { texto: "Se ha quedado corto: divida los 16 mA de la salida entre los 1,6 mA de cada entrada." }
+    inicio: { n_t: 4 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 20, unidad: "", rotulo: "entradas" }
+      y: { min: 0, max: 0.032, unidad: A, rotulo: "corriente en bajo" }
+      curvas:
+        - { expr: "nx*I_IL", color: azul, rotulo: "lo que piden las entradas" }
+        - { expr: "I_OL + 0*nx", color: naranja, rotulo: "lo que absorbe la salida", discontinua: true }
+      asas:
+        - { mueve: n_t, x: "n_t", y: "I_tot", rotulo: "Sus entradas" }
+      lectura: { valor: I_tot, rotulo: "Corriente de las entradas" }
+      mandos:
+        - { valor: n_t, min: 1, max: 20, paso: 1, rotulo: "Entradas" }
+    objetivo:
+      condiciones:
+        - { valor: I_tot, max: 0.016, rotulo: "Corriente: {{I_tot}}" }
+        - { valor: n_t, min: 10, rotulo: "Entradas: {{n_t}}" }
+      logrado: "{{n_t}} entradas, {{I_tot}}: justo lo que absorbe la salida. En TTL el fan-out lo limita la corriente."
+      pistas:
+        - { cuando: { valor: I_tot, mayor: 0.016 }, texto: "Demasiadas: la salida ya no puede absorber tanta corriente en bajo." }
+        - { texto: "Aún caben más entradas sin pasar de 16 mA." }
     escalera: ["Fan-out = corriente de la salida / corriente de cada entrada."]
     solucion: "16 / 1,6 = 10 entradas."
     comprobar:
-      - { N_fo: 10 }
+      - { N_fo: 10, con: { n_t: 10 }, I_tot: 0.016 }
 
   - id: ajuste-fanout-cmos
     tipo: ajuste
@@ -156,24 +186,25 @@ tarjetas:
     exito: "En CMOS el límite es la capacidad: con veinte entradas, 11 ns, más de la mitad del periodo."
 
   - id: estime-potencia
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "La corriente de conmutación"
-    texto: "Una salida CMOS carga 100 pF a 5 V y conmuta a 10 MHz. ¿Qué potencia consume esa línea?"
+    texto: "Una salida CMOS carga 100 pF a 5 V y conmuta a 10 MHz. Calcule la potencia que consume esa línea y escríbala."
     libro: [100]
-    estimar:
-      objetivo: "P_d"
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 0, max: 20000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 0.06, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "C_l*V_s^2*fx", color: azul, rotulo: "C · V² · f" }
+      mandos: []
+    leer:
+      objetivo: P_d
       unidad: W
-      min: 0
-      max: 0.1
-      paso: 0.001
-      inicio: 0.06
-      tol: 0.05
+      tol: 0.03
       rotulo: "Potencia"
-    exito: "25 mW por línea: nula en reposo, y crece con la frecuencia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.026 }, texto: "Se ha pasado: es C · V² · f, sin factores de más." }
-      - { texto: "Se ha quedado corto: la tensión va al cuadrado." }
+      errores:
+        - { expr: "C_l*V_s*f_s", texto: "Ha puesto la tensión sin elevar: P = C · V² · f." }
+    exito: "{{P_d}} por línea: nula en reposo y proporcional a la frecuencia. Por eso un procesador se calienta al trabajar."
     escalera: ["P = C · V² · f."]
     solucion: "100 pF · 25 V² · 10 MHz = 25 mW."
     comprobar:

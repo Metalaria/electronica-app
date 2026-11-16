@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 39.14 «Un RTOS en la Práctica: Semáforos, Mutex y Prioridades» (cap38; etiqueta interna
 # sec-38.14). Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.18 (svg_vista 419,37 × 261,7): la inversión de
 # prioridad sin herencia (arriba) y con herencia (abajo). Los fragmentos de FreeRTOS son los listados del libro.
+# 1.2.1 («aprender haciendo», GUIA §13): cuántas tareas de 512 B caben en 4 kB de pilas es el objetivo de la
+# exploración; en los listados se tocan la espera activa, el aviso desde la ISR y la espera con expiración; lo que
+# ahorra la herencia a la tarea A (6,0 ms frente a 1,5 ms, figura 39.18) se escribe. Quedan dos preguntas de opciones:
+# portYIELD_FROM_ISR y el interbloqueo. Semáforo frente a mutex, la marca de agua y el banco van en los textos.
 leccion: cap38/sec-38.14
 
 libro:
@@ -22,6 +26,7 @@ libro:
   453: "Numerar los recursos y tomarlos siempre en orden creciente lo hace imposible"
   456: "Una cola de FreeRTOS ya está protegida"
   460: "Se deja el doble de lo consumido"
+  427: "cada tarea reserva su pila entera, se use o no"
   466: "primero con semáforo binario y después con mutex, midiendo la latencia de la tarea A"
   467: "Inversión de prioridad con y sin herencia, en un diagrama de tiempos"
 
@@ -29,56 +34,90 @@ modelo:
   valores:
     n_tar: { sim: "n", nombre: "número de tareas", unidad: "", valor: 8 }
     pila: { sim: "pila", nombre: "pila de cada tarea", unidad: "B", valor: 512 }
+    w_sin: { sim: "t_{sin}", nombre: "espera de A sin herencia", unidad: s, valor: 0.006 }
+    w_con: { sim: "t_{con}", nombre: "espera de A con herencia", unidad: s, valor: 0.0015 }
   calculos:
     ram_pilas: { expr: "n_tar*pila", sim: "RAM", nombre: "RAM de las pilas", unidad: "B" }
+    d_w: { expr: "w_sin - w_con", sim: "ahorro", nombre: "espera que ahorra la herencia", unidad: s }
 
 tarjetas:
   - id: explore-herencia
     tipo: explorar
-    titulo: "Con y sin herencia"
-    texto: "Tres tareas y un mutex del bus I²C. Toque los dos diagramas y compare cuánto espera A."
-    libro: [467, 447, 448, 449]
+    titulo: "Lo que cuestan las pilas"
+    texto: "Cada tarea reserva su pila entera, se use o no. Con pilas de 512 bytes, añada tareas hasta gastar 4 kB de RAM sin escribir una línea útil."
+    libro: [427, 428, 460]
+    inicio: { n_tar: 2 }
     widget:
-      tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "Sin herencia: B desplaza a C, y A espera también a B." }
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Con herencia: C sube a la prioridad de A hasta liberar el mutex." }
-    requiere: { mover: [sin, con] }
+      tipo: grafica
+      x: { id: nx, min: 1, max: 12, unidad: "", rotulo: "tareas" }
+      y: { min: 0, max: 6200, unidad: "B", rotulo: "RAM de las pilas" }
+      curvas:
+        - { expr: "nx*pila", color: azul, rotulo: "RAM de las pilas" }
+      marcas:
+        - { x: "n_tar", y: "ram_pilas", rotulo: "Sus tareas" }
+      lectura: { valor: ram_pilas, rotulo: "RAM de las pilas" }
+      mandos:
+        - { valor: n_tar, min: 1, max: 12, paso: 1, rotulo: "Tareas" }
+    objetivo:
+      condiciones:
+        - { valor: ram_pilas, objetivo: 4096, tol: 0.01, rotulo: "Pilas: {{ram_pilas}}" }
+      logrado: "{{n_tar}} tareas, {{ram_pilas}}. Cada pila se mide con la marca de agua y se deja el doble de lo consumido."
+      pistas:
+        - { cuando: { valor: ram_pilas, mayor: 4100 }, texto: "Se ha pasado de 4 kB: quite tareas." }
+        - { texto: "Aún no llega: añada tareas." }
+    escalera: ["4 kB entre 512 bytes."]
+    solucion: "{{n_tar}} tareas."
+    comprobar:
+      - { con: { n_tar: 8 }, ram_pilas: 4096 }
 
   - id: prediga-espera-activa
-    tipo: predecir
+    tipo: tocar
     titulo: "Una espera activa"
-    texto: "Una tarea de prioridad alta espera con for (volatile int i = 0; i < 100000; i++) { }. ¿Qué les pasa a las de menor prioridad?"
+    texto: "Una tarea de prioridad alta tiene que esperar. Toque la línea que dejaría sin CPU a las de menor prioridad."
     libro: [431, 432]
     widget:
       tipo: figura
-      figura: fig-38.18
+      codigo: "cap38#432"
       zonas:
-        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "El planificador da el procesador a la tarea lista de mayor prioridad." }
-    opciones:
-      - { texto: "No se ejecutan mientras dure el bucle", bien: true, porque: "La alta nunca se bloquea: sigue lista y el planificador la elige siempre. vTaskDelay() la bloquearía y soltaría la CPU." }
-      - { texto: "Se reparten el tiempo con ella", porque: "Solo se ejecuta la de mayor prioridad que está lista; las demás esperan." }
-      - { texto: "Se ejecutan durante la espera, que no consume CPU", porque: "La espera activa quema la CPU: no es un bloqueo." }
-    escalera: ["¿Está bloqueada o lista una tarea que da vueltas en un bucle?"]
-    solucion: "Se quedan sin CPU: la espera activa debe ser un bloqueo, vTaskDelay()."
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l5, lineas: [5], rotulo: "Quinta línea" }
+    tocar:
+      bien: [l5]
+      porque:
+        l2: "vTaskDelay() bloquea la tarea y suelta la CPU: es la forma correcta."
+    exito: "El bucle quema la CPU: la tarea nunca se bloquea y el planificador la elige siempre. Corre la lista de más prioridad."
+    escalera: ["¿Cuál de las dos sigue lista mientras espera?"]
+    solucion: "La quinta: el bucle de espera activa."
 
   - id: pregunta-fromisr
-    tipo: pregunta
+    tipo: tocar
     titulo: "Señalizar desde una ISR"
-    texto: "Una interrupción avisa a una tarea con un semáforo. ¿Qué función usa?"
-    libro: [434, 437]
+    texto: "Una interrupción avisa a una tarea de que hay trabajo. Toque la línea que da el aviso."
+    libro: [434, 435, 437]
     widget:
       tipo: figura
-      figura: fig-38.18
+      codigo:
+        lenguaje: c
+        texto: |
+          void EXTI0_IRQHandler(void)
+          {
+              BaseType_t woken = pdFALSE;
+              EXTI->PR1 = EXTI_PR1_PIF0;    /* clear the pending flag first */
+              xSemaphoreGiveFromISR(sem_dato, &woken);
+              portYIELD_FROM_ISR(woken);
+          }
       zonas:
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Las tareas, sobre un mismo planificador." }
-    opciones:
-      - { texto: "xSemaphoreGiveFromISR()", bien: true, porque: "Desde una ISR, solo las funciones FromISR: la versión normal corrompe el planificador." }
-      - { texto: "xSemaphoreGive()", porque: "Es la versión para tareas: llamada desde una ISR corrompe el planificador." }
-      - { texto: "xSemaphoreTake() con espera", porque: "Una ISR no puede esperar: señaliza y sale." }
-    escalera: ["Hay una familia de funciones solo para interrupciones."]
-    solucion: "xSemaphoreGiveFromISR(), seguido de portYIELD_FROM_ISR()."
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: l5, lineas: [5], rotulo: "Quinta línea" }
+        - { id: l6, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [l5]
+      porque:
+        l4: "Borra la bandera del periférico, primero, para que la interrupción no se repita."
+        l6: "Hace que la tarea despertada corra al salir; el aviso es la línea anterior."
+    exito: "xSemaphoreGiveFromISR(): desde una ISR, solo las funciones FromISR. La versión normal corrompe el planificador."
+    escalera: ["Busque la que da el semáforo."]
+    solucion: "La quinta."
 
   - id: porque-yield
     tipo: porque
@@ -106,9 +145,9 @@ tarjetas:
     solucion: "Cambia a la tarea despertada al salir de la ISR: latencia de microsegundos."
 
   - id: pregunta-timeout
-    tipo: pregunta
+    tipo: tocar
     titulo: "Esperar para siempre"
-    texto: "¿Qué pasa si una tarea espera su semáforo sin tiempo de expiración y el sensor deja de responder?"
+    texto: "El sensor deja de responder y nadie da el semáforo. Toque lo que impide que la tarea se quede bloqueada para siempre."
     libro: [435, 439]
     widget:
       tipo: figura
@@ -123,127 +162,58 @@ tarjetas:
                   registrar_fallo();      /* the timeout is not optional */
               }
           }
-      resaltar: [3]
-    opciones:
-      - { texto: "Se queda bloqueada para siempre", bien: true, porque: "Un Take sin expiración convierte cualquier fallo externo en un bloqueo permanente; con expiración, registra el fallo y sigue." }
-      - { texto: "El RTOS la despierta al cabo de un tick", porque: "Sin expiración, nadie la despierta: el semáforo nunca llega." }
-      - { texto: "Se reinicia el sistema", porque: "Solo si un watchdog bien puesto lo detecta; la tarea, por sí misma, se queda esperando." }
-    escalera: ["¿Quién le dará el semáforo si el sensor ha muerto?"]
-    solucion: "Bloqueo permanente: el tiempo de expiración no es opcional."
+      zonas:
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+    tocar:
+      bien: [l3]
+      porque:
+        l2: "El bucle infinito es lo normal en una tarea; lo que la protege es cómo espera."
+        l4: "Solo se procesa si llega el semáforo."
+    exito: "El Take espera como mucho 500 ms y, si no llega nada, registra el fallo. Sin expiración, un fallo externo sería un bloqueo permanente."
+    escalera: ["¿Dónde se limita la espera?"]
+    solucion: "La tercera: el Take con su tiempo de expiración."
 
-  - id: empareje-semaforo-mutex
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Semáforo y mutex"
-    texto: "Una cada mecanismo con lo que hace."
-    libro: [434, 441, 443, 451, 456]
-    emparejar:
-      - ["Semáforo binario", "Señalizar: una interrupción avisa a una tarea"]
-      - ["Mutex", "Proteger un recurso; tiene dueño y hereda prioridad"]
-      - ["Cola de FreeRTOS", "Comunicar tareas, ya protegida, sin mutex"]
-    exito: "xSemaphoreCreateMutex() implementa la herencia de prioridad; xSemaphoreCreateBinary() no."
-    pistas:
-      - { texto: "Solo uno tiene dueño." }
-    escalera: ["¿Cuál se usa para avisar de que hay trabajo?"]
-    solucion: "Semáforo, señalizar; mutex, proteger con dueño; cola, comunicar sin mutex."
-
-  - id: ordene-inversion
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "La inversión, paso a paso"
-    texto: "Ponga en orden lo que pasa sin herencia de prioridad."
-    libro: [447, 448, 449, 450]
-    ordenar:
-      - "C, de prioridad baja, toma el mutex del bus I²C."
-      - "A, de prioridad alta, necesita el bus y se bloquea."
-      - "B, de prioridad media, se vuelve lista y desplaza a C."
-      - "A espera indefinidamente por culpa de B."
-    exito: "Todo «funciona» y la tarea crítica no se ejecuta: con herencia, C sube a la prioridad de A."
-    pistas:
-      - { texto: "Sin que alguien tome antes el mutex, nadie espera." }
-    escalera: ["B entra en escena cuando A ya está esperando."]
-    solucion: "C toma el mutex, A se bloquea, B desplaza a C y A espera por B."
+  - id: leer-herencia
+    tipo: leer
+    titulo: "Lo que ahorra la herencia"
+    texto: "El escenario de la inversión con semáforo binario y luego con mutex. Lea en la figura cuánto espera A en cada caso y escriba cuánto ahorra la herencia."
+    libro: [447, 448, 449, 450, 451, 466, 467]
+    widget:
+      tipo: figura
+      figura: fig-38.18
+      zonas:
+        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90] }
+    leer:
+      objetivo: d_w
+      unidad: s
+      tol: 0.05
+      rotulo: "Espera ahorrada"
+      errores:
+        - { expr: "w_sin", texto: "Esa es la espera sin herencia; reste la que queda con ella." }
+    exito: "{{d_w}} menos: sin herencia, B desplaza a C y A espera también a B. xSemaphoreCreateMutex() la implementa; un semáforo binario, no."
+    escalera: ["Espera sin herencia menos espera con herencia."]
+    solucion: "{{w_sin}} − {{w_con}} = {{d_w}}."
+    comprobar:
+      - { d_w: 0.0045 }
 
   - id: pregunta-interbloqueo
     tipo: pregunta
     titulo: "Dos mutex"
     texto: "Una tarea toma el mutex A y luego el B; otra, el B y luego el A. ¿Cómo se evita que se abracen?"
-    libro: [453]
+    libro: [441, 453, 456]
     widget:
       tipo: figura
       figura: fig-38.18
       zonas:
         - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "Tareas que esperan un mutex." }
     opciones:
-      - { texto: "Numerar los recursos y tomarlos siempre en orden creciente", bien: true, porque: "Con un solo orden de toma en todo el sistema, el interbloqueo es imposible." }
+      - { texto: "Numerar los recursos y tomarlos siempre en orden creciente", bien: true, porque: "Con un solo orden de toma, el interbloqueo es imposible. Y una cola, ya protegida, evita el mutex por completo." }
       - { texto: "Usar semáforos binarios en vez de mutex", porque: "El abrazo es el mismo, y además se pierde la herencia de prioridad." }
       - { texto: "Subir la prioridad de una de las dos", porque: "La prioridad no deshace el abrazo: cada una tiene lo que la otra espera." }
     escalera: ["El problema es el orden en que se toman."]
     solucion: "Un solo orden de toma: numerar los recursos y tomarlos en orden creciente."
-
-  - id: estime-pilas
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "Lo que cuestan las pilas"
-    texto: "Ocho tareas con una pila de 512 bytes cada una. ¿Cuánta RAM se va antes de escribir una línea útil?"
-    libro: [428]
-    widget:
-      tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Cada tarea, con su pila entera reservada." }
-    estimar:
-      objetivo: "ram_pilas"
-      unidad: "B"
-      min: 0
-      max: 8192
-      paso: 128
-      inicio: 7040
-      tol: 0.05
-      rotulo: "RAM de las pilas"
-    exito: "4 kB: cada tarea reserva su pila entera, se use o no."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4096 }, texto: "Se ha pasado: son ocho pilas de 512 bytes." }
-      - { texto: "Se ha quedado corto: multiplique 512 bytes por ocho tareas." }
-    escalera: ["Cada tarea reserva su pila entera."]
-    solucion: "8 × 512 B = 4 kB."
-    comprobar:
-      - { ram_pilas: 4096, n_tar: 8, pila: 512 }
-
-  - id: pregunta-marca-agua
-    tipo: pregunta
-    titulo: "Dimensionar una pila"
-    texto: "uxTaskGetStackHighWaterMark() dice cuánto ha usado como máximo una pila. ¿Cuánto le deja?"
-    libro: [460]
-    widget:
-      tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Cada tarea, con su pila." }
-    opciones:
-      - { texto: "El doble de lo consumido", bien: true, porque: "printf y la coma flotante gastan cientos de bytes de golpe: hace falta margen." }
-      - { texto: "Justo lo consumido", porque: "Sin margen, una condición algo peor la desborda y corrompe otra tarea." }
-      - { texto: "Diez veces lo consumido", porque: "Sería malgastar RAM: el libro dice el doble." }
-    escalera: ["El libro da una regla sencilla con un factor."]
-    solucion: "El doble de lo consumido."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Monta el escenario de la inversión con semáforo binario y luego con mutex. ¿Qué mide?"
-    libro: [466, 467]
-    widget:
-      tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "Sin herencia." }
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Con herencia." }
-    opciones:
-      - { texto: "La latencia de la tarea A en los dos casos", bien: true, porque: "La diferencia entre ambos es exactamente lo que evita la herencia de prioridad." }
-      - { texto: "El uso de CPU de la tarea B", porque: "B se ejecuta igual en los dos casos; lo que cambia es cuánto espera A." }
-      - { texto: "La RAM de cada pila", porque: "Eso es otra medida; aquí importa el tiempo de A." }
-    escalera: ["¿Qué tarea sufre la inversión?"]
-    solucion: "La latencia de A, con semáforo binario y con mutex."
 
   - id: resumen
     tipo: resumen

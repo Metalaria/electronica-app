@@ -1,4 +1,8 @@
-# Lección 1.2 de la sección 9.8 «Adaptación de Niveles entre Familias» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 9.8 «Adaptación de Niveles entre Familias» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 («aprender haciendo», GUIA §13): la entrada que no reconoce 3,2 V se toca en la figura 9.2; el divisor se
+# monta hasta dar 3,33 V; su τ se calcula y se escribe; la solución de un caso (SPI rápido hacia 3,3 V) se toca en la
+# tabla de decisión de la figura 9.8; la medida del banco se hace con el multímetro en la entrada del receptor.
+# Quedan dos preguntas de opciones: el riesgo de alta a baja y por qué el divisor es lento.
 leccion: cap09/sec-9.8
 
 libro:
@@ -14,6 +18,7 @@ libro:
   123: "Traductor bidireccional automático"
   125: "Bajar tensión, señal lenta"
   128: "un traductor unidireccional puesto al revés no da ningún síntoma útil, solo silencio"
+  132: "medir el nivel alto real en la entrada del receptor"
   133: "el enlace funciona por casualidad"
   "cap09#29": "Mezclar familias requiere comprobar que las salidas de una caen en las zonas válidas de la otra"
 
@@ -73,8 +78,9 @@ tarjetas:
   - id: explore-divisor
     tipo: explorar
     titulo: "Un divisor para bajar"
-    texto: "Un divisor baja los 5 V a la entrada de 3,3 V. Cambie las resistencias y mire la tensión y la constante de tiempo."
+    texto: "Un divisor baja los 5 V a la entrada de 3,3 V. Elija las resistencias hasta que la entrada reciba 3,33 V."
     libro: [118]
+    inicio: { R_1: 15000, R_2: 2000 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -87,13 +93,22 @@ tarjetas:
       mandos:
         - { valor: R_1, lista: [1000, 10000, 15000], rotulo: "R₁" }
         - { valor: R_2, lista: [2000, 20000, 30000], rotulo: "R₂" }
-    requiere: { mover: [R_1, R_2] }
+    objetivo:
+      condiciones:
+        - { valor: V_out, objetivo: 3.33, tol: 0.01, rotulo: "Entrada: {{V_out}}" }
+      logrado: "Con R₂ el doble de R₁, {{V_out}}. Pero mire τ: {{tau_d}}. Con resistencias altas, el divisor consume poco y es más lento."
+      pistas:
+        - { cuando: { valor: V_out, mayor: 3.4 }, texto: "Demasiada tensión: R₂ debe ser el doble de R₁, no más." }
+        - { texto: "Falta tensión: suba R₂ o baje R₁." }
+    escalera: ["3,33 V son dos tercios de 5 V: R₂ = 2 · R₁."]
+    solucion: "Cualquier pareja con R₂ = 2 · R₁: 1 y 2 kΩ, 10 y 20 kΩ, 15 y 30 kΩ."
+    comprobar:
+      - { con: { R_1: 15000, R_2: 30000 }, V_out: 3.33 }
 
   - id: estime-tau
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "La velocidad del divisor"
-    texto: "Con 15 kΩ y 30 kΩ y una entrada de 20 pF, ¿qué constante de tiempo tiene la señal?"
+    texto: "Con 15 kΩ y 30 kΩ y una entrada de 20 pF, calcule la constante de tiempo de la señal y escríbala."
     libro: [118]
     fijar: { R_1: 15000, R_2: 30000 }
     widget:
@@ -102,19 +117,15 @@ tarjetas:
       piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
       lectura: { valor: V_out, rotulo: "Tensión en la entrada" }
       mide: { salida: V_out }
-    estimar:
-      objetivo: "tau_d"
+      mandos: []
+    leer:
+      objetivo: tau_d
       unidad: s
-      min: 0
-      max: 0.000001
-      paso: 0.00000001
-      inicio: 0.0000006
-      tol: 0.05
+      tol: 0.03
       rotulo: "τ"
-    exito: "200 ns: sirve hasta unos cientos de kilohercios, no más."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00000021 }, texto: "Se ha pasado: la entrada no ve las dos resistencias en serie, sino en paralelo." }
-      - { texto: "Se ha quedado corto: 15 kΩ en paralelo con 30 kΩ dan 10 kΩ; multiplíquelos por 20 pF." }
+      errores:
+        - { expr: "(R_1 + R_2)*C_e", texto: "Ha sumado las resistencias en serie. La entrada ve las dos en paralelo: 10 kΩ." }
+    exito: "{{tau_d}}: sirve hasta unos cientos de kilohercios, no más."
     escalera: ["La entrada ve las dos resistencias en paralelo."]
     solucion: "15 ‖ 30 = 10 kΩ; 10 kΩ · 20 pF = 200 ns."
     comprobar:
@@ -137,75 +148,59 @@ tarjetas:
     escalera: ["¿Qué hay en la entrada, además de su umbral?"]
     solucion: "Una RC: la resistencia vista por la capacidad de entrada."
 
-  - id: ordene-soluciones
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Cinco soluciones"
-    texto: "Ordene las soluciones de menos a más."
-    libro: [118, 119, 120, 122, 123]
-    ordenar:
-      - "Divisor resistivo"
-      - "Diodo en serie con pull-up"
-      - "MOSFET de canal N con dos pull-up"
-      - "Traductor unidireccional dedicado"
-      - "Traductor bidireccional automático"
-    exito: "Del divisor, que solo baja tensión y es lento, al traductor que detecta el sentido solo."
-    pistas:
-      - { texto: "Empiece por dos resistencias y acabe por el integrado que detecta el sentido." }
-    escalera: ["Las dos últimas son integrados; la primera, dos resistencias."]
-    solucion: "Divisor, diodo con pull-up, MOSFET, traductor unidireccional y bidireccional automático."
-
   - id: empareje-decision
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "La tabla de decisión"
-    texto: "Una cada situación con su solución."
-    libro: [121, 125]
-    emparejar:
-      - ["3,3 V → entrada TTL/HCT", "Nada"]
-      - ["Bajar tensión, señal lenta", "Divisor"]
-      - ["Bus I²C entre dominios", "MOSFET + pull-up"]
-      - ["SPI o líneas rápidas unidireccionales", "Traductor dedicado"]
-      - ["Sentido desconocido o mixto", "Bidireccional automático"]
-    exito: "La comprobación previa resuelve la mitad de los casos: 3,3 V ataca TTL sin nada."
-    pistas:
-      - { texto: "I²C es de drenador abierto y bidireccional: solo una de las soluciones respeta las dos cosas." }
-    escalera: ["Empiece por la que no necesita nada."]
-    solucion: "Nada, divisor, MOSFET, traductor dedicado y bidireccional automático, en ese orden."
-
-  - id: pregunta-al-reves
-    tipo: pregunta
-    titulo: "Un traductor al revés"
-    texto: "Un traductor unidireccional se ha montado en el sentido contrario. ¿Qué síntoma da?"
-    libro: [128]
+    texto: "Un reloj SPI de 5 V va a un chip de 3,3 V que no tolera 5 V, siempre en el mismo sentido. Toque su fila en la tabla."
+    libro: [118, 119, 120, 121, 122, 123, 125, 128]
     widget:
       tipo: figura
       figura: fig-9.9
       zonas:
-        - { id: todo, rotulo: "La figura entera", rect: [0, 0, 450, 261], texto: "Qué solución corresponde a cada caso." }
-    opciones:
-      - { texto: "Ninguno útil: solo silencio", bien: true, porque: "Por eso se olvida tan fácilmente: no hay humo ni niveles raros, simplemente no pasa la señal." }
-      - { texto: "Se calienta enseguida", porque: "No da ese aviso: el traductor puesto al revés no da ningún síntoma útil." }
-      - { texto: "Invierte la señal", porque: "No la invierte: con el sentido equivocado no la transmite." }
-    escalera: ["Piense en el error más silencioso de los tres."]
-    solucion: "Silencio: no pasa nada por la línea."
+        - { id: nada, rotulo: "Primera fila", rect: [8, 24, 436, 29] }
+        - { id: hct, rotulo: "Segunda fila", rect: [8, 52, 436, 29] }
+        - { id: divisor, rotulo: "Cuarta fila", rect: [8, 110, 436, 29] }
+        - { id: unidir, rotulo: "Quinta fila", rect: [8, 139, 436, 29] }
+        - { id: mosfet, rotulo: "Sexta fila", rect: [8, 168, 436, 29] }
+        - { id: bidir, rotulo: "Séptima fila", rect: [8, 196, 436, 31] }
+    tocar:
+      bien: [unidir]
+      porque:
+        nada: "Eso vale de 3,3 V hacia una entrada TTL. Aquí se baja de 5 V a una entrada que no lo tolera."
+        hct: "Eso es para subir de 3,3 V a una HC de 5 V; aquí se baja."
+        divisor: "El divisor es lento: con un reloj rápido, los flancos serían rampas."
+        mosfet: "El MOSFET con dos pull-up es para buses de drenador abierto como I²C, no para SPI."
+        bidir: "El sentido aquí es fijo y conocido: no hace falta que lo detecte."
+    exito: "Un traductor unidireccional: rápido y limpio. Ojo con el sentido: puesto al revés no da ningún síntoma, solo silencio."
+    escalera: ["Es una señal rápida, de alta a baja, con sentido fijo."]
+    solucion: "La quinta fila: traductor unidireccional."
 
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: medir
     titulo: "La medida de un minuto"
-    texto: "El enlace entre dos familias parece funcionar. ¿Qué se mide para saber si es por casualidad?"
-    libro: [133]
+    texto: "El divisor de 15 kΩ y 30 kΩ parece funcionar. Ponga las puntas donde se comprueba el nivel alto que de verdad recibe el receptor."
+    libro: [132, 133]
+    fijar: { R_1: 15000, R_2: 30000 }
     widget:
-      tipo: figura
-      figura: fig-9.2
-      zonas:
-        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182], texto: "CMOS HC: V_{IH} = 3,5 V." }
-    opciones:
-      - { texto: "El nivel alto real en la entrada del receptor, con el emisor dando un 1", bien: true, porque: "Si no supera con margen el V_{IH} del receptor, fallará con la temperatura o con otra unidad." }
-      - { texto: "La tensión de la salida en vacío", porque: "Importa lo que llega a la entrada, con la carga puesta, no la salida sin conectar." }
-      - { texto: "Nada: si funciona, funciona", porque: "Sin margen funciona por casualidad, y falla una vez cada mil transferencias." }
-    escalera: ["¿Dónde importa el nivel: en la salida o en la entrada que lo lee?"]
-    solucion: "El alto real en la entrada del receptor, frente a su V_{IH}."
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      mide: { salida: V_out }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+        puntos: { fte: "Salida del emisor", salida: "Entrada del receptor", "0": "Masa" }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [salida, "0"]
+      valor: V_out
+      porque:
+        fte: "Ahí mide lo que entrega el emisor. Importa lo que llega a la entrada del receptor, con la carga puesta."
+        "fte/salida": "Así mide lo que cae en R₁, no el nivel que recibe la entrada."
+    exito: "{{V_out}} frente al V_{IH} del receptor: si no lo supera con margen, el enlace funciona por casualidad."
+    escalera: ["El nivel que importa es el de la entrada que lo lee, respecto a masa."]
+    solucion: "Roja en la entrada del receptor, negra en masa."
 
   - id: resumen
     tipo: resumen

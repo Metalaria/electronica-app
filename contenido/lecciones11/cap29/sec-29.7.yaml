@@ -1,6 +1,9 @@
-# Lección 1.2 de la sección 28.7 «Contadores y Registros de Desplazamiento» (cap29; etiqueta interna sec-29.7). Formato: contenido/lecciones11/GUIA.md (§11).
+# Lección de la sección 28.7 «Contadores y Registros de Desplazamiento» (cap29; etiqueta interna sec-29.7). Formato: contenido/lecciones11/GUIA.md (§11).
 # El contador asíncrono son flip-flops T disparados por flanco de subida desde la Q̄ del anterior (así cuenta hacia
 # arriba); el LFSR de 3 bits realimenta Q2 ⊕ Q3, tomas de longitud máxima (7 estados).
+# 1.2.1 («aprender haciendo», GUIA §13): el retraso del bit alto y el periodo del LFSR se escriben; los 4 falsos que
+# ve un decodificador se tocan en la figura 28.12; la Q2 del síncrono, la Q4 del registro y la Q1 del LFSR se dibujan.
+# Queda una pregunta de opciones (el estado que falta en el LFSR). La exploración del asíncrono es de cronograma.
 leccion: cap29/sec-29.7
 
 libro:
@@ -15,6 +18,7 @@ libro:
   223: "Serie a serie: retardar una señal un número exacto de ciclos"
   224: "Paralelo a paralelo: registro simple"
   227: "recorre todos los estados posibles menos uno, el de todo ceros, antes de repetirse"
+  238: "Contador asíncrono con sus estados espurios frente al síncrono"
   231: "Un contador debe poder inicializarse"
   236: "se repite exactamente tras 2ⁿ−1 pasos"
   "cap29#39": "A+B"
@@ -23,14 +27,17 @@ modelo:
   valores:
     n_s: { sim: "n", nombre: "etapas", unidad: "", valor: 8 }
     t_ff: { sim: "t_{pd}", nombre: "retardo de cada etapa", unidad: s, valor: 10e-9 }
+    n_l: { sim: "n", nombre: "bits del LFSR", unidad: "", valor: 3 }
+    c_dec: { sim: "N", nombre: "cuenta que se decodifica", unidad: "", valor: 4 }
   calculos:
     t_msb: { expr: "n_s*t_ff", sim: "t", nombre: "retraso del bit más significativo", unidad: s }
+    p_l: { expr: "2^n_l - 1", sim: "2^{n} − 1", nombre: "pasos hasta repetirse", unidad: "" }
 
 tarjetas:
   - id: explore-asincrono
     tipo: explorar
     titulo: "Un contador asíncrono"
-    texto: "Cada flip-flop T se dispara con el anterior. Mueva el cursor y lea la cuenta en Q2 Q1 Q0."
+    texto: "Cada flip-flop T se dispara con el anterior. Dé pulsos hasta que la cuenta en Q2 Q1 Q0 llegue a cinco."
     libro: [211, "cap29#39"]
     widget:
       tipo: logica
@@ -43,61 +50,71 @@ tarjetas:
         - { id: Q2, de: t3.q }
         - { id: Q1, de: t2.q }
         - { id: Q0, de: t1.q }
-      cronograma: { ciclos: 8, senales: [CLK, Q0, Q1, Q2] }
+    objetivo:
+      condiciones:
+        - { led: Q2, valor: 1, rotulo: "Q2 = 1" }
+        - { led: Q1, valor: 0, rotulo: "Q1 = 0" }
+        - { led: Q0, valor: 1, rotulo: "Q0 = 1" }
+      logrado: "Cinco pulsos. Cada etapa cambia cuando la anterior baja: una cuenta en binario."
+      pistas:
+        - { texto: "Q0 cambia en cada pulso; Q1, cuando Q0 vuelve a 0." }
+    escalera: ["Q0 cambia en cada pulso; Q1, cada dos; Q2, cada cuatro."]
+    solucion: "Cinco pulsos de reloj."
 
   - id: estime-retardo
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Ocho etapas"
-    texto: "Un contador asíncrono de 8 etapas de 10 ns pasa de 0111 1111 a 1000 0000. ¿Cuánto después del flanco cambia el bit más significativo?"
+    texto: "Un contador asíncrono de 8 etapas de 10 ns pasa de 0111 1111 a 1000 0000. Escriba cuánto después del flanco cambia el bit más significativo."
     libro: [212]
-    estimar:
-      objetivo: "t_msb"
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 1, max: 8, unidad: "", rotulo: "etapa" }
+      y: { min: 0, max: 0.0000001, unidad: s, rotulo: "retraso" }
+      curvas:
+        - { expr: "nx*t_ff", color: azul, rotulo: "cuándo cambia cada etapa" }
+      mandos: []
+    leer:
+      objetivo: t_msb
       unidad: s
-      min: 0
-      max: 0.0000002
-      paso: 0.000000001
-      inicio: 0.00000015
       tol: 0.02
-      rotulo: "Retraso"
-    exito: "80 ns, 70 ns más tarde que el primero: entretanto la salida pasa por cuentas que no existen."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.000000082 }, texto: "Se ha pasado: son 8 etapas de 10 ns, una tras otra." }
-      - { texto: "Se ha quedado corto: cada etapa espera a la anterior, así que los retardos se suman." }
+      rotulo: "Retraso del bit alto"
+      errores:
+        - { expr: "t_ff", texto: "Eso tarda una etapa. Cada una espera a la anterior: los retardos se suman." }
+        - { expr: "(n_s - 1)*t_ff", texto: "Eso es lo que llega más tarde que el primero. Desde el flanco son las ocho etapas." }
+    exito: "{{t_msb}}, 70 ns más tarde que el primero: entretanto la salida pasa por cuentas que no existen."
     escalera: ["Los retardos se acumulan: cada etapa se dispara con la anterior."]
     solucion: "8 × 10 ns = 80 ns."
     comprobar:
       - { t_msb: 80e-9 }
 
   - id: prediga-decodificar
-    tipo: predecir
+    tipo: tocar
     titulo: "Decodificar un asíncrono"
-    texto: "Un circuito vigila la salida del contador asíncrono para detectar un valor concreto. ¿Qué verá?"
-    libro: [213]
+    texto: "Un circuito vigila la cuenta del contador asíncrono de la figura para detectar el {{c_dec}}. Toque las transiciones en las que verá uno falso."
+    libro: [213, 217, 238]
     widget:
-      tipo: logica
-      entradas: [{ id: CLK, reloj: true }]
-      piezas:
-        - { id: t1, tipo: t, entradas: ["1", CLK] }
-        - { id: t2, tipo: t, entradas: ["1", t1.nq] }
-        - { id: t3, tipo: t, entradas: ["1", t2.nq] }
-      salidas:
-        - { id: Q2, de: t3.q }
-        - { id: Q1, de: t2.q }
-        - { id: Q0, de: t1.q }
-      ocultar: true
-    opciones:
-      - { texto: "Pulsos espurios en las transiciones", bien: true, porque: "Los bits no cambian a la vez: los estados intermedios pueden coincidir un instante con el valor buscado." }
-      - { texto: "El valor exacto, sin problemas", porque: "Solo si todos los bits cambiaran a la vez; en el asíncrono cambian uno tras otro." }
-      - { texto: "Nada: el contador asíncrono no se puede leer", porque: "Se puede leer; el problema son las cuentas intermedias que aparecen en cada transición." }
-    escalera: ["¿Cambian todos los bits en el mismo instante?"]
-    solucion: "Pulsos espurios: los estados intermedios de cada transición."
+      tipo: figura
+      figura: fig-29.11
+      zonas:
+        - { id: t12, rotulo: "Primera transición marcada", rect: [134, 107, 36, 36] }
+        - { id: t34, rotulo: "Segunda transición marcada", rect: [227, 107, 36, 36] }
+        - { id: t56, rotulo: "Tercera transición marcada", rect: [311, 107, 36, 36] }
+        - { id: t70, rotulo: "Cuarta transición marcada", rect: [400, 107, 36, 36] }
+    tocar:
+      bien: [t56, t70]
+      todas: true
+      porque:
+        t12: "Ahí pasa por un 0 falso, no por el valor que se busca."
+        t34: "Ahí pasa por dos cuentas falsas, pero no por el {{c_dec}}: el que llega después es el de verdad."
+    exito: "Dos pulsos espurios del decodificador: los bits no cambian a la vez. Por eso los asíncronos se usan hoy casi solo como divisores de frecuencia."
+    escalera: ["Busque los recuadros rojos con ese número dentro."]
+    solucion: "La tercera y la cuarta transiciones marcadas."
 
   - id: explore-sincrono
-    tipo: explorar
+    tipo: dibujar
     titulo: "Un contador síncrono"
-    texto: "Los tres bits comparten el reloj y cambian a la vez. Mueva el cursor y compare con el asíncrono."
-    libro: [215]
+    texto: "Los tres bits comparten el reloj y cambian a la vez. Dibuje Q2, el bit alto."
+    libro: [215, 231]
     widget:
       tipo: logica
       entradas: [{ id: CLK, reloj: true }]
@@ -107,54 +124,20 @@ tarjetas:
         - { id: Q2, de: c1.q2 }
         - { id: Q1, de: c1.q1 }
         - { id: Q0, de: c1.q0 }
-      cronograma: { ciclos: 8, senales: [CLK, Q0, Q1, Q2] }
-
-  - id: pregunta-regla
-    tipo: pregunta
-    titulo: "La regla moderna"
-    texto: "¿Cuándo se usa hoy un contador asíncrono?"
-    libro: [213, 217]
-    widget:
-      tipo: logica
-      entradas: [{ id: CLK, reloj: true }]
-      piezas:
-        - { id: t1, tipo: t, entradas: ["1", CLK] }
-        - { id: t2, tipo: t, entradas: ["1", t1.nq] }
-      salidas:
-        - { id: Q1, de: t2.q }
-        - { id: Q0, de: t1.q }
-    opciones:
-      - { texto: "Casi solo como divisor de frecuencia, donde los glitches no importan", bien: true, porque: "Contadores síncronos siempre, salvo como divisor de reloj puro." }
-      - { texto: "Siempre que haga falta velocidad", porque: "Su problema es que los retardos se acumulan: no es la opción rápida." }
-      - { texto: "Para decodificar cuentas", porque: "Es justo donde falla: sus estados intermedios dan pulsos espurios." }
-    escalera: ["¿En qué uso no importan los estados intermedios?"]
-    solucion: "Como divisor de reloj puro."
-
-  - id: explore-registro
-    tipo: explorar
-    titulo: "El dato avanza"
-    texto: "Cuatro flip-flops D en cadena. Mueva el cursor y siga los bits de DS."
-    libro: [219]
-    widget:
-      tipo: logica
-      entradas: [DS, { id: CLK, reloj: true }]
-      piezas:
-        - { id: f1, tipo: d, entradas: [DS, CLK] }
-        - { id: f2, tipo: d, entradas: [f1.q, CLK] }
-        - { id: f3, tipo: d, entradas: [f2.q, CLK] }
-        - { id: f4, tipo: d, entradas: [f3.q, CLK] }
-      salidas:
-        - { id: Q1, de: f1.q }
-        - { id: Q2, de: f2.q }
-        - { id: Q3, de: f3.q }
-        - { id: Q4, de: f4.q }
-      cronograma: { ciclos: 7, estimulo: { DS: "1010000" }, senales: [CLK, DS, Q1, Q2, Q3, Q4] }
+      cronograma: { ciclos: 8, senales: [CLK, Q0, Q1] }
+      dibujo: false
+    dibujar:
+      senal: Q2
+    exito: "Sin estados intermedios: todos los bits cambian en el mismo flanco. Y como todo contador, debe poder inicializarse."
+    escalera:
+      - "Q2 vale 1 en la segunda mitad de la cuenta."
+    solucion: "Q2 sube a mitad de la cuenta y baja al volver al principio."
 
   - id: dibuje-q4
     tipo: dibujar
     titulo: "Serie a serie: un retardo exacto"
     texto: "Dibuje Q4, la salida de la cuarta etapa, para esta secuencia en DS."
-    libro: [219, 223]
+    libro: [219, 221, 222, 223, 224]
     widget:
       tipo: logica
       entradas: [DS, { id: CLK, reloj: true }]
@@ -170,33 +153,16 @@ tarjetas:
       dibujo: false
     dibujar:
       senal: Q4
-    exito: "Q4 es DS retrasada un número exacto de ciclos: un registro serie a serie."
+    exito: "Q4 es DS retrasada un número exacto de ciclos: serie a serie. Serie a paralelo recibe (SPI); paralelo a serie transmite; paralelo a paralelo es un registro simple."
     escalera:
       - "Cada etapa copia la anterior en cada flanco."
       - "Q4 sale cuatro flancos después de que DS entre en la primera."
     solucion: "Q4 repite DS cuatro flancos más tarde."
 
-  - id: empareje-configuraciones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuatro configuraciones"
-    texto: "Una cada configuración de un registro con su uso."
-    libro: [221, 222, 223, 224]
-    emparejar:
-      - ["Serie a paralelo", "Recibir: la recepción de SPI"]
-      - ["Paralelo a serie", "Transmitir"]
-      - ["Serie a serie", "Retardar una señal un número exacto de ciclos"]
-      - ["Paralelo a paralelo", "Registro simple"]
-    exito: "Y dos usos menos evidentes: expandir entradas y salidas, y generar secuencias pseudoaleatorias."
-    pistas:
-      - { texto: "Lo que entra en serie y sale en paralelo es lo que se recibe." }
-    escalera: ["El que acaba de dibujar es serie a serie."]
-    solucion: "Recibir, transmitir, retardar y registro simple."
-
   - id: sorpresa-lfsr
-    tipo: sorpresa
+    tipo: leer
     titulo: "Un azar que se repite"
-    texto: "Tres flip-flops con una XOR que realimenta el primero. Mueva el cursor hasta el final: ¿cuándo vuelve el estado inicial?"
+    texto: "Tres flip-flops con una XOR que realimenta el primero. Mueva el cursor y cuente cuántos pasos tarda en volver el estado inicial."
     libro: [227, 236, "cap29#39"]
     widget:
       tipo: logica
@@ -211,6 +177,44 @@ tarjetas:
         - { id: Q2, de: f2.q }
         - { id: Q3, de: f3.q }
       cronograma: { ciclos: 8, senales: [CLK, Q1, Q2, Q3] }
+    leer:
+      objetivo: p_l
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pasos"
+      errores:
+        - { expr: "p_l + 1", texto: "Ocho serían todos los estados de tres bits; uno no aparece nunca." }
+    exito: "{{p_l}} pasos: 2³ − 1. La secuencia parece aleatoria y es exactamente periódica."
+    escalera: ["Anote Q1 Q2 Q3 en el primer tramo y busque cuándo se repite."]
+    solucion: "Vuelve tras 7 pasos."
+    comprobar:
+      - { p_l: 7 }
+
+  - id: dibuje-lfsr
+    tipo: dibujar
+    titulo: "La secuencia"
+    texto: "Dibuje Q1, el primer flip-flop del LFSR: recibe Q2 ⊕ Q3 en cada flanco."
+    libro: [227, "cap29#39"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [x1, CLK], inicial: 1 }
+        - { id: f2, tipo: d, entradas: [f1.q, CLK] }
+        - { id: f3, tipo: d, entradas: [f2.q, CLK] }
+        - { id: x1, tipo: xor, entradas: [f2.q, f3.q] }
+      salidas:
+        - { id: Q1, de: f1.q }
+        - { id: Q2, de: f2.q }
+        - { id: Q3, de: f3.q }
+      cronograma: { ciclos: 7, senales: [CLK, Q2, Q3] }
+      dibujo: false
+    dibujar:
+      senal: Q1
+    exito: "Siete valores que parecen al azar. Un LFSR de 32 bits genera más de cuatro mil millones antes de repetirse, con unas pocas puertas: CRC, patrones de prueba, ensanchado."
+    escalera:
+      - "En cada flanco, Q1 toma la XOR de lo que valen Q2 y Q3 justo antes."
+    solucion: "Q1 = Q2 ⊕ Q3 del ciclo anterior, flanco a flanco."
 
   - id: porque-sin-ceros
     tipo: porque
@@ -237,27 +241,6 @@ tarjetas:
       - { texto: "Ninguno: el octavo es el inicial repetido", porque: "El inicial vuelve tras siete pasos, 2ⁿ − 1. Falta el estado de todo ceros." }
     escalera: ["¿Qué entra en el primer flip-flop si los tres valen 0?"]
     solucion: "El 000: de ceros solo salen ceros."
-
-  - id: pregunta-inicializar
-    tipo: pregunta
-    titulo: "Al encender"
-    texto: "¿Qué le falta a un contador que no tiene forma de inicializarse?"
-    libro: [231]
-    widget:
-      tipo: logica
-      entradas: [{ id: CLK, reloj: true }, { id: R, rotulo: "Reset" }]
-      piezas:
-        - { id: c1, tipo: contador, bits: 3, entradas: [CLK, R] }
-      salidas:
-        - { id: Q2, de: c1.q2 }
-        - { id: Q1, de: c1.q1 }
-        - { id: Q0, de: c1.q0 }
-    opciones:
-      - { texto: "Un valor conocido: tras el encendido su cuenta es indeterminada", bien: true, porque: "Por eso los contadores llevan una entrada de reset, como la R de este." }
-      - { texto: "Nada: siempre arranca en cero", porque: "No está garantizado: sin inicializar, el valor tras el encendido es indeterminado." }
-      - { texto: "Un reloj más rápido", porque: "El reloj no fija el punto de partida; hace falta poder inicializarlo." }
-    escalera: ["¿Qué vale un biestable recién alimentado, si nadie lo fija?"]
-    solucion: "Inicializarlo: si no, su valor tras el encendido es indeterminado."
 
   - id: resumen
     tipo: resumen

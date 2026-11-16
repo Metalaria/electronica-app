@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección K.3 «volatile, const y el Modelo de Memoria» (apK). Formato: contenido/lecciones11/GUIA.md
 # (§11). Figura K.1a (svg_vista 325,42 × 187,09): secciones en la Flash y en la RAM. La comprobación en simavr de
 # ticks_lee() (46 valores imposibles de 20 000 sin ATOMIC_BLOCK) es la del bloque 35 (Complementos/codigo/apK/atomico).
+# 1.2.1 («aprender haciendo», GUIA §13): las secciones y la falta de volatile se tocan; los bytes de la tabla se
+# escriben; la lectura a medias es un objetivo lógico en pequeño (ticks de dos bits, uno por «byte», copiados por dos
+# cerrojos: la copia con los dos bits a uno con ticks en 2); el orden de ATOMIC_BLOCK se toca en un listado desordenado que lo desarrolla
+# (bloque 34). Quedan dos preguntas de opciones: __flash y el cálculo que se mueve.
 leccion: apK/sec-K.3
 
 libro:
@@ -20,24 +24,34 @@ modelo:
     ram_avr: { sim: "RAM", nombre: "RAM del ATmega328P", unidad: "B", valor: 2048 }
   calculos:
     tab: { expr: "n_tab*b_val", sim: "tabla", nombre: "tamaño de la tabla", unidad: "B" }
+    tab_mal: { expr: "n_tab", nombre: "un byte por valor", unidad: "B" }
     frac_ram: { expr: "tab/ram_avr", sim: "fracción", nombre: "fracción de la RAM", unidad: "", cifras: 2 }
 
 tarjetas:
   - id: explore-secciones
-    tipo: explorar
+    tipo: tocar
     titulo: "Dónde acaba cada cosa"
-    texto: "El enlazador reparte el programa en secciones. Toque las de la Flash y las de la RAM."
+    texto: "El enlazador reparte el programa en secciones. Una variable global con valor inicial vive en .data, en la RAM: toque dónde está ese valor al encender."
     libro: [25, "apK#69"]
     widget:
       tipo: figura
       figura: fig-K.1
       zonas:
-        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50], texto: ".text: el código, en la Flash." }
-        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26], texto: ".rodata: las constantes; en el AVR también se copian a la RAM." }
-        - { id: valores, rotulo: "Flash, abajo", rect: [9, 112, 62, 26], texto: "Valores de .data: se copian a la RAM antes de main()." }
-        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26], texto: ".data: las variables con valor inicial." }
-        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28], texto: "La pila, al final de la RAM." }
-    requiere: { mover: [rodata, data] }
+        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50] }
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26] }
+        - { id: valores, rotulo: "Flash, abajo", rect: [9, 112, 62, 26] }
+        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26] }
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28] }
+    tocar:
+      bien: [valores]
+      porque:
+        text: "Ahí va el código, .text."
+        rodata: "Ahí van las constantes, .rodata."
+        data: "Ahí vivirá la variable, pero la RAM no guarda nada sin alimentación."
+        pila: "La pila es para las locales, al final de la RAM."
+    exito: "En la Flash, junto al código: se copia a la RAM antes de main(). Las variables sin valor inicial, en .bss, se ponen a cero."
+    escalera: ["¿Qué memoria conserva los datos sin alimentación?"]
+    solucion: "La Flash, abajo: los valores de .data."
 
   - id: toque-tabla-avr
     tipo: tocar
@@ -61,31 +75,25 @@ tarjetas:
     solucion: "En la RAM, con .data."
 
   - id: estime-seno
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Una tabla de seno"
-    texto: "Una tabla de un seno de 256 valores de 16 bits, copiada a la RAM. ¿Qué parte de los 2 KB del ATmega328P se come?"
+    texto: "Una tabla const de un seno de 256 valores de 16 bits, copiada a la RAM del ATmega328P. Calcule cuántos bytes de RAM se come."
     libro: [26]
     widget:
       tipo: figura
       figura: fig-K.1
       zonas:
-        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26], texto: "La tabla, copiada a .data." }
-    estimar:
-      objetivo: "frac_ram"
-      unidad: ""
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.8
-      tol: 0.05
-      rotulo: "Fracción de la RAM"
-    exito: "512 bytes: la cuarta parte de la RAM, por una tabla que nunca cambia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.25 }, texto: "Se ha pasado: 256 valores de 2 bytes son 512 bytes." }
-      - { texto: "Se ha quedado corto: cada valor de 16 bits ocupa 2 bytes." }
-    escalera: ["256 × 2 bytes, frente a 2048."]
-    solucion: "512 / 2048 = 0,25: la cuarta parte."
+        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26] }
+    leer:
+      objetivo: tab
+      unidad: B
+      tol: 0.01
+      rotulo: "Tamaño de la tabla"
+      errores:
+        - { expr: "tab_mal", texto: "Cada valor de 16 bits ocupa 2 bytes." }
+    exito: "512 bytes: la cuarta parte de los 2 KB de RAM, por una tabla que nunca cambia."
+    escalera: ["256 valores de 2 bytes."]
+    solucion: "256 × 2 = 512 bytes."
     comprobar:
       - { tab: 512, frac_ram: 0.25, ram_avr: 2048, b_val: 2 }
 
@@ -107,70 +115,85 @@ tarjetas:
     solucion: "lpm: un ciclo más que de la RAM, sin gastar RAM."
 
   - id: pregunta-donde-volatile
-    tipo: pregunta
+    tipo: tocar
     titulo: "Dónde hace falta volatile"
-    texto: "volatile es imprescindible en tres sitios. ¿Cuál de estos no es uno de ellos?"
+    texto: "volatile es imprescindible en los registros, en las variables que cambia una interrupción y en las que consulta un bucle de espera. Toque la declaración a la que le falta."
     libro: [28]
     widget:
       tipo: figura
-      figura: fig-K.1
+      codigo:
+        lenguaje: c
+        texto: |
+          static uint16_t ticks;       /* written by the ISR */
+          const uint8_t tabla[4];      /* never written      */
+          uint16_t copia;              /* local of a function */
       zonas:
-        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28], texto: "Las variables locales viven en la pila o en registros." }
-    opciones:
-      - { texto: "Una variable local que solo usa su función", bien: true, porque: "Nadie la cambia fuera de lo que ve el compilador: no lo necesita." }
-      - { texto: "Un registro de un periférico", porque: "Es uno de los tres: leerlo o escribirlo tiene efectos." }
-      - { texto: "Una variable que cambia una interrupción y lee el programa", porque: "Es uno de los tres: el compilador no ve la interrupción." }
-      - { texto: "La variable que consulta un bucle de espera", porque: "Es uno de los tres: sin él, el bucle no termina." }
-    escalera: ["¿Quién más que la propia función puede cambiar una local?"]
-    solucion: "La variable local: los tres sitios son registros, variables de interrupciones y esperas."
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+    tocar:
+      bien: [l1]
+      porque:
+        l2: "Nadie la cambia: es constante."
+        l3: "Solo la usa su función: el compilador lo ve todo."
+    exito: "ticks la cambia una interrupción que el compilador no ve: sin volatile, puede leerla una sola vez y no enterarse nunca."
+    escalera: ["¿Cuál cambia fuera de lo que ve el compilador?"]
+    solucion: "La primera: ticks."
 
   - id: prediga-atomico
-    tipo: predecir
+    tipo: explorar
     titulo: "volatile no basta"
-    texto: "Una interrupción incrementa volatile uint16_t ticks y el programa la lee directamente 20 000 veces. ¿Qué lee?"
+    texto: "Leer ticks son dos instrucciones, un byte y luego el otro; en pequeño, ticks tiene dos bits, uno por byte. Consiga una copia con los dos a uno mientras ticks pasa de 1 a 2."
     libro: [30, 35]
     widget:
-      tipo: figura
-      figura: fig-K.1
-      zonas:
-        - { id: data, rotulo: "RAM, arriba", rect: [108, 30, 62, 26], texto: "ticks: dos bytes en la RAM." }
-    opciones:
-      - { texto: "Algunos valores que nunca existieron: 46, uno de cada 435", bien: true, porque: "Coge el byte bajo antes de que pase de 255 a 0 y el alto después: volatile no hace atómico el acceso." }
-      - { texto: "Siempre valores correctos: es volatile", porque: "volatile obliga a leer de memoria, pero en dos instrucciones." }
-      - { texto: "Siempre el mismo valor", porque: "Con volatile sí ve los cambios; el problema es leerlos a medias." }
-    escalera: ["¿Cuántas instrucciones son leer un uint16_t en el AVR?"]
-    solucion: "46 valores imposibles de 20 000: hace falta ATOMIC_BLOCK."
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Interrupción: ticks++" }, { id: EB, rotulo: "Copiar el bajo" }, { id: EA, rotulo: "Copiar el alto" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK], rotulo: "ticks" }
+        - { id: lb, tipo: latch, entradas: [c1.q0, EB], rotulo: "Copia del bajo" }
+        - { id: la, tipo: latch, entradas: [c1.q1, EA], rotulo: "Copia del alto" }
+      salidas:
+        - { id: T1, de: c1.q1, rotulo: "ticks, alto" }
+        - { id: T0, de: c1.q0, rotulo: "ticks, bajo" }
+        - { id: A, de: la.q, rotulo: "Copia, alto" }
+        - { id: B, de: lb.q, rotulo: "Copia, bajo" }
+    objetivo:
+      condiciones:
+        - { contador: c1, valor: 2, rotulo: "ticks vale 2" }
+        - { led: A, valor: 1, rotulo: "Copia, alto a uno" }
+        - { led: B, valor: 1, rotulo: "Copia, bajo a uno" }
+      logrado: "El bajo copiado antes de pasar de 1 a 0 y el alto después: un valor que nunca existió. volatile no hace atómico el acceso."
+      pistas:
+        - { cuando: { contador: c1, valor: 0 }, texto: "Primero, una interrupción: ticks a 1." }
+        - { texto: "Copie el bajo con ticks en 1, ciérrelo, deje pasar otra interrupción y copie el alto." }
+    escalera: ["Con ticks en 1, copie el bajo; con ticks en 2, el alto."]
+    solucion: "Pulso, copiar el bajo, otro pulso, copiar el alto: la copia tiene los dos a uno y ticks vale 2. De 20 000 lecturas directas, 46 son así."
 
   - id: ordene-atomic
-    tipo: pregunta
-    fase: "Ordene"
+    tipo: tocar
     titulo: "ATOMIC_BLOCK por dentro"
-    texto: "Ponga en orden lo que hace ATOMIC_BLOCK(ATOMIC_RESTORESTATE) alrededor de la copia."
+    texto: "Así desarrolla ATOMIC_BLOCK(ATOMIC_RESTORESTATE) la copia de ticks, con las líneas desordenadas. Tóquelas en el orden en que se ejecutan."
     libro: [33, 34]
     widget:
       tipo: figura
       codigo:
         lenguaje: c
         texto: |
-          uint16_t ticks_lee(void)
-          {
-              uint16_t copia;
-              ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {   /* cli ... restore SREG */
-                  copia = ticks;                    /* two bytes, one copy  */
-              }
-              return copia;
-          }
-      resaltar: [4, 5, 6]
-    ordenar:
-      - "Guardar SREG."
-      - "Deshabilitar las interrupciones."
-      - "Copiar ticks."
-      - "Devolver SREG como estaba."
-    exito: "Con ticks_lee(), 20 000 lecturas nunca dan un valor menor que el anterior. Y no habilita las interrupciones si ya estaban deshabilitadas."
-    pistas:
-      - { texto: "Antes de tocar las interrupciones, se apunta cómo estaban." }
-    escalera: ["Restaurar SREG es lo último."]
-    solucion: "Guardar SREG, cli, copiar y devolver SREG."
+          SREG = sreg;           /* restore it as it was */
+          copia = ticks;         /* two bytes, one copy  */
+          uint8_t sreg = SREG;   /* save the I flag      */
+          cli();                 /* disable interrupts   */
+      zonas:
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+    tocar:
+      bien: [l3, l4, l2, l1]
+      orden: true
+    exito: "Guardar SREG, deshabilitar, copiar y devolver SREG como estaba: no habilita las interrupciones si ya estaban deshabilitadas."
+    escalera: ["Antes de tocar las interrupciones, se apunta cómo estaban."]
+    solucion: "Guardar SREG, cli(), copiar y restaurar SREG."
 
   - id: porque-orden
     tipo: porque

@@ -1,4 +1,8 @@
-# Lección 1.2 de la sección 28.9 «Representación Numérica» (cap29; etiqueta interna sec-29.9). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 28.9 «Representación Numérica» (cap29; etiqueta interna sec-29.9). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 («aprender haciendo», GUIA §13): el salto de 127 a −128 se busca moviendo el código; las conversiones se
+# escriben (0xB6, 47 en BCD, −5 leído sin signo, 127 + 1, −1 extendido con ceros, los bytes intercambiados, los
+# dígitos de un float). −5 se escribe en binario y los bytes intercambiados en hexadecimal («leer» con base, motor121);
+# el resto, en decimal. Quedan dos preguntas de opciones (qué significa un byte y por qué el complemento a dos) y un emparejamiento.
 leccion: cap29/sec-29.9
 
 libro:
@@ -32,8 +36,9 @@ tarjetas:
   - id: explore-signo
     tipo: explorar
     titulo: "Un byte, dos lecturas"
-    texto: "El mismo byte leído sin signo y en complemento a dos. Mueva el código y cruce de 127 a 128."
+    texto: "El mismo byte leído sin signo y en complemento a dos. Mueva el código hasta el más negativo que cabe en 8 bits."
     libro: [273, 284]
+    inicio: { u_c: 100 }
     widget:
       tipo: grafica
       x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
@@ -48,12 +53,22 @@ tarjetas:
         - { valor: u_c, rotulo: "Sin signo: {{u_c}}" }
       mandos:
         - { valor: u_c, min: 0, max: 255, paso: 1, rotulo: "Código" }
-    requiere: { mover: [u_c] }
+    objetivo:
+      condiciones:
+        - { valor: s_c, max: -128, rotulo: "Con signo: {{s_c}}" }
+      logrado: "El código {{u_c}}, 1000 0000, vale −128: justo después del +127. El bit más alto indica el signo; el margen es de −128 a +127."
+      pistas:
+        - { cuando: { valor: u_c, menor: 128 }, texto: "Por debajo de 128 los dos significados coinciden: suba el código." }
+        - { texto: "Ese ya es negativo, pero no el más negativo: busque el salto." }
+    escalera: ["Busque dónde la curva azul salta hacia abajo."]
+    solucion: "El código 128: −128."
+    comprobar:
+      - { con: { u_c: 128 }, s_c: -128 }
 
   - id: prediga-desborde
-    tipo: predecir
+    tipo: leer
     titulo: "127 + 1"
-    texto: "Con 8 bits en complemento a dos, ¿cuánto da 127 + 1?"
+    texto: "Con 8 bits en complemento a dos, un contador vale 127 y se le suma 1. Escriba lo que queda guardado."
     libro: [289]
     fijar: { u_c: 128 }
     widget:
@@ -61,15 +76,19 @@ tarjetas:
       x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
       y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
       curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
         - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
-      lectura: { valor: s_c, rotulo: "Con signo, en complemento a dos" }
-      ocultar: true
-    opciones:
-      - { texto: "−128, y el hardware no avisa", bien: true, porque: "Solo pone a 1 el indicador de desbordamiento, que el programa tiene que comprobar." }
-      - { texto: "128", porque: "Con signo, 8 bits llegan solo hasta +127: el siguiente código es el −128." }
-      - { texto: "Un error que detiene el programa", porque: "El hardware no avisa: el contador da la vuelta en silencio." }
-    escalera: ["¿Cuál es el mayor número con signo en 8 bits?"]
-    solucion: "0111 1111 + 1 = 1000 0000, que es −128."
+      mandos: []
+    leer:
+      objetivo: s_c
+      unidad: ""
+      tol: 0.01
+      rotulo: "Resultado con signo"
+      errores:
+        - { expr: "u_c", texto: "Ese es el código leído sin signo. Con signo, 8 bits solo llegan a +127." }
+    exito: "{{s_c}}, y el hardware no avisa: solo pone a 1 el indicador de desbordamiento, que el programa tiene que comprobar."
+    escalera: ["Después de +127 viene el código 1000 0000."]
+    solucion: "127 + 1 da −128."
     comprobar:
       - { s_c: -128 }
 
@@ -90,25 +109,28 @@ tarjetas:
     solucion: "0x0F = 0000 1111; 0x80 = 1000 0000; 0xFF = 1111 1111."
 
   - id: estime-b6
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "0xB6 en decimal"
-    texto: "0xB6 es 1011 0110. ¿Qué número es en decimal?"
+    texto: "0xB6 es 1011 0110. Escriba qué número es en decimal."
     libro: [276]
-    fijar: { h_a: 11, h_b: 6 }
-    estimar:
-      objetivo: "d_h"
+    fijar: { h_a: 11, h_b: 6, u_c: 182 }
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+      mandos: []
+    leer:
+      objetivo: d_h
       unidad: ""
-      min: 0
-      max: 255
-      paso: 1
-      inicio: 60
       tol: 0.005
       rotulo: "Decimal"
-    exito: "182: B vale 11, por 16, más 6."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 182 }, texto: "Se ha pasado: B vale 11 y pesa 16; 6 pesa 1." }
-      - { texto: "Se ha quedado corto: el dígito B (11) pesa 16 veces." }
+      errores:
+        - { expr: "10*h_a + h_b", texto: "B no pesa 10: en hexadecimal cada dígito pesa 16 veces el siguiente." }
+        - { expr: "16*h_b + h_a", texto: "Ha cambiado los dígitos: B es el de más peso." }
+    exito: "{{d_h}}: B vale 11, por 16, más 6. Cada dígito hexadecimal son exactamente cuatro bits."
     escalera: ["0xB6 = B · 16 + 6, con B = 11."]
     solucion: "11 · 16 + 6 = 182."
     comprobar:
@@ -133,40 +155,59 @@ tarjetas:
     solucion: "La codificación: 65, «A» o 41."
 
   - id: pregunta-bcd
-    tipo: pregunta
-    titulo: "47 en BCD"
-    texto: "¿Cómo se escribe 47 en BCD?"
+    tipo: leer
+    titulo: "Un reloj en BCD"
+    texto: "Un reloj de tiempo real entrega el byte 0100 0111 en BCD. Escriba qué número es."
     libro: [280]
+    fijar: { u_c: 71 }
     widget:
       tipo: grafica
       x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
       y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
       curvas:
-        - { expr: "cx", color: tinta, rotulo: "sin signo" }
-    opciones:
-      - { texto: "0100 0111: cada cifra en cuatro bits", bien: true, porque: "Una cifra en cada grupo de cuatro bits: desperdicia seis de las dieciséis combinaciones, pero facilita mostrar dígitos." }
-      - { texto: "0010 1111", porque: "Ese es el 47 en binario natural. En BCD cada cifra decimal va por separado." }
-      - { texto: "0111 0100", porque: "Ha puesto las cifras al revés: la de las decenas va primero." }
-    escalera: ["Escriba cada cifra decimal por separado, en cuatro bits."]
-    solucion: "Una cifra por grupo de cuatro bits: 0100 0111."
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+      mandos: []
+    leer:
+      objetivo: "4*10 + 7"
+      unidad: ""
+      tol: 0.01
+      rotulo: "Número"
+      errores:
+        - { expr: "u_c", texto: "Ese es el byte en binario natural. En BCD cada grupo de cuatro bits es una cifra decimal." }
+    exito: "47: una cifra en cada grupo de cuatro bits. Desperdicia seis de las dieciséis combinaciones, pero se muestra directamente en un display."
+    escalera: ["Lea 0100 y 0111 por separado: cada uno es una cifra."]
+    solucion: "0100 es la cifra de las decenas y 0111 la de las unidades: 47."
 
   - id: pregunta-menos-cinco
-    tipo: pregunta
-    titulo: "−5 en complemento a dos"
-    texto: "+5 es 0000 0101. ¿Cómo se escribe −5 con 8 bits en complemento a dos?"
-    libro: [277, 283, 284]
+    tipo: leer
+    titulo: "Menos cinco"
+    texto: "+5 es 0000 0101. Escriba −5 en complemento a dos con 8 bits, en binario."
+    libro: [283, 284]
+    inicio: { u_c: 5 }
     widget:
       tipo: grafica
       x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
       y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
       curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
         - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
-    opciones:
-      - { texto: "1111 1011", bien: true, porque: "Se invierten todos los bits de +5 y se suma uno." }
-      - { texto: "0000 0101", porque: "Ese es +5. Para −5 hay que invertir todos los bits y sumar uno." }
-      - { texto: "1000 0101", porque: "Eso es signo-magnitud: el complemento a dos invierte todo y suma uno." }
-    escalera: ["Invierta todos los bits y sume uno."]
-    solucion: "Invertir 0000 0101 y sumar uno: 1111 1011."
+      asas:
+        - { mueve: u_c, x: "u_c", y: "s_c", rotulo: "Su byte" }
+      lectura: { valor: s_c, rotulo: "Con signo" }
+      mandos:
+        - { valor: u_c, min: 0, max: 255, paso: 1, rotulo: "Código" }
+    leer:
+      objetivo: "256 - 5"
+      base: 2
+      cifras: 8
+      rotulo: "−5 en complemento a dos"
+      errores:
+        - { expr: "128 + 5", texto: "Eso es signo-magnitud, 1000 0101: el complemento a dos invierte todos los bits y suma uno." }
+        - { expr: "256 - 6", texto: "Ha invertido los bits, pero falta sumar uno." }
+    exito: "1111 1011, 251 sin signo: se invierten todos los bits de +5 y se suma uno. En la gráfica, el código que vale −5 con signo."
+    escalera: ["Busque en la gráfica el código que vale −5 con signo."]
+    solucion: "1111 1011, que sin signo es 251."
 
   - id: porque-universal
     tipo: porque
@@ -187,61 +228,74 @@ tarjetas:
     solucion: "Un solo sumador para sumar y restar, y un solo cero."
 
   - id: pregunta-extension
-    tipo: pregunta
-    titulo: "De 8 a 16 bits"
-    texto: "Un −1 de 8 bits se pasa a 16 bits rellenando con ceros. ¿Qué se obtiene?"
+    tipo: leer
+    titulo: "Extender el signo"
+    texto: "Un −1 de 8 bits, 1111 1111, se pasa a 16 bits rellenando con ceros. Escriba el número que resulta."
     libro: [290]
+    fijar: { u_c: 255 }
     widget:
       tipo: grafica
       x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
       y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
       curvas:
-        - { expr: "cx", color: tinta, rotulo: "sin signo" }
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
         - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
-    opciones:
-      - { texto: "255", bien: true, porque: "1111 1111 con ceros delante es un positivo. Un negativo se extiende con unos." }
-      - { texto: "−1", porque: "Solo si se rellena con unos: la extensión de signo copia el bit más alto." }
-      - { texto: "−255", porque: "Con ceros delante el bit de signo pasa a ser 0: el número es positivo." }
-    escalera: ["¿Qué bit queda como signo en los 16 bits?"]
+      mandos: []
+    leer:
+      objetivo: u_c
+      unidad: ""
+      tol: 0.005
+      rotulo: "Número de 16 bits"
+      errores:
+        - { expr: "s_c", texto: "Así habría quedado rellenando con unos. Con ceros delante, el bit de signo de 16 bits es 0." }
+    exito: "{{u_c}}: un positivo. Un número negativo se extiende con unos, copiando el bit más alto."
+    escalera: ["Con ceros delante, el bit de signo de 16 bits es 0."]
     solucion: "0000 0000 1111 1111 = 255."
 
   - id: pregunta-endian
-    tipo: pregunta
+    tipo: leer
     titulo: "Bytes intercambiados"
-    texto: "Un sensor I²C entrega 400 con el byte alto primero; un micro little-endian copia los dos bytes tal cual. ¿Qué lee?"
+    texto: "Un sensor I²C entrega 400, 0x0190, con el byte alto primero; un micro little-endian copia los dos bytes tal cual. Escriba en hexadecimal lo que lee."
     libro: [293, 294]
     widget:
       tipo: grafica
       x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
       y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
       curvas:
-        - { expr: "cx", color: tinta, rotulo: "sin signo" }
-    opciones:
-      - { texto: "36 865: 0x0190 se convierte en 0x9001", bien: true, porque: "La regla: montar el valor con (alto << 8) | bajo, que da lo mismo en cualquier procesador." }
-      - { texto: "400, porque el procesador lo corrige", porque: "Dentro no se nota; en la frontera, copiar memoria a ciegas intercambia los bytes." }
-      - { texto: "−400", porque: "No cambia el signo: cambia el orden de los dos bytes." }
-    escalera: ["Escriba 400 en hexadecimal e intercambie sus dos bytes."]
-    solucion: "0x0190 → 0x9001 = 36 865."
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+      mandos: []
+    leer:
+      objetivo: "144*256 + 1"
+      base: 16
+      cifras: 16
+      rotulo: "Valor leído"
+      errores:
+        - { expr: "400", texto: "Eso sería si se montara el valor con (alto << 8) | bajo. Copiando a ciegas, los bytes se intercambian." }
+    exito: "36 865: 0x0190 se convierte en 0x9001. La regla: montar el valor desplazando bytes, (alto << 8) | bajo."
+    escalera: ["Intercambie los dos bytes: 0x01 y 0x90."]
+    solucion: "0x9001 = 36 865."
 
   - id: estime-float
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Los dígitos de un float"
-    texto: "La mantisa de un float de 32 bits tiene 24 bits efectivos. ¿Cuántos dígitos decimales son?"
+    texto: "La mantisa de un float de 32 bits tiene 24 bits efectivos. Calcule cuántos dígitos decimales son y escríbalo."
     libro: [298]
-    estimar:
-      objetivo: "dig"
+    widget:
+      tipo: grafica
+      x: { id: nb, min: 1, max: 32, unidad: "", rotulo: "bits de mantisa" }
+      y: { min: 0, max: 10, unidad: "", rotulo: "dígitos" }
+      curvas:
+        - { expr: "log10(2^nb)", color: azul, rotulo: "dígitos decimales" }
+      mandos: []
+    leer:
+      objetivo: dig
       unidad: ""
-      min: 0
-      max: 16
-      paso: 0.01
-      inicio: 12
       tol: 0.02
       rotulo: "Dígitos"
-    exito: "7,22: por eso un float da unos 7 dígitos significativos, y sumar uno grande y otro pequeño pierde el pequeño."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 7.37 }, texto: "Se ha pasado: es log₁₀ de 2^{24}, no de 2^{32}." }
-      - { texto: "Se ha quedado corto: 24 bits son 24 · log₁₀ 2 dígitos." }
+      errores:
+        - { expr: "log10(2^32)", texto: "Esos serían con los 32 bits; la mantisa solo tiene 24 efectivos." }
+    exito: "{{dig}}: un float da unos 7 dígitos significativos, y sumar uno grande y otro pequeño pierde el pequeño."
     escalera: ["Dígitos = log₁₀(2^{24})."]
     solucion: "log₁₀(2^{24}) = 7,22."
     comprobar:

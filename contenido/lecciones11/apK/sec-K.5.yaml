@@ -1,6 +1,9 @@
 # Lección 1.2 de la sección K.5 «Coma Fija y Tiempo» (apK). Formato: contenido/lecciones11/GUIA.md (§5.2, §11).
 # Q16.16: el número es el entero entre 65 536 (bloque 52; 1,5 es 98 304 y, del ejercicio K.6, 2,5 es 163 840). La tabla
 # K.2 da los ciclos de cada operación en el ATmega328P (medidos en simavr: Complementos/codigo/apK/costes).
+# 1.2.1 («aprender haciendo», GUIA §13): 2,5 en Q16.16 es un objetivo; 1,5 se escribe en hexadecimal (parte entera
+# arriba, fracción abajo); el tiempo de una división de int32_t a 16 MHz y el producto intermedio del convertidor se
+# escriben; las líneas que saturan se tocan. Quedan dos preguntas de opciones: float en una interrupción y el retardo.
 leccion: apK/sec-K.5
 
 libro:
@@ -23,15 +26,20 @@ modelo:
     k_fsum: { sim: "ciclos", nombre: "suma de float (tabla K.2)", unidad: "", valor: 144 }
     k_fdiv: { sim: "ciclos", nombre: "división de float (tabla K.2)", unidad: "", valor: 488 }
     k_ddiv: { sim: "ciclos", nombre: "división de int32_t (tabla K.2)", unidad: "", valor: 628 }
+    f_avr: { sim: "f", nombre: "reloj del ATmega328P", unidad: Hz, valor: 16000000 }
+    lect: { sim: "lectura", nombre: "lectura máxima del convertidor de 10 bits", unidad: "", valor: 1023 }
   calculos:
     val_q: { expr: "n_q/esc", sim: "valor", nombre: "número que representa", unidad: "", cifras: 4 }
     ent_q: { expr: "x_q*esc", sim: "n", nombre: "entero que lo representa", unidad: "" }
+    t_div: { expr: "k_ddiv/f_avr", sim: "t", nombre: "división de int32_t", unidad: s, cifras: 3 }
+    t_fdiv: { expr: "k_fdiv/f_avr", nombre: "división de float", unidad: s, cifras: 3 }
+    prod: { expr: "lect*5000", sim: "producto", nombre: "producto intermedio", unidad: "" }
 
 tarjetas:
   - id: explore-q16
     tipo: explorar
     titulo: "Un entero que es un número con decimales"
-    texto: "En Q16.16, un int32_t guarda el número multiplicado por 65 536. Elija el entero y lea el número que representa."
+    texto: "En Q16.16, un int32_t guarda el número multiplicado por 65 536. Elija el entero que guarda 2,5."
     libro: [52, "apK#70"]
     widget:
       tipo: grafica
@@ -44,13 +52,21 @@ tarjetas:
       lectura: { valor: val_q, rotulo: "Número representado" }
       mandos:
         - { valor: n_q, lista: [65536, 98304, 163840], rotulo: "Entero guardado" }
-    requiere: { mover: [n_q] }
+    objetivo:
+      condiciones:
+        - { valor: val_q, objetivo: 2.5, tol: 0.001, rotulo: "Número: {{val_q}}" }
+      logrado: "{{n_q}}: 2,5 × 65 536. Sumar y restar son las operaciones enteras de siempre."
+      pistas:
+        - { texto: "El entero es el número por 65 536." }
+    escalera: ["2,5 × 65 536."]
+    solucion: "163 840."
+    comprobar:
+      - { con: { n_q: 163840 }, val_q: 2.5 }
 
   - id: estime-q16
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "1,5 en Q16.16"
-    texto: "¿Qué entero guarda 1,5 en formato Q16.16?"
+    texto: "Escriba en hexadecimal el int32_t que guarda 1,5 en Q16.16."
     libro: [52]
     fijar: { x_q: 1.5 }
     widget:
@@ -59,42 +75,44 @@ tarjetas:
       y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
       curvas:
         - { expr: "nn/esc", color: azul, rotulo: "n / 65 536" }
-    estimar:
-      objetivo: "ent_q"
-      unidad: ""
-      min: 0
-      max: 200704
-      paso: 1024
-      inicio: 163840
-      tol: 0.01
+      mandos: []
+    leer:
+      objetivo: ent_q
+      base: 16
+      cifras: 32
       rotulo: "Entero en Q16.16"
-    exito: "98 304: resolución de 1/65 536 e intervalo de ± 32 768."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 98304 }, texto: "Se ha pasado: multiplique 1,5 por 65 536." }
-      - { texto: "Se ha quedado corto: multiplique 1,5 por 65 536." }
-    escalera: ["El entero es el número por 65 536."]
-    solucion: "1,5 × 65 536 = 98 304."
+      errores:
+        - { expr: "esc", texto: "Ese es 1,0: falta la media, que va en los 16 bits bajos." }
+    exito: "0x00018000, 98 304: los 16 bits altos son la parte entera, 1, y los bajos, la mitad. Resolución de 1/65 536 e intervalo de ± 32 768."
+    escalera: ["Parte entera en los 16 bits altos; la mitad, 0x8000, en los bajos."]
+    solucion: "1,5 × 65 536 = 98 304 = 0x00018000."
     comprobar:
       - { ent_q: 98304 }
 
   - id: empareje-costes
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que cuesta cada operación"
-    texto: "Una cada operación en el ATmega328P con sus ciclos, según la tabla K.2."
-    libro: [49]
-    emparejar:
-      - ["Producto de uint8_t", "10 ciclos"]
-      - ["Suma de float", "144 ciclos"]
-      - ["División de float", "488 ciclos"]
-      - ["División de int32_t", "628 ciclos"]
-    exito: "El AVR multiplica 8 × 8 bits en hardware, pero no divide en ningún tamaño."
-    pistas:
-      - { texto: "La más cara es una división entera de 32 bits." }
-    escalera: ["El multiplicador de 8 bits hace barato el producto corto."]
-    solucion: "Producto uint8_t, 10; suma float, 144; división float, 488; división int32_t, 628."
+    tipo: leer
+    titulo: "Lo que cuesta dividir"
+    texto: "El AVR multiplica 8 × 8 bits en hardware, pero no divide en ningún tamaño: una división de int32_t son 628 ciclos. Calcule cuánto tarda a 16 MHz."
+    libro: [49, 50]
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 700, unidad: "", rotulo: "ciclos" }
+      y: { min: 0, max: 0.00005, unidad: s, rotulo: "tiempo a 16 MHz" }
+      curvas:
+        - { expr: "cc/f_avr", color: azul, rotulo: "ciclos / 16 MHz" }
+      mandos: []
+    leer:
+      objetivo: t_div
+      unidad: s
+      tol: 0.03
+      rotulo: "Una división de int32_t"
+      errores:
+        - { expr: "t_fdiv", texto: "Esa es la división de float, 488 ciclos; la de int32_t son 628." }
+    exito: "Unos 40 µs: es lo que limita la rampa del paso a paso. Un producto de uint8_t son 10 ciclos; una suma de float, 144."
+    escalera: ["Divida los 628 ciclos entre los 16 MHz del reloj."]
+    solucion: "628 / 16 MHz = {{t_div}}, unos 40 µs."
     comprobar:
-      - { k_fsum: 144, k_fdiv: 488, k_ddiv: 628 }
+      - { t_div: 0.00003925, k_fsum: 144, k_fdiv: 488, k_ddiv: 628 }
 
   - id: prediga-float-isr
     tipo: predecir
@@ -117,38 +135,55 @@ tarjetas:
       - { k_fsum: 144 }
 
   - id: porque-saturar
-    tipo: porque
+    tipo: tocar
     titulo: "Saturar, no dar la vuelta"
-    texto: "q16_mul satura en lugar de dejar que el resultado dé la vuelta. ¿Por qué es lo correcto en control?"
+    texto: "Un integrador que se desborda y da la vuelta pasa de su máximo positivo al negativo. Toque todas las líneas de q16_mul que lo evitan."
     libro: [53, 54]
     widget:
       tipo: figura
       codigo: "apK#53"
-      resaltar: [11, 12]
-    opciones:
-      - { texto: "Un integrador que da la vuelta pasa de su máximo positivo al negativo", bien: true, porque: "Mandaría el actuador al otro extremo; saturado, se queda en el máximo." }
-      - { texto: "Porque saturar es más rápido", porque: "Cuesta dos comparaciones más: se hace por seguridad, no por velocidad." }
-      - { texto: "Porque el compilador no permite desbordar", porque: "Lo permite, y con signo es indefinido: por eso se comprueba a mano." }
-    escalera: ["¿Qué hace un motor si su consigna salta de máximo positivo a máximo negativo?"]
-    solucion: "Dar la vuelta invierte el actuador; saturar lo deja en el máximo."
+      zonas:
+        - { id: l8, lineas: [8], rotulo: "Octava línea" }
+        - { id: l9, lineas: [9], rotulo: "Novena línea" }
+        - { id: l10, lineas: [10], rotulo: "Décima línea" }
+        - { id: l11, lineas: [11], rotulo: "Undécima línea" }
+        - { id: l12, lineas: [12], rotulo: "Duodécima línea" }
+        - { id: l13, lineas: [13], rotulo: "Decimotercera línea" }
+    tocar:
+      bien: [l11, l12]
+      todas: true
+      porque:
+        l8: "El producto en 64 bits nunca se desborda: es Q32.32."
+        l9: "Redondea al más próximo antes de desplazar."
+        l10: "Devuelve el resultado a Q16.16."
+        l13: "Devuelve el resultado, ya acotado por las anteriores."
+    exito: "Las dos comparaciones saturan: el actuador se queda en el máximo en vez de ir al otro extremo. Es el windup de la sección 30.3."
+    escalera: ["Busque las líneas que comparan con INT32_MAX e INT32_MIN."]
+    solucion: "Las líneas 11 y 12: saturan en lugar de dar la vuelta."
 
   - id: pregunta-ul
-    tipo: pregunta
+    tipo: leer
     titulo: "Un convertidor a milivoltios"
-    texto: "mv = (lectura * 5000ul + 512) / 1024 pasa una lectura de 10 bits a milivoltios con 5 V. ¿Por qué el ul?"
+    texto: "mv = (lectura * 5000ul + 512) / 1024 pasa una lectura de 10 bits a milivoltios con 5 V. Calcule el producto intermedio con la lectura máxima, 1 023."
     libro: [55]
     widget:
       tipo: grafica
-      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
-      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      x: { id: ll, min: 0, max: 1023, unidad: "", rotulo: "lectura" }
+      y: { min: 0, max: 6000000, unidad: "", rotulo: "lectura × 5 000" }
       curvas:
-        - { expr: "nn/esc", color: azul, rotulo: "enteros escalados" }
-    opciones:
-      - { texto: "1 023 × 5 000 no cabe en un int de 16 bits del AVR", bien: true, porque: "Con ul el producto se hace en 32 bits. Y el 512 redondea al más próximo en lugar de truncar." }
-      - { texto: "Para que el resultado tenga decimales", porque: "Sigue siendo entero: ul solo le da 32 bits sin signo." }
-      - { texto: "No hace falta: el resultado cabe en 16 bits", porque: "El resultado cabe, pero el producto intermedio no." }
-    escalera: ["¿Cuánto vale el producto con la lectura máxima?"]
-    solucion: "El producto intermedio se desborda en 16 bits: ul lo hace de 32."
+        - { expr: "ll*5000", color: azul, rotulo: "producto" }
+        - { expr: "32767", color: naranja, rotulo: "lo que cabe en un int del AVR", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: prod
+      unidad: ""
+      tol: 0.01
+      rotulo: "Producto intermedio"
+    exito: "5 115 000: no cabe en un int de 16 bits del AVR. Con ul el producto se hace en 32 bits, y el 512 redondea al más próximo."
+    escalera: ["1 023 × 5 000."]
+    solucion: "1 023 × 5 000 = 5 115 000."
+    comprobar:
+      - { prod: 5115000 }
 
   - id: pregunta-retardo
     tipo: pregunta
