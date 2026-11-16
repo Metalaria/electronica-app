@@ -3,6 +3,11 @@
 # MOSFET de 40 mΩ frente a IGBT de 1,4 V + 12 mΩ·I (cruce en 50 A y 2 V); apagado de 10 A en t = 1 µs. La forma de la
 # cola (80 % de la corriente cae con 20 ns y el 20 % restante con 0,5 µs) es mía, ajustada a la figura: el libro da
 # «cientos de nanosegundos o microsegundos» (bloque 282).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la corriente a la que el IGBT ya cae 1 V menos se busca
+# (objetivo), el cruce se predice, el apagado se dibuja y la parte que limita la frecuencia se toca en la figura 25.17.
+# Quedan dos preguntas de opciones (la modulación de conductividad, el enclavamiento): la sección es de estructura y
+# sus dos «por qué» no se pueden manipular. Salen la exploración de la cola (la hace el dibujo) y el emparejamiento
+# del compromiso (sus tres filas van en las explicaciones).
 leccion: cap26/sec-26.10
 
 libro:
@@ -16,6 +21,7 @@ libro:
   282: "un tramo de decaimiento lento"
   283: "da la energía perdida en cada apagado"
   "cap26#273": "el IGBT conduce con 1,5 a 2 V de caída"
+  284: "La cola de corriente del IGBT en el apagado"
 
 modelo:
   valores:
@@ -30,14 +36,18 @@ modelo:
     V_i: { expr: "V_0 + r_i*I_x", sim: "V_{IGBT}", nombre: "caída del IGBT", unidad: V }
     I_c: { expr: "V_0/(R_m - r_i)", sim: "I_{cruce}", nombre: "corriente de cruce", unidad: A }
     V_c: { expr: "R_m*I_c", sim: "V_{cruce}", nombre: "caída en el cruce", unidad: V }
+    d_mi: { expr: "V_m - V_i", sim: "V_{MOSFET} − V_{IGBT}", nombre: "ventaja del IGBT", unidad: V }
+    R_dif: { expr: "R_m - r_i", sim: "R_{DS(on)} − r", nombre: "diferencia de pendientes", unidad: Ω }
+    I_c0: { expr: "V_0/R_m", sim: "V_{0}/R_{DS(on)}", nombre: "olvidando la resistencia del IGBT", unidad: A }
 
 tarjetas:
   - id: explore-caida
     tipo: explorar
     titulo: "Caída en conducción"
-    texto: "Un MOSFET de 40 mΩ y un IGBT del mismo tamaño. Suba la corriente y compare sus caídas."
+    texto: "Un MOSFET de 40 mΩ y un IGBT del mismo tamaño. Suba la corriente hasta que el IGBT caiga al menos 1 V menos que el MOSFET."
     nota: "Valores de la figura del libro."
     libro: [267, "cap26#273"]
+    inicio: { I_x: 20 }
     widget:
       tipo: grafica
       x: { id: ix, min: 0, max: 100, unidad: A, rotulo: "I" }
@@ -47,40 +57,44 @@ tarjetas:
         - { expr: "V_0 + r_i*ix", color: naranja, rotulo: "IGBT" }
       marcas:
         - { x: "I_x", y: "V_i", rotulo: "IGBT {{V_i}}" }
-      lectura: { valor: V_m, rotulo: "Caída del MOSFET" }
+      lectura: { valor: d_mi, rotulo: "MOSFET − IGBT" }
       datos:
-        - { valor: V_i, rotulo: "Caída del IGBT: {{V_i}}" }
+        - { valor: V_m, rotulo: "MOSFET: {{V_m}}" }
+        - { valor: V_i, rotulo: "IGBT: {{V_i}}" }
       mandos:
         - { valor: I_x, min: 0, max: 100, paso: 5, rotulo: "Corriente" }
-    requiere: { mover: [I_x] }
+    objetivo:
+      condiciones:
+        - { valor: d_mi, min: 1, rotulo: "Ventaja del IGBT: {{d_mi}}" }
+      logrado: "A {{I_x}}, el IGBT cae {{V_i}} y el MOSFET {{V_m}}: la caída casi fija gana a la resistencia."
+      pistas:
+        - { texto: "Con poca corriente gana el MOSFET: suba la corriente." }
+    escalera:
+      - "La caída del MOSFET crece 40 mΩ por amperio; la del IGBT, solo 12 mΩ."
+    solucion: "Unos 90 A."
     comprobar:
-      - { R_m: 0.04 }
+      - { R_m: 0.04, r_i: 0.012 }
+      - { con: { I_x: 90 }, d_mi: 1.12, tol: 0.01 }
 
   - id: estime-cruce
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Dónde gana el IGBT"
     texto: "MOSFET: I · 40 mΩ; IGBT: 1,4 V + 12 mΩ · I. ¿A partir de qué corriente cae menos el IGBT?"
-    libro: ["cap26#273"]
-    estimar:
-      objetivo: "I_c"
+    libro: ["cap26#273", 284]
+    simular:
+      objetivo: I_c
       unidad: A
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 85
       tol: 0.05
       rotulo: "Corriente de cruce"
+      errores:
+        - { expr: "I_c0", texto: "Ha olvidado los 12 mΩ del IGBT: su caída también crece con la corriente." }
     exito: "50 A, con 2 V los dos: por encima, la caída casi fija del IGBT gana a la resistencia del MOSFET."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 52.5 }, texto: "Se ha pasado: iguale las dos caídas, I · 0,04 = 1,4 + 0,012 · I." }
-      - { texto: "Se ha quedado corto: con poca corriente el MOSFET cae menos que los 1,4 V fijos del IGBT." }
     escalera:
       - "Iguale las caídas: I · (40 − 12) mΩ = 1,4 V."
-    solucion: "I = 1,4/0,028 = 50 A, con {{V_c}}."
+    solucion: "I = 1,4 V / 28 mΩ = 50 A, con {{V_c}}."
     comprobar:
-      - { I_c: 50, V_c: 2, R_m: 0.04, V_0: 1.4, r_i: 0.012 }
-      - { con: { R_m: 0.028 }, R_m: 0.028 }
+      - { I_c: 50, V_c: 2, I_c0: 35, R_m: 0.04, V_0: 1.4, r_i: 0.012, R_dif: 0.028 }
 
   - id: por-que-modulacion
     tipo: porque
@@ -108,25 +122,6 @@ tarjetas:
     comprobar:
       - { con: { V_0: 1.5 }, V_0: 1.5 }
 
-  - id: explore-cola
-    tipo: explorar
-    titulo: "El apagado en dos fases"
-    texto: "Apagado de 10 A en t = 1 µs. Cambie de MOSFET a IGBT y mire lo que tarda en desaparecer la corriente."
-    nota: "Forma de la figura del libro."
-    libro: [276, 282]
-    inicio: { s_i: 0 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.0000025, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 11, unidad: A, rotulo: "i" }
-      curvas:
-        - { expr: "I_on*(1 - ceil((t - 0.000001)/1e9)) + ceil((t - 0.000001)/1e9)*I_on*((1 - s_i)*exp(-(t - 0.000001)/0.00000002) + s_i*(0.8*exp(-(t - 0.000001)/0.00000002) + 0.2*exp(-(t - 0.000001)/0.0000005)))", color: naranja, rotulo: "corriente al apagar" }
-      mandos:
-        - { valor: s_i, tipo: interruptor, rotulo: "IGBT" }
-    requiere: { mover: [s_i] }
-    comprobar:
-      - { con: { s_i: 1 }, s_i: 1, I_on: 10 }
-
   - id: dibuje-cola
     tipo: dibujar
     titulo: "Dibuje el apagado del IGBT"
@@ -141,7 +136,7 @@ tarjetas:
       tol: 0.08
       holgura: 0.03
       rotulo: "Corriente del IGBT"
-    exito: "Una caída rápida (el canal) y una cola lenta (la recombinación): en la cola ya hay tensión, y se pierde energía."
+    exito: "Una caída rápida, el canal, y una cola lenta: los portadores inyectados tardan en recombinarse. Un MOSFET cortaría en seco."
     pistas:
       - { cuando: { valor: media, menor: 0 }, texto: "Le falta la cola: tras la caída rápida, la corriente tarda en desaparecer." }
       - { texto: "Hasta 1 µs, 10 A; luego una caída brusca y una cola que se apaga despacio." }
@@ -152,45 +147,26 @@ tarjetas:
       - { s_i: 1, I_on: 10 }
 
   - id: frecuencia
-    tipo: pregunta
+    tipo: tocar
     titulo: "Decenas de kilohercios"
-    texto: "¿Por qué un IGBT conmuta a decenas de kilohercios cuando un MOSFET llega a cientos?"
-    libro: [277, 283]
-    fijar: { s_i: 1 }
+    texto: "Un IGBT conmuta a decenas de kilohercios; un MOSFET, a cientos. Toque la parte del apagado que lo explica."
+    libro: [277, 283, 284]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.0000025, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 11, unidad: A, rotulo: "i" }
-      curvas:
-        - { expr: "I_on*(1 - ceil((t - 0.000001)/1e9)) + ceil((t - 0.000001)/1e9)*I_on*(0.8*exp(-(t - 0.000001)/0.00000002) + 0.2*exp(-(t - 0.000001)/0.0000005))", color: naranja, rotulo: "IGBT al apagar" }
-    opciones:
-      - texto: "Cada apagado disipa la energía de la cola, y eso se multiplica por la frecuencia"
-        bien: true
-        porque: "Durante la cola la tensión ya es alta: v · i es energía perdida en cada ciclo."
-      - texto: "Porque su puerta tarda más en cargarse"
-        porque: "La puerta es MOS, como la del MOSFET. El límite es la recombinación de la cola."
-      - texto: "Porque su caída en conducción es mayor"
-        porque: "Eso son pérdidas de conducción, no dependen de la frecuencia."
+      tipo: figura
+      figura: fig-26.17
+      zonas:
+        - { id: conduccion, rect: [26, 14, 72, 40], rotulo: "Arriba a la izquierda" }
+        - { id: rapida, rect: [86, 44, 36, 100], rotulo: "La caída vertical" }
+        - { id: cola, rect: [124, 118, 90, 44], rotulo: "Abajo, a la derecha de la caída" }
+    tocar:
+      bien: [cola]
+      porque:
+        conduccion: "Antes del apagado solo hay pérdidas de conducción, que no dependen de la frecuencia."
+        rapida: "La fase rápida es la del canal MOS: tan rápida como un MOSFET."
+    exito: "La cola: con la tensión ya alta, tensión por corriente es energía perdida en cada apagado; por la frecuencia, la limita."
     escalera:
-      - "¿Qué pasa en cada apagado, y cuántos hay por segundo?"
-    solucion: "La energía de la cola en cada apagado, multiplicada por la frecuencia."
-
-  - id: empareje-compromiso
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El compromiso del IGBT"
-    texto: "Una cada rasgo con su origen."
-    libro: [273, 277, 279]
-    emparejar:
-      - ["Caída casi fija en conducción", "Portadores inyectados en la deriva"]
-      - ["Cola de corriente al apagar", "Esos portadores tardan en recombinarse"]
-      - ["Enclavamiento (latch-up)", "Un tiristor parásito de cuatro capas PNPN"]
-    exito: "Más portadores inyectados, menos caída y más cola: cada familia elige su punto."
-    pistas:
-      - { texto: "La misma inyección explica la caída baja y la cola." }
-    escalera:
-      - "Cuatro capas alternadas forman dos bipolares realimentados."
-    solucion: "Caída–inyección, cola–recombinación, enclavamiento–tiristor parásito."
+      - "¿Qué tramo no tiene el MOSFET?"
+    solucion: "La cola de corriente, el área sombreada."
 
   - id: latch-up
     tipo: pregunta
@@ -206,7 +182,7 @@ tarjetas:
     opciones:
       - texto: "Se ha disparado su tiristor parásito; hay que despejar el cortocircuito en pocos microsegundos"
         bien: true
-        porque: "Conduce hasta que la corriente cese o algo se destruya: de ahí el límite de corriente y la protección por desaturación."
+        porque: "Sus cuatro capas PNPN forman un tiristor: conduce hasta que la corriente cese o algo se destruya. De ahí el límite de corriente."
       - texto: "Se ha descargado la puerta; basta con volver a cargarla"
         porque: "La puerta ya no controla nada: el tiristor se mantiene solo."
       - texto: "Es la cola de corriente; se apagará sola"

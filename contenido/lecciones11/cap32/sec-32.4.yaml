@@ -2,6 +2,10 @@
 # Friis con dos etapas de ejemplo: la primera con NF = 3 dB (F₁ = 2) y la segunda con NF = 10 dB (F₂ = 10); la
 # ganancia de la primera se mueve en dB. El ajuste pide que la cadena quede a menos de 0,5 dB de la primera etapa sola
 # (bloque 114: sin ganancia no entierra el ruido de las siguientes). Un cable con pérdida L delante suma L a la NF.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ganancia de la primera etapa se quita para ver a la segunda
+# contar entera y se sube hasta que añada menos de una décima al factor (objetivos), la división de la tercera, la NF
+# con el cable delante y el suelo del receptor se predicen. El atenuador del banco va en la explicación del cable.
+# Quedan dos preguntas de opciones (no mejora la SNR, la temperatura de ruido).
 leccion: cap32/sec-32.4
 
 libro:
@@ -41,14 +45,17 @@ modelo:
     d_i: { expr: "g_1*g_1", sim: "G₁G₂", nombre: "ganancia acumulada", unidad: "" }
     s_40: { expr: "2*G_1", sim: "G₁ + G₂", nombre: "ganancia acumulada en dB", unidad: dB }
     s_60: { expr: "10*log10(B_s)", sim: "10·log₁₀ B", nombre: "banda en dB", unidad: dB }
+    d_F: { expr: "F_t - F_1", sim: "F − F₁", nombre: "lo que añade la segunda al factor", unidad: "" }
+    N_s: { expr: "10*log10(F_1 + (F_2 - 1)/g_1)", sim: "NF", nombre: "figura de ruido de la cadena sin cable", unidad: dB }
 
 tarjetas:
   - id: explore-friis
     tipo: explorar
     titulo: "La cadena de dos etapas"
-    texto: "Una primera etapa buena y una segunda mucho más ruidosa. Cambie la ganancia de la primera y mire la figura de ruido de la cadena."
+    texto: "Una primera etapa buena y una segunda mucho más ruidosa. Quítele la ganancia a la primera y mire la figura de ruido de la cadena."
     nota: "Figuras de ruido de ejemplo."
     libro: [103, 110]
+    inicio: { G_1: 20 }
     widget:
       tipo: grafica
       x: { id: gg, min: 0, max: 40, unidad: dB, rotulo: "ganancia de la primera etapa" }
@@ -61,15 +68,25 @@ tarjetas:
       lectura: { valor: N_t, rotulo: "NF de la cadena" }
       mandos:
         - { valor: G_1, lista: [0, 10, 20], rotulo: "G₁" }
-    requiere: { mover: [G_1] }
+    objetivo:
+      condiciones:
+        - { valor: G_1, max: 0, rotulo: "G₁ = {{G_1}}" }
+      logrado: "Sin ganancia, la cadena da {{N_t}}: la segunda etapa cuenta casi entera. Cada etapa se divide por la ganancia de las anteriores."
+      pistas:
+        - { texto: "Quítele toda la ganancia a la primera." }
+    escalera:
+      - "Con G₁ = 1, el ruido de la segunda no se divide por nada."
+    solucion: "G₁ = 0 dB: unos 10,4 dB."
+    comprobar:
+      - { con: { G_1: 0 }, N_t: 10.41, tol: 0.01 }
+      - { con: { G_1: 20 }, N_t: 3.19, tol: 0.01 }
 
   - id: formula-friis
-    tipo: formula
+    tipo: explorar
     titulo: "La fórmula de Friis"
-    texto: "Cada etapa contribuye dividida por la ganancia acumulada de las anteriores."
+    texto: "F = F₁ + (F₂ − 1)/G₁ + …: cada etapa contribuye dividida por la ganancia acumulada. Haga que la segunda añada menos de una décima al factor."
     libro: [109, 110]
-    ec: 109
-    sustitucion: "{{F_1}} + ({{F_2}} − 1)/{{g_1}} = {{F_t}}"
+    inicio: { G_1: 0 }
     fijar: { L_c: 0 }
     widget:
       tipo: grafica
@@ -82,29 +99,33 @@ tarjetas:
       lectura: { valor: F_t, rotulo: "Factor de ruido, F" }
       mandos:
         - { valor: G_1, lista: [0, 10, 20], rotulo: "G₁" }
+    objetivo:
+      condiciones:
+        - { valor: d_F, max: 0.1, rotulo: "La segunda añade: {{d_F}}" }
+      logrado: "{{F_1}} + ({{F_2}} − 1)/{{g_1}} = {{F_t}}: con 20 dB delante, la segunda queda dividida por cien."
+      pistas:
+        - { texto: "Aún pesa: más ganancia en la primera." }
+    escalera:
+      - "(F₂ − 1)/G₁ debe quedar por debajo de una décima: G₁ mucho mayor que F₂."
+    solucion: "G₁ = 20 dB: la segunda añade 0,09."
+    comprobar:
+      - { con: { G_1: 20 }, d_F: 0.09, tol: 0.01 }
 
   - id: prediga-tercera
-    tipo: predecir
+    tipo: simular
     titulo: "Dos etapas de 20 dB"
     texto: "Una cadena empieza con dos etapas de 20 dB de ganancia cada una. ¿Por cuánto queda dividida la contribución de la tercera?"
     libro: [111]
     fijar: { G_1: 20 }
-    widget:
-      tipo: grafica
-      x: { id: gg, min: 0, max: 25, unidad: dB, rotulo: "ganancia de la primera etapa" }
-      y: { min: 0, max: 12, unidad: dB, rotulo: "figura de ruido" }
-      curvas:
-        - { expr: "10*log10(F_1 + (F_2 - 1)/10^(gg/10))", color: azul, rotulo: "cadena" }
-      lectura: { valor: d_3, rotulo: "Factor de la tercera" }
-      ocultar: curvas
-    opciones:
-      - texto: "Por diez mil: no cuenta"
-        bien: true
-        porque: "20 dB son un factor 100; dos etapas, 100 · 100 = 10 000."
-      - texto: "Por 40"
-        porque: "Ha sumado los decibelios como si fueran veces: 40 dB son un factor de diez mil."
-      - texto: "Por cien"
-        porque: "Cien divide a la segunda; la tercera se divide por las dos ganancias anteriores."
+    simular:
+      objetivo: d_i
+      unidad: ""
+      tol: 0.01
+      rotulo: "Factor de división"
+      errores:
+        - { expr: "s_40", texto: "Ha sumado los decibelios como si fueran veces: 40 dB son un factor de diez mil." }
+        - { expr: "g_1", texto: "Cien divide a la segunda; la tercera se divide por las dos ganancias anteriores." }
+    exito: "Por diez mil: 100 · 100. La tercera no cuenta."
     escalera:
       - "20 dB de ganancia en potencia son un factor 100."
     solucion: "100 · 100 = 10 000: la tercera no cuenta."
@@ -165,50 +186,40 @@ tarjetas:
       - { u_a: 0.5 }
 
   - id: prediga-cable
-    tipo: predecir
+    tipo: simular
     titulo: "Un cable delante"
-    texto: "Entre la antena y el amplificador de bajo ruido hay un cable con 3 dB de pérdida. ¿Cuánto sube la figura de ruido?"
-    libro: [115, 116]
+    texto: "Una cadena con unos 3,2 dB de figura de ruido; entre la antena y su amplificador se pone un cable con 3 dB de pérdida. ¿Qué figura de ruido queda?"
+    libro: [115, 116, 127]
     fijar: { L_c: 3, G_1: 20 }
-    widget:
-      tipo: grafica
-      x: { id: gg, min: 0, max: 25, unidad: dB, rotulo: "ganancia de la primera etapa" }
-      y: { min: 0, max: 12, unidad: dB, rotulo: "figura de ruido" }
-      curvas:
-        - { expr: "10*log10(F_1 + (F_2 - 1)/10^(gg/10))", color: azul, rotulo: "sin cable" }
-      lectura: { valor: N_t, rotulo: "NF con el cable" }
-      ocultar: curvas
-    opciones:
-      - texto: "3 dB, sin remedio"
-        bien: true
-        porque: "Lo que precede a la primera etapa cuenta entero. Por eso el amplificador va junto a la antena."
-      - texto: "Casi nada: lo divide la ganancia del amplificador"
-        porque: "Eso vale para lo que va detrás. Lo que va delante no lo divide nada."
-      - texto: "Lo compensa subir la ganancia"
-        porque: "La ganancia amplifica igual señal y ruido: no recupera lo perdido delante."
+    simular:
+      objetivo: N_t
+      unidad: dB
+      tol: 0.01
+      rotulo: "NF con el cable"
+      errores:
+        - { expr: "N_s", texto: "Lo que va delante no lo divide nada: cuenta entero." }
+    exito: "Unos 6,2 dB: 3 dB más, sin remedio. Por eso el amplificador va junto a la antena; un atenuador de 6 dB delante empeora la SNR 6 dB, detrás apenas."
     escalera:
       - "¿Hay alguna ganancia antes del cable que lo divida?"
-    solucion: "Suma sus 3 dB enteros a la figura de ruido."
+    solucion: "3,2 + 3 ≈ 6,2 dB."
+    comprobar:
+      - { N_t: 6.2, N_s: 3.2, tol: 0.01 }
 
   - id: estime-suelo
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El suelo del receptor"
     texto: "Un receptor de 1 MHz de banda y 3 dB de figura de ruido. ¿Dónde está su suelo?"
     libro: [122, 123]
-    estimar:
-      objetivo: "P_n"
+    simular:
+      objetivo: P_n
       unidad: dBm
-      min: -180
-      max: -60
-      paso: 1
-      inicio: -80
-      tol: 0.01
+      tol: 0.003
       rotulo: "Suelo de ruido"
+      errores:
+        - { expr: "P_n - N_1", texto: "Falta la figura de ruido del receptor." }
+        - { expr: "-174 + N_1", texto: "Falta la banda: 1 MHz son 60 dB sobre −174 dBm." }
     exito: "−111 dBm: ninguna señal por debajo se detecta, salvo con técnicas de correlación."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: -110 }, texto: "Se ha pasado por arriba: parta de −174 dBm y sume solo la banda y la NF." }
-      - { texto: "Se ha quedado bajo: 1 MHz son 60 dB sobre −174 dBm." }
     escalera:
       - "−174 dBm + 10 · log₁₀(B) + NF."
     solucion: "−174 + 60 + 3 = −111 dBm."
@@ -237,29 +248,6 @@ tarjetas:
     escalera:
       - "¿Cómo se combinan el ruido de la antena y el del receptor?"
     solucion: "Se suman directamente y resuelven figuras de ruido pequeñas."
-
-  - id: banco-atenuador
-    tipo: pregunta
-    titulo: "Friis en el banco"
-    texto: "Intercala un atenuador de 6 dB, primero delante del amplificador y luego detrás. ¿Qué ve en la relación señal a ruido?"
-    libro: [127]
-    widget:
-      tipo: grafica
-      x: { id: gg, min: 0, max: 40, unidad: dB, rotulo: "ganancia de la primera etapa" }
-      y: { min: 0, max: 12, unidad: dB, rotulo: "figura de ruido" }
-      curvas:
-        - { expr: "10*log10(F_1 + (F_2 - 1)/10^(gg/10))", color: azul, rotulo: "cadena" }
-    opciones:
-      - texto: "Delante empeora 6 dB; detrás apenas cambia"
-        bien: true
-        porque: "Es la fórmula hecha visible: lo de detrás queda dividido por la ganancia."
-      - texto: "Empeora 6 dB en los dos sitios"
-        porque: "Detrás, el atenuador queda dividido por la ganancia del amplificador."
-      - texto: "Detrás empeora más, porque la señal es mayor"
-        porque: "Al revés: detrás cuenta poco, delante cuenta entero."
-    escalera:
-      - "¿Qué divide la contribución de lo que va detrás?"
-    solucion: "Delante, 6 dB peor; detrás, casi igual."
 
   - id: resumen
     tipo: resumen

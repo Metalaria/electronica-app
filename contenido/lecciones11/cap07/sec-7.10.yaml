@@ -5,6 +5,11 @@
 # 1.2: la avalancha va sobre el esquema «mosfet» con carga inductiva: 24 V y un transistor de 60 V (sección 7.4), la
 # bobina de 10 mH con 10 Ω (τ = 1 ms, sección 4.3); el transistor (k = 6,25 A/V², V_th = 2 V, 10 V de puerta) es de
 # ejemplo. La avería usa la carga de 6 Ω con 12 V de la sección 7.5, R_G = 100 Ω y el pull-down de 10 kΩ (ejemplo).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el punto de 10 V con más corriente en continua se busca en la
+# SOA (objetivo), el codo de R_DS(on) y 30 A y el límite en continua a 100 V se marcan, la tensión a la que la
+# focalización deja el límite en menos de la mitad de la hipérbola se busca, la avalancha se provoca quitando el
+# diodo y la avería se busca como antes. Quedan una pregunta de opciones (la focalización; la carga electrónica pasa a
+# su explicación) y el emparejamiento de los modos de fallo; el banco de la SOA pasa a la avería del mando débil.
 leccion: cap07/sec-7.10
 
 libro:
@@ -68,14 +73,17 @@ modelo:
     I_pu: { expr: "min(30, V_o/0.05, 600/V_o)", sim: "I_{máx}", nombre: "límite en 100 µs", unidad: A }
     m_dc: { expr: "I_dc/I_o", sim: "margen", nombre: "margen en continua", unidad: "", cifras: 3 }
     m_pu: { expr: "I_pu/I_o", sim: "margen", nombre: "margen en 100 µs", unidad: "", cifras: 3 }
+    r_hi: { expr: "I_dc/I_hi", sim: "real/hipérbola", nombre: "fracción de la hipérbola que queda", unidad: "", cifras: 3 }
+    V_cod: { expr: "30*0.05", sim: "V", nombre: "codo entre R_DS(on) y la corriente máxima", unidad: V }
 
 tarjetas:
   - id: explore-soa
     tipo: explorar
     titulo: "No las dos a la vez"
-    texto: "Arrastre la tensión del punto de trabajo y cambie la corriente. Compare con la frontera de continua y la de un pulso de 100 µs."
+    texto: "Mueva el punto de trabajo. A 10 V, busque la mayor corriente que el transistor aguanta en continua."
     nota: "Límites de la figura del libro."
     libro: [167, 169, 186]
+    inicio: { V_o: 10, I_o: 20 }
     widget:
       tipo: grafica
       x: { id: vx, min: 0.1, max: 160, unidad: V, rotulo: "V_{DS}", escala: log }
@@ -88,16 +96,59 @@ tarjetas:
       lectura: { valor: P_o, rotulo: "Potencia del punto" }
       datos:
         - { valor: I_dc, rotulo: "Límite en continua: {{I_dc}}" }
-        - { valor: I_pu, rotulo: "En 100 µs: {{I_pu}}" }
       mandos:
         - { valor: V_o, lista: [0.2, 0.5, 1, 2, 5, 10, 20, 50, 100], rotulo: "Tensión" }
         - { valor: I_o, lista: [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30], rotulo: "Corriente" }
-    requiere: { mover: [V_o, I_o] }
+    objetivo:
+      condiciones:
+        - { valor: V_o, objetivo: 10, tol: 0.01, rotulo: "A 10 V" }
+        - { valor: m_dc, min: 1, rotulo: "Dentro de la continua" }
+        - { valor: I_o, min: 5, rotulo: "Corriente: {{I_o}}" }
+      logrado: "{{I_o}} a 10 V, {{P_o}} en continua. En un pulso de 100 µs cabrían hasta {{I_pu}}: no las dos cosas a la vez."
+      pistas:
+        - { cuando: { valor: m_dc, menor: 1 }, texto: "Ese punto queda fuera de la curva azul: baje la corriente." }
+        - { cuando: { valor: V_o, menor: 9.9 }, texto: "Vuelva a 10 V." }
+        - { cuando: { valor: V_o, mayor: 10.1 }, texto: "Vuelva a 10 V." }
+        - { texto: "Aún cabe más: suba la corriente sin salirse de la curva azul." }
+    escalera:
+      - "A 10 V manda la hipérbola de 60 W de continua."
+    solucion: "5 A: 50 W, bajo los 6 A del límite."
+    comprobar:
+      - { con: { V_o: 10, I_o: 5 }, I_dc: 6, P_o: 50, I_pu: 30 }
+
+  - id: cinco-limites
+    tipo: marcar
+    titulo: "Los cinco límites"
+    texto: "A la izquierda, la recta de la R_{DS(on)}; arriba, la horizontal de 30 A. Marque en la curva azul el codo donde se juntan."
+    libro: [168, 186]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0.1, max: 160, unidad: V, rotulo: "V_{DS}", escala: log }
+      y: { min: 0.05, max: 80, unidad: A, rotulo: "I_{D}", escala: log }
+      curvas:
+        - { expr: "min(30, vx/0.05, 60/vx, 3*(vx/20)^(-1.6))", color: azul, rotulo: "continua" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "V_cod"
+      tol: 0.03
+      inicio: { x: 20, y: 1 }
+      rotulo: "Codo de R_{DS(on)} y 30 A"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1.8 }, texto: "Ahí la corriente ya baja por la potencia: el codo está más a la izquierda, donde la curva deja de subir." }
+      - { texto: "Ahí aún manda la recta de la R_{DS(on)}: más a la derecha, donde la curva llega a 30 A." }
+    exito: "1,5 V: 30 A · 50 mΩ. Luego vienen la hipérbola de potencia, el recorte por focalización y la vertical de la ruptura."
+    escalera:
+      - "En la recta, V = I · R_{DS(on)}: ¿cuánta tensión pide 30 A?"
+    solucion: "En 1,5 V: 30 A por 50 mΩ."
+    comprobar:
+      - { V_cod: 1.5 }
 
   - id: prediga-punto
-    tipo: predecir
+    tipo: marcar
     titulo: "100 V y 1 A"
-    texto: "Un punto de 100 V y 1 A, 100 W. ¿Dónde es admisible?"
+    texto: "¿Cabe en continua un punto de 100 V y 1 A, 100 W? Marque el límite de corriente en continua a 100 V."
     libro: [169]
     fijar: { V_o: 100, I_o: 1 }
     widget:
@@ -107,45 +158,28 @@ tarjetas:
       curvas:
         - { expr: "min(30, vx/0.05, 60/vx, 3*(vx/20)^(-1.6))", color: azul, rotulo: "continua" }
         - { expr: "min(30, vx/0.05, 600/vx)", color: naranja, rotulo: "pulso de 100 µs" }
-      lectura: { valor: I_dc, rotulo: "Límite en continua a 100 V" }
-      ocultar: true
-    opciones:
-      - texto: "En un pulso de 100 µs, no en continua"
-        bien: true
-        porque: "En un pulso corto, la masa térmica del chip absorbe la energía; en continua, la unión se calentaría demasiado."
-      - texto: "También en continua: 100 W es poco"
-        porque: "En continua el límite a 100 V es de décimas de amperio, por la potencia y la focalización térmica."
-      - texto: "En ninguno: 100 V es la tensión máxima"
-        porque: "100 V es el límite vertical; en ella aún cabe un pulso breve con 1 A."
-    escalera:
-      - "Cuanto más corto el pulso, más lejos llega la curva."
-    solucion: "Admisible en 100 µs, imposible en continua."
-    comprobar:
-      - { I_dc: 0.228, P_o: 100, tol: 0.01 }
-
-  - id: cinco-limites
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los cinco límites"
-    texto: "Una cada límite de la SOA con su forma en la gráfica."
-    libro: [168]
-    emparejar:
-      - ["R_{DS(on)}", "Recta por la izquierda: no se baja de V = I · R"]
-      - ["Corriente máxima", "Horizontal: hilos y metalización"]
-      - ["Potencia máxima", "Hipérbola V · I por la resistencia térmica"]
-      - ["Focalización térmica", "Un recorte por debajo de la hipérbola"]
-      - ["Tensión de ruptura", "Vertical, a la derecha"]
-    exito: "Cinco límites distintos forman una sola frontera."
+      mandos: []
+    marcar:
+      modo: y
+      y: "I_dc"
+      tol: 0.03
+      inicio: { x: 20, y: 10 }
+      rotulo: "Límite en continua a 100 V"
     pistas:
-      - { texto: "En escala doble logarítmica, una potencia constante es una recta inclinada." }
+      - { cuando: { valor: marca_y, mayor: 2 }, texto: "Esa es la curva naranja, la de un pulso de 100 µs. La de continua está más abajo." }
+      - { cuando: { valor: marca_y, mayor: 0.3 }, texto: "Más abajo: siga la curva azul hasta 100 V." }
+      - { texto: "Más arriba: lea la altura de la curva azul en 100 V." }
+    exito: "Unas décimas de amperio: 1 A no cabe en continua. En un pulso de 100 µs sí: la masa térmica del chip absorbe la energía."
     escalera:
-      - "Dos de los límites son una horizontal y una vertical."
-    solucion: "Resistencia–recta, corriente–horizontal, potencia–hipérbola, focalización–recorte, ruptura–vertical."
+      - "Suba en vertical desde 100 V hasta la curva azul y lea su altura."
+    solucion: "Unos 0,23 A: el punto solo es admisible en un pulso corto."
+    comprobar:
+      - { I_dc: 0.228, I_pu: 6, P_o: 100, tol: 0.01 }
 
   - id: sorpresa-focalizacion
     tipo: sorpresa
     titulo: "Menos que la hipérbola"
-    texto: "Suba la tensión en continua y compare el límite real con lo que dice la hipérbola de potencia."
+    texto: "Suba la tensión en continua hasta que el límite real se quede en menos de la mitad de lo que dice la hipérbola de potencia."
     libro: [171, 173]
     inicio: { V_o: 10 }
     widget:
@@ -162,13 +196,23 @@ tarjetas:
         - { valor: I_hi, rotulo: "Según la hipérbola: {{I_hi}}" }
       mandos:
         - { valor: V_o, lista: [0.2, 0.5, 1, 2, 5, 10, 20, 50, 100], rotulo: "Tensión" }
-    requiere: { mover: [V_o] }
+    objetivo:
+      condiciones:
+        - { valor: r_hi, max: 0.5, rotulo: "Queda: {{r_hi}} de la hipérbola" }
+      logrado: "A {{V_o}}, {{I_dc}} frente a {{I_hi}}: la focalización térmica recorta la SOA por encima de 20 V."
+      pistas:
+        - { texto: "Aún queda más de la mitad: suba la tensión." }
+    escalera:
+      - "El recorte empieza por encima de 20 V y crece con la tensión."
+    solucion: "A 100 V: unos 0,23 A frente a los 0,6 A de la hipérbola."
+    comprobar:
+      - { con: { V_o: 100 }, I_hi: 0.6, I_dc: 0.228, r_hi: 0.38, tol: 0.01 }
 
   - id: por-que-focaliza
     tipo: porque
     titulo: "¿Por qué ese recorte?"
     texto: "A corriente baja y tensión alta, una celda algo más caliente acapara la corriente. ¿Por qué?"
-    libro: [171]
+    libro: [171, 173]
     widget:
       tipo: grafica
       x: { id: vx, min: 0.1, max: 160, unidad: V, rotulo: "V_{DS}", escala: log }
@@ -179,7 +223,7 @@ tarjetas:
     opciones:
       - texto: "Su umbral baja con la temperatura y eso pesa más que la subida de R_{DS(on)}"
         bien: true
-        porque: "Conduce más, se calienta más y se destruye: la ruptura secundaria de la que se creía inmune."
+        porque: "Conduce más y se destruye. Por eso, para una carga electrónica, se elige un MOSFET especificado para SOA lineal."
       - texto: "Porque su R_{DS(on)} baja al calentarse"
         porque: "R_{DS(on)} sube con la temperatura; eso reparte bien a corriente alta, no en zona lineal."
       - texto: "Porque la puerta se perfora"
@@ -188,35 +232,13 @@ tarjetas:
       - "En zona lineal, ¿qué domina: la resistencia o el umbral?"
     solucion: "El umbral, que baja con la temperatura: la celda caliente conduce más."
 
-  - id: carga-electronica
-    tipo: pregunta
-    titulo: "Para una carga electrónica"
-    texto: "Una carga electrónica hace trabajar el MOSFET en zona lineal. ¿Cuál se elige?"
-    libro: [173]
-    widget:
-      tipo: grafica
-      x: { id: vx, min: 0.1, max: 160, unidad: V, rotulo: "V_{DS}", escala: log }
-      y: { min: 0.05, max: 80, unidad: A, rotulo: "I_{D}", escala: log }
-      curvas:
-        - { expr: "min(30, vx/0.05, 60/vx, 3*(vx/20)^(-1.6))", color: azul, rotulo: "continua real" }
-    opciones:
-      - texto: "Uno especificado para SOA lineal"
-        bien: true
-        porque: "Es otra familia. Los optimizados para conmutar, de celdas muy densas, son los peores en zona lineal."
-      - texto: "El de menor R_{DS(on)}"
-        porque: "Suelen ser de celdas muy densas, precisamente los peores en zona lineal."
-      - texto: "Cualquiera con potencia de portada suficiente"
-        porque: "La SOA en continua es mucho menor de lo que esa potencia sugiere."
-    escalera:
-      - "Un transistor excelente conmutando puede ser pésimo como elemento lineal."
-    solucion: "Uno especificado para SOA lineal."
-
   - id: explore-avalancha
     tipo: explorar
     titulo: "Avalancha al apagar una bobina"
-    texto: "Una bobina con 24 V y un transistor de 60 V. Quite el diodo de rueda libre y mire el drenador al apagar."
+    texto: "Una bobina con 24 V y un transistor de 60 V. Provoque la avalancha al apagar."
     nota: "Bobina de 10 mH con 10 Ω de devanado; transistor de ejemplo."
     libro: [178, "cap07#79", "cap04#74"]
+    inicio: { rueda_i: 1 }
     widget:
       tipo: circuito
       esquema: mosfet
@@ -231,7 +253,18 @@ tarjetas:
           - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(Vd_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-(t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
       mandos:
         - { valor: rueda_i, tipo: interruptor, rotulo: "Diodo de rueda libre" }
-    requiere: { mover: [rueda_i] }
+    objetivo:
+      condiciones:
+        - { valor: Vpk_i, min: 60, rotulo: "Pico: {{Vpk_i}}" }
+      logrado: "Sin diodo, la bobina sube el drenador hasta los {{Vpk_i}} de la avalancha. Por eso V_{DS} se dimensiona al doble de la alimentación."
+      pistas:
+        - { texto: "Con el diodo de rueda libre la bobina descarga por él: quítelo." }
+    escalera:
+      - "¿Qué camino tiene la corriente de la bobina cuando el transistor se apaga?"
+    solucion: "Quite el diodo de rueda libre: el drenador llega a 60 V."
+    comprobar:
+      - { con: { rueda_i: 0 }, Vpk_i: 60 }
+      - { Vpk_i: 24.7 }
 
   - id: modos-fallo
     tipo: pregunta
@@ -251,29 +284,6 @@ tarjetas:
     escalera:
       - "Superar V_{DS} lleva a la avalancha."
     solucion: "Puerta–óhmetro, corto–diodos, avalancha–inductiva, dv/dt–cruzada, óxido–umbral."
-
-  - id: banco-soa
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "El osciloscopio en el drenador muestra varios voltios mientras conduce. ¿Qué indica para la SOA?"
-    libro: [185]
-    widget:
-      tipo: grafica
-      x: { id: vx, min: 0.1, max: 160, unidad: V, rotulo: "V_{DS}", escala: log }
-      y: { min: 0.05, max: 80, unidad: A, rotulo: "I_{D}", escala: log }
-      curvas:
-        - { expr: "min(30, vx/0.05, 60/vx, 3*(vx/20)^(-1.6))", color: azul, rotulo: "continua real" }
-    opciones:
-      - texto: "Trabaja en zona lineal por puerta insuficiente"
-        bien: true
-        porque: "Es la causa más frecuente de que un MOSFET se destruya en un circuito aparentemente bien dimensionado."
-      - texto: "Nada: conduce a fondo"
-        porque: "La conducción plena da milivoltios en el drenador, no voltios."
-      - texto: "Que la tensión de ruptura es baja"
-        porque: "La ruptura se ve en los picos al apagar; esto es conducción incompleta."
-    escalera:
-      - "Con tensión y corriente a la vez, el punto se aleja del borde izquierdo."
-    solucion: "Zona lineal por puerta insuficiente: fuera de la SOA en continua."
 
   - id: averia-puerta
     tipo: averia

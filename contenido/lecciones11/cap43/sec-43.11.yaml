@@ -6,6 +6,11 @@
 #   32 W del libro, 2 A).
 # - El filtro LC de salida (22 µH, 0,68 µF; cada mitad del puente ve 4 Ω): gráfica de |H| = 1/|1 − ω²LC + jωL/R|.
 # Paso práctico: «ajuste» del condensador del filtro hasta el corte del libro (41,1 kHz con 22 µH).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la anchura de pulso y el filtro plano (Q ≈ 0,7 con 4 Ω) se
+# buscan con objetivo; el 98,8 % y el 3 % de tiempo muerto se predicen; el rendimiento del 99 % se busca cambiando la
+# R_DS(on) (la potencia no lo cambia: pérdidas y salida van con I²); el ejercicio 44.1 se hace sobre la etapa viva
+# «emisor-comun» del ejemplo del libro (bloque 67), con β doble de ejemplo para simular el calentamiento. Las
+# interferencias pasan al resumen; quedan dos preguntas de opciones (por qué no disipa y el tiempo muerto).
 leccion: cap43/sec-43.11
 
 libro:
@@ -15,6 +20,7 @@ libro:
   362: "la conducción disipa 0,4 W, es decir, un rendimiento del 98,8 %"
   363: "con 50 ns de tiempo muerto en cada una de las dos conmutaciones"
   366: "Modulación por ancho de pulso en clase D"
+  "cap43#67": "12 V de alimentación, divisor de 47 kΩ y 10 kΩ, RC = 3,3 kΩ, RE = 1 kΩ, β = 150 e IC = 1,324 mA"
   "cap43#365": "¿Cambia algo si la resistencia de emisor existe pero está puenteada por un condensador?"
 
 modelo:
@@ -30,6 +36,17 @@ modelo:
     L_f: { sim: "L", nombre: "bobina del filtro", unidad: H, valor: 22e-6 }
     C_f: { sim: "C", nombre: "condensador del filtro", unidad: F, valor: 0.68e-6 }
     R_h: { sim: "R", nombre: "carga de cada mitad del filtro", unidad: Ω, valor: 4 }
+    V_c11: { sim: "V_{CC}", nombre: "alimentación de la etapa", unidad: V, valor: 12 }
+    R_111: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_211: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_C11: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_E11: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    b_11: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    C_E11: { sim: "C_{E}", nombre: "condensador de desvío", unidad: F, valor: 100e-6 }
+    des11: { tipo: interruptor, nombre: "R_E puenteada por el condensador", valor: 0 }
+    a_11: { sim: "v_{s}", nombre: "amplitud de la señal", unidad: V, valor: 0.001 }
+    f_11: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
   calculos:
     V_rms: { expr: "sqrt(P_o*R_L)", sim: "V", nombre: "tensión eficaz en el altavoz", unidad: V }
     I_r: { expr: "V_rms/R_L", sim: "I", nombre: "corriente eficaz", unidad: A }
@@ -41,14 +58,19 @@ modelo:
     t_2: { expr: "2*t_m", sim: "2·t_{muerto}", nombre: "hueco por periodo", unidad: s }
     f_0: { expr: "1/(2*pi*sqrt(L_f*C_f))", sim: "f_{0}", nombre: "frecuencia de corte del filtro", unidad: Hz }
     Q_f: { expr: "R_h*sqrt(C_f/L_f)", sim: "Q", nombre: "factor de calidad del filtro", unidad: "", cifras: 2 }
+    d_mx: { expr: "50*(1 + A_m)", sim: "D_{máx}", nombre: "anchura del pulso más ancho", unidad: "%", cifras: 2 }
+    p_c: { expr: "100*P_c/P_o", sim: "P_{c}/P", nombre: "pérdida frente a la salida", unidad: "%" }
+    I_B11: { expr: "(V_c11*R_211/(R_111 + R_211) - V_BE)/(par(R_111, R_211) + (b_11 + 1)*R_E11)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_C11: { expr: "b_11*I_B11", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
 
 tarjetas:
   - id: explore-pwm
     tipo: explorar
     titulo: "El transistor no amplifica: conmuta"
-    texto: "La señal se compara con una triangular rápida y sale un tren de pulsos. Cambie la amplitud y mire su anchura."
+    texto: "La señal contra una triangular rápida da pulsos. Suba la amplitud hasta que el más ancho ocupe un 95 % del periodo."
     nota: "Frecuencias de ejemplo, 1 kHz y 10 kHz, para que se vean los pulsos."
     libro: [359, 366]
+    inicio: { A_m: 0.3 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
@@ -59,17 +81,48 @@ tarjetas:
         - { expr: "2*ceil((A_m*sin(2*pi*f_a*t) - (4*abs(t*f_p - floor(t*f_p + 0.5)) - 1))/1e9) - 1", color: naranja, rotulo: "pulsos" }
       mandos:
         - { valor: A_m, min: 0, max: 0.9, paso: 0.1, rotulo: "Amplitud de la señal" }
-    requiere: { mover: [A_m] }
+    objetivo:
+      condiciones:
+        - { valor: d_mx, min: 95, rotulo: "Pulso más ancho: {{d_mx}}" }
+      logrado: "Con amplitud {{A_m}}, el pulso más ancho ocupa {{d_mx}} del periodo: la anchura sigue a la señal y el transistor solo conmuta."
+      pistas:
+        - { texto: "Más amplitud, pulsos más anchos en las crestas." }
+    escalera:
+      - "Donde la señal está arriba, la triangular pasa menos tiempo por encima."
+    solucion: "Amplitud 0,9: el pulso más ancho, un 95 %."
     comprobar:
       - { f_p: 10000, f_a: 1000 }
+      - { con: { A_m: 0.9 }, d_mx: 95, tol: 0.001 }
+
+  - id: estime-rendimiento
+    tipo: simular
+    fase: "Estime"
+    titulo: "El rendimiento por conducción"
+    texto: "Un puente con R_{DS(on)} = 50 mΩ entrega 32 W sobre 8 Ω. ¿Qué rendimiento tiene solo por conducción?"
+    libro: [361, 362]
+    fijar: { P_o: 32, R_L: 8, R_ds: 0.05 }
+    simular:
+      objetivo: eta
+      unidad: "%"
+      tol: 0.002
+      rotulo: "Rendimiento"
+      errores:
+        - { expr: "p_c", texto: "Eso es lo que se pierde frente a la salida, no el rendimiento." }
+    exito: "98,8 %: 0,4 W de conducción, frente al 78,5 % teórico de la clase B."
+    escalera:
+      - "32 W sobre 8 Ω son 2 A eficaces."
+      - "2 · 2² · 0,05 = 0,4 W; η = 32/32,4."
+    solucion: "32/(32 + 0,4) = 98,8 %."
+    comprobar:
+      - { eta: 98.8, P_c: 0.4, I_r: 2, p_c: 1.25, tol: 0.002 }
+      - { con: { P_o: 32 }, P_t: 32.4, tol: 0.001 }
 
   - id: formula-conduccion
-    tipo: formula
+    tipo: explorar
     titulo: "Las pérdidas de conducción"
-    texto: "En un puente conducen siempre dos transistores en serie con el altavoz. Cambie la potencia y la R_{DS(on)}."
+    texto: "En un puente conducen siempre dos transistores en serie con el altavoz. Pase del 99 % de rendimiento por conducción."
     libro: [360, 361]
-    ec: 361
-    sustitucion: "2 · {{I_r}}² · {{R_ds}} = {{P_c}}"
+    inicio: { P_o: 32, R_ds: 0.1 }
     widget:
       tipo: circuito
       esquema: resistencia
@@ -81,36 +134,21 @@ tarjetas:
       corriente: I_r
       mide: { corriente: I_r, tension: V_rms }
       mandos:
-        - { valor: P_o, lista: [8, 32, 100] }
-        - { valor: R_ds, lista: [0.025, 0.05, 0.1] }
-
-  - id: estime-rendimiento
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "El rendimiento por conducción"
-    texto: "Un puente con R_{DS(on)} = 50 mΩ entrega 32 W sobre 8 Ω. ¿Qué rendimiento tiene solo por conducción?"
-    libro: [361, 362]
-    fijar: { P_o: 32, R_L: 8, R_ds: 0.05 }
-    estimar:
-      objetivo: "eta"
-      unidad: "%"
-      min: 80
-      max: 100
-      paso: 0.1
-      inicio: 85
-      tol: 0.002
-      rotulo: "Rendimiento"
-    exito: "98,8 %: 0,4 W de conducción, frente al 78,5 % teórico de la clase B."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 99 }, texto: "Se ha pasado: con 2 A por dos transistores de 50 mΩ se pierden 0,4 W." }
-      - { texto: "Se ha quedado corto: las pérdidas son solo 0,4 W frente a 32 W." }
+        - { valor: P_o, lista: [8, 32, 100], rotulo: "Potencia" }
+        - { valor: R_ds, lista: [0.025, 0.05, 0.1], rotulo: "R_{DS(on)}" }
+    objetivo:
+      condiciones:
+        - { valor: eta, min: 99, rotulo: "η = {{eta}}" }
+      logrado: "Con {{R_ds}}: {{eta}}. La potencia no lo cambia: la pérdida y la salida crecen las dos con I²; solo cuenta R_{DS(on)} frente al altavoz."
+      pistas:
+        - { cuando: { valor: R_ds, mayor: 0.03 }, texto: "Cambiar la potencia no basta: pruebe con otro MOSFET." }
+        - { texto: "Menos R_{DS(on)}." }
     escalera:
-      - "32 W sobre 8 Ω son 2 A eficaces."
-      - "2 · 2² · 0,05 = 0,4 W; η = 32/32,4."
-    solucion: "32/(32 + 0,4) = 98,8 %."
+      - "η = R_{L}/(R_{L} + 2R_{DS(on)}) solo por conducción."
+    solucion: "Un MOSFET de 25 mΩ: un 99,4 %."
     comprobar:
-      - { eta: 98.8, P_c: 0.4, I_r: 2, tol: 0.002 }
-      - { con: { P_o: 32 }, P_t: 32.4, tol: 0.001 }
+      - { con: { R_ds: 0.025, P_o: 32 }, eta: 99.38, tol: 0.001 }
+      - { con: { R_ds: 0.05, P_o: 8 }, eta: 98.77, tol: 0.001 }
 
   - id: porque-no-disipa
     tipo: porque
@@ -161,24 +199,19 @@ tarjetas:
     solucion: "Distorsión de cruce, como el tramo muerto de la clase B."
 
   - id: estime-hueco
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Cuánto periodo se pierde"
     texto: "A 300 kHz el periodo es de 3,33 µs. Con 50 ns de tiempo muerto en cada una de sus dos conmutaciones, ¿qué parte se pierde?"
     libro: [363]
-    estimar:
-      objetivo: "k_t"
+    simular:
+      objetivo: k_t
       unidad: "%"
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 8
-      tol: 0.05
+      tol: 0.02
       rotulo: "Periodo perdido"
+      errores:
+        - { expr: "k_t/2", texto: "Cuente las dos conmutaciones del periodo: 100 ns en total." }
     exito: "Un 3 %: poco tiempo, pero distorsión de cruce."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Se ha pasado: son 100 ns de 3,33 µs." }
-      - { texto: "Se ha quedado corto: cuente las dos conmutaciones del periodo, 100 ns en total." }
     escalera:
       - "Dos huecos de 50 ns: 100 ns por periodo."
     solucion: "100 ns / 3,33 µs = 3 %."
@@ -189,8 +222,9 @@ tarjetas:
   - id: explore-filtro
     tipo: explorar
     titulo: "El filtro de salida"
-    texto: "22 µH y 0,68 µF recuperan la señal y quitan la conmutación. Cambie la carga que ve cada mitad del filtro."
+    texto: "22 µH y 0,68 µF recuperan la señal y quitan la conmutación. Busque la carga por mitad que deja la respuesta plana, sin pico."
     libro: [363]
+    inicio: { R_h: 16 }
     widget:
       tipo: grafica
       x: { id: nu, min: 1000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
@@ -204,7 +238,18 @@ tarjetas:
         - { valor: f_0, rotulo: "f_{0} = {{f_0}}" }
       mandos:
         - { valor: R_h, lista: [2, 4, 8, 16], rotulo: "Carga de cada mitad" }
-    requiere: { mover: [R_h] }
+    objetivo:
+      condiciones:
+        - { valor: Q_f, objetivo: 0.7, tol: 0.05, rotulo: "Q = {{Q_f}}" }
+      logrado: "Con {{R_h}} por mitad, Q = {{Q_f}}: plano, de Butterworth. Con otro altavoz sale pico o caída: la respuesta depende de su impedancia."
+      pistas:
+        - { cuando: { valor: Q_f, mayor: 0.74 }, texto: "Sale pico: menos carga por mitad." }
+        - { texto: "Cae antes del corte: más carga por mitad." }
+    escalera:
+      - "Un altavoz de 8 Ω en puente: cada mitad ve la mitad."
+    solucion: "4 Ω por mitad: Q ≈ 0,7."
+    comprobar:
+      - { con: { R_h: 4 }, Q_f: 0.703, f_0: 41100, tol: 0.003 }
 
   - id: ajuste-filtro
     tipo: ajuste
@@ -233,59 +278,43 @@ tarjetas:
       alto: "El corte está demasiado alto, hacia la conmutación: aumente C."
       dentro: "Con 4 Ω por mitad sale plano, de Butterworth (Q ≈ 0,7)."
 
-  - id: pregunta-interferencias
-    tipo: pregunta
-    titulo: "Una antena en el salón"
-    texto: "¿Por qué un clase D obliga a cuidar tanto el trazado y el cableado?"
-    libro: [363]
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "nivel" }
-      curvas:
-        - { expr: "2*ceil((A_m*sin(2*pi*f_a*t) - (4*abs(t*f_p - floor(t*f_p + 0.5)) - 1))/1e9) - 1", color: naranja, rotulo: "pulsos" }
-    opciones:
-      - texto: "Conmuta varios amperios a cientos de kilohercios junto a un cable largo: una antena"
-        bien: true
-        porque: "El cable del altavoz radia lo que la conmutación genera: todo el capítulo de compatibilidad aplica."
-      - texto: "Porque disipa mucho y el calor afecta a las pistas"
-        porque: "Disipa muy poco; el problema son las interferencias."
-      - texto: "Porque su señal es de muy bajo nivel"
-        porque: "Maneja amperios; el riesgo es lo que radia, no lo que capta."
-    escalera:
-      - "¿Qué forma un conmutador rápido conectado a un cable largo?"
-    solucion: "Un emisor de interferencias: amperios conmutados a cientos de kHz y un cable largo."
-
   - id: pregunta-ejercicio
-    tipo: pregunta
+    tipo: explorar
     titulo: "Un ejercicio del capítulo"
-    texto: "Una etapa de emisor común tiene su resistencia de emisor puenteada por un condensador. ¿Sigue estabilizando el punto de trabajo?"
-    libro: ["cap43#365"]
+    texto: "La etapa de ejemplo, con R_{E}. Ponga el condensador que la puentea, caliente el transistor (β doble) y mire si I_{C} se mueve."
+    libro: ["cap43#365", "cap43#67"]
+    nota: "El β doble es de ejemplo."
+    inicio: { des11: 0, b_11: 150 }
     widget:
       tipo: circuito
-      esquema: resistencia
-      piezas: { fuente: V_rms, r: R_L }
-      lectura: { valor: I_r, rotulo: "Corriente" }
-      corriente: I_r
-      mide: { corriente: I_r, tension: V_rms }
-    opciones:
-      - texto: "Sí: el condensador solo actúa sobre la señal"
-        bien: true
-        porque: "En continua el condensador no conduce: la realimentación de R_{E} sigue frenando la deriva térmica."
-      - texto: "No: el condensador la anula"
-        porque: "La anula solo en alterna, para recuperar ganancia; en continua sigue ahí."
-      - texto: "Solo si el condensador es pequeño"
-        porque: "Sea del tamaño que sea, en continua es un circuito abierto."
+      esquema: emisor-comun
+      piezas: { vcc: V_c11, r1: R_111, r2: R_211, rc: R_C11, re: R_E11, ce: C_E11, desvio: des11, beta: b_11, vbe: V_BE, fuente: a_11, f: f_11 }
+      lectura: { valor: I_C11, rotulo: "Corriente de colector" }
+      corriente: I_C11
+      mide: { ic: I_C11 }
+      mandos:
+        - { valor: des11, tipo: interruptor, rotulo: "Condensador sobre R_{E}" }
+        - { valor: b_11, lista: [150, 300], nombres: ["frío", "caliente"], rotulo: "β" }
+    objetivo:
+      condiciones:
+        - { valor: des11, min: 1, rotulo: "Con el condensador" }
+        - { valor: b_11, min: 300, rotulo: "Transistor caliente" }
+      logrado: "I_{C} = {{I_C11}}, casi igual: en continua el condensador es un circuito abierto y R_{E} sigue estabilizando. Solo se anula en alterna, para recuperar ganancia."
+      pistas:
+        - { texto: "Ponga el condensador y suba β." }
     escalera:
       - "¿Qué es un condensador para la continua?"
-    solucion: "Sí: en continua el condensador es un circuito abierto y R_{E} sigue estabilizando."
+    solucion: "Sí: con el condensador y β doble, I_{C} apenas sube."
+    comprobar:
+      - { con: { b_11: 150 }, I_C11: 0.001324, tol: 0.005 }
+      - { con: { b_11: 300, des11: 1 }, I_C11: 0.001363, tol: 0.005 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [359, 362, 363]
+    libro: [359, 362, 363, "cap43#365"]
     ideas:
       - { titulo: "Conmutar.", texto: "PWM muy por encima del audio; un filtro LC recupera la señal." }
       - { titulo: "Pérdidas.", texto: "Conducción 2·I²·R_{DS(on)}: 0,4 W con 32 W, un 98,8 %." }
       - { titulo: "Tiempo muerto.", texto: "Un 3 % del periodo a 300 kHz: distorsión de cruce como la clase B." }
-      - { titulo: "Filtro y antena.", texto: "41,1 kHz, que depende del altavoz; y un cable largo que radia." }
+      - { titulo: "Filtro y antena.", texto: "41,1 kHz, que depende del altavoz; y amperios conmutados a cientos de kilohercios en un cable largo que radia." }

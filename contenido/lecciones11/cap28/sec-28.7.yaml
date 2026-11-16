@@ -4,6 +4,10 @@
 # amplificador de un Wien (esquema ao-no-inversor, 0,1 V de prueba en continua): ganancia de lazo G/3 entre 1,05 y 1,20
 # en el peor caso de las tolerancias de R₁ y R_f (bloque 190; resistencias del 1 % como en el problema 27.A). Solo se
 # modelan las tolerancias, no la temperatura ni la alimentación (lo dice la nota). Con ± 5 % no cabe ningún par.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el exceso de ganancia se sube hasta llegar a la amplitud en 60
+# ciclos y se baja a 0,98 para ver que en frío no arranca (objetivos; los tres casos del emparejamiento pasan a sus
+# explicaciones) y en el banco se marca el tiempo de establecimiento. «Arranca al tocarlo» y la medida del margen con
+# la alimentación pasan al resumen. Quedan dos preguntas de opciones (el AGC, el cristal de 32 768 Hz).
 leccion: cap28/sec-28.7
 
 libro:
@@ -29,20 +33,23 @@ modelo:
     V_e: { sim: "v_{in}", nombre: "tensión de prueba", unidad: V, valor: 0.1 }
     R_1: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 10000 }
     R_2: { sim: "R_{f}", nombre: "resistencia de realimentación", unidad: Ω, valor: 20000 }
+    N_c: { sim: "n", nombre: "ciclos observados", unidad: ciclos, valor: 60 }
   calculos:
-    a_60: { expr: "min(1, v_r*G_l^60)", sim: "v", nombre: "amplitud tras 60 ciclos", unidad: "", cifras: 2 }
+    a_60: { expr: "min(1, v_r*G_l^N_c)", sim: "v", nombre: "amplitud tras 60 ciclos", unidad: "", cifras: 2 }
     G_a: { expr: "1 + R_2/R_1", sim: "G", nombre: "ganancia del amplificador", unidad: "" }
     L_g: { expr: "G_a/3", sim: "|A·β|", nombre: "ganancia de lazo del Wien", unidad: "", cifras: 3 }
     r_f: { expr: "R_2/R_1", sim: "R_{f}/R₁", nombre: "cociente de resistencias", unidad: "" }
     V_o: { expr: "G_a*V_e", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    n_e: { expr: "ln(1/v_r)/ln(G_l)", sim: "n", nombre: "ciclos hasta la amplitud final", unidad: ciclos }
 
 tarjetas:
   - id: explore-arranque
     tipo: explorar
     titulo: "Arranca del ruido"
-    texto: "El lazo amplifica el ruido en cada vuelta. Cambie el exceso de ganancia y mire cuánto tarda en llegar a la amplitud fijada."
+    texto: "El lazo amplifica el ruido en cada vuelta. Ajuste el exceso de ganancia para llegar a la amplitud fijada antes de 60 ciclos."
     nota: "Amplitudes relativas, en escala logarítmica."
     libro: [180, 182]
+    inicio: { G_l: 1.05 }
     widget:
       tipo: grafica
       x: { id: nc, min: 0, max: 60, unidad: ciclos, rotulo: "ciclos de oscilación" }
@@ -52,16 +59,25 @@ tarjetas:
       lectura: { valor: a_60, rotulo: "Amplitud tras 60 ciclos" }
       mandos:
         - { valor: G_l, lista: [1.05, 1.2], rotulo: "|A·β|" }
-    requiere: { mover: [G_l] }
+    objetivo:
+      condiciones:
+        - { valor: a_60, min: 1, rotulo: "Tras 60 ciclos: {{a_60}}" }
+      logrado: "Con |A·β| = {{G_l}} llega a la amplitud fijada antes de 60 ciclos: mayor que 1, crece hasta que algo la limita."
+      pistas:
+        - { texto: "Con tan poco exceso, aún va por la mitad: más ganancia de lazo." }
+    escalera:
+      - "Poco exceso de ganancia, arranque lento."
+    solucion: "|A·β| = 1,2."
     comprobar:
-      - { a_60: 0.37, tol: 0.02 }
+      - { a_60: 0.37, N_c: 60, tol: 0.02 }
+      - { con: { G_l: 1.2 }, a_60: 1 }
 
   - id: prediga-frio
-    tipo: predecir
+    tipo: explorar
     titulo: "En frío"
-    texto: "Un oscilador diseñado con muy poco exceso de ganancia se enciende en frío, y su ganancia de lazo queda en 0,98. ¿Qué pasa?"
-    libro: [177, 182]
-    fijar: { G_l: 0.98 }
+    texto: "Un oscilador diseñado con muy poco exceso de ganancia se enciende en frío, y su ganancia de lazo cae a 0,98. Póngala ahí y mire."
+    libro: [177, 178, 182]
+    inicio: { G_l: 1.05 }
     widget:
       tipo: grafica
       x: { id: nc, min: 0, max: 60, unidad: ciclos, rotulo: "ciclos de oscilación" }
@@ -69,37 +85,20 @@ tarjetas:
       curvas:
         - { expr: "min(1, v_r*G_l^nc)", color: azul, rotulo: "amplitud" }
       lectura: { valor: a_60, rotulo: "Amplitud tras 60 ciclos" }
-      ocultar: curvas
-    opciones:
-      - texto: "No arranca: la oscilación se extingue"
-        bien: true
-        porque: "Por debajo de 1, cada vuelta la reduce. Es el riesgo del poco exceso con temperatura baja."
-      - texto: "Arranca, pero más despacio"
-        porque: "Más despacio sería con ganancia algo mayor que 1. Por debajo de 1 no crece nunca."
-      - texto: "Arranca igual: el ruido siempre está"
-        porque: "El ruido está, pero el lazo lo atenúa en cada vuelta."
+      mandos:
+        - { valor: G_l, lista: [0.98, 1.05, 1.2], rotulo: "|A·β|" }
+    objetivo:
+      condiciones:
+        - { valor: G_l, max: 0.98, rotulo: "|A·β| = {{G_l}}" }
+      logrado: "Se extingue: menor que 1, nunca arranca. Exactamente 1 no se puede mantener: mayor que 1 al arrancar y 1 en régimen, con un mecanismo automático."
+      pistas:
+        - { texto: "Baje la ganancia de lazo a 0,98." }
     escalera:
       - "¿Qué le pasa a una señal que vuelve multiplicada por 0,98 en cada vuelta?"
-    solucion: "Se extingue: con ganancia de lazo menor que 1 nunca arranca."
+    solucion: "Con 0,98, tras 60 ciclos queda una fracción de lo que había."
     comprobar:
-      - { a_60: 0.006, tol: 0.05 }
-
-  - id: empareje-casos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Tres ganancias de lazo"
-    texto: "Una cada ganancia de lazo con lo que hace el oscilador."
-    libro: [177, 178]
-    emparejar:
-      - ["Menor que 1", "Nunca arranca"]
-      - ["Mayor que 1", "Crece hasta que algo la limita"]
-      - ["Exactamente 1", "Perfecto, e imposible de mantener"]
-    exito: "Por eso: mayor que 1 al arrancar y exactamente 1 en régimen, con un mecanismo automático."
-    pistas:
-      - { texto: "Ningún circuito real mantiene una ganancia exactamente igual a 1." }
-    escalera:
-      - "Piense en la temperatura, el envejecimiento y la dispersión."
-    solucion: "Menor: no arranca. Mayor: crece hasta limitarse. Igual: ideal, pero no se sostiene."
+      - { N_c: 60 }
+      - { con: { G_l: 0.98 }, a_60: 0.006, tol: 0.05 }
 
   - id: toque-mecanismo
     tipo: tocar
@@ -184,31 +183,6 @@ tarjetas:
       - { con: { R_2: 21500 }, L_g: 1.05, r_f: 2.15, tol: 0.001 }
       - { con: { R_2: 26000 }, L_g: 1.2, r_f: 2.6, tol: 0.001 }
 
-  - id: arranca-tocandolo
-    tipo: pregunta
-    titulo: "Arranca al tocarlo"
-    texto: "Un oscilador arranca en el banco, no en frío, y a veces solo al tocarlo con la sonda. ¿Qué hace?"
-    libro: [191]
-    fijar: { G_l: 1.05 }
-    widget:
-      tipo: grafica
-      x: { id: nc, min: 0, max: 60, unidad: ciclos, rotulo: "ciclos de oscilación" }
-      y: { min: 0.003, max: 3, unidad: "", rotulo: "amplitud", escala: log }
-      curvas:
-        - { expr: "min(1, v_r*G_l^nc)", color: azul, rotulo: "con poco margen" }
-        - { expr: "min(1, v_r*0.98^nc)", color: naranja, rotulo: "en frío", discontinua: true }
-    opciones:
-      - texto: "Aumentar el margen de ganancia"
-        bien: true
-        porque: "Los dos síntomas dicen que el margen es insuficiente; insistir no lo arregla."
-      - texto: "Insistir: encender y apagar hasta que arranque"
-        porque: "Puede arrancar alguna vez, pero el siguiente ejemplar o la siguiente mañana fría no."
-      - texto: "Dejar la sonda conectada"
-        porque: "La sonda solo cambia ligeramente el circuito: delata el problema, no lo resuelve."
-    escalera:
-      - "¿Qué tienen en común el frío y la sonda?"
-    solucion: "Margen de ganancia insuficiente: hay que aumentarlo."
-
   - id: cristal-excitacion
     tipo: pregunta
     titulo: "Un cristal de 32 768 Hz"
@@ -232,9 +206,9 @@ tarjetas:
     solucion: "Sobreexcitación: el límite es de apenas 1 µW. La resistencia serie lo protege."
 
   - id: banco-margen
-    tipo: pregunta
-    titulo: "Medir el margen real"
-    texto: "En el banco, ¿cómo se mide el margen de arranque de un oscilador?"
+    tipo: marcar
+    titulo: "El arranque en disparo único"
+    texto: "Con disparo único, disparando con la alimentación, se ve la señal crecer desde el ruido. Marque cuándo llega a la amplitud final."
     libro: [196, 197]
     fijar: { G_l: 1.2 }
     widget:
@@ -243,24 +217,30 @@ tarjetas:
       y: { min: 0.003, max: 3, unidad: "", rotulo: "amplitud", escala: log }
       curvas:
         - { expr: "min(1, v_r*G_l^nc)", color: azul, rotulo: "arranque en disparo único" }
-    opciones:
-      - texto: "Bajando la alimentación hasta que deje de arrancar y comparándola con la nominal"
-        bien: true
-        porque: "Esa diferencia es el margen real; si es pequeña, hay que rediseñar."
-      - texto: "Midiendo la amplitud final con el multímetro"
-        porque: "La amplitud final la fija el control; no dice cuánto sobra para arrancar."
-      - texto: "Contando cuántas veces arranca de diez"
-        porque: "Eso solo mide la suerte de ese día; la alimentación mínima da un número."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "n_e"
+      tol: 0.03
+      inicio: { x: 50, y: 1 }
+      rotulo: "Establecimiento"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 24 }, texto: "Ahí ya lleva un rato en la amplitud final: antes." }
+      - { texto: "Ahí aún está creciendo: en escala logarítmica, una recta." }
+    exito: "Ese es el tiempo de establecimiento: la recta en escala logarítmica es el crecimiento exponencial."
     escalera:
-      - "¿Qué variable puede bajar poco a poco hasta llegar al límite?"
-    solucion: "Bajar la alimentación hasta que no arranque: la diferencia con la nominal es el margen."
+      - "Busque dónde la recta se vuelve horizontal."
+    solucion: "Hacia el ciclo 21."
+    comprobar:
+      - { n_e: 21.46, tol: 0.01 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [178, 187, 188, 190]
+    libro: [178, 187, 188, 190, 191, 194, 197]
     ideas:
       - { titulo: "Dos cosas contradictorias.", texto: "Ganancia mayor que 1 para arrancar del ruido y exactamente 1 en régimen." }
       - { titulo: "Cuatro mecanismos.", texto: "Saturación, diodos, lámpara y AGC: cuanto más suave, menos distorsión." }
-      - { titulo: "El margen.", texto: "Entre un 5 y un 20 % por encima de 1 en el peor caso." }
-      - { titulo: "Si no arranca en frío.", texto: "No insista: aumente el margen." }
+      - { titulo: "El margen.", texto: "Entre un 5 y un 20 % por encima de 1 en el peor caso. Se mide bajando la alimentación hasta que deje de arrancar." }
+      - { titulo: "Si no arranca en frío o al tocarlo.", texto: "No insista: aumente el margen." }

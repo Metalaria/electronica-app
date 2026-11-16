@@ -3,6 +3,11 @@
 # esquema carga-rc. 7.C: la corriente con degeneración resuelve ½·k·(V_G − V_th − I·R_S)² = I (raíz menor).
 # 1.2: la fuente de corriente de 7.C es el esquema «mosfet» (con R_S en la degeneración); la carga que alimenta, 6 Ω con
 # 12 V (la de la sección 7.5), es de ejemplo: solo hace falta que el transistor siga en saturación.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la frecuencia a la que B pasa a ganar se busca (objetivo), la
+# pérdida de B a 500 kHz, el empate y el tiempo con 22 Ω se predicen (simular), el cruce se lleva por encima de
+# 500 kHz cambiando de transistor, la R_g de 72 ns se elige en el RC, el ejemplar de menor corriente y el de mayor con
+# degeneración se buscan con el umbral, y la puerta se ajusta hasta 250 mA. Quedan dos preguntas de opciones (por qué
+# no la menor R_g, por qué un factor nueve).
 leccion: cap07/sec-7.11
 
 libro:
@@ -14,6 +19,7 @@ libro:
   199: "500 kHz 3,14 W 1,52 W B"
   200: "44 kHz para A y 556 kHz para B"
   201: "Elegir «el de menor resistencia» sin mirar la frecuencia es el error más común de esta decisión"
+  202: "por debajo de la frecuencia de cruce manda la RDS(on); por encima, la carga de puerta y los tiempos"
   208: "El MOSFET elegido tiene Qg = 60 nC y se excita a 10 V"
   212: 'I_("pico") = (V_("g"))/(R_("g") + R_("driver"))'
   206: "Problema 7.B"
@@ -73,13 +79,19 @@ modelo:
     x_q: { expr: "max(0, V_gq - V_th)", sim: "V_{G} − V_{th}", nombre: "puerta sobre el umbral", unidad: V }
     I_q: { expr: "((k_m*R_sq*x_q + 1) - sqrt(2*k_m*R_sq*x_q + 1))/(k_m*R_sq^2)", sim: "I_{D}", nombre: "corriente con degeneración", unidad: A }
     V_sq: { expr: "I_q*R_sq", sim: "V_{S}", nombre: "tensión en R_S", unidad: V }
+    d_ab: { expr: "P_A - P_B", sim: "P_{A} − P_{B}", nombre: "ventaja del B", unidad: W }
+    P_cB: { expr: "I_k^2*R_B*D_c", sim: "P_{cond}", nombre: "conducción del B", unidad: W }
+    P_cm: { expr: "P_B - P_cB", sim: "P_{conm}", nombre: "conmutación del B", unidad: W }
+    f_xA: { expr: "2*I_k*R_A*D_c/(V_c*t_A)", sim: "f_{cruce, A}", nombre: "cruce del A", unidad: Hz }
+    t_10: { expr: "(10 + R_dr)*C_eq", sim: "τ", nombre: "con 10 Ω", unidad: s }
 
 tarjetas:
   - id: explore-ab
     tipo: explorar
     titulo: "Dos MOSFET que parecen iguales"
-    texto: "24 V y 8 A al 50 %: A tiene 8 mΩ y 60 ns; B, 25 mΩ y 15 ns. Arrastre la frecuencia y compare."
+    texto: "24 V y 8 A al 50 %: A tiene 8 mΩ y 60 ns; B, 25 mΩ y 15 ns. Busque la frecuencia más baja de la lista a la que B ya disipa menos."
     libro: [188, 190, 191]
+    inicio: { f_c: 20000 }
     widget:
       tipo: grafica
       x: { id: fx, min: 10000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
@@ -94,45 +106,50 @@ tarjetas:
         - { valor: P_B, rotulo: "Pérdida del B: {{P_B}}" }
       mandos:
         - { valor: f_c, lista: [10000, 20000, 50000, 100000, 200000, 500000, 1000000], rotulo: "Frecuencia" }
+    objetivo:
+      condiciones:
+        - { valor: d_ab, min: 0, rotulo: "B disipa menos" }
+        - { valor: f_c, max: 200000, rotulo: "Frecuencia: {{f_c}}" }
+      logrado: "A {{f_c}} ya gana B: {{P_B}} frente a {{P_A}}. A 100 kHz aún ganaba A, por poco."
+      pistas:
+        - { cuando: { valor: d_ab, menor: 0 }, texto: "Aquí aún gana A, el de menor resistencia: suba la frecuencia." }
+        - { texto: "B ya gana, pero busque la frecuencia más baja a la que lo hace." }
+    escalera:
+      - "La conmutación crece con la frecuencia, y A tarda cuatro veces más en cada flanco."
+    solucion: "200 kHz: a 100 kHz A gana por poco."
+    comprobar:
+      - { con: { f_c: 100000 }, P_A: 0.83, P_B: 0.94, tol: 0.01 }
+      - { con: { f_c: 200000 }, d_ab: 0.32, tol: 0.01 }
+      - { con: { f_c: 20000 }, P_A: 0.37, P_B: 0.83, tol: 0.01 }
 
   - id: prediga-500k
-    tipo: predecir
+    tipo: simular
     titulo: "A 500 kHz"
-    texto: "A 20 kHz, A disipa menos de la mitad que B. ¿Y a 500 kHz?"
+    texto: "A 20 kHz, A disipa menos de la mitad que B. ¿Cuánto disipa B en total a 500 kHz?"
     libro: [199, 201]
     fijar: { f_c: 500000 }
-    widget:
-      tipo: grafica
-      x: { id: fx, min: 10000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 0, max: 4, unidad: W, rotulo: "pérdida total" }
-      curvas:
-        - { expr: "I_k^2*R_A*D_c + 0.5*V_c*I_k*t_A*fx", color: azul, rotulo: "A" }
-        - { expr: "I_k^2*R_B*D_c + 0.5*V_c*I_k*t_B*fx", color: naranja, rotulo: "B" }
-      lectura: { valor: P_B, rotulo: "Pérdida del B" }
-      ocultar: true
-    opciones:
-      - texto: "Gana B: 1,52 W frente a 3,14 W"
-        bien: true
-        porque: "La conmutación crece con la frecuencia, y A tarda cuatro veces más en cada flanco."
-      - texto: "Sigue ganando A, por su menor resistencia"
-        porque: "Es el error más común: la resistencia solo manda en la pérdida de conducción, que no depende de f."
-      - texto: "Empatan"
-        porque: "Se igualan hacia 126 kHz; a 500 kHz B disipa la mitad."
+    simular:
+      objetivo: P_B
+      unidad: W
+      tol: 0.03
+      rotulo: "Pérdida total del B"
+      errores:
+        - { expr: "P_A", texto: "Esos 3,14 W son los del A: a 500 kHz cuesta el doble de calor que B." }
+        - { expr: "P_cB", texto: "Esa es solo su conducción: falta la conmutación, ½ · V · I · (t_{r} + t_{f}) · f." }
+    exito: "1,52 W frente a 3,14 W del A. Elegir «el de menor resistencia» sin mirar la frecuencia es el error más común."
     escalera:
-      - "¿Cuál de las dos pérdidas crece con la frecuencia, y cuál de los dos es más lento?"
-    solucion: "B: 1,52 W frente a 3,14 W."
+      - "Sume la conducción, I² · R · D, y la conmutación, ½ · V · I · t · f."
+    solucion: "0,8 W de conducción + 0,72 W de conmutación = 1,52 W."
     comprobar:
-      - { P_A: 3.14, P_B: 1.52, tol: 0.01 }
-      - { con: { f_c: 20000 }, P_A: 0.37, P_B: 0.83, tol: 0.01 }
-      - { f_eq: 126000, tol: 0.01 }
+      - { P_A: 3.14, P_B: 1.52, P_cB: 0.8, tol: 0.01 }
+      - { P_cm: 0.72, tol: 0.01 }
 
   - id: regla-cruce
-    tipo: formula
+    tipo: explorar
     titulo: "La frecuencia de cruce de cada uno"
-    texto: "Donde la conducción iguala a la conmutación. Cambie de transistor."
-    libro: [195, 197, 200]
-    ec: 197
-    sustitucion: "2 · {{I_k}} · {{R_s}} · {{D_c}} / ({{V_c}} · {{t_s}}) = {{f_x}}"
+    texto: "Donde la conducción iguala a la conmutación de un mismo transistor. Elija el transistor cuyo cruce queda por encima de 500 kHz."
+    libro: [195, 197, 200, 202]
+    inicio: { s_b: 0 }
     widget:
       tipo: grafica
       x: { id: fx, min: 10000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
@@ -143,37 +160,45 @@ tarjetas:
       lectura: { valor: f_x, rotulo: "Frecuencia de cruce" }
       mandos:
         - { valor: s_b, tipo: interruptor, rotulo: "Transistor B" }
+    objetivo:
+      condiciones:
+        - { valor: f_x, min: 500000, rotulo: "Cruce: {{f_x}}" }
+      logrado: "2 · I · R · D / (V · t) = {{f_x}}: B vive en el régimen de conducción hasta ahí; A cruza en 44 kHz."
+      pistas:
+        - { texto: "El cruce de A queda muy abajo: pruebe el otro." }
+    escalera:
+      - "Menos tiempo de conmutación y más resistencia empujan el cruce hacia arriba."
+    solucion: "El B: 556 kHz."
+    comprobar:
+      - { con: { s_b: 1 }, f_x: 556000, tol: 0.01 }
+      - { f_x: 44400, f_xA: 44400, tol: 0.01 }
 
   - id: estime-empate
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "¿Dónde empatan?"
     texto: "¿A qué frecuencia disipan lo mismo A y B en total?"
     libro: [199, 200]
-    estimar:
-      objetivo: "f_eq"
+    simular:
+      objetivo: f_eq
       unidad: Hz
-      min: 0
-      max: 500000
-      paso: 2000
-      inicio: 400000
       tol: 0.05
       rotulo: "Frecuencia de empate"
-    exito: "Hacia 126 kHz. Por debajo, A; por encima, B."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 132000 }, texto: "Se ha pasado: a 100 kHz A todavía gana por poco." }
-      - { texto: "Se ha quedado corto: a 100 kHz A aún disipa menos que B." }
+      errores:
+        - { expr: "f_xA", texto: "Ese es el cruce del A, donde su conducción iguala a su conmutación. Aquí se igualan los totales de los dos." }
+    exito: "Hacia 126 kHz, con 0,98 W cada uno. Por debajo, A; por encima, B."
     escalera:
-      - "A 100 kHz gana A por poco; a 500 kHz, B."
+      - "Iguale los dos totales: la diferencia de conducción la compensa la diferencia de conmutación."
     solucion: "Unos 126 kHz, con 0,98 W cada uno."
     comprobar:
-      - { f_eq: 126000, tol: 0.01 }
+      - { f_eq: 126000, f_xA: 44400, tol: 0.01 }
 
   - id: explore-puerta
     tipo: explorar
     titulo: "La puerta como un RC"
-    texto: "Problema 7.B: la puerta de 60 nC a 10 V equivale a 6 nF, cargados por R_{g} y los 2 Ω del driver. Cambie R_{g}."
+    texto: "Problema 7.B: la puerta de 60 nC a 10 V equivale a 6 nF, cargados por R_{g} y los 2 Ω del driver. Elija la R_{g} que deja 72 ns."
     libro: [206, 208, 212, 215]
+    inicio: { R_g: 22 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -190,37 +215,39 @@ tarjetas:
           - { x: "tau_g", y: "v_t", rotulo: "τ" }
       mandos:
         - { valor: R_g, lista: [4.7, 10, 22], rotulo: "R_{g}" }
+    objetivo:
+      condiciones:
+        - { valor: tau_g, objetivo: 72e-9, tol: 0.02, rotulo: "τ: {{tau_g}}" }
+      logrado: "Con {{R_g}}: {{I_pk}} de pico y {{tau_g}}. Es el punto de partida del libro."
+      pistas:
+        - { cuando: { valor: tau_g, mayor: 0.0000000735 }, texto: "Demasiado lento: menos R_{g}." }
+        - { texto: "Demasiado rápido: más R_{g}." }
+    escalera:
+      - "τ = (R_{g} + 2 Ω) · 6 nF."
+    solucion: "10 Ω: 12 Ω · 6 nF = 72 ns."
+    comprobar:
+      - { con: { R_g: 10 }, tau_g: 72e-9, I_pk: 0.833, tol: 0.01 }
 
   - id: prediga-22
-    tipo: predecir
+    tipo: simular
     titulo: "Con 22 Ω"
     texto: "Con R_{g} = 22 Ω, ¿cuánto vale el tiempo de conmutación estimado, Q_{g}/I_{pico}?"
     libro: [212, 214]
     fijar: { R_g: 22 }
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_gd, r: R_ser, c: C_eq }
-      lectura: { valor: tau_g, rotulo: "Q_{g}/I_{pico}" }
-      ocultar: true
-      grafica:
-        x: { id: t, min: 0, max: 0.000001, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 11, unidad: V, rotulo: "V_{GS}" }
-        curvas:
-          - { expr: "V_gd*(1 - exp(-t/tau_g))", color: naranja, rotulo: "v_{puerta}", mide: vc }
-    opciones:
-      - texto: "144 ns"
-        bien: true
-        porque: "I_{pico} = 10 V / 24 Ω = 0,42 A, y 60 nC / 0,42 A ≈ 144 ns."
-      - texto: "132 ns"
-        porque: "Ha olvidado los 2 Ω del driver: la corriente de pico la limita la suma."
-      - texto: "72 ns"
-        porque: "Eso es con 10 Ω. Con 22 Ω, la corriente es la mitad y el tiempo el doble."
+    simular:
+      objetivo: tau_g
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo de conmutación"
+      errores:
+        - { expr: "tau_m", texto: "Ha olvidado los 2 Ω del driver: la corriente de pico la limita la suma." }
+        - { expr: "t_10", texto: "Esos 72 ns son con 10 Ω. Con 22 Ω, la corriente es la mitad y el tiempo el doble." }
+    exito: "I_{pico} = 10 V / 24 Ω = 0,42 A, y 60 nC / 0,42 A ≈ 144 ns."
     escalera:
       - "I_{pico} = V_{g}/(R_{g} + R_{driver})."
     solucion: "10 / 24 = 0,42 A; 60 nC / 0,42 A ≈ 144 ns."
     comprobar:
-      - { tau_g: 144e-9, I_pk: 0.4167, tau_m: 132e-9, tol: 0.01 }
+      - { tau_g: 144e-9, I_pk: 0.4167, tau_m: 132e-9, t_10: 72e-9, tol: 0.01 }
 
   - id: por-que-rg
     tipo: pregunta
@@ -255,7 +282,7 @@ tarjetas:
   - id: sorpresa-umbral
     tipo: sorpresa
     titulo: "Una fuente de corriente que no lo es"
-    texto: "Problema 7.C: 250 mA con V_{GS} = 3 V y k = 0,5 A/V². Mueva el umbral entre los extremos de la hoja."
+    texto: "Problema 7.C: 250 mA con V_{GS} = 3 V y k = 0,5 A/V². Busque el ejemplar de la hoja que da la menor corriente."
     nota: "La carga de 6 Ω es de ejemplo."
     libro: [222, 224, 229, 230, "cap07#93"]
     fijar: { s_d: 0 }
@@ -271,7 +298,18 @@ tarjetas:
       mide: { id: I_f, vds: V_dsf, vgs: V_G }
       mandos:
         - { valor: V_th, min: 1.5, max: 2.5, paso: 0.1, rotulo: "Umbral del ejemplar" }
-    requiere: { mover: [V_th] }
+    objetivo:
+      condiciones:
+        - { valor: I_f, objetivo: 0.0625, tol: 0.02, rotulo: "Fuente: {{I_f}}" }
+      logrado: "Con un umbral de {{V_th}}, solo {{I_f}}; con 1,5 V serían 562,5 mA. Eso no es una fuente de corriente."
+      pistas:
+        - { texto: "Aún da más: un umbral más alto deja menos sobreexcitación." }
+    escalera:
+      - "La menor corriente la da el extremo alto del umbral."
+    solucion: "Umbral de 2,5 V: 62,5 mA."
+    comprobar:
+      - { con: { V_th: 2.5 }, I_f: 0.0625 }
+      - { con: { V_th: 1.5 }, I_f: 0.5625 }
 
   - id: por-que-nueve
     tipo: porque
@@ -331,11 +369,12 @@ tarjetas:
       - { con: { V_gq: 4 }, I_q: 0.25, V_sq: 1 }
 
   - id: degeneracion
-    tipo: pregunta
+    tipo: explorar
     titulo: "Con degeneración"
-    texto: "Con R_{S} = 4 Ω y la puerta a 4 V, la corriente pasa a depender de R_{S}. ¿Basta?"
+    texto: "Ahora con R_{S} = 4 Ω y la puerta a 4 V. Busque el ejemplar de la hoja que da la mayor corriente."
     libro: [231, 232]
     fijar: { s_d: 1 }
+    inicio: { V_th: 2 }
     widget:
       tipo: circuito
       esquema: mosfet
@@ -347,17 +386,15 @@ tarjetas:
       mide: { id: I_f, vs: V_sf, vgs: V_gsf, vds: V_dsf }
       mandos:
         - { valor: V_th, lista: [1.5, 2, 2.5], rotulo: "Umbral del ejemplar" }
-    opciones:
-      - texto: "No: queda un factor dos; la solución es cerrar un lazo"
-        bien: true
-        porque: "De 169 a 335 mA. Con un amplificador de error que mida la corriente, el umbral desaparece del resultado."
-      - texto: "Sí: con degeneración la corriente ya es exacta"
-        porque: "Mejora del factor nueve al factor dos, pero sigue siendo inaceptable, y pierde 1 V en la resistencia."
-      - texto: "No cambia nada"
-        porque: "Sí mejora: si la corriente sube, V_{GS} baja. Pero no basta."
+    objetivo:
+      condiciones:
+        - { valor: I_f, min: 0.33, rotulo: "Fuente: {{I_f}}" }
+      logrado: "Entre 169 y {{I_f}}: un factor dos en lugar de nueve. Mejor, pero la solución real es cerrar un lazo con un amplificador de error."
+      pistas:
+        - { texto: "Ese no es el extremo de más corriente: pruebe el umbral más bajo." }
     escalera:
-      - "Cambie el umbral del ejemplar entre los extremos de la hoja y compare la corriente."
-    solucion: "Factor dos en lugar de nueve: mejor, pero hace falta un lazo de realimentación."
+      - "Si la corriente sube, cae más en R_{S} y V_{GS} baja: la dispersión se encoge."
+    solucion: "Umbral de 1,5 V: 335 mA, frente a 169 mA con 2,5 V."
     comprobar:
       - { con: { V_th: 1.5 }, I_f: 0.335, tol: 0.01 }
       - { con: { V_th: 2.5 }, I_f: 0.169, tol: 0.01 }

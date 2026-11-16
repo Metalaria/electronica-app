@@ -6,6 +6,10 @@
 # resonador, 1 − e^(−t/τ) con τ = Q/(π·f) y el mismo Q = 100 000 en los dos cristales (bloque 78).
 # 1.2 (esquemas12d): el modelo BVD vivo, esquema `cristal`, en explore-resonancias e inductivo: |Z| medido por el
 # simulador en un eje lineal de f_s − 15 kHz a f_s + 40 kHz.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): C₀ se sube hasta acercar las resonancias (objetivo), la zona
+# inductiva se marca en la curva, el desvío de 10 ppm se predice, la red que da los otros 180° se toca en la fig. 27.5
+# y el resonador que apenas deriva, en su panel de Q. La resistencia serie pasa al resumen. Quedan una pregunta de
+# opciones (el arranque a 32 768 Hz) y el emparejamiento de resonadores.
 leccion: cap28/sec-28.3
 
 libro:
@@ -23,6 +27,7 @@ libro:
   81: "mucho más robusto frente a golpes y vibración"
   82: "usado sobre todo como filtro en radio"
   85: "el cristal apenas se inmuta"
+  86: "Las dos resonancias de un cristal y la comparación de factores de calidad"
 
 modelo:
   valores:
@@ -45,14 +50,16 @@ modelo:
     t_m: { expr: "1e-5*30*86400", sim: "Δt", nombre: "desvío en un mes con 10 ppm", unidad: s }
     s_mes: { expr: "30*86400", sim: "t", nombre: "segundos de un mes", unidad: s }
     r_t: { expr: "10000000/32768", sim: "T_{32k}/T_{10M}", nombre: "cociente de periodos", unidad: "" }
+    f_m: { expr: "(f_s + f_p)/2", sim: "f", nombre: "punto medio entre las resonancias", unidad: Hz }
 
 tarjetas:
   - id: explore-resonancias
     tipo: explorar
     titulo: "Dos resonancias"
-    texto: "El cristal es una rama serie R, L, C muy pequeña, en paralelo con C₀. Cambie C₀ y mire cuánto se separan sus dos resonancias."
+    texto: "El cristal es una rama serie R, L, C muy pequeña, en paralelo con C₀. Busque el C₀ que más acerca sus dos resonancias."
     nota: "Cristal de ejemplo de 10 MHz."
     libro: [68]
+    inicio: { C_0: 4e-12 }
     widget:
       tipo: circuito
       esquema: cristal
@@ -68,7 +75,18 @@ tarjetas:
       lectura: { valor: sep, rotulo: "Separación" }
       mandos:
         - { valor: C_0, lista: [4e-12, 5e-12, 10e-12], rotulo: "C₀" }
-    requiere: { mover: [C_0] }
+    objetivo:
+      condiciones:
+        - { valor: sep, max: 10000, rotulo: "Separación: {{sep}}" }
+      logrado: "Con C₀ = {{C_0}}, {{sep}}: la separación relativa es C₁/2C₀, así que más C₀, más juntas."
+      pistas:
+        - { texto: "Aún están separadas: más C₀." }
+    escalera:
+      - "La separación relativa es C₁/2C₀."
+    solucion: "C₀ = 10 pF: unos 10 kHz."
+    comprobar:
+      - { con: { C_0: 4e-12 }, sep: 24970, tol: 0.01 }
+      - { con: { C_0: 10e-12 }, sep: 9995, tol: 0.01 }
 
   - id: simule-serie
     tipo: simular
@@ -102,9 +120,9 @@ tarjetas:
       - { Z_s: 20, Z_0: 800000, tol: 0.01 }
 
   - id: inductivo
-    tipo: pregunta
+    tipo: marcar
     titulo: "Entre las dos"
-    texto: "La mayoría de los osciladores de cristal trabajan entre la resonancia serie y la paralelo. ¿Cómo es ahí el cristal?"
+    texto: "Entre la resonancia serie y la paralelo el cristal es inductivo, y ahí trabajan la mayoría de los osciladores. Marque esa zona en la curva."
     libro: [68, 69]
     fijar: { C_0: 5e-12 }
     widget:
@@ -117,37 +135,38 @@ tarjetas:
         curvas:
           - { expr: "sqrt(R_x^2 + (2*pi*nu*L_x - 1/(2*pi*nu*C_x))^2)/(2*pi*nu*C_0)/sqrt(R_x^2 + (2*pi*nu*L_x - 1/(2*pi*nu*C_x) - 1/(2*pi*nu*C_0))^2)", color: naranja, rotulo: "|Z| del cristal", mide: z_amp }
       mandos: []
-    opciones:
-      - texto: "Inductivo"
-        bien: true
-        porque: "Por encima de su resonancia la rama serie ya es inductiva, y resuena con C₀ en la antirresonancia."
-      - texto: "Capacitivo"
-        porque: "Es capacitivo por debajo de la resonancia serie y por encima de la paralelo; entre ambas, no."
-      - texto: "Puramente resistivo"
-        porque: "Solo en las resonancias se anula su reactancia; entre ellas tiene reactancia, y mucha."
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_m"
+      tol: 0.15
+      inicio: { x: 9990000, y: 1000 }
+      rotulo: "Zona inductiva"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 10020000 }, texto: "Ahí ya ha pasado la paralelo, el pico: vuelve a ser capacitivo." }
+      - { texto: "Ahí aún no ha llegado a la serie, el mínimo: es capacitivo." }
+    exito: "Entre el mínimo y el pico: la rama serie ya es inductiva y aún no resuena con C₀."
     escalera:
-      - "Por encima de su resonancia, ¿qué domina en una rama RLC serie, L o C?"
-    solucion: "Inductivo: la rama serie ya es inductiva y aún no resuena con C₀."
+      - "Busque entre el mínimo de la curva y su pico."
+    solucion: "Entre los 10 MHz de la serie y unas decenas de kilohercios más arriba."
+    comprobar:
+      - { f_m: 10009990, tol: 0.0001 }
 
   - id: estime-ppm
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Diez partes por millón"
     texto: "Un cristal mal especificado da un reloj con 10 ppm de error. ¿Cuántos segundos se desvía en un mes?"
     libro: [70]
-    estimar:
-      objetivo: "t_m"
+    simular:
+      objetivo: t_m
       unidad: s
-      min: 0
-      max: 120
-      paso: 1
-      inicio: 90
-      tol: 0.08
+      tol: 0.05
       rotulo: "Desvío en un mes"
+      errores:
+        - { expr: "10*t_m", texto: "Sobra un factor diez: 10 ppm son 10 segundos por cada millón de segundos." }
+        - { expr: "t_m/30", texto: "Ese es el desvío de un día. Un mes tiene unos 2,6 millones de segundos." }
     exito: "Unos 26 s: casi medio minuto al mes, por solo 10 ppm."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 28 }, texto: "Se ha pasado: 10 ppm son 10 segundos por cada millón de segundos." }
-      - { texto: "Se ha quedado corto: un mes tiene unos 2,6 millones de segundos." }
     escalera:
       - "10 ppm son 10 segundos por cada millón de segundos."
     solucion: "Unos 2,6 millones de segundos por 10 ppm: unos 26 s, casi medio minuto."
@@ -156,26 +175,26 @@ tarjetas:
       - { s_mes: 2600000, tol: 0.01 }
 
   - id: pierce-fase
-    tipo: pregunta
+    tipo: tocar
     titulo: "El circuito de Pierce"
-    texto: "Un inversor con el cristal entre entrada y salida y dos condensadores a masa: el inversor da 180°. ¿Quién da los otros 180°?"
-    libro: [73]
+    texto: "Un inversor con el cristal entre entrada y salida y dos condensadores a masa: el inversor da 180°. Toque la zona en la que el cristal, con los condensadores, da los otros 180°."
+    libro: [73, 86]
     widget:
       tipo: figura
       figura: fig-28.5
       zonas:
-        - { id: inductivo, rotulo: "Zona sombreada", rect: [107, 16, 50, 148] }
-    opciones:
-      - texto: "El cristal, inductivo entre sus resonancias, con los dos condensadores"
-        bien: true
-        porque: "Esa red completa la vuelta entera de fase: la condición de Barkhausen."
-      - texto: "Un segundo inversor"
-        porque: "No lo hay: basta un inversor. La red pasiva aporta la otra mitad."
-      - texto: "Nadie: con 180° ya oscila"
-        porque: "Barkhausen pide que el desfase de todo el lazo complete una vuelta entera."
+        - { id: bajo, rotulo: "Por debajo de la serie", rect: [33, 15, 74, 148] }
+        - { id: inductivo, rotulo: "Entre las dos resonancias", rect: [107, 15, 51, 148] }
+        - { id: alto, rotulo: "Por encima de la paralelo", rect: [158, 15, 100, 148] }
+    tocar:
+      bien: [inductivo]
+      porque:
+        bajo: "Por debajo de la serie el cristal es capacitivo: con los condensadores no completa la vuelta."
+        alto: "Por encima de la paralelo vuelve a ser capacitivo."
+    exito: "El cristal inductivo y los dos condensadores completan la vuelta entera de fase: la condición de Barkhausen."
     escalera:
       - "¿Qué se comporta como una bobina entre las dos resonancias?"
-    solucion: "El cristal inductivo y los dos condensadores aportan los otros 180°."
+    solucion: "La zona inductiva, entre las dos resonancias."
 
   - id: reto-carga
     tipo: reto
@@ -235,28 +254,6 @@ tarjetas:
     comprobar:
       - { r_t: 305 }
 
-  - id: resistencia-serie
-    tipo: pregunta
-    titulo: "Una resistencia que «no hace nada»"
-    texto: "Entre la salida del inversor y el cristal hay a veces una resistencia en serie. ¿Para qué?"
-    libro: [76, 77]
-    widget:
-      tipo: figura
-      figura: fig-28.5
-      zonas:
-        - { id: serie, rotulo: "Resonancia serie", rect: [92, 110, 34, 54] }
-    opciones:
-      - texto: "Para limitar el nivel de excitación y no degradar el cristal"
-        bien: true
-        porque: "Sin ella la amplitud crece hasta que satura el inversor, y el cristal se sobreexcita."
-      - texto: "Para que arranque antes"
-        porque: "Al contrario: quita algo de ganancia. Arrancar exige ganancia de sobra según la ESR."
-      - texto: "Para fijar la frecuencia"
-        porque: "La frecuencia la fija el cristal con su carga; la resistencia limita la excitación."
-    escalera:
-      - "¿Qué limita la amplitud si no hay nada más?"
-    solucion: "Limita la excitación: sin ella, solo la saturación del inversor frena la amplitud."
-
   - id: empareje-resonadores
     tipo: pregunta
     fase: "Empareje"
@@ -275,33 +272,33 @@ tarjetas:
     solucion: "Cerámico–0,5 %; MEMS–robusto; SAW–filtro de radio."
 
   - id: banco-mano
-    tipo: pregunta
+    tipo: tocar
     titulo: "Calentarlos con la mano"
-    texto: "En el banco se calientan con la mano un oscilador LC y uno de cristal. ¿Qué se ve?"
-    libro: [64, 85]
+    texto: "En el banco se calientan con la mano un oscilador LC y uno de cristal. Toque el resonador que apenas se inmuta."
+    libro: [64, 85, 86]
     widget:
       tipo: figura
       figura: fig-28.5
       zonas:
-        - { id: q, rotulo: "Los factores de calidad", rect: [282, 16, 156, 148] }
-    opciones:
-      - texto: "El LC deriva de forma visible; el cristal apenas se inmuta"
-        bien: true
-        porque: "Tres órdenes de magnitud de Q: del 1 % a partes por millón. Es toda la razón de que exista."
-      - texto: "Los dos derivan lo mismo"
-        porque: "El LC depende de una bobina y un condensador que cambian con la temperatura; el cuarzo, mucho menos."
-      - texto: "Deriva más el cristal, por ser piezoeléctrico"
-        porque: "La piezoelectricidad es la que le da una resonancia tan definida, no una deriva mayor."
+        - { id: lc, rotulo: "Primera columna", rect: [310, 15, 43, 157] }
+        - { id: ceramico, rotulo: "Segunda columna", rect: [353, 15, 42, 157] }
+        - { id: cristal, rotulo: "Tercera columna", rect: [395, 15, 42, 157] }
+    tocar:
+      bien: [cristal]
+      porque:
+        lc: "El LC, con Q de hasta 200, deriva de forma visible: depende de una bobina y un condensador."
+        ceramico: "El cerámico mejora al LC, pero se queda en un 0,5 %."
+    exito: "Tres órdenes de magnitud de Q: del 1 % a partes por millón. Esa diferencia es toda la razón de que exista el cristal."
     escalera:
       - "¿Qué resonador tiene el Q mil veces mayor?"
-    solucion: "El LC se mueve a la vista; el cristal, apenas."
+    solucion: "El cristal."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [67, 68, 69, 74, 78]
+    libro: [67, 68, 69, 74, 76, 77, 78]
     ideas:
       - { titulo: "Dos resonancias.", texto: "Serie, con impedancia mínima igual a R₁; paralelo, una milésima más arriba, con impedancia máxima." }
       - { titulo: "Inductivo entre ambas.", texto: "Ahí trabaja el Pierce: el inversor da 180° y el cristal con sus condensadores, el resto." }
       - { titulo: "La carga.", texto: "C₁ y C₂ en serie más las parásitas deben dar la capacidad del cristal." }
-      - { titulo: "El arranque.", texto: "Ciclos proporcionales al Q: milisegundos a megahercios, segundos a 32 768 Hz." }
+      - { titulo: "El arranque.", texto: "Ciclos proporcionales al Q: milisegundos a megahercios, segundos a 32 768 Hz. Una resistencia serie limita la excitación." }

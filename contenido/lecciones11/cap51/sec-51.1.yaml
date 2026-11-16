@@ -6,6 +6,10 @@
 # - La disipación del peor caso (ecuación del bloque 22) en una gráfica del modelo: cada transistor disipa
 #   V·V_p/(π·R) − V_p²/(4R), máximo V²/(π²·R) = 15,5 W con ±35 V y 8 Ω; cuatro transistores, 62 W.
 # Paso práctico: «ajuste» del disipador (bloque 44: 62 W; 1 °C/W da +62 °C; 0,4 °C/W, +25 °C).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la cifra que descarta la clase B se toca en la figura 52.1; el
+# pico de 50 W, la ganancia total, los 62 W y el peor caso de la variante de 20 W se predicen; la amplitud del peor
+# caso se busca en la gráfica (objetivo). Las dificultades (zumbido) y la prueba de aceptación pasan al resumen.
+# Quedan dos preguntas de opciones (los dos canales y la clase AB).
 leccion: cap51/sec-51.1
 
 libro:
@@ -49,28 +53,38 @@ modelo:
     P_tot: { expr: "4*P_dm", sim: "P_{total}", nombre: "disipación total en el peor caso", unidad: W }
     V_dm: { expr: "2/pi*V_r", sim: "V_{p}", nombre: "amplitud del peor caso", unidad: V }
     d_T: { expr: "P_tot*R_th", sim: "ΔT", nombre: "calentamiento sobre el ambiente", unidad: "°C" }
-    P_prop: { expr: "20/50*P_dm", sim: "P", nombre: "escalado con la potencia (error)", unidad: W }
+    P_prop: { expr: "20/50*35^2/(pi^2*R_L)", sim: "P", nombre: "escalado con la potencia (error)", unidad: W }
     P_dm21: { expr: "21^2/(pi^2*R_L)", sim: "P_{máx}", nombre: "disipación con ±21 V", unidad: W }
 
 tarjetas:
   - id: explore-especificacion
-    tipo: explorar
+    tipo: tocar
     titulo: "Fijarla con números"
-    texto: "La especificación decide el tamaño, el calor y el coste. Toque cada cifra y lea lo que implica."
+    texto: "La especificación decide el tamaño, el calor y el coste. Toque la cifra que descarta una etapa de clase B."
     libro: [4, 6, 7, 9, 14, 15, 16, 17, 18, 45]
     widget:
       tipo: figura
       figura: fig-51.1
       zonas:
-        - { id: potencia, rotulo: "Primer recuadro", rect: [262, 4, 184, 35], texto: "50 W sobre 8 Ω fijan la alimentación en unos ±35 V." }
-        - { id: canales, rotulo: "Segundo recuadro", rect: [262, 44, 184, 35], texto: "Con ambos canales a la vez, lo honesto, el consumo se duplica frente a un canal." }
-        - { id: thd, rotulo: "Tercer recuadro", rect: [262, 84, 184, 35], texto: "Menos del 0,1 % de distorsión: realimentación y bias bien ajustado; descarta la clase B." }
-        - { id: ruido, rotulo: "Cuarto recuadro", rect: [262, 122, 184, 35], texto: "Más de 90 dB de señal a ruido: cuidar el preamplificador y las masas." }
-        - { id: sensibilidad, rotulo: "Quinto recuadro", rect: [262, 162, 184, 35], texto: "0,7 V de sensibilidad: una ganancia total de unas 29 veces." }
-    requiere: { mover: [potencia, thd, sensibilidad] }
+        - { id: potencia, rotulo: "Primer recuadro", rect: [262, 4, 184, 35] }
+        - { id: canales, rotulo: "Segundo recuadro", rect: [262, 44, 184, 35] }
+        - { id: thd, rotulo: "Tercer recuadro", rect: [262, 84, 184, 35] }
+        - { id: ruido, rotulo: "Cuarto recuadro", rect: [262, 122, 184, 35] }
+        - { id: sensibilidad, rotulo: "Quinto recuadro", rect: [262, 162, 184, 35] }
+    tocar:
+      bien: [thd]
+      porque:
+        potencia: "50 W sobre 8 Ω fijan la alimentación en unos ±35 V, no la clase."
+        canales: "Los dos canales a la vez duplican el consumo frente a uno: deciden la fuente."
+        ruido: "Los 90 dB de señal a ruido obligan a cuidar el preamplificador y las masas."
+        sensibilidad: "Los 0,7 V fijan la ganancia total en unas 29 veces."
+    exito: "Menos del 0,1 % de distorsión: realimentación y bias bien ajustado, y fuera la clase B."
+    escalera:
+      - "¿Qué defecto tiene la clase B?"
+    solucion: "El tercer recuadro: menos del 0,1 % de distorsión."
 
   - id: prediga-pico
-    tipo: predecir
+    tipo: simular
     titulo: "50 W sobre 8 Ω"
     texto: "¿Qué tensión de pico necesita el altavoz para recibir 50 W?"
     libro: [14]
@@ -84,14 +98,17 @@ tarjetas:
       corriente: I_pk
       mide: { corriente: I_pk, tension: V_pk }
       ocultar: true
-    opciones:
-      - texto: "28,3 V; con 3 V que pierde la etapa y margen, raíles de unos ±35 V"
-        bien: true
-        porque: "√(2 · 50 · 8) = 28,3 V. El margen cubre lo que baja una alimentación no regulada con carga."
-      - texto: "20 V"
-        porque: "Ese es el valor eficaz. La etapa tiene que llegar al pico, √2 veces mayor."
-      - texto: "50 V"
-        porque: "Ha confundido vatios con voltios: la tensión va con la raíz de P·R."
+      mandos: []
+    simular:
+      objetivo: V_pk
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión de pico"
+      medida: tension
+      errores:
+        - { expr: "V_ef", texto: "Ese es el valor eficaz. La etapa tiene que llegar al pico, √2 veces mayor." }
+        - { expr: "P_n", texto: "Ha confundido vatios con voltios: la tensión va con la raíz de P·R." }
+    exito: "28,3 V. La etapa pierde unos 3 V y hace falta margen para lo que baja la fuente con carga: raíles de unos ±35 V."
     escalera:
       - "V_{pico} = √(2·P·R)."
     solucion: "√(2 · 50 · 8) = 28,3 V de pico."
@@ -99,24 +116,19 @@ tarjetas:
       - { V_pk: 28.3, V_ef: 20, tol: 0.002 }
 
   - id: estime-ganancia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La ganancia total"
     texto: "Con 0,7 V eficaces de entrada hay que llegar a los 20 V eficaces de 50 W sobre 8 Ω. ¿Qué ganancia total hace falta?"
     libro: [10, 18]
-    estimar:
-      objetivo: "G_t"
+    simular:
+      objetivo: G_t
       unidad: ""
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 70
-      tol: 0.04
+      tol: 0.03
       rotulo: "Ganancia total"
+      errores:
+        - { expr: "V_pk/V_in", texto: "Ha usado el pico de salida con la entrada eficaz: compare eficaz con eficaz." }
     exito: "Unas 29 veces, repartidas entre preamplificador y potencia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 29.7 }, texto: "Se ha pasado: divida 20 V entre 0,7 V." }
-      - { texto: "Se ha quedado corto: 20 V entre 0,7 V." }
     escalera:
       - "Ganancia = salida eficaz / entrada eficaz."
     solucion: "20/0,7 ≈ 29 veces."
@@ -124,12 +136,12 @@ tarjetas:
       - { G_t: 28.6, tol: 0.005 }
 
   - id: formula-peor-caso
-    tipo: formula
+    tipo: explorar
     titulo: "El dato que decide el tamaño"
-    texto: "La disipación del peor caso, por transistor, cuando la salida ronda el 64 % del raíl. Cambie los raíles."
+    texto: "Con ±35 V y 8 Ω, mueva la amplitud de salida hasta el peor caso: la máxima disipación por transistor."
+    fijar: { V_r: 35 }
     libro: [21, 22]
-    ec: 22
-    sustitucion: "{{V_r}}² / (π² · {{R_L}}) = {{P_dm}}"
+    inicio: { V_p: 10 }
     widget:
       tipo: grafica
       x: { id: u, min: 0, max: 36, unidad: V, rotulo: "V_{p}" }
@@ -137,31 +149,38 @@ tarjetas:
       curvas:
         - { expr: "max(0, V_r*u/(pi*R_L) - u^2/(4*R_L))*ceil((V_r - u)/1e9)", color: naranja, rotulo: "P_{transistor}" }
       marcas:
-        - { x: "V_dm", y: "P_dm", rotulo: "{{P_dm}}" }
-      lectura: { valor: P_dm, rotulo: "Peor caso por transistor" }
+        - { x: "V_p", y: "P_t1", rotulo: "{{P_t1}}" }
+      lectura: { valor: P_t1, rotulo: "Disipación de un transistor" }
       mandos:
-        - { valor: V_r, lista: [21, 28, 35], rotulo: "Raíles, V_{CC}" }
+        - { valor: V_p, min: 2, max: 34, paso: 1, rotulo: "Amplitud de pico, V_{p}" }
+    objetivo:
+      condiciones:
+        - { valor: P_t1, min: 15.4, rotulo: "Un transistor: {{P_t1}}" }
+      logrado: "Con {{V_p}} de pico, hacia el 64 % del raíl, cada transistor disipa {{P_t1}}: el máximo, V_{CC}²/(π²·R_{L}) = {{P_dm}}."
+      pistas:
+        - { cuando: { valor: V_p, mayor: 24 }, texto: "Se ha pasado: a más amplitud, la salida se lleva casi todo." }
+        - { texto: "Más amplitud: la disipación aún sube." }
+    escalera:
+      - "El peor caso no está a plena potencia: ronda el 64 % de la alimentación."
+    solucion: "Hacia 22 V de pico: 15,5 W por transistor."
+    comprobar:
+      - { con: { V_p: 22 }, P_t1: 15.51, P_dm: 15.5, V_dm: 22.28, tol: 0.005 }
 
   - id: estime-total
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Todo el calor"
     texto: "15,5 W por transistor en el peor caso, dos transistores por canal y dos canales. ¿Cuánto hay que disipar?"
     libro: [22, 23]
     fijar: { V_r: 35 }
-    estimar:
-      objetivo: "P_tot"
+    simular:
+      objetivo: P_tot
       unidad: W
-      min: 0
-      max: 150
-      paso: 1
-      inicio: 120
-      tol: 0.03
+      tol: 0.02
       rotulo: "Disipación total"
+      errores:
+        - { expr: "2*P_dm", texto: "Eso es un canal: cuente los dos." }
     exito: "62 W: deciden el disipador y buena parte del volumen del aparato."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 64 }, texto: "Se ha pasado: son cuatro transistores en total." }
-      - { texto: "Se ha quedado corto: cuente los dos canales." }
     escalera:
       - "Cuatro transistores de 15,5 W."
     solucion: "Cuatro transistores de 15,5 W: 62 W."
@@ -222,7 +241,7 @@ tarjetas:
     solucion: "Comparten la fuente: con los dos a la vez se dobla el consumo, que es lo honesto."
 
   - id: prediga-20w
-    tipo: predecir
+    tipo: simular
     titulo: "La variante de 20 W"
     texto: "Un solo canal de 20 W enseña lo mismo. Con los ±21 V que pide, ¿cuánto disipa cada transistor en el peor caso?"
     libro: [35, 38]
@@ -234,21 +253,21 @@ tarjetas:
       curvas:
         - { expr: "max(0, V_r*u/(pi*R_L) - u^2/(4*R_L))*ceil((V_r - u)/1e9)", color: naranja, rotulo: "P_{transistor}" }
       lectura: { valor: P_dm, rotulo: "Peor caso por transistor" }
-      ocultar: true
-    opciones:
-      - texto: "Unos 5,6 W, frente a 15,5 W"
-        bien: true
-        porque: "La disipación va con el cuadrado del raíl: disipador, transformador y transistores se simplifican mucho."
-      - texto: "Unos 6,2 W: proporcional a la potencia"
-        porque: "Va con V_{CC}², no con la potencia nominal: 21²/(π²·8)."
-      - texto: "15,5 W, igual"
-        porque: "Con raíles más bajos el peor caso baja mucho."
+      ocultar: curvas
+    simular:
+      objetivo: P_dm
+      unidad: W
+      tol: 0.02
+      rotulo: "Peor caso por transistor"
+      errores:
+        - { expr: "P_prop", texto: "Va con V_{CC}², no con la potencia nominal: 21²/(π²·8)." }
+    exito: "Unos 5,6 W, frente a 15,5 W: va con el cuadrado del raíl. Disipador, transformador y transistores se simplifican mucho."
     escalera:
       - "Use V_{CC}²/(π²·R) con 21 V."
     solucion: "21²/(π² · 8) ≈ 5,6 W por transistor."
     comprobar:
-      - { P_dm: 5.6, P_dm21: 5.6, tol: 0.01 }
-      - { con: { V_r: 35 }, P_dm: 15.5, P_prop: 6.2, tol: 0.01 }
+      - { P_dm: 5.6, P_dm21: 5.6, P_prop: 6.2, tol: 0.01 }
+      - { con: { V_r: 35 }, P_dm: 15.5, tol: 0.01 }
 
   - id: pregunta-clase-d
     tipo: pregunta
@@ -272,56 +291,12 @@ tarjetas:
       - "El libro lo dice: es una decisión, no una imposibilidad."
     solucion: "Por decisión didáctica: la clase AB es la que más enseña."
 
-  - id: pregunta-dificultades
-    tipo: pregunta
-    titulo: "Las dificultades reales"
-    texto: "Ninguna está en el esquema. ¿Cuál es el problema número uno de los amplificadores caseros?"
-    libro: [30]
-    widget:
-      tipo: figura
-      figura: fig-51.1
-      zonas:
-        - { id: ruido, rotulo: "Cuarto recuadro", rect: [262, 122, 184, 35] }
-    opciones:
-      - texto: "El zumbido, casi siempre de masas o del transformador cerca de la entrada"
-        bien: true
-        porque: "Por eso las secciones de montaje y diagnóstico le dedican tanto espacio."
-      - texto: "Que los transistores no den la potencia"
-        porque: "Con el dimensionado de raíles y disipador, la potencia sale; el zumbido es el problema habitual."
-      - texto: "El coste de los transistores"
-        porque: "Lo que suele costar más es la caja y los conectores, no la electrónica."
-    escalera:
-      - "Piense en lo que no aparece en ningún esquema: masas y disposición."
-    solucion: "El zumbido, de masas o de proximidad del transformador a la entrada."
-
-  - id: pregunta-aceptacion
-    tipo: pregunta
-    titulo: "La prueba que decide"
-    texto: "Además de las medidas, ¿qué prueba acepta o rechaza el amplificador?"
-    libro: [40]
-    widget:
-      tipo: figura
-      figura: fig-51.1
-      zonas:
-        - { id: thd, rotulo: "Tercer recuadro", rect: [262, 84, 184, 35] }
-    opciones:
-      - texto: "El escalón con carga capacitiva, sin oscilación sostenida"
-        bien: true
-        porque: "Comprueba la estabilidad con una carga reactiva, una de las dificultades reales; y luego media hora de música real."
-      - texto: "La potencia máxima con carga resistiva"
-        porque: "Es una medida necesaria, pero la que decide es la estabilidad con carga capacitiva."
-      - texto: "Que suene bien con un altavoz"
-        porque: "La prueba de uso viene después; la decisiva es el escalón con carga capacitiva."
-    escalera:
-      - "¿Qué carga puede hacer oscilar a un amplificador realimentado?"
-    solucion: "La respuesta al escalón con carga capacitiva, sin oscilación sostenida."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [6, 18, 23, 44]
+    libro: [6, 18, 23, 30, 40, 44]
     ideas:
       - { titulo: "La especificación.", texto: "50 W por canal sobre 8 Ω, ambos canales, menos del 0,1 %, más de 90 dB, 0,7 V." }
       - { titulo: "Lo que implica.", texto: "Raíles de ±35 V y una ganancia total de unas 29 veces." }
       - { titulo: "El tamaño.", texto: "15,5 W por transistor en el peor caso: 62 W, un disipador de unos 0,4 °C/W." }
-      - { titulo: "Empezar pequeño.", texto: "Un canal de 20 W enseña lo mismo." }
+      - { titulo: "Empezar pequeño.", texto: "Un canal de 20 W enseña lo mismo. Lo difícil no está en el esquema: el zumbido de masas, y un escalón con carga capacitiva sin oscilación sostenida." }

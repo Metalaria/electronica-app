@@ -4,6 +4,10 @@
 # 16 kHz (frecuencia de ejemplo) con 1 V y 10 V de pico (la tabla del bloque 173: 79,6 kHz y 8,0 kHz); la salida
 # limitada es el triángulo de pendiente SR (amplitud SR/(4f)), como en la lección 8.6, con el eje desde 0,2 ms.
 # CMRR: la ecuación del bloque 176 con 5 V de modo común y 80, 100 o 120 dB (tabla del bloque 177).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ganancia que deja 100 kHz se busca (objetivo), el ancho
+# de banda con ganancia 48, la frecuencia máxima por slew rate y el error de modo común se predicen y se comprueban,
+# la senoide se agranda hasta el triángulo y el CMRR se sube hasta 5 µV de error. Quedan una pregunta de opciones
+# (por qué solo la grande) y el emparejamiento de la tabla.
 leccion: cap27/sec-27.5
 
 libro:
@@ -46,14 +50,16 @@ modelo:
     A_s: { expr: "(1 - s_t)*V_pk + s_t*A_t", sim: "V_{salida}", nombre: "amplitud de la salida", unidad: V }
     V_er: { expr: "V_cm/10^(C_db/20)", sim: "V_{error}", nombre: "error equivalente a la entrada", unidad: V }
     k_os: { expr: "V_er/V_off", sim: "×", nombre: "veces el offset", unidad: "", cifras: 2 }
+    V_e10: { expr: "V_cm/10^(C_db/10)", sim: "V_{error}", nombre: "dividiendo los dB entre 10", unidad: V }
 
 tarjetas:
   - id: explore-gbw
     tipo: explorar
     titulo: "Ganancia por ancho de banda"
-    texto: "Un operacional de GBW = 1 MHz con 1 V a la entrada. Cambie la ganancia del montaje y mire hasta dónde llega."
+    texto: "Un operacional de GBW = 1 MHz con 1 V a la entrada. Elija la ganancia del montaje con la que llega a 100 kHz."
     nota: "La amplitud de salida es la ganancia."
     libro: [170, 172]
+    inicio: { G_c: 1000 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
@@ -67,30 +73,33 @@ tarjetas:
           - { expr: "A_p1*A_0/sqrt((1 + A_0/G_c)^2 + (nu/f_p)^2)", color: naranja, rotulo: "su montaje", mide: salida_amp }
       mandos:
         - { valor: G_c, lista: [10, 100, 1000], rotulo: "Ganancia del montaje" }
-    requiere: { mover: [G_c] }
+    objetivo:
+      condiciones:
+        - { valor: B_c, min: 100000, rotulo: "Ancho de banda: {{B_c}}" }
+      logrado: "Ganancia {{G_c}} hasta {{B_c}}: más ganancia, menos banda. El producto no cambia."
+      pistas:
+        - { texto: "Aún no llega: pida menos ganancia." }
+    escalera:
+      - "BW = GBW/G: para 100 kHz con 1 MHz, ganancia 10."
+    solucion: "Ganancia 10: 100 kHz."
     comprobar:
       - { con: { G_c: 1000 }, B_c: 1000 }
-      - { B_c: 100000 }
+      - { con: { G_c: 10 }, B_c: 100000 }
 
   - id: estime-banda
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Ganancia 48"
     texto: "Un no inversor de ganancia 48 con un operacional de GBW = 1 MHz. ¿Qué ancho de banda tiene?"
     libro: [170, "cap27#434"]
-    estimar:
-      objetivo: "B_e"
+    simular:
+      objetivo: B_e
       unidad: Hz
-      min: 0
-      max: 100000
-      paso: 500
-      inicio: 80000
-      tol: 0.05
+      tol: 0.03
       rotulo: "Ancho de banda"
+      errores:
+        - { expr: "GBW", texto: "Esa es la banda con ganancia 1. Con ganancia 48, se divide entre 48." }
     exito: "Unos 20,8 kHz: ganancia y banda se reparten el GBW."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 21900 }, texto: "Se ha pasado: es 1 MHz entre 48." }
-      - { texto: "Se ha quedado corto: divida el GBW solo entre la ganancia." }
     escalera:
       - "BW = GBW/G."
     solucion: "1 000 000/48 ≈ 20,8 kHz."
@@ -98,31 +107,19 @@ tarjetas:
       - { B_e: 20833 }
 
   - id: prediga-slew
-    tipo: predecir
+    tipo: simular
     titulo: "Una senoide de 1 V"
     texto: "Un operacional de 0,5 V/µs da una senoide de 1 V de pico. ¿Hasta qué frecuencia la reproduce sin deformar?"
     libro: [173]
-    fijar: { V_pk: 1 }
-    widget:
-      tipo: circuito
-      esquema: ao-no-inversor
-      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
-      lectura: { valor: f_mx, rotulo: "Frecuencia máxima" }
-      ocultar: true
-      grafica:
-        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
-        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
-          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
-    opciones:
-      - texto: "Unos 79,6 kHz"
-        bien: true
-        porque: "SR/(2π · V_{p}) = 0,5 · 10⁶/(2π · 1): la pendiente máxima de la senoide no puede superar el SR."
-      - texto: "500 kHz"
-        porque: "Falta el 2π: la pendiente máxima de una senoide es 2π · f · V_{p}."
-      - texto: "1 MHz, el GBW"
-        porque: "El GBW limita la señal pequeña; con amplitud, manda el slew rate."
+    simular:
+      objetivo: f_mx
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Frecuencia máxima"
+      errores:
+        - { expr: "f_n2", texto: "Falta el 2π: la pendiente máxima de una senoide es 2π · f · V_{p}." }
+        - { expr: "GBW", texto: "El GBW limita la señal pequeña; con amplitud, manda el slew rate." }
+    exito: "Unos 79,6 kHz: la pendiente máxima de la senoide, 2π · f · V_{p}, no puede superar el SR."
     escalera:
       - "ω · V_{p} ≤ SR."
     solucion: "0,5 · 10⁶/(2π · 1) ≈ 79,6 kHz."
@@ -150,9 +147,18 @@ tarjetas:
           - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: V_pk, lista: [1, 10], rotulo: "Amplitud" }
-    requiere: { mover: [V_pk] }
+    objetivo:
+      condiciones:
+        - { valor: V_pk, min: 10, rotulo: "Amplitud: {{V_pk}}" }
+      logrado: "Con 10 V de pico, la salida es un triángulo de {{A_s}}: a esta amplitud el límite baja a {{f_mx}}."
+      pistas:
+        - { texto: "Suba la amplitud a 10 V." }
+    escalera:
+      - "A 16 kHz con 1 V la salida sigue a la entrada; mire qué pasa con 10 V."
+    solucion: "10 V a 16 kHz: rampas rectas, un triángulo."
     comprobar:
       - { f_s: 16000 }
+      - { con: { V_pk: 10 }, f_mx: 7958, tol: 0.01 }
 
   - id: por-que-amplitud
     tipo: porque
@@ -185,12 +191,11 @@ tarjetas:
       - { f_mx: 7958, tol: 0.01 }
 
   - id: formula-cmrr
-    tipo: formula
+    tipo: explorar
     titulo: "El modo común como error"
-    texto: "5 V de modo común. Cambie el CMRR y mire el error equivalente a la entrada."
+    texto: "V_{error} = V_{cm}/10^{CMRR/20}, con 5 V de modo común. Suba el CMRR hasta que el error baje a 5 µV."
     libro: [176, 177]
-    ec: 176
-    sustitucion: "{{V_cm}} / 10^({{C_db}}/20) = {{V_er}}"
+    inicio: { C_db: 80 }
     widget:
       tipo: grafica
       x: { id: cm, min: 60, max: 130, unidad: dB, rotulo: "CMRR" }
@@ -202,35 +207,39 @@ tarjetas:
       lectura: { valor: V_er, rotulo: "Error equivalente" }
       mandos:
         - { valor: C_db, lista: [80, 100, 120], rotulo: "CMRR" }
+    objetivo:
+      condiciones:
+        - { valor: V_er, max: 0.0000051, rotulo: "Error: {{V_er}}" }
+      logrado: "{{V_cm}} / 10^({{C_db}}/20) = {{V_er}}: cada 20 dB de CMRR dividen el error por diez."
+      pistas:
+        - { texto: "Aún es grande: más CMRR." }
+    escalera:
+      - "Cada 20 dB más, el error se divide por diez."
+    solucion: "CMRR = 120 dB: 5 µV."
     comprobar:
       - { V_er: 0.0005 }
+      - { con: { C_db: 120 }, V_er: 0.000005 }
 
   - id: offset-o-modo-comun
-    tipo: pregunta
+    tipo: simular
     titulo: "¿Qué pesa más?"
-    texto: "Un operacional con 50 µV de offset y 80 dB de CMRR, con 5 V de modo común. ¿Qué error domina?"
+    texto: "Un operacional con 50 µV de offset y 80 dB de CMRR, con 5 V de modo común. ¿Qué error equivalente introduce el modo común?"
     libro: [177, 178]
     fijar: { C_db: 80 }
-    widget:
-      tipo: grafica
-      x: { id: cm, min: 60, max: 130, unidad: dB, rotulo: "CMRR" }
-      y: { min: 0.000001, max: 0.01, unidad: V, rotulo: "V_{error}", escala: log }
-      curvas:
-        - { expr: "V_cm/10^(cm/20)", color: azul, rotulo: "V_{error}" }
-        - { expr: "V_off", color: tinta, rotulo: "offset", discontinua: true }
-    opciones:
-      - texto: "El modo común: 500 µV, diez veces el offset"
-        bien: true
-        porque: "5 V/10⁴ = 500 µV. Es el parámetro que decide en las medidas de puente."
-      - texto: "El offset: 50 µV es el defecto principal"
-        porque: "Con 80 dB, el modo común introduce 500 µV, mucho más."
-      - texto: "Ninguno: el CMRR anula el modo común"
-        porque: "Lo reduce, no lo anula: lo divide por 10^{CMRR/20}."
+    simular:
+      objetivo: V_er
+      unidad: V
+      tol: 0.02
+      rotulo: "Error por modo común"
+      errores:
+        - { expr: "V_e10", texto: "Los dB de tensión se dividen entre 20, no entre 10: 80 dB son un factor 10⁴." }
+        - { expr: "V_off", texto: "Ese es el offset. Calcule el del modo común y compárelos." }
+    exito: "500 µV, diez veces el offset: es el parámetro que decide en las medidas de puente."
     escalera:
       - "80 dB son un factor 10⁴."
     solucion: "5 V/10⁴ = 500 µV, diez veces los 50 µV del offset."
     comprobar:
-      - { V_er: 0.0005, k_os: 10 }
+      - { V_er: 0.0005, k_os: 10, V_e10: 0.00000005 }
 
   - id: empareje-limites
     tipo: pregunta

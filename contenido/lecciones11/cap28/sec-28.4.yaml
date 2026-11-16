@@ -7,6 +7,10 @@
 # 1.2 (esquemas12d): las redes vivas, con 1 V de prueba: `wien` en explore-red (medida en f₀, fase nula y 1/3) y
 # `desfase` en prediga-desfase, explore-seguidores y por-que-29 (medida en la frecuencia de 180°: 1/29 directa, 1/8
 # con seguidores), con el eje en hercios (R = 10 kΩ, C = 10 nF del problema del bloque 247).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el máximo de la red se lleva por encima de diez kilohercios y
+# se sintoniza el ejemplo de 1 592 Hz (objetivos), el no inversor se ajusta a ganancia 3, la ganancia se baja un 1 %
+# hasta que se apaga, la salida de la red de desfase en 180° se predice y se simula, y los seguidores se conectan hasta
+# bajar a 8. «Seno y coseno» pasa al emparejamiento de usos. Quedan dos emparejamientos y una pregunta de opciones.
 leccion: cap28/sec-28.4
 
 libro:
@@ -61,8 +65,9 @@ tarjetas:
   - id: explore-red
     tipo: explorar
     titulo: "La red de Wien"
-    texto: "Una RC en serie y otra en paralelo forman un divisor selectivo. Cambie R y C y mire dónde está su máximo."
+    texto: "Una RC en serie y otra en paralelo forman un divisor selectivo. Lleve su máximo por encima de diez kilohercios."
     libro: [89, 91]
+    inicio: { R_w: 10000, C_w: 10e-9 }
     widget:
       tipo: circuito
       esquema: wien
@@ -79,15 +84,24 @@ tarjetas:
       mandos:
         - { valor: R_w, lista: [1000, 10000, 100000], rotulo: "R" }
         - { valor: C_w, lista: [1e-9, 10e-9, 100e-9], rotulo: "C" }
-    requiere: { mover: [R_w] }
+    objetivo:
+      condiciones:
+        - { valor: f_0, min: 10000, rotulo: "f₀ = {{f_0}}" }
+      logrado: "Con R = {{R_w}} y C = {{C_w}}, el máximo sube a {{f_0}}: ahí la red no desfasa y deja pasar un tercio."
+      pistas:
+        - { texto: "Aún está bajo: R o C más pequeños." }
+    escalera:
+      - "Menos R o menos C, frecuencia característica más alta."
+    solucion: "R = 1 kΩ con C = 10 nF, o R = 10 kΩ con C = 1 nF: unos 15,9 kHz."
+    comprobar:
+      - { con: { R_w: 1000 }, f_0: 15915, tol: 0.001 }
 
   - id: formula-wien
-    tipo: formula
+    tipo: explorar
     titulo: "Solo R y C"
-    texto: "La frecuencia de oscilación depende solo de R y C."
+    texto: "f₀ = 1/(2πRC): la frecuencia de oscilación depende solo de R y C. Sintonice 1 592 Hz."
     libro: [92, "cap28#247"]
-    ec: 92
-    sustitucion: "1 / (2π · {{R_w}} · {{C_w}}) = {{f_0}}"
+    inicio: { R_w: 1000, C_w: 1e-9 }
     widget:
       tipo: grafica
       x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
@@ -100,40 +114,51 @@ tarjetas:
       mandos:
         - { valor: R_w, lista: [1000, 10000, 100000], rotulo: "R" }
         - { valor: C_w, lista: [1e-9, 10e-9, 100e-9], rotulo: "C" }
+    objetivo:
+      condiciones:
+        - { valor: f_0, objetivo: 1592, tol: 0.01, rotulo: "f₀ = {{f_0}}" }
+      logrado: "1 / (2π · {{R_w}} · {{C_w}}) = {{f_0}}: solo dependen de R y C."
+      pistas:
+        - { cuando: { valor: f_0, min: 1700 }, texto: "Demasiado alta: más R o más C." }
+        - { texto: "Demasiado baja: menos R o menos C." }
+    escalera:
+      - "Busque el producto RC que da 1/(2π · RC) = 1 592 Hz."
+    solucion: "R = 10 kΩ y C = 10 nF, por ejemplo."
     comprobar:
       - { con: { R_w: 10000, C_w: 10e-9 }, f_0: 1592 }
 
   - id: prediga-amplificador
-    tipo: predecir
+    tipo: explorar
     titulo: "El amplificador del Wien"
-    texto: "La red no desfasa y atenúa a 1/3. ¿Qué amplificador cierra el lazo con ganancia de lazo igual a uno?"
+    texto: "La red no desfasa y atenúa a 1/3. Ajuste el no inversor para que cierre el lazo con ganancia de lazo igual a uno."
     libro: [91, 93]
-    fijar: { R_1: 10000, R_2: 20000, V_e: 0.1 }
+    fijar: { R_1: 10000, V_e: 0.1 }
+    inicio: { R_2: 10000 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_e, r1: R_1, r2: R_2 }
       lectura: { valor: G_a, rotulo: "Ganancia" }
       mide: { vo: V_o }
-      ocultar: true
-    opciones:
-      - texto: "No inversor, de ganancia 3"
-        bien: true
-        porque: "Sin desfase en la red, el amplificador tampoco debe desfasar; y 3 · 1/3 = 1."
-      - texto: "Inversor, de ganancia 3"
-        porque: "El inversor añade media vuelta de fase: el lazo dejaría de estar en fase."
-      - texto: "No inversor, de ganancia 1"
-        porque: "La red atenúa a 1/3: con ganancia 1, el lazo se queda en 1/3 y la oscilación se apaga."
+      mandos:
+        - { valor: R_2, lista: [10000, 20000, 30000], rotulo: "R_{f}" }
+    objetivo:
+      condiciones:
+        - { valor: G_a, objetivo: 3, tol: 0.001, rotulo: "Ganancia: {{G_a}}" }
+      logrado: "3 · 1/3 = 1. No inversor, porque la red no desfasa: un inversor añadiría media vuelta."
+      pistas:
+        - { cuando: { valor: G_a, min: 3.5 }, texto: "Demasiada ganancia: el lazo pasaría de uno." }
+        - { texto: "Falta ganancia: la red se come dos tercios." }
     escalera:
       - "Barkhausen: |A·β| = 1 y fase cero."
-    solucion: "No inversor de ganancia 3: R_{f} = 2 · R₁."
+    solucion: "R_{f} = 2 · R₁ = 20 kΩ: ganancia 3."
     comprobar:
-      - { G_a: 3, V_o: 0.3 }
+      - { con: { R_2: 20000 }, G_a: 3, V_o: 0.3 }
 
   - id: sorpresa-exacta
     tipo: sorpresa
     titulo: "Exactamente 3"
-    texto: "Y ahí está el problema: la ganancia debe ser exactamente 3. Pruebe un 1 % por debajo y por encima."
+    texto: "Y ahí está el problema: la ganancia debe ser exactamente 3. Bájela un 1 % y mire la amplitud."
     libro: [94, "cap28#206"]
     inicio: { G_w: 3 }
     widget:
@@ -145,7 +170,17 @@ tarjetas:
       lectura: { valor: L_w, rotulo: "|A·β|" }
       mandos:
         - { valor: G_w, lista: [2.97, 3, 3.03], rotulo: "Ganancia" }
-    requiere: { mover: [G_w] }
+    objetivo:
+      condiciones:
+        - { valor: L_w, max: 0.99, rotulo: "|A·β| = {{L_w}}" }
+      logrado: "Un 1 % por debajo y la oscilación se apaga; un 1 % por encima, crece hasta recortar. Lo arregla un control de amplitud."
+      pistas:
+        - { texto: "Baje la ganancia un 1 %." }
+    escalera:
+      - "Con |A·β| < 1, la amplitud cae en cada vuelta."
+    solucion: "Ganancia 2,97: se apaga."
+    comprobar:
+      - { con: { G_w: 2.97 }, L_w: 0.99 }
 
   - id: empareje-control
     tipo: pregunta
@@ -165,9 +200,9 @@ tarjetas:
     solucion: "Lámpara–Hewlett sin distorsión; JFET–moderno y delicado; diodos–simple con distorsión."
 
   - id: prediga-desfase
-    tipo: predecir
+    tipo: simular
     titulo: "Tres células RC"
-    texto: "Tres células RC iguales, conectadas directamente, suman 180° a una frecuencia. ¿Qué ganancia necesita el amplificador inversor?"
+    texto: "Tres células RC iguales, conectadas directamente, suman 180° a una frecuencia. Con 1 V a la entrada, ¿qué amplitud sale ahí?"
     libro: [102, 103]
     fijar: { s_b: 0, R_w: 10000, C_w: 10e-9 }
     widget:
@@ -175,29 +210,32 @@ tarjetas:
       esquema: desfase
       piezas: { fuente: V_1, f: f_d, r: R_w, c: C_w, separadores: s_b }
       mide: { salida_amp: B_d, salida_fase: P_d }
-      lectura: { valor: A_n, rotulo: "Ganancia necesaria" }
+      lectura: { valor: B_d, rotulo: "Salida en 180°" }
       ocultar: true
       mandos: []
-    opciones:
-      - texto: "29"
-        bien: true
-        porque: "La red atenúa a 1/29 en ese punto: esa es la ganancia necesaria."
-      - texto: "8"
-        porque: "Sería con seguidores entre las células, cada una de 60° y 1/2: (1/2)³ = 1/8."
-      - texto: "3"
-        porque: "Ese es el Wien. Tres células RC en cascada atenúan mucho más."
+    simular:
+      objetivo: B_d
+      unidad: V
+      tol: 0.02
+      rotulo: "Amplitud de salida"
+      medida: salida_amp
+      errores:
+        - { expr: "V_1/8", texto: "Sería con seguidores entre las células, cada una de 60° y 1/2: (1/2)³ = 1/8." }
+        - { expr: "V_1/3", texto: "Ese es el Wien. Tres células RC en cascada atenúan mucho más." }
+    exito: "1/29 de voltio: el amplificador inversor necesita ganancia 29. Cada célula carga a la anterior."
     escalera:
       - "Cada célula carga a la anterior: atenúan más que si estuvieran separadas."
-    solucion: "Ganancia 29: la red atenúa a 1/29 en el punto de 180°."
+    solucion: "1 V/29 ≈ 34 mV."
     comprobar:
-      - { A_n: 29 }
+      - { A_n: 29, B_d: 0.03448, tol: 0.001 }
       - { con: { s_b: 1 }, A_n: 8 }
 
   - id: explore-seguidores
     tipo: explorar
     titulo: "Con y sin seguidores"
-    texto: "Separe las células con seguidores y mire cómo cambia la atenuación en el punto de 180°."
+    texto: "Separe las células con seguidores y baje la ganancia que necesita el amplificador en el punto de 180°."
     libro: [103]
+    inicio: { s_b: 0 }
     fijar: { R_w: 10000, C_w: 10e-9 }
     widget:
       tipo: circuito
@@ -214,7 +252,17 @@ tarjetas:
           - { x: "f_d", y: "B_d", rotulo: "180°" }
       mandos:
         - { valor: s_b, tipo: interruptor, rotulo: "Seguidores entre células" }
-    requiere: { mover: [s_b] }
+    objetivo:
+      condiciones:
+        - { valor: A_n, max: 8.01, rotulo: "Ganancia necesaria: {{A_n}}" }
+      logrado: "Con seguidores, cada célula aporta 60° y 1/2: (1/2)³ = 1/8. Basta ganancia 8 en lugar de 29."
+      pistas:
+        - { texto: "Conecte los seguidores." }
+    escalera:
+      - "Un seguidor impide que una célula cargue a la anterior."
+    solucion: "Con seguidores: 8."
+    comprobar:
+      - { con: { s_b: 1 }, A_n: 8 }
 
   - id: por-que-29
     tipo: porque
@@ -246,39 +294,16 @@ tarjetas:
       - "¿Qué hace un seguidor entre dos células?"
     solucion: "Sin separadores cada célula carga a la anterior: 56°, 56° y 68°, y 1/29."
 
-  - id: cuadratura
-    tipo: pregunta
-    titulo: "Seno y coseno"
-    texto: "Un sistema necesita a la vez un seno y un coseno de la misma frecuencia. ¿Qué oscilador lo da?"
-    libro: [106, 108]
-    widget:
-      tipo: grafica
-      x: { id: nv, min: 0, max: 2, unidad: vueltas, rotulo: "t, en periodos" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salidas" }
-      curvas:
-        - { expr: "sin(2*pi*nv)", color: azul, rotulo: "seno" }
-        - { expr: "cos(2*pi*nv)", color: naranja, rotulo: "coseno" }
-    opciones:
-      - texto: "Dos integradores en lazo: el oscilador en cuadratura"
-        bien: true
-        porque: "Da seno y coseno simultáneamente, lo que hace falta para señales I/Q. Su amplitud también necesita control."
-      - texto: "Un Wien con potenciómetro doble"
-        porque: "Ese sirve para ajustar la frecuencia en un amplio margen, con una sola salida."
-      - texto: "Un oscilador de relajación"
-        porque: "Da cuadrada y triangular; sirve cuando basta con que oscile."
-    escalera:
-      - "Integrar un seno da un coseno."
-    solucion: "El oscilador en cuadratura: dos integradores en lazo."
-
   - id: empareje-uso
     tipo: pregunta
     fase: "Empareje"
     titulo: "Cuándo usar cada cosa"
     texto: "Una cada necesidad con su solución."
-    libro: [108]
+    libro: [106, 108]
     emparejar:
       - ["Senoide de audio de calidad", "Wien con control suave"]
       - ["Frecuencia ajustable en amplio margen", "Wien con potenciómetro doble"]
+      - ["Seno y coseno a la vez", "Cuadratura: dos integradores en lazo"]
       - ["Solo hace falta que oscile", "Relajación"]
       - ["Frecuencia estable", "Cristal, aunque sea alta y se divida"]
     exito: "Para una senoide de frecuencia exacta, hoy se sintetiza desde un cristal y se filtra."
@@ -286,7 +311,7 @@ tarjetas:
       - { texto: "La estabilidad de frecuencia es cosa del cuarzo." }
     escalera:
       - "¿Cuál ajusta R a la vez en las dos ramas de la red?"
-    solucion: "Calidad–Wien suave; ajustable–potenciómetro doble; que oscile–relajación; estable–cristal."
+    solucion: "Calidad–Wien suave; ajustable–potenciómetro doble; seno y coseno–cuadratura; que oscile–relajación; estable–cristal."
 
   - id: banco-wien
     tipo: banco

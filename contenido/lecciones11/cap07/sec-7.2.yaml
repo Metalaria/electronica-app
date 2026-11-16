@@ -2,6 +2,11 @@
 # Curvas con k = 0,5 A/V² y V_th = 2 V (los de la figura 7.3). La forma de la región óhmica, k·(V_ov·V_DS − V_DS²/2),
 # es la del modelo de canal largo que dibuja la figura: da ½·k·V_ov² en la frontera y 1/(k·V_ov) cerca del origen.
 # 1.2: la predicción va sobre el esquema «mosfet» con la carga de 6 Ω y 12 V del ejemplo de la sección 7.5 (cap07#93).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): 1 A en saturación con los dos mandos (objetivo), la corriente
+# de 250 mA predicha y simulada, la transferencia dibujada, R_DS(on) predicha, la frontera marcada en la curva, el
+# pinch-off buscado subiendo V_DS y el interruptor llevado a óhmica con holgura en el circuito (bloque 47). Quedan
+# dos preguntas de opciones (por qué deja de subir, el nombre que confunde); el emparejamiento de las regiones sale
+# (el subumbral pasa al éxito del dibujo).
 leccion: cap07/sec-7.2
 
 libro:
@@ -35,17 +40,20 @@ modelo:
     Ic_d: { expr: "(Vc_dd - Vc_ds)/Rc_d", sim: "I_{D}", nombre: "corriente de la carga", unidad: A }
     V_ov: { expr: "max(0, V_gs - V_th)", sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V }
     m_d: { expr: "min(V_ds, V_ov)", sim: "V_{DS}", nombre: "tensión útil del canal", unidad: V }
+    d_fr: { expr: "V_ds - V_ov", sim: "V_{DS} − V_{ov}", nombre: "distancia a la frontera", unidad: V }
     I_d: { expr: "k_m*(V_ov*m_d - m_d^2/2)", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
     I_sat: { expr: "0.5*k_m*V_ov^2", sim: "I_{D}", nombre: "corriente en saturación", unidad: A }
     I_mal: { expr: "k_m*V_ov^2", sim: "I", nombre: "sin el factor un medio", unidad: A }
     R_on: { expr: "1/(k_m*(V_gr - V_th))", sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω }
+    I_car: { expr: "Vc_dd/Rc_d", sim: "V_{DD}/R_{D}", nombre: "corriente que pide la carga", unidad: A }
 
 tarjetas:
   - id: explore-curvas
     tipo: explorar
     titulo: "Las curvas de salida"
-    texto: "Arrastre V_{DS} a lo largo de la curva y cambie V_{GS}. Fíjese en dónde deja de subir la corriente."
+    texto: "Arrastre V_{DS} por la curva y cambie V_{GS}. Consiga 1 A con el transistor en saturación, a la derecha de la frontera."
     libro: [37, 40]
+    inicio: { V_gs: 3, V_ds: 0.5 }
     widget:
       tipo: grafica
       x: { id: vd, min: 0, max: 10, unidad: V, rotulo: "V_{DS}" }
@@ -61,10 +69,23 @@ tarjetas:
       mandos:
         - { valor: V_ds, min: 0, max: 10, paso: 0.25, rotulo: "V_{DS}" }
         - { valor: V_gs, min: 2, max: 6, paso: 0.5, rotulo: "V_{GS}" }
-    requiere: { mover: [V_ds, V_gs] }
+    objetivo:
+      condiciones:
+        - { valor: I_d, objetivo: 1, tol: 0.02, rotulo: "Drenador: {{I_d}}" }
+        - { valor: d_fr, min: 0, rotulo: "En saturación" }
+      logrado: "Con {{V_gs}}, la frontera queda en {{V_ov}}; a su derecha la corriente ya no depende de V_{DS}."
+      pistas:
+        - { cuando: { valor: d_fr, menor: 0 }, texto: "Está en la región óhmica, a la izquierda de la frontera: suba V_{DS}." }
+        - { cuando: { valor: I_d, mayor: 1.02 }, texto: "Sobra corriente: baje V_{GS}." }
+        - { texto: "En saturación, la corriente solo la sube la puerta: suba V_{GS}." }
+    escalera:
+      - "En saturación, más V_{DS} no da más corriente: es la puerta la que manda."
+    solucion: "V_{GS} = 4 V y V_{DS} de 2 V en adelante: 1 A."
+    comprobar:
+      - { con: { V_gs: 4, V_ds: 6 }, I_d: 1, d_fr: 4 }
 
   - id: prediga-saturacion
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga la corriente"
     texto: "k = 0,5 A/V², V_{th} = 2 V y V_{GS} = 3 V, con 12 V sobre una carga de 6 Ω. ¿Qué corriente circula?"
     libro: [40, 45, "cap07#93"]
@@ -79,26 +100,28 @@ tarjetas:
       corriente: Ic_d
       mide: { id: Ic_d, vds: Vc_ds, vgs: V_gs }
       ocultar: true
-    opciones:
-      - texto: "250 mA"
-        bien: true
-        porque: "En saturación: ½ · 0,5 · (3 − 2)² = 250 mA, sin importar V_{DS}."
-      - texto: "500 mA"
-        porque: "Ha olvidado el ½ de la ley cuadrática: k · V_{ov}² da el doble."
-      - texto: "2 A, lo que pide la carga: 12 V / 6 Ω"
-        porque: "Eso sería con el canal a fondo. Con 1 V de sobreexcitación el canal solo deja pasar ½ · k · V_{ov}²."
+      mandos: []
+    simular:
+      objetivo: Ic_d
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de drenador"
+      medida: id
+      errores:
+        - { expr: "I_mal", texto: "Ha olvidado el ½ de la ley cuadrática: k · V_{ov}² da el doble." }
+        - { expr: "I_car", texto: "Eso sería con el canal a fondo. Con 1 V de sobreexcitación el canal solo deja pasar ½ · k · V_{ov}²." }
+    exito: "½ · 0,5 · (3 − 2)² = 250 mA, sin importar V_{DS}: el drenador queda en 10,5 V, en saturación."
     escalera:
       - "Quedan voltios de sobra entre drenador y fuente: el transistor está en saturación."
       - "En saturación, I_{D} = ½ · k · (V_{GS} − V_{th})²."
     solucion: "½ · 0,5 · 1² = 0,25 A; el drenador queda en 10,5 V, muy por encima de la frontera de 1 V."
     comprobar:
-      - { I_d: 0.25, I_sat: 0.25, I_mal: 0.5, Ic_d: 0.25, Vc_ds: 10.5, V_ov: 1 }
-      - { con: { V_gs: 12 }, Ic_d: 2, tol: 0.05 }
+      - { I_d: 0.25, I_sat: 0.25, I_mal: 0.5, Ic_d: 0.25, Vc_ds: 10.5, V_ov: 1, I_car: 2 }
 
   - id: ley-cuadratica
     tipo: formula
     titulo: "La ley cuadrática"
-    texto: "En saturación, la corriente depende del cuadrado de la sobreexcitación. Mueva la puerta."
+    texto: "Esa es la cuenta que acaba de hacer: en saturación, la corriente va con el cuadrado de la sobreexcitación. Mueva la puerta."
     libro: [38, 39]
     ec: 39
     sustitucion: "½ · {{k_m}} · ({{V_gs}} − {{V_th}})² = {{I_sat}}"
@@ -118,7 +141,7 @@ tarjetas:
     tipo: dibujar
     titulo: "Dibuje la transferencia"
     texto: "Con k = 0,5 A/V² y V_{th} = 2 V, dibuje la corriente en saturación al subir V_{GS} desde cero."
-    libro: [38, 40]
+    libro: [38, 40, 42]
     fijar: { V_th: 2, k_m: 0.5 }
     dibujar:
       x: { id: vq, min: 0, max: 6, unidad: V, rotulo: "V_{GS}" }
@@ -128,7 +151,7 @@ tarjetas:
       tol: 0.08
       holgura: 0.03
       rotulo: "I_{D} frente a V_{GS}"
-    exito: "Nada hasta el umbral y luego una parábola: cuadrática, no exponencial como el bipolar."
+    exito: "Casi nada hasta el umbral (solo la fuga y el subumbral, exponencial) y luego una parábola, no una exponencial."
     pistas:
       - { cuando: { valor: media, mayor: 0.05 }, texto: "Ha dibujado alto: por debajo del umbral no circula nada." }
       - { texto: "Por encima del umbral crece con el cuadrado de V_{GS} − V_{th}: cada vez más deprisa." }
@@ -140,24 +163,20 @@ tarjetas:
       - { con: { V_gs: 6 }, I_sat: 4 }
 
   - id: estime-ron
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El interruptor cerrado"
     texto: "En la región óhmica, R_{DS(on)} ≈ 1/(k · V_{ov}). Con k = 0,5 A/V², V_{th} = 2 V y V_{GS} = 10 V, ¿cuánto vale?"
     libro: [43]
-    estimar:
-      objetivo: "R_on"
+    simular:
+      objetivo: R_on
       unidad: Ω
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.8
       tol: 0.05
       rotulo: "R_{DS(on)}"
+      errores:
+        - { razon: { min: 3.8, max: 4.2 }, texto: "Ha tomado 2 V de sobreexcitación: es V_{GS} − V_{th} = 10 − 2 = 8 V." }
+        - { razon: { min: 0.78, max: 0.82 }, texto: "Ha usado V_{GS} entera: la que cuenta es la sobreexcitación, 8 V." }
     exito: "1/(0,5 · 8) = 250 mΩ. Por eso la puerta se lleva a la tensión más alta disponible."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.263 }, texto: "Se ha pasado: la sobreexcitación es 10 − 2 = 8 V, no 2 V." }
-      - { texto: "Se ha quedado corto: es 1/(0,5 · 8)." }
     escalera:
       - "V_{ov} = V_{GS} − V_{th}."
     solucion: "V_{ov} = 8 V: 1/(0,5 · 8) = 0,25 Ω."
@@ -165,36 +184,40 @@ tarjetas:
       - { R_on: 0.25 }
 
   - id: frontera
-    tipo: pregunta
+    tipo: marcar
     titulo: "¿Dónde está la frontera?"
-    texto: "Con V_{GS} = 3 V y V_{th} = 2 V, ¿a qué V_{DS} se estrangula el canal junto al drenador?"
+    texto: "Con V_{GS} = 3 V y V_{th} = 2 V, marque en la curva el punto donde el canal se estrangula junto al drenador."
     libro: [44]
     fijar: { V_gs: 3 }
     widget:
       tipo: grafica
       x: { id: vd, min: 0, max: 10, unidad: V, rotulo: "V_{DS}" }
-      y: { min: 0, max: 4.5, unidad: A, rotulo: "I_{D}" }
+      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
       curvas:
-        - { expr: "k_m*(V_ov*min(vd, V_ov) - min(vd, V_ov)^2/2)", color: azul, rotulo: "I_{D} con su V_{GS}" }
-        - { expr: "0.5*k_m*vd^2", color: tinta, rotulo: "frontera", discontinua: true }
-    opciones:
-      - texto: "1 V"
-        bien: true
-        porque: "La frontera es V_{DS} = V_{GS} − V_{th}: el pinch-off llega cuando V_{DS} alcanza la sobreexcitación."
-      - texto: "3 V"
-        porque: "Esa es V_{GS}. El canal se estrangula cuando la puerta solo supera al drenador en V_{th}."
-      - texto: "2 V"
-        porque: "Esa es la tensión umbral; la frontera es V_{GS} − V_{th}."
+        - { expr: "k_m*(V_ov*min(vd, V_ov) - min(vd, V_ov)^2/2)", color: azul, rotulo: "I_{D} con V_{GS} = 3 V" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "V_ov"
+      tol: 0.03
+      inicio: { x: 6, y: 0 }
+      rotulo: "El pinch-off"
+      pasos: 40
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1.3 }, texto: "Ahí la curva ya es plana: el estrangulamiento ocurre antes, donde deja de subir." }
+      - { texto: "Ahí la corriente aún sube con V_{DS}: más a la derecha, donde la curva se aplana." }
+    exito: "V_{DS} = V_{GS} − V_{th} = 1 V: el pinch-off llega cuando V_{DS} alcanza la sobreexcitación."
     escalera:
       - "Junto al drenador, la puerta ve V_{GS} − V_{DS}."
-    solucion: "V_{DS} = V_{GS} − V_{th} = 1 V."
+    solucion: "En V_{DS} = V_{GS} − V_{th} = 1 V."
     comprobar:
       - { V_ov: 1 }
 
   - id: sorpresa-pinch
     tipo: sorpresa
     titulo: "Más tensión, la misma corriente"
-    texto: "V_{GS} = 4 V. Suba V_{DS} desde la región óhmica hasta pasar la frontera, y mire la corriente."
+    texto: "V_{GS} = 4 V. Suba V_{DS} desde la región óhmica hasta pasar la frontera, y mire cuánto gana la corriente."
     libro: [44, 45]
     fijar: { V_gs: 4 }
     inicio: { V_ds: 0.5 }
@@ -209,7 +232,18 @@ tarjetas:
       lectura: { valor: I_d, rotulo: "Corriente de drenador" }
       mandos:
         - { valor: V_ds, min: 0, max: 10, paso: 0.25, rotulo: "V_{DS}" }
-    requiere: { mover: [V_ds] }
+    objetivo:
+      condiciones:
+        - { valor: d_fr, min: 0, rotulo: "Pasada la frontera" }
+      logrado: "Desde {{V_ov}} la corriente se queda en {{I_d}}: siga subiendo V_{DS} y no ganará nada."
+      pistas:
+        - { texto: "Todavía en óhmica: la corriente aún sube con V_{DS}. Siga." }
+    escalera:
+      - "Con V_{GS} = 4 V, la frontera está en V_{DS} = 2 V."
+    solucion: "Pasados 2 V, la corriente se queda en 1 A."
+    comprobar:
+      - { con: { V_ds: 2 }, I_d: 1 }
+      - { con: { V_ds: 8 }, I_d: 1 }
 
   - id: por-que-plana
     tipo: porque
@@ -239,7 +273,7 @@ tarjetas:
     tipo: pregunta
     titulo: "«El MOSFET está saturado»"
     texto: "Una hoja de datos dice que el MOSFET trabaja en saturación. ¿Qué está haciendo?"
-    libro: [46, 47]
+    libro: [46, 37]
     widget:
       tipo: grafica
       x: { id: vd, min: 0, max: 10, unidad: V, rotulo: "V_{DS}" }
@@ -259,23 +293,37 @@ tarjetas:
       - "Los nombres de las regiones no coinciden con los del bipolar."
     solucion: "Amplifica: en el MOSFET, saturación es la región de amplificación."
 
-  - id: regiones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuatro regiones"
-    texto: "Una cada región con lo que pasa en ella."
-    libro: [37, 42]
-    emparejar:
-      - ["Corte", "Sin canal: solo la fuga, de nanoamperios"]
-      - ["Subumbral", "Corriente exponencial: circuitos de ultra bajo consumo"]
-      - ["Óhmica", "Resistencia controlada por V_{GS}: interruptor cerrado"]
-      - ["Saturación", "Corriente casi independiente de V_{DS}: amplificación"]
-    exito: "El umbral no es una frontera nítida: por debajo hay una región exponencial."
-    pistas:
-      - { texto: "Ordene por V_{GS} creciente: primero no hay canal; al final, la corriente la fija la puerta." }
+  - id: interruptor-holgura
+    tipo: explorar
+    fase: "Diseñe"
+    titulo: "Óhmica con holgura"
+    texto: "Como interruptor, el MOSFET debe quedar en óhmica con holgura. Suba la puerta hasta que en el transistor caigan menos de 0,5 V."
+    libro: [47, "cap07#93"]
+    inicio: { V_gs: 3 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: Vc_dd, rd: Rc_d, entrada: V_gs, k: k_m, vth: V_th }
+      lectura: { valor: Vc_ds, rotulo: "V_{DS}" }
+      datos:
+        - { valor: Ic_d, rotulo: "Carga: {{Ic_d}}" }
+      corriente: Ic_d
+      mide: { id: Ic_d, vds: Vc_ds, vgs: V_gs }
+      mandos:
+        - { valor: V_gs, min: 2, max: 12, paso: 0.5, rotulo: "Tensión de puerta" }
+    objetivo:
+      condiciones:
+        - { valor: Vc_ds, menor: 0.5, rotulo: "V_{DS}: {{Vc_ds}}" }
+      logrado: "Con {{V_gs}} el canal deja solo {{Vc_ds}}. Con 3 V se quedaba en saturación: 10,5 V y la disipación disparada."
+      pistas:
+        - { cuando: { valor: Vc_ds, mayor: 5 }, texto: "La carga pide más de lo que el canal deja pasar: el transistor está en saturación. Suba la puerta." }
+        - { texto: "Ya conduce, pero aún caen voltios en el canal: suba más la puerta." }
     escalera:
-      - "La región óhmica es la del interruptor cerrado."
-    solucion: "Corte–fuga, subumbral–exponencial, óhmica–interruptor, saturación–amplificación."
+      - "Menos resistencia del canal pide más sobreexcitación: R_{DS(on)} ≈ 1/(k · V_{ov})."
+    solucion: "Con la puerta a 10 V o más: unos 0,49 V en el transistor."
+    comprobar:
+      - { con: { V_gs: 10 }, Vc_ds: 0.4947, tol: 0.01 }
+      - { Vc_ds: 10.5 }
 
   - id: resumen
     tipo: resumen

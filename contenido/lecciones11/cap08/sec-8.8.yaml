@@ -6,6 +6,11 @@
 # por el drenador y la entrada de 100 kΩ del convertidor es R_S; la puerta a 5 V, k = 0,01 A/V² y V_th = 1 V son los
 # de la curva de ejemplo (G_N = k·(5 − 1 − V_señal)). La corriente resuelve la ley de la zona óhmica con R_S (cuadrática,
 # raíz menor en forma estable); la señal llega hasta 3,5 V para que el canal no salga de la zona óhmica.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el 0,01 % se consigue con R_on y la entrada (objetivo), el
+# error sobre 100 kΩ y el escalón de inyección se predicen (simular), la señal se sube en el canal N y se baja en el P
+# hasta que su R_on pasa de 100 Ω, el canal P se añade para bajar de 50 Ω con la señal alta, y una señal de 4,5 V se
+# hace llegar al convertidor por la puerta de transmisión. Quedan dos preguntas de opciones (por qué se aplana, fuera
+# de la alimentación) y el emparejamiento de los errores.
 leccion: cap08/sec-8.8
 
 libro:
@@ -64,14 +69,16 @@ modelo:
     Vo_t: { expr: "on_t*V_x*R_in/(R_in + Ron_t)", sim: "V_{salida}", nombre: "tensión en la entrada del convertidor", unidad: V }
     I_t: { expr: "Vo_t/R_in", sim: "I", nombre: "corriente por la puerta", unidad: A }
     V_q: { expr: "Q_i/C_h", sim: "ΔV", nombre: "escalón por inyección de carga", unidad: V }
+    e_1M: { expr: "100*R_on/(R_on + 1000000)", sim: "error", nombre: "error sobre 1 MΩ", unidad: "%", cifras: 2 }
 
 tarjetas:
   - id: explore-ron
     tipo: explorar
     titulo: "Un divisor con la entrada"
-    texto: "La R_{on} del interruptor y la entrada del convertidor forman un divisor. Cambie las dos y mire el error."
+    texto: "La R_{on} del interruptor y la entrada del convertidor forman un divisor. Consiga que el error baje al 0,01 %."
     libro: [170, 174]
     fijar: { V_sg: 1, s_on: 1 }
+    inicio: { R_on: 300, R_in: 100000 }
     widget:
       tipo: circuito
       esquema: thevenin
@@ -82,41 +89,42 @@ tarjetas:
       mandos:
         - { valor: R_on, lista: [100, 300], rotulo: "R_{on}" }
         - { valor: R_in, lista: [100000, 1000000], rotulo: "Entrada del convertidor" }
-    requiere: { mover: [R_on, R_in] }
+    objetivo:
+      condiciones:
+        - { valor: e_r, max: 0.0101, rotulo: "Error: {{e_r}}" }
+      logrado: "{{R_on}} sobre {{R_in}}: un 0,01 %, aceptable. El error es R_{on}/(R_{on} + R_{entrada})."
+      pistas:
+        - { texto: "Aún hay demasiado error: menos R_{on} o más entrada." }
+    escalera:
+      - "El divisor pierde R_{on}/(R_{on} + R_{entrada}) de la señal."
+    solucion: "100 Ω sobre 1 MΩ: 0,01 %."
+    comprobar:
+      - { con: { R_on: 100, R_in: 1000000 }, e_r: 0.01, tol: 0.001 }
 
   - id: prediga-error
-    tipo: predecir
+    tipo: simular
     titulo: "Sobre 100 kΩ"
     texto: "100 Ω sobre 1 MΩ dan un 0,01 % de error. ¿Y sobre una entrada de 100 kΩ?"
     libro: [174]
     fijar: { V_sg: 1, s_on: 1, R_on: 100, R_in: 100000 }
-    widget:
-      tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_sg, rth: R_on, carga: R_in, interruptor: s_on }
-      lectura: { valor: e_r, rotulo: "Error estático" }
-      corriente: I_l
-      mide: { salida: V_l, corriente: I_l, interna: V_ron }
-      ocultar: true
-    opciones:
-      - texto: "Un 0,1 %, un bit de 10"
-        bien: true
-        porque: "El error es R_{on}/(R_{on} + R_{entrada}): diez veces menos entrada, diez veces más error."
-      - texto: "El mismo 0,01 %"
-        porque: "El error depende de la relación entre R_{on} y la entrada, y la entrada es diez veces menor."
-      - texto: "Un 1 %"
-        porque: "Sobra un factor diez: 100 Ω frente a 100 kΩ es una milésima."
+    simular:
+      objetivo: e_r
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Error estático"
+      errores:
+        - { expr: "e_1M", texto: "Ese es el error sobre 1 MΩ. Con una entrada diez veces menor, el error es diez veces mayor." }
+    exito: "Un 0,1 %, es decir, un bit de 10: diez veces menos entrada, diez veces más error."
     escalera:
       - "Error = R_{on}/(R_{on} + R_{entrada})."
     solucion: "100 Ω / (100 Ω + 100 kΩ) ≈ 0,1 %."
     comprobar:
-      - { e_r: 0.1, tol: 0.002 }
-      - { con: { R_in: 1000000 }, e_r: 0.01, tol: 0.001 }
+      - { e_r: 0.1, e_1M: 0.01, tol: 0.002 }
 
   - id: explore-canal-n
     tipo: explorar
     titulo: "Un MOSFET como interruptor de señal"
-    texto: "Puerta a 5 V; la señal entra por el drenador y sale por la fuente hacia el convertidor. Suba la señal y mire R_{on}."
+    texto: "Puerta a 5 V; la señal entra por el drenador y sale hacia el convertidor. Suba la señal hasta que la R_{on} pase de 100 Ω."
     nota: "Transistor de ejemplo; entrada de 100 kΩ."
     libro: [173, 174]
     fijar: { V_gn: 5, R_in: 100000 }
@@ -132,12 +140,22 @@ tarjetas:
       mide: { id: I_n, vs: V_sn, vgs: V_gsn, vds: V_dsn }
       mandos:
         - { valor: V_x, min: 0, max: 3.5, paso: 0.25, rotulo: "Nivel de la señal" }
-    requiere: { mover: [V_x] }
+    objetivo:
+      condiciones:
+        - { valor: R_onn, min: 100, rotulo: "R_{on}: {{R_onn}}" }
+      logrado: "Con la señal en {{V_x}}, la V_{GS} efectiva baja a {{V_gsn}}: el canal N conduce bien las señales bajas y mal las altas."
+      pistas:
+        - { texto: "Aún conduce bien: suba la señal." }
+    escalera:
+      - "La puerta está fija en 5 V: cuanto más sube la señal, menos V_{GS} le queda."
+    solucion: "Con la señal hacia 3 V, la R_{on} ya pasa de 100 Ω."
+    comprobar:
+      - { con: { V_x: 3 }, R_onn: 100, tol: 0.05 }
 
   - id: explore-canal-p
     tipo: explorar
     titulo: "Un canal P, al revés"
-    texto: "Ahora un canal P con la puerta a 0 V: la señal entra por la fuente. Baje la señal y mire R_{on}."
+    texto: "Ahora un canal P con la puerta a 0 V: la señal entra por la fuente. Baje la señal hasta que su R_{on} pase de 100 Ω."
     nota: "Transistor de ejemplo; entrada de 100 kΩ."
     libro: [173]
     fijar: { V_gp: 0, R_in: 100000 }
@@ -151,12 +169,22 @@ tarjetas:
       mide: { id: ID_p, vsd: VSD_p, vd: Vd_p }
       mandos:
         - { valor: V_x, min: 1.5, max: 5, paso: 0.25, rotulo: "Nivel de la señal" }
-    requiere: { mover: [V_x] }
+    objetivo:
+      condiciones:
+        - { valor: Ron_p, min: 100, rotulo: "R_{on}: {{Ron_p}}" }
+      logrado: "Con la señal en {{V_x}}, el canal P conduce mal: justo al revés que el N, bien las altas y mal las bajas."
+      pistas:
+        - { texto: "Aún conduce bien: baje la señal." }
+    escalera:
+      - "Con la puerta en 0 V, la V_{GS} del canal P es la propia señal."
+    solucion: "Con la señal hacia 2 V, la R_{on} pasa de 100 Ω."
+    comprobar:
+      - { con: { V_x: 2 }, Ron_p: 100, tol: 0.1 }
 
   - id: sorpresa-transmision
     tipo: sorpresa
     titulo: "Un canal N no basta"
-    texto: "Recorra todo el margen de la señal con un canal N. Luego añada un canal P en paralelo."
+    texto: "Con un canal N solo, la R_{on} se dispara con la señal alta. Consiga menos de 50 Ω con la señal en 3,5 V o más."
     nota: "Curvas de ejemplo."
     libro: [173]
     inicio: { V_x: 1, s_p: 0 }
@@ -172,7 +200,19 @@ tarjetas:
       mandos:
         - { valor: V_x, min: 0, max: 5, paso: 0.25, rotulo: "Nivel de la señal" }
         - { valor: s_p, tipo: interruptor, rotulo: "Canal P en paralelo" }
-    requiere: { mover: [V_x, s_p] }
+    objetivo:
+      condiciones:
+        - { valor: V_x, min: 3.5, rotulo: "Señal alta: {{V_x}}" }
+        - { valor: R_tg, max: 50, rotulo: "R_{on}: {{R_tg}}" }
+      logrado: "Con el canal P en paralelo, {{R_tg}} con la señal en {{V_x}}: la puerta de transmisión."
+      pistas:
+        - { cuando: { valor: V_x, menor: 3.5 }, texto: "Suba la señal hasta 3,5 V o más: ahí es donde el canal N falla." }
+        - { texto: "El canal N solo no basta con la señal alta: añada el canal P." }
+    escalera:
+      - "Con la señal alta, ¿qué canal conduce bien?"
+    solucion: "Señal en 3,5 V o más y el canal P conectado."
+    comprobar:
+      - { con: { V_x: 3.5, s_p: 1 }, R_tg: 33.3, tol: 0.01 }
 
   - id: por-que-transmision
     tipo: porque
@@ -201,10 +241,10 @@ tarjetas:
   - id: explore-puerta-transmision
     tipo: explorar
     titulo: "La puerta de transmisión, viva"
-    texto: "Los dos canales en paralelo, con las puertas en contrafase. Recorra la señal y abra y cierre el control."
+    texto: "Los dos canales en paralelo, con las puertas en contrafase. Haga llegar una señal de 4,5 V al convertidor."
     libro: [173]
     fijar: { V_gn: 5, R_in: 100000 }
-    inicio: { V_x: 0.5 }
+    inicio: { V_x: 0.5, on_t: 0 }
     widget:
       tipo: circuito
       esquema: puerta-transmision
@@ -217,27 +257,33 @@ tarjetas:
       mandos:
         - { valor: V_x, min: 0.5, max: 4.5, paso: 0.25, rotulo: "Nivel de la señal" }
         - { valor: on_t, tipo: interruptor, rotulo: "Control" }
-    requiere: { mover: [V_x, on_t] }
+    objetivo:
+      condiciones:
+        - { valor: Vo_t, min: 4.49, rotulo: "Al convertidor: {{Vo_t}}" }
+      logrado: "{{Vo_t}} de 4,5 V, con {{Ron_t}}: el canal P se encarga de las señales altas."
+      pistas:
+        - { cuando: { valor: on_t, max: 0 }, texto: "El control está abierto: ciérrelo." }
+        - { texto: "Suba la señal hasta 4,5 V." }
+    escalera:
+      - "Cierre el control y lleve la señal arriba del todo."
+    solucion: "Control cerrado y señal en 4,5 V."
+    comprobar:
+      - { con: { V_x: 4.5, on_t: 1 }, Vo_t: 4.4986, tol: 0.001 }
 
   - id: estime-inyeccion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Inyección de carga"
     texto: "Al conmutar, el interruptor transfiere 10 pC a un condensador de muestreo de 100 pF. ¿Qué escalón produce?"
     libro: [175]
-    estimar:
-      objetivo: "V_q"
+    simular:
+      objetivo: V_q
       unidad: V
-      min: 0
-      max: 0.3
-      paso: 0.005
-      inicio: 0.25
       tol: 0.05
       rotulo: "Escalón"
+      errores:
+        - { razon: { min: 90, max: 110 }, texto: "Ha dividido al revés: ΔV = Q/C, la carga entre la capacidad." }
     exito: "100 mV: enorme frente a un LSB de 12 bits. Se reduce con condensadores mayores o con un interruptor ficticio."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado: ΔV = Q/C." }
-      - { texto: "Se ha quedado corto: 10 pC entre 100 pF son una décima de voltio." }
     escalera:
       - "ΔV = Q/C."
     solucion: "10 pC / 100 pF = 0,1 V."

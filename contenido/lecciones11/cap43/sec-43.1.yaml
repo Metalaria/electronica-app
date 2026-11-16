@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 44.1 «Por Qué Discretos Hoy» (cap43; etiqueta sec-43.1).
 # Formato: contenido/lecciones11/GUIA.md. Sección sin cálculos: las cinco razones (y la sexta, didáctica) sobre la
 # figura 44.2 del libro (fig-43.2, con zonas), la válvula, el precio del discreto y el criterio de elección.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la función simple se hace con un transistor que satura (valores
+# de ejemplo: 12 V, 1 kΩ, 47 kΩ, β = 100), los casos se tocan en orden en la fig. 44.2 y la sexta razón también; el caso
+# más frecuente, el criterio y el banco pasan a explicaciones y resumen. Quedan una pregunta de opciones (la válvula) y
+# el emparejamiento del precio: 60 %, porque es la sección introductoria del capítulo.
 leccion: cap43/sec-43.1
 
 libro:
@@ -22,69 +26,81 @@ libro:
   26: "integrado por defecto, discreto cuando haya una razón concreta"
   31: "montar un emisor común, medir su ganancia"
   32: "El operacional gana en casi todo"
+  33: "Las seis razones para usar transistores discretos"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_c: { sim: "R_{C}", nombre: "carga: relé o LED con su resistencia", unidad: Ω, valor: 1000 }
+    V_b: { sim: "V_{in}", nombre: "tensión de mando", unidad: V, valor: 0 }
+    R_b: { sim: "R_{B}", nombre: "resistencia de base", unidad: Ω, valor: 47000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+  calculos:
+    I_b: { expr: "max(0, (V_b - V_BE)/R_b)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_cm: { expr: "(V_cc - V_CEs)/R_c", sim: "I_{C,máx}", nombre: "corriente de saturación", unidad: A }
+    I_c: { expr: "min(beta*I_b, I_cm)", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_ce: { expr: "V_cc - I_c*R_c", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
 
 tarjetas:
   - id: explore-razones
     tipo: explorar
-    titulo: "Seis razones para un transistor suelto"
-    texto: "Toque cada recuadro de la figura y lea cuándo un transistor discreto es la respuesta correcta."
-    libro: [4, 6, 7, 8, 9, 10, 17]
+    titulo: "Una función simple"
+    texto: "Un solo transistor gobierna una carga, un relé o un LED. Suba la tensión de mando hasta que el transistor sature y la carga reciba toda la corriente."
+    nota: "Valores de ejemplo."
+    libro: [10, 11]
+    inicio: { V_b: 0 }
     widget:
-      tipo: figura
-      figura: fig-43.2
-      zonas:
-        - { id: potencia, rotulo: "Recuadro «Potencia»", rect: [2, 1, 145, 52], texto: "Potencia: por encima de decenas de vatios, o amperios a cientos de voltios, mandan los transistores sueltos." }
-        - { id: frecuencia, rotulo: "Recuadro «Frecuencia»", rect: [155, 1, 145, 52], texto: "Frecuencia: en radiofrecuencia, uno elegido para el caso supera a un integrado de propósito general." }
-        - { id: ruido, rotulo: "Recuadro «Ruido»", rect: [308, 1, 145, 52], texto: "Ruido: en la primera etapa, un transistor seleccionado puede tener menos ruido que cualquier operacional." }
-        - { id: tension, rotulo: "Recuadro «Tensión»", rect: [2, 59, 145, 51], texto: "Tensión: con decenas o cientos de voltios, los integrados de propósito general quedan fuera." }
-        - { id: simple, rotulo: "Recuadro «Función simple»", rect: [155, 59, 145, 51], texto: "Función simple: invertir, adaptar niveles, un relé o un LED. Más barato y ocupa menos que un integrado." }
-        - { id: entender, rotulo: "Recuadro «Entender»", rect: [308, 59, 145, 51], texto: "Entender: un operacional es un par diferencial, un espejo de corriente y una etapa clase AB." }
-    requiere: { mover: [potencia, simple, entender] }
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_c, entrada: V_b, rb: R_b, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_c, rotulo: "I_{C}" }
+      datos:
+        - { valor: V_ce, rotulo: "V_{CE} = {{V_ce}}" }
+      corriente: I_c
+      mide: { ib: I_b, ic: I_c, vce: V_ce }
+      mandos:
+        - { valor: V_b, min: 0, max: 10, paso: 0.5, rotulo: "Tensión de mando" }
+    objetivo:
+      condiciones:
+        - { valor: V_ce, max: 0.2, rotulo: "V_{CE}: {{V_ce}}" }
+      logrado: "Saturado: la carga recibe {{I_c}}. Un transistor es más barato y ocupa menos que un integrado: es el caso más frecuente, y por eso hay transistores sueltos en cualquier placa."
+      pistas:
+        - { texto: "Aún no satura: más mando." }
+    escalera:
+      - "Satura cuando β · I_{B} supera lo que deja la carga."
+    solucion: "Desde unos 6 V de mando, satura."
+    comprobar:
+      - { con: { V_b: 6.5 }, V_ce: 0.2, I_c: 0.0118, tol: 0.01 }
 
   - id: empareje-casos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada caso, su ejemplo"
-    texto: "Una cada razón para usar un discreto con el ejemplo que da el libro."
-    libro: [6, 7, 8, 9, 10]
-    emparejar:
-      - ["Potencia", "Un MOSFET de potencia o un IGBT, sin equivalente integrado"]
-      - ["Frecuencia", "Un transistor elegido para radiofrecuencia"]
-      - ["Ruido", "La primera etapa de un amplificador muy exigente"]
-      - ["Tensión", "Decenas o cientos de voltios"]
-      - ["Función simple", "Gobernar un relé o encender un LED"]
-    exito: "Cinco situaciones; en todas, el integrado de propósito general se queda corto o sobra."
-    pistas:
-      - { texto: "El relé y el LED no piden potencia ni frecuencia: piden poco, y un transistor basta." }
-    escalera:
-      - "Busque en cada ejemplo qué magnitud se sale de lo normal: vatios, megahercios, nanovoltios o voltios."
-    solucion: "Potencia–MOSFET o IGBT, frecuencia–radiofrecuencia, ruido–primera etapa, tensión–cientos de voltios, función simple–relé o LED."
-
-  - id: pregunta-frecuente
-    tipo: pregunta
-    titulo: "El caso más frecuente"
-    texto: "En una placa moderna hay transistores sueltos entre los integrados. ¿Cuál de los cinco casos lo explica sobre todo?"
-    libro: [10, 11]
+    tipo: tocar
+    fase: "Elija"
+    titulo: "Cada caso, su razón"
+    texto: "Toque, por este orden, la razón de usar un MOSFET de potencia, un transistor elegido para radiofrecuencia y un transistor que enciende un LED."
+    libro: [6, 7, 8, 9, 10, 33]
     widget:
       tipo: figura
       figura: fig-43.2
       zonas:
+        - { id: potencia, rotulo: "Recuadro «Potencia»", rect: [2, 1, 145, 52] }
+        - { id: frecuencia, rotulo: "Recuadro «Frecuencia»", rect: [155, 1, 145, 52] }
+        - { id: ruido, rotulo: "Recuadro «Ruido»", rect: [308, 1, 145, 52] }
+        - { id: tension, rotulo: "Recuadro «Tensión»", rect: [2, 59, 145, 51] }
         - { id: simple, rotulo: "Recuadro «Función simple»", rect: [155, 59, 145, 51] }
-    opciones:
-      - texto: "La función simple: invertir, adaptar niveles, un relé, un LED"
-        bien: true
-        porque: "Es el caso más frecuente en la práctica: un transistor es más barato y ocupa menos que un integrado."
-      - texto: "La potencia"
-        porque: "La potencia pide transistores sueltos, pero solo en las etapas de salida: no explica los de cualquier placa."
-      - texto: "El ruido"
-        porque: "El bajo ruido justifica un discreto en una primera etapa exigente, un caso raro, no el de cada placa."
+        - { id: entender, rotulo: "Recuadro «Entender»", rect: [308, 59, 145, 51] }
+    tocar:
+      bien: [potencia, frecuencia, simple]
+      orden: true
+      porque:
+        ruido: "El ruido justifica un transistor seleccionado en la primera etapa de un amplificador muy exigente."
+        tension: "La tensión, con decenas o cientos de voltios, deja fuera a los integrados de propósito general."
+        entender: "Entender lo que hay dentro de un integrado es la razón didáctica, no la de un montaje."
+    exito: "Potencia, frecuencia y función simple. Con el ruido y la tensión, son los cinco casos donde un discreto es la respuesta correcta."
     escalera:
-      - "Piense en lo que hace la mayoría de esos transistores: encender algo, invertir un nivel."
-    solucion: "La función simple: es el caso más frecuente, y explica los transistores sueltos de cualquier placa."
+      - "Busque qué magnitud se sale de lo normal en cada ejemplo."
+    solucion: "Potencia; frecuencia; función simple."
 
   - id: pregunta-valvula
     tipo: pregunta
@@ -109,26 +125,28 @@ tarjetas:
     solucion: "Consumo del filamento, tensiones altas, tamaño y calor, y desgaste con las horas."
 
   - id: porque-operacional
-    tipo: porque
+    tipo: tocar
     titulo: "La sexta razón"
-    texto: "Un operacional es un par diferencial, un espejo de corriente y una etapa clase AB. ¿Por qué importa eso al usarlo?"
-    libro: [17, 18]
+    texto: "Un operacional es un par diferencial, un espejo de corriente y una etapa clase AB, y de ahí salen su offset y su slew rate. Toque la razón que justifica este capítulo."
+    libro: [17, 18, 32]
     widget:
       tipo: figura
       figura: fig-43.2
       zonas:
+        - { id: potencia, rotulo: "Recuadro «Potencia»", rect: [2, 1, 145, 52] }
+        - { id: ruido, rotulo: "Recuadro «Ruido»", rect: [308, 1, 145, 52] }
+        - { id: simple, rotulo: "Recuadro «Función simple»", rect: [155, 59, 145, 51] }
         - { id: entender, rotulo: "Recuadro «Entender»", rect: [308, 59, 145, 51] }
-    opciones:
-      - texto: "Sus límites —offset, slew rate, polarización, ruido— salen de esos bloques"
-        bien: true
-        porque: "Quien entiende los bloques entiende por qué se comporta así, y lo elige y diagnostica bien."
-      - texto: "Porque se puede sustituir siempre por tres transistores sueltos"
-        porque: "No: dentro van transistores apareados en el mismo chip, algo que tres sueltos no igualan."
-      - texto: "No importa: es una caja negra ideal"
-        porque: "Como caja negra se usa, pero sus límites reales vienen de lo que lleva dentro."
+    tocar:
+      bien: [entender]
+      porque:
+        potencia: "La potencia justifica un discreto en un montaje, no el estudio del capítulo."
+        ruido: "El ruido es uno de los cinco casos de montaje."
+        simple: "La función simple es el caso más frecuente en una placa, no la razón didáctica."
+    exito: "Entender lo que hay dentro permite elegir bien el operacional y diagnosticarlo. En el banco, frente a un emisor común, gana en casi todo: lleva veinte transistores apareados."
     escalera:
-      - "¿De dónde vienen el offset o el slew rate de un operacional?"
-    solucion: "De sus bloques internos: por eso entenderlos permite elegir el operacional y diagnosticarlo."
+      - "¿Qué razón no es un caso de montaje?"
+    solucion: "Entender lo que hay dentro de los integrados."
 
   - id: empareje-precio
     tipo: pregunta
@@ -148,54 +166,10 @@ tarjetas:
       - "El apareamiento depende de dónde están los transistores: en el mismo chip, iguales y a la misma temperatura."
     solucion: "Polarización–ya hecha, apareamiento–mismo chip, compensación térmica–resuelta, estabilidad–viene dada."
 
-  - id: pregunta-criterio
-    tipo: pregunta
-    titulo: "El criterio"
-    texto: "Hay que amplificar una señal sin ninguna exigencia especial. ¿Integrado o discreto?"
-    libro: [26]
-    widget:
-      tipo: figura
-      figura: fig-43.2
-      zonas:
-        - { id: tension, rotulo: "Recuadro «Tensión»", rect: [2, 59, 145, 51] }
-    opciones:
-      - texto: "Integrado: es el que va por defecto"
-        bien: true
-        porque: "Integrado por defecto, discreto cuando haya una razón concreta: aquí no hay ninguna."
-      - texto: "Discreto: siempre es más barato"
-        porque: "Solo en una función simple. Para amplificar sin más, el integrado ahorra polarizar, aparear y estabilizar."
-      - texto: "Discreto: suena mejor"
-        porque: "Sin una razón concreta (potencia, frecuencia, ruido, tensión), el integrado hace casi todo mejor."
-    escalera:
-      - "¿Se da alguna de las cinco razones?"
-    solucion: "Integrado: discreto solo cuando haya una razón concreta."
-
-  - id: prediga-banco
-    tipo: predecir
-    titulo: "En el banco"
-    texto: "Un emisor común frente a un operacional con la misma ganancia: se miden ganancia, impedancia de entrada y distorsión. ¿Quién gana?"
-    libro: [31, 32]
-    widget:
-      tipo: figura
-      figura: fig-43.2
-      zonas:
-        - { id: entender, rotulo: "Recuadro «Entender»", rect: [308, 59, 145, 51] }
-    opciones:
-      - texto: "El operacional, en casi todo"
-        bien: true
-        porque: "Lleva dentro veinte transistores apareados haciendo lo que uno solo no puede."
-      - texto: "El emisor común, por ser más sencillo"
-        porque: "Lo sencillo es su debilidad: un solo transistor no corrige su distorsión ni su deriva."
-      - texto: "Empatan: los dos amplifican igual"
-        porque: "La ganancia puede ser la misma, pero la impedancia de entrada y la distorsión del operacional son mucho mejores."
-    escalera:
-      - "¿Cuántos transistores apareados trabajan dentro de un operacional?"
-    solucion: "El operacional gana en casi todo: veinte transistores apareados frente a uno."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [4, 11, 17, 26]
+    libro: [4, 11, 17, 26, 31]
     ideas:
       - { titulo: "Cinco casos.", texto: "Potencia, frecuencia, ruido, tensión y función simple; la última es la más frecuente." }
       - { titulo: "La sexta razón.", texto: "Un operacional es un par diferencial, un espejo y una etapa AB: sus límites salen de ahí." }

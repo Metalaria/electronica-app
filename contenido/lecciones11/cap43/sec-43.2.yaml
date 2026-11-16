@@ -4,6 +4,10 @@
 # «bjt-polarizacion», con el modelo de 0,7 V del libro. La polarización por base fija, en «bjt-interruptor» en zona
 # activa con la misma I_C a β = 150 (R_B = 11,3 V / 8,83 µA = 1,28 MΩ, el valor de la figura 44.4 del libro).
 # Paso práctico: «ajuste» del colector a la mitad de la alimentación (la regla del bloque 43).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): β se lleva al peor caso viendo que I_{C} apenas se mueve (la
+# condición del divisor va en su explicación), la base fija con β = 300 se predice y se simula, lo que no es «cuanta
+# más, mejor» se toca en la fig. 44.4, g_{m} se predice y en el banco se mide la tensión de la que sale la corriente. El
+# desvío pasa al resumen. Quedan el emparejamiento de polarizaciones y una pregunta de opciones (el embalamiento).
 leccion: cap43/sec-43.2
 
 libro:
@@ -25,6 +29,7 @@ libro:
   59: "tensión de base, de emisor y de colector"
   60: "De la de emisor sale la corriente"
   61: "calentar el transistor con los dedos"
+  63: "Dependencia del punto de trabajo con la β según la polarización"
   "cap43#67": "divisor de 47 kΩ y 10 kΩ, RC = 3,3 kΩ, RE = 1 kΩ, β = 150 e IC = 1,324 mA"
 
 modelo:
@@ -62,8 +67,9 @@ tarjetas:
   - id: explore-beta
     tipo: explorar
     titulo: "Cambie de transistor"
-    texto: "La β varía de 50 a 300 entre unidades del mismo modelo. Muévala y mire la corriente de colector."
-    libro: [45, 46, "cap43#67"]
+    texto: "La β varía de 50 a 300 entre unidades del mismo modelo. Monte el peor caso, β = 300, y vigile la corriente de colector."
+    libro: [45, 46, 50, 51, "cap43#67"]
+    inicio: { beta: 50 }
     widget:
       tipo: circuito
       esquema: bjt-polarizacion
@@ -75,13 +81,24 @@ tarjetas:
       corriente: I_C
       mide: { ib: I_B, ic: I_C, vb: V_B, ve: V_E, vc: V_C, vce: V_CE }
       mandos:
-        - { valor: beta, lista: [50, 100, 150, 200, 300] }
-    requiere: { mover: [beta] }
+        - { valor: beta, lista: [50, 100, 150, 200, 300], rotulo: "β" }
+    objetivo:
+      condiciones:
+        - { valor: beta, min: 300, rotulo: "β = {{beta}}" }
+      logrado: "Con β = 300, {{I_C}}: de 50 a 300, solo un 15 %. En el cálculo con el divisor y R_{E} no aparece la β, si el divisor lleva unas diez veces la corriente de base."
+      pistas:
+        - { texto: "Lleve la β al extremo alto." }
+    escalera:
+      - "El divisor fija la base; menos 0,7 V, el emisor; R_{E} da la corriente."
+    solucion: "β = 300: unos 1,36 mA, frente a 1,19 mA con β = 50."
+    comprobar:
+      - { con: { beta: 50 }, I_C: 0.001186, tol: 0.005 }
+      - { con: { beta: 300 }, I_C: 0.001363, tol: 0.005 }
 
   - id: prediga-base-fija
-    tipo: predecir
+    tipo: simular
     titulo: "Polarización por base fija"
-    texto: "Una resistencia de la alimentación a la base da 1,32 mA con β = 150. ¿Y si el transistor trae β = 300?"
+    texto: "Una resistencia de la alimentación a la base da 1,32 mA con β = 150. ¿Qué corriente de colector da si el transistor trae β = 300?"
     libro: [48, "cap43#67"]
     fijar: { b_f: 300 }
     widget:
@@ -92,17 +109,19 @@ tarjetas:
       corriente: I_cf
       mide: { ib: I_bf, ic: I_cf, vce: V_cef, vbe: V_BE }
       ocultar: true
-    opciones:
-      - texto: "Se duplica: 2,65 mA"
-        bien: true
-        porque: "La base recibe la misma corriente, y la de colector es β veces ella: varía en la misma proporción que β."
-      - texto: "Sube solo un 15 %"
-        porque: "Eso hace el divisor con resistencia de emisor. La base fija no corrige nada."
-      - texto: "No cambia: 1,32 mA"
-        porque: "La resistencia de base fija I_{B}, no I_{C}; I_{C} es β · I_{B}."
+      mandos: []
+    simular:
+      objetivo: I_cf
+      unidad: A
+      tol: 0.03
+      rotulo: "I_{C} con β = 300"
+      medida: ic
+      errores:
+        - { expr: "I_C", texto: "La resistencia de base fija I_{B}, no I_{C}; I_{C} es β · I_{B}." }
+    exito: "2,65 mA, el doble: la base recibe la misma corriente y la de colector varía en la misma proporción que β."
     escalera:
       - "¿Qué fija la resistencia de base: la corriente de base o la de colector?"
-    solucion: "I_{B} no cambia y I_{C} = β · I_{B}: de 1,32 a 2,65 mA, el doble."
+    solucion: "I_{B} no cambia y I_{C} = β · I_{B}: de 1,32 a 2,65 mA."
     comprobar:
       - { I_cf: 0.002648, b_f: 300, tol: 0.005 }
       - { con: { b_f: 150 }, I_cf: 0.001324, b_f: 150, tol: 0.005 }
@@ -125,68 +144,44 @@ tarjetas:
       - "Ordénelas de peor a mejor: base fija, realimentación de colector, divisor, fuente de corriente."
     solucion: "Base fija–factor seis, realimentación–factor tres, divisor–15 %, fuente de corriente–la mejor."
 
-  - id: porque-divisor
-    tipo: porque
-    titulo: "Por qué no aparece la β"
-    texto: "El divisor fija la base; menos 0,7 V, el emisor; y R_{E} da la corriente. ¿Qué condición lo hace valer?"
-    libro: [50, 51]
-    widget:
-      tipo: circuito
-      esquema: bjt-polarizacion
-      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, beta: beta, vbe: V_BE }
-      lectura: { valor: I_C, rotulo: "I_{C}" }
-      datos:
-        - { valor: I_d, rotulo: "Corriente por R₂: {{I_d}}" }
-        - { valor: k_d, rotulo: "{{k_d}} veces la de base" }
-      corriente: I_C
-      mide: { ib: I_B, ic: I_C, vb: V_B, ve: V_E, vc: V_C, vce: V_CE }
-    opciones:
-      - texto: "Que la corriente del divisor sea bastante mayor que la de base"
-        bien: true
-        porque: "Diez veces es la regla: así la corriente de base no desequilibra el divisor."
-      - texto: "Que β sea alta"
-        porque: "Justo lo contrario: el diseño busca que β no importe."
-      - texto: "Que R_{C} sea igual a R_{E}"
-        porque: "R_{C} no entra en el cálculo de la corriente: fija dónde queda el colector."
-    escalera:
-      - "Si la base tirase mucha corriente del divisor, ¿seguiría fija su tensión?"
-    solucion: "La corriente del divisor debe ser unas diez veces la de base."
-
   - id: explore-reposo
-    tipo: explorar
+    tipo: tocar
     titulo: "Lo que fija la corriente de reposo"
-    texto: "Toque cada recuadro: el punto de trabajo decide mucho más que la ganancia."
-    libro: [36, 37, 39, 40, 43]
+    texto: "La corriente de reposo decide mucho más que la ganancia. Toque lo que no mejora sin más con más corriente."
+    libro: [36, 37, 39, 40, 43, 63]
     widget:
       tipo: figura
       figura: fig-43.4
       zonas:
-        - { id: gm, rotulo: "Transconductancia", rect: [268, 17, 178, 35], texto: "g_{m} = I_{C}/V_{T}: más corriente, más ganancia." }
-        - { id: ruido, rotulo: "Ruido", rect: [268, 50, 178, 35], texto: "Hay una corriente óptima según la impedancia de la fuente: no es «cuanta más, mejor»." }
-        - { id: banda, rotulo: "Ancho de banda", rect: [268, 84, 178, 35], texto: "Más corriente carga y descarga antes las capacidades de unión." }
-        - { id: consumo, rotulo: "Consumo", rect: [268, 117, 178, 35], texto: "Proporcional a la corriente." }
-        - { id: excursion, rotulo: "Excursión", rect: [268, 148, 178, 35], texto: "Con el colector a la mitad de la alimentación, la excursión simétrica es máxima." }
-    requiere: { mover: [gm, ruido, excursion] }
+        - { id: gm, rotulo: "Transconductancia", rect: [268, 17, 178, 35] }
+        - { id: ruido, rotulo: "Ruido", rect: [268, 50, 178, 35] }
+        - { id: banda, rotulo: "Ancho de banda", rect: [268, 84, 178, 35] }
+        - { id: excursion, rotulo: "Excursión", rect: [268, 148, 178, 35] }
+    tocar:
+      bien: [ruido]
+      porque:
+        gm: "g_{m} = I_{C}/V_{T}: más corriente, más ganancia."
+        banda: "Más corriente carga y descarga antes las capacidades de unión: más banda."
+        excursion: "La excursión no depende de la cantidad de corriente, sino de dónde queda el colector."
+    exito: "El ruido: hay una corriente óptima según la impedancia de la fuente. No es «cuanta más, mejor»."
+    escalera:
+      - "¿Cuál tiene un óptimo en lugar de crecer siempre?"
+    solucion: "El ruido."
 
   - id: estime-gm
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La transconductancia"
     texto: "g_{m} = I_{C}/V_{T}. Con 1 mA de reposo y V_{T} = 26 mV, ¿cuánto vale?"
     libro: [39]
-    estimar:
-      objetivo: "g_m"
+    simular:
+      objetivo: g_m
       unidad: "A/V"
-      min: 0
-      max: 0.1
-      paso: 0.001
-      inicio: 0.075
-      tol: 0.05
+      tol: 0.02
       rotulo: "g_{m}"
+      errores:
+        - { expr: "V_T/I_g", texto: "Al revés: corriente entre tensión." }
     exito: "38 mA/V: cada milivoltio de más en la base da 38 µA más de colector."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0405 }, texto: "Se ha pasado: divida 1 mA entre 26 mV." }
-      - { texto: "Se ha quedado corto: 1 mA entre 26 mV da bastante más." }
     escalera:
       - "1 mA / 26 mV: las unidades salen en mA/V."
     solucion: "g_{m} = 1 mA / 26 mV = 38 mA/V."
@@ -208,7 +203,7 @@ tarjetas:
       corriente: I_C
       mide: { ib: I_B, ic: I_C, vb: V_B, ve: V_E, vc: V_C, vce: V_CE }
       mandos:
-        - { valor: R_C, min: 1000, max: 6800, paso: 100 }
+        - { valor: R_C, min: 1000, max: 6800, paso: 100, rotulo: "R_{C}" }
     ajuste:
       valor: V_C
       objetivo: 6
@@ -243,57 +238,30 @@ tarjetas:
       - "La base está sujeta por el divisor. Si el emisor sube, ¿qué le pasa a V_{BE}?"
     solucion: "Más I_{C}, más V_{E}, menos V_{BE}: la corriente vuelve atrás."
 
-  - id: pregunta-desvio
-    tipo: pregunta
-    titulo: "El condensador de desvío"
-    texto: "R_{E} reduce la ganancia; un condensador la cortocircuita en alterna. ¿Qué se paga?"
-    libro: [56]
-    widget:
-      tipo: circuito
-      esquema: bjt-polarizacion
-      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, beta: beta, vbe: V_BE }
-      lectura: { valor: I_C, rotulo: "I_{C}" }
-      corriente: I_C
-      mide: { ib: I_B, ic: I_C, vb: V_B, ve: V_E, vc: V_C, vce: V_CE }
-    opciones:
-      - texto: "La linealidad que aportaba esa realimentación"
-        bien: true
-        porque: "El compromiso se ajusta desviando solo una parte de R_{E}."
-      - texto: "La estabilidad del punto de trabajo"
-        porque: "En continua el condensador no conduce: R_{E} sigue estabilizando el punto."
-      - texto: "Nada: solo se gana ganancia"
-        porque: "La realimentación en serie también linealizaba; sin ella en alterna, la distorsión crece."
-    escalera:
-      - "El condensador solo actúa sobre la señal. ¿Qué hacía R_{E} sobre la señal?"
-    solucion: "Se pierde la linealidad de la realimentación; por eso a menudo se desvía solo una parte."
-
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: medir
     titulo: "Tres medidas en el banco"
-    texto: "Con el multímetro: V_{B} = 2,02 V, V_{E} = 1,32 V y V_{C} = 7,63 V, con R_{E} = 1 kΩ. ¿Cuánto vale I_{C}?"
+    texto: "El punto de trabajo se verifica con el multímetro. Ponga las puntas donde se lee la tensión de la que sale la corriente de colector."
     libro: [59, 60, 61, "cap43#67"]
     fijar: { beta: 150, R_C: 3300 }
     widget:
       tipo: circuito
       esquema: bjt-polarizacion
       piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, beta: beta, vbe: V_BE }
-      lectura: { valor: V_E, rotulo: "V_{E}" }
-      datos:
-        - { valor: V_B, rotulo: "V_{B} = {{V_B}}" }
-        - { valor: V_C, rotulo: "V_{C} = {{V_C}}" }
       corriente: I_C
       mide: { ib: I_B, ic: I_C, vb: V_B, ve: V_E, vc: V_C, vce: V_CE }
-    opciones:
-      - texto: "Unos 1,32 mA: V_{E} entre R_{E}"
-        bien: true
-        porque: "De la de emisor sale la corriente. Y base 0,7 V sobre el emisor, colector muy por encima: zona activa."
-      - texto: "Unos 2,02 mA: V_{B} entre R_{E}"
-        porque: "Entre la base y el emisor caen 0,7 V: R_{E} solo ve V_{E}."
-      - texto: "Unos 2,31 mA: V_{C} entre R_{C}"
-        porque: "V_{C} es la tensión del colector a masa; R_{C} ve lo que falta hasta los 12 V."
+      instrumento: { tipo: multimetro, modos: [V], puntos: [vcc, b, c, e, "0"] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [e, "0"]
+      porque:
+        b: "Esa punta está en la base: la tensión de base no da la corriente, porque entre base y emisor caen 0,7 V."
+        c: "Esa punta está en el colector: V_{C} es la tensión a masa, y R_{C} ve lo que falta hasta los 12 V."
+    exito: "1,32 V en el emisor: entre R_{E} de 1 kΩ, 1,32 mA. Con la base 0,7 V por encima y el colector muy por encima, zona activa."
     escalera:
       - "¿Qué resistencia tiene una tensión conocida en sus extremos y su valor marcado?"
-    solucion: "I_{C} ≈ I_{E} = 1,32 V / 1 kΩ = 1,32 mA."
+    solucion: "Roja en el emisor, negra en masa: V_{E} / R_{E} = I_{C}."
     comprobar:
       - { V_B: 2.02, V_E: 1.32, V_C: 7.63, I_E1: 0.00132, I_C: 0.001324, I_wr: 0.00231, tol: 0.01 }
       - { V_cc: 12, R_E: 1000, V_BE: 0.7 }
@@ -301,9 +269,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [37, 46, 51, 55]
+    libro: [37, 46, 51, 55, 56]
     ideas:
       - { titulo: "El punto de trabajo lo decide todo.", texto: "Ganancia, excursión, ruido, ancho de banda y consumo: se diseña primero." }
       - { titulo: "Sin depender de β.", texto: "Con el divisor y R_{E}, β de 50 a 300 mueve I_{C} solo un 15 %." }
-      - { titulo: "R_{E} estabiliza.", texto: "Más corriente, más caída en R_{E}: frena el embalamiento térmico." }
+      - { titulo: "R_{E} estabiliza.", texto: "Frena el embalamiento térmico; desviarla en alterna gana ganancia y pierde linealidad." }
       - { titulo: "Tres medidas.", texto: "Base, emisor y colector: I_{C} sale de V_{E}/R_{E}." }

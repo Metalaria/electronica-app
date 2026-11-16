@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 32.14 «Precompliance: Medir Emisiones sin Cámara» (cap32). Formato: GUIA.md.
 # El nivel medido (37 dBµV/m a 100 MHz) es un ejemplo frente al límite de clase B a 3 m de 40 dBµV/m (bloque 253 de la
 # sección 32.8); el margen pedido, 6 dB o 10 dB en volumen, es el del bloque 454.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): lo que falta de margen se predice y el nivel se baja hasta el de
+# volumen (objetivo), las dos sondas se pasan por tres puntos de ejemplo hasta dar con un bucle de corriente (la tabla de
+# soluciones va en su explicación) y los cables se mueven hasta ver cambiar la raya (lecturas de ejemplo). Queda el
+# emparejamiento de culpables; ninguna pregunta de opciones.
 leccion: cap32/sec-32.14
 
 libro:
@@ -19,16 +23,44 @@ modelo:
   valores:
     N_m: { sim: "E", nombre: "nivel medido, dBµV/m", unidad: dB, valor: 37 }
     N_l: { sim: "E_{lím}", nombre: "límite de clase B a 3 m, dBµV/m", unidad: dB, valor: 40 }
+    M_v: { sim: "margen", nombre: "margen para fabricar en volumen", unidad: dB, valor: 10 }
+    p_l: { sim: "punto", nombre: "punto de la placa, de ejemplo", unidad: "", valor: 2 }
+    c_m: { tipo: interruptor, nombre: "cables movidos", valor: 0 }
   calculos:
     m_g: { expr: "N_l - N_m", sim: "margen", nombre: "margen sobre el límite", unidad: dB }
+    f_v: { expr: "M_v - m_g", sim: "Δ", nombre: "lo que falta para el margen de volumen", unidad: dB }
+    H_l: { expr: "max(0, 1 - abs(p_l - 1)) + 0.2*max(0, 1 - abs(p_l - 2)) + max(0, 1 - abs(p_l - 3))", sim: "H", nombre: "lectura del lazo, relativa", unidad: "" }
+    E_p: { expr: "0.2*max(0, 1 - abs(p_l - 1)) + max(0, 1 - abs(p_l - 2)) + max(0, 1 - abs(p_l - 3))", sim: "E", nombre: "lectura de la punta, relativa", unidad: "" }
+    N_v: { expr: "N_m + 8*c_m", sim: "E", nombre: "nivel con los cables movidos, de ejemplo", unidad: dB }
 
 tarjetas:
+  - id: prediga-margen
+    tipo: simular
+    titulo: "¿Listo para el laboratorio?"
+    texto: "Su medida casera da 37 dBµV/m frente a un límite de 40 dBµV/m, y el producto se fabricará en volumen. ¿Cuántos dB le faltan para el margen necesario?"
+    libro: [454, 455, "cap32#253"]
+    fijar: { N_m: 37 }
+    simular:
+      objetivo: f_v
+      unidad: dB
+      tol: 0.02
+      rotulo: "Le faltan"
+      errores:
+        - { expr: "m_g", texto: "Ese es el margen que tiene, 3 dB. En volumen se piden 10." }
+    exito: "7 dB: tiene 3 y en volumen hacen falta 10. La dispersión entre unidades y las tolerancias del laboratorio se comen la diferencia."
+    escalera:
+      - "Margen = límite − medida; en volumen, 10 dB."
+    solucion: "10 − (40 − 37) = 7 dB."
+    comprobar:
+      - { m_g: 3, f_v: 7, M_v: 10 }
+
   - id: explore-margen
     tipo: explorar
     titulo: "De las rayas a una decisión"
-    texto: "Una raya de su equipo frente al límite de clase B a 3 m. Cambie el nivel medido y mire el margen que queda."
+    texto: "Una raya de su equipo frente al límite de clase B a 3 m. Baje su nivel hasta dejar el margen de un producto en volumen."
     nota: "Niveles de ejemplo, en dBµV/m."
     libro: [441, "cap32#253"]
+    inicio: { N_m: 37 }
     widget:
       tipo: grafica
       x: { id: nu, min: 80000000, max: 120000000, unidad: Hz, rotulo: "f" }
@@ -39,35 +71,17 @@ tarjetas:
       lectura: { valor: m_g, rotulo: "Margen" }
       mandos:
         - { valor: N_m, lista: [30, 34, 37], rotulo: "Nivel medido" }
-    requiere: { mover: [N_m] }
-
-  - id: prediga-margen
-    tipo: predecir
-    titulo: "¿Listo para el laboratorio?"
-    texto: "Su medida casera da 37 dBµV/m frente a un límite de 40 dBµV/m, y el producto se fabricará en volumen. ¿Lo lleva a certificar?"
-    libro: [454, 455, "cap32#253"]
-    fijar: { N_m: 37 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 80000000, max: 90000000, unidad: Hz, rotulo: "f" }
-      y: { min: 0, max: 50, unidad: dB, rotulo: "campo, dBµV/m" }
-      curvas:
-        - { expr: "N_l", color: tinta, rotulo: "límite", discontinua: true }
-      lectura: { valor: m_g, rotulo: "Margen" }
-      ocultar: true
-    opciones:
-      - texto: "No: 3 dB de margen; en volumen hacen falta 10 dB"
-        bien: true
-        porque: "La dispersión entre unidades y las tolerancias del laboratorio se comen la diferencia."
-      - texto: "Sí: está por debajo del límite"
-        porque: "Una medida casera no es un ensayo: hay que dejar margen."
-      - texto: "Sí, con 6 dB de margen basta"
-        porque: "No tiene 6 dB, solo 3; y en volumen se piden 10."
+    objetivo:
+      condiciones:
+        - { valor: m_g, min: 10, rotulo: "Margen: {{m_g}}" }
+      logrado: "{{m_g}} de margen: el que pide un producto en volumen. Y conviene ser generoso: un firmware o un cable distinto pueden gastarlo."
+      pistas:
+        - { texto: "Aún falta: baje el nivel." }
     escalera:
-      - "Margen = límite − medida. ¿Cuánto se pide en volumen?"
-    solucion: "40 − 37 = 3 dB: insuficiente. Mínimo 6, y 10 en volumen."
+      - "Margen = 40 dBµV/m − nivel medido."
+    solucion: "30 dBµV/m: 10 dB de margen."
     comprobar:
-      - { m_g: 3 }
+      - { con: { N_m: 30 }, m_g: 10 }
 
   - id: empareje-culpables
     tipo: pregunta
@@ -89,46 +103,67 @@ tarjetas:
     solucion: "Conmutación–fuente; reloj–armónicos; bus–SPI e I²C; 50 Hz–rectificador; ancha–parásita."
 
   - id: empareje-sondas
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: explorar
     titulo: "Las dos sondas"
-    texto: "Una cada lectura de las sondas de lazo (campo H) y de punta (campo E) con su solución."
+    texto: "Pase la sonda de lazo (campo H) y la de punta (campo E) por tres puntos. Busque el que acusa a un bucle de corriente."
+    nota: "Lecturas de ejemplo, relativas."
     libro: [446, 447, 448]
-    emparejar:
-      - ["Lazo fuerte, punta débil", "Bucle de corriente: reducir su área"]
-      - ["Punta fuerte, lazo débil", "Tensión alta en un conductor largo: flancos más lentos o pantalla"]
-      - ["Las dos fuertes en un cable", "Modo común: ferrita de modo común"]
-    exito: "En un cable con modo común, un filtro diferencial no sirve."
-    pistas:
-      - { texto: "El lazo ve campo magnético, el de los bucles de corriente." }
+    inicio: { p_l: 2 }
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0, max: 1, unidad: "", rotulo: "" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "lectura, relativa" }
+      curvas:
+        - { expr: "H_l", color: azul, rotulo: "lazo, campo H" }
+        - { expr: "E_p", color: naranja, rotulo: "punta, campo E", discontinua: true }
+      datos:
+        - { valor: H_l, rotulo: "Lazo: {{H_l}}" }
+        - { valor: E_p, rotulo: "Punta: {{E_p}}" }
+      mandos:
+        - { valor: p_l, lista: [1, 2, 3], nombres: ["punto A", "punto B", "un cable"], rotulo: "Dónde mide" }
+    objetivo:
+      condiciones:
+        - { valor: H_l, min: 0.9, rotulo: "Lazo fuerte" }
+        - { valor: E_p, max: 0.3, rotulo: "Punta débil" }
+      logrado: "Lazo fuerte y punta débil: un bucle de corriente, reducir su área. Punta fuerte y lazo débil: flancos más lentos o pantalla. Las dos en un cable: ferrita de modo común."
+      pistas:
+        - { cuando: { valor: E_p, min: 0.9 }, texto: "Ahí la punta marca fuerte: no es solo un bucle." }
+        - { texto: "Pruebe otro punto." }
     escalera:
-      - "¿Qué produce campo H y qué produce campo E?"
-    solucion: "Lazo–área; punta–flancos o pantalla; las dos en un cable–ferrita de modo común."
+      - "El lazo ve campo magnético, el de los bucles de corriente."
+    solucion: "El punto A."
+    comprobar:
+      - { con: { p_l: 1 }, H_l: 1, E_p: 0.2 }
 
   - id: cables
-    tipo: pregunta
+    tipo: explorar
     titulo: "Mover los cables"
-    texto: "Mueve los cables mientras mira el espectro, y el nivel de una raya cambia mucho. ¿Dónde está el trabajo?"
+    texto: "Mire la raya mientras mueve los cables del equipo, una prueba que cuesta un minuto."
+    nota: "Cambio de nivel de ejemplo."
     libro: [450, 451]
     fijar: { N_m: 37 }
+    inicio: { c_m: 0 }
     widget:
       tipo: grafica
       x: { id: nu, min: 80000000, max: 120000000, unidad: Hz, rotulo: "f" }
-      y: { min: 0, max: 50, unidad: dB, rotulo: "campo, dBµV/m" }
+      y: { min: 0, max: 55, unidad: dB, rotulo: "campo, dBµV/m" }
       curvas:
-        - { expr: "N_m - 6 + 6*exp(-((nu - 100000000)/2000000)^2) - 30*(1 - exp(-((nu - 100000000)/2000000)^2))", color: azul, rotulo: "medida" }
+        - { expr: "N_v - 6 + 6*exp(-((nu - 100000000)/2000000)^2) - 30*(1 - exp(-((nu - 100000000)/2000000)^2))", color: azul, rotulo: "medida" }
         - { expr: "N_l", color: tinta, rotulo: "límite", discontinua: true }
-    opciones:
-      - texto: "En las ferritas y en la conexión de la pantalla de los cables, no en la placa"
-        bien: true
-        porque: "Por debajo de 300 MHz, la mayor parte de lo radiado sale por los cables como modo común."
-      - texto: "En rediseñar el trazado de la placa"
-        porque: "Si el nivel depende de los cables, son ellos los que radian."
-      - texto: "En nada: es la sonda, que se mueve"
-        porque: "La sonda queda quieta; lo que cambia el nivel son los cables."
+      lectura: { valor: N_v, rotulo: "Nivel de la raya" }
+      mandos:
+        - { valor: c_m, tipo: interruptor, rotulo: "Mover los cables" }
+    objetivo:
+      condiciones:
+        - { valor: c_m, min: 1, rotulo: "Cables movidos" }
+      logrado: "La raya cambia mucho: son los cables los que radian. El trabajo está en las ferritas y en la conexión de la pantalla, no en la placa."
+      pistas:
+        - { texto: "Mueva los cables." }
     escalera:
-      - "¿Qué actúa de antena para el modo común?"
-    solucion: "Los cables radian: ferritas y pantalla bien conectada."
+      - "Por debajo de 300 MHz, casi todo lo radiado sale por los cables como modo común."
+    solucion: "Al moverlos, la raya sube: radian los cables."
+    comprobar:
+      - { con: { c_m: 1 }, N_v: 45 }
 
   - id: resumen
     tipo: resumen

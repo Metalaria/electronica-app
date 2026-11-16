@@ -2,6 +2,11 @@
 # Suma en cuadratura de dos fuentes de 10 µV y 10, 3,33 o 1 µV (las relaciones 1:1, 1:3 y 1:10 del bloque 73).
 # El filtro de primer orden es el esquema filtro-rc con R = 1 kΩ y C = 159,15 nF (f_c ≈ 1 kHz): su banda de ruido es
 # (π/2)·f_c = 1,57·f_c (bloque 84), dibujada como la pared ideal equivalente. El ejemplo completo es el del bloque 90.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la relación con la que la menor ya no cuenta se busca, la menor
+# se sube hasta añadir 3 dB, la banda de ruido de un RC se baja de 1 kHz (objetivos), y el total de 10 y 3 µV, el
+# factor de un cuarto de banda, el error de usar f_{c}, la densidad del ejemplo y su ruido a la salida se predicen. La
+# comprobación del banco va en la explicación del último. Quedan el emparejamiento de filtros y dos preguntas de
+# opciones (la dominante, Friis).
 leccion: cap32/sec-32.3
 
 libro:
@@ -49,13 +54,16 @@ modelo:
     s_65: { expr: "G_e*e_b*sqrt(B_e)", sim: "v", nombre: "salida sin el factor de banda", unidad: V }
     v_in: { expr: "e_b*sqrt(1.57*B_e)", sim: "v_{n}", nombre: "ruido referido a la entrada", unidad: V }
     v_out: { expr: "G_e*v_in", sim: "v_{n,salida}", nombre: "ruido a la salida", unidad: V }
+    k_q: { expr: "sqrt(1/4)", sim: "√(1/4)", nombre: "factor con un cuarto de banda", unidad: "" }
+    s_e: { expr: "e_r + e_o + e_i", sim: "suma", nombre: "suma directa de densidades", unidad: "V/√Hz" }
 
 tarjetas:
   - id: explore-cuadratura
     tipo: explorar
     titulo: "Se suman en potencia"
-    texto: "Dos fuentes de ruido independientes no se suman como señales. Cambie la menor y mire lo que añade al total."
-    libro: [70, 73]
+    texto: "Dos fuentes de ruido independientes no se suman como señales. Busque la relación con la que la menor ya casi no añade nada al total."
+    libro: [70, 73, 74]
+    inicio: { a_2: 10e-6 }
     widget:
       tipo: grafica
       x: { id: vv, min: 0, max: 12e-6, unidad: V, rotulo: "fuente menor, V₂" }
@@ -70,30 +78,33 @@ tarjetas:
         - { valor: V_t, rotulo: "Total: {{V_t}}" }
       mandos:
         - { valor: a_2, lista: [10e-6, 3.333e-6, 1e-6], nombres: ["1 : 1", "1 : 3", "1 : 10"], rotulo: "Relación" }
-    requiere: { mover: [a_2] }
+    objetivo:
+      condiciones:
+        - { valor: d_b, max: 0.05, rotulo: "Añade: {{d_b}}" }
+      logrado: "Con la menor diez veces más pequeña, solo añade {{d_b}}: el total lo fija la dominante."
+      pistas:
+        - { texto: "Aún se nota: hágala más pequeña frente a la mayor." }
+    escalera:
+      - "1 : 1, +3 dB; 1 : 3, +0,5 dB; 1 : 10, +0,04 dB."
+    solucion: "1 : 10: +0,04 dB."
+    comprobar:
+      - { con: { a_2: 1e-6 }, d_b: 0.043, tol: 0.01 }
 
   - id: prediga-diez-tres
-    tipo: predecir
+    tipo: simular
     titulo: "10 y 3 µV"
     texto: "Dos fuentes de ruido independientes de 10 y 3 µV. ¿Cuánto vale el total?"
     libro: [74]
     fijar: { a_2: 3e-6 }
-    widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5e-6, unidad: V, rotulo: "fuente menor, V₂" }
-      y: { min: 0, max: 24e-6, unidad: V, rotulo: "total" }
-      curvas:
-        - { expr: "sqrt(a_1^2 + vv^2)", color: azul, rotulo: "en cuadratura" }
-      lectura: { valor: V_t, rotulo: "Total" }
-      ocultar: curvas
-    opciones:
-      - texto: "10,4 µV"
-        bien: true
-        porque: "√(10² + 3²) = 10,4: una fuente tres veces menor apenas cuenta."
-      - texto: "13 µV"
-        porque: "Eso es sumarlas como señales. Independientes, se suman en potencia."
-      - texto: "7 µV"
-        porque: "El ruido no se resta: dos fuentes independientes siempre suman algo."
+    simular:
+      objetivo: V_t
+      unidad: V
+      tol: 0.01
+      rotulo: "Total"
+      errores:
+        - { expr: "s_13", texto: "Eso es sumarlas como señales. Independientes, se suman en potencia." }
+        - { expr: "s_7", texto: "El ruido no se resta: dos fuentes independientes siempre suman algo." }
+    exito: "10,4 µV: una fuente tres veces menor apenas cuenta."
     escalera:
       - "V_{total} = √(V₁² + V₂²)."
     solucion: "√(10² + 3²) ≈ 10,4 µV."
@@ -103,12 +114,11 @@ tarjetas:
       - { s_13: 13e-6, s_7: 7e-6, tol: 0.001 }
 
   - id: formula-cuadratura
-    tipo: formula
+    tipo: explorar
     titulo: "La suma en cuadratura"
-    texto: "Por eso el diseño de bajo ruido identifica la fuente dominante y la ataca."
-    libro: [71, 74]
-    ec: 71
-    sustitucion: "√({{a_1}}² + {{a_2}}²) = {{V_t}}"
+    texto: "V_{total} = √(V₁² + V₂² + …), con la mayor en 10 µV. Suba la menor hasta que el total crezca 3 dB."
+    libro: [71, 73, 74]
+    inicio: { a_2: 3e-6 }
     widget:
       tipo: grafica
       x: { id: vv, min: 0, max: 12e-6, unidad: V, rotulo: "fuente menor, V₂" }
@@ -120,6 +130,17 @@ tarjetas:
       lectura: { valor: V_t, rotulo: "Total" }
       mandos:
         - { valor: a_2, min: 0, max: 12e-6, paso: 0.5e-6, rotulo: "V₂" }
+    objetivo:
+      condiciones:
+        - { valor: d_b, min: 3, rotulo: "Añade: {{d_b}}" }
+      logrado: "√({{a_1}}² + {{a_2}}²) = {{V_t}}: hacen falta dos fuentes iguales para subir 3 dB, √2 veces."
+      pistas:
+        - { texto: "Aún añade poco: súbala más." }
+    escalera:
+      - "+3 dB es √2 en tensión: √(V₁² + V₂²) = √2 · V₁."
+    solucion: "V₂ = 10 µV, igual que la mayor."
+    comprobar:
+      - { con: { a_2: 10e-6 }, V_t: 14.14e-6, d_b: 3.01, tol: 0.001 }
 
   - id: por-que-dominante
     tipo: porque
@@ -145,33 +166,30 @@ tarjetas:
     solucion: "La suma en potencia deja casi todo el total a la dominante."
 
   - id: cuarta-parte
-    tipo: pregunta
+    tipo: simular
     titulo: "La raíz de la banda"
-    texto: "El ruido total es la densidad por √B. Si reduce la banda a la cuarta parte, ¿qué le pasa al ruido?"
+    texto: "El ruido total es la densidad por √B. Si reduce la banda a la cuarta parte, ¿por qué factor queda multiplicado el ruido?"
     libro: [78, 80]
-    widget:
-      tipo: grafica
-      x: { id: bb, min: 0, max: 10, unidad: "", rotulo: "banda, relativa" }
-      y: { min: 0, max: 4, unidad: "", rotulo: "ruido, relativo" }
-      curvas:
-        - { expr: "sqrt(bb)", color: azul, rotulo: "√B" }
-    opciones:
-      - texto: "Se divide por dos"
-        bien: true
-        porque: "√(1/4) = 1/2."
-      - texto: "Se divide por cuatro"
-        porque: "Sería así si el ruido fuera proporcional a la banda; va con su raíz."
-      - texto: "No cambia"
-        porque: "Con menos banda entra menos ruido: por eso es la mejora más barata."
+    simular:
+      objetivo: k_q
+      unidad: ""
+      tol: 0.01
+      rotulo: "Factor"
+      errores:
+        - { expr: "1/4", texto: "Sería así si el ruido fuera proporcional a la banda; va con su raíz." }
+    exito: "Por 0,5: √(1/4) = 1/2. Por eso reducir la banda es la mejora más barata."
     escalera:
       - "¿Cuánto vale la raíz de un cuarto?"
     solucion: "√(1/4) = 1/2: el ruido se reduce a la mitad."
+    comprobar:
+      - { k_q: 0.5 }
 
   - id: explore-banda-ruido
     tipo: explorar
     titulo: "La banda de ruido no es la de −3 dB"
-    texto: "Un filtro RC deja pasar algo por encima de su corte. Cambie R y mire la banda de ruido equivalente."
+    texto: "Un filtro RC deja pasar algo por encima de su corte. Elija R para que la banda de ruido equivalente quede por debajo de 1 kHz."
     libro: [82, 84]
+    inicio: { R_f: 1000 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -189,28 +207,32 @@ tarjetas:
         marcas:
           - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
       mandos:
-        - { valor: R_f, lista: [330, 1000, 3300] }
-    requiere: { mover: [R_f] }
+        - { valor: R_f, lista: [330, 1000, 3300], rotulo: "R" }
+    objetivo:
+      condiciones:
+        - { valor: B_r, max: 1000, rotulo: "Banda de ruido: {{B_r}}" }
+      logrado: "Corte en {{f_c}}, pero la banda de ruido es {{B_r}}: 1,57 veces, porque el RC deja pasar algo por encima de su corte."
+      pistas:
+        - { texto: "Aún entra mucha banda: más R." }
+    escalera:
+      - "Banda de ruido = 1,57 · f_{c} en un primer orden."
+    solucion: "R = 3,3 kΩ: unos 476 Hz."
+    comprobar:
+      - { con: { R_f: 3300 }, B_r: 476, tol: 0.01 }
 
   - id: subestima
-    tipo: pregunta
+    tipo: simular
     titulo: "Con un simple RC"
-    texto: "Calcula el ruido tras un RC usando f_{c} en lugar de 1,57 · f_{c}. ¿Cuánto se equivoca?"
+    texto: "Calcula el ruido tras un RC usando f_{c} en lugar de 1,57 · f_{c}. ¿Cuántas veces mayor es el ruido real que su cálculo?"
     libro: [85]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: k_r, rotulo: "√1,57" }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Subestima: el real es 1,25 veces mayor"
-        bien: true
-        porque: "El ruido va con √B: √1,57 = 1,25. Subestima un 20 %."
-      - texto: "Sobrestima: el real es menor"
-        porque: "Se queda corto, no largo: la banda de ruido es mayor que la de −3 dB."
-      - texto: "Nada: −3 dB es la banda de ruido"
-        porque: "Es justo el matiz: el filtro deja pasar algo por encima de su corte."
+    simular:
+      objetivo: k_r
+      unidad: ""
+      tol: 0.01
+      rotulo: "Real / calculado"
+      errores:
+        - { expr: "1.57", texto: "Eso es lo que crece la banda. El ruido va con su raíz." }
+    exito: "1,25: el ruido va con √B y √1,57 = 1,25. Subestima un 20 %."
     escalera:
       - "El ruido va con la raíz de la banda."
     solucion: "√1,57 = 1,25: el ruido real es 1,25 veces el calculado."
@@ -235,24 +257,19 @@ tarjetas:
     solucion: "1,57 el primer orden; 1,11 el Butterworth de segundo; 1,03 el de cuarto."
 
   - id: estime-densidad
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un cálculo completo"
     texto: "Fuente de 1 kΩ (4,1 nV/√Hz), operacional de 5 nV/√Hz y 1 pA/√Hz, que por la fuente dan 1 nV/√Hz. ¿Densidad total?"
     libro: [90, 91, 92]
-    estimar:
-      objetivo: "e_t"
+    simular:
+      objetivo: e_t
       unidad: "V/√Hz"
-      min: 0
-      max: 12e-9
-      paso: 0.1e-9
-      inicio: 11e-9
-      tol: 0.03
+      tol: 0.02
       rotulo: "Densidad total"
+      errores:
+        - { expr: "s_e", texto: "No las sume directamente: son independientes, en cuadratura." }
     exito: "6,5 nV/√Hz: domina el operacional, pero la fuente no es despreciable."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 6.7e-9 }, texto: "Se ha pasado: no las sume directamente; súmelas en cuadratura." }
-      - { texto: "Se ha quedado corto: el total no puede ser menor que la mayor, 5 nV/√Hz." }
     escalera:
       - "√(4,1² + 5² + 1²)."
     solucion: "√(4,1² + 5² + 1²) = 6,5 nV/√Hz."
@@ -260,24 +277,19 @@ tarjetas:
       - { e_t: 6.5e-9, tol: 0.01 }
 
   - id: a-la-salida
-    tipo: pregunta
+    tipo: simular
     titulo: "Referido a la entrada y a la salida"
     texto: "Con esos 6,5 nV/√Hz, 10 kHz de banda tras un primer orden y ganancia 100, ¿cuánto ruido hay a la salida?"
-    libro: [90, 93]
-    widget:
-      tipo: grafica
-      x: { id: bb, min: 100, max: 100000, unidad: Hz, rotulo: "banda", escala: log }
-      y: { min: 0, max: 0.0002, unidad: V, rotulo: "ruido a la salida" }
-      curvas:
-        - { expr: "G_e*e_b*sqrt(1.57*bb)", color: azul, rotulo: "a la salida" }
-    opciones:
-      - texto: "Unos 81 µV"
-        bien: true
-        porque: "6,5 nV · √15 700 = 0,81 µV a la entrada; por 100, 81 µV."
-      - texto: "Unos 65 µV"
-        porque: "Ha usado los 10 kHz sin el factor 1,57 de la banda de ruido."
-      - texto: "Unos 0,81 µV"
-        porque: "Eso es el ruido referido a la entrada; falta multiplicar por la ganancia."
+    libro: [90, 93, 96, 97]
+    simular:
+      objetivo: v_out
+      unidad: V
+      tol: 0.03
+      rotulo: "Ruido a la salida"
+      errores:
+        - { expr: "s_65", texto: "Ha usado los 10 kHz sin el factor 1,57 de la banda de ruido." }
+        - { expr: "v_in", texto: "Eso es el ruido referido a la entrada; falta multiplicar por la ganancia." }
+    exito: "Unos 81 µV. En el banco, el medido dividido por la ganancia debe coincidir; si es mucho mayor, es interferencia."
     escalera:
       - "Banda de ruido: 1,57 · 10 kHz. Luego, la ganancia."
     solucion: "6,5 nV/√Hz · √15 700 = 0,81 µV; × 100 = 81 µV."
@@ -306,29 +318,6 @@ tarjetas:
     escalera:
       - "Refiera el ruido de cada etapa a la entrada: ¿por qué se divide?"
     solucion: "En la primera: lo que va detrás queda dividido por su ganancia."
-
-  - id: banco-comprobacion
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Mide el ruido de salida, lo divide por la ganancia y le sale mucho mayor que su cálculo. ¿Qué hay?"
-    libro: [96, 97]
-    widget:
-      tipo: grafica
-      x: { id: bb, min: 100, max: 100000, unidad: Hz, rotulo: "banda", escala: log }
-      y: { min: 0, max: 0.0002, unidad: V, rotulo: "ruido a la salida" }
-      curvas:
-        - { expr: "G_e*e_t*sqrt(1.57*bb)", color: azul, rotulo: "calculado" }
-    opciones:
-      - texto: "Interferencia, no ruido"
-        bien: true
-        porque: "Si coincide dentro de un factor razonable, es ruido; si es mucho mayor, algo entra de fuera."
-      - texto: "Que el cálculo olvidó el ruido térmico"
-        porque: "El térmico ya está en el cálculo; un exceso grande no lo explica."
-      - texto: "Que la entrada debía quedar al aire"
-        porque: "Al contrario: se mide terminada en la impedancia real de la fuente."
-    escalera:
-      - "¿Qué se suma al ruido cuando el resultado es mucho mayor de lo previsto?"
-    solucion: "Mucho mayor que el cálculo: es interferencia."
 
   - id: resumen
     tipo: resumen

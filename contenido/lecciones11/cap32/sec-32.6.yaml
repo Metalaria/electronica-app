@@ -2,6 +2,10 @@
 # La cadena del bloque 183: sensor de 600 Ω (3,10 nV/√Hz, la tabla del bloque 185), etapa 1 con e_n = 3 nV/√Hz e
 # i_n = 1 pA/√Hz y ganancia 100, etapa 2 con e_n = 10 nV/√Hz y ganancia 10, 20 kHz como banda de flancos abruptos
 # (bloque 189). La SNR es la de una señal de 10 mV (bloque 190).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ganancia del preamplificador se sube hasta enterrar la segunda
+# etapa y el e_{n} se baja a 1 nV/√Hz (objetivos), y el total con la segunda etapa, la SNR y la mejora en dB del
+# operacional mejor se predicen. «Medido frente a calculado» pasa al resumen. Quedan una pregunta de opciones (más
+# ganancia) y el emparejamiento de lo que enseña el presupuesto.
 leccion: cap32/sec-32.6
 
 libro:
@@ -39,13 +43,15 @@ modelo:
     snr: { expr: "20*log10(V_s/v_e)", sim: "SNR", nombre: "relación señal-ruido", unidad: dB, cifras: 3 }
     t_1n: { expr: "sqrt(e_s^2 + 1e-18 + (i_1*R_s)^2)", sim: "e_{1}", nombre: "total con un operacional de 1 nV", unidad: "V/√Hz" }
     d_1n: { expr: "20*log10(t_1/t_1n)", sim: "Δ", nombre: "mejora con el operacional de 1 nV", unidad: dB, cifras: 2 }
+    t_x: { expr: "sqrt(t_1^2 + e_2^2)", sim: "e_{total}", nombre: "total sin dividir la segunda", unidad: "V/√Hz" }
 
 tarjetas:
   - id: explore-cadena
     tipo: explorar
     titulo: "Encadenar etapas"
-    texto: "Sensor de 600 Ω, preamplificador y una segunda etapa de 10 nV/√Hz. Cambie la ganancia del preamplificador y mire cuánto pesa la segunda."
+    texto: "Sensor de 600 Ω, preamplificador y una segunda etapa de 10 nV/√Hz. Suba la ganancia del preamplificador hasta enterrar a la segunda."
     libro: [183, 186]
+    inicio: { G_1: 1 }
     widget:
       tipo: grafica
       x: { id: gg, min: 1, max: 1000, unidad: "", rotulo: "ganancia de la etapa 1", escala: log }
@@ -60,15 +66,25 @@ tarjetas:
         - { valor: r_2, rotulo: "Etapa 2 referida: {{r_2}}" }
       mandos:
         - { valor: G_1, lista: [1, 10, 100], rotulo: "G₁" }
-    requiere: { mover: [G_1] }
+    objetivo:
+      condiciones:
+        - { valor: r_2, max: 0.5e-9, rotulo: "Etapa 2 referida: {{r_2}}" }
+      logrado: "Con G₁ = {{G_1}}, la segunda etapa se refiere a la entrada como {{r_2}}: el total queda en {{t_e}}, el de la primera sola."
+      pistas:
+        - { texto: "Aún pesa: más ganancia en el preamplificador." }
+    escalera:
+      - "Referida a la entrada, la segunda se divide por G₁."
+    solucion: "G₁ = 100: 0,1 nV/√Hz."
+    comprobar:
+      - { con: { G_1: 1 }, t_e: 11e-9, tol: 0.02 }
+      - { con: { G_1: 100 }, r_2: 0.1e-9 }
 
   - id: formula-etapa
-    tipo: formula
+    tipo: explorar
     titulo: "Las tres contribuciones de una etapa"
-    texto: "El e_{n} del operacional, i_{n} por la fuente y el térmico de la fuente, en cuadratura."
-    libro: [180, 185]
-    ec: 180
-    sustitucion: "√({{e_1}}² + ({{i_1}} · {{R_s}})² + {{e_s}}²) = {{t_1}}"
+    texto: "e_{total} = √(e_{n}² + (i_{n} · R_{s})² + 4kTR_{s}): con 3 nV/√Hz la etapa da 4,36. Cambie a un operacional de 1 nV/√Hz y mire el total."
+    libro: [180, 185, 192]
+    inicio: { e_1: 3e-9 }
     widget:
       tipo: grafica
       x: { id: gg, min: 1, max: 1000, unidad: "", rotulo: "ganancia de la etapa 1", escala: log }
@@ -78,59 +94,55 @@ tarjetas:
       lectura: { valor: t_1, rotulo: "Etapa 1" }
       mandos:
         - { valor: e_1, lista: [1e-9, 3e-9], rotulo: "e_{n1}" }
+    objetivo:
+      condiciones:
+        - { valor: e_1, max: 1e-9, rotulo: "e_{n1} = {{e_1}}" }
+      logrado: "√({{e_1}}² + ({{i_1}} · {{R_s}})² + {{e_s}}²) = {{t_1}}: el operacional ha bajado a un tercio, pero el sensor sigue ahí."
+      pistas:
+        - { texto: "Pruebe con el operacional de 1 nV/√Hz." }
+    escalera:
+      - "El térmico del sensor de 600 Ω ya da 3,10 nV/√Hz."
+    solucion: "Con 1 nV/√Hz: 3,31."
     comprobar:
       - { con: { e_1: 3e-9 }, t_1: 4.36e-9, tol: 0.002 }
+      - { con: { e_1: 1e-9 }, t_1: 3.31e-9, tol: 0.002 }
 
   - id: prediga-segunda
-    tipo: predecir
+    tipo: simular
     titulo: "Diez veces más ruidosa"
-    texto: "La segunda etapa tiene 10 nV/√Hz, más del triple que el preamplificador de ganancia 100. ¿Cuánto sube el total referido a la entrada?"
-    libro: [186, 187, 188]
+    texto: "La segunda etapa tiene 10 nV/√Hz, más del triple que el preamplificador de ganancia 100, de 4,36. ¿Qué total queda referido a la entrada?"
+    libro: [185, 186, 187, 188]
     fijar: { G_1: 100, e_1: 3e-9 }
-    widget:
-      tipo: grafica
-      x: { id: gg, min: 1, max: 1000, escala: log, unidad: "", rotulo: "ganancia de la etapa 1" }
-      y: { min: 0, max: 15e-9, unidad: "V/√Hz", rotulo: "densidad referida a la entrada" }
-      curvas:
-        - { expr: "t_1", color: verde, rotulo: "etapa 1 sola", discontinua: true }
-        - { expr: "sqrt(t_1^2 + (e_2/gg)^2)", color: azul, rotulo: "total", oculta: true }
-      lectura: { valor: t_e, rotulo: "Total" }
-      ocultar: true
-    opciones:
-      - texto: "Nada: sigue en 4,36 nV/√Hz"
-        bien: true
-        porque: "Referida a la entrada queda en 10/100 = 0,1 nV/√Hz, que en cuadratura no se nota."
-      - texto: "Hasta unos 11 nV/√Hz"
-        porque: "Eso sería sumarla sin dividir por la ganancia de la primera etapa."
-      - texto: "Unos 0,1 nV/√Hz"
-        porque: "Eso es lo que vale la segunda referida a la entrada, no lo que sube el total."
+    simular:
+      objetivo: t_e
+      unidad: "V/√Hz"
+      tol: 0.005
+      rotulo: "Total"
+      errores:
+        - { expr: "t_x", texto: "Eso es sumarla sin dividir por la ganancia de la primera etapa." }
+        - { expr: "r_2", texto: "Eso es lo que vale la segunda referida a la entrada, no el total." }
+    exito: "4,36 nV/√Hz: referida a la entrada, la segunda queda en 0,1 y en cuadratura no se nota. Friis, visto desde el ruido de tensión."
     escalera:
       - "Divida su ruido por la ganancia de la primera y súmelo en cuadratura."
     solucion: "√(4,36² + 0,1²) = 4,36 nV/√Hz: la segunda no contribuye."
     comprobar:
       - { t_e: 4.36e-9, r_2: 0.1e-9, tol: 0.002 }
-      - { con: { G_1: 1 }, t_e: 11e-9, tol: 0.02 }
 
   - id: estime-snr
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La relación señal-ruido"
     texto: "4,36 nV/√Hz en 20 kHz dan 0,616 µV a la entrada. Con una señal de 10 mV, ¿qué SNR tiene?"
     libro: [189, 190]
     fijar: { G_1: 100, e_1: 3e-9, B_c: 20000 }
-    estimar:
-      objetivo: "snr"
+    simular:
+      objetivo: snr
       unidad: dB
-      min: 0
-      max: 140
-      paso: 1
-      inicio: 120
-      tol: 0.02
+      tol: 0.005
       rotulo: "SNR"
+      errores:
+        - { expr: "10*log10(V_s/v_e)", texto: "Es un cociente de tensiones: 20 · log₁₀." }
     exito: "84 dB. A la salida, con ganancia total 1000, el ruido son 616 µV."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 86 }, texto: "Se ha pasado: 20 · log₁₀(10 mV / 0,616 µV)." }
-      - { texto: "Se ha quedado corto: la relación es de unas dieciséis mil veces." }
     escalera:
       - "SNR = 20 · log₁₀(señal / ruido), con las dos en la entrada."
     solucion: "20 · log₁₀(10 mV / 0,616 µV) ≈ 84 dB."
@@ -138,29 +150,21 @@ tarjetas:
       - { snr: 84, v_o: 616e-6, v_e: 0.616e-6, tol: 0.005 }
 
   - id: mejor-operacional
-    tipo: pregunta
+    tipo: simular
     titulo: "Un operacional mejor"
-    texto: "Cambia el preamplificador de 3 nV/√Hz por uno de 1 nV/√Hz. ¿Cuánto mejora?"
+    texto: "El preamplificador de 3 nV/√Hz pasa a uno de 1 nV/√Hz: de 4,36 a 3,31 nV/√Hz. ¿Cuántos decibelios mejora?"
     libro: [192]
-    fijar: { e_1: 3e-9 }
-    widget:
-      tipo: grafica
-      x: { id: ee, min: 0, max: 5e-9, unidad: "V/√Hz", rotulo: "e_{n} del preamplificador" }
-      y: { min: 0, max: 6e-9, unidad: "V/√Hz", rotulo: "etapa 1" }
-      curvas:
-        - { expr: "sqrt(e_s^2 + ee^2 + (i_1*R_s)^2)", color: azul, rotulo: "total" }
-        - { expr: "e_s", color: verde, rotulo: "térmico del sensor", discontinua: true }
-    opciones:
-      - texto: "Apenas 2,4 dB: de 4,36 a 3,31 nV/√Hz"
-        bien: true
-        porque: "El térmico del sensor contribuye casi lo mismo que el operacional: bajar solo uno no sirve de mucho."
-      - texto: "Unos 10 dB: un tercio del ruido"
-        porque: "El operacional no es la única contribución: el sensor sigue ahí con 3,10 nV/√Hz."
-      - texto: "Nada"
-        porque: "Algo mejora, porque el operacional sí pesa; pero solo 2,4 dB."
+    simular:
+      objetivo: d_1n
+      unidad: dB
+      tol: 0.03
+      rotulo: "Mejora"
+      errores:
+        - { expr: "20*log10(3)", texto: "Eso sería si el operacional fuera la única contribución; el sensor sigue ahí con 3,10." }
+    exito: "Apenas 2,4 dB: el térmico del sensor contribuye casi lo mismo que el operacional, y bajar solo uno no sirve de mucho."
     escalera:
-      - "El sensor de 600 Ω ya da 3,10 nV/√Hz por sí solo."
-    solucion: "√(3,10² + 1² + 0,6²) = 3,31: apenas 2,4 dB."
+      - "20 · log₁₀(4,36/3,31)."
+    solucion: "20 · log₁₀(4,36/3,31) ≈ 2,4 dB."
     comprobar:
       - { t_1n: 3.31e-9, d_1n: 2.4, tol: 0.01 }
 
@@ -234,35 +238,12 @@ tarjetas:
       - "¿Qué se puede cambiar gratis?"
     solucion: "Límite–sensor y e_{n}; no importa–segunda etapa; actuar–banda."
 
-  - id: banco-cadena
-    tipo: pregunta
-    titulo: "Medido frente a calculado"
-    texto: "Mide la cadena con la entrada en corto y le sale una densidad referida a la entrada mucho mayor que 4,36 nV/√Hz. ¿Qué busca?"
-    libro: [188, 199]
-    widget:
-      tipo: grafica
-      x: { id: gg, min: 1, max: 1000, unidad: "", rotulo: "ganancia de la etapa 1", escala: log }
-      y: { min: 0, max: 15e-9, unidad: "V/√Hz", rotulo: "densidad referida a la entrada" }
-      curvas:
-        - { expr: "sqrt(t_1^2 + (e_2/gg)^2)", color: azul, rotulo: "calculado" }
-    opciones:
-      - texto: "Una interferencia: una masa mal hecha, una alimentación ruidosa"
-        bien: true
-        porque: "Si es mucho mayor que el cálculo, no es ruido: es interferencia, y se busca de otra forma."
-      - texto: "Un operacional de menos ruido"
-        porque: "El cálculo ya dice lo que da el operacional; el exceso viene de otra parte."
-      - texto: "Más ganancia en la segunda etapa"
-        porque: "La ganancia no cambia la densidad referida a la entrada."
-    escalera:
-      - "¿Qué no está en ningún presupuesto de ruido?"
-    solucion: "Una interferencia: el problema no es el ruido."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [188, 190, 192, 194, 196]
+    libro: [188, 190, 192, 194, 196, 199]
     ideas:
       - { titulo: "Encadenar.", texto: "La segunda etapa se refiere a la entrada dividiendo por la ganancia de la primera: no cuenta." }
-      - { titulo: "El presupuesto.", texto: "4,36 nV/√Hz en 20 kHz y 10 mV de señal: 84 dB." }
+      - { titulo: "El presupuesto.", texto: "4,36 nV/√Hz en 20 kHz y 10 mV de señal: 84 dB. Si lo medido es mucho mayor, es una interferencia." }
       - { titulo: "Dónde actuar.", texto: "El ancho de banda, gratis; el operacional, si domina." }
       - { titulo: "La ganancia.", texto: "No mejora la SNR: solo acerca el recorte." }

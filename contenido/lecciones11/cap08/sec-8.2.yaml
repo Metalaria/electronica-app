@@ -6,6 +6,11 @@
 # 1.2: el no inversor, el inversor y el integrador reales son los esquemas «ao-no-inversor», «ao-inversor» y
 # «ao-integrador» (A = 10⁵). El «haga de operacional» sigue con el divisor (el lector es la salida). Integrador con
 # 1 kΩ y 100 nF del libro y una cuadrada de 1 V a 500 Hz (ejemplo) con raíles de ±15 V (sección 8.1).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): 1 V a la salida del no inversor (objetivo), el divisor desde
+# la salida ajustado a mano, la salida del no inversor predicha y simulada, la masa virtual medida con el multímetro
+# en el inversor real, el reto de −5, el error que llega casi al 1 % buscado con la ganancia, el integrador dibujado y
+# su rampa suavizada con el condensador, y la corriente que el inversor pide a la fuente medida y escrita. Quedan la
+# fórmula del no inversor, una pregunta de opciones (la precisión) y el emparejamiento de las configuraciones.
 leccion: cap08/sec-8.2
 
 libro:
@@ -57,14 +62,17 @@ modelo:
     V_oc: { expr: "V_1*A_c", sim: "V_{salida}", nombre: "salida del inversor", unidad: V }
     I_1: { expr: "V_in/R_a", sim: "I₁", nombre: "corriente que entra por R₁", unidad: A }
     T_q: { expr: "1/f_q", sim: "T", nombre: "periodo de la cuadrada", unidad: s }
+    V_sin1: { expr: "V_in*R_b/R_a", sim: "V_{in} · R₂/R₁", nombre: "olvidando el uno", unidad: V }
+    V_mi: { expr: "-V_oi/A_ol", sim: "V_{−}", nombre: "tensión de la masa virtual", unidad: V }
 
 tarjetas:
   - id: explore-divisor
     tipo: explorar
     titulo: "Un divisor desde la salida"
-    texto: "En el no inversor, R₂ y R₁ dividen la salida hacia la entrada −. Mueva la entrada y cambie R₂: mire la entrada −."
+    texto: "En el no inversor, R₂ y R₁ dividen la salida hacia la entrada −. Mueva la entrada y R₂ hasta tener 1 V a la salida."
     libro: [39, 42]
     fijar: { R_1: 1000 }
+    inicio: { V_in: 0.05, R_2: 9100 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
@@ -76,7 +84,18 @@ tarjetas:
       mandos:
         - { valor: V_in, min: -0.2, max: 0.2, paso: 0.01, rotulo: "Entrada +" }
         - { valor: R_2, lista: [9100, 47000], rotulo: "R₂" }
-    requiere: { mover: [V_in] }
+    objetivo:
+      condiciones:
+        - { valor: V_on, objetivo: 1, tol: 0.02, rotulo: "Salida: {{V_on}}" }
+      logrado: "Con {{V_in}} y R₂ = {{R_2}}: la entrada − ha seguido a la +, y la salida es la que hace falta para lograrlo."
+      pistas:
+        - { cuando: { valor: V_on, mayor: 1.02 }, texto: "Sobra salida: baje la entrada." }
+        - { texto: "Falta salida: suba la entrada." }
+    escalera:
+      - "Con 1 kΩ y 9,1 kΩ, la salida es 10,1 veces la entrada."
+    solucion: "R₂ = 9,1 kΩ y 100 mV de entrada: 1,01 V."
+    comprobar:
+      - { con: { V_in: 0.1, R_2: 9100 }, V_on: 1.01 }
 
   - id: haga-de-operacional
     tipo: ajuste
@@ -108,36 +127,39 @@ tarjetas:
       - { con: { V_out: 1.01 }, V_m: 0.1 }
 
   - id: prediga-no-inversor
-    tipo: predecir
+    tipo: simular
     titulo: "El mismo par, otra configuración"
-    texto: "Con R₁ = 10 kΩ y R₂ = 100 kΩ, el inversor da −10. ¿Qué ganancia da el no inversor?"
+    texto: "Con R₁ = 10 kΩ y R₂ = 100 kΩ, el inversor da −10. ¿Qué salida da el no inversor con 100 mV en la entrada?"
     libro: [41, 42]
     fijar: { R_a: 10000, R_b: 100000, V_in: 0.1 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_in, r1: R_a, r2: R_b }
-      lectura: { valor: A_ni, rotulo: "Ganancia del no inversor" }
+      lectura: { valor: V_oa, rotulo: "Salida" }
       mide: { vo: V_oa }
       ocultar: true
-    opciones:
-      - texto: "11"
-        bien: true
-        porque: "1 + R₂/R₁ = 1 + 10 = 11, y en fase con la entrada."
-      - texto: "10"
-        porque: "Ese es el módulo del inversor. El no inversor suma el 1 del divisor."
-      - texto: "−11"
-        porque: "El no inversor no invierte: la señal entra por la entrada +."
+      mandos: []
+    simular:
+      objetivo: V_oa
+      unidad: V
+      tol: 0.03
+      rotulo: "Salida del no inversor"
+      medida: vo
+      errores:
+        - { expr: "V_sin1", texto: "Ha usado el módulo del inversor. El no inversor suma el 1 del divisor: 1 + R₂/R₁." }
+        - { expr: "V_oi", texto: "El no inversor no invierte: la señal entra por la entrada +." }
+    exito: "1 + 100/10 = 11: 1,1 V, en fase con la entrada."
     escalera:
       - "La salida, dividida por el divisor R₁–R₂, debe igualar a V_{in}."
-    solucion: "A_{v} = 1 + 100/10 = 11."
+    solucion: "A_{v} = 1 + 100/10 = 11: 1,1 V."
     comprobar:
-      - { A_ni: 11, A_in: -10 }
+      - { A_ni: 11, A_in: -10, V_oa: 1.1, V_sin1: 1, V_oi: -1 }
 
   - id: regla-no-inversor
     tipo: formula
     titulo: "No inversor"
-    texto: "La ganancia es siempre mayor o igual que 1: el divisor solo puede atenuar. Cambie R₂."
+    texto: "Lo que acaba de calcular: la ganancia es siempre mayor o igual que 1, porque el divisor solo puede atenuar. Cambie R₂."
     libro: [36, 42]
     ec: 36
     sustitucion: "1 + {{R_b}} / {{R_a}} = {{A_ni}}"
@@ -153,24 +175,31 @@ tarjetas:
         - { valor: R_b, lista: [0, 10000, 47000, 100000], rotulo: "R₂" }
 
   - id: regla-inversor
-    tipo: formula
-    titulo: "Inversor"
-    texto: "La entrada + a masa deja la − en masa virtual: toda la corriente de R₁ sigue por R₂."
+    tipo: medir
+    titulo: "Inversor: la masa virtual"
+    texto: "En el inversor, la entrada + va a masa. Ponga las puntas donde comprobaría que la entrada − también está en masa."
     libro: [33, 41]
-    ec: 33
-    sustitucion: "−{{R_b}} / {{R_a}} = {{A_in}}"
-    fijar: { R_a: 10000, V_in: 0.1 }
+    fijar: { R_a: 10000, R_b: 100000, V_in: 0.1 }
     widget:
       tipo: circuito
       esquema: ao-inversor
       piezas: { entrada: V_in, r1: R_a, r2: R_b }
-      lectura: { valor: A_in, rotulo: "Ganancia" }
-      datos:
-        - { valor: V_oi, rotulo: "Salida: {{V_oi}}" }
       corriente: I_1
       mide: { vo: V_oi, i1: I_1 }
-      mandos:
-        - { valor: R_b, lista: [10000, 47000, 100000], rotulo: "R₂" }
+      instrumento: { tipo: multimetro, modos: [V], puntos: [in, mn, out, "0"] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [mn, "0"]
+      porque:
+        in: "Esa punta está en la entrada: mide los 100 mV que se aplican."
+        out: "Esa punta está en la salida: mide los −1 V amplificados."
+    exito: "Microvoltios: masa virtual. La corriente de R₁ no entra en el operacional y sigue por R₂: A_{v} = −R₂/R₁ = −10."
+    escalera:
+      - "La masa virtual es la entrada −, medida respecto a masa."
+    solucion: "Roja en la entrada −, negra en masa: casi cero."
+    comprobar:
+      - { V_oi: -1, A_in: -10, V_mi: 0.00001 }
 
   - id: reto-menos-cinco
     tipo: reto
@@ -206,7 +235,7 @@ tarjetas:
   - id: sorpresa-ganancia-finita
     tipo: sorpresa
     titulo: "Cuando el operacional no es ideal"
-    texto: "Con A = 10⁵, suba la ganancia ideal del montaje y mire el error que añade la ganancia finita."
+    texto: "Con A = 10⁵, suba la ganancia ideal del montaje hasta que la ganancia finita añada casi un 1 % de error."
     libro: [47]
     fijar: { A_ol: 100000 }
     inicio: { G_n: 10 }
@@ -221,7 +250,17 @@ tarjetas:
       lectura: { valor: e_g, rotulo: "Error por la ganancia finita" }
       mandos:
         - { valor: G_n, lista: [1, 10, 100, 1000, 10000], rotulo: "Ganancia del montaje" }
-    requiere: { mover: [G_n] }
+    objetivo:
+      condiciones:
+        - { valor: e_g, min: 0.9, rotulo: "Error: {{e_g}}" }
+        - { valor: e_g, max: 2, rotulo: "Casi un 1 %" }
+      logrado: "Con ganancia {{G_n}}, {{e_g}}; con 10 era el 0,011 %. El margen de ganancia se gasta en el montaje."
+      pistas:
+        - { cuando: { valor: e_g, mayor: 2 }, texto: "Se ha pasado: con 10 000 el error ya es de varios puntos. Baje un escalón." }
+        - { texto: "Aún es despreciable: suba la ganancia del montaje." }
+    escalera:
+      - "El error crece con la ganancia del montaje dividida por A."
+    solucion: "Ganancia 1000: 0,99 %."
     comprobar:
       - { e_g: 0.011, tol: 0.01 }
       - { con: { G_n: 1000 }, e_g: 0.99, tol: 0.01 }
@@ -278,7 +317,7 @@ tarjetas:
   - id: explore-integrador
     tipo: explorar
     titulo: "El integrador en el circuito"
-    texto: "El mismo integrador con una cuadrada de 1 V: cada semiperiodo, una rampa. Cambie el condensador."
+    texto: "El mismo integrador con una cuadrada de 1 V: una rampa por semiperiodo. Cambie el condensador hasta que baje de 5 V por milisegundo."
     nota: "Cuadrada de ejemplo a 500 Hz; raíles de ±15 V."
     libro: [45, "cap08#22"]
     fijar: { R_i: 1000, V_e: 1, f_q: 500, V_sat: 15 }
@@ -296,6 +335,17 @@ tarjetas:
           - { expr: "-V_e/(R_i*C_i)*(T_q/2 - abs(t - T_q*floor(t/T_q) - T_q/2))", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: C_i, lista: [100e-9, 220e-9], rotulo: "C" }
+    objetivo:
+      condiciones:
+        - { valor: p_i, max: 5000, rotulo: "Pendiente: {{p_i}}" }
+      logrado: "Con {{C_i}}: {{p_i}}. Más capacidad, más carga por voltio: la rampa se suaviza."
+      pistas:
+        - { texto: "Con 100 nF sube 10 V por milisegundo: pruebe el otro condensador." }
+    escalera:
+      - "Pendiente = V_{in}/(R · C)."
+    solucion: "220 nF: 4,5 V por milisegundo."
+    comprobar:
+      - { con: { C_i: 220e-9 }, p_i: 4545, tol: 0.01 }
 
   - id: configuraciones
     tipo: pregunta
@@ -316,30 +366,31 @@ tarjetas:
     solucion: "Seguidor–adaptador, inversor–R₁, sumador–masa virtual, integrador–condensador."
 
   - id: impedancia-inversor
-    tipo: pregunta
+    tipo: leer
     titulo: "Un sensor de alta impedancia"
-    texto: "¿Por qué no se conecta un inversor con R₁ = 10 kΩ a un sensor de alta impedancia?"
+    texto: "El inversor recibe 100 mV. Mida la corriente que le pide a la fuente y escríbala."
     libro: [41, 42]
     fijar: { R_a: 10000, R_b: 100000, V_in: 0.1 }
     widget:
       tipo: circuito
       esquema: ao-inversor
       piezas: { entrada: V_in, r1: R_a, r2: R_b }
-      datos:
-        - { valor: I_1, rotulo: "Corriente que pide a la fuente: {{I_1}}" }
       corriente: I_1
       mide: { vo: V_oi, i1: I_1 }
-    opciones:
-      - texto: "Su impedancia de entrada es solo R₁: cargaría el sensor"
-        bien: true
-        porque: "El otro extremo de R₁ está en masa virtual. El no inversor, en cambio, no carga la fuente."
-      - texto: "Porque invierte la señal"
-        porque: "Invertir no es el problema; cargar la fuente, sí."
-      - texto: "Porque su ganancia depende del sensor"
-        porque: "Depende de él precisamente porque lo carga: la impedancia de entrada es R₁."
+      instrumento: { tipo: multimetro, modos: [A], ramas: [vmi] }
+      mandos: []
+    leer:
+      objetivo: I_1
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de entrada"
+      medida: { rama: vmi }
+    exito: "10 µA: la fuente ve solo R₁ = 10 kΩ. Un sensor de alta impedancia quedaría cargado; el no inversor no lo carga."
     escalera:
-      - "¿Qué ve el sensor desde la entrada del inversor?"
-    solucion: "Solo R₁, que forma un divisor con la impedancia del sensor."
+      - "Pase a amperios y abra la rama de la entrada."
+    solucion: "100 mV / 10 kΩ = 10 µA."
+    comprobar:
+      - { I_1: 0.00001 }
 
   - id: resumen
     tipo: resumen

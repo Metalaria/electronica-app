@@ -2,6 +2,11 @@
 # Bandgap ilustrativo con los datos del libro: V_BE baja 2 mV/°C y extrapola a 1,205 V en el cero absoluto; el término
 # PTAT es K·V_T·ln N con V_T = 25,85 mV a 300 K y N = 8 (ejemplo). Modelo lineal: no reproduce la curvatura de segundo
 # orden que el libro menciona (se pregunta por ella aparte).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la suma de 1 V se busca con K (objetivo; aún deriva), la
+# tensión del bandgap, la deriva de 2,5 mV y los bits útiles con un 1 % se predicen (simular), la deriva se ajusta a
+# ±10 ppm/°C y la medida ratiométrica se consigue con un interruptor (sensor alimentado desde la referencia del ADC de
+# 16 bits; 5 V y un sensor que da la mitad de su alimentación son valores de ejemplo). Quedan los dos emparejamientos
+# (tecnologías y parámetros) y ninguna pregunta de opciones.
 leccion: cap08/sec-8.7
 
 libro:
@@ -27,20 +32,32 @@ modelo:
     tc_r: { sim: "TC", nombre: "coeficiente de temperatura", unidad: "ppm/°C", valor: 10 }
     V_r: { sim: "V_{ref}", nombre: "tensión de referencia", unidad: V, valor: 5 }
     dT: { sim: "ΔT", nombre: "excursión de temperatura", unidad: "°C", valor: 50 }
+    e_r: { sim: "error", nombre: "error de la referencia", unidad: "", valor: 0.01 }
+    s_rat: { tipo: interruptor, nombre: "sensor alimentado desde la referencia", valor: 0 }
+    d_ref: { sim: "ΔV_{ref}", nombre: "error de la referencia del ADC", unidad: "%", valor: -1 }
+    V_n: { sim: "V_{ref}", nombre: "referencia nominal", unidad: V, valor: 5 }
+    k_s: { sim: "k", nombre: "fracción de su alimentación que da el sensor", unidad: "", valor: 0.5 }
   calculos:
     V_be: { expr: "1.205 - 0.002*(T_c + 273.15)", sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V }
     V_pt: { expr: "K_p*0.02585*(T_c + 273.15)/300*l_N", sim: "K · V_{T} · ln N", nombre: "término PTAT", unidad: V }
     V_bg: { expr: "V_be + V_pt", sim: "V_{ref}", nombre: "tensión del bandgap", unidad: V }
     d_bg: { expr: "1000000*(-0.002 + K_p*0.02585/300*l_N)/V_bg", sim: "TC", nombre: "deriva de la referencia", unidad: "ppm/°C", cifras: 2 }
     e_tc: { expr: "tc_r/1000000*V_r*dT", sim: "error", nombre: "error por la deriva", unidad: V }
+    e_1: { expr: "tc_r/1000000*V_r", sim: "error", nombre: "deriva por grado", unidad: V }
+    n_b: { expr: "ln(1/e_r)/ln(2)", sim: "bits", nombre: "bits útiles", unidad: "", cifras: 3 }
+    n_16: { expr: "16", sim: "N", nombre: "bits del convertidor", unidad: "" }
+    V_rr: { expr: "V_n*(1 + d_ref/100)", sim: "V_{ref}", nombre: "referencia real del ADC", unidad: V }
+    V_se: { si: s_rat, entonces: "k_s*V_rr", sino: "k_s*V_n", sim: "V_{sensor}", nombre: "salida del sensor", unidad: V }
+    L_adc: { expr: "65536*V_se/V_rr", sim: "N", nombre: "lectura del ADC", unidad: "", cifras: 5 }
 
 tarjetas:
   - id: explore-bandgap
     tipo: explorar
     titulo: "Dos derivas opuestas"
-    texto: "V_{BE} baja con la temperatura; el término PTAT sube. Cambie su múltiplo y mire la suma."
+    texto: "V_{BE} baja con la temperatura; el término PTAT sube. Cambie su múltiplo hasta que la suma valga 1 V a 25 °C."
     nota: "Valores de ejemplo."
     libro: [150, 151]
+    inicio: { K_p: 6 }
     widget:
       tipo: grafica
       x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
@@ -49,35 +66,39 @@ tarjetas:
         - { expr: "1.205 - 0.002*(tx + 273.15)", color: azul, rotulo: "V_{BE}" }
         - { expr: "K_p*0.02585*(tx + 273.15)/300*l_N", color: naranja, rotulo: "PTAT" }
         - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "suma" }
-      lectura: { valor: d_bg, rotulo: "Deriva de la suma" }
+      lectura: { valor: V_bg, rotulo: "Suma a 25 °C" }
       datos:
-        - { valor: V_bg, rotulo: "Suma a 25 °C: {{V_bg}}" }
+        - { valor: d_bg, rotulo: "Deriva: {{d_bg}}" }
       mandos:
         - { valor: K_p, min: 4, max: 16, paso: 0.05, rotulo: "Múltiplo K" }
+    objetivo:
+      condiciones:
+        - { valor: V_bg, objetivo: 1, tol: 0.01, rotulo: "Suma: {{V_bg}}" }
+      logrado: "1 V a 25 °C, pero la suma aún deriva {{d_bg}}: la tensión no se elige; la impone la cancelación."
+      pistas:
+        - { cuando: { valor: V_bg, mayor: 1.01 }, texto: "Sobra tensión: menos múltiplo K." }
+        - { texto: "Falta tensión: más múltiplo K." }
+    escalera:
+      - "A 25 °C, V_{BE} vale unos 0,6 V: el término PTAT tiene que aportar el resto."
+    solucion: "K ≈ 7,35: 1 V, todavía con deriva negativa."
+    comprobar:
+      - { con: { K_p: 7.35 }, V_bg: 1.0013, tol: 0.002 }
+      - { T_c: 25, V_be: 0.6, tol: 0.02 }
 
   - id: prediga-bandgap
-    tipo: predecir
+    tipo: simular
     titulo: "¿A qué tensión se cancela?"
-    texto: "Cuando las dos derivas se cancelan, ¿qué tensión queda?"
+    texto: "Con el múltiplo que cancela las dos derivas, K = 11,15, ¿qué tensión queda?"
     libro: [151]
     fijar: { K_p: 11.15 }
-    widget:
-      tipo: grafica
-      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
-      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
-      curvas:
-        - { expr: "1.205 - 0.002*(tx + 273.15)", color: azul, rotulo: "V_{BE}" }
-        - { expr: "K_p*0.02585*(tx + 273.15)/300*l_N", color: naranja, rotulo: "PTAT" }
-      lectura: { valor: V_bg, rotulo: "Tensión de la referencia" }
-      ocultar: true
-    opciones:
-      - texto: "Unos 1,2 V"
-        bien: true
-        porque: "Muy cerca de 1,205 V, la anchura de la banda prohibida del silicio extrapolada a cero kelvin."
-      - texto: "Unos 0,6 V, la V_{BE}"
-        porque: "La V_{BE} sola deriva 2 mV/°C. Al sumarle el término PTAT, la suma sube hasta la banda prohibida."
-      - texto: "Cero: las derivas se anulan"
-        porque: "Se anulan las derivas, no las tensiones: queda una tensión fija."
+    simular:
+      objetivo: V_bg
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión de la referencia"
+      errores:
+        - { expr: "V_be", texto: "Esa es la V_{BE} sola, que deriva 2 mV/°C. Con el término PTAT, la suma sube hasta la banda prohibida." }
+    exito: "Unos 1,2 V: muy cerca de 1,205 V, la banda prohibida del silicio extrapolada a cero kelvin. De ahí, «bandgap»."
     escalera:
       - "¿De dónde viene el nombre «bandgap»?"
     solucion: "Unos 1,2 V: la banda prohibida del silicio."
@@ -111,52 +132,43 @@ tarjetas:
       dentro: "Recta plana. En un bandgap real queda una curvatura de segundo orden."
 
   - id: estime-deriva
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Lo que cuesta la deriva"
     texto: "Una referencia de 5 V con 10 ppm/°C, en un equipo que recorre 50 °C. ¿Cuánto se mueve?"
     libro: [158]
-    estimar:
-      objetivo: "e_tc"
+    simular:
+      objetivo: e_tc
       unidad: V
-      min: 0
-      max: 0.01
-      paso: 0.0001
-      inicio: 0.008
       tol: 0.05
       rotulo: "Desplazamiento"
+      errores:
+        - { expr: "e_1", texto: "Eso es por cada grado: multiplique por la excursión completa, 50 °C." }
     exito: "2,5 mV, un 0,05 %: ya limita a un convertidor de 12 bits. Y no se puede calibrar."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00263 }, texto: "Se ha pasado: un ppm es una millonésima." }
-      - { texto: "Se ha quedado corto: multiplique por la excursión completa, 50 °C." }
     escalera:
       - "10 · 10⁻⁶ · 5 V por cada grado."
     solucion: "10 · 10⁻⁶ · 5 · 50 = 2,5 mV."
     comprobar:
-      - { e_tc: 0.0025 }
+      - { e_tc: 0.0025, e_1: 0.00005 }
 
   - id: exactitud
-    tipo: pregunta
+    tipo: simular
     titulo: "Resolución y exactitud"
-    texto: "Un convertidor de 16 bits usa una referencia con un 1 % de error. ¿Con qué exactitud mide?"
+    texto: "Un convertidor de 16 bits usa una referencia con un 1 % de error. ¿Cuántos bits útiles tiene en términos absolutos?"
     libro: [146]
-    widget:
-      tipo: grafica
-      x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
-      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
-      curvas:
-        - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "V_{ref}" }
-    opciones:
-      - texto: "Con la de su referencia: menos de 7 bits útiles"
-        bien: true
-        porque: "La resolución la da el convertidor; la exactitud, la referencia."
-      - texto: "Con 16 bits"
-        porque: "Esa es su resolución. En términos absolutos, manda el error de la referencia."
-      - texto: "Con un bit menos de los 16"
-        porque: "Un 1 % es una parte en cien: mucho más que un bit de 16."
+    simular:
+      objetivo: n_b
+      unidad: ""
+      tol: 0.05
+      rotulo: "Bits útiles"
+      errores:
+        - { expr: "n_16", texto: "Esa es su resolución. En términos absolutos, manda el error de la referencia." }
+    exito: "Menos de 7: una parte en cien son unos 6,6 bits. La resolución la da el convertidor; la exactitud, la referencia."
     escalera:
-      - "Todo convertidor compara la entrada con su referencia."
-    solucion: "Con la exactitud de su referencia: menos de 7 bits."
+      - "Un 1 % es una parte en cien: ¿cuántas veces hay que dividir por dos para llegar a cien partes?"
+    solucion: "log₂ 100 ≈ 6,6 bits."
+    comprobar:
+      - { n_b: 6.644, n_16: 16, tol: 0.01 }
 
   - id: tecnologias
     tipo: pregunta
@@ -195,27 +207,37 @@ tarjetas:
     solucion: "Inicial–calibrar, TC–medir temperatura, largo plazo–recalibrar, histéresis–no vuelve."
 
   - id: ratiometrica
-    tipo: porque
+    tipo: explorar
     titulo: "Cuando la referencia no importa"
-    texto: "Un puente de galgas se alimenta desde la misma referencia que el ADC. ¿Por qué deja de importar su exactitud?"
-    libro: [165]
+    texto: "La referencia del ADC de 16 bits está un 1 % baja y la lectura sale mal. Sin arreglar la referencia, consiga la lectura correcta, 32 768."
+    nota: "Valores de ejemplo."
+    libro: [146, 165]
+    inicio: { s_rat: 0, d_ref: -1 }
     widget:
       tipo: grafica
       x: { id: tx, min: -40, max: 125, unidad: "°C", rotulo: "T" }
-      y: { min: 0, max: 1.6, unidad: V, rotulo: "tensión" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "tensión" }
       curvas:
-        - { expr: "1.205 - 0.002*(tx + 273.15) + K_p*0.02585*(tx + 273.15)/300*l_N", color: tinta, rotulo: "V_{ref}" }
-    opciones:
-      - texto: "Cualquier variación afecta igual al numerador y al denominador"
-        bien: true
-        porque: "El ADC mide la relación entre la salida del puente y su referencia: si ambas suben, la relación no cambia."
-      - texto: "Porque el puente no consume corriente"
-        porque: "Consume; lo que importa es que sensor y ADC comparten la misma tensión."
-      - texto: "Porque la galga compensa la temperatura"
-        porque: "La cancelación es eléctrica: medida y referencia varían juntas."
+        - { expr: "V_rr", color: tinta, rotulo: "referencia del ADC" }
+        - { expr: "V_se", color: naranja, rotulo: "salida del sensor" }
+      lectura: { valor: L_adc, rotulo: "Lectura del ADC" }
+      mandos:
+        - { valor: s_rat, tipo: interruptor, rotulo: "Sensor alimentado desde la referencia" }
+        - { valor: d_ref, lista: [0, -1], rotulo: "Error de la referencia" }
+    objetivo:
+      condiciones:
+        - { valor: L_adc, objetivo: 32768, tol: 0.001, rotulo: "Lectura: {{L_adc}}" }
+        - { valor: d_ref, max: -1, rotulo: "Referencia aún un 1 % baja" }
+      logrado: "Medida ratiométrica: la variación afecta igual al numerador y al denominador y se cancela."
+      pistas:
+        - { cuando: { valor: d_ref, mayor: -1 }, texto: "Así ha arreglado la referencia. Déjela con su error: el truco es otro." }
+        - { texto: "El sensor tiene su propia alimentación fija: aliméntelo desde la referencia del ADC." }
     escalera:
-      - "El ADC da la entrada dividida por su referencia."
-    solucion: "Es una medida ratiométrica: la variación se cancela."
+      - "El ADC da su entrada dividida por su referencia."
+    solucion: "Alimente el sensor desde la misma referencia: la relación no cambia."
+    comprobar:
+      - { con: { s_rat: 1 }, L_adc: 32768 }
+      - { L_adc: 33099, tol: 0.001 }
 
   - id: resumen
     tipo: resumen

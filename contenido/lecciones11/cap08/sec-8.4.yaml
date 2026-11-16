@@ -3,6 +3,11 @@
 # tensión cuya parte superior se ajusta sola», bloque 63): un regulador fijo de 5 V con el dropout de unos 2 V de los
 # 78xx (bloque 67). El LM317 sigue en gráfica: su referencia va sobre R₁ (terminal de ajuste), no a masa como en el
 # esquema, así que dibujarlo con él cambiaría los papeles de R₁ y R₂.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la entrada mínima que aún regula se busca (objetivo, el
+# dropout), la disipación de 12 a 5 V se predice y se simula, la diferencia que se convierte en calor se mide con el
+# multímetro, las corrientes de entrada del lineal y del conmutado se predicen, el LM317 se ajusta y la carga con la
+# que el lineal disipa menos de 1 W se busca (la tabla de cuándo cada uno, en su explicación). Quedan dos preguntas de
+# opciones (por qué menos corriente, el LDO que oscila); las protecciones pasan al resumen.
 leccion: cap08/sec-8.4
 
 libro:
@@ -47,32 +52,47 @@ modelo:
     I_id: { expr: "V_o*I_r/V_in", sim: "I", nombre: "corriente sin pérdidas", unidad: A }
     V_17: { expr: "min(1.25*(1 + R_17/R_1l), V_in - V_do)", sim: "V_{out}", nombre: "salida del LM317", unidad: V }
     IL_l: { expr: "V_17/RL_l", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    P_car: { expr: "V_rg*I_rg", sim: "P_{carga}", nombre: "potencia de la carga", unidad: W }
+    V_paso: { expr: "V_in - V_rg", sim: "V_{in} − V_{out}", nombre: "tensión en el elemento de paso", unidad: V }
 
 tarjetas:
   - id: explore-lineal
     tipo: explorar
     titulo: "Un divisor que se ajusta solo"
-    texto: "El elemento de paso cambia para mantener 5 V. Mueva la entrada y la carga, y mire lo que disipa."
-    nota: "Por debajo de unos 2 V de margen, el 78xx deja de regular."
+    texto: "El elemento de paso cambia para mantener 5 V. Baje la entrada hasta la mínima con la que aún regula."
+    nota: "Carga de 5 Ω: 1 A."
     libro: [63, 65, 67]
-    fijar: { V_o: 5, V_do: 2 }
+    fijar: { V_o: 5, V_do: 2, R_L: 5 }
+    inicio: { V_in: 12 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
       piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
-      lectura: { valor: P_rg, rotulo: "Disipa el elemento de paso" }
+      lectura: { valor: V_rg, rotulo: "Salida" }
       datos:
-        - { valor: V_rg, rotulo: "Salida: {{V_rg}}" }
+        - { valor: P_rg, rotulo: "Disipa: {{P_rg}}" }
         - { valor: ren_rg, rotulo: "Rendimiento: {{ren_rg}}" }
       corriente: I_rg
       mide: { vout: V_rg, iin: I_rg, icarga: I_rg, p_paso: P_rg }
       mandos:
         - { valor: V_in, min: 5, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
-        - { valor: R_L, lista: [5, 10, 50], rotulo: "Carga" }
-    requiere: { mover: [V_in, R_L] }
+    objetivo:
+      condiciones:
+        - { valor: V_rg, objetivo: 5, tol: 0.01, rotulo: "Salida: {{V_rg}}" }
+        - { valor: V_in, max: 7, rotulo: "Entrada: {{V_in}}" }
+      logrado: "Con {{V_in}}: el 78xx necesita unos 2 V de margen. Ahí disipa solo {{P_rg}}, y el rendimiento sube a {{ren_rg}}."
+      pistas:
+        - { cuando: { valor: V_rg, menor: 4.95 }, texto: "Ya no regula: la salida se cae. Suba la entrada." }
+        - { texto: "Aún regula con margen de sobra: baje más la entrada." }
+    escalera:
+      - "El regulador necesita una diferencia mínima entre entrada y salida: el dropout."
+    solucion: "7 V: 5 V más los 2 V del dropout."
+    comprobar:
+      - { con: { V_in: 7 }, V_rg: 5, P_rg: 2, ren_rg: 71.4, tol: 0.01 }
+      - { con: { V_in: 6.5 }, V_rg: 4.5 }
 
   - id: prediga-disipacion
-    tipo: predecir
+    tipo: simular
     titulo: "De 12 a 5 V con 1 A"
     texto: "Un regulador lineal entrega 5 V y 1 A desde 12 V. ¿Cuánto disipa?"
     libro: [66]
@@ -85,37 +105,49 @@ tarjetas:
       corriente: I_rg
       mide: { vout: V_rg, iin: I_rg, p_paso: P_rg }
       ocultar: true
-    opciones:
-      - texto: "7 W, con un rendimiento del 41,7 %"
-        bien: true
-        porque: "(12 − 5) · 1 = 7 W: más de lo que entrega a la carga."
-      - texto: "5 W"
-        porque: "5 W son los que recibe la carga. El regulador disipa la diferencia de tensión por la corriente."
-      - texto: "Casi nada: es un regulador"
-        porque: "Eso sería un conmutado. El lineal disipa toda la diferencia de tensión."
+      mandos: []
+    simular:
+      objetivo: P_rg
+      unidad: W
+      tol: 0.03
+      rotulo: "Disipa el elemento de paso"
+      medida: p_paso
+      errores:
+        - { expr: "P_car", texto: "5 W son los que recibe la carga. El regulador disipa la diferencia de tensión por la corriente." }
+    exito: "(12 − 5) · 1 = 7 W, más de lo que entrega: un rendimiento del 41,7 %."
     escalera:
       - "Toda la corriente de la carga atraviesa el elemento de paso."
     solucion: "(12 − 5) V · 1 A = 7 W; rendimiento 5/12 = 41,7 %."
     comprobar:
-      - { P_d: 7, ren: 41.7, V_s: 5, tol: 0.001 }
+      - { P_d: 7, P_rg: 7, ren: 41.7, V_s: 5, P_car: 5, tol: 0.001 }
 
   - id: regla-disipacion
-    tipo: formula
+    tipo: medir
     titulo: "El defecto aritmético"
-    texto: "La diferencia de tensión por la corriente se convierte en calor. Cambie la entrada."
+    texto: "P = (V_{in} − V_{out}) · I. Ponga las puntas donde se ve la tensión que se convierte en calor."
     libro: [65]
-    ec: 65
-    sustitucion: "({{V_in}} − {{V_o}}) · {{I_r}} = {{P_d}}"
-    fijar: { V_o: 5, V_do: 2 }
+    fijar: { V_in: 12, V_o: 5, V_do: 2, R_L: 5 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
       piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
-      lectura: { valor: P_d, rotulo: "Potencia disipada" }
       corriente: I_rg
-      mide: { vout: V_rg, iin: I_rg, p_paso: P_rg }
-      mandos:
-        - { valor: V_in, min: 7, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
+      mide: { vout: V_rg, iin: I_rg, vpaso: V_paso }
+      instrumento: { tipo: multimetro, modos: [V], puntos: [in, out, "0"] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [in, out]
+      valor: V_paso
+      porque:
+        "in/0": "Así mide la entrada entera, 12 V. Lo que se pierde es la diferencia entre entrada y salida."
+        "out/0": "Esa es la salida regulada, la que aprovecha la carga."
+    exito: "7 V en el elemento de paso, por 1 A: 7 W de calor que hay que evacuar con un radiador."
+    escalera:
+      - "Una punta antes del elemento de paso y otra después."
+    solucion: "Roja en la entrada, negra en la salida: 7 V."
+    comprobar:
+      - { V_paso: 7, P_rg: 7 }
 
   - id: simule-entrada
     tipo: simular
@@ -147,30 +179,26 @@ tarjetas:
       - { I_r: 1, I_rg: 1, I_id: 0.4167, tol: 0.001 }
 
   - id: estime-conmutado
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Con un conmutado"
     texto: "El mismo caso, 12 a 5 V con 1 A, con un conmutado del 90 % de rendimiento. ¿Qué corriente toma de la entrada?"
     libro: [72]
     fijar: { V_in: 12, V_o: 5, R_L: 5, eta: 0.9 }
-    estimar:
-      objetivo: "I_sw"
+    simular:
+      objetivo: I_sw
       unidad: A
-      min: 0
-      max: 1.2
-      paso: 0.01
-      inicio: 1.1
       tol: 0.05
       rotulo: "Corriente de entrada"
+      errores:
+        - { expr: "I_r", texto: "Eso es lo del lineal. El conmutado no deja pasar la corriente: transfiere energía. Iguale potencias." }
+        - { expr: "I_id", texto: "Eso sería con un rendimiento del 100 %: la entrada aporta también lo que se pierde." }
     exito: "463 mA, menos que la de salida, y solo 0,56 W de pérdidas: trece veces menos calor."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.486 }, texto: "Se ha pasado: el conmutado no deja pasar la corriente, transfiere energía. Iguale potencias." }
-      - { texto: "Se ha quedado corto: la entrada aporta también lo que se pierde, el 10 %." }
     escalera:
       - "Potencia de entrada = 5 W / 0,9."
     solucion: "5,56 W / 12 V = 463 mA."
     comprobar:
-      - { I_sw: 0.463, P_sw: 0.556, P_in: 5.556, tol: 0.01 }
+      - { I_sw: 0.463, P_sw: 0.556, P_in: 5.556, I_id: 0.4167, tol: 0.01 }
 
   - id: reto-lm317
     tipo: reto
@@ -227,22 +255,32 @@ tarjetas:
     solucion: "Conserva la energía: 5 W divididos por el 90 % de rendimiento, a 12 V, son 463 mA."
 
   - id: cuando-cada-uno
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: explorar
     titulo: "Lineal o conmutado"
-    texto: "Una cada situación con la elección del libro."
+    texto: "Desde 12 V, elija la carga con la que el lineal disipa menos de 1 W. Ahí compensa por simplicidad."
     libro: [76, 80, 81]
-    emparejar:
-      - ["Diferencia pequeña, menos de 1 W disipado", "Lineal, por simplicidad"]
-      - ["Diferencia grande o corriente alta", "Conmutado, por disipación"]
-      - ["ADC de precisión con buen rendimiento", "Conmutado seguido de un LDO"]
-      - ["Salida mayor que la entrada", "Conmutado: el lineal no puede"]
-    exito: "La decisión sale de dos números: la potencia del lineal y el ruido admisible."
-    pistas:
-      - { texto: "Un lineal solo puede bajar la tensión, nunca subirla." }
+    fijar: { V_in: 12, V_o: 5, V_do: 2 }
+    inicio: { R_L: 5 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
+      lectura: { valor: P_rg, rotulo: "Disipa el elemento de paso" }
+      corriente: I_rg
+      mide: { vout: V_rg, iin: I_rg, p_paso: P_rg }
+      mandos:
+        - { valor: R_L, lista: [5, 10, 50], rotulo: "Carga" }
+    objetivo:
+      condiciones:
+        - { valor: P_rg, max: 1, rotulo: "Disipa: {{P_rg}}" }
+      logrado: "Con {{R_L}}, {{P_rg}}: lineal por simplicidad. Con más corriente, conmutado; para un ADC de precisión, conmutado y un LDO detrás."
+      pistas:
+        - { texto: "Con tanta corriente, 7 V de diferencia son demasiado calor: menos corriente, más carga." }
     escalera:
-      - "El LDO detrás del conmutado limpia el ruido con una caída pequeña."
-    solucion: "Poca diferencia–lineal, mucha–conmutado, precisión–conmutado y LDO, elevar–conmutado."
+      - "Disipa 7 V por la corriente: para menos de 1 W hace falta poca corriente."
+    solucion: "50 Ω: 0,1 A y 0,7 W."
+    comprobar:
+      - { con: { R_L: 50 }, P_rg: 0.7, I_rg: 0.1 }
 
   - id: ldo-ceramico
     tipo: pregunta
@@ -267,35 +305,12 @@ tarjetas:
       - "En un LDO, el condensador de salida no es un adorno."
     solucion: "La ESR del condensador de salida decide si el lazo del LDO es estable."
 
-  - id: protecciones
-    tipo: pregunta
-    titulo: "Un 7805 cortocircuitado"
-    texto: "Un 7805 en cortocircuito se calienta y se apaga sin destruirse. ¿Se puede contar con eso en el diseño?"
-    libro: [83]
-    widget:
-      tipo: grafica
-      x: { id: rx, min: 0, max: 3000, unidad: Ω, rotulo: "R₂" }
-      y: { min: 0, max: 18, unidad: V, rotulo: "V_{out}" }
-      curvas:
-        - { expr: "1.25*(1 + rx/240)", color: azul, rotulo: "1,25 · (1 + R₂/R₁)" }
-    opciones:
-      - texto: "No: las protecciones existen para el accidente, no para el régimen"
-        bien: true
-        porque: "Limitación de corriente, protección térmica y de área segura salvan el chip; el diseño no debe apoyarse en ellas."
-      - texto: "Sí: por eso no hace falta radiador"
-        porque: "El radiador se dimensiona para el régimen normal; la protección térmica es el último recurso."
-      - texto: "Sí: la limitación de corriente fija la salida"
-        porque: "La limitación reduce la salida ante un corto; no es una forma de trabajar."
-    escalera:
-      - "¿Para qué situación están pensadas?"
-    solucion: "No: son para el accidente."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [63, 65, 72, 81]
+    libro: [63, 65, 72, 83]
     ideas:
       - { titulo: "Lineal.", texto: "Un divisor que se ajusta solo: disipa (V_{in} − V_{out}) · I." }
-      - { titulo: "Misma corriente.", texto: "En un lineal entra la misma corriente que sale." }
       - { titulo: "Conmutado.", texto: "Transfiere energía en paquetes: menos calor y menos corriente de entrada." }
       - { titulo: "Lo mejor de los dos.", texto: "Conmutado para el trabajo pesado y un LDO para limpiar." }
+      - { titulo: "Protecciones.", texto: "Corriente, temperatura y área segura: para el accidente, no para el régimen." }

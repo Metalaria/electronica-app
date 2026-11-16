@@ -2,6 +2,10 @@
 # El ruido del promediado es un dibujo determinista (suma de senoides de frecuencias no armónicas) de amplitud relativa
 # 1/√N sobre una señal de amplitud 1: así se ve cómo emerge; la mejora es la del bloque 501. Lock-in: BW ≈ 1/(4τ) y
 # mejora 10·log(BW_ancha/BW_lock-in) con 10 kHz de banda ancha (bloques 516 a 520).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el promediado se lleva a 24 y a 30 dB, la banda del lock-in a
+# 0,25 Hz y el desfase hasta dejar toda la señal en Y (objetivos), el tiempo de 18 a 30 dB se predice y en el banco se
+# marca la distancia a la que la salida cae a la cuarta parte. Quedan dos preguntas de opciones (cuándo falla, por qué
+# sobrevive la señal) y el emparejamiento de usos.
 leccion: cap32/sec-32.16
 
 libro:
@@ -24,24 +28,32 @@ libro:
   526: "se modula la luz con un chopper y se detecta a esa frecuencia"
   529: "además elimina los termopares parásitos del montaje"
   536: "la salida sigue la ley del inverso del cuadrado"
+  534: "un LED modulado a 1 kHz iluminando un fotodiodo a un metro"
 
 modelo:
   valores:
     N_p: { sim: "N", nombre: "número de promedios", unidad: "", valor: 1 }
     tau: { sim: "τ", nombre: "constante de tiempo", unidad: s, valor: 0.01 }
     B_a: { sim: "BW_{ancha}", nombre: "banda de la medida ancha", unidad: Hz, valor: 10000 }
+    p_h: { sim: "φ", nombre: "desfase de la señal", unidad: "°", valor: 30 }
+    d_1: { sim: "d", nombre: "distancia de partida", unidad: m, valor: 1 }
   calculos:
     m_p: { expr: "10*log10(N_p)", sim: "mejora", nombre: "mejora del promediado", unidad: dB, cifras: 3 }
     B_l: { expr: "1/(4*tau)", sim: "BW", nombre: "banda equivalente del lock-in", unidad: Hz }
     m_l: { expr: "10*log10(B_a/B_l)", sim: "mejora", nombre: "mejora del lock-in", unidad: dB, cifras: 3 }
+    k_t: { expr: "1024/64", sim: "N₃₀/N₁₈", nombre: "cociente de promedios de 18 a 30 dB", unidad: "" }
+    X_s: { expr: "cos(p_h*pi/180)", sim: "X", nombre: "salida en fase, relativa", unidad: "" }
+    Y_s: { expr: "sin(p_h*pi/180)", sim: "Y", nombre: "salida en cuadratura, relativa", unidad: "" }
+    d_4: { expr: "2*d_1", sim: "d", nombre: "distancia a la que la salida es la cuarta parte", unidad: m }
 
 tarjetas:
   - id: explore-promediado
     tipo: explorar
     titulo: "Promediar"
-    texto: "Una señal repetitiva enterrada en ruido. Promedie más capturas: la señal crece con N y el ruido solo con √N."
+    texto: "Una señal repetitiva enterrada en ruido. Promedie capturas hasta ganar 24 dB de relación señal-ruido."
     nota: "Ruido dibujado de ejemplo."
-    libro: [500, 501]
+    libro: [500, 501, 502]
+    inicio: { N_p: 1 }
     widget:
       tipo: grafica
       x: { id: xt, min: 0, max: 6.283, unidad: "", rotulo: "t, relativo" }
@@ -52,15 +64,24 @@ tarjetas:
       lectura: { valor: m_p, rotulo: "Mejora de la SNR" }
       mandos:
         - { valor: N_p, lista: [1, 16, 256], rotulo: "Promedios, N" }
-    requiere: { mover: [N_p] }
+    objetivo:
+      condiciones:
+        - { valor: m_p, min: 24, rotulo: "Mejora: {{m_p}}" }
+      logrado: "Con {{N_p}} promedios, {{m_p}}: la señal emerge del ruido. Crece con N y el ruido solo con √N."
+      pistas:
+        - { texto: "Promedie más capturas." }
+    escalera:
+      - "Mejora = 10 · log₁₀(N)."
+    solucion: "256 promedios: 24 dB."
+    comprobar:
+      - { con: { N_p: 256 }, m_p: 24, tol: 0.01 }
 
   - id: formula-promediado
-    tipo: formula
+    tipo: explorar
     titulo: "La mejora del promediado"
-    texto: "La señal se suma de forma coherente y el ruido en cuadratura."
+    texto: "Mejora = √N, o 10 · log₁₀(N) en decibelios. Llegue a 30 dB."
     libro: [501, 502]
-    ec: 501
-    sustitucion: "10 · log₁₀({{N_p}}) = {{m_p}}"
+    inicio: { N_p: 1 }
     widget:
       tipo: grafica
       x: { id: nn, min: 1, max: 1024, unidad: "", rotulo: "N", escala: log }
@@ -72,36 +93,38 @@ tarjetas:
       lectura: { valor: m_p, rotulo: "Mejora" }
       mandos:
         - { valor: N_p, lista: [1, 4, 16, 64, 256, 1024], rotulo: "N" }
+    objetivo:
+      condiciones:
+        - { valor: m_p, min: 29.9, rotulo: "Mejora: {{m_p}}" }
+      logrado: "10 · log₁₀({{N_p}}) = {{m_p}}: la señal se suma coherente y el ruido en cuadratura."
+      pistas:
+        - { texto: "Más promedios: cada 6 dB, cuatro veces más." }
+    escalera:
+      - "30 dB es un factor 1000 en potencia: unos mil promedios."
+    solucion: "1024 promedios: 30 dB."
+    comprobar:
+      - { con: { N_p: 1024 }, m_p: 30, tol: 0.01 }
 
   - id: prediga-tiempo
-    tipo: predecir
+    tipo: simular
     titulo: "De 18 a 30 dB"
-    texto: "Un promediado da 18 dB de mejora. Para llegar a 30 dB, ¿cuánto más tiempo de medida necesita?"
+    texto: "Un promediado da 18 dB de mejora. Para llegar a 30 dB, ¿por cuánto hay que multiplicar el tiempo de medida?"
     libro: [502, 503]
-    fijar: { N_p: 64 }
-    widget:
-      tipo: grafica
-      x: { id: nn, min: 1, max: 2000, unidad: "", rotulo: "N", escala: log }
-      y: { min: 0, max: 35, unidad: dB, rotulo: "mejora" }
-      curvas:
-        - { expr: "10*log10(nn)", color: azul, rotulo: "10 · log₁₀(N)" }
-      lectura: { valor: m_p, rotulo: "Mejora actual" }
-      ocultar: curvas
-    opciones:
-      - texto: "Dieciséis veces más"
-        bien: true
-        porque: "Cada 6 dB cuesta cuatro veces más tiempo: 12 dB más son 4 · 4 = 16."
-      - texto: "Casi el doble, porque 30 es casi el doble de 18"
-        porque: "La mejora va con el logaritmo de N: los decibelios no se escalan así."
-      - texto: "Cuatro veces más"
-        porque: "Cuatro veces más tiempo da solo 6 dB más: llegaría a 24 dB."
+    simular:
+      objetivo: k_t
+      unidad: ""
+      tol: 0.02
+      rotulo: "Factor de tiempo"
+      errores:
+        - { expr: "30/18", texto: "La mejora va con el logaritmo de N: los decibelios no se escalan así." }
+        - { expr: "4", texto: "Cuatro veces más tiempo da solo 6 dB más: llegaría a 24 dB." }
+    exito: "Dieciséis: cada 6 dB cuesta cuatro veces más tiempo, y 12 dB son 4 · 4."
     escalera:
       - "Mejora = 10 · log₁₀(N). ¿Qué N da 18 dB y cuál 30 dB?"
     solucion: "De 64 a 1024 promedios: dieciséis veces más."
     comprobar:
-      - { m_p: 18, tol: 0.01 }
-      - { con: { N_p: 1024 }, m_p: 30, tol: 0.01 }
-      - { con: { N_p: 256 }, m_p: 24, tol: 0.01 }
+      - { con: { N_p: 64 }, m_p: 18, tol: 0.01 }
+      - { k_t: 16 }
 
   - id: condiciones
     tipo: pregunta
@@ -153,12 +176,11 @@ tarjetas:
     solucion: "La señal da continua; el ruido, media cero: el filtro solo deja la señal."
 
   - id: formula-banda
-    tipo: formula
+    tipo: explorar
     titulo: "Un filtro imposible"
-    texto: "La constante de tiempo de salida equivale a un filtro paso banda centrado en la referencia."
+    texto: "El filtro de salida, con constante de tiempo τ, equivale a un paso banda centrado en la referencia: BW ≈ 1/(4τ). Déjelo en 0,25 Hz."
     libro: [516, 517]
-    ec: 516
-    sustitucion: "1 / (4 · {{tau}}) = {{B_l}}"
+    inicio: { tau: 0.01 }
     widget:
       tipo: grafica
       x: { id: tt, min: 0.01, max: 10, unidad: s, rotulo: "τ", escala: log }
@@ -170,6 +192,16 @@ tarjetas:
       lectura: { valor: B_l, rotulo: "Banda equivalente" }
       mandos:
         - { valor: tau, lista: [0.01, 0.1, 1, 10], rotulo: "τ" }
+    objetivo:
+      condiciones:
+        - { valor: B_l, objetivo: 0.25, tol: 0.01, rotulo: "BW: {{B_l}}" }
+      logrado: "1 / (4 · {{tau}}) = {{B_l}}: un paso banda de 0,25 Hz centrado exactamente en la referencia, imposible de construir con componentes."
+      pistas:
+        - { cuando: { valor: B_l, max: 0.2 }, texto: "Demasiado estrecho: acorte τ." }
+        - { texto: "Aún es ancho: alargue τ." }
+    escalera:
+      - "BW ≈ 1/(4τ)."
+    solucion: "τ = 1 s."
     comprobar:
       - { con: { tau: 1 }, B_l: 0.25 }
 
@@ -206,28 +238,34 @@ tarjetas:
       - { con: { tau: 1 }, m_l: 46, tol: 0.01 }
 
   - id: fase
-    tipo: pregunta
+    tipo: explorar
     titulo: "La fase es información"
-    texto: "El lock-in da dos salidas, X en fase e Y en cuadratura. ¿Para qué sirve la fase en una medida de impedancia?"
+    texto: "El lock-in da X, en fase con la referencia, e Y, en cuadratura. Mueva el desfase de la señal hasta que toda quede en Y."
     libro: [523, 524]
+    inicio: { p_h: 30 }
     widget:
       tipo: grafica
       x: { id: xt, min: 0, max: 6.283, unidad: "", rotulo: "t, relativo" }
       y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
       curvas:
-        - { expr: "sin(xt)", color: tinta, rotulo: "referencia" }
-        - { expr: "0.8*sin(xt - 0.6)", color: azul, rotulo: "señal desfasada" }
-    opciones:
-      - texto: "Separa la parte resistiva de la reactiva"
-        bien: true
-        porque: "Es el par I/Q aplicado a medida: amplitud √(X² + Y²) y fase arctan(Y/X)."
-      - texto: "No sirve: solo importa la amplitud"
-        porque: "La fase no es un subproducto: distingue resistencia de reactancia."
-      - texto: "Para corregir el jitter de la referencia"
-        porque: "La fase mide el desfase de la señal respecto a la referencia, no el jitter."
+        - { expr: "sin(xt)", color: tinta, rotulo: "referencia", discontinua: true }
+        - { expr: "sin(xt - p_h*pi/180)", color: azul, rotulo: "señal" }
+      datos:
+        - { valor: X_s, rotulo: "X: {{X_s}}" }
+        - { valor: Y_s, rotulo: "Y: {{Y_s}}" }
+      mandos:
+        - { valor: p_h, lista: [0, 30, 60, 90], rotulo: "Desfase" }
+    objetivo:
+      condiciones:
+        - { valor: X_s, max: 0.01, rotulo: "X = {{X_s}}" }
+      logrado: "Toda en cuadratura: en una medida de impedancia, una reactancia pura. X da la parte resistiva e Y la reactiva; amplitud √(X² + Y²)."
+      pistas:
+        - { texto: "Aún hay parte en fase: más desfase." }
     escalera:
-      - "En una impedancia, ¿qué parte está en fase con la corriente y cuál en cuadratura?"
-    solucion: "X da la parte resistiva e Y la reactiva."
+      - "X = A · cos φ; Y = A · sin φ."
+    solucion: "90°."
+    comprobar:
+      - { con: { p_h: 90 }, Y_s: 1 }
 
   - id: empareje-usos
     tipo: pregunta
@@ -247,27 +285,33 @@ tarjetas:
     solucion: "Fotocorriente–chopper; termometría–sin termopares; puentes–ppm."
 
   - id: banco-led
-    tipo: pregunta
+    tipo: marcar
     titulo: "En el banco"
-    texto: "Un LED modulado ilumina un fotodiodo con luz ambiente, y tras el lock-in aleja el LED. ¿Qué confirma que mide su luz?"
-    libro: [509, 536]
+    texto: "Un LED modulado a 1 kHz ilumina un fotodiodo a un metro, con luz ambiente encima. Marque a qué distancia la salida del lock-in cae a la cuarta parte."
+    libro: [509, 534, 536]
     widget:
       tipo: grafica
       x: { id: dd, min: 0.5, max: 3, unidad: m, rotulo: "distancia" }
       y: { min: 0, max: 4.5, unidad: "", rotulo: "salida, relativa" }
       curvas:
         - { expr: "1/dd^2", color: azul, rotulo: "salida del lock-in" }
-    opciones:
-      - texto: "Que la salida siga la ley del inverso del cuadrado"
-        bien: true
-        porque: "Lo que sigue al LED con la distancia es su luz, no el ambiente."
-      - texto: "Que la salida no cambie"
-        porque: "Eso diría que mide el ambiente, que no depende de dónde esté el LED."
-      - texto: "Que la salida baje en proporción a la distancia"
-        porque: "La luz de un emisor puntual cae con el cuadrado de la distancia."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "d_4"
+      tol: 0.03
+      inicio: { x: 0.75, y: 1.8 }
+      rotulo: "La cuarta parte"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 2.2 }, texto: "Ahí ya ha caído más: antes." }
+      - { texto: "Ahí aún es más de la cuarta parte: más lejos." }
+    exito: "A 2 m: el doble de distancia, la cuarta parte. Sigue el inverso del cuadrado: es la luz del LED, no el ambiente."
     escalera:
-      - "¿Cómo cae la luz de un emisor pequeño con la distancia?"
-    solucion: "Inverso del cuadrado: es la luz del LED."
+      - "La luz de un emisor pequeño cae con el cuadrado de la distancia."
+    solucion: "A 2 m."
+    comprobar:
+      - { d_4: 2, d_1: 1 }
 
   - id: resumen
     tipo: resumen

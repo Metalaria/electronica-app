@@ -4,6 +4,11 @@
 # la salida hereda S_ref/(1 + (f/B)²) + S_VCO·(f/B)²/(1 + (f/B)²); su integral es (π/2)·(S_ref·B + K/B), mínima en
 # B = √(K/S_ref), donde las dos curvas se cruzan (unos 30 kHz, como en la figura). El exceso sobre ese mínimo se lee en
 # dB. El tiempo de enganche, t ≈ 1,4/BW, es el del problema 27.B (bloque 223).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): los bloques se tocan en el orden del lazo, el divisor se ajusta
+# para sacar 150 MHz de 10 MHz (objetivo), el divisor de 8 a 160 MHz y el tiempo de enganche se predicen, la entrada se
+# lleva a la zona donde se mantiene enganchado sin poder engancharse (márgenes relativos de ejemplo, 1 y 0,5), el
+# fraccionario se prueba con 15 y 16 alternados y en el banco se marca el instante en que el VCO llega a su límite
+# (curva de ejemplo). Quedan el emparejamiento de usos y dos preguntas de opciones (FM, el tope del ancho de banda).
 leccion: cap28/sec-28.2
 
 libro:
@@ -33,34 +38,47 @@ modelo:
     B_l: { sim: "BW", nombre: "ancho de banda del lazo", unidad: Hz, valor: 1000 }
     S_r: { sim: "S_{ref}", nombre: "ruido de la referencia por N, potencia por hercio", unidad: "", valor: 1e-13 }
     K_v: { sim: "K", nombre: "ruido del VCO, S·f²", unidad: "", valor: 1e-4 }
+    x_d: { sim: "Δf", nombre: "desviación de la entrada, relativa al margen de enganche", unidad: "", valor: 0 }
   calculos:
     f_out: { expr: "N_d*f_ref", sim: "f_{salida}", nombre: "frecuencia de salida", unidad: Hz }
     N_8: { expr: "160000000/8000000", sim: "N", nombre: "divisor de 8 a 160 MHz", unidad: "" }
     B_x: { expr: "sqrt(K_v/S_r)", sim: "f_{cruce}", nombre: "cruce de las dos curvas", unidad: Hz }
     exc: { expr: "10*log10((S_r*B_l + K_v/B_l)/(2*sqrt(K_v*S_r)))", sim: "Δ", nombre: "ruido integrado sobre el mínimo", unidad: dB, cifras: 2 }
     t_e: { expr: "1.4/B_l", sim: "t", nombre: "tiempo de enganche", unidad: s }
+    e_ng: { expr: "1 - ceil((abs(x_d) - 1)/1e9)", sim: "enganche", nombre: "dentro del margen de enganche", unidad: "" }
+    c_ap: { expr: "1 - ceil((abs(x_d) - 0.5)/1e9)", sim: "captura", nombre: "dentro del margen de captura", unidad: "" }
+    t_l: { expr: "(3.2 - 1.5)/20", sim: "t", nombre: "instante en que el control llega al extremo", unidad: s }
 
 tarjetas:
   - id: explore-bloques
-    tipo: explorar
+    tipo: tocar
     titulo: "Cuatro bloques"
-    texto: "El PLL compara la fase de la entrada con la de su oscilador y lo corrige hasta que coinciden. Toque el filtro de lazo y el VCO."
+    texto: "El PLL compara la fase de la entrada con la de su oscilador y lo corrige hasta que coinciden. Toque los bloques en el orden en que la señal recorre el lazo, desde el que compara."
     libro: [32, 34]
     widget:
       tipo: figura
       figura: fig-28.2
       zonas:
-        - { id: detector, rotulo: "Detector de fase", rect: [49, 32, 74, 44], texto: "Da una señal proporcional a la diferencia de fase entre la referencia y la realimentación." }
-        - { id: filtro, rotulo: "Filtro de lazo", rect: [161, 32, 73, 44], texto: "Promedia la señal del detector y fija la dinámica del conjunto." }
-        - { id: vco, rotulo: "VCO", rect: [273, 32, 73, 44], texto: "Oscilador cuya frecuencia depende de la tensión de control." }
-        - { id: divisor, rotulo: "Divisor por N", rect: [197, 114, 59, 35], texto: "Opcional, en la realimentación: el lazo engancha cuando f_{VCO}/N iguala a la referencia." }
-    requiere: { mover: [filtro, vco] }
+        - { id: detector, rotulo: "Detector de fase", rect: [49, 32, 74, 44] }
+        - { id: filtro, rotulo: "Filtro de lazo", rect: [161, 32, 73, 44] }
+        - { id: vco, rotulo: "VCO", rect: [273, 32, 73, 44] }
+        - { id: divisor, rotulo: "Divisor por N", rect: [197, 114, 59, 35] }
+    tocar:
+      bien: [detector, filtro, vco, divisor]
+      orden: true
+    exito: "Detector, filtro que promedia y fija la dinámica, VCO controlado por tensión y, si hace falta, divisor por N de vuelta al detector."
+    pistas:
+      - { texto: "Lo que sale del detector se promedia antes de llegar al oscilador." }
+    escalera:
+      - "El detector compara; el VCO es lo que se corrige."
+    solucion: "Detector de fase, filtro de lazo, VCO y divisor."
 
   - id: explore-sintesis
     tipo: explorar
     titulo: "Sintetizar frecuencias"
-    texto: "Enganchado, la salida vale N veces la referencia. Con un cristal de 10 MHz, cambie el divisor."
+    texto: "Enganchado, la salida vale N veces la referencia. Con un cristal de 10 MHz, elija el divisor que saca 150 MHz."
     libro: [36, 37]
+    inicio: { N_d: 10 }
     fijar: { f_ref: 10000000 }
     widget:
       tipo: grafica
@@ -73,27 +91,33 @@ tarjetas:
       lectura: { valor: f_out, rotulo: "Frecuencia de salida" }
       mandos:
         - { valor: N_d, min: 1, max: 20, paso: 1, rotulo: "Divisor, N" }
-    requiere: { mover: [N_d] }
+    objetivo:
+      condiciones:
+        - { valor: f_out, objetivo: 150000000, tol: 0.001, rotulo: "Salida: {{f_out}}" }
+      logrado: "{{N_d}} · {{f_ref}} = {{f_out}}, con la exactitud del cristal."
+      pistas:
+        - { cuando: { valor: f_out, min: 150000001 }, texto: "Se ha pasado: baje N." }
+        - { texto: "Falta: suba N." }
+    escalera:
+      - "f_{salida} = N · f_{referencia}."
+    solucion: "N = 15."
+    comprobar:
+      - { con: { N_d: 15 }, f_out: 150000000 }
 
   - id: estime-multiplicar
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Multiplicar el reloj"
     texto: "Un microcontrolador saca 160 MHz de un cristal de 8 MHz con un PLL. ¿Qué divisor lleva en la realimentación?"
     libro: [36, 39]
-    estimar:
-      objetivo: "N_8"
+    simular:
+      objetivo: N_8
       unidad: ""
-      min: 1
-      max: 40
-      paso: 1
-      inicio: 5
-      tol: 0.04
+      tol: 0.01
       rotulo: "Divisor, N"
+      errores:
+        - { expr: "1/N_8", texto: "Al revés: el VCO a 160 MHz, dividido por N, debe igualar los 8 MHz." }
     exito: "N = 20: el VCO a 160 MHz, dividido por 20, iguala los 8 MHz del cristal."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 20 }, texto: "Se ha pasado: con ese N la salida superaría los 160 MHz." }
-      - { texto: "Se ha quedado corto: con ese N la salida no llega a 160 MHz." }
     escalera:
       - "f_{salida} = N · f_{referencia}."
     solucion: "N = 160 MHz / 8 MHz = 20."
@@ -141,34 +165,26 @@ tarjetas:
     solucion: "El VCO solo sigue a la portadora si su tensión de control reproduce la modulación."
 
   - id: prediga-enganche
-    tipo: predecir
+    tipo: simular
     titulo: "Ancho o estrecho"
     texto: "Un lazo de 100 kHz de ancho de banda engancha en unos 14 µs. ¿Cuánto tarda uno de 20 kHz?"
     libro: [44, "cap28#222", "cap28#223"]
     fijar: { B_l: 20000 }
-    widget:
-      tipo: grafica
-      x: { id: bw, min: 10000, max: 300000, unidad: Hz, rotulo: "ancho de banda del lazo" }
-      y: { min: 0, max: 0.00016, unidad: s, rotulo: "tiempo de enganche" }
-      curvas:
-        - { expr: "1.4/bw", color: azul, rotulo: "t ≈ 1,4/BW" }
-      lectura: { valor: t_e, rotulo: "Enganche con 20 kHz" }
-      ocultar: curvas
-    opciones:
-      - texto: "Unos 70 µs"
-        bien: true
-        porque: "El tiempo es inversamente proporcional al ancho de banda: cinco veces más estrecho, cinco veces más lento."
-      - texto: "Unos 3 µs"
-        porque: "Eso sería un lazo más ancho. Un lazo estrecho engancha despacio."
-      - texto: "Los mismos 14 µs"
-        porque: "El ancho de banda fija la velocidad de enganche: no es independiente."
+    simular:
+      objetivo: t_e
+      unidad: s
+      tol: 0.03
+      rotulo: "Enganche con 20 kHz"
+      errores:
+        - { expr: "1.4/100000", texto: "El ancho de banda fija la velocidad de enganche: no es independiente." }
+        - { expr: "1.4/500000", texto: "Eso sería un lazo más ancho. Un lazo estrecho engancha despacio." }
+    exito: "Unos 70 µs: el tiempo es inversamente proporcional al ancho de banda; cinco veces más estrecho, cinco veces más lento."
     escalera:
       - "Un lazo ancho engancha deprisa; uno estrecho, despacio."
     solucion: "t ≈ 1,4/BW: con 20 kHz, unos 70 µs."
     comprobar:
       - { t_e: 0.00007 }
       - { con: { B_l: 100000 }, t_e: 0.000014 }
-      - { con: { B_l: 466667 }, t_e: 0.000003, tol: 0.01 }
 
   - id: ajuste-ancho
     tipo: ajuste
@@ -227,10 +243,12 @@ tarjetas:
     solucion: "El filtro debe quitar los espurios de la comparación: no más de f_{ref}/10."
 
   - id: captura
-    tipo: pregunta
+    tipo: explorar
     titulo: "Enganchado donde no llegaría"
-    texto: "Un PLL sigue enganchado en una frecuencia desde la que, partiendo de cero, no habría conseguido engancharse. ¿Por qué?"
+    texto: "Lleve la entrada a una desviación en la que el PLL, ya enganchado, se mantiene, pero desde la que no habría conseguido engancharse."
+    nota: "Márgenes relativos de ejemplo."
     libro: [48, 49]
+    inicio: { x_d: 0 }
     widget:
       tipo: grafica
       x: { id: xr, min: -2, max: 2, unidad: "", rotulo: "desviación de la entrada, relativa" }
@@ -238,44 +256,58 @@ tarjetas:
       curvas:
         - { expr: "1 - ceil((abs(xr) - 1)/1e9)", color: azul, rotulo: "margen de enganche" }
         - { expr: "0.5*(1 - ceil((abs(xr) - 0.5)/1e9))", color: naranja, rotulo: "margen de captura" }
-    opciones:
-      - texto: "El margen de captura es más estrecho que el de enganche"
-        bien: true
-        porque: "Ya enganchado, se mantiene en todo el margen de enganche; para engancharse desde cero necesita estar en el de captura."
-      - texto: "Porque el lazo es inestable"
-        porque: "Un lazo inestable oscila alrededor del enganche en lugar de asentarse; aquí se mantiene estable."
-      - texto: "Porque la referencia ha cambiado de frecuencia"
-        porque: "La asimetría existe con la misma referencia: es propia del lazo."
+      marcas:
+        - { x: "x_d", y: "0.25", rotulo: "su entrada" }
+      mandos:
+        - { valor: x_d, min: -2, max: 2, paso: 0.25, rotulo: "Desviación de la entrada" }
+    objetivo:
+      condiciones:
+        - { valor: e_ng, min: 1, rotulo: "Dentro del enganche" }
+        - { valor: c_ap, max: 0, rotulo: "Fuera de la captura" }
+      logrado: "El margen de captura es más estrecho que el de enganche: se mantiene donde no habría podido llegar solo."
+      pistas:
+        - { cuando: { valor: e_ng, max: 0 }, texto: "Ahí ni siquiera se mantiene: acérquese." }
+        - { texto: "Ahí también engancharía desde cero: aléjese algo más." }
     escalera:
-      - "Compare el intervalo en que se mantiene con el intervalo desde el que llega."
-    solucion: "Captura más estrecha que enganche: se mantiene donde no habría podido llegar solo."
+      - "Busque la franja entre el borde naranja y el azul."
+    solucion: "En la franja entre el borde naranja y el azul, a cualquier lado."
+    comprobar:
+      - { con: { x_d: 0.75 }, e_ng: 1, c_ap: 0 }
 
   - id: fraccionario
-    tipo: pregunta
+    tipo: explorar
     titulo: "El paso de canal fino"
-    texto: "Con divisor entero, un paso de canal fino exige una referencia muy baja, que estrecha el lazo. ¿Qué hace un sintetizador fraccionario?"
+    texto: "Con 10 MHz de referencia, un divisor entero salta de 10 en 10 MHz. Saque 155 MHz."
     libro: [52, 53]
+    inicio: { N_d: 15 }
     widget:
-      tipo: figura
-      figura: fig-28.2
-      zonas:
-        - { id: divisor, rotulo: "Divisor por N", rect: [197, 114, 59, 35] }
-    opciones:
-      - texto: "Alterna entre dos divisores: división media no entera, a cambio de espurios fraccionarios"
-        bien: true
-        porque: "Los espurios se combaten con modulación sigma-delta del divisor."
-      - texto: "Usa una referencia aún más baja"
-        porque: "Eso es justo lo que se quiere evitar: estrecha el lazo y empeora el ruido."
-      - texto: "Quita el filtro de lazo"
-        porque: "Sin filtro no se promedia la señal del detector ni se fija la dinámica: no hay lazo estable."
+      tipo: grafica
+      x: { id: nn, min: 14, max: 17, unidad: "", rotulo: "N" }
+      y: { min: 130000000, max: 180000000, unidad: Hz, rotulo: "f_{salida}" }
+      curvas:
+        - { expr: "nn*f_ref", color: azul, rotulo: "N · f_{ref}" }
+      marcas:
+        - { x: "N_d", y: "f_out", rotulo: "{{f_out}}" }
+      lectura: { valor: f_out, rotulo: "Frecuencia de salida" }
+      mandos:
+        - { valor: N_d, lista: [15, 15.5, 16], nombres: ["solo 15", "15 y 16 alternados", "solo 16"], rotulo: "Divisor" }
+    objetivo:
+      condiciones:
+        - { valor: f_out, objetivo: 155000000, tol: 0.001, rotulo: "Salida: {{f_out}}" }
+      logrado: "División media 15,5: el fraccionario alterna dos divisores. Su precio, espurios fraccionarios, que se combaten con sigma-delta."
+      pistas:
+        - { texto: "Ningún entero da 155 MHz: pruebe a alternar." }
     escalera:
-      - "¿Cómo se consigue una división media que no sea entera?"
-    solucion: "Alternando dos divisores; el precio son espurios, que se combaten con sigma-delta."
+      - "155 MHz / 10 MHz no es entero."
+    solucion: "Alternando 15 y 16 a partes iguales: 15,5."
+    comprobar:
+      - { con: { N_d: 15.5 }, f_out: 155000000 }
 
   - id: banco-control
-    tipo: pregunta
+    tipo: marcar
     titulo: "En el osciloscopio"
-    texto: "La tensión de control del VCO sube y se queda pegada así. ¿Qué indica?"
+    texto: "La tensión de control del VCO sube y se queda pegada. Marque el instante en que el lazo pierde el enganche."
+    nota: "Curva de ejemplo."
     libro: [50, 55]
     widget:
       tipo: grafica
@@ -283,17 +315,23 @@ tarjetas:
       y: { min: 0, max: 3.5, unidad: V, rotulo: "tensión de control" }
       curvas:
         - { expr: "min(3.2, 1.5 + 20*t)", color: azul, rotulo: "control del VCO" }
-    opciones:
-      - texto: "El lazo ha perdido el enganche: el VCO está contra su límite"
-        bien: true
-        porque: "Enganchado, sería una continua estable dentro de su margen."
-      - texto: "Está enganchado: es una continua estable"
-        porque: "Es continua, pero en un extremo: el VCO no alcanza la frecuencia que pide el lazo."
-      - texto: "El lazo es inestable"
-        porque: "Un lazo inestable hace oscilar esa tensión alrededor del punto de enganche."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_l"
+      tol: 0.03
+      inicio: { x: 0.02, y: 2 }
+      rotulo: "Contra el límite"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.1 }, texto: "Ahí ya lleva un rato pegada: fue antes." }
+      - { texto: "Ahí aún sube: el VCO todavía alcanza lo que se le pide." }
+    exito: "Desde ahí, contra su extremo: el VCO no alcanza la frecuencia que pide el lazo. Enganchado sería una continua estable; si oscilara, lazo inestable."
     escalera:
-      - "¿Dónde debería quedarse esa tensión si el lazo engancha?"
-    solucion: "Pegada a un extremo: enganche perdido, VCO en su límite."
+      - "Busque dónde la rampa se vuelve horizontal."
+    solucion: "Donde deja de subir y se queda en el extremo."
+    comprobar:
+      - { t_l: 0.085 }
 
   - id: resumen
     tipo: resumen

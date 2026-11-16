@@ -1,6 +1,11 @@
 # Lección 1.2 de la sección 7.8 «Carga de Puerta, Conmutación y Gate Drivers» (cap07). Formato: contenido/lecciones11/GUIA.md.
 # La curva de carga de puerta usa los valores de ejemplo de la figura 7.10 (Q_gs = 15 nC hasta 4 V, Q_gd = 20 nC de
 # meseta, Q_g = 60 nC a 10 V), dibujada en tiempo con una corriente de driver constante (aproximación por tramos rectos).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la meseta se acorta a 20 ns con el driver (objetivo), su
+# final se marca en la curva con 0,1 A, el tiempo de 30 nC, la pérdida del encendido y el consumo del driver se
+# predicen (simular), la conmutación se lleva por encima de la conducción subiendo la frecuencia y la resistencia de
+# puerta se toca en el esquema «mosfet» (R_G de 10 Ω, pull-down de 10 kΩ, 24 V y 3 Ω de los 8 A del libro, umbral
+# y k de la sección 7.5: valores de ejemplo). Quedan dos preguntas de opciones (por encima del cruce, el bootstrap).
 leccion: cap07/sec-7.8
 
 libro:
@@ -37,6 +42,11 @@ modelo:
     D_x: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.5 }
     t_x: { sim: "t_{r} + t_{f}", nombre: "tiempos de subida y bajada", unidad: s, valor: 50e-9 }
     f_x: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 20000 }
+    R_ld: { sim: "R_{L}", nombre: "carga de 8 A con 24 V", unidad: Ω, valor: 3 }
+    R_g: { sim: "R_{G}", nombre: "resistencia de puerta (ejemplo)", unidad: Ω, valor: 10 }
+    R_pd: { sim: "R_{GS}", nombre: "pull-down de puerta", unidad: Ω, valor: 10000 }
+    V_th: { sim: "V_{th}", nombre: "umbral (ejemplo)", unidad: V, valor: 2 }
+    k_s: { sim: "k", nombre: "parámetro del transistor (ejemplo)", unidad: "A/V²", valor: 6.25 }
   calculos:
     t_m: { expr: "Q_gd/I_dr", sim: "t_{meseta}", nombre: "duración de la meseta", unidad: s }
     t_t: { expr: "Q_g/I_dr", sim: "t", nombre: "tiempo hasta la tensión final", unidad: s }
@@ -48,14 +58,27 @@ modelo:
     P_dr: { expr: "Q_g*V_f*f_s", sim: "P_{driver}", nombre: "consumo del driver", unidad: W }
     P_d10: { expr: "10*Q_g*V_f*f_s", sim: "P", nombre: "diez veces más", unidad: W }
     f_cr: { expr: "2*I_x*R_x*D_x/(V_s*t_x)", sim: "f_{cruce}", nombre: "frecuencia de cruce", unidad: Hz }
+    d_cr: { expr: "P_cm - P_cd", sim: "P_{conm} − P_{cond}", nombre: "exceso de la conmutación", unidad: W }
+    t_i: { expr: "Q_gs/I_dr", sim: "t_{inicio}", nombre: "comienzo de la meseta", unidad: s }
+    t_f: { expr: "(Q_gs + Q_gd)/I_dr", sim: "t_{fin}", nombre: "final de la meseta", unidad: s }
+    t_1a: { expr: "Q_g2/1", sim: "t", nombre: "con un driver de 1 A", unidad: s }
+    P_e2: { expr: "V_s*I_s*t_s*f_s", sim: "P", nombre: "sin el un medio", unidad: W }
+    V_gg: { expr: "V_f*R_pd/(R_pd + R_g)", sim: "V_{GS}", nombre: "tensión de puerta del ejemplo", unidad: V }
+    V_o8: { expr: "max(0, V_gg - V_th)", sim: "V_{ov}", nombre: "sobreexcitación del ejemplo", unidad: V }
+    b_8: { expr: "k_s*V_o8 + 1/R_ld", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tr8: { expr: "(b_8 - sqrt(max(0, b_8^2 - 2*k_s*V_s/R_ld)))/k_s", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_st8: { expr: "V_s - R_ld*k_s*V_o8^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_ds8: { expr: "max(V_st8, min(V_o8, V_tr8))", sim: "V_{DS}", nombre: "V_DS del ejemplo", unidad: V }
+    I_d8: { expr: "(V_s - V_ds8)/R_ld", sim: "I_{D}", nombre: "corriente del ejemplo", unidad: A }
 
 tarjetas:
   - id: explore-meseta
     tipo: explorar
     titulo: "La meseta de Miller"
-    texto: "La tensión de puerta mientras el driver la carga. Cambie la corriente del driver y mire cuánto dura la meseta."
+    texto: "La tensión de puerta mientras el driver la carga. Elija la corriente del driver que deja la meseta en 20 ns."
     nota: "Cargas de ejemplo de la figura del libro."
-    libro: [126, 129, 135]
+    libro: [126, 129, 130, 135]
+    inicio: { I_dr: 0.2 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.0000007, unidad: s, rotulo: "t" }
@@ -66,13 +89,24 @@ tarjetas:
       datos:
         - { valor: t_t, rotulo: "Hasta la tensión final: {{t_t}}" }
       mandos:
-        - { valor: I_dr, lista: [0.1, 0.2, 0.5, 1], rotulo: "Corriente del driver" }
+        - { valor: I_dr, lista: [0.2, 0.5, 1], rotulo: "Corriente del driver" }
+    objetivo:
+      condiciones:
+        - { valor: t_m, objetivo: 2e-8, tol: 0.02, rotulo: "Meseta: {{t_m}}" }
+      logrado: "Con {{I_dr}}, Q_{gd} = 20 nC pasan en {{t_m}}. En la meseta hay tensión y corriente a la vez: ahí se pierde."
+      pistas:
+        - { texto: "La meseta aún es larga: más corriente de driver." }
+    escalera:
+      - "La puerta se carga con corriente: el tiempo es carga entre corriente."
+    solucion: "1 A: 20 nC / 1 A = 20 ns."
+    comprobar:
+      - { con: { I_dr: 1 }, t_m: 2e-8 }
 
   - id: prediga-meseta
-    tipo: predecir
+    tipo: marcar
     titulo: "Un driver débil"
-    texto: "La meseta dura lo que tarda el driver en inyectar Q_{gd} = 20 nC. ¿Cuánto dura con un driver de 0,1 A?"
-    libro: [130]
+    texto: "Ahora un driver de 0,1 A. Marque en la curva dónde termina la meseta."
+    libro: [129, 130]
     fijar: { I_dr: 0.1 }
     widget:
       tipo: grafica
@@ -80,70 +114,69 @@ tarjetas:
       y: { min: 0, max: 12, unidad: V, rotulo: "V_{GS}" }
       curvas:
         - { expr: "min(I_dr*t/Q_gs, 1)*V_pl + min(max(0, I_dr*t - Q_gs - Q_gd), Q_g - Q_gs - Q_gd)*(V_f - V_pl)/(Q_g - Q_gs - Q_gd)", color: azul, rotulo: "V_{GS}" }
-      lectura: { valor: t_m, rotulo: "Duración de la meseta" }
-      ocultar: true
-    opciones:
-      - texto: "200 ns"
-        bien: true
-        porque: "20 nC / 0,1 A = 200 ns: diez veces más que con 1 A, y diez veces más disipación en la meseta."
-      - texto: "20 ns"
-        porque: "Eso es con un driver de 1 A. Con diez veces menos corriente, tarda diez veces más."
-      - texto: "2 ns"
-        porque: "Ha multiplicado en lugar de dividir: t = Q/I."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_f"
+      tol: 0.03
+      inicio: { x: 0.0000006, y: 0 }
+      rotulo: "Final de la meseta"
+      pasos: 70
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.00000037 }, texto: "Ahí la puerta ya sube otra vez: el final está antes." }
+      - { cuando: { valor: marca_x, menor: 0.00000016 }, texto: "Ahí aún se carga C_{gs}: la meseta ni ha empezado." }
+      - { texto: "Ahí está en la meseta: siga hasta donde la tensión vuelve a subir." }
+    exito: "De 150 a 350 ns: la meseta dura 200 ns, diez veces más que con 1 A, y diez veces más disipación."
     escalera:
-      - "La puerta se carga con corriente: t = Q/I."
-    solucion: "20 nC / 0,1 A = 200 ns."
+      - "Busque el tramo plano y su extremo derecho."
+    solucion: "En 350 ns: Q_{gs} + Q_{gd} entre 0,1 A."
     comprobar:
-      - { t_m: 200e-9 }
+      - { t_i: 150e-9, t_f: 350e-9, t_m: 200e-9 }
 
   - id: regla-tiempo
-    tipo: formula
+    tipo: simular
     titulo: "Carga, no tensión"
-    texto: "Lo que carga la puerta es corriente. Con Q_{g} = 30 nC, cambie la corriente del driver."
+    texto: "Lo que carga la puerta es corriente: t = Q_{g}/I_{driver}. Con Q_{g} = 30 nC, ¿cuánto tarda un driver de 100 mA?"
     libro: [139, 140]
-    ec: 139
-    sustitucion: "{{Q_g2}} / {{I_d2}} = {{t_sw}}"
-    widget:
-      tipo: grafica
-      x: { id: ix, min: 0.01, max: 10, unidad: A, rotulo: "I_{driver}", escala: log }
-      y: { min: 0.000000001, max: 0.00001, unidad: s, rotulo: "t_{conmutación}", escala: log }
-      curvas:
-        - { expr: "Q_g2/ix", color: azul, rotulo: "Q_{g}/I_{driver}" }
-      asas:
-        - { mueve: I_d2, x: "I_d2", y: "t_sw", rotulo: "Su driver" }
-      lectura: { valor: t_sw, rotulo: "Tiempo de conmutación" }
-      mandos:
-        - { valor: I_d2, lista: [0.02, 0.1, 0.3, 1, 3], rotulo: "Corriente del driver" }
+    simular:
+      objetivo: t_sw
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo de conmutación"
+      errores:
+        - { expr: "t_1a", texto: "Esos 30 ns son con un driver de 1 A. Con 100 mA, diez veces más." }
+    exito: "300 ns; con 1 A, 30 ns. Un driver débil multiplica por diez las pérdidas: aparecen en el MOSFET, la causa está en el driver."
+    escalera:
+      - "Divida la carga entre la corriente."
+    solucion: "30 nC / 0,1 A = 300 ns."
+    comprobar:
+      - { t_sw: 300e-9, t_1a: 30e-9 }
 
   - id: estime-perdida
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Lo que cuesta la meseta"
     texto: "Se conmutan 24 V y 8 A a 100 kHz con transiciones de 200 ns. ¿Cuánto se pierde solo en el encendido?"
     libro: [130]
-    estimar:
-      objetivo: "P_e"
+    simular:
+      objetivo: P_e
       unidad: W
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 4
       tol: 0.05
       rotulo: "Pérdida en el encendido"
+      errores:
+        - { expr: "P_e2", texto: "Le sobra el doble: tensión y corriente se cruzan en la transición, de ahí el ½." }
     exito: "½ · 24 · 8 · 200 ns · 100 kHz = 1,9 W, y otro tanto al apagar. El driver decide las pérdidas."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.02 }, texto: "Se ha pasado: no olvide el ½, la tensión y la corriente se cruzan en la transición." }
-      - { texto: "Se ha quedado corto: hay cien mil transiciones por segundo." }
     escalera:
       - "Energía por transición: ½ · V · I · t; multiplique por la frecuencia."
     solucion: "½ · 24 · 8 · 2 · 10⁻⁷ · 10⁵ = 1,92 W."
     comprobar:
-      - { P_e: 1.92 }
+      - { P_e: 1.92, P_e2: 3.84 }
 
   - id: sorpresa-cruce
     tipo: sorpresa
     titulo: "La frecuencia manda"
-    texto: "Con 5 A, 20 mΩ, D = 0,5, 24 V y 50 ns, suba la frecuencia. Mire cuándo la conmutación supera a la conducción."
+    texto: "Con 5 A, 20 mΩ, D = 0,5, 24 V y 50 ns: suba la frecuencia hasta que la conmutación supere a la conducción."
     libro: [136, 137]
     inicio: { f_x: 20000 }
     widget:
@@ -155,13 +188,22 @@ tarjetas:
         - { expr: "0.5*V_s*I_x*t_x*fx", color: naranja, rotulo: "conmutación" }
       asas:
         - { mueve: f_x, x: "f_x", y: "P_cm", rotulo: "Su frecuencia" }
-      lectura: { valor: P_tx, rotulo: "Pérdida total" }
+      lectura: { valor: P_cm, rotulo: "Conmutación" }
       datos:
-        - { valor: P_cm, rotulo: "Conmutación: {{P_cm}}" }
-        - { valor: f_cr, rotulo: "Cruce: {{f_cr}}" }
+        - { valor: P_cd, rotulo: "Conducción: {{P_cd}}" }
       mandos:
         - { valor: f_x, lista: [20000, 50000, 100000, 200000, 500000], rotulo: "Frecuencia" }
-    requiere: { mover: [f_x] }
+    objetivo:
+      condiciones:
+        - { valor: d_cr, min: 0, rotulo: "Conmutación ≥ conducción" }
+      logrado: "A {{f_x}} ya manda la conmutación. El cruce está en {{f_cr}}: por encima, Q_{g} y tiempos."
+      pistas:
+        - { texto: "La conducción aún pesa más: suba la frecuencia." }
+    escalera:
+      - "La conducción no depende de la frecuencia; la conmutación crece con ella."
+    solucion: "De 100 kHz en adelante: el cruce está en 83,3 kHz."
+    comprobar:
+      - { con: { f_x: 100000 }, P_cm: 0.3, P_cd: 0.25, f_cr: 83333, tol: 0.01 }
 
   - id: por-que-cruce
     tipo: porque
@@ -188,47 +230,47 @@ tarjetas:
     solucion: "Por encima del cruce dominan Q_{g} y los tiempos, no R_{DS(on)}."
 
   - id: consumo-driver
-    tipo: pregunta
+    tipo: simular
     titulo: "Lo que gasta el driver"
     texto: "Mover Q_{g} = 60 nC a 10 V, cien mil veces por segundo. ¿Cuánto consume el driver?"
     libro: [131]
-    widget:
-      tipo: grafica
-      x: { id: ix, min: 0.01, max: 10, unidad: A, rotulo: "I_{driver}", escala: log }
-      y: { min: 0.000000001, max: 0.00001, unidad: s, rotulo: "t_{conmutación}", escala: log }
-      curvas:
-        - { expr: "Q_g2/ix", color: azul, rotulo: "Q_{g}/I_{driver}" }
-    opciones:
-      - texto: "60 mW"
-        bien: true
-        porque: "Q_{g} · V_{g} · f = 60 nC · 10 V · 100 kHz: poco frente a lo que ahorra en el transistor."
-      - texto: "600 mW"
-        porque: "Sobra un factor diez: revise los prefijos de nano y kilo."
-      - texto: "Nada: la puerta no consume en continua"
-        porque: "En continua no, pero cada ciclo carga y descarga la puerta: Q_{g} · V_{g} · f."
+    simular:
+      objetivo: P_dr
+      unidad: W
+      tol: 0.03
+      rotulo: "Consumo del driver"
+      errores:
+        - { expr: "P_d10", texto: "Sobra un factor diez: revise los prefijos de nano y kilo." }
+    exito: "Q_{g} · V_{g} · f = 60 mW: poco frente a lo que ahorra en el transistor, pero se disipa en el driver."
     escalera:
-      - "Energía por ciclo: Q_{g} · V_{g}."
+      - "Energía por ciclo: Q_{g} · V_{g}; por la frecuencia."
     solucion: "60 nC · 10 V · 100 kHz = 60 mW."
     comprobar:
       - { P_dr: 0.06, P_d10: 0.6 }
 
   - id: resistencia-puerta
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: elegir
     titulo: "La resistencia de puerta"
-    texto: "Una cada problema con lo que lo resuelve."
+    texto: "La puerta oscila y puede reencender el transistor. Toque la pieza que, en serie, amortigua esa resonancia."
+    nota: "Valores de ejemplo."
     libro: [132, 133]
-    emparejar:
-      - ["Oscilación en la puerta", "Una R_{g} que amortigüe la resonancia con C_{gs}"]
-      - ["Interferencia radiada", "Subir R_{g}: flancos más suaves"]
-      - ["Encendido parásito por dv/dt", "Driver de baja impedancia de apagado"]
-      - ["Transistor caliente por conmutar lento", "Bajar R_{g}: flancos más rápidos"]
-    exito: "R_{g} es un compromiso: menos pérdidas o menos interferencia."
-    pistas:
-      - { texto: "El encendido parásito lo provoca C_{gd} inyectando corriente en la puerta." }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_s, rd: R_ld, entrada: V_f, rg: R_g, rgs: R_pd, k: k_s, vth: V_th }
+      mide: { id: I_d8, vds: V_ds8, vgs: V_gg }
+      mandos: []
+    elegir:
+      zonas: [rg, rgs, rd, entrada]
+      bien: [rg]
+      porque:
+        rgs: "La de puerta a masa la mantiene apagada sin mando; no está en serie con el camino de puerta."
+        rd: "Es la carga del drenador: no toca el circuito de puerta."
+        entrada: "Es el driver: la resonancia es entre su camino y C_{gs}, y la amortigua lo que pongamos en serie."
+    exito: "R_{G}: amortigua, limita el pico y suaviza los flancos. Subirla baja la interferencia; bajarla, las pérdidas."
     escalera:
-      - "Subir R_{g} suaviza los flancos; bajarla los acelera."
-    solucion: "Oscilación y emisión: subir R_{g}; calor: bajarla; dv/dt: driver de apagado firme."
+      - "Busque la resistencia por la que pasa la corriente que carga la puerta."
+    solucion: "La resistencia de puerta, en serie entre el driver y la puerta."
 
   - id: bootstrap
     tipo: pregunta

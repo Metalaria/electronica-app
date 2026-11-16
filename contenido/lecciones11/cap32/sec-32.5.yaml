@@ -3,6 +3,10 @@
 # del ejemplo (bloque 143): e_n, el térmico de R_s, i_n·R_s y el de R₁‖R₂ (4 nV/√Hz), en cuadratura. En el reto, la
 # fuente es de 400 kΩ (la R_opt del FET, bloque 162) y se cuenta lo que el operacional añade al térmico de la fuente,
 # sin la red de realimentación; los tres operacionales son los del libro (ejemplo, FET y bipolar de bajo ruido).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la fuente con la que manda i_{n} · R_{s} y la de menos ruido
+# total se buscan (objetivos), el térmico de 10 kΩ, el ruido a la salida y el total con un operacional de 3 nV/√Hz se
+# predicen (la decisión de dónde gastar va en su explicación) y se busca la R_{opt} de un FET. Quedan una pregunta de
+# opciones (el fotodiodo), el emparejamiento de lo que no ve el cálculo y la ordenación de la medida.
 leccion: cap32/sec-32.5
 
 libro:
@@ -57,8 +61,9 @@ tarjetas:
   - id: explore-contribuciones
     tipo: explorar
     titulo: "Cuatro contribuciones"
-    texto: "Amplificador no inversor de ganancia 101, operacional de 10 nV/√Hz y 0,5 pA/√Hz. Cambie la resistencia de la fuente y mire qué domina."
+    texto: "Amplificador no inversor de ganancia 101, operacional de 10 nV/√Hz y 0,5 pA/√Hz. Busque la fuente con la que el ruido de corriente, i_{n} · R_{s}, pasa a mandar."
     libro: [143, 148]
+    inicio: { R_s: 1000 }
     fijar: { e_n: 10e-9, i_n: 0.5e-12, e_f: 4e-9 }
     widget:
       tipo: grafica
@@ -77,44 +82,45 @@ tarjetas:
         - { valor: e_i, rotulo: "i_{n} · R_{s}: {{e_i}}" }
       mandos:
         - { valor: R_s, lista: [1000, 10000, 100000], rotulo: "R_{s}" }
-    requiere: { mover: [R_s] }
+    objetivo:
+      condiciones:
+        - { valor: e_i, min: 4.5e-8, rotulo: "i_{n} · R_{s}: {{e_i}}" }
+      logrado: "Con {{R_s}}, i_{n} · R_{s} = {{e_i}} supera al térmico de la fuente, {{e_r}}: crece con R_{s}, el térmico solo con su raíz."
+      pistas:
+        - { texto: "Más resistencia de fuente." }
+    escalera:
+      - "i_{n} · R_{s} crece con R_{s}; el térmico, con √R_{s}."
+    solucion: "100 kΩ: 50 nV/√Hz frente a 40."
+    comprobar:
+      - { con: { R_s: 100000 }, e_i: 50e-9, e_r: 40e-9, tol: 0.01 }
 
   - id: prediga-mayor
-    tipo: predecir
+    tipo: simular
     titulo: "La contribución mayor"
-    texto: "Con una fuente de 10 kΩ, el operacional da 10 nV/√Hz y la realimentación 4. ¿Cuál es la contribución mayor?"
-    libro: [143, 150, 155]
-    fijar: { R_s: 10000, e_n: 10e-9, i_n: 0.5e-12, e_f: 4e-9 }
-    widget:
-      tipo: grafica
-      x: { id: rs, min: 10, max: 100000, unidad: Ω, rotulo: "R_{s}, resistencia de la fuente", escala: log }
-      y: { min: 1e-10, max: 1e-6, unidad: "V/√Hz", rotulo: "densidad referida a la entrada", escala: log }
-      curvas:
-        - { expr: "e_n", color: naranja, rotulo: "e_{n} del operacional", discontinua: true }
-        - { expr: "4e-9*sqrt(rs/1000)", color: azul, rotulo: "térmico de la fuente", oculta: true }
-      lectura: { valor: e_r, rotulo: "Térmico de la fuente" }
-      ocultar: true
-    opciones:
-      - texto: "El ruido térmico de la fuente: 12,6 nV/√Hz"
-        bien: true
-        porque: "La fuente de 10 kΩ supera al operacional. Es lo que la intuición suele equivocar."
-      - texto: "El ruido de tensión del operacional"
-        porque: "Sus 10 nV/√Hz pesan, pero la fuente de 10 kΩ da más."
-      - texto: "El ruido de corriente por la fuente"
-        porque: "0,5 pA/√Hz × 10 kΩ son solo 5 nV/√Hz."
+    texto: "Una resistencia de 1 kΩ da 4 nV/√Hz. Con una fuente de 10 kΩ, ¿cuánto ruido térmico da la fuente?"
+    libro: [137, 143, 155]
+    fijar: { R_s: 10000 }
+    simular:
+      objetivo: e_r
+      unidad: "V/√Hz"
+      tol: 0.02
+      rotulo: "Térmico de la fuente"
+      errores:
+        - { expr: "10*4e-9", texto: "El térmico crece con la raíz de R: √10 veces, no diez." }
+        - { expr: "e_i", texto: "Ese es el ruido de corriente por la fuente, i_{n} · R_{s}." }
+    exito: "12,6 nV/√Hz: más que los 10 del operacional. La contribución mayor es la fuente, lo que la intuición suele equivocar."
     escalera:
       - "1 kΩ son 4 nV/√Hz; 10 kΩ, √10 veces más."
-    solucion: "La fuente: 4 · √10 ≈ 12,6 nV/√Hz, más que los 10 del operacional."
+    solucion: "4 · √10 ≈ 12,6 nV/√Hz."
     comprobar:
       - { e_r: 12.6e-9, e_i: 5e-9, tol: 0.005 }
 
   - id: formula-total
-    tipo: formula
+    tipo: explorar
     titulo: "En cuadratura"
-    texto: "Las cuatro son independientes: se suman en cuadratura."
+    texto: "Las cuatro son independientes: se suman en cuadratura. Con la de 10 kΩ el total es 17,3 nV/√Hz; busque la fuente de menos ruido total."
     libro: [150, 152]
-    ec: 150
-    sustitucion: "√({{e_n}}² + {{e_r}}² + {{e_i}}² + {{e_f}}²) = {{e_t}}"
+    inicio: { R_s: 10000 }
     fijar: { e_n: 10e-9, i_n: 0.5e-12, e_f: 4e-9 }
     widget:
       tipo: grafica
@@ -130,29 +136,35 @@ tarjetas:
       lectura: { valor: e_t, rotulo: "Densidad total" }
       mandos:
         - { valor: R_s, lista: [1000, 10000, 100000], rotulo: "R_{s}" }
+    objetivo:
+      condiciones:
+        - { valor: e_t, max: 1.2e-8, rotulo: "Total: {{e_t}}" }
+      logrado: "√({{e_n}}² + {{e_r}}² + {{e_i}}² + {{e_f}}²) = {{e_t}}: queda el operacional como mayor."
+      pistas:
+        - { texto: "Aún pesa la fuente: bájela." }
+    escalera:
+      - "La fuente de 10 kΩ era la mayor: bájela."
+    solucion: "1 kΩ: 11,5 nV/√Hz."
     comprobar:
       - { con: { R_s: 10000 }, e_t: 17.3e-9, E_i: 2.2e-6, tol: 0.02 }
+      - { con: { R_s: 1000 }, e_t: 11.5e-9, tol: 0.01 }
 
   - id: estime-salida
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "A la salida"
     texto: "17,3 nV/√Hz en 10 kHz con un filtro de un polo, y ganancia 101. ¿Cuánto ruido eficaz hay a la salida?"
     libro: [141, 143, 153]
     fijar: { R_s: 10000, e_n: 10e-9, i_n: 0.5e-12, e_f: 4e-9 }
-    estimar:
-      objetivo: "E_o"
+    simular:
+      objetivo: E_o
       unidad: V
-      min: 0
-      max: 0.0005
-      paso: 0.000001
-      inicio: 0.0004
-      tol: 0.05
+      tol: 0.03
       rotulo: "Ruido a la salida"
+      errores:
+        - { expr: "G_v*e_t*sqrt(B_w)", texto: "Falta el 1,57 de la banda de ruido: π/2, el que se olvida sistemáticamente." }
+        - { expr: "E_i", texto: "Ese es el ruido a la entrada: falta la ganancia." }
     exito: "Unos 219 µV: 2,2 µV eficaces a la entrada, por 101."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00023 }, texto: "Se ha pasado: multiplique la densidad por √(1,57 · 10 kHz) y luego por la ganancia." }
-      - { texto: "Se ha quedado corto: ¿ha olvidado el 1,57 o la ganancia?" }
     escalera:
       - "BW de ruido = 1,57 · 10 kHz = 15 700 Hz."
     solucion: "17,3 nV/√Hz · √15 700 ≈ 2,2 µV; × 101 ≈ 219 µV."
@@ -160,39 +172,31 @@ tarjetas:
       - { E_o: 219e-6, E_i: 2.2e-6, tol: 0.02 }
 
   - id: decida-mejora
-    tipo: pregunta
+    tipo: simular
     titulo: "Dónde gastar"
-    texto: "Para bajar el ruido de este amplificador, ¿qué hace: bajar la fuente a 1 kΩ o comprar un operacional de 3 nV/√Hz?"
+    texto: "Con la fuente de 10 kΩ, se compra un operacional de 3 nV/√Hz con el mismo i_{n}. ¿Qué densidad total queda?"
     libro: [155, 156]
     fijar: { R_s: 10000, e_n: 10e-9, i_n: 0.5e-12, e_f: 4e-9 }
-    widget:
-      tipo: grafica
-      x: { id: rs, min: 10, max: 1000000, unidad: Ω, rotulo: "R_{s}, resistencia de la fuente", escala: log }
-      y: { min: 1e-10, max: 1e-6, unidad: "V/√Hz", rotulo: "densidad referida a la entrada", escala: log }
-      curvas:
-        - { expr: "e_n", color: naranja, rotulo: "e_{n} del operacional", discontinua: true }
-        - { expr: "4e-9*sqrt(rs/1000)", color: verde, rotulo: "térmico de R_{s}", discontinua: true }
-        - { expr: "i_n*rs", color: tinta, rotulo: "i_{n} · R_{s}", discontinua: true }
-        - { expr: "sqrt(e_n^2 + 16e-18*rs/1000 + (i_n*rs)^2 + e_f^2)", color: azul, rotulo: "total" }
-    opciones:
-      - texto: "Bajar la fuente: 11,5 nV/√Hz, un 33 % mejor, sin cambiar de componente"
-        bien: true
-        porque: "El operacional de 3 nV solo deja 14,5 nV/√Hz: un 16 %, y bastante más caro."
-      - texto: "Comprar el operacional de 3 nV/√Hz"
-        porque: "Mejora un 16 %: ataca una contribución que no es la mayor."
-      - texto: "Da igual: las dos mejoran lo mismo"
-        porque: "El cálculo dice otra cosa: 33 % frente a 16 %."
+    simular:
+      objetivo: e_3n
+      unidad: "V/√Hz"
+      tol: 0.02
+      rotulo: "Densidad total"
+      errores:
+        - { expr: "e_t", texto: "Ese es el total con el operacional de 10 nV/√Hz: cambie su contribución." }
+    exito: "14,5 nV/√Hz: un 16 %, y bastante más caro. Bajar la fuente a 1 kΩ daba 11,5, un 33 %, sin cambiar de componente."
     escalera:
-      - "Ataque la contribución mayor."
-    solucion: "Bajar la fuente: 11,5 frente a 14,5 nV/√Hz."
+      - "Cambie 10² por 3² en la suma en cuadratura."
+    solucion: "√(3² + 12,6² + 5² + 4²) ≈ 14,5 nV/√Hz."
     comprobar:
       - { e_1k: 11.5e-9, e_3n: 14.5e-9, tol: 0.005 }
 
   - id: explore-optima
     tipo: explorar
     titulo: "La resistencia de fuente óptima"
-    texto: "Donde i_{n} · R_{s} cruza a e_{n} está la R_{s} óptima: e_{n}/i_{n}. Cambie de operacional y mire cómo se mueve."
+    texto: "Donde i_{n} · R_{s} cruza a e_{n} está la R_{s} óptima: e_{n}/i_{n}. Combine los operacionales hasta la R_{opt} de una fuente de alta impedancia, 400 kΩ o más."
     libro: [159, 160, 162, 163]
+    inicio: { e_n: 10e-9, i_n: 0.5e-12 }
     fijar: { e_f: 0 }
     widget:
       tipo: grafica
@@ -209,7 +213,15 @@ tarjetas:
       mandos:
         - { valor: e_n, lista: [1e-9, 4e-9, 10e-9], rotulo: "e_{n}" }
         - { valor: i_n, lista: [0.01e-12, 0.5e-12, 2e-12], rotulo: "i_{n}" }
-    requiere: { mover: [i_n] }
+    objetivo:
+      condiciones:
+        - { valor: R_o, min: 400000, rotulo: "R_{opt} = {{R_o}}" }
+      logrado: "e_{n}/i_{n} = {{R_o}}: un i_{n} minúsculo da una R_{opt} enorme. El de un fotodiodo, un piezoeléctrico, un electrodo."
+      pistas:
+        - { texto: "R_{opt} sube con un i_{n} más pequeño." }
+    escalera:
+      - "R_{opt} = e_{n}/i_{n}."
+    solucion: "4 nV/√Hz y 0,01 pA/√Hz: 400 kΩ."
     comprobar:
       - { con: { e_n: 10e-9, i_n: 0.5e-12 }, R_o: 20000 }
       - { con: { e_n: 4e-9, i_n: 0.01e-12 }, R_o: 400000 }

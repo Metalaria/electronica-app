@@ -4,6 +4,11 @@
 # 30 nC y 1 A del bloque 155. El compromiso R_DS(on) × Q_g sigue la figura 25.10 del libro (fig-26.10): R_DS(on) =
 # 60 mΩ/área y Q_g = 6 nC·área (área relativa), cuyo producto es el de la figura (360 mΩ·nC). La meseta de Miller se
 # toca sobre esa misma figura (V_GS frente a Q_g con 1 A: 8 y 18 nC).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el umbral se busca con la puerta (objetivo; la formación del
+# canal, antes ordenada, va en su explicación), el tiempo de 30 ns y el driver de 10 ns se predicen (simular), la
+# conmutación de 50 ns se consigue con la fórmula a la vista, el área se agranda hasta 15 mΩ (la carga sube igual) y
+# la meseta se toca en la figura 25.10. Quedan una pregunta de opciones (por qué no hay MOSFET perfecto; la estructura
+# vertical y la superjunction van en su explicación) y el emparejamiento de las capacidades.
 leccion: cap26/sec-26.5
 
 libro:
@@ -46,14 +51,16 @@ modelo:
     I_n: { expr: "Q_g/t_o", sim: "I_{driver}", nombre: "corriente de driver necesaria", unidad: A }
     R_on: { expr: "0.06/a_s", sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω }
     Q_a: { expr: "6e-9*a_s", sim: "Q_{g}", nombre: "carga de puerta", unidad: C }
+    I_x3: { expr: "Q_g*t_o", sim: "Q · t", nombre: "multiplicando", unidad: A }
     F_m: { expr: "R_on*1000*Q_a*1000000000", sim: "R × Q", nombre: "figura de mérito, en mΩ·nC", unidad: "", cifras: 3 }
 
 tarjetas:
   - id: explore-canal
     tipo: explorar
     titulo: "El canal aparece en el umbral"
-    texto: "Suba la tensión de puerta. Por debajo de V_{th} no hay canal; por encima, el drenador conduce."
+    texto: "Suba la tensión de puerta y busque la primera a la que el drenador conduce: el umbral."
     libro: [142, 145, 146]
+    inicio: { V_g: 0 }
     widget:
       tipo: circuito
       esquema: mosfet
@@ -65,24 +72,19 @@ tarjetas:
       mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
       mandos:
         - { valor: V_g, min: 0, max: 8, paso: 0.5, rotulo: "Tensión de puerta" }
-    requiere: { mover: [V_g] }
-
-  - id: ordene-canal
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Cómo se forma el canal"
-    texto: "La puerta sube por encima de cero. Ordene lo que pasa bajo el óxido."
-    libro: [145]
-    ordenar:
-      - "El campo repele los huecos del sustrato: zona de agotamiento."
-      - "Al subir más, atrae electrones minoritarios a la superficie."
-      - "Igualan a los huecos del sustrato: la superficie se invierte y hay canal N."
-    exito: "La tensión a la que se invierte es el umbral, que depende del dopado, del óxido y de las cargas atrapadas."
-    pistas:
-      - { texto: "Primero se van los huecos; después llegan los electrones." }
+    objetivo:
+      condiciones:
+        - { valor: I_D, min: 0.0001, rotulo: "I_{D}: {{I_D}}" }
+        - { valor: V_g, max: 2.5, rotulo: "Puerta: {{V_g}}" }
+      logrado: "El campo repele los huecos, atrae electrones y la superficie se invierte: a {{V_g}} ya hay canal."
+      pistas:
+        - { cuando: { valor: I_D, max: 0 }, texto: "Aún no hay canal: suba la puerta." }
+        - { texto: "Ya conduce: busque el primer escalón en que aparece corriente." }
     escalera:
-      - "El canal existe cuando hay tantos electrones como huecos tenía el sustrato."
-    solucion: "Agotamiento, atracción de electrones e inversión."
+      - "El umbral de este transistor es de 2 V."
+    solucion: "2,5 V: el primer escalón por encima del umbral."
+    comprobar:
+      - { con: { V_g: 2.5 }, I_D: 0.00025, tol: 0.01 }
 
   - id: empareje-capacidades
     tipo: pregunta
@@ -102,27 +104,19 @@ tarjetas:
     solucion: "C_{gs}–puerta y fuente, C_{gd}–Miller, C_{ds}–energía al encender."
 
   - id: prediga-conmutacion
-    tipo: predecir
+    tipo: simular
     titulo: "Cuánto tarda en conmutar"
     texto: "Un MOSFET de 30 nC de carga de puerta, con un driver de 1 A. ¿Cuánto tarda la conmutación?"
     libro: [153, 155]
     fijar: { Q_g: 30e-9, I_dr: 1 }
-    widget:
-      tipo: grafica
-      x: { id: id, min: 0.1, max: 4, unidad: A, rotulo: "I_{driver}" }
-      y: { min: 0, max: 0.0000003, unidad: s, rotulo: "t" }
-      curvas:
-        - { expr: "Q_g/id", color: azul, rotulo: "t" }
-      lectura: { valor: t_c, rotulo: "Tiempo de conmutación" }
-      ocultar: true
-    opciones:
-      - texto: "30 ns"
-        bien: true
-        porque: "La carga es corriente por tiempo: 30 nC / 1 A = 30 ns."
-      - texto: "30 µs"
-        porque: "Sobra un factor mil: nano entre unidad da nano."
-      - texto: "Nada: la puerta no consume corriente"
-        porque: "En continua no consume, pero en cada conmutación hay que mover toda su carga."
+    simular:
+      objetivo: t_c
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo de conmutación"
+      errores:
+        - { expr: "t_mil", texto: "Sobra un factor mil: nano entre unidad da nano." }
+    exito: "La carga es corriente por tiempo: 30 nC / 1 A = 30 ns."
     escalera:
       - "Q = I · t."
     solucion: "t = 30 nC / 1 A = 30 ns."
@@ -130,12 +124,11 @@ tarjetas:
       - { t_c: 30e-9, t_mil: 30e-6 }
 
   - id: formula-qg
-    tipo: formula
+    tipo: explorar
     titulo: "Carga entre corriente"
-    texto: "El driver mueve la carga de puerta. Cambie la carga y la corriente del driver."
+    texto: "El driver mueve la carga de puerta: t ≈ Q_{g}/I_{driver}. Elija carga y driver para conmutar en 50 ns."
     libro: [154]
-    ec: 154
-    sustitucion: "{{Q_g}} / {{I_dr}} = {{t_c}}"
+    inicio: { Q_g: 30e-9, I_dr: 1 }
     widget:
       tipo: grafica
       x: { id: id, min: 0.1, max: 4, unidad: A, rotulo: "I_{driver}" }
@@ -148,27 +141,35 @@ tarjetas:
       mandos:
         - { valor: Q_g, lista: [10e-9, 30e-9, 100e-9], rotulo: "Carga de puerta" }
         - { valor: I_dr, min: 0.1, max: 4, paso: 0.1, rotulo: "Driver" }
+    objetivo:
+      condiciones:
+        - { valor: t_c, objetivo: 50e-9, tol: 0.02, rotulo: "t: {{t_c}}" }
+      logrado: "{{Q_g}} / {{I_dr}} = {{t_c}}: más carga pide más driver para el mismo tiempo."
+      pistas:
+        - { cuando: { valor: t_c, mayor: 51e-9 }, texto: "Demasiado lento: más corriente de driver o menos carga." }
+        - { texto: "Demasiado rápido: menos corriente de driver." }
+    escalera:
+      - "t ≈ Q_{g}/I_{driver}."
+    solucion: "Por ejemplo, 100 nC con 2 A, o 30 nC con 0,6 A."
+    comprobar:
+      - { con: { Q_g: 100e-9, I_dr: 2 }, t_c: 50e-9 }
+      - { con: { Q_g: 30e-9, I_dr: 0.6 }, t_c: 50e-9 }
 
   - id: estime-driver
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un driver más fuerte"
     texto: "El mismo MOSFET de 30 nC debe conmutar en 10 ns. ¿Qué corriente de driver hace falta?"
     libro: [154, 155]
     fijar: { Q_g: 30e-9, t_o: 10e-9 }
-    estimar:
-      objetivo: "I_n"
+    simular:
+      objetivo: I_n
       unidad: A
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 8
       tol: 0.05
       rotulo: "Corriente del driver"
+      errores:
+        - { razon: { min: 0.3, max: 0.37 }, texto: "Ese es el driver de 30 ns. Para ir tres veces más rápido hace falta tres veces más corriente." }
     exito: "3 A: tres veces más rápido exige tres veces más corriente."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Se ha pasado: I = Q/t, 30 nC entre 10 ns." }
-      - { texto: "Se ha quedado corto: con 1 A tardaba 30 ns; para 10 ns hace falta más." }
     escalera:
       - "Despeje I = Q_{g}/t."
     solucion: "I = 30 nC / 10 ns = 3 A."
@@ -178,7 +179,7 @@ tarjetas:
   - id: explore-compromiso
     tipo: sorpresa
     titulo: "Más área: menos R, más carga"
-    texto: "Agrande el silicio. Mire R_{DS(on)}, la carga de puerta y su producto."
+    texto: "Agrande el silicio hasta que R_{DS(on)} baje a 15 mΩ. Vigile la carga de puerta."
     nota: "Valores de la figura del libro, en área relativa."
     libro: [158, 159, 160]
     inicio: { a_s: 1 }
@@ -197,13 +198,23 @@ tarjetas:
         - { valor: Q_a, rotulo: "Q_{g} = {{Q_a}}" }
       mandos:
         - { valor: a_s, min: 0.5, max: 8, paso: 0.5, rotulo: "Área de silicio" }
-    requiere: { mover: [a_s] }
+    objetivo:
+      condiciones:
+        - { valor: R_on, max: 0.015, rotulo: "R_{DS(on)}: {{R_on}}" }
+      logrado: "Con {{a_s}} veces el área, {{R_on}}, pero la carga sube a {{Q_a}}: el producto sigue en {{F_m}}."
+      pistas:
+        - { texto: "Aún resiste demasiado: más área." }
+    escalera:
+      - "R_{DS(on)} baja en proporción al área."
+    solucion: "Cuatro veces el área: 15 mΩ y 24 nC."
+    comprobar:
+      - { con: { a_s: 4 }, R_on: 0.015, Q_a: 24e-9, F_m: 360 }
 
   - id: que-mejoran
     tipo: porque
     titulo: "¿Por qué no hay MOSFET perfecto?"
     texto: "Al agrandar el silicio, el producto R_{DS(on)} × Q_{g} no se mueve. ¿Por qué?"
-    libro: [159, 160]
+    libro: [159, 160, 163, 164]
     fijar: { a_s: 2 }
     widget:
       tipo: grafica
@@ -215,7 +226,7 @@ tarjetas:
     opciones:
       - texto: "Más área baja la resistencia y sube en la misma proporción la capacidad"
         bien: true
-        porque: "Por eso conduce mejor el que conmuta peor. Bajar el producto exige otra tecnología: trench, superjunction, GaN."
+        porque: "Por eso conduce mejor el que conmuta peor. El producto lo bajan las estructuras verticales, trench, superjunction (cinco veces a 600 V) y GaN."
       - texto: "Porque la carga de puerta no depende del área"
         porque: "Sí depende: más área es más capacidad, y más Q_{g}."
       - texto: "Porque la R_{DS(on)} no depende del área"
@@ -245,28 +256,6 @@ tarjetas:
     escalera:
       - "Busque el tramo plano de la tensión de puerta."
     solucion: "El tramo central, plano: la meseta de Miller."
-
-  - id: vertical
-    tipo: pregunta
-    titulo: "Miliohmios"
-    texto: "Un MOSFET de potencia moderno tiene miliohmios donde uno plano tendría ohmios. ¿Por qué?"
-    libro: [163, 164]
-    widget:
-      tipo: figura
-      figura: fig-26.10
-      zonas:
-        - { id: curva, rotulo: "La curva de R_{DS(on)}", rect: [39, 20, 136, 141] }
-    opciones:
-      - texto: "La corriente va en vertical: mucha más área de canal en el mismo espacio"
-        bien: true
-        porque: "Fuente arriba, drenador en la cara inferior. Superjunction, además, ha dividido por cinco la resistencia por área a 600 V."
-      - texto: "Porque su óxido es más grueso"
-        porque: "El óxido fija el umbral y la robustez de la puerta, no la resistencia del canal."
-      - texto: "Porque son de canal P"
-        porque: "Los huecos son unas tres veces menos móviles: el canal P conduce peor."
-    escalera:
-      - "Más área de canal, menos resistencia. ¿Cómo cabe más en el mismo chip?"
-    solucion: "La estructura vertical: mucha más área de canal en el mismo espacio."
 
   - id: resumen
     tipo: resumen

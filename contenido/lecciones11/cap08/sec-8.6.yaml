@@ -5,6 +5,11 @@
 # respuesta en frecuencia con 1 V de entrada (la amplitud de salida es la ganancia) y un seguidor de 0,5 V/µs con 10 V
 # de pico. El triángulo en régimen tiene amplitud SR/(4f) y su pico cae donde la entrada, al bajar, vale eso; el eje
 # empieza a los 0,2 ms, cuando el arranque ya se ha asentado. Frecuencias de ejemplo: 4 y 16 kHz.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ganancia que aún llega a 100 kHz se busca en la respuesta
+# simulada (objetivo), la banda con ganancia 100, la f_máx del slew rate y el offset amplificado se predicen
+# (simular), la mayor amplitud sin deformar a 16 kHz se busca en la curva del slew rate, la senoide se lleva a
+# triángulo y el hilo del offset se toca en el seguidor (el banco). Quedan dos preguntas de opciones (por qué un
+# triángulo, el de menos ruido) y la tabla de decisión emparejada; el rail-to-rail pasa a su explicación.
 leccion: cap08/sec-8.6
 
 libro:
@@ -48,15 +53,17 @@ modelo:
     A_t: { expr: "min(V_pk, SR/(4*f_s))", sim: "V", nombre: "amplitud del triángulo", unidad: V }
     A_s: { expr: "(1 - s_t)*V_pk + s_t*A_t", sim: "V_{salida}", nombre: "amplitud de la salida", unidad: V }
     e_os: { expr: "V_os*G_c", sim: "error", nombre: "error de salida por el offset", unidad: V }
+    B_2: { expr: "GBW/G_c^2", sim: "GBW/G²", nombre: "dividiendo dos veces", unidad: Hz }
 
 tarjetas:
   - id: explore-gbw
     tipo: explorar
     titulo: "La ganancia que queda a cada frecuencia"
-    texto: "La ganancia en lazo abierto cae con la frecuencia. Cambie la ganancia del montaje y mire hasta dónde llega."
+    texto: "La ganancia en lazo abierto cae con la frecuencia. Elija la ganancia del montaje con la que aún llega a 100 kHz."
     libro: [117, "cap08#11"]
     nota: "Entrada de 1 V: la amplitud de salida es la ganancia."
     fijar: { GBW: 1000000, A_0: 100000 }
+    inicio: { G_c: 1000 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
@@ -70,59 +77,54 @@ tarjetas:
           - { expr: "A_p1*A_0/sqrt((1 + A_0/G_c)^2 + (nu/f_p)^2)", color: naranja, rotulo: "su montaje", mide: salida_amp }
       mandos:
         - { valor: G_c, lista: [10, 100, 1000], rotulo: "Ganancia del montaje" }
+    objetivo:
+      condiciones:
+        - { valor: B_c, min: 100000, rotulo: "Banda: {{B_c}}" }
+      logrado: "Con ganancia {{G_c}}, {{B_c}}: el montaje sigue a la curva de lazo abierto hasta chocar con ella."
+      pistas:
+        - { texto: "Con tanta ganancia, el montaje choca antes con la curva de lazo abierto: baje la ganancia." }
+    escalera:
+      - "El ancho de banda del montaje es GBW dividido por su ganancia."
+    solucion: "Ganancia 10: 1 MHz / 10 = 100 kHz."
+    comprobar:
+      - { con: { G_c: 10 }, B_c: 100000 }
 
   - id: estime-banda
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Ganancia 100"
     texto: "Un operacional de GBW = 1 MHz se monta con ganancia 100. ¿Qué ancho de banda útil le queda?"
     libro: [117, "cap08#246"]
     fijar: { GBW: 1000000, G_c: 100 }
-    estimar:
-      objetivo: "B_c"
+    simular:
+      objetivo: B_c
       unidad: Hz
-      min: 0
-      max: 50000
-      paso: 500
-      inicio: 40000
       tol: 0.05
       rotulo: "Ancho de banda"
+      errores:
+        - { expr: "B_2", texto: "Ha dividido dos veces: es GBW/ganancia, no GBW/ganancia²." }
     exito: "1 MHz / 100 = 10 kHz: la ganancia se paga en banda."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 10500 }, texto: "Se ha pasado: divida el GBW entre la ganancia." }
-      - { texto: "Se ha quedado corto: es GBW/ganancia, no GBW/ganancia²." }
     escalera:
       - "B = GBW/G."
     solucion: "10⁶ / 100 = 10 kHz."
     comprobar:
-      - { B_c: 10000 }
+      - { B_c: 10000, B_2: 100 }
 
   - id: prediga-slew
-    tipo: predecir
+    tipo: simular
     titulo: "Señal grande y rápida"
     texto: "Un operacional de 0,5 V/µs debe dar una senoide de 10 V de pico. ¿Hasta qué frecuencia la reproduce sin deformar?"
     libro: [119, 120]
     fijar: { SR: 500000, V_pk: 10, f_s: 4000 }
-    widget:
-      tipo: circuito
-      esquema: ao-no-inversor
-      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
-      lectura: { valor: f_mx, rotulo: "Frecuencia máxima" }
-      ocultar: true
-      grafica:
-        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
-        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
-          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
-    opciones:
-      - texto: "Unos 8 kHz"
-        bien: true
-        porque: "SR/(2π · V_{pico}) = 0,5 · 10⁶ / (2π · 10) ≈ 8 kHz."
-      - texto: "50 kHz"
-        porque: "Ha olvidado el 2π: la pendiente máxima de una senoide es 2π · f · V_{pico}."
-      - texto: "Unos 0,8 kHz"
-        porque: "Sobra un factor diez: 0,5 V/µs son 5 · 10⁵ V/s."
+    simular:
+      objetivo: f_mx
+      unidad: Hz
+      tol: 0.05
+      rotulo: "Frecuencia máxima"
+      errores:
+        - { expr: "f_n2", texto: "Ha olvidado el 2π: la pendiente máxima de una senoide es 2π · f · V_{pico}." }
+        - { expr: "f_x10", texto: "Sobra un factor diez: 0,5 V/µs son 5 · 10⁵ V/s." }
+    exito: "SR/(2π · V_{pico}) ≈ 8 kHz: la pendiente de la senoide en el cruce por cero no puede superar el SR."
     escalera:
       - "La pendiente máxima de la senoide, 2π · f · V_{pico}, no puede superar el SR."
     solucion: "f_{máx} = 0,5 · 10⁶ / (2π · 10) ≈ 7960 Hz."
@@ -130,13 +132,12 @@ tarjetas:
       - { f_mx: 7958, f_n2: 50000, f_x10: 796, tol: 0.001 }
 
   - id: regla-slew
-    tipo: formula
+    tipo: explorar
     titulo: "El límite del slew rate"
-    texto: "Cuanto mayor la amplitud, menor la frecuencia que la salida puede seguir. Cambie la amplitud."
+    texto: "f_{máx} = SR/(2π · V_{pico}): cuanta más amplitud, menos frecuencia. Busque la mayor amplitud que sale sin deformar a 16 kHz."
     libro: [119]
-    ec: 119
-    sustitucion: "{{SR}} / (2π · {{V_pk}}) = {{f_mx}}"
     fijar: { SR: 500000 }
+    inicio: { V_pk: 10 }
     widget:
       tipo: grafica
       x: { id: vx, min: 0.5, max: 15, unidad: V, rotulo: "V_{pico}" }
@@ -148,11 +149,25 @@ tarjetas:
       lectura: { valor: f_mx, rotulo: "Frecuencia máxima" }
       mandos:
         - { valor: V_pk, min: 0.5, max: 15, paso: 0.5, rotulo: "Amplitud" }
+    objetivo:
+      condiciones:
+        - { valor: f_mx, min: 16000, rotulo: "f_{máx}: {{f_mx}}" }
+        - { valor: V_pk, min: 4.5, rotulo: "Amplitud: {{V_pk}}" }
+      logrado: "Con {{V_pk}} de pico llega a {{f_mx}}. Con 10 V, solo a 8 kHz."
+      pistas:
+        - { cuando: { valor: f_mx, menor: 16000 }, texto: "Con esa amplitud no llega a 16 kHz: bájela." }
+        - { texto: "Llega de sobra: suba la amplitud todo lo que pueda." }
+    escalera:
+      - "Despeje: V_{pico} = SR/(2π · f)."
+    solucion: "4,5 V: unos 17,7 kHz; con 5 V ya no llega."
+    comprobar:
+      - { con: { V_pk: 4.5 }, f_mx: 17684, tol: 0.01 }
+      - { con: { V_pk: 5 }, f_mx: 15915, tol: 0.01 }
 
   - id: sorpresa-triangulo
     tipo: sorpresa
     titulo: "La senoide que se vuelve triángulo"
-    texto: "10 V de pico con 0,5 V/µs. Suba la frecuencia por encima de la máxima y mire la salida."
+    texto: "10 V de pico con 0,5 V/µs. Suba la frecuencia por encima de la máxima hasta que la salida se deforme."
     libro: [120]
     fijar: { SR: 500000, V_pk: 10 }
     inicio: { f_s: 4000 }
@@ -171,7 +186,17 @@ tarjetas:
           - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: f_s, lista: [4000, 16000], rotulo: "Frecuencia" }
-    requiere: { mover: [f_s] }
+    objetivo:
+      condiciones:
+        - { valor: A_s, max: 9, rotulo: "Salida: {{A_s}}" }
+      logrado: "A {{f_s}}, un triángulo de solo {{A_s}} de pico: la senoide pedida es demasiado empinada."
+      pistas:
+        - { texto: "A 4 kHz la sigue entera: suba la frecuencia." }
+    escalera:
+      - "Por encima de 8 kHz, la pendiente pedida supera el SR."
+    solucion: "16 kHz: un triángulo de unos 7,8 V."
+    comprobar:
+      - { con: { f_s: 16000 }, A_s: 7.8125, tol: 0.01 }
 
   - id: por-que-triangulo
     tipo: porque
@@ -202,25 +227,20 @@ tarjetas:
     solucion: "La salida cambia como mucho a SR V/s: rampas, es decir, un triángulo."
 
   - id: estime-offset
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El offset amplificado"
     texto: "Un operacional de 3 mV de offset en un montaje de ganancia 100. ¿Qué error aparece en la salida?"
     libro: [113]
     fijar: { V_os: 0.003, G_c: 100 }
-    estimar:
-      objetivo: "e_os"
+    simular:
+      objetivo: e_os
       unidad: V
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.8
       tol: 0.05
       rotulo: "Error en la salida"
+      errores:
+        - { expr: "V_os", texto: "Esos 3 mV son el offset en la entrada: en la salida aparece multiplicado por la ganancia." }
     exito: "300 mV: el offset se amplifica por la ganancia de ruido. Importa en continua y con ganancia alta."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.315 }, texto: "Se ha pasado: es offset por ganancia." }
-      - { texto: "Se ha quedado corto: el offset se multiplica por la ganancia completa." }
     escalera:
       - "Error de salida = V_{os} · G."
     solucion: "3 mV · 100 = 300 mV."
@@ -232,14 +252,14 @@ tarjetas:
     fase: "Empareje"
     titulo: "El parámetro que manda"
     texto: "Una cada necesidad con el parámetro que hay que mirar."
-    libro: [124, 131]
+    libro: [124, 131, 134]
     emparejar:
       - ["Exactitud en continua", "V_{os} y su deriva"]
       - ["Fuente de alta impedancia", "I_{B}: entrada FET o CMOS"]
       - ["Señal rápida y pequeña", "GBW"]
       - ["Señal rápida y grande", "Slew rate"]
       - ["Consumo", "I_{Q}: micropotencia"]
-    exito: "Identifique el parámetro crítico y acepte lo mediocre en los demás."
+    exito: "El crítico primero; lo demás, aceptable. Y la letra pequeña: rail-to-rail de salida es llegar a milivoltios con carga ligera; con 10 mA, cientos."
     pistas:
       - { texto: "Grande y rápida es un límite de velocidad de la salida; pequeña y rápida, de ganancia." }
     escalera:
@@ -268,44 +288,28 @@ tarjetas:
       - "¿Qué hace la corriente de polarización al atravesar un megaohmio?"
     solucion: "No: con fuentes de alta impedancia conviene la entrada FET o CMOS."
 
-  - id: rail-to-rail
-    tipo: pregunta
-    titulo: "La letra pequeña"
-    texto: "Un operacional «rail-to-rail de salida» entrega 10 mA a una carga. ¿Llega su salida al raíl?"
-    libro: [134]
+  - id: banco-op
+    tipo: elegir
+    fase: "En el banco"
+    titulo: "Tres medidas en el banco"
+    texto: "La primera, el offset: el operacional como seguidor y la entrada a masa. Toque el hilo donde lo leería."
+    libro: [139, 140, 141]
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: cero }
       mide: { vo: cero }
-    opciones:
-      - texto: "No: con 10 mA puede quedarse a cientos de milivoltios"
-        bien: true
-        porque: "Rail-to-rail significa llegar a unos milivoltios, y con carga ligera."
-      - texto: "Sí: eso es lo que significa rail-to-rail"
-        porque: "Solo con carga ligera llega a unos milivoltios del raíl."
-      - texto: "Sí, y además también lo es de entrada"
-        porque: "Muchos lo son solo de salida, aunque el fabricante lo destaque como si fueran ambos."
+      mandos: []
+    elegir:
+      zonas: { "red:out": "Hilo de la derecha", "red:in": "Hilo de la entrada +", entrada: "La fuente de la entrada" }
+      bien: ["red:out"]
+      porque:
+        "red:in": "Ahí solo está la masa de la entrada: el offset aparece, multiplicado por 1, en la salida."
+        entrada: "La entrada está a masa: es lo que se aplica, no lo que se mide."
+    exito: "La salida es V_{os}. Luego, el slew rate con un escalón grande y el margen saturándolo con una carga conocida."
     escalera:
-      - "¿Con qué carga se especifica el margen de salida?"
-    solucion: "No: con 10 mA el margen puede ser de cientos de milivoltios."
-
-  - id: banco-op
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Tres medidas en el banco"
-    texto: "Una cada parámetro con cómo se mide."
-    libro: [139, 140, 141]
-    emparejar:
-      - ["Offset", "Seguidor con la entrada a masa: la salida es V_{os}"]
-      - ["Slew rate", "Un escalón grande: la pendiente máxima de la salida"]
-      - ["Margen de salida", "Saturarlo con una carga conocida"]
-    exito: "Compararlos con la hoja de datos dice además si la unidad es auténtica."
-    pistas:
-      - { texto: "El slew rate es una pendiente: hace falta el osciloscopio." }
-    escalera:
-      - "El offset se lee directamente con ganancia 1."
-    solucion: "Offset–seguidor, SR–escalón, margen–saturación con carga."
+      - "Con ganancia 1, lo que hay en la entrada aparece en la salida."
+    solucion: "El hilo de salida del seguidor."
 
   - id: resumen
     tipo: resumen

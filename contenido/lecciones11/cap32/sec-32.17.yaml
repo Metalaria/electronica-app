@@ -1,5 +1,9 @@
 # Lección 1.2 de la sección 32.17 «La Temperatura de Ruido y el Suelo de Ruido» (cap32). Formato: GUIA.md.
 # T_e = T₀·(F − 1) con T₀ = 290 K (bloque 545); P = kTB con k = 1,380649·10⁻²³ J/K (bloques 541 y 558).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la NF se baja de 100 K y se fija en 289 K (objetivos), la
+# diferencia de 0,5 a 1 dB y el suelo de kTB se predicen, la antena se apunta al cielo (temperaturas de ejemplo: 5 K y
+# 300 K) y el LNA se lleva a la antena delante del cable de 3 dB (LNA de ejemplo: 1 dB y 20 dB de ganancia). Quedan dos
+# preguntas de opciones (enfriar, las dos cargas).
 leccion: cap32/sec-32.17
 
 libro:
@@ -22,19 +26,30 @@ modelo:
     N_f: { sim: "NF", nombre: "figura de ruido", unidad: dB, valor: 3 }
     T_s: { sim: "T", nombre: "temperatura", unidad: K, valor: 290 }
     B_t: { sim: "B", nombre: "ancho de banda", unidad: Hz, valor: 1 }
+    T_a: { sim: "T_{antena}", nombre: "temperatura de la antena, de ejemplo", unidad: K, valor: 300 }
+    T_r: { sim: "T_{receptor}", nombre: "temperatura del receptor, de ejemplo", unidad: K, valor: 75 }
+    s_a: { tipo: interruptor, nombre: "LNA en la antena", valor: 0 }
+    N_a: { sim: "NF_{LNA}", nombre: "figura de ruido del LNA, de ejemplo", unidad: dB, valor: 1 }
+    G_a: { sim: "G_{LNA}", nombre: "ganancia del LNA, de ejemplo", unidad: dB, valor: 20 }
+    L_c: { sim: "L", nombre: "pérdida del cable", unidad: dB, valor: 3 }
   calculos:
     F_t: { expr: "10^(N_f/10)", sim: "F", nombre: "factor de ruido", unidad: "" }
     T_e: { expr: "290*(F_t - 1)", sim: "T_{e}", nombre: "temperatura equivalente", unidad: K }
     d_t: { expr: "290*(10^0.1 - 10^0.05)", sim: "ΔT", nombre: "de 0,5 a 1 dB", unidad: K }
     k_t: { expr: "1.380649e-23*T_s*B_t", sim: "kTB", nombre: "potencia de ruido en vatios", unidad: W }
     P_k: { expr: "10*log10(1.380649e-23*T_s*B_t/0.001)", sim: "P", nombre: "potencia de ruido", unidad: dBm, cifras: 3 }
+    P_w: { expr: "10*log10(1.380649e-23*T_s*B_t)", sim: "P", nombre: "potencia de ruido en dBW", unidad: dB }
+    T_y: { expr: "T_a + T_r", sim: "T_{sistema}", nombre: "temperatura del sistema", unidad: K }
+    F_c: { expr: "s_a*(10^(N_a/10) + (10^(L_c/10) - 1)/10^(G_a/10)) + (1 - s_a)*10^(L_c/10)*10^(N_a/10)", sim: "F", nombre: "factor de ruido de cable y LNA", unidad: "" }
+    N_c: { expr: "10*log10(F_c)", sim: "NF", nombre: "figura de ruido de cable y LNA", unidad: dB, cifras: 3 }
 
 tarjetas:
   - id: explore-temperatura
     tipo: explorar
     titulo: "El ruido como temperatura"
-    texto: "Cualquier ruido se describe por la temperatura de una resistencia que daría el mismo. Cambie la figura de ruido y mire su temperatura."
+    texto: "Cualquier ruido se describe por la temperatura de una resistencia que daría el mismo. Busque una figura de ruido que quede por debajo de cien kelvin."
     libro: [540, 545, 546]
+    inicio: { N_f: 3 }
     widget:
       tipo: grafica
       x: { id: nf, min: 0, max: 10, unidad: dB, rotulo: "figura de ruido" }
@@ -46,15 +61,24 @@ tarjetas:
       lectura: { valor: T_e, rotulo: "Temperatura equivalente" }
       mandos:
         - { valor: N_f, lista: [0, 1, 3, 6, 10], rotulo: "NF" }
-    requiere: { mover: [N_f] }
+    objetivo:
+      condiciones:
+        - { valor: T_e, max: 100, rotulo: "T_{e} = {{T_e}}" }
+      logrado: "NF de {{N_f}}: {{T_e}}. Por debajo de unos pocos dB, la temperatura sigue dando números manejables."
+      pistas:
+        - { texto: "Aún está caliente: menos figura de ruido." }
+    escalera:
+      - "1 dB son 75 K."
+    solucion: "NF = 1 dB: 75 K."
+    comprobar:
+      - { con: { N_f: 1 }, T_e: 75, tol: 0.01 }
 
   - id: formula-temperatura
-    tipo: formula
+    tipo: explorar
     titulo: "Equivalentes"
-    texto: "Las dos descripciones son la misma: el factor de ruido F, menos uno, por 290 K."
+    texto: "Las dos descripciones son la misma: T_{e} = 290 K · (F − 1). Busque la figura de ruido equivalente a 289 K."
     libro: [545, 546]
-    ec: 545
-    sustitucion: "290 K · ({{F_t}} − 1) = {{T_e}}"
+    inicio: { N_f: 10 }
     widget:
       tipo: grafica
       x: { id: nf, min: 0, max: 10, unidad: dB, rotulo: "figura de ruido" }
@@ -66,31 +90,32 @@ tarjetas:
       lectura: { valor: T_e, rotulo: "T_{e}" }
       mandos:
         - { valor: N_f, lista: [0, 1, 3, 6, 10], rotulo: "NF" }
+    objetivo:
+      condiciones:
+        - { valor: T_e, objetivo: 289, tol: 0.01, rotulo: "T_{e} = {{T_e}}" }
+      logrado: "290 K · ({{F_t}} − 1) = {{T_e}}: 3 dB duplican el factor de ruido."
+      pistas:
+        - { cuando: { valor: T_e, min: 300 }, texto: "Demasiado caliente: menos NF." }
+        - { texto: "Demasiado frío: más NF." }
+    escalera:
+      - "T_{e} = 290 K cuando el factor de ruido se duplica."
+    solucion: "NF = 3 dB."
     comprobar:
-      - { con: { N_f: 1 }, T_e: 75, tol: 0.01 }
       - { con: { N_f: 3 }, T_e: 289, tol: 0.01 }
 
   - id: prediga-medio-db
-    tipo: predecir
+    tipo: simular
     titulo: "De 0,5 a 1 dB"
     texto: "En decibelios, pasar de 0,5 a 1 dB de figura de ruido parece una fracción despreciable. ¿Cuántos kelvin son?"
     libro: [547]
-    widget:
-      tipo: grafica
-      x: { id: nf, min: 0, max: 1.2, unidad: dB, rotulo: "figura de ruido" }
-      y: { min: 0, max: 100, unidad: K, rotulo: "temperatura equivalente" }
-      curvas:
-        - { expr: "290*(10^(nf/10) - 1)", color: azul, rotulo: "T_{e}" }
-      lectura: { valor: d_t, rotulo: "Diferencia" }
-      ocultar: curvas
-    opciones:
-      - texto: "Unos 40 K, un número manejable"
-        bien: true
-        porque: "Por eso se usa la temperatura en receptores muy sensibles: resuelve donde los decibelios no."
-      - texto: "Medio kelvin"
-        porque: "Los decibelios no son kelvin: hay que pasar por el factor de ruido."
-      - texto: "Unos 290 K"
-        porque: "290 K es la temperatura de referencia; 3 dB serían unos 289 K, no medio decibelio."
+    simular:
+      objetivo: d_t
+      unidad: K
+      tol: 0.05
+      rotulo: "Diferencia"
+      errores:
+        - { expr: "0.5", texto: "Los decibelios no son kelvin: hay que pasar por el factor de ruido." }
+    exito: "Unos 40 K, un número manejable: por eso se usa la temperatura en receptores muy sensibles."
     escalera:
       - "Calcule T_{e} = 290 · (F − 1) con F = 10^(NF/10) para los dos."
     solucion: "75 K − 35 K ≈ 40 K."
@@ -100,74 +125,84 @@ tarjetas:
       - { con: { N_f: 0.5 }, T_e: 35, tol: 0.015 }
 
   - id: antena
-    tipo: pregunta
+    tipo: explorar
     titulo: "A dónde apunta la antena"
-    texto: "La temperatura de un sistema suma antena, cable y receptor, sin cuadraturas. ¿Cuándo es mayor la de la antena?"
+    texto: "La temperatura del sistema suma la de la antena y la del receptor, sin cuadraturas. Apunte la antena para que el sistema sea lo más silencioso posible."
+    nota: "Temperaturas de ejemplo."
     libro: [542, 550]
+    inicio: { T_a: 300 }
     widget:
-      tipo: figura
-      figura: fig-32.19
-      zonas:
-        - { id: todo, rotulo: "La figura", rect: [0, 0, 449, 241] }
-    opciones:
-      - texto: "Apuntando al suelo o a una ciudad: cientos de kelvin"
-        bien: true
-        porque: "Hacia el cielo frío, unos pocos kelvin."
-      - texto: "Apuntando al cielo"
-        porque: "El cielo frío da unos pocos kelvin: es lo más silencioso."
-      - texto: "Siempre la misma: 290 K"
-        porque: "290 K es la referencia; la antena ve lo que tiene delante."
+      tipo: grafica
+      x: { id: xx, min: 0, max: 1, unidad: "", rotulo: "" }
+      y: { min: 0, max: 450, unidad: K, rotulo: "temperatura del sistema" }
+      curvas:
+        - { expr: "T_y", color: azul, rotulo: "sistema" }
+        - { expr: "T_r", color: verde, rotulo: "receptor", discontinua: true }
+      lectura: { valor: T_y, rotulo: "Temperatura del sistema" }
+      mandos:
+        - { valor: T_a, lista: [300, 5], nombres: ["al suelo o a una ciudad", "al cielo frío"], rotulo: "La antena apunta" }
+    objetivo:
+      condiciones:
+        - { valor: T_y, max: 100, rotulo: "Sistema: {{T_y}}" }
+      logrado: "Hacia el cielo frío, unos pocos kelvin; hacia el suelo o una ciudad, cientos. Se suman directamente con el receptor."
+      pistas:
+        - { texto: "Hacia dónde apunta la antena cambia lo que ve." }
     escalera:
       - "¿Qué está más caliente, el cielo o el suelo?"
-    solucion: "Hacia el suelo o una ciudad: cientos de kelvin."
+    solucion: "Al cielo frío."
+    comprobar:
+      - { con: { T_a: 5 }, T_y: 80 }
 
   - id: cable-antena
-    tipo: pregunta
+    tipo: explorar
     titulo: "El LNA en la antena"
-    texto: "Un cable de 3 dB de pérdida va entre la antena y el receptor. ¿Dónde pone el amplificador de bajo ruido?"
+    texto: "Un cable de 3 dB va entre la antena y el equipo. Cambie dónde está el LNA y mire la figura de ruido."
+    nota: "LNA de ejemplo: 1 dB y 20 dB de ganancia."
     libro: [551, 553]
+    inicio: { s_a: 0 }
     widget:
-      tipo: figura
-      figura: fig-32.19
-      zonas:
-        - { id: todo, rotulo: "La figura", rect: [0, 0, 449, 241] }
-    opciones:
-      - texto: "En la antena, delante del cable"
-        bien: true
-        porque: "Delante del receptor, el cable duplica el factor de ruido: cada decibelio de cable delante se paga íntegro."
-      - texto: "En el equipo, donde está protegido"
-        porque: "Ahí el cable queda delante y suma sus 3 dB enteros a la figura de ruido."
-      - texto: "Da igual"
-        porque: "Lo que precede a la primera etapa cuenta entero."
+      tipo: grafica
+      x: { id: xx, min: 0, max: 1, unidad: "", rotulo: "" }
+      y: { min: 0, max: 6, unidad: dB, rotulo: "figura de ruido" }
+      curvas:
+        - { expr: "N_c", color: azul, rotulo: "cable y LNA" }
+        - { expr: "N_a", color: verde, rotulo: "LNA solo", discontinua: true }
+      lectura: { valor: N_c, rotulo: "Figura de ruido" }
+      mandos:
+        - { valor: s_a, tipo: interruptor, rotulo: "LNA en la antena" }
+    objetivo:
+      condiciones:
+        - { valor: N_c, max: 1.2, rotulo: "NF: {{N_c}}" }
+      logrado: "En la antena, el cable queda detrás y apenas cuenta: {{N_c}}. En el equipo, el cable delante suma sus 3 dB íntegros."
+      pistas:
+        - { texto: "Con el cable delante, sus 3 dB se pagan enteros: mueva el LNA." }
     escalera:
-      - "¿Qué divide el ruido de lo que va delante del amplificador?"
-    solucion: "En la antena: así el cable queda detrás y apenas cuenta."
+      - "Lo que precede a la primera etapa cuenta entero."
+    solucion: "LNA en la antena: unos 1,03 dB."
+    comprobar:
+      - { N_c: 4, tol: 0.01 }
+      - { con: { s_a: 1 }, N_c: 1.03, G_a: 20, tol: 0.02 }
 
   - id: estime-suelo
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El suelo, otra vez"
     texto: "Con P = kTB, T = 290 K y B = 1 Hz, ¿cuántos dBm de ruido salen?"
     libro: [541, 558]
     fijar: { T_s: 290, B_t: 1 }
-    estimar:
-      objetivo: "P_k"
+    simular:
+      objetivo: P_k
       unidad: dBm
-      min: -200
-      max: -100
-      paso: 1
-      inicio: -120
-      tol: 0.01
+      tol: 0.003
       rotulo: "Potencia de ruido"
+      errores:
+        - { expr: "P_w", texto: "Eso son dBW: pase los vatios a milivatios antes del logaritmo." }
     exito: "−174 dBm: la misma cifra de la sección 32.1 vista desde la otra descripción."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: -172 }, texto: "Se ha pasado por arriba: kT a 290 K, en 1 Hz, es una potencia diminuta." }
-      - { texto: "Se ha quedado bajo: pase los vatios a milivatios antes del logaritmo." }
     escalera:
       - "P = kTB en vatios; dBm = 10 · log₁₀(P / 1 mW)."
     solucion: "k · 290 K · 1 Hz, pasado a milivatios y a decibelios: −174 dBm."
     comprobar:
-      - { P_k: -174, tol: 0.001 }
+      - { P_k: -174, P_w: -204, tol: 0.001 }
 
   - id: por-que-enfriar
     tipo: porque

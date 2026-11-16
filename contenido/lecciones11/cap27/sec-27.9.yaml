@@ -3,6 +3,10 @@
 # polos de la lección 26.8 pero el primer polo en 50 Hz (en lugar de 10 Hz): sale estable para ganancia ≥ 5 (unos
 # 52°) y con 25° como seguidor, que es la especificación del bloque 283. El cruce se resuelve exacto, como en 26.8.
 # Miller: 30 pF (bloque 278) multiplicados por (1 + A) de la etapa, con A de 300 a 1000 («varios cientos»).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el descompensado se lleva a seguidor hasta perder el margen
+# (objetivo; sustituye a la predicción de opciones), la ganancia mínima estable se ajusta, Miller se usa para que 30 pF
+# parezcan decenas de nF, las soluciones de carga capacitiva se tocan en la fig. 26.15 y el escalón al borde se compensa
+# hasta un 25 % (tabla del bloque 254). Quedan dos preguntas de opciones (por qué ahí, funciona en la mesa).
 leccion: cap27/sec-27.9
 
 libro:
@@ -18,6 +22,8 @@ libro:
   296: "funciona en la mesa y falla en la caja"
   "cap27#236": "Compromiso recomendado"
   298: "por encima del 50 % de sobreoscilación el circuito está al borde"
+  299: "Efecto de la compensación por polo dominante y las soluciones para carga capacitiva"
+  "cap27#254": "un 5 %, unos 65°; un 25 %, unos 44°"
 
 modelo:
   valores:
@@ -56,9 +62,10 @@ tarjetas:
   - id: explore-descompensado
     tipo: explorar
     titulo: "Un operacional descompensado"
-    texto: "Lleva menos compensación y más ancho de banda. Cambie la ganancia del montaje y mire el margen de fase."
+    texto: "Lleva menos compensación y más ancho de banda. Busque el montaje que lo deja con menos de 30° de margen."
     nota: "Polos de ejemplo en 50 Hz y 1 MHz."
-    libro: [282, 283]
+    libro: [282, 283, "cap27#236"]
+    inicio: { G: 10 }
     widget:
       tipo: grafica
       x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
@@ -71,42 +78,19 @@ tarjetas:
       lectura: { valor: P_m, rotulo: "Margen de fase" }
       mandos:
         - { valor: G, lista: [1, 5, 10], nombres: [seguidor, "ganancia 5", "ganancia 10"], rotulo: "Montaje" }
-    requiere: { mover: [G] }
+    objetivo:
+      condiciones:
+        - { valor: P_m, max: 30, rotulo: "Margen: {{P_m}}" }
+      logrado: "Como seguidor, el cruce sube a {{f_c}} y el margen cae a {{P_m}}: oscila o timbra. De ahí «estable para ganancia ≥ 5»."
+      pistas:
+        - { texto: "Aún tiene margen: baje la ganancia del montaje." }
+    escalera:
+      - "Menos ganancia del montaje, más ganancia de lazo, cruce más alto."
+    solucion: "El seguidor: unos 25°."
     comprobar:
       - { f_1: 50, f_2: 1000000 }
-
-  - id: prediga-seguidor
-    tipo: predecir
-    titulo: "Estable para ganancia ≥ 5"
-    texto: "Un operacional especificado «estable para ganancia ≥ 5» se monta como seguidor. ¿Qué pasa?"
-    libro: [283]
-    fijar: { G: 1 }
-    widget:
-      tipo: circuito
-      esquema: ao-estabilidad
-      piezas: { entrada: e_9, amplitud: a_9, f: f_9, forma: sq_9, a0: A_0, gbw: gbw_9, polo2: f_2 }
-      lectura: { valor: P_m, rotulo: "Margen como seguidor" }
-      datos:
-        - { valor: so_9, rotulo: "Sobreoscilación: {{so_9}}" }
-      grafica:
-        x: { id: t, min: 0.0000495, max: 0.000052, unidad: s, rotulo: "t" }
-        y: { min: -1, max: 1, unidad: V, rotulo: "v_{o}" }
-        curvas:
-          - { expr: "G0_9*(e_9 + a_9) - 2*a_9*G0_9*ceil((t - t0_9)/1e9)*(1 - exp(-z_9*wn_9*max(0, t - t0_9))*(cos(wd_9*max(0, t - t0_9)) + z_9*wn_9/wd_9*sin(wd_9*max(0, t - t0_9))))", color: naranja, rotulo: "v_{o}", mide: salida }
-      ocultar: true
-    opciones:
-      - texto: "Se queda casi sin margen y oscila o timbra"
-        bien: true
-        porque: "En seguidor la ganancia de lazo es la máxima: el cruce sube a donde el segundo polo ya resta mucha fase."
-      - texto: "Funciona mejor: el seguidor es lo más sencillo"
-        porque: "Es justo al revés: el seguidor es el caso difícil."
-      - texto: "Da ganancia 5 en lugar de 1"
-        porque: "La ganancia la fija la red; la especificación habla de estabilidad."
-    escalera:
-      - "¿Qué montaje tiene más ganancia de lazo, el de ganancia 5 o el seguidor?"
-    solucion: "Unos 25° de margen en este ejemplo: oscila o timbra."
-    comprobar:
-      - { P_m: 25.2, tol: 0.01 }
+      - { con: { G: 1 }, P_m: 25.2, tol: 0.01 }
+      - { con: { G: 10 }, P_m: 65.5, tol: 0.01 }
 
   - id: ajuste-ganancia
     tipo: ajuste
@@ -139,8 +123,9 @@ tarjetas:
   - id: explore-miller
     tipo: explorar
     titulo: "Miller a favor"
-    texto: "Los 30 pF de compensación van entre la entrada y la salida de la etapa de ganancia. Cambie su ganancia y mire la capacidad que parece."
+    texto: "Los 30 pF de compensación van entre la entrada y la salida de la etapa de ganancia. Consiga que se comporten como decenas de nanofaradios."
     libro: [277, 278]
+    inicio: { A_e: 300 }
     widget:
       tipo: grafica
       x: { id: ae, min: 0, max: 1000, unidad: "", rotulo: "A_{etapa}" }
@@ -152,9 +137,19 @@ tarjetas:
       lectura: { valor: C_m, rotulo: "Capacidad equivalente" }
       mandos:
         - { valor: A_e, lista: [300, 500, 1000], rotulo: "Ganancia de la etapa" }
-    requiere: { mover: [A_e] }
+    objetivo:
+      condiciones:
+        - { valor: C_m, min: 0.00000001, rotulo: "Equivalente: {{C_m}}" }
+      logrado: "{{C_c}} · (1 + {{A_e}}) = {{C_m}}: así la compensación cabe en el chip."
+      pistas:
+        - { texto: "Más ganancia de la etapa." }
+    escalera:
+      - "Miller multiplica la capacidad por (1 + A)."
+    solucion: "Con ganancia 500, unos 15 nF; con 1000, unos 30 nF."
     comprobar:
       - { C_c: 30e-12 }
+      - { con: { A_e: 500 }, C_m: 1.503e-8, tol: 0.001 }
+      - { con: { A_e: 1000 }, C_m: 3.003e-8, tol: 0.001 }
 
   - id: por-que-miller
     tipo: porque
@@ -181,21 +176,29 @@ tarjetas:
     solucion: "Miller la multiplica por (1 + A): pocos picofaradios integrados bastan."
 
   - id: empareje-carga
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
+    fase: "Elija"
     titulo: "Tres soluciones para la carga capacitiva"
-    texto: "Una cada solución con su rasgo."
-    libro: [288, 289, 290]
-    emparejar:
-      - ["Resistencia serie a la salida", "La más simple; cuesta una pequeña caída"]
-      - ["Realimentar desde la carga en continua y desde antes en alterna", "Conserva la exactitud en continua"]
-      - ["Operacional para carga capacitiva", "Diseñado para ello"]
-    exito: "La resistencia serie saca el polo de la carga fuera del lazo."
+    texto: "Toque, por este orden, la solución más simple y la que conserva la exactitud en continua."
+    libro: [288, 289, 290, 299]
+    widget:
+      tipo: figura
+      figura: fig-27.15
+      zonas:
+        - { id: serie, rect: [270, 46, 171, 39], rotulo: "Primer recuadro" }
+        - { id: mixta, rect: [270, 89, 171, 38], rotulo: "Segundo recuadro" }
+        - { id: especifico, rect: [270, 131, 171, 39], rotulo: "Tercer recuadro" }
+    tocar:
+      bien: [serie, mixta]
+      orden: true
+      porque:
+        especifico: "Un operacional diseñado para carga capacitiva también lo resuelve, pero cambiando de chip."
+    exito: "La resistencia serie saca el polo de la carga fuera del lazo, a costa de una pequeña caída; la mixta la corrige realimentando desde la carga en continua."
     pistas:
-      - { texto: "La que usa un condensador además de la resistencia es la de dos caminos." }
+      - { texto: "La que usa un condensador además de la resistencia es la mixta." }
     escalera:
       - "La más usada es también la más simple."
-    solucion: "Resistencia–sencilla, dos caminos–exactitud, operacional específico–diseñado."
+    solucion: "Resistencia serie; realimentación mixta."
 
   - id: sintomas
     tipo: pregunta
@@ -223,10 +226,11 @@ tarjetas:
     solucion: "Un lazo con poco margen, al que el cableado añade carga capacitiva."
 
   - id: escalon-borde
-    tipo: pregunta
+    tipo: explorar
     titulo: "El escalón del banco"
-    texto: "Un escalón pequeño da un 53 % de sobreoscilación. ¿Cómo está el circuito?"
-    libro: [298]
+    texto: "Un escalón pequeño da un 53 % de sobreoscilación: el circuito está al borde. Compénselo hasta que no pase del 25 %."
+    libro: [298, "cap27#254"]
+    inicio: { z: 0.2 }
     widget:
       tipo: grafica
       x: { id: wt, min: 0, max: 15, unidad: "", rotulo: "ω₀t" }
@@ -234,19 +238,20 @@ tarjetas:
       curvas:
         - { expr: "1 - exp(-z*wt)*(cos(sqrt(1 - z^2)*wt) + z/sqrt(1 - z^2)*sin(sqrt(1 - z^2)*wt))", color: naranja, rotulo: "salida" }
       lectura: { valor: O_s, rotulo: "Sobreoscilación" }
-    opciones:
-      - texto: "Al borde: hay que compensar"
-        bien: true
-        porque: "Por encima del 50 % de sobreoscilación el margen es muy escaso."
-      - texto: "Bien: sobreoscila, pero se estabiliza"
-        porque: "Se estabiliza ahora; cualquier cambio de carga o temperatura puede hacerlo oscilar."
-      - texto: "No se sabe sin un analizador de redes"
-        porque: "La sobreoscilación se traduce en margen de fase; basta para decidir."
+      mandos:
+        - { valor: z, lista: [0.2, 0.42, 0.7], nombres: ["menos de 30°", "unos 44°", "unos 65°"], rotulo: "Margen de fase" }
+    objetivo:
+      condiciones:
+        - { valor: O_s, max: 25, rotulo: "Sobreoscilación: {{O_s}}" }
+      logrado: "{{O_s}}: por encima del 50 % el margen es muy escaso; con unos 44° ya se puede dar por bueno."
+      pistas:
+        - { texto: "Aún timbra demasiado: más margen." }
     escalera:
-      - "La correspondencia es aproximada, pero sirve para decidir."
-    solucion: "Al borde: más del 50 % pide compensación."
+      - "Un 25 % corresponde a unos 44°; un 5 %, a unos 65°."
+    solucion: "Unos 44°: un 23 %."
     comprobar:
       - { O_s: 52.7, tol: 0.01 }
+      - { con: { z: 0.42 }, O_s: 23.4, tol: 0.01 }
 
   - id: resumen
     tipo: resumen

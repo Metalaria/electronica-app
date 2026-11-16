@@ -3,6 +3,11 @@
 # continua) con cada resistencia en sus extremos del 1 %. Problema 27.B: t ≈ 1,4/BW y la multiplicación 20·log₁₀(N).
 # Problema 27.C: la cadena de la fuente y su disipación con el esquema regulador-lineal sin divisor (V_out = V_ref =
 # 12 V, dropout de 2 V), entrada media de 18,7 V y carga de 12 Ω (1 A). C = I·t/ΔV con t = 10 ms (problema 3.B).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la salida del Wien en la esquina desfavorable se predice y se
+# simula, la esquina que satura se busca, la multiplicación del ruido y el condensador se predicen, las decisiones de
+# la fuente se tocan en orden sobre la fig. 27.10 y la entrada del regulador se baja hasta que deja de regular (el
+# banco con red baja va en su explicación). «Decidir el ancho de banda» pasa al resumen. Quedan el emparejamiento de
+# soluciones y una pregunta de opciones (por qué el diseño fijo es imposible).
 leccion: cap28/sec-28.8
 
 libro:
@@ -25,6 +30,7 @@ libro:
   242: "la entrada media del regulador ronda los 18,7 V"
   243: "el rizado aparecería entero a la salida"
   245: "un autotransformador a 207 V es la prueba que separa un diseño bueno de uno afortunado"
+  248: "Cadena de una fuente de alimentación lineal regulada"
   "cap03#217": "los picos se suceden cada T/2 = 10 ms"
 
 modelo:
@@ -56,37 +62,40 @@ modelo:
 
 tarjetas:
   - id: prediga-esquina
-    tipo: predecir
+    tipo: simular
     titulo: "Un Wien con resistencias del 1 %"
-    texto: "El Wien de 1592 Hz pide ganancia 3 con R_{f} = 2 · R₁. Con R_{f} un 1 % baja y R₁ un 1 % alta, ¿qué hace?"
+    texto: "El Wien de 1592 Hz pide ganancia 3 con R_{f} = 2 · R₁. Con R_{f} un 1 % baja, R₁ un 1 % alta y 0,1 V de prueba, ¿qué salida da el amplificador?"
     libro: [202, 206, 209]
     fijar: { k_1: 1.01, k_f: 0.99 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_e, r1: R_1, r2: R_f }
-      lectura: { valor: G_a, rotulo: "Ganancia" }
+      lectura: { valor: V_o, rotulo: "Salida" }
       mide: { vo: V_o }
       ocultar: true
-    opciones:
-      - texto: "No arranca: la ganancia queda en 2,960"
-        bien: true
-        porque: "La ganancia de lazo queda por debajo de 1 y la oscilación se apaga."
-      - texto: "Recorta contra los raíles"
-        porque: "Eso pasaría con la ganancia por encima de 3, con R_{f} alta y R₁ baja."
-      - texto: "Oscila bien: un 1 % no importa"
-        porque: "El Wien necesita el valor exacto: un 1 % de error ya basta para que no arranque o recorte."
+      mandos: []
+    simular:
+      objetivo: V_o
+      unidad: V
+      tol: 0.002
+      rotulo: "Salida con 0,1 V"
+      medida: vo
+      errores:
+        - { expr: "3*V_e", texto: "Esa es la nominal, con ganancia 3. Con R_{f} baja y R₁ alta, el cociente baja." }
+    exito: "0,296 V: ganancia 2,960, |A·β| < 1. No arranca: la oscilación se apaga."
     escalera:
       - "Ganancia = 1 + R_{f}/R₁ = 1 + 2 · 0,99/1,01."
-    solucion: "1 + 1,960 = 2,960: |A·β| < 1, no arranca."
+    solucion: "1 + 1,960 = 2,960; por 0,1 V, 0,296 V."
     comprobar:
-      - { G_a: 2.960, tol: 0.001 }
+      - { G_a: 2.960, V_o: 0.296, V_e: 0.1, tol: 0.001 }
 
   - id: explore-esquinas
     tipo: explorar
     titulo: "Las esquinas"
-    texto: "Lleve cada resistencia a sus extremos del 1 % y mire la ganancia de lazo. ¿Hay alguna combinación que garantice exactamente 1?"
+    texto: "Lleve cada resistencia a sus extremos del 1 % y busque la esquina en la que el oscilador recorta."
     libro: [209, 210]
+    inicio: { k_1: 1, k_f: 1 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
@@ -98,7 +107,17 @@ tarjetas:
       mandos:
         - { valor: k_1, lista: [0.99, 1, 1.01], nombres: ["1 % baja", "nominal", "1 % alta"], rotulo: "R₁" }
         - { valor: k_f, lista: [0.99, 1, 1.01], nombres: ["1 % baja", "nominal", "1 % alta"], rotulo: "R_{f}" }
-    requiere: { mover: [k_1, k_f] }
+    objetivo:
+      condiciones:
+        - { valor: L_g, min: 1.01, rotulo: "|A·β| = {{L_g}}" }
+      logrado: "|A·β| = {{L_g}}: esa esquina recorta. Ninguna combinación garantiza exactamente 1."
+      pistas:
+        - { texto: "Para subir la ganancia: R_{f} alta y R₁ baja." }
+    escalera:
+      - "Ganancia = 1 + R_{f}/R₁: crece con R_{f} y baja con R₁."
+    solucion: "R_{f} un 1 % alta y R₁ un 1 % baja: 3,040."
+    comprobar:
+      - { con: { k_1: 0.99, k_f: 1.01 }, G_a: 3.040, tol: 0.001 }
 
   - id: por-que-imposible
     tipo: porque
@@ -142,93 +161,64 @@ tarjetas:
     solucion: "Lámpara–clásica; PTC–pequeño; JFET–controlable; diodos–sencillos con distorsión."
 
   - id: estime-multiplicacion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El ruido multiplicado"
     texto: "Un sintetizador con referencia de 1 MHz y divisor N = 100. ¿Cuántos decibelios se amplifica dentro del lazo el ruido de fase de la referencia?"
     libro: [219, 225, 228]
-    estimar:
-      objetivo: "M_n"
+    simular:
+      objetivo: M_n
       unidad: dB
-      min: 0
-      max: 80
-      paso: 1
-      inicio: 70
-      tol: 0.05
+      tol: 0.02
       rotulo: "Multiplicación del ruido"
+      errores:
+        - { expr: "10*log10(N_p)", texto: "El ruido de fase multiplica una fase, una amplitud: 20 · log₁₀(N)." }
     exito: "40 dB: por eso los sintetizadores de bajo ruido prefieren una referencia alta con divisor pequeño."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 42 }, texto: "Se ha pasado: son 20 · log₁₀(N), no 10 · N ni N en dB." }
-      - { texto: "Se ha quedado corto: 20 · log₁₀(100)." }
     escalera:
       - "Se amplifica 20 · log₁₀(N) decibelios."
     solucion: "20 · log₁₀(100) = 40 dB."
     comprobar:
       - { M_n: 40 }
 
-  - id: decida-pll
-    tipo: pregunta
-    titulo: "Decidir el ancho de banda"
-    texto: "Con referencia de 1 MHz, un lazo de f_{ref}/10 engancha en unos 14 µs y uno de f_{ref}/50 en unos 70 µs. ¿Cuándo elegir el estrecho?"
-    libro: [219, 222, 231]
-    widget:
-      tipo: grafica
-      x: { id: bw, min: 10000, max: 110000, unidad: Hz, rotulo: "ancho de banda del lazo" }
-      y: { min: 0, max: 0.0001, unidad: s, rotulo: "tiempo de enganche" }
-      curvas:
-        - { expr: "1.4/bw", color: azul, rotulo: "t ≈ 1,4/BW" }
-    opciones:
-      - texto: "Si el ruido cercano importa más que la velocidad"
-        bien: true
-        porque: "f_{ref}/10 para enganche rápido; f_{ref}/50 cuando manda el ruido cercano."
-      - texto: "Siempre: más estrecho, menos ruido"
-        porque: "Estrecharlo más allá del cruce de los dos ruidos no mejora el total, solo ralentiza el enganche."
-      - texto: "Nunca: el ancho siempre es mejor"
-        porque: "El ancho engancha antes, pero hereda más ruido de la referencia multiplicado por N."
-    escalera:
-      - "Cada ancho de banda gana en una cosa y pierde en otra."
-    solucion: "El estrecho, f_{ref}/50, cuando el ruido cercano importa más que la velocidad."
-
   - id: ordene-fuente
-    tipo: pregunta
+    tipo: tocar
     fase: "Ordene"
     titulo: "Una fuente desde la especificación"
-    texto: "Fuente lineal de 12 V y 1 A con rizado inferior a 5 mV. Ordene las decisiones encadenadas."
-    libro: [237, 238, 239, 241, 242]
-    ordenar:
-      - "Tensión mínima de entrada del regulador"
-      - "Transformador, desde la red mínima"
-      - "Condensador de filtro"
-      - "Puente rectificador"
-      - "Rechazo de rizado del regulador"
-      - "Disipación y radiador"
-    exito: "Cada paso parte del anterior: la tensión mínima del regulador lo fija todo."
+    texto: "Fuente lineal de 12 V y 1 A: la tensión mínima del regulador ya fija 14,5 V. Toque los bloques en el orden en que se dimensionan a partir de ahí."
+    libro: [237, 238, 239, 241, 248]
+    widget:
+      tipo: figura
+      figura: fig-28.11
+      zonas:
+        - { id: transformador, rotulo: "Primer bloque", rect: [49, 11, 81, 118] }
+        - { id: puente, rotulo: "Segundo bloque", rect: [137, 11, 80, 118] }
+        - { id: filtro, rotulo: "Tercer bloque", rect: [225, 11, 80, 118] }
+        - { id: regulador, rotulo: "Cuarto bloque", rect: [313, 11, 80, 118] }
+    tocar:
+      bien: [transformador, filtro, puente, regulador]
+      orden: true
+    exito: "Transformador desde la red mínima, condensador por el rizado, puente por las corrientes y regulador por su rechazo. Luego, la disipación."
     pistas:
-      - { texto: "Empiece por lo que exige el regulador para regular." }
+      - { texto: "El puente se dimensiona por las corrientes que pide el condensador." }
     escalera:
       - "El transformador se elige para que el valle del rizado no baje de la tensión mínima."
-    solucion: "Tensión mínima, transformador, condensador, puente, regulador y disipación."
+    solucion: "Transformador, filtro, puente y regulador."
 
   - id: estime-condensador
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El condensador de filtro"
     texto: "Con 1 A de carga y 3 V de rizado admitidos antes del regulador, ¿qué condensador mínimo hace falta?"
     nota: "Con onda completa, los picos llegan cada 10 ms."
     libro: [239, "cap03#217"]
-    estimar:
-      objetivo: "C_f"
+    simular:
+      objetivo: C_f
       unidad: F
-      min: 0
-      max: 0.01
-      paso: 0.0001
-      inicio: 0.008
-      tol: 0.06
+      tol: 0.03
       rotulo: "Condensador mínimo"
+      errores:
+        - { expr: "2*C_f", texto: "Eso sería con media onda, 20 ms. Con onda completa los picos llegan cada 10 ms." }
     exito: "Unos 3300 µF; se elige 4700 µF y el rizado baja a 2,1 V."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0035 }, texto: "Se ha pasado: C = I · t / ΔV, con t = 10 ms." }
-      - { texto: "Se ha quedado corto: C = I · t / ΔV, con t = 10 ms." }
     escalera:
       - "C = I · t / ΔV."
     solucion: "1 A · 10 ms / 3 V ≈ 3300 µF."
@@ -268,10 +258,10 @@ tarjetas:
       - { P_r: 6.7, tol: 0.01 }
 
   - id: por-que-condensador
-    tipo: porque
+    tipo: explorar
     titulo: "Por qué ese condensador"
-    texto: "Con la red mínima el valle del rizado queda en unos 15,6 V, sobre los 14,5 V que pide el regulador. ¿Qué dimensiona de verdad el condensador?"
-    libro: [237, 238, 243]
+    texto: "Con la red mínima, el valle del rizado queda algo por encima de lo que pide el regulador. Baje la entrada del valle hasta que deje de regular."
+    libro: [237, 238, 243, 245]
     fijar: { V_r: 12, V_d: 2, R_L: 12 }
     inicio: { V_i: 15.5 }
     widget:
@@ -282,45 +272,22 @@ tarjetas:
       mide: { vout: V_out }
       mandos:
         - { valor: V_i, min: 12, max: 16, paso: 0.5, rotulo: "Entrada en el valle" }
-    opciones:
-      - texto: "Garantizar el margen del regulador en el peor caso, no el rizado de salida"
-        bien: true
-        porque: "Si la entrada baja del margen, el rizado aparece entero a la salida."
-      - texto: "El rizado de salida de 5 mV"
-        porque: "Ese lo consigue el rechazo del regulador, siempre que su entrada no baje del margen."
-      - texto: "La corriente de pico del puente"
-        porque: "Esa dimensiona el puente; el condensador se elige por el valle del rizado."
+    objetivo:
+      condiciones:
+        - { valor: V_out, max: 11.9, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con {{V_i}} en el valle, la salida cae a {{V_out}}: el rizado pasa entero. El condensador se dimensiona por ese margen en el peor caso; por eso se ensaya con 207 V."
+      pistas:
+        - { texto: "Aún regula: baje más la entrada." }
     escalera:
-      - "Baje la entrada del valle por debajo de la salida más la caída mínima."
-    solucion: "El margen del regulador en el peor caso: por debajo, el rizado pasa entero."
-
-  - id: banco-red-baja
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Su fuente funciona en el banco con la red nominal. ¿Qué prueba separa un diseño bueno de uno afortunado?"
-    libro: [245]
-    widget:
-      tipo: circuito
-      esquema: regulador-lineal
-      piezas: { entrada: V_i, ref: V_r, dropout: V_d, carga: R_L }
-      lectura: { valor: V_out, rotulo: "Salida" }
-      mide: { vout: V_out }
-    opciones:
-      - texto: "Alimentarla con un autotransformador a 207 V"
-        bien: true
-        porque: "Con la red baja se comprueba el margen del regulador; también a plena carga y en caliente."
-      - texto: "Medir la salida en vacío"
-        porque: "En vacío no hay rizado que vigilar: el margen se estrecha a plena carga."
-      - texto: "Medir con la red alta"
-        porque: "Con la red alta se comprueba la disipación; el margen del regulador peligra con la red baja."
-    escalera:
-      - "¿En qué condición de red se queda sin margen el regulador?"
-    solucion: "Con la red baja, 207 V, a plena carga y en caliente."
+      - "El regulador necesita su salida más la caída mínima."
+    solucion: "Por debajo de 14 V, la salida deja de ser 12 V."
+    comprobar:
+      - { con: { V_i: 13.5 }, V_out: 11.5 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [210, 211, 228, 231, 243]
+    libro: [210, 211, 222, 228, 231, 243]
     ideas:
       - { titulo: "El Wien.", texto: "Con resistencias fijas no funciona: ganancia algo mayor que 3 y control de amplitud." }
       - { titulo: "El PLL.", texto: "f_{ref}/10 para enganchar deprisa; f_{ref}/50 si manda el ruido cercano. Dentro del lazo, el ruido se multiplica 20 · log₁₀(N)." }
