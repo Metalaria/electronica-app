@@ -2,6 +2,10 @@
 # - Los cinco bloques del ATmega328P sobre la figura 16.1 (fig-17.1), con zonas en cada bloque.
 # - El tiempo por instrucción a 16 MHz (62,5 ns) como estimación: t = 1/f.
 # Paso práctico: «tocar» el bloque que se agota sin avisar (la SRAM).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 16.1 se tocan los bloques que el microprocesador
+# no lleva dentro, el que se agota y el que guarda la calibración; se escriben el tiempo por instrucción, los bytes del
+# array y la deriva del cristal; en un esqueleto de Arduino se toca la línea que sigue a la última de loop(). Quedan dos
+# preguntas de opciones: la interrupción breve y lo primero que se mide.
 leccion: cap17/sec-17.1
 
 libro:
@@ -16,6 +20,7 @@ libro:
   13: "Y el fallo por agotamiento no avisa"
   17: "Cristal de cuarzo"
   18: "para un reloj o una medida de tiempo, cristal"
+  20: "ese programa llama a setup() una vez"
   21: "el microcontrolador nunca «termina»"
   23: "un periférico o un pin dispara una interrupción"
   24: "las rutinas de interrupción deben ser brevísimas"
@@ -25,8 +30,14 @@ libro:
 modelo:
   valores:
     f_ck: { sim: "f", nombre: "frecuencia del reloj", unidad: Hz, valor: 16000000 }
+    ppm_x: { sim: "\\epsilon", nombre: "exactitud del cristal", unidad: "", valor: 0.00005 }
+    t_dia: { sim: "t_{día}", nombre: "segundos de un día", unidad: s, valor: 86400 }
+    n_lec: { sim: "n", nombre: "lecturas del array", unidad: "", valor: 100 }
+    b_lec: { sim: "b", nombre: "bytes por lectura de 16 bits", unidad: "", valor: 2 }
   calculos:
     t_ins: { expr: "1/f_ck", sim: "t", nombre: "tiempo por instrucción", unidad: s }
+    der_x: { expr: "ppm_x*t_dia", sim: "\\Delta t", nombre: "deriva del cristal en un día", unidad: s }
+    ram_a: { expr: "n_lec*b_lec", sim: "m", nombre: "SRAM del array", unidad: "" }
 
 tarjetas:
   - id: explore-bloques
@@ -46,45 +57,45 @@ tarjetas:
     requiere: { mover: [nucleo, sram] }
 
   - id: pregunta-integra
-    tipo: pregunta
+    tipo: tocar
     titulo: "Qué lo distingue"
-    texto: "¿Qué tiene un microcontrolador que no tiene un microprocesador?"
+    texto: "Un microprocesador es solo una unidad de cálculo. Toque todo lo que el microcontrolador lleva dentro y al microprocesador le falta."
     libro: [3, 4]
     widget:
       tipo: figura
       figura: fig-17.1
       zonas:
-        - { id: chip, rotulo: "El chip entero", rect: [45, 0, 360, 212] }
-    opciones:
-      - texto: "Memoria y periféricos dentro del mismo chip"
-        bien: true
-        porque: "Núcleo, memorias y periféricos integrados: con muy pocos componentes externos gobierna un sistema entero."
-      - texto: "Más potencia de cálculo"
-        porque: "La integración no busca potencia, sino autonomía y coste: es un dispositivo de control, no de cómputo."
-      - texto: "Un núcleo más rápido"
-        porque: "Un microprocesador es una unidad de cálculo; lo que le falta es memoria y periféricos, no velocidad."
+        - { id: nucleo, rotulo: "Recuadro blanco, a la izquierda", rect: [60, 71, 90, 72] }
+        - { id: flash, rotulo: "Recuadro azul, arriba", rect: [176, 13, 101, 52] }
+        - { id: perifericos, rotulo: "Recuadro verde, arriba a la derecha", rect: [299, 13, 97, 70] }
+        - { id: sram, rotulo: "Recuadro rojo, abajo", rect: [176, 137, 101, 64] }
+        - { id: eeprom, rotulo: "Recuadro naranja, abajo a la derecha", rect: [299, 137, 97, 64] }
+    tocar:
+      bien: [flash, perifericos, sram, eeprom]
+      todas: true
+      porque:
+        nucleo: "El núcleo lo tienen los dos: es justo la unidad de cálculo del microprocesador."
+    exito: "Memorias y periféricos dentro del chip: con muy pocos componentes externos gobierna un sistema entero. Es un dispositivo de control, no de cómputo."
     escalera:
-      - "Mire qué hay dentro del recuadro «un solo chip»."
-    solucion: "Lo integra todo: núcleo, memoria de programa, memoria de datos y periféricos."
+      - "Al microprocesador le hacen falta memoria externa y controladores de periféricos."
+    solucion: "Flash, SRAM, EEPROM y periféricos; el núcleo lo tienen los dos."
 
   - id: estime-instruccion
-    tipo: pregunta
+    tipo: leer
     titulo: "Una instrucción por ciclo"
-    texto: "El ATmega328P ejecuta casi todas sus instrucciones en un solo ciclo de su reloj de 16 MHz. ¿Cuánto dura una?"
+    texto: "El ATmega328P ejecuta casi todas sus instrucciones en un solo ciclo de su reloj de 16 MHz. Escriba cuánto dura una."
     libro: [6]
-    estimar:
-      objetivo: "t_ins"
+    widget:
+      tipo: figura
+      figura: fig-17.1
+      zonas:
+        - { id: nucleo, rotulo: "Recuadro blanco, a la izquierda", rect: [60, 71, 90, 72], texto: "8 bits, RISC y Harvard: la mayoría de las instrucciones en un solo ciclo." }
+    leer:
+      objetivo: t_ins
       unidad: s
-      min: 0
-      max: 0.0000002
-      paso: 0.0000000005
-      inicio: 0.00000015
-      tol: 0.05
+      tol: 0.02
       rotulo: "Tiempo por instrucción"
     exito: "62,5 ns: unos 16 millones de instrucciones por segundo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0000000657 }, texto: "Demasiado: un ciclo es la inversa de 16 millones de hercios." }
-      - { texto: "Se ha quedado corto: un ciclo es la inversa de 16 millones de hercios." }
     escalera:
       - "Un ciclo dura 1/f."
     solucion: "1 / 16 MHz = 62,5 ns."
@@ -116,91 +127,107 @@ tarjetas:
     solucion: "La SRAM de 2 KB, abajo en rojo."
 
   - id: pregunta-array
-    tipo: predecir
+    tipo: leer
     titulo: "Cada variable cuenta"
-    texto: "¿Cuánta SRAM ocupa un array de 100 lecturas de 16 bits?"
+    texto: "Con 2 KB de SRAM, cada variable cuenta. Escriba cuántos bytes ocupa un array de 100 lecturas de 16 bits."
     libro: [8, 12]
     widget:
       tipo: figura
       figura: fig-17.1
       zonas:
-        - { id: sram, rotulo: "Recuadro rojo, abajo", rect: [176, 137, 101, 64] }
-    opciones:
-      - texto: "200 bytes"
-        bien: true
-        porque: "16 bits son 2 bytes: 100 lecturas, 200 bytes de los 2 KB."
-      - texto: "100 bytes"
-        porque: "Eso sería con lecturas de 8 bits; cada una de 16 bits ocupa 2 bytes."
-      - texto: "Los 2 KB enteros"
-        porque: "Ocupa 200 bytes de los 2 KB: una décima parte, para un solo array."
+        - { id: sram, rotulo: "Recuadro rojo, abajo", rect: [176, 137, 101, 64], texto: "SRAM: 2 KB para todas las variables." }
+    leer:
+      objetivo: ram_a
+      unidad: ""
+      tol: 0.01
+      rotulo: "Bytes de SRAM"
+      errores:
+        - { expr: "n_lec", texto: "Eso sería con lecturas de 8 bits: cada una de 16 bits ocupa 2 bytes." }
+    exito: "200 bytes de los 2 KB, para un solo array: una décima parte."
     escalera:
-      - "Un byte son 8 bits."
+      - "Un byte son 8 bits: ¿cuántos bytes es una lectura de 16?"
     solucion: "100 · 2 bytes = 200 bytes."
+    comprobar:
+      - { ram_a: 200 }
 
   - id: empareje-memorias
-    tipo: pregunta
-    titulo: "Tres memorias"
-    texto: "Empareje cada memoria con lo que guarda."
+    tipo: tocar
+    titulo: "Lo que sobrevive al apagado"
+    texto: "Un equipo guarda su calibración, que debe sobrevivir al apagado y se escribe pocas veces. Toque la memoria donde va."
     libro: [7, 8, 9]
     widget:
       tipo: figura
       figura: fig-17.1
       zonas:
-        - { id: chip, rotulo: "El chip entero", rect: [45, 0, 360, 212] }
-    emparejar:
-      - ["Flash", "El programa; se desgasta con los ciclos"]
-      - ["SRAM", "Las variables durante la ejecución"]
-      - ["EEPROM", "Calibraciones que sobreviven al apagado"]
-    exito: "Flash para el código, SRAM para las variables y EEPROM para lo que debe durar."
-    pistas:
-      - { texto: "La que se escribe al programar guarda el código; la volátil, las variables." }
+        - { id: flash, rotulo: "Recuadro azul, arriba", rect: [176, 13, 101, 52] }
+        - { id: sram, rotulo: "Recuadro rojo, abajo", rect: [176, 137, 101, 64] }
+        - { id: eeprom, rotulo: "Recuadro naranja, abajo a la derecha", rect: [299, 137, 97, 64] }
+    tocar:
+      bien: [eeprom]
+      porque:
+        flash: "La Flash guarda el programa: se escribe al programar y se desgasta con los ciclos."
+        sram: "La SRAM es volátil: al apagar se pierde todo lo que hay en ella."
+    exito: "La EEPROM: 1 KB para calibraciones y configuración. Escritura lenta y con vida limitada, así que no se escribe en cada vuelta."
     escalera:
-      - "Solo una de las tres es volátil."
-    solucion: "Flash, el programa; SRAM, las variables; EEPROM, la calibración."
+      - "Descarte la memoria volátil y la del programa."
+    solucion: "La EEPROM, abajo a la derecha."
 
   - id: pregunta-reloj
-    tipo: pregunta
+    tipo: leer
     titulo: "Medir el tiempo"
-    texto: "Un equipo debe llevar la hora. ¿Qué base de tiempo pide?"
+    texto: "Un equipo debe llevar la hora con un cristal de 50 ppm. Escriba cuántos segundos puede desviarse en 24 horas."
     libro: [17, 18]
     widget:
       tipo: figura
       figura: fig-17.1
       zonas:
-        - { id: reloj, rotulo: "El reloj, a la izquierda", rect: [0, 78, 42, 62] }
-    opciones:
-      - texto: "Un cristal de cuarzo"
-        bien: true
-        porque: "De 30 a 50 ppm: unos 4 segundos de deriva en 24 horas."
-      - texto: "Un resonador cerámico"
-        porque: "Basta para una UART, pero deriva unos 7 minutos al día."
-      - texto: "El oscilador RC interno"
-        porque: "Del 1 al 10 %: minutos u horas al día. Sirve para parpadear un LED."
+        - { id: reloj, rotulo: "El reloj, a la izquierda", rect: [0, 78, 42, 62], texto: "RC interno, resonador cerámico o cristal de cuarzo." }
+    leer:
+      objetivo: der_x
+      unidad: s
+      tol: 0.1
+      rotulo: "Deriva en un día"
+    exito: "Unos 4 segundos al día. El resonador cerámico deriva unos 7 minutos y el RC interno, minutos u horas: para un reloj, cristal."
     escalera:
-      - "Compare la deriva de cada fuente en un día."
-    solucion: "Cristal: 4 segundos en 24 horas."
+      - "Un día tiene 86 400 segundos."
+      - "50 ppm son 50 millonésimas de esos segundos."
+    solucion: "50 · 10⁻⁶ · 86 400 s ≈ 4 s."
+    comprobar:
+      - { der_x: 4.32, t_dia: 86400 }
 
   - id: pregunta-termina
-    tipo: pregunta
+    tipo: tocar
     titulo: "El final del programa"
-    texto: "En Arduino, ¿qué pasa cuando loop() llega a su última línea?"
-    libro: [21]
+    texto: "El programa acaba de ejecutar la última línea de loop(). Toque la línea que se ejecuta a continuación."
+    libro: [20, 21]
     widget:
       tipo: figura
-      figura: fig-17.1
+      codigo:
+        lenguaje: c
+        texto: |
+          void setup() {
+            // runs once, after reset
+          }
+
+          void loop() {
+            // first line of loop
+            // last line of loop
+          }
       zonas:
-        - { id: nucleo, rotulo: "Recuadro blanco, a la izquierda", rect: [60, 71, 90, 72] }
-    opciones:
-      - texto: "Se vuelve a llamar"
-        bien: true
-        porque: "Un sistema empotrado no tiene estado «parado»: ejecuta, duerme o está en reset."
-      - texto: "El microcontrolador se detiene"
-        porque: "No hay a dónde volver: si loop() retorna, se llama otra vez."
-      - texto: "Se reinicia y repite setup()"
-        porque: "setup() se ejecuta una sola vez; lo que se repite es loop()."
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l6, lineas: [6], rotulo: "Sexta línea" }
+        - { id: l8, lineas: [8], rotulo: "Última línea" }
+    tocar:
+      bien: [l6]
+      porque:
+        l1: "setup() se ejecuta una sola vez, al liberarse el reset; no se repite."
+        l2: "Eso es setup(): una vez al arrancar, nunca más."
+        l8: "El final de loop() no detiene nada: el microcontrolador nunca «termina»."
+    exito: "Si loop() retorna, se vuelve a llamar. Un sistema empotrado no tiene estado «parado»: ejecuta, duerme o está en reset."
     escalera:
-      - "El microcontrolador nunca «termina»."
-    solucion: "Se vuelve a llamar, indefinidamente."
+      - "setup() se llama una vez; después, loop() repetidamente."
+    solucion: "La primera línea de loop(), otra vez."
 
   - id: pregunta-interrupcion
     tipo: porque

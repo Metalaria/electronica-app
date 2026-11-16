@@ -2,6 +2,11 @@
 # - El reparto de la figura 18.1 (fig-19.1) con zonas: microcontrolador, enlace y ordenador de placa.
 # - Sin modelo de circuito: la sección es de arquitectura.
 # Paso práctico: «tocar» en la figura 18.1 el lado que vigila la seguridad; ordenar la prueba del banco (bloque 23).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 18.1 se tocan el lado que vigila la seguridad,
+# el que guarda la base de datos y la parte frágil; la prueba del banco (reiniciar el ordenador en marcha) se hace en un
+# circuito «logica» donde la alimentación compartida arrastra al microcontrolador; el modo autónomo, en otro donde el
+# microcontrolador elige entre la orden del ordenador y su modo propio (un multiplexor). La alimentación y la prueba
+# ordenada pasan a esos circuitos. Queda una pregunta de opciones: cuándo sobra.
 leccion: cap19/sec-19.1
 
 libro:
@@ -61,93 +66,105 @@ tarjetas:
       - "¿Qué lado arranca al instante y no depende de un sistema operativo?"
     solucion: "El recuadro azul, el microcontrolador."
 
-  - id: prediga-reinicio
-    tipo: predecir
-    titulo: "El ordenador se reinicia"
-    texto: "Un sistema combinado está en marcha y el ordenador de placa se actualiza y se reinicia. ¿Qué le pasa al proceso?"
-    libro: [12]
+  - id: toque-base-datos
+    tipo: tocar
+    titulo: "Quién guarda los datos"
+    texto: "El sistema guarda meses de medidas en una base de datos y las sirve por la red. Toque el lado que lo hace."
+    libro: [9, 10]
     widget:
       tipo: figura
       figura: fig-19.1
       zonas:
         - { id: micro, rotulo: "Recuadro azul de la izquierda", rect: [3, 3, 178, 105] }
-    opciones:
-      - texto: "El microcontrolador sigue controlándolo"
-        bien: true
-        porque: "Es la propiedad que justifica la arquitectura: el control no depende del ordenador."
-      - texto: "Se detiene hasta que el ordenador vuelve"
-        porque: "Eso pasaría si el control estuviera en el ordenador; aquí lo lleva el microcontrolador."
-      - texto: "Se reinicia también el microcontrolador"
-        porque: "Son dos placas independientes: el reinicio de una no arrastra a la otra."
+        - { id: enlace, rotulo: "Flechas del centro", rect: [183, 20, 86, 75] }
+        - { id: ordenador, rotulo: "Recuadro morado de la derecha", rect: [271, 3, 177, 105] }
+    tocar:
+      bien: [ordenador]
+      porque:
+        micro: "El microcontrolador lee y gobierna a tiempo; ficheros, bases de datos y red los trae el sistema operativo."
+        enlace: "Por el enlace pasan las medidas, pero alguien tiene que guardarlas."
+    exito: "El ordenador de placa: lo que exige potencia y servicios, como red, almacenamiento, interfaz y procesado pesado."
     escalera:
-      - "¿En qué placa está el control del proceso?"
-    solucion: "El microcontrolador sigue controlando el proceso."
+      - "¿Qué lado tiene sistema de ficheros?"
+    solucion: "El recuadro morado, el ordenador."
+
+  - id: prediga-reinicio
+    tipo: explorar
+    titulo: "El ordenador se reinicia"
+    texto: "La prueba del banco: con el sistema en marcha, apague el ordenador y consiga que el proceso siga controlado."
+    libro: [12, 18, 23, 24]
+    widget:
+      tipo: logica
+      entradas:
+        - { id: PC, valor: 1, rotulo: "Ordenador en marcha" }
+        - { id: FC, valor: 1, rotulo: "Fuente compartida" }
+      piezas:
+        - { id: n1, tipo: not, entradas: [FC] }
+        - { id: o1, tipo: or, entradas: [PC, n1], rotulo: "Microcontrolador vivo" }
+      salidas:
+        - { id: WEB, de: PC, rotulo: "Panel web" }
+        - { id: CTRL, de: o1, rotulo: "Proceso controlado" }
+    objetivo:
+      condiciones:
+        - { led: WEB, valor: 0, rotulo: "Ordenador apagado" }
+        - { led: CTRL, valor: 1, rotulo: "Proceso controlado" }
+      logrado: "Con su propia alimentación, el microcontrolador sigue controlando aunque el ordenador se cuelgue o se reinicie: la propiedad que justifica la arquitectura. Si la prueba falla, la frontera estaba mal trazada."
+      pistas:
+        - { cuando: { led: CTRL, valor: 0 }, texto: "La fuente que cae con el ordenador arrastra al microcontrolador: sepárelas." }
+        - { texto: "Apague el ordenador." }
+    escalera:
+      - "El microcontrolador debe poder seguir vivo si el ordenador se apaga."
+    solucion: "Fuente separada y ordenador apagado."
 
   - id: porque-capas
-    tipo: porque
+    tipo: tocar
     titulo: "Dos capas"
-    texto: "¿Por qué esa propiedad convierte el sistema en algo seguro por construcción?"
+    texto: "El sistema es seguro por construcción: la parte compleja y frágil no puede tumbar a la simple y fiable. Toque la frágil."
     libro: [13]
     widget:
       tipo: figura
       figura: fig-19.1
       zonas:
+        - { id: micro, rotulo: "Recuadro azul de la izquierda", rect: [3, 3, 178, 105] }
+        - { id: enlace, rotulo: "Flechas del centro", rect: [183, 20, 86, 75] }
         - { id: ordenador, rotulo: "Recuadro morado de la derecha", rect: [271, 3, 177, 105] }
-    opciones:
-      - texto: "La parte compleja y frágil no puede tumbar la simple y fiable"
-        bien: true
-        porque: "Dos capas con grados de criticidad distintos, como el cargador de arranque y la aplicación."
-      - texto: "Porque el ordenador nunca se cuelga"
-        porque: "Al contrario: se cuelga, se actualiza y se reinicia. El diseño cuenta con ello."
-      - texto: "Porque el microcontrolador es más rápido"
-        porque: "No es cuestión de velocidad, sino de qué parte puede fallar sin arrastrar a la otra."
+    tocar:
+      bien: [ordenador]
+      porque:
+        micro: "Es la parte simple y fiable: determinista, arranca al instante."
+        enlace: "El enlace une las dos capas; la frágil es una de ellas."
+    exito: "El ordenador: se cuelga, se actualiza y se reinicia, y el diseño cuenta con ello. Dos capas de criticidad distinta, como el cargador de arranque y la aplicación."
     escalera:
-      - "¿Cuál de las dos es la parte compleja?"
-    solucion: "La parte compleja y frágil no puede tumbar la parte simple y fiable."
+      - "¿Cuál de las dos lleva un sistema operativo entero?"
+    solucion: "El ordenador de placa."
 
   - id: degradado
-    tipo: pregunta
+    tipo: explorar
     titulo: "Si el ordenador no responde"
-    texto: "Hay que definir el comportamiento degradado. ¿Qué debe hacer el microcontrolador si el ordenador no contesta?"
+    texto: "Dos diseños gobiernan la misma bomba: uno solo obedece al ordenador; otro tiene un modo autónomo. Corte el enlace y consiga que la bomba siga trabajando."
     libro: [15, 17]
     widget:
-      tipo: figura
-      figura: fig-19.1
-      zonas:
-        - { id: enlace, rotulo: "Flechas del centro", rect: [183, 20, 86, 75] }
-    opciones:
-      - texto: "Pasar a un modo autónomo razonable"
-        bien: true
-        porque: "No debe quedarse esperando: sigue con lo que le toca hasta que el otro vuelva."
-      - texto: "Esperar la siguiente orden"
-        porque: "Esperar indefinidamente es justo lo que hay que evitar: el proceso quedaría sin control."
-      - texto: "Reiniciarse para recuperar el enlace"
-        porque: "Reiniciarse no arregla al otro y deja el proceso sin control mientras arranca."
+      tipo: logica
+      entradas:
+        - { id: ENL, valor: 1, rotulo: "El ordenador responde" }
+        - { id: ORD, valor: 0, rotulo: "Orden: bomba en marcha" }
+      piezas:
+        - { id: a1, tipo: and, entradas: [ORD, ENL], rotulo: "Solo obedece" }
+        - { id: m1, tipo: mux, bits: 1, entradas: [ENL, 1, ORD], rotulo: "Con modo autónomo" }
+      salidas:
+        - { id: ENLACE, de: ENL, rotulo: "Enlace" }
+        - { id: B1, de: a1, rotulo: "Bomba, solo obedece" }
+        - { id: B2, de: m1, rotulo: "Bomba, modo autónomo" }
+    objetivo:
+      condiciones:
+        - { led: ENLACE, valor: 0, rotulo: "Enlace cortado" }
+        - { led: B2, valor: 1, rotulo: "Bomba con modo autónomo en marcha" }
+      logrado: "Sin respuesta, el multiplexor pasa al modo autónomo y la bomba sigue; el diseño que solo obedece se queda esperando. No debe quedarse esperando."
+      pistas:
+        - { texto: "Corte el enlace: el ordenador deja de responder." }
     escalera:
-      - "¿Qué es peor: seguir solo o quedarse parado?"
-    solucion: "Un modo autónomo razonable, sin quedarse esperando."
-
-  - id: alimentacion
-    tipo: pregunta
-    titulo: "La alimentación"
-    texto: "El ordenador de placa consume mucho más. ¿Qué hay que garantizar al diseñar la alimentación?"
-    libro: [18]
-    widget:
-      tipo: figura
-      figura: fig-19.1
-      zonas:
-        - { id: micro, rotulo: "Recuadro azul de la izquierda", rect: [3, 3, 178, 105] }
-    opciones:
-      - texto: "Que el microcontrolador siga vivo si el ordenador se apaga"
-        bien: true
-        porque: "Si comparten una alimentación que cae con el ordenador, la propiedad del reparto se pierde."
-      - texto: "Que los dos se apaguen a la vez"
-        porque: "Eso arrastra al microcontrolador con el ordenador: justo lo contrario."
-      - texto: "Que el ordenador alimente al microcontrolador"
-        porque: "Entonces, si el ordenador se apaga, el microcontrolador cae con él."
-    escalera:
-      - "¿Cuál de los dos tiene que sobrevivir al otro?"
-    solucion: "El microcontrolador debe poder seguir vivo si el ordenador se apaga."
+      - "¿Qué hace cada diseño cuando falta la orden?"
+    solucion: "Enlace cortado: el modo autónomo mantiene la bomba."
 
   - id: cuando-no
     tipo: pregunta
@@ -170,29 +187,6 @@ tarjetas:
     escalera:
       - "¿Hace falta aquí tiempo real estricto y servicios de un sistema operativo a la vez?"
     solucion: "Un microcontrolador con red, como un ESP32 con wifi."
-
-  - id: ordene-prueba
-    tipo: pregunta
-    titulo: "La prueba del banco"
-    texto: "Ordene la prueba que valida una arquitectura combinada."
-    libro: [23, 24]
-    widget:
-      tipo: figura
-      figura: fig-19.1
-      zonas:
-        - { id: ordenador, rotulo: "Recuadro morado de la derecha", rect: [271, 3, 177, 105] }
-    ordenar:
-      - "Poner el sistema en marcha"
-      - "Reiniciar el ordenador"
-      - "Comprobar que el proceso sigue controlado"
-      - "Ver que el microcontrolador entra en modo autónomo"
-      - "Comprobar que al volver se resincronizan solos"
-    exito: "Si funciona, el reparto está bien hecho. Si no, la frontera estaba mal trazada."
-    pistas:
-      - { texto: "El reinicio se provoca con el sistema ya funcionando." }
-    escalera:
-      - "Primero el sistema funcionando; después, el fallo; al final, la vuelta."
-    solucion: "Marcha, reinicio, control, modo autónomo y resincronización."
 
   - id: resumen
     tipo: resumen

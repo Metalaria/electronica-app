@@ -9,6 +9,10 @@
 # Pasos prácticos: «averia» del bus en el paso 3 (orden fijo), «tocar» el shunt en la placa y «banco» opcional: la
 # meseta de la transmisión sobre el shunt de 0,1 Ω, unos 15 mV con 150 mA de media (± 30 %, de ejemplo: la media de la
 # transmisión es «unos 150 mA» y tiene picos).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la placa (figura 50.23) se tocan la reserva para los picos
+# y el shunt; antes de la avería del bus se mide SDA en reposo con el bus sano (punto de partida del diagnóstico). El
+# orden de montaje y las medidas de puesta a punto pasan al resumen. Quedan dos de opciones: el consumo en campo y las
+# semanas de prueba.
 leccion: cap49/sec-49.12
 
 libro:
@@ -51,43 +55,55 @@ modelo:
 
 tarjetas:
   - id: explore-placa
-    tipo: explorar
+    tipo: tocar
     titulo: "La placa portadora"
-    texto: "La placa del proyecto KiCad recibe la DevKit y los módulos, y añade lo que pide el capítulo. Toque la entrada, el shunt y la antena."
+    texto: "La placa del proyecto KiCad recibe la DevKit y los módulos, y añade lo que pide el capítulo. Toque lo que cubre los picos del wifi."
     libro: [388, 389]
     widget:
       tipo: figura
       figura: fig-new-49-placa
       zonas:
-        - { id: entrada, rotulo: "Conector de abajo, en el centro", rect: [165, 150, 40, 45], texto: "J1: la entrada de 5 V, protegida con fusible rearmable, supresor y Schottky." }
-        - { id: shunt, rotulo: "Abajo a la derecha", rect: [196, 158, 36, 40], texto: "R10 y TP10: el shunt de 0,1 Ω en el retorno, para el perfil de corriente." }
-        - { id: antena, rotulo: "Hueco de arriba a la derecha", rect: [232, 18, 58, 42], texto: "La antena del ESP32 sobresale del borde, sin cobre debajo en ninguna cara." }
-        - { id: reserva, rotulo: "Condensadores grandes", rect: [195, 108, 40, 45], texto: "C2: reserva para los picos del wifi." }
-    requiere: { mover: [entrada, shunt, antena] }
-
-  - id: ordene-montaje
-    tipo: pregunta
-    titulo: "El orden de montaje"
-    texto: "Ordene el montaje de la estación."
-    libro: [387, 391, 392, 393, 394, 395, 396, 422]
-    widget:
-      tipo: figura
-      figura: fig-49.20
-      zonas:
-        - { id: orden, rotulo: "La figura", rect: [0, 0, 453, 226] }
-    ordenar:
-      - "La alimentación sola"
-      - "El microcontrolador y el parpadeo"
-      - "Los buses, un dispositivo cada vez"
-      - "Los sensores, con lecturas plausibles"
-      - "La comunicación, por cable y luego inalámbrica"
-      - "La caja y el montaje final"
-    exito: "Cada paso se verifica antes del siguiente: montarlo todo y encender convierte un problema en una búsqueda."
-    pistas:
-      - { texto: "Un error en la alimentación destruye todo lo demás: va primero." }
+        - { id: entrada, rotulo: "Conector de abajo, en el centro", rect: [165, 150, 40, 45] }
+        - { id: shunt, rotulo: "Abajo a la derecha", rect: [196, 158, 36, 40] }
+        - { id: antena, rotulo: "Hueco de arriba a la derecha", rect: [232, 18, 58, 42] }
+        - { id: reserva, rotulo: "Condensadores grandes", rect: [195, 108, 40, 45] }
+    tocar:
+      bien: [reserva]
+      porque:
+        entrada: "J1, la entrada de 5 V, protegida con fusible rearmable, supresor y Schottky."
+        shunt: "R10 y TP10: el shunt de 0,1 Ω en el retorno, para medir el perfil."
+        antena: "El hueco de la antena: sobresale del borde, sin cobre debajo en ninguna cara."
+    exito: "C2, la reserva para los picos del wifi, junto al módulo."
     escalera:
-      - "Del raíl al núcleo, del núcleo al bus, del bus a los sensores, y la caja al final."
-    solucion: "Alimentación, micro, buses, sensores, comunicación, caja."
+      - "Busque los condensadores grandes."
+    solucion: "C2, los condensadores grandes."
+
+  - id: medir-sda
+    tipo: medir
+    titulo: "SDA en reposo"
+    texto: "Paso 3 del montaje, los buses, de uno en uno. Antes de añadir el sensor, ponga las puntas donde comprueba que SDA está sana en reposo."
+    nota: "La carga del bus, 1 MΩ, es de ejemplo."
+    libro: [393, "cap49#199"]
+    fijar: { V_i: 3.3, R_u: 4700, R_d: 1e6 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_i, arriba: R_u, abajo: R_d }
+      mide: { salida: V_l, corriente: I_d }
+      instrumento: { tipo: multimetro, modos: [V], puntos: [fte, salida, "0"] }
+    medir:
+      magnitud: tension
+      entre: [salida, "0"]
+      valor: V_l
+      porque:
+        "fte/0": "Esa es la alimentación del bus, 3,3 V, esté como esté la línea."
+        "fte/salida": "Esa es la caída en la pull-up: casi nada en reposo."
+    exito: "{{V_l}}: casi 3,3 V, la línea en alto. Si al añadir un dispositivo cae a cero, ese dispositivo es el sospechoso."
+    escalera:
+      - "SDA es el punto entre la pull-up y lo que cuelga del bus."
+    solucion: "Entre la salida del divisor y masa."
+    comprobar:
+      - { V_l: 3.28, tol: 0.01 }
 
   - id: averia-bus
     tipo: averia
@@ -123,28 +139,6 @@ tarjetas:
       - { V_l: 3.28, I_d: 3.28e-6, tol: 0.01 }
       - { con: { R_d: 0.001 }, I_d: 0.0007, tol: 0.01 }
 
-  - id: empareje-medidas
-    tipo: pregunta
-    titulo: "Las medidas de puesta a punto"
-    texto: "Empareje cada medida de la puesta a punto con dónde o cómo se hace."
-    libro: [399, 400, 401, 402]
-    widget:
-      tipo: figura
-      figura: fig-49.20
-      zonas:
-        - { id: orden, rotulo: "La figura", rect: [0, 0, 453, 226] }
-    emparejar:
-      - ["Tensiones de los raíles", "En los pines de cada integrado"]
-      - ["Consumo", "Activo, durmiendo y transmitiendo"]
-      - ["Sensores", "Frente a una referencia conocida"]
-      - ["Señal inalámbrica", "En la posición definitiva"]
-    exito: "El consumo medido se compara con lo estimado: de ahí sale la autonomía real."
-    pistas:
-      - { texto: "La radio se mide donde va a quedar, no en la mesa." }
-    escalera:
-      - "Cada medida se hace donde de verdad importa."
-    solucion: "Raíles, en los pines; consumo, en cada modo; sensores, con referencia; radio, en su sitio."
-
   - id: toque-shunt
     tipo: tocar
     titulo: "Dónde medir el perfil"
@@ -168,6 +162,36 @@ tarjetas:
     escalera:
       - "Busque la resistencia con un punto de prueba al lado, en el retorno."
     solucion: "R10 y TP10, abajo a la derecha."
+
+  - id: explore-shunt
+    tipo: explorar
+    titulo: "Corriente en milivoltios"
+    texto: "Sobre el shunt de 0,1 Ω, la tensión es la corriente de la placa. Busque la corriente que da 15 mV, la meseta que se espera al transmitir."
+    libro: [388, 420]
+    fijar: { R_s: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: ii, min: 0, max: 0.4, unidad: A, rotulo: "corriente de la placa" }
+      y: { min: 0, max: 0.04, unidad: V, rotulo: "tensión en el shunt" }
+      curvas:
+        - { expr: "ii*R_s", color: naranja, rotulo: "V = I · R" }
+      marcas:
+        - { x: "I_x", y: "V_h", rotulo: "{{V_h}}" }
+      lectura: { valor: V_h, rotulo: "Tensión en el shunt" }
+      mandos:
+        - { valor: I_x, min: 0, max: 0.4, paso: 0.01, rotulo: "Corriente de la placa" }
+    inicio: { I_x: 0.02 }
+    objetivo:
+      condiciones:
+        - { valor: V_h, objetivo: 0.015, tol: 0.02, rotulo: "Shunt: {{V_h}}" }
+      logrado: "Unos 150 mA, la media de la transmisión: con 0,1 Ω, cada milivoltio del osciloscopio son 10 mA."
+      pistas:
+        - { texto: "I = V / R: 15 mV entre 0,1 Ω." }
+    escalera:
+      - "15 mV / 0,1 Ω."
+    solucion: "150 mA."
+    comprobar:
+      - { con: { I_x: 0.15 }, V_h: 0.015 }
 
   - id: banco-perfil
     tipo: banco
@@ -236,9 +260,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [397, 404, 418, 420]
+    libro: [387, 391, 392, 393, 394, 395, 396, 397, 399, 400, 401, 402, 404, 418, 420, 422]
     ideas:
       - { titulo: "En orden.", texto: "Alimentación, micro, buses de uno en uno, sensores, comunicación y caja." }
       - { titulo: "El bus.", texto: "SDA en bajo: con corriente, alguien la sujeta; sin ella, falta la pull-up." }
-      - { titulo: "El perfil.", texto: "Shunt y disparo único: el consumo medio real." }
+      - { titulo: "El perfil.", texto: "Shunt y disparo único: el consumo medio real. Raíles en los pines, consumo en cada modo, sensores con referencia, radio en su sitio." }
       - { titulo: "Campo.", texto: "Semanas instalada antes de darla por buena." }

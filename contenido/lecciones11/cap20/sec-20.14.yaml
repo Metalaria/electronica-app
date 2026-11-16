@@ -8,6 +8,10 @@
 #   24 − 5 − 0,034 ≈ 19 V.
 # Paso práctico: «simular» el error de la aproximación lineal con un 5 % de excursión (2,5 %; errores típicos: tomarlo
 # igual a ΔR/R, 5 %, o a ΔR/4R, 1,25 %).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): las dos exploraciones tienen objetivo (el 0,5 % de error con
+# un 1 % de excursión; los 250 Ω que dan 5 V a 20 mA); se escriben la salida del puente completo, la sensibilidad que
+# deja el metro de coaxial y la tensión que le queda al transmisor; se marca en la curva la capacidad que divide la
+# sensibilidad por seis. Las otras mejoras y soluciones pasan a los éxitos. Quedan dos preguntas de opciones.
 leccion: cap20/sec-20.14
 
 libro:
@@ -58,6 +62,8 @@ modelo:
     V_r: { expr: "I_b*R_l", sim: "V", nombre: "tensión en la resistencia de lectura", unidad: V }
     V_k: { expr: "I_b*R_k", sim: "V_{cable}", nombre: "caída en el cable", unidad: V }
     V_t: { expr: "V_a - I_b*R_l - I_b*R_k", sim: "V_{transmisor}", nombre: "lo que le queda al transmisor", unidad: V }
+    V_f: { expr: "4*V_l", sim: "V_{completo}", nombre: "salida del puente completo", unidad: V, cifras: 4 }
+    C_6: { expr: "5*C_s", sim: "C_{cable}", nombre: "cable que divide la sensibilidad por seis", unidad: F }
 
 tarjetas:
   - id: explore-puente
@@ -78,9 +84,18 @@ tarjetas:
       mide: { salida: V_o, va: V_wa, vb: V_wb, corriente: I_w }
       mandos:
         - { valor: x_r, lista: [0.001, 0.01, 0.05], nombres: ["0,1 %", "1 %", "5 %"], rotulo: "Excursión, ΔR/R" }
-    requiere: { mover: [x_r] }
+    inicio: { x_r: 0.001 }
+    objetivo:
+      condiciones:
+        - { valor: e_l, min: 0.4, max: 0.6, rotulo: "Error de la lineal: {{e_l}}" }
+      logrado: "Con un 1 %, la aproximación lineal se pasa un 0,5 %: unos ΔR/2R. Con un 0,1 %, apenas un 0,05 %."
+      pistas:
+        - { texto: "El error crece con la excursión: pruebe la de en medio." }
+    escalera:
+      - "Busque la excursión que da medio punto de error."
+    solucion: "Un 1 % de excursión."
     comprobar:
-      - { e_l: 0.5, V_o: 0.002488, tol: 0.01 }
+      - { con: { x_r: 0.01 }, e_l: 0.5, V_o: 0.002488, tol: 0.01 }
       - { con: { x_r: 0.001 }, e_l: 0.05, tol: 0.02 }
 
   - id: formula-puente
@@ -127,10 +142,11 @@ tarjetas:
       - { e_l: 2.5, e_a: 5, e_b: 1.25, tol: 0.01 }
 
   - id: empareje-mejoras
-    tipo: pregunta
-    titulo: "Las tres mejoras"
-    texto: "Empareje cada mejora con lo que consigue."
+    tipo: leer
+    titulo: "Cuatro ramas activas"
+    texto: "Con una rama activa y un 1 % de excursión, la salida lineal es de 2,5 mV por voltio. Con el puente completo, escriba la salida por voltio."
     libro: [362]
+    fijar: { x_r: 0.01, V_e: 1 }
     widget:
       tipo: grafica
       x: { id: u, min: 0, max: 0.05, unidad: "", rotulo: "ΔR/R" }
@@ -138,21 +154,25 @@ tarjetas:
       curvas:
         - { expr: "(1 + u)/(2 + u) - 0.5", color: naranja, rotulo: "exacta" }
         - { expr: "u/4", color: azul, rotulo: "lineal", discontinua: true }
-    emparejar:
-      - ["Puente completo, cuatro ramas activas", "Cancela la no linealidad y cuadruplica la señal"]
-      - ["Excitación por corriente, una rama", "Reduce el error a la mitad"]
-      - ["Linealizar por software", "Aplicar la expresión exacta"]
-    exito: "Por software no cuesta nada si ya hay microcontrolador."
-    pistas:
-      - { texto: "Con microcontrolador, basta usar la ecuación exacta." }
+    leer:
+      objetivo: V_f
+      unidad: V
+      tol: 0.02
+      rotulo: "Salida del puente completo"
+      errores:
+        - { expr: "V_l", texto: "Esa es la de una sola rama: el puente completo cuadruplica la señal." }
+        - { expr: "2*V_l", texto: "Ese es el doble; con cuatro ramas activas es el cuádruple." }
+    exito: "10 mV por voltio, y sin no linealidad. Excitar por corriente la reduce a la mitad; con microcontrolador, basta la expresión exacta."
     escalera:
-      - "¿Cuál cuadruplica además la señal?"
-    solucion: "Completo, cancela y cuadruplica; corriente, la mitad; software, la exacta."
+      - "Cuadruplique 2,5 mV."
+    solucion: "4 · 2,5 mV = 10 mV por voltio."
+    comprobar:
+      - { V_f: 0.01, V_l: 0.0025 }
 
   - id: prediga-cable
-    tipo: predecir
+    tipo: leer
     titulo: "19.B — El cable se come el sensor"
-    texto: "Un sensor capacitivo de 20 pF varía 2 pF con un objeto, y se conecta con un metro de coaxial de 100 pF. ¿Qué sensibilidad queda?"
+    texto: "Un sensor capacitivo de 20 pF varía 2 pF con un objeto, y se conecta con un metro de coaxial de 100 pF. Escriba la sensibilidad que queda."
     libro: [368, 371, 372, 373]
     fijar: { C_s: 20e-12, d_C: 2e-12, C_k: 100e-12 }
     widget:
@@ -161,17 +181,15 @@ tarjetas:
       y: { min: 0, max: 12, unidad: "%", rotulo: "sensibilidad" }
       curvas:
         - { expr: "d_C/(C_s + c)*100", color: naranja, rotulo: "sensibilidad relativa" }
-      lectura: { valor: s_c, rotulo: "Sensibilidad" }
-      ocultar: true
-      mandos: []
-    opciones:
-      - texto: "1,67 %: el cable la divide por seis"
-        bien: true
-        porque: "Los 100 pF quedan en paralelo: 2 pF de 120 en lugar de 2 de 20."
-      - texto: "10 %, como sin cable"
-        porque: "El cable añade 100 pF en paralelo con el sensor: la variación es una parte mucho menor."
-      - texto: "2 %: los 2 pF de 100"
-        porque: "El total es sensor más cable, 120 pF, no solo el cable."
+    leer:
+      objetivo: s_c
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Sensibilidad relativa"
+      errores:
+        - { expr: "d_C/C_s*100", texto: "Ese es el 10 % sin cable: los 100 pF quedan en paralelo con el sensor." }
+        - { expr: "d_C/C_k*100", texto: "El total es sensor más cable, 120 pF, no solo el cable." }
+    exito: "1,67 %: 2 pF de 120 en lugar de 2 de 20. Un metro de cable divide la sensibilidad por seis."
     escalera:
       - "¿Qué capacidad total ve el circuito con el cable?"
     solucion: "2/120 = 1,67 %, frente al 10 % sin cable."
@@ -180,26 +198,30 @@ tarjetas:
       - { con: { C_k: 0 }, s_c: 10 }
 
   - id: empareje-guarda
-    tipo: pregunta
-    titulo: "Salvar el sensor capacitivo"
-    texto: "Empareje cada solución con cómo actúa."
-    libro: [374]
+    tipo: marcar
+    titulo: "Dividida por seis"
+    texto: "La curva da la sensibilidad según la capacidad del cable. Marque la capacidad con la que queda dividida por seis."
+    libro: [371, 373, 374]
+    fijar: { C_s: 20e-12, d_C: 2e-12 }
     widget:
       tipo: grafica
       x: { id: c, min: 0, max: 200e-12, unidad: F, rotulo: "C_{cable}" }
       y: { min: 0, max: 12, unidad: "%", rotulo: "sensibilidad" }
       curvas:
         - { expr: "d_C/(C_s + c)*100", color: naranja, rotulo: "sensibilidad relativa" }
-    emparejar:
-      - ["Electrónica en el sensor", "Baja impedancia antes de salir al cable"]
-      - ["Apantallamiento activo (guarda)", "La malla a la misma tensión que el conductor"]
-      - ["Medir por oscilación", "Transmitir una frecuencia, inmune al cable"]
-    exito: "Con la guarda, la capacidad del cable deja de cargar, aunque siga estando físicamente."
-    pistas:
-      - { texto: "Si no hay diferencia de tensión entre malla y conductor, la capacidad no carga." }
+    marcar:
+      modo: x
+      curva: 0
+      x: C_6
+      tol: 0.06
+      inicio: { x: 20e-12, y: 5 }
+      rotulo: "Capacidad del cable"
+    exito: "100 pF, un metro de coaxial. Se salva con electrónica en el sensor, con medida por oscilación o con una guarda: la malla a la tensión del conductor, y su capacidad deja de cargar."
     escalera:
-      - "Empiece por la guarda: excita la malla con un seguidor."
-    solucion: "Electrónica, baja impedancia; guarda, misma tensión; oscilación, frecuencia."
+      - "Sin cable, el 10 %; busque dónde la curva baja a la sexta parte."
+    solucion: "100 pF: 2 pF de 120, la sexta parte del 10 %."
+    comprobar:
+      - { C_6: 100e-12, s_c: 10 }
 
   - id: explore-bucle
     tipo: explorar
@@ -218,15 +240,23 @@ tarjetas:
       lectura: { valor: V_r, rotulo: "Tensión a 20 mA" }
       mandos:
         - { valor: R_l, lista: [100, 250], rotulo: "Resistencia de lectura" }
-    requiere: { mover: [R_l] }
+    objetivo:
+      condiciones:
+        - { valor: V_r, objetivo: 5, tol: 0.01, rotulo: "A 20 mA: {{V_r}}" }
+      logrado: "250 Ω dan exactamente de 1 a 5 V: por eso son el valor clásico, la entrada de cualquier convertidor."
+      pistas:
+        - { texto: "V = I · R: ¿qué resistencia da 5 V con 20 mA?" }
+    escalera:
+      - "5 V / 20 mA."
+    solucion: "250 Ω."
     comprobar:
       - { con: { R_l: 250 }, V_r: 5 }
       - { con: { R_l: 100 }, V_r: 2 }
 
   - id: estime-margen
-    tipo: pregunta
+    tipo: leer
     titulo: "Lo que le queda al transmisor"
-    texto: "Bucle a 24 V, 250 Ω de lectura y 100 m de cable de 1,72 Ω. Con 20 mA, ¿cuánta tensión le queda al transmisor?"
+    texto: "Bucle a 24 V, 250 Ω de lectura y 100 m de cable de 1,72 Ω. Con 20 mA, escriba la tensión que le queda al transmisor."
     libro: [385, 389]
     fijar: { V_a: 24, R_l: 250, R_k: 1.72, I_b: 0.02 }
     widget:
@@ -235,21 +265,17 @@ tarjetas:
       y: { min: 0, max: 6, unidad: V, rotulo: "V" }
       curvas:
         - { expr: "i*R_l", color: naranja, rotulo: "tensión en la lectura" }
-    estimar:
-      objetivo: "V_t"
+    leer:
+      objetivo: V_t
       unidad: V
-      min: 0
-      max: 24
-      paso: 0.5
-      inicio: 3
       tol: 0.03
       rotulo: "Tensión para el transmisor"
+      errores:
+        - { expr: "V_a", texto: "Reste los 5 V de la lectura y la caída del cable." }
+        - { expr: "V_r", texto: "Esos 5 V son los de la lectura; al transmisor le queda el resto." }
     exito: "19 V: de sobra, salvo que se encadenen varios receptores en el bucle."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 19.6 }, texto: "Demasiado: reste los 5 V de la lectura." }
-      - { texto: "Corto: solo se restan los 5 V de la lectura y 34 mV del cable." }
     escalera:
-      - "A 20 mA, 250 Ω son 5 V."
+      - "A 20 mA, 250 Ω son 5 V, y el cable, 34 mV."
     solucion: "24 − 5 − 0,034 ≈ 19 V."
     comprobar:
       - { V_t: 18.97, V_r: 5, tol: 0.01 }

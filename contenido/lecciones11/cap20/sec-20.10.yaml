@@ -4,6 +4,11 @@
 #   de 5 V es de ejemplo (el libro no la da aquí); la forma de la carga es lo que importa.
 # - La secuencia de cuadratura 00, 01, 11, 10 (bloque 242).
 # Paso práctico: «dibujar» la carga del condensador del antirrebote RC durante 50 ms.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el latch SR del antirrebote (dos NAND cruzadas) se vive en un
+# circuito «logica»; el RC se explora hasta 10 ms; en un fragmento propio (ilustra el bloque 239) se toca la línea que
+# ignora la entrada sin bloquear; la cuadratura sale de un contador de dos bits (A = q1, B = q1 XOR q0) y se lleva a
+# 10; se escriben los pasos por ciclo. El contador que cuenta rebotes pasa al explorar; el sondeo y el banco, al
+# resumen. Queda una pregunta de opciones: la transición ilegal.
 leccion: cap20/sec-20.10
 
 libro:
@@ -30,6 +35,7 @@ modelo:
     t_5: { expr: "5*tau_c", sim: "5τ", nombre: "cinco constantes de tiempo", unidad: s }
     p_t: { expr: "(1 - exp(-1))*100", sim: "v(τ)/V", nombre: "fracción cargada en una constante", unidad: "%", cifras: 3 }
     v_tau: { expr: "0.632*V_c", sim: "v(τ)", nombre: "tensión en una constante de tiempo", unidad: V }
+    n_q: { expr: "4", sim: "n", nombre: "combinaciones por ciclo", unidad: "" }
 
 tarjetas:
   - id: explore-rebotes
@@ -41,61 +47,44 @@ tarjetas:
       tipo: figura
       figura: fig-20.16
       zonas:
-        - { id: rebotes, rotulo: "Tren de pulsos de arriba", rect: [118, 24, 112, 52], texto: "Los rebotes: decenas de transiciones en unos milisegundos." }
-        - { id: asentado, rotulo: "Línea de arriba, a la derecha", rect: [232, 55, 200, 25], texto: "El contacto asentado." }
-        - { id: a, rotulo: "Señal azul de abajo", rect: [33, 140, 405, 30], texto: "Señal A del encoder." }
-        - { id: b, rotulo: "Señal verde de abajo", rect: [33, 172, 405, 32], texto: "Señal B: desfasada un cuarto de ciclo respecto a A." }
+        - { id: rebotes, rotulo: "Tren de pulsos de arriba", rect: [118, 24, 112, 52], texto: "Los rebotes: decenas de transiciones en unos milisegundos. Un contador conectado directamente las cuenta todas." }
+        - { id: asentado, rotulo: "Línea de arriba, a la derecha", rect: [232, 46, 200, 38], texto: "El contacto asentado." }
+        - { id: a, rotulo: "Señal azul de abajo", rect: [33, 134, 405, 37], texto: "Señal A del encoder." }
+        - { id: b, rotulo: "Señal verde de abajo", rect: [33, 172, 405, 38], texto: "Señal B: desfasada un cuarto de ciclo respecto a A." }
     requiere: { mover: [rebotes, b] }
 
-  - id: prediga-contador
-    tipo: predecir
-    titulo: "Un pulsador en un contador"
-    texto: "Un pulsador va directo a la entrada de un contador y se pulsa una sola vez. ¿Qué cuenta?"
-    libro: [235]
-    widget:
-      tipo: figura
-      figura: fig-20.16
-      zonas:
-        - { id: rebotes, rotulo: "Tren de pulsos de arriba", rect: [118, 24, 112, 52] }
-    opciones:
-      - texto: "Muchas pulsaciones: decenas de transiciones"
-        bien: true
-        porque: "El contacto rebota durante 1 a 20 ms, y el contador ve cada rebote."
-      - texto: "Una"
-        porque: "Así sería sin rebotes; un contacto mecánico rebota antes de asentarse."
-      - texto: "Ninguna"
-        porque: "Las transiciones llegan, y de sobra: cada rebote es una."
-    escalera:
-      - "¿Qué ve el contador mientras el contacto rebota?"
-    solucion: "Decenas de transiciones: cuenta de más."
-
   - id: empareje-antirrebote
-    tipo: pregunta
-    titulo: "Tres formas de tratarlo"
-    texto: "Empareje cada antirrebote con su uso."
-    libro: [237, 238, 239]
+    tipo: explorar
+    titulo: "El latch SR"
+    texto: "Un conmutador de dos contactos ataca un latch SR de dos NAND. Lleve el conmutador al otro contacto, con rebotes incluidos, y deje la salida a 1."
+    libro: [238]
     widget:
-      tipo: figura
-      figura: fig-20.16
-      zonas:
-        - { id: rebotes, rotulo: "Tren de pulsos de arriba", rect: [118, 24, 112, 52] }
-    emparejar:
-      - ["RC y disparador de Schmitt", "El contacto alimenta lógica o un contador"]
-      - ["Latch SR", "Pulsador de dos posiciones"]
-      - ["Por software", "Con microcontrolador, ignorando la entrada un rato"]
-    exito: "El latch es el más elegante: el primer contacto fija el biestable."
-    pistas:
-      - { texto: "El latch necesita dos contactos." }
+      tipo: logica
+      entradas:
+        - { id: S, valor: 1, rotulo: "Contacto S (0 = tocando)" }
+        - { id: R, valor: 0, rotulo: "Contacto R (0 = tocando)" }
+      piezas:
+        - { id: n1, tipo: nand, entradas: [S, n2] }
+        - { id: n2, tipo: nand, entradas: [R, n1] }
+      salidas:
+        - { id: Q, de: n1, rotulo: "Salida" }
+    objetivo:
+      condiciones:
+        - { led: Q, valor: 1, rotulo: "Salida a 1" }
+      logrado: "El primer toque de S fija el biestable, y los rebotes, que solo sueltan y vuelven a tocar S, ya no lo cambian. Es el antirrebote más elegante, si el conmutador tiene dos contactos."
+      pistas:
+        - { texto: "Suelte R y toque S: pruebe a soltar y volver a tocar S, como un rebote." }
     escalera:
-      - "¿Cuál no necesita ningún componente?"
-    solucion: "RC y Schmitt para lógica; latch con conmutador doble; software con microcontrolador."
+      - "Un NAND con una entrada a 0 da 1."
+    solucion: "R suelto (1) y S tocando (0)."
 
   - id: explore-rc
     tipo: explorar
     titulo: "El filtro RC"
-    texto: "10 kΩ y 1 µF dan 10 ms de constante: el condensador sube despacio y el Schmitt convierte la rampa en un flanco limpio."
+    texto: "Con 1 µF, el condensador sube despacio y el Schmitt convierte la rampa en un flanco limpio. Elija R para 10 ms de constante."
     nota: "Tensión de ejemplo."
     libro: [237]
+    inicio: { R_c: 4700 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -110,7 +99,15 @@ tarjetas:
           - { x: "tau_c", y: "v_tau", rotulo: "τ" }
       mandos:
         - { valor: R_c, lista: [4700, 10000, 22000] }
-    requiere: { mover: [R_c] }
+    objetivo:
+      condiciones:
+        - { valor: tau_c, objetivo: 0.01, tol: 0.01, rotulo: "τ = {{tau_c}}" }
+      logrado: "10 kΩ y 1 µF: τ = R·C = 10 ms. Los rebotes duran milisegundos y apenas mueven la rampa."
+      pistas:
+        - { texto: "τ = R·C: con 1 µF, ¿qué R da 10 ms?" }
+    escalera:
+      - "τ = R · C."
+    solucion: "10 kΩ."
     comprobar:
       - { con: { R_c: 10000 }, tau_c: 0.01 }
 
@@ -141,48 +138,63 @@ tarjetas:
       - { tau_c: 0.01, v_tau: 3.16, t_5: 0.05, p_t: 63.2 }
 
   - id: sin-bloquear
-    tipo: pregunta
+    tipo: tocar
     titulo: "Por software, sin bloquear"
-    texto: "Por software, al detectar un cambio se ignora la entrada 20 ms. ¿Cómo se hace sin bloquear el programa?"
+    texto: "Por software, al detectar un cambio se ignora la entrada 20 ms. Toque la línea que lo hace sin detener el programa."
     libro: [239]
     widget:
       tipo: figura
-      figura: fig-20.16
+      codigo:
+        lenguaje: c
+        texto: |
+          if (digitalRead(PIN) != ultimo) {
+            delay(20);
+            ultimo = digitalRead(PIN);
+          }
+          if (digitalRead(PIN) != ultimo && millis() - tCambio >= 20) {
+            tCambio = millis();
+            ultimo = !ultimo;
+          }
       zonas:
-        - { id: graf, rotulo: "Gráfica de los rebotes", rect: [33, 20, 405, 60] }
-    opciones:
-      - texto: "Con una marca de tiempo"
-        bien: true
-        porque: "Se apunta cuándo cambió y se ignora la entrada hasta que pasen 20 ms, sin detener nada."
-      - texto: "Con una espera de 20 ms"
-        porque: "Una espera bloquea el programa: es justo lo que hay que evitar."
-      - texto: "Leyendo la entrada sin parar"
-        porque: "Leería todos los rebotes."
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l5, lineas: [5], rotulo: "Quinta línea" }
+        - { id: l7, lineas: [7], rotulo: "Séptima línea" }
+    tocar:
+      bien: [l5]
+      porque:
+        l1: "Detecta el cambio, pero no ignora nada."
+        l2: "Ignora la entrada 20 ms, pero bloqueando: mientras espera, el programa no hace nada más."
+        l7: "Cambia el estado guardado; lo que ignora los rebotes está antes."
+    exito: "Con una marca de tiempo, no con una espera: se apunta cuándo cambió y se ignora la entrada hasta que pasen 20 ms."
     escalera:
-      - "¿Qué permite saber que han pasado 20 ms sin quedarse esperando?"
-    solucion: "Con una marca de tiempo, no con una espera."
+      - "Busque la línea que compara con millis()."
+    solucion: "La quinta."
 
   - id: ordene-cuadratura
-    tipo: pregunta
+    tipo: explorar
     titulo: "La secuencia en cuadratura"
-    texto: "Al girar el encoder en un sentido, las dos señales recorren las cuatro combinaciones AB. Ordénelas desde 00."
+    texto: "Al girar el encoder, cada pulso es un paso. Dé pulsos desde 00 hasta que A valga 1 y B 0, y fíjese en el orden de las combinaciones."
     libro: [241, 242]
     widget:
-      tipo: figura
-      figura: fig-20.16
-      zonas:
-        - { id: graf, rotulo: "Gráfica del encoder", rect: [33, 125, 405, 85] }
-    ordenar:
-      - "00"
-      - "01"
-      - "11"
-      - "10"
-    exito: "Solo cambia un bit cada vez; en el sentido contrario, la secuencia se recorre al revés."
-    pistas:
-      - { texto: "Entre dos combinaciones seguidas cambia una sola señal." }
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Un paso de giro" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK], rotulo: "Posición" }
+        - { id: x1, tipo: xor, entradas: [c1.q1, c1.q0] }
+      salidas:
+        - { id: A, de: c1.q1, rotulo: "A" }
+        - { id: B, de: x1, rotulo: "B" }
+    objetivo:
+      condiciones:
+        - { led: A, valor: 1, rotulo: "A = 1" }
+        - { led: B, valor: 0, rotulo: "B = 0" }
+      logrado: "00, 01, 11, 10: solo cambia una señal en cada paso. Girando al revés, la secuencia se recorre al revés: el orden da el sentido."
+      pistas:
+        - { texto: "Dé otro paso." }
     escalera:
-      - "Desde 00, ¿cuál de las dos señales sube primero en la figura?"
-    solucion: "00, 01, 11, 10."
+      - "Entre dos combinaciones seguidas cambia una sola señal."
+    solucion: "Tres pasos: 01, 11 y 10."
 
   - id: porque-ilegal
     tipo: porque
@@ -207,77 +219,33 @@ tarjetas:
     solucion: "Una transición ilegal solo puede ser ruido, y se descarta."
 
   - id: prediga-detente
-    tipo: predecir
+    tipo: leer
     titulo: "Un mando demasiado sensible"
-    texto: "Cada detente del encoder es un ciclo completo de cuadratura y el firmware cuenta cuatro pasos por ciclo. ¿Qué nota el usuario?"
-    libro: [244]
+    texto: "Cada clic del mando es un ciclo completo de cuadratura, y el firmware cuenta un paso por cada combinación nueva. Escriba cuántos pasos cuenta por clic."
+    libro: [242, 244]
     widget:
       tipo: figura
       figura: fig-20.16
       zonas:
-        - { id: graf, rotulo: "Gráfica del encoder", rect: [33, 125, 405, 85] }
-    opciones:
-      - texto: "Que el mando es «demasiado sensible»: no es una avería"
-        bien: true
-        porque: "Es un desajuste entre el modelo del encoder y el código."
-      - texto: "Que el encoder está roto"
-        porque: "Funciona bien: cuenta cuatro pasos donde el usuario espera uno."
-      - texto: "Nada"
-        porque: "Cada clic avanza cuatro: se nota enseguida."
+        - { id: graf, rotulo: "Gráfica del encoder", rect: [33, 125, 405, 85], texto: "A y B, desfasadas un cuarto de ciclo." }
+    leer:
+      objetivo: n_q
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pasos por clic"
+    exito: "Cuatro donde el usuario espera uno: el mando parece «demasiado sensible». No es una avería: es un desajuste entre el modelo del encoder y el código."
     escalera:
-      - "¿Cuántos pasos espera el usuario por cada clic?"
-    solucion: "Un mando «demasiado sensible», por un desajuste entre modelo y código."
-
-  - id: leer-encoder
-    tipo: pregunta
-    titulo: "Leer un encoder manual"
-    texto: "Un encoder de mando, girado a mano, en un programa con un bucle rápido. ¿Cómo se lee?"
-    libro: [248, 249]
-    widget:
-      tipo: figura
-      figura: fig-20.17
-      zonas:
-        - { id: foto, rotulo: "La foto del encoder", rect: [0, 0, 1600, 1200] }
-    opciones:
-      - texto: "Por sondeo: cada milisegundo basta y sobra"
-        bien: true
-        porque: "Evita la complejidad de las interrupciones."
-      - texto: "Por interrupción, siempre"
-        porque: "Las interrupciones son para encoders rápidos o programas ocupados."
-      - texto: "Una vez por segundo"
-        porque: "Demasiado lento: perdería pasos al girarlo deprisa."
-    escalera:
-      - "¿Gira deprisa un mando movido a mano?"
-    solucion: "Por sondeo, cada milisegundo."
-
-  - id: banco-rebote
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Va a dimensionar el antirrebote de un pulsador concreto. ¿Qué hace primero?"
-    libro: [254]
-    widget:
-      tipo: figura
-      figura: fig-20.16
-      zonas:
-        - { id: rebotes, rotulo: "Tren de pulsos de arriba", rect: [118, 24, 112, 52] }
-    opciones:
-      - texto: "Medir sus rebotes con el osciloscopio en disparo único"
-        bien: true
-        porque: "Medir la duración en el pulsador que se va a usar, en lugar de copiar un valor genérico."
-      - texto: "Copiar los 20 ms del libro"
-        porque: "Son un valor genérico; lo que vale es lo que rebota su pulsador."
-      - texto: "Mirarlo con el multímetro"
-        porque: "Los rebotes duran milisegundos: el multímetro no los ve."
-    escalera:
-      - "¿Con qué instrumento se captura un suceso que ocurre una vez y dura milisegundos?"
-    solucion: "Osciloscopio en disparo único sobre el contacto."
+      - "¿Cuántas combinaciones tiene un ciclo?"
+    solucion: "Cuatro: 00, 01, 11 y 10."
+    comprobar:
+      - { n_q: 4 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [235, 237, 242, 243]
+    libro: [235, 237, 242, 243, 248, 249, 254]
     ideas:
       - { titulo: "Los rebotes.", texto: "De 1 a 20 ms y decenas de transiciones." }
       - { titulo: "El antirrebote.", texto: "RC y Schmitt, latch SR, o software con marca de tiempo." }
       - { titulo: "La cuadratura.", texto: "00, 01, 11, 10: el orden da el sentido y una transición ilegal es ruido." }
-      - { titulo: "Medir.", texto: "La duración real de los rebotes del pulsador concreto." }
+      - { titulo: "Leer y medir.", texto: "Un mando, por sondeo cada milisegundo; los rebotes, con osciloscopio en disparo único sobre el pulsador concreto." }

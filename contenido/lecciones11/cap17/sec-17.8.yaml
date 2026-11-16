@@ -2,6 +2,10 @@
 # - Las cuatro etapas de la cadena y el cargador de arranque sobre la figura 16.13 (fig-17.13), con zonas.
 # - Sin modelo numérico.
 # Paso práctico: «tocar» la pieza que escribe el programa en la Flash (el cargador de arranque).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 16.13 se tocan en orden las cuatro etapas, la
+# que da «referencia no definida», el cargador y la línea TX/RX en la que estorba un módulo (zonas de 17.13.py, 3,6 px
+# por unidad); se escribe el 70 % de los 2 KB de RAM; en un fragmento de biblioteca (propio, ilustra el bloque 213) se
+# toca la línea que bloquea. Queda una pregunta de opciones: el parpadeo en la placa sola.
 leccion: cap17/sec-17.8
 
 libro:
@@ -21,7 +25,12 @@ libro:
   228: "Si funciona, el problema está en el programa o en el circuito"
   229: "De un fichero de texto a un chip programado, con el papel del cargador de arranque."
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    r_ram: { sim: "RAM", nombre: "RAM del ATmega328P", unidad: "", valor: 2048 }
+    f_seg: { sim: "f", nombre: "fracción segura de globales", unidad: "", valor: 0.7 }
+  calculos:
+    g_seg: { expr: "f_seg*r_ram", sim: "m", nombre: "globales con margen", unidad: "" }
 
 tarjetas:
   - id: explore-cadena
@@ -40,48 +49,49 @@ tarjetas:
     requiere: { mover: [pre, enl] }
 
   - id: ordene-etapas
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cuatro etapas"
-    texto: "Ordene lo que pasa al pulsar «subir»."
+    texto: "Toque, en orden, las cuatro etapas que pasan al pulsar «subir»."
     libro: [199, 200, 201, 202, 203]
     widget:
       tipo: figura
       figura: fig-17.13
       zonas:
-        - { id: ordenador, rotulo: "Recuadro gris de arriba", rect: [5, 5, 440, 112] }
-    ordenar:
-      - "Preprocesado: el entorno lo convierte en C++ válido"
-      - "Compilación: cada fichero a código objeto"
-      - "Enlazado: los objetos con las bibliotecas"
-      - "Carga: el cargador lo escribe en Flash"
-    exito: "Distinguir en qué etapa falla es la primera pregunta ante cualquier mensaje."
-    pistas:
-      - { texto: "Lo último ocurre ya en la placa." }
+        - { id: enl, rotulo: "Recuadro violeta, arriba", rect: [294, 34, 94, 71] }
+        - { id: carga, rotulo: "Recuadro verde, abajo a la derecha", rect: [375, 150, 70, 62] }
+        - { id: pre, rotulo: "Recuadro naranja, arriba", rect: [80, 34, 94, 71] }
+        - { id: comp, rotulo: "Recuadro azul, arriba", rect: [187, 34, 94, 71] }
+    tocar:
+      bien: [pre, comp, enl, carga]
+      orden: true
+    exito: "Preprocesado, compilación, enlazado y carga. Distinguir en qué etapa falla es la primera pregunta ante cualquier mensaje."
     escalera:
-      - "No se puede enlazar lo que aún no está compilado."
+      - "No se puede enlazar lo que aún no está compilado; lo último ocurre ya en la placa."
     solucion: "Preprocesado, compilación, enlazado y carga."
 
   - id: empareje-errores
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cada error, su etapa"
-    texto: "Empareje cada mensaje con la etapa en que aparece."
+    texto: "Al subir aparece «referencia no definida». Toque la etapa que se queja."
     libro: [200, 201, 202, 204]
     widget:
       tipo: figura
       figura: fig-17.13
       zonas:
-        - { id: ordenador, rotulo: "Recuadro gris de arriba", rect: [5, 5, 440, 112] }
-    emparejar:
-      - ["Error de tipos en una línea concreta", "Compilación"]
-      - ["«Referencia no definida»", "Enlazado"]
-      - ["Un error en código que usted no escribió", "Preprocesado"]
-      - ["No se encuentra el puerto", "Carga"]
-    exito: "La etapa orienta la solución: un error de enlazado no es una errata, es que falta algo."
-    pistas:
-      - { texto: "El enlazado se queja de lo que falta, no de cómo está escrito." }
+        - { id: pre, rotulo: "Recuadro naranja, arriba", rect: [80, 34, 94, 71] }
+        - { id: comp, rotulo: "Recuadro azul, arriba", rect: [187, 34, 94, 71] }
+        - { id: enl, rotulo: "Recuadro violeta, arriba", rect: [294, 34, 94, 71] }
+        - { id: carga, rotulo: "Recuadro verde, abajo a la derecha", rect: [375, 150, 70, 62] }
+    tocar:
+      bien: [enl]
+      porque:
+        pre: "El preprocesado da errores en código que usted no escribió, no referencias que faltan."
+        comp: "La compilación señala una línea concreta: sintaxis o tipos."
+        carga: "Los errores de carga son de comunicación, no de código."
+    exito: "El enlazado: falta una biblioteca o una función. No es una errata."
     escalera:
-      - "Los errores de carga son de comunicación, no de código."
-    solucion: "Tipos, compilación; referencia, enlazado; código ajeno, preprocesado; puerto, carga."
+      - "¿Qué etapa une los objetos con las bibliotecas?"
+    solucion: "El enlazado."
 
   - id: toque-cargador
     tipo: tocar
@@ -108,69 +118,81 @@ tarjetas:
     solucion: "El cargador de arranque, el recuadro rojo de la Flash."
 
   - id: predecir-ram
-    tipo: predecir
-    titulo: "El 80 % de la RAM"
-    texto: "El programa compila y el entorno dice que las globales ocupan el 80 % de la RAM. ¿Está a salvo?"
+    tipo: leer
+    titulo: "La RAM de verdad"
+    texto: "El informe de la compilación cuenta solo las globales, sobre los 2 KB de RAM. Escriba hasta cuántos bytes de globales se está razonablemente seguro."
     libro: [208, 209]
     widget:
       tipo: figura
       figura: fig-17.13
       zonas:
-        - { id: micro, rotulo: "Recuadro del ATmega328P", rect: [177, 144, 160, 93] }
-    opciones:
-      - texto: "No: puede fallar al ejecutarse"
-        bien: true
-        porque: "Ese número no incluye la pila ni las locales. Por debajo del 70 % se está razonablemente seguro."
-      - texto: "Sí: si compila, cabe"
-        porque: "Las locales y la pila se añaden en ejecución, y el desbordamiento es silencioso."
-      - texto: "Sí, mientras no se llene del todo"
-        porque: "Ese porcentaje es solo de globales: la pila crece en marcha y choca antes."
+        - { id: micro, rotulo: "Recuadro del ATmega328P", rect: [177, 144, 160, 93], texto: "2 KB de RAM para globales, pila y locales." }
+    leer:
+      objetivo: g_seg
+      unidad: ""
+      tol: 0.03
+      rotulo: "Bytes de globales"
+    exito: "Por debajo del 70 %: la pila y las locales se añaden en ejecución. Un programa que compila con el 80 % puede fallar en marcha, sin avisar."
     escalera:
-      - "¿Qué no cuenta ese número?"
-    solucion: "No: la pila y las locales se suman en marcha. Conviene medir la memoria libre."
+      - "El libro da el porcentaje seguro: el 70 %."
+    solucion: "El 70 % de 2048 bytes: unos 1434 bytes."
+    comprobar:
+      - { g_seg: 1433.6, r_ram: 2048 }
 
   - id: pregunta-biblioteca
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una biblioteca sospechosa"
-    texto: "Al añadir una biblioteca, el programa deja de responder a tiempo. ¿Qué comprobación hace?"
+    texto: "Al añadir una biblioteca, el programa deja de responder a tiempo. Mira su código: toque la línea que lo bloquea."
     libro: [213, 215]
     widget:
       tipo: figura
-      figura: fig-17.13
+      codigo:
+        lenguaje: c
+        texto: |
+          float Sensor::leer() {
+            iniciarConversion();
+            delay(750);          // wait for the conversion
+            return resultado();
+          }
       zonas:
-        - { id: enl, rotulo: "Recuadro violeta, arriba", rect: [294, 34, 94, 71] }
-    opciones:
-      - texto: "Mirar su código"
-        bien: true
-        porque: "Es texto y está en el disco; muchas usan delay() por dentro, y a menudo se ve en veinte líneas."
-      - texto: "Reinstalar el entorno"
-        porque: "El problema está en la biblioteca: su código lo dice."
-      - texto: "Cambiar de placa"
-        porque: "La placa no tiene la culpa de un delay() dentro de una biblioteca."
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+    tocar:
+      bien: [l3]
+      porque:
+        l1: "Es la cabecera de la función: no ejecuta nada."
+        l2: "Arranca la conversión y vuelve enseguida."
+        l4: "Devuelve el resultado: es inmediato."
+    exito: "Un delay() dentro de la biblioteca bloquea el programa entero. Es texto en el disco, y a menudo el problema está a la vista en veinte líneas."
     escalera:
-      - "Una biblioteca es texto en el disco."
-    solucion: "Mirar su código: quizá bloquea con delay()."
+      - "¿Qué línea se queda parada esperando?"
+    solucion: "La del delay()."
 
   - id: empareje-carga
-    tipo: pregunta
+    tipo: tocar
     titulo: "Los errores de carga"
-    texto: "Empareje cada síntoma al subir con su causa más frecuente."
-    libro: [218, 219, 220]
+    texto: "Falla la sincronización al subir, con un módulo conectado a los pines 0 y 1. Toque la línea en la que estorba."
+    libro: [203, 218, 219, 220, 229]
     widget:
       tipo: figura
       figura: fig-17.13
       zonas:
-        - { id: placa, rotulo: "Recuadro gris de abajo", rect: [5, 130, 440, 117] }
-    emparejar:
-      - ["No se encuentra el puerto", "Un cable de solo carga, sin datos"]
-      - ["Falla la sincronización", "Algo conectado a los pines 0 y 1"]
-      - ["Carga bien y no hace nada", "La lógica, o el reset retenido"]
-    exito: "Los errores de carga son de comunicación, no de código."
-    pistas:
-      - { texto: "La sincronización la estropea lo que comparte la UART." }
+        - { id: programa, rotulo: "Recuadro azul de la Flash", rect: [185, 182, 100, 36] }
+        - { id: cargador, rotulo: "Recuadro rojo de la Flash", rect: [287, 180, 47, 38] }
+        - { id: txrx, rotulo: "Flecha de arriba, a la derecha del chip", rect: [330, 152, 52, 36] }
+        - { id: dtr, rotulo: "Flecha de abajo, a la derecha del chip", rect: [330, 190, 52, 36] }
+    tocar:
+      bien: [txrx]
+      porque:
+        programa: "Ahí acaba el programa cuando la carga va bien; el fallo es antes, en la comunicación."
+        cargador: "Un cargador dañado también la estropea, pero un módulo en los pines 0 y 1 estorba en la línea que le trae el programa."
+        dtr: "La DTR solo reinicia la placa para que arranque el cargador."
+    exito: "TX/RX: los pines 0 y 1. Los errores de carga son de comunicación: un cable de solo carga, algo en los pines 0 y 1, o un reset retenido por un condensador externo."
     escalera:
-      - "Si ni siquiera aparece el puerto, el ordenador no ve la placa."
-    solucion: "Puerto, cable; sincronización, pines 0 y 1; nada, la lógica o el reset."
+      - "¿Por qué línea recibe el cargador el programa?"
+    solucion: "La línea TX/RX, los pines 0 y 1."
 
   - id: pregunta-banco
     tipo: pregunta

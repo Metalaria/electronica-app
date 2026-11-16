@@ -5,6 +5,11 @@
 # - La cadena MQTT de la figura 50.18 (fig-49.18, cap49#383) para el reparto llevado a la red.
 # - Sin modelo de circuito: la sección es de arquitectura.
 # Paso práctico: «tocar» en la figura del ciclo lo que ahorra en la radio (el envío por lotes).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): se escribe cuántas veces baja el consumo al dormir con el
+# ciclo de la sección 17.9 (20 mA despierta, 38 µA de media); el envío por lotes se toca en la figura 18.4 (el explorar
+# ya no lo cuenta); en el flujo de la figura 48.18 se toca lo que está mal resuelto si faltan medidas; la validación que
+# descubre los fallos reales se toca en la fila de fases (cajas de 19.4.py). ¿Una Pi en el nodo? se escribe con los
+# 600 mA de una Pi 4 en reposo (bloque 135 del capítulo 17). La supervivencia queda por emparejar.
 leccion: cap19/sec-19.3
 
 libro:
@@ -17,8 +22,18 @@ libro:
   61: "y de campo, dejándolo instalado semanas"
   "cap49#43": "el ciclo de trabajo del microcontrolador (dormir, medir y guardar, enviar por lotes)"
   "cap49#383": "Flujo de datos a la nube por MQTT, del ESP32 al panel."
+  "cap18#244": "Con 20 mA activo durante 100 ms cada minuto y 5 µA durmiendo"
+  "cap18#245": "38 µA"
+  "cap18#135": "unos 600 mA una Raspberry Pi 4 sin hacer nada"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    I_ac: { sim: "I_{activa}", nombre: "corriente despierta", unidad: A, valor: 0.02 }
+    I_me: { sim: "I_{media}", nombre: "consumo medio durmiendo entre medidas", unidad: A, valor: 0.0000383 }
+    I_pi4: { sim: "I_{Pi}", nombre: "Pi 4 en reposo", unidad: A, valor: 0.6 }
+  calculos:
+    k_dor: { expr: "I_ac/I_me", sim: "k", nombre: "veces que baja el consumo", unidad: "" }
+    k_pi: { expr: "I_pi4/I_me", sim: "k", nombre: "veces que gasta más la Pi", unidad: "" }
 
 tarjetas:
   - id: explore-ciclo
@@ -30,33 +45,32 @@ tarjetas:
       tipo: figura
       figura: fig-19.4
       zonas:
-        - { id: dormido, rotulo: "Línea de abajo de la gráfica", rect: [48, 148, 215, 16], texto: "Dormido casi todo el tiempo: así el consumo medio baja dos o tres órdenes de magnitud." }
+        - { id: dormido, rotulo: "Línea de abajo de la gráfica", rect: [48, 140, 215, 38], texto: "Dormido casi todo el tiempo: así el consumo medio baja dos o tres órdenes de magnitud." }
         - { id: medir, rotulo: "Picos cortos de la gráfica", rect: [50, 60, 125, 86], texto: "Medir y guardar: despierta, lee los sensores y vuelve a dormir." }
-        - { id: lote, rotulo: "Pico más alto, a la derecha", rect: [178, 38, 84, 108], texto: "Enviar el lote: transmitir cuesta mucho más que medir, así que se acumulan medidas y se envían juntas." }
         - { id: decisiones, rotulo: "Columna de recuadros naranjas", rect: [281, 26, 160, 160], texto: "La cadena de decisiones que arranca en la frecuencia de medida." }
-    requiere: { mover: [dormido, lote] }
+    requiere: { mover: [dormido, medir] }
 
   - id: prediga-dormir
-    tipo: predecir
+    tipo: leer
     titulo: "Lo que ahorra dormir"
-    texto: "La estación duerme entre medida y medida. ¿Cuánto baja su consumo medio respecto a estar siempre despierta?"
-    libro: [54]
+    texto: "Con el ciclo de los criterios cuantitativos, despierta gasta 20 mA y, durmiendo entre medidas, 38 µA de media. Escriba cuántas veces baja el consumo."
+    libro: [54, "cap18#244", "cap18#245"]
     widget:
       tipo: figura
       figura: fig-19.4
       zonas:
-        - { id: grafica, rotulo: "Gráfica del ciclo de trabajo", rect: [48, 15, 215, 150] }
-    opciones:
-      - texto: "Dos o tres órdenes de magnitud"
-        bien: true
-        porque: "Despierta solo unos instantes por ciclo: el resto del tiempo consume casi nada."
-      - texto: "A la mitad"
-        porque: "Se queda muy corto: pasa casi todo el tiempo dormida, no la mitad."
-      - texto: "Casi nada: medir es lo que gasta"
-        porque: "Al contrario: lo que más gasta es estar despierto, y sobre todo transmitir."
+        - { id: grafica, rotulo: "Gráfica del ciclo de trabajo", rect: [48, 15, 215, 150], texto: "Despierta unos instantes; dormida, el resto." }
+    leer:
+      objetivo: k_dor
+      unidad: ""
+      tol: 0.03
+      rotulo: "Veces"
+    exito: "Más de quinientas veces: entre dos y tres órdenes de magnitud, lo que el libro da para dormir entre medidas."
     escalera:
-      - "¿Qué fracción del tiempo pasa despierta?"
-    solucion: "Dos o tres órdenes de magnitud."
+      - "Divida 20 mA entre 38 µA."
+    solucion: "20 mA / 38 µA ≈ 522."
+    comprobar:
+      - { k_dor: 522 }
 
   - id: toque-lote
     tipo: tocar
@@ -67,7 +81,7 @@ tarjetas:
       tipo: figura
       figura: fig-19.4
       zonas:
-        - { id: dormido, rotulo: "Línea de abajo de la gráfica", rect: [48, 148, 215, 16] }
+        - { id: dormido, rotulo: "Línea de abajo de la gráfica", rect: [48, 140, 215, 38] }
         - { id: medir, rotulo: "Picos cortos de la gráfica", rect: [50, 60, 125, 86] }
         - { id: lote, rotulo: "Pico más alto, a la derecha", rect: [178, 38, 84, 108] }
     tocar:
@@ -81,26 +95,26 @@ tarjetas:
     solucion: "El pico más alto, a la derecha: el envío del lote."
 
   - id: sin-pi
-    tipo: porque
+    tipo: leer
     titulo: "¿Una Pi en el nodo?"
-    texto: "¿Por qué el nodo que mide no lleva un ordenador de placa además del microcontrolador?"
-    libro: [55]
+    texto: "Una Raspberry Pi 4 sin hacer nada gasta unos 600 mA; el nodo, 38 µA de media. Escriba cuántas veces más gastaría la Pi."
+    libro: [55, "cap18#135"]
     widget:
       tipo: figura
       figura: fig-19.4
       zonas:
-        - { id: medir, rotulo: "Picos cortos de la gráfica", rect: [50, 60, 125, 86] }
-    opciones:
-      - texto: "Consume más que el presupuesto entero y tarda medio minuto en arrancar"
-        bien: true
-        porque: "Encendido siempre agota las pilas, y su arranque no encaja en un ciclo de unos segundos."
-      - texto: "Porque no sabe leer sensores"
-        porque: "Podría leerlos; el problema es el consumo y el arranque, no la capacidad."
-      - texto: "Porque no tiene red"
-        porque: "Sí tiene red; lo que no tiene es un consumo y un arranque compatibles con el ciclo."
+        - { id: grafica, rotulo: "Gráfica del ciclo de trabajo", rect: [48, 15, 215, 150], texto: "El ciclo del nodo: casi todo el tiempo dormido." }
+    leer:
+      objetivo: k_pi
+      unidad: ""
+      tol: 0.03
+      rotulo: "Veces"
+    exito: "Más de quince mil veces: encendida siempre, consume más que todo el presupuesto de la estación, y su arranque de medio minuto no cabe en un ciclo de unos segundos."
     escalera:
-      - "Piense en las pilas y en cuánto dura cada despertar."
-    solucion: "Consume más que todo el presupuesto y su arranque de medio minuto no cabe en el ciclo."
+      - "Divida 600 mA entre 38 µA."
+    solucion: "600 mA / 38 µA: más de quince mil."
+    comprobar:
+      - { k_pi: 15666 }
 
   - id: toque-servidor
     tipo: tocar
@@ -147,47 +161,50 @@ tarjetas:
     solucion: "Almacenamiento para los cortes, marcas para el retraso, watchdog para funcionar sin nadie."
 
   - id: prueba-servidor
-    tipo: pregunta
+    tipo: tocar
     titulo: "La prueba, en red"
-    texto: "Tras reiniciar el servidor con las estaciones en marcha, faltan medidas del intervalo. ¿Qué está mal resuelto?"
-    libro: [58, 60]
+    texto: "Tras reiniciar el servidor con las estaciones en marcha, faltan medidas del intervalo. Toque dónde está lo mal resuelto."
+    libro: [58, 60, "cap49#383"]
     widget:
       tipo: figura
       figura: fig-49.18
       zonas:
+        - { id: esp32, rotulo: "Primer recuadro, a la izquierda", rect: [4, 57, 80, 47] }
+        - { id: broker, rotulo: "Segundo recuadro", rect: [125, 57, 80, 47] }
         - { id: base, rotulo: "Tercer recuadro", rect: [246, 57, 80, 47] }
-    opciones:
-      - texto: "El almacenamiento local de las estaciones"
-        bien: true
-        porque: "Es lo que guarda las medidas mientras el servidor no está; si faltan, no las guardó o no las reenvió."
-      - texto: "La frecuencia de medida"
-        porque: "Medir más o menos no explica que se pierdan medidas durante el corte."
-      - texto: "El panel"
-        porque: "El panel solo representa lo que hay; las medidas se perdieron antes."
+        - { id: panel, rotulo: "Último recuadro, a la derecha", rect: [367, 57, 80, 47] }
+    tocar:
+      bien: [esp32]
+      porque:
+        broker: "El broker se reinició con el servidor: es normal que no recibiera nada."
+        base: "La base guarda lo que le llega; las medidas se perdieron antes de llegar."
+        panel: "El panel solo representa lo que hay."
+    exito: "En la estación: su almacenamiento local debía guardar las medidas durante el corte y reenviarlas, con sus marcas de tiempo."
     escalera:
-      - "¿Qué cubre los cortes del servidor?"
-    solucion: "El almacenamiento local (y, si llegan mal fechadas, las marcas de tiempo)."
+      - "¿Quién debía guardar las medidas mientras el servidor no estaba?"
+    solucion: "La estación, el primer recuadro."
 
   - id: ordene-validacion
-    tipo: pregunta
+    tipo: tocar
     titulo: "Las tres validaciones"
-    texto: "Ordene la validación completa antes de dar el sistema por bueno."
+    texto: "Antes de dar el sistema por bueno hay tres validaciones. Toque la única que descubre los fallos reales."
     libro: [61, "cap49#43"]
     widget:
       tipo: figura
       figura: fig-19.4
       zonas:
-        - { id: fases, rotulo: "Fila de recuadros de abajo", rect: [71, 208, 372, 36] }
-    ordenar:
-      - "Funcional, en la mesa"
-      - "De consumo, midiendo el perfil de un ciclo"
-      - "De campo, instalado durante semanas"
-    exito: "La de campo es la única que descubre los fallos reales."
-    pistas:
-      - { texto: "La que más tiempo lleva va al final." }
+        - { id: mesa, rotulo: "Primera caja de abajo", rect: [71, 208, 116, 36] }
+        - { id: consumo, rotulo: "Segunda caja de abajo", rect: [199, 208, 116, 36] }
+        - { id: campo, rotulo: "Tercera caja de abajo", rect: [327, 208, 116, 36] }
+    tocar:
+      bien: [campo]
+      porque:
+        mesa: "En la mesa se ve que funciona, pero no lo que pasa con el frío, la humedad o los cortes."
+        consumo: "El perfil de un ciclo dice cuánto gasta, no cómo falla en su sitio."
+    exito: "La de campo, instalado durante semanas: funcional en la mesa, de consumo midiendo un ciclo, y de campo al final."
     escalera:
-      - "Primero que funcione; luego cuánto gasta; luego, en su sitio."
-    solucion: "Funcional, consumo y campo."
+      - "¿Cuál pone el sistema en su sitio real?"
+    solucion: "La de campo."
 
   - id: resumen
     tipo: resumen

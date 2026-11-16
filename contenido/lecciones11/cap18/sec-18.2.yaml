@@ -3,9 +3,14 @@
 #   pines sueltos miden menos de lo que se toca en un teléfono).
 # - Sin modelo numérico.
 # Paso práctico: «tocar» los pines que se pierden como GPIO al activar la UART.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la cabecera de la figura 17.4 se lee el GPIO del pin
+# físico 12 (el 18, según 18.3.py) y se tocan los pines del convertidor I²C y los de la EEPROM del sombrero; el relé
+# durante el arranque se vive en un circuito «logica» (el pin como salida tri-estado que aún no conduce, con y sin
+# resistencia externa); se escribe cuántos pines a 16 mA caben en los 50 mA. Queda una pregunta de opciones: las masas.
 leccion: cap18/sec-18.2
 
 libro:
+  55: "Sí hay"
   44: "no son cuarenta entradas y salidas equivalentes"
   46: "5 V (directo de la fuente, sin regular)"
   47: "usarlas todas y no solo una reduce la inductancia del retorno"
@@ -18,7 +23,14 @@ libro:
   62: "Que la señal no supere 3,3 V, porque los pines no toleran 5"
   66: "Cabecera GPIO de 40 pines de la Raspberry Pi"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    p_fis: { sim: "pin", nombre: "pin físico", unidad: "", valor: 12 }
+    I_pp: { sim: "I_{pin}", nombre: "corriente por pin", unidad: A, valor: 0.016 }
+    I_pt: { sim: "I_{total}", nombre: "corriente total", unidad: A, valor: 0.05 }
+  calculos:
+    g_12: { expr: "p_fis + 6", sim: "GPIO", nombre: "GPIO del pin físico 12", unidad: "" }
+    n_led: { expr: "floor(I_pt/I_pp)", sim: "n", nombre: "pines a 16 mA", unidad: "" }
 
 tarjetas:
   - id: explore-cabecera
@@ -62,113 +74,129 @@ tarjetas:
     solucion: "Los dos violetas: TXD y RXD."
 
   - id: predecir-numeracion
-    tipo: predecir
+    tipo: leer
     titulo: "Dos numeraciones"
-    texto: "Una biblioteca espera números de GPIO y le pasa el número físico del pin. ¿Qué ocurre?"
+    texto: "Una biblioteca espera números de GPIO, y su relé está en el pin físico 12. Búsquelo en la figura y escriba el número que le pasa."
     libro: [50, 66]
     widget:
       tipo: figura
       figura: fig-18.4
       zonas:
-        - { id: aviso, rotulo: "Recuadro rojo, a la derecha", rect: [277, 178, 173, 66] }
-    opciones:
-      - texto: "Actúa sobre el pin equivocado"
-        bien: true
-        porque: "La física (posición) y la lógica (GPIO del chip) no coinciden."
-      - texto: "Da un error al arrancar"
-        porque: "No hay error: el número es válido, pero señala otro pin."
-      - texto: "Nada: coinciden"
-        porque: "No coinciden: compare en la figura el número del círculo con el GPIO de al lado."
+        - { id: cabecera, rotulo: "La cabecera", rect: [70, 10, 160, 305], texto: "En el círculo, el pin físico; al lado, su número de GPIO." }
+    leer:
+      objetivo: g_12
+      unidad: ""
+      tol: 0.01
+      rotulo: "Número de GPIO"
+      errores:
+        - { expr: "p_fis", texto: "Ese es el número físico, por posición en el conector: la biblioteca actuaría sobre otro pin." }
+    exito: "GPIO 18. La física (posición) y la lógica (GPIO del chip) no coinciden: una biblioteca que espere una y reciba la otra actúa sobre el pin equivocado."
     escalera:
-      - "Compare el número del círculo con el GPIO de al lado."
-    solucion: "Actúa sobre el pin equivocado."
+      - "Busque el círculo con el 12, en la columna de la derecha, y lea el GPIO de al lado."
+    solucion: "El pin físico 12 es el GPIO 18."
+    comprobar:
+      - { g_12: 18, p_fis: 12 }
 
   - id: predecir-arranque
-    tipo: predecir
+    tipo: explorar
     titulo: "Un relé que chasquea"
-    texto: "Un GPIO gobierna un relé. ¿Qué puede pasar mientras la Pi arranca?"
+    texto: "Dos relés en dos GPIO, uno sin nada más y otro con una resistencia a masa. Reinicie la Pi y mire cuál queda quieto mientras arranca."
     libro: [52, 53]
     widget:
-      tipo: figura
-      figura: fig-18.4
-      zonas:
-        - { id: cabecera, rotulo: "La cabecera", rect: [70, 10, 160, 305] }
-    opciones:
-      - texto: "Que el relé se active solo"
-        bien: true
-        porque: "Hay pull-ups y pull-downs por defecto y pines que cambian durante decenas de segundos."
-      - texto: "Nada: los pines están apagados"
-        porque: "No lo están: durante el arranque no están donde el programa los deja."
-      - texto: "Que la Pi no arranque"
-        porque: "Arranca; el problema es lo que hace el relé mientras tanto."
+      tipo: logica
+      entradas:
+        - { id: PROG, valor: 1, rotulo: "Programa en marcha" }
+        - { id: D, valor: 0, rotulo: "Lo que manda el programa" }
+      piezas:
+        - { id: t1, tipo: tri, entradas: [D, PROG], rotulo: "GPIO sin resistencia" }
+        - { id: t2, tipo: tri, entradas: [D, PROG], rotulo: "GPIO con resistencia" }
+        - { id: l1, tipo: bus, entradas: [t1], pullup: ninguna, rotulo: "Relé 1" }
+        - { id: l2, tipo: bus, entradas: [t2], pullup: 0, rotulo: "Relé 2" }
+      salidas:
+        - { id: R1, de: l1, rotulo: "Relé sin resistencia" }
+        - { id: R2, de: l2, rotulo: "Relé con resistencia a masa" }
+    objetivo:
+      condiciones:
+        - { led: R1, valor: Z, rotulo: "Relé sin resistencia: sin nivel" }
+        - { led: R2, valor: 0, rotulo: "Relé con resistencia: apagado" }
+      logrado: "Durante el arranque los pines no están donde el programa los deja: el relé sin resistencia puede activarse solo. La resistencia externa fija el estado seguro."
+      pistas:
+        - { texto: "Mientras el programa corre, los dos obedecen. Quite «programa en marcha»." }
     escalera:
       - "¿Quién manda en el pin antes de que corra el programa?"
-    solucion: "Puede activarse. Una resistencia externa fija el estado seguro."
+    solucion: "Programa parado: el relé sin resistencia flota y el otro queda a cero."
 
   - id: pregunta-analogica
-    tipo: pregunta
+    tipo: tocar
     titulo: "Medir una tensión"
-    texto: "Quiere leer un potenciómetro con la Pi, como haría con analogRead() en un Arduino. ¿Cómo?"
-    libro: [56]
+    texto: "Quiere leer un potenciómetro, y ningún pin del conector llega a un convertidor A/D. Toque los pines por los que conectaría uno externo por I²C."
+    libro: [55, 56, 66]
     widget:
       tipo: figura
       figura: fig-18.4
       zonas:
-        - { id: cabecera, rotulo: "La cabecera", rect: [70, 10, 160, 305] }
-    opciones:
-      - texto: "Con un convertidor externo por I²C o SPI"
-        bien: true
-        porque: "Ningún pin del conector llega a un convertidor A/D: es una diferencia estructural."
-      - texto: "Con cualquier GPIO en modo analógico"
-        porque: "No hay entradas analógicas en el conector."
-      - texto: "Con un pin PWM como entrada"
-        porque: "El PWM es una salida; para medir hace falta un convertidor."
+        - { id: i2c, rotulo: "Pines verdes, arriba a la izquierda", rect: [40, 31, 110, 36] }
+        - { id: uart, rotulo: "Pines violetas, arriba a la derecha", rect: [125, 58, 100, 36] }
+        - { id: spi, rotulo: "Pines azules, a la izquierda", rect: [40, 148, 110, 45] }
+        - { id: eeprom, rotulo: "Pines de trazo discontinuo", rect: [35, 198, 190, 36] }
+    tocar:
+      bien: [i2c]
+      porque:
+        uart: "Es el puerto serie, TXD y RXD."
+        spi: "Es SPI: también valdría para un convertidor, pero ha pedido I²C."
+        eeprom: "Están reservados para la EEPROM del sombrero."
+    exito: "SDA y SCL. No hay entradas analógicas: es una diferencia estructural con el Arduino, y se resuelve con un convertidor por I²C o SPI."
     escalera:
-      - "Lo que hay y lo que no hay en el conector."
-    solucion: "Con un convertidor externo, por I²C o SPI."
+      - "I²C son dos líneas: SDA y SCL."
+    solucion: "Los dos verdes, SDA y SCL."
 
   - id: pregunta-sombrero
-    tipo: pregunta
+    tipo: tocar
     titulo: "Los sombreros"
-    texto: "Una placa de expansión configura sola los pines al arrancar. ¿Cómo lo sabe el sistema?"
+    texto: "Una placa de expansión configura sola los pines al arrancar. Toque los pines por los que el sistema sabe qué placa hay."
     libro: [58, 66]
     widget:
       tipo: figura
       figura: fig-18.4
       zonas:
+        - { id: i2c, rotulo: "Pines verdes, arriba a la izquierda", rect: [40, 31, 110, 36] }
+        - { id: uart, rotulo: "Pines violetas, arriba a la derecha", rect: [125, 58, 100, 36] }
+        - { id: spi, rotulo: "Pines azules, a la izquierda", rect: [40, 148, 110, 45] }
         - { id: eeprom, rotulo: "Pines de trazo discontinuo", rect: [35, 198, 190, 36] }
-    opciones:
-      - texto: "Lee la EEPROM de identificación del sombrero"
-        bien: true
-        porque: "Sabe qué placa hay y configura los pines. Muchas placas baratas no la llevan."
-      - texto: "Prueba todos los pines al arrancar"
-        porque: "No los prueba: la placa se identifica con su EEPROM."
-      - texto: "Por el número de serie de la Pi"
-        porque: "La identificación está en la placa de expansión, no en la Pi."
+    tocar:
+      bien: [eeprom]
+      porque:
+        i2c: "Es el I²C general, para sus sensores."
+        uart: "Es el puerto serie."
+        spi: "Es SPI, para pantallas y convertidores."
+    exito: "Los reservados para la EEPROM de identificación: el sistema la lee al arrancar y configura los pines. Muchas placas baratas no la llevan."
     escalera:
-      - "Mire para qué están reservados dos pines."
-    solucion: "Por la EEPROM de identificación."
+      - "Busque los pines con trazo distinto."
+    solucion: "Los de trazo discontinuo, ID SD e ID SC."
 
   - id: empareje-comprobar
-    tipo: pregunta
+    tipo: leer
     titulo: "Antes de conectar nada"
-    texto: "Empareje cada comprobación con su límite."
+    texto: "Cada pin da 16 mA y el total de la cabecera, 50 mA. Escriba cuántos pines puede tener a 16 mA a la vez."
     libro: [62]
     widget:
       tipo: figura
       figura: fig-18.4
       zonas:
-        - { id: aviso, rotulo: "Recuadro rojo, a la derecha", rect: [277, 178, 173, 66] }
-    emparejar:
-      - ["La tensión de la señal", "No más de 3,3 V"]
-      - ["La corriente", "16 mA por pin y 50 mA en total"]
-      - ["Los pines de la función", "Que no se solapen"]
-    exito: "Ninguna cuesta más de dos minutos."
-    pistas:
-      - { texto: "Los pines no toleran 5 V." }
+        - { id: aviso, rotulo: "Recuadro rojo, a la derecha", rect: [277, 178, 173, 66], texto: "3,3 V que no toleran 5 V." }
+    leer:
+      objetivo: n_led
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pines a 16 mA"
+      errores:
+        - { expr: "I_pt/I_pp", texto: "No se encienden fracciones de pin: con el cuarto ya pasaría de 50 mA." }
+    exito: "Tres. Las otras dos comprobaciones: que la señal no supere 3,3 V y que los pines de la función no se solapen. Ninguna cuesta más de dos minutos."
     escalera:
-      - "Una es de tensión, otra de corriente y otra de asignación."
-    solucion: "Tensión, 3,3 V; corriente, 16 y 50 mA; pines, sin solaparse."
+      - "Divida 50 entre 16 y quédese con la parte entera."
+    solucion: "Tres: con el cuarto pasaría de 50 mA."
+    comprobar:
+      - { n_led: 3 }
 
   - id: pregunta-masas
     tipo: pregunta

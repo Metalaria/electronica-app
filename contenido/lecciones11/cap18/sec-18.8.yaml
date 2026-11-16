@@ -3,9 +3,14 @@
 # - El ancho de banda de 1080p a 30 fotogramas sin comprimir (bloque 203: unos 750 Mbit/s en YUV 4:2:0, casi
 #   1,5 Gbit/s en RGB) como estimación: 1920 × 1080 píxeles × 30 × 12 bits (4:2:0) o 24 bits (RGB). Los 1920 píxeles
 #   y los 12/24 bits por píxel no los escribe el libro: son los que dan sus dos cifras.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): se escribe el caudal de la cámara; en la barra de arranque de
+# la figura 17.9 se toca lo que se ahorra sin escritorio; en la placa (fig-18.1), el conector de la red fiable y por
+# dónde entraría un micrófono; en la foto de la familia (fig-18.3), la placa que quizá baste si la pantalla es un
+# añadido. Queda una pregunta de opciones (el obturador); el banco pasa al «exito» de la red.
 leccion: cap18/sec-18.8
 
 libro:
+  216: "La salida de audio analógica integrada de estas placas"
   200: "Las interfaces de alto nivel son la razón principal para usar un ordenador de placa"
   203: "unos 750 Mbit/s en YUV 4:2:0 (casi 1,5 Gbit/s en RGB)"
   205: "si el objeto se mueve, el rodante deforma"
@@ -16,6 +21,9 @@ libro:
   222: "si es un añadido, quizá un microcontrolador con una pantalla pequeña resuelva lo mismo"
   225: "mucho software funciona con red y se cuelga cuando desaparece"
   226: "Las cuatro interfaces de alto nivel con lo que traen resuelto y lo que cuestan."
+  "cap18#38": "La placa Raspberry Pi"
+  "cap18#40": "La familia Raspberry Pi a la misma escala"
+  "cap18#171": "Reparto del tiempo de arranque"
 
 modelo:
   valores:
@@ -45,25 +53,24 @@ tarjetas:
     requiere: { mover: [camara, pantalla, red, audio] }
 
   - id: estime-caudal
-    tipo: pregunta
+    tipo: leer
     titulo: "Una cámara sin comprimir"
-    texto: "1080p (1920 × 1080 píxeles) a 30 fotogramas, en YUV 4:2:0 con 12 bits por píxel. ¿Cuántos bits por segundo?"
+    texto: "1080p (1920 × 1080 píxeles) a 30 fotogramas, en YUV 4:2:0 con 12 bits por píxel. Escriba cuántos bits por segundo salen sin comprimir."
     libro: [203]
     fijar: { p_an: 1920, p_al: 1080, fps: 30, bpp: 12 }
-    estimar:
-      objetivo: "caudal"
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: camara, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 218, 74], texto: "Cámara por CSI o USB." }
+    leer:
+      objetivo: caudal
       unidad: "bit/s"
-      min: 0
-      max: 2000000000
-      paso: 10000000
-      inicio: 1800000000
-      tol: 0.05
+      tol: 0.03
       rotulo: "Caudal sin comprimir"
+      errores:
+        - { expr: "c_rgb", texto: "Eso es en RGB, con 24 bits por píxel; en 4:2:0 son 12." }
     exito: "Unos 750 Mbit/s: hay que comprimir antes de guardar o enviar."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1400000000 }, texto: "Eso se acerca a RGB: en 4:2:0 son 12 bits por píxel, no 24." }
-      - { cuando: { valor: estimacion, mayor: 784000000 }, texto: "Demasiado: multiplique píxeles, fotogramas y 12 bits." }
-      - { texto: "Se ha quedado corto: multiplique píxeles, fotogramas y 12 bits." }
     escalera:
       - "Píxeles por fotograma, por 30 fotogramas, por 12 bits."
     solucion: "1920 × 1080 × 30 × 12 ≈ 750 Mbit/s; en RGB, casi 1,5 Gbit/s."
@@ -93,119 +100,101 @@ tarjetas:
     solucion: "Se deforma: hace falta un obturador global."
 
   - id: pregunta-pantalla
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una pantalla fija"
-    texto: "Un aparato con una pantalla que siempre enseña lo mismo. ¿Con escritorio o sin él?"
-    libro: [209]
+    texto: "Un aparato con una pantalla que siempre enseña lo mismo: su aplicación, a pantalla completa y sin escritorio. Toque en la barra del arranque lo que se ahorra."
+    libro: [209, "cap18#171"]
     widget:
       tipo: figura
-      figura: fig-18.12
+      figura: fig-18.10
       zonas:
-        - { id: pantalla, rotulo: "Recuadro de arriba a la derecha", rect: [229, 4, 218, 74] }
-    opciones:
-      - texto: "Sin escritorio: la aplicación a pantalla completa"
-        bien: true
-        porque: "Un escritorio consume memoria, alarga el arranque y trae actualizaciones que pueden romper la aplicación."
-      - texto: "Con escritorio completo, por comodidad"
-        porque: "Cuesta memoria, arranque y actualizaciones que pueden romper la aplicación."
-      - texto: "Da igual"
-        porque: "Es la decisión que más condiciona."
+        - { id: primeras, rotulo: "Primer tramo de la barra de arriba", rect: [72, 76, 34, 36] }
+        - { id: servicios, rotulo: "Tramo central de la barra de arriba", rect: [106, 76, 48, 36] }
+        - { id: entorno, rotulo: "Último tramo de la barra de arriba", rect: [154, 76, 62, 36] }
+    tocar:
+      bien: [entorno]
+      porque:
+        primeras: "ROM, cargador y núcleo hacen falta siempre."
+        servicios: "Los servicios siguen; la aplicación es uno de ellos."
+    exito: "El entorno de escritorio: consume memoria, alarga el arranque y trae actualizaciones que pueden romper la aplicación."
     escalera:
-      - "¿Qué cuesta un escritorio?"
-    solucion: "Sin escritorio, a pantalla completa."
+      - "¿Qué etapa solo existe si hay escritorio?"
+    solucion: "El último tramo, el entorno."
 
   - id: pregunta-red
-    tipo: pregunta
+    tipo: tocar
     titulo: "Ethernet o wifi"
-    texto: "Un equipo fijo debe estar conectado sin fallos. ¿Qué red elige?"
-    libro: [212, 213]
+    texto: "Un equipo fijo debe estar conectado sin fallos. Toque el conector que usa."
+    libro: [212, 225, "cap18#38"]
     widget:
       tipo: figura
-      figura: fig-18.12
+      figura: fig-18.1
       zonas:
-        - { id: red, rotulo: "Recuadro de abajo a la izquierda", rect: [4, 86, 218, 76] }
-    opciones:
-      - texto: "Ethernet"
-        bien: true
-        porque: "Sin configuración, sin interferencias y con aislamiento por transformador."
-      - texto: "Wifi"
-        porque: "Es cómodo, pero trae configuración inicial, cobertura variable y consumo."
-      - texto: "Bluetooth"
-        porque: "Para lo fiable, Ethernet."
+        - { id: soc, rotulo: "Chip grande del centro", rect: [178, 89, 44, 44] }
+        - { id: gpio, rotulo: "Fila de pines, arriba", rect: [134, 36, 148, 36] }
+        - { id: red, rotulo: "Conectores de la derecha", rect: [303, 51, 62, 46] }
+        - { id: hdmi, rotulo: "Conectores de abajo, en el centro", rect: [178, 180, 62, 36] }
+    tocar:
+      bien: [red]
+      porque:
+        soc: "El wifi va dentro, pero es lo cómodo, no lo fiable."
+        gpio: "Son pines y buses, no una red."
+        hdmi: "Es la salida de vídeo."
+    exito: "Ethernet: sin configuración, sin interferencias y con aislamiento por transformador. En el banco, desconéctela y reconéctela en marcha: mucho software se cuelga cuando la red desaparece."
     escalera:
-      - "Lo fiable frente a lo cómodo."
-    solucion: "Ethernet."
+      - "Lo fiable va por cable."
+    solucion: "El conector Ethernet, a la derecha."
 
   - id: pregunta-audio
-    tipo: pregunta
+    tipo: tocar
     titulo: "Grabar sonido"
-    texto: "Quiere grabar con un micrófono desde la placa. ¿Cómo?"
-    libro: [217]
+    texto: "Quiere grabar con un micrófono, y la placa no tiene entrada analógica. Toque los dos sitios por los que podría conectarlo."
+    libro: [216, 217, "cap18#38"]
     widget:
       tipo: figura
-      figura: fig-18.12
+      figura: fig-18.1
       zonas:
-        - { id: audio, rotulo: "Recuadro de abajo a la derecha", rect: [229, 86, 218, 76] }
-    opciones:
-      - texto: "Con un micrófono digital I²S o un convertidor USB"
-        bien: true
-        porque: "Estas placas no tienen entrada analógica."
-      - texto: "Por el conector de audio analógico"
-        porque: "Es solo salida, y en la Pi 5 ni siquiera existe."
-      - texto: "Por un GPIO"
-        porque: "Los GPIO no llegan a ningún convertidor A/D."
+        - { id: soc, rotulo: "Chip grande del centro", rect: [178, 89, 44, 44] }
+        - { id: gpio, rotulo: "Fila de pines, arriba", rect: [134, 36, 148, 36] }
+        - { id: red, rotulo: "Conectores de la derecha", rect: [303, 51, 62, 46] }
+        - { id: hdmi, rotulo: "Conectores de abajo, en el centro", rect: [178, 180, 62, 36] }
+    tocar:
+      bien: [gpio, red]
+      todas: true
+      porque:
+        soc: "El procesador no tiene entrada analógica de audio."
+        hdmi: "Es una salida de vídeo y sonido, no una entrada."
+    exito: "Un micrófono digital I²S por los pines, o un convertidor USB por los conectores de la derecha: estas placas no tienen entrada analógica."
     escalera:
-      - "¿Hay alguna entrada analógica en la placa?"
-    solucion: "Micrófono I²S o convertidor USB."
+      - "Hace falta un micrófono que ya entregue datos digitales."
+    solucion: "Por la cabecera (I²S) o por USB."
 
   - id: porque-anadido
-    tipo: porque
+    tipo: tocar
     titulo: "La pregunta de cada caso"
-    texto: "Si la pantalla es solo un añadido del proyecto, ¿por qué replantearse el ordenador de placa?"
-    libro: [222, 226]
+    texto: "En su proyecto, la pantalla es solo un añadido. Toque la placa que quizá resuelva lo mismo con una pantalla pequeña."
+    libro: [222, 226, "cap18#40"]
     widget:
       tipo: figura
-      figura: fig-18.12
+      figura: fig-18.3
       zonas:
-        - { id: criterio, rotulo: "Recuadro naranja, abajo", rect: [4, 169, 443, 54] }
-    opciones:
-      - texto: "Un microcontrolador con pantalla pequeña quizá baste"
-        bien: true
-        porque: "Con la décima parte de complicaciones: sin el arranque, el consumo ni la imprevisibilidad."
-      - texto: "Porque un microcontrolador no admite pantallas"
-        porque: "Sí las admite; lo que no da es un sistema operativo, que aquí no hace falta."
-      - texto: "Porque la pantalla consume demasiado"
-        porque: "El coste es el sistema operativo completo, no la pantalla."
+        - { id: pi5, rotulo: "Placa grande, arriba a la izquierda", rect: [0, 0, 770, 500] }
+        - { id: zero, rotulo: "Placa mediana, abajo a la izquierda", rect: [230, 610, 570, 270] }
+        - { id: pico, rotulo: "Placa estrecha, abajo a la derecha", rect: [910, 650, 460, 190] }
+    tocar:
+      bien: [pico]
+      porque:
+        pi5: "Se justifica si la interfaz es la razón del proyecto; si es un añadido, sobra el sistema operativo."
+        zero: "Pequeña, pero con el mismo sistema operativo: arranque, consumo e imprevisibilidad."
+    exito: "Un microcontrolador con una pantalla pequeña: con la décima parte de complicaciones."
     escalera:
       - "¿Es la interfaz la razón del proyecto?"
-    solucion: "Si es un añadido, quizá baste un microcontrolador."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "¿Qué prueba de la red revela más fallos?"
-    libro: [225]
-    widget:
-      tipo: figura
-      figura: fig-18.12
-      zonas:
-        - { id: red, rotulo: "Recuadro de abajo a la izquierda", rect: [4, 86, 218, 76] }
-    opciones:
-      - texto: "Desconectarla y reconectarla en marcha"
-        bien: true
-        porque: "Mucho software funciona con red y se cuelga cuando desaparece."
-      - texto: "Medir la velocidad máxima"
-        porque: "No revela lo que pasa cuando la red falta."
-      - texto: "Dejarla siempre conectada"
-        porque: "Así no se ve el fallo típico: colgarse cuando la red desaparece."
-    escalera:
-      - "¿Qué le pasa al software cuando la red desaparece?"
-    solucion: "Desconectarla y reconectarla en marcha."
+    solucion: "La Pico, un microcontrolador."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [203, 209, 212, 222]
+    libro: [203, 209, 212, 213, 222]
     ideas:
       - { titulo: "Cámara.", texto: "Unos 750 Mbit/s sin comprimir: codificador, luz y obturador." }
       - { titulo: "Pantalla y red.", texto: "Sin escritorio si es fija; Ethernet si debe ser fiable." }

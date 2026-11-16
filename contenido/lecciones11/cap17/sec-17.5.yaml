@@ -4,6 +4,11 @@
 # - El PWM de analogWrite() como gráfica: una onda cuadrada de 490 Hz entre 0 y 5 V con ciclo de trabajo valor/255
 #   (figura 16.8): v = 5·(1 − ⌊frac(t·f) + 1 − D⌋), alta mientras frac(t·f) < D; su media, 5·D.
 # Paso práctico: «dibujar» la onda de analogWrite(pin, 191) (75 %, ejercicio 16.4).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): se escriben el LSB, las lecturas para dividir el ruido por
+# diez, las muestras por segundo y el rizado del RC de 10 ms (ΔV ≈ V·D·(1 − D)·T/τ al 50 %: 0,255 V, los «unos
+# 0,25 V» del libro); la medida ratiométrica se vive en una gráfica del código frente a la alimentación real (hay que
+# llegar a 512 con la alimentación por encima de 5 V); el PWM se lleva a 2,5 V de media antes de dibujar el 75 %.
+# Queda una pregunta de opciones (la impedancia de la fuente) y dos emparejar (referencias y quién promedia).
 leccion: cap17/sec-17.5
 
 libro:
@@ -12,6 +17,7 @@ libro:
   124: "la variación se cancela y la referencia deja de importar"
   125: "sale baja si antes se midió una tensión menor"
   126: "La hoja de datos recomienda menos de 10 kΩ de impedancia de fuente"
+  127: "el último bit o los dos últimos suelen ser ruido"
   128: "Cuatro lecturas lo dividen por dos; para dividir por diez hacen falta cien"
   130: "algo menos de 10 000 muestras por segundo como máximo"
   133: "analogWrite() no genera una tensión: genera una onda cuadrada de ciclo de trabajo variable"
@@ -28,6 +34,12 @@ modelo:
     a_w: { sim: "valor", nombre: "valor de analogWrite()", unidad: "", valor: 64 }
     f_p: { sim: "f_{PWM}", nombre: "frecuencia del PWM", unidad: Hz, valor: 490 }
     V_pw: { sim: "V", nombre: "tensión del pin en alto", unidad: V, valor: 5 }
+    V_al: { sim: "V_{alim}", nombre: "alimentación real", unidad: V, valor: 5.2 }
+    m_r: { sim: "m", nombre: "lo que se mide", unidad: "", valor: 0 }
+    V_fij: { sim: "V_{in}", nombre: "tensión fija medida", unidad: V, valor: 2.5 }
+    k_r: { sim: "k", nombre: "factor de reducción del ruido", unidad: "", valor: 10 }
+    t_cv: { sim: "t_{conv}", nombre: "tiempo de una conversión", unidad: s, valor: 0.000104 }
+    tau_f: { sim: "\\tau", nombre: "constante de tiempo del filtro", unidad: s, valor: 0.01 }
   calculos:
     LSB: { expr: "V_rf/2^n_b", sim: "LSB", nombre: "valor de un paso", unidad: V, cifras: 3 }
     D_w: { expr: "100*a_w/255", sim: "D", nombre: "ciclo de trabajo", unidad: "%", cifras: 3 }
@@ -35,26 +47,31 @@ modelo:
     T_p: { expr: "1/f_p", sim: "T", nombre: "periodo del PWM", unidad: s }
     t_al: { expr: "T_p*a_w/255", sim: "t_{alto}", nombre: "tiempo en alto", unidad: s }
     t_ba: { expr: "T_p - t_al", sim: "t_{bajo}", nombre: "tiempo en bajo", unidad: s }
+    c_ad: { expr: "2^n_b*(m_r*0.5*V_al + (1 - m_r)*V_fij)/V_al", sim: "N", nombre: "código del convertidor", unidad: "", cifras: 3 }
+    c_med: { expr: "2^n_b/2", sim: "N_{mitad}", nombre: "mitad de la escala", unidad: "" }
+    n_pr: { expr: "k_r^2", sim: "n", nombre: "lecturas que promediar", unidad: "" }
+    f_mu: { expr: "1/t_cv", sim: "f_{s}", nombre: "muestras por segundo", unidad: Hz }
+    V_riz: { expr: "V_pw*0.5*0.5*T_p/tau_f", sim: "\\Delta V", nombre: "rizado pico a pico al 50 %", unidad: V }
 
 tarjetas:
   - id: estime-lsb
-    tipo: pregunta
+    tipo: leer
     titulo: "Un paso del convertidor"
-    texto: "El ATmega328P convierte con 10 bits, 1024 códigos entre 0 y 5 V. ¿Cuánto vale un paso?"
+    texto: "El ATmega328P convierte con 10 bits: 1024 códigos entre 0 y 5 V. Escriba cuánto vale un paso."
     libro: [121]
-    estimar:
-      objetivo: "LSB"
+    widget:
+      tipo: figura
+      figura: fig-17.9
+      zonas:
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199], texto: "La lectura del convertidor, código a código." }
+    leer:
+      objetivo: LSB
       unidad: V
-      min: 0
-      max: 0.02
-      paso: 0.0001
-      inicio: 0.015
-      tol: 0.05
+      tol: 0.02
       rotulo: "Un paso, LSB"
-    exito: "4,88 mV: el límite de resolución."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00513 }, texto: "Demasiado: reparta 5 V entre 1024 códigos." }
-      - { texto: "Se ha quedado corto: reparta 5 V entre 1024 códigos." }
+      errores:
+        - { expr: "V_rf/n_b", texto: "Ha dividido entre los bits; se divide entre los códigos, 2¹⁰ = 1024." }
+    exito: "4,88 mV: el límite de resolución. Pero la resolución es lo de menos."
     escalera:
       - "Divida la referencia entre el número de códigos."
     solucion: "5 V / 1024 = 4,88 mV."
@@ -62,26 +79,34 @@ tarjetas:
       - { LSB: 0.004883 }
 
   - id: pregunta-referencia
-    tipo: pregunta
+    tipo: explorar
     titulo: "Lo que de verdad mide"
-    texto: "Por defecto el convertidor mide respecto a la alimentación, y lee «2,5 V». ¿Qué significa?"
-    libro: [123]
+    texto: "El convertidor mide respecto a la alimentación, que no vale 5,000 V. Con la alimentación real por encima de 5 V, consiga que analogRead() dé la mitad de la escala."
+    libro: [123, 124]
     widget:
-      tipo: figura
-      figura: fig-17.9
-      zonas:
-        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
-    opciones:
-      - texto: "La mitad de lo que valga la alimentación en ese instante"
-        bien: true
-        porque: "Los 5 V del regulador no son 5,000 V ni son estables: varían con la carga y la temperatura."
-      - texto: "Exactamente 2,5 V"
-        porque: "Solo si la alimentación vale 5,000 V justo entonces, y no los vale."
-      - texto: "2,5 V más o menos un paso"
-        porque: "La resolución es lo de menos: la referencia variable pesa mucho más."
+      tipo: grafica
+      x: { id: u, min: 4.8, max: 5.2, unidad: V, rotulo: "alimentación real" }
+      y: { min: 470, max: 550, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "2^n_b*V_fij/u", color: naranja, rotulo: "2,5 V fijos" }
+        - { expr: "2^n_b*0.5", color: azul, rotulo: "potenciómetro a mitad" }
+      lectura: { valor: c_ad, rotulo: "analogRead()" }
+      mandos:
+        - { valor: V_al, lista: [4.8, 4.9, 5, 5.1, 5.2], rotulo: "Alimentación real" }
+        - { valor: m_r, lista: [0, 1], nombres: ["2,5 V aparte", "Potenciómetro a mitad"], rotulo: "Lo que mide" }
+    objetivo:
+      condiciones:
+        - { valor: V_al, min: 5.05, rotulo: "Alimentación por encima de 5 V" }
+        - { valor: c_ad, objetivo: 512, tol: 0.001, rotulo: "analogRead(): {{c_ad}}" }
+      logrado: "Medida ratiométrica: el sensor se alimenta de la misma tensión, la variación se cancela y la referencia deja de importar."
+      pistas:
+        - { cuando: { valor: m_r, max: 0.5 }, texto: "Los 2,5 V fijos se leen como una fracción distinta de cada alimentación. Cambie lo que mide." }
+        - { texto: "Suba la alimentación real." }
     escalera:
-      - "¿Cuánto valen, de verdad, los 5 V del regulador?"
-    solucion: "La mitad de la alimentación de ese instante."
+      - "«2,5 V» significa «la mitad de lo que valga la alimentación en ese instante»."
+    solucion: "El potenciómetro de la misma alimentación: siempre 512."
+    comprobar:
+      - { c_med: 512 }
 
   - id: empareje-referencias
     tipo: pregunta
@@ -127,53 +152,57 @@ tarjetas:
     solucion: "Baja. Un buffer, menos impedancia o un condensador en la entrada."
 
   - id: pregunta-promedio
-    tipo: pregunta
+    tipo: leer
     titulo: "Promediar"
-    texto: "Los dos últimos bits son ruido aleatorio. ¿Cuántas lecturas hay que promediar para dividirlo por diez?"
-    libro: [128]
+    texto: "Los dos últimos bits son ruido aleatorio. Escriba cuántas lecturas hay que promediar para dividirlo por diez."
+    libro: [127, 128]
     widget:
       tipo: figura
       figura: fig-17.9
       zonas:
-        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
-    opciones:
-      - texto: "Cien"
-        bien: true
-        porque: "Promediar n lecturas divide el ruido por √n: √100 = 10."
-      - texto: "Diez"
-        porque: "El ruido baja con √n, no con n: diez lecturas lo dividen por algo más de tres."
-      - texto: "Cuatro"
-        porque: "Cuatro lecturas lo dividen por dos, no por diez."
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199], texto: "El último bit o los dos últimos suelen ser ruido." }
+    leer:
+      objetivo: n_pr
+      unidad: ""
+      tol: 0.01
+      rotulo: "Lecturas promediadas"
+      errores:
+        - { expr: "k_r", texto: "El ruido baja con √n, no con n: diez lecturas lo dividen por algo más de tres." }
+    exito: "Cien: promediar n lecturas divide el ruido aleatorio por √n. Cuatro lo dividen por dos."
     escalera:
-      - "Cuatro lecturas lo dividen por dos."
-    solucion: "Cien: el ruido baja con la raíz de n."
+      - "Cuatro lecturas lo dividen por dos: la raíz de cuatro."
+    solucion: "√100 = 10: cien lecturas."
+    comprobar:
+      - { n_pr: 100 }
 
   - id: pregunta-velocidad
-    tipo: pregunta
+    tipo: leer
     titulo: "El tiempo de conversión"
-    texto: "Cada conversión tarda unos 104 µs. ¿Cuántas muestras por segundo, como mucho?"
+    texto: "Cada conversión tarda unos 104 µs. Escriba cuántas muestras por segundo puede dar, como mucho."
     libro: [130]
     widget:
       tipo: figura
       figura: fig-17.9
       zonas:
-        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
-    opciones:
-      - texto: "Algo menos de 10 000"
-        bien: true
-        porque: "Y eso sin hacer nada más: para audio o señales rápidas, es el límite."
-      - texto: "Tantas como el reloj de 125 kHz"
-        porque: "125 kHz es el reloj del convertidor, y cada conversión gasta 13 de sus ciclos."
-      - texto: "16 millones"
-        porque: "Eso es el reloj del núcleo, no el ritmo del convertidor."
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199], texto: "13 ciclos de un reloj de 125 kHz por conversión." }
+    leer:
+      objetivo: f_mu
+      unidad: Hz
+      tol: 0.05
+      rotulo: "Muestras por segundo"
+      errores:
+        - { expr: "125000", texto: "Ese es el reloj del convertidor; cada conversión gasta 13 de sus ciclos." }
+    exito: "Algo menos de 10 000, y eso sin hacer nada más: para audio o señales rápidas, es el límite."
     escalera:
       - "Invierta 104 µs."
     solucion: "1 / 104 µs: algo menos de 10 000 muestras por segundo."
+    comprobar:
+      - { f_mu: 9615 }
 
   - id: explore-pwm
     tipo: explorar
     titulo: "El PWM no es analógico"
-    texto: "analogWrite() da una onda cuadrada de 490 Hz. Cambie el valor y mire el ciclo de trabajo y la media."
+    texto: "analogWrite() da una onda cuadrada de 490 Hz. Cambie el valor hasta que la media sea la mitad de los 5 V."
     libro: [133, 145]
     widget:
       tipo: grafica
@@ -187,7 +216,18 @@ tarjetas:
         - { valor: D_w, rotulo: "Ciclo de trabajo: {{D_w}}" }
       mandos:
         - { valor: a_w, min: 0, max: 255, paso: 1, rotulo: "analogWrite(pin, valor)" }
-    requiere: { mover: [a_w] }
+    objetivo:
+      condiciones:
+        - { valor: V_md, objetivo: 2.5, tol: 0.01, rotulo: "Media: {{V_md}}" }
+      logrado: "Con {{a_w}}, el pin pasa en alto {{D_w}} de cada periodo: la media es 5 V por valor/255. Pero el pin solo vale 0 o 5 V."
+      pistas:
+        - { cuando: { valor: V_md, mayor: 2.5 }, texto: "Demasiado tiempo en alto: baje el valor." }
+        - { texto: "Poco tiempo en alto: suba el valor." }
+    escalera:
+      - "La media es 5 V · valor/255."
+    solucion: "analogWrite(pin, 128): la mitad de 255."
+    comprobar:
+      - { con: { a_w: 128 }, V_md: 2.51 }
 
   - id: dibuje-pwm
     tipo: dibujar
@@ -238,26 +278,27 @@ tarjetas:
     solucion: "LED, el ojo; motor, la inercia; altavoz, en parte; circuito analógico, nadie."
 
   - id: pregunta-rizado
-    tipo: pregunta
+    tipo: leer
     titulo: "Filtrar 490 Hz"
-    texto: "Un filtro RC de 10 ms sobre el PWM de 490 Hz. ¿Qué rizado deja?"
+    texto: "Un filtro RC de 10 ms sobre el PWM de 490 Hz al 50 %. Escriba el rizado pico a pico que deja."
     libro: [135]
     widget:
       tipo: figura
       figura: fig-17.9
       zonas:
-        - { id: pwm, rotulo: "Gráfica de la derecha", rect: [245, 0, 199, 199] }
-    opciones:
-      - texto: "Unos 0,25 V pico a pico"
-        bien: true
-        porque: "Todavía mucho: para acercarse a una LSB de 8 bits hacen falta unos 100 ms, y el control se vuelve lento."
-      - texto: "Menos de una LSB de 8 bits"
-        porque: "Eso pide unos 100 ms de constante de tiempo, no 10 ms."
-      - texto: "Ninguno: 10 ms es mucho más que el periodo"
-        porque: "Más que el periodo no basta: con 10 ms quedan unos 0,25 V."
+        - { id: pwm, rotulo: "Gráfica de la derecha", rect: [245, 0, 199, 199], texto: "El PWM y lo que queda tras el filtro." }
+    leer:
+      objetivo: V_riz
+      unidad: V
+      tol: 0.06
+      rotulo: "Rizado pico a pico"
+    exito: "Unos 0,25 V: todavía mucho. Para acercarse a una LSB de 8 bits hacen falta unos 100 ms, y el control se vuelve lento."
     escalera:
-      - "La frecuencia del PWM es baja: el filtro debe ser lento."
-    solucion: "Unos 0,25 V pico a pico; para menos, unos 100 ms."
+      - "En cada periodo el condensador sube y baja un poco: ΔV ≈ 5 V · D · (1 − D) · T / τ."
+      - "Al 50 %, D · (1 − D) es un cuarto; T es la inversa de 490 Hz."
+    solucion: "5 V · 0,25 · 2,04 ms / 10 ms ≈ 0,25 V."
+    comprobar:
+      - { V_riz: 0.2551, T_p: 0.002041 }
 
   - id: resumen
     tipo: resumen

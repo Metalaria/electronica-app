@@ -9,6 +9,10 @@
 # - Ejercicio 36.6 (bloque 345): con el 1 % y los 48 V de un shunt en el lado alto, unos 0,96 V de error (el modelo da
 #   0,94 V con ε/(2 + ε); dentro de la tolerancia del 3 % del paso «simular»).
 # Paso práctico: «simular» el error de modo común de los 48 V (errores: el del 0,1 %, el de un solo voltio).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): las tres exploraciones tienen objetivo (G = 51 con 1 kΩ, los
+# 74 dB del 0,01 % y el rechazo que sube con la ganancia de entrada); en el recuadro de la figura 36.13 se tocan el
+# camino a masa y el pin de referencia; se escribe el tiempo de integración que anula los 50 Hz. Quedan dos de
+# opciones y una de emparejar.
 leccion: cap35/sec-35.7
 
 libro:
@@ -48,12 +52,13 @@ modelo:
     V_c: { expr: "abs(A_c)*a_c", sim: "v_{o,cm}", nombre: "salida de modo común", unidad: V }
     C_R: { expr: "20*log10(G_d/abs(A_c))", sim: "CMRR", nombre: "rechazo del modo común", unidad: dB }
     V_m: { expr: "abs(A_c)", sim: "error", nombre: "error por voltio de modo común", unidad: V }
+    T_i: { expr: "1/f_r", sim: "T", nombre: "periodo de la red", unidad: s }
 
 tarjetas:
   - id: explore-ganancia
     tipo: explorar
     titulo: "Una diferencia pequeña"
-    texto: "Un puente de galgas da 10 mV sobre 2,5 V de modo común. Cambie la resistencia de ganancia y mire la salida."
+    texto: "Un puente de galgas da 10 mV sobre 2,5 V de modo común. Elija la resistencia de ganancia que da unas 50 veces."
     nota: "R = 25 kΩ y los 10 kΩ del diferencial son de ejemplo."
     libro: [194, 200]
     fijar: { v_1: 2.5, v_2: 2.51, R_a: 25000, R_3: 10000, R_4: 10000, V_r: 0 }
@@ -67,7 +72,18 @@ tarjetas:
       mide: { vo: V_o }
       mandos:
         - { valor: R_G, lista: [100, 1000, 10000], rotulo: "R_{G}" }
-    requiere: { mover: [R_G] }
+    inicio: { R_G: 10000 }
+    objetivo:
+      condiciones:
+        - { valor: G_d, min: 40, max: 60, rotulo: "G = {{G_d}}" }
+      logrado: "Con 1 kΩ, G = 1 + 2 · 25/1 = 51: los 10 mV salen como {{V_o}}, y los 2,5 V de modo común no aparecen."
+      pistas:
+        - { texto: "G = 1 + 2R/R_{G}: con R = 25 kΩ, ¿qué R_{G} da unas 50?" }
+    escalera:
+      - "2 · 25 kΩ / 1 kΩ = 50."
+    solucion: "1 kΩ."
+    comprobar:
+      - { con: { R_G: 1000 }, G_d: 51, V_o: 0.51 }
 
   - id: reto-quinientas
     tipo: reto
@@ -101,7 +117,7 @@ tarjetas:
   - id: explore-cmrr
     tipo: explorar
     titulo: "Cuatro resistencias, mal apareadas"
-    texto: "Un diferencial de cuatro resistencias con ganancia unidad y un voltio de modo común a 50 Hz. Cambie la tolerancia."
+    texto: "Un diferencial de cuatro resistencias con ganancia unidad y un voltio de modo común a 50 Hz. Consiga los 74 dB de rechazo."
     nota: "El desajuste es el peor caso de esa tolerancia."
     libro: [197, 219, 221]
     fijar: { v_1: 2.5, v_2: 2.5, a_c: 1, f_r: 50, R_a: 25000, R_G: 1e9, R_3: 10000, R_4: 10000 }
@@ -115,7 +131,15 @@ tarjetas:
       mide: { salida_amp: V_c }
       mandos:
         - { valor: e_d, lista: [0.0004, 0.004, 0.04], nombres: ["0,01 %", "0,1 %", "1 %"], rotulo: "Tolerancia" }
-    requiere: { mover: [e_d] }
+    objetivo:
+      condiciones:
+        - { valor: C_R, min: 70, rotulo: "CMRR: {{C_R}}" }
+      logrado: "Con el 0,01 %, 74 dB. Con el 1 %, solo 34 dB: 20 mV por voltio de modo común. Cada década de tolerancia, 20 dB."
+      pistas:
+        - { texto: "Hacen falta resistencias mucho mejor apareadas." }
+    escalera:
+      - "Pruebe la tolerancia más estrecha."
+    solucion: "El 0,01 %."
     comprobar:
       - { con: { e_d: 0.04 }, C_R: 34, V_c: 0.02, tol: 0.02 }
       - { con: { e_d: 0.0004 }, C_R: 74, tol: 0.01 }
@@ -123,7 +147,7 @@ tarjetas:
   - id: sorpresa-ganancia
     tipo: sorpresa
     titulo: "Más ganancia, mismo desajuste"
-    texto: "Con resistencias del 1 %, suba la ganancia de la etapa de entrada con R_{G}. Mire el rechazo."
+    texto: "Con resistencias del 1 %, suba la ganancia de la etapa de entrada con R_{G} hasta superar el rechazo del 0,01 %."
     libro: [203, 204]
     fijar: { v_1: 2.5, v_2: 2.5, a_c: 1, f_r: 50, R_a: 25000, R_3: 10000, R_4: 10000, e_d: 0.04 }
     inicio: { R_G: 1e9 }
@@ -137,7 +161,17 @@ tarjetas:
       mide: { salida_amp: V_c }
       mandos:
         - { valor: R_G, lista: [1e9, 5556, 100], nombres: ["sin R_G", "G de unas 10", "G de unas 500"], rotulo: "R_{G}" }
-    requiere: { mover: [R_G] }
+    objetivo:
+      condiciones:
+        - { valor: C_R, min: 80, rotulo: "CMRR: {{C_R}}" }
+      logrado: "La etapa de entrada amplifica la diferencia y no el modo común: con el mismo desajuste del 1 %, el rechazo sube a {{C_R}}. Y la ganancia se fija con una sola resistencia."
+      pistas:
+        - { texto: "Suba más la ganancia de entrada." }
+    escalera:
+      - "Pruebe la ganancia de unas 500."
+    solucion: "Con G de unas 500."
+    comprobar:
+      - { con: { R_G: 100 }, C_R: 88, tol: 0.02 }
 
   - id: porque-una-resistencia
     tipo: porque
@@ -193,48 +227,52 @@ tarjetas:
       - { V_m: 0.0196, tol: 0.01 }
 
   - id: pregunta-polarizacion
-    tipo: pregunta
+    tipo: tocar
     titulo: "Satura sin razón"
-    texto: "Un amplificador de instrumentación mide un termopar aislado y su salida se va al raíl. ¿Qué falta?"
+    texto: "Un amplificador de instrumentación mide un termopar aislado y su salida se va al raíl. Toque lo que falta."
     libro: [207]
     widget:
       tipo: figura
       figura: fig-35.13
       zonas:
         - { id: masa, rotulo: "Recuadro rojo", rect: [262, 26, 173, 42] }
-    opciones:
-      - texto: "Un camino de continua a masa para las corrientes de polarización"
-        bien: true
-        porque: "Con fuente flotante, unas resistencias a masa en las entradas lo resuelven."
-      - texto: "Más ganancia"
-        porque: "Satura; no le falta ganancia, le falta camino a masa."
-      - texto: "Un filtro paso bajo"
-        porque: "El filtro no da camino de continua: el amplificador seguiría derivando."
+        - { id: modo, rotulo: "Recuadro amarillo", rect: [262, 73, 173, 42] }
+        - { id: ref, rotulo: "Recuadro azul", rect: [262, 121, 173, 42] }
+        - { id: offset, rotulo: "Recuadro verde", rect: [262, 168, 173, 42] }
+    tocar:
+      bien: [masa]
+      porque:
+        modo: "El termopar flota: no le sobra modo común, le falta una referencia."
+        ref: "El pin de referencia fija la salida en reposo; la que flota es la entrada."
+        offset: "El offset se amplifica, pero no lleva la salida al raíl por sí solo."
+    exito: "Un camino de continua a masa para las corrientes de polarización: con fuente flotante, unas resistencias a masa en las entradas."
     escalera:
       - "¿Por dónde vuelven las corrientes de polarización si la fuente flota?"
-    solucion: "Resistencias a masa en las entradas."
+    solucion: "El recuadro rojo."
 
   - id: pregunta-referencia
-    tipo: pregunta
+    tipo: tocar
     titulo: "El pin de referencia"
-    texto: "El pin de referencia fija la salida en reposo. ¿Cómo se alimenta?"
+    texto: "El pin de referencia se alimenta con un divisor de dos resistencias y el rechazo empeora. Toque la precaución que se ha saltado."
     libro: [209]
     widget:
       tipo: figura
       figura: fig-35.13
       zonas:
-        - { id: ref, rotulo: "Recuadro azul", rect: [262, 120, 173, 42] }
-    opciones:
-      - texto: "Desde una fuente de baja impedancia, como un seguidor"
-        bien: true
-        porque: "Una impedancia en ese pin degrada el CMRR directamente."
-      - texto: "Con un divisor de dos resistencias"
-        porque: "Es el error de diseño frecuente: el divisor tiene impedancia y desaparea."
-      - texto: "Se deja al aire"
-        porque: "Fija la salida en reposo: hay que llevarlo a una tensión de baja impedancia."
+        - { id: masa, rotulo: "Recuadro rojo", rect: [262, 26, 173, 42] }
+        - { id: modo, rotulo: "Recuadro amarillo", rect: [262, 73, 173, 42] }
+        - { id: ref, rotulo: "Recuadro azul", rect: [262, 121, 173, 42] }
+        - { id: offset, rotulo: "Recuadro verde", rect: [262, 168, 173, 42] }
+    tocar:
+      bien: [ref]
+      porque:
+        masa: "Las entradas tienen camino a masa; el problema está en la salida."
+        modo: "El modo común de la entrada no cambia por un divisor en la referencia."
+        offset: "El offset no depende de cómo se alimente la referencia."
+    exito: "Ese pin es el extremo de una de las resistencias apareadas: hay que alimentarlo desde un seguidor, de baja impedancia."
     escalera:
-      - "Ese pin es el extremo de una de las resistencias apareadas."
-    solucion: "Un seguidor, no un divisor."
+      - "Una impedancia en ese pin desaparea el diferencial."
+    solucion: "El recuadro azul."
 
   - id: empareje-alternativas
     tipo: pregunta
@@ -259,26 +297,28 @@ tarjetas:
     solucion: "Dos operacionales, barato; corriente indirecta, raíles; sensado, decenas de voltios; aislado, barrera."
 
   - id: pregunta-red
-    tipo: pregunta
+    tipo: leer
     titulo: "El zumbido de la red"
-    texto: "Más eficaz que un filtro contra los 50 Hz de la red: integrar durante un tiempo. ¿Cuál?"
+    texto: "Más eficaz que un filtro contra los 50 Hz de la red es integrar durante un tiempo. Escriba el más corto que lo anula."
     libro: [217]
     widget:
       tipo: figura
       figura: fig-35.13
       zonas:
-        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [30, 15, 210, 170] }
-    opciones:
-      - texto: "Un múltiplo del periodo de red: 20, 100 o 200 ms"
-        bien: true
-        porque: "El zumbido se promedia a cero y la red desaparece por completo."
-      - texto: "Lo más corto posible"
-        porque: "Integrar poco no promedia el zumbido: hace falta un periodo entero o varios."
-      - texto: "Cualquier tiempo largo"
-        porque: "Debe ser un múltiplo exacto del periodo para que el zumbido sume cero."
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [30, 15, 210, 170], texto: "El rechazo de un diferencial discreto." }
+    leer:
+      objetivo: T_i
+      unidad: s
+      tol: 0.01
+      rotulo: "Tiempo de integración"
+      errores:
+        - { expr: "1/(2*f_r)", texto: "Medio periodo no promedia a cero: hace falta un periodo entero." }
+    exito: "20 ms, un periodo: el zumbido se promedia a cero. También 100 o 200 ms, múltiplos exactos."
     escalera:
       - "¿Cuánto vale el promedio de una senoide en un periodo entero?"
-    solucion: "Un múltiplo de 20 ms."
+    solucion: "1/50 Hz = 20 ms."
+    comprobar:
+      - { T_i: 0.02 }
 
   - id: pregunta-cmrr-banco
     tipo: predecir

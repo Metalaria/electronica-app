@@ -2,9 +2,15 @@
 # - La trama robusta y sus cuatro mecanismos de la figura 18.6 (fig-19.7), con zonas en cada campo y cada mecanismo.
 # - Sin modelo de circuito: la sección es de protocolo (el nivel físico se empareja).
 # Paso práctico: «tocar» el campo de la trama que evita procesar dos veces una retransmisión.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 18.7 se tocan el mecanismo que recupera un byte
+# perdido (con la predicción del byte perdido en el «exito»), el campo que protege a los demás, la secuencia y el plazo;
+# se escriben en hexadecimal la suma de comprobación de dos bytes de ejemplo (0x12 y 0x34, del autor) y lo que avanza
+# el robot. «Detectar no es corregir» se toca (el mecanismo que consigue la trama buena). Quedan una
+# pregunta de opciones (errores sistemáticos) y el nivel físico, por emparejar.
 leccion: cap19/sec-19.6
 
 libro:
+  142: "Cada trama recibida correctamente se confirma"
   124: "funciona en el banco y falla en el equipo real"
   125: "un bit alterado cambia el significado del mensaje"
   126: "todo lo que sigue es basura"
@@ -29,14 +35,21 @@ libro:
   160: "Un error de velocidad del 3 % ya produce fallos"
   161: "Estructura de una trama robusta y los cuatro mecanismos que la protegen."
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    b_1: { sim: "b_{1}", nombre: "primer byte de ejemplo", unidad: "", valor: 18 }
+    b_2: { sim: "b_{2}", nombre: "segundo byte de ejemplo", unidad: "", valor: 52 }
+    d_av: { sim: "d", nombre: "avance de la orden", unidad: m, valor: 0.1 }
+  calculos:
+    s_ck: { expr: "b_1 + b_2 - 256*floor((b_1 + b_2)/256)", sim: "suma", nombre: "suma de comprobación", unidad: "" }
+    d_2: { expr: "2*d_av", sim: "d_{total}", nombre: "avance con la orden repetida", unidad: m }
 
 tarjetas:
   - id: explore-mecanismos
     tipo: explorar
     titulo: "Bytes sueltos no bastan"
     texto: "Enviar bytes por una UART funciona en el banco y falla en el equipo real. Toque los cuatro mecanismos que lo arreglan."
-    libro: [124, 129, 161]
+    libro: [124, 125, 128, 129, 161]
     widget:
       tipo: figura
       figura: fig-19.7
@@ -48,138 +61,136 @@ tarjetas:
     requiere: { mover: [delimitar, detectar, confirmar, plazos] }
 
   - id: empareje-razones
-    tipo: pregunta
-    titulo: "Cuatro fallos, cuatro remedios"
-    texto: "Empareje cada fallo de un enlace con el mecanismo que lo resuelve."
-    libro: [125, 126, 128, 129]
-    widget:
-      tipo: figura
-      figura: fig-19.7
-      zonas:
-        - { id: todo, rotulo: "La trama y sus mecanismos", rect: [4, 3, 443, 156] }
-    emparejar:
-      - ["Ruido: un bit alterado", "Detectar con un CRC"]
-      - ["Desincronización: un byte perdido", "Delimitar las tramas"]
-      - ["Bloqueo: el emisor deja de hablar", "Plazos de espera"]
-      - ["Una trama que no llega", "Confirmar y reintentar"]
-    exito: "Ninguno de los cuatro es complicado."
-    pistas:
-      - { texto: "El que se queda esperando para siempre necesita un plazo." }
-    escalera:
-      - "Empiece por el ruido: ¿qué mecanismo comprueba los bits?"
-    solucion: "Ruido, CRC; desincronización, delimitar; bloqueo, plazos; trama perdida, confirmar."
-
-  - id: ordene-trama
-    tipo: pregunta
-    titulo: "El diseño mínimo"
-    texto: "Ordene los campos de la trama mínima razonable entre dos placas, del primero al último byte."
-    libro: [131, 133, 157, 158]
-    widget:
-      tipo: figura
-      figura: fig-19.7
-      zonas:
-        - { id: delimitar, rotulo: "Recuadro rojo de la izquierda", rect: [6, 67, 216, 42] }
-    ordenar:
-      - "Inicio"
-      - "Longitud"
-      - "Tipo"
-      - "Secuencia"
-      - "Datos"
-      - "CRC-16"
-    exito: "Con plazo, confirmación, hasta tres reintentos y resincronización por el byte de inicio."
-    pistas:
-      - { texto: "El CRC va al final: protege lo que va antes." }
-    escalera:
-      - "Primero lo que marca el comienzo; al final, la comprobación."
-    solucion: "Inicio, longitud, tipo, secuencia, datos y CRC-16."
-
-  - id: prediga-byte
-    tipo: predecir
+    tipo: tocar
     titulo: "Un byte perdido"
-    texto: "En un enlace sin delimitar las tramas se pierde un solo byte. ¿Qué pasa con lo que llega después?"
-    libro: [126, 136]
+    texto: "Se pierde un solo byte y el receptor interpreta los siguientes desplazados. Toque el mecanismo que le permite recuperarse."
+    libro: [126, 131, 136]
     widget:
       tipo: figura
       figura: fig-19.7
       zonas:
         - { id: delimitar, rotulo: "Recuadro rojo de la izquierda", rect: [6, 67, 216, 42] }
-    opciones:
-      - texto: "Todo lo que sigue es basura"
-        bien: true
-        porque: "El receptor interpreta los siguientes bytes desplazados y no se recupera solo."
-      - texto: "Solo se pierde ese byte"
-        porque: "Sin delimitador, el receptor no sabe dónde empieza la trama siguiente: se desplaza todo."
-      - texto: "El receptor lo detecta y lo pide otra vez"
-        porque: "Para eso haría falta delimitar, detectar y confirmar: aquí no hay nada de eso."
+        - { id: detectar, rotulo: "Recuadro verde de la derecha", rect: [228, 67, 216, 42] }
+        - { id: confirmar, rotulo: "Recuadro morado de la izquierda", rect: [6, 115, 216, 42] }
+        - { id: plazos, rotulo: "Recuadro naranja de la derecha", rect: [228, 115, 216, 42] }
+    tocar:
+      bien: [delimitar]
+      porque:
+        detectar: "El CRC diría que las tramas llegan mal, pero el receptor seguiría desfasado."
+        confirmar: "Reintentar no sirve si el receptor no sabe dónde empieza cada trama."
+        plazos: "El plazo saca de una espera; no le dice dónde empieza la trama siguiente."
+    exito: "Delimitar: sin delimitador, todo lo que sigue es basura; con él, el receptor busca el siguiente inicio y no se queda desfasado para siempre."
     escalera:
       - "¿Cómo sabe el receptor dónde empieza cada mensaje?"
-    solucion: "Todo lo que sigue es basura; con delimitador, buscaría el siguiente inicio."
+    solucion: "Delimitar las tramas."
+
+  - id: ordene-trama
+    tipo: tocar
+    titulo: "El diseño mínimo"
+    texto: "La trama mínima razonable entre dos placas. Toque el campo que comprueba todos los demás."
+    libro: [133, 139, 157, 158]
+    widget:
+      tipo: figura
+      figura: fig-19.7
+      zonas:
+        - { id: inicio, rotulo: "Primer campo", rect: [31, 18, 47, 36] }
+        - { id: longitud, rotulo: "Segundo campo", rect: [78, 18, 54, 36] }
+        - { id: tipo, rotulo: "Tercer campo", rect: [132, 18, 43, 36] }
+        - { id: secuencia, rotulo: "Cuarto campo", rect: [175, 18, 58, 36] }
+        - { id: datos, rotulo: "Quinto campo", rect: [233, 18, 122, 36] }
+        - { id: crc, rotulo: "Último campo", rect: [355, 18, 65, 36] }
+    tocar:
+      bien: [crc]
+      porque:
+        inicio: "El inicio marca el comienzo y sirve para resincronizar."
+        longitud: "La longitud dice cuántos bytes leer."
+        tipo: "El tipo separa sondeos, eventos y órdenes."
+        secuencia: "La secuencia distingue un reenvío de un mensaje nuevo."
+        datos: "Son lo que se protege, no lo que protege."
+    exito: "El CRC-16, al final, protege lo que va antes. Con plazo, confirmación, hasta tres reintentos y resincronización por el byte de inicio."
+    escalera:
+      - "Lo que protege va al final."
+    solucion: "El último, el CRC-16."
 
   - id: checksum
-    tipo: pregunta
+    tipo: leer
     titulo: "Suma o CRC"
-    texto: "Una suma de comprobación es simple. ¿Qué errores no detecta?"
+    texto: "Una trama lleva los bytes 0x12 y 0x34. Escriba en hexadecimal su suma de comprobación, truncada a un byte."
     libro: [138, 139]
     widget:
       tipo: figura
       figura: fig-19.7
       zonas:
-        - { id: detectar, rotulo: "Recuadro verde de la derecha", rect: [228, 67, 216, 42] }
-    opciones:
-      - texto: "Dos errores que se compensen, o un reordenamiento"
-        bien: true
-        porque: "La suma no cambia si un byte sube lo que otro baja, ni si los bytes cambian de orden."
-      - texto: "Un solo bit alterado"
-        porque: "Ese sí cambia la suma: lo detecta."
-      - texto: "Ninguno: es tan buena como un CRC"
-        porque: "Es débil: un CRC de 16 bits detecta además todas las ráfagas de hasta 16 bits."
+        - { id: inicio, rotulo: "Primer campo", rect: [31, 18, 47, 36] }
+        - { id: longitud, rotulo: "Segundo campo", rect: [78, 18, 54, 36] }
+        - { id: tipo, rotulo: "Tercer campo", rect: [132, 18, 43, 36] }
+        - { id: secuencia, rotulo: "Cuarto campo", rect: [175, 18, 58, 36] }
+        - { id: datos, rotulo: "Quinto campo", rect: [233, 18, 122, 36] }
+        - { id: crc, rotulo: "Último campo", rect: [355, 18, 65, 36] }
+    leer:
+      objetivo: s_ck
+      base: 16
+      cifras: 8
+      rotulo: "Suma de comprobación"
+    exito: "0x46. Con los bytes al revés, 0x34 y 0x12, la suma es la misma: no detecta un reordenamiento ni dos errores que se compensen. Un CRC de 16 bits sí."
     escalera:
-      - "¿Cambia una suma si se intercambian dos sumandos?"
-    solucion: "Dos errores que se compensen y los reordenamientos."
+      - "Sume los dos bytes: 0x12 + 0x34."
+    solucion: "0x12 + 0x34 = 0x46."
+    comprobar:
+      - { s_ck: 70 }
 
   - id: porque-detectar
-    tipo: porque
+    tipo: tocar
     titulo: "Detectar no es corregir"
-    texto: "Un CRC dice que la trama está mal, pero no la arregla. ¿Por qué basta en un enlace entre placas?"
-    libro: [140]
+    texto: "Un CRC dice que la trama está mal, pero no la arregla. Toque el mecanismo con el que el receptor acaba teniendo la trama buena."
+    libro: [140, 142]
     widget:
       tipo: figura
       figura: fig-19.7
       zonas:
+        - { id: delimitar, rotulo: "Recuadro rojo de la izquierda", rect: [6, 67, 216, 42] }
         - { id: detectar, rotulo: "Recuadro verde de la derecha", rect: [228, 67, 216, 42] }
-    opciones:
-      - texto: "Detectar y pedir retransmisión es casi siempre más eficiente"
-        bien: true
-        porque: "Corregir exige redundancia adicional; reenviar la trama mala sale más barato."
-      - texto: "Porque los errores no importan"
-        porque: "Importan: por eso se detectan y la trama mala se descarta y se pide otra vez."
-      - texto: "Porque el CRC también corrige"
-        porque: "No corrige: para corregir haría falta redundancia adicional."
+        - { id: confirmar, rotulo: "Recuadro morado de la izquierda", rect: [6, 115, 216, 42] }
+        - { id: plazos, rotulo: "Recuadro naranja de la derecha", rect: [228, 115, 216, 42] }
+    tocar:
+      bien: [confirmar]
+      porque:
+        delimitar: "Delimitar dice dónde empieza la trama, no la repara."
+        detectar: "Ese es el CRC: dice que está mal, pero no la arregla."
+        plazos: "El plazo saca de una espera; no trae la trama buena."
+    exito: "Confirmar y reintentar: sin confirmación, el emisor la retransmite. Detectar y pedirla otra vez es casi siempre más eficiente que corregir, que exige redundancia adicional."
     escalera:
-      - "Si la trama llegó mal, ¿qué es más barato: repararla o pedirla otra vez?"
-    solucion: "Detectar y pedir retransmisión es casi siempre más eficiente."
+      - "Si no puede repararla, ¿cómo la consigue?"
+    solucion: "Confirmar y reintentar."
 
   - id: prediga-avanzar
-    tipo: predecir
+    tipo: leer
     titulo: "Avanzar 10 cm"
-    texto: "Sin número de secuencia, la orden «avanzar 10 cm» llega, pero se pierde su confirmación y el emisor la reenvía. ¿Cuánto avanza el robot?"
-    libro: [144]
+    texto: "Sin número de secuencia, la orden «avanzar 10 cm» llega, pero se pierde su confirmación y el emisor la reenvía. Escriba cuánto avanza el robot."
+    libro: [142, 144]
     widget:
       tipo: figura
       figura: fig-19.7
       zonas:
-        - { id: confirmar, rotulo: "Recuadro morado de la izquierda", rect: [6, 115, 216, 42] }
-    opciones:
-      - texto: "20 cm"
-        bien: true
-        porque: "El receptor no distingue la retransmisión de una orden nueva y la ejecuta dos veces."
-      - texto: "10 cm"
-        porque: "Eso haría con número de secuencia: reconocería el reenvío y no lo repetiría."
-      - texto: "Nada: la orden se descarta"
-        porque: "La orden llegó bien; solo se perdió la confirmación."
+        - { id: inicio, rotulo: "Primer campo", rect: [31, 18, 47, 36] }
+        - { id: longitud, rotulo: "Segundo campo", rect: [78, 18, 54, 36] }
+        - { id: tipo, rotulo: "Tercer campo", rect: [132, 18, 43, 36] }
+        - { id: secuencia, rotulo: "Cuarto campo", rect: [175, 18, 58, 36] }
+        - { id: datos, rotulo: "Quinto campo", rect: [233, 18, 122, 36] }
+        - { id: crc, rotulo: "Último campo", rect: [355, 18, 65, 36] }
+    leer:
+      objetivo: d_2
+      unidad: m
+      tol: 0.02
+      rotulo: "Avance del robot"
+      errores:
+        - { expr: "d_av", texto: "Eso haría con número de secuencia: reconocería el reenvío y no lo repetiría." }
+    exito: "20 cm: el receptor no distingue la retransmisión de una orden nueva y la ejecuta dos veces."
     escalera:
-      - "¿Cómo sabe el receptor que la segunda orden es la misma que la primera?"
-    solucion: "20 cm: la retransmisión se procesa dos veces."
+      - "La orden llegó bien las dos veces."
+    solucion: "Dos veces 10 cm: 20 cm."
+    comprobar:
+      - { d_2: 0.2 }
 
   - id: toque-secuencia
     tipo: tocar
@@ -190,12 +201,12 @@ tarjetas:
       tipo: figura
       figura: fig-19.7
       zonas:
-        - { id: inicio, rotulo: "Primer campo", rect: [31, 23, 47, 26] }
-        - { id: longitud, rotulo: "Segundo campo", rect: [78, 23, 54, 26] }
-        - { id: tipo, rotulo: "Tercer campo", rect: [132, 23, 43, 26] }
-        - { id: secuencia, rotulo: "Cuarto campo", rect: [175, 23, 58, 26] }
-        - { id: datos, rotulo: "Quinto campo", rect: [233, 23, 122, 26] }
-        - { id: crc, rotulo: "Último campo", rect: [355, 23, 65, 26] }
+        - { id: inicio, rotulo: "Primer campo", rect: [31, 18, 47, 36] }
+        - { id: longitud, rotulo: "Segundo campo", rect: [78, 18, 54, 36] }
+        - { id: tipo, rotulo: "Tercer campo", rect: [132, 18, 43, 36] }
+        - { id: secuencia, rotulo: "Cuarto campo", rect: [175, 18, 58, 36] }
+        - { id: datos, rotulo: "Quinto campo", rect: [233, 18, 122, 36] }
+        - { id: crc, rotulo: "Último campo", rect: [355, 18, 65, 36] }
     tocar:
       bien: [secuencia]
       porque:
@@ -210,26 +221,28 @@ tarjetas:
     solucion: "El cuarto campo, la secuencia."
 
   - id: plazos
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una trama a medias"
-    texto: "Un receptor espera el resto de una trama que nunca llegará. ¿Qué le falta?"
+    texto: "Un receptor espera el resto de una trama que nunca llegará, y el sistema parece muerto. Toque el mecanismo que le falta."
     libro: [145, 147, 148]
     widget:
       tipo: figura
       figura: fig-19.7
       zonas:
+        - { id: delimitar, rotulo: "Recuadro rojo de la izquierda", rect: [6, 67, 216, 42] }
+        - { id: detectar, rotulo: "Recuadro verde de la derecha", rect: [228, 67, 216, 42] }
+        - { id: confirmar, rotulo: "Recuadro morado de la izquierda", rect: [6, 115, 216, 42] }
         - { id: plazos, rotulo: "Recuadro naranja de la derecha", rect: [228, 115, 216, 42] }
-    opciones:
-      - texto: "Un plazo, y descartar la trama parcial y resincronizar"
-        bien: true
-        porque: "Sin plazo se queda ahí para siempre y el sistema parece muerto sin que nada haya fallado visiblemente."
-      - texto: "Reintentar indefinidamente"
-        porque: "Reintentar sin límite es otra forma de bloqueo."
-      - texto: "Un CRC más largo"
-        porque: "El CRC comprueba lo que llega; aquí no llega nada."
+    tocar:
+      bien: [plazos]
+      porque:
+        delimitar: "Ya sabe dónde empezó la trama; lo que no sabe es cuánto esperar."
+        detectar: "El CRC comprueba lo que llega; aquí no llega nada."
+        confirmar: "Reintentar indefinidamente es otra forma de bloqueo."
+    exito: "Un plazo, con su acción de recuperación: descartar la trama parcial, resincronizar y seguir. Es la regla que más bloqueos evita y la que más se olvida."
     escalera:
-      - "¿Qué regla evita más bloqueos?"
-    solucion: "Toda espera necesita un plazo y una acción de recuperación."
+      - "¿Qué pone límite a una espera?"
+    solucion: "Los plazos."
 
   - id: empareje-fisico
     tipo: pregunta

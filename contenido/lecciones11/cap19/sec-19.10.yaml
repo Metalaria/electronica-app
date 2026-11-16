@@ -8,9 +8,16 @@
 #   resonador de ±0,5 %, 18 s por hora. La gráfica es la divergencia acumulada frente al tiempo.
 # Paso práctico: «simular» las tramas erróneas aceptadas por hora con CRC-8 (unas 140; errores típicos: olvidar que
 # solo una de cada cien está dañada, o contarlas por segundo).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el CRC se explora hasta pasar menos de una trama errónea por
+# hora; se escriben la sobrecarga total, las muestras por media y la divergencia de dos cristales en una hora (antes de
+# explorar los relojes hasta los 18 s del resonador); en la figura 18.6 se toca dónde marcar el tiempo para una FFT.
+# Quedan dos preguntas de opciones (la marca de inicio, la previsibilidad) y el reparto de tareas, por emparejar.
 leccion: cap19/sec-19.10
 
 libro:
+  261: "Marca de inicio reconocible, para resincronizar tras un"
+  283: "Con dos bases de tiempo de ±20 ppm cada una, la divergencia"
+  287: "Marcar en un solo sitio"
   255: "el enlace lleva mil tramas por segundo y el ruido daña una de cada cien"
   258: "32 bytes + CRC-16"
   259: "son unas 140 tramas erróneas aceptadas cada hora"
@@ -56,7 +63,7 @@ tarjetas:
   - id: explore-crc
     tipo: explorar
     titulo: "Lo que deja pasar el CRC"
-    texto: "Mil tramas por segundo, una de cada cien dañada por el ruido. Cambie el CRC y mire cuántas tramas erróneas se aceptan."
+    texto: "Mil tramas por segundo, una de cada cien dañada por el ruido. Elija la verificación con la que se acepta menos de una trama errónea por hora."
     libro: [255, 258, 259]
     inicio: { c_b: 1 }
     widget:
@@ -72,7 +79,15 @@ tarjetas:
         - { valor: p_p, rotulo: "Dañadas que pasan: {{p_p}}" }
       mandos:
         - { valor: c_b, lista: [1, 2], nombres: [CRC-8, CRC-16], rotulo: "Verificación" }
-    requiere: { mover: [c_b] }
+    objetivo:
+      condiciones:
+        - { valor: A_h, max: 1, rotulo: "Por hora: {{A_h}}" }
+      logrado: "Con CRC-16 pasan {{p_p}} de las dañadas: una errónea cada {{T_a}} horas, frente a unas 140 por hora con CRC-8."
+      pistas:
+        - { texto: "Con CRC-8 pasa una dañada de cada 256: demasiadas." }
+    escalera:
+      - "Cada byte más de CRC divide por 256 las que pasan."
+    solucion: "CRC-16."
     comprobar:
       - { p_p: 0.0039, tol: 0.01 }
       - { con: { c_b: 2 }, p_p: 0.000015, T_a: 1.82, tol: 0.03 }
@@ -99,10 +114,10 @@ tarjetas:
       - { A_h: 140.6, A_x: 14062, A_s: 0.039, tol: 0.01 }
 
   - id: sobrecarga
-    tipo: pregunta
+    tipo: leer
     titulo: "La sobrecarga total"
-    texto: "Trama con marca de inicio, longitud, 32 bytes de datos y CRC-16. ¿Qué sobrecarga tiene sobre los bytes totales?"
-    libro: [258, 266]
+    texto: "Trama con marca de inicio, longitud, 32 bytes de datos y CRC-16. Escriba la sobrecarga sobre los bytes totales."
+    libro: [258, 261, 266]
     fijar: { N_u: 32, c_b: 2 }
     widget:
       tipo: grafica
@@ -111,20 +126,20 @@ tarjetas:
       curvas:
         - { expr: "(c_b + 2)/(n + c_b + 2)*100", color: naranja, rotulo: "total" }
         - { expr: "c_b/(n + c_b)*100", color: azul, rotulo: "solo el CRC", discontinua: true }
-    opciones:
-      - texto: "11,1 %: 4 de cada 36 bytes"
-        bien: true
-        porque: "CRC, inicio y longitud son 4 bytes de los 36 de la trama."
-      - texto: "5,9 %"
-        porque: "Eso es solo el CRC; faltan la marca de inicio y la longitud."
-      - texto: "12,5 %"
-        porque: "Así se cuenta sobre los datos; el problema la cuenta sobre los bytes totales."
+    leer:
+      objetivo: s_t
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Sobrecarga total"
+      errores:
+        - { expr: "s_c", texto: "Eso es solo el CRC; faltan la marca de inicio y la longitud." }
+        - { expr: "4/32*100", texto: "Así se cuenta sobre los datos; el problema la cuenta sobre los bytes totales." }
+    exito: "11,1 %: 4 de cada 36 bytes. Tramas más largas amortizan mejor la verificación, pero pierden más datos cuando una falla."
     escalera:
       - "Sume los bytes que no son datos y divida entre el total."
     solucion: "4 / 36 = 11,1 %."
     comprobar:
       - { s_t: 11.1, s_c: 5.88, tol: 0.01 }
-      - { con: { N_u: 28 }, s_t: 12.5, tol: 0.01 }
 
   - id: porque-inicio
     tipo: porque
@@ -173,31 +188,24 @@ tarjetas:
       - { j_p: 20 }
 
   - id: estime-decimar
-    tipo: pregunta
+    tipo: leer
     titulo: "Decimar antes de enviar"
-    texto: "El microcontrolador lee 1 000 muestras por segundo y la gráfica se refresca a 25 Hz. ¿De cuántas muestras es cada media que envía?"
+    texto: "El microcontrolador lee 1000 muestras por segundo y la gráfica se refresca a 25 Hz. Escriba de cuántas muestras es cada media que envía."
     libro: [269, 274]
     widget:
       tipo: figura
       figura: fig-19.6
       zonas:
-        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192] }
-    estimar:
-      objetivo: "n_d"
+        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192], texto: "Al microcontrolador, lo que no puede esperar; al ordenador, lo que no cabe." }
+    leer:
+      objetivo: n_d
       unidad: ""
-      min: 1
-      max: 100
-      paso: 1
-      inicio: 80
-      tol: 0.05
+      tol: 0.01
       rotulo: "Muestras por media"
-    exito: "40 muestras: el enlace baja a 25 tramas por segundo, sin perder nada que la gráfica pueda mostrar."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 42 }, texto: "Demasiadas: divida las muestras por segundo entre los refrescos por segundo." }
-      - { texto: "Pocas: 1 000 entre 25." }
+    exito: "40 muestras: el enlace baja a 25 tramas por segundo, sin perder nada que la gráfica pueda mostrar. Viajan datos procesados, no en bruto."
     escalera:
       - "Muestras por segundo entre refrescos por segundo."
-    solucion: "1 000 / 25 = 40 muestras por media."
+    solucion: "1000 / 25 = 40 muestras por media."
     comprobar:
       - { n_d: 40 }
 
@@ -223,11 +231,38 @@ tarjetas:
       - "¿Qué le pasa a un lazo si un cálculo llega tarde?"
     solucion: "No es potencia de cálculo, sino previsibilidad."
 
+  - id: prediga-hora
+    tipo: leer
+    titulo: "Una hora con cristales"
+    texto: "Microcontrolador y ordenador marcan el tiempo con sus propios cristales de ±20 ppm. Escriba cuánto pueden divergir sus marcas en una hora."
+    libro: [280, 283, 284]
+    fijar: { p_r: 0.00004, t_h: 3600 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 3600, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.2, unidad: s, rotulo: "divergencia" }
+      curvas:
+        - { expr: "p_r*t", color: naranja, rotulo: "divergencia acumulada" }
+    leer:
+      objetivo: D_h
+      unidad: s
+      tol: 0.02
+      rotulo: "Divergencia en una hora"
+      errores:
+        - { expr: "D_1", texto: "Eso es un solo cristal; los dos se desvían, y en el peor caso en sentidos opuestos." }
+        - { expr: "D_m", texto: "Eso es en un minuto; en una hora, sesenta veces más." }
+    exito: "144 ms: uno puede adelantar 20 ppm y el otro atrasar 20. Son dos relojes independientes: no hay forma de evitarlo, solo de corregirlo."
+    escalera:
+      - "Sume las dos desviaciones y multiplique por los segundos de una hora."
+    solucion: "40 ppm · 3600 s = 144 ms."
+    comprobar:
+      - { D_h: 0.144, D_1: 0.072, D_m: 0.0024 }
+
   - id: explore-deriva
     tipo: explorar
     titulo: "Dos relojes que divergen"
-    texto: "Microcontrolador y ordenador marcan el tiempo con sus propios relojes. Compare dos cristales de ±20 ppm con un resonador cerámico."
-    libro: [280, 285, 286]
+    texto: "Ahora el microcontrolador lleva un resonador cerámico de ±0,5 %. Elija los relojes con los que las marcas divergen más de diez segundos en una hora."
+    libro: [285, 286]
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 3600, unidad: s, rotulo: "t" }
@@ -239,60 +274,37 @@ tarjetas:
       lectura: { valor: D_h, rotulo: "Divergencia en una hora" }
       mandos:
         - { valor: p_r, lista: [0.00004, 0.005], nombres: [dos cristales, resonador], rotulo: "Relojes" }
-    requiere: { mover: [p_r] }
+    objetivo:
+      condiciones:
+        - { valor: D_h, min: 10, rotulo: "En una hora: {{D_h}}" }
+      logrado: "Con resonador, 18 segundos en una hora: frente a los 144 ms de dos cristales, la divergencia se dispara."
+      pistas:
+        - { texto: "Con dos cristales apenas se nota: pruebe el resonador." }
+    escalera:
+      - "0,5 % de una hora."
+    solucion: "El resonador: 18 s."
     comprobar:
       - { con: { p_r: 0.005 }, D_h: 18 }
 
-  - id: prediga-hora
-    tipo: predecir
-    titulo: "Una hora con cristales"
-    texto: "Las dos bases de tiempo son cristales de ±20 ppm. ¿Cuánto pueden divergir sus marcas en una hora?"
-    libro: [280, 284]
-    fijar: { p_r: 0.00004, t_h: 3600 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 3600, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 0.2, unidad: s, rotulo: "divergencia" }
-      curvas:
-        - { expr: "p_r*t", color: naranja, rotulo: "divergencia acumulada" }
-      lectura: { valor: D_h, rotulo: "Divergencia en una hora" }
-      ocultar: true
-      mandos: []
-    opciones:
-      - texto: "144 ms"
-        bien: true
-        porque: "Uno puede adelantar 20 ppm y el otro atrasar 20: 40 ppm de 3 600 s."
-      - texto: "72 ms"
-        porque: "Eso es un solo cristal; los dos se desvían, y en el peor caso en sentidos opuestos."
-      - texto: "2,40 ms"
-        porque: "Eso es en un minuto; en una hora, sesenta veces más."
-    escalera:
-      - "Sume las dos desviaciones y multiplique por los segundos de una hora."
-    solucion: "40 ppm · 3 600 s = 144 ms."
-    comprobar:
-      - { D_h: 0.144, D_1: 0.072, D_m: 0.0024 }
-
   - id: donde-marcar
-    tipo: pregunta
+    tipo: tocar
     titulo: "Dónde marcar el tiempo"
-    texto: "Los datos se usarán para calcular una FFT, que necesita un intervalo entre muestras regular. ¿Dónde se ponen las marcas?"
-    libro: [288, 291]
+    texto: "Los datos se usarán para una FFT, que necesita un intervalo entre muestras regular. Toque dónde se ponen las marcas de tiempo."
+    libro: [287, 288, 291]
     widget:
       tipo: figura
       figura: fig-19.6
       zonas:
-        - { id: todo, rotulo: "El reparto completo", rect: [4, 3, 443, 192] }
-    opciones:
-      - texto: "En el microcontrolador"
-        bien: true
-        porque: "Su periodo es mucho más regular, aunque su hora absoluta se desvíe."
-      - texto: "En el ordenador de placa, al recibir"
-        porque: "Eso conviene si importa la hora absoluta; la latencia del enlace estropea el intervalo."
-      - texto: "Da igual"
-        porque: "No da igual: para el intervalo manda la regularidad del microcontrolador."
+        - { id: micro, rotulo: "Recuadro azul de arriba", rect: [4, 3, 218, 115] }
+        - { id: ordenador, rotulo: "Recuadro morado de arriba", rect: [229, 3, 218, 115] }
+    tocar:
+      bien: [micro]
+      porque:
+        ordenador: "Al recibir, la latencia del enlace estropea el intervalo; marcar ahí conviene si importa la hora absoluta."
+    exito: "En el microcontrolador: su periodo es mucho más regular, aunque su hora absoluta se desvíe."
     escalera:
       - "¿Importa aquí la hora absoluta o el intervalo?"
-    solucion: "En el microcontrolador: importa el intervalo, no la hora absoluta."
+    solucion: "En el microcontrolador."
 
   - id: resumen
     tipo: resumen

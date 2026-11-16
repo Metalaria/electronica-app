@@ -4,6 +4,12 @@
 #   con zonas.
 # - Sin modelo de circuito: la sección es de firmware.
 # Paso práctico: «tocar» la causa de que el watchdog mal usado nunca dispare.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el watchdog con banderas se explora en un circuito «logica»
+# (una AND de las tres banderas refresca; sin refresco, dispara); en otro se compara con el refresco desde varios sitios
+# (una OR); el detector de alimentación baja, en un tercero (con él, reset; sin él, errático). Los malos usos de plazo
+# pasan al «exito» de la interrupción y las tres pruebas del banco, a los «logrado». Quedan dos preguntas de opciones
+# (la red de seguridad, el modo degradado) y las causas, por emparejar: 4 de 7
+# haciendo (las causas y el modo degradado no tienen números ni montaje en el libro).
 leccion: cap19/sec-19.7
 
 libro:
@@ -30,15 +36,29 @@ tarjetas:
   - id: explore-watchdog
     tipo: explorar
     titulo: "Un temporizador vigilante"
-    texto: "Un watchdog reinicia el sistema si el programa no lo refresca a tiempo. Toque los dos montajes de la figura."
-    libro: [164, 192]
+    texto: "Cada tarea pone su bandera al completar su ciclo, y el watchdog solo se refresca si están todas. Bloquee una tarea y consiga que el watchdog dispare."
+    libro: [164, 172, 190, 192]
     widget:
-      tipo: figura
-      figura: fig-19.8
-      zonas:
-        - { id: mal, rotulo: "Recuadro rojo de la izquierda", rect: [4, 3, 216, 190], texto: "Mal: el refresco sale de una interrupción de temporizador, que sigue aunque el bucle principal esté bloqueado." }
-        - { id: bien, rotulo: "Recuadro verde de la derecha", rect: [231, 3, 216, 190], texto: "Bien: cada tarea pone su bandera y solo se refresca si están todas." }
-    requiere: { mover: [mal, bien] }
+      tipo: logica
+      entradas:
+        - { id: A, valor: 1, rotulo: "Tarea A completa" }
+        - { id: B, valor: 1, rotulo: "Tarea B completa" }
+        - { id: C, valor: 1, rotulo: "Tarea C completa" }
+      piezas:
+        - { id: y1, tipo: and, entradas: [A, B, C], rotulo: "Todas las banderas" }
+        - { id: n1, tipo: not, entradas: [y1], rotulo: "Sin refresco" }
+      salidas:
+        - { id: REF, de: y1, rotulo: "Refresco" }
+        - { id: WDT, de: n1, rotulo: "Watchdog dispara" }
+    objetivo:
+      condiciones:
+        - { led: WDT, valor: 1, rotulo: "El watchdog dispara" }
+      logrado: "Una tarea colgada basta: falta su bandera, no se refresca y el watchdog reinicia. Es la primera prueba del banco: bloquear el programa y comprobar que dispara."
+      pistas:
+        - { texto: "Con las tres banderas puestas, se refresca: cuelgue una tarea." }
+    escalera:
+      - "El refresco pide todas las banderas a la vez."
+    solucion: "Cualquier tarea a cero."
 
   - id: porque-red
     tipo: porque
@@ -66,67 +86,53 @@ tarjetas:
     tipo: tocar
     titulo: "Un watchdog que nunca dispara"
     texto: "En el montaje de la izquierda el bucle principal está bloqueado y el watchdog no reinicia. Toque la causa."
-    libro: [167]
+    libro: [167, 169, 170]
     widget:
       tipo: figura
       figura: fig-19.8
       zonas:
-        - { id: bucle, rotulo: "Recuadro discontinuo de arriba", rect: [16, 55, 94, 33] }
-        - { id: interrupcion, rotulo: "Recuadro verde de abajo", rect: [16, 120, 94, 33] }
-        - { id: perro, rotulo: "Recuadro gris de la derecha", rect: [153, 120, 55, 33] }
+        - { id: bucle, rotulo: "Recuadro discontinuo de arriba", rect: [12, 50, 102, 40] }
+        - { id: interrupcion, rotulo: "Recuadro verde de abajo", rect: [12, 114, 102, 40] }
+        - { id: perro, rotulo: "Recuadro gris de la derecha", rect: [148, 114, 64, 40] }
     tocar:
       bien: [interrupcion]
       porque:
         bucle: "El bucle bloqueado es el fallo que habría que detectar, no la causa de que no se detecte."
         perro: "El watchdog funciona: le llegan refrescos y por eso no dispara."
-    exito: "La interrupción sigue ejecutándose aunque el bucle esté bloqueado: refresca y el watchdog deja de proteger."
+    exito: "La interrupción sigue ejecutándose aunque el bucle esté bloqueado: refresca y el watchdog deja de proteger. Y el plazo: ni minutos inútil, ni tan corto que reinicie al escribir en Flash."
     escalera:
       - "¿De dónde le llegan los refrescos al watchdog?"
     solucion: "La interrupción del temporizador."
 
-  - id: empareje-mal
-    tipo: pregunta
-    titulo: "Cuatro malos usos"
-    texto: "Empareje cada mal uso del watchdog con su consecuencia."
-    libro: [167, 168, 169, 170]
-    widget:
-      tipo: figura
-      figura: fig-19.8
-      zonas:
-        - { id: mal, rotulo: "Recuadro rojo de la izquierda", rect: [4, 3, 216, 190] }
-    emparejar:
-      - ["Refrescarlo desde una interrupción", "Nunca dispara aunque el programa se bloquee"]
-      - ["Refrescarlo desde varios sitios", "Basta que uno funcione"]
-      - ["Plazo demasiado largo", "Minutos inútil antes de reiniciar"]
-      - ["Plazo demasiado corto", "Reinicios espurios al escribir en Flash"]
-    exito: "El refresco va en el bucle principal, en el camino que solo se recorre si todo funciona."
-    pistas:
-      - { texto: "Escribir en Flash es una operación legítimamente lenta." }
-    escalera:
-      - "Empiece por los plazos: uno tarda en reiniciar y otro reinicia de más."
-    solucion: "Interrupción, nunca dispara; varios sitios, basta uno; largo, minutos inútil; corto, reinicios espurios."
-
   - id: prediga-banderas
-    tipo: predecir
-    titulo: "Una tarea colgada"
-    texto: "Con el esquema de banderas, las tareas A y B siguen bien y la C se cuelga. ¿Qué hace el watchdog?"
-    libro: [172]
+    tipo: explorar
+    titulo: "Desde varios sitios"
+    texto: "Dos montajes: uno refresca el watchdog desde varios sitios, cualquiera vale; otro, con banderas. Cuelgue tareas hasta que el de banderas dispare y el otro no."
+    libro: [168, 172]
     widget:
-      tipo: figura
-      figura: fig-19.8
-      zonas:
-        - { id: bien, rotulo: "Recuadro verde de la derecha", rect: [231, 3, 216, 190] }
-    opciones:
-      - texto: "Dispara: falta una bandera y no se refresca"
-        bien: true
-        porque: "Solo se refresca si todas las banderas están puestas: una tarea colgada basta."
-      - texto: "Nada: dos de tres funcionan"
-        porque: "Eso pasaría refrescando desde varios sitios; con banderas hacen falta todas."
-      - texto: "Reinicia solo la tarea C"
-        porque: "El watchdog reinicia el sistema entero, no una tarea."
+      tipo: logica
+      entradas:
+        - { id: A, valor: 1, rotulo: "Tarea A viva" }
+        - { id: B, valor: 1, rotulo: "Tarea B viva" }
+        - { id: C, valor: 1, rotulo: "Tarea C viva" }
+      piezas:
+        - { id: o1, tipo: or, entradas: [A, B, C], rotulo: "Desde varios sitios" }
+        - { id: n1, tipo: not, entradas: [o1] }
+        - { id: y1, tipo: and, entradas: [A, B, C], rotulo: "Con banderas" }
+        - { id: n2, tipo: not, entradas: [y1] }
+      salidas:
+        - { id: W1, de: n1, rotulo: "Dispara: varios sitios" }
+        - { id: W2, de: n2, rotulo: "Dispara: banderas" }
+    objetivo:
+      condiciones:
+        - { led: W2, valor: 1, rotulo: "El de banderas dispara" }
+        - { led: W1, valor: 0, rotulo: "El de varios sitios no" }
+      logrado: "Desde varios sitios basta que uno funcione para que el watchdog quede satisfecho aunque el resto esté parado. Con banderas, solo se refresca si están todas."
+      pistas:
+        - { texto: "Cuelgue una tarea." }
     escalera:
-      - "¿Con cuántas banderas puestas se refresca?"
-    solucion: "Dispara: la bandera de C no llega y el watchdog reinicia."
+      - "Uno pide una cualquiera; el otro, todas."
+    solucion: "Una o dos tareas colgadas, no las tres."
 
   - id: empareje-causas
     tipo: pregunta
@@ -172,54 +178,41 @@ tarjetas:
     solucion: "Arrancar en modo degradado en lugar de reintentar lo mismo."
 
   - id: prediga-brownout
-    tipo: predecir
+    tipo: explorar
     titulo: "A media tensión"
-    texto: "Un microcontrolador sin detector de alimentación baja recibe media tensión durante un rato. ¿Qué hace?"
-    libro: [182, 183]
+    texto: "La alimentación baja por debajo de lo que el microcontrolador necesita. Consiga que se pare limpiamente en lugar de seguir ejecutando."
+    libro: [182, 183, 190]
     widget:
-      tipo: figura
-      figura: fig-19.8
-      zonas:
-        - { id: todo, rotulo: "Los dos montajes", rect: [4, 3, 443, 190] }
-    opciones:
-      - texto: "Ejecuta instrucciones de forma errática y puede corromper su memoria"
-        bien: true
-        porque: "No se para: funciona mal, y si escribe en la memoria no volátil puede estropearla."
-      - texto: "Se para limpiamente"
-        porque: "Eso hace con el detector de alimentación baja, que lo mantiene en reset."
-      - texto: "Funciona igual, solo más despacio"
-        porque: "Por debajo de su tensión mínima no funciona bien: ejecuta de forma errática."
+      tipo: logica
+      entradas:
+        - { id: V, valor: 1, rotulo: "Tensión suficiente" }
+        - { id: BOD, valor: 0, rotulo: "Detector de alimentación baja" }
+      piezas:
+        - { id: nv, tipo: not, entradas: [V] }
+        - { id: nb, tipo: not, entradas: [BOD] }
+        - { id: r1, tipo: and, entradas: [nv, BOD], rotulo: "En reset" }
+        - { id: e1, tipo: and, entradas: [nv, nb], rotulo: "Errático" }
+      salidas:
+        - { id: RST, de: r1, rotulo: "En reset" }
+        - { id: ERR, de: e1, rotulo: "Ejecuta de forma errática" }
+    objetivo:
+      condiciones:
+        - { led: RST, valor: 1, rotulo: "Parado en reset" }
+        - { led: ERR, valor: 0, rotulo: "Nada errático" }
+      logrado: "Con el detector, se queda en reset mientras la tensión esté baja. Sin él, ejecuta de forma errática y puede corromper su memoria no volátil. Activarlo es una línea de configuración."
+      pistas:
+        - { cuando: { led: ERR, valor: 1 }, texto: "Sin detector, a media tensión sigue ejecutando mal: actívelo." }
+        - { texto: "Baje la tensión." }
     escalera:
-      - "¿Qué hace el detector de alimentación baja cuando está activado?"
-    solucion: "Ejecuta instrucciones de forma errática y puede corromper su memoria no volátil."
-
-  - id: empareje-pruebas
-    tipo: pregunta
-    titulo: "Provocar los fallos"
-    texto: "Un sistema 24/7 se valida provocando fallos a propósito. Empareje cada prueba con lo que debe pasar."
-    libro: [190, 191]
-    widget:
-      tipo: figura
-      figura: fig-19.8
-      zonas:
-        - { id: todo, rotulo: "Los dos montajes", rect: [4, 3, 443, 190] }
-    emparejar:
-      - ["Bloquear el programa con un bucle infinito", "El watchdog dispara"]
-      - ["Bajar la alimentación lentamente", "Se para limpiamente y no escribe basura"]
-      - ["Desconectar el enlace", "Reintenta y se recupera al reconectar"]
-    exito: "Sin esas tres pruebas no está validado, por bien que funcione en condiciones normales."
-    pistas:
-      - { texto: "La alimentación que baja despacio pone a prueba el detector de alimentación baja." }
-    escalera:
-      - "Cada prueba comprueba uno de los mecanismos de la sección."
-    solucion: "Bucle, watchdog; alimentación, parada limpia; enlace, reintento y recuperación."
+      - "¿Qué mantiene el sistema en reset mientras la alimentación está baja?"
+    solucion: "Detector activado y tensión baja."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [165, 172, 176, 182]
+    libro: [165, 172, 176, 190, 191]
     ideas:
       - { titulo: "El watchdog.", texto: "Red de seguridad: no arregla el fallo, lo convierte en un reinicio." }
       - { titulo: "Bien usado.", texto: "Una bandera por tarea, refresco en el bucle principal, nunca en una interrupción." }
       - { titulo: "El registro.", texto: "La causa de cada reinicio clasifica el fallo." }
-      - { titulo: "La tensión baja.", texto: "El detector la mantiene en reset: una línea de configuración." }
+      - { titulo: "Provocar los fallos.", texto: "Bloquear, bajar la tensión y cortar el enlace: sin esas pruebas, no está validado." }

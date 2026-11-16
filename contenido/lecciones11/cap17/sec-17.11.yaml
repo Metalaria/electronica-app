@@ -2,6 +2,10 @@
 # - El orden de depuración sin depurador de la figura 16.16 (fig-17.16).
 # - La Ec. 1 del convertidor, V = analogRead·5 V/1023, como gráfica frente al código (0 a 1023), y la forma centrada
 #   (k + 0,5)·V_ref/1024 del libro: difieren media LSB (±2,44 mV) en los extremos y nada en 512.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 16.16 se toca la pregunta sin responder (filas
+# de 17.16.py: 37,4 px por paso); la Ec. 1 se explora hasta leer 1 V; se escribe la tensión de 512; en la gráfica de la
+# diferencia se marca el código en que /1023 y la centrada coinciden (511,5); se escribe el error de una referencia de
+# 4,8 V en el fondo de escala. El trazador serie pasa al resumen. Queda una pregunta de opciones: la masa común.
 leccion: cap17/sec-17.11
 
 libro:
@@ -20,10 +24,13 @@ modelo:
   valores:
     k_a: { sim: "k", nombre: "código leído", unidad: "", valor: 300 }
     V_rf: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 5 }
+    V_rr: { sim: "V_{CC}", nombre: "referencia real", unidad: V, valor: 4.8 }
   calculos:
     V_a: { expr: "k_a*V_rf/1023", sim: "V_{entrada}", nombre: "tensión con /1023", unidad: V, cifras: 4 }
     V_c: { expr: "(k_a + 0.5)*V_rf/1024", sim: "V_{centrada}", nombre: "tensión centrada", unidad: V, cifras: 4 }
     d_v: { expr: "V_a - V_c", sim: "ΔV", nombre: "diferencia entre las dos", unidad: V, cifras: 3 }
+    k_co: { expr: "1023*0.5/(1024 - 1023)", sim: "k_{0}", nombre: "código en que coinciden", unidad: "" }
+    e_rf: { expr: "V_rf - V_rr", sim: "e", nombre: "error de la referencia en el fondo de escala", unidad: V }
 
 tarjetas:
   - id: explore-orden
@@ -41,49 +48,32 @@ tarjetas:
     requiere: { mover: [orden, aviso] }
 
   - id: ordene-depuracion
-    tipo: pregunta
+    tipo: tocar
     titulo: "El orden"
-    texto: "Ordene las preguntas de la depuración, de la primera a la última."
+    texto: "La tensión en el propio chip es buena, pero el LED que se enciende en las primeras líneas no luce. Toque la pregunta que se ha quedado sin respuesta."
     libro: [294]
     widget:
       tipo: figura
       figura: fig-17.16
       zonas:
-        - { id: limite, rotulo: "La gráfica de la derecha", rect: [262, 28, 184, 105] }
-    ordenar:
-      - "¿Llega la alimentación y el reset está bien?"
-      - "¿Arranca el programa?"
-      - "¿Por dónde pasa?"
-      - "¿Qué valen las variables?"
-      - "¿Qué sale por el bus?"
-    exito: "De lo más básico a lo más fino: sin alimentación, nada de lo demás importa."
-    pistas:
-      - { texto: "Antes de mirar variables hay que saber que el programa corre." }
+        - { id: p1, rotulo: "Primer paso", rect: [0, 3, 190, 35] }
+        - { id: p2, rotulo: "Segundo paso", rect: [0, 40, 190, 35] }
+        - { id: p3, rotulo: "Tercer paso", rect: [0, 77, 190, 35] }
+        - { id: p4, rotulo: "Cuarto paso", rect: [0, 115, 190, 35] }
+        - { id: p5, rotulo: "Quinto paso", rect: [0, 152, 190, 35] }
+        - { id: p6, rotulo: "Sexto paso", rect: [0, 189, 190, 35] }
+    tocar:
+      bien: [p2]
+      porque:
+        p1: "Esa ya está respondida: la tensión en el chip es buena."
+        p3: "Antes de saber por dónde pasa, hay que saber que el programa arranca."
+        p4: "Medir tiempos no tiene sentido si el programa no arranca."
+        p5: "Las variables vienen después: primero, que el programa corra."
+        p6: "El bus es lo último: lo más fino."
+    exito: "¿Arranca el programa? De lo más básico a lo más fino: sin arranque, nada de lo demás importa."
     escalera:
-      - "Lo primero, que el chip tenga tensión."
-    solucion: "Alimentación, arranque, recorrido, variables y bus."
-
-  - id: pregunta-trazador
-    tipo: pregunta
-    titulo: "Ver evolucionar un sensor"
-    texto: "Quiere ver cómo cambia la lectura de un sensor con el tiempo. ¿Qué usa?"
-    libro: [280]
-    widget:
-      tipo: figura
-      figura: fig-17.16
-      zonas:
-        - { id: orden, rotulo: "Los seis pasos de la izquierda", rect: [0, 5, 190, 220] }
-    opciones:
-      - texto: "El trazador serie"
-        bien: true
-        porque: "Dibuja los valores de Serial.print como una gráfica en el tiempo."
-      - texto: "El monitor serie"
-        porque: "Muestra texto: sirve, pero el trazador lo dibuja como gráfica."
-      - texto: "Un analizador lógico"
-        porque: "Ve niveles y tramas del bus, no la evolución de un valor."
-    escalera:
-      - "Una herramienta muestra texto; la otra, gráficas."
-    solucion: "El trazador serie (Serial Plotter)."
+      - "Un LED en las primeras líneas responde a una sola pregunta."
+    solucion: "El segundo paso: ¿arranca el programa?"
 
   - id: pregunta-masa
     tipo: pregunta
@@ -108,12 +98,10 @@ tarjetas:
     solucion: "Masa común."
 
   - id: formula-adc
-    tipo: formula
+    tipo: explorar
     titulo: "Del código a la tensión"
-    texto: "La conversión que usan casi todos los programas de Arduino. Mueva el código leído."
+    texto: "La conversión que usan casi todos los programas de Arduino, de la Ec. 1. Mueva el código leído hasta que corresponda a 1 V."
     libro: [283]
-    ec: 283
-    sustitucion: "{{k_a}} · 5 V / 1023 = {{V_a}}"
     widget:
       tipo: grafica
       x: { id: cod, min: 0, max: 1023, unidad: "", rotulo: "analogRead" }
@@ -125,36 +113,47 @@ tarjetas:
       lectura: { valor: V_a, rotulo: "Tensión de entrada" }
       mandos:
         - { valor: k_a, min: 0, max: 1023, paso: 1, rotulo: "Código, analogRead" }
+    objetivo:
+      condiciones:
+        - { valor: V_a, objetivo: 1, tol: 0.004, rotulo: "Entrada: {{V_a}}" }
+      logrado: "{{k_a}} · 5 V / 1023 = {{V_a}}: dividir entre 1023 hace que el código máximo corresponda exactamente a la referencia."
+      pistas:
+        - { cuando: { valor: V_a, mayor: 1 }, texto: "Se pasa: baje el código." }
+        - { texto: "Le falta: suba el código." }
+    escalera:
+      - "1 V es la quinta parte de 5 V: la quinta parte de 1023."
+    solucion: "Unos 205."
+    comprobar:
+      - { con: { k_a: 205 }, V_a: 1.002 }
 
   - id: estime-512
-    tipo: pregunta
+    tipo: leer
     titulo: "Lee 512"
-    texto: "analogRead() devuelve 512 con referencia de 5 V. ¿Qué tensión hay en la entrada?"
-    libro: ["cap17#342"]
+    texto: "analogRead() devuelve 512 con referencia de 5 V. Escriba la tensión de la entrada con la Ec. 1."
+    libro: ["cap17#342", 283]
     fijar: { k_a: 512 }
-    estimar:
-      objetivo: "V_a"
+    widget:
+      tipo: grafica
+      x: { id: cod, min: 0, max: 1023, unidad: "", rotulo: "analogRead" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "V_{entrada}" }
+      curvas:
+        - { expr: "cod*V_rf/1023", color: azul, rotulo: "/1023" }
+    leer:
+      objetivo: V_a
       unidad: V
-      min: 0
-      max: 5
-      paso: 0.01
-      inicio: 4
-      tol: 0.01
+      tol: 0.004
       rotulo: "Tensión de entrada"
     exito: "2,50 V: la mitad del rango, la mitad de la referencia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.53 }, texto: "Demasiado: 512 es la mitad de 1023." }
-      - { texto: "Se ha quedado corto: 512 es la mitad de 1023." }
     escalera:
-      - "512 es casi la mitad del rango."
+      - "512 es casi la mitad de 1023."
     solucion: "512 · 5 / 1023 = 2,50 V."
     comprobar:
       - { V_a: 2.5024 }
 
   - id: pregunta-1024
-    tipo: pregunta
+    tipo: marcar
     titulo: "¿1023 o 1024?"
-    texto: "El convertidor tiene 1024 escalones, y la forma centrada usa (k + 0,5)/1024. Frente a la de /1023, ¿cuánto difiere?"
+    texto: "La curva es la diferencia entre la Ec. 1 (/1023) y la forma centrada, (k + 0,5)/1024. Marque el código en que coinciden."
     libro: [285, 288, 290, 291]
     widget:
       tipo: grafica
@@ -162,27 +161,24 @@ tarjetas:
       y: { min: -0.003, max: 0.003, unidad: V, rotulo: "ΔV" }
       curvas:
         - { expr: "cod*V_rf/1023 - (cod + 0.5)*V_rf/1024", color: naranja, rotulo: "/1023 menos centrada" }
-      marcas:
-        - { x: "k_a", y: "d_v", rotulo: "{{d_v}}" }
-      lectura: { valor: d_v, rotulo: "Diferencia" }
-      mandos:
-        - { valor: k_a, min: 0, max: 1023, paso: 1, rotulo: "Código, analogRead" }
-    opciones:
-      - texto: "Como mucho ±2,44 mV, media LSB"
-        bien: true
-        porque: "Del orden del error de cuantificación: en la práctica da igual cuál se use."
-      - texto: "Lo mismo en todo el rango"
-        porque: "En 512 coinciden; la diferencia crece hacia los extremos, hasta media LSB."
-      - texto: "Unos 200 mV en el fondo de escala"
-        porque: "Eso es lo que hace una referencia de 4,8 V en lugar de 5, no la fórmula."
+    marcar:
+      modo: x
+      curva: 0
+      x: k_co
+      tol: 0.02
+      inicio: { x: 100, y: 0 }
+      rotulo: "Código en que coinciden"
+    exito: "Hacia la mitad, en 512, coinciden; en los extremos difieren ±2,44 mV, media LSB, del orden del error de cuantificación: en la práctica da igual cuál se use."
     escalera:
-      - "Mueva el código a 0, 512 y 1023 y mire la diferencia."
-    solucion: "±2,44 mV en los extremos y nada en 512: media LSB."
+      - "Busque dónde la curva cruza el cero."
+    solucion: "Hacia el código 512: la tabla del libro da 0 ahí."
+    comprobar:
+      - { k_co: 511.5 }
 
   - id: porque-referencia
-    tipo: porque
+    tipo: leer
     titulo: "Lo que ninguna arregla"
-    texto: "Si VCC vale 4,8 V en lugar de 5,0, ¿por qué da igual qué fórmula use?"
+    texto: "La referencia es VCC, que vale 4,8 V y no 5,0, y en el fondo de escala el programa lee 5 V. Escriba el error."
     libro: [292]
     widget:
       tipo: grafica
@@ -191,17 +187,19 @@ tarjetas:
       curvas:
         - { expr: "cod*5/1023", color: azul, rotulo: "con 5 V" }
         - { expr: "cod*4.8/1023", color: naranja, rotulo: "con 4,8 V reales" }
-    opciones:
-      - texto: "El error de la referencia es ochenta veces mayor"
-        bien: true
-        porque: "Un 4 % de escala: cerca del fondo, unos 200 mV frente a media LSB."
-      - texto: "Porque las dos fórmulas fallan igual"
-        porque: "Difieren media LSB; el problema es otro: la referencia, que es un 4 % menor."
-      - texto: "Porque el ADC corrige la referencia"
-        porque: "No la corrige: mide respecto a lo que valga VCC. Use una referencia interna o externa."
+    leer:
+      objetivo: e_rf
+      unidad: V
+      tol: 0.02
+      rotulo: "Error en el fondo de escala"
+      errores:
+        - { expr: "0.00244", texto: "Esa es la diferencia entre las dos fórmulas; el error de la referencia es mucho mayor." }
+    exito: "Unos 200 mV, ochenta veces la media LSB: el error real lo domina la referencia, no la fórmula. Use una referencia interna o externa."
     escalera:
-      - "Compare 200 mV con 2,44 mV."
-    solucion: "La referencia domina: un 4 %, unos 200 mV en el fondo de escala."
+      - "En el fondo de escala la entrada vale lo que valga la referencia real."
+    solucion: "5,0 − 4,8 = 0,2 V: unos 200 mV."
+    comprobar:
+      - { e_rf: 0.2, V_rr: 4.8 }
 
   - id: resumen
     tipo: resumen

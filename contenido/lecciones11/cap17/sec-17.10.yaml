@@ -4,9 +4,15 @@
 #   P = (V_entrada − 5)·I (bloque 264): 2,8 W a 12 V, 1 W a 7,5 V. El libro no da el dropout: no se modela (0 V); la
 #   entrada no baja de 7 V, el mínimo del jack.
 # Paso práctico: «simular» la potencia del regulador a 12 V y 400 mA (errores: la entrada entera, lo que recibe la carga).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el regulador vivo se explora hasta que disipa lo mismo que
+# recibe la placa (10 V); la fórmula pasa a medir con el multímetro la caída entre entrada y salida; se toca el elemento
+# de paso que deja de calentarse con 5 V al pin 5V; en el banco se mide el pin 5V con la carga (referencia fijada en
+# 4,6 V, la lectura de la tarjeta de antes). Quedan dos preguntas de opciones (el síntoma térmico y el motor) y los
+# límites se tocan en el cuadro de la figura 16.15 (filas de 17.15.py).
 leccion: cap17/sec-17.10
 
 libro:
+  270: "La última fila sorprende"
   260: "de 7 a 12 V, que pasan por un regulador lineal a bordo"
   263: "El regulador lineal de la placa disipa la diferencia"
   264: 'P = lr(( V_("entrada") - "5" )) dot.op I'
@@ -30,12 +36,14 @@ modelo:
     P_r: { expr: "(V_in - V_o)*I_L", sim: "P", nombre: "potencia en el regulador", unidad: W }
     P_e: { expr: "V_in*I_L", sim: "P_{entrada}", nombre: "potencia que entra", unidad: W }
     P_c: { expr: "V_o*I_L", sim: "P_{carga}", nombre: "potencia de la carga", unidad: W }
+    d_pc: { expr: "P_r - P_c", sim: "\\Delta P", nombre: "regulador menos placa", unidad: W }
+    V_pa: { expr: "V_in - V_o", sim: "V_{paso}", nombre: "caída en el regulador", unidad: V }
 
 tarjetas:
   - id: explore-regulador
     tipo: explorar
     titulo: "El regulador de a bordo"
-    texto: "El jack admite de 7 a 12 V, que pasan por un regulador lineal. Suba la entrada y mire cuánto calor disipa."
+    texto: "El jack admite de 7 a 12 V, que pasan por un regulador lineal. Busque la entrada con la que el regulador se queda tanta potencia como la placa."
     libro: [260, 263]
     widget:
       tipo: circuito
@@ -49,24 +57,42 @@ tarjetas:
       mide: { vout: V_o, iin: I_L, icarga: I_L, p_paso: P_r }
       mandos:
         - { valor: V_in, min: 7, max: 12, paso: 0.5, rotulo: "Entrada, V_{entrada}" }
-    requiere: { mover: [V_in] }
+    objetivo:
+      condiciones:
+        - { valor: d_pc, min: -0.01, max: 0.01, rotulo: "Regulador {{P_r}} · placa {{P_c}}" }
+      logrado: "A {{V_in}}, la mitad de lo que entra se va en calor: el regulador disipa la diferencia por encima de 5 V, por la misma corriente."
+      pistas:
+        - { cuando: { valor: d_pc, mayor: 0 }, texto: "El regulador ya se queda más que la placa: baje la entrada." }
+        - { texto: "El regulador aún se queda menos que la placa: suba la entrada." }
+    escalera:
+      - "La placa recibe 5 V por la corriente; el regulador, lo que sobra por encima de 5 V."
+    solucion: "10 V: sobran 5 V, los mismos que recibe la placa."
+    comprobar:
+      - { con: { V_in: 10 }, d_pc: 0, P_r: 2 }
 
   - id: formula-disipa
-    tipo: formula
+    tipo: medir
     titulo: "Disipa la diferencia"
-    texto: "Toda la tensión que sobra por encima de 5 V se queda en el regulador, multiplicada por la corriente."
+    texto: "Ponga el multímetro donde mide la tensión que se queda el regulador."
     libro: [263, 264]
-    ec: 264
-    sustitucion: "({{V_in}} − {{V_o}}) · {{I_L}} = {{P_r}}"
     widget:
       tipo: circuito
       esquema: regulador-lineal
       piezas: { entrada: V_in, ref: V_rf, carga: R_L }
-      lectura: { valor: P_r, rotulo: "Potencia en el regulador" }
       corriente: I_L
       mide: { vout: V_o, p_paso: P_r }
-      mandos:
-        - { valor: V_in, min: 7, max: 12, paso: 0.5, rotulo: "Entrada, V_{entrada}" }
+      instrumento: { tipo: multimetro, modos: [V], puntos: [in, out, "0"] }
+    medir:
+      magnitud: tension
+      entre: [in, out]
+      valor: V_pa
+      porque:
+        "out/0": "Esa es la salida regulada: lo que recibe la placa, no lo que cae en el regulador."
+        "in/0": "Esa es toda la entrada; el regulador solo se queda con lo que sobra por encima de la salida."
+    exito: "Caen {{V_pa}}, y por el regulador pasa toda la corriente: P = (V_entrada − 5) · I = {{P_r}}."
+    escalera:
+      - "El regulador está entre la entrada y la salida."
+    solucion: "Una punta en la entrada y la otra en la salida regulada."
 
   - id: simule-12v
     tipo: simular
@@ -153,48 +179,52 @@ tarjetas:
       - { con: { V_in: 7.5 }, P_r: 1.0, I_L: 0.4 }
 
   - id: pregunta-pin5v
-    tipo: pregunta
+    tipo: elegir
     titulo: "Consumos apreciables"
-    texto: "Su montaje consume bastante. ¿Cuál es la solución correcta para alimentarlo?"
+    texto: "Para consumos apreciables se alimenta con 5 V regulados directamente al pin 5V. Toque la pieza que así deja de calentarse."
     libro: [267]
     widget:
-      tipo: figura
-      figura: fig-17.15
-      zonas:
-        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 206] }
-    opciones:
-      - texto: "5 V regulados directamente al pin 5V"
-        bien: true
-        porque: "Se salta el regulador; pero no hay protección, así que esos 5 V deben ser buenos."
-      - texto: "12 V por el jack, con un ventilador"
-        porque: "El regulador sigue disipando lo que sobra; la solución es saltárselo."
-      - texto: "Por el pin Vin en lugar del jack"
-        porque: "Vin es lo mismo que el jack, sin el diodo de protección: pasa por el mismo regulador."
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      corriente: I_L
+      mide: { vout: V_o, p_paso: P_r }
+    elegir:
+      zonas: [entrada, paso, ao, ref, carga]
+      bien: [paso]
+      porque:
+        entrada: "Es la fuente de entrada: con 5 V de fuera, ya no hace falta."
+        ao: "El amplificador de error solo compara: no lleva la corriente de la carga."
+        ref: "La referencia no lleva la corriente de la carga."
+        carga: "La placa sigue recibiendo sus 5 V y su corriente."
+    exito: "El elemento de paso, donde se quedaba lo que sobra. Precaución: sin regulador no hay protección, y esos 5 V deben ser buenos."
     escalera:
-      - "El problema es el regulador: ¿cómo evitarlo?"
-    solucion: "5 V regulados al pin 5V, con la precaución de que sean buenos."
+      - "¿Dónde se convierte en calor la tensión que sobra?"
+    solucion: "El elemento de paso del regulador."
 
   - id: empareje-limites
-    tipo: pregunta
+    tipo: tocar
     titulo: "Los límites de corriente"
-    texto: "Empareje cada salida con lo que puede dar."
-    libro: [269]
+    texto: "Toque la salida de la placa que no puede alimentar casi nada."
+    libro: [269, 270]
     widget:
       tipo: figura
       figura: fig-17.15
       zonas:
-        - { id: limites, rotulo: "El cuadro de la derecha", rect: [255, 10, 187, 180] }
-    emparejar:
-      - ["Un pin, recomendado", "20 mA"]
-      - ["El microcontrolador entero", "200 mA"]
-      - ["La salida de 5 V con USB", "~400 mA menos la placa"]
-      - ["La salida de 3,3 V", "50 mA"]
-    exito: "El pin de 3,3 V no puede alimentar casi nada."
-    pistas:
-      - { texto: "La menor de las salidas de alimentación es la de 3,3 V." }
+        - { id: pin, rotulo: "Primera fila del cuadro", rect: [267, 26, 174, 35] }
+        - { id: micro, rotulo: "Segunda fila del cuadro", rect: [267, 61, 174, 35] }
+        - { id: cinco, rotulo: "Tercera fila del cuadro", rect: [267, 96, 174, 35] }
+        - { id: tres, rotulo: "Cuarta fila del cuadro", rect: [267, 131, 174, 36] }
+    tocar:
+      bien: [tres]
+      porque:
+        pin: "Es lo recomendado por pin de E/S: mandar, no alimentar."
+        micro: "Es el total del microcontrolador, sumando sus pines."
+        cinco: "La de 5 V con USB da unos 400 mA, menos lo que gasta la placa: es la que más da."
+    exito: "La de 3,3 V: 50 mA, la cifra oficial. El regulador de la UNO R3 admite unos 150 mA, pero sin disipador y desde los 5 V de la placa."
     escalera:
-      - "El total del micro es diez veces lo de un pin."
-    solucion: "Pin, 20 mA; micro, 200 mA; 5 V, ~400 mA menos la placa; 3,3 V, 50 mA."
+      - "Compare las cuatro cifras."
+    solucion: "La salida de 3,3 V."
 
   - id: porque-motor
     tipo: porque
@@ -219,26 +249,29 @@ tarjetas:
     solucion: "Sus picos hunden la alimentación del microcontrolador."
 
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: medir
     titulo: "En el banco"
-    texto: "Mide el pin 5V con la carga funcionando y lee 4,6 V. ¿Qué concluye?"
+    texto: "La carga está funcionando. Ponga las puntas donde comprueba si la alimentación del sistema está al borde."
     libro: [277]
+    fijar: { V_rf: 4.6 }
     widget:
-      tipo: figura
-      figura: fig-17.15
-      zonas:
-        - { id: limites, rotulo: "El cuadro de la derecha", rect: [255, 10, 187, 180] }
-    opciones:
-      - texto: "Está al borde: cualquier pico lo cruzará"
-        bien: true
-        porque: "Por debajo de 4,7 V con la carga conectada, el sistema está al borde."
-      - texto: "Está bien: es casi 5 V"
-        porque: "El umbral es 4,7 V con carga: 4,6 V ya lo cruza."
-      - texto: "Hay que medirlo en vacío"
-        porque: "Se mide con la carga conectada, no en vacío: así se ve el problema."
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_rf, carga: R_L }
+      corriente: I_L
+      mide: { vout: V_o }
+      instrumento: { tipo: multimetro, modos: [V], puntos: [in, out, "0"] }
+    medir:
+      magnitud: tension
+      entre: [out, "0"]
+      valor: V_o
+      porque:
+        "in/0": "Esa es la entrada del jack: la que importa es la que llega a la placa."
+        "in/out": "Esa es la caída en el regulador, no la alimentación del sistema."
+    exito: "{{V_o}} con la carga conectada: por debajo de 4,7 V, el sistema está al borde y cualquier pico lo cruzará."
     escalera:
-      - "Compare con 4,7 V."
-    solucion: "Está por debajo de 4,7 V: al borde."
+      - "Se mide el pin 5V, con la carga conectada, no en vacío."
+    solucion: "Entre la salida regulada y masa."
     comprobar:
       - { con: { V_rf: 4.6 }, V_o: 4.6 }
 

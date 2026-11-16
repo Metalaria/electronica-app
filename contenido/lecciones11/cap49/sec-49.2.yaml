@@ -7,6 +7,10 @@
 #   acumuladas por envío, n: (3 000 + 10 000 + 450 000/n) µA·s · 105 120.
 # Pasos prácticos: «simular» la corriente media (error típico: la media sin ponderar, 75 mA) y «ajuste» de las medidas
 # por envío hasta que el año quepa en 3 000 mA·h (desde seis medidas por envío; el libro elige doce).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): la exploración busca el tiempo despierto que deja la media en
+# la mitad; se escriben la autonomía con 2 000 mAh y la parte de la carga que se va en transmitir (bloques 61 a 63);
+# en la figura 50.3 se toca el perfil que da el osciloscopio. El por qué de la radio pasa al éxito. Las decisiones
+# de arquitectura, al resumen. Queda una de opciones (las fugas).
 leccion: cap49/sec-49.2
 
 libro:
@@ -48,21 +52,38 @@ modelo:
     Q_y: { expr: "Q_c*105120/3600", sim: "Q_{año}", nombre: "carga de un año", unidad: "A·h", cifras: 3 }
     I_p: { expr: "Q_c/300", sim: "I_{media}", nombre: "corriente media por fases", unidad: A }
     a_y: { expr: "3/(I_p*8760)", sim: "autonomía", nombre: "autonomía con 3 000 mA·h", unidad: "años" }
+    f_t: { expr: "100*0.15*3/Q_c", sim: "fracción", nombre: "parte de la carga en transmitir", unidad: "%", cifras: 2 }
 
 tarjetas:
   - id: explore-perfil
     tipo: explorar
     titulo: "Dormir, medir, transmitir"
-    texto: "La arquitectura sale del consumo. Toque el reposo, la medida y la transmisión en el perfil de un ciclo."
-    libro: [46, 84]
+    texto: "Despierto 3 s cada 300 s a 150 mA y dormido a 10 µA, la media es de 1,51 mA. Busque el tiempo despierto que la deja en la mitad."
+    libro: [46, 53, 54]
+    fijar: { I_w: 0.15, I_z: 10e-6, T_c: 300 }
     widget:
-      tipo: figura
-      figura: fig-49.3
-      zonas:
-        - { id: ciclos, rotulo: "Gráfica de arriba a la izquierda", rect: [5, 5, 210, 125], texto: "Casi todo el ciclo dormido, a 10 µA; un pico breve cada 300 s." }
-        - { id: despierto, rotulo: "Gráfica de arriba a la derecha", rect: [235, 5, 205, 125], texto: "Despierto: medir a 25 mA durante 0,4 s y transmitir a 150 mA de media." }
-        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125], texto: "Acumular medidas y enviarlas juntas alarga mucho la autonomía." }
-    requiere: { mover: [ciclos, despierto] }
+      tipo: grafica
+      x: { id: tt, min: 0.5, max: 10, unidad: s, rotulo: "tiempo despierto" }
+      y: { min: 0, max: 0.006, unidad: A, rotulo: "corriente media" }
+      curvas:
+        - { expr: "tt/T_c*I_w + (1 - tt/T_c)*I_z", color: naranja, rotulo: "media" }
+      marcas:
+        - { x: "t_w", y: "I_a", rotulo: "{{I_a}}" }
+      lectura: { valor: I_a, rotulo: "Corriente media" }
+      mandos:
+        - { valor: t_w, min: 0.5, max: 10, paso: 0.5, rotulo: "Tiempo despierto" }
+    inicio: { t_w: 3 }
+    objetivo:
+      condiciones:
+        - { valor: I_a, min: 0.00071, max: 0.00081, rotulo: "Media: {{I_a}}" }
+      logrado: "Con la mitad de tiempo despierto, la mitad de media: el reposo apenas pesa, y cada segundo despierto cuenta."
+      pistas:
+        - { texto: "La media crece casi en proporción al tiempo despierto." }
+    escalera:
+      - "Pruebe con la mitad de 3 s."
+    solucion: "1,5 s."
+    comprobar:
+      - { con: { t_w: 1.5 }, I_a: 0.00076, tol: 0.02 }
 
   - id: simule-media
     tipo: simular
@@ -105,29 +126,24 @@ tarjetas:
         - { valor: t_w, min: 0.5, max: 10, paso: 0.5, rotulo: "Tiempo despierto" }
 
   - id: estime-autonomia
-    tipo: pregunta
+    tipo: leer
     titulo: "Con 2 000 mAh"
-    texto: "Con esa media de 1,51 mA y una batería de 2 000 mAh, ¿cuántas horas dura?"
+    texto: "Con esa media de 1,51 mA y una batería de 2 000 mAh, escriba cuántas horas dura."
     libro: [56, 57]
     fijar: { I_w: 0.15, I_z: 10e-6, t_w: 3, T_c: 300 }
     widget:
       tipo: figura
       figura: fig-49.3
       zonas:
-        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125] }
-    estimar:
-      objetivo: "h_b"
+        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125], texto: "La autonomía según cómo se envía." }
+    leer:
+      objetivo: h_b
       unidad: h
-      min: 0
-      max: 5000
-      paso: 50
-      inicio: 4000
-      tol: 0.05
+      tol: 0.03
       rotulo: "Autonomía"
+      errores:
+        - { expr: "2*I_a*1e6", texto: "Ha multiplicado: la autonomía es la capacidad dividida entre la corriente." }
     exito: "Unas 1 300 horas: menos de dos meses. Muy lejos del año."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1400 }, texto: "Demasiado: divida la capacidad entre la corriente media." }
-      - { texto: "Demasiado poco: 2 000 entre 1,51." }
     escalera:
       - "Autonomía = capacidad / corriente media."
     solucion: "2 000 mAh / 1,51 mA ≈ 1 300 h."
@@ -135,26 +151,27 @@ tarjetas:
       - { h_b: 1300, tol: 0.03 }
 
   - id: pregunta-fases
-    tipo: predecir
+    tipo: leer
     titulo: "Dónde se va la energía"
-    texto: "En el presupuesto por fases de un ciclo que mide y transmite, ¿qué fase domina?"
-    libro: [61, 62, 85]
+    texto: "Por ciclo: reposo 3 000, medida 10 000 y transmisión 450 000 µA·s, en total 463 000. Escriba qué parte se va en transmitir."
+    libro: [61, 62, 64, 85]
+    fijar: { n_e: 1 }
     widget:
       tipo: figura
       figura: fig-48.2
       zonas:
-        - { id: barras, rotulo: "Gráfica de la izquierda", rect: [20, 15, 210, 160] }
-    opciones:
-      - texto: "Transmitir: 450 000 de los 463 000 µA·s"
-        bien: true
-        porque: "Conectarse y publicar a 150 mA durante 3 s pesa casi todo el ciclo."
-      - texto: "El reposo, porque dura 300 s"
-        porque: "Dura mucho, pero a 10 µA: solo 3 000 µA·s."
-      - texto: "Medir, con el procesador despierto"
-        porque: "25 mA durante 0,4 s son 10 000 µA·s: poco al lado de la radio."
+        - { id: barras, rotulo: "Gráfica de la izquierda", rect: [20, 15, 210, 160], texto: "La carga de cada fase de un ciclo." }
+    leer:
+      objetivo: f_t
+      unidad: "%"
+      tol: 0.01
+      rotulo: "Parte de la transmisión"
+    exito: "Un 97 %: el consumo lo domina la radio, no el procesador ni los sensores. Por eso enviar por lotes es lo que más autonomía gana."
     escalera:
-      - "Multiplique cada corriente por lo que dura."
-    solucion: "Transmitir: la radio domina."
+      - "Divida 450 000 entre 463 000."
+    solucion: "450 000 / 463 000 ≈ 97 %."
+    comprobar:
+      - { f_t: 97.2, tol: 0.01 }
 
   - id: ajuste-envio
     tipo: ajuste
@@ -187,28 +204,6 @@ tarjetas:
       - { Q_y: 13.5, tol: 0.01 }
       - { con: { n_e: 12 }, Q_y: 1.5, I_p: 0.00017, a_y: 2, tol: 0.03 }
 
-  - id: porque-radio
-    tipo: porque
-    titulo: "Lo que domina el consumo"
-    texto: "¿Por qué acumular medidas y enviarlas juntas es la decisión que más autonomía gana?"
-    libro: [64, 68]
-    widget:
-      tipo: figura
-      figura: fig-48.2
-      zonas:
-        - { id: calculo, rotulo: "Recuadros de la derecha", rect: [245, 40, 190, 140] }
-    opciones:
-      - texto: "Porque el consumo lo domina la radio, no el procesador ni los sensores"
-        bien: true
-        porque: "Transmitir menos veces divide el término dominante."
-      - texto: "Porque el procesador duerme más"
-        porque: "Duerme casi igual; lo que se ahorra son conexiones de la radio."
-      - texto: "Porque los sensores gastan menos"
-        porque: "Los sensores miden igual; se ahorran envíos."
-    escalera:
-      - "¿Qué término del presupuesto se divide al enviar por lotes?"
-    solucion: "La radio domina: se transmite menos veces."
-
   - id: pregunta-fugas
     tipo: pregunta
     titulo: "El microcontrolador duerme; la placa no"
@@ -231,56 +226,34 @@ tarjetas:
       - "¿Qué sigue encendido en la placa cuando el micro duerme?"
     solucion: "Las fugas del resto de la placa."
 
-  - id: empareje-decisiones
-    tipo: pregunta
-    titulo: "Las decisiones de arquitectura"
-    texto: "Empareje cada pregunta de arquitectura con su respuesta."
-    libro: [73, 74, 75, 76]
-    widget:
-      tipo: figura
-      figura: fig-49.3
-      zonas:
-        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125] }
-    emparejar:
-      - ["¿Uno o dos microcontroladores?", "Uno, si la radio está integrada"]
-      - ["¿Dónde se guardan muchos datos?", "Flash externa o tarjeta, que consume"]
-      - ["¿Y si falla la red?", "Seguir midiendo y enviar al volver"]
-      - ["¿Cómo se actualiza en un tejado?", "Actualización remota"]
-    exito: "Sin seguir midiendo durante un corte, cada incidencia de red es una pérdida de datos."
-    pistas:
-      - { texto: "Un ordenador de placa no tiene sitio en el nodo de medida." }
-    escalera:
-      - "Piense en la estación instalada lejos, a pilas y con una red que a veces falla."
-    solucion: "Uno; Flash o tarjeta; seguir midiendo; actualización remota."
-
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: tocar
     titulo: "La medida que valida la arquitectura"
-    texto: "¿Cómo se comprueba en el banco que la arquitectura cumplirá su autonomía?"
-    libro: [81, 82]
+    texto: "En el banco, un shunt y el osciloscopio en disparo único dan el perfil de corriente de un ciclo. Toque esa gráfica."
+    libro: [81, 82, 84]
     widget:
       tipo: figura
       figura: fig-49.3
       zonas:
+        - { id: ciclos, rotulo: "Gráfica de arriba a la izquierda", rect: [5, 5, 210, 125] }
         - { id: despierto, rotulo: "Gráfica de arriba a la derecha", rect: [235, 5, 205, 125] }
-    opciones:
-      - texto: "Con el perfil de corriente de un ciclo: shunt y osciloscopio en disparo único"
-        bien: true
-        porque: "Integrando ese perfil sale el consumo medio real, que se compara con el presupuesto."
-      - texto: "Con el multímetro en mA"
-        porque: "Promedia mal picos de segundos sobre un suelo de microamperios."
-      - texto: "Dejándolo un año a pilas"
-        porque: "Es la prueba final, pero el perfil lo dice en minutos."
+        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125] }
+    tocar:
+      bien: [despierto]
+      porque:
+        ciclos: "Esa abarca muchos ciclos: el disparo único captura uno solo, con su pico y su escalón."
+        barras: "Esa compara autonomías; es el resultado del presupuesto, no la medida."
+    exito: "Medir a 25 mA durante 0,4 s y transmitir a 150 mA: integrando ese perfil sale el consumo medio real, que se compara con el presupuesto. El multímetro promedia mal picos sobre un suelo de microamperios."
     escalera:
-      - "Se quieren ver los picos, el escalón y el suelo de un ciclo."
-    solucion: "El perfil de un ciclo, integrado."
+      - "Se quieren ver el pico y el escalón de un ciclo."
+    solucion: "La de arriba a la derecha."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [56, 62, 63, 64]
+    libro: [56, 62, 63, 73, 74, 75, 76]
     ideas:
       - { titulo: "Ciclo de trabajo.", texto: "Cada estado pesa lo que dura: 1,51 mA con un 1 % despierto." }
       - { titulo: "Por fases.", texto: "463 000 µA·s por ciclo: 13 500 mA·h al año, no llega." }
       - { titulo: "Por lotes.", texto: "Enviando cada hora, unos 1 500 mA·h: dos años." }
-      - { titulo: "La radio.", texto: "Domina el consumo, no el procesador." }
+      - { titulo: "Arquitectura.", texto: "Un micro con la radio integrada, Flash o tarjeta para muchos datos, seguir midiendo sin red y actualización remota." }

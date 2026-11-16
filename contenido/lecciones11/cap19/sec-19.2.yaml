@@ -5,6 +5,9 @@
 #   Arduino a 3,33 V en el RX de la Pi; esquema «divisor» vivo.
 # Paso práctico: «simular» la tensión en el RX de la Pi (3,33 V; errores típicos: la tensión de R₁, 1,67 V, y la
 # mitad, 2,5 V).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la tabla de la figura 18.3 se tocan el método que deja
+# ver todo el tráfico (con el observador del banco en el «exito») y el que pierde el puerto al reiniciarse (el explorar
+# ya no lo cuenta). El arranque desacompasado se marca en una gráfica de quién está listo (medio minuto del ordenador, bloque 45). Queda una pregunta de opciones: el maestro.
 leccion: cap19/sec-19.2
 
 libro:
@@ -32,6 +35,8 @@ modelo:
     V_tx: { sim: "V_{TX}", nombre: "nivel alto del TX del Arduino", unidad: V, valor: 5 }
     R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 1000 }
     R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 2000 }
+    t_pc: { sim: "t_{PC}", nombre: "arranque del ordenador", unidad: s, valor: 30 }
+    t_mc: { sim: "t_{µC}", nombre: "arranque del microcontrolador", unidad: s, valor: 0.01 }
   calculos:
     V_rx: { expr: "V_tx*R_2/(R_1 + R_2)", sim: "V_{RX}", nombre: "tensión en el RX de la Pi", unidad: V }
     V_r1: { expr: "V_tx*R_1/(R_1 + R_2)", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
@@ -43,38 +48,40 @@ tarjetas:
     tipo: explorar
     titulo: "Cuatro formas de hablar"
     texto: "Cuando un microcontrolador y un ordenador de placa trabajan juntos, hay que elegir cómo se comunican. Toque cada fila de la tabla."
-    libro: [28, 30, 41, 49]
+    libro: [28, 30, 39, 41, 49]
     widget:
       tipo: figura
       figura: fig-19.3
       zonas:
-        - { id: uart, rotulo: "Primera fila", rect: [2, 20, 450, 25], texto: "UART: dos hilos y disponible en todo. Con un conversor USB-serie se ve todo el tráfico." }
-        - { id: usb, rotulo: "Segunda fila", rect: [2, 46, 450, 24], texto: "USB: el microcontrolador aparece como puerto serie, con velocidad y alimentación por el mismo cable." }
+        - { id: uart, rotulo: "Primera fila", rect: [2, 20, 450, 25], texto: "UART: dos hilos, un protocolo propio y disponible en todo." }
+        - { id: usb, rotulo: "Segunda fila", rect: [2, 46, 450, 24], texto: "USB: el microcontrolador aparece como puerto serie." }
         - { id: spi, rotulo: "Tercera fila", rect: [2, 71, 450, 24], texto: "SPI o I²C: rápidos y sencillos, con las placas juntas: distancias de centímetros." }
         - { id: red, rotulo: "Cuarta fila", rect: [2, 96, 450, 23], texto: "Ethernet o wifi: placas separadas o más de dos; protocolo MQTT o HTTP." }
     requiere: { mover: [uart, spi, red] }
 
   - id: empareje-metodos
-    tipo: pregunta
-    titulo: "Cada método, su rasgo"
-    texto: "Empareje cada método con lo que lo caracteriza."
-    libro: [31, 35, 37, 39]
+    tipo: tocar
+    titulo: "Ver todo el tráfico"
+    texto: "Quiere intercalar un conversor USB-serie y ver desde el ordenador todo lo que se dicen las placas. Toque el método que lo permite."
+    libro: [30, 31, 48, 49]
     widget:
       tipo: figura
       figura: fig-19.3
       zonas:
-        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
-    emparejar:
-      - ["UART", "Un conversor USB-serie intercalado deja ver el tráfico"]
-      - ["USB", "Si el microcontrolador se reinicia, el puerto desaparece"]
-      - ["SPI o I²C", "El ordenador tiene que ser el maestro"]
-      - ["Ethernet o wifi", "Varios nodos, con MQTT o HTTP"]
-    exito: "Y la tabla los resume: velocidad, distancia y complejidad."
-    pistas:
-      - { texto: "El que depende de la enumeración es el del cable con alimentación." }
+        - { id: uart, rotulo: "Primera fila", rect: [2, 20, 450, 25] }
+        - { id: usb, rotulo: "Segunda fila", rect: [2, 46, 450, 24] }
+        - { id: spi, rotulo: "Tercera fila", rect: [2, 71, 450, 24] }
+        - { id: red, rotulo: "Cuarta fila", rect: [2, 96, 450, 23] }
+    tocar:
+      bien: [uart]
+      porque:
+        usb: "Por USB el tráfico va dentro del protocolo USB: no basta con un conversor en paralelo."
+        spi: "Se observa con un analizador lógico, pero no con un conversor USB-serie."
+        red: "La red pide sus propias herramientas; el conversor USB-serie es para la UART."
+    exito: "La UART. Ver el tráfico real distingue un problema de protocolo de uno de nivel físico: es la mitad del diagnóstico."
     escalera:
-      - "Empiece por el de varios nodos: es el de la red."
-    solucion: "UART, tráfico visible; USB, puerto que desaparece; SPI o I²C, ordenador maestro; red, MQTT o HTTP."
+      - "Un conversor USB-serie habla el idioma de un solo método."
+    solucion: "La UART, primera fila."
 
   - id: maestro
     tipo: pregunta
@@ -99,26 +106,28 @@ tarjetas:
     solucion: "El ordenador de placa es el maestro."
 
   - id: prediga-usb
-    tipo: predecir
-    titulo: "Un reinicio por USB"
-    texto: "El microcontrolador, unido por USB como puerto serie, se reinicia. ¿Qué ve la aplicación del ordenador?"
-    libro: [34, 35]
+    tipo: tocar
+    titulo: "Un reinicio que se nota"
+    texto: "El microcontrolador se reinicia, y en el ordenador su puerto desaparece y reaparece. Toque el método que da ese problema."
+    libro: [34, 35, 49]
     widget:
       tipo: figura
       figura: fig-19.3
       zonas:
-        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
-    opciones:
-      - texto: "El puerto desaparece y reaparece, y debe manejarlo"
-        bien: true
-        porque: "La enumeración tarda: la aplicación tiene que volver a abrir el puerto."
-      - texto: "Nada: el puerto sigue abierto"
-        porque: "Con USB, el dispositivo se va del bus al reiniciarse y vuelve a enumerarse."
-      - texto: "Un error de nivel de tensión"
-        porque: "El USB no tiene ese problema; lo que cambia es que el puerto se va y vuelve."
+        - { id: uart, rotulo: "Primera fila", rect: [2, 20, 450, 25] }
+        - { id: usb, rotulo: "Segunda fila", rect: [2, 46, 450, 24] }
+        - { id: spi, rotulo: "Tercera fila", rect: [2, 71, 450, 24] }
+        - { id: red, rotulo: "Cuarta fila", rect: [2, 96, 450, 23] }
+    tocar:
+      bien: [usb]
+      porque:
+        uart: "Con la UART los hilos siguen ahí: el puerto del ordenador no se entera del reinicio."
+        spi: "En SPI o I²C no hay puerto que enumerar."
+        red: "En red, el nodo se reconecta; no hay un puerto local que desaparezca."
+    exito: "USB: aporta velocidad y alimentación por el mismo cable, pero la enumeración tarda y la aplicación tiene que volver a abrir el puerto."
     escalera:
-      - "Un dispositivo USB que se reinicia, ¿sigue conectado para el ordenador?"
-    solucion: "El puerto desaparece y reaparece."
+      - "¿Qué método necesita que el ordenador reconozca al dispositivo cada vez que se conecta?"
+    solucion: "USB, segunda fila."
 
   - id: toque-niveles
     tipo: tocar
@@ -130,8 +139,8 @@ tarjetas:
       figura: fig-19.2
       zonas:
         - { id: arduino, rotulo: "Bloque azul de la izquierda", rect: [94, 10, 80, 148] }
-        - { id: divisor, rotulo: "Recuadro naranja de arriba", rect: [201, 34, 48, 19] }
-        - { id: mosfet, rotulo: "Recuadro naranja de abajo", rect: [201, 113, 48, 19] }
+        - { id: divisor, rotulo: "Recuadro naranja de arriba", rect: [195, 25, 60, 36] }
+        - { id: mosfet, rotulo: "Recuadro naranja de abajo", rect: [195, 104, 60, 36] }
         - { id: pi, rotulo: "Bloque morado de la derecha", rect: [277, 10, 80, 148] }
     tocar:
       bien: [divisor]
@@ -175,26 +184,30 @@ tarjetas:
       - { V_rx: 3.33, V_r1: 1.67, V_mi: 2.5, tol: 0.01 }
 
   - id: arranque
-    tipo: pregunta
+    tipo: marcar
     titulo: "El arranque desacompasado"
-    texto: "Al encender, ¿qué debe tolerar el protocolo entre las dos placas?"
+    texto: "Las dos placas se encienden a la vez. Marque el instante a partir del cual el ordenador escucha: antes, lo que mande el microcontrolador se pierde."
     libro: [45]
     widget:
-      tipo: figura
-      figura: fig-19.3
-      zonas:
-        - { id: arranque, rotulo: "Recuadro rojo de abajo a la izquierda", rect: [2, 187, 222, 43] }
-    opciones:
-      - texto: "Que uno hable cuando el otro todavía no escucha"
-        bien: true
-        porque: "El microcontrolador está listo en milisegundos y el ordenador tarda medio minuto."
-      - texto: "Nada: arrancan a la vez"
-        porque: "No: el microcontrolador está listo en milisegundos y el ordenador tarda medio minuto."
-      - texto: "Que el ordenador arranque primero"
-        porque: "Es al revés: el ordenador es el lento, y el microcontrolador hablará antes."
+      tipo: grafica
+      x: { id: t, min: 0, max: 40, unidad: s, rotulo: "t" }
+      y: { min: -0.2, max: 2.4, unidad: "", rotulo: "listo" }
+      curvas:
+        - { expr: "1.2 + max(0, min(1, (t - t_mc)*100))", color: azul, rotulo: "microcontrolador" }
+        - { expr: "max(0, min(1, (t - t_pc)*100))", color: naranja, rotulo: "ordenador" }
+    marcar:
+      modo: x
+      curva: 1
+      x: t_pc
+      tol: 0.03
+      inicio: { x: 5, y: 0 }
+      rotulo: "El ordenador ya escucha"
+    exito: "Medio minuto: el microcontrolador está listo en milisegundos. El protocolo debe tolerar que uno hable cuando el otro todavía no escucha."
     escalera:
-      - "¿Cuánto tarda cada uno en estar listo?"
-    solucion: "Que uno hable cuando el otro no escucha."
+      - "Busque el escalón de la curva del ordenador."
+    solucion: "Hacia los 30 s, medio minuto."
+    comprobar:
+      - { t_pc: 30 }
 
   - id: toque-decisiones
     tipo: tocar
@@ -219,28 +232,6 @@ tarjetas:
     escalera:
       - "¿Qué decisión habla de potenciales?"
     solucion: "El recuadro de abajo a la derecha, el aislamiento."
-
-  - id: porque-observador
-    tipo: porque
-    titulo: "Intercalar un observador"
-    texto: "Ante un enlace que falla, se intercala un analizador lógico para ver el tráfico real. ¿Por qué es la mitad del diagnóstico?"
-    libro: [48]
-    widget:
-      tipo: figura
-      figura: fig-19.3
-      zonas:
-        - { id: tabla, rotulo: "La tabla de los métodos", rect: [2, 2, 450, 118] }
-    opciones:
-      - texto: "Distingue un problema de protocolo de uno de nivel físico"
-        bien: true
-        porque: "Si los bytes viajan bien y no se entienden, es el protocolo; si no viajan, es el nivel físico."
-      - texto: "Porque corrige los errores del enlace"
-        porque: "Solo observa: no corrige nada, pero dice dónde está el fallo."
-      - texto: "Porque acelera la comunicación"
-        porque: "No cambia la velocidad; está en paralelo con la línea, mirando."
-    escalera:
-      - "¿Qué dos clases de problema puede tener un enlace?"
-    solucion: "Distingue un problema de protocolo de uno de nivel físico."
 
   - id: resumen
     tipo: resumen

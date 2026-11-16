@@ -3,6 +3,11 @@
 #   (fig-17.4), con zonas en cada pieza.
 # - Sin modelo numérico salvo los 5 V del raíl que se miden en el banco.
 # Paso práctico: «banco» de la ficha 18 del cuaderno (cargar el parpadeo y medir el raíl de 5 V).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 16.2 se toca en orden el camino de la
+# alimentación externa y la pieza que ocupa los pines 0 y 1; en la 16.4, la pieza del reset, el puente que lo
+# desactiva y los pines de las interrupciones (zonas sobre la tira de pines de w_172.py: 3,6 px por unidad); se
+# escribe cuántos pines a 20 mA caben en los 200 mA. La tarjeta «placa sana» pasa al consejo del banco. Queda una
+# pregunta de opciones (cuándo cambiar de placa) y las variantes, por emparejar.
 leccion: cap17/sec-17.2
 
 libro:
@@ -31,8 +36,11 @@ libro:
 modelo:
   valores:
     V_5: { sim: "V_{5V}", nombre: "raíl de 5 V", unidad: V, valor: 5 }
+    I_pin: { sim: "I_{pin}", nombre: "corriente por pin", unidad: A, valor: 0.02 }
+    I_tot: { sim: "I_{total}", nombre: "corriente total del microcontrolador", unidad: A, valor: 0.2 }
   calculos:
     V_borde: { expr: "4.7", sim: "V_{borde}", nombre: "tensión al borde", unidad: V }
+    n_pin: { expr: "I_tot/I_pin", sim: "n", nombre: "pines a plena corriente", unidad: "" }
 
 tarjetas:
   - id: explore-placa
@@ -50,6 +58,32 @@ tarjetas:
         - { id: regulador, rotulo: "Chip pequeño, abajo en el centro", rect: [158, 180, 36, 36], texto: "El regulador lineal, con un límite térmico (sección 16.10)." }
         - { id: jack, rotulo: "Conector negro, abajo a la izquierda", rect: [100, 191, 52, 36], texto: "El jack de alimentación externa, que pasa por el regulador." }
     requiere: { mover: [micro, conversor] }
+
+  - id: ordene-alimentacion
+    tipo: tocar
+    titulo: "El camino de la alimentación"
+    texto: "La alimentación externa entra por un conector y pasa por otra pieza antes de llegar al chip. Toque las tres en orden."
+    libro: [31, 33, 57]
+    widget:
+      tipo: figura
+      figura: fig-17.2
+      zonas:
+        - { id: micro, rotulo: "Chip largo, abajo a la derecha", rect: [214, 175, 139, 38] }
+        - { id: conversor, rotulo: "Chip cuadrado, arriba en el centro", rect: [163, 76, 36, 36] }
+        - { id: cristal, rotulo: "Pieza ovalada, en el centro", rect: [158, 119, 40, 36] }
+        - { id: regulador, rotulo: "Chip pequeño, abajo en el centro", rect: [158, 180, 36, 36] }
+        - { id: jack, rotulo: "Conector negro, abajo a la izquierda", rect: [100, 191, 52, 36] }
+    tocar:
+      bien: [jack, regulador, micro]
+      orden: true
+      porque:
+        conversor: "El conversor traduce datos entre el USB y la UART; la alimentación externa no pasa por él."
+        cristal: "El cristal da el reloj de 16 MHz, no la alimentación."
+    exito: "Jack, regulador lineal y microcontrolador. El regulador tiene un límite térmico: con mucha tensión en el jack, se calienta (sección 16.10)."
+    escalera:
+      - "Empiece por el conector negro."
+      - "Antes de llegar al chip, la tensión del jack se baja a 5 V."
+    solucion: "Jack, regulador y ATmega328P."
 
   - id: toque-pines01
     tipo: tocar
@@ -100,70 +134,74 @@ tarjetas:
     solucion: "El condensador entre DTR y RESET."
 
   - id: pregunta-reset-en
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cuando el reset estorba"
-    texto: "Ese reinicio le borra el estado acumulado del programa. ¿Qué hace?"
-    libro: [39, 41]
+    texto: "Ese reinicio le borra el estado acumulado del programa. Toque lo que se corta para desactivarlo."
+    libro: [39, 41, 59]
     widget:
       tipo: figura
       figura: fig-17.4
       zonas:
+        - { id: conversor, rotulo: "Recuadro azul, abajo a la izquierda", rect: [3, 157, 50, 42] }
+        - { id: condensador, rotulo: "Pieza entre DTR y las almohadillas", rect: [68, 152, 36, 36] }
         - { id: reset-en, rotulo: "Las dos almohadillas del centro", rect: [108, 152, 36, 36] }
-    opciones:
-      - texto: "Cortar el puente RESET-EN"
-        bien: true
-        porque: "Existe precisamente para los casos en que ese reset estorba."
-      - texto: "Quitar el conversor USB-serie"
-        porque: "Sin él no se programa ni se usa el monitor; basta con cortar el puente."
-      - texto: "Nada: no se puede desactivar"
-        porque: "Sí se puede: el puente RESET-EN se corta para desactivarlo."
+        - { id: resistencia, rotulo: "Pieza vertical junto a +5 V", rect: [146, 140, 36, 36] }
+    tocar:
+      bien: [reset-en]
+      porque:
+        conversor: "Sin el conversor no se programa ni se usa el monitor serie: no se quita."
+        condensador: "Es una pieza soldada, no un puente: el libro deja preparado otro sitio para cortar."
+        resistencia: "La resistencia mantiene RESET en alto en reposo; quitarla dejaría el reset al aire."
+    exito: "El puente RESET-EN existe precisamente para los casos en que ese reset estorba: se corta y el monitor ya no reinicia."
     escalera:
-      - "Mire lo que hay entre el condensador y RESET."
-    solucion: "Cortar el puente RESET-EN."
+      - "Busque lo que hay entre el condensador y RESET."
+    solucion: "El puente RESET-EN, las dos almohadillas."
 
   - id: empareje-pines
-    tipo: pregunta
+    tipo: tocar
     titulo: "Los pines no son intercambiables"
-    texto: "Empareje cada función con los pines que la ofrecen en la UNO."
+    texto: "Su montaje necesita dos interrupciones externas. Toque los pines que le obliga a usar."
     libro: [44, 45, 59]
     widget:
       tipo: figura
       figura: fig-17.4
       zonas:
-        - { id: pines, rotulo: "La fila de pines", rect: [0, 20, 453, 70] }
-    emparejar:
-      - ["UART hardware", "0 y 1"]
-      - ["Interrupciones externas", "2 y 3"]
-      - ["I²C", "A4 y A5"]
-      - ["LED integrado", "13"]
-    exito: "Dos interrupciones externas obligan a usar el 2 y el 3."
-    pistas:
-      - { texto: "Las interrupciones externas están justo después de los pines del puerto serie." }
+        - { id: uart, rotulo: "Pines 0 y 1", rect: [10, 38, 39, 40] }
+        - { id: int, rotulo: "Pines 2 y 3", rect: [50, 38, 39, 40] }
+        - { id: spi, rotulo: "Pines 10 a 13", rect: [208, 38, 79, 40] }
+        - { id: i2c, rotulo: "Pines A4 y A5", rect: [401, 38, 39, 40] }
+    tocar:
+      bien: [int]
+      porque:
+        uart: "El 0 y el 1 son la UART, ocupados por el conversor USB."
+        spi: "Del 10 al 13 está el SPI; el 13 lleva además el LED integrado."
+        i2c: "A4 y A5 son el I²C."
+    exito: "Solo el 2 y el 3 tienen interrupción externa; los demás ofrecen la de cambio de estado, menos cómoda. Elegir pines no es indiferente."
     escalera:
-      - "El puerto serie ocupa los dos primeros pines digitales."
-    solucion: "UART, 0 y 1; interrupciones, 2 y 3; I²C, A4 y A5; LED, 13."
+      - "Busque la etiqueta INT."
+    solucion: "Los pines 2 y 3."
 
   - id: pregunta-33
-    tipo: pregunta
-    titulo: "El raíl de 3,3 V"
-    texto: "¿Cuánta corriente conviene pedir, como mucho, al pin de 3,3 V de la placa?"
+    tipo: leer
+    titulo: "Los límites de corriente"
+    texto: "20 mA por pin y 200 mA en total. Escriba cuántos pines puede tener a plena corriente a la vez sin pasar del total."
     libro: [47]
     widget:
       tipo: figura
       figura: fig-17.2
       zonas:
-        - { id: power, rotulo: "Conector de abajo, en el centro", rect: [210, 215, 80, 36] }
-    opciones:
-      - texto: "50 mA"
-        bien: true
-        porque: "Es el límite del raíl de 3,3 V: no alimenta casi nada."
-      - texto: "200 mA"
-        porque: "Eso es el total del microcontrolador, no lo que da el raíl de 3,3 V."
-      - texto: "20 mA"
-        porque: "Eso es lo recomendado por pin de E/S, no el raíl de 3,3 V."
+        - { id: micro, rotulo: "Chip largo, abajo a la derecha", rect: [214, 175, 139, 38], texto: "20 mA por pin, 200 mA en total." }
+    leer:
+      objetivo: n_pin
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pines a 20 mA"
+    exito: "Diez: el total limita antes que los 20 pines. Y el raíl de 3,3 V da solo 50 mA: no alimenta casi nada."
     escalera:
-      - "Hay tres cifras distintas: por pin, total y raíl de 3,3 V."
-    solucion: "50 mA."
+      - "Divida el total entre lo que pide cada pin."
+    solucion: "200 mA / 20 mA = 10 pines."
+    comprobar:
+      - { n_pin: 10 }
 
   - id: empareje-variantes
     tipo: pregunta
@@ -223,32 +261,10 @@ tarjetas:
       consejos:
         - { cuando: { valor: medida, menor: 4.7 }, texto: "Por debajo de 4,7 V el sistema está al borde: cualquier pico lo cruzará (sección 16.10)." }
         - { cuando: { valor: desviacion, mayor: 0.06 }, texto: "Mide de más: revise la escala del Brymen y que la punta negra esté en GND." }
-        - { texto: "Raíl correcto. Mida también el de 3,3 V." }
+        - { texto: "Raíl correcto y parpadeo: la placa está sana. Un problema posterior estará en el circuito o en el programa." }
       ficha: { n: 18, titulo: "El Arduino UNO y su alimentación" }
     comprobar:
       - { V_5: 5, V_borde: 4.7 }
-
-  - id: pregunta-sana
-    tipo: pregunta
-    titulo: "Separar el problema"
-    texto: "El parpadeo funciona y los raíles están bien, pero su montaje no. ¿Dónde busca?"
-    libro: [56]
-    widget:
-      tipo: figura
-      figura: fig-17.2
-      zonas:
-        - { id: placa, rotulo: "La placa entera", rect: [105, 30, 270, 210] }
-    opciones:
-      - texto: "En el circuito o en el programa"
-        bien: true
-        porque: "La placa está sana: es exactamente la separación que ahorra tiempo."
-      - texto: "En el microcontrolador"
-        porque: "Si parpadea y los raíles están bien, la placa está sana."
-      - texto: "En el cable USB"
-        porque: "Con el cable se ha cargado el parpadeo: funciona."
-    escalera:
-      - "¿Qué ha demostrado el parpadeo?"
-    solucion: "En el circuito o en el programa."
 
   - id: resumen
     tipo: resumen

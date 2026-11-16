@@ -6,6 +6,10 @@
 #   ejemplo (rotulados).
 # Paso práctico: «banco» opcional, la NTC en hielo fundente (bloque 62): el modelo da 33,6 kΩ a 0 °C; la tolerancia
 # del ± 5 % es de ejemplo (la dispersión de B entre unidades es la que el libro dice que se ajusta así).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 36.3 se toca el sensor para cada necesidad; las
+# dos exploraciones tienen objetivo (la NTC diez veces más sensible que la Pt100; el divisor a mitad de tensión); se
+# escriben la NTC a 50 °C, el error a dos hilos y la lectura del termopar sin compensar (ejercicios 36.2 y 36.3).
+# Quedan dos de opciones: el cable de compensación y el autocalentamiento.
 leccion: cap35/sec-35.2
 
 libro:
@@ -53,24 +57,33 @@ modelo:
 
 tarjetas:
   - id: explore-familias
-    tipo: explorar
+    tipo: tocar
     titulo: "Tres familias y un atajo"
-    texto: "Cada sensor gana claramente en su terreno; elegir mal da medidas mediocres. Toque las tres familias."
+    texto: "Cada sensor gana claramente en su terreno; elegir mal da medidas mediocres. Toque el que se elige por exactitud y estabilidad."
     libro: [37, 64]
     widget:
       tipo: figura
       figura: fig-35.3
       zonas:
-        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42], texto: "RTD Pt100: exactitud y estabilidad; 385 µV/°C a 1 mA." }
-        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42], texto: "Termopar K: temperatura alta o punto diminuto; 41 µV/°C." }
-        - { id: ntc, rotulo: "Recuadro rojo", rect: [260, 116, 185, 42], texto: "NTC de 10 kΩ: sensibilidad y coste, en margen corto." }
-        - { id: integrado, rotulo: "Recuadro azul", rect: [260, 162, 185, 42], texto: "El integrado: linealizado y calibrado, para −40 a 125 °C." }
-    requiere: { mover: [rtd, termopar, ntc] }
+        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42] }
+        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42] }
+        - { id: ntc, rotulo: "Recuadro rojo", rect: [260, 116, 185, 42] }
+        - { id: integrado, rotulo: "Recuadro azul", rect: [260, 162, 185, 42] }
+    tocar:
+      bien: [rtd]
+      porque:
+        termopar: "El termopar es para temperatura alta o un punto diminuto: 41 µV/°C."
+        ntc: "La NTC da sensibilidad y coste, pero en un margen corto y muy curva."
+        integrado: "El integrado viene linealizado y calibrado, para −40 a 125 °C."
+    exito: "La RTD Pt100: exactitud y estabilidad, con 385 µV/°C a 1 mA."
+    escalera:
+      - "Es la de platino."
+    solucion: "El recuadro verde, la RTD."
 
   - id: explore-sensibilidad
     tipo: explorar
     titulo: "Sensible o lineal"
-    texto: "La NTC cae exponencialmente; la Pt100 sube casi recta. Mueva la temperatura y compare cuánto cambia cada una por grado."
+    texto: "La NTC cae exponencialmente; la Pt100 sube casi recta. Busque la temperatura a la que la NTC cambia diez veces más por grado."
     libro: [39, 51, 52]
     widget:
       tipo: grafica
@@ -86,12 +99,22 @@ tarjetas:
         - { valor: s_p, rotulo: "La Pt100: {{s_p}} por grado" }
       mandos:
         - { valor: t_n, min: 0, max: 100, paso: 1, rotulo: "Temperatura" }
-    requiere: { mover: [t_n] }
+    objetivo:
+      condiciones:
+        - { valor: s_n, min: 3.8, max: 3.9, rotulo: "NTC: {{s_n}} por grado" }
+      logrado: "Hacia 47 °C la NTC cambia un {{s_n}} por grado: diez veces lo que la Pt100, y aún más en frío."
+      pistas:
+        - { texto: "La sensibilidad de la NTC baja al calentarla: súbala." }
+    escalera:
+      - "La Pt100 cambia un 0,385 % por grado; busque diez veces eso."
+    solucion: "Unos 47 °C."
+    comprobar:
+      - { con: { t_n: 47 }, s_n: 3.854, tol: 0.01 }
 
   - id: explore-divisor
     tipo: explorar
     titulo: "Con una NTC basta un divisor"
-    texto: "Con esa señal, el circuito es trivial: un divisor y un convertidor A/D. Caliéntela y mire la salida."
+    texto: "Con esa señal, el circuito es trivial: un divisor y un convertidor A/D. Lleve la salida a la mitad de la alimentación."
     nota: "3,3 V y 10 kΩ fijos son de ejemplo."
     libro: [52]
     fijar: { V_d: 3.3, R_u: 10000 }
@@ -106,31 +129,37 @@ tarjetas:
       mide: { salida: V_o, corriente: I_d }
       mandos:
         - { valor: t_n, min: 0, max: 100, paso: 1, rotulo: "Temperatura" }
-    requiere: { mover: [t_n] }
+    inicio: { t_n: 60 }
+    objetivo:
+      condiciones:
+        - { valor: V_o, objetivo: 1.65, tol: 0.01, rotulo: "Salida: {{V_o}}" }
+      logrado: "A 25 °C la NTC vale 10 kΩ, como la fija, y la salida es la mitad: un divisor y un convertidor A/D bastan."
+      pistas:
+        - { texto: "La salida es la mitad cuando las dos resistencias son iguales." }
+    escalera:
+      - "¿A qué temperatura vale la NTC 10 kΩ?"
+    solucion: "A 25 °C."
+    comprobar:
+      - { con: { t_n: 25 }, V_o: 1.65, R_n: 10000 }
 
   - id: estime-ntc
-    tipo: pregunta
+    tipo: leer
     titulo: "La NTC a 50 °C"
-    texto: "Una NTC de 10 kΩ a 25 °C con B = 3 950. ¿Qué resistencia tiene a 50 °C?"
+    texto: "Una NTC de 10 kΩ a 25 °C con B = 3 950. Escriba qué resistencia tiene a 50 °C."
     libro: [51, 52, "cap35#345"]
     widget:
       tipo: figura
       figura: fig-35.3
       zonas:
-        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 20, 215, 175] }
-    estimar:
-      objetivo: "R_50"
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 20, 215, 175], texto: "Las curvas de las tres familias." }
+    leer:
+      objetivo: R_50
       unidad: Ω
-      min: 0
-      max: 10000
-      paso: 10
-      inicio: 7000
       tol: 0.03
       rotulo: "Resistencia a 50 °C"
+      errores:
+        - { expr: "10000*exp(-B_n*(1/323.15 - 1/298.15))", texto: "Ha cambiado el signo: la NTC baja al calentarse." }
     exito: "Unos 3,59 kΩ: en 25 grados ha perdido casi dos tercios."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3700 }, texto: "Demasiado: a un 4 % por grado, 25 grados la bajan mucho más." }
-      - { texto: "Demasiado poco: la caída es exponencial, pero no tanto." }
     escalera:
       - "Las temperaturas en kelvin: 298,15 y 323,15."
       - "R = 10 kΩ·e^(3950·(1/323,15 − 1/298,15)) = 10 kΩ·e^(−1,025)."
@@ -139,23 +168,24 @@ tarjetas:
       - { R_50: 3590 }
 
   - id: pregunta-dos-hilos
-    tipo: pregunta
+    tipo: leer
     titulo: "La Pt100 a dos hilos"
-    texto: "Una Pt100 se conecta a dos hilos de 0,4 Ω cada uno. ¿Cuánto error añade el cable?"
+    texto: "Una Pt100 se conecta a dos hilos de 0,4 Ω cada uno. Escriba cuántos grados de más lee por el cable."
     libro: [39, 44, 56, "cap35#345"]
     widget:
       tipo: figura
       figura: fig-35.3
       zonas:
-        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42] }
-    opciones:
-      - texto: "Unos 2,08 °C de más"
-        bien: true
-        porque: "Los dos hilos suman 0,8 Ω, y a 0,385 Ω/°C se leen como 2,08 °C. Por eso tres y cuatro hilos."
-      - texto: "Unos 1,04 °C"
-        porque: "Ese es un solo hilo: la corriente va y vuelve, y los dos están en serie con el sensor."
-      - texto: "0,8 °C"
-        porque: "Son 0,8 Ω, no grados: hay que dividir entre 0,385 Ω/°C."
+        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42], texto: "RTD Pt100: 0,385 Ω/°C." }
+    leer:
+      objetivo: e_2
+      unidad: "°C"
+      tol: 0.02
+      rotulo: "Error del cable"
+      errores:
+        - { expr: "e_1", texto: "Ese es un solo hilo: la corriente va y vuelve, y los dos están en serie con el sensor." }
+        - { expr: "2*R_h", texto: "Son 0,8 Ω, no grados: hay que dividir entre 0,385 Ω/°C." }
+    exito: "Unos 2,08 °C de más. Por eso se conecta a tres o cuatro hilos."
     escalera:
       - "Sume los dos hilos y divida entre la sensibilidad en ohmios por grado."
     solucion: "0,8 Ω / 0,385 Ω/°C ≈ 2,08 °C."
@@ -163,26 +193,27 @@ tarjetas:
       - { e_2: 2.08, e_1: 1.04 }
 
   - id: pregunta-termopar
-    tipo: predecir
+    tipo: leer
     titulo: "Un termopar sin compensar"
-    texto: "Un termopar K tiene la unión de medida a 300 °C y la fría a 25 °C. Sin compensación de unión fría, ¿qué lee?"
+    texto: "Un termopar K tiene la unión de medida a 300 °C y la fría a 25 °C. Sin compensación de unión fría, escriba qué temperatura lee."
     libro: [46, 47, "cap35#345"]
     widget:
       tipo: figura
       figura: fig-35.3
       zonas:
-        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42] }
-    opciones:
-      - texto: "275 °C"
-        bien: true
-        porque: "Mide la diferencia entre sus uniones: 11,3 mV, que son 275 °C."
-      - texto: "300 °C"
-        porque: "Eso exige sumar la temperatura de la unión fría: es la compensación que falta."
-      - texto: "325 °C"
-        porque: "La unión fría no se suma sola: se resta, porque el termopar mide la diferencia."
+        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42], texto: "Termopar K: 41 µV/°C." }
+    leer:
+      objetivo: t_l
+      unidad: "°C"
+      tol: 0.01
+      rotulo: "Temperatura leída"
+      errores:
+        - { expr: "t_m", texto: "Eso exige sumar la temperatura de la unión fría: es la compensación que falta." }
+        - { expr: "t_s", texto: "La unión fría no se suma sola: el termopar mide la diferencia entre sus uniones." }
+    exito: "275 °C: 11,3 mV, la diferencia entre sus uniones. Hay que sumar la unión fría."
     escalera:
       - "Un termopar mide diferencias, no temperaturas absolutas."
-    solucion: "300 − 25 = 275 °C: hay que sumar la unión fría."
+    solucion: "300 − 25 = 275 °C."
     comprobar:
       - { V_tc: 0.0113, t_l: 275, t_s: 325 }
 
@@ -209,26 +240,28 @@ tarjetas:
     solucion: "Para no crear termopares parásitos en el camino."
 
   - id: empareje-eleccion
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cuál elegir"
-    texto: "Empareje cada necesidad con el sensor que la resuelve."
+    texto: "Hay que medir entre −40 y 125 °C sin complicarse. Toque el sensor que lo resuelve."
     libro: [57, 59]
     widget:
       tipo: figura
       figura: fig-35.3
       zonas:
-        - { id: cajas, rotulo: "Los cuatro recuadros", rect: [260, 22, 185, 182] }
-    emparejar:
-      - ["Exactitud y estabilidad", "RTD"]
-      - ["Temperatura alta o punto diminuto", "Termopar"]
-      - ["Sensibilidad y coste en un margen estrecho", "NTC"]
-      - ["De −40 a 125 °C sin complicarse", "Integrado"]
-    exito: "Antes de diseñar para un RTD, conviene preguntarse si un integrado no basta."
-    pistas:
-      - { texto: "El termopar es el que llega más alto; la NTC, la más sensible." }
+        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42] }
+        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42] }
+        - { id: ntc, rotulo: "Recuadro rojo", rect: [260, 116, 185, 42] }
+        - { id: integrado, rotulo: "Recuadro azul", rect: [260, 162, 185, 42] }
+    tocar:
+      bien: [integrado]
+      porque:
+        rtd: "Una RTD da exactitud, pero pide excitación, puente y cuidado con el cable."
+        termopar: "El termopar es para temperatura alta o un punto diminuto, y pide unión fría."
+        ntc: "La NTC es sensible y barata, pero hay que linealizarla y calibrarla."
+    exito: "El integrado elimina toda la cadena de acondicionamiento. Antes de diseñar para un RTD, conviene preguntarse si no basta."
     escalera:
-      - "El integrado elimina toda la cadena de acondicionamiento."
-    solucion: "Exactitud, RTD; alta temperatura, termopar; sensibilidad, NTC; sin complicarse, integrado."
+      - "¿Cuál viene ya linealizado y calibrado?"
+    solucion: "El recuadro azul, el integrado."
 
   - id: toque-tres-hilos
     tipo: tocar
