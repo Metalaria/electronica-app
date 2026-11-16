@@ -693,15 +693,22 @@ export const TIPOS_HACIENDO = new Set(['medir', 'elegir', 'marcar', 'leer', 'toc
 
 export type ClaseTarjeta = 'hacer' | 'elegir' | 'mirar';
 
+/** Listing languages that are real code: tapping a line of them is reading a program, i.e. doing. */
+export const LENGUAJES_DE_CODIGO = new Set(['c', 'cpp', 'python', 'asm', 'verilog', 'vhdl', 'st', 'sql', 'js', 'bash']);
+
 /**
- * A «tocar» on a plain-text listing (lenguaje «texto») is a list of written answers to pick from: multiple choice
- * in disguise, not doing. Code listings (C, assembler…) and figures stay doing.
+ * A «tocar» on a listing that is not code (lenguaje «texto», «lista final»…) is a list of written answers to pick
+ * from: multiple choice in disguise, not doing. Code listings and figures stay doing.
  */
 export function esListaDeRespuestas(t: { tipo: string; widget?: unknown }): boolean {
   if (t.tipo !== 'tocar' || !t.widget || typeof t.widget !== 'object') return false;
   const w = t.widget as { codigo?: { lenguaje?: string }; fuente?: { codigo?: { lenguaje?: string } } };
-  const lenguaje = w.codigo?.lenguaje ?? w.fuente?.codigo?.lenguaje;
-  return lenguaje === 'texto';
+  const codigo = w.codigo ?? w.fuente?.codigo;
+  // a string names one of the book's own listings: real code
+  if (!codigo || typeof codigo !== 'object') return false;
+  const lenguaje = (codigo.lenguaje ?? '').trim().toLowerCase();
+  // the book's listings come without a language: real code too
+  return lenguaje !== '' && !LENGUAJES_DE_CODIGO.has(lenguaje);
 }
 
 /** doing; answering by choice (options, an estimate's slider, an order, pairs); or looking (explore, formula, surprise). */
