@@ -264,10 +264,11 @@ test('práctica inteligente: los ejercicios de preguntas estructuradas entran en
   expect(await sesionConPreguntas(page)).not.toBe('');
 });
 
-test('práctica inteligente (semilla 3): la sesión saca primero ej-11.5, de ordenar, y también se resuelve', async ({ page }) => {
+test('práctica inteligente (semilla 10): la sesión saca primero ej-11.5, de ordenar, y también se resuelve', async ({ page }) => {
   // final QA 1.0: the test above failed whenever the random session drew this ordering exercise
-  // (seed 12 until 1.1; 1.2, with the section's book 4.1 content, seed 3 draws it first)
-  expect(await sesionConPreguntas(page, 3)).toBe('ej-11.5');
+  // (seed 12 until 1.1; 1.2, with the section's book 4.1 content, seed 3; 1.2.1, with the rewritten lessons' cards in
+  // the draw, seed 10 — also 15 and 18 of the first 40 — draws it first)
+  expect(await sesionConPreguntas(page, 10)).toBe('ej-11.5');
 });
 
 test('ordenar (ej-11.5): «Comprobar» sin mover nada dice qué falta y no cuenta como intento', async ({ page }) => {

@@ -587,9 +587,11 @@ test.describe('tableta: lección', () => {
 
   // 1.1: the button of a question turns from «Comprobar» into «Continuar» in the same place once the answer is right,
   // so a double tap on «Comprobar» would also pass the card before its explanation could be read.
+  // (1.2.1: card 2 of 0.1 is answered on its widget now; card 2 of 0.19, «que-mide-sigma», is a question whose first
+  // option is the right one, as 0.1's was)
   test('lección 1.1: un doble toque en «Comprobar» comprueba y se queda en la tarjeta', async ({ page }) => {
-    await page.goto('/#/leccion/cap00/sec-0.1/2');
-    await expect(page.locator('[data-leccion11="cap00/sec-0.1"][data-tarjeta-n="1"]')).toBeVisible({ timeout: 30_000 });
+    await page.goto('/#/leccion/cap00/sec-0.19/2');
+    await expect(page.locator('[data-leccion11="cap00/sec-0.19"][data-tarjeta-n="1"]')).toBeVisible({ timeout: 30_000 });
     await page.locator('[data-opcion="0"]').click();
     const c = page.locator('[data-continuar]').first();
     await expect(c).toHaveAttribute('data-accion', 'comprobar');
@@ -599,8 +601,8 @@ test.describe('tableta: lección', () => {
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     await page.waitForTimeout(1500);
-    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap00/sec-0.1/2');
-    await expect(page.locator('[data-leccion11="cap00/sec-0.1"]')).toHaveAttribute('data-tarjeta-n', '1');
+    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap00/sec-0.19/2');
+    await expect(page.locator('[data-leccion11="cap00/sec-0.19"]')).toHaveAttribute('data-tarjeta-n', '1');
     await expect(c).toHaveAttribute('data-accion', 'continuar');
   });
 });

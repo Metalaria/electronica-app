@@ -12,6 +12,20 @@ import { LABORATORIOS } from '../../src/componentes/instrumentos/practicas/labor
 import { evaluarPaso, hacerPaso, iniciarLaboratorio, prepararPaso, type Laboratorio, type PasoLab } from '../../src/componentes/instrumentos/practicas/laboratorio.ts';
 import { formatoSI } from '../../src/componentes/grafica/formato.ts';
 
+// The meters' last digit flickers by ±1 like a real one (componentes/instrumentos/motor/dmm.ts: Math.random, a jump
+// in about one reading of four); unseeded, lab 1's 616 µA (book: 610 ± 6.1) read 617 µA in about one run of six and the
+// suite failed at random (cierre121). Seeded here (mulberry32) so that every run of the bench reads the same digits.
+{
+  let s = 0x1210;
+  Math.random = () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 let ultimo = '';
 /** Simulates when the netlist changed, then reads the meters and acquires, as the bench view does. */
 async function simular(b: Banco): Promise<void> {
