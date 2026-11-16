@@ -4,7 +4,9 @@
 # constante de 2 V (modelo del libro, sección 5.3). Con 9 V eso da los «unos 20 mA» del libro. En corte el LED casi
 # apagado cae menos (el libro lee 3,5 V con 5 V): por eso las tarjetas de corte leen la corriente, no V_CE. β = 100 (el
 # del esquema de referencia); la R_B de 100 kΩ es ilustrativa y la de 1 MΩ es la del libro («con 1 MΩ, por ejemplo»),
-# con `iref` = I_C para que la V_BE del simulador sea la del modelo a esa corriente.
+# con `iref` = I_C para que la V_BE del simulador sea la del modelo a esa corriente. 1.2.1 (aprender haciendo):
+# encender el LED, simular V_CE saturado e I_B con el DDS y con 4,7 kΩ, subir R_B hasta la región activa, dibujar y el
+# banco. Dos preguntas: lo que delata el corte y la región activa.
 leccion: cap22/sec-22.8
 
 libro:
@@ -37,7 +39,7 @@ tarjetas:
   - id: explore-conmutar
     tipo: explorar
     titulo: "Corte y saturación"
-    texto: "Una corriente pequeña en la base enciende el LED del colector. Ponga la base a 0 V y a 5 V."
+    texto: "Una corriente pequeña en la base enciende el LED del colector. Enciéndalo."
     libro: [222, 223, 225]
     fijar: { V_cc: 5, R_bb: 10000 }
     inicio: { V_bi: 0 }
@@ -52,12 +54,20 @@ tarjetas:
       mide: { ib: I_bb, ic: I_bc }
       mandos:
         - { valor: V_bi, lista: [0, 5], rotulo: "Base" }
-    requiere: { mover: [V_bi] }
+    objetivo:
+      condiciones:
+        - { valor: I_bc, min: 0.008, rotulo: "I_{C} = {{I_bc}}" }
+      logrado: "Con la base a 5 V circula una corriente de base pequeña y el LED se enciende: saturación."
+      pistas:
+        - { texto: "Ponga la base a 5 V." }
+    escalera:
+      - "La corriente de base controla la del colector."
+    solucion: "Base a 5 V."
 
   - id: prediga-saturacion
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga V_{CE}"
-    texto: "Con 5 V en la base a través de 10 kΩ, el LED se enciende. ¿Cuánto marca el voltímetro entre colector y emisor?"
+    texto: "Con 5 V en la base a través de 10 kΩ, el LED se enciende. Calcule lo que marca el voltímetro entre colector y emisor."
     libro: [225, 227]
     fijar: { V_cc: 5, R_bb: 10000, V_bi: 5 }
     widget:
@@ -68,14 +78,16 @@ tarjetas:
       corriente: I_bc
       mide: { ib: I_bb, ic: I_bc, vce: V_bce }
       ocultar: true
-    opciones:
-      - texto: "Unos 0,2 V"
-        bien: true
-        porque: "Saturado, conduce a tope: entre colector y emisor queda apenas la tensión de saturación."
-      - texto: "Casi la alimentación"
-        porque: "Eso es en corte, con el LED apagado. Encendido, el transistor es casi un cortocircuito."
-      - texto: "La mitad de la alimentación"
-        porque: "Un valor intermedio es la región activa, la de un amplificador. Con esta base, satura."
+    simular:
+      objetivo: V_bce
+      unidad: V
+      tol: 0.1
+      rotulo: "V_{CE}"
+      medida: vce
+      errores:
+        - { expr: "V_cc - V_led", texto: "Eso sería en corte: con el LED encendido, el transistor está saturado." }
+        - { expr: "V_cc/2", texto: "La mitad sería la región activa; con 10 kΩ y 5 V, satura." }
+    exito: "Unos 0,2 V: el transistor conduce a tope, saturado."
     escalera:
       - "Con la base a tope, ¿el transistor es un interruptor abierto o cerrado?"
     solucion: "≈ 0,2 V: saturación."
@@ -108,9 +120,9 @@ tarjetas:
     solucion: "La corriente: en corte no circula. V_{CE} es alta, aunque no toda la alimentación."
 
   - id: activa
-    tipo: sorpresa
+    tipo: explorar
     titulo: "Si R_{B} crece"
-    texto: "Con 5 V en la base, aumente R_{B} hasta 1 MΩ. Mire V_{CE}."
+    texto: "Con 5 V en la base, aumente R_{B} hasta 1 MΩ. Mire V_{CE} e I_{C}."
     libro: [228]
     fijar: { V_cc: 5, V_bi: 5 }
     inicio: { R_bb: 10000 }
@@ -125,7 +137,15 @@ tarjetas:
       mide: { ib: I_bb, ic: I_bc, vce: V_bce, vled: V_led }
       mandos:
         - { valor: R_bb, lista: [10000, 100000, 1000000], rotulo: "R_{B}" }
-    requiere: { mover: [R_bb] }
+    objetivo:
+      condiciones:
+        - { valor: R_bb, min: 1000000, rotulo: "R_{B} = {{R_bb}}" }
+      logrado: "V_{CE} se queda en un valor intermedio: el transistor ya no satura y trabaja como amplificador."
+      pistas:
+        - { texto: "Siga subiendo R_{B}." }
+    escalera:
+      - "Menos corriente de base, menos corriente de colector."
+    solucion: "1 MΩ."
 
   - id: por-que-activa
     tipo: porque
@@ -185,9 +205,9 @@ tarjetas:
       - { con: { V_bi: 3 }, V_bi: 3 }
 
   - id: holgura
-    tipo: pregunta
+    tipo: simular
     titulo: "Una saturación holgada"
-    texto: "Con 9 V el colector pide unos 20 mA y la base solo recibe 0,23 mA. ¿Qué conviene hacer?"
+    texto: "Con 9 V el colector pide unos 20 mA y la base solo recibe 0,23 mA. Baje R_{B} a 4,7 kΩ y calcule la nueva corriente de base."
     libro: [227]
     fijar: { V_cc: 9, V_bi: 3, R_bb: 4700 }
     widget:
@@ -195,24 +215,25 @@ tarjetas:
       esquema: bjt-interruptor
       piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
       lectura: { valor: V_bce, rotulo: "V_{CE} con 4,7 kΩ" }
-      datos:
-        - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }
+      ocultar: true
       corriente: I_bc
       mide: { ib: I_bb, ic: I_bc, vce: V_bce }
-    opciones:
-      - texto: "Bajar R_{B} a 4,7 kΩ"
-        bien: true
-        porque: "Más del doble de corriente de base: la saturación ya no depende de que β sea justo 100."
-      - texto: "Subir R_{B} para proteger la base"
-        porque: "Con menos corriente de base el transistor saldría de saturación y pasaría a la región activa."
-      - texto: "Subir la tensión del DDS a 9 V"
-        porque: "El DDS del 2C53T da como mucho 3 V. Lo que se puede cambiar es R_{B}."
+    simular:
+      objetivo: I_bb
+      unidad: A
+      tol: 0.04
+      rotulo: "Corriente de base, I_{B}"
+      medida: ib
+      errores:
+        - { expr: "V_bi/R_bb", texto: "Ha olvidado los 0,7 V de V_{BE}." }
+        - { expr: "(V_cc - V_BE)/R_bb", texto: "La base la excita el DDS, con 3 V, no la alimentación." }
+    exito: "Unos 0,49 mA: β·I_{B} supera con holgura los unos 20 mA que pide el colector."
     escalera:
       - "¿Qué hay que cambiar para que la base reciba más corriente con los mismos 3 V?"
     solucion: "Bajar R_{B} a 4,7 kΩ: la base recibe unos 0,49 mA y la saturación es holgada."
     comprobar:
       - { I_bb: 0.00049, tol: 0.01 }
-      - { beta: 100 }
+      - { beta: 100, V_BE: 0.7 }
 
   - id: dibuje-parpadeo
     tipo: dibujar

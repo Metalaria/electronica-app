@@ -2,7 +2,9 @@
 # contenido/lecciones11/GUIA.md. La pantalla simulada (± 4 divisiones, recortada) con la cuadrada de 1 kHz y 3 V del
 # generador (la de la ficha 24 del cuaderno), centrada: el pico a pico automático es el de la traza en pantalla,
 # min(V_pp, 8·V/div), y los niveles del convertidor que usa son 32 por división. La foto de la figura 20.23 se toca en
-# píxeles (1600 × 676).
+# píxeles (1600 × 676). 1.2.1 (aprender haciendo): encuadrar la cuadrada para que PRM acierte, leer el recorte,
+# tocar la captura falsa y las capturas de las que no fiarse, leer la traza que no cuadra y el banco. Dos preguntas.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap21/sec-21.10
 
 libro:
@@ -24,12 +26,13 @@ modelo:
     V_prm: { expr: "min(V_pp, 8*v_div)", sim: "V_{pp, PRM}", nombre: "pico a pico automático", unidad: V, cifras: 2 }
     d_alto: { expr: "V_pp/v_div", sim: "div", nombre: "alto de la señal", unidad: div, cifras: 2 }
     niveles: { expr: "32*min(8, d_alto)", sim: "N", nombre: "niveles del convertidor que usa", unidad: "" }
+    V_vis: { expr: "2*v_div", sim: "V_{pp}", nombre: "pico a pico de una traza de dos divisiones", unidad: V }
 
 tarjetas:
   - id: explore-prm
     tipo: explorar
     titulo: "Mide lo que hay en pantalla"
-    texto: "Una cuadrada de 3 V de pico a pico. Cambie VOLT/DIV y mire qué dice la medida automática."
+    texto: "Una cuadrada de 3 V de pico a pico. Elija la VOLT/DIV con la que la medida automática es de fiar."
     libro: [253, 255, 256, "cap21#58"]
     inicio: { v_div: 0.2 }
     widget:
@@ -43,14 +46,24 @@ tarjetas:
         - { valor: niveles, rotulo: "Niveles que usa: {{niveles}}" }
       mandos:
         - { valor: v_div, lista: [0.2, 0.5, 1, 2], rotulo: "VOLT/DIV" }
-    requiere: { mover: [v_div] }
+    objetivo:
+      condiciones:
+        - { valor: d_alto, min: 4, max: 8, rotulo: "Alto: {{d_alto}}" }
+      logrado: "Ocupa más de media pantalla y cabe entera: muchos niveles del convertidor y el pico a pico correcto."
+      pistas:
+        - { cuando: { valor: d_alto, mayor: 8 }, texto: "Se sale de la pantalla: el pico a pico saldría recortado." }
+        - { texto: "Ocupa poco: pocos niveles del convertidor." }
+    escalera:
+      - "Media pantalla o más, sin salirse."
+    solucion: "0,5 V/div: seis divisiones."
     comprobar:
+      - { con: { v_div: 0.5 }, d_alto: 6, V_prm: 3 }
       - { V_pp: 3 }
 
   - id: prediga-recorte
-    tipo: predecir
+    tipo: leer
     titulo: "A 0,2 V/div"
-    texto: "La cuadrada de 3 V se sale de la pantalla a 0,2 V/div. ¿Qué pico a pico da PRM?"
+    texto: "La cuadrada de 3 V se sale de la pantalla a 0,2 V/div. Lea el pico a pico que da PRM."
     libro: [255, 256]
     fijar: { v_div: 0.2 }
     widget:
@@ -59,16 +72,15 @@ tarjetas:
       y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
       curvas:
         - { expr: "max(-4, min(4, V_pp/2*(1 - 2*(floor(2*d/5) - 2*floor(d/5)))/v_div))", color: naranja, rotulo: "CH1" }
-      lectura: { valor: V_prm, rotulo: "PRM, pico a pico" }
-      ocultar: true
-    opciones:
-      - texto: "Menos de 3 V, sin avisar"
-        bien: true
-        porque: "Mide los puntos de la pantalla: 8 divisiones de 0,2 V, 1,6 V. El pico a pico sale recortado."
-      - texto: "3 V, porque mide la señal"
-        porque: "No mide la señal: mide los puntos de la captura que está en pantalla."
-      - texto: "Un aviso de recorte"
-        porque: "No avisa: ese es el peligro."
+    leer:
+      objetivo: V_prm
+      unidad: V
+      tol: 0.03
+      rotulo: "V_{pp} que da PRM"
+      errores:
+        - { expr: "V_pp", texto: "Esa es la señal real; PRM mide la traza, y lo que se sale no cuenta." }
+        - { expr: "4*v_div", texto: "Eso es solo media traza: cuente de abajo arriba." }
+    exito: "1,6 V sin avisar: con la señal fuera de la pantalla, el pico a pico sale recortado."
     escalera:
       - "¿Cuántos voltios caben en las 8 divisiones a 0,2 V/div?"
     solucion: "1,6 V: lo que cabe en pantalla."
@@ -116,29 +128,6 @@ tarjetas:
       - "¿Un alias sale por encima o por debajo de la frecuencia real?"
     solucion: "Un alias sale siempre por debajo; esto es el contador automático fallando."
 
-  - id: medio-ciclo
-    tipo: pregunta
-    titulo: "Medio ciclo en pantalla"
-    texto: "Con solo medio ciclo en pantalla, ¿qué da la frecuencia automática?"
-    libro: [256]
-    widget:
-      tipo: grafica
-      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
-      y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
-      curvas:
-        - { expr: "max(-4, min(4, V_pp/2*(1 - 2*(floor(2*d/24) - 2*floor(d/24)))/0.5))", color: naranja, rotulo: "CH1" }
-    opciones:
-      - texto: "Un valor sin sentido o guiones"
-        bien: true
-        porque: "Necesita al menos un par de ciclos completos: con menos de uno no tiene dónde medir."
-      - texto: "La frecuencia correcta, con menos precisión"
-        porque: "Sin un ciclo completo no hay periodo que medir: no da un valor peor, da uno sin sentido."
-      - texto: "El doble de la real"
-        porque: "Eso le pasa con demasiados ciclos y pocas muestras, no con medio ciclo."
-    escalera:
-      - "La frecuencia sale del periodo. ¿Hay un periodo entero en pantalla?"
-    solucion: "Un valor sin sentido o guiones: hacen falta un par de ciclos completos."
-
   - id: ruido-pico
     tipo: pregunta
     titulo: "El rizado de pocos milivoltios"
@@ -163,27 +152,31 @@ tarjetas:
     solucion: "Un punto ruidoso fija el máximo; mejor los cursores."
 
   - id: no-cuadra
-    tipo: pregunta
+    tipo: leer
     titulo: "Un número que no cuadra"
-    texto: "PRM da 5 V de pico a pico en una traza que ocupa dos divisiones de 1 V. ¿Dónde está el error?"
+    texto: "PRM da 5 V de pico a pico en una traza que ocupa dos divisiones de 1 V. Lea el pico a pico que muestra de verdad."
     libro: [262]
+    fijar: { v_div: 1 }
     widget:
       tipo: grafica
       x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
       y: { min: -4, max: 4, unidad: div, rotulo: "vertical" }
       curvas:
         - { expr: "sin(2*pi*d/6)", color: naranja, rotulo: "CH1" }
-    opciones:
-      - texto: "En la captura: escala, disparo o ventana"
-        bien: true
-        porque: "Las automáticas son la primera lectura, no la última: si no cuadran con la pantalla, falla la captura."
-      - texto: "En el circuito"
-        porque: "La traza dice 2 V; si el número no cuadra con lo que se ve, el circuito no tiene la culpa."
-      - texto: "En la pantalla, que dibuja mal"
-        porque: "La pantalla enseña los puntos capturados; el número es el que hay que revisar."
+    leer:
+      objetivo: V_vis
+      unidad: V
+      tol: 0.05
+      rotulo: "V_{pp} de la traza"
+      errores:
+        - { expr: "5", texto: "Ese es el número de PRM: lea la traza." }
+        - { expr: "v_div", texto: "Esa es la amplitud de pico; el pico a pico es el doble." }
+    exito: "2 V en pantalla frente a 5 V de PRM: el error está en la captura, no en el circuito."
     escalera:
       - "Dos divisiones de 1 V son 2 V. ¿Quién se equivoca?"
-    solucion: "En la captura: escala, disparo o ventana mal elegidos."
+    solucion: "Dos divisiones de 1 V: 2 V. PRM falla por la escala, el disparo o la ventana."
+    comprobar:
+      - { V_vis: 2 }
 
   - id: banco-prm
     tipo: banco

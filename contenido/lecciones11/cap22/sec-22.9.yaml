@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 21.9 «Práctica 9 — Resonancia de un Circuito RLC y Factor Q» (cap22; etiqueta interna
 # sec-22.9). Formato: contenido/lecciones11/GUIA.md. El RLC serie de la práctica (10 mH, 100 nF, 100 Ω o 1 kΩ) con
 # 1 V de pico del generador; el canal 2 es la tensión de la resistencia. El ajuste a fase cero parte de 2 kHz.
+# 1.2.1 (aprender haciendo): aplanar la curva con 1 kΩ, calcular f₀, Q, el Q con 1 kΩ, el desfase a 1 kHz y el Q real,
+# buscar la fase cero, tocar las causas del Q menor, ver la sobretensión y el banco. Dos preguntas: por qué cuadra la
+# sobretensión y el circuito paralelo.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap22/sec-22.9
 
 libro:
@@ -45,12 +49,13 @@ modelo:
     V_R: { expr: "I_a*R_r", sim: "V_{R}", nombre: "amplitud en R", unidad: V }
     V_L: { expr: "I_a*w_r*L_r", sim: "V_{L}", nombre: "amplitud en la bobina", unidad: V }
     V_C: { expr: "I_a/(w_r*C_r)", sim: "V_{C}", nombre: "amplitud en el condensador", unidad: V }
+    Q_real: { expr: "Z_0/(R_r + 20 + 50)", sim: "Q", nombre: "Q con el cobre y el generador", unidad: "", cifras: 3 }
 
 tarjetas:
   - id: explore-curva
     tipo: explorar
     titulo: "La curva de resonancia"
-    texto: "El canal 2 mide la tensión de R, proporcional a la corriente. Cambie R y mire el máximo."
+    texto: "El canal 2 mide la tensión de R, proporcional a la corriente. Pase R a 1 kΩ y mire el máximo."
     libro: [232, 234, 235, 236]
     inicio: { R_r: 100 }
     widget:
@@ -68,82 +73,73 @@ tarjetas:
           - { x: "f_0", y: "V_p", rotulo: "f₀" }
       mandos:
         - { valor: R_r, lista: [100, 1000], rotulo: "R" }
-    requiere: { mover: [R_r] }
+    objetivo:
+      condiciones:
+        - { valor: R_r, min: 1000, rotulo: "R = {{R_r}}" }
+      logrado: "Con 1 kΩ la curva se aplana hasta casi desaparecer, pero el máximo sigue en el mismo sitio."
+      pistas:
+        - { texto: "Cambie R a 1 kΩ." }
+    escalera:
+      - "Mire la altura y la posición del máximo."
+    solucion: "1 kΩ."
 
   - id: formula-f0
-    tipo: formula
+    tipo: simular
     titulo: "Prediga antes de medir"
-    texto: "Con 10 mH y 100 nF, la resonancia cae en unos 5 kHz."
+    texto: "Antes de medir: con 10 mH y 100 nF, calcule la frecuencia de resonancia."
     libro: [235, 238]
     fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100 }
-    ec: 238
-    sustitucion: "1 / (2π · √({{L_r}} · {{C_r}})) = {{f_0}}"
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: f_0, rotulo: "Resonancia" }
-      mide: { vr_amp: V_R }
-      grafica:
-        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
-        curvas:
-          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
-        marcas:
-          - { x: "f_0", y: "V_p", rotulo: "f₀" }
     comprobar:
       - { f_0: 5033 }
+    simular:
+      objetivo: f_0
+      unidad: Hz
+      tol: 0.02
+      rotulo: "f₀"
+      errores:
+        - { expr: "1/sqrt(L_r*C_r)", texto: "Le falta el 2π: eso es ω₀, en rad/s." }
+        - { expr: "1/(2*pi*L_r*C_r)", texto: "Falta la raíz del producto L·C." }
+    exito: "Unos 5 kHz, cómoda para el generador y el osciloscopio."
+    escalera:
+      - "f₀ = 1 / (2π · √(L · C))."
+    solucion: "1 / (2π · √(10 mH · 100 nF)) ≈ 5033 Hz."
 
   - id: formula-q
-    tipo: formula
+    tipo: simular
     titulo: "El factor de calidad"
-    texto: "Z₀ = √(L/C) son 316 Ω; con R = 100 Ω, Q = 3,16 y un ancho de banda de 1592 Hz."
+    texto: "Z₀ = √(L/C) son 316 Ω. Con R = 100 Ω, calcule el factor de calidad."
     libro: [239, 240, 241, 242]
     fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100 }
-    ec: 240
-    sustitucion: "{{Z_0}} / {{R_r}} = {{Q}}"
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: Q, rotulo: "Factor de calidad" }
-      datos:
-        - { valor: BW, rotulo: "BW = {{BW}}" }
-      mide: { vr_amp: V_R }
-      grafica:
-        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
-        curvas:
-          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
     comprobar:
       - { Z_0: 316, Q: 3.16, BW: 1592 }
+    simular:
+      objetivo: Q
+      unidad: ""
+      tol: 0.02
+      rotulo: "Q"
+      errores:
+        - { expr: "R_r/Z_0", texto: "Al revés: Z₀ entre R." }
+        - { expr: "Z_0", texto: "Esa es Z₀, en ohmios; divídala entre R." }
+    exito: "Q = 3,16, con un ancho de banda de 1592 Hz."
+    escalera:
+      - "Q = Z₀ / R, con Z₀ = √(L/C)."
+    solucion: "316 Ω / 100 Ω = 3,16."
 
   - id: prediga-r1k
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga con 1 kΩ"
-    texto: "Se cambia R de 100 Ω a 1 kΩ. ¿Qué les pasa a la resonancia y al Q?"
+    texto: "Se cambia R de 100 Ω a 1 kΩ. Calcule el nuevo Q."
     libro: [251, 252]
     fijar: { R_r: 1000 }
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: Q, rotulo: "Factor de calidad" }
-      mide: { vr_amp: V_R }
-      grafica:
-        x: { id: nu, min: 1000, max: 20000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
-        curvas:
-          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "v_{R}", mide: vr_amp }
-      ocultar: true
-    opciones:
-      - texto: "f₀ no se mueve y Q cae de 3 a 0,3"
-        bien: true
-        porque: "La resonancia la fijan L y C; el amortiguamiento, R. La curva se aplana, pero su máximo sigue en f₀."
-      - texto: "f₀ baja a la décima parte"
-        porque: "R no entra en f₀ = 1/(2π√(LC)). Lo que cambia con R es el Q."
-      - texto: "Las dos se quedan igual"
-        porque: "Q = Z₀/R: con diez veces más R, diez veces menos Q."
+    simular:
+      objetivo: Q
+      unidad: ""
+      tol: 0.02
+      rotulo: "Q con 1 kΩ"
+      errores:
+        - { expr: "Z_0/100", texto: "Ese es con 100 Ω; ahora R es diez veces mayor." }
+        - { expr: "R_r/Z_0", texto: "Al revés: Z₀ entre R." }
+    exito: "Q cae de 3 a 0,3 y f₀ no se mueve: la resonancia la fijan L y C; el amortiguamiento, R."
     escalera:
       - "¿En cuál de las dos fórmulas, la de f₀ o la de Q, aparece R?"
     solucion: "f₀ igual; Q de 3,16 a 0,316. R fija el amortiguamiento, no la resonancia."
@@ -182,82 +178,52 @@ tarjetas:
       dentro: "En fase: está en f₀, unos 5 kHz."
 
   - id: desfase
-    tipo: pregunta
+    tipo: simular
     titulo: "Bastante por debajo de f₀"
-    texto: "El generador está muy por debajo de la resonancia. ¿Cómo va la corriente respecto a la tensión aplicada?"
+    texto: "El generador está muy por debajo de la resonancia. A 1 kHz, calcule el desfase de la corriente respecto a la tensión aplicada."
     libro: [244]
     fijar: { f_r: 1000, R_r: 100 }
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: ph_i, rotulo: "Desfase de la corriente" }
-      mide: { vr_fase: ph_i }
-    opciones:
-      - texto: "Adelantada, casi +90°: el circuito es capacitivo"
-        bien: true
-        porque: "A baja frecuencia manda el condensador, con mucha reactancia: la corriente adelanta."
-      - texto: "Retrasada, casi −90°: el circuito es inductivo"
-        porque: "Eso es muy por encima de f₀, donde manda la bobina."
-      - texto: "En fase"
-        porque: "En fase solo está en resonancia, donde las reactancias se cancelan."
+    simular:
+      objetivo: ph_i
+      unidad: "°"
+      tol: 0.03
+      rotulo: "Desfase de la corriente"
+      errores:
+        - { expr: "-ph_i", texto: "Al revés: por debajo de f₀ el circuito es capacitivo y la corriente adelanta." }
+        - { expr: "0", texto: "En fase solo en f₀." }
+    exito: "Casi +90°: por debajo de f₀ manda el condensador."
     escalera:
       - "¿Qué reactancia es grande a baja frecuencia, la de L o la de C?"
     solucion: "Adelantada, casi +90°: por debajo de f₀ el circuito es capacitivo."
+    comprobar:
+      - { ph_i: 86.3, tol: 0.01 }
 
   - id: estime-q-real
-    tipo: pregunta
+    tipo: simular
     titulo: "El Q de verdad"
-    texto: "La bobina de 10 mH tiene 20 Ω de cobre y el generador 50 Ω de salida, en serie con R = 100 Ω. ¿Qué Q resulta?"
+    texto: "La bobina de 10 mH tiene 20 Ω de cobre y el generador 50 Ω de salida, en serie con R = 100 Ω. Calcule el Q que resulta."
     libro: [239, 240, 248, "cap22#370"]
-    fijar: { L_r: 0.01, C_r: 100e-9 }
-    estimar:
-      objetivo: "Z_0/170"
-      unidad: ""
-      min: 0.5
-      max: 4
-      paso: 0.01
-      inicio: 3.16
-      tol: 0.03
-      rotulo: "Q con todas las resistencias"
+    fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100 }
     exito: "316 / 170 ≈ 1,86, muy lejos de 3,16: es la discrepancia que la práctica enseña a explicar."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.92 }, texto: "Se ha pasado: sume las tres resistencias en serie, no solo R." }
-      - { texto: "Se ha quedado corto: Z₀ sigue siendo 316 Ω; divídala entre la resistencia total." }
+    simular:
+      objetivo: Q_real
+      unidad: ""
+      tol: 0.02
+      rotulo: "Q con todas las resistencias"
+      errores:
+        - { expr: "Z_0/R_r", texto: "Ese es el Q con solo los 100 Ω." }
+        - { expr: "Z_0/(R_r + 20)", texto: "Falta la salida del generador, 50 Ω en serie." }
     escalera:
       - "Todas las resistencias en serie cuentan: 100 + 20 + 50."
       - "Q = Z₀ / R_{total}, con Z₀ = 316 Ω."
     solucion: "R_{total} = 170 Ω y Q = 316 / 170 ≈ 1,86."
     comprobar:
-      - { Z_0: 316 }
-
-  - id: q-menor
-    tipo: pregunta
-    titulo: "Por qué sale menos Q"
-    texto: "El Q medido sale menor que el calculado con los 100 Ω. ¿Qué lo explica, por orden de importancia?"
-    libro: [247, 248, 249]
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: Q, rotulo: "Q calculado" }
-      mide: { vr_amp: V_R }
-    opciones:
-      - texto: "La resistencia de la bobina, la del generador y las pérdidas del núcleo"
-        bien: true
-        porque: "Las tres se suman a R. Midiendo la de la bobina y rehaciendo el cálculo, predicción y medida coinciden."
-      - texto: "Que la resonancia se desplaza con R"
-        porque: "R no mueve f₀: solo aplana la curva. Lo que baja el Q es la resistencia que no se había contado."
-      - texto: "La capacidad de la sonda, únicamente"
-        porque: "La sonda influye poco aquí. Lo que pesa son 20 a 50 Ω de cobre y 50 Ω del generador."
-    escalera:
-      - "¿Qué resistencias hay en el circuito real además de los 100 Ω?"
-    solucion: "La resistencia de la bobina, la impedancia de salida del generador y las pérdidas del núcleo."
+      - { Z_0: 316, Q_real: 1.86, tol: 0.01 }
 
   - id: sobretension
-    tipo: sorpresa
+    tipo: explorar
     titulo: "Más tensión que la fuente"
-    texto: "En resonancia, con 1 V de entrada, mire la bobina y el condensador. Cambie R."
+    texto: "En resonancia, con 1 V de entrada, mire la bobina y el condensador. Después pase R a 1 kΩ."
     libro: [256, 257]
     fijar: { f_r: 5032.92 }
     inicio: { R_r: 100 }
@@ -278,7 +244,15 @@ tarjetas:
           - { expr: "V_C*sin(w_r*t + (ph_i - 90)*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
       mandos:
         - { valor: R_r, lista: [100, 1000], rotulo: "R" }
-    requiere: { mover: [R_r] }
+    objetivo:
+      condiciones:
+        - { valor: R_r, min: 1000, rotulo: "R = {{R_r}}" }
+      logrado: "Con 100 Ω, bobina y condensador tienen Q veces la entrada, más de 3 V; con 1 kΩ, Q baja y la sobretensión casi desaparece."
+      pistas:
+        - { texto: "Pase R a 1 kΩ." }
+    escalera:
+      - "La sobretensión es Q veces la entrada."
+    solucion: "1 kΩ."
     comprobar:
       - { V_L: 3.16, V_C: 3.16, tol: 0.01 }
 
@@ -350,7 +324,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [238, 240, 252, 256]
+    libro: [238, 240, 252, 256, 247, 249]
     ideas:
       - { titulo: "Prediga.", texto: "f₀ = 1/(2π√(LC)), Z₀ = √(L/C), Q = Z₀/R y BW = f₀/Q, antes de encender." }
       - { titulo: "Independientes.", texto: "L y C fijan la resonancia; R, el amortiguamiento." }

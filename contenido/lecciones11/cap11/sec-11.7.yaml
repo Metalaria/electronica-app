@@ -1,9 +1,16 @@
-# Lección 1.2 de la sección 11.7 «Del Esquema al Circuito Físico: Netlist, BOM y Ratsnest» (cap11). Formato: GUIA.md.
+# Lección de la sección 11.7 «Del Esquema al Circuito Físico: Netlist, BOM y Ratsnest» (cap11). Formato: GUIA.md.
 # El esquema es el divisor del libro (sección 1.4: 12 V, 10 kΩ y 5 kΩ) con designadores R1 y R2 y redes de nombre
 # +12V, SALIDA y GND; esos nombres de red y la numeración de pines (R1-1, R1-2…) son míos, al estilo del bloque 166.
+# 1.2.1 (aprender haciendo): cambiar R2 hasta un objetivo, tocar la red SALIDA, tocar el campo de compra, contar las
+# unidades de una línea, tocar la regla común en la figura 11.9. Dos preguntas: el ratsnest y «100 nF».
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap11/sec-11.7
 
 libro:
+  172: "La BOM dice qué comprar y dónde va"
+  176: "Una BOM bien hecha agrupa componentes idénticos en una sola"
+  185: "Junto a los dos anteriores, la fabricación necesita"
+  190: "Netlist y lista de materiales"
   163: "son la única definición formal del circuito"
   165: "cada red con los pines que la forman"
   166: "N$12: R14-1, C7-2, U3-5"
@@ -34,7 +41,7 @@ tarjetas:
   - id: explore-topologia
     tipo: explorar
     titulo: "El netlist no ve los valores"
-    texto: "Cambie el valor de R2. La lectura cambia, pero no las conexiones: el netlist es el mismo."
+    texto: "Cambie R2 hasta que la salida marque la mitad de la pila. Las conexiones no cambian: el netlist es el mismo."
     libro: [165, 167, "cap01#83"]
     widget:
       tipo: circuito
@@ -45,24 +52,41 @@ tarjetas:
       mide: { salida: V_out, corriente: I }
       mandos:
         - { valor: R_2, lista: [5000, 10000, 20000], rotulo: "Valor de R2" }
-    requiere: { mover: [R_2] }
+    objetivo:
+      condiciones:
+        - { valor: V_out, objetivo: 6, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con R2 = R1, la mitad. Ha cambiado un valor, no una conexión: el netlist es topología pura."
+      pistas:
+        - { cuando: { valor: V_out, mayor: 6.12 }, texto: "Sobra tensión: baje R2." }
+        - { texto: "Falta tensión: suba R2." }
+    escalera:
+      - "La mitad cae en R2 cuando vale lo mismo que R1."
+    solucion: "R2 = 10 kΩ: 6 V."
+    comprobar:
+      - { con: { R_2: 10000 }, V_out: 6 }
 
   - id: netlist-divisor
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Escriba el netlist"
-    texto: "Una cada red del divisor con los pines que la forman."
+    tipo: elegir
+    titulo: "Una red del netlist"
+    texto: "El netlist dice: SALIDA está formada por R1-2 y R2-1. Toque esa red en el esquema."
     libro: [165, 166]
-    emparejar:
-      - ["+12V", "Positivo de la pila y R1-1"]
-      - ["SALIDA", "R1-2 y R2-1"]
-      - ["GND", "R2-2 y negativo de la pila"]
-    exito: "Topología pura: sin posición, sin dibujo, sin interpretación. Es lo que usa el programa de trazado."
-    pistas:
-      - { texto: "La salida es el nodo entre las dos resistencias." }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    elegir:
+      zonas: { "red:fte": "Nodo de arriba", "red:salida": "Nodo del centro", "red:0": "Nodo de abajo" }
+      bien: ["red:salida"]
+      porque:
+        "red:fte": "Esa red une el positivo de la pila con R1-1: sería +12V."
+        "red:0": "Esa une R2-2 con el negativo de la pila: GND."
+    exito: "Cada red con los pines que la forman, nada más: sin posición ni dibujo, el trazado sabe qué pistas unir."
     escalera:
-      - "R1-1 es el pin 1 de R1, el que va a la pila."
-    solucion: "+12V: pila y R1-1; SALIDA: R1-2 y R2-1; GND: R2-2 y pila."
+      - "El pin 2 de R1 y el 1 de R2 se tocan entre las dos resistencias."
+    solucion: "El nodo entre las dos resistencias."
 
   - id: prediga-ratsnest
     tipo: predecir
@@ -89,26 +113,6 @@ tarjetas:
       - "Ratsnest: «nido de ratas», lo pendiente de rutar."
     solucion: "Una conexión del netlist que aún no tiene pista."
 
-  - id: campos-bom
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que necesita la BOM"
-    texto: "Una cada campo de la lista de materiales con por qué hace falta."
-    libro: [173]
-    emparejar:
-      - ["Designador", "Enlaza con esquema y placa"]
-      - ["Tolerancia", "Un 1 % y un 5 % no son lo mismo"]
-      - ["Tensión o potencia", "Ausente del símbolo"]
-      - ["Encapsulado", "Decide el montaje"]
-      - ["Fabricante y referencia", "Lo único que permite comprar"]
-      - ["Notas", "DNP, alternativas, criticidad"]
-    exito: "La BOM dice qué comprar y dónde va: el valor solo es lo evidente."
-    pistas:
-      - { texto: "Sin referencia del fabricante no se puede hacer el pedido." }
-    escalera:
-      - "La tensión y la potencia no aparecen en el símbolo."
-    solucion: "Designador–enlace; tolerancia–1 % o 5 %; tensión–no está en el símbolo; encapsulado–montaje; referencia–compra; notas–DNP."
-
   - id: cien-nano
     tipo: pregunta
     titulo: "Una BOM que dice «100 nF»"
@@ -134,107 +138,58 @@ tarjetas:
     solucion: "Hay que volver a decidir dieléctrico y tensión."
 
   - id: estime-linea
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "Una línea de la BOM"
-    texto: "La línea dice: C1, C4, C9, C12 — 100 nF, X7R, 50 V, 0805. ¿Cuántas unidades hay que pedir?"
-    libro: [177, 178]
+    texto: "La línea agrupa los componentes idénticos: C1, C4, C9, C12 — 100 nF, X7R, 50 V, 0805. ¿Cuántas unidades hay que pedir?"
+    libro: [176, 177, 178, 190]
     fijar: { n_c: 4 }
-    estimar:
-      objetivo: "n_c"
+    widget:
+      tipo: figura
+      figura: fig-11.9
+      zonas:
+        - { id: bom, rotulo: "Recuadro de la derecha", rect: [230, 62, 220, 112] }
+    simular:
+      objetivo: n_c
       unidad: ""
-      min: 1
-      max: 12
-      paso: 1
-      inicio: 10
-      tol: 0.05
+      tol: 0.02
       rotulo: "Unidades"
-    exito: "4 uds.: una línea con todos sus designadores reduce el pedido y revela la variedad real del diseño."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4 }, texto: "Se ha pasado: cuente los designadores, no el número del último." }
-      - { texto: "Se ha quedado corto: cada designador es una unidad." }
+      errores:
+        - { expr: "12", texto: "Doce es el número del último designador: se cuentan los designadores." }
+    exito: "Cuatro designadores, cuatro unidades: una línea de pedido, y la variedad real del diseño a la vista."
     escalera:
-      - "Cuente los designadores de la línea."
+      - "Cada designador es una unidad."
     solucion: "Cuatro designadores: 4 uds."
     comprobar:
       - { n_c: 4 }
 
-  - id: por-que-regenerar
-    tipo: porque
-    titulo: "Se regenera siempre"
-    texto: "Tras cambiar el esquema, ¿por qué no se corrige la BOM a mano?"
-    libro: [170, 180]
-    widget:
-      tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
-      lectura: { valor: V_out, rotulo: "Red SALIDA" }
-      mide: { salida: V_out, corriente: I }
-      mandos: []
-    opciones:
-      - texto: "Porque se desincroniza y ninguno de los dos documentos es fiable"
-        bien: true
-        porque: "La BOM, como el netlist, se genera del esquema: es la única forma de que coincidan."
-      - texto: "Porque a mano se tarda más"
-        porque: "El problema no es el tiempo: es que los dos documentos dejan de coincidir."
-      - texto: "Porque la herramienta no lo permite"
-        porque: "Lo permite; por eso es un error frecuente."
-    escalera:
-      - "¿Qué pasa la siguiente vez que cambie el esquema?"
-    solucion: "Editada a mano se desincroniza: se regenera siempre."
-
-  - id: no-se-monta
-    tipo: pregunta
-    titulo: "Lo que no se monta"
-    texto: "Una posición no se puebla en esta versión. ¿Cómo aparece en la BOM?"
-    libro: [181]
-    widget:
-      tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
-      lectura: { valor: V_out, rotulo: "Red SALIDA" }
-      mide: { salida: V_out, corriente: I }
-      mandos: []
-    opciones:
-      - texto: "Marcada como DNP"
-        bien: true
-        porque: "Debe aparecer y no desaparecer: así se sabe que el hueco es deliberado."
-      - texto: "No aparece"
-        porque: "Olvidarla es uno de los errores frecuentes: debe figurar marcada DNP."
-      - texto: "Con cantidad cero y sin designador"
-        porque: "El designador se mantiene; la marca DNP es la que dice que no se monta."
-    escalera:
-      - "DNP: no poblar."
-    solucion: "Con su designador y la marca DNP."
-
   - id: salidas
-    tipo: pregunta
-    titulo: "Los otros ficheros"
-    texto: "Gerbers, taladro, fichero de posiciones y notas. ¿Qué tienen en común con el netlist y la BOM?"
-    libro: [186]
+    tipo: tocar
+    titulo: "Se generan, no se escriben"
+    texto: "Gerbers, taladro, posiciones, netlist y BOM comparten una regla. Toque, en la figura, dónde está."
+    libro: [170, 180, 185, 186, 190]
     widget:
-      tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
-      lectura: { valor: V_out, rotulo: "Red SALIDA" }
-      mide: { salida: V_out, corriente: I }
-      mandos: []
-    opciones:
-      - texto: "Se generan, no se escriben"
-        bien: true
-        porque: "Cualquiera de ellos editado a mano rompe la coherencia del conjunto."
-      - texto: "Se dibujan a mano después del esquema"
-        porque: "Al revés: todos salen de la herramienta, y editarlos rompe la coherencia."
-      - texto: "Solo los necesita el fabricante"
-        porque: "Es verdad que los usa la fabricación, pero lo que los une es que se generan."
+      tipo: figura
+      figura: fig-11.9
+      zonas:
+        - { id: esquema, rotulo: "Recuadro de arriba", rect: [164, 2, 126, 36] }
+        - { id: netlist, rotulo: "Recuadro de la izquierda", rect: [2, 62, 220, 112] }
+        - { id: bom, rotulo: "Recuadro de la derecha", rect: [230, 62, 220, 112] }
+        - { id: regla, rotulo: "Franja de abajo", rect: [2, 182, 448, 46] }
+    tocar:
+      bien: [regla]
+      porque:
+        esquema: "El esquema es el documento para humanos del que salen los demás."
+        netlist: "Dice qué pines forman cada red; la regla común está aparte."
+        bom: "Dice qué comprar y dónde va; la regla común está aparte."
+    exito: "Se generan, no se escriben: editada a mano tras cambiar el esquema, la BOM se desincroniza y ninguno de los dos es fiable."
     escalera:
-      - "Recuerde qué pasa con la BOM editada a mano."
-    solucion: "Todos se generan; ninguno se edita a mano."
+      - "Busque lo que vale para todos los ficheros a la vez."
+    solucion: "La franja de abajo: ambos se generan, no se escriben."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [163, 168, 174, 186]
+    libro: [163, 168, 174, 186, 172, 173, 181]
     ideas:
       - { titulo: "Netlist.", texto: "Cada red con sus pines: topología pura, sin ambigüedad." }
       - { titulo: "Ratsnest.", texto: "Lo que falta por rutar; una línea al final es una conexión sin hacer." }

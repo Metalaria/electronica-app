@@ -1,11 +1,25 @@
-# Lección 1.2 de la sección 14.7 «Alimentación y Desacoplo en el Protoboard» (cap15; etiqueta sec-15.7).
+# Lección de la sección 14.7 «Alimentación y Desacoplo en el Protoboard» (cap15; etiqueta sec-15.7).
 # Formato: contenido/lecciones11/GUIA.md. La gráfica es la de la figura 14.10: reactancia del condensador de
 # desacoplo, 1/(2πfC), frente a la del bucle, 2πfL, con los números del bloque 178 (100 nF: 159 mΩ y 10 nH: 628 mΩ a
 # 10 MHz). El bucle de 5 nH de la sorpresa es un EJEMPLO de «acortar el bucle». El banco usa el factor de cinco a diez
-# del bloque 196 (centro 7,5) como relación entre el ruido sin y con desacoplo.
+# del bloque 196 (centro 7,5) como relación entre el ruido sin y con desacoplo. 1.2.1 (aprender haciendo): leer la
+# reactancia del bucle, marcar el cruce, acortar el bucle hasta el objetivo, tocar el nivel de los pulsos y los
+# síntomas, y medir en el banco. Dos preguntas: el condensador grande y por qué la distancia.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap15/sec-15.7
 
 libro:
+  171: "El problema que resuelve el desacoplo"
+  173: "Esa corriente tiene que venir de algún sitio, y la fuente"
+  177: "Con números, a 10 MHz"
+  181: "El esquema de desacoplo estándar"
+  182: "Tres niveles, cada uno para un rango de frecuencias"
+  187: "El caso del protoboard"
+  188: "En un protoboard el bucle es inevitablemente grande, y por"
+  189: "Un 100 nF por integrado, insertado directamente entre los"
+  190: "Qué ocurre cuando falta"
+  191: "Los síntomas son característicos y merecen reconocerse"
+  192: "Microcontroladores que se reinician de forma aleatoria"
   172: "la consume a pulsos, uno por cada conmutación interna"
   174: "El condensador de desacoplo resuelve eso siendo un depósito local de carga"
   176: "no la limita la capacidad del condensador, sino la inductancia del bucle"
@@ -35,10 +49,11 @@ modelo:
 
 tarjetas:
   - id: explore-reactancias
-    tipo: explorar
+    tipo: leer
     titulo: "El condensador frente al bucle"
-    texto: "Por encima del cruce manda la inductancia del bucle. Cambie el condensador y el bucle y mire a 10 MHz."
-    libro: [176, 178]
+    texto: "Un condensador de 100 nF con un bucle de 10 nH. Lea en la gráfica la reactancia del bucle a 10 MHz."
+    libro: [171, 172, 173, 174, 176, 177, 178]
+    fijar: { C_d: 100e-9, L_d: 10e-9 }
     widget:
       tipo: grafica
       x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
@@ -46,15 +61,51 @@ tarjetas:
       curvas:
         - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
         - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
-      marcas:
-        - { x: "f_x", y: "X_x", rotulo: "Cruce" }
-      lectura: { valor: X_L, rotulo: "Bucle a 10 MHz" }
-      datos:
-        - { valor: X_C, rotulo: "Condensador a 10 MHz: {{X_C}}" }
-      mandos:
-        - { valor: C_d, lista: [100e-9, 10e-6], rotulo: "Condensador" }
-        - { valor: L_d, lista: [5e-9, 10e-9], rotulo: "Bucle" }
-    requiere: { mover: [C_d] }
+      mandos: []
+    leer:
+      objetivo: X_L
+      unidad: Ω
+      tol: 0.06
+      rotulo: "Reactancia del bucle a 10 MHz"
+      errores:
+        - { expr: "X_C", texto: "Esa es la del condensador, la azul: el bucle es la naranja." }
+    exito: "Unos 628 mΩ, cuatro veces los 159 mΩ del condensador: a 10 MHz manda el bucle."
+    escalera:
+      - "Busque 10 MHz en el eje horizontal y suba hasta la curva naranja."
+    solucion: "Unos 628 mΩ."
+    comprobar:
+      - { X_L: 0.628, X_C: 0.159, tol: 0.003 }
+
+  - id: marque-cruce
+    tipo: marcar
+    titulo: "Donde manda el bucle"
+    texto: "Por encima del cruce de las dos curvas, manda la inductancia del bucle. Marque ese cruce sobre la curva del condensador."
+    libro: [176]
+    fijar: { C_d: 100e-9, L_d: 10e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
+        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_x"
+      tol: 0.04
+      inicio: { x: 300000, y: 1 }
+      rotulo: "El cruce"
+    pistas:
+      - { cuando: { valor: marca_x, menor: 5000000 }, texto: "Ahí aún manda el condensador: más a la derecha." }
+      - { texto: "Ahí ya manda el bucle: más a la izquierda." }
+    exito: "Unos 5 MHz: por encima, el condensador ya no decide nada. Lo que decide es el bucle."
+    escalera:
+      - "Busque dónde se cortan la curva azul y la naranja."
+    solucion: "Hacia los 5 MHz."
+    comprobar:
+      - { f_x: 5032921, tol: 0.003 }
 
   - id: prediga-diez-micro
     tipo: predecir
@@ -87,9 +138,9 @@ tarjetas:
       - { X_L: 0.628, tol: 0.003 }
 
   - id: sorpresa-corto
-    tipo: sorpresa
+    tipo: explorar
     titulo: "Corto, no grande"
-    texto: "Vuelva a 100 nF y acorte el bucle a la mitad. Mire la reactancia del bucle a 10 MHz."
+    texto: "Vuelva a 100 nF y acorte el bucle a la mitad. Hágalo hasta que la reactancia del bucle a 10 MHz baje a la mitad."
     nota: "El bucle de 5 nH es un ejemplo."
     libro: [180]
     fijar: { C_d: 100e-9 }
@@ -108,7 +159,15 @@ tarjetas:
         - { valor: f_x, rotulo: "Cruce: {{f_x}}" }
       mandos:
         - { valor: L_d, lista: [10e-9, 5e-9], rotulo: "Bucle" }
-    requiere: { mover: [L_d] }
+    objetivo:
+      condiciones:
+        - { valor: X_L, max: 0.35, rotulo: "Bucle a 10 MHz: {{X_L}}" }
+      logrado: "Con el bucle a la mitad, su reactancia a 10 MHz baja a la mitad y el cruce sube a {{f_x}}: corto, no grande."
+      pistas:
+        - { texto: "Acorte el bucle." }
+    escalera:
+      - "La reactancia del bucle es 2πfL."
+    solucion: "Bucle de 5 nH: la mitad."
 
   - id: por-que-corto
     tipo: porque
@@ -136,71 +195,6 @@ tarjetas:
       - "¿Qué crece con la longitud del camino entre el condensador y el chip?"
     solucion: "La inductancia del bucle."
 
-  - id: tres-niveles
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El esquema de desacoplo estándar"
-    texto: "Una cada nivel con lo que atiende."
-    libro: [183, 184, 185]
-    emparejar:
-      - ["100 nF cerámico junto a cada integrado", "Los pulsos rápidos"]
-      - ["10 µF por raíl y por zona", "Las variaciones lentas; recarga a los pequeños"]
-      - ["100 µF o más en la entrada", "Depósito general y transitorios de conexión"]
-    exito: "Tres niveles, cada uno para un rango de frecuencias."
-    pistas:
-      - { texto: "El pequeño y cercano es el de los pulsos rápidos." }
-    escalera:
-      - "El electrolítico grande va donde entra la alimentación."
-    solucion: "100 nF: pulsos; 10 µF: lentas; 100 µF: depósito y conexión."
-
-  - id: x7r
-    tipo: pregunta
-    titulo: "Un cerámico de clase 2"
-    texto: "Pone un X7R de 10 µF en un raíl de 5 V. ¿Cuánta capacidad tiene de verdad?"
-    libro: [186]
-    fijar: { C_d: 10e-6, L_d: 10e-9 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
-      curvas:
-        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
-    opciones:
-      - texto: "Puede tener menos de la mitad"
-        bien: true
-        porque: "Si el cálculo lo necesita, hay que elegir tensión nominal con margen o contar con menos."
-      - texto: "Sus 10 µF"
-        porque: "Los cerámicos de clase 2 pierden capacidad con la tensión aplicada."
-      - texto: "Más de 10 µF"
-        porque: "Con tensión, pierde capacidad; no gana."
-    escalera:
-      - "Los cerámicos de clase 2 dependen de la tensión aplicada."
-    solucion: "Menos de la mitad, posiblemente."
-
-  - id: buscar-primero
-    tipo: pregunta
-    titulo: "Reinicios aleatorios"
-    texto: "Un microcontrolador se reinicia al accionar una salida de potencia. ¿Dónde busca primero?"
-    libro: [193, 172]
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 0.001, max: 100, unidad: Ω, rotulo: "X", escala: log }
-      curvas:
-        - { expr: "1/(2*pi*nu*C_d)", color: azul, rotulo: "condensador" }
-        - { expr: "2*pi*nu*L_d", color: naranja, rotulo: "bucle" }
-    opciones:
-      - texto: "En la alimentación y su desacoplo"
-        bien: true
-        porque: "Ese síntoma apunta a la alimentación antes que al circuito."
-      - texto: "En el programa"
-        porque: "Un programa no se reinicia según la carga que conmuta: es la alimentación."
-      - texto: "En el reloj del microcontrolador"
-        porque: "Primero la alimentación; es la causa de muchas horas perdidas."
-    escalera:
-      - "¿Qué comparte la salida de potencia con el microcontrolador?"
-    solucion: "En la alimentación."
-
   - id: banco-desacoplo
     tipo: banco
     titulo: "El desacoplo, medido"
@@ -220,7 +214,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [174, 176, 180, 183]
+    libro: [174, 176, 180, 183, 181, 182, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193]
     ideas:
       - { titulo: "Un depósito local.", texto: "El condensador entrega los pulsos desde milímetros." }
       - { titulo: "Manda el bucle.", texto: "A 10 MHz, 10 nH dan cuatro veces más impedancia que 100 nF." }

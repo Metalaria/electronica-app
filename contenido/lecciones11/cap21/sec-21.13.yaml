@@ -2,10 +2,19 @@
 # sec-21.13). Formato: contenido/lecciones11/GUIA.md. El espectro de dos rayas a 1000 y 1050 Hz (armónicos de red
 # separados 50 Hz, bloque 331) con ventana rectangular: cada raya es |sinc((f − f₀)·T)|, de anchura 1/T; se dibuja la
 # mayor de las dos. El leakage: la captura repetida, con un número entero o no de ciclos. THD y suelo de ruido con las
-# ecuaciones y los números del libro.
+# ecuaciones y los números del libro. 1.2.1 (aprender haciendo): separar las rayas, calcular resolución, puntos y THD,
+# provocar el empalme, tocar en las figuras la regla de cada ventana, leer el suelo por hercio y tocar la comprobación
+# de la saturación. Dos preguntas: el generador solo y el promediado.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap21/sec-21.13
 
 libro:
+  325: "La FFT del osciloscopio es la herramienta con la que este"
+  343: "Si importa la frecuencia o separar rayas próximas → Hann, o"
+  362: "Los seis errores que producen espectros falsos"
+  364: "Aliasing"
+  374: "La misma senoide con tres ventanas y los criterios para"
+  375: "Respuesta de tres ventanas de FFT y las reglas para elegir"
   327: "Toma N muestras capturadas durante un tiempo T y las convierte en N/2 líneas espectrales"
   328: '"resolución" = ("1")/(T)'
   330: "la resolución la fija el tiempo capturado, no la frecuencia de muestreo"
@@ -52,8 +61,8 @@ tarjetas:
   - id: explore-resolucion
     tipo: explorar
     titulo: "Dos rayas separadas 50 Hz"
-    texto: "Dos armónicos de red separados 50 Hz. Alargue el tiempo capturado y mire cuándo se separan."
-    libro: [327, 330, 331]
+    texto: "Dos armónicos de red separados 50 Hz. Alargue el tiempo capturado hasta que se separen."
+    libro: [325, 327, 330, 331]
     inicio: { T_c: 0.001 }
     widget:
       tipo: grafica
@@ -64,50 +73,52 @@ tarjetas:
       lectura: { valor: d_f, rotulo: "Resolución" }
       mandos:
         - { valor: T_c, lista: [0.001, 0.01, 0.02, 0.1], rotulo: "Tiempo capturado" }
-    requiere: { mover: [T_c] }
+    objetivo:
+      condiciones:
+        - { valor: d_f, max: 50, rotulo: "Resolución: {{d_f}}" }
+      logrado: "Con 50 Hz de resolución o mejor, las dos rayas se separan: la fija el tiempo capturado."
+      pistas:
+        - { texto: "Siga alargando la captura." }
+    escalera:
+      - "Resolución = 1/T: más tiempo, rayas más finas."
+    solucion: "Una captura de 20 ms o más."
+    comprobar:
+      - { con: { T_c: 0.02 }, d_f: 50 }
 
   - id: formula-resolucion
-    tipo: formula
+    tipo: simular
     titulo: "La resolución"
-    texto: "La resolución es el inverso del tiempo capturado; no depende de la frecuencia de muestreo."
-    libro: [328, 330]
-    ec: 328
-    sustitucion: "1 / {{T_c}} = {{d_f}}"
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 900, max: 1150, unidad: Hz, rotulo: "f" }
-      y: { min: 0, max: 1.2, unidad: "", rotulo: "amplitud" }
-      curvas:
-        - { expr: "max(abs(sin(pi*((nu - 1000)*T_c + 0.000001))/(pi*((nu - 1000)*T_c + 0.000001))), abs(sin(pi*((nu - 1050)*T_c + 0.000001))/(pi*((nu - 1050)*T_c + 0.000001))))", color: azul, rotulo: "FFT" }
-      lectura: { valor: d_f, rotulo: "Resolución" }
-      mandos:
-        - { valor: T_c, lista: [0.001, 0.01, 0.02, 0.1], rotulo: "Tiempo capturado" }
+    texto: "Captura 1 000 puntos en 1 ms. Calcule la resolución de la FFT."
+    libro: [328, 330, 331]
+    fijar: { T_c: 0.001, f_m: 1000000 }
+    simular:
+      objetivo: d_f
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Resolución"
+      errores:
+        - { expr: "f_max", texto: "Ese es el margen, hasta la mitad del muestreo; la resolución es 1/T." }
+        - { expr: "f_m", texto: "Esa es la frecuencia de muestreo: la resolución no depende de ella." }
+    exito: "1 kHz: si se buscan armónicos de red separados 50 Hz, esa captura no sirve."
+    escalera:
+      - "Δf = 1/T."
+    solucion: "1/1 ms = 1 kHz."
 
   - id: estime-puntos
-    tipo: pregunta
+    tipo: simular
     titulo: "Los puntos que hacen falta"
-    texto: "Con 1 MS/s y 100 ms de captura, ¿cuántos puntos guarda el instrumento?"
+    texto: "Con 1 MS/s y 100 ms de captura, calcule cuántos puntos guarda el instrumento."
     libro: [333, 334]
     fijar: { f_m: 1000000, T_c: 0.1 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 900, max: 1150, unidad: Hz, rotulo: "f" }
-      y: { min: 0, max: 1.2, unidad: "", rotulo: "amplitud" }
-      curvas:
-        - { expr: "max(abs(sin(pi*((nu - 1000)*T_c + 0.000001))/(pi*((nu - 1000)*T_c + 0.000001))), abs(sin(pi*((nu - 1050)*T_c + 0.000001))/(pi*((nu - 1050)*T_c + 0.000001))))", color: azul, rotulo: "FFT" }
-    estimar:
-      objetivo: "N_p"
-      unidad: ""
-      min: 0
-      max: 200000
-      paso: 1000
-      inicio: 160000
-      tol: 0.05
-      rotulo: "Puntos"
     exito: "100 000 puntos: la resolución fina pide memoria, y obliga a bajar la base de tiempos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 105000 }, texto: "Se ha pasado: multiplique un millón de muestras por segundo por 0,1 s." }
-      - { texto: "Se ha quedado corto: un millón por segundo durante 100 ms." }
+    simular:
+      objetivo: N_p
+      unidad: ""
+      tol: 0.02
+      rotulo: "Puntos"
+      errores:
+        - { expr: "f_m", texto: "Esa es la frecuencia de muestreo: multiplique por el tiempo capturado." }
+        - { expr: "f_m*T_c/10", texto: "Diez veces de menos: 100 ms son 0,1 s." }
     escalera:
       - "N = f_{muestreo} · T_{captura}."
     solucion: "1 MS/s · 100 ms = 100 000 puntos."
@@ -127,62 +138,72 @@ tarjetas:
       lectura: { valor: c_c, rotulo: "Ciclos capturados" }
       mandos:
         - { valor: c_c, lista: [3, 3.5], rotulo: "Ciclos en la captura" }
-    requiere: { mover: [c_c] }
+    objetivo:
+      condiciones:
+        - { valor: c_c, min: 3.5, rotulo: "Ciclos: {{c_c}}" }
+      logrado: "Sin un número entero de ciclos, el empalme salta: su energía se reparte por todo el espectro. Es el leakage."
+      pistas:
+        - { texto: "Pase a 3,5 ciclos." }
+    escalera:
+      - "La FFT repite la captura una y otra vez."
+    solucion: "3,5 ciclos: un salto en cada empalme."
     comprobar:
       - { con: { c_c: 3.5 }, c_c: 3.5 }
 
   - id: ventanas
-    tipo: pregunta
-    titulo: "Cada ventana, su uso"
-    texto: "Empareje cada ventana con aquello para lo que sirve."
-    libro: [340, 341]
+    tipo: tocar
+    titulo: "Una débil junto a una fuerte"
+    texto: "Quiere separar una señal débil de otra fuerte cercana. Toque en la figura la regla que lo resuelve."
+    libro: [340, 341, 375]
     widget:
       tipo: figura
       figura: fig-21.28
       zonas:
-        - { id: ventanas, rotulo: "Tres ventanas", rect: [0, 0, 446, 213] }
-    emparejar:
-      - ["Rectangular", "Transitorios, o un número entero de ciclos"]
-      - ["Hann", "Uso general: la opción por defecto"]
-      - ["Blackman", "Una señal débil junto a otra fuerte"]
-      - ["Flat-top", "Medir amplitudes con exactitud"]
-    exito: "Una ventana elimina la discontinuidad del empalme a cambio de ensanchar la raya."
-    pistas:
-      - { texto: "Flat-top tiene la raya más ancha y la amplitud más fiable." }
+        - { id: graf, rotulo: "La gráfica", rect: [0, 0, 230, 213] }
+        - { id: flat, rotulo: "Primer recuadro", rect: [245, 5, 197, 44] }
+        - { id: black, rotulo: "Segundo recuadro", rect: [245, 57, 197, 68] }
+        - { id: res, rotulo: "Tercer recuadro", rect: [245, 131, 197, 60] }
+    tocar:
+      bien: [black]
+      porque:
+        graf: "La gráfica compara anchuras; la regla está en los recuadros."
+        flat: "Flat-top es para medir amplitud."
+        res: "La resolución depende del tiempo, no del nivel."
+    exito: "Blackman: lóbulos de −58 dB, que dejan ver lo pequeño cerca de lo grande."
     escalera:
-      - "La rectangular es no poner ventana."
-    solucion: "Rectangular, transitorios; Hann, general; Blackman, débil junto a fuerte; flat-top, amplitudes."
+      - "Busque la ventana de lóbulos laterales más bajos."
+    solucion: "El segundo recuadro: Blackman."
 
   - id: amplitud-exacta
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una raya entre dos bins"
-    texto: "Necesita el nivel exacto de un armónico, que cae entre dos bins. ¿Qué ventana usa?"
-    libro: [344, 371]
+    texto: "Necesita el nivel exacto de un armónico que cae entre dos bins. Toque en la figura el criterio que lo resuelve."
+    libro: [343, 344, 371, 374]
     widget:
       tipo: figura
       figura: fig-21.27
       zonas:
-        - { id: tres, rotulo: "Tres ventanas", rect: [0, 0, 446, 205] }
-    opciones:
-      - texto: "Flat-top"
-        bien: true
-        porque: "Aplana la respuesta y da el nivel correcto aunque la raya no caiga justo en un bin."
-      - texto: "Hann"
-        porque: "Con Hann, una raya entre dos bins puede leerse 1,4 dB baja."
-      - texto: "Rectangular"
-        porque: "Sin ventana aparecen faldas anchas: el nivel no es fiable."
+        - { id: graf, rotulo: "La gráfica", rect: [0, 0, 230, 200] }
+        - { id: freq, rotulo: "Primer recuadro", rect: [245, 6, 197, 62] }
+        - { id: amp, rotulo: "Segundo recuadro", rect: [245, 75, 197, 62] }
+        - { id: res, rotulo: "El texto de abajo", rect: [245, 140, 197, 40] }
+    tocar:
+      bien: [amp]
+      porque:
+        graf: "La gráfica compara las faldas; no dice qué ventana da la amplitud."
+        freq: "Ese criterio es para la frecuencia o separar rayas."
+        res: "La resolución separa rayas; no corrige la amplitud."
+    exito: "Flat-top aplana la respuesta: con Hann, una raya entre dos bins puede leerse 1,4 dB baja."
     escalera:
-      - "¿Qué importa aquí, la frecuencia o la amplitud?"
-    solucion: "Flat-top: si importa la amplitud."
+      - "La pregunta es por la amplitud."
+    solucion: "El segundo recuadro: flat-top."
 
   - id: formula-thd
-    tipo: formula
+    tipo: simular
     titulo: "El THD"
-    texto: "Cada armónico en dB, convertido a relación y sumado en cuadratura. Cambie sus niveles."
+    texto: "Segundo armónico a −60 dB y tercero a −66 dB. Calcule el THD."
     libro: [352, 353, 354]
-    inicio: { A_2: -60, A_3: -66 }
-    ec: 354
-    sustitucion: "√(10^({{A_2}}/10) + 10^({{A_3}}/10)) = {{THD}}"
+    fijar: { A_2: -60, A_3: -66 }
     widget:
       tipo: grafica
       x: { id: k, min: 0.5, max: 3.5, unidad: "", rotulo: "armónico" }
@@ -191,12 +212,21 @@ tarjetas:
         - { expr: "max(-80, 80*max(0, 1 - abs(k - 1)*20) - 80)", color: azul, rotulo: "fundamental" }
         - { expr: "max(-80, (A_2 + 80)*max(0, 1 - abs(k - 2)*20) - 80)", color: naranja, rotulo: "2.º" }
         - { expr: "max(-80, (A_3 + 80)*max(0, 1 - abs(k - 3)*20) - 80)", color: verde, rotulo: "3.º" }
-      lectura: { valor: THD, rotulo: "THD" }
-      mandos:
-        - { valor: A_2, lista: [-70, -66, -60, -50], rotulo: "Segundo armónico" }
-        - { valor: A_3, lista: [-70, -66, -60, -50], rotulo: "Tercer armónico" }
+      mandos: []
     comprobar:
       - { THD: 0.112 }
+    simular:
+      objetivo: THD
+      unidad: "%"
+      tol: 0.03
+      rotulo: "THD"
+      errores:
+        - { expr: "100*10^(A_2/20)", texto: "Solo ha contado el segundo: sume el tercero en cuadratura." }
+        - { expr: "100*(10^(A_2/20) + 10^(A_3/20))", texto: "Se suman en cuadratura, no directamente." }
+    exito: "Un 0,11 %: cada diferencia en dB pasa a relación de amplitudes y se suman en cuadratura."
+    escalera:
+      - "Pase cada nivel en dB a relación y súmelas en cuadratura."
+    solucion: "√(10^(−60/10) + 10^(−66/10)) ≈ 0,11 %."
 
   - id: generador-solo
     tipo: pregunta
@@ -225,9 +255,9 @@ tarjetas:
     solucion: "Medir el generador solo: su distorsión debe quedar muy por debajo."
 
   - id: estime-suelo
-    tipo: pregunta
+    tipo: leer
     titulo: "Un suelo referido a 1 Hz"
-    texto: "Un suelo de −90 dBm con una resolución de 100 Hz. ¿Cuánto es por hercio?"
+    texto: "Un suelo de −90 dBm con una resolución de 100 Hz. Lea en la gráfica cuánto es por hercio."
     libro: [357, 358, 359, 360]
     fijar: { L_r: -90, R_b: 100 }
     widget:
@@ -236,46 +266,20 @@ tarjetas:
       y: { min: -130, max: -80, unidad: dBm, rotulo: "nivel por Hz" }
       curvas:
         - { expr: "L_r - 10*log10(r)", color: azul, rotulo: "nivel por Hz" }
-    estimar:
-      objetivo: "L_hz"
+    exito: "−90 − 10 · log₁₀(100) = −110 dBm/Hz: así dos medidas con ajustes distintos se pueden comparar."
+    leer:
+      objetivo: L_hz
       unidad: "dBm/Hz"
-      min: -130
-      max: -80
-      paso: 1
-      inicio: -90
       tol: 0.02
       rotulo: "Nivel por Hz"
-    exito: "−90 − 10 · log₁₀(100) = −110 dBm/Hz: así dos medidas con ajustes distintos se pueden comparar."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: -108 }, texto: "Se ha quedado alto: reste 10 · log₁₀ de la resolución." }
-      - { texto: "Se ha pasado: 10 · log₁₀(100) son 20 dB, no más." }
+      errores:
+        - { expr: "L_r", texto: "Ese es el nivel leído: reste 10 · log₁₀ de la resolución." }
+        - { expr: "L_r - R_b", texto: "Se restan 10 · log₁₀(100), no 100." }
     escalera:
       - "Nivel por Hz = nivel leído − 10 · log₁₀(resolución)."
     solucion: "−90 − 20 = −110 dBm/Hz."
     comprobar:
       - { D_r: 20, L_hz: -110 }
-
-  - id: saturar
-    tipo: pregunta
-    titulo: "¿Armónico de verdad?"
-    texto: "Sospecha que un armónico lo genera el instrumento al recortar. ¿Cómo lo comprueba?"
-    libro: [363, 368]
-    widget:
-      tipo: figura
-      figura: fig-21.28
-      zonas:
-        - { id: ventanas, rotulo: "Las ventanas", rect: [0, 0, 446, 213] }
-    opciones:
-      - texto: "Con una escala menos sensible: si baja, era del instrumento"
-        bien: true
-        porque: "Un armónico de la señal conserva su nivel absoluto; uno que baja venía del recorte."
-      - texto: "Con más promedios"
-        porque: "El promediado alisa el ruido; un armónico de recorte sigue ahí."
-      - texto: "Cambiando a ventana Hann"
-        porque: "La ventana cambia la forma de las rayas, no si el recorte las genera."
-    escalera:
-      - "Si deja de recortar, ¿qué le pasa a un armónico que creaba el recorte?"
-    solucion: "Más voltios por división: un armónico propio de la señal no cambia su nivel absoluto."
 
   - id: promediado
     tipo: porque
@@ -302,7 +306,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [330, 336, 344, 346, 368]
+    libro: [330, 336, 344, 346, 368, 362, 363, 364]
     ideas:
       - { titulo: "Resolución = 1/T.", texto: "La fija el tiempo capturado: 10 Hz piden 100 ms." }
       - { titulo: "Leakage.", texto: "Sin un número entero de ciclos, el empalme ensucia el espectro; la ventana lo arregla." }

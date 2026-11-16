@@ -2,10 +2,16 @@
 # Formato: contenido/lecciones11/GUIA.md. La cadena unión → cápsula → disipador → ambiente del ejemplo del libro
 # (10 W, 1 + 0,5 + 2 °C/W, 40 °C: 75 °C) se dibuja como la temperatura frente a la resistencia térmica acumulada desde
 # la unión: una recta que baja P °C por cada °C/W, el «divisor» del bloque 150. El paso de banco mide la Rsa del
-# disipador de unos 10 °C/W del regulador de la fuente simétrica (cap15#41, ficha 5 del cuaderno).
+# disipador de unos 10 °C/W del regulador de la fuente simétrica (cap15#41, ficha 5 del cuaderno). 1.2.1 (aprender
+# haciendo): tocar qué hace de potencia, calentar la cadena, calcular la unión con y sin interfaz y el precio del
+# aislante, y el banco. Dos preguntas: más pasta y los picos.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap47/sec-47.4
 
 libro:
+  147: "Pensar el calor como un circuito"
+  151: "La cadena de resistencias"
+  152: "Desde la unión del semiconductor hasta el aire"
   148: "una ecuación idéntica a la ley de Ohm"
   149: "Resistencia térmica (°C/W)"
   150: "calcular la temperatura de una unión es resolver un divisor"
@@ -47,33 +53,11 @@ modelo:
     dT_ais: { expr: "P*R_ais", sim: "ΔT", nombre: "lo que sube la unión por el aislante", unidad: "°C" }
 
 tarjetas:
-  - id: analogia
-    tipo: pregunta
-    titulo: "El calor como un circuito"
-    texto: "La conducción del calor sigue una ecuación idéntica a la ley de Ohm. Empareje cada magnitud térmica con la eléctrica."
-    libro: [148, 149, 178]
-    widget:
-      tipo: figura
-      figura: fig-47.6
-      zonas:
-        - { id: circuito, rotulo: "El circuito", rect: [10, 40, 300, 140] }
-    emparejar:
-      - ["Temperatura (°C)", "Tensión (V)"]
-      - ["Potencia (W)", "Corriente (A)"]
-      - ["Resistencia térmica (°C/W)", "Resistencia (Ω)"]
-      - ["Capacidad térmica (J/°C)", "Condensador (F)"]
-    exito: "Con eso, calcular la temperatura de una unión es resolver un divisor."
-    pistas:
-      - { texto: "Lo que «fluye» por la cadena es la potencia." }
-    escalera:
-      - "La diferencia de temperatura empuja el calor como la de tensión empuja la corriente."
-    solucion: "Temperatura, tensión; potencia, corriente; °C/W, ohmios; J/°C, faradios."
-
   - id: explore-cadena
     tipo: explorar
     titulo: "La cadena, de la unión al aire"
-    texto: "La temperatura baja P grados por cada °C/W. Cambie la potencia y el disipador y mire la unión."
-    libro: [153, 154, 155, 156]
+    texto: "La temperatura baja P grados por cada °C/W. Busque la combinación que más calienta la unión."
+    libro: [151, 152, 153, 154, 155, 156, 159]
     widget:
       tipo: grafica
       x: { id: r, min: 0, max: 6, unidad: "°C/W", rotulo: "resistencia desde la unión" }
@@ -89,50 +73,52 @@ tarjetas:
       mandos:
         - { valor: P, lista: [5, 10, 15], rotulo: "Potencia" }
         - { valor: R_sa, lista: [1, 2, 4], rotulo: "Disipador, R_{sa}" }
-    requiere: { mover: [P, R_sa] }
+    objetivo:
+      condiciones:
+        - { valor: T_j, min: 120, rotulo: "Unión: {{T_j}}" }
+      logrado: "Con más potencia y peor disipador, la unión se acerca a los 150 °C típicos de límite: cada °C/W cuesta P grados."
+      pistas:
+        - { texto: "Suba la potencia y empeore el disipador." }
+    escalera:
+      - "T_{j} = T_{a} + P · R_{total}."
+    solucion: "La potencia más alta con el peor disipador."
 
   - id: formula-cadena
-    tipo: formula
+    tipo: simular
     titulo: "La temperatura de la unión"
-    texto: "La ambiente más la potencia por la suma de las tres resistencias. Pruebe con 10 W y 2 °C/W."
+    texto: "10 W, R_{jc} de 1 °C/W, R_{cs} de 0,5 y un disipador de 2 °C/W, a 40 °C. Calcule la unión."
     libro: [153, 157, 158, 159]
-    ec: 153
-    sustitucion: "{{T_a}} + {{P}} × ({{R_jc}} + {{R_cs}} + {{R_sa}}) = {{T_j}}"
-    widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 6, unidad: "°C/W", rotulo: "resistencia desde la unión" }
-      y: { min: 0, max: 140, unidad: "°C", rotulo: "temperatura" }
-      curvas:
-        - { expr: "max(T_a, T_j - P*r)", color: naranja, rotulo: "temperatura a lo largo de la cadena" }
-      marcas:
-        - { x: "0", y: "T_j", rotulo: "{{T_j}}" }
-      lectura: { valor: T_j, rotulo: "Unión" }
-      mandos:
-        - { valor: P, lista: [5, 10, 15], rotulo: "Potencia" }
-        - { valor: R_sa, lista: [1, 2, 4], rotulo: "Disipador, R_{sa}" }
-        - { valor: T_a, lista: [25, 40], rotulo: "Ambiente" }
+    fijar: { P: 10, R_jc: 1, R_cs: 0.5, R_sa: 2, T_a: 40, R_ais: 0 }
     comprobar:
       - { con: { P: 10, R_sa: 2, T_a: 40 }, T_j: 75, R_tot: 3.5 }
+    simular:
+      objetivo: T_j
+      unidad: "°C"
+      tol: 0.02
+      rotulo: "Temperatura de la unión"
+      errores:
+        - { expr: "P*R_tot", texto: "Falta sumar la temperatura ambiente." }
+        - { expr: "T_a + P*R_sa", texto: "Solo ha contado el disipador; la cadena tiene tres resistencias." }
+    exito: "75 °C: muy por debajo de los 150 °C típicos de límite."
+    escalera:
+      - "T_{j} = T_{a} + P · (R_{jc} + R_{cs} + R_{sa})."
+    solucion: "40 + 10 × 3,5 = 75 °C."
 
   - id: prediga-sin-pasta
-    tipo: predecir
+    tipo: simular
     titulo: "Sin material de interfaz"
-    texto: "Con 10 W, 1 + 0,5 + 2 °C/W y 40 °C, la unión está a 75 °C; sin material de interfaz, R_{cs} se dobla. ¿Y ahora?"
+    texto: "Con 10 W, 1 + 0,5 + 2 °C/W y 40 °C, la unión está a 75 °C; sin material de interfaz, R_{cs} se dobla. Calcule la nueva temperatura de la unión."
     libro: [157, 166, 179]
     fijar: { P: 10, R_jc: 1, R_cs: 1, R_sa: 2, T_a: 40, R_ais: 0 }
-    widget:
-      tipo: figura
-      figura: fig-47.7
-      zonas:
-        - { id: interfaz, rotulo: "El material de interfaz", rect: [222, 108, 228, 92] }
-    opciones:
-      - texto: "80 °C: cinco grados más"
-        bien: true
-        porque: "R_{cs} pasa de 0,5 a 1 °C/W; con 10 W, 5 °C más. La parte más barata de la cadena."
-      - texto: "Igual, 75 °C"
-        porque: "Sin interfaz queda aire microscópico, un aislante excelente: R_{cs} sube."
-      - texto: "150 °C, el doble"
-        porque: "Solo se dobla un eslabón de 0,5 °C/W, no toda la cadena."
+    simular:
+      objetivo: T_j
+      unidad: "°C"
+      tol: 0.02
+      rotulo: "Temperatura de la unión"
+      errores:
+        - { expr: "T_a + P*3.5", texto: "Esa es la de la interfaz bien hecha: R_{cs} se ha doblado." }
+        - { expr: "150", texto: "No se dobla la temperatura: solo R_{cs}." }
+    exito: "80 °C: cinco grados más por la parte más barata de la cadena."
     escalera:
       - "¿Cuánto añaden 0,5 °C/W más con 10 W?"
     solucion: "40 + 10 × 4 = 80 °C."
@@ -162,30 +148,20 @@ tarjetas:
     solucion: "Debe rellenar las irregularidades y nada más: aplicada fina."
 
   - id: estime-aislante
-    tipo: pregunta
+    tipo: simular
     titulo: "El precio del aislamiento"
-    texto: "La lengüeta está a un potencial peligroso y se aísla con una almohadilla de 2 °C/W. Con 10 W, ¿cuánto sube la unión?"
+    texto: "La lengüeta está a un potencial peligroso y se aísla con una almohadilla de 2 °C/W. Con 10 W, calcule cuánto sube la unión."
     libro: [169]
     fijar: { P: 10, R_ais: 2 }
-    widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 6, unidad: "°C/W", rotulo: "resistencia desde la unión" }
-      y: { min: 0, max: 140, unidad: "°C", rotulo: "temperatura" }
-      curvas:
-        - { expr: "T_a + 0*r", color: tinta, rotulo: "ambiente", discontinua: true }
-    estimar:
-      objetivo: "dT_ais"
-      unidad: "°C"
-      min: 0
-      max: 40
-      paso: 1
-      inicio: 2
-      tol: 0.05
-      rotulo: "Subida de la unión"
     exito: "20 grados: hay que contarlo, no darlo por despreciable."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 21 }, texto: "Se ha pasado: la subida es la potencia por la resistencia añadida." }
-      - { texto: "Se ha quedado corto: cada °C/W con 10 W son 10 grados." }
+    simular:
+      objetivo: dT_ais
+      unidad: "°C"
+      tol: 0.03
+      rotulo: "Subida de la unión"
+      errores:
+        - { expr: "R_ais", texto: "Eso son °C/W: multiplique por la potencia." }
+        - { expr: "P*R_ais/2", texto: "La mitad no: cada °C/W con 10 W son 10 grados." }
     escalera:
       - "ΔT = P · R, como la caída en una resistencia."
     solucion: "10 W × 2 °C/W = 20 °C más."
@@ -233,7 +209,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [150, 153, 166, 173]
+    libro: [150, 153, 166, 173, 147, 148, 149, 178]
     ideas:
       - { titulo: "Un divisor.", texto: "Temperatura, tensión; potencia, corriente; °C/W, ohmios." }
       - { titulo: "La cadena.", texto: "T_{j} = T_{a} + P · (R_{jc} + R_{cs} + R_{sa}): 75 °C en el ejemplo." }

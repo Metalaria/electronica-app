@@ -1,11 +1,24 @@
-# Lección 1.2 de la sección 14.9 «Errores Comunes y Buenas Prácticas en el Montaje de Ensayo» (cap15; sec-15.9).
+# Lección de la sección 14.9 «Errores Comunes y Buenas Prácticas en el Montaje de Ensayo» (cap15; sec-15.9).
 # Formato: contenido/lecciones11/GUIA.md. El circuito es el divisor del libro (sección 1.4: 12 V, 10 kΩ y 5 kΩ,
 # 4,00 V) montado en protoboard: la alimentación llega a la otra mitad de la regleta por un puente de hilo (1 mΩ,
 # dibujado como resistencia). Averías de montaje del bloque 231 llevadas al circuito: regleta cortada sin puente
 # (abierta, 1 GΩ), R₂ en la fila equivocada (abierta) y R₁ mal identificada (de 1 kΩ en lugar de 10 kΩ, ejemplo).
+# 1.2.1 (aprender haciendo): medir dónde cae la tensión sin el puente, ponerlo hasta recuperar la salida, tocar el
+# fallo que se arregla presionando, buscar la avería, tocar la prueba del transistor y ordenar la comprobación
+# previa. Dos preguntas: por qué el contacto vencido es el peor y las masas.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap15/sec-15.9
 
 libro:
+  232: "El corte central de las regletas"
+  235: "La comprobación cuesta diez segundos con el zumbador de"
+  236: "Contactos gastados"
+  245: "La alternativa cuesta poco"
+  249: "Los componentes mal identificados"
+  252: "Cuándo la protoboard deja de servir"
+  253: "Y esto es lo que cierra el capítulo"
+  254: "Señales por encima de unos 10 MHz, flancos rápidos"
+  255: "En el banco"
   231: "el esquema está bien y la realidad no lo cumple"
   233: "Las tiras de alimentación de muchas protoboards están cortadas por la mitad"
   234: "media placa alimentada y la otra media no"
@@ -41,10 +54,36 @@ modelo:
     V_yo: { expr: "I_y*R_2", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
 
 tarjetas:
+  - id: mida-corte
+    tipo: medir
+    titulo: "Dónde se queda la tensión"
+    texto: "El divisor está en la mitad derecha y la fuente llega a la izquierda de una regleta cortada. Ponga las puntas donde cae toda la tensión."
+    libro: [232, 233, 234, 235]
+    fijar: { p_r: 0 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_in, r1: R_bx, r2: R_1, r3: R_2 }
+      corriente: I_x
+      mide: { corriente: I_x }
+      instrumento: { tipo: multimetro, modos: [V] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [fte, a1]
+      porque:
+        a2: "Entre la segunda y la tercera: sin corriente, en R₁ no cae nada."
+        "a2/0": "Esa es la salida: sin corriente, cero."
+        "a1/a2": "Esa es R₁: sin corriente no cae nada en ella."
+    exito: "Toda la tensión de la fuente cae en el corte de la regleta: media placa alimentada y la otra no."
+    escalera:
+      - "En un abierto, sin corriente, cae toda la tensión."
+    solucion: "Entre la fuente y la primera unión: el corte de la regleta."
+
   - id: explore-regleta
     tipo: explorar
     titulo: "La regleta cortada"
-    texto: "El divisor está montado en la mitad derecha y la fuente llega a la izquierda. Ponga el puente entre las dos mitades."
+    texto: "El divisor está montado en la mitad derecha y la fuente llega a la izquierda. Ponga el puente entre las dos mitades hasta que la salida vuelva."
     nota: "El divisor del libro, en protoboard."
     libro: [233, 234, "cap01#83"]
     widget:
@@ -56,54 +95,18 @@ tarjetas:
       mide: { corriente: I_x, v1: V_x1, v2: V_x2, v3: V_xo }
       mandos:
         - { valor: p_r, tipo: interruptor, rotulo: "Puente en la regleta" }
-    requiere: { mover: [p_r] }
+    inicio: { p_r: 0 }
+    objetivo:
+      condiciones:
+        - { valor: V_xo, min: 3.9, rotulo: "Salida: {{V_xo}}" }
+      logrado: "Con el puente, la otra mitad de la regleta recibe la alimentación y la salida vuelve a {{V_xo}}."
+      pistas:
+        - { texto: "Ponga el puente en la regleta." }
+    escalera:
+      - "Sin el puente, la mitad derecha no recibe nada."
+    solucion: "Con el puente: 4,00 V."
     comprobar:
       - { con: { p_r: 1 }, V_xo: 4.0 }
-
-  - id: seis-fallos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los fallos que no están en el circuito"
-    texto: "Una cada fallo de montaje con su firma."
-    libro: [234, 238, 241, 244, 248, 250]
-    emparejar:
-      - ["Regleta cortada", "Media placa alimentada y la otra no"]
-      - ["Contacto gastado", "Funciona al presionar el componente"]
-      - ["Sin desacoplo", "Digitales que funcionan de forma errática"]
-      - ["Cables largos", "Bucles que captan y radian"]
-      - ["Masas encadenadas", "Retornos que circulan por donde no deben"]
-      - ["Componente mal identificado", "Una resistencia leída mal por sus bandas"]
-    exito: "Todos con la misma firma: el esquema está bien y la realidad no lo cumple."
-    pistas:
-      - { texto: "Las masas se llevan a la regleta de masa como bus." }
-    escalera:
-      - "El contacto vencido es el que depende de la presión."
-    solucion: "Regleta: media placa; contacto: presionar; desacoplo: errático; cables: bucles; masas: retornos; identificación: bandas."
-
-  - id: prediga-presionar
-    tipo: predecir
-    titulo: "Funciona al presionar"
-    texto: "El circuito falla, y al presionar una resistencia vuelve a funcionar. ¿Qué hace?"
-    libro: [238, 237]
-    fijar: { p_r: 1 }
-    widget:
-      tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_in, r1: R_bx, r2: R_1, r3: R_2 }
-      lectura: { valor: V_xo, rotulo: "Tensión de salida" }
-      mide: { corriente: I_x, v3: V_xo }
-      ocultar: true
-    opciones:
-      - texto: "Cambiar el componente de fila: el contacto está vencido"
-        bien: true
-        porque: "Un muelle vencido da una conexión intermitente y dependiente de la presión."
-      - texto: "Cambiar la resistencia por otra igual"
-        porque: "La resistencia está bien: falla el clip de esa fila."
-      - texto: "Revisar el esquema"
-        porque: "Un error de esquema no se arregla presionando: es el montaje."
-    escalera:
-      - "¿Qué cambia al presionar: la resistencia o su contacto?"
-    solucion: "Cambiar de fila."
 
   - id: averia-montaje
     tipo: averia
@@ -140,30 +143,6 @@ tarjetas:
       - { V_yo: 4.0 }
       - { con: { R_1: 1000 }, V_yo: 10.0 }
 
-  - id: medir-antes
-    tipo: pregunta
-    titulo: "Medir antes de montar"
-    texto: "¿Qué evita una tarde de diagnóstico por un componente mal identificado?"
-    libro: [251]
-    fijar: { p_r: 1 }
-    widget:
-      tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_in, r1: R_bx, r2: R_1, r3: R_2 }
-      lectura: { valor: V_xo, rotulo: "Tensión de salida" }
-      mide: { corriente: I_x, v3: V_xo }
-    opciones:
-      - texto: "Medir antes de montar: la resistencia con el óhmetro, el transistor con la prueba de diodos"
-        bien: true
-        porque: "Cuesta quince segundos por pieza."
-      - texto: "Leer las bandas dos veces"
-        porque: "La lectura de las bandas es justo lo que falla; el óhmetro no se equivoca de color."
-      - texto: "Suponer el patillaje habitual del transistor"
-        porque: "Suponer el patillaje en lugar de comprobarlo es uno de los errores."
-    escalera:
-      - "¿Qué instrumento dice el valor real de una pieza?"
-    solucion: "Medir antes de montar."
-
   - id: por-que-peor
     tipo: porque
     titulo: "¿Por qué es el peor fallo?"
@@ -187,30 +166,6 @@ tarjetas:
     escalera:
       - "¿Se ve el fallo cuando uno lo busca?"
     solucion: "Es intermitente y despista."
-
-  - id: comprobacion-previa
-    tipo: pregunta
-    titulo: "Un minuto antes de encender"
-    texto: "¿Qué comprobación previa resuelve la mitad de los problemas?"
-    libro: [256, 257]
-    fijar: { p_r: 1 }
-    widget:
-      tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_in, r1: R_bx, r2: R_1, r3: R_2 }
-      lectura: { valor: V_xo, rotulo: "Tensión de salida" }
-      mide: { corriente: I_x, v3: V_xo }
-    opciones:
-      - texto: "Recorrer con el zumbador las regletas y ver que no hay corto entre ellas"
-        bien: true
-        porque: "Y después, el primer encendido con límite de corriente: un error se queda en aviso."
-      - texto: "Encender y tocar los integrados"
-        porque: "Primero en frío: así un error no termina en humo."
-      - texto: "Revisar el esquema otra vez"
-        porque: "El esquema suele estar bien; lo que falla es el montaje."
-    escalera:
-      - "Antes de conectar la alimentación, ¿qué instrumento se usa?"
-    solucion: "El zumbador por las regletas."
 
   - id: masas
     tipo: pregunta
@@ -239,7 +194,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [231, 233, 238, 256]
+    libro: [231, 233, 238, 252, 253, 254, 256, 236, 241, 244, 245, 249, 251, 255, 257]
     ideas:
       - { titulo: "La firma.", texto: "El esquema está bien y la realidad no lo cumple." }
       - { titulo: "La regleta.", texto: "Muchas están cortadas por la mitad: comprobarlo y poner el puente." }

@@ -1,4 +1,4 @@
-# Lección 1.2 de la sección 14.2 «Proyecto 1: Fuente de Alimentación Simétrica ±12 V» (cap15; etiqueta sec-15.2).
+# Lección de la sección 14.2 «Proyecto 1: Fuente de Alimentación Simétrica ±12 V» (cap15; etiqueta sec-15.2).
 # Formato: contenido/lecciones11/GUIA.md. La cadena de tensiones del libro: 15-0-15 V eficaces → pico 21,2 V, tras un
 # diodo 20,5 V (0,7 V); rizado ΔV = I/(f·C) = 0,5/(100 · 2200 µF) = 2,27 V; mínimo 18,2 V; el 7812 pide 14 V (2 V de
 # dropout): margen 4,2 V; disipación (20,5 − 12)·0,5 = 4,3 W. Con 12-0-12: 16,3 V y 14,0 V. La exploración y la
@@ -6,10 +6,16 @@
 # queda algo por encima del del libro (la recarga empieza antes del pico; el libro da el peor caso). El reto y las
 # demás gráficas siguen la aproximación del libro (descarga lineal en todo el periodo de 100 Hz), con la que diseña.
 # Los condensadores de 1000 y 4700 µF del mando son un ejemplo alrededor de los 2200 µF del libro; la red al −10 % es
-# la del bloque 40.
+# la del bloque 40. 1.2.1 (aprender haciendo): buscar el condensador de menos rizado, calcular el margen, leer el
+# valle, el reto con la red baja, bajar el transformador hasta perder el margen, tocar el error que destruye y ordenar
+# las comprobaciones, y el banco. Dos preguntas: el disipador y lineal o conmutada.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap15/sec-15.2
 
 libro:
+  37: "Condensadores de filtro"
+  43: "Los tres errores clásicos"
+  47: "Lo que hay que verificar"
   34: "El protoboard sirve para comprobar el circuito con una carga ligera"
   36: "cada mitad da un pico de 15 × √2 = 21,2 V"
   38: '"Δ" V = (I)/(f_("rizado") dot.op C)'
@@ -49,8 +55,8 @@ tarjetas:
   - id: explore-cadena
     tipo: explorar
     titulo: "La cadena de tensiones"
-    texto: "Los dos raíles antes de los reguladores y la salida del 7812. Cambie transformador y condensador."
-    nota: "La simulación recarga antes del pico: su valle queda algo por encima del que calcula el libro, el peor caso."
+    texto: "Los dos raíles antes de los reguladores y la salida del 7812. Busque el condensador que menos rizado deja."
+    nota: "La simulación recarga antes del pico: su valle queda algo por encima del peor caso del libro."
     libro: [36, 39]
     widget:
       tipo: circuito
@@ -70,13 +76,42 @@ tarjetas:
       mandos:
         - { valor: V_ef, lista: [12, 15], rotulo: "Cada mitad del secundario" }
         - { valor: C_f, lista: [0.001, 0.0022, 0.0047], rotulo: "Condensador" }
-    requiere: { mover: [V_ef, C_f] }
+    objetivo:
+      condiciones:
+        - { valor: dV, max: 1.2, rotulo: "Rizado: {{dV}}" }
+      logrado: "Con {{C_f}}, el rizado baja a {{dV}}: más capacidad, valle más alto. La disipación no cambia: {{P_r}}."
+      pistas:
+        - { texto: "Pruebe más capacidad." }
+    escalera:
+      - "El rizado es I/(f·C)."
+    solucion: "Con el condensador mayor, el rizado más pequeño."
 
   - id: prediga-margen
-    tipo: predecir
+    tipo: simular
     titulo: "El margen del 7812"
-    texto: "Con 15-0-15 V, 2200 µF y 0,5 A, el 7812 necesita 14 V. ¿Cuánto margen le queda?"
-    libro: [39, 40]
+    texto: "Con 15-0-15 V, 2200 µF y 0,5 A, el 7812 necesita 14 V. ¿Cuánto margen le queda en el valle?"
+    libro: [36, 39, 40]
+    fijar: { V_ef: 15, C_f: 0.0022, red: 0 }
+    simular:
+      objetivo: M_r
+      unidad: V
+      tol: 0.03
+      rotulo: "Margen sobre los 14 V"
+      errores:
+        - { expr: "M_p", texto: "Ha restado al pico: el margen se mide en el valle, tras el rizado." }
+        - { expr: "V_pk - V_o", texto: "Eso es lo que cae en el regulador en el pico: el margen es sobre los 14 V que necesita." }
+    exito: "4,2 V: 20,5 − 2,27 = 18,2 V en el valle, suficiente incluso con la red al −10 %."
+    escalera:
+      - "Valle = pico − rizado; margen = valle − 14 V."
+    solucion: "18,2 − 14 = 4,2 V."
+    comprobar:
+      - { M_r: 4.24, V_min: 18.24, V_pk: 20.51, dV: 2.27, M_p: 6.51, tol: 0.003 }
+
+  - id: formula-rizado
+    tipo: leer
+    titulo: "El valle, en la gráfica"
+    texto: "La corriente descarga el condensador entre dos picos, I/(f·C). Lea en la gráfica la tensión mínima a la entrada del 7812."
+    libro: [37, 38, 39]
     fijar: { V_ef: 15, C_f: 0.0022, red: 0 }
     widget:
       tipo: grafica
@@ -86,37 +121,19 @@ tarjetas:
         - { expr: "V_pk - dV*(t*f_r - floor(t*f_r))", color: naranja, rotulo: "entrada del 7812" }
         - { expr: "V_nec", color: tinta, rotulo: "lo que necesita", discontinua: true }
       lectura: { valor: M_r, rotulo: "Margen" }
-      ocultar: true
-    opciones:
-      - texto: "4,2 V"
-        bien: true
-        porque: "El mínimo entre pulsos es 18,2 V: 4,2 V por encima de los 14 V."
-      - texto: "6,5 V"
-        porque: "Esos son los 20,5 V del pico menos 14: falta restar el rizado de 2,27 V."
-      - texto: "8,5 V"
-        porque: "Eso es lo que cae en el regulador en el pico; el margen se mide en el valle."
+      mandos: []
+    leer:
+      objetivo: V_min
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión mínima entre pulsos"
+      errores:
+        - { expr: "V_pk", texto: "Ese es el pico: el valle está abajo, tras la descarga." }
+        - { expr: "V_nec", texto: "Eso es lo que necesita el 7812, la línea discontinua." }
+    exito: "18,2 V: el pico, 20,5 V, menos los 2,27 V de rizado."
     escalera:
-      - "El regulador sufre en el punto más bajo del rizado."
-    solucion: "18,2 − 14 = 4,2 V."
-    comprobar:
-      - { M_r: 4.24, V_min: 18.24, V_pk: 20.51, dV: 2.27, M_p: 6.51, tol: 0.003 }
-
-  - id: formula-rizado
-    tipo: formula
-    titulo: "El rizado"
-    texto: "La corriente descarga el condensador entre dos picos. Cambie el condensador."
-    libro: [38]
-    ec: 38
-    sustitucion: "{{I_o}} / ({{f_r}} · {{C_f}}) = {{dV}}"
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 24, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_pk - dV*(t*f_r - floor(t*f_r))", color: naranja, rotulo: "entrada del 7812" }
-      lectura: { valor: dV, rotulo: "Rizado" }
-      mandos:
-        - { valor: C_f, lista: [0.001, 0.0022, 0.0047], rotulo: "Condensador" }
+      - "Busque el punto más bajo de los dientes de sierra."
+    solucion: "Unos 18,2 V."
     comprobar:
       - { con: { C_f: 0.0022 }, dV: 2.27, tol: 0.003 }
 
@@ -171,7 +188,15 @@ tarjetas:
         - { valor: V_min, rotulo: "Valle: {{V_min}}" }
       mandos:
         - { valor: V_ef, lista: [12, 15], rotulo: "Cada mitad del secundario" }
-    requiere: { mover: [V_ef] }
+    objetivo:
+      condiciones:
+        - { valor: V_ef, max: 12, rotulo: "Transformador de 12-0-12" }
+      logrado: "Con 12-0-12 la disipación baja a {{P_r}}, pero el valle queda en {{V_min}}: justo los 14 V, sin margen para la red."
+      pistas:
+        - { texto: "Elija el transformador de 12-0-12." }
+    escalera:
+      - "El mando de debajo cambia el transformador."
+    solucion: "12-0-12: menos calor y cero margen."
     comprobar:
       - { con: { V_ef: 12 }, V_pk: 16.27, V_min: 14.0, tol: 0.003 }
 
@@ -202,43 +227,6 @@ tarjetas:
     solucion: "El disipador de unos 10 °C/W, la pieza mayor."
     comprobar:
       - { P_r: 4.26, tol: 0.003 }
-
-  - id: tres-errores
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los tres errores clásicos"
-    texto: "Una cada error de montaje con lo que provoca."
-    libro: [44, 45, 46]
-    emparejar:
-      - ["7912 montado como un 7812", "Se destruye al encender: otro patillaje"]
-      - ["Sin condensadores junto al regulador", "Oscila a decenas o cientos de kHz"]
-      - ["Sin diodo de salida a entrada", "Descarga inversa al apagar"]
-    exito: "El primero es el más frecuente de este proyecto."
-    pistas:
-      - { texto: "La oscilación no la ve el multímetro, sí el osciloscopio." }
-    escalera:
-      - "El 7912 no es el 7812 con los terminales invertidos."
-    solucion: "Patillaje: destruido; sin condensadores: oscila; sin diodo: descarga inversa."
-
-  - id: ordene-verificar
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Lo que hay que verificar"
-    texto: "Ponga en orden las comprobaciones de la fuente."
-    libro: [48]
-    ordenar:
-      - "Sin transformador: continuidad, cortos y polaridad de los electrolíticos."
-      - "Primer encendido con lámpara serie."
-      - "Entrada de cada regulador: unos 20,5 V con su rizado."
-      - "Salida en vacío y con carga."
-      - "Rizado de salida en AC con el osciloscopio."
-      - "Temperatura del regulador tras diez minutos con carga."
-    exito: "La entrada se mira antes que la salida: si falla allí, la salida no dirá por qué."
-    pistas:
-      - { texto: "Antes de enchufar nada, se mira en frío." }
-    escalera:
-      - "La temperatura es lo último: necesita diez minutos de carga."
-    solucion: "En frío, lámpara serie, entrada, salida, rizado y temperatura."
 
   - id: lineal-conmutada
     tipo: pregunta
@@ -287,7 +275,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [39, 40, 41, 44]
+    libro: [39, 40, 41, 44, 43, 45, 46, 47]
     ideas:
       - { titulo: "La cadena.", texto: "21,2 V de pico, 20,5 tras el diodo, 2,27 V de rizado y 18,2 V de mínimo." }
       - { titulo: "El margen.", texto: "4,2 V sobre los 14 V del 7812 aguantan la red al −10 %." }
