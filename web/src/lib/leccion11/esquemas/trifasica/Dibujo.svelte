@@ -4,6 +4,8 @@
   // bus on the right, with the neutral (a switch) back to the bottom; in delta, R₁ from L1 to L2, R₂ from L2 to L3 and
   // R₃ from L3 to L1, upright between the rows.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
   import Interruptor from '../kit/Interruptor.svelte';
@@ -71,4 +73,17 @@
     {/if}
     <path class="hilo" d="M400 245 V260 H140" data-red="0"></path>
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Rama x={200} y={40} medidor="vm1" />
+  <Rama x={200} y={110} medidor="vm2" />
+  <Rama x={200} y={180} medidor="vm3" />
+  {#if delta}
+    <Rama x={280} y={58} medidor="vj1" />
+    <Rama x={320} y={128} medidor="vj2" />
+    <Rama x={360} y={162} medidor="vj3" />
+  {:else}
+    <Punto x={400} y={150} red="s" />
+    <Rama x={400} y={252} medidor="vmn" />
+  {/if}
+  <Punto x={90} y={260} red="0" />
 </Lienzo>

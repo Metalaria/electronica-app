@@ -13,6 +13,7 @@
 //   node scripts/lecciones11.mjs --solo cap01/sec-1.4   (checks and writes only that lesson; the index is kept)
 //   node scripts/lecciones11.mjs --comprobar        (checks everything, writes nothing)
 //   node scripts/lecciones11.mjs --comprobar --mezcla   (and lists every lesson under half «doing» cards: GUIA §13.6)
+//   node scripts/lecciones11.mjs --convertir cap05/sec-5.3   (a draft towards «aprender haciendo»: GUIA §13.11)
 // EPA_LECCIONES11=<folder> reads the sources from another folder (tests); EPA_LIBRO relocates the book (libro-node.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -91,6 +92,71 @@ function escribir(f, texto) {
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, texto);
   return true;
+}
+
+// 1.2.1 (motor121): --convertir <parte>/<id> writes a DRAFT of that lesson moved towards «aprender haciendo»
+// (lib/leccion12/hacer/convertir.ts, GUIA §13.11) to EPA_CONVERTIR (or --salida <carpeta>; by default
+// <tmp>/epa-convertir)/<parte>/<id>.yaml — never to the source — and says whether the draft generates.
+if (args.includes('--convertir')) {
+  const id = args[args.indexOf('--convertir') + 1] ?? '';
+  const x = fuentes().find((f) => `${f.parte}/${f.label}` === id);
+  if (!x) {
+    console.error(`error: no hay fuente para ${id} en ${FUENTES}`);
+    process.exit(1);
+  }
+  const { parseDocument } = await import('yaml');
+  const { convertirLeccion } = await import(src('lib/leccion12/hacer/convertir.ts'));
+  const textoFuente = fs.readFileSync(x.fichero, 'utf8');
+  const datos = parse(textoFuente, { strict: true, uniqueKeys: true });
+  const r = generarLeccion(datos, contexto, path.relative(path.join(web, '..'), x.fichero));
+  if (!r.leccion) {
+    for (const e of r.errores) console.error(`error: ${e}`);
+    console.error('lecciones11: la lección no se genera; arréglela antes de convertirla');
+    process.exit(1);
+  }
+  const c = convertirLeccion(datos, r.leccion);
+  // the source document with only the changed cards replaced (the others keep their layout and comments)
+  const doc = parseDocument(textoFuente);
+  const corto = (n) => {
+    // (short maps of scalars in flow style, as the authors write them: { valor: V, min: 1 })
+    if (n && n.items && !n.flow) {
+      for (const it of n.items) corto(it.value ?? it);
+      const escalares = n.items.every((it) => it.value && !it.value.items && String(it.value.value ?? '').length < 60) || n.items.every((it) => it.value?.flow || (it.value && !it.value.items));
+      if (escalares && n.items.length <= 6 && String(n).length < 110) n.flow = true;
+    }
+  };
+  c.borrador.tarjetas.forEach((t, k) => {
+    if (JSON.stringify(t) === JSON.stringify(datos.tarjetas[k])) return;
+    const nodo = doc.createNode(t);
+    corto(nodo);
+    for (const it of nodo.items) corto(it.value);
+    nodo.flow = false;
+    doc.setIn(['tarjetas', k], nodo);
+  });
+  const nota = [
+    ` BORRADOR de --convertir (motor121, GUIA §13.11): NO es la fuente. Revise cada «REVISAR» y cópielo a ${path.relative(path.join(web, '..'), x.fichero)}.`,
+    ...(c.cambios.length ? [' Convertidas:', ...c.cambios.map((m) => `   - ${m}`)] : [' Nada convertido automáticamente.']),
+    ...(c.pendientes.length ? [' Quedan (con un tipo sugerido):', ...c.pendientes.map((m) => `   - ${m}`)] : []),
+  ].join('\n');
+  doc.commentBefore = doc.commentBefore ? `${doc.commentBefore}\n\n${nota}` : nota;
+  const salida = args.includes('--salida') ? path.resolve(args[args.indexOf('--salida') + 1]) : process.env.EPA_CONVERTIR ? path.resolve(process.env.EPA_CONVERTIR) : path.join((await import('node:os')).tmpdir(), 'epa-convertir');
+  const f = path.join(salida, x.parte, `${x.label}.yaml`);
+  const texto = doc.toString({ lineWidth: 0 });
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, texto);
+  console.log(`lecciones11: borrador en ${f}`);
+  for (const m of c.cambios) console.log(`  convertida: ${m}`);
+  for (const m of c.pendientes) console.log(`  queda: ${m}`);
+  // the draft through the generator (no ngspice): what is left to fix besides the REVISAR texts
+  const rb = generarLeccion(parse(texto), contexto, path.relative(path.join(web, '..'), f));
+  const { mezclaDe } = await import(src('lib/leccion12/hacer/generar-hacer.ts'));
+  const antes = mezclaDe(r.leccion.tarjetas);
+  console.log(`  mezcla: ${antes.hacer} de ${antes.total} tarjetas haciendo antes${rb.leccion ? `; ${mezclaDe(rb.leccion.tarjetas).hacer} de ${mezclaDe(rb.leccion.tarjetas).total} en el borrador` : ''}`);
+  if (rb.errores.length) {
+    console.log(`  el borrador aún no se genera (${rb.errores.length} error(es)):`);
+    for (const e of rb.errores.slice(0, 20)) console.log(`    ${e}`);
+  } else console.log('  el borrador se genera (sin comprobar con el simulador); falta revisar los textos «REVISAR»');
+  process.exit(0);
 }
 
 const errores = [...consolas.errores];

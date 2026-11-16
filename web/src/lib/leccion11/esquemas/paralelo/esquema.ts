@@ -11,6 +11,12 @@ const d: DefinicionEsquema = {
     r1: { obligatoria: true, descripcion: 'resistencia de la primera rama (Ω)', color: 'azul' },
     r2: { obligatoria: true, descripcion: 'resistencia de la segunda rama (Ω)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { fte: 'Arriba, el nodo de la fuente', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente', v1: 'Rama de R₁', v2: 'Rama de R₂' },
+    zonas: { fuente: 'Fuente', r1: 'Resistencia de la izquierda', r2: 'Resistencia de la derecha' },
+  }),
   observables: {
     total: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente total de la fuente' },
     i1: { medida: 'i(v1)', analisis: 'op', unidad: 'A', descripcion: 'corriente por la primera rama' },

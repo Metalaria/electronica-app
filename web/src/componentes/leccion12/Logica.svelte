@@ -10,13 +10,16 @@
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import { textoPlano } from '../../lib/leccion11/texto';
   import type { Tarjeta } from '../../lib/leccion11/tipos';
-  import { circuitoSecuencial, cronograma, entradasTabla, iniciar, leer, NOMBRE_PIEZA, poner, pulso, relojDe, sondear, tablaVerdad, type EstadoLogico, type Nivel, type PiezaLogica } from '../../lib/leccion12/digital/logica';
+  import { circuitoSecuencial, conMemoria, cronograma, entradasTabla, ficha, iniciar, leer, NOMBRE_PIEZA, poner, pulso, relojDe, sondear, tablaVerdad, type EstadoLogico, type Nivel, type PiezaLogica } from '../../lib/leccion12/digital/logica';
   import { circuitoEnUso, falloEnUso } from '../../lib/leccion12/digital/motor-digital';
   import { planoDe, type PiezaPlano } from '../../lib/leccion12/digital/plano';
   import type { ActividadDigital, EstadoActividadDigital, EstadoWidget12, WidgetLogica } from '../../lib/leccion12/digital/tipos';
   import TextoSvg from '../leccion11/TextoSvg.svelte';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
   import Cronograma from './Cronograma.svelte';
+  // (motor121: an «elegir» card on a logic circuit — its pieces, LEDs and switches are the zones)
+  import ElegirEsquema from './ElegirEsquema.svelte';
+  import { tocarZona } from '../../lib/leccion12/hacer/motor-hacer';
   import TablaVerdad from './TablaVerdad.svelte';
 
   let {
@@ -36,6 +39,15 @@
   } = $props();
 
   const valor = (id: string) => id;
+  const elegir = $derived(t.actividad?.tipo === 'elegir' && e.actividad?.tipo === 'elegir' ? { a: t.actividad, ea: e.actividad } : null);
+  function elegirZona(id: string) {
+    if (!elegir || e.resuelta || !elegir.a.zonas.some((z) => z.id === id)) return;
+    cambiar({ actividad: tocarZona(elegir.a, elegir.ea, id), comprobado: false, bien: null });
+  }
+  const estadoZona = (id: string) => {
+    if (!elegir || !elegir.a.zonas.some((z) => z.id === id)) return undefined;
+    return e.resuelta && elegir.a.bien.includes(id) ? 'bien' : elegir.ea.descartadas.includes(id) ? 'mal' : elegir.ea.elegidas.includes(id) ? 'elegida' : 'libre';
+  };
   const a = $derived(t.actividad as ActividadDigital | undefined);
   const ea = $derived(e.actividad as EstadoActividadDigital | undefined);
   const averia = $derived(a?.tipo === 'averia-logica' && ea?.tipo === 'averia-logica' ? { a, ea } : null);
@@ -44,12 +56,14 @@
   const plano = $derived(planoDe(c));
   const w12 = $derived<EstadoWidget12>(e.widget12 ?? { zona: null, niveles: Object.fromEntries(w.circuito.entradas.map((x) => [x.id, x.valor])), logica: null, pulsos: 0, tramo: 0 });
   const secuencial = $derived(circuitoSecuencial(c));
+  // (motor121: a loop of gates — a cross-coupled NAND latch — keeps its state between switch changes too)
+  const memoria = $derived(conMemoria(c));
   const reloj = $derived(relojDe(c));
   const cron = $derived(w.cronograma ? cronograma(c, w.cronograma.ciclos, w.cronograma.estimulo, fallo) : null);
   const tramo = $derived(Math.min(w12.tramo, (cron?.tramos.length ?? 1) - 1));
   const estado = $derived.by((): EstadoLogico => {
     if (cron) return { senales: cron.tramos[tramo] ?? {}, internos: {}, relojes: {}, estable: cron.estable };
-    if (secuencial && w12.logica) return w12.logica;
+    if (memoria && w12.logica) return w12.logica;
     return iniciar(c, fallo, w12.niveles);
   });
   // a drawing card hides the signal it asks for until it is answered
@@ -57,8 +71,18 @@
   const neutros = $derived(oculto || !!averia);
   const bloqueadas = $derived((oculto && t.tipo !== 'tabla') || !!cron);
   const nivel = (s: string): Nivel => leer(estado, s);
+  // (motor121: a line let go is «Z», two drivers fighting «X»: written as such, the wire dashed)
+  const simbolo = (s: string): string => String(ficha(estado, s));
   const verNivel = (s: string) => !neutros && s !== senalOculta;
-  const claseHilo = (s: string) => (verNivel(s) ? (nivel(s) ? 'uno' : 'cero') : 'neutro');
+  const claseHilo = (s: string) => {
+    if (!verNivel(s)) return 'neutro';
+    const x = ficha(estado, s);
+    return x === 'Z' ? 'flota' : x === 'X' ? 'conflicto' : x ? 'uno' : 'cero';
+  };
+  const decirLed = (s: string) => {
+    const x = ficha(estado, s);
+    return x === 'Z' ? 'sin nivel (Z, la línea flota)' : x === 'X' ? 'en conflicto (X, dos salidas se pelean)' : x ? 'encendido (1)' : 'apagado (0)';
+  };
 
   function guardar(cambios: Partial<EstadoWidget12>, movido?: string) {
     const c2: Partial<EstadoTarjeta> = { widget12: { ...w12, ...cambios } };
@@ -69,7 +93,7 @@
     if (bloqueadas) return;
     const v: Nivel = w12.niveles[id] === 1 ? 0 : 1;
     const niveles = { ...w12.niveles, [id]: v };
-    guardar({ niveles, logica: secuencial ? poner(c, estado, { [id]: v }, fallo) : null }, id);
+    guardar({ niveles, logica: memoria ? poner(c, estado, { [id]: v }, fallo) : null }, id);
   }
   function darPulso() {
     if (bloqueadas || !reloj) return;
@@ -125,16 +149,19 @@
       }
       case 'not':
       case 'buf':
+      case 'od':
+      case 'tri':
         return `M${x0},${y0 + 4}L${x1},${ym}L${x0},${y1 - 4}Z`;
       default:
         return `M${p.x + 6},${p.y}H${p.x + p.w - 6}V${p.y + p.h}H${p.x + 6}Z`;
     }
   }
-  const esPuerta = (p: PiezaPlano) => ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buf'].includes(p.tipo);
+  const esPuerta = (p: PiezaPlano) => ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buf', 'od', 'tri'].includes(p.tipo);
   const pieza = (id: string): PiezaLogica => c.piezas.find((q) => q.id === id)!;
   const titulo = (p: PiezaPlano) => {
     const q = pieza(p.id);
     if (q.rotulo) return textoPlano(q.rotulo);
+    if (p.tipo === 'bus') return q.pullup === null ? 'LÍNEA' : q.pullup === 0 ? 'LÍNEA ↓R' : 'LÍNEA ↑R';
     return { d: 'D', jk: 'JK', t: 'T', latch: 'L', contador: 'CTR', mux: 'MUX', decodificador: 'DEC' }[p.tipo as string] ?? '';
   };
   const etiquetaPuerta = (p: PiezaPlano) => (pieza(p.id).rotulo ? textoPlano(pieza(p.id).rotulo) : '');
@@ -143,7 +170,7 @@
   const descripcion = $derived(
     `Circuito lógico. ${c.piezas.map((p) => `${p.rotulo ? textoPlano(p.rotulo) + ', ' : ''}${NOMBRE_PIEZA[p.tipo]}${p.rotulo ? '' : ` ${p.id}`}, con ${p.entradas.join(' y ')}`).join('; ')}. ${c.salidas.map((s) => `LED ${textoPlano(s.rotulo)} conectado a ${s.de}`).join('; ')}.`,
   );
-  const leds = $derived(c.salidas.map((s) => `${textoPlano(s.rotulo)} ${oculto || s.de === senalOculta ? 'oculto' : nivel(s.de) ? 'encendido (1)' : 'apagado (0)'}`).join(', '));
+  const leds = $derived(c.salidas.map((s) => `${textoPlano(s.rotulo)} ${oculto || s.de === senalOculta ? 'oculto' : decirLed(s.de)}`).join(', '));
   const filasCron = $derived(
     w.cronograma && cron
       ? w.cronograma.senales.map((s) => {
@@ -187,15 +214,19 @@
         {/each}
         <!-- pieces -->
         {#each plano.piezas as p (p.id)}
-          <g class="d12-pieza" data-pieza={p.id}>
+          {@const ez = estadoZona(p.id)}
+          <g class="d12-pieza" class:zona={!!ez} data-pieza={p.id} data-diana={ez ? p.id : undefined} data-diana-estado={ez} onclick={ez ? () => elegirZona(p.id) : undefined} role={ez ? 'presentation' : undefined}>
             {#each p.pinesE as pe, k (k)}<line class="d12-patilla" x1={pe.x} x2={p.x + (esPuerta(p) ? 10 : 6)} y1={pe.y} y2={pe.y} />{/each}
             <path class="d12-cuerpo" d={cuerpo(p)} />
             {#if p.tipo === 'xor' || p.tipo === 'xnor'}<path class="d12-cuerpo-linea" d={`M${p.x + 8},${p.y + 2}Q${p.x + 17},${p.y + p.h / 2} ${p.x + 8},${p.y + p.h - 2}`} />{/if}
             {#if INVERTIDAS.has(p.tipo)}<circle class="d12-burbuja" cx={p.x + p.w - 8} cy={p.y + p.h / 2} r="4" />{/if}
+            <!-- (motor121: the open-drain mark — a diamond over a bar — and the tri-state's enable pin) -->
+            {#if p.tipo === 'od'}<path class="d12-cuerpo-linea" d={`M${p.x + 20},${p.y + p.h / 2 - 5}l4,4l-4,4l-4,-4Z M${p.x + 16},${p.y + p.h / 2 + 5}h8`} />{/if}
+            {#if p.tipo === 'tri' && p.pinesE[1]}<text class="d12-pin" x={p.x + 12} y={p.pinesE[1].y + 4}>EN</text>{/if}
             {#each p.pinesS as ps (ps.senal)}
               <line class="d12-patilla" x1={esPuerta(p) ? p.x + p.w - (INVERTIDAS.has(p.tipo) ? 4 : 4) : p.x + p.w - 6} x2={ps.x} y1={ps.y} y2={ps.y} />
               {#if ps.nombre}<text class="d12-pin" x={p.x + p.w - 9} y={ps.y + 4} text-anchor="end">{ps.nombre}</text>{/if}
-              {#if verNivel(ps.senal)}<text class="d12-nivel" x={ps.x + 3} y={ps.y - 4}>{nivel(ps.senal)}</text>{/if}
+              {#if verNivel(ps.senal)}<text class="d12-nivel" x={ps.x + 3} y={ps.y - 4}>{simbolo(ps.senal)}</text>{/if}
             {/each}
             {#if esPuerta(p)}
               {#if etiquetaPuerta(p)}<text class="d12-pin" x={p.x + p.w / 2 - 4} y={p.y - 3} text-anchor="middle">{etiquetaPuerta(p)}</text>{/if}
@@ -215,10 +246,14 @@
         {#each plano.salidas as s (s.id)}
           {@const sal = c.salidas.find((q) => q.id === s.id)!}
           {@const escondido = oculto || sal.de === senalOculta}
-          <g class="d12-led" class:encendido={!escondido && nivel(sal.de) === 1} class:escondido data-led={s.id} data-encendido={escondido ? 'oculto' : nivel(sal.de) ? 'si' : 'no'}>
+          {@const fx = ficha(estado, sal.de)}
+          {@const ezl = estadoZona(s.id)}
+          <g onclick={ezl ? () => elegirZona(s.id) : undefined} role={ezl ? 'presentation' : undefined} class:zona={!!ezl} data-diana={ezl ? s.id : undefined} data-diana-estado={ezl}>
+          <g class="d12-led" class:encendido={!escondido && fx === 1} class:conflicto={!escondido && fx === 'X'} class:escondido data-led={s.id} data-encendido={escondido ? 'oculto' : fx === 'Z' ? 'z' : fx === 'X' ? 'x' : fx ? 'si' : 'no'}>
             <circle cx={s.x} cy={s.y} r="10" />
-            <text class="d12-led-texto" x={s.x} y={s.y + 4} text-anchor="middle">{escondido ? '?' : nivel(sal.de)}</text>
+            <text class="d12-led-texto" x={s.x} y={s.y + 4} text-anchor="middle">{escondido ? '?' : fx}</text>
             <text x={s.x} y={s.y - 14} text-anchor="middle"><TextoSvg t={sal.rotulo} /></text>
+          </g>
           </g>
         {/each}
       </svg>
@@ -236,11 +271,14 @@
             >
           {/if}
         {/each}
-        {#if secuencial && (w12.pulsos || w12.logica)}<button type="button" class="a12-boton" onclick={reiniciar} data-reiniciar>Reiniciar</button>{/if}
+        {#if memoria && (w12.pulsos || w12.logica)}<button type="button" class="a12-boton" onclick={reiniciar} data-reiniciar>Reiniciar</button>{/if}
       </div>
     {/if}
   {/if}
 
+  {#if elegir}
+    <ElegirEsquema a={elegir.a} ea={elegir.ea} resuelta={e.resuelta} tocar={elegirZona} />
+  {/if}
   {#if cron && w.cronograma}
     <Cronograma filas={filasCron} {tramo} {prefijo} mover={moverTramo} etiquetas={w.cronograma.etiquetas} />
   {/if}

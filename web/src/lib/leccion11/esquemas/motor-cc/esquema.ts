@@ -27,6 +27,12 @@ const d: DefinicionEsquema = {
     rampa: { descripcion: 'en el transitorio, la tensión sube en rampa de 0 a V en este tiempo (s; sin ella, un escalón en t = 0)' },
     w0: { descripcion: 'velocidad inicial (rad/s; sin ella, parado): el motor ya gira en vacío en t = 0' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { in: 'Bornes del motor', e: 'Fuerza contraelectromotriz', w: 'Velocidad: el nodo mecánico', '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama del inducido' },
+    zonas: { fuente: 'Fuente', r: 'Resistencia del inducido', l: 'Inductancia del inducido', j: 'Inercia', ...(c.tiene('b') ? { b: 'Rozamiento' } : {}), ...(c.tiene('carga') ? { carga: 'Par de carga' } : {}) },
+  }),
   observables: {
     ia: { medida: 'i(vmi)', analisis: 'op', unidad: 'A', descripcion: 'corriente del inducido' },
     omega: { medida: 'v(w)', analisis: 'op', unidad: 'rad/s', descripcion: 'velocidad (la tensión del nodo ω)' },

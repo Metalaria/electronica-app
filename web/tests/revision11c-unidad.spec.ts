@@ -13,6 +13,7 @@ import { evaluarPaso, type PasoLab } from '../src/componentes/instrumentos/pract
 import { LABORATORIOS, cruce, cruceS } from '../src/componentes/instrumentos/practicas/laboratorios';
 import type { Banco } from '../src/componentes/instrumentos/banco.svelte';
 import { rotuloAc } from '../src/componentes/editor/catalogo.ts';
+import { leccionCongelada } from './lecciones11-congeladas';
 
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const libro = path.join(web, 'public', 'libro');
@@ -155,7 +156,8 @@ test('editor: una fuente de alterna con fase se rotula con su valor y su fase', 
 });
 
 test('lección: una tarjeta respondida en otra visita vuelve respondida, sin informar de nada otra vez', () => {
-  const l = JSON.parse(fs.readFileSync(path.join(libro, 'lecciones11', 'cap01', 'sec-1.4.json'), 'utf8')) as Leccion11;
+  // (1.2.1: the frozen 1.2.0 copy of the reference lesson, lecciones11-congeladas.ts)
+  const l = leccionCongelada('cap01/sec-1.4');
   const t = l.tarjetas.find((x) => x.id === 'prediga-salida') as Tarjeta;
   const { estado, aviso } = estadoRespondido(t);
   const k = t.opciones!.findIndex((o) => o.bien);

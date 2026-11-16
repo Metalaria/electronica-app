@@ -3,6 +3,8 @@
   // and R_ref up to the rail; Q2 on the right with the load up to the rail; the two bases joined; V_CC on the right.
   // The moving current is the widget's «corriente» along the reference branch.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -22,9 +24,9 @@
   <path class="hilo" d="M108 96 V110 M108 100 H150 V150 M150 150 H226 M108 190 V240 M272 190 V240"></path>
   <circle class="nodo" cx="108" cy="100" r="4.5"></circle>
   <circle class="nodo" cx="150" cy="150" r="4.5"></circle>
-  <g transform="translate(240 0) scale(-1 1)"><Npn x={120} y={150} /></g>
+  <g data-pieza="q1"><g transform="translate(240 0) scale(-1 1)"><Npn x={120} y={150} /></g></g>
   <Et x={70} y={154} t="Q₁" peq />
-  <Npn x={260} y={150} />
+  <Npn x={260} y={150} pieza="q2" />
   <Et x={292} y={170} t="Q₂" peq />
   <Et x={292} y={188} t={`β ${c.val('beta')}`} peq />
   {#if c.tiene('dvbe')}
@@ -36,4 +38,11 @@
   <Et x={286} y={78} t={c.val('carga')} color="naranja" peq />
   <Pila x={340} y1={240} y2={20} pieza="vcc" />
   <Et x={348} y={176} t={c.val('vcc')} peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={190} y={20} red="vcc" />
+  <Punto x={128} y={100} red="c1" />
+  <Punto x={272} y={116} red="c2" />
+  <Punto x={190} y={240} red="0" />
+  <Rama x={108} y={30} medidor="vrm" />
+  <Rama x={272} y={30} medidor="vom" />
 </Lienzo>

@@ -3,15 +3,20 @@
 // not make (one main landmark, the skip link first, the page title, the language, a level-1 heading).
 import { expect, type Page } from '@playwright/test';
 import { createRequire } from 'node:module';
+import { servirCongeladas } from './lecciones11-congeladas';
 
 export const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
 export type Tema = 'claro' | 'sepia' | 'oscuro';
 export const TEMAS: Tema[] = (process.env.ACC_TEMAS?.split(',') as Tema[] | undefined) ?? ['claro', 'sepia', 'oscuro'];
 
-/** A fresh profile (once per tab) in the given theme; GitHub answers 404 so nothing leaves the machine. */
+/**
+ * A fresh profile (once per tab) in the given theme; GitHub answers 404 so nothing leaves the machine. The two
+ * reference lessons are the frozen 1.2.0 copies (lecciones11-congeladas.ts), whatever the build publishes.
+ */
 export async function limpio(page: Page, tema: Tema = 'claro', extra: Record<string, unknown> = {}): Promise<void> {
   await page.context().route('https://api.github.com/**', (r) => r.fulfill({ status: 404, body: '{}' }));
+  await servirCongeladas(page.context());
   await page.addInitScript(
     ([t, e]) => {
       if (!sessionStorage.getItem('preparado')) {

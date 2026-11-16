@@ -20,6 +20,7 @@ import { anchoEtiqueta, geometriaGrafica, TAM_MARCA, type EtiquetaEje } from '..
 import type { Leccion11, Tarjeta } from '../src/lib/leccion11/tipos.ts';
 // @ts-expect-error (a plain .mjs module of the scripts: no types)
 import { cargarEsquemas11 } from '../scripts/esquemas11.mjs';
+import { CONGELADAS, esCongelada, rutaFuenteCongelada, rutaLeccionCongelada } from './lecciones11-congeladas';
 
 // the circuit schematics, registered as the generator script does (one folder each: lib/leccion11/esquemas/); before
 // any describe block, since some generate a lesson while they are declared
@@ -41,7 +42,10 @@ const contexto: ContextoLibro = {
     return partes.get(p)!;
   },
 };
-const fuente = (id: string) => parse(fs.readFileSync(path.join(FUENTES, `${id}.yaml`), 'utf8')) as Record<string, unknown>;
+// (1.2.1, request of autor121-fund) the two reference lessons are their frozen 1.2.0 copies (lecciones11-congeladas.ts):
+// the published ones can be rewritten without touching these tests
+const rutaFuente = (id: string) => (esCongelada(id) ? rutaFuenteCongelada(id) : path.join(FUENTES, `${id}.yaml`));
+const fuente = (id: string) => parse(fs.readFileSync(rutaFuente(id), 'utf8')) as Record<string, unknown>;
 const generar = (x: unknown) => generarLeccion(x, contexto, 'prueba');
 const copia = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 type Fuente = { tarjetas: Record<string, unknown>[]; libro: Record<string, string>; modelo: { valores: Record<string, Record<string, unknown>>; calculos: Record<string, Record<string, unknown>> } };
@@ -168,10 +172,13 @@ test.describe('generador: las lecciones de referencia', () => {
     });
   }
 
-  test('la salida publicada está al día con las fuentes', () => {
-    for (const id of ['cap01/sec-1.4', 'cap00/sec-0.3']) {
-      const publicado = fs.readFileSync(path.join(libro, 'lecciones11', `${id}.json`), 'utf8');
-      expect(publicado).toBe(`${JSON.stringify(generar(fuente(id)).leccion)}\n`);
+  // (1.2.1) the frozen copies: each JSON is what the generator gives from its YAML today (the browser specs serve the
+  // JSON); after an engine change that alters the output, EPA_CONGELAR=1 on this test rewrites the JSON
+  test('las copias congeladas están al día con sus fuentes', () => {
+    for (const id of CONGELADAS) {
+      const hoy = `${JSON.stringify(generar(fuente(id)).leccion)}\n`;
+      if (process.env.EPA_CONGELAR) fs.writeFileSync(rutaLeccionCongelada(id), hoy);
+      expect(fs.readFileSync(rutaLeccionCongelada(id), 'utf8'), `${id}: EPA_CONGELAR=1 la escribe de nuevo`).toBe(hoy);
     }
   });
 });
@@ -383,7 +390,7 @@ test.describe('el script del generador', () => {
     // a source removed: its output and its index entry go
     const fuentes = fs.mkdtempSync(path.join(os.tmpdir(), 'epa-l11f-'));
     fs.mkdirSync(path.join(fuentes, 'cap01'));
-    fs.copyFileSync(path.join(FUENTES, 'cap01', 'sec-1.4.yaml'), path.join(fuentes, 'cap01', 'sec-1.4.yaml'));
+    fs.copyFileSync(rutaFuente('cap01/sec-1.4'), path.join(fuentes, 'cap01', 'sec-1.4.yaml'));
     expect(correr({ EPA_LIBRO: d, EPA_LECCIONES11: fuentes }).status).toBe(0);
     const tres = arbol(path.join(d, 'lecciones11'));
     expect(Object.keys(tres).sort()).toEqual(['cap01/sec-1.4.json', 'indice.json']);
@@ -407,7 +414,7 @@ test.describe('el script del generador', () => {
     expect(JSON.parse(fs.readFileSync(path.join(d, 'conceptos.json'), 'utf8')).partes.cap01).toEqual(['sec-1.4']);
 
     // an error: exit 1 and nothing written
-    fs.writeFileSync(path.join(fuentes, 'cap01', 'sec-1.4.yaml'), fs.readFileSync(path.join(FUENTES, 'cap01', 'sec-1.4.yaml'), 'utf8').replace('texto: "4 V"', 'texto: "7 V"'));
+    fs.writeFileSync(path.join(fuentes, 'cap01', 'sec-1.4.yaml'), fs.readFileSync(rutaFuente('cap01/sec-1.4'), 'utf8').replace('texto: "4 V"', 'texto: "7 V"'));
     const mal = correr({ EPA_LIBRO: d, EPA_LECCIONES11: fuentes });
     expect(mal.status).toBe(1);
     expect(mal.stderr).toContain('el número 7 no está');
@@ -426,7 +433,7 @@ test.describe('el script del generador', () => {
     const fuentes = fs.mkdtempSync(path.join(os.tmpdir(), 'epa-l11f-'));
     fs.mkdirSync(path.join(fuentes, 'cap01'));
     // the «salida» reading claims the voltage across R₁ (the model says 8 V where the circuit gives 4 V)
-    const texto = fs.readFileSync(path.join(FUENTES, 'cap01', 'sec-1.4.yaml'), 'utf8').replace('mide: { salida: V_out, corriente: I }', 'mide: { salida: V_1, corriente: I }');
+    const texto = fs.readFileSync(rutaFuente('cap01/sec-1.4'), 'utf8').replace('mide: { salida: V_out, corriente: I }', 'mide: { salida: V_1, corriente: I }');
     fs.writeFileSync(path.join(fuentes, 'cap01', 'sec-1.4.yaml'), texto);
     const r = correr({ EPA_LIBRO: d, EPA_LECCIONES11: fuentes }, ['--comprobar']);
     expect(r.status).toBe(1);
@@ -595,7 +602,8 @@ test.describe('lecciones de consola (consolas11.mjs)', () => {
     };
     // a quote the console block does not have, a number the console data does not give, a section not in the manifest
     expect(rota((f) => (f.libro['snes#38'] = 'un cristal de 20 MHz'))).toMatch(/el bloque no contiene/);
-    expect(rota((f) => ((tarjetaFuente(f, 'reloj-sonido').opciones as Record<string, unknown>[])[1]!.texto = '19,6 MHz'))).toMatch(/el número 19,6 no está/);
+    // (motor121: on a card's text, whatever type the authors give it in 1.2.1 — «reloj-sonido» lost its options)
+    expect(rota((f) => (tarjetaFuente(f, 'reloj-sonido').texto = 'Un reloj de 19,6 MHz.'))).toMatch(/el número 19,6 no está/);
     expect(rota((f) => ((f as unknown as { leccion: string }).leccion = 'consola-snes/snes-nada'))).toMatch(/no existe la sección/);
   });
 });

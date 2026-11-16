@@ -22,6 +22,12 @@ const d: DefinicionEsquema = {
     re: { descripcion: 'resistencia de equilibrado, la misma en paralelo con cada condensador (Ω)', color: 'verde' },
     interruptor: { interruptor: true, descripcion: 'conecta las dos resistencias de equilibrado (sin él, conectadas si hay «re»)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { a: 'Arriba, el positivo', m: 'Punto medio', '0': 'Abajo, masa' },
+    ramas: { vmed: 'Rama de la fuente', vf1: 'Fuga del de arriba', vf2: 'Fuga del de abajo', ...(c.tiene('re') ? { vme: 'Rama de las de equilibrado' } : {}) },
+    zonas: { fuente: 'Fuente', c1: 'Condensador de arriba', c2: 'Condensador de abajo', f1: 'Fuga del de arriba', f2: 'Fuga del de abajo', ...(c.tiene('re') ? { re: 'Resistencias de equilibrado' } : {}) },
+  }),
   observables: {
     v1: { medida: 'v(a)-v(m)', analisis: 'op', unidad: 'V', descripcion: 'tensión del condensador de arriba' },
     v2: { medida: 'v(m)', analisis: 'op', unidad: 'V', descripcion: 'tensión del condensador de abajo' },

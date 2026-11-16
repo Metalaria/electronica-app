@@ -11,6 +11,12 @@ const d: DefinicionEsquema = {
     fuente: { obligatoria: true, descripcion: 'tensión de la fuente (V)' },
     r: { obligatoria: true, descripcion: 'resistencia (Ω)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { fte: 'Arriba, de la fuente a la resistencia', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama del circuito' },
+    zonas: { fuente: 'Fuente', r: 'Resistencia' },
+  }),
   observables: {
     corriente: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente por la resistencia' },
     tension: { medida: 'v(a)', analisis: 'op', unidad: 'V', descripcion: 'tensión en la resistencia' },

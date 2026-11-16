@@ -52,6 +52,7 @@
     manipular = true,
     alMover,
     dianas,
+    externa = null,
     children,
   }: {
     leccion: Leccion11;
@@ -64,6 +65,8 @@
     alMover: (valor: string, x: number) => void;
     /** 1.2.1: what the reader taps on the drawing (the instrument's probes, an «elegir» card's zones). */
     dianas?: { lista: Diana[]; tocar: (id: string) => void };
+    /** 1.2.1 (motor121): the operating point of a non-linear circuit from the app's ngspice (its instrument's run). */
+    externa?: import('../../lib/leccion12/cc').SolucionCC | null;
     children: Snippet;
   } = $props();
 
@@ -109,7 +112,8 @@
   const alterna = $derived(alternaDibujo || lineas.some((l) => /\bsin\s*\(/i.test(l)));
   /** A switching transient (a capacitor's or a coil's initial condition, a pulse): its DC point is not what is shown. */
   const conmutada = $derived(lineas.some((l) => /\b(pulse|pwl)\s*\(|\bic\s*=/i.test(l)));
-  const solucion = $derived(!oculto && !alterna && !conmutada ? resolverCC(lineas) : null);
+  // (motor121: a non-linear circuit is coloured too once the simulator has solved it for the instrument)
+  const solucion = $derived(!oculto && !alterna && !conmutada ? (resolverCC(lineas) ?? externa) : null);
   const exacto = $derived(!!solucion);
   const tensiones = $derived.by((): Record<string, number> => {
     if (oculto || alterna || conmutada || !lineas.length) return {};
@@ -561,6 +565,8 @@
     // after every change of what the drawing shows (values, a prediction checked, the theme)
     void valores;
     void oculto;
+    // (motor121: and the simulator's operating point, when it arrives)
+    void externa;
     void app.tema;
     void manipulables;
     untrack(() => {

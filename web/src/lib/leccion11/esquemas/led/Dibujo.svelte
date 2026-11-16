@@ -9,6 +9,8 @@
   import Pila from '../kit/Pila.svelte';
   import R from '../kit/R.svelte';
   import EtiquetaRed from '../kit/EtiquetaRed.svelte';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   let { c, widget, dur, descripcion }: PropsDibujo = $props();
   const rev = $derived(c.tiene('reves') && c.cerrado('reves'));
   const brillo = $derived(widget.corriente && !c.oculto ? Math.max(0, c.n(widget.corriente)) / 0.02 : 0.5);
@@ -41,7 +43,13 @@
   <R x1={xr} y1={50} x2={230} y2={50} color="azul" pieza="r" />
   <Et x={(xr + 230) / 2} y={30} t={c.rot('r')} ancla="middle" color="azul" />
   <!-- (esquemas12c: «reves» draws it the other way round; a tap on it turns it, like a switch) -->
-  <D x1={280} y1={rev ? 230 : 50} x2={280} y2={rev ? 50 : 230} color="naranja" variante="led" {brillo} pieza={c.tiene('reves') ? 'reves' : undefined} />
+  <g data-pieza="led"><D x1={280} y1={rev ? 230 : 50} x2={280} y2={rev ? 50 : 230} color="naranja" variante="led" {brillo} pieza={c.tiene('reves') ? 'reves' : undefined} /></g>
   <Et x={318} y={136} t="LED" color="naranja" />
   {#if c.tiene('vf')}<Et x={318} y={156} t={c.val('vf')} color="naranja" peq />{/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens the branch) -->
+  <Punto x={48} y={50} red="fte" />
+  {#if etq}<Punto x={190} y={50} red="a" />{/if}
+  <Punto x={255} y={50} red="an" />
+  <Punto x={160} y={230} red="0" />
+  <Rama x={255} y={50} medidor="vmed" />
 </Lienzo>

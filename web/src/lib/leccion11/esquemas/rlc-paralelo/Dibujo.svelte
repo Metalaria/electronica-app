@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «rlc-paralelo» (esquema.ts): the sine source on the left, R_s on top, then L, C (and R) in parallel.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import L from '../kit/L.svelte';
   import Et from '../kit/Et.svelte';
@@ -35,4 +37,10 @@
     <Et x={330} y={118} t={c.simT('r')} color="azul" ancla="end" />
     <Et x={330} y={138} t={c.val('r')} color="azul" peq ancla="end" />
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={50} red="fte" />
+  <Punto x={220} y={50} red="t" />
+  <Punto x={220} y={230} red="0" />
+  <Rama x={50} y={50} medidor="vmed" />
+  <Rama x={180} y={66} medidor="vl" />
 </Lienzo>

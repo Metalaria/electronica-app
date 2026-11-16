@@ -5,6 +5,7 @@
 // positive current). The oscilloscope shows the widget's graph curve of the probed point. Pure.
 
 import { resolverCC, type SolucionCC } from '../cc';
+import { medicionCacheada, peticionMedida } from './punto-trabajo';
 import { esquemaDe } from '../../leccion11/esquemas/registro';
 import { contextoNetlist } from '../../leccion11/spice';
 import type { Valores } from '../../leccion11/modelo';
@@ -12,10 +13,16 @@ import type { Texto, WidgetCircuito } from '../../leccion11/tipos';
 import { textoPlano } from '../../leccion11/texto';
 import type { EstadoMedida, Instrumento, Medir } from './tipos';
 
-/** The DC operating point of the widget's circuit with the model's evaluation `r` (null: not linear, or no schematic). */
+/**
+ * What the instrument reads on the widget's circuit with the model's evaluation `r`: a linear DC circuit is solved
+ * here (cc.ts); any other one (motor121: non-linear, or changing with time) comes from the app's ngspice once it has
+ * run (punto-trabajo.ts keeps it), null until then.
+ */
 export function solucionWidget(w: WidgetCircuito, r: Valores): SolucionCC | null {
   const def = esquemaDe(w.esquema);
   if (!def) return null;
+  const p = peticionMedida(w, r, def);
+  if (p) return medicionCacheada(p)?.solucion ?? null;
   try {
     return resolverCC(def.netlist(contextoNetlist(w, r), 'op'));
   } catch {

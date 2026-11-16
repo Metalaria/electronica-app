@@ -2,16 +2,19 @@
 // their explanation, the challenge's success and failure hints, estimate, order, match, the summary), keyboard only,
 // dragging, the three themes (axe, contrast included), 360 px, reduced motion, and the integration with 1.0: the same
 // progress key (a section completed with 1.0 stays completed), XP once, mastery and the review, the book's link, the
-// 1.0 lesson at …/clasica and the leave guard.
+// 1.0 lesson at …/clasica and the leave guard. (1.2.1: the frozen 1.2.0 copies of both, tests/lecciones11-congeladas.ts.)
 //   PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c playwright.lecciones11.config.ts tests/lecciones11-navegador.spec.ts
 import { test, expect, type Page } from '@playwright/test';
 import { createRequire } from 'node:module';
+import { servirCongeladas } from './lecciones11-congeladas';
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 type Tema = 'claro' | 'sepia' | 'oscuro';
 
 async function limpio(page: Page, tema: Tema = 'claro', datos: Record<string, unknown> = {}): Promise<void> {
   await page.context().route('https://api.github.com/**', (r) => r.fulfill({ status: 404, body: '{}' }));
+  // (1.2.1) the two reference lessons as they were in 1.2.0, whatever the build publishes (lecciones11-congeladas.ts)
+  await servirCongeladas(page.context());
   await page.addInitScript(
     ({ t, d }) => {
       if (!sessionStorage.getItem('preparado')) {

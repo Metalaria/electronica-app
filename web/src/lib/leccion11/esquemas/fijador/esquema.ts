@@ -22,6 +22,13 @@ const d: DefinicionEsquema = {
     },
     c2: { descripcion: 'condensador del detector de pico (F): con él, el doblador de Greinacher', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { diodo: 'el diodo', diodo2: 'el segundo diodo' },
+  medible: (c) => ({
+    puntos: { fte: 'Entrada, arriba', n: 'Tras el condensador', ...(c.tiene('c2') ? { s: 'Salida, tras el segundo diodo' } : {}), '0': 'Masa, abajo' },
+    ramas: c.tiene('c2') ? ({} as Record<string, string>) : { vs: 'Hilo de la salida' },
+    zonas: { fuente: 'Entrada alterna', c: 'Condensador', diodo: 'Diodo', ...(c.tiene('c2') ? { diodo2: 'Segundo diodo', c2: 'Segundo condensador' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(s)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de salida: la del nodo en el fijador; la del condensador del detector en el doblador' },
     nodo: { medida: 'v(n)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del nodo del diodo a masa: la señal desplazada' },

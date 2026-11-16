@@ -3,6 +3,7 @@
   // transistor; the error amplifier under the rail (+ from the reference battery, − from the divider's tap, its output
   // to the base); the output rail with the divider R₁–R₂ and, through the switch, the load.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
   import AO from '../kit/AO.svelte';
   import Et from '../kit/Et.svelte';
   import Interruptor from '../kit/Interruptor.svelte';
@@ -57,4 +58,12 @@
   <!-- (1.2.1: where an ammeter opens each branch: the 0 V meters of the netlist) -->
   <Rama x={60} y={40} medidor="vmi" />
   <Rama x={410} y={205} medidor="vml" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={160} y={40} red="in" />
+  <Punto x={125} y={100} red="ref" />
+  <Punto x={222} y={100} red="b" />
+  <Punto x={380} y={120} red="out" />
+  {#if divisor}<Punto x={240} y={180} red="fb" />{/if}
+  <Punto x={220} y={240} red="0" />
+  <Rama x={310} y={120} medidor="vmo" />
 </Lienzo>

@@ -48,6 +48,11 @@ export interface Diseno {
   tipo: 'diseno';
   /** Relative tolerance of each value of the model the design depends on (R_1: 0.05 = ± 5 %). */
   tolerancias: Record<string, number>;
+  /**
+   * 1.2.1 (motor121): values given as an interval instead of a tolerance around the nominal (a transistor's β «de 100
+   * a 300»): each board takes the interval's ends (corners) or a value drawn uniformly in it (Monte Carlo).
+   */
+  intervalos?: Record<string, { min: number; max: number }>;
   /** esquinas: every combination of the ends (2ⁿ); montecarlo: `muestras` random boards (uniform within each tolerance). */
   metodo: 'esquinas' | 'montecarlo';
   muestras: number;

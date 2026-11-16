@@ -3,6 +3,8 @@
   // the other when the card has the «triac» switch), its gate down to a trigger terminal with the firing angle, the
   // load R (and L) down the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -22,7 +24,7 @@
   <Et x={58} y={176} t={c.val('fuente')} peq />
   <Et x={58} y={194} t={c.val('f')} peq />
   <path class="hilo" d="M40 60 H90" data-red="fte"></path>
-  <Tiristor x1={90} y1={60} x2={190} y2={60} tipo={triac ? 'triac' : 'scr'} color="azul" pieza={c.tiene('triac') ? 'triac' : undefined} />
+  <g data-pieza="tiristor"><Tiristor x1={90} y1={60} x2={190} y2={60} tipo={triac ? 'triac' : 'scr'} color="azul" pieza={c.tiene('triac') ? 'triac' : undefined} /></g>
   <Et x={140} y={34} t={triac ? 'TRIAC' : 'SCR'} ancla="middle" color="azul" />
   <!-- the gate: down to the trigger's terminal, with the firing angle -->
   <path class="hilo" d="M161 94 V108"></path>
@@ -43,4 +45,9 @@
     <Et x={314} y={164} t={c.val('r')} color="naranja" peq />
   {/if}
   <path class="hilo" d="M300 240 H40" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={65} y={60} red="fte" />
+  <Punto x={245} y={60} red="k" />
+  <Punto x={170} y={240} red="0" />
+  <Rama x={65} y={60} medidor="vmi" />
 </Lienzo>

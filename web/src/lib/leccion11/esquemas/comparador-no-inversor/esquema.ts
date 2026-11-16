@@ -23,6 +23,13 @@ const d: DefinicionEsquema = {
     ...piezasAO(),
     vsat: { obligatoria: true, descripcion: 'tensión de la salida en alto, +V_sat (V)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el comparador' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada', p: 'Entrada no inversora (+)', m: 'Entrada inversora (−), la referencia', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: c.tiene('ref') ? ({} as Record<string, string>) : { vm: 'Hilo de la entrada inversora' },
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}), r1: 'Resistencia de entrada', r2: 'Resistencia de realimentación', ...(c.tiene('ref') ? { ref: 'Referencia' } : {}), ao: 'Comparador' },
+  }),
   observables: {
     ...observablesAO(),
     vmas: { medida: 'v(p)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la entrada +' },

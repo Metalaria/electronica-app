@@ -7,7 +7,7 @@
   import { compilarModelo, posicionMasCercana, type Valores } from '../../lib/leccion11/modelo';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import type { Leccion11, Tarjeta } from '../../lib/leccion11/tipos';
-  import { graficaDe, posicionesMarca, yMarca } from '../../lib/leccion12/hacer/motor-hacer';
+  import { cicloDeTramo, graficaDe, posicionesMarca, yMarca } from '../../lib/leccion12/hacer/motor-hacer';
   import type { EstadoMarcar, Marcar } from '../../lib/leccion12/hacer/tipos';
   import { leerUnidades } from '../../lib/habla-matematicas';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
@@ -15,14 +15,17 @@
   let { leccion, t, a, e, ea, valores, prefijo, valor, cambiar }: { leccion: Leccion11; t: Tarjeta; a: Marcar; e: EstadoTarjeta; ea: EstadoMarcar; valores: Valores; prefijo: string; valor: (id: string) => string; cambiar: (c: Partial<EstadoTarjeta>) => void } = $props();
 
   const mc = $derived(compilarModelo(leccion.modelo));
-  const g = $derived(graficaDe(t)!);
-  const xs = $derived(posicionesMarca(g.x, a.pasos));
-  const ys = $derived(posicionesMarca(g.y, a.pasos));
+  // (motor121: a mark on a timing diagram is its cursor — there is no graph)
+  const g = $derived(a.cronograma ? null : graficaDe(t));
+  const xs = $derived(g ? posicionesMarca(g.x, a.pasos) : []);
+  const ys = $derived(g ? posicionesMarca(g.y, a.pasos) : []);
   const kx = $derived(posicionMasCercana(xs, ea.x));
   const ky = $derived(posicionMasCercana(ys, ea.y));
-  const y = $derived(yMarca(mc, g, a, valores, ea.x, ea.y));
-  const fx = (v: number) => formatoValor(v, g.x.unidad, 3, true);
-  const fy = (v: number) => (Number.isFinite(v) ? formatoValor(v, g.y.unidad, 3, true) : '—');
+  const y = $derived(g ? yMarca(mc, g, a, valores, ea.x, ea.y) : NaN);
+  const fx = (v: number) => (g ? formatoValor(v, g.x.unidad, 3, true) : '');
+  const fy = (v: number) => (g && Number.isFinite(v) ? formatoValor(v, g.y.unidad, 3, true) : '—');
+  const ciclo = $derived(cicloDeTramo(e.widget12?.tramo ?? 0));
+  const movido = $derived(e.movidos.includes('tramo'));
 
   function poner(x: number, yy: number) {
     if (e.resuelta) return;
@@ -32,6 +35,10 @@
 
 <div class="a12 marcar" data-marcar>
   <p class="rotulo"><TextoVivo texto={a.rotulo} {valor} /></p>
+  {#if a.cronograma}
+    <p class="donde" data-marca-donde data-ciclo-marcado={ciclo}>Ciclo {ciclo}</p>
+    {#if !movido}<p class="a12-suave">Lleve el cursor del cronograma al ciclo (deslizador «Momento» o las flechas) y compruebe.</p>{/if}
+  {:else}
   <p class="donde" data-marca-donde>
     {#if a.modo !== 'y'}<span>{fx(ea.x)}</span>{/if}{#if a.modo === 'xy'}<span aria-hidden="true"> · </span>{/if}{#if a.modo !== 'x' || Number.isFinite(y)}<span>{a.modo === 'x' ? ' → ' : ''}{fy(y)}</span>{/if}
   </p>
@@ -70,6 +77,7 @@
     </label>
   {/if}
   {#if !ea.movida}<p class="a12-suave">Arrastre la marca sobre la gráfica (o use {a.modo === 'xy' ? 'los deslizadores' : 'el deslizador'}).</p>{/if}
+  {/if}
 </div>
 
 <style>

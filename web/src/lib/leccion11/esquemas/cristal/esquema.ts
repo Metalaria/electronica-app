@@ -19,6 +19,12 @@ const d: DefinicionEsquema = {
     c1: { obligatoria: true, descripcion: 'capacidad de la rama serie, C₁ (F; femtofaradios)', color: 'naranja' },
     c0: { obligatoria: true, descripcion: 'capacidad en paralelo del encapsulado y los electrodos, C₀ (F)', color: 'azul' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { zx: 'Bornes del cristal, arriba', m2: 'Entre R₁ y L₁', m3: 'Entre L₁ y C₁', '0': 'Bornes del cristal, abajo' },
+    ramas: { vms: 'Rama serie del cristal' },
+    zonas: { c0: 'Capacidad de los electrodos, C₀', r1: 'Resistencia de pérdidas, R₁', l1: 'Inductancia, L₁', c1: 'Capacidad del cuarzo, C₁' },
+  }),
   observables: {
     ...observablesCA('z', 'v(zx)', 'Ω', 'la impedancia del cristal (la tensión que da una corriente de 1 A)'),
     ...observablesCA('serie', 'i(vms)', 'A', 'la corriente de la rama serie con 1 A en el cristal'),

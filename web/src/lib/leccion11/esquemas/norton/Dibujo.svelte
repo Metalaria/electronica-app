@@ -2,6 +2,8 @@
   // Schematic «norton» (esquema.ts): the current source and its parallel resistance in the dashed box, the switch and
   // the load on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import FuenteI from '../kit/FuenteI.svelte';
@@ -37,4 +39,9 @@
     <Et x={334} y={136} t={c.simT('carga')} color="verde" />
     <Et x={334} y={156} t={c.val('carga')} color="verde" peq />
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={215} y={50} red="s" />
+  <Punto x={215} y={230} red="0" />
+  <Rama x={140} y={64} medidor="vr" />
+  <Rama x={306} y={50} medidor="vcarga" />
 </Lienzo>

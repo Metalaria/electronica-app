@@ -4,6 +4,7 @@
   // the output, R₂ down from the + input to ground, the operational amplifier as a follower and the output terminal.
   import type { Texto } from '../../tipos';
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
   import AO from '../kit/AO.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
@@ -49,4 +50,10 @@
   <path class="hilo" d="M40 240 H440"></path>
   <circle class="nodo" cx="300" cy="240" r="4.5"></circle>
   <circle class="borne" cx="440" cy="240" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={150} red="fte" />
+  <Punto x={170} y={150} red="a" />
+  <Punto x={300} y={150} red="b" />
+  <Punto x={420} y={130} red="out" />
+  <Punto x={120} y={240} red="0" />
 </Lienzo>

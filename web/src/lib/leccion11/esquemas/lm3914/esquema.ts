@@ -50,6 +50,13 @@ const d: DefinicionEsquema = {
     factor: { descripcion: 'factor entre la corriente de un LED y la de R_ref (sin él, 10: «unas diez veces»)' },
     barra: { interruptor: true, descripcion: 'modo: 1 barra (todos hasta el nivel), 0 punto (solo el último; sin él, barra)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { chip: 'el LM3914' },
+  medible: () => ({
+    puntos: { in: 'Entrada de señal', vl: 'Alimentación de los LED', o1: 'Salida del primer LED', '0': 'Masa, abajo' },
+    ramas: { vmr: 'Rama de R_{REF}', vml: 'Alimentación de los LED' },
+    zonas: { entrada: 'Señal de entrada', rref: 'Resistencia de referencia, R_{REF}', vled: 'Fuente de los LED', chip: 'El LM3914 por dentro' },
+  }),
   observables: {
     encendidos: { medida: 'v(nled)', analisis: 'op', unidad: '', descripcion: 'número de LED encendidos' },
     iled: { medida: 'i(vml)', analisis: 'op', unidad: 'A', descripcion: 'corriente total de los LED (la que da V_LED)' },
@@ -85,7 +92,7 @@ const d: DefinicionEsquema = {
   },
   describir: (c) => {
     const n = encendidos(c).filter(Boolean).length;
-    return `LM3914 en modo ${c.cerrado('barra') ? 'barra' : 'punto'}: entrada de ${c.val('entrada')}; escalera de diez resistencias de ${c.tiene('vlo') ? c.val('vlo') : '0 V'} a ${c.tiene('vhi') ? c.val('vhi') : `la referencia de ${c.val('vref')}`}; ${c.sim('rref')} de ${c.val('rref')} a masa; LED desde ${c.val('vled')}, ${n === 0 ? 'ninguno encendido' : n === 1 ? 'uno encendido' : `${n} encendidos`}`;
+    return `LM3914 en modo ${c.cerrado('barra') ? 'barra' : 'punto'}: entrada de ${c.val('entrada')}; escalera de diez resistencias de ${c.tiene('vlo') ? c.val('vlo') : '0 V'} a ${c.tiene('vhi') ? c.val('vhi') : `la referencia de ${c.val('vref')}`}; ${c.sim('rref')} de ${c.val('rref')} a masa; LED desde ${c.val('vled')}, ${c.oculto ? 'sin decir cuántos se encienden hasta responder' : n === 0 ? 'ninguno encendido' : n === 1 ? 'uno encendido' : `${n} encendidos`}`;
   },
 };
 export default d;

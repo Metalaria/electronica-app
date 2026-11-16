@@ -16,6 +16,12 @@ const d: DefinicionEsquema = {
     r: { obligatoria: true, descripcion: 'resistencia (Ω)', color: 'azul' },
     c: { obligatoria: true, descripcion: 'capacidad (F)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { fte: 'Arriba de la fuente', c: 'Entre la resistencia y el condensador', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama del circuito' },
+    zonas: { fuente: 'Fuente', r: 'Resistencia', c: 'Condensador' },
+  }),
   observables: {
     entrada: { medida: 'v(fte)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la fuente' },
     vc: { medida: 'v(c)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del condensador (salida paso bajo)' },

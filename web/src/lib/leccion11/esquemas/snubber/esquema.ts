@@ -28,6 +28,22 @@ const d: DefinicionEsquema = {
     csn: { descripcion: 'condensador del snubber, C_s (F)', color: 'azul' },
     snubber: { interruptor: true, descripcion: 'conecta el snubber (sin él, conectado si hay «rsn» y «csn»)', color: 'azul' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { transistor: 'el MOSFET' },
+  medible: (c) => ({
+    puntos: { bus: 'Bus de continua', d: 'Drenador', y: 'Entre el diodo y la bobina', '0': 'Masa, abajo' },
+    ramas: { vml: 'Rama de la bobina', ...(c.tiene('rsn') && c.tiene('csn') ? { vmsn: 'Rama del amortiguador' } : {}) },
+    zonas: {
+      vb: 'Bus de continua',
+      i0: 'Corriente de la carga',
+      transistor: 'MOSFET',
+      coss: 'Capacidad de salida',
+      l: 'Inductancia parásita',
+      ...(c.tiene('rp') ? { rp: 'Resistencia en paralelo' } : {}),
+      ...(c.tiene('rsn') ? { rsn: 'Resistencia del amortiguador' } : {}),
+      ...(c.tiene('csn') ? { csn: 'Condensador del amortiguador' } : {}),
+    },
+  }),
   observables: {
     drenador: { medida: 'v(d)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del drenador frente al tiempo' },
     bobina: { medida: 'i(vml)', analisis: 'tran', unidad: 'A', descripcion: 'corriente del diodo y la inductancia parásita frente al tiempo' },

@@ -24,6 +24,13 @@ const d: DefinicionEsquema = {
     carga: { obligatoria: true, descripcion: 'resistencia de carga del secundario, R_L (Ω)', color: 'verde' },
     cp: { descripcion: 'capacidad de los devanados, en paralelo con el secundario, C_p (F)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { trafo: 'el transformador ideal' },
+  medible: (c) => ({
+    puntos: { fte: 'Generador', a: 'Tras la resistencia del generador', b: 'Primario ideal, arriba', s: 'Secundario, arriba', '0': 'Abajo' },
+    ramas: { vmed: 'Rama del primario', vmm: 'Rama magnetizante', vcarga: 'Rama de la carga' },
+    zonas: { fuente: 'Generador', rs: 'Resistencia del generador', ...(c.tiene('ld') ? { ld: 'Inductancia de dispersión' } : {}), lm: 'Inductancia magnetizante', trafo: 'Transformador ideal', ...(c.tiene('cp') ? { cp: 'Capacidad parásita' } : {}), carga: 'Carga' },
+  }),
   observables: {
     ...observablesCA('salida', 'v(s)', 'V', 'la tensión del secundario'),
     ...observablesCA('primario', 'v(b)', 'V', 'la tensión del primario ideal (tras L_d)'),

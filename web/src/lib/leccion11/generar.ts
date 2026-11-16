@@ -20,7 +20,7 @@ import { analizarTexto, contarPalabras, numerosDe, numerosDeTexto, textoPlano, v
 import { barajarFijo, compilarModelo, enRango, objetivoEstimar, posicionMasCercana, posicionesEstimar, puntuarEstimacion, type Valores } from './modelo';
 import { esquemaDe, nombresEsquemas } from './esquemas/registro';
 import type { DefinicionEsquema } from './esquemas/tipos';
-import { comprobacionesCircuito, type ComprobacionSpice } from './spice';
+import { comprobacionesCircuito, contextoNetlist, type ComprobacionSpice } from './spice';
 // 1.2: the learning-by-doing step types (their own checks), the one-idea-per-screen warnings (ui12)
 import { actividadDe, esTipoActividad, FASE12, VARIABLES_PISTA } from '../leccion12/generar12';
 import { esComprobable12 } from '../leccion12/motor12';
@@ -260,7 +260,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       textoLibro.push(textoDeBloque(b, ' | '));
     }
   }
-  const numerosLibro = numerosDe(textoLibro.join(' | '));
+  // (motor121: a hexadecimal literal of the book counts as its value and as its old decimal reading)
+  const numerosLibro = numerosDe(textoLibro.join(' | ')).flatMap((n) => [n, ...(n.legado ?? [])]);
 
   // ---- the model
   const antesModelo = errores.length;
@@ -474,7 +475,10 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       const w = t.widget;
       const estados: Valores[] = [inicial];
       for (const x of mandos) for (const v of [x.valores[0]!, x.valores[x.valores.length - 1]!]) estados.push({ ...inicial, [x.valor]: v });
-      cifrasModelo.push(...validarInstrumento(esquemaDe(w.esquema)!, w, mc, estados, e));
+      const vi = validarInstrumento(esquemaDe(w.esquema)!, w, mc, estados, e);
+      cifrasModelo.push(...vi.cifras);
+      // (motor121: what a non-linear circuit's instrument reads comes from the app's ngspice: the script runs these)
+      spice.push(...vi.spice.map((x) => ({ ...x, donde: `${origen}: ${donde}: ${x.donde}` })));
     }
 
     // gating
@@ -607,7 +611,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     if (ft.objetivo != null) {
       if (tipo !== 'explorar' && tipo !== 'sorpresa' && tipo !== 'ajuste') e('«objetivo» va en una tarjeta explorar, sorpresa o ajuste');
       else if (sana()) {
-        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e }, t);
+        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}) }, t);
         if (r.objetivo) {
           t.objetivo = r.objetivo;
           if (typeof ft.fase !== 'string') t.fase = 'Consiga';
@@ -701,6 +705,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         textos12.push(...r12.textos);
         cifrasModelo.push(...r12.cifras);
         estados12.push(...r12.estados);
+        spice.push(...(r12.spice ?? []).map((x) => ({ ...x, donde: `${origen}: ${donde}: ${x.donde}` })));
       }
     }
     // formula
@@ -806,8 +811,9 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     ];
     for (const [campo, tx] of textos)
       for (const n of numerosDeTexto(tx)) {
-        const enLibro = numerosLibro.some((b) => Math.abs(b.v - n.v) <= 1e-9 * Math.max(1, Math.abs(n.v)) || Math.abs(b.v + n.v) <= 1e-12);
-        if (enLibro || cifrasModelo.some((c) => coincide(n, c))) continue;
+        const vale = (x: { v: number; s: string; decimales: number }) => numerosLibro.some((b) => Math.abs(b.v - x.v) <= 1e-9 * Math.max(1, Math.abs(x.v)) || Math.abs(b.v + x.v) <= 1e-12) || cifrasModelo.some((c) => coincide(x, c));
+        // (motor121: «$7123» is the hexadecimal 28963 — or, as before, the 7123 its digits say)
+        if (vale(n) || (n.legado && n.legado.every(vale))) continue;
         e(`«${campo}»: el número ${n.s} no está en los bloques del libro citados ni lo da el modelo (añada un «comprobar»)`);
       }
 
@@ -1049,7 +1055,15 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       medidas.set(w, mide);
       // 1.2.1: a multimeter or an oscilloscope the reader places on the drawing
       if (x.instrumento != null) {
-        const ins = instrumentoDe(x.instrumento, e, digital.texto, w.grafica?.curvas.length ?? 0);
+        // (motor121: the schematic's own points, branches and names when the card leaves them out)
+        const medible = (() => {
+          try {
+            return def.medible?.(contextoNetlist(w, mc.evaluar(propios))) ?? null;
+          } catch {
+            return null;
+          }
+        })();
+        const ins = instrumentoDe(x.instrumento, e, digital.texto, w.grafica?.curvas.length ?? 0, medible);
         if (ins) w.instrumento = ins;
         if (ocultar) e('«widget.instrumento» en un widget oculto: el instrumento daría la respuesta');
       }

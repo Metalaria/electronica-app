@@ -19,6 +19,13 @@ const d: DefinicionEsquema = {
     v0: { descripcion: 'tensión de salida en t = 0, v₀ (V; sin ella, 0)' },
     ...piezasAO(),
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el amplificador operacional' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada', mn: 'Entrada inversora (−)', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama de la entrada' },
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}), r: 'Resistencia de entrada', c: 'Condensador', ...(c.tiene('rf') ? { rf: 'Resistencia en paralelo' } : {}), ao: 'Amplificador operacional' },
+  }),
   observables: {
     ...observablesAO(),
     ic: { medida: 'i(vmi)', analisis: 'tran', unidad: 'A', descripcion: 'corriente por R (la que carga C) frente al tiempo' },

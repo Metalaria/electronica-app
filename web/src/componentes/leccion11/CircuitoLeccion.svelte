@@ -27,6 +27,8 @@
   import Instrumento from '../leccion12/Instrumento.svelte';
   import ElegirEsquema from '../leccion12/ElegirEsquema.svelte';
   import { solucionWidget } from '../../lib/leccion12/hacer/medir';
+  // (motor121: a non-linear circuit, or one that changes with time, is read on the app's ngspice)
+  import { medicionCacheada, medirConSpice, ondaDe, peticionMedida, type Medicion } from '../../lib/leccion12/hacer/punto-trabajo';
   import { tocarZona } from '../../lib/leccion12/hacer/motor-hacer';
   import type { EstadoMedida } from '../../lib/leccion12/hacer/tipos';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
@@ -63,7 +65,36 @@
   // ---- 1.2.1: the instrument and the zones of «elegir»
   const instr = $derived(widget.instrumento);
   const medida = $derived(hacer?.e.medida);
-  const solucionCC = $derived(instr && instr.tipo === 'multimetro' && !oculto ? solucionWidget(widget, valores) : null);
+  // (motor121) what has to be simulated for the instrument in this state (null: the page solves it, cc.ts)
+  const peticion = $derived(instr && !oculto ? peticionMedida(widget, valores) : null);
+  let medicion = $state.raw<{ netlist: string; m: Medicion } | null>(null);
+  $effect(() => {
+    const p = peticion;
+    if (!p) return;
+    const ya = medicionCacheada(p);
+    if (ya) {
+      medicion = { netlist: p.netlist, m: ya };
+      return;
+    }
+    // (a short wait: a slider being dragged asks for one run when it stops, not one per step)
+    let vivo = true;
+    let intentos = 0;
+    const correr = () =>
+      void medirConSpice(p).then((m) => {
+        if (!vivo) return;
+        // (a run replaced by another simulation of the page is asked again, once)
+        if (m.error && /cancel/i.test(m.error) && intentos++ < 2) setTimeout(correr, 300);
+        else medicion = { netlist: p.netlist, m };
+      });
+    const id = setTimeout(correr, 150);
+    return () => {
+      vivo = false;
+      clearTimeout(id);
+    };
+  });
+  const medicionActual = $derived(peticion && medicion?.netlist === peticion.netlist ? medicion.m : null);
+  const midiendo = $derived(!!peticion && !medicionActual);
+  const solucionCC = $derived(instr && instr.tipo === 'multimetro' && !oculto ? (peticion ? (medicionActual?.solucion ?? null) : solucionWidget(widget, valores)) : null);
   const bloqueoMedida = $derived(!!hacer && hacer.t.actividad?.tipo === 'medir' && hacer.e.resuelta);
   const elegir = $derived(hacer?.t.actividad?.tipo === 'elegir' && hacer.e.actividad?.tipo === 'elegir' ? { a: hacer.t.actividad, ea: hacer.e.actividad } : null);
   const dianas = $derived.by(() => {
@@ -103,12 +134,19 @@
     if (!hacer || !elegir || hacer.e.resuelta) return;
     hacer.cambiar({ actividad: tocarZona(elegir.a, elegir.ea, id), comprobado: false, bien: null });
   }
-  /** The oscilloscope shows the curve of the probed point only. */
+  /**
+   * The oscilloscope shows the curve of the probed point only: the graph's curve the author gave that point, or
+   * (motor121) the node's waveform from the simulator, drawn as its samples.
+   */
   const graficaVista = $derived.by(() => {
     const g = widget.grafica;
     if (!g || instr?.tipo !== 'osciloscopio') return g;
     const k = medida?.roja ? instr.curvas?.[medida.roja] : undefined;
-    return { ...g, curvas: k == null ? [] : [g.curvas[k]!] };
+    if (k != null) return { ...g, curvas: [g.curvas[k]!] };
+    const onda = medida?.roja && peticion && medicionActual ? ondaDe(peticion, medicionActual.graficas, medida.roja) : null;
+    if (!onda) return { ...g, curvas: [] };
+    const rot = instr.puntos.find((q) => q.id === medida!.roja)?.rotulo ?? [];
+    return { ...g, curvas: [{ expr: '0', color: 'azul' as const, rotulo: rot, discontinua: false, puntos: onda }] };
   });
 
   const p = $derived(widget.piezas);
@@ -197,7 +235,7 @@
       </div>
     {/if}
     {#if Dibujo && def && widget.dibujo !== false}
-      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} manipular={manipular && !elegir} {alMover} {dianas}>
+      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} manipular={manipular && !elegir} {alMover} {dianas} externa={peticion?.analisis === 'op' ? (medicionActual?.solucion ?? null) : null}>
         <Dibujo c={ctx} {widget} vuelta={duracion} {dur} {descripcion} />
       </CircuitoVivo>
     {/if}
@@ -225,14 +263,14 @@
   </div>
   {/if}
   {#if instr && medida && hacer}
-    <Instrumento i={instr} m={medida} solucion={solucionCC} {prefijo} bloqueado={bloqueoMedida} cambiar={cambiarMedida} />
+    <Instrumento i={instr} m={medida} solucion={solucionCC} {midiendo} promedio={peticion?.analisis === 'tran'} {prefijo} bloqueado={bloqueoMedida} cambiar={cambiarMedida} />
   {/if}
   {#if elegir && hacer}
     <ElegirEsquema a={elegir.a} ea={elegir.ea} resuelta={hacer.e.resuelta} tocar={elegirZona} />
   {/if}
   {#if graficaVista}
     {#if instr?.tipo === 'osciloscopio' && !graficaVista.curvas.length}
-      <p class="sin-sonda" data-osciloscopio-vacio>Osciloscopio: ponga la sonda en un punto del circuito para ver su señal.</p>
+      <p class="sin-sonda" data-osciloscopio-vacio>{medida?.roja && midiendo ? 'Osciloscopio: midiendo la señal…' : 'Osciloscopio: ponga la sonda en un punto del circuito para ver su señal.'}</p>
     {/if}
     <GraficaLeccion {leccion} widget={{ ...graficaVista, tipo: 'grafica', mandos: widget.mandos, ocultar: widget.ocultar }} {valores} {propios} {oculto} {prefijo} {valor} {alMover} conMandos={false} {hacer} />
   {/if}

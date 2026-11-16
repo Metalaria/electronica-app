@@ -18,6 +18,12 @@ const d: DefinicionEsquema = {
     carga: { descripcion: 'resistencia de carga en los terminales (Ω)', color: 'verde', seVeCon: 'interruptor' },
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { f: 'Tras la fuente de tensión', a: 'Nodo de arriba', '0': 'Masa, abajo' },
+    ramas: { vm: 'Rama de la fuente de tensión', vr: 'Rama de la resistencia', vi: 'Rama de la fuente de corriente', ...(c.tiene('carga') ? { vcarga: 'Rama de la carga' } : {}) },
+    zonas: { fuente: 'Fuente de tensión', rs: 'Resistencia en serie', rp: 'Resistencia en paralelo', corriente: 'Fuente de corriente', ...(c.tiene('carga') ? { carga: 'Carga' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(a)', analisis: 'op', unidad: 'V', descripcion: 'tensión entre los terminales' },
     rama: { medida: 'i(vm)', analisis: 'op', unidad: 'A', descripcion: 'corriente que la rama de la fuente de tensión lleva al terminal (por la resistencia en serie)' },

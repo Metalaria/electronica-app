@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «rlc-serie» (esquema.ts): the sine source on the left, R and L on top, C on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import L from '../kit/L.svelte';
   import Et from '../kit/Et.svelte';
@@ -25,4 +27,10 @@
   <C x1={300} y1={50} x2={300} y2={230} color="verde" pieza="c" />
   <Et x={318} y={136} t={c.simT('c')} color="verde" />
   <Et x={318} y={156} t={c.val('c')} color="verde" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={55} y={50} red="fte" />
+  <Punto x={180} y={50} red="b" />
+  <Punto x={295} y={50} red="c" />
+  <Punto x={170} y={230} red="0" />
+  <Rama x={55} y={50} medidor="vmed" />
 </Lienzo>

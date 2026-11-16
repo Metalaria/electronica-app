@@ -3,6 +3,8 @@
   // column, their leakages (dashed: they are not parts, but the capacitors' own leak) in the second, and the
   // balancing resistors in the third (a ghost while disconnected).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -47,4 +49,12 @@
     <circle cx="200" cy="135" r="4.5" class="nodo" data-red="m"></circle>
   {/if}
   <circle cx="110" cy="135" r="4.5" class="nodo" data-red="m"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={70} y={40} red="a" />
+  <Punto x={155} y={135} red="m" />
+  <Punto x={70} y={230} red="0" />
+  <Rama x={60} y={40} medidor="vmed" />
+  <Rama x={200} y={52} medidor="vf1" />
+  <Rama x={200} y={147} medidor="vf2" />
+  {#if conRe}<Rama x={300} y={52} medidor="vme" />{/if}
 </Lienzo>

@@ -359,7 +359,8 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
   }
 
   const w12 = widgetDigital(t);
-  if (t.requiere && w12) await explorarDigital(page, t, w12, donde);
+  // (motor121: a goal on a logic circuit is reached from power-on below: nothing is touched before)
+  if (t.requiere && w12 && !(t.objetivo && w12.tipo === 'logica')) await explorarDigital(page, t, w12, donde);
   else if (t.requiere) {
     // explore: touch every control it asks for and leave it where it was (a step there and back)
     await expect(boton(page), donde).toBeDisabled();
@@ -394,7 +395,15 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
 
   // 1.2.1: a goal on an explore or surprise card (an «ajuste» with one is solved below, band and goal together): the
   // first positions of its controls that reach it, put with the keyboard; the card says «¡Conseguido!»
-  if (t.objetivo && t.actividad?.tipo !== 'ajuste') {
+  if (t.objetivo && t.widget?.tipo === 'logica') {
+    // (motor121: a goal on a logic circuit — the shortest way there, switch by switch and pulse by pulse)
+    const { buscarObjetivo } = await import('../src/lib/leccion12/digital/objetivo-logico.ts');
+    const b = buscarObjetivo(t.widget.circuito, t.objetivo.condiciones);
+    expect(b.camino, `${donde}: el objetivo del circuito lógico se alcanza`).not.toBeNull();
+    for (const paso of b.camino!) await page.locator(paso.tipo === 'pulso' ? '[data-pulso]' : `[data-boton-entrada="${paso.id}"]`).click();
+    await expect(page.locator('[data-objetivo]'), donde).toHaveAttribute('data-objetivo', 'logrado');
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  } else if (t.objetivo && t.actividad?.tipo !== 'ajuste') {
     const sol = buscarPosiciones(mandos, estado, (v) => objetivoCumplido(t, mc.evaluar(v)));
     expect(sol, `${donde}: el objetivo se alcanza`).not.toBeNull();
     await ponerMandos(page, mandos, sol!, mios);
@@ -451,6 +460,21 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     for (const z of act.todas ? act.bien : act.bien.slice(0, 1)) await page.locator(`[data-diana="${z}"]`).click();
     await comprobarYVer(page, true, plano(t.exito));
     await expect(page.locator(`[data-diana="${act.bien[0]}"]`), donde).toHaveAttribute('data-diana-estado', 'bien');
+  } else if (act?.tipo === 'marcar' && act.cronograma) {
+    // (motor121) the timing diagram's cursor: a wrong cycle first (its explanation), then the right one
+    const ir = async (ciclo: number) =>
+      page.locator('[data-tramo]').evaluate((el, v) => {
+        const n = el as HTMLInputElement;
+        n.value = String(v);
+        n.dispatchEvent(new Event('input', { bubbles: true }));
+      }, 2 * (ciclo - 1));
+    await expect(boton(page), donde).toBeDisabled();
+    const mal = Number(Object.keys(act.cronograma.porque)[0] ?? (act.cronograma.ciclo > 1 ? act.cronograma.ciclo - 1 : act.cronograma.ciclo + 1));
+    await ir(mal);
+    await comprobarYVer(page, false, act.cronograma.porque[String(mal)] ? plano(act.cronograma.porque[String(mal)]) : undefined);
+    await ir(act.cronograma.ciclo);
+    await expect(page.locator('[data-ciclo-marcado]'), donde).toHaveAttribute('data-ciclo-marcado', String(act.cronograma.ciclo));
+    await comprobarYVer(page, true, plano(t.exito));
   } else if (act?.tipo === 'marcar') {
     // the marker with the keyboard's sliders: a wrong place first (where it says which way), then a right one
     const g = graficaDe(t)!;
@@ -484,10 +508,24 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     await poner(bien!);
     await comprobarYVer(page, true, plano(t.exito));
     await expect(page.locator('[data-meta-marca]'), donde).toBeVisible();
+  } else if (act?.tipo === 'leer' && act.base) {
+    // (motor121) a whole number in hexadecimal or binary: the bits reversed first (explained), then right
+    const { escribirEntero } = await import('../src/lib/leccion12/hacer/motor-hacer.ts');
+    const obj = Math.round(mc.funcion(act.objetivo)(mc.evaluar(estado)));
+    const rev = parseInt(obj.toString(2).padStart(act.cifras, '0').split('').reverse().join(''), 2);
+    await expect(boton(page), donde).toBeDisabled();
+    await page.locator('[data-valor-leido]').fill(escribirEntero(rev === obj ? obj + 1 : rev, act.base, act.cifras));
+    await comprobarYVer(page, false);
+    await page.locator('[data-valor-leido]').fill(escribirEntero(obj, act.base, act.cifras));
+    await comprobarYVer(page, true, plano(t.exito));
   } else if (act?.tipo === 'leer') {
     // a slip of a prefix first (a thousand times too much: explained), then the value with its unit
     const obj = mc.funcion(act.objetivo)(mc.evaluar(estado));
-    const escrito = (x: number) => `${String(Number(x.toPrecision(4))).replace('.', ',')} ${act.unidad}`;
+    // (motor121, autor121-digital: as many figures as the card's tolerance needs — 29 780,67 with tol 5·10⁻⁶ —, at
+    // least four)
+    let fig = 4;
+    while (fig < 15 && Math.abs(Number(obj.toPrecision(fig)) - obj) > (act.tol / 2) * Math.abs(obj)) fig++;
+    const escrito = (x: number) => `${String(Number(x.toPrecision(fig))).replace('.', ',')} ${act.unidad}`;
     await expect(boton(page), donde).toBeDisabled();
     await page.locator('[data-valor-leido]').fill(escrito(obj * 1000));
     await comprobarYVer(page, false);
@@ -499,7 +537,9 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     // the right estimate, written as the reader writes it («5 V», «8,1 V»); then the app's own ngspice answers
     const obj = mc.funcion(act.objetivo)(mc.evaluar(estado));
     await expect(boton(page), donde).toBeDisabled();
-    await page.locator('[data-estimacion]').fill(`${String(Number(obj.toPrecision(4))).replace('.', ',')} ${act.unidad}`);
+    let fig = 4;
+    while (fig < 15 && Math.abs(Number(obj.toPrecision(fig)) - obj) > (act.tol / 2) * Math.abs(obj)) fig++;
+    await page.locator('[data-estimacion]').fill(`${String(Number(obj.toPrecision(fig))).replace('.', ',')} ${act.unidad}`);
     await boton(page).click();
     await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
     await expect(page.locator('[data-simulado]'), donde).not.toBeEmpty({ timeout: 30_000 });

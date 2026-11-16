@@ -4,16 +4,19 @@
   // (lib/leccion12/hacer/motor-hacer.ts), and a wrong one can be read again and corrected.
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import { leerEstimacion } from '../../lib/leccion12/prediccion';
+  // (motor121: a whole number in hexadecimal or binary)
+  import { leerEntero } from '../../lib/leccion12/hacer/motor-hacer';
   import type { EstadoLeer, Leer } from '../../lib/leccion12/hacer/tipos';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
 
   let { a, e, ea, prefijo, valor, cambiar }: { a: Leer; e: EstadoTarjeta; ea: EstadoLeer; prefijo: string; valor: (id: string) => string; cambiar: (c: Partial<EstadoTarjeta>) => void } = $props();
   const id = $derived(`${prefijo}-leido`);
   const malo = $derived(ea.texto.trim() !== '' && ea.valor == null);
+  const base = $derived(a.base === 16 ? 'hexadecimal' : a.base === 2 ? 'binario' : '');
 
   function escribir(texto: string) {
     if (e.resuelta) return;
-    const v = leerEstimacion(texto, a.unidad);
+    const v = a.base ? (leerEntero(texto, a.base) ?? NaN) : leerEstimacion(texto, a.unidad);
     cambiar({ actividad: { ...ea, texto, valor: Number.isFinite(v) ? v : null }, comprobado: false, bien: null });
   }
 </script>
@@ -24,7 +27,7 @@
     <input
       {id}
       type="text"
-      inputmode="decimal"
+      inputmode={a.base ? 'text' : 'decimal'}
       autocomplete="off"
       spellcheck="false"
       value={ea.texto}
@@ -34,9 +37,11 @@
       oninput={(ev) => escribir((ev.currentTarget as HTMLInputElement).value)}
       data-valor-leido
     />
-    <span class="unidad" aria-hidden="true">{a.unidad}</span>
+    <span class="unidad" aria-hidden="true">{base ? (a.base === 16 ? 'hex' : 'bin') : a.unidad}</span>
   </div>
-  <p class="a12-suave" id={`${id}-ayuda`}>{malo ? 'No se entiende como valor: escriba una cifra y, si quiere, su prefijo («3,6 m»).' : `Escriba lo que marca, en ${a.unidad || 'su unidad'}; vale con prefijo («k», «m», «µ»).`}</p>
+  <p class="a12-suave" id={`${id}-ayuda`}>
+    {#if base}{malo ? `No se entiende como ${base}: ${a.base === 16 ? 'cifras 0–9 y letras A–F' : 'solo ceros y unos'}.` : `Escríbalo en ${base}: ${a.base === 16 ? '«3F», «0x3F» o «3Fh»' : '«0011 1111» o «0b00111111»'}.`}{:else}{malo ? 'No se entiende como valor: escriba una cifra y, si quiere, su prefijo («3,6 m»).' : `Escriba lo que marca, en ${a.unidad || 'su unidad'}; vale con prefijo («k», «m», «µ»).`}{/if}
+  </p>
 </div>
 
 <style>

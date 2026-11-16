@@ -22,6 +22,13 @@ const d: DefinicionEsquema = {
     reg: { descripcion: 'tensión de los reguladores, ±V_reg (V; un 7812 y un 7912: 12): la carga cuelga de su salida' },
     dropout: { descripcion: 'diferencia mínima entre entrada y salida de cada regulador (V; sin ella, 0; un 78xx, unos 2 V)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { trafo: 'el transformador', diodos: 'los cuatro diodos' },
+  medible: (c) => ({
+    puntos: { a: 'Secundario, arriba', b: 'Secundario, abajo', p: 'Raíl positivo, tras los diodos', n: 'Raíl negativo, tras los diodos', ...(c.tiene('reg') ? { op: 'Salida positiva regulada', on: 'Salida negativa regulada' } : {}), '0': 'Toma media, masa' },
+    ramas: { vdp: 'Diodos del raíl positivo', vdn: 'Diodos del raíl negativo', vmlp: 'Carga del raíl positivo', vmln: 'Carga del raíl negativo' },
+    zonas: { fuente: 'Red', trafo: 'Transformador con toma media', diodos: 'Puente de diodos', ...(c.tiene('c') ? { c: 'Condensadores de filtro' } : {}), ...(c.tiene('reg') ? { reg: 'Reguladores' } : {}), ...(c.tiene('carga') ? { carga: 'Cargas' } : {}), ...(c.tiene('i') ? { i: 'Consumos constantes' } : {}) },
+  }),
   observables: {
     positivo: { medida: 'v(p)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del condensador del raíl positivo' },
     negativo: { medida: 'v(n)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del condensador del raíl negativo' },

@@ -31,6 +31,12 @@ const d: DefinicionEsquema = {
     r2: { obligatoria: true, descripcion: 'resistencia del rotor referida al estátor, R₂′ (Ω)', color: 'verde' },
     s: { obligatoria: true, descripcion: 'deslizamiento s = (n_s − n)/n_s (de 0 a 1; 1 parado): la carga mecánica R₂′·(1 − s)/s', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { fte: 'Red, arriba', g: 'Rama magnetizante, arriba', '0': 'Abajo, el neutro' },
+    ramas: { vmi: 'Corriente de línea', vmm: 'Rama magnetizante', vm2: 'Rama del rotor' },
+    zonas: { fuente: 'Red', r1: 'Resistencia del estátor', x1: 'Reactancia del estátor', ...(c.tiene('rfe') ? { rfe: 'Pérdidas en el hierro' } : {}), xm: 'Reactancia magnetizante', x2: 'Reactancia del rotor', r2: 'Resistencia del rotor', s: 'Carga mecánica' },
+  }),
   observables: {
     ...observablesCA('linea', 'i(vmi)', 'A', 'la corriente de línea (del estátor), I₁'),
     ...observablesCA('rotor', 'i(vm2)', 'A', 'la corriente del rotor referida al estátor, I₂′'),

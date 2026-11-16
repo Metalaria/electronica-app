@@ -124,6 +124,11 @@ export interface Curva {
   palitos?: { paso: number };
   /** 1.2 (motor12e): hidden (with its legend entry «¿?») while the widget hides its readings (a prediction). */
   oculta?: boolean;
+  /**
+   * 1.2.1 (motor121): samples [x, y] drawn as they are instead of `expr` (the live circuit's oscilloscope: a node's
+   * waveform from the simulator). Page only: lessons never carry it.
+   */
+  puntos?: [number, number][];
 }
 
 /** A fixed point of a graph (τ on a charge curve, the cut-off frequency): a dot, a label, guide lines to the axes. */

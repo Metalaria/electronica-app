@@ -89,6 +89,12 @@ export interface Marcar {
   rotulo: Texto;
   /** Keyboard positions along each axis. */
   pasos: number;
+  /**
+   * motor121 (autor121-digital): the mark is the cursor of a logic circuit's timing diagram, put on the clock cycle
+   * where something happens (the edge that captures the data, the ACK bit): `ciclo` (1-based), why each other cycle is
+   * not it (`porque`, by cycle number), and the row it is about (`senal`, for the label). The graph fields are unused.
+   */
+  cronograma?: { ciclo: number; senal?: string; porque: Record<string, Texto> };
 }
 
 export interface EstadoMarcar {
@@ -107,6 +113,11 @@ export interface Leer {
   tol: number;
   rotulo: Texto;
   errores: ErrorTipico[];
+  /**
+   * motor121 (autor121-digital): a whole number written in hexadecimal (16) or binary (2) — «3F», «0x3F», «3Fh»,
+   * «0011 1111» —, checked exactly; `cifras` is then its width in bits (for the reversed-bits and nibble errors).
+   */
+  base?: 2 | 16;
 }
 
 export interface EstadoLeer {

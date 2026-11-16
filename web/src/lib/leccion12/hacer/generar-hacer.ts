@@ -3,18 +3,21 @@
 // cards (doing against answering by choice; GUIA §13). lib/leccion11/generar.ts and lib/leccion12/generar12.ts call
 // these. Pure.
 
-import { contarPalabras } from '../../leccion11/texto';
+import { contarPalabras, textoPlano } from '../../leccion11/texto';
 import { enRango, type ModeloCompilado, type Valores } from '../../leccion11/modelo';
 import { fraccionEje } from '../../leccion11/ejes';
-import { esLineal, resolverCC } from '../cc';
-import { contextoNetlist } from '../../leccion11/spice';
-import type { DefinicionEsquema } from '../../leccion11/esquemas/tipos';
+import { resolverCC, type SolucionCC } from '../cc';
+import { contextoNetlist, holguraNoLineal, medidaDePuntas, TOL_OP, type ComprobacionSpice, type ValorEsperado } from '../../leccion11/spice';
+import type { DefinicionEsquema, Medible } from '../../leccion11/esquemas/tipos';
+import { lineasOp, peticionMedida, type PeticionMedida } from './punto-trabajo';
 import type { Condicion, Mando, Pista, Rango, Tarjeta, Texto, WidgetCircuito } from '../../leccion11/tipos';
 import type { ErrorTipico } from '../tipos';
 import { errorRelativo } from '../prediccion';
 import type { Contexto12, Resultado12 } from '../generar12';
 import { graficaDe, marcaBien, objetivoCumplido, posicionesMarca } from './motor-hacer';
 import type { Elegir, Instrumento, Leer, Marcar, Medir, Objetivo } from './tipos';
+import { buscarObjetivo, condicionLogica } from '../digital/objetivo-logico';
+import { NOMBRE_PIEZA, type CircuitoLogico } from '../digital/logica';
 
 const esObjeto = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 const esNumero = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
@@ -44,8 +47,13 @@ function partesNetlist(lineas: readonly string[]): { nodos: Set<string>; medidor
   return { nodos, medidores };
 }
 
-/** `widget.instrumento` of a circuit: its shape (checked against the netlist later, card by card: validarInstrumento). */
-export function instrumentoDe(x: unknown, e: (m: string) => void, texto: (x: unknown, campo: string, obligatorio?: boolean) => Texto | undefined, curvas: number): Instrumento | null {
+/**
+ * `widget.instrumento` of a circuit: its shape (checked against the netlist later, card by card: validarInstrumento).
+ * motor121: `puntos` and `ramas` may be left out (the schematic's own, DefinicionEsquema.medible) or given as a list
+ * of ids (the schematic's names for them); the oscilloscope's `curvas` may leave points out (their waveform comes
+ * from the simulator).
+ */
+export function instrumentoDe(x: unknown, e: (m: string) => void, texto: (x: unknown, campo: string, obligatorio?: boolean) => Texto | undefined, curvas: number, medible?: Medible | null): Instrumento | null {
   if (!esObjeto(x)) {
     e('«widget.instrumento» debe ser { tipo: multimetro | osciloscopio, puntos, ramas? }');
     return null;
@@ -53,14 +61,27 @@ export function instrumentoDe(x: unknown, e: (m: string) => void, texto: (x: unk
   for (const k of Object.keys(x)) if (!['tipo', 'modos', 'puntos', 'ramas', 'curvas', 'negra'].includes(k)) e(`«widget.instrumento.${k}»: clave desconocida`);
   const tipo = x.tipo === 'osciloscopio' ? 'osciloscopio' : 'multimetro';
   if (x.tipo !== 'multimetro' && x.tipo !== 'osciloscopio') e('«widget.instrumento.tipo»: multimetro u osciloscopio');
-  const lista = (o: unknown, campo: string) => {
+  const lista = (o: unknown, campo: 'puntos' | 'ramas') => {
     const out: { id: string; rotulo: Texto }[] = [];
-    if (o == null) return out;
+    const propios = medible?.[campo] ?? {};
+    // (motor121: the schematic's own when left out; a list of ids takes the schematic's names)
+    if (o == null) o = campo === 'ramas' && Array.isArray(x.modos) && !x.modos.includes('A') ? {} : propios;
+    if (Array.isArray(o)) {
+      const ids = o.map(String);
+      o = {};
+      for (const id of ids) {
+        const k = Object.keys(propios).find((q) => q.toLowerCase() === id.toLowerCase());
+        if (!k) e(`«widget.instrumento.${campo}»: «${id}» no tiene nombre en el esquema (${Object.keys(propios).join(', ') || 'ninguno'}); póngalo como { ${id}: «nombre» }`);
+        else (o as Record<string, unknown>)[k] = propios[k];
+      }
+    }
     if (!esObjeto(o)) {
-      e(`«widget.instrumento.${campo}»: { id: «nombre neutro» }`);
+      e(`«widget.instrumento.${campo}»: { id: «nombre neutro» } o una lista de los del esquema`);
       return out;
     }
-    for (const [id, r] of Object.entries(o)) {
+    for (const [id, r0] of Object.entries(o)) {
+      // (an empty name takes the schematic's)
+      const r = r0 == null || r0 === '' ? propios[id] : r0;
       const rot = texto(r, `widget.instrumento.${campo}.${id}`, true) ?? [];
       if (contarPalabras(rot) > MAX_ROTULO) e(`«widget.instrumento.${campo}.${id}»: más de ${MAX_ROTULO} palabras`);
       out.push({ id: id.toLowerCase(), rotulo: rot });
@@ -68,21 +89,22 @@ export function instrumentoDe(x: unknown, e: (m: string) => void, texto: (x: unk
     return out;
   };
   const puntos = lista(x.puntos, 'puntos');
-  const ramas = lista(x.ramas, 'ramas');
+  const ramas = tipo === 'osciloscopio' && x.ramas == null ? [] : lista(x.ramas, 'ramas');
   const i: Instrumento = { tipo, modos: [], puntos, ramas };
   if (tipo === 'osciloscopio') {
     if (ramas.length) e('«widget.instrumento.ramas»: el osciloscopio no mide corrientes');
     i.modos = ['V'];
-    if (!esObjeto(x.curvas)) e('«widget.instrumento.curvas»: qué curva de la gráfica enseña cada punto ({ salida: 0 })');
+    // (motor121: a point without a curve shows the simulator's waveform of its node: validarInstrumento checks it can)
+    if (x.curvas != null && !esObjeto(x.curvas)) e('«widget.instrumento.curvas»: qué curva de la gráfica enseña cada punto ({ salida: 0 })');
     else {
       i.curvas = {};
-      for (const [k, v] of Object.entries(x.curvas)) {
+      for (const [k, v] of Object.entries(esObjeto(x.curvas) ? x.curvas : {})) {
         if (!puntos.some((p) => p.id === k.toLowerCase())) e(`«widget.instrumento.curvas.${k}»: no es uno de los puntos`);
         if (!(typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < curvas)) e(`«widget.instrumento.curvas.${k}»: el número de una curva de la gráfica (0 a ${curvas - 1})`);
         else i.curvas[k.toLowerCase()] = v;
       }
-      for (const p of puntos) if (!(p.id in i.curvas)) e(`«widget.instrumento.curvas»: falta la curva del punto «${p.id}»`);
     }
+    if (puntos.length < 1) e('«widget.instrumento.puntos»: al menos un punto para la sonda');
     if (!curvas) e('el osciloscopio necesita la gráfica del circuito («widget.grafica»)');
   } else {
     const modos = Array.isArray(x.modos) ? x.modos : [...(puntos.length ? ['V'] : []), ...(ramas.length ? ['A'] : [])];
@@ -99,22 +121,26 @@ export function instrumentoDe(x: unknown, e: (m: string) => void, texto: (x: unk
 }
 
 /**
- * The instrument against the schematic's netlist in each state the generator checks: a linear DC circuit (the page
- * solves it: lib/leccion12/cc.ts), every point a node of it, every branch one of its 0 V meters. Returns the readings
- * the instrument can show (for the numbers rule).
+ * The instrument against the schematic's netlist in each state the generator checks: every point a node of it, every
+ * branch one of its 0 V meters. A linear DC circuit is solved here (as the page does: lib/leccion12/cc.ts) and its
+ * readings are returned (for the numbers rule); any other one (motor121: non-linear, or changing with time) is read
+ * by the page on the app's ngspice (punto-trabajo.ts): the same netlist goes into `spice`, so the script checks the
+ * simulator gives every point and branch the instrument offers. An oscilloscope's point without a curve needs a graph
+ * against time whose curves the schematic simulates (its waveform comes from that run).
  */
-export function validarInstrumento(def: DefinicionEsquema, w: WidgetCircuito, mc: ModeloCompilado, estados: readonly Valores[], e: (m: string) => void): number[] {
+export function validarInstrumento(def: DefinicionEsquema, w: WidgetCircuito, mc: ModeloCompilado, estados: readonly Valores[], e: (m: string) => void): { cifras: number[]; spice: ComprobacionSpice[] } {
   const i = w.instrumento!;
   const cifras: number[] = [];
+  const spice: ComprobacionSpice[] = [];
   let dicho = false;
-  for (const st of estados) {
+  for (const [k, st] of estados.entries()) {
     const r = mc.evaluar(st);
     let lineas: string[];
     try {
       lineas = def.netlist(contextoNetlist(w, r), 'op');
     } catch (err) {
       e(`«widget.instrumento»: el esquema no da su netlist (${err instanceof Error ? err.message : String(err)})`);
-      return cifras;
+      return { cifras, spice };
     }
     const { nodos, medidores } = partesNetlist(lineas);
     if (!dicho) {
@@ -122,20 +148,103 @@ export function validarInstrumento(def: DefinicionEsquema, w: WidgetCircuito, mc
       for (const b of i.ramas) if (!medidores.has(b.id)) e(`«widget.instrumento.ramas.${b.id}»: no es un medidor de 0 V del esquema ${def.nombre} (${[...medidores].sort().join(', ') || 'ninguno'})`);
       dicho = true;
     }
-    if (i.tipo === 'osciloscopio') continue;
-    if (!esLineal(lineas)) {
-      e('«widget.instrumento»: el multímetro lee el punto de trabajo en continua de un circuito lineal; este esquema no lo es');
-      return cifras;
+    const p = peticionMedida(w, r, def);
+    if (i.tipo === 'osciloscopio') {
+      const sinCurva = i.puntos.filter((q) => !(q.id in (i.curvas ?? {})));
+      if (!sinCurva.length) continue;
+      if (p?.analisis !== 'tran') {
+        e(`«widget.instrumento.curvas»: falta la curva de ${sinCurva.map((q) => `«${q.id}»`).join(', ')} (sin ella, la onda la da el simulador, y eso pide una gráfica frente al tiempo con una curva que «mide» el esquema)`);
+        return { cifras, spice };
+      }
+      if (k === 0) spice.push(existencia(p, sinCurva.filter((q) => q.id !== '0').map((q) => `v(${q.id})`), 'el osciloscopio'));
+      continue;
     }
-    const s = resolverCC(lineas);
-    if (!s) {
-      e('«widget.instrumento»: el punto de trabajo del circuito no tiene solución');
-      return cifras;
-    }
-    for (const b of i.ramas) if (s.corrientes[b.id] != null) cifras.push(s.corrientes[b.id]!, Math.abs(s.corrientes[b.id]!));
-    for (const a of i.puntos) for (const b of i.puntos) if (a.id !== b.id && s.nodos[a.id] != null && s.nodos[b.id] != null) cifras.push(s.nodos[a.id]! - s.nodos[b.id]!);
+    if (!p) {
+      const s = resolverCC(lineas);
+      if (!s) {
+        e('«widget.instrumento»: el punto de trabajo del circuito no tiene solución');
+        return { cifras, spice };
+      }
+      for (const b of i.ramas) if (s.corrientes[b.id] != null) cifras.push(s.corrientes[b.id]!, Math.abs(s.corrientes[b.id]!));
+      for (const a of i.puntos) for (const b of i.puntos) if (a.id !== b.id && s.nodos[a.id] != null && s.nodos[b.id] != null) cifras.push(s.nodos[a.id]! - s.nodos[b.id]!);
+    } else if (k === 0) spice.push(existencia(p, [...i.puntos.filter((q) => q.id !== '0').map((q) => `v(${q.id})`), ...i.ramas.map((b) => `i(${b.id})`)], 'el multímetro'));
   }
-  return cifras;
+  return { cifras, spice };
+}
+
+/** A check that the simulator gives these vectors (any value): what the page's instrument will read. */
+function existencia(p: PeticionMedida, medidas: string[], quien: string): ComprobacionSpice {
+  return {
+    donde: `«widget.instrumento» (${quien}, lo que lee el simulador)`,
+    netlist: p.netlist,
+    analisis: p.analisis,
+    valores: medidas.map((m): ValorEsperado => ({ medida: m, esperado: 0, tol: Infinity, ...(p.analisis === 'tran' ? { promedio: { desde: p.desde!, hasta: p.hasta! } } : {}) })),
+    curvas: [],
+  };
+}
+
+/** The nodes that are one in DC (joined by a 0 V source or a coil): a voltmeter across them always reads 0. */
+function mismoNodo(lineas: readonly string[]): (a: string, b: string) => boolean {
+  const padre = new Map<string, string>();
+  const raiz = (x: string): string => {
+    let y = x;
+    while (padre.has(y) && padre.get(y) !== y) y = padre.get(y)!;
+    return y;
+  };
+  for (const raw of lineas) {
+    const s = raw.replace(/;.*$/, '').trim();
+    if (!s || /^[.*+]/.test(s)) continue;
+    const t = s.split(/\s+/);
+    const tipo = t[0]![0]!.toUpperCase();
+    const cero = tipo === 'V' && t.length >= 4 && /^(dc\s+)?0$/i.test(t.slice(3).join(' '));
+    if ((cero || tipo === 'L') && t[1] && t[2]) {
+      const a = raiz(t[1].toLowerCase().replace(/^gnd$/, '0'));
+      const b = raiz(t[2].toLowerCase().replace(/^gnd$/, '0'));
+      if (a !== b) padre.set(a, b);
+    }
+  }
+  return (a, b) => raiz(a) === raiz(b);
+}
+
+/** A placement's reading in a linear DC solution (NaN when it has none). */
+function leidaCC(s: SolucionCC | null, m: { entre?: [string, string]; rama?: string }): number {
+  if (!s) return NaN;
+  if (m.rama) return s.corrientes[m.rama] ?? NaN;
+  if (m.entre) return (s.nodos[m.entre[0]] ?? NaN) - (s.nodos[m.entre[1]] ?? NaN);
+  return NaN;
+}
+
+/**
+ * The model's value of a placement checked against what the instrument reads: here when the page solves the circuit
+ * (an error if it differs by more than `tolRel`), else a check for the script's ngspice run (the page's own reading).
+ * `holgura`: add the book's constant-drop allowance (a «medir.valor»; not a «leer», whose tolerance is the reader's).
+ */
+function comprobarLectura(c: Contexto12, w: WidgetCircuito, m: { entre?: [string, string]; rama?: string }, expr: string, tolRel: number, donde: string, holgura: boolean, out: Resultado12): boolean {
+  const def = c.esquema as DefinicionEsquema;
+  const esperado = c.mc.funcion(expr)(c.mc.evaluar(c.inicial));
+  if (!Number.isFinite(esperado)) return false;
+  const p = peticionMedida(w, c.mc.evaluar(c.inicial), def);
+  const medida = m.rama ? `i(${m.rama})` : m.entre ? medidaDePuntas(m.entre[0], m.entre[1]) : '';
+  if (!medida) return false;
+  if (!p) {
+    const lineas = lineasOp(def, w, c.mc.evaluar(c.inicial)) ?? [];
+    const leida = leidaCC(resolverCC(lineas), m);
+    if (!Number.isFinite(leida)) c.e(`«${donde}»: el circuito no da esa medida`);
+    else if (Math.abs(leida - esperado) > tolRel * Math.abs(esperado) + 1e-9) c.e(`«${donde}»: el multímetro marcaría ${leida} y el modelo da ${esperado}`);
+    else return true;
+    return false;
+  }
+  const extra = holgura ? holguraNoLineal(def, w, c.mc, c.inicial, (ev) => c.mc.funcion(expr)(ev)) : 0;
+  const unidad = m.rama ? 'A' : 'V';
+  const tol = Math.max(tolRel * Math.abs(esperado) + extra, unidad === 'A' ? 1e-9 : 1e-6);
+  (out.spice ??= []).push({
+    donde: `«${donde}» (lo que marcará el instrumento, del simulador)`,
+    netlist: p.netlist,
+    analisis: p.analisis,
+    valores: [{ medida, esperado, tol, ...(p.analisis === 'tran' ? { promedio: { desde: p.desde!, hasta: p.hasta! } } : {}) }],
+    curvas: [],
+  });
+  return true;
 }
 
 // ------------------------------------------------------------------ the steps
@@ -188,7 +297,12 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
     if (magnitud === 'tension') {
       if (i.tipo !== 'multimetro' || !i.modos.includes('V')) e('«medir.magnitud: tension» necesita un multímetro con el modo V');
       if (!Array.isArray(x.entre) || x.entre.length !== 2) e('«medir.entre»: [punto de la roja, punto de la negra]');
-      else a.entre = [punto(x.entre[0], 'medir.entre'), punto(x.entre[1], 'medir.entre')];
+      else {
+        a.entre = [punto(x.entre[0], 'medir.entre'), punto(x.entre[1], 'medir.entre')];
+        // (motor121: a measure that makes no sense — both probes on one node, which reads 0 whatever the circuit does)
+        const lineas = c.esquema ? (lineasOp(c.esquema as DefinicionEsquema, wc, r0) ?? []) : [];
+        if (a.entre[0] === a.entre[1] || mismoNodo(lineas)(a.entre[0], a.entre[1])) e('«medir.entre»: las dos puntas quedan en el mismo nodo: el multímetro marcaría siempre 0 V');
+      }
     } else if (magnitud === 'corriente') {
       if (i.tipo !== 'multimetro' || !i.modos.includes('A')) e('«medir.magnitud: corriente» necesita un multímetro con el modo A');
       const k = String(x.rama ?? '').toLowerCase();
@@ -206,25 +320,60 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
     }
     const otras = magnitud === 'corriente' ? i.ramas.filter((b) => b.id !== a.rama) : magnitud === 'senal' ? i.puntos.filter((p) => p.id !== a.punto) : [];
     if (otras.length && !otras.some((o) => a.porque[o.id])) c.aviso('«medir.porque»: ninguna explicación para una medida equivocada (diga qué mide cada otra)');
+    // (motor121: a branch that carries nothing in any state is not something to measure)
+    if (magnitud === 'corriente' && a.rama && !peticionMedida(wc, r0, c.esquema as DefinicionEsquema)) {
+      const estados = [c.inicial, ...c.mandos.flatMap((md) => [md.valores[0]!, md.valores[md.valores.length - 1]!].map((v) => ({ ...c.inicial, [md.valor]: v })))];
+      const nada = estados.every((st) => {
+        const ii = leidaCC(resolverCC(lineasOp(c.esquema as DefinicionEsquema, wc, c.mc.evaluar(st)) ?? []), { rama: a.rama });
+        return Number.isFinite(ii) && Math.abs(ii) < 1e-10;
+      });
+      if (nada) e(`«medir.rama»: por «${a.rama}» no pasa corriente en ningún estado de la tarjeta: el amperímetro marcaría siempre 0`);
+    }
     if (x.valor != null) {
-      // the right reading is what the model says (the page's DC solution of the netlist against the author's model)
+      // the right reading is what the model says: against the page's DC solution of the netlist, or (motor121) the
+      // simulator's reading, which the script checks (0,1 %, plus the book's constant drops' allowance)
       c.variables('medir.valor', x.valor);
       const esperado = c.mc.funcion(String(x.valor))(r0);
-      const lineas = (() => {
-        try {
-          return (c.esquema as DefinicionEsquema).netlist(contextoNetlist(wc, r0), 'op');
-        } catch {
-          return [];
-        }
-      })();
-      const s = resolverCC(lineas);
-      const leida = !s ? NaN : magnitud === 'corriente' ? (s.corrientes[a.rama ?? ''] ?? NaN) : magnitud === 'tension' && a.entre ? (s.nodos[a.entre[0]] ?? NaN) - (s.nodos[a.entre[1]] ?? NaN) : NaN;
       if (magnitud === 'senal') e('«medir.valor»: solo en una medida del multímetro');
-      else if (!Number.isFinite(leida)) e('«medir.valor»: el circuito no da esa medida');
-      else if (Math.abs(leida - esperado) > 1e-3 * Math.abs(esperado) + 1e-9) e(`«medir.valor»: el multímetro marcaría ${leida} y el modelo da ${esperado}`);
-      else out.cifras.push(esperado);
+      else {
+        if (comprobarLectura(c, wc, a, String(x.valor), TOL_OP, 'medir.valor', true, out) && Number.isFinite(esperado)) out.cifras.push(esperado);
+      }
     }
     out.actividad = a;
+    return;
+  }
+
+  if (tipo === 'elegir' && w?.tipo === 'logica') {
+    // motor121 (autor121-digital): the pieces, LEDs and switches of a logic circuit are the zones
+    claves(['zonas', 'bien', 'todas', 'porque']);
+    const cl = w.circuito;
+    const propias: Record<string, string> = {
+      ...Object.fromEntries(cl.piezas.map((p) => [p.id, p.rotulo ? textoPlano(p.rotulo) : `${NOMBRE_PIEZA[p.tipo][0]!.toUpperCase()}${NOMBRE_PIEZA[p.tipo].slice(1)} ${p.id}`])),
+      ...Object.fromEntries(cl.salidas.map((x) => [x.id, `LED ${textoPlano(x.rotulo)}`])),
+      ...Object.fromEntries(cl.entradas.map((x) => [x.id, `${x.reloj ? 'Reloj' : 'Entrada'} ${textoPlano(x.rotulo)}`])),
+    };
+    let zs: unknown = x.zonas ?? Object.fromEntries(cl.piezas.map((p) => [p.id, propias[p.id]]));
+    if (Array.isArray(zs)) zs = Object.fromEntries(zs.map(String).map((id) => [id, propias[id] ?? '']));
+    const zonas: Elegir['zonas'] = [];
+    if (!esObjeto(zs) || Object.keys(zs).length < 2 || Object.keys(zs).length > 12) e('«elegir.zonas»: de 2 a 12 piezas, LED o entradas del circuito lógico');
+    else
+      for (const [id, rv] of Object.entries(zs)) {
+        if (!(id in propias)) e(`«elegir.zonas.${id}»: no es una pieza, un LED ni una entrada del circuito (${Object.keys(propias).join(', ')})`);
+        const rot = c.texto(rv == null || rv === '' ? propias[id] : rv, `elegir.zonas.${id}`, true) ?? [];
+        if (contarPalabras(rot) > MAX_ROTULO) e(`«elegir.zonas.${id}»: más de ${MAX_ROTULO} palabras`);
+        zonas.push({ id, rotulo: rot });
+      }
+    const bien = (Array.isArray(x.bien) ? x.bien : [x.bien]).map(String);
+    if (!bien.length || bien.some((b) => !zonas.some((z) => z.id === b))) e('«elegir.bien»: una o varias de las zonas');
+    const porque: Record<string, Texto> = {};
+    if (esObjeto(x.porque))
+      for (const [k, v] of Object.entries(x.porque)) {
+        const t = explicacion(v, `elegir.porque.${k}`);
+        if (t) porque[k] = t;
+        if (!zonas.some((z) => z.id === k) || bien.includes(k)) e(`«elegir.porque.${k}»: solo las zonas que no son la respuesta`);
+      }
+    for (const z of zonas) if (!bien.includes(z.id) && !porque[z.id]) e(`«elegir.porque.${z.id}»: cada zona que no es la respuesta dice por qué no`);
+    out.actividad = { tipo: 'elegir', zonas, bien, todas: x.todas === true, porque } satisfies Elegir;
     return;
   }
 
@@ -232,12 +381,30 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
     claves(['zonas', 'bien', 'todas', 'porque']);
     const wc = w?.tipo === 'circuito' ? w : null;
     if (!wc) {
-      e('«elegir» necesita un widget «circuito» (lo que se toca es el esquema)');
+      e('«elegir» necesita un widget «circuito» o «logica» (lo que se toca es el esquema)');
       return;
     }
     const def = c.esquema as DefinicionEsquema;
     const zonas: Elegir['zonas'] = [];
-    if (!esObjeto(x.zonas) || Object.keys(x.zonas).length < 2 || Object.keys(x.zonas).length > 12) e('«elegir.zonas»: de 2 a 12 { pieza o red:nodo: «nombre neutro» }');
+    // (motor121: a list of ids, or none at all, takes the schematic's own names — its parts and its points as «red:»)
+    const propias = (() => {
+      try {
+        const m = def.medible?.(contextoNetlist(wc, r0));
+        return { ...(m?.zonas ?? {}), ...Object.fromEntries(Object.entries(m?.puntos ?? {}).map(([k, v]) => [`red:${k}`, v])) } as Record<string, string>;
+      } catch {
+        return {} as Record<string, string>;
+      }
+    })();
+    if (x.zonas == null) x = { ...x, zonas: Object.fromEntries(Object.entries(propias).filter(([k]) => !k.startsWith('red:'))) };
+    if (Array.isArray(x.zonas)) {
+      const o: Record<string, unknown> = {};
+      for (const id of x.zonas.map(String)) {
+        if (!(id in propias)) e(`«elegir.zonas»: «${id}» no tiene nombre en el esquema (${Object.keys(propias).join(', ') || 'ninguno'}); póngalo como { ${id}: «nombre» }`);
+        o[id] = propias[id] ?? id;
+      }
+      x = { ...x, zonas: o };
+    }
+    if (!esObjeto(x.zonas) || Object.keys(x.zonas).length < 2 || Object.keys(x.zonas).length > 12) e('«elegir.zonas»: de 2 a 12 { pieza o red:nodo: «nombre neutro» }, o una lista de las del esquema');
     else {
       let nodos: Set<string> = new Set();
       try {
@@ -250,7 +417,7 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
         else if (id.startsWith('red:')) {
           if (!nodos.has(id.slice(4))) e(`«elegir.zonas.${id}»: «${id.slice(4)}» no es un nodo del esquema (${[...nodos].sort().join(', ')})`);
         } else if (!(id in wc.piezas) && !(id in (def.partes ?? {}))) e(`«elegir.zonas.${id}»: no es una pieza de este widget (${[...Object.keys(wc.piezas), ...Object.keys(def.partes ?? {})].join(', ')})`);
-        const rot = c.texto(rv, `elegir.zonas.${id}`, true) ?? [];
+        const rot = c.texto(rv == null || rv === '' ? propias[id] : rv, `elegir.zonas.${id}`, true) ?? [];
         if (contarPalabras(rot) > MAX_ROTULO) e(`«elegir.zonas.${id}»: más de ${MAX_ROTULO} palabras`);
         zonas.push({ id, rotulo: rot });
       }
@@ -269,6 +436,32 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
     })();
     for (const z of zonas) if (!bien.includes(z.id) && !porque[z.id]) e(`«elegir.porque.${z.id}»: cada zona que no es la respuesta dice por qué no`);
     out.actividad = { tipo: 'elegir', zonas, bien, todas: x.todas === true, porque } satisfies Elegir;
+    return;
+  }
+
+  if (tipo === 'marcar' && x.cronograma != null) {
+    // motor121 (autor121-digital): the cursor of a logic circuit's timing diagram on the cycle where something happens
+    claves(['cronograma', 'ciclo', 'senal', 'rotulo', 'porque']);
+    const cr = w?.tipo === 'logica' ? w.cronograma : undefined;
+    if (x.cronograma !== true) e('«marcar.cronograma»: true');
+    if (!cr) {
+      e('«marcar.cronograma» necesita un widget «logica» con su «cronograma»');
+      return;
+    }
+    const ciclo = esNumero(x.ciclo) ? x.ciclo : NaN;
+    if (!Number.isInteger(ciclo) || ciclo < 1 || ciclo > cr.ciclos) e(`«marcar.ciclo»: el número de un ciclo del cronograma (1 a ${cr.ciclos})`);
+    else if (ciclo === 1) e('«marcar.ciclo»: el cursor empieza en el ciclo 1; pida otro, o el lector acertaría sin moverlo');
+    if (x.senal != null && !cr.senales.includes(String(x.senal))) e(`«marcar.senal»: una fila del cronograma (${cr.senales.join(', ')})`);
+    const porque: Record<string, Texto> = {};
+    if (x.porque != null && !esObjeto(x.porque)) e('«marcar.porque»: { ciclo: «por qué no» }');
+    for (const [k, v] of Object.entries(esObjeto(x.porque) ? x.porque : {})) {
+      const n = Number(k);
+      if (!Number.isInteger(n) || n < 1 || n > cr.ciclos || n === ciclo) e(`«marcar.porque.${k}»: un ciclo del cronograma que no es la respuesta`);
+      const t = explicacion(v, `marcar.porque.${k}`);
+      if (t) porque[String(n)] = t;
+    }
+    if (!Object.keys(porque).length) c.aviso('«marcar.porque»: ninguna explicación de un ciclo equivocado (diga qué pasa en los vecinos)');
+    out.actividad = { tipo: 'marcar', modo: 'x', tol: 0.03, inicio: { x: 0, y: 0 }, rotulo: c.texto(x.rotulo, 'marcar.rotulo', true) ?? [], pasos: 120, cronograma: { ciclo, ...(x.senal != null ? { senal: String(x.senal) } : {}), porque } } satisfies Marcar;
     return;
   }
 
@@ -326,8 +519,13 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
   }
 
   // leer
-  claves(['objetivo', 'unidad', 'cifras', 'tol', 'rotulo', 'errores']);
+  claves(['objetivo', 'unidad', 'cifras', 'tol', 'rotulo', 'errores', 'medida', 'base']);
   if (!w) e('«leer» necesita un widget del que leer (un circuito con su instrumento o su lectura, una gráfica)');
+  // (motor121: in hexadecimal or binary the target may be written as such: «0x3F», «0b0011»)
+  if (x.base != null && typeof x.objetivo === 'string' && /^0x[0-9a-f]+$|^0b[01]+$/i.test(x.objetivo.trim())) {
+    const t = x.objetivo.trim().toLowerCase();
+    x = { ...x, objetivo: String(parseInt(t.slice(2), t[1] === 'x' ? 16 : 2)) };
+  }
   c.variables('leer.objetivo', x.objetivo);
   const a: Leer = {
     tipo: 'leer',
@@ -342,6 +540,16 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
   const obj = c.mc.funcion(a.objetivo)(r0);
   if (!Number.isFinite(obj)) e(`«leer.objetivo» no da un número (${obj})`);
   else out.cifras.push(obj);
+  if (x.base != null) {
+    // motor121: a whole number in hexadecimal or binary, checked exactly; «cifras» is its width in bits
+    if (x.base !== 2 && x.base !== 16) e('«leer.base»: 16 (hexadecimal) o 2 (binario)');
+    else a.base = x.base;
+    if (!(Number.isInteger(obj) && obj >= 0)) e(`«leer.objetivo» en base ${String(x.base)}: un entero no negativo (da ${obj})`);
+    const minimo = Math.max(1, Math.ceil(Math.log2(Math.max(obj, 1) + 1)));
+    a.cifras = esNumero(x.cifras) ? x.cifras : Math.max(8, Math.ceil(minimo / 4) * 4);
+    if (!Number.isInteger(a.cifras) || a.cifras < minimo || a.cifras > 32) e(`«leer.cifras» (los bits): de ${minimo} a 32`);
+    if (x.unidad != null || x.tol != null) e('«leer.unidad» y «leer.tol» no van en base 2 o 16: se compara el número exacto');
+  }
   if (x.errores != null) {
     if (!Array.isArray(x.errores)) e('«leer.errores»: una lista de { expr | razon, texto }');
     else
@@ -354,7 +562,9 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
           et.expr = String(y.expr);
           const v = c.mc.funcion(et.expr)(r0);
           if (!Number.isFinite(v)) e(`«${d}.expr» no da un número`);
-          else if (Number.isFinite(obj) && errorRelativo(v, obj) <= a.tol) e(`«${d}.expr» da ${v}, dentro de la tolerancia: no es un error`);
+          // (motor121, autor121-digital: in base 2 or 16 the number is compared exactly — one LSB off is an error)
+          else if (a.base ? Math.round(v) === Math.round(obj) || !Number.isInteger(v) : Number.isFinite(obj) && errorRelativo(v, obj) <= a.tol)
+            e(a.base ? `«${d}.expr» da ${v}: ${Number.isInteger(v) ? 'es el número bueno' : 'no es un entero'}` : `«${d}.expr» da ${v}, dentro de la tolerancia: no es un error`);
           else out.cifras.push(v);
         } else if (esObjeto(y.razon)) {
           et.razon = {};
@@ -364,6 +574,23 @@ export function actividadHacerDe(tipo: 'medir' | 'elegir' | 'marcar' | 'leer', x
         a.errores.push(et);
       });
   }
+  // (motor121: what the reader reads on the instrument, `medida: { entre: [roja, negra] }` or `{ rama }`: checked
+  // against the model within the card's tolerance, less half a percent for the display's three figures)
+  const wc = w?.tipo === 'circuito' ? w : null;
+  if (x.medida != null) {
+    const i = wc?.instrumento;
+    const m = esObjeto(x.medida) ? x.medida : {};
+    if (!wc || !i || i.tipo !== 'multimetro') e('«leer.medida» necesita un circuito con multímetro');
+    else if (Array.isArray(m.entre) && m.entre.length === 2) {
+      const par = m.entre.map((q) => String(q).toLowerCase()) as [string, string];
+      for (const q of par) if (!i.puntos.some((p) => p.id === q)) e(`«leer.medida.entre»: «${q}» no es un punto del instrumento`);
+      comprobarLectura(c, wc, { entre: par }, a.objetivo, Math.max(a.tol - 0.005, a.tol / 2), 'leer.medida', false, out);
+    } else if (typeof m.rama === 'string') {
+      if (!i.ramas.some((b) => b.id === String(m.rama).toLowerCase())) e(`«leer.medida.rama»: «${m.rama}» no es una rama del instrumento`);
+      comprobarLectura(c, wc, { rama: String(m.rama).toLowerCase() }, a.objetivo, Math.max(a.tol - 0.005, a.tol / 2), 'leer.medida', false, out);
+    } else e('«leer.medida»: { entre: [roja, negra] } o { rama }');
+  } else if (wc?.instrumento?.tipo === 'multimetro' && c.esquema && peticionMedida(wc, r0, c.esquema as DefinicionEsquema))
+    c.aviso('«leer» sobre un multímetro que lee el simulador: diga con «medida» qué lectura es ({ entre: [roja, negra] } o { rama }) para comprobar que el lector la verá dentro de la tolerancia');
   out.actividad = a;
 }
 
@@ -377,6 +604,8 @@ export interface ContextoObjetivo {
   texto(x: unknown, campo: string, obligatorio?: boolean): Texto | undefined;
   rango(x: unknown, donde: string): Rango | null;
   e(m: string): void;
+  /** motor121: the card's logic circuit (a goal on its LEDs, signals and counters: digital/objetivo-logico.ts). */
+  logica?: CircuitoLogico;
 }
 
 /** `objetivo: { condiciones: [...], logrado, pistas? }`: reachable with the card's controls, not reached at the start. */
@@ -389,10 +618,22 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
   }
   for (const k of Object.keys(x)) if (!['condiciones', 'logrado', 'pistas'].includes(k)) e(`«objetivo.${k}»: clave desconocida`);
   const condiciones: Condicion[] = [];
+  // (motor121: on a logic circuit, a condition may look at a LED, a signal or a counter)
+  const rangoDe = (y: unknown, donde: string): Rango | null => {
+    if (c.logica && esObjeto(y) && ['led', 'senal', 'contador'].some((q) => y[q] != null)) {
+      const r = condicionLogica(y, c.logica);
+      if (typeof r === 'string') {
+        e(`«${donde}»: ${r}`);
+        return null;
+      }
+      return r;
+    }
+    return c.rango(y, donde);
+  };
   if (!Array.isArray(x.condiciones) || !x.condiciones.length) e('«objetivo.condiciones»: una lista de { valor, objetivo + tol | min / max, rotulo }');
   else
     x.condiciones.forEach((y: unknown, k: number) => {
-      const r = c.rango(y, `objetivo.condicion ${k + 1}`);
+      const r = rangoDe(y, `objetivo.condicion ${k + 1}`);
       const rot = c.texto(esObjeto(y) ? y.rotulo : undefined, `objetivo.condicion ${k + 1}.rotulo`, true) ?? [];
       if (contarPalabras(rot) > 14) e(`objetivo.condicion ${k + 1}.rotulo: más de 14 palabras`);
       textos.push([`objetivo.condicion ${k + 1}`, rot]);
@@ -408,7 +649,7 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
       x.pistas.forEach((y: unknown, k: number) => {
         const p: Pista = { texto: c.texto(esObjeto(y) ? y.texto : y, `objetivo.pista ${k + 1}`, true) ?? [] };
         if (esObjeto(y) && y.cuando != null) {
-          const r = c.rango(y.cuando, `objetivo.pista ${k + 1}.cuando`);
+          const r = rangoDe(y.cuando, `objetivo.pista ${k + 1}.cuando`);
           if (r) p.cuando = r;
         }
         if (contarPalabras(p.texto) > MAX_PALABRAS) e(`objetivo.pista ${k + 1}: más de ${MAX_PALABRAS} palabras`);
@@ -417,7 +658,12 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
       });
   }
   const o: Objetivo = { condiciones, logrado, pistas };
-  if (condiciones.length && c.mandos.length) {
+  if (condiciones.length && c.logica) {
+    // a logic circuit: reachable from power-on with the switches and the clock, not reached at power-on
+    const b = buscarObjetivo(c.logica, condiciones);
+    if (b.inicial) e('el objetivo se cumple ya al encender el circuito (cambie el valor inicial de una entrada)');
+    else if (!b.camino) e(`el objetivo no se alcanza con las entradas y el reloj (${b.estados} estados del circuito probados)`);
+  } else if (condiciones.length && c.mandos.length) {
     const total = c.mandos.reduce((a, m) => a * m.valores.length, 1);
     if (total > c.max) e(`el objetivo tiene ${total} posiciones (máximo ${c.max})`);
     else {

@@ -31,6 +31,9 @@
   const valor = (id: string) => id;
 </script>
 
+<!-- (motor121: at 360 px a wide table scrolls inside its box, never the page; the box is focusable to scroll it) -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="d12-tabla-caja" role="region" aria-label="Tabla de verdad" tabindex="0">
 <table class="d12-tabla" data-tabla-verdad>
   <caption class="a12-solo-lector">Tabla de verdad{celdas ? ': rellene las salidas' : ''}</caption>
   <thead>
@@ -64,3 +67,4 @@
     {/each}
   </tbody>
 </table>
+</div>

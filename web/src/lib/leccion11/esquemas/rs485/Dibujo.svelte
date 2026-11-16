@@ -4,6 +4,8 @@
   // unit loads in the middle, from each wire to the receivers' internal voltage; at the far end (right) the other
   // termination and, with «activa», the bias again. Each termination's jumper is a switch on it.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Interruptor from '../kit/Interruptor.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -70,4 +72,11 @@
     <R x1={450} y1={170} x2={450} y2={240} color="naranja" />
     <path class="hilo" d="M444 240 H456" data-red="0"></path>
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={30} red="vcc" />
+  <Punto x={200} y={100} red="d1" />
+  <Punto x={200} y={170} red="d0" />
+  <Punto x={50} y={240} red="0" />
+  <Rama x={50} y={30} medidor="vmp" />
+  <Rama x={140} y={108} medidor="vmt" />
 </Lienzo>

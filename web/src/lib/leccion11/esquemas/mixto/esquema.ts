@@ -12,6 +12,12 @@ const d: DefinicionEsquema = {
     r2: { obligatoria: true, descripcion: 'primera rama del paralelo (Ω)', color: 'naranja' },
     r3: { obligatoria: true, descripcion: 'segunda rama del paralelo (Ω)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { fte: 'Arriba de la fuente', b: 'Nodo del paralelo, arriba', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente', v2: 'Rama de R₂', v3: 'Rama de R₃' },
+    zonas: { fuente: 'Fuente', r1: 'Resistencia en serie', r2: 'Resistencia del centro', r3: 'Resistencia de la derecha' },
+  }),
   observables: {
     corriente: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente total (por R₁)' },
     i2: { medida: 'i(v2)', analisis: 'op', unidad: 'A', descripcion: 'corriente por la rama de R₂' },

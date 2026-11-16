@@ -16,6 +16,12 @@ const d: DefinicionEsquema = {
     l: { obligatoria: true, descripcion: 'inductancia (H)', color: 'naranja' },
     c: { obligatoria: true, descripcion: 'capacidad (F)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { fte: 'Arriba de la fuente', b: 'Entre la resistencia y la bobina', c: 'Entre la bobina y el condensador', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente' },
+    zonas: { fuente: 'Fuente', r: 'Resistencia', l: 'Bobina', c: 'Condensador' },
+  }),
   observables: {
     entrada: { medida: 'v(fte)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la fuente' },
     i: { medida: 'i(vmed)', analisis: 'tran', unidad: 'A', descripcion: 'corriente' },

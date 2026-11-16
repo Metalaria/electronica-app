@@ -26,6 +26,13 @@ const d: DefinicionEsquema = {
     cin: { descripcion: 'capacidad de la entrada (el fotodiodo y el cable), C_in (F)', color: 'azul' },
     ...piezasAO(),
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el amplificador operacional' },
+  medible: (c) => ({
+    puntos: { m: 'Entrada inversora (−)', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama de la fuente de corriente' },
+    zonas: { entrada: 'Fuente de corriente', rf: 'Resistencia de realimentación', ...(c.tiene('cf') ? { cf: 'Condensador de realimentación' } : {}), ...(c.tiene('cin') ? { cin: 'Capacidad de entrada' } : {}), ao: 'Amplificador operacional' },
+  }),
   observables: {
     vo: { medida: 'v(out)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida en continua' },
     entrada: { medida: 'i(vmi)', analisis: 'tran', unidad: 'A', descripcion: 'corriente de entrada frente al tiempo' },

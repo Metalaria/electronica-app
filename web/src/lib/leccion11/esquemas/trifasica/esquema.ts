@@ -24,6 +24,15 @@ const d: DefinicionEsquema = {
     neutro: { interruptor: true, descripcion: 'neutro conectado (1) o cortado (0); sin él, conectado (solo en estrella)' },
     triangulo: { interruptor: true, descripcion: 'conexión: 1 en triángulo, 0 en estrella (sin ella, estrella)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => {
+    const delta = c.tiene('triangulo') && c.cerrado('triangulo');
+    return {
+      puntos: { l1: 'Fase 1', l2: 'Fase 2', l3: 'Fase 3', ...(delta ? {} : { s: 'Punto común de la estrella' }), '0': 'Neutro de la red' },
+      ramas: { vm1: 'Línea 1', vm2: 'Línea 2', vm3: 'Línea 3', ...(delta ? { vj1: 'Carga entre fases 1 y 2', vj2: 'Carga entre fases 2 y 3', vj3: 'Carga entre fases 3 y 1' } : { vmn: 'Neutro' }) },
+      zonas: { fuente: 'Generador trifásico', r1: 'Carga 1', r2: 'Carga 2', r3: 'Carga 3', ...(c.tiene('neutro') && !delta ? { neutro: 'Interruptor del neutro' } : {}) },
+    };
+  },
   observables: {
     ...observablesCA('v1', 'v(p1)-v(q1)', 'V', 'la tensión de la carga 1'),
     ...observablesCA('v2', 'v(p2)-v(q2)', 'V', 'la tensión de la carga 2'),

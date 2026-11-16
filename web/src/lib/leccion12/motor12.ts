@@ -97,7 +97,7 @@ export function comprobar12(mc: ModeloCompilado, t: Tarjeta, e: EstadoActividad1
     const x = e.valor ?? NaN;
     const d = diagnosticar(mc, a, v, x);
     const obj = mc.funcion(a.objetivo)(mc.evaluar(v));
-    const linea = T(`Su estimación: ${formatear({ sim: [], nombre: '', unidad: a.unidad, cifras: a.cifras, recortar: true }, x)}. El modelo: ${formatear({ sim: [], nombre: '', unidad: a.unidad, cifras: a.cifras, recortar: false }, obj)} (error del ${pc(errorRelativo(x, obj))}).`);
+    const linea = T(`Su estimación: ${formatear({ sim: [], nombre: '', unidad: a.unidad, cifras: a.cifras, recortar: true }, x)}. El modelo: ${formatear({ sim: [], nombre: '', unidad: a.unidad, cifras: a.cifras, recortar: false }, obj)} (${errorRelativo(x, obj) < 1e-9 ? 'exacto' : `error del ${pc(errorRelativo(x, obj))}`}).`);
     const p = d.bien ? null : pista({ ...mc.evaluar(v), estimacion: x });
     return { bien: d.bien, resuelta: true, textos: [linea, ...(d.bien ? exito : [d.texto ?? p ?? T('Se ha alejado bastante: rehaga el cálculo paso a paso.')])] };
   }

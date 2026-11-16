@@ -3,6 +3,8 @@
   // side by side between the top (input) and the bottom (output) wires, each gate to a terminal that shows its level
   // (a tap on either toggles «ctrl»), the load R_L from the output to ground.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -20,8 +22,8 @@
   <Et x={56} y={178} t={c.val('entrada')} peq />
   <path class="hilo" d="M40 60 H312 V90 M192 60 V90" data-red="a"></path>
   <circle class="nodo" cx="192" cy="60" r="4.5" data-red="a"></circle>
-  <Mosfet x={180} y={130} color="azul" />
-  <Mosfet x={300} y={130} canal="p" color="verde" />
+  <Mosfet x={180} y={130} color="azul" pieza="canaln" />
+  <Mosfet x={300} y={130} canal="p" color="verde" pieza="canalp" />
   <path class="hilo" d="M192 170 V200 M312 170 V200 H380" data-red="o"></path>
   <path class="hilo" d="M192 200 H312" data-red="o"></path>
   <circle class="nodo" cx="312" cy="200" r="4.5" data-red="o"></circle>
@@ -39,4 +41,9 @@
   <circle class="borne" cx="380" cy="200" r="5"></circle>
   <Et x={380} y={186} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'out' }]} ancla="middle" />
   <path class="hilo" d="M40 260 H380" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={110} y={60} red="in" />
+  <Punto x={350} y={200} red="o" />
+  <Punto x={120} y={260} red="0" />
+  <Rama x={110} y={60} medidor="vmi" />
 </Lienzo>

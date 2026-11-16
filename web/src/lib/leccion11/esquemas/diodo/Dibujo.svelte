@@ -7,6 +7,8 @@
   import Lienzo from '../kit/Lienzo.svelte';
   import Pila from '../kit/Pila.svelte';
   import R from '../kit/R.svelte';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   let { c, dur, descripcion }: PropsDibujo = $props();
   const rev = $derived(c.tiene('reves') && c.cerrado('reves'));
 </script>
@@ -21,6 +23,11 @@
   <R x1={110} y1={50} x2={230} y2={50} color="azul" pieza="r" />
   <Et x={170} y={30} t={c.rot('r')} ancla="middle" color="azul" />
   <!-- (esquemas12c: «reves» draws it the other way round; a tap on it turns it, like a switch) -->
-  <D x1={280} y1={rev ? 230 : 50} x2={280} y2={rev ? 50 : 230} color="naranja" pieza={c.tiene('reves') ? 'reves' : undefined} />
+  <g data-pieza="diodo"><D x1={280} y1={rev ? 230 : 50} x2={280} y2={rev ? 50 : 230} color="naranja" pieza={c.tiene('reves') ? 'reves' : undefined} /></g>
   <Et x={300} y={136} t={c.tiene('vd') ? c.val('vd') : 'Shockley'} color="naranja" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens the branch) -->
+  <Punto x={75} y={50} red="fte" />
+  <Punto x={255} y={50} red="an" />
+  <Punto x={160} y={230} red="0" />
+  <Rama x={75} y={50} medidor="vmed" />
 </Lienzo>

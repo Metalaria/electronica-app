@@ -25,6 +25,13 @@ const d: DefinicionEsquema = {
     vf: { descripcion: 'caída del LED en el colector, en serie con R_C (V; sin ella, sin LED)', color: 'naranja' },
     iref: { descripcion: 'corriente de colector a la que V_BE vale vbe (A; sin ella, 1 mA): ± 0,1 V entre iref/50 y 50·iref' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { transistor: 'el transistor' },
+  medible: (c) => ({
+    puntos: { vcc: 'Raíl de alimentación, arriba', in: 'Entrada', b: 'Base', ...(c.tiene('vf') ? { k: 'Entre la resistencia y el LED' } : {}), c: 'Colector', '0': 'Masa, abajo' },
+    ramas: { vbm: 'Rama de la base', vcm: 'Rama del colector' },
+    zonas: { entrada: 'Fuente de entrada', rb: 'Resistencia de base', rc: 'Resistencia de colector', ...(c.tiene('vf') ? { vf: 'LED' } : {}), transistor: 'Transistor', vcc: 'Fuente de alimentación' },
+  }),
   observables: {
     ib: { medida: 'i(vbm)', analisis: 'op', unidad: 'A', descripcion: 'corriente de base' },
     ic: { medida: 'i(vcm)', analisis: 'op', unidad: 'A', descripcion: 'corriente de colector' },

@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «carga-rl» (esquema.ts): as carga-rc, with the coil on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Conmutador from '../kit/Conmutador.svelte';
   import Et from '../kit/Et.svelte';
   import L from '../kit/L.svelte';
@@ -20,4 +22,9 @@
   <L x1={300} y1={50} x2={300} y2={230} color="naranja" pieza="l" />
   <Et x={318} y={136} t={c.simT('l')} color="naranja" />
   <Et x={318} y={156} t={c.val('l')} color="naranja" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={150} y={50} red="a" />
+  <Punto x={285} y={50} red="c" />
+  <Punto x={200} y={230} red="0" />
+  <Rama x={150} y={50} medidor="vmed" />
 </Lienzo>

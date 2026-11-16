@@ -5,11 +5,14 @@
 //   EPA_DIST=… EPA_PUERTO=… PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c playwright.lecciones11.config.ts tests/lecciones11-ui12-navegador.spec.ts
 import { test, expect, type Page } from '@playwright/test';
 import { createRequire } from 'node:module';
+import { servirCongeladas } from './lecciones11-congeladas';
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
 async function limpio(page: Page, tema = 'claro', vibracion = false): Promise<void> {
   await page.context().route('https://api.github.com/**', (r) => r.fulfill({ status: 404, body: '{}' }));
+  // (1.2.1) the reference lesson 1.4 as it was in 1.2.0 (lecciones11-congeladas.ts)
+  await servirCongeladas(page.context());
   await page.addInitScript(
     ({ t, v }) => {
       const w = window as unknown as { __vibraciones: unknown[] };

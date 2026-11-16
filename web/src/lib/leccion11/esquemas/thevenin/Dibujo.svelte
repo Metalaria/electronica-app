@@ -2,6 +2,8 @@
   // Schematic «thevenin» (esquema.ts): the source and its resistance inside a dashed box (the equivalent), the two
   // terminals, the switch and the load on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Interruptor from '../kit/Interruptor.svelte';
@@ -35,4 +37,9 @@
     <Et x={334} y={136} t={c.simT('carga')} color="verde" />
     <Et x={334} y={156} t={c.val('carga')} color="verde" peq />
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={58} y={50} red="fte" />
+  <Punto x={215} y={50} red="s" />
+  <Punto x={215} y={230} red="0" />
+  <Rama x={60} y={50} medidor="vmed" />
 </Lienzo>

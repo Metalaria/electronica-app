@@ -81,6 +81,17 @@
   const trazos = $derived(
     widget.curvas.map((c) => {
       if (escondida(c)) return { c, d: '', palitos: [] as { x: number; y: number }[] };
+      if (c.puntos) {
+        // (motor121: samples from the simulator, the oscilloscope's waveform; thinned to about two per pixel)
+        const paso = Math.max(1, Math.floor(c.puntos.length / 800));
+        let d = '';
+        for (let k = 0; k < c.puntos.length; k += paso) {
+          const [px, py] = c.puntos[k]!;
+          if (!Number.isFinite(px) || !Number.isFinite(py) || (ejeX.escala === 'log' && !(px > 0)) || (ejeY.escala === 'log' && !(py > 0))) continue;
+          d += `${d ? 'L' : 'M'}${sx(px).toFixed(2)} ${cerca(sy(py), M.arr, M.arr + alto).toFixed(2)}`;
+        }
+        return { c, d, palitos: [] as { x: number; y: number }[] };
+      }
       const f = mc.funcion(c.expr);
       if (c.palitos) {
         // a sequence: one stem per k·paso along the axis

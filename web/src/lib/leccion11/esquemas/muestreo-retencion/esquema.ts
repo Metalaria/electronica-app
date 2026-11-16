@@ -24,6 +24,13 @@ const d: DefinicionEsquema = {
     v0: { descripcion: 'tensión de C_h en t = 0 (V; sin ella, 0)' },
     ...piezasAO(),
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el seguidor de salida' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada', c: 'Condensador de retención', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: {},
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}), ron: 'Interruptor de muestreo', ch: 'Condensador de retención', ...(c.tiene('fuga') ? { fuga: 'Corriente de fuga' } : {}), ao: 'Seguidor de salida' },
+  }),
   observables: {
     entrada: { medida: 'v(in)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de entrada' },
     vc: { medida: 'v(c)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del condensador de retención' },

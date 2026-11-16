@@ -3,6 +3,7 @@
   // (to its left) down to ground, R₂ above from N to the output; without R₁ (the follower) a wire from the output back
   // to the − input. The optional load from the output to ground.
   import type { PropsDibujo } from '../dibujos';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import Entrada from '../kit/Entrada.svelte';
   import Et from '../kit/Et.svelte';
@@ -20,7 +21,7 @@
   <Entrada {c} x={200} y1={240} y2={150} />
   <EtiquetasAO {c} x={222} y={196} />
   <path class="hilo" d="M200 150 H250" data-red="in"></path>
-  <AO x={250} y={130} />
+  <g data-pieza="ao"><AO x={250} y={130} /></g>
   {#if seguidor}
     <path class="hilo" d="M250 110 H200 V40 H340 V130 M310 130 H440" data-red="out"></path>
   {:else}
@@ -45,4 +46,7 @@
   <Et x={440} y={114} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
   <path class="hilo" d="M160 240 H440" data-red="0"></path>
   <circle class="borne" cx="440" cy="240" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Rama x={seguidor ? 270 : 160} y={seguidor ? 40 : 222} medidor="vmi" />
+  {#if c.tiene('carga')}<Rama x={410} y={150} medidor="vml" />{/if}
 </Lienzo>

@@ -29,6 +29,13 @@ const d: DefinicionEsquema = {
     triac: { interruptor: true, descripcion: 'TRIAC (cerrado: dispara en los dos semiciclos) en lugar de SCR (abierto o sin la pieza: solo el positivo)', color: 'azul' },
     ancho: { descripcion: 'duración del pulso de puerta (grados; sin ella, 10°)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { tiristor: 'el tiristor o el TRIAC' },
+  medible: (c) => ({
+    puntos: { fte: 'Red, arriba', k: 'Carga, arriba', '0': 'Abajo, el neutro' },
+    ramas: { vmi: 'Rama de la red' },
+    zonas: { fuente: 'Red', tiristor: c.tiene('triac') && c.cerrado('triac') ? 'TRIAC' : 'Tiristor', r: 'Resistencia de carga', ...(c.tiene('l') ? { l: 'Bobina de la carga' } : {}) },
+  }),
   observables: {
     red: { medida: 'v(fte)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la red frente al tiempo' },
     carga: { medida: 'v(k)', analisis: 'tran', unidad: 'V', descripcion: 'tensión en la carga frente al tiempo' },

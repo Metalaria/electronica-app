@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «zener» (esquema.ts): input, R_s on top, the Zener down (cathode up), the output node and the load.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -19,7 +21,7 @@
   <R x1={70} y1={50} x2={180} y2={50} color="azul" pieza="rs" />
   <Et x={125} y={30} t={c.rot('rs')} ancla="middle" color="azul" />
   <circle class="nodo" cx="200" cy="50" r="4.5"></circle>
-  <D x1={200} y1={230} x2={200} y2={50} color="naranja" variante="zener" />
+  <g data-pieza="zener"><D x1={200} y1={230} x2={200} y2={50} color="naranja" variante="zener" /></g>
   <Et x={216} y={130} t={c.simT('vz')} color="naranja" />
   <Et x={216} y={150} t={c.val('vz')} color="naranja" peq />
   {#if c.tiene('carga')}
@@ -33,4 +35,11 @@
   {/if}
   <circle class="salida" cx="250" cy="50" r="6"></circle>
   <Et x={250} y={34} t="salida" color="naranja" peq ancla="middle" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={55} y={50} red="fte" />
+  <Punto x={225} y={50} red="s" />
+  <Punto x={120} y={230} red="0" />
+  <Rama x={55} y={50} medidor="vmed" />
+  <Rama x={200} y={68} medidor="vzm" />
+  {#if c.tiene('carga')}<Rama x={300} y={66} medidor="vcarga" />{/if}
 </Lienzo>

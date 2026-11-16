@@ -16,6 +16,13 @@ const d: DefinicionEsquema = {
     carga: { descripcion: 'resistencia de carga (Ω)', color: 'verde', seVeCon: 'interruptor' },
     interruptor: { interruptor: true, descripcion: 'conecta la carga (sin él, siempre conectada)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { zener: 'el diodo Zener' },
+  medible: (c) => ({
+    puntos: { fte: 'Arriba de la fuente', s: 'Salida, sobre el Zener', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente', vzm: 'Rama del Zener', ...(c.tiene('carga') ? { vcarga: 'Rama de la carga' } : {}) },
+    zonas: { fuente: 'Fuente', rs: 'Resistencia en serie', zener: 'Zener', ...(c.tiene('carga') ? { carga: 'Carga' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(s)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida (la del Zener)' },
     serie: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente por la resistencia en serie' },

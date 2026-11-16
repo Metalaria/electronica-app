@@ -2,6 +2,8 @@
   // Schematic «mosfet-p» (esquema.ts): the gate source and R_G on the left, the P-channel MOSFET with its source up to
   // the V_DD rail and its drain down through R_D to ground, R_GS from the gate up to the rail, V_DD on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -28,7 +30,7 @@
     <R x1={162} y1={110} x2={162} y2={30} color="azul" pieza="rgs" />
     <Et x={148} y={66} t={c.rot('rgs')} ancla="end" color="azul" peq />
   {/if}
-  <Mosfet x={210} y={110} canal="p" diodo />
+  <Mosfet x={210} y={110} canal="p" diodo pieza="transistor" />
   <Et x={254} y={150} t={`k ${c.val('k')}`} peq />
   <Et x={254} y={168} t={`V_th −${c.val('vth')}`} peq />
   <path class="hilo" d="M222 70 V30" data-red="vdd"></path>
@@ -39,4 +41,11 @@
   <path class="hilo" d="M40 240 H340" data-red="0"></path>
   <Pila x={340} y1={240} y2={30} pieza="vdd" nodos={['0', 'vdd']} />
   <Et x={354} y={150} t={c.val('vdd')} peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={300} y={30} red="vdd" />
+  <Punto x={52} y={110} red="in" />
+  {#if c.tiene('rg')}<Punto x={165} y={110} red="g" />{/if}
+  <Punto x={222} y={160} red="d" />
+  <Punto x={120} y={240} red="0" />
+  <Rama x={222} y={232} medidor="vmd" />
 </Lienzo>

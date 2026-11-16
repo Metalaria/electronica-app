@@ -75,6 +75,7 @@
   const malo = $derived(ea.texto.trim() !== '' && ea.valor == null);
   const referencia = $derived(simulado?.valor ?? objetivo);
   const err = $derived(ea.valor != null ? errorRelativo(ea.valor, referencia) : 0);
+  // (motor121: an exact answer is «exacto», not «1,2 × 10⁻¹⁴ %» of floating-point noise)
   const fmtPc = (x: number) => formatear({ sim: [], nombre: '', unidad: '%', cifras: 2, recortar: true }, x * 100);
 </script>
 
@@ -114,7 +115,7 @@
       </div>
       <div class="a12-ficha">
         <span class="a12-suave">Error relativo</span>
-        <strong class={err <= a.tol ? 'a12-ok' : 'a12-no'} data-error-relativo>{fmtPc(err)}</strong>
+        <strong class={err <= a.tol ? 'a12-ok' : 'a12-no'} data-error-relativo>{err < 1e-9 ? 'exacto' : fmtPc(err)}</strong>
       </div>
     </div>
     <div class="barra" aria-hidden="true">

@@ -3,6 +3,8 @@
   // top to the rail; across the rail, left to right, the Zener down to the gate node with R_G to ground, the SCR
   // (anode at the rail, its gate wired from the gate node) and the load R_L.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -39,10 +41,15 @@
   <Et x={196} y={192} t={c.tiene('rg') ? c.simT('rg') : [{ t: 'txt', s: 'R' }, { t: 'sub', s: 'G' }]} ancla="end" color="naranja" peq />
   {#if c.tiene('rg')}<Et x={196} y={210} t={c.val('rg')} ancla="end" color="naranja" peq />{/if}
   <path class="hilo" d="M210 150 H266 V171"></path>
-  <Tiristor x1={300} y1={60} x2={300} y2={240} color="azul" />
+  <g data-pieza="scr"><Tiristor x1={300} y1={60} x2={300} y2={240} color="azul" /></g>
   <Et x={322} y={146} t="SCR" color="azul" />
   <R x1={390} y1={60} x2={390} y2={240} color="verde" pieza="carga" />
   <Et x={376} y={192} t={c.simT('carga')} ancla="end" color="verde" peq />
   <Et x={376} y={210} t={c.val('carga')} ancla="end" color="verde" peq />
   <path class="hilo" d="M390 240 H40" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={65} y={60} red="in" />
+  <Punto x={350} y={60} red="r" />
+  <Punto x={120} y={240} red="0" />
+  <Rama x={165} y={60} medidor="vmf" />
 </Lienzo>

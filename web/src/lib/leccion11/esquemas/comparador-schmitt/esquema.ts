@@ -23,6 +23,13 @@ const d: DefinicionEsquema = {
     ...piezasAO(),
     vsat: { obligatoria: true, descripcion: 'tensión de saturación positiva de la salida, +V_sat (V)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el comparador' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada inversora (−)', p: 'Entrada no inversora (+), el umbral', out: 'Salida', ...(c.tiene('ref') ? { ref: 'Referencia' } : {}), '0': 'Masa, abajo' },
+    ramas: {},
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}), ...(c.tiene('r1') ? { r1: 'Resistencia a la referencia' } : {}), ...(c.tiene('r2') ? { r2: 'Resistencia de realimentación' } : {}), ...(c.tiene('ref') ? { ref: 'Referencia' } : {}), ao: 'Comparador' },
+  }),
   observables: {
     ...observablesAO(),
     vmas: { medida: 'v(p)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la entrada + (el umbral)' },

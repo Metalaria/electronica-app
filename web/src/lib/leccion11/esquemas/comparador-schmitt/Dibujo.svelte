@@ -18,7 +18,7 @@
   <Entrada {c} x={40} y1={280} y2={110} />
   <EtiquetasAO {c} x={64} y={170} />
   <path class="hilo" d="M40 110 H250" data-red="in"></path>
-  <AO x={250} y={130} />
+  <g data-pieza="ao"><AO x={250} y={130} /></g>
   <path class="hilo" d="M250 150 H200" data-red="p"></path>
   <circle class="nodo" cx={c.tiene('r2') ? 220 : 200} cy="150" r="4.5" data-red="p"></circle>
   {#if c.tiene('r1')}

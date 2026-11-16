@@ -94,10 +94,11 @@ test.describe('generador: cada regla, rota a propósito', () => {
     ['un punto que no es un nodo', (f) => (tarjetaDe(f, 'mida-tension').widget.instrumento.puntos.x9 = 'Otro'), /no es un nodo del esquema kirchhoff/],
     ['una rama que no es un medidor de 0 V', (f) => (tarjetaDe(f, 'mida-tension').widget.instrumento.ramas.v1 = 'La fuente'), /no es un medidor de 0 V/],
     ['un instrumento en un widget oculto', (f) => (tarjetaDe(f, 'mida-tension').widget.ocultar = true), /el instrumento daría la respuesta/],
-    ['un esquema que no es lineal', (f) => {
+    // (motor121: a non-linear schematic is measured too — on the app's ngspice —; its points are still checked)
+    ['un punto que no es un nodo de un esquema no lineal', (f) => {
       const t = tarjetaDe(f, 'mida-tension');
-      t.widget = { tipo: 'circuito', esquema: 'diodo', piezas: { fuente: 'V_in', r: 'R_1', vd: 'V_k2' }, mide: { corriente: 'I_dv' }, instrumento: { tipo: 'multimetro', puntos: { a: 'A', '0': 'Masa' } }, mandos: [] };
-    }, /circuito lineal|no es un nodo|pieza|esquema/],
+      t.widget = { tipo: 'circuito', esquema: 'diodo', piezas: { fuente: 'V_in', r: 'R_1', vd: 'V_k2' }, mide: { corriente: 'I_dv' }, instrumento: { tipo: 'multimetro', puntos: { zz: 'A', '0': 'Masa' } }, mandos: [] };
+    }, /«widget.instrumento.puntos.zz»: no es un nodo del esquema diodo/],
     ['medir una rama que no está', (f) => (tarjetaDe(f, 'mida-corriente').medir.rama = 'vm9'), /«medir.rama»: una rama del instrumento/],
     ['medir con un valor que no es el que marcaría', (f) => (tarjetaDe(f, 'mida-corriente').medir.valor = 'I_k1'), /el multímetro marcaría/],
     ['un porqué de una medida imposible', (f) => (tarjetaDe(f, 'mida-tension').medir.porque.zz = 'No.'), /ni un punto, ni una rama/],

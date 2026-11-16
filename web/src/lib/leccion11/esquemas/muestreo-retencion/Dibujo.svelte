@@ -33,7 +33,7 @@
     <FuenteI x={210} y1={110} y2={240} pieza="fuga" nodos={['c', '0']} />
     <Et x={232} y={222} t={`I ${c.val('fuga')}`} peq />
   {/if}
-  <AO x={250} y={130} masArriba />
+  <g data-pieza="ao"><AO x={250} y={130} masArriba /></g>
   <path class="hilo" d="M250 150 H240 V200 H330 V130" data-red="out"></path>
   <circle class="nodo" cx="330" cy="130" r="4.5" data-red="out"></circle>
   <path class="hilo" d="M310 130 H420" data-red="out"></path>

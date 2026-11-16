@@ -16,6 +16,13 @@ const d: DefinicionEsquema = {
     carga: { obligatoria: true, descripcion: 'resistencia de carga del secundario (Ω)', color: 'verde', seVeCon: 'interruptor' },
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: secundario en vacío)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { trafo: 'el transformador' },
+  medible: (c) => ({
+    puntos: { fte: 'Primario, arriba', s: 'Secundario, arriba', '0': 'Abajo, primario y secundario' },
+    ramas: { vmed: 'Rama del primario', vcarga: 'Rama de la carga' },
+    zonas: { fuente: 'Fuente', trafo: 'Transformador', carga: 'Carga', ...(c.tiene('interruptor') ? { interruptor: 'Interruptor de la carga' } : {}) },
+  }),
   observables: {
     secundario: { medida: 'v(s)', analisis: 'op', unidad: 'V', descripcion: 'tensión del secundario' },
     i1: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente del primario' },

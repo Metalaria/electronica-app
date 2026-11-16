@@ -20,6 +20,13 @@ const d: DefinicionEsquema = {
     vbe: { obligatoria: true, descripcion: 'V_BE cuando conduce (V; el libro: 0,7 V)' },
     dvbe: { descripcion: 'desapareamiento: V_BE de más que recibe Q2 a la misma corriente (V); sin ella, idénticos' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { q1: 'el transistor de referencia', q2: 'el transistor de salida' },
+  medible: () => ({
+    puntos: { vcc: 'Raíl de alimentación, arriba', c1: 'Colector y base del de la izquierda', c2: 'Colector del de la derecha', '0': 'Masa, abajo' },
+    ramas: { vrm: 'Rama de la referencia', vom: 'Rama de la carga' },
+    zonas: { vcc: 'Fuente', rref: 'Resistencia de referencia', carga: 'Carga', q1: 'Transistor de la izquierda', q2: 'Transistor de la derecha' },
+  }),
   observables: {
     iref: { medida: 'i(vrm)', analisis: 'op', unidad: 'A', descripcion: 'corriente de referencia (por R_ref)' },
     iout: { medida: 'i(vom)', analisis: 'op', unidad: 'A', descripcion: 'corriente copiada (por la carga, al colector de Q2)' },

@@ -25,6 +25,13 @@ const d: DefinicionEsquema = {
     vc: { medida: 'v(c)', analisis: 'op', unidad: 'V', descripcion: 'tensión de colector' },
     vce: { medida: 'v(c)-v(e)', analisis: 'op', unidad: 'V', descripcion: 'tensión colector-emisor' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose
+  partes: { transistor: 'el transistor NPN' },
+  medible: () => ({
+    puntos: { vcc: 'Raíl de alimentación, arriba', b: 'Base', c: 'Colector', e: 'Emisor', '0': 'Masa, abajo' },
+    ramas: { vbm: 'Hilo de la base', vcm: 'Rama del colector' },
+    zonas: { vcc: 'Fuente', r1: 'Resistencia de arriba del divisor', r2: 'Resistencia de abajo del divisor', rc: 'Resistencia de colector', re: 'Resistencia de emisor', transistor: 'Transistor' },
+  }),
   // V_BE ± 0,1 V: the simulator's transistor drops vbe at 1 mA with n = 1 (± 0,1 V from 20 µA to 50 mA)
   noLineal: () => [{ pieza: 'vbe', desviacion: 0.1, porque: 'transistor de V_BE = vbe a 1 mA: ± 0,1 V entre 20 µA y 50 mA', medida: () => 'v(b)-v(e)' }],
   netlist: (c) => [

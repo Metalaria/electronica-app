@@ -2049,6 +2049,14 @@ Tras la opinión del propietario («hay poco de aprender haciendo y de tocar»),
   consejo en vivo y pistas escalonadas; **tocar en orden** sobre una foto;
 - el generador avisa de cada lección con menos de la mitad de tarjetas «de hacer» y resume la mezcla global.
 
+Y desde motor121 (GUIA §13.10–13.12): **todos los esquemas** se miden y se tocan (cada uno trae sus puntos, ramas y
+zonas con nombre); el multímetro lee también los circuitos no lineales y los que cambian con el tiempo (el ngspice de
+la app: punto de trabajo, o la media en la ventana de la gráfica) y el osciloscopio enseña la onda de cualquier nodo;
+sobre un circuito lógico hay objetivo (LED, señales, contadores), elegir piezas, marcar un ciclo del cronograma, leer
+en hexadecimal o binario, y salidas de drenador abierto y tri-estado con su línea (Z y X); y
+`node web/scripts/lecciones11.mjs --convertir <parte>/<id>` escribe un borrador de la lección hacia «aprender
+haciendo» para el autor.
+
 ## Aprender haciendo en las lecciones (1.2)
 
 Las lecciones hechas a mano tienen, además de las tarjetas de la 1.1, **pistas escalonadas** en cada pregunta

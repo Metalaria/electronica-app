@@ -22,6 +22,12 @@ const d: DefinicionEsquema = {
     etiqueta: { interruptor: true, descripcion: 'la carga, aparte, unida por una etiqueta de red con el nombre de su «sim»: cerrado, las dos etiquetas iguales (conectada); abierto, distintas', color: 'verde' },
     etiqueta2: { descripcion: 'el nombre escrito en la etiqueta de la carga, su «sim» (sin ella, el de «etiqueta»); su valor no se usa', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { fte: 'Arriba de la fuente', salida: 'Salida, entre las dos resistencias', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente', vabajo: 'Rama de la resistencia de abajo', ...(c.tiene('carga') ? { vcarga: 'Rama de la carga' } : {}) },
+    zonas: { fuente: 'Fuente', arriba: 'Resistencia de arriba', abajo: 'Resistencia de abajo', ...(c.tiene('carga') ? { carga: 'Carga' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(salida)', analisis: 'op', unidad: 'V', descripcion: 'tensión del nodo de salida' },
     corriente: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente de la fuente' },

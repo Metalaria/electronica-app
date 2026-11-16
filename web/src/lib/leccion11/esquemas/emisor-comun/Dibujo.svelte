@@ -3,6 +3,8 @@
   // R₁–R₂ from the rail to ground; the NPN with R_C up to the rail and, down to ground, R_E1 (if any) and R_E with the
   // bypass branch (its switch and C_E) on the right; C_out from the collector to the load R_L; V_CC on the far right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -47,7 +49,7 @@
   <R x1={170} y1={150} x2={170} y2={300} color="azul" pieza="r2" />
   <Et x={156} y={232} t={c.simT('r2')} ancla="end" color="azul" />
   <Et x={156} y={250} t={c.val('r2')} ancla="end" color="azul" peq />
-  <Npn x={250} y={150} />
+  <Npn x={250} y={150} pieza="transistor" />
   <Et x={196} y={136} t={`β ${c.val('beta')}`} peq ancla="middle" />
   <R x1={262} y1={20} x2={262} y2={110} color="naranja" pieza="rc" />
   <Et x={276} y={60} t={c.rot('rc')} color="naranja" peq />
@@ -89,4 +91,14 @@
   <Pila x={440} y1={300} y2={20} pieza="vcc" nodos={['0', 'vcc']} />
   <Et x={426} y={60} t={c.val('vcc')} ancla="end" peq />
   <path class="hilo" d="M30 300 H440" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={300} y={20} red="vcc" />
+  <Punto x={262} y={116} red="c" />
+  <Punto x={262} y={184} red="e" />
+  <Punto x={385} y={110} red="out" />
+  <Punto x={120} y={300} red="0" />
+  {#if !c.tiene('rs')}<Rama x={70} y={150} medidor="vrs" />{/if}
+  <Rama x={105} y={150} medidor="vmi" />
+  <Rama x={200} y={150} medidor="vbm" />
+  <Rama x={262} y={30} medidor="vcm" />
 </Lienzo>

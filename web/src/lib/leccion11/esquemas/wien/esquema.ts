@@ -18,6 +18,12 @@ const d: DefinicionEsquema = {
     r2: { descripcion: 'resistencia en paralelo, R₂ (Ω; sin ella, R₁)', color: 'naranja' },
     c2: { descripcion: 'condensador en paralelo, C₂ (F; sin él, C₁)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { in: 'Entrada', m: 'Entre R₁ y C₁', o: 'Salida', '0': 'Masa, abajo' },
+    ramas: {},
+    zonas: { fuente: 'Generador', r1: 'Resistencia en serie', c1: 'Condensador en serie', ...(c.tiene('r2') ? { r2: 'Resistencia en paralelo' } : {}), ...(c.tiene('c2') ? { c2: 'Condensador en paralelo' } : {}) },
+  }),
   observables: { ...observablesCA('salida', 'v(o)', 'V', 'la salida de la red (β por la amplitud de la entrada)') },
   netlist: (c) => [
     `VF in 0 DC 0 AC ${num(c.p('fuente'))} 0`,

@@ -3678,6 +3678,32 @@ state lives in memory (`EstadoTarjeta.medida`, `EstadoTarjeta.logrado`, `EstadoT
   position, not met at the start), `mezclaDe` / `avisoMezcla` (doing < half of the non-summary cards → warning
   «mezcla»; `scripts/lecciones11.mjs` sums them up, `--mezcla` lists them).
 
+### Measuring every schematic, logic goals and the conversion helper (1.2.1 motor121, GUIA §13.10–13.12)
+
+Still `Leccion11.version` 1 and **no stored state**: additive optional data; the reader's state stays in memory.
+- `DefinicionEsquema.medible?(c): Medible` {puntos {node: name}, ramas? {0 V meter: name}, zonas? {piece or part:
+  name}}: every schematic has one; the drawings mark probe spots with `esquemas/kit/Punto.svelte` (`<g data-sonda
+  data-punto="x y">`) and branches with `kit/Rama.svelte`. `widget.instrumento` may leave out `puntos`/`ramas` (the
+  schematic's) or give them as lists of ids; the oscilloscope's `curvas` may leave points out (their waveform comes
+  from the simulator). `elegir.zonas` may be a list of ids, or absent.
+- Readings (`hacer/punto-trabajo.ts`): a linear DC circuit is solved in the page (`cc.ts`); any other is run on the
+  app's ngspice (`.op`; a widget whose graph is a transient: `.tran` over the axis, the meter reading the window's
+  average, `spice.ts promedioMedida`, and the oscilloscope the node's waveform). `Curva.puntos?` [[x, y]] (page only)
+  draws those samples. `ValorEsperado.promedio?` {desde, hasta}; `spice.ts tarjetaGrafica`, `holguraNoLineal`,
+  `medidaDePuntas`. `Resultado12.spice?` carries a card's instrument checks (`medir.valor`, `leer.medida`) to the
+  script's ngspice run.
+- `Leer.base?` 2 | 16 (`cifras` = bits; exact comparison), `leer.medida?` {entre} | {rama} (generator only);
+  `Marcar.cronograma?` {ciclo, senal?, porque {cycle: Texto}} (the answer is the timing diagram's cursor:
+  `EstadoWidget12.tramo`); `Diseno.intervalos?` {value: {min, max}}.
+- Logic: `TipoPieza` adds `od` [A], `tri` [D, EN] and `bus` (its inputs: od/tri outputs; `PiezaLogica.pullup?` 1 | 0
+  | null); `EstadoLogico.especiales?` {signal: 'Z' | 'X'} (the level in `senales` is what inputs read: Z → 1, X → 0).
+  A loop of gates keeps its state like a flip-flop (`conMemoria`). `objetivo` conditions on a logic widget become
+  conditions on «led:Y», «senal:n1.q», «contador:c1», «ficha:…» (0, 1, 2 = Z, 3 = X), which the shell adds to the card's
+  values (`digital/objetivo-logico.ts variablesLogica`); the generator searches the shortest way from power-on
+  (`buscarObjetivo`). `elegir` zones on a logic widget are its pieces, LEDs and inputs.
+- `scripts/lecciones11.mjs --convertir <parte>/<id>` (`hacer/convertir.ts`): a draft YAML in `EPA_CONVERTIR` (or
+  `--salida`), never the source.
+
 ### Figure and logic widgets and their steps (1.2 motor12c, `lib/leccion12/digital/`, GUIA §11)
 
 Still `Leccion11.version` 1 and **no stored state** (no key, no migration): additive optional data, state in memory.

@@ -2,6 +2,8 @@
   // Schematic «rlc-escalon» (esquema.ts): the source, the two-way switch of carga-rc (to the source, or to the wire
   // down to ground), R and L on top, C on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Conmutador from '../kit/Conmutador.svelte';
   import Et from '../kit/Et.svelte';
@@ -25,4 +27,10 @@
   <C x1={350} y1={50} x2={350} y2={230} color="verde" pieza="c" />
   <Et x={334} y={136} t={c.simT('c')} color="verde" ancla="end" />
   <Et x={334} y={156} t={c.val('c')} color="verde" peq ancla="end" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={150} y={50} red="a" />
+  <Punto x={233} y={50} red="b" />
+  <Punto x={340} y={50} red="c" />
+  <Punto x={200} y={230} red="0" />
+  <Rama x={150} y={50} medidor="vmed" />
 </Lienzo>

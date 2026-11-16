@@ -15,6 +15,8 @@
     i,
     m,
     solucion,
+    midiendo = false,
+    promedio = false,
     prefijo,
     bloqueado = false,
     cambiar,
@@ -22,6 +24,10 @@
     i: Instrumento;
     m: EstadoMedida;
     solucion: SolucionCC | null;
+    /** motor121: the reading comes from the app's ngspice and it is running. */
+    midiendo?: boolean;
+    /** motor121: a circuit that changes with time: the meter shows the average over the graph's window. */
+    promedio?: boolean;
     prefijo: string;
     /** The answer is checked right: the placement stays as it is. */
     bloqueado?: boolean;
@@ -29,11 +35,12 @@
   } = $props();
 
   const valor = $derived(lectura(i, m, solucion));
-  const display = $derived(formatoLectura(unidadMedida(m), valor));
+  const completa = $derived(m.modo === 'A' ? !!m.rama : !!m.roja && !!m.negra);
+  const display = $derived(midiendo && completa && valor == null ? 'midiendo…' : formatoLectura(unidadMedida(m), valor));
   const nombre = (lista: { id: string; rotulo: import('../../lib/leccion11/tipos').Texto }[], id: string) => textoPlano(lista.find((p) => p.id === id)?.rotulo) || id;
   let hablado = $state('');
   $effect(() => {
-    const t = valor == null ? '' : `El multímetro marca ${leerUnidades(display)}`;
+    const t = valor == null ? '' : `El multímetro marca ${leerUnidades(display)}${promedio ? ' de media' : ''}`;
     const id = setTimeout(() => (hablado = t), 600);
     return () => clearTimeout(id);
   });
@@ -64,7 +71,7 @@
 <div class="a12 instrumento" data-instrumento={i.tipo} data-modo-actual={m.modo}>
   {#if i.tipo === 'multimetro'}
     <div class="pantalla" data-lectura-instrumento={valor == null ? '' : String(valor)}>
-      <span class="a12-suave">Multímetro{m.modo === 'A' ? ' · A⎓' : ' · V⎓'}</span>
+      <span class="a12-suave">Multímetro{m.modo === 'A' ? ' · A⎓' : ' · V⎓'}{promedio ? ' · media' : ''}</span>
       <strong data-display-instrumento>{display}</strong>
     </div>
     {#if i.modos.length > 1}

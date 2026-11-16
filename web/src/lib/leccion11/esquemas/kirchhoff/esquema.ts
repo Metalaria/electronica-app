@@ -17,6 +17,12 @@ const d: DefinicionEsquema = {
     activa1: { interruptor: true, descripcion: 'fuente de la izquierda encendida (apagada = cortocircuito)' },
     activa2: { interruptor: true, descripcion: 'fuente de la derecha encendida (apagada = cortocircuito)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { f1: 'Arriba de la fuente izquierda', n: 'Nodo de arriba', f2: 'Arriba de la fuente derecha', '0': 'Masa, abajo' },
+    ramas: { vm1: 'Rama de R₁', vm2: 'Rama de R₂', vm3: 'Rama de la carga' },
+    zonas: { fuente1: 'Fuente de la izquierda', fuente2: 'Fuente de la derecha', r1: 'Resistencia de la izquierda', r2: 'Resistencia de la derecha', r3: 'Resistencia del centro' },
+  }),
   observables: {
     nodo: { medida: 'v(n)', analisis: 'op', unidad: 'V', descripcion: 'tensión del nodo común (la de la carga)' },
     i1: { medida: 'i(vm1)', analisis: 'op', unidad: 'A', descripcion: 'corriente que la rama izquierda lleva al nodo' },

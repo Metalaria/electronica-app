@@ -18,11 +18,18 @@ export type Nivel = 0 | 1;
 export type TipoPuerta = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor' | 'xnor' | 'buf';
 // (motor12e: «latch», the level-sensitive D latch — transparent while EN is 1 — to set beside a flip-flop)
 export type TipoSecuencial = 'd' | 'jk' | 't' | 'contador' | 'latch';
-export type TipoPieza = TipoPuerta | TipoSecuencial | 'mux' | 'decodificador';
+// (motor121: outputs that let go of the line — an open-drain «od», a tri-state buffer «tri» — and the «bus» line they
+// share with its pull-up: wired-AND, I²C, CAN, a data bus; a line nobody drives floats «Z», two drivers that disagree
+// are a contention «X»)
+export type TipoLinea = 'od' | 'tri' | 'bus';
+export type TipoPieza = TipoPuerta | TipoSecuencial | 'mux' | 'decodificador' | TipoLinea;
+/** A level as the line has it: driven 0 or 1, floating (Z) or two drivers fighting (X). */
+export type Ficha = Nivel | 'Z' | 'X';
 
 export const PUERTAS: readonly TipoPuerta[] = ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buf'];
 export const SECUENCIALES: readonly TipoSecuencial[] = ['d', 'jk', 't', 'contador', 'latch'];
-export const TIPOS_PIEZA: readonly TipoPieza[] = [...PUERTAS, ...SECUENCIALES, 'mux', 'decodificador'];
+export const LINEAS: readonly TipoLinea[] = ['od', 'tri', 'bus'];
+export const TIPOS_PIEZA: readonly TipoPieza[] = [...PUERTAS, ...SECUENCIALES, 'mux', 'decodificador', ...LINEAS];
 
 /** How each piece is named in Spanish (labels, screen readers, messages). */
 export const NOMBRE_PIEZA: Record<TipoPieza, string> = {
@@ -41,6 +48,9 @@ export const NOMBRE_PIEZA: Record<TipoPieza, string> = {
   latch: 'cerrojo D (latch)',
   mux: 'multiplexor',
   decodificador: 'decodificador',
+  od: 'salida de drenador abierto',
+  tri: 'búfer tri-estado',
+  bus: 'línea compartida',
 };
 
 export interface PiezaLogica {
@@ -57,6 +67,11 @@ export interface PiezaLogica {
   inicial?: number;
   /** Label in the drawing (default: the type: «NAND», «D», «CTR»). */
   rotulo?: Texto;
+  /**
+   * bus (motor121): what holds the line when nobody drives it — 1 a pull-up resistor to the supply (default), 0 a
+   * pull-down, null nothing (it floats: «Z», read as a 1 by a TTL input).
+   */
+  pullup?: 0 | 1 | null;
 }
 
 export interface EntradaLogica {
@@ -91,6 +106,11 @@ export interface EstadoLogico {
   relojes: Record<string, Nivel>;
   /** The last settling reached a stable state (false: the circuit oscillates). */
   estable: boolean;
+  /**
+   * motor121: the signals that are not a driven level now — an «od» or «tri» output let go («Z»), a «bus» floating
+   * («Z») or fought over («X»). Their entry in `senales` is what an input reads: Z as 1 (a TTL input), X as 0.
+   */
+  especiales?: Record<string, 'Z' | 'X'>;
 }
 
 /** What a logic probe shows at a point: a level, or no level on an unconnected pin. */
@@ -110,6 +130,34 @@ export function esSecuencial(p: PiezaLogica): boolean {
 
 export function circuitoSecuencial(c: CircuitoLogico): boolean {
   return c.piezas.some(esSecuencial);
+}
+
+/**
+ * motor121 (autor121-digital): a loop of gates (two cross-coupled NAND, a self-holding contactor KM1 = (S1 + KM1)·…)
+ * holds a state the way a flip-flop does: the widget and a logic goal settle it from its previous state when a switch
+ * changes, instead of from power-on. (Its truth table is still asked as before: `circuitoSecuencial` is unchanged.)
+ */
+export function tieneLazo(c: CircuitoLogico): boolean {
+  const de = new Map<string, number>();
+  c.piezas.forEach((p, i) => salidasDe(p).forEach((s) => de.set(s, i)));
+  const estado = new Array<number>(c.piezas.length).fill(0);
+  const visita = (i: number): boolean => {
+    if (estado[i] === 1) return true;
+    if (estado[i] === 2) return false;
+    estado[i] = 1;
+    for (const r of c.piezas[i]!.entradas) {
+      const j = de.get(r);
+      if (j != null && !esSecuencial(c.piezas[j]!) && visita(j)) return true;
+    }
+    estado[i] = 2;
+    return false;
+  };
+  return c.piezas.some((p, i) => !esSecuencial(p) && visita(i));
+}
+
+/** The circuit keeps a state between changes of its switches: a sequential piece or a loop of gates. */
+export function conMemoria(c: CircuitoLogico): boolean {
+  return circuitoSecuencial(c) || tieneLazo(c);
 }
 
 /** Names of a piece's input pins, in order. */
@@ -133,6 +181,10 @@ export function pinesEntrada(p: PiezaLogica): string[] {
       return [...Array.from({ length: b }, (_, k) => `S${k}`), ...Array.from({ length: 2 ** b }, (_, k) => `D${k}`)];
     case 'decodificador':
       return [...Array.from({ length: b }, (_, k) => `A${k}`), ...(p.entradas.length > b ? ['EN'] : [])];
+    case 'od':
+      return ['1'];
+    case 'tri':
+      return ['D', 'EN'];
     default:
       return p.entradas.map((_, k) => String(k + 1));
   }
@@ -157,6 +209,12 @@ export function pinesPermitidos(p: Pick<PiezaLogica, 'tipo' | 'bits'>): [number,
       return [b + 2 ** b, b + 2 ** b];
     case 'decodificador':
       return [b, b + 1];
+    case 'od':
+      return [1, 1];
+    case 'tri':
+      return [2, 2];
+    case 'bus':
+      return [1, 8];
     default:
       return [2, 4];
   }
@@ -261,10 +319,41 @@ function puerta(tipo: TipoPuerta, v: Nivel[]): Nivel {
   }
 }
 
+/** What a signal is now: its level, or Z / X (motor121). */
+export function ficha(s: EstadoLogico, senal: string): Ficha {
+  if (senal === '0') return 0;
+  if (senal === '1') return 1;
+  return s.especiales?.[senal] ?? s.senales[senal] ?? 0;
+}
+
+/** The level an input reads from a line: Z as 1 (a TTL input), X as 0. */
+export const nivelDeFicha = (x: Ficha): Nivel => (x === 'Z' ? 1 : x === 'X' ? 0 : x);
+
+/** Sets a signal to a level or a Z / X (keeps `especiales` only when there is one). */
+function fijar(s: EstadoLogico, senal: string, x: Ficha): void {
+  s.senales[senal] = nivelDeFicha(x);
+  if (x === 'Z' || x === 'X') (s.especiales ??= {})[senal] = x;
+  else if (s.especiales?.[senal]) {
+    delete s.especiales[senal];
+    if (!Object.keys(s.especiales).length) delete s.especiales;
+  }
+}
+
 /** Evaluates one piece with the current levels: its outputs' new levels (and its stored state, updated in `s`). */
-function evaluar(p: PiezaLogica, s: EstadoLogico, f: FalloLogico | null | undefined): [string, Nivel][] {
+function evaluar(p: PiezaLogica, s: EstadoLogico, f: FalloLogico | null | undefined): [string, Ficha][] {
   const v = p.entradas.map((_, k) => pin(p, k, s, f));
   const b = p.bits ?? 1;
+  // motor121: an open-drain output pulls the line to 0 or lets it go; a tri-state one drives D while EN is 1
+  if (p.tipo === 'od') return [[p.id, v[0] === 0 ? 0 : 'Z']];
+  if (p.tipo === 'tri') return [[p.id, v[1] === 1 ? v[0]! : 'Z']];
+  if (p.tipo === 'bus') {
+    // the line: what its drivers say (an unconnected pin of a fault lets go), else what the resistor holds it at
+    const dicen = p.entradas.map((ref, k) => (f?.tipo === 'sin-conexion' && f.pieza === p.id && f.pin === k ? 'Z' : ficha(s, ref))).filter((x) => x !== 'Z');
+    if (dicen.includes('X') || (dicen.includes(0) && dicen.includes(1))) return [[p.id, 'X']];
+    if (dicen.length) return [[p.id, dicen[0]!]];
+    const r = p.pullup === undefined ? 1 : p.pullup;
+    return [[p.id, r === null ? 'Z' : r]];
+  }
   if ((PUERTAS as readonly string[]).includes(p.tipo)) return [[p.id, puerta(p.tipo as TipoPuerta, v)]];
   if (p.tipo === 'mux') {
     let sel = 0;
@@ -318,20 +407,25 @@ function evaluar(p: PiezaLogica, s: EstadoLogico, f: FalloLogico | null | undefi
 }
 
 function copia(s: EstadoLogico): EstadoLogico {
-  return { senales: { ...s.senales }, internos: { ...s.internos }, relojes: { ...s.relojes }, estable: s.estable };
+  return { senales: { ...s.senales }, internos: { ...s.internos }, relojes: { ...s.relojes }, estable: s.estable, ...(s.especiales ? { especiales: { ...s.especiales } } : {}) };
+}
+
+/** A forced level (a stuck signal) wins over what the piece says. */
+function conFallo(f: FalloLogico | null | undefined, sig: string, x: Ficha): Ficha {
+  return forzado(f, sig) ?? x;
 }
 
 /** Runs the events from `afectadas` (pieces to evaluate) and `cambios` (signals that change now) until stable. */
-function asentar(c: CircuitoLogico, s: EstadoLogico, cambios: Map<string, Nivel>, afectadas: Set<number>, f: FalloLogico | null | undefined): EstadoLogico {
+function asentar(c: CircuitoLogico, s: EstadoLogico, cambios: Map<string, Ficha>, afectadas: Set<number>, f: FalloLogico | null | undefined): EstadoLogico {
   const { lectores } = indices(c);
   let pendientes = cambios;
   let porEvaluar = afectadas;
   let t = 0;
   while ((pendientes.size || porEvaluar.size) && t < LIMITE_PASOS) {
     for (const [sig, v0] of pendientes) {
-      const v = forzado(f, sig) ?? v0;
-      if (s.senales[sig] !== v) {
-        s.senales[sig] = v;
+      const v = conFallo(f, sig, v0);
+      if (ficha(s, sig) !== v) {
+        fijar(s, sig, v);
         for (const i of lectores.get(sig) ?? []) porEvaluar.add(i);
       }
     }
@@ -339,8 +433,8 @@ function asentar(c: CircuitoLogico, s: EstadoLogico, cambios: Map<string, Nivel>
     for (const i of [...porEvaluar].sort((a, b) => a - b)) {
       const p = c.piezas[i]!;
       for (const [sig, v0] of evaluar(p, s, f)) {
-        const v = forzado(f, sig) ?? v0;
-        if (s.senales[sig] !== v) pendientes.set(sig, v);
+        const v = conFallo(f, sig, v0);
+        if (ficha(s, sig) !== v) pendientes.set(sig, v);
       }
     }
     porEvaluar = new Set();
@@ -352,14 +446,14 @@ function asentar(c: CircuitoLogico, s: EstadoLogico, cambios: Map<string, Nivel>
     // high flip together at every step. Settle them in order instead (each piece sees the outputs of the ones before
     // it at once): a latch falls into one of its two states (deterministically), a true oscillator (a ring of an odd
     // number of inverters) still does not settle and stays «not stable».
-    for (const [sig, v] of pendientes) s.senales[sig] = forzado(f, sig) ?? v;
+    for (const [sig, v] of pendientes) fijar(s, sig, conFallo(f, sig, v));
     for (let ronda = 0; ronda < 4 * c.piezas.length + 4; ronda++) {
       let cambio = false;
       for (const p of c.piezas)
         for (const [sig, v0] of evaluar(p, s, f)) {
-          const v = forzado(f, sig) ?? v0;
-          if (s.senales[sig] !== v) {
-            s.senales[sig] = v;
+          const v = conFallo(f, sig, v0);
+          if (ficha(s, sig) !== v) {
+            fijar(s, sig, v);
             cambio = true;
           }
         }
@@ -401,7 +495,7 @@ export function iniciar(c: CircuitoLogico, f?: FalloLogico | null, entradas?: Re
 
 /** Sets inputs to new levels and settles. */
 export function poner(c: CircuitoLogico, s0: EstadoLogico, valores: Record<string, Nivel>, f?: FalloLogico | null): EstadoLogico {
-  const cambios = new Map<string, Nivel>();
+  const cambios = new Map<string, Ficha>();
   for (const [k, v] of Object.entries(valores)) cambios.set(k, v);
   return asentar(c, copia(s0), cambios, new Set(), f);
 }

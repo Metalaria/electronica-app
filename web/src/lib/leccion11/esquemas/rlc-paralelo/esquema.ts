@@ -18,6 +18,12 @@ const d: DefinicionEsquema = {
     c: { obligatoria: true, descripcion: 'capacidad del tanque (F)', color: 'verde' },
     r: { descripcion: 'resistencia en paralelo del tanque, sus pérdidas (Ω)', color: 'azul' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { fte: 'Arriba de la fuente', t: 'Nodo del paralelo, arriba', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente', vl: 'Rama de la bobina' },
+    zonas: { fuente: 'Fuente', rs: 'Resistencia en serie', l: 'Bobina', c: 'Condensador', ...(c.tiene('r') ? { r: 'Resistencia en paralelo' } : {}) },
+  }),
   observables: {
     entrada: { medida: 'v(fte)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la fuente' },
     vt: { medida: 'v(t)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del tanque' },

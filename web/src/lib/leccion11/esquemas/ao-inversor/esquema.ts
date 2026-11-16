@@ -17,6 +17,13 @@ const d: DefinicionEsquema = {
     carga: { descripcion: 'resistencia de carga en la salida (Ω)' },
     ...piezasAO(),
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el amplificador operacional' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada', mn: 'Entrada inversora (−)', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama de la entrada', ...(c.tiene('carga') ? { vml: 'Rama de la carga' } : {}) },
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}), r1: 'Resistencia de entrada', r2: 'Resistencia de realimentación', ao: 'Amplificador operacional', ...(c.tiene('carga') ? { carga: 'Carga' } : {}) },
+  }),
   observables: {
     ...observablesAO(),
     vmenos: { medida: 'v(mn)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la entrada − (la masa virtual)' },

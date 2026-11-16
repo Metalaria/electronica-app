@@ -91,6 +91,13 @@ export interface ContextoDibujo extends ContextoNetlist {
   oculto: boolean;
 }
 
+/** 1.2.1 (motor121): the default points, branches and zones of a schematic (DefinicionEsquema.medible). */
+export interface Medible {
+  puntos: Record<string, string>;
+  ramas?: Record<string, string>;
+  zonas?: Record<string, string>;
+}
+
 export interface DefinicionEsquema {
   /** Its folder's name (the YAML's `esquema:`). */
   nombre: string;
@@ -104,6 +111,14 @@ export interface DefinicionEsquema {
    * transistor): they can be zones of an «elegir» card. Name → what it is.
    */
   partes?: Record<string, string>;
+  /**
+   * 1.2.1 (motor121): what a card's instrument and an «elegir» card offer by default on this schematic, with the
+   * pieces the widget has (GUIA §13.1, §13.4): `puntos`, the netlist's nodes the probes can touch (each one drawn with
+   * `data-red`), with a neutral name in Spanish («Ánodo del diodo»); `ramas`, its 0 V meters an ammeter can open
+   * (each one marked on the drawing with kit/Rama.svelte); `zonas`, the pieces and drawn parts (`data-pieza`) a tap
+   * can choose. Names of at most eight words that do not give an answer away (a place, not a value).
+   */
+  medible?(c: ContextoNetlist): Medible;
   observables: Record<string, Observable>;
   /** Extra rules of the pieces (one of two modes, a piece that needs another): the error messages. */
   validar?(tiene: (pieza: string) => boolean): string[];

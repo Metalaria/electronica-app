@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «mixto» (esquema.ts): r1 on top, then r2 and r3 down to the bottom wire, side by side.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -26,4 +28,11 @@
   <Et x={314} y={136} t={c.simT('r3')} color="verde" />
   <Et x={314} y={156} t={c.val('r3')} color="verde" peq />
   <path class="hilo" d="M300 230 H40" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={50} red="fte" />
+  <Punto x={255} y={50} red="b" />
+  <Punto x={120} y={230} red="0" />
+  <Rama x={50} y={50} medidor="vmed" />
+  <Rama x={210} y={66} medidor="v2" />
+  <Rama x={300} y={66} medidor="v3" />
 </Lienzo>
