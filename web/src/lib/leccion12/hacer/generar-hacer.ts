@@ -693,8 +693,22 @@ export const TIPOS_HACIENDO = new Set(['medir', 'elegir', 'marcar', 'leer', 'toc
 
 export type ClaseTarjeta = 'hacer' | 'elegir' | 'mirar';
 
+/**
+ * A «tocar» on a plain-text listing (lenguaje «texto») is a list of written answers to pick from: multiple choice
+ * in disguise, not doing. Code listings (C, assembler…) and figures stay doing.
+ */
+export function esListaDeRespuestas(t: { tipo: string; widget?: unknown }): boolean {
+  if (t.tipo !== 'tocar' || !t.widget || typeof t.widget !== 'object') return false;
+  const w = t.widget as { codigo?: { lenguaje?: string }; fuente?: { codigo?: { lenguaje?: string } } };
+  const lenguaje = w.codigo?.lenguaje ?? w.fuente?.codigo?.lenguaje;
+  return lenguaje === 'texto';
+}
+
 /** doing; answering by choice (options, an estimate's slider, an order, pairs); or looking (explore, formula, surprise). */
-export function claseTarjeta(t: Pick<Tarjeta, 'tipo' | 'objetivo' | 'opciones' | 'estimar' | 'ordenar' | 'emparejar'>): ClaseTarjeta {
+export function claseTarjeta(
+  t: Pick<Tarjeta, 'tipo' | 'objetivo' | 'opciones' | 'estimar' | 'ordenar' | 'emparejar'> & { widget?: unknown },
+): ClaseTarjeta {
+  if (esListaDeRespuestas(t)) return 'elegir';
   if (TIPOS_HACIENDO.has(t.tipo) || ((t.tipo === 'explorar' || t.tipo === 'sorpresa') && t.objetivo)) return 'hacer';
   if (t.opciones || t.estimar || t.ordenar || t.emparejar) return 'elegir';
   return 'mirar';
@@ -716,14 +730,18 @@ export function mezclaDe(tarjetas: readonly Tarjeta[]): Mezcla {
     if (t.tipo === 'resumen') continue;
     m.total++;
     m[claseTarjeta(t)]++;
-    if (t.opciones) m.opciones++;
+    if (t.opciones || esListaDeRespuestas(t)) m.opciones++;
   }
   return m;
 }
 
 /** The warning of a lesson whose doing cards are fewer than half of its cards (null when they are not). */
 export function avisoMezcla(m: Mezcla): string | null {
-  if (!m.total || m.hacer / m.total >= 0.5) return null;
-  return `aprender haciendo: ${m.hacer} de ${m.total} tarjetas se responden haciendo (${Math.round((m.hacer / m.total) * 100)} %; el mínimo es la mitad), ${m.elegir} eligiendo y ${m.mirar} mirando`;
+  if (!m.total) return null;
+  if (m.hacer / m.total < 0.5)
+    return `aprender haciendo: ${m.hacer} de ${m.total} tarjetas se responden haciendo (${Math.round((m.hacer / m.total) * 100)} %; el mínimo es la mitad), ${m.elegir} eligiendo y ${m.mirar} mirando`;
+  // a list of written answers to tap counts as one more multiple-choice question
+  if (m.opciones > 2) return `aprender haciendo: ${m.opciones} tarjetas de opciones o de lista de respuestas (el máximo es 2)`;
+  return null;
 }
 

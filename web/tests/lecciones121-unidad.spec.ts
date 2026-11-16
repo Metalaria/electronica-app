@@ -252,7 +252,14 @@ test.describe('tocar en orden (una foto) y la mezcla de las lecciones', () => {
     expect(claseTarjeta({ tipo: 'predecir', opciones: [] } as unknown as Tarjeta)).toBe('elegir');
     expect(claseTarjeta({ tipo: 'pregunta', estimar: {} } as unknown as Tarjeta)).toBe('elegir');
     expect(claseTarjeta({ tipo: 'reto' } as Tarjeta)).toBe('hacer');
-    expect(avisoMezcla({ hacer: 5, elegir: 5, mirar: 0, total: 10, opciones: 3 })).toBeNull();
+    expect(avisoMezcla({ hacer: 5, elegir: 5, mirar: 0, total: 10, opciones: 2 })).toBeNull();
+    expect(avisoMezcla({ hacer: 7, elegir: 3, mirar: 0, total: 10, opciones: 3 })).toMatch(/3 tarjetas de opciones/);
+    // a tap on a plain-text list of answers is choosing, a tap on a code listing is doing
+    const lista = { tipo: 'tocar', widget: { tipo: 'figura', codigo: { lenguaje: 'texto', texto: 'a\nb' } } };
+    const codigo = { tipo: 'tocar', widget: { tipo: 'figura', codigo: { lenguaje: 'c', texto: 'x = 1;' } } };
+    expect(claseTarjeta(lista as unknown as Tarjeta)).toBe('elegir');
+    expect(claseTarjeta(codigo as unknown as Tarjeta)).toBe('hacer');
+    expect(mezclaDe([lista, codigo] as unknown as Tarjeta[]).opciones).toBe(1);
     expect(avisoMezcla({ hacer: 4, elegir: 5, mirar: 1, total: 10, opciones: 3 })).toMatch(/4 de 10 tarjetas se responden haciendo \(40 %/);
   });
 

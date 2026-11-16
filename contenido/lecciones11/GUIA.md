@@ -3512,6 +3512,11 @@ sorpresa). Avisa («mezcla: aprender haciendo…») si las de hacer no llegan a 
 línea («aprender haciendo: 918 de 7751 tarjetas (11,8 %)…»); `--mezcla` (o `--solo`) lista cada lección. Objetivo de
 la 1.2.1: al menos el 70 % haciendo y como mucho dos tarjetas de opciones por lección.
 
+Un `tocar` sobre un listado de texto (`codigo: { lenguaje: texto }`, con respuestas escritas en las líneas) es una
+pregunta de opciones disfrazada: cuenta como **eligiendo** y como una tarjeta de opciones más. El generador también
+avisa si una lección pasa de dos tarjetas de opciones. Los listados de código de verdad (C, ensamblador, Python…) y
+las figuras con zonas siguen contando como hacer.
+
 ### 13.9 Comprobar
 
 ```sh
