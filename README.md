@@ -2034,6 +2034,21 @@ colores y valores, arrastre, toque y teclado, predicción sin pistas, vibración
 movimiento y el ritmo con la CPU 4× y 6× más lenta), con `playwright.lecciones11.config.ts`. Lo que solo se ve en los
 equipos: la fluidez en el Android (el elemento del circuito dice `data-vivo-fps` y `data-vivo-nivel`) y la vibración.
 
+## Responder haciendo sobre el widget vivo (1.2.1, piloto121)
+
+Tras la opinión del propietario («hay poco de aprender haciendo y de tocar»), las lecciones pueden responderse
+**haciendo** sobre el circuito o la gráfica vivos (guía: `contenido/lecciones11/GUIA.md` §13; catálogo probado:
+`web/tests/lecciones12-catalogo/cap01/sec-1.5.yaml`; tres lecciones piloto: `cap01/sec-1.5`, `cap08/sec-8.1`,
+`consola-snes/snes-alimentacion`):
+
+- un **multímetro** (V entre dos nodos, A abriendo una rama) o la sonda de un **osciloscopio** que se colocan tocando
+  el dibujo; lo que marcan es el punto de trabajo del netlist del propio esquema, resuelto en la página;
+- **Mida** (`medir`): la respuesta es dónde se ponen las puntas; **Elija en el esquema** (`elegir`): tocar una pieza o
+  un nodo del circuito vivo; **Marque en la gráfica** (`marcar`); **Lea y escriba** (`leer`);
+- **objetivo** en explorar, sorpresa o ajuste: una meta sobre el estado del modelo que completa la tarjeta, con
+  consejo en vivo y pistas escalonadas; **tocar en orden** sobre una foto;
+- el generador avisa de cada lección con menos de la mitad de tarjetas «de hacer» y resume la mezcla global.
+
 ## Aprender haciendo en las lecciones (1.2)
 
 Las lecciones hechas a mano tienen, además de las tarjetas de la 1.1, **pistas escalonadas** en cada pregunta

@@ -68,6 +68,9 @@
   import Widget12 from '../leccion12/Widget12.svelte';
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
+  // 1.2.1 (piloto121): the goal of an explore card, reached live (GUIA §13.3)
+  import Objetivo from '../leccion12/Objetivo.svelte';
+  import { objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
 
@@ -473,6 +476,18 @@
   });
 
   const objetivo = $derived(t?.estimar && mc ? objetivoEstimar(mc, t.estimar, efectivos) : 0);
+  // 1.2.1: a card's goal reached once is done: the card says so, and «Continuar» stays open
+  $effect(() => {
+    const tt = t;
+    const ee = e;
+    if (!tt?.objetivo || !ee || ee.logrado || !objetivoCumplido(tt, evaluados)) return;
+    untrack(() => {
+      estados[pantalla] = { ...ee, logrado: true };
+      avisos[pantalla] = { bien: true, titulo: '¡Conseguido!', textos: [tt.objetivo!.logrado] };
+      retro('acierto');
+    });
+  });
+  const hacer = $derived(t && e ? { t, e, cambiar: cambiarEstado } : undefined);
   const textoPlanoValor = (x: Parameters<typeof textoPlano>[0]) => textoPlano(x, valor);
 </script>
 
@@ -543,9 +558,9 @@
               </div>
             {/if}
             {#if t.widget?.tipo === 'circuito'}
-              <CircuitoLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} />
+              <CircuitoLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} {hacer} />
             {:else if t.widget?.tipo === 'grafica'}
-              <GraficaLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} />
+              <GraficaLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} {hacer} />
             {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
               <Widget12 {t} {e} oculto={ocultoWidget} {prefijo} cambiar={cambiarEstado} />
             {/if}
@@ -553,6 +568,7 @@
             {#if t.texto.length}<p class="texto"><TextoVivo texto={t.texto} {valor} /></p>{/if}
             {#if t.nota}<p class="nota"><TextoVivo texto={t.nota} {valor} /></p>{/if}
 
+            {#if t.objetivo}<Objetivo {t} valores={evaluados} logrado={!!e.logrado} {valor} />{/if}
             {#if t.condiciones}
               <div class="chips" data-condiciones>
                 {#each t.condiciones as c, k (k)}
@@ -575,7 +591,7 @@
             {#if t.actividad}
               <Actividad12 {leccion} {t} {e} valores={evaluados} {efectivos} {prefijo} {valor} cambiar={cambiarEstado} />
             {/if}
-            {#if esComprobable(t)}<Escalera {t} {e} {valor} cambiar={cambiarEstado} />{/if}
+            {#if esComprobable(t) || t.objetivo}<Escalera {t} e={t.objetivo && !esComprobable(t) ? { ...e, resuelta: !!e.logrado } : e} {valor} cambiar={cambiarEstado} />{/if}
 
             {#if leccion.consola}
               <ul class="fuentes-tarjeta" data-libro={t.libro.join(' ')} data-fuentes>

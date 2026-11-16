@@ -12,6 +12,7 @@
 //   node scripts/lecciones11.mjs                    (also called by contenido/generar.py, after conceptos11.mjs)
 //   node scripts/lecciones11.mjs --solo cap01/sec-1.4   (checks and writes only that lesson; the index is kept)
 //   node scripts/lecciones11.mjs --comprobar        (checks everything, writes nothing)
+//   node scripts/lecciones11.mjs --comprobar --mezcla   (and lists every lesson under half «doing» cards: GUIA §13.6)
 // EPA_LECCIONES11=<folder> reads the sources from another folder (tests); EPA_LIBRO relocates the book (libro-node.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,6 +32,10 @@ const SALIDA = path.join(libro, 'lecciones11');
 const args = process.argv.slice(2);
 const solo = args.includes('--solo') ? args[args.indexOf('--solo') + 1] : null;
 const comprobarSolo = args.includes('--comprobar');
+// 1.2.1 (piloto121): the «aprender haciendo» warning of each lesson is listed with --mezcla or --solo; otherwise one
+// line sums them up, with the mix of every card of the lessons generated
+const listarMezcla = args.includes('--mezcla') || !!solo;
+const { mezclaDe } = await import(src('lib/leccion12/hacer/generar-hacer.ts'));
 
 // 1.2: the SQL cards' reference queries run on the sample database of section 17.10 (sql.js, the same SQLite the
 // app's worker runs; lib/leccion12/sql/muestra.ts builds it), so their expected results are stored with the lesson
@@ -126,7 +131,19 @@ if (!errores.length && comprobaciones.length) {
   }
 }
 
-for (const a of avisos) console.warn(`aviso: ${a}`);
+const deMezcla = (a) => /: mezcla: aprender haciendo: /.test(a);
+for (const a of avisos) if (listarMezcla || !deMezcla(a)) console.warn(`aviso: ${a}`);
+{
+  const m = { hacer: 0, elegir: 0, mirar: 0, total: 0, opciones: 0 };
+  for (const l of hechas) {
+    const x = mezclaDe(l.tarjetas);
+    for (const k of Object.keys(m)) m[k] += x[k];
+  }
+  const pc = (n) => (m.total ? Math.round((n / m.total) * 1000) / 10 : 0);
+  const bajas = avisos.filter(deMezcla).length;
+  if (m.total)
+    console.warn(`aprender haciendo: ${m.hacer} de ${m.total} tarjetas (${pc(m.hacer)} %) se responden haciendo, ${m.elegir} (${pc(m.elegir)} %) eligiendo (${m.opciones} de opciones) y ${m.mirar} (${pc(m.mirar)} %) mirando; ${bajas} de ${hechas.length} lecciones por debajo de la mitad${listarMezcla || !bajas ? '' : ' (--mezcla las lista)'}`);
+}
 if (errores.length) {
   for (const e of errores) console.error(`error: ${e}`);
   console.error(`lecciones11: ${errores.length} error(es); no se ha escrito nada`);

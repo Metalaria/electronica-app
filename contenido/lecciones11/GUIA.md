@@ -3271,3 +3271,192 @@ modelo). Antes, las de la Super Nintendo, la NES, la Mega Drive, el Master Syste
 `tabla` de un circuito `logica` con tres columnas de rótulos largos desborda a 360 px: dos columnas). Para otra consola: escriba sus siete entradas
 en el manifiesto (con sus `externas`), mire sus bloques, escriba las lecciones con el mismo patrón y añada la consola a
 la lista de `tests/grupoA11.spec.ts` si cambia el número mínimo de lecciones.
+
+## 13. Aprender haciendo de verdad (1.2.1, piloto121): responder sobre el widget vivo
+
+Opinión del propietario (16-11): «con todo preguntas no me termina de convencer, hay poco de aprender haciendo y de
+tocar». En la 1.2.0, el 61 % de las tarjetas se responden eligiendo una opción y solo el 10 % se hacen con las manos.
+Las piezas de esta sección permiten **responder haciendo** sobre el circuito o la gráfica de la tarjeta. Lecciones
+piloto ya escritas así: `cap01/sec-1.5`, `cap08/sec-8.1` y `consola-snes/snes-alimentacion`. Catálogo probado (una
+tarjeta de cada pieza): `web/tests/lecciones12-catalogo/cap01/sec-1.5.yaml`. Cópielos.
+
+### 13.0 Los principios
+
+1. **Responder haciendo, no eligiendo.** La mayoría de las preguntas se contestan sobre el widget vivo y se comprueban
+   solas: gire el mando hasta que pase X (`objetivo`), toque la pieza que… (`elegir`, `tocar`), ponga las puntas donde
+   mediría… (`medir`), marque en la gráfica dónde… (`marcar`), escriba lo que marca el medidor (`leer`). Las opciones
+   quedan para lo que no se puede manipular (un «por qué», un hecho del libro) y son minoría: **como mucho dos por
+   lección**.
+2. **Explorar siempre con un objetivo que se comprueba** («consiga 2,5 V a la salida»), nunca «mueva y mire».
+3. **Un circuito vivo** en lugar de una figura estática cuando la lección trata de un circuito. Las figuras del libro
+   se quedan para tocar zonas, no como fondo de una pregunta.
+4. Cada tarjeta, una idea (≤ 40 palabras), con su `escalera` y con **explicación de lo que hizo el lector** en cada
+   intento fallido («la corriente que mide es la de R₂, no la de la carga»).
+5. Una lección es un **laboratorio guiado corto**: intuición manipulando, la fórmula como explicación de lo que acaba
+   de hacer, y un pequeño reto.
+
+### 13.1 El instrumento: multímetro u osciloscopio sobre el circuito vivo
+
+Un widget `circuito` puede llevar un instrumento que el lector coloca en el dibujo (o con las listas de debajo, que son
+el camino del teclado y del lector de pantalla):
+
+```yaml
+widget:
+  tipo: circuito
+  esquema: kirchhoff
+  piezas: { … }
+  mide: { … }
+  instrumento:
+    tipo: multimetro                 # o osciloscopio
+    modos: [V, A]                    # opcional: por defecto, V si hay puntos y A si hay ramas
+    puntos: { f1: "Arriba de la fuente izquierda", n: "Nodo de arriba", "0": "Masa, abajo" }   # nodos del netlist → nombre neutro
+    ramas: { vm1: "Rama de R₁", vm3: "Rama de la carga" }    # medidores de 0 V del netlist → nombre neutro
+    # negra: "0"                     # dónde empieza la punta negra (por defecto, «0» si es un punto)
+```
+
+- **Lo que marca** es el punto de trabajo en continua del **netlist del propio esquema** con los valores de la
+  tarjeta, resuelto en la página (`lib/leccion12/cc.ts`, el mismo circuito que el generador compara con ngspice): en
+  V, la tensión de la roja menos la de la negra; en A, la corriente del medidor de 0 V de esa rama, en el sentido del
+  dibujo. Solo **circuitos lineales** (R, fuentes, fuentes controladas, el operacional en su región; no diodos ni
+  transistores): el generador lo exige en cada estado.
+- **Dónde se toca**: un nodo, en su punto (`circle[data-red]`) o en el centro de su hilo más largo (`data-red`); una
+  rama, donde el dibujo pone `<Rama x y medidor="vm3" />` (`esquemas/kit/Rama.svelte`: no dibuja nada, solo marca el
+  sitio; ya lo tienen `kirchhoff`, `divisor` y `regulador-lineal`). Para otro esquema, añada sus `Rama`.
+- **Con el dedo**: un toque en un nodo pone la punta roja; un toque en la punta negra la recoge y el siguiente la deja
+  en otro nodo; en A, un toque en una rama mete el amperímetro.
+- **Osciloscopio**: `tipo: osciloscopio`, `puntos` y `curvas: { out: 0, in: 1 }` (qué curva de `widget.grafica`
+  enseña cada punto): la gráfica solo dibuja la curva del punto donde está la sonda.
+- El generador comprueba: cada punto es un nodo del netlist; cada rama, un medidor de 0 V; el circuito, lineal; no en
+  un widget `ocultar` (daría la respuesta). Las lecturas posibles valen como números del modelo (§6).
+- Un instrumento puede ir en cualquier tarjeta (también en una pregunta: «si quiere, mídalo antes»).
+
+### 13.2 `medir` — Ponga el instrumento donde se mide X
+
+```yaml
+  - id: mida-corriente
+    tipo: medir
+    titulo: "Mida la corriente de la carga"
+    texto: "Abra la rama por la que baja la corriente de la carga y meta el amperímetro."
+    widget: { tipo: circuito, …, instrumento: { tipo: multimetro, puntos: { … }, ramas: { vm1: …, vm2: …, vm3: … } } }
+    medir:
+      magnitud: corriente            # tension (entre: [roja, negra]), corriente (rama) o senal (punto, osciloscopio)
+      rama: vm3
+      valor: I_k3                    # opcional: el generador comprueba que el multímetro marcaría eso (0,1 %)
+      # polaridad: true              # (tension) el orden de las puntas cuenta; por defecto, vale al revés
+      porque:                        # por rama, por punto (el de la roja) o por par «a/b»
+        vm1: "Esa es la corriente de R₁: llega al nodo desde la izquierda."
+    exito: "Por la carga bajan {{I_k3}}: la suma de lo que llega al nodo."
+```
+
+La respuesta es **dónde se pone el instrumento**; la lectura se ve en vivo mientras se coloca. Un intento fallido dice
+dónde puso las puntas y lo que marcan («Ha puesto la punta roja en «Arriba de la fuente izquierda» y la negra en «Nodo
+de arriba»: 4,80 V»), luego el `porque` de esa colocación o, si el modo no es el de la magnitud, «una tensión se mide
+en paralelo» / «una corriente se mide en serie». Tarjetas `mida-tension`, `mida-corriente`, `mida-senal`.
+
+### 13.3 `objetivo` — Explorar con una meta que se comprueba
+
+En `explorar`, `sorpresa` o `ajuste`:
+
+```yaml
+    objetivo:
+      condiciones:                   # como las de un reto (objetivo + tol, min/max, menor/mayor), con su rótulo vivo
+        - { valor: V_out, objetivo: 4, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con R₁ el doble de R₂, R₂ se queda la tercera parte: {{V_out}}."
+      pistas:                        # el consejo en vivo mientras no se cumple: el primero cuyo «cuando» vale
+        - { cuando: { valor: V_out, mayor: 4.08 }, texto: "Sobra tensión: suba R₁ o baje R₂." }
+        - { texto: "Falta tensión: baje R₁ o suba R₂." }
+    escalera: ["La salida es la parte de R₂ en R₁ + R₂."]
+    solucion: "Cualquier pareja con R₁ = 2·R₂."
+```
+
+Los chips de las condiciones se marcan en vivo; al cumplirse todas, la tarjeta dice «¡Conseguido!» con `logrado` y
+«Continuar» queda abierto aunque luego se mueva (no puntúa: no es una pregunta). Varios mandos valen (los consejos
+dicen qué mover). La fase de la tarjeta pasa a «Consiga». El generador recorre todas las posiciones de los mandos
+(hasta 250 000): alguna debe cumplir y la inicial no. Un estado como «LED encendido» u «oscila» es un cálculo del
+modelo (0/1) con `min: 1`. Tarjeta `explore-objetivo`.
+
+### 13.4 `elegir` — Toque en el esquema
+
+```yaml
+    tipo: elegir
+    widget: { tipo: circuito, esquema: kirchhoff, … }
+    elegir:
+      zonas: { r1: "Resistencia de la izquierda", r3: "Resistencia del centro", "red:n": "Nodo de arriba" }
+      bien: [r3]
+      # todas: true                  # hay que elegir todas las buenas
+      porque: { r1: "Por R₁ solo pasa la corriente de la izquierda.", "red:n": "…" }
+```
+
+Zonas: una pieza del widget (`data-pieza`), una parte dibujada que el esquema declara en `partes` (el `paso` y el
+`ao` de `regulador-lineal`), o un nodo `red:<nodo>`. Rótulos neutros (≤ 8 palabras); cada zona que no es la respuesta
+lleva su `porque`, y queda tachada al fallarla. Tarjeta `elija-carga`.
+
+### 13.5 `marcar` — Marque en la gráfica
+
+```yaml
+    tipo: marcar
+    widget: { tipo: grafica, … }     # o un circuito con su gráfica
+    marcar:
+      modo: x                        # x: un punto sobre la curva `curva`; y: una línea horizontal; xy: un punto libre
+      curva: 0
+      x: "R_th"                      # el objetivo (expresión del modelo); en xy, x e y
+      tol: 0.03                      # fracción del eje, en su escala (un eje log: fracción de sus décadas)
+      inicio: { x: 8, y: 0 }
+      rotulo: "La carga de la máxima potencia"
+      # pasos: 120                   # posiciones del teclado en cada eje
+    pistas:                          # pueden mirar marca_x y marca_y
+      - { cuando: { valor: marca_x, mayor: 2.4 }, texto: "Más a la izquierda: …" }
+```
+
+La marca se arrastra sobre la gráfica (se ajusta a las posiciones del teclado) y tiene un deslizador por eje debajo.
+Sin pista que se aplique, la app dice hacia dónde está («demasiado a la derecha»). Al acertar se dibuja el objetivo.
+El generador exige que no empiece en el objetivo y que alguna posición del teclado caiga dentro. Tarjetas
+`marque-maximo` y `marque-punto` (la −3 dB de un Bode: `modo: x` sobre la curva en dB con `x: "f_c"` y eje log).
+
+### 13.6 `leer` — Lea y escriba
+
+```yaml
+    tipo: leer
+    widget: { tipo: circuito, …, instrumento: { … } }   # o cualquier widget con una lectura o una gráfica
+    leer:
+      objetivo: I_k3
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de la carga"
+      errores: [ { expr: "I_k1", texto: "Esa es la corriente de R₁: el amperímetro estaba en otra rama." } ]
+```
+
+Como `simular` pero sobre lo que el lector ve (mide, lee en la gráfica, calcula con lo medido): se escribe con su
+unidad («3,6 mA», «4k7»), un fallo se puede corregir, y la app reconoce sola un prefijo equivocado o el signo. Las
+pistas pueden mirar `lectura` (lo escrito). Tarjeta `lea-corriente`; en la piloto de la SNES, «mida la corriente y
+escriba el calor que disipa el 7805».
+
+### 13.7 `tocar` en orden
+
+`tocar: { bien: [j1, t1, db1, f1, c67, u12], orden: true }` pide tocar las zonas **en ese orden** (el camino de la
+corriente en la foto): un fallo dice cuántas van bien y cuál no va en su sitio, y se quitan las que van detrás. Con
+`orden` todas las zonas pueden ser buenas. Tarjeta `ordene-camino` de `consola-snes/snes-alimentacion`.
+
+### 13.8 La mezcla de cada lección
+
+El generador clasifica cada tarjeta (salvo el resumen): **haciendo** (`medir`, `elegir`, `marcar`, `leer`, `tocar`,
+`simular`, `ajuste`, `reto`, `dibujar`, `averia`, `diseno`, `banco`, `tabla`, `sql`, y `explorar`/`sorpresa` con
+`objetivo`), **eligiendo** (opciones, estimar, ordenar, emparejar) o **mirando** (explorar sin objetivo, fórmula,
+sorpresa). Avisa («mezcla: aprender haciendo…») si las de hacer no llegan a la mitad. El script lo resume en una
+línea («aprender haciendo: 918 de 7751 tarjetas (11,8 %)…»); `--mezcla` (o `--solo`) lista cada lección. Objetivo de
+la 1.2.1: al menos el 70 % haciendo y como mucho dos tarjetas de opciones por lección.
+
+### 13.9 Comprobar
+
+```sh
+cd web
+node scripts/lecciones11.mjs --solo cap01/sec-1.5
+EPA_RECORRER_CATALOGO=1 EPA_RECORRER='cap01/sec-1.5' … npx playwright test … tests/lecciones11-recorrido.spec.ts   # el catálogo
+EPA_RECORRER='^cap01/sec-1\.5$' … tests/lecciones11-recorrido.spec.ts      # la lección publicada
+EPA_SIN_SERVIDOR=1 … tests/lecciones121-unidad.spec.ts                       # cada regla rota a propósito y los veredictos
+… tests/lecciones121-navegador.spec.ts                                       # dedo, teclado y 360 px
+```
+
+El recorrido completa cada pieza como el lector: una colocación o una zona equivocada primero (con su explicación) y
+luego la buena tocando el dibujo; la marca con sus deslizadores; lo leído con un prefijo equivocado y luego bien; el
+objetivo con los mandos.

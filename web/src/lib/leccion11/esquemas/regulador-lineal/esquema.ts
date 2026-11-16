@@ -34,6 +34,8 @@ const d: DefinicionEsquema = {
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
     a0: { descripcion: 'ganancia en lazo abierto del amplificador de error (sin ella, 10⁵)' },
   },
+  // (1.2.1: drawn parts an «elegir» card may ask for)
+  partes: { paso: 'elemento de paso, el transistor en serie con la carga', ao: 'amplificador de error' },
   observables: {
     vout: { medida: 'v(out)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida' },
     iin: { medida: 'i(vmi)', analisis: 'op', unidad: 'A', descripcion: 'corriente de entrada' },

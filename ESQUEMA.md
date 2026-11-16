@@ -3652,6 +3652,32 @@ its texts through the numbers rule, each fault's state added to the circuit's ng
 answered cards without any hint and (ui12) `avisosUnaIdea`. `ContextoLibro.sql` (optional) runs SQL; without it SQL
 cards are an error.
 
+### Answering by doing on the live widget (1.2.1 piloto121, `lib/leccion12/hacer/`, GUIA §13)
+
+Still `Leccion11.version` 1 and **no stored state** (no key, no migration): optional additive data; the reader's
+state lives in memory (`EstadoTarjeta.medida`, `EstadoTarjeta.logrado`, `EstadoTarjeta.actividad`).
+- `WidgetCircuito.instrumento?: Instrumento` {tipo: multimetro | osciloscopio, modos ('V' | 'A')[], puntos [{id (a
+  netlist node, lower case), rotulo}], ramas [{id (a 0 V meter source of the netlist), rotulo}], curvas? {punto: index
+  of grafica.curvas} (oscilloscope), negra?}. Readings: `hacer/medir.ts` (`resolverCC` of `def.netlist(…, 'op')` with
+  the card's values; V = node(red) − node(black), A = the meter's current). Drawings mark branch spots with
+  `esquemas/kit/Rama.svelte` (`<g data-rama data-punto="x y">`); `DefinicionEsquema.partes?` names drawn parts
+  (`data-pieza`) that are not model pieces (regulador-lineal: `paso`, `ao`).
+- `TipoActividad` adds `medir` {magnitud: tension | corriente | senal, entre? [red, black], rama?, punto?, polaridad,
+  porque {rama | punto | "a/b": Texto}}, `elegir` {zonas [{id (piece, part or «red:<node>»), rotulo}], bien, todas,
+  porque}, `marcar` {modo: x | y | xy, curva?, x? y? (exprs), tol (axis fraction in its scale), inicio {x, y}, rotulo,
+  pasos}, `leer` {objetivo, unidad, cifras, tol, rotulo, errores (as `simular`)}. States: `{tipo:'medir'}` (placement
+  in `EstadoTarjeta.medida` {modo, roja, negra, rama, activa}), `{tipo:'elegir', elegidas, descartadas}`,
+  `{tipo:'marcar', x, y, movida}`, `{tipo:'leer', texto, valor}`. All four are answered (`esComprobable`,
+  `esPracticable`); verdicts in `hacer/motor-hacer.ts comprobarHacer` (called by `lib/leccion11/motor.ts`).
+- `Tarjeta.objetivo?: Objetivo` {condiciones: Condicion[], logrado: Texto, pistas: Pista[]} on explorar, sorpresa or
+  ajuste: `exploracionHecha` requires it once (`EstadoTarjeta.logrado`, latched by the shell, which shows
+  «¡Conseguido!»); not reported as an answer.
+- `Tocar.orden?: boolean`: the right zones in the order of `bien` (`motor-digital.ts comprobarTocar`).
+- Generator (`hacer/generar-hacer.ts`): `instrumentoDe` + `validarInstrumento` (nodes, 0 V meters, a linear DC netlist
+  at the start and at the ends of each control), `actividadHacerDe`, `objetivoDe` (reachable over every control
+  position, not met at the start), `mezclaDe` / `avisoMezcla` (doing < half of the non-summary cards → warning
+  «mezcla»; `scripts/lecciones11.mjs` sums them up, `--mezcla` lists them).
+
 ### Figure and logic widgets and their steps (1.2 motor12c, `lib/leccion12/digital/`, GUIA §11)
 
 Still `Leccion11.version` 1 and **no stored state** (no key, no migration): additive optional data, state in memory.

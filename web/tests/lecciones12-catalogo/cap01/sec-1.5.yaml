@@ -1,0 +1,280 @@
+# Catálogo de pruebas de las piezas de «aprender haciendo» de la 1.2.1 (contenido/lecciones11/GUIA.md §13): una
+# tarjeta de cada una sobre los circuitos de la sección 1.5 (superposición, Thévenin, máxima transferencia) y un
+# seguidor con alimentación simple. NO se publica: las pruebas (tests/lecciones121-*.spec.ts y el recorrido con
+# EPA_RECORRER_CATALOGO=1) la generan y la sirven en lugar de la lección publicada.
+leccion: cap01/sec-1.5
+
+libro:
+  112: "el efecto total es la suma de los efectos de cada fuente actuando sola"
+  113: "la primera sola aporta 4,80 V a la carga y la segunda 2,40 V, luego la tensión total es 7,20 V"
+  117: "RTh es la resistencia vista desde los terminales con las fuentes anuladas."
+  118: "Con una fuente de 12 V, 4 Ω en serie y 6 Ω a la salida"
+  124: "la carga óptima es 2,4 Ω y la potencia máxima 5,4 W"
+
+modelo:
+  valores:
+    V_k1: { sim: "V₁", nombre: "fuente de la izquierda", unidad: V, valor: 12 }
+    V_k2: { sim: "V₂", nombre: "fuente de la derecha", unidad: V, valor: 6 }
+    R_k1: { sim: "R₁", nombre: "resistencia de la izquierda", unidad: Ω, valor: 1000 }
+    R_k2: { sim: "R₂", nombre: "resistencia de la derecha", unidad: Ω, valor: 1000 }
+    R_k3: { sim: "R₃", nombre: "carga común", unidad: Ω, valor: 2000 }
+    k_on1: { tipo: interruptor, nombre: "fuente de la izquierda encendida", valor: 1 }
+    k_on2: { tipo: interruptor, nombre: "fuente de la derecha encendida", valor: 1 }
+    V_in: { sim: "V", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 1000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 1000 }
+    V_d: { sim: "V", nombre: "tensión de la fuente de la red", unidad: V, valor: 12 }
+    R_d1: { sim: "R₁", nombre: "resistencia en serie de la red", unidad: Ω, valor: 4 }
+    R_d2: { sim: "R₂", nombre: "resistencia a la salida de la red", unidad: Ω, valor: 6 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación simple", unidad: V, valor: 10 }
+    V_s: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 2 }
+    f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    V_neg: { sim: "0", nombre: "raíl inferior (masa)", unidad: V, valor: 0 }
+    V_ref: { sim: "V_{ref}", nombre: "referencia de la señal", unidad: V, valor: 0 }
+  calculos:
+    E_k1: { expr: "V_k1*k_on1", sim: "E₁", nombre: "fuente izquierda efectiva", unidad: V }
+    E_k2: { expr: "V_k2*k_on2", sim: "E₂", nombre: "fuente derecha efectiva", unidad: V }
+    V_kn: { expr: "(E_k1/R_k1 + E_k2/R_k2)/(1/R_k1 + 1/R_k2 + 1/R_k3)", sim: "V_{carga}", nombre: "tensión de la carga", unidad: V }
+    I_k1: { expr: "(E_k1 - V_kn)/R_k1", sim: "I₁", nombre: "corriente de la izquierda", unidad: A }
+    I_k2: { expr: "(E_k2 - V_kn)/R_k2", sim: "I₂", nombre: "corriente de la derecha", unidad: A }
+    I_k3: { expr: "V_kn/R_k3", sim: "I₃", nombre: "corriente por la carga", unidad: A }
+    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I_dv: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "corriente del divisor", unidad: A }
+    V_d0: { expr: "V_d*R_d2/(R_d1 + R_d2)", sim: "V_{Th}", nombre: "tensión de Thévenin", unidad: V }
+    R_th: { expr: "par(R_d1, R_d2)", sim: "R_{Th}", nombre: "resistencia de Thévenin", unidad: Ω }
+    P_max: { expr: "V_d0^2/(4*R_th)", sim: "P_{máx}", nombre: "potencia máxima", unidad: W }
+
+tarjetas:
+  - id: explore-objetivo
+    tipo: explorar
+    titulo: "Objetivo con dos mandos"
+    texto: "Mueva R₁ y R₂ hasta que la salida dé la tercera parte de la pila."
+    libro: [112]
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I_dv
+      mide: { salida: V_out, corriente: I_dv }
+      mandos:
+        - { valor: R_1, min: 1000, max: 10000, paso: 1000 }
+        - { valor: R_2, min: 1000, max: 10000, paso: 1000 }
+    objetivo:
+      condiciones:
+        - { valor: V_out, objetivo: 4, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con R₁ el doble de R₂, R₂ se queda la tercera parte: {{V_out}}."
+      pistas:
+        - { cuando: { valor: V_out, mayor: 4.08 }, texto: "Sobra tensión: suba R₁ o baje R₂." }
+        - { cuando: { valor: V_out, menor: 3.92 }, texto: "Falta tensión: baje R₁ o suba R₂." }
+    escalera:
+      - "La salida es la parte de R₂ en R₁ + R₂."
+    solucion: "Cualquier pareja con R₁ = 2·R₂, por ejemplo 2 kΩ y 1 kΩ."
+    comprobar:
+      - { con: { R_1: 2000, R_2: 1000 }, V_out: 4 }
+
+  - id: mida-tension
+    tipo: medir
+    titulo: "Mida la tensión de la carga"
+    texto: "Ponga las puntas del multímetro donde mediría la tensión de la carga común."
+    libro: [113]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      instrumento:
+        tipo: multimetro
+        puntos: { f1: "Arriba de la fuente izquierda", n: "Nodo de arriba", f2: "Arriba de la fuente derecha", "0": "Masa, abajo" }
+        ramas: { vm1: "Rama de R₁", vm2: "Rama de R₂", vm3: "Rama de la carga" }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [n, "0"]
+      valor: V_kn
+      porque:
+        f1: "Esa punta está en la fuente de la izquierda: mide la fuente, no la carga."
+        f2: "Esa punta está en la fuente de la derecha: mide la fuente, no la carga."
+        "f1/n": "Así mide la caída en R₁. La carga va del nodo de arriba a masa."
+    exito: "Las dos juntas dan {{V_kn}}: 4,80 + 2,40."
+    escalera:
+      - "Una tensión se mide en paralelo con lo que se mide: entre los dos extremos de la carga."
+    solucion: "Roja en el nodo de arriba, negra en masa."
+
+  - id: mida-corriente
+    tipo: medir
+    titulo: "Mida la corriente de la carga"
+    texto: "Abra la rama por la que baja la corriente de la carga y meta el amperímetro."
+    libro: [112]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      instrumento:
+        tipo: multimetro
+        puntos: { n: "Nodo de arriba", "0": "Masa, abajo" }
+        ramas: { vm1: "Rama de R₁", vm2: "Rama de R₂", vm3: "Rama de la carga" }
+      mandos: []
+    medir:
+      magnitud: corriente
+      rama: vm3
+      valor: I_k3
+      porque:
+        vm1: "Esa es la corriente de R₁: llega al nodo desde la izquierda."
+        vm2: "Esa es la corriente de R₂: aquí sale del nodo hacia la fuente de la derecha."
+    exito: "Por la carga bajan {{I_k3}}: la suma de lo que llega al nodo."
+    escalera:
+      - "Una corriente se mide en serie: hay que abrir la rama de la carga."
+    solucion: "El amperímetro en la rama de la carga."
+    comprobar:
+      - { I_k3: 0.0036, I_k1: 0.0048, I_k2: -0.0012 }
+
+  - id: mida-senal
+    tipo: medir
+    titulo: "La sonda del osciloscopio"
+    texto: "Un seguidor con alimentación simple. Ponga la sonda donde vería la señal recortada."
+    libro: [112]
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_ref, amplitud: V_s, f: f_s, vsat: V_cc, vsatneg: V_neg }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -3, max: 11, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(0, min(V_cc, V_ref + V_s*sin(2*pi*f_s*t)))", color: naranja, rotulo: "salida", mide: salida }
+          - { expr: "V_ref + V_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+      instrumento:
+        tipo: osciloscopio
+        puntos: { in: "Entrada +", out: "Salida" }
+        curvas: { out: 0, in: 1 }
+      mandos: []
+    medir:
+      magnitud: senal
+      punto: out
+      porque:
+        in: "En la entrada la senoidal está entera: el recorte lo hace la salida."
+    exito: "La salida no baja de la masa: se pierde el semiciclo negativo."
+    escalera:
+      - "¿Qué patilla no puede bajar del raíl inferior?"
+    solucion: "La sonda en la salida."
+
+  - id: elija-carga
+    tipo: elegir
+    titulo: "Toque en el esquema"
+    texto: "Toque la resistencia por la que pasa la suma de las dos corrientes."
+    libro: [112]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      mandos: []
+    elegir:
+      zonas: { r1: "Resistencia de la izquierda", r2: "Resistencia de la derecha", r3: "Resistencia del centro", "red:n": "Nodo de arriba" }
+      bien: [r3]
+      porque:
+        r1: "Por R₁ solo pasa la corriente que llega desde la fuente de la izquierda."
+        r2: "Por R₂ solo pasa la corriente de la rama de la derecha."
+        "red:n": "En ese nodo se juntan; la suma sigue hacia abajo por la carga."
+    exito: "La carga común lleva la suma de las dos ramas."
+    escalera:
+      - "Siga las dos corrientes hasta donde se juntan y mire por dónde siguen."
+    solucion: "La resistencia del centro, R₃."
+
+  - id: lea-corriente
+    tipo: leer
+    titulo: "Lea y escriba"
+    texto: "Mida con el multímetro la corriente de la carga y escriba lo que marca."
+    libro: [112]
+    widget:
+      tipo: circuito
+      esquema: kirchhoff
+      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
+      corriente: I_k3
+      mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
+      instrumento:
+        tipo: multimetro
+        puntos: { n: "Nodo de arriba", "0": "Masa, abajo" }
+        ramas: { vm1: "Rama de R₁", vm3: "Rama de la carga" }
+      mandos: []
+    leer:
+      objetivo: I_k3
+      unidad: A
+      rotulo: "Corriente de la carga"
+      errores:
+        - { expr: "I_k1", texto: "Esa es la corriente de R₁: el amperímetro estaba en otra rama." }
+    exito: "{{I_k3}}: lo que marca el amperímetro en la rama de la carga."
+    escalera:
+      - "Pase a amperios y abra la rama de la carga."
+    solucion: "3,60 mA."
+    comprobar:
+      - { I_k3: 0.0036, I_k1: 0.0048 }
+
+  - id: marque-maximo
+    tipo: marcar
+    titulo: "Marque en la curva"
+    texto: "Arrastre la marca por la curva hasta donde la carga recibe la máxima potencia."
+    libro: [124]
+    widget:
+      tipo: grafica
+      x: { id: rl, min: 0, max: 12, unidad: Ω, rotulo: "R_{L}" }
+      y: { min: 0, max: 6, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "V_d0^2*rl/(R_th + rl)^2", color: naranja, rotulo: "potencia en la carga" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "R_th"
+      tol: 0.03
+      inicio: { x: 8, y: 0 }
+      rotulo: "La carga de la máxima potencia"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 2.4 }, texto: "Más a la izquierda: con mucha carga apenas pasa corriente." }
+      - { texto: "Más a la derecha: con poca carga cae la tensión." }
+    exito: "Máxima con R_{L} = R_{Th}: 2,4 Ω y 5,4 W."
+    escalera:
+      - "Busque la cima de la curva."
+    solucion: "En R_{L} = 2,4 Ω."
+
+  - id: marque-punto
+    tipo: marcar
+    titulo: "Un punto libre"
+    texto: "Ponga la marca justo en la cima de la curva."
+    libro: [124]
+    widget:
+      tipo: grafica
+      x: { id: rl, min: 0, max: 12, unidad: Ω, rotulo: "R_{L}" }
+      y: { min: 0, max: 6, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "V_d0^2*rl/(R_th + rl)^2", color: naranja, rotulo: "potencia en la carga" }
+      mandos: []
+    marcar:
+      modo: xy
+      x: "R_th"
+      y: "P_max"
+      tol: 0.04
+      inicio: { x: 10, y: 1 }
+      rotulo: "La cima"
+      pasos: 60
+    pistas:
+      - { texto: "La cima: ni más arriba ni más abajo que la curva, ni a un lado." }
+    exito: "La cima: 2,4 Ω y 5,4 W."
+    escalera:
+      - "Primero el lado, luego la altura."
+    solucion: "En 2,4 Ω y 5,4 W."
+    comprobar:
+      - { P_max: 5.4, R_th: 2.4 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Catálogo completado"
+    libro: [112]
+    ideas:
+      - { titulo: "Haciendo.", texto: "Se mide, se toca, se marca y se escribe sobre el circuito vivo." }

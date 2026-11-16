@@ -18,6 +18,9 @@ import { falloDeRonda, lecturas } from '../src/lib/leccion12/averia.ts';
 import { analizarDiseno } from '../src/lib/leccion12/tolerancias.ts';
 import type { IndiceLecciones11, Leccion11, Tarjeta, Texto } from '../src/lib/leccion11/tipos.ts';
 import type { ActividadDigital, WidgetFigura, WidgetLogica } from '../src/lib/leccion12/digital/tipos.ts';
+// 1.2.1 (piloto121): the cards answered by doing on the live widget and the goal of an explore card (GUIA §13)
+import { graficaDe, marcaBien, objetivoCumplido, posicionesMarca } from '../src/lib/leccion12/hacer/motor-hacer.ts';
+import type { Instrumento } from '../src/lib/leccion12/hacer/tipos.ts';
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -252,7 +255,14 @@ function disenar(objetivo: number[], entradas: string[], permitidas: string[], n
 
 /** The 1.2 steps on a figure or a logic circuit, each wrong first (explained) and then right, as the reader does. */
 async function pasoDigital(page: Page, t: Tarjeta, a: ActividadDigital, donde: string) {
-  if (a.tipo === 'tocar') {
+  if (a.tipo === 'tocar' && a.orden) {
+    // (1.2.1) an ordered touch: the second one first (said, and taken back), then all of them in their order
+    await page.locator(`[data-boton-zona="${a.bien[1]}"]`).click();
+    await comprobarYVer(page, false);
+    for (const z of a.bien) await page.locator(`[data-boton-zona="${z}"]`).click();
+    await expect(page.locator(`[data-boton-zona="${a.bien[a.bien.length - 1]}"] [data-orden-zona]`), donde).toHaveText(String(a.bien.length));
+    await comprobarYVer(page, true, plano(t.exito));
+  } else if (a.tipo === 'tocar') {
     // a wrong zone (its own explanation, crossed out), then the right one(s) from the list of zones
     const mal = (t.widget as unknown as WidgetFigura).zonas.find((z) => !a.bien.includes(z.id))!;
     await page.locator(`[data-boton-zona="${mal.id}"]`).click();
@@ -382,9 +392,108 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     }
   }
 
+  // 1.2.1: a goal on an explore or surprise card (an «ajuste» with one is solved below, band and goal together): the
+  // first positions of its controls that reach it, put with the keyboard; the card says «¡Conseguido!»
+  if (t.objetivo && t.actividad?.tipo !== 'ajuste') {
+    const sol = buscarPosiciones(mandos, estado, (v) => objetivoCumplido(t, mc.evaluar(v)));
+    expect(sol, `${donde}: el objetivo se alcanza`).not.toBeNull();
+    await ponerMandos(page, mandos, sol!, mios);
+    await expect(page.locator('[data-objetivo]'), donde).toHaveAttribute('data-objetivo', 'logrado');
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  }
+
   // 1.2 learning-by-doing steps (lib/leccion12): the ones lessons use so far, each driven as the reader does
   const act = t.actividad;
-  if (esPasoDigital(act)) {
+  if (act?.tipo === 'medir') {
+    // a wrong placement first (from the panel's selects: explained), then the right one tapped on the drawing
+    const ins = (t.widget as { instrumento: Instrumento }).instrumento;
+    await expect(boton(page), donde).toBeDisabled();
+    if (act.magnitud === 'corriente') {
+      if ((await page.locator('[data-modo="A"]').count()) && (await page.locator('[data-instrumento]').getAttribute('data-modo-actual')) !== 'A') await page.locator('[data-modo="A"]').click();
+      const otra = ins.ramas.find((b) => b.id !== act.rama);
+      if (otra) {
+        await page.locator('[data-rama-amperimetro]').selectOption(otra.id);
+        await comprobarYVer(page, false, act.porque[otra.id] ? plano(act.porque[otra.id]) : undefined);
+      }
+      await page.locator(`[data-diana="${act.rama}"]`).click();
+    } else if (act.magnitud === 'senal') {
+      const otro = ins.puntos.find((p) => p.id !== act.punto);
+      if (otro) {
+        await page.locator('[data-sonda-osciloscopio]').selectOption(otro.id);
+        await expect(page.locator('[data-grafica] path.curva'), donde).toHaveCount(1);
+        await comprobarYVer(page, false, act.porque[otro.id] ? plano(act.porque[otro.id]) : undefined);
+      }
+      await page.locator(`[data-diana="${act.punto}"]`).click();
+      await expect(page.locator('[data-sonda-en]'), donde).toBeVisible();
+    } else {
+      if ((await page.locator('[data-modo="V"]').count()) && (await page.locator('[data-instrumento]').getAttribute('data-modo-actual')) !== 'V') await page.locator('[data-modo="V"]').click();
+      const [roja, negra] = act.entre!;
+      const otro = ins.puntos.find((p) => p.id !== roja && p.id !== negra);
+      if (otro) {
+        await page.locator('[data-punta-roja]').selectOption(otro.id);
+        await page.locator('[data-punta-negra]').selectOption(negra);
+        await comprobarYVer(page, false);
+      }
+      // (the black probe from the panel, which leaves the red one next; the red one tapped on the drawing)
+      await page.locator('[data-punta-negra]').selectOption(negra);
+      await page.locator(`[data-diana="${roja}"]`).click();
+      await expect(page.locator('[data-punta-roja]'), donde).toHaveValue(roja);
+      await expect(page.locator('[data-punta-negra]'), donde).toHaveValue(negra);
+      await expect(page.locator('[data-display-instrumento]'), donde).not.toHaveText('—');
+    }
+    await comprobarYVer(page, true, plano(t.exito));
+  } else if (act?.tipo === 'elegir') {
+    // a wrong zone from the list (its explanation, crossed out), then the right one(s) tapped on the drawing
+    const mal = act.zonas.find((z) => !act.bien.includes(z.id))!;
+    await page.locator(`[data-boton-zona-esquema="${mal.id}"]`).click();
+    await comprobarYVer(page, false, plano(act.porque[mal.id]));
+    await expect(page.locator(`[data-boton-zona-esquema="${mal.id}"]`), donde).toHaveAttribute('data-estado', 'mal');
+    for (const z of act.todas ? act.bien : act.bien.slice(0, 1)) await page.locator(`[data-diana="${z}"]`).click();
+    await comprobarYVer(page, true, plano(t.exito));
+    await expect(page.locator(`[data-diana="${act.bien[0]}"]`), donde).toHaveAttribute('data-diana-estado', 'bien');
+  } else if (act?.tipo === 'marcar') {
+    // the marker with the keyboard's sliders: a wrong place first (where it says which way), then a right one
+    const g = graficaDe(t)!;
+    const r = mc.evaluar(estado);
+    const xs = act.modo === 'y' ? [act.inicio.x] : posicionesMarca(g.x, act.pasos);
+    const ys = act.modo === 'x' ? [act.inicio.y] : posicionesMarca(g.y, act.pasos);
+    let bien: [number, number] | null = null;
+    let mal: [number, number] | null = null;
+    for (const [i, x] of xs.entries())
+      for (const [j, y] of ys.entries()) {
+        const ok = marcaBien(mc, g, act, r, { x, y });
+        if (ok && !bien) bien = [i, j];
+        if (!ok && !mal && (x !== act.inicio.x || y !== act.inicio.y)) mal = [i, j];
+      }
+    expect(bien, `${donde}: alguna posición de la marca es la buena`).not.toBeNull();
+    const poner = async ([i, j]: [number, number]) => {
+      for (const [sel, k] of [['[data-marcador-x]', i], ['[data-marcador-y]', j]] as const) {
+        if (!(await page.locator(sel).count())) continue;
+        await page.locator(sel).evaluate((el, v) => {
+          const n = el as HTMLInputElement;
+          n.value = String(v);
+          n.dispatchEvent(new Event('input', { bubbles: true }));
+        }, k);
+      }
+    };
+    await expect(boton(page), donde).toBeDisabled();
+    if (mal) {
+      await poner(mal);
+      await comprobarYVer(page, false);
+    }
+    await poner(bien!);
+    await comprobarYVer(page, true, plano(t.exito));
+    await expect(page.locator('[data-meta-marca]'), donde).toBeVisible();
+  } else if (act?.tipo === 'leer') {
+    // a slip of a prefix first (a thousand times too much: explained), then the value with its unit
+    const obj = mc.funcion(act.objetivo)(mc.evaluar(estado));
+    const escrito = (x: number) => `${String(Number(x.toPrecision(4))).replace('.', ',')} ${act.unidad}`;
+    await expect(boton(page), donde).toBeDisabled();
+    await page.locator('[data-valor-leido]').fill(escrito(obj * 1000));
+    await comprobarYVer(page, false);
+    await page.locator('[data-valor-leido]').fill(escrito(obj));
+    await comprobarYVer(page, true, plano(t.exito));
+  } else if (esPasoDigital(act)) {
     await pasoDigital(page, t, act, donde);
   } else if (act?.tipo === 'simular') {
     // the right estimate, written as the reader writes it («5 V», «8,1 V»); then the app's own ngspice answers
@@ -404,7 +513,8 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
   } else if (act?.tipo === 'ajuste') {
     // the first positions of the controls (all of them: a two-control tuning, motor12e) the model puts inside the
     // band — open on one side or closed —, reached with the keyboard
-    const sol = buscarPosiciones(mandos, estado, (v) => enRango(act.banda, mc.evaluar(v)));
+    // (1.2.1: with its goal too, if it has one)
+    const sol = buscarPosiciones(mandos, estado, (v) => enRango(act.banda, mc.evaluar(v)) && (!t.objetivo || objetivoCumplido(t, mc.evaluar(v))));
     expect(sol, `${donde}: el ajuste tiene una posición dentro`).not.toBeNull();
     await expect(boton(page), donde).toBeDisabled();
     await ponerMandos(page, mandos, sol!, mios);

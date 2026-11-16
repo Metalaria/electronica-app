@@ -451,7 +451,7 @@ export function actividadDigitalDe(tipo: 'tocar' | 'tabla' | 'averia' | 'diseno'
   };
   const w = t.widget;
   if (tipo === 'tocar') {
-    claves(['bien', 'todas', 'porque'], 'tocar');
+    claves(['bien', 'todas', 'porque', 'orden'], 'tocar');
     if (w?.tipo !== 'figura') {
       e('una tarjeta «tocar» lleva un widget «figura» con sus zonas');
       return out;
@@ -460,22 +460,27 @@ export function actividadDigitalDe(tipo: 'tocar' | 'tabla' | 'averia' | 'diseno'
     const bien = (Array.isArray(x.bien) ? x.bien : x.bien != null ? [x.bien] : []).map(String);
     if (!bien.length) e('«tocar.bien»: la zona (o zonas) que responden');
     for (const z of bien) if (!ids.includes(z)) e(`«tocar.bien»: «${z}» no es una zona de la figura (${ids.join(', ')})`);
-    if (bien.length >= ids.length) e('«tocar.bien»: alguna zona tiene que no ser la respuesta');
-    const todas = x.todas === true;
+    // (1.2.1: in an ordered touch every zone may be part of the answer: what is checked is the order)
+    const orden = x.orden === true;
+    if (x.orden != null && typeof x.orden !== 'boolean') e('«tocar.orden»: true o false');
+    if (orden && bien.length < 2) e('«tocar.orden»: al menos dos zonas buenas, en su orden');
+    if (orden && x.todas === false) e('«tocar.orden» ya pide tocarlas todas: quite «todas: false»');
+    if (bien.length >= ids.length && !orden) e('«tocar.bien»: alguna zona tiene que no ser la respuesta');
+    const todas = x.todas === true || orden;
     if (x.todas != null && typeof x.todas !== 'boolean') e('«tocar.todas»: true o false');
     if (!todas && bien.length > 1) c.aviso('«tocar»: varias zonas buenas y «todas: false»: vale tocar una cualquiera');
     const porque: Record<string, Texto> = {};
     const fp = esObjeto(x.porque) ? x.porque : {};
     for (const [k, v] of Object.entries(fp)) {
       if (!ids.includes(k)) e(`«tocar.porque.${k}»: no es una zona`);
-      else if (bien.includes(k)) e(`«tocar.porque.${k}»: es una zona buena (su explicación va en «exito»)`);
+      else if (bien.includes(k) && !orden) e(`«tocar.porque.${k}»: es una zona buena (su explicación va en «exito»)`);
       else {
         const r = explicacion(v, `tocar.porque.${k}`);
         if (r) porque[k] = r;
       }
     }
     for (const z of ids) if (!bien.includes(z) && !porque[z]) e(`«tocar.porque»: falta por qué no es «${z}» (cada zona que no es la respuesta lleva su explicación)`);
-    out.actividad = { tipo: 'tocar', bien, todas, porque } satisfies Tocar;
+    out.actividad = { tipo: 'tocar', bien, todas, porque, ...(orden ? { orden } : {}) } satisfies Tocar;
     return out;
   }
   if (w?.tipo !== 'logica') {

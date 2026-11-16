@@ -3,6 +3,7 @@
   import type { PropsDibujo } from '../dibujos';
   import EtiquetaRed from '../kit/EtiquetaRed.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
+  import Rama from '../kit/Rama.svelte';
   import R from '../kit/R.svelte';
   let { c, dur, descripcion }: PropsDibujo = $props();
   // (esquemas12c: the load's connection as a crossing, «union», or as a net label, «etiqueta»; otherwise as before)
@@ -66,4 +67,7 @@
     <text x="232" y="110" class="et naranja peq">salida</text>
   {/if}
   <circle cx="190" cy="125" r="4.5" class="nodo" data-red="salida"></circle>
+  <!-- (1.2.1: where an ammeter opens each branch: the 0 V meters of the netlist) -->
+  <Rama x={120} y={30} medidor="vmed" />
+  <Rama x={190} y={172} medidor="vabajo" />
 </Lienzo>

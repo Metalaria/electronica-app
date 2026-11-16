@@ -19,6 +19,10 @@
   import Mandos from './Mandos.svelte';
   import TextoSvg from './TextoSvg.svelte';
   import TextoVivo from './TextoVivo.svelte';
+  // 1.2.1 (piloto121): the marker of a «marcar» card, dragged on the plot (its keyboard controls: leccion12/Marcar.svelte)
+  import type { EstadoTarjeta } from '../../lib/leccion11/motor';
+  import type { Tarjeta } from '../../lib/leccion11/tipos';
+  import { objetivoMarca, posicionesMarca, yMarca } from '../../lib/leccion12/hacer/motor-hacer';
 
   let {
     leccion,
@@ -30,6 +34,7 @@
     valor,
     alMover,
     conMandos = true,
+    hacer,
   }: {
     leccion: Leccion11;
     widget: WidgetGrafica;
@@ -43,6 +48,8 @@
     prefijo: string;
     valor: (id: string) => string;
     alMover: (valor: string, x: number) => void;
+    /** 1.2.1: the card and its state (a «marcar» card's marker). */
+    hacer?: { t: Tarjeta; e: EstadoTarjeta; cambiar: (c: Partial<EstadoTarjeta>) => void };
   } = $props();
 
   const mc = $derived(compilarModelo(leccion.modelo));
@@ -185,6 +192,41 @@
     if (k !== pos) alMover(a.mueve, md.valores[k]!);
   }
 
+  // ---- 1.2.1: the marker of a «marcar» card
+  const marca = $derived(hacer?.t.actividad?.tipo === 'marcar' && hacer.e.actividad?.tipo === 'marcar' ? { a: hacer.t.actividad, ea: hacer.e.actividad } : null);
+  const marcaY = $derived(marca ? yMarca(mc, widget, marca.a, valores, marca.ea.x, marca.ea.y) : NaN);
+  const meta = $derived(marca && hacer?.e.resuelta ? objetivoMarca(mc, marca.a, valores) : null);
+  /** From the plot's units back to the axis' (the drawn axes: an equal-aspect plot widens one). */
+  function invertir(e: { min: number; max: number; escala?: 'log' }, f: number): number {
+    return e.escala === 'log' ? e.min * (e.max / e.min) ** f : e.min + (e.max - e.min) * f;
+  }
+  let arrastreMarca = false;
+  function moverMarca(ev: PointerEvent) {
+    if (!marca || !hacer || hacer.e.resuelta) return;
+    const q = aSvg(ev);
+    if (!q) return;
+    const fx = Math.max(0, Math.min(1, (q[0] - M.izq) / ancho));
+    const fy = Math.max(0, Math.min(1, 1 - (q[1] - M.arr) / alto));
+    // (snapped to the keyboard's positions, the ones the generator checked)
+    const xs = posicionesMarca(widget.x, marca.a.pasos);
+    const ys = posicionesMarca(widget.y, marca.a.pasos);
+    const x = marca.a.modo === 'y' ? marca.ea.x : xs[posicionMasCercana(xs, invertir(ejeX, fx))]!;
+    const y = marca.a.modo === 'x' ? marca.ea.y : ys[posicionMasCercana(ys, invertir(ejeY, fy))]!;
+    if (x !== marca.ea.x || y !== marca.ea.y || !marca.ea.movida) hacer.cambiar({ actividad: { ...marca.ea, x, y, movida: true }, comprobado: false, bien: null });
+  }
+  function bajarMarca(ev: PointerEvent) {
+    if (ev.button !== 0 || !marca || hacer?.e.resuelta) return;
+    arrastreMarca = true;
+    (ev.currentTarget as Element).setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+    moverMarca(ev);
+  }
+  function soltarMarca(ev: PointerEvent) {
+    arrastreMarca = false;
+    const t = ev.currentTarget as Element;
+    if (t.hasPointerCapture(ev.pointerId)) t.releasePointerCapture(ev.pointerId);
+  }
+
   const color = (): Color => 'azul';
   const nombre = (id: string) => leccion.modelo.valores[id]?.nombre ?? id;
   const descripcion = $derived(
@@ -283,6 +325,26 @@
           </g>
         {/if}
       {/each}
+      {#if marca}
+        <!-- (the marker: the whole plot takes the drag, out of the tab order; Marcar.svelte has its sliders) -->
+        <rect class="zona-marca" x={M.izq} y={M.arr} width={ancho} height={alto} aria-hidden="true" data-zona-marca onpointerdown={bajarMarca} onpointermove={(ev) => arrastreMarca && moverMarca(ev)} onpointerup={soltarMarca} onpointercancel={soltarMarca}></rect>
+        {#if meta}
+          {@const ox = meta.x ?? marca.ea.x}
+          {@const oy = meta.y ?? marcaY}
+          {#if Number.isFinite(ox) && Number.isFinite(oy)}<circle class="meta-marca" cx={sx(ox)} cy={sy(oy)} r="13" data-meta-marca></circle>{/if}
+        {/if}
+        {#if marca.a.modo === 'y' && Number.isFinite(marcaY)}
+          <line class="linea-marca" x1={M.izq} x2={M.izq + ancho} y1={sy(marcaY)} y2={sy(marcaY)}></line>
+        {/if}
+        {#if Number.isFinite(marcaY)}
+          {@const px = marca.a.modo === 'y' ? M.izq + ancho * 0.85 : sx(marca.ea.x)}
+          <g class="marcador" class:quieta={!marca.ea.movida} transform={`translate(${px.toFixed(2)} ${sy(Math.max(ejeY.min, Math.min(ejeY.max, marcaY))).toFixed(2)})`} data-marcador aria-hidden="true">
+            {#if marca.a.modo !== 'y'}<line class="guia-marca" x1="0" x2="0" y1="0" y2={(H - M.aba - sy(Math.max(ejeY.min, Math.min(ejeY.max, marcaY)))).toFixed(2)}></line>{/if}
+            <circle class="aro" r="14"></circle>
+            <circle class="punto" r="7"></circle>
+          </g>
+        {/if}
+      {/if}
     </svg>
     {#if widget.curvas.length > 1 || hayOcultas}
       <div class="leyenda">
@@ -306,6 +368,39 @@
 </div>
 
 <style>
+  /* 1.2.1: the marker of a «marcar» card */
+  .zona-marca {
+    fill: transparent;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .marcador {
+    pointer-events: none;
+  }
+  .marcador .aro {
+    fill: color-mix(in srgb, var(--v11-naranja) 22%, transparent);
+    stroke: var(--v11-naranja);
+    stroke-width: 3;
+  }
+  .marcador.quieta .aro {
+    stroke-dasharray: 5 4;
+  }
+  .marcador .punto {
+    fill: var(--v11-naranja);
+  }
+  .guia-marca,
+  .linea-marca {
+    stroke: var(--v11-naranja);
+    stroke-width: 2;
+    stroke-dasharray: 6 5;
+    pointer-events: none;
+  }
+  .meta-marca {
+    fill: none;
+    stroke: var(--v11-verde);
+    stroke-width: 3.5;
+    pointer-events: none;
+  }
   .grafica {
     display: flex;
     flex-direction: column;

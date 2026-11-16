@@ -162,6 +162,24 @@ export function comprobarDigital(t: Tarjeta, a: ActividadDigital, e: EstadoActiv
 }
 
 function comprobarTocar(t: Tarjeta, a: Tocar, e: EstadoTocar, exito: Texto[]): VeredictoDigital {
+  // (1.2.1: an ordered touch: the first one out of its place is said, and the touches from it on go back)
+  if (a.orden) {
+    const k = a.bien.findIndex((z, i) => e.elegidas[i] !== z);
+    const sobran = e.elegidas.length > a.bien.length;
+    if (k < 0 && !sobran) return { bien: true, textos: exito };
+    const nombre = (z: string) => {
+      const w = t.widget as WidgetFigura | undefined;
+      return textoPlano(w?.zonas.find((q) => q.id === z)?.rotulo) || z;
+    };
+    const p = pistaDe(t, { mal: k < 0 ? 0 : 1, faltan: k < 0 ? 0 : a.bien.length - k });
+    if (k >= 0 && k >= e.elegidas.length) return { bien: false, textos: [T(`Van bien las ${k} primeras; le faltan ${a.bien.length - k}.`), ...(p ? [p] : [])], estado: e };
+    const z = e.elegidas[k]!;
+    return {
+      bien: false,
+      textos: [T(k > 0 ? `Las ${k} primeras van bien; en el puesto ${k + 1} no va «${nombre(z)}».` : `La primera no es «${nombre(z)}».`), ...(a.porque[z] ? [a.porque[z]!] : []), ...(p ? [p] : [])],
+      estado: { ...e, elegidas: e.elegidas.slice(0, k) },
+    };
+  }
   const malas = e.elegidas.filter((z) => !a.bien.includes(z));
   const faltan = a.bien.filter((z) => !e.elegidas.includes(z));
   const bien = a.todas ? !malas.length && !faltan.length : !malas.length && e.elegidas.some((z) => a.bien.includes(z));

@@ -18,6 +18,9 @@
   import PasosDigitales from './PasosDigitales.svelte';
   import { esActividadDigital } from '../../lib/leccion12/digital/motor-digital';
   import type { EstadoActividadDigital } from '../../lib/leccion12/digital/tipos';
+  // 1.2.1 (piloto121): «leer» and «marcar» (the instrument and «elegir» live with the circuit: CircuitoLeccion.svelte)
+  import Leer from './Leer.svelte';
+  import Marcar from './Marcar.svelte';
 
   let {
     leccion,
@@ -58,4 +61,8 @@
   <Dibujar {leccion} a={t.actividad} {e} ea={e.actividad} {efectivos} {prefijo} {cambiar} />
 {:else if t.actividad?.tipo === 'sql' && e.actividad?.tipo === 'sql'}
   <Sql a={t.actividad} {e} ea={e.actividad} {prefijo} {cambiar} />
+{:else if t.actividad?.tipo === 'leer' && e.actividad?.tipo === 'leer'}
+  <Leer a={t.actividad} {e} ea={e.actividad} {prefijo} {valor} {cambiar} />
+{:else if t.actividad?.tipo === 'marcar' && e.actividad?.tipo === 'marcar'}
+  <Marcar {leccion} {t} a={t.actividad} {e} ea={e.actividad} {valores} {prefijo} {valor} {cambiar} />
 {/if}

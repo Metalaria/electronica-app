@@ -23,6 +23,14 @@
   import CircuitoVivo from '../leccion12/CircuitoVivo.svelte';
   import { movimiento } from '../figuras-vivas/carga.svelte';
   import TextoVivo from './TextoVivo.svelte';
+  // 1.2.1 (piloto121): the instrument on the drawing and the zones of an «elegir» card (GUIA §13)
+  import Instrumento from '../leccion12/Instrumento.svelte';
+  import ElegirEsquema from '../leccion12/ElegirEsquema.svelte';
+  import { solucionWidget } from '../../lib/leccion12/hacer/medir';
+  import { tocarZona } from '../../lib/leccion12/hacer/motor-hacer';
+  import type { EstadoMedida } from '../../lib/leccion12/hacer/tipos';
+  import type { EstadoTarjeta } from '../../lib/leccion11/motor';
+  import type { Tarjeta } from '../../lib/leccion11/tipos';
 
   let {
     leccion,
@@ -34,6 +42,7 @@
     valor,
     alMover,
     manipular = true,
+    hacer,
   }: {
     leccion: Leccion11;
     widget: WidgetCircuito;
@@ -47,7 +56,60 @@
     alMover: (valor: string, x: number) => void;
     /** 1.2: the parts of the drawing whose value a control moves can be dragged / tapped (CircuitoVivo.svelte). */
     manipular?: boolean;
+    /** 1.2.1: the card and its state, for the instrument and an «elegir» card's zones (both shells pass them). */
+    hacer?: { t: Tarjeta; e: EstadoTarjeta; cambiar: (c: Partial<EstadoTarjeta>) => void };
   } = $props();
+
+  // ---- 1.2.1: the instrument and the zones of «elegir»
+  const instr = $derived(widget.instrumento);
+  const medida = $derived(hacer?.e.medida);
+  const solucionCC = $derived(instr && instr.tipo === 'multimetro' && !oculto ? solucionWidget(widget, valores) : null);
+  const bloqueoMedida = $derived(!!hacer && hacer.t.actividad?.tipo === 'medir' && hacer.e.resuelta);
+  const elegir = $derived(hacer?.t.actividad?.tipo === 'elegir' && hacer.e.actividad?.tipo === 'elegir' ? { a: hacer.t.actividad, ea: hacer.e.actividad } : null);
+  const dianas = $derived.by(() => {
+    if (!hacer) return undefined;
+    type D = { id: string; clase: 'punto' | 'rama' | 'pieza'; estado: 'roja' | 'negra' | 'rama' | 'elegida' | 'mal' | 'bien' | null };
+    const lista: D[] = [];
+    if (instr && medida) {
+      if (instr.tipo === 'multimetro' && medida.modo === 'A') for (const b of instr.ramas) lista.push({ id: b.id, clase: 'rama', estado: medida.rama === b.id ? 'rama' : null });
+      else for (const q of instr.puntos) lista.push({ id: q.id, clase: 'punto', estado: medida.roja === q.id ? 'roja' : medida.negra === q.id && instr.tipo === 'multimetro' ? 'negra' : null });
+    }
+    if (elegir) {
+      const { a, ea } = elegir;
+      for (const z of a.zonas)
+        lista.push({ id: z.id, clase: 'pieza', estado: hacer.e.resuelta && a.bien.includes(z.id) ? 'bien' : ea.descartadas.includes(z.id) ? 'mal' : ea.elegidas.includes(z.id) ? 'elegida' : null });
+    }
+    return lista.length ? { lista, tocar: tocarDiana } : undefined;
+  });
+  function cambiarMedida(m: EstadoMedida) {
+    hacer?.cambiar({ medida: m });
+  }
+  function tocarDiana(id: string) {
+    if (!hacer) return;
+    if (elegir && elegir.a.zonas.some((z) => z.id === id)) {
+      elegirZona(id);
+      return;
+    }
+    const m = hacer.e.medida;
+    if (!instr || !m || bloqueoMedida) return;
+    if (instr.tipo === 'osciloscopio') cambiarMedida({ ...m, roja: id });
+    else if (m.modo === 'A') cambiarMedida({ ...m, rama: id });
+    // (a tap on the black probe picks it up and the next tap puts it down; any other tap moves the red one)
+    else if (m.activa === 'negra') cambiarMedida({ ...m, negra: id, activa: 'roja' });
+    else if (id === m.negra && m.roja !== id) cambiarMedida({ ...m, activa: 'negra' });
+    else cambiarMedida({ ...m, roja: id, activa: m.negra ? 'roja' : 'negra' });
+  }
+  function elegirZona(id: string) {
+    if (!hacer || !elegir || hacer.e.resuelta) return;
+    hacer.cambiar({ actividad: tocarZona(elegir.a, elegir.ea, id), comprobado: false, bien: null });
+  }
+  /** The oscilloscope shows the curve of the probed point only. */
+  const graficaVista = $derived.by(() => {
+    const g = widget.grafica;
+    if (!g || instr?.tipo !== 'osciloscopio') return g;
+    const k = medida?.roja ? instr.curvas?.[medida.roja] : undefined;
+    return { ...g, curvas: k == null ? [] : [g.curvas[k]!] };
+  });
 
   const p = $derived(widget.piezas);
   const def = $derived(esquemaDe(widget.esquema));
@@ -135,7 +197,7 @@
       </div>
     {/if}
     {#if Dibujo && def && widget.dibujo !== false}
-      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} {manipular} {alMover}>
+      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} manipular={manipular && !elegir} {alMover} {dianas}>
         <Dibujo c={ctx} {widget} vuelta={duracion} {dur} {descripcion} />
       </CircuitoVivo>
     {/if}
@@ -162,8 +224,17 @@
     {/if}
   </div>
   {/if}
-  {#if widget.grafica}
-    <GraficaLeccion {leccion} widget={{ ...widget.grafica, tipo: 'grafica', mandos: widget.mandos, ocultar: widget.ocultar }} {valores} {propios} {oculto} {prefijo} {valor} {alMover} conMandos={false} />
+  {#if instr && medida && hacer}
+    <Instrumento i={instr} m={medida} solucion={solucionCC} {prefijo} bloqueado={bloqueoMedida} cambiar={cambiarMedida} />
+  {/if}
+  {#if elegir && hacer}
+    <ElegirEsquema a={elegir.a} ea={elegir.ea} resuelta={hacer.e.resuelta} tocar={elegirZona} />
+  {/if}
+  {#if graficaVista}
+    {#if instr?.tipo === 'osciloscopio' && !graficaVista.curvas.length}
+      <p class="sin-sonda" data-osciloscopio-vacio>Osciloscopio: ponga la sonda en un punto del circuito para ver su señal.</p>
+    {/if}
+    <GraficaLeccion {leccion} widget={{ ...graficaVista, tipo: 'grafica', mandos: widget.mandos, ocultar: widget.ocultar }} {valores} {propios} {oculto} {prefijo} {valor} {alMover} conMandos={false} {hacer} />
   {/if}
   {#if widget.mandos.length}
     <Mandos {leccion} mandos={widget.mandos} {valores} {prefijo} {color} {visible} {alMover} {valor} />
@@ -172,6 +243,11 @@
 </div>
 
 <style>
+  .sin-sonda {
+    margin: 0;
+    color: var(--v11-tinta-suave);
+    font-size: 14px;
+  }
   .circuito {
     display: flex;
     flex-direction: column;

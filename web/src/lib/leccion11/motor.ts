@@ -12,6 +12,10 @@ import type { EstadoActividad12 } from '../leccion12/tipos';
 // 1.2 (motor12c): the state of a figure or logic widget, and what its interaction counts as «moved»
 import { nombreInteractivo, nuevoEstadoWidget } from '../leccion12/digital/motor-digital';
 import type { EstadoWidget12 } from '../leccion12/digital/tipos';
+// 1.2.1 (piloto121): the cards answered by doing on the live widget, the instrument and the goal (lib/leccion12/hacer/)
+import { comprobarHacer, esActividadHacer, objetivoCumplido, puedeComprobarHacer } from '../leccion12/hacer/motor-hacer';
+import { nuevaMedida } from '../leccion12/hacer/medir';
+import type { EstadoMedida } from '../leccion12/hacer/tipos';
 
 export interface EstadoTarjeta {
   /** Values the reader moved on this card. */
@@ -42,6 +46,10 @@ export interface EstadoTarjeta {
   pistasVistas?: number;
   /** 1.2: the state of a «figura» or «logica» widget (the zone touched, the switches, the flip-flops). */
   widget12?: EstadoWidget12;
+  /** 1.2.1: where the reader put the circuit's instrument (its probes, the ammeter's branch). */
+  medida?: EstadoMedida;
+  /** 1.2.1: the card's goal («objetivo») was reached once: «Continuar» stays open. */
+  logrado?: boolean;
 }
 
 export function nuevoEstado(t: Tarjeta): EstadoTarjeta {
@@ -59,6 +67,7 @@ export function nuevoEstado(t: Tarjeta): EstadoTarjeta {
     cerrada: false,
     ...(t.actividad ? { actividad: nuevoEstadoActividad(t) } : {}),
     ...(t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? { widget12: nuevoEstadoWidget(t) } : {}),
+    ...(t.widget?.tipo === 'circuito' && t.widget.instrumento ? { medida: nuevaMedida(t.widget.instrumento) } : {}),
     pistasVistas: 0,
   };
 }
@@ -71,6 +80,8 @@ export function esComprobable(t: Tarjeta): boolean {
 /** Whether the explore gating is met with the current values. */
 export function exploracionHecha(t: Tarjeta, e: EstadoTarjeta, v: Valores): boolean {
   if (t.actividad && !exploracion12(t, v)) return false;
+  // (1.2.1: a goal must be reached, once: then it stays done)
+  if (t.objetivo && !e.logrado && !objetivoCumplido(t, v)) return false;
   const r = t.requiere;
   if (!r) return true;
   if (r.mover.some((k) => !e.movidos.includes(k))) return false;
@@ -81,6 +92,7 @@ export function exploracionHecha(t: Tarjeta, e: EstadoTarjeta, v: Valores): bool
 /** What still has to be done before «Continuar» on an explore card (spoken next to the disabled button). */
 export function faltaPorExplorar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: Valores): string {
   if (t.actividad && !exploracion12(t, v)) return falta12(t);
+  if (t.objetivo && !e.logrado && !objetivoCumplido(t, v)) return 'Para seguir, consiga el objetivo de la tarjeta.';
   const r = t.requiere;
   if (!r) return '';
   const w12 = t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? t.widget : null;
@@ -97,6 +109,7 @@ export function faltaPorExplorar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: 
 
 /** Whether the answer on show can be checked (something chosen, moved, placed). */
 export function puedeComprobar(t: Tarjeta, e: EstadoTarjeta): boolean {
+  if (t.actividad && esActividadHacer(t.actividad)) return puedeComprobarHacer(t.actividad, e);
   if (t.actividad && esComprobable12(t.actividad)) return puedeComprobar12(t, e.actividad);
   if (t.opciones) return e.eleccion !== null;
   if (t.estimar) return e.estimacion !== null;
@@ -139,7 +152,12 @@ export function comprobar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: Valores
   let textos: Texto[] = [];
   let resuelta12 = false;
   let actividad = e.actividad;
-  if (t.actividad && esComprobable12(t.actividad)) {
+  if (t.actividad && esActividadHacer(t.actividad)) {
+    const rh = comprobarHacer(mc, t, t.actividad, e, v);
+    bien = rh.bien;
+    textos = rh.textos;
+    if (rh.estado) actividad = rh.estado;
+  } else if (t.actividad && esComprobable12(t.actividad)) {
     const r12 = comprobar12(mc, t, e.actividad, v);
     bien = r12.bien;
     textos = r12.textos;
@@ -225,7 +243,8 @@ export function idRespuestaDe(parte: string, seccion: string, tarjeta: string): 
  */
 export function esPracticable(t: Tarjeta): boolean {
   // (1.2: the step types that are answered too; «ajuste» and the optional «banco» are not questions)
-  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql' || t.tipo === 'tocar' || t.tipo === 'tabla') && esComprobable(t);
+  // (1.2.1: and the cards answered by doing on the live widget: medir, elegir, marcar, leer)
+  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql' || t.tipo === 'tocar' || t.tipo === 'tabla' || t.tipo === 'medir' || t.tipo === 'elegir' || t.tipo === 'marcar' || t.tipo === 'leer') && esComprobable(t);
 }
 
 /** A lesson's entry in libro/lecciones11/indice.json: its number of cards and the cards that can be practised. */

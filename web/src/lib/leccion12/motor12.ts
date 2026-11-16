@@ -14,6 +14,8 @@ import { compararResultados, rellenarPlantilla, unirClausulas } from './sql/ejec
 import { analizarDiseno } from './tolerancias';
 import { comprobarDigital, esActividadDigital, nuevoEstadoDigital, puedeComprobarDigital, reintentarDigital } from './digital/motor-digital';
 import type { EstadoActividadDigital } from './digital/tipos';
+// 1.2.1 (piloto121): the steps answered by doing on the live widget (lib/leccion12/hacer/)
+import { esActividadHacer, nuevoEstadoHacer } from './hacer/motor-hacer';
 import type { Actividad12, Averia, EstadoActividad12, EstadoAveria, EstadoBanco, EstadoDibujar, EstadoSimular, EstadoSql } from './tipos';
 
 const T = (s: string): Texto => [{ t: 'txt', s }];
@@ -24,6 +26,7 @@ export function nuevoEstadoActividad(t: Tarjeta): EstadoActividad12 | undefined 
   if (!a) return undefined;
   // motor12c: the steps on a figure or a logic circuit (lib/leccion12/digital/motor-digital.ts)
   if (esActividadDigital(a)) return nuevoEstadoDigital(t, a);
+  if (esActividadHacer(a)) return nuevoEstadoHacer(a);
   switch (a.tipo) {
     case 'simular':
       return { tipo: 'simular', texto: '', valor: null } satisfies EstadoSimular;

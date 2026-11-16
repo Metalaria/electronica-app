@@ -14,6 +14,9 @@ import { errorRelativo } from './prediccion';
 import { NO_DETERMINISTA, rellenarPlantilla, unirClausulas, type Ejecucion } from './sql/ejecutar';
 import { MAX_MUESTRAS, MAX_TOLERANCIAS, analizarDiseno } from './tolerancias';
 import { actividadDigitalDe, type ContextoDigital } from './digital/generar-digital';
+// 1.2.1 (piloto121): the steps answered by doing on the live widget (lib/leccion12/hacer/)
+import { actividadHacerDe } from './hacer/generar-hacer';
+import type { DefinicionEsquema } from '../leccion11/esquemas/tipos';
 import { TIPOS_ACTIVIDAD, type Actividad12, type Ajuste, type Averia, type Banco, type Dibujar, type Diseno, type ErrorTipico, type Fallo, type Simular, type Sonda, type Sql, type TipoActividad } from './tipos';
 
 export const MAX_PALABRAS_EXPLICACION = 40;
@@ -31,6 +34,10 @@ export const FASE12: Record<TipoActividad, string> = {
   sql: 'SQL',
   tocar: 'Toque',
   tabla: 'Tabla de verdad',
+  medir: 'Mida',
+  elegir: 'Elija en el esquema',
+  marcar: 'Marque en la gráfica',
+  leer: 'Lea y escriba',
 };
 
 export function esTipoActividad(x: unknown): x is TipoActividad {
@@ -46,6 +53,10 @@ export const VARIABLES_PISTA: Partial<Record<TipoActividad, string[]>> = {
   tabla: ['error', 'filas_mal'],
   averia: ['medidas'],
   diseno: ['puertas'],
+  // (1.2.1: what the reader did — the marker's point, the value typed, the zones chosen)
+  marcar: ['marca_x', 'marca_y'],
+  leer: ['lectura'],
+  elegir: ['mal', 'faltan'],
 };
 
 /** What the generator gives the step type's checks: the card as built so far and its helpers. */
@@ -72,6 +83,8 @@ export interface Contexto12 {
   digital?: ContextoDigital;
   /** The values the card's «lista» controls move (motor12e: a catalogue, not an E series). */
   listas?: string[];
+  /** 1.2.1: the circuit widget's schematic (its netlist, for the instrument and the zones of «elegir»). */
+  esquema?: DefinicionEsquema;
 }
 
 export interface Resultado12 {
@@ -104,6 +117,10 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
   }
   if (tipo === 'tocar' || tipo === 'tabla') {
     e(`«${tipo}» necesita su widget (figura o logica)`);
+    return out;
+  }
+  if (tipo === 'medir' || tipo === 'elegir' || tipo === 'marcar' || tipo === 'leer') {
+    actividadHacerDe(tipo, x, c, out);
     return out;
   }
   const claves = (permitidas: string[], d = tipo) => {

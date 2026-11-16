@@ -99,6 +99,11 @@ export interface DefinicionEsquema {
   /** One line for the catalogue. */
   resumen: string;
   piezas: Record<string, Pieza>;
+  /**
+   * 1.2.1 (piloto121): parts the drawing marks with `data-pieza` that are not pieces of the model (an op-amp, a pass
+   * transistor): they can be zones of an «elegir» card. Name → what it is.
+   */
+  partes?: Record<string, string>;
   observables: Record<string, Observable>;
   /** Extra rules of the pieces (one of two modes, a piece that needs another): the error messages. */
   validar?(tiene: (pieza: string) => boolean): string[];
