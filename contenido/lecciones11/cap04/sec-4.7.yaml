@@ -2,6 +2,9 @@
 # (f₀ = 1,592 MHz, √(L/C) = 1000 Ω), la resonancia serie (corriente máxima, Q veces la tensión en C), el diseño de
 # 1 MHz con 100 pF (ej. 4.5), Q y ancho de banda, serie frente a paralelo, la impedancia característica y la
 # sensibilidad de la sintonía. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): llevar la corriente al máximo, predecir los 100 mA,
+# sintonizar 1 MHz, calcular el ancho de banda, poner 100 V en el condensador, buscar el máximo del paralelo,
+# calcular la sensibilidad y el banco; se eligen de dónde salen los 100 V y qué limita el Q.
 leccion: cap04/sec-4.7
 
 libro:
@@ -42,7 +45,7 @@ tarjetas:
   - id: explore-resonancia
     tipo: explorar
     titulo: "Un tanque LC en serie"
-    texto: "100 µH y 100 pF en serie con 10 Ω. Mueva la frecuencia de la fuente y mire la corriente."
+    texto: "100 µH y 100 pF en serie con 10 Ω. Busque la frecuencia en la que pasa más corriente."
     libro: [176, 178]
     widget:
       tipo: circuito
@@ -59,41 +62,40 @@ tarjetas:
           - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
       mandos:
         - { valor: f_r, min: 1300000, max: 1900000, paso: 2000, rotulo: "Frecuencia de la fuente, f" }
-    requiere: { mover: [f_r] }
+    inicio: { f_r: 1400000 }
+    objetivo:
+      condiciones:
+        - { valor: I_f, min: 0.099, rotulo: "Corriente: {{I_f}}" }
+      logrado: "A {{f_r}}, {{I_f}}: la resonancia. La energía oscila entre el campo magnético del inductor y el eléctrico del condensador."
+      pistas:
+        - { cuando: { valor: f_r, max: 1590000 }, texto: "Suba la frecuencia." }
+        - { texto: "Baje la frecuencia." }
+    escalera:
+      - "Busque el pico de la curva."
+    solucion: "Hacia 1,592 MHz: 100 mA."
+    comprobar:
+      - { f_0: 1.592e6, tol: 0.001 }
+      - { con: { f_r: 1592000 }, I_f: 0.0999, tol: 0.01 }
 
   - id: prediga-pico
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Justo en la resonancia, ¿qué limita la corriente del circuito serie?"
+    texto: "La fuente da 1 V de pico. Justo en la resonancia, ¿qué corriente pasa por el circuito serie con 10 Ω?"
     libro: [181]
     fijar: { f_r: 1591549 }
-    widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: I_f, rotulo: "Corriente" }
-      mide: { i_amp: I_f }
-      grafica:
-        x: { id: nu, min: 1300000, max: 1900000, unidad: Hz, rotulo: "f" }
-        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
-        curvas:
-          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
-      ocultar: true
-    opciones:
-      - texto: "Solo la resistencia: 100 mA"
-        bien: true
-        porque: "Las reactancias de L y C son iguales y de signo opuesto: se anulan. Queda 1 V / 10 Ω."
-      - texto: "Nada: la corriente es infinita"
-        porque: "Las reactancias se anulan, pero la resistencia sigue ahí: la corriente es máxima, no infinita."
-      - texto: "√(L/C), 1000 Ω: 1 mA"
-        porque: "√(L/C) es la reactancia de cada elemento en resonancia; en serie, las dos se cancelan."
-    comprobar:
-      - { I_f: 0.1, Z_0: 1000 }
-      - { con: { R_r: 1000 }, I_0: 0.001 }
+    simular:
+      objetivo: I_f
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente en resonancia"
+      errores:
+        - { razon: { min: 0.009, max: 0.011 }, texto: "√(L/C) es la reactancia de cada elemento en resonancia; en serie, las dos se cancelan." }
+    exito: "100 mA: las reactancias de L y C son iguales y de signo opuesto. Solo queda la resistencia: máxima, no infinita."
     escalera:
       - "En resonancia, las reactancias de L y C se anulan."
-    solucion: "Solo la resistencia: 100 mA."
-
+    solucion: "1 V / 10 Ω = 100 mA."
+    comprobar:
+      - { I_f: 0.1, Z_0: 1000 }
   - id: formula-resonancia
     tipo: formula
     titulo: "La frecuencia de resonancia"
@@ -143,35 +145,29 @@ tarjetas:
       - { con: { L_r: 0.000253 }, f_0: 1000000, tol: 0.01 }
 
   - id: estime-ancho
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Q y ancho de banda"
-    texto: "Q = √(L/C)/R: con 1000 Ω y 10 Ω, Q = 100. Estime el ancho de banda a −3 dB, f₀/Q, para 1,592 MHz."
+    texto: "Q = √(L/C)/R: con 1000 Ω y 10 Ω, Q = 100. Calcule el ancho de banda a −3 dB, f₀/Q, para 1,592 MHz."
     libro: [182]
     fijar: { L_r: 100e-6, R_r: 10 }
-    estimar:
-      objetivo: "B_w"
+    simular:
+      objetivo: B_w
       unidad: Hz
-      min: 0
-      max: 50000
-      paso: 100
-      inicio: 40000
-      tol: 0.05
+      tol: 0.03
       rotulo: "Ancho de banda"
+      errores:
+        - { razon: { min: 9000, max: 11000 }, texto: "Ha multiplicado: el ancho de banda es f₀ entre Q." }
     exito: "15,9 kHz. Más Q es más selectividad y menos ancho de banda, las dos cosas a la vez."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 16700 }, texto: "Se ha pasado: divida 1,592 MHz entre 100." }
-      - { texto: "Se ha quedado corto: 1,592 MHz entre 100 son unos dieciséis kilohercios." }
-    comprobar:
-      - { B_w: 15915, Q_s: 100, Z_0: 1000 }
     escalera:
       - "Divida f₀ entre Q."
-    solucion: "15,9 kHz. Más Q es más selectividad y menos ancho de banda, las dos cosas a la vez."
-
+    solucion: "1,592 MHz / 100 = 15,9 kHz."
+    comprobar:
+      - { B_w: 15915, Q_s: 100, Z_0: 1000 }
   - id: sorpresa-tension-c
     tipo: sorpresa
     titulo: "Más tensión que la fuente"
-    texto: "La fuente da {{V_p}} de pico. Lleve la frecuencia a la resonancia y mire la tensión del condensador."
+    texto: "La fuente da {{V_p}} de pico. Lleve la frecuencia a la resonancia y busque la tensión del condensador."
     libro: [181]
     fijar: { L_r: 100e-6, R_r: 10 }
     inicio: { f_r: 1000000 }
@@ -183,8 +179,17 @@ tarjetas:
       mide: { vc_amp: A_c, i_amp: I_f }
       mandos:
         - { valor: f_r, lista: [1000000, 1591549, 2000000], rotulo: "Frecuencia de la fuente, f" }
-    requiere: { mover: [f_r] }
+    objetivo:
+      condiciones:
+        - { valor: A_c, min: 99, rotulo: "V_{C} = {{A_c}}" }
+      logrado: "{{A_c}} sobre el condensador con {{V_p}} de entrada: Q veces lo aplicado. Puede perforar un condensador."
+      pistas:
+        - { texto: "Elija la frecuencia de resonancia, 1,592 MHz." }
+    escalera:
+      - "En resonancia, V_{C} = Q·V."
+    solucion: "A 1,592 MHz: 100 V."
     comprobar:
+      - { A_c: 1.65, tol: 0.01 }
       - { con: { f_r: 1591549 }, A_c: 100 }
 
   - id: porque-q-veces
@@ -219,8 +224,7 @@ tarjetas:
   - id: explore-paralelo
     tipo: explorar
     titulo: "Serie y paralelo, al revés"
-    texto: "La misma L y C, ahora en paralelo con 100 kΩ. Mueva la frecuencia y compare las dos impedancias."
-    nota: "En el paralelo, Q = R/√(L/C): también 100."
+    texto: "La misma L y C, ahora en paralelo con 100 kΩ. Busque la frecuencia en la que el paralelo bloquea más."
     libro: [181, 182]
     fijar: { L_r: 100e-6, R_r: 10 }
     widget:
@@ -237,62 +241,40 @@ tarjetas:
         - { valor: Z_r, rotulo: "Serie: {{Z_r}}" }
       mandos:
         - { valor: f_r, min: 1300000, max: 1900000, paso: 2000, rotulo: "Frecuencia, f" }
-    requiere: { mover: [f_r] }
-
-  - id: pregunta-sintonizado
-    tipo: pregunta
-    titulo: "El amplificador sintonizado"
-    texto: "Como carga de un amplificador que solo debe amplificar a f₀, ¿qué tanque se usa?"
-    libro: [181]
-    opciones:
-      - texto: "El paralelo: impedancia máxima en f₀"
-        bien: true
-        porque: "En resonancia las corrientes de L y C se anulan fuera: la fuente apenas ve corriente y la carga es alta solo en f₀."
-      - texto: "El serie: impedancia máxima en f₀"
-        porque: "El serie tiene en f₀ su impedancia mínima, solo R: deja pasar la corriente, no la bloquea."
-      - texto: "Da igual: los dos son iguales"
-        porque: "Se comportan al revés: el serie es mínimo en f₀ y el paralelo, máximo."
-    fijar: { L_r: 100e-6, R_r: 10 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 1300000, max: 1900000, unidad: Hz, rotulo: f }
-      y: { min: 1, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
-      curvas:
-        - { expr: "sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: serie }
-        - { expr: "1/sqrt((1/R_p)^2 + (2*pi*nu*C_r - 1/(2*pi*nu*L_r))^2)", color: azul, rotulo: paralelo }
-      lectura: { valor: Z_p, rotulo: "Impedancia del paralelo" }
-      mandos:
-        - { valor: f_r, min: 1300000, max: 1900000, paso: 2000, rotulo: "Frecuencia, f" }
+    inicio: { f_r: 1400000 }
+    objetivo:
+      condiciones:
+        - { valor: Z_p, min: 99000, rotulo: "Paralelo: {{Z_p}}" }
+      logrado: "En f₀, el paralelo da {{Z_p}} y el serie, {{Z_r}}: al revés. Por eso el paralelo es la carga de un amplificador sintonizado. Su Q = R/√(L/C), también 100."
+      pistas:
+        - { cuando: { valor: f_r, max: 1590000 }, texto: "Suba la frecuencia." }
+        - { texto: "Baje la frecuencia." }
     escalera:
-      - "¿Cuál de los dos tiene impedancia máxima en f₀?"
-    solucion: "El paralelo: en f₀ su impedancia es máxima y la fuente apenas aporta corriente."
+      - "El paralelo es máximo en la misma f₀."
+    solucion: "Hacia 1,592 MHz: 100 kΩ en paralelo, 10 Ω en serie."
+    comprobar:
+      - { con: { f_r: 1592000 }, Z_p: 99840, Z_r: 10.03, tol: 0.01 }
 
   - id: estime-sintonia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Lo sensible de la sintonía"
-    texto: "f₀ va con la raíz de L·C. Si L cambia un 1 %, estime cuánto se mueve f₀."
+    texto: "f₀ va con la raíz de L·C. Si L cambia un 1 %, ¿cuánto se mueve f₀?"
     libro: [184]
     fijar: { d_L: 1 }
-    estimar:
-      objetivo: "d_f"
+    simular:
+      objetivo: d_f
       unidad: "%"
-      min: 0
-      max: 2
-      paso: 0.05
-      inicio: 1.5
       tol: 0.05
       rotulo: "Δf₀"
+      errores:
+        - { razon: { min: 1.9, max: 2.1 }, texto: "Con la raíz, el cambio se reduce a la mitad." }
     exito: "0,5 %: en la FI de 10,7 MHz de un receptor de FM, 53 kHz sobre 280 de banda."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.52 }, texto: "Se ha pasado: con la raíz, el cambio se reduce a la mitad." }
-      - { texto: "Se ha quedado corto: la raíz reduce el cambio a la mitad, no a nada." }
+    escalera:
+      - "f₀ va con 1/√(L·C): la raíz reduce el cambio a la mitad."
+    solucion: "0,5 %."
     comprobar:
       - { d_f: 0.496 }
-    escalera:
-      - "f₀ va con 1/√(L·C): la raíz reduce el cambio."
-    solucion: "0,5 %: en la FI de 10,7 MHz de un receptor de FM, 53 kHz sobre 280 de banda."
-
   - id: pregunta-limita-q
     tipo: pregunta
     titulo: "Lo que limita el Q"

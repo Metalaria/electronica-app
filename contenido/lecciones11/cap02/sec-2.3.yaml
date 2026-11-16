@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 2.3 «Tolerancia, Coeficiente de Temperatura y Ruido» (cap02): el TCR (y el diferencial
 # en un divisor), la tolerancia y su distribución, la deriva, el ruido térmico de Johnson-Nyquist y el de exceso.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): calentar hasta un 1 %, predecir el TCR del libro y el de
+# precisión, elegir la tecnología que apenas se mueve, desaparear un divisor, conseguir el ruido de 1 kΩ en audio y
+# predecir el de 1 MΩ y el del banco; se eligen el divisor apareado y el hueco de la distribución.
 leccion: cap02/sec-2.3
 
 libro:
@@ -51,8 +54,9 @@ tarjetas:
   - id: explore-tcr
     tipo: explorar
     titulo: "Caliente una resistencia"
-    texto: "El TCR se da en partes por millón por grado. Caliente una de 10 kΩ, cambie el TCR y fíjese en cuántos ohmios se mueve."
-    libro: [42]
+    texto: "El TCR se da en partes por millón por grado. Caliente una de 10 kΩ y elija el TCR hasta que cambie un 1 %, todo el margen de una del 1 %."
+    libro: [37, 42]
+    inicio: { dT: 0, tcr: 100 }
     widget:
       tipo: grafica
       x: { id: x, min: 0, max: 100, unidad: "°C", rotulo: "ΔT" }
@@ -67,12 +71,23 @@ tarjetas:
       mandos:
         - { valor: dT, min: 0, max: 100, paso: 10, rotulo: "Calentamiento, ΔT" }
         - { valor: tcr, lista: [25, 50, 100, 250], rotulo: "TCR" }
-    requiere: { mover: [dT, tcr] }
+    objetivo:
+      condiciones:
+        - { valor: pct, objetivo: 1, tol: 0.02, rotulo: "ΔR/R: {{pct}}" }
+      logrado: "{{tcr}} durante {{dT}}: {{d_R}}. La tolerancia no dice nada de cómo cambiará al calentarse."
+      pistas:
+        - { cuando: { valor: pct, mayor: 1.02 }, texto: "Se ha pasado: menos calentamiento o menos TCR." }
+        - { texto: "Todavía falta: más calentamiento o más TCR." }
+    escalera:
+      - "Un 1 % son 10 000 ppm: TCR por calentamiento."
+    solucion: "100 ppm/°C con 100 °C, o 250 con 40 °C."
+    comprobar:
+      - { con: { tcr: 100, dT: 100 }, pct: 1, d_R: 100 }
 
   - id: prediga-tcr
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Una de 10 kΩ con 100 ppm/°C se calienta 50 °C. ¿Cuánto cambia?"
+    tipo: simular
+    titulo: "Prediga el cambio"
+    texto: "Una de 10 kΩ con 100 ppm/°C se calienta 50 °C. ¿Cuánto cambia, en ohmios?"
     libro: [42]
     fijar: { tcr: 100, dT: 50 }
     widget:
@@ -84,70 +99,77 @@ tarjetas:
       lectura: { valor: d_R, rotulo: "Cambio de la resistencia" }
       datos:
         - { valor: pct, rotulo: "ΔR/R = {{pct}}" }
-      ocultar: true
-    opciones:
-      - texto: "50 Ω, un 0,5 %"
-        bien: true
-        porque: "100 ppm por grado y 50 grados son 5 000 ppm: un 0,5 %, la mitad de lo que permitía una tolerancia del 1 %."
-      - texto: "5 Ω, un 0,05 %"
-        porque: "Un ppm es una millonésima: 5 000 ppm de 10 000 Ω son 50 Ω."
-      - texto: "500 Ω, un 5 %"
-        porque: "Se ha pasado diez veces: 5 000 ppm son un 0,5 %, no un 5 %."
-    comprobar:
-      - { d_R: 50, pct: 0.5, ppm: 5000 }
+      ocultar: curvas
+    simular:
+      objetivo: d_R
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Cambio de la resistencia"
+      errores:
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Un ppm es una millonésima: 5 000 ppm de 10 000 Ω son 50 Ω." }
+        - { razon: { min: 9, max: 11 }, texto: "Se ha pasado diez veces: 5 000 ppm son un 0,5 %, no un 5 %." }
+    exito: "100 ppm por grado y 50 grados son 5 000 ppm: un 0,5 %, 50 Ω. La mitad de lo que permitía una tolerancia del 1 %."
     escalera:
       - "100 ppm por grado durante 50 grados son 5 000 ppm."
-    solucion: "5 000 ppm de 10 000 Ω son 50 Ω, un 0,5 %."
-
+    solucion: "5 000 ppm de 10 000 Ω son 50 Ω."
+    comprobar:
+      - { d_R: 50, pct: 0.5, ppm: 5000 }
   - id: estime-precision
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Una de precisión"
-    texto: "Una de 10 kΩ con ±50 ppm/°C pasa de 25 °C a 75 °C. Estime cuánto varía su valor."
+    texto: "Una de 10 kΩ con ±50 ppm/°C pasa de 25 °C a 75 °C. ¿Cuánto varía su valor?"
     libro: ["cap02#342"]
     fijar: { tcr: 50, dT: 50 }
-    estimar:
-      objetivo: "d_R"
+    simular:
+      objetivo: d_R
       unidad: Ω
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 70
       tol: 0.05
       rotulo: "ΔR"
+      errores:
+        - { razon: { min: 2.9, max: 3.1 }, texto: "Ha tomado los 75 °C de llegada. Lo que cuenta es la subida: 50 °C." }
     exito: "50 °C × 50 ppm/°C = 2 500 ppm, un 0,25 %: 25 Ω. Pequeño, pero cuenta en precisión."
     pistas:
       - { cuando: { valor: estimacion, mayor: 26 }, texto: "Se ha pasado: multiplique 50 ppm/°C por los 50 °C de subida y aplíquelo a 10 kΩ." }
       - { texto: "Se ha quedado corto: son 2 500 ppm de 10 000 Ω." }
-    comprobar:
-      - { d_R: 25, pct: 0.25 }
     escalera:
       - "Multiplique el TCR por la subida de temperatura y aplíquelo a 10 kΩ."
-    solucion: "50 °C × 50 ppm/°C = 2 500 ppm, un 0,25 %: 25 Ω. Pequeño, pero cuenta en precisión."
-
+    solucion: "2 500 ppm de 10 kΩ: 25 Ω."
+    comprobar:
+      - { d_R: 25, pct: 0.25 }
   - id: empareje-tecnologias
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: explorar
     titulo: "El TCR de cada tecnología"
-    texto: "Empareje cada tecnología con su TCR típico."
+    texto: "Cada tecnología tiene su TCR típico. Elija la que deja una de 10 kΩ, calentada 50 °C, a no más de 1 Ω de su valor."
     libro: [44]
-    emparejar:
-      - ["Carbón aglomerado", "±1 000 ppm/°C"]
-      - ["Película de carbón", "±250 ppm/°C"]
-      - ["Película metálica", "±50 a ±100 ppm/°C"]
-      - ["Bobinada", "±20 ppm/°C"]
-      - ["Lámina metálica (foil)", "±2 ppm/°C"]
-    exito: "Eso es: del carbón aglomerado a la lámina metálica, el TCR baja quinientas veces."
-    pistas:
-      - { texto: "El peor es el carbón aglomerado; el mejor, la lámina metálica." }
+    fijar: { dT: 50 }
+    inicio: { tcr: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 100, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0.1, max: 1000, unidad: Ω, rotulo: "ΔR", escala: log }
+      curvas:
+        - { expr: "R_t*tcr*x*1e-6", color: naranja, rotulo: "cambio de R" }
+      lectura: { valor: d_R, rotulo: "Cambio con 50 °C" }
+      mandos:
+        - { valor: tcr, lista: [1000, 250, 100, 20, 2], nombres: [carbón aglomerado, película de carbón, película metálica, bobinada, lámina metálica], rotulo: "Tecnología" }
+    objetivo:
+      condiciones:
+        - { valor: d_R, max: 1.01, rotulo: "ΔR: {{d_R}}" }
+      logrado: "La lámina metálica, ±2 ppm/°C: {{d_R}}. Del carbón aglomerado, ±1 000 ppm/°C, a la lámina, quinientas veces menos."
+      pistas:
+        - { texto: "Todavía se mueve demasiado: busque una tecnología de TCR menor." }
     escalera:
-      - "Ordénelas primero de peor a mejor; luego asigne los números."
-    solucion: "Carbón aglomerado: ±1 000 ppm/°C. Película de carbón: ±250 ppm/°C. Película metálica: ±50 a ±100 ppm/°C. Bobinada: ±20 ppm/°C. Lámina metálica (foil): ±2 ppm/°C."
-
+      - "1 Ω de 10 kΩ en 50 °C son 2 ppm/°C."
+    solucion: "Lámina metálica (foil), ±2 ppm/°C."
+    comprobar:
+      - { d_R: 500 }
+      - { con: { tcr: 2 }, d_R: 1 }
+      - { con: { tcr: 250 }, d_R: 125 }
   - id: sorpresa-divisor
     tipo: sorpresa
     titulo: "Caliente un divisor"
-    texto: "Dos de 10 kΩ a 10 V, ambas de 50 ppm/°C: caliente el divisor y mire la salida. Luego dé a R₂ otro TCR."
+    texto: "Dos de 10 kΩ a 10 V, ambas de 50 ppm/°C. Caliente el divisor 100 °C y consiga que la salida se mueva."
     libro: [46, "cap02#342"]
     fijar: { V_d: 10, R_d1: 10000, R_d2: 10000, a_1: 50 }
     widget:
@@ -163,7 +185,18 @@ tarjetas:
       mandos:
         - { valor: dT_d, min: 0, max: 100, paso: 10, rotulo: "Calentamiento, ΔT" }
         - { valor: a_2, lista: [50, 100], rotulo: "TCR de R₂" }
-    requiere: { mover: [dT_d, a_2] }
+    inicio: { dT_d: 0, a_2: 50 }
+    objetivo:
+      condiciones:
+        - { valor: dT_d, min: 100, rotulo: "Calentado 100 °C" }
+        - { valor: V_o, min: 5.01, rotulo: "Salida: {{V_o}}" }
+      logrado: "Con el mismo TCR no se movía; con TCR distintos, {{V_o}}: importa el TCR diferencial."
+      pistas:
+        - { cuando: { valor: dT_d, max: 90 }, texto: "Caliente el divisor hasta 100 °C." }
+        - { texto: "Con el mismo TCR la salida no se mueve: cambie el de R₂." }
+    escalera:
+      - "Si las dos cambian la misma fracción, el cociente no cambia."
+    solucion: "100 °C y R₂ con 100 ppm/°C: 5,012 V."
     comprobar:
       - { con: { dT_d: 100 }, V_o: 5 }
       - { con: { dT_d: 100, a_2: 100 }, V_o: 5.012, tol: 0.0002 }
@@ -195,24 +228,6 @@ tarjetas:
       - "La salida de un divisor depende del cociente R₂/(R₁ + R₂)."
     solucion: "Si las dos suben la misma fracción, el cociente no cambia: lo que importa es el TCR diferencial."
 
-  - id: empareje-conceptos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuatro maneras de no valer lo nominal"
-    texto: "Empareje cada especificación con lo que describe."
-    libro: [37, 42, 48, 49]
-    emparejar:
-      - ["Tolerancia", "Desviación al fabricarla, a temperatura ambiente"]
-      - ["TCR", "Cambio con la temperatura"]
-      - ["Coeficiente de tensión", "Cambio con la tensión aplicada"]
-      - ["Deriva a largo plazo", "Cambio permanente tras miles de horas"]
-    exito: "Eso es. La tolerancia no dice nada de cómo derivará después: por eso no basta con ese número."
-    pistas:
-      - { texto: "La tolerancia es la única que se fija en la fábrica; la deriva, la que tarda años." }
-    escalera:
-      - "Piense en cuándo aparece cada desviación: al fabricar, al calentar, al aplicar tensión o con los años."
-    solucion: "Tolerancia: desviación al fabricarla, a temperatura ambiente. TCR: cambio con la temperatura. Coeficiente de tensión: cambio con la tensión aplicada. Deriva a largo plazo: cambio permanente tras miles de horas."
-
   - id: hueco
     tipo: pregunta
     titulo: "Del 5 %, pero no centradas"
@@ -238,8 +253,9 @@ tarjetas:
   - id: explore-ruido
     tipo: explorar
     titulo: "El ruido que no se puede evitar"
-    texto: "Toda resistencia genera ruido térmico, circule corriente o no. Mueva la resistencia y el ancho de banda."
-    libro: [51, 53]
+    texto: "Toda resistencia genera ruido térmico, circule corriente o no. Consiga el ruido del libro para audio: 0,58 µV."
+    libro: [51, 53, 54]
+    inicio: { R_n: 100000, B: 1000000 }
     widget:
       tipo: grafica
       x: { id: r, min: 100, max: 10000000, unidad: Ω, rotulo: "R", escala: log }
@@ -252,14 +268,25 @@ tarjetas:
       mandos:
         - { valor: R_n, lista: [100, 1000, 10000, 100000, 1000000, 10000000], rotulo: "Resistencia, R" }
         - { valor: B, lista: [20000, 1000000], rotulo: "Ancho de banda, B" }
-    requiere: { mover: [R_n, B] }
+    objetivo:
+      condiciones:
+        - { valor: v_n, objetivo: 5.76e-7, tol: 0.02, rotulo: "Ruido: {{v_n}}" }
+      logrado: "{{R_n}} en {{B}}: {{v_n}}. Menos resistencia y menos banda, menos ruido."
+      pistas:
+        - { cuando: { valor: v_n, mayor: 5.9e-7 }, texto: "Demasiado ruido: baje la resistencia o el ancho de banda." }
+        - { texto: "Falta ruido: suba la resistencia." }
+    escalera:
+      - "Audio son 20 kHz de ancho de banda."
+    solucion: "1 kΩ en 20 kHz: 0,58 µV."
+    comprobar:
+      - { con: { R_n: 1000, B: 20000 }, v_n: 5.76e-7 }
 
   - id: regla-ruido
     tipo: formula
     titulo: "Johnson-Nyquist"
     texto: "k es la constante de Boltzmann, T la temperatura absoluta, R la resistencia y B el ancho de banda."
-    nota: "Limitar la banda es la forma más barata de reducir ruido: todo circuito de medida lleva un paso bajo."
-    libro: [52, 53, 56]
+    nota: "No depende de la tecnología: una de película metálica no tiene menos ruido térmico que una de carbón."
+    libro: [52, 53, 56, 60, 61]
     ec: 52
     sustitucion: "√(4 · k · {{T_k}} · {{R_n}} · {{B}}) = {{v_n}}"
     widget:
@@ -276,7 +303,7 @@ tarjetas:
         - { valor: B, lista: [20000, 1000000], rotulo: "Ancho de banda, B" }
 
   - id: prediga-raiz
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga: mil veces más"
     texto: "1 kΩ en 20 kHz de audio da 0,58 µV. Con 1 MΩ, mil veces más resistencia, ¿qué ruido hay?"
     libro: [54, 56]
@@ -288,82 +315,51 @@ tarjetas:
       curvas:
         - { expr: "sqrt(4*1.380649e-23*T_k*r*B)", color: naranja, rotulo: "ruido térmico" }
       lectura: { valor: v_n, rotulo: "Ruido eficaz" }
-      ocultar: true
-    opciones:
-      - texto: "18,2 µV: unas 32 veces más"
-        bien: true
-        porque: "Crece con la raíz de la resistencia: √1000 ≈ 32. Multiplicar R por cien solo multiplica el ruido por diez."
-      - texto: "Mil veces más"
-        porque: "Sería así si el ruido creciera con R. Crece con su raíz."
-      - texto: "Lo mismo: el ruido no depende de R"
-        porque: "No depende de la tecnología ni del fabricante, pero sí del valor: está bajo la raíz con k, T y B."
+      ocultar: curvas
+    simular:
+      objetivo: v_n
+      unidad: V
+      tol: 0.05
+      rotulo: "Ruido eficaz con 1 MΩ"
+      errores:
+        - { razon: { min: 30, max: 33 }, texto: "Sería así si el ruido creciera con R. Crece con su raíz." }
+        - { razon: { min: 0.03, max: 0.033 }, texto: "No depende de la tecnología, pero sí del valor: R está bajo la raíz." }
+    exito: "18,2 µV: crece con la raíz de la resistencia, √1000 ≈ 32. Multiplicar R por cien solo multiplica el ruido por diez."
+    escalera:
+      - "El ruido crece con la raíz de la resistencia: √1000 ≈ 32."
+    solucion: "Unas 32 veces más que 0,58 µV: 18,2 µV."
     comprobar:
       - { v_n: 1.82e-5 }
       - { con: { R_n: 1000 }, v_n: 5.76e-7 }
       - { con: { R_n: 31623 }, v_n: 3.24e-6 }
-    escalera:
-      - "El ruido crece con la raíz de la resistencia: √1000 ≈ 32."
-    solucion: "Unas 32 veces más que 0,58 µV: 18,2 µV."
-
   - id: estime-banco
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "En el banco"
-    texto: "1 MΩ en la entrada de un amplificador de ganancia 1 000 da 18 mV de ruido en 20 kHz. Cámbiela por una de 10 kΩ y estime la salida."
+    texto: "1 MΩ en la entrada de un amplificador de ganancia 1 000 da 18 mV de ruido en 20 kHz. Cámbiela por una de 10 kΩ: ¿cuánto ruido sale?"
     libro: [63]
     fijar: { R_n: 10000, B: 20000 }
-    estimar:
-      objetivo: "v_sal"
+    simular:
+      objetivo: v_sal
       unidad: V
-      min: 0
-      max: 0.02
-      paso: 0.0002
-      inicio: 0.012
       tol: 0.1
       rotulo: "Ruido a la salida"
+      errores:
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Ha bajado el ruido cien veces, como la resistencia. Baja con la raíz: diez veces." }
     exito: "Unos 1,8 mV: cien veces menos resistencia, diez veces menos ruido, tal como predice la raíz."
     pistas:
       - { cuando: { valor: estimacion, mayor: 0.002 }, texto: "Se ha pasado: con cien veces menos resistencia el ruido baja diez veces." }
       - { texto: "Se ha quedado corto: el ruido baja con la raíz, solo diez veces." }
+    escalera:
+      - "Cien veces menos resistencia: ¿cuánto baja su raíz?"
+    solucion: "18 mV / 10 = 1,8 mV."
     comprobar:
       - { v_sal: 0.00182 }
       - { con: { R_n: 1000000 }, v_sal: 0.0182 }
-    escalera:
-      - "Cien veces menos resistencia: ¿cuánto baja su raíz?"
-    solucion: "Unos 1,8 mV: cien veces menos resistencia, diez veces menos ruido, tal como predice la raíz."
-
-  - id: por-que-un-euro
-    tipo: porque
-    titulo: "Un euro o un céntimo"
-    texto: "Dos de 1 kΩ: una de película metálica de un euro y otra de carbón de un céntimo. ¿Cuál tiene más ruido térmico?"
-    libro: [56, 60, 61]
-    opciones:
-      - texto: "Las dos el mismo"
-        bien: true
-        porque: "El térmico es física, no calidad. La de carbón tiene más ruido de exceso, el que aparece con corriente."
-      - texto: "La de carbón"
-        porque: "Tiene más ruido de exceso, el 1/f. El térmico depende solo de R, T y B."
-      - texto: "La de película metálica"
-        porque: "Ni más ni menos: a igual resistencia, el ruido térmico es el mismo."
-    widget:
-      tipo: grafica
-      x: { id: r, min: 100, max: 10000000, unidad: Ω, rotulo: R, escala: log }
-      y: { min: 1e-8, max: 0.001, unidad: V, rotulo: "v_{ruido}", escala: log }
-      curvas:
-        - { expr: "sqrt(4*1.380649e-23*T_k*r*B)", color: naranja, rotulo: "ruido térmico" }
-      asas:
-        - { mueve: R_n, x: R_n, y: v_n, rotulo: Resistencia }
-      lectura: { valor: v_n, rotulo: "Ruido eficaz" }
-      mandos:
-        - { valor: R_n, lista: [100, 1000, 10000, 100000, 1000000, 10000000], rotulo: "Resistencia, R" }
-    escalera:
-      - "¿De qué depende el ruido térmico: de la tecnología, o de R, T y B?"
-    solucion: "Las dos el mismo: el térmico solo depende de R, T y B. La de carbón tiene más ruido de exceso."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [37, 42, 46, 52, 56, 61]
+    libro: [37, 42, 46, 48, 49, 52, 56, 61]
     ideas:
       - { titulo: "Tolerancia.", texto: "Es la desviación al fabricar; no dice cómo derivará con la temperatura ni con el tiempo." }
       - { titulo: "TCR.", texto: "En ppm/°C. En un divisor importa el diferencial: las redes apareadas ganan." }

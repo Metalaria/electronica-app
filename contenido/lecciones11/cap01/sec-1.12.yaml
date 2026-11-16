@@ -1,5 +1,8 @@
 # Lección 1.1 de la sección 1.12 «Problemas de Diseño» (cap01): los problemas 1.A (referencia con un divisor), 1.B
 # (sección del cable) y 1.C (carga de disipación). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): conectar el comparador a la referencia, el reto E24,
+# predecir el error de carga, la longitud de ida y vuelta y la sección mínima, el reto de la canaleta, montar una
+# matriz de 9 W y el reto de la matriz mínima; se eligen el seguidor y el peor caso del reparto.
 leccion: cap01/sec-1.12
 
 libro:
@@ -40,6 +43,7 @@ modelo:
     A_c: { sim: "A", nombre: "sección del cable", unidad: "mm²", valor: 2.5 }
     cal: { tipo: interruptor, nombre: "cable a 60 °C", valor: 0 }
     n_m: { sim: "n", nombre: "resistencias por rama y ramas", unidad: "", valor: 1 }
+    L_eq: { sim: "d", nombre: "distancia a la fuente", unidad: m, valor: 8 }
   calculos:
     R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
     V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V", nombre: "tensión de referencia", unidad: V, cifras: 4 }
@@ -59,13 +63,16 @@ modelo:
     N_r: { expr: "n_m^2", sim: "N", nombre: "número de resistencias", unidad: "", recortar: true }
     P_adm: { expr: "n_m^2*1", sim: "P_{admisible}", nombre: "potencia admisible al 50 %", unidad: W }
     P_r: { expr: "10/n_m^2", sim: "P_{r}", nombre: "potencia en cada resistencia con 10 W", unidad: W }
+    L_ef: { expr: "2*L_eq", sim: "L_{total}", nombre: "longitud efectiva del cable", unidad: m }
 
 tarjetas:
   - id: explore-referencia
     tipo: explorar
     titulo: "1.A · Una referencia con un divisor"
-    texto: "12 V, 4,7 kΩ y 1,8 kΩ dan una referencia de 3,3 V. Conecte la entrada del comparador, de 47 kΩ, y mire la referencia."
+    texto: "12 V, 4,7 kΩ y 1,8 kΩ dan una referencia de 3,3 V. Conecte la entrada del comparador, de 47 kΩ: ¿sigue siendo una referencia?"
     libro: [241, 251]
+    fijar: { R_1: 4700, R_2: 1800, R_L: 47000 }
+    inicio: { carga: 0 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -77,7 +84,17 @@ tarjetas:
       mide: { salida: V_out, corriente: I_d, carga: I_L }
       mandos:
         - { valor: carga, tipo: conectar, boton: "Conectar el comparador (47 kΩ)" }
-    requiere: { conectar: [carga] }
+    objetivo:
+      condiciones:
+        - { valor: carga, min: 1, rotulo: "Comparador conectado" }
+      logrado: "La referencia cae a {{V_out}}, un {{err_c}}: un divisor no es una referencia si la carga consume."
+      pistas:
+        - { texto: "Pulse el botón para conectar el comparador." }
+    escalera:
+      - "Pulse «Conectar el comparador»."
+    solucion: "Conectado, la referencia baja a 3,234 V."
+    comprobar:
+      - { con: { carga: 1 }, V_out: 3.234, err_c: -2.695 }
 
   - id: reto-e24
     tipo: reto
@@ -111,9 +128,9 @@ tarjetas:
       - { R2_ideal: 1783 }
 
   - id: prediga-carga
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "El divisor equivale a 3,3231 V con R_{Th} = 1,302 kΩ. ¿Qué error introduce la entrada de 47 kΩ?"
+    tipo: simular
+    titulo: "Prediga el error"
+    texto: "El divisor equivale a 3,3231 V con R_{Th} = 1,302 kΩ. ¿Qué referencia queda con la entrada de 47 kΩ conectada?"
     libro: [245, 247, 255]
     fijar: { R_1: 4700, R_2: 1800, R_L: 47000, carga: 1 }
     widget:
@@ -124,21 +141,23 @@ tarjetas:
       corriente: I_d
       mide: { salida: V_out, corriente: I_d, carga: I_L }
       ocultar: true
-    opciones:
-      - texto: "−2,69 %"
-        bien: true
-        porque: "−R_{Th}/(R_{L} + R_{Th}) = −1302/48302. Es el error dominante: solo ese se lleva 90 mV."
-      - texto: "Ninguno: 47 kΩ es mucho mayor que 1,8 kΩ"
-        porque: "No cuenta R₂ sola, sino R_{Th} frente a la carga, y 1,302 kΩ no es despreciable ante 47 kΩ."
-      - texto: "−11,5 %"
-        porque: "Ese sería con una entrada de 10 kΩ. Con 47 kΩ, el error es menor."
-    comprobar:
-      - { err_c: -2.695 }
-      - { con: { R_L: 10000 }, err_c: -11.52 }
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.01
+      rotulo: "Referencia con la carga"
+      medida: salida
+      errores:
+        - { expr: "V_vac", texto: "Eso da en vacío. La entrada de 47 kΩ forma un segundo divisor con R_{Th}." }
+        - { razon: { min: 1.08, max: 1.12 }, texto: "Esa sería con una entrada de 10 kΩ. Con 47 kΩ, el error es menor." }
+    exito: "{{V_out}}: −R_{Th}/(R_{L} + R_{Th}) = −1302/48302 = −2,69 %. Es el error dominante: solo ese se lleva 90 mV."
     escalera:
       - "Compare con la carga de 47 kΩ la R_{Th} del divisor, no R₂ sola."
-    solucion: "−R_{Th}/(R_{L} + R_{Th}) = −1302/48302 = −2,69 %."
-
+    solucion: "3,3231 V con un −2,69 %: 3,234 V."
+    comprobar:
+      - { err_c: -2.695, V_out: 3.234 }
+      - { con: { R_L: 10000 }, err_c: -11.52, V_out: 2.94 }
   - id: regla-error-carga
     tipo: formula
     titulo: "El error de carga"
@@ -192,19 +211,11 @@ tarjetas:
     solucion: "Bajar R_{Th} diez veces multiplica por diez la corriente en reposo; el seguidor, con megaohmios de entrada, no carga el divisor."
 
   - id: ida-y-vuelta
-    tipo: pregunta
+    tipo: simular
     titulo: "1.B · La sección del cable"
     texto: "Un equipo de 12 V y 5 A está a 8 metros de la fuente. ¿Qué longitud de cable cuenta para la caída?"
     libro: [265, 270]
-    opciones:
-      - texto: "16 m"
-        bien: true
-        porque: "La corriente va y vuelve: la longitud efectiva es el doble. Contar solo la ida es el primer error."
-      - texto: "8 m"
-        porque: "Esa es solo la ida. La corriente vuelve por el otro conductor, con su propia caída."
-      - texto: "4 m, porque los dos hilos van en paralelo"
-        porque: "No van en paralelo: van en serie con el equipo, uno de ida y otro de vuelta."
-    fijar: { cal: 0 }
+    fijar: { cal: 0, L_eq: 8 }
     widget:
       tipo: grafica
       x: { id: aa, min: 1, max: 8, unidad: "mm²", rotulo: "A" }
@@ -213,35 +224,42 @@ tarjetas:
         - { expr: "100*5*1.72e-8*16/(aa*1e-6)/12", color: naranja, rotulo: "caída en el cable" }
         - { expr: "3", color: tinta, rotulo: "límite, 3 %", discontinua: true }
       mandos: []
+    simular:
+      objetivo: L_ef
+      unidad: m
+      tol: 0.01
+      rotulo: "Longitud efectiva"
+      errores:
+        - { razon: { min: 0.49, max: 0.51 }, texto: "Esa es solo la ida. La corriente vuelve por el otro conductor, con su propia caída." }
+        - { razon: { min: 0.24, max: 0.26 }, texto: "Los dos hilos no van en paralelo: van en serie con el equipo, uno de ida y otro de vuelta." }
+    exito: "16 m: la corriente va y vuelve. Contar solo la ida es el primer error."
     escalera:
       - "¿Por dónde vuelve la corriente desde el equipo hasta la fuente?"
-    solucion: "16 m: la corriente va por un conductor y vuelve por el otro, en serie con el equipo."
-
+    solucion: "16 m, ida y vuelta."
+    comprobar:
+      - { L_ef: 16 }
   - id: estime-seccion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La sección mínima"
-    texto: "El equipo debe recibir al menos el 97 %: caen como mucho 0,36 V. Con cobre, 16 m y 5 A, estime la sección mínima."
+    texto: "El equipo debe recibir al menos el 97 %: caen como mucho 0,36 V. Con cobre, 16 m y 5 A, ¿qué sección mínima hace falta?"
     libro: [272, 275, 276]
-    estimar:
-      objetivo: "A_min"
+    simular:
+      objetivo: A_min
       unidad: "mm²"
-      min: 0
-      max: 10
-      paso: 0.05
-      inicio: 8
       tol: 0.03
       rotulo: "A_{mín}"
+      errores:
+        - { razon: { min: 0.49, max: 0.51 }, texto: "Ha contado solo 8 m: la corriente va y vuelve, son 16 m." }
     exito: "1,72 × 10⁻⁸ × 16 × 5 / 0,36 = 3,82 mm². La comercial inmediatamente superior es de 4 mm²."
     pistas:
       - { cuando: { valor: estimacion, mayor: 3.94 }, texto: "Se ha pasado: R máxima = 0,36/5 = 72 mΩ; A = ρ·16/R." }
       - { texto: "Se ha quedado corto: ¿ha contado los 16 m, ida y vuelta?" }
-    comprobar:
-      - { A_min: 3.82 }
     escalera:
       - "La caída máxima entre la corriente da la resistencia máxima del cable."
-    solucion: "1,72 × 10⁻⁸ × 16 × 5 / 0,36 = 3,82 mm². La comercial inmediatamente superior es de 4 mm²."
-
+    solucion: "1,72 × 10⁻⁸ × 16 × 5 / 0,36 = 3,82 mm²."
+    comprobar:
+      - { A_min: 3.82 }
   - id: reto-canaleta
     tipo: reto
     titulo: "Reto: el cable en la canaleta"
@@ -279,9 +297,9 @@ tarjetas:
   - id: explore-matriz
     tipo: explorar
     titulo: "1.C · Carga de 100 Ω y 10 W"
-    texto: "Hay resistencias de 100 Ω y 2 W, usadas al 50 %. Monte n en serie por n ramas y mueva n."
-    nota: "El valor no cambia; la potencia admisible crece como n²."
+    texto: "Hay resistencias de 100 Ω y 2 W, usadas al 50 %. Monte n en serie por n ramas: consiga una carga de 100 Ω que admita 9 W."
     libro: [288, 293]
+    inicio: { n_m: 1 }
     widget:
       tipo: grafica
       x: { id: nn, min: 1, max: 6, unidad: "", rotulo: "n" }
@@ -297,7 +315,18 @@ tarjetas:
         - { valor: N_r, rotulo: "Resistencias: {{N_r}}" }
       mandos:
         - { valor: n_m, min: 1, max: 6, paso: 1, rotulo: "n" }
-    requiere: { mover: [n_m] }
+    objetivo:
+      condiciones:
+        - { valor: P_adm, objetivo: 9, tol: 0.01, rotulo: "Admisible: {{P_adm}}" }
+      logrado: "{{N_r}} resistencias, {{R_eq}} y {{P_adm}}: el valor no cambia y la potencia admisible crece como n²."
+      pistas:
+        - { cuando: { valor: P_adm, mayor: 9 }, texto: "Admite más de lo pedido: haga la matriz más pequeña." }
+        - { texto: "Admite poco: haga la matriz más grande." }
+    escalera:
+      - "Cada resistencia admite 1 W y hay n² resistencias."
+    solucion: "n = 3: nueve resistencias, 100 Ω y 9 W."
+    comprobar:
+      - { con: { n_m: 3 }, P_adm: 9, N_r: 9, R_eq: 100 }
 
   - id: reto-matriz
     tipo: reto

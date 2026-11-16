@@ -1,4 +1,7 @@
 # Lección 1.1 de la sección 1.7 «Resonancia en Circuitos RLC» (cap01). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): subir la resonancia con L y C, predecir la corriente en f₀,
+# calcular la de 1 mH y 1 µF, estrechar el pico con R, el reto de Q = 100, decuplicar la tensión de la bobina y marcar
+# el máximo del tanque en paralelo; se eligen el «por qué» de L y C y las tres definiciones.
 leccion: cap01/sec-1.7
 
 libro:
@@ -36,8 +39,9 @@ tarjetas:
   - id: explore-resonancia
     tipo: explorar
     titulo: "Un pico de corriente"
-    texto: "Una fuente de 1 V barre la frecuencia sobre un RLC en serie. Mueva L y C: el pico se desplaza."
+    texto: "Una fuente de 1 V barre la frecuencia sobre un RLC en serie. Cambie L y C hasta que el pico pase del doble de su frecuencia actual."
     libro: [142]
+    inicio: { L_r: 0.01, C_r: 100e-9 }
     widget:
       tipo: circuito
       esquema: rlc-serie
@@ -54,12 +58,22 @@ tarjetas:
       mandos:
         - { valor: L_r, lista: [2.2e-3, 4.7e-3, 10e-3, 22e-3, 47e-3], rotulo: "Inductancia, L" }
         - { valor: C_r, lista: [47e-9, 100e-9, 220e-9], rotulo: "Capacidad, C" }
-    requiere: { mover: [L_r] }
-
+    objetivo:
+      condiciones:
+        - { valor: f_0, min: 10066, rotulo: "Resonancia: {{f_0}}" }
+      logrado: "Con menos L·C, el pico sube a {{f_0}}: las reactancias se cancelan a una sola frecuencia, la que fijan L y C."
+      pistas:
+        - { texto: "Baje la inductancia, la capacidad o las dos." }
+    escalera:
+      - "Para el doble de frecuencia, L·C tiene que bajar cuatro veces."
+    solucion: "Por ejemplo, 2,2 mH con 100 nF: 10,7 kHz."
+    comprobar:
+      - { f_0: 5033 }
+      - { con: { L_r: 2.2e-3, C_r: 100e-9 }, f_0: 10730, tol: 0.01 }
   - id: prediga-fuente
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "En la resonancia de un RLC en serie, las dos reactancias se cancelan. ¿Qué ve la fuente?"
+    tipo: simular
+    titulo: "Prediga la corriente en f₀"
+    texto: "En la resonancia de un RLC en serie, las dos reactancias se cancelan. Con 1 V de pico y R = 10 Ω, ¿qué corriente de pico circula?"
     libro: [142, 148]
     fijar: { L_r: 0.01, C_r: 100e-9, R_r: 10 }
     widget:
@@ -69,20 +83,22 @@ tarjetas:
       lectura: { valor: I_0, rotulo: "Corriente en f₀" }
       mide: { i_amp: I_0 }
       ocultar: true
-    opciones:
-      - texto: "Solo la resistencia: corriente máxima"
-        bien: true
-        porque: "L y C se anulan entre sí; queda R, la impedancia mínima. Con 1 V y 10 Ω, 100 mA de pico."
-      - texto: "Un circuito abierto: corriente nula"
-        porque: "Se cancelan entre ellas, no bloquean. En serie queda solo R, y la corriente es máxima."
-      - texto: "Una impedancia puramente inductiva"
-        porque: "En f₀ la reactancia de la bobina y la del condensador son iguales y opuestas: no queda ninguna."
-    comprobar:
-      - { I_0: 0.1 }
+      mandos: []
+    simular:
+      objetivo: I_0
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de pico en f₀"
+      medida: i_amp
+      errores:
+        - { expr: "V_p/(R_r + Z_0)", texto: "Ha sumado una reactancia. En f₀ la de L y la de C son iguales y opuestas: no queda ninguna." }
+        - { razon: { min: -0.01, max: 0.01 }, texto: "Se cancelan entre ellas, no bloquean. En serie queda solo R, y la corriente es máxima." }
+    exito: "L y C se anulan entre sí; queda R, la impedancia mínima. Con 1 V y 10 Ω, 100 mA de pico."
     escalera:
       - "Si X_{L} y X_{C} se anulan, ¿qué queda en serie?"
-    solucion: "Solo R: la impedancia mínima y, por tanto, la corriente máxima."
-
+    solucion: "Solo R: 1 V / 10 Ω = 100 mA."
+    comprobar:
+      - { I_0: 0.1 }
   - id: regla-f0
     tipo: formula
     titulo: "La frecuencia de resonancia"
@@ -112,45 +128,43 @@ tarjetas:
       - { con: { L_r: 0.01, C_r: 100e-9 }, f_0: 5032.92, tol: 0.0001 }
 
   - id: estime-f0
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un milihenrio y un microfaradio"
-    texto: "Estime la frecuencia de resonancia de 1 mH con 1 µF."
+    texto: "¿Cuál es la frecuencia de resonancia de 1 mH con 1 µF?"
     libro: [143, 147]
     fijar: { L_r: 1e-3, C_r: 1e-6 }
-    estimar:
-      objetivo: "f_0"
+    simular:
+      objetivo: f_0
       unidad: Hz
-      min: 0
-      max: 20000
-      paso: 100
-      inicio: 15000
       tol: 0.03
       rotulo: "f₀"
+      errores:
+        - { razon: { min: 6.1, max: 6.4 }, texto: "Ha olvidado el 2π: 1/√(LC) es la frecuencia angular ω₀, en rad/s." }
     exito: "√(LC) = √(10⁻⁹) ≈ 31,6 µs; 1/(2π × 31,6 µs) = 5,03 kHz."
     pistas:
       - { cuando: { valor: estimacion, mayor: 5180 }, texto: "Se ha pasado: L·C = 10⁻⁹ s²; su raíz, unos 31,6 µs. No olvide el 2π." }
       - { texto: "Se ha quedado corto: 1/(2π · 31,6 µs) son unos miles de hercios." }
+    escalera:
+      - "Calcule primero √(L·C) y después 1/(2π·√(LC))."
+    solucion: "1/(2π × 31,6 µs) = 5,03 kHz."
     comprobar:
       - { f_0: 5033 }
       - { raiz_LC: 31.6e-6 }
-    escalera:
-      - "Calcule primero √(L·C) y después 1/(2π·√(LC))."
-    solucion: "√(LC) = √(10⁻⁹) ≈ 31,6 µs; 1/(2π × 31,6 µs) = 5,03 kHz."
-
   - id: explore-q
     tipo: explorar
     titulo: "La agudeza: el factor Q"
-    texto: "Mueva R. Con menos pérdidas, el pico sube y se estrecha: Q = √(L/C)/R y el ancho de banda es f₀/Q."
+    texto: "Q = √(L/C)/R y el ancho de banda es f₀/Q. Cambie R hasta que el ancho de banda baje a la décima parte del actual."
     libro: [144, 149]
     fijar: { L_r: 0.01, C_r: 100e-9 }
+    inicio: { R_r: 100 }
     widget:
       tipo: circuito
       esquema: rlc-serie
       piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
-      lectura: { valor: Q, rotulo: "Factor de calidad, Q" }
+      lectura: { valor: B, rotulo: "Ancho de banda" }
       datos:
-        - { valor: B, rotulo: "Ancho de banda: {{B}}" }
+        - { valor: Q, rotulo: "Q = {{Q}}" }
       mide: { i_amp: I_0 }
       dibujo: false
       grafica:
@@ -160,7 +174,18 @@ tarjetas:
           - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
       mandos:
         - { valor: R_r, lista: [10, 30, 100, 300], rotulo: "Resistencia, R" }
-
+    objetivo:
+      condiciones:
+        - { valor: B, max: 200, rotulo: "Ancho de banda: {{B}}" }
+      logrado: "Con {{R_r}}, Q = {{Q}}: menos pérdidas, un pico más alto y más estrecho, de {{B}}."
+      pistas:
+        - { texto: "Todavía es ancho: baje la resistencia, las pérdidas." }
+    escalera:
+      - "Q crece al bajar R, y el ancho de banda es f₀/Q."
+    solucion: "R = 10 Ω: Q = 31,6 y 159 Hz."
+    comprobar:
+      - { B: 1591.5, Q: 3.162 }
+      - { con: { R_r: 10 }, Q: 31.62, B: 159.15 }
   - id: reto-q100
     tipo: reto
     titulo: "Reto: Q = 100"
@@ -200,7 +225,7 @@ tarjetas:
   - id: tension-q
     tipo: sorpresa
     titulo: "Más tensión que la fuente"
-    texto: "La fuente da 1 V de pico en la resonancia. Mire la tensión en la bobina y mueva R."
+    texto: "La fuente da 1 V de pico en la resonancia. Consiga en la bobina diez veces más tensión que ahora."
     nota: "Sobre cada elemento reactivo, Q veces la tensión aplicada."
     libro: [148]
     fijar: { L_r: 0.01, C_r: 100e-9 }
@@ -221,8 +246,18 @@ tarjetas:
           - { expr: "A_L*cos(w_0*t)", color: naranja, rotulo: "v_{L}", mide: vl }
       mandos:
         - { valor: R_r, lista: [10, 30, 100], rotulo: "Resistencia, R" }
-    requiere: { mover: [R_r] }
-
+    objetivo:
+      condiciones:
+        - { valor: A_L, min: 31, rotulo: "Bobina: {{A_L}}" }
+      logrado: "{{A_L}} de pico con 1 V en la fuente: Q = {{Q}} veces la tensión aplicada, en la bobina y en el condensador."
+      pistas:
+        - { texto: "Baje las pérdidas: la tensión en la bobina es Q veces la de la fuente." }
+    escalera:
+      - "La tensión en L es Q veces la aplicada, y Q = √(L/C)/R."
+    solucion: "R = 10 Ω: Q = 31,6 y 31,6 V en la bobina."
+    comprobar:
+      - { A_L: 3.162 }
+      - { con: { R_r: 10 }, A_L: 31.62 }
   - id: por-que-f0
     tipo: porque
     titulo: "¿Por qué solo L y C?"
@@ -254,34 +289,38 @@ tarjetas:
     solucion: "La energía va y viene entre C y L a su propio ritmo; R solo decide cuánto se pierde en cada vuelta."
 
   - id: paralelo-maxima
-    tipo: pregunta
+    tipo: marcar
     titulo: "El mismo intercambio en paralelo"
-    texto: "Ahora L y C están en paralelo, alimentados a través de una resistencia. ¿Qué impedancia ve la fuente en f₀?"
+    texto: "Ahora L y C están en paralelo, alimentados a través de una resistencia. Marque la frecuencia en que el tanque ve la impedancia máxima: su tensión es mayor."
     libro: [148]
     fijar: { L_r: 0.01, C_r: 100e-9 }
     widget:
       tipo: circuito
       esquema: rlc-paralelo
       piezas: { fuente: V_p, f: f_0, rs: R_ps, l: L_r, c: C_r, r: R_pp }
-      lectura: { valor: A_t, rotulo: "Tensión del tanque en f₀" }
       mide: { vt_amp: A_t }
       grafica:
         x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
         y: { min: 0, max: 1, unidad: V, rotulo: "|v_{t}|" }
         curvas:
           - { expr: "V_p/sqrt((1 + R_ps/R_pp)^2 + (R_ps*(2*pi*nu*C_r - 1/(2*pi*nu*L_r)))^2)", color: verde, rotulo: "|v_{t}|", mide: vt_amp }
-    opciones:
-      - texto: "Máxima"
-        bien: true
-        porque: "La corriente que circula entre L y C no sale fuera: la fuente solo aporta la de las pérdidas."
-      - texto: "Mínima, como en serie"
-        porque: "En serie se ven las reactancias anularse en el camino de la corriente; en paralelo, la circulante queda dentro."
-      - texto: "Cero: un cortocircuito"
-        porque: "Entonces el tanque no tendría tensión, y es justo en f₀ donde más tiene."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_0"
+      tol: 0.03
+      inicio: { x: 15000, y: 0 }
+      rotulo: "La impedancia máxima"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 5033 }, texto: "Más a la izquierda: busque la cima de la curva." }
+      - { texto: "Más a la derecha: busque la cima de la curva." }
+    exito: "En f₀, {{f_0}}: la corriente que circula entre L y C queda dentro y la fuente solo aporta la de las pérdidas."
     escalera:
-      - "La corriente que circula entre L y C, ¿sale del tanque hacia la fuente?"
-    solucion: "Máxima: el intercambio queda dentro del tanque y la fuente solo aporta las pérdidas."
-
+      - "La impedancia del tanque es máxima donde su tensión es mayor."
+    solucion: "En f₀ = 5,03 kHz, la misma que en serie."
+    comprobar:
+      - { f_0: 5033 }
   - id: tres-definiciones
     tipo: pregunta
     titulo: "Tres resonancias"

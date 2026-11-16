@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 2.7 «Aplicaciones Fundamentales» (cap02): el divisor y el efecto de carga (ejercicios
 # 2.4 y 2.8), el puente de Wheatstone (ejercicio 2.5) y las resistencias pull-up y pull-down.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): hundir el divisor con una carga, predecir la salida con
+# 10 kΩ, los retos de la carga y del 12 → 5 V, diseñar con tolerancias, conectar 1 kΩ, desequilibrar el puente a 5 mV,
+# predecir el sensor del 1 % y equilibrar; se eligen el regulador y el pull-up.
 leccion: cap02/sec-2.7
 
 libro:
@@ -43,10 +46,10 @@ tarjetas:
   - id: explore-carga
     tipo: explorar
     titulo: "Un divisor con carga"
-    texto: "Dos de 10 kΩ a 10 V, con una carga conectada: cambie su valor y desconéctela. Fíjese en cuándo se hunde la salida."
+    texto: "Dos de 10 kΩ a 10 V dan 5 V en vacío. Busque una carga que hunda la salida por debajo de 2 V."
     libro: [136, "cap02#342"]
-    fijar: { V_in: 10, R_1: 10000, R_2: 10000 }
-    inicio: { carga: 1, R_L: 10000 }
+    fijar: { V_in: 10, R_1: 10000, R_2: 10000, carga: 1 }
+    inicio: { R_L: 100000 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -58,13 +61,23 @@ tarjetas:
       corriente: I
       mide: { salida: V_out, corriente: I, carga: I_L }
       mandos:
-        - { valor: carga, tipo: interruptor, rotulo: "Carga conectada" }
-        - { valor: R_L, lista: [1000, 3300, 10000, 33000, 100000, 1000000] }
-    requiere: { mover: [carga, R_L] }
+        - { valor: R_L, lista: [1000, 3300, 10000, 33000, 100000, 1000000], rotulo: "Carga, R_{L}" }
+    objetivo:
+      condiciones:
+        - { valor: V_out, max: 2, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con {{R_L}} en paralelo con R₂, la salida cae a {{V_out}}: la fórmula del divisor solo vale en vacío."
+      pistas:
+        - { texto: "Todavía se sostiene: elija una carga menor, que tire de más corriente." }
+    escalera:
+      - "La carga queda en paralelo con R₂: cuanto menor, más baja la rama de abajo."
+    solucion: "Con 3,3 kΩ, 1,99 V; con 1 kΩ, aún menos."
+    comprobar:
+      - { V_vacio: 5 }
+      - { con: { R_L: 3300 }, V_out: 1.99, tol: 0.01 }
 
   - id: prediga-carga
-    tipo: predecir
-    titulo: "Prediga"
+    tipo: simular
+    titulo: "Prediga con la carga"
     texto: "El divisor de dos 10 kΩ a 10 V se carga con 10 kΩ. ¿Qué tensión queda en la salida?"
     libro: ["cap02#342"]
     fijar: { V_in: 10, R_1: 10000, R_2: 10000, R_L: 10000, carga: 1 }
@@ -76,21 +89,22 @@ tarjetas:
       corriente: I
       mide: { salida: V_out, corriente: I, carga: I_L }
       ocultar: true
-    opciones:
-      - texto: "3,33 V"
-        bien: true
-        porque: "R₂ en paralelo con la carga son 5 kΩ: 10 · 5 / (10 + 5) = 3,33 V. Cae un tercio."
-      - texto: "5 V"
-        porque: "Eso da en vacío. La fórmula del divisor solo vale sin nada conectado."
-      - texto: "Casi lo mismo: la carga apenas influye"
-        porque: "Una carga igual a R₂ influye mucho: en paralelo con ella, la rama de abajo baja a la mitad."
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión de salida"
+      medida: salida
+      errores:
+        - { expr: "V_vacio", texto: "Eso da en vacío. La fórmula del divisor solo vale sin nada conectado." }
+    exito: "R₂ en paralelo con la carga son 5 kΩ: 10 · 5 / (10 + 5) = 3,33 V. Cae un tercio."
+    escalera:
+      - "La carga queda en paralelo con R₂."
+    solucion: "10 · 5 / (10 + 5) = 3,33 V."
     comprobar:
       - { V_out: 3.333, R_ab: 5000 }
       - { con: { carga: 0 }, V_out: 5 }
-    escalera:
-      - "La carga queda en paralelo con R₂."
-    solucion: "R₂ en paralelo con la carga son 5 kΩ: 10 · 5 / (10 + 5) = 3,33 V."
-
   - id: reto-carga-minima
     tipo: reto
     titulo: "Reto: menos del 10 %"
@@ -204,9 +218,17 @@ tarjetas:
       mide: { salida: V_out, corriente: I, carga: I_L }
       mandos:
         - { valor: carga, tipo: conectar, boton: "Conectar la carga (1 kΩ)" }
-    requiere: { conectar: [carga] }
     comprobar:
       - { con: { carga: 1 }, V_out: 2.571, R_ab: 600 }
+    objetivo:
+      condiciones:
+        - { valor: carga, min: 1, rotulo: "Carga conectada" }
+      logrado: "De 4,86 V a {{V_out}}: con 1 kΩ, menos que R₂, el divisor deja de funcionar como se espera."
+      pistas:
+        - { texto: "Pulse el botón para conectar la carga." }
+    escalera:
+      - "Pulse «Conectar la carga»."
+    solucion: "Se desploma a 2,57 V."
 
   - id: por-que-regulador
     tipo: porque
@@ -238,8 +260,10 @@ tarjetas:
   - id: explore-puente
     tipo: explorar
     titulo: "El puente de Wheatstone"
-    texto: "Cuatro resistencias en diamante, dos divisores sobre la misma fuente. R₄ es un sensor: muévala y mire el detector."
+    texto: "Cuatro resistencias en diamante, dos divisores sobre la misma fuente. R₄ es un sensor: muévala hasta que el detector marque +5 mV."
     libro: [140]
+    fijar: { V_w: 5, R_w1: 1000, R_w2: 1000, R_w3: 1000 }
+    inicio: { R_w4: 1000 }
     widget:
       tipo: circuito
       esquema: wheatstone
@@ -252,6 +276,19 @@ tarjetas:
       mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
       mandos:
         - { valor: R_w4, min: 990, max: 1010, paso: 1, rotulo: "R₄, el sensor" }
+    objetivo:
+      condiciones:
+        - { valor: V_wab, objetivo: 0.005, tol: 0.05, rotulo: "Detector: {{V_wab}}" }
+      logrado: "Con R₄ = {{R_w4}}, {{V_wab}}: un cambio de unos ohmios sobre mil da milivoltios sobre un cero."
+      pistas:
+        - { cuando: { valor: V_wab, mayor: 0.00525 }, texto: "Se ha pasado: suba un poco R₄." }
+        - { texto: "Todavía falta: baje R₄, que el punto medio derecho baje." }
+    escalera:
+      - "El detector es V_{a} − V_{b}: para que sea positivo, V_{b} debe bajar."
+    solucion: "R₄ = 996 Ω: 5,01 mV."
+    comprobar:
+      - { V_wab: 0 }
+      - { con: { R_w4: 996 }, V_wab: 0.00501, tol: 0.01 }
 
   - id: regla-equilibrio
     tipo: formula
@@ -272,11 +309,11 @@ tarjetas:
         - { valor: R_w4, min: 990, max: 1010, paso: 1, rotulo: "R₄, el sensor" }
 
   - id: prediga-sensor
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Con R₁ = R₂ = R₃ = R₄ = 1 kΩ el puente está equilibrado. Si el sensor R₄ pasa a 1010 Ω, ¿qué ocurre?"
+    tipo: simular
+    titulo: "Prediga el sensor"
+    texto: "Con R₁ = R₂ = R₃ = R₄ = 1 kΩ y 5 V, el puente está equilibrado. Si el sensor R₄ pasa a 1010 Ω, ¿qué marca el detector?"
     libro: [140, "cap02#342"]
-    fijar: { R_w1: 1000, R_w2: 1000, R_w3: 1000, R_w4: 1010 }
+    fijar: { V_w: 5, R_w1: 1000, R_w2: 1000, R_w3: 1000, R_w4: 1010 }
     widget:
       tipo: circuito
       esquema: wheatstone
@@ -285,20 +322,22 @@ tarjetas:
       corriente: I_w
       mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
       ocultar: true
-    opciones:
-      - texto: "Aparece una pequeña tensión, proporcional al cambio"
-        bien: true
-        porque: "1000/1000 ya no es 1000/1010: el puente se desequilibra. Ese es el principio de medición."
-      - texto: "Nada: un 1 % no rompe el equilibrio"
-        porque: "Cualquier cambio lo rompe: 1 ≠ 0,990. Por eso el puente mide variaciones muy pequeñas."
-      - texto: "El detector salta a la tensión de la fuente"
-        porque: "Es una tensión pequeña: cada punto medio se mueve muy poco."
-    comprobar:
-      - { V_wab: -0.01244, q_34: 0.990, tol: 0.002 }
+      mandos: []
+    simular:
+      objetivo: V_wab
+      unidad: V
+      tol: 0.03
+      rotulo: "Detector"
+      medida: salida
+      errores:
+        - { razon: { min: 3.8, max: 4.2 }, texto: "El 1 % de 5 V no: cada punto medio se mueve mucho menos." }
+        - { expr: "V_wb", texto: "Esa es V_{b}, el punto medio frente a masa. El detector lee la diferencia." }
+    exito: "−12,4 mV: 1000/1000 ya no es 1000/1010 y aparece una tensión pequeña, proporcional al cambio."
     escalera:
       - "¿Siguen siendo iguales los dos cocientes, R₁/R₂ y R₃/R₄?"
-    solucion: "1000/1000 ya no es 1000/1010: aparece una pequeña tensión, proporcional al cambio."
-
+    solucion: "5 · (1/2 − 1010/(1000 + 1010)) = −12,4 mV."
+    comprobar:
+      - { V_wab: -0.01244, q_34: 0.990, tol: 0.002 }
   - id: reto-equilibrio
     tipo: reto
     titulo: "Reto: equilibre el puente"

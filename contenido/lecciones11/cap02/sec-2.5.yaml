@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 2.5 «Código Numérico SMD y Series de Valores» (cap02): los cuatro marcados SMD, la
 # resistencia de cero ohmios, las series E (el paso encaja con la tolerancia) y diseñar con valores comerciales.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): marcar 1 MΩ, leer «100» y «2201», el reto de 4,7 kΩ,
+# elegir la serie de paso del 10 %, la tolerancia de la E12 y 7,5 kΩ en paralelo; se eligen el EIA-96 y el porqué de
+# la E24 en producción.
 leccion: cap02/sec-2.5
 
 libro:
@@ -26,6 +29,8 @@ modelo:
     V_p: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
     R_a: { sim: "R₁", nombre: "primera resistencia", unidad: Ω, valor: 10000 }
     R_b: { sim: "R₂", nombre: "segunda resistencia", unidad: Ω, valor: 10000 }
+    k_3: { sim: "dígitos", nombre: "tres dígitos del marcado de cuatro cifras", unidad: "", valor: 220 }
+    k_m: { sim: "ceros", nombre: "cuarta cifra: ceros", unidad: "", valor: 1 }
   calculos:
     codigo: { expr: "100*c_1 + 10*c_2 + c_n", sim: "código", nombre: "código impreso", unidad: "", cifras: 3, recortar: true }
     R: { expr: "(10*c_1 + c_2)*10^c_n", sim: "R", nombre: "valor de la resistencia", unidad: Ω, cifras: 3, recortar: true }
@@ -36,13 +41,15 @@ modelo:
     I_a: { expr: "V_p/R_a", sim: "I₁", nombre: "corriente por R₁", unidad: A }
     I_b: { expr: "V_p/R_b", sim: "I₂", nombre: "corriente por R₂", unidad: A }
     I_t: { expr: "I_a + I_b", sim: "I", nombre: "corriente total", unidad: A }
+    R4: { expr: "k_3*10^k_m", sim: "R", nombre: "valor del marcado de cuatro cifras", unidad: Ω }
 
 tarjetas:
   - id: explore-tres-cifras
     tipo: explorar
     titulo: "Tres cifras impresas"
-    texto: "Una SMD lleva tres cifras: los dos primeros dígitos y el número de ceros. Mueva las cifras y mire el código y el valor."
+    texto: "Una SMD lleva tres cifras: los dos primeros dígitos y el número de ceros. Consiga el código de una de 1 MΩ."
     libro: [89]
+    inicio: { c_1: 1, c_2: 0, c_n: 1 }
     widget:
       tipo: grafica
       x: { id: x, min: 0, max: 6, unidad: "", rotulo: "número de ceros" }
@@ -58,11 +65,23 @@ tarjetas:
         - { valor: c_1, min: 1, max: 9, paso: 1, rotulo: "Primera cifra" }
         - { valor: c_2, min: 0, max: 9, paso: 1, rotulo: "Segunda cifra" }
         - { valor: c_n, min: 0, max: 6, paso: 1, rotulo: "Tercera cifra: ceros" }
-    requiere: { mover: [c_1, c_n] }
+    objetivo:
+      condiciones:
+        - { valor: R, objetivo: 1000000, tol: 0.001, rotulo: "Valor: {{R}}" }
+      logrado: "«{{codigo}}»: 10 seguido de cinco ceros, {{R}}."
+      pistas:
+        - { cuando: { valor: R, mayor: 1000001 }, texto: "Se ha pasado: cuente los ceros que siguen a 10 en 1 000 000." }
+        - { texto: "Le falta: cuente los ceros que siguen a 10 en 1 000 000." }
+    escalera:
+      - "1 MΩ = 1 000 000 Ω: un 10 y cinco ceros."
+    solucion: "«105»."
+    comprobar:
+      - { R: 100 }
+      - { con: { c_1: 1, c_2: 0, c_n: 5 }, R: 1000000, codigo: 105 }
 
   - id: prediga-cien
-    tipo: predecir
-    titulo: "Prediga"
+    tipo: simular
+    titulo: "Lea «100»"
     texto: "Una SMD marcada «100». ¿Qué valor tiene?"
     libro: [89]
     fijar: { c_1: 1, c_2: 0, c_n: 0 }
@@ -73,22 +92,22 @@ tarjetas:
       curvas:
         - { expr: "(10*c_1 + c_2)*10^x", color: azul, rotulo: "mismas cifras, más ceros" }
       lectura: { valor: R, rotulo: "Valor" }
-      ocultar: true
-    opciones:
-      - texto: "10 Ω"
-        bien: true
-        porque: "Uno, cero y ningún cero más: 10 × 10⁰ = 10 Ω."
-      - texto: "100 Ω"
-        porque: "Es el error más frecuente: el último 0 no es una cifra, es el número de ceros, ninguno."
-      - texto: "1 Ω"
-        porque: "Las dos primeras cifras, 1 y 0, ya forman 10; el multiplicador no divide."
+      ocultar: curvas
+    simular:
+      objetivo: R
+      unidad: Ω
+      tol: 0.01
+      rotulo: "Valor"
+      errores:
+        - { razon: { min: 9.9, max: 10.1 }, texto: "Es el error más frecuente: el último 0 no es una cifra, es el número de ceros, ninguno." }
+        - { razon: { min: 0.099, max: 0.101 }, texto: "Las dos primeras cifras, 1 y 0, ya forman 10; el multiplicador no divide." }
+    exito: "Uno, cero y ningún cero más: 10 × 10⁰ = 10 Ω, no 100 Ω."
+    escalera:
+      - "La tercera cifra no es una cifra del valor: es el número de ceros."
+    solucion: "10 × 10⁰ = 10 Ω."
     comprobar:
       - { R: 10, codigo: 100 }
       - { con: { c_n: 1 }, R: 100 }
-    escalera:
-      - "La tercera cifra no es una cifra del valor: es el número de ceros."
-    solucion: "1 y 0, y ningún cero más: 10 × 10⁰ = 10 Ω."
-
   - id: reto-47k
     tipo: reto
     titulo: "Reto: marque 4,7 kΩ"
@@ -123,27 +142,30 @@ tarjetas:
       - { con: { c_1: 4, c_2: 7, c_n: 2 }, R: 4700, codigo: 472 }
 
   - id: cuatro-cifras
-    tipo: pregunta
+    tipo: simular
     titulo: "Cuatro cifras"
     texto: "Las del 1 % llevan cuatro cifras: tres dígitos y el multiplicador. ¿Cuánto vale una marcada «2201»?"
     libro: [90, "cap02#342"]
-    opciones:
-      - texto: "2,2 kΩ"
-        bien: true
-        porque: "220 seguido de un cero: 2 200 Ω."
-      - texto: "22 kΩ"
-        porque: "La ha leído con dos dígitos y dos ceros. Con cuatro cifras son tres dígitos, 220, y un cero."
-      - texto: "220 Ω"
-        porque: "Le falta el multiplicador: la cuarta cifra, 1, añade un cero."
+    fijar: { k_3: 220, k_m: 1 }
     widget:
       tipo: figura
       figura: fig-2.3
       zonas:
         - { id: smd, rotulo: "Una SMD con su marcado", rect: [545, 0, 540, 360] }
+    simular:
+      objetivo: R4
+      unidad: Ω
+      tol: 0.01
+      rotulo: "Valor"
+      errores:
+        - { razon: { min: 9.9, max: 10.1 }, texto: "La ha leído con dos dígitos y dos ceros. Con cuatro cifras son tres dígitos, 220, y un cero." }
+        - { razon: { min: 0.099, max: 0.101 }, texto: "Le falta el multiplicador: la cuarta cifra, 1, añade un cero." }
+    exito: "220 seguido de un cero: 2 200 Ω = 2,2 kΩ. Igual, «4702» es 47 kΩ."
     escalera:
       - "Con cuatro cifras: tres dígitos y, al final, el multiplicador."
-    solucion: "220 y un cero más: 2 200 Ω = 2,2 kΩ."
-
+    solucion: "220 y un cero más: 2,2 kΩ."
+    comprobar:
+      - { R4: 2200 }
   - id: empareje-marcados
     tipo: pregunta
     fase: "Empareje"
@@ -188,8 +210,9 @@ tarjetas:
   - id: explore-series
     tipo: explorar
     titulo: "Las series E"
-    texto: "Una serie En divide la década en n pasos iguales en proporción; la curva es el error al tomar el valor más cercano. Cambie la serie y la tolerancia."
+    texto: "Una serie En divide la década en n pasos iguales en proporción; la curva es el error al tomar el valor más cercano. Elija la serie de pasos de un 10,1 %."
     libro: [95, 96]
+    inicio: { n_s: 6, tol_s: 5 }
     widget:
       tipo: grafica
       x: { id: v, min: 1, max: 10, unidad: Ω, rotulo: "valor deseado", escala: log }
@@ -205,7 +228,18 @@ tarjetas:
       mandos:
         - { valor: n_s, lista: [6, 12, 24, 96], rotulo: "Serie, E" }
         - { valor: tol_s, lista: [1, 5, 10, 20], rotulo: "Tolerancia" }
-    requiere: { mover: [n_s, tol_s] }
+    objetivo:
+      condiciones:
+        - { valor: paso, min: 9, max: 11, rotulo: "Paso: {{paso}}" }
+      logrado: "La E{{n_s}}: razón {{r_s}}, un paso de {{paso}}. Más pasos por década, valores más cercanos."
+      pistas:
+        - { cuando: { valor: paso, mayor: 11 }, texto: "Pasos demasiado grandes: elija una serie con más valores." }
+        - { texto: "Pasos demasiado pequeños: elija una serie con menos valores." }
+    escalera:
+      - "La razón es 10^(1/n): con más n, menos paso."
+    solucion: "La E24: razón 1,101, paso del 10,1 %."
+    comprobar:
+      - { con: { n_s: 24 }, paso: 10.07, r_s: 1.1007 }
 
   - id: reto-e12
     tipo: reto

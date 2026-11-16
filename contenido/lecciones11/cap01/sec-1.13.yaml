@@ -1,5 +1,8 @@
 # Lección 1.1 de la sección 1.13 «Resumen del Capítulo» (cap01): repaso con las ideas, los errores y los números del
 # resumen, y los ejercicios del capítulo que no han salido en otras lecciones. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir con el Thévenin y comprobarlo conectando la carga,
+# medir la corriente de la carga, tocar el componente no óhmico, el reto del paralelo, predecir la pérdida del cable y
+# el banco; se eligen las seis ideas y el límite de Kirchhoff.
 leccion: cap01/sec-1.13
 
 libro:
@@ -28,6 +31,9 @@ modelo:
     L_c: { sim: "L", nombre: "longitud del cable", unidad: m, valor: 50 }
     A_c: { sim: "A", nombre: "sección del cable", unidad: "mm²", valor: 2.5 }
     I_c: { sim: "I", nombre: "corriente del cable", unidad: A, valor: 10 }
+    V_le: { sim: "V", nombre: "fuente del LED", unidad: V, valor: 5 }
+    R_le: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fle: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
   calculos:
     R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
     V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V", nombre: "tensión medida", unidad: V }
@@ -43,13 +49,46 @@ modelo:
     R_cab: { expr: "1.72e-8*L_c/(A_c*1e-6)", sim: "R", nombre: "resistencia del cable", unidad: Ω }
     V_cab: { expr: "I_c*R_cab", sim: "V", nombre: "caída en el cable", unidad: V }
     P_cab: { expr: "I_c^2*R_cab", sim: "P", nombre: "potencia perdida en el cable", unidad: W }
+    I_le: { expr: "(V_le - V_fle)/R_le", sim: "I", nombre: "corriente del LED", unidad: A }
 
 tarjetas:
+  - id: prediga-thevenin
+    tipo: simular
+    titulo: "Prediga con el Thévenin"
+    texto: "El divisor de 12 V, 10 kΩ y 5 kΩ equivale a 4 V con 3,33 kΩ. Con una carga de 10 kΩ, ¿qué marcará la salida?"
+    libro: [316, "cap01#103"]
+    fijar: { carga: 1, R_L: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Medida" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_L }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.02
+      rotulo: "Salida con la carga"
+      medida: salida
+      errores:
+        - { expr: "V_th", texto: "Eso es en vacío. Todo divisor tiene impedancia de salida, y la carga la nota." }
+        - { razon: { min: 0.64, max: 0.69 }, texto: "Sería con una carga igual a R_{Th}. Con 10 kΩ se pierde menos." }
+    exito: "4 × 10/(10 + 3,33) = 3,00 V: la misma cifra que da el circuito completo."
+    escalera:
+      - "La carga y R_{Th} forman otro divisor con V_{Th}."
+    solucion: "4 × 10/(10 + 3,33) = 3,00 V."
+    comprobar:
+      - { V_out: 3.0, V_th: 4.0, R_th: 3333 }
   - id: explore-banco
     tipo: explorar
     titulo: "El ejercicio que lo consolida"
-    texto: "Un divisor de 12 V, 10 kΩ y 5 kΩ. Mídalo en vacío y con la carga, y compare con lo que da su Thévenin."
-    libro: [327]
+    texto: "El divisor de 12 V, 10 kΩ y 5 kΩ. Conecte la carga y compare la medida con lo que da su Thévenin."
+    libro: [316, 327]
+    fijar: { R_L: 10000 }
+    inicio: { carga: 0 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -62,37 +101,46 @@ tarjetas:
       mide: { salida: V_out, corriente: I_d, carga: I_L }
       mandos:
         - { valor: carga, tipo: conectar, boton: "Conectar la carga (10 kΩ)" }
-    requiere: { conectar: [carga] }
+    objetivo:
+      condiciones:
+        - { valor: carga, min: 1, rotulo: "Carga conectada" }
+      logrado: "Medida, {{V_out}}; con el Thévenin, {{V_calc}}: todo divisor tiene impedancia de salida, R_{Th} = {{R_th}}."
+      pistas:
+        - { texto: "Pulse el botón para conectar la carga." }
+    escalera:
+      - "Pulse «Conectar la carga»."
+    solucion: "Conectada, las dos dan 3,00 V."
+    comprobar:
+      - { V_out: 4 }
+      - { con: { carga: 1 }, V_out: 3, V_calc: 3 }
 
-  - id: prediga-thevenin
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Su Thévenin es 4 V con 3,33 kΩ. Con la carga de 10 kΩ, ¿qué marcará la salida?"
-    libro: [316, "cap01#103"]
+  - id: mida-carga
+    tipo: medir
+    titulo: "Lo que se lleva la carga"
+    texto: "Con la carga conectada, meta el amperímetro donde mediría la corriente que se lleva la carga."
+    libro: [314, 316]
     fijar: { carga: 1, R_L: 10000 }
     widget:
       tipo: circuito
       esquema: divisor
       piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
-      lectura: { valor: V_out, rotulo: "Medida" }
       corriente: I_d
       mide: { salida: V_out, corriente: I_d, carga: I_L }
-      ocultar: true
-    opciones:
-      - texto: "3,00 V"
-        bien: true
-        porque: "4 × 10/(10 + 3,33) = 3,00 V: la misma cifra que da el circuito completo."
-      - texto: "4,00 V"
-        porque: "Eso es en vacío. Todo divisor tiene impedancia de salida, y la carga la nota."
-      - texto: "2,00 V"
-        porque: "Sería con una carga igual a R_{Th}. Con 10 kΩ se pierde menos."
-    comprobar:
-      - { V_out: 3.0, V_th: 4.0, R_th: 3333 }
-      - { con: { R_L: 3333.3 }, V_out: 2.0 }
+      instrumento: { tipo: multimetro, modos: [A] }
+      mandos: []
+    medir:
+      magnitud: corriente
+      rama: vcarga
+      valor: I_L
+      porque:
+        vabajo: "Esa es la corriente de R₂, la resistencia de abajo. La carga cuelga en paralelo con ella."
+        vmed: "Esa es la de la fuente: la suma de lo que bajan R₂ y la carga, por Kirchhoff."
+    exito: "{{I_L}}: 3 V sobre 10 kΩ. La fuente da la suma de esta y la de R₂."
     escalera:
-      - "La carga y R_{Th} forman otro divisor con V_{Th}."
-    solucion: "4 × 10/(10 + 3,33) = 3,00 V."
-
+      - "Una corriente se mide en serie: en la rama de la carga."
+    solucion: "El amperímetro en la rama de la carga: 0,3 mA."
+    comprobar:
+      - { I_L: 0.0003, I_d: 0.0009 }
   - id: empareje-ideas
     tipo: pregunta
     fase: "Empareje"
@@ -114,27 +162,27 @@ tarjetas:
     solucion: "Ohm: una relación. Kirchhoff: conservación de carga y energía. Serie y paralelo: de la corriente y la tensión. Divisor: tiene impedancia de salida. Fuente real: resistencia interna. Instrumento: parte del circuito."
 
   - id: error-tipico
-    tipo: pregunta
+    tipo: elegir
     titulo: "Un error característico"
-    texto: "Alguien mide un LED, divide su tensión entre su corriente y usa esa «resistencia» con la ley de Ohm. ¿Qué error comete?"
+    texto: "Alguien divide la tensión de un componente entre su corriente y usa esa «resistencia» con la ley de Ohm. Toque aquel al que no se le puede hacer."
     libro: [313, 320]
-    opciones:
-      - texto: "Aplicar la ley de Ohm a un componente no lineal"
-        bien: true
-        porque: "En un LED V/I cambia con el punto de trabajo: no es una resistencia."
-      - texto: "Olvidar la resistencia interna de la fuente"
-        porque: "Ese es otro error del capítulo; aquí el problema es el LED, que no es óhmico."
-      - texto: "Calcular con valores nominales"
-        porque: "Las tolerancias importan, pero el fallo de fondo es tratar el LED como una resistencia."
     widget:
-      tipo: figura
-      figura: fig-1.15
-      zonas:
-        - { id: ideas, rotulo: "Las seis ideas del capítulo", rect: [0, 0, 452, 206] }
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_le, r: R_le, vf: V_fle }
+      corriente: I_le
+      mide: { corriente: I_le, vf: V_fle }
+      mandos: []
+    elegir:
+      zonas: [fuente, r, led]
+      bien: [led]
+      porque:
+        r: "La resistencia es óhmica: su V/I es constante y la ley de Ohm vale."
+        fuente: "La fuente no se describe con una resistencia: da su tensión."
+    exito: "El LED no es lineal: su V/I cambia con el punto de trabajo. Aplicarle la ley de Ohm es el error."
     escalera:
-      - "¿Es V/I constante en un LED?"
-    solucion: "Aplicar la ley de Ohm a un componente no lineal: su V/I cambia con el punto de trabajo."
-
+      - "¿En cuál de los tres cambia V/I con la corriente?"
+    solucion: "El LED."
   - id: reto-paralelo
     tipo: reto
     titulo: "Reto: 37,9 mA desde 5 V"
@@ -167,30 +215,27 @@ tarjetas:
       - { con: { R_b: 220 }, I_t: 0.0379, I_a: 0.0152, I_b: 0.0227, R_p: 132 }
 
   - id: estime-cable
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Ohm, geometría y potencia"
-    texto: "Un cable de cobre de 50 m y 2,5 mm² lleva 10 A. Estime la potencia que se pierde en él como calor."
+    texto: "Un cable de cobre de 50 m y 2,5 mm² lleva 10 A. ¿Qué potencia se pierde en él como calor?"
     libro: ["cap01#345"]
-    estimar:
-      objetivo: "P_cab"
+    simular:
+      objetivo: P_cab
       unidad: W
-      min: 0
-      max: 100
-      paso: 0.5
-      inicio: 90
       tol: 0.04
       rotulo: "Potencia en el cable"
+      errores:
+        - { expr: "V_cab", texto: "Esos 3,44 son los voltios que caen. La potencia es I²·R: multiplique también por la corriente." }
     exito: "R = 1,72 × 10⁻⁸ × 50 / 2,5 × 10⁻⁶ = 0,344 Ω; caen 3,44 V y se pierden 100 × 0,344 = 34,4 W."
     pistas:
       - { cuando: { valor: estimacion, mayor: 35.8 }, texto: "Se ha pasado: halle R = ρ·L/A y luego I²·R." }
       - { texto: "Se ha quedado corto: con 10 A, I² = 100; multiplique por R." }
-    comprobar:
-      - { R_cab: 0.344, V_cab: 3.44, P_cab: 34.4 }
     escalera:
       - "Primero R = ρ·L/A; después, P = I²·R."
-    solucion: "R = 1,72 × 10⁻⁸ × 50 / 2,5 × 10⁻⁶ = 0,344 Ω; caen 3,44 V y se pierden 100 × 0,344 = 34,4 W."
-
+    solucion: "0,344 Ω × 100 = 34,4 W."
+    comprobar:
+      - { R_cab: 0.344, V_cab: 3.44, P_cab: 34.4 }
   - id: empareje-numeros
     tipo: pregunta
     fase: "Empareje"
@@ -209,7 +254,6 @@ tarjetas:
     escalera:
       - "Piense en qué resistencia es grande y cuál pequeña en cada caso."
     solucion: "Contacto de un conector: decenas de mΩ. Pista de 1 oz y 1 mm: unos 5 mΩ/cm. Entrada de un multímetro: 10 MΩ. Sonda ×10: 10 MΩ y unos 20 pF. Interna de una alcalina: de 0,1 a 1 Ω."
-
   - id: por-que-kirchhoff
     tipo: porque
     titulo: "¿Hasta dónde vale Kirchhoff?"

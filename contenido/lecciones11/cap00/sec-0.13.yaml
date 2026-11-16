@@ -2,6 +2,9 @@
 # de un multímetro con dos términos, los límites de una lectura (ejercicio 0.9), cifras significativas y tolerancia,
 # la propagación de errores relativos (peor caso y cuadrática) y la medida a cuatro hilos.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir la incertidumbre de 5 V, bajar el error relativo,
+# el reto de los límites, calcular el error de R = V/I y llevar δV a 0,9 %; se eligen por qué V cuenta doble y los
+# cuatro hilos. Las cifras significativas quedan en el resumen.
 leccion: cap00/sec-0.13
 
 libro:
@@ -35,10 +38,30 @@ modelo:
     cuad: { expr: "sqrt((2*dV)^2 + dR^2)", sim: "δP", nombre: "error cuadrático de la potencia", unidad: "%" }
 
 tarjetas:
+  - id: prediga-5v
+    tipo: simular
+    titulo: "Prediga"
+    texto: "Lee 5,00 V con ±(0,5 % + 2 dígitos), y el último dígito es 0,01 V. ¿Cuál es la incertidumbre total?"
+    libro: [217]
+    fijar: { lect: 5, pct: 0.5, cuentas: 2, digito: 0.01 }
+    simular:
+      objetivo: inc
+      unidad: V
+      tol: 0.02
+      rotulo: "Incertidumbre, ±"
+      errores:
+        - { razon: { min: 0.54, max: 0.57 }, texto: "Es solo el porcentaje. Ignorar las cuentas hace creer al instrumento más preciso de lo que es." }
+        - { razon: { min: 0.43, max: 0.46 }, texto: "Son solo las dos cuentas. Falta el 0,5 % de la lectura, 0,025 V." }
+    exito: "±0,045 V: 0,025 V por el porcentaje más 0,02 V por las dos cuentas del último dígito."
+    escalera:
+      - "Sume los dos términos: el 0,5 % de la lectura y las dos cuentas del último dígito."
+    solucion: "0,025 V + 0,02 V = ±0,045 V."
+    comprobar:
+      - { inc: 0.045 }
   - id: explore-especificacion
     tipo: explorar
     titulo: "Dos términos de error"
-    texto: "Un multímetro especifica ±(0,5 % de la lectura + 2 dígitos), con el último dígito de 0,01 V. Mueva la lectura: ¿cuándo pesan más las cuentas?"
+    texto: "Un multímetro especifica ±(0,5 % de la lectura + 2 dígitos), con el último dígito de 0,01 V. Suba la lectura hasta que el error relativo sea el doble del porcentaje."
     libro: [217]
     fijar: { pct: 0.5, cuentas: 2, digito: 0.01 }
     widget:
@@ -55,36 +78,19 @@ tarjetas:
         - { valor: err_rel, rotulo: "Error relativo: {{err_rel}}" }
       mandos:
         - { valor: lect, min: 0.5, max: 20, paso: 0.5, rotulo: "Lectura" }
-    requiere: { mover: [lect] }
-    nota: "Con lecturas bajas, las cuentas dominan."
-
-  - id: prediga-5v
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Lee 5,00 V con ±(0,5 % + 2 dígitos), y el último dígito es 0,01 V. ¿Cuál es la incertidumbre total?"
-    libro: [217]
-    fijar: { lect: 5, pct: 0.5, cuentas: 2, digito: 0.01 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0.5, max: 20, unidad: V, rotulo: "lectura" }
-      y: { min: 0, max: 5, unidad: "%", rotulo: "error relativo" }
-      curvas:
-        - { expr: "(pct/100*x + cuentas*digito)/x*100", color: azul, rotulo: "error relativo total" }
-      lectura: { valor: inc, rotulo: "Incertidumbre, ±" }
-      ocultar: true
-    opciones:
-      - texto: "±0,045 V"
-        bien: true
-        porque: "0,025 V por el porcentaje más 0,02 V por las dos cuentas del último dígito."
-      - texto: "±0,025 V"
-        porque: "Es solo el porcentaje. Ignorar las cuentas hace creer al instrumento más preciso de lo que es."
-      - texto: "±0,02 V"
-        porque: "Son solo las dos cuentas. Falta el 0,5 % de la lectura, 0,025 V."
-    comprobar:
-      - { inc: 0.045 }
+    inicio: { lect: 0.5 }
+    objetivo:
+      condiciones:
+        - { valor: err_rel, max: 1.0, rotulo: "Error relativo: {{err_rel}}" }
+      logrado: "Con {{lect}}, {{err_rel}}: por debajo, las cuentas pesan más que el porcentaje. Con lecturas bajas, las cuentas dominan."
+      pistas:
+        - { texto: "Suba la lectura." }
     escalera:
-      - "Sume los dos términos: el 0,5 % de la lectura y las dos cuentas del último dígito."
-    solucion: "0,025 V + 0,02 V = ±0,045 V."
+      - "Las dos cuentas, 0,02 V, han de pesar como el 0,5 % de la lectura."
+    solucion: "A partir de 4 V."
+    comprobar:
+      - { err_rel: 4.5 }
+      - { con: { lect: 4 }, err_rel: 1 }
 
   - id: reto-limites
     tipo: reto
@@ -124,53 +130,30 @@ tarjetas:
       - { inc: 0.0465, lo: 3.2535, hi: 3.3465 }
 
   - id: estime-propagacion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "R = V/I"
-    texto: "Se calcula R = V/I con la tensión medida con un 1 % de error y la corriente con un 2 %. Estime el error de R."
+    texto: "Se calcula R = V/I con la tensión medida con un 1 % de error y la corriente con un 2 %. ¿Qué error tiene R?"
     libro: [218, 216]
     fijar: { eV: 1, eI: 2 }
-    estimar:
-      objetivo: "e_R"
+    simular:
+      objetivo: e_R
       unidad: "%"
-      min: 0
-      max: 10
-      paso: 0.5
-      inicio: 0.5
       tol: 0.05
       rotulo: "Error de R"
+      errores:
+        - { razon: { min: 0.3, max: 0.36 }, texto: "Al dividir, los errores relativos se suman, no se restan." }
+        - { razon: { min: 0.64, max: 0.69 }, texto: "Sume los dos errores relativos, sin multiplicarlos." }
     exito: "Al dividir se suman los errores relativos: 1 % + 2 % = 3 %, en el peor caso."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 2.85 }, texto: "Se ha quedado corto: al dividir, los errores relativos se suman, no se restan." }
-      - { texto: "Se ha pasado: sume los dos errores relativos, sin multiplicarlos." }
-    comprobar:
-      - { e_R: 3 }
     escalera:
       - "Al multiplicar o dividir se suman los errores relativos."
-    solucion: "Al dividir se suman los errores relativos: 1 % + 2 % = 3 %, en el peor caso."
-
-  - id: cifras
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuánto dice cada número"
-    texto: "Una cada valor con lo que de verdad informa."
-    libro: [214, 212]
-    emparejar:
-      - ["0,0047", "Dos cifras significativas: los ceros solo sitúan la coma"]
-      - ["4,70", "Tres cifras: se midió hasta las centésimas"]
-      - ["10 kΩ al 5 %", "Cualquier valor entre 9,5 y 10,5 kΩ"]
-    exito: "Eso es. El resultado no puede tener más cifras significativas que el dato menos preciso."
-    pistas:
-      - { texto: "Un cero final cuenta; los ceros de delante, no." }
-    escalera:
-      - "Cuente las cifras significativas de cada número: los ceros de delante no cuentan."
-    solucion: "0,0047: dos cifras significativas: los ceros solo sitúan la coma. 4,70: tres cifras: se midió hasta las centésimas. 10 kΩ al 5 %: cualquier valor entre 9,5 y 10,5 kΩ."
-
+    solucion: "1 % + 2 % = 3 %, en el peor caso."
+    comprobar:
+      - { e_R: 3 }
   - id: peor-o-cuadratico
     tipo: sorpresa
     titulo: "Peor caso o en cuadratura"
-    texto: "En P = V²/R, el peor caso es 2·δV + δR; con errores independientes se suman en cuadratura. Mueva δV y compare."
-    nota: "Con δV = 0,9 % y δR = 1 %: 2,80 % frente a 2,06 %."
+    texto: "En P = V²/R, el peor caso es 2·δV + δR; con errores independientes se suman en cuadratura. Lleve δV al 0,9 % y compare."
     libro: [219]
     fijar: { dR: 1 }
     inicio: { dV: 0.5 }
@@ -188,9 +171,18 @@ tarjetas:
         - { valor: peor, rotulo: "Peor caso: {{peor}}" }
       mandos:
         - { valor: dV, min: 0, max: 2, paso: 0.1, rotulo: "Error de V, δV" }
-    requiere: { mover: [dV] }
     comprobar:
       - { con: { dV: 0.9 }, peor: 2.8, cuad: 2.06, tol: 0.003 }
+    objetivo:
+      condiciones:
+        - { valor: dV, objetivo: 0.9, tol: 0.01, rotulo: "δV = {{dV}}" }
+      logrado: "Con δR = 1 %: {{peor}} en el peor caso, frente a {{cuad}} en cuadratura."
+      pistas:
+        - { cuando: { valor: dV, mayor: 0.9 }, texto: "Se ha pasado: baje δV." }
+        - { texto: "Suba δV." }
+    escalera:
+      - "Arrastre el punto hacia la derecha."
+    solucion: "δV = 0,9 %: 2,80 % frente a 2,06 %."
 
   - id: por-que-doble
     tipo: porque
@@ -244,9 +236,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [214, 216, 217, 219]
+    libro: [212, 214, 216, 217, 219]
     ideas:
-      - { titulo: "Cifras.", texto: "No más cifras significativas que el dato menos preciso." }
+      - { titulo: "Cifras.", texto: "No más cifras significativas que el dato menos preciso: 0,0047 tiene dos, y 4,70, tres. 10 kΩ al 5 % es de 9,5 a 10,5 kΩ." }
       - { titulo: "Dos términos.", texto: "±(% de lectura + cuentas): 5,00 V con 0,5 % + 2 dígitos, ±0,045 V." }
       - { titulo: "Propagación.", texto: "Al sumar, errores absolutos; al multiplicar o dividir, relativos." }
       - { titulo: "Cuadratura.", texto: "Con errores independientes, menos que el peor caso: 2,06 % frente a 2,80 %." }

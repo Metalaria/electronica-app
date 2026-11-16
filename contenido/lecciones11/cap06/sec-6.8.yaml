@@ -2,6 +2,9 @@
 # reposo (1,324 mA), doblar I_C dobla la ganancia, r_π = β/g_m (2,93 kΩ con β = 150), r_o = V_A/I_C (75,5 kΩ), la
 # ganancia con r_o (−162 frente a −169) y el techo g_m·r_o = V_A/V_T = 3868, las dos fases del análisis, los modelos
 # en π y en T, las capacidades y f_T, y los límites del modelo (v_be ≪ V_T). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): buscar hasta dónde vale la tangente, predecir la ganancia
+# con doble corriente, buscar el β de r_π = 2,93 kΩ, calcular r_o y subir R_C hasta el techo; se eligen por qué el
+# techo es fijo y cómo se hace más rápido. Las dos fases, los modelos y los límites quedan en los textos.
 leccion: cap06/sec-6.8
 
 libro:
@@ -48,8 +51,8 @@ tarjetas:
   - id: explore-tangente
     tipo: explorar
     titulo: "De cerca, una recta"
-    texto: "La corriente de colector crece en exponencial con V_{BE}. Mueva la variación v_{be} alrededor del punto de reposo y compare la curva con su tangente."
-    libro: [255, 256]
+    texto: "La corriente de colector crece en exponencial con V_{BE}. Busque la mayor variación v_{be} con la que el error de la tangente no pasa de una décima."
+    libro: [255, 256, 286]
     widget:
       tipo: grafica
       x: { id: u, min: -0.03, max: 0.03, unidad: V, rotulo: "v_{be}" }
@@ -65,41 +68,48 @@ tarjetas:
         - { valor: i_tan, rotulo: "Tangente: {{i_tan}}" }
       mandos:
         - { valor: v_s, min: 0.001, max: 0.03, paso: 0.001, rotulo: "v_{be}" }
-    requiere: { mover: [v_s] }
+    inicio: { v_s: 0.001 }
+    objetivo:
+      condiciones:
+        - { valor: e_tan, max: 10, rotulo: "Error: {{e_tan}}" }
+        - { valor: v_s, min: 0.005, rotulo: "v_{be} = {{v_s}}" }
+      logrado: "Hasta {{v_s}}, error {{e_tan}}. La curva se separa a la escala de V_{T}, 25,9 mV: el modelo vale si v_{be} ≪ V_{T}."
+      pistas:
+        - { cuando: { valor: e_tan, mayor: 10 }, texto: "Se ha pasado: baje v_{be}." }
+        - { texto: "Aún cabe más variación." }
+    escalera:
+      - "La tangente se separa a la escala de V_{T}."
+    solucion: "Unos 5 mV."
+    comprobar:
+      - { e_tan: 1.9, tol: 0.05 }
+      - { con: { v_s: 0.005 }, e_tan: 9.4, tol: 0.02 }
 
   - id: prediga-doblar
-    tipo: predecir
+    tipo: simular
     titulo: "Doblar la corriente"
-    texto: "En un emisor común con el emisor puenteado y R_{C} fija, se dobla la corriente de polarización. ¿Qué le pasa a la ganancia?"
+    texto: "Un emisor común con el emisor puenteado y 3,3 kΩ de colector gana 169 a 1,324 mA. Si se dobla la corriente de polarización, ¿qué ganancia da?"
     libro: [261, 289]
-    widget:
-      tipo: grafica
-      x: { id: i, min: 0, max: 0.003, unidad: A, rotulo: "I_{C}" }
-      y: { min: 0, max: 400, unidad: "", rotulo: "|A_{v}|" }
-      curvas:
-        - { expr: "R_C*i/V_T", color: naranja, rotulo: "|A_{v}| = g_{m}·R_{C}" }
-      lectura: { valor: A_0, rotulo: "Ganancia, en módulo" }
-      ocultar: true
-    opciones:
-      - texto: "Se dobla"
-        bien: true
-        porque: "g_{m} = I_{C}/V_{T}: doblar la corriente dobla g_{m}, y con ella g_{m}·R_{C}. Es el experimento de diez minutos que convierte la fórmula en un hecho."
-      - texto: "No cambia: la fija R_{C}"
-        porque: "R_{C} es la mitad de la cuenta; la otra es g_{m}, proporcional a la corriente."
-      - texto: "Se multiplica por cuatro"
-        porque: "g_{m} es proporcional a I_{C}, no a su cuadrado: la ganancia crece en la misma proporción."
+    fijar: { I_Q: 0.002648 }
+    simular:
+      objetivo: A_0
+      unidad: ""
+      tol: 0.03
+      rotulo: "Ganancia, en módulo"
+      errores:
+        - { razon: { min: 0.48, max: 0.52 }, texto: "R_{C} es la mitad de la cuenta; la otra es g_{m}, proporcional a la corriente." }
+        - { razon: { min: 1.95, max: 2.05 }, texto: "g_{m} es proporcional a I_{C}, no a su cuadrado." }
+    exito: "338: doble corriente, doble g_{m}, doble ganancia. Es el experimento de diez minutos que convierte la fórmula en un hecho."
     escalera:
       - "La ganancia es g_{m}·R_{C}, y g_{m} = I_{C}/V_{T}."
-    solucion: "Se dobla: doble corriente, doble g_{m}, doble ganancia."
-
+    solucion: "2 × 169 = 338."
+    comprobar:
+      - { A_0: 338 }
+      - { con: { I_Q: 0.001324 }, A_0: 169 }
   - id: formula-rpi
-    tipo: formula
+    tipo: explorar
     titulo: "La resistencia de entrada"
-    texto: "Mirando desde la base, una variación de V_{BE} mueve β veces menos corriente de base que de colector."
-    nota: "r_{π} sí depende de β: la impedancia de entrada es lo peor controlado de un emisor común."
+    texto: "Desde la base, una variación de V_{BE} mueve β veces menos corriente de base que de colector. Busque el β que da r_{π} = 2,93 kΩ."
     libro: [263, 264]
-    ec: 263
-    sustitucion: "{{beta}} / {{g_m}} = {{r_pi}}"
     widget:
       tipo: grafica
       x: { id: b, min: 50, max: 300, unidad: "", rotulo: "β" }
@@ -113,38 +123,44 @@ tarjetas:
         - { valor: g_m, rotulo: "g_{m} = {{g_m}}" }
       mandos:
         - { valor: beta, min: 50, max: 300, paso: 10, rotulo: "β" }
+    inicio: { beta: 50 }
+    objetivo:
+      condiciones:
+        - { valor: r_pi, objetivo: 2930, tol: 0.01, rotulo: "r_{π} = {{r_pi}}" }
+      logrado: "β = {{beta}}: r_{π} = β/g_{m} = {{r_pi}}. Sí depende de β: la impedancia de entrada es lo peor controlado de un emisor común."
+      pistas:
+        - { cuando: { valor: r_pi, mayor: 2960 }, texto: "Se ha pasado: menos β." }
+        - { texto: "Más β." }
+    escalera:
+      - "r_{π} = β/g_{m}, con g_{m} = 51,2 mS."
+    solucion: "β = 150."
     comprobar:
+      - { r_pi: 977, tol: 0.01 }
       - { con: { beta: 150 }, r_pi: 2930 }
 
   - id: estime-ro
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La resistencia de salida"
-    texto: "Un transistor con tensión de Early V_{A} = 100 V trabaja a 1,324 mA. Con r_{o} = V_{A}/I_{C}, estime su resistencia de salida."
+    texto: "Un transistor con tensión de Early V_{A} = 100 V trabaja a 1,324 mA. Con r_{o} = V_{A}/I_{C}, ¿qué resistencia de salida tiene?"
     libro: [266, 267]
-    estimar:
-      objetivo: "r_o"
+    simular:
+      objetivo: r_o
       unidad: Ω
-      min: 0
-      max: 200000
-      paso: 500
-      inicio: 150000
       tol: 0.03
       rotulo: "r_{o}"
-    exito: "100 V entre 1,324 mA: 75,5 kΩ. Alta, pero no infinita: en el modelo va en paralelo con la carga."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 77800 }, texto: "Se ha pasado. Divida 100 V entre 0,001324 A." }
-      - { texto: "Se ha quedado corto. 100 V entre 1,324 mA dan algo más de 75 kΩ." }
-    comprobar:
-      - { r_o: 75500, I_Q: 0.001324 }
+      errores:
+        - { razon: { min: 0.0009, max: 0.0011 }, texto: "1,324 mA son 0,001324 A." }
+    exito: "75,5 kΩ: alta, pero no infinita. En el modelo va en paralelo con la carga."
     escalera:
       - "Divida 100 V entre 0,001324 A."
     solucion: "100 V / 1,324 mA = 75,5 kΩ."
-
+    comprobar:
+      - { r_o: 75500, I_Q: 0.001324 }
   - id: sorpresa-techo
     tipo: sorpresa
     titulo: "Subir R_{C} no basta"
-    texto: "Emisor común a 1,324 mA con V_{A} = 100 V. Suba la resistencia de colector y mire la ganancia, que incluye r_{o} en paralelo con R_{C}."
+    texto: "Emisor común a 1,324 mA con V_{A} = 100 V. Suba la resistencia de colector todo lo posible y mire la ganancia, con r_{o} en paralelo con R_{C}."
     libro: [275, 276, 277]
     fijar: { I_Q: 0.001324 }
     inicio: { R_C: 3300 }
@@ -163,9 +179,18 @@ tarjetas:
         - { valor: A_0, rotulo: "Sin r_{o}: {{A_0}}" }
       mandos:
         - { valor: R_C, lista: [3300, 33000, 330000, 3300000], rotulo: "R_{C}" }
-    requiere: { mover: [R_C] }
+    objetivo:
+      condiciones:
+        - { valor: A_ro, min: 3000, rotulo: "|A_{v}| = {{A_ro}}" }
+      logrado: "Con {{R_C}}, {{A_ro}}, cerca del techo de {{A_max}}, y no más: r_{o} manda en el paralelo. Con 3,3 kΩ, 162 frente a 169."
+      pistas:
+        - { texto: "Más resistencia de colector." }
+    escalera:
+      - "Pruebe la R_{C} más grande."
+    solucion: "Con 3,3 MΩ: 3786, por debajo de 3868."
     comprobar:
       - { A_ro: 162, A_0: 169, A_max: 3868 }
+      - { con: { R_C: 3300000 }, A_ro: 3786, tol: 0.03 }
 
   - id: por-que-techo
     tipo: porque
@@ -193,42 +218,6 @@ tarjetas:
       - "g_{m} = I_{C}/V_{T} y r_{o} = V_{A}/I_{C}. ¿Qué pasa con I_{C} al multiplicarlos?"
     solucion: "Se cancela: g_{m} sube con la corriente y r_{o} baja en la misma proporción, y queda V_{A}/V_{T}."
 
-  - id: ordene-fases
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Dos fases que no se mezclan"
-    texto: "Confundir las dos fases del análisis es el error más común de quien empieza. Ordene los pasos."
-    libro: [257]
-    ordenar:
-      - "Resolver el circuito en continua para hallar el punto de reposo."
-      - "Calcular g_{m}, r_{π} y r_{o} en ese punto."
-      - "Poner a masa las fuentes de continua y cortocircuitar los condensadores de acoplo."
-      - "Analizar el circuito lineal en alterna."
-    exito: "Eso es: primero la continua, después la alterna con el modelo lineal. Los parámetros salen del punto de reposo."
-    pistas:
-      - { texto: "Los parámetros dependen de la corriente de reposo: no se pueden calcular antes de conocerla." }
-    escalera:
-      - "Los parámetros dependen de la corriente de reposo: no se pueden calcular antes de conocerla."
-    solucion: "Continua, parámetros en el punto de reposo, fuentes a masa y condensadores en corto, y el análisis en alterna."
-
-  - id: empareje-modelos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Modelos y capacidades"
-    texto: "Empareje cada elemento del modelo de pequeña señal con lo que representa o cuándo se usa."
-    libro: [270, 271, 272, 281]
-    emparejar:
-      - ["Híbrido en π", "r_{π} en la entrada y g_{m}·v_{be} con r_{o}: el de por defecto"]
-      - ["Modelo en T", "r_{e} en el emisor: seguidores y base común"]
-      - ["C_{π}", "De 10 a 100 pF: la carga almacenada en la base"]
-      - ["C_{µ}", "De 2 a 5 pF entre base y colector: sufre el Miller"]
-    exito: "Eso es. Los dos modelos son equivalentes; mezclarlos es contar dos veces la misma resistencia."
-    pistas:
-      - { texto: "El modelo en T se usa cuando la señal entra o sale por el emisor." }
-    escalera:
-      - "El modelo en T se usa cuando la señal entra o sale por el emisor."
-    solucion: "Híbrido en π: el de por defecto. En T: seguidores y base común. C_{π}: la carga de la base. C_{µ}: la del Miller."
-
   - id: ft
     tipo: pregunta
     titulo: "La frecuencia de transición"
@@ -251,40 +240,12 @@ tarjetas:
       - "En f_{T}, ¿qué término depende de la polarización?"
     solucion: "g_{m}, proporcional a la corriente: más corriente, más rápido, hasta que la alta inyección lo estropea."
 
-  - id: limites
-    tipo: pregunta
-    titulo: "¿Cuándo es pequeña la señal?"
-    texto: "El modelo de pequeña señal vale para variaciones pequeñas de V_{BE}. ¿Pequeñas comparadas con qué?"
-    libro: [286]
-    opciones:
-      - texto: "Con V_{T}, unos 25,9 mV: con 5 mV la distorsión ya ronda el 5 %"
-        bien: true
-        porque: "La exponencial se curva en una escala de V_{T}. Por encima hay que degenerar el emisor o analizar en gran señal."
-      - texto: "Con los 700 mV de V_{BE}"
-        porque: "Unos milivoltios son poco frente a 700 mV, pero la curvatura se mide con V_{T}, mucho menor."
-      - texto: "Con la alimentación"
-        porque: "La alimentación limita la excursión de la salida. El modelo se rompe antes, en la entrada, a la escala de V_{T}."
-    inicio: { v_s: 0.005 }
-    widget:
-      tipo: grafica
-      x: { id: u, min: -0.03, max: 0.03, unidad: V, rotulo: "v_{be}" }
-      y: { min: 0, max: 0.004, unidad: A, rotulo: "i_{C}" }
-      curvas:
-        - { expr: "I_Q*exp(u/V_T)", color: azul, rotulo: "exponencial" }
-        - { expr: "I_Q*(1 + u/V_T)", color: naranja, rotulo: "tangente", discontinua: true }
-      lectura: { valor: e_tan, rotulo: "Error de la tangente" }
-      mandos:
-        - { valor: v_s, min: 0.001, max: 0.03, paso: 0.001, rotulo: "v_{be}" }
-    escalera:
-      - "Mueva v_{be}: ¿a qué escala se separa la tangente de la exponencial?"
-    solucion: "A la de V_{T}, unos 25,9 mV: con 5 mV la distorsión ya ronda el 5 %."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [256, 264, 267, 277]
+    libro: [256, 257, 264, 267, 270, 271, 272, 277, 281]
     ideas:
       - { titulo: "La tangente.", texto: "En el punto de reposo la exponencial es casi una recta, si v_{be} ≪ V_{T}." }
       - { titulo: "Tres parámetros.", texto: "g_{m} = I_{C}/V_{T}; r_{π} = β/g_{m}, que sí depende de β; r_{o} = V_{A}/I_{C}." }
       - { titulo: "El techo.", texto: "g_{m}·r_{o} = V_{A}/V_{T} = 3868: ninguna etapa de un solo transistor lo supera." }
-      - { titulo: "Dos fases.", texto: "Primero la continua, para el punto de reposo; después la alterna, con el modelo lineal." }
+      - { titulo: "Dos fases.", texto: "Primero la continua, para el punto de reposo; después la alterna, con el modelo en π o en T, sin mezclarlos. C_{µ}, de 2 a 5 pF, sufre el Miller." }

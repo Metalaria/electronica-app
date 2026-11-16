@@ -4,6 +4,10 @@
 # V_E ≥ 1 V (deriva de V_BE: 4,3 % frente a 30 %), la excursión (±4,37 V), el condensador de emisor (82 Hz con
 # 100 µF; unos 400 µF para 20 Hz) y el procedimiento de diseño. La resistencia de base fija (1,2 MΩ) es mía.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): llevar la base fija casi a saturación cambiando β,
+# predecir I_C con divisor y β = 300, calcular el corte de la recta, buscar la V_E que deja la deriva bajo el 5 %,
+# calcular la excursión y C_E, y el banco; se eligen el mecanismo y el criterio de 1 V. El criterio de R_Th y el
+# procedimiento quedan en los textos.
 leccion: cap06/sec-6.5
 
 libro:
@@ -70,7 +74,7 @@ tarjetas:
   - id: explore-base-fija
     tipo: explorar
     titulo: "La peor polarización"
-    texto: "Base fija: una sola resistencia desde los 12 V a la base y 3,3 kΩ de colector. Cambie β entre 50 y 300 y mire I_{C}."
+    texto: "Base fija: una sola resistencia desde los 12 V a la base y 3,3 kΩ de colector. Pruebe ejemplares de β distinta hasta que V_{CE} baje de 3 V."
     libro: [157, 165]
     inicio: { beta: 50 }
     widget:
@@ -84,47 +88,46 @@ tarjetas:
       mide: { ib: I_fb, ic: I_fc, vce: V_fce }
       mandos:
         - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
-    requiere: { mover: [beta] }
+    objetivo:
+      condiciones:
+        - { valor: V_fce, max: 3, rotulo: "V_{CE} = {{V_fce}}" }
+      logrado: "Con β = {{beta}}, I_{C} = {{I_fc}} y V_{CE} = {{V_fce}}: con base fija, la corriente de colector es directamente proporcional a β."
+      pistas:
+        - { texto: "Pruebe un ejemplar de más β." }
+    escalera:
+      - "Con base fija, I_{C} = β·I_{B}."
+    solucion: "Con β = 300: 2,8 mA y 2,7 V."
+    comprobar:
+      - { I_fc: 0.00047 }
+      - { con: { beta: 300 }, I_fc: 0.002825, V_fce: 2.68, tol: 0.01 }
 
   - id: prediga-divisor
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga con divisor y emisor"
     texto: "Etapa a 12 V con divisor de 47 kΩ y 10 kΩ, 3,3 kΩ de colector y 1 kΩ de emisor: con β = 50, I_{C} = 1,186 mA. ¿Y con β = 300?"
     libro: [176, 177]
     fijar: { beta: 300 }
-    widget:
-      tipo: circuito
-      esquema: bjt-polarizacion
-      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
-      lectura: { valor: I_pc, rotulo: "I_{C}" }
-      datos:
-        - { valor: V_pce, rotulo: "V_{CE} = {{V_pce}}" }
-      corriente: I_pc
-      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
-      ocultar: true
-    opciones:
-      - texto: "1,363 mA: solo un 15 % más"
-        bien: true
-        porque: "β varía un 500 % y la corriente de colector solo un 15 %. Ese es el resultado que justifica el circuito."
-      - texto: "Seis veces más, como β"
-        porque: "Eso pasaría con la base fija, donde I_{C} es proporcional a β. Aquí la resistencia de emisor fija la corriente."
-      - texto: "1,186 mA: no cambia nada"
-        porque: "Casi, pero no del todo: la corriente de base, que depende de β, aún influye algo en la malla de entrada."
+    simular:
+      objetivo: I_pc
+      unidad: A
+      tol: 0.02
+      rotulo: "I_{C} con β = 300"
+      errores:
+        - { razon: { min: 4.9, max: 5.5 }, texto: "Eso pasaría con la base fija, donde I_{C} es proporcional a β. Aquí la resistencia de emisor fija la corriente." }
+        - { razon: { min: 0.85, max: 0.89 }, texto: "Casi, pero no del todo: la corriente de base, que depende de β, aún influye algo." }
+    exito: "1,363 mA: β varía un 500 % y la corriente de colector solo un 15 %. Ese es el resultado que justifica el circuito."
+    escalera:
+      - "Con la base sujeta por el divisor, la corriente la fija R_{E}, no β."
+    solucion: "1,363 mA."
     comprobar:
       - { con: { beta: 50 }, I_pc: 0.001186 }
       - { I_pc: 0.001363 }
-      - { con: { beta: 50 }, I_fc: 0.00047 }
-      - { con: { beta: 300 }, I_fc: 0.002825 }
-    escalera:
-      - "Con la base sujeta por el divisor, la corriente la fija R_{E}, no β."
-    solucion: "1,363 mA: β varía un 500 % y la corriente de colector solo un 15 %."
-
   - id: formula-malla
     tipo: formula
     titulo: "La malla de entrada"
     texto: "El divisor se sustituye por su Thévenin: V_{Th} = 2,105 V y R_{Th} = 8,25 kΩ. La malla de entrada da la corriente de base."
-    nota: "Y con I_{C} = β·I_{B} se completa el punto de trabajo."
-    libro: [170, 171, 174]
+    nota: "R_{Th} ≪ (β + 1)·R_{E}: 8,25 kΩ frente a 51 kΩ con β = 50."
+    libro: [170, 171, 174, 181]
     ec: 174
     sustitucion: "({{V_pth}} − {{V_BE}}) / ({{R_pth}} + ({{beta}} + 1) · {{R_pe}}) = {{I_pb}}"
     widget:
@@ -140,32 +143,27 @@ tarjetas:
         - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
     comprobar:
       - { V_pth: 2.105, R_pth: 8246 }
+      - { con: { beta: 50 }, R_beq: 51000 }
 
   - id: estime-recta
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La recta de carga"
-    texto: "Con V_{CC} = 12 V, R_{C} = 3,3 kΩ y R_{E} = 1 kΩ, la recta de carga corta el eje horizontal en 12 V. Estime dónde corta el de I_{C}."
+    texto: "Con V_{CC} = 12 V, R_{C} = 3,3 kΩ y R_{E} = 1 kΩ, la recta de carga corta el eje horizontal en 12 V. ¿Dónde corta el de I_{C}?"
     libro: [161, 162, 163]
-    estimar:
-      objetivo: "I_sat"
+    simular:
+      objetivo: I_sat
       unidad: A
-      min: 0
-      max: 0.012
-      paso: 0.00001
-      inicio: 0.0036
       tol: 0.02
       rotulo: "I_{C} con V_{CE} = 0"
+      errores:
+        - { razon: { min: 1.27, max: 1.33 }, texto: "¿Ha olvidado R_{E}? En la malla de salida están R_{C} y R_{E} en serie." }
     exito: "12 V entre 4,3 kΩ: 2,79 mA. Es el extremo de saturación; el de corte, V_{CE} = V_{CC}."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00285 }, texto: "Se ha pasado. ¿Ha olvidado R_{E}? En la malla de salida están R_{C} y R_{E} en serie." }
-      - { texto: "Se ha quedado corto. Con V_{CE} = 0, los 12 V caen enteros en R_{C} + R_{E} = 4,3 kΩ." }
-    comprobar:
-      - { I_sat: 0.00279 }
     escalera:
       - "Con V_{CE} = 0, los 12 V caen enteros en R_{C} + R_{E}."
     solucion: "12 V / 4,3 kΩ = 2,79 mA."
-
+    comprobar:
+      - { I_sat: 0.00279 }
   - id: mecanismo
     tipo: pregunta
     titulo: "Lo que frena a I_{C}"
@@ -193,41 +191,13 @@ tarjetas:
       - "Si I_{C} sube, sube la caída en R_{E}. Con la base sujeta, ¿qué le pasa a V_{BE}?"
     solucion: "Baja, y la exponencial reduce I_{C}: la estabilidad viene de R_{E}, no del divisor."
 
-  - id: criterio-rth
-    tipo: pregunta
-    titulo: "Primer criterio"
-    texto: "Divisor de 47 kΩ y 10 kΩ (R_{Th} = 8,25 kΩ) y 1 kΩ de emisor, con β mínimo de 50. ¿Se cumple R_{Th} ≪ (β + 1)·R_{E}?"
-    libro: [171, 181]
-    fijar: { beta: 50 }
-    widget:
-      tipo: circuito
-      esquema: bjt-polarizacion
-      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
-      lectura: { valor: R_beq, rotulo: "(β + 1)·R_{E}" }
-      datos:
-        - { valor: R_pth, rotulo: "R_{Th} = {{R_pth}}" }
-      corriente: I_pc
-      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe }
-    opciones:
-      - texto: "Sí: 51 kΩ frente a 8,25 kΩ, una relación de 6:1, suficiente"
-        bien: true
-        porque: "Así la corriente de base, que depende de β, deja de influir. La regla de diez veces la corriente de base es el criterio 10:1; con 6:1, el divisor lleva unas 9."
-      - texto: "No: hace falta que R_{Th} sea mayor"
-        porque: "Es al revés: cuanto menor R_{Th} frente a (β + 1)·R_{E}, menos pesa la corriente de base."
-      - texto: "Da igual: R_{Th} no influye"
-        porque: "Influye a través de la corriente de base, que depende de β. Por eso se pide que sea pequeña frente a (β + 1)·R_{E}."
-    comprobar:
-      - { R_beq: 51000, k_div: 9.06, tol: 0.01 }
-    escalera:
-      - "(β + 1)·R_{E} con β = 50 y 1 kΩ: compárelo con 8,25 kΩ."
-    solucion: "51 kΩ frente a 8,25 kΩ, unas seis veces: se cumple."
-
   - id: sorpresa-ve
     tipo: sorpresa
     titulo: "El segundo enemigo: la deriva"
-    texto: "V_{BE} deriva −2 mV/°C, un error sobre la tensión que queda entre V_{Th} y V_{BE}. Mueva el calentamiento y esa tensión, que casi toda es V_{E}."
+    texto: "V_{BE} deriva −2 mV/°C, un error sobre la tensión que queda entre V_{Th} y V_{BE}. Con 30 °C de calentamiento, busque la tensión que deja la variación de I_{C} en un 4,3 %."
     libro: [182]
-    inicio: { V_m: 1.4, dT: 30 }
+    fijar: { dT: 30 }
+    inicio: { V_m: 0.2 }
     widget:
       tipo: grafica
       x: { id: v, min: 0.2, max: 3, unidad: V, rotulo: "V_{Th} − V_{BE}" }
@@ -241,11 +211,18 @@ tarjetas:
         - { valor: d_vbe, rotulo: "Deriva: {{d_vbe}}" }
       mandos:
         - { valor: V_m, min: 0.2, max: 3, paso: 0.1, rotulo: "V_{Th} − V_{BE}" }
-        - { valor: dT, min: 0, max: 30, paso: 5, rotulo: "Calentamiento" }
-    requiere: { mover: [V_m] }
+    objetivo:
+      condiciones:
+        - { valor: var_i, max: 4.31, rotulo: "ΔI_{C}/I_{C} = {{var_i}}" }
+      logrado: "Con {{V_m}}, los 60 mV de deriva son {{var_i}}; con 0,2 V, un 30 %. Por eso V_{E} de al menos 1 V."
+      pistas:
+        - { texto: "Más tensión de emisor." }
+    escalera:
+      - "La deriva es un error fijo: cuanta más tensión, menos pesa."
+    solucion: "Con 1,4 V: un 4,3 %."
     comprobar:
-      - { d_vbe: 0.06, var_i: 4.3 }
-      - { con: { V_m: 0.2 }, var_i: 30 }
+      - { var_i: 30 }
+      - { con: { V_m: 1.4 }, d_vbe: 0.06, var_i: 4.3 }
 
   - id: por-que-ve
     tipo: porque
@@ -275,79 +252,43 @@ tarjetas:
     solucion: "60 mV frente a 1,4 V es poco; frente a 0,2 V, mucho: por eso V_{E} de al menos 1 V."
 
   - id: excursion
-    tipo: pregunta
+    tipo: simular
     titulo: "La excursión"
     texto: "Con β = 150, el punto Q está en 1,324 mA y 6,31 V, con 3,3 kΩ de colector. ¿Cuál es la excursión simétrica máxima de V_{CE}?"
     libro: [184, 185, 186]
     fijar: { beta: 150 }
-    widget:
-      tipo: circuito
-      esquema: bjt-polarizacion
-      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
-      lectura: { valor: V_pce, rotulo: "V_{CE} en reposo" }
-      datos:
-        - { valor: I_pc, rotulo: "I_{C} = {{I_pc}}" }
-      corriente: I_pc
-      mide: { ib: I_pb, ic: I_pc, vc: V_pc, vce: V_pce }
-    opciones:
-      - texto: "±4,37 V"
-        bien: true
-        porque: "Hacia el corte el límite es la caída en R_{C}, 1,324 mA × 3,3 kΩ = 4,37 V; hacia la saturación hay 6,11 V. Manda el menor."
-      - texto: "±6,11 V"
-        porque: "Ese es el margen hacia la saturación, el mayor. La excursión simétrica la limita el menor de los dos."
-      - texto: "±5,69 V"
-        porque: "V_{CE} podría subir hasta 12 V, pero la corriente no baja de cero: el límite real es la caída en R_{C}, 4,37 V."
+    simular:
+      objetivo: m_rc
+      unidad: V
+      tol: 0.02
+      rotulo: "Excursión, ±"
+      errores:
+        - { razon: { min: 1.35, max: 1.45 }, texto: "Ese es el margen hacia la saturación, el mayor. La excursión simétrica la limita el menor de los dos." }
+    exito: "±4,37 V: hacia el corte, V_{CE} solo sube lo que cae en R_{C}; hacia la saturación hay 6,11 V. Manda el menor."
+    escalera:
+      - "Hacia el corte, V_{CE} solo sube lo que cae en R_{C}."
+    solucion: "1,324 mA × 3,3 kΩ = 4,37 V."
     comprobar:
       - { I_pc: 0.001324, V_pce: 6.31, m_rc: 4.37, m_sat: 6.11 }
-    escalera:
-      - "Hacia el corte, V_{CE} solo sube lo que cae en R_{C}; hacia la saturación hay más margen."
-    solucion: "La menor de las dos: 1,324 mA × 3,3 kΩ = ±4,37 V."
-
   - id: condensador-emisor
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El condensador de emisor"
-    texto: "Un condensador en paralelo con R_{E} recupera la ganancia, pero pone un polo: con r_{e} = 19,5 Ω, 100 µF lo dejan en 82 Hz. Estime C_{E} para 20 Hz."
+    texto: "Un condensador en paralelo con R_{E} recupera la ganancia, pero pone un polo: con r_{e} = 19,5 Ω, 100 µF lo dejan en 82 Hz. ¿Qué C_{E} hace falta para 20 Hz?"
     libro: [189, 190]
-    estimar:
-      objetivo: "C_nec"
+    simular:
+      objetivo: C_nec
       unidad: F
-      min: 0
-      max: 0.001
-      paso: 0.00001
-      inicio: 0.00009
       tol: 0.05
       rotulo: "C_{E} para 20 Hz"
-    exito: "1/(2π · 19,5 Ω · 20 Hz): unos 400 µF, 470 µF en la práctica. El criterio es el polo, calculado con la r_{e} de la etapa."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00043 }, texto: "Se ha pasado. El polo baja en proporción inversa a C_{E}: de 82 a 20 Hz, unas cuatro veces 100 µF." }
-      - { texto: "Se ha quedado corto. Para bajar el polo de 82 a 20 Hz hace falta unas cuatro veces más capacidad." }
-    comprobar:
-      - { f_ce: 82, C_nec: 0.000408 }
+      errores:
+        - { razon: { min: 0.23, max: 0.26 }, texto: "Ese deja el polo en 82 Hz. Para bajarlo hace falta más capacidad." }
+    exito: "Unos 400 µF, 470 µF en la práctica. El criterio es el polo, calculado con la r_{e} de la etapa."
     escalera:
       - "El polo baja en proporción inversa a C_{E}: de 82 a 20 Hz, unas cuatro veces."
-    solucion: "1/(2π · 19,5 Ω · 20 Hz): unos 400 µF, 470 µF en la práctica."
-
-  - id: ordene-diseno
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Procedimiento de diseño"
-    texto: "Ordene los pasos para diseñar una etapa con divisor y resistencia de emisor."
-    libro: [193, 195]
-    ordenar:
-      - "Elegir I_{CQ} según el consumo, el ruido y la carga."
-      - "Elegir V_{E} entre el 10 y el 20 % de V_{CC} y calcular R_{E}."
-      - "Elegir V_{CEQ} hacia la mitad del margen restante y calcular R_{C}."
-      - "Calcular V_{B} y un divisor con unas diez veces la corriente de base máxima."
-      - "Verificar el punto de trabajo con β mínimo y máximo."
-      - "Dimensionar C_{E} y los condensadores de acoplo por sus polos."
-    exito: "Eso es. En el banco, V_{E} entre R_{E} da la corriente de reposo real, con el β verdadero del ejemplar."
-    pistas:
-      - { texto: "Se empieza por la corriente, se baja del emisor al colector y a la base, y se acaba por los condensadores." }
-    escalera:
-      - "Se empieza por la corriente, se baja del emisor al colector y a la base, y se acaba por los condensadores."
-    solucion: "I_{CQ}, V_{E} y R_{E}, V_{CEQ} y R_{C}, el divisor, la verificación con β extremos y los condensadores."
-
+    solucion: "1/(2π · 19,5 Ω · 20 Hz) ≈ 400 µF."
+    comprobar:
+      - { f_ce: 82, C_nec: 0.000408 }
   - id: banco-emisor
     tipo: banco
     titulo: "Mídalo en el banco"
@@ -377,9 +318,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [165, 177, 181, 182, 186]
+    libro: [165, 177, 181, 182, 186, 193, 195]
     ideas:
       - { titulo: "Base fija, no.", texto: "I_{C} es proporcional a β: el punto se va al corte o a la saturación según el ejemplar." }
       - { titulo: "Divisor y R_{E}.", texto: "β varía un 500 % e I_{C} un 15 %: la estabilidad la da R_{E}." }
-      - { titulo: "Dos criterios.", texto: "R_{Th} ≪ (β + 1)·R_{E} y V_{E} de al menos 1 V, contra β y contra la deriva." }
+      - { titulo: "Dos criterios.", texto: "R_{Th} ≪ (β + 1)·R_{E} y V_{E} de al menos 1 V. Se diseña desde I_{CQ} y V_{E}, del 10 al 20 % de V_{CC}, hacia el colector y la base." }
       - { titulo: "Excursión.", texto: "La limita el menor margen: ±4,37 V en el ejemplo, con Q en 1,324 mA y 6,31 V." }

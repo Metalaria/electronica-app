@@ -3,6 +3,9 @@
 # pediría 43 mA pero solo caben 11,8 mA (saturación, factor 3,6); qué fija de verdad I_C, la transconductancia (−182
 # con 4,7 kΩ), el precio de la saturación, la región inversa y cómo se mide la región. Formato:
 # contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir los 7,7 V, llevarlo a activa, bajar R_B a 10 kΩ,
+# calcular el factor 3,6, el reto del factor, calcular g_m·R_C y medir V_CE para saber la región; se eligen por qué
+# no llega a 43 mA y qué fija I_C. El almacenamiento y el transistor que se calienta quedan en los textos.
 leccion: cap06/sec-6.2
 
 libro:
@@ -54,10 +57,30 @@ modelo:
     R_b10: { expr: "(V_bi - V_BE)/I_b10", sim: "R_{B}", nombre: "resistencia de base para un factor de 10", unidad: Ω }
 
 tarjetas:
+  - id: prediga-activa
+    tipo: simular
+    titulo: "Prediga V_{CE}"
+    texto: "Con 12 V y 1 kΩ en el colector, β = 100 y 100 kΩ de base desde 5 V, entran 43 µA en la base. ¿Cuánto marca V_{CE}?"
+    libro: [50, 52, 54, 55]
+    fijar: { V_bi: 5, R_bb: 100000 }
+    simular:
+      objetivo: V_bce
+      unidad: V
+      tol: 0.02
+      rotulo: "V_{CE}"
+      errores:
+        - { razon: { min: 0.02, max: 0.03 }, texto: "Eso sería saturación. Los 4,3 mA que pide la base caben de sobra en 1 kΩ desde 12 V." }
+        - { razon: { min: 1.5, max: 1.6 }, texto: "Eso es corte, sin corriente de base. Aquí entran 43 µA y el colector conduce." }
+    exito: "7,7 V: I_{C} = β·I_{B} = 4,3 mA, que cae 4,3 V en 1 kΩ. Holgadamente positiva: región activa."
+    escalera:
+      - "I_{C} = β·I_{B}; luego reste a 12 V lo que cae en 1 kΩ."
+    solucion: "12 − 4,3 = 7,7 V."
+    comprobar:
+      - { I_bb: 0.000043, I_bc: 0.0043, V_bce: 7.7 }
   - id: explore-regiones
     tipo: explorar
     titulo: "El circuito decide la región"
-    texto: "Base desde 5 V, colector con 1 kΩ desde 12 V y β = 100. Apague y encienda el mando, cambie R_{B} y mire V_{CE}."
+    texto: "Base desde 5 V, colector con 1 kΩ desde 12 V y β = 100. Lleve el transistor a la región activa: V_{CE} entre 1 V y casi toda la alimentación."
     libro: [31, 50]
     widget:
       tipo: circuito
@@ -72,37 +95,20 @@ tarjetas:
       mandos:
         - { valor: V_bi, lista: [0, 5], nombres: [apagado, encendido], rotulo: "Mando de la base" }
         - { valor: R_bb, lista: [10000, 22000, 47000, 100000], rotulo: "R_{B}" }
-    requiere: { mover: [V_bi, R_bb] }
-
-  - id: prediga-activa
-    tipo: predecir
-    titulo: "Prediga V_{CE}"
-    texto: "Con 12 V y 1 kΩ en el colector, β = 100 y 100 kΩ de base desde 5 V, entran 43 µA en la base. ¿Cuánto marca V_{CE}?"
-    libro: [50, 52, 54, 55]
-    fijar: { V_bi: 5, R_bb: 100000 }
-    widget:
-      tipo: circuito
-      esquema: bjt-interruptor
-      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
-      lectura: { valor: V_bce, rotulo: "V_{CE}" }
-      datos:
-        - { valor: I_bc, rotulo: "I_{C} = {{I_bc}}" }
-      corriente: I_bc
-      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
-      ocultar: true
-    opciones:
-      - texto: "7,7 V"
-        bien: true
-        porque: "I_{C} = β·I_{B} = 4,3 mA, que cae 4,3 V en 1 kΩ: quedan 7,7 V. Holgadamente positiva: región activa."
-      - texto: "0,2 V"
-        porque: "Eso sería saturación. Los 4,3 mA que pide la base caben de sobra en 1 kΩ desde 12 V."
-      - texto: "12 V"
-        porque: "Eso es corte, sin corriente de base. Aquí entran 43 µA y el colector conduce."
-    comprobar:
-      - { I_bb: 0.000043, I_bc: 0.0043, V_bce: 7.7 }
+    inicio: { V_bi: 0, R_bb: 100000 }
+    objetivo:
+      condiciones:
+        - { valor: V_bce, min: 1, max: 11, rotulo: "V_{CE} = {{V_bce}}" }
+      logrado: "{{V_bce}} con {{I_bc}}: activa. Apagado, corte, 12 V; con mucha base, saturación. El circuito exterior decide la región."
+      pistas:
+        - { cuando: { valor: V_bi, max: 0 }, texto: "Sin base está en corte: encienda el mando." }
+        - { texto: "Está saturado: suba R_{B}." }
     escalera:
-      - "I_{C} = β·I_{B}; luego reste a 12 V lo que cae en 1 kΩ."
-    solucion: "I_{C} = 100 × 43 µA = 4,3 mA, que cae 4,3 V en 1 kΩ: quedan 7,7 V."
+      - "Encienda el mando sin pasarse de corriente de base."
+    solucion: "Encendido, con 47 o 100 kΩ."
+    comprobar:
+      - { V_bce: 12 }
+      - { con: { V_bi: 5, R_bb: 47000 }, V_bce: 2.85, tol: 0.01 }
 
   - id: recta-carga
     tipo: formula
@@ -143,8 +149,17 @@ tarjetas:
       mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
       mandos:
         - { valor: R_bb, lista: [10000, 22000, 47000, 100000], rotulo: "R_{B}" }
-    requiere: { mover: [R_bb] }
+    objetivo:
+      condiciones:
+        - { valor: I_pide, min: 0.04, rotulo: "β·I_{B} = {{I_pide}}" }
+      logrado: "β·I_{B} pediría {{I_pide}}, pero I_{C} se queda en {{I_bc}} y V_{CE} en {{V_bce}}: saturado."
+      pistas:
+        - { texto: "Menos R_{B}: hasta 10 kΩ." }
+    escalera:
+      - "Elija 10 kΩ."
+    solucion: "Con 10 kΩ: 11,8 mA, no 43."
     comprobar:
+      - { I_bc: 0.0043 }
       - { con: { R_bb: 10000 }, I_bb: 0.00043, I_pide: 0.043, I_bc: 0.0118, V_bce: 0.2 }
 
   - id: por-que-satura
@@ -175,31 +190,25 @@ tarjetas:
     solucion: "(12 − 0,2)/1 kΩ = 11,8 mA: el transistor conduce todo lo que el circuito permite."
 
   - id: factor-forzada
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Factor de saturación forzada"
-    texto: "Base con 10 kΩ desde 5 V, β = 100, colector con 1 kΩ desde 12 V. Estime el cociente entre lo que pide la base y lo que admite el circuito."
+    texto: "Base con 10 kΩ desde 5 V, β = 100, colector con 1 kΩ desde 12 V. Calcule el cociente entre lo que pide la base y lo que admite el circuito."
     libro: [58, 59, 61]
     fijar: { V_bi: 5, R_bb: 10000 }
-    estimar:
-      objetivo: "factor"
+    simular:
+      objetivo: factor
       unidad: ""
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 8
-      tol: 0.06
+      tol: 0.03
       rotulo: "β·I_{B} / I_{C(sat)}"
+      errores:
+        - { razon: { min: 0.26, max: 0.3 }, texto: "Al revés: lo que pide la base entre lo que admite el circuito." }
     exito: "43 mA entre 11,8 mA: 3,6. En conmutación se diseña entre 3 y 10, para saturar con el β mínimo y la carga máxima."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3.9 }, texto: "Se ha pasado. La base pide 100 · 430 µA = 43 mA; el circuito admite 11,8 mA." }
-      - { texto: "Se ha quedado corto. Divida los 43 mA que pide la base entre los 11,8 mA que admite el colector." }
-    comprobar:
-      - { factor: 3.644 }
     escalera:
       - "La base pide 100 · 430 µA = 43 mA; el circuito admite 11,8 mA."
     solucion: "43 mA / 11,8 mA = 3,6."
-
+    comprobar:
+      - { factor: 3.644 }
   - id: reto-factor
     tipo: reto
     titulo: "Reto: saturar con margen"
@@ -221,7 +230,7 @@ tarjetas:
         - { valor: R_bb, serie: E12, min: 1000, max: 100000, rotulo: "R_{B} (E12)" }
     condiciones:
       - { valor: factor, min: 3, max: 10, rotulo: "Factor: {{factor}}" }
-    exito: "Con su R_{B}, la base pide {{I_pide}} y caben 11,8 mA: factor {{factor}}. Saturado, con margen frente a un β menor."
+    exito: "Con su R_{B}, la base pide {{I_pide}} y caben 11,8 mA: factor {{factor}}. El de 10 satura mejor, pero acumula más carga y apaga más despacio."
     pistas:
       - { cuando: { valor: factor, menor: 3 }, texto: "Poco margen: con un ejemplar de β menor dejaría de saturar. Baje R_{B} para que entre más corriente de base." }
       - { cuando: { valor: factor, mayor: 10 }, texto: "Satura de sobra, pero acumula más carga y apaga más despacio. Suba R_{B}." }
@@ -231,34 +240,6 @@ tarjetas:
     comprobar:
       - { con: { R_bb: 10000 }, factor: 3.644 }
       - { I_b3: 0.000354, I_b10: 0.00118, R_b3: 12147, R_b10: 3644 }
-
-  - id: almacenamiento
-    tipo: pregunta
-    titulo: "El precio de saturar"
-    texto: "Dos diseños saturan el mismo transistor, uno con factor 3 y otro con factor 10. ¿Cuál tarda más en apagarse?"
-    libro: [63]
-    opciones:
-      - texto: "El de factor 10"
-        bien: true
-        porque: "Más saturación, más portadores en exceso en la base que evacuar antes de cortar: más tiempo de almacenamiento. Satura mejor, pero conmuta peor."
-      - texto: "El de factor 3"
-        porque: "Satura con menos margen, pero acumula menos carga en la base: se apaga antes."
-      - texto: "Los dos igual: ya están saturados"
-        porque: "La carga almacenada crece con lo forzada que esté la saturación, y con ella el retardo al apagar."
-    fijar: { V_bi: 5 }
-    inicio: { R_bb: 10000 }
-    widget:
-      tipo: circuito
-      esquema: bjt-interruptor
-      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
-      lectura: { valor: factor, rotulo: "Factor de saturación" }
-      corriente: I_bc
-      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
-      mandos:
-        - { valor: R_bb, lista: [3900, 10000], rotulo: "R_{B}" }
-    escalera:
-      - "Saturado, la base acumula portadores en exceso que hay que evacuar antes de apagar."
-    solucion: "El de factor 10: más saturación, más carga almacenada y más retardo al apagar."
 
   - id: que-fija-ic
     tipo: pregunta
@@ -283,76 +264,58 @@ tarjetas:
     solucion: "V_{BE}, por la exponencial I_{C} = I_{S}·e^{V_{BE}/V_{T}}; β·I_{B} es una consecuencia."
 
   - id: ganancia-gm
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "De dónde sale la ganancia"
-    texto: "Un transistor en activa con 1 mA de colector tiene g_{m} = I_{C}/V_{T} = 38,7 mS. Con 4,7 kΩ de colector, estime la ganancia de tensión en módulo."
+    texto: "Un transistor en activa con 1 mA de colector tiene g_{m} = I_{C}/V_{T} = 38,7 mS. Con 4,7 kΩ de colector, ¿qué ganancia de tensión da, en módulo?"
     libro: [47]
-    estimar:
-      objetivo: "A_v"
+    simular:
+      objetivo: A_v
       unidad: ""
-      min: 0
-      max: 400
-      paso: 1
-      inicio: 40
-      tol: 0.05
+      tol: 0.03
       rotulo: "|A_{v}| = g_{m}·R_{C}"
-    exito: "38,7 mS · 4,7 kΩ = 182. La ganancia es −182: el signo negativo es la inversión."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 191 }, texto: "Se ha pasado. Multiplique 0,0387 S por 4,7 kΩ." }
-      - { texto: "Se ha quedado corto. Cada milivoltio mueve 38,7 µA, que en 4,7 kΩ son unos 182 mV." }
-    comprobar:
-      - { g_m: 0.0387, A_v: 182 }
+      errores:
+        - { razon: { min: 0.2, max: 0.23 }, texto: "Esa es g_{m} en mS: multiplíquela por la resistencia de colector." }
+    exito: "182: cada milivoltio en la base mueve 38,7 µA, que caen en 4,7 kΩ. La ganancia es −182: el signo es la inversión."
     escalera:
       - "Cada milivoltio en la base mueve 38,7 µA de colector, que caen en 4,7 kΩ."
-    solucion: "38,7 mS × 4,7 kΩ = 182, invertida: −182."
-
+    solucion: "38,7 mS × 4,7 kΩ = 182."
+    comprobar:
+      - { g_m: 0.0387, A_v: 182 }
   - id: empareje-medidas
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: medir
     titulo: "Saber la región, midiendo"
-    texto: "Con el multímetro basta. Empareje cada región con lo que se mide en ella."
+    texto: "Con 10 kΩ de base, ¿en qué región está? Mida la tensión entre colector y emisor."
     libro: [40, 66, 75, 76]
-    emparejar:
-      - ["Corte", "V_{BE} por debajo de 0,5 V y V_{CE} casi V_{CC}"]
-      - ["Activa", "V_{BE} de 0,6 a 0,7 V y V_{CE} entre 1 V y V_{CC}"]
-      - ["Saturación", "V_{CE} de 0,1 a 0,3 V: la base más alta que el colector"]
-      - ["Inversa", "El colector inyecta: β_{R} de 1 a 5"]
-    exito: "Eso es. El criterio decisivo de la saturación es V_{BC} positiva: la base por encima del colector."
-    pistas:
-      - { texto: "Mire V_{CE}: casi toda la alimentación, unos voltios o casi nada." }
-    escalera:
-      - "Mire V_{CE}: casi toda la alimentación, unos voltios o casi nada."
-    solucion: "Corte: V_{CE} casi V_{CC}. Activa: entre 1 V y V_{CC}. Saturación: de 0,1 a 0,3 V. Inversa: β_{R} de 1 a 5."
-
-  - id: se-calienta
-    tipo: pregunta
-    titulo: "Un interruptor que se calienta"
-    texto: "Un transistor de conmutación se calienta, y entre colector y emisor mide varios voltios. ¿Qué le pasa?"
-    libro: [76]
-    opciones:
-      - texto: "Está en activa, no saturado: le falta corriente de base"
-        bien: true
-        porque: "Saturado mediría de 0,1 a 0,3 V. Con varios voltios disipa diez veces más de lo previsto."
-      - texto: "Está en corte"
-        porque: "En corte V_{CE} es casi V_{CC} y no circula corriente: la disipación es prácticamente nula, no se calentaría."
-      - texto: "Es normal en saturación"
-        porque: "En saturación V_{CE} es de 0,1 a 0,3 V. Varios voltios es la región activa."
+    fijar: { V_bi: 5, R_bb: 10000 }
     widget:
-      tipo: figura
-      figura: fig-6.2
-      zonas:
-        - { id: regiones, rotulo: "Las regiones sobre las curvas de salida", rect: [0, 0, 438, 230] }
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      instrumento: { tipo: multimetro, modos: [V] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [c, "0"]
+      valor: V_bce
+      porque:
+        "b/0": "Esa es V_{BE}: dice que conduce, no si está saturado."
+        "vcc/0": "Esa es la alimentación."
+        "in/0": "Esa es la tensión de mando."
+    exito: "0,2 V: saturado, con la base más alta que el colector. En corte mediría casi 12 V; en activa, entre 1 V y V_{CC}, y un interruptor así se calienta."
     escalera:
-      - "Saturado mediría de 0,1 a 0,3 V. ¿En qué región se mide varios voltios con corriente?"
-    solucion: "En activa: le falta corriente de base y disipa mucho más que saturado."
-
+      - "La región la dice V_{CE}: casi toda la alimentación, unos voltios o casi nada."
+    solucion: "Entre colector y masa: 0,2 V, saturado."
+    comprobar:
+      - { V_bce: 0.2 }
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [36, 59, 62, 76]
+    libro: [36, 40, 59, 62, 63, 66, 75, 76]
     ideas:
       - { titulo: "Activa.", texto: "V_{BE} fija I_{C}; β·I_{B} es la consecuencia. Con 100 kΩ de base: 4,3 mA y 7,7 V." }
       - { titulo: "Saturación.", texto: "Cuando β·I_{B} no cabe en el circuito: con 10 kΩ pediría 43 mA y solo caben 11,8 mA." }
       - { titulo: "Factor forzado.", texto: "Entre 3 y 10 en conmutación: más satura mejor, pero apaga más despacio." }
-      - { titulo: "Midiendo.", texto: "Si la base está más alta que el colector, está saturado." }
+      - { titulo: "Midiendo.", texto: "Corte: V_{BE} bajo 0,5 V. Saturación: V_{CE} de 0,1 a 0,3 V, la base más alta que el colector. Inversa: β_{R} de 1 a 5." }

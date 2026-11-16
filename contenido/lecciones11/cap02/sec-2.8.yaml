@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 2.8 «Potencia Nominal, Disipación y Derating» (cap02): la curva de derating, la regla
 # del 50 % (ejercicio 2.7), la tensión máxima, los pulsos, cómo se evacúa el calor y repartir la potencia.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): calentar hasta la mitad de la nominal, predecir la de
+# 100 °C, marcar la de 125 °C, el reto del 50 %, predecir la potencia de 10 MΩ con 250 V y desigualar un paralelo; se
+# eligen los pulsos y la resistencia del limitador. El cobre de las SMD y el cuerpo caliente quedan en el resumen.
 leccion: cap02/sec-2.8
 
 libro:
@@ -49,8 +52,9 @@ tarjetas:
   - id: explore-derating
     tipo: explorar
     titulo: "La curva de derating"
-    texto: "Una de 0,25 W especificada a 70 °C, con un máximo de 155 °C. Arrastre la temperatura ambiente y mire cuánta potencia admite."
+    texto: "Una de 0,25 W especificada a 70 °C, con un máximo de 155 °C. Caliente el ambiente hasta que solo admita la mitad de su potencia nominal."
     libro: [147, 150]
+    inicio: { T_a: 25 }
     widget:
       tipo: grafica
       x: { id: x, min: 20, max: 160, unidad: "°C", rotulo: "T_{amb}" }
@@ -62,10 +66,23 @@ tarjetas:
       lectura: { valor: P_adm, rotulo: "Potencia admisible" }
       mandos:
         - { valor: T_a, min: 20, max: 160, paso: 5, rotulo: "Temperatura ambiente" }
+    objetivo:
+      condiciones:
+        - { valor: P_adm, objetivo: 0.125, tol: 0.06, rotulo: "Admite: {{P_adm}}" }
+      logrado: "A {{T_a}} admite {{P_adm}}: el dato de catálogo suele referirse a 70 °C, y por encima se pierde en línea recta."
+      pistas:
+        - { cuando: { valor: P_adm, mayor: 0.1325 }, texto: "Todavía admite más de la mitad: suba la temperatura." }
+        - { texto: "Se ha pasado: baje un poco la temperatura." }
+    escalera:
+      - "Hasta 70 °C admite toda; luego baja en línea recta hasta cero en 155 °C."
+    solucion: "Hacia 110 °C, a medio camino entre 70 y 155 °C."
+    comprobar:
+      - { P_adm: 0.25 }
+      - { con: { T_a: 110 }, P_adm: 0.1324, tol: 0.01 }
 
   - id: prediga-cien
-    tipo: predecir
-    titulo: "Prediga"
+    tipo: simular
+    titulo: "Prediga a 100 °C"
     texto: "Una resistencia de 0,25 W, especificada a 70 °C con máximo de 155 °C, va en una caja a 100 °C. ¿Cuánta potencia admite?"
     libro: [150, 151]
     fijar: { T_a: 100 }
@@ -76,48 +93,51 @@ tarjetas:
       curvas:
         - { expr: "P_n*min(1, max(0, (T_m - x)/(T_m - T_r)))", color: naranja, rotulo: "potencia admisible" }
       lectura: { valor: P_adm, rotulo: "Potencia admisible" }
-      ocultar: true
-    opciones:
-      - texto: "0,162 W"
-        bien: true
-        porque: "Por encima de 70 °C baja en línea recta hasta cero en 155 °C: a 100 °C quedan 55 de esos 85 grados."
-      - texto: "0,25 W"
-        porque: "La nominal solo vale hasta la temperatura de referencia, 70 °C. Por encima se pierde."
-      - texto: "0 W"
-        porque: "Llega a cero en la temperatura máxima, 155 °C. A 100 °C aún admite algo."
-    comprobar:
-      - { P_adm: 0.162, margen: 85, queda: 55 }
-      - { con: { T_a: 155 }, P_adm: 0 }
+      ocultar: curvas
+    simular:
+      objetivo: P_adm
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia admisible a 100 °C"
+      errores:
+        - { razon: { min: 1.5, max: 1.6 }, texto: "La nominal solo vale hasta la temperatura de referencia, 70 °C. Por encima se pierde." }
+    exito: "0,162 W: por encima de 70 °C baja en línea recta hasta cero en 155 °C, y a 100 °C quedan 55 de esos 85 grados."
     escalera:
       - "Por encima de 70 °C, la admisible baja en línea recta hasta cero en 155 °C."
-    solucion: "A 100 °C, en ese tramo recto, admite 0,162 W."
-
+    solucion: "0,25 × 55/85 = 0,162 W."
+    comprobar:
+      - { P_adm: 0.162, margen: 85, queda: 55 }
   - id: estime-125
-    tipo: pregunta
-    fase: "Estime"
+    tipo: marcar
+    fase: "Lea"
     titulo: "Más calor"
-    texto: "Una resistencia de 0,25 W, especificada a 70 °C de ambiente, con máximo de 155 °C. Estime la potencia que admite a 125 °C."
+    texto: "La misma resistencia de 0,25 W, a 125 °C de ambiente. Marque en la gráfica el nivel de potencia que admite."
     libro: [150, 151]
     fijar: { T_a: 125 }
-    estimar:
-      objetivo: "P_adm"
-      unidad: W
-      min: 0
-      max: 0.25
-      paso: 0.002
-      inicio: 0.2
-      tol: 0.05
-      rotulo: "P a 125 °C"
-    exito: "0,088 W: quedan 30 de los 85 grados. En el codo de la curva, la capacidad se pierde deprisa."
+    widget:
+      tipo: grafica
+      x: { id: x, min: 20, max: 160, unidad: "°C", rotulo: "T_{amb}" }
+      y: { min: 0, max: 0.3, unidad: W, rotulo: "P_{adm}" }
+      curvas:
+        - { expr: "P_n*min(1, max(0, (T_m - x)/(T_m - T_r)))", color: naranja, rotulo: "potencia admisible" }
+      marcas:
+        - { x: "125", y: "0", rotulo: "125 °C", guias: false }
+      mandos: []
+    marcar:
+      modo: y
+      y: "P_adm"
+      tol: 0.03
+      inicio: { x: 125, y: 0.25 }
+      rotulo: "Lo que admite a 125 °C"
     pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0925 }, texto: "Se ha pasado: a 125 °C faltan solo 30 °C para el máximo de 155 °C." }
-      - { texto: "Se ha quedado corto: aún quedan 30 de los 85 grados de la recta." }
-    comprobar:
-      - { P_adm: 0.088, margen: 85, queda: 30 }
+      - { cuando: { valor: marca_y, mayor: 0.088 }, texto: "Más abajo: suba desde 125 °C hasta la curva y lea ahí." }
+      - { texto: "Más arriba: suba desde 125 °C hasta la curva y lea ahí." }
+    exito: "0,088 W: quedan 30 de los 85 grados. En el codo de la curva, la capacidad se pierde deprisa."
     escalera:
       - "La admisible baja en línea recta desde 70 °C hasta cero en 155 °C."
-    solucion: "0,088 W: quedan 30 de los 85 grados. En el codo de la curva, la capacidad se pierde deprisa."
-
+    solucion: "0,25 × 30/85 = 0,088 W."
+    comprobar:
+      - { P_adm: 0.088, margen: 85, queda: 30 }
   - id: reto-nominal
     tipo: reto
     titulo: "Reto: la regla del 50 %"
@@ -151,9 +171,9 @@ tarjetas:
       - { con: { P_nom: 0.25 }, uso: 79.2 }
 
   - id: prediga-tension
-    tipo: predecir
+    tipo: simular
     titulo: "El límite que se olvida"
-    texto: "Una de 10 MΩ y 0,25 W soporta 250 V. ¿Qué la limita?"
+    texto: "Una de 10 MΩ y 0,25 W soporta 250 V. ¿Qué potencia disipa con esos 250 V?"
     libro: [157, 158]
     widget:
       tipo: grafica
@@ -164,24 +184,23 @@ tarjetas:
         - { expr: "P_n", color: azul, rotulo: "nominal", discontinua: true }
       lectura: { valor: P_hv, rotulo: "Potencia disipada" }
       ocultar: true
-    opciones:
-      - texto: "La tensión: con solo 6 mW está en su límite"
-        bien: true
-        porque: "Con valores altos, el límite de tensión llega antes que el de potencia. Por encima, un arco superficial."
-      - texto: "La potencia: 250 V es mucha tensión"
-        porque: "Con 10 MΩ, 250 V solo disipan 6 mW, muy por debajo de la nominal."
-      - texto: "Nada: le sobra potencia"
-        porque: "Le sobra potencia, pero no tensión. La solución es poner varias en serie, que repartan la tensión."
-    comprobar:
-      - { P_hv: 0.00625 }
+    simular:
+      objetivo: P_hv
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia disipada"
+      errores:
+        - { razon: { min: 39, max: 41 }, texto: "Esa es la nominal. Con 10 MΩ, 250 V disipan muchísimo menos." }
+    exito: "Solo 6 mW, y aun así está en su límite: con valores altos manda la tensión. La solución es poner varias en serie."
     escalera:
       - "Calcule la potencia, V²/R, con 250 V y 10 MΩ."
-    solucion: "Disipa solo 6 mW: la limita la tensión. La solución es poner varias en serie."
-
+    solucion: "250² / 10 MΩ = 6 mW."
+    comprobar:
+      - { P_hv: 0.00625 }
   - id: sorpresa-reparto
     tipo: sorpresa
     titulo: "Repartir entre dos"
-    texto: "Dos de 220 Ω en paralelo se reparten la potencia. Cambie R₂ por un valor algo distinto y mire las barras."
+    texto: "Dos de 220 Ω en paralelo se reparten la potencia. Cambie R₂ por un valor algo distinto hasta que se lleve más potencia que R₁."
     libro: [163, "cap02#342"]
     inicio: { R_pb: 220 }
     widget:
@@ -196,8 +215,18 @@ tarjetas:
       mide: { total: I_pt, i1: I_pa, i2: I_pb }
       mandos:
         - { valor: R_pb, lista: [180, 220, 270], rotulo: "R₂" }
+    objetivo:
+      condiciones:
+        - { valor: P_pb, min: 0.2, rotulo: "R₂: {{P_pb}}" }
+      logrado: "Con {{R_pb}}, R₂ disipa {{P_pb}} y R₁ {{P_pa}}: cualquier desigualdad hace que una se lleve más corriente."
+      pistas:
+        - { texto: "Con la tensión común, la de menor valor se lleva más: baje R₂." }
+    escalera:
+      - "En paralelo, P = V²/R: la menor disipa más."
+    solucion: "R₂ = 180 Ω: 0,242 W frente a 0,198 W."
     comprobar:
       - { P_pa: 0.198, I_pa: 0.03 }
+      - { con: { R_pb: 180 }, P_pb: 0.242 }
 
   - id: por-que-pulsos
     tipo: porque
@@ -243,62 +272,12 @@ tarjetas:
       - "Aquí decide la energía del pulso, no la potencia media."
     solucion: "Bobinada o de óxido metálico: mucha masa y sin película delgada que se evapore."
 
-  - id: smd-cobre
-    tipo: pregunta
-    titulo: "Un chip SMD"
-    texto: "¿De qué depende la potencia que admite una resistencia SMD?"
-    libro: [160]
-    opciones:
-      - texto: "Del área de cobre a la que está soldada"
-        bien: true
-        porque: "Casi todo el calor sale por las soldaduras hacia el cobre. Ensanchar los pads es un recurso barato."
-      - texto: "Solo de su tamaño"
-        porque: "El tamaño cuenta, pero el catálogo la da para una placa de referencia: el cobre decide."
-      - texto: "Del aire que la rodea"
-        porque: "Eso domina en una axial, por convección. En las SMD domina la conducción por las soldaduras."
-    widget:
-      tipo: figura
-      figura: fig-2.1
-      zonas:
-        - { id: reales, rotulo: "Resistencias reales, también SMD", rect: [0, 0, 1600, 1527] }
-    escalera:
-      - "¿Por dónde sale el calor de un chip sin patas largas?"
-    solucion: "Del área de cobre a la que está soldada: casi todo el calor sale por las soldaduras hacia el cobre."
-
-  - id: caliente
-    tipo: pregunta
-    titulo: "Caliente al tacto"
-    texto: "Una resistencia que disipa su potencia nominal tiene el cuerpo a más de 100 °C. ¿Qué significa?"
-    libro: [148, 165]
-    opciones:
-      - texto: "Es lo normal, pero su valor ha derivado y puede quemar lo de al lado"
-        bien: true
-        porque: "No es una avería. Aun así, por encima de 80 o 90 °C conviene revisar el cálculo."
-      - texto: "Está averiada"
-        porque: "A su potencia nominal es normal que esté así de caliente. Por eso se aplica el 50 %."
-      - texto: "Que el termopar mide mal"
-        porque: "El termopar apoyado en el cuerpo es la comprobación buena: dice si el dimensionado es correcto."
-    widget:
-      tipo: grafica
-      x: { id: x, min: 20, max: 160, unidad: °C, rotulo: "T_{amb}" }
-      y: { min: 0, max: 0.3, unidad: W, rotulo: "P_{adm}" }
-      curvas:
-        - { expr: "P_n*min(1, max(0, (T_m - x)/(T_m - T_r)))", color: naranja, rotulo: "potencia admisible" }
-      asas:
-        - { mueve: T_a, x: T_a, y: P_adm, rotulo: "Temperatura ambiente" }
-      lectura: { valor: P_adm, rotulo: "Potencia admisible" }
-      mandos:
-        - { valor: T_a, min: 20, max: 160, paso: 5, rotulo: "Temperatura ambiente" }
-    escalera:
-      - "A su potencia nominal, ¿qué temperatura es normal en el cuerpo de una resistencia?"
-    solucion: "Es lo normal y no es una avería; pero por encima de 80 o 90 °C conviene revisar el cálculo."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [150, 152, 154, 157, 163]
+    libro: [148, 150, 152, 154, 157, 160, 163, 165]
     ideas:
-      - { titulo: "Derating.", texto: "Desde 70 °C, la potencia admisible baja en línea recta hasta cero en la temperatura máxima." }
+      - { titulo: "Derating.", texto: "Desde 70 °C baja en línea recta hasta cero en la máxima. A la nominal el cuerpo pasa de 100 °C; una SMD se enfría por el cobre." }
       - { titulo: "Regla.", texto: "No pasar del 50 % de la nominal en las peores condiciones previstas." }
       - { titulo: "Tensión y pulsos.", texto: "Con valores altos manda la tensión máxima; con pulsos, la energía frente a la masa térmica." }
       - { titulo: "Repartir.", texto: "Varias iguales en paralelo o en serie, del mismo valor y a la misma temperatura." }

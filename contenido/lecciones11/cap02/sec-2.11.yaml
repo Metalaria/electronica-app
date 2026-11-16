@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 2.11 «Potenciómetros, Reóstatos y Trimmers» (cap02): el potenciómetro como divisor, el
 # fallo del cursor, la ley logarítmica, el efecto de la carga (40 % al 50 %, 12 puntos al 69 %), tecnologías y banco.
 # El potenciómetro se dibuja como el divisor: arriba (1 − x)·R y abajo x·R. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): girar el cursor al 30 %, predecir con otro valor total y con
+# carga, el reto de los 12 puntos, dibujar la ley cargada, buscar la zona donde la carga no muerde y elegir la carga
+# de la regla de diez; se eligen el fallo del cursor y las tecnologías. La ley A y el banco quedan en los textos.
 leccion: cap02/sec-2.11
 
 libro:
@@ -26,6 +29,7 @@ modelo:
     R_pot: { sim: "R", nombre: "valor del potenciómetro", unidad: Ω, valor: 10000 }
     x: { sim: "giro", nombre: "posición del cursor", unidad: "%", valor: 50 }
     R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    x_t: { sim: "giro", nombre: "posición del cursor para la regla", unidad: "%", valor: 69 }
     carga: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
   calculos:
     R_up: { expr: "(1 - x/100)*R_pot", sim: "R_{arriba}", nombre: "pista entre el cursor y el extremo alto", unidad: Ω }
@@ -36,14 +40,16 @@ modelo:
     I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
     pct: { expr: "V_out/V_in*100", sim: "salida", nombre: "salida, en porcentaje de la entrada", unidad: "%", cifras: 3 }
     dev: { expr: "x - pct", sim: "desviación", nombre: "desviación respecto a la ley lineal, en puntos", unidad: "", cifras: 3 }
+    dev_t: { expr: "x_t - 100*par(x_t/100*R_pot, R_L)/((1 - x_t/100)*R_pot + par(x_t/100*R_pot, R_L))", sim: "desviación", nombre: "desviación al 69 % con la carga elegida", unidad: "", cifras: 3 }
 
 tarjetas:
   - id: explore-cursor
     tipo: explorar
     titulo: "Un divisor ajustable"
-    texto: "El cursor divide la pista en dos partes: un potenciómetro es un divisor. Gírelo y mire qué fracción de la entrada sale."
+    texto: "El cursor divide la pista en dos partes: un potenciómetro es un divisor. Gírelo hasta que salga el 30 % de la entrada."
     libro: [199, 200]
     fijar: { carga: 0 }
+    inicio: { x: 50 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -55,36 +61,51 @@ tarjetas:
       mide: { salida: V_out, corriente: I }
       mandos:
         - { valor: x, min: 1, max: 99, paso: 1, rotulo: "Giro del cursor" }
+    objetivo:
+      condiciones:
+        - { valor: pct, objetivo: 30, tol: 0.02, rotulo: "Salida: {{pct}}" }
+      logrado: "Con el cursor al {{x}}, la parte de abajo es el {{x}} de la pista: sale el {{pct}}, {{V_out}}."
+      pistas:
+        - { cuando: { valor: pct, mayor: 30.6 }, texto: "Sale de más: gire hacia masa." }
+        - { texto: "Sale de menos: gire hacia el extremo alto." }
+    escalera:
+      - "Sin carga, la salida es la fracción de la pista que queda abajo."
+    solucion: "Cursor al 30 %: 3 V."
+    comprobar:
+      - { pct: 50 }
+      - { con: { x: 30 }, pct: 30, V_out: 3 }
 
   - id: prediga-valor-total
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Cursor al 50 %, sin carga, y el potenciómetro de 10 kΩ se cambia por uno de 100 kΩ. ¿Qué hace la salida?"
+    tipo: simular
+    titulo: "Prediga con otro valor"
+    texto: "Cursor al 50 %, sin carga, 10 V entre los extremos, y el potenciómetro de 10 kΩ se cambia por uno de 100 kΩ. ¿Qué tensión sale?"
     libro: [200]
     fijar: { carga: 0, x: 50, R_pot: 100000 }
     widget:
       tipo: circuito
       esquema: divisor
       piezas: { fuente: V_in, arriba: R_up, abajo: R_dn }
-      lectura: { valor: pct, rotulo: "Salida" }
+      lectura: { valor: V_out, rotulo: "Salida" }
       corriente: I
       mide: { salida: V_out, corriente: I }
       ocultar: true
-    opciones:
-      - texto: "Nada: sigue dando el 50 %"
-        bien: true
-        porque: "Como potenciómetro, la salida es una fracción de la entrada que no depende del valor total."
-      - texto: "Sube diez veces"
-        porque: "Las dos partes crecen a la vez: la proporción, y con ella la salida, no cambia."
-      - texto: "Baja, porque pasa menos corriente"
-        porque: "Pasa menos corriente, pero por las dos partes: el reparto es el mismo."
-    comprobar:
-      - { pct: 50 }
-      - { con: { R_pot: 10000 }, pct: 50 }
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión del cursor"
+      medida: salida
+      errores:
+        - { razon: { min: 9.5, max: 10.5 }, texto: "Las dos partes crecen a la vez: la proporción, y con ella la salida, no cambia." }
+        - { razon: { min: 0.095, max: 0.105 }, texto: "Pasa menos corriente, pero por las dos partes: el reparto es el mismo." }
+    exito: "5 V, igual que con 10 kΩ: como potenciómetro, la salida es una fracción de la entrada que no depende del valor total."
     escalera:
       - "Las dos partes de la pista crecen a la vez: ¿cambia su proporción?"
-    solucion: "Nada: sigue en el 50 %, porque la fracción no depende del valor total."
-
+    solucion: "5 V: la mitad, con 10 kΩ o con 100 kΩ."
+    comprobar:
+      - { pct: 50, V_out: 5 }
+      - { con: { R_pot: 10000 }, pct: 50 }
   - id: por-que-cursor
     tipo: porque
     titulo: "Si el cursor falla"
@@ -111,58 +132,37 @@ tarjetas:
       - "Si el cursor se suelta, ¿qué queda de la salida en cada conexión?"
     solucion: "Como potenciómetro, la salida queda flotando; como reóstato, se abre el circuito entero."
 
-  - id: volumen
-    tipo: pregunta
-    titulo: "El control de volumen"
-    texto: "¿Por qué los controles de volumen usan la ley logarítmica (A)?"
-    libro: [205, 207]
-    opciones:
-      - texto: "El oído percibe la intensidad de forma aproximadamente logarítmica"
-        bien: true
-        porque: "Con uno lineal, casi todo el cambio audible estaría en el primer cuarto del giro."
-      - texto: "Porque es la más barata de fabricar"
-        porque: "Las baratas solo la imitan con dos tramos lineales, y se nota un salto a mitad de recorrido."
-      - texto: "Porque aguanta más potencia"
-        porque: "La ley es la relación entre giro y resistencia; la potencia no tiene que ver."
-    widget:
-      tipo: figura
-      figura: fig-2.13
-      zonas:
-        - { id: leyes, rotulo: "Las tres leyes de variación", rect: [0, 0, 453, 201] }
-    escalera:
-      - "¿Cómo percibe el oído los cambios de intensidad?"
-    solucion: "El oído percibe la intensidad de forma aproximadamente logarítmica."
-
   - id: prediga-carga
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga: con carga"
-    texto: "Un potenciómetro de 10 kΩ al 50 % alimenta una carga de 10 kΩ. ¿Qué parte de la tensión entrega?"
+    texto: "Un potenciómetro de 10 kΩ al 50 %, con 10 V entre extremos, alimenta una carga de 10 kΩ. ¿Qué tensión entrega?"
     libro: [209]
     fijar: { R_pot: 10000, x: 50, R_L: 10000, carga: 1 }
     widget:
       tipo: circuito
       esquema: divisor
       piezas: { fuente: V_in, arriba: R_up, abajo: R_dn, carga: R_L, interruptor: carga }
-      lectura: { valor: pct, rotulo: "Salida" }
+      lectura: { valor: V_out, rotulo: "Salida" }
       corriente: I
       mide: { salida: V_out, corriente: I, carga: I_L }
       ocultar: true
-    opciones:
-      - texto: "El 40 %"
-        bien: true
-        porque: "La mitad de abajo, 5 kΩ, queda en paralelo con 10 kΩ: 3,33 kΩ frente a 5 kΩ arriba."
-      - texto: "El 50 %"
-        porque: "Eso es en vacío. La carga hunde el divisor, como en la sección 1.4."
-      - texto: "El 25 %"
-        porque: "La carga no se queda con la mitad: rebaja la parte de abajo de 5 kΩ a 3,33 kΩ."
-    comprobar:
-      - { pct: 40, R_dl: 3333.3, R_dn: 5000, R_up: 5000 }
-      - { con: { carga: 0 }, pct: 50 }
-      - { con: { x: 25, carga: 0 }, pct: 25 }
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.02
+      rotulo: "Salida con carga"
+      medida: salida
+      errores:
+        - { razon: { min: 1.24, max: 1.26 }, texto: "Eso es en vacío. La carga hunde el divisor, como en la sección 1.4." }
+        - { razon: { min: 0.62, max: 0.63 }, texto: "La carga no se queda con la mitad: rebaja la parte de abajo de 5 kΩ a 3,33 kΩ." }
+    exito: "4 V, el 40 %, no el 50 %: la mitad de abajo, 5 kΩ, queda en paralelo con 10 kΩ, 3,33 kΩ frente a 5 kΩ arriba."
     escalera:
       - "La mitad de abajo, 5 kΩ, queda en paralelo con la carga de 10 kΩ."
-    solucion: "5 ‖ 10 = 3,33 kΩ frente a los 5 kΩ de arriba: el 40 %."
-
+    solucion: "5 ‖ 10 = 3,33 kΩ frente a 5 kΩ: el 40 %, 4 V."
+    comprobar:
+      - { pct: 40, V_out: 4, R_dl: 3333.3, R_dn: 5000, R_up: 5000 }
+      - { con: { carga: 0 }, pct: 50 }
   - id: reto-dos-tercios
     tipo: reto
     titulo: "Reto: dónde deforma más"
@@ -221,11 +221,12 @@ tarjetas:
       - { con: { x: 50 }, pct: 40 }
 
   - id: por-que-extremos
-    tipo: porque
+    tipo: explorar
     titulo: "¿Por qué nada en los extremos?"
-    texto: "Gire el cursor con la carga puesta: en los extremos la carga apenas influye. ¿Por qué?"
+    texto: "Con la carga igual a R puesta, lleve el cursor a una zona donde la ley apenas se aparte de la lineal: menos de un punto."
     libro: [210]
     fijar: { R_pot: 10000, R_L: 10000, carga: 1 }
+    inicio: { x: 50 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -237,85 +238,74 @@ tarjetas:
       mide: { salida: V_out, corriente: I, carga: I_L }
       mandos:
         - { valor: x, min: 1, max: 99, paso: 1, rotulo: "Giro del cursor" }
-    opciones:
-      - texto: "La resistencia de salida es nula en los extremos y máxima en el centro, R/4"
-        bien: true
-        porque: "Por eso la carga afecta mucho en la zona central y nada en los extremos."
-      - texto: "En los extremos no pasa corriente por la carga"
-        porque: "Arriba sí pasa: la salida es casi toda la entrada. Lo que cambia es la resistencia de salida."
-      - texto: "La carga se desconecta sola"
-        porque: "Sigue conectada. En los extremos el cursor está unido directamente a un extremo de la pista."
     escalera:
       - "¿Qué resistencia se ve desde el cursor cuando está pegado a un extremo?"
-    solucion: "La resistencia de salida es nula en los extremos y máxima en el centro, R/4."
+    solucion: "Cerca de un extremo: por debajo del 10 % de giro, o pegado al otro."
+    objetivo:
+      condiciones:
+        - { valor: dev, max: 1, rotulo: "Se aparta {{dev}} puntos" }
+      logrado: "La resistencia de salida es nula en los extremos y máxima en el centro, R/4: por eso la carga muerde en medio."
+      pistas:
+        - { texto: "En el centro la carga influye mucho: acerque el cursor a un extremo." }
+    comprobar:
+      - { dev: 10 }
+      - { con: { x: 10 }, dev: 0.83, tol: 0.01 }
 
   - id: regla-carga
-    tipo: pregunta
+    tipo: explorar
     titulo: "La regla de siempre"
-    texto: "Un potenciómetro de 10 kΩ tiene que alimentar una carga sin que la ley se deforme. ¿Qué pide el libro?"
-    libro: [211]
-    opciones:
-      - texto: "Una carga de al menos diez veces su valor, o un seguidor intercalado"
-        bien: true
-        porque: "Es la regla de siempre para un divisor: la carga, al menos diez veces el potenciómetro."
-      - texto: "Una carga igual al potenciómetro"
-        porque: "Con una carga igual a R, la ley lineal se convierte en una curva."
-      - texto: "Cualquier carga: el potenciómetro la compensa"
-        porque: "Un potenciómetro es un divisor y la carga lo hunde, como a cualquier divisor."
+    texto: "Con el cursor al 69 %, una carga igual a R aparta la ley 12 puntos. Elija la carga más pequeña que la deja en menos de la quinta parte."
+    libro: [210, 211]
+    fijar: { R_pot: 10000, carga: 1, x_t: 69 }
+    inicio: { R_L: 10000 }
     widget:
-      tipo: figura
-      figura: fig-2.13
-      zonas:
-        - { id: leyes, rotulo: "Cómo la carga deforma la ley", rect: [0, 0, 453, 201] }
+      tipo: grafica
+      x: { id: g, min: 0, max: 100, unidad: "%", rotulo: "giro del cursor" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "salida" }
+      curvas:
+        - { expr: "100*par(g/100*R_pot, R_L)/((1 - g/100)*R_pot + par(g/100*R_pot, R_L))", color: naranja, rotulo: "con carga" }
+        - { expr: "g", color: tinta, rotulo: "lineal", discontinua: true }
+      lectura: { valor: dev_t, rotulo: "Desviación al 69 %" }
+      mandos:
+        - { valor: R_L, lista: [10000, 33000, 100000, 1000000], rotulo: "Carga, R_{L}" }
+    objetivo:
+      condiciones:
+        - { valor: dev_t, max: 2.43, rotulo: "Se aparta {{dev_t}} puntos" }
+        - { valor: R_L, max: 100000, rotulo: "La más pequeña" }
+      logrado: "Con {{R_L}}, diez veces el potenciómetro, se aparta {{dev_t}} puntos: la regla de siempre. O un seguidor intercalado."
+      pistas:
+        - { cuando: { valor: dev_t, mayor: 2.43 }, texto: "Todavía deforma: suba la carga." }
+        - { texto: "Esa también cumple, pero se pide la más pequeña." }
     escalera:
-      - "Es la regla de cualquier divisor cargado."
-    solucion: "Una carga de al menos diez veces su valor, o un seguidor intercalado."
-
+      - "Es la regla de cualquier divisor cargado: al menos diez veces su valor."
+    solucion: "100 kΩ: 1,45 puntos."
+    comprobar:
+      - { dev_t: 12.16, tol: 0.002 }
+      - { con: { R_L: 100000 }, dev_t: 1.45, tol: 0.01 }
+      - { con: { R_L: 33000 }, dev_t: 4.3, tol: 0.05 }
   - id: empareje-tecnologias
     tipo: pregunta
     fase: "Empareje"
     titulo: "Tecnologías y desgaste"
     texto: "Empareje cada tecnología con su rasgo."
-    libro: [213, 214, 215, 216, 217, 219]
+    libro: [213, 214, 215, 216, 217, 219, 221]
     emparejar:
       - ["Carbón", "Cruje al girar cuando se gasta"]
       - ["Cermet", "El de los trimmers de precisión"]
       - ["Plástico conductor", "Resolución sin escalones: faders profesionales"]
       - ["Bobinado", "El cursor salta de espira en espira"]
       - ["Digital", "Sin desgaste, unos 256 pasos"]
-    exito: "Eso es. La vida va de 10 000 ciclos en uno barato a millones en uno de plástico conductor."
+    exito: "Eso es. La vida va de 10 000 ciclos en uno barato a millones en uno de plástico conductor. Los cortes del cursor se ven en la barra analógica."
     pistas:
       - { texto: "El más barato es el que cruje; el integrado, el que tiene pasos contados." }
     escalera:
       - "Piense en cómo es la pista de cada uno: carbón, hilo, plástico conductor o pasos digitales."
     solucion: "Carbón: cruje al girar cuando se gasta. Cermet: el de los trimmers de precisión. Plástico conductor: resolución sin escalones: faders profesionales. Bobinado: el cursor salta de espira en espira. Digital: sin desgaste, unos 256 pasos."
 
-  - id: banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Mide entre cursor y extremo mientras gira despacio. ¿Qué muestra mejor los cortes instantáneos?"
-    libro: [221]
-    opciones:
-      - texto: "La barra analógica o el modo de continuidad"
-        bien: true
-        porque: "Responden mucho más rápido que los dígitos: la lectura debe cambiar suave y monótona."
-      - texto: "Los dígitos de la pantalla"
-        porque: "Los dígitos se pierden los cortes instantáneos: la barra analógica los muestra."
-      - texto: "Medir solo entre los extremos"
-        porque: "Entre extremos se ve el valor nominal, pero no el cursor, que es lo que se desgasta."
-    widget:
-      tipo: figura
-      figura: fig-2.14
-      zonas:
-        - { id: pot, rotulo: "Un potenciómetro y sus terminales", rect: [0, 0, 890, 900] }
-    escalera:
-      - "¿Qué responde antes a un corte de un instante: los dígitos o una barra?"
-    solucion: "La barra analógica o la continuidad: responden mucho más rápido que los dígitos."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [200, 201, 205, 210, 211]
+    libro: [200, 201, 205, 207, 210, 211]
     ideas:
       - { titulo: "Tres usos.", texto: "Potenciómetro, divisor de tres terminales; reóstato, dos; trimmer, para ajustar una vez." }
       - { titulo: "Ley A.", texto: "Logarítmica para el volumen, porque el oído es logarítmico." }

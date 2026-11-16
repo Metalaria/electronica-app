@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 4.12 «Resumen del Capítulo» (cap04): la medida que resume el capítulo (el codo de
 # saturación de la figura 4.18: pulso de 12 V sobre 100 µH), las seis ideas, los errores característicos, los
 # números de referencia y el ejercicio 4.3 (energía y pico). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): hacer que la corriente se dispare, predecir la de 3 A al
+# final del pulso, marcar el codo, calcular la energía y la pista; se eligen por qué se dispara y por qué no salta.
+# Las ideas, el límite de la energía y los errores característicos quedan en el resumen.
 leccion: cap04/sec-4.12
 
 libro:
@@ -40,7 +43,7 @@ tarjetas:
   - id: explore-codo
     tipo: explorar
     titulo: "La medida que resume el capítulo"
-    texto: "Un pulso de 12 V sobre una bobina de 100 µH; la corriente se mira con un shunt. Compare una bobina que satura a 3 A con otra que satura a 1 A."
+    texto: "Un pulso de 12 V sobre una bobina de 100 µH; la corriente se mira con un shunt. Elija la bobina con la que se dispara antes de acabar el pulso."
     libro: [267, 269]
     widget:
       tipo: grafica
@@ -54,14 +57,52 @@ tarjetas:
         - { valor: t_s, rotulo: "Satura a los {{t_s}}" }
       mandos:
         - { valor: I_s, lista: [1, 3], rotulo: "Corriente de saturación, I_{sat}" }
-    requiere: { mover: [I_s] }
+    inicio: { I_s: 3 }
+    objetivo:
+      condiciones:
+        - { valor: I_T, min: 5, rotulo: "Al final: {{I_T}}" }
+      logrado: "Con I_{sat} = {{I_s}}, satura a los {{t_s}} y acaba en {{I_T}}: la rampa es recta mientras la inductancia se mantiene y se curva hacia arriba bruscamente al saturar."
+      pistas:
+        - { texto: "Pruebe la otra bobina." }
+    escalera:
+      - "La que satura antes."
+    solucion: "La que satura a 1 A: 7,8 A al final."
     comprobar:
-      - { I_s: 3, k_r: 0.12 }
+      - { I_s: 3, k_r: 0.12, I_T: 1.68 }
+      - { con: { I_s: 1 }, I_T: 7.8, tol: 0.01 }
 
   - id: prediga-satura
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "La bobina que satura a 1 A. ¿Qué hace la corriente cuando pasa de 1 A?"
+    texto: "Ahora la bobina que satura a 3 A, con el mismo pulso de 12 V y 14 µs. ¿Qué corriente alcanza al final?"
+    libro: [267]
+    fijar: { I_s: 3, T_p: 14 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 14, unidad: µs, rotulo: "t" }
+      y: { min: 0, max: 8, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(V_p/L_1*t*1e-6, I_s + V_p/L_2*(t - t_s)*1e-6)", color: naranja, rotulo: "i(t)" }
+      lectura: { valor: I_T, rotulo: "Corriente al final del pulso" }
+      ocultar: curvas
+    simular:
+      objetivo: I_T
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente al final del pulso"
+      errores:
+        - { razon: { min: 4.4, max: 4.9 }, texto: "Esa es la que satura a 1 A. Esta no llega a su codo en 14 µs." }
+        - { razon: { min: 1.7, max: 1.9 }, texto: "No llega a 3 A: la rampa sube 0,12 A cada microsegundo." }
+    exito: "1,68 A: 0,12 A/µs durante 14 µs. No llega a su codo: la rampa sigue recta."
+    escalera:
+      - "12 V / 100 µH son 0,12 A por microsegundo. ¿Llega a 3 A?"
+    solucion: "0,12 × 14 = 1,68 A."
+    comprobar:
+      - { I_T: 1.68, k_r: 0.12 }
+  - id: estime-codo
+    tipo: marcar
+    titulo: "¿Cuándo llega el codo?"
+    texto: "La bobina que satura a 1 A: mientras no satura, la rampa sube a V/L. Marque dónde empieza a curvarse."
     libro: [267]
     fijar: { I_s: 1 }
     widget:
@@ -70,46 +111,22 @@ tarjetas:
       y: { min: 0, max: 8, unidad: A, rotulo: "i" }
       curvas:
         - { expr: "max(V_p/L_1*t*1e-6, I_s + V_p/L_2*(t - t_s)*1e-6)", color: naranja, rotulo: "i(t)" }
-      lectura: { valor: I_T, rotulo: "Corriente al final del pulso" }
-      ocultar: true
-    opciones:
-      - texto: "Se curva hacia arriba, bruscamente"
-        bien: true
-        porque: "La rampa es recta mientras la inductancia se mantiene; al saturar, la corriente se dispara. Ese es el codo."
-      - texto: "Se queda en 1 A"
-        porque: "Saturar no limita la corriente: al contrario, la bobina deja de frenarla."
-      - texto: "Sigue igual de recta"
-        porque: "Seguiría recta si la inductancia se mantuviera. Al saturar, se desploma."
-    escalera:
-      - "La pendiente de la rampa es V/L. ¿Qué le pasa a L al saturar?"
-    solucion: "L se desploma, la pendiente crece y la corriente se curva hacia arriba, bruscamente."
-
-  - id: estime-codo
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "¿Cuándo llega el codo?"
-    texto: "Mientras no satura, la rampa sube a V/L. Con 12 V, 100 µH e I_{sat} = 1 A, estime cuándo empieza a curvarse."
-    libro: [267]
-    fijar: { I_s: 1 }
-    estimar:
-      objetivo: "t_s"
-      unidad: µs
-      min: 0
-      max: 14
-      paso: 0.1
-      inicio: 13
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_s"
       tol: 0.05
-      rotulo: "t_{codo}"
-    exito: "Hacia los 8,3 µs: 12 V / 100 µH son 0,12 A por microsegundo, y 1 A llega ahí."
+      inicio: { x: 3, y: 1 }
+      rotulo: "El codo"
     pistas:
-      - { cuando: { valor: estimacion, mayor: 8.75 }, texto: "Se ha pasado: la rampa sube 0,12 A cada microsegundo." }
-      - { texto: "Se ha quedado corto: 1 A a 0,12 A por microsegundo." }
+      - { cuando: { valor: marca_x, mayor: 8.33 }, texto: "Más a la izquierda: donde la recta se dobla." }
+      - { texto: "Más a la derecha: la rampa aún es recta." }
+    exito: "Hacia los 8,3 µs: 12 V / 100 µH son 0,12 A por microsegundo, y 1 A llega ahí."
+    escalera:
+      - "1 A a 0,12 A por microsegundo."
+    solucion: "Unos 8,3 µs."
     comprobar:
       - { t_s: 8.33, k_r: 0.12 }
-    escalera:
-      - "12 V / 100 µH son 0,12 A por microsegundo."
-    solucion: "1 A a 0,12 A por microsegundo: unos 8,3 µs."
-
   - id: porque-codo
     tipo: porque
     titulo: "¿Por qué se dispara?"
@@ -154,118 +171,51 @@ tarjetas:
         porque: "Da igual su tamaño: cualquier salto pediría una tensión infinita."
 
   - id: estime-energia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Energía guardada"
-    texto: "Un inductor de 100 mH conduce 200 mA. Estime la energía que almacena."
-    libro: ["cap04#341"]
-    estimar:
-      objetivo: "E_e"
+    texto: "Un inductor de 100 mH conduce 200 mA. Calcule la energía que almacena."
+    libro: ["cap04#341", "cap04#23"]
+    simular:
+      objetivo: E_e
       unidad: J
-      min: 0
-      max: 0.01
-      paso: 0.0001
-      inicio: 0.008
-      tol: 0.05
+      tol: 0.03
       rotulo: "E"
-    exito: "2 mJ: ½ × 0,1 × 0,2². Cortada en 2 µs, daría un pico teórico de 10 kV."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0021 }, texto: "Se ha pasado. ¿Ha olvidado el ½ o el cuadrado de 0,2 A?" }
-      - { texto: "Se ha quedado corto: ½ × 0,1 × 0,04." }
-    comprobar:
-      - { E_e: 0.002 }
+      errores:
+        - { razon: { min: 1.9, max: 2.1 }, texto: "Falta el ½ de E = ½·L·I²." }
+        - { razon: { min: 4.8, max: 5.2 }, texto: "La corriente va al cuadrado: 0,2² = 0,04." }
+    exito: "2 mJ: ½ × 0,1 × 0,2². Va con I²: el límite lo pone la saturación, no la inductancia."
     escalera:
       - "E = ½·L·I², con L en henrios y I en amperios."
     solucion: "½ × 0,1 × 0,2² = 2 mJ."
-
-  - id: pregunta-limita
-    tipo: pregunta
-    titulo: "Lo que limita la energía"
-    texto: "La energía va con el cuadrado de la corriente. ¿Qué limita la energía que una bobina puede guardar?"
-    libro: [252, "cap04#23"]
-    ec: "cap04#23"
-    escalera:
-      - "E va con I²: ¿qué impide subir la corriente sin límite?"
-    solucion: "La corriente de saturación: por encima, la bobina deja de ser bobina."
-    opciones:
-      - texto: "Su corriente de saturación"
-        bien: true
-        porque: "Como depende de I², el límite lo pone la corriente a la que satura, no la inductancia."
-      - texto: "Su inductancia"
-        porque: "Cuenta, pero va con L y con I²: la saturación limita la corriente, y eso pesa más."
-      - texto: "Su resistencia"
-        porque: "La resistencia pierde energía, no fija cuánta se guarda."
-
-  - id: empareje-ideas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que hay que llevarse"
-    texto: "Empareje cada idea del capítulo con lo que dice."
-    libro: [251, 252, 253, 254, 256]
-    emparejar:
-      - ["La corriente", "No cambia de golpe"]
-      - ["La energía", "½·L·I²"]
-      - ["La saturación", "El límite real"]
-      - ["El núcleo", "Lo cambia todo"]
-      - ["La autorresonancia", "Pasa a condensador"]
-    exito: "Eso es: la bobina es el componente que más se aparta de su modelo ideal."
-    pistas:
-      - { texto: "La saturación no aparece ni en el símbolo ni en la marca." }
-    escalera:
-      - "La saturación no aparece ni en el símbolo ni en la marca."
-    solucion: "Corriente: no cambia de golpe. Energía: ½·L·I². Saturación: el límite real. Núcleo: lo cambia todo. Autorresonancia: pasa a condensador."
-
-  - id: empareje-errores
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los errores característicos"
-    texto: "Empareje cada error con lo que provoca."
-    libro: [258]
-    emparejar:
-      - ["Elegir solo por L", "Satura"]
-      - ["Sin diodo de rueda libre", "Transistor roto"]
-      - ["Núcleo abierto", "Campo radiado"]
-      - ["Fiarse de la DCR", "Espiras en corto"]
-      - ["Ignorar la SRF", "Choque que no bloquea"]
-    exito: "Eso es. Las espiras en cortocircuito solo las detecta la prueba del anillo."
-    pistas:
-      - { texto: "La DCR apenas cambia con espiras en cortocircuito." }
-    escalera:
-      - "La DCR apenas cambia con espiras en cortocircuito."
-    solucion: "Solo L: satura. Sin diodo: transistor roto. Núcleo abierto: campo radiado. DCR: espiras en corto. Sin mirar la SRF: choque que no bloquea."
-
+    comprobar:
+      - { E_e: 0.002 }
   - id: estime-pista
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Toda pista es una bobina"
-    texto: "Una pista tiene unos 10 nH por centímetro. Estime la inductancia de una pista de 5 cm."
+    texto: "Una pista tiene unos 10 nH por centímetro. Calcule la inductancia de una pista de 5 cm."
     libro: [260, 261]
     fijar: { l_p: 5 }
-    estimar:
-      objetivo: "L_pc"
+    simular:
+      objetivo: L_pc
       unidad: nH
-      min: 0
-      max: 200
-      paso: 1
-      inicio: 150
-      tol: 0.05
+      tol: 0.03
       rotulo: "L de la pista"
+      errores:
+        - { razon: { min: 0.03, max: 0.05 }, texto: "Son 10 nH por cada centímetro: multiplique." }
     exito: "Unos 50 nH. Y una vía, cerca de 1 nH: son los números que más importan en el capítulo 42."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 52 }, texto: "Se ha pasado: 10 nH por cada centímetro." }
-      - { texto: "Se ha quedado corto: son 10 nH por cada uno de los 5 cm." }
-    comprobar:
-      - { L_pc: 50 }
     escalera:
       - "Son 10 nH por cada centímetro."
     solucion: "5 cm × 10 nH/cm = 50 nH."
-
+    comprobar:
+      - { L_pc: 50 }
   - id: resumen
     tipo: resumen
     titulo: "Capítulo completado"
-    libro: [251, 252, 253, 256]
+    libro: [251, 252, 253, 254, 256, 258]
     ideas:
       - { titulo: "No salta.", texto: "La corriente de una bobina no cambia de golpe: de ahí el pico y el depósito de energía." }
       - { titulo: "½·L·I².", texto: "La energía almacenable la limita la saturación, no la inductancia." }
       - { titulo: "Saturación.", texto: "El límite real, y no está en la marca: la rampa se curva hacia arriba." }
-      - { titulo: "Lo real.", texto: "Núcleo, pérdidas de cobre y de núcleo, y autorresonancia." }
+      - { titulo: "Lo real.", texto: "El núcleo lo cambia todo; por encima de la autorresonancia, un condensador. Error típico: elegir por inductancia sin mirar la saturación." }

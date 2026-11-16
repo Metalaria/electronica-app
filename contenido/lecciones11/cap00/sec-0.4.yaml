@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 0.4 «Exponenciales, Logaritmos y Decibelios» (cap00): la curva de carga y sus hitos en
 # múltiplos de τ, que nunca llega del todo; el decibelio de tensión, 20·log, el punto de −3 dB y las ganancias en cascada
 # que se suman. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir la fracción en 1τ, llegar al 95 %, calcular v(τ),
+# pasar de 5τ, predecir los dB de doblar la tensión, buscar 20 dB, el reto de −3 dB y sumar la cascada; se elige por
+# qué 20 y no 10.
 leccion: cap00/sec-0.4
 
 libro:
@@ -40,11 +43,30 @@ modelo:
     fac_tot: { expr: "10^(G_tot/20)", sim: "factor", nombre: "factor de tensión total", unidad: "veces", cifras: 4 }
 
 tarjetas:
+  - id: prediga-tau
+    tipo: simular
+    titulo: "Prediga"
+    texto: "¿Qué fracción del camino lleva un condensador que se carga al cabo de una constante de tiempo, t = τ?"
+    libro: [55, 56]
+    fijar: { n_tau: 1 }
+    simular:
+      objetivo: frac
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Fracción completada"
+      errores:
+        - { razon: { min: 0.77, max: 0.81 }, texto: "La mitad se alcanza antes, a 0,693·τ, porque ln 2 = 0,693." }
+        - { razon: { min: 1.55, max: 1.6 }, texto: "Eso es a 5τ: entonces se da el transitorio por terminado." }
+    exito: "63,2 %: 1 − e^{−1} = 0,632. En 2τ va por el 86,5 % y en 3τ por el 95,0 %."
+    escalera:
+      - "Ponga t = τ en la fracción completada, 1 − e^{−t/τ}."
+    solucion: "1 − e^{−1} = 0,632."
+    comprobar:
+      - { frac: 63.2 }
   - id: explore-carga
     tipo: explorar
     titulo: "La curva de carga"
-    texto: "Arrastre el punto por la curva de carga de un condensador. Fíjese en la fracción completada en 1τ, 2τ y 3τ."
-    nota: "Cuanto más cerca está del final, más despacio va."
+    texto: "Arrastre el punto por la curva de carga de un condensador hasta que lleve el 95 % del camino."
     libro: [47, 54, 55]
     widget:
       tipo: grafica
@@ -60,35 +82,19 @@ tarjetas:
         - { valor: tau, rotulo: "τ = {{tau}}" }
       mandos:
         - { valor: n_tau, min: 0, max: 6, paso: 0.5, rotulo: "Tiempo, en τ" }
-    requiere: { mover: [n_tau] }
-
-  - id: prediga-tau
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "¿Qué fracción del camino lleva el condensador al cabo de una constante de tiempo, t = τ?"
-    libro: [55, 56]
-    fijar: { n_tau: 1 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.3, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 6, unidad: V, rotulo: "v(t)" }
-      curvas:
-        - { expr: "V_fin*(1 - exp(-x/tau))", color: azul, rotulo: "v(t)" }
-      lectura: { valor: frac, rotulo: "Fracción completada" }
-      ocultar: true
-    opciones:
-      - texto: "63,2 %"
-        bien: true
-        porque: "1 − e^{−1} = 0,632. En 2τ va por el 86,5 % y en 3τ por el 95,0 %."
-      - texto: "La mitad"
-        porque: "La mitad se alcanza antes, a 0,693·τ, porque ln 2 = 0,693."
-      - texto: "99,3 %"
-        porque: "Eso es a 5τ: entonces se da el transitorio por terminado."
+    inicio: { n_tau: 0.5 }
+    objetivo:
+      condiciones:
+        - { valor: frac, min: 94.9, rotulo: "Completado: {{frac}}" }
+      logrado: "En {{n_tau}} τ, {{frac}}: cuanto más cerca está del final, más despacio va."
+      pistas:
+        - { texto: "Más tiempo." }
     escalera:
-      - "Ponga t = τ en la fracción completada, 1 − e^{−t/τ}."
-    solucion: "1 − e^{−1} = 0,632: el 63,2 % del camino."
+      - "63,2 % en 1τ, 86,5 % en 2τ..."
+    solucion: "En 3τ: 95,0 %."
     comprobar:
-      - { frac: 63.2 }
+      - { frac: 39.3 }
+      - { con: { n_tau: 3 }, frac: 95.0 }
 
   - id: regla-carga
     tipo: formula
@@ -108,36 +114,30 @@ tarjetas:
         - { valor: C, lista: [0.000001, 0.0000022, 0.0000047, 0.00001], rotulo: "Capacidad, C" }
 
   - id: estime-ej06
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Tras una constante de tiempo"
-    texto: "R = 10 kΩ y C = 4,7 µF se cargan hacia 5 V. Estime la tensión al cabo de una constante de tiempo."
+    texto: "R = 10 kΩ y C = 4,7 µF se cargan hacia 5 V. ¿Qué tensión hay al cabo de una constante de tiempo?"
     libro: ["cap00#284", 55]
     fijar: { R: 10000, C: 0.0000047, V_fin: 5, n_tau: 1 }
-    estimar:
-      objetivo: "v_t"
+    simular:
+      objetivo: v_t
       unidad: V
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 1
       tol: 0.02
       rotulo: "v(τ)"
+      errores:
+        - { razon: { min: 1.55, max: 1.6 }, texto: "En una τ aún le falta más de un tercio del camino." }
+        - { razon: { min: 0.77, max: 0.81 }, texto: "En una τ ya ha hecho casi dos tercios, no la mitad." }
     exito: "5 · (1 − e^{−1}) = 3,16 V, el 63 % del final. Y τ = R·C = 47 ms."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 3.1 }, texto: "Se ha quedado corto: en una τ ya ha hecho casi dos tercios del camino." }
-      - { texto: "Se ha pasado: en una τ aún le falta más de un tercio." }
     escalera:
       - "En una constante de tiempo se completa el 63,2 % del camino hacia el valor final."
-    solucion: "5 · (1 − e^{−1}) = 3,16 V, el 63 % del final. Y τ = R·C = 47 ms."
+    solucion: "5 · 0,632 = 3,16 V."
     comprobar:
       - { v_t: 3.16, tau: 0.047 }
-
   - id: nunca-llega
     tipo: sorpresa
     titulo: "Nunca llega del todo"
-    texto: "Lleve el punto más allá de 5τ. ¿Alcanza la carga los 5 V?"
-    nota: "Nunca del todo. A 5τ va por el 99,3 %: por eso «cinco constantes de tiempo» dan el transitorio por terminado."
+    texto: "Lleve el punto hasta 5τ o más. ¿Alcanza la carga los 5 V?"
     libro: [56, 55]
     fijar: { R: 10000, C: 0.0000047, V_fin: 5 }
     inicio: { n_tau: 3 }
@@ -153,12 +153,43 @@ tarjetas:
       lectura: { valor: frac, rotulo: "Fracción completada" }
       mandos:
         - { valor: n_tau, min: 0, max: 10, paso: 0.5, rotulo: "Tiempo, en τ" }
-    requiere: { mover: [n_tau] }
+    objetivo:
+      condiciones:
+        - { valor: frac, min: 99.3, rotulo: "Completado: {{frac}}" }
+      logrado: "En {{n_tau}} τ, {{frac}}: nunca del todo. A 5τ va por el 99,3 %: por eso «cinco constantes de tiempo» dan el transitorio por terminado."
+      pistas:
+        - { texto: "Más tiempo." }
+    escalera:
+      - "Lleve el punto a 5τ."
+    solucion: "A 5τ: 99,3 %."
+    comprobar:
+      - { frac: 95.0 }
+      - { con: { n_tau: 5 }, frac: 99.3 }
 
+  - id: prediga-doble
+    tipo: simular
+    titulo: "Prediga"
+    texto: "Doblar la potencia son 3 dB. ¿Cuántos decibelios es doblar la tensión?"
+    libro: [58]
+    fijar: { ratio: 2 }
+    simular:
+      objetivo: G_dB
+      unidad: dB
+      tol: 0.02
+      rotulo: "Ganancia"
+      errores:
+        - { razon: { min: 0.48, max: 0.52 }, texto: "3 dB es doblar la potencia. Doblar la tensión cuadruplica la potencia." }
+        - { razon: { min: 3.2, max: 3.4 }, texto: "20 dB son ×10 en tensión, no ×2." }
+    exito: "6 dB: la potencia va con el cuadrado de la tensión, ×2 en tensión es ×4 en potencia."
+    escalera:
+      - "La potencia va con el cuadrado de la tensión: ¿cuánto crece si la tensión se dobla?"
+    solucion: "Dos veces 3 dB: 6 dB."
+    comprobar:
+      - { G_dB: 6.02 }
   - id: explore-db
     tipo: explorar
     titulo: "El decibelio"
-    texto: "El decibelio compara dos tensiones con un logaritmo. Mueva la relación de tensiones: busque ×2 y ×10."
+    texto: "El decibelio compara dos tensiones con un logaritmo. Busque la relación de tensiones que da 20 dB."
     libro: [51, 58, 59]
     widget:
       tipo: grafica
@@ -173,35 +204,19 @@ tarjetas:
         - { valor: p_ratio, rotulo: "En potencia: {{p_ratio}}" }
       mandos:
         - { valor: ratio, lista: [0.5, 0.707, 1, 1.41, 2, 10], rotulo: "Relación de tensiones" }
-    requiere: { mover: [ratio] }
-
-  - id: prediga-doble
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Doblar la potencia son 3 dB. ¿Cuántos decibelios es doblar la tensión?"
-    libro: [58]
-    fijar: { ratio: 2 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0.1, max: 10, unidad: "", rotulo: "V_{salida}/V_{entrada}" }
-      y: { min: -20, max: 20, unidad: dB, rotulo: "G" }
-      curvas:
-        - { expr: "20*log10(x)", color: naranja, rotulo: "20·log₁₀" }
-      lectura: { valor: G_dB, rotulo: "Ganancia" }
-      ocultar: true
-    opciones:
-      - texto: "6 dB"
-        bien: true
-        porque: "La potencia va con el cuadrado de la tensión: ×2 en tensión es ×4 en potencia, 6 dB."
-      - texto: "3 dB"
-        porque: "3 dB es doblar la potencia. Doblar la tensión cuadruplica la potencia: el doble de decibelios."
-      - texto: "20 dB"
-        porque: "20 dB son ×10 en tensión, no ×2."
+    inicio: { ratio: 1 }
+    objetivo:
+      condiciones:
+        - { valor: G_dB, objetivo: 20, tol: 0.01, rotulo: "G = {{G_dB}}" }
+      logrado: "×{{ratio}} en tensión: {{G_dB}}, y ×{{p_ratio}} en potencia. Los logaritmos convierten productos en sumas."
+      pistas:
+        - { texto: "Pruebe otra relación: 20 dB es bastante más que ×2." }
     escalera:
-      - "La potencia va con el cuadrado de la tensión: ¿cuánto crece la potencia si la tensión se dobla?"
-    solucion: "×2 en tensión es ×4 en potencia, dos veces 3 dB: 6 dB."
+      - "20·log₁₀(10) = 20."
+    solucion: "×10."
     comprobar:
-      - { G_dB: 6.02 }
+      - { G_dB: 0 }
+      - { con: { ratio: 10 }, G_dB: 20, p_ratio: 100 }
 
   - id: regla-db
     tipo: formula
@@ -248,31 +263,25 @@ tarjetas:
     solucion: "−3 dB queda a medio camino en decibelios, en ×0,707."
 
   - id: estime-cascada
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Tres etapas en cascada"
-    texto: "Tres etapas de 20 dB, −6 dB y 32 dB, una tras otra. Estime la ganancia total."
+    texto: "Tres etapas de 20 dB, −6 dB y 32 dB, una tras otra. ¿Qué ganancia total dan?"
     libro: ["cap00#284", 60]
     fijar: { G1: 20, G2: -6, G3: 32 }
-    estimar:
-      objetivo: "G_tot"
+    simular:
+      objetivo: G_tot
       unidad: dB
-      min: 0
-      max: 80
-      paso: 1
-      inicio: 20
-      tol: 0.03
+      tol: 0.02
       rotulo: "Ganancia total"
+      errores:
+        - { razon: { min: 1.24, max: 1.28 }, texto: "La etapa de −6 dB resta." }
     exito: "Se suman: 20 − 6 + 32 = 46 dB, unas 200 veces en tensión (199,5)."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 44.6 }, texto: "Se ha quedado corto: en decibelios las ganancias de las etapas se suman." }
-      - { texto: "Se ha pasado: la etapa de −6 dB resta." }
     escalera:
       - "En decibelios, las ganancias en cascada se suman en lugar de multiplicarse."
-    solucion: "Se suman: 20 − 6 + 32 = 46 dB, unas 200 veces en tensión (199,5)."
+    solucion: "20 − 6 + 32 = 46 dB."
     comprobar:
       - { G_tot: 46, fac_tot: 199.5 }
-
   - id: por-que-veinte
     tipo: porque
     titulo: "¿Por qué 20 y no 10?"

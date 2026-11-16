@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 3.6 «Aplicaciones de Diseño» (cap03): filtros RC (f_c = 1/(2π·R·C), −3 dB, paso bajo
 # en C y paso alto en R, 20 dB/década, el desfase de 45°, el ejercicio 3.4 con E12) y el desacoplo de alimentación
 # (100 nF por pin a menos de 5 mm, el cerámico con el electrolítico). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): bajar el corte con R, predecir el corte y la amplitud en
+# él, el reto de 1 kHz, llevar la señal al corte y ver los 45°, calcular la frecuencia de −60 dB y tocar la salida del
+# paso alto; se eligen la pendiente y la regla de oro del desacoplo. Los dos condensadores quedan en esa regla.
 leccion: cap03/sec-3.6
 
 libro:
@@ -34,9 +37,10 @@ tarjetas:
   - id: explore-filtro
     tipo: explorar
     titulo: "Una R y una C"
-    texto: "Cambie R: la salida en C deja pasar lo lento, y la salida en R, lo rápido. Fíjese en dónde se cruzan."
+    texto: "La salida en C deja pasar lo lento; la salida en R, lo rápido, y se cruzan en el corte. Cambie R hasta que el corte baje a la quinta parte."
     libro: [91, 93]
     fijar: { C_f: 100e-9 }
+    inicio: { R_f: 1000 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -53,7 +57,18 @@ tarjetas:
           - { x: "f_c", y: "-3.01", rotulo: "f_{c}" }
       mandos:
         - { valor: R_f, serie: E12, min: 1000, max: 10000, rotulo: "R (E12)" }
-    requiere: { mover: [R_f] }
+    objetivo:
+      condiciones:
+        - { valor: f_c, max: 318.3, rotulo: "Corte: {{f_c}}" }
+      logrado: "Con {{R_f}}, el corte baja a {{f_c}}: más R·C, corte más bajo. Fuera de la banda, 20 dB por década."
+      pistas:
+        - { texto: "Suba R: el corte baja." }
+    escalera:
+      - "El corte es inverso a R·C."
+    solucion: "Con 5,6 kΩ o más: 284 Hz."
+    comprobar:
+      - { f_c: 1591.5 }
+      - { con: { R_f: 5600 }, f_c: 284.2 }
 
   - id: simule-corte
     tipo: simular
@@ -85,9 +100,9 @@ tarjetas:
       - { f_c: 159.15 }
 
   - id: prediga-corte
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Con 10 kΩ y 100 nF el corte está en 159,15 Hz. Entra 1 V a esa frecuencia: ¿qué amplitud sale en C?"
+    tipo: simular
+    titulo: "Prediga en el corte"
+    texto: "Con 10 kΩ y 100 nF el corte está en 159,15 Hz. Entra 1 V de pico a esa frecuencia: ¿qué amplitud sale en C?"
     libro: [91, 97]
     fijar: { R_f: 10000, C_f: 100e-9, f_f: 159.15 }
     widget:
@@ -97,20 +112,22 @@ tarjetas:
       lectura: { valor: A_c, rotulo: "Amplitud en C" }
       mide: { vc_amp: A_c }
       ocultar: true
-    opciones:
-      - texto: "0,707 V"
-        bien: true
-        porque: "En f_{c} la señal cae a 0,707, −3 dB: ya ha perdido un 29 % de amplitud."
-      - texto: "La mitad de 1 V"
-        porque: "La mitad es la potencia, no la amplitud: |H| = 1/√2 = 0,707."
-      - texto: "1 V: el corte es donde empieza a atenuar"
-        porque: "f_{c} no es una frontera entre «pasa» y «no pasa»: ahí ya está atenuada."
-    comprobar:
-      - { A_c: 0.707, f_c: 159.15 }
+      mandos: []
+    simular:
+      objetivo: A_c
+      unidad: V
+      tol: 0.02
+      rotulo: "Amplitud en C"
+      medida: vc_amp
+      errores:
+        - { razon: { min: 0.7, max: 0.72 }, texto: "La mitad es la potencia, no la amplitud: |H| = 1/√2 = 0,707." }
+        - { razon: { min: 1.4, max: 1.43 }, texto: "f_{c} no es una frontera entre «pasa» y «no pasa»: ahí ya está atenuada." }
+    exito: "0,707 V: en f_{c} la señal cae a −3 dB y ya ha perdido un 29 % de amplitud."
     escalera:
       - "En f_{c} la salida cae a −3 dB."
     solucion: "|H| = 1/√2 = 0,707: salen 0,707 V."
-
+    comprobar:
+      - { A_c: 0.707, f_c: 159.15 }
   - id: regla-corte
     tipo: formula
     titulo: "La frecuencia de corte"
@@ -175,7 +192,7 @@ tarjetas:
   - id: sorpresa-desfase
     tipo: sorpresa
     titulo: "En el corte, ya cambiada"
-    texto: "Mire la entrada y la salida en C con 10 kΩ y 100 nF. Cambie la frecuencia y fíjese en la amplitud y el retraso."
+    texto: "La entrada y la salida en C, con 10 kΩ y 100 nF. Lleve la señal a la frecuencia de corte y mire cuánto se retrasa."
     libro: [97]
     fijar: { R_f: 10000, C_f: 100e-9 }
     inicio: { f_f: 50 }
@@ -196,37 +213,42 @@ tarjetas:
           - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
       mandos:
         - { valor: f_f, lista: [50, 159.15, 500], rotulo: "Frecuencia, f" }
-    requiere: { mover: [f_f] }
-    nota: "En f_{c}, atenuada un 29 % y desfasada 45°."
+    objetivo:
+      condiciones:
+        - { valor: f_f, objetivo: 159.15, tol: 0.01, rotulo: "f = {{f_f}}" }
+      logrado: "En f_{c} ya ha cambiado: {{A_c}} de amplitud, un 29 % menos, y {{ph_c}} de desfase."
+      pistas:
+        - { texto: "Elija la frecuencia de corte, 159,15 Hz." }
+    escalera:
+      - "El corte está en 1/(2π·R·C)."
+    solucion: "A 159,15 Hz: 0,707 V y −45°."
     comprobar:
-      - { con: { f_f: 159.15 }, ph_c: -45 }
+      - { con: { f_f: 159.15 }, ph_c: -45, A_c: 0.707 }
 
   - id: estime-sesenta
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Para atenuar de verdad"
-    texto: "La caída es de 20 dB por década. Con el corte en 159 Hz, estime a qué frecuencia la salida baja 60 dB."
+    texto: "La caída es de 20 dB por década. Con el corte en 159 Hz, ¿a qué frecuencia baja la salida 60 dB?"
     libro: [93, 97]
     fijar: { R_f: 10000, C_f: 100e-9 }
-    estimar:
-      objetivo: "f_60"
+    simular:
+      objetivo: f_60
       unidad: Hz
-      min: 0
-      max: 500000
-      paso: 1000
-      inicio: 20000
       tol: 0.05
       rotulo: "Frecuencia de −60 dB"
+      errores:
+        - { razon: { min: 0.018, max: 0.022 }, texto: "Ha contado 60 dB como tres veces, no tres décadas: cada década es ×10." }
+        - { razon: { min: 0.0095, max: 0.0105 }, texto: "Eso son dos décadas, 40 dB. Hacen falta tres." }
     exito: "Unos 159 kHz: tres décadas más allá del corte. Por eso hacen falta filtros de orden superior."
     pistas:
       - { cuando: { valor: estimacion, menor: 151000 }, texto: "Se ha quedado corto: 60 dB a 20 dB por década son tres décadas, ×1000." }
       - { texto: "Se ha pasado: tres décadas son mil veces 159 Hz." }
-    comprobar:
-      - { f_60: 159155 }
     escalera:
       - "60 dB a 20 dB por década son tres décadas."
-    solucion: "Unos 159 kHz: tres décadas más allá del corte. Por eso hacen falta filtros de orden superior."
-
+    solucion: "159 Hz × 1000 = 159 kHz."
+    comprobar:
+      - { f_60: 159155 }
   - id: por-que-orden
     tipo: porque
     titulo: "¿Por qué no basta?"
@@ -259,39 +281,35 @@ tarjetas:
     solucion: "Solo 20 dB por década: para atenuar 60 dB hacen falta tres décadas."
 
   - id: paso-alto
-    tipo: pregunta
+    tipo: elegir
     titulo: "El paso alto"
-    texto: "Una R y una C hacen también un paso alto, que atenúa lo lento. ¿De dónde se toma su salida?"
+    texto: "Una R y una C hacen también un paso alto, que atenúa lo lento. Toque la pieza de la que se toma su salida."
     libro: [93]
     widget:
       tipo: circuito
       esquema: filtro-rc
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
       mide: { vr_amp: A_r }
       grafica:
         x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
         y: { min: -60, max: 5, unidad: dB, rotulo: "|H|" }
         curvas:
           - { expr: "20*log10(2*pi*nu*R_f*C_f) - 10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: azul, rotulo: "paso alto", mide: vr_db }
-      ocultar: true
-    opciones:
-      - texto: "De la resistencia"
-        bien: true
-        porque: "A baja frecuencia el condensador bloquea y R no recibe tensión; a alta, el condensador deja pasar."
-      - texto: "Del condensador"
-        porque: "Esa es la salida del paso bajo: X_{C} es grande con lo lento y se queda la tensión."
-      - texto: "De la fuente"
-        porque: "La fuente es la entrada, sin filtrar."
+      mandos: []
+    elegir:
+      zonas: [r, c]
+      bien: [r]
+      porque:
+        c: "Esa es la salida del paso bajo: X_{C} es grande con lo lento y se queda la tensión."
+    exito: "De la resistencia: a baja frecuencia el condensador bloquea y R no recibe tensión; a alta, casi toda."
     escalera:
       - "A baja frecuencia el condensador bloquea: ¿qué tensión queda en R?"
-    solucion: "De la resistencia: a baja frecuencia no recibe tensión, y a alta, casi toda."
-
+    solucion: "La resistencia."
   - id: regla-de-oro
     tipo: pregunta
     titulo: "Regla de oro del desacoplo"
     texto: "Cada integrado necesita su condensador de desacoplo. ¿Cuál es la regla del libro?"
-    libro: [95, 96]
+    libro: [95, 96, "cap03#68"]
     opciones:
       - texto: "100 nF cerámico por cada pin de alimentación, a menos de 5 mm"
         bien: true
@@ -307,29 +325,7 @@ tarjetas:
         - { id: impedancia, rotulo: "Impedancia real de tres condensadores", rect: [0, 0, 438, 216] }
     escalera:
       - "Piense en la inductancia del camino hasta el pin."
-    solucion: "100 nF cerámico por cada pin de alimentación, a menos de 5 mm."
-
-  - id: por-que-dos
-    tipo: porque
-    titulo: "¿Por qué dos condensadores?"
-    texto: "Es habitual un cerámico de 100 nF junto a un electrolítico de 10–100 µF. ¿Por qué no basta el grande?"
-    libro: [95, "cap03#68"]
-    opciones:
-      - texto: "El grande es lento; el cerámico atiende la alta frecuencia"
-        bien: true
-        porque: "Por encima de su autorresonancia el electrolítico es una bobina: el grande, para lo lento; el pequeño, para lo rápido."
-      - texto: "Para sumar capacidad"
-        porque: "100 nF apenas suman a 100 µF. Cada uno cubre una zona de frecuencias."
-      - texto: "El cerámico protege al electrolítico de la polaridad"
-        porque: "No: el reparto es por frecuencia, rápido y lento."
-    widget:
-      tipo: figura
-      figura: fig-3.8
-      zonas:
-        - { id: impedancia, rotulo: "Impedancia real de tres condensadores", rect: [0, 0, 438, 216] }
-    escalera:
-      - "¿Qué es el electrolítico por encima de su autorresonancia?"
-    solucion: "El grande es lento; el cerámico atiende la alta frecuencia, donde el electrolítico ya es una bobina."
+    solucion: "100 nF cerámico por pin, a menos de 5 mm, con un electrolítico de 10–100 µF para lo lento."
 
   - id: resumen
     tipo: resumen

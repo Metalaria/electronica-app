@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 4.1 «La Inductancia y la Ley de Faraday» (cap04): la bobina se opone al cambio de la
 # corriente (v = L·di/dt), el pico de 10 000 V al cortar deprisa, de qué depende L (N², µr, geometría), la energía
 # ½·L·I², la dualidad con el condensador y la inductancia de una pista. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): conectar la fuente, predecir los 10 V, cortar en un
+# microsegundo, predecir y calcular L, llegar a 50,3 mH con ferrita, añadir dos espiras, la energía y la pista se
+# calculan; se eligen a qué y por qué se opone. La dualidad queda en el resumen.
 leccion: cap04/sec-4.1
 
 libro:
@@ -71,7 +74,17 @@ tarjetas:
           - { expr: "V_lf*(1 - exp(-t/tau_l))", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
       mandos:
         - { valor: l_on, tipo: conectar, boton: "Conectar la fuente" }
-    requiere: { conectar: [l_on] }
+    objetivo:
+      condiciones:
+        - { valor: l_on, min: 1, rotulo: "Fuente conectada" }
+      logrado: "La tensión de la bobina empieza en 10 V y cae a cero mientras la corriente llega a {{I_lf}}: τ = 100 µs."
+      pistas:
+        - { texto: "Pulse «Conectar la fuente»." }
+    escalera:
+      - "Pulse «Conectar la fuente» y mire v_{L}."
+    solucion: "La bobina tiene tensión solo mientras la corriente sube."
+    comprobar:
+      - { con: { l_on: 1 }, I_lf: 0.1, tau_l: 0.0001 }
 
   - id: porque-cambio
     tipo: porque
@@ -103,33 +116,24 @@ tarjetas:
     solucion: "A que la corriente cambie: con corriente constante no desarrolla tensión."
 
   - id: prediga-diez-voltios
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "Una bobina de 10 mH; su corriente cambia 1 A cada milisegundo. ¿Qué tensión desarrolla?"
     libro: [10]
     fijar: { d_t: 0.001 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 0.000001, max: 0.001, unidad: s, rotulo: "Δt", escala: log }
-      y: { min: 1, max: 100000, unidad: V, rotulo: "v", escala: log }
-      curvas:
-        - { expr: "L_f*d_I/nu", color: naranja, rotulo: "v = L·Δi/Δt" }
-      lectura: { valor: v_f, rotulo: "Tensión en la bobina" }
-      ocultar: true
-    opciones:
-      - texto: "10 V"
-        bien: true
-        porque: "1 A por milisegundo son 1000 A/s; por 10 mH, 10 V."
-      - texto: "10 mV"
-        porque: "Ha dividido por mil en lugar de multiplicar: 1 A en un milisegundo son 1000 A/s."
-      - texto: "Nada: 1 A es poca corriente"
-        porque: "La bobina no responde al tamaño de la corriente, sino a lo deprisa que cambia."
-    comprobar:
-      - { v_f: 10, di_dt: 1000 }
+    simular:
+      objetivo: v_f
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión en la bobina"
+      errores:
+        - { razon: { min: 0.0009, max: 0.0011 }, texto: "Ha dividido por mil en lugar de multiplicar: 1 A en un milisegundo son 1000 A/s." }
+    exito: "10 V: 1 A por milisegundo son 1000 A/s; por 10 mH, 10 V. No cuenta el tamaño de la corriente, sino lo deprisa que cambia."
     escalera:
       - "v = L·di/dt, y 1 A por milisegundo son 1000 A/s."
     solucion: "10 mH × 1000 A/s = 10 V."
-
+    comprobar:
+      - { v_f: 10, di_dt: 1000 }
   - id: formula-faraday
     tipo: formula
     titulo: "La ecuación de la bobina"
@@ -154,7 +158,6 @@ tarjetas:
     tipo: sorpresa
     titulo: "Córtela de golpe"
     texto: "Ahora corte esa misma corriente mil veces más deprisa, en un microsegundo. Mire la tensión."
-    nota: "Así se destruye el transistor que conmuta un relé sin diodo de protección."
     libro: [10]
     inicio: { d_t: 0.001 }
     widget:
@@ -168,7 +171,15 @@ tarjetas:
       lectura: { valor: v_f, rotulo: "Tensión en la bobina" }
       mandos:
         - { valor: d_t, lista: [0.000001, 0.00001, 0.0001, 0.001], rotulo: "Tiempo del cambio, Δt" }
-    requiere: { mover: [d_t] }
+    objetivo:
+      condiciones:
+        - { valor: v_f, min: 9999, rotulo: "v = {{v_f}}" }
+      logrado: "{{v_f}}: la misma corriente, cortada mil veces más deprisa. Así se destruye el transistor de un relé sin diodo de protección."
+      pistas:
+        - { texto: "Acorte más el tiempo del cambio." }
+    escalera:
+      - "Elija Δt = 1 µs."
+    solucion: "En 1 µs: 10 000 V."
     comprobar:
       - { con: { d_t: 0.000001 }, v_f: 10000 }
 
@@ -199,41 +210,31 @@ tarjetas:
     solucion: "Por la conservación de la energía: si reforzara el cambio, cualquier perturbación crecería sin límite."
 
   - id: prediga-espiras
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Un solenoide de 100 espiras, 5 cm y 1 cm², sin núcleo. Si dobla las espiras, ¿qué pasa con L?"
+    texto: "Un solenoide de 100 espiras, 5 cm y 1 cm², sin núcleo, tiene 25,1 µH. ¿Cuánta tendrá con el doble de espiras?"
     libro: [16, 18, 19]
-    fijar: { N_s: 100, mu_r: 1 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 0, max: 200, unidad: espiras, rotulo: "N" }
-      y: { min: 0, max: 0.00011, unidad: H, rotulo: "L" }
-      curvas:
-        - { expr: "4*pi*1e-7*mu_r*nu^2*(A_s*1e-6)/(l_s*0.01)", color: naranja, rotulo: "L sin núcleo" }
-      lectura: { valor: L_s, rotulo: "Inductancia" }
-      ocultar: true
-    opciones:
-      - texto: "Se multiplica por cuatro"
-        bien: true
-        porque: "Va con N²: cada espira aporta flujo y a la vez recoge el de todas las demás. De 25,1 µH a 100 µH."
-      - texto: "Se duplica"
-        porque: "Sería así si cada espira solo aportara flujo. También recoge el de las otras: va con el cuadrado."
-      - texto: "No cambia"
-        porque: "Las espiras son lo que más pesa en L: va con su cuadrado."
-    comprobar:
-      - { L_s: 25.13e-6 }
-      - { con: { N_s: 200 }, L_s: 100.5e-6 }
+    fijar: { N_s: 200, mu_r: 1 }
+    simular:
+      objetivo: L_s
+      unidad: H
+      tol: 0.03
+      rotulo: "Inductancia con 200 espiras"
+      errores:
+        - { razon: { min: 0.45, max: 0.55 }, texto: "Sería así si cada espira solo aportara flujo. También recoge el de las otras: va con el cuadrado." }
+        - { razon: { min: 0.22, max: 0.28 }, texto: "Las espiras son lo que más pesa en L: va con su cuadrado." }
+    exito: "100 µH, cuatro veces más: cada espira aporta flujo y a la vez recoge el de todas las demás."
     escalera:
       - "L va con el cuadrado del número de espiras."
-    solucion: "Doble de espiras, cuatro veces la inductancia."
-
+    solucion: "Doble de espiras, cuatro veces la inductancia: 100 µH."
+    comprobar:
+      - { L_s: 100.5e-6 }
+      - { con: { N_s: 100 }, L_s: 25.13e-6 }
   - id: formula-solenoide
-    tipo: formula
+    tipo: explorar
     titulo: "De qué depende L"
-    texto: "Espiras al cuadrado, permeabilidad del núcleo y geometría: sección partida por longitud. Cambie las espiras y ponga ferrita."
-    libro: [16, 19, 20]
-    ec: 16
-    sustitucion: "µ₀ · {{mu_r}} · {{N_s}}² · 1 cm² / 5 cm = {{L_s}}"
+    texto: "Espiras al cuadrado, permeabilidad del núcleo y geometría: sección partida por longitud. Llegue a 50,3 mH."
+    libro: [16, 19, 20, 21]
     widget:
       tipo: grafica
       x: { id: nu, min: 10, max: 200, unidad: espiras, rotulo: "N" }
@@ -246,139 +247,118 @@ tarjetas:
       mandos:
         - { valor: N_s, min: 10, max: 200, paso: 10, rotulo: "Espiras, N" }
         - { valor: mu_r, lista: [1, 2000], nombres: [aire, ferrita], rotulo: "Núcleo, µ_{r}" }
+    inicio: { N_s: 100, mu_r: 1 }
+    objetivo:
+      condiciones:
+        - { valor: L_s, objetivo: 0.05027, tol: 0.01, rotulo: "L = {{L_s}}" }
+      logrado: "Con {{N_s}} espiras sobre ferrita, {{L_s}}: dos mil veces los 25,1 µH en aire. No depende de la corriente, mientras el núcleo no sature."
+      pistas:
+        - { cuando: { valor: mu_r, max: 1 }, texto: "Con aire no llega: ponga ferrita." }
+        - { cuando: { valor: L_s, mayor: 0.06 }, texto: "Se ha pasado: menos espiras." }
+        - { texto: "Le faltan espiras." }
+    escalera:
+      - "µ_{r} = 2000 multiplica L por dos mil."
+    solucion: "100 espiras con ferrita: 50,3 mH."
     comprobar:
+      - { L_s: 25.13e-6 }
       - { con: { N_s: 100, mu_r: 2000 }, L_s: 50.27e-3 }
 
   - id: estime-ejercicio
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Una bobina de ferrita"
-    texto: "200 espiras sobre ferrita de µr = 2000, sección 1 cm² y longitud 4 cm. Estime su inductancia."
+    texto: "200 espiras sobre ferrita de µr = 2000, sección 1 cm² y longitud 4 cm. Calcule su inductancia."
     libro: ["cap04#341"]
     fijar: { N_s: 200, mu_r: 2000, A_s: 100, l_s: 4 }
-    estimar:
-      objetivo: "L_s"
+    simular:
+      objetivo: L_s
       unidad: H
-      min: 0
-      max: 0.5
-      paso: 0.001
-      inicio: 0.45
-      tol: 0.05
+      tol: 0.03
       rotulo: "L"
+      errores:
+        - { razon: { min: 0.004, max: 0.006 }, texto: "N va al cuadrado: 200² = 40 000." }
+        - { razon: { min: 0.0004, max: 0.0006 }, texto: "Falta la ferrita: multiplique por µr = 2000." }
     exito: "Unos 251 mH: 4π × 10⁻⁷ × 2000 × 200² × 10⁻⁴ / 0,04."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.264 }, texto: "Se ha pasado. Pase la sección a metros cuadrados (10⁻⁴) y la longitud a metros (0,04)." }
-      - { texto: "Se ha quedado corto. Recuerde que N va al cuadrado: 200² = 40 000." }
+    escalera:
+      - "Sustituya en L = µ₀·µ_{r}·N²·A/l, con N² = 40 000 y todo en metros."
+    solucion: "Unos 251 mH: 4π × 10⁻⁷ × 2000 × 200² × 10⁻⁴ / 0,04."
     comprobar:
       - { L_s: 0.2513 }
-    escalera:
-      - "Sustituya en L = µ₀·µ_{r}·N²·A/l, con N² = 40 000."
-    solucion: "Unos 251 mH: 4π × 10⁻⁷ × 2000 × 200² × 10⁻⁴ / 0,04."
-
   - id: pregunta-dos-espiras
-    tipo: pregunta
+    tipo: explorar
     titulo: "Dos espiras de más"
-    texto: "Bobina una de 20 espiras y se equivoca en dos. ¿Cuánto cambia la inductancia, más o menos?"
+    texto: "Bobina una de 20 espiras sin núcleo y se equivoca en dos. Añádalas y compare la inductancia."
     libro: [18]
-    opciones:
-      - texto: "Un 20 %"
-        bien: true
-        porque: "Un 10 % de espiras, al cuadrado, es un 20 % de inductancia. Por eso se ajusta con precisión al bobinar."
-      - texto: "Un 10 %"
-        porque: "Eso son las espiras. La inductancia va con su cuadrado: el error se duplica."
-      - texto: "Nada: son pocas"
-        porque: "Con N², cada espira cuenta, y más cuanto menos espiras haya."
+    fijar: { mu_r: 1 }
+    inicio: { N_s: 20 }
     widget:
       tipo: grafica
-      x: { id: nu, min: 10, max: 200, unidad: espiras, rotulo: N }
-      y: { min: 1e-7, max: 1, unidad: H, rotulo: L, escala: log }
+      x: { id: nu, min: 10, max: 40, unidad: espiras, rotulo: N }
+      y: { min: 0, max: 0.000005, unidad: H, rotulo: L }
       curvas:
         - { expr: "4*pi*1e-7*mu_r*nu^2*(A_s*1e-6)/(l_s*0.01)", color: naranja, rotulo: L }
-      asas:
-        - { mueve: N_s, x: N_s, y: L_s, rotulo: Espiras }
       lectura: { valor: L_s, rotulo: Inductancia }
       mandos:
-        - { valor: N_s, min: 10, max: 200, paso: 10, rotulo: "Espiras, N" }
+        - { valor: N_s, min: 10, max: 40, paso: 2, rotulo: "Espiras, N" }
+    objetivo:
+      condiciones:
+        - { valor: N_s, objetivo: 22, tol: 0.01, rotulo: "{{N_s}} espiras" }
+      logrado: "{{L_s}} frente a 1 µH: un 10 % de espiras, al cuadrado, es un 20 % de inductancia. Por eso se ajusta con precisión al bobinar."
+      pistas:
+        - { cuando: { valor: N_s, mayor: 22 }, texto: "Son solo dos de más." }
+        - { texto: "Añada dos espiras." }
     escalera:
-      - "Dos espiras de veinte son un 10 %: ¿qué le pasa a ese error al elevarlo al cuadrado?"
-    solucion: "Un 20 %: el error en las espiras se duplica en la inductancia, que va con N²."
-
+      - "Dos espiras de veinte son un 10 %."
+    solucion: "Con 22 espiras, 1,22 µH frente a 1 µH: un 20 % más."
+    comprobar:
+      - { L_s: 1.005e-6, tol: 0.01 }
+      - { con: { N_s: 22 }, L_s: 1.216e-6, tol: 0.01 }
   - id: estime-energia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La energía del campo"
-    texto: "La bobina de ferrita del ejemplo, 50,3 mH, lleva 1 A. Estime la energía que guarda, ½·L·I²."
-    nota: "No está en el cobre, sino en el campo."
+    texto: "La bobina de ferrita del ejemplo, 50,3 mH, lleva 1 A. Calcule la energía que guarda."
     libro: [23, 24]
     fijar: { N_s: 100, mu_r: 2000, A_s: 100, l_s: 5, I_e: 1 }
-    estimar:
-      objetivo: "E_s"
+    simular:
+      objetivo: E_s
       unidad: J
-      min: 0
-      max: 0.1
-      paso: 0.001
-      inicio: 0.08
-      tol: 0.05
+      tol: 0.03
       rotulo: "E"
-    exito: "25 mJ: la mitad de 50,3 mH por 1 A al cuadrado."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0264 }, texto: "Se ha pasado. ¿Ha olvidado el ½?" }
-      - { texto: "Se ha quedado corto. Con 1 A, I² vale 1: es la mitad de L." }
-    comprobar:
-      - { E_s: 0.02513 }
+      errores:
+        - { razon: { min: 1.9, max: 2.1 }, texto: "Falta el ½ de E = ½·L·I²." }
+    exito: "25 mJ: la mitad de 50,3 mH por 1 A al cuadrado. No está en el cobre, sino en el campo."
     escalera:
       - "E = ½·L·I², con I = 1 A."
     solucion: "25 mJ: la mitad de 50,3 mH por 1 A al cuadrado."
-
-  - id: empareje-dualidad
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La dualidad"
-    texto: "Cada afirmación sobre el condensador tiene su reflejo en la bobina. Empareje."
-    libro: [28]
-    emparejar:
-      - ["Bobina: no salta", "Su corriente"]
-      - ["Condensador: no salta", "Su tensión"]
-      - ["Bobina en continua", "Cortocircuito"]
-      - ["Condensador en continua", "Circuito abierto"]
-    exito: "Eso es: basta intercambiar tensión por corriente."
-    pistas:
-      - { texto: "La bobina guarda energía en el campo magnético, que va con la corriente." }
-    escalera:
-      - "Intercambie tensión por corriente."
-    solucion: "Bobina: no salta: su corriente. Condensador: no salta: su tensión. Bobina en continua: cortocircuito. Condensador en continua: circuito abierto."
-
+    comprobar:
+      - { E_s: 0.02513 }
   - id: estime-pista
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La inductancia de una pista"
-    texto: "Un centímetro de pista tiene unos 10 nH, y una salida lógica conmuta 20 mA en 2 ns. Estime la tensión en la pista."
+    texto: "Un centímetro de pista tiene unos 10 nH, y una salida lógica conmuta 20 mA en 2 ns. Calcule la tensión en la pista."
     libro: [31, 32]
-    estimar:
-      objetivo: "v_p"
+    simular:
+      objetivo: v_p
       unidad: V
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.8
-      tol: 0.05
+      tol: 0.03
       rotulo: "v en la pista"
+      errores:
+        - { razon: { min: 900, max: 1100 }, texto: "Son 20 mA, no 20 A." }
+        - { razon: { min: 0.0009, max: 0.0011 }, texto: "Son nanosegundos: 20 mA en 2 ns son 10⁷ A/s." }
     exito: "0,1 V: di/dt = 10⁷ A/s sobre 10 nH. Varias salidas a la vez: el rebote de masa."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado. 20 mA en 2 ns son 10⁷ A/s; por 10⁻⁸ H." }
-      - { texto: "Se ha quedado corto. 20 mA en 2 ns son 10⁷ A/s: multiplique por 10 nH." }
-    comprobar:
-      - { v_p: 0.1, k_p: 1e7 }
     escalera:
       - "v = L·di/dt: calcule primero di/dt."
-    solucion: "0,1 V: di/dt = 10⁷ A/s sobre 10 nH. Varias salidas a la vez: el rebote de masa."
-
+    solucion: "0,1 V: di/dt = 10⁷ A/s sobre 10 nH."
+    comprobar:
+      - { v_p: 0.1, k_p: 1e7 }
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [5, 8, 16, 21, 23, 31]
+    libro: [5, 8, 16, 21, 23, 28, 31]
     ideas:
       - { titulo: "Se opone al cambio.", texto: "v = L·di/dt: sin cambio de corriente no hay tensión; cortarla de golpe da miles de voltios." }
       - { titulo: "De qué depende L.", texto: "Del cuadrado de las espiras, de la permeabilidad del núcleo y de la geometría, mientras no sature." }
-      - { titulo: "Energía.", texto: "½·L·I², guardada en el campo, no en el cobre." }
+      - { titulo: "Energía y dualidad.", texto: "½·L·I², guardada en el campo. Su corriente no puede saltar, como la tensión del condensador; en continua es un cortocircuito." }
       - { titulo: "Sin querer.", texto: "Toda espira tiene inductancia: un centímetro de pista, unos 10 nH." }

@@ -2,6 +2,10 @@
 # caso frente a RSS); 2.B, el shunt y su error por autocalentamiento; 2.C, el par E24 para 10 dB y qué término
 # domina. El divisor de 2.A se alimenta con 1 V para que su salida sea la relación k.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): provocar el peor caso del divisor, predecir k con las dos
+# desviadas juntas y el peor caso asimétrico, elegir la tolerancia de la especificación, llevar el shunt a su error,
+# predecir la media escala, los retos del shunt y del par E24, el total RSS y el diseño de 10 dB; se eligen el
+# criterio de una protección y qué término domina.
 leccion: cap02/sec-2.13
 
 libro:
@@ -42,6 +46,8 @@ modelo:
     R_th: { sim: "R_{th}", nombre: "resistencia térmica hacia la placa", unidad: "°C/W", valor: 50 }
     R_f: { sim: "R_{f}", nombre: "resistencia de realimentación", unidad: Ω, valor: 10000 }
     R_i: { sim: "R_{i}", nombre: "resistencia de entrada", unidad: Ω, valor: 10000 }
+    e_s: { sim: "serie", nombre: "error del par E24", unidad: "%", valor: 0.79 }
+    e_t: { sim: "tolerancia", nombre: "error RSS de la tolerancia", unidad: "%", valor: 1.41 }
   calculos:
     R_1: { expr: "R_0*(1 + d_1/100)", sim: "R₁", nombre: "R₁ desviada", unidad: Ω, cifras: 4 }
     R_2: { expr: "R_0*(1 + d_2/100)", sim: "R₂", nombre: "R₂ desviada", unidad: Ω, cifras: 4 }
@@ -61,13 +67,15 @@ modelo:
     G_dB: { expr: "20*log10(G)", sim: "G", nombre: "ganancia en decibelios", unidad: "dB", cifras: 4 }
     rss_dB: { expr: "20*log10(1 + sqrt(2)*tol_k/100)", sim: "RSS", nombre: "error RSS de la tolerancia, en decibelios", unidad: "dB", cifras: 2 }
     err_G: { expr: "(G/3.1623 - 1)*100", sim: "error", nombre: "error de la ganancia", unidad: "%", cifras: 2 }
+    e_tot: { expr: "sqrt(e_s^2 + e_t^2)", sim: "total", nombre: "error total en RSS", unidad: "%", cifras: 3 }
 
 tarjetas:
   - id: explore-desvios
     tipo: explorar
     titulo: "Problema 2.A: un divisor 1:2"
-    texto: "Dos de 10 kΩ con relación k = 0,5: desvíe las dos en el mismo sentido y luego en sentidos opuestos. Mire k."
-    libro: [245]
+    texto: "Dos de 10 kΩ del 1 % con relación k = 0,5. Desvíelas dentro de su tolerancia hasta que k se aparte un 1 %: el peor caso."
+    libro: [245, 261]
+    inicio: { d_1: 0, d_2: 0 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -80,36 +88,49 @@ tarjetas:
       mandos:
         - { valor: d_1, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₁, δ₁" }
         - { valor: d_2, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₂, δ₂" }
-    requiere: { mover: [d_1, d_2] }
+    objetivo:
+      condiciones:
+        - { valor: dk, min: 0.99, rotulo: "Δk/k = {{dk}}" }
+      logrado: "Con δ₂ = +1 % y δ₁ = −1 %, {{dk}}: el peor caso, en sentidos opuestos. En el mismo sentido se cancelan."
+      pistas:
+        - { texto: "Suba R₂ y baje R₁: en sentidos opuestos." }
+    escalera:
+      - "k = R₂/(R₁ + R₂) sube si R₂ sube y R₁ baja."
+    solucion: "δ₂ = +1 % y δ₁ = −1 %: un 1,000 %."
+    comprobar:
+      - { dk: 0 }
+      - { con: { d_1: -1, d_2: 1 }, dk: 1, k: 0.505 }
 
   - id: prediga-juntas
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Las dos resistencias salen un 1 % por encima de su valor. ¿Cuánto cambia la relación k?"
+    tipo: simular
+    titulo: "Prediga: las dos a la vez"
+    texto: "Las dos resistencias salen un 1 % por encima de su valor. Con 1 V de entrada, ¿qué da la salida, que es k?"
     libro: [257]
     fijar: { d_1: 1, d_2: 1 }
     widget:
       tipo: circuito
       esquema: divisor
       piezas: { fuente: V_k, arriba: R_1, abajo: R_2 }
-      lectura: { valor: k, rotulo: "Relación k" }
+      lectura: { valor: V_o, rotulo: "Salida, k" }
       corriente: I_k
       mide: { salida: V_o, corriente: I_k }
       ocultar: true
-    opciones:
-      - texto: "Nada"
-        bien: true
-        porque: "Un factor común en R₁ y R₂ se simplifica. Importa el apareamiento, no el valor absoluto."
-      - texto: "Un 1 %"
-        porque: "Cambian las dos a la vez: el cociente, y con él k, se queda igual."
-      - texto: "Un 2 %"
-        porque: "Eso no lo da ni el peor caso con k = 0,5. Y aquí los efectos se cancelan exactamente."
-    comprobar:
-      - { k: 0.5, dk: 0 }
+      mandos: []
+    simular:
+      objetivo: V_o
+      unidad: V
+      tol: 0.005
+      rotulo: "Salida"
+      medida: salida
+      errores:
+        - { razon: { min: 1.008, max: 1.012 }, texto: "Cambian las dos a la vez: el cociente, y con él k, se queda igual." }
+        - { razon: { min: 0.988, max: 0.992 }, texto: "Cambian las dos a la vez: el cociente, y con él k, se queda igual." }
+    exito: "0,5 V, nada: un factor común en R₁ y R₂ se simplifica. Importa el apareamiento, no el valor absoluto."
     escalera:
       - "k = R₂/(R₁ + R₂): ¿qué pasa si R₁ y R₂ se multiplican por el mismo factor?"
-    solucion: "Nada: el factor común se simplifica. Importa el apareamiento, no el valor absoluto."
-
+    solucion: "Sigue en 0,5: el factor común se simplifica."
+    comprobar:
+      - { k: 0.5, dk: 0, V_o: 0.5 }
   - id: regla-sensibilidad
     tipo: formula
     titulo: "La sensibilidad"
@@ -129,31 +150,29 @@ tarjetas:
         - { valor: d_2, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₂, δ₂" }
 
   - id: estime-asimetrico
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un divisor más asimétrico"
-    texto: "Peor caso: 2·(1 − k)·tol. Con resistencias del 1 % y k = 0,25, estime el error del divisor."
+    texto: "Peor caso: 2·(1 − k)·tol. Con resistencias del 1 % y k = 0,25, ¿qué error tiene el divisor?"
     libro: [261, 264, 267]
     fijar: { k_n: 0.25, tol_k: 1 }
-    estimar:
-      objetivo: "peor"
+    simular:
+      objetivo: peor
       unidad: "%"
-      min: 0
-      max: 3
-      paso: 0.05
-      inicio: 0.5
       tol: 0.04
       rotulo: "Peor caso con k = 0,25"
+      errores:
+        - { razon: { min: 0.65, max: 0.68 }, texto: "Ha tomado la tolerancia como error. Cuanto más atenúa el divisor, más sensible: 2 · 0,75 · 1 %." }
+        - { razon: { min: 0.49, max: 0.51 }, texto: "Ha olvidado el 2 del peor caso: las dos se desvían en sentidos opuestos." }
     exito: "1,5 %: el error del divisor no es la tolerancia. Cuanto más atenúa, más sensible. En RSS, 1,061 %."
     pistas:
       - { cuando: { valor: estimacion, mayor: 1.56 }, texto: "Se ha pasado: 2 · 0,75 · 1 %." }
       - { texto: "Se ha quedado corto: con k = 0,25 el factor (1 − k) es 0,75, y el peor caso lo dobla." }
-    comprobar:
-      - { peor: 1.5, rss: 1.061, fac: 0.75 }
     escalera:
       - "Sustituya k = 0,25 en 2·(1 − k)·tol."
-    solucion: "1,5 %: el error del divisor no es la tolerancia. Cuanto más atenúa, más sensible. En RSS, 1,061 %."
-
+    solucion: "2 · 0,75 · 1 % = 1,5 %."
+    comprobar:
+      - { peor: 1.5, rss: 1.061, fac: 0.75 }
   - id: por-que-peor-caso
     tipo: pregunta
     titulo: "¿Peor caso o RSS?"
@@ -182,39 +201,42 @@ tarjetas:
     solucion: "El peor caso: un fallo es inadmisible. El RSS vale para la producción de volumen."
 
   - id: decision
-    tipo: pregunta
+    tipo: explorar
     titulo: "Mejor del 1 %"
-    texto: "La especificación pide un divisor k = 0,5 mejor del 1 %, en peor caso. ¿Qué compra?"
+    texto: "La especificación pide un divisor k = 0,5 mejor del 1 %, en peor caso. Elija la tolerancia de las resistencias."
     libro: [269]
-    opciones:
-      - texto: "Resistencias del 0,5 % o una red apareada"
-        bien: true
-        porque: "Las del 1 % dan justo 1,000 %, sin margen. La red apareada garantiza el apareamiento."
-      - texto: "Resistencias del 1 %"
-        porque: "En peor caso dan exactamente el 1 %: no queda ningún margen."
-      - texto: "Resistencias del 2 %"
-        porque: "Doblarían el error. Hay que ir hacia tolerancias más estrechas o a una red apareada."
+    fijar: { k_n: 0.5 }
+    inicio: { tol_k: 2 }
     widget:
-      tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_k, arriba: R_1, abajo: R_2 }
-      lectura: { valor: dk, rotulo: "Δk/k" }
-      corriente: I_k
-      mide: { salida: V_o, corriente: I_k }
+      tipo: grafica
+      x: { id: tt, min: 0, max: 2, unidad: "%", rotulo: "tolerancia" }
+      y: { min: 0, max: 2.2, unidad: "%", rotulo: "peor caso" }
+      curvas:
+        - { expr: "2*(1 - k_n)*tt", color: naranja, rotulo: "peor caso" }
+        - { expr: "1", color: azul, rotulo: "especificación", discontinua: true }
+      lectura: { valor: peor, rotulo: "Peor caso" }
       mandos:
-        - { valor: d_1, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₁, δ₁" }
-        - { valor: d_2, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₂, δ₂" }
+        - { valor: tol_k, lista: [2, 1, 0.5], rotulo: "Tolerancia" }
+    objetivo:
+      condiciones:
+        - { valor: peor, max: 0.99, rotulo: "Peor caso: {{peor}}" }
+      logrado: "Con el {{tol_k}}, {{peor}}. Las del 1 % dan justo 1,000 %, sin margen: del 0,5 % o una red apareada."
+      pistas:
+        - { texto: "Con esa tolerancia no queda margen: elija una más estrecha." }
     escalera:
-      - "Con resistencias del 1 % y k = 0,5, el peor caso da justo un 1 %: ¿queda margen?"
-    solucion: "Resistencias del 0,5 % o una red apareada: las del 1 % dan justo 1,000 %, sin margen."
-
+      - "Con k = 0,5, el peor caso es igual a la tolerancia."
+    solucion: "El 0,5 %: un 0,5 % de peor caso."
+    comprobar:
+      - { peor: 2 }
+      - { con: { tol_k: 1 }, peor: 1 }
+      - { con: { tol_k: 0.5 }, peor: 0.5 }
   - id: regla-shunt
-    tipo: formula
+    tipo: explorar
     titulo: "Problema 2.B: el shunt que se calienta"
-    texto: "50 mV a 10 A: 5 mΩ, y su error encadena potencia, calentamiento y TCR. Mueva la corriente."
-    libro: [275, 282, 287]
-    ec: 282
-    sustitucion: "{{I_b}}² · {{R_sh}} = {{P_sh}} → {{P_sh}} · {{R_th}} = {{dT_b}} → {{tcr_b}} · {{dT_b}} = {{eps}}"
+    texto: "50 mV a 10 A: 5 mΩ, y su error encadena potencia, calentamiento y TCR. Suba la corriente hasta que el error llegue al 1 %."
+    libro: [275, 282, 287, 291]
+    fijar: { tcr_b: 400, R_th: 50 }
+    inicio: { I_b: 5 }
     widget:
       tipo: grafica
       x: { id: i, min: 0, max: 10, unidad: A, rotulo: "I" }
@@ -224,11 +246,26 @@ tarjetas:
       asas:
         - { mueve: I_b, x: "I_b", y: "eps", rotulo: "Corriente" }
       lectura: { valor: eps, rotulo: "Error" }
+      datos:
+        - { valor: P_sh, rotulo: "P = {{P_sh}}" }
+        - { valor: dT_b, rotulo: "ΔT = {{dT_b}}" }
       mandos:
         - { valor: I_b, min: 1, max: 10, paso: 1, rotulo: "Corriente, I" }
+    objetivo:
+      condiciones:
+        - { valor: eps, min: 0.99, rotulo: "Error: {{eps}}" }
+      logrado: "A {{I_b}}: P = I²·R = {{P_sh}}, ΔT = {{dT_b}} y, con 400 ppm/°C, un {{eps}} de error."
+      pistas:
+        - { texto: "Suba la corriente." }
+    escalera:
+      - "El error sigue a la potencia, I²·R."
+    solucion: "A fondo de escala, 10 A: 0,5 W, 25 °C y un 1 %."
+    comprobar:
+      - { eps: 0.25 }
+      - { con: { I_b: 10 }, eps: 1, P_sh: 0.5, dT_b: 25 }
 
   - id: prediga-media-escala
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga: a media escala"
     texto: "A 10 A, el shunt de 400 ppm/°C yerra un 1 %. ¿Y a 5 A?"
     libro: [285, 291]
@@ -240,22 +277,22 @@ tarjetas:
       curvas:
         - { expr: "tcr_b*i^2*R_sh*R_th*1e-4", color: naranja, rotulo: "error por autocalentamiento" }
       lectura: { valor: eps, rotulo: "Error" }
-      ocultar: true
-    opciones:
-      - texto: "La cuarta parte, 0,25 %"
-        bien: true
-        porque: "El error crece con el cuadrado de la corriente, a través de la potencia. No se corrige calibrando un punto."
-      - texto: "La mitad, 0,5 %"
-        porque: "Sería así si creciera con la corriente. Crece con su cuadrado."
-      - texto: "Lo mismo, 1 %"
-        porque: "El calentamiento depende de la potencia, I²·R: a media escala es la cuarta parte."
-    comprobar:
-      - { eps: 0.25 }
-      - { con: { I_b: 10 }, eps: 1 }
+      ocultar: curvas
+    simular:
+      objetivo: eps
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Error a 5 A"
+      errores:
+        - { razon: { min: 1.95, max: 2.05 }, texto: "Sería así si creciera con la corriente. Crece con su cuadrado." }
+        - { razon: { min: 3.9, max: 4.1 }, texto: "El calentamiento depende de la potencia, I²·R: a media escala es la cuarta parte." }
+    exito: "La cuarta parte, 0,25 %: el error crece con el cuadrado de la corriente, a través de la potencia. No se corrige calibrando un punto."
     escalera:
       - "El error sigue a la potencia, I²·R."
     solucion: "A media escala la potencia es la cuarta parte: un 0,25 %."
-
+    comprobar:
+      - { eps: 0.25 }
+      - { con: { I_b: 10 }, eps: 1 }
   - id: reto-shunt
     tipo: reto
     titulo: "Reto: menos del 0,2 %"
@@ -323,28 +360,28 @@ tarjetas:
       - { con: { R_f: 16000, R_i: 5100 }, G: 3.1373, G_dB: 9.931, err_G: -0.79, tol: 0.01 }
 
   - id: estime-rss
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Sumar la tolerancia"
-    texto: "Al 0,79 % de la serie se suma la tolerancia: con resistencias del 1 %, un 1,41 % en RSS. Estime el total, √(0,79² + 1,41²)."
+    texto: "Al 0,79 % de la serie se suma la tolerancia: con resistencias del 1 %, un 1,41 % en RSS. ¿Qué error total da, √(0,79² + 1,41²)?"
     libro: [308, 310, 312]
-    estimar:
-      objetivo: "sqrt(0.79^2 + 1.41^2)"
+    fijar: { e_s: 0.79, e_t: 1.41 }
+    simular:
+      objetivo: e_tot
       unidad: "%"
-      min: 0
-      max: 3
-      paso: 0.02
-      inicio: 2.5
       tol: 0.04
       rotulo: "Error total en RSS"
+      errores:
+        - { razon: { min: 1.33, max: 1.39 }, texto: "Los ha sumado: eso es el peor caso. En cuadratura, el total es menor que la suma." }
     exito: "1,62 %, unos ±0,14 dB: con «10 dB ±0,5 dB», el par E24 vale de sobra."
     pistas:
       - { cuando: { valor: estimacion, mayor: 1.69 }, texto: "Se ha pasado: en cuadratura, el total es menor que la suma." }
       - { texto: "Se ha quedado corto: el total no puede ser menor que el mayor de los dos, 1,41 %." }
     escalera:
       - "En cuadratura: la raíz de la suma de los cuadrados."
-    solucion: "1,62 %, unos ±0,14 dB: con «10 dB ±0,5 dB», el par E24 vale de sobra."
-
+    solucion: "√(0,79² + 1,41²) = 1,62 %."
+    comprobar:
+      - { e_tot: 1.62 }
   - id: disene-10db
     tipo: diseno
     titulo: "Diseñe con tolerancias"

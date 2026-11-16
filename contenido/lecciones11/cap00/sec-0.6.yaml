@@ -2,6 +2,9 @@
 # (sin cambio no hay corriente), v = L·di/dt (cortar deprisa da miles de voltios), la pendiente de un flanco y su
 # corriente parásita, por qué la tensión de un condensador no salta y la tabla de derivadas.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): dejar la tangente horizontal, calcular la corriente de
+# 100 nF, anular la pendiente, predecir el pico de la bobina y el reto del flanco; se elige la pequeña señal. La
+# cresta, la tabla de derivadas y por qué no salta quedan en la exploración y el resumen.
 leccion: cap00/sec-0.6
 
 libro:
@@ -40,8 +43,8 @@ tarjetas:
   - id: explore-pendiente
     tipo: explorar
     titulo: "La derivada es una pendiente"
-    texto: "Arrastre el punto por la senoide. La recta naranja es la tangente; la discontinua, su pendiente en cada punto."
-    libro: [80, 92]
+    texto: "La recta naranja es la tangente; la discontinua, su pendiente. Arrastre el punto hasta que la tangente quede horizontal."
+    libro: [80, 90, 92]
     widget:
       tipo: grafica
       x: { id: x, min: 0, max: 6.3, unidad: rad, rotulo: "ωt" }
@@ -55,35 +58,42 @@ tarjetas:
       lectura: { valor: pend, rotulo: "Pendiente" }
       mandos:
         - { valor: x0, min: 0, max: 6.25, paso: 0.25, rotulo: "Punto, ωt" }
-    requiere: { mover: [x0] }
-    nota: "La pendiente de una senoide es otra senoide, adelantada 90°."
-
-  - id: prediga-cresta
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "El punto está en la cresta de la senoide. ¿Cuánto vale ahí la pendiente?"
-    libro: [90]
-    fijar: { x0: 1.5707963267948966 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 6.3, unidad: rad, rotulo: "ωt" }
-      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "sen ωt" }
-      curvas:
-        - { expr: "sin(x)", color: azul, rotulo: "sen ωt" }
-      lectura: { valor: pend, rotulo: "Pendiente" }
-      ocultar: true
-    opciones:
-      - texto: "Cero"
-        bien: true
-        porque: "Donde una función tiene un máximo o un mínimo, su derivada es cero: la tangente es horizontal."
-      - texto: "La máxima"
-        porque: "La pendiente es máxima en los pasos por cero, donde la curva sube más deprisa."
-      - texto: "Igual al valor de la cresta"
-        porque: "La pendiente no es la altura, sino lo deprisa que cambia la curva. En la cresta deja de subir."
+    inicio: { x0: 1 }
+    objetivo:
+      condiciones:
+        - { valor: pend, min: -0.1, max: 0.1, rotulo: "Pendiente: {{pend}}" }
+      logrado: "Tangente horizontal, pendiente {{pend}}: en un máximo o un mínimo la derivada es cero. La pendiente de una senoide es otra senoide, adelantada 90°."
+      pistas:
+        - { cuando: { valor: pend, mayor: 0.1 }, texto: "La tangente aún sube: avance hacia la cresta." }
+        - { texto: "La tangente baja: retroceda a la cresta o avance hasta el valle." }
     escalera:
-      - "Imagine la tangente en la cresta: ¿sube, baja o va plana?"
-    solucion: "Cero: en un máximo la tangente es horizontal y la derivada se anula."
+      - "Busque la cresta o el valle de la senoide."
+    solucion: "En la cresta o en el valle la tangente va plana."
+    comprobar:
+      - { pend: 0.5403 }
+      - { con: { x0: 1.5 }, pend: 0.0707 }
 
+  - id: estime-corriente
+    tipo: simular
+    fase: "Estime"
+    titulo: "Un voltio cada milisegundo"
+    texto: "La tensión de un condensador de 100 nF sube a 1000 V/s. ¿Qué corriente toma?"
+    libro: [87]
+    fijar: { C: 0.0000001, dvdt: 1000 }
+    simular:
+      objetivo: i_C
+      unidad: A
+      tol: 0.03
+      rotulo: "i_{C}"
+      errores:
+        - { razon: { min: 9, max: 11 }, texto: "Se ha pasado diez veces: revise el prefijo nano." }
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Se ha quedado corto diez veces: revise el prefijo nano." }
+    exito: "i = C·dv/dt = 100 nF × 1000 V/s = 100 µA."
+    escalera:
+      - "La corriente de un condensador es i = C·dv/dt."
+    solucion: "i = C·dv/dt = 100 nF × 1000 V/s = 100 µA."
+    comprobar:
+      - { i_C: 0.0001 }
   - id: regla-condensador
     tipo: formula
     titulo: "La corriente de un condensador"
@@ -102,37 +112,10 @@ tarjetas:
       mandos:
         - { valor: dvdt, lista: [0, 500, 1000, 2000], rotulo: "Pendiente, dv/dt" }
 
-  - id: estime-corriente
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "Un voltio cada milisegundo"
-    texto: "La tensión de un condensador de 100 nF sube a 1000 V/s. Estime la corriente que toma."
-    libro: [87]
-    fijar: { C: 0.0000001, dvdt: 1000 }
-    estimar:
-      objetivo: "i_C"
-      unidad: A
-      min: 0
-      max: 0.0005
-      paso: 0.00001
-      inicio: 0.0003
-      tol: 0.03
-      rotulo: "i_{C}"
-    exito: "i = C·dv/dt = 100 nF × 1000 V/s = 100 µA."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 0.000097 }, texto: "Se ha quedado corto: multiplique la capacidad por la pendiente." }
-      - { texto: "Se ha pasado: 100 nF por 1000 V/s; cuente bien los prefijos." }
-    escalera:
-      - "La corriente de un condensador es i = C·dv/dt."
-    solucion: "i = C·dv/dt = 100 nF × 1000 V/s = 100 µA."
-    comprobar:
-      - { i_C: 0.0001 }
-
   - id: sin-cambio
     tipo: sorpresa
     titulo: "Mucha tensión, ninguna corriente"
     texto: "Ponga la pendiente a cero: el condensador sigue cargado. ¿Toma corriente?"
-    nota: "Ninguna: sin cambio no hay corriente. Por eso un condensador bloquea la continua y deja pasar la alterna."
     libro: [87]
     fijar: { C: 0.0000001 }
     inicio: { dvdt: 1000 }
@@ -145,10 +128,21 @@ tarjetas:
       lectura: { valor: i_C, rotulo: "Corriente" }
       mandos:
         - { valor: dvdt, lista: [0, 500, 1000, 2000], rotulo: "Pendiente, dv/dt" }
-    requiere: { mover: [dvdt] }
+    objetivo:
+      condiciones:
+        - { valor: dvdt, max: 0, rotulo: "dv/dt = {{dvdt}}" }
+      logrado: "Cargado, pero {{i_C}}: sin cambio no hay corriente. Por eso un condensador bloquea la continua y deja pasar la alterna."
+      pistas:
+        - { texto: "Baje la pendiente hasta el fondo." }
+    escalera:
+      - "Una tensión que no cambia tiene pendiente cero."
+    solucion: "dv/dt = 0: ninguna corriente."
+    comprobar:
+      - { i_C: 0.0001 }
+      - { con: { dvdt: 0 }, i_C: 0 }
 
   - id: prediga-bobina
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "Una bobina de 10 mH desarrolla 10 V si su corriente cambia 1 A en un milisegundo. ¿Y si se corta en un microsegundo?"
     libro: [88]
@@ -159,23 +153,20 @@ tarjetas:
       y: { min: 0, max: 1.2, unidad: A, rotulo: "i" }
       curvas:
         - { expr: "max(1 - x/t_c, 0)", color: azul, rotulo: "corriente de la bobina" }
-      lectura: { valor: v_L, rotulo: "Tensión de la bobina" }
-      ocultar: true
-    opciones:
-      - texto: "10 000 V"
-        bien: true
-        porque: "di/dt es mil veces mayor, y la tensión también: el pico que destruye el transistor sin diodo de protección."
-      - texto: "10 V"
-        porque: "Eso es con el cambio en un milisegundo. En un microsegundo el cambio es mil veces más rápido."
-      - texto: "0 V"
-        porque: "Cero sería con corriente constante. Aquí la corriente cambia, y muy deprisa."
+    simular:
+      objetivo: v_L
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión de la bobina"
+      errores:
+        - { razon: { min: 0.0009, max: 0.0011 }, texto: "Eso es con el cambio en un milisegundo. En un microsegundo es mil veces más rápido." }
+    exito: "10 000 V: di/dt es mil veces mayor, y la tensión también. Es el pico que destruye el transistor sin diodo de protección."
     escalera:
       - "La tensión de la bobina es L·di/dt: sigue a la rapidez del cambio."
     solucion: "El cambio es mil veces más rápido y la tensión, mil veces mayor: 10 000 V."
     comprobar:
       - { v_L: 10000 }
       - { con: { t_c: 0.001 }, v_L: 10 }
-
   - id: reto-flanco
     tipo: reto
     titulo: "Reto: la pendiente de un flanco"
@@ -204,51 +195,6 @@ tarjetas:
     solucion: "Con 10 pF, 16,5 mA piden una pendiente de 1,65 V/ns."
     comprobar:
       - { con: { pend_v: 1650000000 }, t_r: 0.000000002, i_p: 0.0165 }
-
-  - id: por-que-no-salta
-    tipo: porque
-    titulo: "¿Por qué no salta?"
-    texto: "La tensión de un condensador puede cambiar deprisa, pero nunca a saltos. ¿Por qué?"
-    libro: [93, 82]
-    opciones:
-      - texto: "Un salto daría dv/dt infinita, y por tanto una corriente infinita"
-        bien: true
-        porque: "De i = C·dv/dt se sigue. Igual, la corriente de una bobina no puede saltar: son las condiciones iniciales de los transitorios."
-      - texto: "Porque su tensión siempre es constante"
-        porque: "No: cambia, y al cambiar toma corriente. Lo que no puede es cambiar de golpe."
-      - texto: "Porque su resistencia interna lo frena"
-        porque: "El motivo está en el condensador ideal mismo: i = C·dv/dt no admite saltos de tensión."
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.01, unidad: s, rotulo: t }
-      y: { min: 0, max: 30, unidad: V, rotulo: v }
-      curvas:
-        - { expr: "V0 + dvdt*x", color: azul, rotulo: "tensión del condensador" }
-      lectura: { valor: i_C, rotulo: Corriente }
-      mandos:
-        - { valor: dvdt, lista: [0, 500, 1000, 2000], rotulo: "Pendiente, dv/dt" }
-    escalera:
-      - "Más pendiente, más corriente: ¿qué corriente pediría una pendiente vertical?"
-    solucion: "Un salto es una dv/dt infinita: haría falta una corriente infinita."
-
-  - id: derivadas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La tabla de derivadas"
-    texto: "Una cada función con su derivada."
-    libro: [85]
-    emparejar:
-      - ["xⁿ", "n · xⁿ⁻¹"]
-      - ["eᵃˣ", "a · eᵃˣ"]
-      - ["ln(x)", "1 / x"]
-      - ["sen(a·x)", "a · cos(a·x)"]
-      - ["cos(a·x)", "−a · sen(a·x)"]
-    exito: "Eso es. La de sen(ωt), ω·cos(ωt), es la que hace que la corriente de un condensador adelante 90°."
-    pistas:
-      - { texto: "Derivar el seno da un coseno y derivar el coseno da menos el seno." }
-    escalera:
-      - "Derivar una senoide la adelanta 90° y la multiplica por ω."
-    solucion: "xⁿ: n · xⁿ⁻¹. eᵃˣ: a · eᵃˣ. ln(x): 1 / x. sen(a·x): a · cos(a·x). cos(a·x): −a · sen(a·x)."
 
   - id: pequena-senal
     tipo: pregunta
@@ -282,9 +228,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [80, 87, 88, 93]
+    libro: [80, 85, 87, 88, 93]
     ideas:
-      - { titulo: "Pendiente.", texto: "La derivada es la pendiente de la tangente; en un máximo o un mínimo, cero." }
+      - { titulo: "Pendiente.", texto: "La derivada es la pendiente de la tangente; en un máximo o un mínimo, cero. Derivar sen(a·x) da a·cos(a·x)." }
       - { titulo: "Condensador.", texto: "i = C·dv/dt: 100 nF a 1000 V/s toman 100 µA; sin cambio, cero." }
       - { titulo: "Bobina.", texto: "v = L·di/dt: se opone al cambio de la corriente, no a la corriente." }
       - { titulo: "Sin saltos.", texto: "Ni la tensión de un condensador ni la corriente de una bobina pueden saltar." }
