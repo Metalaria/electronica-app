@@ -4,6 +4,9 @@
 # mejorados, la carga activa (1930 frente a 162) y por qué no una resistencia de 75,5 kΩ. La referencia de 1 mA desde
 # 12 V (R_ref = 11,3 kΩ) y la carga de 4,7 kΩ son mías: el libro da 1 mA (problema 6.B) pero no el circuito.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir el error de base con β = 50, buscar la β más fiel,
+# desaparear 5 mV, calcular el error de un grado, la degeneración y la carga activa; se elige por qué no una
+# resistencia de 75,5 kΩ. La exponencial, los espejos mejorados y el dedo quedan en los textos y el resumen.
 leccion: cap06/sec-6.11
 
 libro:
@@ -56,10 +59,29 @@ modelo:
     A_act: { expr: "g_ma*r_par", sim: "A_{v}", nombre: "ganancia con carga activa", unidad: "", cifras: 3 }
 
 tarjetas:
+  - id: prediga-base
+    tipo: simular
+    titulo: "¿Una copia exacta?"
+    texto: "Un espejo simple con dos transistores idénticos de β = 50. ¿Cuánto se queda la corriente copiada por debajo de la de referencia, en %?"
+    libro: [348, 350]
+    fijar: { beta: 50, dV_e: 0 }
+    simular:
+      objetivo: e_b
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Error de la copia"
+      errores:
+        - { razon: { min: 1.03, max: 1.06 }, texto: "La referencia alimenta dos bases y el colector: 2/(β + 2)." }
+    exito: "Un 3,85 %: la referencia se reparte entre el colector de Q₁ y las dos bases."
+    escalera:
+      - "La referencia se reparte entre el colector de Q₁ y las dos corrientes de base."
+    solucion: "2/(50 + 2) = 3,85 %."
+    comprobar:
+      - { e_ref: -3.85, e_b: 3.85 }
   - id: explore-espejo
     tipo: explorar
     titulo: "Copiar una corriente"
-    texto: "Dos transistores iguales tienen las bases unidas: Q₁, en diodo, toma la referencia y fija una V_{BE}, y Q₂, con la misma, la copia. Cambie β y la carga."
+    texto: "Dos transistores iguales tienen las bases unidas: Q₁, en diodo, toma la referencia y fija una V_{BE}, y Q₂, con la misma, la copia. Busque la β con la que la copia es más fiel."
     libro: [346, 347]
     widget:
       tipo: circuito
@@ -74,37 +96,19 @@ tarjetas:
       mandos:
         - { valor: beta, lista: [50, 150, 300], rotulo: "β de los dos" }
         - { valor: R_el, lista: [1000, 4700, 10000], rotulo: "Carga, R_{L}" }
-    requiere: { mover: [beta] }
-
-  - id: prediga-base
-    tipo: predecir
-    titulo: "¿Una copia exacta?"
-    texto: "Un espejo simple con dos transistores idénticos de β = 50. ¿Cuánto se queda la corriente copiada por debajo de la de referencia?"
-    libro: [348, 350]
-    fijar: { beta: 50, dV_e: 0 }
-    widget:
-      tipo: circuito
-      esquema: espejo
-      piezas: { vcc: V_ec, rref: R_er, carga: R_el, beta: beta, vbe: V_BE, dvbe: dV_e }
-      lectura: { valor: e_ref, rotulo: "Diferencia" }
-      datos:
-        - { valor: I_eo, rotulo: "Copiada: {{I_eo}}" }
-      corriente: I_er
-      mide: { iref: I_er, iout: I_eo, vbe: V_BE }
-      ocultar: true
-    opciones:
-      - texto: "Un 3,85 %"
-        bien: true
-        porque: "La referencia se reparte entre el colector de Q₁ y las dos bases: error = 2/(β + 2), con β = 50."
-      - texto: "Nada: son idénticos"
-        porque: "Idénticos copian la corriente de colector, pero la referencia también alimenta las dos bases."
-      - texto: "Un 50 %"
-        porque: "Las corrientes de base son β veces menores que las de colector: se pierde poco, 2/(β + 2)."
-    comprobar:
-      - { e_ref: -3.85, e_b: 3.85 }
+    inicio: { beta: 50 }
+    objetivo:
+      condiciones:
+        - { valor: e_ref, min: -0.7, rotulo: "Diferencia: {{e_ref}}" }
+      logrado: "Con β = {{beta}}, {{I_eo}} frente a {{I_er}}: {{e_ref}}. La corriente se ha copiado sin depender de resistencias."
+      pistas:
+        - { texto: "Más β: menos corriente se va a las bases." }
     escalera:
-      - "La referencia se reparte entre el colector de Q₁ y las dos corrientes de base."
-    solucion: "Error = 2/(β + 2), con β = 50: un 3,85 %."
+      - "El error es 2/(β + 2)."
+    solucion: "Con β = 300: un 0,66 %."
+    comprobar:
+      - { e_ref: -3.85 }
+      - { con: { beta: 300 }, e_ref: -0.66, tol: 0.02 }
 
   - id: formula-base
     tipo: formula
@@ -131,7 +135,7 @@ tarjetas:
   - id: sorpresa-apareamiento
     tipo: sorpresa
     titulo: "Unos milivoltios"
-    texto: "En un espejo simple con β = 150 y transistores sueltos, Q₂ puede recibir unos milivoltios más de V_{BE}. Cambie el desapareamiento."
+    texto: "En un espejo simple con β = 150 y transistores sueltos, Q₂ puede recibir unos milivoltios más de V_{BE}. Pruebe el desapareamiento mayor."
     libro: [352, 353, "cap06#465"]
     fijar: { beta: 150 }
     inicio: { dV_e: 0 }
@@ -147,134 +151,77 @@ tarjetas:
       mide: { iref: I_er, iout: I_eo, vout: V_eo, vbe: V_BE }
       mandos:
         - { valor: dV_e, lista: [0, 0.001, 0.005], rotulo: "Desapareamiento, ΔV_{BE}" }
-    requiere: { mover: [dV_e] }
+    objetivo:
+      condiciones:
+        - { valor: e_d, min: 20, rotulo: "Q₂ frente a Q₁: {{e_d}}" }
+      logrado: "{{e_d}} con solo {{dV_e}}: la corriente va en exponencial con V_{BE}, a la escala de V_{T} = 25,9 mV. Por eso un espejo no se hace con transistores sueltos."
+      pistas:
+        - { texto: "Elija 5 mV." }
+    escalera:
+      - "Elija el desapareamiento de 5 mV."
+    solucion: "Con 5 mV: un 21,3 %."
     comprobar:
+      - { e_d: 0 }
       - { con: { dV_e: 0.001 }, e_d: 3.944 }
       - { con: { dV_e: 0.005 }, e_d: 21.3 }
 
-  - id: por-que-apareamiento
-    tipo: porque
-    titulo: "¿Por qué tanto?"
-    texto: "Cinco milivoltios de diferencia entre las V_{BE} dan un 21 % de error en la corriente copiada. ¿Por qué tanto?"
-    libro: [352, 353]
-    opciones:
-      - texto: "La corriente depende en exponencial de V_{BE}, a la escala de V_{T} = 25,9 mV"
-        bien: true
-        porque: "e^{5/25,9} − 1 = 21 %. Por eso un espejo no se hace con transistores sueltos: pareja apareada, en el mismo encapsulado."
-      - texto: "Porque los 5 mV se suman a la corriente de base"
-        porque: "El error de base es otro, y pequeño: 2/(β + 2). Este viene de la exponencial."
-      - texto: "Porque la carga es distinta"
-        porque: "La copia no depende de la carga mientras Q₂ no sature: lo que la tuerce es la diferencia de V_{BE}."
-    fijar: { beta: 150 }
-    inicio: { dV_e: 0.005 }
-    widget:
-      tipo: circuito
-      esquema: espejo
-      piezas: { vcc: V_ec, rref: R_er, carga: R_el, beta: beta, vbe: V_BE, dvbe: dV_e }
-      lectura: { valor: I_eo, rotulo: "Corriente copiada" }
-      datos:
-        - { valor: I_er, rotulo: "Referencia: {{I_er}}" }
-      corriente: I_er
-      mide: { iref: I_er, iout: I_eo, vout: V_eo, vbe: V_BE }
-      mandos:
-        - { valor: dV_e, lista: [0, 0.005], rotulo: "Desapareamiento de V_{BE}" }
-    escalera:
-      - "I_{C} va con e^{V_{BE}/V_{T}}, y V_{T} son solo 25,9 mV."
-    solucion: "e^{5/25,9} − 1 = 21 %: la exponencial convierte unos milivoltios en un error grande."
-
   - id: estime-grado
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un grado de diferencia"
-    texto: "En un espejo, un transistor está 1 °C más caliente que el otro: su V_{BE} es 2 mV distinta a la misma corriente. Estime el error de la copia."
-    libro: [355]
-    estimar:
-      objetivo: "e_1g"
+    texto: "En un espejo, un transistor está 1 °C más caliente que el otro: su V_{BE} es 2 mV distinta a la misma corriente. ¿Qué error da la copia, en %?"
+    libro: [355, 369]
+    simular:
+      objetivo: e_1g
       unidad: "%"
-      min: 0
-      max: 30
-      paso: 0.1
-      inicio: 20
-      tol: 0.06
+      tol: 0.02
       rotulo: "Error por 1 °C"
-    exito: "Un 8 %: por eso la temperatura tiene que ser común. En un integrado están a micras; en una placa, hay que pegarlos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 8.5 }, texto: "Se ha pasado. 2 mV son unas trece veces menos que V_{T}: e elevado a esa fracción, menos uno." }
-      - { texto: "Se ha quedado corto. Con 5 mV eran un 21 %; con 2 mV, algo más de la tercera parte." }
+      errores:
+        - { razon: { min: 0.94, max: 0.965 }, texto: "Es exponencial: e^{x} − 1, algo más que x." }
+    exito: "Un 8 %: la temperatura tiene que ser común. Calentando uno con el dedo, la relación se desequilibra en segundos."
     escalera:
       - "2 mV son unas trece veces menos que V_{T}: e elevado a esa fracción, menos uno."
     solucion: "e^{2/25,9} − 1: un 8 %."
     comprobar:
       - { e_1g: 8.044 }
-
   - id: estime-degeneracion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La degeneración rescata al espejo"
-    texto: "Un espejo discreto con 5 mV de desapareamiento lleva resistencias de emisor iguales que caen 100 mV. Estime el error, ahora 5 mV frente a 100 + 26 mV."
-    libro: ["cap06#467"]
-    estimar:
-      objetivo: "e_deg"
+    texto: "Un espejo discreto con 5 mV de desapareamiento lleva resistencias de emisor iguales que caen 100 mV. ¿Qué error queda, ahora 5 mV frente a 100 + 26 mV?"
+    libro: ["cap06#467", 357]
+    simular:
+      objetivo: e_deg
       unidad: "%"
-      min: 0
-      max: 25
-      paso: 0.1
-      inicio: 21
-      tol: 0.06
+      tol: 0.03
       rotulo: "Error con degeneración"
-    exito: "Un 4 % en lugar de un 21 %: la caída en las resistencias es lineal y domina sobre la exponencial. Con 200 mV, un 2,2 %."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4.2 }, texto: "Se ha pasado. Divida 5 mV entre 126 mV." }
-      - { texto: "Se ha quedado corto. Son 5 mV frente a 126 mV, en tanto por ciento." }
-    comprobar:
-      - { e_deg: 3.97, d_tot: 0.126 }
+      errores:
+        - { razon: { min: 1.24, max: 1.28 }, texto: "Súmele V_{T}: son 100 + 26 mV." }
+    exito: "Un 4 % en lugar de un 21 %: la caída en las resistencias es lineal y domina sobre la exponencial."
     escalera:
       - "Divida 5 mV entre 126 mV."
-    solucion: "5/126: un 4 %, en lugar de un 21 %."
-
-  - id: empareje-mejorados
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Espejos mejorados"
-    texto: "Empareje cada mejora del espejo simple con lo que consigue."
-    libro: [357, 358, 359, 360]
-    emparejar:
-      - ["Degeneración de emisor", "Diluye el desapareamiento y sube la impedancia por (1 + g_{m}·R_{E})"]
-      - ["Cascodo", "Fija la V_{CE} de salida: impedancia unas β veces mayor, a cambio de tensión"]
-      - ["Wilson", "Cancela el error de base y buena parte del Early"]
-      - ["Transistor de salida N veces mayor", "Copia N veces la corriente de referencia"]
-    exito: "Eso es. Así un integrado analógico fija todas sus corrientes internas con una única resistencia externa."
-    pistas:
-      - { texto: "El cascodo y el Wilson atacan el efecto Early; la degeneración, el apareamiento." }
-    escalera:
-      - "El cascodo y el Wilson atacan el efecto Early; la degeneración, el apareamiento."
-    solucion: "Degeneración: diluye el desapareamiento. Cascodo: fija la V_{CE}. Wilson: cancela el error de base. N veces mayor: copia N veces."
-
+    solucion: "5/126: un 4 %."
+    comprobar:
+      - { e_deg: 3.97, d_tot: 0.126 }
   - id: estime-carga-activa
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La carga activa"
-    texto: "Un espejo como carga de colector presenta su r_{o}: con la del transistor, 37,7 kΩ en paralelo. Con g_{m} = 51,2 mS, estime la ganancia."
+    texto: "Un espejo como carga de colector presenta su r_{o}: con la del transistor, 37,7 kΩ en paralelo. Con g_{m} = 51,2 mS, ¿qué ganancia da?"
     libro: [363, 364]
-    estimar:
-      objetivo: "A_act"
+    simular:
+      objetivo: A_act
       unidad: ""
-      min: 0
-      max: 4000
-      paso: 10
-      inicio: 400
-      tol: 0.05
+      tol: 0.03
       rotulo: "Ganancia con carga activa"
-    exito: "51,2 mS · 37,7 kΩ = 1930, frente a los 162 de 3,3 kΩ: doce veces más sin gastar un voltio más de alimentación."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2030 }, texto: "Se ha pasado. Multiplique 51,2 mS por 37,7 kΩ." }
-      - { texto: "Se ha quedado corto. La carga es mucho mayor que los 3,3 kΩ de una resistencia: la ganancia crece en proporción." }
+      errores:
+        - { razon: { min: 0.08, max: 0.09 }, texto: "Esa es con 3,3 kΩ de colector. La carga activa es mucho mayor." }
+    exito: "1930, frente a los 162 de 3,3 kΩ: doce veces más sin gastar un voltio más de alimentación."
+    escalera:
+      - "Multiplique 51,2 mS por 37,7 kΩ."
+    solucion: "51,2 mS × 37,7 kΩ = 1930."
     comprobar:
       - { A_act: 1930 }
-    escalera:
-      - "La ganancia es g_{m} por la carga: multiplique 51,2 mS por 37,7 kΩ."
-    solucion: "51,2 mS × 37,7 kΩ = 1930, frente a 162 con 3,3 kΩ."
-
   - id: sin-resistencia
     tipo: pregunta
     titulo: "¿Y una resistencia grande?"
@@ -297,34 +244,12 @@ tarjetas:
       - "75,5 kΩ por la corriente de polarización: ¿cuánta tensión cae en continua?"
     solucion: "Unos 100 V: el espejo, en cambio, deja caer poca tensión en continua y presenta mucha impedancia en alterna."
 
-  - id: banco-dedo
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Se miden las dos corrientes de un espejo como caída en resistencias iguales y se calienta con el dedo uno de los dos transistores. ¿Qué se ve?"
-    libro: [369]
-    opciones:
-      - texto: "La relación se desequilibra en cuestión de segundos"
-        bien: true
-        porque: "Es la sensibilidad exponencial en directo: por eso el acoplamiento térmico no es opcional."
-      - texto: "Nada: el espejo compensa la temperatura"
-        porque: "Solo si los dos están a la misma temperatura. Calentando uno, sus V_{BE} se separan 2 mV por grado."
-      - texto: "Las dos corrientes suben por igual"
-        porque: "Eso pasaría calentando los dos a la vez. Calentando uno, se separan."
-    widget:
-      tipo: figura
-      figura: fig-6.20
-      zonas:
-        - { id: desapareamiento, rotulo: "Sensibilidad al desapareamiento de V_{BE}", rect: [0, 0, 437, 194] }
-    escalera:
-      - "Un grado de diferencia son 2 mV de V_{BE}. ¿Cuánto error daba eso?"
-    solucion: "La relación se desequilibra en segundos: es la sensibilidad exponencial en directo."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [343, 349, 353, 364]
+    libro: [343, 349, 353, 358, 359, 360, 364]
     ideas:
       - { titulo: "Igualdad, no precisión.", texto: "El integrado explota transistores iguales: la corriente se copia sin resistencias." }
       - { titulo: "Dos errores.", texto: "La base, 2/(β + 2): 1,32 % con β = 150. El desapareamiento: 5 mV, un 21 %." }
-      - { titulo: "Remedios.", texto: "Pareja apareada y a la misma temperatura; la degeneración deja el 21 % en un 4 %." }
+      - { titulo: "Remedios.", texto: "Pareja apareada y a la misma temperatura; la degeneración deja el 21 % en un 4 %. Cascodo y Wilson atacan el Early; N veces mayor, copia N veces." }
       - { titulo: "Carga activa.", texto: "1930 frente a 162: doce veces más ganancia sin más alimentación." }

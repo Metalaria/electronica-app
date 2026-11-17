@@ -110,6 +110,11 @@ export interface Tocar {
   bien: string[];
   /** Every right zone must be touched (several at once); else one touch answers. */
   todas: boolean;
+  /**
+   * 1.2.1 (piloto121): the right zones are touched in the order of `bien` (the path of the current on a board); a zone
+   * out of order is said and the touches after the last right one go back. Implies `todas`.
+   */
+  orden?: boolean;
   /** Why each other zone is not it (every zone that is not right has one). */
   porque: Record<string, Texto>;
 }

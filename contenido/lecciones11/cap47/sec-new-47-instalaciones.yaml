@@ -2,10 +2,23 @@
 # sec-new-47-instalaciones). Formato: contenido/lecciones11/GUIA.md. El defecto franco en TT (bloque 297) es el lazo
 # de la fuente de 230 V con RA = 20 Ω y RB = 2 Ω en el esquema «serie» (valores eficaces): 10,5 A y la masa a 209 V. La
 # pica de 500 Ω·m del ejercicio 48.8 (cap47#600) se ajusta para un diferencial de 300 mA con 50 V. La caída de tensión
-# del banco de 25 m (bloque 331) y la fuga de los condensadores Y (bloque 326, ejercicio 48.11).
+# del banco de 25 m (bloque 331) y la fuga de los condensadores Y (bloque 326, ejercicio 48.11). 1.2.1 (aprender
+# haciendo): simular el defecto, calcular la masa, la caída y los equipos por diferencial, cambiar a 300 mA, alargar la
+# pica, tocar la curva de motores, el tipo de diferencial, la selectividad y lo que prueba el botón. Dos preguntas: el
+# transformador de 70 A y la isla IT.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap47/sec-new-47-instalaciones
 
 libro:
+  312: "La ITC-BT-19 limita además la caída de tensión, desde el"
+  304: "El magnetotérmico"
+  306: "Zonas de disparo de un magnetotérmico según los puntos de"
+  316: "La selectividad"
+  318: "Entre diferenciales, el de arriba no debe dispararse con lo"
+  319: "Tiempo de corte 1·IΔn 2·IΔn 5·IΔn Uso general (máximo) 300"
+  321: "El diferencial"
+  325: "Corrientes diferenciales simuladas con ngspice"
+  333: "En el banco"
   287: "no sustituye al reglamento ni al instalador"
   291: "añadir un circuito al cuadro es una modificación; enchufar una regleta, no"
   294: "La primera dice cómo está la alimentación"
@@ -104,31 +117,20 @@ tarjetas:
       - { I_d: 10.45, I_sinB: 11.5, tol: 0.003 }
 
   - id: masa-209
-    tipo: pregunta
+    tipo: simular
     titulo: "La masa queda viva"
-    texto: "Con 10,5 A por R_{A} = 20 Ω, ¿a qué tensión queda la masa del aparato?"
+    texto: "Con 10,5 A por R_{A} = 20 Ω, calcule a qué tensión queda la masa del aparato."
     libro: [297, 298]
     fijar: { V_0: 230, R_A: 20, R_B: 2 }
-    widget:
-      tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_0, r1: R_A, r2: R_B }
-      corriente: I_d
-      mide: { corriente: I_d, v1: V_cA }
-      mandos: []
-    estimar:
-      objetivo: "V_cA"
+    exito: "209 V: quien la toque con 1 kΩ recibe 209 mA. En TT corta el diferencial."
+    simular:
+      objetivo: V_cA
       unidad: V
-      min: 0
-      max: 230
-      paso: 1
-      inicio: 20
       tol: 0.02
       rotulo: "Tensión de la masa"
-    exito: "209 V: quien la toque con 1 kΩ recibe 209 mA. En TT corta el diferencial."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 213 }, texto: "Se ha pasado: una parte pequeña cae en R_{B}." }
-      - { texto: "Se ha quedado corto: R_{A} se queda casi toda la tensión, 20 de cada 22 Ω." }
+      errores:
+        - { expr: "V_0", texto: "No toda: una parte cae en R_{B}." }
+        - { expr: "V_cB", texto: "Esa es la caída en R_{B}; se pide la de la masa." }
     escalera:
       - "V_{c} = I_{d} · R_{A}."
     solucion: "10,45 × 20 ≈ 209 V."
@@ -136,12 +138,11 @@ tarjetas:
       - { V_cA: 209, I_d: 10.45, tol: 0.003 }
 
   - id: formula-tierra
-    tipo: formula
+    tipo: explorar
     titulo: "La condición sobre la tierra"
-    texto: "La toma de tierra por la sensibilidad del diferencial no debe pasar de la tensión límite. Cambie los dos."
+    texto: "La toma de tierra por la sensibilidad del diferencial no debe pasar de la tensión límite. Pase al diferencial de 300 mA y mire la tierra que exige."
     libro: [299, 300]
-    ec: 299
-    sustitucion: "R_{A} ≤ {{V_lim}} / {{I_dn}} = {{R_Amax}}"
+    inicio: { I_dn: 0.03, V_lim: 50 }
     widget:
       tipo: grafica
       x: { id: i, min: 0.01, max: 0.5, unidad: A, rotulo: "sensibilidad del diferencial", escala: log }
@@ -156,6 +157,15 @@ tarjetas:
         - { valor: V_lim, lista: [50, 24], rotulo: "Tensión límite" }
     comprobar:
       - { con: { I_dn: 0.03, V_lim: 50 }, R_Amax: 1667, tol: 0.001 }
+    objetivo:
+      condiciones:
+        - { valor: R_Amax, max: 200, rotulo: "R_{A} máxima: {{R_Amax}}" }
+      logrado: "Con 300 mA la tierra no puede pasar de 167 Ω, y menos con 24 V; con 30 mA bastan 1 667 Ω."
+      pistas:
+        - { texto: "Pruebe el diferencial de 300 mA." }
+    escalera:
+      - "R_{A} · I_{Δn} ≤ V_{lím}."
+    solucion: "El diferencial de 300 mA."
 
   - id: ajuste-pica
     tipo: ajuste
@@ -189,27 +199,6 @@ tarjetas:
       - { con: { L_p: 2 }, R_pica: 250 }
       - { con: { L_p: 3 }, R_pica: 166.7, tol: 0.001 }
 
-  - id: curvas-bcd
-    tipo: pregunta
-    titulo: "Curvas B, C y D"
-    texto: "Empareje cada curva con el margen de su disparo magnético."
-    libro: [305, 307]
-    widget:
-      tipo: figura
-      figura: fig-new-47-curvas
-      zonas:
-        - { id: curvas, rotulo: "Las zonas de disparo", rect: [0, 0, 312, 214] }
-    emparejar:
-      - ["Curva B", "De 3 a 5 veces I_{n}: protege líneas largas"]
-      - ["Curva C", "De 5 a 10 veces I_{n}: la de uso general"]
-      - ["Curva D", "De 10 a 20 veces I_{n}: transformadores y motores"]
-    exito: "Entre los dos múltiplos de su curva, puede disparar o no."
-    pistas:
-      - { texto: "La que más irrupción tolera es la de los motores." }
-    escalera:
-      - "B, C y D van de menos a más tolerancia."
-    solucion: "B, 3 a 5; C, 5 a 10; D, 10 a 20 veces I_{n}."
-
   - id: transformador-70a
     tipo: predecir
     titulo: "Conectar un transformador"
@@ -233,28 +222,19 @@ tarjetas:
     solucion: "El C10, entre 50 y 100 A. Lo seguro: curva D o un limitador de irrupción."
 
   - id: estime-caida
-    tipo: pregunta
+    tipo: simular
     titulo: "La caída de tensión del banco"
-    texto: "Banco a 25 m, 9,57 A, cable de 2,5 mm² con 9,55 Ω/km a 70 °C. ¿Qué caída, en porcentaje de 230 V?"
-    libro: [313, 314, 330, 331]
-    widget:
-      tipo: figura
-      figura: fig-new-47-banco
-      zonas:
-        - { id: linea, rotulo: "La línea", rect: [0, 0, 458, 129] }
-    estimar:
-      objetivo: "dV_pct"
-      unidad: "%"
-      min: 0
-      max: 5
-      paso: 0.01
-      inicio: 1
-      tol: 0.03
-      rotulo: "Caída de tensión"
+    texto: "Banco a 25 m, 9,57 A, cable de 2,5 mm² con 9,55 Ω/km a 70 °C. Calcule la caída, en porcentaje de 230 V."
+    libro: [312, 313, 314, 330, 331]
     exito: "4,57 V, el 1,99 %: por debajo del 5 % de los demás usos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.05 }, texto: "Se ha pasado: 2 × 25 m son 50 m de cable." }
-      - { texto: "Se ha quedado corto: la corriente va y vuelve, 2 × 25 m de conductor." }
+    simular:
+      objetivo: dV_pct
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Caída de tensión"
+      errores:
+        - { expr: "dV_1", texto: "Ha contado un solo conductor: la corriente va y vuelve." }
+        - { expr: "dV", texto: "Esos son voltios; se pide el porcentaje de 230 V." }
     escalera:
       - "ΔV = 2 · L · I · R′, con R′ en Ω/m."
     solucion: "2 × 25 × 9,57 × 0,00955 = 4,57 V, el 1,99 %."
@@ -283,105 +263,30 @@ tarjetas:
       - "¿A qué está unida la pinza de masa de un osciloscopio de red?"
     solucion: "La pinza pone un lado a tierra: el otro queda a 230 V y el diferencial del cuadro no lo ve."
 
-  - id: tipos-diferencial
-    tipo: pregunta
-    titulo: "Los tipos de diferencial"
-    texto: "Empareje cada tipo con dónde hace falta."
-    libro: [322, 323, 324]
-    widget:
-      tipo: figura
-      figura: fig-new-47-residual
-      zonas:
-        - { id: corrientes, rotulo: "Las tres corrientes", rect: [0, 0, 463, 171] }
-    emparejar:
-      - ["AC", "Cargas lineales"]
-      - ["A", "Rectificadores monofásicos: fuentes conmutadas, cargadores"]
-      - ["F", "Variadores monofásicos: lavadoras, bombas"]
-      - ["B", "Variadores e inversores trifásicos, cargadores de vehículo"]
-    exito: "La continua casi lisa de un puente trifásico solo la ve el tipo B, y ciega a un AC o un A."
-    pistas:
-      - { texto: "El toroidal solo transmite variaciones de flujo." }
-    escalera:
-      - "Cuanto más lisa es la continua de la fuga, más «completo» debe ser el tipo."
-    solucion: "AC, lineales; A, monofásicos; F, variadores monofásicos; B, trifásicos y cargadores."
-
   - id: estime-fuga
-    tipo: pregunta
+    tipo: simular
     titulo: "La fuga sin defecto"
-    texto: "Cada equipo fuga 0,34 mA por su condensador Y de 4,7 nF. ¿Cuántos caben en el 30 % de un diferencial de 30 mA?"
+    texto: "Cada equipo fuga 0,34 mA por su condensador Y de 4,7 nF. Calcule cuántos caben en el 30 % de un diferencial de 30 mA."
     libro: [326, "cap47#600"]
-    widget:
-      tipo: figura
-      figura: fig-new-47-residual
-      zonas:
-        - { id: fuga, rotulo: "La primera gráfica", rect: [0, 0, 155, 171] }
-    estimar:
-      objetivo: "n_eq"
-      unidad: ""
-      min: 0
-      max: 60
-      paso: 1
-      inicio: 5
-      tol: 0.04
-      rotulo: "Equipos"
     exito: "Unos 26: 9 mA entre 0,34 mA. Se reparten circuitos; nunca se sube la sensibilidad."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 27.5 }, texto: "Se ha pasado: el presupuesto es el 30 % de 30 mA, 9 mA." }
-      - { texto: "Se ha quedado corto: 9 mA entre 0,34 mA por equipo." }
+    simular:
+      objetivo: n_eq
+      unidad: ""
+      tol: 0.03
+      rotulo: "Equipos"
+      errores:
+        - { expr: "0.03/I_fuga", texto: "Ha usado los 30 mA enteros: el presupuesto es el 30 %." }
+        - { expr: "0.03*0.25/I_fuga", texto: "Con el 25 % serían menos: aquí se toma el 30 %." }
     escalera:
       - "Calcule primero el 30 % de 30 mA."
     solucion: "9/0,340 = 26,5: caben 26 equipos."
     comprobar:
       - { n_eq: 26.5, I_fuga: 0.00034, tol: 0.01 }
 
-  - id: selectividad
-    tipo: pregunta
-    titulo: "Que abra solo el de abajo"
-    texto: "30 mA de uso general en el banco y, aguas arriba, otro de uso general. ¿Qué pasa con un defecto grande?"
-    libro: [320]
-    widget:
-      tipo: figura
-      figura: fig-new-47-banco
-      zonas:
-        - { id: cuadro, rotulo: "El cuadro", rect: [0, 0, 230, 129] }
-    opciones:
-      - texto: "Pueden abrir los dos: hace falta uno de tipo S arriba"
-        bien: true
-        porque: "El tipo S tiene retardo normalizado: espera a que abra el de abajo."
-      - texto: "Abre solo el de abajo, siempre"
-        porque: "Con dos de uso general abrirían los dos: ninguno espera."
-      - texto: "Abre solo el de arriba"
-        porque: "El de abajo, más sensible, también ve el defecto y abre."
-    escalera:
-      - "¿Cuál de los dos espera antes de abrir?"
-    solucion: "Abrirían los dos; con 300 mA de tipo S arriba, solo el del banco."
-
-  - id: boton-test
-    tipo: pregunta
-    titulo: "El botón de prueba"
-    texto: "¿Qué comprueba el botón de prueba del diferencial?"
-    libro: [334, 291]
-    widget:
-      tipo: figura
-      figura: fig-new-47-banco
-      zonas:
-        - { id: cuadro, rotulo: "El cuadro", rect: [0, 0, 230, 129] }
-    opciones:
-      - texto: "El mecanismo, no la protección"
-        bien: true
-        porque: "No pasa por la toma de tierra ni mide el tiempo: eso es trabajo del instalador."
-      - texto: "Que la toma de tierra está bien"
-        porque: "La corriente de prueba no pasa por la toma de tierra."
-      - texto: "Que abre en menos de 40 ms"
-        porque: "No mide el tiempo de disparo."
-    escalera:
-      - "¿Por dónde circula la corriente del botón?"
-    solucion: "Solo el mecanismo. Medir disparo, tierra y bucle es del instalador."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [287, 298, 300, 307, 326]
+    libro: [287, 298, 300, 307, 326, 291, 304, 306, 316, 318, 319, 320, 321, 322, 323, 324, 325, 333, 334]
     ideas:
       - { titulo: "TT.", texto: "El defecto vuelve por el terreno: 10,5 A, la masa a 209 V; corta el diferencial." }
       - { titulo: "La tierra.", texto: "R_{A} · I_{Δn} ≤ 50 V: 1 667 Ω con 30 mA, 167 Ω con 300 mA." }

@@ -3,6 +3,9 @@
 # del ejercicio 25.4 (I_D = 4 mA), V_th = 2 V de ejemplo; el circuito, el esquema «mosfet» con 12 V y 470 Ω (ejemplo).
 # La característica de salida es la del modelo de canal largo (triodo k·(V_ov·V_DS − V_DS²/2) y saturación ½·k·V_ov²).
 # Los coeficientes térmicos y la estructura, sobre la figura 25.11 del libro (fig-26.11).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el estrangulamiento se lleva a 4 V con la puerta (objetivo),
+# los 4 mA y la g_m se predicen (simular), los 9 mA se consiguen con la fórmula a la vista, la curva se dibuja y la
+# V_DS del interruptor «saturado» se mide y se escribe. Quedan dos preguntas de opciones (dos sentidos, estática).
 leccion: cap26/sec-26.6
 
 libro:
@@ -45,8 +48,9 @@ tarjetas:
   - id: explore-salida
     tipo: explorar
     titulo: "Óhmica y saturación"
-    texto: "La corriente frente a V_{DS}. Cambie V_{GS} y mire dónde deja de crecer la corriente."
+    texto: "La corriente frente a V_{DS}. Mueva V_{GS} hasta que el canal se estrangule justo en V_{DS} = 4 V."
     libro: [176, 177]
+    inicio: { V_g: 4 }
     widget:
       tipo: grafica
       x: { id: vd, min: 0, max: 8, unidad: V, rotulo: "V_{DS}" }
@@ -59,10 +63,21 @@ tarjetas:
       lectura: { valor: I_s, rotulo: "Corriente de saturación" }
       mandos:
         - { valor: V_g, min: 2.5, max: 7, paso: 0.5, rotulo: "V_{GS}" }
-    requiere: { mover: [V_g] }
+    objetivo:
+      condiciones:
+        - { valor: V_ov, objetivo: 4, tol: 0.01, rotulo: "Estrangulamiento en {{V_ov}}" }
+      logrado: "Con {{V_g}}, el canal se estrangula en V_{DS} = {{V_ov}}: más allá, la corriente se queda en {{I_s}}."
+      pistas:
+        - { cuando: { valor: V_ov, mayor: 4 }, texto: "Se estrangula más a la derecha: baje la puerta." }
+        - { texto: "Se estrangula antes: suba la puerta." }
+    escalera:
+      - "La frontera está en V_{DS} = V_{GS} − V_{th}, con un umbral de 2 V."
+    solucion: "V_{GS} = 6 V."
+    comprobar:
+      - { con: { V_g: 6 }, V_ov: 4, I_s: 0.016 }
 
   - id: prediga-id
-    tipo: predecir
+    tipo: simular
     titulo: "La ley cuadrática"
     texto: "k = 2 mA/V² y V_{GS} − V_{th} = 2 V, en saturación. ¿Cuánta corriente de drenador?"
     libro: [178, "cap26#286"]
@@ -75,27 +90,28 @@ tarjetas:
       corriente: I_D
       mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
       ocultar: true
-    opciones:
-      - texto: "4 mA"
-        bien: true
-        porque: "½ · 2 mA/V² · (2 V)² = 4 mA. Y V_{DS} queda muy por encima de 2 V: sigue en saturación."
-      - texto: "8 mA"
-        porque: "Falta el medio: I_{D} = ½ · k · (V_{GS} − V_{th})²."
-      - texto: "4 mA, pero solo si V_{DS} es pequeña"
-        porque: "Con V_{DS} pequeña estaría en la zona óhmica. La ley cuadrática es la de saturación."
+      mandos: []
+    simular:
+      objetivo: I_D
+      unidad: A
+      tol: 0.03
+      rotulo: "I_{D}"
+      medida: id
+      errores:
+        - { expr: "I_2", texto: "Falta el medio: I_{D} = ½ · k · (V_{GS} − V_{th})²." }
+    exito: "½ · 2 mA/V² · (2 V)² = 4 mA. Y V_{DS} queda muy por encima de 2 V: sigue en saturación."
     escalera:
       - "Eleve al cuadrado el exceso sobre el umbral y multiplique por k/2."
     solucion: "I_{D} = ½ · 2 mA/V² · 4 V² = 4 mA."
     comprobar:
-      - { I_D: 0.004, I_2: 0.008, I_1: 0.004, tol: 0.001 }
+      - { I_D: 0.004, I_2: 0.008, tol: 0.001 }
 
   - id: formula-cuadratica
-    tipo: formula
+    tipo: explorar
     titulo: "Corriente de saturación"
-    texto: "Suba V_{GS}: la corriente crece con el cuadrado del exceso sobre el umbral."
+    texto: "En saturación, I_{D} = ½ · k · (V_{GS} − V_{th})². Suba V_{GS} hasta que circulen 9 mA."
     libro: [178]
-    ec: 178
-    sustitucion: "½ · {{k_m}} · ({{V_g}} − {{V_th}})² = {{I_s}}"
+    inicio: { V_g: 4 }
     widget:
       tipo: circuito
       esquema: mosfet
@@ -107,29 +123,36 @@ tarjetas:
       mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
       mandos:
         - { valor: V_g, min: 2.5, max: 6, paso: 0.5, rotulo: "V_{GS}" }
+    objetivo:
+      condiciones:
+        - { valor: I_D, objetivo: 0.009, tol: 0.02, rotulo: "I_{D}: {{I_D}}" }
+      logrado: "½ · {{k_m}} · ({{V_g}} − {{V_th}})² = {{I_s}}: la corriente crece con el cuadrado del exceso."
+      pistas:
+        - { cuando: { valor: I_D, mayor: 0.00918 }, texto: "Sobra corriente: baje la puerta." }
+        - { texto: "Falta corriente: suba la puerta." }
+    escalera:
+      - "Para 9 mA con k = 2 mA/V², el exceso al cuadrado debe ser 9 V²."
+    solucion: "V_{GS} = 5 V: 3 V de exceso, 9 mA."
+    comprobar:
+      - { con: { V_g: 5 }, I_D: 0.009, I_s: 0.009 }
 
   - id: estime-gm
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La g_{m} del MOSFET"
     texto: "El mismo MOSFET con 4 mA: ¿cuánto vale g_{m} = √(2 · k · I_{D})?"
     libro: [178, 179]
     fijar: { V_g: 4 }
-    estimar:
-      objetivo: "g_m"
+    simular:
+      objetivo: g_m
       unidad: S
-      min: 0
-      max: 0.02
-      paso: 0.0005
-      inicio: 0.015
       tol: 0.05
       rotulo: "g_{m}"
+      errores:
+        - { expr: "g_b", texto: "Esa sería la de un BJT a la misma corriente, I_{C}/V_{T}. La del MOSFET crece solo con la raíz de la corriente." }
     exito: "4 mS. Un BJT a la misma corriente daría unos 155 mS: g_{m} = I_{C}/V_{T} no depende del dispositivo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0042 }, texto: "Se ha pasado: es la raíz de 2 · k · I_{D}, con k = 2 mA/V² e I_{D} = 4 mA." }
-      - { texto: "Se ha quedado corto: también vale k · (V_{GS} − V_{th}), 2 mA/V² por 2 V." }
     escalera:
-      - "g_{m} = k · (V_{GS} − V_{th})."
+      - "También vale g_{m} = k · (V_{GS} − V_{th})."
     solucion: "g_{m} = 2 mA/V² · 2 V = 4 mS."
     comprobar:
       - { g_m: 0.004, g_b: 0.155, tol: 0.01 }
@@ -157,31 +180,33 @@ tarjetas:
     solucion: "Una curva que sube desde el origen y se aplana en 4 mA desde 2 V."
 
   - id: interruptor-saturado
-    tipo: pregunta
+    tipo: leer
     titulo: "«Saturado»"
-    texto: "Con 8 V en la puerta, el MOSFET conduce de lleno como interruptor. ¿En qué región está?"
+    texto: "Con 8 V en la puerta, el MOSFET conduce de lleno como interruptor. Mida su V_{DS} y escríbala."
     libro: [176, 180]
     fijar: { V_g: 8 }
     widget:
       tipo: circuito
       esquema: mosfet
       piezas: { vdd: VDD, rd: RD, entrada: V_g, k: k_m, vth: V_th }
-      lectura: { valor: V_DS, rotulo: "V_{DS}" }
       corriente: I_D
       mide: { id: I_D, vds: V_DS, vgs: V_g, vd: V_DS }
-    opciones:
-      - texto: "En la zona óhmica"
-        bien: true
-        porque: "V_{DS} queda muy por debajo de V_{GS} − V_{th}: el canal es una resistencia pequeña. Es lo que se llama «saturado»."
-      - texto: "En saturación"
-        porque: "La saturación del MOSFET es la de corriente constante. La palabra significa lo contrario que en el BJT."
-      - texto: "En corte"
-        porque: "Con 8 V en la puerta, muy por encima del umbral, hay canal de sobra."
+      instrumento: { tipo: multimetro, modos: [V], puntos: [vdd, in, d, "0"] }
+      mandos: []
+    leer:
+      objetivo: V_DS
+      unidad: V
+      tol: 0.03
+      rotulo: "V_{DS}"
+      medida: { entre: [d, "0"] }
+      errores:
+        - { expr: "V_ov", texto: "Esos 6 V son V_{GS} − V_{th}, la frontera. Mida entre el drenador y la fuente, que está en masa." }
+    exito: "Muy por debajo de V_{GS} − V_{th} = 6 V: zona óhmica. Lo que se llama «saturado» como interruptor."
     escalera:
-      - "Compare V_{DS} con V_{GS} − V_{th}."
-    solucion: "Zona óhmica: V_{DS} es mucho menor que V_{GS} − V_{th}."
+      - "Roja en el drenador, negra en masa."
+    solucion: "Unos 2,1 V: zona óhmica."
     comprobar:
-      - { con: { V_g: 8 }, V_g: 8 }
+      - { V_DS: 2.128, V_ov: 6, tol: 0.01 }
 
   - id: toque-paralelo
     tipo: tocar

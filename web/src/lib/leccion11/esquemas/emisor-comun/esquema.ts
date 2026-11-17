@@ -52,6 +52,28 @@ const d: DefinicionEsquema = {
     cout: { descripcion: 'condensador de acoplo de salida, C_out (F; sin él, acoplo ideal)', color: 'naranja' },
     carga: { descripcion: 'resistencia de carga, R_L (Ω; sin ella, en vacío)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { transistor: 'el transistor' },
+  medible: (c) => {
+    const re1 = c.tiene('re1') && c.p('re1') > 0;
+    return {
+      puntos: { vcc: 'Alimentación, arriba', s0: 'Generador', b: 'Base', c: 'Colector', e: 'Emisor', ...(re1 ? { e2: 'Entre R_{E1} y R_{E}' } : {}), out: 'Salida, tras el condensador', '0': 'Masa, abajo' },
+      ramas: { ...(c.tiene('rs') ? {} : { vrs: 'Hilo del generador' }), vmi: 'Rama de la entrada', vbm: 'Hilo de la base', vcm: 'Rama del colector' },
+      zonas: {
+        fuente: 'Generador',
+        r1: 'Divisor, arriba',
+        r2: 'Divisor, abajo',
+        rc: 'Resistencia de colector',
+        re: 'Resistencia de emisor',
+        ...(re1 ? { re1: 'Resistencia de emisor sin desacoplar' } : {}),
+        ...(c.tiene('ce') ? { ce: 'Condensador de desacoplo' } : {}),
+        ...(c.tiene('cin') ? { cin: 'Condensador de entrada' } : {}),
+        ...(c.tiene('cout') ? { cout: 'Condensador de salida' } : {}),
+        ...(c.tiene('carga') ? { carga: 'Carga' } : {}),
+        transistor: 'Transistor',
+      },
+    };
+  },
   observables: {
     ib: { medida: 'i(vbm)', analisis: 'op', unidad: 'A', descripcion: 'corriente de base' },
     ic: { medida: 'i(vcm)', analisis: 'op', unidad: 'A', descripcion: 'corriente de colector' },

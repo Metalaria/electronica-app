@@ -14,7 +14,16 @@ const d: DefinicionEsquema = {
     vd: { obligatoria: true, descripcion: 'caída de cada diodo cuando conduce (V): el modelo de caída constante' },
     c: { descripcion: 'condensador de filtro (F)', color: 'naranja' },
     carga: { descripcion: 'resistencia de carga (Ω)', color: 'verde' },
+    // (motor121, autor-potencia-C: the load switched off, «en vacío»: the capacitor alone holds the peak)
+    interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { diodos: 'los cuatro diodos del puente' },
+  medible: (c) => ({
+    puntos: { p: 'Borne de arriba de la entrada', q: 'Borne de abajo de la entrada', s: 'Salida, positivo', '0': 'Salida, negativo' },
+    ramas: { vdm: 'Rama de la entrada' },
+    zonas: { fuente: 'Entrada alterna', diodos: 'Puente de diodos', ...(c.tiene('c') ? { c: 'Condensador' } : {}), ...(c.tiene('carga') ? { carga: 'Carga' } : {}), ...(c.tiene('interruptor') ? { interruptor: 'Interruptor de la carga' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(s)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de salida, v_s(t)' },
     entrada: { medida: 'v(p)-v(q)', analisis: 'tran', unidad: 'V', descripcion: 'tensión alterna de entrada' },
@@ -23,7 +32,7 @@ const d: DefinicionEsquema = {
   // 0,2 V per diode: the simulator's diodes drop vd at 10 mA with n = 1, and the capacitor's recharge pulses reach
   // amperes (sección 5.6: about 8 A at the start, 4,4 A on average): n·VT·ln(800) = 0,17 V at 8 A
   noLineal: () => [{ pieza: 'vd', desviacion: 0.2, porque: 'diodos de caída vd a 10 mA, n = 1: + 0,17 V en los pulsos de 8 A del libro' }],
-  validar: (tiene) => (!tiene('c') && !tiene('carga') ? ['falta la carga, el condensador o los dos (si no, la salida queda al aire)'] : []),
+  validar: (tiene) => [...(!tiene('c') && !tiene('carga') ? ['falta la carga, el condensador o los dos (si no, la salida queda al aire)'] : []), ...(tiene('interruptor') && (!tiene('carga') || !tiene('c')) ? ['«interruptor» desconecta la carga: hacen falta la carga y el condensador'] : [])],
   // with a capacitor, it starts charged to the peak and four periods pass before the curve is compared (the ripple
   // settles in the first one or two)
   tran: { periodos: (c) => (c.tiene('c') ? 4 : 0) },
@@ -42,11 +51,11 @@ const d: DefinicionEsquema = {
       'RA a 0 1e9',
       'RQ q 0 1e9',
       ...(c.tiene('c') ? [`C1 s 0 ${ng(c.p('c'))} IC=${num(Math.max(0, vp - 2 * c.p('vd')))}`] : []),
-      ...(c.tiene('carga') ? [`RL s 0 ${ng(c.p('carga'))}`] : []),
+      ...(c.tiene('carga') && c.cerrado('interruptor') ? [`RL s 0 ${ng(c.p('carga'))}`] : []),
       'RX s 0 1e9',
     ];
   },
   describir: (c) =>
-    `Rectificador en puente de cuatro diodos: entrada alterna de ${c.val('fuente')} de pico y ${c.val('f')}${c.tiene('c') ? `, condensador de ${c.val('c')}` : ''}${c.tiene('carga') ? `, carga de ${c.val('carga')}` : ', sin carga'}`,
+    `Rectificador en puente de cuatro diodos: entrada alterna de ${c.val('fuente')} de pico y ${c.val('f')}${c.tiene('c') ? `, condensador de ${c.val('c')}` : ''}${c.tiene('carga') && c.cerrado('interruptor') ? `, carga de ${c.val('carga')}` : c.tiene('carga') ? ', con la carga desconectada (en vacío)' : ', sin carga'}`,
 };
 export default d;

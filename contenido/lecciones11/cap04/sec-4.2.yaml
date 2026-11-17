@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 4.2 «Identificación Física de los Inductores» (cap04): el marcado de tres cifras en
 # microhenrios, la cifra y letra, lo que dice el aspecto, la confusión con una resistencia, los tres parámetros que
 # no van marcados, medir L sin medidor y la prueba del anillo. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): pasar al milihenrio con ceros, predecir «101» y «4R7»,
+# el reto del «103», tocar en la foto la que parece resistencia y la que no radia, calcular L con la constante de
+# tiempo; se eligen la saturación y el anillo. Los parámetros sin marcar y la resonancia quedan en el resumen.
 leccion: cap04/sec-4.2
 
 libro:
@@ -20,8 +23,10 @@ libro:
   58: "por encima de la cual la bobina se comporta como un condensador"
   61: "se pone en paralelo un condensador conocido"
   62: "se aplica un escalón a través de una resistencia conocida"
+  63: "El primero es más preciso; el segundo no necesita más que el osciloscopio"
   65: "la prueba del anillo"
   66: "una con espiras en cortocircuito se amortigua en dos o tres"
+  67: "que solo la «L201» de la serigrafía distingue de una resistencia"
   69: "10 × 10³ µH = 10 mH"
   "cap04#87": "midiendo el tiempo hasta el 63 % se obtiene τ y con ella L"
 
@@ -36,6 +41,7 @@ modelo:
   calculos:
     codigo: { expr: "100*c_1 + 10*c_2 + c_n", sim: "código", nombre: "código impreso", unidad: "", cifras: 3, recortar: true }
     L_c: { expr: "(10*c_1 + c_2)*10^c_n*1e-6", sim: "L", nombre: "inductancia marcada", unidad: H, cifras: 3, recortar: true }
+    L_r: { expr: "(c_1 + c_2/10)*1e-6", sim: "L", nombre: "inductancia con la R de coma", unidad: H }
     tau_m: { expr: "L_m/R_m", sim: "τ", nombre: "constante de tiempo", unidad: s }
     I_mf: { expr: "V_m/R_m", sim: "I_{final}", nombre: "corriente final", unidad: A }
     v_tau: { expr: "0.632*V_m", sim: "v(τ)", nombre: "tensión en R al cabo de τ", unidad: V }
@@ -44,7 +50,7 @@ tarjetas:
   - id: explore-tres-cifras
     tipo: explorar
     titulo: "Tres cifras, en microhenrios"
-    texto: "Como en los condensadores: dos dígitos y el número de ceros, con el resultado en microhenrios. Mueva las cifras."
+    texto: "Como en los condensadores: dos dígitos y el número de ceros, con el resultado en microhenrios. Añada ceros hasta pasar al milihenrio."
     libro: [46, 51]
     widget:
       tipo: grafica
@@ -61,36 +67,39 @@ tarjetas:
         - { valor: c_1, min: 1, max: 9, paso: 1, rotulo: "Primera cifra" }
         - { valor: c_2, min: 0, max: 9, paso: 1, rotulo: "Segunda cifra" }
         - { valor: c_n, min: 0, max: 4, paso: 1, rotulo: "Tercera cifra: ceros" }
-    requiere: { mover: [c_1, c_n] }
+    inicio: { c_1: 1, c_2: 0, c_n: 0 }
+    objetivo:
+      condiciones:
+        - { valor: L_c, min: 0.000999, rotulo: "L = {{L_c}}" }
+      logrado: "«{{codigo}}»: {{L_c}}. Cada cero multiplica por diez, y el resultado va en microhenrios."
+      pistas:
+        - { texto: "Suba la tercera cifra: el número de ceros." }
+    escalera:
+      - "1 mH son 1000 µH."
+    solucion: "«102»: 10 × 10² µH = 1 mH."
+    comprobar:
+      - { L_c: 10e-6 }
+      - { con: { c_n: 2 }, L_c: 0.001, codigo: 102 }
 
   - id: prediga-101
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "Una bobina SMD marcada «101». ¿Qué inductancia tiene?"
     libro: [51]
     fijar: { c_1: 1, c_2: 0, c_n: 1 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 4, unidad: "", rotulo: "número de ceros" }
-      y: { min: 0.000001, max: 1, unidad: H, rotulo: "L", escala: log }
-      curvas:
-        - { expr: "(10*c_1 + c_2)*10^x*1e-6", color: naranja, rotulo: "mismas cifras, más ceros" }
-      lectura: { valor: L_c, rotulo: "Inductancia" }
-      ocultar: true
-    opciones:
-      - texto: "100 µH"
-        bien: true
-        porque: "Uno, cero y un cero más: 10 × 10¹ = 100 µH."
-      - texto: "101 µH"
-        porque: "La tercera cifra no es un dígito del valor: es el número de ceros."
-      - texto: "100 Ω"
-        porque: "Esa sería la lectura de una resistencia. En una bobina el resultado va en microhenrios."
-    comprobar:
-      - { L_c: 100e-6 }
+    simular:
+      objetivo: L_c
+      unidad: H
+      tol: 0.005
+      rotulo: "Inductancia de «101»"
+      errores:
+        - { razon: { min: 1.007, max: 1.013 }, texto: "La tercera cifra no es un dígito del valor: es el número de ceros." }
+    exito: "Uno, cero y un cero más: 10 × 10¹ = 100 µH. En una bobina, microhenrios, no ohmios."
     escalera:
       - "La tercera cifra es el número de ceros, y en una bobina el resultado va en microhenrios."
-    solucion: "Uno, cero y un cero más: 10 × 10¹ = 100 µH."
-
+    solucion: "10 × 10¹ = 100 µH."
+    comprobar:
+      - { L_c: 100e-6 }
   - id: reto-choque
     tipo: reto
     titulo: "Reto: el choque de 10 mH"
@@ -125,69 +134,75 @@ tarjetas:
       - { con: { c_1: 1, c_2: 0, c_n: 3 }, L_c: 0.01, codigo: 103 }
 
   - id: pregunta-4r7
-    tipo: pregunta
+    tipo: simular
     titulo: "Cifra y letra"
     texto: "Otra bobina lleva impreso «4R7». ¿Qué inductancia tiene?"
     libro: [52]
-    opciones:
-      - texto: "4,7 µH"
-        bien: true
-        porque: "La R hace de coma decimal, y en una bobina el resultado va en microhenrios."
-      - texto: "47 µH"
-        porque: "La R no es un cero: marca dónde va la coma."
-      - texto: "4,7 Ω"
-        porque: "Sería así en una resistencia. En una bobina, «4R7» son microhenrios."
-    comprobar:
-      - { con: { c_1: 4, c_2: 7, c_n: 0 }, L_c: 47e-6 }
+    fijar: { c_1: 4, c_2: 7 }
     widget:
       tipo: figura
       figura: fig-4.5
       zonas:
         - { id: choque, rotulo: "Una bobina marcada", rect: [0, 0, 900, 900] }
+    simular:
+      objetivo: L_r
+      unidad: H
+      tol: 0.02
+      rotulo: "Inductancia de «4R7»"
+      errores:
+        - { razon: { min: 9.5, max: 10.5 }, texto: "La R no es un cero: marca dónde va la coma." }
+    exito: "4,7 µH: la R hace de coma decimal, y en una bobina el resultado va en microhenrios."
     escalera:
       - "La R no es un cero: marca dónde va la coma."
-    solucion: "4,7 µH: en una bobina el resultado va en microhenrios."
-
+    solucion: "4,7 µH."
+    comprobar:
+      - { L_r: 4.7e-6 }
   - id: pregunta-ohmetro
-    tipo: pregunta
+    tipo: tocar
     titulo: "¿Resistencia o bobina?"
-    texto: "Un componente axial con bandas de color raro marca casi cero ohmios en el óhmetro. ¿Qué es lo más probable?"
-    libro: [47, 48]
-    opciones:
-      - texto: "Una bobina"
-        bien: true
-        porque: "Una bobina solo tiene la resistencia de su hilo, unos pocos ohmios: si mide muy poco, compruebe si es una bobina."
-      - texto: "Una resistencia estropeada"
-        porque: "Es la confusión típica. Antes de tirarla, compruebe si es una bobina: el código de colores es el mismo."
-      - texto: "Una resistencia de cero ohmios"
-        porque: "Podría, pero unas bandas de color raro y casi cero ohmios apuntan a una bobina."
+    texto: "Una de estas parece una resistencia de color raro y marca casi cero ohmios en el óhmetro. Tóquela."
+    libro: [41, 47, 48, 67]
     widget:
       tipo: figura
       figura: fig-4.3
       zonas:
-        - { id: tipos, rotulo: "Tipos de inductores", rect: [0, 0, 1600, 1114] }
+        - { id: axial, rotulo: "(a), arriba a la izquierda", rect: [0, 0, 785, 590] }
+        - { id: aire, rotulo: "(b), arriba a la derecha", rect: [815, 0, 785, 590] }
+        - { id: smd, rotulo: "(c), abajo a la izquierda", rect: [0, 660, 595, 400] }
+        - { id: toroide, rotulo: "(d), abajo a la derecha", rect: [630, 660, 970, 400] }
+    tocar:
+      bien: [axial]
+      porque:
+        aire: "Una bobina al aire: nadie la confunde con una resistencia."
+        smd: "Bobinas SMD bobinadas: el hilo se ve."
+        toroide: "Un toroide con dos devanados: no parece una resistencia."
+    exito: "La axial: solo la «L201» de la serigrafía la distingue. Si mide muy poco y parece una resistencia de color raro, compruebe si es una bobina."
     escalera:
-      - "¿Qué resistencia tiene el hilo de una bobina?"
-    solucion: "Una bobina: solo tiene la resistencia de su hilo, unos pocos ohmios."
-
+      - "Busque la que lleva bandas de colores."
+    solucion: "(a), la axial con código de colores."
   - id: empareje-aspecto
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "Lo que dice el aspecto"
-    texto: "La construcción delata las propiedades. Empareje cada tipo con lo que lo caracteriza."
-    libro: [40, 41, 42, 43, 44]
-    emparejar:
-      - ["Al aire, sin núcleo", "Nanohenrios, RF"]
-      - ["Barra de ferrita", "Radia y capta"]
-      - ["Toroide", "Flujo en el anillo"]
-      - ["Hierro laminado", "Baja frecuencia"]
-    exito: "Eso es. Donde el flujo se cierra por el aire, la bobina radia; donde queda confinado, no."
-    pistas:
-      - { texto: "Piense por dónde se cierra el flujo: por el aire o dentro del núcleo." }
+    texto: "La construcción delata las propiedades. Toque la bobina cuyo flujo queda confinado: la que menos radia."
+    libro: [40, 41, 42, 43, 44, 67]
+    widget:
+      tipo: figura
+      figura: fig-4.3
+      zonas:
+        - { id: axial, rotulo: "(a), arriba a la izquierda", rect: [0, 0, 785, 590] }
+        - { id: aire, rotulo: "(b), arriba a la derecha", rect: [815, 0, 785, 590] }
+        - { id: smd, rotulo: "(c), abajo a la izquierda", rect: [0, 660, 595, 400] }
+        - { id: toroide, rotulo: "(d), abajo a la derecha", rect: [630, 660, 970, 400] }
+    tocar:
+      bien: [toroide]
+      porque:
+        axial: "Ferrita cilíndrica: el flujo se cierra por el aire, con lo que radia y capta."
+        aire: "Al aire, sin núcleo: nanohenrios para radiofrecuencia, y su flujo se cierra por el aire."
+        smd: "Son bobinas de chip; la foto no deja ver si son blindadas."
+    exito: "El toroide: el flujo queda dentro del anillo. Es la elección en fuentes conmutadas y en filtros de red."
     escalera:
-      - "¿Hay núcleo? Y si lo hay, ¿es cerrado o abierto?"
-    solucion: "Al aire, sin núcleo: nanohenrios, RF. Barra de ferrita: radia y capta. Toroide: flujo en el anillo. Hierro laminado: baja frecuencia."
-
+      - "¿En cuál el núcleo es un anillo cerrado?"
+    solucion: "(d), el toroide."
   - id: pregunta-saturacion
     tipo: pregunta
     titulo: "Lo que la marca no dice"
@@ -210,78 +225,33 @@ tarjetas:
       - "Por encima de su corriente de saturación, ¿qué le pasa a la inductancia?"
     solucion: "No: por encima de 0,5 A el núcleo satura y la inductancia se desploma."
 
-  - id: empareje-parametros
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Tres datos sin marcar"
-    texto: "Ninguna bobina los lleva escritos, y deciden si sirve. Empareje cada uno con lo que determina."
-    libro: [56, 57, 58]
-    emparejar:
-      - ["DCR", "Pérdidas de cobre"]
-      - ["Corriente de saturación", "El límite real"]
-      - ["Autorresonancia", "Pasa a condensador"]
-    exito: "Eso es. La DCR se mide con el óhmetro; las otras dos, no."
-    pistas:
-      - { texto: "La DCR es la resistencia del hilo: lo que se pierde en el cobre." }
-    escalera:
-      - "Uno es del cobre, otro del núcleo y otro de los parásitos."
-    solucion: "DCR: pérdidas de cobre. Corriente de saturación: el límite real. Autorresonancia: pasa a condensador."
-
   - id: estime-tau
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Medir L con un escalón"
-    texto: "Escalón a través de 100 Ω: la marca señala el 63 %, donde t = τ = L/R. Lea τ y estime L."
-    libro: [62, "cap04#87"]
+    texto: "Escalón a través de 100 Ω: la marca señala el 63 %, donde t = τ = L/R. Lea τ y calcule L."
+    libro: [62, 63, "cap04#87"]
     widget:
-      tipo: circuito
-      esquema: carga-rl
-      piezas: { fuente: V_m, r: R_m, l: L_m }
-      lectura: { valor: I_mf, rotulo: "Corriente final" }
-      grafica:
-        x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 11, unidad: V, rotulo: "v_{R}" }
-        curvas:
-          - { expr: "V_m*(1 - exp(-t/tau_m))", color: azul, rotulo: "v_{R}", mide: vr }
-        marcas:
-          - { x: "tau_m", y: "v_tau", rotulo: "63 %" }
-    estimar:
-      objetivo: "L_m"
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 11, unidad: V, rotulo: "v_{R}" }
+      curvas:
+        - { expr: "V_m*(1 - exp(-t/tau_m))", color: azul, rotulo: "v_{R}" }
+      marcas:
+        - { x: "tau_m", y: "v_tau", rotulo: "63 %" }
+    simular:
+      objetivo: L_m
       unidad: H
-      min: 0
-      max: 0.05
-      paso: 0.0005
-      inicio: 0.04
       tol: 0.05
       rotulo: "L"
-    exito: "τ = 100 µs; por 100 Ω, L = 10 mH."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado. L = τ·R: lea τ en el eje de tiempos y multiplique por 100 Ω." }
-      - { texto: "Se ha quedado corto. L = τ·R, con τ donde la curva llega al 63 %." }
-    comprobar:
-      - { tau_m: 100e-6, L_m: 0.01 }
+      errores:
+        - { razon: { min: 0.00009, max: 0.00011 }, texto: "Ha dividido: de τ = L/R sale L = τ·R." }
+    exito: "τ = 100 µs; por 100 Ω, L = 10 mH. Por resonancia, con un condensador conocido, se mide con más precisión."
     escalera:
       - "Despeje L de τ = L/R."
     solucion: "τ = 100 µs; por 100 Ω, L = 10 mH."
-
-  - id: ordene-resonancia
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Medir L por resonancia"
-    texto: "El otro método, el más preciso, usa el generador. Ordene los pasos."
-    libro: [61]
-    ordenar:
-      - "Poner en paralelo un condensador conocido."
-      - "Excitar el conjunto con el generador."
-      - "Buscar la frecuencia de resonancia."
-      - "Despejar L de esa frecuencia."
-    exito: "Ese es el orden. El de la constante de tiempo es menos preciso, pero solo necesita el osciloscopio."
-    pistas:
-      - { texto: "Sin condensador no hay resonancia que buscar." }
-    escalera:
-      - "Lo primero es poner el condensador conocido; lo último, despejar L."
-    solucion: "Poner en paralelo un condensador conocido → Excitar el conjunto con el generador → Buscar la frecuencia de resonancia → Despejar L de esa frecuencia."
-
+    comprobar:
+      - { tau_m: 100e-6, L_m: 0.01 }
   - id: porque-anillo
     tipo: porque
     titulo: "La prueba del anillo"
@@ -307,7 +277,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [48, 51, 53, 62, 66]
+    libro: [48, 51, 53, 56, 57, 58, 61, 62, 66]
     ideas:
       - { titulo: "Marcas.", texto: "Tres cifras o colores, en microhenrios: «101» = 100 µH. Si mide casi cero, quizá no es una resistencia." }
       - { titulo: "Lo que no se marca.", texto: "DCR, corriente de saturación y autorresonancia; la saturación es el límite real." }

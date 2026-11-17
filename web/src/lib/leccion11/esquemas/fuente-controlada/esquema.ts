@@ -26,6 +26,15 @@ const d: DefinicionEsquema = {
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
     invierte: { interruptor: true, descripcion: 'fuente invertida (1: la flecha hacia masa, o el borne + abajo: la salida cambia de signo, como en emisor común)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => {
+    const vccs = c.tiene('gm');
+    return {
+      puntos: { c: 'Entrada de control', ...(vccs ? {} : { e: 'Tras la fuente dependiente' }), s: 'Salida, arriba', '0': 'Masa, abajo' },
+      ramas: { vg: 'Rama de la fuente dependiente', ...(vccs || c.tiene('ro') ? { vr: 'Rama de la resistencia de salida' } : {}), vcarga: 'Rama de la carga' },
+      zonas: { control: 'Fuente de control', [vccs ? 'gm' : 'av']: 'Fuente dependiente', ...(c.tiene('ro') ? { ro: 'Resistencia de salida' } : {}), carga: 'Carga' },
+    };
+  },
   observables: {
     salida: { medida: 'v(s)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida, en los bornes' },
     carga: { medida: 'i(vcarga)', analisis: 'op', unidad: 'A', descripcion: 'corriente por la carga' },

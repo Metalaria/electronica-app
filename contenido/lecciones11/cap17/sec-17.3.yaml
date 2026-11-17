@@ -2,6 +2,10 @@
 # - El arranque, setup() y loop() y dónde vive cada variable sobre la figura 16.6 (fig-17.6), con zonas.
 # - Sin modelo numérico: la sección es de estructura del programa.
 # Paso práctico: «tocar» el sitio donde se guarda el estado de una tarea (local estática).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 16.6 se tocan en orden arranque, setup() y
+# loop(), y la declaración del estado de una tarea y del dato compartido con una interrupción; en tres fragmentos de
+# loop() (propios, ilustran los bloques 70, 80 y 83) se tocan la línea que estropea el temporizador 0, las de una
+# pasada en su orden y la que hace ignorar el pulsador. Queda una pregunta de opciones: el periodo de un segundo.
 leccion: cap17/sec-17.3
 
 libro:
@@ -18,7 +22,6 @@ libro:
   80: "Leer las entradas que haya que atender"
   81: "añadir una más no rompe las existentes"
   83: "Usar delay() para todo, con lo que el programa deja de responder"
-  86: "Imprimir por serie dentro de un bucle rápido"
   89: "una salida que conmute en cada pasada de loop(), mirada con el osciloscopio"
   90: "si es de un segundo, hay un delay()"
   91: "Estructura de un programa de Arduino y dónde vive cada tipo de variable."
@@ -41,48 +44,56 @@ tarjetas:
     requiere: { mover: [setup, loop] }
 
   - id: ordene-arranque
-    tipo: pregunta
+    tipo: tocar
     titulo: "Antes de setup()"
-    texto: "Ordene lo que ocurre desde que se alimenta la placa."
+    texto: "Toque en orden lo que se ejecuta desde que se alimenta la placa."
     libro: [65, 69]
     widget:
       tipo: figura
       figura: fig-17.6
       zonas:
-        - { id: izquierda, rotulo: "Columna de la izquierda", rect: [5, 20, 210, 180] }
-    ordenar:
-      - "Se libera el reset y corre el código de arranque"
-      - "Se inician millis(), los temporizadores del PWM y el A/D"
-      - "Se llama a setup()"
-      - "Se llama a loop() una y otra vez"
-    exito: "Por eso millis() funciona desde el primer instante sin que nadie la configure."
-    pistas:
-      - { texto: "Lo primero es el reset; lo último, lo que se repite." }
+        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46] }
+        - { id: setup, rotulo: "Recuadro verde, a la izquierda", rect: [25, 75, 180, 36] }
+        - { id: arranque, rotulo: "Recuadro gris, arriba a la izquierda", rect: [25, 26, 180, 36] }
+    tocar:
+      bien: [arranque, setup, loop]
+      orden: true
+    exito: "El arranque ya deja en marcha millis(), el PWM y el A/D: por eso millis() funciona desde el primer instante sin que nadie lo configure."
     escalera:
-      - "setup() ya encuentra millis() en marcha."
-    solucion: "Reset y arranque, temporizadores, setup() y loop()."
+      - "Lo primero es liberar el reset; lo último, lo que se repite."
+    solucion: "Arranque, setup() y loop()."
 
   - id: predecir-temporizador
-    tipo: predecir
+    tipo: tocar
     titulo: "Un temporizador ocupado"
-    texto: "Reconfigura el temporizador 0 para cambiar la frecuencia del PWM. ¿Qué más cambia?"
-    libro: [70]
+    texto: "Reconfigura el temporizador 0 para cambiar la frecuencia del PWM. Toque la línea de este loop() que deja de ir bien."
+    libro: [69, 70]
     widget:
       tipo: figura
-      figura: fig-17.6
+      codigo:
+        lenguaje: c
+        texto: |
+          void loop() {
+            boton = digitalRead(PIN_BOTON);
+            if (millis() - ultima >= intervalo) {
+              ultima = millis();
+              estado = !estado;
+            }
+            Serial.println(boton);
+          }
       zonas:
-        - { id: arranque, rotulo: "Recuadro gris, arriba a la izquierda", rect: [25, 26, 180, 36] }
-    opciones:
-      - texto: "Todas las funciones de tiempo, como millis()"
-        bien: true
-        porque: "El temporizador 0 es el de millis(): tocarlo altera todas las funciones de tiempo."
-      - texto: "Nada más: cada temporizador es independiente"
-        porque: "El entorno ya usa el temporizador 0 para millis(); no está libre."
-      - texto: "Solo el puerto serie"
-        porque: "El puerto serie no depende del temporizador 0; millis() y delay() sí."
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l7, lineas: [7], rotulo: "Séptima línea" }
+    tocar:
+      bien: [l3]
+      porque:
+        l2: "Leer un pin no depende de ningún temporizador."
+        l7: "El puerto serie no usa el temporizador 0."
+    exito: "El temporizador 0 es el de millis(): tocarlo altera todas las funciones de tiempo, también delay()."
     escalera:
-      - "¿Qué inicia el entorno antes de setup()?"
-    solucion: "Todas las funciones de tiempo: millis() y delay()."
+      - "¿Qué inicia el entorno con el temporizador 0 antes de setup()?"
+    solucion: "La de millis()."
 
   - id: toque-estatica
     tipo: tocar
@@ -109,68 +120,92 @@ tarjetas:
     solucion: "Local estática."
 
   - id: empareje-variables
-    tipo: pregunta
-    titulo: "Dónde vive cada variable"
-    texto: "Empareje cada caso con su forma de declarar."
-    libro: [73, 74, 76]
+    tipo: tocar
+    titulo: "Compartir con una interrupción"
+    texto: "Un dato se escribe en una interrupción y se lee en loop(). Toque cómo lo declara."
+    libro: [73, 74, 76, 91]
     widget:
       tipo: figura
       figura: fig-17.6
       zonas:
-        - { id: derecha, rotulo: "Columna de la derecha", rect: [230, 20, 220, 185] }
-    emparejar:
-      - ["Un dato que comparte con una interrupción", "Global y volátil"]
-      - ["Un cálculo intermedio dentro de una función", "Local"]
-      - ["Muchos mensajes de texto fijos", "Constantes en Flash"]
-    exito: "Con 2 KB de RAM, dónde se declara cada variable importa."
-    pistas:
-      - { texto: "Solo las globales pueden compartirse con una interrupción." }
+        - { id: globales, rotulo: "Recuadro violeta, arriba a la derecha", rect: [233, 26, 213, 40] }
+        - { id: locales, rotulo: "Recuadro naranja, a la derecha", rect: [233, 72, 213, 40] }
+        - { id: estaticas, rotulo: "Recuadro verde, a la derecha", rect: [233, 117, 213, 40] }
+        - { id: flash, rotulo: "Recuadro azul, abajo a la derecha", rect: [233, 162, 213, 40] }
+    tocar:
+      bien: [globales]
+      porque:
+        locales: "Una local solo existe dentro de su función: la interrupción no la ve."
+        estaticas: "Solo es visible dentro de su función: la interrupción no puede tocarla."
+        flash: "En Flash van constantes, y este dato cambia."
+    exito: "Global y volátil: las globales son las únicas que pueden compartirse con una interrupción."
     escalera:
-      - "Los textos fijos ocupan RAM aunque no cambien, salvo que…"
-    solucion: "Interrupción, global volátil; cálculo, local; mensajes, Flash."
+      - "Tiene que verla tanto la interrupción como loop()."
+    solucion: "Global, declarada volátil."
 
   - id: ordene-pasada
-    tipo: pregunta
+    tipo: tocar
     titulo: "La estructura que escala"
-    texto: "Ordene lo que hace loop() en cada pasada."
+    texto: "Este loop() hace sus tres cosas desordenadas. Toque las tres partes en el orden en que deben ir en cada pasada."
     libro: [78, 80, 81]
     widget:
       tipo: figura
-      figura: fig-17.6
+      codigo:
+        lenguaje: c
+        texto: |
+          void loop() {
+            digitalWrite(LED, estado);
+            if (millis() - ultima >= intervalo) {
+              ultima += intervalo;
+              estado = !estado;
+            }
+            boton = digitalRead(PIN_BOTON);
+          }
       zonas:
-        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46] }
-    ordenar:
-      - "Leer las entradas"
-      - "Actualizar cada tarea, si le toca por tiempo"
-      - "Escribir las salidas"
-    exito: "Miles de vueltas por segundo, y añadir una tarea no rompe las demás."
-    pistas:
-      - { texto: "Primero se mira el mundo; al final se actúa sobre él." }
+        - { id: escribir, lineas: [2], rotulo: "Segunda línea" }
+        - { id: tarea, lineas: [3, 6], rotulo: "El bloque del if" }
+        - { id: leer, lineas: [7], rotulo: "Séptima línea" }
+    tocar:
+      bien: [leer, tarea, escribir]
+      orden: true
+    exito: "Leer, actualizar cada tarea si le toca por tiempo y escribir: miles de vueltas por segundo, y añadir una tarea no rompe las demás."
     escalera:
-      - "Las salidas dependen de lo que se ha leído."
-    solucion: "Leer, actualizar y escribir."
+      - "Primero se mira el mundo; al final se actúa sobre él."
+    solucion: "La lectura del pulsador, el bloque del if y la escritura del LED."
 
   - id: pregunta-errores
-    tipo: pregunta
+    tipo: tocar
     titulo: "Un pulsador ignorado"
-    texto: "Su programa deja de atender un pulsador en cuanto añade una segunda tarea. ¿Qué error característico sospecha?"
-    libro: [83, 86]
+    texto: "Este programa casi nunca atiende el pulsador. Toque la línea que lo provoca."
+    libro: [78, 83]
     widget:
       tipo: figura
-      figura: fig-17.6
+      codigo:
+        lenguaje: c
+        texto: |
+          void loop() {
+            if (digitalRead(PIN_BOTON) == LOW) {
+              cambiarModo();
+            }
+            digitalWrite(LED, HIGH);
+            delay(1000);
+            digitalWrite(LED, LOW);
+          }
       zonas:
-        - { id: loop, rotulo: "Recuadro azul, abajo a la izquierda", rect: [25, 118, 180, 46] }
-    opciones:
-      - texto: "Usar delay() para todo"
-        bien: true
-        porque: "Con delay() el programa deja de responder: loop() no debe bloquear nunca."
-      - texto: "Demasiadas variables locales"
-        porque: "Las locales se crean y se destruyen: ahorran memoria, no bloquean."
-      - texto: "Haber declarado constantes en Flash"
-        porque: "Eso libera RAM; no hace que el programa deje de responder."
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l5, lineas: [5], rotulo: "Quinta línea" }
+        - { id: l6, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [l6]
+      porque:
+        l2: "Leer el pin es instantáneo; el problema es cuánto tarda en volver aquí."
+        l3: "Solo se ejecuta si se ha leído el pulsador pulsado."
+        l5: "Escribir un pin dura microsegundos: no bloquea."
+    exito: "Con delay(), el programa deja de responder: solo mira el pulsador un instante por pasada. loop() no debe bloquear nunca."
     escalera:
-      - "¿Qué hace el programa mientras espera?"
-    solucion: "delay() para todo: el programa no mira el pulsador mientras espera."
+      - "¿En qué línea se queda el programa parado sin mirar nada?"
+    solucion: "La del delay(): espera parada."
 
   - id: pregunta-banco
     tipo: pregunta

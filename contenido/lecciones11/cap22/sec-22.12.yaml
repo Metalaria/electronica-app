@@ -4,9 +4,14 @@
 # 1 V de mínimo con m = 0,5, como el texto; la FM sigue con 40 kHz y 2 kHz (el ejercicio 21.10) para ver la portadora. El espectro sí es el del
 # texto (100 kHz y 1 kHz), con líneas de 0,08 kHz de anchura. Las constantes del detector (1 µs, 100 µs, 10 ms) son
 # una décima del periodo de la portadora, la media geométrica de los dos periodos y diez periodos de la moduladora.
+# 1.2.1 (aprender haciendo): llegar al 100 %, leer el índice y la banda, calcular m, la potencia y las bandas de Carson,
+# sobremodular, tocar la causa del corte diagonal y el banco. Dos preguntas: por qué es irrecuperable y la FM.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap22/sec-22.12
 
 libro:
+  312: "La demodulación"
+  318: "Y el experimento que enseña más"
   292: "reúne el dominio del tiempo, el de la frecuencia y un circuito no lineal"
   294: "en la pantalla aparece la portadora con su envolvente siguiendo la moduladora"
   295: "el DDS del 2C53T no pasa de 50 kHz ni modula"
@@ -50,12 +55,14 @@ modelo:
     tau_ok: { expr: "sqrt(T_pp*T_mm)", sim: "τ", nombre: "constante del detector", unidad: s }
     tau_c: { expr: "T_pp/10", sim: "τ", nombre: "constante demasiado corta", unidad: s }
     tau_l: { expr: "10*T_mm", sim: "τ", nombre: "constante demasiado larga", unidad: s }
+    m_ej: { expr: "(2.6 - 1.4)/(2.6 + 1.4)", sim: "m", nombre: "índice del ejercicio", unidad: "" }
+    B_c2: { expr: "2*(6000 + 2000)", sim: "B", nombre: "banda de Carson del ejercicio", unidad: Hz }
 
 tarjetas:
   - id: explore-am
     tipo: explorar
     titulo: "La envolvente sigue al tono"
-    texto: "Una portadora modulada en amplitud por un tono. Mueva el índice de modulación y mire la envolvente."
+    texto: "Una portadora modulada en amplitud por un tono. Suba el índice hasta que la envolvente toque cero."
     libro: [292, 294]
     inicio: { m: 0.5 }
     widget:
@@ -71,16 +78,24 @@ tarjetas:
         - { valor: A_min, rotulo: "A_{mín} = {{A_min}}" }
       mandos:
         - { valor: m, min: 0, max: 1, paso: 0.05, rotulo: "Índice m" }
-    requiere: { mover: [m] }
+    objetivo:
+      condiciones:
+        - { valor: A_min, max: 0.05, rotulo: "A_{mín} = {{A_min}}" }
+      logrado: "Al 100 %, la envolvente toca cero en cada valle: es el límite antes de la sobremodulación."
+      pistas:
+        - { texto: "Suba el índice." }
+    escalera:
+      - "El mínimo de la envolvente es A·(1 − m)."
+    solucion: "m = 1."
+    comprobar:
+      - { con: { m: 1 }, A_min: 0 }
 
   - id: formula-m
-    tipo: formula
+    tipo: leer
     titulo: "El índice, en la pantalla"
-    texto: "Se lee el máximo y el mínimo de la envolvente. Con 3 V y 1 V, m = 0,5: el 50 %."
+    texto: "Lea el máximo y el mínimo de la envolvente y calcule el índice: (A_{máx} − A_{mín}) / (A_{máx} + A_{mín})."
     libro: [296, 297, 298]
     fijar: { m: 0.5, A_c: 2 }
-    ec: 297
-    sustitucion: "({{A_max}} − {{A_min}}) / ({{A_max}} + {{A_min}}) = {{m}}"
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t", muestras: 4000 }
@@ -91,35 +106,43 @@ tarjetas:
       marcas:
         - { x: "1/(4*f_m1)", y: "A_max", rotulo: "A_{máx}" }
         - { x: "3/(4*f_m1)", y: "A_min", rotulo: "A_{mín}" }
+    leer:
+      objetivo: m
+      unidad: ""
+      tol: 0.03
+      rotulo: "Índice m"
+      errores:
+        - { expr: "A_max - A_min", texto: "Esa es la diferencia; divídala entre la suma." }
+        - { expr: "(A_max - A_min)/A_min", texto: "Divida entre la suma, no entre el mínimo." }
+    exito: "Con 3 V y 1 V, m = 2/4 = 0,5: el 50 %."
+    escalera:
+      - "Lea el pico más alto y el valle más bajo de la envolvente."
+    solucion: "(3 − 1) / (3 + 1) = 0,5."
     comprobar:
       - { A_max: 3, A_min: 1, m_pct: 50 }
 
   - id: estime-m
-    tipo: pregunta
+    tipo: simular
     titulo: "Mida el índice"
-    texto: "Una portadora de 40 kHz modulada por un tono de 2 kHz: la envolvente va de 1,4 V a 2,6 V. ¿Cuánto vale m?"
+    texto: "Una portadora de 40 kHz modulada por un tono de 2 kHz: la envolvente va de 1,4 V a 2,6 V. Calcule m."
     libro: [297, "cap22#370"]
-    estimar:
-      objetivo: "(2.6 - 1.4)/(2.6 + 1.4)"
-      unidad: ""
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.8
-      tol: 0.04
-      rotulo: "m"
     exito: "(2,6 − 1,4) / (2,6 + 1,4) = 0,3: un 30 %."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.31 }, texto: "Se ha pasado: divida la diferencia entre la suma, no entre el mínimo." }
-      - { texto: "Se ha quedado corto: la diferencia es 1,2 V y la suma 4 V." }
+    simular:
+      objetivo: m_ej
+      unidad: ""
+      tol: 0.03
+      rotulo: "m"
+      errores:
+        - { expr: "(2.6 - 1.4)/1.4", texto: "Divida la diferencia entre la suma, no entre el mínimo." }
+        - { expr: "2.6 - 1.4", texto: "Esa es la diferencia; falta dividirla entre la suma." }
     escalera:
       - "Diferencia entre máximo y mínimo, dividida entre su suma."
     solucion: "m = 1,2 / 4 = 0,3."
     comprobar:
-      - { d_ej: 1.2 }
+      - { d_ej: 1.2, m_ej: 0.3 }
 
   - id: sobremodulacion
-    tipo: sorpresa
+    tipo: explorar
     titulo: "Por encima del 100 %"
     texto: "Suba el índice por encima del 100 % y mire la envolvente."
     libro: [299]
@@ -135,7 +158,15 @@ tarjetas:
       lectura: { valor: m_pct, rotulo: "Índice de modulación" }
       mandos:
         - { valor: m, lista: [0.8, 1, 1.3], rotulo: "Índice m" }
-    requiere: { mover: [m] }
+    objetivo:
+      condiciones:
+        - { valor: m, min: 1.3, rotulo: "m = {{m}}" }
+      logrado: "La envolvente se cruza: sobremodulación. Al demodular, el tono sale distorsionado sin remedio."
+      pistas:
+        - { texto: "Suba más el índice." }
+    escalera:
+      - "Mire dónde se tocan las dos envolventes."
+    solucion: "El índice más alto, por encima de 1."
 
   - id: por-que-sobremod
     tipo: porque
@@ -163,9 +194,9 @@ tarjetas:
     solucion: "El detector sigue la amplitud, que con la envolvente cruzada ya no reproduce el tono: distorsión irrecuperable."
 
   - id: espectro
-    tipo: predecir
+    tipo: leer
     titulo: "AM en la FFT"
-    texto: "Una portadora de 100 kHz modulada por un tono de 1 kHz. ¿Qué ancho de banda ocupa?"
+    texto: "Una portadora de 100 kHz modulada por un tono de 1 kHz. Lea en la FFT el ancho de banda que ocupa."
     libro: [301, 303]
     fijar: { m: 0.5 }
     widget:
@@ -175,38 +206,36 @@ tarjetas:
       curvas:
         - { expr: "A_c*exp(-((nu - 100000)/80)^2) + A_c*m/2*(exp(-((nu - 99000)/80)^2) + exp(-((nu - 101000)/80)^2))", color: naranja, rotulo: "FFT" }
       lectura: { valor: B_am, rotulo: "Banda ocupada" }
-      ocultar: true
-    opciones:
-      - texto: "2 kHz, el doble de la moduladora"
-        bien: true
-        porque: "Tres líneas: la portadora y las bandas laterales en 99 y 101 kHz. De una a otra hay 2 kHz."
-      - texto: "1 kHz, lo que mide el tono"
-        porque: "El tono aparece a los dos lados de la portadora: la banda ocupada es el doble."
-      - texto: "100 kHz, la portadora"
-        porque: "La portadora es una línea. El ancho lo dan las bandas laterales que la rodean."
+    leer:
+      objetivo: B_am
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Ancho de banda"
+      errores:
+        - { expr: "1000", texto: "Esa es la distancia de cada banda a la portadora; la señal va de una banda a la otra." }
+        - { expr: "100000", texto: "Esa es la portadora, no la banda que ocupa." }
+    exito: "2 kHz, de 99 a 101 kHz: el doble de la moduladora."
     escalera:
       - "¿Dónde caen las dos bandas laterales?"
     solucion: "De 99 a 101 kHz: 2 kHz, el doble del tono."
+    comprobar:
+      - { B_am: 2000 }
 
   - id: estime-potencia
-    tipo: pregunta
+    tipo: simular
     titulo: "Dónde va la potencia"
-    texto: "Con modulación al 100 %, ¿qué parte de la potencia total llevan entre las dos bandas laterales?"
+    texto: "Con modulación al 100 %, calcule qué parte de la potencia total llevan entre las dos bandas laterales."
     libro: [304]
     fijar: { m: 1 }
-    estimar:
-      objetivo: "P_bl"
-      unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 80
-      tol: 0.05
-      rotulo: "Potencia en las bandas"
     exito: "Un tercio: el resto es portadora, que no transporta información. Es el argumento de la banda lateral única."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 35 }, texto: "Se ha pasado: la portadora se lleva la mayor parte de la potencia." }
-      - { texto: "Se ha quedado corto: al 100 %, las bandas no son tan pequeñas." }
+    simular:
+      objetivo: P_bl
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Potencia en las bandas"
+      errores:
+        - { expr: "m^2/2*100", texto: "Esa es la relación con la portadora; divida entre la potencia total." }
+        - { expr: "100 - P_bl", texto: "Esa es la de la portadora, la que no lleva información." }
     escalera:
       - "Cada banda lateral tiene la mitad de la amplitud de la portadora: la cuarta parte de su potencia."
     solucion: "Un tercio de la potencia total; los otros dos tercios, portadora desperdiciada."
@@ -214,36 +243,44 @@ tarjetas:
       - { P_bl: 33.3 }
 
   - id: formula-carson
-    tipo: formula
+    tipo: simular
     titulo: "La banda de la FM"
-    texto: "La regla de Carson estima la banda ocupada. Con 5 kHz de desviación y un tono de 1 kHz, 12 kHz."
+    texto: "FM con 5 kHz de desviación y un tono de 1 kHz. Calcule la banda que estima la regla de Carson."
     libro: [308, 309, 310]
-    ec: 309
-    sustitucion: "2 · ({{D_f}} + {{f_t}}) = {{B_c}}"
     comprobar:
       - { B_c: 12000 }
+    simular:
+      objetivo: B_c
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Banda de Carson"
+      errores:
+        - { expr: "2*D_f", texto: "Falta sumar el tono." }
+        - { expr: "D_f + f_t", texto: "Falta multiplicar por dos." }
+    exito: "12 kHz: seis veces más que la AM equivalente. Ese es el precio de su inmunidad."
+    escalera:
+      - "B ≈ 2 · (Δf + f_m)."
+    solucion: "2 · (5 + 1) kHz = 12 kHz."
 
   - id: estime-carson
-    tipo: pregunta
+    tipo: simular
     titulo: "Carson con otro tono"
-    texto: "La misma portadora, modulada en FM con 6 kHz de desviación por un tono de 2 kHz. ¿Qué banda estima Carson?"
+    texto: "La misma portadora, modulada en FM con 6 kHz de desviación por un tono de 2 kHz. Calcule la banda que estima Carson."
     libro: [309, "cap22#370"]
-    estimar:
-      objetivo: "2*(6000 + 2000)"
-      unidad: Hz
-      min: 0
-      max: 40000
-      paso: 100
-      inicio: 30000
-      tol: 0.04
-      rotulo: "Banda de Carson"
     exito: "2 · (6 + 2) = 16 kHz, cuatro veces la AM equivalente: el precio de la inmunidad al ruido."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 16640 }, texto: "Se ha pasado: sume la desviación y el tono, y multiplique por dos." }
-      - { texto: "Se ha quedado corto: la banda es el doble de la suma de la desviación y el tono." }
+    simular:
+      objetivo: B_c2
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Banda de Carson"
+      errores:
+        - { expr: "2*6000", texto: "Falta sumar el tono." }
+        - { expr: "6000 + 2000", texto: "Falta multiplicar por dos." }
     escalera:
       - "B ≈ 2·(Δf + f_{m})."
     solucion: "B ≈ 2 · (6 + 2) = 16 kHz."
+    comprobar:
+      - { B_c2: 16000 }
 
   - id: fm-amplitud
     tipo: pregunta
@@ -268,22 +305,6 @@ tarjetas:
       - "¿Qué cambia en la señal de FM, y qué no?"
     solucion: "La información va en la frecuencia, no en la amplitud: el ruido de amplitud no la toca."
 
-  - id: detector
-    tipo: pregunta
-    titulo: "El detector de diodo"
-    texto: "El diodo rectifica y el RC sigue la envolvente. Empareje cada constante de tiempo con lo que se ve."
-    libro: [313, 314]
-    emparejar:
-      - ["Demasiado corta", "Se filtra mal la portadora: rizado"]
-      - ["Demasiado larga", "No sigue las bajadas: distorsión por corte diagonal"]
-      - ["Mucho mayor que la portadora y mucho menor que el tono", "El tono recuperado"]
-    exito: "Esa doble condición es todo el diseño del detector."
-    pistas:
-      - { texto: "Una constante larga baja despacio; una corta deja pasar la portadora." }
-    escalera:
-      - "El RC debe alisar la portadora sin quedarse atrás cuando la envolvente baja."
-    solucion: "Corta: rizado de portadora. Larga: corte diagonal. Entre las dos: el tono."
-
   - id: banco-am
     tipo: banco
     titulo: "Mida el índice en el banco"
@@ -305,7 +326,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [297, 299, 303, 313]
+    libro: [297, 299, 303, 313, 312, 314, 318]
     ideas:
       - { titulo: "El índice.", texto: "m = (A_{máx} − A_{mín})/(A_{máx} + A_{mín}), leído en la pantalla. Por encima del 100 %, sobremodulación." }
       - { titulo: "Tres líneas.", texto: "Portadora y dos bandas laterales: la AM ocupa el doble de la moduladora." }

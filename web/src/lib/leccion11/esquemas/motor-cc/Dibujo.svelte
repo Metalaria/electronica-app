@@ -6,6 +6,8 @@
   // wires carry no `data-red`: their «voltage» is a speed, not volts (and the drawing is never coloured anyway: the
   // coil and the inertia start from their initial conditions).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -63,4 +65,10 @@
     <Et x={xc + 18} y={48} t={[{ t: 'txt', s: 'T' }, { t: 'sub', s: 'carga' }, { t: 'txt', s: ` ${c.val('carga')}` }]} ancla="end" color="verde" peq />
   {/if}
   <path class="hilo" d={`M330 240 H${xfin}`}></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={55} y={60} red="in" />
+  <Punto x={255} y={60} red="e" />
+  <Punto x={355} y={60} red="w" />
+  <Punto x={150} y={240} red="0" />
+  <Rama x={55} y={60} medidor="vmi" />
 </Lienzo>

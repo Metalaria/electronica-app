@@ -79,9 +79,9 @@ export function contarPalabras(t: Texto | undefined): number {
  * «3,3», «25», «1 000 000» (thin or normal spaces between groups of three), «−6». Returned as written (decimal comma)
  * with their value.
  */
-export function numerosDeTexto(t: Texto | undefined): { s: string; v: number; decimales: number }[] {
+export function numerosDeTexto(t: Texto | undefined): NumeroDeTexto[] {
   if (!t) return [];
-  const out: { s: string; v: number; decimales: number }[] = [];
+  const out: NumeroDeTexto[] = [];
   for (const x of t) {
     if (x.t !== 'txt' && x.t !== 'b') continue;
     out.push(...numerosDe(x.s));
@@ -89,8 +89,35 @@ export function numerosDeTexto(t: Texto | undefined): { s: string; v: number; de
   return out;
 }
 
+export interface NumeroDeTexto {
+  s: string;
+  v: number;
+  decimales: number;
+  /**
+   * motor121: a hexadecimal or binary literal («$7123», «0x20») also stands for what it was read as before (its
+   * decimal digits, «7123»), so the texts written then keep passing the numbers rule.
+   */
+  legado?: { s: string; v: number; decimales: number }[];
+}
+
 /** The numbers of a plain string (also used on the book's text). */
-export function numerosDe(s: string): { s: string; v: number; decimales: number }[] {
+export function numerosDe(s: string): NumeroDeTexto[] {
+  const out: NumeroDeTexto[] = [];
+  // (motor121, autor121-pc: «$7123» and «0x7123» are hexadecimal, «0b0101» binary — read as such, and not as the
+  // decimal digits inside them)
+  const enBase = /(?<![\p{L}\p{N}_$])(\$|0[xX]|0[bB])([0-9A-Fa-f]+)(?![\p{L}\p{N}_])/gu;
+  for (const m of s.matchAll(enBase)) {
+    const bin = m[1]!.toLowerCase() === '0b';
+    if (bin && !/^[01]+$/.test(m[2]!)) continue;
+    out.push({ s: m[0], v: parseInt(m[2]!, bin ? 2 : 16), decimales: 0, legado: decimalesDe(m[0]) });
+  }
+  s = s.replace(enBase, (x: string, p: string, d: string) => (p.toLowerCase() === '0b' && !/^[01]+$/.test(d) ? x : ' '.repeat(x.length)));
+  out.push(...decimalesDe(s));
+  return out;
+}
+
+/** The decimal numbers of a string (what numerosDe read before motor121). */
+function decimalesDe(s: string): { s: string; v: number; decimales: number }[] {
   const out: { s: string; v: number; decimales: number }[] = [];
   // groups of three digits joined by a space are one number («1 000 000»), never inside a word («R2», «E24», «x10»)
   const limpio = s.replace(/(\d)[    ](?=\d{3}(?!\d))/g, '$1');

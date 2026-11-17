@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «filtro-rl» (esquema.ts): the sine source on the left, R on top, L on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import L from '../kit/L.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -21,4 +23,9 @@
   <L x1={300} y1={50} x2={300} y2={230} color="naranja" pieza="l" />
   <Et x={318} y={136} t={c.simT('l')} color="naranja" />
   <Et x={318} y={156} t={c.val('l')} color="naranja" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={85} y={50} red="fte" />
+  <Punto x={275} y={50} red="l" />
+  <Punto x={170} y={230} red="0" />
+  <Rama x={85} y={50} medidor="vmed" />
 </Lienzo>

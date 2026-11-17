@@ -5,6 +5,8 @@
   // and the negative at the bottom with their capacitors to the ground rail between them, the regulators (if any) and
   // each rail's load. Ground is drawn with its symbol at the tap and on the rail. No current particles (as «puente»).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -42,18 +44,20 @@
 <Lienzo {descripcion} {ancho} alto={300}>
   <FuenteCA x={24} y1={220} y2={80} pieza="fuente" />
   <path class="hilo" d="M24 80 H60 M24 220 H60"></path>
-  <Trafo x1={60} x2={110} y1={80} y2={220} />
+  <g data-pieza="trafo"><Trafo x1={60} x2={110} y1={80} y2={220} /></g>
   <Et x={2} y={36} t={`± ${c.val('fuente')} · ${c.val('f')}`} peq />
   <!-- the centre tap to ground -->
   <path class="hilo" d={`M112 150 H130 ${masa(130, 150)}`}></path>
   <!-- the halves' ends to the diamond's top and bottom corners -->
   <path class="hilo" d="M110 80 V60 H220 V100 M110 220 V240 H220 V200"></path>
+  <g data-pieza="diodos">
   <path class="pieza azul" d="M170 150 L187 133 M203 117 L220 100 M220 200 L237 183 M253 167 L270 150"></path>
   <path class="pieza naranja" d="M170 150 L187 167 M203 183 L220 200 M220 100 L237 117 M253 133 L270 150"></path>
   <path class="pieza relleno azul" d={Dna.tri}></path><path class="pieza azul" d={Dna.barra}></path>
   <path class="pieza relleno azul" d={Dbp.tri}></path><path class="pieza azul" d={Dbp.barra}></path>
   <path class="pieza relleno naranja" d={Dnb.tri}></path><path class="pieza naranja" d={Dnb.barra}></path>
   <path class="pieza relleno naranja" d={Dap.tri}></path><path class="pieza naranja" d={Dap.barra}></path>
+  </g>
   <Et x={220} y={155} t={c.val('vd')} peq ancla="middle" />
   <!-- the rails: + from the right corner up to y = 40, − from the left corner down to y = 260 (hopping the lower end's
        wire); the ground rail between them -->
@@ -92,4 +96,15 @@
   <Et x={xc - 20} y={26} t="+V" color="naranja" peq ancla="middle" />
   <circle class="salida" cx={xc - 20} cy="260" r="6"></circle>
   <Et x={xc - 20} y={286} t="−V" color="naranja" peq ancla="middle" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={165} y={60} red="a" />
+  <Punto x={165} y={240} red="b" />
+  <Punto x={300} y={40} red="p" />
+  <Punto x={300} y={260} red="n" />
+  {#if reg}<Punto x={415} y={40} red="op" /><Punto x={415} y={260} red="on" />{/if}
+  <Punto x={340} y={150} red="0" />
+  <Rama x={285} y={95} medidor="vdp" />
+  <Rama x={150} y={200} medidor="vdn" />
+  <Rama x={xf} y={58} medidor="vmlp" />
+  <Rama x={xf} y={242} medidor="vmln" />
 </Lienzo>

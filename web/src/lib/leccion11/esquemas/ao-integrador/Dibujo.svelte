@@ -2,6 +2,7 @@
   // Schematic «ao-integrador» (esquema.ts): the input source on the left, R along the row to the − input (the node N),
   // C above from N to the output and, with R_f, R_f in parallel above it; the + input to ground.
   import type { PropsDibujo } from '../dibujos';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import C from '../kit/C.svelte';
   import Entrada from '../kit/Entrada.svelte';
@@ -33,11 +34,13 @@
   {/if}
   <path class="hilo" d="M320 66 H340 V130 M310 130 H440" data-red="out"></path>
   <circle class="nodo" cx="340" cy="130" r="4.5" data-red="out"></circle>
-  <AO x={250} y={130} />
+  <g data-pieza="ao"><AO x={250} y={130} /></g>
   <path class="hilo" d="M250 150 H230 V240" data-red="0"></path>
   <EtiquetasAO {c} x={262} y={190} ao />
   <circle class="borne" cx="440" cy="130" r="5"></circle>
   <Et x={440} y={114} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
   <path class="hilo" d="M40 240 H440" data-red="0"></path>
   <circle class="borne" cx="440" cy="240" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Rama x={55} y={110} medidor="vmi" />
 </Lienzo>

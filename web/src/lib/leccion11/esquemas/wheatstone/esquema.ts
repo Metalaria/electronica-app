@@ -16,6 +16,12 @@ const d: DefinicionEsquema = {
     r4: { obligatoria: true, descripcion: 'rama derecha, abajo (Ω)', color: 'naranja' },
     rd: { descripcion: 'resistencia del detector (Ω); sin ella, un voltímetro ideal', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { t: 'Arriba del puente', a: 'Punto medio izquierdo', b: 'Punto medio derecho', '0': 'Abajo del puente, masa' },
+    ramas: { vmed: 'Rama de la fuente', ...(c.tiene('rd') ? { vd: 'Rama del detector' } : {}) },
+    zonas: { fuente: 'Fuente', r1: 'Arriba a la izquierda', r2: 'Abajo a la izquierda', r3: 'Arriba a la derecha', r4: 'Abajo a la derecha', ...(c.tiene('rd') ? { rd: 'Detector' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(a)-v(b)', analisis: 'op', unidad: 'V', descripcion: 'tensión del detector (punto medio izquierdo menos derecho)' },
     va: { medida: 'v(a)', analisis: 'op', unidad: 'V', descripcion: 'punto medio de la rama izquierda' },

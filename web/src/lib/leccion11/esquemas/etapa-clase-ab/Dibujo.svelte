@@ -4,6 +4,8 @@
   // beside it; Q₁ (NPN) and Q₂ (PNP) on the right, their emitter resistors meeting at the output and the load R_L to
   // ground; the driver source at the bottom left, on the base of Q₂; Q₂'s collector to the −V terminal.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Entrada from '../kit/Entrada.svelte';
   import Et from '../kit/Et.svelte';
   import EtiquetasAO from '../kit/EtiquetasAO.svelte';
@@ -40,7 +42,7 @@
   <R x1={100} y1={200} x2={100} y2={300} color="azul" pieza="r2" />
   <Et x={86} y={246} t={c.simT('r2')} ancla="end" color="azul" />
   <Et x={86} y={264} t={c.val('r2')} ancla="end" color="azul" peq />
-  <Npn x={138} y={200} />
+  <Npn x={138} y={200} pieza="q3" />
   <path class="hilo" d="M150 100 V160" data-red="b1"></path>
   <path class="hilo" d="M150 240 V300" data-red="b2"></path>
   <Et x={124} y={176} t={sub('Q', '3')} ancla="end" peq />
@@ -57,7 +59,7 @@
   <Entrada {c} x={40} y1={380} y2={300} nodo="b2" />
   <EtiquetasAO {c} x={62} y={326} />
   <!-- the output pair -->
-  <Npn x={264} y={100} />
+  <Npn x={264} y={100} pieza="q1" />
   <path class="hilo" d="M276 20 V60" data-red="vcc"></path>
   <Et x={292} y={92} t={sub('Q', '1')} peq />
   <R x1={276} y1={140} x2={276} y2={200} color="verde" pieza="re" />
@@ -67,7 +69,7 @@
   <Et x={340} y={190} t={sub('v', 'o')} ancla="middle" />
   <R x1={276} y1={200} x2={276} y2={260} color="verde" pieza={c.tiene('re2') ? 're2' : undefined} />
   <Et x={290} y={234} t={c.tiene('re2') ? c.rot('re2') : c.rot('re')} color="verde" peq />
-  <Npn x={264} y={300} pnp />
+  <Npn x={264} y={300} pnp pieza="q2" />
   <Et x={292} y={318} t={sub('Q', '2')} peq />
   <circle class="borne" cx="276" cy="345" r="5"></circle>
   <Et x={290} y={350} t={`−${c.val('vcc')}`} peq />
@@ -76,4 +78,12 @@
   <Et x={404} y={304} t={c.val('carga')} color="naranja" peq />
   <Et x={292} y={122} t={`β ${c.val('beta')}`} peq />
   <path class="hilo" d="M40 380 H390" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={213} y={20} red="vcc" />
+  <Punto x={276} y={345} red="vee" />
+  <Punto x={340} y={200} red="out" />
+  <Punto x={300} y={380} red="0" />
+  <Rama x={276} y={45} medidor="vc1" />
+  <Rama x={276} y={350} medidor="vc2" />
+  <Rama x={390} y={215} medidor="vl" />
 </Lienzo>

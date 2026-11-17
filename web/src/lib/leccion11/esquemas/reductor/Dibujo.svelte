@@ -4,6 +4,8 @@
   // along the top to the output node, the capacitor C (with its ESR above it) and the load R down to ground, the output
   // terminal on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
@@ -66,4 +68,12 @@
   <circle class="borne" cx="435" cy="60" r="5"></circle>
   <Et x={435} y={44} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
   <path class="hilo" d="M380 240 H40" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={55} y={60} red="vin" />
+  <Punto x={150} y={60} red="sw" />
+  <Punto x={405} y={60} red="o" />
+  <Punto x={260} y={240} red="0" />
+  <Rama x={55} y={60} medidor="vmin" />
+  <Rama x={170} y={226} medidor="vmd" />
+  <Rama x={190} y={60} medidor="vml" />
 </Lienzo>

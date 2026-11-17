@@ -1,8 +1,21 @@
 # Lección 1.2 de la sección 32.12 «Normativa y Ensayos» (cap32). Formato: contenido/lecciones11/GUIA.md.
 # Zonas de la figura 32.15 (fig-32.14, svg_vista 450,72 × 220,48), medidas sobre el dibujo.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la frecuencia de una emisión se lleva al rango del ensayo
+# radiado (objetivo; sustituye al emparejamiento de emisión y a «dónde se arregla»), y la familia que protege al equipo,
+# el criterio de quien se reinicia solo y el de quien se queda colgado se tocan en la fig. 32.15 (el watchdog va en su
+# explicación). Preconformidad y banco pasan al resumen. Quedan dos emparejamientos (inmunidad, sin laboratorio): 67 %,
+# porque la sección es de normativa, con categorías y casi ninguna magnitud que manipular.
 leccion: cap32/sec-32.12
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    f_e: { sim: "f", nombre: "frecuencia de la emisión", unidad: Hz, valor: 1000000 }
+    f_c1: { sim: "f", nombre: "comienzo de la conducida", unidad: Hz, valor: 150000 }
+    f_c2: { sim: "f", nombre: "frontera entre conducida y radiada", unidad: Hz, valor: 30000000 }
+    f_r2: { sim: "f", nombre: "final de la radiada", unidad: Hz, valor: 1000000000 }
+  calculos:
+    e_c: { expr: "ceil((f_e - f_c1)/1e12)*(1 - ceil((f_e - f_c2)/1e12))", sim: "conducida", nombre: "dentro del ensayo conducido", unidad: "" }
+    e_r: { expr: "ceil((f_e - f_c2)/1e12)*(1 - ceil((f_e - f_r2)/1e12))", sim: "radiada", nombre: "dentro del ensayo radiado", unidad: "" }
 
 libro:
   365: "cuánto ruido genera el equipo. Se mide"
@@ -27,63 +40,60 @@ libro:
   393: "acercando un transmisor conocido"
   396: "la mayoría de los suspensos están ahí"
   397: "el encendedor piezoeléctrico contra los conectores y las juntas"
+  398: "Ensayos de emisión e inmunidad, y los criterios de aceptación"
+  383: "Criterio C: requiere intervención del usuario"
 
 tarjetas:
   - id: explore-ensayos
     tipo: explorar
-    titulo: "Dos familias de ensayos"
-    texto: "Para vender un aparato hay que cumplir la normativa de EMC. Toque las dos familias de ensayos."
-    libro: [365, 366, 367]
+    titulo: "Conducida o radiada"
+    texto: "Un equipo emite un armónico a cierta frecuencia. Muévala hasta que la cubra el ensayo de emisión radiada."
+    libro: [369, 370, 371, 372]
+    inicio: { f_e: 1000000 }
     widget:
-      tipo: figura
-      figura: fig-32.14
-      zonas:
-        - { id: emision, rotulo: "Recuadro de arriba a la izquierda", rect: [5, 2, 217, 104], texto: "Emisión: cuánto ruido genera el equipo. Se mide, y protege a los demás." }
-        - { id: inmunidad, rotulo: "Recuadro de arriba a la derecha", rect: [229, 3, 217, 103], texto: "Inmunidad: cuánta perturbación soporta sin fallar. Se le inyecta, protege al propio equipo y es la que más se descuida." }
-    requiere: { mover: [emision, inmunidad] }
-
-  - id: empareje-emision
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los ensayos de emisión"
-    texto: "Una cada ensayo de emisión con su rasgo."
-    libro: [369, 370, 371]
-    widget:
-      tipo: figura
-      figura: fig-32.14
-      zonas:
-        - { id: emision, rotulo: "Emisión", rect: [5, 2, 217, 104] }
-    emparejar:
-      - ["Conducida, de 150 kHz a 30 MHz", "Por el cable de red, con una LISN"]
-      - ["Radiada, de 30 MHz a 1 GHz o más", "En cámara anecoica, con los cables de antena"]
-    exito: "En las dos manda el modo común: por eso se arreglan en los cables y en el filtro de entrada."
-    pistas:
-      - { texto: "La LISN aísla la instalación del cable de red." }
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 3000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "" }
+      curvas:
+        - { expr: "ceil((nu - f_c1)/1e12)*(1 - ceil((nu - f_c2)/1e12))", color: naranja, rotulo: "conducida, por el cable de red" }
+        - { expr: "ceil((nu - f_c2)/1e12)*(1 - ceil((nu - f_r2)/1e12))", color: azul, rotulo: "radiada, por el aire" }
+      marcas:
+        - { x: "f_e", y: "0.5", rotulo: "su emisión" }
+      mandos:
+        - { valor: f_e, lista: [1000000, 10000000, 100000000, 2000000000], rotulo: "Frecuencia" }
+    objetivo:
+      condiciones:
+        - { valor: e_r, min: 1, rotulo: "Ensayo radiado" }
+      logrado: "Radiada, de 30 MHz a 1 GHz o más: los cables hacen de antena. Por debajo, conducida, con una LISN. En las dos manda el modo común: se arreglan en cables y filtro de entrada."
+      pistas:
+        - { cuando: { valor: e_c, min: 1 }, texto: "Esa la cubre la conducida, de 150 kHz a 30 MHz: suba." }
+        - { texto: "Suba la frecuencia." }
     escalera:
-      - "¿Cuál se mide por el cable y cuál por el aire?"
-    solucion: "Conducida–cable de red y LISN; radiada–cámara y cables como antena."
+      - "Conducida, de 150 kHz a 30 MHz; radiada, de 30 MHz a 1 GHz o más."
+    solucion: "100 MHz: ensayo radiado."
+    comprobar:
+      - { f_c1: 150000, f_c2: 30000000, f_r2: 1000000000 }
+      - { con: { f_e: 100000000 }, e_r: 1, e_c: 0 }
 
   - id: donde-se-arregla
-    tipo: pregunta
-    titulo: "Dónde se arregla"
-    texto: "Una fuente conmutada suspende el ensayo de emisión conducida. ¿Dónde está casi siempre la solución?"
-    libro: [370, 372]
+    tipo: tocar
+    titulo: "Emisión e inmunidad"
+    texto: "Dos familias de ensayos con lógicas opuestas. Toque la que protege al propio equipo y más veces se descuida."
+    libro: [365, 366, 367, 398]
     widget:
       tipo: figura
       figura: fig-32.14
       zonas:
-        - { id: emision, rotulo: "Emisión", rect: [5, 2, 217, 104] }
-    opciones:
-      - texto: "En los cables y en el filtro de entrada, contra el modo común"
-        bien: true
-        porque: "La mayoría de los problemas de emisión se resuelven ahí, no en la placa."
-      - texto: "En rediseñar toda la placa"
-        porque: "A veces hace falta, pero lo habitual es que baste con el filtro y los cables."
-      - texto: "En una pantalla alrededor de la placa"
-        porque: "La emisión conducida va por el cable de red: una pantalla no la frena."
+        - { id: emision, rotulo: "Recuadro de arriba a la izquierda", rect: [5, 2, 217, 104] }
+        - { id: inmunidad, rotulo: "Recuadro de arriba a la derecha", rect: [229, 3, 217, 103] }
+    tocar:
+      bien: [inmunidad]
+      porque:
+        emision: "La emisión, que se mide, protege a los demás."
+    exito: "La inmunidad: cuánta perturbación soporta sin fallar. Se le inyecta."
     escalera:
-      - "¿Qué modo domina en las fuentes conmutadas que suspenden?"
-    solucion: "Filtro de entrada y cables: el modo común."
+      - "Una familia se mide; la otra se le inyecta al equipo."
+    solucion: "La inmunidad."
 
   - id: empareje-inmunidad
     tipo: pregunta
@@ -132,48 +142,26 @@ tarjetas:
     solucion: "B: se degrada y se recupera solo."
 
   - id: por-que-watchdog
-    tipo: porque
+    tipo: tocar
     titulo: "El watchdog"
-    texto: "Además de buena práctica, el watchdog es una herramienta de certificación. ¿Por qué?"
-    libro: [385]
+    texto: "Ante una descarga, un equipo sin watchdog se queda colgado hasta que alguien lo apaga y lo enciende. Toque el criterio que cumple."
+    libro: [383, 384, 385]
     widget:
       tipo: figura
       figura: fig-32.14
       zonas:
-        - { id: flecha, rotulo: "Flecha de abajo", rect: [220, 175, 160, 45] }
-    opciones:
-      - texto: "Convierte un equipo colgado, criterio C, en uno que se reinicia solo, criterio B"
-        bien: true
-        porque: "Un equipo que se queda colgado suspende; uno que se recupera solo puede aprobar."
-      - texto: "Porque evita que el equipo emita ruido"
-        porque: "El watchdog no toca la emisión: actúa sobre cómo se recupera de una perturbación."
-      - texto: "Porque convierte un fallo en criterio A"
-        porque: "Reiniciarse no es funcionar normalmente durante la perturbación."
+        - { id: a, rotulo: "Caja de abajo a la izquierda", rect: [5, 133, 137, 47] }
+        - { id: b, rotulo: "Caja de abajo en el centro", rect: [158, 133, 137, 47] }
+        - { id: c, rotulo: "Caja de abajo a la derecha", rect: [310, 133, 136, 47] }
+    tocar:
+      bien: [c]
+      porque:
+        a: "No funciona durante la perturbación: se ha colgado."
+        b: "No se recupera solo: necesita al usuario."
+    exito: "Criterio C: suspende. Un watchdog lo reiniciaría solo, criterio B: por eso, además de buena práctica, es una herramienta de certificación."
     escalera:
-      - "¿Qué hace un watchdog cuando el programa se cuelga?"
-    solucion: "Lo reinicia: de colgado, criterio C, a recuperarse solo, criterio B."
-
-  - id: preconformidad
-    tipo: pregunta
-    titulo: "El coste de fallar tarde"
-    texto: "Un ensayo de certificación cuesta miles de euros, y suspender obliga a rediseñar y repetir. ¿Qué se hace durante el desarrollo?"
-    libro: [387, 388]
-    widget:
-      tipo: figura
-      figura: fig-32.14
-      zonas:
-        - { id: todo, rotulo: "Los ensayos", rect: [5, 2, 441, 104] }
-    opciones:
-      - texto: "Preconformidad: medir de forma aproximada con equipo modesto"
-        bien: true
-        porque: "Para llegar al laboratorio con margen en lugar de con sorpresas."
-      - texto: "Nada: el laboratorio ya dirá"
-        porque: "Así se descubren los fallos en el momento más caro."
-      - texto: "Comprar un receptor calibrado y una cámara"
-        porque: "Es lo que tiene el laboratorio; para desarrollar basta con equipo modesto."
-    escalera:
-      - "¿Cuándo es más barato encontrar un fallo?"
-    solucion: "Preconformidad durante el desarrollo."
+      - "¿Necesita al usuario?"
+    solucion: "C: requiere intervención del usuario."
 
   - id: empareje-sin-laboratorio
     tipo: pregunta
@@ -192,34 +180,12 @@ tarjetas:
       - "¿Cuál es de emisión y cuáles de inmunidad?"
     solucion: "Sonda–emisión; encendedor–ESD; emisora–inmunidad radiada."
 
-  - id: banco-rentable
-    tipo: pregunta
-    titulo: "La medida más rentable"
-    texto: "Con poco presupuesto, ¿qué medida de preconformidad de emisión es la más rentable?"
-    libro: [396, 397]
-    widget:
-      tipo: figura
-      figura: fig-32.14
-      zonas:
-        - { id: emision, rotulo: "Emisión", rect: [5, 2, 217, 104] }
-    opciones:
-      - texto: "Emisión conducida con una LISN casera y un analizador económico"
-        bien: true
-        porque: "La mayoría de los suspensos están ahí, y el margen respecto al límite se ve directamente."
-      - texto: "Emisión radiada a 3 m en el garaje"
-        porque: "Sin cámara, el entorno lo contamina todo; la conducida es más fiable y es donde se suspende."
-      - texto: "Ninguna: sin laboratorio no sirve"
-        porque: "Comparativa y aproximada, sirve para llegar con margen."
-    escalera:
-      - "¿En qué ensayo suspende la mayoría?"
-    solucion: "La conducida, con LISN casera: ahí están la mayoría de los suspensos."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [367, 372, 374, 385, 388]
+    libro: [367, 372, 374, 385, 387, 388, 396, 397]
     ideas:
       - { titulo: "Emisión e inmunidad.", texto: "La emisión protege a los demás y se mide; la inmunidad protege al equipo y se le inyecta." }
       - { titulo: "Modo común.", texto: "Domina la emisión conducida y la radiada: cables y filtro de entrada." }
       - { titulo: "Criterios.", texto: "A funciona; B se recupera solo; C necesita al usuario. El watchdog convierte C en B." }
-      - { titulo: "Preconformidad.", texto: "Medir pronto con equipo modesto para llegar con margen." }
+      - { titulo: "Preconformidad.", texto: "Un ensayo cuesta miles de euros: medir pronto, sobre todo la conducida con LISN casera, para llegar con margen." }

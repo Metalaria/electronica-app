@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «resistencia» (esquema.ts): the source on the left, the resistor on the right, one loop.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -18,4 +20,8 @@
   <R x1={270} y1={50} x2={270} y2={230} color="naranja" pieza="r" />
   <Et x={286} y={136} t={c.simT('r')} color="naranja" />
   <Et x={286} y={156} t={c.val('r')} color="naranja" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={180} y={50} red="fte" />
+  <Punto x={180} y={230} red="0" />
+  <Rama x={180} y={50} medidor="vmed" />
 </Lienzo>

@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 39.12 «El Mapa de Memoria: Flash, RAM, Pila y Enlazador» (cap38; etiqueta interna sec-38.12).
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.16 (svg_vista 453,6 × 259,2): Flash a la izquierda, RAM a la
 # derecha; las secciones pequeñas de la Flash se agrupan para que las zonas se puedan tocar en un teléfono.
+# 1.2.1 («aprender haciendo», GUIA §13): la técnica del patrón se explora como la fracción de la zona de pila que el
+# programa llega a pisar, hasta el mayor uso que deja el margen del 25 % del libro (bloque 388); en la figura se tocan
+# .bss, los valores iniciales en Flash, el montón que se suprime y la pila que crece con el formateo de texto. Quedan
+# dos preguntas de opciones: el encuentro silencioso y el fichero de mapa.
 leccion: cap38/sec-38.12
 
 libro:
@@ -20,25 +24,42 @@ libro:
   389: "Mapa de memoria con la pila y el montón creciendo el uno hacia el otro"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    u_p: { sim: "uso", nombre: "fracción de la zona de pila pisada", unidad: "", valor: 0.5 }
+  calculos:
+    mg: { expr: "1 - u_p", sim: "margen", nombre: "margen libre", unidad: "", cifras: 2 }
 
 tarjetas:
   - id: explore-mapa
     tipo: explorar
-    titulo: "Dónde vive cada cosa"
-    texto: "Flash a la izquierda, RAM a la derecha. Toque las zonas y lea qué guarda cada una."
-    libro: [365, 366, 389]
+    titulo: "Medir la pila con un patrón"
+    texto: "Se rellena la RAM libre con un patrón y se deja correr el programa; lo pisado es la pila usada. Busque el mayor uso que deja el margen del libro."
+    libro: [379, 388]
+    inicio: { u_p: 0.5 }
     widget:
-      tipo: figura
-      figura: fig-38.16
-      zonas:
-        - { id: codigo, rotulo: "Bloque grande de la Flash", rect: [62, 129, 119, 68], texto: "Código de la aplicación, en la Flash." }
-        - { id: valores, rotulo: "Flash, encima de las constantes", rect: [62, 72, 119, 36], texto: "Valores iniciales de .data: el arranque los copia a la RAM." }
-        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50], texto: "Pila: variables locales, retornos y contextos; crece hacia abajo." }
-        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36], texto: "Montón: la memoria dinámica; crece hacia arriba." }
-        - { id: data, rotulo: "Abajo de la RAM", rect: [271, 220, 118, 36], texto: ".data: las globales inicializadas, con valores copiados de la Flash." }
-    requiere: { mover: [pila, monton] }
+      tipo: grafica
+      x: { id: ux, min: 0, max: 1, unidad: "", rotulo: "fracción pisada" }
+      y: { min: 0, max: 1, unidad: "", rotulo: "margen libre" }
+      curvas:
+        - { expr: "1 - ux", color: azul, rotulo: "Margen" }
+        - { expr: "0.25", color: tinta, rotulo: "25 %", discontinua: true }
+      marcas:
+        - { x: "u_p", y: "mg", rotulo: "Su medida" }
+      lectura: { valor: mg, rotulo: "Margen libre" }
+      mandos:
+        - { valor: u_p, min: 0.3, max: 1, paso: 0.05, rotulo: "Fracción pisada" }
+    objetivo:
+      condiciones:
+        - { valor: mg, min: 0.249, rotulo: "Margen: {{mg}}" }
+        - { valor: u_p, min: 0.74, rotulo: "Uso: {{u_p}}" }
+      logrado: "Hasta un {{u_p}} pisado queda el 25 %. Con menos margen, una condición algo peor la desborda: una corrupción esperando su momento."
+      pistas:
+        - { cuando: { valor: mg, menor: 0.249 }, texto: "Ese margen ya es menor del 25 %." }
+        - { texto: "Aún queda margen de sobra: busque el límite." }
+    escalera: ["Margen = 1 − fracción pisada."]
+    solucion: "Tres cuartas partes pisadas: un 25 % de margen."
+    comprobar:
+      - { con: { u_p: 0.75 }, mg: 0.25 }
 
   - id: toque-bss
     tipo: tocar
@@ -64,21 +85,23 @@ tarjetas:
     solucion: "En .bss, la penúltima zona de la RAM."
 
   - id: prediga-array
-    tipo: predecir
+    tipo: tocar
     titulo: "Un array grande"
-    texto: "Un array global grande, inicializado a cero o inicializado con valores. ¿Cuál cuesta Flash?"
-    libro: [369, 371, 389]
+    texto: "Un array global grande inicializado con valores ocupa RAM y, además, una zona de la Flash. Tóquela."
+    libro: [365, 369, 371, 389]
     widget:
       tipo: figura
       figura: fig-38.16
       zonas:
-        - { id: valores, rotulo: "Flash, encima de las constantes", rect: [62, 72, 119, 36], texto: "Valores iniciales de .data." }
-    opciones:
-      - { texto: "El de valores: sus valores iniciales se guardan en la Flash", bien: true, porque: "El arranque los copia a la RAM: ocupa en las dos memorias. El de ceros va a .bss y no cuesta Flash." }
-      - { texto: "Los dos igual", porque: "El de ceros no necesita copia: el arranque pone .bss a cero." }
-      - { texto: "El de ceros", porque: "Los ceros no se guardan: el arranque los escribe solo." }
-    escalera: ["¿Qué hay que copiar de la Flash al arrancar?"]
-    solucion: "El de valores: ocupa Flash y RAM. A cero, solo RAM."
+        - { id: codigo, rotulo: "Bloque grande de la Flash", rect: [62, 129, 119, 68] }
+        - { id: valores, rotulo: "Flash, encima de las constantes", rect: [62, 72, 119, 36] }
+    tocar:
+      bien: [valores]
+      porque:
+        codigo: "El código ocupa su sitio igual; los valores del array van aparte."
+    exito: "Sus valores iniciales: el arranque los copia a la RAM. Inicializado a cero, iría a .bss y no costaría Flash."
+    escalera: ["¿Qué copia el arranque de la Flash a la RAM?"]
+    solucion: "Los valores iniciales de .data."
 
   - id: porque-encuentro
     tipo: porque
@@ -98,54 +121,50 @@ tarjetas:
     solucion: "La corrupción es silenciosa: el fallo aparece mucho después y lejos."
 
   - id: pregunta-sin-monton
-    tipo: pregunta
+    tipo: tocar
     titulo: "Sin memoria dinámica"
-    texto: "En un sistema pequeño se decide no usar asignación dinámica. ¿Qué gana la pila?"
-    libro: [376, 389]
+    texto: "En un sistema pequeño se prescinde de una zona de la RAM para que la pila tenga toda la memoria libre. Tóquela."
+    libro: [374, 376, 389]
     widget:
       tipo: figura
       figura: fig-38.16
       zonas:
-        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36], texto: "Montón." }
-    opciones:
-      - { texto: "Toda la memoria libre, y el choque desaparece", bien: true, porque: "Sin montón no hay nada que crezca hacia ella." }
-      - { texto: "Nada: la pila tiene un tamaño fijo", porque: "Crece hacia abajo hasta donde haya sitio: sin montón, tiene todo el hueco." }
-      - { texto: "Velocidad", porque: "No va más deprisa: gana espacio y elimina el choque." }
-    escalera: ["¿Qué crece hacia la pila?"]
-    solucion: "Toda la memoria libre: el problema desaparece."
+        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50] }
+        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36] }
+        - { id: bss, rotulo: "RAM, penúltima zona", rect: [271, 184, 118, 36] }
+        - { id: data, rotulo: "Abajo de la RAM", rect: [271, 220, 118, 36] }
+    tocar:
+      bien: [monton]
+      porque:
+        pila: "La pila no se puede suprimir: guarda locales, retornos y contextos."
+        bss: ".bss son las globales sin valor inicial: siguen haciendo falta."
+        data: ".data son las globales con valor: siguen ahí."
+    exito: "El montón: sin asignación dinámica no hay nada que crezca hacia la pila, y el choque desaparece."
+    escalera: ["¿Qué crece hacia arriba, al encuentro de la pila?"]
+    solucion: "El montón."
 
-  - id: ordene-medir-pila
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Medir la pila"
-    texto: "Ponga en orden la técnica del patrón."
-    libro: [379]
-    ordenar:
-      - "Rellenar toda la RAM libre con un patrón conocido al arrancar."
-      - "Dejar correr el programa en sus condiciones más exigentes."
-      - "Mirar hasta dónde ha llegado el patrón sin tocar."
-    exito: "Eso da el máximo real de pila usada: difícil de calcular, fácil de medir."
-    pistas:
-      - { texto: "El patrón se escribe antes de que el programa use la pila." }
-    escalera: ["Lo que la pila haya pisado ya no tiene el patrón."]
-    solucion: "Rellenar, correr en lo más exigente y mirar el patrón."
-
-  - id: pregunta-margen
-    tipo: pregunta
-    titulo: "El margen de pila"
-    texto: "Ha medido la pila en la condición más exigente. ¿Qué margen libre es una corrupción esperando su momento?"
-    libro: [388, 389]
+  - id: toque-pila
+    tipo: tocar
+    titulo: "Funciones de formateo"
+    texto: "Una función de formateo de texto, llamada desde una interrupción, usa mucha más memoria de la esperada. Toque la zona que crece."
+    libro: [373, 378, 389]
     widget:
       tipo: figura
       figura: fig-38.16
       zonas:
-        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50], texto: "La pila." }
-    opciones:
-      - { texto: "Menos del 25 %", bien: true, porque: "Con menos margen, una condición algo peor que la medida la desborda." }
-      - { texto: "Ninguno: basta con que la pila quepa", porque: "Lo medido es solo lo que se ha probado: una condición algo peor la desborda." }
-      - { texto: "Cualquier margen basta si no ha fallado", porque: "No haber fallado no prueba nada: la corrupción es silenciosa." }
-    escalera: ["El libro da una cifra: una cuarta parte."]
-    solucion: "Un margen menor del 25 %."
+        - { id: pila, rotulo: "Arriba de la RAM", rect: [271, 32, 118, 50] }
+        - { id: monton, rotulo: "RAM, debajo del hueco libre", rect: [271, 148, 118, 36] }
+        - { id: bss, rotulo: "RAM, penúltima zona", rect: [271, 184, 118, 36] }
+        - { id: data, rotulo: "Abajo de la RAM", rect: [271, 220, 118, 36] }
+    tocar:
+      bien: [pila]
+      porque:
+        monton: "El montón crece con la memoria dinámica, no con las llamadas."
+        bss: ".bss tiene tamaño fijo, decidido al compilar."
+        data: ".data también es fijo."
+    exito: "La pila: locales, profundidad de llamadas y contextos de interrupción, que se apilan y en las anidadas se suman."
+    escalera: ["¿Dónde van las variables locales y los contextos de interrupción?"]
+    solucion: "La pila, arriba de la RAM."
 
   - id: pregunta-mapa
     tipo: pregunta

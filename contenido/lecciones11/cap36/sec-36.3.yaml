@@ -4,6 +4,11 @@
 # - Acoplador (bloque 167): 20 dB toma el 1 % y cuesta −10·log(0,99) = 0,04 dB; una directividad de 25 dB hace que una
 #   carga perfecta parezca de 25 dB de pérdidas de retorno, VSWR 1,12.
 # Paso práctico: «simular» el VSWR mínimo medible con 25 dB de directividad (errores: dar |Γ|, usar 10·log).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la pérdida de retorno y el aislamiento se tocan en la figura
+# 37.7 (la pregunta del S₁₂ grande pasa al éxito del aislamiento); S₁₁ se lleva al 10 % reflejado; |Γ| con −6 dB se
+# lee en su curva (la referencia de 50 o 75 Ω pasa a su éxito, y se quita esa pregunta); la potencia reflejada con
+# −20 dB y la pérdida del acoplador de 20 dB se predicen. Quedan dos preguntas de opciones (por qué ondas y la
+# calibración) y los usos, por emparejar.
 leccion: cap36/sec-36.3
 
 libro:
@@ -45,22 +50,32 @@ modelo:
     P_p: { expr: "100 - F_c", sim: "pasa", nombre: "potencia que pasa", unidad: "%" }
     P_1: { expr: "100*(1 - 10^(-0.1))", sim: "1 dB", nombre: "potencia que quita 1 dB", unidad: "%" }
     L_c: { expr: "-10*log10(1 - F_c/100)", sim: "pérdida", nombre: "pérdida en la línea principal", unidad: dB }
+    P_10: { expr: "100*10^(S_11/10)*10", sim: "P", nombre: "con |Γ| en lugar de |Γ|²", unidad: "%" }
 
 tarjetas:
   - id: explore-cuatro
-    tipo: explorar
+    tipo: tocar
     titulo: "Cuatro parámetros"
-    texto: "Un dispositivo de dos puertos: ondas que entran y ondas que salen. Toque los cuatro parámetros."
+    texto: "Un dispositivo de dos puertos: ondas que entran y ondas que salen, cada parámetro complejo y según la frecuencia. Toque lo que se refleja en la entrada."
     libro: [140, 143, 144]
     widget:
       tipo: figura
       figura: fig-36.4
-      zonas:
-        - { id: s21, rotulo: "Flecha azul, arriba", rect: [64, 42, 99, 35], texto: "S₂₁: lo que sale por la salida respecto a lo que entró. Ganancia o pérdida de inserción." }
-        - { id: s11, rotulo: "Arco rojo, a la izquierda", rect: [64, 79, 40, 50], texto: "S₁₁: lo que se refleja en la entrada. Pérdida de retorno." }
-        - { id: s22, rotulo: "Arco morado, a la derecha", rect: [128, 79, 40, 50], texto: "S₂₂: lo que se refleja en la salida. Adaptación de salida." }
-        - { id: s12, rotulo: "Flecha naranja, abajo", rect: [64, 126, 99, 35], texto: "S₁₂: lo que pasa de la salida a la entrada. Aislamiento." }
-    requiere: { mover: [s21, s11, s22, s12] }
+      zonas: &zonas-s
+        - { id: s21, rotulo: "Flecha azul, arriba", rect: [64, 42, 99, 35] }
+        - { id: s11, rotulo: "Arco rojo, a la izquierda", rect: [64, 79, 40, 50] }
+        - { id: s22, rotulo: "Arco morado, a la derecha", rect: [128, 79, 40, 50] }
+        - { id: s12, rotulo: "Flecha naranja, abajo", rect: [64, 126, 99, 35] }
+    tocar:
+      bien: [s11]
+      porque:
+        s21: "Esa es la transmisión de entrada a salida: ganancia o pérdida de inserción."
+        s22: "Esa es la reflexión en la salida: adaptación de salida."
+        s12: "Esa es la transmisión de la salida a la entrada: aislamiento."
+    exito: "S₁₁: la pérdida de retorno. El primer subíndice es el puerto por donde sale; el segundo, por donde entra."
+    escalera:
+      - "Entra por la entrada y vuelve por ella."
+    solucion: "El arco rojo, S₁₁."
 
   - id: porque-ondas
     tipo: porque
@@ -85,32 +100,31 @@ tarjetas:
     solucion: "Medida ambigua y riesgo de oscilar: por eso ondas con 50 Ω en todos los puertos."
 
   - id: empareje-nombres
-    tipo: pregunta
+    tipo: tocar
     titulo: "Sus nombres habituales"
-    texto: "Empareje cada parámetro con su nombre habitual."
-    libro: [143, 147]
+    texto: "S₂₁ es la ganancia si el dispositivo amplifica. Toque el aislamiento: lo que pasa de la salida a la entrada."
+    libro: [143, 147, 148]
     widget:
       tipo: figura
       figura: fig-36.4
-      zonas:
-        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
-    emparejar:
-      - ["S₁₁", "Pérdida de retorno"]
-      - ["S₂₁", "Ganancia o pérdida de inserción"]
-      - ["S₁₂", "Aislamiento"]
-      - ["S₂₂", "Adaptación de salida"]
-    exito: "El primer subíndice es el puerto por donde sale; el segundo, por donde entra."
-    pistas:
-      - { texto: "Los de subíndices repetidos son reflexiones." }
+      zonas: *zonas-s
+    tocar:
+      bien: [s12]
+      porque:
+        s21: "Ese va de la entrada a la salida: ganancia."
+        s11: "Esa es una reflexión, en la entrada."
+        s22: "Esa es una reflexión, en la salida."
+    exito: "S₁₂. Si es grande, la carga de salida afecta a la entrada: una realimentación sin querer, y el amplificador puede oscilar."
     escalera:
-      - "S₂₁: entra por el primer puerto y sale por el segundo."
-    solucion: "S₁₁ retorno; S₂₁ ganancia; S₁₂ aislamiento; S₂₂ adaptación de salida."
+      - "Entra por la salida y sale por la entrada."
+    solucion: "La flecha naranja, S₁₂."
 
   - id: explore-conversion
     tipo: explorar
     titulo: "Tres formas de decir lo mismo"
-    texto: "S₁₁ en decibelios, |Γ|, VSWR y potencia reflejada son la misma medida. Mueva S₁₁."
+    texto: "S₁₁ en decibelios, |Γ|, VSWR y potencia reflejada son la misma medida. Lleve una antena a una adaptación aceptable: el 10 % reflejado."
     libro: [146, 151, 153]
+    inicio: { S_11: -6 }
     widget:
       tipo: grafica
       x: { id: s, min: -35, max: -3, unidad: dB, rotulo: "S₁₁" }
@@ -125,15 +139,25 @@ tarjetas:
         - { valor: P_r, rotulo: "Reflejada: {{P_r}}" }
       mandos:
         - { valor: S_11, lista: [-6, -10, -20, -30], rotulo: "S₁₁" }
-    requiere: { mover: [S_11] }
+    objetivo:
+      condiciones:
+        - { valor: P_r, objetivo: 10, tol: 0.02, rotulo: "Reflejada: {{P_r}}" }
+      logrado: "S₁₁ = {{S_11}}: |Γ| = {{G_m}} y VSWR {{VSWR}}. Aceptable."
+      pistas:
+        - { cuando: { valor: P_r, mayor: 10.2 }, texto: "Refleja demasiado: más pérdida de retorno." }
+        - { texto: "Refleja menos de lo pedido: eso ya es más que aceptable." }
+    escalera:
+      - "La potencia reflejada es |Γ|²: −10 dB son una décima."
+    solucion: "S₁₁ = −10 dB."
+    comprobar:
+      - { con: { S_11: -10 }, P_r: 10, VSWR: 1.92, tol: 0.01 }
 
   - id: formula-s11
-    tipo: formula
+    tipo: leer
     titulo: "S₁₁ es Γ en decibelios"
-    texto: "S₁₁ es el coeficiente de reflexión Γ, expresado en decibelios de tensión."
-    libro: [151, 153]
-    ec: 151
-    sustitucion: "20 · log₁₀ {{G_m}} = {{S_11}}"
+    texto: "S₁₁ es Γ en decibelios de tensión, 20·log₁₀|Γ|. Lea en la curva |Γ| para un S₁₁ de −6 dB y escríbalo."
+    libro: [151, 153, 155]
+    fijar: { S_11: -6 }
     widget:
       tipo: grafica
       x: { id: s, min: -35, max: -3, unidad: dB, rotulo: "S₁₁" }
@@ -141,13 +165,24 @@ tarjetas:
       curvas:
         - { expr: "10^(s/20)", color: azul, rotulo: "|Γ|" }
       marcas:
-        - { x: "S_11", y: "G_m", rotulo: "{{G_m}}" }
-      lectura: { valor: G_m, rotulo: "|Γ|" }
-      mandos:
-        - { valor: S_11, lista: [-6, -10, -20, -30], rotulo: "S₁₁" }
+        - { x: "S_11", y: "G_m", rotulo: "−6 dB" }
+      mandos: []
+    leer:
+      objetivo: G_m
+      unidad: ""
+      tol: 0.03
+      rotulo: "|Γ|"
+      errores:
+        - { expr: "G_m^2", texto: "Ese es |Γ|², la potencia reflejada; |Γ| es su raíz." }
+    exito: "0,50: la mitad de la tensión vuelve, VSWR 3,0 y el 25 % de la potencia. Y referidos a 50 Ω: con 75 Ω, el mismo dispositivo da otros números."
+    escalera:
+      - "−6 dB en tensión es la mitad."
+    solucion: "|Γ| = 0,50."
+    comprobar:
+      - { G_m: 0.501, VSWR: 3.0, P_r: 25.1, tol: 0.01 }
 
   - id: estime-reflejada
-    tipo: pregunta
+    tipo: simular
     titulo: "Un S₁₁ de −20 dB"
     texto: "Una antena tiene un S₁₁ de −20 dB. ¿Qué porcentaje de la potencia se refleja?"
     libro: [146, 153]
@@ -157,68 +192,20 @@ tarjetas:
       figura: fig-36.4
       zonas:
         - { id: grafica, rotulo: "VSWR frente a S₁₁", rect: [235, 10, 205, 195] }
-    estimar:
-      objetivo: "P_r"
+    simular:
+      objetivo: P_r
       unidad: "%"
-      min: 0
-      max: 20
-      paso: 0.1
-      inicio: 14
-      tol: 0.1
+      tol: 0.05
       rotulo: "Potencia reflejada"
-    exito: "El 1 %: un valor excelente. Con −10 dB sería el 10 %, aceptable."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.1 }, texto: "Demasiado: −20 dB es una centésima de la potencia." }
-      - { texto: "Demasiado poco: −20 dB es la centésima, no la milésima." }
+      errores:
+        - { expr: "P_10", texto: "Ese 10 % es |Γ|; la potencia reflejada es |Γ|²." }
+        - { expr: "P_r/10", texto: "Demasiado poco: −20 dB es la centésima, no la milésima." }
+    exito: "El 1 %: excelente, VSWR 1,22. Con −10 dB sería el 10 %, aceptable."
     escalera:
       - "−10 dB es una décima de potencia; −20 dB, una décima de una décima."
     solucion: "|Γ| = 0,1, y su cuadrado es una centésima: el 1 %."
     comprobar:
-      - { G_m: 0.1, P_r: 1, VSWR: 1.22 }
-
-  - id: predecir-s12
-    tipo: predecir
-    titulo: "Un amplificador que no aísla"
-    texto: "Un amplificador tiene un S₁₂ grande. ¿Qué puede pasar?"
-    libro: [148]
-    widget:
-      tipo: figura
-      figura: fig-36.4
-      zonas:
-        - { id: s12, rotulo: "Flecha naranja, abajo", rect: [64, 126, 99, 35] }
-    opciones:
-      - texto: "La carga de salida afecta a la entrada y puede oscilar"
-        bien: true
-        porque: "Lo que se cuela hacia atrás es una realimentación: con fase y ganancia, oscila."
-      - texto: "Que amplifica más"
-        porque: "La ganancia es S₂₁; S₁₂ es lo que vuelve de la salida a la entrada."
-      - texto: "Que refleja más en la entrada"
-        porque: "La reflexión de entrada es S₁₁; S₁₂ es transmisión hacia atrás."
-    escalera:
-      - "S₁₂ es lo que pasa de la salida a la entrada."
-    solucion: "Realimentación sin querer: la salida mueve la entrada y puede oscilar."
-
-  - id: pregunta-referencia
-    tipo: pregunta
-    titulo: "50 o 75 Ω"
-    texto: "Le dan los parámetros S de un amplificador sin decir la impedancia de referencia. ¿Qué falta?"
-    libro: [155]
-    widget:
-      tipo: figura
-      figura: fig-36.4
-      zonas:
-        - { id: dispositivo, rotulo: "El dispositivo y sus puertos", rect: [0, 0, 230, 213] }
-    opciones:
-      - texto: "Saber el sistema: referidos a 50 o a 75 Ω son distintos"
-        bien: true
-        porque: "Los parámetros S van referidos a una impedancia concreta; hay fórmulas de conversión."
-      - texto: "Nada: son propiedades del dispositivo"
-        porque: "Dependen también de los puertos terminados: un mismo dispositivo da otros con 75 Ω."
-      - texto: "Solo la frecuencia"
-        porque: "La frecuencia también hace falta, pero la referencia cambia todos los números."
-    escalera:
-      - "Los parámetros S se miden con los puertos terminados. ¿En qué?"
-    solucion: "La impedancia de referencia: 50 y 75 Ω dan parámetros distintos."
+      - { G_m: 0.1, P_r: 1, VSWR: 1.22, P_10: 10 }
 
   - id: empareje-usos
     tipo: pregunta
@@ -287,9 +274,9 @@ tarjetas:
       - { G_d: 0.0562, S_d: 1.119, G_10: 0.00316, S_10: 1.0063 }
 
   - id: pregunta-acoplo
-    tipo: pregunta
+    tipo: simular
     titulo: "Lo que cuesta mirar"
-    texto: "Un acoplador de 20 dB toma el 1 % de la potencia. ¿Cuánto le cuesta a la línea principal?"
+    texto: "Un acoplador de 20 dB toma el 1 % de la potencia. ¿Cuántos dB le cuesta a la línea principal?"
     libro: [167]
     fijar: { A_c: 20 }
     widget:
@@ -297,16 +284,17 @@ tarjetas:
       figura: fig-36.4
       zonas:
         - { id: s21, rotulo: "Flecha azul, arriba", rect: [64, 42, 99, 35] }
-    opciones:
-      - texto: "0,04 dB"
-        bien: true
-        porque: "Quitar el 1 % es multiplicar por 0,99: −10·log(0,99), unas centésimas."
-      - texto: "20 dB"
-        porque: "Los 20 dB son lo que se extrae respecto a la línea, no lo que pierde la línea."
-      - texto: "1 dB"
-        porque: "1 dB sería quitar un 21 %; el 1 % cuesta mucho menos."
+    simular:
+      objetivo: L_c
+      unidad: dB
+      tol: 0.05
+      rotulo: "Pérdida en la línea principal"
+      errores:
+        - { expr: "A_c", texto: "Los 20 dB son lo que se extrae respecto a la línea, no lo que pierde la línea." }
+        - { expr: "1", texto: "1 dB sería quitar un 21 %; el 1 % cuesta mucho menos." }
+    exito: "0,04 dB: quitar el 1 % es multiplicar por 0,99. Mirar sale casi gratis."
     escalera:
-      - "Si se lleva el 1 %, pasa el 99 %."
+      - "Si se lleva el 1 %, pasa el 99 %: −10·log(0,99)."
     solucion: "−10·log(0,99) = 0,04 dB."
     comprobar:
       - { F_c: 1, L_c: 0.0436, f_p: 0.99, P_p: 99, P_1: 20.57 }

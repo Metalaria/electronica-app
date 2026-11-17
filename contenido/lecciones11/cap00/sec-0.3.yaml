@@ -1,5 +1,8 @@
 # Lección 1.1 de la sección 0.3 «Trigonometría y la Señal Senoidal» (cap00). Lección de referencia con una
 # gráfica de función de parámetros que se arrastran. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13; reescrita tras la copia congelada de motor121): predecir
+# el periodo, dejarlo en 10 ms, calcular el pico de la red, el reto del cuarto de periodo, dibujar la senoide
+# adelantada y tapar el coseno con el seno; se elige por qué radianes. Los símbolos quedan en el resumen.
 leccion: cap00/sec-0.3
 
 libro:
@@ -30,10 +33,31 @@ modelo:
     t_cero: { expr: "(0 - phi - 360*floor((0 - phi)/360))/(360*f)", nombre: "instante del paso por cero", unidad: s }
 
 tarjetas:
+  - id: prediga-periodo
+    tipo: simular
+    titulo: "Prediga"
+    texto: "La red española va a 50 Hz. ¿Cuánto dura un periodo?"
+    libro: [33, 39]
+    fijar: { V_p: 325, f: 50, phi: 0 }
+    simular:
+      objetivo: T
+      unidad: s
+      tol: 0.02
+      rotulo: "Periodo"
+      errores:
+        - { razon: { min: 2.4, max: 2.6 }, texto: "Confunde hercios con milisegundos: 50 Hz son 50 ciclos cada segundo, no 50 ms por ciclo." }
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Ese periodo sería el de una señal de 500 Hz, diez veces más rápida que la red." }
+    exito: "20 ms: T = 1/f = 1/50 s. Cada semiciclo dura 10 ms."
+    escalera:
+      - "El periodo es la inversa de la frecuencia: T = 1/f."
+    solucion: "T = 1/50 s = 20 ms."
+    comprobar:
+      - { T: 0.02 }
+      - { con: { f: 500 }, T: 0.002 }
   - id: explore-senoide
     tipo: explorar
     titulo: "Una senoide, tres mandos"
-    texto: "Mueva la amplitud, la frecuencia y la fase, o arrastre los puntos de la curva. Fíjese en qué cambia cada una."
+    texto: "Mueva la amplitud, la frecuencia y la fase, o arrastre los puntos de la curva, hasta que el periodo baje a 10 ms."
     libro: [32, 33]
     widget:
       tipo: grafica
@@ -51,36 +75,19 @@ tarjetas:
         - { valor: V_p, min: 50, max: 400, paso: 5, rotulo: "Amplitud, V_{p}" }
         - { valor: f, min: 25, max: 100, paso: 5, rotulo: "Frecuencia, f" }
         - { valor: phi, min: -180, max: 180, paso: 15, rotulo: "Fase, φ" }
-    requiere: { mover: [V_p, f, phi] }
-
-  - id: prediga-periodo
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "La red española va a 50 Hz. ¿Cuánto dura un periodo?"
-    libro: [33, 39]
-    fijar: { V_p: 325, f: 50, phi: 0 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: -400, max: 400, unidad: V, rotulo: "v(t)" }
-      curvas:
-        - { expr: "V_p*sin(2*pi*f*t + phi*pi/180)", color: azul, rotulo: "v(t)" }
-      lectura: { valor: T, rotulo: "Periodo" }
-      ocultar: true
-    opciones:
-      - texto: "20 ms"
-        bien: true
-        porque: "T = 1/f = 1/50 s = 20 ms. Cada semiciclo dura 10 ms."
-      - texto: "50 ms"
-        porque: "Confunde hercios con milisegundos: 50 Hz son 50 ciclos cada segundo, no 50 ms por ciclo."
-      - texto: "2 ms"
-        porque: "Ese periodo sería el de una señal de 500 Hz, diez veces más rápida que la red."
+    inicio: { V_p: 325, f: 50, phi: 0 }
+    objetivo:
+      condiciones:
+        - { valor: T, max: 0.0101, rotulo: "T = {{T}}" }
+      logrado: "Con {{f}}, T = {{T}}: el periodo solo depende de la frecuencia. La amplitud estira la curva y la fase la desplaza."
+      pistas:
+        - { texto: "El periodo lo fija la frecuencia: súbala." }
     escalera:
-      - "El periodo es la inversa de la frecuencia: T = 1/f."
-    solucion: "T = 1/50 s = 20 ms."
+      - "T = 1/f: la mitad de periodo pide el doble de frecuencia."
+    solucion: "Con 100 Hz: 10 ms."
     comprobar:
       - { T: 0.02 }
-      - { con: { f: 500 }, T: 0.002 }
+      - { con: { f: 100 }, T: 0.01 }
 
   - id: regla-senoide
     tipo: formula
@@ -101,31 +108,26 @@ tarjetas:
         - { valor: f, min: 25, max: 100, paso: 5, rotulo: "Frecuencia, f" }
 
   - id: pico-red
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Del eficaz al pico"
-    texto: "La red da 230 V eficaces, y el eficaz vale Vₚ dividido por raíz de dos. Estime el pico, Vₚ."
+    texto: "La red da 230 V eficaces, y el eficaz vale Vₚ dividido por raíz de dos. ¿Cuál es el pico, Vₚ?"
     libro: [35, 36, 39]
     fijar: { V_ef: 230 }
-    estimar:
-      objetivo: "pico"
+    simular:
+      objetivo: pico
       unidad: V
-      min: 200
-      max: 400
-      paso: 5
-      inicio: 250
       tol: 0.02
       rotulo: "V_{p} de la red"
+      errores:
+        - { razon: { min: 0.48, max: 0.52 }, texto: "El pico es mayor que el eficaz, √2 veces: multiplique." }
+        - { razon: { min: 0.69, max: 0.72 }, texto: "Ese es el eficaz: el pico es mayor." }
     exito: "230 × √2 = 325 V: a eso se carga un condensador de filtro tras un rectificador."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 318 }, texto: "Se ha quedado corto: el pico es mayor que el eficaz, √2 veces." }
-      - { texto: "Se ha pasado: el eficaz es 0,707 veces el pico, así que el pico es √2 veces el eficaz." }
     escalera:
       - "El pico es mayor que el eficaz: despeje Vₚ multiplicando por √2."
-    solucion: "230 × √2 = 325 V: a eso se carga un condensador de filtro tras un rectificador."
+    solucion: "230 × √2 = 325 V."
     comprobar:
       - { pico: 325.27 }
-
   - id: reto-fase
     tipo: reto
     titulo: "Reto: un cuarto de periodo"
@@ -199,8 +201,18 @@ tarjetas:
         - { mueve: phi, x: "t_cero", y: "0", rotulo: "Paso por cero: fase" }
       mandos:
         - { valor: phi, min: -180, max: 180, paso: 15, rotulo: "Fase, φ" }
-    requiere: { mover: [phi] }
-    nota: "Con φ = 90° la tapa: cos(ωt) = sen(ωt + 90°). Son la misma curva, desplazada."
+    objetivo:
+      condiciones:
+        - { valor: phi, min: 90, max: 90, rotulo: "φ = {{phi}}" }
+      logrado: "Con φ = 90° la tapa: cos(ωt) = sen(ωt + 90°). Son la misma curva, desplazada un cuarto de periodo."
+      pistas:
+        - { cuando: { valor: phi, mayor: 90 }, texto: "Se ha pasado: baje la fase." }
+        - { texto: "Suba la fase." }
+    escalera:
+      - "Un coseno es un seno adelantado un cuarto de periodo."
+    solucion: "φ = 90°."
+    comprobar:
+      - { con: { phi: 90 }, adelanto: 0.005 }
 
   - id: por-que-radianes
     tipo: porque
@@ -224,30 +236,12 @@ tarjetas:
       - "Derive sen(ωt): ¿en qué unidad del ángulo sale limpia la derivada?"
     solucion: "Solo en radianes d(sen ωt)/dt = ω·cos ωt; en grados habría un factor π/180."
 
-  - id: simbolos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada símbolo, su papel"
-    texto: "Una cada símbolo de v(t) = Vₚ·sen(ωt + φ) con lo que significa."
-    libro: [33, 39]
-    emparejar:
-      - ["Vₚ", "Amplitud, el valor de pico"]
-      - ["ω", "Frecuencia angular, en radianes por segundo"]
-      - ["φ", "Fase inicial"]
-      - ["T", "Periodo: lo que tarda en repetirse"]
-    exito: "Eso es. En la red: Vₚ = 325 V, ω = 314 rad/s y T = 20 ms."
-    pistas:
-      - { texto: "ω lleva dentro la frecuencia (ω = 2π·f); T es su inversa, T = 1/f." }
-    escalera:
-      - "Vₚ va delante del seno: es la altura de la cresta."
-    solucion: "Vₚ: amplitud, el valor de pico. ω: frecuencia angular, en radianes por segundo. φ: fase inicial. T: periodo: lo que tarda en repetirse."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
     libro: [32, 33, 36, 39, 41]
     ideas:
-      - { titulo: "La senoide.", texto: "v(t) = Vₚ·sen(ωt + φ): pico, frecuencia angular ω = 2π·f y fase." }
+      - { titulo: "La senoide.", texto: "v(t) = Vₚ·sen(ωt + φ): Vₚ, el pico; ω = 2π·f, en radianes por segundo; φ, la fase inicial." }
       - { titulo: "El periodo.", texto: "T = 1/f: a 50 Hz, 20 ms." }
       - { titulo: "Eficaz y pico.", texto: "El eficaz es Vₚ/√2: la red, 230 V eficaces y 325 V de pico." }
       - { titulo: "La fase.", texto: "90° adelantan la señal un cuarto de periodo: 5 ms a 50 Hz." }

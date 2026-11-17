@@ -4,6 +4,8 @@
   // inductive load (esquemas12b) the coil L sits under R_D, everything below it 40 units lower, and the freewheel
   // diode (with its switch) runs from the drain node up to the rail on the right of the transistor.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -45,7 +47,7 @@
     <R x1={162} y1={yg} x2={162} y2={ym} color="azul" pieza="rgs" />
     <Et x={150} y={yg + 56} t={c.rot('rgs')} ancla="end" color="azul" peq />
   {/if}
-  <Mosfet x={210} y={yg} diodo />
+  <Mosfet x={210} y={yg} diodo pieza="transistor" />
   <Et x={205} y={72 + dy} t={`k ${c.val('k')}`} ancla="end" peq />
   <Et x={205} y={92 + dy} t={[{ t: 'txt', s: 'V' }, { t: 'sub', s: 'th' }, { t: 'txt', s: ` ${c.val('vth')}` }]} ancla="end" peq />
   {#if c.tiene('bv')}
@@ -81,4 +83,12 @@
   <path class="hilo" d={`M352 ${ym} H40`} data-red="0"></path>
   <Pila x={352} y1={ym} y2={30} pieza="vdd" nodos={['0', 'vdd']} />
   <Et x={366} y={150 + dy / 2} t={c.val('vdd')} peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={300} y={30} red="vdd" />
+  <Punto x={52} y={yg} red="in" />
+  {#if c.tiene('rg')}<Punto x={165} y={yg} red="g" />{/if}
+  <Punto x={222} y={yg - 34} red="d" />
+  {#if c.tiene('rs')}<Punto x={222} y={yg + 36} red="s" />{/if}
+  <Punto x={120} y={ym} red="0" />
+  <Rama x={222} y={40} medidor="vmd" />
 </Lienzo>

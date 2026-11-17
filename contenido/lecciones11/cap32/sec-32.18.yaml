@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 32.18 «Ampliación: Ensayos Normativos de EMC» (cap32). Formato: GUIA.md.
 # El contenido espectral de un flanco llega hasta 1/(π·t_subida) (bloque 572); se compara con las bandas de los
 # ensayos del bloque 569 (conducida 150 kHz–30 MHz, radiada desde 30 MHz).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el contenido de un flanco de 1 ns se predice, los flancos se
+# frenan hasta salir de la banda radiada (objetivo) y se marca el primer armónico de una conmutada de 100 kHz (de
+# ejemplo) que entra en la conducida. «En el diseño, no en el ensayo» pasa al resumen. Quedan el emparejamiento de
+# ensayos y una pregunta de opciones (la LISN): 60 %, porque es una ampliación normativa sin más magnitudes.
 leccion: cap32/sec-32.18
 
 libro:
@@ -14,15 +18,40 @@ libro:
 modelo:
   valores:
     t_r: { sim: "t_{subida}", nombre: "tiempo de subida", unidad: s, valor: 100e-9 }
+    f_s: { sim: "f_{conmutación}", nombre: "conmutación de ejemplo", unidad: Hz, valor: 100000 }
+    f_ci: { sim: "f", nombre: "inicio de la conducida", unidad: Hz, valor: 150000 }
   calculos:
     f_x: { expr: "1/(pi*t_r)", sim: "f", nombre: "contenido espectral hasta", unidad: Hz }
+    f_1: { expr: "1/t_r", sim: "1/t", nombre: "sin el π", unidad: Hz }
+    f_2: { expr: "2*f_s", sim: "2f", nombre: "segundo armónico", unidad: Hz }
 
 tarjetas:
+  - id: prediga-flanco
+    tipo: simular
+    titulo: "Un flanco de 1 ns"
+    texto: "Un microcontrolador conmuta sus salidas con flancos de 1 ns. ¿Hasta qué frecuencia llega su contenido espectral?"
+    libro: [569, 572]
+    fijar: { t_r: 1e-9 }
+    simular:
+      objetivo: f_x
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Contenido hasta"
+      errores:
+        - { expr: "f_1", texto: "Falta el π: 1/(π · t_{subida})." }
+    exito: "Unos 318 MHz: de lleno en la emisión radiada, de 30 MHz a 1 GHz."
+    escalera:
+      - "Calcule 1/(π · t_{subida})."
+    solucion: "1/(π · 1 ns) ≈ 318 MHz."
+    comprobar:
+      - { f_x: 318000000, tol: 0.002 }
+
   - id: explore-flancos
     tipo: explorar
     titulo: "Flancos y espectro"
-    texto: "El contenido espectral de un flanco se extiende hasta 1/(π · t_{subida}). Cambie el tiempo de subida y mire hasta dónde llega."
+    texto: "El contenido espectral de un flanco llega hasta 1/(π · t_{subida}). Frene el flanco hasta sacar ese contenido de la banda de emisión radiada."
     libro: [572]
+    inicio: { t_r: 1e-9 }
     widget:
       tipo: grafica
       x: { id: tt, min: 1e-9, max: 1e-6, unidad: s, rotulo: "tiempo de subida", escala: log }
@@ -36,36 +65,18 @@ tarjetas:
       lectura: { valor: f_x, rotulo: "Contenido hasta" }
       mandos:
         - { valor: t_r, lista: [1e-9, 10e-9, 100e-9, 1e-6], rotulo: "Tiempo de subida" }
-    requiere: { mover: [t_r] }
-
-  - id: prediga-flanco
-    tipo: predecir
-    titulo: "Un flanco de 1 ns"
-    texto: "Un microcontrolador conmuta sus salidas con flancos de 1 ns. ¿Hasta qué ensayo llega su contenido espectral?"
-    libro: [569, 572]
-    fijar: { t_r: 1e-9 }
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 0.5e-9, max: 1e-6, unidad: s, rotulo: "tiempo de subida", escala: log }
-      y: { min: 100000, max: 1000000000, unidad: Hz, rotulo: "contenido espectral hasta", escala: log }
-      curvas:
-        - { expr: "1/(pi*tt)", color: azul, rotulo: "1/(π · t_{subida})" }
-      lectura: { valor: f_x, rotulo: "Contenido hasta" }
-      ocultar: curvas
-    opciones:
-      - texto: "Hasta la emisión radiada: cientos de megahercios"
-        bien: true
-        porque: "1/(π · 1 ns) son unos 318 MHz, de lleno en la banda de 30 MHz a 1 GHz."
-      - texto: "Solo a la conducida, por debajo de 30 MHz"
-        porque: "Eso sería con flancos de unos 10 ns o más lentos."
-      - texto: "A ninguno: es una señal digital"
-        porque: "Las señales digitales son justo las que tienen flancos rápidos y espectro ancho."
+    objetivo:
+      condiciones:
+        - { valor: f_x, max: 30000000, rotulo: "Contenido hasta: {{f_x}}" }
+      logrado: "Con {{t_r}} de subida, el contenido llega a {{f_x}}: fuera de la radiada. Flancos no más rápidos de lo necesario."
+      pistas:
+        - { texto: "Aún llega a la radiada: frene más el flanco." }
     escalera:
-      - "Calcule 1/(π · t_{subida})."
-    solucion: "Unos 318 MHz: emisión radiada."
+      - "Diez veces más lento, diez veces menos frecuencia."
+    solucion: "100 ns: unos 3,2 MHz."
     comprobar:
-      - { f_x: 318000000, tol: 0.002 }
       - { con: { t_r: 10e-9 }, f_x: 31.8e6, tol: 0.002 }
+      - { con: { t_r: 100e-9 }, f_x: 3.18e6, tol: 0.002 }
 
   - id: empareje-ensayos
     tipo: pregunta
@@ -108,59 +119,42 @@ tarjetas:
     solucion: "Impedancia definida y reproducible: la medida no depende de la instalación."
 
   - id: por-que-150k
-    tipo: porque
+    tipo: marcar
     titulo: "Por qué desde 150 kHz"
-    texto: "La emisión conducida se mide a partir de 150 kHz. ¿Por qué el filtro de entrada de una fuente conmutada no es opcional?"
-    libro: [571]
-    fijar: { t_r: 100e-9 }
+    texto: "La conducida se mide desde 150 kHz, justo donde trabajan los convertidores. Marque el primer armónico de una conmutada de 100 kHz que cae dentro."
+    nota: "Conmutación de ejemplo."
+    libro: [569, 571]
     widget:
       tipo: grafica
-      x: { id: tt, min: 1e-9, max: 1e-6, unidad: s, rotulo: "tiempo de subida", escala: log }
-      y: { min: 100000, max: 1000000000, unidad: Hz, rotulo: "contenido espectral hasta", escala: log }
+      x: { id: nu, min: 0, max: 1000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "nivel relativo" }
       curvas:
-        - { expr: "1/(pi*tt)", color: azul, rotulo: "1/(π · t_{subida})" }
-        - { expr: "150000", color: verde, rotulo: "inicio de la conducida", discontinua: true }
-    opciones:
-      - texto: "Es la banda donde trabajan los convertidores conmutados: sus armónicos caen de lleno en lo que se mide"
-        bien: true
-        porque: "Por eso el filtro de entrada forma parte del diseño de toda fuente conmutada."
-      - texto: "Porque por debajo de 150 kHz no hay ruido"
-        porque: "Lo hay; el límite inferior del ensayo deja dentro justo la conmutación."
-      - texto: "Porque la red de 50 Hz molesta por debajo"
-        porque: "La red está muy por debajo; la razón es la frecuencia de los convertidores."
+        - { expr: "exp(-((nu - f_s)/8000)^2) + 0.5*exp(-((nu - 2*f_s)/8000)^2) + 0.33*exp(-((nu - 3*f_s)/8000)^2) + 0.25*exp(-((nu - 4*f_s)/8000)^2) + 0.2*exp(-((nu - 5*f_s)/8000)^2) + 0.17*exp(-((nu - 6*f_s)/8000)^2) + 0.14*exp(-((nu - 7*f_s)/8000)^2) + 0.12*exp(-((nu - 8*f_s)/8000)^2) + 0.11*exp(-((nu - 9*f_s)/8000)^2)", color: azul, rotulo: "armónicos" }
+        - { expr: "ceil((nu - f_ci)/1e12)", color: verde, rotulo: "dentro de la conducida", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_2"
+      tol: 0.02
+      inicio: { x: 700000, y: 0.2 }
+      rotulo: "Primer armónico dentro"
+    pistas:
+      - { cuando: { valor: marca_x, max: 150000 }, texto: "Ese queda por debajo de 150 kHz: fuera del ensayo." }
+      - { texto: "Hay uno anterior que ya cae dentro." }
+    exito: "El segundo, a 200 kHz, y todos los siguientes caen de lleno en la banda medida: el filtro de entrada de una conmutada no es opcional."
     escalera:
-      - "¿A qué frecuencias conmutan los convertidores?"
-    solucion: "Los convertidores conmutan ahí y sus armónicos llenan la banda medida."
-
-  - id: diseno-o-ensayo
-    tipo: pregunta
-    titulo: "En el diseño, no en el ensayo"
-    texto: "Según la regla práctica del sector, ¿cuánto más cuesta corregir un problema de EMC en el laboratorio que preverlo en el diseño?"
-    libro: [567, 572, 573]
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 1e-9, max: 1e-6, unidad: s, rotulo: "tiempo de subida", escala: log }
-      y: { min: 100000, max: 1000000000, unidad: Hz, rotulo: "contenido espectral hasta", escala: log }
-      curvas:
-        - { expr: "1/(pi*tt)", color: azul, rotulo: "1/(π · t_{subida})" }
-    opciones:
-      - texto: "Un orden de magnitud más"
-        bien: true
-        porque: "Por eso se reducen bucles, se filtra en la entrada, se eligen flancos no más rápidos de lo necesario y se separan zonas."
-      - texto: "Lo mismo, solo que más tarde"
-        porque: "Más tarde es más caro: rediseño, repetición del ensayo y retraso."
-      - texto: "Menos: el laboratorio dice exactamente qué falla"
-        porque: "Dice que falla, no por qué; y cada visita cuesta. En casa, la preconformidad localiza el foco."
-    escalera:
-      - "¿Qué hay que repetir si se suspende?"
-    solucion: "Un orden de magnitud más: se previene en el diseño."
+      - "La conducida empieza en 150 kHz."
+    solucion: "El de 200 kHz."
+    comprobar:
+      - { f_2: 200000, f_ci: 150000, f_s: 100000 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [569, 570, 571, 572]
+    libro: [567, 569, 570, 571, 572, 573]
     ideas:
       - { titulo: "Cuatro familias.", texto: "Emisión conducida y radiada, inmunidad radiada y transitorios: las cuatro vías." }
       - { titulo: "La LISN.", texto: "Una impedancia definida y reproducible para medir la conducida." }
       - { titulo: "150 kHz.", texto: "Justo donde conmutan los convertidores: el filtro de entrada no es opcional." }
-      - { titulo: "Flancos.", texto: "El espectro llega a 1/(π · t_{subida}): no más rápidos de lo necesario." }
+      - { titulo: "En el diseño.", texto: "El espectro llega a 1/(π · t_{subida}). Corregir en el laboratorio cuesta un orden de magnitud más que preverlo." }

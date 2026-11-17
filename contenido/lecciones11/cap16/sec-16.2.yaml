@@ -4,6 +4,11 @@
 #   limitación y las comprobaciones del banco (bloques 31 a 48); ejercicio 15.1.
 # Sección sin cálculos: sin modelo (aviso de secuencia «sin tarjeta de fórmula»).
 # Paso práctico: «tocar» en la figura 15.2 el integrado del que sale el medidor de señal.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 15.2 se tocan los cinco integrados en el orden de
+# la señal, el decodificador estéreo, el medidor y la zona de la gráfica con el ruido al máximo; se lleva el oscilador
+# local de L2 y el variable a 10,7 MHz por encima de una emisora de 100 MHz (de ejemplo; la FI es la del bloque 33). El
+# emparejar de lo que hay que mirar va al éxito del medidor y el silencio absoluto al de la gráfica. Queda una pregunta
+# de opciones (los ajustes).
 leccion: cap16/sec-16.2
 
 libro:
@@ -21,70 +26,91 @@ libro:
   48: "Su desviación con y sin antena"
   49: "Los cinco integrados del FM7303 en el recorrido de la señal"
   "cap16#530": "Indica la función de cada uno de los cinco integrados del FM7303"
+  "cap16#55": 'f_("oscilador") - f_("emisora") = "10,7 MHz"'
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    f_o: { sim: "f_{OL}", nombre: "oscilador local", unidad: Hz, valor: 105000000 }
+    f_e: { sim: "f_{emisora}", nombre: "emisora de ejemplo", unidad: Hz, valor: 100000000 }
+  calculos:
+    f_i: { expr: "f_o - f_e", sim: "f_{FI}", nombre: "frecuencia intermedia", unidad: Hz }
 
 tarjetas:
   - id: explore-chips
-    tipo: explorar
+    tipo: tocar
     titulo: "Cinco integrados"
     texto: "El receptor se organiza alrededor de cinco integrados, cada uno con una función clara. Tóquelos en el orden de la señal."
     libro: [32, 33, 49]
     widget:
       tipo: figura
       figura: fig-16.2
-      zonas:
-        - { id: ic1, rotulo: "Arriba, el primero", rect: [4, 4, 77, 56], texto: "IC1, TA7358AP: amplificador de RF, oscilador local y mezclador en un SIP; entrega la FI de 10,7 MHz." }
-        - { id: ic2, rotulo: "Arriba, el segundo", rect: [95, 4, 77, 56], texto: "IC2, TA7061BP: el primer amplificador de FI." }
-        - { id: ic3, rotulo: "Arriba, el tercero", rect: [187, 4, 77, 56], texto: "IC3, TA7303P: segundo amplificador y limitador de FI, detector de FM y salida del medidor de señal." }
-        - { id: ic4, rotulo: "Arriba, el cuarto", rect: [278, 4, 77, 56], texto: "IC4, TA7343AP: decodificador estéreo por PLL; regenera la subportadora de 38 kHz." }
-        - { id: ic5, rotulo: "Arriba, el quinto", rect: [370, 4, 77, 56], texto: "IC5, TEA2025: el amplificador de audio estéreo que ataca los altavoces." }
-    requiere: { mover: [ic1, ic2, ic3, ic4, ic5] }
+      zonas: &zonas-ic
+        - { id: ic1, rotulo: "Primer integrado", rect: [4, 4, 77, 56] }
+        - { id: ic2, rotulo: "Segundo integrado", rect: [95, 4, 77, 56] }
+        - { id: ic3, rotulo: "Tercer integrado", rect: [187, 4, 77, 56] }
+        - { id: ic4, rotulo: "Cuarto integrado", rect: [278, 4, 77, 56] }
+        - { id: ic5, rotulo: "Quinto integrado", rect: [370, 4, 77, 56] }
+    tocar:
+      bien: [ic1, ic2, ic3, ic4, ic5]
+      orden: true
+    exito: "Front-end, primera FI, limitador y detector, decodificador estéreo y audio."
+    escalera:
+      - "La señal entra por la antena, a la izquierda."
+    solucion: "De izquierda a derecha."
 
   - id: empareje-chips
-    tipo: pregunta
+    tipo: tocar
     titulo: "Cada chip, su función"
-    texto: "Empareje cada integrado con su función en el receptor."
+    texto: "Toque el integrado que decodifica el estéreo con un PLL."
     libro: [33, "cap16#530"]
     widget:
       tipo: figura
       figura: fig-16.2
-      zonas:
-        - { id: cadena, rotulo: "Los cinco integrados", rect: [4, 4, 443, 56] }
-    emparejar:
-      - ["TA7358AP", "Front-end: RF, oscilador local y mezclador"]
-      - ["TA7061BP", "Primer amplificador de FI"]
-      - ["TA7303P", "Limitador de FI y detector de FM"]
-      - ["TA7343AP", "Decodificador estéreo por PLL"]
-      - ["TEA2025", "Amplificador de audio estéreo"]
-    exito: "Conocerlos es lo que permite diagnosticar por bloques."
-    pistas:
-      - { texto: "Siga la señal: entra por el front-end y sale por el amplificador de audio." }
+      zonas: *zonas-ic
+    tocar:
+      bien: [ic4]
+      porque:
+        ic1: "TA7358AP, el front-end: RF, oscilador local y mezclador."
+        ic2: "TA7061BP, el primer amplificador de FI."
+        ic3: "TA7303P, el limitador de FI y el detector de FM."
+        ic5: "TEA2025, el amplificador de audio."
+    exito: "El TA7343AP. Conocerlos es lo que permite diagnosticar por bloques."
     escalera:
-      - "Los dos del medio son la cadena de FI: el segundo, además, detecta."
-    solucion: "TA7358AP front-end, TA7061BP FI, TA7303P FI y detector, TA7343AP estéreo, TEA2025 audio."
+      - "El estéreo se decodifica después del detector."
+    solucion: "El cuarto, TA7343AP."
 
   - id: pregunta-sintonia
-    tipo: pregunta
+    tipo: explorar
     titulo: "Una radio analógica"
-    texto: "El FM7303 no tiene microcontrolador ni sintetizador. ¿Qué fija la frecuencia de su oscilador local?"
-    libro: [34, 36, 37]
+    texto: "Sin microcontrolador ni sintetizador: L2 y el condensador variable fijan el oscilador local. Para una emisora de 100 MHz, llévelo a donde salga la FI de 10,7 MHz."
+    nota: "Emisora de ejemplo."
+    libro: [33, 34, 36, 37, "cap16#55"]
+    fijar: { f_e: 100000000 }
+    inicio: { f_o: 105000000 }
     widget:
-      tipo: figura
-      figura: fig-16.2
-      zonas:
-        - { id: ic1, rotulo: "Arriba, el primero", rect: [4, 4, 77, 56] }
-    opciones:
-      - texto: "La bobina L2 y el condensador variable"
-        bien: true
-        porque: "La sintonía es analógica: L2 y el variable de doble sección; el AFC corrige la deriva con el varicap FV1043."
-      - texto: "Un PLL de síntesis con microcontrolador"
-        porque: "Así sintoniza una radio actual; el FM7303 es la arquitectura de los radiocasetes de los ochenta."
-      - texto: "El display SC3610D"
-        porque: "El display es un frecuencímetro: cuenta el oscilador, no lo fija."
+      tipo: grafica
+      x: { id: f, min: 100000000, max: 115000000, unidad: Hz, rotulo: "f_{OL}" }
+      y: { min: 0, max: 15000000, unidad: Hz, rotulo: "f_{OL} − f_{emisora}" }
+      curvas:
+        - { expr: "f - f_e", color: naranja, rotulo: "diferencia" }
+        - { expr: "10700000", color: verde, rotulo: "FI de 10,7 MHz", discontinua: true }
+      marcas:
+        - { x: "f_o", y: "f_i", rotulo: "{{f_i}}" }
+      lectura: { valor: f_i, rotulo: "Diferencia" }
+      mandos:
+        - { valor: f_o, min: 100000000, max: 115000000, paso: 100000, rotulo: "Oscilador local (L2 y variable)" }
+    objetivo:
+      condiciones:
+        - { valor: f_i, objetivo: 10700000, tol: 0.005, rotulo: "FI: {{f_i}}" }
+      logrado: "{{f_o}}: la FI cae en los filtros. El AFC corrige después la deriva con el varicap."
+      pistas:
+        - { cuando: { valor: f_i, mayor: 10700000 }, texto: "Demasiada diferencia: baje el oscilador." }
+        - { texto: "Falta diferencia: suba el oscilador." }
     escalera:
-      - "Busque los elementos que giran o se estiran en la sintonía."
-    solucion: "L2 y el condensador variable de doble sección."
+      - "El oscilador va 10,7 MHz por encima de la emisora."
+    solucion: "110,7 MHz."
+    comprobar:
+      - { con: { f_o: 110700000 }, f_i: 10700000 }
 
   - id: porque-ajustes
     tipo: porque
@@ -109,54 +135,30 @@ tarjetas:
     solucion: "Bobinas, variable, transformador de FI y filtros cerámicos quedan fuera: ahí están los ajustes."
 
   - id: predecir-ruido
-    tipo: predecir
+    tipo: tocar
     titulo: "Entre emisoras"
-    texto: "Entre emisoras se oye más ruido que con una emisora sintonizada. ¿Qué indica?"
+    texto: "Entre emisoras se oye más ruido que con una emisora sintonizada. Toque la zona de la gráfica en la que el limitador saca el ruido a plena amplitud."
     libro: [44, 45, 49]
     widget:
       tipo: figura
       figura: fig-16.2
       zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [30, 85, 235, 130] }
-    opciones:
-      - texto: "Que la cadena de FI funciona: amplifica y limita"
-        bien: true
-        porque: "Con portadora, el limitador fija la amplitud y sale solo el audio; sin ella, lo que llega a plena amplitud es ruido."
-      - texto: "Una avería en el front-end"
-        porque: "Ese ruido es el comportamiento normal: un receptor ruidoso entre emisoras está vivo."
-      - texto: "Que falta un control de ganancia"
-        porque: "La FI no controla la ganancia: limita. Por eso el ruido sale al máximo sin portadora."
+        - { id: debil, rotulo: "Izquierda de la gráfica", rect: [40, 98, 90, 108] }
+        - { id: fuerte, rotulo: "Derecha de la gráfica", rect: [173, 98, 90, 108] }
+    tocar:
+      bien: [debil]
+      porque:
+        fuerte: "Con una emisora fuerte, el limitador fija la amplitud y el fondo queda en silencio."
+    exito: "Sin portadora, ruido al máximo: la FI funciona. Con el Mute desactivado, el silencio absoluto indica que la cadena está rota."
     escalera:
-      - "¿Qué llena la salida de un limitador cuando no hay portadora?"
-    solucion: "Es normal: sin portadora, el limitador saca el ruido a plena amplitud."
-
-  - id: pregunta-silencio
-    tipo: pregunta
-    titulo: "Silencio absoluto"
-    texto: "Con el Mute desactivado, el receptor está en silencio absoluto entre emisoras. ¿Qué es lo más probable?"
-    libro: [45]
-    widget:
-      tipo: figura
-      figura: fig-16.2
-      zonas:
-        - { id: banco, rotulo: "El recuadro de la derecha", rect: [290, 87, 157, 115] }
-    opciones:
-      - texto: "La cadena está rota"
-        bien: true
-        porque: "Una cadena viva saca ruido entre emisoras; el silencio absoluto sin Mute indica que algo la corta."
-      - texto: "Funciona perfectamente"
-        porque: "El funcionamiento normal es ruido entre emisoras, no silencio."
-      - texto: "El Mute está mal ajustado con W2"
-        porque: "El Mute está desactivado: W2 no puede callar nada."
-    escalera:
-      - "Sin Mute, ¿qué debería oírse entre emisoras?"
-    solucion: "Cadena rota: sin Mute debería oírse el siseo."
+      - "Busque donde hay poca señal en la antena."
+    solucion: "La izquierda: poca señal, siseo al máximo."
 
   - id: toque-medidor
     tipo: tocar
     titulo: "El medidor de señal"
     texto: "La comprobación que más informa es el medidor de señal. Toque el integrado del que sale."
-    libro: [33, 48]
+    libro: [33, 42, 47, 48]
     widget:
       tipo: figura
       figura: fig-16.2
@@ -173,31 +175,10 @@ tarjetas:
         ic2: "Es el primer amplificador de FI: no tiene salida para el medidor."
         ic4: "El decodificador estéreo enciende el LED de estéreo, no el medidor."
         ic5: "El amplificador de audio mueve los altavoces."
-    exito: "El TA7303P: su desviación con y sin antena dice si el front-end y la FI están vivos."
+    exito: "El TA7303P: su desviación con y sin antena dice si front-end y FI viven. Y en cada chip: alimentación en sus pines, condensadores de filtrado y salidas de estado."
     escalera:
       - "El medidor mide el nivel de la FI: busque el que la limita y la detecta."
     solucion: "El tercero, TA7303P."
-
-  - id: empareje-mirar
-    tipo: pregunta
-    titulo: "Lo que hay que mirar"
-    texto: "Empareje lo que hay que mirar de cada chip con por qué importa."
-    libro: [42, 47]
-    widget:
-      tipo: figura
-      figura: fig-16.2
-      zonas:
-        - { id: cadena, rotulo: "Los cinco integrados", rect: [4, 4, 443, 56] }
-    emparejar:
-      - ["Alimentación en sus pines", "Si está sucia, se oye como ruido de fondo"]
-      - ["Condensadores de filtrado", "Fijan el AFC, el VCO estéreo y el de-énfasis"]
-      - ["Salidas de estado", "Medidor, LED de estéreo y Mute: ayudan a diagnosticar"]
-    exito: "Y la alimentación se comprueba en los propios pines de cada chip, no en el conector."
-    pistas:
-      - { texto: "C38, el único de poliéster, fija la frecuencia del VCO del decodificador." }
-    escalera:
-      - "Una cosa se oye, otra fija constantes y otra informa."
-    solucion: "Alimentación, ruido; filtrado, constantes; estado, diagnóstico."
 
   - id: resumen
     tipo: resumen

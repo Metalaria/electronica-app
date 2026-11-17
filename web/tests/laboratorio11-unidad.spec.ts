@@ -109,6 +109,16 @@ test('cada paso, en un banco real: rechazado antes de hacerlo, aceptado al hacer
   expect(lecturas).toBeGreaterThanOrEqual(35);
 });
 
+test('laboratorio 1, la corriente: la lectura cabe en lo que espera el libro aunque baile la última cifra (cierre121)', () => {
+  // The bench reads about 616 µA. Against the rounded «0,61 mA» (610 ± 6.1 µA) the Brymen's flicker of the last digit
+  // (617 µA) put it outside in about one run of six: the summary said «5 de 6» and «No» at random. The book's own
+  // calculation is 9 / 14 700 = 612.2 µA.
+  const i = PRACTICAS.find((p) => p.n === 1)!.comprobaciones.find((c) => c.id === 'i')!;
+  expect(i.esperado).toBeCloseTo(9 / 14_700, 9);
+  const paso = informes.find((r) => r.n === 1)!.pasos.find((x) => x.libro?.id === 'i')!;
+  for (const salto of [-1e-6, 0, 1e-6]) expect(Math.abs(paso.lectura! + salto - i.esperado), `${paso.lectura! + salto}`).toBeLessThanOrEqual(paso.libro!.tol);
+});
+
 test('los errores típicos que nombra el libro se rechazan con su pista', () => {
   let n = 0;
   for (const r of informes)

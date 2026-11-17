@@ -4,6 +4,7 @@
 
 import type { Actividad12, TipoActividad } from '../leccion12/tipos';
 import type { WidgetFigura, WidgetLogica } from '../leccion12/digital/tipos';
+import type { Instrumento, Objetivo } from '../leccion12/hacer/tipos';
 
 /** A run of a short text: plain, subscript, superscript, bold, or the live value of a quantity of the model. */
 export type Trozo =
@@ -100,6 +101,8 @@ export interface WidgetCircuito {
   mandos: Mando[];
   /** The readings are hidden («¿? V») until the card is checked (a prediction). */
   ocultar: boolean;
+  /** 1.2.1 (piloto121): a multimeter or an oscilloscope the reader places on the drawing (GUIA §13.1). */
+  instrumento?: Instrumento;
 }
 
 export interface Curva {
@@ -121,6 +124,11 @@ export interface Curva {
   palitos?: { paso: number };
   /** 1.2 (motor12e): hidden (with its legend entry «¿?») while the widget hides its readings (a prediction). */
   oculta?: boolean;
+  /**
+   * 1.2.1 (motor121): samples [x, y] drawn as they are instead of `expr` (the live circuit's oscilloscope: a node's
+   * waveform from the simulator). Page only: lessons never carry it.
+   */
+  puntos?: [number, number][];
 }
 
 /** A fixed point of a graph (τ on a charge curve, the cut-off frequency): a dot, a label, guide lines to the axes. */
@@ -285,6 +293,8 @@ export interface Tarjeta {
   solucion?: Texto;
   /** 1.2: the data of a learning-by-doing step (simular, diseno, averia, ajuste, banco, dibujar, sql). */
   actividad?: Actividad12;
+  /** 1.2.1 (piloto121): the goal of an explore, surprise or tuning card, checked live on the model (GUIA §13.3). */
+  objetivo?: Objetivo;
 }
 
 export interface CitaLibro {

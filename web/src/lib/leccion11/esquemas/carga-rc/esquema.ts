@@ -15,6 +15,12 @@ const d: DefinicionEsquema = {
     v0: { descripcion: 'tensión del condensador en t = 0 (V); sin ella, descargado' },
     interruptor: { interruptor: true, descripcion: 'conmutador: 1 carga desde la fuente, 0 descarga a masa (sin él, carga)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { a: 'Tras el conmutador', c: 'Entre la resistencia y el condensador', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama del circuito' },
+    zonas: { fuente: 'Fuente', interruptor: 'Conmutador', r: 'Resistencia', c: 'Condensador' },
+  }),
   observables: {
     vc: { medida: 'v(c)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del condensador, v_C(t)' },
     vr: { medida: 'v(a)-v(c)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la resistencia' },

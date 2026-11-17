@@ -65,6 +65,20 @@ const d: DefinicionEsquema = {
     rsn: { descripcion: 'resistencia de la red snubber, R_s (Ω; con «csn»)', color: 'verde' },
     csn: { descripcion: 'condensador de la red snubber, C_s (F; con «rsn»)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el amplificador operacional' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada no inversora (+)', m: 'Entrada inversora (−)', o: 'Salida del operacional', ...(c.tiene('riso') ? { out: 'Salida, tras la resistencia de aislamiento' } : {}), '0': 'Masa, abajo' },
+    ramas: { ...(c.tiene('rsal') && c.p('rsal') > 0 ? {} : { vo: 'Salida del operacional' }), ...(c.tiene('riso') ? {} : { viso: 'Hilo hacia la carga' }), ...(c.tiene('r2') ? {} : { vfb: 'Hilo de realimentación' }) },
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}),
+      ao: 'Amplificador operacional',
+      ...(c.tiene('r2') ? { r1: 'Resistencia a masa', r2: 'Resistencia de realimentación' } : {}),
+      ...(c.tiene('rsal') ? { rsal: 'Resistencia de salida' } : {}),
+      ...(c.tiene('riso') ? { riso: 'Resistencia de aislamiento' } : {}),
+      ...(c.tiene('cl') ? { cl: 'Condensador de carga' } : {}),
+      ...(c.tiene('rsn') ? { rsn: 'Resistencia del amortiguador', csn: 'Condensador del amortiguador' } : {}),
+    },
+  }),
   observables: {
     vo: { medida: 'v(out)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida en continua' },
     entrada: { medida: 'v(in)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de entrada frente al tiempo' },

@@ -3,6 +3,7 @@
   // node P at the + input (on top), R₂ over the amplifier from P to the output; the − input below to the reference (a
   // battery) or to ground.
   import type { PropsDibujo } from '../dibujos';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import Entrada from '../kit/Entrada.svelte';
   import Et from '../kit/Et.svelte';
@@ -27,7 +28,7 @@
   <Et x={285} y={34} t={c.rot('r2')} ancla="middle" color="naranja" peq />
   <path class="hilo" d="M330 50 H350 V130" data-red="out"></path>
   <circle class="nodo" cx="350" cy="130" r="4.5" data-red="out"></circle>
-  <AO x={250} y={130} masArriba />
+  <g data-pieza="ao"><AO x={250} y={130} masArriba /></g>
   <path class="hilo" d={`M250 150 H200 V${ref ? 215 : 280}`} data-red="m"></path>
   {#if ref}
     <Pila x={200} y1={280} y2={215} pieza="ref" nodos={['0', 'm']} />
@@ -39,4 +40,6 @@
   <Et x={420} y={114} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
   <path class="hilo" d="M40 280 H420" data-red="0"></path>
   <circle class="borne" cx="420" cy="280" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  {#if !ref}<Rama x={200} y={240} medidor="vm" />{/if}
 </Lienzo>

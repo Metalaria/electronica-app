@@ -9,6 +9,9 @@
 # el nominal, 39,8 Hz). El mando del diseño es de serie E6 (motor12e) y lleva los 1000 µF: cumplen en nominal y no con
 # el 20 % menos, la trampa del diseño (el recorrido resuelve con una posición que aprueba con las tolerancias). «banco» opcional del corte inferior con la
 # ficha 16 del cuaderno (20 Hz con 1000 µF y 8 Ω, ±20 %).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca el condensador y el altavoz que bajan el corte a unos
+# 20 Hz; el corte con 4 Ω se calcula («simular»). El cobre como disipador se funde en la pregunta del calor (la única de
+# opciones) y el recorte de 1 W en el éxito de los síntomas, por emparejar.
 leccion: cap16/sec-16.5
 
 libro:
@@ -38,12 +41,13 @@ modelo:
     x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
     A_r: { expr: "V_p*x_c/sqrt(1 + x_c^2)", sim: "V_{altavoz}", nombre: "amplitud en el altavoz", unidad: V }
     f_w: { expr: "1/(2*pi*R_f*C_f*(1 - 0.2))", sim: "f_{c, peor}", nombre: "corte con el condensador un 20 % bajo", unidad: Hz, cifras: 3 }
+    f_q: { expr: "f_c/4", sim: "f", nombre: "una cuarta parte", unidad: Hz }
 
 tarjetas:
   - id: explore-acoplo
     tipo: explorar
     titulo: "El condensador que fija los graves"
-    texto: "El condensador de salida y el altavoz forman un paso alto. Cambie el condensador y el altavoz, y mire el corte inferior."
+    texto: "El condensador de salida y el altavoz forman un paso alto. Busque el condensador y el altavoz que bajan el corte a unos 20 Hz."
     libro: [72, 83]
     nota: "La amplitud de 1 V es de ejemplo."
     widget:
@@ -62,34 +66,38 @@ tarjetas:
       mandos:
         - { valor: C_f, lista: [0.00047, 0.001], rotulo: "Condensador de salida" }
         - { valor: R_f, lista: [4, 8], rotulo: "Altavoz" }
+    inicio: { C_f: 0.00047, R_f: 4 }
+    objetivo:
+      condiciones:
+        - { valor: f_c, max: 25, rotulo: "Corte: {{f_c}}" }
+      logrado: "{{C_f}} con {{R_f}}: {{f_c}}. El corte va con 1/(R·C): más condensador o más impedancia, más graves."
+      pistas:
+        - { texto: "El corte aún está alto: suba el condensador o la impedancia del altavoz." }
+    escalera:
+      - "f = 1/(2π·R·C)."
+    solucion: "1000 µF y 8 Ω: 19,9 Hz."
+    comprobar:
+      - { con: { C_f: 0.001, R_f: 8 }, f_c: 19.89 }
 
   - id: predecir-cuatro
-    tipo: predecir
+    tipo: simular
     titulo: "Altavoces de 4 Ω"
     texto: "Con 1000 µF y altavoces de 8 Ω, el corte está en 20 Hz. Si monta altavoces de 4 Ω, ¿dónde queda?"
     libro: [83]
     fijar: { C_f: 0.001, R_f: 4 }
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Corte inferior" }
-      mide: { vr_amp: A_r }
-      ocultar: true
-      mandos: []
-    opciones:
-      - texto: "En 40 Hz: el doble"
-        bien: true
-        porque: "El corte va con 1/(R·C): con la mitad de resistencia, el doble de frecuencia."
-      - texto: "En 20 Hz: no cambia"
-        porque: "El corte depende del condensador y del altavoz juntos."
-      - texto: "En 10 Hz: la mitad"
-        porque: "Al revés: menos resistencia sube el corte, no lo baja."
+    simular:
+      objetivo: f_c
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Corte inferior"
+      errores:
+        - { expr: "f_q", texto: "El corte va con 1/(R·C), no con 1/R²: con la mitad de resistencia, el doble." }
+    exito: "40 Hz: con la mitad de resistencia, el doble de frecuencia."
     escalera:
-      - "f_{c} = 1/(2π·R·C). ¿Qué pasa si R se reduce a la mitad?"
-    solucion: "40 Hz: 1/(2π · 4 · 1000 µF)."
+      - "f = 1/(2π·R·C)."
+    solucion: "1/(2π · 4 · 1000 µF) = 40 Hz."
     comprobar:
-      - { f_c: 39.79 }
+      - { f_c: 39.79, f_q: 9.95 }
       - { con: { R_f: 8 }, f_c: 19.89 }
 
   - id: simule-peor
@@ -182,7 +190,7 @@ tarjetas:
     tipo: pregunta
     titulo: "Los síntomas"
     texto: "Empareje cada síntoma de la etapa de audio con su causa probable."
-    libro: [90]
+    libro: [81, 87, 90]
     widget:
       tipo: figura
       figura: fig-16.5
@@ -194,7 +202,7 @@ tarjetas:
       - ["Se calienta sin señal", "Oscilación de alta frecuencia"]
       - ["Sonido «respirado»", "Desacoplo insuficiente"]
       - ["Un canal sí y otro no", "Componente externo de ese canal"]
-    exito: "Cada síntoma apunta a una parte de la etapa: es el primer paso del diagnóstico."
+    exito: "Cada síntoma apunta a una parte de la etapa. Y el recorte llega pronto: con 9 V y 8 Ω, ronda 1 W por canal."
     pistas:
       - { texto: "Lo «respirado» es la alimentación que se hunde al ritmo de la música." }
     escalera:
@@ -205,7 +213,7 @@ tarjetas:
     tipo: porque
     titulo: "Caliente en silencio"
     texto: "El TEA2025 se calienta aunque no suene nada. ¿Por qué merece atención?"
-    libro: [91]
+    libro: [88, 91]
     widget:
       tipo: figura
       figura: fig-16.5
@@ -214,7 +222,7 @@ tarjetas:
     opciones:
       - texto: "Porque está oscilando aunque no se oiga"
         bien: true
-        porque: "Es un fallo frecuente: la oscilación de alta frecuencia no se oye y se confirma con el osciloscopio."
+        porque: "La oscilación de alta frecuencia no se oye: se confirma con el osciloscopio. El calor sale por las patillas de masa al cobre: recortarlo dispara la protección."
       - texto: "Porque es normal en clase AB"
         porque: "Sin señal, la clase AB solo gasta su corriente de reposo: calentarse en silencio no es normal."
       - texto: "Porque el volumen está al mínimo"
@@ -222,50 +230,6 @@ tarjetas:
     escalera:
       - "¿Qué consume potencia sin que se oiga?"
     solucion: "Oscila a alta frecuencia: se confirma con el osciloscopio."
-
-  - id: pregunta-cobre
-    tipo: pregunta
-    titulo: "El disipador"
-    texto: "El TEA2025 no lleva aleta. ¿Cómo evacua el calor?"
-    libro: [88]
-    widget:
-      tipo: figura
-      figura: fig-16.5
-      zonas:
-        - { id: salida, rotulo: "La etapa de salida", rect: [210, 90, 93, 46] }
-    opciones:
-      - texto: "Por cuatro patillas centrales de masa unidas al cobre"
-        bien: true
-        porque: "Están unidas al soporte del chip: el cobre de la placa hace de disipador. Recortarlo lleva a la protección térmica."
-      - texto: "No lo necesita: disipa muy poco"
-        porque: "A 12 V con 8 Ω cada canal puede disipar hasta 0,9 W, más la corriente de reposo."
-      - texto: "Por el condensador de salida"
-        porque: "El condensador acopla la señal; el calor sale por las patillas de masa."
-    escalera:
-      - "Su encapsulado es PowerDIP 12+2+2."
-    solucion: "Por las cuatro patillas centrales de masa, al cobre de la placa."
-
-  - id: predecir-recorte
-    tipo: predecir
-    titulo: "Con 9 V y 8 Ω"
-    texto: "Con 9 V y un altavoz de 8 Ω, ¿cuánta potencia da antes de recortar, aproximadamente?"
-    libro: [81]
-    widget:
-      tipo: figura
-      figura: fig-16.5
-      zonas:
-        - { id: salida, rotulo: "La etapa de salida", rect: [210, 90, 93, 46] }
-    opciones:
-      - texto: "Ronda 1 W por canal"
-        bien: true
-        porque: "La excursión útil no llega a la alimentación completa: queda en torno a 1 W."
-      - texto: "Unos 10 W por canal"
-        porque: "Con 9 V la excursión no da para tanto: son unos pocos vatios como mucho."
-      - texto: "Lo mismo que con 12 V"
-        porque: "Con menos alimentación hay menos excursión y menos potencia."
-    escalera:
-      - "La excursión útil no llega a la alimentación completa."
-    solucion: "Ronda 1 W por canal."
 
   - id: banco-corte
     tipo: banco

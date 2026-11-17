@@ -2,6 +2,10 @@
 # - Las cinco ampliaciones y lo que decide que un sistema siga funcionando (figura 50.26, fig-49.22).
 # Sin números ni fórmulas: sin modelo (aviso de secuencia «sin tarjeta de fórmula»).
 # Paso práctico: «tocar» la ampliación más exigente y más valiosa en un aparato instalado en un tejado.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el retorno seguro de la actualización remota (bloques 465 a 468)
+# se ve en el simulador lógico; en la figura 50.26 se tocan la ampliación para cortes largos y la que se lee sin red ni
+# consumo. Lo que domina el consumo, lo que decide que siga funcionando y la lectura de un mes de datos pasan al
+# resumen. Queda una de opciones, el peor mes del panel solar.
 leccion: cap49/sec-49.14
 
 libro:
@@ -25,19 +29,38 @@ modelo: { valores: {}, calculos: {} }
 tarjetas:
   - id: explore-ampliaciones
     tipo: explorar
-    titulo: "Cinco direcciones"
-    texto: "La estación básica mide y transmite; cada ampliación tiene su enseñanza. Toque las cinco."
-    libro: [461, 463, 465, 479]
+    titulo: "Con retorno seguro"
+    texto: "Se instala por la red un firmware nuevo en la estación del tejado, y no arranca bien. Haga que la estación siga funcionando."
+    libro: [461, 465, 467, 468]
     widget:
-      tipo: figura
-      figura: fig-49.22
-      zonas:
-        - { id: sensores, rotulo: "Primer recuadro", rect: [5, 20, 84, 66], texto: "Más sensores, cada uno con su acondicionamiento y su montaje." }
-        - { id: solar, rotulo: "Segundo recuadro", rect: [95, 20, 84, 66], texto: "Alimentación solar con MPPT: panel y batería para el peor mes." }
-        - { id: memoria, rotulo: "Tercer recuadro", rect: [185, 20, 84, 66], texto: "Más memoria local, para sobrevivir a cortes largos." }
-        - { id: tinta, rotulo: "Cuarto recuadro", rect: [275, 20, 84, 66], texto: "Pantalla de tinta: se lee sin red y no gasta al dormir." }
-        - { id: remota, rotulo: "Quinto recuadro", rect: [365, 20, 84, 66], texto: "Actualización remota, con retorno seguro." }
-    requiere: { mover: [sensores, solar, memoria, tinta, remota] }
+      tipo: logica
+      entradas:
+        - { id: ACT, valor: 0, rotulo: "Firmware nuevo instalado" }
+        - { id: OK, valor: 0, rotulo: "El nuevo arranca bien" }
+        - { id: RET, valor: 0, rotulo: "Retorno seguro previsto" }
+      piezas:
+        - { id: a1, tipo: and, entradas: [ACT, OK], rotulo: "Corre el nuevo" }
+        - { id: n1, tipo: not, entradas: [OK], rotulo: "El nuevo falla" }
+        - { id: a2, tipo: and, entradas: [ACT, n1], rotulo: "Actualización fallida" }
+        - { id: a3, tipo: and, entradas: [a2, RET], rotulo: "Vuelve al anterior" }
+        - { id: n2, tipo: not, entradas: [ACT], rotulo: "Sin actualizar" }
+        - { id: o1, tipo: or, entradas: [a1, a3], rotulo: "Funciona" }
+        - { id: o2, tipo: or, entradas: [o1, n2], rotulo: "Estación funcionando" }
+      salidas:
+        - { id: INS, de: ACT, rotulo: "Firmware nuevo instalado" }
+        - { id: FAL, de: n1, rotulo: "El nuevo falla" }
+        - { id: FUN, de: o2, rotulo: "Estación funcionando" }
+    objetivo:
+      condiciones:
+        - { led: INS, valor: 1, rotulo: "Nuevo instalado" }
+        - { led: FAL, valor: 1, rotulo: "El nuevo falla" }
+        - { led: FUN, valor: 1, rotulo: "Y sigue funcionando" }
+      logrado: "Con retorno seguro, si el nuevo no arranca vuelve solo al anterior. Sin él, una actualización fallida obliga a subir al tejado."
+      pistas:
+        - { texto: "Instale el nuevo y déjelo fallar: ¿qué falta para que siga funcionando?" }
+    escalera:
+      - "Prevea el retorno seguro."
+    solucion: "Nuevo instalado, que falla, y retorno seguro previsto."
 
   - id: toque-tejado
     tipo: tocar
@@ -88,99 +111,63 @@ tarjetas:
     solucion: "El peor mes."
 
   - id: pregunta-tinta
-    tipo: pregunta
+    tipo: tocar
     titulo: "Pantalla de tinta"
-    texto: "¿Qué gana una pantalla de tinta electrónica frente a la OLED en esta estación?"
+    texto: "Se quiere consultar la estación en el sitio, sin red y sin que gaste mientras duerme casi todo el tiempo. Toque la ampliación."
     libro: [466]
     widget:
       tipo: figura
       figura: fig-49.22
       zonas:
+        - { id: sensores, rotulo: "Primer recuadro", rect: [5, 20, 84, 66] }
+        - { id: solar, rotulo: "Segundo recuadro", rect: [95, 20, 84, 66] }
+        - { id: memoria, rotulo: "Tercer recuadro", rect: [185, 20, 84, 66] }
         - { id: tinta, rotulo: "Cuarto recuadro", rect: [275, 20, 84, 66] }
-    opciones:
-      - texto: "Conserva la imagen sin consumir mientras el aparato duerme"
-        bien: true
-        porque: "Y se lee sin red: encaja con un aparato que pasa casi todo el tiempo dormido."
-      - texto: "Más brillo"
-        porque: "Su ventaja es el consumo, no el brillo."
-      - texto: "Más velocidad"
-        porque: "Es lenta; gana en que no gasta para mantener la imagen."
+        - { id: remota, rotulo: "Quinto recuadro", rect: [365, 20, 84, 66] }
+    tocar:
+      bien: [tinta]
+      porque:
+        sensores: "Más sensores miden más; no muestran nada."
+        solar: "El panel da energía, no imagen."
+        memoria: "La memoria guarda; no se ve."
+        remota: "La actualización remota cambia el firmware; no muestra datos."
+    exito: "La pantalla de tinta electrónica: conserva la imagen sin consumir mientras el aparato duerme, al revés que la OLED."
     escalera:
-      - "¿Qué hace el aparato casi todo el tiempo?"
-    solucion: "No gasta para mantener la imagen."
+      - "Busque la pantalla."
+    solucion: "El cuarto recuadro."
 
   - id: pregunta-leccion
-    tipo: pregunta
-    titulo: "Lo que domina el consumo"
-    texto: "De todo lo que el proyecto ha enseñado sobre bajo consumo, ¿qué lo domina?"
-    libro: [471]
+    tipo: tocar
+    titulo: "Cortes largos"
+    texto: "La red de la vivienda cae a veces durante días. Toque la ampliación que permite no perder datos."
+    libro: [463, 465]
     widget:
       tipo: figura
       figura: fig-49.22
       zonas:
-        - { id: cierre, rotulo: "Recuadro verde", rect: [5, 95, 443, 85] }
-    opciones:
-      - texto: "La radio y la frecuencia de medida"
-        bien: true
-        porque: "Lo que menos parece: no el procesador."
-      - texto: "El procesador"
-        porque: "Duerme casi siempre: pesa poco en la media."
-      - texto: "Los sensores"
-        porque: "Miden en una fracción de segundo: pesan poco."
+        - { id: sensores, rotulo: "Primer recuadro", rect: [5, 20, 84, 66] }
+        - { id: solar, rotulo: "Segundo recuadro", rect: [95, 20, 84, 66] }
+        - { id: memoria, rotulo: "Tercer recuadro", rect: [185, 20, 84, 66] }
+        - { id: tinta, rotulo: "Cuarto recuadro", rect: [275, 20, 84, 66] }
+        - { id: remota, rotulo: "Quinto recuadro", rect: [365, 20, 84, 66] }
+    tocar:
+      bien: [memoria]
+      porque:
+        sensores: "Más sensores, más datos que perder."
+        solar: "El panel mantiene la estación viva, pero la red sigue caída."
+        tinta: "La pantalla muestra; no guarda el histórico."
+        remota: "La actualización remota necesita, precisamente, red."
+    exito: "Más memoria local: la estación sigue midiendo y envía lo acumulado al volver la red."
     escalera:
-      - "Recuerde el presupuesto por fases de la sección 50.2."
-    solucion: "La radio y la frecuencia de medida."
-
-  - id: porque-instalado
-    tipo: porque
-    titulo: "Un sistema instalado"
-    texto: "¿Qué decide que un prototipo siga funcionando meses después, sin nadie delante?"
-    libro: [473, 474, 475]
-    widget:
-      tipo: figura
-      figura: fig-49.22
-      zonas:
-        - { id: cierre, rotulo: "Recuadro verde", rect: [5, 95, 443, 85] }
-    opciones:
-      - texto: "Consumo real medido, robustez, montaje físico y que se pueda mantener"
-        bien: true
-        porque: "Cuatro cosas modestas; por eso la prueba que lo valida es la de semanas."
-      - texto: "La sofisticación del circuito"
-        porque: "No es eso: son cuatro cosas modestas."
-      - texto: "El procesador más rápido"
-        porque: "La velocidad no hace que siga funcionando meses."
-    escalera:
-      - "Mire los cuatro recuadros pequeños de la figura."
-    solucion: "Las cuatro cosas modestas."
-
-  - id: predecir-datos
-    tipo: predecir
-    titulo: "Un mes de datos"
-    texto: "Al cerrar el proyecto se revisan los datos de un mes y aparecen saltos, huecos y derivas lentas. ¿Qué son?"
-    libro: [477, 478]
-    widget:
-      tipo: figura
-      figura: fig-49.22
-      zonas:
-        - { id: datos, rotulo: "Texto de abajo", rect: [60, 190, 330, 65] }
-    opciones:
-      - texto: "Lo que le pasó al aparato: reinicios, cortes, un sensor sucio, autocalentamiento"
-        bien: true
-        porque: "Cada anomalía tiene una explicación, y encontrarla es la última lección."
-      - texto: "Ruido sin importancia"
-        porque: "Cada una cuenta algo: un reinicio, un corte de red, un sensor que se ensució."
-      - texto: "Errores del panel"
-        porque: "El panel muestra lo que recibió: los datos cuentan lo que le pasó al aparato."
-    escalera:
-      - "Los datos cuentan una historia."
-    solucion: "Los datos cuentan lo que le pasó al aparato."
+      - "Hay que guardar lo que no se puede enviar."
+    solucion: "El tercer recuadro."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [468, 471, 474, 478]
+    libro: [468, 471, 473, 474, 475, 477, 478, 479]
     ideas:
       - { titulo: "Cinco ampliaciones.", texto: "La actualización remota, la más valiosa en un tejado." }
-      - { titulo: "El consumo.", texto: "Lo domina la radio y la frecuencia de medida." }
-      - { titulo: "Instalado.", texto: "Consumo medido, robustez, montaje y mantenimiento." }
-      - { titulo: "Los datos.", texto: "Cuentan lo que le pasó al aparato." }
+      - { titulo: "El consumo.", texto: "Lo dominan la radio y la frecuencia de medida, no el procesador." }
+      - { titulo: "Instalado.", texto: "Consumo real medido, robustez, montaje físico y mantenimiento: cuatro cosas modestas, validadas con semanas de prueba." }
+      - { titulo: "Los datos.", texto: "Saltos, huecos y derivas cuentan lo que le pasó: reinicios, cortes, un sensor sucio, autocalentamiento." }

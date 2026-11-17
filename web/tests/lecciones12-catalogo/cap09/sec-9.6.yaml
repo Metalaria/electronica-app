@@ -1,0 +1,169 @@
+# Catálogo de pruebas de motor121 sobre el widget «logica» (contenido/lecciones11/GUIA.md §11.2, §13): objetivo sobre
+# los LED, un contador y un cerrojo; «elegir» una pieza del circuito; «marcar» un ciclo en el cronograma; «leer» en
+# hexadecimal; y las salidas de drenador abierto y tri-estado sobre una línea («bus») con su pull-up (la AND cableada
+# y la contención). NO se publica: las pruebas (tests/lecciones121-motor-*.spec.ts y el recorrido con
+# EPA_RECORRER_CATALOGO=1) la generan y la sirven en lugar de la lección publicada.
+leccion: cap09/sec-9.6
+
+libro:
+  71: "la salida queda en alta impedancia: eléctricamente desconectada del cable"
+  72: "si dos se habilitan a la vez se produce contención de bus"
+  77: "el nivel alto lo proporciona una resistencia de pull-up externa"
+  78: "Eso implementa una AND cableada sin ninguna puerta"
+  "cap29#40": "NAND y NOR, que son las básicas invertidas"
+  "cap09#56": "una onda cuadrada de la mitad de la frecuencia del reloj"
+
+modelo:
+  valores:
+    n_bits: { sim: "n", nombre: "bits del registro", unidad: "", valor: 8 }
+  calculos:
+    v_reg: { expr: "2^5", sim: "PORTB", nombre: "valor del registro", unidad: "" }
+
+tarjetas:
+  # --- a goal on the LEDs: the wired-AND of three open-drain outputs on a line with its pull-up
+  - id: explore-and-cableada
+    tipo: explorar
+    titulo: "La AND cableada"
+    texto: "Tres salidas de drenador abierto comparten la línea. Consiga que la línea quede en alto."
+    libro: [77, 78]
+    widget:
+      tipo: logica
+      entradas: [A, B, C]
+      piezas:
+        - { id: d1, tipo: od, entradas: [A] }
+        - { id: d2, tipo: od, entradas: [B] }
+        - { id: d3, tipo: od, entradas: [C] }
+        - { id: linea, tipo: bus, entradas: [d1, d2, d3], pullup: 1 }
+      salidas:
+        - { id: L, de: linea, rotulo: "Línea" }
+    objetivo:
+      condiciones:
+        - { led: L, valor: 1, rotulo: "Línea en alto" }
+      logrado: "Solo sube si ninguna tira de ella: la línea es la AND de las tres."
+      pistas:
+        - { texto: "Mientras una sola salida tire a 0, la línea se queda abajo." }
+
+  # --- a goal with the clock: a counter
+  - id: explore-contador
+    tipo: explorar
+    titulo: "Cuente hasta cinco"
+    texto: "Dé pulsos de reloj hasta que el contador marque cinco."
+    libro: ["cap09#56"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 3, entradas: [CLK] }
+      salidas:
+        - { id: Q0, de: c1.q0 }
+        - { id: Q1, de: c1.q1 }
+        - { id: Q2, de: c1.q2 }
+    objetivo:
+      condiciones:
+        - { contador: c1, valor: 5, rotulo: "Cuenta: cinco" }
+      logrado: "Cinco en binario: Q2 y Q0 encendidos, Q1 apagado."
+      pistas:
+        - { cuando: { contador: c1, min: 6 }, texto: "Se ha pasado: siga dando pulsos hasta que vuelva a pasar por cinco." }
+        - { texto: "Un pulso más suma uno." }
+
+  # --- tap a piece of the logic circuit
+  - id: elija-inversor
+    tipo: elegir
+    titulo: "Toque el inversor"
+    texto: "Toque la puerta que hace de inversor."
+    libro: ["cap29#40"]
+    widget:
+      tipo: logica
+      entradas: [A, B]
+      piezas:
+        - { id: n1, tipo: nand, entradas: [A, A], rotulo: "N1" }
+        - { id: n2, tipo: nand, entradas: [n1, B], rotulo: "N2" }
+      salidas:
+        - { id: Y, de: n2 }
+    elegir:
+      zonas: { n1: "Puerta de la izquierda", n2: "Puerta de la derecha", Y: "El LED" }
+      bien: [n1]
+      porque:
+        n2: "Esa recibe dos señales distintas: es una NAND de verdad."
+        Y: "El LED solo enseña la salida."
+    exito: "Una NAND con las entradas unidas es un inversor."
+    escalera: ["Busque la puerta con las dos entradas unidas."]
+    solucion: "La de la izquierda."
+
+  # --- mark the cycle on the timing diagram
+  - id: marque-ciclo
+    tipo: marcar
+    titulo: "Marque el ciclo"
+    texto: "Lleve el cursor al ciclo en que Q vuelve a 0."
+    libro: ["cap09#56"]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: ff, tipo: t, entradas: ["1", CLK] }
+      salidas:
+        - { id: Q, de: ff.q }
+      cronograma:
+        ciclos: 4
+        senales: [CLK, Q]
+    marcar:
+      cronograma: true
+      ciclo: 2
+      rotulo: "El ciclo en que baja Q"
+      porque:
+        1: "Ahí sube: es el primer flanco."
+        3: "Ahí vuelve a subir: cambia en cada flanco."
+    escalera: ["Con T a 1, Q cambia en cada flanco de subida."]
+    solucion: "En el segundo ciclo."
+    exito: "Con T a 1 cambia en cada flanco: baja en el segundo."
+
+  # --- read in hexadecimal
+  - id: lea-hex
+    tipo: leer
+    titulo: "En hexadecimal"
+    texto: "Escriba en hexadecimal el valor del registro con solo el bit cinco a uno."
+    libro: [71]
+    widget:
+      tipo: logica
+      entradas: [A]
+      piezas:
+        - { id: b1, tipo: buf, entradas: [A] }
+      salidas:
+        - { id: B5, de: b1 }
+    leer:
+      objetivo: v_reg
+      base: 16
+      rotulo: "Valor del registro"
+    exito: "Vale {{v_reg}}: dos cifras hexadecimales."
+    escalera: ["Cada cifra hexadecimal son cuatro bits."]
+    solucion: "Agrupe los bits de cuatro en cuatro."
+
+  # --- tri-state: the contention when two are enabled at once
+  - id: explore-contencion
+    tipo: explorar
+    titulo: "Dos al bus"
+    texto: "Dos búferes tri-estado comparten la línea. Habilite los dos con datos distintos y mire la línea."
+    libro: [71, 72]
+    widget:
+      tipo: logica
+      entradas: [D1, E1, D2, E2]
+      piezas:
+        - { id: t1, tipo: tri, entradas: [D1, E1] }
+        - { id: t2, tipo: tri, entradas: [D2, E2] }
+        - { id: bus, tipo: bus, entradas: [t1, t2], pullup: ninguna }
+      salidas:
+        - { id: L, de: bus, rotulo: "Línea" }
+    objetivo:
+      condiciones:
+        - { led: L, valor: X, rotulo: "Línea en conflicto" }
+      logrado: "Uno empuja a 1 y el otro a 0: contención de bus."
+      pistas:
+        - { texto: "Habilite los dos, uno con su dato a 1 y el otro a 0." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Resumen"
+    libro: [72, 78]
+    ideas:
+      - { titulo: "Drenador abierto", texto: "Solo tira a 0: la línea es la AND de todas." }
+      - { titulo: "Tri-estado", texto: "Con dos habilitadas a la vez, la línea se pelea." }

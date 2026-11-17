@@ -3,6 +3,8 @@
   // of the positive peaks (diode, optional Zener and optional reference battery), the branch of the negative ones
   // (a diode upside down), or the two Zeners in antiserie. A disconnected branch is drawn as a ghost.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -25,15 +27,15 @@
   {#if zz}
     <circle class="nodo" cx="240" cy="50" r="4.5"></circle>
     <circle class="nodo" cx="240" cy="230" r="4.5"></circle>
-    <D x1={240} y1={140} x2={240} y2={50} color="naranja" variante="zener" />
-    <D x1={240} y1={140} x2={240} y2={230} color="naranja" variante="zener" />
+    <g data-pieza="zeners"><D x1={240} y1={140} x2={240} y2={50} color="naranja" variante="zener" />
+    <D x1={240} y1={140} x2={240} y2={230} color="naranja" variante="zener" /></g>
     <Et x={256} y={100} t={`Zener ${c.val('zz')}`} color="naranja" peq />
     <Et x={256} y={186} t={`Zener ${c.val('zz')}`} color="naranja" peq />
   {:else}
       <g class:fantasma={!pos} data-rama={pos ? 'conectada' : 'suelta'}>
         <circle class="nodo" cx="210" cy="50" r="4.5"></circle>
         <circle class="nodo" cx="210" cy="230" r="4.5"></circle>
-        <D x1={210} y1={50} x2={210} y2={110} color="naranja" />
+        <g data-pieza="diodo1"><D x1={210} y1={50} x2={210} y2={110} color="naranja" /></g>
         <Et x={196} y={84} t={c.val('vd')} color="naranja" peq ancla="end" />
         {#if c.tiene('vz')}
           <D x1={210} y1={170} x2={210} y2={110} color="naranja" variante="zener" />
@@ -51,10 +53,16 @@
     <g class:fantasma={!neg} data-rama={neg ? 'conectada' : 'suelta'}>
       <circle class="nodo" cx="280" cy="50" r="4.5"></circle>
       <circle class="nodo" cx="280" cy="230" r="4.5"></circle>
-      <D x1={280} y1={230} x2={280} y2={50} color="verde" />
+      <g data-pieza="diodo2"><D x1={280} y1={230} x2={280} y2={50} color="verde" /></g>
       <Et x={294} y={144} t={c.val('vd')} color="verde" peq />
     </g>
   {/if}
   <circle class="salida" cx="330" cy="50" r="6"></circle>
   <Et x={330} y={34} t="salida" color="naranja" peq ancla="middle" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={55} y={50} red="fte" />
+  <Punto x={310} y={50} red="s" />
+  {#if pos}<Punto x={210} y={115} red="p1" />{/if}
+  <Punto x={120} y={230} red="0" />
+  <Rama x={55} y={50} medidor="vmed" />
 </Lienzo>

@@ -47,6 +47,13 @@ const d: DefinicionEsquema = {
     acm: { descripcion: 'señal de modo común de pico, v_cm (V): en las dos bases', color: 'azul' },
     f: { descripcion: 'frecuencia de las señales (Hz; obligatoria con «ad» o «acm»)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { rc2: 'la resistencia de colector derecha', q1: 'el transistor de la izquierda', q2: 'el transistor de la derecha' },
+  medible: (c) => ({
+    puntos: { vcc: 'Raíl positivo', c1: 'Colector de la izquierda', c2: 'Colector de la derecha', b1: 'Base de la izquierda', b2: 'Base de la derecha', e: 'Emisores', vee: 'Raíl negativo', '0': 'Masa, abajo' },
+    ramas: { vcm1: 'Colector de la izquierda', vcm2: 'Colector de la derecha', vcola: 'Rama de la cola' },
+    zonas: { rc: 'Resistencia de colector izquierda', rc2: 'Resistencia de colector derecha', ...(c.tiene('icola') ? { icola: 'Fuente de corriente de cola' } : { ree: 'Resistencia de cola' }), ...(c.tiene('ro') ? { ro: 'Resistencia de la fuente de cola' } : {}), q1: 'Transistor de la izquierda', q2: 'Transistor de la derecha' },
+  }),
   observables: {
     ic1: { medida: 'i(vcm1)', analisis: 'op', unidad: 'A', descripcion: 'corriente de colector de Q₁' },
     ic2: { medida: 'i(vcm2)', analisis: 'op', unidad: 'A', descripcion: 'corriente de colector de Q₂' },

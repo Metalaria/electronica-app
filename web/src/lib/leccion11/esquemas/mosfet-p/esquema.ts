@@ -21,6 +21,13 @@ const d: DefinicionEsquema = {
     vth: { obligatoria: true, descripcion: 'tensión umbral en valor absoluto, |V_th| (V)' },
     lambda: { descripcion: 'modulación de la longitud del canal, λ (1/V)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { transistor: 'el MOSFET' },
+  medible: (c) => ({
+    puntos: { vdd: 'Raíl de alimentación, arriba', in: 'Salida del generador de puerta', ...(c.tiene('rg') ? { g: 'Puerta' } : {}), d: 'Drenador', '0': 'Masa, abajo' },
+    ramas: { vmd: 'Rama del drenador' },
+    zonas: { vdd: 'Fuente de alimentación', entrada: 'Generador de puerta', rd: 'Resistencia de drenador', ...(c.tiene('rg') ? { rg: 'Resistencia de puerta' } : {}), ...(c.tiene('rgs') ? { rgs: 'Resistencia de puerta' } : {}), transistor: 'MOSFET' },
+  }),
   observables: {
     id: { medida: 'i(vmd)', analisis: 'op', unidad: 'A', descripcion: 'corriente de drenador (hacia la carga)' },
     vsd: { medida: 'v(vdd)-v(d)', analisis: 'op', unidad: 'V', descripcion: 'tensión fuente-drenador, V_SD' },

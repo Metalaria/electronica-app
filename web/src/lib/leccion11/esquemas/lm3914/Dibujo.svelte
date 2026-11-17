@@ -6,6 +6,8 @@
   // from the V_LED rail, lit as the netlist decides (esquema.ts encendidos). No current particles (the outputs are
   // current sinks).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -13,7 +15,8 @@
   import R from '../kit/R.svelte';
   import { encendidos } from './esquema';
   let { c, descripcion }: PropsDibujo = $props();
-  const luz = $derived(encendidos(c));
+  // (motor121, revisor-esquemas: in a prediction the LEDs do not give the answer away — all dark until answered)
+  const luz = $derived(c.oculto ? encendidos(c).map(() => false) : encendidos(c));
   // the chain's nodes are 24 units apart, from y = 274 (V_LO) up to y = 34 (V_HI); comparator k sits at node k + 1
   const yc = (k: number) => 250 - 24 * k;
   const cadena = $derived.by(() => {
@@ -28,7 +31,7 @@
 
 <Lienzo {descripcion} ancho={430} alto={380}>
   <!-- the chip -->
-  <rect class="pieza" x="110" y="24" width="150" height="268" rx="4"></rect>
+  <g data-pieza="chip"><rect class="pieza" x="110" y="24" width="150" height="268" rx="4"></rect></g>
   <Et x={258} y={308} t={`LM3914 · ${c.cerrado('barra') ? 'barra' : 'punto'}`} peq ancla="end" />
   <!-- input: the source, over the top into SIG, down the bus -->
   <Pila x={40} y1={360} y2={200} pieza="entrada" nodos={['0', 'in']} />
@@ -58,4 +61,11 @@
   <Pila x={400} y1={360} y2={34} pieza="vled" nodos={['0', 'vl']} />
   <Et x={408} y={200} t={c.val('vled')} peq />
   <path class="hilo" d="M400 360 H40" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={100} y={10} red="in" />
+  <Punto x={375} y={34} red="vl" />
+  <Punto x={266} y={yc(0)} red="o1" />
+  <Punto x={200} y={360} red="0" />
+  <Rama x={130} y={350} medidor="vmr" />
+  <Rama x={400} y={60} medidor="vml" />
 </Lienzo>

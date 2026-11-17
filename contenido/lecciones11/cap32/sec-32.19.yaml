@@ -2,6 +2,9 @@
 # 32.A: Friis con preamplificador (NF 3 dB, 20 dB), filtro (6 dB de pérdida: F = 3,981, G = 0,2512), amplificador
 # (NF 10 dB, 30 dB) y convertidor (NF 20 dB). 32.B: I = 2π·f·C_Y·V con 230 V y 50 Hz. 32.C: V = ω·B·A con 1 µT a 50 Hz.
 # Ejercicios 32.1 y 32.4 del bloque 618.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el aporte del preamplificador y el ruido de 10 kΩ se predicen,
+# la cadena se baja de 2,3 dB (dónde invertir va en su explicación), la C_{Y} de 72,3 µA se busca y el cable se trenza
+# hasta quedar por debajo del ruido térmico (objetivos). Queda una pregunta de opciones (filtrar sin fuga).
 leccion: cap32/sec-32.19
 
 libro:
@@ -41,13 +44,37 @@ modelo:
     C_m: { expr: "0.0001/(2*pi*50*230)", sim: "C_{Y,máx}", nombre: "capacidad máxima para 100 µA", unidad: F }
     V_b: { expr: "2*pi*50*1e-6*A_c*1e-4", sim: "V", nombre: "tensión inducida", unidad: V }
     v_e: { expr: "sqrt(4*1.38e-23*290*10000*10000)", sim: "V_{n}", nombre: "ruido de 10 kΩ en 10 kHz", unidad: V }
+    v_4: { expr: "sqrt(1.38e-23*290*10000*10000)", sim: "√(kTRB)", nombre: "sin el 4", unidad: V }
+    V_th: { expr: "0.407e-6", sim: "v_{n}", nombre: "ruido térmico de 1 kΩ en 10 kHz", unidad: V }
 
 tarjetas:
+  - id: prediga-dominante
+    tipo: simular
+    titulo: "El término dominante"
+    texto: "Preamplificador de 3 dB y 20 dB de ganancia, filtro de 6 dB, amplificador de 10 dB y 30 dB, y convertidor de 20 dB. ¿Qué porcentaje del exceso de ruido aporta el preamplificador?"
+    libro: [578, 583, 584]
+    fijar: { N_p: 3, N_a: 10 }
+    simular:
+      objetivo: p_p
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Aporte del preamplificador"
+      errores:
+        - { expr: "p_a", texto: "Ese es el del amplificador. La primera etapa no la divide nada." }
+        - { expr: "p_c", texto: "Ese es el del convertidor, que queda dividido por toda la ganancia previa." }
+    exito: "Un 71,7 %: el preamplificador es el mejor de la cadena y aun así aporta casi tres cuartas partes. El convertidor, con 20 dB, solo el 0,3 %."
+    escalera:
+      - "Por Friis, (F − 1) de cada etapa dividido por la ganancia previa; luego, el peso de cada término."
+    solucion: "(F_{pre} − 1)/(F − 1) ≈ 71,7 %."
+    comprobar:
+      - { p_p: 71.7, p_c: 0.284, tol: 0.03 }
+
   - id: explore-cadena
     tipo: explorar
     titulo: "Dónde está el ruido de una cadena"
-    texto: "Preamplificador, filtro, amplificador y convertidor. Mejore el preamplificador o el amplificador y mire la figura de ruido total."
-    libro: [578, 582]
+    texto: "Preamplificador, filtro, amplificador y convertidor: 3,78 dB en total. Mejore una sola etapa hasta dejarla en unos 2,2 dB."
+    libro: [578, 582, 584, 585]
+    inicio: { N_p: 3, N_a: 10 }
     widget:
       tipo: grafica
       x: { id: xx, min: 0, max: 6, unidad: dB, rotulo: "NF del preamplificador" }
@@ -63,70 +90,27 @@ tarjetas:
       mandos:
         - { valor: N_p, lista: [1, 3], rotulo: "NF del preamplificador" }
         - { valor: N_a, lista: [6, 10], rotulo: "NF del amplificador" }
-    requiere: { mover: [N_p] }
+    objetivo:
+      condiciones:
+        - { valor: N_t, max: 2.3, rotulo: "NF total: {{N_t}}" }
+      logrado: "{{N_t}}: atacar el término dominante es lo que rinde. El amplificador de 10 a 6 dB solo la deja en 3,3 dB; un convertidor mejor, en nada."
+      pistas:
+        - { cuando: { valor: N_a, max: 6 }, texto: "Mejorar el amplificador ayuda poco: pruebe con el preamplificador." }
+        - { texto: "Mejore la etapa que más aporta." }
+    escalera:
+      - "Ataque el término dominante."
+    solucion: "Preamplificador de 1 dB: unos 2,2 dB."
     comprobar:
       - { con: { N_p: 3, N_a: 10 }, N_t: 3.78, p_p: 71.7, p_a: 25.8, tol: 0.003 }
       - { con: { N_p: 1, N_a: 10 }, N_t: 2.2, tol: 0.02 }
       - { con: { N_p: 3, N_a: 6 }, N_t: 3.3, tol: 0.02 }
 
-  - id: prediga-dominante
-    tipo: predecir
-    titulo: "El término dominante"
-    texto: "El preamplificador es el mejor de la cadena, con 3 dB; el convertidor, el peor, con 20 dB. ¿Quién aporta más al exceso de ruido?"
-    libro: [578, 583, 584]
-    fijar: { N_p: 3, N_a: 10 }
-    widget:
-      tipo: grafica
-      x: { id: xx, min: 1, max: 6, unidad: dB, rotulo: "NF del preamplificador" }
-      y: { min: 0, max: 8, unidad: dB, rotulo: "NF total" }
-      curvas:
-        - { expr: "10*log10(10^(xx/10) + (3.981 - 1)/100 + (10^(N_a/10) - 1)/(100*0.2512) + (100 - 1)/(100*0.2512*1000))", color: azul, rotulo: "NF total" }
-      lectura: { valor: p_p, rotulo: "Aporte del preamplificador" }
-      ocultar: curvas
-    opciones:
-      - texto: "El preamplificador: casi tres cuartas partes"
-        bien: true
-        porque: "Es la primera etapa y su ruido no lo divide nada: el 71,7 %."
-      - texto: "El convertidor, por su NF de 20 dB"
-        porque: "Aporta el 0,3 %: queda dividido por toda la ganancia previa."
-      - texto: "El filtro, porque atenúa"
-        porque: "Aporta el 2,1 %: su pérdida queda dividida por los 20 dB del preamplificador."
-    escalera:
-      - "Por Friis, ¿qué divide el ruido de cada etapa?"
-    solucion: "El preamplificador, 71,7 %; el convertidor, solo 0,3 %."
-    comprobar:
-      - { p_p: 71.7, tol: 0.01 }
-
-  - id: invertir
-    tipo: pregunta
-    titulo: "Dónde invertir"
-    texto: "Puede mejorar el preamplificador de 3 a 1 dB, el amplificador de 10 a 6 dB o comprar un convertidor mejor. ¿Qué elige?"
-    libro: [584, 585]
-    widget:
-      tipo: grafica
-      x: { id: xx, min: 0, max: 6, unidad: dB, rotulo: "NF del preamplificador" }
-      y: { min: 0, max: 8, unidad: dB, rotulo: "NF total" }
-      curvas:
-        - { expr: "10*log10(10^(xx/10) + (3.981 - 1)/100 + (10^(N_a/10) - 1)/(100*0.2512) + (100 - 1)/(100*0.2512*1000))", color: azul, rotulo: "NF total" }
-    opciones:
-      - texto: "El preamplificador: el total baja a unos 2,2 dB"
-        bien: true
-        porque: "El amplificador lo dejaría en 3,3 dB; el convertidor, en nada apreciable."
-      - texto: "El convertidor, que es el peor"
-        porque: "Comprar un ADC mejor no serviría de nada: aporta el 0,3 %."
-      - texto: "El amplificador, que es el más ruidoso"
-        porque: "Ayuda algo, a 3,3 dB, pero menos que el preamplificador."
-    escalera:
-      - "Ataque el término dominante."
-    solucion: "El preamplificador: de 3,78 a unos 2,2 dB."
-
   - id: formula-fuga
-    tipo: formula
+    tipo: explorar
     titulo: "El límite de un filtro de red"
-    texto: "Por los condensadores Y circula siempre una corriente de fuga a frecuencia de red. Con 230 V y 50 Hz:"
-    libro: [591, 595, 596]
-    ec: 595
-    sustitucion: "2π · 50 Hz · {{C_y}} · 230 V = {{I_f}}"
+    texto: "Por los condensadores Y circula siempre una corriente de fuga a frecuencia de red: I = 2π · f · C_{Y} · V. Con 230 V y 50 Hz, búsquela por debajo de 100 µA."
+    libro: [591, 595, 596, 597]
+    inicio: { C_y: 4.7e-9 }
     widget:
       tipo: grafica
       x: { id: cc, min: 0, max: 5e-9, unidad: F, rotulo: "C_{Y} total" }
@@ -138,8 +122,18 @@ tarjetas:
       lectura: { valor: I_f, rotulo: "Corriente de fuga" }
       mandos:
         - { valor: C_y, lista: [1e-9, 2.2e-9, 4.7e-9], rotulo: "C_{Y}" }
+    objetivo:
+      condiciones:
+        - { valor: I_f, max: 0.0001, rotulo: "Fuga: {{I_f}}" }
+      logrado: "2π · 50 Hz · {{C_y}} · 230 V = {{I_f}}: por los Y circula siempre corriente a tierra."
+      pistas:
+        - { texto: "Menos capacidad Y." }
+    escalera:
+      - "La fuga es proporcional a C_{Y}."
+    solucion: "1 nF: 72,3 µA."
     comprobar:
       - { con: { C_y: 1e-9 }, I_f: 72.3e-6, tol: 0.002 }
+      - { con: { C_y: 2.2e-9 }, I_f: 159e-6, tol: 0.003 }
 
   - id: reto-medico
     tipo: reto
@@ -197,50 +191,51 @@ tarjetas:
     solucion: "El choke de modo común: inductancia en lugar de capacidad."
 
   - id: trenzar
-    tipo: pregunta
+    tipo: explorar
     titulo: "Cuánto mejora trenzar"
-    texto: "Un cable suelto de 200 cm² junto a un transformador capta 6,283 µV; trenzado apretado, con 1 cm², 0,031 µV. ¿Qué no resuelve trenzar?"
+    texto: "Un cable de señal junto a un transformador de 1 µT a 50 Hz. Trence hasta que la tensión inducida quede por debajo del ruido térmico de 1 kΩ en 10 kHz."
     libro: [611, 612, 614]
+    inicio: { A_c: 200 }
     widget:
       tipo: grafica
       x: { id: aa, min: 1, max: 200, unidad: "cm²", rotulo: "área del bucle" }
       y: { min: 0, max: 0.000007, unidad: V, rotulo: "tensión inducida" }
       curvas:
         - { expr: "2*pi*50*1e-6*aa*1e-4", color: azul, rotulo: "inducida" }
-    opciones:
-      - texto: "El acoplamiento capacitivo, que depende de la proximidad y no del área"
-        bien: true
-        porque: "Contra el capacitivo hace falta apantallar. Distinguir los mecanismos evita el remedio equivocado."
-      - texto: "El acoplamiento magnético a 50 Hz"
-        porque: "Es justo lo que resuelve: un factor 200, y aún más por la cancelación de cada media vuelta."
-      - texto: "Nada: trenzar lo resuelve todo"
-        porque: "Solo actúa sobre el área del bucle; el capacitivo sigue ahí."
+        - { expr: "V_th", color: verde, rotulo: "térmico de 1 kΩ en 10 kHz", discontinua: true }
+      marcas:
+        - { x: "A_c", y: "V_b", rotulo: "{{V_b}}" }
+      lectura: { valor: V_b, rotulo: "Tensión inducida" }
+      mandos:
+        - { valor: A_c, lista: [200, 20, 1], nombres: ["suelto", "trenzado con paso grande", "trenzado apretado"], rotulo: "Montaje" }
+    objetivo:
+      condiciones:
+        - { valor: V_b, max: 0.000000407, rotulo: "Inducida: {{V_b}}" }
+      logrado: "Trenzado apretado: {{V_b}}, un factor 200. Lo que no resuelve: el acoplamiento capacitivo, que depende de la proximidad y pide pantalla."
+      pistas:
+        - { texto: "Aún supera el ruido térmico: trence más apretado." }
     escalera:
-      - "¿De qué depende cada acoplamiento?"
-    solucion: "El capacitivo: para él, pantalla."
+      - "V = ω · B · A: proporcional al área."
+    solucion: "Trenzado apretado: 0,031 µV."
     comprobar:
       - { con: { A_c: 200 }, V_b: 6.283e-6, tol: 0.001 }
+      - { con: { A_c: 20 }, V_b: 0.628e-6, tol: 0.002 }
       - { con: { A_c: 1 }, V_b: 0.031e-6, tol: 0.02 }
 
   - id: estime-termico
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Ejercicio: ruido de 10 kΩ"
     texto: "¿Qué tensión eficaz de ruido térmico da una resistencia de 10 kΩ a 290 K en 10 kHz de banda?"
     libro: ["cap32#618"]
-    estimar:
-      objetivo: "v_e"
+    simular:
+      objetivo: v_e
       unidad: V
-      min: 0
-      max: 5e-6
-      paso: 0.01e-6
-      inicio: 4e-6
-      tol: 0.04
+      tol: 0.02
       rotulo: "Ruido eficaz"
+      errores:
+        - { expr: "v_4", texto: "No olvide el 4 dentro de la raíz." }
     exito: "Unos 1,27 µV eficaces."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.32e-6 }, texto: "Se ha pasado: √(4kTRB), con todo en unidades SI." }
-      - { texto: "Se ha quedado corto: no olvide el 4 dentro de la raíz." }
     escalera:
       - "V_{n} = √(4 · k · T · R · B)."
     solucion: "√(4 · 1,38·10⁻²³ · 290 · 10 000 · 10 000) ≈ 1,27 µV."

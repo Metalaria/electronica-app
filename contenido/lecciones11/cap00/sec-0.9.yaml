@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 0.9 «Impedancia Compleja y Análisis Fasorial» (cap00): la impedancia de R, L y C frente a
 # la frecuencia, el RC serie del libro a 1 kHz (1880 Ω, −57,9°, 0,532 mA), las tensiones que se suman como fasores y
 # los límites del método. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): igualar el condensador a la resistencia, calcular |Z_C| a
+# 1 kHz, el reto de 1880 Ω, calcular la corriente y ver que no suman 1 V; se eligen la bobina y los límites. De dónde
+# sale 1/(jωC) y la tabla de impedancias quedan en el resumen.
 leccion: cap00/sec-0.9
 
 libro:
@@ -30,7 +33,7 @@ tarjetas:
   - id: explore-impedancia
     tipo: explorar
     titulo: "La impedancia cambia con la frecuencia"
-    texto: "R = 1 kΩ y C = 100 nF. Arrastre la frecuencia: la resistencia no cambia; el condensador, sí."
+    texto: "Con R = 1 kΩ y C = 100 nF, arrastre la frecuencia hasta que el condensador se oponga tanto como la resistencia, que no cambia."
     libro: [126, 129]
     fijar: { R: 1000, C: 0.0000001 }
     widget:
@@ -45,9 +48,41 @@ tarjetas:
       lectura: { valor: Xc, rotulo: "Módulo de Z_{C}" }
       mandos:
         - { valor: f, min: 100, max: 5000, paso: 50, rotulo: "Frecuencia, f" }
-    requiere: { mover: [f] }
-    nota: "El condensador es imaginario negativo y decrece con la frecuencia."
+    inicio: { f: 500 }
+    objetivo:
+      condiciones:
+        - { valor: Xc, objetivo: 1000, tol: 0.01, rotulo: "|Z_{C}| = {{Xc}}" }
+      logrado: "A {{f}}, {{Xc}}: el condensador es imaginario negativo y decrece con la frecuencia."
+      pistas:
+        - { cuando: { valor: Xc, mayor: 1010 }, texto: "El condensador aún se opone más: suba la frecuencia." }
+        - { texto: "Se ha pasado: baje la frecuencia." }
+    escalera:
+      - "Busque donde se cruzan las dos curvas."
+    solucion: "Hacia 1,6 kHz."
+    comprobar:
+      - { Xc: 3183 }
+      - { con: { f: 1600 }, Xc: 994.7 }
 
+  - id: calcule-zc
+    tipo: simular
+    fase: "Estime"
+    titulo: "El condensador a 1 kHz"
+    texto: "C = 100 nF a 1 kHz. ¿Cuánto vale |Z_{C}| = 1/(ωC)?"
+    libro: [126, 129]
+    fijar: { R: 1000, C: 0.0000001, f: 1000 }
+    simular:
+      objetivo: Xc
+      unidad: Ω
+      tol: 0.02
+      rotulo: "|Z_{C}|"
+      errores:
+        - { razon: { min: 6.2, max: 6.36 }, texto: "Ha usado f en lugar de ω: la pulsación va en radianes por segundo." }
+    exito: "1592 Ω: a 1 kHz, el condensador se opone más que R."
+    escalera:
+      - "ω = 2π·f, en radianes por segundo."
+    solucion: "|Z_{C}| = 1/(ωC) = 1592 Ω."
+    comprobar:
+      - { Xc: 1592 }
   - id: prediga-bobina
     tipo: predecir
     titulo: "Prediga"
@@ -108,36 +143,30 @@ tarjetas:
       - { con: { f: 1000 }, Xc: 1592, Zt: 1880, ang: -57.9, tol: 0.002 }
 
   - id: estime-corriente
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La ley de Ohm, con complejos"
-    texto: "Al RC de 1880 Ω se le aplica 1 V eficaz. Estime la corriente: V = I · Z."
+    texto: "Al RC de 1880 Ω se le aplica 1 V eficaz: ¿qué corriente circula, con V = I · Z?"
     libro: [129, 125]
     fijar: { R: 1000, C: 0.0000001, f: 1000, V_in: 1 }
-    estimar:
-      objetivo: "I_t"
+    simular:
+      objetivo: I_t
       unidad: A
-      min: 0
-      max: 0.002
-      paso: 0.00001
-      inicio: 0.0015
       tol: 0.03
       rotulo: "I"
+      errores:
+        - { razon: { min: 1.83, max: 1.93 }, texto: "Ha dividido entre R. Divida entre el módulo de la impedancia total, 1880 Ω." }
+        - { razon: { min: 1.16, max: 1.2 }, texto: "Ha dividido entre el condensador solo. Divida entre el módulo total, 1880 Ω." }
     exito: "1/1880 = 0,532 mA, adelantados 57,9° respecto a la tensión."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 0.000516 }, texto: "Se ha quedado corto: divida 1 V entre 1880 Ω." }
-      - { texto: "Se ha pasado: divida 1 V entre el módulo, 1880 Ω, no entre R." }
     escalera:
       - "Divida la tensión entre el módulo de la impedancia."
     solucion: "1/1880 = 0,532 mA, adelantados 57,9° respecto a la tensión."
     comprobar:
       - { I_t: 0.000532 }
-
   - id: no-suman
     tipo: sorpresa
     titulo: "No suman 1 V"
-    texto: "Con 1 V aplicado, compare V_{R} y V_{C} con su suma. Mueva la frecuencia."
-    nota: "A 1 kHz, 0,532 V y 0,847 V suman 1 V, no 1,38 V: en alterna se suman como fasores."
+    texto: "Con 1 V aplicado, lleve la frecuencia a 1 kHz y compare V_{R} y V_{C} con su suma."
     libro: [129]
     fijar: { R: 1000, C: 0.0000001, V_in: 1 }
     inicio: { f: 2000 }
@@ -157,52 +186,18 @@ tarjetas:
         - { valor: V_C, rotulo: "V_{C} = {{V_C}}" }
       mandos:
         - { valor: f, min: 100, max: 5000, paso: 50, rotulo: "Frecuencia, f" }
-    requiere: { mover: [f] }
-
-  - id: por-que-jw
-    tipo: porque
-    titulo: "¿Por qué 1/(jωC)?"
-    texto: "La impedancia de un condensador es 1/(jωC). ¿De dónde sale?"
-    libro: [127]
-    opciones:
-      - texto: "De i = C·dv/dt en fasores: derivar es multiplicar por jω"
-        bien: true
-        porque: "i = C·dv/dt queda I = jωC·V, y Z = V/I = 1/(jωC). La bobina, igual, da jωL."
-      - texto: "Es una definición, sin más"
-        porque: "Las tres impedancias se deducen de la relación de cada componente escrita en fasores."
-      - texto: "Del valor eficaz del condensador"
-        porque: "El eficaz no interviene: es la derivada, que en fasores es multiplicar por jω."
-    widget:
-      tipo: grafica
-      x: { id: x, min: 100, max: 5000, unidad: Hz, rotulo: f }
-      y: { min: 0, max: 5000, unidad: Ω, rotulo: "|Z|" }
-      curvas:
-        - { expr: "1/(2*pi*x*C)", color: naranja, rotulo: "condensador, 1/(ωC)" }
-      asas:
-        - { mueve: f, x: f, y: Xc, rotulo: Frecuencia }
-      lectura: { valor: Xc, rotulo: "Módulo de Z_{C}" }
-      mandos:
-        - { valor: f, min: 100, max: 5000, paso: 50, rotulo: "Frecuencia, f" }
+    objetivo:
+      condiciones:
+        - { valor: f, objetivo: 1000, tol: 0.01, rotulo: "f = {{f}}" }
+      logrado: "{{V_R}} y {{V_C}} suman 1 V, no {{suma}}: en alterna se suman como fasores."
+      pistas:
+        - { cuando: { valor: f, mayor: 1000 }, texto: "Baje la frecuencia." }
+        - { texto: "Suba la frecuencia." }
     escalera:
-      - "Escriba i = C·dv/dt con fasores: ¿qué es derivar?"
-    solucion: "Derivar es multiplicar por jω: I = jωC·V, y Z = V/I = 1/(jωC)."
-
-  - id: cada-impedancia
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Tres componentes, tres impedancias"
-    texto: "Una cada componente con su impedancia y su desfase."
-    libro: [126]
-    emparejar:
-      - ["Resistencia R", "Z = R; 0°, en fase"]
-      - ["Bobina L", "Z = j·ω·L; +90°, la tensión adelanta"]
-      - ["Condensador C", "Z = 1/(j·ω·C); −90°, la tensión retrasa"]
-    exito: "Eso es. Con ellas, un circuito de alterna se resuelve con las reglas de continua y aritmética compleja."
-    pistas:
-      - { texto: "La j de la bobina va arriba (crece con ω); la del condensador, abajo." }
-    escalera:
-      - "La resistencia no depende de la frecuencia; las otras dos, sí."
-    solucion: "Resistencia R: Z = R; 0°, en fase. Bobina L: Z = j·ω·L; +90°, la tensión adelanta. Condensador C: Z = 1/(j·ω·C); −90°, la tensión retrasa."
+      - "1 kHz es la frecuencia del ejemplo."
+    solucion: "A 1 kHz: 0,532 V y 0,847 V."
+    comprobar:
+      - { con: { f: 1000 }, V_R: 0.532, V_C: 0.847, suma: 1.379, tol: 0.002 }
 
   - id: limites
     tipo: pregunta
@@ -229,9 +224,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [125, 126, 129, 130]
+    libro: [125, 126, 127, 129, 130]
     ideas:
       - { titulo: "V = I · Z.", texto: "La ley de Ohm con complejos: el módulo da amplitudes y el ángulo, el desfase." }
-      - { titulo: "Las tres.", texto: "R; j·ω·L, que crece con f; 1/(j·ω·C), que decrece." }
+      - { titulo: "Las tres.", texto: "R, en fase; j·ω·L, que crece con f y adelanta 90°; 1/(j·ω·C), que decrece y retrasa 90°. Salen de cada relación escrita en fasores." }
       - { titulo: "El RC del libro.", texto: "A 1 kHz: 1880 Ω, −57,9° y 0,532 mA con 1 V." }
       - { titulo: "Fasores.", texto: "Las tensiones se suman como fasores, y una frecuencia a la vez." }

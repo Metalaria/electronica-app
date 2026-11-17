@@ -4,6 +4,8 @@
   // the case to the ambient. The thermal capacitances hang from their nodes down to the 0 °C rail. The living circuit
   // labels and keys the nodes in °C (Lienzo «nodos»).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -65,4 +67,11 @@
     <Et x={316} y={168} t={c.val('cs')} color="verde" peq />
   {/if}
   <path class="hilo" d="M40 240 H400" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={70} y={60} red="j" />
+  <Punto x={200} y={60} red="c" />
+  {#if disip}<Punto x={300} y={60} red="s" />{/if}
+  <Punto x={400} y={60} red="a" />
+  <Punto x={220} y={240} red="0" />
+  <Rama x={70} y={60} medidor="vmq" />
 </Lienzo>

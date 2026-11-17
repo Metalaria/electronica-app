@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 46.7 «LED Direccionables» (cap45, sec-45.7). Formato: GUIA.md.
 # - Consumo: hasta 60 mA por LED a pleno blanco: 6 A con 100 y 18 A con 300 (bloque 217).
 # Paso práctico: «tocar» el condensador de desacoplo en la foto 46.14.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca la tira que ya pide 6 A; el LED que hay que sustituir
+# y los 18 A de 300 LED se calculan («simular»); en la foto 46.14 se tocan la entrada a la que va la resistencia serie
+# (con el traductor de nivel en su éxito) y el condensador. Las soluciones por hardware y el APA102 se funden en la
+# pregunta de la temporización, y el orden del diagnóstico en la de los LED rojos. Quedan esas dos preguntas de opciones.
 leccion: cap45/sec-45.7
 
 libro:
@@ -34,27 +38,45 @@ modelo:
   calculos:
     I_t: { expr: "n_l*I_l", sim: "I", nombre: "corriente total", unidad: A }
     n_ok: { expr: "n_f - 1", sim: "k − 1", nombre: "último que funciona", unidad: "" }
+    n_bad: { expr: "n_f", sim: "k", nombre: "LED que hay que sustituir", unidad: "" }
+    I_t1: { expr: "n_l*I_l/3", sim: "I", nombre: "con un solo color", unidad: A }
 
 tarjetas:
   - id: explore-cadena
     tipo: explorar
     titulo: "Una sola línea para todos"
-    texto: "Cada LED lleva su controlador y se encadena por una sola línea de datos. Toque las partes de la figura."
-    libro: [198, 199, 201, 217]
+    texto: "Cada LED lleva tres LED, sus drivers y su controlador, y se encadena por una sola línea. Busque la tira que ya pide 6 A a pleno blanco."
+    libro: [198, 199, 217]
+    fijar: { I_l: 0.06 }
+    inicio: { n_l: 300 }
     widget:
-      tipo: figura
-      figura: fig-45.13
-      zonas:
-        - { id: mcu, rotulo: "Bloque de la izquierda", rect: [3, 48, 75, 48], texto: "Un solo pin del microcontrolador, con una resistencia en serie." }
-        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48], texto: "Cada uno mantiene su color permanentemente: solo se comparte el cable." }
-        - { id: trama, rotulo: "Recuadros de colores", rect: [60, 118, 308, 35], texto: "Cada LED se queda con su color y retransmite el resto." }
-        - { id: consumo, rotulo: "Gráfica de abajo", rect: [0, 161, 237, 146], texto: "Hasta 60 mA por LED a pleno blanco: 100 LED, 6 A; 300 LED, 18 A." }
-    requiere: { mover: [cadena, trama, consumo] }
+      tipo: grafica
+      x: { id: n, min: 0, max: 300, unidad: "", rotulo: "LED" }
+      y: { min: 0, max: 20, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "n*I_l", color: naranja, rotulo: "60 mA por LED" }
+      marcas:
+        - { x: "n_l", y: "I_t", rotulo: "{{I_t}}" }
+      lectura: { valor: I_t, rotulo: "Corriente total" }
+      mandos:
+        - { valor: n_l, min: 10, max: 300, paso: 10, rotulo: "Número de LED" }
+    objetivo:
+      condiciones:
+        - { valor: I_t, objetivo: 6, tol: 0.01, rotulo: "I = {{I_t}}" }
+      logrado: "{{n_l}} LED, {{I_t}}: la alimentación, y no los datos, es el problema real."
+      pistas:
+        - { cuando: { valor: I_t, mayor: 6 }, texto: "Demasiados: menos LED." }
+        - { texto: "Pocos: más LED." }
+    escalera:
+      - "6 A entre 60 mA."
+    solucion: "100 LED."
+    comprobar:
+      - { con: { n_l: 100 }, I_t: 6 }
 
   - id: predecir-averiado
-    tipo: predecir
+    tipo: simular
     titulo: "Un LED averiado"
-    texto: "En una tira de cien LED, desde el LED 40 hasta el final todos se quedan apagados. ¿Cuál hay que sustituir?"
+    texto: "Cada LED se queda con su color y retransmite el resto: en una tira de cien, el LED 39 luce y del 40 al final todos están apagados. ¿Cuál se sustituye?"
     libro: [201, 203]
     fijar: { n_f: 40 }
     widget:
@@ -62,22 +84,22 @@ tarjetas:
       figura: fig-45.13
       zonas:
         - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48] }
-    opciones:
-      - texto: "El 40: el primero que falla"
-        bien: true
-        porque: "El último que funciona, el 39, es el anterior al culpable: el 40 corta la cadena."
-      - texto: "El 39"
-        porque: "El 39 funciona y retransmite; el que no deja pasar los datos es el siguiente."
-      - texto: "El último de la tira"
-        porque: "El último no afecta a los anteriores: la cadena se corta antes."
+    simular:
+      objetivo: n_bad
+      unidad: ""
+      tol: 0.01
+      rotulo: "Número del LED"
+      errores:
+        - { expr: "n_ok", texto: "El 39 funciona y retransmite; el que no deja pasar los datos es el siguiente." }
+    exito: "El 40: el último que funciona es el anterior al culpable."
     escalera:
-      - "Cada LED retransmite al siguiente. ¿Dónde se cortan los datos?"
-    solucion: "El primero que falla, el 40."
+      - "¿Dónde se cortan los datos?"
+    solucion: "El 40."
     comprobar:
-      - { n_ok: 39 }
+      - { n_bad: 40, n_ok: 39 }
 
   - id: estime-corriente
-    tipo: pregunta
+    tipo: simular
     titulo: "La alimentación, que es el problema real"
     texto: "Una tira de 300 LED a pleno blanco, hasta 60 mA cada uno. ¿Qué corriente pide?"
     libro: [217, 219]
@@ -87,30 +109,25 @@ tarjetas:
       figura: fig-45.13
       zonas:
         - { id: consumo, rotulo: "Gráfica de abajo", rect: [0, 161, 237, 146] }
-    estimar:
-      objetivo: "I_t"
+    simular:
+      objetivo: I_t
       unidad: A
-      min: 0
-      max: 40
-      paso: 0.5
-      inicio: 32
-      tol: 0.05
+      tol: 0.02
       rotulo: "Corriente total"
+      errores:
+        - { expr: "I_t1", texto: "Ha contado un solo color: a pleno blanco lucen los tres." }
     exito: "18 A: ni el microcontrolador ni un USB, salvo unas pocas unidades."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 18.9 }, texto: "Demasiado: 300 × 60 mA." }
-      - { texto: "Demasiado poco: 60 mA por 300 LED." }
     escalera:
       - "Con 100 LED son 6 A."
     solucion: "300 × 60 mA = 18 A."
     comprobar:
-      - { I_t: 18 }
+      - { I_t: 18, I_t1: 6 }
 
   - id: porque-rojo
     tipo: porque
     titulo: "Los últimos, más rojos"
     texto: "En una tira larga alimentada por un extremo, los últimos LED se ven más oscuros y más rojos. ¿Por qué?"
-    libro: [220, 221]
+    libro: [220, 221, 227]
     widget:
       tipo: figura
       figura: fig-45.13
@@ -119,7 +136,7 @@ tarjetas:
     opciones:
       - texto: "La tira cae tensión y el azul, con más V_{f}, se apaga antes"
         bien: true
-        porque: "La solución es inyectar alimentación cada uno o dos metros."
+        porque: "La solución es inyectar alimentación cada uno o dos metros; se ve midiendo en el primer LED y en el último."
       - texto: "Porque los datos llegan tarde"
         porque: "Los datos llegan bien; lo que falta al final es tensión."
       - texto: "Porque los últimos son de peor calidad"
@@ -132,7 +149,7 @@ tarjetas:
     tipo: pregunta
     titulo: "Pulsos de 400 ns"
     texto: "Los WS2812 codifican cada bit con pulsos de unos 400 ns, ± 150 ns. ¿Se pueden generar por software con interrupciones activas?"
-    libro: [205, 206, 211]
+    libro: [205, 206, 208, 209, 210, 211, 213, 214]
     widget:
       tipo: figura
       figura: fig-45.13
@@ -141,78 +158,41 @@ tarjetas:
     opciones:
       - texto: "No: cualquier interrupción rompe la temporización"
         bien: true
-        porque: "Solo en un microcontrolador desnudo, bucle contado y sin interrupciones; lo normal es que lo haga el hardware."
+        porque: "Lo hace el hardware: DMA con temporizador, SPI con tres o cuatro bits por bit, o un periférico como el del ESP32."
       - texto: "Sí, con un microcontrolador rápido"
         porque: "La velocidad no basta: una interrupción a destiempo estira un pulso."
       - texto: "Sí, con un sistema operativo de tiempo real"
         porque: "Con un sistema operativo la temporización se rompe."
+    exito: "Los APA102, con datos y reloj, evitan el problema: la velocidad la marca quien envía, y refrescan mucho más."
     escalera:
       - "¿Cuánto puede retrasar una interrupción a un bucle de software?"
     solucion: "No: los nanosegundos los genera el hardware."
 
-  - id: empareje-soluciones
-    tipo: pregunta
-    titulo: "Las soluciones reales"
-    texto: "Empareje cada solución con cómo genera la forma de onda."
-    libro: [208, 209, 210]
-    widget:
-      tipo: figura
-      figura: fig-45.13
-      zonas:
-        - { id: mcu, rotulo: "Bloque de la izquierda", rect: [3, 48, 75, 48] }
-    emparejar:
-      - ["DMA con temporizador", "Escribe en un puerto o en un PWM sin el núcleo"]
-      - ["Periférico SPI", "Cada bit del protocolo, tres o cuatro de SPI"]
-      - ["Periférico dedicado", "El hardware pensado para esto, como en el ESP32"]
-    exito: "En todos los casos el trabajo lo hace el hardware."
-    pistas:
-      - { texto: "El SPI codifica cada bit con varios de los suyos." }
-    escalera:
-      - "El DMA mueve datos sin pasar por el núcleo."
-    solucion: "DMA, sin núcleo; SPI, tres o cuatro bits; dedicado, ESP32."
-
-  - id: pregunta-apa102
-    tipo: pregunta
-    titulo: "Dos hilos: APA102"
-    texto: "Los APA102 usan datos y reloj. ¿Qué ganan?"
-    libro: [213, 214]
-    widget:
-      tipo: figura
-      figura: fig-45.13
-      zonas:
-        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48] }
-    opciones:
-      - texto: "Desaparecen los tiempos críticos: la velocidad la marca quien envía"
-        bien: true
-        porque: "Es SPI puro, con refresco mucho mayor: compensa en lo que se mueve o se graba."
-      - texto: "Consumen menos"
-        porque: "Su coste es un pin más y algo de precio; el consumo es el del LED."
-      - texto: "No necesitan alimentación aparte"
-        porque: "La alimentación sigue siendo el problema real."
-    escalera:
-      - "Con reloj, ¿quién marca el ritmo?"
-    solucion: "Sin tiempos críticos y con más refresco."
-
   - id: empareje-montaje
-    tipo: pregunta
-    titulo: "Tres detalles de montaje"
-    texto: "Empareje cada detalle con su razón."
-    libro: [223, 224, 225]
+    tipo: tocar
+    titulo: "La resistencia de datos"
+    texto: "En la línea de datos va una resistencia serie de unos 300 Ω. Toque en la foto la entrada a la que llega."
+    libro: [224, 225, 230]
     widget:
       tipo: figura
       figura: fig-45.14
-      zonas:
-        - { id: tira, rotulo: "Foto de la izquierda", rect: [0, 0, 800, 677] }
-    emparejar:
-      - ["100 nF junto a cada LED", "Cada uno conmuta corriente"]
-      - ["Unos 300 Ω en la línea de datos", "Amortigua reflexiones y protege la entrada"]
-      - ["Traductor de nivel", "Un 3,3 V no siempre alcanza el umbral de 5 V"]
-    exito: "Sin traductor funciona a menudo y falla a veces, que es lo peor."
-    pistas:
-      - { texto: "La resistencia va junto al controlador." }
+      zonas: &zonas-tira
+        - { id: din, rotulo: "Rótulos de la izquierda", rect: [150, 150, 160, 300] }
+        - { id: led, rotulo: "Cuadrado blanco grande", rect: [330, 150, 300, 320] }
+        - { id: condensador, rotulo: "Pieza pequeña a la derecha", rect: [640, 220, 125, 130] }
+        - { id: dout, rotulo: "Rótulos de la derecha", rect: [770, 150, 140, 300] }
+        - { id: dado, rotulo: "Foto de la derecha", rect: [960, 0, 640, 677] }
+    tocar:
+      bien: [din]
+      porque:
+        led: "Es el propio LED, con sus tres dados y su controlador."
+        condensador: "Es el condensador de desacoplo."
+        dout: "Es la salida DO, hacia el siguiente LED."
+        dado: "Es el LED de cerca: los tres dados y el controlador."
+    exito: "En Din: amortigua reflexiones y protege la entrada. Y un 3,3 V no siempre alcanza el umbral de 5 V: sin traductor funciona a menudo y falla a veces."
     escalera:
-      - "El condensador alimenta los picos de cada LED."
-    solucion: "100 nF, conmutación; 300 Ω, reflexiones; traductor, umbral."
+      - "Busque la entrada de datos del primer LED."
+    solucion: "Din, a la izquierda."
 
   - id: toque-condensador
     tipo: tocar
@@ -222,12 +202,7 @@ tarjetas:
     widget:
       tipo: figura
       figura: fig-45.14
-      zonas:
-        - { id: din, rotulo: "Rótulos de la izquierda", rect: [150, 150, 160, 300] }
-        - { id: led, rotulo: "Cuadrado blanco grande", rect: [330, 150, 300, 320] }
-        - { id: condensador, rotulo: "Pieza pequeña a la derecha", rect: [640, 220, 125, 130] }
-        - { id: dout, rotulo: "Rótulos de la derecha", rect: [770, 150, 140, 300] }
-        - { id: dado, rotulo: "Foto de la derecha", rect: [960, 0, 640, 677] }
+      zonas: *zonas-tira
     tocar:
       bien: [condensador]
       porque:
@@ -235,31 +210,10 @@ tarjetas:
         led: "Es el propio LED, con sus tres dados y su controlador."
         dout: "Es la salida de datos, DO, hacia el siguiente."
         dado: "Es el LED de cerca: los tres dados de color y el controlador."
-    exito: "Junto a cada LED, su condensador de 100 nF."
+    exito: "Junto a cada LED, su condensador de 100 nF: cada uno conmuta corriente."
     escalera:
       - "Busque una pieza pequeña entre las pistas de alimentación."
     solucion: "La pieza pequeña a la derecha del LED."
-
-  - id: ordene-diagnostico
-    tipo: pregunta
-    titulo: "Una tira que no funciona"
-    texto: "Ordene el diagnóstico de una tira que no funciona."
-    libro: [227]
-    widget:
-      tipo: figura
-      figura: fig-45.13
-      zonas:
-        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48] }
-    ordenar:
-      - "Medir la alimentación en el primer LED y en el último."
-      - "Comprobar el nivel de la línea de datos con el osciloscopio."
-      - "Localizar el primer LED que falla y sustituirlo."
-    exito: "La diferencia entre el primero y el último delata la caída."
-    pistas:
-      - { texto: "Primero, lo que más proyectos arruina." }
-    escalera:
-      - "Alimentación, datos, y después el LED culpable."
-    solucion: "Alimentación en los extremos, nivel de datos, primer LED que falla."
 
   - id: resumen
     tipo: resumen

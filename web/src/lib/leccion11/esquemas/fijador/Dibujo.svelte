@@ -2,6 +2,8 @@
   // Schematic «fijador» (esquema.ts): the sine input, the series capacitor on top, the diode from the node to ground
   // (its direction by the «sube» switch) and, for the doubler, the second diode on top and the peak capacitor down.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
@@ -21,18 +23,22 @@
   <Et x={110} y={26} t={c.rot('c')} ancla="middle" color="azul" />
   <circle class="nodo" cx="190" cy="50" r="4.5"></circle>
   <circle class="nodo" cx="190" cy="230" r="4.5"></circle>
+  <g data-pieza="diodo">
   {#if sube}
     <D x1={190} y1={230} x2={190} y2={50} color="naranja" />
   {:else}
     <D x1={190} y1={50} x2={190} y2={230} color="naranja" />
   {/if}
+  </g>
   <Et x={176} y={144} t={c.val('vd')} color="naranja" peq ancla="end" />
   {#if doble}
+    <g data-pieza="diodo2">
     {#if sube}
       <D x1={210} y1={50} x2={290} y2={50} color="verde" />
     {:else}
       <D x1={290} y1={50} x2={210} y2={50} color="verde" />
     {/if}
+    </g>
     <Et x={250} y={30} t={c.val('vd')} color="verde" peq ancla="middle" />
     <circle class="nodo" cx="310" cy="50" r="4.5"></circle>
     <circle class="nodo" cx="310" cy="230" r="4.5"></circle>
@@ -42,4 +48,9 @@
   {/if}
   <circle class="salida" cx="330" cy="50" r="6"></circle>
   <Et x={330} y={34} t="salida" color="naranja" peq ancla="middle" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={60} y={50} red="fte" />
+  <Punto x={165} y={50} red="n" />
+  {#if doble}<Punto x={320} y={50} red="s" />{:else}<Rama x={290} y={50} medidor="vs" />{/if}
+  <Punto x={120} y={230} red="0" />
 </Lienzo>

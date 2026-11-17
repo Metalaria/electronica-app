@@ -3,6 +3,10 @@
 # 2·V_p − 2·V_f), las cascadas de N etapas y su impedancia de salida, dónde tienen sentido, la bomba de carga y la
 # seguridad en el banco. Esquemas «media-onda» (detector) y «fijador» (doblador).
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): elegir la R que retiene el pico, predecir el pico
+# guardado y el doblador, dar la vuelta a los diodos, pasar de 300 V con etapas y predecir la caída de diez etapas;
+# se elige por qué no sustituye al transformador. AM, detector activo, dónde sí, la bomba de carga y la seguridad
+# quedan en los textos y el resumen.
 leccion: cap05/sec-5.10
 
 libro:
@@ -47,7 +51,7 @@ tarjetas:
   - id: explore-detector
     tipo: explorar
     titulo: "Memoria del pico"
-    texto: "Un diodo y un condensador: el diodo carga el condensador mientras la señal lo supera, y luego bloquea. Cambie la resistencia en paralelo."
+    texto: "Un diodo y un condensador: el diodo carga el condensador mientras la señal lo supera, y luego bloquea. Elija la resistencia en paralelo con la que la salida apenas baja entre picos."
     libro: [273]
     fijar: { V_ef: 12 }
     widget:
@@ -63,102 +67,65 @@ tarjetas:
           - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: R_d, lista: [10000, 100000, 1000000], rotulo: "Resistencia en paralelo" }
-    requiere: { mover: [R_d] }
+    inicio: { R_d: 10000 }
+    objetivo:
+      condiciones:
+        - { valor: tau_d, min: 0.5, rotulo: "R·C = {{tau_d}}" }
+      logrado: "R·C = {{tau_d}}, mucho mayor que el periodo: retiene el pico. Un demodulador de AM la quiere mayor que el periodo de la portadora y menor que el de la moduladora."
+      pistas:
+        - { texto: "Más resistencia: el condensador se descarga más despacio." }
+    escalera:
+      - "Entre picos, el condensador se descarga por R con τ = R·C."
+    solucion: "Con 100 kΩ: 1 s, frente a 20 ms de periodo."
+    comprobar:
+      - { tau_d: 0.1, T_r: 0.02 }
+      - { con: { R_d: 100000 }, tau_d: 1 }
 
   - id: prediga-pico
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "Un detector de pico con una entrada de 16,97 V de pico y una resistencia de 100 kΩ en paralelo. ¿Qué tensión guarda el condensador?"
     libro: [273, 277]
     fijar: { V_ef: 12, R_d: 100000 }
-    widget:
-      tipo: circuito
-      esquema: media-onda
-      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
-      lectura: { valor: V_pk, rotulo: "Pico guardado" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_p*sin(2*pi*f_r*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
-      ocultar: true
-    opciones:
-      - texto: "16,27 V: el pico menos la caída del diodo"
-        bien: true
-        porque: "V_{pico} − 0,7 V. Con señales pequeñas es un error inaceptable: se corrige con un detector activo."
-      - texto: "16,97 V, el pico exacto"
-        porque: "El diodo se queda con su caída al cargar el condensador."
-      - texto: "La media de la señal"
-        porque: "El condensador retiene el máximo, no la media: el diodo solo conduce en los picos."
-    comprobar:
-      - { V_pk: 16.27, V_p: 16.97 }
+    simular:
+      objetivo: V_pk
+      unidad: V
+      tol: 0.01
+      rotulo: "Pico guardado"
+      errores:
+        - { razon: { min: 1.03, max: 1.06 }, texto: "El diodo se queda con su caída al cargar el condensador." }
+    exito: "16,27 V: V_{pico} − 0,7 V. Con señales pequeñas es un error inaceptable: se corrige con un detector activo, el diodo dentro del lazo de un operacional."
     escalera:
       - "Para cargar el condensador, el diodo tiene que conducir, y conduciendo cae 0,7 V."
-    solucion: "16,97 − 0,7 = 16,27 V: el pico menos la caída del diodo."
-
-  - id: pregunta-am
-    tipo: pregunta
-    titulo: "El demodulador de AM"
-    texto: "En AM la información es la envolvente de una portadora. ¿Qué R·C debe tener un detector de pico para seguirla?"
-    libro: [275]
-    opciones:
-      - texto: "Mucho mayor que el periodo de la portadora y mucho menor que el de la moduladora"
-        bien: true
-        porque: "Así descarta la portadora y sigue la envolvente. Con un diodo, un condensador y una resistencia."
-      - texto: "Mucho menor que el periodo de la portadora"
-        porque: "Seguiría cada ciclo de la portadora en lugar de su envolvente."
-      - texto: "Mucho mayor que el periodo de la moduladora"
-        porque: "Tardaría demasiado en bajar: no seguiría las bajadas de la envolvente."
-    fijar: { V_ef: 12 }
-    widget:
-      tipo: circuito
-      esquema: media-onda
-      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
-      lectura: { valor: tau_d, rotulo: "Constante R·C" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
-      mandos:
-        - { valor: R_d, lista: [10000, 100000, 1000000], rotulo: "Resistencia en paralelo" }
+    solucion: "16,97 − 0,7 = 16,27 V."
+    comprobar:
+      - { V_pk: 16.27, V_p: 16.97 }
+  - id: prediga-doblador
+    tipo: simular
+    titulo: "Prediga"
+    texto: "Un doblador de Greinacher, fijador más detector, con una entrada de 12 V eficaces y diodos de 0,7 V, sin carga. ¿Qué salida da?"
+    libro: [279, 281]
+    fijar: { V_ef: 12, s_on: 1 }
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.01
+      rotulo: "Salida"
+      errores:
+        - { razon: { min: 0.72, max: 0.76 }, texto: "El condensador se carga al pico, 16,97 V, no a la eficaz." }
+        - { razon: { min: 1.03, max: 1.06 }, texto: "Falta restar las dos caídas de diodo, 1,4 V." }
+    exito: "32,5 V: 2 × 16,97 − 1,4, dos veces el pico menos las caídas de los dos diodos."
     escalera:
-      - "Debe ignorar cada ciclo de la portadora, pero bajar cuando baja la envolvente."
-    solucion: "R·C mucho mayor que el periodo de la portadora y mucho menor que el de la moduladora."
-
-  - id: pregunta-errores
-    tipo: pregunta
-    titulo: "Señales pequeñas"
-    texto: "Un detector de pico pierde la caída del diodo, error inaceptable con señales pequeñas. ¿Cómo se corrige?"
-    libro: [277]
-    opciones:
-      - texto: "Con un detector activo: el diodo dentro del lazo de un operacional"
-        bien: true
-        porque: "El error se divide por la ganancia del lazo."
-      - texto: "Con un condensador mayor"
-        porque: "Un condensador mayor retiene mejor el pico, pero la caída del diodo sigue ahí."
-      - texto: "Con una resistencia en paralelo menor"
-        porque: "Eso acorta R·C: más rizado, y la caída del diodo sigue sin corregir."
-    fijar: { V_ef: 12, R_d: 100000 }
-    widget:
-      tipo: circuito
-      esquema: media-onda
-      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
-      lectura: { valor: V_pk, rotulo: "Tensión guardada" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
-      mandos: []
-    escalera:
-      - "La caída del diodo es el error. ¿Qué la divide por un factor grande?"
-    solucion: "Un detector activo: con el diodo dentro del lazo de un operacional, el error se divide por la ganancia del lazo."
-
+      - "El pico de 12 V eficaces es 16,97 V; el doblador da dos picos menos dos caídas de diodo."
+    solucion: "2 × 16,97 − 1,4 = 32,5 V."
+    comprobar:
+      - { V_out: 32.5, V_p: 16.97 }
+      - { con: { V_D: 0 }, V_out: 33.9 }
+      - { V_e2: 24 }
   - id: explore-doblador
     tipo: explorar
     titulo: "Fijador más detector"
-    texto: "El fijador sube la senoide hasta que su mínimo queda en cero; el detector guarda su máximo. Cambie el sentido de los diodos."
+    texto: "El fijador sube la senoide hasta que su mínimo queda en cero; el detector guarda su máximo. Dé la vuelta a los diodos para que la salida sea positiva."
     libro: [279]
     fijar: { V_ef: 12 }
     widget:
@@ -174,46 +141,25 @@ tarjetas:
           - { expr: "V_out", color: verde, rotulo: "salida", mide: salida }
       mandos:
         - { valor: s_on, tipo: interruptor, rotulo: "Cátodo del primer diodo en el nodo" }
-    requiere: { mover: [s_on] }
-
-  - id: prediga-doblador
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Un doblador de Greinacher con una entrada de 12 V eficaces y diodos de 0,7 V, sin carga. ¿Qué salida da?"
-    libro: [279, 281]
-    fijar: { V_ef: 12, s_on: 1 }
-    widget:
-      tipo: circuito
-      esquema: fijador
-      piezas: { fuente: V_p, f: f_r, c: C_1, vd: V_D, sube: s_on, c2: C_2 }
-      lectura: { valor: V_out, rotulo: "Salida" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: -36, max: 36, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_p*sin(2*pi*f_r*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
-      ocultar: true
-    opciones:
-      - texto: "32,5 V"
-        bien: true
-        porque: "2 × 16,97 − 1,4: dos veces el pico menos las caídas de los dos diodos."
-      - texto: "24 V, el doble de la eficaz"
-        porque: "El condensador se carga al pico, 16,97 V, no a la eficaz."
-      - texto: "33,9 V, el doble del pico"
-        porque: "Falta restar las dos caídas de diodo, 1,4 V."
-    comprobar:
-      - { V_out: 32.5, V_p: 16.97 }
-      - { con: { V_D: 0 }, V_out: 33.9 }
-      - { V_e2: 24 }
+    inicio: { s_on: 0 }
+    objetivo:
+      condiciones:
+        - { valor: V_out, min: 30, rotulo: "Salida: {{V_out}}" }
+      logrado: "{{V_out}}: el fijador sube la senoide hasta que su mínimo queda en cero, y el detector guarda su máximo, casi 2·V_{p}."
+      pistas:
+        - { texto: "Ponga el cátodo del primer diodo en el nodo." }
     escalera:
-      - "El pico de 12 V eficaces es 16,97 V; el doblador da dos picos menos dos caídas de diodo."
-    solucion: "2 × 16,97 − 1,4 = 32,5 V."
+      - "Con los diodos al revés, el doblador da la misma tensión, negativa."
+    solucion: "Cátodo en el nodo: +32,5 V."
+    comprobar:
+      - { V_out: -32.5 }
+      - { con: { s_on: 1 }, V_out: 32.5 }
 
   - id: formula-doblador
     tipo: formula
     titulo: "La salida del doblador"
-    texto: "Cambie la tensión de entrada: la salida es el doble del pico menos dos caídas de diodo."
-    libro: [280]
+    texto: "Cambie la entrada: la salida es el doble del pico menos dos caídas de diodo. Una bomba de carga, como el MAX232, hace lo mismo con interruptores: ±10 V desde 5 V."
+    libro: [280, 288]
     ec: 280
     sustitucion: "2 · {{V_p}} − 2 · {{V_D}} = {{V_out}}"
     fijar: { s_on: 1 }
@@ -234,7 +180,7 @@ tarjetas:
   - id: explore-etapas
     tipo: explorar
     titulo: "Más etapas"
-    texto: "Encadenando dobladores se multiplica la tensión: la cascada de Cockcroft-Walton. Añada etapas y mire la salida en vacío y lo que empeora con carga."
+    texto: "Encadenando dobladores se multiplica la tensión: la cascada de Cockcroft-Walton. Añada etapas, hasta diez, y mire lo que empeora con carga."
     libro: [282, 284, 285, 291]
     fijar: { V_ef: 12 }
     widget:
@@ -252,36 +198,40 @@ tarjetas:
         - { valor: k_r, rotulo: "Rizado: ×{{k_r}}" }
       mandos:
         - { valor: n_et, min: 1, max: 10, paso: 1, rotulo: "Etapas, n" }
-    requiere: { mover: [n_et] }
+    inicio: { n_et: 1 }
+    objetivo:
+      condiciones:
+        - { valor: V_n, min: 300, rotulo: "En vacío: {{V_n}}" }
+      logrado: "{{n_et}} etapas: {{V_n}} en vacío, pero la caída con carga se multiplica por {{k_c}} y el rizado por {{k_r}}. Cada etapa resta dos caídas de diodo."
+      pistas:
+        - { texto: "Más etapas." }
+    escalera:
+      - "Cada etapa suma un doblador: 32,5 V."
+    solucion: "Diez etapas: 325 V."
+    comprobar:
+      - { V_n: 32.5 }
+      - { con: { n_et: 10 }, V_n: 325, k_c: 1000, k_r: 100 }
 
   - id: prediga-diez
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "La caída de un multiplicador con carga crece con N³. Una cascada de diez etapas frente a un doblador, con la misma carga: ¿cuánto más cae?"
+    texto: "La caída de un multiplicador con carga crece con N³. Una cascada de diez etapas frente a un doblador, con la misma carga: ¿cuántas veces más cae?"
     libro: [284]
     fijar: { n_et: 10, V_ef: 12 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 1, max: 10, unidad: "", rotulo: "etapas" }
-      y: { min: 0, max: 1000, unidad: "", rotulo: "caída relativa" }
-      curvas:
-        - { expr: "x^3", color: naranja, rotulo: "caída ∝ N³" }
-      lectura: { valor: k_c, rotulo: "Veces la de un doblador" }
-      ocultar: true
-    opciones:
-      - texto: "Mil veces más"
-        bien: true
-        porque: "10³. Por eso un doblador entrega decenas de miliamperios y una cascada de diez etapas, microamperios."
-      - texto: "Diez veces más"
-        porque: "Crecería así si fuera proporcional a N. Va con el cubo."
-      - texto: "Cien veces más"
-        porque: "Eso es lo que crece el rizado, con N². La caída va con N³."
-    comprobar:
-      - { k_c: 1000, k_r: 100 }
+    simular:
+      objetivo: k_c
+      unidad: ""
+      tol: 0.02
+      rotulo: "Veces la caída de un doblador"
+      errores:
+        - { razon: { min: 0.009, max: 0.011 }, texto: "Crecería así si fuera proporcional a N. Va con el cubo." }
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Eso es lo que crece el rizado, con N². La caída va con N³." }
+    exito: "Mil veces: 10³. Por eso un doblador entrega decenas de miliamperios y una cascada de diez etapas, microamperios."
     escalera:
       - "La caída va con N³: con diez etapas, 10³."
-    solucion: "Mil veces más: por eso una cascada solo entrega microamperios."
-
+    solucion: "10³ = 1000."
+    comprobar:
+      - { k_c: 1000, k_r: 100 }
   - id: porque-no-universal
     tipo: porque
     titulo: "¿Por qué no en todas partes?"
@@ -312,81 +262,12 @@ tarjetas:
       - "Mire la caída con carga al añadir etapas: ¿qué le pasa a la salida en cuanto se le pide corriente?"
     solucion: "Su impedancia de salida crece muy deprisa con las etapas: la tensión se hunde con cualquier carga."
 
-  - id: pregunta-donde
-    tipo: pregunta
-    titulo: "Dónde sí"
-    texto: "¿En cuál de estos casos tiene sentido un multiplicador de tensión?"
-    libro: [286]
-    opciones:
-      - texto: "Un ionizador: alta tensión, muy poca corriente, de una alterna que ya existe"
-        bien: true
-        porque: "Es su terreno: también la polarización de un tubo o un fotomultiplicador."
-      - texto: "Alimentar un circuito de 12 V y 2 A"
-        porque: "Con carga su tensión se hunde. Ahí la respuesta es un convertidor conmutado."
-      - texto: "Sustituir un regulador de tensión"
-        porque: "No regula: su salida cae con la carga."
-    widget:
-      tipo: figura
-      figura: fig-5.19
-      zonas:
-        - { id: multiplicadores, rotulo: "Salida e impedancia frente a las etapas", rect: [0, 0, 441, 200] }
-    escalera:
-      - "Da mucha tensión, pero se hunde con la carga. ¿Qué caso pide poca corriente?"
-    solucion: "El ionizador: alta tensión, muy poca corriente, de una alterna que ya existe."
-
-  - id: pregunta-bomba
-    tipo: pregunta
-    titulo: "La bomba de carga"
-    texto: "El MAX232 genera ±10 V desde 5 V sin bobina ni transformador. ¿Cómo?"
-    libro: [288, 280]
-    opciones:
-      - texto: "Carga un condensador en paralelo con la alimentación y lo conecta en serie con ella"
-        bien: true
-        porque: "El mismo principio con interruptores y un reloj; y el mismo límite: su impedancia de salida."
-      - texto: "Con un transformador integrado"
-        porque: "No lleva bobina ni transformador: solo condensadores e interruptores."
-      - texto: "Con un Zener de 10 V"
-        porque: "Un Zener no puede dar más tensión que la que recibe. La bomba suma la de un condensador cargado."
-    ec: 280
-    escalera:
-      - "El doblador suma a la entrada la tensión de un condensador cargado. ¿Se puede hacer con interruptores?"
-    solucion: "Carga un condensador en paralelo con la alimentación y lo conecta en serie con ella, al ritmo de un reloj."
-
-  - id: pregunta-seguridad
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Acaba de apagar una cascada multiplicadora de alta tensión. ¿Qué hace antes de tocarla?"
-    libro: [290]
-    opciones:
-      - texto: "Descargar los condensadores con una resistencia"
-        bien: true
-        porque: "Retienen la tensión mucho tiempo tras apagar."
-      - texto: "Nada: sin entrada no hay tensión"
-        porque: "Los condensadores guardan la carga: siguen a alta tensión mucho tiempo."
-      - texto: "Cortocircuitarlos con un destornillador"
-        porque: "La descarga brusca es peligrosa. Se descargan con una resistencia."
-    fijar: { V_ef: 12, R_d: 1000000 }
-    widget:
-      tipo: circuito
-      esquema: media-onda
-      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
-      lectura: { valor: tau_d, rotulo: "Constante R·C" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
-      mandos: []
-    escalera:
-      - "Mire cuánto tarda en descargarse el condensador del detector. ¿Y los de una cascada de alta tensión?"
-    solucion: "Retienen la carga mucho tiempo: se descargan con una resistencia antes de tocar."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [273, 277, 280, 284, 286]
+    libro: [273, 275, 277, 280, 284, 286, 290]
     ideas:
       - { titulo: "Detector de pico.", texto: "Diodo y condensador guardan el pico menos 0,7 V; R·C decide entre rizado y rapidez." }
       - { titulo: "Doblador.", texto: "Fijador más detector: 2·V_{p} − 2·V_{f}, 32,5 V con 12 V eficaces." }
       - { titulo: "Cascadas.", texto: "La tensión crece con N; la caída con carga, con N³, y el rizado, con N²." }
-      - { titulo: "Su terreno.", texto: "Mucha tensión y muy poca corriente; para lo demás, un convertidor conmutado." }
+      - { titulo: "Su terreno.", texto: "Mucha tensión y muy poca corriente, de una alterna que ya existe; para lo demás, un convertidor conmutado. Antes de tocarlo, descargar sus condensadores con resistencia." }

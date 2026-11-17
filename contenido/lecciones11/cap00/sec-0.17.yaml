@@ -2,6 +2,9 @@
 # invariante, la convolución es superposición de impulsos, con un escalón da la carga del RC (como la ecuación
 # diferencial), el error numérico que baja con el paso y el producto en frecuencia.
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir la salida del escalón en t = τ, acortar τ, marcar
+# la mitad del camino y calcular el error con un paso diez veces menor; se elige el producto en frecuencia. La
+# deducción y por qué basta h(t) quedan en el resumen. Lección conceptual: 4 de 6 haciendo.
 leccion: cap00/sec-0.17
 
 libro:
@@ -21,10 +24,30 @@ modelo:
     err_num: { expr: "0.001*1000/N_div", sim: "error", nombre: "error máximo de la convolución numérica", unidad: "" }
 
 tarjetas:
+  - id: prediga-escalon
+    tipo: simular
+    titulo: "Prediga"
+    texto: "La h de un RC de τ = 1 ms es (1/τ)·e^{−t/τ}. Convolucionada con un escalón unidad, ¿cuánto vale la salida en t = τ?"
+    libro: [257]
+    fijar: { tau: 0.001, t_m: 0.001 }
+    simular:
+      objetivo: y_t
+      unidad: ""
+      tol: 0.02
+      rotulo: "y(τ)"
+      errores:
+        - { razon: { min: 0.56, max: 0.6 }, texto: "Eso es lo que queda de τ·h(t). La salida del escalón es lo que le falta hasta 1." }
+        - { razon: { min: 1.55, max: 1.61 }, texto: "Un RC no copia el escalón: lo convierte en la curva de carga, que sube hacia 1." }
+    exito: "0,632: la salida es 1 − e^{−t/τ}, lo mismo que da la ecuación diferencial, como debe ser."
+    escalera:
+      - "Un escalón es la acumulación de impulsos: la salida acumula la respuesta al impulso."
+    solucion: "1 − e^{−1} = 0,632: la misma curva de carga que da la ecuación diferencial."
+    comprobar:
+      - { y_t: 0.632 }
   - id: explore-impulso
     tipo: explorar
     titulo: "La respuesta al impulso"
-    texto: "Un RC queda descrito por su respuesta al impulso, h(t). Cambie τ y arrastre el instante: la convolución con un escalón da la curva azul."
+    texto: "Un RC queda descrito por su respuesta al impulso, h(t), y su convolución con un escalón da la curva azul. Ponga la τ más corta y mire las dos."
     libro: [254, 257]
     widget:
       tipo: grafica
@@ -39,30 +62,19 @@ tarjetas:
       mandos:
         - { valor: tau, lista: [0.0005, 0.001, 0.002], rotulo: "Constante de tiempo, τ" }
         - { valor: t_m, min: 0, max: 0.005, paso: 0.00025, rotulo: "Instante, t" }
-    requiere: { mover: [tau, t_m] }
-
-  - id: prediga-escalon
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "La h de un RC de τ = 1 ms es (1/τ)·e^{−t/τ}. Convolucionada con un escalón unidad, ¿qué da?"
-    libro: [257]
-    opciones:
-      - texto: "1 − e^{−t/τ}, lo mismo que la ecuación diferencial"
-        bien: true
-        porque: "Convolución y ecuación diferencial dan lo mismo, como debe ser."
-      - texto: "La misma h(t)"
-        porque: "h(t) es la salida para un impulso. Un escalón es otra entrada: acumula impulsos."
-      - texto: "Un escalón retrasado 1 ms"
-        porque: "Un RC no retrasa el escalón: lo convierte en la curva de carga, que sube hacia 1."
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: t }
-      y: { min: 0, max: 1.2, unidad: "", rotulo: "" }
-      curvas:
-        - { expr: "exp(-x/tau)", color: naranja, rotulo: "τ·h(t), respuesta al impulso" }
+    inicio: { tau: 0.001, t_m: 0.001 }
+    objetivo:
+      condiciones:
+        - { valor: tau, max: 0.0005, rotulo: "τ = {{tau}}" }
+      logrado: "Con τ = {{tau}}, h cae antes y la salida sube antes: la salida acumula la respuesta al impulso."
+      pistas:
+        - { texto: "Elija una constante de tiempo menor." }
     escalera:
-      - "Un escalón es la acumulación de impulsos: la salida acumula la respuesta al impulso."
-    solucion: "1 − e^{−t/τ}: la misma curva de carga que da la ecuación diferencial."
+      - "La más corta de la lista."
+    solucion: "τ = 0,5 ms."
+    comprobar:
+      - { y_t: 0.632 }
+      - { con: { tau: 0.0005 }, y_t: 0.865 }
 
   - id: regla-convolucion
     tipo: formula
@@ -82,50 +94,57 @@ tarjetas:
       mandos:
         - { valor: t_m, min: 0, max: 0.005, paso: 0.00025, rotulo: "Instante, t" }
 
-  - id: ordene-deduccion
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "De dónde sale"
-    texto: "Ordene los pasos que llevan a la integral de convolución."
-    libro: [254, 256]
-    ordenar:
-      - "Ver la entrada como una sucesión de impulsos"
-      - "Por linealidad, cada impulso de área x(τ) da x(τ)·h(t − τ)"
-      - "Por superposición, sumar todos: la integral"
-    exito: "Eso es: la convolución no cae del cielo, es superposición aplicada a un continuo de impulsos."
+  - id: marca-mitad
+    tipo: marcar
+    titulo: "La mitad del camino"
+    texto: "Con τ = 1 ms, marque el instante en que la salida del escalón llega a la mitad."
+    libro: [257]
+    fijar: { tau: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "" }
+      curvas:
+        - { expr: "1 - exp(-x/tau)", color: azul, rotulo: "salida para un escalón" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "tau*ln(2)"
+      tol: 0.05
+      inicio: { x: 0.003, y: 0 }
+      rotulo: "Mitad del camino"
     pistas:
-      - { texto: "Primero se trocea la entrada; lo último es sumar." }
+      - { cuando: { valor: marca_x, menor: 0.00066 }, texto: "Ahí aún no ha llegado a la mitad: más a la derecha." }
+      - { cuando: { valor: marca_x, mayor: 0.00073 }, texto: "Ahí ya ha pasado de la mitad: más a la izquierda." }
+      - { texto: "Antes de una constante de tiempo, que ya lleva casi dos tercios." }
+    exito: "Antes de τ: la curva de carga hace la mitad del camino enseguida y después se frena."
     escalera:
-      - "Es superposición: cada trozo de la entrada da su propia respuesta."
-    solucion: "Ver la entrada como una sucesión de impulsos → Por linealidad, cada impulso de área x(τ) da x(τ)·h(t − τ) → Por superposición, sumar todos: la integral."
-
+      - "En t = τ la salida ya vale 0,632."
+    solucion: "Un poco antes de una constante de tiempo."
+    comprobar:
+      - { con: { t_m: 0.001 }, y_t: 0.632 }
   - id: estime-paso
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El paso de la integración"
-    texto: "Convolucionando numéricamente con un paso de τ/1000, el error máximo es 0,001. Estime el error con un paso de τ/10 000."
+    texto: "Convolucionando numéricamente con un paso de τ/1000, el error máximo es 0,001. ¿Qué error da un paso de τ/10 000?"
     libro: [257]
     fijar: { N_div: 10000 }
-    estimar:
-      objetivo: "err_num"
+    simular:
+      objetivo: err_num
       unidad: ""
-      min: 0
-      max: 0.002
-      paso: 0.00005
-      inicio: 0.001
       tol: 0.05
-      cifras: 2
       rotulo: "Error máximo"
+      errores:
+        - { razon: { min: 9.5, max: 10.5 }, texto: "Ese es el error del paso de τ/1000. El paso es diez veces menor, y el error también." }
+        - { razon: { min: 0.095, max: 0.105 }, texto: "El error baja en proporción al paso: diez veces, no más." }
     exito: "0,0001: al dividir el paso por diez, el error también se divide por diez."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.000105 }, texto: "Se ha pasado: el paso es diez veces menor, y el error también." }
-      - { texto: "Se ha quedado corto: el error baja en proporción al paso, diez veces, no más." }
-    comprobar:
-      - { err_num: 0.0001 }
     escalera:
       - "El error baja en proporción al paso."
     solucion: "0,0001: al dividir el paso por diez, el error también se divide por diez."
-
+    comprobar:
+      - { err_num: 0.0001 }
   - id: producto
     tipo: pregunta
     titulo: "En frecuencia"
@@ -148,34 +167,12 @@ tarjetas:
       - "Filtrar en el tiempo es convolucionar. En frecuencia, ¿qué operación lo sustituye?"
     solucion: "Un producto: Y(f) = X(f)·H(f). Por eso filtrar es multiplicar en frecuencia."
 
-  - id: por-que-h
-    tipo: porque
-    titulo: "¿Por qué basta h(t)?"
-    texto: "Conociendo solo la respuesta al impulso de un sistema lineal e invariante, se conoce su salida para cualquier entrada. ¿Por qué?"
-    libro: [254, 256]
-    opciones:
-      - texto: "Cualquier entrada es una suma de impulsos, y el sistema suma sus respuestas"
-        bien: true
-        porque: "Linealidad e invariancia: cada impulso da una h desplazada y escalada, y la salida es su suma."
-      - texto: "Porque todas las entradas reales son impulsos"
-        porque: "No lo son, pero cualquiera puede verse como una sucesión de impulsos."
-      - texto: "Porque h(t) es la salida en continua"
-        porque: "La salida en continua es la del escalón ya asentado. h(t) es la respuesta a un impulso."
-    widget:
-      tipo: figura
-      figura: fig-30.5
-      zonas:
-        - { id: copias, rotulo: "Copias de la respuesta al impulso", rect: [0, 0, 437, 276] }
-    escalera:
-      - "Vea la entrada como una sucesión de impulsos uno tras otro."
-    solucion: "Cualquier entrada es una suma de impulsos, y el sistema suma sus respuestas: copias de h desplazadas y escaladas."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [254, 255, 257, 258]
+    libro: [254, 255, 256, 257, 258]
     ideas:
-      - { titulo: "h(t).", texto: "La respuesta al impulso describe por completo un sistema lineal e invariante." }
-      - { titulo: "Convolución.", texto: "Superposición de impulsos: y(t) = ∫x(τ)·h(t − τ)·dτ." }
+      - { titulo: "h(t).", texto: "La respuesta al impulso describe por completo un sistema lineal e invariante: cualquier entrada es una suma de impulsos." }
+      - { titulo: "Convolución.", texto: "Superposición de impulsos: cada uno, de área x(τ), da x(τ)·h(t − τ), y se suman todos." }
       - { titulo: "Coincide.", texto: "La h del RC con un escalón da 1 − e^{−t/τ}, como la ecuación diferencial." }
       - { titulo: "En frecuencia.", texto: "Un producto: filtrar es multiplicar." }

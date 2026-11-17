@@ -2,6 +2,7 @@
   // Schematic «transimpedancia» (esquema.ts): the current source (arrow up into the − input's node) and C_in on the
   // left, the amplifier with its + input to ground, R_f and, above it, C_f from the output back to the − input.
   import type { PropsDibujo } from '../dibujos';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
@@ -38,7 +39,7 @@
   {/if}
   <path class="hilo" d="M320 75 H340 V170" data-red="out"></path>
   <circle class="nodo" cx="340" cy="75" r="4.5" data-red="out"></circle>
-  <AO x={230} y={170} />
+  <g data-pieza="ao"><AO x={230} y={170} /></g>
   <path class="hilo" d="M230 190 H215 V290" data-red="0"></path>
   <path class="hilo" d="M290 170 H420" data-red="out"></path>
   <circle class="nodo" cx="340" cy="170" r="4.5" data-red="out"></circle>
@@ -47,4 +48,6 @@
   <Et x={420} y={154} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
   <path class="hilo" d="M60 290 H420" data-red="0"></path>
   <circle class="borne" cx="420" cy="290" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Rama x={95} y={150} medidor="vmi" />
 </Lienzo>

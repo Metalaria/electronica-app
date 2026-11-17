@@ -4,6 +4,8 @@
 # cuatro cosas», no un circuito del libro); la caída por debajo del brown-out con `regulador-lineal`: un LDO de 3,3 V
 # (sin divisor, V_out = V_ref) con 0,5 V de caída mínima y 220 Ω de carga (unos 15 mA, dentro de los 10–20 mA del
 # libro). La caída mínima y la carga son de ejemplo. Paso práctico: la predicción del reinicio con la entrada hundida.
+# 1.2.1 (aprender haciendo): exploraciones con objetivo, el orden de los requisitos y listados que se tocan.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap53/sec-53.25
 
 libro:
@@ -50,26 +52,36 @@ tarjetas:
     requiere: { mover: [consumo, arranca, reinicia, cuelga] }
 
   - id: empareje-sintomas
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "Qué significa cada síntoma"
-    texto: "Una cada síntoma con el primer lugar donde mirar."
+    texto: "El aparato se reinicia solo. Toque el primer lugar donde mirar."
     libro: [805]
-    emparejar:
-      - ["No arranca nunca", "Alimentación del núcleo, reset, reloj"]
-      - ["Se reinicia solo", "Caídas de alimentación, watchdog, brown-out"]
-      - ["Se cuelga", "Firmware, periférico bloqueado, bus colgado"]
-    exito: "No arranca: el núcleo no ejecuta. Se reinicia: ejecuta y vuelve. Se cuelga: ejecuta y deja de responder."
-    pistas:
-      - { texto: "Volver al principio es un reset: alguien lo provoca." }
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: texto
+        texto: |-
+          Alimentación del núcleo, reset, reloj
+          Caídas de alimentación, watchdog, brown-out
+          Firmware, periférico bloqueado, bus colgado
+      zonas:
+        - { id: arranca, lineas: [1], rotulo: "Primera línea" }
+        - { id: reinicia, lineas: [2], rotulo: "Segunda línea" }
+        - { id: cuelga, lineas: [3], rotulo: "Tercera línea" }
+    tocar:
+      bien: [reinicia]
+      porque:
+        arranca: "Es lo primero cuando no arranca nunca."
+        cuelga: "Es lo primero cuando se cuelga."
+    exito: "Un reinicio espontáneo es casi siempre una caída momentánea de la alimentación."
     escalera:
-      - "Sin reloj o sin reset liberado, el núcleo no llega a ejecutar."
-    solucion: "No arranca: alimentación, reset, reloj. Reinicio: caídas o watchdog. Cuelgue: firmware o bus."
+      - "¿Qué hace reiniciar a un micro que sí arrancó?"
+    solucion: "Caídas de alimentación, watchdog, brown-out."
 
   - id: explore-requisitos
     tipo: explorar
     titulo: "Cuatro cosas para la primera instrucción"
-    texto: "El núcleo ejecuta solo con las cuatro a la vez. Quite cualquiera y mire el LED."
+    texto: "El núcleo ejecuta solo con las cuatro a la vez. Pare el núcleo."
     libro: [807]
     widget:
       tipo: logica
@@ -82,71 +94,20 @@ tarjetas:
         - { id: nucleo, tipo: and, entradas: [VDD, RST, OSC, BOOT], rotulo: "Núcleo" }
       salidas:
         - { id: EJ, de: nucleo }
-    requiere: { mover: [VDD, RST, OSC, BOOT] }
-
-  - id: ordene-requisitos
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "En qué orden se comprueban"
-    texto: "Cada requisito condiciona al siguiente. Ordénelos."
-    libro: [807]
-    ordenar:
-      - "Tensión en los pines de alimentación"
-      - "Reset liberado"
-      - "Reloj activo"
-      - "Pines de arranque en su nivel"
-    exito: "Sin alimentación no hay reset que valga; sin reset liberado, el reloj no sirve de nada."
-    pistas:
-      - { texto: "Lo primero es que haya tensión en los pines." }
+    objetivo:
+      condiciones:
+        - { led: EJ, valor: 0, rotulo: "Núcleo parado" }
+      logrado: "Basta que falte una de las cuatro para que no se ejecute la primera instrucción."
+      pistas:
+        - { texto: "Quite cualquiera de las cuatro." }
     escalera:
-      - "El reset y el reloj necesitan alimentación para funcionar."
-    solucion: "Alimentación, reset, reloj y pines de arranque."
-
-  - id: empareje-consumo
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El consumo como firma"
-    texto: "Una cada consumo con el estado probable del micro."
-    libro: [809, 810]
-    emparejar:
-      - ["Casi cero", "Sin alimentación o núcleo sin tensión"]
-      - ["Muy bajo y estable", "En reset permanente o en reposo profundo"]
-      - ["Normal", "Ejecuta: fallo de firmware o periférico"]
-      - ["Alto y caliente", "Corto interno o pin en conflicto"]
-    exito: "Por eso se empieza midiendo el consumo: clasifica el fallo más rápido que nada."
-    pistas:
-      - { texto: "En reset el núcleo está parado: consume muy poco, pero algo." }
-    escalera:
-      - "Consumo normal quiere decir que el núcleo está ejecutando."
-    solucion: "Cero: sin tensión; muy bajo: reset; normal: firmware o periférico; alto: corto o conflicto."
-
-  - id: medio-miliamperio
-    tipo: pregunta
-    titulo: "Medio miliamperio"
-    texto: "Un aparato que no arranca consume medio miliamperio donde se esperan diez. ¿Qué se mide primero?"
-    libro: [808]
-    widget:
-      tipo: figura
-      figura: fig-53.36
-      zonas:
-        - { id: arranca, rotulo: "Abajo a la izquierda", rect: [4, 102, 146, 96] }
-        - { id: consumo, rotulo: "Arriba en el centro", rect: [80, 2, 226, 52] }
-    opciones:
-      - texto: "La línea de reset, con el Brymen"
-        bien: true
-        porque: "En reset permanente el consumo es anormalmente bajo: un condensador con fugas, un supervisor que no libera o un pulsador atascado."
-      - texto: "El firmware, reprogramándolo"
-        porque: "Con consumo normal sí; con medio miliamperio el núcleo ni siquiera ejecuta."
-      - texto: "Un pin en conflicto, con el termopar"
-        porque: "Un conflicto daría consumo alto y calor, no bajo."
-    escalera:
-      - "¿En qué estado consume tan poco un micro alimentado?"
-    solucion: "La línea de reset: en reset permanente el consumo es muy bajo."
+      - "El núcleo es una Y de las cuatro."
+    solucion: "Cualquiera de las cuatro, quitada."
 
   - id: explore-brownout
     tipo: explorar
     titulo: "Una caída por debajo del umbral"
-    texto: "El micro se reinicia si su alimentación baja de {{V_bo}}. Baje la entrada del regulador y mire el margen."
+    texto: "El micro se reinicia si su alimentación baja de {{V_bo}}. Baje la entrada hasta que el margen se acabe."
     libro: [812]
     widget:
       tipo: circuito
@@ -159,11 +120,20 @@ tarjetas:
       mide: { vout: V_s, iin: I_mc, icarga: I_mc, p_paso: P_ldo }
       mandos:
         - { valor: V_e, min: 2.5, max: 5.5, paso: 0.1, rotulo: "Entrada del regulador" }
+    objetivo:
+      condiciones:
+        - { valor: m_bo, max: 0, rotulo: "Margen: {{m_bo}}" }
+      logrado: "Bajo el umbral, el brown-out reinicia el micro: la caída de la entrada llega a su alimentación."
+      pistas:
+        - { texto: "Baje la entrada del regulador." }
+    escalera:
+      - "Por debajo de su caída mínima, el regulador ya no mantiene la salida."
+    solucion: "Una entrada menor que el umbral más la caída mínima."
 
   - id: prediga-reinicio
-    tipo: predecir
+    tipo: simular
     titulo: "Una caída de la entrada"
-    texto: "La entrada de este regulador de 3,3 V, con 0,5 V de caída mínima, baja un instante a 3,0 V. ¿Se reinicia el micro?"
+    texto: "La entrada de este regulador de 3,3 V, con 0,5 V de caída mínima, baja un instante a 3,0 V. ¿Cuánto le llega al micro?"
     libro: [812]
     fijar: { V_e: 3.0, V_ref: 3.3, V_do: 0.5, R_mc: 220, V_bo: 2.7 }
     widget:
@@ -174,14 +144,16 @@ tarjetas:
       mide: { vout: V_s, icarga: I_mc }
       ocultar: true
       mandos: []
-    opciones:
-      - texto: "Sí: su alimentación baja a 2,5 V"
-        bien: true
-        porque: "El regulador ya no tiene margen: entrada menos caída mínima, por debajo de 2,7 V."
-      - texto: "No: el regulador mantiene 3,3 V"
-        porque: "Solo mientras la entrada supere la salida en la caída mínima; con 3,0 V no llega."
-      - texto: "No: 3,0 V está por encima de 2,7 V"
-        porque: "Esos 3,0 V son la entrada; el micro ve la salida, medio voltio menos."
+    simular:
+      objetivo: V_s
+      unidad: V
+      tol: 0.02
+      rotulo: "Alimentación del micro"
+      medida: vout
+      errores:
+        - { expr: "V_ref", texto: "Solo mientras la entrada supere la salida en la caída mínima." }
+        - { expr: "V_e", texto: "Esa es la entrada; el micro ve la salida, medio voltio menos." }
+    exito: "2,5 V, por debajo de 2,7 V: el brown-out reinicia el micro."
     escalera:
       - "Sin margen, la salida es la entrada menos la caída mínima."
     solucion: "3,0 − 0,5 = 2,5 V, por debajo de 2,7 V: se reinicia."
@@ -211,74 +183,10 @@ tarjetas:
       - "¿Cuánto dura la caída que basta para reiniciar el micro?"
     solucion: "Bastan decenas de microsegundos: ningún multímetro en modo normal la ve."
 
-  - id: empareje-captura
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cazar la caída"
-    texto: "Una cada método con lo que puede ver."
-    libro: [813]
-    emparejar:
-      - ["Brymen con REC", "El mínimo, si dura más que su muestreo de 350 ms"]
-      - ["Brymen con CREST", "Caídas de 0,7 ms o más"]
-      - ["FNIRSI en disparo único", "La caída con su forma y su duración"]
-      - ["Reinicio siempre tras el mismo intervalo", "El watchdog"]
-    exito: "El disparo único, en flanco descendente y justo por debajo de la nominal, es el método definitivo."
-    pistas:
-      - { texto: "Una caída de microsegundos se escapa de los dos modos del Brymen." }
-    escalera:
-      - "Cuanto más corta la caída, más rápido tiene que mirar el instrumento."
-    solucion: "REC: 350 ms; CREST: 0,7 ms; disparo único: forma y duración; intervalo fijo: watchdog."
-
-  - id: forma-caida
-    tipo: pregunta
-    titulo: "La forma dice la causa"
-    texto: "El disparo único captura la caída como un pico estrecho. ¿Qué la provoca?"
-    libro: [813]
-    widget:
-      tipo: figura
-      figura: fig-53.36
-      zonas:
-        - { id: reinicia, rotulo: "Abajo en el centro", rect: [154, 102, 145, 96] }
-        - { id: alto, rotulo: "Arriba a la derecha", rect: [336, 2, 112, 52] }
-    opciones:
-      - texto: "Un motor o un relé que conmuta"
-        bien: true
-        porque: "Un pico estrecho es una conmutación; una rampa lenta sería la fuente que no da la corriente."
-      - texto: "Una fuente que no da la corriente"
-        porque: "Esa caída es una rampa lenta, no un pico estrecho."
-      - texto: "El watchdog"
-        porque: "El watchdog reinicia sin que caiga la alimentación, siempre tras el mismo intervalo."
-    escalera:
-      - "Rápido y breve: algo que conmuta."
-    solucion: "Un motor o un relé que conmuta."
-
-  - id: bus-colgado
-    tipo: pregunta
-    titulo: "Se cuelga y el reset lo revive"
-    texto: "El reset lo revive, y el FNIRSI muestra SDA plantada en bajo, sin actividad. ¿Qué pasa?"
-    libro: [815]
-    widget:
-      tipo: figura
-      figura: fig-53.36
-      zonas:
-        - { id: cuelga, rotulo: "Abajo a la derecha", rect: [304, 102, 144, 96] }
-        - { id: reinicia, rotulo: "Abajo en el centro", rect: [154, 102, 145, 96] }
-    opciones:
-      - texto: "Un dispositivo I²C se ha quedado con SDA en bajo"
-        bien: true
-        porque: "Bloquea el bus entero y el micro espera para siempre; el hardware básico está bien."
-      - texto: "El micro está averiado"
-        porque: "Si el reset lo revive, el hardware básico funciona: es el bus o el firmware."
-      - texto: "Falta el reloj"
-        porque: "Sin reloj no arrancaría, ni siquiera tras el reset."
-    escalera:
-      - "Una línea plantada en bajo sin actividad: ¿quién la sujeta?"
-    solucion: "Un dispositivo I²C con SDA en bajo bloquea el bus."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [804, 807, 812, 817]
+    libro: [804, 807, 812, 817, 808, 809, 810, 813, 815]
     ideas:
       - { titulo: "Primero, el consumo.", texto: "Cero, muy bajo, normal o alto: clasifica el fallo." }
       - { titulo: "No arranca.", texto: "Alimentación, reset, reloj y BOOT, en ese orden." }

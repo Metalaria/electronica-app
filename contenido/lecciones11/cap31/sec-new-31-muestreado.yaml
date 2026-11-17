@@ -10,6 +10,11 @@
 #   1,6075 y 1,5911, con el K_p sin redondear): los coeficientes salen del modelo.
 # Pasos prácticos: «simular» el periodo con que el horno se vuelve inestable (61,3 s; errores típicos: 60 s, que aún
 # es estable, y 26,8 s, el polo en cero) y después «ajuste» de T hasta el borde (el polo en −1): prediga y deslice.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): T se alarga hasta que los polos bajan de 0,7 de módulo; la
+# K_crít del servo con 10 ms se predice y luego se lleva c₀ hasta 1 con K; la regla del medio periodo y la emulación
+# con Tustin se recorren con las filas de las tablas del libro (bloques 625 y 631; el mando elige la fila) hasta el
+# 10 % de error y hasta pasar del 25 % de sobreimpulso; b₀ de Tustin y la frecuencia de la oscilación crítica en hercios
+# se predicen. Quedan dos preguntas de opciones: el cero de muestreo y diseñar en z.
 leccion: cap31/sec-new-31-muestreado
 
 libro:
@@ -30,6 +35,7 @@ libro:
   643: "el modelo dice que el servo oscila con K = 20,3 a 7,1 Hz"
   "cap31#686": "ganancia 0,8 °C/W y constante de tiempo 120 s"
   "cap31#723": "T = 60 s: p = 0,6065, Kcrít = 5,10 y el polo en −0,967"
+  630: "En continuo el lazo cruza a 15,7 rad/s con 51,8° de margen"
 
 modelo:
   valores:
@@ -40,6 +46,9 @@ modelo:
     Kp_m: { sim: "K_{p}", nombre: "ganancia del PI del motor", unidad: "V·s/rad", valor: 1.6 }
     Ti_m: { sim: "T_{i}", nombre: "tiempo integral del PI del motor", unidad: s, valor: 0.0976 }
     Tm_m: { sim: "T", nombre: "periodo del PI del motor", unidad: s, valor: 0.001 }
+    f_t: { sim: "fila", nombre: "fila de la tabla de K_crít", unidad: "", valor: 0 }
+    f_e: { sim: "fila", nombre: "fila de la tabla de la emulación", unidad: "", valor: 0 }
+    w_c: { sim: "ω", nombre: "oscilación en el límite con 10 ms", unidad: "rad/s", valor: 44.4 }
   calculos:
     p_o: { expr: "exp(-T_o/120)", sim: "p", nombre: "polo de la planta en z", unidad: "" }
     z_o: { expr: "5*exp(-T_o/120) - 4", sim: "z_{c}", nombre: "polo del lazo cerrado", unidad: "", cifras: 3 }
@@ -55,13 +64,21 @@ modelo:
     Kc_s: { expr: "(1 - p_s)/(1 - p_s - 10*T_s*p_s)", sim: "K_{crít}", nombre: "ganancia crítica del servo", unidad: "" }
     g_0: { expr: "Kp_m*(1 + Tm_m/(2*Ti_m))", sim: "b₀", nombre: "coeficiente de e[k]", unidad: "", cifras: 5 }
     g_1: { expr: "Kp_m*(1 - Tm_m/(2*Ti_m))", sim: "b₁", nombre: "coeficiente de e[k − 1]", unidad: "", cifras: 5 }
+    K_ex: { expr: "200.3*max(0, 1 - abs(f_t)) + 20.34*max(0, 1 - abs(f_t - 1)) + 10.34*max(0, 1 - abs(f_t - 2)) + 4.36*max(0, 1 - abs(f_t - 3)) + 2.39*max(0, 1 - abs(f_t - 4))", sim: "K_{crít}", nombre: "ganancia crítica exacta", unidad: "" }
+    K_ap: { expr: "200.2*max(0, 1 - abs(f_t)) + 20.16*max(0, 1 - abs(f_t - 1)) + 10.16*max(0, 1 - abs(f_t - 2)) + 4.16*max(0, 1 - abs(f_t - 3)) + 2.15*max(0, 1 - abs(f_t - 4))", sim: "K_{crít}", nombre: "ganancia crítica con un retardo de T/2", unidad: "" }
+    e_r: { expr: "100*(K_ex - K_ap)/K_ex", sim: "error", nombre: "error de la regla del medio periodo", unidad: "%", cifras: 2 }
+    M_t: { expr: "17.1*max(0, 1 - abs(f_e)) + 18.4*max(0, 1 - abs(f_e - 1)) + 20.7*max(0, 1 - abs(f_e - 2)) + 26.0*max(0, 1 - abs(f_e - 3)) + 39.1*max(0, 1 - abs(f_e - 4))", sim: "M_{p}", nombre: "sobreimpulso con Tustin", unidad: "%" }
+    r_b: { expr: "124*max(0, 1 - abs(f_e)) + 49*max(0, 1 - abs(f_e - 1)) + 25*max(0, 1 - abs(f_e - 2)) + 12*max(0, 1 - abs(f_e - 3)) + 6*max(0, 1 - abs(f_e - 4))", sim: "f_{s}/BW", nombre: "muestreo frente al ancho de banda", unidad: "" }
+    f_hz: { expr: "w_c/(2*pi)", sim: "f", nombre: "frecuencia de la oscilación", unidad: Hz }
+    w_x: { expr: "w_c*2*pi", sim: "f", nombre: "multiplicando por 2π", unidad: Hz }
 
 tarjetas:
   - id: explore-plano-z
     tipo: explorar
     titulo: "Del plano s al plano z"
-    texto: "Los polos −10 ± j17,3 vistos desde el programa: z = e^{sT}. Cambie el periodo y mire dónde caen dentro del círculo unidad."
+    texto: "Los polos −10 ± j17,3 vistos desde el programa: z = e^{sT}. Alargue el periodo hasta que su módulo baje de 0,7."
     libro: [614, 620]
+    inicio: { T_z: 0.01 }
     widget:
       tipo: grafica
       aspecto: igual
@@ -79,42 +96,51 @@ tarjetas:
         - { valor: a_z, rotulo: "Ángulo: ±{{a_z}}" }
       mandos:
         - { valor: T_z, lista: [0.01, 0.04], rotulo: "Periodo de muestreo" }
-    requiere: { mover: [T_z] }
+    objetivo:
+      condiciones:
+        - { valor: r_z, max: 0.7, rotulo: "Módulo: {{r_z}}" }
+      logrado: "Con T = 40 ms, 0,670 con ±39,7°: el semiplano izquierdo cae dentro del círculo unidad, y al alargar T el polo se aleja del 1."
+      pistas:
+        - { texto: "Con T = 10 ms quedan cerca del 1: 0,905 con ±9,9°. Alargue el periodo." }
+    escalera:
+      - "Módulo e^{−10T}: baja al alargar T."
+    solucion: "T = 40 ms."
     comprobar:
       - { r_z: 0.905, a_z: 9.9, tol: 0.003 }
       - { con: { T_z: 0.04 }, r_z: 0.670, a_z: 39.7, tol: 0.003 }
 
   - id: predecir-muestreo
-    tipo: predecir
+    tipo: simular
     titulo: "Estable con cualquier ganancia"
-    texto: "En continuo, el servo con un proporcional es estable con cualquier K. Programado con T = 10 ms, ¿también?"
+    texto: "En continuo, el servo con un proporcional es estable con cualquier K. Programado con T = 10 ms, calcule su ganancia crítica, (1 − p)/b₀."
     libro: [624, 625]
+    fijar: { T_s: 0.01 }
     widget:
       tipo: figura
       figura: fig-new-31-muestreado
       zonas:
         - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
-    opciones:
-      - texto: "No: a partir de una ganancia crítica oscila, porque el muestreo añade retardo"
-        bien: true
-        porque: "Medio periodo de retardo lleva la fase a −180° donde en continuo no llegaba nunca."
-      - texto: "Sí: el muestreo no cambia la estabilidad"
-        porque: "Entre muestras el lazo está abierto: es un retardo, y un retardo desestabiliza."
-      - texto: "Sí, si el periodo es menor que la constante de tiempo"
-        porque: "Ayuda, pero sigue habiendo una ganancia crítica para cualquier T."
+    simular:
+      objetivo: Kc_s
+      unidad: ""
+      tol: 0.02
+      rotulo: "Ganancia crítica"
+      errores:
+        - { expr: "1/b0_s", texto: "Falta el 1 − p del numerador." }
+    exito: "20,34: a partir de ahí oscila. Medio periodo de retardo lleva la fase a −180° donde en continuo no llegaba nunca."
     escalera:
-      - "¿Qué le hace un retardo a la fase?"
-    solucion: "No: con T = 10 ms la ganancia crítica es 20,34."
+      - "p = e^{−10T} = {{p_s}}; b₀ = 1 − p − 10T·p."
+    solucion: "(1 − {{p_s}})/{{b0_s}} = 20,34."
     comprobar:
-      - { Kc_s: 20.34, tol: 0.002 }
+      - { Kc_s: 20.34, p_s: 0.9048, tol: 0.002 }
 
   - id: formula-jury
-    tipo: formula
+    tipo: explorar
     titulo: "Jury en segundo orden"
-    texto: "Lo que falla primero es c₀, el producto de las dos raíces: debe quedarse por debajo de 1."
+    texto: "Lo que falla primero es c₀ = p + K·b₀, el producto de las dos raíces: debe quedarse por debajo de 1. Suba K hasta el límite."
     libro: [618, 623, 625]
-    ec: 618
-    sustitucion: "c₀ = {{p_s}} + {{K_s}} · {{b0_s}} = {{q0_s}}; K_{crít} = {{Kc_s}}"
+    fijar: { T_s: 0.01 }
+    inicio: { K_s: 4 }
     widget:
       tipo: grafica
       x: { id: k, min: 0, max: 30, unidad: "", rotulo: "K" }
@@ -124,10 +150,21 @@ tarjetas:
         - { expr: "1", color: tinta, rotulo: "límite", discontinua: true }
       marcas:
         - { x: "K_s", y: "q0_s", rotulo: "{{q0_s}}" }
+      lectura: { valor: q0_s, rotulo: "c₀" }
       mandos:
-        - { valor: K_s, lista: [4, 10, 20, 25], rotulo: "Ganancia, K" }
-        - { valor: T_s, lista: [0.01, 0.02], rotulo: "Periodo, T" }
+        - { valor: K_s, min: 0, max: 30, paso: 0.1, rotulo: "Ganancia, K" }
+    objetivo:
+      condiciones:
+        - { valor: q0_s, objetivo: 1, tol: 0.002, rotulo: "c₀ = {{q0_s}}" }
+      logrado: "Con K = {{K_s}}, c₀ llega a 1: las dos raíces sobre el círculo. Con T = 20 ms el límite baja a 10,34."
+      pistas:
+        - { cuando: { valor: q0_s, mayor: 1.002 }, texto: "Ya ha pasado de 1: inestable. Baje K." }
+        - { texto: "c₀ aún por debajo de 1: suba K." }
+    escalera:
+      - "La ganancia crítica que acaba de calcular."
+    solucion: "K ≈ 20,3."
     comprobar:
+      - { con: { K_s: 20.3 }, q0_s: 0.9998, tol: 0.001 }
       - { con: { T_s: 0.02 }, Kc_s: 10.34, tol: 0.003 }
 
   - id: simule-periodo
@@ -182,26 +219,37 @@ tarjetas:
       - { con: { T_o: 61 }, z_o: -0.992, tol: 0.003 }
 
   - id: regla-retardo
-    tipo: pregunta
+    tipo: explorar
     titulo: "La regla del medio periodo, justificada"
-    texto: "Sustituir el muestreo por un retardo de medio periodo, ¿qué tal predice la ganancia crítica?"
+    texto: "La tabla del libro compara la K_{crít} exacta con la de un retardo de medio periodo. Alargue el periodo hasta que la regla se equivoque un 10 %."
     libro: [612, 625, 626]
+    inicio: { f_t: 0 }
     widget:
-      tipo: figura
-      figura: fig-new-31-muestreado
-      zonas:
-        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
-    opciones:
-      - texto: "Menos de un 1 % de error hasta 10 ms; un 10 % con 100 ms"
-        bien: true
-        porque: "Mientras el muestreo es rápido, solo añade medio periodo de retardo."
-      - texto: "Exacta para cualquier periodo"
-        porque: "Falla cuando el periodo se acerca a la constante de tiempo de la planta."
-      - texto: "Mal siempre: el muestreo no es un retardo"
-        porque: "Con muestreo rápido es casi exactamente un retardo de T/2."
+      tipo: grafica
+      x: { id: n, min: 0, max: 4, unidad: "", rotulo: "fila de la tabla" }
+      y: { min: 0, max: 12, unidad: "%", rotulo: "error de la regla" }
+      curvas:
+        - { expr: "0", color: tinta, rotulo: "sin error", discontinua: true }
+      marcas:
+        - { x: "f_t", y: "e_r", rotulo: "{{e_r}}" }
+      lectura: { valor: e_r, rotulo: "Error de la regla" }
+      datos:
+        - { valor: K_ex, rotulo: "Exacta: {{K_ex}}" }
+        - { valor: K_ap, rotulo: "Con T/2: {{K_ap}}" }
+      mandos:
+        - { valor: f_t, lista: [0, 1, 2, 3, 4], nombres: [1 ms, 10 ms, 20 ms, 50 ms, 100 ms], rotulo: "Periodo, T" }
+    objetivo:
+      condiciones:
+        - { valor: e_r, min: 9, rotulo: "Error: {{e_r}}" }
+      logrado: "Con 100 ms, un 10 %: el periodo ya es comparable a la constante de la planta. Hasta 10 ms, menos de un 1 %: muestrear rápido solo añade medio periodo de retardo."
+      pistas:
+        - { texto: "La regla aún acierta: alargue el periodo." }
     escalera:
-      - "Compare las dos columnas de la tabla."
-    solucion: "Buena hasta 10 ms (menos del 1 %); un 10 % con 100 ms."
+      - "La regla falla cuando T se acerca a la constante de tiempo de la planta."
+    solucion: "T = 100 ms."
+    comprobar:
+      - { con: { f_t: 4 }, e_r: 10, tol: 0.01 }
+      - { con: { f_t: 1 }, e_r: 0.885, tol: 0.01 }
 
   - id: cero-muestreo
     tipo: pregunta
@@ -226,31 +274,40 @@ tarjetas:
     solucion: "Nunca se cancela."
 
   - id: emulacion-lenta
-    tipo: predecir
+    tipo: explorar
     titulo: "Emular con poco muestreo"
-    texto: "El adelanto del servo, diseñado en continuo, se discretiza con Tustin y se muestrea a solo 6 veces el ancho de banda. ¿Qué pasa?"
-    libro: [631, 632]
+    texto: "El adelanto del servo, diseñado en continuo (un 16,3 %), se emula con Tustin. Alargue el periodo, con la tabla del libro, hasta que se pase más de un 25 %."
+    libro: [630, 631, 632]
+    inicio: { f_e: 0 }
     widget:
-      tipo: figura
-      figura: fig-new-31-muestreado
-      zonas:
-        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
-    opciones:
-      - texto: "Se pasa un 39,1 % en vez de un 16,3 %: el diseño es otro"
-        bien: true
-        porque: "Entre 25 y 50 veces apenas cambia; con 12 ya se nota; con 6, no se parece."
-      - texto: "Igual que el analógico, porque Tustin es exacto"
-        porque: "Tustin es una aproximación de segundo orden; con poco muestreo se nota."
-      - texto: "Se vuelve más lento, sin pasarse más"
-        porque: "El retardo del muestreo resta margen: más sobreimpulso."
+      tipo: grafica
+      x: { id: n, min: 0, max: 4, unidad: "", rotulo: "fila de la tabla" }
+      y: { min: 0, max: 45, unidad: "%", rotulo: "sobreimpulso" }
+      curvas:
+        - { expr: "16.3", color: tinta, rotulo: "analógico", discontinua: true }
+      marcas:
+        - { x: "f_e", y: "M_t", rotulo: "{{M_t}}" }
+      lectura: { valor: M_t, rotulo: "Sobreimpulso con Tustin" }
+      datos:
+        - { valor: r_b, rotulo: "f_{s}/ancho de banda: {{r_b}}" }
+      mandos:
+        - { valor: f_e, lista: [0, 1, 2, 3, 4], nombres: [2 ms, 5 ms, 10 ms, 20 ms, 40 ms], rotulo: "Periodo, T" }
+    objetivo:
+      condiciones:
+        - { valor: M_t, min: 25, max: 30, rotulo: "Se pasa {{M_t}}" }
+      logrado: "Con 12 veces el ancho de banda ya se nota; con 6, un 39,1 %: el diseño es otro. Tustin es siempre algo mejor que Euler."
+      pistas:
+        - { cuando: { valor: M_t, mayor: 30 }, texto: "Se ha ido a la última fila: vuelva una." }
+        - { texto: "Entre 25 y 50 veces apenas cambia: alargue el periodo." }
     escalera:
-      - "Cada milisegundo de periodo resta margen de fase."
-    solucion: "Un 39,1 %: con 6 veces el ancho de banda, se diseña directamente en z."
+      - "Busque la fila de 12 veces el ancho de banda."
+    solucion: "T = 20 ms: un 26,0 %."
     comprobar:
-      - { con: { T_z: 0.04 }, r_z: 0.670, tol: 0.003 }
+      - { con: { f_e: 3 }, M_t: 26, r_b: 12 }
+      - { con: { f_e: 4 }, M_t: 39.1, r_b: 6 }
 
   - id: tustin-pi
-    tipo: pregunta
+    tipo: simular
     titulo: "Un PI con Tustin"
     texto: "El PI del motor (K_{p} = 1,60, T_{i} = 97,6 ms) se programa con Tustin y T = 1 ms: u[k] = u[k − 1] + b₀·e[k] − b₁·e[k − 1]. ¿Cuánto vale b₀?"
     libro: ["cap31#723"]
@@ -259,17 +316,18 @@ tarjetas:
       figura: fig-new-31-muestreado
       zonas:
         - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
-    opciones:
-      - texto: "1,6082, y b₁ = 1,5918"
-        bien: true
-        porque: "K_{p}·(1 ± T/(2·T_{i})), con T/(2·T_{i}) = 0,00512."
-      - texto: "1,60, el mismo K_{p}"
-        porque: "Tustin reparte la integral entre e[k] y e[k − 1]: K_{p} se multiplica por 1 ± T/(2·T_{i})."
-      - texto: "1,5918"
-        porque: "Ese es b₁, el de e[k − 1]: lleva el signo menos dentro."
+    simular:
+      objetivo: g_0
+      unidad: ""
+      tol: 0.001
+      rotulo: "b₀"
+      errores:
+        - { expr: "Kp_m", texto: "Tustin reparte la integral entre e[k] y e[k − 1]: K_{p} se multiplica por 1 + T/(2·T_{i})." }
+        - { expr: "g_1", texto: "Ese es b₁, el de e[k − 1]: lleva el signo menos dentro." }
+    exito: "1,6082, y b₁ = 1,5918: K_{p}·(1 ± T/(2·T_{i})), con T/(2·T_{i}) = 0,00512."
     escalera:
       - "b₀ = K_{p}·(1 + T/(2·T_{i}))."
-    solucion: "1,60 × (1 + 0,00512) = 1,6082; b₁ = 1,60 × (1 − 0,00512) = 1,5918."
+    solucion: "1,60 × (1 + 0,00512) = 1,6082."
     comprobar:
       - { g_0: 1.6082, g_1: 1.5918, tol: 0.0001 }
 
@@ -296,26 +354,29 @@ tarjetas:
     solucion: "El modelo discreto incluye el retenedor."
 
   - id: banco-critica
-    tipo: pregunta
+    tipo: simular
     titulo: "En el banco"
-    texto: "Con un proporcional y T = 10 ms, el modelo dice que el servo oscila con K = 20,3 a 7,1 Hz, y el real oscila con menos. ¿Qué indica?"
-    libro: [643]
+    texto: "Con un proporcional y T = 10 ms, el modelo dice que el servo oscila en el límite a 44,4 rad/s. ¿A cuántos hercios mirará el osciloscopio?"
+    libro: [625, 643]
     widget:
       tipo: figura
       figura: fig-new-31-muestreado
       zonas:
         - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
-    opciones:
-      - texto: "Hay más retardo que el del muestreo: un filtro, el PWM o el cálculo"
-        bien: true
-        porque: "Su valor sale de la diferencia de fase: así se mide el retardo que hay que contar."
-      - texto: "El modelo de la planta tiene demasiada ganancia"
-        porque: "Más ganancia en el modelo daría una K_{crít} menor en el papel, no en el banco."
-      - texto: "Nada: el banco siempre oscila antes"
-        porque: "Si oscila antes, algo falta en el modelo; casi siempre, retardo."
+    simular:
+      objetivo: f_hz
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia de la oscilación"
+      errores:
+        - { expr: "w_c", texto: "Esos son radianes por segundo; los hercios son 2π veces menos." }
+        - { expr: "w_x", texto: "Se divide entre 2π, no se multiplica." }
+    exito: "7,1 Hz con K = 20,3. Si el real oscila con menos ganancia o más despacio, hay más retardo que el del muestreo: un filtro, el PWM o el cálculo."
     escalera:
-      - "¿Qué reduce la ganancia crítica de un lazo muestreado?"
-    solucion: "Hay retardo de más."
+      - "f = ω/2π."
+    solucion: "44,4/2π = 7,06 Hz."
+    comprobar:
+      - { f_hz: 7.07, w_c: 44.4, tol: 0.003 }
 
   - id: resumen
     tipo: resumen

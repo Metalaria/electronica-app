@@ -31,6 +31,17 @@ const d: DefinicionEsquema = {
     cs: { descripcion: 'capacidad térmica del disipador (J/°C)', color: 'verde' },
     duracion: { descripcion: 'en el transitorio, la potencia se corta tras este tiempo (s; sin ella, sigue)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { j: 'Unión', c: 'Cápsula', ...(conDisipador(c) ? { s: 'Disipador' } : {}), a: 'Ambiente', '0': 'Referencia, 0 °C' },
+    ramas: { vmq: 'Flujo de calor' },
+    zonas: {
+      p: 'Potencia disipada',
+      rjc: 'Resistencia unión-cápsula',
+      ...(conDisipador(c) ? { ...(c.tiene('rcs') ? { rcs: 'Resistencia cápsula-disipador' } : {}), rsa: 'Resistencia disipador-ambiente' } : c.tiene('rja') ? { rja: 'Resistencia al ambiente' } : {}),
+      ta: 'Temperatura ambiente',
+    },
+  }),
   observables: {
     tj: { medida: 'v(j)', analisis: 'op', unidad: '°C', descripcion: 'temperatura de la unión' },
     tc: { medida: 'v(c)', analisis: 'op', unidad: '°C', descripcion: 'temperatura de la cápsula' },

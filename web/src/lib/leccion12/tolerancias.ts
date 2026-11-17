@@ -27,12 +27,19 @@ export interface Informe {
 
 /** The boards of a design: the values with each toleranced one moved to its ends (corners) or drawn at random. */
 export function placas(d: Diseno, v: Valores): Valores[] {
-  const ids = Object.keys(d.tolerancias).sort();
+  const iv = d.intervalos ?? {};
+  // (motor121: a value given as an interval, β «de 100 a 300», takes its ends or a value inside it, whatever the nominal)
+  const ids = [...new Set([...Object.keys(d.tolerancias), ...Object.keys(iv)])].sort();
+  /** The value of `k` at the fraction s of its band (−1 one end, +1 the other). */
+  const en = (k: string, s: number) => {
+    const i = iv[k];
+    return i ? i.min + ((s + 1) / 2) * (i.max - i.min) : (v[k] ?? 0) * (1 + s * d.tolerancias[k]!);
+  };
   if (d.metodo === 'esquinas') {
     const out: Valores[] = [];
     for (let m = 0; m < 1 << ids.length; m++) {
       const p: Valores = { ...v };
-      ids.forEach((k, j) => (p[k] = (v[k] ?? 0) * (1 + ((m >> j) & 1 ? 1 : -1) * d.tolerancias[k]!)));
+      ids.forEach((k, j) => (p[k] = en(k, (m >> j) & 1 ? 1 : -1)));
       out.push(p);
     }
     return out;
@@ -40,7 +47,7 @@ export function placas(d: Diseno, v: Valores): Valores[] {
   const rnd = generador(d.semilla);
   return Array.from({ length: d.muestras }, () => {
     const p: Valores = { ...v };
-    for (const k of ids) p[k] = (v[k] ?? 0) * (1 + (2 * rnd() - 1) * d.tolerancias[k]!);
+    for (const k of ids) p[k] = en(k, 2 * rnd() - 1);
     return p;
   });
 }

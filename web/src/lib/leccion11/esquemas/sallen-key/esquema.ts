@@ -38,6 +38,12 @@ const d: DefinicionEsquema = {
     gbw: { descripcion: 'producto ganancia-ancho de banda del operacional (Hz); sin él, ideal', color: 'verde' },
     rsal: { descripcion: 'resistencia de salida en lazo abierto del operacional (Ω); sin ella, 0', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { fte: 'Entrada', a: 'Nodo entre los dos resistencias', b: 'Entrada no inversora (+)', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: {},
+    zonas: { r1: 'Primera resistencia', r2: 'Segunda resistencia', c1: 'Condensador a la salida', c2: 'Condensador a masa', ...(c.tiene('gbw') ? { gbw: 'Amplificador operacional' } : {}) },
+  }),
   observables: {
     entrada: { medida: 'v(fte)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la fuente' },
     salida: { medida: 'v(out)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de salida' },

@@ -5,6 +5,17 @@
 // (any config whose baseURL serves a build of web/; light theme, 1366×900 unless the test says otherwise)
 import { expect, test, type Page } from '@playwright/test';
 import { limpio } from './accesibilidad10-comun';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+/** The address of a lesson card by its id, as published (1.2.1 rewrote the lessons: cards moved, ids stayed). */
+const tarjetaRuta = (leccion: string, id: string): string => {
+  const l = JSON.parse(readFileSync(fileURLToPath(new URL(`../public/libro/lecciones11/${leccion}.json`, import.meta.url)), 'utf8')) as { tarjetas: { id: string }[] };
+  const k = l.tarjetas.findIndex((t) => t.id === id);
+  if (k < 0) throw new Error(`${leccion}: no tiene la tarjeta ${id}`);
+  return `#/leccion/${leccion}/${k + 1}`;
+};
+const ESPEJO_611 = tarjetaRuta('cap06/sec-6.11', 'explore-espejo');
 
 const tarjetaN = (page: Page) => page.locator('[data-leccion11]').getAttribute('data-tarjeta-n');
 const continuar = (page: Page) => page.locator('[data-continuar]');
@@ -253,7 +264,7 @@ test('escritorio: ninguna etiqueta del carril se corta («Componentes»)', async
 test('lecciones a 360 px: los rótulos de las gráficas y los esquemas se ven a 11 px o más', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await limpio(page);
-  for (const ruta of ['#/leccion/cap05/sec-5.1/1', '#/leccion/cap06/sec-6.11/1', '#/leccion/cap01/sec-1.4/1', '#/leccion/cap03/sec-3.9/6']) {
+  for (const ruta of ['#/leccion/cap05/sec-5.1/1', ESPEJO_611, '#/leccion/cap01/sec-1.4/1', '#/leccion/cap03/sec-3.9/6']) {
     await page.goto(ruta);
     await expect(page.locator('[data-leccion11] [data-tarjeta] svg text').first()).toBeVisible();
     await page.waitForTimeout(400);
@@ -277,7 +288,7 @@ test('lecciones a 360 px: los rótulos de las gráficas y los esquemas se ven a 
 
 test('esquemas de las lecciones: los rótulos no se pisan (espejo de 6.11 y 6.15, condensadores de 3.9)', async ({ page }) => {
   await limpio(page);
-  for (const [ruta, ancho] of [['#/leccion/cap06/sec-6.11/1', 1366], ['#/leccion/cap06/sec-6.15/7', 1366], ['#/leccion/cap03/sec-3.9/6', 1366], ['#/leccion/cap06/sec-6.11/1', 360], ['#/leccion/cap03/sec-3.9/6', 360]] as const) {
+  for (const [ruta, ancho] of [[ESPEJO_611, 1366], ['#/leccion/cap06/sec-6.15/7', 1366], ['#/leccion/cap03/sec-3.9/6', 1366], [ESPEJO_611, 360], ['#/leccion/cap03/sec-3.9/6', 360]] as const) {
     await page.setViewportSize({ width: ancho, height: ancho === 360 ? 780 : 900 });
     await page.goto(ruta);
     const d = page.getByRole('alertdialog');

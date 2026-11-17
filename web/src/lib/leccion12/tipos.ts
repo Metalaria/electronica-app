@@ -7,12 +7,14 @@
 import type { Eje, Rango, Texto } from '../leccion11/tipos';
 import type { TipoAveria } from '../../componentes/practica/averias';
 import type { ActividadDigital, EstadoActividadDigital } from './digital/tipos';
+import type { ActividadHacer, EstadoActividadHacer } from './hacer/tipos';
 
 // (motor12c: «tocar» on a figure and «tabla» on a logic circuit; «averia», «diseno» and «dibujar» on a logic
 // circuit give the digital activities of lib/leccion12/digital/tipos.ts)
-export type TipoActividad = 'simular' | 'diseno' | 'averia' | 'ajuste' | 'banco' | 'dibujar' | 'sql' | 'tocar' | 'tabla';
+// (1.2.1, piloto121: «medir», «elegir», «marcar» and «leer», answered by doing on the live widget: lib/leccion12/hacer/)
+export type TipoActividad = 'simular' | 'diseno' | 'averia' | 'ajuste' | 'banco' | 'dibujar' | 'sql' | 'tocar' | 'tabla' | 'medir' | 'elegir' | 'marcar' | 'leer';
 
-export const TIPOS_ACTIVIDAD: readonly TipoActividad[] = ['simular', 'diseno', 'averia', 'ajuste', 'banco', 'dibujar', 'sql', 'tocar', 'tabla'];
+export const TIPOS_ACTIVIDAD: readonly TipoActividad[] = ['simular', 'diseno', 'averia', 'ajuste', 'banco', 'dibujar', 'sql', 'tocar', 'tabla', 'medir', 'elegir', 'marcar', 'leer'];
 
 /** A typical wrong estimate and its explanation: the value a misconception gives, or a ratio to the right value. */
 export interface ErrorTipico {
@@ -46,6 +48,11 @@ export interface Diseno {
   tipo: 'diseno';
   /** Relative tolerance of each value of the model the design depends on (R_1: 0.05 = ± 5 %). */
   tolerancias: Record<string, number>;
+  /**
+   * 1.2.1 (motor121): values given as an interval instead of a tolerance around the nominal (a transistor's β «de 100
+   * a 300»): each board takes the interval's ends (corners) or a value drawn uniformly in it (Monte Carlo).
+   */
+  intervalos?: Record<string, { min: number; max: number }>;
   /** esquinas: every combination of the ends (2ⁿ); montecarlo: `muestras` random boards (uniform within each tolerance). */
   metodo: 'esquinas' | 'montecarlo';
   muestras: number;
@@ -172,7 +179,7 @@ export interface Sql {
   inicio?: number[];
 }
 
-export type Actividad12 = Simular | Diseno | Averia | Ajuste | Banco | Dibujar | Sql | ActividadDigital;
+export type Actividad12 = Simular | Diseno | Averia | Ajuste | Banco | Dibujar | Sql | ActividadDigital | ActividadHacer;
 
 // ------------------------------------------------------------------ the reader's state (in memory only)
 
@@ -222,4 +229,4 @@ export interface EstadoSql {
 }
 
 /** «diseno» and «ajuste» keep nothing of their own: their values are the widget's controls. */
-export type EstadoActividad12 = EstadoSimular | EstadoAveria | EstadoBanco | EstadoDibujar | EstadoSql | { tipo: 'diseno' | 'ajuste' } | EstadoActividadDigital;
+export type EstadoActividad12 = EstadoSimular | EstadoAveria | EstadoBanco | EstadoDibujar | EstadoSql | { tipo: 'diseno' | 'ajuste' } | EstadoActividadDigital | EstadoActividadHacer;

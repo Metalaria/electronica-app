@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 35.11 «Herramientas Adicionales y Resumen» (cap34; etiqueta interna sec-34.11).
 # Formato: contenido/lecciones11/GUIA.md (§11.1, figura con zonas). La figura 35.14 reúne las cinco ideas y las cinco
 # medidas del capítulo; el «tocar» pide la idea que explica un caso, no leer un rótulo.
+# 1.2.1 («aprender haciendo», GUIA §13): la primera medida (entrada a masa) se explora con la fórmula del ENOB de la
+# sección 35.6, ENOB ≈ n − log₂(σ·√12), hasta el convertidor de 16 bits con ENOB de 13,5 del libro (la lista de σ es
+# de ejemplo); la medida que revela los códigos faltantes, la idea del antialiasing y la de la referencia se tocan en
+# la figura 35.14. Quedan dos preguntas de opciones: el generador que limita y el suelo de ruido.
 leccion: cap34/sec-34.11
 
 libro:
@@ -18,47 +22,71 @@ libro:
   328: "Prescindir del filtro antialiasing porque «la señal es lenta»"
   331: "comprar más allá de ese límite es gastar sin ganar"
   334: "El resultado casi siempre está por debajo de lo nominal"
+  "cap34#167": "un convertidor de 16 bits nominales con ENOB de 13,5 es un convertidor de 13,5 bits"
+  "cap34#177": "un convertidor ideal tiene σ = 1/√12 = 0,29 LSB, y cada duplicación de σ por encima de eso cuesta un bit, es decir, ENOB ≈ n − log2(σ·√12)"
   "cap34#112": "Un sigma-delta de 24 bits a 1 kS/s puede ser inservible en un lazo de control por su retardo"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    n_n: { sim: "n", nombre: "bits nominales", unidad: "", valor: 16 }
+    s_g: { sim: "σ", nombre: "desviación típica con la entrada a masa", unidad: LSB, valor: 0.29 }
+  calculos:
+    E_n: { expr: "n_n - log10(s_g*sqrt(12))/log10(2)", sim: "ENOB", nombre: "bits efectivos", unidad: "", cifras: 3 }
 
 tarjetas:
   - id: explore-cierre
     tipo: explorar
-    titulo: "Cinco ideas y cinco medidas"
-    texto: "A la izquierda, lo que hay que retener; a la derecha, cómo se caracteriza un convertidor. Toque una idea y una medida."
-    libro: [310, 312, 322, 324]
+    titulo: "Entrada a masa, mil muestras"
+    texto: "La desviación típica σ de mil muestras con la entrada a masa da el ENOB real. Busque la σ de un convertidor de 16 bits nominales con ENOB de 13,5."
+    libro: [322, "cap34#167", "cap34#177"]
+    inicio: { s_g: 0.29 }
+    widget:
+      tipo: grafica
+      x: { id: sx, min: 0.2, max: 3, unidad: LSB, rotulo: "σ", escala: log }
+      y: { min: 12, max: 17, unidad: "", rotulo: "ENOB" }
+      curvas:
+        - { expr: "n_n - log10(sx*sqrt(12))/log10(2)", color: azul, rotulo: "ENOB" }
+      marcas:
+        - { x: "s_g", y: "E_n", rotulo: "Su σ" }
+      lectura: { valor: E_n, rotulo: "ENOB" }
+      mandos:
+        - { valor: s_g, lista: [0.29, 0.58, 1.16, 1.64, 2.32], rotulo: "σ" }
+    objetivo:
+      condiciones:
+        - { valor: E_n, objetivo: 13.5, tol: 0.005, rotulo: "ENOB: {{E_n}}" }
+      logrado: "σ = {{s_g}}: un convertidor de {{E_n}} bits, por mucho que la portada diga 16. Esta cifra solo cuenta el ruido."
+      pistas:
+        - { cuando: { valor: E_n, menor: 13.5 }, texto: "Se ha pasado de ruido: menos σ." }
+        - { texto: "Cada duplicación de σ cuesta un bit: más σ." }
+    escalera: ["ENOB ≈ n − log₂(σ · √12)."]
+    solucion: "σ = {{s_g}}: ENOB = {{E_n}}."
+    comprobar:
+      - { con: { s_g: 1.64 }, E_n: 13.49 }
+
+  - id: empareje-medidas
+    tipo: tocar
+    titulo: "Códigos faltantes"
+    texto: "Sospecha que su convertidor se salta códigos. Toque la medida que lo revela."
+    libro: [322, 323, 324, 325, 326, 334]
     widget:
       tipo: figura
       figura: fig-34.14
       zonas:
-        - { id: idea1, rotulo: "Primera idea", rect: [4, 22, 166, 36], texto: "El error de cuantificación es irreducible: medio LSB. La cifra honesta, el ENOB." }
-        - { id: idea2, rotulo: "Segunda idea", rect: [4, 63, 166, 36], texto: "El aliasing es irreversible: el antialiasing es analógico." }
-        - { id: idea3, rotulo: "Tercera idea", rect: [4, 104, 166, 36], texto: "La arquitectura decide la latencia, y la latencia importa tanto como la velocidad." }
-        - { id: idea4, rotulo: "Cuarta idea", rect: [4, 143, 166, 37], texto: "La referencia es el patrón: la exactitud del sistema es la suya." }
-        - { id: idea5, rotulo: "Quinta idea", rect: [4, 186, 166, 36], texto: "El reloj es el componente crítico en alta velocidad." }
-        - { id: medidas, rotulo: "Recuadro de la derecha", rect: [238, 20, 210, 210], texto: "Masa, senoide, rampa, escalón y barrido de impedancia: dicen mucho más que la portada." }
-    requiere: { mover: [idea3, medidas] }
-
-  - id: empareje-medidas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que dice cada medida"
-    texto: "Una cada medida con lo que revela del convertidor."
-    libro: [322, 323, 324, 325, 326, 334]
-    emparejar:
-      - ["Entrada a masa, mil muestras", "El ruido y el ENOB real"]
-      - ["Senoide pura y FFT", "SINAD, THD y espurios"]
-      - ["Rampa lenta", "INL y códigos faltantes"]
-      - ["Escalón", "La latencia: distingue la arquitectura"]
-      - ["Barrido de impedancia de fuente", "El límite real admisible"]
-    exito: "El resultado casi siempre queda por debajo de lo nominal: saber cuánto permite diseñar con datos."
-    pistas:
-      - { texto: "Los códigos faltantes aparecen como saltos al barrer despacio." }
-    escalera: ["La FFT mira el espectro: distorsión y espurios."]
-    solucion: "Masa, ruido; senoide, SINAD; rampa, INL; escalón, latencia; barrido, impedancia."
+        - { id: masa, rotulo: "Primera medida", rect: [241, 20, 206, 36] }
+        - { id: senoide, rotulo: "Segunda medida", rect: [241, 56, 206, 36] }
+        - { id: rampa, rotulo: "Tercera medida", rect: [241, 92, 206, 36] }
+        - { id: escalon, rotulo: "Cuarta medida", rect: [241, 128, 206, 36] }
+        - { id: barrido, rotulo: "Quinta medida", rect: [241, 164, 206, 36] }
+    tocar:
+      bien: [rampa]
+      porque:
+        masa: "Con la entrada fija sale el ruido y el ENOB real, no los códigos que faltan."
+        senoide: "La senoide y la FFT dan SINAD, THD y espurios."
+        escalon: "El escalón muestra la latencia y distingue la arquitectura."
+        barrido: "El barrido de impedancia da el límite de la fuente."
+    exito: "La rampa lenta recorre todos los códigos: los que faltan saltan a la vista, igual que el INL. El resultado suele quedar bajo lo nominal."
+    escalera: ["Hay que pasar despacio por todos los códigos."]
+    solucion: "La tercera: rampa lenta."
 
   - id: toque-idea
     tipo: tocar
@@ -86,21 +114,29 @@ tarjetas:
     solucion: "La tercera: la latencia importa tanto como la velocidad."
 
   - id: pregunta-error
-    tipo: pregunta
-    titulo: "Un error de los que resume el capítulo"
-    texto: "La señal de un sensor es lenta. ¿Qué no debe hacerse por ello?"
+    tipo: tocar
+    titulo: "«La señal es lenta»"
+    texto: "Alguien quita el filtro antialiasing porque la señal del sensor es lenta. Toque la idea que lo desaconseja."
     libro: [311, 328]
     widget:
       tipo: figura
       figura: fig-34.14
       zonas:
+        - { id: idea1, rotulo: "Primera idea", rect: [4, 22, 166, 36] }
         - { id: idea2, rotulo: "Segunda idea", rect: [4, 63, 166, 36] }
-    opciones:
-      - { texto: "Prescindir del filtro antialiasing", bien: true, porque: "El aliasing es irreversible: lo que se pliega no se separa después, y el filtro es analógico." }
-      - { texto: "Promediar lecturas", porque: "Con una señal lenta, promediar es razonable; el error es quitar el antialiasing." }
-      - { texto: "Usar un sigma-delta", porque: "Para señales lentas es justo su nicho." }
-    escalera: ["¿Qué ruido de alta frecuencia puede acompañar a una señal lenta?"]
-    solucion: "Quitar el antialiasing: el aliasing no tiene arreglo digital."
+        - { id: idea3, rotulo: "Tercera idea", rect: [4, 104, 166, 36] }
+        - { id: idea4, rotulo: "Cuarta idea", rect: [4, 143, 166, 37] }
+        - { id: idea5, rotulo: "Quinta idea", rect: [4, 186, 166, 36] }
+    tocar:
+      bien: [idea2]
+      porque:
+        idea1: "La cuantificación no tiene que ver: el riesgo es el ruido rápido que se pliega."
+        idea3: "La latencia no es el problema aquí."
+        idea4: "La referencia fija la exactitud, no el plegado."
+        idea5: "El reloj importa en alta velocidad; aquí el riesgo es el aliasing."
+    exito: "El aliasing es irreversible: lo que se pliega no se separa después, y el filtro es analógico. Es uno de los errores que resume el capítulo."
+    escalera: ["Una señal lenta puede traer ruido rápido."]
+    solucion: "La segunda: el aliasing es irreversible."
 
   - id: pregunta-generador
     tipo: pregunta
@@ -137,21 +173,29 @@ tarjetas:
     solucion: "Por debajo del suelo de ruido, los bits solo llevan ruido."
 
   - id: pregunta-referencia
-    tipo: pregunta
+    tipo: tocar
     titulo: "El patrón"
-    texto: "Un sistema con un convertidor excelente mide con un 1 % de error. ¿Dónde se mira primero?"
+    texto: "Un sistema con un convertidor excelente mide con un 1 % de error. Toque la idea que dice dónde mirar primero."
     libro: [313]
     widget:
       tipo: figura
       figura: fig-34.14
       zonas:
+        - { id: idea1, rotulo: "Primera idea", rect: [4, 22, 166, 36] }
+        - { id: idea2, rotulo: "Segunda idea", rect: [4, 63, 166, 36] }
+        - { id: idea3, rotulo: "Tercera idea", rect: [4, 104, 166, 36] }
         - { id: idea4, rotulo: "Cuarta idea", rect: [4, 143, 166, 37] }
-    opciones:
-      - { texto: "En la referencia: la exactitud del sistema es la suya", bien: true, porque: "Es el patrón: su error pasa entero a todas las medidas." }
-      - { texto: "En los bits del convertidor", porque: "Un convertidor excelente no corrige una referencia mala." }
-      - { texto: "En el reloj", porque: "El reloj limita en alta velocidad; la exactitud en continua es cosa de la referencia." }
+        - { id: idea5, rotulo: "Quinta idea", rect: [4, 186, 166, 36] }
+    tocar:
+      bien: [idea4]
+      porque:
+        idea1: "Un convertidor excelente no tiene ese error de cuantificación."
+        idea2: "El aliasing deforma señales rápidas, no un error fijo."
+        idea3: "La latencia retrasa el dato, no lo falsea."
+        idea5: "El reloj limita en alta velocidad, no la exactitud en continua."
+    exito: "La referencia es el patrón: su error pasa entero a todas las medidas."
     escalera: ["¿Con qué se compara cada código?"]
-    solucion: "La referencia."
+    solucion: "La cuarta: la referencia."
 
   - id: resumen
     tipo: resumen

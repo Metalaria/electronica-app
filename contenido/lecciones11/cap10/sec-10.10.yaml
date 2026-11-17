@@ -7,6 +7,9 @@
 #   la avería del driver).
 # Pasos prácticos: «averia» del montaje (diodo abierto, devanado abierto o puerta sin señal; tres sondas, una con el
 #   drenador en el osciloscopio) y el «banco» opcional de la ficha 8.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se parte sin diodo y se pone hasta quitar el pico
+# (objetivo), se busca el pico con la sonda en el drenador y se lee su altura; la avería y el banco se quedan. Quedan
+# dos preguntas (el principio del capítulo y el varistor degradado); los números de referencia, al resumen.
 leccion: cap10/sec-10.10
 
 libro:
@@ -51,8 +54,9 @@ tarjetas:
   - id: explore-pico
     tipo: explorar
     titulo: "La medida del capítulo"
-    texto: "Apague la carga inductiva sin diodo y luego con él. Dos capturas explican el capítulo entero."
+    texto: "Al apagar la carga inductiva sin diodo, el drenador salta muy por encima de los 12 V. Ponga el diodo de rueda libre y quite el pico."
     libro: [243, 244, 245]
+    inicio: { rueda_i: 0 }
     widget:
       tipo: circuito
       esquema: mosfet
@@ -65,36 +69,81 @@ tarjetas:
           - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
       mandos:
         - { valor: rueda_i, tipo: interruptor, rotulo: "Diodo de rueda libre" }
-    requiere: { mover: [rueda_i] }
+    objetivo:
+      condiciones:
+        - { valor: Vpk_i, max: 13, rotulo: "Pico: {{Vpk_i}}" }
+      logrado: "Con el diodo, la corriente de la bobina sigue por él: el drenador se queda en {{Vpk_i}}, la alimentación más una caída."
+      pistas:
+        - { texto: "Sin camino para su corriente, la bobina dispara el drenador: conecte el diodo." }
+    escalera:
+      - "La bobina no deja que su corriente se corte de golpe: dele por dónde seguir."
+    solucion: "Diodo conectado: 12,7 V."
+    comprobar:
+      - { con: { rueda_i: 1 }, Vpk_i: 12.7 }
+      - { Vpk_i: 60 }
 
   - id: prediga-diodo
-    tipo: predecir
-    titulo: "Con el diodo"
-    texto: "Sin diodo, el drenador salta muy por encima de la alimentación. ¿Qué hace el diodo de rueda libre?"
-    libro: [238, 244]
-    fijar: { rueda_i: 1 }
+    tipo: medir
+    titulo: "Dónde se ve el pico"
+    texto: "Sin el diodo, ponga la sonda del osciloscopio en el punto donde aparece el pico al apagar."
+    libro: [238, 243]
+    fijar: { rueda_i: 0 }
     widget:
       tipo: circuito
       esquema: mosfet
       piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
-      lectura: { valor: Vpk_i, rotulo: "Pico del drenador" }
-      ocultar: true
       grafica:
-        x: { id: t, min: 0, max: 0.0004, unidad: s, rotulo: "t" }
+        x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "VDD_i + 0*t", color: tinta, rotulo: "alimentación", discontinua: true }
+          - { expr: "Vg_i*(1 - ceil((t - to_i)/1e9))", color: azul, rotulo: "puerta", mide: puerta }
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      instrumento:
+        tipo: osciloscopio
+        puntos: { vdd: "Raíl de alimentación", in: "Salida del generador de puerta", d: "Drenador" }
+        curvas: { vdd: 0, in: 1, d: 2 }
+      mandos: []
+    medir:
+      magnitud: senal
+      punto: d
+      porque:
+        vdd: "Ese es el raíl: sus 12 V fijos, sin pico."
+        in: "Esa es la puerta: el pulso que apaga, no la respuesta de la bobina."
+    exito: "En el drenador: la bobina lo empuja hasta la avalancha del transistor, que sufre en cada apagado."
+    escalera:
+      - "El pico aparece entre la bobina y el transistor."
+    solucion: "La sonda en el drenador."
+
+  - id: lea-pico
+    tipo: leer
+    titulo: "Cuánto sube"
+    texto: "Sin el diodo, lea en la gráfica hasta dónde sube el drenador al apagar."
+    libro: [243]
+    fijar: { rueda_i: 0 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      grafica:
+        x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
         y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
         curvas:
           - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
-    opciones:
-      - texto: "Da camino a la corriente de la bobina: el pico desaparece"
-        bien: true
-        porque: "La corriente se extingue por el diodo y el drenador se queda en la alimentación más una caída de diodo."
-      - texto: "Reduce el pico a la mitad"
-        porque: "No lo reparte: lo elimina, porque la corriente ya tiene por dónde seguir."
-      - texto: "Nada: el pico lo fija el transistor"
-        porque: "Sin diodo lo fija la avalancha del transistor, que sufre; con diodo, ya no hay pico."
+      mandos: []
+    leer:
+      objetivo: Vpk_i
+      unidad: V
+      tol: 0.05
+      rotulo: "Pico del drenador"
+      errores:
+        - { expr: "VDD_i", texto: "Esos son los 12 V de la alimentación, donde se queda tras el pico." }
+    exito: "60 V, cinco veces la alimentación: lo fija la avalancha. Con un relé, decenas o cientos de voltios."
     escalera:
-      - "La bobina no deja que su corriente se corte de golpe: ¿por dónde puede seguir?"
-    solucion: "El pico desaparece: la corriente sigue por el diodo."
+      - "Mire la altura del salto justo después del apagado."
+    solucion: "60 V."
+    comprobar:
+      - { Vpk_i: 60 }
 
   - id: por-que-dificil
     tipo: porque
@@ -117,28 +166,6 @@ tarjetas:
     escalera:
       - "¿Qué pasa con una protección demasiado sensible?"
     solucion: "Debe ser más rápida que el daño y más lenta que el funcionamiento normal."
-
-  - id: numeros
-    tipo: pregunta
-    titulo: "Los números de referencia"
-    texto: "Empareje cada elemento con su dato clave."
-    libro: [229, 230, 240]
-    widget:
-      tipo: figura
-      figura: fig-10.16
-      zonas:
-        - { id: grafica, rotulo: "La figura", rect: [0, 0, 450, 220] }
-    emparejar:
-      - ["Varistor", "Energía en J; se degrada con cada disparo"]
-      - ["TVS", "Responde en picosegundos"]
-      - ["Fusible lento", "Tolera irrupción; tarda en actuar"]
-      - ["NTC de irrupción", "Trabaja caliente: no protege en rearranques"]
-    exito: "Y la energía de una sobretensión se especifica en julios, no en voltios."
-    pistas:
-      - { texto: "El varistor es el de la energía." }
-    escalera:
-      - "Empiece por el que responde en picosegundos."
-    solucion: "Varistor: julios. TVS: picosegundos. Fusible lento: irrupción. NTC: rearranques."
 
   - id: modos-fallo
     tipo: pregunta
@@ -167,6 +194,7 @@ tarjetas:
     titulo: "El montaje que falla"
     texto: "Este interruptor de una carga inductiva no se comporta como debe. Mida y diga qué pieza falla."
     libro: [238, 243]
+    fijar: { rueda_i: 1 }
     widget:
       tipo: circuito
       esquema: mosfet
@@ -223,9 +251,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [228, 230, 231, 235]
+    libro: [228, 229, 230, 231, 235, 240]
     ideas:
       - { titulo: "Tiristores.", texto: "Conducen hasta que la corriente cae, no hasta que se retira el disparo." }
-      - { titulo: "En cascada.", texto: "Varistor para la energía, TVS para la velocidad, filtro para lo que queda." }
+      - { titulo: "En cascada.", texto: "Varistor para la energía (en julios), TVS para la velocidad, filtro para lo que queda; fusible lento si hay irrupción." }
       - { titulo: "Snubber.", texto: "Reparte el transitorio en el tiempo, a costa de disipar." }
       - { titulo: "El principio.", texto: "Más rápida que el daño, más lenta que el funcionamiento normal." }

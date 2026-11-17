@@ -14,6 +14,12 @@ const d: DefinicionEsquema = {
     carga: { obligatoria: true, descripcion: 'resistencia de carga (Ω)', color: 'verde', seVeCon: 'interruptor' },
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { fte: 'Dentro, tras la fuente', s: 'Borne de salida, arriba', '0': 'Borne de abajo, masa' },
+    ramas: { vmed: 'Rama de la fuente' },
+    zonas: { fuente: 'Fuente', rth: 'Resistencia interna', ...(c.tiene('carga') ? { carga: 'Carga' } : {}), ...(c.tiene('interruptor') ? { interruptor: 'Interruptor de la carga' } : {}) },
+  }),
   observables: {
     salida: { medida: 'v(s)', analisis: 'op', unidad: 'V', descripcion: 'tensión en los bornes (la de la carga)' },
     corriente: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente por la carga' },

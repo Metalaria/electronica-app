@@ -3652,6 +3652,58 @@ its texts through the numbers rule, each fault's state added to the circuit's ng
 answered cards without any hint and (ui12) `avisosUnaIdea`. `ContextoLibro.sql` (optional) runs SQL; without it SQL
 cards are an error.
 
+### Answering by doing on the live widget (1.2.1 piloto121, `lib/leccion12/hacer/`, GUIA §13)
+
+Still `Leccion11.version` 1 and **no stored state** (no key, no migration): optional additive data; the reader's
+state lives in memory (`EstadoTarjeta.medida`, `EstadoTarjeta.logrado`, `EstadoTarjeta.actividad`).
+- `WidgetCircuito.instrumento?: Instrumento` {tipo: multimetro | osciloscopio, modos ('V' | 'A')[], puntos [{id (a
+  netlist node, lower case), rotulo}], ramas [{id (a 0 V meter source of the netlist), rotulo}], curvas? {punto: index
+  of grafica.curvas} (oscilloscope), negra?}. Readings: `hacer/medir.ts` (`resolverCC` of `def.netlist(…, 'op')` with
+  the card's values; V = node(red) − node(black), A = the meter's current). Drawings mark branch spots with
+  `esquemas/kit/Rama.svelte` (`<g data-rama data-punto="x y">`); `DefinicionEsquema.partes?` names drawn parts
+  (`data-pieza`) that are not model pieces (regulador-lineal: `paso`, `ao`).
+- `TipoActividad` adds `medir` {magnitud: tension | corriente | senal, entre? [red, black], rama?, punto?, polaridad,
+  porque {rama | punto | "a/b": Texto}}, `elegir` {zonas [{id (piece, part or «red:<node>»), rotulo}], bien, todas,
+  porque}, `marcar` {modo: x | y | xy, curva?, x? y? (exprs), tol (axis fraction in its scale), inicio {x, y}, rotulo,
+  pasos}, `leer` {objetivo, unidad, cifras, tol, rotulo, errores (as `simular`)}. States: `{tipo:'medir'}` (placement
+  in `EstadoTarjeta.medida` {modo, roja, negra, rama, activa}), `{tipo:'elegir', elegidas, descartadas}`,
+  `{tipo:'marcar', x, y, movida}`, `{tipo:'leer', texto, valor}`. All four are answered (`esComprobable`,
+  `esPracticable`); verdicts in `hacer/motor-hacer.ts comprobarHacer` (called by `lib/leccion11/motor.ts`).
+- `Tarjeta.objetivo?: Objetivo` {condiciones: Condicion[], logrado: Texto, pistas: Pista[]} on explorar, sorpresa or
+  ajuste: `exploracionHecha` requires it once (`EstadoTarjeta.logrado`, latched by the shell, which shows
+  «¡Conseguido!»); not reported as an answer.
+- `Tocar.orden?: boolean`: the right zones in the order of `bien` (`motor-digital.ts comprobarTocar`).
+- Generator (`hacer/generar-hacer.ts`): `instrumentoDe` + `validarInstrumento` (nodes, 0 V meters, a linear DC netlist
+  at the start and at the ends of each control), `actividadHacerDe`, `objetivoDe` (reachable over every control
+  position, not met at the start), `mezclaDe` / `avisoMezcla` (doing < half of the non-summary cards → warning
+  «mezcla»; `scripts/lecciones11.mjs` sums them up, `--mezcla` lists them).
+
+### Measuring every schematic, logic goals and the conversion helper (1.2.1 motor121, GUIA §13.10–13.12)
+
+Still `Leccion11.version` 1 and **no stored state**: additive optional data; the reader's state stays in memory.
+- `DefinicionEsquema.medible?(c): Medible` {puntos {node: name}, ramas? {0 V meter: name}, zonas? {piece or part:
+  name}}: every schematic has one; the drawings mark probe spots with `esquemas/kit/Punto.svelte` (`<g data-sonda
+  data-punto="x y">`) and branches with `kit/Rama.svelte`. `widget.instrumento` may leave out `puntos`/`ramas` (the
+  schematic's) or give them as lists of ids; the oscilloscope's `curvas` may leave points out (their waveform comes
+  from the simulator). `elegir.zonas` may be a list of ids, or absent.
+- Readings (`hacer/punto-trabajo.ts`): a linear DC circuit is solved in the page (`cc.ts`); any other is run on the
+  app's ngspice (`.op`; a widget whose graph is a transient: `.tran` over the axis, the meter reading the window's
+  average, `spice.ts promedioMedida`, and the oscilloscope the node's waveform). `Curva.puntos?` [[x, y]] (page only)
+  draws those samples. `ValorEsperado.promedio?` {desde, hasta}; `spice.ts tarjetaGrafica`, `holguraNoLineal`,
+  `medidaDePuntas`. `Resultado12.spice?` carries a card's instrument checks (`medir.valor`, `leer.medida`) to the
+  script's ngspice run.
+- `Leer.base?` 2 | 16 (`cifras` = bits; exact comparison), `leer.medida?` {entre} | {rama} (generator only);
+  `Marcar.cronograma?` {ciclo, senal?, porque {cycle: Texto}} (the answer is the timing diagram's cursor:
+  `EstadoWidget12.tramo`); `Diseno.intervalos?` {value: {min, max}}.
+- Logic: `TipoPieza` adds `od` [A], `tri` [D, EN] and `bus` (its inputs: od/tri outputs; `PiezaLogica.pullup?` 1 | 0
+  | null); `EstadoLogico.especiales?` {signal: 'Z' | 'X'} (the level in `senales` is what inputs read: Z → 1, X → 0).
+  A loop of gates keeps its state like a flip-flop (`conMemoria`). `objetivo` conditions on a logic widget become
+  conditions on «led:Y», «senal:n1.q», «contador:c1», «ficha:…» (0, 1, 2 = Z, 3 = X), which the shell adds to the card's
+  values (`digital/objetivo-logico.ts variablesLogica`); the generator searches the shortest way from power-on
+  (`buscarObjetivo`). `elegir` zones on a logic widget are its pieces, LEDs and inputs.
+- `scripts/lecciones11.mjs --convertir <parte>/<id>` (`hacer/convertir.ts`): a draft YAML in `EPA_CONVERTIR` (or
+  `--salida`), never the source.
+
 ### Figure and logic widgets and their steps (1.2 motor12c, `lib/leccion12/digital/`, GUIA §11)
 
 Still `Leccion11.version` 1 and **no stored state** (no key, no migration): additive optional data, state in memory.

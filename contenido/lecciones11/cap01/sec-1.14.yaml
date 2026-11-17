@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 1.14 «Ampliación: El Efecto Pelicular» (cap01). Formato: contenido/lecciones11/GUIA.md.
 # Rac/Rdc se dibuja con max(1, a/(2δ)): la aproximación del libro solo vale para a ≫ δ, y por debajo la resistencia es
 # la de continua (la tabla del libro da 1,00 a 50 Hz).
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): llevar la corriente a la piel subiendo la frecuencia,
+# predecir δ a 1 MHz y a 1 kHz, conseguir la fila de la tabla de R_ac/R_dc, engordar el hilo y calcular cuánto mejora
+# la Q; solo el «por qué» de la piel se elige.
 leccion: cap01/sec-1.14
 
 libro:
@@ -19,6 +22,7 @@ modelo:
   valores:
     f_p: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
     d_h: { sim: "Ø", nombre: "diámetro del hilo", unidad: m, valor: 0.001 }
+    f_q: { sim: "f₂/f₁", nombre: "veces que sube la frecuencia", unidad: "", valor: 100 }
   calculos:
     delta: { expr: "sqrt(1.72e-8/(pi*f_p*4*pi*1e-7))", sim: "δ", nombre: "profundidad de penetración", unidad: m }
     a_h: { expr: "d_h/2", sim: "a", nombre: "radio del hilo", unidad: m }
@@ -27,13 +31,15 @@ modelo:
     razon: { expr: "1000/50", sim: "f/f₀", nombre: "razón de frecuencias", unidad: "" }
     raiz20: { expr: "sqrt(20)", sim: "√20", nombre: "raíz de veinte", unidad: "" }
     R_ac: { expr: "R_dc*k_ac", sim: "R_{ac}", nombre: "resistencia efectiva por metro", unidad: "Ω/m" }
+    q_x: { expr: "sqrt(f_q)", sim: "Q₂/Q₁", nombre: "veces que mejora la Q", unidad: "" }
 
 tarjetas:
   - id: explore-penetracion
     tipo: explorar
     titulo: "La corriente se va a la piel"
-    texto: "En alterna, la densidad de corriente decae hacia el interior del cobre. Mueva la frecuencia y mire hasta qué profundidad conduce."
+    texto: "En alterna, la densidad de corriente decae hacia el interior del cobre. Suba la frecuencia hasta que la corriente solo ocupe unas micras de la superficie."
     libro: [331, 333]
+    inicio: { f_p: 50 }
     widget:
       tipo: grafica
       x: { id: nu, min: 10, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
@@ -45,12 +51,22 @@ tarjetas:
       lectura: { valor: delta, rotulo: "Profundidad de penetración" }
       mandos:
         - { valor: f_p, lista: [50, 1000, 1000000, 100000000], rotulo: "Frecuencia, f" }
-    requiere: { mover: [f_p] }
+    objetivo:
+      condiciones:
+        - { valor: delta, max: 1e-5, rotulo: "δ: {{delta}}" }
+      logrado: "A {{f_p}}, δ = {{delta}}: la corriente circula por la piel del conductor."
+      pistas:
+        - { texto: "Todavía penetra mucho: suba la frecuencia." }
+    escalera:
+      - "δ baja al subir la frecuencia."
+    solucion: "A 100 MHz: 6,6 µm."
+    comprobar:
+      - { con: { f_p: 100000000 }, delta: 6.6e-6 }
 
   - id: prediga-megahercio
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "A 50 Hz el cobre conduce hasta casi un centímetro de profundidad. ¿Y a 1 MHz?"
+    tipo: simular
+    titulo: "Prediga a 1 MHz"
+    texto: "A 50 Hz el cobre conduce hasta casi un centímetro de profundidad. ¿Hasta qué profundidad a 1 MHz?"
     libro: [336, 337]
     fijar: { f_p: 1000000 }
     widget:
@@ -60,22 +76,22 @@ tarjetas:
       curvas:
         - { expr: "sqrt(1.72e-8/(pi*nu*4*pi*1e-7))", color: naranja, rotulo: "δ en cobre" }
       lectura: { valor: delta, rotulo: "Profundidad de penetración" }
-      ocultar: true
-    opciones:
-      - texto: "Unas 66 micras"
-        bien: true
-        porque: "A 1 MHz solo conducen las 66,0 µm exteriores: la frecuencia se ha multiplicado por veinte mil y δ va con su raíz."
-      - texto: "Casi un centímetro, igual"
-        porque: "δ depende de la frecuencia: baja con su raíz cuadrada."
-      - texto: "Todo el hilo, como en continua"
-        porque: "Eso es en continua. En alterna la corriente se concentra en la superficie."
+      ocultar: curvas
+    simular:
+      objetivo: delta
+      unidad: m
+      tol: 0.05
+      rotulo: "δ a 1 MHz"
+      errores:
+        - { razon: { min: 100, max: 200 }, texto: "δ depende de la frecuencia: baja con su raíz cuadrada." }
+        - { razon: { min: 0.006, max: 0.008 }, texto: "Ha dividido por la frecuencia, no por su raíz: δ baja mucho menos que veinte mil veces." }
+    exito: "A 1 MHz solo conducen las 66,0 µm exteriores: la frecuencia se ha multiplicado por veinte mil y δ va con su raíz."
+    escalera:
+      - "δ baja con la raíz cuadrada de la frecuencia."
+    solucion: "Unas 66,0 µm."
     comprobar:
       - { delta: 66.0e-6 }
       - { con: { f_p: 50 }, delta: 9.33e-3 }
-    escalera:
-      - "δ baja con la raíz cuadrada de la frecuencia."
-    solucion: "A 1 MHz solo conducen las 66,0 µm exteriores."
-
   - id: regla-delta
     tipo: formula
     titulo: "Profundidad de penetración"
@@ -100,41 +116,36 @@ tarjetas:
       - { con: { f_p: 100000000 }, delta: 6.6e-6 }
 
   - id: estime-kilohercio
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "A 1 kHz"
-    texto: "A 50 Hz, δ = 9,33 mm, y δ va con 1/√f. Estime δ a 1 kHz, con veinte veces más frecuencia."
+    texto: "A 50 Hz, δ = 9,33 mm, y δ va con 1/√f. ¿Cuánto vale δ a 1 kHz, con veinte veces más frecuencia?"
     libro: [334, 336]
     fijar: { f_p: 1000 }
-    estimar:
-      objetivo: "delta"
+    simular:
+      objetivo: delta
       unidad: m
-      min: 0
-      max: 0.01
-      paso: 0.0001
-      inicio: 0.008
       tol: 0.05
       rotulo: "δ a 1 kHz"
+      errores:
+        - { razon: { min: 0.21, max: 0.24 }, texto: "No es 9,33/20: δ va con la raíz, 9,33/√20." }
     exito: "9,33 mm / √20 ≈ 2,09 mm. La raíz suaviza: veinte veces más frecuencia, algo más de cuatro veces menos profundidad."
     pistas:
       - { cuando: { valor: estimacion, mayor: 0.0022 }, texto: "Se ha pasado: divida 9,33 mm entre √20, que es algo más de 4." }
       - { texto: "Se ha quedado corto: no es 9,33/20; es 9,33/√20." }
+    escalera:
+      - "La raíz suaviza: veinte veces más frecuencia no son veinte veces menos δ."
+    solucion: "9,33 mm / √20 ≈ 2,09 mm."
     comprobar:
       - { delta: 2.09e-3 }
       - { con: { f_p: 50 }, delta: 9.33e-3 }
       - { raiz20: 4.47, razon: 20 }
-    escalera:
-      - "La raíz suaviza: veinte veces más frecuencia no son veinte veces menos δ."
-    solucion: "9,33 mm / √20 ≈ 2,09 mm. La raíz suaviza: veinte veces más frecuencia, algo más de cuatro veces menos profundidad."
-
   - id: regla-rac
-    tipo: formula
+    tipo: explorar
     titulo: "Consecuencia sobre la resistencia"
-    texto: "Con el radio mucho mayor que δ, la corriente va por una corona de espesor δ. Mueva la frecuencia y el diámetro."
+    texto: "Con el radio mucho mayor que δ, la corriente va por una corona de espesor δ y R_{ac}/R_{dc} ≈ a/(2δ). Consiga la fila de la tabla con 7,58."
     libro: [339, 340, 341]
-    inicio: { f_p: 1000000 }
-    ec: 340
-    sustitucion: "{{a_h}} / (2 · {{delta}}) = {{k_ac}}"
+    inicio: { f_p: 1000000, d_h: 0.001 }
     widget:
       tipo: grafica
       x: { id: nu, min: 10000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
@@ -147,14 +158,23 @@ tarjetas:
       mandos:
         - { valor: f_p, lista: [100000, 1000000, 10000000, 100000000], rotulo: "Frecuencia, f" }
         - { valor: d_h, lista: [0.001, 0.002], rotulo: "Diámetro, Ø" }
+    objetivo:
+      condiciones:
+        - { valor: k_ac, objetivo: 7.58, tol: 0.02, rotulo: "R_{ac}/R_{dc}: {{k_ac}}" }
+      logrado: "Ø {{d_h}} a {{f_p}}: {{k_ac}}. Con el radio doble, a/(2δ) se duplica."
+      pistas:
+        - { cuando: { valor: k_ac, mayor: 7.74 }, texto: "Se ha pasado: con más frecuencia, δ es menor y la razón crece. Baje la frecuencia." }
+        - { texto: "Falta: pruebe con el hilo más grueso a 1 MHz." }
+    escalera:
+      - "La tabla del libro da 3,79 con Ø 1 mm a 1 MHz: ¿qué pasa al doblar el radio?"
+    solucion: "Ø 2 mm a 1 MHz: 7,58."
     comprobar:
-      - { con: { f_p: 1000000, d_h: 0.001 }, k_ac: 3.79 }
+      - { k_ac: 3.79 }
       - { con: { f_p: 1000000, d_h: 0.002 }, k_ac: 7.58 }
-
   - id: hilo-gordo
     tipo: sorpresa
     titulo: "Engordar el hilo deja de servir"
-    texto: "A 1 MHz, duplique el diámetro. En continua la resistencia baja a la cuarta parte; mire la efectiva."
+    texto: "A 1 MHz, en continua, duplicar el diámetro baja la resistencia a la cuarta parte. Duplíquelo y mire la efectiva."
     nota: "Crece la periferia, no la sección útil: de ahí el hilo de Litz."
     libro: [342]
     fijar: { f_p: 1000000 }
@@ -173,7 +193,18 @@ tarjetas:
         - { valor: R_dc, rotulo: "En continua: {{R_dc}}" }
       mandos:
         - { valor: d_h, lista: [0.001, 0.002], rotulo: "Diámetro, Ø" }
-    requiere: { mover: [d_h] }
+    objetivo:
+      condiciones:
+        - { valor: d_h, min: 0.002, rotulo: "Diámetro doble" }
+      logrado: "R_{dc} baja a la cuarta parte, pero la efectiva solo a la mitad, {{R_ac}}: crece la periferia, no la sección útil."
+      pistas:
+        - { texto: "Elija el diámetro de 2 mm." }
+    escalera:
+      - "Duplique el diámetro con su mando."
+    solucion: "Con 2 mm, la efectiva solo baja a la mitad."
+    comprobar:
+      - { R_ac: 0.0830, tol: 0.01 }
+      - { con: { d_h: 0.002 }, R_ac: 0.0415, tol: 0.01 }
 
   - id: por-que-piel
     tipo: porque
@@ -204,27 +235,25 @@ tarjetas:
     solucion: "Las corrientes parásitas que induce su propio campo, que se oponen a la principal en el centro."
 
   - id: q-bobinas
-    tipo: pregunta
+    tipo: simular
     titulo: "La Q de las bobinas"
-    texto: "Q = ωL/R, y con el efecto pelicular R crece con √f mientras ωL crece con f. ¿Qué hace la Q al subir la frecuencia?"
+    texto: "Q = ωL/R, y con el efecto pelicular R crece con √f mientras ωL crece con f. Si la frecuencia se multiplica por 100, ¿por cuánto se multiplica la Q?"
     libro: [342]
-    opciones:
-      - texto: "Mejora, pero mucho más despacio"
-        bien: true
-        porque: "El numerador crece más deprisa que R, pero no tanto como con R constante; y acaba cayendo con otras pérdidas."
-      - texto: "Crece en proporción a la frecuencia"
-        porque: "Eso sería con R constante. Con R creciendo como √f, la mejora es mucho menor."
-      - texto: "No cambia"
-        porque: "Numerador y denominador no crecen al mismo ritmo: f frente a √f."
-    widget:
-      tipo: figura
-      figura: fig-1.16
-      zonas:
-        - { id: penetracion, rotulo: "Penetración en cobre", rect: [0, 0, 438, 187] }
+    fijar: { f_q: 100 }
+    simular:
+      objetivo: q_x
+      unidad: ""
+      tol: 0.02
+      rotulo: "Veces que mejora la Q"
+      errores:
+        - { razon: { min: 9.5, max: 10.5 }, texto: "Eso sería con R constante. Con R creciendo como √f, la mejora es mucho menor." }
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Numerador y denominador no crecen al mismo ritmo: f frente a √f. La Q mejora." }
+    exito: "Por 10: 100 veces más ωL entre 10 veces más R. Mejora, pero mucho más despacio, y acaba cayendo con otras pérdidas."
     escalera:
       - "Compare cómo crecen el numerador y el denominador: f frente a √f."
-    solucion: "Mejora, pero mucho más despacio que si R fuera constante."
-
+    solucion: "100/√100 = 10."
+    comprobar:
+      - { q_x: 10 }
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"

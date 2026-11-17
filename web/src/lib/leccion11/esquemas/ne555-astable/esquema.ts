@@ -23,6 +23,13 @@ const d: DefinicionEsquema = {
     c: { obligatoria: true, descripcion: 'condensador de temporización, C (F)', color: 'naranja' },
     v0: { descripcion: 'tensión del condensador en t = 0 (V; sin ella, ⅓·V_CC; menos de ⅔·V_CC)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { chip: 'el 555' },
+  medible: () => ({
+    puntos: { vcc: 'Alimentación, arriba', dis: 'Patilla de descarga', c: 'Condensador: umbral y disparo', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vmb: 'Rama de R_{B}' },
+    zonas: { vcc: 'Fuente', ra: 'Resistencia de arriba, R_{A}', rb: 'Resistencia de abajo, R_{B}', c: 'Condensador', chip: 'El 555 por dentro' },
+  }),
   observables: {
     vc: { medida: 'v(c)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del condensador, v_C(t)' },
     salida: { medida: 'v(out)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de salida (V_CC en alto, 0 en bajo)' },

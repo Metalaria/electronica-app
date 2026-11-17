@@ -4,6 +4,10 @@
 # «ao-no-inversor»; el reto de atenuar a la mitad con R_in = 22 kΩ es un ejemplo de la fila «atenuar» de la tabla de
 # elección. La avería: un no inversor de 1 kΩ y 10 kΩ con 0,5 V, medido como dice el bloque 133 (la salida y la
 # entrada −, que debe seguir a la +); R₂ abierta deja el lazo abierto y R₁ abierta lo convierte en seguidor.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el inversor se lleva a −11 V viendo la masa virtual, su
+# fórmula se usa para fijar ganancia 4,7, la salida del no inversor de 48 se predice y se simula, el no inversor se
+# baja hasta ganancia 1 (objetivo), la tabla de elección pasa a tocar en la fig. 26.9 y el fotodiodo se predice y se
+# simula. Quedan dos preguntas de opciones (por qué no atenúa, la entrada flotante).
 leccion: cap27/sec-27.3
 
 libro:
@@ -18,6 +22,7 @@ libro:
   124: "Atenuar, o ganancia menor que 1"
   127: "Una entrada flotante hace que la salida derive al raíl"
   133: "el operacional está saturado o el lazo está abierto"
+  135: "Las cinco configuraciones del operacional"
   "cap27#434": "Un amplificador no inversor usa R₁ = 1 kΩ a masa y R₂ = 47 kΩ de realimentación"
 
 modelo:
@@ -44,6 +49,7 @@ modelo:
     V_mp: { expr: "V_op*b_p", sim: "v_{−}", nombre: "entrada − del no inversor", unidad: V }
     I_p: { expr: "V_mp/R_g", sim: "I", nombre: "corriente por R_g", unidad: A }
     G_m: { expr: "R_f/R_g", sim: "R_{f}/R_{g}", nombre: "sin el uno", unidad: "" }
+    V_pm: { expr: "V_p*G_m", sim: "v_{o}", nombre: "salida con la ganancia del inversor", unidad: V }
     b_a: { expr: "R_1/(R_1 + R_2)", sim: "β", nombre: "fracción realimentada de la avería", unidad: "" }
     V_oa: { expr: "max(-V_s, min(V_s, V_i*A_0/(1 + A_0*b_a)))", sim: "v_{o}", nombre: "salida", unidad: V }
     V_ma: { expr: "V_oa*b_a", sim: "v_{−}", nombre: "entrada −", unidad: V }
@@ -55,8 +61,9 @@ tarjetas:
   - id: explore-inversor
     tipo: explorar
     titulo: "El inversor"
-    texto: "La entrada entra por R_{in} al nodo inversor. Cambie R_{f} y la entrada, y mire la ganancia y la entrada −."
+    texto: "La entrada llega por R_{in} al nodo inversor. Lleve la salida a −11 V y mire la entrada −."
     libro: [104, 107, 108, 109]
+    inicio: { R_2: 10000, V_i: 0.5 }
     widget:
       tipo: circuito
       esquema: ao-inversor
@@ -70,15 +77,25 @@ tarjetas:
       mandos:
         - { valor: R_2, lista: [4700, 10000, 22000], rotulo: "R_{f}" }
         - { valor: V_i, min: -1, max: 1, paso: 0.25, rotulo: "Entrada" }
-    requiere: { mover: [R_2, V_i] }
+    objetivo:
+      condiciones:
+        - { valor: V_o, objetivo: -11, tol: 0.05, rotulo: "Salida: {{V_o}}" }
+      logrado: "−11 V a la salida y la entrada − en {{V_m}}: masa virtual. La ganancia la ponen R_{f} y R_{in}."
+      pistas:
+        - { cuando: { valor: V_o, min: 0 }, texto: "Salida positiva: el inversor invierte. Entrada positiva para salida negativa." }
+        - { texto: "Falta ganancia: R_{f} más grande." }
+    escalera:
+      - "Con 0,5 V a la entrada hace falta ganancia −22."
+    solucion: "R_{f} = 22 kΩ y 0,5 V: −11 V."
+    comprobar:
+      - { con: { R_2: 22000 }, V_o: -10.997, tol: 0.001 }
 
   - id: formula-inversor
-    tipo: formula
+    tipo: explorar
     titulo: "La ganancia del inversor"
-    texto: "La corriente de R_{in} no tiene otro camino que R_{f}. Cambie R_{f}."
+    texto: "A_{v} = −R_{f}/R_{in}: la corriente de R_{in} no tiene otro camino que R_{f}. Ponga la ganancia en −4,7."
     libro: [107, 108]
-    ec: 107
-    sustitucion: "−{{R_2}} / {{R_1}} = −{{G_n}}"
+    inicio: { R_2: 10000 }
     widget:
       tipo: circuito
       esquema: ao-inversor
@@ -88,33 +105,47 @@ tarjetas:
       mide: { vo: V_o, vmenos: V_m, i1: I_1 }
       mandos:
         - { valor: R_2, lista: [4700, 10000, 22000], rotulo: "R_{f}" }
+    objetivo:
+      condiciones:
+        - { valor: G_n, objetivo: 4.7, tol: 0.01, rotulo: "|A_{v}| = {{G_n}}" }
+      logrado: "−{{R_2}} / {{R_1}} = −{{G_n}}: la corriente de R_{in} no tiene otro camino que R_{f}."
+      pistas:
+        - { texto: "Ganancia 4,7 con R_{in} = 1 kΩ: ¿cuánto vale R_{f}?" }
+    escalera:
+      - "A_{v} = −R_{f}/R_{in}."
+    solucion: "R_{f} = 4,7 kΩ."
+    comprobar:
+      - { con: { R_2: 4700 }, G_n: 4.7 }
 
   - id: prediga-no-inversor
-    tipo: predecir
+    tipo: simular
     titulo: "Un no inversor"
-    texto: "R_{g} = 1 kΩ a masa y R_{f} = 47 kΩ de realimentación. ¿Cuál es su ganancia?"
+    texto: "R_{g} = 1 kΩ a masa, R_{f} = 47 kΩ de realimentación y 0,1 V a la entrada. ¿Qué tensión da la salida?"
     libro: [112, "cap27#434"]
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_p, r1: R_g, r2: R_f, a0: A_0, vsat: V_s }
-      lectura: { valor: G_p, rotulo: "Ganancia" }
+      lectura: { valor: V_op, rotulo: "Salida" }
       corriente: I_p
       mide: { vo: V_op, vmenos: V_mp, i1: I_p }
       ocultar: true
-    opciones:
-      - texto: "48"
-        bien: true
-        porque: "1 + 47/1 = 48: el divisor devuelve 1/48 de la salida y la entrada − debe igualar a la +."
-      - texto: "47"
-        porque: "Esa es la del inversor con las mismas resistencias. El no inversor suma uno."
-      - texto: "−47"
-        porque: "El no inversor no invierte: la señal entra por la +."
+      mandos: []
+    simular:
+      objetivo: V_op
+      unidad: V
+      tol: 0.02
+      rotulo: "Salida con 0,1 V"
+      medida: vo
+      errores:
+        - { expr: "V_pm", texto: "Esa es la ganancia del inversor, 47. El no inversor suma uno." }
+        - { expr: "-V_op", texto: "El signo: el no inversor no invierte, la señal entra por la +." }
+    exito: "4,8 V: ganancia 1 + 47/1 = 48. El divisor devuelve 1/48 de la salida y la entrada − iguala a la +."
     escalera:
       - "A_{v} = 1 + R_{f}/R_{g}."
-    solucion: "1 + 47 000/1000 = 48."
+    solucion: "1 + 47 000/1000 = 48; 0,1 V · 48 = 4,8 V."
     comprobar:
-      - { G_p: 48, G_m: 47 }
+      - { G_p: 48, G_m: 47, V_op: 4.7977, tol: 0.001 }
 
   - id: reto-atenuar
     tipo: reto
@@ -147,7 +178,7 @@ tarjetas:
   - id: sorpresa-minimo
     tipo: sorpresa
     titulo: "El no inversor no baja de 1"
-    texto: "Intente atenuar con el no inversor: baje R_{f} hasta cero."
+    texto: "Intente atenuar con el no inversor: baje R_{f} hasta que ya no pueda bajar más la ganancia."
     libro: [113, 115]
     inicio: { R_f: 47000 }
     widget:
@@ -161,7 +192,17 @@ tarjetas:
       mide: { vo: V_op, vmenos: V_mp, i1: I_p }
       mandos:
         - { valor: R_f, lista: [0, 1000, 10000, 47000], rotulo: "R_{f}" }
-    requiere: { mover: [R_f] }
+    objetivo:
+      condiciones:
+        - { valor: R_f, max: 0, rotulo: "R_{f} = {{R_f}}" }
+      logrado: "Ganancia {{G_p}} y salida {{V_op}}, igual que la entrada: el seguidor. Por debajo de 1 no hay manera."
+      pistas:
+        - { texto: "Siga bajando R_{f}." }
+    escalera:
+      - "Con R_{f} = 0, 1 + R_{f}/R_{g} = 1."
+    solucion: "R_{f} = 0: ganancia 1."
+    comprobar:
+      - { con: { R_f: 0 }, G_p: 1 }
 
   - id: por-que-minimo
     tipo: porque
@@ -224,29 +265,38 @@ tarjetas:
       - { G_n: 10, G_a: 11 }
 
   - id: empareje-eleccion
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
+    fase: "Elija"
     titulo: "La tabla de elección"
-    texto: "Una cada necesidad con su configuración."
-    libro: [124]
-    emparejar:
-      - ["Amplificar con impedancia alta", "No inversor"]
-      - ["Atenuar, o ganancia menor que 1", "Inversor"]
-      - ["Adaptar impedancias", "Seguidor"]
-      - ["Sumar señales", "Inversor sumador"]
-      - ["Convertir corriente", "Transimpedancia"]
-    exito: "Casi cualquier función analógica es una combinación de estas."
+    texto: "Toque, por este orden, la configuración que atenúa a la mitad, la que adapta impedancias tras un sensor y la que convierte una corriente."
+    libro: [124, 135]
+    widget:
+      tipo: figura
+      figura: fig-27.8
+      zonas:
+        - { id: inv, rect: [10, 0, 136, 160], rotulo: "Arriba a la izquierda" }
+        - { id: noinv, rect: [161, 0, 131, 160], rotulo: "Arriba en el centro" }
+        - { id: seg, rect: [312, 0, 136, 160], rotulo: "Arriba a la derecha" }
+        - { id: dif, rect: [10, 171, 141, 160], rotulo: "Abajo a la izquierda" }
+        - { id: trans, rect: [171, 171, 126, 160], rotulo: "Abajo en el centro" }
+    tocar:
+      bien: [inv, seg, trans]
+      orden: true
+      porque:
+        noinv: "El no inversor amplifica con impedancia alta, pero su ganancia mínima es 1: ni atenúa ni recibe corriente."
+        dif: "El diferencial resta dos señales; no es ninguna de las tres necesidades."
+    exito: "Inversor, seguidor y transimpedancia. Casi cualquier función analógica es una combinación de estas cinco."
     pistas:
-      - { texto: "El seguidor no amplifica: transforma impedancias." }
+      - { texto: "El no inversor no baja de ganancia 1: para atenuar no sirve." }
     escalera:
-      - "Las entradas que no interactúan son las del inversor: de ahí el sumador."
-    solucion: "Impedancia alta–no inversor, atenuar–inversor, adaptar–seguidor, sumar–sumador, corriente–transimpedancia."
+      - "El seguidor no amplifica: transforma impedancias."
+    solucion: "Atenuar: inversor. Adaptar: seguidor. Corriente: transimpedancia."
 
   - id: estime-transimpedancia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un fotodiodo"
-    texto: "Un amplificador de transimpedancia con R_{f} = 1 MΩ y un fotodiodo que entrega 200 nA. ¿Qué tensión de salida da, en módulo?"
+    texto: "Un amplificador de transimpedancia con R_{f} = 1 MΩ y un fotodiodo que entrega 200 nA. ¿Qué tensión da la salida?"
     libro: [121, "cap27#434"]
     widget:
       tipo: circuito
@@ -255,24 +305,21 @@ tarjetas:
       lectura: { valor: V_ts, rotulo: "Tensión de salida" }
       mide: { vo: V_ts }
       ocultar: true
-    estimar:
-      objetivo: "V_t"
+      mandos: []
+    simular:
+      objetivo: V_ts
       unidad: V
-      min: 0
-      max: 2
-      paso: 0.05
-      inicio: 1.5
-      tol: 0.05
-      rotulo: "|V_{out}|"
-    exito: "0,2 V: toda la corriente pasa por R_{f}, y el fotodiodo trabaja con tensión nula."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.21 }, texto: "Se ha pasado: 200 nA son 2 · 10⁻⁷ A." }
-      - { texto: "Se ha quedado corto: multiplique la corriente por R_{f}." }
+      tol: 0.02
+      rotulo: "V_{out}"
+      medida: vo
+      errores:
+        - { expr: "V_t", texto: "El módulo está bien, pero la corriente entra al nodo inversor: la salida es negativa." }
+    exito: "−0,2 V: toda la corriente pasa por R_{f}, y el fotodiodo trabaja con tensión nula."
     escalera:
       - "V_{out} = −I_{in} · R_{f}."
-    solucion: "200 nA · 1 MΩ = 0,2 V."
+    solucion: "−200 nA · 1 MΩ = −0,2 V."
     comprobar:
-      - { V_t: 0.2 }
+      - { V_t: 0.2, V_ts: -0.2, tol: 0.001 }
 
   - id: entrada-flotante
     tipo: pregunta

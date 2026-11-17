@@ -6,6 +6,10 @@
 # - La curva del condensador es la del catálogo: el pico menos la descarga exponencial con τ = R·C (sección 5.6).
 # Paso práctico: «simular» el condensador de filtro de C = I/(f·ΔV) (5 000 µF; error típico: 50 Hz en lugar de los
 # 100 Hz del puente, 10 000 µF).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se elige el condensador que deja 2 V de rizado (objetivo), y se
+# calculan la continua nominal, la de red baja y la de red alta en vacío, y el condensador de C = I/(f·ΔV). Quedan dos
+# preguntas (los picos del puente y la vida del condensador); la tensión del condensador, la toma media y la
+# irrupción, al resumen.
 leccion: cap50/sec-50.5
 
 libro:
@@ -15,6 +19,7 @@ libro:
   146: '"23,1 V"'
   148: "esos 23,1 V se quedan en 20,5 V"
   150: "la tensión sube a 26,6 V"
+  151: "calcular la disipación con el extremo alto"
   153: "con dos caídas de diodo y frecuencia de rizado de 100 Hz"
   154: "una sola caída, mejor rendimiento a baja tensión, y exige un secundario con toma central"
   158: "al menos 1,414 veces la eficaz del secundario"
@@ -48,13 +53,17 @@ modelo:
     C_n: { expr: "I_c/(2*f_r*dV_o)", sim: "C", nombre: "condensador necesario", unidad: F }
     C_50: { expr: "I_c/(f_r*dV_o)", sim: "C", nombre: "con 50 Hz", unidad: F }
     f_riz: { expr: "2*f_r", sim: "f", nombre: "frecuencia del rizado", unidad: Hz }
+    V_sin: { expr: "V_sec*red - 2*V_d - dV/2", sim: "V", nombre: "sin el pico (error)", unidad: V }
+    V_10: { expr: "0.9*(V_sec*1.414 - 2*V_d - dV/2)", sim: "V", nombre: "un 10 % menos de la continua (error)", unidad: V }
 
 tarjetas:
   - id: explore-filtro
     tipo: explorar
     titulo: "El condensador de filtro"
-    texto: "Secundario de 18 V eficaces, puente y 1 A de carga. Cambie el condensador y mire el rizado."
-    libro: [140, 145, 176]
+    texto: "Secundario de 18 V eficaces, puente y 1 A de carga. Elija el condensador que deja el rizado en 2 V o menos."
+    libro: [140, 145, 162, 176]
+    inicio: { C_f: 0.0022 }
+    fijar: { red: 1 }
     widget:
       tipo: circuito
       esquema: puente
@@ -70,92 +79,104 @@ tarjetas:
           - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: C_f, lista: [0.0022, 0.005, 0.01], rotulo: "Condensador de filtro" }
-    requiere: { mover: [C_f] }
+    objetivo:
+      condiciones:
+        - { valor: dV, max: 2.05, rotulo: "Rizado: {{dV}}" }
+      logrado: "Con {{C_f}}, {{dV}} de rizado y {{V_cc}} de continua. Más capacidad, menos rizado, pero picos de carga más cortos e intensos."
+      pistas:
+        - { texto: "Todavía rizado de sobra: el condensador se descarga demasiado entre picos." }
+    escalera:
+      - "Cuanto mayor C, más despacio cae entre picos."
+    solucion: "5 000 µF: unos 2 V de rizado."
     comprobar:
       - { con: { C_f: 0.005 }, dV: 2.0, V_cc: 23.1, f_riz: 100, tol: 0.02 }
 
   - id: formula-vcc
-    tipo: formula
+    tipo: simular
     titulo: "La continua tras el filtro"
-    texto: "El pico del secundario, menos dos diodos, menos medio rizado."
+    texto: "Con esos 5 000 µF: el pico del secundario, menos dos diodos, menos medio rizado. ¿Qué continua queda?"
     libro: [144, 146]
     fijar: { C_f: 0.005, red: 1 }
-    ec: 144
-    sustitucion: "{{V_sec}} × 1,414 − 2 × {{V_d}} − {{dV}}/2 = {{V_cc}}"
     widget:
-      tipo: circuito
-      esquema: puente
-      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_f, carga: R_L }
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 30, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida" }
       lectura: { valor: V_cc, rotulo: "Continua" }
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 30, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
-      mandos: []
+      ocultar: true
+    simular:
+      objetivo: V_cc
+      unidad: V
+      tol: 0.02
+      rotulo: "Continua tras el filtro"
+      errores:
+        - { expr: "V_sin", texto: "Le falta el 1,414: el condensador se carga al pico, no a la eficaz." }
+        - { expr: "V_pk", texto: "Le falta restar medio rizado: la media está por debajo del pico." }
+    exito: "Unos 23,1 V, a plena carga y con la red nominal."
+    escalera:
+      - "18 × 1,414 − 2 × 0,7 − 2/2."
+    solucion: "18 × 1,414 − 1,4 − 1 ≈ 23,1 V."
     comprobar:
-      - { V_cc: 23.1, tol: 0.02 }
+      - { V_cc: 23.1, V_pk: 24.05, V_sin: 15.6, V_d: 0.7, tol: 0.02 }
 
   - id: prediga-red-baja
-    tipo: predecir
+    tipo: simular
     titulo: "La red baja"
     texto: "La red cae un 10 %. ¿Dónde se quedan los 23,1 V tras el filtro?"
     libro: [146, 148]
     fijar: { C_f: 0.005, red: 0.9 }
     widget:
-      tipo: circuito
-      esquema: puente
-      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_f, carga: R_L }
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 30, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida" }
       lectura: { valor: V_cc, rotulo: "Continua" }
       ocultar: true
-      grafica:
-        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 30, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
-      mandos: []
-    opciones:
-      - texto: "En unos 20,5 V"
-        bien: true
-        porque: "El pico baja un 10 %, y los diodos y el rizado restan lo mismo. El regulador debe funcionar ahí."
-      - texto: "En 23,1 V: el filtro lo compensa"
-        porque: "El condensador se carga al pico: si el pico baja, baja con él."
-      - texto: "Exactamente un 10 % menos"
-        porque: "Las caídas de los diodos y el medio rizado no bajan con la red: baja algo más."
+    simular:
+      objetivo: V_cc
+      unidad: V
+      tol: 0.01
+      rotulo: "Continua con la red baja"
+      errores:
+        - { expr: "V_10", texto: "Ha bajado un 10 % la continua entera; los diodos y el medio rizado no bajan con la red." }
+    exito: "Unos 20,5 V: el regulador debe seguir funcionando ahí."
     escalera:
       - "Baje el pico un 10 % y reste otra vez los diodos y el medio rizado."
     solucion: "0,9 × 25,45 − 1,4 − 1 ≈ 20,5 V."
     comprobar:
-      - { V_cc: 20.5, tol: 0.01 }
+      - { V_cc: 20.5, V_10: 20.8, tol: 0.01 }
       - { con: { red: 1 }, V_cc: 23.1, V_p: 25.45, tol: 0.02 }
 
   - id: red-alta
-    tipo: pregunta
+    tipo: simular
     titulo: "La red alta, en vacío"
-    texto: "Con la red un 10 % alta y sin carga, ya sin rizado, la continua sube. ¿Para qué sirve esa cifra?"
-    libro: [150]
-    fijar: { red: 1.1 }
+    texto: "Con la red un 10 % alta y sin carga, ya sin rizado que restar, ¿a cuánto sube la continua?"
+    libro: [150, 151]
+    fijar: { red: 1.1, C_f: 0.005 }
     widget:
       tipo: grafica
       x: { id: rx, min: 0.85, max: 1.15, unidad: "", rotulo: "red relativa" }
       y: { min: 15, max: 30, unidad: V, rotulo: "V" }
       curvas:
         - { expr: "V_sec*1.414*rx - 2*V_d", color: naranja, rotulo: "en vacío" }
-      marcas:
-        - { x: "red", y: "V_vac", rotulo: "{{V_vac}}" }
-    opciones:
-      - texto: "Fija la disipación y la tensión que soportan los componentes"
-        bien: true
-        porque: "Unos 26,6 V, y algo más por la regulación del transformador: es el extremo alto del margen."
-      - texto: "Es la que debe dar la fuente a la salida"
-        porque: "La salida la fija el regulador; esta es la tensión que soporta todo lo demás."
-      - texto: "No importa: en vacío no hay corriente"
-        porque: "La disipación se calcula con este extremo alto, y los componentes deben soportarlo."
+      lectura: { valor: V_vac, rotulo: "En vacío" }
+      ocultar: true
+    simular:
+      objetivo: V_vac
+      unidad: V
+      tol: 0.02
+      rotulo: "Continua en vacío con la red alta"
+      errores:
+        - { expr: "V_cc", texto: "Ha restado medio rizado: en vacío no hay corriente y el condensador se queda en el pico." }
+    exito: "Unos 26,6 V, y algo más por la regulación del transformador: con este extremo se calcula la disipación."
     escalera:
-      - "¿Qué pasa con lo que sobra entre la entrada y la salida del regulador?"
-    solucion: "Unos 26,6 V: fija la disipación y la tensión de los componentes."
+      - "1,1 × 18 × 1,414 − 1,4."
+    solucion: "1,1 × 25,45 − 1,4 ≈ 26,6 V."
     comprobar:
-      - { V_vac: 26.6, tol: 0.01 }
+      - { V_vac: 26.6, V_cc: 25.6, tol: 0.01 }
+      - { con: { red: 1 }, V_p: 25.45, tol: 0.01 }
 
   - id: simule-c
     tipo: simular
@@ -184,28 +205,6 @@ tarjetas:
     comprobar:
       - { C_n: 0.005, C_50: 0.01, f_riz: 100, f_r: 50 }
 
-  - id: tension-c
-    tipo: pregunta
-    titulo: "La tensión del condensador"
-    texto: "El peor caso alto son 26,6 V. ¿De qué tensión se elige el condensador?"
-    libro: [146, 164]
-    widget:
-      tipo: figura
-      figura: fig-50.8
-      zonas:
-        - { id: grafica, rotulo: "La figura", rect: [0, 0, 448, 223] }
-    opciones:
-      - texto: "De 35 V"
-        bien: true
-        porque: "Con margen sobre el peor caso alto."
-      - texto: "Uno justo por encima de los 23,1 V nominales"
-        porque: "Con la red alta y en vacío llegan 26,6 V: no basta."
-      - texto: "De 26,6 V justos"
-        porque: "Sin margen: hace falta uno por encima, de 35 V."
-    escalera:
-      - "Mire el extremo alto, no el nominal."
-    solucion: "De 35 V."
-
   - id: pico-diodos
     tipo: pregunta
     titulo: "Dimensionar el puente"
@@ -227,26 +226,6 @@ tarjetas:
     escalera:
       - "¿Cuánto tiempo conduce cada diodo en cada ciclo?"
     solucion: "La de pico repetitiva; y una tensión inversa de al menos 1,414 veces la eficaz."
-
-  - id: empareje-rect
-    tipo: pregunta
-    titulo: "Puente o toma media"
-    texto: "Empareje cada rectificador con lo que lo distingue."
-    libro: [153, 154]
-    widget:
-      tipo: figura
-      figura: fig-50.7
-      zonas:
-        - { id: grafica, rotulo: "La figura", rect: [0, 0, 435, 184] }
-    emparejar:
-      - ["Puente completo", "Dos caídas de diodo; la opción normal"]
-      - ["Doble onda con toma media", "Una caída; exige toma central en el secundario"]
-    exito: "Los dos dan rizado de 100 Hz."
-    pistas:
-      - { texto: "El de una sola caída rinde mejor a baja tensión." }
-    escalera:
-      - "Cuente cuántos diodos conducen a la vez en cada uno."
-    solucion: "Puente, dos caídas; toma media, una caída y toma central."
 
   - id: por-que-rizado
     tipo: porque
@@ -270,34 +249,12 @@ tarjetas:
       - "¿Qué calienta el condensador por dentro?"
     solucion: "La corriente de rizado eficaz que admite: es lo que decide su vida."
 
-  - id: irrupcion
-    tipo: pregunta
-    titulo: "Al enchufar"
-    texto: "Al conectar, el condensador descargado es un cortocircuito y la corriente puede ser de decenas de amperios. ¿Cómo se defiende la fuente?"
-    libro: [168, 170]
-    widget:
-      tipo: figura
-      figura: fig-50.7
-      zonas:
-        - { id: grafica, rotulo: "La figura", rect: [0, 0, 435, 184] }
-    opciones:
-      - texto: "Fusible lento, NTC de irrupción o arranque suave con relé"
-        bien: true
-        porque: "Sin ellas, fusibles que se funden al encender, contactos picados y diodos que sufren."
-      - texto: "Con un fusible rápido"
-        porque: "Un rápido se fundiría en cada encendido."
-      - texto: "Con un condensador más pequeño"
-        porque: "Subiría el rizado; la irrupción se limita, no se evita así."
-    escalera:
-      - "Hay que limitar el pico o tolerarlo sin fundir nada."
-    solucion: "Fusible lento, NTC de irrupción o arranque suave con relé."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [144, 148, 150, 161]
+    libro: [144, 148, 150, 153, 154, 161, 164, 168, 170]
     ideas:
       - { titulo: "La continua.", texto: "Pico menos dos diodos menos medio rizado: 23,1 V con 18 V eficaces." }
       - { titulo: "El margen.", texto: "De 20,5 V con la red baja a 26,6 V con la alta en vacío." }
-      - { titulo: "El condensador.", texto: "C = I/(f·ΔV) a 100 Hz; con su tensión y su corriente de rizado." }
-      - { titulo: "Los picos.", texto: "Diodos y condensador sufren pulsos mucho mayores que la media." }
+      - { titulo: "El condensador.", texto: "C = I/(f·ΔV) a 100 Hz, la del puente; de 35 V para 26,6 V, y con su corriente de rizado." }
+      - { titulo: "Los picos.", texto: "Pulsos de carga mucho mayores que la media; al enchufar, decenas de amperios: fusible lento, NTC o arranque suave." }

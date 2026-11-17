@@ -2,6 +2,9 @@
 # umbral), los milivoltios por década y la lectura inversa, el factor de idealidad, la resistencia dinámica, los
 # modelos del diodo, el coeficiente térmico y el ejemplo del LED con la dispersión de V_f. Formato:
 # contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): subir hasta ver la corriente, predecir 0,40 V, 0,6 V y
+# 100 mA, cambiar a n = 2, bajar r_d, el banco, el reto del LED, buscar el LED que más corriente lleva y predecir
+# el de 2,5 V; se elige el reparto en paralelo. Los cuatro modelos quedan en los textos.
 leccion: cap05/sec-5.3
 
 libro:
@@ -62,7 +65,7 @@ tarjetas:
   - id: explore-exponencial
     tipo: explorar
     titulo: "¿Dónde está el umbral?"
-    texto: "Un diodo con I_{S} = 10⁻¹² A. Suba su tensión de 0,40 a 0,70 V y busque el punto en que «empieza a conducir»."
+    texto: "Un diodo con I_{S} = 10⁻¹² A. Suba su tensión hasta que la corriente se vea en la gráfica y busque dónde «empieza a conducir»."
     libro: [101, 102]
     inicio: { V_D: 0.5 }
     widget:
@@ -76,37 +79,39 @@ tarjetas:
       lectura: { valor: I_D, rotulo: "Corriente" }
       mandos:
         - { valor: V_D, min: 0.4, max: 0.7, paso: 0.05, rotulo: "Tensión del diodo, V_{D}" }
-    requiere: { mover: [V_D] }
+    objetivo:
+      condiciones:
+        - { valor: I_D, min: 0.1, rotulo: "I_{D} = {{I_D}}" }
+      logrado: "A {{V_D}}, {{I_D}}. ¿Dónde empezó? En ningún sitio: la exponencial es tan empinada que, en escala lineal, parece un umbral."
+      pistas:
+        - { texto: "Más tensión." }
+    escalera:
+      - "No hay umbral: suba hasta que la curva despegue."
+    solucion: "A 0,70 V: 575 mA."
+    comprobar:
+      - { I_D: 251e-6 }
+      - { con: { V_D: 0.7 }, I_D: 0.575 }
 
   - id: prediga-040
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "El mismo diodo, con I_{S} = 10⁻¹² A y n = 1, recibe 0,40 V y en la gráfica lineal parece apagado. ¿Qué corriente lleva?"
-    libro: [101, 102]
+    libro: [101, 102, 103]
     fijar: { V_D: 0.4 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.75, unidad: V, rotulo: "V_{D}" }
-      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "I_S*(exp(x/(n_d*V_T)) - 1)", color: naranja, rotulo: "I_{D}" }
-      lectura: { valor: I_D, rotulo: "Corriente" }
-      ocultar: true
-    opciones:
-      - texto: "5,24 µA: conduce, poco"
-        bien: true
-        porque: "Conduce siempre. Esos microamperios parecen cero a la escala de trabajo, pero existen."
-      - texto: "Nada: no llega a 0,7 V"
-        porque: "No hay umbral: hay una exponencial tan empinada que, en escala lineal, lo parece."
-      - texto: "575 mA"
-        porque: "Eso lleva con 0,70 V. Con 0,30 V menos, la corriente es cien mil veces menor."
+    simular:
+      objetivo: I_D
+      unidad: A
+      tol: 0.03
+      rotulo: "I_{D} con 0,40 V"
+      errores:
+        - { razon: { min: 90000, max: 120000 }, texto: "Eso lleva con 0,70 V, 575 mA. Con 0,30 V menos, la corriente es cien mil veces menor." }
+    exito: "5,24 µA: conduce, poco. No hay umbral; hay una exponencial."
+    escalera:
+      - "Aplique la ecuación de Shockley con 0,40 V."
+    solucion: "Unos 5,24 µA."
     comprobar:
       - { I_D: 5.24e-6 }
       - { con: { V_D: 0.7 }, I_D: 0.575 }
-    escalera:
-      - "No hay umbral: aplique la ecuación de Shockley con 0,40 V."
-    solucion: "Unos 5,24 µA: conduce, poco, y a la escala de trabajo parece cero."
-
   - id: formula-shockley
     tipo: formula
     titulo: "La ecuación de Shockley"
@@ -127,37 +132,31 @@ tarjetas:
         - { valor: V_D, min: 0.4, max: 0.7, paso: 0.05, rotulo: "Tensión del diodo, V_{D}" }
 
   - id: estime-060
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Con 0,6 V"
-    texto: "Un diodo de silicio con I_{S} = 10⁻¹² A y n = 1 recibe 0,6 V en directa. Estime su corriente con la ecuación de Shockley."
+    texto: "Un diodo de silicio con I_{S} = 10⁻¹² A y n = 1 recibe 0,6 V en directa. Calcule su corriente con la ecuación de Shockley."
     libro: [101, "cap05#348"]
     fijar: { V_D: 0.6 }
-    estimar:
-      objetivo: "I_D"
+    simular:
+      objetivo: I_D
       unidad: A
-      min: 0
-      max: 0.03
-      paso: 0.0005
-      inicio: 0.025
       tol: 0.05
       rotulo: "I_{D} con 0,6 V"
-    exito: "12 mA, la corriente de trabajo típica. A 0,5 V eran 251 µA: casi cincuenta veces menos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0126 }, texto: "Se ha pasado. 0,6/0,02585 = 23,21, y e^{23,21} vale unos 1,2 × 10¹⁰." }
-      - { texto: "Se ha quedado corto. Multiplique 10⁻¹² A por e^{23,21}, unos 1,2 × 10¹⁰." }
-    comprobar:
-      - { I_D: 0.012, tol: 0.01 }
-      - { con: { V_D: 0.5 }, I_D: 251e-6 }
+      errores:
+        - { razon: { min: 0.019, max: 0.023 }, texto: "Eso es con 0,5 V, 251 µA." }
+    exito: "12 mA, la corriente de trabajo típica: casi cincuenta veces más que con 0,5 V."
     escalera:
       - "0,6/0,02585 = 23,21, y e^{23,21} vale unos 1,2 × 10¹⁰."
     solucion: "10⁻¹² A × 1,2 × 10¹⁰ = 12 mA."
-
+    comprobar:
+      - { I_D: 0.012, tol: 0.01 }
+      - { con: { V_D: 0.5 }, I_D: 251e-6 }
   - id: prediga-decadas
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "La lectura inversa es V = n·V_{T}·ln(I/I_{S}). Con I_{S} = 10⁻¹² A, ¿cuánto sube la tensión del diodo al pasar de 1 mA a 100 mA?"
-    libro: [107, 108, 109, 105]
+    texto: "Con V = n·V_{T}·ln(I/I_{S}) e I_{S} = 10⁻¹² A, el diodo tiene 0,536 V con 1 mA. ¿Qué tensión tiene con 100 mA?"
+    libro: [105, 107, 108, 109, 120, 121, 123]
     fijar: { I_q: 0.1 }
     widget:
       tipo: grafica
@@ -166,27 +165,25 @@ tarjetas:
       curvas:
         - { expr: "n_d*V_T*ln(i/I_S)", color: azul, rotulo: "V" }
       lectura: { valor: V_q, rotulo: "Tensión con 100 mA" }
-      ocultar: true
-    opciones:
-      - texto: "Solo 119 mV"
-        bien: true
-        porque: "De 0,536 a 0,655 V: cien veces más corriente, dos décadas de 59,5 mV. Por eso «cae 0,7 V» funciona."
-      - texto: "Cien veces"
-        porque: "La tensión va con el logaritmo de la corriente: cien veces más suma poco."
-      - texto: "0,7 V, como siempre"
-        porque: "La tensión sí se mueve, pero poco: 59,5 mV por cada década de corriente."
+      ocultar: curvas
+    simular:
+      objetivo: V_q
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión con 100 mA"
+      errores:
+        - { razon: { min: 0.8, max: 0.84 }, texto: "La tensión sí se mueve, pero poco: 59,5 mV por cada década de corriente." }
+    exito: "0,655 V: cien veces más corriente, solo 119 mV más. Por eso «cae 0,7 V» sirve en el 90 % de los cálculos; el ideal, en un rectificador de 325 V; la ecuación, en una bandgap."
+    escalera:
+      - "Con n = 1, cada década de corriente suma 59,5 mV."
+    solucion: "0,536 V más dos décadas de 59,5 mV: 0,655 V."
     comprobar:
       - { V_q: 0.655 }
       - { con: { I_q: 0.001 }, V_q: 0.536 }
-    escalera:
-      - "Con n = 1, cada década de corriente suma 59,5 mV."
-    solucion: "Dos décadas, 119 mV: de 0,536 a 0,655 V."
-
   - id: explore-idealidad
     tipo: explorar
     titulo: "El factor de idealidad"
-    texto: "Elija el mecanismo que domina y mire la pendiente: cuántos milivoltios hacen falta para multiplicar la corriente por diez."
-    nota: "Recombinación a corrientes bajas; difusión a corrientes medias."
+    texto: "Busque el mecanismo con el que hacen falta más milivoltios para multiplicar la corriente por diez."
     libro: [105, 112]
     widget:
       tipo: grafica
@@ -197,18 +194,25 @@ tarjetas:
       lectura: { valor: dec, rotulo: "Tensión por década" }
       mandos:
         - { valor: n_d, lista: [1, 2], nombres: [difusión, recombinación], rotulo: "Mecanismo, n" }
-    requiere: { mover: [n_d] }
+    inicio: { n_d: 1 }
+    objetivo:
+      condiciones:
+        - { valor: dec, min: 0.11, rotulo: "{{dec}} por década" }
+      logrado: "Con n = {{n_d}}, {{dec}} por década: a corrientes bajas manda la recombinación; a corrientes medias, la difusión, con 59,5 mV."
+      pistas:
+        - { texto: "Pruebe la recombinación." }
+    escalera:
+      - "n multiplica la tensión por década."
+    solucion: "Recombinación, n = 2: 119 mV."
     comprobar:
       - { dec: 0.0595 }
       - { con: { n_d: 2 }, dec: 0.119 }
 
   - id: formula-rd
-    tipo: formula
+    tipo: explorar
     titulo: "La resistencia dinámica"
-    texto: "El diodo no tiene «una resistencia»: tiene una pendiente en cada punto. Cambie R y mire cómo cambia r_{d} con la corriente."
+    texto: "El diodo no tiene «una resistencia»: tiene una pendiente en cada punto. Elija la R que deja r_{d} por debajo de 3 Ω."
     libro: [116, 117, 118]
-    ec: 116
-    sustitucion: "{{n_d}} · {{V_T}} / {{I_ds}} = {{r_d}}"
     widget:
       tipo: circuito
       esquema: diodo
@@ -220,8 +224,21 @@ tarjetas:
       corriente: I_ds
       mide: { corriente: I_ds, vd: V_ds }
       mandos:
-        - { valor: R_s, lista: [100, 1000, 10000] }
+        - { valor: R_s, lista: [100, 1000, 10000], rotulo: "Resistencia, R" }
     fijar: { n_d: 1 }
+    inicio: { R_s: 1000 }
+    objetivo:
+      condiciones:
+        - { valor: r_d, max: 3, rotulo: "r_{d} = {{r_d}}" }
+      logrado: "Con {{R_s}} pasan {{I_ds}} y r_{d} = {{r_d}}: r_{d} = n·V_{T}/I baja con la corriente. Es la resistencia que ve una señal pequeña."
+      pistas:
+        - { texto: "Más corriente: menos resistencia en serie." }
+    escalera:
+      - "r_{d} = n·V_{T}/I: más corriente, menos r_{d}."
+    solucion: "Con 100 Ω: unos 44 mA y 0,59 Ω."
+    comprobar:
+      - { r_d: 5.92, tol: 0.02 }
+      - { con: { R_s: 100 }, r_d: 0.59, I_ds: 0.0438, tol: 0.02 }
 
   - id: banco-curva
     tipo: banco
@@ -248,24 +265,6 @@ tarjetas:
         - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Lee de menos: ¿es una Schottky? Caen unas décimas menos. Compruebe también el sentido del diodo." }
         - { texto: "Dentro de lo esperado: no hay umbral, pero a esta corriente la tensión ronda las seis décimas." }
       ficha: { n: 27, titulo: "Práctica 3 · Característica I-V de un diodo" }
-
-  - id: empareje-modelos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuatro modelos"
-    texto: "Elegir el modelo es una decisión de ingeniería. Empareje cada modelo del diodo con un caso en que es el adecuado."
-    libro: [120, 121, 122, 123]
-    emparejar:
-      - ["Ideal, un interruptor", "Un rectificador de 325 V de pico"]
-      - ["Caída constante, 0,7 V", "El 90 % de los cálculos de diseño"]
-      - ["Lineal por tramos", "La disipación de un puente a plena carga"]
-      - ["Ecuación completa", "Una referencia de tensión bandgap"]
-    exito: "Eso es. Usar la ecuación donde basta la caída constante solo multiplica el trabajo."
-    pistas:
-      - { texto: "Cuanto más grandes las tensiones frente a 0,7 V, más simple puede ser el modelo." }
-    escalera:
-      - "Cuanto más grandes las tensiones frente a 0,7 V, más simple puede ser el modelo."
-    solucion: "Ideal: el rectificador de 325 V. Caída constante: el 90 % del diseño. Por tramos: la disipación del puente. Ecuación: la referencia bandgap."
 
   - id: formula-temperatura
     tipo: formula
@@ -321,7 +320,7 @@ tarjetas:
   - id: sorpresa-dispersion
     tipo: sorpresa
     titulo: "Dos LED del mismo lote"
-    texto: "Con 5 V y 150 Ω, cambie la V_{f} del LED dentro de su tolerancia, de 1,8 a 2,2 V, y mire la corriente."
+    texto: "Con 5 V y 150 Ω, busque, dentro de su tolerancia de 1,8 a 2,2 V, el LED que más corriente lleva."
     libro: [136, 137, 138]
     fijar: { V_e: 5, R_e: 150 }
     inicio: { V_fe: 2 }
@@ -334,43 +333,42 @@ tarjetas:
       mide: { corriente: I_e, vf: V_fe }
       mandos:
         - { valor: V_fe, lista: [1.8, 2, 2.2], rotulo: "Tensión del LED, V_{f}" }
-    requiere: { mover: [V_fe] }
+    objetivo:
+      condiciones:
+        - { valor: I_e, min: 0.0212, rotulo: "LED: {{I_e}}" }
+      logrado: "Con V_{f} = {{V_fe}}, {{I_e}}; el de 2,2 V, 18,7 mA. Con 3 V sobre la resistencia, la dispersión apenas pesa."
+      pistas:
+        - { texto: "Menos V_{f}, más tensión sobre la resistencia." }
+    escalera:
+      - "I = (5 − V_{f})/150 Ω."
+    solucion: "El de 1,8 V: 21,3 mA."
     comprobar:
+      - { I_e: 0.02 }
       - { con: { V_fe: 1.8 }, I_e: 0.0213 }
       - { con: { V_fe: 2.2 }, I_e: 0.0187 }
 
   - id: prediga-25
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Un LED rojo cuya V_{f} va de 1,8 a 2,2 V según la unidad, alimentado desde 2,5 V con 25 Ω. ¿Entre qué corrientes queda?"
+    texto: "Un LED rojo de 1,8 V, el más bajo de su tolerancia, alimentado desde 2,5 V con 25 Ω para 20 mA nominales. ¿Qué corriente lleva?"
     libro: [138]
-    fijar: { V_e: 2.5, R_e: 25 }
-    inicio: { V_fe: 2 }
-    widget:
-      tipo: circuito
-      esquema: led
-      piezas: { fuente: V_e, r: R_e, vf: V_fe }
-      lectura: { valor: I_e, rotulo: "Corriente del LED" }
-      corriente: I_e
-      mide: { corriente: I_e, vf: V_fe }
-      ocultar: true
-      mandos:
-        - { valor: V_fe, lista: [1.8, 2, 2.2], rotulo: "Tensión del LED, V_{f}" }
-    opciones:
-      - texto: "Entre 28 y 12 mA"
-        bien: true
-        porque: "La resistencia solo se queda con 0,5 V: la dispersión pesa mucho más. Un factor 2,3."
-      - texto: "Entre 21,3 y 18,7 mA, como con 5 V"
-        porque: "Con 5 V la resistencia se quedaba con 3 V. Con 0,5 V, los mismos 0,2 V de dispersión pesan seis veces más."
-      - texto: "20 mA siempre"
-        porque: "Solo con 2,0 V justos. La corriente depende de lo que quede sobre la resistencia."
-    comprobar:
-      - { con: { V_fe: 1.8 }, I_e: 0.028 }
-      - { con: { V_fe: 2.2 }, I_e: 0.012 }
+    fijar: { V_e: 2.5, R_e: 25, V_fe: 1.8 }
+    simular:
+      objetivo: I_e
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente del LED"
+      errores:
+        - { razon: { min: 0.73, max: 0.79 }, texto: "Eso era con 5 V. Con 0,5 V sobre la resistencia, los mismos 0,2 V de dispersión pesan seis veces más." }
+        - { razon: { min: 0.69, max: 0.73 }, texto: "Solo con 2,0 V justos. La corriente depende de lo que quede sobre la resistencia." }
+    exito: "28 mA; el de 2,2 V, 12 mA. La resistencia solo se queda con 0,5 V: la dispersión manda."
     escalera:
-      - "Calcule (2,5 − V_{f})/25 Ω con 1,8 y con 2,2 V."
-    solucion: "(2,5 − 1,8)/25 = 28 mA y (2,5 − 2,2)/25 = 12 mA."
-
+      - "(2,5 − 1,8)/25 Ω."
+    solucion: "0,7 V / 25 Ω = 28 mA."
+    comprobar:
+      - { I_e: 0.028 }
+      - { con: { V_fe: 2.2 }, I_e: 0.012 }
+      - { con: { V_fe: 2 }, I_e: 0.02 }
   - id: porque-paralelo
     tipo: porque
     titulo: "Dos LED, una resistencia"
@@ -401,9 +399,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [103, 109, 116, 121, 129, 138]
+    libro: [103, 109, 116, 121, 122, 129, 138]
     ideas:
       - { titulo: "No hay umbral.", texto: "I = I_{S}·(e^{V/nV_{T}} − 1): 59,5 mV por década con n = 1; 119 mV con n = 2." }
-      - { titulo: "Por eso 0,7 V.", texto: "De 1 a 100 mA la tensión sube 119 mV: la caída constante basta en el 90 % de los diseños." }
+      - { titulo: "Por eso 0,7 V.", texto: "De 1 a 100 mA la tensión sube 119 mV: la caída constante basta en el 90 % de los diseños; por tramos, para la disipación de un puente." }
       - { titulo: "r_{d} = n·V_{T}/I.", texto: "La pendiente en el punto de trabajo; baja con la corriente: 2,59 Ω a 10 mA." }
       - { titulo: "Temperatura y dispersión.", texto: "Unos −2 mV/°C. Con poca tensión sobre la resistencia, la dispersión de V_{f} manda." }

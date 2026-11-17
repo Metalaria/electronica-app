@@ -2,7 +2,10 @@
 # contenido/lecciones11/GUIA.md. La salida del 2C53T va de 0 a la amplitud ajustada (de 0,1 a 3 V): una senoide con
 # una continua de la mitad de la amplitud (bloque 439). La impedancia de salida de 50 Ω de un generador de
 # laboratorio, con el esquema thevenin: programado para 1 V sobre 50 Ω, en vacío da el doble (bloques 428–429; el
-# voltio programado es ilustrativo). El banco usa una senoide de 2 V (ilustrativa) medida directamente.
+# voltio programado es ilustrativo). El banco usa una senoide de 2 V (ilustrativa) medida directamente. 1.2.1
+# (aprender haciendo): ajustar la continua, buscar la carga que da lo programado, calcular lo que sale en vacío, tocar
+# la causa de la escalera y el banco. Dos preguntas: el condensador de acoplo y el Bode a mano.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap21/sec-21.16
 
 libro:
@@ -39,7 +42,7 @@ tarjetas:
   - id: explore-positiva
     tipo: explorar
     titulo: "Siempre positiva"
-    texto: "La salida del 2C53T va de 0 a la amplitud ajustada. Cambie la amplitud y mire su continua."
+    texto: "La salida del 2C53T va de 0 a la amplitud ajustada. Ajuste la amplitud para que su continua valga 1 V."
     libro: [428, 439]
     widget:
       tipo: grafica
@@ -51,7 +54,18 @@ tarjetas:
       lectura: { valor: V_dc, rotulo: "Continua que lleva" }
       mandos:
         - { valor: A_g, lista: [0.1, 0.5, 1, 2, 3], rotulo: "Amplitud" }
-    requiere: { mover: [A_g] }
+    objetivo:
+      condiciones:
+        - { valor: V_dc, min: 0.99, max: 1.01, rotulo: "Continua: {{V_dc}}" }
+      logrado: "Amplitud de 2 V, continua de 1 V: la salida siempre positiva lleva la mitad de la amplitud como continua."
+      pistas:
+        - { cuando: { valor: V_dc, mayor: 1.01 }, texto: "Demasiada continua: baje la amplitud." }
+        - { texto: "Poca continua: suba la amplitud." }
+    escalera:
+      - "La continua es la mitad de la amplitud."
+    solucion: "2 V de amplitud."
+    comprobar:
+      - { con: { A_g: 2 }, V_dc: 1 }
 
   - id: prediga-acoplo
     tipo: predecir
@@ -84,7 +98,7 @@ tarjetas:
   - id: explore-50
     tipo: explorar
     titulo: "Los 50 Ω de un generador de laboratorio"
-    texto: "Un generador de laboratorio programado para 1 V sobre 50 Ω. Cambie la carga y mire lo que sale."
+    texto: "Un generador de laboratorio programado para 1 V sobre 50 Ω. Busque la carga con la que sale lo programado."
     libro: [428, 429]
     widget:
       tipo: circuito
@@ -95,61 +109,40 @@ tarjetas:
       mide: { salida: V_out, corriente: I_o, interna: V_ri }
       mandos:
         - { valor: R_c, lista: [50, 1000, 1000000], rotulo: "Carga" }
-    requiere: { mover: [R_c] }
+    inicio: { R_c: 1000 }
+    objetivo:
+      condiciones:
+        - { valor: R_c, max: 50, rotulo: "Carga: {{R_c}}" }
+      logrado: "Solo sobre 50 Ω sale lo programado: la resistencia de salida forma un divisor con la carga."
+      pistas:
+        - { texto: "Pruebe la carga más baja." }
+    escalera:
+      - "La amplitud se especifica sobre una carga concreta."
+    solucion: "50 Ω."
     comprobar:
+      - { con: { R_c: 50 }, V_out: 1 }
       - { V_prog: 1 }
 
   - id: estime-doble
-    tipo: pregunta
+    tipo: simular
     titulo: "En alta impedancia"
-    texto: "Programado para 1 V sobre 50 Ω, lo conecta a la entrada de 1 MΩ de un osciloscopio. ¿Cuánto ve?"
+    texto: "Programado para 1 V sobre 50 Ω, lo conecta a la entrada de 1 MΩ de un osciloscopio. Calcule cuánto ve."
     libro: [429, 442]
     fijar: { R_c: 1000000, V_prog: 1 }
-    widget:
-      tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_th, rth: R_o, carga: R_c }
-      mide: { salida: V_out }
-    estimar:
-      objetivo: "V_out"
+    exito: "Casi 2 V: en circuito abierto la tensión es el doble de la programada. Es el factor dos."
+    simular:
+      objetivo: V_out
       unidad: V
-      min: 0
-      max: 3
-      paso: 0.05
-      inicio: 0.5
       tol: 0.03
       rotulo: "Tensión que ve"
-    exito: "Casi 2 V: en circuito abierto la tensión es el doble de la programada. Es el factor dos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.06 }, texto: "Se ha pasado: como mucho, el doble de lo programado." }
-      - { texto: "Se ha quedado corto: sin los 50 Ω de carga no hay divisor, y no se pierde la mitad." }
+      errores:
+        - { expr: "V_prog", texto: "Eso es lo programado sobre 50 Ω; sin esa carga no hay divisor." }
+        - { expr: "V_prog/2", texto: "Al revés: sin carga sale más, no menos." }
     escalera:
       - "Programado sobre 50 Ω, la mitad de la tensión interna se quedaba en la salida."
     solucion: "Casi 2 V: el doble de lo programado."
     comprobar:
       - { V_out: 2, tol: 0.001 }
-
-  - id: virtudes
-    tipo: pregunta
-    titulo: "Lo que da la síntesis digital"
-    texto: "Empareje cada rasgo del DDS con su causa."
-    libro: [417, 419, 420, 423, 424, 444]
-    widget:
-      tipo: figura
-      figura: fig-21.33
-      zonas:
-        - { id: dds, rotulo: "Antes y después del filtro", rect: [0, 0, 435, 180] }
-    emparejar:
-      - ["Frecuencia exacta y estable", "El cristal de referencia"]
-      - ["Barridos limpios", "Cambios de frecuencia sin saltos de fase"]
-      - ["Salida en escalera", "Falta el filtro de reconstrucción"]
-      - ["Frecuencia máxima baja", "Muy por debajo de la de muestreo"]
-    exito: "Calcula la señal punto a punto desde una tabla: de ahí sus virtudes y sus límites."
-    pistas:
-      - { texto: "La escalera son los puntos de la tabla sin suavizar." }
-    escalera:
-      - "La exactitud la hereda de su referencia."
-    solucion: "Cristal, exactitud; sin saltos de fase, barridos; sin filtro, escalera; muestreo, frecuencia máxima."
 
   - id: bode
     tipo: pregunta
@@ -195,7 +188,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [416, 428, 429, 439]
+    libro: [416, 428, 429, 439, 417, 419, 420, 423, 424, 444]
     ideas:
       - { titulo: "Excitar y medir.", texto: "Con el mismo aparato: la mitad de las prácticas del libro." }
       - { titulo: "De 0,1 a 3 V, positiva.", texto: "Lleva una continua de la mitad de la amplitud: un condensador la bloquea." }

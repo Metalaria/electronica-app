@@ -3,6 +3,10 @@
 #   dropout; la carga de 50 Ω (100 mA) es mía: el libro solo dice «unos pocos vatios» como mucho.
 # - La figura 33.11 con zonas (criterios, solución mixta, el receptor).
 # Sin paso práctico: el «banco» del libro (pilas frente a adaptador) es de oído, sin un número que comparar.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se baja la entrada hasta que más de la mitad llega al
+# receptor (objetivo), se escribe el rendimiento de 9 V a 5 V con las lecturas, se calcula lo que disipa con 100 mA
+# (valor de ejemplo) y se tocan en la figura la conmutada para elevar y la solución mixta. Quedan dos preguntas (el
+# ruido y las pilas); las razones, los criterios y la ferrita pasan a explicaciones y resumen.
 leccion: cap33/sec-33.10
 
 libro:
@@ -13,6 +17,7 @@ libro:
   406: "la eficiencia no es el único criterio"
   407: "Hay que elevar o invertir"
   408: "conmutada para el grueso, seguida de un LDO para las alimentaciones sensibles"
+  409: "cualquier equipo moderno con partes analógicas y digitales"
   414: "Filtrado de la entrada con una bobina o ferrita"
   415: "todo el problema de ruido se traslada a ese adaptador"
   418: "Con pilas, silencio"
@@ -28,13 +33,15 @@ modelo:
     I_L: { expr: "V_o/R_L", sim: "I", nombre: "corriente del receptor", unidad: A }
     P_paso: { expr: "(V_i - V_o)*I_L", sim: "P_{paso}", nombre: "potencia en el elemento de paso", unidad: W }
     eta: { expr: "V_o/V_i*100", sim: "η", nombre: "rendimiento", unidad: "%" }
+    P_out: { expr: "V_o*I_L", sim: "P_{out}", nombre: "potencia del receptor", unidad: W }
 
 tarjetas:
   - id: explore-receptor
     tipo: explorar
     titulo: "Un lineal en el receptor"
-    texto: "El regulador del receptor da 5 V. Baje la entrada hacia 9 V y mire el rendimiento y lo que se disipa."
+    texto: "El regulador lineal del receptor da 5 V. Baje la entrada hasta que más de la mitad de la energía llegue al receptor."
     libro: [402, 403]
+    inicio: { V_i: 12 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -46,39 +53,78 @@ tarjetas:
       mide: { vout: V_o, iin: I_L, iout: I_L, icarga: I_L, p_paso: P_paso }
       mandos:
         - { valor: V_i, min: 6, max: 15, paso: 0.5, rotulo: "Entrada, V_{in}" }
-    requiere: { mover: [V_i] }
+    objetivo:
+      condiciones:
+        - { valor: eta, min: 51, rotulo: "Rendimiento: {{eta}}" }
+      logrado: "Con {{V_i}}, rinde {{eta}}: con poca diferencia de tensión, el lineal es aceptable."
+      pistas:
+        - { texto: "Todavía se pierde más de la mitad: baje la entrada." }
+    escalera:
+      - "Un lineal rinde V_{out}/V_{in}."
+    solucion: "9,5 V o menos; con la pila de 9 V, un 56 %."
+    comprobar:
+      - { con: { V_i: 9.5 }, eta: 52.6 }
+      - { con: { V_i: 9 }, eta: 55.6, tol: 0.002 }
 
   - id: estime-rendimiento
-    tipo: pregunta
+    tipo: leer
     titulo: "De 9 V a 5 V"
-    texto: "¿Qué rendimiento tiene un regulador lineal de 9 V a 5 V?"
+    texto: "Con la entrada y la salida que marca el regulador, escriba su rendimiento."
     libro: [403]
     fijar: { V_i: 9 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
       piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      lectura: { valor: V_o, rotulo: "Salida" }
+      datos:
+        - { valor: V_i, rotulo: "Entrada: {{V_i}}" }
       corriente: I_L
       mide: { vout: V_o, iin: I_L }
       mandos: []
-    estimar:
-      objetivo: "eta"
+    leer:
+      objetivo: eta
       unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 90
-      tol: 0.04
+      tol: 0.02
       rotulo: "Rendimiento"
+      errores:
+        - { expr: "100 - eta", texto: "Esa es la parte que se pierde en el paso. El rendimiento es lo que llega." }
     exito: "Un 56 %: pobre en abstracto, aceptable con la potencia de un receptor."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 58 }, texto: "Se ha pasado: el rendimiento de un lineal es V_{out}/V_{in}." }
-      - { texto: "Se ha quedado corto: la carga se queda 5 de los 9 V." }
     escalera:
       - "η = V_{out}/V_{in}."
     solucion: "5/9 = 56 %."
     comprobar:
       - { eta: 55.6, tol: 0.002 }
+
+  - id: simule-disipa
+    tipo: simular
+    titulo: "Lo que se calienta"
+    texto: "Valores de ejemplo: el receptor consume 100 mA. ¿Cuánto disipa el regulador de 9 V a 5 V?"
+    libro: [402, 403]
+    fijar: { V_i: 9, R_L: 50 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      lectura: { valor: P_paso, rotulo: "Disipa" }
+      corriente: I_L
+      mide: { p_paso: P_paso, icarga: I_L }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: P_paso
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en el paso"
+      medida: p_paso
+      errores:
+        - { expr: "P_out", texto: "Esa es la del receptor, 5 V por 100 mA. El paso cae la diferencia." }
+    exito: "0,4 W: asumible, y no justifica la complejidad de una conmutada. Tres componentes, nada que oscile ni radie."
+    escalera:
+      - "(9 − 5) V por la corriente."
+    solucion: "(9 − 5) V × 100 mA = 0,4 W."
+    comprobar:
+      - { P_paso: 0.4, P_out: 0.5, I_L: 0.1 }
 
   - id: ruido
     tipo: pregunta
@@ -102,72 +148,53 @@ tarjetas:
       - "¿Qué hace un receptor, y qué genera un conmutador?"
     solucion: "El ruido: los armónicos de la conmutación caen en las bandas que el receptor quiere oír."
 
-  - id: razones
-    tipo: pregunta
-    titulo: "Cuatro razones"
-    texto: "Empareje cada razón del lineal en el receptor con su explicación."
-    libro: [401, 402, 403, 404]
-    widget:
-      tipo: figura
-      figura: fig-33.11
-      zonas:
-        - { id: lineal, rotulo: "Recuadro de arriba a la izquierda", rect: [3, 3, 141, 118] }
-    emparejar:
-      - ["El ruido", "Incompatible con detectar señales diminutas"]
-      - ["La potencia", "Unos pocos vatios: la disipación es asumible"]
-      - ["La diferencia de tensión", "De 9 a 5 V: un 56 %, aceptable"]
-      - ["La simplicidad", "Tres componentes, nada que pueda oscilar ni radiar"]
-    exito: "La eficiencia no es el único criterio."
-    pistas:
-      - { texto: "Los tres componentes son la simplicidad." }
-    escalera:
-      - "Empiece por el ruido: es la razón de fondo."
-    solucion: "Ruido, poca potencia, poca diferencia de tensión y simplicidad."
-
   - id: criterios
-    tipo: pregunta
+    tipo: tocar
     titulo: "Lineal o conmutada"
-    texto: "Empareje cada situación con lo que conviene."
-    libro: [406, 407, 419]
+    texto: "Hay que elevar la tensión, o invertirla. Toque el recuadro de lo que conviene."
+    libro: [407, 419]
     widget:
       tipo: figura
       figura: fig-33.11
       zonas:
         - { id: lineal, rotulo: "Recuadro de arriba a la izquierda", rect: [3, 3, 141, 118] }
         - { id: conmutada, rotulo: "Recuadro de arriba a la derecha", rect: [233, 3, 210, 118] }
-    emparejar:
-      - ["Hay que elevar o invertir", "Conmutada"]
-      - ["Alimentación analógica sensible", "Lineal"]
-      - ["Mucha potencia y mucha diferencia", "Conmutada"]
-      - ["Poca potencia y la simplicidad vale", "Lineal"]
-    exito: "Un lineal no puede elevar ni invertir: ahí no hay elección."
-    pistas:
-      - { texto: "Lo analógico sensible pide poco ruido." }
+        - { id: mixta, rotulo: "Abajo a la izquierda", rect: [0, 130, 247, 93] }
+        - { id: receptor, rotulo: "Recuadro de abajo a la derecha", rect: [273, 130, 170, 84] }
+    tocar:
+      bien: [conmutada]
+      porque:
+        lineal: "Un lineal solo puede bajar la tensión: elevar o invertir no está a su alcance."
+        mixta: "La mixta baja con una conmutada y limpia con un LDO; elevar lo hace la conmutada."
+        receptor: "El receptor usa un lineal porque su caso es el contrario: poca potencia y ruido que importa."
+    exito: "La conmutada: elevar o invertir no deja elección. El lineal, cuando importan el ruido, la poca diferencia o lo analógico sensible."
     escalera:
-      - "Un lineal solo puede bajar la tensión."
-    solucion: "Elevar o invertir y mucha potencia: conmutada. Analógica sensible y poca potencia: lineal."
+      - "Un lineal solo puede bajar."
+    solucion: "Arriba a la derecha, la conmutada."
 
   - id: mixta
-    tipo: pregunta
+    tipo: tocar
     titulo: "Lo mejor de los dos"
-    texto: "Un equipo moderno con partes analógicas y digitales. ¿Cómo se alimenta lo analógico sensible?"
-    libro: [408]
+    texto: "Un equipo moderno con partes analógicas y digitales. Toque la solución que alimenta así lo analógico sensible."
+    libro: [408, 409]
     widget:
       tipo: figura
       figura: fig-33.11
       zonas:
+        - { id: lineal, rotulo: "Recuadro de arriba a la izquierda", rect: [3, 3, 141, 118] }
+        - { id: conmutada, rotulo: "Recuadro de arriba a la derecha", rect: [233, 3, 210, 118] }
         - { id: mixta, rotulo: "Abajo a la izquierda", rect: [0, 130, 247, 93] }
-    opciones:
-      - texto: "Conmutada para el grueso, y un LDO detrás para lo sensible"
-        bien: true
-        porque: "Rendimiento del conmutador y ruido bajo del lineal, a costa de una caída pequeña."
-      - texto: "Todo con lineales en paralelo"
-        porque: "Con la potencia de un equipo así, el grueso disiparía demasiado."
-      - texto: "Todo con conmutadas, cada una con su filtro"
-        porque: "Se puede filtrar, pero lo habitual es el LDO detrás de la conmutada."
+        - { id: receptor, rotulo: "Recuadro de abajo a la derecha", rect: [273, 130, 170, 84] }
+    tocar:
+      bien: [mixta]
+      porque:
+        lineal: "Solo lineales: con la potencia de un equipo así, el grueso disiparía demasiado."
+        conmutada: "Solo conmutadas: rinden, pero su ruido llega a lo analógico."
+        receptor: "El receptor es un caso de poca potencia: le basta un lineal."
+    exito: "Conmutada para el grueso y un LDO detrás: rendimiento del conmutador y ruido bajo del lineal, a costa de una caída pequeña."
     escalera:
-      - "Una caída pequeña en un lineal casi no cuesta rendimiento."
-    solucion: "Conmutada para el grueso y un LDO para las alimentaciones sensibles."
+      - "Busque la que combina las dos."
+    solucion: "Abajo a la izquierda, la mixta."
 
   - id: prediga-pilas
     tipo: predecir
@@ -191,34 +218,12 @@ tarjetas:
       - "¿Cuál de las dos fuentes conmuta?"
     solucion: "Con pilas silencio; con muchos adaptadores, zumbidos y silbidos."
 
-  - id: por-que-ferrita
-    tipo: porque
-    titulo: "Lo que sí lleva"
-    texto: "Sin convertidor conmutado, el receptor filtra su entrada con una bobina o una ferrita. ¿Por qué?"
-    libro: [414, 415]
-    widget:
-      tipo: figura
-      figura: fig-33.11
-      zonas:
-        - { id: receptor, rotulo: "Recuadro de abajo a la derecha", rect: [273, 130, 170, 84] }
-    opciones:
-      - texto: "Para que el ruido de la fuente externa, a menudo conmutada, no entre"
-        bien: true
-        porque: "El adaptador suele ser conmutado: el filtro de entrada es la defensa del receptor."
-      - texto: "Para subir la tensión de entrada"
-        porque: "Una bobina en serie no eleva nada sin interruptor; aquí solo filtra."
-      - texto: "Para limitar la corriente de arranque"
-        porque: "No es su función aquí: está para frenar el ruido."
-    escalera:
-      - "¿De dónde viene el ruido si el receptor no conmuta?"
-    solucion: "Para frenar el ruido de la fuente externa."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [401, 403, 406, 408]
+    libro: [401, 403, 404, 406, 408, 414]
     ideas:
       - { titulo: "El ruido manda.", texto: "Un receptor no tolera los armónicos de un conmutador." }
       - { titulo: "Lineal aceptable.", texto: "De 9 a 5 V, un 56 %, con poca potencia." }
-      - { titulo: "Más de un criterio.", texto: "Ruido, diferencia de tensión, potencia, simplicidad." }
+      - { titulo: "Más de un criterio.", texto: "Ruido, diferencia de tensión, potencia, simplicidad. Y la ferrita de entrada frena el ruido del adaptador." }
       - { titulo: "Solución mixta.", texto: "Conmutada para el grueso y LDO para lo sensible." }

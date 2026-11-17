@@ -3,6 +3,10 @@
 # - Sin modelo de la carga: la sección da las fases con fracciones de C y porcentajes aproximados, que se citan.
 # Paso práctico: «banco» del bloque 163: registrar una carga completa con un cargador propio y anotar la tensión
 # máxima de la celda; debe quedar en 4,20 V ± 50 mV (bloque 139), y por encima de 4,25 V el cargador no sirve.
+# - 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la corriente de carga de la figura 40.11 en el modelo, con
+#   sus fronteras (10,1, 57,9 y 103,5 min) y la caída de la fase CV ajustada a sus datos (dos exponenciales, error de
+#   0,005 C): se avanza la carga hasta el codo (objetivo, ~81 % dentro), se marca el corte en 0,05 C, se toca la fase
+#   del 80 % y se calcula la precarga de una celda de 2 Ah (ejemplo). Quedan dos preguntas (las dendritas y el frío).
 leccion: cap39/sec-39.5
 
 libro:
@@ -25,24 +29,108 @@ libro:
 modelo:
   valores:
     V_c: { sim: "V_{carga}", nombre: "tensión de carga", unidad: V, valor: 4.2 }
+    t_c: { sim: "t", nombre: "tiempo de carga", unidad: min, valor: 30 }
+    Q_cel: { sim: "C", nombre: "capacidad de la celda (ejemplo)", unidad: Ah, valor: 2 }
+    t_fin: { sim: "t_{corte}", nombre: "corte de la figura", unidad: min, valor: 103.464 }
   calculos:
+    I_t: { expr: "0.1*(1 - ceil(max(0, t_c - 10.146)/1e9)) + ceil(max(0, t_c - 10.146)/1e9)*(1 - ceil(max(0, t_c - 57.87)/1e9)) + ceil(max(0, t_c - 57.87)/1e9)*(1 - ceil(max(0, t_c - 103.464)/1e9))*(0.9479*exp(-(t_c - 57.87)/10.242) + 0.0521*exp(-(t_c - 57.87)/213.54))", sim: "I", nombre: "corriente de carga", unidad: "C", cifras: 2 }
+    Q_t: { expr: "100*(0.1*min(t_c, 10.146)/60 + max(0, min(t_c, 57.87) - 10.146)/60 + (0.9479*10.242*(1 - exp(-max(0, min(t_c, 103.464) - 57.87)/10.242)) + 0.0521*213.54*(1 - exp(-max(0, min(t_c, 103.464) - 57.87)/213.54)))/60)", sim: "Q", nombre: "carga que ha entrado", unidad: "%", cifras: 2 }
+    I_pre: { expr: "0.1*Q_cel", sim: "I_{pre}", nombre: "precarga máxima", unidad: A }
     V_max: { expr: "V_c + 0.05", sim: "V", nombre: "tolerancia por arriba", unidad: V }
 
 tarjetas:
   - id: explore-fases
     tipo: explorar
-    titulo: "Cuatro fases"
-    texto: "La carga de litio es un procedimiento estricto. Toque las cuatro fases."
-    libro: [141, 142, 143, 144, 165]
+    titulo: "Las fases de la carga"
+    texto: "Precarga, corriente constante, tensión constante y corte. Avance la carga hasta que la celda llegue a 4,20 V y la corriente empiece a caer."
+    libro: [141, 142, 143, 165]
+    inicio: { t_c: 30 }
     widget:
-      tipo: figura
-      figura: fig-39.11
-      zonas:
-        - { id: precarga, rotulo: "Primera franja", rect: [31, 5, 34, 190], texto: "Precarga: por debajo de unos 2,8 V, una corriente pequeña, de 0,05 a 0,1 C." }
-        - { id: cc, rotulo: "Segunda franja", rect: [65, 5, 152, 190], texto: "Corriente constante, de 0,5 a 1 C: la tensión sube y entra en torno al 80 %." }
-        - { id: cv, rotulo: "Tercera franja", rect: [219, 5, 145, 190], texto: "Tensión constante en 4,20 V: la corriente decae sola. Completa el 20 % restante, despacio." }
-        - { id: corte, rotulo: "Cuarta franja", rect: [365, 5, 52, 190], texto: "Corte: la corriente baja de 0,05 a 0,1 C y la carga termina." }
-    requiere: { mover: [cc, cv] }
+      tipo: grafica
+      x: { id: x, min: 0, max: 115, unidad: min, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "C", rotulo: "corriente de carga" }
+      curvas:
+        - { expr: "0.1*(1 - ceil(max(0, x - 10.146)/1e9)) + ceil(max(0, x - 10.146)/1e9)*(1 - ceil(max(0, x - 57.87)/1e9)) + ceil(max(0, x - 57.87)/1e9)*(1 - ceil(max(0, x - 103.464)/1e9))*(0.9479*exp(-(x - 57.87)/10.242) + 0.0521*exp(-(x - 57.87)/213.54))", color: naranja, rotulo: "corriente" }
+        - { expr: "0.05 + 0*x", color: tinta, rotulo: "0,05 C", discontinua: true }
+      marcas:
+        - { x: "t_c", y: "I_t", rotulo: "{{Q_t}} dentro" }
+      lectura: { valor: I_t, rotulo: "Corriente" }
+      datos:
+        - { valor: Q_t, rotulo: "Ha entrado: {{Q_t}}" }
+      mandos:
+        - { valor: t_c, min: 0, max: 115, paso: 1, rotulo: "Tiempo de carga" }
+    objetivo:
+      condiciones:
+        - { valor: t_c, min: 20, rotulo: "Tiempo: {{t_c}}" }
+        - { valor: I_t, max: 0.95, rotulo: "Corriente: {{I_t}}" }
+      logrado: "A {{t_c}} ya ha entrado {{Q_t}}: desde aquí el cargador mantiene 4,20 V y la corriente decae sola, despacio."
+      pistas:
+        - { texto: "Todavía en corriente constante: avance." }
+    escalera:
+      - "La corriente baja cuando la tensión llega a 4,20 V."
+    solucion: "Hacia los 59 min, con un 81 % dentro."
+    comprobar:
+      - { con: { t_c: 59 }, I_t: 0.90, Q_t: 82.9, tol: 0.02 }
+      - { con: { t_c: 57.87 }, Q_t: 81.2, tol: 0.003 }
+      - { I_t: 1 }
+
+  - id: marque-corte
+    tipo: marcar
+    titulo: "El corte"
+    texto: "En tensión constante la corriente decae sola. Marque el instante en que cae por debajo de 0,05 C y la carga termina."
+    libro: [143, 144, 146]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 115, unidad: min, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "C", rotulo: "corriente de carga" }
+      curvas:
+        - { expr: "0.1*(1 - ceil(max(0, x - 10.146)/1e9)) + ceil(max(0, x - 10.146)/1e9)*(1 - ceil(max(0, x - 57.87)/1e9)) + ceil(max(0, x - 57.87)/1e9)*(1 - ceil(max(0, x - 103.464)/1e9))*(0.9479*exp(-(x - 57.87)/10.242) + 0.0521*exp(-(x - 57.87)/213.54))", color: naranja, rotulo: "corriente" }
+        - { expr: "0.05 + 0*x", color: tinta, rotulo: "0,05 C", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_fin"
+      tol: 0.03
+      inicio: { x: 70, y: 0 }
+      rotulo: "El corte"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 103.5 }, texto: "Más a la izquierda: ahí ya ha cortado." }
+      - { texto: "Más a la derecha: la corriente todavía pasa de 0,05 C." }
+    exito: "Hacia los 103 min. Y no se hace carga de mantenimiento: si la tensión baja con el tiempo, se recarga."
+    escalera:
+      - "Donde la naranja cruza la línea discontinua."
+    solucion: "Hacia los 103,5 min."
+    comprobar:
+      - { con: { t_c: 103.4 }, I_t: 0.053, tol: 0.05 }
+
+  - id: simule-precarga
+    tipo: simular
+    titulo: "La precarga"
+    texto: "Valores de ejemplo: una celda de 2 Ah, por debajo de unos 2,8 V. La precarga va de 0,05 a 0,1 C: ¿cuánta corriente, como mucho?"
+    libro: [141]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 115, unidad: min, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "C", rotulo: "corriente de carga" }
+      curvas:
+        - { expr: "0.1*(1 - ceil(max(0, x - 10.146)/1e9)) + ceil(max(0, x - 10.146)/1e9)*(1 - ceil(max(0, x - 57.87)/1e9)) + ceil(max(0, x - 57.87)/1e9)*(1 - ceil(max(0, x - 103.464)/1e9))*(0.9479*exp(-(x - 57.87)/10.242) + 0.0521*exp(-(x - 57.87)/213.54))", color: naranja, rotulo: "corriente" }
+        - { expr: "0.05 + 0*x", color: tinta, rotulo: "0,05 C", discontinua: true }
+      lectura: { valor: I_pre, rotulo: "Precarga" }
+      ocultar: true
+    simular:
+      objetivo: I_pre
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de precarga máxima"
+      errores:
+        - { expr: "Q_cel", texto: "Eso es 1C, corriente plena: peligroso en una celda profundamente descargada." }
+    exito: "200 mA: una corriente pequeña hasta superar los 2,8 V; después, la corriente constante."
+    escalera:
+      - "0,1 C de 2 Ah."
+    solucion: "0,1 × 2 Ah = 0,2 A."
+    comprobar:
+      - { I_pre: 0.2 }
 
   - id: toque-80
     tipo: tocar
@@ -68,28 +156,6 @@ tarjetas:
       - "Busque la fase con la corriente alta y fija."
     solucion: "La segunda, corriente constante: en torno al 80 %."
 
-  - id: en-4v2
-    tipo: pregunta
-    titulo: "Al llegar a 4,20 V"
-    texto: "La celda llega a 4,20 V durante la carga. ¿Qué hace el cargador?"
-    libro: [143]
-    widget:
-      tipo: figura
-      figura: fig-39.11
-      zonas:
-        - { id: cv, rotulo: "Tercera franja", rect: [219, 5, 145, 190] }
-    opciones:
-      - texto: "Mantiene la tensión fija y deja que la corriente decaiga sola"
-        bien: true
-        porque: "Es la fase de tensión constante: la corriente cae exponencialmente por sí sola."
-      - texto: "Sigue con la misma corriente hasta llenarla"
-        porque: "Pasaría de 4,20 V: el límite no admite margen."
-      - texto: "Corta en ese momento"
-        porque: "Faltaría el 20 % restante: el corte llega cuando la corriente cae a 0,05–0,1 C."
-    escalera:
-      - "El límite de tensión no admite margen: ¿qué no puede seguir subiendo?"
-    solucion: "Fija la tensión en 4,20 V; la corriente decae sola hasta el corte."
-
   - id: por-que-estricto
     tipo: porque
     titulo: "Sin margen"
@@ -111,49 +177,6 @@ tarjetas:
     escalera:
       - "¿Qué se deposita en el ánodo al pasar de la tensión máxima?"
     solucion: "Litio metálico en dendritas que perforan el separador y cortocircuitan la celda."
-
-  - id: mantenimiento
-    tipo: pregunta
-    titulo: "¿Y después?"
-    texto: "La carga ha terminado y el equipo sigue enchufado. ¿Se mantiene la celda a 4,2 V?"
-    libro: [144]
-    widget:
-      tipo: figura
-      figura: fig-39.11
-      zonas:
-        - { id: corte, rotulo: "Cuarta franja", rect: [365, 5, 52, 190] }
-    opciones:
-      - texto: "No: si la tensión baja con el tiempo, se recarga"
-        bien: true
-        porque: "Mantenerla a 4,2 V indefinidamente la degrada: no hay carga de mantenimiento."
-      - texto: "Sí, con una corriente de goteo"
-        porque: "Eso vale para otras químicas; al litio sostenerlo a 4,2 V lo degrada."
-      - texto: "Sí, para que esté siempre llena"
-        porque: "Llena y sostenida es justo lo que la degrada."
-    escalera:
-      - "Una celda de litio a tensión de carga todo el tiempo, ¿envejece más o menos?"
-    solucion: "No se sostiene: se corta y, si baja, se recarga."
-
-  - id: empareje-tension
-    tipo: pregunta
-    titulo: "Capacidad o vida"
-    texto: "Empareje cada tensión de carga con lo que da."
-    libro: [150, 151]
-    widget:
-      tipo: figura
-      figura: fig-39.10
-      zonas:
-        - { id: cv, rotulo: "Mitad derecha", rect: [137, 0, 160, 175] }
-    emparejar:
-      - ["4,20 V", "100 % y de 300 a 500 ciclos"]
-      - ["4,10 V", "~85 % y de 600 a 1 000 ciclos"]
-      - ["4,00 V", "~70 % y de 1 200 a 2 000 ciclos"]
-    exito: "Limitar la carga al 80 % renuncia a un 20 % de autonomía y multiplica la vida por tres o cuatro."
-    pistas:
-      - { texto: "A menos tensión, menos capacidad y más ciclos." }
-    escalera:
-      - "Cada décima de voltio menos cuesta capacidad y regala ciclos."
-    solucion: "4,20 V: 100 %; 4,10 V: ~85 %; 4,00 V: ~70 %, con más ciclos cuanto más baja."
 
   - id: en-frio
     tipo: pregunta
@@ -177,49 +200,6 @@ tarjetas:
       - "Compare el margen de temperatura de carga con el de descarga."
     solucion: "Por debajo de 0 °C se deposita litio metálico: se mide la temperatura y se bloquea la carga."
 
-  - id: ordene-soc
-    tipo: pregunta
-    titulo: "Cuánta carga queda"
-    texto: "Ordene los métodos para estimar el estado de carga, del más burdo al mejor."
-    libro: [158]
-    widget:
-      tipo: figura
-      figura: fig-39.10
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [30, 0, 270, 175] }
-    ordenar:
-      - "Por tensión en reposo"
-      - "Contador de culombios"
-      - "Modelo con corrección"
-    exito: "El modelo con corrección es lo que hacen los medidores integrados: la única forma de acercarse al ±3 %."
-    pistas:
-      - { texto: "El contador acumula deriva; el modelo lo corrige." }
-    escalera:
-      - "La tensión es plana en la mayor parte; el mejor combina los otros dos."
-    solucion: "Tensión en reposo, contador de culombios, modelo con corrección."
-
-  - id: cargador-propio
-    tipo: pregunta
-    titulo: "No es una fuente de 4,2 V"
-    texto: "Hace falta cargar una celda de litio en un montaje propio. ¿Qué es lo sensato?"
-    libro: [160, 161]
-    widget:
-      tipo: figura
-      figura: fig-39.11
-      zonas:
-        - { id: fases, rotulo: "La gráfica", rect: [31, 5, 386, 190] }
-    opciones:
-      - texto: "Un integrado de carga: trae CC-CV, temperatura, temporizador y celda dañada"
-        bien: true
-        porque: "Cuestan poco y traen todo verificado; un cargador improvisado puede causar un incendio."
-      - texto: "Una fuente ajustada a 4,2 V con una resistencia"
-        porque: "Le falta el control CC-CV con su tolerancia, la temperatura, el temporizador y la detección de celda dañada."
-      - texto: "Un regulador lineal de 4,2 V"
-        porque: "Fija la tensión, pero no hace el resto de lo que debe hacer un cargador."
-    escalera:
-      - "Cuente lo que debe incluir un cargador de litio como mínimo."
-    solucion: "Un integrado de carga: no hay razón para hacerlo a mano."
-
   - id: banco-cargador
     tipo: banco
     titulo: "Registre una carga"
@@ -241,9 +221,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [139, 142, 143, 144]
+    libro: [139, 142, 143, 144, 147, 150, 151, 158, 160, 161]
     ideas:
       - { titulo: "CC-CV.", texto: "Precarga, corriente constante (80 %), tensión constante (el resto, lento) y corte." }
       - { titulo: "4,20 V ± 50 mV.", texto: "Sin margen: pasarse deposita litio metálico." }
-      - { titulo: "Sin mantenimiento.", texto: "Se corta y, si baja, se recarga." }
-      - { titulo: "Ni en frío.", texto: "Por debajo de 0 °C no se carga." }
+      - { titulo: "Sin mantenimiento.", texto: "Se corta y, si baja, se recarga. Cargar a 4,10 V da ~85 % y mucha más vida." }
+      - { titulo: "Ni en frío, ni a mano.", texto: "Por debajo de 0 °C no se carga. Un integrado de carga trae todo verificado; la carga se estima con culombios." }

@@ -3,10 +3,15 @@
 # bloqueo de región y el balance del audio de las primeras placas. Fuentes externas citadas en el manifiesto
 # (ConsoleMods «SNES:Power Supply Fuse», «SNES:Region Information», «SNES:Buying Guide»; Chromagi SNS-002), los datos
 # de la consola (snes#n) y el libro (reparación, capítulo 55; fusibles, 10.3; reguladores, 8.4).
+# 1.2.1: un circuito lógico con meta (los 5 V llegan si el adaptador, el fusible y el 7805 están bien: el camino de
+# la alimentación, en serie); el orden de las medidas se toca en la foto; la pantalla negra y el DAC de las placas con
+# problema de balance se tocan. Queda una pregunta: el fusible como síntoma.
 leccion: consola-snes/snes-averias
 
 libro:
   "snes#43": "Un 7805, que según Fabien Sanglard está en todas las versiones de la SNES"
+  "snes#22": "Toma de corriente, filtro (T1), puente rectificador (DB1: acepta continua o alterna)"
+  "snes#23": "El interruptor de encendido corta la entrada entre el fusible y el regulador"
   "snes#45": "Rápido, de 1,5 A en las SNES originales"
   "snes#111": "Un fusible fundido es la causa más común de que una SNES o una Super Famicom no enciendan"
   "snes#112": "El fusible protege la consola de una fuente de alimentación inadecuada o de un cortocircuito a masa"
@@ -37,34 +42,47 @@ tarjetas:
   - id: explore-primero
     tipo: explorar
     titulo: "Lo primero, lo simple"
-    texto: "Casi siempre es lo simple: alimentación, conector, soldadura, fusible. Toque esas piezas en la placa."
-    libro: ["cap53#39", "snes#43", "snes#45"]
-    requiere: { mover: [n-fusible, n-reg] }
+    texto: "La corriente va del adaptador al fusible y del fusible al 7805, en serie. Consiga que lleguen los 5 V a la lógica."
+    libro: ["cap53#39", "snes#22", "snes#23", "snes#43"]
+    widget:
+      tipo: logica
+      entradas: [{ id: AD, rotulo: "Adaptador con sus 10 V" }, { id: FU, rotulo: "Fusible sano" }, { id: RE, rotulo: "7805 sano" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [AD, FU, RE] }
+      salidas:
+        - { id: CINCO, de: a1, rotulo: "5 V en la lógica" }
+    objetivo:
+      condiciones:
+        - { led: CINCO, valor: 1, rotulo: "5 V en la lógica" }
+      logrado: "Las tres en serie: con que falle una, no llega nada. Por eso se mide a lo largo del camino."
+      pistas:
+        - { texto: "Todavía falla una pieza del camino: las tres tienen que estar bien." }
+    escalera:
+      - "Adaptador, fusible y 7805: los tres sanos."
+    solucion: "Las tres entradas a 1."
+
+  - id: ordene-apagada
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Antes de encender"
+    texto: "Una consola que no enciende. Toque las piezas en el orden en que mediría: la continuidad con la consola apagada, la salida del regulador y la tensión en la carga."
+    libro: ["cap53#30", "cap53#179"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-fusible, hotspot: n-fusible, rotulo: "Fusible F1", texto: "Rápido, de 1,5 A en las SNES originales." }
-        - { id: n-reg, hotspot: n-reg, rotulo: "Regulador 7805", texto: "Da los 5 V de toda la lógica." }
-        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho", texto: "El conector por el que pasa el juego entero." }
-
-  - id: ordene-apagada
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Antes de encender"
-    texto: "Una consola que no enciende. Ordene los pasos, de lo primero a lo último."
-    libro: ["cap53#30", "cap53#179"]
-    ordenar:
-      - "Apagada: continuidad del fusible."
-      - "Apagada: cortocircuitos entre los 5 V y masa."
-      - "Encendida: tensión a la salida del 7805."
-      - "Encendida: los 5 V en el chip que los usa."
-    exito: "Primero lo que se mide apagado; luego las tensiones, y al final en la carga."
+        - { id: fusible, hotspot: n-fusible, rotulo: "Pieza alargada, abajo del todo" }
+        - { id: reg, hotspot: n-reg, rotulo: "Pieza con disipador, abajo" }
+        - { id: cpu, hotspot: n-cpu, rotulo: "Chip cuadrado, abajo a la derecha" }
+    tocar:
+      bien: [fusible, reg, cpu]
+      orden: true
     pistas:
       - { texto: "Lo que se mide con la consola apagada va antes que lo que se mide encendida." }
+    exito: "Primero lo que se mide apagado (el fusible y los cortos entre los 5 V y masa); luego la salida del 7805, y al final en la carga."
     escalera:
       - "Con el circuito apagado se buscan los cortos y los fusibles."
-    solucion: "Fusible, cortos a masa, salida del 7805 y, por último, en la carga."
+    solucion: "Fusible, 7805 y CPU."
 
   - id: averia-no-enciende
     tipo: averia
@@ -104,7 +122,7 @@ tarjetas:
     tipo: porque
     titulo: "Cambiar el fusible y ya"
     texto: "Era el fusible. ¿Basta con poner otro?"
-    libro: ["cap10#81", "snes#112"]
+    libro: ["cap10#81", "snes#112", "snes#45"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
@@ -145,49 +163,48 @@ tarjetas:
     solucion: "En la CPU, la carga: no en el 7805."
 
   - id: pantalla-negra
-    tipo: predecir
+    tipo: tocar
     titulo: "Un juego no arranca"
-    texto: "Una SNES PAL arranca sus juegos, pero uno norteamericano se queda en negro. ¿Avería?"
+    texto: "Una SNES PAL arranca sus juegos, pero uno norteamericano se queda en negro. No es avería: toque el chip que lo impide."
     libro: ["snes#121", "snes#114"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-cic, hotspot: n-cic, rotulo: "CIC" }
-    opciones:
-      - texto: "No: es el bloqueo de región del CIC."
-        bien: true
-        porque: "Con otro chip de bloqueo, el CIC mantiene el sistema en reset y el juego no arranca. La consola está sana."
-      - texto: "Sí: el 7805 no da bastante corriente."
-        porque: "Los juegos de su región arrancan: la alimentación está bien. Lo que cambia es el CIC del cartucho."
-      - texto: "Sí: la ranura está sucia."
-        porque: "Una ranura sucia fallaría también con los juegos de su región, que arrancan."
+        - { id: cic, hotspot: n-cic, rotulo: "Chip pequeño, arriba a la derecha" }
+        - { id: reg, hotspot: n-reg, rotulo: "Pieza con disipador, abajo" }
+        - { id: cart, hotspot: n-cart, rotulo: "Conector largo, en el centro" }
+    tocar:
+      bien: [cic]
+      porque:
+        reg: "Los juegos de su región arrancan: la alimentación está bien."
+        cart: "Una ranura sucia fallaría también con los juegos de su región, que arrancan."
+    exito: "El CIC: con otro chip de bloqueo en el cartucho, mantiene el sistema en reset y el juego no arranca. La consola está sana."
     escalera:
       - "¿Qué cambia entre un juego que arranca y el que no?"
-    solucion: "No es avería: el CIC del cartucho es de otra región y el de la consola la deja en reset."
+    solucion: "El CIC, el chip de bloqueo."
 
   - id: balance-audio
-    tipo: pregunta
+    tipo: tocar
     titulo: "Un canal suena más"
-    texto: "En una SNS-CPU-RGB-01, un canal de audio suena algo más que el otro. ¿Qué es?"
+    texto: "Las placas de la SHVC-CPU-01 a la SNS-CPU-RGB-01 tienen un problema conocido de balance del audio. Toque el DAC que llevan."
     libro: ["snes#123", "snes#34"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-dac, hotspot: n-dac, rotulo: "DAC" }
-        - { id: n-mix, hotspot: n-mix, rotulo: "Mezclador" }
-    opciones:
-      - texto: "Un problema conocido de las placas de la SHVC-CPU-01 a la SNS-CPU-RGB-01."
-        bien: true
-        porque: "ConsoleMods lo da como un problema de balance de esas revisiones: no es una pieza estropeada de esa consola."
-      - texto: "El S-DSP se ha estropeado."
-        porque: "Un S-DSP estropeado no daría un leve desequilibrio: esas revisiones tienen un problema de balance conocido."
-      - texto: "El adaptador da poca tensión."
-        porque: "Una alimentación baja no desequilibra un canal frente al otro."
+        - { id: dac, hotspot: n-dac, rotulo: "Chip pequeño, a la izquierda" }
+        - { id: mix, hotspot: n-mix, rotulo: "Chip pequeño, en el centro" }
+        - { id: dsp, hotspot: n-dsp, rotulo: "Chip cuadrado, en el centro" }
+    tocar:
+      bien: [dac]
+      porque:
+        mix: "Es el mezclador: filtra y suma el audio, pero el chip de esas placas es el DAC."
+        dsp: "Es el S-DSP, que genera las voces."
+    exito: "El NEC µPD6376: un leve desequilibrio en esas revisiones es un problema conocido, no una pieza estropeada de esa consola."
     escalera:
-      - "Esa placa lleva el DAC NEC µPD6376."
-    solucion: "Un problema de balance conocido de las revisiones SHVC-CPU-01 a SNS-CPU-RGB-01."
+      - "Es el chip pequeño junto al mezclador, hacia la izquierda."
+    solucion: "El DAC, NEC µPD6376."
 
   - id: resumen
     tipo: resumen

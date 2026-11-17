@@ -15,6 +15,11 @@
   //   - a prediction (`oculto`) shows neither speed nor voltages: the particles move at one neutral speed; an «averia»
   //     card whose fault is still hidden comes as `oculto` too (Leccion11.svelte, fix12);
   //   - «reducir movimiento»: no animation, still arrows along the paths;
+  //   - 1.2.1 (piloto121): targets on the drawing the reader taps (`dianas`) — the nodes and branches of the card's
+  //     instrument (where the probes go: red «+», black «COM», the ammeter «A») and the parts or nodes of an «elegir»
+  //     card — placed from the drawing's own marks (a node's dot or longest wire `data-red`, a branch's `data-rama`
+  //     with its `data-punto`, a part's `data-pieza`); they are out of the tab order: the panel under the drawing
+  //     (Instrumento.svelte, ElegirEsquema.svelte) is the keyboard's and the screen reader's way to the same thing;
   //   - performance: the loop runs only while the drawing is on screen and the page visible; it measures its frame
   //     interval and cost, and degrades (half the particles at 30 fps, then still arrows) on a slow device. The
   //     measures are on the element (data-vivo, data-vivo-nivel, data-vivo-fps, data-vivo-ms) for the tests.
@@ -46,6 +51,8 @@
     oculto,
     manipular = true,
     alMover,
+    dianas,
+    externa = null,
     children,
   }: {
     leccion: Leccion11;
@@ -56,8 +63,25 @@
     oculto: boolean;
     manipular?: boolean;
     alMover: (valor: string, x: number) => void;
+    /** 1.2.1: what the reader taps on the drawing (the instrument's probes, an «elegir» card's zones). */
+    dianas?: { lista: Diana[]; tocar: (id: string) => void };
+    /** 1.2.1 (motor121): the operating point of a non-linear circuit from the app's ngspice (its instrument's run). */
+    externa?: import('../../lib/leccion12/cc').SolucionCC | null;
     children: Snippet;
   } = $props();
+
+  interface Diana {
+    id: string;
+    clase: 'punto' | 'rama' | 'pieza';
+    estado: 'roja' | 'negra' | 'rama' | 'elegida' | 'mal' | 'bien' | null;
+  }
+  interface DianaPos extends Diana {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }
+  let dianasPos = $state<DianaPos[]>([]);
 
   /** Current (A) of full particle speed; four decades below it is the slowest. */
   const IREF = 0.1;
@@ -88,7 +112,8 @@
   const alterna = $derived(alternaDibujo || lineas.some((l) => /\bsin\s*\(/i.test(l)));
   /** A switching transient (a capacitor's or a coil's initial condition, a pulse): its DC point is not what is shown. */
   const conmutada = $derived(lineas.some((l) => /\b(pulse|pwl)\s*\(|\bic\s*=/i.test(l)));
-  const solucion = $derived(!oculto && !alterna && !conmutada ? resolverCC(lineas) : null);
+  // (motor121: a non-linear circuit is coloured too once the simulator has solved it for the instrument)
+  const solucion = $derived(!oculto && !alterna && !conmutada ? (resolverCC(lineas) ?? externa) : null);
   const exacto = $derived(!!solucion);
   const tensiones = $derived.by((): Record<string, number> => {
     if (oculto || alterna || conmutada || !lineas.length) return {};
@@ -242,9 +267,81 @@
       }
     }
     asas = as;
+    dianasPos = ctm ? colocarDianas(svg, ctm) : [];
     dimensionar();
     if (!animando()) pintarQuieto();
   }
+
+  // ---------------------------------------------------------------- 1.2.1: the taps' targets on the drawing
+  /** Where a node is on the drawing (SVG units): its `data-sonda` mark, its dot, or the middle of its longest wire. */
+  function puntoDeNodo(s: SVGSVGElement, nodo: string): [number, number] | null {
+    const marca = s.querySelector<SVGElement>(`[data-sonda="${nodo}"][data-punto]`);
+    if (marca) {
+      const [x, y] = (marca.getAttribute('data-punto') ?? '').split(/\s+/).map(Number);
+      if (Number.isFinite(x) && Number.isFinite(y)) return [x!, y!];
+    }
+    const dot = s.querySelector<SVGCircleElement>(`circle[data-red="${nodo}"]`);
+    if (dot) return [Number(dot.getAttribute('cx')), Number(dot.getAttribute('cy'))];
+    let mejor: SVGGeometryElement | null = null;
+    let l = -1;
+    s.querySelectorAll<SVGGeometryElement>(`path[data-red="${nodo}"]`).forEach((el) => {
+      const x = el.getTotalLength?.() ?? 0;
+      if (x > l) {
+        l = x;
+        mejor = el;
+      }
+    });
+    if (!mejor) return null;
+    const p = (mejor as SVGGeometryElement).getPointAtLength(l / 2);
+    return [p.x, p.y];
+  }
+  function colocarDianas(s: SVGSVGElement, m: DOMMatrix): DianaPos[] {
+    if (!dianas) return [];
+    const out: DianaPos[] = [];
+    const aCaja = (x: number, y: number) => {
+      const q = m.transformPoint(new DOMPoint(x, y));
+      return [q.x + marco.x, q.y + marco.y] as const;
+    };
+    for (const d of dianas.lista) {
+      let p: [number, number] | null = null;
+      if (d.clase === 'punto' || d.id.startsWith('red:')) p = puntoDeNodo(s, d.id.replace(/^red:/, ''));
+      else if (d.clase === 'rama') {
+        const el = s.querySelector<SVGElement>(`[data-rama="${d.id}"][data-punto]`);
+        const [x, y] = (el?.getAttribute('data-punto') ?? '').split(/\s+/).map(Number);
+        if (el && Number.isFinite(x) && Number.isFinite(y)) p = [x!, y!];
+      }
+      if (p) {
+        const [x, y] = aCaja(p[0], p[1]);
+        out.push({ ...d, x: x - 22, y: y - 22, w: 44, h: 44 });
+        continue;
+      }
+      if (d.clase !== 'pieza') continue;
+      const el = s.querySelector<SVGGraphicsElement>(`[data-pieza="${d.id}"]`);
+      if (!el?.getBBox) continue;
+      const b = el.getBBox();
+      const [x0, y0] = aCaja(b.x, b.y);
+      const [x1, y1] = aCaja(b.x + b.width, b.y + b.height);
+      let x = Math.min(x0, x1);
+      let y = Math.min(y0, y1);
+      let w = Math.abs(x1 - x0);
+      let h = Math.abs(y1 - y0);
+      if (w < 44) {
+        x -= (44 - w) / 2;
+        w = 44;
+      }
+      if (h < 44) {
+        y -= (44 - h) / 2;
+        h = 44;
+      }
+      out.push({ ...d, x, y, w, h });
+    }
+    return out;
+  }
+  $effect(() => {
+    // (the targets follow what the panel changes: a probe moved, a zone chosen)
+    void dianas;
+    untrack(() => leerDibujo());
+  });
 
   // ---------------------------------------------------------------- where particles are not drawn (fix12)
   /** The drawing's geometry the zones depend on (they are worked out again only when it changes). */
@@ -468,6 +565,8 @@
     // after every change of what the drawing shows (values, a prediction checked, the theme)
     void valores;
     void oculto;
+    // (motor121: and the simulator's operating point, when it arrives)
+    void externa;
     void app.tema;
     void manipulables;
     untrack(() => {
@@ -639,6 +738,25 @@
       ></button>
     {/if}
   {/each}
+  {#each dianasPos as d (d.clase + d.id)}
+    <!-- (out of the tab order and hidden from screen readers: the panel below offers the same, with names) -->
+    <button
+      type="button"
+      tabindex="-1"
+      aria-hidden="true"
+      class={`diana ${d.clase}`}
+      class:puesta={!!d.estado}
+      data-diana={d.id}
+      data-diana-estado={d.estado ?? ''}
+      style:left={`${d.x}px`}
+      style:top={`${d.y}px`}
+      style:width={`${d.w}px`}
+      style:height={`${d.h}px`}
+      onclick={() => dianas?.tocar(d.id)}
+    >
+      {#if d.estado === 'roja'}<span class="punta roja">+</span>{:else if d.estado === 'negra'}<span class="punta negra">COM</span>{:else if d.estado === 'rama'}<span class="punta rama">A</span>{:else if d.clase !== 'pieza'}<span class="anillo"></span>{/if}
+    </button>
+  {/each}
 </div>
 {#if hayColor}
   <div class="leyenda" data-leyenda-tension>
@@ -709,6 +827,75 @@
     outline: 3px solid var(--v11-foco);
     outline-offset: 2px;
     border-color: currentColor;
+  }
+  /* 1.2.1: what the reader taps on the drawing (probes' nodes and branches, an «elegir» card's zones) */
+  .diana {
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .diana .anillo {
+    width: 18px;
+    height: 18px;
+    border: 2.5px dashed var(--v11-tinta-suave);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--v11-fondo) 70%, transparent);
+  }
+  .diana:hover .anillo {
+    border-style: solid;
+    border-color: var(--v11-tinta);
+  }
+  .diana .punta {
+    display: grid;
+    place-items: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 4px;
+    border: 2px solid var(--v11-fondo);
+    border-radius: 13px;
+    color: #fff;
+    font: 800 12px/1 var(--v11-texto);
+    box-shadow: var(--v11-sombra);
+  }
+  .diana .punta.roja {
+    background: #b3261e;
+    font-size: 17px;
+  }
+  .diana .punta.negra {
+    background: #1d1d1f;
+  }
+  .diana .punta.rama {
+    background: var(--v11-azul);
+    font-size: 15px;
+  }
+  .diana.pieza {
+    border: 2.5px dashed var(--v11-tinta-suave);
+    border-radius: 12px;
+  }
+  .diana.pieza:hover {
+    border-color: var(--v11-tinta);
+  }
+  .diana.pieza[data-diana-estado='elegida'] {
+    border: 3px solid var(--v11-azul);
+    background: color-mix(in srgb, var(--v11-azul) 14%, transparent);
+  }
+  .diana.pieza[data-diana-estado='mal'] {
+    border: 3px solid var(--v11-mal, #b3261e);
+    background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, #b3261e 16%, transparent) 8px 12px);
+    cursor: default;
+  }
+  .diana.pieza[data-diana-estado='bien'] {
+    border: 3px solid var(--v11-verde);
+    background: color-mix(in srgb, var(--v11-verde) 16%, transparent);
   }
   .burbuja {
     position: absolute;

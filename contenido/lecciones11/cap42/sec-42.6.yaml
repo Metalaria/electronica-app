@@ -4,6 +4,11 @@
 # (cap22#235: 100 Ω, 10 mH, 100 nF) sin fuente (conmutador a cortocircuito) y una condición inicial v₀ en el
 # condensador, como un .ic (los valores de v₀ son EJEMPLOS). Un tanque con pérdidas timbra y se apaga.
 # La sección no tiene ecuaciones: sin tarjeta «fórmula».
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el punto de trabajo del diodo se itera moviendo la fuente
+# hasta 2 mA (objetivo), y se comprueba antes de nada midiendo su tensión y su corriente (el ngspice de la app); el RLC
+# en reposo arranca dándole un .ic (objetivo; lo que le falta a la simulación, en su «logrado») y su periodo de timbre
+# se lee. Quedan dos preguntas de opciones (desconfiar de lo demasiado bueno y el uic); las causas emparejadas, los
+# remedios ordenados y reltol pasan al resumen.
 leccion: cap42/sec-42.6
 
 libro:
@@ -46,14 +51,16 @@ modelo:
     I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_d + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
     V_ds: { expr: "V_d - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 3 }
     a_t: { expr: "R_t/(2*L_t)", sim: "α", nombre: "amortiguamiento", unidad: "1/s" }
+    T_d: { expr: "2*pi/sqrt(1/(L_t*C_t) - (R_t/(2*L_t))^2)", sim: "T_{d}", nombre: "periodo del timbre", unidad: s }
     wd_t: { expr: "sqrt(1/(L_t*C_t) - a_t^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
 
 tarjetas:
   - id: explore-iterar
     tipo: explorar
     titulo: "Un punto de trabajo que se itera"
-    texto: "Un diodo con 1 kΩ: su ecuación no es lineal y SPICE la resuelve por iteración, partiendo de una estimación. Mueva la fuente."
+    texto: "Un diodo con 1 kΩ: su ecuación no es lineal y SPICE la resuelve por iteración, desde una estimación. Mueva la fuente hasta que pasen 2 mA."
     libro: [158, "cap22#72"]
+    inicio: { V_d: 1 }
     widget:
       tipo: circuito
       esquema: diodo
@@ -65,9 +72,82 @@ tarjetas:
       mide: { corriente: I_ds, vd: V_ds }
       mandos:
         - { valor: V_d, min: 1, max: 5, paso: 0.25 }
+    objetivo:
+      condiciones:
+        - { valor: I_ds, objetivo: 0.002, tol: 0.05, rotulo: "Corriente: {{I_ds}}" }
+      logrado: "{{I_ds}} con {{V_ds}} en el diodo: cada posición es un sistema no lineal que el solucionador itera hasta converger."
+      pistas:
+        - { cuando: { valor: I_ds, mayor: 0.0021 }, texto: "Pasa de más: baje la fuente." }
+        - { texto: "Pasa poco: suba la fuente." }
+    escalera:
+      - "I ≈ (V − V_{D})/1 kΩ."
+    solucion: "Unos 2,5 V: 1,9 mA."
+    comprobar:
+      - { con: { V_d: 2.5 }, I_ds: 0.00191, tol: 0.01 }
+
+  - id: punto-trabajo
+    tipo: medir
+    titulo: "El punto de trabajo, primero"
+    texto: "Comprobar el punto de trabajo antes de cualquier otra cosa: con 5 V, ponga las puntas donde mediría la tensión del diodo."
+    libro: [179]
+    fijar: { V_d: 5, R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [an, "0"]
+      valor: V_ds
+      porque:
+        fte: "Esa punta está en la fuente: mide los 5 V."
+        "fte/an": "Así mide la resistencia, no el diodo."
+    exito: "Unos 0,61 V: razonable para un diodo de silicio con 4,4 mA. Si el reposo no tiene sentido, nada de lo que venga después lo tendrá."
+    escalera:
+      - "El diodo va entre el punto medio y masa."
+    solucion: "Roja entre la resistencia y el diodo, negra en masa."
+    comprobar:
+      - { V_ds: 0.608, I_ds: 0.00439, tol: 0.01 }
+
+  - id: corriente-op
+    tipo: leer
+    titulo: "Y su corriente"
+    texto: "Con 5 V, mida la corriente del circuito con el amperímetro y escriba lo que marca."
+    libro: [179]
+    fijar: { V_d: 5, R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      instrumento:
+        tipo: multimetro
+        modos: [A]
+      mandos: []
+    leer:
+      objetivo: I_ds
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente"
+      medida: { rama: vmed }
+      errores:
+        - { expr: "V_d/R_d", texto: "Eso sería sin diodo: 5 V/1 kΩ. El diodo se queda su caída." }
+    exito: "Unos 4,4 mA: (5 − 0,61) V/1 kΩ. Corriente y tensión casan: el punto de trabajo es creíble."
+    escalera:
+      - "Meta el amperímetro en la rama de la fuente."
+    solucion: "≈ 4,4 mA."
+    comprobar:
+      - { I_ds: 0.00439, V_ds: 0.61, tol: 0.01 }
 
   - id: prediga-bueno
-    tipo: predecir
+    tipo: pregunta
     titulo: "Demasiado bueno"
     texto: "Una simulación da una distorsión de 10⁻¹⁵ y un rendimiento del 100 %. ¿Qué hay que pensar?"
     libro: [180]
@@ -78,7 +158,7 @@ tarjetas:
       lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
       corriente: I_ds
       mide: { corriente: I_ds, vd: V_ds }
-      ocultar: true
+      mandos: []
     opciones:
       - texto: "Que casi seguro falta algo en el modelo"
         bien: true
@@ -90,45 +170,6 @@ tarjetas:
     escalera:
       - "¿Qué circuito real tiene un rendimiento del 100 %?"
     solucion: "Falta algo en el modelo."
-
-  - id: causas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Las causas habituales"
-    texto: "Una cada causa de no convergencia con lo que la caracteriza."
-    libro: [161, 162, 163, 164, 165]
-    emparejar:
-      - ["Nodo flotante", "Un punto sin camino de continua a masa"]
-      - ["Discontinuidades", "Interruptores ideales, flancos de cero segundos"]
-      - ["Realimentación fuerte", "Ganancia muy alta: un cambio pequeño da uno enorme"]
-      - ["Valores extremos", "Una matriz mal condicionada"]
-      - ["Condiciones iniciales imposibles", "Circuitos con dos estados estables"]
-    exito: "El problema suele estar en el modelo numérico, no en la electrónica."
-    pistas:
-      - { texto: "El nodo flotante es la causa número uno." }
-    escalera:
-      - "¿Cuál deja al solucionador sin saber qué tensión dar a un punto?"
-    solucion: "Flotante: sin camino a masa; discontinuidad: flancos de cero; realimentación: ganancia; extremos: matriz; iniciales: dos estados."
-
-  - id: remedios
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Los remedios, en orden"
-    texto: "Ordene los remedios como los propone el libro, del que resuelve más deprisa al último recurso."
-    libro: [168, 169, 170, 171, 172, 173]
-    ordenar:
-      - "Resistencias de fuga de 1 GΩ a masa"
-      - "Resistencias serie de miliohmios con fuentes y bobinas"
-      - "Flancos finitos en las fuentes"
-      - "Condiciones iniciales explícitas con .ic"
-      - "Relajar las tolerancias, sabiendo que pierde exactitud"
-      - "Limitar el paso máximo en transitorio"
-    exito: "Primero lo que no altera el circuito; relajar tolerancias, casi al final."
-    pistas:
-      - { texto: "Lo primero ataca la causa número uno: el nodo flotante." }
-    escalera:
-      - "Relajar tolerancias sacrifica exactitud: no va al principio."
-    solucion: "Fuga, serie, flancos, .ic, tolerancias, paso máximo."
 
   - id: uic
     tipo: pregunta
@@ -156,8 +197,8 @@ tarjetas:
   - id: no-arranca
     tipo: sorpresa
     titulo: "El oscilador que no arranca"
-    texto: "Un RLC sin fuente y en reposo: el simulador no ve nada que mover. Dé al condensador un .ic."
-    nota: "100 Ω, 10 mH y 100 nF: con pérdidas, timbra y se apaga."
+    texto: "Un RLC sin fuente y en reposo: el simulador no ve nada que mover. Dé al condensador un .ic y consiga que timbre."
+    nota: "100 Ω, 10 mH y 100 nF."
     libro: [182, 183, "cap22#235"]
     inicio: { v_0: 0 }
     widget:
@@ -172,13 +213,22 @@ tarjetas:
       lectura: { valor: v_0, rotulo: "Condición inicial, v₀" }
       mandos:
         - { valor: v_0, lista: [0, 0.1, 1], rotulo: "Condición inicial, v₀" }
+    objetivo:
+      condiciones:
+        - { valor: v_0, min: 0.1, rotulo: "v₀: {{v_0}}" }
+      logrado: "Con {{v_0}} arranca. En el banco lo hace el ruido térmico, que rompe el equilibrio; en simulación, un .ic, un pulso breve o una pequeña asimetría."
+      pistas:
+        - { texto: "Sin perturbación sigue en equilibrio: dele una tensión inicial." }
+    escalera:
+      - "Un circuito perfectamente simétrico y en reposo no tiene nada que lo saque de ahí."
+    solucion: "Cualquier v₀ distinta de cero."
 
   - id: por-que-arranca
-    tipo: porque
-    titulo: "¿Qué le falta a la simulación?"
-    texto: "El mismo oscilador arranca siempre en el banco y nunca en el simulador. ¿Qué le da el banco que la simulación no tiene?"
-    libro: [182, 183]
-    fijar: { v_0: 0 }
+    tipo: leer
+    titulo: "Su timbre"
+    texto: "Con v₀ = 1 V, el tanque timbra mientras se apaga. Lea en la curva el periodo de la oscilación y escríbalo."
+    libro: [183, "cap22#235"]
+    fijar: { v_0: 1 }
     widget:
       tipo: circuito
       esquema: rlc-escalon
@@ -188,47 +238,27 @@ tarjetas:
         y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v_{C}" }
         curvas:
           - { expr: "v_0*exp(-a_t*t)*(cos(wd_t*t) + a_t/wd_t*sin(wd_t*t))", color: naranja, rotulo: "v_{C}", mide: vc }
-    opciones:
-      - texto: "El ruido térmico, que rompe el equilibrio: se imita con un .ic, un pulso o una asimetría"
-        bien: true
-        porque: "Cualquiera de las tres da el empujón que en la realidad da el ruido."
-      - texto: "Una fuente de alimentación más potente"
-        porque: "La alimentación no es el problema: el circuito está en un equilibrio del que nada lo saca."
-      - texto: "Un paso de tiempo más pequeño"
-        porque: "Con paso más fino, el equilibrio sigue siendo perfecto: sin perturbación, no arranca."
+      mandos: []
+    leer:
+      objetivo: T_d
+      unidad: s
+      tol: 0.04
+      rotulo: "Periodo del timbre"
+      errores:
+        - { expr: "T_d/2", texto: "Eso es medio periodo: de una cresta a la siguiente del mismo signo." }
+    exito: "Unos 0,2 ms, unos 5 kHz: la frecuencia propia del tanque, que el .ic solo ha puesto en marcha."
     escalera:
-      - "¿Qué hay siempre en un circuito real y nunca en un modelo ideal?"
-    solucion: "Ruido: en simulación, una condición inicial o un pulso."
-
-  - id: reltol
-    tipo: pregunta
-    titulo: "Fiable o solo convergente"
-    texto: "Al bajar reltol, el resultado de una simulación se mueve apreciablemente. ¿Qué significa?"
-    libro: [186]
-    widget:
-      tipo: circuito
-      esquema: diodo
-      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
-      corriente: I_ds
-      mide: { corriente: I_ds, vd: V_ds }
-    opciones:
-      - texto: "Que no era la solución, sino donde el algoritmo se dio por satisfecho"
-        bien: true
-        porque: "Un resultado fiable no cambia al apretar tolerancias ni al reducir el paso."
-      - texto: "Que ahora es menos exacto"
-        porque: "Al revés: con reltol más bajo es más exigente; si cambia, el anterior no era fiable."
-      - texto: "Nada: es normal que cambie"
-        porque: "Si cambia apreciablemente, el número anterior no resolvía las ecuaciones."
-    escalera:
-      - "¿Qué debería pasar con un resultado bien resuelto si se exige más precisión?"
-    solucion: "El anterior no era la solución."
+      - "Mida de una cresta a la siguiente."
+    solucion: "≈ 0,201 ms."
+    comprobar:
+      - { T_d: 0.000201, tol: 0.01 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [159, 168, 179, 182]
+    libro: [159, 161, 162, 163, 164, 165, 168, 169, 170, 171, 172, 173, 174, 179, 182, 186]
     ideas:
-      - { titulo: "No converger.", texto: "Casi siempre es el modelo numérico: nodos flotantes, discontinuidades, extremos." }
+      - { titulo: "No converger.", texto: "Casi siempre el modelo numérico: nodo flotante, discontinuidades, realimentación fuerte, extremos, iniciales imposibles." }
       - { titulo: "Los remedios.", texto: "Fugas de 1 GΩ, resistencias serie, flancos finitos, .ic… y relajar tolerancias, casi al final." }
-      - { titulo: "Los trucos.", texto: "Por partes, de lo simple a lo complejo, y el punto de trabajo primero." }
+      - { titulo: "Los trucos.", texto: "El punto de trabajo primero; si falla, uic. Fiable es lo que no cambia al bajar reltol." }
       - { titulo: "Osciladores.", texto: "Sin ruido no arrancan: una condición inicial, un pulso o una asimetría." }

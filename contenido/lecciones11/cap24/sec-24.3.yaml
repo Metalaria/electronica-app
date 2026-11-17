@@ -2,6 +2,11 @@
 # El RLC es el del ejercicio 23.2 (cap24#329: R = 220 Ω, L = 10 mH, C = 1 µF, ζ = 1,1), con el esquema «rlc-escalon»
 # y un escalón de 1 V (EJEMPLO: el libro no da la tensión; así v_C se lee en tanto por uno). Una sola expresión para
 # los tres casos (cos·cosh y sen/ω + senh/ω, y el término t del caso crítico).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se consigue que oscile bajando R (objetivo); ζ del RLC del
+# ejercicio se escribe; Q = 10 se busca con R (lo que más oscila, más resuena, en su «logrado»); el crítico se ajusta;
+# el pico del sobreimpulso con ζ = 0,2 se marca en la curva. Quedan dos preguntas de opciones (la continuidad en 0⁺ y
+# por qué rompe el transitorio, con las tres maniobras del libro en su explicación); el método de tres líneas pasa al
+# resumen.
 leccion: cap24/sec-24.3
 
 libro:
@@ -49,9 +54,10 @@ tarjetas:
   - id: explore-tres
     tipo: explorar
     titulo: "Tres maneras de llegar"
-    texto: "La tensión del condensador de un RLC serie tras un escalón de 1 V. Cambie R: se pasa y oscila, o llega despacio."
+    texto: "La tensión del condensador de un RLC serie tras un escalón de 1 V. Cambie R hasta que se pase del valor final y oscile."
     libro: [61, 62, 63]
     fijar: { L_s: 0.01, C_s: 1e-6 }
+    inicio: { R_s: 400 }
     widget:
       tipo: circuito
       esquema: rlc-escalon
@@ -67,49 +73,24 @@ tarjetas:
         - { valor: OS, rotulo: "Sobreimpulso: {{OS}}" }
       mandos:
         - { valor: R_s, lista: [10, 40, 100, 200, 220, 400], rotulo: "R" }
+    objetivo:
+      condiciones:
+        - { valor: OS, min: 10, rotulo: "Sobreimpulso: {{OS}}" }
+      logrado: "Con ζ = {{z}} se pasa un {{OS}} y oscila: subamortiguado. Con ζ > 1, dos exponenciales lentas; con ζ = 1, lo más rápido sin pasarse."
+      pistas:
+        - { texto: "Todavía llega sin pasarse: menos resistencia, que gaste menos energía." }
+    escalera:
+      - "La resistencia gasta la energía que va y viene entre bobina y condensador."
+    solucion: "Con 100 Ω o menos: ζ < 1 y oscila."
+    comprobar:
+      - { con: { R_s: 100 }, z: 0.5, OS: 16.3, tol: 0.003 }
 
   - id: prediga-regimen
-    tipo: predecir
+    tipo: leer
     titulo: "El RLC del ejercicio"
-    texto: "Un RLC serie con R = 220 Ω, L = 10 mH y C = 1 µF recibe un escalón. ¿Cómo responde?"
+    texto: "Un RLC serie con R = 220 Ω, L = 10 mH y C = 1 µF recibe un escalón. Escriba su amortiguamiento ζ."
     libro: [60, 61, "cap24#329"]
-    nota: "Solo los primeros 100 µs: el resto, en la tarjeta siguiente."
     fijar: { R_s: 220, L_s: 0.01, C_s: 1e-6 }
-    widget:
-      tipo: circuito
-      esquema: rlc-escalon
-      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
-      grafica:
-        x: { id: t, min: 0, max: 0.0001, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 1, unidad: V, rotulo: "v_{C}" }
-        curvas:
-          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
-      lectura: { valor: z, rotulo: "Amortiguamiento ζ" }
-      ocultar: true
-    opciones:
-      - texto: "Sobreamortiguado: dos exponenciales, sin oscilar"
-        bien: true
-        porque: "ζ = 110 · √(10⁻⁶/10⁻²) = 1,1. Como ζ > 1, llega despacio y no oscila."
-      - texto: "Subamortiguado: oscila y se pasa"
-        porque: "Oscilaría con ζ < 1. Aquí ζ = 1,1: la resistencia gasta la energía antes de que pueda ir y venir."
-      - texto: "Críticamente amortiguado"
-        porque: "Ese es el límite exacto, ζ = 1, con R = 200 Ω. Con 220 Ω se pasa al lado sobreamortiguado."
-    escalera:
-      - "Calcule ζ = (R/2)·√(C/L)."
-      - "√(C/L) = √(10⁻⁶/10⁻²) = 0,01."
-    solucion: "ζ = 110 × 0,01 = 1,1: sobreamortiguado."
-    comprobar:
-      - { z: 1.1, w0: 10000 }
-      - { con: { R_s: 200 }, z: 1.0 }
-
-  - id: formula-q
-    tipo: formula
-    titulo: "ζ y Q, lo mismo"
-    texto: "El factor de calidad de la resonancia es el amortiguamiento visto desde la frecuencia: Q = 1/(2ζ). Mueva R y compare."
-    libro: ["cap24#156", 64]
-    ec: "cap24#156"
-    sustitucion: "Q = (1/{{R_s}}) · √({{L_s}} / {{C_s}}) = {{Q_s}}; ζ = {{z}}"
-    fijar: { L_s: 0.01, C_s: 1e-6 }
     widget:
       tipo: circuito
       esquema: rlc-escalon
@@ -119,9 +100,56 @@ tarjetas:
         y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
         curvas:
           - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: z
+      unidad: ""
+      tol: 0.02
+      rotulo: "Amortiguamiento ζ"
+      errores:
+        - { expr: "Q_s", texto: "Eso es Q = 1/(2ζ). Pida ζ = (R/2)·√(C/L)." }
+    exito: "ζ = 110 × √(10⁻⁶/10⁻²) = 1,1. Como ζ > 1, sobreamortiguado: llega despacio y sin oscilar, como muestra la curva."
+    escalera:
+      - "ζ = (R/2)·√(C/L)."
+      - "√(C/L) = √(10⁻⁶/10⁻²) = 0,01."
+    solucion: "ζ = 110 × 0,01 = 1,1: sobreamortiguado."
+    comprobar:
+      - { z: 1.1, w0: 10000, Q_s: 0.4545 }
+
+  - id: formula-q
+    tipo: explorar
+    titulo: "ζ y Q, lo mismo"
+    texto: "El factor de calidad de la resonancia es el amortiguamiento visto desde la frecuencia: Q = 1/(2ζ). Elija R para que Q valga 10."
+    libro: ["cap24#156", "cap24#159", 64]
+    fijar: { L_s: 0.01, C_s: 1e-6 }
+    inicio: { R_s: 220 }
+    widget:
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
       lectura: { valor: Q_s, rotulo: "Factor de calidad Q" }
+      datos:
+        - { valor: z, rotulo: "ζ = {{z}}" }
       mandos:
         - { valor: R_s, lista: [10, 40, 100, 200, 220, 400], rotulo: "R" }
+    objetivo:
+      condiciones:
+        - { valor: Q_s, objetivo: 10, tol: 0.02, rotulo: "Q: {{Q_s}}" }
+      logrado: "Con {{R_s}}, ζ = {{z}} y Q = {{Q_s}}: el circuito que más oscila tras el escalón es el que más selectivamente resuena en frecuencia."
+      pistas:
+        - { texto: "Q = (1/R)·√(L/C) = 100/R: para Q = 10, ¿qué R?" }
+    escalera:
+      - "√(L/C) = √(10⁻²/10⁻⁶) = 100 Ω."
+    solucion: "R = 10 Ω: Q = 10 y ζ = 0,05."
+    comprobar:
+      - { con: { R_s: 10 }, z: 0.05, Q_s: 10 }
 
   - id: ajuste-critico
     tipo: ajuste
@@ -156,29 +184,33 @@ tarjetas:
       - { con: { R_s: 200 }, z: 1.0 }
 
   - id: estime-sobreimpulso
-    tipo: pregunta
-    fase: "Estime"
+    tipo: marcar
     titulo: "El sobreimpulso con ζ = 0,2"
-    texto: "Ante un escalón, un RLC con ζ = 0,2 se pasa del valor final. Estime cuánto, en tanto por ciento del salto."
+    texto: "Con R = 40 Ω, ζ = 0,2: ante el escalón de 1 V se pasa del valor final. Marque con la línea la altura de su primer pico."
     libro: [63]
     fijar: { R_s: 40, L_s: 0.01, C_s: 1e-6 }
-    estimar:
-      objetivo: "OS"
-      unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 10
-      tol: 0.08
-      rotulo: "Sobreimpulso"
-    exito: "Un 53 %: con ζ = 0,2 casi se pasa la mitad del salto. Por encima de ζ = 0,8, casi nada."
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}" }
+        - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
+      mandos: []
+    marcar:
+      modo: y
+      y: "V_e*(1 + OSu)"
+      tol: 0.03
+      inicio: { x: 0.0015, y: 1 }
+      rotulo: "El primer pico"
     pistas:
-      - { cuando: { valor: estimacion, mayor: 57 }, texto: "Demasiado: incluso con ζ = 0,2 queda por debajo del doble del valor final." }
-      - { texto: "Se queda corto: con tan poco amortiguamiento se pasa mucho." }
+      - { cuando: { valor: marca_y, mayor: 1.57 }, texto: "Más abajo: ponga la línea en la cresta más alta de la curva." }
+      - { texto: "Más arriba: la primera cresta pasa bastante del valor final." }
+    exito: "Un 53 % sobre el salto: e^{−πζ/√(1−ζ²)} = e^{−0,641}. Por encima de ζ = 0,8, casi nada."
     escalera:
+      - "Busque la cresta más alta, la primera."
       - "El sobreimpulso vale e^{−πζ/√(1−ζ²)}."
-      - "Con ζ = 0,2: e^{−0,641}."
-    solucion: "e^{−0,641} ≈ 0,53: un 53 %."
+    solucion: "En 1,53 V: un 53 % por encima del valor final."
     comprobar:
       - { z: 0.2, OS: 52.7, OSu: 0.527, ex_o: 0.641 }
 
@@ -209,53 +241,11 @@ tarjetas:
       - "Recuerde i = C·dv/dt."
     solucion: "Un salto de tensión exigiría corriente infinita: v_{C}(0⁺) = v_{C}(0⁻) = 0 V."
 
-  - id: tres-lineas
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El método de tres líneas"
-    texto: "Ordene los pasos que resuelven cualquier circuito de primer orden sin escribir la ecuación diferencial."
-    libro: [57, 58]
-    ordenar:
-      - "Valor inicial: el de t = 0⁻, por continuidad"
-      - "Valor final: el del régimen permanente"
-      - "Constante de tiempo τ del circuito"
-      - "Entre ambos valores, una exponencial con esa τ"
-    exito: "Valor inicial, valor final y τ: tres líneas."
-    pistas:
-      - { texto: "Primero los dos extremos de la curva; luego, lo deprisa que va de uno a otro." }
-    escalera:
-      - "La continuidad da el principio; el régimen permanente, el final."
-    solucion: "Inicial, final, τ y la exponencial que los une."
-
-  - id: oscila-resuena
-    tipo: sorpresa
-    titulo: "El que más oscila, más resuena"
-    texto: "Baje R a 10 Ω: ζ = 0,05 y Q = 10. El circuito que más timbra tras el escalón es el que más selectivamente resuena en frecuencia."
-    libro: [64, "cap24#159"]
-    fijar: { L_s: 0.01, C_s: 1e-6 }
-    inicio: { R_s: 220 }
-    widget:
-      tipo: circuito
-      esquema: rlc-escalon
-      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
-      grafica:
-        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
-        curvas:
-          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
-      lectura: { valor: Q_s, rotulo: "Factor de calidad Q" }
-      datos:
-        - { valor: z, rotulo: "ζ = {{z}}" }
-      mandos:
-        - { valor: R_s, lista: [10, 40, 100, 200, 220, 400], rotulo: "R" }
-    comprobar:
-      - { con: { R_s: 10 }, z: 0.05, Q_s: 10 }
-
   - id: por-que-rompe
     tipo: porque
     titulo: "¿Por qué rompe el transitorio?"
     texto: "Con ζ = 0,2 la tensión llega a superar en un 53 % su valor final. ¿Por qué se dice que el transitorio es lo que rompe cosas?"
-    libro: [48, 70]
+    libro: [48, 67, 68, 69, 70]
     fijar: { R_s: 40, L_s: 0.01, C_s: 1e-6 }
     widget:
       tipo: circuito
@@ -271,7 +261,7 @@ tarjetas:
     opciones:
       - texto: "Porque los picos de tensión y de corriente solo aparecen durante el cambio"
         bien: true
-        porque: "El pico de una bobina, la irrupción de un condensador, el sobreimpulso de un lazo: ninguno se ve en el régimen permanente."
+        porque: "Al conectar, la irrupción de los condensadores; al desconectar una bobina, su pico; ante un escalón de carga, el lazo. Ninguno se ve en el permanente."
       - texto: "Porque en el transitorio los componentes están fríos"
         porque: "No es cuestión de temperatura: es el valor de pico que se alcanza mientras el circuito se asienta."
       - texto: "Porque el régimen permanente no disipa"
@@ -282,29 +272,12 @@ tarjetas:
     comprobar:
       - { OS: 52.7 }
 
-  - id: prever
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los transitorios que hay que prever"
-    texto: "Una cada maniobra con el transitorio que produce."
-    libro: [67, 68, 69]
-    emparejar:
-      - ["Al conectar", "La corriente de irrupción de los condensadores de entrada"]
-      - ["Al desconectar una carga inductiva", "El pico de tensión"]
-      - ["Ante un escalón de carga", "La respuesta del lazo de regulación"]
-    exito: "En los tres, lo que decide si algo se rompe es el transitorio."
-    pistas:
-      - { texto: "Un condensador descargado se comporta al principio como un corto; una bobina se opone a que su corriente cambie." }
-    escalera:
-      - "¿Qué componente pide corriente al conectar y cuál protesta al cortar?"
-    solucion: "Conectar: irrupción; desconectar la bobina: pico; escalón de carga: el lazo."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [56, 57, 60, 64, 73]
+    libro: [56, 57, 58, 60, 64, 73]
     ideas:
-      - { titulo: "Primer orden.", texto: "Valor inicial, valor final y τ: la continuidad de v_{C} e i_{L} da el principio." }
+      - { titulo: "Primer orden.", texto: "Tres líneas: valor inicial (por la continuidad de v_{C} e i_{L}), valor final y τ." }
       - { titulo: "Segundo orden.", texto: "ζ = (R/2)·√(C/L): sobreamortiguado, crítico o subamortiguado." }
       - { titulo: "ζ y Q.", texto: "Q = 1/(2ζ): el que más oscila es el que más resuena." }
       - { titulo: "En el banco.", texto: "Un escalón en disparo único da τ, el amortiguamiento y el sobreimpulso." }

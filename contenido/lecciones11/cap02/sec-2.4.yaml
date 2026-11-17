@@ -2,6 +2,10 @@
 # leer, cinco bandas, dorado y plateado como multiplicador, los problemas reales y otros componentes con el mismo
 # código. Los colores no pueden ser un mando con nombres todavía (petición al motor): los dígitos se mueven como
 # números y el texto da la tabla. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): poner las bandas de 1 kΩ, leer y escribir el valor de
+# amarillo-violeta-rojo, de dos dorados y de cinco bandas, el reto de rojo-rojo-marrón y elegir la banda de tolerancia
+# del 1 %; se eligen el porqué de los colores y qué hacer ante la duda. Sin el orden de criterios ni los otros
+# componentes (sus ideas quedan en los textos).
 leccion: cap02/sec-2.4
 
 libro:
@@ -23,17 +27,23 @@ modelo:
     d_1: { sim: "1.ª cifra", nombre: "primera banda, dígito", unidad: "", valor: 1 }
     d_2: { sim: "2.ª cifra", nombre: "segunda banda, dígito", unidad: "", valor: 0 }
     m: { sim: "n", nombre: "tercera banda, potencia de diez del multiplicador", unidad: "", valor: 0 }
+    d_3: { sim: "3.ª cifra", nombre: "tercera banda de cinco, dígito", unidad: "", valor: 0 }
+    tb: { sim: "tol", nombre: "banda de tolerancia", unidad: "%", valor: 5 }
   calculos:
     cifras2: { expr: "10*d_1 + d_2", sim: "dígitos", nombre: "las dos cifras", unidad: "", cifras: 2, recortar: true }
     mult: { expr: "10^m", sim: "multiplicador", nombre: "multiplicador", unidad: "", cifras: 3, recortar: true }
     R: { expr: "cifras2*mult", sim: "R", nombre: "valor de la resistencia", unidad: Ω, cifras: 3, recortar: true }
+    R5: { expr: "(100*d_1 + 10*d_2 + d_3)*mult", sim: "R", nombre: "valor de cinco bandas", unidad: Ω, cifras: 3, recortar: true }
+    R_lo: { expr: "1000*(1 - tb/100)", sim: "R_{mín}", nombre: "mínimo de una de 1 kΩ", unidad: Ω }
+    R_hi: { expr: "1000*(1 + tb/100)", sim: "R_{máx}", nombre: "máximo de una de 1 kΩ", unidad: Ω }
 
 tarjetas:
   - id: explore-bandas
     tipo: explorar
     titulo: "Dos cifras y un multiplicador"
-    texto: "Cuatro bandas: dos dígitos, multiplicador y tolerancia. Elija el color de cada banda y mire el valor."
+    texto: "Cuatro bandas: dos dígitos, multiplicador y tolerancia. Ponga las bandas de una de 1 kΩ."
     libro: [73, 76]
+    inicio: { d_1: 1, d_2: 0, m: 0 }
     widget:
       tipo: grafica
       x: { id: x, min: -2, max: 6, unidad: "", rotulo: "potencia de diez del multiplicador" }
@@ -50,13 +60,24 @@ tarjetas:
         - { valor: d_1, rotulo: "Primera banda", lista: [1, 2, 3, 4, 5, 6, 7, 8, 9], nombres: [marrón, rojo, naranja, amarillo, verde, azul, violeta, gris, blanco] }
         - { valor: d_2, rotulo: "Segunda banda", lista: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], nombres: [negro, marrón, rojo, naranja, amarillo, verde, azul, violeta, gris, blanco] }
         - { valor: m, rotulo: "Tercera banda, multiplicador", lista: [-2, -1, 0, 1, 2, 3, 4, 5, 6], nombres: [plateado, dorado, negro, marrón, rojo, naranja, amarillo, verde, azul] }
-    requiere: { mover: [d_1, m] }
+    objetivo:
+      condiciones:
+        - { valor: R, objetivo: 1000, tol: 0.001, rotulo: "Valor: {{R}}" }
+      logrado: "Marrón 1, negro 0 y rojo × 100: 10 × 100 = {{R}}. Negro 0 a blanco 9, en el orden del espectro."
+      pistas:
+        - { cuando: { valor: R, mayor: 1001 }, texto: "Se ha pasado: 1 kΩ son las cifras 1 y 0 por cien." }
+        - { texto: "Le falta: 1 kΩ son las cifras 1 y 0 por cien." }
+    escalera:
+      - "1 kΩ = 10 × 100: dos cifras, 1 y 0, y un multiplicador de cien."
+    solucion: "Marrón, negro y rojo."
+    comprobar:
+      - { con: { d_1: 1, d_2: 0, m: 2 }, R: 1000 }
 
   - id: prediga-amarillo
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Amarillo, violeta, rojo y dorado. ¿Qué resistencia es?"
-    libro: [76, 78]
+    tipo: simular
+    titulo: "Lea el valor"
+    texto: "Amarillo, violeta, rojo y dorado. Escriba el valor de la resistencia."
+    libro: [71, 76, 78]
     fijar: { d_1: 4, d_2: 7, m: 2 }
     widget:
       tipo: grafica
@@ -65,23 +86,23 @@ tarjetas:
       curvas:
         - { expr: "cifras2*10^x", color: azul, rotulo: "mismas cifras, otro multiplicador" }
       lectura: { valor: R, rotulo: "Valor" }
-      ocultar: true
-    opciones:
-      - texto: "4,7 kΩ ±5 %"
-        bien: true
-        porque: "Amarillo 4 y violeta 7 dan 47; el rojo como multiplicador es × 100; el dorado, ±5 %."
-      - texto: "470 Ω ±5 %"
-        porque: "Eso sería con marrón, × 10. El rojo vale 2: multiplica por 10², cien."
-      - texto: "47 kΩ ±5 %"
-        porque: "Eso sería con naranja, × 1 000. El rojo multiplica por cien."
+      ocultar: curvas
+    simular:
+      objetivo: R
+      unidad: Ω
+      tol: 0.01
+      rotulo: "Valor"
+      errores:
+        - { razon: { min: 9.9, max: 10.1 }, texto: "Eso sería con marrón, × 10. El rojo vale 2: multiplica por 10², cien." }
+        - { razon: { min: 0.099, max: 0.101 }, texto: "Eso sería con naranja, × 1 000. El rojo multiplica por cien." }
+    exito: "47 × 100 = 4,7 kΩ, ±5 %. Si duda del sentido, lea en los dos: un extremo dará 4,7 kΩ y el otro un número absurdo."
+    escalera:
+      - "Amarillo 4 y violeta 7; el rojo, como multiplicador, es × 10²."
+    solucion: "47 × 100 = 4,7 kΩ, y el dorado, ±5 %."
     comprobar:
       - { R: 4700 }
       - { con: { m: 3 }, R: 47000 }
       - { con: { m: 1 }, R: 470 }
-    escalera:
-      - "Amarillo 4 y violeta 7; el rojo, como multiplicador, es × 10²."
-    solucion: "47 × 100 = 4,7 kΩ, y el dorado, ±5 %."
-
   - id: reto-220
     tipo: reto
     titulo: "Reto: rojo, rojo, marrón"
@@ -103,7 +124,7 @@ tarjetas:
         - { valor: m, rotulo: "Tercera banda, multiplicador", lista: [-2, -1, 0, 1, 2, 3, 4, 5, 6], nombres: [plateado, dorado, negro, marrón, rojo, naranja, amarillo, verde, azul] }
     condiciones:
       - { valor: R, objetivo: 220, tol: 0.001, rotulo: "Valor: {{R}}" }
-    exito: "Rojo 2, rojo 2, marrón × 10: 22 × 10 = 220 Ω, con el dorado ±5 %."
+    exito: "Rojo 2, rojo 2, marrón × 10: 22 × 10 = 220 Ω. El dorado, ±5 %, marca el final: nunca es la primera banda."
     pistas:
       - { cuando: { valor: R, mayor: 220.2 }, texto: "Se ha pasado: rojo es 2 y marrón, como multiplicador, solo × 10." }
       - { cuando: { valor: R, menor: 219.8 }, texto: "Le falta: rojo es 2 en las dos primeras bandas, y el marrón multiplica por 10." }
@@ -115,7 +136,7 @@ tarjetas:
       - { con: { d_1: 2, d_2: 2, m: 1 }, R: 220 }
 
   - id: prediga-dorado
-    tipo: predecir
+    tipo: simular
     titulo: "Por debajo de 10 Ω"
     texto: "Marrón, negro, dorado y dorado: el dorado aparece dos veces. ¿Cuánto vale?"
     libro: [76, 78]
@@ -127,80 +148,78 @@ tarjetas:
       curvas:
         - { expr: "cifras2*10^x", color: azul, rotulo: "mismas cifras, otro multiplicador" }
       lectura: { valor: R, rotulo: "Valor" }
-      ocultar: true
-    opciones:
-      - texto: "1 Ω ±5 %"
-        bien: true
-        porque: "Como multiplicador, el dorado es × 0,1: 10 × 0,1 = 1 Ω. Como última banda, ±5 %."
-      - texto: "10 Ω ±5 %"
-        porque: "Ha ignorado el multiplicador dorado: × 0,1 divide por diez las dos cifras."
-      - texto: "0,1 Ω ±5 %"
-        porque: "Eso sería el plateado, × 0,01. El dorado divide por diez."
+      ocultar: curvas
+    simular:
+      objetivo: R
+      unidad: Ω
+      tol: 0.01
+      rotulo: "Valor"
+      errores:
+        - { razon: { min: 9.9, max: 10.1 }, texto: "Ha ignorado el multiplicador dorado: × 0,1 divide por diez las dos cifras." }
+        - { razon: { min: 0.099, max: 0.101 }, texto: "Eso sería el plateado, × 0,01. El dorado divide por diez." }
+    exito: "Como multiplicador, el dorado es × 0,1: 10 × 0,1 = 1 Ω. Como última banda, ±5 %."
+    escalera:
+      - "El primer dorado es el multiplicador; el segundo, la tolerancia."
+    solucion: "10 × 0,1 = 1 Ω, ±5 %."
     comprobar:
       - { R: 1 }
       - { con: { m: 0 }, R: 10 }
       - { con: { m: -2 }, R: 0.1 }
-    escalera:
-      - "El primer dorado es el multiplicador; el segundo, la tolerancia."
-    solucion: "Como multiplicador, el dorado es × 0,1: 10 × 0,1 = 1 Ω, ±5 %."
-
   - id: empareje-tolerancia
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: explorar
     titulo: "La banda de tolerancia"
-    texto: "Los colores de tolerancia son distintos. Empareje cada color con su tolerancia."
-    libro: [70]
-    emparejar:
-      - ["Dorado", "5 %"]
-      - ["Plateado", "10 %"]
-      - ["Marrón", "1 %"]
-      - ["Rojo", "2 %"]
-    exito: "Eso es. Si ve un dorado o un plateado en un extremo, ese es el final."
-    pistas:
-      - { texto: "Los dos metálicos son las tolerancias más amplias; el marrón, la más estrecha." }
+    texto: "La última banda es la tolerancia, con sus propios colores. Elija la que deja una de 1 kΩ entre 990 y 1 010 Ω."
+    libro: [70, 73, 74]
+    inicio: { tb: 5 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 850, max: 1150, unidad: Ω, rotulo: "valor" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "posible" }
+      curvas:
+        - { expr: "1 - min(1, floor(abs(x - 1000)/(10*tb)))", color: azul, rotulo: "valores posibles" }
+      lectura: { valor: tb, rotulo: "Tolerancia, ±" }
+      datos:
+        - { valor: R_lo, rotulo: "Desde {{R_lo}}" }
+        - { valor: R_hi, rotulo: "Hasta {{R_hi}}" }
+      mandos:
+        - { valor: tb, lista: [5, 10, 1, 2], nombres: [dorado, plateado, marrón, rojo], rotulo: "Banda de tolerancia" }
+    objetivo:
+      condiciones:
+        - { valor: tb, max: 1, rotulo: "Tolerancia: ± {{tb}}" }
+      logrado: "Marrón, ±1 %: las de cinco bandas. Dorado ±5 %, plateado ±10 %, rojo ±2 %."
+      pistas:
+        - { texto: "Ese margen es más ancho: elija otra banda." }
     escalera:
-      - "El dorado y el plateado nunca son la primera banda: marcan el final."
-    solucion: "Dorado: 5 %. Plateado: 10 %. Marrón: 1 %. Rojo: 2 %."
-
-  - id: ordene-criterios
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "¿Por dónde se empieza?"
-    texto: "La dificultad no es la tabla: es saber por qué extremo leer. Ordene los criterios del más fiable al menos fiable."
-    libro: [70, 71]
-    ordenar:
-      - "La banda de tolerancia está separada por un espacio mayor."
-      - "El dorado y el plateado nunca son la primera banda."
-      - "El cuerpo: beige en carbón, azul claro en película metálica."
-    exito: "Ese es el orden. Si aún duda, lea en los dos sentidos: un extremo dará 4,7 kΩ y el otro un número absurdo."
-    pistas:
-      - { texto: "El criterio principal es el espacio; el color del cuerpo, el último." }
-    escalera:
-      - "Piense en qué pista no engaña nunca y cuál engaña más con el calor y la luz."
-    solucion: "La banda de tolerancia está separada por un espacio mayor → El dorado y el plateado nunca son la primera banda → El cuerpo: beige en carbón, azul claro en película metálica."
-
+      - "Entre 990 y 1 010 Ω es ±1 %."
+    solucion: "Marrón: ±1 %."
+    comprobar:
+      - { R_lo: 950, R_hi: 1050 }
+      - { con: { tb: 1 }, R_lo: 990, R_hi: 1010 }
   - id: cinco-bandas
-    tipo: pregunta
+    tipo: simular
     titulo: "Cinco bandas"
     texto: "Marrón, negro, negro, marrón y marrón: una de cinco bandas. ¿Cuánto vale?"
     libro: [74, 78]
-    opciones:
-      - texto: "1 kΩ ±1 %"
-        bien: true
-        porque: "Tres dígitos, 100; el cuarto marrón multiplica por 10; el último, ±1 %."
-      - texto: "100 Ω ±1 %"
-        porque: "Ha tomado el cuarto marrón como tolerancia. Con cinco bandas, el cuarto es el multiplicador, × 10."
-      - texto: "10 Ω ±1 %"
-        porque: "La ha leído como de cuatro bandas. Con cinco hay tres dígitos: 1, 0 y 0."
+    fijar: { d_1: 1, d_2: 0, d_3: 0, m: 1 }
     widget:
       tipo: figura
       figura: fig-2.5
       zonas:
-        - { id: codigo, rotulo: "El código de colores", rect: [0, 0, 453, 288] }
+        - { id: codigo, rotulo: "El código de colores", rect: [0, 0, 260, 288] }
+    simular:
+      objetivo: R5
+      unidad: Ω
+      tol: 0.01
+      rotulo: "Valor"
+      errores:
+        - { razon: { min: 0.099, max: 0.101 }, texto: "Ha tomado el cuarto marrón como tolerancia. Con cinco bandas, el cuarto es el multiplicador, × 10." }
+        - { razon: { min: 0.0099, max: 0.0101 }, texto: "La ha leído como de cuatro bandas. Con cinco hay tres dígitos: 1, 0 y 0." }
+    exito: "Tres dígitos, 100; el cuarto marrón multiplica por 10: 1 kΩ. El último, ±1 %."
     escalera:
       - "Con cinco bandas hay tres dígitos, un multiplicador y la tolerancia."
-    solucion: "1, 0 y 0, y el cuarto marrón, × 10: 1 kΩ, ±1 %."
-
+    solucion: "100 × 10 = 1 kΩ, ±1 %."
+    comprobar:
+      - { R5: 1000 }
   - id: por-que-colores
     tipo: porque
     titulo: "¿Por qué colores?"
@@ -245,29 +264,12 @@ tarjetas:
       - "El color solo dice el valor nominal; el real se mide."
     solucion: "Medirla con el multímetro: es la respuesta definitiva y tarda cinco segundos."
 
-  - id: empareje-otros
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El mismo código, otros componentes"
-    texto: "El código de colores no es exclusivo de las resistencias. Empareje cada componente con lo que codifican sus bandas."
-    libro: [84]
-    emparejar:
-      - ["Resistencia", "Su valor en ohmios"]
-      - ["Algunas bobinas", "Su valor en microhenrios"]
-      - ["Algunos diodos Zener", "Su tensión"]
-    exito: "Eso es. La forma del cuerpo y el material aclaran qué componente es."
-    pistas:
-      - { texto: "En los Zener, las bandas no son una resistencia." }
-    escalera:
-      - "Piense en la magnitud principal de cada componente."
-    solucion: "Resistencia: su valor en ohmios. Algunas bobinas: su valor en microhenrios. Algunos diodos Zener: su tensión."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [70, 73, 74, 76, 81]
+    libro: [70, 73, 74, 76, 81, 84]
     ideas:
       - { titulo: "Estructura.", texto: "Cuatro bandas: dos dígitos, multiplicador y tolerancia. Cinco: tres dígitos." }
       - { titulo: "El orden.", texto: "Negro 0 a blanco 9, el del espectro; dorado × 0,1 y plateado × 0,01 como multiplicador." }
       - { titulo: "Por dónde.", texto: "La tolerancia está más separada; el dorado y el plateado nunca son la primera." }
-      - { titulo: "Ante la duda.", texto: "Medir con el multímetro: el color solo dice el nominal." }
+      - { titulo: "Ante la duda.", texto: "Medir con el multímetro: el color solo dice el nominal. Algunas bobinas y Zener usan el mismo código." }

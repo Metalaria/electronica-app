@@ -25,6 +25,7 @@ import type { Camino } from '../src/componentes/figuras-vivas/esquema/modelo.sve
 import type { Punto } from '../src/componentes/figuras-vivas/tipos.ts';
 import { sqlNode } from '../src/lib/leccion12/sql/node.ts';
 import { nombresEsquemas } from '../src/lib/leccion11/esquemas/registro.ts';
+import { entradasCongeladas, leccionCongelada, rutasCongeladas } from './lecciones11-congeladas';
 // @ts-expect-error (a plain .mjs module of the scripts: no types)
 import { cargarEsquemas11 } from '../scripts/esquemas11.mjs';
 
@@ -47,9 +48,11 @@ async function servir(ctx: BrowserContext, id: string, leccion: Leccion11) {
   await ctx.route('https://api.github.com/**', (x) => x.fulfill({ status: 404, body: '{}' }));
   await ctx.route('**/libro/lecciones11/indice.json', async (x) => {
     const real = await x.fetch().then((y) => y.json()).catch(() => ({ version: 1, total: 0, lecciones: {} }));
-    const lecciones = { ...(real.lecciones ?? {}), [id]: { tarjetas: leccion.tarjetas.length } };
+    const lecciones = { ...(real.lecciones ?? {}), ...entradasCongeladas(), [id]: { tarjetas: leccion.tarjetas.length } };
     await x.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, total: Object.keys(lecciones).length, lecciones }) });
   });
+  // (1.2.1) the reference lessons as they were in 1.2.0 (lecciones11-congeladas.ts); the lesson served here wins
+  await rutasCongeladas(ctx);
   await ctx.route(`**/libro/lecciones11/${id}.json`, (x) => x.fulfill({ contentType: 'application/json', body: JSON.stringify(leccion) }));
 }
 async function preparar(page: Page) {
@@ -351,8 +354,8 @@ async function solapes(page: Page): Promise<{ encendidos: number; dentro: string
   });
 }
 
-/** Every circuit card with a drawing: the 1.1 catalogue's and the reference lesson's divisor and parallel circuit. */
-const real14 = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', 'cap01', 'sec-1.4.json'), 'utf8')) as Leccion11;
+/** Every circuit card with a drawing: the 1.1 catalogue's and the reference lesson's (frozen 1.2.0 copy) divisor and parallel circuit. */
+const real14 = leccionCongelada('cap01/sec-1.4');
 const tarjetas = [
   ...['divisor', 'paralelo'].map((e) => ({ id: 'cap01/sec-1.4', lec: null as Leccion11 | null, k: real14.tarjetas.findIndex((t) => t.widget?.tipo === 'circuito' && t.widget.esquema === e), esquema: e })),
   ...cat11.tarjetas.flatMap((t, k) => (t.widget?.tipo === 'circuito' && t.widget.dibujo !== false ? [{ id: CAT11, lec: cat11 as Leccion11 | null, k, esquema: t.widget.esquema }] : [])),

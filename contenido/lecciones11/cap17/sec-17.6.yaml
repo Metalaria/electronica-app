@@ -2,6 +2,11 @@
 # - Los tres buses del Arduino, la trampa de cada uno y el criterio de elección sobre la figura 16.10 (fig-17.10).
 # - Sin modelo numérico: la sección no da valores de los pull-ups ni de los buses.
 # Paso práctico: «tocar» el bus cuyos módulos se estorban al sumarse (los pull-ups de I²C).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el módulo en los pines 0 y 1 se vive en un circuito
+# «logica» (el conversor USB y el módulo, dos salidas tri-estado en la línea RX: contención); en la figura 16.10 se
+# tocan el bus de los pull-ups, el de las direcciones, el de los datos desplazados y el del módulo lejano; se escriben
+# los pines de SPI con tres esclavos. El serie por software pasa al «logrado» de la contención. Queda una pregunta de
+# opciones: la basura sistemática.
 leccion: cap17/sec-17.6
 
 libro:
@@ -19,7 +24,11 @@ libro:
   169: "distingue «no está conectado» de «está en otra dirección»"
   170: "Los tres buses del Arduino con la trampa característica de cada uno y el criterio de elección."
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    n_esc: { sim: "n", nombre: "esclavos SPI", unidad: "", valor: 3 }
+  calculos:
+    p_spi: { expr: "3 + n_esc", sim: "p", nombre: "pines de SPI", unidad: "" }
 
 tarjetas:
   - id: explore-buses
@@ -37,48 +46,32 @@ tarjetas:
     requiere: { mover: [serie, i2c, spi] }
 
   - id: predecir-pines01
-    tipo: predecir
+    tipo: explorar
     titulo: "Un módulo en los pines 0 y 1"
-    texto: "Conecta un módulo serie a los pines 0 y 1 y deja el cable puesto. ¿Qué pasa al subir un programa nuevo?"
-    libro: [153]
+    texto: "El pin 0 de la placa recibe lo que manda el conversor USB. Conecte también un módulo serie y haga que los dos manden niveles distintos."
+    libro: [153, 154]
     widget:
-      tipo: figura
-      figura: fig-17.10
-      zonas:
-        - { id: serie, rotulo: "Recuadro naranja, a la izquierda", rect: [4, 5, 143, 83] }
-    opciones:
-      - texto: "La placa deja de aceptar programas"
-        bien: true
-        porque: "Los pines 0 y 1 son los del conversor USB: el módulo interfiere con la programación."
-      - texto: "Se programa bien, pero el módulo no responde"
-        porque: "El problema es justo la programación: el módulo está en las líneas que usa el conversor USB."
-      - texto: "Nada: son pines como los demás"
-        porque: "No lo son: los comparte el conversor USB-serie de la placa."
+      tipo: logica
+      entradas:
+        - { id: USB, valor: 1, rotulo: "Dato del conversor" }
+        - { id: MOD, valor: 1, rotulo: "Dato del módulo" }
+        - { id: CON, valor: 0, rotulo: "Módulo conectado" }
+      piezas:
+        - { id: t1, tipo: tri, entradas: [USB, 1], rotulo: "Conversor USB" }
+        - { id: t2, tipo: tri, entradas: [MOD, CON], rotulo: "Módulo serie" }
+        - { id: rx, tipo: bus, entradas: [t1, t2], pullup: ninguna, rotulo: "Pin 0" }
+      salidas:
+        - { id: RX, de: rx, rotulo: "Pin 0 (RX)" }
+    objetivo:
+      condiciones:
+        - { led: RX, valor: X, rotulo: "Pin 0 en conflicto" }
+      logrado: "Dos salidas en la misma línea: el programa nuevo no llega limpio y la placa deja de aceptarlo. La salida es un serie por software en otros pines, más lento (unos 38 400 baudios) y sin interrupciones al transmitir."
+      pistas:
+        - { cuando: { senal: CON, valor: 0 }, texto: "Conecte el módulo." }
+        - { texto: "Con los dos mandando lo mismo no se nota: cambie el dato del módulo." }
     escalera:
-      - "¿Quién más está conectado a los pines 0 y 1?"
-    solucion: "Deja de aceptar programas mientras el módulo esté ahí."
-
-  - id: pregunta-software
-    tipo: pregunta
-    titulo: "Un serie por software"
-    texto: "Para no usar los pines 0 y 1, monta un puerto serie por software en otros pines. ¿Qué precio paga?"
-    libro: [154]
-    widget:
-      tipo: figura
-      figura: fig-17.10
-      zonas:
-        - { id: serie, rotulo: "Recuadro naranja, a la izquierda", rect: [4, 5, 143, 83] }
-    opciones:
-      - texto: "Más lento y deshabilita interrupciones al transmitir"
-        bien: true
-        porque: "Hasta unos 38 400 baudios con fiabilidad, y puede romper otras temporizaciones."
-      - texto: "Ninguno: va igual que el hardware"
-        porque: "Es más lento y bloquea las interrupciones mientras transmite."
-      - texto: "Ocupa los pines A4 y A5"
-        porque: "Usa los pines que se elijan; su precio es la velocidad y las interrupciones."
-    escalera:
-      - "Lo que hace el hardware lo tiene que hacer ahora el programa."
-    solucion: "Más lento (unos 38 400 baudios) y sin interrupciones mientras transmite."
+      - "El conversor USB-serie ya está conectado a los pines 0 y 1."
+    solucion: "Módulo conectado y dato del módulo a 0."
 
   - id: porque-basura
     tipo: porque
@@ -125,70 +118,95 @@ tarjetas:
     solucion: "I²C. Retire los pull-ups de todos los módulos menos uno."
 
   - id: pregunta-escaner
-    tipo: pregunta
-    titulo: "Lo primero en I²C"
-    texto: "Un sensor I²C no responde. ¿Qué herramienta usa antes que nada?"
-    libro: [159, 169]
+    tipo: tocar
+    titulo: "Otra dirección"
+    texto: "Un sensor no responde y sospecha que está en otra dirección. Toque el bus en el que eso puede pasar."
+    libro: [159, 162, 169]
     widget:
       tipo: figura
       figura: fig-17.10
       zonas:
+        - { id: serie, rotulo: "Recuadro naranja, a la izquierda", rect: [4, 5, 143, 83] }
         - { id: i2c, rotulo: "Recuadro azul, en el centro", rect: [155, 5, 143, 83] }
-    opciones:
-      - texto: "El escáner de direcciones"
-        bien: true
-        porque: "Distingue «no está conectado» de «está en otra dirección»."
-      - texto: "Cambiar el sensor por otro"
-        porque: "Antes, el escáner: quizá está bien y en otra dirección."
-      - texto: "Subir la velocidad del bus"
-        porque: "No resuelve nada si el sensor está en otra dirección o desconectado."
+        - { id: spi, rotulo: "Recuadro verde, a la derecha", rect: [305, 5, 143, 83] }
+    tocar:
+      bien: [i2c]
+      porque:
+        serie: "La UART une dos equipos, sin direcciones."
+        spi: "SPI no tiene direcciones: cada esclavo tiene su pin de selección."
+    exito: "I²C: antes que nada, el escáner de direcciones, que distingue «no está conectado» de «está en otra dirección»."
     escalera:
-      - "En I²C cada dispositivo tiene una dirección."
-    solucion: "El escáner de direcciones."
+      - "¿En qué bus cada dispositivo se identifica por una dirección?"
+    solucion: "I²C, y su escáner de bus."
 
   - id: predecir-spi
-    tipo: predecir
-    titulo: "Un modo que no coincide"
-    texto: "Un convertidor SPI espera otro modo de reloj que el configurado. ¿Qué se ve?"
+    tipo: tocar
+    titulo: "Datos desplazados"
+    texto: "Un convertidor responde, pero con valores que parecen válidos y están desplazados. Toque el bus en el que sospecha del modo de reloj."
     libro: [162, 165]
     widget:
       tipo: figura
       figura: fig-17.10
       zonas:
+        - { id: serie, rotulo: "Recuadro naranja, a la izquierda", rect: [4, 5, 143, 83] }
+        - { id: i2c, rotulo: "Recuadro azul, en el centro", rect: [155, 5, 143, 83] }
         - { id: spi, rotulo: "Recuadro verde, a la derecha", rect: [305, 5, 143, 83] }
-    opciones:
-      - texto: "Responde, pero con datos desplazados"
-        bien: true
-        porque: "La comunicación «funciona» y devuelve valores incorrectos: se resuelve con la hoja de datos."
-      - texto: "No responde nada"
-        porque: "Sí responde: por eso desconcierta. Los datos llegan desplazados."
-      - texto: "Un conflicto de direcciones"
-        porque: "SPI no tiene direcciones: cada esclavo tiene su pin de selección."
+    tocar:
+      bien: [spi]
+      porque:
+        serie: "Un fallo de la UART es de velocidad y da basura sistemática, no datos desplazados."
+        i2c: "I²C no tiene modos de reloj; su trampa es otra: pull-ups y direcciones."
+    exito: "SPI tiene cuatro modos de polaridad y fase del reloj: con el equivocado, la comunicación «funciona» y devuelve valores incorrectos."
     escalera:
-      - "Polaridad y fase del reloj deciden cuándo se lee cada bit."
-    solucion: "Datos desplazados que parecen válidos."
+      - "¿Qué bus tiene cuatro modos de reloj?"
+    solucion: "SPI: compruebe el modo en la hoja de datos."
 
   - id: empareje-eleccion
-    tipo: pregunta
+    tipo: tocar
     titulo: "La elección"
-    texto: "Empareje cada situación con su bus."
+    texto: "Tiene que hablar con un módulo lejano, en un entorno ruidoso. Toque el bus que usaría, con un transceptor RS-485."
     libro: [152, 164, 167]
     widget:
       tipo: figura
       figura: fig-17.10
       zonas:
-        - { id: tabla, rotulo: "La tabla de abajo", rect: [4, 95, 440, 70] }
-    emparejar:
-      - ["Depurar y hablar con el ordenador", "Serial"]
-      - ["Muchos sensores lentos, pocos pines", "I²C"]
-      - ["Pantalla o tarjeta SD", "SPI"]
-      - ["Módulo lejano o entorno ruidoso", "Serial con RS-485"]
-    exito: "Y los tres se diagnostican igual: osciloscopio en las líneas y velocidad."
-    pistas:
-      - { texto: "I²C ahorra pines; SPI, velocidad." }
+        - { id: serie, rotulo: "Recuadro naranja, a la izquierda", rect: [4, 5, 143, 83] }
+        - { id: i2c, rotulo: "Recuadro azul, en el centro", rect: [155, 5, 143, 83] }
+        - { id: spi, rotulo: "Recuadro verde, a la derecha", rect: [305, 5, 143, 83] }
+    tocar:
+      bien: [serie]
+      porque:
+        i2c: "I²C es para muchos sensores lentos y cerca: con pocos pines."
+        spi: "SPI es para pantallas, tarjetas SD y convertidores rápidos, en la misma placa."
+    exito: "Serial con RS-485. Para depurar, Serial; para muchos sensores lentos, I²C; para una pantalla o una SD, SPI."
     escalera:
-      - "SPI consume un pin de selección por dispositivo, pero es el más rápido."
-    solucion: "Depurar, Serial; sensores lentos, I²C; pantalla o SD, SPI; lejos, RS-485."
+      - "RS-485 es un transceptor para una UART."
+    solucion: "El puerto serie."
+
+  - id: lea-pines-spi
+    tipo: leer
+    titulo: "Lo que cuesta SPI"
+    texto: "SPI usa reloj, dos líneas de datos y una selección por esclavo. Escriba cuántos pines ocupa con tres esclavos."
+    libro: [162, 164]
+    widget:
+      tipo: figura
+      figura: fig-17.10
+      zonas:
+        - { id: spi, rotulo: "Recuadro verde, a la derecha", rect: [305, 5, 143, 83], texto: "Cuatro líneas y una selección por esclavo." }
+    leer:
+      objetivo: p_spi
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pines de SPI"
+      errores:
+        - { expr: "4", texto: "Cuatro son con un esclavo: cada esclavo más añade su pin de selección." }
+        - { expr: "3*n_esc", texto: "El reloj y los datos se comparten: solo la selección es una por esclavo." }
+    exito: "Seis, frente a los dos de I²C: SPI es rápido, pero consume pines rápidamente."
+    escalera:
+      - "Reloj y datos se comparten; la selección, no."
+    solucion: "3 + 3 = 6 pines."
+    comprobar:
+      - { p_spi: 6, n_esc: 3 }
 
   - id: resumen
     tipo: resumen

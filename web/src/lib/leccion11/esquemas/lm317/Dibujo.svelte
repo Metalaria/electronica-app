@@ -2,6 +2,8 @@
   // Schematic «lm317» (esquema.ts): the input battery on the left into IN, the chip (a box: IN left, OUT right, ADJ
   // below), R₁ from OUT down to the ADJ node, R₂ from it to ground, the load switch and R_L on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Interruptor from '../kit/Interruptor.svelte';
@@ -18,7 +20,7 @@
   <Pila x={40} y1={260} y2={60} pieza="entrada" nodos={['0', 'in']} />
   <Et x={56} y={170} t={c.val('entrada')} />
   <path class="hilo" d="M40 60 H110" data-red="in"></path>
-  <g data-cuerpo="110 30 190 100"><rect class="pieza" x="110" y="30" width="80" height="70" rx="4"></rect></g>
+  <g data-cuerpo="110 30 190 100" data-pieza="chip"><rect class="pieza" x="110" y="30" width="80" height="70" rx="4"></rect></g>
   <Et x={150} y={56} t="LM317" ancla="middle" peq />
   <Et x={116} y={92} t="IN" peq />
   <Et x={184} y={92} t="OUT" ancla="end" peq />
@@ -46,4 +48,12 @@
     <Et x={376} y={188} t={c.val('carga')} ancla="end" color="verde" peq />
   {/if}
   <path class="hilo" d="M40 260 H390" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={75} y={60} red="in" />
+  <Punto x={290} y={60} red="out" />
+  <Punto x={200} y={150} red="adj" />
+  <Punto x={150} y={260} red="0" />
+  <Rama x={75} y={60} medidor="vmi" />
+  <Rama x={250} y={74} medidor="vmr" />
+  <Rama x={390} y={76} medidor="vml" />
 </Lienzo>

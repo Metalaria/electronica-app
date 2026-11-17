@@ -5,6 +5,10 @@
 # - Sensores propioceptivos y exteroceptivos (bloque 11) y el presupuesto de ciclo (bloque 12).
 # - Modelo: los ciclos de un ATmega328P a 16 MHz en un milisegundo (16 000, bloque 9).
 # Pasos prácticos: «ordenar» los lazos de fuera adentro y «tocar» en la figura el lazo que de verdad mueve el motor.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 58.1 se tocan los lazos de fuera adentro (sustituye
+# al ordenar; los grados de libertad van a su éxito) y los sensores del entorno (las familias van a su éxito); los ciclos
+# por milisegundo se calculan y se busca cuántos puede gastar el controlador sin pasar de la mitad del procesador. Quedan
+# dos preguntas de opciones (el reparto y la parada de emergencia).
 leccion: cap57/sec-57.1
 
 libro:
@@ -21,69 +25,36 @@ modelo:
   valores:
     f_c: { sim: "f_{reloj}", nombre: "reloj del ATmega328P", unidad: Hz, valor: 16000000 }
     T_l: { sim: "T", nombre: "periodo del lazo", unidad: s, valor: 0.001 }
+    c_u: { sim: "ciclos", nombre: "ciclos que gastan lazos e interrupciones", unidad: ciclos, valor: 12000 }
   calculos:
     N_c: { expr: "f_c*T_l", sim: "N", nombre: "ciclos en cada periodo", unidad: ciclos }
+    u_p: { expr: "c_u/N_c", sim: "uso", nombre: "fracción del procesador", unidad: "" }
+    N_x: { expr: "f_c*T_l*1000", sim: "N", nombre: "con el milisegundo como segundo", unidad: ciclos }
 
 tarjetas:
   - id: explore-lazos
-    tipo: explorar
+    tipo: tocar
     titulo: "Lazos dentro de lazos"
-    texto: "Lo que distingue a un robot son sus lazos anidados, a frecuencias muy distintas. Toque la planificación y el lazo de corriente."
-    libro: [6, 8]
+    texto: "Lo que distingue a un robot son sus lazos anidados, a frecuencias muy distintas. Toque los cinco del más lento, el exterior, al más rápido."
+    libro: [4, 6, 7, 8]
     widget:
       tipo: figura
       figura: fig-57.1
-      zonas:
-        - { id: plan, rotulo: "Arriba del todo", rect: [16, 8, 160, 27], texto: "Planificación: qué hacer y por dónde ir, a unos pocos hercios." }
-        - { id: trayectoria, rotulo: "La segunda caja", rect: [16, 48, 160, 27], texto: "Generador de trayectoria: consignas con velocidad y aceleración limitadas, de 100 Hz a 1 kHz." }
-        - { id: posicion, rotulo: "La tercera caja", rect: [16, 88, 160, 27], texto: "Lazo de posición de cada eje: compara la consigna con el encoder." }
-        - { id: velocidad, rotulo: "La cuarta caja", rect: [16, 128, 160, 27], texto: "Lazo de velocidad, dentro del de posición." }
-        - { id: corriente, rotulo: "La quinta caja", rect: [16, 167, 160, 27], texto: "Lazo de corriente y puente: vive en el driver, al ritmo de la PWM." }
-        - { id: externos, rotulo: "A la derecha, arriba", rect: [237, 33, 76, 52], texto: "Sensores externos: IMU, cámara, distancia y contacto, para la planificación." }
-    requiere: { mover: [plan, corriente] }
-
-  - id: empareje-grados
-    tipo: pregunta
-    titulo: "Grados de libertad"
-    texto: "Cada eje independiente es un grado de libertad. Empareje cada tarea con los que necesita."
-    libro: [4]
-    widget:
-      tipo: figura
-      figura: fig-57.1
-      zonas:
-        - { id: cadena, rotulo: "La cadena de abajo", rect: [16, 218, 296, 26] }
-    emparejar:
-      - ["Seis", "Colocar una herramienta en cualquier posición y orientación"]
-      - ["Tres", "Llevar un punto a cualquier sitio de un volumen"]
-      - ["Dos", "Mover un robot sobre el suelo"]
-    exito: "Para la electrónica, un robot es un conjunto de ejes, cada uno con actuador, transmisión y sensor de posición."
-    pistas:
-      - { texto: "La orientación añade ejes a la posición." }
+      zonas: &zonas-lz
+        - { id: plan, rotulo: "Primera caja", rect: [16, 8, 160, 27] }
+        - { id: trayectoria, rotulo: "Segunda caja", rect: [16, 48, 160, 27] }
+        - { id: posicion, rotulo: "Tercera caja", rect: [16, 88, 160, 27] }
+        - { id: velocidad, rotulo: "Cuarta caja", rect: [16, 128, 160, 27] }
+        - { id: corriente, rotulo: "Quinta caja", rect: [16, 167, 160, 27] }
+        - { id: externos, rotulo: "Recuadro de la derecha", rect: [237, 33, 76, 52] }
+    tocar:
+      bien: [plan, trayectoria, posicion, velocidad, corriente]
+      orden: true
+      porque:
+        externos: "Son los sensores del entorno, no un lazo."
+    exito: "Cada lazo interior, de cinco a diez veces más rápido. Y cada eje es un grado de libertad: seis para una herramienta, tres para un punto, dos sobre el suelo."
     escalera:
-      - "Un punto en el espacio tiene tres coordenadas; una orientación, tres ángulos más."
-    solucion: "Seis: posición y orientación. Tres: un punto en un volumen. Dos: sobre el suelo."
-
-  - id: ordene-lazos
-    tipo: pregunta
-    titulo: "De fuera adentro"
-    texto: "Ordene los lazos del más lento, el exterior, al más rápido, el interior."
-    libro: [7]
-    widget:
-      tipo: figura
-      figura: fig-57.1
-      zonas:
-        - { id: externos, rotulo: "A la derecha, arriba", rect: [237, 33, 76, 52] }
-    ordenar:
-      - "Planificación"
-      - "Generador de trayectoria"
-      - "Lazo de posición"
-      - "Lazo de velocidad"
-      - "Lazo de corriente"
-    exito: "Cada lazo interior tiene que ser de cinco a diez veces más rápido que el que lo contiene."
-    pistas:
-      - { texto: "El de corriente es el más interior: vive en el driver, al ritmo de la PWM." }
-    escalera:
-      - "La posición manda velocidad; la velocidad manda corriente."
+      - "De arriba abajo."
     solucion: "Planificación, trayectoria, posición, velocidad y corriente."
 
   - id: toque-corriente
@@ -111,33 +82,24 @@ tarjetas:
     solucion: "La quinta caja: el lazo de corriente y el puente."
 
   - id: estime-ciclos
-    tipo: pregunta
+    tipo: simular
     titulo: "Ciclos en un milisegundo"
     texto: "El lazo de posición trabaja a 1 kHz. ¿Cuántos ciclos tiene un ATmega328P a 16 MHz en cada milisegundo?"
     libro: [9]
-    widget:
-      tipo: figura
-      figura: fig-57.1
-      zonas:
-        - { id: posicion, rotulo: "La tercera caja", rect: [16, 88, 160, 27] }
-    estimar:
-      objetivo: "N_c"
+    fijar: { f_c: 16000000, T_l: 0.001 }
+    simular:
+      objetivo: N_c
       unidad: ciclos
-      min: 0
-      max: 40000
-      paso: 500
-      inicio: 30000
-      tol: 0.05
+      tol: 0.02
       rotulo: "Ciclos por milisegundo"
+      errores:
+        - { expr: "N_x", texto: "Un milisegundo es una milésima de segundo." }
     exito: "16 000: bastan para la posición de tres ejes y su trayectoria, no para planificar con visión."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 16800 }, texto: "Se ha pasado: 16 MHz son 16 millones de ciclos por segundo." }
-      - { texto: "Se ha quedado corto: divida 16 millones entre mil." }
     escalera:
-      - "Ciclos = frecuencia del reloj × tiempo."
-    solucion: "16·10⁶ × 0,001 = 16 000 ciclos."
+      - "Ciclos por segundo por segundos."
+    solucion: "16 MHz × 1 ms = 16 000 ciclos."
     comprobar:
-      - { N_c: 16000, T_l: 0.001 }
+      - { N_c: 16000, T_l: 0.001, N_x: 16000000 }
 
   - id: prediga-reparto
     tipo: predecir
@@ -162,26 +124,26 @@ tarjetas:
     solucion: "La separación de frecuencias: cada nivel puede vivir en un procesador distinto."
 
   - id: empareje-sensores
-    tipo: pregunta
+    tipo: tocar
     titulo: "Sensores propios y del entorno"
-    texto: "Empareje cada sensor con su familia."
+    texto: "Ultrasonidos, tiempo de vuelo o cámara miden el entorno y alimentan la planificación. Toque dónde entran."
     libro: [11]
     widget:
       tipo: figura
       figura: fig-57.1
-      zonas:
-        - { id: externos, rotulo: "A la derecha, arriba", rect: [237, 33, 76, 52] }
-    emparejar:
-      - ["Encoder de un eje", "Propioceptivo: cierra los lazos"]
-      - ["IMU que da la orientación", "Propioceptivo: cierra los lazos"]
-      - ["Ultrasonidos o tiempo de vuelo", "Exteroceptivo: alimenta la planificación"]
-      - ["Cámara", "Exteroceptivo: alimenta la planificación"]
-    exito: "Los propioceptivos miden el propio robot; los exteroceptivos, el entorno."
-    pistas:
-      - { texto: "La IMU mide la orientación del propio robot." }
+      zonas: *zonas-lz
+    tocar:
+      bien: [externos]
+      porque:
+        plan: "La planificación recibe esos sensores, pero no es un sensor."
+        trayectoria: "El generador de trayectoria no mide el entorno."
+        posicion: "La posición se cierra con el encoder, un sensor del propio robot."
+        velocidad: "La velocidad, también con sensores propios."
+        corriente: "La corriente se mide en el propio motor."
+    exito: "Los exteroceptivos. Encoder e IMU son propioceptivos: miden el propio robot y cierran los lazos."
     escalera:
-      - "¿Mide el sensor algo del robot o algo de fuera?"
-    solucion: "Encoder e IMU: propioceptivos. Ultrasonidos y cámara: exteroceptivos."
+      - "Busque lo que no es una caja de lazo."
+    solucion: "El recuadro de la derecha."
 
   - id: porque-emergencia
     tipo: porque
@@ -206,26 +168,37 @@ tarjetas:
     solucion: "Para que funcione aunque falle el procesador: corta la potencia por hardware."
 
   - id: pregunta-presupuesto
-    tipo: pregunta
+    tipo: explorar
     titulo: "El presupuesto de ciclo"
-    texto: "Antes de escribir el controlador se suman las interrupciones de los encoders y los lazos. ¿Qué límite deja margen?"
-    libro: [12]
+    texto: "Antes de escribir el controlador se suman interrupciones de encoders y lazos. Con 16 000 ciclos por milisegundo, busque el máximo que deja margen."
+    libro: [9, 12]
+    fijar: { f_c: 16000000, T_l: 0.001 }
+    inicio: { c_u: 12000 }
     widget:
-      tipo: figura
-      figura: fig-57.1
-      zonas:
-        - { id: lazos, rotulo: "La columna de cajas", rect: [16, 8, 160, 187] }
-    opciones:
-      - texto: "No pasar de la mitad del procesador"
-        bien: true
-        porque: "Por encima de la mitad no hay sitio para lo que se añadirá después."
-      - texto: "Llegar justo al cien por cien"
-        porque: "Sin margen, cualquier añadido rompe los tiempos de los lazos."
-      - texto: "No hace falta contar: el micro va sobrado"
-        porque: "Con tres ejes y encoders rápidos, las interrupciones se comen el procesador."
+      tipo: grafica
+      x: { id: c, min: 0, max: 16000, unidad: ciclos, rotulo: "ciclos gastados" }
+      y: { min: 0, max: 1, unidad: "", rotulo: "uso" }
+      curvas:
+        - { expr: "c/N_c", color: naranja, rotulo: "fracción del procesador" }
+        - { expr: "0.5", color: tinta, rotulo: "la mitad", discontinua: true }
+      marcas:
+        - { x: "c_u", y: "u_p", rotulo: "{{u_p}}" }
+      lectura: { valor: u_p, rotulo: "Uso del procesador" }
+      mandos:
+        - { valor: c_u, min: 1000, max: 16000, paso: 500, rotulo: "Ciclos gastados" }
+    objetivo:
+      condiciones:
+        - { valor: u_p, max: 0.5, rotulo: "Uso: {{u_p}}" }
+        - { valor: c_u, min: 7500, rotulo: "{{c_u}}" }
+      logrado: "{{c_u}}: la mitad como mucho. Por encima no hay sitio para lo que se añadirá después."
+      pistas:
+        - { cuando: { valor: u_p, mayor: 0.5 }, texto: "Pasa de la mitad: sin margen." }
+        - { texto: "Aún queda margen: puede gastar más." }
     escalera:
-      - "Cuente a la velocidad máxima: interrupciones por segundo por ciclos de cada rutina."
-    solucion: "La mitad del procesador como máximo."
+      - "La mitad de 16 000."
+    solucion: "8 000 ciclos."
+    comprobar:
+      - { con: { c_u: 8000 }, u_p: 0.5 }
 
   - id: resumen
     tipo: resumen

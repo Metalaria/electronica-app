@@ -4,14 +4,22 @@
 #   sección 41.3 (I = k·ΔT^0,44·A^0,725, A en mils², 1 mil = 0,0254 mm): 1,8 A por fuera, 0,9 A por dentro (bloque 378).
 # - 41.C: la pista que hace de fusible.
 # Paso práctico: «simular» la corriente de la vía con el criterio exterior (1,8 A; errores: el agujero entero, sin π).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la tabla de Z₀ del bloque 364 se vuelve un modelo (un polinomio
+# de Lagrange por los cuatro puntos de cada columna: exacto en las anchuras de la tabla, y su cruce con 50 Ω cae en
+# 0,34 mm y 0,64 mm, los «0,34 mm exactos» y «unos 0,65 mm» del bloque 365); se consigue 50 Ω eligiendo anchura y
+# dieléctrico, y se marca la anchura del dieléctrico grueso. La capa con referencia de alimentación del apilado A se
+# toca en la figura 41.3 (es el clásico), y la vía de masa en la 41.6. La corriente de la vía se simula, el número
+# mínimo de vías para 5 A y la caída de cinco vías en paralelo se escriben. Quedan dos preguntas de opciones (41.C).
 leccion: cap40/sec-40.12
 
 libro:
   354: "Elegir el apilado de cuatro capas"
+  "cap40#112": "necesita una vía de masa cerca por donde hacerlo"
   356: "Una placa mixta (microcontrolador, convertidor conmutado y entradas analógicas) se va a fabricar en cuatro capas"
   359: "Alimentación"
   360: "su corriente de retorno debe cruzar entre planos por los condensadores de desacoplo, alargando el bucle"
   361: "Opción B da a todas las señales un plano de masa contiguo"
+  363: "El dato que decide es la altura al plano de referencia"
   364: "0,7 mm"
   365: "con h = 0,36 mm harían falta unos 0,65 mm, casi el doble de espacio"
   366: "La decisión: apilado B con dieléctrico fino entre las capas 1-2 y 3-4"
@@ -37,6 +45,12 @@ modelo:
     e_m: { sim: "e", nombre: "espesor del metalizado", unidad: mm, valor: 0.025 }
     k_e: { sim: "k", nombre: "coeficiente de pista", unidad: "", valor: 0.048 }
     dT_v: { sim: "ΔT", nombre: "subida de temperatura", unidad: "°C", valor: 10 }
+    w_m: { sim: "w", nombre: "anchura de la pista", unidad: mm, valor: 0.5 }
+    h_m: { sim: "h", nombre: "dieléctrico hasta el plano", unidad: mm, valor: 0.36 }
+    I5: { sim: "I", nombre: "corriente de la pista de potencia", unidad: A, valor: 5 }
+    I1v: { sim: "I_{vía}", nombre: "corriente por vía (regla conservadora)", unidad: A, valor: 1 }
+    R_v1: { sim: "R_{vía}", nombre: "resistencia de una vía de 1,6 mm", unidad: Ω, valor: 0.0012 }
+    n_v5: { sim: "n", nombre: "vías en paralelo", unidad: "", valor: 5 }
   calculos:
     A_v: { expr: "pi*d_t*e_m", sim: "A", nombre: "sección de la corona", unidad: "mm²" }
     w_eq: { expr: "A_v/0.035", sim: "w", nombre: "pista equivalente de 35 µm", unidad: mm }
@@ -44,110 +58,127 @@ modelo:
     I_int: { expr: "0.024*dT_v^0.44*(A_v/0.0254^2)^0.725", sim: "I", nombre: "con el coeficiente interior", unidad: A }
     I_agujero: { expr: "k_e*dT_v^0.44*(pi*d_t^2/4/0.0254^2)^0.725", sim: "I", nombre: "con el agujero entero", unidad: A }
     I_sinpi: { expr: "k_e*dT_v^0.44*(d_t*e_m/0.0254^2)^0.725", sim: "I", nombre: "sin π", unidad: A }
+    Z_1: { expr: "58.4*(w_m-0.35)*(w_m-0.5)*(w_m-0.7)/(-0.01125) + 49.2*(w_m-0.25)*(w_m-0.5)*(w_m-0.7)/0.00525 + 40*(w_m-0.25)*(w_m-0.35)*(w_m-0.7)/(-0.0075) + 32.1*(w_m-0.25)*(w_m-0.35)*(w_m-0.5)/0.0315", sim: "Z₀", nombre: "impedancia con h = 0,2 mm (tabla)", unidad: Ω, cifras: 3 }
+    Z_2: { expr: "77.7*(w_m-0.35)*(w_m-0.5)*(w_m-0.7)/(-0.01125) + 67.6*(w_m-0.25)*(w_m-0.5)*(w_m-0.7)/0.00525 + 57*(w_m-0.25)*(w_m-0.35)*(w_m-0.7)/(-0.0075) + 47.4*(w_m-0.25)*(w_m-0.35)*(w_m-0.5)/0.0315", sim: "Z₀", nombre: "impedancia con h = 0,36 mm (tabla)", unidad: Ω, cifras: 3 }
+    Z_t: { expr: "Z_1 + (h_m - 0.2)/0.16*(Z_2 - Z_1)", sim: "Z₀", nombre: "impedancia de la pista", unidad: Ω, cifras: 3 }
+    n_min: { expr: "ceil(I5/I1v)", sim: "n", nombre: "vías mínimas", unidad: "" }
+    V_v: { expr: "I5*R_v1/n_v5", sim: "ΔV", nombre: "caída en las vías en paralelo", unidad: V }
+    V_v1: { expr: "I5*R_v1", sim: "ΔV", nombre: "caída con una sola vía", unidad: V }
 
 tarjetas:
-  - id: empareje-apilados
-    tipo: pregunta
-    titulo: "Problema 41.A: dos apilados"
-    texto: "Una placa mixta de cuatro capas. Empareje cada apilado con su consecuencia."
-    libro: [354, 356, 359, 360, 361]
-    emparejar:
-      - ["A: señal, masa, alimentación, señal", "La capa 4 tiene de referencia la alimentación"]
-      - ["B: señal, masa, señal, masa", "Todas las señales con masa contigua"]
-    exito: "En A, el retorno de la capa 4 cruza entre planos por los desacoplos y alarga el bucle."
-    pistas:
-      - { texto: "Mire qué plano queda junto a la capa 4 en cada uno." }
-    escalera:
-      - "En A, la capa 3 es la alimentación."
-    solucion: "A, referencia de alimentación en la capa 4; B, masa contigua para todas."
-
   - id: porque-a
-    tipo: porque
-    titulo: "El problema del apilado A"
-    texto: "¿Por qué la capa 4 del apilado A empeora el retorno?"
-    libro: [360]
+    tipo: tocar
+    titulo: "Problema 41.A: dos apilados"
+    texto: "Una placa mixta de cuatro capas. El apilado A es el clásico de la izquierda: toque la capa de señal cuya referencia es la alimentación."
+    libro: [354, 356, 359, 360, 361]
     widget:
       tipo: figura
       figura: fig-40.3
       zonas:
-        - { id: clasico, rotulo: "Apilado de la izquierda", rect: [15, 0, 120, 115] }
-    opciones:
-      - texto: "Su retorno cruza entre planos por los condensadores de desacoplo"
-        bien: true
-        porque: "Su referencia es la alimentación; el bucle se alarga al pasar al plano de masa."
-      - texto: "Porque la alimentación no conduce"
-        porque: "Conduce; el problema es que el retorno tiene que cambiar de plano."
-      - texto: "Porque está más lejos del plano"
-        porque: "Está a la misma distancia; lo que cambia es qué plano tiene al lado."
+        - { id: s1, rotulo: "Clásico: la primera capa", rect: [18, 23, 114, 14] }
+        - { id: m, rotulo: "Clásico: la segunda", rect: [18, 40, 114, 15] }
+        - { id: a, rotulo: "Clásico: la tercera", rect: [18, 58, 114, 15] }
+        - { id: s4, rotulo: "Clásico: la cuarta", rect: [18, 76, 114, 15] }
+    tocar:
+      bien: [s4]
+      porque:
+        s1: "La capa 1 tiene debajo el plano de masa: su retorno es directo."
+        m: "Es el plano de masa, no una capa de señal."
+        a: "Es el plano de alimentación: la referencia de la capa que se busca."
+    exito: "La capa 4: su retorno cruza entre planos por los desacoplos y alarga el bucle. El apilado B, señal-masa-señal-masa, da masa contigua a todas."
     escalera:
-      - "¿Qué plano tiene justo encima la capa 4?"
-    solucion: "Su retorno tiene que cruzar por los desacoplos: el bucle se alarga."
+      - "¿Qué plano tiene justo encima la capa de abajo?"
+    solucion: "La cuarta capa, sobre el plano de alimentación."
 
   - id: estime-anchura
-    tipo: pregunta
-    titulo: "50 Ω con el dieléctrico grueso"
-    texto: "Con h = 0,2 mm, 50 Ω piden 0,35 mm de pista. Con h = 0,36 mm, según la tabla, ¿cuánta anchura?"
-    libro: [364, 365]
-    estimar:
-      objetivo: "w_36"
-      unidad: mm
-      min: 0.2
-      max: 1
-      paso: 0.01
-      inicio: 0.3
-      tol: 0.08
-      rotulo: "Anchura para 50 Ω"
-    exito: "Unos 0,65 mm, casi el doble de espacio: de ahí el dieléctrico fino."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.7 }, texto: "Se ha pasado: con 0,7 mm ya baja a 47,4 Ω." }
-      - { texto: "Se ha quedado corto: con 0,5 mm aún son 57,0 Ω." }
+    tipo: explorar
+    fase: "Consiga"
+    titulo: "50 Ω en el menor espacio"
+    texto: "Pistas exteriores de 35 µm en FR4. Elija la anchura y el dieléctrico de la tabla hasta conseguir unos 50 Ω."
+    libro: [363, 364, 365]
+    inicio: { w_m: 0.5, h_m: 0.36 }
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0.25, max: 0.7, unidad: mm, rotulo: "anchura de la pista" }
+      y: { min: 25, max: 85, unidad: Ω, rotulo: "Z₀" }
+      curvas:
+        - { expr: "58.4*(q-0.35)*(q-0.5)*(q-0.7)/(-0.01125) + 49.2*(q-0.25)*(q-0.5)*(q-0.7)/0.00525 + 40*(q-0.25)*(q-0.35)*(q-0.7)/(-0.0075) + 32.1*(q-0.25)*(q-0.35)*(q-0.5)/0.0315", color: azul, rotulo: "h = 0,2 mm" }
+        - { expr: "77.7*(q-0.35)*(q-0.5)*(q-0.7)/(-0.01125) + 67.6*(q-0.25)*(q-0.5)*(q-0.7)/0.00525 + 57*(q-0.25)*(q-0.35)*(q-0.7)/(-0.0075) + 47.4*(q-0.25)*(q-0.35)*(q-0.5)/0.0315", color: naranja, rotulo: "h = 0,36 mm" }
+        - { expr: "50 + 0*q", color: tinta, rotulo: "50 Ω", discontinua: true }
+      marcas:
+        - { x: "w_m", y: "Z_t", rotulo: "{{Z_t}}" }
+      lectura: { valor: Z_t, rotulo: "Impedancia de la pista" }
+      mandos:
+        - { valor: w_m, lista: [0.25, 0.35, 0.5, 0.7], rotulo: "Anchura de la pista" }
+        - { valor: h_m, lista: [0.2, 0.36], rotulo: "Dieléctrico, h" }
+    objetivo:
+      condiciones:
+        - { valor: Z_t, objetivo: 50, tol: 0.02, rotulo: "Z₀: {{Z_t}}" }
+      logrado: "Con {{h_m}} de dieléctrico, {{w_m}} de pista: {{Z_t}}. El dato que decide es la altura al plano."
+      pistas:
+        - { cuando: { valor: Z_t, mayor: 51 }, texto: "Demasiada impedancia: ensanche la pista o acerque el plano." }
+        - { texto: "Poca impedancia: estreche la pista o aleje el plano." }
     escalera:
-      - "En la columna de 0,36 mm, 50 Ω cae entre 0,5 y 0,7 mm."
+      - "Más ancha, menos impedancia; más lejos del plano, más."
+    solucion: "h = 0,2 mm y 0,35 mm de pista: 49,2 Ω."
+    comprobar:
+      - { con: { w_m: 0.35, h_m: 0.2 }, Z_t: 49.2, tol: 0.001 }
+      - { con: { w_m: 0.7, h_m: 0.36 }, Z_t: 47.4, tol: 0.001 }
+      - { con: { w_m: 0.25, h_m: 0.36 }, Z_t: 77.7, tol: 0.001 }
+
+  - id: marque-grueso
+    tipo: marcar
+    titulo: "Con el dieléctrico grueso"
+    texto: "Con h = 0,36 mm ninguna anchura de la tabla da 50 Ω. Marque en su curva la anchura que los daría."
+    libro: [364, 365]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0.25, max: 0.7, unidad: mm, rotulo: "anchura de la pista" }
+      y: { min: 25, max: 85, unidad: Ω, rotulo: "Z₀" }
+      curvas:
+        - { expr: "58.4*(q-0.35)*(q-0.5)*(q-0.7)/(-0.01125) + 49.2*(q-0.25)*(q-0.5)*(q-0.7)/0.00525 + 40*(q-0.25)*(q-0.35)*(q-0.7)/(-0.0075) + 32.1*(q-0.25)*(q-0.35)*(q-0.5)/0.0315", color: azul, rotulo: "h = 0,2 mm" }
+        - { expr: "77.7*(q-0.35)*(q-0.5)*(q-0.7)/(-0.01125) + 67.6*(q-0.25)*(q-0.5)*(q-0.7)/0.00525 + 57*(q-0.25)*(q-0.35)*(q-0.7)/(-0.0075) + 47.4*(q-0.25)*(q-0.35)*(q-0.5)/0.0315", color: naranja, rotulo: "h = 0,36 mm" }
+        - { expr: "50 + 0*q", color: tinta, rotulo: "50 Ω", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 1
+      x: "w_36"
+      tol: 0.03
+      inicio: { x: 0.3, y: 70 }
+      rotulo: "La anchura de 50 Ω con h = 0,36 mm"
+      pasos: 90
+    pistas:
+      - { cuando: { valor: marca_x, menor: 0.64 }, texto: "Ahí la impedancia aún pasa de 50 Ω: más ancha." }
+      - { texto: "Ahí ya baja de 50 Ω: algo más estrecha." }
+    exito: "Unos 0,65 mm, casi el doble que con 0,2 mm: de ahí el apilado B con dieléctrico fino entre las capas 1-2 y 3-4."
+    escalera:
+      - "Busque dónde la curva naranja cruza la línea de 50 Ω, entre 0,5 y 0,7 mm."
     solucion: "Unos 0,65 mm."
 
-  - id: pregunta-decision
-    tipo: pregunta
-    titulo: "La decisión"
-    texto: "¿Qué apilado y qué dieléctrico elige el problema?"
-    libro: [366]
-    widget:
-      tipo: figura
-      figura: fig-40.3
-      zonas:
-        - { id: alta, rotulo: "Apilado del centro", rect: [165, 0, 122, 115] }
-    opciones:
-      - texto: "B, con dieléctrico fino entre las capas 1-2 y 3-4"
-        bien: true
-        porque: "Masa para todas las señales, pistas estrechas de 50 Ω y la alimentación en vertidos."
-      - texto: "A, con dieléctrico grueso"
-        porque: "A deja la capa 4 sobre alimentación, y el grueso pide pistas casi el doble de anchas."
-      - texto: "B, con dieléctrico grueso"
-        porque: "B es el bueno, pero con el grueso las pistas de 50 Ω ocupan casi el doble."
-    escalera:
-      - "Masa contigua y pistas estrechas."
-    solucion: "B con 0,2 mm: pistas de 0,35 mm para 50 Ω."
-
   - id: pregunta-via-masa
-    tipo: pregunta
+    tipo: tocar
     titulo: "El detalle que lo hace funcionar"
-    texto: "En el apilado B una señal pasa de la capa 1 a la 3. ¿Qué hay que añadir?"
-    libro: [367]
+    texto: "En el apilado B una señal pasa de la capa 1 a la 3, y su retorno salta del plano 2 al 4. Toque lo que necesita al lado."
+    libro: [367, "cap40#112"]
     widget:
       tipo: figura
-      figura: fig-40.3
+      figura: fig-40.6
       zonas:
-        - { id: alta, rotulo: "Apilado del centro", rect: [165, 0, 122, 115] }
-    opciones:
-      - texto: "Una vía de masa junto a la vía de señal"
-        bien: true
-        porque: "Su retorno salta del plano 2 al plano 4: sin esa vía, el bucle se dispara."
-      - texto: "Nada: las dos capas tienen masa"
-        porque: "Tienen masas distintas, en planos distintos: el retorno tiene que pasar de uno a otro."
-      - texto: "Un condensador de desacoplo"
-        porque: "Une alimentación y masa; aquí el salto es entre dos planos de masa."
+        - { id: inductancia, rotulo: "Recuadro de arriba", rect: [249, 29, 198, 42] }
+        - { id: retorno, rotulo: "Segundo recuadro", rect: [249, 77, 198, 40] }
+        - { id: corriente, rotulo: "Tercer recuadro", rect: [249, 125, 198, 40] }
+        - { id: pasta, rotulo: "Recuadro de abajo", rect: [249, 172, 198, 40] }
+    tocar:
+      bien: [retorno]
+      porque:
+        inductancia: "La inductancia de la vía no se quita; lo que falta es el paso del retorno entre planos."
+        corriente: "Varias vías en paralelo son para la corriente de potencia, no para el retorno de una señal."
+        pasta: "Es un detalle de las vías térmicas bajo una almohadilla."
+    exito: "Una vía de masa junto a cada vía de señal que cambia de plano de referencia; si no, el bucle de retorno se dispara."
     escalera:
-      - "¿Qué plano de referencia tiene la capa 1? ¿Y la 3?"
-    solucion: "Una vía de masa junto a cada vía de señal que cambia de plano."
+      - "El retorno tiene que pasar del plano 2 al 4: ¿por dónde?"
+    solucion: "El segundo recuadro: una vía de masa al lado."
 
   - id: simule-via
     tipo: simular
@@ -181,64 +212,60 @@ tarjetas:
       - { A_v: 0.0236, w_eq: 0.67, I_via: 1.8, I_int: 0.9, tol: 0.01 }
       - { I_agujero: 3.99, I_sinpi: 0.79, tol: 0.02 }
 
-  - id: explore-corona
-    tipo: explorar
-    titulo: "La corona de la vía"
-    texto: "Una vía conduce por el cobre de su pared. Cambie el taladro y el criterio, y mire la corriente."
-    libro: [376, 378]
+  - id: pregunta-cuantas
+    tipo: leer
+    titulo: "Para 5 A"
+    texto: "Una pista de potencia de 5 A cambia de capa. Con 1 A por vía como regla conservadora, escriba cuántas vías hacen falta como mínimo."
+    libro: [373, 379, 381]
+    fijar: { I5: 5, I1v: 1 }
     widget:
       tipo: grafica
-      x: { id: ss, min: 0, max: 0.08, unidad: "mm²", rotulo: "sección" }
-      y: { min: 0, max: 5, unidad: A, rotulo: "I" }
+      x: { id: nv, min: 1, max: 8, unidad: "", rotulo: "vías" }
+      y: { min: 0, max: 5.5, unidad: A, rotulo: "I por vía" }
       curvas:
-        - { expr: "k_e*dT_v^0.44*(ss/0.0254^2)^0.725", color: naranja, rotulo: "I(sección)" }
-      marcas:
-        - { x: "A_v", y: "I_via", rotulo: "{{I_via}}" }
-      lectura: { valor: I_via, rotulo: "Corriente de la vía" }
-      datos:
-        - { valor: A_v, rotulo: "Sección de la corona: {{A_v}}" }
-      mandos:
-        - { valor: d_t, lista: [0.2, 0.3, 0.4], rotulo: "Taladro, d" }
-        - { valor: k_e, lista: [0.024, 0.048], nombres: [interior, exterior], rotulo: "Criterio" }
-    requiere: { mover: [d_t, k_e] }
-
-  - id: pregunta-cuantas
-    tipo: pregunta
-    titulo: "Para 5 A"
-    texto: "Con 1 A por vía como regla conservadora, ¿cuántas vías para 5 A?"
-    libro: [379]
-    widget:
-      tipo: figura
-      figura: fig-40.6
-      zonas:
-        - { id: corriente, rotulo: "Recuadro azul", rect: [249, 125, 198, 40] }
-    opciones:
-      - texto: "Al menos 5; en la práctica 6 u 8"
-        bien: true
-        porque: "El margen cuesta poco; y en un camino de conmutación, más aún."
-      - texto: "Una, si es grande"
-        porque: "La solución es poner varias en paralelo, no una mayor."
-      - texto: "Exactamente 5"
-        porque: "Es el mínimo; sin margen, cualquier dispersión las sobrecarga."
+        - { expr: "I5/nv", color: naranja, rotulo: "corriente por vía" }
+        - { expr: "I1v + 0*nv", color: tinta, rotulo: "1 A por vía", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: n_min
+      unidad: ""
+      tol: 0.01
+      rotulo: "Vías mínimas"
+      errores:
+        - { expr: "1", texto: "Una sola conduce, pero llevaría 5 A: un punto caliente, y su inductancia arruina el bucle de conmutación." }
+    exito: "Al menos 5; en la práctica, 6 u 8 para dejar margen, y más si es un camino de conmutación."
     escalera:
-      - "Divida y añada margen."
-    solucion: "Al menos 5, y 6 u 8 en la práctica."
+      - "5 A entre 1 A por vía."
+    solucion: "Cinco como mínimo; seis u ocho en la práctica."
+    comprobar:
+      - { n_min: 5 }
 
   - id: empareje-criterios
-    tipo: pregunta
+    tipo: leer
     titulo: "Los tres criterios a la vez"
-    texto: "Empareje cada criterio con lo que dice para las vías."
+    texto: "Cada vía de 1,6 mm aporta unos 1,2 mΩ. Con cinco en paralelo y 5 A, escriba la caída entre las dos capas."
     libro: [381, 382]
-    emparejar:
-      - ["Corriente", "1 A por vía, como regla conservadora"]
-      - ["Resistencia", "Del orden de 1 mΩ por vía: despreciable"]
-      - ["Inductancia", "La que manda en un camino de conmutación"]
-    exito: "Una sola vía conduce, pero su inductancia arruina el bucle de conmutación."
-    pistas:
-      - { texto: "La resistencia de cinco en paralelo es una fracción de miliohmio." }
+    fijar: { I5: 5, R_v1: 0.0012, n_v5: 5 }
+    widget:
+      tipo: grafica
+      x: { id: nv, min: 1, max: 8, unidad: "", rotulo: "vías en paralelo" }
+      y: { min: 0, max: 0.007, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "I5*R_v1/nv", color: naranja, rotulo: "caída" }
+      mandos: []
+    leer:
+      objetivo: V_v
+      unidad: V
+      tol: 0.05
+      rotulo: "Caída en las cinco vías"
+      errores:
+        - { expr: "V_v1", texto: "Esa es la de una sola vía: en paralelo, la resistencia se divide entre cinco." }
+    exito: "Unos 1,2 mV: despreciable. En conmutación manda la inductancia, de 1 a 2 nH por vía: más vías la reducen."
     escalera:
-      - "En conmutación importa lo que reacciona a di/dt."
-    solucion: "Corriente, 1 A; resistencia, despreciable; inductancia, la que manda al conmutar."
+      - "Cinco iguales en paralelo: la quinta parte de la resistencia."
+    solucion: "5 A × 1,2 mΩ / 5 = 1,2 mV."
+    comprobar:
+      - { V_v: 0.0012, V_v1: 0.006 }
 
   - id: pregunta-fusible
     tipo: predecir

@@ -15,6 +15,18 @@ const d: DefinicionEsquema = {
     r3: { descripcion: 'tercera resistencia, a la derecha (Ω)', color: 'verde' },
     r4: { descripcion: 'cuarta resistencia, abajo (Ω)', color: 'azul' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => {
+    const n = RS.filter((r) => c.tiene(r)).length;
+    const orden = ['primera', 'segunda', 'tercera', 'cuarta'];
+    const puntos: Record<string, string> = { fte: 'Arriba de la fuente', '0': 'Masa, abajo' };
+    for (let k = 1; k < n; k++) puntos[`a${k}`] = `Entre la ${orden[k - 1]} y la ${orden[k]}`;
+    return {
+      puntos,
+      ramas: { vmed: 'Rama de la fuente', vfin: 'Vuelta a la fuente, abajo' },
+      zonas: { fuente: 'Fuente', ...Object.fromEntries(RS.filter((r) => c.tiene(r)).map((r, k) => [r, `${orden[k]![0]!.toUpperCase()}${orden[k]!.slice(1)} resistencia`])) },
+    };
+  },
   observables: {
     corriente: { medida: 'i(vmed)', analisis: 'op', unidad: 'A', descripcion: 'corriente del lazo' },
     v1: { medida: 'v(a0)-v(a1)', analisis: 'op', unidad: 'V', descripcion: 'tensión en la primera resistencia' },

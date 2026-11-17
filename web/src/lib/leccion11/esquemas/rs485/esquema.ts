@@ -25,6 +25,20 @@ const d: DefinicionEsquema = {
     ru: { descripcion: 'resistencia de una carga unidad de cada hilo a su tensión interna (Ω; sin ella, 12 kΩ)', color: 'verde' },
     ref: { descripcion: 'tensión interna de los receptores (V; sin ella, V_CC/2)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { vcc: 'Alimentación de la polarización', d1: 'Hilo de arriba del bus', d0: 'Hilo de abajo del bus', '0': 'Masa' },
+    ramas: { vmp: 'Rama de la polarización', vmt: 'Terminación de la izquierda' },
+    zonas: {
+      vcc: 'Fuente',
+      rp: 'Resistencia de polarización',
+      ...(c.tiene('rpd') ? { rpd: 'Resistencia de polarización a masa' } : {}),
+      rt: 'Resistencias de terminación',
+      ...(c.tiene('t1') ? { t1: 'Puente de la terminación izquierda' } : {}),
+      ...(c.tiene('t2') ? { t2: 'Puente de la terminación derecha' } : {}),
+      ...(c.tiene('n') ? { n: 'Cargas unidad' } : {}),
+    },
+  }),
   observables: {
     vba: { medida: 'v(d1)-v(d0)', analisis: 'op', unidad: 'V', descripcion: 'tensión diferencial del bus en reposo, V_BA = v(D1) − v(D0)' },
     vd1: { medida: 'v(d1)', analisis: 'op', unidad: 'V', descripcion: 'tensión de D1 (B) respecto a masa' },

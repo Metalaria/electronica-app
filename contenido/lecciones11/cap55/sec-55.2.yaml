@@ -1,7 +1,11 @@
-# Lección 1.2 de la sección 31.2 «Sensores y Actuadores Industriales» (cap55; etiqueta interna sec-55.2).
+# Lección de la sección 31.2 «Sensores y Actuadores Industriales» (cap55; etiqueta interna sec-55.2).
 # Formato: contenido/lecciones11/GUIA.md (§11). La distancia de trabajo asegurada es Sa = 0,81·Sn·k (lista del libro y
 # ejemplo del M18); el ejercicio 31.3 da el M12. Las electroválvulas se ven como lógica: la monoestable sigue a su bobina
 # y la biestable es una memoria (un cerrojo de dos NOR).
+# 1.2.1 («aprender haciendo», GUIA §13): se busca el material más débil que el M18 enrasado ve a 2 mm; las distancias
+# aseguradas del aluminio, del inoxidable y del latón se calculan y se escriben; el detector se elige con un reto; el
+# PNP se toca en la figura 31.3; el cilindro de la válvula biestable se dibuja. Quedan dos preguntas de opciones (la
+# válvula como decisión de seguridad y el final de carrera) y un emparejamiento (otros detectores).
 leccion: cap55/sec-55.2
 
 libro:
@@ -28,8 +32,10 @@ tarjetas:
   - id: explore-distancia
     tipo: explorar
     titulo: "Lo que alcanza un inductivo"
-    texto: "La distancia asegurada es 0,81 · S_{n} · k. Cambie el material y mire si llega a la pieza, montada a 2 mm."
+    texto: "Un M18 enrasado, S_{n} = 5 mm, montado a 2 mm. La distancia asegurada es 0,81 · S_{n} · k: busque el material más débil que aún detecta."
     libro: [27, 28]
+    fijar: { S_n: 0.005, d_m: 0.002 }
+    inicio: { k_m: 1 }
     widget:
       tipo: grafica
       x: { id: kx, min: 0.2, max: 1, unidad: "", rotulo: "k (material)" }
@@ -42,13 +48,23 @@ tarjetas:
       lectura: { valor: S_a, rotulo: "Distancia asegurada" }
       mandos:
         - { valor: k_m, min: 0.25, max: 1, paso: 0.05, rotulo: "Factor del material" }
-        - { valor: S_n, lista: [0.004, 0.005, 0.008], nombres: [M12 no enrasado, M18 enrasado, M18 no enrasado], rotulo: "Detector" }
-    requiere: { mover: [k_m] }
+    objetivo:
+      condiciones:
+        - { valor: S_a, min: 0.002, rotulo: "Asegurada: {{S_a}}" }
+        - { valor: k_m, max: 0.5, rotulo: "Factor: {{k_m}}" }
+      logrado: "Con k = {{k_m}} quedan {{S_a}}, justo por encima de los 2 mm. Con un material de factor menor, unos ejemplares detectarán la pieza y otros no."
+      pistas:
+        - { cuando: { valor: S_a, menor: 0.002 }, texto: "Ahí ya no llega a los 2 mm: suba un poco el factor." }
+        - { texto: "Aún sobra distancia: pruebe un material de factor menor." }
+    escalera: ["S_{a} = 0,81 · 5 mm · k ≥ 2 mm."]
+    solucion: "k = 0,5: 0,81 × 5 × 0,5 = 2,03 mm."
+    comprobar:
+      - { con: { k_m: 0.5 }, S_a: 0.002025 }
 
   - id: prediga-aluminio
-    tipo: predecir
+    tipo: leer
     titulo: "Aluminio a 2 mm"
-    texto: "Un M18 enrasado (S_{n} = 5 mm), montado a 2 mm de piezas de aluminio, con k = 0,35 en el peor caso. ¿Las detectará?"
+    texto: "El mismo M18 enrasado ante piezas de aluminio, con k = 0,35 en el peor caso. Calcule la distancia que asegura y escríbala."
     libro: [28]
     fijar: { S_n: 0.005, k_m: 0.35, d_m: 0.002 }
     widget:
@@ -58,14 +74,18 @@ tarjetas:
       curvas:
         - { expr: "0.81*S_n*kx", color: azul, rotulo: "S_{a}" }
         - { expr: "d_m", color: tinta, rotulo: "Montaje", discontinua: true }
-      lectura: { valor: S_a, rotulo: "Distancia asegurada" }
-      ocultar: true
-    opciones:
-      - { texto: "Unos ejemplares sí y otros no", bien: true, porque: "S_{a} = 4,05 × 0,35 = 1,42 mm, menos que los 2 mm del montaje: no está asegurado." }
-      - { texto: "Sí: 5 mm sobran", porque: "5 mm es la nominal con acero dulce. La asegurada es 0,81 veces esa, y el aluminio la multiplica por 0,35." }
-      - { texto: "Nunca: el inductivo no ve el aluminio", porque: "Detecta cualquier metal, pero a menos distancia: el factor del aluminio va de 0,35 a 0,5." }
-    escalera: ["Calcule 0,81 · S_{n} y multiplique por el factor del material."]
-    solucion: "0,81 × 5 × 0,35 = 1,42 mm: menos que 2 mm, la detección no está asegurada."
+      mandos: []
+    leer:
+      objetivo: S_a
+      unidad: m
+      tol: 0.02
+      rotulo: "Distancia asegurada"
+      errores:
+        - { expr: "S_n*k_m", texto: "Falta el 0,81: la asegurada es la que garantiza cualquier ejemplar." }
+        - { expr: "0.81*S_n", texto: "Esa es con acero dulce. El aluminio la multiplica por 0,35." }
+    exito: "{{S_a}}, menos que los 2 mm del montaje: unos ejemplares detectarán la pieza y otros no."
+    escalera: ["0,81 · S_{n}, por el factor del material."]
+    solucion: "0,81 × 5 × 0,35 = 1,42 mm."
     comprobar:
       - { S_a: 0.00142 }
 
@@ -99,34 +119,36 @@ tarjetas:
       - { con: { S_n: 0.008 }, S_a: 0.00227 }
 
   - id: estime-inoxidable
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Un M12 con inoxidable"
-    texto: "Un M12 no enrasado tiene S_{n} = 4 mm. ¿Qué distancia asegura con acero inoxidable de factor 0,7?"
+    texto: "Un M12 no enrasado tiene S_{n} = 4 mm. Escriba la distancia que asegura con acero inoxidable de factor 0,7."
     libro: ["cap55#138"]
     fijar: { S_n: 0.004, k_m: 0.7 }
-    estimar:
-      objetivo: "S_a"
+    widget:
+      tipo: grafica
+      x: { id: kx, min: 0.2, max: 1, unidad: "", rotulo: "k (material)" }
+      y: { min: 0, max: 0.008, unidad: m, rotulo: "S_{a}" }
+      curvas:
+        - { expr: "0.81*S_n*kx", color: azul, rotulo: "S_{a}" }
+        - { expr: "d_m", color: tinta, rotulo: "Montaje", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: S_a
       unidad: m
-      min: 0
-      max: 0.004
-      paso: 0.00001
-      inicio: 0.0035
-      tol: 0.03
+      tol: 0.02
       rotulo: "Distancia asegurada"
-    exito: "2,27 mm: a 2 mm la detecta, con poco margen pero seguro."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.00234 }, texto: "Se ha pasado: no olvide el 0,81 de la distancia asegurada." }
-      - { texto: "Se ha quedado corto: 0,81 × 4 mm son 3,24 mm, y el inoxidable las multiplica por 0,7." }
+      errores:
+        - { expr: "S_n*k_m", texto: "Falta el 0,81 de la distancia asegurada." }
+    exito: "{{S_a}}: a 2 mm la detecta, con poco margen pero seguro."
     escalera: ["Primero 0,81 × 4 mm; después, por el factor."]
     solucion: "0,81 × 4 = 3,24 mm; × 0,7 = 2,27 mm."
     comprobar:
       - { S_a: 0.00227 }
 
   - id: pregunta-laton
-    tipo: pregunta
+    tipo: leer
     titulo: "El mismo M12 con latón"
-    texto: "El M12 (S_{n} = 4 mm) a 2 mm de piezas de latón, de factor 0,4, asegura 1,30 mm. ¿Qué se hace?"
+    texto: "Y ante piezas de latón, de factor 0,4, a los mismos 2 mm. Escriba la distancia asegurada."
     libro: ["cap55#138"]
     fijar: { S_n: 0.004, k_m: 0.4, d_m: 0.002 }
     widget:
@@ -136,15 +158,15 @@ tarjetas:
       curvas:
         - { expr: "0.81*S_n*kx", color: azul, rotulo: "S_{a}" }
         - { expr: "d_m", color: tinta, rotulo: "Montaje", discontinua: true }
-      marcas:
-        - { x: "k_m", y: "S_a", rotulo: "Latón" }
-      lectura: { valor: S_a, rotulo: "Distancia asegurada" }
-    opciones:
-      - { texto: "Acercarlo a 1 mm, o usar uno mayor o de factor 1", bien: true, porque: "1,30 mm es menos que 2 mm: hay que montarlo más cerca o cambiar de detector." }
-      - { texto: "Dejarlo: detecta la mayoría", porque: "Unos ejemplares la verán y otros no: la distancia asegurada es la que se usa para diseñar." }
-      - { texto: "Subir la tensión del detector", porque: "La distancia asegurada ya cuenta un 10 % de variación con la tensión: no se gana así." }
-    escalera: ["Compare 1,30 mm con el montaje."]
-    solucion: "1,30 mm < 2 mm: acercarlo a 1 mm o cambiar de detector."
+      mandos: []
+    leer:
+      objetivo: S_a
+      unidad: m
+      tol: 0.02
+      rotulo: "Distancia asegurada"
+    exito: "{{S_a}}, menos de 2 mm: hay que acercarlo a 1 mm, o usar uno mayor o de factor 1."
+    escalera: ["0,81 × 4 mm × 0,4."]
+    solucion: "0,81 × 4 × 0,4 = 1,30 mm."
     comprobar:
       - { S_a: 0.0013 }
 
@@ -166,9 +188,9 @@ tarjetas:
     solucion: "Capacitivo, cualquier material; barrera, más alcance; réflex, reflector polarizado; difuso, la propia pieza."
 
   - id: pregunta-pnp
-    tipo: pregunta
+    tipo: tocar
     titulo: "El hilo negro"
-    texto: "Un detector PNP de tres hilos detecta una pieza. ¿Qué hace su hilo negro?"
+    texto: "En Europa se usa casi siempre el detector que, al detectar, pone 24 V en su hilo negro y entrega corriente a la entrada. Tóquelo."
     libro: [31, 32, "cap55#44"]
     widget:
       tipo: figura
@@ -176,29 +198,37 @@ tarjetas:
       zonas:
         - { id: pnp, rotulo: "Detector de la izquierda", rect: [25, 38, 48, 58] }
         - { id: npn, rotulo: "Detector del centro", rect: [178, 38, 48, 58] }
-    opciones:
-      - { texto: "Pone 24 V y entrega corriente a una carga que va a 0 V", bien: true, porque: "El PNP conmuta el positivo: es una fuente de corriente. En Europa se usa casi siempre." }
-      - { texto: "Lo une a 0 V y absorbe la corriente de la carga", porque: "Eso hace el NPN, que conmuta el negativo." }
-      - { texto: "Lo lleva al azul", porque: "El azul es el negativo; el negro es la salida, que el PNP lleva al positivo." }
-    escalera: ["P de positivo: ¿qué conmuta?"]
-    solucion: "Lleva el negro a +24 V: entrega corriente a la carga."
+        - { id: dos, rotulo: "Detector de la derecha", rect: [349, 34, 40, 46] }
+    tocar:
+      bien: [pnp]
+      porque:
+        npn: "El NPN une el negro a 0 V y absorbe la corriente de una entrada que va a +24 V: la flecha va hacia el detector."
+        dos: "Es un detector de dos hilos, en serie con la entrada: no tiene hilo negro aparte."
+    exito: "El PNP conmuta el positivo: marrón a +24 V, azul a 0 V y el negro, la salida, entrega corriente a una entrada sumidero."
+    escalera: ["P de positivo: siga la flecha de la corriente."]
+    solucion: "El de la izquierda, PNP."
 
   - id: explore-valvulas
-    tipo: explorar
+    tipo: dibujar
     titulo: "Válvulas con y sin memoria"
-    texto: "Arriba, una 5/2 monoestable; abajo, una biestable. Mande cada una y después quite toda la tensión."
+    texto: "La válvula biestable recibe un pulso de retroceso, otro de avance y, más tarde, otro de retroceso. Dibuje la posición de su cilindro."
     libro: [35]
     widget:
       tipo: logica
-      entradas: [{ id: Y1, rotulo: "Bobina monoestable" }, { id: A, rotulo: "Bobina avance" }, { id: R, rotulo: "Bobina retroceso" }]
+      entradas: [{ id: A, rotulo: "Bobina avance" }, { id: R, rotulo: "Bobina retroceso" }, { id: CLK, reloj: true }]
       piezas:
-        - { id: mono, tipo: buf, entradas: [Y1], rotulo: "Muelle" }
         - { id: q, tipo: nor, entradas: [R, nq] }
         - { id: nq, tipo: nor, entradas: [A, q] }
       salidas:
-        - { id: C1, de: mono, rotulo: "Cilindro 1 fuera" }
-        - { id: C2, de: q, rotulo: "Cilindro 2 fuera" }
-    requiere: { mover: [Y1, A] }
+        - { id: C2, de: q, rotulo: "Cilindro fuera" }
+      cronograma: { ciclos: 7, estimulo: { A: "0010000", R: "1000010" }, senales: [A, R] }
+      dibujo: false
+    dibujar:
+      senal: C2
+    exito: "Se queda fuera aunque la bobina de avance se suelte: es una memoria neumática. Una monoestable, en cambio, volvería al reposo por su muelle."
+    escalera:
+      - "Avance pone a 1; retroceso pone a 0; sin pulsos, se queda como estaba."
+    solucion: "Fuera desde el pulso de avance hasta el de retroceso."
 
   - id: porque-valvula
     tipo: porque

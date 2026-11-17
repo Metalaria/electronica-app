@@ -20,7 +20,7 @@ import { analizarTexto, contarPalabras, numerosDe, numerosDeTexto, textoPlano, v
 import { barajarFijo, compilarModelo, enRango, objetivoEstimar, posicionMasCercana, posicionesEstimar, puntuarEstimacion, type Valores } from './modelo';
 import { esquemaDe, nombresEsquemas } from './esquemas/registro';
 import type { DefinicionEsquema } from './esquemas/tipos';
-import { comprobacionesCircuito, type ComprobacionSpice } from './spice';
+import { comprobacionesCircuito, contextoNetlist, type ComprobacionSpice } from './spice';
 // 1.2: the learning-by-doing step types (their own checks), the one-idea-per-screen warnings (ui12)
 import { actividadDe, esTipoActividad, FASE12, VARIABLES_PISTA } from '../leccion12/generar12';
 import { esComprobable12 } from '../leccion12/motor12';
@@ -30,6 +30,8 @@ import { avisosUnaIdea } from '../leccion12/una-idea';
 // 1.2 (motor12c): the «figura» and «logica» widgets and their steps (GUIA §11)
 import { widgetFiguraDe, widgetLogicaDe, type ContextoDigital, type RecursosLibro } from '../leccion12/digital/generar-digital';
 import { interactivos } from '../leccion12/digital/motor-digital';
+// 1.2.1 (piloto121): the instrument of a live circuit, the goal of an explore card and the lesson's mix (GUIA §13)
+import { avisoMezcla, instrumentoDe, mezclaDe, objetivoDe, validarInstrumento } from '../leccion12/hacer/generar-hacer';
 import type {
   Asa, Barra, CalculoModelo, CitaLibro, Color, Condicion, Curva, Ecuacion, Emparejar, Estimar, Grafica, Idea, Leccion11, Lectura, Mando,
   Marca, Modelo, Opcion, Ordenar, Pista, Rango, Tarjeta, Texto, TipoTarjeta, ValorModelo, Widget, WidgetCircuito, WidgetGrafica,
@@ -258,7 +260,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       textoLibro.push(textoDeBloque(b, ' | '));
     }
   }
-  const numerosLibro = numerosDe(textoLibro.join(' | '));
+  // (motor121: a hexadecimal literal of the book counts as its value and as its old decimal reading)
+  const numerosLibro = numerosDe(textoLibro.join(' | ')).flatMap((n) => [n, ...(n.legado ?? [])]);
 
   // ---- the model
   const antesModelo = errores.length;
@@ -372,7 +375,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     /** No error in this card so far (the checks that evaluate the model need a sound card). */
     const sana = () => errores.length === antes;
     if (!esObjeto(ft)) return e('no es un objeto');
-    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar', 'escalera', 'solucion', ...TIPOS_ACTIVIDAD]);
+    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar', 'escalera', 'solucion', 'objetivo', ...TIPOS_ACTIVIDAD]);
     for (const k of Object.keys(ft)) if (!CLAVES.has(k)) e(`clave desconocida «${k}»`);
     if (!/^[a-z0-9][a-z0-9-]*$/.test(tid)) e('«id» debe ser corto, en minúsculas y con guiones («prediga-salida»)');
     if (ids.has(tid)) e('«id» repetido');
@@ -455,7 +458,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     const valoresMando = new Set(mandos.map((x) => x.valor));
     // (a figure's zones, a logic circuit's switches or its timing diagram's cursor are what an explore card moves)
     const widget12 = t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? t.widget : null;
-    const movibles = new Set([...valoresMando, ...(widget12 ? interactivos(widget12) : [])]);
+    const movibles = new Set([...valoresMando, ...(widget12 ? interactivos(widget12, esObjeto(ft) && ft.objetivo != null) : [])]);
     for (const k of Object.keys(t.inicio)) {
       const md = mandos.find((x) => x.valor === k);
       if (!md) e(`«inicio.${k}»: solo se ponen al empezar valores que la tarjeta deja mover`);
@@ -467,6 +470,16 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     const inicial = { ...propios, ...t.inicio, ...t.fijar };
     const ev0 = mc.evaluar(inicial);
     for (const k of modelo.orden) if (!Number.isFinite(ev0[k]!)) e(`con los valores de esta tarjeta, «${k}» no da un número (${ev0[k]})`);
+    // 1.2.1: the instrument against the schematic's netlist, at the start and at the ends of each control
+    if (t.widget?.tipo === 'circuito' && t.widget.instrumento && sana()) {
+      const w = t.widget;
+      const estados: Valores[] = [inicial];
+      for (const x of mandos) for (const v of [x.valores[0]!, x.valores[x.valores.length - 1]!]) estados.push({ ...inicial, [x.valor]: v });
+      const vi = validarInstrumento(esquemaDe(w.esquema)!, w, mc, estados, e);
+      cifrasModelo.push(...vi.cifras);
+      // (motor121: what a non-linear circuit's instrument reads comes from the app's ngspice: the script runs these)
+      spice.push(...vi.spice.map((x) => ({ ...x, donde: `${origen}: ${donde}: ${x.donde}` })));
+    }
 
     // gating
     // (1.2: an «ajuste» opens «Continuar» inside its band, an optional «banco» always: lib/leccion12/motor12.ts)
@@ -593,6 +606,20 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (r.min != null && r.max != null && r.min > r.max) e(`${d}: min > max`);
       return r;
     };
+    // 1.2.1: the goal of an explore, surprise or tuning card (reached live; GUIA §13.3)
+    const textosObjetivo: [string, Texto][] = [];
+    if (ft.objetivo != null) {
+      if (tipo !== 'explorar' && tipo !== 'sorpresa' && tipo !== 'ajuste') e('«objetivo» va en una tarjeta explorar, sorpresa o ajuste');
+      else if (sana()) {
+        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}) }, t);
+        if (r.objetivo) {
+          t.objetivo = r.objetivo;
+          if (typeof ft.fase !== 'string') t.fase = 'Consiga';
+        }
+        textosObjetivo.push(...r.textos);
+      }
+    }
+
     if (ft.condiciones != null) {
       if (tipo !== 'reto' && tipo !== 'diseno') e('solo un reto o un diseño lleva «condiciones»');
       if (!Array.isArray(ft.condiciones) || !ft.condiciones.length) e('«condiciones» es una lista');
@@ -672,11 +699,13 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
           listas: (esObjeto(ft.widget) && Array.isArray(ft.widget.mandos) ? ft.widget.mandos : []).filter((m: unknown) => esObjeto(m) && Array.isArray(m.lista)).map((m: unknown) => String((m as { valor?: unknown }).valor)),
           ...(libro.sql ? { sql: libro.sql } : {}),
           digital,
+          ...(t.widget?.tipo === 'circuito' ? { esquema: esquemaDe(t.widget.esquema) } : {}),
         });
         if (r12.actividad) t.actividad = r12.actividad;
         textos12.push(...r12.textos);
         cifrasModelo.push(...r12.cifras);
         estados12.push(...r12.estados);
+        spice.push(...(r12.spice ?? []).map((x) => ({ ...x, donde: `${origen}: ${donde}: ${x.donde}` })));
       }
     }
     // formula
@@ -778,11 +807,13 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       ['solucion', t.solucion],
       ...textos12,
       ...textosWidget,
+      ...textosObjetivo,
     ];
     for (const [campo, tx] of textos)
       for (const n of numerosDeTexto(tx)) {
-        const enLibro = numerosLibro.some((b) => Math.abs(b.v - n.v) <= 1e-9 * Math.max(1, Math.abs(n.v)) || Math.abs(b.v + n.v) <= 1e-12);
-        if (enLibro || cifrasModelo.some((c) => coincide(n, c))) continue;
+        const vale = (x: { v: number; s: string; decimales: number }) => numerosLibro.some((b) => Math.abs(b.v - x.v) <= 1e-9 * Math.max(1, Math.abs(x.v)) || Math.abs(b.v + x.v) <= 1e-12) || cifrasModelo.some((c) => coincide(x, c));
+        // (motor121: «$7123» is the hexadecimal 28963 — or, as before, the 7123 its digits say)
+        if (vale(n) || (n.legado && n.legado.every(vale))) continue;
         e(`«${campo}»: el número ${n.s} no está en los bloques del libro citados ni lo da el modelo (añada un «comprobar»)`);
       }
 
@@ -846,6 +877,9 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     break;
   }
   for (const tipo of ['predecir', 'formula', 'porque'] as const) if (!tarjetas.some((t) => t.tipo === tipo)) aviso('tarjetas', `no hay ninguna tarjeta «${tipo}»`);
+  // 1.2.1 (piloto121): learning by doing — at least half of the cards answered with the hands (GUIA §13.6)
+  const mezcla = avisoMezcla(mezclaDe(tarjetas));
+  if (mezcla) aviso('mezcla', mezcla);
   const sinCitar = Object.keys(citas).filter((k) => !tarjetas.some((t) => t.libro.includes(k)));
   if (sinCitar.length) aviso('libro', `bloques citados por ninguna tarjeta: ${sinCitar.join(', ')}`);
 
@@ -1019,7 +1053,21 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (!Object.keys(mide).length && !w.grafica?.curvas.some((c) => c.mide))
         e(`«widget.mide»: qué cálculo del modelo da cada medida del esquema (${lista}), o una curva con «mide», para comprobarlo con el simulador`);
       medidas.set(w, mide);
-      for (const k of Object.keys(x)) if (!['tipo', 'esquema', 'piezas', 'lectura', 'barras', 'datos', 'corriente', 'mandos', 'ocultar', 'mide', 'grafica', 'dibujo'].includes(k)) e(`«widget.${k}»: clave desconocida`);
+      // 1.2.1: a multimeter or an oscilloscope the reader places on the drawing
+      if (x.instrumento != null) {
+        // (motor121: the schematic's own points, branches and names when the card leaves them out)
+        const medible = (() => {
+          try {
+            return def.medible?.(contextoNetlist(w, mc.evaluar(propios))) ?? null;
+          } catch {
+            return null;
+          }
+        })();
+        const ins = instrumentoDe(x.instrumento, e, digital.texto, w.grafica?.curvas.length ?? 0, medible);
+        if (ins) w.instrumento = ins;
+        if (ocultar) e('«widget.instrumento» en un widget oculto: el instrumento daría la respuesta');
+      }
+      for (const k of Object.keys(x)) if (!['tipo', 'esquema', 'piezas', 'lectura', 'barras', 'datos', 'corriente', 'mandos', 'ocultar', 'mide', 'grafica', 'dibujo', 'instrumento'].includes(k)) e(`«widget.${k}»: clave desconocida`);
       return w;
     }
     if (x.tipo === 'grafica') {

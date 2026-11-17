@@ -3,6 +3,11 @@
 # - Presupuesto de pérdidas (bloque 259): cada conector de 0,3 a 0,75 dB (se usa el peor, 0,75) y cada empalme 0,1 dB.
 #   El enlace de 20 km con 2 conectores y 4 empalmes es de ejemplo: 4 + 1,5 + 0,4 = 5,9 dB.
 # Paso práctico: «simular» la pérdida del enlace (errores: sin conectores, sin empalmes).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca la ventana y la longitud que llegan a cien kilómetros con
+# 20 dB; la portadora de 1550 nm (193 THz), los cien kilómetros en la primera ventana y el presupuesto se calculan; en la
+# figura 46.15 se toca la ventana de menor atenuación. Los dos tipos de fibra se funden en la pregunta de la dispersión,
+# el mando bajo el sol en el emparejar del espacio libre y la cámara del móvil en la del conector sucio. Quedan dos
+# preguntas de opciones y el uso por el aire, por emparejar: 5 de 8 (62,5 %), porque lo que queda son criterios sin cifras.
 leccion: cap45/sec-45.8
 
 libro:
@@ -29,6 +34,7 @@ modelo:
     a_f: { sim: "α", nombre: "atenuación de la fibra", unidad: "dB/km", valor: 0.2 }
     n_c: { sim: "n_{c}", nombre: "conectores", unidad: "", valor: 2 }
     n_e: { sim: "n_{e}", nombre: "empalmes", unidad: "", valor: 4 }
+    l_o: { sim: "λ", nombre: "longitud de onda", unidad: m, valor: 0.00000155 }
   calculos:
     P_f: { expr: "a_f*L_f/1000", sim: "pérdida", nombre: "pérdida de la fibra", unidad: dB }
     P_tot: { expr: "P_f + 0.75*n_c + 0.1*n_e", sim: "pérdida", nombre: "pérdida total del enlace", unidad: dB }
@@ -36,61 +42,86 @@ modelo:
     P_e: { expr: "0.1*n_e", sim: "empalmes", nombre: "pérdida de los empalmes", unidad: dB }
     P_sc: { expr: "P_f + 0.1*n_e", sim: "pérdida", nombre: "sin los conectores", unidad: dB }
     P_se: { expr: "P_f + 0.75*n_c", sim: "pérdida", nombre: "sin los empalmes", unidad: dB }
+    f_o: { expr: "299792458/l_o", sim: "f", nombre: "frecuencia de la portadora", unidad: Hz }
+    f_ox: { expr: "299792458/(l_o*1000)", sim: "f", nombre: "con λ en micras por error", unidad: Hz }
+    P_f2: { expr: "0.2*L_f/1000", sim: "pérdida", nombre: "en la tercera ventana", unidad: dB }
 
 tarjetas:
   - id: explore-ventanas
     tipo: explorar
     titulo: "La fibra óptica"
-    texto: "Un núcleo de vidrio confina la luz por reflexión total. Toque las ventanas de atenuación y los dos tipos de fibra."
+    texto: "Un núcleo de vidrio confina la luz por reflexión total. Con 20 dB de pérdida, busque la ventana y la longitud que llegan a cien kilómetros."
     libro: [239, 240, 242]
+    inicio: { a_f: 2.5, L_f: 10000 }
     widget:
-      tipo: figura
-      figura: fig-45.15
-      zonas:
-        - { id: ventanas, rotulo: "Gráfica de la izquierda", rect: [0, 0, 224, 220], texto: "Mínimos en 850, 1310 y 1550 nm; en la última, 0,2 dB/km." }
-        - { id: tipos, rotulo: "Gráfica de la derecha", rect: [224, 0, 224, 220], texto: "Multimodo, núcleo grueso y muchos caminos; monomodo, unos 9 µm y un solo modo." }
-    requiere: { mover: [ventanas, tipos] }
+      tipo: grafica
+      x: { id: d, min: 0, max: 150000, unidad: m, rotulo: "L" }
+      y: { min: 0, max: 60, unidad: dB, rotulo: "pérdida" }
+      curvas:
+        - { expr: "a_f*d/1000", color: naranja, rotulo: "pérdida de la fibra" }
+        - { expr: "20", color: tinta, rotulo: "20 dB", discontinua: true }
+      marcas:
+        - { x: "L_f", y: "P_f", rotulo: "{{P_f}}" }
+      lectura: { valor: P_f, rotulo: "Pérdida de la fibra" }
+      mandos:
+        - { valor: a_f, lista: [2.5, 0.35, 0.2], nombres: [850 nm, 1310 nm, 1550 nm], rotulo: "Ventana" }
+        - { valor: L_f, min: 10000, max: 150000, paso: 10000, rotulo: "Longitud" }
+    objetivo:
+      condiciones:
+        - { valor: L_f, min: 100000, rotulo: "Cien kilómetros" }
+        - { valor: P_f, max: 20, rotulo: "Pérdida: {{P_f}}" }
+      logrado: "{{L_f}} con {{P_f}}: solo la tercera ventana, en monomodo, llega tan lejos."
+      pistas:
+        - { cuando: { valor: L_f, menor: 100000 }, texto: "Alargue la fibra hasta cien kilómetros." }
+        - { texto: "Pierde demasiado: pruebe otra ventana." }
+    escalera:
+      - "A 0,2 dB/km, cien kilómetros cuestan 20 dB."
+    solucion: "1550 nm y 100 km: 20 dB."
+    comprobar:
+      - { con: { a_f: 0.2, L_f: 100000 }, P_f: 20 }
+      - { con: { a_f: 2.5, L_f: 10000 }, P_f: 25 }
 
   - id: empareje-ventajas
-    tipo: pregunta
+    tipo: simular
     titulo: "Por qué con luz"
-    texto: "Empareje cada ventaja de la luz como portadora con su razón."
+    texto: "La luz de 1550 nm es la portadora de la fibra. ¿Qué frecuencia tiene?"
     libro: [234, 235, 236]
-    widget:
-      tipo: figura
-      figura: fig-45.15
-      zonas:
-        - { id: ventanas, rotulo: "Gráfica de la izquierda", rect: [0, 0, 224, 220] }
-    emparejar:
-      - ["Aislamiento total", "No hay camino de corriente"]
-      - ["Inmunidad a interferencias", "La fibra no capta ni emite nada"]
-      - ["Ancho de banda enorme", "Portadora de cientos de terahercios"]
-    exito: "Ninguna señal eléctrica ofrece las tres a la vez."
-    pistas:
-      - { texto: "Una modulación de gigahercios es minúscula frente a cientos de terahercios." }
+    fijar: { l_o: 0.00000155 }
+    simular:
+      objetivo: f_o
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia de la portadora"
+      errores:
+        - { expr: "f_ox", texto: "Revise las unidades: son nanómetros, no micras." }
+    exito: "Cientos de terahercios: ancho de banda enorme. Y además, aislamiento total e inmunidad: la fibra no capta nada."
     escalera:
-      - "El vidrio no conduce."
-    solucion: "Sin corriente; no capta; portadora de terahercios."
+      - "f = c/λ."
+    solucion: "c / 1550 nm ≈ 193 THz."
+    comprobar:
+      - { f_o: 193414489725000, f_ox: 193414489725 }
 
   - id: empareje-tipos
-    tipo: pregunta
-    titulo: "Multimodo y monomodo"
-    texto: "Empareje cada fibra con sus rasgos."
-    libro: [239, 240]
+    tipo: tocar
+    titulo: "La ventana de menor pérdida"
+    texto: "La gráfica muestra las tres ventanas de atenuación de la fibra. Toque la de menor pérdida."
+    libro: [242]
     widget:
       tipo: figura
       figura: fig-45.15
       zonas:
-        - { id: tipos, rotulo: "Gráfica de la derecha", rect: [224, 0, 224, 220] }
-    emparejar:
-      - ["Multimodo", "Barata, fácil de acoplar; decenas o cientos de metros"]
-      - ["Monomodo", "Láser y alineación de micras; cientos de kilómetros"]
-    exito: "Sin dispersión modal, la monomodo llega mucho más lejos."
-    pistas:
-      - { texto: "Por un núcleo de unos 9 µm solo cabe un modo." }
+        - { id: v1, rotulo: "Primera ventana", rect: [33, 26, 40, 160] }
+        - { id: v2, rotulo: "Segunda ventana", rect: [144, 26, 40, 160] }
+        - { id: v3, rotulo: "Tercera ventana", rect: [205, 26, 40, 160] }
+    tocar:
+      bien: [v3]
+      porque:
+        v1: "La primera, en 850 nm, pierde mucho más."
+        v2: "La segunda, en 1310 nm, pierde algo más que la tercera."
+    exito: "1550 nm, 0,2 dB/km: una cifra extraordinaria."
     escalera:
-      - "Muchos caminos ensanchan el pulso."
-    solucion: "Multimodo, corta y barata; monomodo, larga y precisa."
+      - "Busque el punto más bajo de la curva."
+    solucion: "La tercera ventana, 1550 nm."
 
   - id: porque-dispersion
     tipo: porque
@@ -105,7 +136,7 @@ tarjetas:
     opciones:
       - texto: "Los distintos caminos tardan distinto y el pulso se ensancha"
         bien: true
-        porque: "Es la dispersión modal: limita el producto velocidad por distancia."
+        porque: "Es la dispersión modal. La monomodo, de unos 9 µm, solo admite un modo: láser, micras de alineación y cientos de kilómetros."
       - texto: "Porque atenúa mucho más"
         porque: "El límite principal es el ensanchamiento del pulso, no la atenuación."
       - texto: "Porque usa LED en vez de láser"
@@ -115,34 +146,24 @@ tarjetas:
     solucion: "La dispersión modal ensancha el pulso."
 
   - id: estime-100km
-    tipo: pregunta
-    titulo: "Cien kilómetros de fibra"
-    texto: "En la ventana de 1550 nm la fibra pierde 0,2 dB/km. ¿Cuánto pierde en cien kilómetros?"
+    tipo: simular
+    titulo: "Cien kilómetros en la primera ventana"
+    texto: "En la tercera ventana, cien kilómetros cuestan 20 dB. En la primera, a 2,5 dB/km, ¿cuánto perderían?"
     libro: [242]
-    fijar: { L_f: 100000, a_f: 0.2 }
-    widget:
-      tipo: figura
-      figura: fig-45.15
-      zonas:
-        - { id: ventanas, rotulo: "Gráfica de la izquierda", rect: [0, 0, 224, 220] }
-    estimar:
-      objetivo: "P_f"
+    fijar: { L_f: 100000, a_f: 2.5 }
+    simular:
+      objetivo: P_f
       unidad: dB
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 80
-      tol: 0.05
+      tol: 0.03
       rotulo: "Pérdida de la fibra"
-    exito: "Solo 20 dB: una cifra extraordinaria."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 21 }, texto: "Demasiado: 0,2 por cada kilómetro." }
-      - { texto: "Demasiado poco: cien veces 0,2 dB." }
+      errores:
+        - { expr: "P_f2", texto: "Esa es la de la tercera ventana; aquí son 2,5 dB por kilómetro." }
+    exito: "250 dB: imposible. La primera ventana es para tramos cortos."
     escalera:
       - "dB/km por km."
-    solucion: "100 × 0,2 = 20 dB."
+    solucion: "100 × 2,5 = 250 dB."
     comprobar:
-      - { P_f: 20 }
+      - { P_f: 250, P_f2: 20 }
 
   - id: simule-presupuesto
     tipo: simular
@@ -166,28 +187,6 @@ tarjetas:
     comprobar:
       - { P_f: 4, P_tot: 5.9, P_sc: 4.4, P_se: 5.5, P_c: 1.5, P_e: 0.4 }
 
-  - id: predecir-mando
-    tipo: predecir
-    titulo: "Un mando bajo el sol"
-    texto: "Un mando a distancia funciona incluso a pleno sol. ¿Por qué?"
-    libro: [249]
-    widget:
-      tipo: figura
-      figura: fig-45.15
-      zonas:
-        - { id: ventanas, rotulo: "Gráfica de la izquierda", rect: [0, 0, 224, 220] }
-    opciones:
-      - texto: "Su infrarrojo va modulado a 38 kHz y el receptor solo escucha esa frecuencia"
-        bien: true
-        porque: "Es la técnica contra la luz ambiente: el sol no está modulado a 38 kHz."
-      - texto: "Porque emite mucha más luz que el sol"
-        porque: "Emite muy poca: lo que lo distingue es la modulación."
-      - texto: "Porque el sol no tiene infrarrojo"
-        porque: "Tiene mucho; sin modulación lo taparía."
-    escalera:
-      - "¿Qué tiene la señal del mando que el sol no tiene?"
-    solucion: "La modulación a 38 kHz."
-
   - id: empareje-espacio
     tipo: pregunta
     titulo: "Sin fibra"
@@ -202,7 +201,7 @@ tarjetas:
       - ["Mando a distancia", "Infrarrojo modulado a 38 kHz"]
       - ["Enlace entre edificios", "La niebla y la lluvia lo cortan"]
       - ["LiFi", "La iluminación LED como canal de datos"]
-    exito: "IrDA, la de datos por infrarrojo, está hoy en desuso."
+    exito: "El mando funciona a pleno sol porque el sol no está modulado a 38 kHz. IrDA, hoy, en desuso."
     pistas:
       - { texto: "Un enlace de kilómetros por el aire depende del tiempo." }
     escalera:
@@ -213,7 +212,7 @@ tarjetas:
     tipo: pregunta
     titulo: "La causa número uno"
     texto: "Un enlace de fibra monomodo pierde mucho más de lo calculado. ¿Qué se sospecha primero?"
-    libro: [256, 257, 261]
+    libro: [256, 257, 261, 262]
     widget:
       tipo: figura
       figura: fig-45.15
@@ -227,31 +226,10 @@ tarjetas:
         porque: "La fibra pierde poco; lo habitual es un conector o una curvatura."
       - texto: "Que la luz es demasiado fuerte"
         porque: "Sobrar luz no aumenta las pérdidas."
+    exito: "Para ver si sale luz, la cámara de un móvil, que ve el infrarrojo; nunca el ojo."
     escalera:
       - "En monomodo la alineación es de micras."
     solucion: "Un conector sucio; después, una curvatura excesiva."
-
-  - id: pregunta-camara
-    tipo: pregunta
-    titulo: "¿Hay luz en la fibra?"
-    texto: "Sin medidor de potencia óptica, ¿cómo se comprueba que sale luz infrarroja por una fibra?"
-    libro: [262]
-    widget:
-      tipo: figura
-      figura: fig-45.15
-      zonas:
-        - { id: ventanas, rotulo: "Gráfica de la izquierda", rect: [0, 0, 224, 220] }
-    opciones:
-      - texto: "Con la cámara de un móvil, que ve el infrarrojo"
-        bien: true
-        porque: "Confirma que hay luz sin exponer el ojo."
-      - texto: "Mirando el extremo con el ojo"
-        porque: "Nunca: el infrarrojo no se ve y puede dañar el ojo sin avisar."
-      - texto: "Con el multímetro"
-        porque: "El multímetro no mide luz."
-    escalera:
-      - "¿Qué aparato de bolsillo ve el infrarrojo?"
-    solucion: "La cámara del móvil; nunca el ojo."
 
   - id: resumen
     tipo: resumen

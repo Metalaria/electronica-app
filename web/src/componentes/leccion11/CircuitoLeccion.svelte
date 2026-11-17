@@ -23,6 +23,16 @@
   import CircuitoVivo from '../leccion12/CircuitoVivo.svelte';
   import { movimiento } from '../figuras-vivas/carga.svelte';
   import TextoVivo from './TextoVivo.svelte';
+  // 1.2.1 (piloto121): the instrument on the drawing and the zones of an «elegir» card (GUIA §13)
+  import Instrumento from '../leccion12/Instrumento.svelte';
+  import ElegirEsquema from '../leccion12/ElegirEsquema.svelte';
+  import { solucionWidget } from '../../lib/leccion12/hacer/medir';
+  // (motor121: a non-linear circuit, or one that changes with time, is read on the app's ngspice)
+  import { medicionCacheada, medirConSpice, ondaDe, peticionMedida, type Medicion } from '../../lib/leccion12/hacer/punto-trabajo';
+  import { tocarZona } from '../../lib/leccion12/hacer/motor-hacer';
+  import type { EstadoMedida } from '../../lib/leccion12/hacer/tipos';
+  import type { EstadoTarjeta } from '../../lib/leccion11/motor';
+  import type { Tarjeta } from '../../lib/leccion11/tipos';
 
   let {
     leccion,
@@ -34,6 +44,7 @@
     valor,
     alMover,
     manipular = true,
+    hacer,
   }: {
     leccion: Leccion11;
     widget: WidgetCircuito;
@@ -47,7 +58,96 @@
     alMover: (valor: string, x: number) => void;
     /** 1.2: the parts of the drawing whose value a control moves can be dragged / tapped (CircuitoVivo.svelte). */
     manipular?: boolean;
+    /** 1.2.1: the card and its state, for the instrument and an «elegir» card's zones (both shells pass them). */
+    hacer?: { t: Tarjeta; e: EstadoTarjeta; cambiar: (c: Partial<EstadoTarjeta>) => void };
   } = $props();
+
+  // ---- 1.2.1: the instrument and the zones of «elegir»
+  const instr = $derived(widget.instrumento);
+  const medida = $derived(hacer?.e.medida);
+  // (motor121) what has to be simulated for the instrument in this state (null: the page solves it, cc.ts)
+  const peticion = $derived(instr && !oculto ? peticionMedida(widget, valores) : null);
+  let medicion = $state.raw<{ netlist: string; m: Medicion } | null>(null);
+  $effect(() => {
+    const p = peticion;
+    if (!p) return;
+    const ya = medicionCacheada(p);
+    if (ya) {
+      medicion = { netlist: p.netlist, m: ya };
+      return;
+    }
+    // (a short wait: a slider being dragged asks for one run when it stops, not one per step)
+    let vivo = true;
+    let intentos = 0;
+    const correr = () =>
+      void medirConSpice(p).then((m) => {
+        if (!vivo) return;
+        // (a run replaced by another simulation of the page is asked again, once)
+        if (m.error && /cancel/i.test(m.error) && intentos++ < 2) setTimeout(correr, 300);
+        else medicion = { netlist: p.netlist, m };
+      });
+    const id = setTimeout(correr, 150);
+    return () => {
+      vivo = false;
+      clearTimeout(id);
+    };
+  });
+  const medicionActual = $derived(peticion && medicion?.netlist === peticion.netlist ? medicion.m : null);
+  const midiendo = $derived(!!peticion && !medicionActual);
+  const solucionCC = $derived(instr && instr.tipo === 'multimetro' && !oculto ? (peticion ? (medicionActual?.solucion ?? null) : solucionWidget(widget, valores)) : null);
+  const bloqueoMedida = $derived(!!hacer && hacer.t.actividad?.tipo === 'medir' && hacer.e.resuelta);
+  const elegir = $derived(hacer?.t.actividad?.tipo === 'elegir' && hacer.e.actividad?.tipo === 'elegir' ? { a: hacer.t.actividad, ea: hacer.e.actividad } : null);
+  const dianas = $derived.by(() => {
+    if (!hacer) return undefined;
+    type D = { id: string; clase: 'punto' | 'rama' | 'pieza'; estado: 'roja' | 'negra' | 'rama' | 'elegida' | 'mal' | 'bien' | null };
+    const lista: D[] = [];
+    if (instr && medida) {
+      if (instr.tipo === 'multimetro' && medida.modo === 'A') for (const b of instr.ramas) lista.push({ id: b.id, clase: 'rama', estado: medida.rama === b.id ? 'rama' : null });
+      else for (const q of instr.puntos) lista.push({ id: q.id, clase: 'punto', estado: medida.roja === q.id ? 'roja' : medida.negra === q.id && instr.tipo === 'multimetro' ? 'negra' : null });
+    }
+    if (elegir) {
+      const { a, ea } = elegir;
+      for (const z of a.zonas)
+        lista.push({ id: z.id, clase: 'pieza', estado: hacer.e.resuelta && a.bien.includes(z.id) ? 'bien' : ea.descartadas.includes(z.id) ? 'mal' : ea.elegidas.includes(z.id) ? 'elegida' : null });
+    }
+    return lista.length ? { lista, tocar: tocarDiana } : undefined;
+  });
+  function cambiarMedida(m: EstadoMedida) {
+    hacer?.cambiar({ medida: m });
+  }
+  function tocarDiana(id: string) {
+    if (!hacer) return;
+    if (elegir && elegir.a.zonas.some((z) => z.id === id)) {
+      elegirZona(id);
+      return;
+    }
+    const m = hacer.e.medida;
+    if (!instr || !m || bloqueoMedida) return;
+    if (instr.tipo === 'osciloscopio') cambiarMedida({ ...m, roja: id });
+    else if (m.modo === 'A') cambiarMedida({ ...m, rama: id });
+    // (a tap on the black probe picks it up and the next tap puts it down; any other tap moves the red one)
+    else if (m.activa === 'negra') cambiarMedida({ ...m, negra: id, activa: 'roja' });
+    else if (id === m.negra && m.roja !== id) cambiarMedida({ ...m, activa: 'negra' });
+    else cambiarMedida({ ...m, roja: id, activa: m.negra ? 'roja' : 'negra' });
+  }
+  function elegirZona(id: string) {
+    if (!hacer || !elegir || hacer.e.resuelta) return;
+    hacer.cambiar({ actividad: tocarZona(elegir.a, elegir.ea, id), comprobado: false, bien: null });
+  }
+  /**
+   * The oscilloscope shows the curve of the probed point only: the graph's curve the author gave that point, or
+   * (motor121) the node's waveform from the simulator, drawn as its samples.
+   */
+  const graficaVista = $derived.by(() => {
+    const g = widget.grafica;
+    if (!g || instr?.tipo !== 'osciloscopio') return g;
+    const k = medida?.roja ? instr.curvas?.[medida.roja] : undefined;
+    if (k != null) return { ...g, curvas: [g.curvas[k]!] };
+    const onda = medida?.roja && peticion && medicionActual ? ondaDe(peticion, medicionActual.graficas, medida.roja) : null;
+    if (!onda) return { ...g, curvas: [] };
+    const rot = instr.puntos.find((q) => q.id === medida!.roja)?.rotulo ?? [];
+    return { ...g, curvas: [{ expr: '0', color: 'azul' as const, rotulo: rot, discontinua: false, puntos: onda }] };
+  });
 
   const p = $derived(widget.piezas);
   const def = $derived(esquemaDe(widget.esquema));
@@ -135,7 +235,7 @@
       </div>
     {/if}
     {#if Dibujo && def && widget.dibujo !== false}
-      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} {manipular} {alMover}>
+      <CircuitoVivo {leccion} {widget} {def} {ctx} {valores} {oculto} manipular={manipular && !elegir} {alMover} {dianas} externa={peticion?.analisis === 'op' ? (medicionActual?.solucion ?? null) : null}>
         <Dibujo c={ctx} {widget} vuelta={duracion} {dur} {descripcion} />
       </CircuitoVivo>
     {/if}
@@ -162,8 +262,17 @@
     {/if}
   </div>
   {/if}
-  {#if widget.grafica}
-    <GraficaLeccion {leccion} widget={{ ...widget.grafica, tipo: 'grafica', mandos: widget.mandos, ocultar: widget.ocultar }} {valores} {propios} {oculto} {prefijo} {valor} {alMover} conMandos={false} />
+  {#if instr && medida && hacer}
+    <Instrumento i={instr} m={medida} solucion={solucionCC} {midiendo} promedio={peticion?.analisis === 'tran'} {prefijo} bloqueado={bloqueoMedida} cambiar={cambiarMedida} />
+  {/if}
+  {#if elegir && hacer}
+    <ElegirEsquema a={elegir.a} ea={elegir.ea} resuelta={hacer.e.resuelta} tocar={elegirZona} />
+  {/if}
+  {#if graficaVista}
+    {#if instr?.tipo === 'osciloscopio' && !graficaVista.curvas.length}
+      <p class="sin-sonda" data-osciloscopio-vacio>{medida?.roja && midiendo ? 'Osciloscopio: midiendo la señal…' : 'Osciloscopio: ponga la sonda en un punto del circuito para ver su señal.'}</p>
+    {/if}
+    <GraficaLeccion {leccion} widget={{ ...graficaVista, tipo: 'grafica', mandos: widget.mandos, ocultar: widget.ocultar }} {valores} {propios} {oculto} {prefijo} {valor} {alMover} conMandos={false} {hacer} />
   {/if}
   {#if widget.mandos.length}
     <Mandos {leccion} mandos={widget.mandos} {valores} {prefijo} {color} {visible} {alMover} {valor} />
@@ -172,6 +281,11 @@
 </div>
 
 <style>
+  .sin-sonda {
+    margin: 0;
+    color: var(--v11-tinta-suave);
+    font-size: 14px;
+  }
   .circuito {
     display: flex;
     flex-direction: column;

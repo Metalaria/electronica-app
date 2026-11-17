@@ -4,6 +4,9 @@
 # libro, 39.8) y el puerto de infrarrojos RP ($FF56: circuito lógico y tabla de la habilitación de lectura, el LED, el
 # consumo y el receptor que se adapta). Fuentes: el decodificador del explorador (arquitectura gbc.ts), Pan Docs «CGB
 # Registers» y «Video Display», y el libro.
+# 1.2.1: se toca el chip que pone el banco; se escriben la dirección de la SRAM (banco × 4096 + $123, en hexadecimal),
+# el banco que da VBK = $FF y el valor de RP tras enviar ($00); el circuito de la lectura de RP tiene meta. Queda una
+# pregunta: la HDMA.
 leccion: consola-gbc/gbc-buses
 
 libro:
@@ -23,22 +26,35 @@ libro:
   "cap38#231": "El DMA (acceso directo a memoria) es un motor de copia independiente"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    b_w: { sim: "b", nombre: "banco de SVBK", unidad: "", valor: 7 }
+    vbk: { sim: "VBK", nombre: "valor escrito en VBK", unidad: "", valor: 255 }
+  calculos:
+    d_s: { expr: "b_w*4096 + 291", sim: "dirección", nombre: "dirección en la SRAM de $D123", unidad: "" }
+    b_v: { expr: "vbk - 2*floor(vbk/2)", sim: "banco", nombre: "banco de VRAM (bit 0 de VBK)", unidad: "" }
 
 tarjetas:
   - id: explore-wram
-    tipo: explorar
+    tipo: tocar
     titulo: "Ocho bancos"
-    texto: "Toque la WRAM y el chip que le pone el banco."
+    texto: "La WRAM son 32 KB en ocho bancos de 4 KB. Toque el chip que le pone el banco, con RA0 y RA1."
     libro: ["gbc#3", "gbc#43"]
-    requiere: { mover: [wram, soc] }
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
-        - { id: wram, hotspot: wram, rotulo: "WRAM", texto: "32 KB: ocho bancos de 4 KB." }
-        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "Pone MA0–MA12 y, con RA0/RA1, el banco de SVBK." }
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, a la izquierda del grande" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, debajo del grande" }
+    tocar:
+      bien: [soc]
+      porque:
+        wram: "Es la propia WRAM: recibe el banco, no lo elige."
+        amp: "Es el amplificador de audio."
+    exito: "La CPU CGB: pone MA0–MA12 y, con RA0/RA1, el banco que el juego escribió en SVBK ($FF70)."
+    escalera:
+      - "El banco lo elige un registro del SoC."
+    solucion: "El SoC CPU CGB C."
 
   - id: empareje-bancos
     tipo: pregunta
@@ -59,48 +75,53 @@ tarjetas:
     solucion: "$C123: banco 0. $D123: el de SVBK, con 0 = 1. $8000: VRAM interna."
 
   - id: prediga-sram
-    tipo: predecir
+    tipo: leer
     titulo: "¿Qué celda de la SRAM?"
-    texto: "Con SVBK = 7, la CPU lee $D123. ¿Qué dirección ve el chip de WRAM?"
+    texto: "Con SVBK = 7, la CPU lee $D123. El SoC rehace la dirección como banco × 4096 + $123: escríbala en hexadecimal."
     libro: ["gbc#54", "gbc#3"]
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
         - { id: wram, hotspot: wram, rotulo: "WRAM" }
-    opciones:
-      - texto: "Banco × 4096 + $123: el banco 7 en los bits altos."
-        bien: true
-        porque: "Así la rehace el CPU CGB: los bits bajos son los de la CPU; los altos, el banco."
-      - texto: "$D123, la misma."
-        porque: "La SRAM solo tiene 32 KB: la dirección se rehace con el banco."
-      - texto: "$123: el banco no cuenta."
-        porque: "Eso sería el banco 0. Con SVBK = 7, el banco 7 entra en los bits altos."
+    leer:
+      objetivo: d_s
+      base: 16
+      cifras: 16
+      rotulo: "Dirección en la SRAM"
+      errores:
+        - { expr: "53539", texto: "Esa es la dirección de la CPU: la SRAM solo tiene 32 KB y se rehace con el banco." }
+        - { expr: "291", texto: "Eso sería el banco 0: con SVBK = 7, el banco 7 entra en los bits altos." }
+    exito: "El banco 7 delante de $123: los bits bajos son los de la CPU; los altos, el banco."
     escalera:
-      - "Multiplicar el banco por 4096 lo sube a los bits altos de la dirección."
-    solucion: "Banco × 4096 + $123, con el banco 7."
+      - "Multiplicar por 4096 es poner el banco en la cifra hexadecimal más alta."
+    solucion: "La cifra hexadecimal más alta es el banco, 7, y detrás va $123."
+    comprobar:
+      - { d_s: 28963 }
 
   - id: prediga-vbk
-    tipo: predecir
+    tipo: leer
     titulo: "Un registro de un bit"
-    texto: "El juego escribe $FF en VBK. ¿Qué banco de VRAM ve la CPU?"
+    texto: "El juego escribe $FF en VBK, y de VBK solo cuenta el bit 0. Escriba el banco de VRAM que ve la CPU."
     libro: ["gbc#74", "gbc#52"]
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
         - { id: soc, hotspot: soc, rotulo: "La VRAM está aquí dentro" }
-    opciones:
-      - texto: "El banco 1: solo cuenta el bit 0."
-        bien: true
-        porque: "VBK elige entre dos bancos con el bit 0, que en $FF vale 1."
-      - texto: "Un banco que no existe."
-        porque: "VBK ignora los demás bits: no hay más bancos que elegir."
-      - texto: "El banco 0, porque $FF no es válido."
-        porque: "Cualquier valor es válido: el bit 0 de $FF es 1."
+    leer:
+      objetivo: b_v
+      unidad: ""
+      tol: 0.01
+      rotulo: "Banco de VRAM"
+      errores:
+        - { expr: "vbk", texto: "Ese es el valor entero: VBK solo mira el bit 0." }
+    exito: "El banco 1: el bit 0 de $FF es 1, y VBK ignora los demás."
     escalera:
       - "¿Cuánto vale el bit 0 de $FF?"
     solucion: "El banco 1."
+    comprobar:
+      - { b_v: 1 }
 
   - id: por-que-hdma
     tipo: porque
@@ -127,9 +148,8 @@ tarjetas:
   - id: explore-rp
     tipo: explorar
     titulo: "El puerto de infrarrojos"
-    texto: "En RP ($FF56), los bits 7 y 6 habilitan la lectura. Pruebe cuándo se puede leer."
+    texto: "En RP ($FF56), los bits 7 y 6 habilitan la lectura de los infrarrojos. Consiga habilitarla."
     libro: ["gbc#65", "gbc#8"]
-    requiere: { mover: [B7, B6] }
     widget:
       tipo: logica
       entradas: [{ id: B7, rotulo: "Bit 7" }, { id: B6, rotulo: "Bit 6" }]
@@ -137,6 +157,15 @@ tarjetas:
         - { id: y, tipo: and, entradas: [B7, B6] }
       salidas:
         - { id: LEER, de: y, rotulo: "Lectura habilitada" }
+    objetivo:
+      condiciones:
+        - { led: LEER, valor: 1, rotulo: "Lectura habilitada" }
+      logrado: "Los dos bits a la vez: 3 habilita, 0 no."
+      pistas:
+        - { texto: "Con un solo bit no basta." }
+    escalera:
+      - "La fuente da dos valores: 3 o 0."
+    solucion: "Bit 7 y bit 6 a uno."
 
   - id: tabla-rp
     tipo: tabla
@@ -159,26 +188,24 @@ tarjetas:
     solucion: "Solo con los dos bits a uno."
 
   - id: prediga-rp
-    tipo: predecir
+    tipo: leer
     titulo: "Después de enviar"
-    texto: "El juego ha terminado de enviar por infrarrojos. ¿Qué debe hacer con RP?"
+    texto: "El juego ha terminado de enviar por infrarrojos y debe volver a reducir el consumo de las pilas. Escriba en hexadecimal el valor que pone en RP."
     libro: ["gbc#66", "gbc#67"]
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
         - { id: ir, hotspot: ir, rotulo: "LED y fototransistor" }
-    opciones:
-      - texto: "Ponerlo a $00, para no gastar pilas."
-        bien: true
-        porque: "Pan Docs lo pide: así vuelve a bajar el consumo."
-      - texto: "Dejar el LED encendido, para que el otro siga recibiendo."
-        porque: "Una señal larga encendida acaba leyéndose como apagada: el receptor se adapta."
-      - texto: "Nada: se apaga solo."
-        porque: "Hay que ponerlo a $00 a mano."
+    leer:
+      objetivo: "0x00"
+      base: 16
+      cifras: 8
+      rotulo: "Valor de RP"
+    exito: "$00. Y no sirve dejar el LED encendido para que el otro siga recibiendo: el receptor se adapta y una señal larga encendida acaba leyéndose como apagada."
     escalera:
-      - "¿Qué se gasta con el puerto habilitado?"
-    solucion: "RP = $00."
+      - "Todo a cero: LED apagado y lectura deshabilitada."
+    solucion: "$00."
 
   - id: resumen
     tipo: resumen

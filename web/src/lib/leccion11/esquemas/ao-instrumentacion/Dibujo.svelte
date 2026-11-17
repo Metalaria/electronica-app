@@ -3,6 +3,7 @@
   // joined through R_G down the middle-left, each R from its output back to its − input; U₃ on the right with R₃ from
   // each buffer, R₄ over it to the output and R₄ under it to the reference (a battery, or ground).
   import type { PropsDibujo } from '../dibujos';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import Et from '../kit/Et.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -26,8 +27,8 @@
   <Et x={108} y={330} t={[...sub('v', '2'), { t: 'txt', s: ` ${c.val('v2')}` }]} color="azul" peq />
   <path class="hilo" d="M40 60 H150" data-red="in1"></path>
   <path class="hilo" d="M84 260 H150" data-red="in2"></path>
-  <AO x={150} y={80} masArriba />
-  <AO x={150} y={240} />
+  <g data-pieza="aoa"><AO x={150} y={80} masArriba /></g>
+  <g data-pieza="aob"><AO x={150} y={240} /></g>
   <Et x={180} y={30} t={sub('U', '1')} ancla="middle" peq />
   <Et x={180} y={296} t={sub('U', '2')} ancla="middle" peq />
   <!-- the gain network -->
@@ -59,7 +60,7 @@
   <R x1={360} y1={40} x2={440} y2={40} color="naranja" pieza="r4" />
   <Et x={400} y={24} t={c.rot('r4')} ancla="middle" color="naranja" peq />
   <path class="hilo" d="M440 40 H450 V160" data-red="out"></path>
-  <AO x={360} y={160} />
+  <g data-pieza="aoc"><AO x={360} y={160} /></g>
   <Et x={390} y={214} t={sub('U', '3')} ancla="middle" peq />
   <path class="hilo" d="M330 240 H345 V180 H360" data-red="p3"></path>
   <circle class="nodo" cx="345" cy="240" r="4.5" data-red="p3"></circle>
@@ -77,4 +78,6 @@
   <Et x={490} y={144} t={sub('v', 'o')} ancla="middle" />
   <path class="hilo" d="M40 340 H490" data-red="0"></path>
   <circle class="borne" cx="490" cy="340" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Rama x={120} y={146} medidor="vrg" />
 </Lienzo>

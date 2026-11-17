@@ -30,6 +30,13 @@ const d: DefinicionEsquema = {
     vf: { medida: 'v(an)', analisis: 'op', unidad: 'V', descripcion: 'tensión del LED' },
     vr: { medida: 'v(a)-v(an)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la resistencia' },
   },
+  // 1.2.1 (motor121): the instrument's points and branch, the parts a tap can choose
+  partes: { led: 'el LED' },
+  medible: (c) => ({
+    puntos: { fte: 'Arriba de la fuente', ...(c.tiene('etiqueta') ? { a: 'Tras la etiqueta del LED' } : {}), an: 'Entre la resistencia y el LED', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama del LED' },
+    zonas: { fuente: 'Fuente', r: 'Resistencia', led: 'LED' },
+  }),
   validar: (tiene) => [...validarDiodo('vf')(tiene), ...(tiene('etiqueta2') && !tiene('etiqueta') ? ['«etiqueta2» es el nombre de la etiqueta del LED: hace falta «etiqueta»'] : [])],
   // 0,2 V: the book's own spread of a red LED's Vf (1,8 to 2,2 V); the simulator's LED drops vf at 20 mA with n = 2
   // («normal en LED», sección 5.3) and stays within it from 0,4 mA to 1 A

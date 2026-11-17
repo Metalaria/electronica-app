@@ -3,6 +3,8 @@
   // the left, the resistance and the current source between the same two wires, the terminals and, if the widget has
   // it, the switch and the load on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import FuenteI from '../kit/FuenteI.svelte';
@@ -51,4 +53,12 @@
       <Et x={444} y={156} t={c.val('carga')} color="verde" peq />
     {/if}
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={50} red="f" />
+  <Punto x={255} y={50} red="a" />
+  <Punto x={120} y={230} red="0" />
+  <Rama x={192} y={50} medidor="vm" />
+  <Rama x={210} y={66} medidor="vr" />
+  <Rama x={300} y={66} medidor="vi" />
+  {#if conCarga}<Rama x={420} y={50} medidor="vcarga" />{/if}
 </Lienzo>

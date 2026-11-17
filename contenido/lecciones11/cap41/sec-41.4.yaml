@@ -3,10 +3,16 @@
 # - La saturación de la NEXT (bloque 116): crece con el tramo acoplado hasta la mitad de lo que avanza la señal durante
 #   el flanco, unos 7,5 cm con flancos de 1 ns (a 15 cm/ns, cap41#6). Gráfica: NEXT relativa = min(L/L_sat, 1).
 # Paso práctico: «simular» esa longitud de saturación (7,5 cm; errores: sin dividir por dos, la longitud crítica).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): el acoplamiento relativo 1/(1 + (s/h)²) del problema 42.C
+# (cap41#348-351) se vuelve la gráfica viva: se lleva al 10 % con 0,3 mm de separación acercando el plano (meta), se
+# marca la separación del 10 % (3 alturas), y se escriben el acoplamiento con la regla 3W (unas 5 alturas: 3,8 %) y la
+# separación con 0,5 mm de dieléctrico (1,5 mm). NEXT y FEXT se tocan en la figura 42.6. Quedan una pregunta de
+# opciones (el banco), el emparejamiento de los dos mecanismos y el orden de las medidas.
 leccion: cap41/sec-41.4
 
 libro:
   104: "capacitivo (la tensión de una inyecta corriente en la otra) e inductivo (la corriente de una induce tensión en la otra)"
+  107: "En la línea víctima aparecen dos perturbaciones que viajan en sentidos opuestos"
   108: "de duración igual al doble del tiempo de vuelo por la zona acoplada"
   109: "En un medio homogéneo (una stripline, con dieléctrico por ambos lados) se cancelan casi exactamente"
   110: "un problema de diafonía puede aparecer solo en unas capas"
@@ -22,32 +28,64 @@ libro:
   125: "Diafonía cercana y lejana con su forma característica"
   "cap41#5": '"longitud crítica" approx (t_("subida") times "velocidad")/("6")'
   "cap41#6": "Con 15 cm por nanosegundo en FR4"
+  "cap41#348": "como 1/(1 + (s/h)²), con s la separación entre centros y h la altura al plano"
+  "cap41#349": "Acoplamiento relativo"
+  "cap41#350": "Para quedar en el 10 % basta s = 3h"
+  "cap41#351": "Con un dieléctrico fino de 0,1 mm, 0,3 mm de separación bastan; con uno de 0,5 mm harían falta 1,5 mm"
 
 modelo:
   valores:
     t_x: { sim: "t_{subida}", nombre: "flanco del agresor", unidad: ns, valor: 1 }
     v_x: { sim: "v", nombre: "velocidad en FR4", unidad: "cm/ns", valor: 15 }
     L_x: { sim: "L", nombre: "tramo acoplado", unidad: cm, valor: 3 }
+    s_x: { sim: "s", nombre: "separación entre centros", unidad: mm, valor: 0.3 }
+    h_x: { sim: "h", nombre: "altura al plano", unidad: mm, valor: 0.5 }
+    r_10: { sim: "s/h", nombre: "separación del 10 %, en alturas", unidad: "", valor: 3 }
+    r_3w: { sim: "s/h", nombre: "la regla 3W, en alturas", unidad: "", valor: 5 }
+    h_g: { sim: "h", nombre: "dieléctrico grueso", unidad: mm, valor: 0.5 }
   calculos:
     L_sat: { expr: "t_x*v_x/2", sim: "L_{sat}", nombre: "longitud de saturación de la NEXT", unidad: cm }
     L_sat1: { expr: "t_x*v_x", sim: "L", nombre: "sin dividir por dos", unidad: cm }
     L_crx: { expr: "t_x*v_x/6", sim: "L", nombre: "longitud crítica", unidad: cm }
+    k_x: { expr: "100/(1 + (s_x/h_x)^2)", sim: "k", nombre: "acoplamiento relativo", unidad: "%", cifras: 3 }
+    k_3w: { expr: "100/(1 + r_3w^2)", sim: "k", nombre: "acoplamiento con 5 alturas", unidad: "%", cifras: 2 }
+    k_10: { expr: "100/(1 + r_10^2)", sim: "k", nombre: "acoplamiento con 3 alturas", unidad: "%" }
+    s_g: { expr: "r_10*h_g", sim: "s", nombre: "separación del 10 % con dieléctrico grueso", unidad: mm }
     nx: { expr: "min(L_x/L_sat, 1)*100", sim: "NEXT", nombre: "NEXT frente a su máximo", unidad: "%" }
 
 tarjetas:
   - id: explore-diafonia
     tipo: explorar
-    titulo: "Diafonía cercana y lejana"
-    texto: "Dos perturbaciones viajan en sentidos opuestos por la víctima. Toque las dos y la gráfica de la separación."
-    libro: [108, 123, 125]
+    fase: "Consiga"
+    titulo: "Separar o acercar el plano"
+    texto: "Dos pistas a 0,3 mm entre centros y no hay sitio para separarlas más. Baje el acoplamiento al 10 % de su máximo sin pasar de esa separación."
+    libro: [112, 113, "cap41#348", "cap41#351"]
+    inicio: { s_x: 0.3, h_x: 0.5 }
     widget:
-      tipo: figura
-      figura: fig-41.6
-      zonas:
-        - { id: next, rotulo: "Pulso ancho hacia arriba", rect: [55, 100, 85, 42], texto: "NEXT, hacia el extremo cercano: un pulso ancho que dura el doble del tiempo de vuelo del tramo acoplado." }
-        - { id: fext, rotulo: "Pulso estrecho hacia abajo", rect: [82, 145, 36, 48], texto: "FEXT, hacia el extremo lejano: estrecho, de la duración del flanco; en stripline casi nula." }
-        - { id: separacion, rotulo: "Gráfica de la derecha", rect: [255, 10, 185, 200], texto: "El acoplamiento cae muy deprisa al separar las pistas, y más aún con el plano más cerca." }
-    requiere: { mover: [next, fext, separacion] }
+      tipo: grafica
+      x: { id: rr, min: 0, max: 6, unidad: "", rotulo: "s / h" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "acoplamiento" }
+      curvas:
+        - { expr: "100/(1 + rr^2)", color: naranja, rotulo: "1/(1 + (s/h)²)" }
+      marcas:
+        - { x: "s_x/h_x", y: "k_x", rotulo: "{{k_x}}" }
+      lectura: { valor: k_x, rotulo: "Acoplamiento relativo" }
+      mandos:
+        - { valor: s_x, lista: [0.1, 0.2, 0.3, 0.5, 1.0, 1.5], rotulo: "Separación, s" }
+        - { valor: h_x, lista: [0.1, 0.2, 0.5], rotulo: "Altura al plano, h" }
+    objetivo:
+      condiciones:
+        - { valor: k_x, max: 10.1, rotulo: "Acoplamiento: {{k_x}}" }
+        - { valor: s_x, max: 0.3, rotulo: "Separación: {{s_x}}" }
+      logrado: "Con el plano a {{h_x}}, {{s_x}} bastan: cuenta la separación relativa a la altura. Acercar el plano es más eficaz y ocupa menos."
+      pistas:
+        - { cuando: { valor: s_x, mayor: 0.3 }, texto: "No hay sitio para separarlas tanto: vuelva a 0,3 mm como mucho." }
+        - { texto: "Todavía acoplan mucho: acerque el plano." }
+    escalera:
+      - "El acoplamiento depende de s/h, no de s sola."
+    solucion: "Plano a 0,1 mm con 0,3 mm de separación: el 10 %."
+    comprobar:
+      - { con: { s_x: 0.3, h_x: 0.1 }, k_x: 10, tol: 0.001 }
 
   - id: empareje-mecanismos
     tipo: pregunta
@@ -67,8 +105,8 @@ tarjetas:
   - id: toque-next
     tipo: tocar
     titulo: "La firma de cada una"
-    texto: "Toque la perturbación que dura el doble del tiempo de vuelo por el tramo acoplado."
-    libro: [108, 123]
+    texto: "En la víctima viajan dos perturbaciones en sentidos opuestos. Toque la que dura el doble del tiempo de vuelo por el tramo acoplado."
+    libro: [107, 108, 123, 125]
     widget:
       tipo: figura
       figura: fig-41.6
@@ -79,72 +117,113 @@ tarjetas:
       bien: [next]
       porque:
         fext: "Es la FEXT: estrecha, de la duración del flanco, llega con él al extremo lejano."
-    exito: "La NEXT: las dos contribuciones se suman en un pulso ancho."
+    exito: "La NEXT, hacia el extremo cercano: las contribuciones capacitiva e inductiva se suman en un pulso ancho."
     escalera:
       - "Busque el pulso ancho, no el estrecho."
     solucion: "El pulso ancho hacia arriba, la NEXT."
 
   - id: porque-stripline
-    tipo: porque
+    tipo: tocar
     titulo: "Solo en unas capas"
-    texto: "¿Por qué la diafonía lejana casi desaparece en stripline y no en microstrip?"
+    texto: "En una stripline, con dieléctrico por ambos lados, una de las dos perturbaciones casi desaparece. Tóquela."
     libro: [109, 110]
     widget:
       tipo: figura
       figura: fig-41.6
       zonas:
+        - { id: next, rotulo: "Pulso ancho hacia arriba", rect: [55, 100, 85, 42] }
         - { id: fext, rotulo: "Pulso estrecho hacia abajo", rect: [82, 145, 36, 48] }
-    opciones:
-      - texto: "En un medio homogéneo las dos contribuciones se cancelan casi exactamente"
-        bien: true
-        porque: "En microstrip una cara ve aire y la otra FR4: la cancelación es parcial."
-      - texto: "Porque la stripline está más lejos del plano"
-        porque: "Está entre dos planos; la clave es que todo el campo está en el mismo dieléctrico."
-      - texto: "Porque en stripline no hay acoplamiento inductivo"
-        porque: "Lo hay; se cancela con el capacitivo."
+    tocar:
+      bien: [fext]
+      porque:
+        next: "En la NEXT las dos contribuciones se suman: no se cancelan en ningún medio."
+    exito: "La FEXT: hacia el extremo lejano las contribuciones tienen signos opuestos y, en un medio homogéneo, se cancelan casi exactamente. Por eso las capas internas para las señales críticas."
     escalera:
-      - "Hacia el extremo lejano, las dos contribuciones tienen signos opuestos."
-    solucion: "Dieléctrico por ambos lados: se cancelan casi exactamente."
-
-  - id: empareje-factores
-    tipo: pregunta
-    titulo: "De qué depende"
-    texto: "Empareje cada factor con su efecto sobre la diafonía."
-    libro: [112]
-    emparejar:
-      - ["Separación entre pistas", "Cae muy deprisa con la distancia"]
-      - ["Altura sobre el plano", "Más cerca, menos acoplamiento"]
-      - ["Longitud del tramo paralelo", "Proporcional, hasta saturar"]
-      - ["Tiempo de subida", "Flancos más rápidos, más diafonía"]
-      - ["Impedancia de la víctima", "Alta, más vulnerable"]
-    exito: "Separar, acercar el plano, acortar el tramo y ralentizar: las cuatro palancas."
-    pistas:
-      - { texto: "El plano cercano da a cada pista su retorno propio." }
-    escalera:
-      - "La víctima de alta impedancia se deja influir más."
-    solucion: "Separación, cae deprisa; plano, cerca mejor; longitud, hasta saturar; flanco, rápido peor; víctima, alta peor."
+      - "¿En cuál de las dos se restan las contribuciones?"
+    solucion: "El pulso estrecho, la FEXT."
 
   - id: predecir-plano
-    tipo: predecir
-    titulo: "Sin gastar espacio horizontal"
-    texto: "No hay sitio para separar más dos pistas. ¿Qué reduce la diafonía sin ocupar más ancho?"
-    libro: [113]
+    tipo: marcar
+    titulo: "Cuánto separar"
+    texto: "Una pista de reloj corre junto a una analógica. Marque en la curva la separación, en alturas al plano, que deja el acoplamiento en el 10 %."
+    libro: [113, "cap41#348", "cap41#349", "cap41#350"]
     widget:
-      tipo: figura
-      figura: fig-41.6
-      zonas:
-        - { id: separacion, rotulo: "Gráfica de la derecha", rect: [255, 10, 185, 200] }
-    opciones:
-      - texto: "Acercarlas al plano, con un dieléctrico más fino"
-        bien: true
-        porque: "La separación al plano importa tanto como la separación entre pistas."
-      - texto: "Ensancharlas"
-        porque: "Ocupa más ancho y no mejora el acoplamiento."
-      - texto: "Nada: solo separar funciona"
-        porque: "Por eso los apilados modernos tienen dieléctricos delgados."
+      tipo: grafica
+      x: { id: rr, min: 0, max: 6, unidad: "", rotulo: "s / h" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "acoplamiento" }
+      curvas:
+        - { expr: "100/(1 + rr^2)", color: naranja, rotulo: "1/(1 + (s/h)²)" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "r_10"
+      tol: 0.02
+      inicio: { x: 1, y: 50 }
+      rotulo: "La separación del 10 %"
+      pasos: 120
+    pistas:
+      - { cuando: { valor: marca_x, menor: 3 }, texto: "Ahí aún acoplan más del 10 %: sepárelas más." }
+      - { texto: "Ahí ya sobra separación: algo menos." }
+    exito: "Tres alturas: s = 3h deja el 10 %."
     escalera:
-      - "Compare las dos curvas de la gráfica."
-    solucion: "Acercar el plano de retorno."
+      - "Lea en la curva dónde cruza el 10 %."
+    solucion: "s/h = 3."
+    comprobar:
+      - { k_10: 10 }
+
+  - id: lea-3w
+    tipo: leer
+    titulo: "La regla 3W"
+    texto: "Una pista de 50 Ω en FR4 mide unas 1,75 alturas: tres anchuras entre centros son unas 5 alturas. Lea la curva y escriba el acoplamiento."
+    libro: [113, "cap41#349", "cap41#350"]
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 0, max: 6, unidad: "", rotulo: "s / h" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "acoplamiento" }
+      curvas:
+        - { expr: "100/(1 + rr^2)", color: naranja, rotulo: "1/(1 + (s/h)²)" }
+      mandos: []
+    leer:
+      objetivo: k_3w
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Acoplamiento con la regla 3W"
+      errores:
+        - { expr: "k_10", texto: "Eso es con 3 alturas; 3W son unas 5." }
+    exito: "En torno al 4 %: la regla 3W es algo más exigente que s = 3h, y deja margen."
+    escalera:
+      - "Lea la curva en s/h = 5."
+    solucion: "1/(1 + 5²) = 3,8 %."
+    comprobar:
+      - { k_3w: 3.8, tol: 0.02 }
+
+  - id: lea-grueso
+    tipo: leer
+    titulo: "Con el dieléctrico grueso"
+    texto: "Si el plano queda a 0,5 mm, escriba la separación entre centros que hace falta para quedar en el 10 %."
+    libro: ["cap41#350", "cap41#351"]
+    fijar: { h_g: 0.5, r_10: 3 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 0, max: 6, unidad: "", rotulo: "s / h" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "acoplamiento" }
+      curvas:
+        - { expr: "100/(1 + rr^2)", color: naranja, rotulo: "1/(1 + (s/h)²)" }
+      mandos: []
+    leer:
+      objetivo: s_g
+      unidad: mm
+      tol: 0.03
+      rotulo: "Separación necesaria"
+      errores:
+        - { expr: "h_g", texto: "Esa es la altura al plano; la separación son tres alturas." }
+    exito: "1,5 mm, cinco veces más que con el plano a 0,1 mm: no depende de la separación absoluta, sino de la altura."
+    escalera:
+      - "s = 3h."
+    solucion: "3 × 0,5 mm = 1,5 mm."
+    comprobar:
+      - { s_g: 1.5 }
 
   - id: simule-saturacion
     tipo: simular
@@ -179,7 +258,7 @@ tarjetas:
     tipo: pregunta
     titulo: "Las medidas que funcionan"
     texto: "Ordene las medidas contra la diafonía, de la más eficaz a la menos."
-    libro: [116]
+    libro: [116, 118, 119, 120, 121]
     ordenar:
       - "Acercar el plano de retorno."
       - "Separar las pistas críticas, 3W como mínimo."
@@ -187,34 +266,12 @@ tarjetas:
       - "Cruzar en ángulo recto."
       - "Pistas de guarda con vías a masa."
       - "Ralentizar el flanco del agresor."
-    exito: "La guarda sin vías empeora: se convierte en una antena resonante."
+    exito: "La guarda sin vías empeora: es una antena. Y los casos típicos: relojes aislados, masas intercaladas en los conectores y capas adyacentes en direcciones perpendiculares."
     pistas:
       - { texto: "La primera no gasta espacio horizontal." }
     escalera:
       - "Primero el plano, luego separar y acortar."
     solucion: "Plano, separar, acortar, cruzar, guarda con vías, flanco más lento."
-
-  - id: pregunta-capas
-    tipo: pregunta
-    titulo: "Entre capas"
-    texto: "Dos capas de señal adyacentes llevan pistas superpuestas. ¿Cómo se encaminan?"
-    libro: [118, 119, 120, 121]
-    widget:
-      tipo: figura
-      figura: fig-41.6
-      zonas:
-        - { id: separacion, rotulo: "Gráfica de la derecha", rect: [255, 10, 185, 200] }
-    opciones:
-      - texto: "En direcciones perpendiculares"
-        bien: true
-        porque: "Superpuestas se acoplan enormemente; en un cruce perpendicular el acoplamiento es mínimo."
-      - texto: "En paralelo, para igualar longitudes"
-        porque: "Superpuestas en paralelo se acoplan enormemente."
-      - texto: "Da igual: hay dieléctrico entre ellas"
-        porque: "El dieléctrico no las separa del acoplamiento: están muy cerca."
-    escalera:
-      - "¿En qué ángulo se acoplan menos dos pistas?"
-    solucion: "Perpendiculares."
 
   - id: pregunta-banco
     tipo: predecir

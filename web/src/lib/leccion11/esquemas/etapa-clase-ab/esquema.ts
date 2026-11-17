@@ -54,6 +54,13 @@ const d: DefinicionEsquema = {
     vbem: { descripcion: 'V_BE del transistor del multiplicador a su corriente (V; sin ella, vbe)' },
     betam: { descripcion: 'β del transistor del multiplicador (sin ella, 10⁶: sin corriente de base, como el libro)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { q1: 'el NPN de salida', q2: 'el PNP de salida', q3: 'el transistor del multiplicador' },
+  medible: (c) => ({
+    puntos: { vcc: 'Raíl positivo', b1: 'Base del NPN', ...(c.tiene('puente') && c.cerrado('puente') ? {} : { bm: 'Punto medio del multiplicador' }), b2: 'Base del PNP, la entrada', out: 'Salida', vee: 'Raíl negativo', '0': 'Masa, abajo' },
+    ramas: { vc1: 'Colector del NPN', vc2: 'Colector del PNP', vl: 'Rama de la carga' },
+    zonas: { ib: 'Fuente de corriente de polarización', r1: 'Multiplicador, arriba', r2: 'Multiplicador, abajo', re: 'Resistencia de emisor', carga: 'Carga', q1: 'Transistor NPN de salida', q2: 'Transistor PNP de salida', q3: 'Transistor del multiplicador' },
+  }),
   observables: {
     iq: { medida: 'i(vc1)', analisis: 'op', unidad: 'A', descripcion: 'corriente de colector de Q₁ (en reposo, la de reposo)' },
     iq2: { medida: 'i(vc2)', analisis: 'op', unidad: 'A', descripcion: 'corriente de colector de Q₂ (hacia −V)' },

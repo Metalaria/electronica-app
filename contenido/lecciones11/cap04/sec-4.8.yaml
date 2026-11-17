@@ -2,6 +2,9 @@
 # una bobina de 100 µH con 5 pF entre espiras (autorresonancia a 7,1 MHz; a 30 MHz es un condensador), el Q (ej. 4.7)
 # y por qué tiene un máximo, el efecto pelicular (66 µm a 1 MHz) y el hilo de Litz, las pérdidas del núcleo y cómo
 # se mide cada parásito. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): buscar la autorresonancia, predecir la impedancia a
+# 30 MHz, calcular el Q, bajar δ por debajo del radio del hilo y predecir δ a 4 MHz; se eligen el máximo de Q y las
+# pérdidas del núcleo. Litz, parásitos y medidas quedan en los textos y el resumen.
 leccion: cap04/sec-4.8
 
 libro:
@@ -35,7 +38,7 @@ tarjetas:
   - id: explore-real
     tipo: explorar
     titulo: "Una bobina que no siempre lo es"
-    texto: "100 µH de hilo, con 5 pF entre espiras. Suba la frecuencia y compare su impedancia con la de la bobina ideal."
+    texto: "100 µH de hilo, con 5 pF entre espiras. Busque la frecuencia en la que más bloquea, y compárela con la ideal."
     libro: [187, 191]
     widget:
       tipo: grafica
@@ -52,63 +55,61 @@ tarjetas:
         - { valor: f_s, rotulo: "Autorresonancia: {{f_s}}" }
       mandos:
         - { valor: f_q, lista: [100000, 1000000, 3000000, 7120000, 30000000], rotulo: "Frecuencia, f" }
-    requiere: { mover: [f_q] }
+    inicio: { f_q: 100000 }
+    objetivo:
+      condiciones:
+        - { valor: Z_q, min: 1000000, rotulo: "|Z| = {{Z_q}}" }
+      logrado: "A {{f_q}}, {{Z_q}}: la autorresonancia, con 5 pF entre espiras. Por encima de ella la «bobina» se comporta como un condensador."
+      pistas:
+        - { cuando: { valor: f_q, mayor: 7200000 }, texto: "Se ha pasado: aquí ya baja. Pruebe más abajo." }
+        - { texto: "Suba la frecuencia." }
+    escalera:
+      - "Busque el pico de la curva naranja."
+    solucion: "A 7,1 MHz, la autorresonancia."
+    comprobar:
+      - { Z_q: 62.85, tol: 0.01 }
+      - { con: { f_q: 7120000 }, Z_q: 6611000, tol: 0.01 }
+      - { f_s: 7.12e6 }
 
   - id: prediga-treinta
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Un choque de 100 µH, con 5 pF entre espiras, se usa para bloquear una señal de 30 MHz. ¿Qué es a esa frecuencia?"
-    libro: [191]
+    texto: "Un choque de 100 µH, con 5 pF entre espiras, se usa para bloquear una señal de 30 MHz. ¿Qué impedancia presenta?"
+    libro: [187, 191]
     fijar: { f_q: 30000000 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 10000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 1, max: 10000000, unidad: Ω, rotulo: "|Z|", escala: log }
-      curvas:
-        - { expr: "sqrt(R_q^2 + (2*pi*nu*L_q)^2)/sqrt((1 - (2*pi*nu)^2*L_q*C_q)^2 + (2*pi*nu*R_q*C_q)^2)", color: naranja, rotulo: "|Z| real" }
-        - { expr: "2*pi*nu*L_q", color: tinta, rotulo: "ωL ideal", discontinua: true }
-      lectura: { valor: Z_q, rotulo: "Impedancia real" }
-      ocultar: true
-    opciones:
-      - texto: "Un condensador de 5 pF"
-        bien: true
-        porque: "Está muy por encima de su autorresonancia, 7,1 MHz: allí su impedancia cae como la de un condensador. No bloquea nada."
-      - texto: "Una bobina que bloquea aún mejor"
-        porque: "ωL sugiere eso, pero la capacidad entre espiras la cortocircuita por encima de 7,1 MHz."
-      - texto: "Un cortocircuito perfecto"
-        porque: "No llega a cero: se comporta como la reactancia de 5 pF, que baja con la frecuencia."
-    comprobar:
-      - { f_s: 7.12e6 }
+    simular:
+      objetivo: Z_q
+      unidad: Ω
+      tol: 0.05
+      rotulo: "|Z| a 30 MHz"
+      errores:
+        - { razon: { min: 15, max: 18.5 }, texto: "Eso diría la bobina ideal, ωL. Por encima de 7,1 MHz manda la capacidad entre espiras." }
+    exito: "Unos 1,1 kΩ, y bajando con la frecuencia: es un condensador. No bloquea casi nada."
     escalera:
       - "30 MHz está muy por encima de su autorresonancia, 7,1 MHz."
-    solucion: "Un condensador de 5 pF: la capacidad entre espiras manda."
-
+    solucion: "Unos 1,1 kΩ, no los 18,8 kΩ de ωL."
+    comprobar:
+      - { Z_q: 1124, X_q: 18850, tol: 0.01 }
   - id: estime-q
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El factor de calidad"
-    texto: "Q = ωL/R: estime el Q de una bobina de 100 µH con 0,5 Ω de resistencia en continua, a 100 kHz."
-    libro: [188, "cap04#341"]
+    texto: "Q = ωL/R: calcule el Q de una bobina de 100 µH con 0,5 Ω de resistencia en continua, a 100 kHz."
+    libro: [188, 194, "cap04#341"]
     fijar: { f_q: 100000 }
-    estimar:
-      objetivo: "Q_q"
+    simular:
+      objetivo: Q_q
       unidad: ""
-      min: 0
-      max: 300
-      paso: 1
-      inicio: 250
-      tol: 0.05
+      tol: 0.03
       rotulo: "Q"
-    exito: "Unos 126: ωL = 62,8 Ω entre 0,5 Ω. Un Q alto, propio de una buena bobina de filtro."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 132 }, texto: "Se ha pasado. ωL = 2π × 100 000 × 100 µH = 62,8 Ω; divida por 0,5 Ω." }
-      - { texto: "Se ha quedado corto. ωL vale 62,8 Ω: divídalo por 0,5 Ω." }
-    comprobar:
-      - { Q_q: 125.7, X_q: 62.8 }
+      errores:
+        - { razon: { min: 0.15, max: 0.17 }, texto: "Use ω, no f: ωL = 62,8 Ω." }
+    exito: "Unos 126: ωL = 62,8 Ω entre 0,5 Ω. Esa DCR, décimas de ohmio, se mide a cuatro hilos."
     escalera:
       - "Calcule primero ωL a 100 kHz."
-    solucion: "Unos 126: ωL = 62,8 Ω entre 0,5 Ω. Un Q alto, propio de una buena bobina de filtro."
-
+    solucion: "62,8 Ω / 0,5 Ω ≈ 126."
+    comprobar:
+      - { Q_q: 125.7, X_q: 62.8 }
   - id: porque-maximo
     tipo: porque
     titulo: "El Q no es constante"
@@ -139,7 +140,7 @@ tarjetas:
   - id: explore-pelicular
     tipo: explorar
     titulo: "El efecto pelicular"
-    texto: "En alta frecuencia la corriente se concentra en una capa de espesor δ = √(ρ/(π·f·µ)). Mueva la frecuencia y compárela con el radio de un hilo de 0,5 mm."
+    texto: "En alta frecuencia la corriente se concentra en una capa de espesor δ = √(ρ/(π·f·µ)). Suba la frecuencia hasta que δ quede por debajo del radio de un hilo de 0,5 mm."
     libro: [190, "cap02#10"]
     widget:
       tipo: grafica
@@ -153,83 +154,41 @@ tarjetas:
       lectura: { valor: d_s, rotulo: "Profundidad pelicular" }
       mandos:
         - { valor: f_d, lista: [10000, 100000, 1000000, 4000000, 10000000], rotulo: "Frecuencia, f" }
-    requiere: { mover: [f_d] }
+    inicio: { f_d: 10000 }
+    objetivo:
+      condiciones:
+        - { valor: d_s, max: 0.00025, rotulo: "δ = {{d_s}}" }
+      logrado: "A {{f_d}}, δ = {{d_s}}: el centro del hilo ya no conduce. El hilo de Litz, muchos hilos finos aislados y trenzados, usa todo el cobre."
+      pistas:
+        - { texto: "Más frecuencia: δ baja con ella." }
+    escalera:
+      - "δ va con 1/√f."
+    solucion: "A 100 kHz: 209 µm."
+    comprobar:
+      - { d_s: 660e-6, tol: 0.01 }
+      - { con: { f_d: 100000 }, d_s: 208.7e-6, tol: 0.01 }
 
   - id: prediga-cuatro
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "En cobre a 1 MHz, δ vale 66 µm. Si la frecuencia se multiplica por cuatro, ¿qué espesor queda?"
     libro: [190]
     fijar: { f_d: 4000000 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 0.000001, max: 0.01, unidad: m, rotulo: "δ", escala: log }
-      curvas:
-        - { expr: "sqrt(rho/(pi*nu*4*pi*1e-7))", color: naranja, rotulo: "δ en cobre" }
-      lectura: { valor: d_s, rotulo: "Profundidad pelicular" }
-      ocultar: true
-    opciones:
-      - texto: "La mitad, 33 µm"
-        bien: true
-        porque: "δ va con 1/√f: cuatro veces la frecuencia, la mitad de espesor."
-      - texto: "La cuarta parte, 16,5 µm"
-        porque: "Eso sería si fuera con 1/f. Va con la raíz: se queda en la mitad."
-      - texto: "El mismo: depende del cobre"
-        porque: "Depende del cobre y de la frecuencia: δ = √(ρ/(π·f·µ))."
+    simular:
+      objetivo: d_s
+      unidad: m
+      tol: 0.03
+      rotulo: "δ a 4 MHz"
+      errores:
+        - { razon: { min: 0.45, max: 0.55 }, texto: "Eso sería si fuera con 1/f. Va con la raíz." }
+        - { razon: { min: 1.9, max: 2.1 }, texto: "Depende del cobre y de la frecuencia: δ = √(ρ/(π·f·µ))." }
+    exito: "33 µm: δ va con 1/√f. Cuatro veces la frecuencia, la mitad de espesor."
+    escalera:
+      - "δ va con 1/√f."
+    solucion: "√4 = 2: la mitad, 33 µm."
     comprobar:
       - { d_s: 33e-6 }
       - { con: { f_d: 1000000 }, d_s: 66e-6 }
-      - { con: { f_d: 16000000 }, d_s: 16.5e-6 }
-    escalera:
-      - "δ va con 1/√f."
-    solucion: "√4 = 2: la mitad de espesor, 33 µm."
-
-  - id: pregunta-litz
-    tipo: pregunta
-    titulo: "Hilo de Litz"
-    texto: "Las bobinas de radiofrecuencia y de las conmutadas usan hilo de Litz: muchos hilos finos aislados y trenzados. ¿Qué ganan?"
-    libro: [190]
-    opciones:
-      - texto: "Cada hilo es más fino que δ y usa toda su sección"
-        bien: true
-        porque: "Un hilo grueso solo usa una corona exterior; muchos finos aislados aprovechan todo el cobre."
-      - texto: "Menos inductancia"
-        porque: "La inductancia la fijan las espiras y el núcleo. El Litz combate el efecto pelicular."
-      - texto: "Más capacidad entre espiras"
-        porque: "Eso sería peor, no una ganancia. Lo que busca es usar todo el cobre en alterna."
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: f, escala: log }
-      y: { min: 0.000001, max: 0.01, unidad: m, rotulo: "δ", escala: log }
-      curvas:
-        - { expr: "sqrt(rho/(pi*nu*4*pi*1e-7))", color: naranja, rotulo: "δ en cobre" }
-        - { expr: "0.00025", color: tinta, rotulo: "radio del hilo", discontinua: true }
-      lectura: { valor: d_s, rotulo: "Profundidad pelicular" }
-      mandos:
-        - { valor: f_d, lista: [10000, 100000, 1000000, 4000000, 10000000], rotulo: "Frecuencia, f" }
-    escalera:
-      - "Compare el radio de un hilo grueso con δ."
-    solucion: "Cada hilo es más fino que δ y aprovecha toda su sección."
-
-  - id: empareje-parasitos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los parásitos"
-    texto: "Empareje cada imperfección de la bobina con lo que provoca."
-    libro: [187, 190, 191]
-    emparejar:
-      - ["DCR", "Pérdidas en continua"]
-      - ["Efecto pelicular", "R crece con f"]
-      - ["Proximidad", "Hasta diez veces R"]
-      - ["Capacidad entre espiras", "Autorresonancia"]
-    exito: "Eso es. Los tres deciden hasta qué frecuencia una bobina sigue siendo una bobina."
-    pistas:
-      - { texto: "La proximidad es la corriente de una espira desplazando la de la vecina, en bobinas de muchas capas." }
-    escalera:
-      - "Piense en qué sube la resistencia y qué añade una capacidad."
-    solucion: "DCR: pérdidas en continua. Efecto pelicular: R crece con f. Proximidad: hasta diez veces R. Capacidad entre espiras: autorresonancia."
-
   - id: pregunta-nucleo
     tipo: pregunta
     titulo: "El núcleo también pierde"
@@ -252,30 +211,12 @@ tarjetas:
       - "Histéresis y Foucault, ¿crecen o bajan con la frecuencia?"
     solucion: "Las del núcleo: crecen con la frecuencia y con el flujo, y a 300 kHz pueden superar a las del cobre."
 
-  - id: empareje-medida
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cómo se mide cada cosa"
-    texto: "Empareje cada parámetro con su método en el banco."
-    libro: [194]
-    emparejar:
-      - ["DCR", "Cuatro hilos"]
-      - ["L y SRF", "Por resonancia"]
-      - ["Q", "Anchura del pico"]
-      - ["Saturación", "Corriente con shunt"]
-    exito: "Eso es. La DCR son décimas de ohmio: por eso hacen falta cuatro hilos."
-    pistas:
-      - { texto: "El Q se lee comparando la anchura del pico de resonancia con f₀." }
-    escalera:
-      - "La DCR son décimas de ohmio: ¿con qué técnica se miden valores tan bajos?"
-    solucion: "DCR: cuatro hilos. L y SRF: por resonancia. Q: anchura del pico. Saturación: corriente con shunt."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [188, 190, 191, 192]
+    libro: [187, 188, 190, 191, 192, 194]
     ideas:
-      - { titulo: "Autorresonancia.", texto: "Por encima de la SRF, la capacidad entre espiras la convierte en condensador." }
+      - { titulo: "Autorresonancia.", texto: "Por encima de la SRF, la capacidad entre espiras la convierte en condensador. La DCR pierde en continua." }
       - { titulo: "Q = ωL/R.", texto: "No es constante: tiene un máximo, y la bobina se elige para usarla ahí." }
       - { titulo: "Efecto pelicular.", texto: "δ va con 1/√f: 66 µm a 1 MHz en cobre. El hilo de Litz usa todo el cobre." }
       - { titulo: "Núcleo.", texto: "En alta frecuencia, sus pérdidas pueden superar a las del cobre." }

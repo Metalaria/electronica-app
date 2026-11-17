@@ -5,6 +5,11 @@
 # 10,9976, el cambio exacto del bloque 57 desde la errata 4.1.2, G); el 0,0055 % que el bloque cita aparte es la
 # sensibilidad lineal (50 %/9 092), que se queda en la mitad: las tarjetas no usan esa cifra. La masa virtual, en
 # «ao-inversor» de 1 kΩ y 10 kΩ con 0,5 V (ejemplo).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la A más pequeña con un error por debajo del 0,15 % se busca
+# (objetivo), la ganancia real con A = 10⁵ se predice y se simula, el factor de desensibilización se lleva por encima
+# de 9 000 con la fórmula a la vista, A se baja a la mitad, el ancho de banda y la impedancia de salida se predicen y
+# la masa virtual se mide. Quedan una pregunta de opciones (por qué casi no cambia) y dos emparejamientos (lo que no
+# mejora, las topologías).
 leccion: cap27/sec-27.2
 
 libro:
@@ -54,65 +59,74 @@ modelo:
     V_mn: { expr: "(V_n*R_2 + V_on*R_1)/(R_1 + R_2)", sim: "v_{−}", nombre: "entrada − del inversor", unidad: V }
     I_n: { expr: "(V_n - V_mn)/R_1", sim: "I₁", nombre: "corriente por R₁", unidad: A }
     Z_o: { expr: "R_o/(1 + T_l)", sim: "Z_{o}", nombre: "impedancia de salida realimentada", unidad: Ω }
+    Z_x: { expr: "R_o/T_l^2", sim: "Z_{o}", nombre: "dividiendo dos veces", unidad: Ω }
 
 tarjetas:
   - id: explore-ganancia
     tipo: explorar
     titulo: "Una ganancia que no depende del amplificador"
-    texto: "Red de ganancia 11 y 1 V a la entrada. Cambie la ganancia en lazo abierto y mire la del conjunto."
-    libro: [43, 50]
-    inicio: { A_0: 10000 }
+    texto: "Red de ganancia 11. Busque el operacional de menos ganancia en lazo abierto y vea cuánto error deja frente a 11."
+    libro: [43, 50, 54]
+    inicio: { A_0: 100000 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
-      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
-      datos:
-        - { valor: e_r, rotulo: "Error frente a 11: {{e_r}}" }
+      lectura: { valor: e_r, rotulo: "Error frente a 11" }
       corriente: I_1
       mide: { vo: V_o, vmenos: V_m, i1: I_1 }
       mandos:
         - { valor: A_0, lista: [10000, 50000, 100000], rotulo: "Ganancia en lazo abierto, A" }
-    requiere: { mover: [A_0] }
+    objetivo:
+      condiciones:
+        - { valor: e_r, max: 0.15, rotulo: "Error: {{e_r}}" }
+        - { valor: A_0, max: 10000, rotulo: "A = {{A_0}}" }
+      logrado: "Con A = 10⁴, aún solo un {{e_r}}: la ganancia del conjunto depende de las resistencias, no del amplificador."
+      pistas:
+        - { texto: "Ese aún cumple de sobra: pruebe uno peor." }
+    escalera:
+      - "El error es aproximadamente 1/(A · β): con β = 1/11, diez veces menos A, diez veces más error."
+    solucion: "A = 10⁴: un 0,11 %."
     comprobar:
       - { G_i: 11 }
+      - { con: { A_0: 10000 }, e_r: 0.11, tol: 0.01 }
 
   - id: prediga-ganancia
-    tipo: predecir
+    tipo: simular
     titulo: "Con A = 10⁵"
-    texto: "Un operacional de A = 10⁵ con una red que fija ganancia 11. ¿Qué ganancia da de verdad?"
+    texto: "Un operacional de A = 10⁵ con una red que fija ganancia 11 y 1 V a la entrada. ¿Qué tensión da la salida, con cuatro decimales?"
     libro: [53, 54]
     fijar: { A_0: 100000 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_i, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
-      lectura: { valor: A_f, rotulo: "Ganancia del conjunto" }
+      lectura: { valor: V_o, rotulo: "Salida" }
       corriente: I_1
       mide: { vo: V_o, vmenos: V_m, i1: I_1 }
       ocultar: true
-    opciones:
-      - texto: "10,9988: un 0,011 % por debajo"
-        bien: true
-        porque: "10⁵/(1 + 10⁵/11): no hace falta que A valga nada exacto, solo que sea mucho mayor que 1/β."
-      - texto: "Exactamente 11"
-        porque: "Eso es con A infinita. Con A finita queda un error pequeño, 1/(1 + A · β)."
-      - texto: "10⁵, la del operacional"
-        porque: "Esa es la ganancia sin realimentación. El lazo la cambia por la de la red."
+      mandos: []
+    simular:
+      objetivo: V_o
+      unidad: V
+      tol: 0.00005
+      rotulo: "Salida con 1 V"
+      medida: vo
+      errores:
+        - { expr: "G_i", texto: "Eso es con A infinita. Con A finita queda un error pequeño, 1/(1 + A · β)." }
+    exito: "10,9988: un 0,011 % por debajo de 11. No hace falta que A valga nada exacto, solo que sea mucho mayor que 1/β."
     escalera:
       - "A_{f} = A/(1 + A · β) con β = 1/11."
-    solucion: "10⁵/(1 + 9091) = 10,9988."
+    solucion: "10⁵/(1 + 9091) = 10,9988 V."
     comprobar:
-      - { A_f: 10.9988, e_r: 0.011, T_b: 9091, tol: 0.01 }
-      - { con: { A_0: 10000 }, e_r: 0.11, tol: 0.01 }
+      - { A_f: 10.9988, V_o: 10.9988, e_r: 0.011, T_b: 9091, tol: 0.01 }
 
   - id: formula-af
-    tipo: formula
+    tipo: explorar
     titulo: "La ecuación fundamental"
-    texto: "Cambie A: A · β, la ganancia de lazo, gobierna el error."
+    texto: "A_{f} = A/(1 + A · β): la ganancia de lazo, A · β, gobierna el error. Lleve A a 10⁵ y lea el factor 1 + A · β."
     libro: [47, 55]
-    ec: 47
-    sustitucion: "{{A_0}} / (1 + {{A_0}} · {{b_r}}) = {{A_f}}"
+    inicio: { A_0: 10000 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
@@ -124,11 +138,22 @@ tarjetas:
       mide: { vo: V_o, vmenos: V_m, i1: I_1 }
       mandos:
         - { valor: A_0, lista: [10000, 50000, 100000], rotulo: "A" }
+    objetivo:
+      condiciones:
+        - { valor: F_d, min: 9000, rotulo: "1 + A · β = {{F_d}}" }
+      logrado: "{{A_0}} / (1 + {{A_0}} · {{b_r}}) = {{A_f}}: con un factor de {{F_d}}, todos los defectos se dividen por él."
+      pistas:
+        - { texto: "Aún es pequeño: más ganancia en lazo abierto." }
+    escalera:
+      - "Con β = 1/11, el factor es 1 + A/11."
+    solucion: "A = 10⁵: 9 092."
+    comprobar:
+      - { con: { A_0: 100000 }, F_d: 9092, tol: 0.001 }
 
   - id: sorpresa-medio
     tipo: sorpresa
     titulo: "El operacional pierde la mitad"
-    texto: "Por temperatura o por cambiar el transistor, A cae de 10⁵ a la mitad. Pruébelo y mire la ganancia del conjunto."
+    texto: "Por temperatura o por cambiar el transistor, A cae de 10⁵ a la mitad. Bájela y vigile la ganancia del conjunto."
     libro: [57]
     inicio: { A_0: 100000 }
     widget:
@@ -142,9 +167,18 @@ tarjetas:
       mide: { vo: V_o, vmenos: V_m, i1: I_1 }
       mandos:
         - { valor: A_0, lista: [50000, 100000], rotulo: "A" }
-    requiere: { mover: [A_0] }
+    objetivo:
+      condiciones:
+        - { valor: A_0, max: 50000, rotulo: "A = {{A_0}}" }
+      logrado: "A ha caído un 50 % y la ganancia del conjunto apenas se mueve: {{d_A}}."
+      pistas:
+        - { texto: "Baje A a la mitad." }
+    escalera:
+      - "Pase de 10⁵ a 5 · 10⁴."
+    solucion: "Con A = 5 · 10⁴: 10,9976, un 0,011 % menos."
     comprobar:
       - { d_A: 0.011, tol: 0.05 }
+      - { con: { A_0: 50000 }, A_f: 10.9976, tol: 0.001 }
 
   - id: por-que-estable
     tipo: porque
@@ -172,24 +206,19 @@ tarjetas:
     solucion: "Por el factor de desensibilización, 1 + A · β: unos 9 092."
 
   - id: estime-banda
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Más ancho de banda"
     texto: "Con GBW de 1 MHz y ganancia 11, ¿qué ancho de banda queda?"
     libro: [61]
-    estimar:
-      objetivo: "B_w"
+    simular:
+      objetivo: B_w
       unidad: Hz
-      min: 0
-      max: 500000
-      paso: 1000
-      inicio: 400000
       tol: 0.05
       rotulo: "Ancho de banda"
+      errores:
+        - { expr: "GBW", texto: "Esa es la banda con ganancia 1. Con ganancia 11, la banda se divide entre 11." }
     exito: "91 kHz: la ganancia se baja y la banda se multiplica, porque su producto se conserva."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 95500 }, texto: "Se ha pasado: es GBW dividido entre la ganancia." }
-      - { texto: "Se ha quedado corto: 1 MHz entre 11." }
     escalera:
       - "BW = GBW/G."
     solucion: "1 MHz / 11 ≈ 91 kHz."
@@ -233,55 +262,51 @@ tarjetas:
     solucion: "Tensión–baja Z_{salida}, corriente–la sube; serie–sube Z_{entrada}, paralelo–la baja."
 
   - id: masa-virtual
-    tipo: pregunta
+    tipo: medir
     titulo: "La masa virtual"
-    texto: "Un inversor de 1 kΩ y 10 kΩ con 0,5 V a la entrada. ¿Cuánto vale la entrada −?"
+    texto: "Un inversor de 1 kΩ y 10 kΩ con 0,5 V a la entrada. Ponga las puntas donde se ve que la entrada − está a masa sin estarlo."
     libro: [82]
     widget:
       tipo: circuito
       esquema: ao-inversor
       piezas: { entrada: V_n, r1: R_1, r2: R_2, a0: A_0, vsat: V_s }
-      lectura: { valor: V_on, rotulo: "v_{o}" }
       corriente: I_n
       mide: { vo: V_on, vmenos: V_mn, i1: I_n }
-    opciones:
-      - texto: "Prácticamente 0 V, aunque no esté conectada a masa"
-        bien: true
-        porque: "La + está a masa y la realimentación iguala las entradas: la corriente de R₁ solo puede seguir por R₂."
-      - texto: "0,5 V, la de la entrada"
-        porque: "Entre la entrada y la − está R₁, que se queda los 0,5 V."
-      - texto: "−5 V, la de la salida"
-        porque: "La salida está al otro lado de R₂; la − queda en medio, a masa virtual."
+      instrumento: { tipo: multimetro, modos: [V], puntos: [in, mn, out, "0"] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [mn, "0"]
+      porque:
+        in: "Esa punta está en la entrada: mide los 0,5 V que se aplican."
+        out: "Esa punta está en la salida: mide los −5 V amplificados."
+    exito: "Prácticamente 0 V: la + está a masa y el lazo iguala las entradas. La corriente de R₁ solo puede seguir por R₂."
     escalera:
-      - "¿A qué potencial está la entrada +?"
-    solucion: "Casi 0 V: la inversora está a masa sin estarlo."
+      - "La masa virtual es la entrada −, medida respecto a masa."
+    solucion: "Roja en la entrada −, negra en masa: casi cero."
     comprobar:
       - { V_on: -5, V_n: 0.5, tol: 0.01 }
 
   - id: estime-zo
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Una salida casi ideal"
     texto: "Un operacional con 100 Ω de salida en lazo abierto y una ganancia de lazo de 1000, muestreando tensión. ¿Qué impedancia de salida queda?"
     libro: [99]
-    estimar:
-      objetivo: "Z_o"
+    simular:
+      objetivo: Z_o
       unidad: Ω
-      min: 0
-      max: 2
-      paso: 0.05
-      inicio: 1.5
       tol: 0.1
       rotulo: "Impedancia de salida"
+      errores:
+        - { expr: "Z_x", texto: "Ha dividido dos veces: se divide una vez por (1 + A · β), unos mil." }
+        - { expr: "R_o", texto: "Esa es la de lazo abierto. Muestrear tensión la divide por (1 + A · β)." }
     exito: "Unos 0,1 Ω: el operacional realimentado se comporta como una fuente de tensión casi ideal."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.11 }, texto: "Se ha pasado: se divide por (1 + A · β), unos mil." }
-      - { texto: "Se ha quedado corto: 100 Ω entre mil, no entre un millón." }
     escalera:
       - "Muestrear tensión divide la impedancia de salida por (1 + A · β)."
     solucion: "100/1001 ≈ 0,1 Ω."
     comprobar:
-      - { Z_o: 0.0999, F_z: 1001, tol: 0.01 }
+      - { Z_o: 0.0999, F_z: 1001, Z_x: 0.0001, tol: 0.01 }
 
   - id: resumen
     tipo: resumen

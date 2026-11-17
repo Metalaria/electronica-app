@@ -3,6 +3,11 @@
 # C₂ = 10 nF, operacional de 1 MHz de GBW), con el esquema «sallen-key». Q = √(C₁/C₂)/2, f₀ = 1/(2π·R·√(C₁·C₂)). Lo
 # que deja pasar muy por encima del corte (bloque 147) sale del operacional real del esquema (gbw y rsal), con la
 # resistencia de salida en lazo abierto «de 20 a 100 Ω» de la sección 26.7 (cap27#304).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el pico aparece subiendo C₁ hasta Q > 2 (objetivo; el límite de
+# 0,5 de dos RC pasivas, en su «logrado») y su altura se marca; el ajuste del Q y el reto del corte se quedan; el GBW
+# mínimo se lee y se escribe; la fuga de alta frecuencia se baja de −50 dB con la R_o del operacional (objetivo).
+# Quedan dos preguntas de opciones (por qué deja de filtrar y Sallen-Key o MFB); el orden de las secciones, la variable
+# de estado y lo que aporta lo activo pasan al resumen y a los «logrado».
 leccion: cap25/sec-25.5
 
 libro:
@@ -47,14 +52,16 @@ modelo:
     d1: { expr: "1 + wp*(100001*C_2*2*R_s + C_1*(R_s + R_o))", sim: "d₁", nombre: "coeficiente d₁", unidad: "" }
     d2: { expr: "C_1*(R_s + R_o) + C_2*2*R_s + wp*C_1*C_2*(100001*R_s^2 + R_o*2*R_s)", sim: "d₂", nombre: "coeficiente d₂", unidad: "" }
     d3: { expr: "C_1*C_2*(R_s^2 + R_o*2*R_s)", sim: "d₃", nombre: "coeficiente d₃", unidad: "" }
+    pk_q: { expr: "20*log10(sqrt(5.5)/sqrt(1 - 1/22))", sim: "pico", nombre: "altura del pico con C₁ = 220 nF", unidad: dB, cifras: 3 }
     D_suelo: { expr: "20*log10(n3/d3)", sim: "suelo", nombre: "suelo de la atenuación", unidad: dB, cifras: 3 }
 
 tarjetas:
   - id: explore-q
     tipo: explorar
     titulo: "El Q sale de la realimentación"
-    texto: "Paso bajo Sallen-Key de ganancia unidad. Cambie C₁, el que realimenta desde la salida: con él crece el Q y aparece el pico."
-    libro: [140, "cap25#312"]
+    texto: "Paso bajo Sallen-Key de ganancia unidad. Suba C₁, el que realimenta desde la salida, hasta que el pico dé un Q de más de 2."
+    libro: [137, 140, 143, "cap25#312"]
+    inicio: { C_1: 22e-9 }
     widget:
       tipo: circuito
       esquema: sallen-key
@@ -69,31 +76,46 @@ tarjetas:
         - { valor: f_0, rotulo: "f₀ = {{f_0}}" }
       mandos:
         - { valor: C_1, lista: [10e-9, 22e-9, 47e-9, 100e-9, 220e-9, 470e-9, 1e-6], rotulo: "C₁" }
+    objetivo:
+      condiciones:
+        - { valor: Q_s, min: 2, rotulo: "Q: {{Q_s}}" }
+      logrado: "Con {{C_1}}, Q = {{Q_s}}. Dos RC pasivas en cascada no pasan de 0,5: el pico lo crea la realimentación, sin bobinas y sin depender de la carga."
+      pistas:
+        - { texto: "Todavía poco pico: más C₁." }
+    escalera:
+      - "Q = √(C₁/C₂)/2: para Q = 2, C₁ tiene que ser muchas veces C₂."
+    solucion: "C₁ = 220 nF: Q ≈ 2,35."
+    comprobar:
+      - { con: { C_1: 220e-9 }, Q_s: 2.345, tol: 0.003 }
 
   - id: prediga-sin
-    tipo: predecir
-    titulo: "Sin realimentación"
-    texto: "Dos células RC pasivas en cascada, sin el operacional. ¿Qué Q pueden dar como mucho?"
-    libro: [143, "cap25#75"]
+    tipo: marcar
+    titulo: "La altura del pico"
+    texto: "Con C₁ = 220 nF, Q ≈ 2,35. Marque con la línea la altura del pico sobre los 0 dB de la banda de paso."
+    libro: [140]
+    fijar: { C_1: 220e-9, C_2: 10e-9, R_s: 11000 }
     widget:
       tipo: grafica
       x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
       y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
       curvas:
-        - { expr: "-10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|" }
-      lectura: { valor: Q_s, rotulo: "Q" }
-      ocultar: true
-    opciones:
-      - texto: "0,5, y menos si la segunda carga a la primera"
-        bien: true
-        porque: "Sin pico posible. La realimentación positiva del Sallen-Key es la que crea el Q que se quiera."
-      - texto: "El que se quiera, eligiendo bien R y C"
-        porque: "Con solo R y C pasivos no hay pico: el Q queda limitado a 0,5."
-      - texto: "0,707, el de Butterworth"
-        porque: "0,707 ya necesita la realimentación: dos RC solas no llegan."
+        - { expr: "20*log10(V_p) - 10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|" }
+      mandos: []
+    marcar:
+      modo: y
+      y: "pk_q"
+      tol: 0.02
+      inicio: { x: 1000, y: 0 }
+      rotulo: "La altura del pico"
+    pistas:
+      - { cuando: { valor: marca_y, mayor: 9 }, texto: "Más abajo: la línea en la cima." }
+      - { texto: "Más arriba: la curva sube por encima de 0 dB antes de caer." }
+    exito: "Unos +7,6 dB: un Q de 10 exige componentes muy precisos, porque la dispersión se amplifica con el pico."
     escalera:
-      - "Dos polos reales: ¿puede haber pico?"
-    solucion: "Como mucho Q = 0,5."
+      - "Busque la cima de la curva, cerca de f₀."
+    solucion: "+7,6 dB."
+    comprobar:
+      - { pk_q: 7.6, Q_s: 2.345, tol: 0.005 }
 
   - id: ajuste-q
     tipo: ajuste
@@ -163,25 +185,26 @@ tarjetas:
       - { con: { R_s: 10000 }, f_3: 1120, tol: 0.01 }
 
   - id: gbw
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El operacional condiciona el filtro"
-    texto: "Un paso bajo activo de segundo orden con el corte en 20 kHz y Q = 2. ¿Qué GBW mínimo pide al operacional?"
+    texto: "Un paso bajo activo de segundo orden con el corte en 20 kHz y Q = 2. Lea en la recta el GBW mínimo que pide al operacional y escríbalo."
     libro: [158, "cap25#312"]
     fijar: { f_g: 20000, Q_g: 2 }
-    estimar:
-      objetivo: "GBW"
+    widget:
+      tipo: grafica
+      x: { id: fc, min: 1000, max: 100000, unidad: Hz, rotulo: "corte", escala: log }
+      y: { min: 100000, max: 100000000, unidad: Hz, rotulo: "GBW mínimo", escala: log }
+      curvas:
+        - { expr: "100*fc*Q_g", color: azul, rotulo: "100 · f_{c} · Q" }
+      mandos: []
+    leer:
+      objetivo: GBW
       unidad: Hz
-      min: 0
-      max: 10000000
-      paso: 100000
-      inicio: 200000
-      tol: 0.05
+      tol: 0.03
       rotulo: "GBW mínimo"
+      errores:
+        - { expr: "100*f_g", texto: "Falta multiplicar por el Q." }
     exito: "100 · 20 kHz · 2 = 4 MHz."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4200000 }, texto: "Se ha pasado: la regla es 100 veces el corte por el Q." }
-      - { texto: "Se ha quedado corto: multiplique el corte por 100 y por el Q." }
     escalera:
       - "GBW ≥ 100 · f_{c} · Q."
     solucion: "100 · 20 kHz · 2 = 4 MHz."
@@ -191,7 +214,7 @@ tarjetas:
   - id: fuga-arriba
     tipo: sorpresa
     titulo: "Muy por encima del corte"
-    texto: "El mismo filtro con el operacional real del ejercicio, de 1 MHz de GBW. Cambie su resistencia de salida y mire la atenuación arriba."
+    texto: "El mismo filtro con el operacional real del ejercicio, de 1 MHz de GBW. Cambie su resistencia de salida hasta que la atenuación llegue más abajo de −50 dB."
     libro: [147, "cap25#312", "cap27#304"]
     fijar: { R_s: 11000, C_1: 22e-9, C_2: 10e-9, G_bw: 1000000 }
     inicio: { R_o: 100 }
@@ -208,8 +231,18 @@ tarjetas:
       lectura: { valor: D_suelo, rotulo: "Donde se detiene la atenuación" }
       mandos:
         - { valor: R_o, lista: [20, 50, 100], rotulo: "R_{o} del operacional" }
+    objetivo:
+      condiciones:
+        - { valor: D_suelo, max: -50, rotulo: "Suelo: {{D_suelo}}" }
+      logrado: "Con {{R_o}}, la atenuación se detiene en {{D_suelo}}: muy por encima del corte, el filtro deja de filtrar y se queda en un suelo."
+      pistas:
+        - { texto: "El suelo todavía está alto: menos resistencia de salida." }
+    escalera:
+      - "El suelo es R_{o}/(R + 2·R_{o}): menos R_{o}, suelo más bajo."
+    solucion: "Con 20 Ω: unos −55 dB."
     comprobar:
       - { D_suelo: -40.9, tol: 0.01 }
+      - { con: { R_o: 20 }, D_suelo: -54.8, tol: 0.005 }
 
   - id: alta-frecuencia
     tipo: porque
@@ -261,77 +294,12 @@ tarjetas:
       - "¿Cuál no tiene camino directo de la entrada a la salida?"
     solucion: "MFB: Q alto, frecuencia alta, y la inversión no importa."
 
-  - id: orden-secciones
-    tipo: pregunta
-    titulo: "Encadenar secciones"
-    texto: "Un filtro de orden 4 se monta con dos secciones de segundo orden, de Q distinto. ¿Cuál va primero?"
-    libro: [164]
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|" }
-      mandos:
-        - { valor: C_1, lista: [10e-9, 22e-9, 47e-9, 100e-9, 220e-9, 470e-9, 1e-6], rotulo: "C₁" }
-    opciones:
-      - texto: "La de menor Q"
-        bien: true
-        porque: "Así la de Q alto no recibe una señal ya amplificada por el pico y no satura."
-      - texto: "La de mayor Q"
-        porque: "Su pico amplificaría la señal antes de la segunda sección, que podría saturar."
-      - texto: "Da igual: es un sistema lineal"
-        porque: "En lineal daría igual, pero el operacional satura: el orden importa con señal real."
-    escalera:
-      - "Piense en el pico de la sección de Q alto."
-    solucion: "De menor a mayor Q."
-
-  - id: variable-estado
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Variable de estado"
-    texto: "Un sumador y dos integradores en cascada. Una cada salida con la respuesta que entrega."
-    libro: [154]
-    emparejar:
-      - ["Salida del sumador", "Paso alto"]
-      - ["Tras el primer integrador", "Paso banda"]
-      - ["Tras el segundo integrador", "Paso bajo"]
-    exito: "Tres respuestas a la vez, y f₀ y Q se ajustan por separado."
-    pistas:
-      - { texto: "Cada integrador quita frecuencias altas." }
-    escalera:
-      - "Tras dos integradores, solo queda lo más lento."
-    solucion: "Sumador–paso alto, primer integrador–paso banda, segundo–paso bajo."
-
-  - id: por-que-activo
-    tipo: pregunta
-    titulo: "Por qué no basta el pasivo"
-    texto: "¿Qué resuelve un filtro activo frente a uno pasivo?"
-    libro: [137, 140]
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|" }
-    opciones:
-      - texto: "No depende de la carga, puede dar ganancia y consigue Q alto sin bobinas"
-        bien: true
-        porque: "El operacional da entrada alta y salida baja, y la realimentación sintetiza el Q."
-      - texto: "Solo que no necesita condensadores"
-        porque: "Sigue usando condensadores: lo que evita son las bobinas."
-      - texto: "Que tiene un corte más abrupto con el mismo orden"
-        porque: "La pendiente la da el orden, igual que en uno pasivo."
-    escalera:
-      - "Recuerde las tres limitaciones del filtro pasivo."
-    solucion: "Independencia de la carga, ganancia y Q alto sin bobinas."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [140, 147, 158, 164]
+    libro: [137, 140, 147, 154, 158, 164]
     ideas:
-      - { titulo: "Activo.", texto: "Un operacional: sin depender de la carga, con ganancia y con Q alto sin bobinas." }
+      - { titulo: "Activo.", texto: "Sin depender de la carga, con ganancia y Q alto sin bobinas; la variable de estado da alto, banda y bajo a la vez." }
       - { titulo: "Sallen-Key.", texto: "La realimentación por C₁ crea el Q; muy por encima del corte puede dejar pasar la señal." }
       - { titulo: "El operacional.", texto: "GBW de al menos 100 veces el corte por el Q." }
       - { titulo: "Montaje.", texto: "Secciones de menor a mayor Q; condensadores primero, resistencias después." }

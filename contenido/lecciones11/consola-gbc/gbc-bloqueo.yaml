@@ -4,6 +4,9 @@
 # con licencia de Nintendo según un resumen de su título o a mano con los botones, y los cartuchos solo para Color
 # llevan un bloqueo mecánico: sin muesca, una Game Boy monocroma no se enciende. Fuentes: los datos de la consola
 # (gbc#n, gb#n), Pan Docs «The Cartridge Header», TCRF «Game Boy Color Bootstrap ROM», la wiki de gbdev y Wikipedia.
+# 1.2.1: se toca el chip con las tres ROM; un circuito lógico vivo con meta y su tabla (arranca si la primera mitad del
+# logotipo y la suma complementaria están bien: gbc#75, gbc#77); se escriben los bytes que compara (24, $18) y el
+# indicador de un juego solo para la Color ($C0). Quedan dos preguntas: las paletas y la muesca.
 leccion: consola-gbc/gbc-bloqueo
 
 libro:
@@ -21,62 +24,121 @@ libro:
   "gb#80": "Compara $30 bytes del logotipo del cartucho con la copia que guarda"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    n_gb: { sim: "n_{GB}", nombre: "bytes del logotipo que compara la Game Boy", unidad: "", valor: 48 }
+  calculos:
+    n_c: { expr: "n_gb/2", sim: "n_{CGB}", nombre: "bytes que compara la Color", unidad: "" }
 
 tarjetas:
   - id: explore-arranque
-    tipo: explorar
+    tipo: tocar
     titulo: "Otra ROM de arranque"
-    texto: "Toque el chip donde está la ROM de arranque de la Color y la ranura que comprueba."
+    texto: "La Color sigue sin CIC: la comprobación la hace su ROM de arranque. Toque el chip donde está."
     libro: ["gbc#2", "gbc#81", "gbc#77", "gbc#12"]
-    requiere: { mover: [soc, cart] }
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
-        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "Dentro hay tres ROM: de 256, 512 y 1792 bytes." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Comprueba la suma de la cabecera y el logotipo, como la Game Boy." }
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, a la izquierda del grande" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [soc]
+      porque:
+        wram: "Es una RAM: se borra al apagar."
+        cart: "El cartucho es lo que se comprueba."
+    exito: "Dentro del CPU CGB hay tres ROM: una de 256 bytes, otra de 512 y otra de 1792."
+    escalera:
+      - "Como en la Game Boy, dentro del chip que lo hace todo."
+    solucion: "El SoC CPU CGB C."
+
+  - id: explore-condicion
+    tipo: explorar
+    titulo: "Dos comprobaciones"
+    texto: "La ROM de arranque de la Color comprueba la suma complementaria y busca el logotipo, pero solo su primera mitad. Consiga que arranque."
+    libro: ["gbc#75", "gbc#77"]
+    widget:
+      tipo: logica
+      entradas: [{ id: LOGO, rotulo: "Primera mitad del logotipo igual" }, { id: SUMA, rotulo: "Suma complementaria correcta" }]
+      piezas:
+        - { id: y, tipo: and, entradas: [LOGO, SUMA] }
+      salidas:
+        - { id: JUEGO, de: y, rotulo: "Arranca el juego" }
+    objetivo:
+      condiciones:
+        - { led: JUEGO, valor: 1, rotulo: "Arranca el juego" }
+      logrado: "Las dos comprobaciones a la vez: la Color sigue sin CIC, como la Game Boy."
+      pistas:
+        - { texto: "Falta una de las dos comprobaciones." }
+    escalera:
+      - "Hacen falta las dos."
+    solucion: "Logotipo y suma correctos."
+
+  - id: tabla-arranque
+    tipo: tabla
+    titulo: "La tabla del arranque"
+    texto: "Rellene en qué filas arranca el juego en la Color."
+    libro: ["gbc#75", "gbc#77"]
+    widget:
+      tipo: logica
+      entradas: [{ id: LOGO, rotulo: "Primera mitad del logotipo igual" }, { id: SUMA, rotulo: "Suma complementaria correcta" }]
+      piezas:
+        - { id: y, tipo: and, entradas: [LOGO, SUMA] }
+      salidas:
+        - { id: JUEGO, de: y, rotulo: "Arranca el juego" }
+      ocultar: true
+    tabla:
+      salidas: [JUEGO]
+    exito: "Una AND, como en la Game Boy: cualquier fallo la deja parada."
+    escalera:
+      - "Una sola fila de las cuatro."
+    solucion: "Solo con las dos comprobaciones bien."
 
   - id: prediga-mitad
-    tipo: predecir
+    tipo: leer
     titulo: "¿Todo el logotipo?"
-    texto: "La Game Boy compara $30 bytes del logotipo. ¿Cuántos compara la Color?"
+    texto: "La Game Boy compara $30 bytes del logotipo, 48; la Color solo compara la primera mitad. Escriba cuántos bytes, en decimal."
     libro: ["gbc#75", "gbc#80", "gb#80"]
     widget:
       tipo: figura
       consola: { maquina: gbc }
       zonas:
         - { id: cart, hotspot: cart, rotulo: "Ranura" }
-    opciones:
-      - texto: "Solo los primeros $18: la mitad."
-        bien: true
-        porque: "La Color, y también la versión de la Game Boy Advance, solo comparan la primera mitad."
-      - texto: "Los $30, como la Game Boy."
-        porque: "Se queda en los primeros $18 bytes."
-      - texto: "Ninguno: la Color no lo comprueba."
-        porque: "Sí lo comprueba, junto con la suma complementaria, pero solo la mitad."
+    leer:
+      objetivo: n_c
+      unidad: ""
+      tol: 0.001
+      rotulo: "Bytes que compara"
+      errores:
+        - { expr: "n_gb", texto: "Esos son los de la Game Boy: la Color se queda en la mitad." }
+    exito: "24, los primeros $18. La versión de la Game Boy Advance también compara solo la primera mitad."
     escalera:
-      - "$18 es la mitad de $30."
-    solucion: "Los primeros $18 bytes."
+      - "La mitad de 48."
+    solucion: "24 bytes ($18)."
+    comprobar:
+      - { n_c: 24 }
 
   - id: empareje-cabecera
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: leer
     titulo: "Lo que lee al arrancar"
-    texto: "Empareje cada caso con lo que hace la Color."
+    texto: "En $0143 la cabecera lleva el indicador CGB: escriba en hexadecimal el de un juego que solo funciona en la Color."
     libro: ["gbc#76", "gbc#78", "gbc#79"]
-    emparejar:
-      - ["$80 en $0143", "Funciona en las dos consolas"]
-      - ["$C0 en $0143", "Solo funciona en la Color"]
-      - ["Juego de Game Boy con licencia", "Paleta según su título"]
-      - ["Botones al arrancar", "Paleta elegida a mano"]
-    exito: "Un byte de la cabecera y el título deciden el modo y los colores."
-    pistas:
-      - { texto: "$C0 es «solo Color»; $80, «también en las anteriores»." }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura" }
+    leer:
+      objetivo: "0xC0"
+      base: 16
+      cifras: 8
+      rotulo: "Indicador CGB"
+      errores:
+        - { expr: "128", texto: "$80 es el de los juegos que usan la Color pero funcionan también en las anteriores." }
+    exito: "$C0: solo Color; $80: las dos consolas. Y a los juegos de Game Boy con licencia les da una paleta según su título, o la que se elija con los botones."
     escalera:
-      - "Los juegos de Game Boy no tienen paletas: las pone la ROM de arranque."
-    solucion: "$80: las dos. $C0: solo Color. Título: paleta automática. Botones: a mano."
+      - "Hay dos valores: el de «también en las anteriores» y el de «solo Color»."
+    solucion: "$C0."
 
   - id: prediga-colores
     tipo: predecir

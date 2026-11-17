@@ -1,4 +1,8 @@
 # Lección 1.2 de la sección 7.6 «MOSFET frente a BJT: ¿Cuál Elegir?» (cap07). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ventaja de diez veces a 1 A se busca con los mandos
+# (objetivo), la pérdida a 10 A y la corriente de base se predicen (simular), el cruce se busca (reto) y el MOSFET se
+# calienta hasta perder un 50 % más que el bipolar. Quedan dos preguntas de opciones (el paralelo, la velocidad); el
+# criterio práctico pasa al éxito de la velocidad y al resumen.
 leccion: cap07/sec-7.6
 
 libro:
@@ -34,9 +38,10 @@ tarjetas:
   - id: explore-perdidas
     tipo: explorar
     titulo: "Caída fija o resistiva"
-    texto: "Arrastre la corriente y compare las dos pérdidas. Cambie la caída del bipolar y la R_{DS(on)}."
+    texto: "Mueva la corriente, la caída del bipolar y la R_{DS(on)} hasta que el MOSFET pierda diez veces menos que el bipolar."
     libro: [106, 107]
     fijar: { T_j: 25 }
+    inicio: { I_c: 5, V_ce: 0.2, R_m: 0.02 }
     widget:
       tipo: grafica
       x: { id: ix, min: 0, max: 15, unidad: A, rotulo: "I" }
@@ -46,18 +51,31 @@ tarjetas:
         - { expr: "ix^2*R_m", color: naranja, rotulo: "MOSFET" }
       asas:
         - { mueve: I_c, x: "I_c", y: "P_m", rotulo: "Su corriente" }
-      lectura: { valor: P_m, rotulo: "Pérdida del MOSFET" }
+      lectura: { valor: r_p, rotulo: "MOSFET / bipolar" }
       datos:
+        - { valor: P_m, rotulo: "MOSFET: {{P_m}}" }
         - { valor: P_b, rotulo: "Bipolar: {{P_b}}" }
       mandos:
         - { valor: I_c, min: 0.5, max: 15, paso: 0.5, rotulo: "Corriente" }
         - { valor: V_ce, lista: [0.2, 0.3], rotulo: "Caída del bipolar" }
         - { valor: R_m, lista: [0.01, 0.02, 0.03], rotulo: "R_{DS(on)}" }
+    objetivo:
+      condiciones:
+        - { valor: r_p, objetivo: 0.1, tol: 0.02, rotulo: "Relación: {{r_p}}" }
+      logrado: "A {{I_c}}, {{P_m}} frente a {{P_b}}. A corrientes moderadas, el MOSFET gana de largo."
+      pistas:
+        - { cuando: { valor: r_p, mayor: 0.102 }, texto: "El MOSFET aún pierde demasiado: baje la corriente o su R_{DS(on)}." }
+        - { texto: "Ya pierde menos de la décima parte: suba la corriente." }
+    escalera:
+      - "La pérdida del MOSFET va con I², la del bipolar con I: a menos corriente, más ventaja."
+    solucion: "1 A con 0,2 V y 20 mΩ: 0,02 W frente a 0,20 W."
+    comprobar:
+      - { con: { I_c: 1, V_ce: 0.2, R_m: 0.02 }, P_m: 0.02, P_b: 0.2, r_p: 0.1 }
 
   - id: prediga-10a
-    tipo: predecir
+    tipo: simular
     titulo: "A 10 A"
-    texto: "A 1 A, un MOSFET de 20 mΩ pierde diez veces menos que un bipolar de 0,2 V. ¿Y a 10 A?"
+    texto: "A 1 A, el MOSFET de 20 mΩ pierde 0,02 W. ¿Cuánto pierde a 10 A?"
     libro: [107, 108]
     fijar: { I_c: 10, V_ce: 0.2, R_m: 0.02, T_j: 25 }
     widget:
@@ -67,19 +85,19 @@ tarjetas:
       curvas:
         - { expr: "V_ce*ix", color: azul, rotulo: "bipolar" }
         - { expr: "ix^2*R_m", color: naranja, rotulo: "MOSFET" }
-      lectura: { valor: r_p, rotulo: "MOSFET / bipolar" }
-      ocultar: true
-    opciones:
-      - texto: "Disipan lo mismo, 2 W cada uno"
-        bien: true
-        porque: "La pérdida del MOSFET crece con el cuadrado de la corriente; la del bipolar, solo linealmente."
-      - texto: "El MOSFET sigue perdiendo diez veces menos"
-        porque: "Eso supondría que las dos crecen igual. La del MOSFET va con I², la del bipolar con I."
-      - texto: "El bipolar pierde diez veces menos"
-        porque: "A 10 A se igualan: 0,2 V · 10 A = 2 W y 10² · 0,02 = 2 W."
+      ocultar: curvas
+      mandos: []
+    simular:
+      objetivo: P_m
+      unidad: W
+      tol: 0.03
+      rotulo: "Pérdida del MOSFET a 10 A"
+      errores:
+        - { razon: { min: 0.09, max: 0.11 }, texto: "Ha multiplicado por 10, como si fuera lineal: con I², diez veces más corriente son cien veces más pérdida." }
+    exito: "2 W: lo mismo que el bipolar de 0,2 V. Su pérdida crece con el cuadrado; la del bipolar, linealmente."
     escalera:
-      - "Calcule las dos: V · I y I² · R."
-    solucion: "Bipolar 2 W, MOSFET 2 W: la ventaja se ha estrechado del todo."
+      - "P = I² · R_{DS(on)}."
+    solucion: "10² · 0,02 = 2 W."
     comprobar:
       - { P_m: 2, P_b: 2, r_p: 1 }
 
@@ -118,24 +136,19 @@ tarjetas:
       - { con: { I_c: 5 }, P_m: 0.75, P_b: 1.5 }
 
   - id: estime-base
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El precio del control por corriente"
     texto: "Un bipolar conmuta 1 A con β mínimo de 50 y factor de saturación de 5. ¿Qué corriente de base pide mientras conduce?"
     libro: [103, 105]
-    estimar:
-      objetivo: "I_b"
+    simular:
+      objetivo: I_b
       unidad: A
-      min: 0
-      max: 0.3
-      paso: 0.005
-      inicio: 0.25
       tol: 0.05
       rotulo: "Corriente de base"
+      errores:
+        - { razon: { min: 0.19, max: 0.21 }, texto: "Eso es I_{C}/β, sin forzar la saturación: el factor de 5 multiplica esa corriente." }
     exito: "100 mA todo el tiempo. El MOSFET solo carga la puerta al conmutar: en continua, cero."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado: es I_{C} · factor / β." }
-      - { texto: "Se ha quedado corto: el factor de saturación multiplica por 5 la corriente mínima." }
     escalera:
       - "Sin forzar, bastaría I_{C}/β; la saturación forzada pide 5 veces más."
     solucion: "1 A · 5 / 50 = 100 mA."
@@ -145,7 +158,7 @@ tarjetas:
   - id: sorpresa-caliente
     tipo: sorpresa
     titulo: "A plena carga, en caliente"
-    texto: "10 A con un MOSFET de 20 mΩ y un bipolar de 0,2 V. Suba la temperatura de unión."
+    texto: "10 A con un MOSFET de 20 mΩ y un bipolar de 0,2 V: empatan en frío. Caliente la unión hasta que el MOSFET pierda un 50 % más."
     libro: [108, "cap07#81"]
     fijar: { I_c: 10, V_ce: 0.2, R_m: 0.02 }
     inicio: { T_j: 25 }
@@ -161,7 +174,18 @@ tarjetas:
         - { valor: P_b, rotulo: "Bipolar: {{P_b}}" }
       mandos:
         - { valor: T_j, min: 25, max: 125, paso: 5, rotulo: "Temperatura de unión" }
-    requiere: { mover: [T_j] }
+    objetivo:
+      condiciones:
+        - { valor: r_p, objetivo: 1.5, tol: 0.02, rotulo: "MOSFET / bipolar: {{r_p}}" }
+      logrado: "A {{T_j}}, {{P_m}} frente a {{P_b}}: la caída del bipolar apenas cambia con la temperatura."
+      pistas:
+        - { cuando: { valor: r_p, mayor: 1.53 }, texto: "Se ha pasado: enfríe un poco la unión." }
+        - { texto: "Aún no: caliente más la unión." }
+    escalera:
+      - "R_{DS(on)} sube un 0,7 % por grado: ×1,5 hacia 100 °C."
+    solucion: "Hacia 100 °C: unos 3 W del MOSFET frente a 2 W del bipolar."
+    comprobar:
+      - { con: { T_j: 100 }, P_m: 3.05, r_p: 1.525 }
 
   - id: por-que-paralelo
     tipo: porque
@@ -192,7 +216,7 @@ tarjetas:
     tipo: pregunta
     titulo: "Más de unas decenas de kilohercios"
     texto: "¿Por qué las fuentes conmutadas rápidas son territorio del MOSFET?"
-    libro: [109]
+    libro: [109, 111, 112]
     widget:
       tipo: grafica
       x: { id: ix, min: 0, max: 15, unidad: A, rotulo: "I" }
@@ -203,7 +227,7 @@ tarjetas:
     opciones:
       - texto: "No almacena carga en su canal: solo hay que cargar y descargar la puerta"
         bien: true
-        porque: "Con un driver adecuado conmuta en decenas de nanosegundos; el bipolar saturado tarda en vaciar su base."
+        porque: "Conmuta en decenas de nanosegundos. Por eso, por debajo de 200 V, MOSFET; por encima de 600 V, IGBT."
       - texto: "Porque su R_{DS(on)} es menor"
         porque: "La resistencia decide la pérdida de conducción, no la velocidad."
       - texto: "Porque no tiene diodo de cuerpo"
@@ -211,23 +235,6 @@ tarjetas:
     escalera:
       - "Al apagar un bipolar saturado hay que vaciar su base de portadores."
     solucion: "El MOSFET no tiene tiempo de almacenamiento."
-
-  - id: criterio
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El criterio práctico"
-    texto: "Una cada necesidad con el transistor que conviene."
-    libro: [111, 112]
-    emparejar:
-      - ["Conmutar por debajo de 200 V", "MOSFET"]
-      - ["Amplificación lineal", "Bipolar"]
-      - ["Por encima de 600 V", "IGBT"]
-    exito: "En la duda, decide la disipación calculada con los números del circuito."
-    pistas:
-      - { texto: "El IGBT es un híbrido: puerta MOS y salida bipolar, para tensiones muy altas." }
-    escalera:
-      - "La transconductancia del bipolar es mayor y más predecible."
-    solucion: "Conmutación–MOSFET, lineal–bipolar, alta tensión–IGBT."
 
   - id: resumen
     tipo: resumen

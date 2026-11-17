@@ -4,6 +4,9 @@
 # - Ejercicio 36.5 (bloque 345): 20 A con 5 mΩ dan 100 mV y 2 W; para no pasar de 0,5 W, 1,25 mΩ y 25 mV. La lista de
 #   shunts del reto es de ejemplo (el reto pide la mayor caída que no pase de 0,5 W: solo 1,25 mΩ).
 # - Shunt frente a Hall (tabla del bloque 150, figura 36.9) y los sensores sin contacto. Sin fórmula de bloque «ec».
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 36.9 se toca el sensor para 200 A en continua
+# con aislamiento; el shunt se explora hasta 50 mV y se escribe lo que disipa a 20 A (ejercicio 36.5); el offset del
+# Hall se busca con el shunt a corriente cero. Los sensores de proximidad pasan al resumen. Quedan dos de opciones.
 leccion: cap35/sec-35.5
 
 libro:
@@ -39,24 +42,33 @@ modelo:
 
 tarjetas:
   - id: explore-sin-contacto
-    tipo: explorar
+    tipo: tocar
     titulo: "Medir sin tocar"
-    texto: "Campo, proximidad y corriente: no necesitan contacto con lo que miden. Toque el efecto Hall y el transformador de intensidad."
-    libro: [132, 158]
+    texto: "Hay que medir 200 A en continua con aislamiento galvánico. Toque el sensor que lo resuelve."
+    libro: [132, 141, 151, 158, "cap35#345"]
     widget:
       tipo: figura
       figura: fig-35.9
       zonas:
-        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38], texto: "Efecto Hall: el campo da una tensión transversal; corriente y posición, en continua y alterna." }
-        - { id: ti, rotulo: "Recuadro azul", rect: [260, 62, 186, 38], texto: "Transformador de intensidad: no consume y aísla, pero solo en alterna. Nunca con el secundario abierto." }
-        - { id: inductiva, rotulo: "Recuadro naranja", rect: [260, 104, 186, 38], texto: "Proximidad inductiva: solo metales, robusta, de milímetros." }
-        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 15, 210, 175], texto: "El shunt disipa I²·R; el Hall, nada. El shunt es más exacto y deriva menos." }
-    requiere: { mover: [hall, ti] }
+        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38] }
+        - { id: ti, rotulo: "Recuadro azul", rect: [260, 62, 186, 38] }
+        - { id: inductiva, rotulo: "Recuadro naranja", rect: [260, 104, 186, 38] }
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 15, 210, 175] }
+    tocar:
+      bien: [hall]
+      porque:
+        ti: "El transformador de intensidad aísla y no consume, pero solo en alterna."
+        inductiva: "La proximidad inductiva detecta metales a milímetros; no mide corriente."
+        grafica: "El shunt no aísla, y a 200 A disiparía mucho."
+    exito: "El efecto Hall: el campo da una tensión transversal; aísla, mide continua y alterna, y no disipa."
+    escalera:
+      - "Descarte el que no aísla y el que no ve la continua."
+    solucion: "El recuadro verde, el efecto Hall."
 
   - id: explore-shunt
     tipo: explorar
     titulo: "El shunt, en contraste"
-    texto: "La alternativa clásica: una resistencia baja en serie, y se mide la caída. Suba la corriente y mire la caída y el calor."
+    texto: "La alternativa clásica: una resistencia baja en serie, y se mide la caída. Suba la corriente hasta que caigan 50 mV."
     libro: [149, 150]
     fijar: { R_s: 0.005, s_c: 0, R_c: 10 }
     widget:
@@ -70,33 +82,44 @@ tarjetas:
       mide: { salida: V_s, carga: I_c, paralelo: I_s }
       mandos:
         - { valor: I_m, min: 0, max: 20, paso: 1, rotulo: "Corriente medida" }
-    requiere: { mover: [I_m] }
+    inicio: { I_m: 2 }
+    objetivo:
+      condiciones:
+        - { valor: V_s, objetivo: 0.05, tol: 0.01, rotulo: "Caída: {{V_s}}" }
+      logrado: "10 A dan 50 mV sobre 5 mΩ, y el shunt disipa {{P_s}}: el calor que el Hall no tiene."
+      pistas:
+        - { texto: "V = I · R: con 5 mΩ, ¿qué corriente da 50 mV?" }
+    escalera:
+      - "50 mV / 5 mΩ."
+    solucion: "10 A."
+    comprobar:
+      - { con: { I_m: 10 }, V_s: 0.05, P_s: 0.5 }
 
   - id: predecir-disipacion
-    tipo: predecir
+    tipo: leer
     titulo: "A 20 A"
-    texto: "Una fuente mide hasta 20 A con un shunt de 5 mΩ. ¿Cuánto disipa el shunt a 20 A?"
+    texto: "Con 10 A, el shunt de 5 mΩ disipaba 0,5 W. Escriba cuánto disipa a 20 A, el máximo de la fuente."
     libro: ["cap35#345", 150]
     fijar: { I_m: 20, R_s: 0.005, s_c: 0, R_c: 10 }
     widget:
       tipo: circuito
       esquema: norton
       piezas: { fuente: I_m, rn: R_s, carga: R_c, interruptor: s_c }
-      lectura: { valor: P_s, rotulo: "Potencia en el shunt" }
+      lectura: { valor: V_s, rotulo: "Caída en el shunt" }
       corriente: I_s
       mide: { salida: V_s, carga: I_c, paralelo: I_s }
-      ocultar: true
       mandos: []
-    opciones:
-      - texto: "2 W"
-        bien: true
-        porque: "I²·R: 400 · 5 mΩ = 2 W, sobre una caída de 100 mV."
-      - texto: "0,1 W"
-        porque: "Esos 0,1 son la caída en voltios, 100 mV, no la potencia: falta multiplicar por la corriente."
-      - texto: "Nada: el shunt no disipa"
-        porque: "El que no disipa es el sensor Hall; el shunt disipa I²·R."
+    leer:
+      objetivo: P_s
+      unidad: W
+      tol: 0.02
+      rotulo: "Potencia en el shunt"
+      errores:
+        - { expr: "2*0.5", texto: "Ha doblado: la potencia crece con el cuadrado de la corriente." }
+        - { expr: "V_s", texto: "Esa es la caída en voltios, 100 mV: falta multiplicar por la corriente." }
+    exito: "2 W sobre una caída de 100 mV: el doble de corriente, cuatro veces el calor."
     escalera:
-      - "La potencia crece con el cuadrado de la corriente."
+      - "P = I² · R."
     solucion: "20² · 0,005 = 2 W."
     comprobar:
       - { P_s: 2, V_s: 0.1 }
@@ -133,28 +156,6 @@ tarjetas:
     comprobar:
       - { con: { R_s: 0.00125 }, P_s: 0.5, V_s: 0.025 }
 
-  - id: pregunta-200a
-    tipo: pregunta
-    titulo: "200 A en continua, aislados"
-    texto: "Hay que medir 200 A en continua con aislamiento galvánico. ¿Qué sensor?"
-    libro: [141, 151, "cap35#345"]
-    widget:
-      tipo: figura
-      figura: fig-35.9
-      zonas:
-        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38] }
-    opciones:
-      - texto: "Un sensor de efecto Hall"
-        bien: true
-        porque: "Aísla, mide continua y no disipa: es el de corriente grande con aislamiento."
-      - texto: "Un shunt"
-        porque: "El shunt no aísla, y a 200 A disiparía mucho."
-      - texto: "Un transformador de intensidad"
-        porque: "Aísla, pero solo funciona en alterna: necesita variación de flujo."
-    escalera:
-      - "Descarte primero el que no aísla y el que no ve la continua."
-    solucion: "Efecto Hall."
-
   - id: porque-secundario
     tipo: porque
     titulo: "El secundario abierto"
@@ -176,28 +177,6 @@ tarjetas:
     escalera:
       - "El primario impone la corriente: ¿qué hace el secundario si no tiene por dónde cerrarla?"
     solucion: "La tensión se dispara: siempre cerrado o en corto."
-
-  - id: empareje-proximidad
-    tipo: pregunta
-    titulo: "Sensores de proximidad"
-    texto: "Empareje cada sensor de proximidad con su rasgo."
-    libro: [144, 145, 146, 147]
-    widget:
-      tipo: figura
-      figura: fig-35.9
-      zonas:
-        - { id: inductiva, rotulo: "Recuadro naranja", rect: [260, 104, 186, 38] }
-    emparejar:
-      - ["Inductivo", "Solo metales, alcance de milímetros"]
-      - ["Capacitivo", "Cualquier material, también líquidos"]
-      - ["Óptico", "Barrera, réflex y difuso"]
-      - ["Ultrasónico", "Tiempo de vuelo; lo blando absorbe el eco"]
-    exito: "El capacitivo es el más versátil y el más sensible a la humedad y la suciedad."
-    pistas:
-      - { texto: "El inductivo necesita metal que amortigüe su campo." }
-    escalera:
-      - "Uno mide un eco; otro, una capacidad; otro, un campo amortiguado."
-    solucion: "Inductivo, metales; capacitivo, cualquier material; óptico, tres variantes; ultrasónico, eco."
 
   - id: pregunta-pico
     tipo: pregunta
@@ -222,33 +201,37 @@ tarjetas:
     solucion: "La inductancia parásita del shunt."
 
   - id: pregunta-offset
-    tipo: pregunta
+    tipo: explorar
     titulo: "Verificar un sensor Hall"
-    texto: "Se verifica un sensor de corriente Hall contra un shunt. ¿Dónde se mide su offset?"
+    texto: "Se verifica un sensor de corriente Hall contra este shunt. Lleve la corriente al punto donde se mide el offset del Hall."
     libro: [138, 156]
+    fijar: { R_s: 0.005, s_c: 0, R_c: 10 }
     widget:
-      tipo: figura
-      figura: fig-35.9
-      zonas:
-        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38] }
-    opciones:
-      - texto: "Con corriente cero, que es donde más se aparta"
-        bien: true
-        porque: "El Hall tiene offset y deriva apreciables: sin corriente, cualquier lectura es error."
-      - texto: "A plena escala"
-        porque: "Ahí se ve la ganancia; el offset se separa sin corriente."
-      - texto: "No hace falta: el Hall no tiene offset"
-        porque: "Lo tiene, apreciable, y deriva: es su principal límite."
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_m, rn: R_s, carga: R_c, interruptor: s_c }
+      lectura: { valor: V_s, rotulo: "Caída en el shunt" }
+      corriente: I_s
+      mide: { salida: V_s, carga: I_c, paralelo: I_s }
+      mandos:
+        - { valor: I_m, min: 0, max: 20, paso: 1, rotulo: "Corriente medida" }
+    inicio: { I_m: 10 }
+    objetivo:
+      condiciones:
+        - { valor: V_s, max: 0.00001, rotulo: "Caída: {{V_s}}" }
+      logrado: "Con corriente cero el shunt lee cero, y lo que lea el Hall es su offset, apreciable y con deriva: su principal límite. A plena escala se ve la ganancia."
+      pistas:
+        - { texto: "Sin corriente, ¿qué debería leer el Hall?" }
     escalera:
-      - "Sin corriente, ¿qué debería leer?"
+      - "Lleve la corriente a cero."
     solucion: "Con corriente cero."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [136, 141, 142, 151]
+    libro: [136, 141, 142, 144, 145, 146, 147, 151]
     ideas:
       - { titulo: "Shunt.", texto: "Exacto y de poca deriva, pero no aísla y disipa I²·R." }
       - { titulo: "Hall.", texto: "Aísla y no disipa: corrientes grandes, con offset y deriva." }
       - { titulo: "Transformador.", texto: "Solo alterna, y nunca con el secundario abierto." }
-      - { titulo: "Proximidad.", texto: "Inductivo, capacitivo, óptico o ultrasónico, según el material." }
+      - { titulo: "Proximidad.", texto: "Inductivo, solo metales y a milímetros; capacitivo, cualquier material, también líquidos; óptico, de barrera, réflex o difuso; ultrasónico, por eco." }

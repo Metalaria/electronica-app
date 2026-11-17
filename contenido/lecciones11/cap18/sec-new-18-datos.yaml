@@ -6,6 +6,10 @@
 #   WHERE con un agregado, la consulta de la máxima diaria del libro con huecos, el orden de las cláusulas, el JOIN del
 #   libro (con una fecha de marzo en lugar de 'now') y el ejercicio 17.9 (media, mínimo y máximo por sensor y hora).
 # Paso práctico: los pasos «sql».
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): se escriben las medidas de un día (bloque 258) y lo que se
+# escribe en la tarjeta con WAL y una transacción cada diez minutos (tabla 277); en la figura 17.14 se toca lo que hace
+# de índice (el explorar ya no lo cuenta); en el programa del libro (bloque 281) se toca la línea que hace imposible la
+# inyección. Quedan dos preguntas de opciones: la guía telefónica y la copia.
 leccion: cap18/sec-new-18-datos
 
 libro:
@@ -27,8 +31,17 @@ libro:
   282: "es la inyección de SQL, y los marcadores la hacen imposible"
   290: "La copia de seguridad se hace con la orden .backup de la consola sqlite3"
   "cap18#333": "para cada sensor y cada hora del 1 de marzo de 2026, la media, el mínimo y el máximo"
+  258: "Son cuatro medidas cada 10 s: 34 560 al día"
+  281: "Data logger: four readings every 10 s"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    n_m: { sim: "n", nombre: "medidas cada 10 s", unidad: "", valor: 4 }
+    W_1: { sim: "W", nombre: "escrito al día con WAL, una transacción por muestra", unidad: B, valor: 168000000 }
+    k_16: { sim: "k", nombre: "factor de agrupar diez minutos", unidad: "", valor: 16 }
+  calculos:
+    m_dia: { expr: "n_m*86400/10", sim: "N_{día}", nombre: "medidas al día", unidad: "" }
+    W_10: { expr: "W_1/k_16", sim: "W", nombre: "escrito al día con WAL, una transacción cada diez minutos", unidad: B }
 
 tarjetas:
   - id: explore-tablas
@@ -42,31 +55,30 @@ tarjetas:
       zonas:
         - { id: sensores, rotulo: "Tabla azul, a la izquierda", rect: [6, 31, 101, 70], texto: "sensores: id, nombre, magnitud y unidad. El nombre y la unidad no se repiten en cada medida." }
         - { id: medidas, rotulo: "Tabla naranja, en el centro", rect: [124, 31, 101, 57], texto: "medidas: sensor, t y valor. «sensor» es una clave ajena: guarda el id de la otra tabla." }
-        - { id: clave, rotulo: "Texto bajo la tabla naranja", rect: [124, 100, 100, 42], texto: "La clave primaria (sensor, t) es también el índice que ordena las medidas." }
         - { id: escritura, rotulo: "La gráfica de la derecha", rect: [272, 20, 175, 140], texto: "Lo que se escribe al día en la tarjeta, según cuántas muestras van en cada transacción." }
     requiere: { mover: [sensores, medidas] }
 
   - id: empareje-csv
-    tipo: pregunta
+    tipo: leer
     titulo: "Lo que un fichero de texto no resuelve"
-    texto: "Empareje cada problema del fichero CSV con lo que lo causa."
-    libro: [256, 259, 260]
+    texto: "El registro guarda cuatro medidas cada 10 s. Escriba cuántas añade al día."
+    libro: [256, 258, 259, 260]
     widget:
       tipo: figura
       figura: fig-new-18-datos
       zonas:
-        - { id: tablas, rotulo: "Las dos tablas", rect: [4, 20, 225, 125] }
-    emparejar:
-      - ["La máxima de cada día de marzo", "Hay que leer el fichero entero"]
-      - ["Un corte a mitad de escritura", "Una línea a medias"]
-      - ["Dos programas a la vez", "Se pisan"]
-      - ["Una línea sin valor", "Nada lo impide"]
-    exito: "Una base de datos resuelve las cuatro."
-    pistas:
-      - { texto: "En el fichero, nada dice dónde empieza marzo." }
+        - { id: tablas, rotulo: "Las dos tablas", rect: [4, 20, 225, 125], texto: "sensores y medidas." }
+    leer:
+      objetivo: m_dia
+      unidad: ""
+      tol: 0.01
+      rotulo: "Medidas al día"
+    exito: "34 560 al día, 12,6 millones al año. En un CSV, consultar es leerlo todo, un corte deja líneas a medias y nada impide un dato imposible: una base de datos resuelve las cuatro."
     escalera:
-      - "Uno es de búsqueda, otro de cortes, otro de accesos y otro de datos imposibles."
-    solucion: "Consultar, leerlo todo; corte, línea a medias; dos programas, se pisan; dato imposible, nada lo impide."
+      - "Un día tiene 8640 tramos de 10 s."
+    solucion: "4 · 8640 = 34 560."
+    comprobar:
+      - { m_dia: 34560 }
 
   - id: sql-select
     tipo: sql
@@ -100,26 +112,28 @@ tarjetas:
       - "Añada WHERE sensor = 4."
 
   - id: pregunta-clave
-    tipo: pregunta
+    tipo: tocar
     titulo: "La clave primaria"
-    texto: "La tabla medidas tiene la clave primaria (sensor, t). ¿Qué consigue?"
-    libro: [263, 267]
+    texto: "Encontrar el principio de marzo no debe exigir leerlo todo. Toque lo que lo consigue."
+    libro: [263, 267, 279]
     widget:
       tipo: figura
       figura: fig-new-18-datos
       zonas:
+        - { id: sensores, rotulo: "Tabla azul, a la izquierda", rect: [6, 31, 101, 70] }
+        - { id: medidas, rotulo: "Tabla naranja, en el centro", rect: [124, 31, 101, 57] }
         - { id: clave, rotulo: "Texto bajo la tabla naranja", rect: [124, 100, 100, 42] }
-    opciones:
-      - texto: "Identifica cada medida y hace de índice"
-        bien: true
-        porque: "No admite dos filas iguales, y encontrar el principio de marzo cuesta unas pocas lecturas."
-      - texto: "Solo impide medidas repetidas"
-        porque: "Además hace de índice: un árbol ordenado por sensor y por instante."
-      - texto: "Ordena los sensores por nombre"
-        porque: "Ordena las medidas por sensor y por instante, no los nombres."
+        - { id: escritura, rotulo: "La gráfica de la derecha", rect: [272, 20, 175, 140] }
+    tocar:
+      bien: [clave]
+      porque:
+        sensores: "La tabla de sensores no ordena las medidas."
+        medidas: "La tabla sola no dice dónde empieza marzo: lo dice su clave."
+        escritura: "Es lo que se escribe en la tarjeta, no cómo se busca."
+    exito: "La clave primaria (sensor, t): no admite dos filas iguales y hace de índice, un árbol ordenado por sensor y por instante. Encontrar marzo cuesta unas pocas lecturas."
     escalera:
       - "Es a la vez una restricción y un orden."
-    solucion: "Identifica la fila y hace de índice."
+    solucion: "La clave primaria (sensor, t)."
 
   - id: sql-maxima-diaria
     tipo: sql
@@ -214,48 +228,57 @@ tarjetas:
     solucion: "La clave empieza por el sensor: hay que fijarlo en el WHERE."
 
   - id: pregunta-transacciones
-    tipo: pregunta
+    tipo: leer
     titulo: "Cuánto se escribe en la tarjeta"
-    texto: "Con una transacción por muestra y el diario clásico se escriben 402 MB al día. ¿Qué cambia agrupar diez minutos de medidas?"
+    texto: "Con el diario WAL y una transacción por muestra, la base escribe 168 MB al día. Agrupar diez minutos de medidas lo divide por dieciséis: escriba lo que queda."
     libro: [275, 277, 278]
     widget:
       tipo: figura
       figura: fig-new-18-datos
       zonas:
-        - { id: escritura, rotulo: "La gráfica de la derecha", rect: [272, 20, 175, 140] }
-    opciones:
-      - texto: "Divide lo escrito por dieciséis"
-        bien: true
-        porque: "A cambio de perder como mucho esos diez minutos en un corte sin aviso."
-      - texto: "Nada: se escriben los mismos datos"
-        porque: "Cada transacción reescribe páginas completas y el diario: agrupar escribe mucho menos."
-      - texto: "Arriesga dejar la base dañada"
-        porque: "La transacción se aplica entera o nada: nunca a medias."
+        - { id: escritura, rotulo: "La gráfica de la derecha", rect: [272, 20, 175, 140], texto: "Lo escrito al día según cuántas muestras van en cada transacción." }
+    leer:
+      objetivo: W_10
+      unidad: B
+      tol: 0.02
+      rotulo: "Escrito al día"
+    exito: "10,5 MB al día, a cambio de perder como mucho diez minutos en un corte sin aviso. Cada transacción reescribe páginas de 4 KiB aunque añada pocas filas."
     escalera:
-      - "Cada transacción reescribe páginas enteras, aunque añada pocas filas."
-    solucion: "Divide lo escrito por dieciséis."
+      - "168 MB entre dieciséis."
+    solucion: "168 MB / 16 = 10,5 MB."
+    comprobar:
+      - { W_10: 10500000, W_1: 168000000, k_16: 16 }
 
   - id: porque-marcadores
-    tipo: porque
+    tipo: tocar
     titulo: "Los marcadores ?"
-    texto: "El programa inserta los valores con marcadores ?, nunca pegándolos al texto de la orden. ¿Por qué?"
-    libro: [282]
+    texto: "En el programa del libro, toque lo que mete los valores de forma que un texto de fuera nunca pueda cambiar la orden."
+    libro: [281, 282]
     widget:
       tipo: figura
-      figura: fig-new-18-datos
+      codigo:
+        lenguaje: python
+        texto: |
+          db.execute('PRAGMA journal_mode=WAL')
+          pending += [(s, t, v) for s, v in read_sensors().items()]
+          with db:                 # one transaction: all rows or none
+              db.executemany('INSERT INTO medidas VALUES (?, ?, ?)',
+                             pending)
       zonas:
-        - { id: tablas, rotulo: "Las dos tablas", rect: [4, 20, 225, 125] }
-    opciones:
-      - texto: "Hacen imposible la inyección de SQL"
-        bien: true
-        porque: "El motor recibe los valores aparte de la orden: un texto de fuera no puede cambiarla."
-      - texto: "Para que vaya más rápido"
-        porque: "El motivo es la seguridad: la inyección de SQL."
-      - texto: "Porque SQLite no admite números en la orden"
-        porque: "Los admite; el peligro es un texto que venga de fuera."
+        - { id: l13, lineas: [1], rotulo: "Primera línea" }
+        - { id: l20, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l22, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l23, lineas: [4, 5], rotulo: "Las dos últimas líneas" }
+    tocar:
+      bien: [l23]
+      porque:
+        l13: "Elige el diario WAL: escribe menos, pero no protege de nada que venga de fuera."
+        l20: "Junta las lecturas en la lista; todavía no hay orden SQL."
+        l22: "Abre la transacción: todo o nada, pero no separa los valores de la orden."
+    exito: "Los marcadores ?: el motor recibe los valores aparte de la orden, y un texto que venga de fuera no puede cambiarla. Es la inyección de SQL, y así es imposible."
     escalera:
-      - "¿Qué pasa si el nombre de un sensor llega por la red con trozos de SQL?"
-    solucion: "Hacen imposible la inyección de SQL."
+      - "Busque los signos de interrogación."
+    solucion: "Las del INSERT … VALUES (?, ?, ?)."
 
   - id: pregunta-copia
     tipo: pregunta

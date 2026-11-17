@@ -170,9 +170,9 @@
   <div class="a12" data-paso-tocar>
     <p aria-live="polite" data-elegidas={ea.elegidas.join(' ')}>
       {#if ea.elegidas.length}
-        {a.todas ? 'Ha elegido: ' : 'Ha elegido '}{ea.elegidas.map((z) => textoPlano(wf.zonas.find((q) => q.id === z)?.rotulo)).join(', ')}.
+        {a.orden ? 'Su orden: ' : a.todas ? 'Ha elegido: ' : 'Ha elegido '}{ea.elegidas.map((z, k) => `${a.orden ? `${k + 1}. ` : ''}${textoPlano(wf.zonas.find((q) => q.id === z)?.rotulo)}`).join(', ')}.
       {:else}
-        <span class="a12-suave">{a.todas ? 'Toque todas las que respondan; vuelva a tocar una para quitarla.' : 'Toque la zona que responde (en la figura o en la lista).'}</span>
+        <span class="a12-suave">{a.orden ? 'Tóquelas en su orden; volver a tocar una la quita, con las que van detrás.' : a.todas ? 'Toque todas las que respondan; vuelva a tocar una para quitarla.' : 'Toque la zona que responde (en la figura o en la lista).'}</span>
       {/if}
     </p>
   </div>

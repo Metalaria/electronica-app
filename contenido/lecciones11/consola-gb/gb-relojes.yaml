@@ -2,6 +2,8 @@
 # ciclo de máquina y PHI del cartucho (÷ 4), el puerto serie con el reloj interno (8192 Hz, ÷ 2⁹) y el cuadro: 456
 # puntos por línea y 154 líneas, unos 59,7 Hz. No hay versión PAL ni NTSC: la pantalla va dentro. Fuentes: los datos
 # de la consola (gb#n), Pan Docs «Video Display» y el libro (contadores que dividen por 2ⁿ, 9.5; el cristal de 2¹⁵ Hz).
+# 1.2.1: el camino del reloj se toca en orden en la foto; el divisor del puerto serie es un explorar con meta; los cuadros
+# de una Game Boy europea se escriben (los mismos 59,7 Hz).
 leccion: consola-gb/gb-relojes
 
 libro:
@@ -31,18 +33,30 @@ modelo:
 
 tarjetas:
   - id: explore-reloj
-    tipo: explorar
+    tipo: tocar
+    fase: "Ordene"
     titulo: "Un cristal para todo"
-    texto: "Toque el cristal, el chip que lo divide y la ranura, que recibe PHI."
+    texto: "Siga el reloj: toque, en orden, el cristal, el chip que lo divide y la ranura que recibe PHI."
     libro: ["gb#5", "gb#51", "gb#52"]
-    requiere: { mover: [xtal, soc, cart] }
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: xtal, hotspot: xtal, rotulo: "Cristal X1", texto: "4,194304 MHz entre CK1 y CK2." }
-        - { id: soc, hotspot: soc, rotulo: "SoC", texto: "Saca el punto de la pantalla y PHI." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "Recibe PHI: 1,048576 MHz." }
+        - { id: xtal, hotspot: xtal, rotulo: "Pieza ovalada, a la izquierda" }
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, a la derecha" }
+    tocar:
+      bien: [xtal, soc, cart]
+      orden: true
+      porque:
+        amp: "El amplificador de audio no usa el reloj: amplifica el sonido."
+    pistas:
+      - { texto: "El reloj nace en el cristal, el SoC lo divide y el cartucho recibe PHI." }
+    exito: "4,194304 MHz entre CK1 y CK2; el SoC saca el punto de la pantalla y PHI, 1,048576 MHz, para el cartucho."
+    escalera:
+      - "Lo primero es el cristal."
+    solucion: "Cristal X1, SoC y ranura."
 
   - id: por-que-potencia
     tipo: porque
@@ -95,9 +109,9 @@ tarjetas:
       - { f_phi: 1048576 }
 
   - id: ajuste-serie
-    tipo: ajuste
+    tipo: explorar
     titulo: "El reloj del puerto serie"
-    texto: "Con el reloj interno, el puerto de enlace va a 8192 Hz. ¿Cuántas divisiones por dos hacen falta?"
+    texto: "Con el reloj interno, el puerto de enlace va a 8192 Hz. Divida el cristal por dos las veces que haga falta."
     libro: ["gb#58", "cap09#61"]
     inicio: { k: 6 }
     widget:
@@ -109,15 +123,13 @@ tarjetas:
       marcas:
         - { x: "k", y: "f_ser", rotulo: "{{f_ser}}" }
       mandos: [ { valor: k, min: 6, max: 12, paso: 1, rotulo: "Divisiones por dos, k" } ]
-    ajuste:
-      valor: f_ser
-      objetivo: 8192
-      tol: 0.001
-      rotulo: "Reloj del puerto serie"
-      bajo: "Demasiado lento: quite una división."
-      alto: "Demasiado rápido: añada una división."
-      dentro: "8192 Hz justos."
-    exito: "Nueve divisiones por dos: 2²² ÷ 2⁹ = 2¹³ = 8192 Hz."
+    objetivo:
+      condiciones:
+        - { valor: f_ser, objetivo: 8192, tol: 0.001, rotulo: "Puerto serie: {{f_ser}}" }
+      logrado: "{{k}} divisiones por dos: 2²² ÷ 2⁹ = 2¹³ = 8192 Hz justos."
+      pistas:
+        - { cuando: { valor: f_ser, mayor: 8200 }, texto: "Demasiado rápido: añada una división." }
+        - { texto: "Demasiado lento: quite una división." }
     escalera:
       - "8192 Hz es 2¹³; el cristal, 2²²."
     solucion: "k = 9."
@@ -183,26 +195,29 @@ tarjetas:
       - { con: { L: 154 }, f_cuadro: 59.73 }
 
   - id: por-que-sin-pal
-    tipo: predecir
+    tipo: leer
     titulo: "¿Una Game Boy PAL?"
-    texto: "Una Mega Drive europea va a 50 Hz. ¿Y una Game Boy europea?"
-    libro: ["gb#73", "gb#35", "gb#71"]
+    texto: "Una Mega Drive europea va a 50 Hz. Una Game Boy europea dibuja 154 líneas de 456 puntos con el mismo cristal: escriba cuántos cuadros por segundo."
+    libro: ["gb#73", "gb#35", "gb#71", "gb#70"]
+    fijar: { L: 154 }
     widget:
       tipo: figura
       consola: { maquina: gb, foto: lcd-f }
       zonas:
         - { id: lcd, hotspot: f-lcd, rotulo: "Su propia pantalla" }
-    opciones:
-      - texto: "Igual, unos 59,7 Hz: no hay televisor que seguir."
-        bien: true
-        porque: "Lleva su propia pantalla: el cuadro lo marcan el cristal y las 154 líneas."
-      - texto: "A 50 Hz, como las consolas PAL."
-        porque: "Las de sobremesa siguen al televisor; la Game Boy no se conecta a ninguno."
-      - texto: "Depende del cartucho."
-        porque: "El juego no elige el cuadro: lo fijan el cristal y las líneas."
+    leer:
+      objetivo: f_cuadro
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Cuadros por segundo"
+      errores:
+        - { expr: "50", texto: "Las de sobremesa siguen al televisor; la Game Boy no se conecta a ninguno." }
+    exito: "Unos 59,7 Hz en todas: lleva su propia pantalla, y el cuadro lo marcan el cristal y las 154 líneas."
     escalera:
-      - "¿A qué se conecta la Game Boy para dar imagen?"
-    solucion: "Unos 59,7 Hz en todas: la pantalla va dentro."
+      - "4,194304 MHz ÷ (456 × 154)."
+    solucion: "Unos 59,7 Hz, como cualquier otra."
+    comprobar:
+      - { f_cuadro: 59.73 }
 
   - id: empareje-cifras
     tipo: pregunta

@@ -3,6 +3,11 @@
 # (C_j/C_j0), con m de 0,33 o 0,5 (bloque 203) y V_0 = 0,7 V, la barrera de la unión de silicio (bloque 45). El ajuste
 # «a la mitad» es un ejemplo mío de cómo se sintoniza un varicap. La de difusión, C_d = τ·I/V_T (bloque 205), en valor
 # relativo a 1 mA (sin inventar τ). El tiempo de tránsito, τ_B = W²/(2D) con 0,5 µm y 35 cm²/s (bloque 212).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la capacidad se baja a la mitad con m = 0,33 (objetivo) y con
+# m = 0,5 (ajuste), la capacidad de difusión con 100 mA y el tránsito con la base a la mitad se predicen (simular), la
+# base de 36 ps se busca con la fórmula a la vista y f_T se marca en la curva de |β| de la figura 25.12 (β₀ = 100,
+# f_β = 10 MHz, f_T = 1 GHz). Quedan dos preguntas de opciones (más corriente, más lento; romper el compromiso, que
+# recoge la tabla antes emparejada).
 leccion: cap26/sec-26.7
 
 libro:
@@ -19,6 +24,8 @@ libro:
   212: "Con una base de 0,5 µm y D = 35 cm²/s"
   215: 'f_("T") = (g_(m))/("2" π'
   216: "Hay, por tanto, una corriente óptima para la velocidad"
+  214: "la frecuencia a la que la ganancia de corriente cae a la unidad"
+  225: "la ganancia de corriente |β| frente a la frecuencia"
   219: "Región de deriva gruesa y poco dopada"
   222: "mayor campo crítico de ruptura"
   "cap26#45": "una barrera de potencial de unos 0,7 V en silicio"
@@ -31,18 +38,24 @@ modelo:
     I_f: { sim: "I", nombre: "corriente directa", unidad: A, valor: 0.001 }
     W_b: { sim: "W", nombre: "espesor de la base", unidad: m, valor: 0.0000005 }
     D_n: { sim: "D", nombre: "coeficiente de difusión", unidad: "m²/s", valor: 0.0035 }
+    b_0: { sim: "β_{0}", nombre: "β en continua", unidad: "", valor: 100 }
+    f_b: { sim: "f_{β}", nombre: "frecuencia de −3 dB de β", unidad: Hz, valor: 10000000 }
   calculos:
     C_r: { expr: "1/(1 + V_R/V_0)^m_j", sim: "C_{j}/C_{j0}", nombre: "capacidad relativa", unidad: "", cifras: 3 }
     C_d: { expr: "I_f/0.001", sim: "C_{d}/C_{d}(1 mA)", nombre: "capacidad de difusión relativa a 1 mA", unidad: "", cifras: 3 }
     t_B: { expr: "W_b^2/(2*D_n)", sim: "τ_{B}", nombre: "tiempo de tránsito", unidad: s }
     t_m: { expr: "(W_b/2)^2/(2*D_n)", sim: "τ_{B}", nombre: "con la base a la mitad", unidad: s }
+    t_2: { expr: "t_B/2", sim: "τ_{B}/2", nombre: "la mitad del tiempo", unidad: s }
+    C_1: { expr: "I_f/I_f", sim: "1", nombre: "sin cambio", unidad: "", cifras: 3 }
+    f_T: { expr: "b_0*f_b", sim: "f_{T}", nombre: "frecuencia de transición", unidad: Hz }
 
 tarjetas:
   - id: explore-agotamiento
     tipo: explorar
     titulo: "Un condensador que cambia con la tensión"
-    texto: "Capacidad de la zona de agotamiento frente a la tensión inversa. Súbala y cambie el perfil de dopaje."
+    texto: "Capacidad de la zona de agotamiento frente a la tensión inversa. Con el perfil de m = 0,33, súbala hasta la mitad de la capacidad."
     libro: [202, 203]
+    inicio: { V_R: 0, m_j: 0.5 }
     widget:
       tipo: grafica
       x: { id: vr, min: 0, max: 20, unidad: V, rotulo: "V_{R}" }
@@ -55,7 +68,20 @@ tarjetas:
       mandos:
         - { valor: V_R, min: 0, max: 20, paso: 0.5, rotulo: "Tensión inversa" }
         - { valor: m_j, lista: [0.33, 0.5], rotulo: "Exponente m" }
-    requiere: { mover: [V_R, m_j] }
+    objetivo:
+      condiciones:
+        - { valor: C_r, objetivo: 0.5, tol: 0.02, rotulo: "C_{j}/C_{j0}: {{C_r}}" }
+        - { valor: m_j, max: 0.33, rotulo: "m = 0,33" }
+      logrado: "Con m = 0,33 hacen falta {{V_R}}: el perfil de dopaje decide cuánto se mueve la capacidad con la tensión."
+      pistas:
+        - { cuando: { valor: m_j, mayor: 0.33 }, texto: "Elija el perfil de m = 0,33." }
+        - { cuando: { valor: C_r, menor: 0.49 }, texto: "Se ha pasado: baje la tensión inversa." }
+        - { texto: "Aún sobra capacidad: suba la tensión inversa." }
+    escalera:
+      - "La zona de agotamiento se ensancha con la tensión inversa, y C = ε · A/W baja."
+    solucion: "Unos 5 V con m = 0,33."
+    comprobar:
+      - { con: { m_j: 0.33, V_R: 5 }, C_r: 0.5, tol: 0.01 }
 
   - id: ajuste-varicap
     tipo: ajuste
@@ -86,32 +112,24 @@ tarjetas:
       dentro: "La mitad: con m = 0,5, el paréntesis (1 + V_{R}/V_{0}) ya vale cuatro."
 
   - id: prediga-difusion
-    tipo: predecir
+    tipo: simular
     titulo: "En directa, otra capacidad"
-    texto: "El mismo diodo conduce 100 mA en lugar de 1 mA. ¿Qué le pasa a su capacidad de difusión?"
+    texto: "El mismo diodo conduce 100 mA en lugar de 1 mA. ¿Por cuánto se multiplica su capacidad de difusión?"
     libro: [205, 206]
     fijar: { I_f: 0.1 }
-    widget:
-      tipo: grafica
-      x: { id: ix, min: 0.0001, max: 0.1, unidad: A, rotulo: "I", escala: log }
-      y: { min: 0.1, max: 1000, unidad: "", rotulo: "C_{d}/C_{d}(1 mA)", escala: log }
-      curvas:
-        - { expr: "ix/0.001", color: naranja, rotulo: "C_{d}" }
-      lectura: { valor: C_d, rotulo: "Capacidad frente a la de 1 mA" }
-      ocultar: true
-    opciones:
-      - texto: "Se multiplica por cien"
-        bien: true
-        porque: "C_{d} = τ · I/V_{T}: proporcional a la corriente. Cien veces más corriente, cien veces más capacidad."
-      - texto: "No cambia: la fija la geometría"
-        porque: "Esa es la de agotamiento, C = ε · A/W. La de difusión es carga almacenada, y crece con la corriente."
-      - texto: "Baja, como al subir la tensión inversa"
-        porque: "En inversa baja la de agotamiento. En directa manda la de difusión, que sube con la corriente."
+    simular:
+      objetivo: C_d
+      unidad: ""
+      tol: 0.05
+      rotulo: "Capacidad frente a la de 1 mA"
+      errores:
+        - { expr: "C_1", texto: "Esa es la de agotamiento, que fija la geometría. La de difusión es carga almacenada y crece con la corriente." }
+    exito: "Por cien: C_{d} = τ · I/V_{T}, proporcional a la corriente. En directa domina sobre la de agotamiento."
     escalera:
       - "¿Qué aparece en el numerador de C_{d} = τ · I/V_{T}?"
     solucion: "Cien veces mayor: C_{d} es proporcional a la corriente."
     comprobar:
-      - { C_d: 100 }
+      - { C_d: 100, C_1: 1 }
 
   - id: por-que-lento
     tipo: porque
@@ -138,40 +156,31 @@ tarjetas:
     solucion: "Más corriente es más carga almacenada, y vaciarla es la recuperación inversa."
 
   - id: prediga-transito
-    tipo: predecir
+    tipo: simular
     titulo: "Una base el doble de fina"
-    texto: "En un bipolar, los portadores cruzan la base por difusión. Si la base se reduce a la mitad, ¿qué le pasa al tiempo de tránsito?"
-    libro: [209, 210, 211]
+    texto: "Los portadores cruzan una base de 0,5 µm en 36 ps. Si la base se reduce a la mitad, ¿cuánto tardan?"
+    libro: [209, 210, 211, 212]
     fijar: { W_b: 0.0000005, D_n: 0.0035 }
-    widget:
-      tipo: grafica
-      x: { id: w, min: 0, max: 0.000001, unidad: m, rotulo: "W" }
-      y: { min: 0, max: 0.00000000016, unidad: s, rotulo: "τ_{B}" }
-      curvas:
-        - { expr: "w^2/(2*D_n)", color: azul, rotulo: "τ_{B}" }
-      lectura: { valor: t_m, rotulo: "Con la base a la mitad" }
-      ocultar: true
-    opciones:
-      - texto: "Se divide por cuatro"
-        bien: true
-        porque: "τ_{B} = W²/(2D): va con el cuadrado del espesor."
-      - texto: "Se divide por dos"
-        porque: "Sería así si fuera proporcional al espesor. Por difusión, va con su cuadrado."
-      - texto: "No cambia"
-        porque: "Cuanto más fina la base, antes la cruzan: de ahí las bases finísimas de los transistores de RF."
+    simular:
+      objetivo: t_m
+      unidad: s
+      tol: 0.05
+      rotulo: "Tiempo de tránsito"
+      errores:
+        - { expr: "t_2", texto: "Sería así si fuera proporcional al espesor. Por difusión, va con su cuadrado." }
+    exito: "La cuarta parte, 9 ps: τ_{B} = W²/(2D) va con el cuadrado del espesor."
     escalera:
       - "Mire la potencia de W en τ_{B} = W²/(2D)."
-    solucion: "La cuarta parte: el tiempo va con W²."
+    solucion: "36 ps / 4 = 9 ps."
     comprobar:
-      - { t_B: 36e-12, t_m: 9e-12, tol: 0.01 }
+      - { t_B: 36e-12, t_m: 9e-12, t_2: 18e-12, tol: 0.01 }
 
   - id: formula-transito
-    tipo: formula
+    tipo: explorar
     titulo: "El tiempo de tránsito"
-    texto: "D = 35 cm²/s en silicio. Cambie el espesor de la base."
+    texto: "τ_{B} = W²/(2D), con D = 35 cm²/s en silicio. Busque el espesor de base que da 36 ps."
     libro: [210, 212]
-    ec: 210
-    sustitucion: "{{W_b}}² / (2 · {{D_n}}) = {{t_B}}"
+    inicio: { W_b: 0.000001 }
     fijar: { D_n: 0.0035 }
     widget:
       tipo: grafica
@@ -184,31 +193,24 @@ tarjetas:
       lectura: { valor: t_B, rotulo: "Tiempo de tránsito" }
       mandos:
         - { valor: W_b, min: 0.0000001, max: 0.000001, paso: 0.0000001, rotulo: "Espesor de la base" }
-    comprobar:
-      - { D_n: 0.0035 }
-
-  - id: empareje-compromiso
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que se gana y lo que se paga"
-    texto: "Una cada objetivo con lo que exige y lo que empeora."
-    libro: [219]
-    emparejar:
-      - ["Más tensión de ruptura", "Deriva gruesa y poco dopada: peor resistencia y velocidad"]
-      - ["Más velocidad", "Regiones delgadas: peor tensión de ruptura"]
-      - ["Más corriente", "Más área: todas las capacidades crecen"]
-    exito: "Elegir un dispositivo es siempre un compromiso, nunca optimizar una sola variable."
-    pistas:
-      - { texto: "Lo delgado es rápido, pero aguanta menos tensión." }
+    objetivo:
+      condiciones:
+        - { valor: t_B, objetivo: 36e-12, tol: 0.03, rotulo: "τ_{B}: {{t_B}}" }
+      logrado: "{{W_b}}² / (2 · {{D_n}}) = {{t_B}}: varios gigahercios, en el orden de magnitud correcto."
+      pistas:
+        - { cuando: { valor: t_B, mayor: 37e-12 }, texto: "Demasiado lento: base más fina." }
+        - { texto: "Más rápido de la cuenta: base algo más gruesa." }
     escalera:
-      - "Más área es más corriente, y también más capacidad."
-    solucion: "Ruptura–deriva gruesa, velocidad–delgado, corriente–área."
+      - "Pruebe con media micra."
+    solucion: "0,5 µm: 36 ps."
+    comprobar:
+      - { con: { W_b: 0.0000005 }, t_B: 36e-12, tol: 0.01 }
 
   - id: romper-compromiso
     tipo: pregunta
     titulo: "Mejorar las tres a la vez"
     texto: "¿Cómo se consigue más ruptura, menos resistencia y más velocidad a la vez?"
-    libro: [222]
+    libro: [219, 222]
     widget:
       tipo: figura
       figura: fig-26.12
@@ -217,7 +219,7 @@ tarjetas:
     opciones:
       - texto: "Con un semiconductor de mayor campo crítico de ruptura"
         bien: true
-        porque: "La región de deriva puede ser mucho más delgada para la misma tensión: eso aportan SiC y GaN."
+        porque: "En silicio, ruptura pide deriva gruesa; velocidad, regiones delgadas; corriente, área. Con más campo crítico la deriva adelgaza: SiC y GaN."
       - texto: "Con más área de silicio"
         porque: "Más área baja la resistencia, pero sube todas las capacidades."
       - texto: "Dopando más la región de deriva"
@@ -227,26 +229,34 @@ tarjetas:
     solucion: "Cambiar de material: SiC o GaN, con mayor campo crítico."
 
   - id: corriente-optima
-    tipo: pregunta
-    titulo: "La corriente más rápida"
-    texto: "f_{T} crece con la corriente de polarización porque g_{m} crece. ¿Hasta dónde?"
-    libro: [215, 216]
+    tipo: marcar
+    titulo: "La frecuencia de transición"
+    texto: "La ganancia de corriente cae con la frecuencia. Marque f_{T}, donde |β| baja a la unidad."
+    nota: "Valores de la figura del libro."
+    libro: [214, 215, 216, 225]
     widget:
-      tipo: figura
-      figura: fig-26.12
-      zonas:
-        - { id: ft, rotulo: "El punto de |β| = 1", rect: [385, 115, 50, 45] }
-    opciones:
-      - texto: "Hasta un techo; a corriente alta cae: hay una corriente óptima"
-        bien: true
-        porque: "La capacidad de difusión crece al ritmo de g_{m} y fija el techo, 1/(2π · τ_{F}); la alta inyección la hace caer."
-      - texto: "Sin límite: g_{m} es proporcional a la corriente"
-        porque: "Las capacidades también crecen con la corriente, y acaban mandando."
-      - texto: "No depende de la corriente"
-        porque: "Sí depende: f_{T} = g_{m}/(2π · (C_{π} + C_{µ})), y g_{m} es proporcional a I_{C}."
+      tipo: grafica
+      x: { id: fx, min: 100000, max: 10000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.3, max: 300, unidad: "", rotulo: "|β|", escala: log }
+      curvas:
+        - { expr: "b_0/sqrt(1 + (fx/f_b)^2)", color: naranja, rotulo: "|β|" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_T"
+      tol: 0.03
+      inicio: { x: 1000000, y: 1 }
+      rotulo: "f_{T}"
+    pistas:
+      - { cuando: { valor: marca_x, menor: 300000000 }, texto: "Ahí |β| aún es mayor que uno: siga hacia la derecha." }
+      - { texto: "Ahí ya está por debajo de uno: algo más a la izquierda." }
+    exito: "1 GHz = β₀ · f_{β}. f_{T} crece con la corriente hasta un techo, 1/(2π · τ_{F}), y a corriente alta cae: hay una corriente óptima."
     escalera:
-      - "¿Qué capacidad crece al mismo ritmo que g_{m}?"
-    solucion: "Hasta un techo, y luego cae: se polariza en la corriente óptima."
+      - "Por encima de f_{β}, |β| cae diez veces por década: de 100 a 1 en dos décadas."
+    solucion: "En 1 GHz: 100 · 10 MHz."
+    comprobar:
+      - { f_T: 1000000000, f_b: 10000000, b_0: 100 }
 
   - id: resumen
     tipo: resumen

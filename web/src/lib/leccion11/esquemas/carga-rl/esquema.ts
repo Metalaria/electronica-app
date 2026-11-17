@@ -15,6 +15,12 @@ const d: DefinicionEsquema = {
     i0: { descripcion: 'corriente de la bobina en t = 0 (A); sin ella, cero' },
     interruptor: { interruptor: true, descripcion: 'conmutador: 1 conectada a la fuente, 0 descarga por la resistencia (sin él, conectada)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { a: 'Tras el conmutador', c: 'Entre la resistencia y la bobina', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama del circuito' },
+    zonas: { fuente: 'Fuente', interruptor: 'Conmutador', r: 'Resistencia', l: 'Bobina' },
+  }),
   observables: {
     i: { medida: 'i(vmed)', analisis: 'tran', unidad: 'A', descripcion: 'corriente del lazo, i(t)' },
     vl: { medida: 'v(c)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de la bobina' },

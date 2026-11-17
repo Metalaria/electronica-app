@@ -3,6 +3,11 @@
 #   de desmagnetización y las tres formas de cruzar la barrera) y la foto 33.5 de la fuente del grabador de DVD.
 # - Sin paso práctico: no hay un cálculo ni una medida que el lector pueda hacer aquí (el transformador con números
 #   es la sección 33.15, sec-33.15).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): un explorar nuevo sube el D del forward hasta el límite en el
+# que el núcleo aún se vacía (objetivo; flujo en tanto por uno con un bobinado de desmagnetización de las mismas
+# espiras que el primario, valor de ejemplo: da el 50 % del bloque 122); se tocan en la figura el bobinado de
+# desmagnetización, el entrehierro, el RCD y la realimentación que no cruza, y en la foto el transformador. Quedan dos
+# preguntas (la conducción del flyback y el CTR); la comparación, la normativa y el drenador pasan al resumen.
 leccion: cap33/sec-33.4
 
 libro:
@@ -23,29 +28,76 @@ libro:
   128: "el diseño debe funcionar con su valor de final de vida"
   129: "su regulación es mediocre porque incluye las caídas y la dispersión"
   130: "un aislador digital para gobernar el interruptor"
+  132: "un transformador con aislamiento certificado, distancias respetadas en la placa"
   133: "Un transformador que aísla eléctricamente no aísla normativamente"
   135: "la suma de la entrada, la tensión reflejada del secundario y el pico de dispersión"
   136: "Flyback y forward comparados"
   137: "el filtro de entrada de red con su choque de 30 mH"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    D_f: { sim: "D", nombre: "ciclo de trabajo del forward", unidad: "", valor: 0.3 }
+  calculos:
+    r_f: { expr: "max(0, 2*D_f - 1)", sim: "ΔB", nombre: "flujo que queda al final de cada ciclo, en tanto por uno", unidad: "" }
 
 tarjetas:
   - id: explore-topologias
-    tipo: explorar
+    tipo: tocar
     titulo: "Dos maneras de cruzar"
-    texto: "Toque las piezas de cada topología: el flyback almacena y entrega; el forward transfiere directamente."
-    libro: [108, 110, 114, 116, 119, 121, 136]
+    texto: "El forward transfiere directamente, pero su núcleo se magnetiza al conducir. Toque lo que lo vacía en cada ciclo."
+    libro: [108, 110, 119, 121, 136]
     widget:
       tipo: figura
       figura: fig-33.4
       zonas:
-        - { id: rcd, rotulo: "Flyback, junto al primario", rect: [36, 36, 40, 58], texto: "El snubber RCD: recoge el pico de la inductancia de dispersión. No es opcional." }
-        - { id: entrehierro, rotulo: "Flyback, en el núcleo", rect: [98, 60, 45, 42], texto: "El entrehierro: donde se guarda el campo. Un flyback quiere almacenar energía." }
-        - { id: diodo-fb, rotulo: "Flyback, a la salida", rect: [122, 22, 40, 38], texto: "En inversa mientras conduce el interruptor: no sale nada hasta el corte." }
-        - { id: bobina-fw, rotulo: "Forward, a la salida", rect: [384, 22, 42, 38], texto: "La bobina de salida promedia, como en un reductor." }
-        - { id: nr, rotulo: "Forward, a la izquierda", rect: [246, 72, 40, 42], texto: "El bobinado de desmagnetización, N_{r}: vacía el núcleo en cada ciclo." }
-    requiere: { mover: [rcd, entrehierro, bobina-fw] }
+        - { id: rcd, rotulo: "Flyback, junto al primario", rect: [36, 36, 40, 58] }
+        - { id: entrehierro, rotulo: "Flyback, en el núcleo", rect: [98, 60, 45, 42] }
+        - { id: diodo-fb, rotulo: "Flyback, a la salida", rect: [122, 22, 40, 38] }
+        - { id: bobina-fw, rotulo: "Forward, a la salida", rect: [384, 22, 42, 38] }
+        - { id: nr, rotulo: "Forward, a la izquierda", rect: [246, 72, 40, 42] }
+    tocar:
+      bien: [nr]
+      porque:
+        rcd: "Es el snubber RCD del flyback: recoge el pico de la dispersión."
+        entrehierro: "Es el entrehierro del flyback, donde guarda el campo."
+        diodo-fb: "Es el diodo de salida del flyback, en inversa mientras conduce el interruptor."
+        bobina-fw: "La bobina de salida del forward promedia, como en un reductor; no vacía el núcleo."
+    exito: "El bobinado de desmagnetización, N_{r}: devuelve la energía del núcleo antes del ciclo siguiente."
+    escalera:
+      - "Busque un tercer bobinado en el transformador del forward."
+    solucion: "El bobinado de desmagnetización, a la izquierda del forward."
+
+  - id: explore-desmag
+    tipo: explorar
+    titulo: "El precio del forward"
+    texto: "Valores de ejemplo: desmagnetización con las mismas espiras que el primario. Suba D todo lo posible sin que el flujo crezca de un ciclo a otro."
+    libro: [121, 122]
+    inicio: { D_f: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 4, unidad: "", rotulo: "t / T" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "flujo, en tanto por uno" }
+      curvas:
+        - { expr: "floor(t)*r_f + min(t - floor(t), D_f) - min(max(0, t - floor(t) - D_f), D_f)", color: naranja, rotulo: "flujo del núcleo" }
+      lectura: { valor: D_f, rotulo: "Ciclo de trabajo" }
+      datos:
+        - { valor: r_f, rotulo: "Queda al final de cada ciclo: {{r_f}}" }
+      mandos:
+        - { valor: D_f, min: 0.1, max: 0.8, paso: 0.05, rotulo: "Ciclo de trabajo, D" }
+    objetivo:
+      condiciones:
+        - { valor: D_f, min: 0.5, rotulo: "D: {{D_f}}" }
+        - { valor: r_f, max: 0.0001, rotulo: "Sobrante: {{r_f}}" }
+      logrado: "D = {{D_f}}: el núcleo tarda en vaciarse lo mismo que en llenarse. Con más, el flujo sube ciclo a ciclo y acabaría saturando."
+      pistas:
+        - { cuando: { valor: r_f, mayor: 0 }, texto: "Se ha pasado: el flujo ya no vuelve a cero y crece en cada ciclo." }
+        - { texto: "El núcleo todavía se vacía con margen: suba D." }
+    escalera:
+      - "Desmagnetizar tarda lo mismo que magnetizar: ¿cuánto puede durar la conducción?"
+    solucion: "D = 0,5: típicamente el 50 % con bobinado de desmagnetización."
+    comprobar:
+      - { con: { D_f: 0.5 }, r_f: 0 }
+      - { con: { D_f: 0.6 }, r_f: 0.2 }
 
   - id: prediga-conduccion
     tipo: predecir
@@ -97,7 +149,7 @@ tarjetas:
     tipo: tocar
     titulo: "Lo que no es opcional"
     texto: "La parte del flujo que no llega al secundario produce un pico al cortar. Toque lo que lo recoge."
-    libro: [116]
+    libro: [116, 135]
     widget:
       tipo: figura
       figura: fig-33.4
@@ -110,59 +162,16 @@ tarjetas:
       porque:
         entrehierro: "El entrehierro guarda la energía útil; el pico viene de la dispersión."
         diodo-fb: "El diodo del secundario no ve el flujo que no llega al secundario."
-    exito: "El snubber RCD: sin él, el pico de la dispersión puede destruir el interruptor."
+    exito: "El snubber RCD. En el drenador se ve la entrada, más la reflejada del secundario, más ese pico: si roza la ruptura, el snubber está mal."
     escalera:
       - "El pico aparece en el drenador del interruptor: busque lo que está junto al primario."
     solucion: "El snubber RCD junto al primario."
 
-  - id: comparar
-    tipo: pregunta
-    titulo: "Flyback frente a forward"
-    texto: "Empareje cada rasgo con su topología."
-    libro: [115, 117, 120, 122, 124]
-    widget:
-      tipo: figura
-      figura: fig-33.4
-      zonas:
-        - { id: todo, rotulo: "Las dos topologías", rect: [0, 0, 453, 190] }
-    emparejar:
-      - ["Flyback", "Muy pocos componentes; hasta unos 100 W"]
-      - ["Forward", "Mejor aprovechamiento del núcleo; de 100 a 500 W"]
-      - ["Push-pull y puentes", "Más potencia; riesgo de conducción cruzada"]
-    exito: "Cada salto de potencia reparte el trabajo de otra manera."
-    pistas:
-      - { texto: "Toda la energía del flyback pasa por el núcleo en paquetes: eso lo limita." }
-    escalera:
-      - "El que domina en cargadores es el de menos componentes."
-    solucion: "Flyback: pocos componentes y poca potencia. Forward: 100 a 500 W. Puentes: más, con conducción cruzada."
-
-  - id: desmagnetizar
-    tipo: porque
-    titulo: "El precio del forward"
-    texto: "El ciclo de trabajo del forward se limita, típicamente, al 50 %. ¿Por qué?"
-    libro: [121, 122]
-    widget:
-      tipo: figura
-      figura: fig-33.4
-      zonas:
-        - { id: nr, rotulo: "Forward, a la izquierda", rect: [246, 72, 40, 42] }
-    opciones:
-      - texto: "Hay que desmagnetizar el núcleo antes del ciclo siguiente"
-        bien: true
-        porque: "Hay que dejar tiempo para vaciar el núcleo antes del ciclo siguiente, o acabaría saturando."
-      - texto: "Para que la salida no supere la entrada"
-        porque: "La relación de espiras permite cualquier salida; el límite está en el tiempo de desmagnetización."
-      - texto: "Para que el diodo de salida descanse"
-        porque: "El diodo no es el límite: lo es el núcleo, que sin desmagnetizar acabaría saturando."
-    escalera:
-      - "Si el núcleo necesita un tiempo para vaciarse, ¿cuánto puede durar la conducción?"
-    solucion: "El núcleo se magnetiza al conducir: necesita tiempo para vaciarse, el 50 % con bobinado de desmagnetización."
-
   - id: lazo-aislado
-    tipo: pregunta
+    tipo: tocar
     titulo: "La realimentación cruza"
-    texto: "El control está en el primario y la salida en el secundario. Empareje cada solución con su rasgo."
-    libro: [126, 128, 129, 130]
+    texto: "El control está en el primario y la salida en el secundario. Toque la solución que no cruza la barrera, aunque regule mal."
+    libro: [126, 129, 130]
     widget:
       tipo: figura
       figura: fig-33.4
@@ -170,16 +179,15 @@ tarjetas:
         - { id: opto, rotulo: "Recuadro de la izquierda", rect: [7, 203, 137, 45] }
         - { id: auxiliar, rotulo: "Recuadro del centro", rect: [157, 203, 137, 45] }
         - { id: secundario, rotulo: "Recuadro de la derecha", rect: [305, 203, 137, 45] }
-    emparejar:
-      - ["Optoacoplador y TL431", "Lo estándar; diseñar con el CTR de final de vida"]
-      - ["Bobinado auxiliar", "No cruza la barrera, pero regula mal"]
-      - ["Control en el secundario", "Un aislador digital gobierna el interruptor"]
-    exito: "Tres compromisos entre coste, regulación y rendimiento."
-    pistas:
-      - { texto: "El que regula mal incluye las caídas y la dispersión." }
+    tocar:
+      bien: [auxiliar]
+      porque:
+        opto: "Optoacoplador y TL431: lo estándar, y cruza la barrera con luz."
+        secundario: "Control en el secundario: un aislador digital cruza la barrera para gobernar el interruptor."
+    exito: "El bobinado auxiliar refleja la salida sin cruzar: no cuesta nada, pero incluye las caídas y la dispersión."
     escalera:
-      - "Empiece por el que no cruza la barrera."
-    solucion: "Opto y TL431: lo estándar. Bobinado auxiliar: gratis y mediocre. Secundario: aislador digital."
+      - "Busque la que mide en el primario."
+    solucion: "El del centro: el bobinado auxiliar."
 
   - id: ctr
     tipo: pregunta
@@ -202,28 +210,6 @@ tarjetas:
     escalera:
       - "¿Hacia dónde se mueve el CTR con los años?"
     solucion: "Con el CTR de final de vida."
-
-  - id: normativa
-    tipo: pregunta
-    titulo: "Aislar no es certificar"
-    texto: "Un transformador aísla eléctricamente la salida de la red. ¿Basta para vender la fuente como barrera de seguridad?"
-    libro: [133]
-    widget:
-      tipo: figura
-      figura: fig-33.4
-      zonas:
-        - { id: barrera, rotulo: "La línea discontinua del flyback", rect: [90, 0, 40, 190] }
-    opciones:
-      - texto: "No, salvo que esté construido y ensayado para ello"
-        bien: true
-        porque: "Hace falta aislamiento certificado, distancias en la placa y un optoacoplador también certificado."
-      - texto: "Sí: si aísla, aísla"
-        porque: "Aislar eléctricamente no es aislar normativamente: es la diferencia entre un montaje y un producto."
-      - texto: "Sí, si además lleva fusible"
-        porque: "El fusible protege de sobrecorrientes; la barrera exige transformador, distancias y opto certificados."
-    escalera:
-      - "Piense en la diferencia entre un montaje que funciona y un producto que puede venderse."
-    solucion: "No: la barrera exige transformador certificado, distancias respetadas y optoacoplador certificado."
 
   - id: toque-foto
     tipo: tocar
@@ -249,33 +235,12 @@ tarjetas:
       - "El transformador separa la red, a la izquierda, de las salidas, a la derecha."
     solucion: "El bloque del centro: el transformador de ferrita."
 
-  - id: drenador
-    tipo: pregunta
-    titulo: "Lo que se ve en el drenador"
-    texto: "Al cortar, la tensión de drenador de un flyback suma tres cosas. Ordénelas de la base a la punta."
-    libro: [135]
-    widget:
-      tipo: figura
-      figura: fig-33.4
-      zonas:
-        - { id: rcd, rotulo: "Flyback, junto al primario", rect: [36, 36, 40, 58] }
-    ordenar:
-      - "La tensión de entrada"
-      - "La tensión reflejada del secundario"
-      - "El pico de la dispersión"
-    exito: "Si el pico se acerca a la ruptura del transistor, el snubber está mal o el transformador se ha degradado."
-    pistas:
-      - { texto: "La base es lo que hay con el interruptor abierto y sin nada más: la entrada." }
-    escalera:
-      - "El pico es lo último: dura un instante sobre las otras dos."
-    solucion: "Entrada, reflejada del secundario y, encima, el pico de dispersión."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [110, 116, 119, 128, 133]
+    libro: [110, 115, 116, 119, 122, 128, 132, 133, 117, 120, 124]
     ideas:
-      - { titulo: "Flyback.", texto: "Bobinas acopladas que almacenan: entrehierro, pocos componentes y snubber RCD obligatorio." }
-      - { titulo: "Forward.", texto: "Transfiere directamente y promedia con una bobina; hay que desmagnetizar cada ciclo." }
+      - { titulo: "Flyback.", texto: "Bobinas acopladas que almacenan: entrehierro, pocos componentes, snubber RCD obligatorio; hasta unos 100 W." }
+      - { titulo: "Forward.", texto: "Transfiere directamente y promedia con una bobina; desmagnetiza cada ciclo; de 100 a 500 W." }
       - { titulo: "El lazo cruza.", texto: "Optoacoplador con el CTR de final de vida, bobinado auxiliar o control en el secundario." }
-      - { titulo: "Normativa.", texto: "Aislar eléctricamente no es aislar normativamente." }
+      - { titulo: "Normativa.", texto: "Aislar eléctricamente no es aislar normativamente: transformador, distancias y opto certificados." }

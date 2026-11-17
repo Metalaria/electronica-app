@@ -2,6 +2,10 @@
 # La regla de los divisores (bloque 346) con el esquema filtro-rl: una ferrita como L = 10 µH en serie (ejemplo) y la
 # carga como R, ruido de 10 MHz (ωL ≈ 628 Ω). La salida es v_R: con carga de 10 Ω atenúa unos 36 dB; con 100 kΩ, nada.
 # Zonas de la figura 32.13 (svg_vista 450,72 × 229,71) y de la foto 32.14 (1600 × 619 px).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la carga con la que la ferrita no hace nada se busca y lo que
+# atenúa con 10 Ω se predice y se simula; una tarjeta nueva lleva el condensador de ejemplo (1 nF) a atenuar subiendo la
+# impedancia de la fuente; la resistencia de descarga se toca en la fig. 32.13. El banco va en la explicación del montaje
+# y la ordenación al resumen. Quedan dos emparejamientos (formas, montaje); ninguna pregunta de opciones.
 leccion: cap32/sec-32.11
 
 libro:
@@ -22,6 +26,7 @@ libro:
   356: "el filtro está tapando el síntoma a un coste mucho mayor"
   359: "esa discrepancia casi siempre se debe al montaje y no al componente"
   "cap32#361": "con un condensador X2 añadido en sus terminales"
+  360: "Los dos modos de interferencia conducida y el componente que actúa sobre cada uno"
 
 modelo:
   valores:
@@ -29,45 +34,23 @@ modelo:
     f_n: { sim: "f", nombre: "frecuencia del ruido", unidad: Hz, valor: 10000000 }
     L_f: { sim: "L", nombre: "ferrita en serie", unidad: H, valor: 10e-6 }
     R_c: { sim: "R_{carga}", nombre: "impedancia de la carga", unidad: Ω, valor: 10 }
+    R_g: { sim: "R_{fuente}", nombre: "impedancia de la fuente", unidad: Ω, valor: 1 }
+    C_e: { sim: "C", nombre: "condensador en paralelo, de ejemplo", unidad: F, valor: 1e-9 }
   calculos:
     x_l: { expr: "2*pi*f_n*L_f/R_c", sim: "ωL/R", nombre: "ωL/R", unidad: "" }
     A_r: { expr: "V_p/sqrt(1 + x_l^2)", sim: "v_{carga}", nombre: "ruido en la carga", unidad: V }
     d_r: { expr: "20*log10(A_r/V_p)", sim: "atenuación", nombre: "atenuación", unidad: dB, cifras: 3 }
+    A_c: { expr: "V_p/sqrt(1 + (2*pi*f_n*R_g*C_e)^2)", sim: "v_{carga}", nombre: "ruido tras el condensador", unidad: V }
+    d_c: { expr: "20*log10(A_c/V_p)", sim: "atenuación", nombre: "atenuación del condensador", unidad: dB, cifras: 3 }
 
 tarjetas:
-  - id: prediga-ferrita
-    tipo: predecir
-    titulo: "Una ferrita en serie"
-    texto: "Pone una ferrita en serie delante de una entrada de alta impedancia para frenar un ruido de 10 MHz. ¿Atenúa?"
-    libro: [346]
-    fijar: { R_c: 100000 }
-    widget:
-      tipo: circuito
-      esquema: filtro-rl
-      piezas: { fuente: V_p, f: f_n, r: R_c, l: L_f }
-      lectura: { valor: d_r, rotulo: "Atenuación" }
-      mide: { vr_db: d_r }
-      ocultar: true
-    opciones:
-      - texto: "Casi nada: un elemento en serie solo atenúa si detrás hay impedancia baja"
-        bien: true
-        porque: "Es un divisor: con una carga enorme detrás, la ferrita se lleva una parte mínima del ruido."
-      - texto: "Mucho: la ferrita siempre frena la alta frecuencia"
-        porque: "Frena la corriente, pero la tensión sobre una carga alta apenas cambia: es un divisor."
-      - texto: "Lo amplifica"
-        porque: "Una ferrita sola no amplifica; aquí sencillamente no divide."
-    escalera:
-      - "Trátelo como un divisor: ferrita arriba, carga abajo."
-    solucion: "Casi nada: con 100 kΩ detrás, la ferrita de unos cientos de ohmios no divide."
-    comprobar:
-      - { f_n: 10000000 }
-
   - id: explore-ferrita
     tipo: explorar
     titulo: "Depende de lo que hay detrás"
-    texto: "La misma ferrita frente a cargas distintas. Cambie la impedancia de la carga y mire la atenuación del ruido."
+    texto: "La misma ferrita frente a cargas distintas. Busque la carga con la que la ferrita deja pasar el ruido de 10 MHz casi entero."
     nota: "Ferrita de ejemplo, 10 µH."
     libro: [346]
+    inicio: { R_c: 10 }
     widget:
       tipo: circuito
       esquema: filtro-rl
@@ -81,9 +64,75 @@ tarjetas:
           - { expr: "-10*log10(1 + (2*pi*nu*L_f/R_c)^2)", color: azul, rotulo: "v_{carga}", mide: vr_db }
       mandos:
         - { valor: R_c, lista: [10, 1000, 100000], rotulo: "Carga" }
-    requiere: { mover: [R_c] }
+    objetivo:
+      condiciones:
+        - { valor: d_r, min: -0.1, rotulo: "Atenuación: {{d_r}}" }
+      logrado: "Con {{R_c}} detrás, la ferrita atenúa {{d_r}}: casi nada. Un elemento en serie solo atenúa si detrás hay una impedancia baja."
+      pistas:
+        - { texto: "Aún atenúa: pruebe con una carga de impedancia mayor." }
+    escalera:
+      - "Es un divisor: ferrita arriba, carga abajo."
+    solucion: "Con 100 kΩ detrás, casi nada."
     comprobar:
       - { L_f: 10e-6 }
+      - { con: { R_c: 100000 }, d_r: -0.00017, tol: 0.05 }
+
+  - id: prediga-ferrita
+    tipo: simular
+    titulo: "Una ferrita en serie"
+    texto: "La ferrita de 10 µH en serie delante de una carga de 10 Ω, con un ruido de 10 MHz. ¿Cuántos decibelios lo atenúa?"
+    libro: [346]
+    fijar: { R_c: 10 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rl
+      piezas: { fuente: V_p, f: f_n, r: R_c, l: L_f }
+      lectura: { valor: d_r, rotulo: "Atenuación" }
+      mide: { vr_db: d_r }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: d_r
+      unidad: dB
+      tol: 0.02
+      rotulo: "Atenuación"
+      medida: vr_db
+      errores:
+        - { expr: "-d_r", texto: "Atenúa: el ruido en la carga baja, así que los decibelios son negativos." }
+    exito: "Unos −36 dB: frente a 10 Ω, la reactancia de la ferrita a 10 MHz se lleva casi todo el ruido."
+    escalera:
+      - "Divisor: la reactancia ωL de la ferrita frente a los 10 Ω de la carga."
+    solucion: "ωL/R ≈ 62,8: unos −36 dB."
+    comprobar:
+      - { d_r: -35.96, x_l: 62.8, tol: 0.002 }
+
+  - id: explore-condensador
+    tipo: explorar
+    titulo: "Un condensador en paralelo"
+    texto: "Un condensador en paralelo solo atenúa si delante hay una impedancia alta. Cambie la impedancia de la fuente hasta que deje pasar menos de una centésima del ruido."
+    nota: "Condensador de ejemplo, 1 nF; 10 MHz."
+    libro: [346, 347]
+    inicio: { R_g: 1 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_n, r: R_g, c: C_e }
+      lectura: { valor: d_c, rotulo: "Atenuación a 10 MHz" }
+      mide: { vc_db: d_c }
+      mandos:
+        - { valor: R_g, lista: [1, 100, 10000], rotulo: "Impedancia de la fuente" }
+    objetivo:
+      condiciones:
+        - { valor: d_c, max: -40, rotulo: "Atenuación: {{d_c}}" }
+      logrado: "Con {{R_g}} delante, {{d_c}}: el condensador va del lado de la impedancia alta; la bobina, del de la baja."
+      pistas:
+        - { texto: "Aún atenúa poco: más impedancia delante." }
+    escalera:
+      - "Es un divisor: la fuente arriba, el condensador abajo."
+    solucion: "10 kΩ delante: unos −56 dB."
+    comprobar:
+      - { con: { R_g: 1 }, d_c: -0.017, tol: 0.05 }
+      - { con: { R_g: 10000 }, d_c: -55.96, tol: 0.002 }
 
   - id: empareje-formas
     tipo: pregunta
@@ -130,38 +179,40 @@ tarjetas:
     solucion: "Los bobinados del centro: el choke de modo común."
 
   - id: descarga
-    tipo: porque
+    tipo: tocar
     titulo: "La resistencia de descarga"
-    texto: "Un filtro de red lleva una resistencia en paralelo con los condensadores X. ¿Para qué?"
-    libro: [338, 344]
+    texto: "Al desenchufar el equipo, las clavijas no deben dar una descarga. Toque el componente que lo evita."
+    libro: [338, 344, 360]
     widget:
       tipo: figura
       figura: fig-32.12
       zonas:
         - { id: rd, rotulo: "Resistencia de la izquierda", rect: [85, 45, 35, 70] }
-    opciones:
-      - texto: "Para que al desenchufar las clavijas no den una descarga"
-        bien: true
-        porque: "Sin ella, el filtro queda cargado. Es un requisito normativo y una cortesía elemental."
-      - texto: "Para filtrar el modo común"
-        porque: "Va entre líneas y no filtra nada: solo descarga los X."
-      - texto: "Para limitar la corriente si el X falla"
-        porque: "Si un X falla en cortocircuito, lo que actúa es el fusible."
+        - { id: cx1, rotulo: "Condensador de la izquierda", rect: [125, 45, 35, 70] }
+        - { id: choke, rotulo: "Bobinados del centro", rect: [180, 15, 60, 115] }
+        - { id: cy, rotulo: "Condensadores de la derecha", rect: [300, 38, 42, 70] }
+    tocar:
+      bien: [rd]
+      porque:
+        cx1: "El condensador X es justo lo que queda cargado al desenchufar."
+        choke: "El choke frena el modo común; no descarga nada."
+        cy: "Los Y van a tierra y derivan el modo común; no descargan los X."
+    exito: "La resistencia de descarga, en paralelo con los X: sin ella el filtro queda cargado. Es un requisito normativo y una cortesía elemental."
     escalera:
       - "¿Qué queda en un condensador al quitarle la tensión de golpe?"
-    solucion: "Descarga los X al desenchufar: sin ella, las clavijas pican."
+    solucion: "La resistencia de la izquierda."
 
   - id: empareje-montaje
     tipo: pregunta
     fase: "Empareje"
     titulo: "Lo que arruina un filtro"
     texto: "Una cada error de montaje con su consecuencia."
-    libro: [350, 351, 352]
+    libro: [350, 351, 352, 359]
     emparejar:
       - ["Filtro lejos de la entrada", "El cable ya ha recogido y radiado por el camino"]
       - ["Tierra de los Y con un cable largo", "Su inductancia la anula"]
       - ["Entrada y salida juntas o en paralelo", "El ruido salta por encima del filtro"]
-    exito: "Los filtros integrados en el conector de red lo resuelven por construcción."
+    exito: "Los filtros integrados en el conector lo resuelven por construcción. Por eso, en el banco, un filtro atenúa menos que en su hoja: casi siempre por el montaje."
     pistas:
       - { texto: "Un cable largo a frecuencias altas es, sobre todo, una inductancia." }
     escalera:
@@ -192,53 +243,12 @@ tarjetas:
       - "Busque lo que está soldado a los terminales, fuera de la caja."
     solucion: "La pieza azul soldada a los terminales."
 
-  - id: ordene-actuacion
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El filtro es el último recurso"
-    texto: "Ordene las actuaciones contra la interferencia conducida."
-    libro: [355, 356]
-    ordenar:
-      - "Reducir la emisión en origen"
-      - "Contener localmente, en la propia fuente conmutada"
-      - "Filtrar en la entrada"
-      - "Apantallar"
-    exito: "Un equipo que necesita un filtro enorme suele tener un problema en el primer paso."
-    pistas:
-      - { texto: "Lo más barato es no generar el ruido." }
-    escalera:
-      - "Del origen hacia fuera."
-    solucion: "Origen, contener, filtrar y apantallar."
-
-  - id: banco-filtro
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Mide el espectro del cable de red con y sin el filtro, y atenúa bastante menos que en su hoja de datos. ¿Por qué?"
-    libro: [359]
-    widget:
-      tipo: circuito
-      esquema: filtro-rl
-      piezas: { fuente: V_p, f: f_n, r: R_c, l: L_f }
-      lectura: { valor: d_r, rotulo: "Atenuación" }
-      mide: { vr_db: d_r }
-    opciones:
-      - texto: "Casi siempre por el montaje, no por el componente"
-        bien: true
-        porque: "Cables largos, tierra deficiente o entrada y salida juntas le quitan eficacia."
-      - texto: "Porque la hoja de datos miente"
-        porque: "La hoja da el filtro bien montado; la diferencia la pone su montaje."
-      - texto: "Porque el filtro está estropeado"
-        porque: "Es posible, pero lo habitual es que falle el montaje."
-    escalera:
-      - "¿Qué ha cambiado entre la hoja de datos y su placa?"
-    solucion: "El montaje: la discrepancia casi siempre es suya."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [338, 339, 342, 346, 350]
+    libro: [338, 339, 342, 346, 350, 355, 356]
     ideas:
       - { titulo: "Cada componente, su modo.", texto: "X entre líneas para el diferencial; Y a tierra y choke para el común." }
       - { titulo: "Divisores.", texto: "Serie si detrás hay impedancia baja; paralelo si delante hay alta: L, π o T." }
       - { titulo: "El montaje.", texto: "En la entrada, tierra corta, entrada y salida separadas." }
-      - { titulo: "El último recurso.", texto: "Antes, reducir en origen y contener." }
+      - { titulo: "El último recurso.", texto: "Antes, reducir en origen y contener; después, filtrar y apantallar." }

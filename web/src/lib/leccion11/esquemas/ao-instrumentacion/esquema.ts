@@ -34,6 +34,13 @@ const d: DefinicionEsquema = {
     ref: { descripcion: 'tensión de la patilla de referencia, V_ref (V; sin ella, masa)' },
     a0: { descripcion: 'ganancia en lazo abierto de los tres operacionales (sin ella, 10⁷)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { aoa: 'el operacional de la entrada 1', aob: 'el operacional de la entrada 2', aoc: 'el operacional restador' },
+  medible: () => ({
+    puntos: { in1: 'Entrada 1', in2: 'Entrada 2', n1: 'Arriba de R_{G}', n2: 'Abajo de R_{G}', o1: 'Salida del primer operacional', o2: 'Salida del segundo operacional', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vrg: 'Rama de R_{G}' },
+    zonas: { rg: 'Resistencia de ganancia, R_{G}', r: 'Resistencias de la primera etapa', r3: 'Resistencias de entrada del restador', r4: 'Resistencias de realimentación del restador', aoa: 'Operacional de la entrada 1', aob: 'Operacional de la entrada 2', aoc: 'Operacional restador' },
+  }),
   observables: {
     vo: { medida: 'v(out)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida' },
     vo1: { medida: 'v(o1)', analisis: 'op', unidad: 'V', descripcion: 'salida del seguidor U₁' },

@@ -20,6 +20,13 @@ const d: DefinicionEsquema = {
     rf: { obligatoria: true, descripcion: 'resistencia de realimentación, R_f (Ω)', color: 'naranja' },
     ...piezasAO(),
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { ao: 'el amplificador operacional' },
+  medible: (c) => ({
+    puntos: { in: 'Primera entrada', in2: 'Segunda entrada', ...(c.tiene('entrada3') ? { in3: 'Tercera entrada' } : {}), mn: 'Entrada inversora (−)', out: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vm1: 'Rama de la primera entrada', vm2: 'Rama de la segunda entrada', ...(c.tiene('entrada3') ? { vm3: 'Rama de la tercera entrada' } : {}), vmf: 'Rama de realimentación' },
+    zonas: { ...(c.tiene('entrada') ? { entrada: 'Fuente de entrada' } : {}), r1: 'Resistencia de la primera entrada', r2: 'Resistencia de la segunda entrada', ...(c.tiene('r3') ? { r3: 'Resistencia de la tercera entrada' } : {}), rf: 'Resistencia de realimentación', ao: 'Amplificador operacional' },
+  }),
   observables: {
     ...observablesAO(),
     vmenos: { medida: 'v(mn)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la entrada − (la masa virtual)' },

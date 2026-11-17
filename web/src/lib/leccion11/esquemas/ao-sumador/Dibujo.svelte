@@ -3,6 +3,7 @@
   // 2 and 3 below, each with its resistor to a bus that goes up to N; R_f above from N to the output; the + input to
   // ground.
   import type { PropsDibujo } from '../dibujos';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import Entrada from '../kit/Entrada.svelte';
   import Et from '../kit/Et.svelte';
@@ -44,11 +45,16 @@
   <Et x={270} y={22} t={c.rot('rf')} ancla="middle" color="naranja" />
   <path class="hilo" d="M320 40 H340 V130 M310 130 H440" data-red="out"></path>
   <circle class="nodo" cx="340" cy="130" r="4.5" data-red="out"></circle>
-  <AO x={250} y={130} />
+  <g data-pieza="ao"><AO x={250} y={130} /></g>
   <path class="hilo" d="M250 150 H230 V240" data-red="0"></path>
   <EtiquetasAO {c} x={262} y={190} ao />
   <circle class="borne" cx="440" cy="130" r="5"></circle>
   <Et x={440} y={114} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
   <path class="hilo" d="M40 240 H440" data-red="0"></path>
   <circle class="borne" cx="440" cy="240" r="5"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Rama x={55} y={110} medidor="vm1" />
+  <Rama x={105} y={170} medidor="vm2" />
+  {#if tres}<Rama x={175} y={210} medidor="vm3" />{/if}
+  <Rama x={200} y={62} medidor="vmf" />
 </Lienzo>

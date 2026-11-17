@@ -4,6 +4,9 @@
 # - La caída en el cable del bloque 262 (a 20 V, la cuarta parte de corriente y la dieciseisava parte de pérdidas).
 # Paso práctico: «averia» de una placa propia que «no arranca con este cargador»: falta R_d (el pin CC queda a 5 V y la
 # fuente no la detecta, bloques 254 y 277) o la fuente no presenta R_p (el pin queda a 0 V).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se pide a la fuente que anuncie 3 A (objetivo), se calcula el
+# pin CC con 22 kΩ en el simulador, se consigue que pasen los 5 A acordados (cable con chip, objetivo) y se calcula
+# la fracción de pérdidas a 20 V. Quedan dos preguntas (dos R_d y los 20 V sin negociar); niveles y protección, al resumen.
 leccion: cap39/sec-39.8
 
 libro:
@@ -29,16 +32,25 @@ modelo:
     V_cc: { sim: "5 V", nombre: "alimentación de la fuente", unidad: V, valor: 5 }
     R_p: { sim: "R_{p}", nombre: "resistencia de la fuente", unidad: Ω, valor: 56000 }
     R_d: { sim: "R_{d}", nombre: "resistencia del consumidor", unidad: Ω, valor: 5100 }
+    I_ac: { sim: "I_{acordada}", nombre: "corriente acordada", unidad: A, valor: 5 }
+    chip: { tipo: interruptor, nombre: "cable con chip identificador", valor: 0 }
+    V_a: { sim: "V_{a}", nombre: "tensión del perfil bajo", unidad: V, valor: 5 }
+    V_b: { sim: "V_{b}", nombre: "tensión del perfil alto", unidad: V, valor: 20 }
   calculos:
     V_pin: { expr: "V_cc*R_d/(R_p + R_d)", sim: "V_{CC}", nombre: "tensión del pin CC", unidad: V }
     I_cc: { expr: "V_cc/(R_p + R_d)", sim: "I", nombre: "corriente del pin CC", unidad: A }
+    V_inv: { expr: "V_cc*R_p/(R_p + R_d)", sim: "V", nombre: "tensión en R_p (error)", unidad: V }
+    I_c: { expr: "chip*I_ac + (1 - chip)*min(I_ac, 3)", sim: "I", nombre: "corriente por el cable", unidad: A }
+    r_I: { expr: "100*V_a/V_b", sim: "I_{b}/I_{a}", nombre: "corriente a tensión alta, en %", unidad: "%" }
+    r_P: { expr: "100*(V_a/V_b)^2", sim: "P_{b}/P_{a}", nombre: "pérdidas a tensión alta, en %", unidad: "%" }
 
 tarjetas:
   - id: explore-cc
     tipo: explorar
     titulo: "El pin CC"
-    texto: "La fuente pone R_{p} hacia 5 V; el consumidor, R_{d} a masa. Cambie lo que anuncia la fuente y mire el pin."
+    texto: "La fuente pone R_{p} hacia 5 V; el consumidor, R_{d} a masa. Haga que la fuente anuncie 3 A y mire el pin."
     libro: [251, 252, 278]
+    inicio: { R_p: 56000 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -48,33 +60,40 @@ tarjetas:
       mide: { salida: V_pin, corriente: I_cc }
       mandos:
         - { valor: R_p, lista: [56000, 22000, 10000], nombres: ["por defecto", "1,5 A", "3 A"], rotulo: "Lo que ofrece la fuente" }
-    requiere: { mover: [R_p] }
+    objetivo:
+      condiciones:
+        - { valor: V_pin, min: 1.5, rotulo: "Pin CC: {{V_pin}}" }
+      logrado: "Con {{R_p}} el pin marca {{V_pin}}: el consumidor lee ahí, sin protocolo, que puede tomar 3 A."
+      pistas:
+        - { texto: "Cuanto menor R_{p}, más sube el pin y más corriente anuncia." }
+    escalera:
+      - "Es un divisor: R_{d}/(R_{p} + R_{d}) de los 5 V."
+    solucion: "R_{p} de 10 kΩ: unos 1,69 V."
     comprobar:
       - { con: { R_p: 56000 }, V_pin: 0.42, tol: 0.01 }
       - { con: { R_p: 10000 }, V_pin: 1.69, tol: 0.01 }
 
   - id: prediga-15
-    tipo: predecir
+    tipo: simular
     titulo: "Lo que lee el consumidor"
     texto: "La fuente ofrece 1,5 A con R_{p} de 22 kΩ hacia 5 V. ¿Qué tensión ve el consumidor en su R_{d} de 5,1 kΩ?"
     libro: [252]
-    fijar: { R_p: 22000 }
+    fijar: { R_p: 22000, R_d: 5100 }
     widget:
       tipo: circuito
       esquema: divisor
       piezas: { fuente: V_cc, arriba: R_p, abajo: R_d }
-      lectura: { valor: V_pin, rotulo: "Tensión en el pin CC" }
-      mide: { salida: V_pin }
-      ocultar: true
+      mide: { salida: V_pin, corriente: I_cc }
       mandos: []
-    opciones:
-      - texto: "Unos 0,94 V"
-        bien: true
-        porque: "5 × 5,1/(22 + 5,1): información analógica, sin protocolo, que entiende cualquier consumidor."
-      - texto: "Unos 0,42 V"
-        porque: "Esa es la de 56 kΩ, la corriente por defecto."
-      - texto: "Unos 1,69 V"
-        porque: "Esa es la de 10 kΩ, la de 3 A."
+    simular:
+      medida: salida
+      objetivo: V_pin
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión en el pin CC"
+      errores:
+        - { expr: "V_inv", texto: "Esa es la que cae en R_{p}, la de la fuente: el consumidor mide sobre su R_{d}, a masa." }
+    exito: "Unos 0,94 V: información analógica, sin protocolo, que entiende cualquier consumidor."
     escalera:
       - "Es un divisor: R_{d}/(R_{p} + R_{d}) de los 5 V."
     solucion: "5 V × 5,1/(22 + 5,1) ≈ 0,94 V: la fuente ofrece 1,5 A."
@@ -133,27 +152,6 @@ tarjetas:
       - "Sana, el pin marca unos 0,42 V. ¿Hacia dónde se va si falta la de abajo? ¿Y la de arriba?"
     solucion: "Pin CC en 5 V: falta R_{d} en la placa."
 
-  - id: empareje-niveles
-    tipo: pregunta
-    titulo: "Tres niveles"
-    texto: "Empareje cada nivel con cómo decide la alimentación."
-    libro: [245, 246, 247]
-    widget:
-      tipo: figura
-      figura: fig-39.16
-      zonas:
-        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
-    emparejar:
-      - ["USB clásico", "5 V; 100 mA al conectar, hasta 500 mA pidiéndolos"]
-      - ["USB-C sin Power Delivery", "5 V; la corriente, por resistencias en el pin CC"]
-      - ["Power Delivery", "Un protocolo que negocia tensión y corriente"]
-    exito: "Con USB-C la tensión no la fija el conector: se acuerda."
-    pistas:
-      - { texto: "Solo uno usa un protocolo digital." }
-    escalera:
-      - "Uno pide en la enumeración; otro lee una resistencia; otro conversa."
-    solucion: "Clásico, enumeración; USB-C, resistencias en CC; PD, protocolo que negocia."
-
   - id: espera-20
     tipo: pregunta
     titulo: "Esperaba 20 V"
@@ -177,77 +175,70 @@ tarjetas:
     solucion: "5 V: sin negociar, no sube."
 
   - id: cable-20v
-    tipo: pregunta
+    tipo: simular
     titulo: "La caída en el cable"
-    texto: "La misma potencia pasa de 5 V a 20 V por el mismo cable. ¿Qué les pasa a las pérdidas en el cable?"
+    texto: "La misma potencia pasa de 5 V a 20 V por el mismo cable. ¿Qué porcentaje de las pérdidas de antes queda?"
     libro: [262]
     widget:
-      tipo: figura
-      figura: fig-39.16
-      zonas:
-        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
-    opciones:
-      - texto: "Caen a la dieciseisava parte"
-        bien: true
-        porque: "La corriente es la cuarta parte, y las pérdidas van con su cuadrado."
-      - texto: "Caen a la cuarta parte"
-        porque: "Esa es la corriente; las pérdidas, I²·R, bajan con el cuadrado."
-      - texto: "No cambian: la potencia es la misma"
-        porque: "La potencia entregada sí, pero la corriente baja, y con ella las pérdidas."
+      tipo: grafica
+      x: { id: vb, min: 5, max: 20, unidad: V, rotulo: "Tensión del perfil" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "Pérdidas en el cable" }
+      curvas:
+        - { expr: "100*(V_a/vb)^2", color: naranja, rotulo: "pérdidas, % de las de 5 V" }
+        - { expr: "100*V_a/vb", color: azul, rotulo: "corriente, % de la de 5 V", discontinua: true }
+      lectura: { valor: r_P, rotulo: "Pérdidas a 20 V" }
+      ocultar: true
+    simular:
+      objetivo: r_P
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Pérdidas a 20 V"
+      errores:
+        - { expr: "r_I", texto: "Esa es la corriente, la cuarta parte; las pérdidas, I²·R, bajan con el cuadrado." }
+    exito: "Un 6,25 %, la dieciseisava parte: por eso las potencias grandes usan los perfiles de tensión alta."
     escalera:
       - "Pérdidas en el cable: I²·R. ¿Qué le pasa a I?"
-    solucion: "Cuarta parte de corriente: dieciseisava parte de pérdidas."
+    solucion: "La cuarta parte de corriente da la dieciseisava parte de pérdidas: un 6,25 %."
+    comprobar:
+      - { r_P: 6.25, r_I: 25, V_a: 5, V_b: 20 }
 
   - id: cable-chip
-    tipo: pregunta
+    tipo: explorar
     titulo: "Un cable sin chip"
-    texto: "Fuente y consumidor acuerdan 5 A, pero el cable no lleva chip identificador. ¿Qué corriente circula?"
+    texto: "Fuente y consumidor acuerdan 5 A. Consiga que circulen de verdad por el cable."
     libro: [260]
+    fijar: { I_ac: 5 }
+    inicio: { chip: 0 }
     widget:
-      tipo: figura
-      figura: fig-39.16
-      zonas:
-        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
-    opciones:
-      - texto: "Como mucho 3 A: el límite conservador"
-        bien: true
-        porque: "Los cables de más corriente declaran sus capacidades con un chip; sin él, 3 A."
-      - texto: "5 A: lo que se ha acordado"
-        porque: "El cable también cuenta: sin chip, el sistema se queda en 3 A."
-      - texto: "Nada: no conecta"
-        porque: "Conecta, pero limitado al valor conservador."
+      tipo: grafica
+      x: { id: ia, min: 0, max: 5, unidad: A, rotulo: "Corriente acordada" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "Corriente por el cable" }
+      curvas:
+        - { expr: "chip*ia + (1 - chip)*min(ia, 3)", color: naranja, rotulo: "corriente por el cable" }
+      marcas:
+        - { x: "I_ac", y: "I_c", rotulo: "{{I_c}}" }
+      lectura: { valor: I_c, rotulo: "Corriente por el cable" }
+      mandos:
+        - { valor: chip, tipo: interruptor, rotulo: "Cable con chip identificador" }
+    objetivo:
+      condiciones:
+        - { valor: I_c, min: 4.9, rotulo: "Por el cable: {{I_c}}" }
+      logrado: "Con chip, el cable declara sus capacidades y pasan {{I_c}}. Sin él, el sistema se queda en el límite conservador."
+      pistas:
+        - { texto: "Un cable sin chip no dice cuánto aguanta: el sistema se queda corto." }
     escalera:
       - "¿Cómo sabe el sistema que el cable aguanta más?"
-    solucion: "Como mucho 3 A."
-
-  - id: proteger
-    tipo: pregunta
-    titulo: "Proteger la entrada"
-    texto: "Una placa propia negocia solo 5 V. ¿Para qué tensión hay que proteger su entrada?"
-    libro: [266]
-    widget:
-      tipo: figura
-      figura: fig-39.16
-      zonas:
-        - { id: cc, rotulo: "La figura", rect: [0, 0, 451, 249] }
-    opciones:
-      - texto: "Para la máxima que el conector puede llegar a presentar"
-        bien: true
-        porque: "Un cable o adaptador mal hecho puede aplicar una tensión que el equipo no espera."
-      - texto: "Para 5 V, que es lo que negocia"
-        porque: "Ha habido accesorios que presentaban tensiones altas a equipos de 5 V."
-      - texto: "No hace falta: el protocolo lo impide"
-        porque: "El protocolo no protege de un accesorio mal cableado."
-    escalera:
-      - "¿Qué puede hacer un adaptador mal fabricado?"
-    solucion: "Para la máxima que el conector puede presentar, no para la negociada."
+    solucion: "Un cable con chip identificador: 5 A. Sin él, como mucho 3 A."
+    comprobar:
+      - { con: { chip: 0 }, I_c: 3 }
+      - { con: { chip: 1 }, I_c: 5 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [243, 252, 254, 262]
+    libro: [243, 245, 246, 247, 252, 254, 262, 266]
     ideas:
-      - { titulo: "Se acuerda.", texto: "La tensión no la fija el conector: arranca en 5 V y se negocia." }
-      - { titulo: "El pin CC.", texto: "R_{p} y R_{d} forman un divisor: detectan, anuncian la corriente y la orientación." }
-      - { titulo: "Dos R_{d}.", texto: "Sin ellas el cargador no entrega nada." }
+      - { titulo: "Se acuerda.", texto: "La tensión no la fija el conector: arranca en 5 V y se negocia. USB clásico pide en la enumeración; USB-C sin PD lee resistencias en CC; Power Delivery negocia por protocolo." }
+      - { titulo: "El pin CC.", texto: "R_{p} y R_{d} forman un divisor: detectan, anuncian la corriente y la orientación. Sin las R_{d}, el cargador no entrega nada." }
       - { titulo: "Tensión alta.", texto: "A 20 V, la cuarta parte de corriente y la dieciseisava de pérdidas." }
+      - { titulo: "Proteger.", texto: "La entrada, para la tensión máxima que el conector puede llegar a presentar, no para la negociada." }

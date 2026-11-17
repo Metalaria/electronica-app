@@ -4,6 +4,11 @@
 # 11 kW (280-282); la tabla de los dos vatímetros (298). El desfase de 90° y 150° de la primera tarjeta es solo para
 # ver que la suma se anula con 120°. Estrella o triángulo y el neutro cortado, con el esquema «trifasica» (fuentes de
 # pico √2·230,94 V: las lecturas de las tarjetas son eficaces y las medidas, de pico).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la suma se anula buscando los 120° (objetivo); la potencia total,
+# el pico de línea, la corriente del motor, la del neutro y la potencia de Aron se escriben leyendo las gráficas; el
+# triángulo se elige hasta que la línea lleve 13 A; el neutro se corta hasta que las lámparas reciban más que nadie; la
+# tensión de línea se dibuja. Quedan dos preguntas de opciones (los terceros armónicos y el osciloscopio del kit); las
+# conexiones emparejadas pasan al «logrado» del triángulo y al resumen.
 leccion: cap24/sec-new-24-trifasica
 
 libro:
@@ -91,6 +96,9 @@ modelo:
     W_1: { expr: "V_LL*I_a*cos((ph_a - 30)*pi/180)", sim: "W₁", nombre: "lectura del primer vatímetro", unidad: W }
     W_2: { expr: "V_LL*I_a*cos((ph_a + 30)*pi/180)", sim: "W₂", nombre: "lectura del segundo vatímetro", unidad: W }
     W_t: { expr: "W_1 + W_2", sim: "P", nombre: "suma de las lecturas", unidad: W }
+    p_mal: { expr: "3*p_max", sim: "3·p_{máx}", nombre: "tres máximos sumados", unidad: W }
+    I_sin: { expr: "P_e/(sqrt(3)*V_LL*c_m)", sim: "I", nombre: "corriente sin el rendimiento", unidad: A }
+    W_d: { expr: "W_1 - W_2", sim: "W₁ − W₂", nombre: "diferencia de las lecturas", unidad: W }
     T_r: { expr: "1/f_r", sim: "T", nombre: "periodo de la red", unidad: s }
     t_mx: { expr: "-T_r/12", sim: "t", nombre: "instante del máximo de u₁₂", unidad: s }
     t_ce: { expr: "T_r/4 - T_r/12", sim: "t", nombre: "primer cero de u₁₂", unidad: s }
@@ -100,8 +108,9 @@ tarjetas:
   - id: explore-suma
     tipo: explorar
     titulo: "Tres senoides que suman cero"
-    texto: "Tres tensiones de fase de 230,9 V eficaces. Cambie el desfase entre ellas: solo con 120° la suma, a trazos, se anula en todo instante."
+    texto: "Tres tensiones de fase de 230,9 V eficaces. Cambie el desfase entre ellas hasta que la suma, a trazos, se anule en todo instante."
     libro: [245]
+    inicio: { d_g: 90 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
@@ -114,11 +123,23 @@ tarjetas:
       lectura: { valor: s_3, rotulo: "Suma, en veces una fase" }
       mandos:
         - { valor: d_g, lista: [90, 120, 150], rotulo: "Desfase entre fases" }
+    objetivo:
+      condiciones:
+        - { valor: s_3, min: -0.01, max: 0.01, rotulo: "Suma: {{s_3}}" }
+      logrado: "Con {{d_g}}, las tres suman cero en todo instante: en equilibrio, el retorno común no lleva corriente."
+      pistas:
+        - { cuando: { valor: s_3, mayor: 0.01 }, texto: "La suma aún va con v₁: separe más las fases." }
+        - { texto: "Ahora la suma va al revés: júntelas un poco." }
+    escalera:
+      - "Tres fasores iguales cierran un triángulo cuando se reparten la vuelta."
+    solucion: "120°: un tercio de vuelta."
+    comprobar:
+      - { con: { d_g: 120 }, s_3: 0 }
 
   - id: prediga-total
-    tipo: predecir
+    tipo: leer
     titulo: "La potencia de las tres"
-    texto: "Cada fase entrega 230 V y 10 A con φ = 30°: su potencia pulsa entre −308 W y 4292 W. ¿Cómo es la suma de las tres?"
+    texto: "Cada fase entrega 230 V y 10 A con φ = 30°: su potencia pulsa entre −308 W y 4292 W alrededor de 1992 W. Escriba la potencia total."
     libro: [246]
     fijar: { V_p: 230, I_p: 10, ph_c: 30 }
     widget:
@@ -129,29 +150,28 @@ tarjetas:
         - { expr: "p_med + V_p*I_p*cos(2*w_r*t - phr)", color: azul, rotulo: "p₁" }
         - { expr: "p_med + V_p*I_p*cos(2*w_r*t - phr - 4*pi/3)", color: naranja, rotulo: "p₂" }
         - { expr: "p_med + V_p*I_p*cos(2*w_r*t - phr + 4*pi/3)", color: verde, rotulo: "p₃" }
-      lectura: { valor: p_tot, rotulo: "Potencia total" }
-      ocultar: true
-    opciones:
-      - texto: "Constante: una recta en 5976 W"
-        bien: true
-        porque: "Los términos que oscilan quedan a 240° entre sí, otra terna, y se anulan. El motor da un par sin pulsación."
-      - texto: "Pulsa a 100 Hz, el triple de alto"
-        porque: "Eso pasaría si las tres pulsaran a la vez. Van desfasadas y se compensan."
-      - texto: "Pulsa al triple de frecuencia"
-        porque: "Las oscilaciones no solo se reparten: se anulan del todo. Queda la media, 3 × 1992 W."
+      mandos: []
+    leer:
+      objetivo: p_tot
+      unidad: W
+      tol: 0.02
+      rotulo: "Potencia total"
+      errores:
+        - { expr: "p_mal", texto: "Ha sumado los tres máximos, pero no llegan a la vez: van desfasados." }
+        - { expr: "p_med", texto: "Esa es la media de una sola fase. Sume las tres." }
+    exito: "Una recta en 5976 W: los términos que oscilan quedan a 240° entre sí y se anulan. El motor da un par sin pulsación."
     escalera:
-      - "Los términos oscilantes de cada fase, ¿cómo están desfasados entre sí?"
-    solucion: "Constante: 3 × 1992 = 5976 W."
+      - "Los términos oscilantes se anulan: queda la suma de las medias."
+    solucion: "3 × 1992 = 5976 W, constante."
     comprobar:
-      - { p_med: 1992, p_max: 4292, p_min: -308, p_tot: 5976 }
+      - { p_med: 1992, p_max: 4292, p_min: -308, p_tot: 5976, p_mal: 12876 }
 
   - id: formula-linea
-    tipo: formula
+    tipo: leer
     titulo: "Fase y línea"
-    texto: "Entre dos fases hay la diferencia de dos fasores a 120°: √3 veces la de fase."
+    texto: "Entre dos fases hay la diferencia de dos fasores a 120°: √3 veces la de fase. Lea en la gráfica el pico de u₁₂ y escríbalo."
     libro: [252, 254]
     ec: 252
-    sustitucion: "√3 · {{V_f}} = {{VLL}}"
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
@@ -160,40 +180,28 @@ tarjetas:
         - { expr: "Vpk*cos(w_r*t)", color: azul, rotulo: "v₁" }
         - { expr: "Vpk*cos(w_r*t - 2*pi/3)", color: naranja, rotulo: "v₂" }
         - { expr: "Vpk*cos(w_r*t) - Vpk*cos(w_r*t - 2*pi/3)", color: tinta, rotulo: "u₁₂ = v₁ − v₂" }
-      lectura: { valor: VLL, rotulo: "Tensión de línea" }
-    comprobar:
-      - { VLL: 400, Vpk: 326.6, VLLp: 565.7 }
-
-  - id: estime-pico
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "El pico entre fases"
-    texto: "La tensión de línea es de 400 V eficaces. Estime su valor de pico."
-    libro: [254]
-    estimar:
-      objetivo: "VLLp"
+      mandos: []
+    leer:
+      objetivo: VLLp
       unidad: V
-      min: 0
-      max: 800
-      paso: 1
-      inicio: 400
-      tol: 0.02
-      rotulo: "Pico de línea"
-    exito: "400 × √2 = 565,7 V; con un 10 % de más, 622 V."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 577 }, texto: "Demasiado: es el eficaz por √2, no por √3." }
-      - { texto: "Poco: el pico es √2 veces el eficaz." }
+      tol: 0.03
+      rotulo: "Pico de u₁₂"
+      errores:
+        - { expr: "VLL", texto: "Esos 400 V son el eficaz de línea. El pico es √2 veces más." }
+        - { expr: "Vpk", texto: "Ese es el pico de una fase, v₁. El de u₁₂ es √3 veces mayor." }
+    exito: "565,7 V de pico: 400 V eficaces × √2, y √3 × 326,6 V. Con un 10 % de más, 622 V."
     escalera:
-      - "Pico = eficaz × √2."
+      - "Busque la cresta de la curva negra."
+      - "O calcule: √2 × √3 × 230,9 V."
     solucion: "565,7 V."
     comprobar:
-      - { VLLp: 565.7 }
+      - { VLL: 400, Vpk: 326.6, VLLp: 565.7 }
 
   - id: estrella-triangulo
     tipo: explorar
     titulo: "Estrella o triángulo"
-    texto: "Tres resistencias de 53,3 Ω: en estrella cada una recibe la tensión de fase; en triángulo, la de línea. Cambie la conexión."
-    libro: [261, 262, 263]
+    texto: "Tres resistencias de 53,3 Ω: en estrella, cada una recibe la tensión de fase. Cambie la conexión hasta que la línea lleve unos 13 A."
+    libro: [260, 261, 262, 263]
     inicio: { tri: 0 }
     widget:
       tipo: circuito
@@ -206,43 +214,74 @@ tarjetas:
       mide: { v1_amp: Vr_p, ir1_amp: Ir_p, i1_amp: Il_p }
       mandos:
         - { valor: tri, tipo: interruptor, rotulo: "En triángulo" }
+    objetivo:
+      condiciones:
+        - { valor: I_lin, min: 12.5, rotulo: "Línea: {{I_lin}}" }
+      logrado: "En triángulo, sin neutro, cada resistencia recibe 400 V y consume el triple: {{P_r}}. Un triángulo de Z equivale a una estrella de Z/3; arrancar en estrella da un tercio del par."
+      pistas:
+        - { texto: "En estrella cada una recibe 230 V: pruebe la otra conexión." }
+    escalera:
+      - "En triángulo, cada resistencia queda entre dos fases."
+    solucion: "En triángulo: 7,5 A por rama y 13 A de línea."
     comprobar:
       - { I_r: 4.333, I_lin: 4.333, tol: 0.003 }
       - { con: { tri: 1 }, I_r: 7.505, I_lin: 13.0, tol: 0.003 }
 
   - id: formula-motor
-    tipo: formula
+    tipo: leer
     titulo: "La corriente de un motor"
-    texto: "Un motor de 11 kW en el eje, rendimiento 0,90 y cos φ = 0,85, toma 12,22 kW de la red de 400 V."
+    texto: "Un motor de 11 kW en el eje, con rendimiento 0,90 y cos φ = 0,85, en la red de 400 V. Escriba su corriente de línea."
     libro: [281, "cap24#280"]
     ec: 281
-    sustitucion: "{{P_m}} / (√3 · {{V_LL}} · {{c_m}}) = {{I_m}}"
+    widget:
+      tipo: grafica
+      x: { id: cf, min: 0.5, max: 1, unidad: "", rotulo: "cos φ" }
+      y: { min: 0, max: 40, unidad: A, rotulo: "I_{L}" }
+      curvas:
+        - { expr: "P_m/(sqrt(3)*V_LL*cf)", color: naranja, rotulo: "I_{L} con 12,22 kW" }
+      mandos: []
+    leer:
+      objetivo: I_m
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de línea"
+      errores:
+        - { expr: "I_sin", texto: "Ha usado los 11 kW del eje. De la red toma 11/0,90 = 12,22 kW." }
+    exito: "12 222 / (√3 × 400 × 0,85) = 20,75 A. Con peor cos φ, la curva sube: más corriente para la misma potencia."
+    escalera:
+      - "Primero la potencia que toma: 11 kW / 0,90."
+      - "I_{L} = P/(√3 · V_{LL} · cos φ)."
+    solucion: "20,75 A."
     comprobar:
-      - { P_m: 12222, I_m: 20.75 }
+      - { P_m: 12222, I_m: 20.75, I_sin: 18.68 }
 
   - id: estime-neutro
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Lo que lleva el neutro"
-    texto: "Una estufa de 2 kW en L1, un radiador de 1 kW en L2 y nada en L3. Estime la corriente del neutro."
+    texto: "Una estufa de 2 kW en L1, un radiador de 1 kW en L2 y nada en L3: 8,66 A y 4,33 A. Escriba la corriente eficaz del neutro."
     libro: [269]
     fijar: { P_1: 2000, P_2: 1000, P_3: 0 }
-    estimar:
-      objetivo: "I_N"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -20, max: 20, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "sqrt(2)*I_1*cos(w_r*t)", color: azul, rotulo: "i₁" }
+        - { expr: "sqrt(2)*I_2*cos(w_r*t - 2*pi/3)", color: naranja, rotulo: "i₂" }
+        - { expr: "sqrt(2)*I_1*cos(w_r*t) + sqrt(2)*I_2*cos(w_r*t - 2*pi/3)", color: tinta, rotulo: "neutro" }
+      mandos: []
+    leer:
+      objetivo: I_N
       unidad: A
-      min: 0
-      max: 20
-      paso: 0.05
-      inicio: 0
-      tol: 0.03
-      rotulo: "Corriente del neutro"
-    exito: "|8,66 + 4,33∠−120°| = 7,50 A, no la suma aritmética de 12,99 A."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 7.73 }, texto: "Demasiado: las corrientes están a 120° y se suman como fasores." }
-      - { texto: "Poco: con las cargas desiguales, el neutro sí lleva corriente." }
+      tol: 0.02
+      rotulo: "Corriente del neutro (eficaz)"
+      errores:
+        - { expr: "I_ar", texto: "Esa es la suma aritmética. Las corrientes están a 120° y se suman como fasores." }
+        - { expr: "sqrt(2)*I_N", texto: "Ese es el pico de la curva negra. Divídalo por √2." }
+    exito: "|8,66 + 4,33∠−120°| = 7,50 A, no los 12,99 A de la suma aritmética."
     escalera:
-      - "I₁ = 8,66 A a 0° e I₂ = 4,33 A a −120°."
-      - "Sume por separado las partes reales y las imaginarias de los dos fasores."
+      - "Lea el pico de la curva negra y divídalo por √2."
+      - "O sume los fasores: partes reales y partes imaginarias por separado."
     solucion: "7,50 A."
     comprobar:
       - { I_1: 8.66, I_2: 4.33, I_N: 7.5, I_ar: 12.99 }
@@ -250,7 +289,7 @@ tarjetas:
   - id: neutro-cortado
     tipo: sorpresa
     titulo: "El neutro cortado"
-    texto: "Estufa de 2 kW, radiador de 1 kW y lámparas de 200 W, una por fase. Corte el neutro: el punto de estrella se desplaza y la carga más pequeña recibe más tensión."
+    texto: "Estufa de 2 kW, radiador de 1 kW y lámparas de 200 W, una por fase. Consiga que las lámparas, la carga menor, reciban más tensión que nadie."
     libro: [270]
     fijar: { R_1: 26.45, R_2: 52.9, R_3: 264.5 }
     inicio: { n_on: 1 }
@@ -273,6 +312,15 @@ tarjetas:
       mide: { v1_amp: Up_1, v2_amp: Up_2, v3_amp: Up_3, vn_amp: Vs_p }
       mandos:
         - { valor: n_on, tipo: interruptor, rotulo: "Neutro conectado" }
+    objetivo:
+      condiciones:
+        - { valor: U_3, min: 300, rotulo: "Lámparas: {{U_3}}" }
+      logrado: "Sin neutro, el punto de estrella se desplaza {{V_s}}: la estufa recibe {{U_1}}, el radiador {{U_2}} y las lámparas, la carga menor, {{U_3}}."
+      pistas:
+        - { texto: "Con el neutro, cada carga tiene sus 230 V: córtelo." }
+    escalera:
+      - "¿Qué fija el punto de estrella de las cargas?"
+    solucion: "Cortando el neutro: 139 V, 263 V y 331 V."
     comprobar:
       - { con: { n_on: 0 }, U_1: 139, U_2: 263, U_3: 331, V_s: 112.7, tol: 0.006 }
 
@@ -303,9 +351,9 @@ tarjetas:
     solucion: "3 × 120° = 360°: los terceros armónicos están en fase y se suman."
 
   - id: aron
-    tipo: pregunta
+    tipo: leer
     titulo: "Un vatímetro en negativo"
-    texto: "Dos vatímetros en conexión de Aron sobre una carga de 400 V y 10 A con cos φ = 0,3: W₂ marca −869 W. ¿Qué ocurre?"
+    texto: "Dos vatímetros en conexión de Aron sobre una carga de 400 V y 10 A con cos φ = 0,3: W₁ marca 2947 W y W₂, −869 W. Escriba la potencia de la carga."
     libro: [298, 299]
     fijar: { V_LL: 400, I_a: 10, ph_a: 72.54 }
     widget:
@@ -317,19 +365,21 @@ tarjetas:
         - { expr: "V_LL*I_a*cos((g + 30)*pi/180)", color: naranja, rotulo: "W₂" }
       marcas:
         - { x: "ph_a", y: "W_2", rotulo: "W₂" }
-    opciones:
-      - texto: "Nada raro: por debajo de cos φ = 0,5 una lectura sale negativa; P = W₁ + W₂"
-        bien: true
-        porque: "Es lo normal en un motor en vacío. Uno analógico tiraría la aguja contra el tope: se invierte su bobina y se resta."
-      - texto: "El vatímetro está mal conectado"
-        porque: "La conexión es la correcta: con φ > 60°, cos(φ + 30°) es negativo."
-      - texto: "La carga devuelve potencia a la red"
-        porque: "La suma, 2078 W, es positiva: la carga consume. Solo una lectura es negativa."
+      mandos: []
+    leer:
+      objetivo: W_t
+      unidad: W
+      tol: 0.02
+      rotulo: "Potencia de la carga"
+      errores:
+        - { expr: "W_d", texto: "Ha restado la negativa como si fuera positiva. P = W₁ + W₂, con su signo." }
+        - { expr: "W_1", texto: "Falta sumar W₂, que es negativa." }
+    exito: "2947 − 869 = 2078 W. Por debajo de cos φ = 0,5 una lectura sale negativa: con uno analógico se invierte su bobina y se resta."
     escalera:
-      - "W₂ = V_{LL}·I_{L}·cos(φ + 30°): ¿qué signo tiene con φ = 72,5°?"
-    solucion: "W₁ = 2947 W y W₂ = −869 W: P = 2078 W."
+      - "P = W₁ + W₂, cada una con su signo."
+    solucion: "2947 + (−869) = 2078 W."
     comprobar:
-      - { W_1: 2947, W_2: -869, W_t: 2078 }
+      - { W_1: 2947, W_2: -869, W_t: 2078, W_d: 3816 }
 
   - id: dibuje-linea
     tipo: dibujar
@@ -383,30 +433,12 @@ tarjetas:
     comprobar:
       - { VLLp: 565.7 }
 
-  - id: conexiones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Estrella y triángulo"
-    texto: "Una cada conexión o maniobra con lo que la caracteriza."
-    libro: [260, 261, 263]
-    emparejar:
-      - ["Estrella", "Cada carga, la tensión de fase; puede tener neutro"]
-      - ["Triángulo", "Cada carga, la tensión de línea; sin neutro"]
-      - ["Un triángulo de Z", "Equivale a una estrella de Z/3"]
-      - ["Arranque estrella-triángulo", "Un tercio de la corriente y del par"]
-    exito: "Las mismas tres impedancias consumen el triple en triángulo."
-    pistas:
-      - { texto: "En triángulo no hay punto de estrella." }
-    escalera:
-      - "¿Qué tensión recibe cada impedancia en cada conexión?"
-    solucion: "Estrella: fase y neutro; triángulo: línea; Z en triángulo = Z/3 en estrella; arranque: un tercio."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
     libro: [245, 252, 261, 269, 272]
     ideas:
       - { titulo: "Tres fases.", texto: "Suman cero: potencia constante y retorno sin corriente en equilibrio." }
-      - { titulo: "400/230 V.", texto: "V_{LL} = √3·V_{f}; picos de 326,6 y 565,7 V." }
+      - { titulo: "400/230 V.", texto: "V_{LL} = √3·V_{f}; en estrella, cada carga la de fase; en triángulo, la de línea." }
       - { titulo: "El neutro.", texto: "Suma fasorial: 7,50 A, no 12,99; cortado, la carga menor recibe 331 V." }
       - { titulo: "Armónicos.", texto: "Los terceros se suman en el neutro: 1,73 veces una fase." }

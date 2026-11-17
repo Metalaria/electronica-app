@@ -2,6 +2,10 @@
 # dos condiciones de peor caso, la ventana vacía con 250 mW, el Zener de 1 W y 120 Ω, la r_z); 5.B, el rectificador
 # dimensionado por la corriente eficaz (13 VA, no 6; la irrupción de 39 A); 5.C, el recorte real de dos Zener en
 # oposición (±6,3 V, no 5,6), la resistencia serie y el paso bajo parásito. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): buscar la esquina que más castiga al Zener, predecir los
+# 0,387 W, abrir la ventana con el Zener de 1 W, el reto de 120 Ω, calcular la r_z, los VA y la irrupción, montar
+# los Zener de 5,6 V, el reto de 4,7 V y la corriente; se eligen por qué quema el de 6 VA y el paso bajo. La
+# corriente media por diodo queda en los textos.
 leccion: cap05/sec-5.11
 
 libro:
@@ -69,7 +73,7 @@ tarjetas:
   - id: explore-esquinas
     tipo: explorar
     titulo: "5.A: el fallo vive en las esquinas"
-    texto: "5,6 V para una carga de hasta 20 mA desde una entrada de 9 a 15 V. Recorra las esquinas: entrada mínima y máxima, con y sin carga."
+    texto: "5,6 V para una carga de hasta 20 mA desde una entrada de 9 a 15 V. Con R_{s} = 120 Ω, busque la esquina en la que el Zener disipa más."
     libro: [295, 319]
     widget:
       tipo: circuito
@@ -84,43 +88,47 @@ tarjetas:
       mandos:
         - { valor: V_zi, min: 9, max: 15, paso: 1, rotulo: "Entrada, V_{in}" }
         - { valor: z_on, tipo: interruptor, rotulo: "Carga de 20 mA" }
-    requiere: { mover: [V_zi, z_on] }
+    fijar: { R_zs: 120 }
+    inicio: { V_zi: 9, z_on: 1 }
+    objetivo:
+      condiciones:
+        - { valor: P_zz, min: 0.43, rotulo: "El Zener disipa {{P_zz}}" }
+      logrado: "Con {{V_zi}} y sin carga, el Zener lleva {{I_zz}} y disipa {{P_zz}}: la esquina alta. La baja, 9 V con carga, decide la R_{s} máxima. El fallo vive en las esquinas."
+      pistas:
+        - { cuando: { valor: z_on, min: 1 }, texto: "Con carga, parte de la corriente se va a ella: quítela." }
+        - { texto: "Suba la entrada." }
+    escalera:
+      - "R_{s} fija la corriente; sin carga, toda va al Zener."
+    solucion: "15 V sin carga: 78,3 mA y 0,44 W."
+    comprobar:
+      - { I_zz: 0.00833, tol: 0.01 }
+      - { con: { V_zi: 15, z_on: 0 }, I_zz: 0.0783, P_zz: 0.44, tol: 0.01 }
 
   - id: prediga-250mw
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Regulador de 5,6 V con R_{s} = 136 Ω, la mayor que deja 5 mA al Zener con 9 V y 20 mA. Con 15 V y sin carga, ¿cabe en un Zener de 250 mW?"
-    libro: [305, 306]
+    texto: "Regulador de 5,6 V con R_{s} = 136 Ω, la mayor que deja 5 mA al Zener con 9 V y 20 mA. Con 15 V y sin carga, ¿cuánto disipa el Zener?"
+    libro: [304, 305, 306]
     fijar: { V_zi: 15, z_on: 0, R_zs: 136 }
-    widget:
-      tipo: circuito
-      esquema: zener
-      piezas: { fuente: V_zi, rs: R_zs, vz: V_z, carga: R_zl, interruptor: z_on }
-      lectura: { valor: P_zz, rotulo: "El Zener disipa" }
-      corriente: I_zs
-      mide: { salida: V_zo, serie: I_zs, iz: I_zz }
-      ocultar: true
-    opciones:
-      - texto: "No: disiparía 0,387 W"
-        bien: true
-        porque: "Toda la corriente de R_{s} pasa por el Zener. Para no pasar de 45 mA haría falta R_{s} ≥ 211 Ω."
-      - texto: "Sí, con margen"
-        porque: "Sin carga, los 69 mA de R_{s} van todos al Zener: 0,387 W, más que sus 250 mW."
-      - texto: "Sí, justo en el límite"
-        porque: "Pasa de largo: 0,387 W frente a 0,25 W."
-    comprobar:
-      - { P_zz: 0.387, I_zz: 0.0691, tol: 0.01 }
+    simular:
+      objetivo: P_zz
+      unidad: W
+      tol: 0.02
+      rotulo: "El Zener disipa"
+      errores:
+        - { razon: { min: 0.69, max: 0.73 }, texto: "Sin carga, toda la corriente de R_{s} pasa por el Zener." }
+    exito: "0,387 W: no cabe en uno de 250 mW. Para no pasar de 45 mA haría falta R_{s} ≥ 211 Ω, y la esquina baja pide ≤ 136 Ω."
     escalera:
       - "Sin carga, toda la corriente de R_{s} pasa por el Zener: (15 − 5,6)/136."
-    solucion: "69 mA × 5,6 V = 0,387 W: no cabe en un Zener de 250 mW."
-
+    solucion: "69 mA × 5,6 V = 0,387 W."
+    comprobar:
+      - { P_zz: 0.387, I_zz: 0.0691, tol: 0.01 }
+      - { con: { z_on: 1 }, P_zz: 0.275, tol: 0.02 }
   - id: formula-ventana
-    tipo: formula
+    tipo: explorar
     titulo: "La ventana de R_{s}"
-    texto: "R_{s} debe ser menor que 136 Ω por la esquina baja y mayor que este límite por la alta. Cambie la potencia del Zener."
+    texto: "R_{s} debe ser menor que 136 Ω por la esquina baja y mayor que este límite por la alta. Elija el Zener que abre la ventana."
     libro: [300, 302, 304, 307, 311, 312]
-    ec: 302
-    sustitucion: "(15 − {{V_z}}) / {{I_zmax}} = {{R_min}}"
     widget:
       tipo: grafica
       x: { id: p, min: 0.2, max: 1.1, unidad: W, rotulo: "P_{Z}" }
@@ -135,6 +143,16 @@ tarjetas:
         - { valor: R_max, rotulo: "R_{s} máxima: {{R_max}}" }
       mandos:
         - { valor: P_Z, lista: [0.25, 1], nombres: [un cuarto de vatio, un vatio], rotulo: "Potencia del Zener" }
+    inicio: { P_Z: 0.25 }
+    objetivo:
+      condiciones:
+        - { valor: R_min, max: 136, rotulo: "R_{s} mínima: {{R_min}}" }
+      logrado: "Con {{P_Z}}, I_{Z(máx)} = {{I_zmax}} y R_{s} va de {{R_min}} a {{R_max}}. Con 250 mW, la ventana está vacía: 211 Ω frente a 136."
+      pistas:
+        - { texto: "Más potencia: sube I_{Z(máx)} y baja la R_{s} mínima." }
+    escalera:
+      - "R_{s} ≥ (V_{in(máx)} − V_{Z})/I_{Z(máx)}, y debe quedar por debajo de 136 Ω."
+    solucion: "El de 1 W: de 53 a 136 Ω."
     comprobar:
       - { R_max: 136, R_min: 211, I_zmax: 0.045, tol: 0.01 }
       - { con: { P_Z: 1 }, R_min: 53, I_zmax: 0.179, tol: 0.01 }
@@ -170,75 +188,43 @@ tarjetas:
       - { con: { R_zs: 120, V_zi: 15, z_on: 0 }, I_zz: 0.0783, P_zz: 0.44, P_rs: 0.74, tol: 0.01 }
 
   - id: estime-rz
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Y aun así, la r_{z}"
-    texto: "Con el diseño de 120 Ω, la corriente del Zener va de 8,3 a 78,3 mA entre las esquinas. Con r_{z} = 10 Ω, estime cuánto se mueve la salida."
+    texto: "Con el diseño de 120 Ω, la corriente del Zener va de 8,3 a 78,3 mA entre las esquinas. Con r_{z} = 10 Ω, ¿cuánto se mueve la salida?"
     libro: [313, 315, 316]
-    estimar:
-      objetivo: "dV"
+    simular:
+      objetivo: dV
       unidad: V
-      min: 0
-      max: 2
-      paso: 0.05
-      inicio: 1.6
-      tol: 0.08
+      tol: 0.05
       rotulo: "ΔV de la salida"
+      errores:
+        - { razon: { min: 1.08, max: 1.15 }, texto: "Cuenta la variación de corriente, unos 70 mA, no la máxima." }
     exito: "0,7 V, un 12,5 % sobre 5,6 V. Un regulador integrado da dos órdenes de magnitud más de estabilidad."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.76 }, texto: "Se ha pasado: son unos 70 mA de variación por 10 Ω." }
-      - { texto: "Se ha quedado corto: 70 mA por 10 Ω." }
     escalera:
       - "ΔV = r_{z}·ΔI: unos 70 mA de variación por 10 Ω."
-    solucion: "70 mA × 10 Ω = 0,7 V, un 12,5 % sobre 5,6 V."
-
-  - id: pregunta-media-diodo
-    tipo: pregunta
-    titulo: "5.B: la corriente que tranquiliza"
-    texto: "Fuente de 12 V eficaces, puente, 4 700 µF y una carga de 0,5 A. ¿Qué corriente media lleva cada diodo?"
-    libro: [323, 326, "cap05#208"]
-    opciones:
-      - texto: "0,25 A, la mitad de la carga"
-        bien: true
-        porque: "Cada pareja conduce uno de cada dos pulsos. Pero lo que calienta es la eficaz de esos pulsos, no la media."
-      - texto: "0,5 A, la de la carga"
-        porque: "Cada diodo conduce solo en uno de cada dos semiciclos: lleva la mitad."
-      - texto: "Unos 4,4 A"
-        porque: "Esa es la media durante el pulso de conducción. Promediada en todo el ciclo, cada diodo lleva 0,25 A."
-    widget:
-      tipo: figura
-      figura: fig-5.15
-      zonas:
-        - { id: pulsos, rotulo: "La recarga en pulsos", rect: [0, 0, 447, 259] }
-    escalera:
-      - "En un puente, cada pareja de diodos conduce uno de cada dos pulsos."
-    solucion: "0,25 A, la mitad de la carga; pero lo que calienta es la eficaz de los pulsos."
-
+    solucion: "70 mA × 10 Ω = 0,7 V."
+    comprobar:
+      - { dV: 0.7 }
   - id: estime-va
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "¿6 VA?"
-    texto: "Se propone un transformador de 6 VA porque «12 V por 0,5 A son 6 VA», pero la simulación da 1,09 A eficaces en el secundario. Estime la potencia aparente real."
-    libro: [328, 331]
-    estimar:
-      objetivo: "S_va"
+    texto: "5.B: 12 V eficaces, puente, 4 700 µF y 0,5 A; la simulación da 1,09 A eficaces en el secundario. ¿Qué potencia aparente pide el transformador, que se propuso de 6 VA?"
+    libro: [323, 326, 328, 331, "cap05#208"]
+    simular:
+      objetivo: S_va
       unidad: VA
-      min: 0
-      max: 30
-      paso: 0.5
-      inicio: 6
-      tol: 0.05
+      tol: 0.03
       rotulo: "Potencia aparente"
-    exito: "Unos 13 VA: hace falta uno de 15 VA, o de 20 VA con margen."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 13.7 }, texto: "Se ha pasado: 12 V por 1,09 A eficaces." }
-      - { texto: "Se ha quedado corto: cuenta la corriente eficaz, 1,09 A, no los 0,5 A de la carga." }
-    comprobar:
-      - { S_va: 13.08 }
+      errores:
+        - { razon: { min: 0.44, max: 0.48 }, texto: "Cuenta la corriente eficaz del secundario, 1,09 A, no los 0,5 A de la carga." }
+    exito: "Unos 13 VA: uno de 15, o de 20 con margen. Cada diodo lleva 0,25 A de media, pero en pulsos de unos 4,4 A."
     escalera:
       - "Cuenta la corriente eficaz del secundario, no la de la carga."
-    solucion: "12 V × 1,09 A ≈ 13 VA: hace falta uno de 15 VA, o de 20 VA con margen."
-
+    solucion: "12 V × 1,09 A ≈ 13 VA."
+    comprobar:
+      - { S_va: 13.08 }
   - id: porque-6va
     tipo: porque
     titulo: "Un transformador que quema"
@@ -261,37 +247,31 @@ tarjetas:
       - "Las pérdidas del cobre van con el cuadrado de la corriente eficaz."
     solucion: "Ve 1,09 A eficaces, no 0,5 A: (1,09/0,5)² ≈ 4,8 veces sus pérdidas nominales."
   - id: estime-irrupcion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La irrupción"
-    texto: "Al encender, el condensador descargado es un cortocircuito y solo limita el devanado de 0,4 Ω. Con 16,97 V de pico y 1,4 V de diodos, estime la corriente en el peor instante."
+    texto: "Al encender, el condensador descargado es un cortocircuito y solo limita el devanado de 0,4 Ω. Con 16,97 V de pico y 1,4 V de diodos, ¿qué corriente pasa en el peor instante?"
     libro: [331]
-    estimar:
-      objetivo: "I_irr"
+    simular:
+      objetivo: I_irr
       unidad: A
-      min: 0
-      max: 60
-      paso: 1
-      inicio: 10
-      tol: 0.05
+      tol: 0.03
       rotulo: "Irrupción"
+      errores:
+        - { razon: { min: 1.07, max: 1.11 }, texto: "Reste los 1,4 V de los diodos." }
     exito: "Unos 39 A, cerca de los 50 A de pico que admiten los puentes pequeños: mejor uno de 2 A o más."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 41 }, texto: "Se ha pasado: (16,97 − 1,4)/0,4." }
-      - { texto: "Se ha quedado corto: (16,97 − 1,4) V sobre solo 0,4 Ω." }
-    comprobar:
-      - { I_irr: 38.9 }
     escalera:
       - "Solo limita el devanado: divida (16,97 − 1,4) V entre 0,4 Ω."
-    solucion: "(16,97 − 1,4)/0,4 ≈ 39 A en el peor instante."
-
+    solucion: "(16,97 − 1,4)/0,4 ≈ 39 A."
+    comprobar:
+      - { I_irr: 38.9 }
   - id: sorpresa-zener
     tipo: sorpresa
     titulo: "5.C: un recorte que no es el previsto"
-    texto: "Una señal de ±10 V debe recortarse a ±5,6 V con dos Zener de 5,6 V en oposición y 1 kΩ en serie. Mire dónde recorta de verdad."
+    texto: "Una señal de ±10 V debe recortarse a ±5,6 V con dos Zener en oposición y 1 kΩ. Monte los de 5,6 V y mire dónde recorta."
     libro: [337, 340, 341]
     fijar: { V_q: 10, R_q: 1000 }
-    inicio: { V_zz: 5.6 }
+    inicio: { V_zz: 5.1 }
     widget:
       tipo: circuito
       esquema: recortador
@@ -308,9 +288,18 @@ tarjetas:
           - { expr: "5.6", color: azul, rotulo: "5,6 V", discontinua: true }
       mandos:
         - { valor: V_zz, lista: [5.1, 5.6], rotulo: "Zener, V_{Z}" }
-    requiere: { mover: [V_zz] }
+    objetivo:
+      condiciones:
+        - { valor: V_zz, min: 5.6, rotulo: "Zener de {{V_zz}}" }
+      logrado: "Recorta en ±{{V_az}}, un {{exc}} por encima de lo previsto: conducen por parejas, uno en ruptura y el otro en directa."
+      pistas:
+        - { texto: "Elija los Zener de 5,6 V." }
+    escalera:
+      - "Elija 5,6 V."
+    solucion: "5,6 + 0,7 = 6,3 V."
     comprobar:
-      - { V_az: 6.3, exc: 12.5 }
+      - { V_az: 5.8 }
+      - { con: { V_zz: 5.6 }, V_az: 6.3, exc: 12.5 }
 
   - id: reto-47
     tipo: reto
@@ -347,31 +336,25 @@ tarjetas:
       - { V_Zlim: 4.9 }
 
   - id: estime-corriente
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La resistencia serie"
-    texto: "Dos Zener de 5,6 V en oposición recortan en 6,3 V. Con 10 V de entrada y 1 kΩ en serie, estime la corriente que absorben."
+    texto: "Dos Zener de 5,6 V en oposición recortan en 6,3 V. Con 10 V de entrada y 1 kΩ en serie, ¿qué corriente absorben?"
     libro: [343]
     fijar: { V_q: 10, R_q: 1000, V_zz: 5.6 }
-    estimar:
-      objetivo: "I_rq"
+    simular:
+      objetivo: I_rq
       unidad: A
-      min: 0
-      max: 0.01
-      paso: 0.0001
-      inicio: 0.008
-      tol: 0.05
+      tol: 0.03
       rotulo: "Corriente"
+      errores:
+        - { razon: { min: 2.6, max: 2.8 }, texto: "La resistencia solo se queda con lo que no recortan los Zener: 10 − 6,3 V." }
     exito: "3,7 mA, que los Zener absorben sin problema. Una R pequeña carga la fuente; una grande hace pesar fugas y capacidades."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0039 }, texto: "Se ha pasado: la resistencia solo se queda con 10 − 6,3 V." }
-      - { texto: "Se ha quedado corto: (10 − 6,3) V sobre 1 kΩ." }
+    escalera:
+      - "La resistencia se queda con 10 − 6,3 V."
+    solucion: "(10 − 6,3) V / 1 kΩ = 3,7 mA."
     comprobar:
       - { I_rq: 0.0037 }
-    escalera:
-      - "La resistencia se queda con lo que no recortan los Zener: 10 − 6,3 V."
-    solucion: "(10 − 6,3) V / 1 kΩ = 3,7 mA."
-
   - id: pregunta-paso-bajo
     tipo: pregunta
     titulo: "El efecto que hay que anticipar"

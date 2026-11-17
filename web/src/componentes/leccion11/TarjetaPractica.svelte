@@ -124,9 +124,9 @@
     </div>
   {/if}
   {#if t.widget?.tipo === 'circuito'}
-    <CircuitoLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} />
+    <CircuitoLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
   {:else if t.widget?.tipo === 'grafica'}
-    <GraficaLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} />
+    <GraficaLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
   {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
     <Widget12 {t} {e} {oculto} {prefijo} cambiar={cambiarEstado} />
   {/if}

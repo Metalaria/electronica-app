@@ -8,6 +8,11 @@
 #   fórmula y el valor son de la figura); R₂ = 1 kΩ de ejemplo.
 # - La deriva con la temperatura: 2 mV/°C por unión (bloque 168); el bias fijo frente al multiplicador en el disipador.
 # Paso práctico: «ajuste» del bias mirando el escalón (bloque 185: «el escalón desaparece en un punto concreto»).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el escalón se agranda bajando la señal con el bias de una sola
+# caída (objetivo: más de la mitad perdida), se quita con el ajuste, y el calentamiento con el multiplicador en el
+# disipador se comprueba (objetivo); el bias con Darlington y los 11 mV de R_E se predicen; el transistor que va al
+# disipador se toca en la figura 52.12. El volumen bajo, el montaje suelto y el procedimiento pasan a logrados y
+# éxitos; quedan el compromiso (emparejar) y el lazo (opciones).
 leccion: cap51/sec-51.5
 
 libro:
@@ -63,13 +68,17 @@ modelo:
     Ir_t: { expr: "max(Iq_t, 0.01)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
     Vin_t: { expr: "-Vbb_t/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
     V_re: { expr: "R_e*I_q", sim: "V_{RE}", nombre: "caída en la resistencia de emisor", unidad: V }
+    k_p: { expr: "100*min(1, V_on/A_v)", sim: "pérdida", nombre: "parte de la amplitud que se come el hueco", unidad: "%", cifras: 2 }
+    V_d4: { expr: "4*V_be", sim: "V_{bias}", nombre: "bias con cuatro uniones", unidad: V }
 
 tarjetas:
   - id: explore-cruce
     tipo: explorar
     titulo: "El escalón del cruce"
-    texto: "Sin bias, ningún transistor conduce hasta 0,6 V. Suba R₁ del multiplicador y mire el hueco de la salida."
-    libro: [159, 167, 171, 189]
+    texto: "Con una sola caída entre las bases, cada transistor espera a que la señal supere ±0,3 V. Baje la señal hasta que el hueco se coma más de la mitad."
+    fijar: { R_1: 0 }
+    libro: [159, 160, 171, 189]
+    inicio: { A_v: 2 }
     widget:
       tipo: circuito
       esquema: etapa-clase-ab
@@ -77,6 +86,7 @@ tarjetas:
       lectura: { valor: V_b, rotulo: "Tensión entre las bases" }
       datos:
         - { valor: V_on, rotulo: "Hueco: ±{{V_on}}" }
+        - { valor: k_p, rotulo: "Amplitud perdida: {{k_p}}" }
       mide: { vbb: V_b }
       grafica:
         x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
@@ -85,34 +95,18 @@ tarjetas:
           - { expr: "A_v*sin(2*pi*f_s*t)", color: tinta, rotulo: "señal", discontinua: true }
           - { expr: "sab_s*max((A_v*sin(2*pi*f_s*t) - V_b/2 + V_be)/(1 + k_s), min((A_v*sin(2*pi*f_s*t) + V_b/2 - V_be)/(1 + k_s), (2*A_v*sin(2*pi*f_s*t))/(2 + k_s))) + (1 - sab_s)*(max((A_v*sin(2*pi*f_s*t) + V_b/2 - V_be)/(1 + k_s), 0) + min((A_v*sin(2*pi*f_s*t) - V_b/2 + V_be)/(1 + k_s), 0))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
-        - { valor: R_1, min: 0, max: 1500, paso: 50, rotulo: "R₁ del multiplicador" }
-    requiere: { mover: [R_1] }
-
-  - id: prediga-volumen
-    tipo: predecir
-    titulo: "¿Cuándo suena peor?"
-    texto: "Un amplificador con el bias mal ajustado: ¿cuándo se nota más la distorsión de cruce?"
-    libro: [160]
-    fijar: { R_1: 0, A_s: 1 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "max(0, A_s*sin(2*pi*f_s*t) - V_on) + min(0, A_s*sin(2*pi*f_s*t) + V_on)", color: naranja, rotulo: "salida" }
-      lectura: { valor: V_on, rotulo: "Hueco" }
-      ocultar: true
-    opciones:
-      - texto: "A bajo volumen"
-        bien: true
-        porque: "El escalón tiene tamaño fijo y la señal es pequeña: suena mal justo cuando debería sonar bien."
-      - texto: "A todo volumen"
-        porque: "Con señal grande el escalón fijo es una parte pequeña; a todo volumen manda el recorte."
-      - texto: "Igual a cualquier volumen"
-        porque: "El escalón mide lo mismo, pero pesa más frente a una señal pequeña."
+        - { valor: A_v, lista: [2, 1, 0.5], rotulo: "Amplitud de la señal" }
+    objetivo:
+      condiciones:
+        - { valor: k_p, min: 50, rotulo: "Perdido: {{k_p}}" }
+      logrado: "Con {{A_v}} de señal, el hueco se come {{k_p}} de la amplitud: el escalón es fijo, y suena peor justo a bajo volumen."
+      pistas:
+        - { texto: "Menos señal." }
     escalera:
-      - "El hueco no cambia con la señal. ¿Frente a qué señal es mayor?"
-    solucion: "A bajo volumen: proporcionalmente peor."
+      - "El hueco no cambia con la señal: ¿frente a qué señal pesa más?"
+    solucion: "Con medio voltio de señal, más de la mitad."
+    comprobar:
+      - { con: { A_v: 0.5 }, k_p: 60, V_on: 0.3, V_b: 0.6, tol: 0.001 }
 
   - id: ajuste-bias
     tipo: ajuste
@@ -145,32 +139,29 @@ tarjetas:
       dentro: "Unos 1,2 V, dos caídas: el escalón desaparece justo aquí."
 
   - id: pregunta-darlington
-    tipo: pregunta
+    tipo: simular
     titulo: "Con drivers Darlington"
-    texto: "Dos uniones piden unos 1,2 V entre las bases; con drivers Darlington hay cuatro en serie. ¿Qué bias hace falta?"
+    texto: "Dos uniones piden unos 1,2 V entre las bases; con drivers Darlington hay cuatro en serie, de 0,6 V. ¿Qué bias hace falta?"
     libro: [167]
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
-    opciones:
-      - texto: "Unos 2,3 a 2,5 V"
-        bien: true
-        porque: "Cuatro caídas base-emisor en serie: el doble de uniones, casi el doble de tensión."
-      - texto: "Unos 1,2 V, igual"
-        porque: "Cada unión en serie pide su caída: con cuatro, hace falta más."
-      - texto: "Unos 0,6 V"
-        porque: "Esa es una sola caída; entre las bases hay que vencer todas las del camino."
+    simular:
+      objetivo: V_d4
+      unidad: V
+      tol: 0.05
+      rotulo: "Bias entre las bases"
+      errores:
+        - { expr: "2*V_be", texto: "Cada unión en serie pide su caída: con cuatro, hace falta más." }
+        - { expr: "V_be", texto: "Esa es una sola caída; entre las bases hay que vencer todas las del camino." }
+    exito: "Unos 2,3 a 2,5 V: el doble de uniones, casi el doble de tensión."
     escalera:
       - "¿Cuántas caídas base-emisor hay entre las dos bases?"
     solucion: "Cuatro uniones: unos 2,3 a 2,5 V."
+    comprobar:
+      - { V_d4: 2.4, tol: 0.001 }
 
   - id: sorpresa-termica
     tipo: sorpresa
     titulo: "Caliente el disipador"
-    texto: "Las caídas bajan 2 mV/°C. Caliente los transistores de salida y mire la corriente de reposo; luego, atornille el multiplicador al disipador."
+    texto: "Las caídas bajan 2 mV/°C. Caliente los transistores de salida y vigile la corriente de reposo, con el multiplicador suelto y atornillado al disipador."
     libro: [168, 169, 172, 174]
     fijar: { R_1: 1037 }
     inicio: { Vbe_t: 0.6, en_d: 0 }
@@ -186,9 +177,20 @@ tarjetas:
       mandos:
         - { valor: Vbe_t, lista: [0.6, 0.57, 0.54], nombres: [en frío, templados, calientes], rotulo: "Transistores de salida" }
         - { valor: en_d, tipo: interruptor, rotulo: "Multiplicador en el disipador" }
-    requiere: { mover: [Vbe_t, en_d] }
+    objetivo:
+      condiciones:
+        - { valor: Vbe_t, max: 0.54, rotulo: "Transistores calientes" }
+        - { valor: en_d, min: 1, rotulo: "Multiplicador en el disipador" }
+      logrado: "Calientes y con el multiplicador en el disipador: {{Iq_t}}, casi lo de partida. Suelto, la corriente se dispara: más corriente, más calor, más corriente."
+      pistas:
+        - { cuando: { valor: en_d, menor: 1 }, texto: "Atornille el multiplicador al disipador." }
+        - { texto: "Caliente los transistores de salida." }
+    escalera:
+      - "Si la V_{BE} del multiplicador baja con la de los de salida, el bias baja con ellos."
+    solucion: "Calientes y con el multiplicador atornillado: unos 45 mA."
     comprobar:
       - { con: { Vbe_t: 0.54, en_d: 1 }, Iq_t: 0.0446, tol: 0.01 }
+      - { con: { Vbe_t: 0.54, en_d: 0 }, Iq_t: 0.32, tol: 0.01 }
 
   - id: porque-lazo
     tipo: porque
@@ -215,73 +217,50 @@ tarjetas:
     solucion: "Armónicos altos, donde el lazo ya casi no gana: se resuelve con el bias."
 
   - id: pregunta-montaje
-    tipo: pregunta
+    tipo: tocar
     titulo: "La regla de montaje"
-    texto: "Un amplificador se destruye tras unos minutos de funcionar, con el transistor del multiplicador suelto en la placa. ¿Qué pasa?"
-    libro: [169, 174]
+    texto: "Un amplificador se destruye tras unos minutos de funcionar. Toque el transistor que debía ir atornillado al disipador y estaba suelto en la placa."
+    libro: [169, 172, 174, 189]
     widget:
       tipo: figura
       figura: fig-51.11
       zonas:
-        - { id: suelto, rotulo: "Recuadro de abajo a la derecha", rect: [264, 184, 157, 62] }
-    opciones:
-      - texto: "Su V_{BE} no baja con el disipador: el bias sobra, la corriente sube y se embala"
-        bien: true
-        porque: "Más corriente, más calor, más corriente: el embalamiento térmico destruye los transistores."
-      - texto: "Se calienta él y se quema"
-        porque: "Disipa muy poco; el problema es que no siente la temperatura de los de potencia."
-      - texto: "Nada: el bias ya se ajustó en frío"
-        porque: "En frío estaba bien; al calentarse los de salida piden menos, y el circuito sigue dando lo mismo."
+        - { id: fuente, rotulo: "Fuente de corriente", rect: [70, 34, 36, 36] }
+        - { id: qn, rotulo: "Q_{N}", rect: [120, 68, 40, 36] }
+        - { id: qbias, rotulo: "Q_{bias}", rect: [64, 122, 40, 38] }
+        - { id: qp, rotulo: "Q_{P}", rect: [120, 183, 40, 36] }
+        - { id: q3, rotulo: "Q₃, el driver", rect: [66, 222, 40, 36] }
+    tocar:
+      bien: [qbias]
+      porque:
+        fuente: "La fuente de corriente alimenta el multiplicador; su temperatura no fija el bias."
+        qn: "Q_{N} es de salida: es el que se calienta, y ya va en el disipador."
+        qp: "Q_{P} es de salida, como Q_{N}."
+        q3: "El driver no fija la tensión entre las bases."
+    exito: "Q_{bias}: su V_{BE} debe bajar 2 mV/°C con los de salida. Suelto, el bias no baja, la corriente sube y se embala."
     escalera:
-      - "¿Qué temperatura sigue la V_{BE} del multiplicador si no toca el disipador?"
-    solucion: "No sigue la temperatura de los de potencia: embalamiento térmico."
+      - "¿Qué transistor genera la tensión entre las bases?"
+    solucion: "El del multiplicador, Q_{bias}."
 
   - id: estime-caida
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Medir la corriente de reposo"
     texto: "Se mide la caída en una R_{E} de 0,22 Ω, sin señal. Para 50 mA de reposo, ¿cuánto debe leer el multímetro?"
-    libro: [177]
-    estimar:
-      objetivo: "V_re"
+    libro: [177, 178]
+    simular:
+      objetivo: V_re
       unidad: V
-      min: 0
-      max: 0.05
-      paso: 0.0005
-      inicio: 0.04
-      tol: 0.05
+      tol: 0.03
       rotulo: "Caída en R_{E}"
-    exito: "11 mV: con el amplificador caliente, no en frío."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0116 }, texto: "Se ha pasado: 0,22 Ω por 50 mA son milivoltios." }
-      - { texto: "Se ha quedado corto: 0,22 Ω por 50 mA." }
+      errores:
+        - { expr: "I_q/R_e", texto: "Ha dividido: la caída es R por I." }
+    exito: "11 mV, en caliente: ajustar en frío, dejar calentar media hora y reajustar. Si la corriente sigue subiendo, la compensación térmica no funciona."
     escalera:
       - "Ley de Ohm: V = R · I."
     solucion: "0,22 Ω × 50 mA = 11 mV."
     comprobar:
       - { V_re: 0.011, tol: 0.001 }
-
-  - id: pregunta-procedimiento
-    tipo: pregunta
-    titulo: "El procedimiento"
-    texto: "Se ajusta en frío y se deja calentar media hora; al reajustar, la corriente sigue subiendo. ¿Qué indica?"
-    libro: [178]
-    widget:
-      tipo: figura
-      figura: fig-51.11
-      zonas:
-        - { id: disipador, rotulo: "El recuadro gris", rect: [63, 66, 138, 152] }
-    opciones:
-      - texto: "Que la compensación térmica no funciona"
-        bien: true
-        porque: "La corriente debe derivar al principio y estabilizarse; si sigue subiendo, el lazo térmico no está cerrado."
-      - texto: "Que falta tiempo: hay que esperar más"
-        porque: "Tras media hora debería estar estable; si sigue subiendo, el problema es la compensación."
-      - texto: "Que sobra corriente de reposo: basta bajar R₁"
-        porque: "Bajarla solo retrasa el problema: la corriente seguirá subiendo con el calor."
-    escalera:
-      - "Con la compensación funcionando, ¿qué debería hacer la corriente al calentarse?"
-    solucion: "La compensación térmica no está funcionando: debe estabilizarse."
 
   - id: empareje-compromiso
     tipo: pregunta
@@ -303,7 +282,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [160, 167, 172, 177]
+    libro: [160, 167, 172, 177, 178]
     ideas:
       - { titulo: "El cruce.", texto: "Un escalón fijo de ±0,6 V: peor a bajo volumen, y el lazo lo corrige mal." }
       - { titulo: "El bias.", texto: "Unos 1,2 V entre las bases, dos caídas; con Darlington, 2,3 a 2,5 V." }

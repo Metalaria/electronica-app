@@ -2,6 +2,8 @@
   // Schematic «paralelo» (esquema.ts): the first 1.1 engine's drawing, unchanged. Each branch's current moves at the
   // speed of its own bar when the bars are currents (the split), else at the widget's «corriente».
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
   let { c, widget, vuelta, descripcion }: PropsDibujo = $props();
   const durRama = (k: 0 | 1) => {
@@ -33,4 +35,10 @@
   <path class="hilo" d="M300 220 H50" data-red="0"></path>
   <circle cx="170" cy="30" r="4.5" class="nodo" data-red="fte"></circle>
   <circle cx="170" cy="220" r="4.5" class="nodo" data-red="0"></circle>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={110} y={30} red="fte" />
+  <Punto x={110} y={220} red="0" />
+  <Rama x={50} y={70} medidor="vmed" />
+  <Rama x={170} y={42} medidor="v1" />
+  <Rama x={300} y={42} medidor="v2" />
 </Lienzo>

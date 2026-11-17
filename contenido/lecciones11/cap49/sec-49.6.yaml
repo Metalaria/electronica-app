@@ -8,6 +8,10 @@
 # Paso práctico: «diseno» de la pull-up E12 para un cable de dos metros (250 pF) a 100 kHz: subida ≤ 1 µs y corriente
 # ≤ 3 mA, con R ± 5 % y la capacidad del cable ± 10 % (tolerancias de ejemplo). Con 4,7 kΩ el nominal da justo 1 µs y
 # se pasa en las esquinas; cumplen de 1,2 a 3,9 kΩ.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 50.13 se tocan los dispositivos con dirección; el
+# flanco se explora hasta los 300 ns de 400 kHz; se escriben la subida con dos metros, la corriente de las pull-ups en
+# paralelo y el tiempo despierto lanzando las medidas a la vez (bloque 209). La robustez pasa al resumen. Quedan dos de
+# opciones: el escáner y el flanco en el osciloscopio.
 leccion: cap49/sec-49.6
 
 libro:
@@ -36,6 +40,7 @@ modelo:
     R_p: { sim: "R_{pull-up}", nombre: "resistencia de pull-up", unidad: Ω, valor: 4700 }
     C_b: { sim: "C_{bus}", nombre: "capacidad del bus", unidad: F, valor: 50e-12 }
     V_0: { sim: "V₀", nombre: "línea en bajo al soltarla", unidad: V, valor: 0 }
+    t_m: { sim: "t_{medida}", nombre: "lo que tarda cada sensor en medir", unidad: s, valor: 0.1 }
   calculos:
     t_r: { expr: "R_p*C_b*ln(7/3)", sim: "t_{subida}", nombre: "tiempo de subida", unidad: s }
     t_7: { expr: "R_p*C_b*ln(10/3)", sim: "t_{70}", nombre: "llegada al 70 %", unidad: s }
@@ -44,24 +49,33 @@ modelo:
 
 tarjetas:
   - id: explore-bus
-    tipo: explorar
+    tipo: tocar
     titulo: "Un bus para todos"
-    texto: "Dos hilos, pull-ups y una dirección por dispositivo. Toque las pull-ups y dos sensores."
+    texto: "Dos hilos, pull-ups y una dirección por dispositivo. Toque los dispositivos cuya dirección hay que anotar para no repetirla."
     libro: [193, 194, 202, 222, "cap49#265"]
     widget:
       tipo: figura
       figura: fig-49.10
       zonas:
-        - { id: pullups, rotulo: "Resistencias de la izquierda", rect: [5, 10, 95, 75], texto: "Dos pull-ups de 4,7 kΩ a 3,3 V: con la línea en bajo, 0,7 mA cada una." }
-        - { id: esp32, rotulo: "Bloque azul", rect: [102, 110, 66, 52], texto: "El ESP32, el maestro del bus." }
-        - { id: bme, rotulo: "Primer bloque verde", rect: [181, 110, 66, 52], texto: "BME280 en la dirección 0x76." }
-        - { id: bh, rotulo: "Segundo bloque verde", rect: [260, 110, 66, 52], texto: "BH1750 en la dirección 0x23." }
-    requiere: { mover: [pullups, bme] }
+        - { id: pullups, rotulo: "Resistencias de la izquierda", rect: [5, 10, 95, 75] }
+        - { id: esp32, rotulo: "Bloque azul", rect: [102, 110, 66, 52] }
+        - { id: bme, rotulo: "Primer bloque verde", rect: [181, 110, 66, 52] }
+        - { id: bh, rotulo: "Segundo bloque verde", rect: [260, 110, 66, 52] }
+    tocar:
+      bien: [bme, bh]
+      todas: true
+      porque:
+        pullups: "Son dos pull-ups de 4,7 kΩ a 3,3 V: fijan el nivel alto, no tienen dirección."
+        esp32: "El ESP32 es el maestro: es él quien envía las direcciones."
+    exito: "El BME280 en 0x76 y el BH1750 en 0x23: el maestro envía primero la dirección y solo contesta ese."
+    escalera:
+      - "¿Quién contesta cuando el maestro llama?"
+    solucion: "Los dos bloques verdes."
 
   - id: explore-flanco
     tipo: explorar
     titulo: "El flanco de subida"
-    texto: "Al soltar la línea, la pull-up carga la capacidad del bus. Alargue el cable y mire el flanco."
+    texto: "Al soltar la línea, la pull-up carga la capacidad del bus. Busque la longitud de cable con la que el flanco sube en 300 ns, lo que pide 400 kHz."
     libro: [196, 198]
     fijar: { V_p: 3.3, R_p: 4700, V_0: 0 }
     widget:
@@ -78,67 +92,69 @@ tarjetas:
           - { x: "t_7", y: "v_7", rotulo: "Subida: {{t_r}}" }
       mandos:
         - { valor: C_b, lista: [50e-12, 75e-12, 250e-12], nombres: ["placa", "decímetros", "dos metros"], rotulo: "Capacidad del bus" }
-    requiere: { mover: [C_b] }
+    inicio: { C_b: 250e-12 }
+    objetivo:
+      condiciones:
+        - { valor: t_r, objetivo: 3e-7, tol: 0.03, rotulo: "Subida: {{t_r}}" }
+      logrado: "Con 4,7 kΩ, el flanco cabe en los 300 ns de 400 kHz con unos 75 pF: decímetros de cable. Con la placa sola sobra, y con dos metros no llega."
+      pistas:
+        - { texto: "Menos cable, menos capacidad, flanco más rápido." }
+    escalera:
+      - "La subida es proporcional a R·C."
+    solucion: "Unos 75 pF, decímetros de cable."
     comprobar:
       - { con: { C_b: 250e-12 }, t_r: 1e-6, tol: 0.01 }
       - { con: { C_b: 75e-12 }, t_r: 300e-9, tol: 0.01 }
 
   - id: predecir-400
-    tipo: predecir
-    titulo: "Dos metros a 400 kHz"
-    texto: "El sensor exterior cuelga de dos metros de cable (unos 250 pF) con pull-ups de 4,7 kΩ. A 400 kHz, que pide subidas de 300 ns, ¿funciona?"
+    tipo: leer
+    titulo: "Dos metros de cable"
+    texto: "El sensor exterior cuelga de dos metros de cable, unos 250 pF, con pull-ups de 4,7 kΩ. Escriba el tiempo de subida."
     libro: [196]
     fijar: { V_p: 3.3, R_p: 4700, C_b: 250e-12, V_0: 0 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_p, r: R_p, c: C_b, v0: V_0 }
-      lectura: { valor: t_r, rotulo: "Tiempo de subida" }
-      ocultar: true
       grafica:
         x: { id: t, min: 0, max: 3e-6, unidad: s, rotulo: "t" }
         y: { min: 0, max: 3.5, unidad: V, rotulo: "SDA" }
         curvas:
           - { expr: "V_p*(1 - exp(-t/(R_p*C_b)))", color: naranja, rotulo: "línea", mide: vc }
       mandos: []
-    opciones:
-      - texto: "No: el flanco tarda 1 µs, más del triple de lo permitido"
-        bien: true
-        porque: "A 400 kHz solo caben unos 75 pF, decímetros. A 100 kHz sí."
-      - texto: "Sí: 4,7 kΩ son las pull-ups adecuadas"
-        porque: "Lo son a 100 kHz con 50 pF de placa; con dos metros de cable, la subida se alarga."
-      - texto: "Sí, si se baja la alimentación"
-        porque: "La subida depende de R·C, no de la tensión."
+    leer:
+      objetivo: t_r
+      unidad: s
+      tol: 0.04
+      rotulo: "Tiempo de subida"
+      errores:
+        - { expr: "R_p*C_b", texto: "Eso es R·C entera; el tiempo de subida, como lo mide la norma, es algo menor." }
+    exito: "1 µs: vale a 100 kHz, pero es más del triple de los 300 ns de 400 kHz."
     escalera:
-      - "Con 4,7 kΩ, a 100 kHz caben unos 250 pF; a 400 kHz, unos 75 pF."
-    solucion: "No: con 250 pF la subida es de 1 µs; a 400 kHz, decímetros."
+      - "La subida es algo menor que R·C: con 75 pF eran 300 ns."
+    solucion: "Unos 1 µs."
     comprobar:
       - { t_r: 1e-6, tol: 0.01 }
 
   - id: estime-corriente
-    tipo: pregunta
+    tipo: leer
     titulo: "Pull-ups en paralelo"
-    texto: "Tres módulos traen sus propias pull-ups, y con las del bus el conjunto baja a unos 1,4 kΩ. ¿Qué corriente pasa con la línea en bajo, a 3,3 V?"
+    texto: "Tres módulos traen sus propias pull-ups, y con las del bus el conjunto baja a unos 1,4 kΩ. Escriba la corriente con la línea en bajo, a 3,3 V."
     libro: [199, "cap49#199"]
     fijar: { V_p: 3.3, R_p: 1400 }
     widget:
       tipo: figura
       figura: fig-49.10
       zonas:
-        - { id: pullups, rotulo: "Resistencias de la izquierda", rect: [5, 10, 95, 75] }
-    estimar:
-      objetivo: "I_l"
+        - { id: pullups, rotulo: "Resistencias de la izquierda", rect: [5, 10, 95, 75], texto: "Las pull-ups del bus." }
+    leer:
+      objetivo: I_l
       unidad: A
-      min: 0
-      max: 0.005
-      paso: 0.0001
-      inicio: 0.0007
-      tol: 0.05
+      tol: 0.03
       rotulo: "Corriente por línea"
+      errores:
+        - { expr: "V_p/4700", texto: "Esa es la de una sola pull-up de 4,7 kΩ: en paralelo quedan unos 1,4 kΩ." }
     exito: "Unos 2,4 mA: dentro de los 3 mA del I²C. Si se suman más módulos, quite las sobrantes."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0025 }, texto: "Demasiada: 3,3 V entre 1,4 kΩ." }
-      - { texto: "Poca: ya no es una pull-up de 4,7 kΩ, sino unos 1,4 kΩ." }
     escalera:
       - "Ley de Ohm con la resistencia equivalente."
     solucion: "3,3 V / 1,4 kΩ ≈ 2,4 mA."
@@ -190,48 +206,28 @@ tarjetas:
       - { con: { R_p: 1200 }, I_l: 0.00275, tol: 0.01 }
 
   - id: pregunta-orden
-    tipo: pregunta
+    tipo: leer
     titulo: "Lanzar primero, leer después"
-    texto: "Tres sensores tardan 100 ms cada uno en medir; se lanzan las tres medidas y se leen después. ¿Cuánto tiempo despierto ocupa?"
+    texto: "Tres sensores tardan 100 ms cada uno en medir. Se lanzan las tres medidas y se leen después: escriba el tiempo despierto que ocupan."
     libro: [209, 223]
     widget:
       tipo: figura
       figura: fig-49.11
       zonas:
-        - { id: grafica, rotulo: "La figura", rect: [0, 0, 438, 255] }
-    opciones:
-      - texto: "Unos 100 ms"
-        bien: true
-        porque: "Las tres miden a la vez: en lugar de 300 ms esperando a cada una, 100."
-      - texto: "300 ms"
-        porque: "Eso es esperar a cada una por separado, la lectura secuencial."
-      - texto: "Nada: se leen sin esperar"
-        porque: "Cada medida sigue tardando 100 ms: hay que esperar a que terminen, pero a la vez."
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 438, 255], texto: "Lectura secuencial frente a lanzar y leer." }
+    leer:
+      objetivo: t_m
+      unidad: s
+      tol: 0.02
+      rotulo: "Tiempo despierto"
+      errores:
+        - { expr: "3*t_m", texto: "Eso es esperar a cada una por separado, la lectura secuencial." }
+    exito: "100 ms en lugar de 300: las tres miden a la vez, y solo se espera a la más lenta."
     escalera:
-      - "Las medidas corren a la vez; solo hay que esperar a la más lenta."
-    solucion: "100 ms en lugar de 300."
-
-  - id: empareje-robustez
-    tipo: pregunta
-    titulo: "Lo que hay que implementar"
-    texto: "Empareje cada mecanismo del firmware con lo que evita."
-    libro: [212, 213, 214, 215]
-    widget:
-      tipo: figura
-      figura: fig-49.10
-      zonas:
-        - { id: bus, rotulo: "Las dos líneas", rect: [100, 60, 345, 40] }
-    emparejar:
-      - ["Tiempo de expiración", "Que un sensor bloqueado cuelgue el programa"]
-      - ["Nueve pulsos de reloj", "Que el bus quede bloqueado"]
-      - ["Detección de sensor ausente", "Confundir «no responde» con «lee cero»"]
-      - ["Comprobación de rango", "Propagar un valor imposible"]
-    exito: "Es lo que separa un prototipo de algo que funciona en un tejado."
-    pistas:
-      - { texto: "Los nueve pulsos liberan un esclavo que se quedó sujetando SDA." }
-    escalera:
-      - "Cada uno cubre una forma distinta de fallar."
-    solucion: "Expiración, cuelgue; nueve pulsos, bus bloqueado; ausente, cero falso; rango, valor imposible."
+      - "Las medidas corren a la vez."
+    solucion: "100 ms."
+    comprobar:
+      - { t_m: 0.1 }
 
   - id: pregunta-escaner
     tipo: porque
@@ -280,9 +276,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [196, 199, 209, 212]
+    libro: [196, 199, 209, 212, 213, 214, 215]
     ideas:
       - { titulo: "El flanco.", texto: "Pull-up y capacidad: 4,7 kΩ admiten 250 pF a 100 kHz, 75 pF a 400 kHz." }
       - { titulo: "El consumo.", texto: "0,7 mA por línea en bajo; las de los módulos se suman en paralelo." }
       - { titulo: "El orden.", texto: "Lanzar todas las medidas y leerlas después." }
-      - { titulo: "Robustez.", texto: "Expiración, nueve pulsos, sensor ausente y rango." }
+      - { titulo: "Robustez.", texto: "Expiración contra un sensor que cuelga, nueve pulsos contra el bus bloqueado, sensor ausente distinto de cero y comprobación de rango." }

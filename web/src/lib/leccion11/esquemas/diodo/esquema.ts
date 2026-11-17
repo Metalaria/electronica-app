@@ -21,6 +21,13 @@ const d: DefinicionEsquema = {
     vd: { medida: 'v(an)', analisis: 'op', unidad: 'V', descripcion: 'tensión del diodo (ánodo menos cátodo)' },
     vr: { medida: 'v(a)-v(an)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la resistencia' },
   },
+  // 1.2.1 (motor121): the instrument's points and branch, the parts a tap can choose
+  partes: { diodo: 'el diodo' },
+  medible: () => ({
+    puntos: { fte: 'Arriba de la fuente', an: 'Entre la resistencia y el diodo', '0': 'Masa, abajo' },
+    ramas: { vmed: 'Rama de la fuente' },
+    zonas: { fuente: 'Fuente', r: 'Resistencia', diodo: 'Diodo' },
+  }),
   validar: validarDiodo('vd'),
   // 0,1 V: the simulator's diode drops vd at 10 mA with n = 1, so it stays within vd ± 0,1 V from 0,2 mA to 500 mA
   // (n·VT·ln 50 = 0,10 V), the currents of the book's examples; the book itself says the constant drop's error «es

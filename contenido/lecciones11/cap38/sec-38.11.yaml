@@ -1,6 +1,11 @@
 # Lección 1.2 de la sección 39.11 «Arranque Seguro y Actualización del Firmware» (cap38; etiqueta interna sec-38.11).
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.15 (svg_vista 453,6 × 216): doble banco con confirmación; la
 # lista numerada de la izquierda no se usa como zona porque da la respuesta del ordenar.
+# 1.2.1 («aprender haciendo», GUIA §13): la decisión del cargador (bloques 344–345) se ve como lógica: arranca B si su
+# versión está verificada y no ha vencido el plazo sin confirmarse; si no, A. Volver solo a A es el objetivo de la
+# exploración, y la salida «arranca B» se dibuja en una secuencia. En la figura se tocan el cargador, dónde se verifica
+# la versión nueva y lo que cuesta el doble banco. Quedan dos preguntas de opciones: CRC o firma y el antirretroceso.
+# El nivel razonable y las pruebas del banco van en los textos.
 leccion: cap38/sec-38.11
 
 libro:
@@ -8,6 +13,7 @@ libro:
   336: "decide si hay que actualizar y, si no, salta a la aplicación"
   338: "porque él mismo no se puede actualizar con seguridad"
   339: "comprobar una suma o una firma"
+  340: "Debe tener una vía de recuperación si la aplicación no arranca."
   342: "dos zonas de memoria, una con la versión en uso y otra donde se escribe la nueva"
   344: "Descargar la nueva versión en el banco inactivo."
   345: "una versión que no llega a confirmarse se revierte sola, sin intervención"
@@ -27,53 +33,86 @@ modelo:
 tarjetas:
   - id: explore-doble-banco
     tipo: explorar
-    titulo: "Dos bancos"
-    texto: "Una versión en uso y otra donde se escribe la nueva. Toque el cargador y los dos bancos."
-    libro: [336, 342, 361]
+    titulo: "La vuelta atrás"
+    texto: "Así decide el cargador: arranca B si su versión está verificada y no ha vencido el plazo sin confirmarse. Con B verificado, consiga que vuelva solo a A."
+    libro: [336, 342, 344, 345]
+    widget:
+      tipo: logica
+      entradas:
+        - { id: VER, rotulo: "B verificado" }
+        - { id: CONF, rotulo: "B confirmado" }
+        - { id: VENC, rotulo: "Plazo vencido" }
+      piezas:
+        - { id: nc, tipo: not, entradas: [CONF] }
+        - { id: rev, tipo: and, entradas: [VENC, nc], rotulo: "Volver atrás" }
+        - { id: nr, tipo: not, entradas: [rev] }
+        - { id: okb, tipo: and, entradas: [VER, nr], rotulo: "Arrancar B" }
+        - { id: na, tipo: not, entradas: [okb] }
+      salidas:
+        - { id: B, de: okb, rotulo: "Arranca B" }
+        - { id: A, de: na, rotulo: "Arranca A" }
+    objetivo:
+      condiciones:
+        - { senal: VER, valor: 1, rotulo: "B verificado" }
+        - { led: A, valor: 1, rotulo: "Arranca A" }
+      logrado: "Verificada, pero sin confirmarse en el plazo: el cargador vuelve solo al banco anterior, sin intervención. Esa es la clave de una actualización robusta."
+      pistas:
+        - { cuando: { senal: VER, valor: 0 }, texto: "Primero, una versión nueva verificada." }
+        - { texto: "Ahora, que venza el plazo sin que B se confirme." }
+    escalera: ["Una versión que no se confirma a tiempo se revierte."]
+    solucion: "B verificado, sin confirmar, y el plazo vencido."
+
+  - id: dibuje-arranque
+    tipo: dibujar
+    titulo: "Qué banco arranca"
+    texto: "Se descarga y verifica una versión, vence el plazo sin confirmarse y, en un segundo intento, se confirma. Dibuje cuándo arranca B."
+    libro: [344, 345]
+    widget:
+      tipo: logica
+      entradas:
+        - { id: VER, rotulo: "B verificado" }
+        - { id: CONF, rotulo: "B confirmado" }
+        - { id: VENC, rotulo: "Plazo vencido" }
+        - { id: CLK, reloj: true, rotulo: "Tiempo" }
+      piezas:
+        - { id: nc, tipo: not, entradas: [CONF] }
+        - { id: rev, tipo: and, entradas: [VENC, nc], rotulo: "Volver atrás" }
+        - { id: nr, tipo: not, entradas: [rev] }
+        - { id: okb, tipo: and, entradas: [VER, nr], rotulo: "Arrancar B" }
+        - { id: na, tipo: not, entradas: [okb] }
+      salidas:
+        - { id: B, de: okb, rotulo: "Arranca B" }
+        - { id: A, de: na, rotulo: "Arranca A" }
+      cronograma: { ciclos: 8, estimulo: { VER: "01111111", VENC: "00011100", CONF: "00000011" }, senales: [VER, VENC, CONF] }
+      dibujo: false
+    dibujar:
+      senal: B
+    exito: "B arranca mientras está a prueba dentro del plazo y cuando se confirma; si vence sin confirmar, vuelve A."
+    escalera:
+      - "Sin versión verificada, siempre A."
+      - "Con el plazo vencido y sin confirmación, A otra vez."
+    solucion: "B en los tramos con la versión verificada y sin vencer el plazo, y de nuevo cuando se confirma."
+
+  - id: toque-verificar
+    tipo: tocar
+    titulo: "Antes de nada"
+    texto: "La versión nueva acaba de descargarse en el banco inactivo. Toque dónde se comprueba su integridad, antes de marcarla y arrancarla."
+    libro: [339, 344, 361]
     widget:
       tipo: figura
       figura: fig-38.15
       zonas:
-        - { id: cargador, rotulo: "Recuadro de arriba a la derecha", rect: [281, 18, 115, 40], texto: "Cargador de arranque: decide qué banco arranca." }
-        - { id: banco-a, rotulo: "Recuadro gris de abajo", rect: [234, 107, 94, 55], texto: "Banco A: la versión en uso." }
-        - { id: banco-b, rotulo: "Recuadro azul de abajo a la derecha", rect: [353, 107, 95, 55], texto: "Banco B: la versión nueva, que se verifica con CRC o firma." }
-    requiere: { mover: [cargador, banco-b] }
-
-  - id: ordene-secuencia
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "La secuencia segura"
-    texto: "Ponga en orden los pasos de una actualización con doble banco."
-    libro: [344]
-    ordenar:
-      - "Descargar la nueva versión en el banco inactivo."
-      - "Verificar su integridad."
-      - "Marcar el nuevo banco como «a probar»."
-      - "Reiniciar y arrancar desde él."
-      - "La aplicación nueva se confirma a sí misma."
-      - "Si no se confirma en un plazo, volver al banco anterior."
-    exito: "Los dos últimos pasos son la clave: una versión que no se confirma se revierte sola."
-    pistas:
-      - { texto: "Nada se marca ni se arranca sin verificarlo antes." }
-    escalera: ["La confirmación la hace la aplicación nueva, ya arrancada."]
-    solucion: "Descargar, verificar, marcar, reiniciar, confirmarse y, si no, volver atrás."
-
-  - id: prediga-sin-confirmar
-    tipo: predecir
-    titulo: "Una versión que no arranca"
-    texto: "La versión nueva del banco B se cuelga al arrancar y nunca se confirma. ¿Qué hace el cargador?"
-    libro: [345, 361]
-    widget:
-      tipo: figura
-      figura: fig-38.15
-      zonas:
-        - { id: banco-a, rotulo: "Recuadro gris de abajo", rect: [234, 107, 94, 55], texto: "Banco A: la versión anterior, intacta." }
-    opciones:
-      - { texto: "Vuelve a arrancar el banco A, sin intervención", bien: true, porque: "Pasado el plazo sin confirmación, el cargador revierte solo a la versión anterior." }
-      - { texto: "Se queda esperando a que alguien lo reinicie", porque: "No hay nadie: por eso la vuelta atrás es automática." }
-      - { texto: "Borra el banco A para dejar sitio", porque: "El banco A se conserva justo para poder volver a él." }
-    escalera: ["¿Para qué sirve el plazo de confirmación?"]
-    solucion: "Vuelve al banco A: una versión que no se confirma se revierte sola."
+        - { id: cargador, rotulo: "Recuadro de arriba a la derecha", rect: [281, 18, 115, 40] }
+        - { id: banco-a, rotulo: "Recuadro gris de abajo", rect: [234, 107, 94, 55] }
+        - { id: banco-b, rotulo: "Recuadro azul de abajo a la derecha", rect: [353, 107, 95, 55] }
+    tocar:
+      bien: [banco-b]
+      porque:
+        cargador: "El cargador decide después qué arranca; la versión se verifica antes, en su banco."
+        banco-a: "El banco A tiene la versión en uso: la nueva no está ahí."
+    exito: "En el banco B, con su CRC o su firma: nada se marca «a probar» ni se arranca sin verificarlo."
+    escalera: ["¿Dónde está la versión recién descargada?"]
+    solucion: "El banco B."
 
   - id: pregunta-crc
     tipo: pregunta
@@ -93,21 +132,25 @@ tarjetas:
     solucion: "La firma: el CRC solo detecta errores accidentales."
 
   - id: porque-cargador
-    tipo: porque
+    tipo: tocar
     titulo: "Un cargador sencillo"
-    texto: "¿Por qué el cargador de arranque debe ser sencillo y estar muy probado?"
-    libro: [338, 339]
+    texto: "Una de las tres piezas no se puede actualizar con seguridad, así que debe ser sencilla y estar muy probada. Tóquela."
+    libro: [336, 338, 340, 361]
     widget:
       tipo: figura
       figura: fig-38.15
       zonas:
-        - { id: cargador, rotulo: "Recuadro de arriba a la derecha", rect: [281, 18, 115, 40], texto: "Decide qué banco arranca." }
-    opciones:
-      - { texto: "Porque él mismo no se puede actualizar con seguridad", bien: true, porque: "Si se puede, es la operación más delicada de todas: debe salir bien a la primera." }
-      - { texto: "Porque tiene que caber en la RAM", porque: "Vive en una zona protegida de la Flash; el motivo es que no se actualiza." }
-      - { texto: "Porque se ejecuta solo una vez en la vida del aparato", porque: "Se ejecuta en cada encendido: decide qué arrancar." }
-    escalera: ["¿Quién actualizaría al cargador si falla?"]
-    solucion: "No se puede actualizar con seguridad: tiene que estar bien desde el principio."
+        - { id: cargador, rotulo: "Recuadro de arriba a la derecha", rect: [281, 18, 115, 40] }
+        - { id: banco-a, rotulo: "Recuadro gris de abajo", rect: [234, 107, 94, 55] }
+        - { id: banco-b, rotulo: "Recuadro azul de abajo a la derecha", rect: [353, 107, 95, 55] }
+    tocar:
+      bien: [cargador]
+      porque:
+        banco-a: "Los bancos son justo lo que se actualiza, uno cada vez."
+        banco-b: "En el banco B se escribe la versión nueva: se actualiza siempre."
+    exito: "El cargador de arranque: si se puede actualizar, es la operación más delicada de todas. Debe validar lo que arranca y tener una vía de recuperación."
+    escalera: ["¿Qué decide qué banco arranca?"]
+    solucion: "El cargador de arranque."
 
   - id: pregunta-retroceso
     tipo: pregunta
@@ -126,58 +169,26 @@ tarjetas:
     escalera: ["La versión antigua es auténtica: ¿qué tiene de malo?"]
     solucion: "El antirretroceso: un contador de versión monótono."
 
-  - id: empareje-nivel
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El nivel razonable"
-    texto: "Una cada caso con la protección razonable."
-    libro: [357]
-    emparejar:
-      - ["Proyecto propio, actualizable con cable", "CRC y poco más"]
-      - ["Producto que se actualiza por USB", "CRC, doble banco, vuelta atrás"]
-      - ["Producto conectado a internet", "Firma, canal autenticado, antirretroceso"]
-      - ["Sistema crítico o con datos sensibles", "Todo, más arranque seguro y bloqueo de lectura"]
-    exito: "No todo necesita lo mismo: cada nivel añade defensas al anterior."
-    pistas:
-      - { texto: "Internet trae atacantes: ahí entra la firma." }
-    escalera: ["Ordénelos de menos a más riesgo."]
-    solucion: "Cable, CRC; USB, doble banco; internet, firma y antirretroceso; crítico, todo y arranque seguro."
-
   - id: pregunta-coste
-    tipo: pregunta
+    tipo: tocar
     titulo: "El precio del doble banco"
-    texto: "¿Qué cuesta la arquitectura de doble banco?"
-    libro: [346]
+    texto: "La arquitectura de doble banco cuesta el doble de memoria de programa. Toque lo que ocupa esa memoria."
+    libro: [346, 357, 359, 361]
     widget:
       tipo: figura
       figura: fig-38.15
       zonas:
-        - { id: banco-a, rotulo: "Recuadro gris de abajo", rect: [234, 107, 94, 55], texto: "Banco A." }
-        - { id: banco-b, rotulo: "Recuadro azul de abajo a la derecha", rect: [353, 107, 95, 55], texto: "Banco B." }
-    opciones:
-      - { texto: "El doble de memoria de programa", bien: true, porque: "En un microcontrolador pequeño puede ser prohibitivo; la alternativa de un banco exige un cargador impecable." }
-      - { texto: "El doble de RAM", porque: "Los bancos son de memoria de programa, en la Flash." }
-      - { texto: "Un arranque el doble de lento", porque: "Se arranca de un solo banco: el coste es de memoria." }
-    escalera: ["¿Cuántas copias del programa caben a la vez?"]
-    solucion: "El doble de memoria de programa."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Validar la actualización"
-    texto: "¿Cuál de estas pruebas no basta para validar el mecanismo de actualización?"
-    libro: [359]
-    widget:
-      tipo: figura
-      figura: fig-38.15
-      zonas:
-        - { id: cargador, rotulo: "Recuadro de arriba a la derecha", rect: [281, 18, 115, 40], texto: "El cargador debe dejar siempre un estado recuperable." }
-    opciones:
-      - { texto: "Actualizar varias veces con éxito", bien: true, porque: "Hay que provocar el fallo: si nunca falla en la prueba, no se sabe qué hará cuando falle." }
-      - { texto: "Cortar la alimentación a mitad de la escritura", porque: "Es una de las tres pruebas que pide el libro." }
-      - { texto: "Cargar un firmware corrupto a propósito", porque: "Es una de las tres pruebas que pide el libro." }
-      - { texto: "Cargar uno que no llegue a confirmarse", porque: "Es una de las tres pruebas que pide el libro." }
-    escalera: ["La validación se hace provocando el fallo."]
-    solucion: "Actualizar con éxito no prueba nada: hay que cortar, corromper y dejar sin confirmar."
+        - { id: cargador, rotulo: "Recuadro de arriba a la derecha", rect: [281, 18, 115, 40] }
+        - { id: banco-a, rotulo: "Recuadro gris de abajo", rect: [234, 107, 94, 55] }
+        - { id: banco-b, rotulo: "Recuadro azul de abajo a la derecha", rect: [353, 107, 95, 55] }
+    tocar:
+      bien: [banco-a, banco-b]
+      todas: true
+      porque:
+        cargador: "El cargador es pequeño y está siempre; lo que se duplica es la aplicación."
+    exito: "Dos copias de la aplicación. Con un solo banco, un corte a mitad deja el aparato sin aplicación válida. Y se valida cortando, corrompiendo y dejando sin confirmar."
+    escalera: ["¿Cuántas copias del programa hay a la vez?"]
+    solucion: "Los dos bancos."
 
   - id: resumen
     tipo: resumen

@@ -3,6 +3,8 @@
   // for on the right — the two terminals, C₀ down the middle and the motional branch R₁, L₁, C₁ down the right side.
   // The impedance is measured between the terminals (Z).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import L from '../kit/L.svelte';
@@ -35,4 +37,8 @@
   <Et x={334} y={154} t={c.rot('l1')} color="naranja" peq />
   <C x1={320} y1={180} x2={320} y2={240} color="naranja" pieza="c1" />
   <Et x={334} y={214} t={c.rot('c1')} color="naranja" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={320} y={120} red="m2" />
+  <Punto x={320} y={180} red="m3" />
+  <Rama x={320} y={68} medidor="vms" />
 </Lienzo>

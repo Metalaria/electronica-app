@@ -2575,7 +2575,9 @@ app). Esto no sustituye su revisión: compruebe también que cada afirmación di
    tests/lecciones11-unidad.spec.ts` (comprueba, entre otras cosas, que la salida publicada está al día con las
    fuentes: vuelva a generar si falla «al día»). Las de navegador de las dos lecciones de referencia:
    `tests/lecciones11-navegador.spec.ts` (carpeta de compilación y puerto los de la configuración; `EPA_DIST` y
-   `EPA_PUERTO` los cambian).
+   `EPA_PUERTO` los cambian). Desde la 1.2.1 esas pruebas (y las demás que recorren `cap01/sec-1.4`, `cap00/sec-0.3` o
+   las preguntas de `cap02/sec-2.2`) usan una **copia congelada** de la 1.2.0 (`web/tests/lecciones11-congeladas/`),
+   no la publicada: puede reescribir esas tres lecciones como cualquier otra (§13.12).
 6. No cambie el `id` de una tarjeta publicada ni borre lecciones: las respuestas guardadas cuelgan de ellos.
 
 ## 9. Lo que la app hace sola (no lo escriba)
@@ -2671,6 +2673,8 @@ factor mil), el signo, «cerca» o, si no, la primera `pista`.
     exito: "La carga baja la rama de abajo y la salida cae a 3,00 V."
 ```
 
+Una respuesta exacta sale como «exacto», no como un error relativo de 10⁻¹⁴ % (motor121).
+
 El generador comprueba: el objetivo da un número; cada `expr` de error da otro valor **fuera** de la tolerancia (si no,
 no es un error); una `razon` no incluye la respuesta buena; `medida` es una medida de `widget.mide` que vale lo mismo
 que el objetivo (el circuito se comprueba con ngspice como cualquier otro, §5.3).
@@ -2702,6 +2706,10 @@ El generador exige al menos una posición de los mandos que **apruebe con las to
 y las comprobaciones de un reto (§4). Úselo para la lección del libro: con E12 y ± 5 % un divisor de 3,3 V ± 2 % no
 sale; el lector lo descubre.
 
+- **Un valor dado como intervalo** (motor121): `tolerancias: { beta: { min: 100, max: 300 } }` — la β de un transistor
+  «de 100 a 300», que no es «nominal ± x %». Las esquinas toman los dos extremos; el Monte Carlo, valores al azar
+  dentro; el informe dice «β de 100 a 300». Los extremos valen como números del modelo. Puede ir con tolerancias
+  normales (`R_1: 0.05`). Tarjeta `disene-beta` de `web/tests/lecciones12-catalogo/cap05/sec-5.3.yaml`.
 - Un mando de `lista` (un catálogo de disipadores, de cables) vale como valores normalizados: no sale el aviso «sin un
   mando de serie» (1.2, motor12e). Los electrolíticos (± 20 %) se eligen en `serie: E6` (1, 1,5, 2,2, 3,3, 4,7, 6,8).
 - El recorrido (`tests/lecciones11-recorrido.spec.ts`) resuelve el diseño con una posición que **aprueba con las
@@ -2970,6 +2978,22 @@ widget:
 - `explorar` con circuito: `requiere: { mover: [A, B] }` pide cambiar esas entradas; con cronograma, mover el cursor.
 - **Predecir la salida**: `predecir` (o `pregunta`) con `opciones` y `ocultar: true`; ponga en `entradas` los `valor`
   de la combinación por la que pregunta (los interruptores no se mueven hasta responder).
+- **Drenador abierto, tri-estado y líneas compartidas** (1.2.1, motor121):
+
+  ```yaml
+      - { id: d1, tipo: od, entradas: [A] }                 # drenador abierto: tira a 0 con A = 0; con A = 1 suelta (Z)
+      - { id: t1, tipo: tri, entradas: [D1, E1] }           # tri-estado: da D1 con E1 = 1; con E1 = 0 suelta (Z)
+      - { id: linea, tipo: bus, entradas: [d1, d2, d3], pullup: 1 }   # la línea: 1 pull-up (por defecto), 0 pull-down, ninguna
+  ```
+
+  La línea vale lo que digan sus salidas; si nadie la conduce, lo que fija su resistencia (sin ella, **Z**: flota, y
+  una entrada TTL la lee como 1); si dos dicen cosas distintas, **X** (contención; la leen como 0). Con `od` y
+  pull-up es la **AND cableada** (I²C, CAN, la línea de interrupción). El cable y el LED escriben «Z» (gris
+  discontinuo) o «X» (discontinuo en el color de «mal»); el lector de pantalla oye «sin nivel» o «en conflicto». Una
+  `bus` solo admite salidas `od`/`tri`, y cada `od`/`tri` va a una `bus`. Un `objetivo` puede pedir `valor: X` o
+  `valor: Z` en un LED o una señal. Tarjetas `explore-and-cableada` y `explore-contencion` de
+  `web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`.
+- **Objetivo, elegir, marcar y leer sobre el circuito** (motor121): §13.3, §13.4, §13.5, §13.6.
 
 ### 11.3 `tocar` — Toque la zona
 
@@ -3271,3 +3295,328 @@ modelo). Antes, las de la Super Nintendo, la NES, la Mega Drive, el Master Syste
 `tabla` de un circuito `logica` con tres columnas de rótulos largos desborda a 360 px: dos columnas). Para otra consola: escriba sus siete entradas
 en el manifiesto (con sus `externas`), mire sus bloques, escriba las lecciones con el mismo patrón y añada la consola a
 la lista de `tests/grupoA11.spec.ts` si cambia el número mínimo de lecciones.
+
+## 13. Aprender haciendo de verdad (1.2.1, piloto121): responder sobre el widget vivo
+
+Opinión del propietario (16-11): «con todo preguntas no me termina de convencer, hay poco de aprender haciendo y de
+tocar». En la 1.2.0, el 61 % de las tarjetas se responden eligiendo una opción y solo el 10 % se hacen con las manos.
+Las piezas de esta sección permiten **responder haciendo** sobre el circuito o la gráfica de la tarjeta. Lecciones
+piloto ya escritas así: `cap01/sec-1.5`, `cap08/sec-8.1` y `consola-snes/snes-alimentacion`. Catálogo probado (una
+tarjeta de cada pieza): `web/tests/lecciones12-catalogo/cap01/sec-1.5.yaml`. Cópielos.
+
+### 13.0 Los principios
+
+1. **Responder haciendo, no eligiendo.** La mayoría de las preguntas se contestan sobre el widget vivo y se comprueban
+   solas: gire el mando hasta que pase X (`objetivo`), toque la pieza que… (`elegir`, `tocar`), ponga las puntas donde
+   mediría… (`medir`), marque en la gráfica dónde… (`marcar`), escriba lo que marca el medidor (`leer`). Las opciones
+   quedan para lo que no se puede manipular (un «por qué», un hecho del libro) y son minoría: **como mucho dos por
+   lección**.
+2. **Explorar siempre con un objetivo que se comprueba** («consiga 2,5 V a la salida»), nunca «mueva y mire».
+3. **Un circuito vivo** en lugar de una figura estática cuando la lección trata de un circuito. Las figuras del libro
+   se quedan para tocar zonas, no como fondo de una pregunta.
+4. Cada tarjeta, una idea (≤ 40 palabras), con su `escalera` y con **explicación de lo que hizo el lector** en cada
+   intento fallido («la corriente que mide es la de R₂, no la de la carga»).
+5. Una lección es un **laboratorio guiado corto**: intuición manipulando, la fórmula como explicación de lo que acaba
+   de hacer, y un pequeño reto.
+
+### 13.1 El instrumento: multímetro u osciloscopio sobre el circuito vivo
+
+Un widget `circuito` puede llevar un instrumento que el lector coloca en el dibujo (o con las listas de debajo, que son
+el camino del teclado y del lector de pantalla):
+
+```yaml
+widget:
+  tipo: circuito
+  esquema: kirchhoff
+  piezas: { … }
+  mide: { … }
+  instrumento:
+    tipo: multimetro                 # o osciloscopio
+    modos: [V, A]                    # opcional: por defecto, V si hay puntos y A si hay ramas
+    puntos: { f1: "Arriba de la fuente izquierda", n: "Nodo de arriba", "0": "Masa, abajo" }   # nodos del netlist → nombre neutro
+    ramas: { vm1: "Rama de R₁", vm3: "Rama de la carga" }    # medidores de 0 V del netlist → nombre neutro
+    # negra: "0"                     # dónde empieza la punta negra (por defecto, «0» si es un punto)
+```
+
+- **Lo que marca** es el punto de trabajo en continua del **netlist del propio esquema** con los valores de la
+  tarjeta: en V, la tensión de la roja menos la de la negra; en A, la corriente del medidor de 0 V de esa rama, en el
+  sentido del dibujo. Un circuito lineal se resuelve en la página (`lib/leccion12/cc.ts`); **cualquier otro esquema**
+  (diodos, LED, Zener, transistores, MOSFET, operacionales con raíles, reguladores…) se lee en el **ngspice de la
+  app** (`.op`), el mismo que corre el generador: la pantalla dice «midiendo…» un instante. En un circuito que cambia
+  con el tiempo (su gráfica tiene curvas frente al tiempo con `mide`: un rectificador, una carga RC, un 555) el
+  multímetro da la **media** en la ventana de la gráfica («Multímetro · V⎓ · media»), como un polímetro real en
+  continua. Todo en §13.10.
+- **Dónde se toca**: un nodo, donde el dibujo pone `<Punto x y red="an" />` (`esquemas/kit/Punto.svelte`), o en su
+  punto (`circle[data-red]`) o en el centro de su hilo más largo (`data-red`); una rama, donde el dibujo pone
+  `<Rama x y medidor="vm3" />` (`esquemas/kit/Rama.svelte`). Ninguno dibuja nada: marcan el sitio. Todos los esquemas
+  los tienen (motor121, §13.10); un esquema nuevo declara los suyos en `medible()` y los marca en su dibujo.
+- **Con el dedo**: un toque en un nodo pone la punta roja; un toque en la punta negra la recoge y el siguiente la deja
+  en otro nodo; en A, un toque en una rama mete el amperímetro.
+- **Osciloscopio**: `tipo: osciloscopio`, `puntos` y `curvas: { out: 0, in: 1 }` (qué curva de `widget.grafica`
+  enseña cada punto): la gráfica solo dibuja la curva del punto donde está la sonda. Un punto **sin curva** enseña la
+  onda de su nodo **del simulador** (motor121), si la gráfica es frente al tiempo y el esquema la simula.
+- El generador comprueba: cada punto es un nodo del netlist; cada rama, un medidor de 0 V; no en un widget `ocultar`
+  (daría la respuesta). En un circuito lineal, las lecturas posibles valen como números del modelo (§6); en uno que
+  lee el simulador, el script comprueba con ngspice que da cada punto y rama, y lo que pidan `medir.valor` y
+  `leer.medida` (§13.10).
+- Un instrumento puede ir en cualquier tarjeta (también en una pregunta: «si quiere, mídalo antes»).
+
+### 13.2 `medir` — Ponga el instrumento donde se mide X
+
+```yaml
+  - id: mida-corriente
+    tipo: medir
+    titulo: "Mida la corriente de la carga"
+    texto: "Abra la rama por la que baja la corriente de la carga y meta el amperímetro."
+    widget: { tipo: circuito, …, instrumento: { tipo: multimetro, puntos: { … }, ramas: { vm1: …, vm2: …, vm3: … } } }
+    medir:
+      magnitud: corriente            # tension (entre: [roja, negra]), corriente (rama) o senal (punto, osciloscopio)
+      rama: vm3
+      valor: I_k3                    # opcional: el generador comprueba que el multímetro marcaría eso (0,1 %)
+      # polaridad: true              # (tension) el orden de las puntas cuenta; por defecto, vale al revés
+      porque:                        # por rama, por punto (el de la roja) o por par «a/b»
+        vm1: "Esa es la corriente de R₁: llega al nodo desde la izquierda."
+    exito: "Por la carga bajan {{I_k3}}: la suma de lo que llega al nodo."
+```
+
+La respuesta es **dónde se pone el instrumento**; la lectura se ve en vivo mientras se coloca. Un intento fallido dice
+dónde puso las puntas y lo que marcan («Ha puesto la punta roja en «Arriba de la fuente izquierda» y la negra en «Nodo
+de arriba»: 4,80 V»), luego el `porque` de esa colocación o, si el modo no es el de la magnitud, «una tensión se mide
+en paralelo» / «una corriente se mide en serie». Tarjetas `mida-tension`, `mida-corriente`, `mida-senal`.
+
+### 13.3 `objetivo` — Explorar con una meta que se comprueba
+
+En `explorar`, `sorpresa` o `ajuste`:
+
+```yaml
+    objetivo:
+      condiciones:                   # como las de un reto (objetivo + tol, min/max, menor/mayor), con su rótulo vivo
+        - { valor: V_out, objetivo: 4, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con R₁ el doble de R₂, R₂ se queda la tercera parte: {{V_out}}."
+      pistas:                        # el consejo en vivo mientras no se cumple: el primero cuyo «cuando» vale
+        - { cuando: { valor: V_out, mayor: 4.08 }, texto: "Sobra tensión: suba R₁ o baje R₂." }
+        - { texto: "Falta tensión: baje R₁ o suba R₂." }
+    escalera: ["La salida es la parte de R₂ en R₁ + R₂."]
+    solucion: "Cualquier pareja con R₁ = 2·R₂."
+```
+
+Los chips de las condiciones se marcan en vivo; al cumplirse todas, la tarjeta dice «¡Conseguido!» con `logrado` y
+«Continuar» queda abierto aunque luego se mueva (no puntúa: no es una pregunta). Varios mandos valen (los consejos
+dicen qué mover). La fase de la tarjeta pasa a «Consiga». El generador recorre todas las posiciones de los mandos
+(hasta 250 000): alguna debe cumplir y la inicial no. Un estado como «LED encendido» u «oscila» es un cálculo del
+modelo (0/1) con `min: 1`. Tarjeta `explore-objetivo`.
+
+**Sobre un circuito lógico** (motor121), las condiciones miran el circuito vivo: `{ led: Y, valor: 1 }`,
+`{ senal: f1.q, valor: 0 }` (también `valor: Z` o `X` en una línea, §11.2), `{ contador: c1, valor: 5 }` (o
+`min`/`max`), con su `rotulo` en texto («Cuenta: cinco»; sin `{{…}}`). Las pistas pueden mirar lo mismo en `cuando`.
+El generador busca, desde el encendido, conmutando interruptores y dando pulsos de reloj, el camino más corto al
+objetivo: debe existir y el encendido no debe cumplirlo ya. No hace falta `requiere`. Con `cronograma` (1.2.1, cierre121)
+el circuito sigue vivo —interruptores y «Pulso de reloj»— y el cronograma se dibuja debajo como referencia, sin cursor:
+antes el cronograma mandaba en el circuito, quitaba el botón de pulso y un objetivo que pedía pulsos no se podía
+conseguir (20.10, 35.4 y 45.6 tuvieron que quitar el suyo; ya pueden volver a llevarlo). Con `dibujo: false` no hay
+nada que tocar: un `objetivo` es un error. Un circuito con un **lazo entre puertas** (dos NAND
+cruzadas, una autorretención) guarda su estado como un biestable: el widget y la búsqueda lo asientan desde el estado
+anterior al cambiar un interruptor. Tarjetas `explore-and-cableada`,
+`explore-contador` (cinco pulsos) y `explore-contencion` de `web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`.
+
+### 13.4 `elegir` — Toque en el esquema
+
+```yaml
+    tipo: elegir
+    widget: { tipo: circuito, esquema: kirchhoff, … }
+    elegir:
+      zonas: { r1: "Resistencia de la izquierda", r3: "Resistencia del centro", "red:n": "Nodo de arriba" }
+      bien: [r3]
+      # todas: true                  # hay que elegir todas las buenas
+      porque: { r1: "Por R₁ solo pasa la corriente de la izquierda.", "red:n": "…" }
+```
+
+Zonas: una pieza del widget (`data-pieza`), una parte dibujada que el esquema declara en `partes` (el `paso` y el
+`ao` de `regulador-lineal`), o un nodo `red:<nodo>`. **Sobre un widget `logica`** (motor121) las zonas son sus
+piezas, sus LED y sus entradas, por id (`zonas: { n1: "Puerta de la izquierda", Y: "El LED" }`, o una lista de ids:
+toman el `rotulo` de la pieza o su tipo); se tocan en el dibujo o en la lista. Tarjeta `elija-inversor` de
+`web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`. Rótulos neutros (≤ 8 palabras); cada zona que no es la respuesta
+lleva su `porque`, y queda tachada al fallarla. Tarjeta `elija-carga`.
+
+### 13.5 `marcar` — Marque en la gráfica
+
+```yaml
+    tipo: marcar
+    widget: { tipo: grafica, … }     # o un circuito con su gráfica
+    marcar:
+      modo: x                        # x: un punto sobre la curva `curva`; y: una línea horizontal; xy: un punto libre
+      curva: 0
+      x: "R_th"                      # el objetivo (expresión del modelo); en xy, x e y
+      tol: 0.03                      # fracción del eje, en su escala (un eje log: fracción de sus décadas)
+      inicio: { x: 8, y: 0 }
+      rotulo: "La carga de la máxima potencia"
+      # pasos: 120                   # posiciones del teclado en cada eje
+    pistas:                          # pueden mirar marca_x y marca_y
+      - { cuando: { valor: marca_x, mayor: 2.4 }, texto: "Más a la izquierda: …" }
+```
+
+La marca se arrastra sobre la gráfica (se ajusta a las posiciones del teclado) y tiene un deslizador por eje debajo.
+Sin pista que se aplique, la app dice hacia dónde está («demasiado a la derecha»). Al acertar se dibuja el objetivo.
+El generador exige que no empiece en el objetivo y que alguna posición del teclado caiga dentro. Tarjetas
+`marque-maximo` y `marque-punto` (la −3 dB de un Bode: `modo: x` sobre la curva en dB con `x: "f_c"` y eje log).
+
+**En el cronograma de un circuito lógico** (motor121): la marca es el cursor del cronograma, puesto en el ciclo donde
+pasa algo (el flanco que captura el dato, el bit de ACK, la violación de setup):
+
+```yaml
+    marcar:
+      cronograma: true
+      ciclo: 9                      # 1 … ciclos; no el 1 (el cursor empieza ahí)
+      senal: SDA                    # opcional: la fila de la que se habla
+      rotulo: "El ciclo del ACK"
+      porque: { 8: "Ese es el último bit de datos: el ACK viene después." }   # por número de ciclo
+```
+
+Se mueve con el deslizador «Momento» del cronograma (teclado y dedo); un fallo dice el ciclo marcado y su `porque` (sin él,
+«demasiado pronto/tarde»). Tarjeta `marque-ciclo` de `web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`.
+
+### 13.6 `leer` — Lea y escriba
+
+```yaml
+    tipo: leer
+    widget: { tipo: circuito, …, instrumento: { … } }   # o cualquier widget con una lectura o una gráfica
+    leer:
+      objetivo: I_k3
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de la carga"
+      errores: [ { expr: "I_k1", texto: "Esa es la corriente de R₁: el amperímetro estaba en otra rama." } ]
+```
+
+Como `simular` pero sobre lo que el lector ve (mide, lee en la gráfica, calcula con lo medido): se escribe con su
+unidad («3,6 mA», «4k7»), un fallo se puede corregir, y la app reconoce sola un prefijo equivocado o el signo. Las
+pistas pueden mirar `lectura` (lo escrito). Tarjeta `lea-corriente`; en la piloto de la SNES, «mida la corriente y
+escriba el calor que disipa el 7805».
+
+- `medida: { entre: [roja, negra] }` o `{ rama: vmed }` (motor121, §13.10): qué lectura del multímetro es; se
+  comprueba con el simulador que el lector la verá dentro de `tol`.
+- **En hexadecimal o binario** (motor121): `base: 16` o `base: 2`, sin `unidad` ni `tol` (se compara el número
+  exacto; un objetivo 0 vale). El `objetivo` es una expresión del modelo o un literal (`"0x3F"`, `"0b0011"`); `cifras`
+  es su ancho en bits (por defecto, múltiplo de 4, al menos 8). Acepta «3F», «0x3F», «3Fh», «0011 1111», «0b00111111»;
+  explica sola el valor escrito en decimal, los bits al revés, los nibbles cambiados y los bits invertidos (y los
+  `errores` con `expr`, que se comparan exactos: uno a un bit del bueno vale). Tarjeta `lea-hex` de `web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`.
+
+### 13.7 `tocar` en orden
+
+`tocar: { bien: [j1, t1, db1, f1, c67, u12], orden: true }` pide tocar las zonas **en ese orden** (el camino de la
+corriente en la foto): un fallo dice cuántas van bien y cuál no va en su sitio, y se quitan las que van detrás. Con
+`orden` todas las zonas pueden ser buenas. Tarjeta `ordene-camino` de `consola-snes/snes-alimentacion`.
+
+### 13.8 La mezcla de cada lección
+
+El generador clasifica cada tarjeta (salvo el resumen): **haciendo** (`medir`, `elegir`, `marcar`, `leer`, `tocar`,
+`simular`, `ajuste`, `reto`, `dibujar`, `averia`, `diseno`, `banco`, `tabla`, `sql`, y `explorar`/`sorpresa` con
+`objetivo`), **eligiendo** (opciones, estimar, ordenar, emparejar) o **mirando** (explorar sin objetivo, fórmula,
+sorpresa). Avisa («mezcla: aprender haciendo…») si las de hacer no llegan a la mitad. El script lo resume en una
+línea («aprender haciendo: 918 de 7751 tarjetas (11,8 %)…»); `--mezcla` (o `--solo`) lista cada lección. Objetivo de
+la 1.2.1: al menos el 70 % haciendo y como mucho dos tarjetas de opciones por lección.
+
+Un `tocar` sobre un listado que no es código (`codigo: { lenguaje: texto }` o cualquier lenguaje fuera de c, cpp,
+python, asm, verilog, vhdl, st, sql, js y bash, con respuestas escritas en las líneas) es una pregunta de opciones
+disfrazada: cuenta como **eligiendo** y como una tarjeta de opciones más. El generador también
+avisa si una lección pasa de dos tarjetas de opciones. Los listados de código de verdad (C, ensamblador, Python…) y
+las figuras con zonas siguen contando como hacer.
+
+### 13.9 Comprobar
+
+```sh
+cd web
+node scripts/lecciones11.mjs --solo cap01/sec-1.5
+EPA_RECORRER_CATALOGO=1 EPA_RECORRER='cap01/sec-1.5' … npx playwright test … tests/lecciones11-recorrido.spec.ts   # el catálogo
+EPA_RECORRER='^cap01/sec-1\.5$' … tests/lecciones11-recorrido.spec.ts      # la lección publicada
+EPA_SIN_SERVIDOR=1 … tests/lecciones121-unidad.spec.ts                       # cada regla rota a propósito y los veredictos
+… tests/lecciones121-navegador.spec.ts                                       # dedo, teclado y 360 px
+```
+
+El recorrido completa cada pieza como el lector: una colocación o una zona equivocada primero (con su explicación) y
+luego la buena tocando el dibujo; la marca con sus deslizadores; lo leído con un prefijo equivocado y luego bien; el
+objetivo con los mandos.
+
+### 13.10 Medir y elegir en todos los esquemas (motor121)
+
+**Cada esquema trae sus puntos, ramas y zonas** (`medible()` en su `esquema.ts`, con nombres neutros en español y
+sus marcas en el dibujo: `kit/Punto.svelte`, `kit/Rama.svelte`, `data-pieza`). Basta con:
+
+```yaml
+      instrumento: { tipo: multimetro }                 # todos los puntos y ramas del esquema, con sus nombres
+      instrumento: { tipo: multimetro, modos: [A] }     # solo el amperímetro
+      instrumento: { tipo: multimetro, puntos: [an, "0"], ramas: [vmed] }   # algunos, con el nombre del esquema
+      instrumento: { tipo: osciloscopio, puntos: [fte, s] }                 # sin «curvas»: la onda del simulador
+    elegir:
+      zonas: [r1, r2, rc, re]                           # piezas o partes del esquema, con su nombre
+      # (sin «zonas»: todas las del esquema)
+```
+
+Un objeto `{ id: «nombre» }` sigue valiendo para poner nombres propios (vacío: el del esquema). Si pide un punto,
+una rama o una zona que el esquema no tiene, el error del generador lista los que tiene.
+
+**Lo que se comprueba con el simulador** (el mismo número que verá el lector):
+
+- `medir.valor`: la lectura de esa colocación frente al modelo, al 0,1 % más la holgura de las caídas constantes del
+  libro (§5.3), como las `mide` del widget.
+- `leer.medida: { entre: [roja, negra] }` o `{ rama: vmed }`: dice **qué lectura** escribe el lector; el simulador
+  debe darla dentro de la tolerancia de la tarjeta (menos medio punto por las tres cifras de la pantalla). Sin ella,
+  sobre un multímetro que lee el simulador, el generador avisa. Si el modelo usa la caída constante (0,7 V) y el
+  diodo real da 0,65 V, el error dice cuánto: suba `tol`, use el modelo de Shockley o mida otra cosa.
+- Lo que no tiene sentido es un error: un punto o una rama que no existen; las dos puntas en el mismo nodo (también
+  dos nodos unidos por un medidor de 0 V o una bobina: marcaría siempre 0 V); una rama por la que no pasa corriente en
+  ningún estado de la tarjeta (circuito lineal); un punto del osciloscopio sin curva en un circuito de continua.
+
+El circuito vivo de un esquema no lineal se colorea con las tensiones del simulador en cuanto el instrumento las
+tiene. Tarjetas probadas: `web/tests/lecciones12-catalogo/cap05/sec-5.3.yaml` (LED, diodo de Shockley,
+transistor, osciloscopio y media de un rectificador, elegir con las zonas del esquema).
+
+### 13.11 `--convertir`: un borrador de la lección hacia «aprender haciendo» (motor121)
+
+```sh
+cd web
+EPA_CONVERTIR=<su scratchpad>/convertir node scripts/lecciones11.mjs --convertir cap05/sec-5.3
+#  (o --salida <carpeta>; sin ninguna de las dos, <tmp>/epa-convertir)
+```
+
+Escribe `<carpeta>/cap05/sec-5.3.yaml`, **nunca la fuente**, y dice qué ha hecho, qué queda y si el borrador se
+genera. Las tarjetas que no cambia quedan con su formato y sus comentarios; las que cambia, en YAML normal. Lo que hace:
+
+- **Opciones numéricas** (la buena es un número con la unidad de una magnitud del modelo en el estado de la tarjeta) y
+  **`estimar`** → **`simular`** (con `medida` si `widget.mide` mide ese valor; si no, con el modelo), o → **`leer`**
+  con el multímetro del esquema si es una `pregunta` sobre un circuito que se ve y el valor es una lectura del
+  instrumento (`leer.medida` puesta). Cada opción mala con número pasa a **error típico** (`razon`: lo que dice entre
+  el valor bueno, ±3 %) con su `porque`; las que no tienen número quedan como `REVISAR`; la explicación de la buena
+  pasa a `exito` si no había. Las pistas de `estimacion` de un `estimar` se quedan (también valen en `simular`).
+- **`explorar`/`sorpresa` con mandos y sin objetivo** → con **`objetivo`**: la lectura del widget en el estado que fija
+  la tarjeta siguiente que pregunta (hasta tres más allá), si los mandos llegan a él; `logrado` y las pistas, `REVISAR`.
+  Ojo: si esa tarjeta pide predecir ese valor, el objetivo le da la respuesta — elija otro estado.
+- **Las demás** que no se hacen con las manos salen en la cabecera con un tipo sugerido (`elegir` si las opciones
+  nombran partes del circuito, `marcar`/`leer` sobre una gráfica, `tocar` con `orden` para un `ordenar`, mantener un
+  «por qué» como una de las dos preguntas permitidas…).
+
+Todo lo marcado `REVISAR` lo escribe usted (es texto del motor, no del libro). Luego copie lo que valga a la fuente y
+genere como siempre (`--solo`, que sí comprueba con el simulador).
+
+### 13.12 Otros cambios de la 1.2.1 (motor121)
+
+- `media-onda` y `puente`: pieza `interruptor` (conecta la carga; abierto, **en vacío**: el condensador solo, en el
+  pico). Pide la carga y el condensador. Tarjeta `explore-vacio` de `web/tests/lecciones12-catalogo/cap05/sec-5.3.yaml`
+  (autor-potencia-C, 51.5 y 51.9).
+- `lm3914` con `ocultar`: los diez LED salen apagados y la descripción no dice cuántos se encienden hasta responder
+  (revisor-esquemas).
+- `diseno`: un valor como intervalo (`beta: { min: 100, max: 300 }`, §10.3).
+- `simular`: una respuesta exacta dice «exacto» (§10.2).
+- La tabla de verdad de un circuito lógico cabe a 360 px (columnas más estrechas; si aún no cabe, se desplaza dentro de
+  su caja, nunca la página).
+- Números en hexadecimal y binario en los textos: «$7123», «0x7123» y «0b0101» se leen como 28963 y 5 al compararlos
+  con el modelo y con los bloques (la regla de los números). La lectura decimal de antes («7123») sigue valiendo, así
+  que una lección que ya generaba no cambia. `exito: "$7123: los bits altos son el banco"` con
+  `d_s: { expr: "7*4096 + 291" }` genera (autor121-pc).
+- El recorrido escribe en `leer` y `simular` decimales con tantas cifras como pida `tol` (mínimo cuatro): un `leer`
+  con `tol: 0.000005` cuyo error típico es redondear se completa (autor121-digital, 37.11).
+- Las lecciones de referencia `cap01/sec-1.4` y `cap00/sec-0.3` (y `cap02/sec-2.2`, de la que la prueba de la práctica
+  elige dos preguntas) se pueden reescribir: las pruebas que las recorren tarjeta a tarjeta sirven una copia congelada
+  de la 1.2.0 (`web/tests/lecciones11-congeladas/<parte>/<label>.yaml` y su `.json`; `tests/lecciones11-congeladas.ts`)
+  en lugar de la publicada. Esa copia no se edita; si un cambio del motor cambia su salida, la prueba «las copias
+  congeladas están al día» de `lecciones11-unidad` lo dice y `EPA_CONGELAR=1` la escribe de nuevo (autor121-fund).

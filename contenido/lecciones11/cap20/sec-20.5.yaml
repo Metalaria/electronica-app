@@ -6,9 +6,15 @@
 # - El RC antes del convertidor (bloques 107 y 108): señal de 100 Hz, corte en 1 kHz. Esquema «filtro-rc» con
 #   C = 100 nF de ejemplo; la banda del ajuste, ± 10 %, es mía (el libro dice «razonable»).
 # Paso práctico: «ajuste» de R hasta poner el corte en 1 kHz (1,59 kΩ con 100 nF).
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): las tres funciones se tocan en orden en la figura 19.10; el
+# tope del pin se escribe y la pieza que protege se toca en el recortador vivo; el RC se explora hasta un corte entre
+# los 100 Hz de la señal y el doble. El divisor de valores altos pasa al «exito» del nivel y la regla de oro, al
+# resumen. En el banco se pone el osciloscopio en el pin recortado. La adaptación de nivel pasa al explorar. Queda una pregunta
+# de opciones: el disparador de Schmitt.
 leccion: cap20/sec-20.5
 
 libro:
+  115: "La cadena se verifica midiendo en cada punto"
   93: "Ninguna señal del mundo real entra directamente en un microcontrolador."
   95: "Proteger: limitar lo que puede entrar"
   96: "llevar la señal al margen que el convertidor admite"
@@ -52,50 +58,47 @@ tarjetas:
     tipo: explorar
     titulo: "Entre el mundo y el pin"
     texto: "Ninguna señal del mundo real entra directamente en un microcontrolador. Toque cada eslabón de la cadena."
-    libro: [93, 95, 96, 97, 98, 117]
+    libro: [93, 95, 96, 97, 98, 103, 104, 105, 117]
     widget:
       tipo: figura
       figura: fig-20.10
       zonas:
         - { id: proteger, rotulo: "Segundo recuadro", rect: [96, 4, 76, 45], texto: "Proteger: limitar lo que puede entrar." }
-        - { id: adaptar, rotulo: "Tercer recuadro", rect: [189, 4, 76, 45], texto: "Adaptar el nivel al margen del convertidor, y la impedancia: la carga que pide el sensor y la fuente baja que pide el convertidor." }
+        - { id: adaptar, rotulo: "Tercer recuadro", rect: [189, 4, 76, 45], texto: "Adaptar: divisor para lo grande, amplificador para lo pequeño, desplazamiento para lo bipolar; y la impedancia: la carga que pide el sensor y la fuente baja que pide el convertidor." }
         - { id: filtrar, rotulo: "Cuarto recuadro", rect: [282, 4, 76, 45], texto: "Filtrar: limitar el ancho de banda al necesario." }
         - { id: regla, rotulo: "Recuadro de abajo", rect: [4, 93, 446, 50], texto: "La regla de oro del acondicionamiento." }
     requiere: { mover: [proteger, adaptar, filtrar] }
 
   - id: porque-orden
-    tipo: porque
+    tipo: tocar
     titulo: "Proteger, lo primero"
-    texto: "En la cadena, la protección va antes que todo lo demás. ¿Por qué ese orden?"
-    libro: [99]
+    texto: "Toque en orden las tres funciones de la cadena, desde el conector hasta el convertidor."
+    libro: [95, 96, 98, 99, 117]
     widget:
       tipo: figura
       figura: fig-20.10
       zonas:
+        - { id: filtrar, rotulo: "Cuarto recuadro", rect: [282, 4, 76, 45] }
         - { id: proteger, rotulo: "Segundo recuadro", rect: [96, 4, 76, 45] }
-    opciones:
-      - texto: "De nada sirve acondicionar una señal que va a destruir la entrada"
-        bien: true
-        porque: "Si llega una sobretensión, todo lo que haya delante sin proteger se destruye con ella."
-      - texto: "Porque proteger es lo más barato"
-        porque: "No es cuestión de coste, sino de que lo demás sobreviva."
-      - texto: "Da igual el orden"
-        porque: "No es casual: lo que no está protegido puede romperse antes de que nada actúe."
+        - { id: adaptar, rotulo: "Tercer recuadro", rect: [189, 4, 76, 45] }
+    tocar:
+      bien: [proteger, adaptar, filtrar]
+      orden: true
+    exito: "Proteger, adaptar y filtrar. El orden no es casual: de nada sirve acondicionar bien una señal que va a destruir la entrada."
     escalera:
-      - "¿Qué le pasa a un amplificador sin proteger ante una sobretensión?"
-    solucion: "De nada sirve acondicionar bien una señal que va a destruir la entrada."
+      - "¿Qué tiene que sobrevivir para que lo demás sirva?"
+    solucion: "Proteger, adaptar nivel e impedancia, y filtrar."
 
   - id: prediga-tope
-    tipo: predecir
+    tipo: leer
     titulo: "El tope del pin"
-    texto: "Una entrada de 3,3 V recibe por error 24 V a través de 4,7 kΩ, con diodos de 0,6 V a los raíles. ¿Hasta dónde sube el pin?"
+    texto: "Una entrada de 3,3 V recibe por error 24 V a través de 4,7 kΩ, con diodos de 0,6 V a los raíles. Escriba hasta dónde sube el pin."
     libro: [116, "cap10#112"]
     fijar: { V_m: 24, R_s: 4700, V_DD: 3.3, V_D: 0.6 }
     widget:
       tipo: circuito
       esquema: recortador
       piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
-      lectura: { valor: V_tope, rotulo: "Tope del pin" }
       grafica:
         x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
         y: { min: -25, max: 25, unidad: V, rotulo: "v" }
@@ -104,24 +107,25 @@ tarjetas:
           - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
       ocultar: true
       mandos: []
-    opciones:
-      - texto: "3,9 V: el raíl más una caída de diodo"
-        bien: true
-        porque: "El diodo hacia V_{DD} conduce en cuanto el pin pasa de 3,3 + 0,6 V; el resto cae en la resistencia."
-      - texto: "24 V"
-        porque: "Eso sin diodos: con ellos, el pin se queda en el raíl más una caída."
-      - texto: "3,3 V exactos"
-        porque: "Falta la caída del diodo: conduce a 0,6 V por encima del raíl."
+    leer:
+      objetivo: V_tope
+      unidad: V
+      tol: 0.02
+      rotulo: "Tope del pin"
+      errores:
+        - { expr: "V_m", texto: "Eso sería sin diodos: con ellos, el pin se queda en el raíl más una caída." }
+        - { expr: "V_DD", texto: "Falta la caída del diodo: conduce a 0,6 V por encima del raíl." }
+    exito: "3,9 V: el diodo hacia V_{DD} conduce en cuanto el pin pasa de 3,3 + 0,6 V, y el resto cae en la resistencia."
     escalera:
       - "¿Cuándo empieza a conducir el diodo que va a V_{DD}?"
-    solucion: "3,3 + 0,6 = 3,9 V: el raíl más una caída de diodo."
+    solucion: "3,3 + 0,6 = 3,9 V."
     comprobar:
       - { V_tope: 3.9 }
 
   - id: resistencia
-    tipo: pregunta
+    tipo: elegir
     titulo: "Quién protege"
-    texto: "En la protección de una entrada, una resistencia en serie y dos diodos hacia los raíles. ¿Qué es lo que protege?"
+    texto: "Una resistencia en serie y dos diodos hacia los raíles. Toque la pieza que de verdad protege el chip."
     libro: [101, "cap10#111"]
     fijar: { V_m: 24, R_s: 4700, V_DD: 3.3, V_D: 0.6 }
     widget:
@@ -135,65 +139,50 @@ tarjetas:
         curvas:
           - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
       mandos: []
-    opciones:
-      - texto: "La resistencia, que limita la corriente inyectada"
-        bien: true
-        porque: "Los diodos ya están en el chip; sin la resistencia conducen sin límite y el chip se destruye igual."
-      - texto: "Los diodos, que recortan"
-        porque: "Recortan, pero sin la resistencia la corriente que llevan no está limitada."
-      - texto: "Ninguna de las dos: el chip ya se protege"
-        porque: "Sus diodos internos solo toleran una corriente de inyección limitada: hace falta la resistencia."
+    elegir:
+      zonas: [r, diodo1, diodo2, vref]
+      bien: [r]
+      porque:
+        diodo1: "Recorta, pero sin la resistencia la corriente que lleva no tiene límite."
+        diodo2: "Recorta lo negativo, con el mismo problema: nada limita su corriente."
+        vref: "Es el raíl al que se descarga la corriente, no lo que la limita."
+    exito: "La resistencia: limita la corriente que se inyecta en los diodos, {{I_iny}} en el pico. Los diodos ya están en el chip, y sin ella conducirían sin límite."
     escalera:
       - "¿Qué limita la corriente que entra por los diodos?"
-    solucion: "La resistencia: limita la corriente que se inyecta en los diodos."
+    solucion: "La resistencia en serie."
 
-  - id: empareje-nivel
-    tipo: pregunta
-    titulo: "Adaptar el nivel"
-    texto: "Empareje cada caso con la forma de adaptarlo al convertidor."
-    libro: [103, 104, 105]
+  - id: mida-pin
+    tipo: medir
+    titulo: "En el banco"
+    texto: "La cadena se verifica midiendo en cada punto. Ponga la sonda del osciloscopio donde comprueba que la sobretensión no pasa del raíl más una caída."
+    libro: [115, 116]
+    fijar: { V_m: 24, R_s: 4700, V_DD: 3.3, V_D: 0.6 }
     widget:
-      tipo: figura
-      figura: fig-20.10
-      zonas:
-        - { id: adaptar, rotulo: "Tercer recuadro", rect: [189, 4, 76, 45] }
-    emparejar:
-      - ["Señal mayor que la referencia", "Divisor resistivo"]
-      - ["Señal pequeña", "Amplificador, que amplifica también offset y ruido"]
-      - ["Señal bipolar en un convertidor unipolar", "Desplazamiento de nivel"]
-    exito: "Y la impedancia: el divisor, con valores moderados seguidos de un seguidor."
-    pistas:
-      - { texto: "Lo bipolar tiene que subirse para entrar en un convertidor que solo admite positivo." }
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_m, f: f_s, r: R_s, vd: V_D, vref: V_DD }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -25, max: 25, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_m*sin(2*pi*f_s*t)", color: tinta, rotulo: "conector", mide: entrada, discontinua: true }
+          - { expr: "max(min(V_m*sin(2*pi*f_s*t), V_DD + V_D), -V_D)", color: naranja, rotulo: "pin", mide: salida }
+      instrumento: { tipo: osciloscopio, puntos: [fte, s] }
+      mandos: []
+    medir:
+      magnitud: senal
+      punto: s
+      porque:
+        fte: "Ese es el conector: la sobretensión entera, antes de la protección."
+    exito: "En el pin, la onda recortada en el raíl más una caída de diodo, y en una caída por debajo de masa: la protección funciona."
     escalera:
-      - "Empiece por la señal grande: hay que bajarla."
-    solucion: "Grande, divisor; pequeña, amplificador; bipolar, desplazamiento de nivel."
-
-  - id: divisor-alto
-    tipo: pregunta
-    titulo: "Un divisor de valores altos"
-    texto: "Para no cargar el sensor, se pone un divisor de valores muy altos ante el convertidor. ¿Qué problema trae?"
-    libro: [97, 103]
-    widget:
-      tipo: figura
-      figura: fig-20.10
-      zonas:
-        - { id: adaptar, rotulo: "Tercer recuadro", rect: [189, 4, 76, 45] }
-    opciones:
-      - texto: "Incumple la impedancia baja que exige el convertidor"
-        bien: true
-        porque: "La solución es valores moderados seguidos de un seguidor."
-      - texto: "Ninguno: cuanto más alto, mejor"
-        porque: "Alto no carga el sensor, pero deja al convertidor sin la fuente de baja impedancia que exige."
-      - texto: "Carga demasiado el sensor"
-        porque: "Eso lo hace un divisor de valores bajos."
-    escalera:
-      - "¿Qué pide el convertidor a lo que tiene delante?"
-    solucion: "Incumple la exigencia de baja impedancia del convertidor: valores moderados y un seguidor."
+      - "Lo que importa es lo que llega al pin, tras la resistencia."
+    solucion: "En la salida, tras la resistencia."
 
   - id: explore-filtro
     tipo: explorar
     titulo: "Un RC antes de convertir"
-    texto: "Limita el ancho de banda, hace de antialiasing y da al convertidor una fuente de baja impedancia. Mueva R y mire dónde corta."
+    texto: "Limita el ruido, hace de antialiasing y da al convertidor una fuente de baja impedancia. Elija la R que corta entre los 100 Hz de la señal y su doble."
     nota: "C de ejemplo."
     libro: [107]
     widget:
@@ -211,7 +200,17 @@ tarjetas:
           - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
       mandos:
         - { valor: R_f, lista: [1000, 4700, 10000] }
-    requiere: { mover: [R_f] }
+    objetivo:
+      condiciones:
+        - { valor: f_c, min: 100, max: 200, rotulo: "Corte: {{f_c}}" }
+      logrado: "Con {{R_f}}, corta en {{f_c}}. Cuanto mayor es R, más abajo corta y más ruido quita."
+      pistas:
+        - { texto: "Corta demasiado arriba: suba R." }
+    escalera:
+      - "Con más R, el condensador tarda más en cargarse: corta más abajo."
+    solucion: "10 kΩ: unos 159 Hz."
+    comprobar:
+      - { con: { R_f: 10000 }, f_c: 159.2, tol: 0.01 }
 
   - id: ajuste-corte
     tipo: ajuste
@@ -270,32 +269,10 @@ tarjetas:
       - "¿Qué entrada convierte una rampa en un flanco limpio?"
     solucion: "Un disparador de Schmitt."
 
-  - id: porque-oro
-    tipo: porque
-    titulo: "La regla de oro"
-    texto: "Una señal llega con ruido al convertidor. ¿Por qué no basta con promediar o filtrar en digital después?"
-    libro: [112, 113]
-    widget:
-      tipo: figura
-      figura: fig-20.10
-      zonas:
-        - { id: regla, rotulo: "Recuadro de abajo", rect: [4, 93, 446, 50] }
-    opciones:
-      - texto: "Lo que se estropea antes del convertidor no se recupera después"
-        bien: true
-        porque: "Ni promediando, ni filtrando en digital, ni con más bits."
-      - texto: "Porque el digital es más lento"
-        porque: "No es la velocidad: lo que se perdió ya no está en los datos."
-      - texto: "Sí basta, con suficientes bits"
-        porque: "Más bits no devuelven lo que el acondicionamiento estropeó."
-    escalera:
-      - "¿Está todavía en los datos lo que se perdió antes de convertir?"
-    solucion: "Lo que se pierde o se estropea antes del convertidor no se recupera después."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [99, 101, 108, 112]
+    libro: [99, 101, 108, 112, 113]
     ideas:
       - { titulo: "La cadena.", texto: "Proteger, adaptar nivel e impedancia, filtrar y convertir, en ese orden." }
       - { titulo: "La protección.", texto: "Resistencia y diodos: el pin no pasa del raíl más una caída de diodo." }

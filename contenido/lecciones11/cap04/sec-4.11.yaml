@@ -2,6 +2,9 @@
 # resistencia que solo existe en radiofrecuencia (600 Ω a 100 MHz atenúan 17 dB en un sistema de 50 Ω), su caída con
 # la corriente continua, la resonancia con el desacoplo, y el choke de modo común (qué ve la señal y qué ve el ruido,
 # el fallo de arrollarlo al revés y cómo comprobarlo). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): pasar de 15 dB con la cuenta, predecir y calcular la
+# atenuación, pasar medio amperio, y arrollar el choke para que el modo común sume sus flujos (flujos en veces Φ₁,
+# fig. 4.17); se eligen la ferrita de pérdidas y la prueba del choke. Saturación, desacoplo y la conmutada van en los textos.
 leccion: cap04/sec-4.11
 
 libro:
@@ -20,6 +23,8 @@ modelo:
     dc_on: { tipo: interruptor, nombre: "medio amperio de continua por la cuenta", valor: 0 }
     Z_0: { sim: "Z_{cuenta}", nombre: "impedancia de la cuenta sin corriente", unidad: Ω, valor: 600 }
     Z_dc: { sim: "Z_{cuenta}", nombre: "impedancia de la cuenta con 0,5 A", unidad: Ω, valor: 100 }
+    s_c: { sim: "sentido", nombre: "sentido del segundo devanado (1, el mismo; −1, contrario)", unidad: "", valor: -1 }
+    m_c: { sim: "modo", nombre: "modo de la corriente (0, diferencial; 1, común)", unidad: "", valor: 0 }
   calculos:
     a_b: { expr: "20*log10((Z_b + R_s)/R_s)", sim: "atenuación", nombre: "atenuación de la cuenta", unidad: dB, cifras: 3 }
     Z_e: { si: dc_on, entonces: "Z_dc", sino: "Z_0", sim: "Z_{cuenta}", nombre: "impedancia de la cuenta a 100 MHz", unidad: Ω }
@@ -27,12 +32,13 @@ modelo:
     Z_t: { expr: "Z_b + R_s", sim: "Z + R", nombre: "impedancia total del lazo", unidad: Ω }
     l_k: { expr: "log10(k_b)", sim: "log", nombre: "logaritmo del cociente", unidad: "", cifras: 3 }
     a_e: { expr: "20*log10((Z_e + R_s)/R_s)", sim: "atenuación", nombre: "atenuación a 100 MHz", unidad: dB, cifras: 3 }
+    k_f: { expr: "abs(1 + s_c*(2*m_c - 1))", sim: "(Φ₁ + Φ₂)/Φ₁", nombre: "flujo total, en veces el de un devanado", unidad: "veces", cifras: 2 }
 
 tarjetas:
   - id: explore-cuenta
     tipo: explorar
     titulo: "Una resistencia de radiofrecuencia"
-    texto: "Una cuenta de ferrita en serie, en un sistema de 50 Ω: generador y carga suman 100 Ω. Cambie su impedancia y mire cuánto atenúa."
+    texto: "Una cuenta de ferrita en serie, en un sistema de 50 Ω: generador y carga suman 100 Ω. Busque la cuenta que atenúa 17 dB."
     libro: [239, 242]
     widget:
       tipo: grafica
@@ -45,61 +51,62 @@ tarjetas:
       lectura: { valor: a_b, rotulo: "Atenuación" }
       mandos:
         - { valor: Z_b, lista: [1, 10, 100, 600, 1000, 10000], rotulo: "Impedancia de la cuenta" }
-    requiere: { mover: [Z_b] }
+    inicio: { Z_b: 10 }
+    objetivo:
+      condiciones:
+        - { valor: a_b, objetivo: 16.9, tol: 0.02, rotulo: "Atenuación: {{a_b}}" }
+      logrado: "Con {{Z_b}}, {{a_b}}: deja pasar lo útil y absorbe el ruido de radiofrecuencia, donde su impedancia sube."
+      pistas:
+        - { cuando: { valor: a_b, mayor: 17.3 }, texto: "Se ha pasado: menos impedancia." }
+        - { texto: "Más impedancia." }
+    escalera:
+      - "Atenuación = 20·log((Z + 100)/100)."
+    solucion: "Con 600 Ω: 17 dB."
+    comprobar:
+      - { a_b: 0.828, tol: 0.01 }
+      - { con: { Z_b: 600 }, a_b: 16.9, tol: 0.01 }
 
   - id: prediga-continua
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "A baja frecuencia, la cuenta es una inductancia pequeña y una resistencia de décimas de ohmio. ¿Qué le hace a la alimentación?"
+    texto: "A baja frecuencia, la cuenta es una inductancia pequeña y una resistencia de décimas de ohmio: cuente 1 Ω. ¿Cuánto atenúa a la alimentación?"
     libro: [239, 242]
     fijar: { Z_b: 1 }
-    widget:
-      tipo: grafica
-      x: { id: z, min: 1, max: 10000, unidad: Ω, rotulo: "Z_{cuenta}", escala: log }
-      y: { min: 0, max: 45, unidad: dB, rotulo: "atenuación" }
-      curvas:
-        - { expr: "20*log10((z + R_s)/R_s)", color: naranja, rotulo: "20·log((Z + 100)/100)" }
-      lectura: { valor: a_b, rotulo: "Atenuación" }
-      ocultar: true
-    opciones:
-      - texto: "Nada"
-        bien: true
-        porque: "Frente a los 100 Ω del sistema, unas décimas de ohmio no atenúan: deja pasar lo útil."
-      - texto: "La atenúa 17 dB"
-        porque: "Eso es a 100 MHz, donde presenta 600 Ω. Abajo apenas es nada."
-      - texto: "La corta"
-        porque: "En continua solo pone su resistencia de décimas de ohmio: no corta nada."
+    simular:
+      objetivo: a_b
+      unidad: dB
+      tol: 0.1
+      rotulo: "Atenuación de la alimentación"
+      errores:
+        - { razon: { min: 150, max: 250 }, texto: "Eso es a 100 MHz, donde presenta 600 Ω. Abajo apenas es nada." }
+    exito: "Menos de una décima de decibelio: frente a los 100 Ω del sistema, no atenúa. Deja pasar lo útil."
     escalera:
-      - "Compare unas décimas de ohmio con los 100 Ω del sistema."
-    solucion: "Nada: apenas atenúa y deja pasar la alimentación útil."
-
+      - "Compare 1 Ω con los 100 Ω del sistema."
+    solucion: "20·log((1 + 100)/100): casi nada."
+    comprobar:
+      - { a_b: 0.0864, tol: 0.01 }
   - id: estime-cuenta
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "A 100 MHz"
-    texto: "Una cuenta común da 600 Ω a 100 MHz, esencialmente resistivos. Estime cuánto atenúa en el sistema de 50 Ω."
+    texto: "Una cuenta común da 600 Ω a 100 MHz, esencialmente resistivos. Calcule cuánto atenúa en el sistema de 50 Ω."
     libro: [242]
     fijar: { Z_b: 600 }
-    estimar:
-      objetivo: "a_b"
+    simular:
+      objetivo: a_b
       unidad: dB
-      min: 0
-      max: 40
-      paso: 0.5
-      inicio: 35
-      tol: 0.05
+      tol: 0.03
       rotulo: "Atenuación"
+      errores:
+        - { razon: { min: 0.89, max: 0.95 }, texto: "Sume los 100 Ω del sistema: (600 + 100)/100." }
     exito: "17 dB: 20·log(700/100). Y como es resistiva, disipa el ruido en lugar de reflejarlo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 17.8 }, texto: "Se ha pasado: 20·log((600 + 100)/100) = 20·log 7." }
-      - { texto: "Se ha quedado corto: 20·log 7, con log 7 ≈ 0,845." }
+    escalera:
+      - "En el sistema de 50 Ω, la atenuación es 20·log((Z + 100)/100)."
+    solucion: "20·log 7 ≈ 17 dB."
     comprobar:
       - { a_b: 16.9, tol: 0.01 }
       - { k_b: 7, Z_t: 700, l_k: 0.845 }
-    escalera:
-      - "En el sistema de 50 Ω, la atenuación es 20·log((Z + 100)/100)."
-    solucion: "20·log(700/100) = 20·log 7 ≈ 17 dB."
-
+      - { con: { Z_b: 500 }, a_b: 15.56, tol: 0.01 }
   - id: sorpresa-corriente
     tipo: sorpresa
     titulo: "Con corriente continua"
@@ -118,37 +125,18 @@ tarjetas:
         - { valor: a_e, rotulo: "Atenúa {{a_e}}" }
       mandos:
         - { valor: dc_on, tipo: conectar, boton: "Pasar 0,5 A de continua" }
-    requiere: { conectar: [dc_on] }
-    comprobar:
-      - { con: { dc_on: 1 }, Z_e: 100, a_e: 6.02 }
-
-  - id: porque-satura
-    tipo: porque
-    titulo: "¿Por qué cae?"
-    texto: "Sin corriente, 600 Ω; con medio amperio, 100 Ω. ¿Qué le ha pasado a la cuenta?"
-    libro: [243]
-    opciones:
-      - texto: "Su núcleo se satura"
-        bien: true
-        porque: "Por eso, en una alimentación, la cuenta se elige con la curva de la hoja de datos a la corriente real."
-      - texto: "Se ha calentado y se ha roto"
-        porque: "No está rota: al quitar la corriente vuelve a 600 Ω. Es saturación."
-      - texto: "La continua la cortocircuita"
-        porque: "La continua pasa igual que antes; lo que cambia es el núcleo, que satura."
-    fijar: { dc_on: 1 }
-    widget:
-      tipo: grafica
-      x: { id: z, min: 1, max: 10000, unidad: Ω, rotulo: "Z_{cuenta}", escala: log }
-      y: { min: 0, max: 45, unidad: dB, rotulo: "atenuación" }
-      curvas:
-        - { expr: "20*log10((z + R_s)/R_s)", color: naranja, rotulo: "20·log((Z + 100)/100)" }
-      marcas:
-        - { x: "Z_e", y: "a_e", rotulo: "La cuenta" }
-      lectura: { valor: Z_e, rotulo: "Impedancia a 100 MHz" }
-      mandos: []
+    objetivo:
+      condiciones:
+        - { valor: dc_on, min: 1, rotulo: "Medio amperio de continua" }
+      logrado: "De 600 Ω a {{Z_e}}: el núcleo se satura y ya solo atenúa {{a_e}}. En una alimentación se elige con la curva de la hoja de datos a la corriente real."
+      pistas:
+        - { texto: "Pulse el botón para pasar la continua." }
     escalera:
-      - "La cuenta es una ferrita: ¿qué le hace una corriente continua grande a su núcleo?"
-    solucion: "Lo satura: la permeabilidad cae y con ella la impedancia. Al quitar la corriente, se recupera."
+      - "Pulse el botón."
+    solucion: "Cae a 100 Ω: 6 dB."
+    comprobar:
+      - { Z_e: 600 }
+      - { con: { dc_on: 1 }, Z_e: 100, a_e: 6.02 }
 
   - id: porque-perdidas
     tipo: porque
@@ -172,67 +160,39 @@ tarjetas:
       - "Mire la curva R (pérdidas) arriba: ¿qué hace una resistencia con la energía del ruido?"
     solucion: "La convierte en calor: la cuenta disipa el ruido en vez de reflejarlo y no forma resonancias."
 
-  - id: pregunta-desacoplo
-    tipo: pregunta
-    titulo: "Junto al desacoplo"
-    texto: "Una cuenta en una alimentación, junto a sus condensadores de desacoplo. ¿Qué hay que vigilar?"
-    libro: [243]
-    opciones:
-      - texto: "Que formen un LC que resuene"
-        bien: true
-        porque: "Donde la cuenta aún es inductiva, decenas de megahercios. Se amortigua con una resistencia pequeña o con la ESR de un electrolítico."
-      - texto: "Que la cuenta descargue los condensadores"
-        porque: "No los descarga: el riesgo es una resonancia del filtro LC que forman."
-      - texto: "Nada: la cuenta siempre es resistiva"
-        porque: "Solo lo es arriba. En decenas de megahercios aún es inductiva y puede resonar."
-    widget:
-      tipo: figura
-      figura: fig-4.17
-      zonas:
-        - { id: inductiva, rotulo: "Zona inductiva de la cuenta", rect: [0, 0, 218, 251] }
-    escalera:
-      - "Por debajo de su zona resistiva, la cuenta es una bobina. ¿Y con un condensador al lado?"
-    solucion: "Forman un LC que puede resonar en decenas de megahercios; se amortigua con una resistencia pequeña."
-
   - id: empareje-choke
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: explorar
     titulo: "El choke de modo común"
-    texto: "Los dos hilos de la línea van arrollados juntos sobre el mismo núcleo. Empareje."
+    texto: "Los dos hilos de la línea van arrollados juntos sobre el mismo núcleo. Arróllelos de modo que el ruido de modo común sume sus flujos y la señal no."
     libro: [240, 244, 246]
-    emparejar:
-      - ["Corriente diferencial", "Flujos que se cancelan"]
-      - ["Modo común", "Inductancia completa"]
-      - ["Hilos al revés", "Funciona al revés"]
-    exito: "Eso es: la señal pasa intacta y el ruido de modo común ve una impedancia alta."
-    pistas:
-      - { texto: "La corriente útil va por un hilo y vuelve por el otro: sus flujos tienen sentidos opuestos." }
-    escalera:
-      - "La corriente útil va por un hilo y vuelve por el otro: sus flujos tienen sentidos opuestos."
-    solucion: "Diferencial: flujos que se cancelan. Modo común: inductancia completa. Hilos al revés: funciona al revés."
-
-  - id: porque-conmutada
-    tipo: porque
-    titulo: "El filtro obligado"
-    texto: "Casi toda fuente conmutada lleva un choke de modo común a la entrada. ¿De dónde sale su ruido de modo común?"
-    libro: [245]
-    opciones:
-      - texto: "De la capacidad entre bobinados de su transformador"
-        bien: true
-        porque: "Acopla la conmutación del primario al secundario en modo común. El choke y los condensadores Y lo frenan."
-      - texto: "De la corriente de la carga"
-        porque: "La de la carga es diferencial: va y vuelve. El modo común entra por la capacidad del transformador."
-      - texto: "Del rizado de la salida"
-        porque: "El rizado es diferencial. El modo común viene de la capacidad entre bobinados."
+    inicio: { s_c: -1, m_c: 0 }
     widget:
-      tipo: figura
-      figura: fig-4.17
-      zonas:
-        - { id: choke, rotulo: "Choke: modo diferencial y modo común", rect: [222, 0, 223, 251] }
+      tipo: grafica
+      x: { id: m, min: 0, max: 1, unidad: "", rotulo: "modo: diferencial (0) a común (1)" }
+      y: { min: 0, max: 2.2, unidad: "veces", rotulo: "flujo total / Φ₁" }
+      curvas:
+        - { expr: "abs(1 + s_c*(2*m - 1))", color: naranja, rotulo: "Φ₁ + Φ₂" }
+      marcas:
+        - { x: "m_c", y: "k_f", rotulo: "La corriente" }
+      lectura: { valor: k_f, rotulo: "Flujo total, en veces Φ₁" }
+      mandos:
+        - { valor: s_c, lista: [-1, 1], nombres: ["contrario", "el mismo"], rotulo: "Sentido del segundo devanado" }
+        - { valor: m_c, lista: [0, 1], nombres: ["diferencial: la señal", "común: el ruido"], rotulo: "Corriente" }
+    objetivo:
+      condiciones:
+        - { valor: m_c, min: 1, rotulo: "Modo común" }
+        - { valor: k_f, min: 1.99, rotulo: "Flujo: {{k_f}} Φ₁" }
+      logrado: "El modo común suma sus flujos y ve toda la inductancia; la señal, que va y vuelve, los cancela y pasa intacta."
+      pistas:
+        - { cuando: { valor: m_c, max: 0 }, texto: "Mire el modo común: el ruido." }
+        - { texto: "Así se cancelan: está arrollado al revés. Cambie el sentido." }
     escalera:
-      - "El modo común va por los dos hilos en el mismo sentido: no lo produce la carga."
-    solucion: "La capacidad entre bobinados del transformador acopla la conmutación del primario al secundario."
-
+      - "Arrollados en sentidos contrarios, funciona exactamente al revés."
+    solucion: "El mismo sentido y modo común: 2Φ₁."
+    comprobar:
+      - { k_f: 2 }
+      - { con: { s_c: 1, m_c: 1 }, k_f: 2 }
+      - { con: { s_c: 1, m_c: 0 }, k_f: 0 }
   - id: pregunta-prueba
     tipo: pregunta
     titulo: "¿Está bien arrollado?"
@@ -258,9 +218,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [242, 243, 244, 246]
+    libro: [242, 243, 244, 245, 246]
     ideas:
       - { titulo: "La cuenta.", texto: "Una resistencia que solo aparece en RF: 600 Ω a 100 MHz atenúan 17 dB en 50 Ω, y disipa sin resonar." }
-      - { titulo: "Con continua.", texto: "Su núcleo satura: hay que elegirla a la corriente real." }
-      - { titulo: "El choke.", texto: "La señal cancela su flujo y pasa; el modo común ve toda la inductancia." }
+      - { titulo: "Con continua.", texto: "Su núcleo satura: hay que elegirla a la corriente real. Junto al desacoplo forma un LC que puede resonar." }
+      - { titulo: "El choke.", texto: "La señal cancela su flujo y pasa; el modo común ve toda la inductancia. En una conmutada, ese ruido entra por la capacidad entre bobinados del transformador." }
       - { titulo: "Al revés.", texto: "Arrollado en sentidos contrarios, funciona exactamente al revés." }

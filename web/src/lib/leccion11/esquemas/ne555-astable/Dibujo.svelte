@@ -4,6 +4,8 @@
   // that drives it, the threshold comparator (⅔ V_CC) and the trigger comparator (⅓ V_CC) on the left edge, wired to
   // the capacitor, and the output on the right.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
@@ -36,6 +38,8 @@
   <path class="hilo" d="M30 290 H300 V270" data-red="0"></path>
   <!-- the chip -->
   <rect class="cuerpo" x="150" y="50" width="290" height="220" rx="8"></rect>
+  <!-- (1.2.1: the chip as a zone of an «elegir» card — a clear corner of it, so no wire of the inside counts as its body) -->
+  <rect data-pieza="chip" x="330" y="196" width="100" height="62" fill="transparent" stroke="none"></rect>
   <Et x={430} y={262} t="555" ancla="end" peq />
   <Et x={348} y={64} t="DIS" peq />
   <Et x={384} y={64} t="VCC" peq />
@@ -59,4 +63,8 @@
   <path class="hilo" d="M286 130 H300 V170 H470" data-red="out"></path>
   <circle class="borne" cx="470" cy="170" r="5"></circle>
   <Et x={470} y={154} t={[{ t: 'txt', s: 'v' }, { t: 'sub', s: 'o' }]} ancla="middle" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={440} y={170} red="out" />
+  <Punto x={200} y={290} red="0" />
+  <Rama x={80} y={98} medidor="vmb" />
 </Lienzo>

@@ -3,6 +3,9 @@
 # Complementos/codigo/apK (estados, bufer). El número de datos guardados es (uint8_t)(cabeza − cola): la gráfica lo
 # dibuja frente a la cabeza con la cola fija, con la vuelta de 255 a 0; figura K.1b (cola 254, cabeza 3: 5 datos) y
 # ejercicio K.5 (cabeza 3, cola 250: 9 datos).
+# 1.2.1 («aprender haciendo», GUIA §13): los 5 datos de la figura K.1b son un objetivo (la cabeza da la vuelta); los 9
+# del ejercicio se escriben; las fases se tocan en orden en el enum, desordenado; la línea del tiempo máximo y la que
+# publica el dato se tocan en el código. Quedan dos preguntas de opciones: la potencia de dos y comparar restando.
 leccion: apK/sec-K.4
 
 libro:
@@ -27,8 +30,10 @@ tarjetas:
   - id: explore-bufer
     tipo: explorar
     titulo: "Cabeza menos cola"
-    texto: "Índices de 8 bits que cuentan libremente de 0 a 255. Mueva la cabeza y la cola: (uint8_t)(cabeza − cola) cuenta los datos aunque dé la vuelta."
+    texto: "La cabeza escribe y la cola lee, con índices de 8 bits que cuentan libremente de 0 a 255. Con la cola en 254, mueva la cabeza hasta que el búfer guarde 5 datos."
     libro: [42, 44, "apK#69"]
+    fijar: { col: 254 }
+    inicio: { cab: 254 }
     widget:
       tipo: grafica
       x: { id: hh, min: 0, max: 255, unidad: "", rotulo: "cabeza" }
@@ -40,14 +45,22 @@ tarjetas:
       lectura: { valor: n_dat, rotulo: "Datos guardados" }
       mandos:
         - { valor: cab, min: 0, max: 255, paso: 1, rotulo: "Cabeza" }
-        - { valor: col, lista: [250, 254], rotulo: "Cola" }
-    requiere: { mover: [cab] }
+    objetivo:
+      condiciones:
+        - { valor: n_dat, objetivo: 5, tol: 0.01, rotulo: "Datos: {{n_dat}}" }
+      logrado: "La cabeza en {{cab}}: ha pasado de 255 a 0, y (uint8_t)(cabeza − cola) sigue contando {{n_dat}} datos."
+      pistas:
+        - { cuando: { valor: n_dat, mayor: 5 }, texto: "Demasiados: la cabeza va solo 5 posiciones por delante de la cola." }
+        - { texto: "Faltan: avance la cabeza; al pasar de 255 vuelve a 0." }
+    escalera: ["254, 255, 0, 1, 2: la quinta posición tras la cola es la 3."]
+    solucion: "Cabeza en 3: 5 datos."
+    comprobar:
+      - { con: { cab: 3, col: 254 }, n_dat: 5 }
 
   - id: estime-datos
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Un búfer que ha dado la vuelta"
-    texto: "Índices uint8_t que cuentan libremente: la cabeza está en 3 y la cola en 250. ¿Cuántos datos guarda?"
+    texto: "Índices uint8_t que cuentan libremente: la cabeza está en 3 y la cola en 250. Calcule cuántos datos guarda."
     libro: ["apK#70"]
     fijar: { cab: 3, col: 250 }
     widget:
@@ -56,19 +69,15 @@ tarjetas:
       y: { min: 0, max: 260, unidad: "", rotulo: "datos guardados" }
       curvas:
         - { expr: "hh - col - 256*floor((hh - col)/256)", color: azul, rotulo: "cabeza − cola" }
-    estimar:
-      objetivo: "n_dat"
+      mandos: []
+    leer:
+      objetivo: n_dat
       unidad: ""
-      min: 0
-      max: 64
-      paso: 1
-      inicio: 40
       tol: 0.01
       rotulo: "Datos guardados"
+      errores:
+        - { expr: "col - cab", texto: "Ha restado al revés: son cabeza menos cola, y en uint8_t la resta da la vuelta." }
     exito: "9 datos: la resta en uint8_t da la vuelta igual que los índices."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 9 }, texto: "Se ha pasado: cuente solo de 250 hasta 255 y de 0 hasta 3." }
-      - { texto: "Se ha quedado corto: cuente de 250 hasta 255 y siga desde 0 hasta 3." }
     escalera: ["(uint8_t)(3 − 250): sume 256 a la resta."]
     solucion: "(uint8_t)(3 − 250) = 9 datos."
     comprobar:
@@ -93,33 +102,49 @@ tarjetas:
     solucion: "La vuelta del índice debe coincidir con una vuelta del búfer: tamaño potencia de dos que divida a 256."
 
   - id: ordene-referenciado
-    tipo: pregunta
-    fase: "Ordene"
+    tipo: tocar
     titulo: "Referenciar la base del brazo"
-    texto: "Ponga en orden las fases de la máquina de estados, cuando todo va bien."
+    texto: "Un enum con los estados y un switch: buscar el final de carrera deprisa, retroceder un poco y buscarlo despacio. Toque los estados en el orden en que los recorre si todo va bien."
     libro: [38, 39]
-    ordenar:
-      - "BUSCA_RAPIDO: hacia el final de carrera, deprisa."
-      - "RETROCEDE: un poco, durante un tiempo."
-      - "BUSCA_LENTO: otra vez hacia el final, despacio."
-      - "HECHO: parado."
-    exito: "Un enum con los estados y un switch: la función se llama cada milisegundo y nunca espera."
-    pistas:
-      - { texto: "Se busca dos veces: primero deprisa y después despacio." }
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          typedef enum {
+              BUSCA_LENTO,
+              HECHO,
+              BUSCA_RAPIDO,
+              RETROCEDE,
+              FALLO
+          } fase_t;
+      zonas:
+        - { id: lento, lineas: [2], rotulo: "Segunda línea" }
+        - { id: hecho, lineas: [3], rotulo: "Tercera línea" }
+        - { id: rapido, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: retrocede, lineas: [5], rotulo: "Quinta línea" }
+        - { id: fallo, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [rapido, retrocede, lento, hecho]
+      orden: true
+      porque:
+        fallo: "FALLO solo se alcanza si un estado se pasa de su tiempo máximo: cuando todo va bien, no se pasa por él."
+    exito: "Deprisa, atrás, despacio y hecho. La función se llama cada milisegundo y nunca espera; FALLO queda para cuando algo se pasa de tiempo."
     escalera: ["Para buscar despacio, antes hay que separarse del final de carrera."]
-    solucion: "Rápido, retroceder, lento y hecho."
+    solucion: "BUSCA_RAPIDO, RETROCEDE, BUSCA_LENTO y HECHO."
 
   - id: prediga-fallo
-    tipo: predecir
+    tipo: tocar
     titulo: "Un final de carrera roto"
-    texto: "En BUSCA_RAPIDO, el final de carrera no llega nunca porque está roto. ¿Qué hace la función?"
+    texto: "En BUSCA_RAPIDO, el final de carrera no llega nunca porque está roto. Toque la línea que impide que el motor gire para siempre."
     libro: [39, 40]
     widget:
       tipo: figura
       codigo:
         lenguaje: c
         texto: |
-          int16_t referencia(referencia_t *r, bool final_carrera, uint32_t ahora)
+          int16_t referencia(referencia_t *r, bool final_carrera,
+                             uint32_t ahora)
           {
               switch (r->fase) {
               case BUSCA_RAPIDO:
@@ -127,13 +152,20 @@ tarjetas:
                   else if (ahora - r->inicio > 15000u) r->fase = FALLO;
                   else return -800;
                   return 0;
-      resaltar: [6]
-    opciones:
-      - { texto: "Pasado su tiempo máximo, va a FALLO y devuelve velocidad 0", bien: true, porque: "Cada estado tiene un tiempo máximo: un final de carrera roto no deja el motor girando para siempre." }
-      - { texto: "Sigue devolviendo -800 para siempre", porque: "Eso haría sin tiempo máximo; la comprobación con ahora - r->inicio lo impide." }
-      - { texto: "Pasa a RETROCEDE", porque: "Solo pasa a RETROCEDE si el final de carrera se activa." }
-    escalera: ["Mire qué comprueba BUSCA_RAPIDO además del final de carrera."]
-    solucion: "Agota su tiempo, pasa a FALLO y para el motor."
+      zonas:
+        - { id: l6, lineas: [6], rotulo: "Sexta línea" }
+        - { id: l7, lineas: [7], rotulo: "Séptima línea" }
+        - { id: l8, lineas: [8], rotulo: "Octava línea" }
+        - { id: l9, lineas: [9], rotulo: "Novena línea" }
+    tocar:
+      bien: [l7]
+      porque:
+        l6: "Esa solo actúa si el final de carrera llega, y está roto."
+        l8: "Esa pide seguir girando: es la que no debe repetirse para siempre."
+        l9: "Devuelve velocidad 0, pero solo tras cambiar de fase."
+    exito: "Cada estado tiene un tiempo máximo: pasado, va a FALLO y devuelve velocidad 0."
+    escalera: ["¿Qué comprueba BUSCA_RAPIDO además del final de carrera?"]
+    solucion: "La séptima: el tiempo máximo, que lleva a FALLO."
 
   - id: pregunta-restar
     tipo: pregunta
@@ -153,20 +185,37 @@ tarjetas:
     solucion: "La resta funciona a través del desbordamiento; la suma, no."
 
   - id: porque-sin-seccion
-    tipo: porque
+    tipo: tocar
     titulo: "Sin sección crítica"
-    texto: "La interrupción de la UART mete bytes y el bucle los saca, sin deshabilitar interrupciones. ¿Por qué es seguro?"
+    texto: "La interrupción mete bytes y el bucle los saca sin deshabilitar interrupciones. Toque la línea que, puesta antes, dejaría leer un dato aún no escrito."
     libro: [43, 44, 45]
     widget:
       tipo: figura
-      codigo: "apK#43"
-      resaltar: [10, 11, 18, 27]
-    opciones:
-      - { texto: "Cada índice lo escribe un solo lado, es de un byte y se actualiza tras el dato", bien: true, porque: "En simavr, 24 263 bytes llegan en orden y sin errores. Con varios productores harían falta secciones críticas." }
-      - { texto: "Porque los índices son volatile", porque: "volatile hace falta, pero no basta: la clave es que cada índice tiene un solo escritor." }
-      - { texto: "Porque la UART es lenta", porque: "No depende de la velocidad: la estructura es segura por construcción." }
-    escalera: ["¿Quién escribe la cabeza y quién la cola?"]
-    solucion: "Un escritor por índice, índices de un byte y actualizados después del dato."
+      codigo:
+        lenguaje: c
+        texto: |
+          bool bufer_pon(uint8_t x)
+          {
+              uint8_t c = cabeza;
+              if ((uint8_t)(c - cola) == TAM) return false;
+              datos[c & (TAM - 1u)] = x;
+              cabeza = (uint8_t)(c + 1u);
+              return true;
+          }
+      zonas:
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+        - { id: l4, lineas: [4], rotulo: "Cuarta línea" }
+        - { id: l5, lineas: [5], rotulo: "Quinta línea" }
+        - { id: l6, lineas: [6], rotulo: "Sexta línea" }
+    tocar:
+      bien: [l6]
+      porque:
+        l3: "Lee la cabeza, que solo escribe este lado."
+        l4: "Comprueba si está lleno; no publica nada."
+        l5: "Es la escritura del dato: lo que debe ir antes."
+    exito: "Publicar la cabeza después de escribir: un escritor por índice, de un byte. En simavr, 24 263 bytes llegan en orden y sin errores."
+    escalera: ["¿Qué línea le dice al consumidor que hay un dato nuevo?"]
+    solucion: "La sexta: cabeza = c + 1, después del dato."
 
   - id: resumen
     tipo: resumen

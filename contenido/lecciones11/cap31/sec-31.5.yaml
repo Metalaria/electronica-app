@@ -6,6 +6,10 @@
 # - El windup sobre la figura 30.10 (zonas).
 # Paso práctico: «ajuste» de la razón f_s/f_c hasta que la fase perdida entre en la banda de la regla (6° a 18°);
 # «tocar» en la figura 30.10 el tramo del windup.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la saturación y la respuesta con anti-windup se tocan en la
+# figura 30.10; la fase perdida con una razón de 4 se predice (simular sobre el modelo); y el ciclo límite entre dos
+# códigos se corta con una banda muerta de uno o dos LSB (dibujo esquemático). Quedan dos preguntas de opciones: la
+# coma fija y por qué todo control es digital.
 leccion: cap31/sec-31.5
 
 libro:
@@ -31,24 +35,37 @@ libro:
 modelo:
   valores:
     r_s: { sim: "f_{s}/f_{c}", nombre: "razón entre muestreo y ancho de banda", unidad: "", valor: 10 }
+    b_m: { sim: "banda", nombre: "banda muerta, en LSB", unidad: "", valor: 0 }
   calculos:
     phi_s: { expr: "180/r_s", sim: "Δφ", nombre: "fase perdida por el muestreo", unidad: "°" }
+    c_l: { expr: "max(0, 1 - b_m)", sim: "ciclo", nombre: "amplitud del ciclo límite, en LSB", unidad: "" }
+    phi_1: { expr: "360/r_s", sim: "Δφ", nombre: "fase con un periodo entero de retardo", unidad: "°" }
+    phi_v: { expr: "180", sim: "π", nombre: "media vuelta", unidad: "°" }
 
 tarjetas:
   - id: explore-windup
-    tipo: explorar
+    tipo: tocar
     titulo: "Un horno con la puerta abierta"
-    texto: "Toque cada parte de la figura: la saturación, lo que pasa después y el actuador."
+    texto: "Con la puerta abierta, el actuador está a tope y la temperatura no sube. Toque ese tramo: ahí el integrador sigue acumulando sin servir de nada."
     libro: [185, 186, 203]
     widget:
       tipo: figura
       figura: fig-31.10
-      zonas:
-        - { id: puerta, rotulo: "Zona sombreada, arriba", rect: [41, 5, 100, 50], texto: "Puerta abierta: el actuador está a tope, la temperatura no sube y el integrador sigue acumulando." }
-        - { id: pico, rotulo: "Pico de la curva roja", rect: [200, 5, 120, 36], texto: "Sin protección: al cerrar la puerta, el acumulado tarda en descargarse y el horno se pasa de largo." }
-        - { id: verde, rotulo: "Curva verde, arriba", rect: [160, 50, 120, 36], texto: "Con anti-windup (integración condicional): llega a la consigna sin pasarse." }
-        - { id: actuador, rotulo: "Gráfica de abajo", rect: [41, 150, 400, 45], texto: "El actuador: a tope durante la saturación y, sin protección, mucho después." }
-    requiere: { mover: [puerta, pico, actuador] }
+      zonas: &zonas-windup
+        - { id: puerta, rotulo: "Zona sombreada, arriba", rect: [41, 5, 100, 50] }
+        - { id: pico, rotulo: "Pico de la curva roja", rect: [200, 5, 120, 36] }
+        - { id: verde, rotulo: "Curva verde, arriba", rect: [160, 50, 120, 36] }
+        - { id: actuador, rotulo: "Gráfica de abajo", rect: [41, 150, 400, 45] }
+    tocar:
+      bien: [puerta]
+      porque:
+        pico: "Ese pico es la consecuencia: al cerrar la puerta, el acumulado tarda en descargarse."
+        verde: "Esa es la respuesta con anti-windup, que llega sin pasarse."
+        actuador: "Esa es la salida del actuador; la saturación se ve en la temperatura, arriba."
+    exito: "La zona sombreada: la integral se carga de error mientras la salida no puede crecer. Luego el horno se pasará de largo."
+    escalera:
+      - "Busque dónde la temperatura se queda plana por debajo de la consigna."
+    solucion: "La zona sombreada, arriba."
 
   - id: toque-windup
     tipo: tocar
@@ -73,25 +90,24 @@ tarjetas:
     solucion: "La línea roja a tope entre el cierre de la puerta y el pico."
 
   - id: empareje-defensas
-    tipo: pregunta
+    tipo: tocar
     titulo: "Tres defensas"
-    texto: "Empareje cada defensa contra el windup con lo que hace."
+    texto: "Limitar la integral, congelarla mientras se satura o recalcularla desde la salida real. Toque la respuesta con integración condicional."
     libro: [188, 189, 190, 191]
     widget:
       tipo: figura
       figura: fig-31.10
-      zonas:
-        - { id: todo, rotulo: "El windup con y sin protección", rect: [0, 0, 445, 241] }
-    emparejar:
-      - ["Limitar", "El término integral, a un valor razonable"]
-      - ["Congelar", "La integral, mientras la salida esté saturada"]
-      - ["Back-calculation", "Recalcular la integral desde la salida real"]
-    exito: "Ninguna es complicada; omitirlas da un lazo que funciona en simulación y no en el equipo."
-    pistas:
-      - { texto: "«Hacia atrás»: parte de lo que el actuador da de verdad." }
+      zonas: *zonas-windup
+    tocar:
+      bien: [verde]
+      porque:
+        puerta: "Esa es la saturación, igual con protección o sin ella."
+        pico: "Ese pico es la respuesta sin protección."
+        actuador: "Esa es la salida del actuador, no la temperatura."
+    exito: "La verde llega sin pasarse. Ninguna defensa es complicada; omitirlas da un lazo que funciona en simulación y no en el equipo."
     escalera:
-      - "Una pone un techo, otra para el reloj y otra corrige el valor."
-    solucion: "Limitar con un techo, congelar durante la saturación, recalcular desde la salida real."
+      - "Busque la temperatura que no se dispara al cerrar la puerta."
+    solucion: "La curva verde."
 
   - id: ajuste-muestreo
     tipo: ajuste
@@ -124,9 +140,9 @@ tarjetas:
       - { con: { r_s: 30 }, phi_s: 6 }
 
   - id: predecir-lento
-    tipo: predecir
+    tipo: simular
     titulo: "Un lazo digital lento"
-    texto: "Un lazo analógico lento solo es lento. ¿Y uno digital que muestrea demasiado despacio?"
+    texto: "Un lazo analógico lento solo es lento. Uno digital que muestrea solo 4 veces su ancho de banda, ¿cuánta fase pierde en el cruce?"
     libro: [175, 177]
     fijar: { r_s: 4 }
     widget:
@@ -138,41 +154,47 @@ tarjetas:
       lectura: { valor: phi_s, rotulo: "Fase perdida en el cruce" }
       ocultar: true
       mandos: []
-    opciones:
-      - texto: "Puede volverse inestable: el retardo resta margen de fase"
-        bien: true
-        porque: "El retardo de medio periodo se suma al de la planta; con poco margen, oscila."
-      - texto: "Solo responde más despacio, como el analógico"
-        porque: "Al analógico le pasa eso; el digital además pierde fase por el retardo del muestreo."
-      - texto: "Gana estabilidad, porque actúa menos veces"
-        porque: "Actuar menos veces deja el lazo más tiempo abierto: más retardo, menos margen."
+    simular:
+      objetivo: phi_s
+      unidad: "°"
+      tol: 0.03
+      rotulo: "Fase perdida"
+      errores:
+        - { expr: "phi_1", texto: "Ha tomado un periodo entero de retardo; el retardo medio es medio periodo." }
+    exito: "45° de margen perdidos: un lazo digital lento no es simplemente peor, es potencialmente inestable."
     escalera:
-      - "¿Qué le hace un retardo al margen de fase?"
-    solucion: "Potencialmente inestable: con una razón de 4 se pierden 45° de margen."
+      - "Δφ = 180°/(f_{s}/f_{c})."
+    solucion: "180°/4 = 45°."
     comprobar:
-      - { phi_s: 45 }
+      - { phi_s: 45, phi_1: 90, phi_v: 180 }
 
   - id: cuantificacion
-    tipo: pregunta
+    tipo: explorar
     titulo: "Un suelo de un LSB"
-    texto: "Un lazo con integrador queda oscilando entre dos códigos adyacentes del convertidor, sin parar. ¿Qué se hace?"
+    texto: "Un lazo con integrador oscila entre dos códigos adyacentes, sin parar: un ciclo límite. Córtelo con una banda muerta."
+    nota: "Dibujo esquemático."
     libro: [179, 180, 181, 182]
+    inicio: { b_m: 0 }
     widget:
-      tipo: figura
-      figura: fig-31.10
-      zonas:
-        - { id: todo, rotulo: "El windup con y sin protección", rect: [0, 0, 445, 241] }
-    opciones:
-      - texto: "Una banda muerta de unos pocos LSB, o dither"
-        bien: true
-        porque: "Por debajo de un LSB el lazo no ve el error; no actuar ahí corta el ciclo límite."
-      - texto: "Subir la ganancia integral"
-        porque: "La integral acumula el error de signo contrario de cada código: es la que mantiene el ciclo."
-      - texto: "Muestrear más deprisa"
-        porque: "El problema es la resolución del convertidor, no el periodo."
+      tipo: grafica
+      x: { id: n, min: 0, max: 30, unidad: "", rotulo: "muestra" }
+      y: { min: 0, max: 3, unidad: "", rotulo: "código" }
+      curvas:
+        - { expr: "1.5 + 0.5*c_l*cos(pi*n)", palitos: true, color: naranja, rotulo: "código del convertidor" }
+      lectura: { valor: c_l, rotulo: "Ciclo límite, en LSB" }
+      mandos:
+        - { valor: b_m, lista: [0, 1, 2], rotulo: "Banda muerta, en LSB" }
+    objetivo:
+      condiciones:
+        - { valor: c_l, max: 0, rotulo: "Ciclo: {{c_l}}" }
+      logrado: "Por debajo de un LSB el lazo no ve el error; si no actúa ahí, la integral deja de bailar. El dither es la otra salida."
+      pistas:
+        - { texto: "Sin banda muerta, la integral acumula el error de signo contrario de cada código: sigue el ciclo." }
     escalera:
-      - "¿Qué ve el lazo por debajo de un LSB?"
-    solucion: "Banda muerta o dither: es un ciclo límite de la cuantificación."
+      - "El lazo no puede corregir lo que es menor que un LSB."
+    solucion: "Una banda muerta de un LSB o más."
+    comprobar:
+      - { con: { b_m: 1 }, c_l: 0 }
 
   - id: coma-fija
     tipo: pregunta

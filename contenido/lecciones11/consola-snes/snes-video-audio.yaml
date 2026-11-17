@@ -1,6 +1,8 @@
 # «Consolas por dentro» · Super Nintendo 5: el camino del vídeo (PPU1 → PPU2 → codificador → Multi Out y RF) y del
 # sonido (S-SMP → S-DSP con la ARAM → DAC → mezclador), en la foto NTSC y en la cara de soldadura PAL. Fuentes: snes#n
 # (explorador, arquitectura, SNESdev «Version differences», Fabien Sanglard) y el libro.
+# 1.2.1: los dos caminos (vídeo y sonido) se tocan en orden en la foto NTSC; el explorar pide los 1,024 Mbit/s hacia
+# el DAC con los canales y los bits; se toca el chip que suma el audio del cartucho. Queda una pregunta: la patilla 3.
 leccion: consola-snes/snes-video-audio
 
 libro:
@@ -28,38 +30,29 @@ modelo:
     tasa: { expr: "canales*b*f_m", sim: "R", nombre: "bits por segundo hacia el DAC", unidad: "bit/s", cifras: 4 }
 
 tarjetas:
-  - id: explore-video
-    tipo: explorar
-    titulo: "El camino del vídeo"
-    texto: "Siga la imagen por la placa NTSC: toque la PPU2, el codificador y las dos salidas."
-    libro: ["snes#4", "snes#36", "snes#20"]
-    requiere: { mover: [n-ppu2, n-rgb, n-av] }
+  - id: ordene-video
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Del mosaico al televisor"
+    texto: "Toque, en orden, el camino de la imagen: quien lee la memoria de vídeo, quien mezcla y saca RGB, quien lo codifica y la salida a la antena."
+    libro: ["snes#3", "snes#4", "snes#36", "snes#20"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-ppu2, hotspot: n-ppu2, rotulo: "PPU2", texto: "Saca el RGB analógico con la paleta." }
-        - { id: n-rgb, hotspot: n-rgb, rotulo: "Codificador S-RGB", texto: "Del RGB saca el S-vídeo y el compuesto." }
-        - { id: n-av, hotspot: n-av, rotulo: "Multi Out", texto: "RGB, S-vídeo, compuesto y audio estéreo." }
-        - { id: n-rf, hotspot: n-rf, rotulo: "Modulador de RF", texto: "Compuesto y audio mono, para la antena del televisor." }
-
-  - id: ordene-video
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Del mosaico al televisor"
-    texto: "Ordene el camino de la imagen."
-    libro: ["snes#3", "snes#4", "snes#36", "snes#20"]
-    ordenar:
-      - "La PPU1 lee fondos y sprites de la VRAM."
-      - "La PPU2 mezcla las capas y saca RGB."
-      - "El codificador saca S-vídeo y compuesto."
-      - "El modulador de RF lo lleva a la antena."
-    exito: "Leer, mezclar, codificar y modular: cada chip, un paso."
+        - { id: ppu1, hotspot: n-ppu1, rotulo: "Chip cuadrado, en el centro a la derecha" }
+        - { id: ppu2, hotspot: n-ppu2, rotulo: "Chip cuadrado, en el centro" }
+        - { id: rgb, hotspot: n-rgb, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: rf, hotspot: n-rf, rotulo: "Caja metálica, abajo a la izquierda" }
+    tocar:
+      bien: [ppu1, ppu2, rgb, rf]
+      orden: true
     pistas:
-      - { texto: "El RGB sale de la PPU2; el compuesto, del codificador." }
+      - { texto: "El RGB sale de la PPU2; el compuesto, del codificador; la antena, al final." }
+    exito: "La PPU1 lee fondos y sprites de la VRAM, la PPU2 mezcla y saca el RGB con la paleta, el S-RGB saca el S-vídeo y el compuesto, y el modulador lo lleva a la antena."
     escalera:
       - "Lo primero es leer la memoria de vídeo."
-    solucion: "PPU1, PPU2, codificador y modulador."
+    solucion: "PPU1, PPU2, S-RGB y modulador de RF."
 
   - id: toque-codificador
     tipo: tocar
@@ -83,67 +76,62 @@ tarjetas:
       - "Lea las marcas: el nombre del chip lo dice."
     solucion: "Arriba a la derecha: S-RGB, BA6595F."
 
-  - id: explore-sonido
-    tipo: explorar
-    titulo: "El camino del sonido"
-    texto: "Toque el S-SMP, el S-DSP, el DAC y el mezclador."
-    libro: ["snes#8", "snes#34", "snes#35", "snes#93"]
-    requiere: { mover: [n-smp, n-dsp, n-dac, n-mix] }
-    widget:
-      tipo: figura
-      consola: { maquina: snes, foto: ntsc }
-      zonas:
-        - { id: n-smp, hotspot: n-smp, rotulo: "S-SMP", texto: "La CPU del sonido: la principal solo le habla por cuatro puertos." }
-        - { id: n-dsp, hotspot: n-dsp, rotulo: "S-DSP", texto: "Estéreo de 16 bits a 32 kHz, en serie hacia el DAC." }
-        - { id: n-dac, hotspot: n-dac, rotulo: "DAC", texto: "En estas placas, el NEC µPD6376." }
-        - { id: n-mix, hotspot: n-mix, rotulo: "Mezclador S-MIX", texto: "Mezcla el sonido antes de las salidas." }
-
   - id: ordene-sonido
-    tipo: pregunta
+    tipo: tocar
     fase: "Ordene"
     titulo: "De la muestra al altavoz"
-    texto: "Ordene el camino del sonido en la placa PAL del esquema."
-    libro: ["snes#8", "snes#11", "snes#93"]
-    ordenar:
-      - "El S-SMP ejecuta el programa de sonido."
-      - "El S-DSP lee las muestras de la ARAM."
-      - "El DAC las convierte en tensiones."
-      - "El mezclador suma el audio del cartucho."
-      - "Sale por el Multi Out y el modulador."
-    exito: "Programa, voces, conversión, mezcla y salida."
-    pistas:
-      - { texto: "El DAC va antes que el mezclador: se mezclan tensiones, no muestras." }
-    escalera:
-      - "Lo primero es el programa del SPC700."
-    solucion: "S-SMP, S-DSP, DAC, mezclador y salidas."
-
-  - id: prediga-bits
-    tipo: predecir
-    titulo: "Los bits hacia el DAC"
-    texto: "El S-DSP saca dos canales de 16 bits a 32 kHz, en serie. ¿Cuántos bits por segundo?"
-    libro: ["snes#8"]
-    fijar: { canales: 2, b: 16, f_m: 32000 }
+    texto: "Toque, en orden, el camino del sonido: la CPU de sonido, el generador, el DAC, el mezclador y la salida."
+    libro: ["snes#8", "snes#11", "snes#93", "snes#34", "snes#35"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-dsp, hotspot: n-dsp, rotulo: "S-DSP" }
-        - { id: n-dac, hotspot: n-dac, rotulo: "DAC" }
-    opciones:
-      - texto: "1,024 Mbit/s"
-        bien: true
-        porque: "2 canales · 16 bits · 32 000 muestras por segundo = 1,024 Mbit/s."
-      - texto: "512 kbit/s"
-        porque: "Eso es un solo canal. El S-DSP saca izquierda y derecha por la misma línea DATA."
-      - texto: "32 kbit/s"
-        porque: "32 kHz son muestras, no bits: cada muestra de cada canal lleva 16 bits."
+        - { id: smp, hotspot: n-smp, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: dsp, hotspot: n-dsp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: dac, hotspot: n-dac, rotulo: "Chip pequeño, a la izquierda" }
+        - { id: mix, hotspot: n-mix, rotulo: "Chip pequeño, en el centro" }
+        - { id: av, hotspot: n-av, rotulo: "Conector gris, a la izquierda" }
+    tocar:
+      bien: [smp, dsp, dac, mix, av]
+      orden: true
+    pistas:
+      - { texto: "El DAC va antes que el mezclador: se mezclan tensiones, no muestras." }
+    exito: "El S-SMP ejecuta el programa, el S-DSP lee las muestras de la ARAM, el DAC (un NEC µPD6376) las convierte, el S-MIX suma el audio del cartucho y sale por el Multi Out."
     escalera:
-      - "Multiplique canales por bits por muestras por segundo."
-    solucion: "2 · 16 · 32 000 = 1,024 Mbit/s."
+      - "Lo primero es el programa del SPC700."
+    solucion: "S-SMP, S-DSP, DAC, mezclador y Multi Out."
+
+  - id: prediga-bits
+    tipo: explorar
+    titulo: "Los bits hacia el DAC"
+    texto: "El S-DSP saca las muestras a 32 kHz, en serie, por una sola línea DATA. Elija los canales y los bits por muestra que dan 1,024 Mbit/s."
+    libro: ["snes#8"]
+    fijar: { f_m: 32000 }
+    inicio: { canales: 1, b: 8 }
+    widget:
+      tipo: grafica
+      x: { id: ff, min: 0, max: 48000, unidad: Hz, rotulo: "muestras por segundo" }
+      y: { min: 0, max: 1600000, unidad: "bit/s", rotulo: "bits por segundo" }
+      curvas:
+        - { expr: "canales*b*ff", color: azul, rotulo: "canales · bits · muestras" }
+      marcas:
+        - { x: "f_m", y: "tasa", rotulo: "{{tasa}}" }
+      lectura: { valor: tasa, rotulo: "Hacia el DAC" }
+      mandos:
+        - { valor: canales, lista: [1, 2], rotulo: "Canales" }
+        - { valor: b, lista: [8, 16], rotulo: "Bits por muestra" }
+    objetivo:
+      condiciones:
+        - { valor: tasa, objetivo: 1024000, tol: 0.001, rotulo: "Hacia el DAC: {{tasa}}" }
+      logrado: "Estéreo de 16 bits a 32 kHz: {{tasa}} por la misma línea, izquierda y derecha alternadas."
+      pistas:
+        - { texto: "Faltan bits: el S-DSP saca estéreo de 16 bits." }
+    escalera:
+      - "Canales por bits por muestras por segundo."
+    solucion: "Dos canales de 16 bits: 2 · 16 · 32 000 = 1,024 Mbit/s."
     comprobar:
-      - { tasa: 1024000 }
-      - { con: { canales: 1 }, tasa: 512000 }
-      - { con: { canales: 1, b: 1 }, tasa: 32000 }
+      - { con: { canales: 2, b: 16 }, tasa: 1024000 }
+      - { con: { canales: 1, b: 16 }, tasa: 512000 }
 
   - id: patilla-3
     tipo: pregunta
@@ -190,26 +178,26 @@ tarjetas:
     solucion: "Q3–Q8, en el centro a la izquierda."
 
   - id: por-que-cartucho
-    tipo: porque
+    tipo: tocar
     titulo: "Sonido desde el cartucho"
-    texto: "La ranura tiene una entrada de audio estéreo. ¿Para qué?"
-    libro: ["snes#11"]
+    texto: "La ranura tiene una entrada de audio estéreo, SOUND-L/R. Toque el chip que la suma al sonido de la consola."
+    libro: ["snes#11", "snes#35"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho" }
-    opciones:
-      - texto: "El mezclador suma el audio del cartucho al de la consola."
-        bien: true
-        porque: "SOUND-L/R del cartucho entran al mezclador, que los suma al sonido del DAC antes de las salidas."
-      - texto: "Para grabar en el cartucho el sonido del juego."
-        porque: "Es una entrada hacia la consola: el mezclador la suma, no se graba nada."
-      - texto: "Es la alimentación del chip de sonido."
-        porque: "SOUND-L/R son señales de audio que llegan al mezclador, no alimentación."
+        - { id: mix, hotspot: n-mix, rotulo: "Chip pequeño, en el centro" }
+        - { id: dac, hotspot: n-dac, rotulo: "Chip pequeño, a la izquierda" }
+        - { id: dsp, hotspot: n-dsp, rotulo: "Chip cuadrado, en el centro" }
+    tocar:
+      bien: [mix]
+      porque:
+        dac: "El DAC convierte las muestras del S-DSP; el audio del cartucho llega ya como tensión."
+        dsp: "El S-DSP genera las voces; la suma con el cartucho se hace después."
+    exito: "El mezclador (U10, el S-MIX): suma SOUND-L/R del cartucho y el audio de la expansión al sonido del DAC."
     escalera:
-      - "Mire qué suma el mezclador."
-    solucion: "El mezclador suma SOUND-L/R del cartucho al sonido de la consola."
+      - "Mire qué chip va justo después del DAC."
+    solucion: "El mezclador S-MIX."
 
   - id: resumen
     tipo: resumen

@@ -1,10 +1,19 @@
-# Lección 1.2 de la sección 11.5 «Cómo Leer un Esquema: Método Sistemático» (cap11). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 11.5 «Cómo Leer un Esquema: Método Sistemático» (cap11). Formato: contenido/lecciones11/GUIA.md.
 # El esquema que se lee es la etapa en emisor común del libro (sección 6.5: 12 V, 47 kΩ, 10 kΩ, 3,3 kΩ, 1 kΩ,
 # β = 150, V_E = 1,33 V). La alimentación de 6 V del primer mando es un ejemplo para ver que todo cuelga de ella.
-# Paso práctico: «simular» (predecir una tensión de nodo y comprobarla, como pide «En el banco» de la sección).
+# 1.2.1 (aprender haciendo): bajar la alimentación hasta un objetivo, ordenar los cinco pasos tocando, tocar en la
+# figura 11.7 el paso de las hojas de datos, tocar el divisor en el esquema, contar el servicio de la criba, tocar los
+# cruces sin conexión en la figura 11.3, predecir y medir el emisor. Dos preguntas: por qué primero y la discrepancia.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap11/sec-11.5
 
 libro:
+  115: "El método que funciona tiene cinco pasos"
+  120: "Buscar los integrados"
+  123: "trazar el camino entre ambas"
+  126: "La señal (los que procesan la información) y el servicio"
+  137: "Los cinco pasos para leer un esquema"
+  "cap11#54": "Obsérvese la distinción crucial entre un cruce con punto"
   114: "Es la peor forma de abordarlo"
   117: "identificar de dónde viene la energía"
   118: "la mayoría de los diagnósticos empiezan y terminan en la alimentación"
@@ -23,6 +32,8 @@ libro:
 
 modelo:
   valores:
+    n_t: { sim: "N", nombre: "componentes del esquema", unidad: "", valor: 60 }
+    n_u: { sim: "n", nombre: "componentes que hacen algo", unidad: "", valor: 15 }
     V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
     R_p1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
     R_p2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
@@ -31,6 +42,7 @@ modelo:
     beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
     V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
   calculos:
+    n_s: { expr: "n_t - n_u", sim: "n_{servicio}", nombre: "componentes de servicio", unidad: "" }
     V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión del divisor en vacío", unidad: V }
     R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
     I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
@@ -45,7 +57,7 @@ tarjetas:
   - id: explore-alimentacion
     tipo: explorar
     titulo: "Paso 1: la alimentación"
-    texto: "Antes que nada, de dónde viene la energía. Cambie V_{CC} y mire qué nodos se mueven."
+    texto: "Primero, de dónde viene la energía. Baje V_{CC} hasta que el emisor quede por debajo de medio voltio."
     nota: "La etapa en emisor común del libro; los 6 V son de ejemplo."
     libro: [117, 118, "cap06#452"]
     widget:
@@ -61,7 +73,15 @@ tarjetas:
       mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
       mandos:
         - { valor: V_cc, lista: [6, 12], rotulo: "Alimentación" }
-    requiere: { mover: [V_cc] }
+    objetivo:
+      condiciones:
+        - { valor: V_pe, max: 0.5, rotulo: "Emisor: {{V_pe}}" }
+      logrado: "Base, emisor y colector han cambiado a la vez: todo cuelga de la alimentación."
+      pistas:
+        - { texto: "Elija la alimentación menor." }
+    escalera:
+      - "El mando de debajo cambia la alimentación."
+    solucion: "Con 6 V, el emisor cae por debajo de medio voltio."
     comprobar:
       - { con: { V_cc: 6 }, V_pth: 1.0526 }
 
@@ -91,109 +111,105 @@ tarjetas:
       - "Piense en dónde empiezan casi todas las averías."
     solucion: "La mayoría de los diagnósticos empiezan y terminan en la alimentación."
 
-  - id: cinco-pasos
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El método, en orden"
-    texto: "Ordene los cinco pasos para leer un esquema desconocido."
-    libro: [114, "cap11#306"]
-    ordenar:
-      - "Localizar la alimentación y la masa"
-      - "Identificar los bloques"
-      - "Seguir el camino de la señal"
-      - "Distinguir señal de servicio"
-      - "Leer las notas y lo que no es el dibujo"
-    exito: "Su orden importa: empezar arriba a la izquierda y leerlo como un texto es la peor forma de abordarlo."
-    pistas:
-      - { texto: "La señal se sigue a través de los bloques ya identificados." }
-    escalera:
-      - "Primero la energía, luego los bloques, luego la señal."
-    solucion: "Alimentación, bloques, señal, señal frente a servicio y notas."
-
   - id: integrados
-    tipo: pregunta
-    titulo: "Paso 2: por los integrados"
-    texto: "¿Por qué los integrados son el mejor punto de partida para identificar los bloques?"
-    libro: [121]
+    tipo: tocar
+    titulo: "Por los integrados"
+    texto: "Con tres o cuatro hojas de datos se tiene el diagrama de bloques sin trazar una conexión. Toque el paso que lo aprovecha."
+    libro: [120, 121, 137]
     widget:
-      tipo: circuito
-      esquema: bjt-polarizacion
-      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
-      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
-      corriente: I_pc
-      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
-      mandos: []
-    opciones:
-      - texto: "Cada uno define una función, y su hoja de datos se puede buscar"
-        bien: true
-        porque: "Con tres o cuatro hojas de datos se tiene el diagrama de bloques sin trazar una sola conexión de señal."
-      - texto: "Porque son los componentes más caros"
-        porque: "El precio no importa: importa que cada referencia dice qué función cumple."
-      - texto: "Porque nunca fallan"
-        porque: "Pueden fallar; se empieza por ellos porque organizan el resto del esquema."
+      tipo: figura
+      figura: fig-11.7
+      zonas:
+        - { id: p1, rotulo: "Primer recuadro", rect: [2, 2, 82, 86] }
+        - { id: p2, rotulo: "Segundo recuadro", rect: [94, 2, 82, 86] }
+        - { id: p3, rotulo: "Tercer recuadro", rect: [186, 2, 82, 86] }
+        - { id: p4, rotulo: "Cuarto recuadro", rect: [278, 2, 82, 86] }
+        - { id: p5, rotulo: "Quinto recuadro", rect: [370, 2, 82, 86] }
+    tocar:
+      bien: [p2]
+      porque:
+        p1: "Ese es la alimentación: qué raíles hay y qué alimenta cada uno."
+        p3: "Ese sigue la señal a través de los bloques que ya están identificados."
+        p4: "Ese aparta el servicio; los integrados ya se han usado antes."
+        p5: "Ese lee las notas y el bloque de título."
+    exito: "Cada integrado define una función, y su referencia se puede buscar: por eso son el mejor punto de partida."
     escalera:
-      - "¿Qué se puede buscar a partir del marcaje de un integrado?"
-    solucion: "Cada integrado define una función; su hoja de datos la cuenta."
+      - "¿En qué paso se buscan las funciones reconocibles?"
+    solucion: "El segundo: identificar los bloques."
 
   - id: camino
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Pistas del camino"
-    texto: "Una cada elemento con lo que le dice al lector."
-    libro: [124, 129]
-    emparejar:
-      - ["Condensadores de acoplo en serie", "El camino de una señal de alterna"]
-      - ["Divisores y redes de realimentación", "Dónde se ajusta el nivel de la señal"]
-      - ["Bloque de título y notas", "La mitad de la información útil"]
-    exito: "Las notas son lo primero que se salta quien tiene prisa."
-    pistas:
-      - { texto: "Un condensador en serie deja pasar la alterna y bloquea la continua." }
-    escalera:
-      - "Los divisores reparten la tensión: ajustan un nivel."
-    solucion: "Acoplo–camino de alterna; divisores–nivel; notas–media información útil."
-
-  - id: servicio
-    tipo: pregunta
-    titulo: "Paso 4: señal o servicio"
-    texto: "Junto a un chip hay un condensador de 100 nF entre alimentación y masa. ¿Qué hace usted con él al leer?"
-    libro: [127]
+    tipo: elegir
+    titulo: "Dónde se ajusta el nivel"
+    texto: "Los divisores marcan dónde se ajusta el nivel de una señal. Toque las piezas que forman el divisor de esta etapa."
+    libro: [124]
     widget:
       tipo: circuito
       esquema: bjt-polarizacion
       piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
-      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
       corriente: I_pc
       mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
       mandos: []
-    opciones:
-      - texto: "Lo identifica como desacoplo y lo aparta"
-        bien: true
-        porque: "Es servicio: no hace falta pensarlo. Con esa criba, sesenta componentes se reducen mentalmente a quince que hacen algo."
-      - texto: "Lo analiza como parte de la señal"
-        porque: "No procesa la información: es desacoplo, servicio, y se aparta para ver la estructura."
-      - texto: "Busca a qué etapa acopla la señal"
-        porque: "Un acoplo va en serie con la señal; este va de la alimentación a masa: es desacoplo."
+    elegir:
+      zonas: [r1, r2, rc, re, transistor]
+      bien: [r1, r2]
+      todas: true
+      porque:
+        rc: "La resistencia de colector convierte la corriente en tensión de salida; no divide la alimentación."
+        re: "La de emisor estabiliza el punto de trabajo; no forma el divisor."
+        transistor: "El transistor es el que amplifica; el divisor le fija la base."
+    exito: "R₁ y R₂ reparten la alimentación y fijan la base. Los condensadores de acoplo en serie marcarían el camino de la alterna."
     escalera:
-      - "Entre alimentación y masa no pasa ninguna señal."
-    solucion: "Es desacoplo: se identifica y se aparta."
+      - "Un divisor son dos resistencias en serie entre la alimentación y masa."
+    solucion: "R₁ y R₂, las dos de la base."
+
+  - id: servicio
+    tipo: simular
+    titulo: "La criba"
+    texto: "Con la criba, un esquema de sesenta componentes se reduce a quince que hacen algo. ¿Cuántos ha apartado como servicio?"
+    libro: [126, 127, 137]
+    widget:
+      tipo: figura
+      figura: fig-11.7
+      zonas:
+        - { id: criba, rotulo: "El paso cuatro: la criba", rect: [2, 98, 280, 122] }
+    simular:
+      objetivo: n_s
+      unidad: ""
+      tol: 0.02
+      rotulo: "Componentes de servicio"
+      errores:
+        - { expr: "n_u", texto: "Esos quince son los que hacen algo: el servicio es el resto." }
+        - { expr: "n_t", texto: "Esos son todos: quince no son de servicio." }
+    exito: "Cuarenta y cinco de servicio: mayoría en número y ninguno en importancia funcional. Un 100 nF junto a un chip se aparta sin pensarlo."
+    escalera:
+      - "Reste a los sesenta los que hacen algo."
+    solucion: "60 − 15 = 45 de servicio."
+    comprobar:
+      - { n_s: 45, n_u: 15, n_t: 60 }
 
   - id: errores-lectura
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Errores de lectura"
-    texto: "Una cada detalle del dibujo con lo que de verdad significa."
-    libro: [131, 132, 133, 134]
-    emparejar:
-      - ["Dos líneas que se cruzan sin punto", "No están conectadas"]
-      - ["Dos etiquetas con el mismo nombre", "Conectadas, sin línea entre ellas"]
-      - ["Dos piezas juntas en el dibujo", "No dice nada de su posición en la placa"]
-      - ["Los números de pin", "La única referencia para llevarlo a la placa"]
-    exito: "El símbolo de un integrado casi nunca sigue el orden físico de sus patillas."
-    pistas:
-      - { texto: "Buscar una línea que no existe es una pérdida de tiempo garantizada." }
+    tipo: tocar
+    titulo: "Cruce o conexión"
+    texto: "Confundir cruce con conexión es el error de lectura más frecuente. Toque las dos formas de dibujar un cruce sin conexión."
+    libro: [131, 132, 133, 134, "cap11#54"]
+    widget:
+      tipo: figura
+      figura: fig-11.3
+      zonas:
+        - { id: union, rotulo: "Tercero de la última fila", rect: [190, 252, 70, 50] }
+        - { id: cruce, rotulo: "Cuarto de la última fila", rect: [282, 252, 70, 50] }
+        - { id: arco, rotulo: "Quinto de la última fila", rect: [372, 252, 70, 50] }
+        - { id: fusible, rotulo: "Segundo de la última fila", rect: [100, 252, 70, 50] }
+    tocar:
+      bien: [cruce, arco]
+      todas: true
+      porque:
+        union: "Con punto, las líneas están conectadas."
+        fusible: "Es un fusible: una protección, no un cruce."
+    exito: "Sin punto, o con arco de salto, no conectan. Por eso las herramientas evitan las uniones de cuatro líneas. Y una etiqueta igual conecta sin línea."
     escalera:
-      - "El esquema no es un plano: la posición no dice proximidad."
-    solucion: "Cruce sin punto–sin conexión; etiquetas–conectadas; posición–nada físico; pines–referencia."
+      - "El punto es la conexión."
+    solucion: "El cruce sin punto y el arco de salto."
 
   - id: prediga-emisor
     tipo: simular
@@ -228,6 +244,34 @@ tarjetas:
     comprobar:
       - { V_pe: 1.33, tol: 0.01 }
 
+  - id: mida-emisor
+    tipo: medir
+    titulo: "Compruebe con el Brymen"
+    texto: "Ahora compruebe la predicción: ponga las puntas donde se mide la tensión del emisor."
+    libro: [136]
+    fijar: { V_cc: 12, beta: 150 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      instrumento: { tipo: multimetro, modos: [V], puntos: [vcc, b, c, e, "0"] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [e, "0"]
+      valor: V_pe
+      porque:
+        b: "Esa es la base: queda V_{BE} por encima del emisor."
+        c: "Ese es el colector."
+        vcc: "Esa es la alimentación."
+        "b/e": "Así mide V_{BE}, la unión base-emisor; el emisor se mide frente a masa."
+    exito: "Coincide con lo predicho: el esquema se ha entendido. Es el método que convierte la lectura pasiva en comprensión."
+    escalera:
+      - "El emisor es la patilla de abajo del transistor; la referencia, masa."
+    solucion: "Roja en el emisor, negra en masa."
+
   - id: discrepancia
     tipo: porque
     titulo: "Si no coincide"
@@ -258,7 +302,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [114, 118, 127, 136]
+    libro: [114, 118, 127, 136, 115, 123, 129, "cap11#306"]
     ideas:
       - { titulo: "Bloques, no texto.", texto: "Alimentación, bloques, señal, señal frente a servicio y notas." }
       - { titulo: "La alimentación primero.", texto: "Casi todos los diagnósticos empiezan y terminan en ella." }

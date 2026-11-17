@@ -6,6 +6,10 @@
 #   T = 1/√velocidad = 20 ms, como dice el libro; la suma de los dos términos es mi aproximación (lo dice la nota).
 # Pasos prácticos: «tocar» en la figura 29.15 el espectrograma que sitúa mejor el clic, y «ajuste» de la ventana hasta
 # la línea más fina del barrido.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la ventana se alarga hasta 10 Hz de resolución; la de
+# 5 Hz y las transformadas del 75 % se calculan (simular sobre el modelo); y el reparto de las wavelets se explora con
+# dos ventanas, una para las frecuencias bajas (separar 5 Hz) y otra para las altas (situar eventos en 20 ms, el orden
+# de la ventana del barrido del banco). Quedan una pregunta de opciones (la melodía) y el emparejamiento de los usos.
 leccion: cap30/sec-30.9
 
 libro:
@@ -34,18 +38,24 @@ modelo:
     T_b: { sim: "T", nombre: "ventana sobre el barrido", unidad: s, valor: 0.1 }
     v_b: { sim: "v", nombre: "velocidad del barrido", unidad: "Hz/s", valor: 2500 }
     s_l: { sim: "solape", nombre: "solapamiento", unidad: "%", valor: 50 }
+    d_r: { sim: "Δf", nombre: "separación de los dos tonos", unidad: Hz, valor: 5 }
+    T_lo: { sim: "T_{bajas}", nombre: "ventana para las frecuencias bajas", unidad: s, valor: 0.02 }
+    T_hi: { sim: "T_{altas}", nombre: "ventana para las frecuencias altas", unidad: s, valor: 0.2 }
   calculos:
     d_f: { expr: "1/T_v", sim: "Δf", nombre: "resolución en frecuencia", unidad: Hz }
     a_b: { expr: "1/T_b + v_b*T_b", sim: "anchura", nombre: "anchura de la línea del barrido", unidad: Hz }
     T_o: { expr: "1/sqrt(v_b)", sim: "T_{óptima}", nombre: "ventana de la línea más fina", unidad: s }
     n_t: { expr: "1/(1 - s_l/100)", sim: "×", nombre: "transformadas de más", unidad: "" }
+    T_r: { expr: "1/d_r", sim: "T", nombre: "ventana para esa resolución", unidad: s }
+    f_lo: { expr: "1/T_lo", sim: "Δf_{bajas}", nombre: "resolución en las bajas", unidad: Hz }
 
 tarjetas:
   - id: explore-compromiso
     tipo: explorar
     titulo: "Líneas finas o instantes precisos"
-    texto: "Un espectrograma trocea la señal en ventanas y transforma cada una. Alargue la ventana y mire las dos resoluciones."
+    texto: "Un espectrograma trocea la señal en ventanas y transforma cada una. Alargue la ventana hasta una resolución de 10 Hz."
     libro: [278, 281, 282, 284]
+    inicio: { T_v: 0.02 }
     widget:
       tipo: grafica
       x: { id: w, min: 0.01, max: 1, unidad: s, rotulo: "ventana, T", escala: log }
@@ -59,39 +69,45 @@ tarjetas:
         - { valor: T_v, rotulo: "Resolución en tiempo: {{T_v}}" }
       mandos:
         - { valor: T_v, lista: [0.02, 0.05, 0.1, 0.2], rotulo: "Ventana, T" }
-    requiere: { mover: [T_v] }
+    objetivo:
+      condiciones:
+        - { valor: d_f, objetivo: 10, tol: 0.01, rotulo: "Δf = {{d_f}}" }
+      logrado: "Con 100 ms: 10 Hz en frecuencia, pero 100 ms de incertidumbre en el tiempo. Ventana larga, líneas finas e instantes borrosos."
+      pistas:
+        - { cuando: { valor: d_f, mayor: 10.1 }, texto: "Las líneas aún son anchas: alargue la ventana." }
+        - { texto: "Se ha pasado: más fina de lo pedido, y el tiempo, más borroso." }
+    escalera:
+      - "Δf ≈ 1/T."
+    solucion: "T = 100 ms."
     comprobar:
       - { con: { T_v: 0.1 }, d_f: 10 }
 
   - id: predecir-5hz
-    tipo: predecir
+    tipo: simular
     titulo: "Dos tonos a 5 Hz"
-    texto: "Quiere separar dos tonos a 5 Hz de distancia y, a la vez, saber cuándo ocurrió un evento. ¿Qué consigue?"
+    texto: "Quiere separar dos tonos a 5 Hz de distancia. ¿Qué ventana necesita, y por tanto cuánto se le borra el instante de un evento?"
     libro: [283, 284]
-    fijar: { T_v: 0.2 }
     widget:
       tipo: grafica
       x: { id: w, min: 0.01, max: 1, unidad: s, rotulo: "ventana, T", escala: log }
       y: { min: 1, max: 100, unidad: Hz, rotulo: "Δf", escala: log }
       curvas:
         - { expr: "1/w", color: naranja, rotulo: "resolución en frecuencia" }
-      marcas:
-        - { x: "T_v", y: "d_f", rotulo: "{{d_f}}" }
-      lectura: { valor: d_f, rotulo: "Resolución en frecuencia" }
-      ocultar: true
-    opciones:
-      - texto: "Ventana de al menos 200 ms, y el evento no se sitúa mejor que eso"
-        bien: true
-        porque: "El producto de las dos resoluciones está acotado: mejorar una empeora la otra, siempre."
-      - texto: "Ventana corta para el evento y, a la vez, líneas de 5 Hz"
-        porque: "Una ventana corta emborrona la frecuencia: 5 Hz piden 200 ms de ventana."
-      - texto: "Basta más solapamiento para tener las dos"
-        porque: "El solapamiento suaviza la imagen, pero no cambia la longitud de cada ventana."
+      mandos: []
+    simular:
+      objetivo: T_r
+      unidad: s
+      tol: 0.03
+      rotulo: "Ventana, T"
+      errores:
+        - { expr: "1/(2*d_r)", texto: "Δf ≈ 1/T, sin ningún 2: la mitad de ventana da 10 Hz." }
+        - { expr: "d_r", texto: "Ha escrito la resolución; la ventana es su inverso." }
+    exito: "200 ms de ventana y 200 ms de incertidumbre en el tiempo: el producto de las dos resoluciones está acotado."
     escalera:
       - "Δf ≈ 1/T: ¿qué T da 5 Hz?"
-    solucion: "200 ms de ventana y 200 ms de incertidumbre en el tiempo."
+    solucion: "T = 1/5 Hz = 200 ms."
     comprobar:
-      - { d_f: 5 }
+      - { T_r: 0.2 }
 
   - id: toque-clic
     tipo: tocar
@@ -149,9 +165,9 @@ tarjetas:
       - { con: { T_b: 0.02 }, a_b: 100 }
 
   - id: pregunta-solape
-    tipo: pregunta
+    tipo: simular
     titulo: "El solapamiento"
-    texto: "Las ventanas se toman solapadas para no perder lo que la ponderación atenúa en los extremos. Con un 75 %, ¿cuántas transformadas más?"
+    texto: "Las ventanas se solapan para no perder lo que la ponderación atenúa en los extremos. Con un 75 %, ¿cuántas veces más transformadas?"
     libro: [286, 287]
     fijar: { s_l: 75 }
     widget:
@@ -159,17 +175,18 @@ tarjetas:
       figura: fig-30.15
       zonas:
         - { id: todo, rotulo: "Tres longitudes de ventana", rect: [0, 0, 451, 179] }
-    opciones:
-      - texto: "Cuatro veces más"
-        bien: true
-        porque: "Cada ventana avanza solo una cuarta parte de su longitud: cuatro por cada una sin solape."
-      - texto: "Un 75 % más"
-        porque: "No se suma: cada ventana avanza un cuarto, así que caben cuatro donde antes cabía una."
-      - texto: "Las mismas: solo cambia la imagen"
-        porque: "El coste del solapamiento es precisamente computacional."
+    simular:
+      objetivo: n_t
+      unidad: ""
+      tol: 0.02
+      rotulo: "Transformadas, veces"
+      errores:
+        - { expr: "1 + s_l/100", texto: "No se suma un 75 %: cada ventana avanza un cuarto, y caben cuatro donde antes cabía una." }
+        - { expr: "1/(s_l/100)", texto: "Ha dividido por lo que se solapan; lo que cuenta es lo que avanza, un cuarto." }
+    exito: "Cuatro veces más: el coste del solapamiento es computacional."
     escalera:
       - "Si se solapan un 75 %, ¿cuánto avanza cada ventana?"
-    solucion: "Cuatro veces más transformadas."
+    solucion: "Avanza un cuarto: cuatro veces más."
     comprobar:
       - { n_t: 4 }
 
@@ -218,26 +235,39 @@ tarjetas:
     solucion: "Muestra la evolución del espectro en el tiempo."
 
   - id: porque-wavelets
-    tipo: porque
+    tipo: explorar
     titulo: "Repartir la resolución"
-    texto: "Las wavelets usan ventanas largas para las frecuencias bajas y cortas para las altas. ¿Por qué así?"
-    libro: [294, 295]
+    texto: "Las wavelets reparten el compromiso. Elija una ventana para las bajas que separe 5 Hz y otra para las altas que sitúe eventos en 20 ms."
+    libro: [294, 295, 298]
+    inicio: { T_lo: 0.02, T_hi: 0.2 }
     widget:
-      tipo: figura
-      figura: fig-30.15
-      zonas:
-        - { id: todo, rotulo: "Tres longitudes de ventana", rect: [0, 0, 451, 179] }
-    opciones:
-      - texto: "Como no se puede tener todo en todas partes, se da resolución fina donde importa"
-        bien: true
-        porque: "Abajo importa separar frecuencias; arriba, situar los eventos en el tiempo."
-      - texto: "Porque así se esquiva el compromiso"
-        porque: "No se esquiva: se reparte según dónde haga falta."
-      - texto: "Porque las frecuencias altas no tienen armónicos"
-        porque: "No es eso: en las altas lo útil es la localización temporal."
+      tipo: grafica
+      x: { id: w, min: 0.01, max: 1, unidad: s, rotulo: "ventana, T", escala: log }
+      y: { min: 1, max: 100, unidad: Hz, rotulo: "Δf", escala: log }
+      curvas:
+        - { expr: "1/w", color: naranja, rotulo: "resolución en frecuencia" }
+      marcas:
+        - { x: "T_lo", y: "f_lo", rotulo: "bajas" }
+        - { x: "T_hi", y: "1/T_hi", rotulo: "altas" }
+      lectura: { valor: f_lo, rotulo: "Resolución en las bajas" }
+      datos:
+        - { valor: T_hi, rotulo: "Tiempo en las altas: {{T_hi}}" }
+      mandos:
+        - { valor: T_lo, lista: [0.02, 0.05, 0.1, 0.2], rotulo: "Ventana de las bajas" }
+        - { valor: T_hi, lista: [0.02, 0.05, 0.1, 0.2], rotulo: "Ventana de las altas" }
+    objetivo:
+      condiciones:
+        - { valor: f_lo, max: 5.01, rotulo: "Bajas: {{f_lo}}" }
+        - { valor: T_hi, max: 0.0201, rotulo: "Altas: {{T_hi}}" }
+      logrado: "Larga abajo, donde importa separar frecuencias; corta arriba, donde importa situar los eventos. No se esquiva el compromiso: se reparte."
+      pistas:
+        - { cuando: { valor: f_lo, mayor: 5.01 }, texto: "En las bajas las líneas aún no separan 5 Hz: alargue esa ventana." }
+        - { texto: "En las altas el tiempo sigue borroso: acorte esa ventana." }
     escalera:
-      - "El compromiso sigue ahí. ¿Qué hace falta en cada zona del espectro?"
-    solucion: "Reparte el compromiso: largas abajo, cortas arriba."
+      - "5 Hz piden 200 ms; 20 ms de tiempo, una ventana de 20 ms."
+    solucion: "Bajas, 200 ms; altas, 20 ms."
+    comprobar:
+      - { con: { T_lo: 0.2, T_hi: 0.02 }, f_lo: 5 }
 
   - id: resumen
     tipo: resumen

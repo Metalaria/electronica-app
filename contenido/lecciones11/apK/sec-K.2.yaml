@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección K.2 «Punteros, Vectores y Estructuras» (apK). Formato: contenido/lecciones11/GUIA.md (§11).
 # El ejemplo de relleno es el del libro (struct muestra: 12 bytes en un Cortex-M, 8 ordenada, 6 en el AVR; comprobado en
 # Complementos/codigo/apK/tamanos). Figura K.1 (svg_vista 325,42 × 187,09) para dónde apunta un puntero.
+# 1.2.1 («aprender haciendo», GUIA §13): dónde queda una tabla const se toca en la figura; p + 1 es un objetivo sobre
+# una gráfica de direcciones (0x0100 es la 256; el tamaño del elemento, 1, 2 o 4 bytes) y p + 3 se escribe en
+# hexadecimal; el puntero fijo y la trama byte a byte se tocan en listados; los dos tamaños de struct muestra se
+# escriben. Quedan dos preguntas de opciones: por qué no enviar la estructura y packed.
 leccion: apK/sec-K.2
 
 libro:
@@ -18,128 +22,162 @@ modelo:
     al: { sim: "alineación", nombre: "alineación del uint32_t", unidad: "", valor: 4 }
     b1: { sim: "uint8_t", nombre: "bytes de un uint8_t", unidad: "", valor: 1 }
     b4: { sim: "uint32_t", nombre: "bytes de un uint32_t", unidad: "", valor: 4 }
+    tam_el: { sim: "bytes", nombre: "bytes de cada elemento", unidad: "", valor: 1 }
   calculos:
     tam: { expr: "ceil((ceil(b1/al)*al + b4 + b1)/al)*al", sim: "sizeof", nombre: "tamaño de struct muestra", unidad: "" }
     tam_ord: { expr: "ceil((b4 + 2*b1)/al)*al", sim: "sizeof", nombre: "tamaño de la estructura ordenada", unidad: "" }
     rel_fin: { expr: "ceil((b4 + 2*b1)/al)*al - b4 - 2*b1", sim: "relleno", nombre: "relleno al final de la ordenada", unidad: "" }
     tam_avr: { expr: "b4 + 2*b1", sim: "sizeof", nombre: "tamaño en el AVR", unidad: "" }
+    p0: { expr: "256", sim: "p", nombre: "dirección de p", unidad: "" }
+    dir1: { expr: "256 + tam_el", sim: "p + 1", nombre: "dirección de p + 1", unidad: "" }
+    dir3: { expr: "256 + 3*b4", sim: "p + 3", nombre: "dirección de p + 3 con uint32_t", unidad: "" }
 
 tarjetas:
   - id: explore-punteros
-    tipo: explorar
+    tipo: tocar
     titulo: "Un puntero es una dirección"
-    texto: "Un puntero guarda una dirección de la Flash o de la RAM, y su tipo dice qué hay en ella. Toque las zonas."
-    libro: [15, "apK#69"]
+    texto: "Un puntero guarda una dirección de la Flash o de la RAM. Una función recibe una tabla con const uint8_t *: toque dónde puede dejarla un Cortex-M."
+    libro: [15, 16, "apK#69"]
     widget:
       tipo: figura
       figura: fig-K.1
       zonas:
-        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50], texto: "El código: un puntero a función apunta aquí." }
-        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26], texto: "Constantes: lo que recibe un const uint8_t *." }
-        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "Variables: lo que recorre un puntero a un vector." }
-        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28], texto: "La pila: las variables locales." }
-    requiere: { mover: [text, ram] }
+        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50] }
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26] }
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42] }
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28] }
+    tocar:
+      bien: [rodata]
+      porque:
+        text: "Ahí va el código: allí apunta un puntero a función."
+        ram: "Ahí van las variables que se escriben; la tabla const no se escribe."
+        pila: "La pila guarda las variables locales mientras dura la función."
+    exito: "Con las constantes, en la Flash: declarar const lo que no se escribe no es cosmético. El compilador detecta además el error de escribirlo."
+    escalera: ["¿Dónde se guardan las constantes?"]
+    solucion: "La Flash, en medio: las constantes."
 
   - id: prediga-p-mas-uno
-    tipo: predecir
+    tipo: explorar
     titulo: "p + 1"
-    texto: "p es un puntero a uint32_t que apunta a la dirección 0x0100. ¿Adónde apunta p + 1?"
+    texto: "p apunta a 0x0100, la dirección 256, y p + 1 apunta al elemento siguiente. Elija el tipo de elemento con el que p + 1 cae en 0x0104, la 260."
+    libro: [15]
+    inicio: { tam_el: 1 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 4, rotulo: "k en p + k" }
+      y: { min: 250, max: 275, rotulo: "dirección" }
+      curvas:
+        - { expr: "256 + k*tam_el", color: azul, rotulo: "p + k" }
+      lectura: { valor: dir1, rotulo: "p + 1" }
+      mandos:
+        - { valor: tam_el, lista: [1, 2, 4], rotulo: "Bytes de cada elemento" }
+    objetivo:
+      condiciones:
+        - { valor: dir1, objetivo: 260, tol: 0.001, rotulo: "p + 1 en 260" }
+      logrado: "Elementos de 4 bytes, un uint32_t: el tipo dice qué hay en la dirección, y p + 1 salta un elemento entero. v[i] es *(v + i)."
+      pistas:
+        - { texto: "Cada paso de p avanza lo que ocupa un elemento: 260 − 256 bytes." }
+    escalera: ["De 256 a 260 hay 4 bytes: un uint32_t."]
+    solucion: "Elementos de 4 bytes: uint32_t."
+    comprobar:
+      - { con: { tam_el: 4 }, dir1: 260, p0: 256 }
+
+  - id: lea-p-mas-tres
+    tipo: leer
+    titulo: "p + 3"
+    texto: "Con el mismo puntero a uint32_t en 0x0100, escriba en hexadecimal la dirección de p + 3."
     libro: [15]
     widget:
       tipo: figura
       figura: fig-K.1
       zonas:
-        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "Un vector de uint32_t en la RAM." }
-    opciones:
-      - { texto: "Al elemento siguiente, 4 bytes más allá", bien: true, porque: "El tipo dice qué hay en la dirección: p + 1 salta un uint32_t entero." }
-      - { texto: "Un byte más allá", porque: "Eso pasaría con un puntero a uint8_t; este apunta a elementos de cuatro bytes." }
-      - { texto: "Al mismo sitio", porque: "p + 1 siempre avanza un elemento." }
-    escalera: ["¿Cuántos bytes ocupa un uint32_t?"]
-    solucion: "Al elemento siguiente: cuatro bytes más allá."
+        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50] }
+        - { id: rodata, rotulo: "Flash, en medio", rect: [9, 86, 62, 26] }
+        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42] }
+        - { id: pila, rotulo: "RAM, abajo", rect: [108, 106, 62, 28] }
+    leer:
+      objetivo: dir3
+      base: 16
+      cifras: 16
+      rotulo: "Dirección de p + 3"
+      errores:
+        - { expr: "256 + 3", texto: "Eso sería con un puntero a uint8_t: este salta 4 bytes por elemento." }
+    exito: "0x010C: tres elementos de 4 bytes, 12 bytes más allá."
+    escalera: ["3 × 4 = 12 bytes, que en hexadecimal es C."]
+    solucion: "0x0100 + 0x0C = 0x010C."
     comprobar:
-      - { b4: 4 }
+      - { dir3: 268 }
 
   - id: empareje-punteros
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "Leer un puntero"
-    texto: "Una cada declaración o expresión con lo que significa."
-    libro: [15, 16, 17]
-    emparejar:
-      - ["const uint8_t *p", "No se pueden cambiar los datos a través de él"]
-      - ["uint8_t *const p", "Un puntero que no se puede mover"]
-      - ["v[i]", "*(v + i)"]
-      - ["Una tabla de punteros a función", "La tabla de vectores de interrupción"]
-    exito: "Una función que solo lee un búfer debe recibir const uint8_t *: el compilador detecta el error de escribirlo."
-    pistas:
-      - { texto: "const delante del tipo protege los datos; detrás del asterisco, el puntero." }
-    escalera: ["Lea la declaración de derecha a izquierda."]
-    solucion: "const antes, datos fijos; const después, puntero fijo; v[i], *(v + i); vectores, punteros a función."
+    texto: "La posición de const cambia el sentido. Toque el puntero que no se puede mover."
+    libro: [16, 17]
+    widget:
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          const uint8_t *p1;
+          uint8_t *const p2;
+          uint8_t *p3;
+      zonas:
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+    tocar:
+      bien: [l2]
+      porque:
+        l1: "Ese sí se mueve: lo que no se puede cambiar a través de él son los datos."
+        l3: "Ni datos ni puntero fijos: se puede todo."
+    exito: "const detrás del asterisco fija el puntero; delante del tipo, los datos. Una tabla de punteros a función es la de vectores de interrupción."
+    escalera: ["Lea la declaración de derecha a izquierda: «p2 es un puntero constante a…»."]
+    solucion: "La segunda: uint8_t *const p2."
 
   - id: estime-relleno
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Lo que ocupa una estructura"
-    texto: "struct muestra: un uint8_t, un uint32_t y otro uint8_t, por ese orden. ¿Cuántos bytes ocupa en un Cortex-M?"
+    texto: "struct muestra: un uint8_t, un uint32_t y otro uint8_t, por ese orden. Calcule cuántos bytes ocupa en un Cortex-M."
     libro: [19, 20, 21]
     widget:
       tipo: figura
       codigo: "apK#20"
       resaltar: [3, 4, 5, 6, 7]
-    estimar:
-      objetivo: "tam"
+    leer:
+      objetivo: tam
       unidad: "B"
-      min: 0
-      max: 16
-      paso: 1
-      inicio: 3
       tol: 0.01
       rotulo: "sizeof(struct muestra)"
+      errores:
+        - { expr: "tam_avr", texto: "Esos son los datos: el uint32_t debe empezar en una dirección múltiplo de 4." }
+        - { expr: "tam_ord", texto: "Falta el relleno del final, para que la siguiente de un vector quede alineada." }
     exito: "12 bytes: 3 de relleno tras canal para alinear instante en la dirección 4, y 3 al final."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 12 }, texto: "Se ha pasado: el relleno solo llega hasta el siguiente múltiplo de 4." }
-      - { texto: "Se ha quedado corto: el uint32_t debe empezar en una dirección múltiplo de 4." }
     escalera: ["El uint32_t no puede empezar en la dirección 1: el compilador rellena."]
     solucion: "1 + 3 de relleno + 4 + 1 + 3 de relleno = 12."
     comprobar:
       - { tam: 12, tam_ord: 8, tam_avr: 6 }
 
   - id: pregunta-ordenada
-    tipo: pregunta
+    tipo: leer
     titulo: "Ordenar los campos"
-    texto: "Los mismos campos, del mayor al menor: uint32_t, uint8_t, uint8_t. ¿Cuánto ocupa en un Cortex-M?"
+    texto: "Los mismos campos, del mayor al menor: uint32_t, uint8_t, uint8_t. Calcule cuánto ocupa en un Cortex-M."
     libro: [20, 21]
     widget:
       tipo: figura
       codigo: "apK#20"
       resaltar: [9, 10, 11, 12, 13]
-    opciones:
-      - { texto: "8 bytes", bien: true, porque: "4 + 1 + 1 y 2 de relleno al final para que la siguiente del vector quede alineada." }
-      - { texto: "6 bytes", porque: "Esos son los datos; el vector de estructuras necesita relleno al final." }
-      - { texto: "12 bytes, como antes", porque: "Al ordenar de mayor a menor, desaparece el relleno de en medio." }
+    leer:
+      objetivo: tam_ord
+      unidad: "B"
+      tol: 0.01
+      rotulo: "sizeof(struct muestra_ordenada)"
+      errores:
+        - { expr: "tam_avr", texto: "Esos son los datos: un vector de estructuras necesita relleno al final." }
+    exito: "8 bytes: 4 + 1 + 1 y 2 de relleno al final. En el AVR, que lee byte a byte, las dos ocupan 6."
     escalera: ["Sin hueco en medio, ¿cuánto relleno hace falta al final?"]
     solucion: "8 bytes."
     comprobar:
       - { tam_ord: 8, tam_avr: 6, rel_fin: 2 }
-
-  - id: pregunta-avr
-    tipo: pregunta
-    titulo: "En el AVR"
-    texto: "¿Cuánto ocupan las dos versiones de la estructura en el AVR?"
-    libro: [21]
-    widget:
-      tipo: figura
-      figura: fig-K.1
-      zonas:
-        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "La RAM del AVR, byte a byte." }
-    opciones:
-      - { texto: "6 bytes las dos", bien: true, porque: "El AVR lee byte a byte: no necesita alinear y no mete relleno." }
-      - { texto: "12 y 8, como en el Cortex-M", porque: "El relleno lo pide el acceso de 32 bits del Cortex-M; el AVR no lo tiene." }
-      - { texto: "8 bytes las dos", porque: "Sin relleno, son los 6 bytes de los datos." }
-    escalera: ["¿Cuántos bytes lee el AVR de una vez?"]
-    solucion: "6 bytes las dos: sizeof y offsetof dan siempre la respuesta del compilador que se usa."
-    comprobar:
-      - { tam_avr: 6 }
 
   - id: porque-trama
     tipo: porque
@@ -159,21 +197,30 @@ tarjetas:
     solucion: "Relleno y orden de bytes dependen del compilador: se envía byte a byte."
 
   - id: pregunta-endian
-    tipo: pregunta
+    tipo: tocar
     titulo: "El byte más significativo primero"
-    texto: "Modbus envía un uint16_t v con el byte más significativo primero. ¿Cómo se escribe en la trama?"
+    texto: "Modbus envía un uint16_t v con el byte más significativo primero, y el procesador lo guarda al revés. Toque la línea que lo escribe bien en cualquier procesador."
     libro: [22]
     widget:
       tipo: figura
-      figura: fig-K.1
+      codigo:
+        lenguaje: c
+        texto: |
+          memcpy(b, &v, 2);
+          b[0] = v & 0xFF; b[1] = v >> 8;
+          b[0] = v >> 8;   b[1] = v & 0xFF;
       zonas:
-        - { id: ram, rotulo: "RAM, arriba", rect: [108, 37, 62, 42], texto: "En la RAM, el byte menos significativo primero." }
-    opciones:
-      - { texto: "b[0] = v >> 8; b[1] = v & 0xFF;", bien: true, porque: "Con desplazamientos funciona igual en cualquier procesador, sea cual sea su orden de bytes." }
-      - { texto: "Copiando los dos bytes de v tal cual", porque: "El AVR, los Cortex-M y los PC guardan primero el menos significativo: saldría al revés." }
-      - { texto: "b[0] = v & 0xFF; b[1] = v >> 8;", porque: "Así va primero el menos significativo, al revés de lo que pide Modbus." }
+        - { id: l1, lineas: [1], rotulo: "Primera línea" }
+        - { id: l2, lineas: [2], rotulo: "Segunda línea" }
+        - { id: l3, lineas: [3], rotulo: "Tercera línea" }
+    tocar:
+      bien: [l3]
+      porque:
+        l1: "Copia los bytes como los guarda el procesador: el menos significativo primero."
+        l2: "Pone primero el byte bajo: al revés de lo que pide Modbus."
+    exito: "Con desplazamientos funciona igual en cualquier procesador: v >> 8 es el byte alto."
     escalera: ["v >> 8 es el byte alto."]
-    solucion: "b[0] = v >> 8; b[1] = v & 0xFF;"
+    solucion: "La tercera: b[0] = v >> 8; b[1] = v & 0xFF;"
 
   - id: pregunta-packed
     tipo: pregunta
@@ -199,5 +246,5 @@ tarjetas:
     ideas:
       - { titulo: "Punteros.", texto: "p + 1 salta un elemento; v[i] es *(v + i)." }
       - { titulo: "const.", texto: "Delante, datos fijos; detrás del asterisco, puntero fijo." }
-      - { titulo: "Relleno.", texto: "Campos de mayor a menor; sizeof y offsetof dicen la verdad." }
+      - { titulo: "Relleno.", texto: "Campos de mayor a menor; sizeof y offsetof dan la respuesta del compilador que se usa." }
       - { titulo: "Tramas.", texto: "Byte a byte, con desplazamientos." }

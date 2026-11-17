@@ -1,4 +1,8 @@
-# Lección 1.2 de la sección 28.8 «Diseño Síncrono: Setup, Hold, Skew y Frecuencia Máxima» (cap29; etiqueta interna sec-29.8). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 28.8 «Diseño Síncrono: Setup, Hold, Skew y Frecuencia Máxima» (cap29; etiqueta interna sec-29.8). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 («aprender haciendo», GUIA §13): la lógica que cabe a 62,5 MHz se busca arrastrando su retardo; la frecuencia
+# sin lógica, la de 20 ns de lógica partida en dos etapas y el periodo con 2 ns de skew favorable se calculan y se
+# escriben; el camino crítico se recorta con un ajuste. Quedan dos preguntas de opciones: por qué solo limita el camino
+# crítico y cómo se arregla un fallo de hold. Las reglas (reloj derivado) y el jitter van en los textos de éxito.
 leccion: cap29/sec-29.8
 
 libro:
@@ -18,16 +22,22 @@ modelo:
     t_pd: { sim: "t_{pd}", nombre: "retardo del flip-flop", unidad: s, valor: 8e-9 }
     t_l: { sim: "t_{lógica}", nombre: "retardo de la lógica", unidad: s, valor: 5e-9 }
     t_su: { sim: "t_{su}", nombre: "tiempo de setup", unidad: s, valor: 3e-9 }
+    t_sk: { sim: "t_{skew}", nombre: "skew favorable del reloj", unidad: s, valor: 2e-9 }
   calculos:
     T_min: { expr: "t_pd + t_l + t_su", sim: "T", nombre: "periodo mínimo", unidad: s }
     f_max: { expr: "1/T_min", sim: "f_{máx}", nombre: "frecuencia máxima", unidad: Hz }
+    f_seg: { expr: "1/(t_pd + t_l/2 + t_su)", sim: "f_{máx}", nombre: "frecuencia máxima con la lógica en dos etapas", unidad: Hz }
+    t_l2: { expr: "t_l/2", sim: "t_{lógica}/2", nombre: "lógica de cada etapa", unidad: s }
+    T_seg: { expr: "t_pd + t_l/2 + t_su", sim: "T", nombre: "periodo de cada etapa", unidad: s }
+    T_sk: { expr: "T_min - t_sk", sim: "T", nombre: "periodo mínimo con el skew favorable", unidad: s }
 
 tarjetas:
   - id: explore-fmax
     tipo: explorar
     titulo: "Cada nanosegundo cuenta"
-    texto: "Entre dos flip-flops hay lógica. Arrastre su retardo y mire la frecuencia máxima."
-    libro: [242, 247]
+    texto: "Entre dos flip-flops de t_{pd} = 8 ns y t_{su} = 3 ns hay lógica. Añádale retardo hasta que el reloj baje a 62,5 MHz."
+    libro: [242, 246, 247]
+    inicio: { t_l: 0 }
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
@@ -41,31 +51,22 @@ tarjetas:
         - { valor: T_min, rotulo: "Periodo mínimo: {{T_min}}" }
       mandos:
         - { valor: t_l, min: 0, max: 0.00000003, paso: 0.000000001, rotulo: "t_{lógica}" }
-    requiere: { mover: [t_l] }
-
-  - id: formula-periodo
-    tipo: formula
-    titulo: "La ecuación del periodo"
-    texto: "El dato sale del primero, atraviesa la lógica y llega al segundo antes de su setup."
-    libro: [246, 247]
-    ec: 246
-    sustitucion: "{{t_pd}} + {{t_l}} + {{t_su}} = {{T_min}}, es decir, {{f_max}}"
-    widget:
-      tipo: grafica
-      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
-      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
-      curvas:
-        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
-      asas:
-        - { mueve: t_l, x: "t_l", y: "f_max", rotulo: "Su lógica" }
-      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
-      mandos:
-        - { valor: t_l, min: 0, max: 0.00000003, paso: 0.000000001, rotulo: "t_{lógica}" }
+    objetivo:
+      condiciones:
+        - { valor: f_max, objetivo: 62500000, tol: 0.01, rotulo: "f_{máx}: {{f_max}}" }
+      logrado: "{{t_l}} de lógica: T = 8 + 5 + 3 = {{T_min}}. El dato sale del primero, atraviesa la lógica y llega antes del setup del segundo."
+      pistas:
+        - { cuando: { valor: f_max, menor: 62000000 }, texto: "Demasiada lógica: el reloj ya va más despacio. Quite un poco." }
+        - { texto: "Aún va más deprisa: añada retardo de lógica." }
+    escalera: ["T ≥ t_{pd} + t_{lógica} + t_{su}, y f = 1/T."]
+    solucion: "5 ns de lógica: T = 16 ns, 62,5 MHz."
+    comprobar:
+      - { con: { t_l: 5e-9 }, T_min: 16e-9, f_max: 62.5e6 }
 
   - id: prediga-sin-logica
-    tipo: predecir
+    tipo: leer
     titulo: "Sin lógica entre medias"
-    texto: "Los mismos flip-flops (t_{pd} = 8 ns, t_{su} = 3 ns) sin ninguna lógica entre ellos. ¿Hasta qué frecuencia llegan?"
+    texto: "Los mismos flip-flops, sin ninguna lógica entre ellos. Calcule hasta qué frecuencia llegan y escríbala."
     libro: [247]
     fijar: { t_l: 0 }
     widget:
@@ -74,12 +75,16 @@ tarjetas:
       y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
       curvas:
         - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
-      lectura: { valor: f_max, rotulo: "Frecuencia máxima" }
-      ocultar: true
-    opciones:
-      - { texto: "Unos 91 MHz: 1/11 ns", bien: true, porque: "Sin lógica, T = 8 + 3 = 11 ns. Cada nanosegundo de lógica resta." }
-      - { texto: "Infinita: sin lógica no hay retardo", porque: "El flip-flop tarda en sacar el dato y el siguiente necesita su setup: 11 ns." }
-      - { texto: "62,5 MHz, como antes", porque: "Esos son con 5 ns de lógica. Sin ella, el periodo baja a 11 ns." }
+      mandos: []
+    leer:
+      objetivo: f_max
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia máxima"
+      errores:
+        - { expr: "1/t_pd", texto: "Falta el setup del segundo flip-flop: T = t_{pd} + t_{su}." }
+        - { expr: "62500000", texto: "Esos son con 5 ns de lógica. Sin ella, el periodo baja a 11 ns." }
+    exito: "{{f_max}}: 1/11 ns. Cada nanosegundo de lógica resta."
     escalera: ["T = t_{pd} + t_{su} cuando no hay lógica."]
     solucion: "1/(8 + 3) ns ≈ 91 MHz."
     comprobar:
@@ -115,22 +120,32 @@ tarjetas:
       - { t_l: 20e-9 }
 
   - id: pregunta-segmentar
-    tipo: pregunta
-    titulo: "Subir la frecuencia"
-    texto: "¿Cuál es la forma más eficaz de subir la frecuencia de un circuito síncrono?"
+    tipo: leer
+    titulo: "Segmentar"
+    texto: "Un camino crítico de 20 ns de lógica se parte en dos etapas de {{t_l2}} con un registro en medio. Calcule la nueva frecuencia máxima."
     libro: [249]
+    fijar: { t_l: 20e-9 }
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
       y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
       curvas:
         - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
-    opciones:
-      - { texto: "Partir la lógica del camino crítico con un registro en medio", bien: true, porque: "Es la segmentación: se acerca al doble cuando la lógica domina, a cambio de un ciclo más de latencia." }
-      - { texto: "Usar una familia más rápida", porque: "Ayuda, porque reduce t_{pd} y t_{su}, pero es la segunda en eficacia." }
-      - { texto: "Simplificar la función a mano", porque: "Hoy eso lo hace la herramienta de síntesis; es la última de las tres." }
-    escalera: ["¿Qué término de la ecuación suele ser el más grande?"]
-    solucion: "La segmentación."
+      lectura: { valor: f_max, rotulo: "Sin segmentar" }
+      mandos: []
+    leer:
+      objetivo: f_seg
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia segmentada"
+      errores:
+        - { expr: "2*f_max", texto: "El doble exacto no se alcanza: t_{pd} y t_{su} se pagan en cada etapa." }
+        - { expr: "1/(t_l/2)", texto: "Falta lo del flip-flop: cada etapa paga sus 8 ns de t_{pd} y 3 ns de t_{su}." }
+    exito: "{{f_seg}} frente a {{f_max}}: se acerca al doble, pero nunca lo alcanza. A cambio, un ciclo más de latencia."
+    escalera: ["Cada etapa: T = t_{pd} + {{t_l2}} + t_{su}."]
+    solucion: "1/{{T_seg}} = {{f_seg}}."
+    comprobar:
+      - { f_max: 32.26e6, f_seg: 47.62e6, t_l2: 10e-9, T_seg: 21e-9, tol: 0.01 }
 
   - id: porque-critico
     tipo: porque
@@ -151,7 +166,7 @@ tarjetas:
     solucion: "Solo el camino más lento limita el periodo."
 
   - id: pregunta-hold
-    tipo: pregunta
+    tipo: porque
     titulo: "Un fallo de hold"
     texto: "Un circuito con un fallo de hold no funciona ni a la frecuencia más baja. ¿Qué se hace?"
     libro: [254, 255]
@@ -169,59 +184,31 @@ tarjetas:
     solucion: "Añadir retardo en el camino de datos."
 
   - id: pregunta-skew
-    tipo: pregunta
+    tipo: leer
     titulo: "Un skew de 2 ns"
-    texto: "El flip-flop destino recibe el reloj 2 ns más tarde que el origen. ¿Qué pasa con los márgenes?"
-    libro: [258]
+    texto: "Con 5 ns de lógica, el flip-flop destino recibe el reloj 2 ns más tarde que el origen. Escriba el nuevo periodo mínimo."
+    libro: [258, 260, 263]
+    fijar: { t_l: 5e-9 }
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
       y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
       curvas:
         - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
-    opciones:
-      - { texto: "Gana 2 ns de setup y pierde 2 ns de hold", bien: true, porque: "Por eso el skew no es simplemente malo: favorable sube la frecuencia, desfavorable rompe el hold." }
-      - { texto: "Pierde 2 ns en los dos", porque: "Los efectos son opuestos: lo que gana el setup lo pierde el hold." }
-      - { texto: "Nada: el skew no afecta", porque: "Afecta a las dos condiciones, en sentidos opuestos." }
-    escalera: ["Si el flanco de captura llega más tarde, el dato tiene más tiempo… y el dato nuevo también."]
-    solucion: "+2 ns de setup, −2 ns de hold."
-
-  - id: pregunta-jitter
-    tipo: pregunta
-    titulo: "El jitter"
-    texto: "Un reloj tiene 200 ps de jitter. ¿Qué le hace al margen de setup?"
-    libro: [260]
-    widget:
-      tipo: grafica
-      x: { id: tx, min: 0, max: 0.00000003, unidad: s, rotulo: "t_{lógica}" }
-      y: { min: 0, max: 100000000, unidad: Hz, rotulo: "f_{máx}" }
-      curvas:
-        - { expr: "1/(t_pd + tx + t_su)", color: azul, rotulo: "f_{máx}" }
-    opciones:
-      - { texto: "Lo reduce en esos 200 ps: el periodo útil es menor", bien: true, porque: "La variación aleatoria del periodo se resta directamente del margen de setup." }
-      - { texto: "Nada, porque se compensa de un ciclo a otro", porque: "Basta un ciclo corto para fallar: el jitter se resta del margen." }
-      - { texto: "Lo aumenta en 200 ps", porque: "Un periodo que a veces es más corto quita tiempo, no lo da." }
-    escalera: ["¿Qué pasa en el ciclo que sale más corto?"]
-    solucion: "Resta 200 ps del periodo útil."
-
-  - id: pregunta-reloj-and
-    tipo: pregunta
-    titulo: "Un reloj derivado"
-    texto: "Para parar un bloque, el reloj se pasa por una puerta AND con una señal de habilitación. ¿Qué regla rompe?"
-    libro: [263]
-    widget:
-      tipo: logica
-      entradas: [{ id: CLK, reloj: true }, { id: EN, valor: 1 }]
-      piezas:
-        - { id: y1, tipo: and, entradas: [CLK, EN] }
-      salidas:
-        - { id: CLK2, de: y1, rotulo: "Reloj derivado" }
-    opciones:
-      - { texto: "Un solo reloj para todo el dominio, sin relojes derivados con lógica", bien: true, porque: "Un reloj que sale de una AND tiene glitches y skew impredecible." }
-      - { texto: "Ninguna: es la forma normal de parar un bloque", porque: "Es una de las cinco reglas rotas con más frecuencia: los glitches de la AND son flancos." }
-      - { texto: "La del reset", porque: "El reset es otra regla; aquí el problema es el reloj que sale de una puerta." }
-    escalera: ["Recuerde qué es un glitch para un biestable."]
-    solucion: "Nada de relojes derivados con lógica."
+      lectura: { valor: T_min, rotulo: "Periodo sin skew" }
+      mandos: []
+    leer:
+      objetivo: T_sk
+      unidad: s
+      tol: 0.02
+      rotulo: "Periodo mínimo"
+      errores:
+        - { expr: "T_min + t_sk", texto: "Al revés: si el destino captura más tarde, el dato tiene 2 ns más. El que pierde es el hold." }
+    exito: "{{T_sk}}: gana 2 ns de setup y pierde 2 de hold. El jitter, en cambio, siempre resta; y un reloj que sale de una AND tiene skew impredecible."
+    escalera: ["El flanco de captura llega 2 ns más tarde: el dato dispone de 2 ns más."]
+    solucion: "16 − 2 = 14 ns."
+    comprobar:
+      - { T_min: 16e-9, T_sk: 14e-9 }
 
   - id: resumen
     tipo: resumen

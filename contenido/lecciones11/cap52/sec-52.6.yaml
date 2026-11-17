@@ -5,6 +5,10 @@
 #   por encima (banda mía para «justo por encima»). El suelo lleva ruido de 2 dB eficaces (motor12e: `ruido(nu, 5)`,
 #   con semilla fija), no una senoide rápida.
 # Pasos prácticos: «tocar» en la foto la emisión que ocupa menos banda, y «ajuste» del mínimo del margen de color.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la foto 53.13 se toca la vista donde se ve el sensor que
+# despierta cada minuto (la predicción se funde en ella); se alarga la captura hasta separar dos señales a 10 Hz
+# (Δf = 1/T; tiempos y separación de ejemplo); la parte de una emisora de FM que cabe en 48 kHz se calcula. Queda una
+# pregunta de opciones (la ganancia que satura) y el emparejar de firmas.
 leccion: cap52/sec-52.6
 
 libro:
@@ -34,22 +38,35 @@ modelo:
   valores:
     c_m: { sim: "mínimo", nombre: "mínimo del margen de color", unidad: dB, valor: -75 }
     s_f: { sim: "suelo", nombre: "suelo de ruido de ejemplo", unidad: dB, valor: -60 }
+    T_c: { sim: "T", nombre: "tiempo capturado", unidad: s, valor: 0.01 }
+    B_r: { sim: "B", nombre: "banda del receptor", unidad: Hz, valor: 48000 }
+    B_fm: { sim: "B_{FM}", nombre: "anchura de una emisora de FM", unidad: Hz, valor: 200000 }
   calculos:
     d_c: { expr: "c_m - s_f", sim: "Δ", nombre: "mínimo sobre el suelo", unidad: dB }
+    d_f: { expr: "1/T_c", sim: "Δf", nombre: "resolución en frecuencia", unidad: Hz }
+    c_fm: { expr: "B_r/B_fm", sim: "fracción", nombre: "parte de la emisora que cabe", unidad: "" }
+    c_x: { expr: "B_fm/B_r", sim: "fracción", nombre: "cociente invertido", unidad: "" }
 
 tarjetas:
   - id: explore-pantalla
-    tipo: explorar
+    tipo: tocar
     titulo: "Dos vistas del mismo dato"
-    texto: "La pantalla de una SDR en la FM comercial. Toque las dos mitades."
-    libro: [207, 209, 215, 244]
+    texto: "La pantalla de una SDR en la FM comercial. Un sensor transmite un segundo cada minuto: toque la vista donde lo verá."
+    libro: [207, 209, 215, 216, 218, 244, 245]
     widget:
       tipo: figura
       figura: fig-52.10
       zonas:
-        - { id: espectro, rotulo: "Mitad de arriba", rect: [0, 0, 1600, 405], texto: "El espectro instantáneo: amplitud frente a frecuencia, por FFT de la última captura. Muestra lo que hay ahora." }
-        - { id: cascada, rotulo: "Mitad de abajo", rect: [0, 415, 1600, 350], texto: "La cascada: cada línea es un instante y el color, la intensidad. Cada emisora deja una franja vertical." }
-    requiere: { mover: [espectro, cascada] }
+        - { id: espectro, rotulo: "Mitad de arriba", rect: [0, 0, 1600, 405] }
+        - { id: cascada, rotulo: "Mitad de abajo", rect: [0, 415, 1600, 350] }
+    tocar:
+      bien: [cascada]
+      porque:
+        espectro: "El espectro instantáneo, por FFT de la última captura, solo muestra lo que hay ahora: un segundo pasa desapercibido."
+    exito: "La cascada: el tiempo en vertical y la amplitud en color. Lo breve e intermitente deja su marca."
+    escalera:
+      - "¿Cuál de las dos vistas recuerda lo que pasó hace un rato?"
+    solucion: "La mitad de abajo, la cascada."
 
   - id: toque-estrecha
     tipo: tocar
@@ -74,48 +91,36 @@ tarjetas:
     solucion: "La del centro."
 
   - id: pregunta-resolucion
-    tipo: porque
+    tipo: explorar
     titulo: "Los dos ajustes del espectro"
-    texto: "Sube la resolución del espectro instantáneo para separar dos señales próximas. ¿Qué precio paga?"
+    texto: "La resolución del espectro es el inverso del tiempo capturado. Alargue la captura hasta separar dos señales a 10 Hz una de otra."
+    nota: "Tiempos y separación de ejemplo."
     libro: [212, 213]
+    inicio: { T_c: 0.01 }
     widget:
-      tipo: figura
-      figura: fig-52.11
-      zonas:
-        - { id: todo, rotulo: "Espectro instantáneo y cascada", rect: [0, 0, 434, 283] }
-    opciones:
-      - texto: "Capturar más tiempo: el espectro responde más despacio"
-        bien: true
-        porque: "La resolución es el inverso del tiempo capturado: el compromiso del espectrograma."
-      - texto: "Más ruido en la pantalla"
-        porque: "El ruido lo suaviza el promediado; la resolución se paga en tiempo."
-      - texto: "Ninguno: es un ajuste gratuito"
-        porque: "Más resolución exige capturar más tiempo, siempre."
+      tipo: grafica
+      x: { id: t, min: 0.005, max: 2, unidad: s, rotulo: "T", escala: log }
+      y: { min: 0.5, max: 200, unidad: Hz, rotulo: "Δf", escala: log }
+      curvas:
+        - { expr: "1/t", color: naranja, rotulo: "Δf = 1/T" }
+        - { expr: "10", color: tinta, rotulo: "10 Hz", discontinua: true }
+      marcas:
+        - { x: "T_c", y: "d_f", rotulo: "{{d_f}}" }
+      lectura: { valor: d_f, rotulo: "Resolución" }
+      mandos:
+        - { valor: T_c, lista: [0.01, 0.1, 1], rotulo: "Tiempo capturado" }
+    objetivo:
+      condiciones:
+        - { valor: d_f, max: 10.01, rotulo: "Δf = {{d_f}}" }
+      logrado: "Con {{T_c}} de captura, {{d_f}}: más resolución, respuesta más lenta. El promediado, a su vez, oculta lo breve."
+      pistas:
+        - { texto: "Aún no las separa: capture más tiempo." }
     escalera:
-      - "Resolución en frecuencia y tiempo de observación van juntos."
-    solucion: "Más tiempo de captura y respuesta más lenta."
-
-  - id: predecir-breve
-    tipo: predecir
-    titulo: "Un sensor que despierta"
-    texto: "Un sensor inalámbrico transmite un segundo cada minuto. ¿Dónde lo verá?"
-    libro: [216, 218, 245]
-    widget:
-      tipo: figura
-      figura: fig-52.11
-      zonas:
-        - { id: todo, rotulo: "Espectro instantáneo y cascada", rect: [0, 0, 434, 283] }
-    opciones:
-      - texto: "En la cascada, que guarda el historial"
-        bien: true
-        porque: "En el espectro instantáneo pasa desapercibido; en la cascada deja una marca visible."
-      - texto: "En el espectro instantáneo, como un pico más"
-        porque: "Solo si mira justo en ese segundo, y el promediado lo oculta."
-      - texto: "En ninguno: es demasiado breve"
-        porque: "Para eso existe la cascada: muestra el historial."
-    escalera:
-      - "¿Cuál de las dos vistas recuerda lo que pasó hace un rato?"
-    solucion: "En la cascada."
+      - "Δf es el inverso de T."
+    solucion: "0,1 s: 10 Hz."
+    comprobar:
+      - { con: { T_c: 0.1 }, d_f: 10 }
+      - { con: { T_c: 0.01 }, d_f: 100 }
 
   - id: ajuste-color
     tipo: ajuste
@@ -191,26 +196,29 @@ tarjetas:
     solucion: "Bajar la ganancia."
 
   - id: pregunta-banda
-    tipo: pregunta
+    tipo: simular
     titulo: "Leer una banda conocida"
-    texto: "Para leer la pantalla con el receptor del capítulo, de 48 kHz de banda, ¿qué banda conviene recorrer?"
+    texto: "Una emisora de FM ocupa unos 200 kHz y el receptor del capítulo captura 48 kHz. ¿Qué fracción de la emisora cabe?"
     libro: [242, 243]
+    fijar: { B_r: 48000, B_fm: 200000 }
     widget:
       tipo: figura
       figura: fig-52.10
       zonas:
         - { id: todo, rotulo: "Espectro y cascada de la FM comercial", rect: [0, 0, 1600, 765] }
-    opciones:
-      - texto: "La de 41 m: emisoras de AM de unos 9 kHz sobre una rejilla de 5 kHz"
-        bien: true
-        porque: "En 48 kHz caben varias a la vez, con su portadora y sus dos bandas laterales."
-      - texto: "La FM comercial"
-        porque: "Cada emisora ocupa unos 200 kHz: en 48 kHz no cabe ni una. Esa pide una llave USB."
-      - texto: "Cualquiera: todas caben en 48 kHz"
-        porque: "Una emisora de FM ya no cabe; hay que elegir una banda de emisiones estrechas."
+    simular:
+      objetivo: c_fm
+      unidad: ""
+      tol: 0.02
+      rotulo: "Fracción que cabe"
+      errores:
+        - { expr: "c_x", texto: "Ha invertido el cociente: la banda del receptor entre la de la emisora." }
+    exito: "Ni la cuarta parte: con este receptor, mejor la banda de 41 m, con emisoras de AM estrechas; la FM pide una llave USB."
     escalera:
-      - "Compare 48 kHz con la anchura de una emisora de FM."
-    solucion: "La de radiodifusión de 41 m."
+      - "48 kHz entre 200 kHz."
+    solucion: "0,24."
+    comprobar:
+      - { c_fm: 0.24, c_x: 4.167 }
 
   - id: resumen
     tipo: resumen

@@ -4,6 +4,10 @@
 #   prerregulador, la salida más 3 V. Salida sin divisor (la referencia hace de consigna) y carga de 1 Ω (3 A).
 # - Los bloques y los dos lazos unidos por diodos de la figura 51.4 (fig-48.3), con zonas.
 # Paso práctico: «tocar» el bloque que sigue a la salida.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se baja el calor del lineal de 10 W (objetivo, activando el
+# prerregulador), se calculan los 81 W del lineal solo y los 87 W con 1 V y 3 A cuando el prerregulador no baja
+# (bloque 89; la carga pasa a pedir siempre 3 A, R_L = V_out/3), y se tocan el seguimiento y la unión por diodos.
+# Quedan dos preguntas (el ruido y los lazos anidados); el banco y la descarga de salida, al resumen.
 leccion: cap50/sec-50.3
 
 libro:
@@ -30,11 +34,16 @@ modelo:
     V_raw: { sim: "V_{in}", nombre: "entrada sin prerregulador", unidad: V, valor: 30 }
     V_s: { sim: "V_{out}", nombre: "salida ajustada", unidad: V, valor: 3 }
     V_hr: { sim: "ΔV", nombre: "caída que deja el prerregulador", unidad: V, valor: 3 }
-    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1 }
+    I_s: { sim: "I", nombre: "corriente que pide la carga", unidad: A, valor: 3 }
+    P_obj: { sim: "P", nombre: "calor que se quiere no superar", unidad: W, valor: 10 }
     pre: { tipo: interruptor, nombre: "prerregulador", valor: 0 }
   calculos:
     V_in: { si: pre, entonces: "V_s + V_hr", sino: "V_raw", sim: "V_{in}", nombre: "entrada del lineal", unidad: V }
+    R_L: { expr: "V_s/I_s", sim: "R_{L}", nombre: "carga que pide 3 A", unidad: Ω }
     I_o: { expr: "V_s/R_L", sim: "I", nombre: "corriente de salida", unidad: A }
+    V_q: { expr: "V_in - V_s", sim: "ΔV", nombre: "tensión que sobra en el lineal", unidad: V }
+    P_in: { expr: "V_in*I_o", sim: "P", nombre: "toda la potencia de entrada (error)", unidad: W }
+    P_hr: { expr: "V_hr*I_o", sim: "P", nombre: "con el prerregulador siguiendo (error)", unidad: W }
     P_q: { expr: "(V_in - V_s)*I_o", sim: "P", nombre: "potencia en el lineal", unidad: W }
     r_p: { expr: "(V_raw - V_s)/V_hr", sim: "×", nombre: "veces menos con prerregulador", unidad: "", cifras: 2 }
 
@@ -42,71 +51,60 @@ tarjetas:
   - id: explore-pre
     tipo: explorar
     titulo: "Lineal solo o con prerregulador"
-    texto: "30 V de entrada, 3 V y 3 A de salida. Active el prerregulador, que deja solo 3 V sobre el lineal, y mire el calor."
-    libro: [71, 78]
+    texto: "30 V de entrada, 3 V y 3 A de salida. Consiga que el lineal se caliente con menos de 10 W."
+    libro: [71, 78, 81]
+    inicio: { pre: 0 }
+    fijar: { V_s: 3 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
       piezas: { entrada: V_in, ref: V_s, carga: R_L }
-      lectura: { valor: P_q, rotulo: "Calor en el lineal" }
-      datos:
-        - { valor: V_in, rotulo: "Entrada del lineal: {{V_in}}" }
+      lectura: { valor: V_in, rotulo: "Entrada del lineal" }
       corriente: I_o
       mide: { vout: V_s, iin: I_o, p_paso: P_q }
       mandos:
         - { valor: pre, tipo: interruptor, rotulo: "Prerregulador" }
-    requiere: { mover: [pre] }
+    objetivo:
+      condiciones:
+        - { valor: P_q, max: 10, rotulo: "Menos de 10 W en el lineal" }
+      logrado: "Con el prerregulador, la entrada del lineal es {{V_in}}: solo sobran 3 V y disipa {{P_q}}, nueve veces menos."
+      pistas:
+        - { texto: "Al lineal le sobran 27 V: algo tiene que bajarle la entrada." }
+    escalera:
+      - "El lineal disipa lo que le sobra por la corriente."
+    solucion: "Activar el prerregulador: 3 V × 3 A = 9 W."
     comprobar:
-      - { con: { pre: 0 }, P_q: 81, I_o: 3 }
-      - { con: { pre: 1 }, P_q: 9, V_in: 6 }
+      - { con: { pre: 0 }, P_q: 81, I_o: 3, V_in: 30, V_q: 27, P_obj: 10 }
+      - { con: { pre: 1 }, P_q: 9, V_in: 6, r_p: 9 }
 
   - id: formula-lineal
-    tipo: formula
+    tipo: simular
     titulo: "El lineal solo"
-    texto: "Disipa lo que sobra por la corriente: un disipador enorme y un ventilador."
+    texto: "Sin prerregulador, el lineal tiene 30 V a la entrada y da 3 V a 3 A. ¿Cuánto disipa?"
     libro: [78, 79]
-    fijar: { pre: 0 }
-    ec: 79
-    sustitucion: "({{V_in}} − {{V_s}}) × {{I_o}} = {{P_q}}"
+    fijar: { pre: 0, V_s: 3 }
     widget:
-      tipo: circuito
-      esquema: regulador-lineal
-      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{out}" }
+      y: { min: 0, max: 100, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "(V_raw - vx)*I_s", color: naranja, rotulo: "lineal solo" }
+        - { expr: "V_hr*I_s + 0*vx", color: verde, rotulo: "con prerregulador" }
       lectura: { valor: P_q, rotulo: "Calor en el lineal" }
-      corriente: I_o
-      mide: { vout: V_s, p_paso: P_q }
-      mandos: []
-    comprobar:
-      - { P_q: 81 }
-
-  - id: prediga-9w
-    tipo: predecir
-    titulo: "Con prerregulador"
-    texto: "El prerregulador mantiene 3 V sobre el lineal. ¿Cuánto disipa ahora el lineal con 3 A?"
-    libro: [81]
-    fijar: { pre: 1 }
-    widget:
-      tipo: circuito
-      esquema: regulador-lineal
-      piezas: { entrada: V_in, ref: V_s, carga: R_L }
-      lectura: { valor: P_q, rotulo: "Calor en el lineal" }
-      corriente: I_o
-      mide: { vout: V_s, p_paso: P_q }
       ocultar: true
-      mandos: []
-    opciones:
-      - texto: "9 W: nueve veces menos"
-        bien: true
-        porque: "3 V × 3 A: la caída sobre el lineal ya no depende de la entrada."
-      - texto: "81 W, igual"
-        porque: "La entrada del lineal ya no es 30 V: el prerregulador la baja a la salida más 3 V."
-      - texto: "Nada: el prerregulador no disipa"
-        porque: "El lineal sigue teniendo 3 V encima con 3 A."
+    simular:
+      objetivo: P_q
+      unidad: W
+      tol: 0.03
+      rotulo: "Calor en el lineal"
+      errores:
+        - { expr: "P_in", texto: "Esa es toda la potencia que entra; a la carga llegan 9 W, que no se quedan en el lineal." }
+    exito: "81 W: un disipador enorme y un ventilador."
     escalera:
-      - "Ahora sobran solo 3 V sobre el lineal."
-    solucion: "3 V × 3 A = 9 W, nueve veces menos."
+      - "Lo que sobra, (30 − 3) V, por los 3 A."
+    solucion: "(30 − 3) × 3 = 81 W."
     comprobar:
-      - { P_q: 9, r_p: 9 }
+      - { P_q: 81, P_in: 90 }
 
   - id: por-que-ruido
     tipo: porque
@@ -177,98 +175,64 @@ tarjetas:
     solucion: "El del prerregulador, más lento."
 
   - id: salida-baja
-    tipo: pregunta
+    tipo: simular
     titulo: "Con la salida baja"
-    texto: "Con 1 V y 3 A, el prerregulador no consigue bajar lo suficiente. ¿Qué pasa?"
-    libro: [85, 89]
+    texto: "Con 1 V y 3 A, un prerregulador que no baja lo suficiente deja sobre el lineal casi toda la entrada de 30 V. ¿Cuánto disipa?"
+    libro: [78, 89]
+    fijar: { pre: 0, V_s: 1 }
     widget:
-      tipo: figura
-      figura: fig-48.3
-      zonas:
-        - { id: pre, rotulo: "Segundo bloque de arriba", rect: [95, 26, 76, 48] }
-    opciones:
-      - texto: "El lineal recibe casi toda la entrada y vuelve a disipar como si estuviera solo"
-        bien: true
-        porque: "Por eso hay que verificar el seguimiento en el extremo bajo."
-      - texto: "Nada: el lineal sigue con sus 3,5 V encima"
-        porque: "Solo si el prerregulador baja lo bastante; si no, la caída crece."
-      - texto: "La salida no puede bajar de 3,5 V"
-        porque: "La salida la fija el lineal; lo que crece es su calor."
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{out}" }
+      y: { min: 0, max: 100, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "(V_raw - vx)*I_s", color: naranja, rotulo: "lineal solo" }
+        - { expr: "V_hr*I_s + 0*vx", color: verde, rotulo: "con prerregulador" }
+      lectura: { valor: P_q, rotulo: "Calor en el lineal" }
+      ocultar: true
+    simular:
+      objetivo: P_q
+      unidad: W
+      tol: 0.03
+      rotulo: "Calor en el lineal"
+      errores:
+        - { expr: "P_hr", texto: "Eso sería si el prerregulador siguiera a la salida; aquí no baja." }
+    exito: "Unos 87 W, más que con 3 V: vuelve a ser la del lineal solo. Por eso hay que verificar el extremo bajo."
     escalera:
-      - "¿Qué tensión queda sobre el lineal si su entrada no baja?"
-    solucion: "Casi toda la entrada cae en el lineal: la disipación vuelve a la del lineal solo."
+      - "Sobran (30 − 1) V, por los 3 A."
+    solucion: "(30 − 1) × 3 = 87 W."
+    comprobar:
+      - { P_q: 87, P_hr: 9, I_o: 3 }
 
   - id: transicion
-    tipo: pregunta
+    tipo: tocar
     titulo: "Tensión o corriente"
-    texto: "Los amplificadores de error de tensión y de corriente se unen por diodos. ¿Cuál gobierna?"
-    libro: [73, 92, 94]
+    texto: "La fuente pasa sola de regular tensión a regular corriente. Toque dónde se decide qué lazo manda."
+    libro: [73, 92, 105]
     widget:
       tipo: figura
       figura: fig-48.3
       zonas:
-        - { id: diodos, rotulo: "Los dos diodos, a la izquierda", rect: [195, 95, 35, 115] }
-    opciones:
-      - texto: "El que pida menos tensión de control"
-        bien: true
-        porque: "Un OR analógico: manda el lazo más limitado. Y conviene un indicador del modo activo."
-      - texto: "Siempre el de tensión"
-        porque: "Cuando la corriente llega al límite, manda el de corriente."
-      - texto: "El que pida más"
-        porque: "Al revés: con los diodos, el que pide menos se impone."
+        - { id: shunt, rotulo: "La resistencia de arriba a la derecha", rect: [318, 32, 40, 36] }
+        - { id: corriente, rotulo: "Bloque verde de arriba", rect: [224, 90, 94, 37] }
+        - { id: diodos, rotulo: "Los dos diodos, a la izquierda", rect: [188, 95, 36, 115] }
+        - { id: tension, rotulo: "Bloque azul de abajo", rect: [224, 180, 94, 37] }
+    tocar:
+      bien: [diodos]
+      porque:
+        shunt: "Mide la corriente; no decide nada."
+        corriente: "Compara el shunt con el límite: pide, pero no decide solo."
+        tension: "Compara la salida con la consigna: pide, pero no decide solo."
+    exito: "Un OR analógico: el amplificador que pide menos tensión de control gobierna. Y un indicador del modo activo, porque en corriente parece averiada."
     escalera:
-      - "Por los diodos, el amplificador que baja más la tensión de control se lleva el nodo."
-    solucion: "El que pida menos: el lazo más limitado."
-
-  - id: empareje-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Empareje cada medida de la fuente con lo que revela."
-    libro: [100, 101, 102]
-    widget:
-      tipo: figura
-      figura: fig-48.3
-      zonas:
-        - { id: todo, rotulo: "La figura", rect: [0, 0, 448, 268] }
-    emparejar:
-      - ["Regulación de carga", "La impedancia de salida"]
-      - ["Rizado y ruido en AC", "Si el lineal filtra bien el conmutado"]
-      - ["Escalón de carga", "El margen de fase del lazo"]
-    exito: "Y la transición entre modos, la que más se olvida: cargar hasta pasar a corriente constante."
-    pistas:
-      - { texto: "Lo que cae de vacío a plena carga es una resistencia vista desde fuera." }
-    escalera:
-      - "Una es estática, otra mira el ruido, otra mira el lazo en movimiento."
-    solucion: "Carga, impedancia; rizado, el filtrado; escalón, el margen de fase."
-
-  - id: descarga
-    tipo: pregunta
-    titulo: "Bajar la consigna"
-    texto: "Se baja la consigna de 20 a 5 V sin carga conectada. ¿Qué hace una fuente sin descarga activa?"
-    libro: [97]
-    widget:
-      tipo: figura
-      figura: fig-48.3
-      zonas:
-        - { id: salida, rotulo: "La salida, a la derecha", rect: [380, 30, 65, 45] }
-    opciones:
-      - texto: "Tarda varios segundos en bajar"
-        bien: true
-        porque: "El condensador de salida no tiene por dónde descargarse: incómodo y peligroso si se supone que ya está en 5 V."
-      - texto: "Baja al instante"
-        porque: "Sin carga, el condensador de salida mantiene la tensión: tarda segundos."
-      - texto: "Se queda en 20 V hasta apagarla"
-        porque: "Baja, pero despacio: varios segundos."
-    escalera:
-      - "Sin carga, ¿por dónde se descarga el condensador de salida?"
-    solucion: "Tarda varios segundos: un pequeño circuito de descarga lo resuelve."
+      - "Los dos amplificadores tiran del mismo nodo: ¿qué los une?"
+    solucion: "La unión por diodos."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [78, 81, 88, 92]
+    libro: [78, 81, 88, 92, 97, 100, 101, 102, 85, 94]
     ideas:
       - { titulo: "Prerregulador más lineal.", texto: "De 81 W a 9 W, con el ruido filtrado por el lineal." }
       - { titulo: "Seguimiento.", texto: "Unos 3 a 4 V sobre el lineal, también con la salida baja." }
-      - { titulo: "Lazos anidados.", texto: "El del prerregulador, más lento que el del lineal." }
-      - { titulo: "OR de diodos.", texto: "Manda el lazo que pide menos, con indicador de modo." }
+      - { titulo: "Lazos.", texto: "El del prerregulador, más lento que el del lineal; entre tensión y corriente manda, por diodos, el que pide menos." }
+      - { titulo: "En el banco.", texto: "Regulación de carga, la impedancia de salida; rizado, el filtrado; escalón, el margen de fase. Y descarga activa: sin ella, de 20 a 5 V tarda segundos." }

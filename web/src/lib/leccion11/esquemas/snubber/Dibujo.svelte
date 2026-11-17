@@ -4,6 +4,8 @@
   // node to the stray inductance L (and R_p beside it) back to the rail; on the right the snubber R_s–C_s across the
   // switch, with its switch.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
@@ -29,7 +31,7 @@
   <Et x={128} y={94} t={c.val('i0')} ancla="end" color="verde" peq />
   <path class="hilo" d={`M150 120 V160 M150 140 H${xfin}`} data-red="d"></path>
   <circle class="nodo" cx="150" cy="140" r="4.5" data-red="d"></circle>
-  <Mosfet x={138} y={200} />
+  <Mosfet x={138} y={200} pieza="transistor" />
   <path class="hilo" d="M150 240 V250" data-red="0"></path>
   <circle class="borne" cx="70" cy="200" r="5"></circle>
   <path class="hilo" d="M75 200 H104"></path>
@@ -68,4 +70,11 @@
     <Et x={346} y={130} t="snubber" ancla="end" color="azul" peq />
   {/if}
   <path class="hilo" d={`M40 250 H${red ? 360 : 190}`} data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={100} y={40} red="bus" />
+  <Punto x={170} y={140} red="d" />
+  <Punto x={230} y={100} red="y" />
+  <Punto x={100} y={250} red="0" />
+  <Rama x={230} y={88} medidor="vml" />
+  {#if red}<Rama x={360} y={158} medidor="vmsn" />{/if}
 </Lienzo>

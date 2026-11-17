@@ -4,6 +4,9 @@
 # (cartucho japonés, juego sin cabecera, 50 Hz, juego integrado). Fuentes: los datos de la consola (sms#n: el esquema
 # del manual de servicio de Sega), ConsoleMods («Comparison of Power Supplies», «Master System:Region Information»),
 # SMS Power y el libro.
+# 1.2.1: un circuito lógico con meta (los 5 V llegan si el adaptador, el interruptor y el 7805 están bien); el orden de
+# las medidas, el juego integrado y la línea del mando se tocan en la foto; lo que no es avería va en el éxito del juego
+# integrado. Queda una pregunta: el botón de pausa.
 leccion: consola-sms/sms-averias
 
 libro:
@@ -38,17 +41,24 @@ tarjetas:
   - id: explore-primero
     tipo: explorar
     titulo: "Lo primero, lo simple"
-    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
+    texto: "La corriente va del adaptador al interruptor y del interruptor al 7805, en serie. Consiga que lleguen los 5 V a la placa."
     libro: ["cap53#39", "sms#17", "sms#16"]
-    requiere: { mover: [dc, power, reg, cart] }
     widget:
-      tipo: figura
-      consola: { maquina: sms }
-      zonas:
-        - { id: dc, hotspot: dc, rotulo: "Toma CN4", texto: "Entran los 9 V del adaptador." }
-        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Corta la entrada antes del diodo y el regulador." }
-        - { id: reg, hotspot: reg, rotulo: "Regulador 7805", texto: "Da los 5 V de toda la placa." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "50 contactos por los que pasa todo el bus." }
+      tipo: logica
+      entradas: [{ id: AD, rotulo: "Adaptador con sus 9 V" }, { id: SW, rotulo: "Interruptor sano" }, { id: RE, rotulo: "7805 sano" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [AD, SW, RE] }
+      salidas:
+        - { id: CINCO, de: a1, rotulo: "5 V en la placa" }
+    objetivo:
+      condiciones:
+        - { led: CINCO, valor: 1, rotulo: "5 V en la placa" }
+      logrado: "Las tres en serie: con que falle una, no llega nada. Por eso se mide a lo largo del camino."
+      pistas:
+        - { texto: "Todavía falla una pieza del camino." }
+    escalera:
+      - "Adaptador, interruptor y 7805: los tres bien."
+    solucion: "Adaptador, interruptor y 7805, los tres sanos."
 
   - id: averia-no-enciende
     tipo: averia
@@ -130,39 +140,55 @@ tarjetas:
     solucion: "Los filtros EMI (EM11–EM18 para el mando 1)."
 
   - id: empareje-no-averias
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "Lo que no es avería"
-    texto: "Empareje cada síntoma con su explicación: ninguno es una pieza rota."
+    texto: "Sin cartucho, en la pantalla sale un juego. No es avería: toque dónde está."
     libro: ["sms#93", "sms#88", "sms#94", "sms#3"]
-    emparejar:
-      - ["Un cartucho japonés no entra", "44 contactos, no 50"]
-      - ["Un juego sin cabecera no arranca", "La ROM de arranque la pide"]
-      - ["Un juego va lento", "No está optimizado para 50 Hz"]
-      - ["Sin cartucho sale un juego", "El juego integrado"]
-    exito: "Antes de abrir, descarte lo que es así por diseño."
-    pistas:
-      - { texto: "Repase la lección del bloqueo: cabecera, contactos y 50 Hz." }
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor, abajo a la izquierda" }
+        - { id: reg, hotspot: reg, rotulo: "Pieza atornillada, a la izquierda" }
+        - { id: bios, hotspot: bios, rotulo: "Chip vertical, arriba a la derecha" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+    tocar:
+      bien: [bios]
+      porque:
+        power: "El interruptor solo enciende la consola."
+        reg: "El regulador da los 5 V; no guarda juegos."
+        z80: "El Z80 ejecuta el juego, pero está guardado en otro chip."
+    exito: "La ROM de arranque, con el juego integrado. Tampoco son averías un cartucho japonés que no entra (44 contactos, no 50), un juego sin cabecera que no arranca o uno que va lento a 50 Hz."
     escalera:
       - "La ROM de arranque trae un juego dentro."
-    solucion: "Japonés: 44 contactos. Sin cabecera: ROM de arranque. Lento: 50 Hz. Sin cartucho: juego integrado."
+    solucion: "La ROM de arranque."
 
   - id: ordene-apagada
-    tipo: pregunta
+    tipo: tocar
     fase: "Ordene"
     titulo: "Antes de enchufar"
-    texto: "Una consola que no enciende. Ordene las medidas, de lo primero a lo último."
+    texto: "Una consola que no enciende. Toque, en el orden en que mediría: la continuidad con la consola desenchufada y la tensión con ella enchufada."
     libro: ["cap53#30", "cap53#39"]
-    ordenar:
-      - "Desenchufada: continuidad del interruptor."
-      - "Desenchufada: cortocircuitos entre los 5 V y masa."
-      - "Enchufada: tensión a la salida del 7805."
-    exito: "Primero lo que se mide sin tensión; luego, las tensiones."
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor, abajo a la izquierda" }
+        - { id: reg, hotspot: reg, rotulo: "Pieza atornillada, a la izquierda" }
+        - { id: bios, hotspot: bios, rotulo: "Chip vertical, arriba a la derecha" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+    tocar:
+      bien: [power, reg]
+      orden: true
+      porque:
+        bios: "Un chip va al final: antes, el camino de la alimentación."
+        z80: "Un chip va al final: antes, el camino de la alimentación."
     pistas:
-      - { texto: "Con el circuito apagado se buscan los cortos y las continuidades." }
+      - { texto: "Lo que se mide desenchufado va antes." }
+    exito: "Desenchufada, la continuidad del interruptor y los cortos entre los 5 V y masa; enchufada, la salida del 7805."
     escalera:
-      - "Lo que se mide desenchufado va antes."
-    solucion: "Interruptor, cortos a masa y, por último, la salida del 7805."
+      - "Con el circuito apagado se buscan los cortos y las continuidades."
+    solucion: "El interruptor y luego el 7805."
 
   - id: resumen
     tipo: resumen

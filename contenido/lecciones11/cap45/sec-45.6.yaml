@@ -5,6 +5,10 @@
 # - Refresco: 4 dígitos a 200 Hz son 800 conmutaciones por segundo, una interrupción cada 1,25 ms (bloque 180).
 # Pasos prácticos: «dibujar» el común del segundo dígito en el cronograma y «simular» el periodo de la interrupción
 # (errores: el periodo de un dígito, olvidar los cuatro dígitos).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 46.11 se toca lo que fija el patrón; los pines
+# multiplexados, la corriente del común (8 × 80 mA) y el periodo de la interrupción se calculan; se dan pulsos hasta
+# encender el tercer dígito y se buscan los dígitos que piden 80 mA de pico. Los LED direccionables se funden en la
+# pregunta del límite de ocho dígitos. Quedan una pregunta de opciones (ese límite) y los defectos, por emparejar.
 leccion: cap45/sec-45.6
 
 libro:
@@ -38,49 +42,61 @@ modelo:
     T_f: { expr: "1/f_r", sim: "T", nombre: "periodo de refresco de un dígito", unidad: s }
     T_x: { expr: "1/(f_r*8)", sim: "T", nombre: "con ocho dígitos", unidad: s }
     f_c: { expr: "f_r*n_d", sim: "f", nombre: "conmutaciones por segundo", unidad: Hz }
+    n_pin: { expr: "8 + n_d", sim: "pines", nombre: "pines multiplexados", unidad: "" }
+    n_pin32: { expr: "8*n_d", sim: "pines", nombre: "uno por LED", unidad: "" }
+    n_pin8: { expr: "8", sim: "pines", nombre: "solo segmentos", unidad: "" }
+    I_k: { expr: "8*I_p", sim: "I_{común}", nombre: "corriente del común", unidad: A }
 
 tarjetas:
   - id: explore-matriz
-    tipo: explorar
+    tipo: tocar
     titulo: "Uno cada vez, muy deprisa"
-    texto: "Una matriz se gobierna encendiendo una fila cada vez con el patrón de sus columnas. Toque las partes de la figura."
+    texto: "Una matriz se gobierna encendiendo una fila cada vez con el patrón de sus columnas. Toque lo que decide qué LED de la fila activa se encienden."
     libro: [165, 182, 194]
     widget:
       tipo: figura
       figura: fig-45.11
       zonas:
-        - { id: fila, rotulo: "Fila verde", rect: [34, 68, 197, 32], texto: "La fila activa: solo ella está alimentada en este instante." }
-        - { id: columnas, rotulo: "Texto del centro a la derecha", rect: [245, 75, 82, 38], texto: "Las columnas fijan el patrón: deciden qué LED de la fila activa se encienden." }
-        - { id: lineas, rotulo: "Texto de arriba a la derecha", rect: [245, 13, 64, 32], texto: "4 + 4 = 8 líneas para 16 LED." }
-        - { id: persistencia, rotulo: "Texto de abajo a la derecha", rect: [245, 145, 82, 38], texto: "Se recorren las filas muy deprisa: la persistencia retiniana las muestra todas." }
-    requiere: { mover: [fila, columnas, persistencia] }
+        - { id: fila, rotulo: "Fila verde", rect: [34, 66, 197, 40] }
+        - { id: columnas, rotulo: "Texto del centro a la derecha", rect: [245, 75, 82, 40] }
+        - { id: lineas, rotulo: "Texto de arriba a la derecha", rect: [245, 13, 64, 40] }
+        - { id: persistencia, rotulo: "Texto de abajo a la derecha", rect: [245, 145, 82, 40] }
+    tocar:
+      bien: [columnas]
+      porque:
+        fila: "Es la fila activa: solo ella está alimentada en este instante."
+        lineas: "Es la cuenta de líneas: 4 + 4 = 8 para 16 LED."
+        persistencia: "Es por qué se ven todas: la persistencia retiniana."
+    exito: "Las columnas fijan el patrón. Se recorren las filas muy deprisa y el ojo las ve todas encendidas."
+    escalera:
+      - "Busque lo que cambia de una fila a la siguiente."
+    solucion: "El texto de las columnas, en el centro a la derecha."
 
   - id: predecir-pines
-    tipo: predecir
+    tipo: simular
     titulo: "Los pines de cuatro dígitos"
     texto: "Cuatro dígitos de siete segmentos con punto son 32 LED. Multiplexados, ¿cuántos pines hacen falta?"
     libro: [164, 167, 168]
-    widget:
-      tipo: figura
-      figura: fig-45.11
-      zonas:
-        - { id: lineas, rotulo: "Texto de arriba a la derecha", rect: [245, 13, 64, 32] }
-    opciones:
-      - texto: "12: 8 de segmento y 4 de dígito"
-        bien: true
-        porque: "Los segmentos homólogos van juntos y cada dígito tiene su común."
-      - texto: "32, uno por LED"
-        porque: "Eso es sin multiplexar: más de los que tiene un microcontrolador pequeño."
-      - texto: "8, los de los segmentos"
-        porque: "Faltan los comunes: hay que elegir qué dígito luce."
+    fijar: { n_d: 4 }
+    simular:
+      objetivo: n_pin
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pines"
+      errores:
+        - { expr: "n_pin32", texto: "Eso es sin multiplexar, uno por LED." }
+        - { expr: "n_pin8", texto: "Faltan los comunes: hay que elegir qué dígito luce." }
+    exito: "12 en lugar de 32: los segmentos homólogos van juntos y cada dígito tiene su común."
     escalera:
       - "Segmentos compartidos más un común por dígito."
     solucion: "8 + 4 = 12."
+    comprobar:
+      - { n_pin: 12, n_pin32: 32, n_pin8: 8 }
 
   - id: explore-barrido
     tipo: explorar
     titulo: "El barrido de los comunes"
-    texto: "Un contador y un decodificador activan los comunes D1 a D4 por turnos. Dé pulsos de reloj o mueva el cursor."
+    texto: "Un contador y un decodificador activan los comunes D1 a D4 por turnos. Dé pulsos de reloj hasta que luzca el tercer dígito."
     libro: [165, 170]
     widget:
       tipo: logica
@@ -93,7 +109,15 @@ tarjetas:
         - { id: D2, de: d1.y1 }
         - { id: D3, de: d1.y2 }
         - { id: D4, de: d1.y3 }
-      cronograma: { ciclos: 8, senales: [CLK, D1, D2, D3, D4] }
+    objetivo:
+      condiciones:
+        - { led: D3, valor: 1, rotulo: "D3 activo" }
+      logrado: "D3 luce solo, y los otros tres esperan: cada dígito, la cuarta parte del tiempo."
+      pistas:
+        - { texto: "Aún no: dé otro pulso de reloj." }
+    escalera:
+      - "Cada pulso pasa al dígito siguiente."
+    solucion: "Dos pulsos desde D1."
 
   - id: dibuje-comun
     tipo: dibujar
@@ -123,7 +147,7 @@ tarjetas:
   - id: explore-pico
     tipo: explorar
     titulo: "La corriente de pico"
-    texto: "Si cada dígito luce 1/n del tiempo, para 20 mA medios hay que dar n veces más de pico. Cambie el número de dígitos."
+    texto: "Si cada dígito luce 1/n del tiempo, para 20 mA medios hay que dar n veces más de pico. Busque los dígitos que piden 80 mA."
     libro: [170, 172, 173]
     fijar: { I_m: 0.02 }
     widget:
@@ -137,32 +161,44 @@ tarjetas:
       lectura: { valor: I_p, rotulo: "Corriente de pico por segmento" }
       mandos:
         - { valor: n_d, lista: [2, 4, 8], rotulo: "Dígitos" }
-    requiere: { mover: [n_d] }
+    inicio: { n_d: 2 }
+    objetivo:
+      condiciones:
+        - { valor: I_p, objetivo: 0.08, tol: 0.01, rotulo: "Pico: {{I_p}}" }
+      logrado: "{{n_d}} dígitos: {{I_p}} de pico por segmento, cuatro veces la media."
+      pistas:
+        - { cuando: { valor: I_p, mayor: 0.08 }, texto: "Demasiado pico: menos dígitos." }
+        - { texto: "Poco pico: más dígitos." }
+    escalera:
+      - "80 mA son cuatro veces 20 mA."
+    solucion: "Cuatro dígitos."
+    comprobar:
+      - { con: { n_d: 4 }, I_p: 0.08 }
 
   - id: pregunta-drivers
-    tipo: pregunta
+    tipo: simular
     titulo: "El pin no puede"
-    texto: "Cuatro dígitos a 20 mA medios piden 80 mA de pico por segmento. ¿Qué hace falta?"
+    texto: "Cuatro dígitos a 20 mA medios piden 80 mA de pico por segmento. ¿Qué corriente lleva el común con los ocho segmentos encendidos?"
     libro: [175]
     fijar: { n_d: 4, I_m: 0.02 }
     widget:
       tipo: figura
       figura: fig-45.11
       zonas:
-        - { id: fila, rotulo: "Fila verde", rect: [34, 68, 197, 32] }
-    opciones:
-      - texto: "Transistores o un driver en los segmentos y en los comunes"
-        bien: true
-        porque: "80 mA superan los 20 mA de un pin; el común lleva además la suma de los ocho segmentos."
-      - texto: "Nada: el pin da los 80 mA en pulsos"
-        porque: "Un pin de microcontrolador no da 80 mA, ni en pulsos."
-      - texto: "Solo un transistor en cada común"
-        porque: "Los segmentos también pasan de 20 mA: los dos lados necesitan driver."
+        - { id: fila, rotulo: "Fila verde", rect: [34, 66, 197, 40] }
+    simular:
+      objetivo: I_k
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente del común"
+      errores:
+        - { expr: "I_p", texto: "Esa es la de un segmento; el común suma los ocho." }
+    exito: "640 mA: ni ese ni los 80 mA de un segmento los da un pin. Transistores o un driver en segmentos y comunes."
     escalera:
-      - "Compare 80 mA con lo que da un pin."
-    solucion: "Drivers en segmentos y comunes."
+      - "Ocho segmentos de 80 mA."
+    solucion: "8 × 80 mA = 640 mA."
     comprobar:
-      - { I_p: 0.08 }
+      - { I_p: 0.08, I_k: 0.64 }
 
   - id: simule-refresco
     tipo: simular
@@ -210,7 +246,7 @@ tarjetas:
     tipo: porque
     titulo: "El límite de ocho dígitos"
     texto: "¿Por qué el multiplexado tiene un límite práctico en torno a ocho dígitos?"
-    libro: [177, 183]
+    libro: [177, 183, 189]
     fijar: { n_d: 8 }
     widget:
       tipo: grafica
@@ -223,7 +259,7 @@ tarjetas:
     opciones:
       - texto: "La corriente de pico crece con los dígitos y el LED no la admite"
         bien: true
-        porque: "Con ocho, 160 mA de pico por segmento; más allá, controladores con memoria por dígito."
+        porque: "Con ocho, 160 mA de pico; más allá, controladores con memoria o LED direccionables, sin corriente de pico."
       - texto: "Porque se acaban los pines"
         porque: "Los pines crecen poco: es la corriente de pico la que se dispara."
       - texto: "Porque el ojo no ve más de ocho"
@@ -233,28 +269,6 @@ tarjetas:
     solucion: "La corriente de pico: 160 mA con ocho dígitos."
     comprobar:
       - { I_p: 0.16 }
-
-  - id: pregunta-alternativa
-    tipo: pregunta
-    titulo: "La alternativa moderna"
-    texto: "¿Qué ofrecen los LED direccionables frente al multiplexado?"
-    libro: [189]
-    widget:
-      tipo: figura
-      figura: fig-45.11
-      zonas:
-        - { id: persistencia, rotulo: "Texto de abajo a la derecha", rect: [245, 145, 82, 38] }
-    opciones:
-      - texto: "Sin multiplexado ni corriente de pico, con una sola línea de datos"
-        bien: true
-        porque: "Cada LED lleva su controlador; el precio es una temporización estricta."
-      - texto: "Más brillo con la misma corriente de pico"
-        porque: "No hay corriente de pico: cada LED luce de forma continua."
-      - texto: "Que no necesitan alimentación"
-        porque: "La necesitan, y mucha: es su problema real."
-    escalera:
-      - "¿Quién guarda el valor de cada LED?"
-    solucion: "Cada LED tiene su controlador: nada de barrido ni de picos."
 
   - id: resumen
     tipo: resumen

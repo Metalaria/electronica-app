@@ -6,6 +6,10 @@
 #   de potencia en 0,50 V, el 83 % de V_oc («hacia el 80 %», bloque 95), y V_oc = 0,51 V con la décima parte de luz
 #   («baja poco con poca luz»).
 # Paso práctico: «ajuste» del punto de trabajo al de máxima potencia (lo que hace el MPPT, bloque 105).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se toca la luz interior en la figura; se calculan la energía
+# del día, las transmisiones que caben y la V_oc con poca luz; se sube la tensión hasta que la corriente cae a la
+# mitad, pasado el codo (objetivo), y se ajusta el MPPT. Quedan dos preguntas (el arranque en frío y cuándo tiene
+# sentido); dentro o fuera, los bloques y el ciclo pasan a explicaciones y resumen.
 leccion: cap39/sec-39.4
 
 libro:
@@ -54,48 +58,35 @@ modelo:
 
 tarjetas:
   - id: explore-fuentes
-    tipo: explorar
+    tipo: tocar
     titulo: "Las fuentes y sus números"
-    texto: "Toque las fuentes: la potencia disponible es minúscula, y el eje va de diez en diez."
-    libro: [92, 134]
-    widget:
-      tipo: figura
-      figura: fig-39.8
-      zonas:
-        - { id: exterior, rotulo: "Primera columna", rect: [35, 42, 37, 36], texto: "Solar exterior: 10 a 15 mW/cm²." }
-        - { id: interior, rotulo: "Segunda columna", rect: [73, 72, 37, 50], texto: "Solar interior: 10 a 100 µW/cm²." }
-        - { id: termica, rotulo: "Tercera columna", rect: [110, 85, 37, 40], texto: "Térmica, con 5 °C de diferencia: 20 a 60 µW/cm²." }
-        - { id: vibracion, rotulo: "Cuarta columna", rect: [150, 85, 37, 40], texto: "Vibración: 10 a 100 µW por centímetro cúbico." }
-        - { id: rf, rotulo: "Quinta columna", rect: [188, 125, 37, 36], texto: "Radiofrecuencia ambiental: 0,1 a 1 µW/cm²." }
-    requiere: { mover: [exterior, interior] }
-
-  - id: dentro-fuera
-    tipo: pregunta
-    titulo: "Junto a la ventana"
-    texto: "Un panel sobra para el sensor a pleno sol. ¿Qué pasa si el sensor se instala dentro?"
-    libro: [93]
+    texto: "Un panel que sobra al sol se queda corto en el error de dimensionado más común. Toque la fuente que lo explica."
+    libro: [92, 93, 134]
     widget:
       tipo: figura
       figura: fig-39.8
       zonas:
         - { id: exterior, rotulo: "Primera columna", rect: [35, 42, 37, 36] }
         - { id: interior, rotulo: "Segunda columna", rect: [73, 72, 37, 50] }
-    opciones:
-      - texto: "Probablemente no basta: dentro hay de cien a mil veces menos"
-        bien: true
-        porque: "Es el error de dimensionado más común: lo que sobra fuera es insuficiente dentro."
-      - texto: "Basta igual, con la mitad de margen"
-        porque: "La diferencia no es de la mitad sino de un factor de cien a mil."
-      - texto: "Basta mejor, porque dentro no hay nubes"
-        porque: "Las nubes cuentan poco frente a la diferencia entre el sol y la luz interior."
+        - { id: termica, rotulo: "Tercera columna", rect: [110, 85, 37, 40] }
+        - { id: vibracion, rotulo: "Cuarta columna", rect: [150, 85, 37, 40] }
+        - { id: rf, rotulo: "Quinta columna", rect: [188, 125, 37, 36] }
+    tocar:
+      bien: [interior]
+      porque:
+        exterior: "Es el sol de fuera, 10 a 15 mW/cm²: ahí el panel sobra."
+        termica: "Es la térmica, con 5 °C de diferencia: no es la del error del panel."
+        vibracion: "Es la vibración, en µW por centímetro cúbico."
+        rf: "Es la radiofrecuencia ambiental, la menor de todas."
+    exito: "La solar interior, 10 a 100 µW/cm²: de cien a mil veces menos que fuera. El eje va de diez en diez."
     escalera:
-      - "Compare las dos primeras columnas: el eje es logarítmico."
-    solucion: "Dentro llega de cien a mil veces menos: el panel se queda corto."
+      - "Busque la otra columna de luz."
+    solucion: "La segunda columna, la solar interior."
 
   - id: estime-julios
-    tipo: pregunta
+    tipo: simular
     titulo: "El presupuesto al revés"
-    texto: "Luz interior de 50 µW/cm² sobre un panel de 10 cm². ¿Cuánta energía recoge al día?"
+    texto: "Se parte de la energía disponible. Luz interior de 50 µW/cm² sobre un panel de 10 cm²: ¿cuánta energía recoge al día?"
     libro: [98, 99]
     widget:
       tipo: grafica
@@ -103,55 +94,56 @@ tarjetas:
       y: { min: 0, max: 100, unidad: J, rotulo: "E_{día}" }
       curvas:
         - { expr: "D_luz*ax*86400", color: naranja, rotulo: "energía al día" }
-    estimar:
-      objetivo: "E_dia"
+      lectura: { valor: E_dia, rotulo: "Energía al día" }
+      ocultar: true
+    simular:
+      objetivo: E_dia
       unidad: J
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 80
-      tol: 0.05
+      tol: 0.03
       rotulo: "Energía al día"
+      errores:
+        - { expr: "P_med", texto: "Esa es la potencia media, 500 µW. Multiplíquela por los segundos de un día." }
     exito: "500 µW medios son 43 julios al día: de ahí sale todo lo demás."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 45 }, texto: "Se ha pasado: son 500 µW durante los segundos de un día." }
-      - { texto: "Se ha quedado corto: multiplique los 500 µW por los segundos de un día." }
     escalera:
-      - "Primero la potencia: densidad por área."
-    solucion: "50 µW/cm² × 10 cm² = 500 µW; por los segundos de un día, unos 43 J."
+      - "Primero la potencia, densidad por área; luego, por los segundos de un día."
+    solucion: "500 µW durante un día: unos 43 J."
     comprobar:
-      - { P_med: 500e-6, E_dia: 43.2 }
+      - { E_dia: 43.2, P_med: 0.0005 }
 
   - id: cuantas-tx
-    tipo: pregunta
-    titulo: "¿Cuántos envíos caben?"
+    tipo: simular
+    titulo: "Cuántas transmisiones"
     texto: "Con esos 43 J al día y 1,5 J por cada transmisión WiFi, ¿cuántas caben?"
-    libro: [100]
+    libro: [99, 100]
     widget:
       tipo: grafica
-      x: { id: ex, min: 0.05, max: 2, unidad: J, rotulo: "E_{tx}" }
-      y: { min: 0, max: 900, unidad: "", rotulo: "envíos al día" }
+      x: { id: ax, min: 0, max: 20, unidad: "cm²", rotulo: "A" }
+      y: { min: 0, max: 100, unidad: J, rotulo: "E_{día}" }
       curvas:
-        - { expr: "E_dia/ex", color: azul, rotulo: "envíos al día" }
-    opciones:
-      - texto: "Unas 29: poco más de una por hora"
-        bien: true
-        porque: "43 J entre 1,5 J por envío; con una radio de unos 100 mJ serían unas 430."
-      - texto: "Unas 430"
-        porque: "Esas son con una radio de bajo consumo de unos 100 mJ por envío."
-      - texto: "Las que haga falta: el panel se recarga"
-        porque: "El presupuesto es fijo: lo que no cabe en los 43 J del día no se puede hacer."
+        - { expr: "D_luz*ax*86400", color: naranja, rotulo: "energía al día" }
+      lectura: { valor: n_wifi, rotulo: "Transmisiones al día" }
+      ocultar: true
+    simular:
+      objetivo: n_wifi
+      unidad: ""
+      tol: 0.03
+      rotulo: "Transmisiones al día"
+      errores:
+        - { expr: "n_lp", texto: "Esas serían con envíos de bajo consumo de 100 mJ. Con WiFi, 1,5 J cada uno." }
+    exito: "Unas 29, poco más de una por hora. Con una radio de bajo consumo, unas 430."
     escalera:
-      - "Divida la energía del día entre la de un envío."
-    solucion: "43 J / 1,5 J ≈ 29 envíos al día."
+      - "Energía del día entre la de cada envío."
+    solucion: "43/1,5 ≈ 29."
     comprobar:
-      - { n_wifi: 28.8, n_lp: 432 }
+      - { n_wifi: 28.8, n_lp: 432, tol: 0.005 }
 
   - id: explore-celula
     tipo: explorar
     titulo: "La célula solar"
-    texto: "Una célula es un fotodiodo de gran área. Mueva la tensión de trabajo y mire la potencia que entrega."
+    texto: "La corriente de la célula es casi constante hasta un codo. Suba la tensión de trabajo hasta que caiga a la mitad."
     libro: [95]
+    fijar: { luz: 1 }
+    inicio: { V_w: 0.3 }
     nota: "Modelo de ejemplo: la corriente de la luz menos la de un diodo."
     widget:
       tipo: grafica
@@ -166,7 +158,17 @@ tarjetas:
         - { valor: V_oc, rotulo: "V_{oc} = {{V_oc}}" }
       mandos:
         - { valor: V_w, min: 0.05, max: 0.6, paso: 0.01, rotulo: "Tensión de trabajo" }
-    requiere: { mover: [V_w] }
+    objetivo:
+      condiciones:
+        - { valor: I_w, max: 0.015, rotulo: "Corriente: {{I_w}}" }
+      logrado: "Pasado el codo, la corriente se desploma: a {{V_w}} ya solo da {{I_w}}, y la potencia, {{P_w}}. El máximo estaba antes."
+      pistas:
+        - { texto: "Todavía da casi toda su corriente: suba la tensión." }
+    escalera:
+      - "El codo está cerca de V_{oc}."
+    solucion: "Hacia 0,58 V."
+    comprobar:
+      - { con: { V_w: 0.58 }, I_w: 0.0119, tol: 0.02 }
 
   - id: ajuste-mppt
     tipo: ajuste
@@ -203,9 +205,9 @@ tarjetas:
       - { V_oc: 0.6 }
 
   - id: prediga-poca-luz
-    tipo: predecir
+    tipo: simular
     titulo: "Con poca luz"
-    texto: "La luz baja a la décima parte. ¿Qué le pasa a la tensión en circuito abierto de la célula?"
+    texto: "Con plena luz, V_{oc} = 0,6 V. La luz baja a la décima parte: ¿qué tensión en circuito abierto da la célula?"
     libro: [95]
     fijar: { luz: 0.1 }
     widget:
@@ -216,40 +218,19 @@ tarjetas:
         - { expr: "max(0, I_sc - I_0*(exp(vx/(n_d*V_T)) - 1))", color: azul, rotulo: "corriente" }
       lectura: { valor: V_oc, rotulo: "V_{oc}" }
       ocultar: true
-    opciones:
-      - texto: "Baja poco"
-        bien: true
-        porque: "Crece con el logaritmo de la corriente, como la tensión de un diodo: con la décima parte de luz pasa a {{V_oc}}."
-      - texto: "Baja a la décima parte"
-        porque: "Eso le pasa a la corriente de cortocircuito, proporcional a la luz; la tensión sigue al logaritmo."
-      - texto: "No cambia nada"
-        porque: "Baja algo: el logaritmo de la décima parte no es cero."
+    simular:
+      objetivo: V_oc
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión en circuito abierto"
+      errores:
+        - { expr: "V_oc0*luz", texto: "No baja en proporción: crece con el logaritmo de la corriente." }
+    exito: "Unos 0,51 V: baja poco con poca luz. La corriente sí cae a la décima parte."
     escalera:
-      - "¿Cómo depende la tensión de un diodo de su corriente?"
-    solucion: "Baja poco, de 0,6 V a unos 0,51 V: la corriente, en cambio, cae a la décima parte."
+      - "V_{oc} = n·V_{T}·ln(I_{sc}/I₀ + 1): ¿qué hace el logaritmo al dividir por diez?"
+    solucion: "Unos 0,51 V."
     comprobar:
-      - { V_oc: 0.511, I_sc: 0.003 }
-
-  - id: empareje-bloques
-    tipo: pregunta
-    titulo: "Los tres bloques"
-    texto: "Empareje cada bloque de un recolector con lo que tiene que hacer."
-    libro: [103, 104, 107]
-    widget:
-      tipo: figura
-      figura: fig-39.9
-      zonas:
-        - { id: ciclos, rotulo: "La gráfica", rect: [30, 0, 415, 170] }
-    emparejar:
-      - ["Transductor", "Convertir luz, calor, vibración o radio"]
-      - ["Convertidor", "Arrancar con microvatios y seguir la máxima potencia"]
-      - ["Almacenamiento", "Absorber la irregularidad de la fuente"]
-    exito: "El convertidor es lo delicado: algunos integrados arrancan con unos 20 mV."
-    pistas:
-      - { texto: "El que sigue el punto de máxima potencia es el que convierte." }
-    escalera:
-      - "Uno capta, otro convierte, otro guarda."
-    solucion: "Transductor, capta; convertidor, arranca y sigue el máximo; almacenamiento, absorbe la irregularidad."
+      - { V_oc: 0.51, tol: 0.01 }
 
   - id: arranque-frio
     tipo: pregunta
@@ -272,28 +253,6 @@ tarjetas:
     escalera:
       - "Hace falta algo que funcione antes de que haya energía acumulada."
     solucion: "Una primaria de respaldo para el arranque (o arranque de umbral bajo, o un elevador de relación alta)."
-
-  - id: ordene-ciclo
-    tipo: pregunta
-    titulo: "Acumular hasta poder"
-    texto: "Ordene el ciclo de un sistema de recolección."
-    libro: [123, 124, 135]
-    widget:
-      tipo: figura
-      figura: fig-39.9
-      zonas:
-        - { id: ciclos, rotulo: "La gráfica", rect: [30, 0, 415, 170] }
-    ordenar:
-      - "El recolector carga un condensador lentamente."
-      - "Al llegar al umbral, se activa el circuito."
-      - "Hace su trabajo y se apaga."
-      - "Vuelve a empezar."
-    exito: "El sistema se autorregula: con más luz, mide más a menudo."
-    pistas:
-      - { texto: "Primero hay que juntar energía." }
-    escalera:
-      - "Nada puede hacerse antes de llegar al umbral."
-    solucion: "Cargar, llegar al umbral, trabajar y apagarse, y otra vez."
 
   - id: cuando-sentido
     tipo: pregunta
@@ -320,9 +279,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [93, 99, 105, 109]
+    libro: [93, 99, 105, 109, 103, 104, 107, 123, 124, 135]
     ideas:
       - { titulo: "Microvatios.", texto: "Dentro llega de cien a mil veces menos que fuera." }
       - { titulo: "Al revés.", texto: "Se parte de la energía disponible: 43 J al día dan unos 29 envíos WiFi." }
       - { titulo: "MPPT.", texto: "La célula entrega el máximo en el codo, hacia el 80 % de V_{oc}." }
-      - { titulo: "Arranque en frío.", texto: "Sin energía no arranca el convertidor: hay que preverlo y probarlo." }
+      - { titulo: "Bloques y ciclo.", texto: "Transductor, convertidor con MPPT y almacenamiento; se carga hasta un umbral, trabaja y vuelve a empezar. Y prever el arranque en frío." }

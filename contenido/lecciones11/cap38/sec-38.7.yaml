@@ -2,6 +2,10 @@
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.11 (svg_vista 433,41 × 227,52): exactitud de las fuentes de
 # reloj y las reglas del watchdog. El watchdog vivo es un contador con borrado (el refresco) cuya cuenta llena enciende
 # el LED de reinicio (bloque 213: «un contador que reinicia el sistema si el programa no lo refresca a tiempo»).
+# 1.2.1 («aprender haciendo», GUIA §13): el watchdog se lleva con pulsos hasta pedir el reinicio (objetivo) y su salida
+# se dibuja con refrescos; la fuente que no vale para la UART, la regla del reloj independiente y la de la ventana se
+# tocan en la figura 39.11. Quedan dos preguntas de opciones: el divisor y el refresco desde un temporizador. Los
+# arranques, el brown-out y la prueba del banco van en los textos.
 leccion: cap38/sec-38.7
 
 libro:
@@ -26,26 +30,11 @@ modelo:
   calculos: {}
 
 tarjetas:
-  - id: explore-fuentes
-    tipo: explorar
-    titulo: "Cuatro fuentes de reloj"
-    texto: "Exactitud frente a arranque. Toque cada fuente de reloj."
-    libro: [227, 202, 203, 204, 205]
-    widget:
-      tipo: figura
-      figura: fig-38.11
-      zonas:
-        - { id: rc, rotulo: "Primera fila de la izquierda", rect: [0, 30, 230, 36], texto: "RC interno: arranca al instante; del 1 al 5 %, con deriva térmica." }
-        - { id: cristal, rotulo: "Segunda fila de la izquierda", rect: [0, 68, 230, 36], texto: "Cristal externo: partes por millón, arranque de milisegundos." }
-        - { id: reloj32, rotulo: "Tercera fila de la izquierda", rect: [0, 106, 230, 36], texto: "Cristal de 32 768 Hz: consumo mínimo, arranque de uno o dos segundos." }
-        - { id: xo, rotulo: "Cuarta fila de la izquierda", rect: [0, 144, 230, 36], texto: "Oscilador XO: un módulo completo, sin problemas de arranque." }
-    requiere: { mover: [rc, cristal] }
-
   - id: toque-uart
     tipo: tocar
     titulo: "Una UART exigente"
     texto: "Toque la fuente de reloj cuyo error pasa del límite típico de una UART."
-    libro: [202, 227]
+    libro: [202, 203, 204, 205, 206, 227]
     widget:
       tipo: figura
       figura: fig-38.11
@@ -60,26 +49,9 @@ tarjetas:
         cristal: "Un cristal externo da partes por millón: muy por debajo del límite."
         reloj32: "El de 32 768 Hz es exacto; su problema es el arranque lento, no el error."
         xo: "El XO es el más exacto de los cuatro."
-    exito: "El RC interno, del 1 al 5 %: suficiente para la lógica, insuficiente para comunicación asíncrona exigente."
+    exito: "El RC interno, del 1 al 5 %: arranca al instante, pero no vale para comunicación exigente. Los cristales son exactos y tardan de milisegundos a segundos."
     escalera: ["Busque la caja que cae a la derecha de la línea discontinua."]
     solucion: "El RC interno: su error, del 1 al 5 %, pasa de la línea del límite de la UART."
-
-  - id: empareje-arranque
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que tarda en arrancar"
-    texto: "Una cada fuente de reloj con su arranque."
-    libro: [202, 203, 204, 205, 206]
-    emparejar:
-      - ["Oscilador RC interno", "Al instante"]
-      - ["Cristal externo", "Milisegundos"]
-      - ["Cristal de reloj de 32 768 Hz", "Uno o dos segundos"]
-      - ["Oscilador externo (XO)", "Un módulo completo, sin problemas de arranque"]
-    exito: "Y el PLL multiplica cualquiera de ellas hasta la frecuencia de trabajo, añadiendo su propio jitter."
-    pistas:
-      - { texto: "El más lento es el del reloj de tiempo real." }
-    escalera: ["El que no tiene nada que hacer oscilar fuera del chip arranca antes."]
-    solucion: "RC, al instante; cristal, milisegundos; 32 768 Hz, uno o dos segundos; XO, sin problemas."
 
   - id: pregunta-divisor
     tipo: pregunta
@@ -101,7 +73,7 @@ tarjetas:
   - id: explore-watchdog
     tipo: explorar
     titulo: "Un watchdog"
-    texto: "Un contador cuenta pulsos de reloj; el refresco lo pone a cero. Mueva el cursor: si el refresco falta, la cuenta llega al final y pide el reinicio."
+    texto: "Un contador cuenta pulsos de reloj y el refresco lo pone a cero. Dé pulsos sin refrescar hasta que pida el reinicio."
     libro: [213]
     widget:
       tipo: logica
@@ -111,7 +83,37 @@ tarjetas:
         - { id: a1, tipo: and, entradas: [c1.q1, c1.q0] }
       salidas:
         - { id: WDT, de: a1, rotulo: "Reinicio" }
-      cronograma: { ciclos: 8, estimulo: { RF: "01001000" }, senales: [CLK, RF, WDT] }
+    objetivo:
+      condiciones:
+        - { led: WDT, valor: 1, rotulo: "Reinicio pedido" }
+      logrado: "Sin refresco, la cuenta llega al final y reinicia el sistema: la última defensa contra un programa colgado."
+      pistas:
+        - { texto: "Siga dando pulsos sin tocar el refresco." }
+    escalera: ["El reinicio llega con la cuenta máxima."]
+    solucion: "Tres pulsos sin refresco."
+
+  - id: dibuje-watchdog
+    tipo: dibujar
+    titulo: "Refrescos a tiempo"
+    texto: "Ahora el programa refresca el watchdog de vez en cuando, y luego deja de hacerlo. Dibuje la salida de reinicio."
+    libro: [213, 225]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }, { id: RF, rotulo: "Refresco" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK, RF] }
+        - { id: a1, tipo: and, entradas: [c1.q1, c1.q0] }
+      salidas:
+        - { id: WDT, de: a1, rotulo: "Reinicio" }
+      cronograma: { ciclos: 8, estimulo: { RF: "01001000" }, senales: [CLK, RF] }
+      dibujo: false
+    dibujar:
+      senal: WDT
+    exito: "Mientras llegan los refrescos, nada; cuando faltan, reinicio. En el banco se provoca un bucle infinito para comprobarlo: un watchdog sin probar no se sabe si funciona."
+    escalera:
+      - "Cada refresco devuelve la cuenta a cero."
+      - "El reinicio solo llega tras varios pulsos seguidos sin refresco."
+    solucion: "Reinicio solo al final, cuando la cuenta llega al máximo tras el último refresco."
 
   - id: prediga-temporizador
     tipo: predecir
@@ -153,39 +155,28 @@ tarjetas:
     escalera: ["¿Qué regla castiga refrescar antes de tiempo?"]
     solucion: "La ventana de refresco."
 
-  - id: porque-brownout
-    tipo: porque
-    titulo: "Mejor parado"
-    texto: "Con la alimentación bajo el umbral, el brown-out mantiene el microcontrolador en reset. ¿Por qué es mejor que dejarlo funcionar?"
-    libro: [221]
+  - id: toque-independiente
+    tipo: tocar
+    titulo: "Si falla el reloj"
+    texto: "Falla el reloj principal y el programa se detiene. Toque la regla que permite al watchdog reiniciar aun así."
+    libro: [216, 217, 221, 227]
     widget:
       tipo: figura
       figura: fig-38.11
       zonas:
-        - { id: independiente, rotulo: "Segunda regla de la derecha", rect: [245, 64, 184, 37], texto: "El watchdog, con reloj independiente." }
-    opciones:
-      - { texto: "Con poca tensión ejecuta de forma errática, que es mucho peor que pararse", bien: true, porque: "Parado no hace nada; con poca tensión puede ejecutar cualquier cosa, y eso es mucho peor." }
-      - { texto: "Porque así gasta menos la pila", porque: "No es por ahorrar: es para no ejecutar mal." }
-      - { texto: "Porque el watchdog no funciona con poca tensión", porque: "Es complementario del watchdog, pero su motivo es evitar la ejecución errática." }
-    escalera: ["¿Qué es peor, pararse o ejecutar mal?"]
-    solucion: "Sin él, el chip ejecuta de forma errática en lugar de pararse."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Probar el watchdog"
-    texto: "¿Cómo se comprueba en el banco que el watchdog funciona?"
-    libro: [225, 227]
-    widget:
-      tipo: figura
-      figura: fig-38.11
-      zonas:
-        - { id: causa, rotulo: "Tercera regla de la derecha", rect: [245, 107, 184, 37], texto: "Registrar la causa del reinicio." }
-    opciones:
-      - { texto: "Provocar un bucle infinito y ver que reinicia a tiempo y registra la causa", bien: true, porque: "Un watchdog que nunca se ha probado no se sabe si funciona." }
-      - { texto: "Leer su registro de configuración", porque: "Dice cómo está configurado, no si de verdad reinicia." }
-      - { texto: "Dejar el sistema funcionando un día sin fallos", porque: "Si no se cuelga, el watchdog nunca actúa: no se prueba." }
-    escalera: ["Para ver si actúa, hay que darle un motivo."]
-    solucion: "Un bucle infinito a propósito: debe reiniciar en el tiempo esperado y registrar la causa."
+        - { id: refrescar, rotulo: "Primera regla de la derecha", rect: [245, 19, 184, 39] }
+        - { id: independiente, rotulo: "Segunda regla de la derecha", rect: [245, 64, 184, 37] }
+        - { id: causa, rotulo: "Tercera regla de la derecha", rect: [245, 107, 184, 37] }
+        - { id: ventana, rotulo: "Cuarta regla de la derecha", rect: [245, 150, 184, 38] }
+    tocar:
+      bien: [independiente]
+      porque:
+        refrescar: "Dónde se refresca no importa si el contador se queda sin reloj."
+        causa: "Registrar la causa sirve después del reinicio; primero tiene que haberlo."
+        ventana: "La ventana detecta bucles rápidos; sin reloj, el contador no avanza."
+    exito: "Con su propio oscilador, el watchdog sobrevive al fallo del reloj. Y con poca tensión, el brown-out lo mantiene todo en reset: mejor parado que errático."
+    escalera: ["¿Qué necesita el contador del watchdog para avanzar?"]
+    solucion: "Reloj independiente."
 
   - id: resumen
     tipo: resumen

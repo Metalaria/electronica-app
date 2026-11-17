@@ -3,6 +3,10 @@
 # cuál usar; tras el reset los vectores vienen de la BIOS y el programa los pasa al cartucho escribiendo en $3A0013.
 # UniBIOS cambia región y modo. Fuentes: los datos de la consola (neogeo#n), The Cutting Room Floor «Neo Geo» y
 # ConsoleMods «Neo Geo:UNIVERSE BIOS (UniBIOS)».
+# 1.2.1: un circuito lógico vivo con meta y su tabla: tras el reset los vectores vienen de la BIOS y, cuando el programa
+# escribe en $3A0013, del cartucho (neogeo#87); se tocan la BIOS y dónde están los datos de las tres regiones; la
+# dirección $3A0013 se escribe en hexadecimal. Quedan el emparejar de región y modo y una pregunta: un cartucho, dos
+# máquinas.
 leccion: consola-neogeo/neogeo-bloqueo
 
 libro:
@@ -24,16 +28,49 @@ modelo:
 tarjetas:
   - id: explore-bios
     tipo: explorar
-    titulo: "Sin chip de bloqueo"
-    texto: "La AES no lleva un CIC. Toque la BIOS y la ranura de cartucho."
-    libro: ["neogeo#8", "neogeo#19", "neogeo#112"]
-    requiere: { mover: [bios, cart] }
+    titulo: "Los vectores del 68000"
+    texto: "Tras el reset, el 68000 lee sus vectores en $000000 y vienen de la BIOS. Consiga que pasen al cartucho."
+    libro: ["neogeo#87", "neogeo#8"]
     widget:
-      tipo: figura
-      consola: { maquina: neogeo }
-      zonas:
-        - { id: bios, hotspot: bios, rotulo: "BIOS NEO-EP0", texto: "128 KB: arranque, pantalla de SNK y pruebas." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "El cartucho trae los datos de las tres regiones." }
+      tipo: logica
+      entradas: [{ id: W, rotulo: "Escrito en $3A0013" }]
+      piezas:
+        - { id: n1, tipo: not, entradas: [W] }
+        - { id: b1, tipo: buf, entradas: [W] }
+      salidas:
+        - { id: VBIOS, de: n1, rotulo: "Vectores de la BIOS" }
+        - { id: VCART, de: b1, rotulo: "Vectores del cartucho" }
+    objetivo:
+      condiciones:
+        - { led: VCART, valor: 1, rotulo: "Vectores del cartucho" }
+      logrado: "El programa escribe en $3A0013 y los vectores pasan al cartucho: la BIOS ya ha arrancado y enseñado la pantalla de SNK."
+      pistas:
+        - { texto: "Los vectores pasan al cartucho cuando el programa escribe en un registro." }
+    escalera:
+      - "Escriba en $3A0013."
+    solucion: "Escrito en $3A0013."
+
+  - id: tabla-vectores
+    tipo: tabla
+    titulo: "De quién son los vectores"
+    texto: "Rellene de dónde vienen los vectores en cada caso (1: de ahí)."
+    libro: ["neogeo#87"]
+    widget:
+      tipo: logica
+      entradas: [{ id: W, rotulo: "Escrito en $3A0013" }]
+      piezas:
+        - { id: n1, tipo: not, entradas: [W] }
+        - { id: b1, tipo: buf, entradas: [W] }
+      salidas:
+        - { id: VBIOS, de: n1, rotulo: "Vectores de la BIOS" }
+        - { id: VCART, de: b1, rotulo: "Vectores del cartucho" }
+      ocultar: true
+    tabla:
+      salidas: [VBIOS, VCART]
+    exito: "Uno u otro, nunca los dos: la BIOS hasta la escritura, el cartucho después."
+    escalera:
+      - "Antes de la escritura, la BIOS."
+    solucion: "Sin escribir: BIOS. Tras escribir en $3A0013: cartucho."
 
   - id: toque-531024
     tipo: tocar
@@ -58,27 +95,26 @@ tarjetas:
     solucion: "Arriba: Toshiba TC531024P «NEO-EP0»."
 
   - id: prediga-region
-    tipo: predecir
-    titulo: "¿Quién decide la región?"
-    texto: "Un cartucho japonés en una AES europea. ¿Quién decide en qué región se juega?"
-    libro: ["neogeo#112", "neogeo#113"]
+    tipo: tocar
+    titulo: "¿Dónde están las regiones?"
+    texto: "La AES no lleva chip de bloqueo. Un cartucho japonés en una AES europea funciona: toque dónde están los datos de las tres regiones."
+    libro: ["neogeo#112", "neogeo#113", "neogeo#19"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
       zonas:
-        - { id: bios, hotspot: bios, rotulo: "BIOS" }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
-    opciones:
-      - texto: "La consola: el cartucho trae las tres regiones y la BIOS elige."
-        bien: true
-        porque: "Los datos de las tres regiones están en el cartucho: se juega en la región que dice la consola."
-      - texto: "Un chip de bloqueo, que no lo deja arrancar."
-        porque: "La AES no tiene chip de bloqueo: el cartucho trae los datos de todas las regiones."
-      - texto: "El cartucho: solo trae su región."
-        porque: "No: todo juego trae los datos de las tres regiones."
+        - { id: cart, hotspot: cart, rotulo: "Ranura grande, en el centro" }
+        - { id: bios, hotspot: bios, rotulo: "Chip largo, arriba" }
+        - { id: m68k, hotspot: 68k, rotulo: "Chip largo, arriba en el centro" }
+    tocar:
+      bien: [cart]
+      porque:
+        bios: "La BIOS dice qué región usar, pero los datos de las tres están en otro sitio."
+        m68k: "El 68000 ejecuta el juego."
+    exito: "En el cartucho: todo juego trae las tres regiones y las versiones AES y MVS, y se juega en la que dice la BIOS. En una región en la que no salió puede mostrar opciones sin usar."
     escalera:
-      - "¿Qué datos de región trae el cartucho?"
-    solucion: "La consola: el cartucho trae las tres regiones y se usa la de la BIOS."
+      - "Vienen con el juego."
+    solucion: "El cartucho."
 
   - id: empareje-efectos
     tipo: pregunta
@@ -99,9 +135,9 @@ tarjetas:
     solucion: "EE. UU.: sin sangre. Recreativa: opciones extra. Otra región: opciones sin usar. UniBIOS: elegir al arrancar."
 
   - id: prediga-vectores
-    tipo: predecir
-    titulo: "Al encender"
-    texto: "Tras el reset, el 68000 lee sus vectores en $000000. ¿De dónde salen?"
+    tipo: leer
+    titulo: "Ceder los vectores"
+    texto: "La BIOS arranca, enseña la pantalla de SNK y cede los vectores al cartucho. Escriba en hexadecimal dónde escribe el programa para cederlos."
     libro: ["neogeo#87", "neogeo#8"]
     widget:
       tipo: figura
@@ -109,17 +145,17 @@ tarjetas:
       zonas:
         - { id: bios, hotspot: bios, rotulo: "BIOS" }
         - { id: cart, hotspot: cart, rotulo: "Cartucho" }
-    opciones:
-      - texto: "De la BIOS; el cartucho los toma cuando el programa escribe en $3A0013."
-        bien: true
-        porque: "La BIOS arranca, enseña la pantalla de SNK y luego cede los vectores al cartucho."
-      - texto: "Del cartucho, siempre."
-        porque: "Tras el reset vienen de la BIOS; el cartucho solo los toma después."
-      - texto: "De la RAM de usuario."
-        porque: "La RAM se borra al apagar: los vectores vienen de la BIOS y luego del cartucho."
+    leer:
+      objetivo: "0x3A0013"
+      base: 16
+      cifras: 24
+      rotulo: "Registro"
+      errores:
+        - { expr: "0", texto: "$000000 es donde lee los vectores; el registro que los cede es otro." }
+    exito: "$3A0013: desde ahí, los vectores de $000000–$00007F vienen del cartucho."
     escalera:
-      - "¿Quién enseña la pantalla de SNK al encender?"
-    solucion: "De la BIOS tras el reset; del cartucho tras escribir en $3A0013."
+      - "Está en la zona de registros del sistema, $3A0000."
+    solucion: "$3A0013."
 
   - id: por-que-un-cartucho
     tipo: porque

@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «serie» (esquema.ts): one loop — r1 and r2 on top, r3 on the right, r4 along the bottom.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -36,4 +38,12 @@
   {:else}
     <path class="hilo" d="M300 230 H40" data-red="0"></path>
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={50} red="fte" />
+  <Punto x={172} y={50} red="a1" />
+  {#if c.tiene('r3')}<Punto x={293} y={50} red="a2" />{/if}
+  {#if c.tiene('r4')}<Punto x={300} y={222} red="a3" />{/if}
+  <Punto x={110} y={230} red="0" />
+  <Rama x={50} y={50} medidor="vmed" />
+  <Rama x={110} y={230} medidor="vfin" />
 </Lienzo>

@@ -4,6 +4,11 @@
 # - Reflectometría (bloques 131 y 48): escalón de 1 V por 50 Ω en 1 m de coaxial de 5,00 ns: la entrada se queda en
 #   0,500 V y la reflexión vuelve a los 10 ns; en cortocircuito la anula (Γ = −1).
 # Paso práctico: «dibujar» lo que se ve en el origen de una línea en cortocircuito.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la carga se elige para no reflejar y para Γ = 0,2 (los 75 Ω
+# del ejercicio 37.1); la terminación se elige en una reflectometría viva (escalón de 0,5 V en la entrada y 2T = 10 ns)
+# hasta que la entrada se duplica; el VSWR sube hasta reflejar la cuarta parte; el VSWR de 75 Ω y lo que llega con la
+# terminación serie se predicen. Quedan dos preguntas de opciones (el transmisor y la malla) y las terminaciones, por
+# emparejar.
 leccion: cap36/sec-36.2
 
 libro:
@@ -30,6 +35,8 @@ modelo:
     Z_L: { sim: "Z_{L}", nombre: "impedancia de la carga", unidad: Ω, valor: 75 }
     S_v: { sim: "VSWR", nombre: "razón de onda estacionaria", unidad: "", valor: 2 }
     T_l: { sim: "T", nombre: "retardo de la línea", unidad: s, valor: 0.000000005 }
+    G_t: { sim: "Γ", nombre: "terminación elegida", unidad: "", valor: -1 }
+    V_g: { sim: "V", nombre: "escalón del driver", unidad: V, valor: 1 }
   calculos:
     Gam: { expr: "(Z_L - Z_0)/(Z_L + Z_0)", sim: "Γ", nombre: "coeficiente de reflexión", unidad: "" }
     VSWR: { expr: "(1 + abs(Gam))/(1 - abs(Gam))", sim: "VSWR", nombre: "razón de onda estacionaria", unidad: "" }
@@ -37,13 +44,16 @@ modelo:
     G_s: { expr: "(S_v - 1)/(S_v + 1)", sim: "|Γ|", nombre: "módulo de Γ", unidad: "" }
     P_s: { expr: "100*G_s^2", sim: "P_{refl}", nombre: "potencia reflejada", unidad: "%" }
     ML_s: { expr: "-10*log10(1 - G_s^2)", sim: "ML", nombre: "pérdida por desadaptación", unidad: dB }
+    v_2T: { expr: "0.5*(1 + G_t)", sim: "v", nombre: "tensión en la entrada tras la ida y vuelta", unidad: V }
+    V_rx: { expr: "V_g/2*(1 + 1)", sim: "v_{receptor}", nombre: "tensión en el receptor con terminación serie", unidad: V }
 
 tarjetas:
   - id: explore-reflexion
     tipo: explorar
     titulo: "Lo que vuelve"
-    texto: "Una línea de 50 Ω acaba en una carga. Cámbiela y mire qué parte de la onda vuelve."
+    texto: "Una línea de 50 Ω acaba en una carga, y parte de la energía vuelve. Elija la carga con la que no vuelve nada."
     libro: [114, 115, 116]
+    inicio: { Z_L: 10 }
     widget:
       tipo: grafica
       x: { id: z, min: 5, max: 500, unidad: Ω, rotulo: "Z_{L}", escala: log }
@@ -57,37 +67,53 @@ tarjetas:
         - { valor: P_r, rotulo: "Potencia reflejada: {{P_r}}" }
       mandos:
         - { valor: Z_L, lista: [10, 25, 50, 75, 100, 250], rotulo: "Carga, Z_{L}" }
-    requiere: { mover: [Z_L] }
+    objetivo:
+      condiciones:
+        - { valor: Gam, min: -0.001, max: 0.001, rotulo: "Γ = {{Gam}}" }
+      logrado: "Carga igual a la línea: Γ = 0, toda la onda se queda en la carga."
+      pistas:
+        - { cuando: { valor: Gam, menor: 0 }, texto: "Carga menor que la línea: vuelve invertida. Súbala." }
+        - { texto: "Carga mayor que la línea: vuelve en fase. Bájela." }
+    escalera:
+      - "Γ compara la carga con la línea."
+    solucion: "Z_{L} = 50 Ω."
+    comprobar:
+      - { con: { Z_L: 50 }, Gam: 0 }
 
   - id: predecir-abierto
-    tipo: predecir
+    tipo: explorar
     titulo: "Una línea digital abierta"
-    texto: "Una línea digital acaba en circuito abierto, Γ = +1. ¿Qué tensión aparece en el extremo?"
-    libro: [116, 117]
+    texto: "Reflectometría: escalón de 0,5 V en la entrada de un coaxial de 5,00 ns. Elija la terminación que duplica la tensión al volver la reflexión."
+    libro: [116, 117, "cap36#48"]
+    inicio: { G_t: -1 }
     widget:
-      tipo: figura
-      figura: fig-36.2
-      zonas:
-        - { id: tdr, rotulo: "Reflectometría con tres terminaciones", rect: [0, 0, 221, 197] }
-    opciones:
-      - texto: "El doble de la incidente"
-        bien: true
-        porque: "La incidente y la reflejada se suman en fase: el sobreimpulso que lleva una entrada por encima de su máximo."
-      - texto: "Cero"
-        porque: "Eso pasa en cortocircuito, Γ = −1: la reflejada llega invertida y la anula."
-      - texto: "La misma que la incidente"
-        porque: "Así sería solo con la línea adaptada, sin reflexión."
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000002, unidad: s, rotulo: "t" }
+      y: { min: -0.1, max: 1.2, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "0.5*(1 + G_t*max(0, min(1, (t - 2*T_l)*1e11)))", color: naranja, rotulo: "entrada" }
+      lectura: { valor: v_2T, rotulo: "Tras la ida y vuelta" }
+      mandos:
+        - { valor: G_t, lista: [-1, 0, 1], nombres: [corto, adaptada, abierta], rotulo: "Terminación" }
+    objetivo:
+      condiciones:
+        - { valor: v_2T, min: 0.99, rotulo: "Entrada: {{v_2T}}" }
+      logrado: "Abierta, Γ = +1: incidente y reflejada se suman en fase y la tensión se duplica. Es el sobreimpulso que lleva una entrada digital por encima de su máximo."
+      pistas:
+        - { cuando: { valor: G_t, menor: 0 }, texto: "En corto, Γ = −1: la reflejada llega invertida y la anula." }
+        - { texto: "Adaptada no vuelve nada: la entrada se queda en 0,5 V." }
     escalera:
-      - "Γ = +1: vuelve todo, y en fase."
-    solucion: "Incidente más reflejada: el doble."
+      - "¿Qué Γ devuelve toda la onda y en fase?"
+    solucion: "Abierta."
+    comprobar:
+      - { con: { G_t: 1 }, v_2T: 1, T_l: 0.000000005 }
 
   - id: formula-gamma
-    tipo: formula
+    tipo: explorar
     titulo: "El coeficiente de reflexión"
-    texto: "Γ compara la carga con la línea. Cero si son iguales; ±1 en abierto o en corto."
-    libro: [115, 116]
-    ec: 115
-    sustitucion: "({{Z_L}} − {{Z_0}}) / ({{Z_L}} + {{Z_0}}) = {{Gam}}"
+    texto: "Γ = (Z_{L} − Z₀)/(Z_{L} + Z₀): cero si son iguales, ±1 en abierto o en corto. Busque la carga del ejercicio, la que da Γ = 0,2."
+    libro: [115, 116, "cap36#542"]
+    inicio: { Z_L: 25 }
     widget:
       tipo: grafica
       x: { id: z, min: 5, max: 500, unidad: Ω, rotulo: "Z_{L}", escala: log }
@@ -99,11 +125,23 @@ tarjetas:
       lectura: { valor: Gam, rotulo: "Coeficiente de reflexión" }
       mandos:
         - { valor: Z_L, lista: [10, 25, 50, 75, 100, 250], rotulo: "Carga, Z_{L}" }
+    objetivo:
+      condiciones:
+        - { valor: Gam, objetivo: 0.2, tol: 0.01, rotulo: "Γ = {{Gam}}" }
+      logrado: "({{Z_L}} − {{Z_0}}) / ({{Z_L}} + {{Z_0}}) = {{Gam}}: una carga de 75 Ω en una línea de 50 Ω."
+      pistas:
+        - { cuando: { valor: Gam, mayor: 0.21 }, texto: "Refleja demasiado: acérquela a 50 Ω." }
+        - { texto: "Γ aún es menor: súbala." }
+    escalera:
+      - "Γ positivo pide una carga mayor que la línea."
+    solucion: "Z_{L} = 75 Ω."
+    comprobar:
+      - { con: { Z_L: 75 }, Gam: 0.2 }
 
   - id: estime-vswr
-    tipo: pregunta
+    tipo: simular
     titulo: "75 Ω sobre 50 Ω"
-    texto: "Una carga de 75 Ω en una línea de 50 Ω da Γ = 0,2. ¿Cuánto vale el VSWR?"
+    texto: "Una carga de 75 Ω en una línea de 50 Ω da Γ = 0,2. ¿Cuánto vale el VSWR, (1 + |Γ|)/(1 − |Γ|)?"
     libro: [120, "cap36#542"]
     fijar: { Z_L: 75, Z_0: 50 }
     widget:
@@ -111,19 +149,15 @@ tarjetas:
       figura: fig-36.2
       zonas:
         - { id: vswr, rotulo: "VSWR frente a la carga", rect: [221, 0, 222, 197] }
-    estimar:
-      objetivo: "VSWR"
+    simular:
+      objetivo: VSWR
       unidad: ""
-      min: 1
-      max: 3
-      paso: 0.01
-      inicio: 2.6
-      tol: 0.03
+      tol: 0.02
       rotulo: "VSWR"
+      errores:
+        - { expr: "1 + Gam", texto: "Falta dividir entre 1 − |Γ|." }
+        - { expr: "1/(1 - Gam)", texto: "Falta el 1 + |Γ| del numerador." }
     exito: "1,5: muy bueno. Se refleja el 4 % de la potencia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.545 }, texto: "Demasiado alto: (1 + 0,2)/(1 − 0,2)." }
-      - { texto: "Demasiado bajo: el VSWR nunca baja de 1, y 0,2 de Γ lo sube algo más." }
     escalera:
       - "VSWR = (1 + |Γ|)/(1 − |Γ|)."
     solucion: "1,2 / 0,8 = 1,5."
@@ -133,8 +167,9 @@ tarjetas:
   - id: explore-coste
     tipo: explorar
     titulo: "Lo que cuesta en potencia"
-    texto: "Mueva el VSWR y mire qué parte de la potencia se refleja."
+    texto: "Con VSWR 1,5 se refleja el 4 % de la potencia. Suba el VSWR hasta que se refleje la cuarta parte."
     libro: [119, 121, 122]
+    inicio: { S_v: 1.5 }
     widget:
       tipo: grafica
       x: { id: s, min: 1, max: 5, unidad: "", rotulo: "VSWR" }
@@ -148,9 +183,18 @@ tarjetas:
         - { valor: ML_s, rotulo: "Pérdida: {{ML_s}}" }
       mandos:
         - { valor: S_v, lista: [1.5, 2, 3], rotulo: "VSWR" }
-    requiere: { mover: [S_v] }
+    objetivo:
+      condiciones:
+        - { valor: P_s, min: 24, rotulo: "Reflejada: {{P_s}}" }
+      logrado: "VSWR 3: el 25 %, {{ML_s}} de pérdida. Con 2, el 11 %, medio decibelio."
+      pistas:
+        - { texto: "Aún se refleja menos: suba el VSWR." }
+    escalera:
+      - "|Γ| = (VSWR − 1)/(VSWR + 1), y la potencia reflejada es |Γ|²."
+    solucion: "VSWR 3."
     comprobar:
       - { con: { S_v: 2 }, P_s: 11.1, ML_s: 0.512 }
+      - { con: { S_v: 3 }, P_s: 25 }
 
   - id: porque-transmisor
     tipo: porque
@@ -198,26 +242,29 @@ tarjetas:
     solucion: "Paralelo, consumo permanente; serie, relojes; AC, sin continua."
 
   - id: pregunta-serie
-    tipo: pregunta
+    tipo: simular
     titulo: "La terminación serie"
-    texto: "Una resistencia en serie en el driver, y el extremo abierto. ¿Cómo llega la amplitud completa al receptor?"
+    texto: "Un driver de 1 V con una resistencia en serie igual a Z₀ y el extremo abierto: la onda sale a media amplitud. ¿Qué tensión ve el receptor del extremo?"
     libro: [125]
     widget:
       tipo: figura
       figura: fig-36.2
       zonas:
         - { id: tdr, rotulo: "Reflectometría con tres terminaciones", rect: [0, 0, 221, 197] }
-    opciones:
-      - texto: "Sale a media amplitud y se dobla al reflejarse en el extremo abierto"
-        bien: true
-        porque: "La reflexión vuelve al origen, donde la resistencia la absorbe: no rebota más."
-      - texto: "La resistencia amplifica la señal"
-        porque: "Una resistencia no amplifica: divide con la línea y deja la mitad."
-      - texto: "No llega: la serie solo sirve en el origen"
-        porque: "El receptor sí ve la amplitud completa, gracias al extremo abierto."
+    simular:
+      objetivo: V_rx
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión en el receptor"
+      errores:
+        - { expr: "V_g/2", texto: "Esa es la que sale del origen; en el extremo abierto se dobla." }
+        - { expr: "2*V_g", texto: "Lo que se dobla es la media amplitud, no el escalón entero." }
+    exito: "1 V, la amplitud completa: la media se dobla en el extremo abierto, y la vuelta la absorbe la resistencia serie. No rebota más."
     escalera:
       - "Γ = +1 en el extremo abierto: incidente más reflejada."
-    solucion: "Media amplitud que se dobla en el extremo; la vuelta la absorbe la serie."
+    solucion: "0,5 V × 2 = 1 V."
+    comprobar:
+      - { V_rx: 1, V_g: 1 }
 
   - id: dibuje-corto
     tipo: dibujar

@@ -5,6 +5,9 @@
 # - La energía del apagado del bloque 231 (½CV²) con la fórmula de la figura 40.15, t = C(V₁² − V₂²)/(2P), y sus
 #   casos de 10 ms a 1 W: de 3,3 a 2,7 V o de 12 a 5 V (los condensadores salen del modelo, comprobados).
 # Paso práctico: «simular» la potencia del LDO con el simulador (1,14 W; errores: la de entrada, 1,8 W, o la de salida).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se baja la entrada hasta que el LDO rinda más de la mitad y se
+# consigue que la reserva aguante 10 ms (objetivos); se calculan la potencia del LDO, la del conmutado y el
+# condensador de 10 ms. Quedan dos preguntas (sin power path y el brown-out); los casos y el OR con diodos, al resumen.
 leccion: cap39/sec-39.7
 
 libro:
@@ -14,6 +17,7 @@ libro:
   221: "sin power path, un equipo con la batería muy descargada no arranca aunque esté enchufado"
   223: "pierde la caída del diodo, lo que en 3,3 V es inaceptable"
   224: "emulando diodos con caída de milivoltios"
+  229: "un condensador que mantenga la alimentación unos milisegundos"
   231: "conviene detectar el corte en el lado de tensión alta, antes del regulador"
   238: "Si se reinicia, el condensador de reserva es insuficiente o la conmutación es lenta."
   239: "la energía disponible para un apagado ordenado"
@@ -43,14 +47,16 @@ modelo:
     t_h: { expr: "C_r*(V_1^2 - V_2^2)/(2*P_h)", sim: "t", nombre: "tiempo que aguanta", unidad: s }
     C_10: { expr: "2*P_h*t_obj/(V_1^2 - V_2^2)", sim: "C", nombre: "condensador para 10 ms", unidad: F }
     dV2: { expr: "V_1^2 - V_2^2", sim: "V₁² − V₂²", nombre: "diferencia de cuadrados", unidad: "V²" }
+    P_10: { expr: "P_in/10", sim: "P", nombre: "una décima de lo que entra al LDO (error)", unidad: W }
     E_h: { expr: "P_h*t_obj", sim: "E", nombre: "energía del apagado", unidad: J }
 
 tarjetas:
   - id: explore-ldo
     tipo: explorar
     titulo: "Un LDO a pilas"
-    texto: "Un LDO da 3,3 V y 200 mA. Cambie la entrada y mire cuánto se queda en calor."
+    texto: "Un LDO da 3,3 V y 200 mA. Elija la entrada con la que más de la mitad de la energía llega a la carga."
     libro: ["cap39#392"]
+    inicio: { Vi: 9 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -62,8 +68,17 @@ tarjetas:
       mide: { vout: Vo, iin: Io, p_paso: P_ldo }
       mandos:
         - { valor: Vi, lista: [5, 9, 12], rotulo: "Tensión de entrada" }
-    requiere: { mover: [Vi] }
+    objetivo:
+      condiciones:
+        - { valor: eta, min: 50, rotulo: "Rendimiento: {{eta}}" }
+      logrado: "Con {{Vi}} rinde {{eta}} y disipa {{P_ldo}}: un LDO solo es aceptable con poca diferencia de tensión."
+      pistas:
+        - { texto: "Demasiada diferencia: baje la entrada." }
+    escalera:
+      - "El LDO rinde V_{out}/V_{in}."
+    solucion: "La de 5 V (valor de ejemplo): un 66 %."
     comprobar:
+      - { con: { Vi: 5 }, eta: 66, tol: 0.01 }
       - { con: { Vi: 9 }, Io: 0.2, P_ldo: 1.14, eta: 36.7 }
 
   - id: simule-ldo
@@ -98,53 +113,33 @@ tarjetas:
       - { P_ldo: 1.14, P_in: 1.8, P_out: 0.66 }
 
   - id: conmutado
-    tipo: pregunta
-    titulo: "Con un conmutado"
-    texto: "El mismo caso con un regulador conmutado del 90 %. ¿Cuánto pierde?"
+    tipo: simular
+    titulo: "Y con un conmutado"
+    texto: "El mismo caso, 3,3 V y 200 mA desde 9 V, con un regulador conmutado del 90 %. ¿Cuánto pierde?"
     libro: ["cap39#392"]
     fijar: { Vi: 9 }
     widget:
-      tipo: circuito
-      esquema: regulador-lineal
-      piezas: { entrada: Vi, ref: Vr, carga: RL }
-      lectura: { valor: P_ldo, rotulo: "Potencia en el LDO" }
-      corriente: Io
-      mide: { vout: Vo, p_paso: P_ldo }
-      mandos: []
-    opciones:
-      - texto: "Unos 0,07 W: unas 16 veces menos"
-        bien: true
-        porque: "Entran 0,66/0,9 = 0,73 W y salen 0,66 W: se pierden unos 0,07 W."
-      - texto: "Una décima parte de lo que entraba al LDO"
-        porque: "Con el conmutado ya no entra lo mismo: la corriente de entrada baja. Entran 0,73 W."
-      - texto: "Lo mismo que el LDO"
-        porque: "El conmutado no disipa la diferencia de tensión: la convierte."
+      tipo: grafica
+      x: { id: ex, min: 50, max: 100, unidad: "%", rotulo: "Rendimiento del conmutado" }
+      y: { min: 0, max: 1, unidad: W, rotulo: "Pérdida" }
+      curvas:
+        - { expr: "P_out*(100/ex - 1)", color: naranja, rotulo: "pérdida del conmutado" }
+        - { expr: "P_ldo + 0*ex", color: tinta, rotulo: "pérdida del LDO", discontinua: true }
+      lectura: { valor: P_sw, rotulo: "Pérdida del conmutado" }
+      ocultar: true
+    simular:
+      objetivo: P_sw
+      unidad: W
+      tol: 0.05
+      rotulo: "Pérdida del conmutado"
+      errores:
+        - { expr: "P_10", texto: "No es una décima de lo que entraba al LDO: es lo que falta para el 90 % de los 0,66 W de salida." }
+    exito: "Unos 0,07 W, unas 16 veces menos que el LDO: con 9 V y pilas, el conmutado."
     escalera:
-      - "Calcule lo que entra: la salida dividida por el rendimiento."
-    solucion: "0,66/0,9 − 0,66 ≈ 0,07 W: unas 16 veces menos que el LDO."
+      - "P_{in} = P_{out}/0,9; la pérdida es la diferencia."
+    solucion: "0,66/0,9 − 0,66 ≈ 0,073 W."
     comprobar:
-      - { P_sw: 0.0733, r_sw: 15.5, tol: 0.05 }
-
-  - id: empareje-casos
-    tipo: pregunta
-    titulo: "Varias fuentes"
-    texto: "Empareje cada forma de gestionar red y batería con lo que hace."
-    libro: [218, 219, 220]
-    widget:
-      tipo: figura
-      figura: fig-39.15
-      zonas:
-        - { id: arriba, rotulo: "Los tres recuadros de arriba", rect: [0, 0, 453, 125] }
-    emparejar:
-      - ["Conmutación simple", "Al fallar la fuente, la batería toma el relevo"]
-      - ["Alimentación simultánea", "Reparte la corriente entre carga y batería"]
-      - ["Power path", "Funciona aunque la batería esté agotada"]
-    exito: "El power path es lo que llevan los portátiles modernos."
-    pistas:
-      - { texto: "El de los SAI es el más sencillo: relevo al fallar." }
-    escalera:
-      - "Solo uno alimenta la carga directamente y da a la batería el excedente."
-    solucion: "Simple, relevo; simultánea, reparte; power path, funciona con la batería agotada."
+      - { P_sw: 0.0733, r_sw: 15.5, P_out: 0.66, tol: 0.01 }
 
   - id: prediga-agotada
     tipo: predecir
@@ -168,33 +163,12 @@ tarjetas:
       - "¿Quién se queda la corriente de la fuente sin power path?"
     solucion: "No arranca hasta que la batería se recupera: toda la corriente va a cargarla."
 
-  - id: or-diodos
-    tipo: pregunta
-    titulo: "Diodos en OR"
-    texto: "Dos fuentes en OR con diodos alimentan un sistema de 3,3 V. ¿Cuál es el problema?"
-    libro: [223, 224]
-    widget:
-      tipo: figura
-      figura: fig-39.15
-      zonas:
-        - { id: arriba, rotulo: "Los tres recuadros de arriba", rect: [0, 0, 453, 125] }
-    opciones:
-      - texto: "Pierden la caída del diodo: en 3,3 V es inaceptable"
-        bien: true
-        porque: "Por eso hoy se usan MOSFET en OR ideal, con caídas de milivoltios."
-      - texto: "Que alimenta la fuente de menor tensión"
-        porque: "Al revés: con diodos en OR alimenta la de mayor tensión."
-      - texto: "Que no pueden conmutar"
-        porque: "Conmutan solos; lo que sobra es su caída."
-    escalera:
-      - "¿Cuánto cae en un diodo de silicio que conduce?"
-    solucion: "La caída del diodo; un controlador con MOSFET la reduce a milivoltios."
-
   - id: explore-reserva
     tipo: explorar
     titulo: "Energía para apagarse"
-    texto: "Un condensador mantiene el sistema mientras guarda el estado. Cambie el condensador y dónde se detecta el corte."
-    libro: [231, 239]
+    texto: "Un condensador mantiene el sistema mientras guarda el estado, con 1 W. Elija el condensador y dónde se detecta el corte para aguantar 10 ms."
+    libro: [229, 231, 239]
+    inicio: { C_r: 100e-6, lado: 0 }
     widget:
       tipo: grafica
       x: { id: cx, min: 1e-6, max: 0.01, unidad: F, rotulo: "C", escala: log }
@@ -208,11 +182,22 @@ tarjetas:
       mandos:
         - { valor: C_r, lista: [10e-6, 100e-6, 1000e-6], rotulo: "Condensador de reserva" }
         - { valor: lado, tipo: interruptor, rotulo: "Detectar antes del regulador (12 V)" }
-    requiere: { mover: [lado] }
-    nota: "Con t = C·(V₁² − V₂²)/(2P): la energía crece con V²."
+    objetivo:
+      condiciones:
+        - { valor: t_h, min: 0.01, rotulo: "Aguanta: {{t_h}}" }
+      logrado: "Con {{C_r}} aguanta {{t_h}}. t = C·(V₁² − V₂²)/(2P): detectando en el lado de 12 V la energía crece con V²."
+      pistas:
+        - { cuando: { valor: lado, menor: 1 }, texto: "Detectando tras el regulador, de 3,3 a 2,7 V, hay muy poca energía: detecte antes." }
+        - { texto: "Todavía no llega a 10 ms: más condensador." }
+    escalera:
+      - "La energía útil es ½·C·(V₁² − V₂²)."
+    solucion: "1 000 µF detectando en el lado de 12 V: unos 60 ms."
+    comprobar:
+      - { con: { C_r: 1000e-6, lado: 1 }, t_h: 0.0595, V_1: 12, t_obj: 0.01, tol: 0.01 }
+      - { con: { lado: 0 }, V_1: 3.3, V_2: 2.7 }
 
   - id: estime-reserva
-    tipo: pregunta
+    tipo: simular
     titulo: "El condensador de reserva"
     texto: "Hace falta aguantar 10 ms a 1 W, detectando en el lado de 12 V y bajando hasta 5 V. ¿Qué condensador basta?"
     libro: [231, 239]
@@ -222,20 +207,18 @@ tarjetas:
       x: { id: cx, min: 1e-6, max: 0.01, unidad: F, rotulo: "C", escala: log }
       y: { min: 0.0001, max: 10, unidad: s, rotulo: "t", escala: log }
       curvas:
-        - { expr: "0.01", color: tinta, rotulo: "10 ms", discontinua: true }
-    estimar:
-      objetivo: "C_10"
+        - { expr: "cx*(V_1^2 - V_2^2)/(2*P_h)", color: naranja, rotulo: "tiempo a 1 W" }
+        - { expr: "0.01 + 0*cx", color: tinta, rotulo: "10 ms", discontinua: true }
+      lectura: { valor: C_10, rotulo: "Condensador" }
+      ocultar: true
+    simular:
+      objetivo: C_10
       unidad: F
-      min: 0
-      max: 0.0005
-      paso: 0.000002
-      inicio: 0.00045
-      tol: 0.05
+      tol: 0.03
       rotulo: "Condensador de reserva"
+      errores:
+        - { expr: "C_10/2", texto: "Le falta el 2: la energía del condensador es ½·C·V²." }
     exito: "Unos 168 µF. Detectando tras el regulador, de 3,3 a 2,7 V, harían falta unos 5,6 mF."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.000177 }, texto: "Se ha pasado: despeje C = 2·P·t/(V₁² − V₂²)." }
-      - { texto: "Se ha quedado corto: V₁² − V₂² son 119 V², y P·t son 10 mJ." }
     escalera:
       - "Despeje C de t = C·(V₁² − V₂²)/(2P)."
     solucion: "C = 2 × 1 W × 10 ms / (12² − 5²) ≈ 168 µF."
@@ -268,9 +251,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [220, 223, 231, "cap39#392"]
+    libro: [220, 223, 231, "cap39#392", 218, 219, 224]
     ideas:
       - { titulo: "LDO o conmutado.", texto: "De 9 a 3,3 V, el LDO pierde 1,14 W; un conmutado del 90 %, unos 0,07 W." }
       - { titulo: "Power path.", texto: "Alimenta la carga y carga la batería con el excedente: arranca aunque esté agotada." }
-      - { titulo: "OR ideal.", texto: "MOSFET con milivoltios de caída en lugar de diodos." }
+      - { titulo: "OR ideal.", texto: "Diodos en OR pierden su caída, inaceptable en 3,3 V: MOSFET con milivoltios. Conmutación simple, simultánea o power path." }
       - { titulo: "Apagado ordenado.", texto: "Detectar en el lado alto: la energía crece con V²." }

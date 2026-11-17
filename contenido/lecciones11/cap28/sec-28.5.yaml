@@ -3,6 +3,10 @@
 # V_BE = 0,6 V (bloque 121) y V_CE(sat) = 0,2 V; al conducir el otro, la base cae a 0,6 − (9 − 0,2) = −8,2 V y se
 # recarga hacia +9 V por R con τ = RC hasta 0,6 V (unos 0,34 s, el 0,693·RC del libro con su redondeo). El colector
 # sube por R_C = 1 kΩ (τ = 10 ms, la ampliación de la figura). El 555 es el esquema ne555-astable (como en 8.5).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el periodo del 555 se acorta por debajo de un milisegundo y el
+# semiciclo se lleva a 0,33 s (objetivos), la frecuencia del intermitente se predice, el ln 2 se marca en la carga RC
+# y en el colector se marca una constante de tiempo de su subida. El reloj Schmitt pasa a la explicación del 555 y
+# «relajación o resonante» al resumen. Quedan el emparejamiento de limitaciones y una pregunta de opciones (por qué −8 V).
 leccion: cap28/sec-28.5
 
 libro:
@@ -44,14 +48,18 @@ modelo:
     v_mn: { expr: "V_be - (V_cc - V_ce)", sim: "v_{B,mín}", nombre: "mínimo de la base", unidad: V }
     t_c: { expr: "R_m*C_m*ln((V_cc - v_mn)/(V_cc - V_be))", sim: "t", nombre: "semiciclo con la base real", unidad: s }
     T_b: { expr: "2*t_c", sim: "T", nombre: "periodo con la base real", unidad: s }
+    l_2: { expr: "ln(2)", sim: "t/RC", nombre: "medio camino de una carga RC", unidad: "" }
+    tau_k: { expr: "R_k*C_m", sim: "τ", nombre: "constante de tiempo del colector", unidad: s }
+    x_k: { expr: "T_b + R_k*C_m", sim: "t", nombre: "una constante de tiempo tras empezar la subida", unidad: s }
 
 tarjetas:
   - id: explore-555
     tipo: explorar
     titulo: "Carga y dos umbrales"
-    texto: "Todo oscilador de relajación tiene un elemento que carga, dos umbrales y una conmutación entre ellos. En el 555, cambie R_{b}."
+    texto: "Todo oscilador de relajación tiene un elemento que carga, dos umbrales y una conmutación entre ellos. Acorte el periodo del 555 por debajo de un milisegundo."
     nota: "El 555 de la sección 21.7."
-    libro: [133, 134]
+    libro: [131, 132, 133, 134]
+    inicio: { R_b: 10000 }
     fijar: { V_cc: 9, R_a: 1000, C_t: 100e-9 }
     widget:
       tipo: circuito
@@ -66,15 +74,24 @@ tarjetas:
           - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
       mandos:
         - { valor: R_b, lista: [4700, 10000, 22000], rotulo: "R_{b}" }
-    requiere: { mover: [R_b] }
+    objetivo:
+      condiciones:
+        - { valor: T5, max: 0.001, rotulo: "Periodo: {{T5}}" }
+      logrado: "Con R_{b} = {{R_b}}, {{T5}}: menos R, menos camino de carga. Un inversor Schmitt con R y C, tres componentes, sería el reloj sin cristal más económico; con operacional, la base de la triangular."
+      pistas:
+        - { texto: "Aún es largo: menos R_{b}." }
+    escalera:
+      - "El condensador se carga por R_{a} + R_{b} y se descarga por R_{b}."
+    solucion: "R_{b} = 4,7 kΩ: unos 0,72 ms."
+    comprobar:
+      - { con: { R_b: 4700 }, T5: 0.000721, tol: 0.01 }
 
   - id: formula-astable
-    tipo: formula
+    tipo: explorar
     titulo: "El astable de dos transistores"
-    texto: "Dos etapas acopladas por condensadores, cada una realimentando a la otra. Cada semiciclo dura:"
-    libro: [118, 123]
-    ec: 123
-    sustitucion: "0,693 · {{R_m}} · {{C_m}} = {{t_h}}"
+    texto: "Dos etapas acopladas por condensadores, cada una realimentando a la otra; cada semiciclo dura 0,693 · R · C. Llévelo a 0,33 s."
+    libro: [118, 123, 125]
+    inicio: { R_m: 10000, C_m: 10e-6 }
     widget:
       tipo: grafica
       x: { id: rr, min: 10000, max: 100000, unidad: Ω, rotulo: "R" }
@@ -87,40 +104,45 @@ tarjetas:
       mandos:
         - { valor: R_m, min: 10000, max: 100000, paso: 1000, rotulo: "R" }
         - { valor: C_m, lista: [1e-6, 10e-6], rotulo: "C" }
+    objetivo:
+      condiciones:
+        - { valor: t_h, objetivo: 0.33, tol: 0.02, rotulo: "Semiciclo: {{t_h}}" }
+      logrado: "0,693 · {{R_m}} · {{C_m}} = {{t_h}}: el semiciclo del intermitente de dos LED."
+      pistas:
+        - { cuando: { valor: t_h, min: 0.34 }, texto: "Demasiado largo: menos R." }
+        - { texto: "Demasiado corto: más R o más C." }
+    escalera:
+      - "Con C = 10 µF, R = 0,33/(0,693 · 10 µF)."
+    solucion: "R = 47 kΩ con C = 10 µF."
+    comprobar:
+      - { con: { R_m: 47000, C_m: 10e-6 }, t_h: 0.3257, tol: 0.001 }
 
   - id: prediga-intermitente
-    tipo: predecir
+    tipo: simular
     titulo: "El intermitente de dos LED"
     texto: "Con R = 47 kΩ y C = 10 µF, ¿a qué frecuencia parpadea?"
     libro: [125]
     fijar: { R_m: 47000, C_m: 10e-6 }
-    widget:
-      tipo: grafica
-      x: { id: rr, min: 10000, max: 60000, unidad: Ω, rotulo: "R" }
-      y: { min: 0, max: 1, unidad: s, rotulo: "semiciclo" }
-      curvas:
-        - { expr: "0.693*rr*C_m", color: azul, rotulo: "0,693 · R · C" }
-      lectura: { valor: f_h, rotulo: "Frecuencia" }
-      ocultar: curvas
-    opciones:
-      - texto: "1,5 Hz"
-        bien: true
-        porque: "0,33 s por semiciclo: el periodo son dos semiciclos, unos 0,65 s."
-      - texto: "3 Hz"
-        porque: "Ha tomado los 0,33 s como periodo entero. Son solo un semiciclo."
-      - texto: "0,33 Hz"
-        porque: "0,33 es el semiciclo en segundos, no una frecuencia."
+    simular:
+      objetivo: f_h
+      unidad: Hz
+      tol: 0.04
+      rotulo: "Frecuencia"
+      errores:
+        - { expr: "f_1", texto: "Ha tomado los 0,33 s como periodo entero. Son solo un semiciclo." }
+        - { expr: "t_h", texto: "0,33 es el semiciclo en segundos, no una frecuencia." }
+    exito: "1,5 Hz: 0,33 s por semiciclo, y el periodo son dos semiciclos, unos 0,65 s."
     escalera:
       - "t = 0,693 · R · C es un semiciclo: el periodo tiene dos."
     solucion: "t = 0,33 s; periodo 0,65 s; 1,5 Hz."
     comprobar:
-      - { t_h: 0.33, T_h: 0.65, tol: 0.02 }
+      - { t_h: 0.33, T_h: 0.65, f_h: 1.535, tol: 0.02 }
       - { f_1: 3, tol: 0.03 }
 
   - id: por-que-ln2
-    tipo: porque
+    tipo: marcar
     titulo: "El mismo ln 2"
-    texto: "El astable de dos transistores y el 555 comparten el 0,693, que es ln 2. ¿Por qué?"
+    texto: "El astable de dos transistores y el 555 comparten el 0,693. Marque en la carga RC el instante en que el condensador ha recorrido la mitad de su camino."
     libro: [124]
     widget:
       tipo: grafica
@@ -128,19 +150,23 @@ tarjetas:
       y: { min: 0, max: 1.1, unidad: "", rotulo: "camino recorrido" }
       curvas:
         - { expr: "1 - exp(-xt)", color: azul, rotulo: "carga RC" }
-      marcas:
-        - { x: "ln(2)", y: "0.5", rotulo: "ln 2: la mitad" }
-    opciones:
-      - texto: "El condensador recorre medio camino restante"
-        bien: true
-        porque: "Una carga RC hace la mitad de su camino en ln 2 · RC = 0,693 · RC."
-      - texto: "Es una constante del transistor"
-        porque: "No depende del dispositivo: sale de la exponencial de la carga."
-      - texto: "Es un redondeo de la raíz de 2"
-        porque: "La raíz de 2 no aparece aquí: el número sale de la exponencial de la carga."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "l_2"
+      tol: 0.03
+      inicio: { x: 2, y: 0.8 }
+      rotulo: "Medio camino"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.8 }, texto: "Ahí ya ha pasado de la mitad: antes." }
+      - { texto: "Ahí aún no llega a la mitad." }
+    exito: "En 0,693 · RC: ln 2. No es una constante del transistor; sale de la exponencial de la carga."
     escalera:
-      - "¿Cuánto tarda una carga RC en hacer la mitad de su camino?"
-    solucion: "Medio camino restante: la exponencial llega a la mitad en t = ln 2 · RC."
+      - "Busque dónde la curva cruza la mitad de su altura final."
+    solucion: "t = ln 2 · RC = 0,693 · RC."
+    comprobar:
+      - { l_2: 0.693, tol: 0.001 }
 
   - id: empareje-limites
     tipo: pregunta
@@ -205,57 +231,10 @@ tarjetas:
       - "¿Puede cambiar de golpe la tensión entre las placas de un condensador?"
     solucion: "El salto del colector del otro pasa por el condensador a la base: unos −8 V."
 
-  - id: schmitt-reloj
-    tipo: pregunta
-    titulo: "Un reloj sin cristal"
-    texto: "Necesita un reloj sin cristal, con flancos limpios y el mínimo de componentes. ¿Qué monta?"
-    libro: [131, 132]
-    widget:
-      tipo: grafica
-      x: { id: xt, min: 0, max: 3, unidad: "", rotulo: "t, en periodos" }
-      y: { min: -0.2, max: 1.2, unidad: "", rotulo: "salida" }
-      curvas:
-        - { expr: "1 - floor(2*(xt - floor(xt)))", color: azul, rotulo: "reloj" }
-    opciones:
-      - texto: "Un inversor Schmitt, una resistencia y un condensador"
-        bien: true
-        porque: "Tres componentes, frecuencia fijada por la histéresis y flancos limpios: lo más económico."
-      - texto: "El astable de dos transistores"
-        porque: "Lleva seis pasivos y dos transistores, y sus flancos son lentos."
-      - texto: "Un comparador con histéresis y un RC"
-        porque: "Funciona y define bien amplitud y frecuencia, pero lleva más piezas: es la base del generador de triangular."
-    escalera:
-      - "¿Cuál cuenta solo tres componentes?"
-    solucion: "Inversor Schmitt con R y C: tres componentes y flancos limpios."
-
-  - id: relajacion-resonante
-    tipo: pregunta
-    titulo: "Relajación o resonante"
-    texto: "La frecuencia de un sistema es un dato que debe cumplirse. ¿Qué oscilador elige?"
-    libro: [137, 138]
-    widget:
-      tipo: grafica
-      x: { id: xt, min: 0, max: 3, unidad: "", rotulo: "t, en periodos" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salida" }
-      curvas:
-        - { expr: "sin(2*pi*xt)", color: verde, rotulo: "resonante" }
-        - { expr: "1 - 2*floor(2*(xt - floor(xt)))", color: azul, rotulo: "relajación", discontinua: true }
-    opciones:
-      - texto: "Resonante, LC o cristal: estabilidad en ppm"
-        bien: true
-        porque: "Relajación cuando basta con que oscile; resonante cuando la frecuencia es un dato."
-      - texto: "De relajación: es el más barato"
-        porque: "Es barato, pero su estabilidad es mala, de tanto por ciento."
-      - texto: "Da igual: los dos se basan en cargar un condensador"
-        porque: "Solo el de relajación funciona por carga y umbrales; el resonante, por resonancia."
-    escalera:
-      - "Compare su estabilidad: % frente a ppm."
-    solucion: "Resonante: la frecuencia es un dato del sistema."
-
   - id: banco-colector
-    tipo: pregunta
+    tipo: marcar
     titulo: "El colector en el osciloscopio"
-    texto: "En el colector del astable, el flanco de subida es más lento que el de bajada. ¿Por qué?"
+    texto: "La subida del colector es más lenta que la bajada: es la carga del condensador por R_{C}. Marque dónde ha pasado una constante de tiempo, R_{C} · C, desde que empieza a subir."
     libro: [143]
     fijar: { V_cc: 9, R_m: 47000, C_m: 10e-6 }
     widget:
@@ -264,24 +243,32 @@ tarjetas:
       y: { min: -1, max: 10, unidad: V, rotulo: "colector" }
       curvas:
         - { expr: "(1 - min(1, floor((t - T_b*floor(t/T_b))/t_c)))*(V_cc - (V_cc - V_ce)*exp(-(t - T_b*floor(t/T_b))/(R_k*C_m))) + min(1, floor((t - T_b*floor(t/T_b))/t_c))*V_ce", color: azul, rotulo: "colector" }
-    opciones:
-      - texto: "La bajada la produce la conducción del transistor; la subida, la carga del condensador por la resistencia de colector"
-        bien: true
-        porque: "Conducir es inmediato; cargar un condensador por R_{C} lleva su constante de tiempo."
-      - texto: "Es un defecto de la sonda"
-        porque: "La sonda no distingue subida de bajada; la asimetría está en el circuito."
-      - texto: "La β del transistor es distinta al subir"
-        porque: "Al subir, el transistor está cortado: lo que manda es el RC del colector."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "x_k"
+      tol: 0.03
+      inicio: { x: 0.74, y: 9 }
+      rotulo: "Una constante de tiempo"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.69 }, texto: "Ahí ya está casi arriba: es antes." }
+      - { cuando: { valor: marca_x, max: 0.673 }, texto: "Ahí aún no ha empezado a subir." }
+      - { texto: "Ahí acaba de empezar: un poco más." }
+    exito: "Unos 10 ms tras empezar. La bajada la produce la conducción del transistor, inmediata; la subida, la carga por R_{C}."
     escalera:
-      - "¿Qué ocurre cuando el transistor se corta y su colector sube?"
-    solucion: "Bajar es conducir; subir es cargar el condensador a través de R_{C}."
+      - "R_{C} · C = 1 kΩ · 10 µF."
+    solucion: "10 ms después del comienzo de la subida."
+    comprobar:
+      - { tau_k: 0.01 }
+      - { x_k: 0.6837, tol: 0.002 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [123, 124, 129, 134, 138]
+    libro: [123, 124, 129, 134, 137, 138]
     ideas:
       - { titulo: "Relajación.", texto: "Un elemento que carga, dos umbrales y una conmutación: astable, Schmitt, comparador o 555." }
       - { titulo: "ln 2.", texto: "Cada semiciclo dura 0,693 · R · C: el condensador recorre medio camino restante." }
       - { titulo: "Limitaciones.", texto: "Frecuencia del 10 %, arranque no garantizado y una base que baja a casi −V_{CC}." }
-      - { titulo: "El criterio.", texto: "Relajación cuando basta con que oscile; resonante cuando la frecuencia es un dato." }
+      - { titulo: "El criterio.", texto: "Relajación, de estabilidad en %, cuando basta con que oscile; resonante, en ppm, cuando la frecuencia es un dato." }

@@ -2,6 +2,8 @@
   // Schematic «transformador» (esquema.ts): the AC source, the primary (blue) and secondary (orange) windings on the
   // core, the switch and the load.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -19,7 +21,7 @@
   <FuenteCA x={40} y1={210} y2={60} pieza="fuente" />
   <Et x={2} y={36} t={c.val('fuente')} />
   <path class="hilo" d="M40 60 H150 V80 M40 210 H150 V190 M210 80 V60 H240 M210 190 V210 H320"></path>
-  <Trafo x1={150} x2={210} y1={80} y2={190} />
+  <g data-pieza="trafo"><Trafo x1={150} x2={210} y1={80} y2={190} /></g>
   <Et x={140} y={232} t={`${c.val('n1')} esp.`} color="azul" peq ancla="end" />
   <Et x={220} y={232} t={`${c.val('n2')} esp.`} color="naranja" peq />
   {#if c.tiene('interruptor')}
@@ -33,4 +35,10 @@
     <Et x={334} y={130} t={c.simT('carga')} color="verde" />
     <Et x={334} y={150} t={c.val('carga')} color="verde" peq />
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={95} y={60} red="fte" />
+  <Punto x={228} y={60} red="s" />
+  <Punto x={95} y={210} red="0" />
+  <Rama x={95} y={60} medidor="vmed" />
+  <Rama x={320} y={76} medidor="vcarga" />
 </Lienzo>

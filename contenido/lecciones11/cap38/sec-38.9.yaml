@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 39.9 «La Arquitectura del Firmware» (cap38; etiqueta interna sec-38.9).
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 39.13 (fig/w_388.svg, svg_vista 450,72 × 313,92): las tres
 # arquitecturas arriba y las capas abajo.
+# 1.2.1 («aprender haciendo», GUIA §13): la exploración elige la arquitectura en la que la tarea importante no espera a
+# la tarea de 50 ms (bloques 265 y 270; las demás esperas no se modelan); en la figura se tocan el cooperativo, las
+# capas en orden, la capa que cambia con el chip y la arquitectura cuya vuelta mide el pin. Quedan dos preguntas de
+# opciones: la tarea de 50 ms y lo que no es coste de un RTOS. Prever la actualización va en el resumen.
 leccion: cap38/sec-38.9
 
 libro:
@@ -19,26 +23,45 @@ libro:
   279: "cambiar de microcontrolador afecta solo a la capa inferior"
   284: "añadir un cargador de arranque después exige reorganizar el mapa de memoria"
   286: "Su periodo es la latencia máxima de cualquier tarea no interrumpida"
+  287: "en un sistema con RTOS, la medida equivalente es el uso de pila de cada tarea"
   288: "Las tres arquitecturas de firmware y las capas en que se organiza"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    t_L: { sim: "t_{larga}", nombre: "la tarea larga", unidad: s, valor: 0.05 }
+    m_a: { sim: "modelo", nombre: "arquitectura", unidad: "", valor: 0 }
+  calculos:
+    lat: { expr: "t_L*(1 - floor(m_a/2))", sim: "espera", nombre: "espera de la tarea importante por la larga", unidad: s }
 
 tarjetas:
   - id: explore-tres
     tipo: explorar
     titulo: "Tres arquitecturas"
-    texto: "Superloop, cooperativo y RTOS. Toque cada una y mire cómo reparten el procesador."
-    libro: [288, 262, 267, 270]
+    texto: "Una tarea tarda 50 ms y otra, la importante, tiene más prioridad. Elija la arquitectura en que la importante no espera a la larga."
+    libro: [262, 265, 267, 270, 271]
+    inicio: { m_a: 0 }
     widget:
-      tipo: figura
-      figura: fig-38.13
-      zonas:
-        - { id: superloop, rotulo: "Panel de arriba a la izquierda", rect: [4, 4, 144, 159], texto: "Superloop: un bucle llama a las tareas una tras otra." }
-        - { id: cooperativo, rotulo: "Panel de arriba en el centro", rect: [153, 4, 144, 159], texto: "Cooperativo: un planificador llama a cada tarea según su periodo." }
-        - { id: rtos, rotulo: "Panel de arriba a la derecha", rect: [303, 4, 144, 159], texto: "RTOS: suspende una tarea a mitad por otra más prioritaria." }
-    requiere: { mover: [superloop, rtos] }
+      tipo: grafica
+      x: { id: mx, min: 0, max: 2, unidad: "", rotulo: "superloop · cooperativo · RTOS" }
+      y: { min: 0, max: 0.06, unidad: s, rotulo: "espera por la larga" }
+      curvas:
+        - { expr: "t_L*(1 - floor(mx/2))", color: azul, rotulo: "Espera" }
+      marcas:
+        - { x: "m_a", y: "lat", rotulo: "Su elección" }
+      lectura: { valor: lat, rotulo: "Espera de la importante" }
+      mandos:
+        - { valor: m_a, lista: [0, 1, 2], nombres: [Superloop, Cooperativo, RTOS], rotulo: "Arquitectura" }
+    objetivo:
+      condiciones:
+        - { valor: lat, max: 0.001, rotulo: "Espera: {{lat}}" }
+      logrado: "Con el RTOS, la larga queda suspendida a mitad: la latencia depende solo de las tareas de mayor prioridad. Ese es su beneficio real."
+      pistas:
+        - { texto: "En el superloop y en el cooperativo, cada tarea termina antes de que corra la siguiente." }
+    escalera: ["¿Cuál puede suspender una tarea a mitad?"]
+    solucion: "El RTOS."
+    comprobar:
+      - { con: { m_a: 2 }, lat: 0 }
+      - { con: { m_a: 1 }, lat: 0.05 }
 
   - id: prediga-superloop
     tipo: predecir
@@ -57,38 +80,26 @@ tarjetas:
     escalera: ["Mire la petición para A en el panel del superloop."]
     solucion: "Hasta 50 ms: la latencia depende de todas las tareas."
 
-  - id: empareje-modelos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que da cada modelo"
-    texto: "Una cada arquitectura con su rasgo."
-    libro: [264, 268, 271]
-    emparejar:
-      - ["Superloop", "Simple, sin sobrecarga, predecible y fácil de depurar"]
-      - ["Cooperativo con planificador", "Periodos explícitos; cada tarea debe terminar y devolver el control"]
-      - ["RTOS", "Acota la latencia de lo importante, a cambio de la concurrencia"]
-    exito: "El cooperativo cubre la mayoría de los proyectos que superan al superloop."
-    pistas:
-      - { texto: "Solo uno puede suspender una tarea a mitad." }
-    escalera: ["¿Cuál de los tres añade pilas, mutex e inversión de prioridades?"]
-    solucion: "Superloop, simple; cooperativo, periodos y ceder el control; RTOS, latencia acotada."
-
-  - id: porque-rtos
-    tipo: porque
-    titulo: "El beneficio real"
-    texto: "¿Por qué un RTOS acota la latencia de la tarea importante y un superloop no?"
-    libro: [270, 271, 288]
+  - id: toque-cooperativo
+    tipo: tocar
+    titulo: "Ceder el control"
+    texto: "Los periodos de cada tarea están en una tabla, y cada tarea debe terminar y devolver el control. Toque el modelo."
+    libro: [264, 267, 268, 288]
     widget:
       tipo: figura
       figura: fig-38.13
       zonas:
-        - { id: rtos, rotulo: "Panel de arriba a la derecha", rect: [303, 4, 144, 159], texto: "H lista: L queda suspendida." }
-    opciones:
-      - { texto: "Puede suspender a mitad la tarea en curso por otra más prioritaria", bien: true, porque: "Así la latencia depende solo de las tareas de mayor prioridad, no de todas." }
-      - { texto: "Porque ejecuta las tareas más deprisa", porque: "No las acelera: cambia el orden en que reciben el procesador." }
-      - { texto: "Porque elimina las interrupciones", porque: "Las interrupciones siguen; lo nuevo es suspender tareas." }
-    escalera: ["Fíjese en lo que le pasa a L cuando H está lista."]
-    solucion: "Expulsa a la tarea en curso: solo esperan las de mayor prioridad."
+        - { id: superloop, rotulo: "Panel de arriba a la izquierda", rect: [4, 4, 144, 159] }
+        - { id: cooperativo, rotulo: "Panel de arriba en el centro", rect: [153, 4, 144, 159] }
+        - { id: rtos, rotulo: "Panel de arriba a la derecha", rect: [303, 4, 144, 159] }
+    tocar:
+      bien: [cooperativo]
+      porque:
+        superloop: "El superloop llama a las tareas una tras otra, sin periodos."
+        rtos: "El RTOS no espera a que la tarea ceda: la suspende."
+    exito: "El cooperativo con planificador: ordena el código, es determinista y ligero, y cubre la mayoría de los proyectos que superan al superloop."
+    escalera: ["¿Cuál llama a cada tarea según su periodo?"]
+    solucion: "El panel del centro: cooperativo."
 
   - id: pregunta-coste
     tipo: pregunta
@@ -109,18 +120,21 @@ tarjetas:
     solucion: "La latencia que depende de todas es del superloop."
 
   - id: ordene-capas
-    tipo: pregunta
-    fase: "Ordene"
+    tipo: tocar
     titulo: "Las capas"
-    texto: "Ordene las capas de un firmware, de la que toca el hardware a la de más arriba."
-    libro: [276, 277, 278]
-    ordenar:
-      - "HAL: las funciones que hablan con los registros."
-      - "Controladores de cada sensor, actuador y bus."
-      - "Lógica de aplicación: lo que hace el aparato."
-    exito: "Sea cual sea el modelo, un firmware que vaya a durar se organiza así."
-    pistas:
-      - { texto: "La aplicación no sabe en qué hardware corre: va arriba." }
+    texto: "Toque las capas en orden, de la que habla con el hardware a la de más arriba."
+    libro: [276, 277, 278, 288]
+    widget:
+      tipo: figura
+      figura: fig-38.13
+      zonas:
+        - { id: aplicacion, rotulo: "Primera capa de abajo a la izquierda", rect: [4, 196, 256, 38] }
+        - { id: controladores, rotulo: "Segunda capa de abajo a la izquierda", rect: [4, 235, 256, 38] }
+        - { id: hal, rotulo: "Tercera capa de abajo a la izquierda", rect: [4, 274, 256, 38] }
+    tocar:
+      bien: [hal, controladores, aplicacion]
+      orden: true
+    exito: "HAL, controladores y aplicación: sea cual sea el modelo, un firmware que vaya a durar se organiza así."
     escalera: ["La que toca los registros va abajo del todo."]
     solucion: "HAL, controladores y aplicación."
 
@@ -145,46 +159,33 @@ tarjetas:
     escalera: ["¿Qué capa habla con los registros del chip?"]
     solucion: "La HAL, la capa de abajo."
 
-  - id: pregunta-pronto
-    tipo: pregunta
-    titulo: "Decidir pronto"
-    texto: "¿Por qué hay que prever la actualización del firmware desde el primer día?"
-    libro: [284]
-    widget:
-      tipo: figura
-      figura: fig-38.13
-      zonas:
-        - { id: hal, rotulo: "Tercera capa de abajo a la izquierda", rect: [4, 274, 256, 38], texto: "HAL: todo lo específico del microcontrolador." }
-    opciones:
-      - { texto: "Añadir un cargador de arranque después exige reorganizar el mapa de memoria", bien: true, porque: "El cargador ocupa su zona: meterlo luego obliga a mover todo lo demás." }
-      - { texto: "Porque el compilador lo exige", porque: "No lo exige: es una decisión de diseño que sale cara tarde." }
-      - { texto: "Porque gasta mucha RAM", porque: "El problema no es la RAM, es el sitio del cargador en el mapa de memoria." }
-    escalera: ["¿Dónde vive el cargador de arranque?"]
-    solucion: "Un cargador añadido después obliga a reorganizar el mapa de memoria."
-
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: tocar
     titulo: "En el banco"
-    texto: "Una salida conmuta en cada vuelta del bucle principal. ¿Qué dice su periodo?"
-    libro: [286, 288]
+    texto: "Una salida conmuta en cada vuelta del bucle principal, y su periodo es la latencia máxima de cualquier tarea. Toque la arquitectura que mide así."
+    libro: [286, 287, 288]
     widget:
       tipo: figura
       figura: fig-38.13
       zonas:
-        - { id: banco, rotulo: "Recuadro de abajo a la derecha", rect: [269, 256, 178, 55], texto: "Tiempo de ciclo con una salida que conmuta en cada vuelta." }
-    opciones:
-      - { texto: "La latencia máxima de cualquier tarea no interrumpida", bien: true, porque: "Si crece por encima de lo que pide el sistema, hay que cambiar de modelo o repartir el trabajo." }
-      - { texto: "La frecuencia del reloj del núcleo", porque: "Mide el bucle, no el reloj: suma lo que tardan todas las tareas." }
-      - { texto: "El consumo medio", porque: "Es una medida de tiempo, no de corriente." }
-    escalera: ["Una vuelta del bucle pasa por todas las tareas."]
-    solucion: "Su periodo es la latencia máxima de una tarea no interrumpida."
+        - { id: superloop, rotulo: "Panel de arriba a la izquierda", rect: [4, 4, 144, 159] }
+        - { id: cooperativo, rotulo: "Panel de arriba en el centro", rect: [153, 4, 144, 159] }
+        - { id: rtos, rotulo: "Panel de arriba a la derecha", rect: [303, 4, 144, 159] }
+    tocar:
+      bien: [superloop]
+      porque:
+        cooperativo: "En el cooperativo cuenta el tick del planificador; el pin de cada vuelta es la medida del superloop."
+        rtos: "Con RTOS, la medida equivalente es el uso de pila de cada tarea."
+    exito: "En el superloop, la vuelta pasa por todas las tareas: si crece por encima de lo requerido, hay que cambiar de modelo o repartir el trabajo."
+    escalera: ["¿En cuál una vuelta del bucle recorre todas las tareas?"]
+    solucion: "El superloop."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [265, 268, 273, 279]
+    libro: [265, 268, 273, 279, 284]
     ideas:
       - { titulo: "Superloop.", texto: "Simple y predecible; la latencia depende de todas las tareas." }
       - { titulo: "Cooperativo.", texto: "El paso intermedio que cubre la mayoría de los proyectos." }
       - { titulo: "RTOS.", texto: "Acota la latencia de lo importante; no se usa por defecto." }
-      - { titulo: "Capas.", texto: "HAL, controladores y aplicación: cambiar de chip toca solo la HAL." }
+      - { titulo: "Capas.", texto: "HAL, controladores y aplicación; y prever la actualización desde el primer día." }

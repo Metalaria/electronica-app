@@ -5,6 +5,11 @@
 #   50 °C (bloque 93: «dentro de una caja puede estar ya a 50 o 60 °C») sin pasar de 110 °C (cap10#129, «diseñar para
 #   100 o 110 °C de unión en el peor caso»): 5 cm² da 120 °C, 10 cm² da 100 °C.
 # - Sin fórmula del libro (la sección no tiene ecuaciones; la subida es resistencia × potencia, sección 10.5).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la mitad de resistencia térmica se busca con una meta (de 5 a
+# 25 cm²: cinco veces el área), el cobre en dos caras se lee (5 cm² que casi se doblan: 25 °C/W, no 17,5), la zona
+# en la que ya no compensa más cobre y el grupo del electrolítico se tocan en la figura 41.11, el área se ajusta y la
+# temperatura del componente dentro de la caja se escribe. Quedan dos preguntas de opciones (la cifra de la hoja y la
+# placa vertical) y el emparejamiento de los recursos.
 leccion: cap40/sec-40.7
 
 libro:
@@ -32,31 +37,20 @@ modelo:
     R_cu: { sim: "R_{θ}", nombre: "resistencia térmica del cobre", unidad: "°C/W", valor: 35 }
     P_t: { sim: "P", nombre: "potencia disipada (ejemplo)", unidad: W, valor: 1 }
     T_at: { sim: "T_{a}", nombre: "temperatura ambiente", unidad: "°C", valor: 25 }
+    T_lab: { sim: "T_{lab}", nombre: "temperatura de la habitación (ejemplo)", unidad: "°C", valor: 25 }
+    R_10: { sim: "R_{θ}", nombre: "resistencia térmica con 10 cm² (tabla)", unidad: "°C/W", valor: 25 }
   calculos:
     T_c: { expr: "T_at + P_t*R_cu", sim: "T", nombre: "temperatura del componente", unidad: "°C" }
     dT_c: { expr: "P_t*R_cu", sim: "ΔT", nombre: "subida", unidad: "°C" }
+    T_malc: { expr: "T_lab + P_t*R_cu", sim: "T", nombre: "con la temperatura de la habitación", unidad: "°C" }
+    R_mitad: { expr: "35/2", sim: "R_{θ}", nombre: "la mitad de 35 °C/W", unidad: "°C/W" }
 
 tarjetas:
-  - id: explore-figura
-    tipo: explorar
-    titulo: "La placa es el disipador"
-    texto: "En un SMD el calor sale por las almohadillas al cobre. Toque la curva y los tres grupos que hay que vigilar."
-    libro: [195, 211, 218]
-    widget:
-      tipo: figura
-      figura: fig-40.11
-      zonas:
-        - { id: curva, rotulo: "La gráfica", rect: [30, 18, 205, 180], texto: "Resistencia térmica según el área de cobre: baja deprisa al principio y apenas a partir de 25 cm²." }
-        - { id: disipan, rotulo: "Recuadro rojo", rect: [255, 29, 182, 45], texto: "Los que disipan más de unos cientos de miliwatios: reguladores lineales, transistores de potencia, resistencias de sensado." }
-        - { id: sensibles, rotulo: "Recuadro naranja", rect: [255, 76, 182, 45], texto: "Los sensibles al calor: electrolíticos, cristales, referencias y sensores." }
-        - { id: lado, rotulo: "Recuadro azul", rect: [255, 122, 182, 40], texto: "Los que están al lado: el calor del vecino entra en su cadena térmica." }
-    requiere: { mover: [curva, disipan, sensibles] }
-
   - id: porque-hoja
     tipo: porque
     titulo: "La cifra de la hoja de datos"
-    texto: "¿Por qué la resistencia térmica de un SMD que da su hoja de datos no vale para cualquier placa?"
-    libro: [196]
+    texto: "En un SMD el calor sale por las almohadillas al cobre. ¿Por qué su resistencia térmica de la hoja no vale para cualquier placa?"
+    libro: [195, 196]
     widget:
       tipo: figura
       figura: fig-40.11
@@ -76,9 +70,12 @@ tarjetas:
 
   - id: explore-area
     tipo: explorar
+    fase: "Consiga"
     titulo: "Cuánto disipa un área de cobre"
-    texto: "Cobre de 35 µm en una cara, convección natural. Cambie el área y la potencia, y mire la temperatura."
-    libro: [199, 218]
+    texto: "Cobre de 35 µm en una cara, convección natural. Con 5 cm², unos 35 °C/W: busque el área que la deja en unos 20 °C/W."
+    libro: [199, 201, 218]
+    fijar: { P_t: 1, T_at: 25 }
+    inicio: { R_cu: 35 }
     widget:
       tipo: grafica
       x: { id: pp, min: 0, max: 3, unidad: W, rotulo: "P" }
@@ -87,20 +84,29 @@ tarjetas:
         - { expr: "T_at + pp*R_cu", color: naranja, rotulo: "T = T_a + P·R" }
       marcas:
         - { x: "P_t", y: "T_c", rotulo: "{{T_c}}" }
-      lectura: { valor: T_c, rotulo: "Temperatura del componente" }
+      lectura: { valor: R_cu, rotulo: "Resistencia térmica" }
       datos:
-        - { valor: R_cu, rotulo: "Resistencia térmica: {{R_cu}}" }
+        - { valor: T_c, rotulo: "Temperatura con 1 W: {{T_c}}" }
       mandos:
         - { valor: R_cu, lista: [70, 35, 25, 20], nombres: ["1 cm²", "5 cm²", "10 cm²", "25 cm²"], rotulo: "Área de cobre" }
-        - { valor: P_t, min: 0.25, max: 3, paso: 0.25, rotulo: "Potencia, P" }
-    requiere: { mover: [R_cu] }
+    objetivo:
+      condiciones:
+        - { valor: R_cu, max: 20, rotulo: "Resistencia térmica: {{R_cu}}" }
+      logrado: "25 cm²: cinco veces el área para algo más de la mitad. El calor se extiende peor cuanto más lejos."
+      pistas:
+        - { cuando: { valor: R_cu, mayor: 30 }, texto: "Más cobre: todavía está lejos." }
+        - { texto: "Con el doble de área no basta: siga." }
+    escalera:
+      - "Doblar el área no divide por dos la resistencia térmica."
+    solucion: "25 cm²: unos 20 °C/W."
 
   - id: predecir-doble
-    tipo: predecir
+    tipo: leer
     titulo: "El doble de cobre"
-    texto: "Con 5 cm² la resistencia térmica es de unos 35 °C/W. ¿Y con 10 cm²?"
-    libro: [199, 201]
-    fijar: { R_cu: 25 }
+    texto: "5 cm² de cobre por una cara; con cobre en las dos, unido con vías, la superficie efectiva casi se dobla. Elija esa área y escriba su resistencia térmica."
+    libro: [199, 201, 204]
+    fijar: { P_t: 1, T_at: 25 }
+    inicio: { R_cu: 35 }
     widget:
       tipo: grafica
       x: { id: pp, min: 0, max: 3, unidad: W, rotulo: "P" }
@@ -108,41 +114,43 @@ tarjetas:
       curvas:
         - { expr: "T_at + pp*R_cu", color: naranja, rotulo: "T = T_a + P·R" }
       lectura: { valor: R_cu, rotulo: "Resistencia térmica" }
-      ocultar: true
-      mandos: []
-    opciones:
-      - texto: "Unos 25 °C/W"
-        bien: true
-        porque: "Doblar el área no divide por dos: el calor se extiende peor cuanto más lejos."
-      - texto: "La mitad de 35 °C/W"
-        porque: "Sería así si fuera proporcional; el cobre tiene resistencia térmica lateral."
-      - texto: "Unos 35 °C/W: no cambia"
-        porque: "Sí baja, aunque cada vez menos."
+      mandos:
+        - { valor: R_cu, lista: [70, 35, 25, 20], nombres: ["1 cm²", "5 cm²", "10 cm²", "25 cm²"], rotulo: "Área de cobre" }
+    leer:
+      objetivo: R_10
+      unidad: "°C/W"
+      tol: 0.03
+      rotulo: "Resistencia térmica con el doble de área"
+      errores:
+        - { expr: "R_mitad", texto: "Es la mitad de 35: sería así si fuera proporcional. Mire lo que da 10 cm²." }
+    exito: "Unos 25 °C/W, no la mitad: el propio cobre tiene resistencia térmica lateral."
     escalera:
-      - "Mire la tabla: rendimiento decreciente."
-    solucion: "Unos 25 °C/W: menos de lo que se esperaría."
+      - "El doble de 5 cm² son 10 cm²: póngalo en el mando y lea."
+    solucion: "10 cm²: unos 25 °C/W."
+    comprobar:
+      - { R_mitad: 17.5 }
 
   - id: pregunta-25
-    tipo: pregunta
+    tipo: tocar
     titulo: "Más allá de 25 cm²"
-    texto: "Con 25 cm² de cobre el componente sigue demasiado caliente. ¿Qué hacer?"
-    libro: [202]
+    texto: "Un componente sigue demasiado caliente. Toque la zona de la curva en la que añadir cobre ya no compensa."
+    libro: [202, 218]
     widget:
       tipo: figura
       figura: fig-40.11
       zonas:
-        - { id: curva, rotulo: "La gráfica", rect: [30, 18, 205, 180] }
-    opciones:
-      - texto: "Otra cosa: disipador atornillado, ventilación o menos potencia"
-        bien: true
-        porque: "A partir de unos 25 cm² apenas se gana con más cobre."
-      - texto: "Doblar el área de cobre"
-        porque: "En esa zona la curva es casi plana: apenas baja."
-      - texto: "Quitar la máscara del cobre"
-        porque: "El libro no la da como solución; el cuello de botella es el área."
+        - { id: inicio, rotulo: "Primer tramo de la curva", rect: [30, 25, 35, 130] }
+        - { id: medio, rotulo: "Tramo central de la curva", rect: [70, 110, 80, 50] }
+        - { id: plano, rotulo: "Zona sombreada", rect: [155, 20, 75, 172] }
+    tocar:
+      bien: [plano]
+      porque:
+        inicio: "Ahí cada centímetro cuadrado de cobre baja mucho la resistencia térmica."
+        medio: "Ahí todavía se gana, aunque cada vez menos."
+    exito: "A partir de unos 25 cm² apenas se gana: la respuesta es otra, un disipador atornillado, ventilación o menos potencia."
     escalera:
-      - "Mire la zona sombreada de la gráfica."
-    solucion: "Disipador, ventilación o reducir la potencia."
+      - "Busque dónde la curva ya es casi plana."
+    solucion: "La zona sombreada, a partir de 25 cm²."
 
   - id: ajuste-area
     tipo: ajuste
@@ -213,6 +221,28 @@ tarjetas:
       - "Un electrolítico no genera calor, pero lo sufre."
     solucion: "El naranja: los sensibles al calor."
 
+  - id: toque-disipan
+    tipo: tocar
+    titulo: "Los sospechosos de siempre"
+    texto: "Una resistencia de sensado disipa varios cientos de miliwatios. Toque su grupo."
+    libro: [211]
+    widget:
+      tipo: figura
+      figura: fig-40.11
+      zonas:
+        - { id: disipan, rotulo: "Recuadro rojo", rect: [255, 29, 182, 45] }
+        - { id: sensibles, rotulo: "Recuadro naranja", rect: [255, 76, 182, 45] }
+        - { id: lado, rotulo: "Recuadro azul", rect: [255, 122, 182, 40] }
+    tocar:
+      bien: [disipan]
+      porque:
+        sensibles: "Esos sufren el calor sin generarlo; la resistencia de sensado lo genera."
+        lado: "Esos sufren el calor del vecino; la resistencia de sensado es el vecino caliente."
+    exito: "Los que disipan más de unos cientos de miliwatios: reguladores lineales, transistores de potencia y resistencias de sensado."
+    escalera:
+      - "¿Genera calor o lo sufre?"
+    solucion: "El rojo: los que disipan."
+
   - id: pregunta-vertical
     tipo: pregunta
     titulo: "Una placa vertical"
@@ -236,26 +266,32 @@ tarjetas:
     solucion: "Sensibles abajo, calientes arriba."
 
   - id: pregunta-caja
-    tipo: pregunta
+    tipo: leer
     titulo: "La componente que se olvida"
-    texto: "Un equipo cerrado funciona al sol. ¿A qué temperatura se aplica el derating?"
-    libro: [214, 216, 217]
+    texto: "El SMD de 2 W, con 10 cm² de cobre, va en una caja cerrada a 50 °C. Escriba la temperatura del componente."
+    libro: [214, 216, 217, "cap40#93"]
+    fijar: { P_t: 2, T_at: 50, R_cu: 25, T_lab: 25 }
     widget:
-      tipo: figura
-      figura: fig-40.11
-      zonas:
-        - { id: lado, rotulo: "Recuadro azul", rect: [255, 122, 182, 40] }
-    opciones:
-      - texto: "A la del interior de la caja, medida"
-        bien: true
-        porque: "Esa temperatura hay que medirla, no suponerla; con termopar y el equipo en régimen."
-      - texto: "A la del laboratorio"
-        porque: "Dentro de la caja el ambiente es muy superior."
-      - texto: "A la del componente más caliente"
-        porque: "Esa es la que se calcula; el derating parte del ambiente que lo rodea."
+      tipo: grafica
+      x: { id: pp, min: 0, max: 3, unidad: W, rotulo: "P" }
+      y: { min: 0, max: 250, unidad: "°C", rotulo: "T" }
+      curvas:
+        - { expr: "T_at + pp*R_cu", color: naranja, rotulo: "T = T_a + P·R" }
+      mandos: []
+    leer:
+      objetivo: T_c
+      unidad: "°C"
+      tol: 0.02
+      rotulo: "Temperatura del componente"
+      errores:
+        - { expr: "T_malc", texto: "Ha partido de la temperatura de la habitación: se parte del interior de la caja, medida." }
+        - { expr: "dT_c", texto: "Esa es solo la subida: súmela al ambiente de la caja." }
+    exito: "50 + 2 × 25 = 100 °C. El derating se aplica a la temperatura interior de la caja, y esa se mide con termopar."
     escalera:
-      - "El calor también entra desde fuera."
-    solucion: "A la temperatura interior de la caja, medida."
+      - "Ambiente de la caja más potencia por resistencia térmica."
+    solucion: "50 °C + 2 W × 25 °C/W = 100 °C."
+    comprobar:
+      - { T_c: 100, T_malc: 75, dT_c: 50 }
 
   - id: resumen
     tipo: resumen

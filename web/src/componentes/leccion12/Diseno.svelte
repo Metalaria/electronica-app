@@ -17,9 +17,14 @@
   const c0 = $derived(conds[0]);
   const mag = $derived(c0 ? mc.magnitud(c0.valor) : null);
   const tolTexto = $derived(
-    Object.entries(a.tolerancias)
-      .map(([k, v]) => `${leccion.modelo.valores[k]?.nombre ?? k} ± ${formatear({ sim: [], nombre: '', unidad: '%', cifras: 2, recortar: true }, v * 100)}`)
-      .join('; '),
+    [
+      ...Object.entries(a.tolerancias).map(([k, v]) => `${leccion.modelo.valores[k]?.nombre ?? k} ± ${formatear({ sim: [], nombre: '', unidad: '%', cifras: 2, recortar: true }, v * 100)}`),
+      // (motor121: a value given as an interval, β «de 100 a 300»)
+      ...Object.entries(a.intervalos ?? {}).map(([k, i]) => {
+        const m = mc.magnitud(k);
+        return `${leccion.modelo.valores[k]?.nombre ?? k} de ${formatear(m, i.min)} a ${formatear(m, i.max)}`;
+      }),
+    ].join('; '),
   );
   const exige = $derived(a.exigir === 'nominal' ? 'el valor nominal' : a.exigir === 'todas' ? `todas las ${a.metodo === 'esquinas' ? 'esquinas' : 'placas'}` : `al menos el ${Math.round(a.exigir * 100)} % de las placas`);
   // the drawing's scale: the band, the nominal and the spread, with some room

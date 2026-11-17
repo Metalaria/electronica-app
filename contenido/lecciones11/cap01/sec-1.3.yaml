@@ -1,5 +1,8 @@
 # Lección 1.1 de la sección 1.3 «Las Leyes de Kirchhoff» (cap01). Formato: contenido/lecciones11/GUIA.md.
 # La sección no tiene bloques «ec»: no hay tarjeta de fórmula.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): conseguir una corriente en la carga sumando las ramas, medir
+# dos ramas y escribir la tercera, predecir el nodo del libro y la caída de 6 Ω, igualar las caídas de un lazo, el
+# reto de 5,35 V, cambiar de signo una corriente y contar ecuaciones; dos «por qué» se eligen entre opciones.
 leccion: cap01/sec-1.3
 
 libro:
@@ -30,6 +33,7 @@ modelo:
     R_s1: { sim: "R₁", nombre: "primera resistencia", unidad: Ω, valor: 4 }
     R_s2: { sim: "R₂", nombre: "segunda resistencia", unidad: Ω, valor: 6 }
     R_s3: { sim: "R₃", nombre: "tercera resistencia", unidad: Ω, valor: 2 }
+    n_nod: { sim: "n", nombre: "nodos del circuito", unidad: "", valor: 3 }
   calculos:
     E_k1: { expr: "V_k1*k_on1", sim: "E₁", nombre: "fuente izquierda efectiva", unidad: V }
     E_k2: { expr: "V_k2*k_on2", sim: "E₂", nombre: "fuente derecha efectiva", unidad: V }
@@ -45,13 +49,15 @@ modelo:
     V_s3: { expr: "I_s*R_s3", sim: "V₃", nombre: "caída en R₃", unidad: V }
     R_12: { expr: "R_s1 + R_s2", sim: "R₁ + R₂", nombre: "las dos primeras", unidad: Ω }
     V_sum: { expr: "V_s1 + V_s2 + V_s3", sim: "suma", nombre: "suma de las caídas", unidad: V }
+    n_ec: { expr: "n_nod - 1", sim: "ecuaciones", nombre: "ecuaciones por nodos", unidad: "" }
 
 tarjetas:
   - id: explore-nodo
     tipo: explorar
     titulo: "Lo que entra en un nodo"
-    texto: "Dos fuentes llevan corriente al mismo nodo. Mueva la carga y apague una fuente; compare I₁ + I₂ con I₃."
+    texto: "Dos fuentes llevan corriente al mismo nodo y la carga se la lleva. Consiga que por la carga bajen 9 mA."
     libro: [60, 62]
+    inicio: { R_k3: 2000, k_on1: 1, k_on2: 1 }
     widget:
       tipo: circuito
       esquema: kirchhoff
@@ -67,62 +73,75 @@ tarjetas:
         - { valor: R_k3, min: 500, max: 5000, paso: 500, rotulo: "Carga, R₃" }
         - { valor: k_on1, tipo: interruptor, rotulo: "Fuente de la izquierda" }
         - { valor: k_on2, tipo: interruptor, rotulo: "Fuente de la derecha" }
-
+    objetivo:
+      condiciones:
+        - { valor: I_k3, objetivo: 0.009, tol: 0.02, rotulo: "Por la carga: {{I_k3}}" }
+      logrado: "{{I_k1}} + {{I_k2}} = {{I_k3}}: lo que llega al nodo por las dos ramas baja por la carga."
+      pistas:
+        - { cuando: { valor: I_k3, mayor: 0.00918 }, texto: "Baja demasiada: suba la carga." }
+        - { cuando: { valor: k_on1, max: 0 }, texto: "Encienda las dos fuentes: cada una aporta su corriente." }
+        - { cuando: { valor: k_on2, max: 0 }, texto: "Encienda las dos fuentes: cada una aporta su corriente." }
+        - { texto: "Falta corriente: baje la carga, para que tire de más." }
+    escalera:
+      - "Una carga menor deja bajar más corriente."
+    solucion: "Las dos fuentes encendidas y R₃ = 500 Ω: 7,5 + 1,5 = 9 mA."
+    comprobar:
+      - { I_k3: 0.0036 }
+      - { con: { R_k3: 500 }, I_k3: 0.009, I_k1: 0.0075, I_k2: 0.0015 }
   - id: prediga-nodo
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "I₁ e I₂ llegan al nodo por las dos ramas, e I₃ baja por la carga. ¿Cuánto vale I₃?"
+    tipo: leer
+    titulo: "Mida dos y escriba la tercera"
+    texto: "Con la fuente de la derecha apagada, mida I₁ e I₂ con el amperímetro. Sin medirla, escriba la corriente de la carga."
     libro: [62]
-    fijar: { k_on1: 1, k_on2: 1, R_k3: 500 }
+    fijar: { k_on1: 1, k_on2: 0, R_k3: 500 }
     widget:
       tipo: circuito
       esquema: kirchhoff
       piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
-      lectura: { valor: I_k3, rotulo: "Por la carga, I₃" }
-      datos:
-        - { valor: I_k1, rotulo: "I₁ = {{I_k1}}" }
-        - { valor: I_k2, rotulo: "I₂ = {{I_k2}}" }
       corriente: I_k3
       mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
-      ocultar: true
-    opciones:
-      - texto: "I₁ + I₂"
-        bien: true
-        porque: "Todo lo que entra en el nodo sale de él: la carga que llega por las dos ramas baja por la tercera."
-      - texto: "La mayor de las dos"
-        porque: "Entonces la otra corriente desaparecería en el nodo. Las dos llegan y las dos tienen que salir."
-      - texto: "I₁ − I₂"
-        porque: "Las dos entran en el nodo, así que se suman. Se restaría una corriente que saliera."
+      instrumento:
+        tipo: multimetro
+        modos: [A]
+        ramas: { vm1: "Rama de R₁", vm2: "Rama de R₂" }
+      mandos: []
+    leer:
+      objetivo: I_k3
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de la carga, I₃"
+      errores:
+        - { expr: "I_k1 - I_k2", texto: "Ha restado. I₂ ya trae su signo: negativa, sale del nodo. Súmelas tal como las marca el amperímetro." }
+        - { expr: "I_k1", texto: "Esa es la de R₁. Parte de ella se va por R₂ hacia la fuente apagada." }
+    exito: "9 mA llegan por R₁ y 3 mA se van por R₂: por la carga bajan 6 mA."
     escalera:
-      - "Todo lo que entra en el nodo tiene que salir de él."
-    solucion: "I₃ = I₁ + I₂: las dos corrientes que llegan salen juntas por la carga."
-
+      - "I₃ = I₁ + I₂, cada una con el signo que marca el amperímetro."
+    solucion: "9 + (−3) = 6 mA."
+    comprobar:
+      - { I_k1: 0.009, I_k2: -0.003, I_k3: 0.006 }
   - id: estime-tercera
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La tercera rama"
-    texto: "En un nodo de tres ramas entran 2 A por una y salen 1,2 A por otra. Estime lo que sale por la tercera."
+    texto: "En un nodo de tres ramas entran 2 A por una y salen 1,2 A por otra. ¿Cuánto sale por la tercera?"
     libro: [64]
     fijar: { I_n1: 2, I_n2: 1.2 }
-    estimar:
-      objetivo: "I_n3"
+    simular:
+      objetivo: I_n3
       unidad: A
-      min: 0
-      max: 2
-      paso: 0.05
-      inicio: 1.6
       tol: 0.03
       rotulo: "Por la tercera rama"
+      errores:
+        - { razon: { min: 3.9, max: 4.1 }, texto: "Ha sumado la que sale a la que entra. Entre las dos que salen deben sumar los 2 A." }
     exito: "0,8 A: con signos, +2 − 1,2 − 0,8 = 0. La suma algebraica en un nodo es cero."
     pistas:
       - { cuando: { valor: estimacion, mayor: 0.82 }, texto: "Se ha pasado: entre las dos que salen deben sumar justo los 2 A que entran." }
       - { texto: "Se ha quedado corto: lo que sale tiene que sumar los 2 A que entran." }
-    comprobar:
-      - { I_n3: 0.8 }
     escalera:
       - "Con signos, la suma de las corrientes de un nodo es cero."
-    solucion: "0,8 A: con signos, +2 − 1,2 − 0,8 = 0. La suma algebraica en un nodo es cero."
-
+    solucion: "2 − 1,2 = 0,8 A."
+    comprobar:
+      - { I_n3: 0.8 }
   - id: por-que-nodo
     tipo: porque
     titulo: "¿Por qué todo lo que entra sale?"
@@ -151,11 +170,47 @@ tarjetas:
       - "¿Puede un nodo, un simple punto de unión, guardar carga?"
     solucion: "Se conserva la carga, y un nodo no la almacena: lo que entra, sale."
 
+  - id: prediga-caida
+    tipo: simular
+    titulo: "Prediga la caída"
+    texto: "Una fuente de 12 V con 4, 6 y 2 Ω en serie. ¿Cuánto cae en la resistencia de 6 Ω?"
+    libro: [70]
+    fijar: { V_s: 12, R_s1: 4, R_s2: 6, R_s3: 2 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_s1, r2: R_s2, r3: R_s3 }
+      lectura: { valor: V_s2, rotulo: "Caída en R₂" }
+      barras:
+        - { valor: V_s1, rotulo: "R₁: {{V_s1}}", color: azul }
+        - { valor: V_s2, rotulo: "R₂: {{V_s2}}", color: naranja }
+        - { valor: V_s3, rotulo: "R₃: {{V_s3}}", color: verde }
+      corriente: I_s
+      mide: { corriente: I_s, v2: V_s2 }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_s2
+      unidad: V
+      tol: 0.02
+      rotulo: "Caída en la de 6 Ω"
+      medida: v2
+      errores:
+        - { expr: "V_s", texto: "Los 12 V se reparten entre las tres; ninguna se queda con toda la tensión de la fuente." }
+        - { expr: "V_s/3", texto: "Sería un reparto a partes iguales. Cae más en la mayor: la caída es I·R." }
+    exito: "La corriente es 12/12 = 1 A; en 6 Ω caen 6 V. Con 4 y 2 V de las otras, suman los 12 V."
+    escalera:
+      - "Calcule primero la corriente: los 12 V entre la suma de las tres."
+    solucion: "12/12 = 1 A, y en 6 Ω caen 6 V."
+    comprobar:
+      - { I_s: 1, V_s1: 4, V_s2: 6, V_s3: 2, V_sum: 12 }
   - id: explore-lazo
     tipo: explorar
     titulo: "Recorra el lazo"
-    texto: "La fuente sube 12 V y cada resistencia baja I·R. Mueva las resistencias y mire la suma de las caídas."
+    texto: "La fuente sube 12 V y cada resistencia baja I·R. Consiga que las tres caídas sean iguales."
     libro: [68, 70, 71]
+    fijar: { V_s: 12 }
+    inicio: { R_s1: 4, R_s2: 6, R_s3: 2 }
     widget:
       tipo: circuito
       esquema: serie
@@ -173,40 +228,19 @@ tarjetas:
         - { valor: R_s1, min: 1, max: 10, paso: 1, rotulo: "R₁" }
         - { valor: R_s2, min: 1, max: 10, paso: 1, rotulo: "R₂" }
         - { valor: R_s3, min: 1, max: 10, paso: 1, rotulo: "R₃" }
-    requiere: { mover: [R_s1, R_s2] }
-
-  - id: prediga-caida
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Una fuente de 12 V con 4, 6 y 2 Ω en serie. ¿Cuánto cae en la resistencia de 6 Ω?"
-    libro: [70]
-    fijar: { V_s: 12, R_s1: 4, R_s2: 6, R_s3: 2 }
-    widget:
-      tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_s, r1: R_s1, r2: R_s2, r3: R_s3 }
-      lectura: { valor: V_s2, rotulo: "Caída en R₂" }
-      barras:
-        - { valor: V_s1, rotulo: "R₁: {{V_s1}}", color: azul }
-        - { valor: V_s2, rotulo: "R₂: {{V_s2}}", color: naranja }
-        - { valor: V_s3, rotulo: "R₃: {{V_s3}}", color: verde }
-      corriente: I_s
-      mide: { corriente: I_s, v2: V_s2 }
-      ocultar: true
-    opciones:
-      - texto: "6 V"
-        bien: true
-        porque: "La corriente es 12/12 = 1 A; en 6 Ω caen 6 V. Con 4 y 2 V de las otras, suman los 12 V."
-      - texto: "12 V"
-        porque: "Los 12 V se reparten entre las tres; ninguna se queda con toda la tensión de la fuente."
-      - texto: "4 V"
-        porque: "Sería un reparto a partes iguales. Cae más en la mayor: la caída es I·R."
-    comprobar:
-      - { I_s: 1, V_s1: 4, V_s2: 6, V_s3: 2, V_sum: 12 }
+    objetivo:
+      condiciones:
+        - { valor: V_s1, objetivo: 4, tol: 0.02, rotulo: "R₁: {{V_s1}}" }
+        - { valor: V_s2, objetivo: 4, tol: 0.02, rotulo: "R₂: {{V_s2}}" }
+      logrado: "Tres caídas iguales, y la suma sigue en {{V_sum}}: lo que sube la fuente lo bajan las caídas."
+      pistas:
+        - { texto: "La caída es I·R con la misma corriente: ponga las tres resistencias iguales." }
     escalera:
-      - "Calcule primero la corriente: los 12 V entre la suma de las tres."
-    solucion: "12/12 = 1 A, y en 6 Ω caen 6 V."
-
+      - "Por las tres pasa la misma corriente."
+    solucion: "Tres resistencias iguales: 4 V cada una."
+    comprobar:
+      - { V_sum: 12 }
+      - { con: { R_s1: 4, R_s2: 4, R_s3: 4 }, V_s1: 4, V_s2: 4, V_s3: 4 }
   - id: reto-nueve
     tipo: reto
     titulo: "Reto: 5,35 V en la tercera"
@@ -243,7 +277,7 @@ tarjetas:
   - id: corriente-negativa
     tipo: sorpresa
     titulo: "Una corriente negativa"
-    texto: "Se supuso que las dos ramas llevan corriente al nodo. Aumente la carga y mire I₂."
+    texto: "Se supuso que las dos ramas llevan corriente al nodo. Aumente la carga hasta que I₂ cambie de signo."
     nota: "Si sale negativa, circula al revés de lo supuesto y su valor es correcto."
     libro: [72]
     fijar: { k_on1: 1, k_on2: 1 }
@@ -260,8 +294,18 @@ tarjetas:
       mide: { nodo: V_kn, i1: I_k1, i2: I_k2, i3: I_k3 }
       mandos:
         - { valor: R_k3, min: 500, max: 5000, paso: 500, rotulo: "Carga, R₃" }
-    requiere: { mover: [R_k3] }
-
+    objetivo:
+      condiciones:
+        - { valor: I_k2, menor: 0, rotulo: "I₂: {{I_k2}}" }
+      logrado: "El nodo sube a {{V_kn}}, por encima de los 6 V de la derecha: I₂ va hacia esa fuente, al revés de lo supuesto."
+      pistas:
+        - { texto: "Suba la carga: con menos corriente por ella, el nodo sube." }
+    escalera:
+      - "I₂ cambia de signo cuando el nodo supera los 6 V de la fuente de la derecha."
+    solucion: "Con R₃ por encima de 1 kΩ, I₂ sale negativa."
+    comprobar:
+      - { I_k2: 0.0015 }
+      - { con: { R_k3: 1000 }, V_kn: 6, I_k2: 0 }
   - id: por-que-negativa
     tipo: porque
     titulo: "¿Qué significa el signo?"
@@ -288,46 +332,25 @@ tarjetas:
       - "El sentido de cada corriente se eligió al plantear las ecuaciones."
     solucion: "Nada: circula al revés de lo supuesto, y el valor vale tal cual."
 
-  - id: ordene-signos
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El procedimiento seguro"
-    texto: "Los signos son donde se pierde todo el mundo. Ordene los pasos del procedimiento seguro."
-    libro: [72]
-    ordenar:
-      - "Elegir un sentido de recorrido, cualquiera."
-      - "Asignar un sentido supuesto a cada corriente."
-      - "Anotar cada elemento con su signo según se atraviese."
-      - "Resolver e interpretar: una corriente negativa va al revés."
-    exito: "Ese es el orden. Ningún sentido hay que acertarlo de antemano."
-    pistas:
-      - { texto: "Primero se eligen los sentidos; los signos se anotan después, y se interpreta al final." }
-    escalera:
-      - "Ningún sentido hay que acertarlo: se eligen al principio, sin más."
-    solucion: "Elegir un sentido de recorrido, cualquiera → Asignar un sentido supuesto a cada corriente → Anotar cada elemento con su signo según se atraviese → Resolver e interpretar: una corriente negativa va al revés."
-
   - id: mallas-nodos
-    tipo: pregunta
+    tipo: simular
     titulo: "Mallas o nodos"
-    texto: "Un circuito tiene cinco mallas y tres nodos. ¿Por qué método conviene resolverlo?"
+    texto: "Un circuito tiene cinco mallas y tres nodos: por mallas salen cinco ecuaciones. ¿Cuántas salen por nodos?"
     libro: [74]
-    opciones:
-      - texto: "Por nodos: da menos ecuaciones"
-        bien: true
-        porque: "Los dos dan el mismo resultado; se elige el de menos ecuaciones. Es además el método de los simuladores."
-      - texto: "Por mallas: hay una ecuación por lazo"
-        porque: "Con cinco mallas serían cinco ecuaciones; por nodos, con uno de masa, bastan dos."
-      - texto: "Da igual: los dos dan lo mismo"
-        porque: "Dan el mismo resultado, pero no el mismo trabajo: conviene el de menos ecuaciones."
-    widget:
-      tipo: figura
-      figura: fig-0.2
-      zonas:
-        - { id: mallas, rotulo: "Dos mallas resueltas", rect: [0, 0, 453, 175] }
+    fijar: { n_nod: 3 }
+    simular:
+      objetivo: n_ec
+      unidad: ""
+      tol: 0.01
+      rotulo: "Ecuaciones por nodos"
+      errores:
+        - { razon: { min: 1.4, max: 1.6 }, texto: "Uno de los tres nodos es la masa, la referencia: no lleva ecuación." }
+    exito: "Dos: uno de los tres nodos es la masa. Se elige el método de menos ecuaciones; es además el de los simuladores."
     escalera:
-      - "Cuente las ecuaciones: una por malla, o una por nodo menos el de masa."
-    solucion: "Por nodos: con tres nodos, uno de masa, salen dos ecuaciones frente a cinco."
-
+      - "Una ecuación por nodo, menos el de masa."
+    solucion: "3 − 1 = 2 ecuaciones, frente a 5 por mallas."
+    comprobar:
+      - { n_ec: 2 }
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"

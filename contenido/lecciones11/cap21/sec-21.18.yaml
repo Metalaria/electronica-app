@@ -1,7 +1,10 @@
 # Lección 1.2 de la sección 20.18 «Aplicaciones Prácticas de Diagnóstico» (cap21; etiqueta interna sec-21.18).
 # Formato: contenido/lecciones11/GUIA.md. El rizado en porcentaje (ecuación del bloque 525) con un rizado de red
 # dibujado como senoide en acoplamiento AC; la fuente de 5 V y sus rizados son ilustrativos. El PWM es un tren de
-# pulsos con su ciclo de trabajo. Las figuras 20.41 y 20.42 se tocan por cuadrantes y por bandas.
+# pulsos con su ciclo de trabajo. Las figuras 20.41 y 20.42 se tocan por cuadrantes y por bandas. 1.2.1 (aprender
+# haciendo): tocar el cuadrante de τ, calcular el rizado y su máximo, poner el PWM al 75 %, tocar el bus I²C y la causa
+# de una línea muerta. Dos preguntas: el ciclo que no coincide y el gate driver.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap21/sec-21.18
 
 libro:
@@ -25,62 +28,65 @@ modelo:
 
 tarjetas:
   - id: explore-aplicaciones
-    tipo: explorar
+    tipo: tocar
     titulo: "Cuatro aplicaciones reales"
-    texto: "Toque cada cuadrante: lo que el 2C53T resuelve en un banco de reparación."
+    texto: "Lo que el 2C53T resuelve en un banco de reparación. Toque el cuadrante donde se mide una constante de tiempo con cursores."
     libro: [522]
     widget:
       tipo: figura
       figura: fig-21.41
       zonas:
-        - { id: rizado, rotulo: "Arriba a la izquierda", rect: [0, 0, 222, 163], texto: "El rizado de una fuente, en AC y con la escala ampliada." }
-        - { id: uart, rotulo: "Arriba a la derecha", rect: [222, 0, 222, 163], texto: "Una señal serie UART, leída a ojo." }
-        - { id: tau, rotulo: "Abajo a la izquierda", rect: [0, 163, 222, 163], texto: "La constante de tiempo τ = RC, medida con cursores." }
-        - { id: mosfet, rotulo: "Abajo a la derecha", rect: [222, 163, 222, 163], texto: "El encendido de un MOSFET, con su meseta de Miller." }
-    requiere: { mover: [rizado, mosfet] }
+        - { id: rizado, rotulo: "Arriba a la izquierda", rect: [0, 0, 222, 163] }
+        - { id: uart, rotulo: "Arriba a la derecha", rect: [222, 0, 222, 163] }
+        - { id: tau, rotulo: "Abajo a la izquierda", rect: [0, 163, 222, 163] }
+        - { id: mosfet, rotulo: "Abajo a la derecha", rect: [222, 163, 222, 163] }
+    tocar:
+      bien: [tau]
+      porque:
+        rizado: "Ese es el rizado de una fuente, en AC y con la escala ampliada."
+        uart: "Esa es una señal serie UART, leída a ojo."
+        mosfet: "Ese es el encendido de un MOSFET."
+    exito: "τ = RC, medida con cursores sobre la carga del condensador."
+    escalera:
+      - "Busque una curva que se acerca poco a poco a su valor final."
+    solucion: "Abajo a la izquierda."
 
   - id: formula-rizado
-    tipo: formula
+    tipo: simular
     titulo: "El rizado en porcentaje"
-    texto: "El rizado de pico a pico entre la tensión de salida. Bien diseñada, por debajo del 1 %."
+    texto: "Una fuente de 5 V con 20 mV de rizado de pico a pico. Calcule el rizado en porcentaje."
     libro: [524, 525]
-    ec: 525
-    sustitucion: "{{V_rpp}} / {{V_DC}} · 100 % = {{riz}}"
-    widget:
-      tipo: grafica
-      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
-      y: { min: -0.1, max: 0.1, unidad: V, rotulo: "v (AC)" }
-      curvas:
-        - { expr: "V_rpp/2*sin(2*pi*n)", color: naranja, rotulo: "rizado" }
-      lectura: { valor: riz, rotulo: "Rizado" }
-      mandos:
-        - { valor: V_rpp, lista: [0.01, 0.02, 0.05, 0.1], rotulo: "Rizado de pico a pico" }
+    fijar: { V_rpp: 0.02, V_DC: 5 }
+    simular:
+      objetivo: riz
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Rizado"
+      errores:
+        - { expr: "V_rpp/V_DC", texto: "Le falta multiplicar por cien." }
+        - { expr: "V_DC/V_rpp", texto: "Al revés: rizado entre tensión de salida." }
+    exito: "Un 0,4 %: por debajo del 1 % de una fuente bien diseñada."
+    escalera:
+      - "Rizado de pico a pico / tensión de salida · 100 %."
+    solucion: "20 mV / 5 V · 100 % = 0,4 %."
+    comprobar:
+      - { riz: 0.4, V_rpp: 0.02, V_DC: 5 }
 
   - id: estime-maximo
-    tipo: pregunta
+    tipo: simular
     titulo: "El límite del 1 %"
-    texto: "Una fuente de 5 V bien diseñada. ¿Cuál es el rizado máximo de pico a pico?"
+    texto: "Una fuente de 5 V bien diseñada. Calcule el rizado máximo de pico a pico."
     libro: [524, 525]
     fijar: { V_DC: 5 }
-    widget:
-      tipo: grafica
-      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
-      y: { min: -0.1, max: 0.1, unidad: V, rotulo: "v (AC)" }
-      curvas:
-        - { expr: "V_max/2*sin(2*pi*n)", color: naranja, rotulo: "rizado en el límite" }
-    estimar:
-      objetivo: "V_max"
-      unidad: V
-      min: 0
-      max: 0.2
-      paso: 0.005
-      inicio: 0.15
-      tol: 0.05
-      rotulo: "Rizado máximo"
     exito: "El 1 % de 5 V son 50 mV de pico a pico."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0525 }, texto: "Se ha pasado: es el 1 %, una centésima de 5 V." }
-      - { texto: "Se ha quedado corto: una centésima de 5 V." }
+    simular:
+      objetivo: V_max
+      unidad: V
+      tol: 0.03
+      rotulo: "Rizado máximo"
+      errores:
+        - { expr: "V_DC/10", texto: "Diez veces de más: el límite es el 1 %." }
+        - { expr: "V_max/2", texto: "Eso es el pico; se pide de pico a pico." }
     escalera:
       - "1 % es una centésima de la tensión de salida."
     solucion: "5 V / 100 = 50 mV."
@@ -90,7 +96,7 @@ tarjetas:
   - id: explore-pwm
     tipo: explorar
     titulo: "Un PWM"
-    texto: "La salida PWM de un microcontrolador. Cambie el ciclo de trabajo y mire el tiempo en alto."
+    texto: "La salida PWM de un microcontrolador. Póngala al 75 %, lo programado, y mire el tiempo en alto."
     libro: [527]
     widget:
       tipo: grafica
@@ -101,7 +107,18 @@ tarjetas:
       lectura: { valor: D_pc, rotulo: "Duty" }
       mandos:
         - { valor: D_c, lista: [0.1, 0.25, 0.5, 0.75, 0.9], rotulo: "Ciclo de trabajo" }
-    requiere: { mover: [D_c] }
+    objetivo:
+      condiciones:
+        - { valor: D_pc, min: 74, max: 76, rotulo: "Ciclo de trabajo: {{D_pc}}" }
+      logrado: "Al 75 %, la salida pasa tres cuartos de cada periodo en alto."
+      pistas:
+        - { cuando: { valor: D_pc, mayor: 76 }, texto: "Demasiado tiempo en alto: baje el ciclo." }
+        - { texto: "Poco tiempo en alto: suba el ciclo." }
+    escalera:
+      - "El ciclo de trabajo es la fracción del periodo en alto."
+    solucion: "El 75 %."
+    comprobar:
+      - { con: { D_c: 0.75 }, D_pc: 75 }
 
   - id: pwm-no-coincide
     tipo: pregunta
@@ -150,28 +167,6 @@ tarjetas:
     exito: "I²C: reloj y datos; tras cada byte, el esclavo tira SDA a bajo (ACK) o la deja en alto (NACK)."
     escalera: ["Busque las dos líneas, reloj y datos, con un pulso más tras cada byte."]
     solucion: "En el centro: I²C."
-
-  - id: sin-actividad
-    tipo: pregunta
-    titulo: "Una línea muerta"
-    texto: "La línea de datos de un bus no muestra ninguna actividad. ¿Qué indica?"
-    libro: [529]
-    widget:
-      tipo: figura
-      figura: fig-21.42
-      zonas:
-        - { id: buses, rotulo: "Los tres buses", rect: [0, 0, 450, 335] }
-    opciones:
-      - texto: "Un problema de hardware o de alimentación"
-        bien: true
-        porque: "Sin ninguna actividad no hay nada que decodificar: lo primero es la alimentación y el hardware."
-      - texto: "Que el 2C53T no sabe decodificar el bus"
-        porque: "No decodifica, pero sí ve si hay actividad. Si no la hay, no es culpa suya."
-      - texto: "Que la velocidad del bus es muy alta"
-        porque: "Una línea rápida se vería como actividad, aunque comprimida."
-    escalera:
-      - "Ver actividad no exige decodificar."
-    solucion: "Un problema de hardware o de alimentación."
 
   - id: ringing
     tipo: porque

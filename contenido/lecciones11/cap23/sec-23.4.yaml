@@ -1,4 +1,8 @@
 # Lección 1.2 de la sección 22.4 «Análisis por Mallas» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): las dos corrientes de malla se igualan moviendo R₂ (objetivo);
+# i₁ se mide en la rama de la fuente; la rama compartida se predice y se simula, y luego se mide (i₁ − i₂: las de malla
+# no son medibles); el coeficiente de la diagonal se escribe. Quedan dos preguntas de opciones (por qué restan, la
+# supermalla) y el orden del procedimiento; el circuito no plano pasa al resumen.
 leccion: cap23/sec-23.4
 
 libro:
@@ -28,14 +32,17 @@ modelo:
     I_m2: { expr: "V_mp/R_m2", sim: "i₁ − i₂", nombre: "corriente por la rama compartida", unidad: A }
     V_m1: { expr: "I_m*R_m1", sim: "V₁", nombre: "tensión en R₁", unidad: V }
     I_sum: { expr: "I_m + I_m3", sim: "i₁ + i₂", nombre: "suma de las corrientes de malla", unidad: A }
+    d_m: { expr: "I_m2 - I_m3", sim: "Δi", nombre: "diferencia entre las dos ramas del paralelo", unidad: A }
+    Z_all: { expr: "R_m1 + R_m2 + R_m3", sim: "ΣR", nombre: "todas las resistencias", unidad: Ω }
     Z_11: { expr: "R_m1 + R_m2", sim: "R₁₁", nombre: "resistencia propia de la malla 1", unidad: Ω }
 
 tarjetas:
   - id: explore-mallas
     tipo: explorar
     titulo: "Dos ventanas, dos corrientes"
-    texto: "i₁ recorre la ventana izquierda; i₂, la derecha. Mueva R₂, la compartida, y compare las tres corrientes."
+    texto: "i₁ recorre la ventana izquierda; i₂, la derecha. Mueva R₂, la compartida, hasta que las dos ramas de la derecha lleven lo mismo."
     libro: [93]
+    inicio: { R_m2: 8 }
     widget:
       tipo: circuito
       esquema: mixto
@@ -48,11 +55,53 @@ tarjetas:
       mide: { corriente: I_m, i2: I_m2, i3: I_m3, v1: V_m1, paralelo: V_mp }
       mandos:
         - { valor: R_m2, min: 1, max: 20, paso: 1 }
+    objetivo:
+      condiciones:
+        - { valor: d_m, min: -0.01, max: 0.01, rotulo: "Diferencia: {{d_m}}" }
+      logrado: "i₁ = {{I_m}} e i₂ = {{I_m3}}: por la compartida circula su diferencia, {{I_m2}}, lo mismo que por R₃."
+      pistas:
+        - { cuando: { valor: d_m, mayor: 0.01 }, texto: "La compartida lleva más: súbala." }
+        - { texto: "La compartida lleva menos: bájela." }
+    escalera:
+      - "Con la misma tensión, dos ramas llevan lo mismo si tienen la misma resistencia."
+    solucion: "R₂ = 4 Ω, como R₃: i₁ = 2 A, i₂ = 1 A y por la compartida 1 A."
+    comprobar:
+      - { con: { R_m2: 4 }, I_m: 2, I_m3: 1, I_m2: 1 }
+
+  - id: mida-i1
+    tipo: medir
+    titulo: "La corriente de la malla 1"
+    texto: "Con 12 V, 4 Ω propios, 8 Ω compartidos y 4 Ω propios. Por la fuente solo pasa i₁: mídala."
+    libro: [100]
+    fijar: { V_m: 12, R_m1: 4, R_m2: 8, R_m3: 4 }
+    widget:
+      tipo: circuito
+      esquema: mixto
+      piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
+      corriente: I_m
+      mide: { corriente: I_m, i2: I_m2, i3: I_m3 }
+      instrumento:
+        tipo: multimetro
+        modos: [A]
+      mandos: []
+    medir:
+      magnitud: corriente
+      rama: vmed
+      valor: I_m
+      porque:
+        v2: "Esa es la rama compartida: por ella pasan las dos corrientes de malla, opuestas."
+        v3: "Esa rama es solo de la malla 2: mide i₂."
+    exito: "i₁ = 1,8 A: la fuente y R₁ solo los recorre la malla 1."
+    escalera:
+      - "Busque una rama por la que pase solo la malla de la izquierda."
+    solucion: "El amperímetro en la rama de la fuente: 1,8 A."
+    comprobar:
+      - { I_m: 1.8 }
 
   - id: prediga-compartida
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga la rama compartida"
-    texto: "Con 12 V, 4 Ω propios, 8 Ω compartidos y 4 Ω propios salen i₁ = 1,8 A e i₂ = 1,2 A. ¿Cuánto circula por los 8 Ω?"
+    texto: "Salen i₁ = 1,8 A e i₂ = 1,2 A. ¿Cuánto circula por los 8 Ω compartidos?"
     libro: [100]
     fijar: { V_m: 12, R_m1: 4, R_m2: 8, R_m3: 4 }
     widget:
@@ -63,43 +112,57 @@ tarjetas:
       corriente: I_m
       mide: { corriente: I_m, i2: I_m2, i3: I_m3 }
       ocultar: true
-    opciones:
-      - texto: "0,6 A"
-        bien: true
-        porque: "Con las dos corrientes en el mismo sentido, por el elemento compartido circula su diferencia: 1,8 − 1,2 = 0,6 A."
-      - texto: "3 A"
-        porque: "Es la suma. En la rama compartida las dos corrientes de malla van en sentidos opuestos: se restan."
-      - texto: "1,8 A"
-        porque: "Esa es i₁ sola. La malla 2 también recorre los 8 Ω, en sentido contrario."
+      mandos: []
+    simular:
+      objetivo: I_m2
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente por los 8 Ω"
+      medida: i2
+      errores:
+        - { expr: "I_sum", texto: "Es la suma. En la rama compartida las dos corrientes de malla van en sentidos opuestos: se restan." }
+        - { expr: "I_m", texto: "Esa es i₁ sola. La malla 2 también recorre los 8 Ω, en sentido contrario." }
+    exito: "Con las dos corrientes horarias, por el elemento compartido circula su diferencia: 1,8 − 1,2 = 0,6 A."
     escalera:
       - "Las dos mallas, en sentido horario, recorren la rama compartida en sentidos opuestos."
     solucion: "i₁ − i₂ = 1,8 − 1,2 = 0,6 A."
     comprobar:
       - { I_m: 1.8, I_m3: 1.2, I_m2: 0.6, I_sum: 3 }
 
-  - id: procedimiento
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El procedimiento"
-    texto: "Ponga en orden los pasos del análisis por mallas."
-    libro: [98]
-    ordenar:
-      - "Identificar las mallas independientes: las ventanas del circuito."
-      - "Asignar una corriente a cada una, todas en sentido horario."
-      - "Plantear KVL en cada malla."
-      - "En un elemento compartido, usar la diferencia de las dos corrientes."
-      - "Resolver el sistema."
-    exito: "El cuarto paso concentra los errores; el convenio del segundo lo hace mecánico."
-    pistas:
-      - { texto: "Primero las mallas y sus corrientes; las ecuaciones, después; resolver, lo último." }
+  - id: no-se-miden
+    tipo: medir
+    titulo: "Lo que mide el amperímetro"
+    texto: "Las corrientes de malla son una construcción del método. Meta el amperímetro donde mediría i₁ − i₂."
+    libro: [93, 113, 114]
+    fijar: { V_m: 12, R_m1: 4, R_m2: 8, R_m3: 4 }
+    widget:
+      tipo: circuito
+      esquema: mixto
+      piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
+      corriente: I_m
+      mide: { corriente: I_m, i2: I_m2, i3: I_m3 }
+      instrumento:
+        tipo: multimetro
+        modos: [A]
+      mandos: []
+    medir:
+      magnitud: corriente
+      rama: v2
+      valor: I_m2
+      porque:
+        vmed: "Ahí pasa solo i₁: es la rama de la fuente."
+        v3: "Ahí pasa solo i₂: la rama de la derecha es solo de la malla 2."
+    exito: "0,6 A en la compartida. Ningún amperímetro mide una corriente de malla como tal: mide ramas, y aquí su diferencia valida el método."
     escalera:
-      - "No se puede plantear KVL sin haber asignado antes las corrientes."
-    solucion: "Mallas, corrientes horarias, KVL, diferencia en lo compartido y resolver."
+      - "¿Por qué rama pasan las dos mallas a la vez?"
+    solucion: "En la rama compartida, la del centro: 0,6 A."
+    comprobar:
+      - { I_m2: 0.6 }
 
   - id: diagonal
-    tipo: pregunta
+    tipo: leer
     titulo: "La ecuación de la malla 1"
-    texto: "La malla 1 da 12·i₁ − 8·i₂ = 12. ¿De dónde sale el 12 que multiplica a i₁?"
+    texto: "La malla 1 da 12·i₁ − 8·i₂ = 12. Escriba la resistencia que multiplica a i₁."
     libro: [100]
     fijar: { V_m: 12, R_m1: 4, R_m2: 8, R_m3: 4 }
     widget:
@@ -109,22 +172,24 @@ tarjetas:
       lectura: { valor: I_m, rotulo: "i₁" }
       corriente: I_m
       mide: { corriente: I_m }
-    opciones:
-      - texto: "Es la suma de las resistencias de la malla 1: 4 + 8 Ω"
-        bien: true
-        porque: "En la diagonal va la suma de resistencias de cada malla; fuera, con signo negativo, la compartida."
-      - texto: "Es la tensión de la fuente"
-        porque: "Los 12 V son el término de la derecha. El coeficiente de i₁ es una resistencia."
-      - texto: "Es 4 + 8 + 4 Ω, todas las del circuito"
-        porque: "Los 4 Ω de la derecha no están en la malla 1: aparecen solo en la ecuación de la malla 2."
+      mandos: []
+    leer:
+      objetivo: Z_11
+      unidad: Ω
+      tol: 0.01
+      rotulo: "Coeficiente de i₁"
+      errores:
+        - { expr: "Z_all", texto: "Ha sumado las tres. Los 4 Ω de la derecha no están en la malla 1: solo en la ecuación de la malla 2." }
+        - { expr: "R_m2", texto: "Esa es solo la compartida, el término de i₂. En la diagonal va toda la malla 1." }
+    exito: "4 Ω propios más 8 Ω compartidos: 12 Ω. En la diagonal, la suma de la malla; fuera, con signo menos, la compartida."
     escalera:
       - "Recorra la malla 1 y sume las resistencias por las que pasa i₁."
-    solucion: "4 Ω propios más 8 Ω compartidos: 12 Ω."
+    solucion: "4 + 8 = 12 Ω."
     comprobar:
       - { Z_11: 12 }
 
   - id: por-que-restan
-    tipo: pregunta
+    tipo: porque
     titulo: "¿Por qué siempre restan?"
     texto: "En las ecuaciones de mallas, los términos de la resistencia compartida llevan siempre signo menos. ¿Por qué?"
     libro: [98, 99]
@@ -135,6 +200,7 @@ tarjetas:
       lectura: { valor: I_m2, rotulo: "Corriente por la rama compartida" }
       corriente: I_m
       mide: { corriente: I_m, i2: I_m2 }
+      mandos: []
     opciones:
       - texto: "Todas las corrientes van en el mismo sentido, y en lo compartido se cruzan opuestas"
         bien: true
@@ -147,47 +213,33 @@ tarjetas:
       - "Dibuje i₁ e i₂, las dos horarias, y mire cómo cruzan la resistencia de en medio."
     solucion: "Con todas en sentido horario, en un elemento compartido van opuestas: el término resta."
 
-  - id: no-se-miden
-    tipo: sorpresa
-    titulo: "Lo que mide el amperímetro"
-    texto: "Mueva R₃. En la rama compartida solo se puede medir una corriente, y es siempre i₁ − i₂."
-    libro: [113, 114]
+  - id: malla-dos
+    tipo: leer
+    titulo: "La ecuación de la malla 2"
+    texto: "La malla 2 da −8·i₁ + 12·i₂ = 0, sin fuente. Con i₁ = 1,8 A, escriba i₂."
+    libro: [98, 100]
+    fijar: { V_m: 12, R_m1: 4, R_m2: 8, R_m3: 4 }
     widget:
       tipo: circuito
       esquema: mixto
       piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
-      lectura: { valor: I_m2, rotulo: "Amperímetro en la rama compartida" }
-      datos:
-        - { valor: I_m, rotulo: "i₁ = {{I_m}}" }
-        - { valor: I_m3, rotulo: "i₂ = {{I_m3}}" }
+      lectura: { valor: I_m, rotulo: "i₁" }
       corriente: I_m
-      mide: { corriente: I_m, i2: I_m2, i3: I_m3 }
-      mandos:
-        - { valor: R_m3, min: 1, max: 20, paso: 1 }
-
-  - id: medibles
-    tipo: porque
-    titulo: "¿Se miden las corrientes de malla?"
-    texto: "¿Se puede medir con un amperímetro la corriente de malla i₂?"
-    libro: [93, 114]
-    widget:
-      tipo: circuito
-      esquema: mixto
-      piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
-      lectura: { valor: I_m2, rotulo: "Amperímetro en la rama compartida" }
-      corriente: I_m
-      mide: { corriente: I_m, i2: I_m2 }
-    opciones:
-      - texto: "No como tal: es una construcción del método; se mide la corriente de las ramas"
-        bien: true
-        porque: "Las corrientes de malla son ficticias. En una rama compartida se mide su diferencia, y eso valida el método."
-      - texto: "Sí: en la rama compartida se mide i₂"
-        porque: "En la rama compartida se mide i₁ − i₂, la combinación de las dos."
-      - texto: "Sí, con dos amperímetros en la misma malla"
-        porque: "Cada amperímetro mide la corriente de su rama. La de malla no circula por ningún sitio como tal."
+      mide: { corriente: I_m }
+      mandos: []
+    leer:
+      objetivo: I_m3
+      unidad: A
+      tol: 0.02
+      rotulo: "i₂"
+      errores:
+        - { expr: "I_m2", texto: "Eso es i₁ − i₂, lo que pasa por la compartida. Despeje i₂ de la ecuación." }
+    exito: "8 × 1,8 / 12 = 1,2 A. El paso que concentra los errores es el de la compartida, con su signo menos; el convenio horario lo hace mecánico."
     escalera:
-      - "¿Qué circula de verdad por cada rama?"
-    solucion: "No: son ficticias; lo medible es la corriente de rama, como su diferencia en la compartida."
+      - "Despeje: i₂ = 8·i₁ / 12."
+    solucion: "i₂ = 8 × 1,8 / 12 = 1,2 A."
+    comprobar:
+      - { I_m3: 1.2, I_m2: 0.6 }
 
   - id: supermalla
     tipo: pregunta
@@ -201,6 +253,7 @@ tarjetas:
       lectura: { valor: I_m2, rotulo: "Corriente por la rama compartida" }
       corriente: I_m
       mide: { corriente: I_m }
+      mandos: []
     opciones:
       - texto: "KVL rodeando las dos mallas, evitando la fuente, y la diferencia de corrientes igual a su valor"
         bien: true
@@ -213,36 +266,12 @@ tarjetas:
       - "El dual del supernodo: englobar las dos mallas en una."
     solucion: "Supermalla: KVL alrededor de ambas mallas y i_{a} − i_{b} = I_{fuente}."
 
-  - id: cual-metodo
-    tipo: pregunta
-    titulo: "¿Nodos o mallas?"
-    texto: "Un circuito no plano, que no se puede dibujar sin cruces. ¿Qué método conviene?"
-    libro: [94, 96, 107]
-    widget:
-      tipo: circuito
-      esquema: mixto
-      piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
-      lectura: { valor: I_m, rotulo: "i₁" }
-      corriente: I_m
-      mide: { corriente: I_m }
-    opciones:
-      - texto: "El nodal"
-        bien: true
-        porque: "Sin dibujo plano no hay mallas bien definidas. El nodal solo necesita numerar los nodos."
-      - texto: "El de mallas, eligiendo bien las ventanas"
-        porque: "Las ventanas solo existen en un circuito plano. Con cruces, las mallas no están definidas."
-      - texto: "El que dé menos ecuaciones, como siempre"
-        porque: "Esa es la regla cuando los dos valen. Aquí el de mallas no se puede aplicar."
-    escalera:
-      - "Una malla es una ventana del circuito dibujado sin cruces."
-    solucion: "Nodal: las mallas solo existen en circuitos planos."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [93, 98, 103, 114]
+    libro: [93, 98, 103, 107, 114, 94, 96]
     ideas:
-      - { titulo: "Corrientes de malla.", texto: "Una por ventana, todas horarias; KVL en cada una." }
+      - { titulo: "Corrientes de malla.", texto: "Una por ventana, todas horarias; KVL en cada una. No se miden: se miden ramas." }
       - { titulo: "Lo compartido resta.", texto: "Por un elemento de dos mallas circula la diferencia de sus corrientes." }
       - { titulo: "Supermalla.", texto: "Con una fuente de corriente entre dos mallas, KVL rodeando las dos: el dual del supernodo." }
-      - { titulo: "Cuándo.", texto: "Pocas mallas y fuentes de tensión, a mano y en circuitos planos." }
+      - { titulo: "Cuándo.", texto: "Pocas mallas y fuentes de tensión, a mano y en circuitos planos; si no se puede dibujar sin cruces, nodal." }

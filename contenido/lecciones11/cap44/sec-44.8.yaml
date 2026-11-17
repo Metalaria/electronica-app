@@ -3,6 +3,10 @@
 # elección y la regla a la izquierda, el diagnóstico en cinco pasos a la derecha. El flanco que el analizador no ve
 # (bloque 334) es la carga RC de un pull-up de I²C de 10 kΩ con 200 pF (sección 45.4, bloque 122). LoRa: cada paso de
 # SF duplica el tiempo en el aire y gana unos 2,5 dB (bloque 330).
+# 1.2.1 («aprender haciendo», GUIA §13): los pasos del diagnóstico se tocan (filas de 35 de alto, solapadas menos de
+# la mitad); LoRa es un objetivo (10 dB con el menor tiempo en el aire) y SF12 se escribe. Quedan dos preguntas de
+# opciones: por qué diferencial fuera de la placa y qué radio. Las cuatro preguntas, los fallos por bus y lo que hay
+# que añadir por encima van al resumen.
 leccion: cap44/sec-44.8
 
 libro:
@@ -13,13 +17,13 @@ libro:
   306: "¿Hace falta aislamiento?"
   308: "Fuera de la placa, algo diferencial."
   309: "cualquier bus de un solo hilo referido a masa capta y radia en cuanto sale de la placa"
+  311: "Un bus que no funciona se diagnostica de lo físico a lo lógico"
   312: "Alimentaciones de todos los dispositivos, medidas en sus pines"
   313: "Una línea baja en reposo indica pull-up ausente, bus bloqueado o cortocircuito."
   314: "La forma de los flancos con el osciloscopio."
   315: "El contenido con el analizador lógico"
   316: "La temporización: velocidad real medida frente a la configurada."
   317: "los pasos 1 a 3 resuelven la mayoría de los problemas"
-  319: "Modo de reloj equivocado, CS mal gobernado"
   323: "solo CAN y USB llevan CRC en hardware"
   324: "que el byte llegue no significa que la orden se haya ejecutado"
   325: "qué hacer si el otro extremo no responde"
@@ -30,7 +34,6 @@ libro:
   331: "la etiqueta pasiva no lleva batería y se alimenta del campo del lector"
   334: "Un analizador lógico interpreta niveles y no ve que un flanco es una exponencial lenta"
   335: "Criterio de elección de bus y el orden de diagnóstico."
-  "cap44#122": "Con 10 kΩ y 200 pF, la constante es de 2 µs"
 
 modelo:
   valores:
@@ -44,35 +47,29 @@ modelo:
 
 tarjetas:
   - id: explore-elegir
-    tipo: explorar
-    titulo: "Elegir y diagnosticar"
-    texto: "A la izquierda, cómo elegir; a la derecha, cómo diagnosticar, de lo físico a lo lógico. Toque las tres partes."
-    libro: [301, 308, 317, 335]
+    tipo: tocar
+    titulo: "Una línea baja en reposo"
+    texto: "Un bus se diagnostica de lo físico a lo lógico. En un I²C sin actividad, SDA está baja: toque el paso que lo descubre."
+    libro: [311, 312, 313, 335]
     widget:
       tipo: figura
       figura: fig-44.11
       zonas:
-        - { id: tabla, rotulo: "Tabla de la izquierda", rect: [0, 22, 222, 96], texto: "Cuántos dispositivos y a qué distancia decide casi todo." }
-        - { id: regla, rotulo: "Texto de abajo a la izquierda", rect: [0, 122, 222, 66], texto: "En la placa, I²C si el dispositivo lo ofrece y SPI si hace falta velocidad; fuera, algo diferencial." }
-        - { id: diagnostico, rotulo: "Recuadro de la derecha", rect: [234, 2, 218, 186], texto: "Cinco pasos; los tres primeros resuelven la mayoría y son los que más se saltan." }
-    requiere: { mover: [regla, diagnostico] }
-
-  - id: ordene-preguntas
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Cuatro preguntas encadenadas"
-    texto: "Ordene las preguntas con que se elige un bus."
-    libro: [302, 304, 305, 306]
-    ordenar:
-      - "¿Cuántos dispositivos y a qué distancia?"
-      - "¿Qué velocidad?"
-      - "¿Importa la latencia acotada?"
-      - "¿Hace falta aislamiento?"
-    exito: "Si importa la latencia acotada: CAN o un maestro determinista, nunca contienda pura."
-    pistas:
-      - { texto: "La primera ya reduce la lista a uno o dos buses." }
-    escalera: ["Empiece por lo que más descarta: dispositivos y distancia."]
-    solucion: "Dispositivos y distancia, velocidad, latencia y aislamiento."
+        - { id: alim, rotulo: "Primer paso de la derecha", rect: [240, 21.5, 205, 35] }
+        - { id: reposo, rotulo: "Segundo paso de la derecha", rect: [240, 43.2, 205, 35] }
+        - { id: flancos, rotulo: "Tercer paso de la derecha", rect: [240, 65.2, 205, 35] }
+        - { id: contenido, rotulo: "Cuarto paso de la derecha", rect: [240, 86.5, 205, 35] }
+        - { id: tiempo, rotulo: "Quinto paso de la derecha", rect: [240, 108.1, 205, 35] }
+    tocar:
+      bien: [reposo]
+      porque:
+        alim: "Las alimentaciones se miden en los pines de cada dispositivo, no en la línea."
+        flancos: "Sin actividad no hay flancos que mirar."
+        contenido: "Sin actividad, el analizador no tiene nada que decodificar."
+        tiempo: "La velocidad se mide con el bus transmitiendo."
+    exito: "Los niveles en reposo: I²C debe estar en alto. Una línea baja indica pull-up ausente, bus bloqueado o cortocircuito."
+    escalera: ["¿Qué paso mira las líneas sin actividad?"]
+    solucion: "El segundo paso: niveles en reposo."
 
   - id: porque-diferencial
     tipo: porque
@@ -91,134 +88,125 @@ tarjetas:
     escalera: ["¿Qué le pasa a un cable largo referido a masa, como antena?"]
     solucion: "Uno referido a masa capta y radia; el par diferencial resuelve ambas."
 
-  - id: ordene-diagnostico
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "De lo físico a lo lógico"
-    texto: "Ordene los cinco pasos del diagnóstico de un bus."
-    libro: [312, 313, 314, 315, 316]
-    ordenar:
-      - "Alimentaciones, medidas en los pines."
-      - "Niveles en reposo."
-      - "Forma de los flancos, con el osciloscopio."
-      - "Contenido, con el analizador lógico."
-      - "Temporización: la velocidad real."
-    exito: "Los pasos 1 a 3 resuelven la mayoría, y son los que más se saltan."
-    pistas:
-      - { texto: "El analizador lógico no va el primero, aunque lo parezca más moderno." }
-    escalera: ["Sin alimentación, nada de lo demás tiene sentido."]
-    solucion: "Alimentaciones, reposo, flancos, contenido y temporización."
-
-  - id: pregunta-reposo
-    tipo: pregunta
-    titulo: "Una línea baja en reposo"
-    texto: "En un I²C sin actividad, SDA está baja. ¿Qué indica?"
-    libro: [313]
+  - id: prediga-analizador
+    tipo: tocar
+    titulo: "Lo que no ve el analizador"
+    texto: "El analizador lógico enseña ceros y unos limpios, pero SDA sube con una exponencial lenta que apenas llega al nivel alto. Toque el paso que lo habría visto."
+    libro: [314, 317, 334]
     widget:
       tipo: figura
       figura: fig-44.11
       zonas:
-        - { id: diagnostico, rotulo: "Recuadro de la derecha", rect: [234, 2, 218, 186], texto: "El segundo paso: niveles en reposo." }
-    opciones:
-      - { texto: "Pull-up ausente, bus bloqueado o cortocircuito", bien: true, porque: "En reposo, los buses de drenador abierto deben estar en alto." }
-      - { texto: "Nada: es el reposo normal de I²C", porque: "El reposo de I²C es alto: lo dan los pull-ups." }
-      - { texto: "Velocidad mal configurada", porque: "La velocidad es el último paso; una línea baja en reposo es del nivel físico." }
-    escalera: ["¿Qué nivel deben tener en reposo las líneas de drenador abierto?"]
-    solucion: "Pull-up ausente, bus bloqueado o cortocircuito."
+        - { id: alim, rotulo: "Primer paso de la derecha", rect: [240, 21.5, 205, 35] }
+        - { id: reposo, rotulo: "Segundo paso de la derecha", rect: [240, 43.2, 205, 35] }
+        - { id: flancos, rotulo: "Tercer paso de la derecha", rect: [240, 65.2, 205, 35] }
+        - { id: contenido, rotulo: "Cuarto paso de la derecha", rect: [240, 86.5, 205, 35] }
+        - { id: tiempo, rotulo: "Quinto paso de la derecha", rect: [240, 108.1, 205, 35] }
+    tocar:
+      bien: [flancos]
+      porque:
+        alim: "Las alimentaciones pueden estar bien con un flanco lento."
+        reposo: "En reposo la línea llega a alto: el problema está al subir."
+        contenido: "Ese es el analizador: interpreta niveles y no ve la forma."
+        tiempo: "La velocidad puede ser la configurada con un flanco lento."
+    exito: "La forma de los flancos, con el osciloscopio: pull-ups grandes o capacidad excesiva. Los pasos 1 a 3 resuelven la mayoría, y son los que más se saltan."
+    escalera: ["¿Qué instrumento enseña la forma de onda?"]
+    solucion: "El tercer paso: los flancos con el osciloscopio."
 
-  - id: prediga-analizador
-    tipo: predecir
-    titulo: "Lo que ve el analizador"
-    texto: "Así sube SDA con 10 kΩ y 200 pF. ¿Qué enseña de este flanco un analizador lógico?"
-    libro: [334, "cap44#122"]
+  - id: pregunta-temporizacion
+    tipo: tocar
+    titulo: "Errores de trama"
+    texto: "En una UART, el analizador decodifica las tramas, pero el receptor da errores de trama. Toque el paso que falta."
+    libro: [315, 316]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 1.1, rotulo: "v / V_{DD}" }
-      curvas:
-        - { expr: "1 - exp(-t/(R_pu*C_b))", color: azul, rotulo: "SDA" }
-      lectura: { valor: tau_b, rotulo: "Constante de tiempo" }
-      mandos: []
-    opciones:
-      - { texto: "Ceros y unos limpios: no ve que es una exponencial lenta", bien: true, porque: "Interpreta niveles. Por eso se miran antes los flancos con el osciloscopio." }
-      - { texto: "Un aviso de flanco lento", porque: "No avisa de nada: solo decide si cada muestra es un cero o un uno." }
-      - { texto: "La exponencial, como el osciloscopio", porque: "La forma de onda la enseña el osciloscopio; el analizador, niveles." }
-    escalera: ["¿Qué muestra un analizador lógico: niveles o formas de onda?"]
-    solucion: "Interpreta niveles: no ve una exponencial lenta que apenas llega al nivel alto."
-    comprobar:
-      - { tau_b: 0.000002 }
-
-  - id: empareje-fallos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El fallo típico de cada bus"
-    texto: "Una cada bus con su fallo característico."
-    libro: [319]
-    emparejar:
-      - ["I²C", "Pull-ups mal, bus bloqueado, direcciones duplicadas"]
-      - ["SPI", "Modo de reloj equivocado, CS mal gobernado"]
-      - ["UART", "Velocidad equivocada, niveles incompatibles"]
-      - ["CAN", "Terminación ausente, velocidad distinta entre nodos"]
-      - ["USB", "Alimentación, descriptores, impedancia del par"]
-    exito: "El del SPI es el primer parámetro a comprobar: un modo equivocado desplaza los datos un bit."
-    pistas:
-      - { texto: "Los descriptores solo existen en uno de ellos." }
-    escalera: ["¿Cuál de ellos tiene modos de reloj?"]
-    solucion: "I²C, pull-ups; SPI, modo; UART, velocidad; CAN, terminación; USB, descriptores."
-
-  - id: empareje-encima
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que ningún bus resuelve solo"
-    texto: "Una cada cosa que hay que añadir por encima con su porqué."
-    libro: [323, 324, 325]
-    emparejar:
-      - ["Un CRC propio", "Sobre I²C, SPI y UART: solo CAN y USB lo llevan"]
-      - ["Confirmación de aplicación", "Que el byte llegue no es que la orden se ejecute"]
-      - ["Tiempo de expiración", "Qué hacer si el otro extremo no responde"]
-    exito: "El ACK de I²C dice que el byte llegó, no que el dispositivo hizo lo pedido."
-    pistas:
-      - { texto: "La confirmación de aplicación va más allá del ACK del bus." }
-    escalera: ["¿Qué dos buses del capítulo llevan CRC en hardware?"]
-    solucion: "CRC propio sobre I²C, SPI y UART; confirmación de aplicación; tiempo de expiración."
+      tipo: figura
+      figura: fig-44.11
+      zonas:
+        - { id: alim, rotulo: "Primer paso de la derecha", rect: [240, 21.5, 205, 35] }
+        - { id: reposo, rotulo: "Segundo paso de la derecha", rect: [240, 43.2, 205, 35] }
+        - { id: flancos, rotulo: "Tercer paso de la derecha", rect: [240, 65.2, 205, 35] }
+        - { id: contenido, rotulo: "Cuarto paso de la derecha", rect: [240, 86.5, 205, 35] }
+        - { id: tiempo, rotulo: "Quinto paso de la derecha", rect: [240, 108.1, 205, 35] }
+    tocar:
+      bien: [tiempo]
+      porque:
+        alim: "Si hay tramas, el emisor está alimentado."
+        reposo: "Con tramas en la línea, el reposo ya se ha visto."
+        flancos: "La forma puede ser buena y la velocidad, otra."
+        contenido: "Ese es el paso que ya se ha hecho."
+    exito: "La temporización: la velocidad real medida frente a la configurada. Una velocidad equivocada es el fallo típico de la UART."
+    escalera: ["¿Qué falta comprobar si el contenido parece bueno?"]
+    solucion: "El quinto paso: la temporización."
 
   - id: empareje-radios
     tipo: pregunta
-    fase: "Empareje"
     titulo: "Cuando el bus es una radio"
-    texto: "Sin cable mandan primero el consumo y el alcance. Una cada radio con su rasgo."
+    texto: "Sin cable, la elección es como la de la tabla, pero mandan primero el consumo y el alcance. ¿Qué radio para un sensor a pilas que debe vivir años y hablar con un teléfono?"
     libro: [327, 328, 329, 331]
-    emparejar:
-      - ["BLE", "Años con una pila de botón, habla con un teléfono"]
-      - ["Zigbee", "Red mallada: los nodos con enchufe retransmiten"]
-      - ["LoRa", "Kilómetros a una velocidad ínfima"]
-      - ["RFID pasivo", "La etiqueta se alimenta del campo del lector"]
-    exito: "El wifi consume demasiado para pilas: queda para cuando hay enchufe."
-    pistas:
-      - { texto: "Solo una de ellas no lleva batería en el extremo que responde." }
-    escalera: ["¿Cuál llega a kilómetros?"]
-    solucion: "BLE, pila de botón y teléfono; Zigbee, malla; LoRa, kilómetros; RFID, sin batería."
+    widget:
+      tipo: figura
+      figura: fig-44.11
+      zonas:
+        - { id: tabla, rotulo: "Tabla de la izquierda", rect: [0, 22, 222, 96], texto: "La elección con cable." }
+    opciones:
+      - { texto: "BLE", bien: true, porque: "La radio está casi siempre apagada: vive años con una pila de botón y habla directamente con un teléfono." }
+      - { texto: "Zigbee", porque: "Su rasgo es la red mallada, donde los nodos con enchufe retransmiten; no habla con un teléfono." }
+      - { texto: "RFID pasivo", porque: "La etiqueta se alimenta del campo del lector, a centímetros; no conversa con un teléfono a distancia." }
+      - { texto: "Wifi", porque: "Consume demasiado para pilas: queda para cuando hay enchufe." }
+    escalera: ["¿Qué radio está casi siempre apagada y la llevan todos los teléfonos?"]
+    solucion: "BLE: años con una pila de botón y directo al teléfono."
+
+  - id: explore-lora
+    tipo: explorar
+    titulo: "El precio del alcance"
+    texto: "En LoRa, cada paso de SF duplica el tiempo en el aire y gana unos 2,5 dB de sensibilidad. Gane al menos 10 dB frente a SF7 con el menor tiempo posible."
+    libro: [330]
+    inicio: { sf: 7 }
+    widget:
+      tipo: grafica
+      x: { id: s, min: 7, max: 12, rotulo: "SF" }
+      y: { min: 0, max: 35, rotulo: "tiempo en el aire frente a SF7" }
+      curvas:
+        - { expr: "2^(s - 7)", color: azul, rotulo: "tiempo en el aire" }
+      lectura: { valor: toa_rel, rotulo: "Veces el tiempo de SF7" }
+      datos:
+        - { valor: db_rel, rotulo: "Sensibilidad ganada: {{db_rel}}" }
+      mandos:
+        - { valor: sf, lista: [7, 8, 9, 10, 11, 12], rotulo: "Factor de ensanchamiento" }
+    objetivo:
+      condiciones:
+        - { valor: db_rel, min: 10, rotulo: "Al menos 10 dB: {{db_rel}}" }
+        - { valor: toa_rel, max: 16, rotulo: "Tiempo: {{toa_rel}} veces" }
+      logrado: "SF11: 10 dB a cambio de 16 veces el tiempo en el aire. Es el intercambio del balance de enlace."
+      pistas:
+        - { cuando: { valor: db_rel, max: 9 }, texto: "Aún falta sensibilidad: suba el SF." }
+        - { texto: "Se ha pasado: con un paso menos ya gana 10 dB." }
+    escalera: ["Cuatro pasos de 2,5 dB son 10 dB."]
+    solucion: "SF11: 10 dB y 16 veces el tiempo de SF7."
+    comprobar:
+      - { con: { sf: 11 }, toa_rel: 16, db_rel: 10 }
 
   - id: estime-lora
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "El precio del alcance"
-    texto: "En LoRa, cada paso de SF duplica el tiempo en el aire. ¿Cuántas veces más dura un mensaje en SF12 que en SF7?"
+    tipo: leer
+    titulo: "El máximo alcance"
+    texto: "Calcule cuántas veces más dura un mensaje en SF12 que en SF7."
     libro: [330]
     fijar: { sf: 12 }
-    estimar:
-      objetivo: "toa_rel"
-      unidad: ""
-      min: 0
-      max: 64
-      paso: 1
-      inicio: 10
+    widget:
+      tipo: grafica
+      x: { id: s, min: 7, max: 12, rotulo: "SF" }
+      y: { min: 0, max: 35, rotulo: "tiempo en el aire frente a SF7" }
+      curvas:
+        - { expr: "2^(s - 7)", color: azul, rotulo: "tiempo en el aire" }
+      mandos: []
+    leer:
+      objetivo: toa_rel
+      unidad: veces
       tol: 0.03
       rotulo: "Veces más tiempo"
-    exito: "32 veces más tiempo, a cambio de unos 12,5 dB de sensibilidad: el intercambio del balance de enlace."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 33 }, texto: "Demasiado: de SF7 a SF12 hay cinco pasos." }
-      - { texto: "Se queda corto: cada paso duplica, no suma." }
+      errores:
+        - { expr: "2*(sf - 7)", texto: "Cada paso duplica el tiempo, no le suma dos veces." }
+    exito: "32 veces más tiempo, a cambio de unos 12,5 dB de sensibilidad. Por eso LoRa envía unos bytes cada pocos minutos."
     escalera: ["De SF7 a SF12 hay cinco pasos, y cada uno duplica."]
     solucion: "2⁵ = 32 veces, y 5 × 2,5 = 12,5 dB más de sensibilidad."
     comprobar:
@@ -227,9 +215,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [301, 308, 317, 323]
+    libro: [301, 302, 304, 305, 306, 308, 317, 323, 324, 325]
     ideas:
-      - { titulo: "Elegir.", texto: "Dispositivos y distancia, velocidad, latencia y aislamiento." }
+      - { titulo: "Elegir.", texto: "Dispositivos y distancia, velocidad, latencia acotada y aislamiento." }
       - { titulo: "La regla.", texto: "En la placa, I²C o SPI; fuera, algo diferencial." }
       - { titulo: "Diagnosticar.", texto: "De lo físico a lo lógico: alimentación, reposo y flancos primero." }
-      - { titulo: "Por encima.", texto: "CRC propio, confirmación de aplicación y tiempo de expiración." }
+      - { titulo: "Por encima.", texto: "CRC propio sobre I²C, SPI y UART; confirmación de aplicación y tiempo de expiración." }

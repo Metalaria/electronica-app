@@ -5,6 +5,11 @@
 #   tiempo de transición fijo de 50 ns (valor mío: el libro dice «unos nanosegundos»); la pérdida media en las dos
 #   transiciones es t_c·f/3 de V·I, proporcional a la frecuencia (bloque 11).
 # Paso práctico: «simular» la potencia del paso (ejercicio 33.7) y el «banco» opcional del bloque 30–31.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se busca la entrada con la que el lineal rinde el 50 %
+# (objetivo), se escribe el calor de 12 V a 5 V leyendo las potencias, se dobla la pérdida de conmutación con la
+# frecuencia (objetivo), se toca en la figura la recta que conviene con mucha diferencia; el ejercicio y el banco se
+# quedan. Quedan dos preguntas (el interruptor ideal y la bobina); las pérdidas, el 100 %, el precio y los tres
+# bloques pasan a explicaciones y resumen.
 leccion: cap33/sec-33.1
 
 libro:
@@ -51,8 +56,9 @@ tarjetas:
   - id: explore-lineal
     tipo: explorar
     titulo: "El lineal quema la diferencia"
-    texto: "Un regulador lineal de 5 V con 1 A de carga. Mueva la entrada y mire el calor del elemento de paso."
+    texto: "Un regulador lineal de 5 V con 1 A de carga: el paso trabaja como una resistencia variable. Busque la entrada con la que rinde la mitad."
     libro: [3, 31]
+    inicio: { V_i: 12 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -64,39 +70,48 @@ tarjetas:
       mide: { vout: V_o, iin: I_L, iout: I_L, icarga: I_L, p_paso: P_paso }
       mandos:
         - { valor: V_i, min: 6, max: 15, paso: 0.5, rotulo: "Entrada, V_{in}" }
-    requiere: { mover: [V_i] }
+    objetivo:
+      condiciones:
+        - { valor: eta, objetivo: 50, tol: 0.01, rotulo: "Rendimiento: {{eta}}" }
+      logrado: "Con {{V_i}}, el paso quema {{P_paso}}, tanto como recibe la carga. Cuanta más diferencia, más calor."
+      pistas:
+        - { cuando: { valor: eta, menor: 50 }, texto: "Rinde menos de la mitad: baje la entrada." }
+        - { texto: "Rinde más de la mitad: suba la entrada." }
+    escalera:
+      - "Rinde la mitad cuando el paso cae lo mismo que la carga."
+    solucion: "10 V: 5 V en el paso y 5 V en la carga, 5 W cada uno."
+    comprobar:
+      - { con: { V_i: 10 }, eta: 50, P_paso: 5 }
 
   - id: estime-calor
-    tipo: pregunta
+    tipo: leer
     titulo: "De 12 V a 5 V"
-    texto: "Un regulador lineal pasa de 12 V a 5 V. ¿Qué porcentaje de la energía se convierte en calor?"
+    texto: "El lineal pasa de 12 V a 5 V. Con las potencias que marca, escriba qué porcentaje de la energía se convierte en calor."
     libro: [3]
-    fijar: { V_i: 12 }
+    fijar: { V_i: 12, R_L: 5 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
       piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      lectura: { valor: P_paso, rotulo: "Calor en el paso" }
+      datos:
+        - { valor: P_in, rotulo: "Entra: {{P_in}}" }
       corriente: I_L
-      mide: { vout: V_o, iin: I_L }
+      mide: { vout: V_o, iin: I_L, p_paso: P_paso }
       mandos: []
-    estimar:
-      objetivo: "calor"
+    leer:
+      objetivo: calor
       unidad: "%"
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 20
-      tol: 0.04
+      tol: 0.02
       rotulo: "Se va en calor"
-    exito: "El 58 %: el paso trabaja como una resistencia variable y se queda la diferencia."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 61 }, texto: "Se ha pasado: la carga sí recibe sus 5 V de los 12." }
-      - { texto: "Se ha quedado corto: la misma corriente atraviesa el paso, que cae más tensión que la carga." }
+      errores:
+        - { expr: "eta", texto: "Ese es el rendimiento, lo que llega a la carga. El calor es el resto." }
+    exito: "El 58 %, y no hay forma de evitarlo: la misma corriente atraviesa el paso, que cae más tensión que la carga."
     escalera:
-      - "La corriente es la misma en el paso y en la carga: reparten la potencia como las tensiones."
-    solucion: "(12 − 5)/12: el 58 % se va en calor."
+      - "Calor entre lo que entra."
+    solucion: "7 W de 12 W: el 58 %."
     comprobar:
-      - { calor: 58.33, tol: 0.01 }
+      - { calor: 58.33, P_paso: 7, P_in: 12, tol: 0.01 }
 
   - id: interruptor-ideal
     tipo: predecir
@@ -124,8 +139,9 @@ tarjetas:
   - id: explore-transiciones
     tipo: explorar
     titulo: "Donde pierde el real"
-    texto: "En cada transición hay tensión y corriente a la vez. Cambie la frecuencia y mire la pérdida media."
+    texto: "Valores de ejemplo: transiciones de 50 ns, con tensión y corriente a la vez. Consiga que la pérdida media se duplique."
     libro: [11, 32]
+    inicio: { f_c: 250000 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.000004, unidad: s, rotulo: "t", muestras: 2000 }
@@ -137,28 +153,19 @@ tarjetas:
       lectura: { valor: p_med, rotulo: "Pérdida media" }
       mandos:
         - { valor: f_c, lista: [250000, 500000, 1000000], rotulo: "Frecuencia de conmutación" }
-    requiere: { mover: [f_c] }
-
-  - id: perdidas-reales
-    tipo: pregunta
-    titulo: "Dos pérdidas"
-    texto: "Empareje cada pérdida del interruptor real con su origen."
-    libro: [10, 11]
-    widget:
-      tipo: figura
-      figura: fig-33.1
-      zonas:
-        - { id: potencia, rotulo: "Abajo a la derecha", rect: [257, 160, 185, 42] }
-    emparejar:
-      - ["En conducción", "I²·R_{DS(on)}"]
-      - ["En cada transición", "Tensión y corriente a la vez unos nanosegundos"]
-      - ["Al doblar la frecuencia", "Se doblan las de conmutación"]
-    exito: "Diseñar una fuente conmutada es minimizar las dos."
-    pistas:
-      - { texto: "La que depende de la frecuencia es la que ocurre en cada conmutación." }
+    objetivo:
+      condiciones:
+        - { valor: p_med, objetivo: 0.8333, tol: 0.02, rotulo: "Pérdida: {{p_med}}" }
+      logrado: "A {{f_c}}, {{p_med}}: el doble de conmutaciones por segundo, el doble de pérdida."
+      pistas:
+        - { cuando: { valor: p_med, mayor: 0.85 }, texto: "Se ha pasado: es más del doble." }
+        - { texto: "Cambie la frecuencia: cada transición pierde lo mismo." }
     escalera:
-      - "Cerrado del todo, el interruptor real es una resistencia."
-    solucion: "Conducción: I²·R_{DS(on)}. Transición: tensión y corriente a la vez. Más frecuencia, más conmutaciones."
+      - "Cada transición pierde la misma energía: cuente cuántas hay por segundo."
+    solucion: "500 kHz, el doble de 250 kHz."
+    comprobar:
+      - { con: { f_c: 500000 }, p_med: 0.8333, tol: 0.01 }
+      - { p_med: 0.4167, tol: 0.01 }
 
   - id: papel-bobina
     tipo: pregunta
@@ -181,28 +188,6 @@ tarjetas:
     escalera:
       - "Piense en qué pasa con la corriente en el instante en que el interruptor abre."
     solucion: "La corriente de la bobina no puede cambiar de golpe: sigue circulando cuando el interruptor abre."
-
-  - id: por-que-cien
-    tipo: porque
-    titulo: "El límite del 100 %"
-    texto: "Con interruptor, bobina y condensador se puede, en el ideal, llegar al 100 %. ¿Por qué el lineal no?"
-    libro: [16, 17]
-    widget:
-      tipo: figura
-      figura: fig-33.1
-      zonas:
-        - { id: lineal, rotulo: "La recta roja", poligono: [[42, 172], [52, 188], [212, 38], [202, 22]] }
-    opciones:
-      - texto: "No tiene ningún elemento de almacenamiento: la diferencia cae en algo resistivo"
-        bien: true
-        porque: "Bobina y condensador almacenan y devuelven; el paso del lineal solo puede quemar."
-      - texto: "Porque su amplificador de error consume mucho"
-        porque: "El consumo del control es pequeño; la pérdida es la diferencia de tensión por la corriente."
-      - texto: "Porque trabaja a frecuencia cero"
-        porque: "La frecuencia no es el motivo: sin almacenamiento, la diferencia de tensión tiene que caer en el paso."
-    escalera:
-      - "¿Qué hacen la bobina y el condensador con la energía que reciben?"
-    solucion: "Le falta un elemento que almacene: toda la diferencia aparece sobre un elemento resistivo."
 
   - id: simule-ejercicio
     tipo: simular
@@ -235,71 +220,25 @@ tarjetas:
     comprobar:
       - { P_paso: 3.5, P_out: 2.5, P_in: 6, eta: 41.7, tol: 0.002 }
 
-  - id: precio
-    tipo: pregunta
-    titulo: "El precio de conmutar"
-    texto: "Empareje cada inconveniente de la conmutada con lo que lo causa."
-    libro: [20, 21, 22, 23]
-    widget:
-      tipo: figura
-      figura: fig-33.1
-      zonas:
-        - { id: tension, rotulo: "Arriba a la derecha", rect: [257, 18, 185, 55] }
-    emparejar:
-      - ["Ruido", "Flancos rápidos: interferencia conducida y radiada"]
-      - ["Rizado", "La frecuencia de conmutación y sus armónicos"]
-      - ["Complejidad", "Control, realimentación y protecciones"]
-      - ["Componentes críticos", "La bobina y los condensadores"]
-    exito: "Ese precio explica el resto del capítulo: filtros, trazado y control."
-    pistas:
-      - { texto: "El ruido sale de los flancos; el rizado, de la propia conmutación." }
-    escalera:
-      - "Empiece por los componentes: ¿cuáles fallan y cuestan más?"
-    solucion: "Ruido: flancos. Rizado: la frecuencia. Complejidad: control. Críticos: bobina y condensadores."
-
   - id: elegir
-    tipo: pregunta
+    tipo: tocar
     titulo: "¿Lineal o conmutada?"
-    texto: "El ruido importa y la diferencia entre entrada y salida es pequeña. ¿Qué elige?"
-    libro: [24]
+    texto: "La entrada queda muy por encima de la salida y lo que importa es el rendimiento. Toque la recta del que conviene."
+    libro: [24, 32]
     widget:
       tipo: figura
       figura: fig-33.1
       zonas:
         - { id: lineal, rotulo: "La recta roja", rect: [88, 103, 40, 40] }
         - { id: conmutado, rotulo: "La recta verde", rect: [47, 20, 120, 40] }
-    opciones:
-      - texto: "Un regulador lineal"
-        bien: true
-        porque: "Con poca diferencia rinde bien y no añade ruido de conmutación."
-      - texto: "Una fuente conmutada"
-        porque: "Se elige cuando importa el rendimiento; aquí sus flancos y su rizado son el problema."
-      - texto: "Da igual: rinden lo mismo"
-        porque: "Rinden parecido solo con poca diferencia; el ruido sí las separa."
+    tocar:
+      bien: [conmutado]
+      porque:
+        lineal: "El lineal: su rendimiento cae con la diferencia. Se elige cuando importa el ruido y la diferencia es pequeña."
+    exito: "La conmutada: su rendimiento no depende de la diferencia. A cambio, ruido, rizado, complejidad y bobinas y condensadores críticos."
     escalera:
-      - "Mire la recta roja cerca de la entrada: ¿cuánto rinde el lineal ahí?"
-    solucion: "El lineal: poca diferencia de tensión y sin ruido de conmutación."
-
-  - id: tres-bloques
-    tipo: pregunta
-    titulo: "Tres bloques"
-    texto: "Toda fuente conmutada tiene los mismos tres bloques. Empareje cada uno con lo que es."
-    libro: [27]
-    widget:
-      tipo: figura
-      figura: fig-33.1
-      zonas:
-        - { id: tension, rotulo: "Arriba a la derecha", rect: [257, 18, 185, 55] }
-    emparejar:
-      - ["El interruptor", "Con su driver"]
-      - ["El almacenamiento", "Bobina, transformador o condensador conmutado"]
-      - ["El control", "Mide la salida y ajusta el ciclo de trabajo"]
-    exito: "Reconocerlos permite entender una fuente sin haberla visto antes."
-    pistas:
-      - { texto: "El que mide la salida es el que cierra el lazo." }
-    escalera:
-      - "El transformador también almacena: va con la bobina."
-    solucion: "Interruptor con driver; almacenamiento en bobina, transformador o condensador; control del ciclo de trabajo."
+      - "¿Cuál se mantiene alta aunque la entrada crezca?"
+    solucion: "La recta verde, el conmutado."
 
   - id: banco-corriente
     tipo: banco
@@ -323,9 +262,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [3, 7, 11, 16, 27]
+    libro: [3, 7, 10, 11, 16, 17, 27, 20, 21, 22, 23]
     ideas:
       - { titulo: "El lineal quema.", texto: "Disipa la diferencia: de 12 V a 5 V, el 58 % se va en calor." }
       - { titulo: "El interruptor ideal no disipa.", texto: "Cerrado sin tensión, abierto sin corriente." }
-      - { titulo: "El real pierde.", texto: "En conducción, I²·R; en cada transición, proporcional a la frecuencia." }
-      - { titulo: "Almacenar, no quemar.", texto: "Bobina y condensador almacenan y devuelven: interruptor, almacenamiento y control." }
+      - { titulo: "El real pierde.", texto: "En conducción, I²·R_{DS(on)}; en cada transición, proporcional a la frecuencia." }
+      - { titulo: "Almacenar, no quemar.", texto: "Bobina y condensador no disipan. Tres bloques: interruptor, almacenamiento y control del ciclo de trabajo." }

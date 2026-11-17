@@ -5,6 +5,10 @@
 # A = 1 + 2R/R_G con R = 25 kΩ (la del problema 26.A). El CMRR total = CMRR del diferencial de salida + 20·log₁₀ de la
 # ganancia de la primera etapa (bloque 206); los 80 dB del diferencial de salida son un ejemplo (red apareada, bloque
 # 198). El seguidor del pin de referencia, en «ao-no-inversor» sin resistencias, con 2,5 V (media alimentación).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el CMRR que deja el error por debajo de una centésima se
+# busca (objetivo), el error con 60 dB y con 100 dB se predice, la ganancia se sube por encima de 100 con R_{G}, el
+# CMRR total se lleva al máximo y las familias se tocan en la fig. 26.13. Quedan dos preguntas de opciones (34 dB del
+# diferencial, por qué mejora); el pin de referencia pasa al resumen.
 leccion: cap27/sec-27.7
 
 libro:
@@ -19,6 +23,7 @@ libro:
   209: "ese pin debe atacarse desde una fuente de baja impedancia"
   219: "Fuentes de baja impedancia, audio"
   220: "la impedancia de la fuente decide la tecnología"
+  226: "Las cuatro tecnologías de entrada de un operacional"
   "cap27#341": "(R = 25 kΩ interna)"
   "cap27#434": "Un amplificador de instrumentación tiene un CMRR de 100 dB"
 
@@ -52,9 +57,9 @@ tarjetas:
   - id: explore-cmrr
     tipo: explorar
     titulo: "10 mV sobre 2,5 V"
-    texto: "Un puente de galgas: 10 mV de diferencia sobre 2,5 V comunes. Cambie el CMRR y mire el error."
+    texto: "Un puente de galgas: 10 mV de diferencia sobre 2,5 V comunes. Busque el CMRR más bajo con el que el error queda por debajo de una centésima de la señal."
     libro: [193]
-    inicio: { C_db: 90 }
+    inicio: { C_db: 60 }
     widget:
       tipo: grafica
       x: { id: cm, min: 40, max: 120, unidad: dB, rotulo: "CMRR" }
@@ -68,36 +73,39 @@ tarjetas:
         - { valor: e_v, rotulo: "Referido a la entrada: {{e_v}}" }
       mandos:
         - { valor: C_db, lista: [60, 90, 110], rotulo: "CMRR" }
-    requiere: { mover: [C_db] }
+    objetivo:
+      condiciones:
+        - { valor: e_p, max: 1, rotulo: "Error: {{e_p}}" }
+        - { valor: C_db, max: 90, rotulo: "CMRR: {{C_db}}" }
+      logrado: "Con {{C_db}}, {{e_v}} referidos a la entrada: un {{e_p}} de la señal. Con menos rechazo, el error se dispara."
+      pistas:
+        - { cuando: { valor: e_p, min: 1 }, texto: "Demasiado error: más CMRR." }
+        - { texto: "Cumple, pero busque el CMRR más bajo que aún cumpla." }
+    escalera:
+      - "Cada 20 dB menos, el error se multiplica por diez."
+    solucion: "90 dB: 79 µV, un 0,8 %."
+    comprobar:
+      - { con: { C_db: 90 }, e_p: 0.79, e_v: 0.000079, tol: 0.01 }
 
   - id: prediga-60
-    tipo: predecir
+    tipo: simular
     titulo: "Con 60 dB"
-    texto: "El mismo puente, 2,5 V comunes y 10 mV de señal, con un CMRR de 60 dB. ¿Qué error introduce el modo común?"
+    texto: "El mismo puente, 2,5 V comunes y 10 mV de señal, con un CMRR de 60 dB. ¿Qué error introduce el modo común, en porcentaje de la señal?"
     libro: [194]
     fijar: { C_db: 60 }
-    widget:
-      tipo: grafica
-      x: { id: cm, min: 40, max: 120, unidad: dB, rotulo: "CMRR" }
-      y: { min: 0.01, max: 1000, unidad: "%", rotulo: "error", escala: log }
-      curvas:
-        - { expr: "100*V_cm/10^(cm/20)/V_d", color: naranja, rotulo: "error" }
-      lectura: { valor: e_p, rotulo: "Error frente a la señal" }
-      ocultar: true
-    opciones:
-      - texto: "Un 25 %: 2,5 mV sobre 10 mV"
-        bien: true
-        porque: "60 dB son un factor mil: 2,5 V/1000 = 2,5 mV, la cuarta parte de la señal."
-      - texto: "Un 0,8 %"
-        porque: "Ese es el de 90 dB. Treinta decibelios menos multiplican el error por más de treinta."
-      - texto: "Ninguno: el amplificador es diferencial"
-        porque: "Lo es, pero su rechazo es finito: el CMRR dice cuánto."
+    simular:
+      objetivo: e_p
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Error frente a la señal"
+      errores:
+        - { expr: "100*V_cm/10^(C_db/10)/V_d", texto: "Los dB de tensión se dividen entre 20: 60 dB son un factor mil." }
+    exito: "Un 25 %: 2,5 V/1000 = 2,5 mV, la cuarta parte de la señal. Treinta decibelios menos multiplican el error por más de treinta."
     escalera:
       - "60 dB son un factor 10³."
     solucion: "2,5 V/10³ = 2,5 mV: un 25 % de 10 mV."
     comprobar:
       - { e_p: 25, e_v: 0.0025 }
-      - { con: { C_db: 90 }, e_p: 0.79, tol: 0.02 }
 
   - id: un-operacional
     tipo: pregunta
@@ -124,12 +132,11 @@ tarjetas:
     solucion: "Unos 34 dB: por eso la red apareada o el amplificador de instrumentación."
 
   - id: formula-ganancia
-    tipo: formula
+    tipo: explorar
     titulo: "Una resistencia fija la ganancia"
-    texto: "Con R = 25 kΩ interna, cambie R_{G}: la ganancia cambia sin tocar las resistencias del rechazo."
-    libro: [202, 204, 205, "cap27#341"]
-    ec: 204
-    sustitucion: "1 + 2 · {{R_i}} / {{R_G}} = {{A_g}}"
+    texto: "A = 1 + 2R/R_{G}, con R = 25 kΩ interna. Pase de ganancia 100 cambiando solo R_{G}."
+    libro: [194, 202, 204, 205, "cap27#341"]
+    inicio: { R_G: 1000 }
     widget:
       tipo: circuito
       esquema: ao-instrumentacion
@@ -140,6 +147,17 @@ tarjetas:
       mide: { vo: V_o }
       mandos:
         - { valor: R_G, lista: [100, 510, 1000, 5100, 50000], rotulo: "R_{G}" }
+    objetivo:
+      condiciones:
+        - { valor: A_g, min: 100, rotulo: "Ganancia: {{A_g}}" }
+      logrado: "1 + 2 · {{R_i}} / {{R_G}} = {{A_g}}: un único componente fija la ganancia y el rechazo queda intacto."
+      pistas:
+        - { texto: "Más ganancia: R_{G} más pequeña." }
+    escalera:
+      - "A = 1 + 2R/R_{G}: la ganancia sube al bajar R_{G}."
+    solucion: "R_{G} = 100 Ω: ganancia 501."
+    comprobar:
+      - { con: { R_G: 100 }, A_g: 501 }
 
   - id: reto-cien
     tipo: reto
@@ -173,7 +191,7 @@ tarjetas:
   - id: sorpresa-cmrr
     tipo: sorpresa
     titulo: "Más ganancia, mejor rechazo"
-    texto: "El diferencial de salida rechaza 80 dB. Suba la ganancia con R_{G} y mire el CMRR total."
+    texto: "El diferencial de salida rechaza 80 dB. Suba la ganancia al máximo con R_{G} y vigile el CMRR total."
     libro: [206]
     inicio: { R_G: 50000 }
     widget:
@@ -187,9 +205,18 @@ tarjetas:
       mide: { salida_amp: V_oc }
       mandos:
         - { valor: R_G, lista: [100, 510, 1000, 5100, 50000], rotulo: "R_{G}" }
-    requiere: { mover: [R_G] }
+    objetivo:
+      condiciones:
+        - { valor: A_g, min: 500, rotulo: "Ganancia: {{A_g}}" }
+      logrado: "Ganancia {{A_g}} y CMRR total {{C_t}}: más ganancia, mejor rechazo, al revés de lo habitual."
+      pistas:
+        - { texto: "Siga subiendo la ganancia: R_{G} más pequeña." }
+    escalera:
+      - "CMRR total = el del diferencial más la ganancia de la primera etapa, en dB."
+    solucion: "R_{G} = 100 Ω: unos 134 dB."
     comprobar:
       - { C_s: 80 }
+      - { con: { R_G: 100 }, C_t: 134, tol: 0.01 }
 
   - id: por-que-cmrr
     tipo: porque
@@ -215,68 +242,47 @@ tarjetas:
       - "¿Qué ganancia tiene la primera etapa para una señal común a las dos entradas?"
     solucion: "La primera etapa da ganancia a la diferencia y 1 a lo común: CMRR total = el del diferencial por esa ganancia."
 
-  - id: pin-referencia
-    tipo: pregunta
-    titulo: "El pin de referencia"
-    texto: "Con alimentación única, el pin de referencia va a media alimentación. ¿Cómo se ataca?"
-    libro: [208, 209]
-    widget:
-      tipo: circuito
-      esquema: ao-no-inversor
-      piezas: { entrada: V_rf }
-      lectura: { valor: V_rf, rotulo: "Salida del seguidor" }
-      mide: { vo: V_rf, vmenos: V_rf }
-    opciones:
-      - texto: "Desde baja impedancia: un seguidor entre el divisor y el pin"
-        bien: true
-        porque: "La resistencia de un divisor se sumaría a la red interna, la desequilibraría y destruiría el CMRR."
-      - texto: "Directamente desde un divisor de valor alto"
-        porque: "Es el error que se incumple a menudo: su resistencia desequilibra el diferencial."
-      - texto: "Dejándolo al aire"
-        porque: "Fija el nivel de la salida para diferencia cero: no puede quedar al aire."
-    escalera:
-      - "Ese pin forma parte de la red de resistencias del diferencial."
-    solucion: "Con un seguidor: baja impedancia, y el CMRR intacto."
-    comprobar:
-      - { V_rf: 2.5 }
-
   - id: empareje-familias
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
+    fase: "Elija"
     titulo: "Tecnologías de entrada"
-    texto: "La impedancia de la fuente decide la tecnología. Una cada familia con su uso típico."
-    libro: [219, 220]
-    emparejar:
-      - ["Bipolar", "Fuentes de baja impedancia, audio"]
-      - ["JFET", "Fuentes de alta impedancia, integradores"]
-      - ["CMOS", "Baja potencia, rail-to-rail"]
-      - ["Chopper", "Continua y muy baja frecuencia"]
-    exito: "El bipolar tiene muy poco ruido de tensión; JFET y CMOS, corrientes de entrada de pA y fA."
+    texto: "La impedancia de la fuente decide la tecnología. Toque, por este orden, la de audio con fuente de baja impedancia, la de un integrador y la de continua muy lenta."
+    libro: [219, 220, 226]
+    widget:
+      tipo: figura
+      figura: fig-27.13
+      zonas:
+        - { id: bipolar, rect: [2, 1, 108, 144], rotulo: "Primera columna" }
+        - { id: jfet, rect: [116, 1, 108, 144], rotulo: "Segunda columna" }
+        - { id: cmos, rect: [229, 1, 108, 144], rotulo: "Tercera columna" }
+        - { id: chopper, rect: [343, 1, 108, 144], rotulo: "Cuarta columna" }
+    tocar:
+      bien: [bipolar, jfet, chopper]
+      orden: true
+      porque:
+        cmos: "CMOS es la de baja potencia y rail-to-rail: corriente de fA, pero más ruido de tensión."
+    exito: "Bipolar, JFET y chopper. El bipolar tiene muy poco ruido de tensión; JFET y CMOS, corrientes de entrada de pA y fA."
     pistas:
-      - { texto: "Corriente de entrada de femtoamperios: CMOS." }
+      - { texto: "Mire la fila del uso típico." }
     escalera:
       - "El de menos ruido de tensión sirve para fuentes de baja impedancia."
-    solucion: "Bipolar–baja impedancia, JFET–alta impedancia, CMOS–rail-to-rail, chopper–continua."
+    solucion: "Bipolar–audio, JFET–integradores, chopper–continua."
 
   - id: estime-error
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "100 dB y 2 V"
     texto: "Un amplificador de instrumentación de 100 dB de CMRR con 2 V de modo común. ¿Qué error aparece referido a la entrada?"
     libro: ["cap27#434"]
-    estimar:
-      objetivo: "e_x"
+    simular:
+      objetivo: e_x
       unidad: V
-      min: 0
-      max: 0.0001
-      paso: 0.000001
-      inicio: 0.00008
-      tol: 0.05
+      tol: 0.02
       rotulo: "Error referido a la entrada"
+      errores:
+        - { expr: "V_e/10^4", texto: "100 dB son 10⁵, no 10⁴: un factor diez cada 20 dB." }
+        - { expr: "V_e/10^(C_e/10)", texto: "Los dB de tensión se dividen entre 20, no entre 10." }
     exito: "20 µV: 100 dB son un factor 10⁵."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.000021 }, texto: "Se ha pasado: 100 dB son 10⁵, no 10⁴." }
-      - { texto: "Se ha quedado corto: 2 V entre 10⁵." }
     escalera:
       - "Error = V_{cm}/10^{CMRR/20}."
     solucion: "2/10⁵ = 20 µV."
@@ -286,9 +292,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [194, 198, 204, 206, 209]
+    libro: [194, 198, 204, 206, 208, 209]
     ideas:
       - { titulo: "El problema.", texto: "Una diferencia pequeña sobre un modo común grande: manda el CMRR." }
       - { titulo: "Un operacional.", texto: "El rechazo lo fijan las resistencias: unos 34 dB con el 1 %." }
       - { titulo: "Tres operacionales.", texto: "Entrada altísima, ganancia con R_{G} y más ganancia, mejor CMRR." }
-      - { titulo: "Referencia.", texto: "Desde baja impedancia: un seguidor." }
+      - { titulo: "Referencia.", texto: "A media alimentación con alimentación única, y desde baja impedancia: un seguidor. Un divisor destruye el CMRR." }

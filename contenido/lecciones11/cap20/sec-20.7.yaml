@@ -3,9 +3,15 @@
 #   de I²C. El ejercicio 19.2 (ocho sensores, pocos pines) sale del bloque de ejercicios (cap20#394).
 # - Sin modelo de circuito: el dimensionado del pull-up es de la sección 45.4, que tiene su lección.
 # Paso práctico: «tocar» en la figura 19.11 lo que cada esclavo SPI necesita para él solo.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la figura 19.12 se toca el bus para un interlocutor lejano
+# y las selecciones de SPI; se escriben los pines de SPI para ocho sensores; el bloqueo de I²C se vive en un circuito
+# «logica» (tres salidas de drenador abierto en SDA, con pull-up); el flanco lento, en una carga RC viva con los 400 pF
+# del límite de I²C (los pull-ups de 1 a 10 kΩ y el bit de 400 kHz son del autor). La elección por pines, el más lento y
+# el bus robusto pasan al resumen. Queda una pregunta de opciones: la misma dirección.
 leccion: cap20/sec-20.7
 
 libro:
+  156: "Con serie"
   149: "lo que un aficionado necesita decidir al montar un circuito con varios dispositivos"
   151: "¿Cuántos pines tengo y cuántos dispositivos hay?"
   152: "Pocos dispositivos y pines de sobra: SPI"
@@ -23,7 +29,19 @@ libro:
   171: "Los buses de comunicación más comunes: UART, SPI e I²C."
   "cap20#394": "Tienes que leer ocho sensores de temperatura distintos"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    n_s: { sim: "n", nombre: "sensores", unidad: "", valor: 8 }
+    V_b: { sim: "V", nombre: "alimentación del bus", unidad: V, valor: 3.3 }
+    R_pu: { sim: "R_{pull-up}", nombre: "pull-up", unidad: Ω, valor: 10000 }
+    C_bu: { sim: "C", nombre: "capacidad del bus", unidad: F, valor: 400e-12 }
+    f_400: { sim: "f", nombre: "reloj rápido de I²C", unidad: Hz, valor: 400000 }
+  calculos:
+    p_spi: { expr: "3 + n_s", sim: "p", nombre: "pines de SPI", unidad: "" }
+    t_bit: { expr: "1/f_400", sim: "t_{bit}", nombre: "un bit a 400 kHz", unidad: s }
+    tau_b: { expr: "R_pu*C_bu", sim: "τ", nombre: "constante del flanco", unidad: s }
+    v_bit: { expr: "V_b*(1 - exp(-t_bit/tau_b))", sim: "v", nombre: "tensión al final del bit", unidad: V }
+    fr_b: { expr: "100*(1 - exp(-t_bit/tau_b))", sim: "%", nombre: "fracción alcanzada en un bit", unidad: "%" }
 
 tarjetas:
   - id: explore-buses
@@ -41,47 +59,52 @@ tarjetas:
     requiere: { mover: [uart, spi, i2c] }
 
   - id: empareje-eleccion
-    tipo: pregunta
-    titulo: "La pregunta de partida"
-    texto: "¿Cuántos pines tengo y cuántos dispositivos hay? Empareje cada caso con su bus."
-    libro: [151, 152]
+    tipo: tocar
+    titulo: "Un solo interlocutor"
+    texto: "Hay que hablar con un único equipo, a cierta distancia. Toque el bus."
+    libro: [151, 152, 156]
     widget:
       tipo: figura
       figura: fig-20.12
       zonas:
-        - { id: todo, rotulo: "Los tres buses", rect: [2, 5, 448, 135] }
-    emparejar:
-      - ["Pocos dispositivos y pines de sobra", "SPI, el más simple y rápido"]
-      - ["Muchos dispositivos y pocos pines", "I²C, dos líneas para todos"]
-      - ["Un solo interlocutor a cierta distancia", "Serie"]
-    exito: "Esa relación entre pines y dispositivos decide casi todo."
-    pistas:
-      - { texto: "SPI gasta un pin de selección por dispositivo." }
+        - { id: uart, rotulo: "Parte izquierda", rect: [2, 5, 110, 135] }
+        - { id: spi, rotulo: "Parte central", rect: [120, 5, 160, 135] }
+        - { id: i2c, rotulo: "Parte derecha", rect: [282, 5, 168, 135] }
+    tocar:
+      bien: [uart]
+      porque:
+        spi: "SPI es para pocos dispositivos cerca, con pines de sobra."
+        i2c: "I²C es para muchos dispositivos cerca, con pocos pines."
+    exito: "Serie: punto a punto. Con velocidades coincidentes y, si hay distancia, un transceptor diferencial."
     escalera:
-      - "¿Qué bus gasta más pines a medida que crecen los dispositivos?"
-    solucion: "Pines de sobra, SPI; pocos pines, I²C; uno lejos, serie."
+      - "¿Qué bus une solo a dos?"
+    solucion: "La UART, a la izquierda."
 
   - id: ocho-sensores
-    tipo: pregunta
+    tipo: leer
     titulo: "Ocho sensores, pocos pines"
-    texto: "Hay que leer ocho sensores de temperatura distintos con un microcontrolador de pocos pines libres. ¿Qué bus?"
-    libro: ["cap20#394", 152]
+    texto: "Hay que leer ocho sensores de temperatura distintos. Escriba cuántos pines pediría SPI: reloj, dos de datos y una selección por sensor."
+    libro: ["cap20#394", 152, 154]
     widget:
       tipo: figura
       figura: fig-20.12
       zonas:
+        - { id: uart, rotulo: "Parte izquierda", rect: [2, 5, 110, 135] }
+        - { id: spi, rotulo: "Parte central", rect: [120, 5, 160, 135] }
         - { id: i2c, rotulo: "Parte derecha", rect: [282, 5, 168, 135] }
-    opciones:
-      - texto: "I²C"
-        bien: true
-        porque: "Dos líneas compartidas, cada sensor con su dirección: sin un pin de selección por sensor."
-      - texto: "SPI"
-        porque: "Pediría una selección por dispositivo: ocho pines más."
-      - texto: "Una UART por sensor"
-        porque: "Serían dieciséis pines: la serie es para un solo interlocutor."
+    leer:
+      objetivo: p_spi
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pines de SPI"
+      errores:
+        - { expr: "3*n_s", texto: "Reloj y datos se comparten: solo la selección es una por sensor." }
+    exito: "Once, frente a las dos líneas de I²C, con un sensor por dirección. Con pocos pines libres, I²C."
     escalera:
-      - "¿Qué bus no gasta pines por cada dispositivo nuevo?"
-    solucion: "I²C: dos líneas para los ocho."
+      - "Tres compartidas más una por sensor."
+    solucion: "Tres compartidas y ocho selecciones: 11 pines."
+    comprobar:
+      - { p_spi: 11, n_s: 8 }
 
   - id: toque-cs
     tipo: tocar
@@ -92,9 +115,9 @@ tarjetas:
       tipo: figura
       figura: fig-20.12
       zonas:
-        - { id: cs1, rotulo: "Línea roja de arriba", rect: [158, 28, 74, 16] }
+        - { id: cs1, rotulo: "Línea roja de arriba", rect: [156, 10, 78, 40] }
         - { id: bus, rotulo: "Haz azul del centro", rect: [190, 50, 45, 55] }
-        - { id: cs2, rotulo: "Línea roja de abajo", rect: [158, 106, 74, 16] }
+        - { id: cs2, rotulo: "Línea roja de abajo", rect: [156, 104, 78, 40] }
         - { id: maestro, rotulo: "Recuadro del maestro", rect: [122, 32, 38, 85] }
     tocar:
       bien: [cs1, cs2]
@@ -129,99 +152,73 @@ tarjetas:
       - "Si no pueden estar en el mismo bus, ¿cómo se les da un bus a cada uno?"
     solucion: "Un multiplexor I²C (o pines de selección, dos buses, o alimentar uno cada vez)."
 
-  - id: prediga-lento
-    tipo: predecir
-    titulo: "El más lento manda"
-    texto: "En un bus I²C, todos admiten 400 kHz salvo un dispositivo que solo admite 100 kHz. ¿A qué velocidad va el bus?"
-    libro: [162, 163]
-    widget:
-      tipo: figura
-      figura: fig-20.12
-      zonas:
-        - { id: i2c, rotulo: "Parte derecha", rect: [282, 5, 168, 135] }
-    opciones:
-      - texto: "A 100 kHz, todo el bus"
-        bien: true
-        porque: "La velocidad del más lento fija la del bus entero."
-      - texto: "A 400 kHz, salvo con ese dispositivo"
-        porque: "El bus es uno: lo que viaja por él lo ven todos."
-      - texto: "A 400 kHz, y el lento se adapta"
-        porque: "Si solo admite 100 kHz, no se adapta: obliga a todos."
-    escalera:
-      - "¿Comparten todos las mismas líneas?"
-    solucion: "A 100 kHz: un dispositivo lento obliga a todos."
-
   - id: porque-spi
-    tipo: porque
+    tipo: explorar
     titulo: "Cuando falla uno"
-    texto: "En un sistema donde la fiabilidad importa, el libro da un argumento a favor de SPI. ¿Cuál?"
+    texto: "En I²C todos sueltan o tiran de la misma línea SDA, con su pull-up. Haga que un sensor se quede bloqueado tirando de ella con el maestro soltándola."
     libro: [164, 165]
     widget:
-      tipo: figura
-      figura: fig-20.12
-      zonas:
-        - { id: todo, rotulo: "Los tres buses", rect: [2, 5, 448, 135] }
-    opciones:
-      - texto: "Un dispositivo I²C que bloquee la línea tumba el bus entero"
-        bien: true
-        porque: "En SPI, uno averiado solo se afecta a sí mismo si su selección está bien."
-      - texto: "SPI es más rápido"
-        porque: "Lo es, pero el argumento de fiabilidad es otro: qué pasa cuando uno falla."
-      - texto: "SPI usa menos pines"
-        porque: "Al contrario: gasta una selección por dispositivo."
+      tipo: logica
+      entradas:
+        - { id: M, valor: 1, rotulo: "Maestro suelta" }
+        - { id: S1, valor: 1, rotulo: "Sensor 1 suelta" }
+        - { id: S2, valor: 1, rotulo: "Sensor 2 suelta" }
+      piezas:
+        - { id: dm, tipo: od, entradas: [M], rotulo: "Maestro" }
+        - { id: d1, tipo: od, entradas: [S1], rotulo: "Sensor 1" }
+        - { id: d2, tipo: od, entradas: [S2], rotulo: "Sensor 2" }
+        - { id: sda, tipo: bus, entradas: [dm, d1, d2], pullup: 1, rotulo: "SDA" }
+      salidas:
+        - { id: LM, de: M, rotulo: "El maestro suelta" }
+        - { id: SDA, de: sda, rotulo: "SDA" }
+    objetivo:
+      condiciones:
+        - { led: LM, valor: 1, rotulo: "El maestro suelta" }
+        - { led: SDA, valor: 0, rotulo: "SDA en bajo" }
+      logrado: "Basta uno: la línea es compartida y nadie puede subirla. En I²C, un dispositivo que bloquee la línea tumba el bus entero; en SPI, uno averiado solo se afecta a sí mismo."
+      pistas:
+        - { texto: "Deje al maestro soltando y bloquee un sensor." }
     escalera:
-      - "¿Qué le pasa al bus si un dispositivo deja una línea compartida bloqueada?"
-    solucion: "En I²C uno que bloquee la línea tumba el bus; en SPI, solo falla él."
-
-  - id: bus-robusto
-    tipo: pregunta
-    titulo: "Más de un metro"
-    texto: "Un sensor I²C tiene que ir a dos metros, con motores cerca. ¿Qué hacer?"
-    libro: [167]
-    widget:
-      tipo: figura
-      figura: fig-20.12
-      zonas:
-        - { id: i2c, rotulo: "Parte derecha", rect: [282, 5, 168, 135] }
-    opciones:
-      - texto: "Pasar a un bus robusto: RS-485 o CAN"
-        bien: true
-        porque: "Con más de un metro, motores o relés cerca, I²C y SPI dejan de ser adecuados."
-      - texto: "Subir el pull-up y alargar el cable"
-        porque: "Alargar I²C da fallos intermitentes que no se resuelven subiendo el pull-up."
-      - texto: "Pasar a SPI"
-        porque: "SPI también es de distancias cortas."
-    escalera:
-      - "¿Qué buses son para distancia y ruido industrial?"
-    solucion: "RS-485 o CAN."
+      - "Con drenador abierto, cualquiera puede bajar la línea; nadie puede subirla."
+    solucion: "Un sensor tirando, el maestro soltando."
 
   - id: empareje-patologias
-    tipo: pregunta
-    titulo: "Osciloscopio en las líneas"
-    texto: "El diagnóstico de cualquier bus empieza mirando sus líneas. Empareje cada síntoma con su causa más común."
-    libro: [155, 169, 170]
+    tipo: explorar
+    titulo: "Flancos lentos"
+    texto: "El pull-up carga la capacidad del bus, hasta 400 pF en I²C. Elija el pull-up con el que la línea llega casi a la alimentación dentro de un bit a 400 kHz."
+    libro: [162, 169, 170]
     widget:
-      tipo: figura
-      figura: fig-20.12
-      zonas:
-        - { id: todo, rotulo: "Los tres buses", rect: [2, 5, 448, 135] }
-    emparejar:
-      - ["Flancos lentos", "Pull-up alto"]
-      - ["Niveles insuficientes", "Mezcla de tensiones"]
-      - ["Ninguna actividad", "Configuración o cableado"]
-    exito: "Y en I²C, el escáner de direcciones antes de nada: distingue un dispositivo ausente de uno mal direccionado."
-    pistas:
-      - { texto: "Un pull-up alto carga despacio la capacidad del bus." }
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_b, r: R_pu, c: C_bu }
+      lectura: { valor: v_bit, rotulo: "Al final del bit" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 3.6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_b*(1 - exp(-t/tau_b))", color: naranja, rotulo: "SDA", mide: vc }
+        marcas:
+          - { x: "t_bit", y: "v_bit", rotulo: "fin del bit" }
+      mandos:
+        - { valor: R_pu, lista: [1000, 2200, 4700, 10000], rotulo: "Pull-up" }
+    objetivo:
+      condiciones:
+        - { valor: fr_b, min: 90, rotulo: "En un bit: {{fr_b}} de la alimentación" }
+      logrado: "Con {{R_pu}}, el flanco cabe en el bit. Un pull-up alto da flancos lentos: es la primera patología que enseña el osciloscopio; las otras, niveles insuficientes y ausencia de actividad."
+      pistas:
+        - { texto: "El flanco es demasiado lento: baje el pull-up." }
     escalera:
-      - "Empiece por los flancos: ¿qué los sube en un bus de drenador abierto?"
-    solucion: "Flancos lentos, pull-up alto; niveles bajos, mezcla de tensiones; nada, configuración o cableado."
+      - "τ = R · C: menos R, flanco más rápido."
+    solucion: "1 kΩ o 2,2 kΩ."
+    comprobar:
+      - { con: { R_pu: 2200 }, fr_b: 94.2, tol: 0.01 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [151, 154, 163, 167]
+    libro: [151, 154, 155, 163, 167]
     ideas:
-      - { titulo: "La pregunta.", texto: "Pines frente a dispositivos: SPI, I²C o serie." }
+      - { titulo: "La pregunta.", texto: "Pines frente a dispositivos: SPI si sobran pines, I²C si faltan, serie para uno lejos." }
       - { titulo: "SPI.", texto: "Una selección por dispositivo; uno averiado solo se afecta a sí mismo." }
       - { titulo: "I²C.", texto: "Direcciones únicas, 400 pF como mucho y el más lento manda." }
       - { titulo: "Lejos o con ruido.", texto: "RS-485 o CAN, no un pull-up más alto." }

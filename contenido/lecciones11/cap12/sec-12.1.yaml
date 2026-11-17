@@ -1,12 +1,19 @@
-# Lección 1.2 de la sección 12.1 «Bloques Funcionales en Circuitos Reales» (cap12). Formato: GUIA.md.
+# Lección de la sección 12.1 «Bloques Funcionales en Circuitos Reales» (cap12). Formato: GUIA.md.
 # Los bloques se reconocen sobre esquemas del kit: la etapa en emisor común del libro (sección 6.5: 12 V, 47 kΩ,
 # 10 kΩ, 3,3 kΩ, 1 kΩ); un RC de entrada (1 kΩ y 159 nF, corte en 1 kHz, valores de ejemplo); un puente con su
 # condensador (17 V de pico, 1000 µF y 100 Ω, valores de ejemplo).
 # Paso práctico: «averia» por bisección. Cuatro resistencias iguales en serie (12 V, 1 kΩ cada una, de ejemplo)
 # hacen de cuatro bloques en cadena: se mide la salida de los bloques y se localiza el que está abierto.
+# 1.2.1 (aprender haciendo): ajustar la polarización hasta el punto del libro, tocar el condensador de la fuente, el
+# bloque que se ignora (figura 12.2), la bobina y los electrolíticos en la foto 12.3, ordenar el método tocando y
+# buscar la avería por bisección. Dos preguntas: el RC de entrada y por qué bastan dos medidas.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap12/sec-12.1
 
 libro:
+  19: "Tras ese proceso, lo que queda sin identificar es lo"
+  29: "Los ocho bloques funcionales"
+  30: "La bobina de potencia delata el bloque conmutado en cualquier placa."
   4: "reconocerlos es lo que convierte un esquema opaco en algo comprensible en minutos"
   7: "Es siempre el primer bloque que hay que localizar"
   9: "lo delata la bobina"
@@ -74,7 +81,7 @@ tarjetas:
   - id: explore-polarizacion
     tipo: explorar
     titulo: "Un bloque, no cinco piezas"
-    texto: "Divisor en la base, una resistencia en el emisor y otra en el colector: una polarización de transistor. Cambie el ejemplar y mire la corriente."
+    texto: "Divisor en la base, resistencia de emisor y de colector: una polarización de transistor. Busque el ejemplar que deja V_{CE} en 6,31 V."
     libro: [4, 13, "cap06#452"]
     inicio: { beta: 50 }
     widget:
@@ -86,7 +93,18 @@ tarjetas:
       mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
       mandos:
         - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
-    requiere: { mover: [beta] }
+    objetivo:
+      condiciones:
+        - { valor: V_pce, objetivo: 6.31, tol: 0.02, rotulo: "V_{CE}: {{V_pce}}" }
+      logrado: "Con β = 150, {{I_pc}}: cinco piezas que se leen como un solo bloque, la polarización."
+      pistas:
+        - { cuando: { valor: V_pce, menor: 6.18 }, texto: "Demasiada corriente: pruebe un β menor." }
+        - { texto: "Falta corriente: pruebe un β mayor." }
+    escalera:
+      - "El libro da ese punto con β = 150."
+    solucion: "β = 150: 1,324 mA y 6,31 V."
+    comprobar:
+      - { con: { beta: 150 }, V_pce: 6.31, I_pc: 0.001324 }
 
   - id: prediga-rc
     tipo: predecir
@@ -115,9 +133,9 @@ tarjetas:
     solucion: "Un filtro paso bajo: el antialiasing de la entrada analógica."
 
   - id: que-puente
-    tipo: pregunta
+    tipo: elegir
     titulo: "Puente y condensador grande"
-    texto: "Tras el conector de entrada, un puente de diodos y un condensador grande. ¿Qué bloque es y cuándo se busca?"
+    texto: "Tras el conector de entrada, un puente de diodos y un condensador grande: la alimentación. Toque el condensador que alisa la salida."
     nota: "Valores de ejemplo."
     libro: [7]
     widget:
@@ -131,76 +149,99 @@ tarjetas:
         curvas:
           - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
       mandos: []
-    opciones:
-      - texto: "La alimentación: el primer bloque que hay que localizar"
-        bien: true
-        porque: "Conector, diodo o puente y condensadores grandes delatan la alimentación."
-      - texto: "Un regulador conmutado, al final"
-        porque: "Al conmutado lo delata la bobina, y no hay ninguna."
-      - texto: "Una protección de entrada, en cualquier orden"
-        porque: "La protección lleva diodos hacia los raíles, TVS y una resistencia serie, no un condensador grande."
+    elegir:
+      zonas: [fuente, diodos, c, carga]
+      bien: [c]
+      porque:
+        fuente: "Es la entrada alterna, la que llega del conector."
+        diodos: "El puente rectifica, pero no alisa: deja pulsos."
+        carga: "Es lo que se alimenta, no parte del bloque."
+    exito: "El condensador grande: con el puente, delata la alimentación, el primer bloque que hay que localizar."
     escalera:
       - "Los condensadores grandes indican energía, no señal."
     solucion: "La alimentación, que se localiza siempre lo primero."
 
   - id: patrones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El patrón que los delata"
-    texto: "Una cada bloque con el patrón que lo identifica."
-    libro: [9, 10, 11, 12, 14, 15]
-    emparejar:
-      - ["Regulador conmutado", "La bobina"]
-      - ["Oscilador de cristal", "Cristal y dos condensadores pequeños a masa"]
-      - ["Desacoplo", "100 nF por cada par de pines de alimentación"]
-      - ["Etapa con operacional", "Dos resistencias entre salida y entrada inversora"]
-      - ["Interfaz digital", "Pull-ups en pares de líneas"]
-      - ["Protección de entrada", "Diodos hacia los raíles, TVS y resistencia serie"]
-    exito: "La bobina de potencia en una placa es prácticamente diagnóstica de un conmutado."
-    pistas:
-      - { texto: "Los pull-ups en pares son los del I²C." }
+    tipo: tocar
+    titulo: "El bloque que se aparta"
+    texto: "Uno de estos ocho bloques se identifica y se ignora mentalmente al leer. Tóquelo."
+    libro: [9, 10, 11, 12, 14, 15, 29]
+    widget:
+      tipo: figura
+      figura: fig-12.2
+      zonas:
+        - { id: lineal, rotulo: "Arriba, primero", rect: [2, 2, 110, 110] }
+        - { id: conmutado, rotulo: "Arriba, segundo", rect: [115, 2, 110, 110] }
+        - { id: cristal, rotulo: "Arriba, tercero", rect: [228, 2, 110, 110] }
+        - { id: desacoplo, rotulo: "Arriba, cuarto", rect: [341, 2, 110, 110] }
+        - { id: operacional, rotulo: "Abajo, primero", rect: [2, 114, 110, 110] }
+        - { id: polarizacion, rotulo: "Abajo, segundo", rect: [115, 114, 110, 110] }
+        - { id: i2c, rotulo: "Abajo, tercero", rect: [228, 114, 110, 110] }
+        - { id: filtro, rotulo: "Abajo, cuarto", rect: [341, 114, 110, 110] }
+    tocar:
+      bien: [desacoplo]
+      porque:
+        lineal: "El regulador hace la alimentación: no se ignora, se localiza lo primero."
+        conmutado: "El conmutado, delatado por la bobina, es alimentación: se localiza."
+        cristal: "El oscilador marca el ritmo del micro: importa."
+        operacional: "La etapa con operacional procesa la señal."
+        polarizacion: "La polarización fija el punto del transistor: es parte de la etapa."
+        i2c: "Los pull-ups en pares de líneas delatan un bus I²C."
+        filtro: "El RC antes del convertidor es el antialiasing."
+    exito: "El desacoplo: 100 nF por cada par de pines de alimentación. Se identifica y se aparta."
     escalera:
-      - "El desacoplo se reconoce y se ignora mentalmente."
-    solucion: "Conmutado–bobina; cristal–dos condensadores; desacoplo–100 nF; operacional–realimentación; digital–pull-ups; protección–diodos."
+      - "¿Cuál se repite junto a cada integrado y no procesa nada?"
+    solucion: "El desacoplo, arriba a la derecha."
 
   - id: pistas-fisicas
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "Sin esquema, en la placa"
-    texto: "Una lo que se ve en la placa con lo que indica."
-    libro: [23]
-    emparejar:
-      - ["Electrolíticos grandes", "Alimentación"]
-      - ["Bobina de potencia", "Regulador conmutado"]
-      - ["Disipador o cobre ancho", "Potencia"]
-      - ["Cristal metálico", "Oscilador, junto al micro"]
-      - ["Ranura fresada en el sustrato", "Barrera de aislamiento de red"]
-      - ["Serigrafía con TP", "Puntos de prueba"]
-    exito: "Los conectores con muchos pines finos son un bus o un display; los componentes muy pequeños y juntos, un circuito rápido."
-    pistas:
-      - { texto: "La ranura separa el lado de red del resto." }
+    texto: "En el módulo de arriba, sin esquema, toque la pieza que delata un regulador conmutado."
+    libro: [9, 23, 30]
+    widget:
+      tipo: figura
+      figura: fig-12.3
+      zonas:
+        - { id: celec, rotulo: "Cilindro de la izquierda", rect: [393, 215, 130, 205] }
+        - { id: ic, rotulo: "Integrado negro con patillas", rect: [587, 178, 186, 250] }
+        - { id: bobina, rotulo: "Bloque cuadrado del centro", rect: [790, 250, 230, 280] }
+        - { id: trimmer, rotulo: "Pieza azul de arriba", rect: [850, 98, 190, 125] }
+        - { id: celec2, rotulo: "Cilindro de la derecha", rect: [1075, 205, 150, 215] }
+    tocar:
+      bien: [bobina]
+      porque:
+        celec: "Un electrolítico grande dice «alimentación», no si es lineal o conmutada."
+        ic: "Un integrado con lengüeta podría ser también un regulador lineal."
+        trimmer: "Es un ajuste de la tensión de salida; lo llevan muchos reguladores."
+        celec2: "Otro electrolítico: alimentación, sin decir de qué tipo."
+    exito: "La bobina de potencia: su presencia en una placa es prácticamente diagnóstica de un conmutado."
     escalera:
-      - "TP es «test point»."
-    solucion: "Electrolíticos–alimentación; bobina–conmutado; disipador–potencia; cristal–oscilador; ranura–aislamiento; TP–pruebas."
+      - "Busque la pieza que un regulador lineal no lleva nunca."
+    solucion: "El bloque cuadrado del centro: la bobina."
 
-  - id: metodo
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El método de identificación"
-    texto: "Ordene los pasos para reconocer los bloques de un aparato."
-    libro: [18, 20]
-    ordenar:
-      - "Localizar los integrados y buscar sus referencias"
-      - "Seguir la alimentación y ver qué alimenta cada raíl"
-      - "Identificar los bloques auxiliares por su patrón"
-      - "Marcar los bloques en una copia o en la foto"
-      - "Dibujar el diagrama de bloques"
-    exito: "Lo que queda sin identificar es lo específico del aparato, y suele ser mucho menos de lo que parecía."
-    pistas:
-      - { texto: "El diagrama de bloques es el resultado de todo el trabajo." }
+  - id: electroliticos
+    tipo: tocar
+    titulo: "Lo que dice «alimentación»"
+    texto: "Los condensadores electrolíticos grandes indican alimentación. Toque los dos del módulo de arriba."
+    libro: [7, 23, 30]
+    widget:
+      tipo: figura
+      figura: fig-12.3
+      zonas:
+        - { id: celec, rotulo: "Cilindro de la izquierda", rect: [393, 215, 130, 205] }
+        - { id: ic, rotulo: "Integrado negro con patillas", rect: [587, 178, 186, 250] }
+        - { id: bobina, rotulo: "Bloque cuadrado del centro", rect: [790, 250, 230, 280] }
+        - { id: celec2, rotulo: "Cilindro de la derecha", rect: [1075, 205, 150, 215] }
+    tocar:
+      bien: [celec, celec2]
+      todas: true
+      porque:
+        ic: "Es el integrado regulador, con su lengüeta."
+        bobina: "Es la bobina: dice conmutado; los cilindros dicen alimentación."
+    exito: "Uno a la entrada y otro a la salida del regulador: el patrón de la alimentación."
     escalera:
-      - "Los integrados primero: con tres o cuatro hojas de datos se tiene la arquitectura."
-    solucion: "Integrados, alimentación, auxiliares, marcar y dibujar el diagrama."
+      - "Busque los cilindros metálicos con la tensión impresa."
+    solucion: "Los dos cilindros, a izquierda y derecha."
 
   - id: averia-biseccion
     tipo: averia
@@ -263,35 +304,10 @@ tarjetas:
       - "Una medida en medio dice en qué mitad está el fallo."
     solucion: "Entrada bien y salida mal: ese bloque tiene el fallo, y cada medida parte la cadena en dos."
 
-  - id: diagrama
-    tipo: pregunta
-    titulo: "El diagrama de bloques"
-    texto: "El resultado de reconocer los bloques se dibuja como un diagrama de bloques. ¿Qué lleva?"
-    libro: [20]
-    widget:
-      tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_s, r1: R_s1, r2: R_s2, r3: R_s3, r4: R_s4 }
-      lectura: { valor: I_s, rotulo: "Corriente" }
-      corriente: I_s
-      mide: { corriente: I_s, v1: V_b1, v2: V_b2, v3: V_b3, v4: V_b4 }
-      mandos: []
-    opciones:
-      - texto: "Rectángulos con su función y flechas de señales y alimentaciones"
-        bien: true
-        porque: "No lleva componentes ni valores: muestra la arquitectura entera en una hoja."
-      - texto: "Todos los componentes, agrupados por bloque"
-        porque: "Eso sigue siendo un esquema; el diagrama no lleva componentes."
-      - texto: "Los valores de cada bloque"
-        porque: "Ni componentes ni valores: solo funciones y las flechas que las unen."
-    escalera:
-      - "Su virtud es lo que no lleva."
-    solucion: "Bloques con su función y flechas, sin componentes ni valores."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [4, 9, 20, 25]
+    libro: [4, 9, 20, 25, 18, 19]
     ideas:
       - { titulo: "Bloques.", texto: "Reconocerlos es más rápido que analizar componentes uno a uno." }
       - { titulo: "Patrones.", texto: "La bobina delata el conmutado; el cristal con dos condensadores, el oscilador." }

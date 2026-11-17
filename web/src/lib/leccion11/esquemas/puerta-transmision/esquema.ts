@@ -22,6 +22,13 @@ const d: DefinicionEsquema = {
     vtp: { obligatoria: true, descripcion: 'umbral del PMOS en valor absoluto, |V_tp| (V)', color: 'verde' },
     ctrl: { interruptor: true, descripcion: 'control: cerrado, la puerta conduce (NMOS a V_DD, PMOS a 0); abierto, no (sin él, conduce)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { canaln: 'el MOSFET de canal N', canalp: 'el MOSFET de canal P' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada', o: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama de la entrada' },
+    zonas: { entrada: 'Fuente de entrada', canaln: 'MOSFET de canal N', canalp: 'MOSFET de canal P', carga: 'Carga', ...(c.tiene('ctrl') ? { ctrl: 'Puertas de control' } : {}) },
+  }),
   observables: {
     vout: { medida: 'v(o)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida' },
     corriente: { medida: 'i(vmi)', analisis: 'op', unidad: 'A', descripcion: 'corriente de la entrada a la salida' },

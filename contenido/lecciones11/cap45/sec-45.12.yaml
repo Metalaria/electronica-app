@@ -7,6 +7,10 @@
 #   2 nF, con la resistencia de carga: 7,96 kHz con 10 kΩ y 79,6 kHz con 1 kΩ (bloque 385). La dispersión del CTR,
 #   300/50 = 6 veces = 15,6 dB (bloque 379).
 # Paso práctico: «simular» la potencia en la resistencia (errores: la del LED, la total).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se calienta el LED desde 12 V con la corriente casi quieta; la R
+# desde 12 V, la deriva desde 4 V, el pico por dígito, el barrido y la dispersión del CTR se calculan («simular»); se
+# aleja diez veces el polo del optoacoplador. Quedan dos preguntas de opciones: lo que gana el driver y el peor caso
+# del lazo.
 leccion: cap45/sec-45.12
 
 libro:
@@ -61,12 +65,17 @@ modelo:
     x_o: { expr: "2*pi*f_o*R_o*C_o", sim: "ωRC", nombre: "ωRC", unidad: "" }
     A_o: { expr: "V_p/sqrt(1 + x_o^2)", sim: "V_{C}", nombre: "amplitud en el condensador", unidad: V }
     G_d: { expr: "20*log10(r_c)", sim: "ΔG", nombre: "dispersión de la ganancia del lazo", unidad: dB }
+    R_x: { expr: "V_a/0.7", sim: "R", nombre: "sin restar V_f", unidad: Ω }
+    d_12: { expr: "100*((12 - V_f)/((12 - 3.2)/0.7)/0.7 - 1)", sim: "ΔI", nombre: "la misma deriva desde 12 V", unidad: "%" }
+    f_1: { expr: "60", sim: "f", nombre: "el refresco de un dígito", unidad: Hz }
+    f_d: { expr: "60/n_d", sim: "f", nombre: "dividiendo", unidad: Hz }
+    G_x: { expr: "10*log10(r_c)", sim: "ΔG", nombre: "con 10·log", unidad: dB }
 
 tarjetas:
   - id: explore-calefactor
     tipo: explorar
     titulo: "46.A: una resistencia que es un calefactor"
-    texto: "LED de potencia de 3,2 V y 700 mA con resistencia. Cambie la alimentación y caliente el LED: su V_{f} cae 60 mV."
+    texto: "LED de potencia de 3,2 V y 700 mA con resistencia. Desde 12 V, caliéntelo: su V_{f} cae 60 mV, y mire cuánto sube la corriente."
     libro: [341, 343, 351, 353]
     widget:
       tipo: circuito
@@ -81,28 +90,41 @@ tarjetas:
       mandos:
         - { valor: V_a, lista: [12, 4], rotulo: "Alimentación" }
         - { valor: V_f, lista: [3.2, 3.14], nombres: [en frío, caliente], rotulo: "Estado del LED" }
-    requiere: { mover: [V_a, V_f] }
+    inicio: { V_a: 4, V_f: 3.2 }
+    objetivo:
+      condiciones:
+        - { valor: V_a, min: 12, rotulo: "Desde 12 V" }
+        - { valor: V_f, max: 3.15, rotulo: "LED caliente" }
+      logrado: "Caliente y desde 12 V, solo {{d_I}}: en R caen 8,8 V y los 60 mV apenas pesan."
+      pistas:
+        - { cuando: { valor: V_a, menor: 12 }, texto: "Ponga la alimentación de 12 V." }
+        - { texto: "Ahora caliente el LED." }
+    escalera:
+      - "Alimentación de 12 V y LED caliente."
+    solucion: "+0,7 %: 4,8 mA más."
     comprobar:
       - { con: { V_a: 12, V_f: 3.14 }, R_a: 12.57, d_I: 0.68 }
       - { con: { V_a: 4, V_f: 3.14 }, R_a: 1.143, d_I: 7.5 }
 
   - id: formula-r
-    tipo: formula
+    tipo: simular
     titulo: "La resistencia desde 12 V"
-    texto: "Lo que sobra de los 12 V, al ritmo de los 700 mA."
+    texto: "LED de 3,2 V y 700 mA desde 12 V. ¿Qué resistencia hace falta?"
     libro: [346, 343]
-    fijar: { V_f: 3.2 }
-    ec: 346
-    sustitucion: "({{V_a}} − 3,2) / 0,7 = {{R_a}}"
-    widget:
-      tipo: circuito
-      esquema: led
-      piezas: { fuente: V_a, r: R_a, vf: V_f }
-      lectura: { valor: R_a, rotulo: "Resistencia" }
-      corriente: I_a
-      mide: { corriente: I_a, vf: V_f }
-      mandos:
-        - { valor: V_a, lista: [12, 4], rotulo: "Alimentación" }
+    fijar: { V_a: 12, V_f: 3.2 }
+    simular:
+      objetivo: R_a
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Resistencia"
+      errores:
+        - { expr: "R_x", texto: "Falta restar la tensión del LED: en R caen 8,8 V." }
+    exito: "12,6 Ω: lo que sobra de los 12 V, al ritmo de los 700 mA."
+    escalera:
+      - "R = (V − V_{f})/I."
+    solucion: "8,8 V / 0,7 A = 12,6 Ω."
+    comprobar:
+      - { R_a: 12.57, R_x: 17.14 }
 
   - id: simule-potencia
     tipo: simular
@@ -126,32 +148,24 @@ tarjetas:
       - { P_R: 6.16, P_L: 2.24, P_T: 8.4 }
 
   - id: predecir-4v
-    tipo: predecir
+    tipo: simular
     titulo: "Desde 4 V"
-    texto: "Al calentarse 30 °C, V_{f} cae 60 mV y, desde 12 V, la corriente sube un 0,7 %. ¿Y desde 4 V, con 1,14 Ω?"
+    texto: "Desde 12 V, los 60 mV del LED caliente suben la corriente un 0,7 %. Desde 4 V, con 1,14 Ω, ¿cuánto sube?"
     libro: [351, 352, 353]
     fijar: { V_a: 4, V_f: 3.14 }
-    widget:
-      tipo: circuito
-      esquema: led
-      piezas: { fuente: V_a, r: R_a, vf: V_f }
-      lectura: { valor: d_I, rotulo: "Variación de la corriente" }
-      corriente: I_a
-      mide: { corriente: I_a, vf: V_f }
-      ocultar: true
-    opciones:
-      - texto: "Un 7,5 %, y con realimentación positiva"
-        bien: true
-        porque: "En R cae muy poca tensión y los 60 mV pesan mucho más: más corriente, más calor, más corriente."
-      - texto: "El mismo 0,7 %"
-        porque: "La variación es 60 mV frente a lo que cae en R: con 4 V cae mucho menos."
-      - texto: "Baja la corriente"
-        porque: "Al caer V_{f}, sobra más tensión para R: la corriente sube."
+    simular:
+      objetivo: d_I
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Subida de la corriente"
+      errores:
+        - { expr: "d_12", texto: "Ese es el de 12 V; desde 4 V en R cae mucho menos y los 60 mV pesan más." }
+    exito: "Un 7,5 %, 52 mA, y con realimentación positiva: más corriente, más calor, menos V_{f}, más corriente."
     escalera:
-      - "ΔI = 60 mV / R."
-    solucion: "52 mA más: un 7,5 %."
+      - "ΔI = 60 mV / 1,14 Ω."
+    solucion: "52 mA de 700: un 7,5 %."
     comprobar:
-      - { d_I: 7.5 }
+      - { d_I: 7.5, d_12: 0.68, R_a: 1.143 }
 
   - id: pregunta-driver
     tipo: pregunta
@@ -176,7 +190,7 @@ tarjetas:
     solucion: "Corriente constante: sin deriva y con brillo estable."
 
   - id: estime-pico-digito
-    tipo: pregunta
+    tipo: simular
     titulo: "46.B: multiplexar sin quemarlo"
     texto: "4 dígitos con 15 mA medios por segmento. ¿Qué corriente de pico conmuta el driver de cada dígito, con sus 8 segmentos encendidos?"
     libro: [359, 361, 364, 365]
@@ -186,19 +200,14 @@ tarjetas:
       figura: fig-45.12
       zonas:
         - { id: todo, rotulo: "Secuencia y corriente de pico", rect: [0, 0, 453, 213] }
-    estimar:
-      objetivo: "I_pd"
+    simular:
+      objetivo: I_pd
       unidad: A
-      min: 0
-      max: 1
-      paso: 0.01
-      inicio: 0.85
-      tol: 0.05
+      tol: 0.02
       rotulo: "Pico por dígito"
+      errores:
+        - { expr: "I_ps", texto: "Ese es el pico de un segmento; el común suma los ocho." }
     exito: "480 mA: el driver que más se subestima. Cada segmento lleva 60 mA de pico."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.505 }, texto: "Demasiado: 15 mA × 4 por segmento, por 8 segmentos." }
-      - { texto: "Demasiado poco: el común suma los ocho segmentos de 60 mA." }
     escalera:
       - "Pico por segmento: 15 mA × 4."
       - "Por dígito, ocho segmentos a la vez."
@@ -207,34 +216,30 @@ tarjetas:
       - { I_ps: 0.06, I_pd: 0.48 }
 
   - id: pregunta-barrido
-    tipo: pregunta
+    tipo: simular
     titulo: "La frecuencia de barrido"
     texto: "Cada dígito debe refrescarse 60 veces por segundo. Con 4 dígitos, ¿qué barrido hace falta?"
     libro: [368, 369]
     fijar: { n_d: 4 }
-    widget:
-      tipo: figura
-      figura: fig-45.12
-      zonas:
-        - { id: todo, rotulo: "Secuencia y corriente de pico", rect: [0, 0, 453, 213] }
-    opciones:
-      - texto: "240 Hz como mínimo, y conviene 1 kHz"
-        bien: true
-        porque: "El ojo ve el parpadeo al mover la vista aunque no lo vea con la mirada fija."
-      - texto: "60 Hz"
-        porque: "Eso es por dígito; el barrido pasa por los cuatro."
-      - texto: "15 Hz"
-        porque: "Ha dividido en vez de multiplicar: el barrido es más rápido que cada dígito."
+    simular:
+      objetivo: f_b
+      unidad: Hz
+      tol: 0.01
+      rotulo: "Barrido mínimo"
+      errores:
+        - { expr: "f_1", texto: "Eso es por dígito; el barrido pasa por los cuatro." }
+        - { expr: "f_d", texto: "Ha dividido: el barrido es más rápido que cada dígito." }
+    exito: "240 Hz como mínimo, y conviene 1 kHz: el parpadeo se ve al mover la vista."
     escalera:
       - "60 × el número de dígitos."
     solucion: "240 Hz; mejor 1 kHz."
     comprobar:
-      - { f_b: 240 }
+      - { f_b: 240, f_1: 60, f_d: 15 }
 
   - id: explore-polo
     tipo: explorar
     titulo: "46.C: el polo del optoacoplador"
-    texto: "La capacidad de salida del optoacoplador, unos 2 nF, forma un polo con la resistencia de carga. Cámbiela."
+    texto: "La capacidad de salida del optoacoplador, unos 2 nF, forma un polo con la resistencia de carga. Aleje el polo diez veces."
     libro: [374, 384, 385, 386]
     fijar: { C_o: 2e-9, V_p: 1 }
     widget:
@@ -252,13 +257,22 @@ tarjetas:
           - { x: "f_p", y: "-3.01", rotulo: "{{f_p}}" }
       mandos:
         - { valor: R_o, lista: [10000, 1000], rotulo: "Resistencia de carga" }
-    requiere: { mover: [R_o] }
+    inicio: { R_o: 10000 }
+    objetivo:
+      condiciones:
+        - { valor: f_p, min: 70000, rotulo: "Polo: {{f_p}}" }
+      logrado: "Con {{R_o}}, el polo sube a {{f_p}}; a cambio hace falta más corriente, y por tanto más CTR."
+      pistas:
+        - { texto: "Aún está bajo: cambie la resistencia de carga." }
+    escalera:
+      - "f = 1/(2π·R·C): menos R, polo más alto."
+    solucion: "1 kΩ: 79,6 kHz."
     comprobar:
       - { con: { R_o: 10000 }, f_p: 7958 }
       - { con: { R_o: 1000 }, f_p: 79580 }
 
   - id: estime-dispersion
-    tipo: pregunta
+    tipo: simular
     titulo: "La dispersión del CTR"
     texto: "El CTR del optoacoplador del lazo va del 50 % al 300 %. ¿Cuánto varía la ganancia del lazo, en decibelios?"
     libro: [376, 379]
@@ -268,24 +282,19 @@ tarjetas:
       figura: fig-45.8
       zonas:
         - { id: todo, rotulo: "Envejecimiento del CTR", rect: [0, 0, 449, 220] }
-    estimar:
-      objetivo: "G_d"
+    simular:
+      objetivo: G_d
       unidad: dB
-      min: 0
-      max: 40
-      paso: 0.5
-      inicio: 32
-      tol: 0.05
+      tol: 0.02
       rotulo: "Dispersión de la ganancia"
+      errores:
+        - { expr: "G_x", texto: "Es una ganancia de tensión: 20·log, no 10·log." }
     exito: "15,6 dB, y aún hay que sumar el envejecimiento y la temperatura."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 16.4 }, texto: "Demasiado: 20·log de seis." }
-      - { texto: "Demasiado poco: seis veces de ganancia son más de 15 dB." }
     escalera:
       - "300/50 = 6 veces; en decibelios, 20·log 6."
     solucion: "20·log 6 = 15,6 dB."
     comprobar:
-      - { G_d: 15.56 }
+      - { G_d: 15.56, G_x: 7.78 }
 
   - id: porque-peor-caso
     tipo: porque

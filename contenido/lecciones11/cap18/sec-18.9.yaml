@@ -2,6 +2,11 @@
 # - El consumo medio con ciclo de trabajo (bloque 243) como gráfica frente al periodo T (escala logarítmica): con
 #   20 mA activo 100 ms cada minuto y 5 µA dormido, 38 µA; con 2 000 mAh, unos seis años (52 000 h). Un ordenador de
 #   placa a 400 mA continuos, cinco horas. La figura 17.13 (fig-18.13, fichero 18.12.svg) resume las cifras.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el ciclo de trabajo se explora hasta bajar de 10 µA; la
+# fórmula pasa a marcar en la curva el periodo que da 10 µA con 100 ms activos (400 s); se escriben el consumo medio,
+# la autonomía y la relación de consumos; la solución mixta se explora hasta que la pila dure más de un año encendiendo
+# el ordenador una fracción del tiempo. El banco pasa al resumen. Quedan dos preguntas de opciones (el reposo del
+# ordenador) y los umbrales, por emparejar.
 leccion: cap18/sec-18.9
 
 libro:
@@ -27,20 +32,27 @@ modelo:
     T_c: { sim: "T", nombre: "periodo del ciclo", unidad: s, valor: 60 }
     I_d: { sim: "I_{dormido}", nombre: "corriente dormido", unidad: A, valor: 5e-6 }
     C_b: { sim: "C", nombre: "capacidad de la pila", unidad: Ah, valor: 2 }
+    h_an: { sim: "h", nombre: "horas de un año", unidad: "", valor: 8760 }
     I_pi: { sim: "I_{placa}", nombre: "consumo del ordenador de placa", unidad: A, valor: 0.4 }
+    I_ob: { sim: "I_{objetivo}", nombre: "consumo medio buscado", unidad: A, valor: 1e-5 }
+    f_on: { sim: "f", nombre: "fracción del tiempo con el ordenador encendido", unidad: "", valor: 0.1 }
   calculos:
     I_m: { expr: "I_a*t_on/T_c + I_d*(1 - t_on/T_c)", sim: "I_{media}", nombre: "consumo medio", unidad: A }
     h_m: { expr: "C_b/I_m", sim: "autonomía", nombre: "autonomía del microcontrolador", unidad: h }
-    a_m: { expr: "h_m/8760", sim: "autonomía", nombre: "autonomía en años", unidad: "años", cifras: 2 }
+    a_m: { expr: "h_m/h_an", sim: "autonomía", nombre: "autonomía en años", unidad: "años", cifras: 2 }
     h_pi: { expr: "C_b/I_pi", sim: "autonomía", nombre: "autonomía del ordenador de placa", unidad: h }
     r_ab: { expr: "I_pi/I_m", sim: "relación", nombre: "relación de consumos", unidad: "veces", cifras: 2 }
+    T_ob: { expr: "(I_a - I_d)*t_on/(I_ob - I_d)", sim: "T", nombre: "periodo para el consumo buscado", unidad: s }
+    I_x: { expr: "I_m + I_pi*f_on", sim: "I_{media}", nombre: "consumo medio del sistema mixto", unidad: A }
+    a_x: { expr: "C_b/I_x/8760", sim: "autonomía", nombre: "autonomía del sistema mixto", unidad: "años", cifras: 2 }
 
 tarjetas:
   - id: explore-ciclo
     tipo: explorar
     titulo: "Dormir casi todo el tiempo"
-    texto: "Un microcontrolador despierta 100 ms con 20 mA y duerme con 5 µA. Alargue o acorte el tiempo despierto y mire el consumo medio."
+    texto: "Un microcontrolador despierta una vez por minuto con 20 mA y duerme con 5 µA. Acorte el tiempo despierto hasta que el consumo medio baje de 10 µA."
     libro: [243, 244]
+    inicio: { t_on: 1 }
     widget:
       tipo: grafica
       x: { id: per, min: 1, max: 1000, unidad: s, rotulo: "T", escala: log }
@@ -55,46 +67,64 @@ tarjetas:
         - { valor: a_m, rotulo: "Con 2 000 mAh: {{a_m}}" }
       mandos:
         - { valor: t_on, lista: [0.01, 0.1, 1], rotulo: "Tiempo activo, t_{activo}" }
-    requiere: { mover: [t_on] }
+    objetivo:
+      condiciones:
+        - { valor: I_m, max: 0.00001, rotulo: "Media: {{I_m}}" }
+      logrado: "Despierto {{t_on}} de cada minuto, la media es {{I_m}}: cada corriente pesa según la fracción del tiempo que dura, y ya manda la de dormido."
+      pistas:
+        - { texto: "Todavía pesa mucho lo activo: acorte el tiempo despierto." }
+    escalera:
+      - "Lo activo pesa t_{activo}/T del tiempo."
+    solucion: "10 ms despierto."
+    comprobar:
+      - { con: { t_on: 0.01 }, I_m: 0.00000833, tol: 0.01 }
 
   - id: formula-media
-    tipo: formula
+    tipo: marcar
     titulo: "El consumo medio"
-    texto: "Cada corriente pesa según la fracción del tiempo que dura."
+    texto: "Con 100 ms despierto, la curva da la media según cada cuánto despierta. Marque el periodo con el que baja a 10 µA."
     libro: [243, 244]
-    ec: 243
-    sustitucion: "{{I_a}} · {{t_on}} / {{T_c}} + {{I_d}} · (1 − {{t_on}} / {{T_c}}) = {{I_m}}"
+    fijar: { t_on: 0.1 }
     widget:
       tipo: grafica
       x: { id: per, min: 1, max: 1000, unidad: s, rotulo: "T", escala: log }
       y: { min: 0.000001, max: 0.01, unidad: A, rotulo: "I_{media}", escala: log }
       curvas:
         - { expr: "I_a*t_on/per + I_d*(1 - t_on/per)", color: azul, rotulo: "consumo medio" }
-      marcas:
-        - { x: "T_c", y: "I_m", rotulo: "{{I_m}}" }
-      lectura: { valor: I_m, rotulo: "Consumo medio" }
-      mandos:
-        - { valor: t_on, lista: [0.01, 0.1, 1], rotulo: "Tiempo activo, t_{activo}" }
+        - { expr: "I_ob", color: tinta, rotulo: "10 µA", discontinua: true }
+    marcar:
+      modo: x
+      curva: 0
+      x: T_ob
+      tol: 0.04
+      inicio: { x: 10, y: 0.0001 }
+      rotulo: "Periodo del ciclo"
+    exito: "Unos 400 s: I_{media} = I_{activa} · t_{activo} / T más lo dormido. Cada corriente pesa según la fracción del tiempo que dura."
+    escalera:
+      - "Busque dónde la curva azul corta la línea de 10 µA."
+    solucion: "Unos 400 s entre despertares."
+    comprobar:
+      - { T_ob: 399.9, I_ob: 0.00001, tol: 0.01 }
 
   - id: estime-media
-    tipo: pregunta
+    tipo: leer
     titulo: "Un ciclo por minuto"
-    texto: "20 mA durante 100 ms cada minuto y 5 µA el resto. ¿Cuál es el consumo medio?"
-    libro: [244, 245]
+    texto: "20 mA durante 100 ms cada minuto y 5 µA el resto. Escriba el consumo medio."
+    libro: [243, 244, 245]
     fijar: { I_a: 0.02, t_on: 0.1, T_c: 60, I_d: 5e-6 }
-    estimar:
-      objetivo: "I_m"
+    widget:
+      tipo: figura
+      figura: fig-18.13
+      zonas:
+        - { id: barras, rotulo: "La gráfica de barras", rect: [5, 5, 220, 195], texto: "Arranque y consumo de los dos." }
+    leer:
+      objetivo: I_m
       unidad: A
-      min: 0
-      max: 0.0001
-      paso: 0.000001
-      inicio: 0.00008
-      tol: 0.05
+      tol: 0.03
       rotulo: "Consumo medio"
+      errores:
+        - { expr: "I_a*t_on/T_c", texto: "Falta lo dormido: 5 µA durante casi todo el tiempo." }
     exito: "38 µA: lo activo pesa 0,00167 del tiempo, y lo dormido casi todo el resto."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0000402 }, texto: "Demasiado: 100 ms de cada 60 s son solo 0,00167 del tiempo." }
-      - { texto: "Se ha quedado corto: no olvide los 5 µA dormido, casi todo el tiempo." }
     escalera:
       - "20 mA · 0,1 / 60 es la parte activa."
       - "Súmele 5 µA · 0,998."
@@ -103,52 +133,53 @@ tarjetas:
       - { I_m: 0.0000383, tol: 0.01 }
 
   - id: pregunta-autonomia
-    tipo: pregunta
+    tipo: leer
     titulo: "Con una pila de 2 000 mAh"
-    texto: "Con ese consumo medio de 38 µA, ¿cuánto dura la pila en teoría? ¿Y un ordenador de placa a 400 mA?"
+    texto: "Con ese consumo medio de 38 µA y una pila de 2 000 mAh, escriba cuántos años dura en teoría."
     libro: [241, 246, 247, 254]
     fijar: { I_a: 0.02, t_on: 0.1, T_c: 60, I_d: 5e-6 }
     widget:
       tipo: figura
       figura: fig-18.13
       zonas:
-        - { id: barras, rotulo: "La gráfica de barras", rect: [5, 5, 220, 195] }
-    opciones:
-      - texto: "Unos seis años; el ordenador, cinco horas"
-        bien: true
-        porque: "Autonomía = capacidad / consumo medio. En la práctica limita la autodescarga."
-      - texto: "Unos seis meses; el ordenador, cinco días"
-        porque: "2 000 mAh / 38 µA son unos seis años; 2 000 mAh / 400 mA, cinco horas."
-      - texto: "Lo mismo los dos: es la misma pila"
-        porque: "La pila es la misma; el consumo medio no: autonomía = capacidad / consumo."
+        - { id: barras, rotulo: "La gráfica de barras", rect: [5, 5, 220, 195], texto: "Arranque y consumo de los dos." }
+    leer:
+      objetivo: a_m
+      unidad: ""
+      tol: 0.03
+      rotulo: "Años"
+      errores:
+        - { expr: "h_m", texto: "Eso son horas: un año tiene 8760." }
+    exito: "Unos seis años, limitados en la práctica por la autodescarga. Un ordenador de placa a 400 mA continuos: cinco horas."
     escalera:
-      - "Divida la capacidad entre el consumo medio."
-    solucion: "Unos seis años frente a cinco horas."
+      - "Autonomía = capacidad / consumo medio."
+      - "2 000 mAh / 38 µA, en horas; luego, entre 8760."
+    solucion: "2 000 mAh / 38 µA ≈ 52 200 h: unos seis años."
     comprobar:
-      - { a_m: 5.96, h_pi: 5, tol: 0.01 }
+      - { a_m: 5.96, h_pi: 5, h_m: 52200, h_an: 8760, tol: 0.01 }
 
   - id: pregunta-ordenes
-    tipo: pregunta
+    tipo: leer
     titulo: "Cuatro órdenes de magnitud"
-    texto: "¿Cuántas veces más dura el microcontrolador con la misma pila?"
+    texto: "Escriba cuántas veces más dura el microcontrolador (38 µA de media) que un ordenador de placa (400 mA) con la misma pila."
     libro: [248]
     fijar: { I_a: 0.02, t_on: 0.1, T_c: 60, I_d: 5e-6 }
     widget:
       tipo: figura
       figura: fig-18.13
       zonas:
-        - { id: cuadros, rotulo: "Los recuadros de la derecha", rect: [245, 5, 190, 165] }
-    opciones:
-      - texto: "Unas diez mil veces"
-        bien: true
-        porque: "Cuatro órdenes de magnitud: lo que hace la decisión evidente en un sistema autónomo."
-      - texto: "Unas veinte veces"
-        porque: "Esa es la relación del consumo activo; durmiendo, el micro gasta microamperios."
-      - texto: "Unas cien veces"
-        porque: "Seis años frente a cinco horas son unas diez mil veces."
+        - { id: cuadros, rotulo: "Los recuadros de la derecha", rect: [245, 5, 190, 165], texto: "El cálculo de autonomía." }
+    leer:
+      objetivo: r_ab
+      unidad: ""
+      tol: 0.05
+      rotulo: "Veces"
+      errores:
+        - { expr: "I_pi/I_a", texto: "Esa es la relación con el micro despierto; casi todo el tiempo duerme." }
+    exito: "Unas diez mil veces: cuatro órdenes de magnitud hacen la decisión evidente en un sistema autónomo."
     escalera:
       - "Divida 400 mA entre 38 µA."
-    solucion: "Unas diez mil veces."
+    solucion: "400 mA / 38 µA: unas diez mil veces."
     comprobar:
       - { r_ab: 10440, tol: 0.01 }
 
@@ -196,53 +227,38 @@ tarjetas:
     solucion: "No tiene un modo de reposo comparable."
 
   - id: pregunta-mixta
-    tipo: pregunta
+    tipo: explorar
     titulo: "La solución mixta en el campo"
-    texto: "Con microcontrolador y ordenador de placa, ¿qué hace viable un sistema de campo a batería?"
+    texto: "Un microcontrolador a 38 µA de media enciende un ordenador de 400 mA. Elija qué fracción del tiempo lo enciende para que la pila de 2 000 mAh dure más de un año."
     libro: [250]
+    fijar: { I_a: 0.02, t_on: 0.1, T_c: 60, I_d: 5e-6 }
     widget:
-      tipo: figura
-      figura: fig-18.13
-      zonas:
-        - { id: cuadros, rotulo: "Los recuadros de la derecha", rect: [245, 5, 190, 165] }
-    opciones:
-      - texto: "Que el micro encienda el ordenador solo cuando hace falta"
-        bien: true
-        porque: "El consumo lo domina el ordenador salvo que se le pueda apagar."
-      - texto: "Una batería más grande"
-        porque: "Con cientos de mA continuos, la batería se agota igual: hay que apagar el ordenador."
-      - texto: "Dormir el microcontrolador"
-        porque: "El micro ya consume poco: quien domina es el ordenador."
+      tipo: grafica
+      x: { id: fr, min: 0.0001, max: 1, unidad: "", rotulo: "fracción encendido", escala: log }
+      y: { min: 0.0001, max: 10, unidad: "años", rotulo: "autonomía", escala: log }
+      curvas:
+        - { expr: "C_b/(I_m + I_pi*fr)/8760", color: azul, rotulo: "autonomía" }
+      marcas:
+        - { x: "f_on", y: "a_x", rotulo: "{{a_x}}" }
+      lectura: { valor: a_x, rotulo: "Autonomía" }
+      mandos:
+        - { valor: f_on, lista: [1, 0.1, 0.01, 0.001, 0.0001], rotulo: "Fracción con el ordenador encendido" }
+    objetivo:
+      condiciones:
+        - { valor: a_x, min: 1, rotulo: "Autonomía: {{a_x}}" }
+      logrado: "Solo encendiéndolo una fracción mínima del tiempo: el consumo lo domina el ordenador salvo que se le pueda apagar. Que el micro lo encienda solo cuando hace falta es lo que hace viable el sistema."
+      pistas:
+        - { texto: "El ordenador encendido pesa más que todo el micro: enciéndalo menos." }
     escalera:
-      - "¿Quién domina el consumo?"
-    solucion: "Que el microcontrolador encienda el ordenador solo cuando hace falta."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Mide el perfil de consumo real de un ciclo con un shunt y el osciloscopio. Frente al calculado, ¿qué espera?"
-    libro: [253]
-    widget:
-      tipo: figura
-      figura: fig-18.13
-      zonas:
-        - { id: cuadros, rotulo: "Los recuadros de la derecha", rect: [245, 5, 190, 165] }
-    opciones:
-      - texto: "Casi siempre mayor"
-        bien: true
-        porque: "Incluye reintentos, estabilizaciones y lo que el firmware hace sin que nadie lo haya previsto."
-      - texto: "Igual"
-        porque: "Las hojas de datos no ven los reintentos ni las estabilizaciones."
-      - texto: "Menor"
-        porque: "Casi siempre es mayor: la medida sustituye a toda estimación."
-    escalera:
-      - "¿Qué hace el firmware que no está en las hojas de datos?"
-    solucion: "Casi siempre mayor que el calculado."
+      - "Cada fracción del tiempo con 400 mA suma 400 mA por esa fracción."
+    solucion: "Una diezmilésima del tiempo."
+    comprobar:
+      - { con: { f_on: 0.0001 }, a_x: 2.93, tol: 0.02 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [243, 246, 248, 250]
+    libro: [243, 246, 248, 250, 253]
     ideas:
       - { titulo: "Consumo medio.", texto: "Cada corriente, por la fracción del tiempo que dura: 38 µA." }
       - { titulo: "Autonomía.", texto: "Capacidad / consumo medio: seis años frente a cinco horas." }

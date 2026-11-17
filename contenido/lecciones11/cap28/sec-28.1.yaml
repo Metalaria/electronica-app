@@ -3,6 +3,12 @@
 # |A·β| en cada vuelta (bloques 5 a 7); la saturación es una salida normalizada a 1. La pendiente de fase del
 # resonador es la de un circuito resonante, φ = −atan(2Q·Δf/f₀), con Q de 200 (un LC bueno) y 200 000 (un cristal,
 # «cientos de miles»; bloque 64 de la sección 27.3): su cociente es el «mil veces» del bloque 16.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el módulo que mantiene la perturbación se busca, el desfase
+# del lazo se lleva a 0° hasta que la señal que vuelve refuerce a la que sale (φ de ejemplo: 180°, 90°, 0°), el recorte
+# se provoca subiendo |A·β| (sustituye a la predicción), la ganancia mínima se predice, el cristal se elige por su
+# desviación de frecuencia (el «por qué mil veces» pasa a su explicación), la campana se estrecha con el Q y se marca
+# cuándo llega a plena amplitud el lazo con ganancia de sobra. Quedan el emparejamiento de familias y dos preguntas de
+# opciones (la sonda ×1, la forma en el osciloscopio).
 leccion: cap28/sec-28.1
 
 libro:
@@ -32,19 +38,24 @@ modelo:
     b_r: { sim: "β", nombre: "atenuación de la red", unidad: "", valor: 0.05 }
     Q_r: { sim: "Q", nombre: "factor de calidad del resonador", unidad: "", valor: 200 }
     d_f: { sim: "Δφ", nombre: "perturbación de fase", unidad: "°", valor: 10 }
+    f_i: { sim: "φ", nombre: "desfase del lazo, de ejemplo", unidad: "°", valor: 180 }
   calculos:
     a_fin: { expr: "v_0*A_b^30", sim: "v", nombre: "amplitud tras las vueltas", unidad: "", cifras: 2 }
     a_sat: { expr: "min(V_s, v_0*A_b^30)", sim: "v", nombre: "amplitud con saturación", unidad: "", cifras: 2 }
     A_min: { expr: "1/b_r", sim: "A", nombre: "ganancia mínima", unidad: "" }
     d_u: { expr: "1000000*tan(d_f*pi/180)/(2*Q_r)", sim: "Δf/f₀", nombre: "desviación relativa de frecuencia", unidad: ppm }
+    s_um: { expr: "2*abs(cos(f_i*pi/360))", sim: "|v + v_{vuelta}|", nombre: "amplitud de la suma", unidad: "" }
+    w_c: { expr: "1000000/Q_r", sim: "Δf/f₀", nombre: "anchura de la campana a media potencia", unidad: ppm }
+    n_a: { expr: "ln(V_s/v_0)/ln(1.2)", sim: "n", nombre: "vueltas hasta plena amplitud con |A·β| = 1,2", unidad: vueltas }
 
 tarjetas:
   - id: explore-lazo
     tipo: explorar
     titulo: "Una perturbación da vueltas"
-    texto: "En cada vuelta al lazo, la perturbación se multiplica por |A·β|. Cambie ese módulo y mire si se mantiene."
+    texto: "En cada vuelta al lazo, la perturbación se multiplica por |A·β|. Busque el módulo con el que se mantiene."
     nota: "Amplitudes relativas."
     libro: [4, 5, 6]
+    inicio: { A_b: 0.9 }
     widget:
       tipo: grafica
       x: { id: nv, min: 0, max: 30, unidad: vueltas, rotulo: "vueltas al lazo" }
@@ -54,66 +65,56 @@ tarjetas:
       lectura: { valor: a_fin, rotulo: "Amplitud al final" }
       mandos:
         - { valor: A_b, lista: [0.9, 1, 1.1], rotulo: "|A·β|" }
-    requiere: { mover: [A_b] }
+    objetivo:
+      condiciones:
+        - { valor: a_fin, min: 0.099, max: 0.101, rotulo: "Amplitud al final: {{a_fin}}" }
+      logrado: "Con |A·β| = {{A_b}}, la perturbación vuelve igual en cada vuelta: oscilación sostenida."
+      pistas:
+        - { cuando: { valor: a_fin, max: 0.099 }, texto: "Se apaga: más ganancia de lazo." }
+        - { texto: "Crece sin parar: menos ganancia de lazo." }
+    escalera:
+      - "Multiplicada por 1 en cada vuelta, ni crece ni se apaga."
+    solucion: "|A·β| = 1."
+    comprobar:
+      - { con: { A_b: 1 }, a_fin: 0.1 }
 
   - id: fase-cero
-    tipo: pregunta
+    tipo: explorar
     titulo: "La otra condición"
-    texto: "La señal vuelve con el mismo módulo, |A·β| = 1, pero desfasada media vuelta. ¿Se sostiene la oscilación?"
+    texto: "La señal vuelve con el mismo módulo, pero desfasada. Cambie el desfase del lazo hasta que la que vuelve refuerce a la que sale."
+    nota: "Desfases de ejemplo."
     libro: [5, 15]
+    inicio: { f_i: 180 }
     widget:
       tipo: grafica
       x: { id: nv, min: 0, max: 2, unidad: vueltas, rotulo: "t, en periodos" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      y: { min: -2.2, max: 2.2, unidad: "", rotulo: "señal" }
       curvas:
         - { expr: "sin(2*pi*nv)", color: azul, rotulo: "la que sale" }
-        - { expr: "sin(2*pi*nv + pi)", color: naranja, rotulo: "la que vuelve", discontinua: true }
-    opciones:
-      - texto: "No: la fase del lazo debe ser 0° o un múltiplo de 360°"
-        bien: true
-        porque: "Solo en fase la señal que vuelve refuerza a la que sale. Desfasada media vuelta, la contrarresta."
-      - texto: "Sí: basta con que el módulo valga 1"
-        porque: "El módulo es una de las dos condiciones de Barkhausen. La fase debe cumplirse a la vez."
-      - texto: "Sí, pero a otra amplitud"
-        porque: "La amplitud la fija el módulo. Sin la fase correcta no se refuerza ninguna amplitud."
+        - { expr: "sin(2*pi*nv + f_i*pi/180)", color: naranja, rotulo: "la que vuelve", discontinua: true }
+        - { expr: "sin(2*pi*nv) + sin(2*pi*nv + f_i*pi/180)", color: verde, rotulo: "suma" }
+      lectura: { valor: s_um, rotulo: "Amplitud de la suma" }
+      mandos:
+        - { valor: f_i, lista: [180, 90, 0], rotulo: "Desfase del lazo" }
+    objetivo:
+      condiciones:
+        - { valor: s_um, min: 1.99, rotulo: "Suma: {{s_um}}" }
+      logrado: "Con 0° se refuerzan: la fase del lazo debe ser 0° o un múltiplo de 360°, a la vez que el módulo vale 1."
+      pistas:
+        - { cuando: { valor: s_um, max: 0.1 }, texto: "Desfasada media vuelta, la contrarresta: la suma se anula." }
+        - { texto: "Aún no están en fase." }
     escalera:
       - "Barkhausen pide dos condiciones simultáneas sobre A·β."
-    solucion: "No oscila: hace falta módulo 1 y fase 0° (o múltiplo de 360°) a la vez."
-
-  - id: prediga-recorte
-    tipo: predecir
-    titulo: "Un poco más que 1"
-    texto: "Para que arranque desde el ruido, se diseña con |A·β| algo mayor que 1, sin nada que la corrija. ¿Qué sale al final?"
-    libro: [7]
-    fijar: { A_b: 1.1 }
-    widget:
-      tipo: grafica
-      x: { id: nv, min: 0, max: 40, unidad: vueltas, rotulo: "vueltas al lazo", muestras: 4000 }
-      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "señal" }
-      curvas:
-        - { expr: "max(-V_s, min(V_s, v_0*A_b^nv*sin(2*pi*nv)))", color: azul, rotulo: "salida" }
-      lectura: { valor: a_sat, rotulo: "Amplitud final" }
-      ocultar: curvas
-    opciones:
-      - texto: "Crece hasta que el amplificador satura: sale recortada"
-        bien: true
-        porque: "Nada frena el crecimiento salvo la saturación, que achata las crestas."
-      - texto: "Se queda sola en una amplitud fija y limpia"
-        porque: "Eso exige un mecanismo que baje la ganancia a 1 al crecer la amplitud. Aquí no hay ninguno."
-      - texto: "Se apaga"
-        porque: "Se apagaría con |A·β| menor que 1. Mayor que 1, crece en cada vuelta."
-    escalera:
-      - "En cada vuelta se multiplica por un número mayor que 1. ¿Qué la detiene?"
-    solucion: "Crece hasta la saturación del amplificador y sale recortada."
+    solucion: "Desfase 0°: la suma es el doble."
     comprobar:
-      - { a_sat: 1 }
+      - { con: { f_i: 0 }, s_um: 2 }
 
   - id: sorpresa-recorte
-    tipo: sorpresa
+    tipo: explorar
     titulo: "Recortada"
-    texto: "Sin mecanismo, la amplitud crece hasta los raíles. Cambie |A·β|: cuanto más sobra, antes recorta."
+    texto: "Se diseña con |A·β| algo mayor que 1 para que arranque, sin nada que lo corrija. Súbalo hasta que la señal llegue a los raíles."
     libro: [7]
-    inicio: { A_b: 1.1 }
+    inicio: { A_b: 1.05 }
     widget:
       tipo: grafica
       x: { id: nv, min: 0, max: 30, unidad: vueltas, rotulo: "vueltas al lazo" }
@@ -123,27 +124,33 @@ tarjetas:
       lectura: { valor: a_sat, rotulo: "Amplitud final" }
       mandos:
         - { valor: A_b, lista: [1.05, 1.1, 1.2], rotulo: "|A·β|" }
-    requiere: { mover: [A_b] }
+    objetivo:
+      condiciones:
+        - { valor: a_sat, min: 1, rotulo: "Amplitud final: {{a_sat}}" }
+      logrado: "Nada frena el crecimiento salvo la saturación, que achata las crestas: sale recortada."
+      pistas:
+        - { texto: "Con tan poca ganancia de sobra, aún no ha llegado: más |A·β|." }
+    escalera:
+      - "En cada vuelta se multiplica por más de 1: solo la saturación la detiene."
+    solucion: "|A·β| = 1,1: llega al raíl y recorta."
+    comprobar:
+      - { con: { A_b: 1.05 }, a_sat: 0.432, tol: 0.01 }
+      - { con: { A_b: 1.1 }, a_sat: 1 }
 
   - id: estime-ganancia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La ganancia mínima"
     texto: "La red de realimentación de un oscilador tiene β = 0,05. ¿Qué ganancia mínima necesita el amplificador?"
     libro: ["cap28#247"]
-    estimar:
-      objetivo: "A_min"
+    simular:
+      objetivo: A_min
       unidad: ""
-      min: 0
-      max: 50
-      paso: 1
-      inicio: 5
-      tol: 0.05
+      tol: 0.02
       rotulo: "Ganancia del amplificador, A"
+      errores:
+        - { expr: "b_r", texto: "Esa es β. Busque el A que hace A · 0,05 = 1." }
     exito: "20: con β = 0,05 hace falta A ≥ 20 para que |A·β| llegue a 1."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 21 }, texto: "Se ha pasado: busque el A que hace A · 0,05 = 1." }
-      - { texto: "Se ha quedado corto: con ese A, |A·β| no llega a 1." }
     escalera:
       - "Por Barkhausen, |A·β| ≥ 1."
     solucion: "A ≥ 1/0,05 = 20."
@@ -170,9 +177,10 @@ tarjetas:
   - id: explore-pendiente
     tipo: explorar
     titulo: "La pendiente de fase"
-    texto: "Oscila donde el desfase del lazo es cero; una perturbación de fase mueve ese punto. Cambie el Q y mire cuánto se desvía la frecuencia."
+    texto: "Oscila donde el desfase del lazo es cero; 10° de perturbación mueven ese punto. Elija el resonador con el que la frecuencia se desvía menos de una parte por millón."
     nota: "Perturbación de ejemplo de 10°."
     libro: [15, 16, "cap28#64"]
+    inicio: { Q_r: 200 }
     widget:
       tipo: grafica
       x: { id: u, min: -2000, max: 2000, unidad: ppm, rotulo: "(f − f₀)/f₀" }
@@ -182,34 +190,19 @@ tarjetas:
       lectura: { valor: d_u, rotulo: "Desviación por 10° de fase" }
       mandos:
         - { valor: Q_r, lista: [200, 200000], nombres: ["LC bueno", "cristal"], rotulo: "Resonador" }
-    requiere: { mover: [Q_r] }
+    objetivo:
+      condiciones:
+        - { valor: d_u, max: 1, rotulo: "Desviación: {{d_u}}" }
+      logrado: "El cristal: su pendiente de fase es mil veces mayor, y la misma perturbación mueve mil veces menos la frecuencia."
+      pistas:
+        - { texto: "Con ese Q la fase cambia despacio: pruebe otro resonador." }
+    escalera:
+      - "Con Q alto, la fase varía muy deprisa alrededor de la resonancia."
+    solucion: "El cristal: menos de una parte por millón."
     comprobar:
       - { d_f: 10 }
-
-  - id: por-que-cristal
-    tipo: porque
-    titulo: "¿Por qué mil veces?"
-    texto: "Un cristal es unas mil veces más estable que un LC. ¿Por qué?"
-    libro: [16]
-    fijar: { Q_r: 200000 }
-    widget:
-      tipo: grafica
-      x: { id: u, min: -2000, max: 2000, unidad: ppm, rotulo: "(f − f₀)/f₀" }
-      y: { min: -90, max: 90, unidad: "°", rotulo: "fase del resonador" }
-      curvas:
-        - { expr: "-atan(2*Q_r*u/1000000)*180/pi", color: azul, rotulo: "cristal" }
-        - { expr: "-atan(400*u/1000000)*180/pi", color: naranja, rotulo: "LC", discontinua: true }
-    opciones:
-      - texto: "Su pendiente de fase es mil veces mayor: la misma perturbación mueve mil veces menos la frecuencia"
-        bien: true
-        porque: "Es la razón cuantitativa: con Q alto, la fase cambia muy deprisa alrededor de la resonancia."
-      - texto: "Porque el cuarzo «es más preciso» por naturaleza"
-        porque: "El libro lo descarta: la estabilidad sale de la pendiente de fase, no de una precisión abstracta."
-      - texto: "Porque el cristal no tiene desfase"
-        porque: "Sí lo tiene. Lo que importa es lo deprisa que cambia con la frecuencia."
-    escalera:
-      - "Compare cuánto hay que moverse en frecuencia para cambiar la fase lo mismo."
-    solucion: "La pendiente de fase del cristal es mil veces mayor: una perturbación de fase apenas lo desvía."
+      - { con: { Q_r: 200 }, d_u: 440.8, tol: 0.01 }
+      - { con: { Q_r: 200000 }, d_u: 0.4408, tol: 0.01 }
 
   - id: sonda-x1
     tipo: pregunta
@@ -234,34 +227,38 @@ tarjetas:
     solucion: "La sonda carga la salida y cambia el desfase del lazo: la frecuencia se mueve."
 
   - id: ruido-fase
-    tipo: pregunta
+    tipo: explorar
     titulo: "Una campana, no una raya"
-    texto: "La fase de un oscilador real fluctúa y su espectro es una campana. ¿Qué la estrecha?"
+    texto: "La fase de un oscilador real fluctúa y su espectro es una campana. Elija el resonador que la estrecha hasta casi una raya."
+    nota: "Forma de la campana, de ejemplo."
     libro: [21, 23]
-    fijar: { Q_r: 200 }
+    inicio: { Q_r: 200 }
     widget:
       tipo: grafica
       x: { id: u, min: -10000, max: 10000, unidad: ppm, rotulo: "distancia a la portadora" }
       y: { min: 0, max: 1.1, unidad: "", rotulo: "potencia relativa" }
       curvas:
-        - { expr: "1/(1 + (2*Q_r*u/1000000)^2)", color: naranja, rotulo: "Q bajo" }
-        - { expr: "1/(1 + (8*Q_r*u/1000000)^2)", color: azul, rotulo: "Q cuatro veces mayor", discontinua: true }
-    opciones:
-      - texto: "Un resonador de Q más alto"
-        bien: true
-        porque: "Más Q, menos ruido de fase, por la misma pendiente de fase. Por eso el cristal es la referencia."
-      - texto: "Más ganancia en el amplificador"
-        porque: "La ganancia sobrante no limpia la fase; si satura, añade distorsión."
-      - texto: "Una sonda ×10"
-        porque: "La sonda evita cargar el oscilador al medir, pero no cambia su ruido de fase."
+        - { expr: "1/(1 + (2*Q_r*u/1000000)^2)", color: naranja, rotulo: "espectro" }
+      lectura: { valor: w_c, rotulo: "Anchura a media potencia" }
+      mandos:
+        - { valor: Q_r, lista: [200, 200000], nombres: ["LC bueno", "cristal"], rotulo: "Resonador" }
+    objetivo:
+      condiciones:
+        - { valor: w_c, max: 10, rotulo: "Anchura: {{w_c}}" }
+      logrado: "Más Q, menos ruido de fase, por la misma pendiente de fase. Por eso el cristal es la referencia."
+      pistas:
+        - { texto: "Con ese Q la campana es ancha: pruebe otro resonador." }
     escalera:
       - "La misma razón que hace estable al cristal."
-    solucion: "Más Q: la fase cambia muy deprisa con la frecuencia y la campana se estrecha."
+    solucion: "El cristal."
+    comprobar:
+      - { con: { Q_r: 200 }, w_c: 5000 }
+      - { con: { Q_r: 200000 }, w_c: 5 }
 
   - id: arranque-rc
-    tipo: pregunta
+    tipo: marcar
     titulo: "Despertar deprisa"
-    texto: "Un microcontrolador de bajo consumo despierta muchas veces. ¿Por qué arranca con un oscilador RC y no con el cristal?"
+    texto: "Dos osciladores arrancan desde el ruido. Marque cuándo llega a plena amplitud el de ganancia de sobra."
     libro: [25, 26]
     widget:
       tipo: grafica
@@ -270,17 +267,23 @@ tarjetas:
       curvas:
         - { expr: "min(V_s, v_0*1.2^nv)", color: naranja, rotulo: "ganancia de sobra" }
         - { expr: "min(V_s, v_0*1.01^nv)", color: azul, rotulo: "apenas mayor que 1", discontinua: true }
-    opciones:
-      - texto: "El cristal tarda milisegundos en llegar a amplitud plena: energía gastada sin hacer nada"
-        bien: true
-        porque: "Con Q alto la amplitud crece muy despacio. El cristal se arranca solo cuando hace falta exactitud."
-      - texto: "Porque el RC es más exacto"
-        porque: "Es al revés: el cristal es el exacto. El RC gana en rapidez de arranque."
-      - texto: "Porque el cristal consume más al oscilar"
-        porque: "El problema es el tiempo de arranque, en el que el microcontrolador espera sin poder ejecutar."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "n_a"
+      tol: 0.03
+      inicio: { x: 25, y: 1 }
+      rotulo: "Plena amplitud"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 14 }, texto: "Ahí ya lleva un rato arriba: llega antes." }
+      - { texto: "Ahí aún está creciendo: más a la derecha." }
+    exito: "El otro, con ganancia apenas mayor que 1, ni ha empezado. Así arranca un cristal de Q alto: milisegundos. Para despertar, un RC rápido."
     escalera:
-      - "¿Cuánto tarda en arrancar un oscilador de Q muy alto?"
-    solucion: "El cristal tarda milisegundos o decenas de milisegundos en arrancar; el RC es casi inmediato."
+      - "Busque dónde la curva naranja deja de subir."
+    solucion: "Hacia la vuelta 13."
+    comprobar:
+      - { n_a: 12.63, tol: 0.01 }
 
   - id: banco-forma
     tipo: pregunta

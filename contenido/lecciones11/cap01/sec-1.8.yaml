@@ -1,4 +1,7 @@
 # Lección 1.1 de la sección 1.8 «Energía, Rendimiento y Autonomía» (cap01). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): conseguir cien horas de pila, predecir la energía de una AA
+# y la autonomía de 2500 mAh, ver el efecto Peukert, conseguir los 43 µA del nodo, ajustar los cinco años, perder la
+# mitad en una cascada y predecir el 72,7 % y el regulador; se eligen la autodescarga y el «por qué» de la cascada.
 leccion: cap01/sec-1.8
 
 libro:
@@ -51,8 +54,9 @@ tarjetas:
   - id: explore-autonomia
     tipo: explorar
     titulo: "¿Cuánto dura una pila?"
-    texto: "Mueva el consumo y la capacidad. La autonomía teórica es la capacidad dividida por el consumo: mucha corriente, poco tiempo."
+    texto: "La autonomía teórica es la capacidad dividida por el consumo: mucha corriente, poco tiempo. Consiga cien horas."
     libro: [158, 162, 163]
+    inicio: { Q_ah: 2, I_c: 0.05 }
     widget:
       tipo: grafica
       x: { id: ii, min: 0.005, max: 1, unidad: A, rotulo: "consumo", escala: log }
@@ -65,12 +69,24 @@ tarjetas:
       mandos:
         - { valor: I_c, lista: [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1], rotulo: "Consumo, I" }
         - { valor: Q_ah, lista: [1, 2, 3], rotulo: "Capacidad" }
-    requiere: { mover: [I_c, Q_ah] }
+    objetivo:
+      condiciones:
+        - { valor: aut, objetivo: 100, tol: 0.02, rotulo: "Autonomía: {{aut}}" }
+      logrado: "{{Q_ah}} entre {{I_c}}: {{aut}}. Con la mitad de consumo, el doble de tiempo."
+      pistas:
+        - { cuando: { valor: aut, mayor: 102 }, texto: "Dura más de la cuenta: suba el consumo o baje la capacidad." }
+        - { texto: "Dura poco: baje el consumo o suba la capacidad." }
+    escalera:
+      - "Autonomía = capacidad / consumo: ¿qué consumo da cien horas con 2 Ah?"
+    solucion: "2 Ah con 20 mA, o 1 Ah con 10 mA."
+    comprobar:
+      - { aut: 40 }
+      - { con: { Q_ah: 2, I_c: 0.02 }, aut: 100 }
 
   - id: prediga-energia
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Una AA alcalina tiene 2 000 mAh a 1,5 V. ¿Cuánta energía contiene?"
+    tipo: simular
+    titulo: "Prediga la energía"
+    texto: "Una AA alcalina tiene 2 000 mAh a 1,5 V. ¿Cuánta energía contiene, en Wh?"
     libro: [160, 161]
     fijar: { Q_ah: 2, V_b: 1.5 }
     widget:
@@ -80,21 +96,20 @@ tarjetas:
       curvas:
         - { expr: "qq*V_b", color: naranja, rotulo: "energía a 1,5 V" }
       lectura: { valor: E_wh, rotulo: "Energía" }
-      ocultar: true
-    opciones:
-      - texto: "3,0 Wh"
-        bien: true
-        porque: "2 Ah × 1,5 V = 3,0 Wh, que son 10 800 J."
-      - texto: "3 000 Wh"
-        porque: "Son miliamperios-hora: 2 000 mAh son 2 Ah. El resultado es mil veces menor."
-      - texto: "2 000 mAh: eso ya es la energía"
-        porque: "Los mAh son carga, no energía: falta multiplicar por la tensión."
-    comprobar:
-      - { E_wh: 3.0, E_j: 10800 }
+      ocultar: curvas
+    simular:
+      objetivo: E_wh
+      unidad: Wh
+      tol: 0.02
+      rotulo: "Energía de la pila"
+      errores:
+        - { razon: { min: 0.6, max: 0.7 }, texto: "Los mAh son carga, no energía: falta multiplicar por la tensión." }
+    exito: "2 Ah × 1,5 V = 3,0 Wh, que son 10 800 J."
     escalera:
       - "Energía = carga × tensión, con la carga en amperios-hora."
     solucion: "2 Ah × 1,5 V = 3,0 Wh."
-
+    comprobar:
+      - { E_wh: 3.0, E_j: 10800 }
   - id: regla-energia
     tipo: formula
     titulo: "Carga por tensión"
@@ -117,31 +132,28 @@ tarjetas:
         - { valor: V_b, lista: [1.2, 1.5, 3.7], rotulo: "Tensión, V" }
 
   - id: estime-autonomia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Una batería de 3,7 V"
-    texto: "Una batería de 3,7 V y 2500 mAh alimenta un equipo que consume 50 mA de media. Estime su autonomía."
+    texto: "Una batería de 3,7 V y 2500 mAh alimenta un equipo que consume 50 mA de media. ¿Cuál es su autonomía teórica?"
     libro: ["cap01#345"]
     fijar: { Q_ah: 2.5, V_b: 3.7, I_c: 0.05 }
-    estimar:
-      objetivo: "aut"
+    simular:
+      objetivo: aut
       unidad: h
-      min: 0
-      max: 200
-      paso: 1
-      inicio: 150
       tol: 0.05
       rotulo: "Autonomía"
+      errores:
+        - { razon: { min: 3.6, max: 3.8 }, texto: "Ha multiplicado por la tensión: la autonomía es solo capacidad entre consumo." }
     exito: "2500 mAh / 50 mA = 50 h, y guarda 2,5 Ah × 3,7 V = 9,25 Wh. Algo menos en la práctica."
     pistas:
       - { cuando: { valor: estimacion, mayor: 52 }, texto: "Se ha pasado: divida los 2500 mAh entre los 50 mA." }
       - { texto: "Se ha quedado corto: la tensión no entra en la autonomía; solo capacidad entre consumo." }
-    comprobar:
-      - { aut: 50, E_wh: 9.25 }
     escalera:
       - "La autonomía teórica es la capacidad dividida entre el consumo."
-    solucion: "2500 mAh / 50 mA = 50 h, y guarda 2,5 Ah × 3,7 V = 9,25 Wh. Algo menos en la práctica."
-
+    solucion: "2500 mAh / 50 mA = 50 h."
+    comprobar:
+      - { aut: 50, E_wh: 9.25 }
   - id: peukert
     tipo: sorpresa
     titulo: "Teórica, y esa palabra importa"
@@ -163,7 +175,15 @@ tarjetas:
         - { valor: Q_real, rotulo: "Capacidad: {{Q_real}}" }
       mandos:
         - { valor: alta, tipo: interruptor, rotulo: "Consumo de 500 mA" }
-    requiere: { mover: [alta] }
+    objetivo:
+      condiciones:
+        - { valor: alta, min: 1, rotulo: "Consumo de 500 mA" }
+      logrado: "Teórica, {{aut_t}}; real, {{aut_r}}: a 500 mA la alcalina solo da {{Q_real}}. A más corriente, menos capacidad."
+      pistas:
+        - { texto: "Active el consumo de 500 mA." }
+    escalera:
+      - "Active el interruptor del consumo alto."
+    solucion: "A 500 mA: 4 h teóricas, 2,4 h reales."
     comprobar:
       - { con: { alta: 1 }, aut_t: 4, aut_r: 2.4 }
       - { aut_t: 40 }
@@ -189,7 +209,7 @@ tarjetas:
   - id: consumo-medio
     tipo: explorar
     titulo: "Despierto y dormido"
-    texto: "Un nodo despierta cada segundo y vuelve a dormir. Mueva el tiempo despierto y la corriente despierto: decide la media."
+    texto: "Un nodo despierta cada segundo y vuelve a dormir. Consiga el consumo medio del libro, 43 µA."
     nota: "Es más eficaz reducir el tiempo activo que el consumo activo."
     libro: [169, 170]
     inicio: { I_act: 0.008, t_on: 0.05 }
@@ -206,9 +226,19 @@ tarjetas:
       mandos:
         - { valor: t_on, lista: [0.005, 0.01, 0.02, 0.05, 0.1], rotulo: "Despierto, t_{activo}" }
         - { valor: I_act, lista: [0.004, 0.008], rotulo: "Corriente despierto" }
-    requiere: { mover: [t_on] }
+    objetivo:
+      condiciones:
+        - { valor: I_med, objetivo: 43e-6, tol: 0.03, rotulo: "Media: {{I_med}}" }
+      logrado: "8 mA durante 5 ms cada segundo y 3 µA el resto: {{I_med}} de media, {{anos}} con una pila."
+      pistas:
+        - { cuando: { valor: I_med, mayor: 44.3e-6 }, texto: "La media es alta: acorte el tiempo despierto." }
+        - { texto: "La media es baja: el libro despierta 5 ms con 8 mA." }
+    escalera:
+      - "La media es la ponderada en el tiempo: lo despierto pesa t_{activo} de cada segundo."
+    solucion: "8 mA y 5 ms: 43 µA."
     comprobar:
       - { con: { t_on: 0.005, I_act: 0.008 }, I_med: 43e-6 }
+      - { I_med: 0.0004029 }
 
   - id: ajuste-cinco-anos
     tipo: ajuste
@@ -237,7 +267,7 @@ tarjetas:
   - id: explore-cascada
     tipo: explorar
     titulo: "Etapas en cadena"
-    texto: "Tres etapas convierten la energía una tras otra. Baje el rendimiento de cada una y mire cuánto llega al final."
+    texto: "Tres etapas convierten la energía una tras otra. Baje sus rendimientos hasta que al final llegue menos de la mitad."
     libro: [172]
     inicio: { e_1: 100, e_2: 100, e_3: 100 }
     widget:
@@ -251,11 +281,22 @@ tarjetas:
         - { valor: e_1, min: 50, max: 100, paso: 5, rotulo: "Fuente, η₁" }
         - { valor: e_2, min: 50, max: 100, paso: 5, rotulo: "Convertidor, η₂" }
         - { valor: e_3, min: 50, max: 100, paso: 5, rotulo: "Regulador, η₃" }
-    requiere: { mover: [e_1, e_2] }
+    objetivo:
+      condiciones:
+        - { valor: eta_t, max: 50, rotulo: "Total: {{eta_t}}" }
+      logrado: "{{e_1}}, {{e_2}} y {{e_3}} dejan {{eta_t}}: el total es menor que el de cualquier etapa."
+      pistas:
+        - { texto: "Todavía llega más de la mitad: baje el rendimiento de alguna etapa." }
+    escalera:
+      - "Cada etapa se lleva su parte de lo que le llega."
+    solucion: "Por ejemplo, 80, 80 y 75 %: 48 %."
+    comprobar:
+      - { eta_t: 100 }
+      - { con: { e_1: 80, e_2: 80, e_3: 75 }, eta_t: 48 }
 
   - id: prediga-cascada
-    tipo: predecir
-    titulo: "Prediga"
+    tipo: simular
+    titulo: "Prediga la cascada"
     texto: "Una fuente del 90 %, un convertidor del 85 % y un regulador del 95 %. ¿Qué rendimiento total dan?"
     libro: [173]
     fijar: { e_1: 90, e_2: 85, e_3: 95 }
@@ -266,49 +307,46 @@ tarjetas:
       curvas:
         - { expr: "100*(e_1/100)^min(1, floor(k))*(e_2/100)^min(1, max(0, floor(k) - 1))*(e_3/100)^max(0, floor(k) - 2)", color: azul, rotulo: "potencia" }
       lectura: { valor: eta_t, rotulo: "Rendimiento total" }
-      ocultar: true
-    opciones:
-      - texto: "72,7 %"
-        bien: true
-        porque: "Se multiplican: 0,9 × 0,85 × 0,95. Más de una cuarta parte se pierde, sin que ninguna etapa parezca mala."
-      - texto: "85 %, el de la peor"
-        porque: "La peor no pone el límite sola: cada etapa se lleva su parte de lo que le llega."
-      - texto: "90 %, la media"
-        porque: "Los rendimientos no se promedian: se multiplican, y el total es menor que cualquiera."
-    comprobar:
-      - { eta_t: 72.7 }
+      ocultar: curvas
+    simular:
+      objetivo: eta_t
+      unidad: "%"
+      tol: 0.01
+      rotulo: "Rendimiento total"
+      errores:
+        - { expr: "e_2", texto: "La peor no pone el límite sola: cada etapa se lleva su parte de lo que le llega." }
+        - { expr: "e_1", texto: "Los rendimientos no se promedian: se multiplican, y el total es menor que cualquiera." }
+    exito: "Se multiplican: 0,9 × 0,85 × 0,95 = 72,7 %. Más de una cuarta parte se pierde, sin que ninguna etapa parezca mala."
     escalera:
       - "Cada etapa se lleva su fracción de lo que le llega: los rendimientos se multiplican."
     solucion: "0,9 × 0,85 × 0,95 = 72,7 %."
-
+    comprobar:
+      - { eta_t: 72.7 }
   - id: estime-regulador
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un regulador lineal"
-    texto: "Un regulador lineal baja de 9 V a 3,3 V entregando 0,5 A. Estime la potencia que disipa."
+    texto: "Un regulador lineal baja de 9 V a 3,3 V entregando 0,5 A. ¿Qué potencia disipa?"
     libro: ["cap01#345"]
     fijar: { V_in: 9, V_out: 3.3, I_o: 0.5 }
-    estimar:
-      objetivo: "P_dis"
+    simular:
+      objetivo: P_dis
       unidad: W
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 4.5
       tol: 0.03
       rotulo: "Potencia disipada"
+      errores:
+        - { expr: "V_out*I_o", texto: "Esa es la potencia que entrega a la carga. Lo que disipa es la caída, 9 − 3,3 V, por la corriente." }
+        - { expr: "V_in*I_o", texto: "Esa es la que absorbe de la entrada. Réstele la que entrega a la carga." }
     exito: "(9 − 3,3) × 0,5 = 2,85 W. Su rendimiento es 3,3/9, un 37 %: el resto se va en calor."
     pistas:
       - { cuando: { valor: estimacion, mayor: 2.94 }, texto: "Se ha pasado: lo que disipa es la caída, 9 − 3,3 V, por la corriente." }
       - { texto: "Se ha quedado corto: la caída es 5,7 V, con medio amperio." }
-    comprobar:
-      - { P_dis: 2.85, eta_r: 36.7 }
-      - { con: { V_in: 3.3 }, P_dis: 0 }
-      - { caida: 5.7 }
     escalera:
       - "Lo que disipa el regulador es la caída por la corriente."
-    solucion: "(9 − 3,3) × 0,5 = 2,85 W. Su rendimiento es 3,3/9, un 37 %: el resto se va en calor."
-
+    solucion: "(9 − 3,3) × 0,5 = 2,85 W."
+    comprobar:
+      - { P_dis: 2.85, eta_r: 36.7 }
+      - { caida: 5.7 }
   - id: por-que-directa
     tipo: porque
     titulo: "¿Cascada o directa?"

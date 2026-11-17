@@ -2,6 +2,9 @@
 # de paleta → latches 74LS273 → DAC de resistencias → codificador → DIN), los 65 536 colores de 16 bits, y el sonido
 # (Z80 con la ROM M1, YM2610 que lee él solo las ROM V, NJM2066D para auriculares). Fuentes: los datos de la consola
 # (neogeo#n: explorador, arquitectura, esquemas MV4 de SNK) y el libro (sección 38.14).
+# 1.2.1: el camino del píxel desde la RAM de paleta se toca en orden en la foto; los 65 536 colores son un explorar
+# con meta; se tocan de dónde lee las muestras el YM2610 y el amplificador de auriculares. Queda una pregunta: los
+# latches.
 leccion: consola-neogeo/neogeo-video-audio
 
 libro:
@@ -26,65 +29,58 @@ modelo:
     colores8: { expr: "2^(b/2)", sim: "N_8", nombre: "colores con 8 bits (error)", unidad: "", cifras: 3 }
 
 tarjetas:
-  - id: explore-video
-    tipo: explorar
-    titulo: "El camino de un píxel"
-    texto: "Toque el LSPC, los latches de paleta, el DAC de resistencias y el conector DIN."
-    libro: ["neogeo#5", "neogeo#15", "neogeo#16", "neogeo#29"]
-    requiere: { mover: [lspc, latch, dac, din] }
+  - id: ordene-pixel
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Del sprite a la pantalla"
+    texto: "El LSPC elige los sprites; del buffer de línea, el píxel pasa a la RAM de paleta. Toque, en orden, el camino desde ella hasta el conector."
+    libro: ["neogeo#75", "neogeo#14", "neogeo#15", "neogeo#16", "neogeo#17", "neogeo#29", "neogeo#5"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
       zonas:
-        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0", texto: "Elige hasta 96 sprites por línea." }
-        - { id: latch, hotspot: latch, rotulo: "Latches 74LS273", texto: "Retienen el color durante todo el píxel." }
-        - { id: dac, hotspot: dac, rotulo: "DAC de resistencias", texto: "5 bits por color a tensión R, G y B." }
-        - { id: din, hotspot: din, rotulo: "Conector DIN", texto: "Compuesto, RGB, sincronismo y audio." }
-
-  - id: ordene-pixel
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Del sprite a la pantalla"
-    texto: "Ordene el camino de un píxel hasta el conector."
-    libro: ["neogeo#75", "neogeo#14", "neogeo#15", "neogeo#16", "neogeo#17"]
-    ordenar:
-      - "El buffer de línea guarda paleta y color del píxel."
-      - "La RAM de paleta lo convierte en un color de 16 bits."
-      - "Los 74LS273 lo retienen durante el píxel."
-      - "El DAC de resistencias da R, G y B."
-      - "El codificador saca compuesto y RGB al DIN."
-    exito: "Número de color, color de 16 bits, tensión y vídeo."
+        - { id: palram, hotspot: palram, rotulo: "Zona tapada, arriba a la derecha" }
+        - { id: latch, hotspot: latch, rotulo: "Chip pequeño, arriba a la izquierda" }
+        - { id: dac, hotspot: dac, rotulo: "Fila de resistencias, arriba" }
+        - { id: enc, hotspot: enc, rotulo: "Zona con un cristal, a la izquierda" }
+        - { id: din, hotspot: din, rotulo: "Conector redondo, arriba del todo" }
+    tocar:
+      bien: [palram, latch, dac, enc, din]
+      orden: true
     pistas:
       - { texto: "El DAC necesita un valor estable: los latches van justo antes." }
+    exito: "La RAM de paleta da un color de 16 bits, los 74LS273 lo retienen durante el píxel, las resistencias lo pasan a R, G y B, y el codificador saca compuesto y RGB al DIN."
     escalera:
-      - "Lo primero es el buffer de línea; lo último, el conector."
-    solucion: "Buffer de línea, RAM de paleta, latches, DAC y codificador."
+      - "La RAM de paleta está oculta en la foto, arriba a la derecha."
+    solucion: "RAM de paleta, latches, DAC, codificador y DIN."
 
   - id: prediga-colores
-    tipo: predecir
+    tipo: explorar
     titulo: "Colores de 16 bits"
-    texto: "Cada color de la paleta es de 16 bits. ¿Cuántos colores distintos puede haber en la paleta?"
+    texto: "La paleta tiene 65 536 colores posibles, de los que salen 4 096 en pantalla. Elija los bits por color que los dan."
     libro: ["neogeo#14", "cap37#556"]
+    inicio: { b: 8 }
     widget:
       tipo: grafica
-      ocultar: curvas
       x: { id: k, min: 8, max: 16, unidad: "", rotulo: "bits por color" }
       y: { min: 0, max: 70000, unidad: "", rotulo: "colores" }
       curvas:
         - { expr: "2^k", color: azul, rotulo: "2^{bits}", palitos: true }
-    opciones:
-      - texto: "65 536."
-        bien: true
-        porque: "2¹⁶ = 65 536: la paleta de la que salen los 4 096 colores en pantalla."
-      - texto: "4 096."
-        porque: "Esos son los que puede haber a la vez en pantalla. La paleta tiene 65 536."
-      - texto: "256."
-        porque: "Serían 8 bits. Con 16 bits hay 2¹⁶."
+      marcas:
+        - { x: "b", y: "colores", rotulo: "{{colores}}" }
+      lectura: { valor: colores, rotulo: "Colores" }
+      mandos: [ { valor: b, min: 8, max: 16, paso: 1, rotulo: "Bits por color, b" } ]
+    objetivo:
+      condiciones:
+        - { valor: colores, objetivo: 65536, tol: 0.001, rotulo: "Colores: {{colores}}" }
+      logrado: "{{b}} bits: 2¹⁶ = 65 536 colores. La RAM de paleta convierte cada píxel en uno de ellos."
+      pistas:
+        - { texto: "Pocos: más bits por color." }
     escalera:
       - "Con n bits hay 2ⁿ combinaciones."
     solucion: "2¹⁶ = 65 536 colores."
     comprobar:
-      - { colores: 65536, colores8: 256 }
+      - { con: { b: 16 }, colores: 65536, colores8: 256 }
 
   - id: toque-dac
     tipo: tocar
@@ -131,45 +127,48 @@ tarjetas:
     solucion: "Retienen el color durante el píxel y dan negro en el borrado."
 
   - id: prediga-adpcm
-    tipo: predecir
+    tipo: tocar
     titulo: "Las muestras de sonido"
-    texto: "El YM2610 reproduce muestras ADPCM. ¿De dónde las lee?"
+    texto: "El YM2610 reproduce muestras ADPCM y las lee él solo, por sus propios buses. Toque de dónde las lee."
     libro: ["neogeo#4", "neogeo#83", "neogeo#82"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
       zonas:
-        - { id: ym, hotspot: ym2610, rotulo: "YM2610" }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
-    opciones:
-      - texto: "Él solo, de las ROM V del cartucho."
-        bien: true
-        porque: "Tiene sus propios buses multiplexados hasta las ROM V: el Z80 no copia las muestras."
-      - texto: "De la RAM del Z80."
-        porque: "La RAM del Z80 es de 2 KB: el YM2610 lee las muestras de las ROM V."
-      - texto: "Del 68000, que se las manda."
-        porque: "El 68000 solo deja un código al Z80. El YM2610 lee las muestras él solo."
+        - { id: cart, hotspot: cart, rotulo: "Ranura grande, en el centro" }
+        - { id: z80ram, hotspot: z80ram, rotulo: "Chip, en el centro a la derecha" }
+        - { id: wram, hotspot: wram, rotulo: "Chips, arriba en el centro" }
+    tocar:
+      bien: [cart]
+      porque:
+        z80ram: "La RAM del Z80 es de 2 KB: no caben las muestras."
+        wram: "La RAM del 68000 no la ve el YM2610."
+    exito: "Las ROM V del cartucho: el Z80 no copia las muestras. Su programa, en cambio, está en la ROM M1."
     escalera:
-      - "Lea la ficha del YM2610."
-    solucion: "De las ROM V del cartucho, por sus propios buses."
+      - "Las muestras vienen con el juego."
+    solucion: "El cartucho: sus ROM V."
 
   - id: empareje-sonido
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: tocar
     titulo: "El sonido, pieza a pieza"
-    texto: "Empareje cada pieza con su papel en el sonido."
+    texto: "El Z80 ejecuta la ROM M1, el YM2610 genera FM y ADPCM, y el audio sale por el DIN y por los auriculares. Toque el amplificador de los auriculares."
     libro: ["neogeo#82", "neogeo#4", "neogeo#26", "neogeo#29"]
-    emparejar:
-      - ["Z80", "Ejecuta la ROM M1"]
-      - ["YM2610", "FM y ADPCM"]
-      - ["NJM2066D", "Auriculares"]
-      - ["Conector DIN", "Audio con el vídeo"]
-    exito: "Un procesador, un sintetizador y dos salidas."
-    pistas:
-      - { texto: "El NJM2066D es un amplificador estéreo, tras el volumen." }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: audio, hotspot: audio, rotulo: "Chip pequeño, abajo en el centro" }
+        - { id: ym, hotspot: ym2610, rotulo: "Chip largo, arriba a la derecha" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo, en el centro" }
+    tocar:
+      bien: [audio]
+      porque:
+        ym: "El YM2610 genera el sonido; no lo amplifica."
+        z80: "El Z80 programa el sonido."
+    exito: "El NJM2066D: un amplificador estéreo para los auriculares, tras el control de volumen."
     escalera:
-      - "El programa del sonido está en la ROM M1."
-    solucion: "Z80: ROM M1. YM2610: FM y ADPCM. NJM2066D: auriculares. DIN: audio."
+      - "Es un chip pequeño, cerca de los puertos de mando."
+    solucion: "El NJM2066D."
 
   - id: resumen
     tipo: resumen

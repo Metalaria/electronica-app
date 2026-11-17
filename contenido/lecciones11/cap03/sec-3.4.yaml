@@ -2,6 +2,9 @@
 # DC, zumbido piezoeléctrico), electrolíticos de aluminio (polaridad, regla de los 10 °C, 50–80 % de la tensión),
 # película, tántalo y supercondensadores, y cómo se reconocen. Sección cualitativa, sin fórmula: la parte viva es la
 # vida frente a la temperatura del ejercicio 3.6. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): enfriar un electrolítico hasta cuadruplicar su vida,
+# predecir 95 °C y 70 °C, calcular lo que queda de un X7R y de un Y5V, tocar en la foto los que no tienen polaridad y
+# elegir la tensión nominal de trabajo; se eligen las familias, el porqué del electrolítico y el zumbido.
 leccion: cap03/sec-3.4
 
 libro:
@@ -25,17 +28,20 @@ modelo:
     T_a: { sim: "T", nombre: "temperatura de trabajo", unidad: "°C", valor: 105 }
     C_y: { sim: "C", nombre: "capacidad nominal", unidad: F, valor: 10e-6 }
     perd: { sim: "pérdida", nombre: "capacidad perdida", unidad: "%", valor: 82 }
+    V_w: { sim: "V_{trabajo}", nombre: "tensión del circuito", unidad: V, valor: 12 }
+    V_nom: { sim: "V_{nom}", nombre: "tensión nominal elegida", unidad: V, valor: 35 }
   calculos:
     vida: { expr: "L_0*2^((T_n - T_a)/10)", sim: "L", nombre: "vida estimada", unidad: h, cifras: 3 }
     factor: { expr: "2^((T_n - T_a)/10)", sim: "factor", nombre: "factor de vida", unidad: "veces", cifras: 3 }
     C_ef: { expr: "C_y*(1 - perd/100)", sim: "C_{ef}", nombre: "capacidad que queda", unidad: F }
     queda: { expr: "100 - perd", sim: "queda", nombre: "fracción que queda", unidad: "%", cifras: 2 }
+    uso_v: { expr: "V_w/V_nom*100", sim: "uso", nombre: "fracción de la tensión nominal", unidad: "%", cifras: 2 }
 
 tarjetas:
   - id: explore-vida
     tipo: explorar
     titulo: "El calor gasta un electrolítico"
-    texto: "Un electrolítico dura 2000 horas a 105 °C. Arrastre la temperatura de trabajo y mire su vida."
+    texto: "Un electrolítico dura 2000 horas a 105 °C. Enfríelo hasta que viva cuatro veces más."
     nota: "Su electrolito se evapora poco a poco, y el calor lo acelera."
     libro: [53, "cap03#99"]
     inicio: { T_a: 105 }
@@ -52,11 +58,23 @@ tarjetas:
         - { valor: factor, rotulo: "{{factor}} la nominal" }
       mandos:
         - { valor: T_a, min: 65, max: 105, paso: 5, rotulo: "Temperatura, T" }
-    requiere: { mover: [T_a] }
+    objetivo:
+      condiciones:
+        - { valor: factor, objetivo: 4, tol: 0.02, rotulo: "{{factor}} la nominal" }
+      logrado: "A {{T_a}}, {{vida}}: por cada 10 °C menos, la vida se duplica."
+      pistas:
+        - { cuando: { valor: factor, mayor: 4.1 }, texto: "Se ha pasado: suba un poco la temperatura." }
+        - { texto: "Todavía falta: enfríelo más." }
+    escalera:
+      - "Cuatro veces son dos duplicaciones: dos pasos de 10 °C."
+    solucion: "A 85 °C: 8000 horas."
+    comprobar:
+      - { vida: 2000 }
+      - { con: { T_a: 85 }, vida: 8000, factor: 4 }
 
   - id: prediga-diez-grados
-    tipo: predecir
-    titulo: "Prediga"
+    tipo: simular
+    titulo: "Prediga a 95 °C"
     texto: "Un electrolítico de 2000 horas a 105 °C trabaja a 95 °C, 10 °C por debajo. ¿Cuánto vivirá?"
     libro: [53, "cap03#99"]
     fijar: { T_a: 95 }
@@ -69,49 +87,46 @@ tarjetas:
       marcas:
         - { x: "T_a", y: "vida", rotulo: "95 °C" }
       lectura: { valor: vida, rotulo: "Vida estimada" }
-      ocultar: true
-    opciones:
-      - texto: "4000 horas"
-        bien: true
-        porque: "Cada 10 °C menos, la vida se duplica: el doble de 2000 horas."
-      - texto: "1000 horas"
-        porque: "Es al revés: el calor acorta la vida. Al enfriarse 10 °C, se duplica."
-      - texto: "2000 horas, la misma"
-        porque: "La vida depende mucho de la temperatura: cada 10 °C la cambian por dos."
-    comprobar:
-      - { vida: 4000 }
-      - { con: { T_a: 105 }, vida: 2000 }
-      - { con: { T_a: 115 }, vida: 1000 }
+      ocultar: curvas
+    simular:
+      objetivo: vida
+      unidad: h
+      tol: 0.02
+      rotulo: "Vida a 95 °C"
+      errores:
+        - { razon: { min: 0.24, max: 0.26 }, texto: "Es al revés: el calor acorta la vida. Al enfriarse 10 °C, se duplica." }
+        - { razon: { min: 0.49, max: 0.51 }, texto: "La vida depende mucho de la temperatura: cada 10 °C la cambian por dos." }
+    exito: "4000 horas: cada 10 °C menos, la vida se duplica."
     escalera:
       - "Cada 10 °C menos de temperatura, la vida se duplica."
     solucion: "El doble de 2000 horas: 4000 horas."
-
+    comprobar:
+      - { vida: 4000 }
+      - { con: { T_a: 105 }, vida: 2000 }
   - id: estime-setenta
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "A 70 °C"
-    texto: "Un electrolítico de 2000 horas a 105 °C funciona a 70 °C. Estime su vida con la regla de los 10 °C."
+    texto: "Un electrolítico de 2000 horas a 105 °C funciona a 70 °C. ¿Cuánto vive, con la regla de los 10 °C?"
     libro: ["cap03#99"]
     fijar: { T_a: 70 }
-    estimar:
-      objetivo: "vida"
+    simular:
+      objetivo: vida
       unidad: h
-      min: 0
-      max: 40000
-      paso: 100
-      inicio: 7000
       tol: 0.05
       rotulo: "Vida a 70 °C"
+      errores:
+        - { razon: { min: 0.3, max: 0.32 }, texto: "Ha multiplicado por 3,5 en lugar de duplicar 3,5 veces: 2^{3,5}." }
+        - { razon: { min: 1.4, max: 1.43 }, texto: "Se ha pasado: 2^{3,5} es algo más de 11, no 16." }
     exito: "35 °C menos son 3,5 pasos: 2^{3,5} ≈ 11,3, unas 22 600 horas. Más frío, mucha más vida."
     pistas:
       - { cuando: { valor: estimacion, menor: 21500 }, texto: "Se ha quedado corto: 35 °C son tres pasos y medio de 10 °C, y cada uno duplica." }
       - { texto: "Se ha pasado: 2^{3,5} es algo más de 11, no 16." }
-    comprobar:
-      - { vida: 22627, factor: 11.3 }
     escalera:
       - "Cuente cuántos pasos de 10 °C hay de 105 °C a 70 °C."
-    solucion: "35 °C menos son 3,5 pasos: 2^{3,5} ≈ 11,3, unas 22 600 horas. Más frío, mucha más vida."
-
+    solucion: "2000 × 2^{3,5} ≈ 22 600 horas."
+    comprobar:
+      - { vida: 22627, factor: 11.3 }
   - id: familias
     tipo: pregunta
     fase: "Empareje"
@@ -132,53 +147,53 @@ tarjetas:
     solucion: "Cerámico C0G: osciladores y temporización. Cerámico X7R: desacoplo y filtrado general. Electrolítico de aluminio: filtrado de fuentes. Película de polipropileno: audio y circuitos resonantes. Supercondensador: respaldo de memoria."
 
   - id: polarizacion-dc
-    tipo: pregunta
+    tipo: simular
     titulo: "La capacidad que falta"
-    texto: "Un MLCC X7R marcado 10 µF trabaja a su tensión de trabajo. ¿Qué capacidad puede tener de verdad?"
+    texto: "Un MLCC X7R marcado 10 µF pierde un 70 % de su capacidad a su tensión de trabajo. ¿Qué capacidad tiene de verdad?"
     libro: [49]
-    opciones:
-      - texto: "Unos 3 µF"
-        bien: true
-        porque: "Es el efecto de polarización DC: la capacidad de los clase II baja mucho con la tensión aplicada."
-      - texto: "10 µF, dentro de su tolerancia"
-        porque: "La tolerancia se mide sin tensión. Con la de trabajo, un clase II pierde buena parte de su valor."
-      - texto: "Más de 10 µF"
-        porque: "La tensión no le suma capacidad: se la quita. Es lo que sorprende a muchos diseñadores."
+    fijar: { C_y: 10e-6, perd: 70 }
     widget:
       tipo: figura
       figura: fig-3.10
       zonas:
         - { id: polarizacion, rotulo: "Capacidad frente a la tensión continua", rect: [0, 0, 439, 203] }
+    simular:
+      objetivo: C_ef
+      unidad: F
+      tol: 0.03
+      rotulo: "Capacidad a la tensión de trabajo"
+      errores:
+        - { razon: { min: 3.2, max: 3.4 }, texto: "La tolerancia se mide sin tensión. Con la de trabajo, un clase II pierde buena parte de su valor." }
+        - { razon: { min: 2.3, max: 2.4 }, texto: "Ese es el 70 % que pierde. Queda el resto." }
+    exito: "Unos 3 µF: es la polarización DC, que sorprende a muchos diseñadores. Los clase II, además, zumban: son piezoeléctricos."
     escalera:
-      - "La tolerancia se mide sin tensión: ¿qué le hace la tensión continua a un clase II?"
-    solucion: "Unos 3 µF: la polarización DC le quita buena parte de la capacidad."
-
+      - "Le queda el 30 % de 10 µF."
+    solucion: "El 30 % de 10 µF: 3 µF."
+    comprobar:
+      - { C_ef: 3e-6, queda: 30 }
   - id: estime-y5v
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un Y5V"
-    texto: "Los Y5V dan la máxima capacidad por volumen, pero varían hasta un −82 %. Estime cuánto puede quedar de 10 µF."
+    texto: "Los Y5V dan la máxima capacidad por volumen, pero varían hasta un −82 %. ¿Cuánto puede quedar de 10 µF?"
     libro: [48]
     fijar: { C_y: 10e-6, perd: 82 }
-    estimar:
-      objetivo: "C_ef*1e6"
-      unidad: "µF"
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 6
+    simular:
+      objetivo: C_ef
+      unidad: F
       tol: 0.06
       rotulo: "Capacidad que queda"
+      errores:
+        - { razon: { min: 4.4, max: 4.7 }, texto: "Ese es el 82 % que pierde. Queda el 18 %." }
     exito: "1,8 µF: menos de la quinta parte. Por eso solo sirven para aplicaciones no críticas."
     pistas:
-      - { cuando: { valor: estimacion, mayor: 1.9 }, texto: "Se ha pasado: si pierde el 82 %, solo queda el 18 %." }
+      - { cuando: { valor: estimacion, mayor: 1.9e-6 }, texto: "Se ha pasado: si pierde el 82 %, solo queda el 18 %." }
       - { texto: "Se ha quedado corto: queda el 18 % de 10 µF." }
-    comprobar:
-      - { C_ef: 1.8e-6, queda: 18 }
     escalera:
       - "Reste la pérdida al 100 % y aplique lo que queda a 10 µF."
-    solucion: "1,8 µF: menos de la quinta parte. Por eso solo sirven para aplicaciones no críticas."
-
+    solucion: "El 18 % de 10 µF: 1,8 µF."
+    comprobar:
+      - { C_ef: 1.8e-6, queda: 18 }
   - id: por-que-electrolitico
     tipo: porque
     titulo: "¿Por qué tanta capacidad?"
@@ -198,44 +213,30 @@ tarjetas:
     solucion: "De una d minúscula: una capa de óxido finísima, crecida electroquímicamente."
 
   - id: polaridad
-    tipo: pregunta
-    titulo: "Al revés"
-    texto: "¿Qué ocurre si un electrolítico de aluminio se conecta con la polaridad invertida?"
-    libro: [52, 57]
-    opciones:
-      - texto: "La capa de óxido se destruye, se calienta, genera gas y puede explotar"
-        bien: true
-        porque: "Puede expulsar electrolito caliente. Los de tántalo, además, pueden incendiarse."
-      - texto: "No conduce, como un diodo en inversa"
-        porque: "No es un bloqueo inocuo: la capa de óxido se destruye y el componente se calienta."
-      - texto: "Funciona igual, con algo menos de capacidad"
-        porque: "Es peligroso: puede explotar. Por eso el negativo viene marcado con una banda."
+    tipo: tocar
+    titulo: "Sin polaridad"
+    texto: "Un electrolítico al revés puede explotar, y un tántalo, incendiarse. Toque los dos tipos que se pueden montar en cualquier sentido."
+    libro: [52, 57, 60]
     widget:
       tipo: figura
       figura: fig-3.2
       zonas:
-        - { id: reales, rotulo: "Condensadores reales y su polaridad", rect: [0, 0, 1600, 1197] }
+        - { id: a, rotulo: "Arriba a la izquierda", rect: [0, 0, 615, 305] }
+        - { id: b, rotulo: "Arriba en el centro", rect: [648, 0, 460, 305] }
+        - { id: c, rotulo: "Arriba a la derecha", rect: [1140, 0, 460, 305] }
+        - { id: d, rotulo: "Abajo a la izquierda", rect: [117, 380, 762, 762] }
+        - { id: e, rotulo: "Abajo a la derecha", rect: [911, 380, 573, 762] }
+    tocar:
+      bien: [b, d]
+      todas: true
+      porque:
+        a: "Electrolíticos de aluminio: polarizados. La franja clara marca el negativo."
+        c: "Junto a los MLCC hay tántalos, polarizados: su franja marca el positivo, al revés que el aluminio."
+        e: "Un electrolítico de potencia: polarizado."
+    exito: "El cerámico de disco y el de película no tienen polaridad. Los electrolíticos marcan el negativo; los de tántalo, el positivo."
     escalera:
-      - "¿Qué le pasa a la capa de óxido con la tensión al revés?"
-    solucion: "La capa de óxido se destruye, se calienta, genera gas y puede explotar."
-
-  - id: marcas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Dónde está la marca"
-    texto: "Montarlos bien empieza por reconocer la polaridad. Una cada tipo con su marca."
-    libro: [60]
-    emparejar:
-      - ["Electrolítico de aluminio", "Franja en el negativo"]
-      - ["Tántalo", "Franja en el positivo"]
-      - ["Cerámico o de película", "Sin polaridad"]
-    exito: "Eso es: los electrolíticos marcan el negativo; los de tántalo, el positivo. Es fácil confundirlos."
-    pistas:
-      - { texto: "El de aluminio y el de tántalo marcan terminales opuestos." }
-    escalera:
-      - "Fíjese en cuál de los dos marca el negativo."
-    solucion: "Electrolítico de aluminio: franja en el negativo. Tántalo: franja en el positivo. Cerámico o de película: sin polaridad."
-
+      - "Los electrolíticos y los tántalos tienen polaridad; los cerámicos y los de película, no."
+    solucion: "El cerámico de disco y el de película."
   - id: zumbido
     tipo: pregunta
     titulo: "Una fuente que zumba"
@@ -259,27 +260,36 @@ tarjetas:
     solucion: "Un MLCC de clase II: vibra con la tensión alterna del rizado. Son los «singing capacitors»."
 
   - id: tension-trabajo
-    tipo: pregunta
+    tipo: explorar
     titulo: "Margen de tensión"
-    texto: "Un electrolítico de 16 V trabaja en un circuito de 12 V: el 75 % de su nominal. ¿Qué dice la regla de diseño?"
+    texto: "Un electrolítico para un circuito de 12 V. Elija su tensión nominal para que trabaje entre el 50 y el 80 % de ella."
     libro: [52, "cap03#99"]
-    opciones:
-      - texto: "Está dentro: conviene trabajar entre el 50 y el 80 %"
-        bien: true
-        porque: "Cumple, aunque ajustado: el ejercicio del libro preferiría 25 V para que viva más."
-      - texto: "Está mal: hay que trabajar por debajo del 50 %"
-        porque: "La regla pide entre el 50 y el 80 % de la tensión máxima."
-      - texto: "Da igual mientras no pase de 16 V"
-        porque: "Nunca debe superarse, pero trabajar más abajo alarga su vida."
+    fijar: { V_w: 12 }
+    inicio: { V_nom: 35 }
     widget:
-      tipo: figura
-      figura: fig-3.2
-      zonas:
-        - { id: reales, rotulo: "Condensadores reales", rect: [0, 0, 1600, 1197] }
+      tipo: grafica
+      x: { id: vv, min: 0, max: 40, unidad: V, rotulo: "V_{nom}" }
+      y: { min: 0, max: 130, unidad: "%", rotulo: "uso" }
+      curvas:
+        - { expr: "V_w/max(vv, 1)*100", color: naranja, rotulo: "12 V en % de la nominal" }
+        - { expr: "80", color: tinta, rotulo: "80 %", discontinua: true }
+        - { expr: "50", color: tinta, rotulo: "50 %", discontinua: true }
+      lectura: { valor: uso_v, rotulo: "Trabaja al" }
+      mandos:
+        - { valor: V_nom, lista: [10, 16, 25, 35], rotulo: "Tensión nominal" }
+    objetivo:
+      condiciones:
+        - { valor: uso_v, min: 50, max: 80, rotulo: "Trabaja al {{uso_v}}" }
+      logrado: "De {{V_nom}}, al {{uso_v}}: dentro, aunque ajustado. Nunca debe superarse, y trabajar más abajo alarga su vida."
+      pistas:
+        - { cuando: { valor: uso_v, mayor: 80 }, texto: "Demasiado cerca de su máximo: elija una nominal mayor." }
+        - { texto: "Demasiado holgado para la regla: elija una nominal menor." }
     escalera:
-      - "Calcule qué fracción de su nominal es 12 V de 16 V."
-    solucion: "Un 75 %: dentro del 50 al 80 % que pide la regla, aunque ajustado."
-
+      - "Calcule qué fracción de cada nominal son 12 V."
+    solucion: "16 V: un 75 %."
+    comprobar:
+      - { uso_v: 34.29 }
+      - { con: { V_nom: 16 }, uso_v: 75 }
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"

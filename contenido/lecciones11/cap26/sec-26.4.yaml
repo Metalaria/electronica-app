@@ -5,6 +5,10 @@
 # hace de «r_o mucho mayor que R_C» (condición del bloque 127). La ganancia se lee en módulo (el libro: A_v = −g_m·R_C;
 # el esquema dibuja la fuente hacia la salida). v = 1 mV de control es un ejemplo de señal pequeña. I_C = 0,5 mA del
 # reto es un ejemplo mío; la meta de unos 97 es la del libro (2,5 V en R_C).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la década se consigue subiendo V_BE (objetivo), g_m y r_π se
+# predicen (simular), la corriente de 386,8 mS se busca con la fórmula a la vista, los 97 de ganancia se consiguen con
+# 1 mA y luego con 0,5 mA (reto), y la β se lleva a 200 sin que cambie la ganancia. Quedan una pregunta de opciones
+# (por qué no cambia) y dos emparejamientos (los modelos y la base).
 leccion: cap26/sec-26.4
 
 libro:
@@ -44,14 +48,16 @@ modelo:
     I_L: { expr: "v_o/R_C", sim: "i_{c}", nombre: "corriente por R_C", unidad: A }
     I_ro: { expr: "v_o/r_o", sim: "i_{ro}", nombre: "corriente por r_o", unidad: A }
     V_RC: { expr: "I_C*R_C", sim: "I_{C} · R_{C}", nombre: "caída en R_C", unidad: V }
+    g_1v: { expr: "I_C/1", sim: "I_{C}/1 V", nombre: "dividiendo entre un voltio", unidad: S }
 
 tarjetas:
   - id: explore-exponencial
     tipo: explorar
     titulo: "La exponencial de la base"
-    texto: "Corriente de colector partiendo de 1 mA. Suba V_{BE} 60 mV y mire la corriente."
+    texto: "Corriente de colector partiendo de 1 mA. Suba V_{BE} hasta que la corriente se multiplique por diez."
     nota: "Escala logarítmica en el eje vertical."
     libro: [106, 108, 119]
+    inicio: { D_v: 0 }
     widget:
       tipo: grafica
       x: { id: dv, min: -0.12, max: 0.12, unidad: V, rotulo: "ΔV_{BE}" }
@@ -63,43 +69,45 @@ tarjetas:
       lectura: { valor: I_x, rotulo: "Corriente de colector" }
       mandos:
         - { valor: D_v, min: -0.12, max: 0.12, paso: 0.01, rotulo: "Subida de V_{BE}" }
-    requiere: { mover: [D_v] }
+    objetivo:
+      condiciones:
+        - { valor: I_x, objetivo: 0.01, tol: 0.03, rotulo: "I_{C}: {{I_x}}" }
+      logrado: "Con {{D_v}} más de V_{BE}, diez veces la corriente: 60 mV por década. Por eso no se polariza fijando V_{BE}."
+      pistas:
+        - { cuando: { valor: I_x, mayor: 0.0103 }, texto: "Se ha pasado: baje un poco V_{BE}." }
+        - { texto: "Aún falta: suba V_{BE}." }
+    escalera:
+      - "La corriente se multiplica por e cada V_{T}, unos 26 mV."
+    solucion: "Unos 60 mV más: 10 mA."
+    comprobar:
+      - { con: { D_v: 0.06 }, I_x: 0.01019, tol: 0.01 }
 
   - id: prediga-gm
-    tipo: predecir
+    tipo: simular
     titulo: "La transconductancia"
     texto: "Un BJT trabaja con 1 mA de colector. ¿Cuánto vale su g_{m}?"
     libro: [119, 122, 126]
     fijar: { I_C: 0.001 }
-    widget:
-      tipo: grafica
-      x: { id: ic, min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
-      y: { min: 0, max: 0.4, unidad: S, rotulo: "g_{m}" }
-      curvas:
-        - { expr: "ic/V_T", color: azul, rotulo: "g_{m}" }
-      lectura: { valor: g_m, rotulo: "g_{m} con 1 mA" }
-      ocultar: true
-    opciones:
-      - texto: "38,7 mS, sea cual sea el transistor"
-        bien: true
-        porque: "g_{m} = I_{C}/V_{T} = 1 mA/25,85 mV: solo depende de la corriente."
-      - texto: "Depende de su β"
-        porque: "La β entra en r_{π}, no en g_{m}. Dos BJT distintos a la misma corriente tienen la misma g_{m}."
-      - texto: "1 mS"
-        porque: "Eso sería dividir 1 mA entre 1 V. La tensión que manda es V_{T}, unos 26 mV."
+    simular:
+      objetivo: g_m
+      unidad: S
+      tol: 0.03
+      rotulo: "g_{m} con 1 mA"
+      errores:
+        - { expr: "g_1v", texto: "Eso es dividir 1 mA entre 1 V. La tensión que manda es V_{T}, unos 26 mV." }
+    exito: "g_{m} = I_{C}/V_{T} = 38,7 mS, sea cual sea el transistor: solo depende de la corriente."
     escalera:
-      - "Derive la exponencial: g_{m} = dI_{C}/dV_{BE}."
+      - "Derive la exponencial: g_{m} = dI_{C}/dV_{BE} = I_{C}/V_{T}."
     solucion: "g_{m} = 1 mA / 25,85 mV = 38,7 mS."
     comprobar:
-      - { g_m: 0.0387, tol: 0.001 }
+      - { g_m: 0.0387, g_1v: 0.001, tol: 0.001 }
 
   - id: formula-gm
-    tipo: formula
+    tipo: explorar
     titulo: "Derivar es linealizar"
-    texto: "g_{m} sale de derivar la exponencial en el punto de trabajo. Cambie la corriente."
+    texto: "g_{m} sale de derivar la exponencial en el punto de trabajo: g_{m} = I_{C}/V_{T}. Busque la corriente que da 386,8 mS."
     libro: [121]
-    ec: 121
-    sustitucion: "{{I_C}} / {{V_T}} = {{g_m}}"
+    inicio: { I_C: 0.001 }
     widget:
       tipo: grafica
       x: { id: ic, min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
@@ -111,29 +119,33 @@ tarjetas:
       lectura: { valor: g_m, rotulo: "g_{m}" }
       mandos:
         - { valor: I_C, min: 0.0005, max: 0.01, paso: 0.0005, rotulo: "I_{C}" }
+    objetivo:
+      condiciones:
+        - { valor: g_m, objetivo: 0.3868, tol: 0.01, rotulo: "g_{m}: {{g_m}}" }
+      logrado: "{{I_C}} / {{V_T}} = {{g_m}}: diez veces la corriente, diez veces la g_{m}."
+      pistas:
+        - { texto: "Falta transconductancia: más corriente de colector." }
+    escalera:
+      - "g_{m} es proporcional a I_{C}: 38,7 mS por cada miliamperio."
+    solucion: "10 mA: 386,8 mS."
+    comprobar:
+      - { con: { I_C: 0.01 }, g_m: 0.3868, tol: 0.001 }
 
   - id: prediga-rpi
-    tipo: predecir
+    tipo: simular
     titulo: "La resistencia de entrada"
     texto: "Con 1 mA y β = 100, ¿cuánto vale r_{π}?"
     libro: [124, 126]
     fijar: { I_C: 0.001, beta: 100 }
-    widget:
-      tipo: grafica
-      x: { id: ic, min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
-      y: { min: 0, max: 0.4, unidad: S, rotulo: "g_{m}" }
-      curvas:
-        - { expr: "ic/V_T", color: azul, rotulo: "g_{m}" }
-      lectura: { valor: r_pi, rotulo: "r_{π}" }
-      ocultar: true
-    opciones:
-      - texto: "2585 Ω"
-        bien: true
-        porque: "r_{π} = β/g_{m} = 100/38,7 mS: la base ve β veces la resistencia 1/g_{m}."
-      - texto: "25,85 Ω"
-        porque: "Eso es 1/g_{m}, lo que se ve desde el emisor. Desde la base se multiplica por β."
-      - texto: "258,5 kΩ"
-        porque: "Sobra una β: r_{π} = β/g_{m}, no β²/g_{m}."
+    simular:
+      objetivo: r_pi
+      unidad: Ω
+      tol: 0.03
+      rotulo: "r_{π}"
+      errores:
+        - { expr: "r_1", texto: "Eso es 1/g_{m}, lo que se ve desde el emisor. Desde la base se multiplica por β." }
+        - { expr: "r_b", texto: "Sobra una β: r_{π} = β/g_{m}, no β²/g_{m}." }
+    exito: "r_{π} = β/g_{m} ≈ 2585 Ω: aquí sí entra la β."
     escalera:
       - "i_{b} = i_{c}/β, así que r_{π} = v_{be}/i_{b} = β/g_{m}."
     solucion: "r_{π} = 100/38,7 mS ≈ 2585 Ω."
@@ -143,7 +155,7 @@ tarjetas:
   - id: explore-etapa
     tipo: explorar
     titulo: "Una etapa en pequeña señal"
-    texto: "La fuente g_{m} · v_{be} carga R_{C}. Cambie la corriente y R_{C}, y mire la caída I_{C} · R_{C} junto a la ganancia."
+    texto: "La fuente g_{m} · v_{be} carga R_{C}. Elija la corriente y R_{C} hasta una ganancia de unos 97."
     libro: [122, 127]
     inicio: { I_C: 0.001, R_C: 1000 }
     widget:
@@ -159,7 +171,18 @@ tarjetas:
       mandos:
         - { valor: I_C, lista: [0.0005, 0.001, 0.0025], rotulo: "I_{C}" }
         - { valor: R_C, lista: [1000, 2500, 5000], rotulo: "R_{C}" }
-    requiere: { mover: [I_C, R_C] }
+    objetivo:
+      condiciones:
+        - { valor: A_v, objetivo: 97, tol: 0.02, rotulo: "Ganancia: {{A_v}}" }
+      logrado: "{{V_RC}} de caída en R_{C}: A_{v} = I_{C} · R_{C}/V_{T} = {{A_v}}."
+      pistas:
+        - { cuando: { valor: A_v, mayor: 98.94 }, texto: "Sobra ganancia: menos corriente o menos R_{C}." }
+        - { texto: "Falta ganancia: más corriente o más R_{C}." }
+    escalera:
+      - "La ganancia es I_{C} · R_{C}/V_{T}: busque 2,5 V de caída."
+    solucion: "1 mA con 2,5 kΩ: unos 97."
+    comprobar:
+      - { con: { I_C: 0.001, R_C: 2500 }, A_v: 96.7, V_RC: 2.5, tol: 0.01 }
 
   - id: reto-ganancia
     tipo: reto
@@ -195,7 +218,7 @@ tarjetas:
   - id: sorpresa-transistor
     tipo: sorpresa
     titulo: "Otro transistor, la misma ganancia"
-    texto: "Con 1 mA y 2,5 kΩ, cambie de transistor: su β. Mire la ganancia y r_{π}."
+    texto: "Con 1 mA y 2,5 kΩ, cambie al transistor de β = 200. Vigile la ganancia y r_{π}."
     libro: [122, 127]
     fijar: { I_C: 0.001, R_C: 2500 }
     inicio: { beta: 100 }
@@ -210,9 +233,18 @@ tarjetas:
       mide: { salida: v_o, carga: I_L, controlada: I_g, ro: I_ro }
       mandos:
         - { valor: beta, lista: [50, 100, 200], rotulo: "β del transistor" }
-    requiere: { mover: [beta] }
+    objetivo:
+      condiciones:
+        - { valor: beta, min: 200, rotulo: "β: {{beta}}" }
+      logrado: "Con β = {{beta}}, r_{π} sube a {{r_pi}}, pero la ganancia sigue en {{A_v}}."
+      pistas:
+        - { texto: "Pruebe el transistor de más β." }
+    escalera:
+      - "La β entra en r_{π}, no en g_{m}."
+    solucion: "β = 200: la misma ganancia, el doble de r_{π}."
     comprobar:
       - { V_RC: 2.5, A_v: 96.7, tol: 0.01 }
+      - { con: { beta: 200 }, r_pi: 5170, tol: 0.01 }
 
   - id: por-que-ganancia
     tipo: porque

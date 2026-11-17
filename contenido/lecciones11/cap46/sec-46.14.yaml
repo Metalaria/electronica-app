@@ -2,7 +2,8 @@
 # - La tabla del ejemplo de la fuente del capítulo 51 (figura 47.23, fig-46.23; bloque 499) con zonas en sus filas.
 # - RPN = G × O × D (bloque 493) vivo: 9 × 3 × 7 = 189; con la protección independiente, D de 7 a 2 y 54 (bloque 501);
 #   el ventilador, G de 7 a 3 (bloque 502): 72. G = 10, O = 1, D = 1 y G = 1, O = 10, D = 1 dan los dos 10 (bloque 496).
-# Paso práctico: «tocar» en la tabla de la figura 47.23 el modo que se aborda primero.
+# 1.2.1: se juega moviendo G, O y D hasta el RPN de la acción, leyendo los RPN de 54, 10 y 72, ordenando
+#   las filas por detección (D invertida) y tocando la fila que se aborda primero y la que baja de gravedad.
 leccion: cap46/sec-46.14
 
 libro:
@@ -38,28 +39,15 @@ modelo:
     RPN: { expr: "G*O*D", sim: "RPN", nombre: "índice de riesgo", unidad: "", cifras: 4 }
 
 tarjetas:
-  - id: explore-tabla
-    tipo: explorar
-    titulo: "El FMEA de una fuente"
-    texto: "Para cada elemento: cómo falla, qué efecto tiene y tres puntuaciones. Toque cada fila."
-    libro: [499, 516, 500]
-    widget:
-      tipo: figura
-      figura: fig-46.23
-      zonas:
-        - { id: transistor, rotulo: "Primera fila", rect: [5, 27, 440, 35], texto: "Transistor de paso en cortocircuito: 38 V en una salida de 3,3 V. Destruye lo conectado." }
-        - { id: ventilador, rotulo: "Segunda fila", rect: [5, 63, 440, 35], texto: "Ventilador bloqueado: sobrecalentamiento." }
-        - { id: sensor, rotulo: "Tercera fila", rect: [5, 99, 440, 35], texto: "Sensor de corriente con deriva: límite incorrecto." }
-        - { id: condensador, rotulo: "Cuarta fila", rect: [5, 135, 440, 35], texto: "Condensador de filtro con ESR alta: rizado excesivo." }
-    requiere: { mover: [transistor, ventilador] }
-
   - id: formula-rpn
-    tipo: formula
+    tipo: explorar
     titulo: "El índice de riesgo"
-    texto: "Gravedad por ocurrencia por detección, cada una de 1 a 10. Mueva las tres."
-    libro: [485, 493, 490]
+    texto: "El transistor de paso: 9 × 3 × 7. Una protección de sobretensión independiente hace detectable el fallo: baje D hasta que el RPN quede en 54."
+    libro: [485, 493, 490, 499, 501]
     ec: 493
     sustitucion: "{{G}} × {{O}} × {{D}} = {{RPN}}"
+    fijar: { G: 9, O: 3 }
+    inicio: { D: 7 }
     widget:
       tipo: grafica
       x: { id: dd, min: 1, max: 10, unidad: "", rotulo: "D" }
@@ -70,68 +58,48 @@ tarjetas:
         - { x: "D", y: "RPN", rotulo: "{{RPN}}" }
       lectura: { valor: RPN, rotulo: "RPN" }
       mandos:
-        - { valor: G, min: 1, max: 10, paso: 1, rotulo: "Gravedad, G" }
-        - { valor: O, min: 1, max: 10, paso: 1, rotulo: "Ocurrencia, O" }
         - { valor: D, min: 1, max: 10, paso: 1, rotulo: "Detección, D" }
+    objetivo:
+      condiciones:
+        - { valor: RPN, max: 54, rotulo: "RPN con la protección: {{RPN}}" }
+      logrado: "D = {{D}}: el RPN baja de 189 a {{RPN}}. El séptimo paso, volver a puntuar con la acción aplicada, convierte el FMEA en trabajo."
+      pistas:
+        - { texto: "Todavía alto: la protección hace el fallo más detectable, así que D baja." }
+    escalera:
+      - "Solo cambia D; G y O siguen igual: 9 × 3 × D = 54."
+    solucion: "D = 2: 9 × 3 × 2 = 54."
+    comprobar:
+      - { RPN: 189 }
+      - { con: { D: 2 }, RPN: 54 }
 
   - id: prediga-d
-    tipo: predecir
+    tipo: tocar
     titulo: "La puntuación invertida"
-    texto: "Un modo de fallo tiene D = 10. ¿Qué significa?"
-    libro: [492]
-    widget:
-      tipo: figura
-      figura: fig-46.23
-      zonas:
-        - { id: pie, rotulo: "Recuadro rojo de abajo", rect: [5, 175, 440, 45] }
-    opciones:
-      - texto: "Que no se detecta antes de llegar al usuario"
-        bien: true
-        porque: "D mide la probabilidad de NO detectarlo: 10 es lo peor."
-      - texto: "Que se detecta siempre"
-        porque: "Es la inversión que se equivoca a menudo: 10 significa que no se detecta."
-      - texto: "Que es muy grave"
-        porque: "La gravedad es G; D es la detección."
-    escalera:
-      - "¿Qué mide D: detectarlo o no detectarlo?"
-    solucion: "No se detecta: 10 es el peor caso de detección."
-
-  - id: estime-accion
-    tipo: pregunta
-    titulo: "La acción correctora"
-    texto: "Transistor de paso: G = 9, O = 3, D = 7. Una protección de sobretensión independiente baja D de 7 a 2: ¿qué RPN queda?"
-    libro: [499, 501]
-    fijar: { G: 9, O: 3, D: 2 }
+    texto: "En D, 10 significa que no se detecta. Toque las filas de la peor detección a la mejor."
+    libro: [492, 499]
     widget:
       tipo: figura
       figura: fig-46.23
       zonas:
         - { id: transistor, rotulo: "Primera fila", rect: [5, 27, 440, 35] }
-    estimar:
-      objetivo: "RPN"
-      unidad: ""
-      min: 0
-      max: 300
-      paso: 1
-      inicio: 189
-      tol: 0.03
-      rotulo: "RPN con la protección"
-    exito: "54: el séptimo paso convierte el FMEA en trabajo."
+        - { id: ventilador, rotulo: "Segunda fila", rect: [5, 63, 440, 35] }
+        - { id: sensor, rotulo: "Tercera fila", rect: [5, 99, 440, 35] }
+        - { id: condensador, rotulo: "Cuarta fila", rect: [5, 135, 440, 35] }
+    tocar:
+      bien: [sensor, transistor, ventilador, condensador]
+      orden: true
     pistas:
-      - { cuando: { valor: estimacion, mayor: 56 }, texto: "Demasiado: con D = 2 el producto es 9 × 3 × 2." }
-      - { texto: "Demasiado poco: 9 × 3 × 2." }
+      - { texto: "Mire la columna D: cuanto más alta, peor se detecta." }
+    exito: "Sensor 8, transistor 7, ventilador 6 y condensador 5. La deriva del sensor es lo que más fácilmente pasa desapercibido: D mide la probabilidad de no detectarlo."
     escalera:
-      - "Solo cambia D; G y O siguen igual."
-    solucion: "9 × 3 × 2 = 54."
-    comprobar:
-      - { RPN: 189, con: { D: 7 } }
-      - { RPN: 54 }
+      - "D alta es mala: empiece por el 8."
+    solucion: "Sensor, transistor, ventilador y condensador."
 
   - id: toque-primero
     tipo: tocar
     titulo: "Lo que se aborda primero"
     texto: "La práctica moderna prioriza por gravedad. Toque la fila que se aborda primero."
-    libro: [497, 499]
+    libro: [497, 499, 500, 516]
     widget:
       tipo: figura
       figura: fig-46.23
@@ -151,51 +119,112 @@ tarjetas:
       - "Mire la columna G, no la del RPN."
     solucion: "La primera fila: gravedad 9."
 
-  - id: prediga-trampa
-    tipo: predecir
-    titulo: "La trampa del número"
-    texto: "Un fallo catastrófico raro y detectable (G = 10, O = 1, D = 1) y una molestia frecuente (G = 1, O = 10, D = 1). ¿Cómo se comparan?"
-    libro: [494, 496, 497]
-    fijar: { G: 10, O: 1, D: 1 }
+  - id: estime-accion
+    tipo: leer
+    titulo: "La acción correctora"
+    texto: "Transistor de paso con la protección de sobretensión independiente: G = 9, O = 3 y D = 2. Escriba el RPN que queda."
+    libro: [499, 501]
+    fijar: { G: 9, O: 3, D: 2 }
     widget:
-      tipo: figura
-      figura: fig-46.23
-      zonas:
-        - { id: pie, rotulo: "Recuadro rojo de abajo", rect: [5, 175, 440, 45] }
-    opciones:
-      - texto: "Mismo RPN, 10, pero no son equivalentes"
-        bien: true
-        porque: "Por eso se prioriza primero por gravedad: el catastrófico se aborda aunque su RPN sea bajo."
-      - texto: "El frecuente es peor: ocurre más"
-        porque: "Una molestia frecuente no es un daño a personas; la gravedad manda."
-      - texto: "Son equivalentes: tienen el mismo RPN"
-        porque: "Esa es justo la crítica al RPN: trata como iguales situaciones que no lo son."
+      tipo: grafica
+      x: { id: dd, min: 1, max: 10, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 1000, unidad: "", rotulo: "RPN" }
+      curvas:
+        - { expr: "G*O*dd", color: azul, rotulo: "RPN frente a D" }
+      marcas:
+        - { x: "D", y: "RPN", rotulo: "{{RPN}}" }
+      mandos: []
+    leer:
+      objetivo: RPN
+      unidad: ""
+      tol: 0.01
+      rotulo: "RPN con la protección"
+      errores:
+        - { expr: "G*O*7", texto: "Ese es el de antes de la acción: con la protección, D = 2." }
+    exito: "54: de 189 a 54 solo con detectarlo."
     escalera:
-      - "Calcule los dos productos y compare las gravedades."
-    solucion: "Los dos dan 10; el catastrófico va primero por su gravedad."
+      - "9 × 3 × 2."
+    solucion: "9 × 3 × 2 = 54."
     comprobar:
-      - { RPN: 10 }
-      - { con: { G: 1, O: 10 }, RPN: 10 }
+      - { RPN: 54 }
 
   - id: empareje-acciones
-    tipo: pregunta
+    tipo: tocar
     titulo: "Volver a puntuar"
-    texto: "Cada acción correctora baja una puntuación distinta. Empareje."
+    texto: "Dos acciones correctoras: una protección de sobretensión independiente y un sensor de temperatura que reduce la potencia. Toque la fila cuya acción baja la gravedad."
     libro: [501, 502]
     widget:
       tipo: figura
       figura: fig-46.23
       zonas:
-        - { id: filas, rotulo: "Las dos primeras filas", rect: [5, 27, 440, 71] }
-    emparejar:
-      - ["Protección de sobretensión independiente del lazo", "Baja D de 7 a 2"]
-      - ["Sensor de temperatura que reduce la potencia", "Baja G de 7 a 3"]
-    exito: "Detectar antes baja D; limitar las consecuencias baja G."
-    pistas:
-      - { texto: "La protección hace que el fallo no pase desapercibido; el sensor, que sea menos grave." }
+        - { id: transistor, rotulo: "Primera fila", rect: [5, 27, 440, 35] }
+        - { id: ventilador, rotulo: "Segunda fila", rect: [5, 63, 440, 35] }
+    tocar:
+      bien: [ventilador]
+      porque:
+        transistor: "Su protección baja D de 7 a 2: hace el fallo detectable, no menos grave."
+    exito: "El sensor de temperatura baja G de 7 a 3: el ventilador sigue bloqueándose, pero el sobrecalentamiento ya no daña. Detectar antes baja D; limitar las consecuencias baja G."
     escalera:
-      - "¿Cuál cambia lo que ocurre, y cuál si se nota?"
-    solucion: "La protección baja D; el sensor de temperatura baja G."
+      - "Mire la columna «Tras la acción»: ¿cuál cambia G?"
+    solucion: "La segunda fila, el ventilador: G de 7 a 3."
+
+  - id: lea-ventilador
+    tipo: leer
+    titulo: "El ventilador, vuelto a puntuar"
+    texto: "Ventilador bloqueado: O = 4 y D = 6; el sensor de temperatura baja G de 7 a 3. Escriba el RPN que queda."
+    libro: [499, 502]
+    fijar: { G: 3, O: 4, D: 6 }
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 1, max: 10, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 1000, unidad: "", rotulo: "RPN" }
+      curvas:
+        - { expr: "G*O*dd", color: azul, rotulo: "RPN frente a D" }
+      marcas:
+        - { x: "D", y: "RPN", rotulo: "{{RPN}}" }
+      mandos: []
+    leer:
+      objetivo: RPN
+      unidad: ""
+      tol: 0.01
+      rotulo: "RPN con el sensor"
+      errores:
+        - { expr: "7*O*D", texto: "Ese es el de antes de la acción: con el sensor, G = 3." }
+    exito: "{{RPN}}, frente a 168: menos de la mitad sin tocar O ni D."
+    escalera:
+      - "3 × 4 × 6."
+    solucion: "3 × 4 × 6 = {{RPN}}."
+    comprobar:
+      - { RPN: 72 }
+      - { con: { G: 7 }, RPN: 168 }
+
+  - id: prediga-trampa
+    tipo: leer
+    titulo: "La trampa del número"
+    texto: "Un fallo catastrófico, raro y detectable: G = 10, O = 1 y D = 1. Escriba su RPN."
+    libro: [494, 496, 497]
+    fijar: { G: 10, O: 1, D: 1 }
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 1, max: 10, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 1000, unidad: "", rotulo: "RPN" }
+      curvas:
+        - { expr: "G*O*dd", color: azul, rotulo: "RPN frente a D" }
+      marcas:
+        - { x: "D", y: "RPN", rotulo: "{{RPN}}" }
+      mandos: []
+    leer:
+      objetivo: RPN
+      unidad: ""
+      tol: 0.01
+      rotulo: "RPN del fallo catastrófico"
+    exito: "10, lo mismo que una molestia frecuente (G = 1, O = 10, D = 1). El número los iguala; la gravedad no: un fallo de gravedad 9 o 10 se aborda aunque su RPN sea bajo."
+    escalera:
+      - "10 × 1 × 1."
+    solucion: "10 × 1 × 1 = 10."
+    comprobar:
+      - { RPN: 10 }
+      - { con: { G: 1, O: 10 }, RPN: 10 }
 
   - id: ordene-procedimiento
     tipo: pregunta

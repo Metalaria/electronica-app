@@ -5,6 +5,10 @@
 # (de µV a mV, sección 26.1) en 10 kΩ y 100 nF, sin y con R_f = 1 MΩ (sin ella, R_f = 1 TΩ hace de «abierta»); la
 # curva de la deriva incluye A₀ finito (v₋ = −v_o/A₀), como el simulador. La
 # cuadrada de 1 V a 500 Hz para la triangular es un ejemplo de la comprobación de banco del bloque 164.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el sumador se lleva a −2 V y se anula con entradas opuestas
+# (objetivos), las entradas que no interactúan se comprueban moviendo la 2, el tiempo de la rampa se predice, la
+# rampa se frena con C, R_{f} detiene la deriva, la triangular se reduce con C y la frecuencia desde la que el
+# derivador amplifica se marca en su Bode. Quedan dos preguntas de opciones (las dos «por qué») y el emparejamiento.
 leccion: cap27/sec-27.4
 
 libro:
@@ -60,13 +64,15 @@ modelo:
     V_lim: { expr: "min(V_s, -x_inf)", sim: "|v_{o}|", nombre: "salida final por el offset", unidad: V }
     T_q: { expr: "1/f_q", sim: "T", nombre: "periodo", unidad: s }
     V_pp: { expr: "A_q/(R_d*C_q)*T_q/2", sim: "Δv_{o}", nombre: "excursión de la triangular", unidad: V }
+    f_u: { expr: "1/(2*pi*R_d*C_q)", sim: "f", nombre: "frecuencia de ganancia 1 del derivador", unidad: Hz }
 
 tarjetas:
   - id: explore-sumador
     tipo: explorar
     titulo: "El sumador"
-    texto: "Tres entradas por 10 kΩ al nodo inversor y 10 kΩ de realimentación. Mueva las entradas y mire la salida."
+    texto: "Tres entradas por 10 kΩ al nodo inversor y 10 kΩ de realimentación. Combine las entradas hasta tener −2 V a la salida."
     libro: [142, 143]
+    inicio: { V_1: 0.5, V_2: 0, V_3: 0 }
     widget:
       tipo: circuito
       esquema: ao-sumador
@@ -80,17 +86,26 @@ tarjetas:
         - { valor: V_1, min: -1, max: 1, paso: 0.25, rotulo: "Entrada 1" }
         - { valor: V_2, lista: [-1, 0, 1], rotulo: "Entrada 2" }
         - { valor: V_3, lista: [-1, 0, 1], rotulo: "Entrada 3" }
-    requiere: { mover: [V_1, V_2] }
+    objetivo:
+      condiciones:
+        - { valor: V_os_s, objetivo: -2, tol: 0.01, rotulo: "Salida: {{V_os_s}}" }
+      logrado: "−2 V: con todas las resistencias iguales, la salida es la suma de las entradas, cambiada de signo."
+      pistas:
+        - { cuando: { valor: V_os_s, min: -1.9 }, texto: "Falta: sume más entrada positiva." }
+        - { texto: "Se ha pasado: quite algo de entrada." }
+    escalera:
+      - "Con R = R_{f}, v_{o} = −(v₁ + v₂ + v₃)."
+    solucion: "Por ejemplo, la entrada 1 y la 2 en 1 V: −2 V."
     comprobar:
       - { R_s: 10000, R_fs: 10000 }
+      - { con: { V_1: 1, V_2: 1 }, V_os_s: -2, tol: 0.001 }
 
   - id: formula-sumador
-    tipo: formula
+    tipo: explorar
     titulo: "Suma de corrientes"
-    texto: "Las corrientes se suman en la masa virtual y cruzan R_{f}. Mueva las entradas."
+    texto: "V_{out} = −R_{f} · (v₁/R₁ + v₂/R₂ + …): las corrientes se suman en la masa virtual. Con la entrada 3 en −1 V, anule la salida con la 1."
     libro: [142, 144]
-    ec: 142
-    sustitucion: "−{{R_fs}} · ({{V_1}} + {{V_2}} + {{V_3}}) / {{R_s}} = {{V_os_s}}"
+    inicio: { V_1: 0.5, V_3: -1 }
     widget:
       tipo: circuito
       esquema: ao-sumador
@@ -101,11 +116,22 @@ tarjetas:
       mandos:
         - { valor: V_1, min: -1, max: 1, paso: 0.25, rotulo: "Entrada 1" }
         - { valor: V_3, lista: [-1, 0, 1], rotulo: "Entrada 3" }
+    objetivo:
+      condiciones:
+        - { valor: V_os_s, min: -0.01, max: 0.01, rotulo: "Salida: {{V_os_s}}" }
+      logrado: "−{{R_fs}} · ({{V_1}} + {{V_2}} + {{V_3}}) / {{R_s}} = {{V_os_s}}: las corrientes se cancelan en el nodo y R_{f} no lleva nada."
+      pistas:
+        - { texto: "La entrada 3 mete −100 µA en el nodo: la entrada 1 debe meter lo mismo con el otro signo." }
+    escalera:
+      - "Corriente total nula: v₁/R + v₃/R = 0."
+    solucion: "Entrada 1 en +1 V: salida 0."
+    comprobar:
+      - { con: { V_1: 1, V_3: -1 }, V_os_s: 0, tol: 0.001 }
 
   - id: sorpresa-independientes
     tipo: sorpresa
     titulo: "Las entradas no se oyen entre sí"
-    texto: "Fije la entrada 1 y mueva la 2. Mire la corriente de la entrada 1."
+    texto: "La entrada 1 fija en 0,5 V. Suba la entrada 2 a 1 V y vigile la corriente de la entrada 1."
     libro: [143]
     fijar: { V_1: 0.5 }
     inicio: { V_2: 0 }
@@ -120,7 +146,18 @@ tarjetas:
       mide: { vo: V_os_s, vmenos: V_ms, i1: I_s1, i2: I_s2, i3: I_s3 }
       mandos:
         - { valor: V_2, lista: [-1, 0, 1], rotulo: "Entrada 2" }
-    requiere: { mover: [V_2] }
+    objetivo:
+      condiciones:
+        - { valor: V_2, min: 1, rotulo: "Entrada 2: {{V_2}}" }
+      logrado: "La salida ha pasado a {{V_os_s}} y la corriente de la entrada 1 sigue en {{I_s1}}."
+      pistas:
+        - { texto: "Suba la entrada 2 a 1 V." }
+    escalera:
+      - "Vigile la lectura de arriba mientras cambia la entrada 2."
+    solucion: "Entrada 2 en 1 V: la salida cambia, I₁ no."
+    comprobar:
+      - { I_s1: 0.00005, tol: 0.001 }
+      - { con: { V_2: 1 }, I_s1: 0.00005, tol: 0.001 }
 
   - id: por-que-independientes
     tipo: porque
@@ -148,29 +185,18 @@ tarjetas:
     solucion: "La masa virtual: cada entrada ve solo su resistencia."
 
   - id: prediga-rampa
-    tipo: predecir
+    tipo: simular
     titulo: "Un escalón en el integrador"
     texto: "R = 100 kΩ, C = 100 nF y un escalón de 1 V. ¿Cuánto tarda la salida en llegar a −10 V?"
     libro: [149, 150, "cap27#434"]
-    widget:
-      tipo: circuito
-      esquema: ao-integrador
-      piezas: { entrada: V_ig, r: R_ig, c: C_ig, a0: A_0, vsat: V_s }
-      lectura: { valor: t_10, rotulo: "Tiempo hasta −10 V" }
-      ocultar: true
-      grafica:
-        x: { id: t, min: 0, max: 0.2, unidad: s, rotulo: "t" }
-        y: { min: -13, max: 2, unidad: V, rotulo: "v_{o}" }
-        curvas:
-          - { expr: "max(-V_s, -V_ig*t/t_rc)", color: naranja, rotulo: "v_{o}", mide: salida }
-    opciones:
-      - texto: "0,1 s"
-        bien: true
-        porque: "La pendiente es 1 V / (100 kΩ · 100 nF) = 100 V/s: 10 V en 0,1 s."
-      - texto: "0,01 s"
-        porque: "Eso es RC. En RC la rampa solo baja 1 V, lo que vale la entrada."
-      - texto: "Nunca: un condensador cargado se para"
-        porque: "La corriente es constante, 1 V/R, porque la entrada − es masa virtual: la carga crece sin parar."
+    simular:
+      objetivo: t_10
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo hasta −10 V"
+      errores:
+        - { expr: "t_rc", texto: "Eso es RC. En un RC la rampa solo baja 1 V, lo que vale la entrada." }
+    exito: "0,1 s: la pendiente es 1 V / (100 kΩ · 100 nF) = 100 V/s, constante, porque la entrada − es masa virtual."
     escalera:
       - "Pendiente = v_{in}/(RC)."
     solucion: "100 V/s: 10 V en 0,1 s (bajando, porque es inversor)."
@@ -178,12 +204,11 @@ tarjetas:
       - { t_10: 0.1, p_i: 100, t_rc: 0.01 }
 
   - id: formula-integrador
-    tipo: formula
+    tipo: explorar
     titulo: "La rampa del integrador"
-    texto: "Una entrada constante carga C con corriente constante. Cambie C y mire la pendiente."
+    texto: "V_{out} = −1/(RC) · ∫v_{in} dt: una entrada constante carga C con corriente constante. Haga la rampa al menos cuatro veces más lenta."
     libro: [149, 150]
-    ec: 149
-    sustitucion: "{{V_ig}} / ({{R_ig}} · {{C_ig}}) = {{p_i}}"
+    inicio: { C_ig: 100e-9 }
     widget:
       tipo: circuito
       esquema: ao-integrador
@@ -196,11 +221,22 @@ tarjetas:
           - { expr: "max(-V_s, -V_ig*t/t_rc)", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: C_ig, lista: [100e-9, 220e-9, 470e-9], rotulo: "C" }
+    objetivo:
+      condiciones:
+        - { valor: p_i, max: 25, rotulo: "Pendiente: {{p_i}}" }
+      logrado: "{{V_ig}} / ({{R_ig}} · {{C_ig}}) = {{p_i}}: más C, misma corriente, rampa más lenta."
+      pistas:
+        - { texto: "Aún es rápida: más capacidad." }
+    escalera:
+      - "La pendiente es v_{in}/(RC): para dividirla por cuatro, C cuatro veces mayor."
+    solucion: "C = 470 nF: unos 21 V/s."
+    comprobar:
+      - { con: { C_ig: 470e-9 }, p_i: 21.28, tol: 0.01 }
 
   - id: sorpresa-deriva
     tipo: sorpresa
     titulo: "La entrada a cero, y la salida se va"
-    texto: "Integrador de 10 kΩ y 100 nF con la entrada a masa, pero con 1 mV de offset. Mire la salida; luego ponga R_{f} = 1 MΩ."
+    texto: "Integrador de 10 kΩ y 100 nF con la entrada a masa, pero con 1 mV de offset: la salida se va al raíl. Deténgala."
     libro: [151, 152]
     inicio: { s_rf: 0 }
     widget:
@@ -215,10 +251,18 @@ tarjetas:
           - { expr: "max(-V_s, x_inf*(1 - exp(-t/tau_d)))", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: s_rf, tipo: interruptor, rotulo: "R_{f} de 1 MΩ en paralelo con C" }
-    requiere: { mover: [s_rf] }
+    objetivo:
+      condiciones:
+        - { valor: s_rf, min: 1, rotulo: "R_{f} en paralelo" }
+      logrado: "Con R_{f}, la salida se queda en {{V_lim}}: limita la ganancia en continua y detiene la deriva."
+      pistas:
+        - { texto: "Conecte la R_{f} de 1 MΩ en paralelo con C." }
+    escalera:
+      - "Sin R_{f}, la ganancia en continua es la del operacional."
+    solucion: "Con R_{f} = 1 MΩ: 0,1 V en lugar del raíl."
     comprobar:
       - { V_os: 0.001, R_d: 10000 }
-      - { con: { s_rf: 1 }, R_fd: 1000000 }
+      - { con: { s_rf: 1 }, R_fd: 1000000, V_lim: 0.1, tol: 0.01 }
 
   - id: por-que-deriva
     tipo: porque
@@ -250,8 +294,9 @@ tarjetas:
   - id: explore-cuadrada
     tipo: explorar
     titulo: "Cuadrada que entra, triangular que sale"
-    texto: "Una cuadrada de 1 V a 500 Hz en un integrador de 10 kΩ. Cambie C y mire la triangular."
+    texto: "Una cuadrada de 1 V a 500 Hz en un integrador de 10 kΩ. Reduzca la triangular a menos de la mitad de su excursión."
     libro: [164]
+    inicio: { C_q: 100e-9 }
     widget:
       tipo: circuito
       esquema: ao-integrador
@@ -265,9 +310,18 @@ tarjetas:
           - { expr: "-A_q/(R_d*C_q)*(T_q/2 - abs(t - T_q*floor(t/T_q) - T_q/2))", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: C_q, lista: [47e-9, 100e-9, 220e-9], rotulo: "C" }
-    requiere: { mover: [C_q] }
+    objetivo:
+      condiciones:
+        - { valor: V_pp, max: 0.5, rotulo: "Excursión: {{V_pp}}" }
+      logrado: "{{V_pp}} con C = {{C_q}}: la pendiente es proporcional a la amplitud y a 1/(RC)."
+      pistas:
+        - { texto: "Aún es grande: más C, rampas más lentas." }
+    escalera:
+      - "Excursión = v_{in}/(RC) · T/2."
+    solucion: "C = 220 nF: unos 0,45 V."
     comprobar:
       - { A_q: 1, f_q: 500, R_d: 10000 }
+      - { con: { C_q: 220e-9 }, V_pp: 0.4545, tol: 0.01 }
 
   - id: dibuje-triangular
     tipo: dibujar
@@ -294,9 +348,9 @@ tarjetas:
       - { V_pp: 1, T_q: 0.002, f_q: 500 }
 
   - id: por-que-derivador
-    tipo: pregunta
+    tipo: marcar
     titulo: "El derivador"
-    texto: "¿Por qué conviene evitar el derivador siempre que se pueda?"
+    texto: "Integrador y derivador de 10 kΩ y 100 nF. Marque en la curva del derivador la frecuencia desde la que amplifica más que 1."
     libro: [156, 157]
     widget:
       tipo: grafica
@@ -305,17 +359,23 @@ tarjetas:
       curvas:
         - { expr: "1/(2*pi*nu*R_d*C_q)", color: azul, rotulo: "integrador" }
         - { expr: "2*pi*nu*R_d*C_q", color: naranja, rotulo: "derivador" }
-    opciones:
-      - texto: "Su ganancia crece con la frecuencia: amplifica el ruido y tiende a oscilar"
-        bien: true
-        porque: "El ruido está sobre todo arriba, y el condensador de entrada añade fase al lazo. Casi todo se puede reformular integrando."
-      - texto: "Porque no funciona con señales lentas"
-        porque: "Funciona, con poca ganancia. El problema está arriba, en el ruido."
-      - texto: "Porque deriva hasta saturar"
-        porque: "Eso es el integrador, que integra el offset. El derivador falla por el otro extremo."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 1
+      x: "f_u"
+      tol: 0.03
+      inicio: { x: 10000, y: 1 }
+      rotulo: "Ganancia 1 del derivador"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 300 }, texto: "Ahí ya amplifica de sobra: el cruce con 1 está más a la izquierda." }
+      - { texto: "Ahí aún atenúa: más a la derecha." }
+    exito: "Desde ahí la ganancia crece sin parar con la frecuencia: amplifica el ruido, que está arriba, y tiende a oscilar. Mejor integrar."
     escalera:
-      - "Mire las dos curvas a frecuencia alta."
-    solucion: "Amplifica el ruido de alta frecuencia y es propenso a la inestabilidad."
+      - "Busque dónde la curva naranja corta la horizontal de ganancia 1."
+    solucion: "Donde 2π · f · RC = 1: 1/(2π · 1 ms), unos 159 Hz."
+    comprobar:
+      - { f_u: 159.15, tol: 0.001 }
 
   - id: empareje-operaciones
     tipo: pregunta

@@ -11,6 +11,10 @@
 # Pasos prácticos: «ajuste» de la excitación al mínimo de la curva en V (cos φ = 1) y un «reto» de sincronización
 # con las tres condiciones que se ajustan (frecuencia algo por encima, tensión entre la de la red y un 5 % más, fase
 # dentro de ±10°; la secuencia de fases se comprueba una vez al montar).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): con 10 kW se sube la excitación hasta δ < 30° (objetivo); se
+# calculan δ, la reactiva con 300 V, la tensión entre contactos y la velocidad del BLDC; se quedan el tocar, el ajuste
+# y el reto. Quedan dos preguntas (sobreexcitada o no y el límite de estabilidad); el «un poco más rápido», los Hall
+# y el paso a paso pasan a explicaciones y resumen.
 leccion: cap56/sec-56.5
 
 libro:
@@ -59,6 +63,8 @@ modelo:
     dth_a: { expr: "abs(dth)", sim: "|Δθ|", nombre: "desfase al cerrar", unidad: "°" }
     V_c: { expr: "sqrt(V_alt^2 + V^2 - 2*V_alt*V*cos(dth*pi/180))", sim: "V_{contactos}", nombre: "tensión entre los contactos al cerrar", unidad: V }
     V_10: { expr: "2*V*sin(10*pi/360)", sim: "V", nombre: "entre contactos con 10°", unidad: V }
+    Q_mal: { expr: "3*V*(V - E)/X_s", sim: "Q", nombre: "con E en lugar de E·cos δ (error)", unidad: var }
+    V_20: { expr: "2*V*sin(10*pi/180)", sim: "V", nombre: "con el ángulo entero (error)", unidad: V }
     k_b: { expr: "60/(2*pi*KV)", sim: "k", nombre: "constante del BLDC", unidad: "V·s/rad" }
     n_b: { expr: "KV*V_b", sim: "n_{0}", nombre: "velocidad en vacío ideal", unidad: rpm, cifras: 5 }
 
@@ -66,8 +72,9 @@ tarjetas:
   - id: explore-potencia
     tipo: explorar
     titulo: "Potencia y ángulo de carga"
-    texto: "Pida más potencia y suba la excitación. El ángulo δ entre E y V crece con la carga; con 90° está el máximo."
+    texto: "El ángulo δ entre E y V crece con la carga; con 90° está el máximo. Con 10 kW, elija la excitación que deja δ por debajo de 30°."
     libro: [79, 80, 81]
+    inicio: { P_w: 10000, E: 250 }
     widget:
       tipo: grafica
       x: { id: dx, min: 0, max: 180, unidad: "°", rotulo: "δ" }
@@ -82,12 +89,23 @@ tarjetas:
       mandos:
         - { valor: P_w, lista: [5000, 10000, 15000], rotulo: "Potencia" }
         - { valor: E, lista: [250, 300], rotulo: "Excitación, E" }
-    requiere: { mover: [P_w, E] }
+    objetivo:
+      condiciones:
+        - { valor: P_w, min: 10000, rotulo: "Potencia: {{P_w}}" }
+        - { valor: delta, max: 30, rotulo: "δ = {{delta}}" }
+      logrado: "Con E = {{E}}, δ = {{delta}}: más excitación sube el máximo, {{P_max}}, y aleja el descuelgue."
+      pistas:
+        - { cuando: { valor: P_w, menor: 10000 }, texto: "Pida al menos 10 kW." }
+        - { texto: "δ sigue alto: suba la excitación." }
+    escalera:
+      - "sen δ = P·X_{s}/(3·V·E): más E, menos δ."
+    solucion: "E = 300 V: δ = 28,8°."
     comprobar:
+      - { con: { E: 300, P_w: 10000 }, delta: 28.8, tol: 0.003 }
       - { con: { E: 250 }, P_max: 17300, T_max: 110.3, tol: 0.003 }
 
   - id: estime-delta
-    tipo: pregunta
+    tipo: simular
     titulo: "El ángulo con 10 kW"
     texto: "V = 230,9 V, E = 250 V y X_{s} = 10 Ω. ¿Con qué ángulo de carga da 10 kW?"
     libro: [80, 81]
@@ -98,20 +116,17 @@ tarjetas:
       y: { min: 0, max: 25000, unidad: W, rotulo: "P" }
       curvas:
         - { expr: "3*V*E/X_s*sin(dx*pi/180)", color: naranja, rotulo: "P" }
-        - { expr: "P_w", color: tinta, rotulo: "10 kW", discontinua: true }
-    estimar:
-      objetivo: "delta"
+        - { expr: "P_w + 0*dx", color: tinta, rotulo: "10 kW", discontinua: true }
+      lectura: { valor: delta, rotulo: "Ángulo de carga" }
+      ocultar: true
+    simular:
+      objetivo: delta
       unidad: "°"
-      min: 0
-      max: 90
-      paso: 0.5
-      inicio: 70
       tol: 0.02
       rotulo: "Ángulo de carga"
+      errores:
+        - { expr: "s_d", texto: "Ese es sen δ: falta el arcoseno." }
     exito: "35,3°, con 14,7 A y cos φ = 0,983. Si la carga pidiera más que el máximo, se descolgaría."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 36 }, texto: "Se ha pasado: sen δ = 10 000·10/(3 × 230,9 × 250)." }
-      - { texto: "Se ha quedado corto: sen δ vale algo más de la mitad." }
     escalera:
       - "Despeje sen δ = P·X_{s}/(3·V·E)."
     solucion: "sen δ = 0,577: δ = 35,3°."
@@ -166,24 +181,30 @@ tarjetas:
     solucion: "I₁, la flecha corta de abajo."
 
   - id: formula-q
-    tipo: formula
+    tipo: simular
     titulo: "La reactiva"
-    texto: "La proyección horizontal del diagrama da la reactiva: positiva cuando la máquina la toma de la red."
-    libro: [86, 87]
-    fijar: { P_w: 10000 }
-    ec: 86
-    sustitucion: "3 · {{V}} · ({{V}} − {{E_c}}) / {{X_s}} = {{Q_s}}"
+    texto: "Q = 3·V·(V − E·cos δ)/X_{s}, positiva cuando la máquina la toma de la red. Con 10 kW y E = 300 V, δ = 28,8°: ¿cuánta reactiva?"
+    libro: [85, 86, 87]
+    fijar: { P_w: 10000, E: 300 }
     widget:
       tipo: grafica
       x: { id: ex, min: 140, max: 350, unidad: V, rotulo: "E" }
       y: { min: -10000, max: 10000, unidad: var, rotulo: "Q" }
       curvas:
         - { expr: "3*V*(V - sqrt(max(0, ex^2 - a_p^2)))/X_s", color: naranja, rotulo: "Q" }
-      marcas:
-        - { x: "E", y: "Q_s", rotulo: "{{Q_s}}" }
       lectura: { valor: Q_s, rotulo: "Reactiva que toma" }
-      mandos:
-        - { valor: E, lista: [250, 300], rotulo: "Excitación, E" }
+      ocultar: true
+    simular:
+      objetivo: Q_s
+      unidad: var
+      tol: 0.03
+      rotulo: "Reactiva que toma de la red"
+      errores:
+        - { expr: "Q_mal", texto: "Ha usado E en lugar de E·cos δ: lo que decide es la proyección sobre V." }
+    exito: "−2 221 var: la entrega. E·cos δ = 263,0 V supera a V: sobreexcitada, con 14,8 A."
+    escalera:
+      - "E·cos δ = 300 × cos 28,8°."
+    solucion: "3 × 230,9 × (230,9 − 263,0)/10 ≈ −2 221 var."
     comprobar:
       - { con: { E: 300 }, delta: 28.8, E_c: 263.0, I_s: 14.8, Q_s: -2221, tol: 0.003 }
 
@@ -249,7 +270,7 @@ tarjetas:
     tipo: reto
     titulo: "Acople el alternador"
     texto: "Ajuste la velocidad, la excitación y el instante de cierre para acoplar el alternador a la red de 230,9 V por fase."
-    libro: [92, 94]
+    libro: [92, 94, 95]
     inicio: { f_alt: 49.9, V_alt: 220, dth: 20 }
     widget:
       tipo: grafica
@@ -268,7 +289,7 @@ tarjetas:
       - { valor: df, min: 0.01, max: 0.067, rotulo: "Δf: {{df}}" }
       - { valor: V_alt, min: 230.9, max: 242.4, rotulo: "Tensión: {{V_alt}}" }
       - { valor: dth_a, max: 10, rotulo: "Desfase: {{dth_a}}" }
-    exito: "Acoplado: apenas circula corriente al cerrar. Desde ahora la velocidad es la de la red."
+    exito: "Acoplado: apenas circula corriente al cerrar. Algo más rápido que la red, toma carga como generador; desde ahora, la velocidad es la de la red."
     pistas:
       - { cuando: { valor: df, mayor: 0.067 }, texto: "La diferencia de frecuencias pasa de 0,067 Hz: el batido va demasiado deprisa." }
       - { cuando: { valor: df, menor: 0.01 }, texto: "Que vaya un poco más rápido que la red, para que tome carga como generador." }
@@ -282,7 +303,7 @@ tarjetas:
       - { con: { f_alt: 50.05, V_alt: 230.9, dth: -5 }, df: 0.05, V_c: 20.1, tol: 0.01 }
 
   - id: estime-contactos
-    tipo: pregunta
+    tipo: simular
     titulo: "Diez grados de desfase"
     texto: "Alternador y red con la misma tensión, 230,9 V por fase, y 10° de desfase. ¿Qué tensión queda entre los contactos de cada polo?"
     libro: [93]
@@ -293,49 +314,24 @@ tarjetas:
       y: { min: 0, max: 500, unidad: V, rotulo: "v_{contactos}" }
       curvas:
         - { expr: "2*V*sin(ax*pi/360)", color: naranja, rotulo: "2·V·sen(Δθ/2)" }
-    estimar:
-      objetivo: "V_c"
+      lectura: { valor: V_c, rotulo: "Entre contactos" }
+      ocultar: true
+    simular:
+      objetivo: V_c
       unidad: V
-      min: 0
-      max: 200
-      paso: 0.5
-      inicio: 120
       tol: 0.03
       rotulo: "Entre contactos"
+      errores:
+        - { expr: "V_20", texto: "Ha usado el ángulo entero: es 2·V·sen(Δθ/2), la mitad del desfase." }
     exito: "40,3 V; con 20°, 80,2 V. Si las frecuencias difieren, late entre cero y 461,8 V."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 41.5 }, texto: "Se ha pasado: 2 × 230,9 × sen 5°." }
-      - { texto: "Se ha quedado corto: 2 × 230,9 × sen 5°." }
     escalera:
       - "Dos tensiones iguales desfasadas Δθ: 2·V·sen(Δθ/2)."
     solucion: "2 × 230,9 × sen 5° = 40,3 V."
     comprobar:
-      - { V_c: 40.3, V_10: 40.3 }
-
-  - id: por-que-rapido
-    tipo: porque
-    titulo: "Un poco más rápido"
-    texto: "Se cierra con la aguja girando despacio hacia «rápido». ¿Por qué con el alternador algo más rápido que la red?"
-    libro: [94, 95]
-    widget:
-      tipo: figura
-      figura: fig-new-56-sincrona
-      zonas:
-        - { id: fasores, rotulo: "El diagrama fasorial", rect: [0, 20, 230, 160] }
-    opciones:
-      - texto: "Para que tome algo de carga como generador, en lugar de tomarla de la red como motor"
-        bien: true
-        porque: "Al engancharse, el rotor adelantado da δ y potencia activa a la red."
-      - texto: "Para que el batido sea más rápido"
-        porque: "Al contrario: se busca un batido lento, para cerrar con calma dentro de la ventana."
-      - texto: "Porque más velocidad sube la tensión"
-        porque: "La tensión se ajusta con la excitación; la velocidad decide quién da potencia."
-    escalera:
-      - "Tras cerrar, ¿quién da potencia si el rotor va adelantado?"
-    solucion: "Para que entregue algo de potencia al acoplarse, y no la tome de la red."
+      - { V_c: 40.3, V_10: 40.3, V_20: 80.2 }
 
   - id: estime-kv
-    tipo: pregunta
+    tipo: simular
     titulo: "El KV de un BLDC"
     texto: "Un BLDC de modelismo de 920 KV con una batería de 11,1 V. ¿A cuánto giraría en vacío, idealmente?"
     libro: [100]
@@ -345,75 +341,28 @@ tarjetas:
       y: { min: 0, max: 15000, unidad: rpm, rotulo: "n_{0}" }
       curvas:
         - { expr: "KV*vx", color: naranja, rotulo: "n₀ = KV·V" }
-    estimar:
-      objetivo: "n_b"
+      lectura: { valor: n_b, rotulo: "Velocidad en vacío" }
+      ocultar: true
+    simular:
+      objetivo: n_b
       unidad: rpm
-      min: 0
-      max: 15000
-      paso: 50
-      inicio: 3000
       tol: 0.02
       rotulo: "Velocidad en vacío"
+      errores:
+        - { expr: "KV/V_b", texto: "Ha dividido: el KV son rpm por cada voltio, así que se multiplica." }
     exito: "10 212 rpm. Lo que el KV no dice es la resistencia: con 0,1 Ω, 10 A ya le quitan 1 V."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 10420 }, texto: "Se ha pasado: KV por voltios." }
-      - { texto: "Se ha quedado corto: 920 rpm por cada voltio." }
     escalera:
       - "KV son rpm por voltio."
     solucion: "920 × 11,1 = 10 212 rpm."
     comprobar:
       - { n_b: 10212, k_b: 0.01038 }
 
-  - id: hall
-    tipo: pregunta
-    titulo: "Seis pasos con sensores Hall"
-    texto: "Empareje cada código de los sensores con las fases que conducen, según la tabla del libro."
-    libro: [98, 99]
-    widget:
-      tipo: grafica
-      x: { id: vx, min: 0, max: 15, unidad: V, rotulo: "V" }
-      y: { min: 0, max: 15000, unidad: rpm, rotulo: "n_{0}" }
-      curvas:
-        - { expr: "KV*vx", color: naranja, rotulo: "n₀ = KV·V" }
-    emparejar:
-      - ["H = 1 0 1", "A al +, B al −; C al aire"]
-      - ["H = 1 0 0", "A al +, C al −; B al aire"]
-      - ["H = 0 1 0", "B al +, A al −; C al aire"]
-    exito: "Cada 60° cambia el código y conmutan dos fases; la tercera queda al aire."
-    pistas:
-      - { texto: "Con 1 0 1 conducen A y B." }
-    escalera:
-      - "La que queda al aire es la que no aparece en el par."
-    solucion: "1 0 1: A+ B−. 1 0 0: A+ C−. 0 1 0: B+ A−."
-
-  - id: paso-a-paso
-    tipo: pregunta
-    titulo: "El paso a paso"
-    texto: "Un motor paso a paso trabaja en lazo abierto. ¿Qué pasa si la carga pide más par del que puede dar?"
-    libro: [102]
-    widget:
-      tipo: figura
-      figura: fig-new-56-sincrona
-      zonas:
-        - { id: fasores, rotulo: "El diagrama fasorial", rect: [0, 20, 230, 160] }
-    opciones:
-      - texto: "Pierde pasos sin avisar, y el controlador cree que está donde no está"
-        bien: true
-        porque: "Sin sensor no hay forma de saberlo: esa es su ventaja y su límite."
-      - texto: "El controlador lo detecta y reintenta"
-        porque: "En lazo abierto no hay sensor que lo detecte."
-      - texto: "Sigue la consigna con más corriente"
-        porque: "Su par está limitado: pasado ese límite pierde pasos."
-    escalera:
-      - "¿Qué mide el controlador de un paso a paso en lazo abierto?"
-    solucion: "Pierde pasos sin avisar."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [80, 87, 89, 94]
+    libro: [80, 87, 89, 94, 98, 99, 102]
     ideas:
       - { titulo: "Síncrona.", texto: "P = 3VE/X_{s}·sen δ; con δ = 90°, el máximo." }
       - { titulo: "Excitación.", texto: "Decide la reactiva: E·cos δ frente a V, no E frente a V." }
       - { titulo: "Curva en V.", texto: "Mínima corriente con cos φ = 1; a la derecha entrega reactiva." }
-      - { titulo: "Acoplar.", texto: "Misma secuencia, frecuencia, tensión y fase al cerrar." }
+      - { titulo: "Acoplar e imanes.", texto: "Misma secuencia, frecuencia, tensión y fase. BLDC con seis pasos y Hall; el paso a paso pierde pasos sin avisar." }

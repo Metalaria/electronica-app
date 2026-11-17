@@ -3,6 +3,10 @@
 #   los bornes; las tablas de especificación (bloque 523), taladros (526) y ficheros (531).
 # - El ejercicio 51.2 (C = I·Δt/ΔV = 1 A × 10 ms / 1 V = 10 000 µF) como «estimar», y el 51.1 (la barrera).
 # Paso práctico: «tocar» la pieza que va en el borde para que su disipador quede fuera de la placa.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el ejercicio 51.2 pasa a explorar con objetivo (elegir el
+# condensador que deja 1 V de rizado; las posiciones de 4 700 y 22 000 µF del mando son de ejemplo), se calcula el
+# rizado con los 22 000 µF del filtro del proyecto (bloque 518) y el margen de la pista de 3 mm, y se tocan Q1 y J2.
+# Quedan dos preguntas (sin la red y antes de encargarla); especificación, taladros y ficheros, al resumen.
 leccion: cap50/sec-50.16
 
 libro:
@@ -16,6 +20,7 @@ libro:
   531: "Taladros, formato Excellon métrico"
   533: "Q1 y su excitador junto al borde superior, para el disipador exterior"
   534: "la placa no se ha fabricado ni probado en el banco"
+  "cap50#502": "el par de sensado remoto debe ir trenzado hasta los bornes"
   536: "C = I · Δt / ΔV = 1 A × 0,01 s / 1 V = 0,01 F = 10000 µF"
 
 modelo:
@@ -23,24 +28,46 @@ modelo:
     I_c: { sim: "I", nombre: "corriente", unidad: A, valor: 1 }
     dt: { sim: "Δt", nombre: "tiempo entre picos", unidad: s, valor: 0.01 }
     dV: { sim: "ΔV", nombre: "rizado", unidad: V, valor: 1 }
+    C_x: { sim: "C", nombre: "condensador elegido", unidad: F, valor: 0.0047 }
+    w_ipc: { sim: "w", nombre: "ancho calculado por IPC", unidad: mm, valor: 1.82 }
+    w_p: { sim: "w", nombre: "ancho trazado", unidad: mm, valor: 3 }
   calculos:
     C_f: { expr: "I_c*dt/dV", sim: "C", nombre: "condensador de filtro", unidad: F }
+    dV_x: { expr: "I_c*dt/C_x", sim: "ΔV", nombre: "rizado con el condensador elegido", unidad: V }
+    dV_20: { expr: "I_c*2*dt/C_x", sim: "ΔV", nombre: "con 20 ms (error)", unidad: V }
+    m_w: { expr: "100*(w_p/w_ipc - 1)", sim: "margen", nombre: "margen de la pista", unidad: "%", cifras: 2 }
+    m_e: { expr: "100*(1 - w_ipc/w_p)", sim: "margen", nombre: "margen sobre el ancho trazado (error)", unidad: "%", cifras: 2 }
 
 tarjetas:
   - id: explore-placa
     tipo: explorar
-    titulo: "La placa del núcleo"
-    texto: "Cien por ochenta milímetros a dos caras. Toque sus piezas principales."
-    libro: [520, 533]
+    titulo: "Un condensador de filtro"
+    texto: "Un ejercicio: 1 A, onda completa a 50 Hz, unos 10 ms entre picos. Elija el condensador que deja el rizado en 1 V o menos."
+    libro: [536]
+    inicio: { C_x: 0.0047 }
     widget:
-      tipo: figura
-      figura: fig-new-50-placa
-      zonas:
-        - { id: q1, rotulo: "Arriba, junto al borde", rect: [112, 4, 40, 28], texto: "Q1 y su excitador, en el borde superior, para el disipador exterior." }
-        - { id: c1, rotulo: "Círculo grande de arriba", rect: [158, 32, 50, 50], texto: "El condensador de salida, en el camino de potencia." }
-        - { id: j2, rotulo: "Conector de la derecha", rect: [262, 75, 35, 75], texto: "J2: la salida y el par de sensado, contiguos para trenzarlos." }
-        - { id: j3, rotulo: "Conector de abajo", rect: [75, 190, 70, 30], texto: "J3: los conectores de mando, en la mitad del control." }
-    requiere: { mover: [q1, j2] }
+      tipo: grafica
+      x: { id: cx, min: 0.002, max: 0.025, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "I_c*dt/cx", color: naranja, rotulo: "ΔV = I·Δt/C" }
+        - { expr: "dV + 0*cx", color: tinta, rotulo: "1 V", discontinua: true }
+      marcas:
+        - { x: "C_x", y: "dV_x", rotulo: "{{dV_x}}" }
+      lectura: { valor: dV_x, rotulo: "Rizado" }
+      mandos:
+        - { valor: C_x, lista: [0.0047, 0.01, 0.022], rotulo: "Condensador" }
+    objetivo:
+      condiciones:
+        - { valor: dV_x, max: 1.001, rotulo: "Rizado: {{dV_x}}" }
+      logrado: "Con {{C_x}}, {{dV_x}} de rizado: C = I·Δt/ΔV, 10 000 µF o algo mayor para tener margen."
+      pistas:
+        - { texto: "Demasiado rizado: más capacidad." }
+    escalera:
+      - "C = I · Δt / ΔV."
+    solucion: "10 000 µF: 1 A × 0,01 s / 1 V."
+    comprobar:
+      - { con: { C_x: 0.01 }, dV_x: 1, C_f: 0.01 }
 
   - id: solo-nucleo
     tipo: porque
@@ -64,71 +91,32 @@ tarjetas:
       - "¿Qué precauciones exige una placa con tensión de red?"
     solucion: "Por seguridad y fabricación, no por comodidad."
 
-  - id: empareje-spec
-    tipo: pregunta
-    titulo: "Lo que se dice al fabricante"
-    texto: "Empareje cada parámetro de fabricación con su valor."
-    libro: [523]
-    widget:
-      tipo: figura
-      figura: fig-new-50-placa
-      zonas:
-        - { id: placa, rotulo: "La placa", rect: [0, 0, 317, 235] }
-    emparejar:
-      - ["Dimensiones", "100 × 80 mm"]
-      - ["Capas", "2, cobre en ambas caras"]
-      - ["Cobre", "35 µm (1 oz)"]
-      - ["Taladro mínimo", "0,8 mm"]
-    exito: "Los mínimos de 0,25 mm y 0,8 mm son los que cualquier fabricante acepta sin recargo."
-    pistas:
-      - { texto: "El cobre se da en micras y en onzas." }
-    escalera:
-      - "Uno es un tamaño, otro un número, otro un espesor, otro un diámetro."
-    solucion: "100 × 80 mm; 2 capas; 35 µm; 0,8 mm."
-
   - id: pista-3mm
-    tipo: pregunta
+    tipo: simular
     titulo: "La pista de potencia"
-    texto: "Según el cálculo IPC, 1,82 mm bastarían para 5 A con 20 °C de calentamiento. ¿Por qué se trazan 3 mm?"
+    texto: "Según el cálculo IPC, 1,82 mm bastarían para 5 A con 20 °C de calentamiento, y se trazan 3 mm. ¿Qué margen da, en porcentaje sobre lo calculado?"
     libro: [524]
     widget:
-      tipo: figura
-      figura: fig-new-50-placa
-      zonas:
-        - { id: placa, rotulo: "La placa", rect: [0, 0, 317, 235] }
-    opciones:
-      - texto: "Para dar margen"
-        bien: true
-        porque: "Con 35 µm de cobre, los 3 mm dan margen sobre el cálculo."
-      - texto: "Porque la mínima del fabricante es 3 mm"
-        porque: "La mínima es 0,25 mm: los 3 mm son margen de corriente."
-      - texto: "Para que se vea mejor en la serigrafía"
-        porque: "Es una cuestión de corriente y calentamiento."
+      tipo: grafica
+      x: { id: wx, min: 1, max: 4, unidad: mm, rotulo: "ancho trazado" }
+      y: { min: -50, max: 150, unidad: "%", rotulo: "margen" }
+      curvas:
+        - { expr: "100*(wx/w_ipc - 1)", color: naranja, rotulo: "margen sobre lo calculado" }
+      lectura: { valor: m_w, rotulo: "Margen" }
+      ocultar: true
+    simular:
+      objetivo: m_w
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Margen de la pista"
+      errores:
+        - { expr: "m_e", texto: "Ha tomado el margen sobre los 3 mm trazados; se pide sobre los 1,82 mm calculados." }
+    exito: "Un 65 % más de lo necesario: los 3 mm dan margen con el cobre de 35 µm."
     escalera:
-      - "¿Qué pasa con el calentamiento si se ensancha la pista?"
-    solucion: "Para dar margen sobre los 1,82 mm calculados."
-
-  - id: empareje-taladros
-    tipo: pregunta
-    titulo: "La tabla de taladros"
-    texto: "Empareje cada diámetro con su uso."
-    libro: [526]
-    widget:
-      tipo: figura
-      figura: fig-new-50-placa
-      zonas:
-        - { id: placa, rotulo: "La placa", rect: [0, 0, 317, 235] }
-    emparejar:
-      - ["0,8 mm", "Señal: DIP, diodos, resistencias y J3"]
-      - ["1,2 mm", "Bornes J1 y J2"]
-      - ["1,4 mm", "Q1 y el shunt"]
-      - ["3,2 mm", "Fijación M3, al plano de masa"]
-    exito: "Los cuatro de fijación van a masa: aterrizan el chasis en cuatro puntos."
-    pistas:
-      - { texto: "El mayor es para tornillos." }
-    escalera:
-      - "Cuanto más gruesa la patilla o el tornillo, mayor el taladro."
-    solucion: "0,8 señal; 1,2 bornes; 1,4 Q1 y shunt; 3,2 fijación."
+      - "3 / 1,82, menos uno."
+    solucion: "3 / 1,82 − 1 ≈ 65 %."
+    comprobar:
+      - { m_w: 64.8, m_e: 39.3, tol: 0.01 }
 
   - id: toque-q1
     tipo: tocar
@@ -154,27 +142,29 @@ tarjetas:
       - "¿Qué pieza disipa y lleva disipador?"
     solucion: "Q1, el transistor de paso."
 
-  - id: empareje-ficheros
-    tipo: pregunta
-    titulo: "El paquete de fabricación"
-    texto: "Empareje cada fichero con lo que contiene."
-    libro: [531]
+  - id: toque-j2
+    tipo: tocar
+    titulo: "El par de sensado"
+    texto: "El par de sensado remoto debe ir trenzado hasta los bornes. Toque el conector donde la salida y el sensado van contiguos para trenzarlos."
+    libro: [529, 533, "cap50#502"]
     widget:
       tipo: figura
       figura: fig-new-50-placa
       zonas:
-        - { id: placa, rotulo: "La placa", rect: [0, 0, 317, 235] }
-    emparejar:
-      - ["…Edge_Cuts.gm1", "Contorno de la placa"]
-      - ["…F_Cu.gtl", "Cobre de la cara superior"]
-      - ["…B_Cu.gbl", "Cobre inferior, el plano de masa"]
-      - ["….drl", "Taladros, formato Excellon"]
-    exito: "Con la máscara, la serigrafía, el trabajo, la lista de conexiones y la de materiales."
-    pistas:
-      - { texto: "F es la cara de delante; B, la de detrás." }
+        - { id: q1, rotulo: "Arriba, junto al borde", rect: [112, 4, 40, 28] }
+        - { id: c1, rotulo: "Círculo grande de arriba", rect: [158, 32, 50, 50] }
+        - { id: j2, rotulo: "Conector de la derecha", rect: [262, 75, 35, 75] }
+        - { id: j3, rotulo: "Conector de abajo", rect: [75, 190, 70, 30] }
+    tocar:
+      bien: [j2]
+      porque:
+        q1: "Es el transistor de paso, en el borde por el disipador."
+        c1: "Es el condensador de salida."
+        j3: "Son los conectores de mando, en la mitad del control."
+    exito: "J2: salida y sensado juntos, para trenzar el par hasta los bornes."
     escalera:
-      - "Edge es el borde; Cu, cobre; drl, drill."
-    solucion: "Edge_Cuts, contorno; F_Cu, cobre de arriba; B_Cu, cobre de abajo; drl, taladros."
+      - "Busque el conector con +OUT, −OUT, S+ y S−."
+    solucion: "J2, a la derecha."
 
   - id: antes-encargar
     tipo: pregunta
@@ -199,41 +189,39 @@ tarjetas:
     solucion: "Revisar el camino de potencia y el par de sensado, y montar primero una."
 
   - id: estime-c
-    tipo: pregunta
-    titulo: "Un condensador de filtro"
-    texto: "Rizado de 1 V con 1 A, onda completa a 50 Hz: unos 10 ms entre picos. ¿Qué condensador de filtro?"
-    libro: [536]
+    tipo: simular
+    titulo: "El filtro del proyecto"
+    texto: "El filtro de red del proyecto lleva 22 000 µF. Con 1 A y los mismos 10 ms entre picos, ¿qué rizado deja?"
+    libro: [518, 536]
+    fijar: { C_x: 0.022 }
     widget:
       tipo: grafica
-      x: { id: dx, min: 0.5, max: 3, unidad: V, rotulo: "ΔV" }
-      y: { min: 0, max: 0.025, unidad: F, rotulo: "C" }
+      x: { id: cx, min: 0.002, max: 0.025, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "ΔV" }
       curvas:
-        - { expr: "I_c*dt/dx", color: naranja, rotulo: "C = I·Δt/ΔV" }
-    estimar:
-      objetivo: "C_f"
-      unidad: F
-      min: 0
-      max: 0.025
-      paso: 0.0005
-      inicio: 0.02
-      tol: 0.05
-      rotulo: "Condensador"
-    exito: "10 000 µF, o algo mayor para tener margen."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado: 1 A × 0,01 s / 1 V." }
-      - { texto: "Se ha quedado corto: 1 A × 0,01 s / 1 V." }
+        - { expr: "I_c*dt/cx", color: naranja, rotulo: "ΔV = I·Δt/C" }
+      lectura: { valor: dV_x, rotulo: "Rizado" }
+      ocultar: true
+    simular:
+      objetivo: dV_x
+      unidad: V
+      tol: 0.03
+      rotulo: "Rizado"
+      errores:
+        - { expr: "dV_20", texto: "Ha usado 20 ms, el periodo de la red; en onda completa los picos van cada 10 ms." }
+    exito: "Unos 0,45 V por amperio: menos de la mitad que con 10 000 µF."
     escalera:
-      - "C = I · Δt / ΔV."
-    solucion: "1 A × 0,01 s / 1 V = 0,01 F = 10 000 µF."
+      - "ΔV = I · Δt / C."
+    solucion: "1 A × 0,01 s / 0,022 F ≈ 0,45 V."
     comprobar:
-      - { C_f: 0.01 }
+      - { dV_x: 0.4545, dV_20: 0.909, tol: 0.01 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [518, 523, 529, 534]
+    libro: [518, 523, 526, 529, 531, 534, 520]
     ideas:
       - { titulo: "Solo el núcleo.", texto: "Sin tensiones de red: más segura de fabricar y depurar." }
-      - { titulo: "Especificación.", texto: "100 × 80 mm, dos capas, 35 µm y mínimos sin recargo." }
+      - { titulo: "Especificación.", texto: "100 × 80 mm, dos capas, 35 µm y mínimos sin recargo; taladros de 0,8 a 3,2 mm, y Gerber de cobre, contorno y Excellon." }
       - { titulo: "Distribución.", texto: "Q1 al borde, plano de masa, shunt Kelvin y sensado contiguo." }
       - { titulo: "Antes de encargar.", texto: "Revisar y montar primero una unidad." }

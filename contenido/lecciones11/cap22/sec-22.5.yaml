@@ -1,10 +1,16 @@
 # Lección 1.2 de la sección 21.5 «Práctica 5 — Filtro RC Paso-Bajo y Diagrama de Bode» (cap22; etiqueta interna
 # sec-22.5). Formato: contenido/lecciones11/GUIA.md. El RC del libro (1,6 kΩ y 100 nF, corte en 995 Hz) con 1 V de pico
 # a la entrada; el barrido de frecuencias es el del procedimiento (100 Hz a 20 kHz). Las 500 Hz, 1 kHz y 2 kHz de la
-# suma de las dos salidas son ilustrativas (la suma da la entrada a cualquier frecuencia).
+# suma de las dos salidas son ilustrativas (la suma da la entrada a cualquier frecuencia). 1.2.1 (aprender haciendo):
+# bajar 20 dB, calcular el corte y la ganancia a 4 kHz, leer la salida en el corte, dibujar, ver la fase una década
+# antes, sumar las salidas, tocar el error con 1 nF, buscar el corte y el banco. Dos preguntas: la progresión geométrica
+# y por qué suman la entrada.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap22/sec-22.5
 
 libro:
+  143: "Los errores que arruinan la medida"
+  147: "Confundir amplitud de pico con eficaz al calcular"
   131: "enseña lo que la teoría no dice: dónde están las tolerancias, dónde la sonda influye"
   133: "Con R = 1,6 kΩ y C = 100 nF"
   134: 'f_("c") = ("1")/("2" π dot.op R dot.op C)'
@@ -38,13 +44,14 @@ modelo:
     G_db: { expr: "20*log10(A_c/V_p)", sim: "G", nombre: "ganancia", unidad: dB, cifras: 2 }
     f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
     rel: { expr: "A_c/V_p", sim: "V_{C}/V_{p}", nombre: "relación de amplitudes", unidad: "" }
+    G_4k: { expr: "-10*log10(1 + (4000/f_c)^2)", sim: "G", nombre: "ganancia a 4 kHz", unidad: dB, cifras: 2 }
 
 tarjetas:
   - id: explore-barrido
     tipo: explorar
     titulo: "Punto a punto"
-    texto: "Recorra las frecuencias del procedimiento. Cada una da un punto: la relación de amplitudes, en decibelios."
-    libro: [131, 133, 137]
+    texto: "Recorra las frecuencias del procedimiento. Busque la que deja la salida unos 20 dB por debajo."
+    libro: [131, 133, 137, 141]
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -62,43 +69,49 @@ tarjetas:
           - { x: "f_f", y: "G_db", rotulo: "su punto" }
       mandos:
         - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000, 20000], rotulo: "Generador" }
-    requiere: { mover: [f_f] }
+    objetivo:
+      condiciones:
+        - { valor: G_db, max: -19, rotulo: "Ganancia: {{G_db}}" }
+      logrado: "Diez veces por encima del corte, unos −20 dB: la pendiente asintótica de un filtro de primer orden."
+      pistas:
+        - { texto: "Suba la frecuencia." }
+    escalera:
+      - "Cada década por encima del corte, unos 20 dB menos."
+    solucion: "10 kHz."
+    comprobar:
+      - { con: { f_f: 10000 }, G_db: -20.1, tol: 0.01 }
 
   - id: formula-corte
-    tipo: formula
+    tipo: simular
     titulo: "La frecuencia de corte"
-    texto: "Con 1,6 kΩ y 100 nF, el corte cae en 995 Hz."
+    texto: "Con 1,6 kΩ y 100 nF, calcule la frecuencia de corte."
     libro: [133, 134]
     fijar: { R_f: 1600, C_f: 100e-9 }
-    ec: 134
-    sustitucion: "1 / (2π · {{R_f}} · {{C_f}}) = {{f_c}}"
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
-      mide: { vc_db: G_db }
-      grafica:
-        x: { id: nu, min: 50, max: 50000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: -35, max: 3, unidad: dB, rotulo: "V_{C}/V_{p}" }
-        curvas:
-          - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v_{C}", mide: vc_db }
-        marcas:
-          - { x: "f_c", y: "-3.01", rotulo: "f_{c}" }
     comprobar:
       - { f_c: 995 }
+    simular:
+      objetivo: f_c
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia de corte"
+      errores:
+        - { expr: "1/(R_f*C_f)", texto: "Le falta el 2π." }
+        - { expr: "2*pi*R_f*C_f", texto: "Eso es el inverso." }
+    exito: "995 Hz: ahí la salida es 0,707 veces la entrada y está a −45°."
+    escalera:
+      - "f_c = 1 / (2π · R · C)."
+    solucion: "1 / (2π · 1,6 kΩ · 100 nF) ≈ 995 Hz."
 
   - id: prediga-corte
-    tipo: predecir
+    tipo: leer
     titulo: "Prediga en el corte"
-    texto: "El generador está justo en la frecuencia de corte. ¿Cómo sale la tensión del condensador?"
+    texto: "El generador está justo en la frecuencia de corte. Lea la amplitud del condensador."
     libro: [135]
     fijar: { f_f: 994.72, R_f: 1600, C_f: 100e-9, V_p: 1 }
     widget:
       tipo: circuito
       esquema: filtro-rc
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: rel, rotulo: "Salida / entrada" }
       datos:
         - { valor: ph_c, rotulo: "Fase: {{ph_c}}" }
       mide: { vc_amp: A_c, vc_fase: ph_c }
@@ -108,15 +121,15 @@ tarjetas:
         curvas:
           - { expr: "V_p*sin(w_f*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
           - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
-      ocultar: true
-    opciones:
-      - texto: "0,707 veces la entrada y retrasada 45°"
-        bien: true
-        porque: "En el corte R y X_{C} valen lo mismo: −3 dB y −45°, la mitad del camino hacia los −90°."
-      - texto: "La mitad de la entrada y retrasada 90°"
-        porque: "−90° es el límite muy por encima del corte. En el corte, la mitad del camino: −45°."
-      - texto: "Igual que la entrada, en fase"
-        porque: "Eso es muy por debajo del corte. En el corte ya ha caído 3 dB."
+    leer:
+      objetivo: A_c
+      unidad: V
+      tol: 0.03
+      rotulo: "Amplitud en C"
+      errores:
+        - { expr: "V_p", texto: "Esa es la entrada; lea el pico de la curva naranja." }
+        - { expr: "V_p/2", texto: "La mitad no: lea el pico de la curva naranja." }
+    exito: "0,707 veces la entrada (−3 dB), y la fase marca −45°."
     escalera:
       - "En el corte, ωRC = 1: la resistencia y la reactancia son iguales."
     solucion: "0,707 veces la entrada (−3 dB) y −45°."
@@ -174,35 +187,31 @@ tarjetas:
     solucion: "Con espaciado lineal, la mitad de los puntos caen en una década y se pierde la forma."
 
   - id: estime-4k
-    tipo: pregunta
+    tipo: simular
     titulo: "La ganancia a 4 kHz"
-    texto: "El filtro de 1,6 kΩ y 100 nF a 4 kHz. ¿Cuántos decibelios da?"
+    texto: "El filtro de 1,6 kΩ y 100 nF a 4 kHz. Calcule cuántos decibelios da."
     libro: [134, "cap22#370"]
     fijar: { R_f: 1600, C_f: 100e-9 }
-    estimar:
-      objetivo: "-10*log10(1 + (4000/f_c)^2)"
-      unidad: dB
-      min: -30
-      max: 0
-      paso: 0.05
-      inicio: -3
-      tol: 0.03
-      rotulo: "Ganancia a 4 kHz"
     exito: "4 kHz es unas 4,02 veces el corte: −10·log(1 + 16,2) ≈ −12,35 dB, ya cerca de la asíntota."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: -12 }, texto: "Se ha quedado corto: a cuatro veces el corte ya cae bastante más que 3 dB." }
-      - { texto: "Se ha pasado: la asíntota de −20 dB/década da algo menos de 12 dB a cuatro veces el corte." }
+    simular:
+      objetivo: G_4k
+      unidad: dB
+      tol: 0.015
+      rotulo: "Ganancia a 4 kHz"
+      errores:
+        - { expr: "-3.01", texto: "Eso es en el corte; 4 kHz está cuatro veces por encima." }
+        - { expr: "-20*log10(4000/f_c)*2", texto: "Ha contado 40 dB por década; un RC cae 20." }
     escalera:
       - "Calcule f/f_{c} con el corte de 995 Hz."
       - "G = −10·log(1 + (f/f_{c})²)."
     solucion: "f/f_{c} ≈ 4,02 y G = −10·log(1 + 16,2) ≈ −12,35 dB."
     comprobar:
-      - { f_c: 995 }
+      - { f_c: 995, G_4k: -12.35, tol: 0.01 }
 
   - id: fase-antes
-    tipo: sorpresa
+    tipo: explorar
     titulo: "La fase se adelanta a la amplitud"
-    texto: "Recorra las frecuencias y mire la fase. Compare con lo poco que ha caído la amplitud."
+    texto: "Baje a una década por debajo del corte y mire la fase. Compare con lo poco que ha caído la amplitud."
     libro: [142]
     inicio: { f_f: 1000 }
     widget:
@@ -222,14 +231,22 @@ tarjetas:
           - { x: "f_f", y: "ph_c", rotulo: "su punto" }
       mandos:
         - { valor: f_f, lista: [100, 200, 500, 1000, 2000, 5000, 10000, 20000], rotulo: "Generador" }
-    requiere: { mover: [f_f] }
+    objetivo:
+      condiciones:
+        - { valor: f_f, max: 100, rotulo: "Generador: {{f_f}}" }
+      logrado: "Una década por debajo del corte, la fase ya vale −6° con la amplitud casi intacta: cambia mucho antes."
+      pistas:
+        - { texto: "Baje la frecuencia." }
+    escalera:
+      - "Compare la fase con la ganancia."
+    solucion: "100 Hz."
     comprobar:
       - { con: { f_f: 100 }, ph_c: -6, tol: 0.06 }
 
   - id: suma-salidas
-    tipo: sorpresa
+    tipo: explorar
     titulo: "Las dos salidas suman la entrada"
-    texto: "La salida en la resistencia es un paso alto con el mismo corte. Sume las dos y compare con la entrada."
+    texto: "La salida en la resistencia es un paso alto con el mismo corte. Compare la suma con la entrada en cada frecuencia."
     libro: [149, 150]
     inicio: { f_f: 1000 }
     widget:
@@ -249,7 +266,15 @@ tarjetas:
           - { expr: "A_c*sin(w_f*t + ph_c*pi/180) + A_r*sin(w_f*t + ph_r*pi/180)", color: tinta, rotulo: "suma", discontinua: true }
       mandos:
         - { valor: f_f, lista: [500, 1000, 2000], rotulo: "Generador" }
-    requiere: { mover: [f_f] }
+    objetivo:
+      condiciones:
+        - { valor: f_f, min: 2000, rotulo: "Generador: {{f_f}}" }
+      logrado: "A cualquier frecuencia, la suma de las dos salidas es la entrada."
+      pistas:
+        - { texto: "Pruebe la frecuencia más alta." }
+    escalera:
+      - "Mire la curva discontinua."
+    solucion: "2 kHz: la suma sigue siendo la entrada."
 
   - id: por-que-suma
     tipo: porque
@@ -276,29 +301,6 @@ tarjetas:
     escalera:
       - "¿Qué desfase hay entre la tensión de la resistencia y la del condensador?"
     solucion: "Los fasores de v_{R} y v_{C} son perpendiculares: su suma vectorial es la entrada, a cualquier frecuencia."
-
-  - id: errores
-    tipo: pregunta
-    titulo: "El error que arruina la medida"
-    texto: "Se repite la práctica con un condensador de 1 nF. ¿Qué error estropea ahora la medida?"
-    libro: [144, 145, 146]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Medir con la sonda en ×1: su capacidad se suma al condensador"
-        bien: true
-        porque: "Con 100 nF la capacidad de la sonda es irrelevante; con 1 nF, no: desplaza el corte."
-      - texto: "Confundir amplitud de pico con eficaz"
-        porque: "En una relación de amplitudes ambas se cancelan: no estropea los decibelios."
-      - texto: "Recorrer las frecuencias en progresión geométrica"
-        porque: "Eso es lo correcto: tres o cuatro puntos por década."
-    escalera:
-      - "¿Qué se pone en paralelo con el condensador al medir?"
-    solucion: "La sonda en ×1: su capacidad se suma al condensador, y frente a 1 nF ya no es despreciable."
 
   - id: ajuste-corte
     tipo: ajuste
@@ -346,7 +348,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [135, 138, 141, 142]
+    libro: [135, 138, 141, 142, 143, 144, 145, 146, 147]
     ideas:
       - { titulo: "El corte.", texto: "En f_{c} = 1/(2πRC), 0,707 veces la entrada (−3 dB) y −45°." }
       - { titulo: "Geométrica.", texto: "Tres o cuatro puntos por década, no espaciados linealmente." }

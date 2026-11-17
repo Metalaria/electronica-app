@@ -4,6 +4,10 @@
 # Sin fórmulas en la sección (aviso de secuencia «sin tarjeta de fórmula»).
 # Paso práctico: «banco» opcional, el acelerómetro quieto contra el patrón de 1 g de la gravedad (bloque 127); la
 # tolerancia del ± 5 % es de ejemplo.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la tabla de la figura 36.7 se tocan las columnas de las
+# cuatro preguntas; el código Gray y la verificación por cuenta (bloques 110 y 126) se hacen en el simulador lógico
+# (un disco de 2 bits y un encoder de ejemplo de 4 impulsos por vuelta, rotulados). El potenciómetro, el inclinómetro
+# y el montaje pasan a éxitos y resumen. Sección cualitativa, sin números ni fórmulas: queda en 4 de 7.
 leccion: cap35/sec-35.4
 
 libro:
@@ -27,23 +31,35 @@ libro:
 modelo:
   valores:
     g_1: { sim: "g", nombre: "aceleración de la gravedad", unidad: g, valor: 1 }
+    N_e: { sim: "N", nombre: "impulsos por vuelta del encoder de ejemplo", unidad: "", valor: 4 }
   calculos: {}
 
 tarjetas:
   - id: explore-familias
-    tipo: explorar
+    tipo: tocar
     titulo: "Cuatro preguntas"
-    texto: "Absoluto o incremental, con o sin contacto, lineal o angular, y qué resolución. Toque el encoder incremental y la fusión."
+    texto: "La elección depende de cuatro preguntas: absoluto o incremental, contacto o sin contacto, lineal o angular, y qué resolución. Toque sus columnas en la tabla."
     libro: [102, 128]
     widget:
       tipo: figura
       figura: fig-35.7
       zonas:
-        - { id: pot, rotulo: "Primera fila", rect: [0, 10, 453, 36], texto: "Potenciómetro: absoluto y barato, pero con contacto: se desgasta." }
-        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36], texto: "Encoder incremental: alta resolución, sin contacto; hay que referenciarlo al arrancar." }
-        - { id: lvdt, rotulo: "Quinta fila", rect: [0, 104, 453, 36], texto: "LVDT: absoluto, muy robusto, resolución prácticamente infinita; excitación alterna." }
-        - { id: fusion, rotulo: "Gráfica de abajo", rect: [35, 195, 280, 105], texto: "El acelerómetro, ruidoso; el giróscopo integrado, con deriva; la fusión, sobre el ángulo real." }
-    requiere: { mover: [incremental, fusion] }
+        - { id: sensor, rotulo: "Primera columna", rect: [0, 1, 83, 181] }
+        - { id: tipo, rotulo: "Segunda columna", rect: [83, 1, 54, 181] }
+        - { id: contacto, rotulo: "Tercera columna", rect: [137, 1, 47, 181] }
+        - { id: movimiento, rotulo: "Cuarta columna", rect: [184, 1, 61, 181] }
+        - { id: resolucion, rotulo: "Quinta columna", rect: [245, 1, 75, 181] }
+        - { id: rasgo, rotulo: "Última columna", rect: [320, 1, 133, 181] }
+    tocar:
+      bien: [tipo, contacto, movimiento, resolucion]
+      todas: true
+      porque:
+        sensor: "Es el nombre de cada familia, no una de las preguntas."
+        rasgo: "Es lo que distingue a cada uno: la consecuencia de las respuestas."
+    exito: "Tipo, contacto, movimiento y resolución. El potenciómetro, por ejemplo: absoluto y barato, pero con contacto; se desgasta, y su resolución la limita el ruido del contacto."
+    escalera:
+      - "Son las cuatro columnas del medio."
+    solucion: "De la segunda a la quinta."
 
   - id: empareje-familias
     tipo: pregunta
@@ -90,76 +106,37 @@ tarjetas:
     solucion: "Trabaja desplazada sin saberlo, hasta que se referencie."
 
   - id: pregunta-gray
-    tipo: pregunta
+    tipo: explorar
     titulo: "El código del disco"
-    texto: "¿Por qué el disco de un encoder absoluto lleva código Gray y no binario natural?"
+    texto: "Un disco absoluto de 2 bits, leído en binario y en Gray. Gírelo desde la posición 0 hasta la 2 y compare cuántos bits cambian en cada paso."
     libro: [110]
     widget:
-      tipo: figura
-      figura: fig-35.7
-      zonas:
-        - { id: absoluto, rotulo: "Tercera fila", rect: [0, 56, 453, 36] }
-    opciones:
-      - texto: "Solo cambia un bit entre posiciones vecinas: no hay estados espurios"
-        bien: true
-        porque: "En binario varios bits cambian a la vez y, si no lo hacen a la vez, se leen posiciones falsas."
-      - texto: "Porque da más resolución"
-        porque: "La resolución la dan los bits del disco, no el código."
-      - texto: "Porque es más barato de leer"
-        porque: "Se lee igual; lo que evita son lecturas falsas en las transiciones."
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Un paso de giro" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK], rotulo: "Posición" }
+        - { id: x1, tipo: xor, entradas: [c1.q1, c1.q0] }
+      salidas:
+        - { id: B1, de: c1.q1, rotulo: "Binario, bit 1" }
+        - { id: B0, de: c1.q0, rotulo: "Binario, bit 0" }
+        - { id: G1, de: c1.q1, rotulo: "Gray, bit 1" }
+        - { id: G0, de: x1, rotulo: "Gray, bit 0" }
+    objetivo:
+      condiciones:
+        - { led: G1, valor: 1, rotulo: "Gray, bit 1 a 1" }
+        - { led: G0, valor: 1, rotulo: "Gray, bit 0 a 1" }
+      logrado: "De la 1 a la 2, en binario cambian los dos bits y, si no lo hacen a la vez, se lee una posición falsa. En Gray cambia uno solo: no hay estados espurios."
+      pistas:
+        - { texto: "Dé otro paso." }
     escalera:
-      - "En binario, al pasar a la posición vecina a veces cambian varios bits a la vez."
-    solucion: "Un solo bit cambia: sin estados espurios."
-
-  - id: pregunta-potenciometro
-    tipo: pregunta
-    titulo: "El límite del potenciómetro"
-    texto: "¿Qué limita la resolución de un potenciómetro usado como sensor de posición?"
-    libro: [108]
-    widget:
-      tipo: figura
-      figura: fig-35.7
-      zonas:
-        - { id: pot, rotulo: "Primera fila", rect: [0, 10, 453, 36] }
-    opciones:
-      - texto: "El ruido del contacto"
-        bien: true
-        porque: "No la pista: el cursor que roza. Y su vida, de decenas o cientos de miles de ciclos."
-      - texto: "La longitud de la pista"
-        porque: "La pista es continua; el límite es el ruido del contacto."
-      - texto: "El número de bits del disco"
-        porque: "Eso es de un encoder absoluto; el potenciómetro da una salida analógica."
-    escalera:
-      - "Tiene contacto: ¿qué hace un cursor que roza?"
-    solucion: "El ruido del contacto."
-
-  - id: predecir-movimiento
-    tipo: predecir
-    titulo: "Un inclinómetro en marcha"
-    texto: "Un acelerómetro quieto sirve de inclinómetro. ¿Y montado en un vehículo que acelera?"
-    libro: [116]
-    widget:
-      tipo: figura
-      figura: fig-35.7
-      zonas:
-        - { id: fusion, rotulo: "Gráfica de abajo", rect: [35, 195, 280, 105] }
-    opciones:
-      - texto: "Se equivoca: no distingue la aceleración propia de la gravedad"
-        bien: true
-        porque: "Mide aceleración, incluida la gravedad: en movimiento, las dos se mezclan."
-      - texto: "Mide igual de bien"
-        porque: "Solo distingue la inclinación cuando lo único que mide es la gravedad."
-      - texto: "Mide la velocidad del vehículo"
-        porque: "Mide aceleración, no velocidad, y además la mezcla con la gravedad."
-    escalera:
-      - "Quieto, la única aceleración es la gravedad."
-    solucion: "Falla: mezcla la aceleración propia con la gravedad."
+      - "Entre posiciones vecinas, en Gray cambia un solo bit."
+    solucion: "Dos pasos; en el segundo, en Gray, solo cambia el bit 1."
 
   - id: porque-fusion
     tipo: porque
     titulo: "Acelerómetro y giróscopo"
     texto: "¿Por qué se combinan acelerómetro y giróscopo en lugar de mejorar uno de los dos?"
-    libro: [117, 118, 119]
+    libro: [116, 117, 118, 119]
     widget:
       tipo: figura
       figura: fig-35.7
@@ -168,7 +145,7 @@ tarjetas:
     opciones:
       - texto: "Sus defectos son complementarios: uno da la referencia, el otro la limpieza"
         bien: true
-        porque: "El acelerómetro da la referencia a largo plazo; el giróscopo, la señal limpia a corto."
+        porque: "El acelerómetro da la referencia a largo plazo, pero en movimiento no distingue su aceleración de la gravedad; el giróscopo, la señal limpia a corto."
       - texto: "Porque el giróscopo mide la gravedad"
         porque: "Mide velocidad angular; integrándola da el ángulo, con deriva."
       - texto: "Para tener un sensor de repuesto"
@@ -177,49 +154,32 @@ tarjetas:
       - "Mire la gráfica: ¿cuál es ruidoso y cuál se va alejando?"
     solucion: "Defectos complementarios: la fusión toma lo mejor de los dos."
 
-  - id: pregunta-montaje
-    tipo: pregunta
-    titulo: "El encoder y la carga"
-    texto: "Un encoder en el eje del motor mueve una carga a través de una transmisión con holgura. ¿Qué riesgo hay en un lazo de control?"
-    libro: [122]
-    widget:
-      tipo: figura
-      figura: fig-35.7
-      zonas:
-        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36] }
-    opciones:
-      - texto: "La posición medida y la real difieren, y el lazo puede oscilar"
-        bien: true
-        porque: "El encoder mide el eje donde está montado, no la carga."
-      - texto: "Ninguno: el encoder es muy preciso"
-        porque: "Es preciso con su eje; la holgura está entre el eje y la carga."
-      - texto: "Que el encoder se desgaste"
-        porque: "No tiene contacto; el problema es lo que hay entre él y la carga."
-    escalera:
-      - "¿Qué mide exactamente el encoder?"
-    solucion: "Mide el eje, no la carga: con holgura, oscilación."
-
   - id: pregunta-encoder
-    tipo: pregunta
+    tipo: explorar
     titulo: "Verificar un encoder"
-    texto: "Da exactamente una vuelta al eje y la cuenta sale por debajo de la resolución nominal. ¿Qué pasa?"
+    texto: "Un encoder se verifica contando. Dé exactamente una vuelta a uno de 4 impulsos por vuelta y compruebe que la cuenta coincide."
+    nota: "Encoder de ejemplo."
     libro: [126]
     widget:
-      tipo: figura
-      figura: fig-35.7
-      zonas:
-        - { id: incremental, rotulo: "Segunda fila", rect: [0, 40, 453, 36] }
-    opciones:
-      - texto: "Se pierden pulsos, por ruido o por velocidad excesiva"
-        bien: true
-        porque: "Un encoder se verifica contando: la vuelta entera debe dar su resolución."
-      - texto: "El disco está mal grabado"
-        porque: "Lo habitual es que se pierdan pulsos al leerlos, no un disco mal hecho."
-      - texto: "Nada: es normal perder alguno"
-        porque: "No: cada pulso perdido es un error de posición que el incremental no detecta."
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Un impulso del encoder" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 3, entradas: [CLK], rotulo: "Cuenta" }
+      salidas:
+        - { id: Q2, de: c1.q2, rotulo: "Cuenta, bit 2" }
+        - { id: Q1, de: c1.q1, rotulo: "Cuenta, bit 1" }
+        - { id: Q0, de: c1.q0, rotulo: "Cuenta, bit 0" }
+    objetivo:
+      condiciones:
+        - { led: Q2, valor: 1, rotulo: "Bit 2 a 1" }
+        - { led: Q1, valor: 0, rotulo: "Bit 1 a 0" }
+        - { led: Q0, valor: 0, rotulo: "Bit 0 a 0" }
+      logrado: "Cuatro impulsos, cuenta 100: una vuelta, su resolución nominal. Si sale por debajo, se pierden pulsos, por ruido o por velocidad excesiva, y un incremental no lo sabe."
+      pistas:
+        - { texto: "Cuente los impulsos hasta 4: en binario, 100." }
     escalera:
       - "Una vuelta exacta debe dar exactamente su número de pulsos."
-    solucion: "Se pierden pulsos: ruido o demasiada velocidad."
+    solucion: "Cuatro impulsos."
 
   - id: banco-gravedad
     tipo: banco
@@ -243,7 +203,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [104, 106, 119, 127]
+    libro: [104, 106, 119, 122, 127]
     ideas:
       - { titulo: "Absoluto o incremental.", texto: "El incremental se referencia al arrancar y no sabe si pierde cuentas." }
       - { titulo: "Gray.", texto: "Un solo bit cambia entre posiciones: sin estados espurios." }

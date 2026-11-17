@@ -3,10 +3,19 @@
 # de ambiente y Rjc + Rcs = 1,5 + 1 = 2,5 °C/W: Rsa ≤ 13,5 °C/W (la curva de la figura 48.10). El paso práctico es un
 # «diseno» con tolerancias: elegir un disipador de una lista que mantenga la unión a 120 °C o menos aunque el montaje
 # lo empeore un 30 % (bloque 225, «un disipador montado de lado puede empeorar un 30 %»), modelado como ± 30 % sobre Rsa
-# por esquinas: 13,5 °C/W cumple justo en nominal y falla en la esquina mala; 10 °C/W cumple en las dos.
+# por esquinas: 13,5 °C/W cumple justo en nominal y falla en la esquina mala; 10 °C/W cumple en las dos. 1.2.1
+# (aprender haciendo): llegar a pocos °C/W, despejar R_sa en el caso del libro y en el ejercicio, elegir con margen,
+# tocar lo que empeora un disipador, calcular el ventilador, tocar lo que baja el límite de un tubo de calor, dónde se
+# pierde y lo imprescindible en la placa. Dos preguntas: los 120 °C y la prueba definitiva.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap47/sec-47.6
 
 libro:
+  223: "Lo que determina la resistencia de un disipador"
+  227: "El espacio libre alrededor, sin el cual la convección no"
+  231: "Llevar el calor a otro sitio"
+  240: "Cuando el disipador es la placa"
+  241: "En montaje superficial, el calor sale por las almohadillas"
   218: "se despeja la resistencia térmica que hace falta"
   219: 'R_("sa") = (T_("unión" , op("máx")) - T_("amb"))/(P) - R_("jc") - R_("cs")'
   220: "5 W, unión limitada a 120 °C por criterio de diseño, ambiente de 40 °C, Rjc = 1,5 y Rcs = 1"
@@ -50,7 +59,7 @@ tarjetas:
   - id: explore-curva
     tipo: explorar
     titulo: "A más potencia, menos °C/W"
-    texto: "Cambie la potencia y el criterio de temperatura de la unión. Cualquier disipador por debajo de la curva sirve."
+    texto: "Cualquier disipador por debajo de la curva sirve. Busque el caso que pide el disipador más exigente."
     libro: [218, 249]
     widget:
       tipo: grafica
@@ -64,54 +73,52 @@ tarjetas:
       mandos:
         - { valor: P, lista: [2, 5, 10, 20], rotulo: "Potencia" }
         - { valor: T_jmax, lista: [120, 150], rotulo: "Unión, como mucho" }
-    requiere: { mover: [P, T_jmax] }
+    objetivo:
+      condiciones:
+        - { valor: R_req, max: 2, rotulo: "R_{sa} necesaria: {{R_req}}" }
+      logrado: "Con mucha potencia y el criterio de 120 °C hace falta un disipador de muy pocos °C/W: a más potencia, menos."
+      pistas:
+        - { texto: "Suba la potencia y baje el criterio." }
+    escalera:
+      - "R_{sa} = (T_{j} − T_{a})/P − (R_{jc} + R_{cs})."
+    solucion: "La potencia más alta, con la unión a 120 °C."
 
   - id: formula-rsa
-    tipo: formula
+    tipo: simular
     titulo: "Despejar R_{sa}"
-    texto: "La cadena térmica, invertida: la caída total admisible entre la potencia, menos lo que no se elige."
+    texto: "5 W, la unión como mucho a 120 °C, 40 °C de ambiente, R_{jc} = 1,5 y R_{cs} = 1. Despeje R_{sa}."
     libro: [219, 220, 221]
-    ec: 219
-    sustitucion: "({{T_jmax}} − {{T_a}}) / {{P}} − {{R_jcs}} = {{R_req}}"
-    widget:
-      tipo: grafica
-      x: { id: p, min: 1, max: 25, unidad: W, rotulo: "potencia a disipar" }
-      y: { min: 0, max: 50, unidad: "°C/W", rotulo: "R_{sa} necesaria" }
-      curvas:
-        - { expr: "max(0, (T_jmax - T_a)/p - R_jcs)", color: naranja, rotulo: "R_{sa} máxima" }
-      marcas:
-        - { x: "P", y: "R_req", rotulo: "{{R_req}}" }
-      lectura: { valor: R_req, rotulo: "Disipador necesario" }
-      mandos:
-        - { valor: P, lista: [2, 5, 10, 20], rotulo: "Potencia" }
+    fijar: { P: 5, T_jmax: 120, T_a: 40, R_jcs: 2.5 }
     comprobar:
       - { con: { P: 5, T_jmax: 120 }, R_req: 13.5 }
+    simular:
+      objetivo: R_req
+      unidad: "°C/W"
+      tol: 0.02
+      rotulo: "R_{sa} máxima"
+      errores:
+        - { expr: "(T_jmax - T_a)/P", texto: "Falta restar lo que no se elige: R_{jc} + R_{cs}." }
+        - { expr: "(150 - T_a)/P - R_jcs", texto: "Se dimensiona para 120 °C, no para el máximo absoluto." }
+    exito: "13,5 °C/W o menos: cualquier disipador así sirve."
+    escalera:
+      - "R_{sa} = (T_{j} − T_{a})/P − (R_{jc} + R_{cs})."
+    solucion: "(120 − 40)/5 − 2,5 = 13,5 °C/W."
 
   - id: estime-ejercicio
-    tipo: pregunta
+    tipo: simular
     titulo: "Un transistor de 4 W"
-    texto: "Disipa 4 W; la unión admite 125 °C, el ambiente es de 40 °C y R_{jc} + R_{cs} suman 2 °C/W. ¿Qué R_{sa} máxima?"
+    texto: "Disipa 4 W; la unión admite 125 °C, el ambiente es de 40 °C y R_{jc} + R_{cs} suman 2 °C/W. Despeje la R_{sa} máxima."
     libro: ["cap47#600"]
     fijar: { P: 4, T_jmax: 125, T_a: 40, R_jcs: 2 }
-    widget:
-      tipo: grafica
-      x: { id: p, min: 1, max: 25, unidad: W, rotulo: "potencia a disipar" }
-      y: { min: 0, max: 50, unidad: "°C/W", rotulo: "R_{sa} necesaria" }
-      curvas:
-        - { expr: "max(0, (T_jmax - T_a)/p)", color: tinta, rotulo: "resistencia total admisible", discontinua: true }
-    estimar:
-      objetivo: "R_req"
-      unidad: "°C/W"
-      min: 0
-      max: 30
-      paso: 0.25
-      inicio: 25
-      tol: 0.03
-      rotulo: "R_{sa} máxima"
     exito: "19,25 °C/W; mejor algo menos, para no trabajar al límite."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 19.83 }, texto: "Se ha pasado: reste los 2 °C/W de la cápsula y la interfaz." }
-      - { texto: "Se ha quedado corto: la total admisible es 85/4 = 21,25 °C/W." }
+    simular:
+      objetivo: R_req
+      unidad: "°C/W"
+      tol: 0.02
+      rotulo: "R_{sa} máxima"
+      errores:
+        - { expr: "(T_jmax - T_a)/P", texto: "Esa es la total admisible: reste los 2 °C/W fijos." }
+        - { expr: "(T_jmax - T_a)/P + R_jcs", texto: "Se restan, no se suman." }
     escalera:
       - "Primero la total: (125 − 40)/4."
     solucion: "(125 − 40)/4 − 2 = 19,25 °C/W."
@@ -175,74 +182,26 @@ tarjetas:
       - { con: { R_sa: 13.5 }, T_j: 120 }
       - { con: { R_sa: 10 }, T_j: 102.5 }
 
-  - id: area
-    tipo: predecir
-    titulo: "Lo que decide la resistencia"
-    texto: "¿Qué pasa si dobla el área de un disipador?"
-    libro: [224, 225, 226]
-    widget:
-      tipo: figura
-      figura: fig-47.11
-      zonas:
-        - { id: disipadores, rotulo: "Los disipadores", rect: [0, 0, 1600, 728] }
-    opciones:
-      - texto: "Mejora, pero no divide por dos su resistencia"
-        bien: true
-        porque: "El área rinde cada vez menos; orientación, acabado y espacio libre cuentan también."
-      - texto: "Su resistencia se divide por dos"
-        porque: "Sería así si fuera lineal; el rendimiento del área es decreciente."
-      - texto: "Nada: solo cuenta el color"
-        porque: "El negro anodizado radia mejor, pero el área sigue siendo lo primero."
-    escalera:
-      - "¿Rinde igual cada centímetro cuadrado que se añade?"
-    solucion: "Mejora con rendimiento decreciente: doblar el área no divide por dos la resistencia."
-
   - id: estime-ventilador
-    tipo: pregunta
+    tipo: simular
     titulo: "La ventilación forzada"
-    texto: "Un disipador de 5 °C/W baja a 1,5 °C/W con un ventilador modesto. Con 10 W, ¿cuántos grados menos?"
+    texto: "Un disipador de 5 °C/W baja a 1,5 °C/W con un ventilador modesto. Con 10 W, calcule cuántos grados menos."
     libro: [229, 230]
     fijar: { P_v: 10 }
-    widget:
-      tipo: figura
-      figura: fig-47.11
-      zonas:
-        - { id: disipadores, rotulo: "Los disipadores", rect: [0, 0, 1600, 728] }
-    estimar:
-      objetivo: "ahorro"
-      unidad: "°C"
-      min: 0
-      max: 60
-      paso: 1
-      inicio: 10
-      tol: 0.04
-      rotulo: "Grados menos"
     exito: "35 grados. Pero si el ventilador se para, el sistema se destruye: hay que vigilarlo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 36.4 }, texto: "Se ha pasado: son 3,5 °C/W de diferencia por 10 W." }
-      - { texto: "Se ha quedado corto: la diferencia de resistencia, por la potencia." }
+    simular:
+      objetivo: ahorro
+      unidad: "°C"
+      tol: 0.03
+      rotulo: "Grados menos"
+      errores:
+        - { expr: "P_v*R_nat", texto: "Esa es la subida sin ventilador; reste la de con ventilador." }
+        - { expr: "R_nat - R_ven", texto: "Eso son °C/W: multiplique por la potencia." }
     escalera:
       - "ΔT = P · (5 − 1,5)."
     solucion: "10 × (5 − 1,5) = 35 °C menos."
     comprobar:
       - { ahorro: 35 }
-
-  - id: tubo-calor
-    tipo: pregunta
-    titulo: "El tubo de calor"
-    texto: "Empareje cada situación con lo que le pasa a un tubo de calor."
-    libro: [232, 233]
-    emparejar:
-      - ["En el extremo frío", "Sigue haciendo falta un disipador"]
-      - ["Con el extremo caliente arriba", "La mecha tiene que subir el líquido: menos potencia"]
-      - ["Doblado o aplastado de más", "Baja su límite de potencia"]
-      - ["Por debajo de 0 °C", "El agua se congela y deja de funcionar"]
-    exito: "No disipa: solo transporta, con un cambio de fase, y con pocos grados entre extremos."
-    pistas:
-      - { texto: "El líquido vuelve por capilaridad: la gravedad puede ayudar o estorbar." }
-    escalera:
-      - "Empiece por lo que pasa con agua por debajo de cero."
-    solucion: "Extremo frío, disipador; caliente arriba, menos potencia; doblado, menos límite; bajo cero, congelado."
 
   - id: toque-montaje
     tipo: tocar
@@ -267,28 +226,6 @@ tarjetas:
     escalera:
       - "¿Qué cambia la convección natural alrededor de las aletas?"
     solucion: "La orientación: montado de lado puede empeorar un 30 %."
-
-  - id: placa
-    tipo: pregunta
-    titulo: "Cuando el disipador es la placa"
-    texto: "En montaje superficial, el calor sale al cobre. ¿Qué es imprescindible?"
-    libro: [242, 243, 244]
-    widget:
-      tipo: figura
-      figura: fig-47.10
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [25, 20, 205, 170] }
-    opciones:
-      - texto: "Las vías térmicas bajo el componente"
-        bien: true
-        porque: "Conducen el calor a la otra cara. Y el área de cobre rinde hasta unos centímetros cuadrados."
-      - texto: "Cobre de 2 oz"
-        porque: "Ayuda apreciablemente frente al de 1, pero el libro llama imprescindibles a las vías."
-      - texto: "Toda el área de cobre posible"
-        porque: "Más allá de unos centímetros cuadrados el rendimiento se estanca."
-    escalera:
-      - "¿Por dónde llega el calor a la cara de abajo?"
-    solucion: "Las vías térmicas bajo el componente."
 
   - id: prueba-definitiva
     tipo: pregunta
@@ -315,7 +252,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [219, 222, 225, 229]
+    libro: [219, 222, 225, 229, 223, 224, 226, 227, 231, 232, 233, 240, 241, 242, 243, 244]
     ideas:
       - { titulo: "Despejar.", texto: "R_{sa} = (T_{j,máx} − T_{amb})/P − R_{jc} − R_{cs}: 13,5 °C/W en el ejemplo." }
       - { titulo: "Criterio.", texto: "Unos 120 °C, no los 150 del máximo absoluto." }

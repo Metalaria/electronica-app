@@ -1,4 +1,8 @@
-# Lección 1.2 de la sección 9.2 «Familias Lógicas y Niveles de Tensión» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 9.2 «Familias Lógicas y Niveles de Tensión» (cap09). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 («aprender haciendo», GUIA §13): el umbral de la HC se lleva a 3,5 V moviendo la alimentación; los niveles se
+# tocan en la figura 9.2 (dónde cae 2,4 V en una entrada HC, qué familia copia los umbrales TTL, qué entrada de 5 V
+# acepta 3,3 V); el umbral a 3,3 V se lee en la gráfica; la entrada en la zona prohibida se marca sobre una rampa lenta
+# (de ejemplo, 0 a 5 V en 1 ms). Quedan dos preguntas de opciones: por qué TTL solo existe a 5 V y la tolerancia a 5 V.
 leccion: cap09/sec-9.2
 
 libro:
@@ -14,49 +18,19 @@ libro:
 modelo:
   valores:
     V_DD: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 5 }
+    T_r: { sim: "T", nombre: "duración de la rampa", unidad: s, valor: 0.001 }
   calculos:
     V_IH: { expr: "0.7*V_DD", sim: "V_{IH}", nombre: "umbral alto de entrada", unidad: V }
     V_IL: { expr: "0.3*V_DD", sim: "V_{IL}", nombre: "umbral bajo de entrada", unidad: V }
+    t_IL: { expr: "0.3*T_r", sim: "t_{IL}", nombre: "instante en que la rampa cruza V_{IL}", unidad: s }
 
 tarjetas:
-  - id: explore-familias
-    tipo: explorar
-    titulo: "Cuatro familias, cuatro escalas"
-    texto: "Toque cada columna y lea sus niveles. Verde es un 0 válido; azul, un 1; rojo, ninguno de los dos."
-    libro: [28, 29, 33, 34, 36]
-    widget:
-      tipo: figura
-      figura: fig-9.2
-      zonas:
-        - { id: ttl, rotulo: "Primera columna", rect: [58, 50, 44, 182], texto: "TTL a 5 V: bajo hasta 0,8 V, alto desde 2,0 V. Su salida garantiza 2,4 V en alto." }
-        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182], texto: "CMOS HC a 5 V: umbrales de 1,5 y 3,5 V. Su salida da 4,4 V en alto y 0,33 V en bajo." }
-        - { id: lv33, rotulo: "Tercera columna", rect: [260, 110, 44, 122], texto: "LVCMOS a 3,3 V: umbrales de 0,8 y 2,0 V, compatibles con TTL por diseño." }
-        - { id: lv18, rotulo: "Cuarta columna", rect: [362, 160, 44, 72], texto: "LVCMOS a 1,8 V: niveles cada vez más pequeños y márgenes menores." }
-    requiere: { mover: [ttl, hc] }
-
-  - id: prediga-ttl-en-hc
-    tipo: predecir
-    titulo: "2,4 V en una entrada HC"
-    texto: "Una salida TTL entrega su alto garantizado, 2,4 V, a una entrada CMOS HC a 5 V. ¿Qué lee la entrada?"
-    libro: [30, 33, 34]
-    widget:
-      tipo: figura
-      figura: fig-9.2
-      zonas:
-        - { id: ttl, rotulo: "Primera columna", rect: [58, 50, 44, 182], texto: "TTL a 5 V: su salida garantiza 2,4 V en alto." }
-        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182], texto: "CMOS HC a 5 V: alto desde 3,5 V, bajo hasta 1,5 V." }
-    opciones:
-      - { texto: "Nada garantizado: 2,4 V caen en su zona prohibida", bien: true, porque: "La HC exige 3,5 V para un 1 y acepta hasta 1,5 V como 0: 2,4 V queda en medio." }
-      - { texto: "Un 1, porque supera los 2,0 V", porque: "Los 2,0 V son el umbral alto de una entrada TTL. Una entrada HC a 5 V exige 3,5 V." }
-      - { texto: "Un 0, porque no llega a la mitad", porque: "El 0 válido de la HC llega hasta 1,5 V; 2,4 V lo supera y cae en la zona prohibida." }
-    escalera: ["Compare 2,4 V con los umbrales de la segunda columna, no con los de la primera."]
-    solucion: "2,4 V está entre 1,5 y 3,5 V: la zona prohibida de la HC."
-
   - id: explore-escala
     tipo: explorar
     titulo: "Los umbrales siguen a V_{DD}"
-    texto: "Arrastre la alimentación de una CMOS HC. Sus dos umbrales son el 30 y el 70 % de V_{DD}."
-    libro: [34]
+    texto: "Una CMOS HC conmuta al 30 y al 70 % de su alimentación. Arrástrela hasta que el umbral alto valga 3,5 V."
+    libro: [28, 34]
+    inicio: { V_DD: 3 }
     widget:
       tipo: grafica
       x: { id: vdd, min: 2, max: 6, unidad: V, rotulo: "V_{DD}" }
@@ -72,13 +46,45 @@ tarjetas:
         - { valor: V_IL, rotulo: "Umbral bajo, V_{IL}: {{V_IL}}" }
       mandos:
         - { valor: V_DD, min: 2, max: 6, paso: 0.1, rotulo: "V_{DD}" }
-    requiere: { mover: [V_DD] }
+    objetivo:
+      condiciones:
+        - { valor: V_IH, objetivo: 3.5, tol: 0.01, rotulo: "V_{IH}: {{V_IH}}" }
+      logrado: "Con {{V_DD}}, 3,5 V para un 1 y {{V_IL}} para un 0: los umbrales de la HC a 5 V. Todo escala con la alimentación."
+      pistas:
+        - { cuando: { valor: V_IH, mayor: 3.5 }, texto: "Se ha pasado: baje la alimentación." }
+        - { texto: "Le falta: suba la alimentación." }
+    escalera:
+      - "V_{IH} = 0,7 · V_{DD}."
+    solucion: "V_{DD} = 5 V: 0,7 · 5 = 3,5 V."
+    comprobar:
+      - { con: { V_DD: 5 }, V_IH: 3.5, V_IL: 1.5 }
+
+  - id: prediga-ttl-en-hc
+    tipo: tocar
+    titulo: "2,4 V en una entrada HC"
+    texto: "Una salida TTL entrega su alto garantizado, 2,4 V, a una entrada CMOS HC a 5 V. En la columna de la HC, toque la franja donde cae."
+    libro: [29, 30, 33, 34]
+    widget:
+      tipo: figura
+      figura: fig-9.2
+      zonas:
+        - { id: alto, rotulo: "Franja de arriba, segunda columna", rect: [161, 54, 40, 53] }
+        - { id: prohibida, rotulo: "Franja del medio, segunda columna", rect: [161, 107, 40, 71] }
+        - { id: bajo, rotulo: "Franja de abajo, segunda columna", rect: [161, 178, 40, 53] }
+    tocar:
+      bien: [prohibida]
+      porque:
+        alto: "El 1 válido de la HC empieza en 3,5 V: 2,4 V no llega. Los 2,0 V son el umbral de una entrada TTL."
+        bajo: "El 0 válido de la HC acaba en 1,5 V: 2,4 V lo supera."
+    exito: "En la zona prohibida: la entrada no garantiza nada. Mezclar familias exige que las salidas de una caigan en las zonas válidas de la otra."
+    escalera:
+      - "Compare 2,4 V con los umbrales de la segunda columna, no con los de la primera."
+    solucion: "La franja del medio: 2,4 V está entre 1,5 y 3,5 V."
 
   - id: estime-vih
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Una HC a 3,3 V"
-    texto: "Con la serie HC alimentada a 3,3 V, ¿desde qué tensión garantiza la entrada un 1?"
+    texto: "La misma serie HC, alimentada a 3,3 V. Lea en la gráfica desde qué tensión garantiza la entrada un 1 y escríbala."
     libro: [34]
     fijar: { V_DD: 3.3 }
     widget:
@@ -88,23 +94,63 @@ tarjetas:
       curvas:
         - { expr: "0.7*vdd", color: azul, rotulo: "V_{IH}, 70 %" }
         - { expr: "0.3*vdd", color: naranja, rotulo: "V_{IL}, 30 %" }
-    estimar:
-      objetivo: "V_IH"
+      mandos: []
+    leer:
+      objetivo: V_IH
       unidad: V
-      min: 0
-      max: 3.3
-      paso: 0.01
-      inicio: 1.2
       tol: 0.03
       rotulo: "Umbral alto a 3,3 V"
-    exito: "2,31 V: el 70 % de 3,3 V. Todo escala con la alimentación."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.38 }, texto: "Se ha pasado: los 3,5 V son el umbral a 5 V. A 3,3 V baja en proporción." }
-      - { texto: "Se ha quedado corto: el umbral alto es el 70 % de la alimentación, no el 30 %." }
-    escalera: ["El umbral alto es el 70 % de V_{DD}."]
+      errores:
+        - { expr: "V_IL", texto: "Ese es el umbral bajo, el 30 %: hasta ahí se garantiza un 0." }
+        - { expr: "0.7*5", texto: "Esos 3,5 V son el umbral a 5 V. A 3,3 V baja en proporción." }
+    exito: "{{V_IH}}: el 70 % de 3,3 V. Todo escala con la alimentación."
+    escalera: ["El umbral alto es el 70 % de V_{DD}: busque la curva azul en 3,3 V."]
     solucion: "0,7 · 3,3 = 2,31 V."
     comprobar:
       - { V_IH: 2.31, V_IL: 0.99 }
+
+  - id: empareje-familias
+    tipo: tocar
+    titulo: "Umbrales de TTL sin ser TTL"
+    texto: "Una de las familias CMOS modernas tiene los mismos umbrales de entrada que TTL, 0,8 y 2,0 V, por diseño. Tóquela."
+    libro: [33, 36]
+    widget:
+      tipo: figura
+      figura: fig-9.2
+      zonas:
+        - { id: ttl, rotulo: "Primera columna", rect: [58, 50, 44, 182] }
+        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182] }
+        - { id: lv33, rotulo: "Tercera columna", rect: [260, 110, 44, 122] }
+        - { id: lv18, rotulo: "Cuarta columna", rect: [362, 160, 44, 72] }
+    tocar:
+      bien: [lv33]
+      porque:
+        ttl: "Esa es la propia TTL. Busque otra familia con sus mismos umbrales."
+        hc: "La HC a 5 V conmuta al 30 y 70 %: 1,5 y 3,5 V."
+        lv18: "A 1,8 V los niveles son más pequeños y los márgenes, menores."
+    exito: "La LVCMOS a 3,3 V: 0,8 y 2,0 V, compatibles con TTL. La HCT hace lo mismo a 5 V: CMOS con umbrales de entrada TTL."
+    escalera:
+      - "Busque la columna cuyos números en azul y verde son 2,0 y 0,8, sin contar la primera."
+    solucion: "La tercera columna, LVCMOS a 3,3 V."
+
+  - id: pregunta-33-a-5
+    tipo: tocar
+    titulo: "Una salida de 3,3 V"
+    texto: "Una salida a 3,3 V ataca entradas de 5 V. Toque la familia de 5 V que la reconoce como 1 con garantía."
+    libro: [33, 34, 36]
+    widget:
+      tipo: figura
+      figura: fig-9.2
+      zonas:
+        - { id: ttl, rotulo: "Primera columna", rect: [58, 50, 44, 182] }
+        - { id: hc, rotulo: "Segunda columna", rect: [159, 50, 44, 182] }
+    tocar:
+      bien: [ttl]
+      porque:
+        hc: "La HC a 5 V necesita 3,5 V para garantizar un 1: 3,3 V se queda corto."
+    exito: "Solo la TTL: 3,3 V supera los 2,0 V garantizados, pero no los 3,5 V de la HC. El sentido y la familia deciden."
+    escalera: ["Compare 3,3 V con los 2,0 V de TTL y los 3,5 V de la HC a 5 V."]
+    solucion: "La primera columna, TTL: 3,3 V supera 2,0 V."
 
   - id: porque-ttl-5v
     tipo: porque
@@ -123,24 +169,38 @@ tarjetas:
     escalera: ["¿De dónde sale el umbral de 1,3 V de una entrada TTL?"]
     solucion: "Dos caídas de unión de 0,7 V fijan los niveles: no escalan con la alimentación."
 
-  - id: pregunta-33-a-5
-    tipo: pregunta
-    titulo: "Una salida de 3,3 V"
-    texto: "Una salida a 3,3 V ataca dos entradas de 5 V: una TTL y una CMOS HC. ¿Cuál la reconoce como 1 con garantía?"
-    libro: [33, 34, 36]
+  - id: pregunta-schmitt
+    tipo: marcar
+    titulo: "Una señal lenta"
+    texto: "Una rampa lenta sube de 0 a 5 V en {{T_r}} hacia una entrada HC. Marque el instante en que entra en la zona prohibida."
+    nota: "Rampa de ejemplo."
+    libro: [34, 35]
     widget:
       tipo: grafica
-      x: { id: vdd, min: 2, max: 6, unidad: V, rotulo: "V_{DD}" }
-      y: { min: 0, max: 6, unidad: V, rotulo: "umbral" }
+      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5.5, unidad: V, rotulo: "v" }
       curvas:
-        - { expr: "0.7*vdd", color: azul, rotulo: "V_{IH} de la HC" }
-        - { expr: "2+0*vdd", color: naranja, rotulo: "V_{IH} de TTL" }
-    opciones:
-      - { texto: "Solo la TTL", bien: true, porque: "3,3 V supera los 2,0 V garantizados de TTL, pero no los 3,5 V que exige la HC." }
-      - { texto: "Las dos", porque: "La HC a 5 V necesita 3,5 V para garantizar un 1; 3,3 V se queda corto." }
-      - { texto: "Solo la HC", porque: "Es al revés: la HC exige más tensión (3,5 V) que TTL (2,0 V)." }
-    escalera: ["Compare 3,3 V con los 2,0 V de TTL y los 3,5 V de la HC a 5 V."]
-    solucion: "Solo la TTL: 3,3 V supera 2,0 V, pero no 3,5 V."
+        - { expr: "5*t/T_r", color: azul, rotulo: "rampa" }
+        - { expr: "V_IL + 0*t", color: naranja, rotulo: "V_{IL}", discontinua: true }
+        - { expr: "V_IH + 0*t", color: tinta, rotulo: "V_{IH}", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_IL"
+      tol: 0.03
+      inicio: { x: 0.0008, y: 0 }
+      rotulo: "La entrada en la zona prohibida"
+      pasos: 100
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.00033 }, texto: "Ahí la rampa ya pasó de 1,5 V: más a la izquierda." }
+      - { texto: "Ahí la rampa aún es un 0 válido: más a la derecha, donde cruza 1,5 V." }
+    exito: "Desde ahí hasta 3,5 V, los dos transistores de entrada conducen a medias: corriente de cortocircuito y salidas erráticas. Por eso las señales lentas llevan un Schmitt."
+    escalera:
+      - "La zona prohibida empieza en V_{IL}, 1,5 V a 5 V."
+    solucion: "Donde la rampa cruza 1,5 V: a {{t_IL}}."
+    comprobar:
+      - { t_IL: 0.0003 }
 
   - id: pregunta-tolerancia
     tipo: pregunta
@@ -158,40 +218,6 @@ tarjetas:
       - { texto: "Que lo tolera si se pone una resistencia", porque: "La hoja de datos no dice eso; sin la mención, la entrada puede dañarse o alimentar el chip." }
     escalera: ["¿Qué conduce dentro de la entrada cuando le llegan 5 V?"]
     solucion: "Que no: si no lo dice, hay que suponer que no."
-
-  - id: empareje-familias
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Las familias"
-    texto: "Una cada familia con su rasgo."
-    libro: [33, 34, 36]
-    emparejar:
-      - ["TTL", "Bipolar: solo a 5 V, umbrales de 0,8 y 2,0 V"]
-      - ["CMOS HC", "De 2 a 6 V, umbrales al 30 y 70 %"]
-      - ["Serie 4000", "De 3 a 18 V"]
-      - ["HCT", "CMOS con umbrales de entrada TTL"]
-    exito: "TTL hereda sus niveles de las uniones; CMOS, de la alimentación."
-    pistas:
-      - { texto: "Solo una familia es bipolar; de las CMOS, una admite hasta 18 V y otra mezcla con TTL." }
-    escalera: ["La HCT existe para mezclar CMOS con TTL."]
-    solucion: "TTL, bipolar a 5 V; HC, de 2 a 6 V; 4000, de 3 a 18 V; HCT, umbrales TTL."
-
-  - id: pregunta-schmitt
-    tipo: pregunta
-    titulo: "Una señal lenta"
-    texto: "Una entrada recibe una rampa lenta, o se queda al aire. ¿Qué le pasa a la puerta?"
-    libro: [35]
-    widget:
-      tipo: figura
-      figura: fig-9.2
-      zonas:
-        - { id: prohibida, rotulo: "Zona roja de la CMOS HC", rect: [161, 107, 40, 71], texto: "La zona prohibida." }
-    opciones:
-      - { texto: "Se calienta y da salidas erráticas: conviene un disparador de Schmitt", bien: true, porque: "En la zona prohibida conducen a medias los dos transistores: corriente de cortocircuito y salida indecisa." }
-      - { texto: "Nada: tarde o temprano lee el nivel correcto", porque: "Mientras está en la zona prohibida puede oscilar y consume corriente de cortocircuito." }
-      - { texto: "Lee siempre un 0 hasta que pasa del umbral", porque: "Entre los dos umbrales la puerta no garantiza nada: puede leer cualquiera de los dos." }
-    escalera: ["¿Qué hacen los dos transistores de la etapa de entrada a media tensión?"]
-    solucion: "Consume corriente de cortocircuito y da salidas erráticas: toda entrada debe cruzar la zona deprisa."
 
   - id: resumen
     tipo: resumen

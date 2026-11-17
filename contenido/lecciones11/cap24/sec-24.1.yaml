@@ -1,5 +1,9 @@
 # Lección 1.2 de la sección 23.1 «Transitorio y Permanente» (cap24). Formato: contenido/lecciones11/GUIA.md.
 # El ejemplo es el del libro (bloque 7): 100 nF a través de 10 kΩ conectados de golpe a 5 V, τ = 1 ms.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): τ se lleva a 2,2 ms con R (objetivo); τ se marca en la curva
+# (el 63 %); lo que falta a 5τ y las τ de 12 bits se escriben; la carga se dibuja; la natural se anula eligiendo la
+# tensión inicial (objetivo). Quedan dos preguntas de opciones (por qué decae y qué se ve en el osciloscopio); los
+# depósitos emparejados pasan al resumen.
 leccion: cap24/sec-24.1
 
 libro:
@@ -28,14 +32,17 @@ modelo:
     v_1t: { expr: "V_c*(1 - exp(-1))", sim: "v(τ)", nombre: "tensión a una τ", unidad: V }
     v_5t: { expr: "V_c*(1 - exp(-5))", sim: "v(5τ)", nombre: "tensión a cinco τ", unidad: V }
     p_1t: { expr: "100*(1 - exp(-1))", sim: "v(τ)/V", nombre: "fracción alcanzada a una τ", unidad: "%" }
+    p_5: { expr: "100*exp(-1)", sim: "ΔV/V", nombre: "lo que falta a 1τ", unidad: "%" }
+    falta1: { expr: "V_c*exp(-1)", sim: "ΔV", nombre: "lo que falta a 1τ", unidad: V }
     t_8: { expr: "8*tau_c", sim: "t", nombre: "ventana del dibujo", unidad: s }
 
 tarjetas:
   - id: explore-suma
     tipo: explorar
     titulo: "Dos respuestas que se suman"
-    texto: "100 nF a través de 10 kΩ, conectados de golpe a 5 V. La carga (naranja) es la forzada, 5 V, más la natural, que decae: cambie R y mire las tres."
+    texto: "100 nF por una resistencia, conectados de golpe a 5 V: la carga es la forzada más la natural. Elija R para que τ valga 2,2 ms."
     libro: [3, 6, 7]
+    inicio: { R_c: 4700 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -50,48 +57,24 @@ tarjetas:
           - { expr: "(V_c0 - V_cf)*exp(-t/tau_c)", color: azul, rotulo: "natural", discontinua: true }
       mandos:
         - { valor: R_c, lista: [4700, 10000, 22000] }
+    objetivo:
+      condiciones:
+        - { valor: tau_c, objetivo: 0.0022, tol: 0.02, rotulo: "τ: {{tau_c}}" }
+      logrado: "Con {{R_c}}, τ = {{tau_c}}: la natural tarda más en apagarse, pero la forzada, 5 V, no cambia."
+      pistas:
+        - { texto: "τ = R·C: con 100 nF, ¿qué R da 2,2 ms?" }
+    escalera:
+      - "τ = R·C."
+    solucion: "22 kΩ × 100 nF = 2,2 ms."
+    comprobar:
+      - { con: { R_c: 22000 }, tau_c: 0.0022 }
 
   - id: prediga-5tau
-    tipo: predecir
+    tipo: leer
     titulo: "A cinco constantes de tiempo"
-    texto: "Con τ = 1 ms, a los 5 ms ¿cuánto le falta todavía al condensador para llegar a los 5 V?"
+    texto: "Con 10 kΩ, τ = 1 ms. Escriba cuánto le falta al condensador, a los 5 ms, para llegar a los 5 V."
     libro: [7]
     fijar: { V_c: 5, R_c: 10000, C_c: 100e-9, V_c0: 0, c_modo: 1 }
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: falta5, rotulo: "Falta a 5τ" }
-      datos:
-        - { valor: pct5, rotulo: "Del recorrido: {{pct5}}" }
-      ocultar: true
-      grafica:
-        x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 5.5, unidad: V, rotulo: "v_{C}" }
-        curvas:
-          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
-    opciones:
-      - texto: "Un 0,674 % del recorrido: unos 34 mV"
-        bien: true
-        porque: "Falta e⁻⁵ del recorrido. «Terminado» a 5τ es a efectos prácticos: la exponencial no llega nunca del todo."
-      - texto: "Nada: a 5τ ya ha llegado"
-        porque: "La regla de las 5τ es práctica. La natural sigue ahí, aunque pequeña: un 0,674 %."
-      - texto: "Un 37 %"
-        porque: "Ese 37 % es lo que falta a una sola τ (e⁻¹). A cinco, queda e⁻⁵."
-    escalera:
-      - "Lo que falta decae como e^{−t/τ}."
-      - "Con t = 5τ, falta e⁻⁵ de los 5 V."
-    solucion: "e⁻⁵ = 0,674 %: unos 34 mV de los 5 V."
-    comprobar:
-      - { falta5: 0.0337, pct5: 0.674, pct1: 36.8 }
-
-  - id: formula-suma
-    tipo: formula
-    titulo: "Natural más forzada"
-    texto: "Vale para cualquier orden. Aquí, la forzada es la tensión final y la natural, una exponencial que la completa desde el valor inicial."
-    libro: ["cap24#51", 7]
-    ec: "cap24#51"
-    sustitucion: "v_{C} = {{V_cf}} − {{V_cf}}·e^{−t/τ}, con τ = {{tau_c}}"
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -99,35 +82,80 @@ tarjetas:
       lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
       grafica:
         x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t" }
-        y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
+        y: { min: 0, max: 5.5, unidad: V, rotulo: "v_{C}" }
         curvas:
           - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
-          - { expr: "(V_c0 - V_cf)*exp(-t/tau_c)", color: azul, rotulo: "natural", discontinua: true }
-      mandos:
-        - { valor: C_c, lista: [47e-9, 100e-9, 220e-9] }
+      mandos: []
+    leer:
+      objetivo: falta5
+      unidad: V
+      tol: 0.03
+      rotulo: "Lo que falta a 5τ"
+      errores:
+        - { expr: "falta1", texto: "Eso es lo que falta a una sola τ, el 37 %. A cinco, queda e⁻⁵." }
+    exito: "e⁻⁵ = 0,674 % del recorrido: unos 34 mV. «Terminado» a 5τ es a efectos prácticos: la exponencial no llega nunca del todo."
+    escalera:
+      - "Lo que falta decae como e^{−t/τ}."
+      - "Con t = 5τ, falta e⁻⁵ de los 5 V."
+    solucion: "5 V × e⁻⁵ = 34 mV, el 0,674 %."
+    comprobar:
+      - { falta5: 0.0337, pct5: 0.674, pct1: 36.8, falta1: 1.839 }
+
+  - id: formula-suma
+    tipo: marcar
+    titulo: "Marque τ en la curva"
+    texto: "v_{C} = 5 − 5·e^{−t/τ}: la forzada menos una natural que decae. Marque en la curva el instante en que llega al 63 % de los 5 V."
+    libro: ["cap24#51", 7]
+    ec: "cap24#51"
+    fijar: { V_c: 5, R_c: 10000, C_c: 100e-9, V_c0: 0, c_modo: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5.5, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "tau_c"
+      tol: 0.03
+      inicio: { x: 0.005, y: 0 }
+      rotulo: "El 63 %: una constante de tiempo"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.001 }, texto: "Ahí ya pasa del 63 %: más a la izquierda, donde la curva cruza unos 3,16 V." }
+      - { texto: "Ahí todavía no llega al 63 %: más a la derecha." }
+    exito: "1 ms, τ = R·C: 3,16 V, el 63 % del recorrido. La natural ya ha caído a e⁻¹."
+    escalera:
+      - "El 63 % de 5 V son 3,16 V."
+    solucion: "En t = τ = 1 ms."
+    comprobar:
+      - { tau_c: 0.001, v_1t: 3.16, p_1t: 63.2 }
 
   - id: doce-bits
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Para un convertidor de 12 bits"
-    texto: "Para quedar a menos de un LSB de 12 bits, 1/4096 del recorrido, ¿cuántas constantes de tiempo hay que esperar?"
+    texto: "Para quedar a menos de un LSB de 12 bits, 1/4096 del recorrido, ¿cuántas constantes de tiempo hay que esperar? Escríbalo."
     libro: [7]
-    estimar:
-      objetivo: "n12"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 12, unidad: "", rotulo: "t/τ" }
+      y: { min: 0.00001, max: 1, unidad: "", rotulo: "lo que falta", escala: log }
+      curvas:
+        - { expr: "exp(-n)", color: azul, rotulo: "e^{−t/τ}" }
+        - { expr: "1/4096", color: naranja, rotulo: "1 LSB de 12 bits", discontinua: true }
+      mandos: []
+    leer:
+      objetivo: n12
       unidad: ""
-      min: 0
-      max: 15
-      paso: 0.1
-      inicio: 5
-      tol: 0.05
+      tol: 0.03
       rotulo: "Constantes de tiempo"
+      errores:
+        - { expr: "5", texto: "A 5τ todavía queda un 0,674 %, mucho más que 1/4096." }
     exito: "ln 4096 ≈ 8,3τ. «A efectos prácticos» depende de la precisión que se pida."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 7.9 }, texto: "Le falta: a 5τ todavía queda un 0,674 %, mucho más que 1/4096." }
-      - { texto: "Se ha pasado: basta con que e^{−t/τ} baje a 1/4096." }
     escalera:
-      - "Hay que esperar hasta que e^{−t/τ} = 1/4096."
-      - "Tome logaritmos: t/τ = ln 4096."
+      - "Busque dónde la curva azul cruza la línea de 1 LSB."
+      - "t/τ = ln 4096."
     solucion: "t/τ = ln 4096 ≈ 8,3."
     comprobar:
       - { n12: 8.3 }
@@ -158,30 +186,13 @@ tarjetas:
     comprobar:
       - { tau_c: 0.001, t_8: 0.008, v_1t: 3.16, v_5t: 4.97, p_1t: 63.2 }
 
-  - id: depositos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que decide el orden"
-    texto: "Cada depósito de energía aporta una derivada a la ecuación. Una cada circuito con su respuesta natural."
-    libro: [8]
-    emparejar:
-      - ["Un condensador o una bobina", "Una sola exponencial: no puede oscilar"]
-      - ["Bobina y condensador, poca resistencia", "Subamortiguada: oscila y la resistencia la va gastando"]
-      - ["Bobina y condensador, mucha resistencia", "Sobreamortiguada: dos exponenciales"]
-      - ["Bobina y condensador, en el límite", "Críticamente amortiguada"]
-    exito: "Con un depósito no hay a dónde ir y volver; con dos, la energía puede ir y venir."
-    pistas:
-      - { texto: "Para oscilar, la energía necesita dos depósitos entre los que ir y venir." }
-    escalera:
-      - "Un solo depósito da primer orden; dos, segundo orden con tres casos."
-    solucion: "Uno: una exponencial. Dos: subamortiguada si R es pequeña, sobreamortiguada si es grande, crítica en el límite."
-
   - id: natural-empieza
     tipo: sorpresa
-    titulo: "La natural empieza en −5 V"
-    texto: "Fíjese en la curva azul: arranca en −5 V. Así la suma empieza en cero, que es la condición inicial del condensador descargado."
+    titulo: "Sin respuesta natural"
+    texto: "Descargado, la natural arranca en −5 V para que la suma empiece en cero. Elija la tensión inicial con la que no hay respuesta natural."
     libro: [7]
-    fijar: { V_c: 5, V_c0: 0, c_modo: 1 }
+    fijar: { V_c: 5, c_modo: 1, R_c: 10000 }
+    inicio: { V_c0: 0 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -193,10 +204,19 @@ tarjetas:
         curvas:
           - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "completa", mide: vc }
           - { expr: "(V_c0 - V_cf)*exp(-t/tau_c)", color: azul, rotulo: "natural", discontinua: true }
-        marcas:
-          - { x: "0", y: "V_c0 - V_cf", rotulo: "−5 V" }
       mandos:
-        - { valor: R_c, lista: [4700, 10000, 22000] }
+        - { valor: V_c0, lista: [0, 2.5, 5], rotulo: "Tensión inicial del condensador" }
+    objetivo:
+      condiciones:
+        - { valor: V_c0, min: 5, rotulo: "Inicial: {{V_c0}}" }
+      logrado: "Si ya empieza en los 5 V finales, la natural vale cero: no hay transitorio. La natural es lo que separa el estado inicial del final."
+      pistas:
+        - { texto: "La natural arranca en la diferencia entre la tensión inicial y la final: anúlela." }
+    escalera:
+      - "La natural empieza en V₀ − V_{final}."
+    solucion: "Con el condensador ya cargado a 5 V."
+    comprobar:
+      - { con: { V_c0: 5 }, V_cf: 5 }
 
   - id: por-que-decae
     tipo: porque
@@ -261,5 +281,5 @@ tarjetas:
     ideas:
       - { titulo: "Completa = natural + forzada.", texto: "La forzada tiene la forma de la fuente; la natural, la del circuito." }
       - { titulo: "La natural decae.", texto: "Las resistencias solo absorben energía. A 5τ queda un 0,674 %; para 12 bits, unas 8,3τ." }
-      - { titulo: "El orden.", texto: "Un depósito, una exponencial; dos, tres casos de segundo orden." }
+      - { titulo: "El orden.", texto: "Un depósito, una exponencial: no puede oscilar. Dos: subamortiguada, crítica o sobreamortiguada." }
       - { titulo: "En el banco.", texto: "Lo que se extingue es natural; lo que permanece, forzado." }

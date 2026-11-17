@@ -1,6 +1,8 @@
 <script lang="ts">
   // Schematic «wheatstone» (esquema.ts): the left divider at x = 150, the right one at x = 270, the detector between.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
@@ -43,4 +45,11 @@
   <circle class="nodo" cx="270" cy="130" r="4.5" data-red="b"></circle>
   <Et x={158} y={120} t="a" peq />
   <Et x={262} y={120} t="b" peq ancla="end" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={95} y={30} red="t" />
+  <Punto x={150} y={130} red="a" />
+  <Punto x={270} y={130} red="b" />
+  <Punto x={95} y={230} red="0" />
+  <Rama x={95} y={30} medidor="vmed" />
+  {#if c.tiene('rd')}<Rama x={175} y={130} medidor="vd" />{/if}
 </Lienzo>

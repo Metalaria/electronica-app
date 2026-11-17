@@ -5,6 +5,10 @@
 # 26.B (transimpedancia): R_f = 2 V/10 µA y C_f = √(C_in/(2π·R_f·GBW)) del bloque 392.
 # 26.C (termostato): ventana ΔV = 2·k·V_ref con k = R1/R2 (bloque 418); la señal del sensor (senoide lenta de 2 a 3 V)
 # es un ejemplo para dibujar los umbrales.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): las estimaciones pasan a simular (fondo de escala, offset, R_{f},
+# ventana con el sensor), la báscula se carga hasta el fondo de escala (objetivo), la salida real con el lazo finito se
+# predice y se simula, el cruce de la ganancia de ruido con la del operacional se marca (por qué oscila) y el fotodiodo
+# que se conforma con menos C_{f} se busca. Queda una pregunta de opciones (no bajar R_{f}).
 leccion: cap27/sec-27.11
 
 libro:
@@ -98,38 +102,36 @@ modelo:
     Vo_t: { expr: "Vn_t + alto_t*(Vs_t - Vn_t)", sim: "v_{o}", nombre: "salida en continua", unidad: V }
     Vp_t: { expr: "(V_r*R_2 + Vo_t*R_1)/(R_1 + R_2)", sim: "V₊", nombre: "entrada +", unidad: V }
     D_s: { expr: "2*(R_1 + R_s)/R_2*V_r", sim: "ΔV", nombre: "ventana con la resistencia del sensor", unidad: V }
+    f_z: { expr: "1/(2*pi*R_f*C_in)", sim: "f_{z}", nombre: "donde empieza a subir la ganancia de ruido", unidad: Hz }
+    f_cr: { expr: "sqrt(GBW*f_z)", sim: "f_{c}", nombre: "cruce de la ganancia de ruido con la del operacional", unidad: Hz }
 
 tarjetas:
   - id: estime-fondo
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Báscula: la señal de la célula"
     texto: "Un puente de galgas de 2 mV/V excitado a 5 V. ¿Qué tensión da a fondo de escala?"
     libro: [340, 345, 346]
-    estimar:
-      objetivo: "V_fs"
+    simular:
+      objetivo: V_fs
       unidad: V
-      min: 0
-      max: 0.05
-      paso: 0.0005
-      inicio: 0.04
-      tol: 0.05
+      tol: 0.02
       rotulo: "Fondo de escala"
+      errores:
+        - { expr: "S_c/V_x", texto: "Son milivoltios por cada voltio de excitación: se multiplica, no se divide." }
     exito: "10 mV: el puente modula la excitación. Con la misma tensión de referencia en el ADC, la medida es ratiométrica."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado: son milivoltios por cada voltio de excitación." }
-      - { texto: "Se ha quedado corto: 2 mV por cada uno de los 5 V." }
     escalera:
       - "V_{FS} = S · V_{exc}."
     solucion: "2 mV/V · 5 V = 10 mV."
     comprobar:
-      - { V_fs: 0.01 }
+      - { V_fs: 0.01, tol: 0.001 }
 
   - id: explore-bascula
     tipo: explorar
     titulo: "Báscula: del puente al ADC"
-    texto: "Un lazo de ganancia 455,5 amplifica la señal del puente. Cargue la báscula y mire la salida."
+    texto: "Un lazo de ganancia 455,5 amplifica la señal del puente. Cargue la báscula hasta el fondo de escala y mire la salida."
     libro: [345, 355]
+    inicio: { V_in: 0.005 }
     fijar: { R_G: 110 }
     widget:
       tipo: circuito
@@ -140,9 +142,18 @@ tarjetas:
       mide: { vo: V_oi, vmenos: V_mi, i1: I_mi }
       mandos:
         - { valor: V_in, min: 0, max: 0.01, paso: 0.001, rotulo: "Señal del puente" }
-    requiere: { mover: [V_in] }
+    objetivo:
+      condiciones:
+        - { valor: V_oi, min: 4.5, rotulo: "Salida: {{V_oi}}" }
+      logrado: "{{V_in}} del puente dan {{V_oi}}: el fondo de escala queda cerca del techo del ADC sin saturar."
+      pistas:
+        - { texto: "Cargue más la báscula: más señal del puente." }
+    escalera:
+      - "A fondo de escala, el puente da 10 mV."
+    solucion: "10 mV: unos 4,54 V."
     comprobar:
       - { G_ia: 455.5, tol: 0.001 }
+      - { con: { V_in: 0.01 }, V_oi: 4.535, tol: 0.001 }
 
   - id: reto-rg
     tipo: reto
@@ -175,55 +186,50 @@ tarjetas:
       - { R_r: 50000, V_sat: 5 }
 
   - id: prediga-lazo
-    tipo: predecir
+    tipo: simular
     titulo: "Báscula: el lazo finito"
-    texto: "Un lazo de ganancia 455,5 con A = 10⁵ y 10 mV a la entrada. ¿Cuánto se queda corta la ganancia?"
+    texto: "Un lazo de ganancia 455,5 con A = 10⁵ y 10 mV a la entrada. ¿Qué tensión da la salida, con cuatro cifras?"
     libro: [351, 361]
     fijar: { R_G: 110 }
     widget:
       tipo: circuito
       esquema: ao-no-inversor
       piezas: { entrada: V_fs, r1: R_G, r2: R_fb, a0: A_0, vsat: V_sat }
-      lectura: { valor: e_g, rotulo: "Error de ganancia" }
-      datos:
-        - { valor: V_oa, rotulo: "Salida: {{V_oa}}" }
+      lectura: { valor: V_oa, rotulo: "Salida" }
       corriente: I_ma
       mide: { vo: V_oa, vmenos: V_ma, i1: I_ma }
       ocultar: true
-    opciones:
-      - texto: "Un 0,45 %: T = A · β = 219,5"
-        bien: true
-        porque: "El error vale 1/(1 + T). Con ganancias de cientos queda poco lazo de sobra: 23 g sobre 5 kg."
-      - texto: "Nada: A = 10⁵ es casi infinita"
-        porque: "Lo sería con una ganancia pequeña. Con 455,5, T es solo de 219,5."
-      - texto: "Un 4,4 %"
-        porque: "Eso pasaría si A bajara a 10⁴: T sería 22."
+      mandos: []
+    simular:
+      objetivo: V_oa
+      unidad: V
+      tol: 0.001
+      rotulo: "Salida a fondo de escala"
+      medida: vo
+      errores:
+        - { expr: "V_out", texto: "Esa es la ideal. Con A finita, la ganancia se queda corta en 1/(1 + T), con T = A · β." }
+    exito: "Unos 4,535 V: T = 219,5 y un 0,45 % de error, 23 g sobre 5 kg. Si A bajase a 10⁴, saltaría al 4,4 %."
     escalera:
       - "T = A · β = 10⁵/455,5; error = 1/(1 + T)."
-    solucion: "T = 219,5: 1/220,5 = 0,453 %."
+    solucion: "4,555 V · (1 − 1/220,5) ≈ 4,535 V."
     comprobar:
-      - { e_g: 0.453, T_l: 219.5, F_l: 220.5, e_4: 4.4, tol: 0.01 }
+      - { e_g: 0.453, T_l: 219.5, F_l: 220.5, e_4: 4.4, V_oa: 4.535, tol: 0.01 }
 
   - id: estime-offset
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Báscula: el error de cero"
     texto: "El amplificador tiene 50 µV de offset y ganancia 455,5. ¿Qué aparece a la salida?"
     libro: [363]
     fijar: { R_G: 110 }
-    estimar:
-      objetivo: "V_oo"
+    simular:
+      objetivo: V_oo
       unidad: V
-      min: 0
-      max: 0.1
-      paso: 0.0002
-      inicio: 0.08
-      tol: 0.05
+      tol: 0.02
       rotulo: "Offset a la salida"
+      errores:
+        - { expr: "V_os", texto: "El offset está en la entrada: se amplifica igual que la señal." }
     exito: "22,8 mV, unos 25 g: se elimina con tara. La deriva no, y es el límite real."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.024 }, texto: "Se ha pasado: 50 µV por 455,5." }
-      - { texto: "Se ha quedado corto: el offset se amplifica igual que la señal." }
     escalera:
       - "V_{os}(salida) = V_{os} · G."
     solucion: "50 µV · 455,5 = 22,8 mV."
@@ -231,24 +237,19 @@ tarjetas:
       - { V_oo: 0.0228, tol: 0.005 }
 
   - id: estime-rf
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Fotodiodo: la resistencia"
     texto: "Un fotodiodo da 10 µA a plena luz y la salida debe dar 2 V. ¿Qué R_{f} hace falta?"
     libro: [379]
-    estimar:
-      objetivo: "R_fn"
+    simular:
+      objetivo: R_fn
       unidad: Ω
-      min: 0
-      max: 1000000
-      paso: 5000
-      inicio: 800000
-      tol: 0.05
+      tol: 0.02
       rotulo: "R_{f}"
+      errores:
+        - { expr: "I_pd*V_pd", texto: "Es la tensión entre la corriente: R_{f} = V_{out}/I_{pd}." }
     exito: "200 kΩ: toda la fotocorriente pasa por R_{f}, porque la entrada inversora es masa virtual."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 210000 }, texto: "Se ha pasado: 2 V entre 10 µA." }
-      - { texto: "Se ha quedado corto: R_{f} = V_{out}/I_{pd}." }
     escalera:
       - "R_{f} = V_{out}/I_{pd}."
     solucion: "2 V / 10 µA = 200 kΩ."
@@ -256,9 +257,9 @@ tarjetas:
       - { R_fn: 200000 }
 
   - id: por-que-oscila
-    tipo: pregunta
+    tipo: marcar
     titulo: "Fotodiodo: por qué oscila"
-    texto: "Montado solo con R_{f}, el transimpedancia oscila. ¿Por qué?"
+    texto: "Solo con R_{f}, la capacidad del fotodiodo hace subir la ganancia de ruido desde 14,5 kHz. Marque dónde cruza la del operacional."
     libro: [385, 386]
     widget:
       tipo: grafica
@@ -267,27 +268,31 @@ tarjetas:
       curvas:
         - { expr: "20*log10(GBW/nu)", color: azul, rotulo: "lazo abierto" }
         - { expr: "20*log10(sqrt(1 + (2*pi*nu*R_f*C_in)^2))", color: naranja, rotulo: "ganancia de ruido" }
-    opciones:
-      - texto: "La ganancia de ruido sube a +20 dB/década y cruza la del operacional con 40 dB/década de diferencia"
-        bien: true
-        porque: "Eso son 180° de desfase: margen nulo. Lo causa la capacidad del propio sensor, que el diseñador no elige."
-      - texto: "Porque R_{f} es demasiado grande"
-        porque: "R_{f} fija la señal; el problema es la capacidad de la entrada, que con R_{f} hace subir la ganancia de ruido."
-      - texto: "Por un error de montaje"
-        porque: "Oscila aunque esté bien montado: es la física de la capacidad de entrada."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 1
+      x: "f_cr"
+      tol: 0.03
+      inicio: { x: 10000, y: 0 }
+      rotulo: "El cruce"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 600000 }, texto: "Ahí la ganancia de ruido ya está por encima: el cruce está más a la izquierda." }
+      - { texto: "Ahí la del operacional aún está por encima: más a la derecha." }
+    exito: "Ahí se cruzan con 40 dB/década de diferencia de pendiente: 180° de desfase y margen nulo. Lo causa la capacidad del sensor."
     escalera:
-      - "¿Qué hacen la ganancia de ruido y la del operacional por encima de 14,5 kHz?"
-    solucion: "Las pendientes opuestas se cruzan con 40 dB/década: 180°, margen nulo."
+      - "Siga la curva naranja hasta que toque la azul."
+    solucion: "Hacia los 380 kHz: 20 dB/década subiendo contra 20 bajando."
     comprobar:
       - { R_f: 200000, C_in: 55e-12 }
+      - { f_z: 14470, f_cr: 380400, tol: 0.01 }
 
   - id: formula-cf
-    tipo: formula
+    tipo: explorar
     titulo: "Fotodiodo: el condensador de compensación"
-    texto: "El polo de C_{f} se pone en el cruce: 45° de margen. Cambie la capacidad de la entrada."
+    texto: "C_{f} = √(C_{in}/(2π · R_{f} · GBW)) pone su polo en el cruce: 45° de margen. Busque el fotodiodo que se conforma con el C_{f} más pequeño."
     libro: [389, 392, 394]
-    ec: 392
-    sustitucion: "√({{C_in}} / (2π · {{R_f}} · {{GBW}})) = {{C_f}}"
+    inicio: { C_in: 5.5e-11 }
     widget:
       tipo: circuito
       esquema: transimpedancia
@@ -303,11 +308,21 @@ tarjetas:
           - { expr: "I_a/sqrt((1/R_f + (1/R_f - (2*pi*nu)^2*(C_in + C_f)/wp_f)/A0f)^2 + ((2*pi*nu)*C_f + ((2*pi*nu)*(C_in + C_f) + (2*pi*nu)/(R_f*wp_f))/A0f)^2)", color: naranja, rotulo: "v_{o}", mide: salida_amp }
       mandos:
         - { valor: C_in, lista: [2.5e-11, 5.5e-11, 1e-10], rotulo: "C_{in}" }
+    objetivo:
+      condiciones:
+        - { valor: C_in, max: 2.5e-11, rotulo: "C_{in}: {{C_in}}" }
+      logrado: "√({{C_in}} / (2π · {{R_f}} · {{GBW}})) = {{C_f}}: menos capacidad del sensor, menos C_{f} y más banda."
+      pistas:
+        - { texto: "Pruebe con un fotodiodo de menos capacidad." }
+    escalera:
+      - "C_{f} crece con la raíz de C_{in}."
+    solucion: "25 pF: unos 1,4 pF."
     comprobar:
       - { C_f: 2.09e-12, tol: 0.01 }
+      - { con: { C_in: 2.5e-11 }, C_f: 1.41e-12, tol: 0.01 }
 
   - id: no-bajar-rf
-    tipo: porque
+    tipo: pregunta
     titulo: "Fotodiodo: ¿más velocidad bajando R_{f}?"
     texto: "Falta velocidad. ¿Conviene bajar R_{f}?"
     libro: [402]
@@ -366,25 +381,20 @@ tarjetas:
       - { con: { R_1: 4000 }, k_r: 0.04 }
 
   - id: estime-fuente
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Termostato: el sensor también es una resistencia"
     texto: "Con R1 = 3,9 kΩ, el sensor añade 1 kΩ de resistencia de salida. ¿Qué ventana queda?"
     libro: [427, 428, 429]
     fijar: { R_1: 3900 }
-    estimar:
-      objetivo: "D_s"
+    simular:
+      objetivo: D_s
       unidad: V
-      min: 0
-      max: 0.5
-      paso: 0.005
-      inicio: 0.4
-      tol: 0.05
+      tol: 0.02
       rotulo: "Ventana real"
+      errores:
+        - { expr: "D_V", texto: "Esa es la ventana sin el sensor. Su resistencia se suma a R1: 4,9 kΩ." }
     exito: "245 mV, un 26 % más ancha: por eso se ataca desde baja impedancia, con un seguidor."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.257 }, texto: "Se ha pasado: R1 efectiva = 3,9 + 1 = 4,9 kΩ." }
-      - { texto: "Se ha quedado corto: la resistencia del sensor se suma a R1." }
     escalera:
       - "Use k = 4,9 kΩ/100 kΩ en ΔV = 2 · k · V_{ref}."
     solucion: "2 · 0,049 · 2,5 = 245 mV."

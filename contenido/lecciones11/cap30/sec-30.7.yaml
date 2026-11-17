@@ -8,6 +8,12 @@
 #   cos ωT = (1 + (1 − a)² − 2a²)/(2(1 − a)): 151,8 Hz a 10 kHz, algo por debajo de los 159 Hz del RC (cálculo mío).
 # - El coste del bloque 239: N·f_s multiplicaciones por segundo (64 × 48 kHz, unos 3 millones).
 # Paso práctico: «simular» el coeficiente a con RC = 1 ms y 10 kHz (0,0909; errores típicos: Δt/RC y 1 − a).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): el muestreo se acelera hasta que la salida digital en
+# t = RC queda a menos de dos centésimas del RC (0,614 frente a 0,632 a 10 kHz); la fórmula del coeficiente pasa al
+# «simular» de a (se quita la tarjeta de fórmula); los bits de un coeficiente que pone el polo en r = 0,995 (el de la
+# figura 29.11) se suben hasta que el polo cuantificado vuelve dentro del círculo (r_q = round(r·2ⁿ)/2ⁿ); envolver o
+# saturar se elige sobre una senoide de ejemplo de 1,3 veces el fondo de escala hasta que no hay salto; y el coste se
+# calcula. Quedan una pregunta de opciones (muestrear más deprisa) y el emparejamiento de los métodos.
 leccion: cap30/sec-30.7
 
 libro:
@@ -39,6 +45,10 @@ modelo:
     d_t: { sim: "Δt", nombre: "periodo de muestreo", unidad: s, valor: 0.0005 }
     N_c: { sim: "N", nombre: "coeficientes del FIR", unidad: "", valor: 64 }
     f_m: { sim: "f_{s}", nombre: "frecuencia de muestreo del audio", unidad: Hz, valor: 48000 }
+    r_d: { sim: "r", nombre: "radio diseñado del polo", unidad: "", valor: 0.995 }
+    n_q: { sim: "n", nombre: "bits del coeficiente", unidad: "", valor: 6 }
+    k_s: { sim: "modo", nombre: "saturar en lugar de envolver", unidad: "", valor: 0 }
+    A_w: { sim: "A", nombre: "amplitud de ejemplo frente al fondo de escala", unidad: "", valor: 1.3 }
   calculos:
     tau_c: { expr: "R_c*C_c", sim: "RC", nombre: "constante de tiempo", unidad: s }
     f_d: { expr: "1/d_t", sim: "f_{s}", nombre: "frecuencia de muestreo", unidad: Hz }
@@ -51,19 +61,23 @@ modelo:
     c_w: { expr: "(1 + (1 - a_d)^2 - 2*a_d^2)/(2*(1 - a_d))", sim: "cos ω_{c}T", nombre: "coseno del corte digital", unidad: "" }
     f_cd: { expr: "acos(c_w)/(2*pi*d_t)", sim: "f_{c}", nombre: "corte de −3 dB del filtro digital", unidad: Hz }
     m_s: { expr: "N_c*f_m", sim: "MAC/s", nombre: "multiplicaciones por segundo", unidad: "" }
+    e_d: { expr: "abs(y_d - v_a)", sim: "diferencia", nombre: "diferencia con el RC en t = RC", unidad: V, cifras: 2 }
+    r_q: { expr: "round(r_d*2^n_q)/2^n_q", sim: "r_{q}", nombre: "radio del polo cuantificado", unidad: "", cifras: 4 }
+    s_w: { expr: "2*(1 - k_s)", sim: "salto", nombre: "salto máximo de la salida", unidad: "" }
 
 tarjetas:
   - id: explore-rc-codigo
     tipo: explorar
     titulo: "Un RC hecho código"
-    texto: "El RC de 1 ms ante un escalón y, encima, su ecuación en diferencias. Muestree más deprisa y compare las dos curvas."
+    texto: "El RC de 1 ms ante un escalón y, encima, su ecuación en diferencias. Muestree más deprisa hasta que en t = RC no se aparten dos centésimas."
     nota: "R y C de ejemplo."
     libro: [216, 217, 218]
+    inicio: { d_t: 0.0005 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_c, r: R_c, c: C_c }
-      lectura: { valor: a_d, rotulo: "Coeficiente, a" }
+      lectura: { valor: e_d, rotulo: "Diferencia en t = RC" }
       datos:
         - { valor: y_d, rotulo: "Digital en t = RC: {{y_d}}" }
         - { valor: v_a, rotulo: "RC en t = RC: {{v_a}}" }
@@ -75,35 +89,24 @@ tarjetas:
           - { expr: "V_c*(1 - (1 - a_d)^floor(t/d_t))", color: azul, rotulo: "y[n] digital" }
       mandos:
         - { valor: d_t, lista: [0.0005, 0.00025, 0.0001], rotulo: "Periodo de muestreo, Δt" }
-    requiere: { mover: [d_t] }
+    objetivo:
+      condiciones:
+        - { valor: e_d, max: 0.02, rotulo: "Diferencia: {{e_d}}" }
+      logrado: "Con Δt = {{d_t}}, {{y_d}} frente a {{v_a}}: la escalera digital sigue al condensador. Esa ecuación en diferencias es el RC hecho código."
+      pistas:
+        - { texto: "Los peldaños aún son gruesos frente a RC: muestree más deprisa." }
+    escalera:
+      - "La diferencia baja cuando Δt es mucho menor que RC."
+    solucion: "Δt = 0,1 ms, 10 kHz."
     comprobar:
       - { tau_c: 0.001 }
-
-  - id: formula-coeficiente
-    tipo: formula
-    titulo: "De dónde sale el coeficiente"
-    texto: "Dos multiplicaciones y una suma por muestra. El coeficiente sale de la constante de tiempo y del periodo de muestreo."
-    libro: [217, 219]
-    ec: 217
-    sustitucion: "a = {{d_t}} / ({{tau_c}} + {{d_t}}) = {{a_d}}"
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "RC" }
-        - { expr: "V_c*(1 - (1 - a_d)^floor(t/d_t))", color: azul, rotulo: "y[n] digital" }
-      lectura: { valor: a_d, rotulo: "Coeficiente, a" }
-      datos:
-        - { valor: t_e, rotulo: "Constante equivalente: {{t_e}}" }
-      mandos:
-        - { valor: d_t, lista: [0.0005, 0.00025, 0.0001], rotulo: "Periodo de muestreo, Δt" }
+      - { con: { d_t: 0.0001 }, e_d: 0.018, tol: 0.05 }
 
   - id: simule-a
     tipo: simular
     titulo: "El coeficiente del libro"
-    texto: "RC = 1 ms y muestreo a 10 kHz. ¿Cuánto vale a?"
-    libro: [217, 218]
+    texto: "Dos multiplicaciones y una suma por muestra, con a = Δt/(RC + Δt). Con RC = 1 ms y muestreo a 10 kHz, ¿cuánto vale a?"
+    libro: [217, 218, 219]
     fijar: { d_t: 0.0001 }
     simular:
       objetivo: a_d
@@ -171,71 +174,81 @@ tarjetas:
     solucion: "Invarianza, forma y aliasing; bilineal, warping; preajuste, lo corrige; directo, lo habitual."
 
   - id: empareje-coma-fija
-    tipo: pregunta
+    tipo: explorar
     titulo: "Las trampas de la coma fija"
-    texto: "Empareje cada problema de un filtro en coma fija con su remedio."
-    libro: [226, 229, 232, 233, 234]
+    texto: "Un polo diseñado en r = {{r_d}}, redondeado al cuantificar el coeficiente, puede quedar fuera del círculo. Dé bits al coeficiente hasta que vuelva dentro."
+    libro: [226, 227, 229, 233]
+    inicio: { n_q: 6 }
     widget:
-      tipo: figura
-      figura: fig-30.13
-      zonas:
-        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
-    emparejar:
-      - ["Desbordamiento", "Acumular en 32 bits y saturar"]
-      - ["Coeficientes cuantificados", "Secciones de segundo orden o más bits"]
-      - ["Ciclos límite", "Dither o más bits"]
-    exito: "Los ciclos límite: uno o dos LSB de oscilación con la entrada a cero, porque el redondeo realimenta."
-    pistas:
-      - { texto: "Un acumulador de 16 bits se desborda al sumar productos." }
+      tipo: grafica
+      x: { id: k, min: 0, max: 60, unidad: "", rotulo: "n" }
+      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "h[n]" }
+      curvas:
+        - { expr: "r_q^k*cos(0.3*k)", palitos: true, color: naranja, rotulo: "respuesta al impulso" }
+      lectura: { valor: r_q, rotulo: "Radio del polo cuantificado" }
+      mandos:
+        - { valor: n_q, lista: [6, 7, 8, 10], rotulo: "Bits del coeficiente, n" }
+    objetivo:
+      condiciones:
+        - { valor: r_q, max: 0.999, rotulo: "Polo en r = {{r_q}}" }
+      logrado: "Con {{n_q}} bits el polo queda dentro: la respuesta se apaga. El otro remedio es descomponer en secciones de segundo orden."
+      pistas:
+        - { texto: "El redondeo ha llevado el polo al círculo: la respuesta no se apaga. Más bits." }
     escalera:
-      - "Los coeficientes redondeados mueven los polos: ¿qué los hace menos sensibles?"
-    solucion: "Desbordamiento, 32 bits y saturar; coeficientes, secciones de segundo orden; ciclos límite, dither."
+      - "Con pocos bits, {{r_d}} se redondea a 1."
+    solucion: "Ocho bits o más."
+    comprobar:
+      - { con: { n_q: 8 }, r_q: 0.9961, tol: 0.0005 }
+      - { con: { n_q: 6 }, r_q: 1 }
 
   - id: porque-saturar
-    tipo: porque
+    tipo: explorar
     titulo: "Saturar en lugar de envolver"
-    texto: "Al desbordarse, un acumulador puede envolver (del máximo salta al mínimo) o saturar. ¿Por qué se prefiere saturar?"
-    libro: [232]
+    texto: "Esta senoide pasa del fondo de escala del acumulador, y envolviendo salta del máximo al mínimo. Elija el modo sin saltos."
+    nota: "Amplitud de ejemplo."
+    libro: [232, 234]
+    inicio: { k_s: 0 }
     widget:
-      tipo: figura
-      figura: fig-30.13
-      zonas:
-        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
-    opciones:
-      - texto: "Envolver produce una discontinuidad brutal; saturar, solo distorsión"
-        bien: true
-        porque: "Un salto de fondo de escala a fondo de escala es mucho peor que recortar la cresta."
-      - texto: "Saturar es más rápido de calcular"
-        porque: "No es cuestión de velocidad: es lo que le pasa a la señal."
-      - texto: "Saturar evita los ciclos límite"
-        porque: "Los ciclos límite son otro problema, del redondeo: se combaten con dither o más bits."
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "A_w*sin(2*pi*t)", color: tinta, rotulo: "lo que pedía el cálculo", discontinua: true }
+        - { expr: "(1 - k_s)*((A_w*sin(2*pi*t) + 1) - 2*floor((A_w*sin(2*pi*t) + 1)/2) - 1) + k_s*max(-1, min(1, A_w*sin(2*pi*t)))", color: naranja, rotulo: "salida del acumulador" }
+      lectura: { valor: s_w, rotulo: "Salto máximo, en fondos de escala" }
+      mandos:
+        - { valor: k_s, lista: [0, 1], nombres: [envolver, saturar], rotulo: "Al desbordarse" }
+    objetivo:
+      condiciones:
+        - { valor: s_w, max: 0, rotulo: "Salto: {{s_w}}" }
+      logrado: "Saturar solo recorta la cresta: distorsión. Envolver producía una discontinuidad brutal. Mejor aún: acumular en 32 bits; y los ciclos límite, con dither."
+      pistas:
+        - { texto: "Envolver salta de fondo de escala a fondo de escala: pruebe el otro modo." }
     escalera:
-      - "Imagine la salida al pasar del máximo positivo al máximo negativo."
-    solucion: "Envolver salta de un extremo al otro; saturar solo recorta."
+      - "¿Qué es peor, recortar la cresta o saltar al otro extremo?"
+    solucion: "Saturar."
+    comprobar:
+      - { con: { k_s: 1 }, s_w: 0 }
 
   - id: estime-coste
-    tipo: pregunta
+    tipo: simular
     titulo: "Si el diseño cabe"
-    texto: "Un FIR de 64 coeficientes a 48 kHz. ¿Cuántas multiplicaciones por segundo y por canal?"
+    texto: "Un FIR de 64 coeficientes a 48 kHz. Calcule las multiplicaciones por segundo y por canal."
     libro: [239, 240]
     widget:
       tipo: figura
       figura: fig-30.13
       zonas:
         - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
-    estimar:
-      objetivo: "m_s"
+    simular:
+      objetivo: m_s
       unidad: ""
-      min: 0
-      max: 10000000
-      paso: 100000
-      inicio: 7000000
       tol: 0.05
       rotulo: "Multiplicaciones por segundo"
+      errores:
+        - { expr: "f_m", texto: "Eso es una multiplicación por muestra: un FIR hace una por coeficiente, 64 por muestra." }
+        - { expr: "f_m/N_c", texto: "Se multiplica, no se divide: 64 multiplicaciones en cada una de las 48 000 muestras." }
     exito: "Unos 3 millones: un microcontrolador moderno sin dificultad; uno de 8 bits, no. El IIR lo haría con diez veces menos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3230000 }, texto: "Demasiado: son N multiplicaciones por muestra, 64 por cada una de las 48 000 muestras." }
-      - { texto: "Corto: cada muestra pide 64 multiplicaciones, y hay 48 000 muestras por segundo." }
     escalera:
       - "Multiplique coeficientes por muestras por segundo."
     solucion: "64 × 48 000 ≈ 3 millones."

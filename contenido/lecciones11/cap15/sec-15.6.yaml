@@ -1,10 +1,21 @@
-# Lección 1.2 de la sección 14.6 «Limitaciones del Protoboard: Parásitos y Alta Frecuencia» (cap15; sec-15.6).
+# Lección de la sección 14.6 «Limitaciones del Protoboard: Parásitos y Alta Frecuencia» (cap15; sec-15.6).
 # Formato: contenido/lecciones11/GUIA.md. La gráfica es v = L·di/dt con los números del libro (bloque 148): 20 mA en
 # 2 ns sobre 10 nH, 100 mV; ocho salidas a la vez, 800 mV. Los flancos de 10 y 20 ns del mando son un EJEMPLO para ver
-# la proporción; los relojes de 8 y 100 MHz son los del bloque 158.
+# la proporción; los relojes de 8 y 100 MHz son los del bloque 158. 1.2.1 (aprender haciendo): llevar el rebote al
+# peor caso, leerlo, marcar el flanco de 100 mV, subir el reloj sin que cambie, tocar lo que se monta sin problema,
+# el plano improvisado y las señales para abandonar. Dos preguntas: por qué los flancos y qué hace oscilar.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap15/sec-15.6
 
 libro:
+  155: "El límite de frecuencia, en la práctica"
+  156: "Combinando los tres efectos, el protoboard deja de ser"
+  159: "Cómo mitigar, dentro de lo posible"
+  160: "Hilo rígido corto y encaminado pegado a la placa, no cables"
+  162: "Desacoplo abundante y cerca (sección 14.7)"
+  164: "Módulos en lugar de componentes sueltos para las partes"
+  165: "Cuándo hay que abandonar el protoboard"
+  167: "En el banco"
   144: "es un circuito distinto, con componentes parásitos que no están en el esquema"
   146: "Cada contacto y cada centímetro de cable de puente aportan unos 10 nH."
   147: 'v = L dot.op (d i)/(d t)'
@@ -35,7 +46,7 @@ tarjetas:
   - id: explore-rebote
     tipo: explorar
     titulo: "El rebote de masa"
-    texto: "Cada salida conmuta 20 mA sobre los 10 nH del camino de masa. Cambie el flanco y las salidas que conmutan a la vez."
+    texto: "Cada salida conmuta 20 mA sobre los 10 nH del camino de masa. Busque el peor caso: flanco y salidas que conmutan a la vez."
     nota: "Los flancos de 10 y 20 ns son un ejemplo."
     libro: [146, 148]
     widget:
@@ -50,12 +61,21 @@ tarjetas:
       mandos:
         - { valor: t_r, lista: [2e-9, 1e-8, 2e-8], rotulo: "Flanco" }
         - { valor: N_s, lista: [1, 8], rotulo: "Salidas a la vez" }
-    requiere: { mover: [t_r, N_s] }
+    inicio: { t_r: 2e-8, N_s: 1 }
+    objetivo:
+      condiciones:
+        - { valor: v_b, min: 0.8, rotulo: "Rebote: {{v_b}}" }
+      logrado: "Ocho salidas con flancos de 2 ns: {{v_b}} de rebote en la masa local, más que el margen de ruido de una lógica de 3,3 V."
+      pistas:
+        - { texto: "Más salidas a la vez y flancos más rápidos." }
+    escalera:
+      - "El rebote crece con la corriente y con la rapidez del flanco."
+    solucion: "Ocho salidas y flancos de 2 ns: 800 mV."
 
   - id: prediga-bus
-    tipo: predecir
+    tipo: leer
     titulo: "Un bus de ocho salidas"
-    texto: "Una salida da 100 mV de rebote. ¿Cuánto dan ocho salidas de un bus conmutando a la vez?"
+    texto: "La curva es el rebote de ocho salidas de un bus conmutando a la vez. Lea el que dan con flancos de 2 ns."
     libro: [148]
     fijar: { N_s: 8, t_r: 2e-9 }
     widget:
@@ -65,45 +85,55 @@ tarjetas:
       curvas:
         - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
       lectura: { valor: v_b, rotulo: "Rebote de masa" }
-      ocultar: true
-    opciones:
-      - texto: "800 mV"
-        bien: true
-        porque: "Las corrientes se suman en la masa común: 160 mA en 2 ns sobre 10 nH."
-      - texto: "100 mV: cada salida tiene su rebote"
-        porque: "Comparten el camino de masa: sus corrientes se suman."
-      - texto: "Menos de 100 mV: se reparte"
-        porque: "No se reparte: se suma."
+      mandos: []
+    leer:
+      objetivo: v_b
+      unidad: V
+      tol: 0.05
+      rotulo: "Rebote de masa"
+      errores:
+        - { expr: "v_1", texto: "Eso es una sola salida: las ocho comparten el mismo camino de masa y se suman." }
+    exito: "800 mV: supera el margen de ruido en nivel bajo de una lógica de 3,3 V. Lecturas erróneas y resets espurios."
     escalera:
-      - "¿Por dónde vuelven las corrientes de las ocho salidas?"
+      - "Busque 2 ns en el eje horizontal, a la izquierda."
     solucion: "8 · 100 mV = 800 mV."
     comprobar:
       - { v_b: 0.8, v_1: 0.1, I_bus: 0.16 }
 
   - id: formula-rebote
-    tipo: formula
+    tipo: marcar
     titulo: "La tensión de una inductancia"
-    texto: "La caída depende de lo deprisa que cambia la corriente. Cambie la duración del flanco."
-    libro: [147]
-    ec: 147
-    sustitucion: "{{L_b}} · {{dI}} / {{t_r}} = {{v_1}}"
-    fijar: { N_s: 1 }
+    texto: "Una sola salida de 20 mA sobre 10 nH: v = L·di/dt. Marque en la curva el flanco que produce 100 mV."
+    libro: [146, 147]
+    fijar: { N_s: 1, t_r: 2e-9 }
     widget:
       tipo: grafica
       x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
       y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
       curvas:
-        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
-      marcas:
-        - { x: "t_r", y: "v_b", rotulo: "Su flanco" }
-      lectura: { valor: v_1, rotulo: "Rebote" }
-      mandos:
-        - { valor: t_r, lista: [2e-9, 1e-8, 2e-8], rotulo: "Flanco" }
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de una salida" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_r"
+      tol: 0.04
+      inicio: { x: 5e-8, y: 0 }
+      rotulo: "Flanco de 100 mV"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 2.2e-9 }, texto: "Ahí el rebote es menor de 100 mV: un flanco más rápido, más a la izquierda." }
+      - { texto: "Ahí se pasa de 100 mV: más a la derecha." }
+    exito: "2 ns: 10 nH · 20 mA / 2 ns = 100 mV. Con flancos diez veces más lentos, diez veces menos."
+    escalera:
+      - "Busque dónde la curva vale 0,1 V."
+    solucion: "2 ns."
+    comprobar:
+      - { t_r: 2e-9, v_1: 0.1 }
 
   - id: sorpresa-reloj
     tipo: sorpresa
     titulo: "El reloj no importa"
-    texto: "Mismos flancos de 2 ns, otro reloj. Cambie de 8 a 100 MHz y mire el rebote."
+    texto: "Mismos flancos de 2 ns, otro reloj. Suba de 8 a 100 MHz y compare el rebote."
     libro: [158]
     fijar: { N_s: 8, t_r: 2e-9 }
     inicio: { f_ck: 8000000 }
@@ -118,7 +148,15 @@ tarjetas:
       lectura: { valor: v_b, rotulo: "Rebote de masa" }
       mandos:
         - { valor: f_ck, lista: [8000000, 100000000], rotulo: "Reloj" }
-    requiere: { mover: [f_ck] }
+    objetivo:
+      condiciones:
+        - { valor: f_ck, min: 100000000, rotulo: "Reloj de 100 MHz" }
+      logrado: "El rebote sigue en {{v_b}}: con los mismos flancos, el reloj no cambia nada."
+      pistas:
+        - { texto: "Suba el reloj a 100 MHz." }
+    escalera:
+      - "El mando de debajo cambia el reloj."
+    solucion: "Con 100 MHz, el mismo rebote."
 
   - id: por-que-flancos
     tipo: porque
@@ -168,75 +206,10 @@ tarjetas:
       - "¿Qué une, sin cable, dos filas vecinas?"
     solucion: "La capacidad entre filas."
 
-  - id: limites
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "El límite práctico"
-    texto: "Una cada tipo de circuito con el límite del protoboard."
-    libro: [157]
-    emparejar:
-      - ["Digital con flancos lentos", "Sin problema"]
-      - ["Digital rápido", "Rebote a cualquier frecuencia de reloj"]
-      - ["Analógico de ganancia alta", "Puede oscilar a cualquier frecuencia"]
-      - ["Analógico general", "Unos 10 MHz"]
-      - ["Radiofrecuencia", "Inútil"]
-    exito: "No manda la frecuencia de la señal sino la de los flancos y la ganancia."
-    pistas:
-      - { texto: "La radiofrecuencia queda fuera del todo." }
-    escalera:
-      - "Los dos de «a cualquier frecuencia» son el digital rápido y el de ganancia alta."
-    solucion: "Lentos: sin problema; rápido: rebote; ganancia alta: oscila; general: 10 MHz; RF: inútil."
-
-  - id: mitigar
-    tipo: pregunta
-    titulo: "Llevar la masa junto a la señal"
-    texto: "¿Por qué ayuda llevar el cable de masa paralelo y pegado al de la señal?"
-    libro: [161, 163, 149]
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
-      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
-      curvas:
-        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
-    opciones:
-      - texto: "Reduce el área del bucle, que fija la inductancia y la captación de ruido"
-        bien: true
-        porque: "Y una tira de cobre bajo el protoboard, a masa en varios puntos, hace de plano improvisado."
-      - texto: "Porque el cable de masa conduce mejor así"
-        porque: "Conduce igual: lo que cambia es el área que encierran ida y vuelta."
-      - texto: "Por estética: el montaje se lee mejor"
-        porque: "Se lee mejor, sí, pero la razón es eléctrica: el área del bucle."
-    escalera:
-      - "La inductancia de un camino depende del área que encierra con su retorno."
-    solucion: "Reduce el área del bucle."
-
-  - id: abandonar
-    tipo: pregunta
-    titulo: "Cuándo dejarlo"
-    texto: "El prototipo oscila, su consumo es errático y cambia al tocar los cables. ¿Qué hace?"
-    libro: [166, 168]
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
-      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
-      curvas:
-        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
-    opciones:
-      - texto: "Pasar a placa perforada con plano de masa o a una placa fabricada"
-        bien: true
-        porque: "Cuando luchar contra el montaje cuesta más que el circuito, el camino corto es la placa."
-      - texto: "Seguir ajustando el esquema"
-        porque: "El problema es el montaje: ningún cambio en el esquema lo va a resolver."
-      - texto: "Cambiar los integrados"
-        porque: "Funcionan en una placa; el fallo es del soporte."
-    escalera:
-      - "¿El problema está en el diseño o en el montaje?"
-    solucion: "Pasar a placa."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [144, 148, 152, 158]
+    libro: [144, 148, 152, 158, 149, 155, 156, 157, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168]
     ideas:
       - { titulo: "Otro circuito.", texto: "El protoboard añade parásitos que no están en el esquema." }
       - { titulo: "Rebote.", texto: "v = L · di/dt: 20 mA en 2 ns sobre 10 nH dan 100 mV; ocho salidas, 800 mV." }

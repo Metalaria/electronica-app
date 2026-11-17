@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 38.8 «FPGA o Microcontrolador» (cap37; etiqueta interna sec-37.8).
 # Formato: contenido/lecciones11/GUIA.md (§11). Figura 38.10 (svg_vista 450,72 × 184,32): las dos naturalezas y el
 # criterio práctico. La tabla de decisión (bloque 235) se empareja con los ejemplos del propio libro.
+# 1.2.1 («aprender haciendo», GUIA §13): el paralelismo se explora con tres canales del mismo reloj llevados con pulsos
+# (objetivo sobre el contador y el LED); los casos del libro (100 ns sin excepciones, el protocolo raro, la máquina de
+# cien casos, dormir a microamperios) se tocan en el lado de la figura 38.10 que los resuelve. Quedan dos preguntas de
+# opciones: el criterio práctico y la medida del banco. El reparto y el procesador blando van en el resumen.
 leccion: cap37/sec-37.8
 
 libro:
@@ -28,68 +32,104 @@ modelo:
 tarjetas:
   - id: explore-dos-naturalezas
     tipo: explorar
-    titulo: "Dos naturalezas"
-    texto: "Toque los dos recuadros de arriba: lo que cada uno hace bien y lo que cuesta. La diferencia no es de velocidad sino de naturaleza."
-    libro: [222, 223, 246]
+    titulo: "Todo a la vez"
+    texto: "Dos canales del mismo reloj en una FPGA: un contador y un biestable que conmuta. Dé pulsos hasta tener el contador en su cuenta máxima y S encendida."
+    libro: [222, 223, 225]
     widget:
-      tipo: figura
-      figura: fig-37.10
-      zonas:
-        - { id: fpga, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 216, 100], texto: "FPGA: paralelismo, determinismo, interfaces no estándar y caudal. A cambio, más cara, compleja y consume siempre." }
-        - { id: micro, rotulo: "Recuadro de arriba a la derecha", rect: [231, 4, 216, 100], texto: "Microcontrolador: decisiones complejas, comunicaciones, bajo consumo y coste. A cambio, una cosa después de otra." }
-    requiere: { mover: [fpga, micro] }
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK], rotulo: "Canal A" }
+        - { id: t1, tipo: t, entradas: ["1", CLK], rotulo: "Canal B" }
+      salidas:
+        - { id: Q1, de: c1.q1 }
+        - { id: Q0, de: c1.q0 }
+        - { id: S, de: t1.q }
+    objetivo:
+      condiciones:
+        - { contador: c1, valor: 3, rotulo: "Contador al máximo" }
+        - { led: S, valor: 1, rotulo: "S encendida" }
+      logrado: "Los dos canales avanzan en el mismo flanco, sin turnos. Un microcontrolador los atendería uno tras otro."
+      pistas:
+        - { texto: "Cada pulso mueve los dos canales a la vez." }
+    escalera: ["El contador sube uno por pulso; S cambia en cada pulso."]
+    solucion: "Tres pulsos de reloj."
 
   - id: prediga-100ns
-    tipo: predecir
+    tipo: tocar
     titulo: "Sin excepciones"
-    texto: "Un sistema debe responder en menos de 100 ns, siempre, sin excepciones. ¿Qué elige?"
+    texto: "Un sistema debe responder en menos de 100 ns, siempre, sin excepciones. Toque el lado que lo garantiza."
     libro: [226]
     widget:
       tipo: figura
       figura: fig-37.10
       zonas:
-        - { id: criterio, rotulo: "Recuadro de abajo", rect: [5, 111, 442, 68], texto: "Microcontrolador siempre que sea posible; FPGA cuando no pueda." }
-    opciones:
-      - { texto: "Una FPGA", bien: true, porque: "Una operación tarda exactamente los ciclos que tarda, siempre: determinismo temporal." }
-      - { texto: "Un microcontrolador rápido", porque: "Una interrupción puede retrasar cualquier cosa: «sin excepciones» no lo garantiza." }
-      - { texto: "Un ordenador con sistema operativo", porque: "Con sistema operativo el retraso posible es todavía mayor." }
+        - { id: fpga, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 216, 100] }
+        - { id: micro, rotulo: "Recuadro de arriba a la derecha", rect: [231, 4, 216, 100] }
+    tocar:
+      bien: [fpga]
+      porque:
+        micro: "Una interrupción puede retrasar cualquier cosa: «sin excepciones» no se garantiza."
+    exito: "En una FPGA una operación tarda exactamente los ciclos que tarda, siempre: determinismo temporal."
     escalera: ["¿Qué puede retrasar una respuesta en un microcontrolador?"]
-    solucion: "Una FPGA: determinismo temporal, sin interrupciones que retrasen nada."
+    solucion: "Arriba a la izquierda: la FPGA."
 
   - id: empareje-tabla
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La tabla de decisión"
-    texto: "Una cada caso con su elección y el motivo."
-    libro: [225, 227, 228, 231, 235]
-    emparejar:
-      - ["Ocho canales de PWM independientes", "FPGA: paralelismo real"]
-      - ["Un sensor con un protocolo raro", "FPGA: interfaz no estándar"]
-      - ["Filtrar megamuestras por segundo", "FPGA: procesado de flujo"]
-      - ["Una pila de red", "Micro: comunicaciones"]
-      - ["Una máquina de estados con cien casos", "Micro: lógica de decisión compleja"]
-    exito: "Lo paralelo, lo estricto y lo raro, a la FPGA; lo secuencial y complejo, al micro."
-    pistas:
-      - { texto: "Lo que en C se escribe en una tarde es del microcontrolador." }
-    escalera: ["Pregúntese en cada caso: ¿hace falta que muchas cosas ocurran a la vez?"]
-    solucion: "PWM: paralelismo. Protocolo raro: interfaz. Megamuestras: caudal. Red y máquina de cien casos: micro."
+    tipo: tocar
+    titulo: "Un protocolo raro"
+    texto: "Un sensor habla un protocolo raro que ningún periférico conoce. Toque el lado que lo resuelve."
+    libro: [227, 228, 235, 246]
+    widget:
+      tipo: figura
+      figura: fig-37.10
+      zonas:
+        - { id: fpga, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 216, 100] }
+        - { id: micro, rotulo: "Recuadro de arriba a la derecha", rect: [231, 4, 216, 100] }
+    tocar:
+      bien: [fpga]
+      porque:
+        micro: "Está limitado a los periféricos que trae."
+    exito: "La FPGA implementa el hardware que haga falta: interfaz no estándar, uno de sus cuatro casos."
+    escalera: ["¿Quién puede fabricarse el periférico que falta?"]
+    solucion: "Arriba a la izquierda: la FPGA."
+
+  - id: toque-cien-casos
+    tipo: tocar
+    titulo: "Cien casos"
+    texto: "Una máquina de estados con cien casos, una pila de red y un sistema de ficheros. Toque el lado que los escribe en una tarde."
+    libro: [231, 235]
+    widget:
+      tipo: figura
+      figura: fig-37.10
+      zonas:
+        - { id: fpga, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 216, 100] }
+        - { id: micro, rotulo: "Recuadro de arriba a la derecha", rect: [231, 4, 216, 100] }
+    tocar:
+      bien: [micro]
+      porque:
+        fpga: "En HDL eso es una pesadilla: lo secuencial y complejo no es lo suyo."
+    exito: "En C se escribe en una tarde: lógica de decisión compleja y comunicaciones, territorio del microcontrolador."
+    escalera: ["¿Qué se escribe mejor como una cosa después de otra?"]
+    solucion: "Arriba a la derecha: el microcontrolador."
 
   - id: porque-consumo
-    tipo: porque
+    tipo: tocar
     titulo: "El consumo"
-    texto: "Un microcontrolador duerme a microamperios. ¿Por qué una FPGA basada en SRAM no puede?"
+    texto: "El equipo pasa casi todo el tiempo dormido y debe gastar microamperios. Toque el lado que lo consigue."
     libro: [232]
     widget:
       tipo: figura
       figura: fig-37.10
       zonas:
-        - { id: fpga, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 216, 100], texto: "A cambio: más cara, compleja, consume siempre." }
-    opciones:
-      - { texto: "Consume siempre por sus fugas y por mantener la configuración", bien: true, porque: "La SRAM de configuración tiene que seguir alimentada para que la FPGA siga siendo el circuito." }
-      - { texto: "Porque funciona a más frecuencia", porque: "Aunque el reloj se pare, las fugas y la configuración siguen consumiendo." }
-      - { texto: "Sí puede, igual que el micro", porque: "Si pierde la alimentación pierde la configuración: no hay un modo de dormir equivalente." }
-    escalera: ["¿Qué pasa con la configuración en SRAM si se corta la alimentación?"]
-    solucion: "Consume permanentemente por sus fugas y por mantener la configuración."
+        - { id: fpga, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 216, 100] }
+        - { id: micro, rotulo: "Recuadro de arriba a la derecha", rect: [231, 4, 216, 100] }
+    tocar:
+      bien: [micro]
+      porque:
+        fpga: "Basada en SRAM, consume siempre por sus fugas y por mantener la configuración."
+    exito: "El microcontrolador duerme a microamperios; la FPGA no puede, porque su configuración tiene que seguir alimentada."
+    escalera: ["¿Cuál pierde su configuración si se corta la alimentación?"]
+    solucion: "Arriba a la derecha: el microcontrolador."
 
   - id: pregunta-criterio
     tipo: pregunta
@@ -107,40 +147,6 @@ tarjetas:
       - { texto: "FPGA si el volumen es alto", porque: "En un proyecto pequeño domina el tiempo de desarrollo, no el componente." }
     escalera: ["¿Qué domina el coste en un proyecto pequeño?"]
     solucion: "Microcontrolador siempre que sea posible; FPGA para paralelismo, determinismo, interfaz o caudal."
-
-  - id: pregunta-reparto
-    tipo: pregunta
-    titulo: "Las dos a la vez"
-    texto: "Un sistema usa FPGA y procesador. ¿Qué parte se lleva el procesador?"
-    libro: [238, 239]
-    widget:
-      tipo: figura
-      figura: fig-37.10
-      zonas:
-        - { id: micro, rotulo: "Recuadro de arriba a la derecha", rect: [231, 4, 216, 100], texto: "Decisiones, comunicaciones, ficheros." }
-    opciones:
-      - { texto: "Decisiones, configuración, comunicación e interfaz de usuario", bien: true, porque: "Lo secuencial y lo complejo; la FPGA, lo paralelo y lo estricto." }
-      - { texto: "La adquisición y el filtrado", porque: "Eso es paralelo y temporalmente estricto: va a la FPGA." }
-      - { texto: "La generación de señales", porque: "También es de la FPGA: tiempos estrictos." }
-    escalera: ["Al procesador le toca lo que se hace una cosa después de otra."]
-    solucion: "El procesador, lo secuencial y complejo; la FPGA, adquisición, señales, filtrado e interfaces rápidas."
-
-  - id: pregunta-procesador-blando
-    tipo: pregunta
-    titulo: "Sin un chip aparte"
-    texto: "¿Cómo se llama un microcontrolador implementado con las propias LUT de la FPGA?"
-    libro: [239]
-    widget:
-      tipo: figura
-      figura: fig-37.10
-      zonas:
-        - { id: criterio, rotulo: "Recuadro de abajo", rect: [5, 111, 442, 68], texto: "Y a menudo los dos." }
-    opciones:
-      - { texto: "Un procesador blando", bien: true, porque: "Se encarga de la parte secuencial sin necesidad de un chip aparte." }
-      - { texto: "Un SoC FPGA", porque: "En un SoC FPGA el procesador ARM es de silicio, junto a la lógica programable." }
-      - { texto: "Un CPLD", porque: "Un CPLD es otro dispositivo de lógica programable, no un procesador." }
-    escalera: ["¿Está hecho de silicio propio o de la lógica configurable?"]
-    solucion: "Un procesador blando: un microcontrolador hecho con las LUT de la FPGA."
 
   - id: pregunta-banco
     tipo: pregunta
@@ -162,9 +168,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [223, 235, 238, 242]
+    libro: [223, 235, 238, 239, 242]
     ideas:
       - { titulo: "Naturaleza.", texto: "La FPGA es el circuito; el micro ejecuta en secuencia." }
       - { titulo: "Los cuatro «no puede».", texto: "Paralelismo, determinismo, interfaz y caudal: FPGA." }
       - { titulo: "Criterio.", texto: "Micro siempre que se pueda: el desarrollo en HDL cuesta mucho más." }
-      - { titulo: "Las dos.", texto: "FPGA para lo paralelo y estricto; procesador para lo secuencial." }
+      - { titulo: "Las dos.", texto: "FPGA para lo paralelo y estricto; procesador, en SoC o blando, para lo secuencial." }

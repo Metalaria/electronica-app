@@ -3,6 +3,9 @@
 # es una gráfica con el ciclo de trabajo como mando. El dibujo es la salida de la figura 39.8: el contador sube de 0 a
 # 100 en cada periodo, la salida baja al llegar a la comparación (CCR = 65) y sube al desbordar; figura 39.8 con
 # svg_vista 432,51 × 260,52.
+# 1.2.1 («aprender haciendo», GUIA §13): el valor medio del 80 % es el objetivo de la exploración; la comparación y los
+# valores capturados se tocan en la figura 39.8; la salida se dibuja; los pasos del PWM se escriben. Quedan dos
+# preguntas de opciones: la captura tardía y el registro sombra. Los modos y el banco van en los textos.
 leccion: cap38/sec-38.5
 
 libro:
@@ -19,6 +22,8 @@ libro:
   165: "cuanto mayor es el ciclo de trabajo (25 %, 50 %, 80 %), mayor es el valor medio de la señal"
   166: "Resolución de PWM según la frecuencia"
   167: "El contador de un temporizador con la captura y la comparación, y la salida PWM resultante"
+  146: "La resolución es la del reloj"
+  147: "Medir frecuencia de una señal externa contando entre capturas."
   "cap38#548": "medir la frecuencia de una señal cuadrada de unos 10 kHz"
 
 modelo:
@@ -38,8 +43,9 @@ tarjetas:
   - id: explore-pwm
     tipo: explorar
     titulo: "El ciclo de trabajo"
-    texto: "A igual frecuencia, cambie el ciclo de trabajo y mire el valor medio de la señal."
+    texto: "A igual frecuencia, el ciclo de trabajo fija el valor medio de la señal. Consiga un valor medio del 80 % de V_CC."
     libro: [142, 165]
+    inicio: { D_p: 25 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 4, unidad: "", rotulo: "periodos" }
@@ -50,47 +56,48 @@ tarjetas:
       lectura: { valor: v_med, rotulo: "Valor medio (× V_CC)" }
       mandos:
         - { valor: D_p, lista: [25, 50, 80], rotulo: "Ciclo de trabajo" }
-    requiere: { mover: [D_p] }
-
-  - id: empareje-modos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los cuatro modos"
-    texto: "Una cada modo del temporizador con lo que hace."
-    libro: [139, 140, 141, 142]
-    emparejar:
-      - ["Contar y desbordar", "Cuenta hasta el máximo e interrumpe: una base de tiempo"]
-      - ["Comparación", "Al alcanzar un valor, ocurre algo en un instante exacto"]
-      - ["Captura", "Un flanco externo guarda el valor del contador"]
-      - ["PWM", "Comparación con recarga: onda cuadrada de ciclo variable"]
-    exito: "Y todo en hardware: el programa configura y el temporizador trabaja solo, sin jitter de software."
-    pistas:
-      - { texto: "El PWM se construye con la comparación." }
-    escalera: ["¿Cuál de los modos lo dispara una señal de fuera?"]
-    solucion: "Desbordar, base de tiempo; comparación, instante exacto; captura, flanco externo; PWM, onda de ciclo variable."
+    objetivo:
+      condiciones:
+        - { valor: v_med, objetivo: 0.8, tol: 0.01, rotulo: "Valor medio: {{v_med}} × V_CC" }
+      logrado: "Con un {{D_p}} de ciclo, el valor medio es {{v_med}} de V_CC: así se regula brillo o velocidad."
+      pistas:
+        - { texto: "Más tiempo alto en cada periodo, más valor medio." }
+    escalera: ["Valor medio = ciclo de trabajo × V_CC."]
+    solucion: "Un ciclo de trabajo del 80 %."
+    comprobar:
+      - { con: { D_p: 80 }, v_med: 0.8 }
 
   - id: explore-contador
-    tipo: explorar
-    titulo: "Captura y comparación"
-    texto: "El contador sube, compara y captura a la vez. Toque cada parte de la figura."
-    libro: [167, 140, 141]
+    tipo: tocar
+    titulo: "Un instante exacto"
+    texto: "La salida baja en un instante exacto de cada periodo, sin que intervenga el programa. Toque lo que lo marca."
+    libro: [139, 140, 142, 143, 167]
+    fijar: { CCR: 65 }
     widget:
       tipo: figura
       figura: fig-38.8
       zonas:
-        - { id: entrada, rotulo: "Fila de arriba", rect: [35, 0, 337, 38], texto: "Entrada externa: cada flanco de subida captura el contador." }
-        - { id: contador, rotulo: "Diente de sierra del centro", rect: [35, 43, 337, 132], texto: "El contador: cada punto es el valor capturado en un flanco de la entrada." }
-        - { id: desborde, rotulo: "Rótulo de arriba a la derecha", rect: [370, 34, 62, 40], texto: "Desbordamiento: recarga e interrupción." }
-        - { id: comparacion, rotulo: "Rótulo a la derecha", rect: [368, 86, 64, 40], texto: "Comparación: la línea discontinua, CCR = 65." }
-        - { id: salida, rotulo: "Fila de abajo", rect: [35, 184, 337, 41], texto: "Salida PWM: baja en la comparación y sube al desbordar." }
-    fijar: { CCR: 65 }
-    requiere: { mover: [contador, salida] }
+        - { id: entrada, rotulo: "Fila de arriba", rect: [35, 0, 337, 38] }
+        - { id: contador, rotulo: "Diente de sierra del centro", rect: [35, 43, 337, 132] }
+        - { id: desborde, rotulo: "Rótulo de arriba a la derecha", rect: [370, 34, 62, 40] }
+        - { id: comparacion, rotulo: "Rótulo a la derecha", rect: [368, 86, 64, 40] }
+        - { id: salida, rotulo: "Fila de abajo", rect: [35, 184, 337, 41] }
+    tocar:
+      bien: [comparacion]
+      porque:
+        entrada: "La entrada externa dispara capturas; no mueve la salida."
+        contador: "El contador sube sin parar; lo que marca el instante es un valor con el que se compara."
+        desborde: "El desbordamiento sube la salida, no la baja."
+        salida: "Es la salida misma: lo que la hace bajar está en otro sitio."
+    exito: "La comparación, CCR = 65: un evento en un instante exacto, en hardware. Con la recarga del desbordamiento, eso es el PWM."
+    escalera: ["¿Con qué valor se compara el contador?"]
+    solucion: "La comparación, a la derecha."
 
   - id: dibuje-pwm
     tipo: dibujar
     titulo: "Dibuje la salida"
     texto: "El contador va de 0 a 100 en cada periodo. La salida sube al desbordar y baja al llegar a CCR = 65: dibújela."
-    libro: [142, 167]
+    libro: [142, 164, 167]
     fijar: { CCR: 65, N_c: 100 }
     widget:
       tipo: figura
@@ -105,7 +112,7 @@ tarjetas:
       tol: 0.12
       holgura: 0.03
       rotulo: "Salida PWM"
-    exito: "Alta el 65 % de cada periodo: el ciclo de trabajo es CCR entre la cuenta máxima."
+    exito: "Alta el 65 % de cada periodo. Hecho en hardware, ni una interrupción lo deforma; uno por software se deformaría."
     pistas:
       - { cuando: { valor: media, mayor: 0.1 }, texto: "Ha dibujado la salida alta de más: baja en cuanto el contador llega a 65." }
       - { texto: "Ha dibujado la salida baja de más: sube en cada desbordamiento y se queda alta hasta 65." }
@@ -134,50 +141,27 @@ tarjetas:
     solucion: "El exacto: la captura se hace en hardware al llegar el flanco."
 
   - id: estime-pasos
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Frecuencia frente a resolución"
-    texto: "Un PWM de 20 kHz con un reloj de 16 MHz. ¿Cuántos pasos de ciclo de trabajo quedan?"
+    texto: "Un PWM de 20 kHz con un reloj de 16 MHz. Calcule cuántos pasos de ciclo de trabajo quedan y escríbalo."
     libro: [153, 166]
     widget:
       tipo: figura
       figura: fig-38.7
       zonas:
-        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 20, 200, 185], texto: "Resolución frente a la frecuencia de PWM, para tres relojes." }
-    estimar:
-      objetivo: "pasos"
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 20, 200, 185] }
+    leer:
+      objetivo: pasos
       unidad: ""
-      min: 0
-      max: 2000
-      paso: 50
-      inicio: 1500
-      tol: 0.05
+      tol: 0.01
       rotulo: "Pasos de PWM"
-    exito: "800 pasos: menos de 10 bits. Frecuencia y resolución salen del mismo reloj y compiten."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 800 }, texto: "Se ha pasado: divida 16 MHz entre 20 kHz." }
-      - { texto: "Se ha quedado corto: 16 MHz entre 20 kHz da cientos de pasos." }
+      errores:
+        - { expr: "bits", texto: "Esos son los bits; los pasos son el reloj entre la frecuencia del PWM." }
+    exito: "{{pasos}} pasos, menos de 10 bits. Frecuencia y resolución salen del mismo reloj y compiten: un periodo más corto cabe en menos ciclos."
     escalera: ["Cada periodo de PWM dura tantos ciclos del reloj como pasos tiene."]
-    solucion: "16 MHz / 20 kHz = 800 pasos."
+    solucion: "16 MHz / 20 kHz = {{pasos}} pasos."
     comprobar:
       - { pasos: 800 }
-
-  - id: porque-compiten
-    tipo: porque
-    titulo: "¿Por qué compiten?"
-    texto: "Subir la frecuencia del PWM baja su resolución. ¿Por qué?"
-    libro: [153, 166]
-    widget:
-      tipo: figura
-      figura: fig-38.7
-      zonas:
-        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 20, 200, 185], texto: "A más frecuencia, menos bits, con el mismo reloj." }
-    opciones:
-      - { texto: "Las dos salen del mismo reloj: un periodo más corto cabe en menos ciclos", bien: true, porque: "Los pasos son el reloj entre la frecuencia del PWM: si una sube, los otros bajan." }
-      - { texto: "Porque el contador se calienta", porque: "No es térmico: es una división entre dos frecuencias." }
-      - { texto: "Porque el programa no da abasto", porque: "El PWM es hardware: el programa no interviene en cada paso." }
-    escalera: ["¿Cuántos ciclos del reloj caben en un periodo de PWM?"]
-    solucion: "Pasos = f_reloj / f_PWM: frecuencia y resolución compiten por el mismo reloj."
 
   - id: pregunta-sombra
     tipo: pregunta
@@ -197,40 +181,29 @@ tarjetas:
     solucion: "El registro sombra: el cambio entra al empezar el siguiente ciclo."
 
   - id: pregunta-frecuencimetro
-    tipo: pregunta
+    tipo: tocar
     titulo: "Medir una frecuencia"
-    texto: "Quiere medir la frecuencia de una cuadrada de unos 10 kHz con el microcontrolador. ¿Qué modo usa?"
-    libro: ["cap38#548", 141, 167]
+    texto: "Quiere medir la frecuencia de una cuadrada de unos 10 kHz con el microcontrolador. Toque dónde se ven los valores que guarda la captura."
+    libro: ["cap38#548", 141, 146, 147, 167]
     widget:
       tipo: figura
       figura: fig-38.8
       zonas:
-        - { id: entrada, rotulo: "Fila de arriba", rect: [35, 0, 337, 38], texto: "La señal externa." }
-    opciones:
-      - { texto: "Captura: la diferencia entre dos flancos da el periodo", bien: true, porque: "Con la resolución de un ciclo de reloj, sin depender de la latencia ni gastar CPU." }
-      - { texto: "Sondear el pin en el bucle", porque: "Depende de la latencia del software y consume CPU esperando." }
-      - { texto: "PWM", porque: "El PWM genera una señal; no mide una de fuera." }
-    escalera: ["¿Qué modo guarda el contador cuando llega un flanco?"]
-    solucion: "Captura de entrada: el periodo con precisión de hardware."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Genera el mismo PWM por software y por hardware mientras el programa atiende interrupciones. ¿Qué ve en el osciloscopio?"
-    libro: [143, 164, 165]
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 4, unidad: "", rotulo: "periodos" }
-      y: { min: 0, max: 1.2, unidad: "", rotulo: "v / V_{CC}" }
-      curvas:
-        - { expr: "ceil(D_p/100 - (t - floor(t)))", color: azul, rotulo: "PWM" }
-    fijar: { D_p: 50 }
-    opciones:
-      - { texto: "El de software se deforma; el de hardware no se inmuta", bien: true, porque: "Es la razón de que los temporizadores existan: trabajan solos, sin jitter de software." }
-      - { texto: "Los dos se deforman igual", porque: "El de hardware no depende del programa: las interrupciones no le afectan." }
-      - { texto: "El de hardware se deforma más", porque: "Al revés: el que se deforma es el de los retardos por software." }
-    escalera: ["¿Cuál de los dos depende de que el programa llegue a tiempo?"]
-    solucion: "El de software se deforma en cuanto llega una interrupción; el de hardware sigue igual."
+        - { id: entrada, rotulo: "Fila de arriba", rect: [35, 0, 337, 38] }
+        - { id: contador, rotulo: "Diente de sierra del centro", rect: [35, 43, 337, 132] }
+        - { id: desborde, rotulo: "Rótulo de arriba a la derecha", rect: [370, 34, 62, 40] }
+        - { id: comparacion, rotulo: "Rótulo a la derecha", rect: [368, 86, 64, 40] }
+        - { id: salida, rotulo: "Fila de abajo", rect: [35, 184, 337, 41] }
+    tocar:
+      bien: [contador]
+      porque:
+        entrada: "Es la señal que dispara la captura; los valores guardados están en el contador."
+        desborde: "El desbordamiento recarga el contador; no guarda nada."
+        comparacion: "La comparación genera eventos, no los mide."
+        salida: "Es la salida PWM: no mide la entrada."
+    exito: "Los puntos del contador: la diferencia entre dos capturas da el periodo, con la resolución del reloj y sin gastar CPU."
+    escalera: ["Cada flanco de la entrada deja un punto en el contador."]
+    solucion: "Los puntos sobre el diente de sierra."
 
   - id: resumen
     tipo: resumen

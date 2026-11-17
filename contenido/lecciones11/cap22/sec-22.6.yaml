@@ -3,9 +3,14 @@
 # sierra 1/n, triangular 1/n² solo impares), dibujado como líneas de anchura 0,12 armónicos hasta el noveno, en dB
 # respecto a la fundamental y con el suelo en −40 dB (escala logarítmica) o en amplitud (lineal). La reconstrucción
 # suma los impares hasta el armónico elegido (hasta el 31): la sobreoscilación de Gibbs se ve en las esquinas.
+# 1.2.1 (aprender haciendo): buscar la forma con pares, leer el tercero de la cuadrada y de la triangular, calcular el
+# noveno, sumar armónicos hasta Gibbs, dibujar, pasar a escala logarítmica, tocar lo que indica un pico no relacionado
+# y el banco. Dos preguntas: la simetría y la escala logarítmica.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap22/sec-22.6
 
 libro:
+  180: "Esta práctica no es un ejercicio académico"
   159: "La serie de Fourier dice que cualquier señal periódica es una suma de senoides."
   161: "Onda cuadrada: solo armónicos impares, con amplitud 1/n. El tercero está 9,5 dB por debajo de la fundamental"
   162: "también solo impares, con amplitud 1/n². Caen mucho más rápido: el tercero, 19 dB por debajo."
@@ -34,12 +39,13 @@ modelo:
     f_s: { expr: "max(0, 1 - abs(s_f - 3))", sim: "s", nombre: "es la sierra", unidad: "" }
     L_3: { expr: "20*log10(f_q/3 + f_t/9 + f_s/3)", sim: "A₃", nombre: "tercer armónico", unidad: dB, cifras: 2 }
     L_2: { expr: "20*log10(max(0.0001, f_s/2))", sim: "A₂", nombre: "segundo armónico", unidad: dB, cifras: 2 }
+    L_9: { expr: "20*log10(1/9)", sim: "A₉", nombre: "noveno armónico de la cuadrada", unidad: dB, cifras: 2 }
 
 tarjetas:
   - id: explore-espectros
     tipo: explorar
     titulo: "Tres formas, tres espectros"
-    texto: "Cambie la forma de onda y mire qué armónicos aparecen y cuánto caen."
+    texto: "Busque la forma de onda que tiene armónicos pares."
     libro: [159, 161, 162, 163]
     inicio: { s_f: 1 }
     widget:
@@ -51,12 +57,20 @@ tarjetas:
       lectura: { valor: L_3, rotulo: "Tercer armónico" }
       mandos:
         - { valor: s_f, lista: [1, 2, 3], nombres: [cuadrada, triangular, sierra], rotulo: "Forma" }
-    requiere: { mover: [s_f] }
+    objetivo:
+      condiciones:
+        - { valor: s_f, min: 3, rotulo: "Forma con armónicos pares" }
+      logrado: "La sierra: todos los armónicos, pares e impares, con amplitud 1/n."
+      pistas:
+        - { texto: "Pruebe otra forma." }
+    escalera:
+      - "Mire los armónicos segundo y cuarto."
+    solucion: "La sierra."
 
   - id: prediga-tercero
-    tipo: predecir
+    tipo: leer
     titulo: "El tercero de la cuadrada"
-    texto: "En la FFT de una onda cuadrada, ¿a cuántos decibelios por debajo de la fundamental está el tercer armónico?"
+    texto: "En la FFT de una onda cuadrada, lea a cuántos decibelios por debajo de la fundamental está el tercero."
     libro: [161, 184]
     fijar: { s_f: 1 }
     widget:
@@ -66,15 +80,15 @@ tarjetas:
       curvas:
         - { expr: "20*log10(max(0.01, ((f_q/1 + f_t/1) + f_s/1)*exp(-((nu - 1)/0.12)^2) + (f_s/2)*exp(-((nu - 2)/0.12)^2) + ((f_q/3 + f_t/9) + f_s/3)*exp(-((nu - 3)/0.12)^2) + (f_s/4)*exp(-((nu - 4)/0.12)^2) + ((f_q/5 + f_t/25) + f_s/5)*exp(-((nu - 5)/0.12)^2) + (f_s/6)*exp(-((nu - 6)/0.12)^2) + ((f_q/7 + f_t/49) + f_s/7)*exp(-((nu - 7)/0.12)^2) + (f_s/8)*exp(-((nu - 8)/0.12)^2) + ((f_q/9 + f_t/81) + f_s/9)*exp(-((nu - 9)/0.12)^2)))", color: naranja, rotulo: "FFT" }
       lectura: { valor: L_3, rotulo: "Tercer armónico" }
-      ocultar: true
-    opciones:
-      - texto: "Unos 9,5 dB"
-        bien: true
-        porque: "Su amplitud es 1/3 de la fundamental: 20·log(1/3) = −9,54 dB."
-      - texto: "Unos 19 dB"
-        porque: "Eso es en la triangular, que cae con 1/n². La cuadrada cae con 1/n."
-      - texto: "Unos 3 dB"
-        porque: "Un tercio de la amplitud no es −3 dB: en amplitud, 20·log(1/3)."
+    leer:
+      objetivo: L_3
+      unidad: dB
+      tol: 0.04
+      rotulo: "Tercer armónico"
+      errores:
+        - { expr: "20*log10(1/9)", texto: "Eso sería con 1/n², como la triangular." }
+        - { expr: "-3", texto: "Lea la altura del pico del tercero, no la del corte de un filtro." }
+    exito: "Unos 9,5 dB por debajo: 20·log(1/3) = −9,54 dB."
     escalera:
       - "En la cuadrada, la amplitud del armónico n es 1/n de la fundamental."
     solucion: "20·log(1/3) = −9,54 dB: unos 9,5 dB por debajo."
@@ -82,32 +96,31 @@ tarjetas:
       - { L_3: -9.54 }
 
   - id: estime-noveno
-    tipo: pregunta
+    tipo: simular
     titulo: "El noveno armónico"
-    texto: "Una cuadrada en la FFT con escala logarítmica. ¿A qué nivel respecto a la fundamental está el noveno armónico?"
+    texto: "Una cuadrada en la FFT con escala logarítmica. Calcule el nivel del noveno armónico respecto a la fundamental."
     libro: [161, "cap22#370"]
-    estimar:
-      objetivo: "20*log10(1/9)"
+    fijar: { s_f: 1 }
+    exito: "1/9 de la fundamental: 20·log(1/9) ≈ −19,1 dB."
+    simular:
+      objetivo: L_9
       unidad: dB
-      min: -40
-      max: 0
-      paso: 0.1
-      inicio: -5
       tol: 0.03
       rotulo: "Noveno armónico"
-    exito: "1/9 de la fundamental: 20·log(1/9) ≈ −19,1 dB."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: -18.5 }, texto: "Se ha quedado corto: un noveno de la amplitud cae más que el tercio del tercero." }
-      - { texto: "Se ha pasado: eso sería con 1/n², como la triangular. La cuadrada cae con 1/n." }
+      errores:
+        - { expr: "20*log10(1/81)", texto: "Eso sería con 1/n², como la triangular. La cuadrada cae con 1/n." }
+        - { expr: "L_3", texto: "Ese es el tercero; el noveno cae más." }
     escalera:
       - "La amplitud del noveno es 1/9 de la fundamental."
       - "En decibelios de amplitud: 20·log(1/9)."
     solucion: "20·log(1/9) ≈ −19,1 dB."
+    comprobar:
+      - { L_9: -19.08, L_3: -9.54 }
 
   - id: gibbs
-    tipo: sorpresa
+    tipo: explorar
     titulo: "La esquina que no desaparece"
-    texto: "Sume armónicos impares a la fundamental. La esquina sigue rebasando por muchos que añada."
+    texto: "Sume armónicos impares a la fundamental. Llegue al máximo y mire la esquina."
     libro: [177, 178]
     inicio: { N_a: 1 }
     widget:
@@ -120,7 +133,15 @@ tarjetas:
       lectura: { valor: N_a, rotulo: "Último armónico" }
       mandos:
         - { valor: N_a, lista: [1, 3, 5, 7, 15, 31], rotulo: "Hasta el armónico" }
-    requiere: { mover: [N_a] }
+    objetivo:
+      condiciones:
+        - { valor: N_a, min: 31, rotulo: "Hasta el armónico {{N_a}}" }
+      logrado: "Los flancos se afilan, pero la esquina sigue rebasando un 9 % del salto: el fenómeno de Gibbs."
+      pistas:
+        - { texto: "Siga añadiendo armónicos." }
+    escalera:
+      - "Mire la esquina, no el flanco."
+    solucion: "Hasta el último armónico: el rebote sigue ahí."
 
   - id: dibuje-tercero
     tipo: dibujar
@@ -141,9 +162,9 @@ tarjetas:
     solucion: "Una senoide con las crestas aplanadas y un valle suave en medio de cada una."
 
   - id: triangular
-    tipo: pregunta
+    tipo: leer
     titulo: "La triangular"
-    texto: "¿Qué armónicos tiene una onda triangular y con qué amplitud?"
+    texto: "Una triangular. Lea a cuántos decibelios por debajo de la fundamental está su tercer armónico."
     libro: [162, 165]
     fijar: { s_f: 2 }
     widget:
@@ -152,14 +173,15 @@ tarjetas:
       y: { min: -40, max: 5, unidad: dB, rotulo: "nivel" }
       curvas:
         - { expr: "20*log10(max(0.01, ((f_q/1 + f_t/1) + f_s/1)*exp(-((nu - 1)/0.12)^2) + (f_s/2)*exp(-((nu - 2)/0.12)^2) + ((f_q/3 + f_t/9) + f_s/3)*exp(-((nu - 3)/0.12)^2) + (f_s/4)*exp(-((nu - 4)/0.12)^2) + ((f_q/5 + f_t/25) + f_s/5)*exp(-((nu - 5)/0.12)^2) + (f_s/6)*exp(-((nu - 6)/0.12)^2) + ((f_q/7 + f_t/49) + f_s/7)*exp(-((nu - 7)/0.12)^2) + (f_s/8)*exp(-((nu - 8)/0.12)^2) + ((f_q/9 + f_t/81) + f_s/9)*exp(-((nu - 9)/0.12)^2)))", color: naranja, rotulo: "FFT" }
-    opciones:
-      - texto: "Solo impares, con amplitud 1/n²"
-        bien: true
-        porque: "Es continua, más suave que la cuadrada: sus armónicos caen más deprisa, el tercero ya 19 dB abajo."
-      - texto: "Solo impares, con amplitud 1/n"
-        porque: "Esa es la cuadrada, que tiene saltos. La triangular es continua y cae con 1/n²."
-      - texto: "Todos, pares e impares, con amplitud 1/n"
-        porque: "Ese es el diente de sierra, que no tiene simetría de media onda."
+    leer:
+      objetivo: L_3
+      unidad: dB
+      tol: 0.04
+      rotulo: "Tercer armónico"
+      errores:
+        - { expr: "20*log10(1/3)", texto: "Ese es el de la cuadrada, con 1/n; la triangular cae con 1/n²." }
+        - { expr: "-40", texto: "Ese es el suelo de la gráfica; lea el pico del tercero." }
+    exito: "Unos 19 dB por debajo: solo impares, con amplitud 1/n²."
     escalera:
       - "Cuanto más suave la forma, más rápido caen sus armónicos."
     solucion: "Solo impares, con amplitud 1/n²."
@@ -203,7 +225,15 @@ tarjetas:
         - { expr: "(1 - esc)*(((f_q/1 + f_t/1) + f_s/1)*exp(-((nu - 1)/0.12)^2) + (f_s/2)*exp(-((nu - 2)/0.12)^2) + ((f_q/3 + f_t/9) + f_s/3)*exp(-((nu - 3)/0.12)^2) + (f_s/4)*exp(-((nu - 4)/0.12)^2) + ((f_q/5 + f_t/25) + f_s/5)*exp(-((nu - 5)/0.12)^2) + (f_s/6)*exp(-((nu - 6)/0.12)^2) + ((f_q/7 + f_t/49) + f_s/7)*exp(-((nu - 7)/0.12)^2) + (f_s/8)*exp(-((nu - 8)/0.12)^2) + ((f_q/9 + f_t/81) + f_s/9)*exp(-((nu - 9)/0.12)^2)) + esc*max(0, 1 + (20*log10(max(0.01, ((f_q/1 + f_t/1) + f_s/1)*exp(-((nu - 1)/0.12)^2) + (f_s/2)*exp(-((nu - 2)/0.12)^2) + ((f_q/3 + f_t/9) + f_s/3)*exp(-((nu - 3)/0.12)^2) + (f_s/4)*exp(-((nu - 4)/0.12)^2) + ((f_q/5 + f_t/25) + f_s/5)*exp(-((nu - 5)/0.12)^2) + (f_s/6)*exp(-((nu - 6)/0.12)^2) + ((f_q/7 + f_t/49) + f_s/7)*exp(-((nu - 7)/0.12)^2) + (f_s/8)*exp(-((nu - 8)/0.12)^2) + ((f_q/9 + f_t/81) + f_s/9)*exp(-((nu - 9)/0.12)^2))))/40)", color: naranja, rotulo: "FFT" }
       mandos:
         - { valor: esc, lista: [0, 1], nombres: [lineal, logarítmica], rotulo: "Escala vertical" }
-    requiere: { mover: [esc] }
+    objetivo:
+      condiciones:
+        - { valor: esc, min: 1, rotulo: "Escala logarítmica" }
+      logrado: "En escala logarítmica aparecen los armónicos de la triangular: caen con 1/n² y en lineal se confunden con el suelo."
+      pistas:
+        - { texto: "Cambie la escala vertical." }
+    escalera:
+      - "Los armónicos son muy pequeños."
+    solucion: "La escala logarítmica."
 
   - id: por-que-log
     tipo: porque
@@ -229,23 +259,6 @@ tarjetas:
       - "¿Qué fracción de la fundamental es el tercer armónico de la triangular?"
     solucion: "Caen con 1/n²: tan pequeños que en escala lineal se confunden con el suelo. Hace falta la escala logarítmica."
 
-  - id: diagnostico
-    tipo: pregunta
-    titulo: "Diagnóstico por espectro"
-    texto: "Empareje lo que se ve en el espectro de una señal sucia con lo que indica."
-    libro: [164, 181]
-    emparejar:
-      - ["Armónicos de la fundamental", "Distorsión, una no linealidad"]
-      - ["Picos a frecuencias no relacionadas", "Interferencia"]
-      - ["Un fondo continuo", "Ruido"]
-      - ["Armónicos en una senoide del generador", "Distorsión del generador o del osciloscopio"]
-    exito: "Cada forma de onda tiene su firma espectral: el espectro dice de dónde viene el problema."
-    pistas:
-      - { texto: "Lo que guarda relación con la fundamental viene de la propia señal." }
-    escalera:
-      - "Una no linealidad crea múltiplos de la frecuencia que la atraviesa."
-    solucion: "Armónicos: distorsión. Picos no relacionados: interferencia. Fondo continuo: ruido. En una senoide: distorsión del equipo."
-
   - id: banco-fft
     tipo: banco
     titulo: "Compruébelo en el banco"
@@ -267,7 +280,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [161, 165, 168, 178]
+    libro: [161, 165, 168, 178, 164, 180, 181]
     ideas:
       - { titulo: "Cuadrada.", texto: "Solo impares, con 1/n: el tercero a −9,54 dB." }
       - { titulo: "Suavidad.", texto: "Cuanto más suave la forma, más deprisa caen los armónicos: la triangular, con 1/n²." }

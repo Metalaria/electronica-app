@@ -1,5 +1,8 @@
 # «Consolas por dentro» · Super Nintendo 1: la placa de un vistazo, sobre la foto NTSC del explorador (SNS-CPU-RGB-01,
 # Yaca2671, CC BY-SA 3.0). Fuentes: los datos de la consola (snes#n, scripts/consolas11.mjs) y el libro.
+# 1.2.1: el sonido y los chips por sus papeles se tocan en la foto (este, en orden); el reloj del SPC700 se escribe
+# (24,576 MHz ÷ 24). En la placa PAL desnuda se toca el sitio de la CPU.
+# Queda una pregunta: las dos PPU.
 leccion: consola-snes/snes-placa
 
 libro:
@@ -20,8 +23,12 @@ libro:
   "snes#1": "en esta cara no hay ninguna pieza montada"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    f_res: { sim: "f_{resonador}", nombre: "resonador del sonido", unidad: Hz, valor: 24576000 }
+    n_s: { sim: "n", nombre: "divisor del SPC700", unidad: "", valor: 24 }
+    f_nt: { sim: "f_{X1}", nombre: "cristal de una NTSC", unidad: Hz, valor: 21477000 }
+  calculos:
+    f_spc: { expr: "f_res/n_s", sim: "f_{SPC700}", nombre: "reloj del SPC700", unidad: Hz }
 
 tarjetas:
   - id: explore-chips
@@ -110,66 +117,78 @@ tarjetas:
     solucion: "Arriba a la derecha: las dos GoldStar, una al lado de la otra."
 
   - id: explore-sonido
-    tipo: explorar
+    tipo: tocar
     titulo: "El sonido, aparte"
-    texto: "A la izquierda de la ranura está el sonido: su propia CPU, su generador y su memoria. Tóquelos."
+    texto: "El sonido va aparte, con su propia CPU, su generador y su memoria. Toque los tres."
     libro: ["snes#31", "snes#32", "snes#33"]
-    requiere: { mover: [n-smp, n-dsp] }
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-smp, hotspot: n-smp, rotulo: "CPU de sonido (S-SMP)", texto: "La CPU del sonido. Habla con la CPU principal por cuatro puertos." }
-        - { id: n-dsp, hotspot: n-dsp, rotulo: "Generador de sonido (S-DSP)", texto: "Ocho voces de muestras leídas de la ARAM, con eco." }
-        - { id: n-aram, hotspot: n-aram, rotulo: "ARAM", texto: "La memoria del sonido: programa, muestras y eco." }
+        - { id: smp, hotspot: n-smp, rotulo: "Chip cuadrado, arriba en el centro" }
+        - { id: dsp, hotspot: n-dsp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: aram, hotspot: n-aram, rotulo: "Dos chips, a la izquierda de la ranura" }
+        - { id: vram, hotspot: n-vram, rotulo: "Dos chips iguales, arriba a la derecha" }
+        - { id: ppu2, hotspot: n-ppu2, rotulo: "Chip cuadrado, en el centro a la derecha" }
+    tocar:
+      bien: [smp, dsp, aram]
+      todas: true
+      porque:
+        vram: "Es la VRAM, la memoria de vídeo: la lee la PPU1."
+        ppu2: "Es la PPU2: mezcla las capas del vídeo."
+    exito: "El S-SMP, que habla con la CPU principal por cuatro puertos; el S-DSP, con ocho voces de muestras; y la ARAM, que se reparten los dos."
+    escalera:
+      - "Los tres están a la izquierda de la ranura del cartucho."
+    solucion: "S-SMP, S-DSP y ARAM, a la izquierda de la ranura."
 
   - id: reloj-sonido
-    tipo: predecir
+    tipo: leer
     titulo: "El reloj del sonido"
-    texto: "El sonido tiene su resonador de 24,576 MHz. ¿A qué frecuencia va el SPC700 del S-SMP?"
+    texto: "El sonido tiene su resonador de 24,576 MHz y el SPC700 del S-SMP lo divide entre 24. Escriba a qué frecuencia va."
     libro: ["snes#16", "snes#38"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
         - { id: n-smp, hotspot: n-smp, rotulo: "CPU de sonido (S-SMP)" }
-    opciones:
-      - texto: "1,024 MHz"
-        bien: true
-        porque: "El resonador se divide entre 24: 24,576 MHz ÷ 24 = 1,024 MHz."
-      - texto: "21,477 MHz"
-        porque: "Ese es el cristal del vídeo y de la CPU en una NTSC. El sonido no depende de él."
-      - texto: "24,576 MHz"
-        porque: "Es la frecuencia del resonador, antes de dividirla: el SPC700 va 24 veces más despacio."
+    leer:
+      objetivo: f_spc
+      unidad: Hz
+      tol: 0.01
+      rotulo: "Reloj del SPC700"
+      errores:
+        - { expr: "f_res", texto: "Es la frecuencia del resonador, antes de dividirla: el SPC700 va 24 veces más despacio." }
+        - { expr: "f_nt", texto: "Ese es el cristal del vídeo y de la CPU en una NTSC. El sonido no depende de él." }
+    exito: "1,024 MHz: el sonido lleva su propio reloj, aparte del de la CPU."
     escalera:
-      - "El SPC700 no va al ritmo del resonador: lo divide."
       - "Divida 24,576 MHz entre 24."
     solucion: "24,576 MHz ÷ 24 = 1,024 MHz."
+    comprobar:
+      - { f_spc: 1024000 }
 
   - id: empareje-chips
-    tipo: pregunta
+    tipo: tocar
+    fase: "Ordene"
     titulo: "Cada chip, su papel"
-    texto: "Empareje la marca que se lee en la foto con lo que hace."
+    texto: "Toque, por este orden: el 65C816, la memoria de vídeo, el que saca el S-vídeo y el compuesto, y el chip de bloqueo."
     libro: ["snes#26", "snes#29", "snes#36", "snes#37"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-cpu, hotspot: n-cpu, rotulo: "S-CPU B" }
-        - { id: n-vram, hotspot: n-vram, rotulo: "GoldStar GM76C256" }
-        - { id: n-rgb, hotspot: n-rgb, rotulo: "S-RGB" }
-        - { id: n-cic, hotspot: n-cic, rotulo: "F411A" }
-    emparejar:
-      - ["S-CPU B", "El 65C816 que gobierna los dos buses"]
-      - ["GoldStar GM76C256", "La memoria de vídeo"]
-      - ["S-RGB", "Del RGB saca el S-vídeo y el compuesto"]
-      - ["F411A", "El chip de bloqueo de las NTSC"]
-    exito: "Cada marca legible dice qué chip es y, con él, qué papel tiene en la placa."
+        - { id: cpu, hotspot: n-cpu, rotulo: "Chip cuadrado, abajo a la derecha" }
+        - { id: vram, hotspot: n-vram, rotulo: "Dos chips iguales, arriba a la derecha" }
+        - { id: rgb, hotspot: n-rgb, rotulo: "Chip pequeño, arriba a la derecha" }
+        - { id: cic, hotspot: n-cic, rotulo: "Chip pequeño, arriba del todo a la derecha" }
+    tocar:
+      bien: [cpu, vram, rgb, cic]
+      orden: true
     pistas:
-      - { texto: "Toque cada zona de la foto y compare su marca con la ficha del explorador." }
+      - { texto: "Lea las marcas: S-CPU B, GoldStar GM76C256, S-RGB y F411A." }
+    exito: "S-CPU B, las GoldStar GM76C256, el S-RGB y el F411A: todas las NTSC llevan el F411 y las PAL el F413."
     escalera:
-      - "Toque cada zona de la foto y lea su ficha."
-    solucion: "S-CPU B: la CPU. GoldStar: la VRAM. S-RGB: el codificador de vídeo. F411A: el CIC."
+      - "Toque cada zona en la primera tarjeta y lea su ficha."
+    solucion: "La CPU, la VRAM, el S-RGB y el CIC."
 
   - id: toque-ntsc
     tipo: tocar
@@ -194,26 +213,28 @@ tarjetas:
     solucion: "El cristal X1 (D21G4), abajo a la derecha: 21,477 MHz, el reloj maestro NTSC."
 
   - id: placa-desnuda
-    tipo: pregunta
+    tipo: tocar
     titulo: "La otra foto"
-    texto: "El explorador tiene también la placa PAL del esquema. ¿Qué se ve en su cara de componentes?"
-    libro: ["snes#1"]
+    texto: "La placa PAL del esquema está desnuda: en su cara de componentes no hay ninguna pieza montada. Toque el sitio de la CPU."
+    libro: ["snes#1", "snes#26"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: cara-a }
       zonas:
-        - { id: cpu, hotspot: cpu, rotulo: "Sitio de la CPU (U1)" }
-    opciones:
-      - texto: "Los pads y la serigrafía: la placa está desnuda."
-        bien: true
-        porque: "Es un escaneo de la placa sin ninguna pieza: cada recuadro marca dónde va una pieza, no la pieza."
-      - texto: "Los mismos chips que en la foto NTSC."
-        porque: "En esa cara no hay ninguna pieza montada: se ven los sitios de los chips, no los chips."
-      - texto: "Solo las resistencias y los condensadores pequeños."
-        porque: "Esos están en la otra cara, la de soldadura. La de componentes, en esa foto, no tiene ninguna pieza."
+        - { id: cpu, hotspot: cpu, rotulo: "Recuadro grande, abajo a la derecha" }
+        - { id: ppu1, hotspot: ppu1, rotulo: "Recuadro grande, en el centro a la derecha" }
+        - { id: ppu2, hotspot: ppu2, rotulo: "Recuadro grande, en el centro" }
+        - { id: wram, hotspot: wram, rotulo: "Recuadro alargado, abajo en el centro" }
+    tocar:
+      bien: [cpu]
+      porque:
+        ppu1: "Es el sitio de la PPU1, la que lee la memoria de vídeo."
+        ppu2: "Es el sitio de la PPU2, la que mezcla las capas."
+        wram: "Es el sitio de la WRAM, la memoria de trabajo."
+    exito: "U1: se ven los pads y la serigrafía, no el chip. Cada recuadro marca dónde va una pieza."
     escalera:
-      - "Mire la foto: ¿hay algún chip negro?"
-    solucion: "Ninguna pieza: se ven los pads y la serigrafía (U1, U2…)."
+      - "Está donde en la foto NTSC está la CPU: abajo a la derecha, junto a la WRAM."
+    solucion: "El recuadro de abajo a la derecha: el sitio de U1."
 
   - id: resumen
     tipo: resumen

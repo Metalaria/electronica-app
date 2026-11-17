@@ -10,6 +10,10 @@
 #   margen (bloque 516).
 # - 37.C: l = t_r·v/2 con v = 165 mm/ns (bloques 530 y 533): 17 mm con 0,2 ns.
 # Pasos prácticos: «diseno» de la red en L con valores E12 y tolerancias, y «simular» el alcance con 20 dB de margen.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se baja la antena hasta dejar menos de 20 MHz de banda; se
+# marca la antena que impone Q = 7; la banda con 1 Ω, el alcance con tres muros y la longitud crítica del flanco se
+# calculan («simular» con los errores típicos). Quedan dos preguntas de opciones (la ganancia de antena y el criterio) y
+# los remedios, por emparejar.
 leccion: cap36/sec-36.13
 
 libro:
@@ -71,7 +75,7 @@ tarjetas:
   - id: explore-banda
     tipo: explorar
     titulo: "37.A: adaptar y quedarse sin banda"
-    texto: "Red en L de 50 Ω a la antena, calculada para 100 MHz. Baje la resistencia de la antena y mire la banda de 1 dB."
+    texto: "Red en L de 50 Ω a la antena, calculada para 100 MHz. Baje la antena hasta dejar menos de 20 MHz de banda de 1 dB."
     libro: [493, 495, 498, 503, 504]
     widget:
       tipo: grafica
@@ -85,29 +89,50 @@ tarjetas:
         - { valor: Q_d, rotulo: "Q = {{Q_d}}" }
       mandos:
         - { valor: R_d, lista: [10, 5, 1], rotulo: "Antena, R_{L}" }
-    requiere: { mover: [R_d] }
+    inicio: { R_d: 10 }
+    objetivo:
+      condiciones:
+        - { valor: B_d, max: 20000000, rotulo: "Banda: {{B_d}}" }
+      logrado: "Con {{R_d}}, Q = {{Q_d}} y solo {{B_d}} de banda: adaptar 50 a 1 Ω deja un 14 %."
+      pistas:
+        - { texto: "Aún queda mucha banda: baje más la antena." }
+    escalera:
+      - "Cuanto mayor el salto de impedancias, mayor Q y menos banda."
+    solucion: "Antena de 1 Ω: Q = 7 y 14,3 MHz."
+    comprobar:
+      - { con: { R_d: 1 }, Q_d: 7, B_d: 14286000, tol: 0.001 }
+      - { con: { R_d: 10 }, Q_d: 2, B_d: 50000000, tol: 0.001 }
 
   - id: formula-q
-    tipo: formula
+    tipo: marcar
     titulo: "El Q que impone el salto"
-    texto: "El Q de una red en L no se elige: lo impone la relación de impedancias."
+    texto: "El Q de una red en L no se elige: Q = √(50/R_{L} − 1). Marque la antena que obliga a Q = 7."
     libro: [498, 499, 501, 502]
-    ec: 499
-    sustitucion: "√(50/{{R_d}} − 1) = {{Q_d}}"
     widget:
       tipo: grafica
       x: { id: r, min: 0.5, max: 25, unidad: Ω, rotulo: "R_{L}", escala: log }
       y: { min: 0, max: 10, unidad: "", rotulo: "Q" }
       curvas:
         - { expr: "sqrt(50/r - 1)", color: naranja, rotulo: "Q" }
-      marcas:
-        - { x: "R_d", y: "Q_d", rotulo: "Q = {{Q_d}}" }
-      lectura: { valor: Q_d, rotulo: "Q" }
-      datos:
-        - { valor: L_d, rotulo: "L = {{L_d}}" }
-        - { valor: C_d, rotulo: "C = {{C_d}}" }
-      mandos:
-        - { valor: R_d, lista: [10, 5, 1], rotulo: "Antena, R_{L}" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "1"
+      tol: 0.05
+      inicio: { x: 20, y: 1 }
+      rotulo: "Q = 7"
+      pasos: 150
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1 }, texto: "Ahí el Q es menor: el salto debe ser mayor." }
+      - { texto: "Ahí el Q es mayor: menos salto." }
+    exito: "1 Ω: un salto de cincuenta veces. Con 10 Ω, Q = 2, L = 31,8 nH y C = 63,7 pF."
+    escalera:
+      - "50/R_{L} − 1 tiene que valer Q²."
+    solucion: "R_{L} = 1 Ω."
+    comprobar:
+      - { con: { R_d: 1 }, Q_d: 7 }
+      - { con: { R_d: 10 }, Q_d: 2, L_d: 31.83e-9, C_d: 63.66e-12 }
 
   - id: disene-red
     tipo: diseno
@@ -146,30 +171,24 @@ tarjetas:
       - { con: { L_e: 33e-9, C_e: 68e-12 }, S_e: 1.21, tol: 0.01 }
 
   - id: predecir-un-ohmio
-    tipo: predecir
+    tipo: simular
     titulo: "Adaptar 50 a 1 Ω"
-    texto: "Con la misma red en L, la antena baja a 1 Ω. ¿Qué banda queda a 100 MHz?"
+    texto: "Con la misma red en L, la antena baja a 1 Ω. ¿Qué banda de 1 dB queda a 100 MHz?"
     libro: [504, 505]
     fijar: { R_d: 1 }
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 50000000, max: 150000000, unidad: Hz, rotulo: "f" }
-      y: { min: 0, max: 6, unidad: dB, rotulo: "pérdida" }
-      curvas:
-        - { expr: "-10*log10(4*50*R_d/(R_d^2 + (2*pi*nu*L_d)^2)/((1 + 50*R_d/(R_d^2 + (2*pi*nu*L_d)^2))^2 + (50*(2*pi*nu*C_d - 2*pi*nu*L_d/(R_d^2 + (2*pi*nu*L_d)^2)))^2))", color: naranja, rotulo: "pérdida por desadaptación" }
-      lectura: { valor: B_d, rotulo: "Banda de 1 dB" }
-      ocultar: true
-    opciones:
-      - texto: "14,3 MHz: Q = 7"
-        bien: true
-        porque: "Un 14 % de banda: en muchas aplicaciones, inservible."
-      - texto: "50 MHz, como con 10 Ω"
-        porque: "La banda depende del salto: con 1 Ω el Q sube de 2 a 7."
-      - texto: "Más banda, porque la antena es más baja"
-        porque: "Al revés: cuanto mayor la transformación, más estrecha la banda."
+    simular:
+      objetivo: B_d
+      unidad: Hz
+      tol: 0.03
+      rotulo: "Banda de 1 dB"
+      errores:
+        - { expr: "f_0/2", texto: "Esa es la banda con 10 Ω: con 1 Ω el Q sube de 2 a 7." }
+        - { expr: "f_0/49", texto: "Ha dividido por 50/R_{L} − 1; falta la raíz para tener Q." }
+    exito: "14,3 MHz: un 14 % de banda, inservible en muchas aplicaciones."
     escalera:
-      - "Q = √(50/1 − 1)."
-    solucion: "Q = 7 y banda ≈ 100 MHz/7 = 14,3 MHz."
+      - "Q = √(50/1 − 1) = 7."
+      - "Banda ≈ f₀/Q."
+    solucion: "100 MHz/7 = 14,3 MHz."
     comprobar:
       - { Q_d: 7, B_d: 14286000, tol: 0.001 }
 
@@ -218,30 +237,24 @@ tarjetas:
       - { L_ad: 94, d_b: 499, d_0: 4986, d_10: 1577, tol: 0.003 }
 
   - id: predecir-muros
-    tipo: predecir
+    tipo: simular
     titulo: "Tres muros"
     texto: "El mismo enlace, con 20 dB de margen, atraviesa 3 muros de 12 dB cada uno. ¿Qué alcance queda?"
     libro: [519, 520]
     fijar: { M_b: 20, O_b: 36 }
-    widget:
-      tipo: grafica
-      x: { id: o, min: 0, max: 40, unidad: dB, rotulo: "obstáculos" }
-      y: { min: 1, max: 1000, unidad: m, rotulo: "d", escala: log }
-      curvas:
-        - { expr: "1000*10^((94 - o - 32.44 - 20*log10(2400))/20)", color: naranja, rotulo: "alcance" }
-      lectura: { valor: d_b, rotulo: "Alcance" }
-      ocultar: true
-    opciones:
-      - texto: "Unos 8 m"
-        bien: true
-        porque: "36 dB dividen el alcance por 63: de 499 m a unos 8."
-      - texto: "Casi los mismos 499 m: tres muros apenas restan"
-        porque: "Restan 36 dB, y en espacio libre eso divide la distancia por 63."
-      - texto: "Cero: no pasa"
-        porque: "Pasa, pero muy poco: unos 8 m."
+    simular:
+      objetivo: d_b
+      unidad: m
+      tol: 0.05
+      rotulo: "Alcance tras los muros"
+      errores:
+        - { expr: "d_0/10", texto: "Ese es el alcance sin muros: restan 36 dB." }
+        - { expr: "d_0/10/3", texto: "Los decibelios no dividen la distancia por el número de muros: 36 dB la dividen por 63." }
+    exito: "Unos 8 m: de 4986 metros teóricos a 8 reales."
     escalera:
+      - "Pérdida admisible: 114 − 20 − 36 = 58 dB."
       - "Cada 20 dB dividen por diez; 36 dB, por algo más de sesenta."
-    solucion: "Unos 8 m: el margen y los obstáculos dominan."
+    solucion: "Unos 8 m."
     comprobar:
       - { L_ad: 58, d_b: 7.9, tol: 0.02 }
       - { con: { O_b: 0 }, d_b: 499, tol: 0.003 }
@@ -270,30 +283,19 @@ tarjetas:
     solucion: "3 dB en cada extremo son 6 dB al presupuesto."
 
   - id: estime-flanco
-    tipo: pregunta
+    tipo: simular
     titulo: "37.C: cuándo una pista deja de ser un cable"
     texto: "Flancos de 0,2 ns en microstrip sobre FR4, a 165 mm/ns. Con ida y vuelta igual al tiempo de subida, ¿cuál es la longitud crítica?"
     libro: [525, 527, 530, 534]
     fijar: { t_f: 0.0000000002 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0.0000000001, max: 0.000000002, unidad: s, rotulo: "t_{r}" }
-      y: { min: 0, max: 0.2, unidad: m, rotulo: "l" }
-      curvas:
-        - { expr: "t*165000000/2", color: naranja, rotulo: "l = t_{r}·v/2" }
-    estimar:
-      objetivo: "l_f"
+    simular:
+      objetivo: l_f
       unidad: m
-      min: 0
-      max: 0.1
-      paso: 0.001
-      inicio: 0.08
       tol: 0.05
       rotulo: "Longitud crítica"
+      errores:
+        - { expr: "t_f*165000000", texto: "Eso recorre el flanco; hay que ir y volver: entre dos." }
     exito: "17 mm: diez veces menos que los 165 mm de la señal de 100 MHz."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0174 }, texto: "Demasiado: el flanco recorre 33 mm, y hay que ir y volver." }
-      - { texto: "Demasiado poco: 0,2 ns × 165 mm/ns, entre dos." }
     escalera:
       - "l = t_{r}·v/2."
     solucion: "0,2 × 165 / 2 = 16,5 mm: unos 17 mm."

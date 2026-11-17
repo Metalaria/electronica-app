@@ -3,9 +3,12 @@
 # 0 a 3 V del ejercicio 21.2. La sonda de 10 MΩ en paralelo con C se dibuja con su equivalente de Thévenin exacto: la
 # fuente baja a V·10/11 y la resistencia a R ‖ 10 MΩ (lo que dice el bloque 52). La cuadrada de 1 kHz y 10 kHz de la
 # gráfica de frecuencias es ilustrativa (el libro: «frecuencia demasiado alta»); la respuesta es la estacionaria.
+# 1.2.1 (aprender haciendo): calcular τ, marcar el 63,2 % y el 95 %, leer la tensión a los 2 ms, calcular el tiempo de
+# subida, conectar la sonda, subir la frecuencia, dibujar y el banco. Dos preguntas: por qué cambia τ y el integrador.
 leccion: cap22/sec-22.2
 
 libro:
+  46: "Los cinco valores de referencia, que conviene tener"
   38: "Medir la carga de un condensador es la forma más directa de comprobar la exponencial"
   40: "Una resistencia en serie con un condensador, alimentados por una onda cuadrada del generador"
   41: "Con R = 10 kΩ y C = 100 nF, la constante de tiempo es:"
@@ -51,6 +54,7 @@ modelo:
     v_hi: { expr: "V_c/(1 + e_h)", sim: "v_{máx}", nombre: "máximo estacionario", unidad: V }
     v_lo: { expr: "v_hi*e_h", sim: "v_{mín}", nombre: "mínimo estacionario", unidad: V }
     v_pp: { expr: "v_hi - v_lo", sim: "Δv", nombre: "excursión del condensador", unidad: V }
+    v_2ms: { expr: "V_c*(1 - exp(-0.002/tau_c))", sim: "v_{C}", nombre: "tensión a los 2 ms", unidad: V }
 
 tarjetas:
   - id: explore-carga
@@ -77,127 +81,130 @@ tarjetas:
     requiere: { mover: [c_modo] }
 
   - id: formula-tau
-    tipo: formula
+    tipo: simular
     titulo: "La constante de tiempo"
-    texto: "Con 10 kΩ y 100 nF, τ = 1 ms. Una cuadrada de 100 Hz deja 5 ms por semiciclo: cinco constantes."
+    texto: "El RC de la práctica: 10 kΩ y 100 nF. Calcule su constante de tiempo."
     libro: [41, 42, 43]
     fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
-    ec: 42
-    sustitucion: "{{R_c}} · {{C_c}} = {{tau_c}}"
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
-      grafica:
-        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
-        marcas:
-          - { x: "tau_ef", y: "v_tau", rotulo: "τ" }
     comprobar:
       - { tau_c: 0.001 }
+    simular:
+      objetivo: tau_c
+      unidad: s
+      tol: 0.02
+      rotulo: "τ"
+      errores:
+        - { expr: "R_c*100e-6", texto: "100 nF son 100·10⁻⁹ F, no 100·10⁻⁶." }
+        - { expr: "1/(R_c*C_c)", texto: "Eso es el inverso de τ." }
+    exito: "1 ms: una cuadrada de 100 Hz deja 5 ms por semiciclo, cinco constantes."
+    escalera:
+      - "τ = R · C."
+    solucion: "10 kΩ · 100 nF = 1 ms."
 
   - id: prediga-tau
-    tipo: predecir
+    tipo: marcar
     titulo: "Prediga en un τ"
-    texto: "El condensador se carga desde cero. ¿Qué parte de la tensión final tiene al cabo de una constante de tiempo?"
+    texto: "En una constante de tiempo la carga llega al 63,2 % de la final. Marque ese instante en la curva."
     libro: [45]
     fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: v_tau, rotulo: "Tensión en un τ" }
       grafica:
         x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
         y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
-      ocultar: true
-    opciones:
-      - texto: "El 63,2 %"
-        bien: true
-        porque: "Es 1 − e⁻¹: en un τ queda por recorrer e⁻¹ del camino. Medir ese tiempo es la comprobación central."
-      - texto: "La mitad"
-        porque: "La mitad se alcanza antes de τ. En un τ ya va por el 63,2 %."
-      - texto: "Toda la tensión"
-        porque: "La exponencial no llega nunca del todo: con cinco constantes se da por terminada."
+    marcar:
+      modo: x
+      curva: 0
+      x: "tau_c"
+      tol: 0.08
+      inicio: { x: 0.004, y: 1 }
+      rotulo: "Un τ"
+    pistas:
+      - { cuando: { valor: marca_x, menor: 0.001 }, texto: "Ahí aún no ha llegado al 63,2 %: más a la derecha." }
+      - { texto: "Ahí ya ha pasado del 63,2 %: más a la izquierda." }
+    exito: "En una constante de tiempo, el 63,2 % de la final: es la comprobación central de la práctica."
     escalera:
       - "Tras un τ, lo que falta por cargar se ha reducido en un factor e."
     solucion: "El 63,2 % de la tensión final."
 
   - id: tabla-tau
-    tipo: pregunta
+    tipo: marcar
     titulo: "Los valores de referencia"
-    texto: "Empareje cada tiempo con la tensión alcanzada, en porcentaje de la final."
-    libro: [47, 48]
-    emparejar:
-      - ["1τ", "63,2 %"]
-      - ["2τ", "86,5 %"]
-      - ["3τ", "95,0 %"]
-      - ["5τ", "99,3 %"]
-    exito: "Con cinco constantes, el 99,3 %: por eso se considera terminado el transitorio."
+    texto: "1τ es el 63,2 %; 2τ, el 86,5 %. Marque cuándo llega al 95,0 % de la final."
+    libro: [46, 47, 48]
+    fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "3*tau_c"
+      tol: 0.06
+      inicio: { x: 0.001, y: 1 }
+      rotulo: "El 95 %"
     pistas:
-      - { texto: "Cada constante de tiempo más, lo que falta por cargar se divide por e." }
+      - { cuando: { valor: marca_x, menor: 0.003 }, texto: "Ahí aún no ha llegado al 95,0 %: más a la derecha." }
+      - { texto: "Ahí ya ha pasado del 95,0 %: más a la izquierda." }
+    exito: "3τ: 95,0 %. Con cinco constantes, 99,3 %, y el transitorio se da por terminado."
     escalera:
-      - "La primera, 63,2 %, ya la conoce: la cifra sube cada vez menos."
+      - "Cada constante de tiempo más, lo que falta por cargar se divide por e."
     solucion: "1τ: 63,2 %; 2τ: 86,5 %; 3τ: 95,0 %; 5τ: 99,3 %."
+    comprobar:
+      - { V_c: 3, tau_c: 0.001 }
 
   - id: estime-2ms
-    tipo: pregunta
+    tipo: leer
     titulo: "Dos milisegundos después"
-    texto: "Una cuadrada de 0 a 3 V carga el RC de 1 ms desde cero. ¿Qué tensión tiene el condensador 2 ms después del flanco?"
+    texto: "Una cuadrada de 0 a 3 V carga el RC de 1 ms desde cero. Lea la tensión del condensador 2 ms después del flanco."
     libro: [42, 47, "cap22#370"]
     fijar: { V_c: 3, R_c: 10000, C_c: 100e-9 }
-    estimar:
-      objetivo: "V_c*(1 - exp(-0.002/tau_c))"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}" }
+      mandos: []
+    exito: "2 ms son dos constantes: el 86,5 % de 3 V, unos 2,59 V."
+    leer:
+      objetivo: v_2ms
       unidad: V
-      min: 0
-      max: 3
-      paso: 0.01
-      inicio: 1
       tol: 0.03
       rotulo: "v_{C} a los 2 ms"
-    exito: "2 ms son dos constantes: el 86,5 % de 3 V, unos 2,59 V."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.7 }, texto: "Se ha pasado: en 2τ aún no ha llegado a 3 V; va por el 86,5 %." }
-      - { texto: "Se ha quedado corto: 2 ms son dos constantes de tiempo, no una." }
+      errores:
+        - { expr: "V_c*0.632", texto: "Esa es la de un τ: 2 ms son dos constantes." }
+        - { expr: "V_c", texto: "En 2τ aún no ha llegado a 3 V: va por el 86,5 %." }
     escalera:
       - "¿Cuántas constantes de tiempo son 2 ms?"
       - "Con 2τ se alcanza el 86,5 % de la tensión final."
     solucion: "v = 3 · (1 − e⁻²) ≈ 2,59 V, el 86,5 % de la tabla."
     comprobar:
-      - { con: { V_c: 3 }, V_c: 3 }
+      - { v_2ms: 2.59, tol: 0.01 }
 
   - id: tiempo-subida
-    tipo: pregunta
+    tipo: simular
     titulo: "Del 10 al 90 %"
-    texto: "Los osciloscopios miden el tiempo de subida entre el 10 y el 90 % del salto. ¿Cuánto vale en un RC?"
+    texto: "Los osciloscopios miden el tiempo de subida entre el 10 y el 90 % del salto. Calcule el del RC de 1 ms."
     libro: [61]
     fijar: { R_c: 10000, C_c: 100e-9, sonda: 0, c_modo: 1 }
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_ef, r: R_ef, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
-      grafica:
-        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 3.3, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_ef))", color: naranja, rotulo: "v_{C}", mide: vc }
-        marcas:
-          - { x: "t_10", y: "v_10", rotulo: "10 %" }
-          - { x: "t_90", y: "v_90", rotulo: "90 %" }
-    opciones:
-      - texto: "2,2·τ"
-        bien: true
-        porque: "Del 10 % al 90 % del salto pasan 2,2 constantes de tiempo: con 1 ms, unos 2,2 ms."
-      - texto: "τ"
-        porque: "Es el error típico de la práctica: τ es la llegada al 63,2 %, no el tiempo del 10 al 90 %."
-      - texto: "5·τ"
-        porque: "Cinco constantes es cuando se da por terminado el transitorio, no el tiempo de subida."
+    simular:
+      objetivo: t_r
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo de subida"
+      errores:
+        - { expr: "tau_c", texto: "Eso es τ: del 10 al 90 % tarda más." }
+        - { expr: "5*tau_c", texto: "Eso es lo que tarda en terminar, no el 10–90 %." }
+    exito: "2,2·τ, unos 2,2 ms: no hay que confundirlo con la constante."
     escalera:
       - "Mire dónde caen las marcas del 10 % y del 90 % en la gráfica."
     solucion: "2,2·τ: con τ = 1 ms, unos 2,2 ms."
@@ -205,7 +212,7 @@ tarjetas:
       - { t_r: 0.0022, tol: 0.01 }
 
   - id: sonda-carga
-    tipo: sorpresa
+    tipo: explorar
     titulo: "La sonda en un RC de 1 MΩ"
     texto: "Con R = 1 MΩ, τ = 100 ms. Conecte la sonda de 10 MΩ en paralelo con el condensador."
     libro: [51, 52]
@@ -226,7 +233,15 @@ tarjetas:
           - { expr: "V_c*(1 - exp(-t/tau_c))", color: tinta, rotulo: "sin sonda", discontinua: true }
       mandos:
         - { valor: sonda, tipo: conectar, boton: "Conectar la sonda (10 MΩ)" }
-    requiere: { conectar: [sonda] }
+    objetivo:
+      condiciones:
+        - { valor: sonda, min: 1, rotulo: "Sonda conectada" }
+      logrado: "Con la sonda, la tensión final baja al 90,9 % y la constante a unos 91 ms: medir modifica lo medido."
+      pistas:
+        - { texto: "Conecte la sonda." }
+    escalera:
+      - "Sus 10 MΩ quedan en paralelo con el condensador."
+    solucion: "Conectarla."
     comprobar:
       - { tau_c: 0.1 }
       - { con: { sonda: 1 }, tau_ef: 0.091, fin_pct: 90.9, tol: 0.005 }
@@ -262,7 +277,7 @@ tarjetas:
   - id: frecuencia-alta
     tipo: explorar
     titulo: "Si la cuadrada va demasiado deprisa"
-    texto: "Suba la frecuencia de la cuadrada. El condensador ya no llega a cargarse."
+    texto: "Suba la frecuencia de la cuadrada. Súbala hasta que el condensador apenas se mueva."
     libro: [43, 59]
     fijar: { V_c: 3, R_c: 10000, C_c: 100e-9 }
     inicio: { f_q: 100 }
@@ -276,7 +291,15 @@ tarjetas:
       lectura: { valor: v_pp, rotulo: "Excursión del condensador" }
       mandos:
         - { valor: f_q, lista: [100, 1000, 10000], rotulo: "Frecuencia" }
-    requiere: { mover: [f_q] }
+    objetivo:
+      condiciones:
+        - { valor: f_q, min: 10000, rotulo: "Frecuencia: {{f_q}}" }
+      logrado: "Con semiciclos mucho más cortos que τ, el condensador no llega a cargarse: queda una triangular pequeña."
+      pistas:
+        - { texto: "Siga subiendo la frecuencia." }
+    escalera:
+      - "Compare el semiciclo con τ."
+    solucion: "La frecuencia más alta."
 
   - id: integrador
     tipo: pregunta

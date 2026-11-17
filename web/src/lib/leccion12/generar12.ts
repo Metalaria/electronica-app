@@ -14,6 +14,10 @@ import { errorRelativo } from './prediccion';
 import { NO_DETERMINISTA, rellenarPlantilla, unirClausulas, type Ejecucion } from './sql/ejecutar';
 import { MAX_MUESTRAS, MAX_TOLERANCIAS, analizarDiseno } from './tolerancias';
 import { actividadDigitalDe, type ContextoDigital } from './digital/generar-digital';
+// 1.2.1 (piloto121): the steps answered by doing on the live widget (lib/leccion12/hacer/)
+import { actividadHacerDe } from './hacer/generar-hacer';
+import type { DefinicionEsquema } from '../leccion11/esquemas/tipos';
+import type { ComprobacionSpice } from '../leccion11/spice';
 import { TIPOS_ACTIVIDAD, type Actividad12, type Ajuste, type Averia, type Banco, type Dibujar, type Diseno, type ErrorTipico, type Fallo, type Simular, type Sonda, type Sql, type TipoActividad } from './tipos';
 
 export const MAX_PALABRAS_EXPLICACION = 40;
@@ -31,6 +35,10 @@ export const FASE12: Record<TipoActividad, string> = {
   sql: 'SQL',
   tocar: 'Toque',
   tabla: 'Tabla de verdad',
+  medir: 'Mida',
+  elegir: 'Elija en el esquema',
+  marcar: 'Marque en la gráfica',
+  leer: 'Lea y escriba',
 };
 
 export function esTipoActividad(x: unknown): x is TipoActividad {
@@ -46,6 +54,10 @@ export const VARIABLES_PISTA: Partial<Record<TipoActividad, string[]>> = {
   tabla: ['error', 'filas_mal'],
   averia: ['medidas'],
   diseno: ['puertas'],
+  // (1.2.1: what the reader did — the marker's point, the value typed, the zones chosen)
+  marcar: ['marca_x', 'marca_y'],
+  leer: ['lectura'],
+  elegir: ['mal', 'faltan'],
 };
 
 /** What the generator gives the step type's checks: the card as built so far and its helpers. */
@@ -72,6 +84,8 @@ export interface Contexto12 {
   digital?: ContextoDigital;
   /** The values the card's «lista» controls move (motor12e: a catalogue, not an E series). */
   listas?: string[];
+  /** 1.2.1: the circuit widget's schematic (its netlist, for the instrument and the zones of «elegir»). */
+  esquema?: DefinicionEsquema;
 }
 
 export interface Resultado12 {
@@ -82,6 +96,8 @@ export interface Resultado12 {
   cifras: number[];
   /** More states to check the circuit in with ngspice (each fault). */
   estados: Valores[];
+  /** 1.2.1 (motor121): ngspice checks of what the card's instrument reads (`donde` without the card's place). */
+  spice?: ComprobacionSpice[];
 }
 
 const esObjeto = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -104,6 +120,10 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
   }
   if (tipo === 'tocar' || tipo === 'tabla') {
     e(`«${tipo}» necesita su widget (figura o logica)`);
+    return out;
+  }
+  if (tipo === 'medir' || tipo === 'elegir' || tipo === 'marcar' || tipo === 'leer') {
+    actividadHacerDe(tipo, x, c, out);
     return out;
   }
   const claves = (permitidas: string[], d = tipo) => {
@@ -178,14 +198,24 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
       // (motor12e, autor-taller-E, autor-potencia-A: a «lista» control is a catalogue of its own — heatsinks)
       if (!c.mandos.some((m) => m.serie || c.listas?.includes(m.valor))) c.aviso('«diseno» sin un mando de serie E6/E12/E24 ni de «lista»: ¿no se eligen valores normalizados?');
       const tol: Record<string, number> = {};
-      if (!esObjeto(x.tolerancias) || !Object.keys(x.tolerancias).length) e('«diseno.tolerancias»: { valor: tolerancia } (R_1: 0.05 = ± 5 %)');
+      // (motor121: or an interval, «beta: { min: 100, max: 300 }», for a value that is not «nominal ± x %»)
+      const intervalos: Record<string, { min: number; max: number }> = {};
+      if (!esObjeto(x.tolerancias) || !Object.keys(x.tolerancias).length) e('«diseno.tolerancias»: { valor: tolerancia } (R_1: 0.05 = ± 5 %, o beta: { min: 100, max: 300 })');
       else
         for (const [k, v] of Object.entries(x.tolerancias)) {
           if (!(k in c.mc.modelo.valores)) e(`«diseno.tolerancias.${k}»: no es un valor del modelo`);
-          else if (!esNumero(v) || !(v > 0 && v < 0.5)) e(`«diseno.tolerancias.${k}»: una fracción (0.05 = ± 5 %)`);
+          else if (esObjeto(v)) {
+            if (!esNumero(v.min) || !esNumero(v.max) || !(v.min < v.max) || Object.keys(v).some((q) => q !== 'min' && q !== 'max')) e(`«diseno.tolerancias.${k}»: un intervalo { min, max } con min < max`);
+            else {
+              intervalos[k] = { min: v.min, max: v.max };
+              out.cifras.push(v.min, v.max);
+              const nom = c.inicial[k] ?? c.mc.modelo.valores[k]?.valor;
+              if (nom != null && (nom < v.min || nom > v.max)) c.aviso(`«diseno.tolerancias.${k}»: el valor nominal (${nom}) cae fuera del intervalo de ${v.min} a ${v.max}`);
+            }
+          } else if (!esNumero(v) || !(v > 0 && v < 0.5)) e(`«diseno.tolerancias.${k}»: una fracción (0.05 = ± 5 %) o un intervalo { min, max }`);
           else tol[k] = v;
         }
-      if (Object.keys(tol).length > MAX_TOLERANCIAS) e(`«diseno.tolerancias»: como mucho ${MAX_TOLERANCIAS}`);
+      if (Object.keys(tol).length + Object.keys(intervalos).length > MAX_TOLERANCIAS) e(`«diseno.tolerancias»: como mucho ${MAX_TOLERANCIAS}`);
       const metodo = x.metodo === 'montecarlo' ? 'montecarlo' : 'esquinas';
       if (x.metodo != null && x.metodo !== 'esquinas' && x.metodo !== 'montecarlo') e('«diseno.metodo»: esquinas o montecarlo');
       const muestras = esNumero(x.muestras) ? Math.round(x.muestras) : 200;
@@ -194,7 +224,7 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
       if (x.exigir === 'nominal' || x.exigir === 'todas') exigir = x.exigir;
       else if (esNumero(x.exigir) && x.exigir > 0 && x.exigir <= 1) exigir = x.exigir;
       else if (x.exigir != null) e('«diseno.exigir»: nominal, todas o una fracción de placas (0.95)');
-      const d: Diseno = { tipo, tolerancias: tol, metodo, muestras, semilla: semillaDe(c.semilla), exigir };
+      const d: Diseno = { tipo, tolerancias: tol, ...(Object.keys(intervalos).length ? { intervalos } : {}), metodo, muestras, semilla: semillaDe(c.semilla), exigir };
       const st = explicacion(x.si_tolerancias, 'diseno.si_tolerancias', false);
       if (st) d.siTolerancias = st;
       // reachable with the tolerances, and not passing at the start

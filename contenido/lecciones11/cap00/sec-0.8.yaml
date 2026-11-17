@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 0.8 «Ecuaciones Diferenciales y Circuitos» (cap00): la descarga de un RC, que la ecuación
 # impone como exponencial; la respuesta con fuente; el RLC y sus tres respuestas según ζ (oscila o no), el método
 # general y lo que el orden dice antes de resolver. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): predecir lo que queda a 2 ms, buscar 1,84 V, hacer la
+# curva de carga, calcular ζ, buscar la que más oscila y el reto del crítico; se elige si un RC puede oscilar. Por
+# qué una exponencial y el método quedan en el resumen.
 leccion: cap00/sec-0.8
 
 libro:
@@ -36,11 +39,31 @@ modelo:
     s_sub: { expr: "min(max((1 - zeta)*1000000, 0), 1)", nombre: "es subamortiguada", unidad: "" }
 
 tarjetas:
+  - id: prediga-2ms
+    tipo: simular
+    titulo: "Prediga"
+    texto: "R·C = 1 ms y 5 V iniciales. ¿Cuánta tensión queda a los 2 ms?"
+    libro: [117]
+    fijar: { V0: 5, RC: 0.001, t_d: 0.002 }
+    simular:
+      objetivo: v_d
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión a los 2 ms"
+      errores:
+        - { razon: { min: 2.6, max: 2.8 }, texto: "Eso es lo que queda a 1 ms, una sola constante de tiempo: 5·e^{−1}." }
+    exito: "5·e^{−2} = 0,677 V: dos constantes de tiempo. La exponencial nunca llega a cero."
+    escalera:
+      - "2 ms son dos constantes de tiempo: v = V₀·e^{−t/RC}."
+    solucion: "5·e^{−2} = 0,677 V."
+    comprobar:
+      - { v_d: 0.677 }
+      - { con: { t_d: 0.001 }, v_d: 1.84 }
   - id: explore-descarga
     tipo: explorar
     titulo: "Un RC que se descarga"
-    texto: "Un condensador cargado se descarga por una resistencia: la curva es siempre una exponencial. Arrastre el instante y cambie R·C."
-    libro: [112, 113]
+    texto: "Un condensador cargado se descarga por una resistencia: la curva es siempre una exponencial. Arrastre el instante y cambie R·C hasta que queden 1,84 V."
+    libro: [112, 113, 117]
     widget:
       tipo: grafica
       x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
@@ -53,36 +76,20 @@ tarjetas:
       mandos:
         - { valor: t_d, min: 0, max: 0.005, paso: 0.00025, rotulo: "Instante, t" }
         - { valor: RC, lista: [0.0005, 0.001, 0.002], rotulo: "Constante de tiempo, R·C" }
-    requiere: { mover: [t_d, RC] }
-
-  - id: prediga-2ms
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "R·C = 1 ms y 5 V iniciales. ¿Cuánta tensión queda a los 2 ms?"
-    libro: [117]
-    fijar: { V0: 5, RC: 0.001, t_d: 0.002 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 6, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V0*exp(-x/RC)", color: azul, rotulo: "v(t)" }
-      lectura: { valor: v_d, rotulo: "Tensión" }
-      ocultar: true
-    opciones:
-      - texto: "0,677 V"
-        bien: true
-        porque: "5·e^{−2} = 0,677 V: dos constantes de tiempo."
-      - texto: "1,84 V"
-        porque: "Eso es lo que queda a 1 ms, una sola constante de tiempo: 5·e^{−1}."
-      - texto: "0 V"
-        porque: "La exponencial nunca llega a cero: a los 2 ms aún queda tensión."
+    inicio: { t_d: 0, RC: 0.0005 }
+    objetivo:
+      condiciones:
+        - { valor: v_d, objetivo: 1.84, tol: 0.01, rotulo: "v = {{v_d}}" }
+      logrado: "A {{t_d}} con R·C = {{RC}}: justo una constante de tiempo, 5·e^{−1}."
+      pistas:
+        - { cuando: { valor: v_d, mayor: 1.86 }, texto: "Aún queda mucha: avance el instante." }
+        - { texto: "Ya ha caído de más: retroceda el instante o alargue R·C." }
     escalera:
-      - "2 ms son dos constantes de tiempo: v = V₀·e^{−t/RC}."
-    solucion: "5·e^{−2} = 0,677 V."
+      - "Queda 5·e^{−1} al cabo de una constante de tiempo."
+    solucion: "t = R·C: por ejemplo, 1 ms con R·C = 1 ms."
     comprobar:
-      - { v_d: 0.677 }
-      - { con: { t_d: 0.001 }, v_d: 1.84 }
+      - { v_d: 5 }
+      - { con: { t_d: 0.002, RC: 0.002 }, v_d: 1.839 }
 
   - id: regla-descarga
     tipo: formula
@@ -105,8 +112,7 @@ tarjetas:
   - id: explore-forzada
     tipo: explorar
     titulo: "Con fuente"
-    texto: "Si el RC se conecta a una fuente, la tensión va de V₀ a la de la fuente, V_{f}. Mueva las dos."
-    nota: "Con V₀ = 0, es la curva de carga 1 − e^{−t/τ}."
+    texto: "Si el RC se conecta a una fuente, la tensión va de V₀ a la de la fuente, V_{f}. Empiece con el condensador descargado y suba la fuente al máximo."
     libro: [118]
     fijar: { RC: 0.001 }
     widget:
@@ -122,12 +128,45 @@ tarjetas:
       mandos:
         - { valor: V0, min: 0, max: 10, paso: 1, rotulo: "Tensión inicial, V₀" }
         - { valor: Vf, min: 0, max: 10, paso: 1, rotulo: "Fuente, V_{f}" }
-    requiere: { mover: [V0, Vf] }
+    inicio: { V0: 5, Vf: 0 }
+    objetivo:
+      condiciones:
+        - { valor: V0, max: 0, rotulo: "V₀ = {{V0}}" }
+        - { valor: Vf, min: 10, rotulo: "V_{f} = {{Vf}}" }
+      logrado: "De {{V0}} a {{Vf}}: con V₀ = 0, es la curva de carga 1 − e^{−t/τ}."
+      pistas:
+        - { cuando: { valor: V0, mayor: 0 }, texto: "Baje la tensión inicial hasta el fondo." }
+        - { texto: "Suba la fuente hasta arriba." }
+    escalera:
+      - "V₀ al mínimo y V_{f} al máximo."
+    solucion: "V₀ = 0 y V_{f} = 10 V."
+    comprobar:
+      - { V0: 5, Vf: 0 }
 
+  - id: prediga-timbre
+    tipo: simular
+    titulo: "Prediga"
+    texto: "R = 10 Ω, L = 1 mH y C = 1 µF. ¿Cuánto vale ζ = (R/2)·√(C/L)?"
+    libro: [119, 115]
+    fijar: { R: 10, L: 0.001, C: 0.000001 }
+    simular:
+      objetivo: zeta
+      unidad: ""
+      tol: 0.02
+      rotulo: "ζ"
+      errores:
+        - { razon: { min: 1.9, max: 2.1 }, texto: "Falta dividir R entre dos." }
+        - { razon: { min: 990, max: 1010 }, texto: "Ha invertido la raíz: es √(C/L), no √(L/C)." }
+    exito: "ζ = 0,158 < 1: subamortiguada, una senoide envuelta en una exponencial que decrece. Es el timbre."
+    escalera:
+      - "√(C/L) = √(1 µF / 1 mH)."
+    solucion: "5 · √(0,001) = 0,158."
+    comprobar:
+      - { zeta: 0.158, f0: 5033 }
   - id: explore-rlc
     tipo: explorar
     titulo: "Segundo orden: el RLC"
-    texto: "Con una bobina y un condensador la ecuación es de segundo orden. L = 1 mH y C = 1 µF: mueva R y mire la forma de la respuesta."
+    texto: "Con una bobina y un condensador la ecuación es de segundo orden. L = 1 mH y C = 1 µF: busque la R con la que la respuesta más oscila."
     libro: [115, 119]
     fijar: { L: 0.001, C: 0.000001 }
     widget:
@@ -141,35 +180,19 @@ tarjetas:
         - { valor: f0, rotulo: "f₀ = {{f0}}" }
       mandos:
         - { valor: R, min: 5, max: 200, paso: 5, rotulo: "Resistencia, R" }
-    requiere: { mover: [R] }
-
-  - id: prediga-timbre
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Con R = 10 Ω, L = 1 mH y C = 1 µF, ζ = 0,158. ¿Cómo responde el circuito?"
-    libro: [119, 115]
-    fijar: { R: 10, L: 0.001, C: 0.000001 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.001, unidad: s, rotulo: "t" }
-      y: { min: -1, max: 1.2, unidad: V, rotulo: "v_{C}" }
-      curvas:
-        - { expr: "s_sub*exp(-a*x)*(cos(wd*x) + a/wd*sin(wd*x)) + (1 - s_sub)*((exp((wb - a)*x) + exp(-(wb + a)*x))/2 + a/wb*(exp((wb - a)*x) - exp(-(wb + a)*x))/2)", color: azul, rotulo: "respuesta natural" }
-      lectura: { valor: zeta, rotulo: "Amortiguamiento, ζ" }
-      ocultar: true
-    opciones:
-      - texto: "Oscila amortiguándose"
-        bien: true
-        porque: "Con ζ < 1 la respuesta es una senoide envuelta en una exponencial que decrece: subamortiguada, el timbre."
-      - texto: "Vuelve al reposo sin oscilar"
-        porque: "Eso es la sobreamortiguada, con ζ > 1: una suma de dos exponenciales."
-      - texto: "Como un RC: una sola exponencial"
-        porque: "Con dos reactancias la ecuación es de segundo orden; con ζ = 0,158 oscila unas cuantas veces."
+    inicio: { R: 10 }
+    objetivo:
+      condiciones:
+        - { valor: zeta, max: 0.08, rotulo: "ζ = {{zeta}}" }
+      logrado: "Con {{R}}, ζ = {{zeta}}: la resistencia es la que apaga la oscilación. Con ζ > 1, dos exponenciales y ninguna oscilación."
+      pistas:
+        - { texto: "Menos resistencia, menos amortiguamiento." }
     escalera:
-      - "Compare ζ con 1: por debajo, por encima o justo en 1."
-    solucion: "ζ < 1: subamortiguada, una senoide que se apaga."
+      - "ζ crece con R."
+    solucion: "Con R al mínimo, 5 Ω."
     comprobar:
-      - { zeta: 0.158, f0: 5033 }
+      - { zeta: 0.158 }
+      - { con: { R: 5 }, zeta: 0.0791 }
 
   - id: reto-critico
     tipo: reto
@@ -199,53 +222,6 @@ tarjetas:
       - { con: { R: 63 }, zeta: 0.996, tol: 0.001 }
       - { con: { R: 10 }, zeta: 0.158 }
 
-  - id: por-que-exponencial
-    tipo: porque
-    titulo: "¿Por qué una exponencial?"
-    texto: "Todo transitorio de primer orden es una exponencial. ¿Por qué esa función y no otra?"
-    libro: [122, 117]
-    opciones:
-      - texto: "La ecuación pide una función proporcional a su propia derivada, y solo la exponencial lo es"
-        bien: true
-        porque: "La exponencial no se supone: la impone la ecuación."
-      - texto: "Porque se supone así al plantear el problema"
-        porque: "Se prueba una exponencial, pero la ecuación es la que obliga: ninguna otra función la cumple."
-      - texto: "Porque los condensadores no son lineales"
-        porque: "El RC es lineal. La exponencial sale de que la derivada sea proporcional a la función."
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: t }
-      y: { min: 0, max: 6, unidad: V, rotulo: v }
-      curvas:
-        - { expr: "V0*exp(-x/RC)", color: azul, rotulo: "v(t)" }
-      asas:
-        - { mueve: t_d, x: t_d, y: v_d, rotulo: Instante }
-      lectura: { valor: v_d, rotulo: Tensión }
-      mandos:
-        - { valor: t_d, min: 0, max: 0.005, paso: 0.00025, rotulo: "Instante, t" }
-        - { valor: RC, lista: [0.0005, 0.001, 0.002], rotulo: "Constante de tiempo, R·C" }
-    escalera:
-      - "En el RC, ¿qué relación hay entre la tensión y lo deprisa que cae?"
-    solucion: "dv/dt es proporcional a v, y solo la exponencial es proporcional a su propia derivada."
-
-  - id: ordene-metodo
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El método, en general"
-    texto: "Ordene los pasos para hallar la respuesta de un circuito con reactancias."
-    libro: [120]
-    ordenar:
-      - "Escribir Kirchhoff con la relación de cada componente"
-      - "Probar exponenciales: queda un polinomio en s"
-      - "Resolver el polinomio: sus raíces son los modos naturales"
-      - "Ajustar las constantes con las condiciones iniciales"
-    exito: "Eso es. El polinomio en s es lo que Laplace formaliza; los fasores, el caso s = jω."
-    pistas:
-      - { texto: "Las condiciones iniciales se usan al final, cuando ya hay constantes que ajustar." }
-    escalera:
-      - "Primero la ecuación del circuito; lo último, las condiciones iniciales."
-    solucion: "Escribir Kirchhoff con la relación de cada componente → Probar exponenciales: queda un polinomio en s → Resolver el polinomio: sus raíces son los modos naturales → Ajustar las constantes con las condiciones iniciales."
-
   - id: contar-reactancias
     tipo: pregunta
     titulo: "Antes de resolver nada"
@@ -271,9 +247,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [113, 118, 119, 121]
+    libro: [113, 117, 118, 119, 120, 121, 122]
     ideas:
-      - { titulo: "Primer orden.", texto: "Una reactancia, una exponencial: v = V₀·e^{−t/τ}; con 1 ms y 5 V, a los 2 ms, 0,677 V." }
+      - { titulo: "Primer orden.", texto: "Una reactancia, una exponencial: la única función proporcional a su derivada. Con 1 ms y 5 V, a los 2 ms, 0,677 V." }
       - { titulo: "Con fuente.", texto: "v = V_{f} + (V₀ − V_{f})·e^{−t/RC}: de la inicial a la de la fuente." }
       - { titulo: "Segundo orden.", texto: "ζ < 1 oscila, ζ > 1 no, ζ = 1 es el límite." }
       - { titulo: "El método.", texto: "Kirchhoff, probar exponenciales, resolver el polinomio en s, condiciones iniciales." }

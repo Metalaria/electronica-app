@@ -2,6 +2,11 @@
 # Formato: contenido/lecciones11/GUIA.md. La red de 230 V (bloque 24) es del libro; el desfase de un octavo de
 # periodo a 50 Hz y la amplitud de 1 V del banco son ejemplos (la sección no da números para eso).
 # El multímetro de valor medio multiplica por π/(2√2) = 1,1107 (el «1,11» del libro), exacto para la senoide.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el eficaz se lleva a 100 V arrastrando la cresta (objetivo); el
+# pico de la red se lee en la gráfica y se escribe; el desfase se lleva a un cuarto de periodo (objetivo) y el de 2,5 ms
+# se escribe; el factor de cresta de la triangular se escribe; se busca la forma con la que el multímetro de valor medio
+# se equivoca. Quedan dos preguntas de opciones (lo que sale de un RC y por qué falla el multímetro); la fórmula del
+# desfase y el modo XY pasan al «logrado» del desfase, y los factores de cresta, al resumen.
 leccion: cap24/sec-24.2
 
 libro:
@@ -42,6 +47,7 @@ modelo:
     V_rms: { expr: "V_p*(w_1*0.7071068 + w_2 + w_3*0.5773503)", sim: "V_{ef}", nombre: "verdadero valor eficaz", unidad: V }
     V_med: { expr: "pi/(2*sqrt(2))*V_p*(w_1*2/pi + w_2 + w_3*0.5)", sim: "V_{lee}", nombre: "lectura del multímetro de valor medio", unidad: V }
     err_m: { expr: "(V_med/V_rms - 1)*100", sim: "error", nombre: "error del multímetro de valor medio", unidad: "%", cifras: 2 }
+    V_mal: { expr: "V_ef/sqrt(2)", sim: "V", nombre: "eficaz por 0,707", unidad: V }
     FC: { expr: "V_p/V_rms", sim: "FC", nombre: "factor de cresta", unidad: "" }
     w_rc: { expr: "2*pi*f_rc", sim: "ω", nombre: "frecuencia angular del RC", unidad: "rad/s" }
     x_rc: { expr: "w_rc*R_rc*C_rc", sim: "ωRC", nombre: "ωRC", unidad: "" }
@@ -52,8 +58,9 @@ tarjetas:
   - id: explore-senoide
     tipo: explorar
     titulo: "Pico, pico a pico y eficaz"
-    texto: "Arrastre la cresta. Las líneas a trazos marcan el valor eficaz: el de la continua que daría la misma potencia."
+    texto: "Las líneas a trazos marcan el valor eficaz: el de la continua que daría la misma potencia. Arrastre la cresta hasta que el eficaz valga 100 V."
     libro: [20, 21]
+    inicio: { V_p: 300 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
@@ -69,6 +76,18 @@ tarjetas:
         - { valor: V_pp, rotulo: "Pico a pico: {{V_pp}}" }
       mandos:
         - { valor: V_p, min: 50, max: 400, paso: 5, rotulo: "Amplitud de pico" }
+    objetivo:
+      condiciones:
+        - { valor: V_ef, objetivo: 100, tol: 0.02, rotulo: "Eficaz: {{V_ef}}" }
+      logrado: "Pico {{V_p}}, pico a pico {{V_pp}} y eficaz {{V_ef}}: el eficaz es el pico entre √2."
+      pistas:
+        - { cuando: { valor: V_ef, mayor: 102 }, texto: "Sobra: baje la cresta." }
+        - { texto: "Falta: suba la cresta." }
+    escalera:
+      - "El pico de la senoide es √2 veces el eficaz."
+    solucion: "Unos 140 V de pico: 99 V eficaces."
+    comprobar:
+      - { con: { V_p: 140 }, V_ef: 99, V_pp: 280, tol: 0.01 }
 
   - id: por-que-senoides
     tipo: pregunta
@@ -101,9 +120,9 @@ tarjetas:
     solucion: "Senoide de la misma frecuencia, más pequeña y retrasada."
 
   - id: prediga-red
-    tipo: predecir
+    tipo: leer
     titulo: "El pico de la red"
-    texto: "Los 230 V de un enchufe son eficaces. ¿Qué tensión de pico debe soportar un condensador conectado a la red?"
+    texto: "Los 230 V de un enchufe son eficaces. Lea en la gráfica la tensión de pico que debe soportar un condensador conectado a la red."
     libro: [24]
     fijar: { V_p: 325.27, forma: 1 }
     widget:
@@ -113,25 +132,22 @@ tarjetas:
       curvas:
         - { expr: "V_p*sin(2*pi*f_s*t)", color: azul, rotulo: "red" }
         - { expr: "V_ef", color: naranja, rotulo: "V_{ef}", discontinua: true }
-      lectura: { valor: V_p, rotulo: "Pico" }
-      datos:
-        - { valor: V_ef, rotulo: "Eficaz: {{V_ef}}" }
-      ocultar: true
-    opciones:
-      - texto: "325 V"
-        bien: true
-        porque: "230 × √2 = 325 V. Por eso el condensador de filtro tras el rectificador de red es de 400 V y no de 250."
-      - texto: "230 V"
-        porque: "Esos 230 V son el valor eficaz. La tensión sube hasta el pico, √2 veces más."
-      - texto: "163 V"
-        porque: "Ha multiplicado por 0,707 en lugar de dividir: el pico es mayor que el eficaz, no menor."
+      mandos: []
+    leer:
+      objetivo: V_p
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión de pico"
+      errores:
+        - { expr: "V_ef", texto: "Esos 230 V son el valor eficaz, la línea a trazos. La tensión sube hasta el pico, √2 veces más." }
+        - { expr: "V_mal", texto: "Ha multiplicado por 0,707 en lugar de dividir: el pico es mayor que el eficaz, no menor." }
+    exito: "230 × √2 = 325 V. Por eso el condensador de filtro tras el rectificador de red es de 400 V y no de 250."
     escalera:
-      - "El eficaz es el pico dividido entre √2."
-      - "Despeje el pico: 230 × √2."
+      - "Lea dónde está la cresta de la curva azul."
+      - "O calcule: el eficaz es el pico entre √2."
     solucion: "230 × √2 = 325 V de pico."
     comprobar:
-      - { V_p: 325.27, V_ef: 230 }
-      - { con: { V_p: 230 }, V_ef: 163 }
+      - { V_p: 325.27, V_ef: 230, V_mal: 163 }
 
   - id: formula-eficaz
     tipo: formula
@@ -158,9 +174,10 @@ tarjetas:
   - id: explore-desfase
     tipo: explorar
     titulo: "Dos señales, un desfase"
-    texto: "Dos senoides de la misma frecuencia. Arrastre el paso por cero de la naranja y mire cuánto se desplaza respecto a la azul."
-    libro: [33]
+    texto: "Dos senoides de 50 Hz. Arrastre el paso por cero de la naranja hasta retrasarla un cuarto de periodo respecto a la azul."
+    libro: [33, 37, 38]
     fijar: { V_p: 100, f_s: 50 }
+    inicio: { phi: 0 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
@@ -175,15 +192,25 @@ tarjetas:
         - { valor: phi, rotulo: "Desfase: {{phi}}" }
       mandos:
         - { valor: phi, min: 0, max: 180, paso: 5, rotulo: "Desfase" }
+    objetivo:
+      condiciones:
+        - { valor: dt, objetivo: 0.005, tol: 0.02, rotulo: "Δt: {{dt}}" }
+      logrado: "{{dt}} de 20 ms: φ = 360° · Δt/T = {{phi}}. Con 90° y amplitudes iguales, en modo XY se vería un círculo."
+      pistas:
+        - { cuando: { valor: dt, mayor: 0.0051 }, texto: "Se ha pasado de un cuarto de periodo." }
+        - { texto: "Todavía no llega a un cuarto de periodo, 5 ms." }
+    escalera:
+      - "El periodo a 50 Hz es de 20 ms: un cuarto son 5 ms."
+    solucion: "5 ms de retraso: 90°."
+    comprobar:
+      - { con: { phi: 90 }, dt: 0.005, T_s: 0.02 }
 
-  - id: formula-desfase
-    tipo: formula
-    titulo: "Del tiempo al ángulo"
-    texto: "Un periodo entero son 360°. El desplazamiento medido, en fracción de periodo, da el ángulo."
+  - id: estime-desfase
+    tipo: leer
+    titulo: "Un octavo de periodo"
+    texto: "A 50 Hz el periodo es de 20 ms. Esta señal cruza por cero 2,5 ms después de la referencia: escriba el desfase."
     libro: [37]
-    ec: 37
-    sustitucion: "360° · {{dt}} / {{T_s}} = {{phi}}"
-    fijar: { V_p: 100, f_s: 50 }
+    fijar: { V_p: 100, f_s: 50, phi: 45 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
@@ -191,32 +218,15 @@ tarjetas:
       curvas:
         - { expr: "V_p*sin(2*pi*f_s*t)", color: azul, rotulo: "referencia" }
         - { expr: "V_p*sin(2*pi*f_s*(t - dt))", color: naranja, rotulo: "retrasada" }
-      asas:
-        - { mueve: phi, x: "dt", y: "0", rotulo: "Paso por cero" }
-      lectura: { valor: phi, rotulo: "Desfase" }
-      mandos:
-        - { valor: phi, min: 0, max: 180, paso: 5, rotulo: "Desfase" }
-
-  - id: estime-desfase
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "Un octavo de periodo"
-    texto: "A 50 Hz el periodo es de 20 ms. Si la segunda señal cruza por cero 2,5 ms después, ¿qué desfase hay?"
-    libro: [37]
-    fijar: { f_s: 50, phi: 45 }
-    estimar:
-      objetivo: "phi"
+      mandos: []
+    leer:
+      objetivo: phi
       unidad: "°"
-      min: 0
-      max: 180
-      paso: 1
-      inicio: 90
-      tol: 0.05
+      tol: 0.02
       rotulo: "Desfase"
+      errores:
+        - { expr: "90", texto: "90° sería un cuarto de periodo. Aquí son 2,5 ms de 20." }
     exito: "360° × 2,5/20 = 45°: un octavo de vuelta."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 47.25 }, texto: "Demasiado: 2,5 ms es un octavo de los 20 ms del periodo." }
-      - { texto: "Poco: un periodo entero serían 360°." }
     escalera:
       - "¿Qué fracción del periodo son 2,5 ms de 20 ms?"
     solucion: "2,5/20 es un octavo de periodo: 45°."
@@ -224,27 +234,39 @@ tarjetas:
       - { T_s: 0.02, dt: 0.0025, phi: 45 }
 
   - id: crestas
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: leer
     titulo: "El factor de cresta"
-    texto: "El cociente entre pico y eficaz depende de la forma. Una cada forma con su factor de cresta."
+    texto: "El cociente entre pico y eficaz depende de la forma: 1,41 en la senoide. Esta triangular tiene 100 V de pico: escriba su factor de cresta."
     libro: [26]
-    emparejar:
-      - ["Senoide", "1,41"]
-      - ["Cuadrada", "1,0"]
-      - ["Triangular", "1,73"]
-      - ["Pulsos de una fuente conmutada", "3 o más"]
-    exito: "Cuanto más picuda la forma, mayor el factor de cresta."
-    pistas:
-      - { texto: "La cuadrada está siempre en su pico: su eficaz es el propio pico." }
+    fijar: { V_p: 100, f_s: 50, forma: 3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -120, max: 120, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_p*(w_1*sin(2*pi*f_s*t) + w_2*min(1, max(-1, 1000000*sin(2*pi*f_s*t))) + w_3*(1 - 4*abs(f_s*t - 0.25 - floor(f_s*t + 0.25))))", color: azul, rotulo: "v(t)" }
+        - { expr: "V_rms", color: naranja, rotulo: "V_{ef}", discontinua: true }
+      lectura: { valor: V_rms, rotulo: "Eficaz verdadero" }
+      mandos: []
+    leer:
+      objetivo: FC
+      unidad: ""
+      tol: 0.02
+      rotulo: "Factor de cresta"
+      errores:
+        - { expr: "sqrt(2)", texto: "1,41 es el de la senoide. Divida el pico de esta, 100 V, por su eficaz." }
+        - { expr: "V_rms", texto: "Ese es el eficaz. El factor de cresta es el pico dividido por él." }
+    exito: "100/57,7 = 1,73. Cuadrada, 1,0; pulsos de una fuente conmutada, 3 o más: cuanto más picuda, mayor."
     escalera:
-      - "Una forma que pasa más tiempo cerca del pico tiene un eficaz más parecido al pico."
-    solucion: "Senoide 1,41; cuadrada 1,0; triangular 1,73; pulsos, 3 o más."
+      - "Factor de cresta = pico / eficaz."
+    solucion: "100 V / 57,7 V = 1,73."
+    comprobar:
+      - { FC: 1.732, V_rms: 57.7 }
 
   - id: multimetro-barato
     tipo: sorpresa
     titulo: "El multímetro barato se equivoca"
-    texto: "Con el mismo pico, cambie la forma. La lectura grande es la de un multímetro de valor medio; debajo, el eficaz verdadero."
+    texto: "Con el mismo pico, cambie la forma hasta que el multímetro de valor medio se equivoque un 11 %. Debajo, el eficaz verdadero."
     libro: [28, 29]
     fijar: { V_p: 100, f_s: 50 }
     inicio: { forma: 1 }
@@ -261,6 +283,15 @@ tarjetas:
         - { valor: err_m, rotulo: "Error: {{err_m}}" }
       mandos:
         - { valor: forma, rotulo: "Forma de onda", lista: [1, 2, 3], nombres: [senoide, cuadrada, triangular] }
+    objetivo:
+      condiciones:
+        - { valor: err_m, min: 11, rotulo: "Error: {{err_m}}" }
+      logrado: "Con la cuadrada marca {{V_med}} y el eficaz es {{V_rms}}. Un multímetro de verdadero valor eficaz calcula la raíz de la media de los cuadrados y acierta."
+      pistas:
+        - { texto: "Con la senoide acierta; con la triangular falla poco. Pruebe la otra." }
+    escalera:
+      - "¿Qué forma tiene el valor medio igual al eficaz?"
+    solucion: "La cuadrada: 11 % de más."
     comprobar:
       - { con: { forma: 2 }, err_m: 11.1 }
 
@@ -293,31 +324,6 @@ tarjetas:
     comprobar:
       - { V_med: 111, V_rms: 100, err_m: 11.1 }
 
-  - id: lissajous
-    tipo: pregunta
-    titulo: "En modo XY"
-    texto: "Dos senoides de la misma amplitud, desfasadas 90°, a los dos canales en modo XY. ¿Qué figura aparece?"
-    libro: [38]
-    fijar: { V_p: 100, f_s: 50, phi: 90 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: -120, max: 120, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_p*sin(2*pi*f_s*t)", color: azul, rotulo: "canal X" }
-        - { expr: "V_p*sin(2*pi*f_s*(t - dt))", color: naranja, rotulo: "canal Y" }
-    opciones:
-      - texto: "Un círculo"
-        bien: true
-        porque: "Con 90° la elipse tiene los ejes alineados con la pantalla, y con amplitudes iguales es un círculo."
-      - texto: "Una recta inclinada"
-        porque: "La recta es la de 0°: las dos señales en fase."
-      - texto: "Una elipse inclinada"
-        porque: "La inclinada es la de los ángulos intermedios. A 90° los ejes quedan alineados."
-    escalera:
-      - "Cuando una pasa por su máximo, ¿dónde está la otra?"
-    solucion: "Un círculo: con 90° y amplitudes iguales."
-
   - id: banco-tres
     tipo: banco
     titulo: "Tres instrumentos, un valor"
@@ -342,6 +348,6 @@ tarjetas:
     libro: [22, 26, 28, 37]
     ideas:
       - { titulo: "Eficaz.", texto: "El pico entre √2: los 230 V de la red tienen 325 V de pico." }
-      - { titulo: "Factor de cresta.", texto: "1,41 en la senoide; 1,0 en la cuadrada; 1,73 en la triangular." }
+      - { titulo: "Factor de cresta.", texto: "1,41 en la senoide; 1,0 en la cuadrada; 1,73 en la triangular; 3 o más en pulsos." }
       - { titulo: "El multímetro.", texto: "El de valor medio solo acierta con senoides; para lo demás, verdadero valor eficaz." }
       - { titulo: "La fase.", texto: "Solo entre dos señales de la misma frecuencia: 360° · Δt/T." }

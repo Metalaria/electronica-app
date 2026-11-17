@@ -1,8 +1,11 @@
-# Lección 1.2 de la sección 35.2 «Muestreo y Retención: el Sample and Hold» (cap34; etiqueta interna sec-34.2).
+# Lección de la sección 35.2 «Muestreo y Retención: el Sample and Hold» (cap34; etiqueta interna sec-34.2).
 # Formato: contenido/lecciones11/GUIA.md (§5.4 bis, «muestreo-retencion»). El ADC del Arduino del banco del libro:
 # 14 pF cargados durante 12 µs a través de la fuente, con un salto de fondo de escala de 5 V (su referencia por defecto,
 # sección 35.8) y 10 bits. El error al final de la adquisición, en LSB, es 2^10 · e^(−12 µs/(R·14 pF)): medio LSB hacia
 # 110 kΩ, como dice el libro. Los 200 kΩ del mando son las resistencias del divisor del problema 35.C.
+# 1.2.1 («aprender haciendo», GUIA §13): se busca la fuente más alta que aún deja el error bajo medio LSB; la tensión
+# retenida con 200 kΩ se lee en la gráfica; la señal y los bits que piden 2,4 ps se eligen; el jitter de 8 bits a
+# 1 MHz se escribe; el límite real se ajusta. Quedan dos preguntas de opciones (el condensador grande y el pequeño).
 leccion: cap34/sec-34.2
 
 libro:
@@ -41,8 +44,8 @@ tarjetas:
   - id: explore-adquisicion
     tipo: explorar
     titulo: "Cargar un condensador"
-    texto: "El ADC del Arduino carga 14 pF durante 12 µs a través de la fuente. Cambie la resistencia de la fuente y mire el error al convertir."
-    nota: "Salto de 5 V con el condensador descargado; 10 bits."
+    texto: "El ADC del Arduino carga 14 pF en 12 µs a través de la fuente. Elija la fuente más alta que aún deja el error bajo medio LSB."
+    nota: "Salto de 5 V desde cero; 10 bits."
     libro: [36, 37, 40, 59, "cap34#220"]
     widget:
       tipo: circuito
@@ -58,54 +61,53 @@ tarjetas:
           - { expr: "(1 - ceil((t - t_a)/1e9))*V_s*(1 - exp(-t/tau)) + ceil((t - t_a)/1e9)*V_m", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: R_f, lista: [10000, 110000, 200000], rotulo: "R_{fuente}" }
-    requiere: { mover: [R_f] }
+    objetivo:
+      condiciones:
+        - { valor: e_L, max: 0.5, rotulo: "Error: {{e_L}}" }
+        - { valor: R_f, min: 110000, rotulo: "Fuente: {{R_f}}" }
+      logrado: "Con {{R_f}}, τ = {{tau}} y el error se queda en {{e_L}}: el condensador casi termina de cargarse en 12 µs."
+      pistas:
+        - { cuando: { valor: e_L, mayor: 0.5 }, texto: "Demasiada resistencia: el condensador no termina de cargarse." }
+        - { texto: "Aún sobra margen: pruebe una fuente más resistiva." }
+    escalera: ["El error cae con e^{−t/τ}: busque τ bastante menor que 12 µs."]
+    solucion: "110 kΩ: unos 0,4 LSB."
+    comprobar:
+      - { con: { R_f: 110000 }, e_L: 0.42, tol: 0.05 }
 
   - id: prediga-alta
-    tipo: predecir
+    tipo: leer
     titulo: "Una fuente de 200 kΩ"
-    texto: "Se mide una tensión continua conocida a través de 200 kΩ con ese ADC. ¿Qué lee?"
+    texto: "Se mide un salto de 5 V a través de 200 kΩ con ese ADC. Lea en la gráfica la tensión que queda retenida al acabar la adquisición."
     libro: [58, 59]
     fijar: { R_f: 200000 }
     widget:
       tipo: circuito
       esquema: muestreo-retencion
       piezas: { entrada: V_s, ron: R_f, ch: C_s, tm: t_a }
-      lectura: { valor: e_L, rotulo: "Error al convertir" }
-      ocultar: true
       grafica:
         x: { id: t, min: 0, max: 0.000015, unidad: s, rotulo: "t" }
         y: { min: 0, max: 5.5, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "(1 - ceil((t - t_a)/1e9))*V_s*(1 - exp(-t/tau)) + ceil((t - t_a)/1e9)*V_m", color: naranja, rotulo: "v_{o}", mide: salida }
-    opciones:
-      - { texto: "Menos de lo que hay: el condensador no termina de cargarse", bien: true, porque: "12 µs ya no bastan para cargar 14 pF a través de 200 kΩ: la lectura cae." }
-      - { texto: "Lo mismo: en continua no circula corriente", porque: "Al muestrear sí: el condensador se carga a través de la fuente en cada lectura." }
-      - { texto: "Más de lo que hay", porque: "Partiendo de una carga menor, el condensador se queda corto, no se pasa." }
-    escalera: ["Compare la constante de tiempo con los 12 µs de adquisición."]
-    solucion: "τ = 200 kΩ × 14 pF es demasiado larga para 12 µs: la lectura sale baja."
-
-  - id: empareje-parametros
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los cuatro parámetros"
-    texto: "Una cada parámetro del muestreo y retención con lo que limita."
-    libro: [40, 41, 42, 43]
-    emparejar:
-      - ["Tiempo de adquisición", "Cuánto tarda en alcanzar la señal; depende de la fuente"]
-      - ["Caída (droop)", "Cuánto tiempo se puede retener"]
-      - ["Pedestal", "Un salto al abrir: error sistemático que se calibra"]
-      - ["Jitter de apertura", "El límite a frecuencias altas"]
-    exito: "Y el condensador es el punto de equilibrio entre todos ellos."
-    pistas:
-      - { texto: "El que se puede calibrar es un salto siempre igual." }
-    escalera: ["La caída la producen las fugas durante la retención."]
-    solucion: "Adquisición, la fuente; caída, retener; pedestal, calibrable; jitter, alta frecuencia."
+      mandos: []
+    leer:
+      objetivo: V_m
+      unidad: V
+      tol: 0.005
+      rotulo: "Tensión retenida"
+      errores:
+        - { expr: "V_s", texto: "Eso sería con el condensador cargado del todo. Mire el tramo plano: se queda algo por debajo." }
+    exito: "{{V_m}}: unos {{e_L}} por debajo de lo que hay. 12 µs ya no bastan para cargar 14 pF a través de 200 kΩ: la lectura cae."
+    escalera: ["Lea el tramo plano, después de los 12 µs."]
+    solucion: "5 · (1 − e^{−12 µs/2,8 µs}) ≈ 4,93 V."
+    comprobar:
+      - { V_m: 4.93, tol: 0.005 }
 
   - id: pregunta-condensador
-    tipo: pregunta
+    tipo: porque
     titulo: "Un condensador grande"
     texto: "¿Qué da un condensador de muestreo grande frente a uno pequeño?"
-    libro: [46]
+    libro: [40, 41, 42, 46]
     widget:
       tipo: circuito
       esquema: muestreo-retencion
@@ -149,8 +151,9 @@ tarjetas:
   - id: explore-jitter
     tipo: explorar
     titulo: "El instante exacto"
-    texto: "Si el instante de muestreo baila, la tensión muestreada también. Cambie la frecuencia de la señal y los bits, y mire cuánto baile se admite."
+    texto: "Si el instante de muestreo baila, la tensión muestreada también. Elija la señal y los bits del caso más exigente del libro: 2,4 ps."
     libro: [43, 53]
+    inicio: { f_j: 1000, n_j: 8 }
     widget:
       tipo: grafica
       x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
@@ -163,52 +166,42 @@ tarjetas:
       mandos:
         - { valor: f_j, lista: [1000, 1000000], rotulo: "Frecuencia de la señal" }
         - { valor: n_j, lista: [8, 16], rotulo: "Bits" }
-    requiere: { mover: [f_j] }
-
-  - id: formula-jitter
-    tipo: formula
-    titulo: "Pendiente por incertidumbre"
-    texto: "ΔV = dV/dt · Δt, y una senoide cambia como mucho a 2πfA. Bajo medio LSB: Δt < 1/(2π · f · 2ⁿ)."
-    libro: [51, 53]
-    ec: 51
-    sustitucion: "Δt < 1/(2π · {{f_j}} · {{N_j}}) = {{dt_j}}"
-    widget:
-      tipo: grafica
-      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 1e-14, max: 1e-6, unidad: s, rotulo: "Δt", escala: log }
-      curvas:
-        - { expr: "1/(2*pi*nu*N_j)", color: azul, rotulo: "Δt máximo" }
-      marcas:
-        - { x: "f_j", y: "dt_j", rotulo: "Su señal" }
-      lectura: { valor: dt_j, rotulo: "Jitter máximo" }
-      mandos:
-        - { valor: f_j, lista: [1000, 1000000], rotulo: "Frecuencia de la señal" }
-        - { valor: n_j, lista: [8, 16], rotulo: "Bits" }
+    objetivo:
+      condiciones:
+        - { valor: dt_j, max: 3e-12, rotulo: "Jitter máximo: {{dt_j}}" }
+      logrado: "16 bits a 1 MHz: {{dt_j}}. Por eso, en convertidores rápidos de alta resolución, el reloj es el componente crítico."
+      pistas:
+        - { texto: "Aún se admite mucho baile: más bits o una señal más rápida." }
+    escalera: ["Δt < 1/(2π · f · 2ⁿ): más bits y más frecuencia, menos baile."]
+    solucion: "16 bits y 1 MHz."
+    comprobar:
+      - { con: { f_j: 1000000, n_j: 16 }, dt_j: 2.43e-12, N_j: 65536 }
 
   - id: estime-jitter
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "16 bits a 1 MHz"
-    texto: "¿Qué incertidumbre máxima admite el instante de muestreo de un convertidor de 16 bits con una senoide de 1 MHz?"
-    libro: [53, 54]
-    fijar: { f_j: 1000000, n_j: 16 }
-    estimar:
-      objetivo: "dt_j"
+    tipo: leer
+    titulo: "8 bits a 1 MHz"
+    texto: "Y con un convertidor de 8 bits y la misma señal de 1 MHz, ¿cuánto baile admite el instante de muestreo? Calcúlelo y escríbalo."
+    libro: [51, 53, 54]
+    fijar: { f_j: 1000000, n_j: 8 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1e-14, max: 1e-6, unidad: s, rotulo: "Δt", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*N_j)", color: azul, rotulo: "Δt máximo" }
+      mandos: []
+    leer:
+      objetivo: dt_j
       unidad: s
-      min: 0
-      max: 1e-11
-      paso: 1e-13
-      inicio: 8e-12
-      tol: 0.06
+      tol: 0.03
       rotulo: "Jitter máximo"
-    exito: "2,4 ps: por eso, en alta resolución y alta velocidad, el reloj es el componente crítico."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 2.6e-12 }, texto: "Se ha pasado: 2¹⁶ son 65 536 códigos, y entran multiplicando con 2π y 1 MHz." }
-      - { texto: "Se ha quedado corto: 1/(2π · 10⁶ · 65 536) son unos pocos picosegundos." }
-    escalera: ["Calcule 2π · 1 MHz · 2¹⁶ y tome el inverso."]
-    solucion: "1/(2π × 1 MHz × 65 536) = 2,4 ps."
+      errores:
+        - { expr: "1/(f_j*N_j)", texto: "Falta el 2π: la pendiente máxima de la senoide es 2πfA." }
+    exito: "{{dt_j}}: 256 veces más que con 16 bits. Cada bit más divide por dos el baile admitido."
+    escalera: ["Δt < 1/(2π · f · 2⁸)."]
+    solucion: "1/(2π × 1 MHz × 256) ≈ 622 ps."
     comprobar:
-      - { dt_j: 2.43e-12, N_j: 65536 }
+      - { dt_j: 6.22e-10, N_j: 256 }
 
   - id: ajuste-impedancia
     tipo: ajuste

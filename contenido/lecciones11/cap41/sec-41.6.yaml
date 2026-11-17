@@ -4,6 +4,12 @@
 # - La figura 42.10 (fig-41.10) con zonas: el objetivo, las antirresonancias y las defensas.
 # Paso práctico: «simular» la impedancia objetivo del ejemplo del libro antes de ver la fórmula (12 mΩ; errores: sin el
 # 5 %, multiplicar por la corriente).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la red del problema 42.B (cap41#330-336: electrolítico de 100 µF
+# con 5 nH y 0,1 Ω, 1 µF con 1,5 nH, 100 nF con 1,2 nH, 1 nF con 0,8 nH, cerámicos con 20 mΩ) es una gráfica viva
+# |Z(f)|: reproduce los 0,37 Ω sin el 1 nF, los 0,55 Ω con él, el pico de unos 135 MHz y los 0,15 Ω con cuatro
+# 100 nF a 100 MHz. Se consigue bajar de 0,15 Ω (meta), se escribe el 0,55 y se marca el pico; las antirresonancias,
+# la defensa y la de los pines de masa se tocan en las figuras 42.10 y 42.11. Quedan una pregunta de opciones (el
+# banco), la fórmula y el emparejamiento de las bandas.
 leccion: cap41/sec-41.6
 
 libro:
@@ -19,40 +25,85 @@ libro:
   172: "La capacidad entre planos: por encima de eso"
   173: "lo más rápido de todo, y no está bajo control del diseñador"
   174: "ningún elemento cubre todo el margen, y el diseño consiste en encadenarlos sin dejar huecos"
+  176: "El problema que hace la PDN difícil"
   177: "aparece una resonancia paralelo donde la impedancia sube en lugar de bajar"
   178: "el resultado es peor que sin el condensador"
+  179: "Sus defensas"
   180: "Usar menos valores distintos y más unidades del mismo"
   181: "un electrolítico o un cerámico con ESR controlada amortigua el pico"
+  182: "Simular la PDN"
+  184: "la corriente de retorno atraviesa la inductancia de los pines de masa"
   185: "errores que dependen del patrón de datos, peores cuando muchos bits cambian a la vez"
   186: "más pines de masa"
   190: "revela las antirresonancias que el osciloscopio solo insinúa"
   192: "Impedancia de la PDN por bandas y el problema de las antirresonancias"
+  "cap41#221": "Rebote de masa según el número de salidas simultáneas, y las seis defensas"
+  "cap41#330": "Electrolítico 100 µF"
+  "cap41#332": "el electrolítico aporta una ESR (unos 0,1 Ω) que amortigua"
+  "cap41#333": "juntos forman un circuito tanque: una antirresonancia paralelo"
+  "cap41#335": "a 100 MHz la red de cuatro valores presenta 0,55 Ω, peor que sin el 1 nF (0,37 Ω)"
+  "cap41#336": "Con cuatro, la red presenta 0,15 Ω a 100 MHz"
 
 modelo:
   valores:
     V_n: { sim: "V", nombre: "tensión de alimentación", unidad: V, valor: 1.2 }
     tol_p: { sim: "tol", nombre: "tolerancia", unidad: "%", valor: 5 }
     dI: { sim: "ΔI_{máxima}", nombre: "variación de corriente", unidad: A, valor: 5 }
+    C_el: { sim: "C", nombre: "electrolítico", unidad: F, valor: 100e-6 }
+    L_el: { sim: "L", nombre: "inductancia del electrolítico", unidad: H, valor: 5e-9 }
+    R_el: { sim: "ESR", nombre: "ESR del electrolítico", unidad: Ω, valor: 0.1 }
+    C_1u: { sim: "C", nombre: "cerámico de 1 µF", unidad: F, valor: 1e-6 }
+    L_1u: { sim: "L", nombre: "inductancia del 1 µF", unidad: H, valor: 1.5e-9 }
+    C_100: { sim: "C", nombre: "cerámico de 100 nF", unidad: F, valor: 100e-9 }
+    L_100: { sim: "L", nombre: "inductancia del 100 nF", unidad: H, valor: 1.2e-9 }
+    C_1n: { sim: "C", nombre: "cerámico de 1 nF", unidad: F, valor: 1e-9 }
+    L_1n: { sim: "L", nombre: "inductancia del 1 nF", unidad: H, valor: 0.8e-9 }
+    esr: { sim: "ESR", nombre: "ESR de los cerámicos", unidad: Ω, valor: 0.02 }
+    f_ev: { sim: "f", nombre: "frecuencia de evaluación", unidad: Hz, valor: 100000000 }
+    f_pk: { sim: "f_{ar}", nombre: "pico de la antirresonancia (unos 135 MHz)", unidad: Hz, valor: 135000000 }
+    n_c: { sim: "N", nombre: "cerámicos de 100 nF iguales", unidad: "", valor: 1 }
+    s_1n: { tipo: interruptor, nombre: "cerámico de 1 nF montado", valor: 1 }
   calculos:
     dV: { expr: "V_n*tol_p/100", sim: "ΔV_{admisible}", nombre: "caída admisible", unidad: V }
     Z_o: { expr: "dV/dI", sim: "Z_{objetivo}", nombre: "impedancia objetivo", unidad: Ω }
     Z_sinpct: { expr: "V_n/dI", sim: "Z", nombre: "sin aplicar la tolerancia", unidad: Ω }
     Z_mult: { expr: "dV*dI", sim: "Z", nombre: "multiplicando por la corriente", unidad: Ω }
+    Z_100: { expr: "1/sqrt((R_el/(R_el^2 + (2*pi*f_ev*L_el - 1/(2*pi*f_ev*C_el))^2) + esr/(esr^2 + (2*pi*f_ev*L_1u - 1/(2*pi*f_ev*C_1u))^2) + n_c*esr/(esr^2 + (2*pi*f_ev*L_100 - 1/(2*pi*f_ev*C_100))^2) + s_1n*esr/(esr^2 + (2*pi*f_ev*L_1n - 1/(2*pi*f_ev*C_1n))^2))^2 + ((-(2*pi*f_ev*L_el - 1/(2*pi*f_ev*C_el))/(R_el^2 + (2*pi*f_ev*L_el - 1/(2*pi*f_ev*C_el))^2)) + (-(2*pi*f_ev*L_1u - 1/(2*pi*f_ev*C_1u))/(esr^2 + (2*pi*f_ev*L_1u - 1/(2*pi*f_ev*C_1u))^2)) + n_c*(-(2*pi*f_ev*L_100 - 1/(2*pi*f_ev*C_100))/(esr^2 + (2*pi*f_ev*L_100 - 1/(2*pi*f_ev*C_100))^2)) + s_1n*(-(2*pi*f_ev*L_1n - 1/(2*pi*f_ev*C_1n))/(esr^2 + (2*pi*f_ev*L_1n - 1/(2*pi*f_ev*C_1n))^2)))^2)", sim: "|Z|", nombre: "impedancia de la red a 100 MHz", unidad: Ω, cifras: 3 }
+    Z_100s: { expr: "1/sqrt((R_el/(R_el^2 + (2*pi*f_ev*L_el - 1/(2*pi*f_ev*C_el))^2) + esr/(esr^2 + (2*pi*f_ev*L_1u - 1/(2*pi*f_ev*C_1u))^2) + n_c*esr/(esr^2 + (2*pi*f_ev*L_100 - 1/(2*pi*f_ev*C_100))^2) + 0*esr/(esr^2 + (2*pi*f_ev*L_1n - 1/(2*pi*f_ev*C_1n))^2))^2 + ((-(2*pi*f_ev*L_el - 1/(2*pi*f_ev*C_el))/(R_el^2 + (2*pi*f_ev*L_el - 1/(2*pi*f_ev*C_el))^2)) + (-(2*pi*f_ev*L_1u - 1/(2*pi*f_ev*C_1u))/(esr^2 + (2*pi*f_ev*L_1u - 1/(2*pi*f_ev*C_1u))^2)) + n_c*(-(2*pi*f_ev*L_100 - 1/(2*pi*f_ev*C_100))/(esr^2 + (2*pi*f_ev*L_100 - 1/(2*pi*f_ev*C_100))^2)) + 0*(-(2*pi*f_ev*L_1n - 1/(2*pi*f_ev*C_1n))/(esr^2 + (2*pi*f_ev*L_1n - 1/(2*pi*f_ev*C_1n))^2)))^2)", sim: "|Z|", nombre: "la misma red sin el 1 nF", unidad: Ω, cifras: 3 }
 
 tarjetas:
   - id: explore-pdn
     tipo: explorar
+    fase: "Consiga"
     titulo: "La alimentación también es una señal"
-    texto: "La red que entrega la corriente debe tener baja impedancia desde continua hasta cientos de megahercios. Toque las tres zonas."
-    libro: [159, 160, 166, 192]
+    texto: "Electrolítico, 1 µF, 100 nF y 1 nF en la misma alimentación. Cambie la red hasta que a 100 MHz baje de 0,15 Ω."
+    libro: [159, 160, 166, "cap41#330", "cap41#335", "cap41#336"]
+    inicio: { n_c: 1, s_1n: 1 }
     widget:
-      tipo: figura
-      figura: fig-41.10
-      zonas:
-        - { id: objetivo, rotulo: "Línea de puntos roja", rect: [35, 115, 75, 36], texto: "El objetivo: la impedancia que no se debe superar en ninguna frecuencia." }
-        - { id: anti, rotulo: "Rótulo antirresonancias", rect: [110, 40, 80, 36], texto: "Picos donde la impedancia sube en lugar de bajar." }
-        - { id: defensas, rotulo: "Recuadro verde", rect: [315, 160, 125, 75], texto: "Menos valores distintos, ESR que amortigüe y simular la PDN." }
-    requiere: { mover: [objetivo, anti, defensas] }
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log, muestras: 600 }
+      y: { min: 0.01, max: 20, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "1/sqrt((R_el/(R_el^2 + (2*pi*nu*L_el - 1/(2*pi*nu*C_el))^2) + esr/(esr^2 + (2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))^2) + n_c*esr/(esr^2 + (2*pi*nu*L_100 - 1/(2*pi*nu*C_100))^2) + s_1n*esr/(esr^2 + (2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))^2))^2 + ((-(2*pi*nu*L_el - 1/(2*pi*nu*C_el))/(R_el^2 + (2*pi*nu*L_el - 1/(2*pi*nu*C_el))^2)) + (-(2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))/(esr^2 + (2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))^2)) + n_c*(-(2*pi*nu*L_100 - 1/(2*pi*nu*C_100))/(esr^2 + (2*pi*nu*L_100 - 1/(2*pi*nu*C_100))^2)) + s_1n*(-(2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))/(esr^2 + (2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))^2)))^2)", color: naranja, rotulo: "la red" }
+      marcas:
+        - { x: "f_ev", y: "Z_100", rotulo: "{{Z_100}}" }
+      lectura: { valor: Z_100, rotulo: "Impedancia a 100 MHz" }
+      mandos:
+        - { valor: n_c, lista: [1, 2, 3, 4], rotulo: "Cerámicos de 100 nF iguales" }
+        - { valor: s_1n, tipo: interruptor, rotulo: "Cerámico de 1 nF" }
+    objetivo:
+      condiciones:
+        - { valor: Z_100, max: 0.15, rotulo: "A 100 MHz: {{Z_100}}" }
+      logrado: "{{n_c}} de 100 nF iguales y sin el 1 nF: {{Z_100}}. Iguales no forman tanque entre sí, y N en paralelo dividen la inductancia."
+      pistas:
+        - { cuando: { valor: s_1n, mayor: 0.5 }, texto: "El 1 nF forma un tanque con los 100 nF: pruebe a quitarlo." }
+        - { texto: "Ponga más 100 nF iguales, cada uno con sus vías." }
+    escalera:
+      - "Más unidades del mismo valor, y menos valores distintos."
+    solucion: "Cuatro de 100 nF y sin el de 1 nF: 0,15 Ω."
+    comprobar:
+      - { con: { n_c: 4, s_1n: 0 }, Z_100: 0.147, tol: 0.01 }
+      - { con: { n_c: 1, s_1n: 0 }, Z_100: 0.366, tol: 0.01 }
 
   - id: simule-objetivo
     tipo: simular
@@ -123,93 +174,135 @@ tarjetas:
       - "Cuanto más pequeño y cercano al chip, más alta la banda."
     solucion: "Regulador, continua; grandes, kHz a MHz; desacoplo, MHz; planos, por encima; chip, lo más rápido."
 
-  - id: porque-regulador
-    tipo: porque
-    titulo: "Por qué no basta el regulador"
-    texto: "Un buen regulador mantiene la tensión. ¿Por qué hace falta todo lo demás?"
-    libro: [169, 174]
-    widget:
-      tipo: figura
-      figura: fig-41.10
-      zonas:
-        - { id: objetivo, rotulo: "Línea de puntos roja", rect: [35, 115, 75, 36] }
-    opciones:
-      - texto: "Su lazo no responde más allá de unas decenas de kilohercios"
-        bien: true
-        porque: "Por encima, son los condensadores, los planos y el chip los que entregan la corriente."
-      - texto: "Porque su tensión no es exacta"
-        porque: "El problema no es la continua sino los pulsos rápidos."
-      - texto: "Porque no da bastante corriente media"
-        porque: "La media la da; lo que no puede es seguir los nanosegundos."
-    escalera:
-      - "¿Hasta qué frecuencia responde un lazo de regulación?"
-    solucion: "Su lazo es lento: decenas de kilohercios."
-
   - id: predecir-anti
-    tipo: predecir
-    titulo: "Dos valores distintos"
-    texto: "Se añade un condensador de otro valor junto a los existentes. Entre las resonancias de ambos, ¿qué hace la impedancia?"
-    libro: [177, 178]
+    tipo: tocar
+    titulo: "Las antirresonancias"
+    texto: "Entre dos valores distintos aparece una resonancia paralelo y la impedancia sube en vez de bajar. Toque un pico que supere el objetivo."
+    libro: [176, 177, 178, 192]
     widget:
       tipo: figura
       figura: fig-41.10
       zonas:
-        - { id: anti, rotulo: "Rótulo antirresonancias", rect: [110, 40, 80, 36] }
-    opciones:
-      - texto: "Sube: aparece una resonancia paralelo"
-        bien: true
-        porque: "Si cae donde el circuito tiene contenido, el resultado es peor que sin el condensador."
-      - texto: "Baja, porque hay más capacidad"
-        porque: "Más capacidad no garantiza menos impedancia entre resonancias."
-      - texto: "No cambia"
-        porque: "Cambia: entre las dos resonancias aparece un pico."
+        - { id: p1, rotulo: "Primer pico de la curva roja", rect: [176, 96, 16, 16] }
+        - { id: p2, rotulo: "Segundo pico", rect: [216, 88, 12, 20] }
+        - { id: p3, rotulo: "Tercer pico", rect: [236, 80, 14, 18] }
+        - { id: valle, rotulo: "Valle de la curva discontinua", rect: [170, 155, 20, 14] }
+        - { id: plano, rotulo: "Tramo plano de la izquierda", rect: [30, 180, 40, 10] }
+    tocar:
+      bien: [p1, p2, p3]
+      porque:
+        valle: "Es la red de un valor, con más unidades y ESR controlada: queda bajo el objetivo."
+        plano: "Es la continua, donde manda el regulador: muy por debajo del objetivo."
+    exito: "Un pico de antirresonancia: si cae donde el circuito tiene contenido, es peor que sin el condensador."
     escalera:
-      - "Una bobina y un condensador en paralelo forman un tanque."
-    solucion: "Sube: una antirresonancia."
+      - "Busque dónde la curva gruesa sube por encima de la línea de puntos."
+    solucion: "Cualquiera de los tres picos de la curva roja."
+
+  - id: lea-1n
+    tipo: leer
+    titulo: "El de 1 nF sobra"
+    texto: "Con un 100 nF y el 1 nF montados, lea la impedancia de la red a 100 MHz y escríbala."
+    libro: ["cap41#333", "cap41#335"]
+    fijar: { n_c: 1, s_1n: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log, muestras: 600 }
+      y: { min: 0.01, max: 20, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "1/sqrt((R_el/(R_el^2 + (2*pi*nu*L_el - 1/(2*pi*nu*C_el))^2) + esr/(esr^2 + (2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))^2) + n_c*esr/(esr^2 + (2*pi*nu*L_100 - 1/(2*pi*nu*C_100))^2) + s_1n*esr/(esr^2 + (2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))^2))^2 + ((-(2*pi*nu*L_el - 1/(2*pi*nu*C_el))/(R_el^2 + (2*pi*nu*L_el - 1/(2*pi*nu*C_el))^2)) + (-(2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))/(esr^2 + (2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))^2)) + n_c*(-(2*pi*nu*L_100 - 1/(2*pi*nu*C_100))/(esr^2 + (2*pi*nu*L_100 - 1/(2*pi*nu*C_100))^2)) + s_1n*(-(2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))/(esr^2 + (2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))^2)))^2)", color: naranja, rotulo: "la red" }
+      marcas:
+        - { x: "f_ev", y: "Z_100", rotulo: "100 MHz" }
+      mandos: []
+    leer:
+      objetivo: Z_100
+      unidad: Ω
+      tol: 0.05
+      rotulo: "Impedancia a 100 MHz"
+      errores:
+        - { expr: "Z_100s", texto: "Esa es la red sin el 1 nF; aquí está montado." }
+    exito: "0,55 Ω, peor que sin él (0,37 Ω): el pequeño solo ayuda si su conexión tiene bastante menos inductancia que la del grande."
+    escalera:
+      - "Lea la curva en la marca de 100 MHz, en escala logarítmica."
+    solucion: "Unos 0,55 Ω."
+    comprobar:
+      - { Z_100: 0.55, Z_100s: 0.366, tol: 0.01 }
+
+  - id: marque-pico
+    tipo: marcar
+    titulo: "Dónde está el tanque"
+    texto: "El 100 nF ya es una bobina y el 1 nF aún es un condensador: juntos forman un tanque. Marque en la curva el pico de la antirresonancia."
+    libro: ["cap41#333", "cap41#335"]
+    fijar: { n_c: 1, s_1n: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log, muestras: 600 }
+      y: { min: 0.01, max: 20, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "1/sqrt((R_el/(R_el^2 + (2*pi*nu*L_el - 1/(2*pi*nu*C_el))^2) + esr/(esr^2 + (2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))^2) + n_c*esr/(esr^2 + (2*pi*nu*L_100 - 1/(2*pi*nu*C_100))^2) + s_1n*esr/(esr^2 + (2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))^2))^2 + ((-(2*pi*nu*L_el - 1/(2*pi*nu*C_el))/(R_el^2 + (2*pi*nu*L_el - 1/(2*pi*nu*C_el))^2)) + (-(2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))/(esr^2 + (2*pi*nu*L_1u - 1/(2*pi*nu*C_1u))^2)) + n_c*(-(2*pi*nu*L_100 - 1/(2*pi*nu*C_100))/(esr^2 + (2*pi*nu*L_100 - 1/(2*pi*nu*C_100))^2)) + s_1n*(-(2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))/(esr^2 + (2*pi*nu*L_1n - 1/(2*pi*nu*C_1n))^2)))^2)", color: naranja, rotulo: "la red" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_pk"
+      tol: 0.03
+      inicio: { x: 3000000, y: 0.1 }
+      rotulo: "El pico de la antirresonancia"
+      pasos: 150
+    pistas:
+      - { cuando: { valor: marca_x, menor: 135000000 }, texto: "El pico está más arriba en frecuencia." }
+      - { texto: "Se ha pasado: el pico está algo más abajo." }
+    exito: "Unos 135 MHz y casi 9 Ω con 20 mΩ de ESR: el 1 nF empeora justo donde debía ayudar."
+    escalera:
+      - "Es el máximo agudo de la curva, por encima de 100 MHz."
+    solucion: "Unos 135 MHz."
 
   - id: pregunta-defensa
-    tipo: pregunta
+    tipo: tocar
     titulo: "Domar el pico"
-    texto: "Un pico de antirresonancia cae donde el circuito tiene contenido. ¿Qué lo amortigua?"
-    libro: [180, 181]
+    texto: "Un pico de antirresonancia cae donde el circuito tiene contenido. En el recuadro de defensas, toque la que lo amortigua."
+    libro: [179, 180, 181, 182, "cap41#332"]
     widget:
       tipo: figura
       figura: fig-41.10
       zonas:
-        - { id: defensas, rotulo: "Recuadro verde", rect: [315, 160, 125, 75] }
-    opciones:
-      - texto: "Condensadores con algo de resistencia serie"
-        bien: true
-        porque: "Un electrolítico o un cerámico con ESR controlada amortigua el pico; y menos valores distintos."
-      - texto: "Un condensador de un valor más pequeño"
-        porque: "Añadir otro valor puede crear otra antirresonancia."
-      - texto: "Cerámicos con la menor ESR posible"
-        porque: "Sin resistencia, el pico queda sin amortiguar."
+        - { id: menos, rotulo: "Primera defensa", rect: [318, 185, 120, 16] }
+        - { id: esr, rotulo: "Segunda defensa", rect: [318, 201, 120, 9] }
+        - { id: simular, rotulo: "Tercera defensa", rect: [318, 210, 120, 10] }
+    tocar:
+      bien: [esr]
+      porque:
+        menos: "Menos valores distintos evitan que el tanque se forme; amortiguarlo es otra cosa."
+        simular: "Simular la PDN encuentra el pico, pero no lo baja."
+    exito: "Algo de resistencia serie: un electrolítico o un cerámico con ESR controlada amortiguan el tanque."
     escalera:
       - "Un tanque sin pérdidas resuena más."
-    solucion: "Algo de ESR: un electrolítico o un cerámico con ESR controlada."
+    solucion: "La segunda: ESR que amortigüe el pico."
 
   - id: pregunta-ssn
-    tipo: pregunta
+    tipo: tocar
     titulo: "El ruido de conmutación simultánea"
-    texto: "Un sistema da errores que dependen del patrón de datos, peores cuando cambian muchos bits a la vez. ¿Qué es?"
-    libro: [185, 186]
+    texto: "Errores según el patrón de datos, peores cuando cambian muchos bits a la vez. Toque la defensa que explica que los encapsulados rápidos tengan tantos pines."
+    libro: [184, 185, 186, "cap41#221"]
     widget:
       tipo: figura
-      figura: fig-41.10
+      figura: fig-41.11
       zonas:
-        - { id: defensas, rotulo: "Recuadro verde", rect: [315, 160, 125, 75] }
-    opciones:
-      - texto: "Ruido de conmutación simultánea"
-        bien: true
-        porque: "La corriente de retorno atraviesa los pines de masa y desplaza la referencia interna del chip."
-      - texto: "Un fallo de software"
-        porque: "Depende de cuántos bits cambian a la vez: es eléctrico."
-      - texto: "Una antirresonancia de la PDN"
-        porque: "Puede sumarse, pero la firma del patrón de datos es la de la conmutación simultánea."
+        - { id: d1, rotulo: "Primera defensa", rect: [267, 37, 171, 23] }
+        - { id: d2, rotulo: "Segunda defensa", rect: [267, 64, 171, 22] }
+        - { id: d3, rotulo: "Tercera defensa", rect: [267, 90, 171, 23] }
+        - { id: d4, rotulo: "Cuarta defensa", rect: [267, 117, 171, 22] }
+        - { id: d5, rotulo: "Quinta defensa", rect: [267, 144, 171, 22] }
+    tocar:
+      bien: [d1]
+      porque:
+        d2: "El desacoplo ayuda, pero no explica el número de pines."
+        d3: "Las vías de masa son de la placa, no del encapsulado."
+        d4: "Ralentizar los flancos es otra defensa, sin pines."
+        d5: "Escalonar las conmutaciones reparte la corriente en el tiempo."
+    exito: "Muchos pines de masa en paralelo: la corriente de retorno atraviesa su inductancia y desplaza la referencia interna del chip."
     escalera:
-      - "Muchas salidas a la vez, mucha corriente por los pines de masa."
-    solucion: "Ruido de conmutación simultánea: más pines de masa, flancos más lentos."
+      - "¿Por dónde vuelve la corriente de tantas salidas a la vez?"
+    solucion: "La primera: muchos pines de masa en paralelo."
 
   - id: pregunta-banco
     tipo: pregunta

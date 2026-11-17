@@ -2,6 +2,8 @@
   // Schematic «transformador-real» (esquema.ts): the source with R_s, the leakage L_d along the top, the magnetising
   // L_m down across the primary, the ideal transformer (the kit's windings) and, on the secondary, C_p and the load.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import C from '../kit/C.svelte';
   import Et from '../kit/Et.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -36,7 +38,7 @@
   <Et x={204} y={126} t={c.simT('lm')} ancla="end" color="azul" peq />
   <Et x={204} y={144} t={c.val('lm')} ancla="end" color="azul" peq />
   <path class="hilo" d="M40 220 H250 V190"></path>
-  <Trafo x1={250} x2={310} y1={80} y2={190} />
+  <g data-pieza="trafo"><Trafo x1={250} x2={310} y1={80} y2={190} /></g>
   <Et x={240} y={238} t={`${c.val('n1')} esp.`} color="azul" peq ancla="end" />
   <Et x={320} y={238} t={`${c.val('n2')} esp.`} color="naranja" peq />
   <path class="hilo" d="M310 80 V40 H440 M310 190 V220 H440"></path>
@@ -49,4 +51,13 @@
   <R x1={440} y1={40} x2={440} y2={220} color="verde" pieza="carga" />
   <Et x={428} y={110} t={c.simT('carga')} ancla="end" color="verde" peq />
   <Et x={428} y={128} t={c.val('carga')} ancla="end" color="verde" peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={40} red="fte" />
+  <Punto x={135} y={40} red="a" />
+  <Punto x={235} y={40} red="b" />
+  <Punto x={400} y={40} red="s" />
+  <Punto x={150} y={220} red="0" />
+  <Rama x={135} y={40} medidor="vmed" />
+  <Rama x={215} y={56} medidor="vmm" />
+  <Rama x={440} y={56} medidor="vcarga" />
 </Lienzo>

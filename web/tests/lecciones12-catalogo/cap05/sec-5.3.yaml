@@ -1,0 +1,313 @@
+# Catálogo de pruebas de motor121 (contenido/lecciones11/GUIA.md §13.1, §13.4, §13.10): el instrumento sobre
+# esquemas no lineales (LED, diodo de Shockley, transistor) y sobre un circuito que cambia con el tiempo (media onda:
+# el multímetro da la media, el osciloscopio la onda del simulador), con los puntos, ramas y zonas que cada esquema
+# trae de serie. NO se publica: las pruebas (tests/lecciones121-*.spec.ts y el recorrido con EPA_RECORRER_CATALOGO=1)
+# la generan y la sirven en lugar de la lección publicada.
+leccion: cap05/sec-5.3
+
+libro:
+  101: "Con IS = 10⁻¹² A y n = 1"
+  133: "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+  135: "El valor comercial de la serie E24 coincide: 150 Ω"
+  "cap06#171": "VTh = 2,105 V y RTh = 8,25 kΩ"
+  "cap06#179": "La estabilidad no viene del divisor sino de RE."
+  "cap05#207": "los diodos solo conducen durante el breve instante en que la senoide supera la tensión del condensador"
+
+modelo:
+  valores:
+    V_e: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_e: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 1e-12 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.025852 }
+    V_s: { sim: "V", nombre: "tensión de la fuente del diodo", unidad: V, valor: 5 }
+    R_s: { sim: "R", nombre: "resistencia del diodo", unidad: Ω, valor: 1000 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_a: { sim: "V_{p}", nombre: "pico de la entrada", unidad: V, valor: 16.97 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+    R_a: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1000 }
+    C_f: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 0.0047 }
+    k_l: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+  calculos:
+    I_e: { expr: "(V_e - V_fe)/R_e", sim: "I", nombre: "corriente del LED", unidad: A }
+    V_re: { expr: "V_e - V_fe", sim: "V_{R}", nombre: "tensión de la resistencia del LED", unidad: V }
+    I_ds: { expr: "n_d*V_T/R_s*wright(ln(I_S*R_s/(n_d*V_T)) + (V_s + I_S*R_s)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_ds: { expr: "V_s - I_ds*R_s", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+    V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión Thévenin del divisor", unidad: V, cifras: 4 }
+    R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
+    I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V, cifras: 4 }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    V_m1: { expr: "(V_a - V_rd)/pi", sim: "V_{media}", nombre: "media aproximada de media onda", unidad: V }
+    V_r1: { expr: "V_a - V_rd", sim: "V_{pico}", nombre: "pico tras el diodo", unidad: V }
+    T_red: { expr: "1/f_red", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau_r: { expr: "k_l*R_a*C_f + (1 - k_l)*1e9", sim: "τ", nombre: "constante de descarga", unidad: s }
+
+tarjetas:
+  - id: explore-led
+    tipo: explorar
+    titulo: "Consiga los 20 mA"
+    texto: "Cambie la resistencia hasta que el LED lleve la corriente que pide el libro."
+    libro: [133]
+    inicio: { R_e: 100 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      instrumento: { tipo: multimetro }
+      mandos:
+        - { valor: R_e, lista: [100, 120, 150, 180, 220], rotulo: "Resistencia, R" }
+    objetivo:
+      condiciones:
+        - { valor: I_e, min: 0.0195, max: 0.0205, rotulo: "Corriente: {{I_e}}" }
+      logrado: "Con {{R_e}} el LED lleva {{I_e}}: el valor de la serie E24 del libro."
+      pistas:
+        - { cuando: { valor: I_e, mayor: 0.0205 }, texto: "Demasiada corriente: suba la resistencia." }
+        - { texto: "Falta corriente: baje la resistencia." }
+    escalera:
+      - "A la resistencia le quedan los voltios que el LED no cae."
+    solucion: "{{R_e}} da {{I_e}}."
+    comprobar:
+      - { con: { R_e: 150 }, I_e: 0.02 }
+
+  - id: mida-led
+    tipo: medir
+    titulo: "Mida la tensión del LED"
+    texto: "Ponga las puntas donde mediría la tensión del LED encendido."
+    libro: [133]
+    fijar: { R_e: 150 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      instrumento: { tipo: multimetro }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [an, "0"]
+      valor: V_fe
+      porque:
+        fte: "Esa punta está en la fuente: mide la fuente, o la fuente menos el LED."
+        "fte/an": "Así mide la caída en la resistencia, no la del LED."
+    exito: "El LED cae {{V_fe}}: su tensión de trabajo."
+    escalera:
+      - "En paralelo con el LED: de su lado de arriba a masa."
+    solucion: "Roja entre la resistencia y el LED, negra en masa."
+
+  - id: lea-led
+    tipo: leer
+    titulo: "Lea la corriente del LED"
+    texto: "Abra la rama, meta el amperímetro y escriba lo que marca."
+    libro: [133, 135]
+    fijar: { R_e: 150 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      instrumento: { tipo: multimetro, modos: [A] }
+      mandos: []
+    leer:
+      objetivo: I_e
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente del LED"
+      medida: { rama: vmed }
+    exito: "{{I_e}}: la corriente que pedía el libro."
+    escalera:
+      - "Ponga el multímetro en amperios y toque la rama."
+    solucion: "Marca {{I_e}}."
+
+  - id: mida-diodo
+    tipo: medir
+    titulo: "Mida la tensión del diodo"
+    texto: "Un diodo de Shockley con una resistencia. Ponga las puntas donde mediría su tensión."
+    libro: [101]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_s, r: R_s, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      instrumento: { tipo: multimetro, puntos: [fte, an, "0"], modos: [V] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [an, "0"]
+      valor: V_ds
+      porque:
+        fte: "Esa punta está en la fuente: mide la fuente, o la resistencia."
+    exito: "El diodo cae {{V_ds}} con {{I_ds}}."
+    escalera:
+      - "En paralelo con el diodo."
+    solucion: "Roja entre la resistencia y el diodo, negra en masa."
+
+  - id: mida-colector
+    tipo: medir
+    titulo: "Mida la corriente de colector"
+    texto: "Meta el amperímetro donde mediría la corriente de colector del transistor."
+    libro: ["cap06#171"]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      instrumento: { tipo: multimetro, modos: [A] }
+      mandos: []
+    medir:
+      magnitud: corriente
+      rama: vcm
+      valor: I_pc
+      porque:
+        vbm: "Esa es la corriente de base: β veces menor que la de colector."
+    exito: "Por el colector pasan {{I_pc}}."
+    escalera:
+      - "La corriente de colector baja por R_{C}."
+    solucion: "En la rama del colector."
+
+  - id: elija-estabilidad
+    tipo: elegir
+    titulo: "Toque la que estabiliza"
+    texto: "Toque la resistencia que hace que la corriente de colector apenas dependa de β."
+    libro: ["cap06#179"]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    elegir:
+      zonas: [r1, r2, rc, re]
+      bien: [re]
+      porque:
+        r1: "El divisor da la tensión de base, pero no corrige si β cambia."
+        r2: "El divisor da la tensión de base, pero no corrige si β cambia."
+        rc: "R_{C} solo convierte la corriente en tensión: no la fija."
+    exito: "La estabilidad no viene del divisor sino de R_{E}."
+    escalera:
+      - "¿Qué resistencia sube la tensión del emisor si sube la corriente?"
+    solucion: "R_{E}."
+
+  - id: disene-beta
+    tipo: diseno
+    titulo: "Diseñe para cualquier β"
+    texto: "Elija R_{E} para que la corriente de colector quede en la banda con cualquier transistor de β entre 100 y 300."
+    libro: ["cap06#179"]
+    inicio: { R_pe: 470 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "I_{C}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: R_pe, min: 470, max: 2200, serie: E12, rotulo: "R_{E}" }
+    condiciones:
+      - { valor: I_pc, min: 0.0011, max: 0.0015, rotulo: "I_{C}: {{I_pc}}" }
+    diseno:
+      tolerancias: { beta: { min: 100, max: 300 } }
+      metodo: esquinas
+      si_tolerancias: "Con el nominal cumple, pero con un β de los extremos se sale: suba R_{E}."
+    pistas:
+      - { cuando: { valor: I_pc, mayor: 0.0015 }, texto: "Demasiada corriente: suba R_{E}." }
+      - { texto: "Falta corriente: baje R_{E}." }
+    exito: "Con {{R_pe}} la corriente apenas depende de β: la fija R_{E}."
+
+  - id: explore-vacio
+    tipo: explorar
+    titulo: "En vacío"
+    texto: "Desconecte la carga y mire la salida con el condensador solo."
+    libro: ["cap05#207"]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_a, f: f_red, vd: V_rd, c: C_f, carga: R_a, interruptor: k_l }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_a*sin(2*pi*f_red*t) - V_rd, V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: k_l, rotulo: "Carga conectada" }
+    requiere: { mover: [k_l] }
+
+  - id: mida-onda
+    tipo: medir
+    titulo: "Vea la salida"
+    texto: "Ponga la sonda del osciloscopio donde vería los pulsos que deja pasar el diodo."
+    libro: ["cap05#207"]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_a, f: f_red, vd: V_rd, carga: R_a }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_a*sin(2*pi*f_red*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "max(V_a*sin(2*pi*f_red*t) - V_rd, 0)", color: naranja, rotulo: "salida", mide: salida }
+      instrumento: { tipo: osciloscopio, puntos: [fte, s] }
+      mandos: []
+    medir:
+      magnitud: senal
+      punto: s
+      porque:
+        fte: "Esa es la entrada: la senoide entera, antes del diodo."
+    exito: "Solo pasan los semiciclos positivos, menos la caída del diodo."
+    escalera:
+      - "Los pulsos están después del diodo."
+    solucion: "La sonda en la salida, tras el diodo."
+
+  - id: mida-media
+    tipo: medir
+    titulo: "Mida la continua"
+    texto: "El multímetro en continua da la media de lo que ve. Ponga las puntas donde mediría la continua de la carga."
+    libro: ["cap05#207"]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_a, f: f_red, vd: V_rd, carga: R_a }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_a*sin(2*pi*f_red*t) - V_rd, 0)", color: naranja, rotulo: "salida", mide: salida }
+      instrumento: { tipo: multimetro, modos: [V] }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [s, "0"]
+      porque:
+        fte: "En la entrada la media es cero: tanto sube como baja."
+    exito: "Esa es la continua de la carga: cerca de {{V_m1}}."
+    escalera:
+      - "En paralelo con la carga."
+    solucion: "Roja en la salida, negra en masa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Resumen"
+    libro: [133, "cap05#207"]
+    ideas:
+      - { titulo: "El punto de trabajo", texto: "El multímetro lee el circuito tal como es, también con diodos y transistores." }
+      - { titulo: "Lo que cambia", texto: "En continua lee la media; el osciloscopio enseña la onda." }

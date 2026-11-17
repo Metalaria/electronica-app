@@ -4,6 +4,10 @@
 # salida (en el ejercicio, R₂ y R₁): umbrales 2,27 y 2,73 V, ventana de 0,45 V. La triangular lenta (de 2 a 3 V a
 # 100 Hz) es la del banco del bloque 190, con valores de ejemplo; «sin R₂» es R₂ = 1 GΩ.
 # La ganancia con realimentación positiva, A/(1 − A·β), se dibuja normalizada a A frente a A·β (bloque 182).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ganancia se lleva a ×10 acercando A · β a uno, el umbral
+# al subir se encuentra moviendo la entrada, la anchura de la ventana se predice, el cruce al subir se marca sobre la
+# triangular y R₂ se quita hasta cerrar la ventana (objetivos). Quedan dos preguntas de opciones (para qué dos
+# umbrales, Barkhausen); «oscilador o inestable» pasa a la explicación de Barkhausen y al resumen.
 leccion: cap27/sec-27.6
 
 libro:
@@ -47,8 +51,9 @@ tarjetas:
   - id: explore-signo
     tipo: explorar
     titulo: "El otro signo"
-    texto: "Si lo devuelto suma, la ganancia es A/(1 − A · β). Acerque la ganancia de lazo a uno."
+    texto: "Si lo devuelto suma, la ganancia es A/(1 − A · β). Acerque A · β a uno hasta multiplicarla por diez."
     libro: [182]
+    inicio: { T_l: 0.5 }
     widget:
       tipo: grafica
       x: { id: ab, min: 0, max: 0.98, unidad: "", rotulo: "A · β" }
@@ -60,12 +65,22 @@ tarjetas:
       lectura: { valor: G_p, rotulo: "La ganancia crece por" }
       mandos:
         - { valor: T_l, min: 0, max: 0.98, paso: 0.02, rotulo: "Ganancia de lazo, A · β" }
-    requiere: { mover: [T_l] }
+    objetivo:
+      condiciones:
+        - { valor: G_p, min: 10, rotulo: "A_{f}/A = {{G_p}}" }
+      logrado: "Con A · β = {{T_l}}, la ganancia se multiplica por {{G_p}}: los defectos también. En 1, no hay equilibrio."
+      pistas:
+        - { texto: "Acerque más la ganancia de lazo a uno." }
+    escalera:
+      - "1/(1 − A · β) = 10 pide 1 − A · β = 0,1."
+    solucion: "A · β = 0,9: ×10."
+    comprobar:
+      - { con: { T_l: 0.9 }, G_p: 10, tol: 0.001 }
 
   - id: explore-schmitt
     tipo: explorar
     titulo: "Dos umbrales"
-    texto: "Salida de 0 a 5 V, referencia de 2,5 V. Suba la entrada y bájela: conmuta en sitios distintos."
+    texto: "Salida de 0 a 5 V, referencia de 2,5 V. Con la salida en alto, suba la entrada hasta que conmute y mire la entrada +."
     libro: [186]
     inicio: { V_i: 2, alto: 1 }
     widget:
@@ -79,29 +94,34 @@ tarjetas:
       mandos:
         - { valor: V_i, min: 2, max: 3, paso: 0.1, rotulo: "Entrada" }
         - { valor: alto, tipo: interruptor, rotulo: "Salida en alto antes" }
-    requiere: { mover: [V_i, alto] }
+    objetivo:
+      condiciones:
+        - { valor: alto, min: 1, rotulo: "Salida en alto antes" }
+        - { valor: V_o, max: 0, rotulo: "Salida: {{V_o}}" }
+      logrado: "Conmuta al pasar de {{V_hi}}; la entrada + baja a {{V_p}} y, para volver, la entrada tendrá que bajar de ahí."
+      pistas:
+        - { cuando: { valor: alto, max: 0 }, texto: "Empiece con la salida en alto." }
+        - { texto: "Suba más la entrada." }
+    escalera:
+      - "Con la salida en 5 V, la entrada + está algo por encima de la referencia."
+    solucion: "Entre 2,7 y 2,8 V la salida cae a 0 V."
+    comprobar:
+      - { V_hi: 2.727, V_lo: 2.273, tol: 0.001 }
+      - { con: { V_i: 2.8, alto: 1 }, V_o: 0 }
 
   - id: prediga-ventana
-    tipo: predecir
+    tipo: simular
     titulo: "La anchura de la histéresis"
     texto: "Salida de 0 a 5 V, 100 kΩ de la salida a la entrada + y 10 kΩ de ahí a la referencia. ¿Qué anchura tiene la ventana?"
     libro: ["cap27#434"]
-    fijar: { V_i: 2.5, alto: 1 }
-    widget:
-      tipo: circuito
-      esquema: comparador-schmitt
-      piezas: { entrada: V_i, r1: R_1, r2: R_2, ref: V_r, vsat: V_s, vsatneg: V_b, alto: alto }
-      lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
-      mide: { vo: V_o, vmas: V_p }
-      ocultar: true
-    opciones:
-      - texto: "Unos 0,45 V: de 2,27 a 2,73 V"
-        bien: true
-        porque: "Al conmutar, la entrada + se mueve 5 V · 10/110: esa es la separación entre los umbrales."
-      - texto: "0,5 V"
-        porque: "Sería 5 · 10/100. El divisor es 10/(10 + 100)."
-      - texto: "Ninguna: la referencia es fija"
-        porque: "La referencia lo es, pero la entrada + recibe también parte de la salida."
+    simular:
+      objetivo: V_w
+      unidad: V
+      tol: 0.02
+      rotulo: "Anchura de la ventana"
+      errores:
+        - { expr: "V_mal", texto: "Sería 5 · 10/100. El divisor es 10/(10 + 100)." }
+    exito: "Unos 0,45 V, de 2,27 a 2,73 V: al conmutar, la entrada + se mueve 5 V · 10/110."
     escalera:
       - "ΔV = ΔV_{salida} · R/(R + R_{realimentación})."
     solucion: "5 · 10/110 ≈ 0,45 V: umbrales en 2,27 y 2,73 V."
@@ -109,11 +129,11 @@ tarjetas:
       - { V_w: 0.4545, V_hi: 2.727, V_lo: 2.273, V_mal: 0.5, tol: 0.005 }
 
   - id: explore-triangular
-    tipo: explorar
+    tipo: marcar
     titulo: "Una triangular lenta"
-    texto: "Una triangular entra por la −. Mire dónde conmuta la salida al subir y al bajar, y cómo salta la entrada +."
-    nota: "Triangular de ejemplo, de 2 a 3 V."
+    texto: "Una triangular de 2 a 3 V entra por la −. Marque en ella el punto donde la salida cae a 0 V."
     libro: [186, 190]
+    fijar: { A_t: 0.5 }
     widget:
       tipo: circuito
       esquema: comparador-schmitt
@@ -126,16 +146,28 @@ tarjetas:
           - { expr: "V_r - A_t + 4*A_t/T_t*(T_t/2 - abs(t - T_t*floor(t/T_t) - T_t/2))", color: tinta, rotulo: "v_{in}", mide: entrada, discontinua: true }
           - { expr: "V_s*(1 - ceil((t - T_t*floor(t/T_t) - t_1)/1e9)*(1 - ceil((t - T_t*floor(t/T_t) - t_2)/1e9)))", color: naranja, rotulo: "v_{o}", mide: salida }
           - { expr: "(V_r*R_2 + R_1*V_s*(1 - ceil((t - T_t*floor(t/T_t) - t_1)/1e9)*(1 - ceil((t - T_t*floor(t/T_t) - t_2)/1e9))))/(R_1 + R_2)", color: azul, rotulo: "v_{+}", mide: umbral }
-      mandos:
-        - { valor: A_t, lista: [0.4, 0.5], rotulo: "Amplitud de la triangular" }
-    requiere: { mover: [A_t] }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_1"
+      tol: 0.03
+      inicio: { x: 0.012, y: 2.5 }
+      rotulo: "Conmutación al subir"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.005 }, texto: "Ahí la salida ya ha caído: busque el primer escalón de la curva naranja." }
+      - { texto: "Ahí la triangular aún no ha llegado al umbral: más a la derecha." }
+    exito: "La triangular cruza el umbral alto, la salida cae y la entrada + baja: para volver, la entrada tendrá que bajar al umbral bajo."
+    escalera:
+      - "Al subir, la salida cae cuando la triangular pasa de 2,73 V."
+    solucion: "En el primer tramo de subida, a 2,73 V."
     comprobar:
-      - { V_r: 2.5, A_t: 0.5 }
+      - { V_r: 2.5, A_t: 0.5, t_1: 0.003636, tol: 0.001 }
 
   - id: sorpresa-sin-r2
     tipo: sorpresa
     titulo: "Sin la realimentación positiva"
-    texto: "Quite R₂: los dos umbrales se juntan en la referencia."
+    texto: "Quite R₂ y mire qué pasa con la ventana entre los dos umbrales."
     libro: [186, 190]
     inicio: { R_2: 100000 }
     widget:
@@ -152,7 +184,17 @@ tarjetas:
           - { expr: "(V_r*R_2 + R_1*V_s*(1 - ceil((t - T_t*floor(t/T_t) - t_1)/1e9)*(1 - ceil((t - T_t*floor(t/T_t) - t_2)/1e9))))/(R_1 + R_2)", color: azul, rotulo: "v_{+}", mide: umbral }
       mandos:
         - { valor: R_2, lista: [100000, 1000000000], nombres: ["con R₂", "sin R₂"], rotulo: "Realimentación positiva" }
-    requiere: { mover: [R_2] }
+    objetivo:
+      condiciones:
+        - { valor: R_2, min: 1000000000, rotulo: "Sin R₂" }
+      logrado: "Ventana de {{V_w}}: un solo umbral, la referencia. La salida conmuta justo donde la entrada la cruza."
+      pistas:
+        - { texto: "Quite R₂." }
+    escalera:
+      - "Sin R₂, la entrada + solo ve la referencia."
+    solucion: "Sin R₂, los dos umbrales en 2,5 V."
+    comprobar:
+      - { con: { R_2: 1000000000 }, V_w: 0.00005, tol: 0.01 }
 
   - id: por-que-histeresis
     tipo: porque
@@ -182,7 +224,7 @@ tarjetas:
     tipo: pregunta
     titulo: "Para oscilar"
     texto: "Un oscilador es realimentación positiva buscada. ¿Qué condición debe cumplir el lazo?"
-    libro: [187, "cap27#230"]
+    libro: [183, 187, 188, "cap27#230"]
     widget:
       tipo: grafica
       x: { id: ab, min: 0, max: 0.98, unidad: "", rotulo: "A · β" }
@@ -192,7 +234,7 @@ tarjetas:
     opciones:
       - texto: "Ganancia de lazo igual a uno y desfase de 360°"
         bien: true
-        porque: "Es la condición de Barkhausen: la señal vuelve igual y en fase, y se mantiene sola."
+        porque: "La señal vuelve igual y en fase. Un amplificador inestable cumple lo mismo: la diferencia es si se pretendía."
       - texto: "Ganancia de lazo muy pequeña"
         porque: "Con poca ganancia de lazo la señal se apaga en cada vuelta."
       - texto: "Desfase de 180°"
@@ -200,29 +242,6 @@ tarjetas:
     escalera:
       - "Cuando A · β llega a uno, el denominador se anula."
     solucion: "A · β = 1 con 360° de desfase: Barkhausen."
-
-  - id: oscilador-o-inestable
-    tipo: pregunta
-    titulo: "Oscilador o amplificador inestable"
-    texto: "Dos circuitos oscilan igual: uno es un oscilador y otro un amplificador inestable. ¿Qué los distingue?"
-    libro: [183, 188]
-    widget:
-      tipo: grafica
-      x: { id: ab, min: 0, max: 0.98, unidad: "", rotulo: "A · β" }
-      y: { min: 1, max: 100, unidad: "", rotulo: "A_{f}/A", escala: log }
-      curvas:
-        - { expr: "1/(1 - ab)", color: naranja, rotulo: "A_{f}/A" }
-    opciones:
-      - texto: "Si se pretendía"
-        bien: true
-        porque: "El circuito puede ser el mismo. Lo peligroso es la realimentación positiva involuntaria, la de los retardos."
-      - texto: "El número de componentes"
-        porque: "Uno inestable puede ser idéntico a un oscilador: la diferencia no está en el circuito."
-      - texto: "Que el oscilador usa realimentación negativa"
-        porque: "Los dos oscilan porque la realimentación, a esa frecuencia, suma."
-    escalera:
-      - "¿La diferencia está en el circuito o en la intención?"
-    solucion: "Si se pretendía: en el circuito pueden ser iguales."
 
   - id: resumen
     tipo: resumen

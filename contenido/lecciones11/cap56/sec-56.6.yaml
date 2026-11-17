@@ -11,6 +11,10 @@
 #   raíz mayor de la cuadrática del par sobre el Thévenin. La corriente magnetizante E/X_m mide el flujo: 3,87 A a
 #   50 Hz; con V/f puro cae a frecuencia baja (a 5 Hz ni siquiera llega al par nominal) y el refuerzo de 16,5 V la
 #   devuelve a 3,87 A a 5 Hz, lo que dice el bloque 108. El deslizamiento a 25 Hz sale 55,9 rpm (el libro: 55 rpm).
+# - 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): objetivos en los 200 V de 25 Hz, en la frecuencia más baja
+#   con más de la mitad del par máximo y en bajar a 10 Hz con V/f puro; se calculan el par a 5 Hz y a 75 Hz; el
+#   ajuste del refuerzo y la velocidad a 30 Hz se quedan. Quedan dos preguntas (el refuerzo y el chopper de frenado);
+#   el control vectorial y la refrigeración a baja velocidad pasan al resumen.
 leccion: cap56/sec-56.6
 
 libro:
@@ -57,6 +61,7 @@ modelo:
     V_th2: { expr: "(V_v/sqrt(3))^2*(a_m^2 + b_m^2)/d_s", sim: "V_{th}²", nombre: "tensión de Thévenin al cuadrado", unidad: "" }
     T_max: { expr: "3*V_th2/(2*w_s*(R_th + sqrt(R_th^2 + (X_th + x_2)^2)))", sim: "T_{máx}", nombre: "par máximo", unidad: "N·m" }
     T_rel: { expr: "100*T_max/T_50", sim: "T_{máx}", nombre: "par máximo frente al de 50 Hz", unidad: "%", cifras: 3 }
+    T_r1f: { expr: "T_50*(50/f_v)^2", sim: "T", nombre: "por la regla 1/f²", unidad: "N·m" }
     n_30: { expr: "n_s - n_desl", sim: "n", nombre: "velocidad con el par nominal", unidad: rpm, cifras: 3 }
     K_d: { expr: "3*V_th2/(T_n*w_s)", sim: "K", nombre: "auxiliar", unidad: Ω }
     B_d: { expr: "2*R_th - K_d", sim: "B", nombre: "auxiliar", unidad: Ω }
@@ -78,8 +83,9 @@ tarjetas:
   - id: explore-ley
     tipo: explorar
     titulo: "La ley V/f"
-    texto: "Mueva la frecuencia: el variador cambia la tensión con ella para no cambiar el flujo. Pruebe con y sin refuerzo."
-    libro: [106, 107]
+    texto: "El variador cambia la tensión con la frecuencia para no cambiar el flujo: 8 V/Hz. Busque el punto en que el motor recibe 200 V."
+    libro: [105, 106, 107]
+    inicio: { f_v: 50, bst: 0 }
     widget:
       tipo: grafica
       x: { id: fx, min: 0, max: 80, unidad: Hz, rotulo: "f" }
@@ -92,44 +98,25 @@ tarjetas:
       mandos:
         - { valor: f_v, lista: [5, 10, 25, 50, 75], rotulo: "Frecuencia" }
         - { valor: bst, tipo: interruptor, rotulo: "Refuerzo" }
-    requiere: { mover: [f_v, bst] }
-
-  - id: estime-25
-    tipo: pregunta
-    titulo: "A 25 Hz"
-    texto: "Con V/f puro, 8 V/Hz, ¿qué tensión recibe el motor a 25 Hz?"
-    libro: [106]
-    fijar: { f_v: 25, bst: 0 }
-    widget:
-      tipo: grafica
-      x: { id: fx, min: 0, max: 80, unidad: Hz, rotulo: "f" }
-      y: { min: 0, max: 450, unidad: V, rotulo: "V" }
-      curvas:
-        - { expr: "400", color: tinta, rotulo: "nominal", discontinua: true }
-    estimar:
-      objetivo: "V_v"
-      unidad: V
-      min: 0
-      max: 400
-      paso: 5
-      inicio: 350
-      tol: 0.03
-      rotulo: "Tensión"
-    exito: "200 V: la mitad de frecuencia, la mitad de tensión, el mismo flujo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 206 }, texto: "Se ha pasado: 8 V por cada hercio." }
-      - { texto: "Se ha quedado corto: 8 V/Hz por 25 Hz." }
+    objetivo:
+      condiciones:
+        - { valor: V_v, objetivo: 200, tol: 0.01, rotulo: "Tensión: {{V_v}}" }
+      logrado: "A {{f_v}}, {{V_v}}: la mitad de frecuencia, la mitad de tensión, el mismo flujo."
+      pistas:
+        - { cuando: { valor: bst, mayor: 0 }, texto: "El refuerzo suma tensión a baja frecuencia: quítelo." }
+        - { texto: "8 V por cada hercio: busque la frecuencia." }
     escalera:
-      - "El flujo es proporcional a V/f: mantenga 8 V/Hz."
-    solucion: "8 × 25 = 200 V."
+      - "200/8."
+    solucion: "25 Hz, sin refuerzo."
     comprobar:
-      - { V_v: 200 }
+      - { con: { f_v: 25, bst: 0 }, V_v: 200 }
 
   - id: explore-curvas
     tipo: explorar
     titulo: "Curvas a cada frecuencia"
-    texto: "Cambie la frecuencia: la curva par-velocidad se desplaza casi sin deformarse. Fíjese en el par máximo a frecuencia baja."
+    texto: "Con V/f la curva par-velocidad se desplaza casi sin deformarse. Busque la frecuencia más baja con la que el par máximo aún pasa de la mitad del de 50 Hz."
     libro: [106, 108]
+    inicio: { f_v: 50, bst: 0 }
     widget:
       tipo: grafica
       x: { id: nx, min: 0, max: 2300, unidad: rpm, rotulo: "n" }
@@ -142,36 +129,49 @@ tarjetas:
       mandos:
         - { valor: f_v, lista: [5, 10, 25, 50, 75], rotulo: "Frecuencia" }
         - { valor: bst, tipo: interruptor, rotulo: "Refuerzo" }
-    requiere: { mover: [f_v] }
+    objetivo:
+      condiciones:
+        - { valor: bst, max: 0, rotulo: "V/f puro" }
+        - { valor: f_v, max: 25, rotulo: "Frecuencia: {{f_v}}" }
+        - { valor: T_rel, min: 50, rotulo: "{{T_rel}} del de 50 Hz" }
+      logrado: "A {{f_v}} queda {{T_rel}}; más abajo se hunde, porque la caída en R₁ se come la tensión."
+      pistas:
+        - { cuando: { valor: bst, mayor: 0 }, texto: "Hágalo con V/f puro, sin refuerzo." }
+        - { cuando: { valor: T_rel, menor: 50 }, texto: "Ahí ya no llega a la mitad: suba la frecuencia." }
+        - { texto: "Aún puede bajar más." }
+    escalera:
+      - "Mire el porcentaje a 25 y a 10 Hz."
+    solucion: "25 Hz: el 73,6 %. A 10 Hz, solo el 37,5 %."
     comprobar:
       - { con: { f_v: 50 }, T_max: 86.51 }
       - { con: { f_v: 25, bst: 0 }, T_rel: 73.6 }
       - { con: { f_v: 10, bst: 0 }, T_rel: 37.5 }
 
   - id: prediga-5hz
-    tipo: predecir
+    tipo: simular
     titulo: "V/f puro a 5 Hz"
-    texto: "Sin refuerzo, a 5 Hz, ¿cuánto par máximo le queda al motor frente a los 86,5 N·m de 50 Hz?"
+    texto: "Sin refuerzo, a 5 Hz el motor recibe 40 V. ¿Qué porcentaje del par máximo de 50 Hz le queda?"
     libro: [108]
     fijar: { f_v: 5, bst: 0 }
     widget:
       tipo: grafica
-      x: { id: nx, min: 0, max: 50, unidad: rpm, rotulo: "n" }
+      x: { id: nx, min: 0, max: 200, unidad: rpm, rotulo: "n" }
       y: { min: 0, max: 100, unidad: "N·m", rotulo: "T" }
       curvas:
         - { expr: "3*V_th2*R_2/max(0.000001, (n_s - nx)/n_s)/(w_s*((R_th + R_2/max(0.000001, (n_s - nx)/n_s))^2 + (X_th + x_2)^2))*ceil(max(0, n_s - nx)/1e9)", color: naranja, rotulo: "par" }
-      lectura: { valor: T_max, rotulo: "Par máximo" }
+      lectura: { valor: T_rel, rotulo: "Par máximo" }
       ocultar: true
-    opciones:
-      - texto: "Menos de 17 N·m, un 19,6 %"
-        bien: true
-        porque: "La caída en R₁, que no depende de la frecuencia, se come una parte cada vez mayor de la tensión."
-      - texto: "Los mismos 86,5 N·m: el flujo es el mismo"
-        porque: "Lo sería sin R₁; a 5 Hz la tensión es tan pequeña que su caída pesa mucho."
-      - texto: "Una décima parte, como la tensión"
-        porque: "El par máximo no sigue a la tensión: cae al 19,6 %, por la caída en R₁."
+    simular:
+      objetivo: T_rel
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Par máximo frente al de 50 Hz"
+      errores:
+        - { expr: "100", texto: "Lo sería sin R₁: a 5 Hz la tensión es tan pequeña que su caída pesa mucho." }
+        - { expr: "10", texto: "El par máximo no sigue a la tensión: la caída en R₁ lo hunde de otra manera." }
+    exito: "El 19,6 %, menos de 17 N·m: por eso a baja frecuencia se suma un refuerzo de tensión."
     escalera:
-      - "¿Qué parte de 40 V se queda en la resistencia del estátor?"
+      - "Simúlelo con la curva: el par máximo es la cima."
     solucion: "16,9 N·m, el 19,6 %."
     comprobar:
       - { T_rel: 19.6, T_max: 16.9, V_v: 40, T_50: 86.5 }
@@ -179,7 +179,7 @@ tarjetas:
   - id: explore-flujo
     tipo: explorar
     titulo: "El flujo a cada frecuencia"
-    texto: "Con el par nominal, la corriente magnetizante sigue al flujo. Baje la frecuencia con V/f puro y después ponga el refuerzo."
+    texto: "Con el par nominal, la corriente magnetizante sigue al flujo. Baje a 10 Hz con V/f puro y mire qué le pasa."
     libro: [106, 108]
     inicio: { f_v: 50, bst: 0 }
     widget:
@@ -194,7 +194,17 @@ tarjetas:
       mandos:
         - { valor: f_v, lista: [10, 25, 50, 75], rotulo: "Frecuencia" }
         - { valor: bst, tipo: interruptor, rotulo: "Refuerzo" }
-    requiere: { mover: [f_v, bst] }
+    objetivo:
+      condiciones:
+        - { valor: f_v, max: 10, rotulo: "Frecuencia: {{f_v}}" }
+        - { valor: bst, max: 0, rotulo: "V/f puro" }
+      logrado: "A {{f_v}}, la magnetizante cae a {{Im_d}}, frente a 3,87 A a 50 Hz: el flujo se pierde. Pruebe ahora el refuerzo."
+      pistas:
+        - { cuando: { valor: bst, mayor: 0 }, texto: "Sin refuerzo." }
+        - { texto: "Baje la frecuencia hasta 10 Hz." }
+    escalera:
+      - "La magnetizante es E/X_{m}: mide el flujo."
+    solucion: "10 Hz sin refuerzo."
     comprobar:
       - { T_d: 26.61, Im_d: 3.873, s_d: 0.0339, tol: 0.003 }
       - { con: { f_v: 25, bst: 0 }, T_d: 26.61, Im_d: 3.696, tol: 0.003 }
@@ -287,11 +297,11 @@ tarjetas:
       - { n_30: 850, n_s: 900, V_v: 240 }
 
   - id: por-encima
-    tipo: pregunta
+    tipo: simular
     titulo: "Por encima de 50 Hz"
-    texto: "A 75 Hz el variador ya no puede subir la tensión. ¿Qué le pasa al par máximo?"
+    texto: "A 75 Hz el variador ya no puede subir de 400 V, y el flujo baja como 1/f. ¿Cuánto par máximo le queda?"
     libro: [109]
-    fijar: { f_v: 75 }
+    fijar: { f_v: 75, bst: 0 }
     widget:
       tipo: grafica
       x: { id: nx, min: 0, max: 2300, unidad: rpm, rotulo: "n" }
@@ -299,41 +309,20 @@ tarjetas:
       curvas:
         - { expr: "3*V_th2*R_2/max(0.000001, (n_s - nx)/n_s)/(w_s*((R_th + R_2/max(0.000001, (n_s - nx)/n_s))^2 + (X_th + x_2)^2))*ceil(max(0, n_s - nx)/1e9)", color: naranja, rotulo: "par" }
       lectura: { valor: T_max, rotulo: "Par máximo" }
-    opciones:
-      - texto: "Baja aproximadamente como 1/f²: 42,9 N·m, el 49,6 %"
-        bien: true
-        porque: "El flujo baja como 1/f: es el debilitamiento de campo, la zona de potencia constante."
-      - texto: "Se mantiene, porque sigue con 400 V"
-        porque: "Con la misma tensión y más frecuencia el flujo baja."
-      - texto: "Sube, porque gira más deprisa"
-        porque: "Gira más deprisa con menos flujo: menos par por amperio."
+      ocultar: true
+    simular:
+      objetivo: T_max
+      unidad: "N·m"
+      tol: 0.03
+      rotulo: "Par máximo a 75 Hz"
+      errores:
+        - { expr: "T_50", texto: "Se mantendría con el flujo; por encima de 50 Hz la tensión no sube y el flujo cae." }
+    exito: "42,9 N·m, el 49,6 %: la regla de 1/f² diría el 44,4 %. Es la zona de potencia constante."
     escalera:
-      - "Con V fija, ¿qué hace V/f al subir f?"
-    solucion: "Cae: 42,9 N·m, el 49,6 % (la regla de 1/f² diría el 44,4 %)."
+      - "Simúlelo con la curva: el par máximo es la cima."
+    solucion: "42,9 N·m."
     comprobar:
-      - { T_max: 42.9, T_rel: 49.6, V_v: 400 }
-
-  - id: foc
-    tipo: pregunta
-    titulo: "Control vectorial"
-    texto: "Empareje cada pieza del control vectorial con lo que hace."
-    libro: [111, 113]
-    widget:
-      tipo: figura
-      figura: fig-56.8
-      zonas:
-        - { id: esquema, rotulo: "El esquema de bloques", rect: [0, 0, 325, 124] }
-    emparejar:
-      - ["Clarke", "De las tres fases a un vector del plano"]
-      - ["Park", "Lo gira con el ángulo del flujo: corrientes continuas"]
-      - ["i_{d}", "Alineada con el flujo: lo controla"]
-      - ["i_{q}", "Perpendicular: da el par"]
-    exito: "En un PMSM los imanes ponen el flujo: i_{d} = 0 y el par es proporcional a i_{q}, como en un motor de continua."
-    pistas:
-      - { texto: "Park usa el ángulo θ del flujo." }
-    escalera:
-      - "Empiece por la que da el par."
-    solucion: "Clarke: tres a dos. Park: gira con θ. i_{d}: flujo. i_{q}: par."
+      - { T_max: 42.9, T_rel: 49.6, T_r1f: 38.4, tol: 0.005 }
 
   - id: frenar
     tipo: pregunta
@@ -357,34 +346,12 @@ tarjetas:
       - "¿Hacia dónde puede circular la energía por un puente de diodos?"
     solucion: "Un chopper con resistencia de frenado (o un rectificador activo)."
 
-  - id: despacio
-    tipo: pregunta
-    titulo: "Mucho tiempo despacio"
-    texto: "Un motor autoventilado debe dar su par nominal a 5 Hz durante horas. ¿Qué hay que vigilar?"
-    libro: ["cap56#109"]
-    widget:
-      tipo: figura
-      figura: fig-56.7
-      zonas:
-        - { id: curvas, rotulo: "Las curvas", rect: [0, 0, 325, 153] }
-    opciones:
-      - texto: "La refrigeración: su ventilador gira con el eje y despacio enfría poco"
-        bien: true
-        porque: "Hace falta ventilación forzada o un motor mayor, según la curva del fabricante."
-      - texto: "Nada, con refuerzo da el par"
-        porque: "Da el par, pero se calienta: el límite no está en las curvas."
-      - texto: "La tensión del bus"
-        porque: "A baja velocidad el bus no es el problema; el calor sí."
-    escalera:
-      - "¿De dónde saca el aire un motor autoventilado?"
-    solucion: "La refrigeración: a baja velocidad su ventilador apenas mueve aire."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [106, 108, 109, 111]
+    libro: [106, 108, 109, 111, 113, "cap56#109"]
     ideas:
       - { titulo: "V/f.", texto: "8 V/Hz mantienen el flujo y desplazan la curva par-velocidad." }
       - { titulo: "Refuerzo.", texto: "A baja frecuencia R₁ se come la tensión: se suma una tensión fija." }
       - { titulo: "Por encima de 50 Hz.", texto: "Tensión fija, flujo como 1/f: potencia constante." }
-      - { titulo: "Vectorial.", texto: "i_{d} para el flujo, i_{q} para el par, cada una con su PI." }
+      - { titulo: "Vectorial y límites.", texto: "i_{d} para el flujo, i_{q} para el par. Despacio y con par, el autoventilado se calienta." }

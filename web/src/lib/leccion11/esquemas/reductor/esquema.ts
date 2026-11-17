@@ -46,6 +46,12 @@ const d: DefinicionEsquema = {
     sincrono: { interruptor: true, descripcion: 'con «vf»: cerrado, el rectificador síncrono en lugar del diodo' },
     asentar: { descripcion: 'periodos que se simulan antes del eje (sin ella, 0: se parte del régimen permanente continuo)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { vin: 'Entrada', sw: 'Nodo de conmutación', o: 'Salida', '0': 'Masa, abajo' },
+    ramas: { vmin: 'Rama de la entrada', vmd: 'Rama del diodo o del interruptor de abajo', vml: 'Rama de la bobina' },
+    zonas: { vin: 'Fuente de entrada', ciclo: 'Interruptor de arriba', l: 'Bobina', ...(c.tiene('dcr') ? { dcr: 'Resistencia de la bobina' } : {}), c: 'Condensador', ...(c.tiene('esr') ? { esr: 'Resistencia serie del condensador' } : {}), carga: 'Carga' },
+  }),
   observables: {
     nodo: { medida: 'v(sw)', analisis: 'tran', unidad: 'V', descripcion: 'tensión del nodo de conmutación frente al tiempo' },
     il: { medida: 'i(vml)', analisis: 'tran', unidad: 'A', descripcion: 'corriente de la bobina frente al tiempo' },

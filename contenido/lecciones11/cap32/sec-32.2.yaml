@@ -2,6 +2,10 @@
 # Térmico: √(4kTRB) con k = 1,380649·10⁻²³ J/K y T = 300 K (bloque 42). Disparo: √(2qIB) con q = 1,602·10⁻¹⁹ C
 # (bloque 50). La densidad con zona 1/f se dibuja como e·√(1 + f_c/f), con la esquina de cada dispositivo en el
 # centro (geométrico) de su intervalo de la tabla del bloque 55 y la densidad blanca normalizada a 1.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el ruido térmico se lleva por encima de una décima de milivoltio y
+# se divide por diez bajando R (objetivos), el factor de doble banda se predice, la corriente con menos ruido relativo
+# se busca, la esquina del MOSFET se marca (la tabla va en su explicación) y el valor eficaz se estima desde 3 µV pico
+# a pico (valor de ejemplo). Las ráfagas quedan en el resumen. Quedan dos preguntas de opciones (resistencia, chopper).
 leccion: cap32/sec-32.2
 
 libro:
@@ -27,19 +31,23 @@ modelo:
     B_n: { sim: "B", nombre: "ancho de banda", unidad: Hz, valor: 1000000 }
     I_d: { sim: "I", nombre: "corriente", unidad: A, valor: 0.001 }
     f_e: { sim: "f_{c}", nombre: "frecuencia de esquina 1/f", unidad: Hz, valor: 10 }
+    f_m: { sim: "f_{c}", nombre: "esquina de la curva alta", unidad: Hz, valor: 10000 }
+    V_pp: { sim: "V_{pp}", nombre: "ruido pico a pico, de ejemplo", unidad: V, valor: 3e-6 }
   calculos:
     e_t: { expr: "sqrt(4*1.380649e-23*T_k*R_n)", sim: "e_{n}", nombre: "densidad de ruido térmico", unidad: "V/√Hz" }
     v_t: { expr: "e_t*sqrt(B_n)", sim: "V_{n}", nombre: "ruido térmico en la banda", unidad: V }
     i_s: { expr: "sqrt(2*1.602e-19*I_d)", sim: "i_{n}", nombre: "densidad de ruido de disparo", unidad: "A/√Hz" }
     r_s: { expr: "100*i_s/I_d", sim: "i_{n}/I", nombre: "ruido de disparo relativo, por √Hz", unidad: "%" }
     k_2: { expr: "sqrt(2)", sim: "√2", nombre: "raíz de dos", unidad: "" }
+    V_ef: { expr: "V_pp/6", sim: "V_{ef}", nombre: "valor eficaz estimado", unidad: V }
 
 tarjetas:
   - id: explore-termico
     tipo: explorar
     titulo: "Ruido térmico"
-    texto: "Todo conductor lo genera por la agitación térmica de sus portadores. Cambie la resistencia y la banda y mire el ruido."
+    texto: "Todo conductor lo genera por la agitación térmica de sus portadores. Elija resistencia y banda hasta que el ruido pase de una décima de milivoltio."
     libro: [41, 42]
+    inicio: { R_n: 1000, B_n: 10000 }
     fijar: { T_k: 300 }
     widget:
       tipo: grafica
@@ -55,18 +63,25 @@ tarjetas:
       mandos:
         - { valor: R_n, lista: [1000, 1000000], rotulo: "R" }
         - { valor: B_n, lista: [10000, 1000000], rotulo: "Banda, B" }
-    requiere: { mover: [R_n] }
+    objetivo:
+      condiciones:
+        - { valor: v_t, min: 0.0001, rotulo: "En la banda: {{v_t}}" }
+      logrado: "{{v_t}} con {{R_n}} y {{B_n}}: ya no es despreciable en absoluto."
+      pistas:
+        - { texto: "Más resistencia y más banda." }
+    escalera:
+      - "V_{n} = √(4kTRB): crece con R y con B."
+    solucion: "1 MΩ en 1 MHz: 129 µV."
     comprobar:
       - { con: { R_n: 1000 }, e_t: 4.1e-9, tol: 0.01 }
       - { con: { R_n: 1000000, B_n: 1000000 }, v_t: 0.000129, tol: 0.01 }
 
   - id: formula-termico
-    tipo: formula
+    tipo: explorar
     titulo: "Solo R, T y B"
-    texto: "Depende de R, T y B, y de nada más: ni de la corriente ni del material."
+    texto: "V_{n} = √(4kTRB) depende de R, T y B, y de nada más. Con 1 MΩ y 1 MHz, divida el ruido por diez como mínimo sin tocar la banda."
     libro: [41, 44, 45]
-    ec: 41
-    sustitucion: "√(4 · k · {{T_k}} · {{R_n}} · {{B_n}}) = {{v_t}}"
+    inicio: { R_n: 1000000, B_n: 1000000 }
     fijar: { T_k: 300 }
     widget:
       tipo: grafica
@@ -80,28 +95,33 @@ tarjetas:
       mandos:
         - { valor: R_n, lista: [1000, 1000000], rotulo: "R" }
         - { valor: B_n, lista: [10000, 1000000], rotulo: "Banda, B" }
+    objetivo:
+      condiciones:
+        - { valor: v_t, max: 0.0000129, rotulo: "En la banda: {{v_t}}" }
+        - { valor: B_n, min: 1000000, rotulo: "Banda: {{B_n}}" }
+      logrado: "√(4 · k · {{T_k}} · {{R_n}} · {{B_n}}) = {{v_t}}: resistencias bajas donde se pueda."
+      pistas:
+        - { cuando: { valor: B_n, max: 999999 }, texto: "Sin tocar la banda: déjela en 1 MHz." }
+        - { texto: "Baje la resistencia." }
+    escalera:
+      - "El ruido crece con √R: mil veces menos R lo divide por √1000."
+    solucion: "R = 1 kΩ: unos 4 µV."
+    comprobar:
+      - { con: { R_n: 1000, B_n: 1000000 }, v_t: 4.07e-6, tol: 0.01 }
 
   - id: prediga-doble
-    tipo: predecir
+    tipo: simular
     titulo: "Doble de banda"
     texto: "Si dobla el ancho de banda de medida, ¿por cuánto se multiplica el ruido térmico?"
     libro: [44]
-    widget:
-      tipo: grafica
-      x: { id: bb, min: 1, max: 10, unidad: Hz, rotulo: "B" }
-      y: { min: 0, max: 4, unidad: "", rotulo: "ruido relativo" }
-      curvas:
-        - { expr: "sqrt(bb)", color: azul, rotulo: "√B" }
-      lectura: { valor: k_2, rotulo: "Factor" }
-      ocultar: curvas
-    opciones:
-      - texto: "Por 1,41"
-        bien: true
-        porque: "Crece con la raíz de la banda: √2 ≈ 1,41."
-      - texto: "Por 2"
-        porque: "Eso sería si creciera con la banda. Crece con su raíz."
-      - texto: "Por 4"
-        porque: "Por 4 crece la banda si el ruido se dobla, no al revés."
+    simular:
+      objetivo: k_2
+      unidad: ""
+      tol: 0.005
+      rotulo: "Factor"
+      errores:
+        - { expr: "2", texto: "Eso sería si creciera con la banda. Crece con su raíz." }
+    exito: "Por 1,41: crece con la raíz de la banda, √2."
     escalera:
       - "V_{n} es proporcional a √B."
     solucion: "√2 ≈ 1,41: no se dobla."
@@ -111,8 +131,9 @@ tarjetas:
   - id: explore-disparo
     tipo: explorar
     titulo: "Ruido de disparo"
-    texto: "La corriente que cruza una unión es un goteo de cargas. Cambie la corriente: el ruido crece, pero en relación con ella, baja."
+    texto: "La corriente que cruza una unión es un goteo de cargas: √(2qI). Busque la corriente con la que el ruido, en relación con ella, es menor."
     libro: [49, 50]
+    inicio: { I_d: 0.00001 }
     widget:
       tipo: grafica
       x: { id: ii, min: 0.000001, max: 0.1, unidad: A, rotulo: "I", escala: log }
@@ -126,9 +147,18 @@ tarjetas:
         - { valor: r_s, rotulo: "Relativa: {{r_s}} por √Hz" }
       mandos:
         - { valor: I_d, lista: [0.00001, 0.001, 0.1], rotulo: "Corriente" }
-    requiere: { mover: [I_d] }
+    objetivo:
+      condiciones:
+        - { valor: r_s, max: 0.0000002, rotulo: "Relativa: {{r_s}}" }
+      logrado: "Con {{I_d}}, la densidad sube a {{i_s}}, pero en relación con la corriente es la menor: crece con la raíz."
+      pistas:
+        - { texto: "Pruebe con más corriente." }
+    escalera:
+      - "i_{n}/I = √(2q/I): baja al subir I."
+    solucion: "0,1 A."
     comprobar:
       - { con: { I_d: 0.001 }, i_s: 17.9e-12, tol: 0.01 }
+      - { con: { I_d: 0.1 }, r_s: 1.79e-7, tol: 0.01 }
 
   - id: por-que-resistencia
     tipo: porque
@@ -154,10 +184,10 @@ tarjetas:
     solucion: "Sin barrera de potencial no hay goteo de cargas que la crucen: no hay disparo."
 
   - id: empareje-esquina
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: marcar
     titulo: "La esquina 1/f"
-    texto: "Por debajo de su esquina domina el ruido 1/f. Una cada dispositivo con su esquina típica."
+    texto: "Por debajo de su esquina domina el ruido 1/f. Marque la esquina de la curva de esquina alta, la típica de un MOSFET."
+    nota: "Curvas de ejemplo."
     libro: [53, 55]
     widget:
       tipo: grafica
@@ -167,16 +197,23 @@ tarjetas:
         - { expr: "sqrt(1 + 10/nu)", color: azul, rotulo: "esquina baja" }
         - { expr: "sqrt(1 + 316/nu)", color: verde, rotulo: "esquina media", discontinua: true }
         - { expr: "sqrt(1 + 10000/nu)", color: naranja, rotulo: "esquina alta" }
-    emparejar:
-      - ["Bipolar", "1 – 100 Hz"]
-      - ["JFET", "100 Hz – 1 kHz"]
-      - ["MOSFET", "1 – 100 kHz"]
-    exito: "El MOSFET tiene la esquina más alta: su ruido 1/f llega mucho más arriba."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 2
+      x: "f_m"
+      tol: 0.04
+      inicio: { x: 1, y: 1 }
+      rotulo: "Esquina del MOSFET"
     pistas:
-      - { texto: "El bipolar es el preferido en continua por su esquina baja." }
+      - { cuando: { valor: marca_x, mayor: 30000 }, texto: "Ahí ya es plana: la esquina está más a la izquierda, donde empieza a subir." }
+      - { texto: "Ahí aún domina el 1/f: más a la derecha, donde se aplana." }
+    exito: "Unos 10 kHz. Típicas: bipolar de 1 a 100 Hz, JFET de 100 Hz a 1 kHz, MOSFET de 1 a 100 kHz. Para señales lentas, el bipolar."
     escalera:
-      - "¿Cuál se elige para sensores lentos?"
-    solucion: "Bipolar 1–100 Hz; JFET 100 Hz–1 kHz; MOSFET 1–100 kHz."
+      - "La esquina está donde la curva deja de subir hacia la izquierda."
+    solucion: "Hacia 10 kHz."
+    comprobar:
+      - { f_m: 10000 }
 
   - id: sensor-lento
     tipo: pregunta
@@ -201,56 +238,31 @@ tarjetas:
       - "¿Dónde es pequeño el ruido 1/f?"
     solucion: "El chopper: amplifica a frecuencia alta, fuera de la zona 1/f."
 
-  - id: rafagas
-    tipo: pregunta
-    titulo: "Saltos de offset"
-    texto: "Un amplificador da saltos aleatorios de offset entre dos niveles; otro igual del mismo lote, no. ¿Qué es?"
-    libro: [59, 60]
-    widget:
-      tipo: grafica
-      x: { id: xt, min: 0, max: 10, unidad: "", rotulo: "t, relativo" }
-      y: { min: -0.5, max: 1.5, unidad: "", rotulo: "offset, relativo" }
-      curvas:
-        - { expr: "floor(2*(sin(1.7*xt) + sin(4.1*xt + 1))/2.5 + 1)/2", color: azul, rotulo: "salida" }
-    opciones:
-      - texto: "Ruido en ráfagas: un defecto de fabricación de ese ejemplar"
-        bien: true
-        porque: "Saltos discretos entre dos niveles, solo en algunos ejemplares: es el popcorn."
-      - texto: "Ruido de avalancha"
-        porque: "Ese lo genera un Zener en ruptura, y es continuo, no a saltos entre dos niveles."
-      - texto: "Ruido térmico"
-        porque: "El térmico es blanco y lo tienen todos los ejemplares por igual."
-    escalera:
-      - "¿Qué ruido aparece en unos ejemplares y no en otros?"
-    solucion: "Ráfagas (popcorn): un defecto de fabricación, no un fenómeno universal."
-
   - id: banco-osciloscopio
-    tipo: pregunta
+    tipo: simular
     titulo: "Medirlo en el osciloscopio"
-    texto: "Mide ruido con el osciloscopio en AC, escala más sensible. ¿Cómo deja la entrada del circuito y cómo estima el valor eficaz?"
+    texto: "Con la entrada terminada en una resistencia, no al aire, el osciloscopio en AC muestra 3 µV de ruido pico a pico. ¿Qué valor eficaz estima?"
+    nota: "Valor de ejemplo."
     libro: [63]
-    widget:
-      tipo: grafica
-      x: { id: xt, min: 0, max: 10, unidad: "", rotulo: "t, relativo" }
-      y: { min: -4, max: 4, unidad: "", rotulo: "ruido, relativo" }
-      curvas:
-        - { expr: "sin(13*xt) + 0.7*sin(31*xt + 2) + 0.5*sin(57*xt + 1) + 0.4*sin(89*xt + 4)", color: azul, rotulo: "ruido" }
-    opciones:
-      - texto: "Terminada en una resistencia; pico a pico dividido por unos 6"
-        bien: true
-        porque: "Al aire captaría interferencias; el pico a pico entre 6 aproxima el eficaz de un ruido aleatorio."
-      - texto: "Al aire; pico a pico dividido por 2"
-        porque: "Al aire mide interferencia. Y dividir por 2 da la amplitud, no el valor eficaz de un ruido."
-      - texto: "En cortocircuito con la sonda ×1; el pico a pico tal cual"
-        porque: "El pico a pico no es el valor eficaz: es unas seis veces mayor."
+    simular:
+      objetivo: V_ef
+      unidad: V
+      tol: 0.05
+      rotulo: "Valor eficaz"
+      errores:
+        - { expr: "V_pp/2", texto: "Dividir por 2 da la amplitud de una senoide; el eficaz de un ruido es el pico a pico entre unos 6." }
+        - { expr: "V_pp/(2*sqrt(2))", texto: "Eso vale para una senoide. Un ruido aleatorio no tiene amplitud fija: entre unos 6." }
+    exito: "Unos 0,5 µV: el pico a pico de un ruido aleatorio es unas seis veces su valor eficaz."
     escalera:
-      - "Un ruido aleatorio no tiene una amplitud fija: ¿cuántas veces el eficaz mide su pico a pico?"
-    solucion: "Entrada terminada en una resistencia; eficaz ≈ pico a pico / 6."
+      - "Eficaz ≈ pico a pico / 6."
+    solucion: "3 µV / 6 = 0,5 µV."
+    comprobar:
+      - { V_ef: 0.0000005, V_pp: 3e-6 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [41, 44, 50, 55, 59]
+    libro: [41, 44, 50, 55, 59, 60]
     ideas:
       - { titulo: "Térmico.", texto: "√(4kTRB): blanco, solo de R, T y B, y crece con la raíz." }
       - { titulo: "Disparo.", texto: "√(2qIB), solo en uniones: crece con la corriente pero relativo baja." }

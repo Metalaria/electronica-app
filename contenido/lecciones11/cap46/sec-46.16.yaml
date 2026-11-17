@@ -4,6 +4,9 @@
 #   4 h, 99,60 % y 2 094 min. Gráfica del modelo como la figura 47.25 (fig-46.25), en ejes logarítmicos.
 # - Redundancia con conmutador: 0,9999 × 0,995 = 0,9949 (bloque 576).
 # Paso práctico: «ajuste» del MTTR de un equipo de 10 000 h de MTBF hasta 210 min de parada al año (4 h).
+# 1.2.1: el explorar pide que el equipo de 1 000 h pare menos que el fiable reparado en dos días; se leen las 42 h,
+#   el 99,60 % y el 0,9949; se tocan en el desglose de la figura los pasos que dominan y el que acortan los puntos de
+#   prueba. El orden de los cinco pasos queda en la figura (numerada) y en los textos.
 leccion: cap46/sec-46.16
 
 libro:
@@ -12,14 +15,17 @@ libro:
   559: "10 000 h 4 h 99,96 % 210 min"
   560: "pasa de 3,5 horas a 42 horas de parada anual solo por tardar dos días en repararlo en lugar de cuatro horas"
   561: "un equipo que falla diez veces más pero se repara rápido tiene mejor disponibilidad que uno fiable con reparación lenta"
+  563: "casi nada de ese tiempo es reparar"
   564: "Diagnosticar dónde está."
   565: "En equipos reales, los pasos 2 y 3 dominan con diferencia."
+  567: "son baratas si se toman a tiempo"
   568: "Un equipo que avisa de qué le pasa elimina el paso 1 y acorta el 2."
   569: "Es el paso donde el diseño puede ahorrar más tiempo."
   570: "componentes estándar y disponibles en lugar de exóticos"
   571: "zócalos en los componentes que más fallan, módulos sustituibles"
   572: "un procedimiento de prueba escrito, derivado de la especificación"
   574: "dos de 0,99 dan 0,9999"
+  575: "ese detector-conmutador está en serie con todo el conjunto"
   576: "0,9999 × 0,995 = 0,9949"
   580: "convierte una parada no planificada en una planificada"
   577: "en un sistema redundante, el elemento crítico es el que decide, no los que se duplican"
@@ -42,11 +48,43 @@ modelo:
     R_t: { expr: "R_p*R_sw", sim: "R_{total}", nombre: "paralelo con su conmutador", unidad: "", cifras: 4 }
 
 tarjetas:
+  - id: prediga-dos-dias
+    tipo: leer
+    titulo: "Dos días en vez de cuatro horas"
+    texto: "Un equipo de 10 000 h de MTBF para 3,5 horas al año si se repara en 4 h. Escriba cuántas horas para si tarda dos días, 48 h."
+    libro: [557, 559, 560]
+    fijar: { MTBF: 10000, MTTR: 48 }
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
+      y: { min: 10, max: 100000, unidad: min, rotulo: "parada al año", escala: log }
+      curvas:
+        - { expr: "xx/(1000 + xx)*M_a", color: naranja, rotulo: "MTBF = 1 000 h" }
+        - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
+      mandos: []
+    leer:
+      objetivo: P_h
+      unidad: h
+      tol: 0.03
+      rotulo: "Parada al año"
+      errores:
+        - { expr: "4/(MTBF + 4)*M_a/60", texto: "Esa es la de 4 h: el MTBF no ha cambiado, pero cada fallo lo deja parado doce veces más." }
+        - { expr: "2*4/(MTBF + 4)*M_a/60", texto: "No es el doble: de 4 a 48 h son doce veces más." }
+    exito: "Unas 42 horas al año, 2 511 minutos: el mismo equipo, solo por tardar dos días en repararlo."
+    escalera:
+      - "La parada crece casi en proporción al MTTR: 48 h son doce veces 4 h."
+    solucion: "Unas 42 horas: doce veces 3,5 h."
+    comprobar:
+      - { P_h: 41.85, P_m: 2511 }
+      - { con: { MTTR: 4 }, P_h: 3.5 }
+      - { con: { MTTR: 8 }, P_h: 7 }
+
   - id: explore-parada
     tipo: explorar
     titulo: "Fiable no es disponible"
-    texto: "La parada al año depende del MTBF y del MTTR, lo que se tarda en reparar. Mueva los dos."
-    libro: [556, 557, 584]
+    texto: "Un equipo fiable, de 10 000 h de MTBF, que tarda dos días en repararse para 2 511 minutos al año. Con un MTBF diez veces menor, consiga que pare menos."
+    libro: [556, 557, 559, 561, 584]
+    inicio: { MTBF: 10000, MTTR: 48 }
     widget:
       tipo: grafica
       x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
@@ -62,43 +100,26 @@ tarjetas:
       mandos:
         - { valor: MTBF, lista: [1000, 10000], rotulo: "MTBF" }
         - { valor: MTTR, lista: [1, 2, 4, 8, 12, 24, 48], rotulo: "MTTR" }
-    requiere: { mover: [MTBF, MTTR] }
-
-  - id: prediga-dos-dias
-    tipo: predecir
-    titulo: "Dos días en vez de cuatro horas"
-    texto: "Un equipo de 10 000 h de MTBF para 3,5 horas al año si se repara en 4 h. ¿Y si tarda dos días, 48 h?"
-    libro: [559, 560]
-    fijar: { MTBF: 10000, MTTR: 48 }
-    widget:
-      tipo: grafica
-      x: { id: xx, min: 0.5, max: 200, unidad: h, rotulo: "MTTR", escala: log }
-      y: { min: 10, max: 100000, unidad: min, rotulo: "parada al año", escala: log }
-      curvas:
-        - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
-      lectura: { valor: P_h, rotulo: "Parada al año" }
-      ocultar: true
-    opciones:
-      - texto: "Unas 42 horas al año"
-        bien: true
-        porque: "La parada crece casi en proporción al MTTR: doce veces más tiempo de reparación."
-      - texto: "Igual, 3,5 horas: el MTBF no ha cambiado"
-        porque: "Falla igual de a menudo, pero cada fallo lo deja parado doce veces más."
-      - texto: "Unas 7 horas: el doble"
-        porque: "No es el doble: de 4 a 48 h es doce veces más."
+    objetivo:
+      condiciones:
+        - { valor: MTBF, objetivo: 1000, tol: 0.01, rotulo: "MTBF: {{MTBF}}" }
+        - { valor: P_m, max: 2500, rotulo: "Parada: {{P_m}}" }
+      logrado: "{{P_m}} al año con {{MTBF}} y {{MTTR}}: falla diez veces más, pero se repara rápido y está más disponible. Reducir el MTTR suele ser más barato que aumentar el MTBF."
+      pistas:
+        - { cuando: { valor: MTBF, mayor: 2000 }, texto: "Ese es el equipo fiable: pase el MTBF a 1 000 h." }
+        - { texto: "Para demasiado: repárelo antes." }
     escalera:
-      - "¿Cuántas veces cabe 4 h en 48 h?"
-    solucion: "Unas 42 horas: 2 511 minutos al año."
+      - "Con 1 000 h de MTBF, pruebe a repararlo en 4 h."
+    solucion: "MTBF de 1 000 h y MTTR de 4 h: 2 094 minutos al año."
     comprobar:
-      - { P_h: 41.85, P_m: 2511 }
-      - { con: { MTTR: 4 }, P_h: 3.5 }
-      - { con: { MTTR: 8 }, P_h: 7 }
+      - { P_m: 2511 }
+      - { con: { MTBF: 1000, MTTR: 4 }, P_m: 2094 }
 
   - id: prediga-rapido
-    tipo: predecir
+    tipo: leer
     titulo: "Falla más, se repara antes"
-    texto: "Equipo A: MTBF de 1 000 h y MTTR de 4 h; equipo B: MTBF de 10 000 h y MTTR de 48 h. ¿Cuál está más disponible?"
-    libro: [559, 561]
+    texto: "El equipo de 1 000 h de MTBF reparado en 4 h. Escriba su disponibilidad, para compararla con el 99,52 % del fiable reparado en 48 h."
+    libro: [557, 559, 561]
     fijar: { MTBF: 1000, MTTR: 4 }
     widget:
       tipo: grafica
@@ -107,19 +128,18 @@ tarjetas:
       curvas:
         - { expr: "xx/(1000 + xx)*M_a", color: naranja, rotulo: "MTBF = 1 000 h" }
         - { expr: "xx/(10000 + xx)*M_a", color: verde, rotulo: "MTBF = 10 000 h" }
-      lectura: { valor: A_d, rotulo: "Disponibilidad del A" }
-      ocultar: true
-    opciones:
-      - texto: "El A: falla diez veces más, pero se repara rápido"
-        bien: true
-        porque: "99,60 % frente a 99,52 %: reducir el MTTR suele ser más barato que aumentar el MTBF."
-      - texto: "El B: es diez veces más fiable"
-        porque: "Más fiable no es más disponible: su reparación lenta lo deja parado más tiempo."
-      - texto: "Los dos igual"
-        porque: "No: el A para 2 094 minutos al año y el B, 2 511."
+      mandos: []
+    leer:
+      objetivo: A_d
+      unidad: "%"
+      tol: 0.0003
+      rotulo: "Disponibilidad"
+      errores:
+        - { expr: "10000/(10000 + 48)*100", texto: "Esa es la del equipo fiable reparado en 48 h: aquí el MTBF es 1 000 h y el MTTR, 4 h." }
+    exito: "99,60 % frente a 99,52 %: más fiable no es más disponible."
     escalera:
-      - "Compare sus paradas anuales, no sus MTBF."
-    solucion: "El A: 99,60 % frente a 99,52 %."
+      - "Disponibilidad = MTBF / (MTBF + MTTR) = 1 000 / (1 000 + 4)."
+    solucion: "1 000 / (1 000 + 4) = 99,60 %."
     comprobar:
       - { A_d: 99.60, P_m: 2094 }
       - { con: { MTBF: 10000, MTTR: 48 }, A_d: 99.52, P_m: 2511 }
@@ -155,34 +175,11 @@ tarjetas:
     comprobar:
       - { con: { MTTR: 4 }, P_m: 210, A_d: 99.96 }
 
-  - id: ordene-mttr
-    tipo: pregunta
-    titulo: "De qué se compone el MTTR"
-    texto: "Casi nada del MTTR es reparar. Ordene sus cinco pasos."
-    libro: [564]
-    widget:
-      tipo: figura
-      figura: fig-46.25
-      zonas:
-        - { id: desglose, rotulo: "Barras de la derecha", rect: [280, 20, 145, 170] }
-    ordenar:
-      - "Detectar que hay un fallo"
-      - "Diagnosticar dónde está"
-      - "Conseguir el repuesto"
-      - "Reparar físicamente"
-      - "Verificar que funciona"
-    exito: "Reparar puede ser diez minutos; encontrarlo, horas; la pieza, días."
-    pistas:
-      - { texto: "Antes de reparar hay que saber qué y tener con qué." }
-    escalera:
-      - "Lo último es comprobar que ha quedado bien."
-    solucion: "Detectar, diagnosticar, conseguir el repuesto, reparar y verificar."
-
   - id: toque-domina
     tipo: tocar
     titulo: "Lo que domina"
-    texto: "En el desglose de un MTTR de 48 h, toque los dos pasos que dominan."
-    libro: [565, 584]
+    texto: "Detectar, diagnosticar, conseguir el repuesto, reparar y verificar. En el desglose de un MTTR de 48 h, toque los dos pasos que dominan."
+    libro: [563, 564, 565, 584]
     widget:
       tipo: figura
       figura: fig-46.25
@@ -205,50 +202,57 @@ tarjetas:
     solucion: "La segunda y la tercera: diagnosticar y conseguir el repuesto."
 
   - id: empareje-diseno
-    tipo: pregunta
+    tipo: tocar
     titulo: "Diseñar para el MTTR"
-    texto: "Empareje cada decisión de diseño con el paso del MTTR que acorta."
-    libro: [568, 569, 570, 571, 572]
+    texto: "Puntos de prueba accesibles, esquema disponible y tensiones esperadas anotadas. Toque el paso del MTTR que acortan."
+    libro: [567, 568, 569, 570, 571, 572]
     widget:
       tipo: figura
       figura: fig-46.25
       zonas:
-        - { id: desglose, rotulo: "Barras de la derecha", rect: [280, 20, 145, 170] }
-    emparejar:
-      - ["Autodiagnóstico e indicadores", "Detectar"]
-      - ["Puntos de prueba y tensiones anotadas", "Diagnosticar"]
-      - ["Componentes estándar y disponibles", "Conseguir el repuesto"]
-      - ["Zócalos y módulos sustituibles", "Reparar"]
-      - ["Procedimiento de prueba escrito", "Verificar"]
-    exito: "Decisiones baratas si se toman a tiempo."
-    pistas:
-      - { texto: "Un equipo que avisa de qué le pasa elimina el primer paso." }
+        - { id: detectar, rotulo: "Primera barra", rect: [280, 25, 145, 34] }
+        - { id: diagnosticar, rotulo: "Segunda barra", rect: [280, 59, 145, 34] }
+        - { id: repuesto, rotulo: "Tercera barra", rect: [280, 93, 145, 34] }
+        - { id: reparar, rotulo: "Cuarta barra", rect: [280, 127, 145, 34] }
+        - { id: verificar, rotulo: "Quinta barra", rect: [280, 161, 145, 34] }
+    tocar:
+      bien: [diagnosticar]
+      porque:
+        detectar: "Detectar lo acortan el autodiagnóstico, los indicadores de estado y el registro de la causa del reinicio."
+        repuesto: "El repuesto lo acortan los componentes estándar y disponibles."
+        reparar: "Reparar lo acortan los zócalos y los módulos sustituibles."
+        verificar: "Verificar lo acorta un procedimiento de prueba escrito."
+    exito: "Diagnosticar: es el paso donde el diseño puede ahorrar más tiempo. Decisiones baratas si se toman a tiempo."
     escalera:
       - "Los puntos de prueba sirven para encontrar dónde está el fallo."
-    solucion: "Autodiagnóstico, detectar; puntos de prueba, diagnosticar; estándar, repuesto; zócalos, reparar; procedimiento, verificar."
+    solucion: "La segunda barra: diagnosticar."
 
   - id: estime-conmutador
-    tipo: pregunta
+    tipo: leer
     titulo: "La letra pequeña de la redundancia"
-    texto: "Dos elementos de 0,99 en paralelo dan 0,9999, pero el conmutador, de 0,995, queda en serie con todo. ¿Qué fiabilidad tiene el conjunto?"
-    libro: [574, 576, 577]
+    texto: "Dos elementos de 0,99 en paralelo dan 0,9999, pero el conmutador, de 0,995, queda en serie con todo. Escriba la fiabilidad del conjunto."
+    libro: [574, 575, 576, 577]
     fijar: { R_e: 0.99, R_sw: 0.995 }
-    estimar:
-      objetivo: "R_t"
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 0.98, max: 1, unidad: "", rotulo: "fiabilidad del conmutador" }
+      y: { min: 0.98, max: 1, unidad: "", rotulo: "fiabilidad del conjunto" }
+      curvas:
+        - { expr: "R_p*rr", color: azul, rotulo: "paralelo con su conmutador" }
+        - { expr: "R_e + 0*rr", color: naranja, rotulo: "un solo elemento" }
+      mandos: []
+    leer:
+      objetivo: R_t
       unidad: ""
-      min: 0.98
-      max: 1
-      paso: 0.0001
-      inicio: 0.9999
-      tol: 0.0005
+      tol: 0.0002
       rotulo: "Fiabilidad del conjunto"
-    exito: "0,9949: algo mejor que un solo elemento de 0,99, pero muy lejos de 0,9999."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.9954 }, texto: "Demasiado: el conmutador está en serie y multiplica por 0,995." }
-      - { texto: "Demasiado poco: 0,9999 × 0,995." }
+      errores:
+        - { expr: "R_p", texto: "Falta el conmutador: está en serie con todo y multiplica por 0,995." }
+        - { expr: "R_e*R_sw", texto: "Ha multiplicado un solo elemento: son dos en paralelo, 0,9999." }
+    exito: "0,9949: algo mejor que un solo elemento de 0,99, pero muy lejos de 0,9999. Manda el elemento crítico, el que decide."
     escalera:
-      - "En serie, las fiabilidades se multiplican."
-    solucion: "0,9999 × 0,995 = 0,9949: manda el que decide."
+      - "En serie, las fiabilidades se multiplican: 0,9999 × 0,995."
+    solucion: "0,9999 × 0,995 = 0,9949."
     comprobar:
       - { R_p: 0.9999, R_t: 0.9949 }
 

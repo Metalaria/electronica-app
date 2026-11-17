@@ -1,10 +1,24 @@
-# Lección 1.2 de la sección 12.9 «Criterios Cuantitativos» (cap12). Formato: GUIA.md.
+# Lección de la sección 12.9 «Criterios Cuantitativos» (cap12). Formato: GUIA.md.
 # La potencia con margen se calcula con el ejemplo del libro (sección 1.1: 220 Ω con 12 V, 0,655 W). Paso práctico:
 # «ajuste» de la tensión de trabajo de un condensador de 50 V con un 50 % de margen (ejercicio del capítulo:
 # 50 V / 1,5 ≈ 33 V), dibujado con «carga-rc» (10 kΩ y 100 µF de ejemplo); el consumo de 200 mA es el del bloque 243.
+# 1.2.1 (aprender haciendo): buscar la resistencia que cabe en 1 W de nominal, calcular potencia y consumo con margen,
+# ajustar el condensador, tocar el margen de la corriente, la comprobación más aburrida y lo que hay que prototipar.
+# Dos preguntas: otra persona y el rotulador.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap12/sec-12.9
 
 libro:
+  249: "La lista de verificación previa a fabricar"
+  251: "DRC en cero, con las reglas del fabricante concreto"
+  253: "Gerbers revisados en un visor independiente"
+  254: "Impresión 1:1 con los componentes reales encima (sección"
+  255: "BOM completa, con la que se pueda comprar sin consultar el"
+  256: "Los números que hay que haber calculado"
+  257: "Y no estimado"
+  259: "Los márgenes razonables"
+  264: "Esos márgenes parecen generosos y son lo que hace la"
+  265: "Lo que hay que haber prototipado"
   250: "ERC en cero"
   252: "Es la comprobación más aburrida y la que evita el error más caro."
   258: "Con margen del 50 % sobre lo estimado"
@@ -41,7 +55,7 @@ tarjetas:
   - id: explore-potencia
     tipo: explorar
     titulo: "Potencia con margen"
-    texto: "Con 12 V, cambie la resistencia. Compare lo que disipa con la potencia nominal que debe tener: el doble."
+    texto: "Con 12 V, busque la menor resistencia E12 que pueda ser de 1 W: su nominal debe ser el doble de lo que disipa."
     libro: [262, "cap01#33"]
     fijar: { V_r: 12 }
     widget:
@@ -55,27 +69,34 @@ tarjetas:
       mide: { corriente: I_r, tension: V_r }
       mandos:
         - { valor: R_r, serie: E12, min: 100, max: 1000, rotulo: "R (E12)" }
+    inicio: { R_r: 220 }
+    objetivo:
+      condiciones:
+        - { valor: P_nom, max: 1, rotulo: "Nominal mínima: {{P_nom}}" }
+      logrado: "Con {{R_r}}, disipa {{P_r}} y basta una de {{P_nom}}: el doble de lo calculado."
+      pistas:
+        - { texto: "Suba la resistencia: disipa demasiado." }
+    escalera:
+      - "La nominal es el doble de lo que disipa."
+    solucion: "Con 330 Ω disipa 0,436 W: basta una de 1 W."
+    comprobar:
+      - { con: { R_r: 330 }, P_r: 0.4364 }
 
   - id: estime-220
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "¿De cuántos vatios?"
     texto: "Una resistencia de 220 Ω a 12 V disipa 0,655 W. ¿Qué potencia nominal mínima debe tener?"
     libro: [262, "cap01#33"]
     fijar: { V_r: 12, R_r: 220 }
-    estimar:
-      objetivo: "P_nom"
+    simular:
+      objetivo: P_nom
       unidad: W
-      min: 0
-      max: 3
-      paso: 0.01
-      inicio: 2.5
       tol: 0.03
-      rotulo: "Potencia nominal"
+      rotulo: "Potencia nominal mínima"
+      errores:
+        - { expr: "P_r", texto: "Esa es la que disipa: la nominal lleva el doble de margen." }
+        - { expr: "1.5*P_r", texto: "El 50 % es el margen de la tensión; en potencia es el doble." }
     exito: "1,31 W: el doble de la disipación calculada."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.35 }, texto: "Se ha pasado: basta con el doble de lo calculado." }
-      - { texto: "Se ha quedado corto: hace falta el doble de 0,655 W." }
     escalera:
       - "Potencia: el doble de la disipación calculada."
     solucion: "2 · 0,655 W = 1,31 W."
@@ -115,74 +136,26 @@ tarjetas:
     comprobar:
       - { V_lim: 33.3, tol: 0.002 }
 
-  - id: margenes
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los márgenes razonables"
-    texto: "Una cada magnitud con su margen."
-    libro: [260, 261, 262, 263]
-    emparejar:
-      - ["Tensión", "Un 50 % por encima del máximo previsto"]
-      - ["Corriente", "El doble del máximo continuo"]
-      - ["Potencia", "El doble de la disipación calculada"]
-      - ["Temperatura", "30 °C por debajo del máximo del componente"]
-    exito: "Parecen generosos y son lo que separa un prototipo de algo que dura."
-    pistas:
-      - { texto: "La tensión es la única con un 50 %; corriente y potencia, el doble." }
-    escalera:
-      - "Con transitorios, la tensión necesita aún más margen."
-    solucion: "Tensión +50 %; corriente y potencia, el doble; temperatura, 30 °C por debajo."
-
   - id: estime-consumo
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "El consumo total"
     texto: "Ha estimado un consumo de 200 mA. ¿Para cuánto dimensiona la alimentación?"
-    libro: [258, "cap12#243"]
+    libro: [256, 257, 258, "cap12#243"]
     fijar: { I_est: 0.2 }
-    estimar:
-      objetivo: "I_dis"
+    simular:
+      objetivo: I_dis
       unidad: A
-      min: 0
-      max: 0.6
-      paso: 0.01
-      inicio: 0.55
       tol: 0.03
       rotulo: "Consumo de diseño"
-    exito: "300 mA: el consumo total lleva un margen del 50 % sobre lo estimado."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.31 }, texto: "Se ha pasado: el consumo lleva un 50 %, no el doble." }
-      - { texto: "Se ha quedado corto: sume un 50 % a lo estimado." }
+      errores:
+        - { expr: "2*I_est", texto: "El doble es el margen de una corriente máxima continua; el consumo total lleva un 50 %." }
+        - { expr: "I_est", texto: "Sin margen: el consumo total se calcula con un 50 % sobre lo estimado." }
+    exito: "300 mA: calculado, no estimado, con un 50 % de margen."
     escalera:
-      - "Consumo total: con margen del 50 % sobre lo estimado."
+      - "Sume un 50 % a lo estimado."
     solucion: "200 mA · 1,5 = 300 mA."
     comprobar:
       - { I_dis: 0.3 }
-
-  - id: aburrida
-    tipo: predecir
-    titulo: "La más aburrida"
-    texto: "En la lista previa a fabricar, ¿qué comprobación es la más aburrida y la que evita el error más caro?"
-    libro: [250, 252]
-    widget:
-      tipo: circuito
-      esquema: resistencia
-      piezas: { fuente: V_r, r: R_r }
-      lectura: { valor: P_r, rotulo: "Potencia disipada" }
-      mide: { corriente: I_r, tension: V_r }
-      ocultar: true
-      mandos: []
-    opciones:
-      - texto: "Cotejar el patillaje con la hoja de datos, uno a uno"
-        bien: true
-        porque: "Un patillaje equivocado pasa ERC y DRC y deja la placa inservible."
-      - texto: "Dejar el ERC en cero"
-        porque: "Es imprescindible, pero el ERC no ve el patillaje: la comprobación cara es la manual."
-      - texto: "Revisar los Gerbers"
-        porque: "Se revisan en un visor independiente, pero el error más caro es el del patillaje."
-    escalera:
-      - "¿Qué error no ve ninguna herramienta?"
-    solucion: "El patillaje cotejado con la hoja de datos de cada componente."
 
   - id: por-que-otra
     tipo: porque
@@ -207,30 +180,6 @@ tarjetas:
     escalera:
       - "El autor lee lo que quiso dibujar."
     solucion: "Ve lo que el autor no ve."
-
-  - id: prototipar
-    tipo: pregunta
-    titulo: "Antes de comprometer una placa"
-    texto: "¿Qué hay que haber prototipado antes de comprometer una placa?"
-    libro: [266]
-    widget:
-      tipo: circuito
-      esquema: resistencia
-      piezas: { fuente: V_r, r: R_r }
-      lectura: { valor: P_r, rotulo: "Potencia disipada" }
-      mide: { corriente: I_r, tension: V_r }
-      mandos: []
-    opciones:
-      - texto: "Los bloques analógicos delicados, las interfaces nuevas y el firmware"
-        bien: true
-        porque: "Es lo que el libro pide antes de comprometer la placa: todo bloque analógico delicado, toda interfaz no usada antes y el firmware, este sobre una placa de desarrollo."
-      - texto: "Nada: para eso está la simulación"
-        porque: "La simulación no sustituye a un prototipo de lo delicado o nuevo."
-      - texto: "Solo la alimentación"
-        porque: "La alimentación importa, pero el libro pide lo analógico delicado, lo nuevo y el firmware."
-    escalera:
-      - "Lo delicado y lo nunca usado antes."
-    solucion: "Lo analógico delicado, lo que no se ha usado antes y el firmware."
 
   - id: rotulador
     tipo: pregunta
@@ -259,7 +208,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [252, 258, 262, 268]
+    libro: [252, 258, 262, 268, 249, 250, 251, 253, 254, 255, 259, 261, 263, 264, 265, 266]
     ideas:
       - { titulo: "Lista previa.", texto: "ERC y DRC en cero, patillaje, Gerbers, impresión 1:1 y BOM completa." }
       - { titulo: "Calculado, no estimado.", texto: "Consumo con un 50 % de margen; potencias en el peor caso." }

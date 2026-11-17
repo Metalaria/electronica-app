@@ -80,6 +80,22 @@ const d: DefinicionEsquema = {
     rueda: { interruptor: true, descripcion: 'conecta el diodo de rueda libre (sin él, conectado si hay «vf»)', color: 'verde' },
     rdson: { descripcion: 'canal como una resistencia R_DS(on) cuando V_GS ≥ V_th (Ω; la tabla de la hoja de datos o su valor a una temperatura: el modelo la calcula), en lugar de la ley cuadrática' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { transistor: 'el MOSFET' },
+  medible: (c) => ({
+    puntos: { vdd: 'Raíl de alimentación, arriba', in: 'Salida del generador de puerta', ...(c.tiene('rg') ? { g: 'Puerta' } : {}), d: 'Drenador', ...(c.tiene('rs') ? { s: 'Fuente del transistor' } : {}), '0': 'Masa, abajo' },
+    ramas: { vmd: 'Rama del drenador' },
+    zonas: {
+      vdd: 'Fuente de alimentación',
+      entrada: 'Generador de puerta',
+      rd: 'Resistencia de drenador',
+      ...(c.tiene('l') ? { l: 'Bobina' } : {}),
+      ...(c.tiene('rg') ? { rg: 'Resistencia de puerta' } : {}),
+      ...(c.tiene('rgs') ? { rgs: 'Resistencia de puerta a masa' } : {}),
+      ...(c.tiene('rs') ? { rs: 'Resistencia de fuente' } : {}),
+      transistor: 'MOSFET',
+    },
+  }),
   observables: {
     id: { medida: 'i(vmd)', analisis: 'op', unidad: 'A', descripcion: 'corriente de drenador' },
     vds: { medida: 'v(d)-v(s)', analisis: 'op', unidad: 'V', descripcion: 'tensión drenador-fuente' },

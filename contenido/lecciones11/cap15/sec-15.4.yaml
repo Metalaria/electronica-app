@@ -1,13 +1,21 @@
-# Lección 1.2 de la sección 14.4 «Proyecto 3: Indicador de Nivel con LM3914» (cap15; etiqueta sec-15.4).
+# Lección de la sección 14.4 «Proyecto 3: Indicador de Nivel con LM3914» (cap15; etiqueta sec-15.4).
 # Formato: contenido/lecciones11/GUIA.md. El integrado se dibuja con el esquema «lm3914» (diez comparadores sobre una
 # cadena de diez resistencias iguales; el LED k se enciende con la entrada por encima de V_LO + k·ΔV/10, ficha 7); la
 # gráfica de las preguntas es su escalera. La escala de 0 a 5 V es un EJEMPLO (el libro no fija una). La corriente por
 # LED es la del bloque 101: unas diez veces la de la referencia, I_LED ≈ 10·V_ref/R_ref; con los 1,25 V de la
 # referencia interna, 1 kΩ da 10 × 1,25 mA = 12,5 mA (la relación y las cifras son del libro desde la errata 4.1.2,
 # L). El exceso de 4 V del bloque 97 se reparte en 6 V de alimentación de los LED y 2 V de caída (EJEMPLO).
+# 1.2.1 (aprender haciendo): subir la entrada hasta siete LED, leer el nivel en la escalera, calcular los comparadores
+# de doce bits, pasar a punto, ajustar el brillo, tocar lo razonable para audio y los usos, y el banco. Dos preguntas:
+# por qué se calienta en barra y la escala que cambia el brillo.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap15/sec-15.4
 
 libro:
+  102: "El escalado logarítmico"
+  103: "Encadenando varios integrados con las referencias"
+  105: "Los usos y sus límites"
+  106: "Sirve para"
   87: "es un convertidor A/D flash en miniatura"
   90: "Una cadena de diez resistencias iguales entre dos referencias."
   91: "Al subir la entrada, los comparadores van conmutando uno tras otro."
@@ -34,6 +42,7 @@ modelo:
     V_led: { sim: "V_{LED}", nombre: "alimentación de los LED", unidad: V, valor: 6 }
     V_fl: { sim: "V_{F}", nombre: "caída de un LED", unidad: V, valor: 2 }
   calculos:
+    n_12: { expr: "2^12 - 1", sim: "comparadores", nombre: "comparadores de un flash de doce bits", unidad: "" }
     d_v: { expr: "(V_HI - V_LO)/10", sim: "ΔV/10", nombre: "escalón de la cadena", unidad: V }
     n_on: { expr: "min(10, max(0, floor(10*(v_in - V_LO)/(V_HI - V_LO))))", sim: "n", nombre: "nivel de la entrada", unidad: "" }
     V_ex: { expr: "V_led - V_fl", sim: "V_{exceso}", nombre: "alimentación menos la caída del LED", unidad: V }
@@ -47,7 +56,7 @@ tarjetas:
   - id: explore-escalera
     tipo: explorar
     titulo: "Diez comparadores en escalera"
-    texto: "Suba la entrada despacio: cada comparador conmuta al pasar su escalón de la cadena."
+    texto: "Suba la entrada despacio hasta que se enciendan siete LED: cada comparador conmuta al pasar su escalón."
     nota: "Escala de ejemplo, de 0 a 5 V."
     libro: [90, 91, 87]
     widget:
@@ -58,14 +67,24 @@ tarjetas:
       mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
       mandos:
         - { valor: v_in, min: 0.05, max: 5.45, paso: 0.1, rotulo: "Entrada" }
-    requiere: { mover: [v_in] }
+    inicio: { v_in: 0.55 }
+    objetivo:
+      condiciones:
+        - { valor: n_on, min: 7, max: 7, rotulo: "LED encendidos: {{n_on}}" }
+      logrado: "Siete comparadores han conmutado: la entrada pasa del séptimo escalón de la cadena y aún no del octavo. Un convertidor flash a la vista."
+      pistas:
+        - { cuando: { valor: n_on, max: 6 }, texto: "Suba la entrada." }
+        - { texto: "Se ha pasado: baje la entrada." }
+    escalera:
+      - "Con la escala de 0 a 5 V, cada escalón son 0,5 V."
+    solucion: "Algo por debajo de 4 V de entrada: siete escalones de 0,5 V."
     comprobar:
       - { V_LO: 0, V_HI: 5 }
 
   - id: prediga-nivel
-    tipo: predecir
+    tipo: leer
     titulo: "A media escala"
-    texto: "En modo barra, con la escala de 0 a 5 V y la entrada a 2,7 V, ¿cuántos LED se encienden?"
+    texto: "Esta es la escalera de 0 a 5 V. Lea en ella cuántos LED se encienden en modo barra con 2,7 V a la entrada."
     libro: [90, 95]
     fijar: { v_in: 2.7, m_b: 1 }
     widget:
@@ -75,46 +94,42 @@ tarjetas:
       curvas:
         - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
       lectura: { valor: n_i, rotulo: "LED encendidos" }
-      ocultar: true
-    opciones:
-      - texto: "Cinco"
-        bien: true
-        porque: "Cada escalón es la décima parte de la escala, 0,5 V: 2,7 V pasa cinco escalones."
-      - texto: "Uno"
-        porque: "Ese sería el modo punto: solo el del nivel."
-      - texto: "Seis"
-        porque: "El sexto escalón está en 3,0 V; la entrada no llega."
+      mandos: []
+    leer:
+      objetivo: n_on
+      unidad: ""
+      tol: 0.01
+      rotulo: "LED encendidos"
+      errores:
+        - { expr: "n_on + 1", texto: "No llega al sexto: el sexto comparador conmuta a 3,0 V." }
+        - { expr: "1", texto: "Uno sería en modo punto: en barra se encienden todos hasta el nivel." }
+    exito: "Cinco: 2,7 V pasa cinco escalones de 0,5 V y no llega al de 3,0 V."
     escalera:
-      - "La cadena reparte la escala en diez escalones iguales."
+      - "Cada escalón son 5 V / 10 = 0,5 V."
     solucion: "Cinco."
     comprobar:
       - { n_i: 5, d_v: 0.5 }
       - { con: { v_in: 3.0 }, n_on: 6 }
 
   - id: doce-bits
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "Un flash de doce bits"
-    texto: "Un flash necesita un comparador por nivel. ¿Cuántos harían falta para doce bits?"
-    libro: [92]
-    estimar:
-      objetivo: "2^12 - 1"
+    texto: "Un flash necesita un comparador por nivel: con diez niveles, diez. ¿Cuántos harían falta para doce bits?"
+    libro: [91, 92]
+    simular:
+      objetivo: n_12
       unidad: ""
-      min: 0
-      max: 10000
-      paso: 50
-      inicio: 500
       tol: 0.05
       rotulo: "Comparadores"
+      errores:
+        - { expr: "12", texto: "Uno por bit sería otra arquitectura: el flash necesita uno por nivel." }
+        - { expr: "2^10", texto: "Eso son diez bits: cada bit más duplica los niveles." }
     exito: "Unos cuatro mil: por eso un flash de muchos bits es inviable."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 4300 }, texto: "Se ha pasado: doce bits son unos cuatro mil niveles." }
-      - { texto: "Se ha quedado corto: cada bit más duplica los niveles." }
     escalera:
-      - "Diez niveles piden diez comparadores; cada bit más duplica los niveles."
-    solucion: "Unos cuatro mil."
+      - "Doce bits son 2¹² niveles."
+    solucion: "2¹² − 1, unos cuatro mil."
     comprobar:
-      - { con: { v_in: 0.5 }, n_on: 1 }
+      - { n_12: 4095 }
 
   - id: sorpresa-modo
     tipo: sorpresa
@@ -133,7 +148,15 @@ tarjetas:
       mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
       mandos:
         - { valor: m_b, tipo: interruptor, rotulo: "Modo barra" }
-    requiere: { mover: [m_b] }
+    objetivo:
+      condiciones:
+        - { valor: I_tot, max: 0.013, rotulo: "Corriente de los LED: {{I_tot}}" }
+      logrado: "En modo punto, un solo LED: {{I_tot}}, la décima parte que en barra."
+      pistas:
+        - { texto: "Pase a modo punto." }
+    escalera:
+      - "En modo punto solo se enciende el LED del nivel."
+    solucion: "Modo punto: 12,5 mA."
 
   - id: por-que-calienta
     tipo: porque
@@ -209,52 +232,6 @@ tarjetas:
       - "¿Qué fija, además, la resistencia entre la referencia y masa?"
     solucion: "El brillo de los LED."
 
-  - id: vumetro
-    tipo: pregunta
-    titulo: "Un vúmetro"
-    texto: "Para audio se quiere una escala en decibelios. ¿Qué es lo razonable?"
-    libro: [104]
-    widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
-    opciones:
-      - texto: "El LM3915, con 3 dB por paso ya incorporados"
-        bien: true
-        porque: "El oído responde de forma logarítmica; una escala lineal concentra la información arriba."
-      - texto: "El LM3914 tal cual: los escalones iguales sirven"
-        porque: "Escalones lineales: toda la información se amontona en el extremo superior."
-      - texto: "Un convertidor de muchos bits"
-        porque: "Para vigilar de un vistazo, la barra; lo que falta es la escala logarítmica."
-    escalera:
-      - "¿Cómo responde el oído al nivel?"
-    solucion: "El LM3915, logarítmico."
-
-  - id: medir-no
-    tipo: pregunta
-    titulo: "¿Sirve para medir?"
-    texto: "¿Para qué sirve, y para qué no, un indicador de diez LED?"
-    libro: [107, 108]
-    widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
-    opciones:
-      - texto: "Para vigilar de un vistazo; no para medir"
-        bien: true
-        porque: "Diez niveles son poco más de tres bits; para medir hace falta un convertidor y un display."
-      - texto: "Para medir con precisión: es un convertidor"
-        porque: "Su exactitud es la de sus comparadores y su referencia."
-      - texto: "Para nada: un número siempre es mejor"
-        porque: "Para una magnitud que cambia, la barra se lee mejor."
-    escalera:
-      - "¿Cuántos bits son diez niveles?"
-    solucion: "Vigilar sí; medir no."
-
   - id: banco-consumo
     tipo: banco
     titulo: "El factor diez, medido"
@@ -277,7 +254,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [87, 95, 97, 101]
+    libro: [87, 95, 97, 101, 102, 103, 104, 105, 106, 107, 108]
     ideas:
       - { titulo: "Un flash.", texto: "Diez comparadores sobre una cadena de resistencias iguales." }
       - { titulo: "Punto o barra.", texto: "La barra consume hasta diez veces más y calienta el chip." }

@@ -21,6 +21,12 @@ const d: DefinicionEsquema = {
     r2: { obligatoria: true, descripcion: 'resistencia de entrada del osciloscopio, R₂ (Ω; 1 MΩ)', color: 'naranja' },
     c2: { obligatoria: true, descripcion: 'capacidad de la entrada con el cable y el trimmer, C₂ (F): el ajuste', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: () => ({
+    puntos: { in: 'Punta de la sonda', out: 'Entrada del osciloscopio', '0': 'Masa' },
+    ramas: {},
+    zonas: { entrada: 'Señal medida', r1: 'Resistencia de la sonda', c1: 'Condensador de compensación', r2: 'Resistencia de entrada del osciloscopio', c2: 'Capacidad de entrada y trimmer' },
+  }),
   observables: {
     entrada: { medida: 'v(in)', analisis: 'tran', unidad: 'V', descripcion: 'la cuadrada en la punta frente al tiempo' },
     salida: { medida: 'v(out)', analisis: 'tran', unidad: 'V', descripcion: 'lo que ve el osciloscopio frente al tiempo' },

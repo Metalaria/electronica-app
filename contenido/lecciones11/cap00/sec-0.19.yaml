@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 0.20 «Probabilidad, Tolerancias y Monte Carlo» (cap00): las varianzas que se suman
 # (independientes, en cuadratura; correlacionados, el peor caso), lo que deja fuera ±3σ, el método de Monte Carlo y su
 # precisión, que mejora con la raíz de los ensayos. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): correlacionar los errores, predecir cuántas quedan fuera de
+# ±3σ, llevar Monte Carlo al máximo, el reto de diez veces y calcular lo que se verá en producción; se eligen qué mide
+# σ y por qué casi nunca el peor caso. Los pasos de Monte Carlo quedan en el resumen.
 leccion: cap00/sec-0.19
 
 libro:
@@ -31,8 +34,7 @@ tarjetas:
   - id: explore-varianzas
     tipo: explorar
     titulo: "Las varianzas se suman"
-    texto: "Z = X + Y. Mueva σ_{X} y σ_{Y}, y pruebe con errores independientes y totalmente correlacionados."
-    nota: "Independientes, en cuadratura; correlacionados, se suman: el peor caso."
+    texto: "Z = X + Y. Mueva σ_{X} y σ_{Y}, y después haga los errores totalmente correlacionados."
     libro: [269]
     widget:
       tipo: grafica
@@ -48,7 +50,19 @@ tarjetas:
         - { valor: sX, min: 0, max: 3, paso: 0.1, rotulo: "σ_{X}" }
         - { valor: sY, min: 0, max: 3, paso: 0.5, rotulo: "σ_{Y}" }
         - { valor: corr, tipo: interruptor, rotulo: "Totalmente correlacionados" }
-    requiere: { mover: [sX, sY] }
+    inicio: { corr: 0 }
+    objetivo:
+      condiciones:
+        - { valor: corr, min: 1, rotulo: "Correlacionados" }
+      logrado: "Correlacionados, {{sZ}}: se suman, el peor caso. Independientes, en cuadratura."
+      pistas:
+        - { texto: "Encienda el interruptor de los errores correlacionados." }
+    escalera:
+      - "Use el interruptor."
+    solucion: "Con σ_{X} = σ_{Y} = 1 %: 2 % correlacionados, 1,41 % independientes."
+    comprobar:
+      - { sZ: 1.414 }
+      - { con: { corr: 1 }, sZ: 2 }
 
   - id: que-mide-sigma
     tipo: pregunta
@@ -73,39 +87,30 @@ tarjetas:
     solucion: "Cuánto se apartan los valores de la media: su dispersión. σ² es la varianza."
 
   - id: prediga-3sigma
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "Un fabricante acepta lo que cae dentro de ±3σ. ¿Cuántas unidades de cada mil quedan fuera?"
     libro: [268]
     fijar: { k: 3 }
-    widget:
-      tipo: grafica
-      x: { id: x, min: -4, max: 4, unidad: "", rotulo: "desviación, en σ" }
-      y: { min: 0, max: 1.1, unidad: "", rotulo: "frecuencia relativa" }
-      curvas:
-        - { expr: "exp(-x^2/2)", color: tinta, rotulo: "campana de Gauss", discontinua: true }
-        - { expr: "exp(-x^2/2)*min(max((k - abs(x))*1000, 0), 1)", color: azul, rotulo: "dentro de ±k·σ" }
-      lectura: { valor: fuera_mil, rotulo: "Fuera, de cada mil" }
-      ocultar: true
-    opciones:
-      - texto: "Unas 3"
-        bien: true
-        porque: "Dentro de ±3σ cae el 99,7 %: fuera, el 0,3 %, unas 3 de cada mil."
-      - texto: "Unas 317"
-        porque: "Eso es lo que deja fuera ±1σ, que solo recoge el 68,3 %."
-      - texto: "Ninguna"
-        porque: "La campana no se acaba en ±3σ: fuera queda el 0,3 %."
-    comprobar:
-      - { fuera_mil: 2.7, tol: 0.01 }
-      - { con: { k: 1 }, fuera_mil: 317, tol: 0.003 }
+    simular:
+      objetivo: fuera_mil
+      unidad: ""
+      tol: 0.12
+      rotulo: "Fuera, de cada mil"
+      errores:
+        - { razon: { min: 110, max: 125 }, texto: "Eso es lo que deja fuera ±1σ, que solo recoge el 68,3 %." }
+        - { razon: { min: -0.05, max: 0.05 }, texto: "La campana no se acaba en ±3σ: fuera queda el 0,3 %." }
+    exito: "Unas 3: dentro de ±3σ cae el 99,7 %, y fuera, el 0,3 %."
     escalera:
       - "Recuerde los márgenes de la campana: ±1σ, ±2σ y ±3σ."
     solucion: "Dentro de ±3σ cae el 99,7 %: fuera, el 0,3 %, unas 3 de cada mil."
-
+    comprobar:
+      - { fuera_mil: 2.7, tol: 0.01 }
+      - { con: { k: 1 }, fuera_mil: 317, tol: 0.003 }
   - id: explore-montecarlo
     tipo: explorar
     titulo: "Monte Carlo: sortear y repetir"
-    texto: "Se sortea cada componente, se calcula el resultado y se repite. Mueva el número de ensayos y mire cuánto mejora la precisión."
+    texto: "Se sortea cada componente, se calcula el resultado y se repite. Lleve el número de ensayos al máximo."
     libro: [270]
     widget:
       tipo: grafica
@@ -120,7 +125,19 @@ tarjetas:
         - { valor: N, rotulo: "Ensayos: {{N}}" }
       mandos:
         - { valor: N, lista: [100, 1000, 10000, 100000, 400000], rotulo: "Número de ensayos" }
-    requiere: { mover: [N] }
+    inicio: { N: 100 }
+    objetivo:
+      condiciones:
+        - { valor: N, min: 400000, rotulo: "Ensayos: {{N}}" }
+      logrado: "{{N}} ensayos: {{mejora}} veces más precisión que con 100. Mejora con la raíz de los ensayos, como el promediado."
+      pistas:
+        - { texto: "Más ensayos." }
+    escalera:
+      - "El último valor de la lista."
+    solucion: "400 000 ensayos."
+    comprobar:
+      - { mejora: 1 }
+      - { con: { N: 400000 }, mejora: 63.2 }
 
   - id: reto-diez
     tipo: reto
@@ -152,51 +169,27 @@ tarjetas:
     comprobar:
       - { con: { N: 10000 }, mejora: 10 }
 
-  - id: ordene-montecarlo
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El método, paso a paso"
-    texto: "Ordene los pasos del método de Monte Carlo."
-    libro: [270]
-    ordenar:
-      - "Sortear un valor de cada componente según su distribución"
-      - "Calcular el resultado"
-      - "Repetir miles de veces"
-      - "Hacer el histograma: es la distribución buscada"
-    exito: "Eso es. Sirve cuando la propagación con derivadas parciales resulta inabordable."
-    pistas:
-      - { texto: "El histograma se hace al final, con todos los resultados." }
-    escalera:
-      - "Lo primero es sortear el valor de cada pieza dentro de su distribución."
-    solucion: "Sortear un valor de cada componente según su distribución → Calcular el resultado → Repetir miles de veces → Hacer el histograma: es la distribución buscada."
-
   - id: produccion
-    tipo: pregunta
+    tipo: simular
+    fase: "Estime"
     titulo: "Lo que se verá en producción"
-    texto: "P = V²/R con δV = 0,9 % y δR = 1 % como 3σ. ¿Qué dispersión da una simulación de 400 000 muestras?"
+    texto: "P = V²/R con δV = 0,9 % y δR = 1 % como 3σ; V pesa doble, σ_{X} = 1,8 %. ¿Qué dispersión da una simulación de 400 000 muestras?"
     libro: [271]
-    opciones:
-      - texto: "La del cálculo cuadrático, 2,06 %"
-        bien: true
-        porque: "Monte Carlo reproduce el valor cuadrático: lo que se verá en producción."
-      - texto: "La del peor caso, 2,80 %"
-        porque: "El peor caso es un límite muy conservador que casi nunca se alcanza."
-      - texto: "Ninguna fija: cambia en cada simulación"
-        porque: "Con 400 000 muestras la estimación es muy precisa: reproduce el 2,06 %."
-    widget:
-      tipo: grafica
-      x: { id: x, min: 0, max: 3, unidad: "%", rotulo: "σ_{X}" }
-      y: { min: 0, max: 6, unidad: "%", rotulo: "σ_{Z}" }
-      curvas:
-        - { expr: "sqrt(x^2 + sY^2)", color: azul, rotulo: independientes }
-        - { expr: "x + sY", color: tinta, rotulo: correlacionados, discontinua: true }
-      lectura: { valor: sZ, rotulo: "Desviación de la suma" }
-      mandos:
-        - { valor: sX, min: 0, max: 3, paso: 0.1, rotulo: "σ_{X}" }
+    fijar: { sX: 1.8, sY: 1, corr: 0 }
+    simular:
+      objetivo: sZ
+      unidad: "%"
+      tol: 0.02
+      rotulo: "δP"
+      errores:
+        - { razon: { min: 1.33, max: 1.39 }, texto: "Ese es el peor caso, un límite muy conservador que casi nunca se alcanza." }
+    exito: "2,06 %: Monte Carlo reproduce el valor cuadrático, lo que se verá en producción."
     escalera:
       - "Errores independientes: ¿peor caso o suma en cuadratura?"
-    solucion: "La del cálculo cuadrático, 2,06 %: Monte Carlo lo reproduce."
-
+    solucion: "√(1,8² + 1²) = 2,06 %."
+    comprobar:
+      - { sZ: 2.06 }
+      - { con: { corr: 1 }, sZ: 2.8 }
   - id: por-que-peor
     tipo: porque
     titulo: "¿Por qué casi nunca el peor caso?"
@@ -226,5 +219,5 @@ tarjetas:
     ideas:
       - { titulo: "Varianzas.", texto: "Independientes, σ_{Z}² = σ_{X}² + σ_{Y}²; correlacionados, el peor caso." }
       - { titulo: "±3σ.", texto: "Deja fuera unas 3 unidades de cada mil." }
-      - { titulo: "Monte Carlo.", texto: "Sortear, calcular, repetir: la precisión mejora con la raíz de los ensayos." }
+      - { titulo: "Monte Carlo.", texto: "Sortear cada componente, calcular, repetir y hacer el histograma: la precisión mejora con la raíz de los ensayos." }
       - { titulo: "Dos preguntas.", texto: "Lo peor posible, 2,80 %; lo que se verá en producción, 2,06 %." }

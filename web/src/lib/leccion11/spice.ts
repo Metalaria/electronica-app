@@ -35,6 +35,11 @@ export interface ValorEsperado {
   tol: number;
   /** Constant drops the reading depends on: expected += pendiente·(simulated drop − base); |drop − base| ≤ max. */
   correcciones?: Correccion[];
+  /**
+   * 1.2.1 (motor121): a multimeter on a circuit that changes with time reads the average of the measure over the
+   * graph's time window (simulated time, `desfase` included): the transient's points from `desde` to `hasta`.
+   */
+  promedio?: { desde: number; hasta: number };
 }
 
 export interface Correccion {
@@ -115,6 +120,34 @@ function medir(g: GraficaSim, medida: string, ac: ValorEsperado['ac'], k: number
   return ac === 'db' ? 20 * Math.log10(mag) : mag;
 }
 
+/**
+ * 1.2.1 (motor121): the time average of a measure over [desde, hasta] of a transient plot (trapezoids over the
+ * simulator's own points; the plot's first vector is time). The multimeter of a live circuit that changes with time
+ * reads this (lib/leccion12/hacer/punto-trabajo.ts), and the generator compares the same number with the model.
+ */
+export function promedioMedida(g: GraficaSim, medida: string, desde: number, hasta: number): number | null {
+  const t = g.vectores[0];
+  if (!t || !(hasta > desde)) return null;
+  let area = 0;
+  let largo = 0;
+  let previo: { x: number; y: number } | null = null;
+  for (let k = 0; k < t.re.length; k++) {
+    const x = t.re[k]!;
+    if (x < desde - 1e-12 * Math.abs(hasta) || x > hasta + 1e-12 * Math.abs(hasta)) {
+      previo = null;
+      continue;
+    }
+    const y = medir(g, medida, undefined, k);
+    if (y == null || !Number.isFinite(y)) return null;
+    if (previo && x > previo.x) {
+      area += ((y + previo.y) / 2) * (x - previo.x);
+      largo += x - previo.x;
+    }
+    previo = { x, y };
+  }
+  return largo > 0 ? area / largo : null;
+}
+
 const etiqueta = (medida: string, ac: ValorEsperado['ac']) => (ac ? `${ac}(${medida})` : medida);
 const p4 = (x: number) => Number(x.toPrecision(4));
 
@@ -125,7 +158,7 @@ export function compararSimulacion(c: ComprobacionSpice, graficas: readonly Graf
   const out: string[] = [];
   const avisadas = new Set<string>();
   for (const v of c.valores) {
-    const real = medir(g, v.medida, v.ac, 0);
+    const real = v.promedio ? promedioMedida(g, v.medida, v.promedio.desde, v.promedio.hasta) : medir(g, v.medida, v.ac, 0);
     if (real == null || !Number.isFinite(real)) {
       out.push(`${c.donde}: el simulador no da ${etiqueta(v.medida, v.ac)}`);
       continue;
@@ -221,6 +254,52 @@ export function montarNetlist(def: DefinicionEsquema, c: ContextoNetlist, analis
 }
 
 /**
+ * 1.2.1 (motor121): how far a reading may be from the model because of the book's constant drops (tipos.ts NoLineal):
+ * the sum over those pieces of the reading's sensitivity to each (the author's model, finite differences) times its
+ * deviation. 0 on a circuit without them. `f` is the reading as a function of the model's evaluation.
+ */
+export function holguraNoLineal(def: DefinicionEsquema, w: Pick<WidgetCircuito, 'piezas'>, mc: ModeloCompilado, st: Valores, f: (e: Valores) => number): number {
+  const r = mc.evaluar(st);
+  const h = 1e-3;
+  let total = 0;
+  for (const n of (def.noLineal?.((k) => k in w.piezas) ?? []).filter((x) => w.piezas[x.pieza])) {
+    const id = w.piezas[n.pieza]!;
+    const v0 = st[id] ?? r[id] ?? 0;
+    const d = (f(mc.evaluar({ ...st, [id]: v0 + h })) - f(mc.evaluar({ ...st, [id]: v0 - h }))) / (2 * h);
+    if (Number.isFinite(d)) total += Math.abs(d) * n.desviacion;
+  }
+  return total;
+}
+
+/** 1.2.1 (motor121): the simulator's measure of a multimeter placement: «v(a)-v(b)» (ground left out), «i(vm3)». */
+export function medidaDePuntas(roja: string, negra: string): string {
+  const t: string[] = [];
+  if (roja !== '0') t.push(`v(${roja})`);
+  if (negra !== '0') t.push(`-v(${negra})`);
+  return t.length ? t.join('') : '';
+}
+
+/**
+ * The analysis card of a circuit widget's graph, when its curves measure the schematic (a curve with `mide`): a
+ * transient over the axis (after `periodos` whole periods of the piece «f», `desfase` seconds) or an AC sweep. Shared by
+ * the generator's check of the curves and, 1.2.1 (motor121), by the live circuit's oscilloscope and the multimeter of a
+ * circuit that changes with time (lib/leccion12/hacer/punto-trabajo.ts): the same simulation in both.
+ */
+export function tarjetaGrafica(def: DefinicionEsquema, w: Pick<WidgetCircuito, 'grafica'>, c: ContextoNetlist): { analisis: 'tran' | 'ac'; tarjeta: string; desfase: number } | null {
+  const g = w.grafica;
+  const ob = (g?.curvas ?? []).map((cv) => (cv.mide ? def.observables[cv.mide] : undefined)).find((o) => !!o);
+  if (!g || !ob) return null;
+  if (ob.analisis === 'tran') {
+    const periodos = def.tran?.periodos?.(c) ?? 0;
+    const f = c.p('f');
+    const desfase = periodos > 0 && f > 0 ? periodos / f : 0;
+    const paso = (g.x.max - g.x.min) / 1000;
+    return { analisis: 'tran', tarjeta: `.tran ${num(paso)} ${num(desfase + g.x.max)} ${num(desfase + g.x.min)} ${num(paso)} uic`, desfase };
+  }
+  return { analisis: 'ac', tarjeta: g.x.escala === 'log' ? `.ac dec 40 ${num(g.x.min)} ${num(g.x.max)}` : `.ac lin 400 ${num(g.x.min)} ${num(g.x.max)}`, desfase: 0 };
+}
+
+/**
  * The ngspice checks of a circuit widget in each state: the readings `mide` (DC, or AC at the piece «f») and the
  * curves of its graph that measure the schematic (transient or AC sweep), with the tolerances above.
  */
@@ -264,19 +343,10 @@ export function comprobacionesCircuito(def: DefinicionEsquema, w: WidgetCircuito
     const g = w.grafica;
     const medidas = (g?.curvas ?? []).map((cv, j) => ({ cv, j, ob: cv.mide ? def.observables[cv.mide] : undefined })).filter((x) => x.ob);
     if (!g || !medidas.length) return;
-    const an = medidas[0]!.ob!.analisis as 'tran' | 'ac';
+    const { analisis: an, tarjeta, desfase } = tarjetaGrafica(def, w, c)!;
     const xid = g.x.id;
     const ancho = g.x.max - g.x.min;
     const alto = g.y.max - g.y.min;
-    let tarjeta: string;
-    let desfase = 0;
-    if (an === 'tran') {
-      const periodos = def.tran?.periodos?.(c) ?? 0;
-      const f = c.p('f');
-      desfase = periodos > 0 && f > 0 ? periodos / f : 0;
-      const paso = ancho / 1000;
-      tarjeta = `.tran ${num(paso)} ${num(desfase + g.x.max)} ${num(desfase + g.x.min)} ${num(paso)} uic`;
-    } else tarjeta = g.x.escala === 'log' ? `.ac dec 40 ${num(g.x.min)} ${num(g.x.max)}` : `.ac lin 400 ${num(g.x.min)} ${num(g.x.max)}`;
     const curvas = medidas.map(({ cv, j, ob }): CurvaEsperada => {
       const fn = mc.funcion(cv.expr);
       const en = (e: Valores, x: number) => fn({ ...e, [xid]: x });

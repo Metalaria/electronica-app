@@ -1,6 +1,8 @@
 # «Consolas por dentro» · NES 3: un cristal, dos relojes. El cristal de 21,477272 MHz (seis veces la subportadora NTSC)
 # dividido entre 12 para la CPU y entre 4 para la PPU, tres puntos por ciclo, el cuadro de 341 × 262 y el reloj aparte
 # del CIC. Fuentes: nes#n (explorador y arquitectura) y la sección 38.11 del libro (sus ecuaciones).
+# 1.2.1: se toca el trimmer en la foto; el explorar pide el reloj de la CPU con el divisor; se leen los tres
+# puntos por ciclo y los 29 780,67 ciclos de CPU de un cuadro (89 342 / 3).
 leccion: consola-nes/nes-relojes
 
 libro:
@@ -29,52 +31,42 @@ modelo:
     f_div: { expr: "f_m/n", sim: "f_{m} / n", nombre: "reloj dividido", unidad: Hz, cifras: 7 }
     f_ppu: { expr: "f_m/4", sim: "f_{PPU}", nombre: "reloj de la PPU", unidad: Hz, cifras: 7 }
     f_cpu: { expr: "f_m/12", sim: "f_{CPU}", nombre: "reloj de la CPU", unidad: Hz, cifras: 7 }
+    tres: { expr: "f_ppu/f_cpu", sim: "f_{PPU} / f_{CPU}", nombre: "puntos de PPU por ciclo de CPU", unidad: "", cifras: 3 }
+    c_cpu: { expr: "puntos*lineas/3", sim: "ciclos", nombre: "ciclos de CPU por cuadro", unidad: "", cifras: 7 }
     f_cuadro: { expr: "f_m/4/(puntos*lineas)", sim: "f_{cuadro}", nombre: "cuadros por segundo", unidad: Hz, cifras: 6 }
 
 tarjetas:
   - id: explore-osc
-    tipo: explorar
+    tipo: tocar
     titulo: "El corazón de la placa"
-    texto: "Toque el cristal maestro, su trimmer y el cristal del CIC."
+    texto: "Junto al cristal maestro hay una pieza que retoca la frecuencia del oscilador para centrar la subportadora de color. Tóquela."
     libro: ["nes#12", "nes#13", "nes#14", "nes#15"]
-    requiere: { mover: [x1, tc1, x2] }
     widget:
       tipo: figura
       consola: { maquina: nes }
       zonas:
-        - { id: x1, hotspot: X1, rotulo: "Cristal maestro", texto: "21,477 MHz: seis veces la subportadora NTSC." }
-        - { id: tc1, hotspot: TC1, rotulo: "Trimmer TC1", texto: "Retoca la frecuencia para centrar la subportadora de color." }
-        - { id: x2, hotspot: X2, rotulo: "Cristal del CIC", texto: "4 MHz, aparte: el reloj del chip de bloqueo." }
-
-  - id: prediga-tres
-    tipo: predecir
-    titulo: "Puntos por ciclo"
-    texto: "La CPU divide el cristal entre 12 y la PPU entre 4. ¿Cuántos puntos dibuja la PPU en cada ciclo de CPU?"
-    libro: ["cap37#335", "cap37#334"]
-    widget:
-      tipo: figura
-      consola: { maquina: nes }
-      zonas:
-        - { id: cpu, hotspot: U6, rotulo: "CPU" }
-        - { id: ppu, hotspot: U5, rotulo: "PPU" }
-    opciones:
-      - texto: "3, exactamente"
-        bien: true
-        porque: "12 ÷ 4 = 3: los dos relojes salen del mismo cristal y mantienen una fase fija, sin deriva."
-      - texto: "4"
-        porque: "4 es el divisor de la PPU. La relación entre los dos es 12 ÷ 4."
-      - texto: "Unos 3, y va variando"
-        porque: "No varía: los dos salen del mismo cristal por división entera. Son 3 exactamente."
+        - { id: tc1, hotspot: TC1, rotulo: "Pieza redonda pequeña, arriba a la izquierda" }
+        - { id: x1, hotspot: X1, rotulo: "Pieza azul, arriba a la izquierda" }
+        - { id: q2, hotspot: Q2, rotulo: "Piezas pequeñas, arriba del todo a la izquierda" }
+        - { id: x2, hotspot: X2, rotulo: "Pieza pequeña, a la derecha del centro" }
+    tocar:
+      bien: [tc1]
+      porque:
+        x1: "Es el cristal maestro, de 21,477 MHz: da la frecuencia, el trimmer la retoca."
+        q2: "Son los transistores del oscilador: Q2 oscila con el cristal y Q3 reparte el reloj."
+        x2: "Es el cristal de 4 MHz del CIC, aparte del maestro."
+    exito: "El trimmer TC1, de 30 pF, en serie con el cristal: retoca la frecuencia para que la subportadora de color quede centrada."
     escalera:
-      - "Divida un divisor entre el otro."
-    solucion: "12 ÷ 4 = 3 puntos de PPU por ciclo de CPU, exactamente."
+      - "Es un condensador ajustable, pequeño y redondo, cerca del cristal."
+    solucion: "TC1, la pieza redonda pequeña junto al cristal."
 
   - id: formula-cpu
-    tipo: formula
+    tipo: explorar
     titulo: "El reloj de la CPU"
-    texto: "Mueva el divisor: con 12 sale el reloj de la CPU."
+    texto: "Todo cuelga de un único cristal de 21,477272 MHz. Elija el divisor con el que sale el reloj de la CPU, 1,789773 MHz."
     libro: ["cap37#331", "cap37#330"]
     ec: "cap37#331"
+    inicio: { n: 1 }
     sustitucion: "{{f_m}} / {{n}} = {{f_div}}"
     widget:
       tipo: grafica
@@ -85,6 +77,47 @@ tarjetas:
       marcas:
         - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
       mandos: [ { valor: n, min: 1, max: 16, paso: 1, rotulo: "Divisor, n" } ]
+    objetivo:
+      condiciones:
+        - { valor: f_div, objetivo: 1789773, tol: 0.0005, rotulo: "Reloj: {{f_div}}" }
+      logrado: "Entre {{n}}: {{f_div}}, el reloj de la CPU."
+      pistas:
+        - { cuando: { valor: f_div, mayor: 1790000 }, texto: "Demasiado rápido: suba el divisor." }
+        - { texto: "Demasiado lento: baje el divisor." }
+    escalera:
+      - "21,477272 ÷ 1,789773 da el divisor."
+    solucion: "Entre 12."
+    comprobar:
+      - { con: { n: 12 }, f_div: 1789773 }
+
+  - id: prediga-tres
+    tipo: leer
+    titulo: "Puntos por ciclo"
+    texto: "La CPU divide el cristal entre 12 y la PPU entre 4. Escriba cuántos puntos dibuja la PPU en cada ciclo de CPU."
+    libro: ["cap37#335", "cap37#334", "cap37#331", "cap37#332"]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 16, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 22000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "f_m/k", color: azul, rotulo: "f_{maestro} / divisor", palitos: true }
+      marcas:
+        - { x: "4", y: "f_ppu", rotulo: "PPU" }
+        - { x: "12", y: "f_cpu", rotulo: "CPU" }
+      mandos: []
+    leer:
+      objetivo: tres
+      unidad: ""
+      tol: 0.01
+      rotulo: "Puntos por ciclo de CPU"
+      errores:
+        - { expr: "4", texto: "4 es el divisor de la PPU. La relación entre los dos relojes es 12 ÷ 4." }
+    exito: "3, exactamente: los dos relojes salen del mismo cristal y mantienen una fase fija, sin deriva."
+    escalera:
+      - "Divida un divisor entre el otro."
+    solucion: "12 ÷ 4 = 3 puntos de PPU por ciclo de CPU."
+    comprobar:
+      - { tres: 3 }
 
   - id: ajuste-ppu
     tipo: ajuste
@@ -143,26 +176,29 @@ tarjetas:
       - { f_cuadro: 60.0985 }
 
   - id: por-que-fraccion
-    tipo: porque
+    tipo: leer
     titulo: "Un número con decimales"
-    texto: "Un cuadro son 29 780,67 ciclos de CPU. ¿Por qué no se redondea?"
-    libro: ["cap37#342", "cap37#343"]
+    texto: "Un cuadro son 89 342 puntos de PPU, y cada ciclo de CPU dura tres. Escriba cuántos ciclos de CPU hay en un cuadro."
+    libro: ["cap37#339", "cap37#342", "cap37#343"]
     widget:
       tipo: figura
       consola: { maquina: nes }
       zonas:
         - { id: cpu, hotspot: U6, rotulo: "CPU" }
-    opciones:
-      - texto: "La CPU no hace ciclos enteros por cuadro y el software cuenta con ello."
-        bien: true
-        porque: "No es un error de redondeo: es lo que hace la consola. Redondear acumularía deriva."
-      - texto: "Es un error de redondeo del libro."
-        porque: "No lo es: 89 342 ÷ 3 no es entero, y la consola trabaja así."
-      - texto: "La CPU se para un ciclo en cada cuadro para redondear."
-        porque: "No se para: los dos relojes siguen su división fija y el cuadro cae a mitad de un ciclo de CPU."
+        - { id: ppu, hotspot: U5, rotulo: "PPU" }
+    leer:
+      objetivo: c_cpu
+      unidad: ""
+      tol: 0.0001
+      rotulo: "Ciclos de CPU por cuadro"
+      errores:
+        - { expr: "puntos*lineas", texto: "Esos son puntos de PPU: cada ciclo de CPU son tres." }
+    exito: "29 780,67: la CPU no ejecuta un número entero de ciclos por cuadro, y el software cuenta con ello. Redondear acumularía deriva."
     escalera:
-      - "89 342 entre 3 no da entero."
-    solucion: "La CPU no ejecuta un número entero de ciclos por cuadro; el software lo sabe y redondear acumula deriva."
+      - "89 342 ÷ 3."
+    solucion: "89 342 ÷ 3 = 29 780,67."
+    comprobar:
+      - { c_cpu: 29780.67 }
 
   - id: por-que-cic-reloj
     tipo: pregunta

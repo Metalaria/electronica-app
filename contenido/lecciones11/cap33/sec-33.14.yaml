@@ -7,6 +7,10 @@
 # - Pérdidas de núcleo ∝ ΔB^2,5 (bloque 504) y de cobre ∝ N² ∝ 1/ΔB² (figura 33.15), con las constantes que dan el
 #   mínimo de la figura (1,00 W hacia 0,10 T, núcleo ≈ cobre): 158,1·ΔB^2,5 + 0,005/ΔB² (constantes mías).
 # Paso práctico: «ajuste» de la excursión de flujo hasta el mínimo de pérdidas (total ≤ 1,05 W).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se elige el núcleo que admite más corriente (objetivo), se
+# calcula la L del reductor, se marca el cruce de núcleo y cobre (0,10 T, el de la figura), se ajusta el óptimo y se
+# toca en la figura el asunto que obliga a medir en caliente. Quedan dos preguntas (la energía en el hueco y el
+# pelicular); L·I², materiales, el método y núcleo o cobre pasan a explicaciones y resumen.
 leccion: cap33/sec-33.14
 
 libro:
@@ -44,14 +48,17 @@ modelo:
     L_b: { expr: "(V_in - V_out)*D/(f_s*dI)", sim: "L", nombre: "inductancia necesaria", unidad: H }
     P_nu: { expr: "158.1*dB^2.5", sim: "P_{núcleo}", nombre: "pérdidas de núcleo", unidad: W }
     P_cu: { expr: "0.005/dB^2", sim: "P_{cobre}", nombre: "pérdidas de cobre", unidad: W }
+    dB_x: { expr: "(0.005/158.1)^(1/4.5)", sim: "ΔB", nombre: "excursión con núcleo y cobre iguales", unidad: T }
+    L_sinD: { expr: "(V_in - V_out)/(f_s*dI)", sim: "L", nombre: "L sin el factor D (error)", unidad: H }
     P_t: { expr: "158.1*dB^2.5 + 0.005/dB^2", sim: "P", nombre: "pérdidas totales", unidad: W }
 
 tarjetas:
   - id: explore-entrehierro
     tipo: explorar
     titulo: "El entrehierro"
-    texto: "La ferrita cerrada satura con muy poca corriente. Abra el entrehierro y mire hasta dónde llega antes de B_{máx}."
-    libro: [479, 491, 493, 513]
+    texto: "La ferrita cerrada satura con muy poca corriente. Elija el núcleo que admite más corriente antes de llegar a B_{máx}."
+    libro: [479, 490, 491, 493, 513]
+    inicio: { a_g: 0.48 }
     widget:
       tipo: grafica
       x: { id: i, min: 0, max: 12, unidad: A, rotulo: "corriente en la bobina" }
@@ -64,7 +71,18 @@ tarjetas:
       lectura: { valor: I_sat, rotulo: "Llega a B_{máx} con" }
       mandos:
         - { valor: a_g, lista: [0.48, 0.13, 0.05], nombres: [cerrado, entrehierro pequeño, entrehierro grande], rotulo: "Núcleo" }
-    requiere: { mover: [a_g] }
+    objetivo:
+      condiciones:
+        - { valor: I_sat, min: 8, rotulo: "Llega a B_{máx} con {{I_sat}}" }
+      logrado: "Con el entrehierro grande llega a {{I_sat}}: menos inductancia por espira, mucha más corriente. Por eso importa L·I², no la inductancia."
+      pistas:
+        - { texto: "Todavía satura pronto: más entrehierro." }
+    escalera:
+      - "El entrehierro baja la pendiente de B frente a i."
+    solucion: "El entrehierro grande: unos 8,6 A."
+    comprobar:
+      - { con: { a_g: 0.05 }, I_sat: 8.63, tol: 0.01 }
+      - { I_sat: 0.899, tol: 0.01 }
 
   - id: prediga-energia
     tipo: predecir
@@ -89,90 +107,32 @@ tarjetas:
     solucion: "En el hueco de aire, no en la ferrita."
 
   - id: formula-l
-    tipo: formula
+    tipo: simular
     titulo: "La inductancia sale del rizado"
-    texto: "El reductor de 12 V a 5 V a 300 kHz. Con 207 mA de rizado sale su bobina de 47 µH; pida otro rizado."
+    texto: "El reductor de 12 V a 5 V, D = 0,417 y 300 kHz admite 207 mA de rizado. ¿Qué inductancia necesita?"
     libro: [483, "cap33#49", "cap33#54"]
-    ec: 483
-    sustitucion: "({{V_in}} − {{V_out}}) · {{D}} / ({{f_s}} · {{dI}}) = {{L_b}}"
+    fijar: { dI: 0.207 }
     widget:
       tipo: grafica
       x: { id: r, min: 0.1, max: 1, unidad: A, rotulo: "ΔI" }
       y: { min: 0, max: 0.0001, unidad: H, rotulo: "L" }
       curvas:
         - { expr: "(V_in - V_out)*D/(f_s*r)", color: naranja, rotulo: "L necesaria" }
-      marcas:
-        - { x: "dI", y: "L_b", rotulo: "{{L_b}}" }
-      mandos:
-        - { valor: dI, lista: [0.1, 0.15, 0.207, 0.3, 0.4, 0.6, 0.8, 1], rotulo: "Rizado, ΔI" }
+      lectura: { valor: L_b, rotulo: "Inductancia" }
+      ocultar: true
+    simular:
+      objetivo: L_b
+      unidad: H
+      tol: 0.03
+      rotulo: "Inductancia necesaria"
+      errores:
+        - { expr: "L_sinD", texto: "Le falta el factor D: la bobina ve V_{in} − V_{out} solo durante t_{on}." }
+    exito: "47 µH, la bobina del reductor. Luego, la corriente de pico, el núcleo y el bobinado, en ese orden."
+    escalera:
+      - "L = (V_{in} − V_{out})·D/(f·ΔI)."
+    solucion: "(12 − 5) × 0,417 / (300 kHz × 207 mA) ≈ 47 µH."
     comprobar:
       - { L_b: 4.7e-5, tol: 0.005 }
-
-  - id: dato-nucleo
-    tipo: pregunta
-    titulo: "El dato que importa"
-    texto: "Al elegir un núcleo para una bobina de almacenamiento, ¿qué dato importa más?"
-    libro: [490]
-    widget:
-      tipo: figura
-      figura: fig-33.14
-      zonas:
-        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 220, 213] }
-    opciones:
-      - texto: "El producto L·I² que admite"
-        bien: true
-        porque: "Es la energía que puede guardar sin pasar de B_{máx}: lo que de verdad limita."
-      - texto: "Su inductancia"
-        porque: "Una inductancia alta que satura con poca corriente no sirve; cuenta L junto con I²."
-      - texto: "Su color o su forma"
-        porque: "La forma importa para el bobinado, pero el límite es la energía, L·I²."
-    escalera:
-      - "Si B supera B_{máx}, la inductancia se desploma: ¿qué tiene que aguantar el núcleo?"
-    solucion: "El producto L·I²: la energía que admite."
-
-  - id: materiales
-    tipo: pregunta
-    titulo: "Tres materiales"
-    texto: "Empareje cada material con su densidad de flujo máxima."
-    libro: [491]
-    widget:
-      tipo: figura
-      figura: fig-33.15
-      zonas:
-        - { id: saturacion, rotulo: "Primer recuadro de la derecha", rect: [259, 20, 184, 41] }
-    emparejar:
-      - ["Ferrita", "0,3 T, con pocas pérdidas a 100 kHz"]
-      - ["Polvo de hierro", "1 T"]
-      - ["Chapa", "1,5 T"]
-    exito: "La ferrita satura antes, pero a frecuencia alta pierde mucho menos."
-    pistas:
-      - { texto: "La que menos flujo admite es la que mejor trabaja a 100 kHz." }
-    escalera:
-      - "La chapa es la de los transformadores de red."
-    solucion: "Ferrita 0,3 T, polvo de hierro 1 T, chapa 1,5 T."
-
-  - id: metodo
-    tipo: pregunta
-    titulo: "El método de las áreas"
-    texto: "Ordene los pasos para diseñar el magnético."
-    libro: [498, 499]
-    widget:
-      tipo: figura
-      figura: fig-33.14
-      zonas:
-        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 220, 213] }
-    ordenar:
-      - "Calcular la energía ½·L·I²_{pico}"
-      - "Elegir el núcleo por su producto de áreas A_{e}·A_{w}"
-      - "Calcular N para que B quede bajo B_{máx}"
-      - "Elegir el entrehierro que dé la L con esas espiras"
-      - "Comprobar que el cobre cabe y pierde poco"
-    exito: "Si el último falla, el núcleo es pequeño: volver al segundo."
-    pistas:
-      - { texto: "Primero la energía; el núcleo se elige por ella." }
-    escalera:
-      - "Las espiras se calculan antes que el entrehierro."
-    solucion: "Energía, núcleo, espiras, entrehierro y comprobar el cobre."
 
   - id: pelicular
     tipo: pregunta
@@ -197,9 +157,9 @@ tarjetas:
     solucion: "Hilo de Litz o hebras finas en paralelo."
 
   - id: explore-perdidas
-    tipo: explorar
+    tipo: marcar
     titulo: "Núcleo y cobre"
-    texto: "Más espiras bajan la excursión de flujo y las pérdidas del núcleo, y suben las del cobre. Mueva ΔB."
+    texto: "Más espiras bajan la excursión de flujo y las pérdidas del núcleo, y suben las del cobre. Marque la excursión en la que las dos se igualan."
     libro: [504, 514]
     widget:
       tipo: grafica
@@ -209,15 +169,24 @@ tarjetas:
         - { expr: "158.1*b^2.5", color: azul, rotulo: "núcleo" }
         - { expr: "0.005/b^2", color: naranja, rotulo: "cobre", discontinua: true }
         - { expr: "158.1*b^2.5 + 0.005/b^2", color: verde, rotulo: "total" }
-      marcas:
-        - { x: "dB", y: "P_t", rotulo: "{{P_t}}" }
-      lectura: { valor: P_t, rotulo: "Pérdidas totales" }
-      datos:
-        - { valor: P_nu, rotulo: "Núcleo: {{P_nu}}" }
-        - { valor: P_cu, rotulo: "Cobre: {{P_cu}}" }
-      mandos:
-        - { valor: dB, min: 0.03, max: 0.3, paso: 0.005, rotulo: "Excursión, ΔB" }
-    requiere: { mover: [dB] }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "dB_x"
+      tol: 0.03
+      inicio: { x: 0.25, y: 0 }
+      rotulo: "El cruce"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.1 }, texto: "Más a la izquierda: ahí el núcleo ya pierde más." }
+      - { texto: "Más a la derecha: ahí manda el cobre." }
+    exito: "Hacia 0,10 T: justo debajo del mínimo del total, 1,00 W. El óptimo es cuando núcleo y cobre pierden casi lo mismo."
+    escalera:
+      - "Donde se cortan la azul y la naranja."
+    solucion: "0,10 T."
+    comprobar:
+      - { dB_x: 0.1, tol: 0.01 }
+      - { con: { dB: 0.1 }, P_t: 1, tol: 0.01 }
 
   - id: ajuste-optimo
     tipo: ajuste
@@ -247,56 +216,36 @@ tarjetas:
       alto: "Aún sobra: acérquese al cruce entre núcleo y cobre."
       dentro: "En el óptimo: núcleo y cobre pierden casi lo mismo."
 
-  - id: por-que-calientan
-    tipo: porque
-    titulo: "Núcleo o cobre"
-    texto: "Los transformadores se calientan por el núcleo y las bobinas de filtro por el cobre. ¿Por qué?"
-    libro: [505]
-    widget:
-      tipo: figura
-      figura: fig-33.15
-      zonas:
-        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 220] }
-    opciones:
-      - texto: "En la bobina la excursión de flujo es la del rizado, pequeña; en el transformador, la total"
-        bien: true
-        porque: "Las pérdidas del núcleo crecen con ΔB^2,5: el diagnóstico térmico distingue los dos casos."
-      - texto: "Porque los transformadores tienen menos cobre"
-        porque: "No es cuestión de cuánto cobre: lo es la excursión de flujo de cada uno."
-      - texto: "Porque las bobinas no tienen núcleo"
-        porque: "Lo tienen; solo que su flujo oscila poco, al ritmo del rizado."
-    escalera:
-      - "¿Cuánto oscila el flujo en cada uno?"
-    solucion: "El flujo de la bobina solo oscila con el rizado; el del transformador, entero."
-
   - id: banco-saturacion
-    tipo: pregunta
+    tipo: tocar
     titulo: "Validarlo en el banco"
-    texto: "A plena carga, la rampa de corriente de la bobina se curva hacia arriba en el pico. ¿Qué indica y qué falta comprobar?"
-    libro: [508, 512]
+    texto: "A plena carga, la rampa de corriente de la bobina es recta en frío y se curva en el pico al calentarse. Toque el asunto que lo explica."
+    libro: [508, 512, 514]
     widget:
       tipo: figura
       figura: fig-33.15
       zonas:
+        - { id: saturacion, rotulo: "Primer recuadro de la derecha", rect: [259, 20, 184, 41] }
+        - { id: entrehierro, rotulo: "Segundo recuadro de la derecha", rect: [259, 66, 184, 41] }
+        - { id: pelicular, rotulo: "Tercer recuadro de la derecha", rect: [259, 113, 184, 40] }
         - { id: temperatura, rotulo: "Último recuadro de la derecha", rect: [259, 159, 184, 40] }
-    opciones:
-      - texto: "Satura; y repetir en caliente, porque B_{máx} baja con la temperatura"
-        bien: true
-        porque: "Hay que aumentar espiras, entrehierro o núcleo; y una bobina que no satura en frío puede saturar caliente."
-      - texto: "Que la bobina tiene demasiado entrehierro"
-        porque: "Más entrehierro retrasa la saturación; aquí falta, no sobra."
-      - texto: "Nada: la rampa siempre se curva"
-        porque: "Debe ser recta; si se curva en el pico, la inductancia se está desplomando."
+    tocar:
+      bien: [temperatura]
+      porque:
+        saturacion: "Curvarse en el pico es saturar, sí; pero en frío no lo hacía: algo ha bajado B_{máx}."
+        entrehierro: "El entrehierro retrasa la saturación, pero no cambia entre frío y caliente."
+        pelicular: "El pelicular calienta el cobre; no curva la rampa."
+    exito: "B_{máx} de la ferrita baja con la temperatura: hay que repetir la medida caliente. Si satura, más espiras, entrehierro o núcleo."
     escalera:
-      - "¿Qué le pasa a la inductancia cuando el núcleo satura?"
-    solucion: "Saturación: más espiras, entrehierro o núcleo; y medirla también caliente."
+      - "¿Qué cambia entre frío y caliente?"
+    solucion: "El último recuadro: la temperatura."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [483, 490, 494, 498, 504]
+    libro: [483, 490, 491, 494, 498, 499, 504, 505]
     ideas:
       - { titulo: "Se diseña.", texto: "L del rizado, corriente de pico, núcleo y bobinado, en ese orden." }
-      - { titulo: "El entrehierro.", texto: "Guarda la energía y retrasa la saturación; manda L·I²." }
-      - { titulo: "El método.", texto: "Energía, núcleo por áreas, espiras, entrehierro y cobre." }
-      - { titulo: "Las pérdidas.", texto: "Núcleo con f^1,3·B^2,5, cobre con el pelicular: el óptimo, cuando se igualan." }
+      - { titulo: "El entrehierro.", texto: "Guarda la energía y retrasa la saturación; manda L·I². Ferrita 0,3 T, polvo de hierro 1 T, chapa 1,5 T." }
+      - { titulo: "El método.", texto: "Energía ½·L·I², núcleo por áreas, espiras, entrehierro y cobre; si el cobre no cabe, núcleo mayor." }
+      - { titulo: "Las pérdidas.", texto: "Núcleo con f^1,3·B^2,5 (los transformadores), cobre (las bobinas): el óptimo, cuando se igualan." }

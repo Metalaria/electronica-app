@@ -3,6 +3,10 @@
 # - Ejercicio 50.1 (bloque 265): el micrófono va al ADC1 (GPIO32-39), porque el ADC2 lo usa el wifi.
 # Sin fórmulas ni modelo (aviso de secuencia «sin tarjeta de fórmula»).
 # Paso práctico: «tocar» en la placa de desarrollo de la foto la zona de la antena, sin cobre debajo.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el pin de arranque forzado (bloques 134, 135 y 152) se ve en el
+# simulador lógico, con su pull-up; en la figura 50.9 se tocan el ADC2 del micrófono (ejercicio 50.1) y los pines de la
+# Flash, con las zonas recalculadas desde la fuente; en la foto 50.10, la placa que no baja de miliamperios. La elección
+# del ESP32 pasa al resumen. Queda una de opciones, el pico.
 leccion: cap49/sec-49.4
 
 libro:
@@ -29,106 +33,75 @@ modelo: { valores: {}, calculos: {} }
 tarjetas:
   - id: explore-esp32
     tipo: explorar
-    titulo: "Por periféricos, no por velocidad"
-    texto: "El ESP32 reúne wifi, convertidores, buses y sueño profundo. Toque sus modos de consumo y dos restricciones de pines."
-    libro: [124, 153]
-    widget:
-      tipo: figura
-      figura: fig-49.6
-      zonas:
-        - { id: consumo, rotulo: "Gráfica de la izquierda", rect: [60, 20, 160, 130], texto: "De 10 µA dormido a 150 mA de media con el wifi, con picos de cientos de miliamperios." }
-        - { id: arranque, rotulo: "Recuadro de arriba a la derecha", rect: [240, 18, 203, 45], texto: "Pines de arranque: si el circuito los fuerza, no arranca al encender." }
-        - { id: flash, rotulo: "Segundo recuadro", rect: [240, 66, 203, 36], texto: "Pines de la Flash interna: no se pueden usar." }
-        - { id: adc2, rotulo: "Último recuadro", rect: [240, 142, 203, 45], texto: "El segundo bloque de ADC queda inutilizado con el wifi activo." }
-    requiere: { mover: [consumo, arranque, adc2] }
-
-  - id: pregunta-eleccion
-    tipo: pregunta
-    titulo: "Por qué el ESP32"
-    texto: "¿Cuál es el criterio que lleva al ESP32 en esta estación?"
-    libro: [124, 125, 129]
-    widget:
-      tipo: figura
-      figura: fig-49.7
-      zonas:
-        - { id: modulo, rotulo: "Foto de la izquierda", rect: [0, 0, 760, 683] }
-    opciones:
-      - texto: "Periféricos y conectividad: wifi integrado, convertidores, buses y sueño"
-        bien: true
-        porque: "El wifi integrado es la razón principal."
-      - texto: "Su velocidad"
-        porque: "Leer unos sensores cada cinco minutos no exige velocidad."
-      - texto: "Sus convertidores de 12 bits muy lineales"
-        porque: "Su linealidad es mediocre: conviene calibrarlos."
-    escalera:
-      - "¿Qué necesita la estación que un microcontrolador sin radio no tiene?"
-    solucion: "Periféricos y conectividad."
-
-  - id: predecir-arranque
-    tipo: predecir
     titulo: "Funciona al programar"
-    texto: "La placa funciona al programarla desde el ordenador, pero no arranca al encenderla en su sitio. ¿Qué apostaría?"
-    libro: [134, 135]
+    texto: "Un pin de arranque se lee al encender, con su pull-up. La placa funciona al programarla y no arranca en su sitio: haga que arranque el programa."
+    libro: [124, 134, 135, 152, 153]
     widget:
-      tipo: figura
-      figura: fig-49.6
-      zonas:
-        - { id: arranque, rotulo: "Recuadro de arriba a la derecha", rect: [240, 18, 203, 45] }
-    opciones:
-      - texto: "Un pin de arranque forzado por el circuito externo"
-        bien: true
-        porque: "Es un fallo desconcertante y su causa es siempre la misma."
-      - texto: "El firmware está mal"
-        porque: "El mismo firmware funciona al programar: lo que cambia es el estado de los pines al encender."
-      - texto: "Falta de memoria"
-        porque: "La memoria es la misma en los dos casos."
+      tipo: logica
+      entradas: [{ id: F, valor: 1, rotulo: "El circuito fuerza el pin" }]
+      piezas:
+        - { id: n1, tipo: not, entradas: [F], rotulo: "Periférico conectado" }
+        - { id: d1, tipo: od, entradas: [n1], rotulo: "Salida del periférico" }
+        - { id: p1, tipo: bus, entradas: [d1], pullup: 1, rotulo: "Pin de arranque" }
+      salidas:
+        - { id: ARR, de: p1, rotulo: "Arranca el programa" }
+    objetivo:
+      condiciones:
+        - { led: ARR, valor: 1, rotulo: "Arranca el programa" }
+      logrado: "Libre, el pull-up deja el pin en su nivel y arranca el programa. Forzado por el circuito, entra en otro modo: desnuda arranca, conectada no. La causa es siempre la misma."
+      pistas:
+        - { texto: "Que el periférico no fuerce el pin al encender." }
     escalera:
-      - "Unos pocos pines se leen al encender para decidir el modo de arranque."
-    solucion: "Un pin de arranque (strapping) forzado."
+      - "Quite lo que fuerza el pin."
+    solucion: "Circuito sin forzar el pin: arranca."
 
   - id: pregunta-adc
-    tipo: pregunta
+    tipo: tocar
     titulo: "El micrófono, ¿a qué pin?"
-    texto: "El micrófono analógico se conecta a un pin del convertidor. ¿Por qué al ADC1 y no al ADC2?"
+    texto: "El micrófono analógico va a un pin del convertidor, con el wifi activo. Toque la restricción que decide en qué bloque."
     libro: [138, "cap49#265"]
     widget:
       tipo: figura
       figura: fig-49.6
       zonas:
-        - { id: adc2, rotulo: "Último recuadro", rect: [240, 142, 203, 45] }
-    opciones:
-      - texto: "El ADC2 lo usa el wifi: con la radio activa, sus lecturas fallan"
-        bien: true
-        porque: "El ADC1 (GPIO32-39) es independiente del wifi: el único válido en un proyecto conectado."
-      - texto: "El ADC1 tiene más bits"
-        porque: "Los dos son de 12 bits; el problema del ADC2 es que comparte recursos con el wifi."
-      - texto: "Da igual"
-        porque: "Con el wifi activo, el ADC2 queda inutilizado."
+        - { id: arranque, rotulo: "Recuadro de arriba a la derecha", rect: [240, 18, 203, 45] }
+        - { id: flash, rotulo: "Segundo recuadro", rect: [240, 64, 203, 37] }
+        - { id: entrada, rotulo: "Tercer recuadro", rect: [240, 102, 203, 37] }
+        - { id: adc2, rotulo: "Último recuadro", rect: [240, 141, 203, 45] }
+    tocar:
+      bien: [adc2]
+      porque:
+        arranque: "Los de arranque importan al encender, no para el convertidor."
+        flash: "Esos no se pueden usar para nada."
+        entrada: "Los de solo entrada sirven para el convertidor: el problema es otro bloque."
+    exito: "El ADC2 lo usa el wifi: con la radio activa, sus lecturas fallan. El micrófono va al ADC1, el único válido en un proyecto conectado."
     escalera:
       - "¿Qué comparte el segundo bloque de convertidores?"
-    solucion: "Al ADC1: el ADC2 queda inutilizado con el wifi."
+    solucion: "El último recuadro: al ADC1."
 
   - id: empareje-pines
-    tipo: pregunta
+    tipo: tocar
     titulo: "Las restricciones de pines"
-    texto: "Empareje cada tipo de pin con su restricción."
+    texto: "Unos pines del ESP32 no se pueden usar para nada. Toque cuáles."
     libro: [134, 136, 137, 138]
     widget:
       tipo: figura
       figura: fig-49.6
       zonas:
-        - { id: restricciones, rotulo: "Columna de la derecha", rect: [240, 18, 203, 170] }
-    emparejar:
-      - ["De arranque", "Si se fuerzan, no arranca"]
-      - ["De la Flash interna", "Inservibles"]
-      - ["De solo entrada", "Sin etapa de salida"]
-      - ["Del ADC2", "Inutilizados con el wifi activo"]
-    exito: "Esa última es la que aparece en la errata o en el foro, no en la primera página."
-    pistas:
-      - { texto: "Un pin de solo entrada no puede encender un LED." }
+        - { id: arranque, rotulo: "Recuadro de arriba a la derecha", rect: [240, 18, 203, 45] }
+        - { id: flash, rotulo: "Segundo recuadro", rect: [240, 64, 203, 37] }
+        - { id: entrada, rotulo: "Tercer recuadro", rect: [240, 102, 203, 37] }
+        - { id: adc2, rotulo: "Último recuadro", rect: [240, 141, 203, 45] }
+    tocar:
+      bien: [flash]
+      porque:
+        arranque: "Los de arranque se usan, con cuidado de no forzarlos al encender."
+        entrada: "Los de solo entrada sirven como entradas; lo que no tienen es etapa de salida."
+        adc2: "El ADC2 se usa sin wifi; con él activo, queda inutilizado."
+    exito: "Los de la Flash interna. Y ojo con los de solo entrada, sin etapa de salida, y con el ADC2: esa restricción aparece en la errata o en el foro, no en la primera página."
     escalera:
-      - "Dos de ellos sirven para entrada analógica; uno no sirve para nada."
-    solucion: "Arranque, no arranca; Flash, inservibles; solo entrada, sin salida; ADC2, sin wifi."
+      - "Los que ya están conectados dentro del módulo."
+    solucion: "El segundo recuadro, los de la Flash."
 
   - id: porque-pico
     tipo: porque
@@ -153,26 +126,24 @@ tarjetas:
     solucion: "Los picos lo hunden: dimensionar para el pico y un condensador de reserva."
 
   - id: pregunta-devkit
-    tipo: pregunta
+    tipo: tocar
     titulo: "Diez microamperios… ¿en qué placa?"
-    texto: "El sueño profundo del ESP32 son unos 10 µA. ¿Y en una placa de desarrollo?"
+    texto: "El sueño profundo del ESP32 son unos 10 µA. Toque la placa que, dormida, no baja de varios miliamperios."
     libro: [142]
     widget:
       tipo: figura
       figura: fig-49.7
       zonas:
+        - { id: modulo, rotulo: "Foto de la izquierda", rect: [0, 0, 760, 683] }
         - { id: devkit, rotulo: "Foto de la derecha", rect: [790, 0, 810, 683] }
-    opciones:
-      - texto: "No baja de varios miliamperios"
-        bien: true
-        porque: "Su regulador, su LED y su conversor USB-serie siguen gastando."
-      - texto: "Los mismos 10 µA"
-        porque: "Esa es la cifra del módulo desnudo."
-      - texto: "Menos, porque el regulador ayuda"
-        porque: "El regulador de la placa añade consumo, no lo quita."
+    tocar:
+      bien: [devkit]
+      porque:
+        modulo: "Ese es el módulo desnudo: ahí sí valen los 10 µA."
+    exito: "La de desarrollo: su regulador, su LED y su conversor USB-serie siguen gastando."
     escalera:
       - "¿Qué más hay en la placa además del módulo?"
-    solucion: "Varios miliamperios."
+    solucion: "La placa de desarrollo."
 
   - id: toque-antena
     tipo: tocar
@@ -196,32 +167,10 @@ tarjetas:
       - "La antena está trazada en cobre en el extremo libre del módulo."
     solucion: "El extremo libre del módulo, sobre el borde de la placa."
 
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Antes de construir"
-    texto: "La placa arranca desnuda, pero no con los periféricos conectados. ¿Dónde está el problema?"
-    libro: [152]
-    widget:
-      tipo: figura
-      figura: fig-49.6
-      zonas:
-        - { id: arranque, rotulo: "Recuadro de arriba a la derecha", rect: [240, 18, 203, 45] }
-    opciones:
-      - texto: "En un pin de arranque que el circuito externo fuerza"
-        bien: true
-        porque: "Desnuda arranca: lo que cambia al conectar es el nivel de algún pin de arranque."
-      - texto: "En el ESP32"
-        porque: "Desnudo funciona: el ESP32 está bien."
-      - texto: "En la antena"
-        porque: "La antena afecta al alcance, no al arranque."
-    escalera:
-      - "¿Qué cambia entre la placa desnuda y conectada?"
-    solucion: "Un pin de arranque forzado."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [125, 138, 144, 147]
+    libro: [125, 129, 138, 144, 147]
     ideas:
       - { titulo: "Elegido por periféricos.", texto: "Wifi integrado, convertidores, buses y sueño." }
       - { titulo: "Pines.", texto: "Arranque, Flash, solo entrada, y el ADC2 inútil con wifi." }

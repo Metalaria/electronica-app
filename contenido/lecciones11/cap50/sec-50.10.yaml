@@ -3,6 +3,10 @@
 #   demasiado finas para tocarlas en un teléfono).
 # - Sin modelo numérico: cada cifra sale de la sección 51.9 y se cita.
 # Sin paso práctico: la sección es una lista razonada.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): cada compra se rehace con su cálculo de la sección 51.9: se elige
+# el secundario que da el pico con la red baja (objetivo; 24 V es la alternativa que el libro descarta) y se calculan
+# los VA, el rizado eficaz del condensador, el reparto entre los dos transistores y la potencia del shunt. Quedan dos
+# preguntas (dónde gastar y la seguridad); el puente, los bornes y por qué hacerla, al resumen.
 leccion: cap50/sec-50.10
 
 libro:
@@ -21,111 +25,173 @@ libro:
   335: "Componentes de red certificados: interruptor, portafusibles, cable, prensaestopas."
   338: "Ahorrar aquí es donde no se debe ahorrar nunca."
   341: "lo que se compra no es la fuente, es entender cómo funciona"
+  "cap50#281": "37,9/(0,9 × 1,414) ≈ 30 V eficaces"
+  "cap50#285": "del orden de 1,5 veces la corriente de salida, es decir, unos 4,5 A"
+  "cap50#289": '"129 W"'
+  "cap50#290": "65 W cada uno"
+  "cap50#300": "150 mV a fondo de escala, y una disipación de 0,45 W"
+  "cap50#303": "debe dar unos 30 V × 3 A × 1,8 ≈ 160 VA"
   342: "Los componentes que deciden en la fuente y la seguridad como criterio."
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    V_sec: { sim: "V_{sec}", nombre: "secundario elegido, eficaz", unidad: V, valor: 24 }
+    V_nec: { sim: "V_{pico}", nombre: "pico necesario con la red baja", unidad: V, valor: 37.9 }
+    V_max: { sim: "V_{máx}", nombre: "salida máxima", unidad: V, valor: 30 }
+    I_max: { sim: "I", nombre: "corriente máxima", unidad: A, valor: 3 }
+    k_ef: { sim: "k", nombre: "eficaz del secundario sobre la continua", unidad: "", valor: 1.8 }
+    k_riz: { sim: "k", nombre: "rizado eficaz sobre la corriente de salida", unidad: "", valor: 1.5 }
+    P_paso: { sim: "P", nombre: "disipación sin prerregulador, a 5 V", unidad: W, valor: 129 }
+    n_t: { sim: "n", nombre: "transistores en paralelo", unidad: "", valor: 2 }
+    R_sh: { sim: "R_{shunt}", nombre: "shunt", unidad: Ω, valor: 0.05 }
+  calculos:
+    V_pb: { expr: "0.9*1.414*V_sec", sim: "V", nombre: "pico con la red al −10 %", unidad: V }
+    S_tr: { expr: "V_max*I_max*k_ef", sim: "S", nombre: "potencia del transformador", unidad: VA }
+    P_ent: { expr: "V_max*I_max", sim: "P", nombre: "potencia entregada máxima", unidad: W }
+    I_riz: { expr: "k_riz*I_max", sim: "I_{rizado}", nombre: "corriente de rizado eficaz", unidad: A }
+    P_1t: { expr: "P_paso/n_t", sim: "P", nombre: "disipación de cada transistor", unidad: W }
+    V_sh: { expr: "I_max*R_sh", sim: "V", nombre: "caída en el shunt", unidad: V }
+    P_sh: { expr: "I_max^2*R_sh", sim: "P", nombre: "potencia en el shunt", unidad: W }
 
 tarjetas:
   - id: explore-bom
     tipo: explorar
-    titulo: "Una lista razonada"
-    texto: "Cada elección responde a un cálculo de la sección 51.9. Toque la tabla y la seguridad."
-    libro: [310, 342]
+    titulo: "El transformador"
+    texto: "Cada elección responde a un cálculo de la sección 51.9. Elija el secundario que da los 37,9 V de pico necesarios con la red al −10 %."
+    libro: [310, 312, "cap50#281"]
+    inicio: { V_sec: 24 }
     widget:
-      tipo: figura
-      figura: fig-50.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 15, 453, 115], texto: "Los componentes que deciden: qué comprar y por qué, con cifras de la sección 51.9." }
-        - { id: seguridad, rotulo: "El recuadro rojo de abajo", rect: [3, 150, 448, 82], texto: "La seguridad como criterio: componentes de red certificados, aislamiento y toma de tierra al chasis." }
-    requiere: { mover: [tabla, seguridad] }
-
-  - id: empareje-por-que
-    tipo: pregunta
-    titulo: "Por qué cada uno"
-    texto: "Empareje cada componente con la razón de su elección."
-    libro: [312, 313, 314, 315, 319]
-    widget:
-      tipo: figura
-      figura: fig-50.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 15, 453, 115] }
-    emparejar:
-      - ["Transformador", "El más caro: fija el tamaño de la caja"]
-      - ["Puente rectificador", "La corriente de pico repetitiva"]
-      - ["Condensador de filtro", "La corriente de rizado eficaz decide su vida"]
-      - ["Shunts de sensado", "Su valor entra directo en la medida"]
-    exito: "Cada fila de la lista viene de un número calculado antes."
-    pistas:
-      - { texto: "Lo que decide la vida del condensador no aparece en el precio." }
+      tipo: grafica
+      x: { id: vx, min: 20, max: 40, unidad: V, rotulo: "V_{sec}" }
+      y: { min: 20, max: 55, unidad: V, rotulo: "pico con red baja" }
+      curvas:
+        - { expr: "0.9*1.414*vx", color: naranja, rotulo: "pico con la red al −10 %" }
+        - { expr: "V_nec + 0*vx", color: tinta, rotulo: "37,9 V necesarios", discontinua: true }
+      marcas:
+        - { x: "V_sec", y: "V_pb", rotulo: "{{V_pb}}" }
+      lectura: { valor: V_pb, rotulo: "Pico con la red baja" }
+      mandos:
+        - { valor: V_sec, lista: [24, 30], rotulo: "Secundario eficaz" }
+    objetivo:
+      condiciones:
+        - { valor: V_pb, min: 37.9, rotulo: "Pico: {{V_pb}}" }
+      logrado: "Con {{V_sec}} eficaces el pico con la red baja es {{V_pb}}: llega. Con 24 V la fuente no pasaría de unos 26 V a 3 A."
+      pistas:
+        - { texto: "No llega: con la red baja, el valle del rizado dejaría al regulador sin caída." }
     escalera:
-      - "Uno es grande y caro; otro sufre picos; otro, rizado; otro mide."
-    solucion: "Transformador, tamaño; puente, pico; condensador, rizado; shunt, medida."
+      - "Pico con la red baja: 0,9 × 1,414 × V_{sec}."
+    solucion: "30 V eficaces: unos 38,2 V de pico con la red baja."
+    comprobar:
+      - { con: { V_sec: 30 }, V_pb: 38.2, tol: 0.01 }
+      - { V_nec: 37.9 }
 
-  - id: puente-8a
-    tipo: pregunta
-    titulo: "8 A para 3 A"
-    texto: "La fuente da 3 A medios. ¿Por qué el puente rectificador es de al menos 8 A?"
-    libro: [314]
+  - id: simule-va
+    tipo: simular
+    titulo: "Los VA"
+    texto: "La fuente entrega como mucho 30 V y 3 A, y la eficaz del secundario es unas 1,8 veces la continua. ¿Cuántos VA como mínimo?"
+    libro: [312, "cap50#303"]
     widget:
-      tipo: figura
-      figura: fig-50.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 15, 453, 115] }
-    opciones:
-      - texto: "Por la corriente de pico repetitiva de los pulsos de carga"
-        bien: true
-        porque: "Los diodos entregan la corriente en pulsos cortos mucho mayores que la media."
-      - texto: "Por si se quiere ampliar la fuente"
-        porque: "La razón es la de ahora: los pulsos de carga del condensador."
-      - texto: "Porque los de 3 A no existen"
-        porque: "Existen; no aguantarían los pulsos de pico."
+      tipo: grafica
+      x: { id: kx, min: 1, max: 2.5, unidad: "", rotulo: "eficaz / continua" }
+      y: { min: 0, max: 250, unidad: VA, rotulo: "S" }
+      curvas:
+        - { expr: "V_max*I_max*kx", color: naranja, rotulo: "potencia del transformador" }
+      lectura: { valor: S_tr, rotulo: "Transformador" }
+      ocultar: true
+    simular:
+      objetivo: S_tr
+      unidad: VA
+      tol: 0.05
+      rotulo: "Potencia del transformador"
+      errores:
+        - { expr: "P_ent", texto: "Esos 90 son los vatios entregados; los pulsos de carga piden 1,8 veces más al secundario." }
+    exito: "Unos 160 VA, toroidal si se puede: el más caro y el que fija el tamaño de la caja."
     escalera:
-      - "¿La corriente por los diodos es continua o a pulsos?"
-    solucion: "Por la corriente de pico repetitiva."
+      - "30 V × 3 A × 1,8."
+    solucion: "30 × 3 × 1,8 ≈ 160 VA."
+    comprobar:
+      - { S_tr: 162, P_ent: 90 }
 
-  - id: transistores
-    tipo: pregunta
-    titulo: "Cuántos transistores de paso"
-    texto: "La lista pide dos transistores de paso de al menos 200 W. ¿Y con el prerregulador?"
-    libro: [316]
+  - id: simule-rizado
+    tipo: simular
+    titulo: "El condensador de filtro"
+    texto: "Con 3 A de salida, los pulsos de carga dan un rizado eficaz del orden de 1,5 veces la salida. ¿Cuánto debe aguantar el condensador?"
+    libro: [315, "cap50#285"]
     widget:
-      tipo: figura
-      figura: fig-50.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 15, 453, 115] }
-    opciones:
-      - texto: "Basta uno en un disipador modesto"
-        bien: true
-        porque: "Con prerregulador la caída sobre el paso es pequeña, y su calor también."
-      - texto: "Hacen falta seis"
-        porque: "Seis serían con un secundario único y sin prerregulador."
-      - texto: "Los mismos dos"
-        porque: "El prerregulador reduce tanto el calor que basta uno."
+      tipo: grafica
+      x: { id: ix, min: 0, max: 4, unidad: A, rotulo: "I_{out}" }
+      y: { min: 0, max: 7, unidad: A, rotulo: "I_{rizado}" }
+      curvas:
+        - { expr: "k_riz*ix", color: naranja, rotulo: "rizado eficaz" }
+      lectura: { valor: I_riz, rotulo: "Corriente de rizado" }
+      ocultar: true
+    simular:
+      objetivo: I_riz
+      unidad: A
+      tol: 0.04
+      rotulo: "Corriente de rizado eficaz"
+      errores:
+        - { expr: "I_max", texto: "Esa es la media de salida; los pulsos de carga la hacen mayor." }
+    exito: "Unos 4,5 A: es lo que decide su vida y no aparece en el precio. Hay que comprobarlo en la hoja."
     escalera:
-      - "¿Cuánto calor queda en el paso con prerregulador?"
-    solucion: "Uno en un disipador modesto."
+      - "1,5 × 3 A."
+    solucion: "1,5 × 3 = 4,5 A."
+    comprobar:
+      - { I_riz: 4.5, I_max: 3 }
 
-  - id: bornes
-    tipo: pregunta
-    titulo: "Lo que se olvida"
-    texto: "En la lista de lo que se olvida aparecen unos bornes de salida de calidad. ¿Por qué importan?"
-    libro: [325]
+  - id: simule-transistores
+    tipo: simular
+    titulo: "Los transistores de paso"
+    texto: "Sin prerregulador, el paso disipa 129 W en el peor caso, repartidos entre dos transistores en paralelo. ¿Cuánto se lleva cada uno?"
+    libro: [316, "cap50#289", "cap50#290"]
     widget:
-      tipo: figura
-      figura: fig-50.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 15, 453, 115] }
-    opciones:
-      - texto: "Su resistencia entra en la regulación"
-        bien: true
-        porque: "Lo que cae en los bornes lo pierde la carga: empeora la regulación medida."
-      - texto: "Por estética del panel"
-        porque: "Es una cuestión eléctrica: su resistencia."
-      - texto: "Porque los baratos no aguantan la tensión"
-        porque: "El problema es la resistencia de contacto, que entra en la regulación."
+      tipo: grafica
+      x: { id: nx, min: 1, max: 6, unidad: "", rotulo: "transistores" }
+      y: { min: 0, max: 140, unidad: W, rotulo: "P por transistor" }
+      curvas:
+        - { expr: "P_paso/nx", color: naranja, rotulo: "disipación de cada uno" }
+      lectura: { valor: P_1t, rotulo: "Cada transistor" }
+      ocultar: true
+    simular:
+      objetivo: P_1t
+      unidad: W
+      tol: 0.03
+      rotulo: "Disipación de cada transistor"
+      errores:
+        - { expr: "P_paso", texto: "Esos son los 129 W del conjunto; se reparten entre los dos." }
+    exito: "Unos 65 W cada uno: de al menos 200 W nominales, con resistencias de emisor para repartir. Con prerregulador basta uno en un disipador modesto."
     escalera:
-      - "¿Por dónde pasa toda la corriente de salida antes de llegar a la carga?"
-    solucion: "Su resistencia entra en la regulación de carga."
+      - "129 W entre dos."
+    solucion: "129 / 2 ≈ 65 W."
+    comprobar:
+      - { P_1t: 64.5, P_paso: 129, n_t: 2 }
+
+  - id: simule-shunt
+    tipo: simular
+    titulo: "Los shunts"
+    texto: "El shunt de 0,05 Ω lleva los 3 A de salida. ¿Cuánto disipa?"
+    libro: [319, "cap50#300"]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 4, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 1, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "ix^2*R_sh", color: naranja, rotulo: "I²·R" }
+      lectura: { valor: P_sh, rotulo: "Potencia en el shunt" }
+      ocultar: true
+    simular:
+      objetivo: P_sh
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en el shunt"
+      errores:
+        - { expr: "V_sh", texto: "Esos 150 mV son la caída a fondo de escala; la potencia es I²·R." }
+    exito: "0,45 W: una resistencia de al menos 1 W, y de baja deriva, porque su valor entra directo en la medida."
+    escalera:
+      - "P = I²·R."
+    solucion: "3² × 0,05 = 0,45 W."
+    comprobar:
+      - { P_sh: 0.45, V_sh: 0.15 }
 
   - id: gastar
     tipo: pregunta
@@ -171,34 +237,12 @@ tarjetas:
       - "¿Qué está conectado a la red?"
     solucion: "En los componentes de red certificados, el aislamiento y la tierra."
 
-  - id: mas-cara
-    tipo: porque
-    titulo: "Más cara que la comercial"
-    texto: "Sumado el coste, la fuente casera sale más cara que una comercial equivalente. ¿Por qué hacerla?"
-    libro: [341]
-    widget:
-      tipo: figura
-      figura: fig-50.15
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 15, 453, 115] }
-    opciones:
-      - texto: "Lo que se compra es entender cómo funciona"
-        bien: true
-        porque: "Saberlo de antemano evita la decepción y hace la decisión consciente."
-      - texto: "Porque al final sale más barata"
-        porque: "A menudo sale más cara; el valor está en lo que se aprende."
-      - texto: "Porque es mejor en todo"
-        porque: "En protecciones y ergonomía suele perder frente a una comercial."
-    escalera:
-      - "¿Qué no viene en la caja de una fuente comercial?"
-    solucion: "Por entender cómo funciona: eso es lo que se compra."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [310, 330, 332, 338]
+    libro: [310, 313, 314, 325, 330, 332, 338, 341, 342]
     ideas:
-      - { titulo: "Cada compra, un cálculo.", texto: "Transformador, puente, condensador, paso, disipador, referencia y shunts." }
-      - { titulo: "Lo que se olvida.", texto: "Fusible, NTC, interruptor, cable, bornes, desacoplos y ventilación." }
+      - { titulo: "Cada compra, un cálculo.", texto: "Transformador, el más caro, fija la caja; puente de al menos 8 A por los picos; condensador, paso, disipador, referencia y shunts." }
+      - { titulo: "Lo que se olvida.", texto: "Fusible, NTC, interruptor, cable, bornes de calidad (su resistencia entra en la regulación), desacoplos y ventilación." }
       - { titulo: "Especificación o precio.", texto: "Gastar en la referencia y el condensador se nota." }
-      - { titulo: "Seguridad.", texto: "Lo de red, certificado: ahí no se ahorra nunca." }
+      - { titulo: "Seguridad.", texto: "Lo de red, certificado: ahí no se ahorra nunca. Y aunque salga más cara, lo que se compra es entender cómo funciona." }

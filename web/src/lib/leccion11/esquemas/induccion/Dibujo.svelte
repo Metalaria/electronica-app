@@ -3,6 +3,8 @@
   // air-gap node; R_Fe and X_m down from it; X₂′ along the top on to the rotor, whose R₂′ and R₂′·(1 − s)/s (the slip's
   // resistor, drawn with an arrow: it changes with the speed) go down the right side.
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import FuenteCA from '../kit/FuenteCA.svelte';
@@ -48,4 +50,11 @@
   <Et x={416} y={224} t={[{ t: 'txt', s: 'R' }, { t: 'sub', s: '2' }, { t: 'txt', s: '′(1 − s)/s' }]} ancla="end" color="verde" peq />
   <Et x={416} y={196} t={pct} ancla="end" color="verde" peq />
   <path class="hilo" d="M430 240 H40" data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={50} y={50} red="fte" />
+  <Punto x={260} y={50} red="g" />
+  <Punto x={150} y={240} red="0" />
+  <Rama x={50} y={50} medidor="vmi" />
+  <Rama x={290} y={66} medidor="vmm" />
+  <Rama x={405} y={50} medidor="vm2" />
 </Lienzo>

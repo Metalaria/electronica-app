@@ -3,9 +3,24 @@
 # media; por bisección, log₂ n (las cadenas de la tabla son potencias de dos). (2) Paso práctico: «averia» con la
 # sonda lógica sobre una cadena de ocho etapas (ocho seguidores en serie, la figura 55.26 en versión lógica: la «señal»
 # es un 1 a la entrada); una etapa con la salida atascada a 0; tres medidas bastan si se biseca.
+# 1.2.1 (aprender haciendo): alargar la cadena hasta 64 etapas, calcular la bisección de 1 024, localizar la etapa,
+# tocar la técnica que no necesita la entrada, las precauciones al inyectar, el procedimiento en orden, la lectura de una
+# señal deformada y el inyector más barato. Dos preguntas: la realimentación y los raíles antes de bisecar.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap53/sec-53.10
 
 libro:
+  369: "Seguimiento"
+  371: "Ventaja"
+  372: "Requisito"
+  373: "Inyección"
+  377: "Las dos son bisección aplicada en distinta dirección, y en"
+  382: "El procedimiento"
+  399: "Los inyectores"
+  400: "Generador de señal, lo ideal"
+  401: "Un móvil con un cable, que sirve perfectamente para audio"
+  402: "Un inyector de señal casero"
+  404: "Los síntomas y su lectura"
   370: "se sigue desde la entrada hacia la salida con el osciloscopio"
   374: "al revés, desde la salida hacia la entrada"
   375: "no necesita que la entrada funcione"
@@ -37,8 +52,9 @@ tarjetas:
   - id: explore-biseccion
     tipo: explorar
     titulo: "Una a una o por la mitad"
-    texto: "Recorrer las etapas una a una cuesta n/2 medidas de media; bisecar, cada medida descarta la mitad. Alargue la cadena."
+    texto: "Recorrer las etapas una a una cuesta n/2 medidas de media; bisecar, cada medida descarta la mitad. Alárguela hasta 64 etapas y compare."
     libro: [379, 381, 412]
+    inicio: { n_e: 8 }
     widget:
       tipo: grafica
       x: { id: nx, min: 2, max: 1024, unidad: "", rotulo: "etapas", escala: log }
@@ -53,28 +69,34 @@ tarjetas:
         - { valor: m_s, rotulo: "Una a una: {{m_s}}" }
       mandos:
         - { valor: n_e, lista: [8, 16, 32, 64, 1024], rotulo: "Etapas" }
-    requiere: { mover: [n_e] }
+    objetivo:
+      condiciones:
+        - { valor: n_e, min: 64, max: 64, rotulo: "Etapas: {{n_e}}" }
+      logrado: "Con 64 etapas, seis medidas por bisección frente a 32 de media una a una: la bisección crece con el logaritmo."
+      pistas:
+        - { cuando: { valor: n_e, mayor: 64 }, texto: "Demasiadas: vuelva a 64." }
+        - { texto: "Alargue la cadena." }
+    escalera:
+      - "Cada medida descarta la mitad."
+    solucion: "64 etapas."
+    comprobar:
+      - { con: { n_e: 64 }, m_b: 6, m_s: 32 }
 
   - id: estime-1024
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "Una cadena de 1 024 etapas"
-    texto: "¿Cuántas medidas bastan por bisección para localizar la etapa averiada entre 1 024?"
+    texto: "Calcule cuántas medidas bastan por bisección para localizar la averiada entre 1 024."
     libro: [380, 381]
     fijar: { n_e: 1024 }
-    estimar:
-      objetivo: "m_b"
-      unidad: ""
-      min: 0
-      max: 100
-      paso: 1
-      inicio: 60
-      tol: 0.05
-      rotulo: "Medidas por bisección"
     exito: "Diez, frente a 512 de media una a una: la diferencia entre una tarde y diez minutos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 10.5 }, texto: "Se ha pasado: cada medida divide por dos; ¿cuántas veces hay que dividir 1 024 hasta llegar a 1?" }
-      - { texto: "Se ha quedado corto: con 8 etapas ya hacen falta 3." }
+    simular:
+      objetivo: m_b
+      unidad: ""
+      tol: 0.02
+      rotulo: "Medidas por bisección"
+      errores:
+        - { expr: "n_e/2", texto: "Esa es la media una a una." }
+        - { expr: "ln(n_e)/ln(10)", texto: "Es el logaritmo en base 2, no en base 10." }
     escalera:
       - "2¹⁰ = 1 024."
     solucion: "log₂ 1 024 = 10 medidas."
@@ -135,65 +157,6 @@ tarjetas:
       - "Repita en el medio de la mitad que queda: a la salida de la segunda o de la sexta."
     solucion: "La cuarta, luego la segunda o la sexta, y luego la que queda en medio: tres medidas, con ocho etapas."
 
-  - id: seguir-inyectar
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Seguimiento e inyección"
-    texto: "Una cada técnica con lo que la caracteriza."
-    libro: [370, 374, 375]
-    emparejar:
-      - ["Seguimiento", "Señal en la entrada; se mira etapa a etapa hacia la salida"]
-      - ["Inyección", "Señal en cada etapa; se mira si llega a la salida"]
-      - ["Ventaja de la inyección", "No necesita que la entrada funcione"]
-    exito: "Las dos son bisección en distinta dirección, y se combinan."
-    pistas:
-      - { texto: "La inyección avanza de la salida hacia la entrada." }
-    escalera:
-      - "El seguimiento necesita una señal de entrada adecuada."
-    solucion: "Seguimiento: de la entrada hacia la salida; inyección: al revés, sin depender de la entrada."
-
-  - id: inyectar-condensador
-    tipo: pregunta
-    titulo: "Cómo se inyecta"
-    texto: "Al inyectar en una etapa, ¿qué precauciones se toman?"
-    libro: [376, 414]
-    widget:
-      tipo: figura
-      figura: fig-53.17
-      zonas:
-        - { id: cadena, rotulo: "La cadena", rect: [5, 5, 440, 180] }
-    opciones:
-      - texto: "Nivel bajo y a través de un condensador"
-        bien: true
-        porque: "Una señal grande satura o daña una etapa de ganancia alta; el condensador bloquea la continua."
-      - texto: "Nivel alto para que se oiga bien"
-        porque: "En una etapa de ganancia alta, una señal grande la satura o la daña."
-      - texto: "Directamente, sin nada en serie"
-        porque: "La continua del circuito o del generador desplaza el punto de trabajo."
-    escalera:
-      - "Piense en los niveles y en la continua de la etapa."
-    solucion: "Nivel bajo y a través de un condensador."
-
-  - id: ordene-procedimiento
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El procedimiento"
-    texto: "Ordene la bisección de una cadena."
-    libro: [383]
-    ordenar:
-      - "Definir la cadena y sus puntos accesibles."
-      - "Confirmar señal en la entrada y no en la salida."
-      - "Comprobar las alimentaciones de todas las etapas."
-      - "Medir en el punto medio."
-      - "Repetir en la mitad que contiene el fallo."
-      - "Bisecar dentro de la etapa."
-    exito: "Comprobar las alimentaciones cuesta una sola medida y ahorra la mitad de los casos."
-    pistas:
-      - { texto: "Antes de medir en medio, la entrada, la salida y las alimentaciones." }
-    escalera:
-      - "Sin señal en la entrada y no en la salida, no se busca lo que se cree."
-    solucion: "Cadena, entrada y salida, alimentaciones, punto medio, repetir y bisecar dentro de la etapa."
-
   - id: realimentacion
     tipo: pregunta
     titulo: "Cuándo no vale"
@@ -240,50 +203,10 @@ tarjetas:
       - "La alimentación es la causa más frecuente."
     solucion: "Un raíl caído lo explica todo y falsea la bisección."
 
-  - id: sintomas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los síntomas y su lectura"
-    texto: "Una cada síntoma de la señal con su lectura."
-    libro: [405, 406, 407, 408]
-    emparejar:
-      - ["Desaparece", "Etapa cortada, acoplo abierto o su alimentación"]
-      - ["Se atenúa", "Ganancia insuficiente, componente derivado"]
-      - ["Se deforma", "Polarización, recorte o distorsión de cruce"]
-      - ["Aparece ruido nuevo", "Realimentación perdida o componente ruidoso"]
-    exito: "Una señal presente pero deformada también es información."
-    pistas:
-      - { texto: "El ruido nuevo suele ser una ganancia excesiva porque se ha perdido la realimentación." }
-    escalera:
-      - "La deformación habla del punto de trabajo."
-    solucion: "Desaparece: cortada; atenúa: ganancia; deforma: polarización; ruido: realimentación."
-
-  - id: el-dedo
-    tipo: pregunta
-    titulo: "El inyector más barato"
-    texto: "Sin generador, ¿cómo se comprueba en un segundo una cadena de audio?"
-    libro: [397, 403]
-    widget:
-      tipo: figura
-      figura: fig-53.17
-      zonas:
-        - { id: cadena, rotulo: "La cadena", rect: [5, 5, 440, 180] }
-    opciones:
-      - texto: "Tocando su entrada con el dedo: si funciona, zumba"
-        bien: true
-        porque: "Poco elegante, y resuelve muchas dudas en un segundo."
-      - texto: "Midiendo la continua de la salida"
-        porque: "Dice si está polarizada, no si transmite señal."
-      - texto: "Con la prueba de diodos"
-        porque: "Se hace sin alimentar: no dice si la cadena transmite."
-    escalera:
-      - "El cuerpo capta la red y la lleva a la entrada."
-    solucion: "Con el dedo en la entrada."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [379, 380, 381, 383, 389]
+    libro: [379, 380, 381, 383, 389, 369, 370, 371, 372, 373, 374, 375, 376, 377, 382, 397, 399, 400, 401, 402, 403, 404, 405, 406, 407, 408]
     ideas:
       - { titulo: "Por la mitad.", texto: "Cada medida descarta la mitad: diez medidas bastan para más de mil etapas." }
       - { titulo: "Dos direcciones.", texto: "Seguimiento desde la entrada; inyección desde la salida, por un condensador." }

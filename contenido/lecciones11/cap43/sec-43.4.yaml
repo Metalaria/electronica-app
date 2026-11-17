@@ -8,6 +8,10 @@
 #   R_E = 1 kΩ): con V_T = 25,9 mV, g_m·R_C = 169 y R_C/(r_e + R_E) = 3,24. En ese caso el control v es la señal en
 #   la base (la transconductancia efectiva de la etapa degenerada).
 # - Los límites del modelo: la exponencial de la unión frente a su recta tangente (gráfica del modelo, 1 mA).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la mayor ganancia de la lista, el −181 del libro, la ganancia
+# degenerada de 3,24 y la señal en la que el modelo ya se equivoca un 10 % se buscan (objetivos); la ganancia con
+# β = 300 y el techo V_{RC}/V_{T} se predicen. El límite del modelo y el banco pasan a explicaciones. Quedan el
+# emparejamiento de los dos análisis y dos preguntas de opciones (la alimentación, qué se compra degenerando).
 leccion: cap43/sec-43.4
 
 libro:
@@ -120,8 +124,9 @@ tarjetas:
   - id: explore-hibrido
     tipo: explorar
     titulo: "El modelo lineal"
-    texto: "En pequeña señal el emisor común es un amplificador de tensión. Cambie la corriente de colector y R_{C}."
+    texto: "En pequeña señal el emisor común es un amplificador de tensión. Combine corriente de colector y R_{C} hasta la mayor ganancia posible."
     libro: [116, 117, 118]
+    inicio: { I_q: 0.001, R_C: 3300 }
     widget:
       tipo: circuito
       esquema: fuente-controlada
@@ -134,17 +139,26 @@ tarjetas:
       corriente: I_L
       mide: { salida: V_o, carga: I_L, controlada: I_L }
       mandos:
-        - { valor: I_q, lista: [0.0005, 0.001, 0.0015] }
-        - { valor: R_C, lista: [2200, 3300, 4700] }
-    requiere: { mover: [I_q, R_C] }
+        - { valor: I_q, lista: [0.0005, 0.001, 0.0015], rotulo: "I_{C}" }
+        - { valor: R_C, lista: [2200, 3300, 4700], rotulo: "R_{C}" }
+    objetivo:
+      condiciones:
+        - { valor: A_x, min: 270, rotulo: "|A_{v}| = {{A_x}}" }
+      logrado: "Con {{I_q}} y {{R_C}}, |A_{v}| = {{A_x}}: la ganancia es g_{m} · R_{C}, y g_{m} crece con la corriente."
+      pistas:
+        - { texto: "Más corriente o más R_{C}." }
+    escalera:
+      - "g_{m} = I_{C}/V_{T}; |A_{v}| = g_{m} · R_{C}."
+    solucion: "1,5 mA y 4,7 kΩ: unos 272."
+    comprobar:
+      - { con: { I_q: 0.0015, R_C: 4700 }, A_v: 272, tol: 0.01 }
 
   - id: formula-ganancia
-    tipo: formula
+    tipo: explorar
     titulo: "La ganancia del emisor común"
-    texto: "Con 1 mA y R_{C} = 4,7 kΩ sale −181. El signo menos es la inversión."
-    libro: [120, 121]
-    ec: 120
-    sustitucion: "−{{g_m}} · {{R_C}} = −{{A_v}}"
+    texto: "A_{v} = −g_{m} · R_{C}: el signo menos es la inversión. Monte el −181 del libro."
+    libro: [120, 121, 139]
+    inicio: { I_q: 0.0005, R_C: 2200 }
     widget:
       tipo: circuito
       esquema: fuente-controlada
@@ -153,13 +167,24 @@ tarjetas:
       corriente: I_L
       mide: { salida: V_o, carga: I_L, controlada: I_L }
       mandos:
-        - { valor: I_q, lista: [0.0005, 0.001, 0.0015] }
-        - { valor: R_C, lista: [2200, 3300, 4700] }
+        - { valor: I_q, lista: [0.0005, 0.001, 0.0015], rotulo: "I_{C}" }
+        - { valor: R_C, lista: [2200, 3300, 4700], rotulo: "R_{C}" }
+    objetivo:
+      condiciones:
+        - { valor: A_x, objetivo: 181, tol: 0.01, rotulo: "|A_{v}| = {{A_x}}" }
+      logrado: "−{{g_m}} · {{R_C}} = −{{A_v}}. En el banco se valida igual: la ganancia medida frente a −g_{m} · R_{C} con la I_{C} medida."
+      pistas:
+        - { texto: "1 mA y 4,7 kΩ." }
+    escalera:
+      - "A_{v} = −g_{m} · R_{C}, con g_{m} = I_{C}/V_{T}."
+    solucion: "1 mA y 4,7 kΩ: −181."
+    comprobar:
+      - { con: { I_q: 0.001, R_C: 4700 }, A_v: 181, tol: 0.005 }
 
   - id: prediga-beta
-    tipo: predecir
+    tipo: simular
     titulo: "¿Y la β?"
-    texto: "Dos transistores, uno con β = 50 y otro con β = 300, polarizados a la misma corriente. ¿Qué ganancia dan?"
+    texto: "El emisor común de 1 mA y 4,7 kΩ con un transistor de β = 300 en lugar de uno de β = 50. Con 1 mV a la entrada, ¿qué señal sale?"
     libro: [123]
     fijar: { I_q: 0.001, R_C: 4700, b_t: 300 }
     widget:
@@ -167,42 +192,40 @@ tarjetas:
       esquema: fuente-controlada
       piezas: { control: v_s, av: A_x, ro: R_C, carga: R_L, interruptor: c_on, invierte: inv }
       lectura: { valor: V_o, rotulo: "Señal de salida" }
-      datos:
-        - { valor: r_pi, rotulo: "r_{π} = {{r_pi}}" }
       corriente: I_L
       mide: { salida: V_o, carga: I_L, controlada: I_L }
       ocultar: true
-    opciones:
-      - texto: "La misma"
-        bien: true
-        porque: "La ganancia depende de g_{m}, que depende solo de I_{C}. La β cambia r_{π}, la entrada, no la ganancia."
-      - texto: "Seis veces más la de β = 300"
-        porque: "Eso pasaría con la corriente de colector, no con la ganancia a corriente fija."
-      - texto: "Más la de β = 50"
-        porque: "La β no aparece en −g_{m}·R_{C}."
+      mandos: []
+    simular:
+      objetivo: V_o
+      unidad: V
+      tol: 0.01
+      rotulo: "Señal de salida"
+      medida: salida
+      errores:
+        - { expr: "-V_o", texto: "El emisor común invierte." }
+        - { expr: "6*V_o", texto: "La β no aparece en −g_{m} · R_{C}: no multiplica la ganancia." }
+    exito: "−181 mV, lo mismo que con β = 50: g_{m} = I_{C}/V_{T} no depende de β. La β cambia r_{π}, la entrada."
     escalera:
-      - "¿Aparece β en A_{v} = −g_{m}·R_{C}? ¿De qué depende g_{m}?"
-    solucion: "La misma: g_{m} = I_{C}/V_{T} no depende de β."
+      - "¿Aparece β en A_{v} = −g_{m} · R_{C}?"
+    solucion: "−181 · 1 mV = −181 mV."
+    comprobar:
+      - { V_o: -0.1815, v_s: 0.001, tol: 0.005 }
 
   - id: estime-techo
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El techo de la ganancia"
-    texto: "Como g_{m}·R_{C} = I_{C}·R_{C}/V_{T}, la ganancia vale V_{RC}/V_{T}. Con 5 V de caída en R_{C}, ¿cuánto como máximo?"
+    texto: "Como g_{m} · R_{C} = I_{C} · R_{C}/V_{T}, la ganancia vale V_{RC}/V_{T}. Con 5 V de caída en R_{C}, ¿cuánto como máximo?"
     libro: [125]
-    estimar:
-      objetivo: "A_max"
+    simular:
+      objetivo: A_max
       unidad: ""
-      min: 0
-      max: 500
-      paso: 1
-      inicio: 400
-      tol: 0.04
+      tol: 0.01
       rotulo: "Ganancia máxima"
+      errores:
+        - { expr: "V_T/V_Rc", texto: "Al revés: la caída en R_{C} entre V_{T}." }
     exito: "193, con las resistencias que sean: el techo lo pone la tensión disponible."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 200 }, texto: "Se ha pasado: 5 V entre 25,9 mV." }
-      - { texto: "Se ha quedado corto: 5 V entre 25,9 mV." }
     escalera:
       - "Divida la caída en R_{C} entre V_{T}."
     solucion: "5/0,0259 = 193."
@@ -240,13 +263,12 @@ tarjetas:
       - { V_o: -0.003237, Vo_3: 0.003216, Voa_3: 0.169, A_d: 3.24, A_v: 169, r_e: 19.56, tol: 0.006 }
 
   - id: formula-degenerada
-    tipo: formula
+    tipo: explorar
     titulo: "La ganancia degenerada"
-    texto: "Sin desviar el emisor, la ganancia es casi R_{C}/R_{E}. Cambie R_{E}."
+    texto: "Sin desviar el emisor, A_{v} = −R_{C}/(r_{e} + R_{E}). Monte la etapa de −3,24 del libro."
     libro: [128, 129]
+    inicio: { R_E: 100 }
     fijar: { I_q: 0.001324, R_C: 3300, pte: 0 }
-    ec: 128
-    sustitucion: "−{{R_C}} / ({{r_e}} + {{R_E}}) = −{{A_d}}"
     widget:
       tipo: circuito
       esquema: fuente-controlada
@@ -255,7 +277,18 @@ tarjetas:
       corriente: I_L
       mide: { salida: V_o, carga: I_L, controlada: I_L }
       mandos:
-        - { valor: R_E, lista: [100, 470, 1000] }
+        - { valor: R_E, lista: [100, 470, 1000], rotulo: "R_{E}" }
+    objetivo:
+      condiciones:
+        - { valor: A_d, max: 3.3, rotulo: "|A_{v}| = {{A_d}}" }
+      logrado: "−{{R_C}} / ({{r_e}} + {{R_E}}) = −{{A_d}}: casi R_{C}/R_{E}, de −169 a −3,24."
+      pistas:
+        - { texto: "Más R_{E}." }
+    escalera:
+      - "Con R_{E} ≫ r_{e}, A_{v} ≈ −R_{C}/R_{E}."
+    solucion: "R_{E} = 1 kΩ: −3,24."
+    comprobar:
+      - { con: { R_E: 1000 }, A_d: 3.24, tol: 0.005 }
 
   - id: porque-degeneracion
     tipo: porque
@@ -285,8 +318,9 @@ tarjetas:
   - id: explore-limites
     tipo: explorar
     titulo: "¿Cuánto es pequeña?"
-    texto: "La recta es el modelo lineal; la curva, la exponencial de la unión. Aumente la señal y mire cuándo se separan."
-    libro: [109, 135]
+    texto: "La recta es el modelo lineal; la curva, la exponencial de la unión. Suba la señal hasta que la recta se equivoque un 10 %."
+    libro: [109, 135, 136, 140]
+    inicio: { a_u: 0.001 }
     fijar: { I_q: 0.001 }
     widget:
       tipo: grafica
@@ -300,55 +334,17 @@ tarjetas:
       lectura: { valor: e_ln, rotulo: "Error de la recta" }
       mandos:
         - { valor: a_u, min: 0.001, max: 0.025, paso: 0.001, rotulo: "Amplitud de v_{be}" }
-    requiere: { mover: [a_u] }
-
-  - id: pregunta-pequena
-    tipo: pregunta
-    titulo: "El límite del modelo"
-    texto: "¿Cuándo vale el análisis en pequeña señal?"
-    libro: [135, 136]
-    widget:
-      tipo: grafica
-      x: { id: u, min: -0.03, max: 0.03, unidad: V, rotulo: "v_{be}" }
-      y: { min: -0.001, max: 0.0025, unidad: A, rotulo: "Δi_{C}" }
-      curvas:
-        - { expr: "I_q*(exp(u/V_T) - 1)", color: naranja, rotulo: "exponencial" }
-        - { expr: "g_m*u", color: azul, rotulo: "recta del modelo", discontinua: true }
-    opciones:
-      - texto: "Con variaciones de V_{BE} mucho menores que V_{T}: unos pocos milivoltios"
-        bien: true
-        porque: "Con más, la exponencial se nota: g_{m} cambia con la señal y aparece distorsión."
-      - texto: "Mientras la salida no recorte"
-        porque: "La salida deja de ser proporcional bastante antes del recorte."
-      - texto: "Siempre: el transistor es lineal"
-        porque: "Es no lineal; solo se comporta como lineal en el entorno del punto de trabajo."
+    objetivo:
+      condiciones:
+        - { valor: e_ln, min: 10, rotulo: "Error: {{e_ln}}" }
+      logrado: "Con {{a_u}} la recta ya se equivoca un {{e_ln}}: el modelo vale con variaciones mucho menores que V_{T}, unos pocos milivoltios. Con más, g_{m} cambia con la señal y aparece distorsión, bastante antes del recorte."
+      pistas:
+        - { texto: "Más amplitud." }
     escalera:
-      - "Compare la amplitud de v_{be} con V_{T} = 25,9 mV."
-    solucion: "Variaciones de V_{BE} mucho menores que 25,9 mV: unos pocos milivoltios."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Validar el modelo en el banco"
-    texto: "Mide la ganancia de un emisor común. ¿Con qué la compara para validar el modelo?"
-    libro: [139, 140]
-    widget:
-      tipo: circuito
-      esquema: fuente-controlada
-      piezas: { control: v_s, av: A_x, ro: R_C, carga: R_L, interruptor: c_on, invierte: inv }
-      lectura: { valor: V_o, rotulo: "Señal de salida" }
-      corriente: I_L
-      mide: { salida: V_o, carga: I_L, controlada: I_L }
-    opciones:
-      - texto: "Con −g_{m}·R_{C}, con g_{m} de la corriente de colector medida"
-        bien: true
-        porque: "Deben coincidir dentro de un margen razonable: es la prueba de todo el modelo."
-      - texto: "Con la β de la hoja de datos"
-        porque: "La ganancia no depende de β: depende de la corriente de colector."
-      - texto: "Con el recorte de la salida"
-        porque: "El recorte enseña el límite de gran señal, no la ganancia de pequeña señal."
-    escalera:
-      - "¿De qué medida sale g_{m}?"
-    solucion: "Con −g_{m}·R_{C}, calculada a partir de la I_{C} medida."
+      - "Compare la amplitud con V_{T} = 25,9 mV."
+    solucion: "Hacia 5 mV, un 10 %."
+    comprobar:
+      - { con: { a_u: 0.005 }, e_ln: 10.2, tol: 0.03 }
 
   - id: resumen
     tipo: resumen

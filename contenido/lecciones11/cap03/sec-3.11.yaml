@@ -7,6 +7,10 @@
 # exponencial; las lecturas de rizado, ángulo y pico de corriente son las del libro con corriente constante (0,5 A),
 # con el cálculo autoconsistente iterado seis veces (da la tabla del libro).
 # Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): buscar la frecuencia donde mejor desacopla, predecir los
+# 100 MHz, el reto de bajar L, añadir el 1 nF, bajar el rizado de la fuente, el reto del mínimo C, ver crecer el pico
+# y doblar el rizado del MLCC; se eligen la capacidad que no ayuda y el porqué del pico. El medidor LCR y la corrección
+# quedan en los textos.
 leccion: cap03/sec-3.11
 
 libro:
@@ -106,7 +110,7 @@ tarjetas:
   - id: explore-desacoplo
     tipo: explorar
     titulo: "3.A · Hasta dónde llega"
-    texto: "El desacoplo de siempre: 100 nF en 0603, con 0,8 nH de montaje y 20 mΩ de ESR. Suba la frecuencia."
+    texto: "El desacoplo de siempre: 100 nF en 0603, con 0,8 nH de montaje y 20 mΩ de ESR. Suba la frecuencia hasta donde mejor desacopla."
     nota: "La discontinua: el condensador ideal."
     libro: [193, 200]
     fijar: { V_a: 1, R_a: 0.02, L_a: 0.8e-9, C_a: 100e-9 }
@@ -129,42 +133,48 @@ tarjetas:
           - { x: "f_a", y: "Z_a", rotulo: "{{Z_a}}" }
       mandos:
         - { valor: f_a, lista: [1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000, 200000000, 500000000, 1000000000], rotulo: "Frecuencia, f" }
-    requiere: { mover: [f_a] }
+    objetivo:
+      condiciones:
+        - { valor: Z_a, max: 0.03, rotulo: "|Z|: {{Z_a}}" }
+      logrado: "A {{f_a}}, {{Z_a}}: el mínimo está cerca de su resonancia, 17,8 MHz. Más arriba deja de desacoplar y empieza a estorbar."
+      pistas:
+        - { cuando: { valor: f_a, max: 10000000 }, texto: "Todavía manda la capacidad: suba la frecuencia." }
+        - { texto: "Ya manda la inductancia: baje la frecuencia." }
+    escalera:
+      - "El mínimo está en la resonancia, donde la reactancia se anula."
+    solucion: "A 20 MHz, junto a los 17,8 MHz de su resonancia."
+    comprobar:
+      - { f_res: 17.8e6, tol: 0.002 }
+      - { con: { f_a: 20000000 }, Z_a: 0.029, tol: 0.02 }
 
   - id: prediga-cien-megas
-    tipo: predecir
-    titulo: "Prediga"
+    tipo: simular
+    titulo: "Prediga a 100 MHz"
     texto: "Un 100 nF en 0603 con 0,8 nH de montaje y 20 mΩ resuena a 17,8 MHz. ¿Qué impedancia presenta a 100 MHz?"
     libro: [202, 203, 204]
     fijar: { V_a: 1, R_a: 0.02, L_a: 0.8e-9, C_a: 100e-9, f_a: 100000000 }
     widget:
-      tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_a, f: f_a, r: R_a, l: L_a, c: C_a }
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.01, max: 10, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "sqrt(R_a^2 + (2*pi*nu*L_a - 1/(2*pi*nu*C_a))^2)", color: naranja, rotulo: "real" }
       lectura: { valor: Z_a, rotulo: "Impedancia a 100 MHz" }
-      mide: { i_amp: I_a }
-      dibujo: false
-      grafica:
-        x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0.01, max: 10, unidad: Ω, rotulo: "|Z|", escala: log }
-        curvas:
-          - { expr: "sqrt(R_a^2 + (2*pi*nu*L_a - 1/(2*pi*nu*C_a))^2)", color: naranja, rotulo: "real" }
-      ocultar: true
-    opciones:
-      - texto: "487 mΩ, medio ohmio"
-        bien: true
-        porque: "Ya es una bobina: 30 veces peor que la idealización. 100 mA de pico dan 49 mV de caída."
-      - texto: "16 mΩ, cada vez menos"
-        porque: "Eso diría el condensador ideal. Por encima de 17,8 MHz manda la inductancia."
-      - texto: "20 mΩ, la ESR"
-        porque: "La ESR es el mínimo, justo en la resonancia. Más arriba se suma ω·L."
-    comprobar:
-      - { Z_a: 0.487, Z_id: 0.016, tol: 0.01 }
-      - { f_res: 17.8e6, tol: 0.002 }
+      ocultar: curvas
+    simular:
+      objetivo: Z_a
+      unidad: Ω
+      tol: 0.05
+      rotulo: "Impedancia a 100 MHz"
+      errores:
+        - { razon: { min: 0.03, max: 0.036 }, texto: "Eso diría el condensador ideal. Por encima de 17,8 MHz manda la inductancia." }
+        - { razon: { min: 0.039, max: 0.043 }, texto: "La ESR es el mínimo, justo en la resonancia. Más arriba se suma ω·L." }
+    exito: "487 mΩ, medio ohmio: ya es una bobina, 30 veces peor que la idealización."
     escalera:
       - "Por encima de 17,8 MHz, ¿quién manda: C o L?"
-    solucion: "Ya es una bobina: 487 mΩ, 30 veces peor que la idealización."
-
+    solucion: "Casi ω·L: 2π · 100 MHz · 0,8 nH ≈ 0,5 Ω."
+    comprobar:
+      - { Z_a: 0.487, Z_id: 0.016, tol: 0.01 }
   - id: regla-impedancia
     tipo: formula
     titulo: "La impedancia real"
@@ -266,19 +276,27 @@ tarjetas:
       lectura: { valor: Z_s, rotulo: "A 100 MHz" }
       mandos:
         - { valor: s_b, tipo: conectar, boton: "Añadir el 1 nF" }
-    requiere: { conectar: [s_b] }
-    nota: "Antirresonancia en 126 MHz, casi 10 Ω: a 100 MHz, 0,88 Ω, peor que el 100 nF solo."
+    objetivo:
+      condiciones:
+        - { valor: s_b, min: 1, rotulo: "1 nF añadido" }
+      logrado: "A 100 MHz, {{Z_s}}, peor que el 100 nF solo: antirresonancia en 126 MHz, casi 10 Ω."
+      pistas:
+        - { texto: "Pulse el botón para añadir el 1 nF." }
+    escalera:
+      - "Pulse «Añadir el 1 nF»."
+    solucion: "Con el 1 nF, 0,88 Ω a 100 MHz."
     comprobar:
+      - { Z_s: 0.487, tol: 0.01 }
       - { con: { s_b: 1 }, Z_s: 0.88, tol: 0.01 }
       - { f_resb: 178e6, tol: 0.003 }
 
   - id: explore-fuente
     tipo: explorar
     titulo: "3.B · El filtro de una fuente"
-    texto: "Transformador de 12 V eficaces, puente y condensador; la carga pide 500 mA. Cambie el condensador y mire el rizado."
+    texto: "Transformador de 12 V eficaces, puente y condensador; la carga pide 500 mA. Elija un condensador con el que el rizado no llegue a 1 V."
     libro: [214, 224, 231]
     fijar: { V_rp: 16.97, f_red: 50, V_rd: 0.7, I_L: 0.5 }
-    inicio: { C_rf: 4700e-6 }
+    inicio: { C_rf: 2200e-6 }
     widget:
       tipo: circuito
       esquema: puente
@@ -293,7 +311,18 @@ tarjetas:
           - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: C_rf, lista: [2200e-6, 4700e-6, 10000e-6], rotulo: "Condensador, C" }
-    requiere: { mover: [C_rf] }
+    objetivo:
+      condiciones:
+        - { valor: dq6, max: 0.99, rotulo: "Rizado: {{dq6}}" }
+      logrado: "Con {{C_rf}}, {{dq6}}: más condensador, menos rizado, cada 10 ms."
+      pistas:
+        - { texto: "Demasiado rizado: más capacidad." }
+    escalera:
+      - "ΔV = I·Δt/C: más C, menos rizado."
+    solucion: "4700 µF: 0,945 V."
+    comprobar:
+      - { dq6: 1.9, tol: 0.05 }
+      - { con: { C_rf: 4700e-6 }, dq6: 0.945, tol: 0.003 }
 
   - id: reto-condensador
     tipo: reto
@@ -331,7 +360,7 @@ tarjetas:
   - id: sorpresa-pico
     tipo: sorpresa
     titulo: "Más condensador, más pico"
-    texto: "Mire la corriente de pico que soportan los diodos mientras cambia el condensador."
+    texto: "Para tener aún menos rizado, ponga el condensador más grande. Mire la corriente de pico que soportan los diodos."
     libro: [248, 254, 255]
     fijar: { V_rp: 16.97, f_red: 50, V_rd: 0.7, I_L: 0.5 }
     inicio: { C_rf: 4700e-6 }
@@ -350,8 +379,15 @@ tarjetas:
           - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: C_rf, lista: [2200e-6, 4700e-6, 10000e-6], rotulo: "Condensador, C" }
-    requiere: { mover: [C_rf] }
-    nota: "Con 4700 µF, 8,39 A de pico para 0,5 A de carga: casi diecisiete veces."
+    objetivo:
+      condiciones:
+        - { valor: C_rf, min: 0.01, rotulo: "C = {{C_rf}}" }
+      logrado: "Rizado {{dq6}}, pero {{I_pk}} de pico, frente a 8,39 A con 4700 µF: con 0,5 A de carga, casi diecisiete veces más."
+      pistas:
+        - { texto: "Elija el de 10 000 µF." }
+    escalera:
+      - "Elija 10 000 µF."
+    solucion: "Con 10 000 µF, 12,3 A de pico."
     comprobar:
       - { I_pk: 8.39, dq6: 0.945, tol: 0.003 }
       - { con: { C_rf: 10000e-6 }, I_pk: 12.32, tol: 0.003 }
@@ -390,14 +426,12 @@ tarjetas:
     solucion: "La conducción es más corta y la misma carga se repone en menos tiempo: más pico de corriente."
 
   - id: regla-rizado-mlcc
-    tipo: formula
+    tipo: explorar
     titulo: "3.C · El rizado doble"
-    texto: "Reductor de 500 kHz, 300 mA a 5 V y ΔI_{L} de 90 mA: su MLCC de 10 µF mide el doble de rizado. Baje la capacidad."
+    texto: "Reductor de 500 kHz, 300 mA a 5 V y ΔI_{L} de 90 mA: su MLCC de 10 µF mide el doble de rizado. Baje la capacidad hasta doblar el rizado."
     libro: [262, 266, 268, 271]
-    ec: 268
     fijar: { dIL: 0.09, f_sw: 500000 }
     inicio: { C_o: 10e-6 }
-    sustitucion: "{{dIL}} / (8 · {{f_sw}} · {{C_o}}) = {{dV_o}}"
     widget:
       tipo: grafica
       x: { id: cc, min: 1e-6, max: 1e-5, unidad: F, rotulo: "C" }
@@ -409,67 +443,25 @@ tarjetas:
       lectura: { valor: dV_o, rotulo: "Rizado" }
       mandos:
         - { valor: C_o, min: 1e-6, max: 1e-5, paso: 5e-7, rotulo: "Capacidad, C" }
+    objetivo:
+      condiciones:
+        - { valor: dV_o, min: 0.0045, rotulo: "ΔV = {{dV_o}}" }
+      logrado: "Con {{C_o}} efectivos, {{dV_o}}: el rizado es inverso a C. A 5 V queda la mitad, y el LCR, que mide sin tensión continua, no lo ve."
+      pistas:
+        - { texto: "Baje la capacidad efectiva." }
+    escalera:
+      - "ΔV = ΔI_{L}/(8·f_{sw}·C): la mitad de C, el doble de rizado."
+    solucion: "Con 5 µF efectivos: 4,5 mV."
     comprobar:
       - { dV_o: 0.00225 }
       - { con: { C_o: 5e-6 }, dV_o: 0.0045 }
 
-  - id: por-que-lcr
-    tipo: porque
-    titulo: "El medidor dice 10 µF"
-    texto: "El medidor LCR da 10 µF, pero el rizado corresponde a unos 5 µF. ¿Quién tiene razón?"
-    libro: [266, 279]
-    opciones:
-      - texto: "El rizado: el LCR mide sin tensión continua, y a 5 V queda la mitad"
-        bien: true
-        porque: "Un 10 µF/16 V en 0603 puede quedarse en la mitad a 5 V. El rizado medido es un capacímetro."
-      - texto: "El LCR: el condensador tiene 10 µF"
-        porque: "Los tiene a cero voltios. En el circuito, polarizado a 5 V, no."
-      - texto: "Ninguno: el montaje está mal"
-        porque: "No hay fallo en el montaje: el error está en calcular con el valor impreso."
-    fijar: { dIL: 0.09, f_sw: 500000 }
-    widget:
-      tipo: grafica
-      x: { id: cc, min: 0.000001, max: 0.00001, unidad: F, rotulo: C }
-      y: { min: 0, max: 0.012, unidad: V, rotulo: "ΔV" }
-      curvas:
-        - { expr: "dIL/(8*f_sw*cc)", color: naranja, rotulo: rizado }
-      asas:
-        - { mueve: C_o, x: C_o, y: dV_o, rotulo: "Capacidad efectiva" }
-      lectura: { valor: dV_o, rotulo: Rizado }
-      mandos:
-        - { valor: C_o, min: 0.000001, max: 0.00001, paso: 5e-7, rotulo: "Capacidad, C" }
-    escalera:
-      - "¿Con qué tensión continua mide un LCR corriente?"
-    solucion: "El rizado: el LCR mide sin tensión continua, y a 5 V queda la mitad."
-
-  - id: correccion
-    tipo: pregunta
-    titulo: "La corrección"
-    texto: "Un MLCC de 10 µF y 16 V en 0603 se queda en la mitad a 5 V y el rizado se dobla. ¿Cuál es la corrección preferida?"
-    libro: [276]
-    opciones:
-      - texto: "Subir la tensión nominal: un 10 µF de 25 o 50 V"
-        bien: true
-        porque: "Su dieléctrico es más grueso y pierde mucha menos capacidad a 5 V."
-      - texto: "Bajar la tensión nominal para que esté más cargado"
-        porque: "Al revés: con menos tensión nominal el dieléctrico es más fino y pierde más."
-      - texto: "Cambiarlo por un Y5V del mismo valor"
-        porque: "Un Y5V pierde aún más capacidad con la tensión y la temperatura."
-    widget:
-      tipo: figura
-      figura: fig-3.10
-      zonas:
-        - { id: perdida, rotulo: "Pérdida de capacidad con la tensión", rect: [0, 0, 439, 203] }
-    escalera:
-      - "¿Qué condensador tiene el dieléctrico más grueso para la misma capacidad?"
-    solucion: "Subir la tensión nominal: un 10 µF de 25 o 50 V pierde mucha menos capacidad a 5 V."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [204, 208, 255, 266]
+    libro: [204, 208, 255, 266, 276, 279]
     ideas:
       - { titulo: "3.A.", texto: "Por encima de su resonancia un desacoplo es una bobina: se baja L con varios iguales, no con más C." }
       - { titulo: "Antirresonancia.", texto: "Mezclar 100 nF y 1 nF con la misma conexión empeora los 100 MHz." }
       - { titulo: "3.B.", texto: "El mínimo C que cumpla el rizado: uno mayor dispara la corriente de pico." }
-      - { titulo: "3.C.", texto: "Un MLCC polarizado puede quedarse en la mitad: rizado doble." }
+      - { titulo: "3.C.", texto: "Un MLCC polarizado puede quedarse en la mitad: rizado doble. Se corrige subiendo su tensión nominal." }

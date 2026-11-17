@@ -2,6 +2,10 @@
 # El RC es el del libro (bloque 87: 1 kΩ y 100 nF a 1 kHz). El libro aplica 1 V eficaz; la fuente del esquema se
 # da en amplitud (1 V de pico): las cifras (0,532 y 0,847) son las mismas en proporción, porque el circuito es lineal.
 # El RLC de la sobretensión es el de la práctica 9 (cap22#235: 100 Ω, 10 mH, 100 nF; Q = 3,16).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se busca la frecuencia en la que C se queda menos que R
+# (objetivo); |Z| se escribe; X_C se lleva a 3 183 Ω con la frecuencia; v_C se predice y se simula; la suma de
+# amplitudes se lleva por encima de 1,4 V (objetivo) y la sobretensión del RLC en resonancia se escribe. Quedan dos
+# preguntas de opciones (por qué no suman 1 V y los límites del método); R, X, Z e Y emparejadas pasan al resumen.
 leccion: cap24/sec-24.4
 
 libro:
@@ -59,8 +63,9 @@ tarjetas:
   - id: explore-rc
     tipo: explorar
     titulo: "Tres senoides de la misma frecuencia"
-    texto: "El RC de 1 kΩ y 100 nF, con 1 V de amplitud. Cambie la frecuencia: cambian las amplitudes y los desfases, nunca la forma."
+    texto: "El RC de 1 kΩ y 100 nF, con 1 V de amplitud. Cambie la frecuencia hasta que el condensador se quede menos amplitud que la resistencia."
     libro: [87]
+    inicio: { f_f: 500 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -78,30 +83,40 @@ tarjetas:
           - { expr: "A_c*sin(w_f*t + ph_c*pi/180)", color: naranja, rotulo: "v_{C}", mide: vc }
       mandos:
         - { valor: f_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: A_c, max: 0.7, rotulo: "V_{C}: {{A_c}}" }
+      logrado: "A {{f_f}}, {{A_c}} en C y {{A_r}} en R: cambian amplitudes y desfases, nunca la forma ni la frecuencia."
+      pistas:
+        - { texto: "El condensador todavía frena mucho: suba la frecuencia, que su reactancia baje." }
+    escalera:
+      - "X_{C} = 1/(ωC) baja al subir la frecuencia."
+    solucion: "A 2 kHz: X_{C} = 796 Ω, menos que R."
+    comprobar:
+      - { con: { f_f: 2000 }, X_c: 795.8, A_c: 0.623, A_r: 0.782, tol: 0.003 }
 
   - id: prediga-z
-    tipo: predecir
+    tipo: leer
     titulo: "La impedancia a 1 kHz"
-    texto: "A 1 kHz, R = 1000 Ω y X_{C} = 1592 Ω. ¿Cuánto vale el módulo de la impedancia del RC serie?"
+    texto: "A 1 kHz, R = 1000 Ω y X_{C} = 1592 Ω. Escriba el módulo de la impedancia del RC serie."
     libro: [88, 90, 91]
     fijar: { V_p: 1, f_f: 1000, R_f: 1000, C_f: 100e-9 }
     widget:
       tipo: circuito
       esquema: filtro-rc
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: Z_m, rotulo: "Módulo de la impedancia" }
-      datos:
-        - { valor: ph_z, rotulo: "Fase: {{ph_z}}" }
+      lectura: { valor: X_c, rotulo: "Reactancia X_{C}" }
       mide: { i_amp: I_a, i_fase: ph_i }
-      ocultar: true
-    opciones:
-      - texto: "Unos 1880 Ω"
-        bien: true
-        porque: "Z = 1000 − j1592: R y X_{C} están en cuadratura y se suman como catetos, con fase −57,9°."
-      - texto: "2592 Ω"
-        porque: "Es la suma como números. La reactancia está girada 90° respecto a la resistencia: se suman como vectores."
-      - texto: "592 Ω"
-        porque: "Restarlas tampoco: el −j no es un signo menos sobre el módulo, es un giro de −90°."
+      mandos: []
+    leer:
+      objetivo: Z_m
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Módulo de la impedancia"
+      errores:
+        - { expr: "Z_s", texto: "Es la suma como números. La reactancia está girada 90° respecto a la resistencia: se suman como vectores." }
+        - { expr: "Z_d", texto: "Restarlas tampoco: el −j no es un signo menos sobre el módulo, es un giro de −90°." }
+    exito: "Z = 1000 − j1592: R y X_{C} en cuadratura se suman como catetos, 1880 Ω, con fase −57,9°."
     escalera:
       - "Z = R − jX_{C}: parte real y parte imaginaria."
       - "|Z| = √(R² + X_{C}²)."
@@ -110,12 +125,11 @@ tarjetas:
       - { X_c: 1592, Z_m: 1880, ph_z: -57.9, Z_s: 2592, Z_d: 592 }
 
   - id: formula-xc
-    tipo: formula
+    tipo: explorar
     titulo: "La reactancia del condensador"
-    texto: "La derivada se convierte en multiplicar por jω; por eso X_{C} = 1/(ωC) baja al subir la frecuencia."
+    texto: "La derivada se convierte en multiplicar por jω: X_{C} = 1/(ωC). Elija la frecuencia con la que X_{C} vale 3183 Ω."
     libro: [80, 88]
-    ec: 88
-    sustitucion: "1 / (2π · {{f_f}} · {{C_f}}) = {{X_c}}"
+    inicio: { f_f: 1000 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -126,6 +140,17 @@ tarjetas:
       mide: { i_amp: I_a }
       mandos:
         - { valor: f_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: X_c, objetivo: 3183, tol: 0.02, rotulo: "X_{C}: {{X_c}}" }
+      logrado: "A {{f_f}}, el doble que a 1 kHz: la reactancia del condensador baja al subir la frecuencia, y en continua es infinita."
+      pistas:
+        - { texto: "Para doblar X_{C}, la frecuencia tiene que bajar a la mitad." }
+    escalera:
+      - "3183 Ω es el doble de 1592 Ω."
+    solucion: "500 Hz."
+    comprobar:
+      - { con: { f_f: 500 }, X_c: 3183 }
 
   - id: simule-vc
     tipo: simular
@@ -158,28 +183,10 @@ tarjetas:
     comprobar:
       - { I_a: 0.000532, A_r: 0.532, A_c: 0.847, A_resta: 0.468, A_suma: 0.614, Z_s: 2592, Z_m: 1880 }
 
-  - id: tres-terminos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Tres términos que no se confunden"
-    texto: "Una cada magnitud con lo que es."
-    libro: [98, 99]
-    emparejar:
-      - ["Resistencia, R", "La parte real: disipa potencia"]
-      - ["Reactancia, X", "La parte imaginaria: almacena y devuelve"]
-      - ["Impedancia, Z", "El conjunto, R + jX"]
-      - ["Admitancia, Y", "1/Z = G + jB, cómoda en paralelo"]
-    exito: "Solo la parte real disipa; la reactancia va y vuelve."
-    pistas:
-      - { texto: "La admitancia es la inversa de la impedancia." }
-    escalera:
-      - "¿Cuál de las dos partes de Z convierte energía en calor?"
-    solucion: "R real y disipa; X imaginaria, no disipa; Z = R + jX; Y = 1/Z."
-
   - id: mas-que-fuente
     tipo: sorpresa
     titulo: "Suman más que la fuente"
-    texto: "Mire las dos amplitudes y su suma: 0,53 + 0,85 = 1,38 V, con una fuente de 1 V. Cambie la frecuencia: la suma nunca cuadra."
+    texto: "A 1 kHz, 0,53 + 0,85 = 1,38 V con una fuente de 1 V. Cambie la frecuencia hasta que la suma pase de 1,4 V."
     libro: [92]
     fijar: { V_p: 1, R_f: 1000, C_f: 100e-9 }
     inicio: { f_f: 1000 }
@@ -196,8 +203,18 @@ tarjetas:
       mide: { vr_amp: A_r, vc_amp: A_c }
       mandos:
         - { valor: f_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: S_ab, min: 1.4, rotulo: "Suma: {{S_ab}}" }
+      logrado: "Suman {{S_ab}} con una fuente de 1 V. Como catetos, {{S_q}}: eso no cambia con ninguna frecuencia."
+      pistas:
+        - { texto: "Pruebe otra frecuencia y mire la suma." }
+    escalera:
+      - "La suma como números es mayor cuanto más se parecen las dos amplitudes."
+    solucion: "A 2 kHz: 0,782 + 0,623 = 1,405 V."
     comprobar:
       - { S_ab: 1.38, S_q: 1.0 }
+      - { con: { f_f: 2000 }, S_ab: 1.405, A_r: 0.782, A_c: 0.623, tol: 0.003 }
 
   - id: por-que-no-suman
     tipo: porque
@@ -253,10 +270,9 @@ tarjetas:
     solucion: "No es un límite que no admita reactancias: es lo que resuelve."
 
   - id: sobretension
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Más tensión que la fuente"
-    texto: "El RLC de la práctica de resonancia (100 Ω, 10 mH, 100 nF, Q = 3,16) en resonancia, con 1 V de entrada. ¿Qué amplitud tiene el condensador?"
+    texto: "El RLC de la práctica de resonancia (100 Ω, 10 mH, 100 nF, Q = 3,16), en resonancia con 1 V de entrada. Escriba la amplitud en el condensador."
     libro: [110, "cap22#235", "cap22#256"]
     widget:
       tipo: circuito
@@ -264,19 +280,15 @@ tarjetas:
       piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
       lectura: { valor: I_r, rotulo: "Corriente en resonancia" }
       mide: { i_amp: I_r, vc_amp: A_cr, vl_amp: A_lr }
-    estimar:
-      objetivo: "A_cr"
+      mandos: []
+    leer:
+      objetivo: A_cr
       unidad: V
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 1
-      tol: 0.08
+      tol: 0.03
       rotulo: "Amplitud en C"
+      errores:
+        - { expr: "V_p", texto: "En resonancia, V_{L} y V_{C} no son la entrada: son Q veces la entrada." }
     exito: "Q veces la entrada: unos 3 V en C y otros tantos en L, en oposición de fase. Su suma es casi cero."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 2.9 }, texto: "Más: en resonancia, V_{L} y V_{C} son Q veces la tensión aplicada." }
-      - { texto: "Menos: Q = 3,16 con 1 V de entrada." }
     escalera:
       - "En resonancia la corriente es V/R, y V_{C} = I·X_{C}."
       - "X_{C} = √(L/C) = 316 Ω en resonancia."
@@ -287,9 +299,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [84, 93, 102, 112]
+    libro: [84, 93, 98, 99, 102, 112]
     ideas:
-      - { titulo: "Fasores.", texto: "Derivar es multiplicar por jω: R, jωL y 1/(jωC) se asocian como resistencias." }
+      - { titulo: "Fasores.", texto: "Derivar es multiplicar por jω. Z = R + jX: solo R disipa; X almacena y devuelve. En paralelo, Y = 1/Z." }
       - { titulo: "En cuadratura.", texto: "1000 y 1592 Ω dan 1880 Ω; 0,532 y 0,847 V dan 1 V: catetos, no sumas." }
       - { titulo: "Los límites.", texto: "Régimen permanente, una frecuencia, circuito lineal y senoides." }
       - { titulo: "En el banco.", texto: "Dos canales: la relación de amplitudes da |Z|; el desfase, su argumento." }

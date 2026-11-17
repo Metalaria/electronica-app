@@ -4,6 +4,9 @@
 # «saturación» en el MOSFET, la tensión inversa base-emisor y el efecto Early. El punto de referencia de la curva
 # (1 mA a 0,7 V) es mío; la pendiente es V_T·ln 10 = 59,5 mV, la del libro (60 mV redondeados). La curva calentada
 # solo desplaza V_BE (−2 mV/°C), sin cambiar V_T, como hace el libro. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): subir V_BE dos décadas, predecir 60 mV más, calcular lo
+# que dobla la corriente y calentar 30 °C; se elige por qué no basta fijar V_BE. Los números de referencia, las dos
+# descripciones, la saturación del MOSFET, la inversa base-emisor y el Early quedan en el resumen.
 leccion: cap06/sec-6.12
 
 libro:
@@ -39,7 +42,7 @@ tarjetas:
   - id: explore-decada
     tipo: explorar
     titulo: "La medida que resume el capítulo"
-    texto: "La corriente de colector frente a V_{BE}, con la corriente en escala logarítmica: sale una recta. Mueva V_{BE} y mire cuánto hace falta para cada década."
+    texto: "La corriente de colector frente a V_{BE}, con la corriente en escala logarítmica: sale una recta. Suba V_{BE} hasta 1 mA, contando cuánto hace falta para cada década."
     libro: [376, 390]
     widget:
       tipo: grafica
@@ -54,42 +57,66 @@ tarjetas:
         - { valor: dec, rotulo: "Una década cada {{dec}}" }
       mandos:
         - { valor: V_be, min: 0.55, max: 0.8, paso: 0.005, rotulo: "V_{BE}" }
-    requiere: { mover: [V_be] }
+    inicio: { V_be: 0.58 }
+    objetivo:
+      condiciones:
+        - { valor: I_c, min: 0.000999, rotulo: "I_{C} = {{I_c}}" }
+      logrado: "A {{V_be}}, {{I_c}}: una década cada {{dec}}. En realidad es controlado por tensión."
+      pistas:
+        - { texto: "Más V_{BE}." }
+    escalera:
+      - "Una década cada 60 mV."
+    solucion: "A 0,7 V: 1 mA."
+    comprobar:
+      - { I_c: 0.0000096, tol: 0.02 }
+      - { con: { V_be: 0.7 }, I_c: 0.001, dec: 0.0595 }
 
   - id: prediga-60mv
-    tipo: predecir
+    tipo: simular
     titulo: "60 mV más"
-    texto: "Un transistor conduce 1 mA con V_{BE} = 0,7 V. ¿Cuánto conduce con 0,76 V, a la misma temperatura?"
+    texto: "Un transistor conduce 1 mA con V_{BE} = 0,7 V. ¿Cuántas veces más conduce con 0,76 V, a la misma temperatura?"
     libro: [384, 391]
     fijar: { V_be: 0.76, dT: 0 }
-    widget:
-      tipo: grafica
-      x: { id: v, min: 0.55, max: 0.8, unidad: V, rotulo: "V_{BE}" }
-      y: { min: 0.000001, max: 0.1, unidad: A, rotulo: "I_{C}", escala: log }
-      curvas:
-        - { expr: "I_1*exp((v - V_0 + k_v*dT)/V_T)", color: azul, rotulo: "I_{C}" }
-      lectura: { valor: I_c, rotulo: "I_{C}" }
-      ocultar: true
-    opciones:
-      - texto: "Unos 10 mA"
-        bien: true
-        porque: "60 mV son una década: la corriente se multiplica por diez. Es la exponencial de Ebers-Moll."
-      - texto: "Poco más de 1 mA"
-        porque: "Sería así si la corriente creciera en proporción a la tensión. Crece en exponencial: diez veces cada 60 mV."
-      - texto: "Unos 2 mA"
-        porque: "Se queda corto: el doble pide unos 18 mV. Con 60 mV es una década entera."
+    simular:
+      objetivo: veces
+      unidad: "veces"
+      tol: 0.05
+      rotulo: "I_{C} en veces la de 0,7 V"
+      errores:
+        - { razon: { min: 0.18, max: 0.21 }, texto: "Se queda corto: el doble pide unos 18 mV. Con 60 mV es una década entera." }
+        - { razon: { min: 0.09, max: 0.115 }, texto: "Sería así si la corriente creciera en proporción a la tensión. Crece en exponencial." }
+    exito: "Unas diez veces, 10 mA: 60 mV son una década. Es la exponencial de Ebers-Moll."
+    escalera:
+      - "La corriente sube una década cada 60 mV de V_{BE}."
+    solucion: "Diez veces: unos 10 mA."
     comprobar:
       - { con: { V_be: 0.7 }, I_c: 0.001 }
       - { I_c: 0.0102, veces: 10.2, dec: 0.0595 }
       - { d2: 0.018 }
+  - id: estime-doble
+    tipo: simular
+    fase: "Estime"
+    titulo: "Para doblarla"
+    texto: "Si 60 mV multiplican la corriente por diez, ¿cuántos milivoltios de V_{BE} hacen falta para doblarla?"
+    libro: [384, 391]
+    simular:
+      objetivo: d2
+      unidad: V
+      tol: 0.05
+      rotulo: "ΔV_{BE} para el doble"
+      errores:
+        - { razon: { min: 3.2, max: 3.4 }, texto: "60 mV son diez veces, no el doble." }
+        - { razon: { min: 1.6, max: 1.7 }, texto: "No es la mitad de una década: va con el logaritmo de 2." }
+    exito: "Unos 18 mV: V_{T}·ln 2. Unos pocos milivoltios mueven mucho la corriente."
     escalera:
-      - "La corriente sube una década cada 60 mV de V_{BE}."
-    solucion: "60 mV son una década: unos 10 mA."
-
+      - "ΔV = V_{T}·ln 2."
+    solucion: "V_{T}·ln 2 ≈ 18 mV."
+    comprobar:
+      - { d2: 0.018, V_T: 0.02585 }
   - id: sorpresa-calor
     tipo: sorpresa
     titulo: "La misma tensión, más calor"
-    texto: "El mismo transistor, con V_{BE} sujeta a 0,7 V. Caliéntelo hasta 30 °C: cada grado baja 2 mV la V_{BE} que necesita para la misma corriente."
+    texto: "El mismo transistor, con V_{BE} sujeta a 0,7 V. Caliéntelo 30 °C: cada grado baja 2 mV la V_{BE} que necesita para la misma corriente."
     libro: [379, "cap06#182"]
     fijar: { V_be: 0.7 }
     inicio: { dT: 0 }
@@ -107,8 +134,17 @@ tarjetas:
         - { valor: d_vbe, rotulo: "Deriva: {{d_vbe}}" }
       mandos:
         - { valor: dT, min: 0, max: 30, paso: 5, rotulo: "Calentamiento, ΔT" }
-    requiere: { mover: [dT] }
+    objetivo:
+      condiciones:
+        - { valor: veces, min: 10, rotulo: "I_{C}: × {{veces}}" }
+      logrado: "Con {{dT}} más, la deriva es {{d_vbe}} y la corriente se multiplica por {{veces}}: una década."
+      pistas:
+        - { texto: "Más calentamiento." }
+    escalera:
+      - "30 °C a −2 mV/°C son 60 mV."
+    solucion: "Con 30 °C: diez veces."
     comprobar:
+      - { veces: 1 }
       - { con: { dT: 30 }, d_vbe: 0.06, I_c: 0.0102 }
 
   - id: por-que-inviable
@@ -136,127 +172,12 @@ tarjetas:
       - "30 °C a −2 mV/°C son 60 mV de deriva. ¿Cuánto es eso en la exponencial?"
     solucion: "Una década: por eso la polarización por tensión necesita realimentación, la resistencia de emisor."
 
-  - id: empareje-numeros
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los números de referencia"
-    texto: "Empareje cada parámetro del bipolar con su valor típico."
-    libro: [384]
-    emparejar:
-      - ["V_{BE} en activa", "0,6 a 0,7 V"]
-      - ["V_{CE} en saturación", "0,1 a 0,3 V"]
-      - ["Pendiente exponencial", "60 mV/década"]
-      - ["Coeficiente térmico de V_{BE}", "−2 mV/°C"]
-      - ["V_{EB} inversa máxima", "Unos 5 V"]
-      - ["β de pequeña señal", "50 a 300"]
-    exito: "Eso es. Con estos seis números se diagnostica y se dimensiona casi cualquier etapa bipolar."
-    pistas:
-      - { texto: "Los dos de tensión directa son menos de un voltio; la inversa base-emisor es la única de varios voltios." }
-    escalera:
-      - "Los dos de tensión directa son menos de un voltio; la inversa base-emisor es la única de varios voltios."
-    solucion: "V_{BE}: 0,6 a 0,7 V. Saturación: 0,1 a 0,3 V. 60 mV/década. −2 mV/°C. Unos 5 V inversos. β de 50 a 300."
-
-  - id: corriente-o-tension
-    tipo: pregunta
-    titulo: "¿Corriente o tensión?"
-    texto: "Se dice que el bipolar está controlado por corriente, I_{C} ≈ β·I_{B}, y también por tensión, por la exponencial de V_{BE}. ¿Cuál es la correcta?"
-    libro: [374, 376, 377]
-    opciones:
-      - texto: "Las dos: la de corriente es cómoda para diseñar; la de tensión explica el comportamiento real"
-        bien: true
-        porque: "Ambas descripciones son válidas. La regla que sale de las dos: no depender de β, que varía de 50 a 300."
-      - texto: "Solo la de corriente"
-        porque: "Describe bien el comportamiento externo, pero no explica la deriva térmica ni la exponencial."
-      - texto: "Solo la de tensión"
-        porque: "Es la que explica el mecanismo, pero la de corriente sigue siendo válida y cómoda para diseñar."
-    inicio: { V_be: 0.7 }
-    widget:
-      tipo: grafica
-      x: { id: v, min: 0.55, max: 0.8, unidad: V, rotulo: "V_{BE}" }
-      y: { min: 0.000001, max: 0.1, unidad: A, rotulo: "I_{C}", escala: log }
-      curvas:
-        - { expr: "I_1*exp((v - V_0 + k_v*dT)/V_T)", color: azul, rotulo: "I_{C}" }
-      lectura: { valor: I_c, rotulo: "I_{C}" }
-      mandos:
-        - { valor: V_be, min: 0.55, max: 0.8, paso: 0.005, rotulo: "V_{BE}" }
-    escalera:
-      - "Una sirve para diseñar con β; la otra explica la deriva térmica con la exponencial."
-    solucion: "Las dos: la de corriente es cómoda para diseñar y la de tensión explica el comportamiento real."
-
-  - id: saturacion-mosfet
-    tipo: pregunta
-    titulo: "Una palabra que confunde"
-    texto: "En el bipolar, «saturación» es el interruptor cerrado, con V_{CE} de 0,1 a 0,3 V. ¿Qué significa en un MOSFET?"
-    libro: [378, 384]
-    opciones:
-      - texto: "Lo contrario: la región en que la corriente casi no depende de la tensión de salida"
-        bien: true
-        porque: "La saturación del MOSFET corresponde a la región activa del bipolar. Es la distinción terminológica que más confunde."
-      - texto: "Lo mismo: el interruptor cerrado"
-        porque: "El libro avisa de que significa lo contrario en el MOSFET (sección 25.6)."
-      - texto: "Que el MOSFET está en corte"
-        porque: "Tampoco: es la región en la que conduce como fuente de corriente, la equivalente a la activa del bipolar."
-    widget:
-      tipo: figura
-      figura: fig-6.2
-      zonas:
-        - { id: regiones, rotulo: "Las regiones del bipolar", rect: [0, 0, 438, 230] }
-    escalera:
-      - "En el MOSFET, «saturación» es la región en que la corriente casi no depende de la tensión de salida."
-    solucion: "Lo contrario que en el bipolar: equivale a su región activa."
-
-  - id: inversa-be
-    tipo: pregunta
-    titulo: "Uno de los errores característicos"
-    texto: "Un circuito somete la unión base-emisor de un NPN a 6 V en inversa. ¿Qué pasa?"
-    libro: [382, 384]
-    comprobar:
-      - { V_inv: 6 }
-    opciones:
-      - texto: "Supera la tensión inversa máxima, de solo unos 5 V: la unión rompe"
-        bien: true
-        porque: "La unión base-emisor, muy dopada por los dos lados, aguanta poca tensión inversa: unos 5 V."
-      - texto: "Nada: el transistor queda en corte"
-        porque: "En corte sí, pero 6 V en inversa superan los unos 5 V que aguanta la unión base-emisor."
-      - texto: "Pasa a la región inversa y amplifica con β_{R}"
-        porque: "La región inversa pide la base-colector en directa. Aquí el problema es la ruptura de la base-emisor."
-    widget:
-      tipo: figura
-      figura: fig-6.21
-      zonas:
-        - { id: numeros, rotulo: "La curva y los números de referencia", rect: [0, 0, 445, 219] }
-    escalera:
-      - "La unión base-emisor, muy dopada por los dos lados, aguanta poca tensión inversa. ¿Cuánta?"
-    solucion: "Unos 5 V: con 6 V la unión rompe."
-
-  - id: early-resumen
-    tipo: pregunta
-    titulo: "La pendiente de la salida"
-    texto: "La corriente de colector no es perfectamente constante con V_{CE}: las curvas de salida tienen pendiente. ¿Qué representa esa pendiente?"
-    libro: [380]
-    opciones:
-      - texto: "La impedancia de salida finita del transistor: el efecto Early"
-        bien: true
-        porque: "Su inversa es r_{o} = V_{A}/I_{C}: limita la ganancia y degrada las fuentes de corriente."
-      - texto: "La resistencia de colector"
-        porque: "R_{C} está fuera del transistor: da la recta de carga, no la pendiente de las curvas."
-      - texto: "La saturación"
-        porque: "La saturación es la zona de V_{CE} muy baja. La pendiente en activa es el efecto Early."
-    widget:
-      tipo: figura
-      figura: fig-6.18
-      zonas:
-        - { id: early, rotulo: "Las curvas de salida inclinadas", rect: [0, 0, 409, 208] }
-    escalera:
-      - "Una pendiente en una curva I-V es una conductancia: su inversa es una resistencia."
-    solucion: "La impedancia de salida finita, r_{o} = V_{A}/I_{C}: el efecto Early."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [376, 379, 384, 391]
+    libro: [374, 376, 377, 378, 379, 380, 382, 384, 391]
     ideas:
-      - { titulo: "La exponencial.", texto: "60 mV por década: la tensión explica el comportamiento; la corriente, cómoda para diseñar." }
-      - { titulo: "No depender de β.", texto: "Varía de 50 a 300 entre unidades, con la temperatura y con la corriente." }
+      - { titulo: "La exponencial.", texto: "60 mV por década; V_{BE} de 0,6 a 0,7 V, saturación de 0,1 a 0,3 V. La tensión explica; la corriente, cómoda para diseñar." }
+      - { titulo: "No depender de β.", texto: "Varía de 50 a 300 entre unidades. Y «saturación» significa lo contrario en un MOSFET." }
       - { titulo: "−2 mV/°C.", texto: "Origen del embalamiento térmico y razón de la resistencia de emisor." }
-      - { titulo: "Early.", texto: "La pendiente de la salida es la impedancia de salida finita del transistor." }
+      - { titulo: "Early.", texto: "La pendiente de la salida es la impedancia de salida finita del transistor. Y la base-emisor solo aguanta unos 5 V en inversa." }

@@ -2,11 +2,13 @@
   // Schematic «kirchhoff» (esquema.ts): source 1 on the left, source 2 on the right, the load in the middle. A source
   // switched off is drawn as the short circuit that replaces it (its battery faded).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import Lienzo from '../kit/Lienzo.svelte';
   import Pila from '../kit/Pila.svelte';
   import R from '../kit/R.svelte';
+  import Rama from '../kit/Rama.svelte';
   let { c, dur, descripcion }: PropsDibujo = $props();
   const on1 = $derived(c.cerrado('activa1'));
   const on2 = $derived(c.cerrado('activa2'));
@@ -32,4 +34,12 @@
   <Et x={204} y={156} t={c.val('r3')} color="verde" peq />
   <path class="hilo" d="M40 230 H340" data-red="0"></path>
   <circle class="nodo" cx="190" cy="230" r="4.5" data-red="0"></circle>
+  <!-- (1.2.1: where an ammeter opens each branch: the 0 V meters of the netlist) -->
+  <Rama x={115} y={50} medidor="vm1" />
+  <Rama x={265} y={50} medidor="vm2" />
+  <Rama x={190} y={140} medidor="vm3" />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={47} y={50} red="f1" />
+  <Punto x={333} y={50} red="f2" />
+  <Punto x={110} y={230} red="0" />
 </Lienzo>

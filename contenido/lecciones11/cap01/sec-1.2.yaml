@@ -1,4 +1,8 @@
-# Lección 1.1 de la sección 1.2 «La Ley de Ohm en Profundidad» (cap01). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 1.2 «La Ley de Ohm en Profundidad» (cap01). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): doblar la corriente con la tensión, predecir la de doble
+# resistencia y verla en el amperímetro, mover el LED hasta que su cociente V/I cambie, predecir el cable del libro
+# y buscar su sección en aluminio, predecir la subida con la temperatura y buscar dónde se contradice el modelo; solo
+# el «por qué» del calor se elige entre opciones.
 leccion: cap01/sec-1.2
 
 libro:
@@ -32,6 +36,7 @@ modelo:
     T_m: { sim: "T_{m}", nombre: "temperatura intermedia", unidad: "°C", valor: 30 }
   calculos:
     I_a: { expr: "V_a/R_a", sim: "I", nombre: "corriente", unidad: A }
+    I_a2: { expr: "2*V_a/R_a", sim: "2·I", nombre: "el doble de la corriente", unidad: A }
     rho: { si: alu, entonces: "2.82e-8", sino: "1.72e-8", sim: "ρ", nombre: "resistividad", unidad: "Ω·m" }
     R_g: { expr: "rho*L_g/(A_g*1e-6)", sim: "R", nombre: "resistencia del cable", unidad: Ω }
     I_e: { expr: "(V_e - V_fe)/R_e", sim: "I", nombre: "corriente del LED", unidad: A }
@@ -45,9 +50,11 @@ modelo:
 tarjetas:
   - id: explore-ohm
     tipo: explorar
-    titulo: "Tensión, corriente y resistencia"
-    texto: "Mueva la tensión y la resistencia. Fíjese en cómo responde la corriente a cada una."
+    titulo: "Doble corriente"
+    texto: "Con 6 V y 220 Ω pasan 27,3 mA. Sin tocar la resistencia, consiga que pase el doble."
     libro: [38, 42]
+    fijar: { R_a: 220 }
+    inicio: { V_a: 6 }
     widget:
       tipo: circuito
       esquema: resistencia
@@ -57,15 +64,26 @@ tarjetas:
       mide: { corriente: I_a, tension: V_a }
       mandos:
         - { valor: V_a, min: 1, max: 12, paso: 1, rotulo: "Tensión, V" }
-        - { valor: R_a, serie: E12, min: 100, max: 1000, rotulo: "R (E12)" }
-    requiere: { mover: [V_a, R_a] }
+    objetivo:
+      condiciones:
+        - { valor: I_a, objetivo: 0.05455, tol: 0.02, rotulo: "Corriente: {{I_a}}" }
+      logrado: "Con {{V_a}} pasan {{I_a}}: doble tensión, doble corriente. La corriente es proporcional a la tensión."
+      pistas:
+        - { cuando: { valor: I_a, mayor: 0.0556 }, texto: "Se ha pasado: baje la tensión." }
+        - { texto: "Todavía falta corriente: suba la tensión." }
+    escalera:
+      - "Si la corriente es proporcional a la tensión, ¿cuánta tensión hace falta para el doble?"
+    solucion: "Doble la tensión: 12 V dan 54,5 mA."
+    comprobar:
+      - { I_a: 0.02727 }
+      - { con: { V_a: 12 }, I_a: 0.05455 }
 
   - id: prediga-doble
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Con la misma resistencia, se dobla la tensión de la fuente. ¿Qué hace la corriente?"
-    libro: [38]
-    fijar: { V_a: 12, R_a: 220 }
+    tipo: simular
+    titulo: "Prediga con el doble de resistencia"
+    texto: "Con 12 V y 220 Ω pasan 54,5 mA. Si la resistencia se dobla a 440 Ω con la misma fuente, ¿cuánta corriente pasa?"
+    libro: [38, 42]
+    fijar: { V_a: 12, R_a: 440 }
     widget:
       tipo: circuito
       esquema: resistencia
@@ -74,23 +92,29 @@ tarjetas:
       corriente: I_a
       mide: { corriente: I_a, tension: V_a }
       ocultar: true
-    opciones:
-      - texto: "Se dobla"
-        bien: true
-        porque: "En un conductor óhmico la corriente es proporcional a la tensión: doble tensión, doble corriente."
-      - texto: "Se reduce a la mitad"
-        porque: "Eso pasaría al doblar la resistencia, no la tensión. Más tensión empuja más corriente."
-      - texto: "No cambia: la fija la resistencia"
-        porque: "La resistencia fija la proporción entre las dos, no la corriente. La corriente sigue a la tensión."
+      mandos: []
+    simular:
+      objetivo: I_a
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente con 440 Ω"
+      medida: corriente
+      errores:
+        - { expr: "I_a2", texto: "Ha doblado la corriente. Más resistencia es más oposición: la corriente baja a la mitad." }
+        - { razon: { min: 1.9, max: 2.1 }, texto: "Esa es la corriente con 220 Ω. Con el doble de resistencia, la mitad." }
+    exito: "12 / 440 = 27,3 mA: doble resistencia, la mitad de corriente."
     escalera:
-      - "En un conductor óhmico, I = V/R."
-    solucion: "Se dobla: la corriente es proporcional a la tensión."
+      - "I = V/R: con la misma V, si R se dobla, ¿qué hace I?"
+    solucion: "12 V / 440 Ω = 27,3 mA."
+    comprobar:
+      - { I_a: 0.02727, I_a2: 0.05455 }
+      - { con: { R_a: 220 }, I_a: 0.05455 }
 
   - id: regla-ohm
     tipo: formula
     titulo: "La ley de Ohm"
-    texto: "La corriente es proporcional a la tensión y la constante es la resistencia. Arrastre el punto; con más R, la recta se tumba."
-    libro: [39, 42]
+    texto: "Lo que acaba de hacer: la corriente es proporcional a la tensión y la constante es la resistencia. Arrastre el punto; con más R, la recta se tumba."
+    libro: [39, 41, 42, 56]
     ec: 39
     sustitucion: "{{I_a}} · {{R_a}} = {{V_a}}"
     widget:
@@ -106,75 +130,12 @@ tarjetas:
         - { valor: V_a, min: 1, max: 12, paso: 1, rotulo: "Tensión, V" }
         - { valor: R_a, serie: E12, min: 100, max: 1000, rotulo: "R (E12)" }
 
-  - id: empareje-triangulo
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Las tres formas"
-    texto: "De V = I·R salen las otras dos. Tape la que busca, como en el triángulo de la ley de Ohm, y empareje."
-    libro: [41, 42, 56]
-    emparejar:
-      - ["V", "I · R"]
-      - ["I", "V / R"]
-      - ["R", "V / I"]
-      - ["Un ohmio", "Un voltio que hace circular un amperio"]
-    exito: "Eso es. Mucha resistencia: mucha tensión para poca corriente; poca resistencia: mucha corriente con poca tensión."
-    pistas:
-      - { texto: "Lo que busca queda solo a un lado; las otras dos, multiplicándose o dividiéndose al otro." }
-    escalera:
-      - "Tape la magnitud que busca: lo que queda dice si se multiplica o se divide."
-    solucion: "V: I · R. I: V / R. R: V / I. Un ohmio: un voltio que hace circular un amperio."
-
-  - id: explore-cable
-    tipo: explorar
-    titulo: "La resistencia de un cable"
-    texto: "Mueva la longitud y la sección, y cambie de cobre a aluminio. Más largo, más resistencia; más grueso, menos."
-    libro: [45, 46]
-    widget:
-      tipo: grafica
-      x: { id: ll, min: 0, max: 200, unidad: m, rotulo: "L" }
-      y: { min: 0, max: 6, unidad: Ω, rotulo: "R" }
-      curvas:
-        - { expr: "rho*ll/(A_g*1e-6)", color: naranja, rotulo: "R = ρL/A" }
-      asas:
-        - { mueve: L_g, x: "L_g", y: "R_g", rotulo: "Longitud del cable" }
-      lectura: { valor: R_g, rotulo: "Resistencia del cable" }
-      mandos:
-        - { valor: L_g, min: 10, max: 200, paso: 10, rotulo: "Longitud, L" }
-        - { valor: A_g, lista: [1, 1.5, 2.5, 4, 6], rotulo: "Sección, A" }
-        - { valor: alu, tipo: interruptor, rotulo: "Aluminio" }
-    requiere: { mover: [L_g, A_g] }
-
-  - id: estime-cable
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "Cien metros de cobre"
-    texto: "El cobre tiene 1,72 × 10⁻⁸ Ω·m. Estime la resistencia de 100 metros de cable de cobre de 1,5 mm²."
-    libro: [46, 47]
-    fijar: { L_g: 100, A_g: 1.5, alu: 0 }
-    estimar:
-      objetivo: "R_g"
-      unidad: Ω
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 3
-      tol: 0.05
-      rotulo: "R de 100 m"
-    exito: "1,72 × 10⁻⁶ / 1,5 × 10⁻⁶ = 1,15 Ω. Poca, pero en tiradas largas da caídas de tensión apreciables."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.2 }, texto: "Se ha pasado: pase la sección a m², 1,5 × 10⁻⁶, y divida." }
-      - { texto: "Se ha quedado corto: ρ·L = 1,72 × 10⁻⁶; divídalo entre 1,5 × 10⁻⁶ m²." }
-    comprobar:
-      - { R_g: 1.1467, tol: 0.001 }
-    escalera:
-      - "R = ρ·L/A, con la sección en metros cuadrados."
-    solucion: "1,72 × 10⁻⁶ / 1,5 × 10⁻⁶ = 1,15 Ω. Poca, pero en tiradas largas da caídas de tensión apreciables."
-
   - id: led-no-ohmico
-    tipo: pregunta
+    tipo: explorar
     titulo: "¿La resistencia de un LED?"
-    texto: "Mueva la fuente y mire el cociente V/I del LED. ¿Tiene sentido llamarlo su resistencia?"
+    texto: "Con 3 V, el cociente V/I del LED sale 300 Ω. Suba la fuente hasta que ese cociente baje a 100 Ω."
     libro: [49, 50, 51]
+    inicio: { V_e: 3 }
     widget:
       tipo: circuito
       esquema: led
@@ -184,24 +145,85 @@ tarjetas:
         - { valor: I_e, rotulo: "Corriente: {{I_e}}" }
       corriente: I_e
       mide: { corriente: I_e, vf: V_fe }
+      instrumento: { tipo: multimetro }
       mandos:
         - { valor: V_e, min: 3, max: 9, paso: 0.5, rotulo: "Fuente, V" }
-    opciones:
-      - texto: "No como constante: cambia con el punto de trabajo"
-        bien: true
-        porque: "El LED no es óhmico: su cociente V/I cambia según la corriente. La ley de Ohm no se le aplica."
-      - texto: "Sí, y es la resistencia que hay que ponerle en serie"
-        porque: "La de serie limita la corriente; el cociente del LED no es una constante y no sirve para calcularla."
-      - texto: "Sí, siempre que no cambie la temperatura"
-        porque: "Esa condición vale para un metal. El LED no es óhmico ni a temperatura constante."
+    objetivo:
+      condiciones:
+        - { valor: R_led, objetivo: 100, tol: 0.02, rotulo: "V/I del LED: {{R_led}}" }
+      logrado: "El mismo LED, de 300 Ω a {{R_led}}: no es óhmico. Su cociente V/I cambia con el punto de trabajo."
+      pistas:
+        - { cuando: { valor: R_led, mayor: 102 }, texto: "Todavía es alto: suba la fuente." }
+        - { texto: "Ha bajado de más: baje un poco la fuente." }
     escalera:
-      - "Mueva la fuente y compare V/I en dos puntos: ¿sale lo mismo?"
-    solucion: "No como constante: el cociente V/I del LED cambia con el punto de trabajo."
+      - "Con más corriente, el LED sigue cayendo unos 2 V: su V/I baja."
+    solucion: "Con 5 V: 20 mA y 2 V, V/I = 100 Ω."
+    comprobar:
+      - { R_led: 300, I_e: 0.006667 }
+      - { con: { V_e: 5 }, R_led: 100, I_e: 0.02 }
+
+  - id: estime-cable
+    tipo: simular
+    fase: "Estime"
+    titulo: "Cien metros de cobre"
+    texto: "El cobre tiene 1,72 × 10⁻⁸ Ω·m. Estime la resistencia de 100 metros de cable de cobre de 1,5 mm²."
+    libro: [45, 46, 47]
+    fijar: { L_g: 100, A_g: 1.5, alu: 0 }
+    simular:
+      objetivo: R_g
+      unidad: Ω
+      tol: 0.05
+      rotulo: "R de 100 m"
+      errores:
+        - { razon: { min: 900, max: 1100 }, texto: "Ha dejado la sección en mm²: pásela a m², 1,5 × 10⁻⁶, y divida." }
+        - { razon: { min: 0.6, max: 0.7 }, texto: "Ha multiplicado por la sección: R = ρ·L/A, la sección divide." }
+    exito: "1,72 × 10⁻⁶ / 1,5 × 10⁻⁶ = 1,15 Ω. Poca, pero en tiradas largas da caídas de tensión apreciables."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.2 }, texto: "Se ha pasado: pase la sección a m², 1,5 × 10⁻⁶, y divida." }
+      - { texto: "Se ha quedado corto: ρ·L = 1,72 × 10⁻⁶; divídalo entre 1,5 × 10⁻⁶ m²." }
+    escalera:
+      - "R = ρ·L/A, con la sección en metros cuadrados."
+    solucion: "1,72 × 10⁻⁶ / 1,5 × 10⁻⁶ = 1,15 Ω."
+    comprobar:
+      - { R_g: 1.1467, tol: 0.001 }
+
+  - id: explore-cable
+    tipo: explorar
+    titulo: "El mismo cable en aluminio"
+    texto: "El aluminio conduce peor, 2,82 × 10⁻⁸ Ω·m. Pase a aluminio y busque la sección con la que 100 m no superan los 1,15 Ω del cobre."
+    libro: [45, 46, 47]
+    fijar: { L_g: 100 }
+    inicio: { A_g: 1.5, alu: 0 }
+    widget:
+      tipo: grafica
+      x: { id: ll, min: 0, max: 200, unidad: m, rotulo: "L" }
+      y: { min: 0, max: 6, unidad: Ω, rotulo: "R" }
+      curvas:
+        - { expr: "rho*ll/(A_g*1e-6)", color: naranja, rotulo: "R = ρL/A" }
+      marcas:
+        - { x: "L_g", y: "R_g", rotulo: "100 m" }
+      lectura: { valor: R_g, rotulo: "Resistencia del cable" }
+      mandos:
+        - { valor: A_g, lista: [1, 1.5, 2.5, 4, 6], rotulo: "Sección, A" }
+        - { valor: alu, tipo: interruptor, rotulo: "Aluminio" }
+    objetivo:
+      condiciones:
+        - { valor: alu, min: 1, rotulo: "Cable de aluminio" }
+        - { valor: R_g, max: 1.1467, rotulo: "R: {{R_g}}" }
+      logrado: "Con {{A_g}} de aluminio, {{R_g}}: a mayor sección, menor resistencia, y el aluminio pide más sección."
+      pistas:
+        - { cuando: { valor: alu, max: 0 }, texto: "Primero pase el cable a aluminio." }
+        - { texto: "Todavía sobra resistencia: suba la sección." }
+    escalera:
+      - "R = ρ·L/A: con una ρ mayor, hace falta una A mayor para la misma R."
+    solucion: "2,5 mm² de aluminio: 1,13 Ω."
+    comprobar:
+      - { con: { alu: 1, A_g: 2.5 }, R_g: 1.128 }
 
   - id: prediga-calor
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "El cobre sube casi un 0,4 % por grado. Si un cable pasa de 20 °C a 100 °C, ¿cuánto sube su resistencia?"
+    tipo: simular
+    titulo: "Prediga con el calor"
+    texto: "El cobre sube casi un 0,4 % por grado. Si un cable pasa de 20 °C a 100 °C, ¿cuánto sube su resistencia, en %?"
     libro: [55, 57]
     fijar: { T_c: 100 }
     widget:
@@ -212,19 +234,20 @@ tarjetas:
         - { expr: "1 + 0.00393*(tt - 20)", color: naranja, rotulo: "cobre" }
       lectura: { valor: sube, rotulo: "Subida de R" }
       ocultar: true
-    opciones:
-      - texto: "Un 31 %"
-        bien: true
-        porque: "Son 0,00393 por grado durante 80 grados: el factor es 1,31440, un 31 % más."
-      - texto: "Un 0,4 %"
-        porque: "Ese 0,4 % es por cada grado. Son 80 grados de subida."
-      - texto: "Baja un 31 %"
-        porque: "Baja en los semiconductores, cuyo coeficiente es negativo. En el cobre, α es positivo."
-    comprobar:
-      - { k_T: 1.3144, sube: 31.44 }
+    simular:
+      objetivo: sube
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Subida de la resistencia"
+      errores:
+        - { razon: { min: 0.0123, max: 0.0131 }, texto: "Ese 0,4 % es por cada grado. Son 80 grados de subida." }
+        - { razon: { min: -1.05, max: -0.95 }, texto: "Baja en los semiconductores, cuyo coeficiente es negativo. En el cobre, α es positivo." }
+    exito: "Son 0,00393 por grado durante 80 grados: el factor es 1,31440, un 31 % más."
     escalera:
       - "Son 0,00393 por grado durante 80 grados."
     solucion: "1 + 0,00393 × 80 = 1,31440: un 31 % más."
+    comprobar:
+      - { k_T: 1.3144, sube: 31.44 }
 
   - id: regla-temperatura
     tipo: formula
@@ -248,8 +271,7 @@ tarjetas:
   - id: dos-tramos
     tipo: sorpresa
     titulo: "El modelo se contradice"
-    texto: "Si fuese exacto, ir de 20 a 100 °C en dos tramos daría igual que en uno. Mueva el intermedio."
-    nota: "Con el punto intermedio en 60 °C, 1,9 %: es una linealización, vale para decenas de grados."
+    texto: "Si fuese exacto, ir de 20 a 100 °C en dos tramos daría igual que en uno. Busque el punto intermedio en que más se contradice."
     libro: [57]
     inicio: { T_m: 30 }
     widget:
@@ -266,6 +288,16 @@ tarjetas:
         - { valor: k_2, rotulo: "Dos tramos: {{k_2}}" }
       mandos:
         - { valor: T_m, min: 20, max: 100, paso: 5, rotulo: "Punto intermedio, T_{m}" }
+    objetivo:
+      condiciones:
+        - { valor: disc, min: 1.87, rotulo: "Discrepancia: {{disc}}" }
+      logrado: "En {{T_m}}, un {{disc}}: es una linealización, que vale para unas decenas de grados."
+      pistas:
+        - { cuando: { valor: T_m, max: 55 }, texto: "Más a la derecha: la cima está en medio del recorrido." }
+        - { texto: "Más a la izquierda: la cima está en medio del recorrido." }
+    escalera:
+      - "Busque la cima de la curva."
+    solucion: "En 60 °C, a medio camino: 1,9 %."
     comprobar:
       - { con: { T_m: 60 }, k_1: 1.3144, k_2: 1.33911, disc: 1.88 }
 

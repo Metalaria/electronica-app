@@ -6,6 +6,13 @@
 #   ventana, sin ventana o con Hann (0,5 − 0,5·cos 2π·frac(t)). Los ciclos son de ejemplo.
 # Paso práctico: «simular» el tiempo de observación para 5 Hz de resolución (200 ms; error típico: los 21 ms de
 # 1 024 puntos).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): N se sube hasta pasar del millón de operaciones directas;
+# el factor de 4 096 y la ganancia de proceso se calculan (simular sobre el modelo); N se sube hasta bajar de 5 Hz de
+# resolución; la unión de la captura se arregla con la Hann sin tocar los ciclos; la ventana se elige por sus lóbulos
+# (los de la tabla del libro; el dibujo de cada pico es esquemático: anchura 1, 2, 3 y 5 casillas, de ejemplo) para ver
+# un tono 50 dB por debajo; Goertzel se explora con M hasta el último tono que gana con N = 205; y FIR o IIR se elige
+# sobre un pulso (media móvil de 0,3 s frente a un polo de τ = 0,15 s, de ejemplo). Quedan dos preguntas de opciones:
+# la Hann entre casillas y lo que el digital no puede.
 leccion: cap30/sec-30.6
 
 libro:
@@ -39,6 +46,13 @@ modelo:
     d_r: { sim: "Δf", nombre: "resolución deseada", unidad: Hz, valor: 5 }
     c_y: { sim: "c", nombre: "ciclos en la ventana", unidad: "", valor: 3 }
     v_h: { sim: "Hann", nombre: "ventana Hann", unidad: "", valor: 0 }
+    k_w: { sim: "ventana", nombre: "ventana elegida", unidad: "", valor: 0 }
+    M_g: { sim: "M", nombre: "frecuencias que interesan", unidad: "", valor: 1 }
+    N_g: { sim: "N", nombre: "puntos del detector DTMF", unidad: "", valor: 205 }
+    k_f: { sim: "filtro", nombre: "filtro elegido", unidad: "", valor: 1 }
+    W_f: { sim: "W", nombre: "media móvil de ejemplo", unidad: s, valor: 0.3 }
+    t_f: { sim: "τ", nombre: "constante del IIR de ejemplo", unidad: s, valor: 0.15 }
+    L_p: { sim: "L", nombre: "nivel del tono pequeño", unidad: dB, valor: -50 }
   calculos:
     d_n: { expr: "N_f^2", sim: "N²", nombre: "operaciones directas", unidad: "" }
     f_n: { expr: "N_f*log2(N_f)", sim: "N·log₂N", nombre: "operaciones de la FFT", unidad: "" }
@@ -50,13 +64,22 @@ modelo:
     T_r: { expr: "1/d_r", sim: "T", nombre: "tiempo para la resolución deseada", unidad: s }
     T_m: { expr: "1/(2*d_r)", sim: "T", nombre: "la mitad del tiempo necesario", unidad: s }
     G_p: { expr: "10*log10(N_f/2)", sim: "G", nombre: "ganancia de proceso", unidad: dB, cifras: 2 }
+    s_j: { expr: "abs(sin(2*pi*c_y))*(1 - v_h)", sim: "salto", nombre: "salto en la unión", unidad: "", cifras: 2 }
+    lob: { expr: "-13*max(0, 1 - abs(k_w)) - 31*max(0, 1 - abs(k_w - 1)) - 58*max(0, 1 - abs(k_w - 2)) - 90*max(0, 1 - abs(k_w - 3))", sim: "lóbulos", nombre: "lóbulos laterales", unidad: dB }
+    w_k: { expr: "1 + k_w + max(0, 1 - abs(k_w - 3))", sim: "anchura", nombre: "anchura esquemática del pico, en casillas", unidad: "" }
+    l_g: { expr: "log2(N_g)", sim: "log₂N", nombre: "logaritmo en base dos de N", unidad: "", cifras: 2 }
+    c_g: { expr: "M_g*N_g", sim: "M·N", nombre: "coste de Goertzel", unidad: "" }
+    c_f: { expr: "N_g*log2(N_g)", sim: "N·log₂N", nombre: "coste de la FFT", unidad: "" }
+    g_ok: { expr: "max(0, min(1, (l_g - M_g)*10))*max(0, min(1, (M_g - l_g + 1)*10))", sim: "último", nombre: "el último M con el que Goertzel gana", unidad: "" }
+    fir: { expr: "1 - k_f", sim: "FIR", nombre: "el filtro elegido es el FIR", unidad: "" }
 
 tarjetas:
   - id: explore-coste
     tipo: explorar
     titulo: "N² frente a N·log₂N"
-    texto: "Las operaciones del cálculo directo y de la FFT, en escala logarítmica. Suba N y mire cómo crece la ventaja."
+    texto: "Las operaciones del cálculo directo y de la FFT, en escala logarítmica. Suba N hasta que el cálculo directo pase del millón."
     libro: [179, 180, 181]
+    inicio: { N_f: 256 }
     widget:
       tipo: grafica
       x: { id: n, min: 100, max: 100000, unidad: "", rotulo: "N", escala: log }
@@ -70,15 +93,24 @@ tarjetas:
       lectura: { valor: fac, rotulo: "Factor de ahorro" }
       mandos:
         - { valor: N_f, lista: [256, 1024, 4096, 65536], rotulo: "Puntos, N" }
-    requiere: { mover: [N_f] }
+    objetivo:
+      condiciones:
+        - { valor: d_n, min: 1000000, rotulo: "Directa: {{d_n}} operaciones" }
+      logrado: "Con N = {{N_f}}, más de un millón de operaciones directas; la FFT, {{f_n}}. Explota la simetría del problema."
+      pistas:
+        - { texto: "Aún no llega al millón: suba N." }
+    escalera:
+      - "La directa cuesta N²: mil por mil es un millón."
+    solucion: "N = 1 024."
     comprobar:
       - { fac: 32 }
+      - { con: { N_f: 1024 }, d_n: 1048576 }
       - { con: { N_f: 65536 }, fac: 4096 }
 
   - id: estime-factor
-    tipo: pregunta
+    tipo: simular
     titulo: "Cuánto ahorra"
-    texto: "Con N = 4 096, el cálculo directo cuesta casi diecisiete millones de operaciones. ¿Cuántas veces menos cuesta la FFT?"
+    texto: "Con N = 4 096, el cálculo directo cuesta casi diecisiete millones de operaciones. Calcule cuántas veces menos cuesta la FFT."
     libro: [179, 181, 182]
     fijar: { N_f: 4096 }
     widget:
@@ -86,19 +118,15 @@ tarjetas:
       figura: fig-30.12
       zonas:
         - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
-    estimar:
-      objetivo: "fac"
+    simular:
+      objetivo: fac
       unidad: ""
-      min: 0
-      max: 1000
-      paso: 1
-      inicio: 800
       tol: 0.05
       rotulo: "Factor de ahorro"
+      errores:
+        - { expr: "N_f/log10(N_f)", texto: "Ha usado el logaritmo decimal: el de la FFT es en base dos, log₂ 4 096 = 12." }
+        - { expr: "N_f", texto: "Eso es N²/N: falta el log₂N que cuesta la FFT." }
     exito: "341 veces: 49 152 operaciones en lugar de 16 777 216. Y da exactamente el mismo resultado."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 358 }, texto: "Demasiado: el factor es N/log₂N, y log₂ 4 096 = 12." }
-      - { texto: "Corto: el factor es N/log₂N = 4 096/12." }
     escalera:
       - "Divida N² entre N·log₂N."
     solucion: "4 096/12 ≈ 341."
@@ -106,12 +134,11 @@ tarjetas:
       - { fac: 341, d_n: 16777216, f_n: 49152, l_2: 12, tol: 0.002 }
 
   - id: formula-resolucion
-    tipo: formula
+    tipo: explorar
     titulo: "La resolución en frecuencia"
-    texto: "Cada casilla de la FFT mide f_{s}/N. Cambie N y mire la resolución y el tiempo de observación que cuesta."
+    texto: "Cada casilla de la FFT mide Δf = f_{s}/N. A 48 kHz, suba N hasta que la resolución baje de 5 Hz."
     libro: [185, 186, 188, 212]
-    ec: 185
-    sustitucion: "{{f_s}} / {{N_f}} = {{df}}; T = {{T_n}}"
+    inicio: { N_f: 256 }
     widget:
       tipo: grafica
       x: { id: n, min: 100, max: 100000, unidad: "", rotulo: "N", escala: log }
@@ -125,8 +152,18 @@ tarjetas:
         - { valor: T_n, rotulo: "Tiempo de observación: {{T_n}}" }
       mandos:
         - { valor: N_f, lista: [256, 1024, 4096, 65536], rotulo: "Puntos, N" }
+    objetivo:
+      condiciones:
+        - { valor: df, max: 5, rotulo: "Resolución: {{df}}" }
+      logrado: "{{df}}, pero a costa de {{T_n}} de señal: más resolución exige más tiempo de observación."
+      pistas:
+        - { texto: "Las casillas aún son anchas: más puntos." }
+    escalera:
+      - "Δf baja al subir N, y el tiempo observado es N/f_{s}."
+    solucion: "N = 65 536."
     comprobar:
       - { con: { N_f: 1024 }, df: 46.9, T_n: 0.021, tol: 0.02 }
+      - { con: { N_f: 65536 }, df: 0.732, tol: 0.01 }
 
   - id: simule-observacion
     tipo: simular
@@ -150,9 +187,9 @@ tarjetas:
       - { T_r: 0.2, T_n: 0.021, T_m: 0.1, df: 46.9, tol: 0.02 }
 
   - id: porque-ganancia
-    tipo: porque
+    tipo: simular
     titulo: "Por debajo del suelo de ruido"
-    texto: "Con N = 1 024 se ven tonos que, en el tiempo, estaban por debajo del ruido. ¿De dónde sale esa ganancia de unos 27 dB?"
+    texto: "La FFT reparte el ruido entre N/2 casillas útiles y concentra el tono en una. Calcule esa ganancia de proceso, 10·log₁₀(N/2), con N = 1 024."
     libro: [188, 189]
     fijar: { N_f: 1024 }
     widget:
@@ -160,26 +197,28 @@ tarjetas:
       figura: fig-30.12
       zonas:
         - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
-    opciones:
-      - texto: "El ruido se reparte entre N/2 casillas y el tono se concentra en una"
-        bien: true
-        porque: "Cada casilla recibe una fracción del ruido; la señal, entera, emerge sobre él."
-      - texto: "La FFT amplifica la señal"
-        porque: "No amplifica: reparte. El ruido se diluye entre casillas y el tono no."
-      - texto: "La FFT elimina el ruido"
-        porque: "El ruido sigue ahí, repartido entre N/2 casillas: cada una lleva solo una parte."
+    simular:
+      objetivo: G_p
+      unidad: dB
+      tol: 0.02
+      rotulo: "Ganancia de proceso"
+      errores:
+        - { expr: "10*log10(N_f)", texto: "Ha usado las N casillas: las útiles son N/2." }
+        - { expr: "20*log10(N_f/2)", texto: "Es un reparto de potencia: diez veces el logaritmo, no veinte." }
+    exito: "Unos 27 dB: cada casilla lleva una fracción del ruido y el tono emerge entero sobre él."
     escalera:
-      - "¿Cuántas casillas útiles hay con N puntos?"
-    solucion: "Reparto del ruido entre N/2 casillas: 10·log₁₀(512) ≈ 27 dB."
+      - "Con N = 1 024 hay 512 casillas útiles."
+    solucion: "10·log₁₀(512) ≈ 27 dB."
     comprobar:
       - { G_p: 27.1, m_2: 512, tol: 0.01 }
 
   - id: explore-fuga
     tipo: explorar
     titulo: "La discontinuidad que no existe"
-    texto: "La FFT repite el trozo capturado. Ponga un número no entero de ciclos y mire la unión; después, aplique la ventana Hann."
+    texto: "La FFT repite el trozo capturado: con ciclos no enteros, la unión salta. Sin volver a un número entero de ciclos, quite el salto."
     nota: "Ciclos de ejemplo."
     libro: [191, 192]
+    inicio: { c_y: 3.25, v_h: 0 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 2, unidad: "", rotulo: "ventanas", muestras: 1200 }
@@ -191,29 +230,49 @@ tarjetas:
       mandos:
         - { valor: c_y, lista: [3, 3.25, 3.5], rotulo: "Ciclos, c" }
         - { valor: v_h, lista: [0, 1], nombres: [rectangular, Hann], rotulo: "Ventana" }
-    requiere: { mover: [c_y, v_h] }
+    objetivo:
+      condiciones:
+        - { valor: c_y, min: 3.2, rotulo: "Ciclos no enteros" }
+        - { valor: s_j, max: 0.01, rotulo: "Salto: {{s_j}}" }
+      logrado: "La Hann se anula suavemente en los extremos: la discontinuidad que no existía en la señal desaparece, y con ella casi toda la fuga."
+      pistas:
+        - { cuando: { valor: c_y, max: 3.1 }, texto: "Con ciclos enteros ya empalma, pero una señal real no se ajusta a la ventana: vuelva a un número no entero." }
+        - { texto: "La rectangular corta en seco: pruebe otra ventana." }
+    escalera:
+      - "Una ventana que valga cero en los dos extremos empalma siempre."
+    solucion: "Ventana Hann con 3,25 ciclos."
+    comprobar:
+      - { con: { c_y: 3.25, v_h: 1 }, s_j: 0 }
 
   - id: empareje-ventanas
-    tipo: pregunta
+    tipo: explorar
     titulo: "Cada ventana para lo suyo"
-    texto: "Empareje cada ventana con el uso que le da la tabla del libro."
+    texto: "Quiere ver un tono pequeño, a {{L_p}}, junto a uno enorme. Elija la ventana que lo permite sin ensanchar de más."
+    nota: "Anchura del pico esquemática."
     libro: [193, 194]
+    inicio: { k_w: 0 }
     widget:
-      tipo: figura
-      figura: fig-30.12
-      zonas:
-        - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
-    emparejar:
-      - ["Rectangular", "Señales periódicas exactas y transitorios"]
-      - ["Hann", "Uso general"]
-      - ["Blackman", "Señales de muy distinta amplitud"]
-      - ["Flat-top", "Medir amplitudes con exactitud"]
-    exito: "El compromiso es siempre el mismo: menos fuga a costa de peor resolución."
-    pistas:
-      - { texto: "La flat-top tiene los lóbulos más bajos (−90 dB) y el pico más ancho." }
+      tipo: grafica
+      x: { id: nu, min: -8, max: 8, unidad: "", rotulo: "casillas" }
+      y: { min: -100, max: 5, unidad: dB, rotulo: "nivel" }
+      curvas:
+        - { expr: "max(lob, -100*abs(nu)/w_k)", color: azul, rotulo: "tono enorme y su fuga" }
+        - { expr: "L_p - 100*abs(nu - 5)/w_k", color: naranja, rotulo: "tono pequeño" }
+      lectura: { valor: lob, rotulo: "Lóbulos laterales" }
+      mandos:
+        - { valor: k_w, lista: [0, 1, 2, 3], nombres: [rectangular, Hann, Blackman, flat-top], rotulo: "Ventana" }
+    objetivo:
+      condiciones:
+        - { valor: lob, max: -50, min: -60, rotulo: "Fuga: {{lob}}" }
+      logrado: "La Blackman: lóbulos a −58 dB, por debajo del tono pequeño. Menos fuga a costa de peor resolución."
+      pistas:
+        - { cuando: { valor: lob, menor: -60 }, texto: "La flat-top también lo vería, pero su pico es muy ancho: es para medir amplitudes." }
+        - { texto: "Su fuga tapa el tono pequeño: hace falta una ventana de lóbulos más bajos." }
     escalera:
-      - "Ordénelas por lóbulos laterales: −13, −31, −58 y −90 dB."
-    solucion: "Rectangular, periódicas exactas; Hann, general; Blackman, amplitudes muy distintas; flat-top, medir amplitudes."
+      - "Los lóbulos de la tabla: −13, −31, −58 y −90 dB."
+    solucion: "Blackman."
+    comprobar:
+      - { con: { k_w: 2 }, lob: -58 }
 
   - id: predecir-hann
     tipo: predecir
@@ -238,48 +297,65 @@ tarjetas:
     solucion: "Hasta 1,4 dB por debajo: para medir niveles, flat-top."
 
   - id: pregunta-goertzel
-    tipo: pregunta
+    tipo: explorar
     titulo: "Solo unas pocas frecuencias"
-    texto: "Para detectar un tono concreto en un microcontrolador, ¿cuándo compensa Goertzel en lugar de la FFT?"
+    texto: "Goertzel cuesta del orden de M·N; la FFT, N·log₂N. Con N = 205, suba M hasta el último número de tonos con el que Goertzel aún gana."
     libro: [197, 201]
+    inicio: { M_g: 1 }
     widget:
-      tipo: figura
-      figura: fig-30.12
-      zonas:
-        - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
-    opciones:
-      - texto: "Cuando el número de frecuencias M es menor que log₂N"
-        bien: true
-        porque: "Cuesta del orden de M·N frente a N·log₂N. Ocho tonos DTMF con N = 205 (log₂N = 7,7) cuestan como una FFT."
-      - texto: "Siempre: es más rápido que la FFT"
-        porque: "Para muchas frecuencias pierde: su coste crece con M."
-      - texto: "Solo si la señal es periódica"
-        porque: "El criterio es de coste: cuántas casillas interesan frente a log₂N."
+      tipo: grafica
+      x: { id: m, min: 0, max: 10, unidad: "", rotulo: "M" }
+      y: { min: 0, max: 2200, unidad: "", rotulo: "operaciones" }
+      curvas:
+        - { expr: "m*N_g", color: naranja, rotulo: "Goertzel, M·N" }
+        - { expr: "c_f", color: azul, rotulo: "FFT, N·log₂N", discontinua: true }
+      marcas:
+        - { x: "M_g", y: "c_g", rotulo: "M = {{M_g}}" }
+      lectura: { valor: c_g, rotulo: "Coste de Goertzel" }
+      datos:
+        - { valor: c_f, rotulo: "FFT: {{c_f}}" }
+      mandos:
+        - { valor: M_g, min: 1, max: 10, paso: 1, rotulo: "Tonos, M" }
+    objetivo:
+      condiciones:
+        - { valor: g_ok, min: 1, rotulo: "El último M que gana" }
+      logrado: "M = {{M_g}}, por debajo de log₂N = {{l_g}}. Los ocho tonos DTMF ya cuestan como una FFT."
+      pistas:
+        - { cuando: { valor: M_g, mayor: 7.7 }, texto: "Ahí Goertzel ya cuesta más que la FFT: baje." }
+        - { texto: "Todavía sobra margen: suba M." }
     escalera:
-      - "Compare M·N con N·log₂N."
-    solucion: "Mientras M < log₂N: el detector de tonos de los microcontroladores."
+      - "Goertzel gana mientras M sea menor que log₂N = 7,7."
+    solucion: "M = 7."
+    comprobar:
+      - { con: { M_g: 7 }, g_ok: 1, l_g: 7.68 }
 
   - id: pregunta-fir-iir
-    tipo: pregunta
+    tipo: explorar
     titulo: "FIR o IIR"
-    texto: "Hay que filtrar pulsos de datos sin deformar su forma de onda, y la estabilidad debe estar garantizada. ¿Qué filtro?"
-    libro: [204, 205, 206]
+    texto: "Hay que filtrar pulsos de datos sin deformar su forma de onda. Elija el filtro que retarda todas las frecuencias lo mismo."
+    nota: "Filtros de ejemplo."
+    libro: [204, 205, 206, 209]
+    inicio: { k_f: 1 }
     widget:
-      tipo: figura
-      figura: fig-30.12
-      zonas:
-        - { id: todo, rotulo: "Coste de la FFT y tres ventanas", rect: [0, 0, 448, 206] }
-    opciones:
-      - texto: "Un FIR: sin realimentación y con fase exactamente lineal"
-        bien: true
-        porque: "Retarda todas las frecuencias lo mismo y no puede ser inestable. Su precio: muchos coeficientes."
-      - texto: "Un IIR: diez veces menos coeficientes"
-        porque: "Ahorra cálculo, pero no tiene fase lineal y puede volverse inestable al cuantificar."
-      - texto: "Cualquiera: los dos deforman igual"
-        porque: "El FIR puede no deformar nada; el IIR, como su equivalente analógico, sí."
+      tipo: grafica
+      x: { id: t, min: 0, max: 3, unidad: s, rotulo: "t", muestras: 900 }
+      y: { min: -0.1, max: 1.2, unidad: "", rotulo: "x" }
+      curvas:
+        - { expr: "min(max((t - 1)*1000000, 0), 1) - min(max((t - 2)*1000000, 0), 1)", color: tinta, rotulo: "pulso", discontinua: true }
+        - { expr: "(1 - k_f)*(min(max((t - 1)/W_f, 0), 1) - min(max((t - 2)/W_f, 0), 1)) + k_f*((1 - exp(-max(t - 1, 0)/t_f)) - (1 - exp(-max(t - 2, 0)/t_f)))", color: naranja, rotulo: "salida del filtro" }
+      mandos:
+        - { valor: k_f, lista: [1, 0], nombres: [IIR, FIR], rotulo: "Filtro" }
+    objetivo:
+      condiciones:
+        - { valor: fir, min: 1, rotulo: "Pulso sin deformar" }
+      logrado: "El FIR: sin realimentación, siempre estable y con fase exactamente lineal; las dos caras del pulso salen simétricas. Su precio, muchos coeficientes."
+      pistas:
+        - { texto: "El IIR sube y baja con colas distintas: deforma. Ahorra coeficientes, típicamente diez veces menos, pero no tiene fase lineal." }
     escalera:
       - "¿Cuál de los dos realimenta salidas anteriores?"
-    solucion: "Un FIR; el IIR, cuando lo escaso es el cálculo."
+    solucion: "El FIR."
+    comprobar:
+      - { con: { k_f: 0 }, fir: 1 }
 
   - id: porque-antes-convertidor
     tipo: porque

@@ -4,9 +4,14 @@
 # - El equilibrado pasivo del bloque 199 (100 mAh a 100 mA: una hora; 4 V × 0,1 A = 0,4 W por celda; doce celdas, casi
 #   5 W) y la deriva del contador del bloque 208 (1 mA: 24 mAh al día, el 1,2 % de 2 Ah).
 # Paso práctico: «simular» el calor de doce celdas equilibrando a la vez (4,8 W; error típico: los 0,4 W de una).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se toca la protección más crítica y los MOSFET de corte, se
+# equilibra 100 mAh en media hora (objetivo) y se calculan el calor de doce celdas y la deriva del contador. Quedan dos
+# preguntas (el pack que parece muerto y la celda adelantada); la peor celda, pasivo o activo y la recalibración, al
+# resumen.
 leccion: cap39/sec-39.6
 
 libro:
+  168: "salirse de sus márgenes no produce un mal funcionamiento sino un daño irreversible o un incendio"
   171: "Corta si alguna celda supera 4,25 V"
   172: "Corta por debajo de unos 2,5 V"
   173: "un pack cuyo BMS ha cortado por subtensión parece muerto"
@@ -16,9 +21,11 @@ libro:
   180: "la capacidad utilizable del pack la fija su peor celda"
   182: "se disipa el exceso de la celda más cargada en una resistencia"
   195: "Las cinco protecciones de un BMS"
+  184: "el equilibrado pasivo es lento por naturaleza"
   199: "equilibrar 100 mAh de desviación a 100 mA lleva una hora, y disipa 4 V × 0,1 A = 0,4 W por celda"
   201: "No disipa: mueve energía con un rendimiento del 80 al 90 %."
   205: "por debajo de unos 10 Ah, pasivo"
+  207: "todo integrador acumula su propio error"
   208: "1 mA de offset son 24 mAh al día, que en un pack de 2 Ah es un 1,2 % diario de deriva"
   210: "al terminar la carga —donde el estado de carga es 100 % por definición— y en el codo de descarga"
   211: "es fiable durante días y no durante meses"
@@ -41,20 +48,30 @@ modelo:
 
 tarjetas:
   - id: explore-protecciones
-    tipo: explorar
-    titulo: "El vigilante"
-    texto: "Salirse de los márgenes no da un mal funcionamiento: da un daño irreversible o un incendio. Toque las protecciones."
-    libro: [171, 172, 174, 175, 195]
+    tipo: tocar
+    titulo: "Cinco protecciones"
+    texto: "Salirse de los márgenes del litio da un daño irreversible o un incendio. Toque la protección más crítica."
+    libro: [168, 171, 195]
     widget:
       tipo: figura
       figura: fig-39.12
       zonas:
-        - { id: sobre, rotulo: "Primer recuadro", rect: [5, 24, 192, 36], texto: "Sobretensión: corta si una celda supera 4,25 V. La más crítica." }
-        - { id: sub, rotulo: "Segundo recuadro", rect: [5, 64, 192, 36], texto: "Subtensión: corta por debajo de unos 2,5 V." }
-        - { id: corriente, rotulo: "Tercer recuadro", rect: [5, 104, 192, 36], texto: "Sobrecorriente: un umbral con retardo, para los picos de arranque, y otro de cortocircuito casi instantáneo." }
-        - { id: temperatura, rotulo: "Cuarto recuadro", rect: [5, 145, 192, 36], texto: "Temperatura: la ventana de carga, de 0 a 45 °C, es más estrecha que la de descarga." }
-        - { id: propia, rotulo: "Quinto recuadro", rect: [5, 186, 192, 36], texto: "La propia electrónica: MOSFET de corte dimensionados para la corriente máxima." }
-    requiere: { mover: [sobre, temperatura] }
+        - { id: sobre, rotulo: "Primer recuadro", rect: [5, 24, 192, 36] }
+        - { id: sub, rotulo: "Segundo recuadro", rect: [5, 64, 192, 36] }
+        - { id: corriente, rotulo: "Tercer recuadro", rect: [5, 104, 192, 36] }
+        - { id: temperatura, rotulo: "Cuarto recuadro", rect: [5, 145, 192, 36] }
+        - { id: propia, rotulo: "Quinto recuadro", rect: [5, 186, 192, 36] }
+    tocar:
+      bien: [sobre]
+      porque:
+        sub: "La subtensión, por debajo de unos 2,5 V, daña la celda, pero no es la más crítica."
+        corriente: "La sobrecorriente lleva dos umbrales: uno con retardo para los arranques y otro casi instantáneo."
+        temperatura: "La ventana de carga, de 0 a 45 °C, es más estrecha que la de descarga."
+        propia: "Los MOSFET de corte, dimensionados para la corriente máxima."
+    exito: "La sobretensión: corta si una celda supera 4,25 V, porque pasarse deposita litio metálico."
+    escalera:
+      - "¿Qué límite, al superarse, deposita litio metálico?"
+    solucion: "El primero: sobretensión en carga."
 
   - id: parece-muerto
     tipo: pregunta
@@ -100,33 +117,12 @@ tarjetas:
       - "Todas llevan la misma corriente; la degradada se llena antes."
     solucion: "Cuando la más adelantada llega a 4,2 V: las demás quedan sin llenar."
 
-  - id: por-que-peor
-    tipo: porque
-    titulo: "La peor celda manda"
-    texto: "¿Por qué la capacidad utilizable de un pack en serie la fija su peor celda?"
-    libro: [179, 180]
-    widget:
-      tipo: figura
-      figura: fig-39.12
-      zonas:
-        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
-    opciones:
-      - texto: "Llega antes al corte al cargar y al descargar"
-        bien: true
-        porque: "Al cargar, la adelantada corta la carga; al descargar, la más débil llega primero al corte."
-      - texto: "Porque arrastra a las demás a su capacidad"
-        porque: "Las demás no pierden capacidad: no se aprovecha porque la débil corta antes."
-      - texto: "Porque se calienta más"
-        porque: "No es el calor: son los cortes por tensión de la celda que llega primero."
-    escalera:
-      - "Piense en los dos extremos: el final de carga y el de descarga."
-    solucion: "La débil llega primero a los dos cortes y fija lo que se puede usar."
-
   - id: explore-pasivo
     tipo: explorar
     titulo: "Equilibrado pasivo"
-    texto: "La celda más cargada se descarga en una resistencia. Cambie la corriente de equilibrado y mire el tiempo y el calor."
-    libro: [182, 199]
+    texto: "El pasivo descarga la celda más cargada en una resistencia. Equilibre 100 mAh de desviación en media hora como mucho, y mire el calor."
+    libro: [182, 184, 199]
+    inicio: { I_bal: 0.05 }
     widget:
       tipo: grafica
       x: { id: qx, min: 0, max: 0.2, unidad: Ah, rotulo: "ΔQ" }
@@ -140,8 +136,17 @@ tarjetas:
         - { valor: P_cel, rotulo: "Calor por celda: {{P_cel}}" }
       mandos:
         - { valor: I_bal, lista: [0.05, 0.1, 0.2], rotulo: "Corriente de equilibrado" }
-    requiere: { mover: [I_bal] }
+    objetivo:
+      condiciones:
+        - { valor: t_bal, max: 0.5, rotulo: "Tiempo: {{t_bal}}" }
+      logrado: "Con {{I_bal}} tarda {{t_bal}}, pero cada celda disipa {{P_cel}}: el pasivo es lento por naturaleza o calienta."
+      pistas:
+        - { texto: "Tarda demasiado: más corriente de equilibrado." }
+    escalera:
+      - "t = ΔQ / I."
+    solucion: "200 mA: media hora y 0,8 W por celda."
     comprobar:
+      - { con: { I_bal: 0.2 }, t_bal: 0.5, P_cel: 0.8 }
       - { con: { I_bal: 0.1 }, t_bal: 1, P_cel: 0.4 }
 
   - id: simule-doce
@@ -172,79 +177,29 @@ tarjetas:
     comprobar:
       - { P_tot: 4.8, P_cel: 0.4 }
 
-  - id: pasivo-activo
-    tipo: pregunta
-    titulo: "Un pack de tracción"
-    texto: "Un pack de tracción, de muchos amperios-hora. ¿Equilibrado pasivo o activo?"
-    libro: [201, 205]
-    widget:
-      tipo: figura
-      figura: fig-39.12
-      zonas:
-        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
-    opciones:
-      - texto: "Activo: por encima de unos 10 Ah el pasivo no da abasto"
-        bien: true
-        porque: "Mueve energía en lugar de disiparla, con amperios: equilibra en minutos."
-      - texto: "Pasivo: es lo que llevan casi todos"
-        porque: "Lo llevan los packs de consumo; por encima de unos 10 Ah el tiempo y el calor lo hacen impracticable."
-      - texto: "Ninguno: en paralelo se igualan solas"
-        porque: "Eso es en paralelo; aquí las celdas van en serie."
-    escalera:
-      - "El criterio es la capacidad del pack."
-    solucion: "Activo: por encima de unos 10 Ah."
-
   - id: estime-deriva
-    tipo: pregunta
-    titulo: "El contador que deriva"
+    tipo: simular
+    titulo: "La deriva del contador"
     texto: "El sensor de corriente tiene 1 mA de offset y el pack es de 2 Ah. ¿Cuánto deriva el estado de carga al día?"
-    libro: [208]
-    widget:
-      tipo: grafica
-      x: { id: dx, min: 0, max: 30, unidad: "", rotulo: "días" }
-      y: { min: 0, max: 40, unidad: "%", rotulo: "deriva" }
-      curvas:
-        - { expr: "dx*der", color: naranja, rotulo: "deriva acumulada" }
-    estimar:
-      objetivo: "der"
-      unidad: "%"
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 8
-      tol: 0.05
-      rotulo: "Deriva diaria"
-    exito: "1,2 % al día: fiable durante días, no durante meses."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.26 }, texto: "Se ha pasado: 1 mA durante 24 h son 24 mAh." }
-      - { texto: "Se ha quedado corto: compare 24 mAh con los 2 Ah del pack." }
-    escalera:
-      - "El offset se integra sin límite: 1 mA por 24 h."
-    solucion: "24 mAh / 2 Ah = 1,2 % diario."
-    comprobar:
-      - { Q_der: 0.024, der: 1.2 }
-
-  - id: recalibrar
-    tipo: pregunta
-    titulo: "Dónde recalibrar"
-    texto: "¿En qué puntos recalibra un sistema serio su contador de culombios?"
-    libro: [210, 211]
+    libro: [207, 208]
     widget:
       tipo: figura
-      figura: fig-39.12
+      figura: fig-39.13
       zonas:
-        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
-    opciones:
-      - texto: "Al terminar la carga y en el codo de descarga"
-        bien: true
-        porque: "Ahí la tensión sí informa: al final de la carga es el 100 % por definición."
-      - texto: "A mitad de descarga, donde la curva es más plana"
-        porque: "Justo ahí la tensión dice menos: la meseta es casi plana."
-      - texto: "No hace falta: integrar la corriente es exacto"
-        porque: "El offset y la eficiencia culómbica se integran sin límite."
+        - { id: deriva, rotulo: "Gráfica de la derecha", rect: [225, 0, 222, 195] }
+    simular:
+      objetivo: der
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Deriva diaria"
+      errores:
+        - { expr: "Q_der*1000", texto: "Esos son los mAh contados de más al día. Compárelos con los 2 Ah del pack." }
+    exito: "Un 1,2 % diario: fiable durante días y no durante meses."
     escalera:
-      - "Busque los puntos donde la tensión deja de ser plana."
-    solucion: "Al terminar la carga y en el codo de descarga."
+      - "1 mA durante 24 h, entre 2 Ah."
+    solucion: "24 mAh / 2 Ah = 1,2 %."
+    comprobar:
+      - { der: 1.2, Q_der: 0.024 }
 
   - id: toque-mosfet
     tipo: tocar
@@ -271,9 +226,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [171, 180, 199, 208]
+    libro: [171, 180, 199, 208, 172, 174, 175, 201, 205, 210, 211]
     ideas:
       - { titulo: "Cinco protecciones.", texto: "Sobretensión, subtensión, corriente, temperatura y la propia electrónica." }
       - { titulo: "La peor celda.", texto: "En serie, fija la capacidad utilizable: hace falta equilibrar." }
-      - { titulo: "Pasivo o activo.", texto: "Pasivo, lento y con calor, hasta unos 10 Ah; activo, por encima." }
-      - { titulo: "Culombios.", texto: "El contador deriva y se recalibra donde la tensión informa." }
+      - { titulo: "Pasivo o activo.", texto: "Pasivo, lento y con calor, hasta unos 10 Ah; activo, que transfiere con un 80 a 90 %, por encima." }
+      - { titulo: "Culombios.", texto: "El contador deriva y se recalibra donde la tensión informa: al terminar la carga y en el codo de descarga." }

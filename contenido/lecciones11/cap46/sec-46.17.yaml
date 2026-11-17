@@ -8,6 +8,8 @@
 #   disipadores del mando (4, 6 y 10 °C/W) son valores de ejemplo.
 # Paso práctico: «simular» el factor de aceleración de 55 a 125 °C (errores típicos: temperaturas en °C en lugar de
 # kelvin; la regla de ×2 cada 10 °C, 128).
+# 1.2.1: los tres explorar tienen meta (228 años con 1 000 componentes; 937 con el uso a 25 °C; más del doble de vida
+#   con el disipador); se leen los 571 años, los 9 años del ensayo y las 32 000 h del electrolítico.
 leccion: cap46/sec-46.17
 
 libro:
@@ -62,8 +64,9 @@ tarjetas:
   - id: explore-tasas
     tipo: explorar
     titulo: "Las tasas se suman"
-    texto: "En serie, la tasa del sistema es la suma de las de sus componentes. Cambie cuántos son y su tasa."
+    texto: "En serie, la tasa del sistema es la suma de las de sus componentes. Con 1 000 componentes, consiga un MTBF de 228 años."
     libro: [587, 590]
+    inicio: { n_c: 200, F_c: 1 }
     widget:
       tipo: grafica
       x: { id: nn, min: 100, max: 2000, unidad: "", rotulo: "componentes", escala: log }
@@ -78,25 +81,46 @@ tarjetas:
       mandos:
         - { valor: n_c, lista: [200, 1000], rotulo: "Componentes" }
         - { valor: F_c, lista: [0.1, 0.5, 1], rotulo: "Tasa de cada uno" }
-    requiere: { mover: [n_c, F_c] }
+    objetivo:
+      condiciones:
+        - { valor: n_c, objetivo: 1000, tol: 0.01, rotulo: "Componentes: {{n_c}}" }
+        - { valor: M_y, objetivo: 228, tol: 0.02, rotulo: "MTBF: {{M_y}}" }
+      logrado: "{{n_c}} componentes a {{F_c}}: {{L_t}} y {{M_y}}. Más componentes, más tasa; mejores componentes, menos."
+      pistas:
+        - { cuando: { valor: n_c, menor: 500 }, texto: "Primero, los 1 000 componentes." }
+        - { cuando: { valor: M_y, menor: 220 }, texto: "MTBF corto: componentes con menos FIT." }
+        - { texto: "MTBF largo: con esa tasa sobra; pruebe una algo mayor." }
+    escalera:
+      - "228 años son unos 2·10⁶ h: 500 FIT entre 1 000 componentes."
+    solucion: "1 000 componentes a 0,5 FIT: 500 FIT, 228 años."
+    comprobar:
+      - { con: { n_c: 1000, F_c: 0.5 }, L_t: 500, M_y: 228 }
 
   - id: formula-mtbf
-    tipo: formula
+    tipo: leer
     titulo: "Del FIT al MTBF"
-    texto: "Se suman las tasas, en fallos por cada 10⁹ horas, y el MTBF es su inversa."
-    libro: [587, 588]
-    fijar: { n_c: 200, F_c: 1 }
-    ec: 588
-    sustitucion: "{{n_c}} × {{F_c}} = {{L_t}}; MTBF = {{M_h}} = {{M_y}}"
+    texto: "Doscientos componentes a 1 FIT, en fallos por cada 10⁹ horas. Se suman las tasas y el MTBF es su inversa: escríbalo en años."
+    libro: [587, 588, 590]
+    fijar: { n_c: 200, F_c: 1, h_a: 8760 }
     widget:
       tipo: grafica
       x: { id: nn, min: 100, max: 2000, unidad: "", rotulo: "componentes", escala: log }
       y: { min: 10, max: 100000, unidad: "años", rotulo: "MTBF", escala: log }
       curvas:
         - { expr: "1000000000/(nn*F_c)/8760", color: azul, rotulo: "MTBF del sistema" }
-      marcas:
-        - { x: "n_c", y: "M_y", rotulo: "{{M_y}}" }
-      lectura: { valor: M_y, rotulo: "MTBF" }
+      mandos: []
+    leer:
+      objetivo: M_y
+      unidad: "años"
+      tol: 0.02
+      rotulo: "MTBF"
+      errores:
+        - { expr: "M_h", texto: "Eso son horas: divídalas entre las 8 760 de un año." }
+    exito: "{{L_t}}, {{M_h}}: unos 571 años."
+    escalera:
+      - "λ_{total} = 200 × 1 FIT = 200 FIT."
+      - "MTBF = 10⁹ / 200 = 5·10⁶ h; entre 8 760 h de un año."
+    solucion: "5·10⁶ h, unos 571 años."
     comprobar:
       - { L_t: 200, M_y: 571 }
 
@@ -131,9 +155,10 @@ tarjetas:
   - id: explore-aceleracion
     tipo: explorar
     titulo: "Ensayar en semanas"
-    texto: "Las temperaturas, en kelvin. Mueva la de uso y mire cuánto acelera un ensayo a 125 °C."
+    texto: "Un ensayo a 125 °C acelera los fallos frente al uso. Busque la temperatura de uso para la que acelera 937 veces."
     libro: [594, 595, 596]
     fijar: { T_e: 125 }
+    inicio: { T_u: 55 }
     widget:
       tipo: grafica
       x: { id: te, min: 60, max: 150, unidad: "°C", rotulo: "T_{ensayo}" }
@@ -144,8 +169,19 @@ tarjetas:
         - { x: "T_e", y: "AF", rotulo: "{{AF}}" }
       lectura: { valor: AF, rotulo: "Factor de aceleración a 125 °C" }
       mandos:
-        - { valor: T_u, lista: [25, 55], rotulo: "Temperatura de uso" }
-    requiere: { mover: [T_u] }
+        - { valor: T_u, min: 25, max: 85, paso: 5, rotulo: "Temperatura de uso, T_{uso}" }
+    objetivo:
+      condiciones:
+        - { valor: AF, objetivo: 937, tol: 0.03, rotulo: "Aceleración: {{AF}}" }
+      logrado: "Con el uso a {{T_u}}, un ensayo a 125 °C acelera {{AF}} veces: cuanto más lejos del ensayo, más acelera."
+      pistas:
+        - { texto: "Acelera poco: baje la temperatura de uso." }
+    escalera:
+      - "El factor crece con la distancia entre las dos temperaturas, en kelvin."
+    solucion: "Uso a 25 °C: 937."
+    comprobar:
+      - { AF: 77.7 }
+      - { con: { T_u: 25 }, AF: 937 }
 
   - id: simule-af
     tipo: simular
@@ -170,24 +206,26 @@ tarjetas:
       - { AF: 77.7, AF_r: 128, EK: 8100, K_u: 328, K_e: 398 }
 
   - id: estime-anos
-    tipo: pregunta
+    tipo: leer
     titulo: "Mil horas a 125 °C"
-    texto: "Con un factor de 77,7, ¿a cuántos años de uso a 55 °C equivalen mil horas de ensayo a 125 °C?"
+    texto: "Con un factor de 77,7, escriba a cuántos años de uso a 55 °C equivalen mil horas de ensayo a 125 °C."
     libro: [596, 597]
     fijar: { T_u: 55, T_e: 125, t_e: 1000, h_a: 8760 }
-    estimar:
-      objetivo: "Y_e"
+    widget:
+      tipo: grafica
+      x: { id: te, min: 60, max: 150, unidad: "°C", rotulo: "T_{ensayo}" }
+      y: { min: 1, max: 10000, unidad: "", rotulo: "AF", escala: log }
+      curvas:
+        - { expr: "exp(E_a*q_e/k_B*(1/(T_u + 273.15) - 1/(te + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
+      mandos: []
+    leer:
+      objetivo: Y_e
       unidad: "años"
-      min: 0
-      max: 30
-      paso: 0.1
-      inicio: 20
       tol: 0.05
       rotulo: "Años de uso"
+      errores:
+        - { expr: "t_e*AF_r/h_a", texto: "Ha usado la regla de duplicar cada 10 °C: con 0,7 eV el factor es 77,7." }
     exito: "Unos 9 años: el ensayo reproduce en semanas lo que ocurriría en años."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 9.4 }, texto: "Demasiado: 77 700 horas entre las 8 760 de un año." }
-      - { texto: "Demasiado poco: mil horas por 77,7, y luego a años de 8 760 horas." }
     escalera:
       - "Multiplique las horas de ensayo por el factor."
       - "Divida entre las 8 760 horas de un año."
@@ -198,9 +236,10 @@ tarjetas:
   - id: explore-disipador
     tipo: explorar
     titulo: "Solo el disipador"
-    texto: "El TO-220 de la sección 10.5: 5 W, 40 °C y 92,5 °C con 8 °C/W. Cambie el disipador y mire la vida."
+    texto: "El TO-220 de la sección 10.5: 5 W, 40 °C y 92,5 °C con 8 °C/W. Elija un disipador con el que viva más del doble."
     libro: [597, "cap10#127"]
     fijar: { P: 5, T_a: 40, R_jc: 2, R_cs: 0.5, T_0: 92.5, E_a: 0.7 }
+    inicio: { R_sa: 8 }
     widget:
       tipo: circuito
       esquema: termica
@@ -212,7 +251,18 @@ tarjetas:
       mide: { tj: T_j, tc: T_c, ts: T_s, flujo: P }
       mandos:
         - { valor: R_sa, lista: [4, 6, 8, 10], rotulo: "Disipador, R_{sa}" }
-    requiere: { mover: [R_sa] }
+    objetivo:
+      condiciones:
+        - { valor: V_r, min: 2, rotulo: "Vida: ×{{V_r}}" }
+      logrado: "Con {{R_sa}}, la unión baja a {{T_j}} y la pieza vive ×{{V_r}}: sin cambiar ningún componente, solo el disipador."
+      pistas:
+        - { cuando: { valor: R_sa, mayor: 8.5 }, texto: "Ese disipador es peor: la unión se calienta más." }
+        - { texto: "Todavía no llega: un disipador de menos °C/W." }
+    escalera:
+      - "Menos °C/W, unión más fría; y por Arrhenius, vida más larga."
+    solucion: "El de 4 °C/W: unión a 72,5 °C."
+    comprobar:
+      - { con: { R_sa: 4 }, T_j: 72.5 }
 
   - id: porque-rentable
     tipo: porque
@@ -242,9 +292,9 @@ tarjetas:
     solucion: "No exige cambiar ningún componente: solo el disipador."
 
   - id: pregunta-electrolitico
-    tipo: pregunta
+    tipo: leer
     titulo: "La regla del electrolítico"
-    texto: "Un electrolítico de 2000 h a 105 °C trabaja a 65 °C. Con la vida doblando cada 10 °C, ¿cuánto dura?"
+    texto: "Un electrolítico de 2000 h a 105 °C trabaja a 65 °C. Con la vida doblando cada 10 °C menos, escriba cuánto dura."
     libro: [598]
     fijar: { L_0: 2000, T_w: 65 }
     widget:
@@ -253,16 +303,16 @@ tarjetas:
       y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
       curvas:
         - { expr: "L_0*2^((105 - tt)/10)", color: naranja, rotulo: "×2 cada 10 °C menos" }
-      lectura: { valor: L_e, rotulo: "Vida a 65 °C" }
-      ocultar: true
-    opciones:
-      - texto: "Unas 32 000 h: 16 veces más"
-        bien: true
-        porque: "40 °C son cuatro saltos de 10 °C: 2 × 2 × 2 × 2 = 16."
-      - texto: "Unas 8 000 h: cuatro veces más"
-        porque: "Cuatro es el número de saltos; cada uno duplica, así que el factor es 16."
-      - texto: "Las mismas 2000 h"
-        porque: "Esas horas son a 105 °C; a 65 °C dura mucho más."
+      mandos: []
+    leer:
+      objetivo: L_e
+      unidad: h
+      tol: 0.03
+      rotulo: "Vida a 65 °C"
+      errores:
+        - { expr: "L_0*4", texto: "Cuatro es el número de saltos; cada uno duplica, así que el factor es 16." }
+        - { expr: "L_0", texto: "Esas horas son a 105 °C; a 65 °C dura mucho más." }
+    exito: "Unas 32 000 h: 16 veces más."
     escalera:
       - "¿Cuántos saltos de 10 °C hay de 105 a 65 °C?"
     solucion: "Cuatro saltos: ×16, unas 32 000 h."

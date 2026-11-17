@@ -2,6 +2,10 @@
 # El circuito para comparar simulación y medida es el RC de la práctica 5 (cap22#133-135: 1,6 kΩ y 100 nF, corte en
 # 995 Hz), la ficha 29 del cuaderno: el libro propone «un filtro RC» sin valores (bloque 29). La app lo simula con
 # su ngspice. Las capacidades de 90 y 110 nF de la sorpresa son el ± 10 % de un condensador corriente (ejemplo).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el corte se lleva a unos 2 kHz con R (objetivo); la amplitud y
+# la fase en el corte se predicen con lápiz y se comparan con el ngspice de la app (simular); el ± 10 % del condensador
+# se usa para desviar el corte (objetivo; por qué no valida, en su «logrado»); el banco se queda. Quedan dos preguntas
+# de opciones (el desacuerdo y los modelos); para qué sirve y cuándo no merece la pena, al resumen.
 leccion: cap42/sec-42.1
 
 libro:
@@ -39,8 +43,9 @@ tarjetas:
   - id: explore-prediccion
     tipo: explorar
     titulo: "Lo que predice el simulador"
-    texto: "El RC de la práctica 5, 1,6 kΩ y 100 nF, simulado con el ngspice de la app. Cambie R y mire cómo se mueve el corte, sin tocar una pieza."
+    texto: "El RC de la práctica 5, 1,6 kΩ y 100 nF, simulado con el ngspice de la app. Cambie R, sin tocar una pieza, hasta llevar el corte a unos 2 kHz."
     libro: [4, "cap22#133"]
+    inicio: { R_f: 1600 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -56,6 +61,17 @@ tarjetas:
           - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
       mandos:
         - { valor: R_f, lista: [800, 1600, 3200] }
+    objetivo:
+      condiciones:
+        - { valor: f_c, min: 1900, max: 2100, rotulo: "Corte: {{f_c}}" }
+      logrado: "Con {{R_f}}, el corte en {{f_c}}: probar una idea sin componentes ni tiempo de montaje."
+      pistas:
+        - { texto: "Para doblar el corte, la mitad de resistencia." }
+    escalera:
+      - "f_{c} = 1/(2πRC)."
+    solucion: "800 Ω: unos 1,99 kHz."
+    comprobar:
+      - { con: { R_f: 800 }, f_c: 1989 }
 
   - id: prediga-desacuerdo
     tipo: predecir
@@ -83,41 +99,64 @@ tarjetas:
     solucion: "El desacuerdo señala algo que no se entendía."
 
   - id: formula-corte
-    tipo: formula
+    tipo: simular
     titulo: "La predicción, con lápiz"
-    texto: "El simulador y el cálculo deben coincidir: para este RC, 995 Hz. Cambie R."
-    libro: ["cap22#134"]
+    texto: "En el corte, 995 Hz, con 1 V de pico a la entrada. Calcule la amplitud de la salida y compárela con lo que da el simulador."
+    libro: ["cap22#134", "cap22#135"]
     ec: "cap22#134"
-    sustitucion: "1 / (2π · {{R_f}} · {{C_f}}) = {{f_c}}"
+    fijar: { V_p: 1, R_f: 1600, C_f: 100e-9, f_f: 994.72 }
     widget:
       tipo: circuito
       esquema: filtro-rc
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
-      mide: { vc_amp: A_c }
-      mandos:
-        - { valor: R_f, lista: [800, 1600, 3200] }
+      lectura: { valor: A_c, rotulo: "Salida simulada" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: A_c
+      unidad: V
+      tol: 0.02
+      rotulo: "Amplitud de la salida"
+      medida: vc_amp
+      errores:
+        - { expr: "V_p/2", texto: "La mitad es la potencia. En amplitud, 0,707." }
+    exito: "0,707 V: el simulador y el cálculo coinciden. Con un modelo así de simple, lo hacen siempre."
+    escalera:
+      - "En el corte, ωRC = 1: la salida es 1/√2 de la entrada."
+    solucion: "0,707 V."
     comprobar:
-      - { con: { R_f: 1600 }, f_c: 995 }
+      - { A_c: 0.707, f_c: 995 }
 
   - id: para-que
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Para qué sirve simular"
-    texto: "Una cada cosa que permite el simulador con lo que ahorra en el banco."
-    libro: [4, 5, 6, 7, 8]
-    emparejar:
-      - ["Probar ideas", "Sin componentes ni montaje"]
-      - ["Ver lo que no se puede medir", "Corrientes internas, potencias instantáneas"]
-      - ["Barrer parámetros", "Por decenas o cientos"]
-      - ["Monte Carlo", "Tolerancias sin cientos de unidades"]
-      - ["Casos peligrosos", "Cortocircuitos sin destruir nada"]
-    exito: "Todo antes de montar nada."
-    pistas:
-      - { texto: "Monte Carlo es el de las tolerancias." }
+    tipo: simular
+    titulo: "Y la fase"
+    texto: "Prediga la fase de la salida en el corte y compárela con la del simulador."
+    libro: ["cap22#135", 5]
+    fijar: { V_p: 1, R_f: 1600, C_f: 100e-9, f_f: 994.72 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: ph_c, rotulo: "Fase simulada" }
+      mide: { vc_amp: A_c, vc_fase: ph_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: ph_c
+      unidad: "°"
+      tol: 0.02
+      rotulo: "Fase de la salida"
+      medida: vc_fase
+      errores:
+        - { expr: "-ph_c", texto: "La salida de un paso bajo va retrasada: el signo es negativo." }
+        - { expr: "-90", texto: "−90° es el límite muy por encima del corte. En el corte, la mitad." }
+    exito: "−45°: lo que el libro pide comprobar en el banco con dos canales."
     escalera:
-      - "¿Cuál de ellas destruiría piezas en el banco?"
-    solucion: "Ideas: sin montaje; lo invisible; barridos; tolerancias; fallos sin romper."
+      - "φ = −arctan(ωRC), con ωRC = 1."
+    solucion: "−45°."
+    comprobar:
+      - { ph_c: -45 }
 
   - id: modelos
     tipo: pregunta
@@ -142,33 +181,11 @@ tarjetas:
       - "Si el motor es esencialmente el mismo, ¿qué cambia de un caso a otro?"
     solucion: "Los modelos."
 
-  - id: cuando-no
-    tipo: pregunta
-    titulo: "Cuándo no merece la pena"
-    texto: "¿Cuál de estos casos NO merece una simulación?"
-    libro: [24, 25]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Algo trivial que se mide en dos minutos"
-        bien: true
-        porque: "Ni los circuitos triviales ni lo que depende de parásitos que no se van a modelar."
-      - texto: "La estabilidad de un lazo de realimentación"
-        porque: "Ese sí: es de los casos que más se benefician."
-      - texto: "Un filtro con sus tolerancias"
-        porque: "También: la respuesta de filtros y las tolerancias están entre los «sí»."
-    escalera:
-      - "Simular tiene un coste: ¿cuándo no compensa?"
-    solucion: "Lo trivial y lo que se mide en dos minutos."
-
   - id: tolerancia
     tipo: sorpresa
     titulo: "El circuito que se monta no es el nominal"
-    texto: "Un condensador del ± 10 % (ejemplo). Cámbielo: el corte se desvía, como el 5 o 10 % que suele dar la práctica."
-    libro: ["cap22#140", 12]
+    texto: "Un condensador del ± 10 % (ejemplo). Elija el que desvía el corte más de un 10 % por arriba."
+    libro: ["cap22#140", 12, 29]
     fijar: { R_f: 1600 }
     inicio: { C_f: 100e-9 }
     widget:
@@ -181,32 +198,17 @@ tarjetas:
       mide: { vc_amp: A_c }
       mandos:
         - { valor: C_f, lista: [90e-9, 100e-9, 110e-9] }
-
-  - id: por-que-valida
-    tipo: porque
-    titulo: "¿Por qué no valida un diseño?"
-    texto: "La simulación del RC da el corte en 995 Hz exactos. ¿Por qué no basta para dar el diseño por bueno?"
-    libro: [12, 29]
-    fijar: { R_f: 1600, C_f: 100e-9 }
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Corte simulado" }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Porque predice un modelo, y el modelo no es el circuito"
-        bien: true
-        porque: "Tolerancias, sonda, parásitos: lo que no se le dice no existe para él. La simulación explora; el prototipo confirma."
-      - texto: "Porque ngspice redondea"
-        porque: "Resuelve las ecuaciones con precisión de sobra. El límite es lo que contiene el modelo."
-      - texto: "Porque solo simula en continua"
-        porque: "Simula en alterna y en el tiempo; el problema no es el tipo de análisis."
+    objetivo:
+      condiciones:
+        - { valor: d_fc, min: 10, rotulo: "Desviación: {{d_fc}}" }
+      logrado: "Con {{C_f}}, el corte en {{f_c}}. La simulación predice un modelo, y el modelo no es el circuito: explora; el prototipo confirma."
+      pistas:
+        - { texto: "Para subir el corte, menos capacidad." }
     escalera:
-      - "¿Qué sabe el simulador de las tolerancias de sus piezas?"
-    solucion: "Predice el modelo; el prototipo lo confirma."
+      - "El corte va con 1/C."
+    solucion: "90 nF: un 11 % por arriba."
     comprobar:
-      - { f_c: 995 }
+      - { con: { C_f: 90e-9 }, d_fc: 11.1, tol: 0.01 }
 
   - id: banco-rc
     tipo: banco
@@ -230,9 +232,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [12, 15, 22, 25]
+    libro: [6, 7, 8, 12, 15, 22, 24, 25]
     ideas:
-      - { titulo: "Para qué.", texto: "Probar ideas, ver lo que no se mide, barrer y estudiar tolerancias sin gastar piezas." }
+      - { titulo: "Para qué.", texto: "Probar ideas, ver lo que no se mide, barrer, Monte Carlo y casos peligrosos. Lo trivial, mejor medirlo." }
       - { titulo: "Lo que no es.", texto: "No valida un diseño: predice un modelo." }
       - { titulo: "Los modelos.", texto: "Deciden la calidad del resultado, no el simulador." }
       - { titulo: "Simular y medir.", texto: "Coincidir da confianza en ambos; discrepar enseña lo que faltaba." }

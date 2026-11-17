@@ -7,6 +7,9 @@
 # - 10.C (24 V, 4700 µF, 10 Ω: τ = 47 ms, 5τ = 235 ms, 2,4 A, 1,35 J; relé a los 300 ms) en «carga-rc».
 # Pasos prácticos: «simular» la energía de la NTC de 10 Ω (el error típico, que se reparte con R) y «ajuste» del
 # retardo del relé hasta que el condensador pase de 5τ (99,3 % de la carga) antes de cerrar.
+# - 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el pico de 10.A se baja a la centésima parte (objetivo); la
+#   potencia del TVS, la unión sin pasta y la de la mica sin pasta pasan a «simular»; el orden de la entrada, al
+#   resumen. Quedan dos preguntas (los siete grados y el precio de 22 Ω).
 leccion: cap10/sec-10.11
 
 libro:
@@ -65,8 +68,9 @@ tarjetas:
   - id: explore-10a
     tipo: explorar
     titulo: "Problema 10.A: la irrupción"
-    texto: "12 V sobre 470 µF: pruebe sin limitar (0,1 Ω de cables y ESR) y con una NTC, y mire el pico y el tiempo de carga."
+    texto: "12 V sobre 470 µF, sin limitar: 0,1 Ω de cables y ESR. Elija la NTC que baja el pico a la centésima parte."
     libro: [249, 255, 256]
+    inicio: { R_a: 0.1 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -81,7 +85,16 @@ tarjetas:
           - { expr: "V_a*(1 - exp(-t/tau_a))", color: verde, rotulo: "v_{C}", mide: vc }
       mandos:
         - { valor: R_a, lista: [0.1, 5, 10], nombres: ["sin limitar", "NTC de 5 Ω", "NTC de 10 Ω"], rotulo: "Limitador" }
-    requiere: { mover: [R_a] }
+    objetivo:
+      condiciones:
+        - { valor: I_a, objetivo: 1.2, tol: 0.02, rotulo: "Pico: {{I_a}}" }
+      logrado: "Con {{R_a}}, {{I_a}} de pico; a cambio, τ = {{tau_a}}: la carga tarda cien veces más."
+      pistas:
+        - { cuando: { valor: I_a, mayor: 1.3 }, texto: "El pico sigue alto: más resistencia." }
+        - { texto: "Se ha pasado: menos resistencia." }
+    escalera:
+      - "El pico es V/R: para la centésima parte, cien veces la resistencia."
+    solucion: "La NTC de 10 Ω: 1,2 A."
     comprobar:
       - { I_a: 120, tau_a: 0.000047 }
       - { con: { R_a: 5 }, I_a: 2.4 }
@@ -116,7 +129,7 @@ tarjetas:
       - { E_a: 0.0338, E_mal: 0.0169, tol: 0.01 }
 
   - id: estime-tvs
-    tipo: pregunta
+    tipo: simular
     titulo: "El TVS se dimensiona por energía"
     texto: "Un transitorio de 1 J dura 10 ms. ¿Qué potencia media tiene que absorber el TVS?"
     libro: [253]
@@ -126,54 +139,24 @@ tarjetas:
       y: { min: 0, max: 150, unidad: W, rotulo: "P" }
       curvas:
         - { expr: "P_t*ceil((t_t - t)/1e9)", color: naranja, rotulo: "potencia media" }
-      ocultar: false
-    estimar:
-      objetivo: "P_t"
+      lectura: { valor: P_t, rotulo: "Potencia media" }
+      ocultar: true
+    simular:
+      objetivo: P_t
       unidad: W
-      min: 0
-      max: 150
-      paso: 5
-      inicio: 10
       tol: 0.03
       rotulo: "Potencia media"
+      errores:
+        - { expr: "E_t*t_t", texto: "Ha multiplicado: la potencia es la energía entre la duración." }
     exito: "100 W medios: ahí es donde muchos TVS pequeños se quedan cortos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 103 }, texto: "Se ha pasado: es la energía entre la duración." }
-      - { texto: "Se ha quedado corto: 10 ms es una centésima de segundo." }
     escalera:
       - "P = E / t."
     solucion: "1 J / 10 ms = 100 W."
     comprobar:
       - { P_t: 100 }
 
-  - id: ordene-10a
-    tipo: pregunta
-    titulo: "La cadena de la entrada"
-    texto: "Ordene los elementos de protección de la entrada de 12 V, desde el conector."
-    libro: [260]
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_a, r: R_a, c: C_a }
-      grafica:
-        x: { id: t, min: 0, max: 0.025, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 13, unidad: V, rotulo: "v_{C}" }
-        curvas:
-          - { expr: "V_a*(1 - exp(-t/tau_a))", color: verde, rotulo: "v_{C}", mide: vc }
-    ordenar:
-      - "Fusible"
-      - "Diodo de polaridad"
-      - "TVS dimensionado por energía"
-      - "NTC de 10 Ω"
-    exito: "El fusible primero, para que cualquier fallo posterior quede acotado."
-    pistas:
-      - { texto: "Lo primero acota cualquier fallo que venga detrás." }
-    escalera:
-      - "El limitador va justo antes del condensador."
-    solucion: "Fusible, diodo de polaridad, TVS y NTC."
-
   - id: estime-10b
-    tipo: pregunta
+    tipo: simular
     titulo: "Problema 10.B: sin pasta"
     texto: "7 W, R_{jc} = 3 y radiador de 5 °C/W a 40 °C de ambiente; sin pasta, R_{cs} es 1,5 °C/W. ¿Temperatura de la unión?"
     libro: [263, 266]
@@ -187,30 +170,27 @@ tarjetas:
       mide: { tj: Tj_b, tc: Tc_b, ts: Ts_b, flujo: P_b }
       ocultar: true
       mandos: []
-    estimar:
-      objetivo: "Tj_b"
+    simular:
+      objetivo: Tj_b
       unidad: "°C"
-      min: 80
-      max: 140
-      paso: 0.5
-      inicio: 130
       tol: 0.01
       rotulo: "Unión"
+      medida: tj
+      errores:
+        - { expr: "dT_b", texto: "Ese es el calentamiento: súmele los 40 °C del ambiente." }
+        - { expr: "Ta_b + P_b*(Rjc_b + 0.5 + Rsa_b)", texto: "Esa es con pasta, 0,5 °C/W. Sin ella, R_{cs} es 1,5." }
     exito: "106,5 °C, siete grados más que con pasta (99,5 °C), por una capa que cuesta céntimos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 107.6 }, texto: "Se ha pasado: la total es 3 + 1,5 + 5 = 9,5 °C/W." }
-      - { texto: "Se ha quedado corto: 7 W por 9,5 °C/W, más los 40 °C del ambiente." }
     escalera:
       - "Sume las tres resistencias y multiplique por 7 W."
     solucion: "40 + 7 × (3 + 1,5 + 5) = 106,5 °C."
     comprobar:
-      - { Tj_b: 106.5, Rt_b: 9.5 }
+      - { Tj_b: 106.5, Rt_b: 9.5, dT_b: 66.5 }
       - { con: { Rcs_b: 0.5 }, Tj_b: 99.5 }
 
   - id: prediga-mica
-    tipo: predecir
+    tipo: simular
     titulo: "Y con mica sin pasta"
-    texto: "Una arandela de mica sin pasta lleva R_{cs} a unos 4 °C/W. ¿Cumple el límite de diseño de 110 °C?"
+    texto: "Una arandela de mica sin pasta lleva R_{cs} a unos 4 °C/W. ¿A cuánto sube la unión?"
     libro: [268]
     fijar: { Rcs_b: 4 }
     widget:
@@ -222,20 +202,21 @@ tarjetas:
       mide: { tj: Tj_b, tc: Tc_b, ts: Ts_b, flujo: P_b }
       ocultar: true
       mandos: []
-    opciones:
-      - texto: "No: la unión sube a unos 124 °C"
-        bien: true
-        porque: "7 W por 12 °C/W son 84 °C sobre los 40 del ambiente."
-      - texto: "Sí, por poco"
-        porque: "Con 4 °C/W la cápsula suma casi tanto como el radiador: muy por encima de 110 °C."
-      - texto: "Da igual, mientras no se destruya"
-        porque: "110 °C es el límite de diseño, no el de destrucción: se diseña con margen."
+    simular:
+      objetivo: Tj_b
+      unidad: "°C"
+      tol: 0.01
+      rotulo: "Unión con mica sin pasta"
+      medida: tj
+      errores:
+        - { expr: "Ta_b + P_b*(Rjc_b + 1.5 + Rsa_b)", texto: "Esa es sin pasta y sin mica, con 1,5 °C/W. La mica sin pasta llega a unos 4." }
+        - { expr: "dT_b", texto: "Ese es el calentamiento: súmele los 40 °C del ambiente." }
+    exito: "Unos 124 °C, por encima de los 110 °C de diseño: la mica sin pasta no cumple."
     escalera:
-      - "Calcule con R_{cs} = 4: la total es 12 °C/W."
-    solucion: "40 + 7 × 12 = 124 °C: por encima de 110 °C."
+      - "Con R_{cs} = 4, la total es 12 °C/W."
+    solucion: "40 + 7 × 12 = 124 °C."
     comprobar:
       - { Tj_b: 124, dT_b: 84 }
-      - { con: { Rcs_b: 0.5 }, Tj_b: 99.5 }
 
   - id: por-que-siete
     tipo: porque
@@ -331,6 +312,6 @@ tarjetas:
     titulo: "Lección completada"
     libro: [257, 260, 267, 280]
     ideas:
-      - { titulo: "10.A.", texto: "Fusible, polaridad, TVS por energía y NTC: la NTC reparte la energía, no la reduce." }
+      - { titulo: "10.A.", texto: "Desde el conector: fusible, diodo de polaridad, TVS por energía y NTC. La NTC reparte la energía, no la reduce." }
       - { titulo: "10.B.", texto: "Sin pasta, siete grados más y en torno a un 33 % menos de vida." }
       - { titulo: "10.C.", texto: "Resistencia de arranque y relé a más de 5τ: 300 ms con 10 Ω." }

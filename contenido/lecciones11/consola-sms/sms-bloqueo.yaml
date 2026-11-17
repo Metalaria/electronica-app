@@ -3,11 +3,15 @@
 # comprobación; los cartuchos japoneses son de 44 contactos y los occidentales de 50; y un juego de 60 Hz va más lento
 # en una PAL. Fuentes: SMS Power «ROM header», ConsoleMods «Master System:Region Information» y los datos de la consola
 # (sms#n).
+# 1.2.1: se tocan la ROM que mira el cartucho y el chip que marca los cuadros; la dirección de la cabecera se escribe
+# en hexadecimal, como el código de región de exportación; el circuito
+# lógico tiene meta. Quedan dos preguntas: el cartucho japonés y el adaptador.
 leccion: consola-sms/sms-bloqueo
 
 libro:
   "sms#11": "CN1 (50 contactos)"
   "sms#77": "Durante el arranque es la ROM de arranque (/CE0) la que responde a estas direcciones"
+  "sms#5": "Procesador de vídeo"
   "sms#87": "Los ocho primeros bytes de la cabecera son el texto ASCII «TMR SEGA»; la cabecera está en $7FF0"
   "sms#88": "Las BIOS de los Master System de exportación y de la Game Gear piden la cabecera para dar los datos por válidos"
   "sms#89": "La palabra de $7FFA es la suma de comprobación de la ROM para las BIOS de exportación"
@@ -24,47 +28,58 @@ modelo:
 
 tarjetas:
   - id: explore-sin-chip
-    tipo: explorar
+    tipo: tocar
     titulo: "Sin chip de bloqueo"
-    texto: "El SMS no lleva un CIC: quien mira el cartucho es la ROM de arranque. Toque la ROM y la ranura."
+    texto: "El SMS no lleva un CIC: quien mira el cartucho al encender es un programa. Toque el chip donde está."
     libro: ["sms#92", "sms#77", "sms#11"]
-    requiere: { mover: [bios, cart] }
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: bios, hotspot: bios, rotulo: "ROM de arranque", texto: "Contesta al encender y comprueba el cartucho." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "50 contactos, el formato occidental." }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: bios, hotspot: bios, rotulo: "Chip vertical, arriba a la derecha" }
+        - { id: ram, hotspot: ram, rotulo: "Chip vertical, arriba del todo a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [bios]
+      porque:
+        z80: "El Z80 ejecuta la comprobación, pero el programa está guardado en otro chip."
+        ram: "La RAM se borra al apagar."
+        vdp: "El VDP hace la imagen y el sonido."
+        cart: "El cartucho es lo que se comprueba."
+    exito: "La ROM de arranque: contesta al encender (/CE0) y no distingue regiones en la mayoría de los juegos, pero sí comprueba que el juego tenga una cabecera."
+    escalera:
+      - "Es la ROM, junto a la CPU."
+    solucion: "La ROM de arranque."
 
   - id: prediga-cabecera
-    tipo: predecir
+    tipo: leer
     titulo: "¿Qué busca la ROM de arranque?"
-    texto: "Antes de pasar al juego, la ROM de arranque de un SMS de exportación mira el cartucho. ¿Qué busca?"
+    texto: "La ROM de arranque de un SMS de exportación busca el texto «TMR SEGA» en la cabecera del cartucho. Escriba en hexadecimal dónde está la cabecera."
     libro: ["sms#87", "sms#88"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: bios, hotspot: bios, rotulo: "ROM de arranque" }
         - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
-    opciones:
-      - texto: "El texto «TMR SEGA» en la cabecera, en $7FF0."
-        bien: true
-        porque: "Sin cabecera, no da los datos por válidos."
-      - texto: "Un chip de bloqueo en el cartucho."
-        porque: "El SMS no tiene chip de bloqueo: lo que mira es la cabecera del programa."
-      - texto: "Nada: arranca cualquier cosa."
-        porque: "La de exportación pide la cabecera: sin ella, no sigue."
+    leer:
+      objetivo: "0x7FF0"
+      base: 16
+      cifras: 16
+      rotulo: "Dirección de la cabecera"
+      errores:
+        - { expr: "32762", texto: "Esa es la palabra de la suma de comprobación, $7FFA: la cabecera empieza antes." }
+    exito: "$7FF0: sus ocho primeros bytes son «TMR SEGA». Sin cabecera, no da los datos por válidos."
     escalera:
-      - "Son ocho letras en ASCII."
-    solucion: "«TMR SEGA», los ocho primeros bytes de la cabecera, en $7FF0."
+      - "Es la dirección de la cabecera que usa el software conocido; la suma va diez bytes después."
+    solucion: "$7FF0."
 
   - id: explore-comprobacion
     tipo: explorar
     titulo: "Dos comprobaciones"
-    texto: "La ROM de exportación pide la cabecera y una suma de comprobación correcta. Mueva las dos."
+    texto: "La ROM de exportación pide la cabecera y una suma de comprobación correcta. Consiga que dé el cartucho por válido."
     libro: ["sms#88", "sms#89"]
-    requiere: { mover: [TMR, SUMA] }
     widget:
       tipo: logica
       entradas: [{ id: TMR, rotulo: "Cabecera «TMR SEGA»" }, { id: SUMA, rotulo: "Suma correcta" }]
@@ -72,6 +87,15 @@ tarjetas:
         - { id: y1, tipo: and, entradas: [TMR, SUMA] }
       salidas:
         - { id: VALIDO, de: y1, rotulo: "Datos válidos" }
+    objetivo:
+      condiciones:
+        - { led: VALIDO, valor: 1, rotulo: "Datos válidos" }
+      logrado: "Cabecera y suma correctas: la ROM de arranque da los datos por válidos y pasa al juego."
+      pistas:
+        - { texto: "Falta una de las dos: la suma está en la palabra de $7FFA." }
+    escalera:
+      - "Hacen falta las dos."
+    solucion: "Cabecera y suma correctas."
 
   - id: tabla-comprobacion
     tipo: tabla
@@ -94,21 +118,27 @@ tarjetas:
     solucion: "Solo en la fila con las dos entradas a 1."
 
   - id: empareje-regiones
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: leer
     titulo: "El código de región"
-    texto: "Los 4 bits altos del byte 16 de la cabecera dicen para qué sistema es. Empareje."
+    texto: "Los 4 bits altos del byte 16 de la cabecera dicen para qué sistema es: $3, SMS Japón; $5, Game Gear Japón. Escriba en hexadecimal el de un SMS de exportación."
     libro: ["sms#90", "sms#91"]
-    emparejar:
-      - ["$3", "SMS Japón"]
-      - ["$4", "SMS exportación"]
-      - ["$5", "Game Gear Japón"]
-    exito: "Solo la ROM de los SMS de exportación mira este código."
-    pistas:
-      - { texto: "Los dos de SMS van seguidos: $3 y $4." }
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
+    leer:
+      objetivo: "0x4"
+      base: 16
+      cifras: 4
+      rotulo: "Código de región"
+      errores:
+        - { expr: "3", texto: "$3 es SMS Japón." }
+        - { expr: "5", texto: "$5 es Game Gear Japón." }
+    exito: "$4: SMS exportación. Solo la ROM de los SMS de exportación mira este código."
     escalera:
-      - "El primero de la lista es Japón."
-    solucion: "$3: SMS Japón. $4: SMS exportación. $5: Game Gear Japón."
+      - "Los dos de SMS van seguidos."
+    solucion: "$4."
 
   - id: prediga-japones
     tipo: predecir
@@ -155,26 +185,30 @@ tarjetas:
     solucion: "Aporta la cabecera que la ROM de arranque necesita ver."
 
   - id: lento-pal
-    tipo: pregunta
+    tipo: tocar
     titulo: "Un juego que va lento"
-    texto: "Un juego norteamericano va más lento en el SMS II PAL que en su consola. ¿Qué pasa?"
-    libro: ["sms#94"]
+    texto: "Un juego norteamericano va más lento en el SMS II PAL: no está optimizado para 50 Hz. Toque el chip que marca los cuadros."
+    libro: ["sms#94", "sms#5"]
     widget:
       tipo: figura
       consola: { maquina: sms }
       zonas:
-        - { id: vdp, hotspot: vdp, rotulo: "VDP" }
-    opciones:
-      - texto: "El juego no está optimizado para 50 Hz."
-        bien: true
-        porque: "Si cuenta cuadros, a 50 Hz avanza menos por segundo. No es una avería."
-      - texto: "El Z80 está estropeado."
-        porque: "Un Z80 averiado no daría un juego más lento y estable: es la frecuencia de cuadro."
-      - texto: "La ROM de arranque lo frena."
-        porque: "La ROM de arranque solo comprueba la cabecera y pasa al juego."
+        - { id: z80, hotspot: z80, rotulo: "Chip largo vertical, arriba en el centro" }
+        - { id: bios, hotspot: bios, rotulo: "Chip vertical, arriba a la derecha" }
+        - { id: ram, hotspot: ram, rotulo: "Chip vertical, arriba del todo a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip largo, en el centro" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, en el centro" }
+    tocar:
+      bien: [vdp]
+      porque:
+        z80: "El Z80 ejecuta el juego al ritmo que le marcan los cuadros del VDP."
+        bios: "La ROM de arranque solo comprueba la cabecera y pasa al juego."
+        ram: "La RAM no marca ningún ritmo."
+        cart: "El juego es el mismo; lo que cambia son los cuadros por segundo."
+    exito: "El VDP: en una PAL da unos 50 cuadros por segundo. Un juego que cuenta cuadros avanza menos por segundo: no es una avería."
     escalera:
-      - "¿Cuántos cuadros por segundo da una PAL?"
-    solucion: "Es la norma: un juego no optimizado para 50 Hz va más lento en una PAL."
+      - "El chip de vídeo cuenta las líneas y los cuadros."
+    solucion: "El VDP."
 
   - id: resumen
     tipo: resumen

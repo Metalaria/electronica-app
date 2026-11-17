@@ -3,9 +3,15 @@
 #   componentes críticos y protecciones.
 # - Sin modelo numérico: la sección es de lectura del esquema.
 # Pasos prácticos: «tocar» la referencia y el diodo de protección de la salida en el esquema.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): con los valores del propio esquema 51.6 (TL431 de 2,5 V,
+# R1 de 22 kΩ, R2 de 2 kΩ, R_S de 0,05 Ω, salida de 0–30 V y 0–3 A) se elige R1 para que el divisor devuelva la
+# referencia con la salida en 30 V (objetivo, esquema «divisor» vivo) y se calcula la tensión del shunt a 3 A. Los
+# bloques y los componentes se tocan. Quedan dos preguntas (la separación y el aislamiento); los críticos y los tres
+# casos de entrada, al resumen.
 leccion: cap50/sec-50.4
 
 libro:
+  109: "reúne cinco bloques, y su lectura ordenada explica el aparato entero"
   111: "Entrada de red y transformador"
   112: "puente, condensador principal y su descarga"
   114: "con su OR de diodos y la referencia común"
@@ -21,24 +27,74 @@ libro:
   136: "Esquema de la fuente: lazo de tensión con operacional y lazo de límite de corriente."
   137: "Los cinco bloques del esquema de la fuente y sus componentes críticos."
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    V_max: { sim: "V_{out}", nombre: "salida máxima", unidad: V, valor: 30 }
+    V_ref: { sim: "V_{ref}", nombre: "referencia TL431", unidad: V, valor: 2.5 }
+    R_1: { sim: "R_{1}", nombre: "resistencia de arriba del divisor", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R_{2}", nombre: "resistencia de abajo del divisor", unidad: Ω, valor: 2000 }
+    R_s: { sim: "R_{S}", nombre: "shunt de corriente", unidad: Ω, valor: 0.05 }
+    I_max: { sim: "I", nombre: "corriente máxima", unidad: A, valor: 3 }
+  calculos:
+    V_fb: { expr: "V_max*R_2/(R_1 + R_2)", sim: "V_{fb}", nombre: "lo que devuelve el divisor", unidad: V }
+    I_div: { expr: "V_max/(R_1 + R_2)", sim: "I", nombre: "corriente del divisor", unidad: A }
+    V_sh: { expr: "I_max*R_s", sim: "V_{S}", nombre: "tensión en el shunt a 3 A", unidad: V }
+    V_err: { expr: "I_max/R_s", sim: "V", nombre: "corriente entre resistencia (error)", unidad: V }
 
 tarjetas:
-  - id: explore-bloques
+  - id: explore-divisor
     tipo: explorar
+    titulo: "El divisor de realimentación"
+    texto: "El lazo ajusta la salida hasta que el divisor devuelve los 2,5 V del TL431. Elija R1 para que eso ocurra con la salida en 30 V."
+    libro: [123, 125, 136]
+    inicio: { R_1: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_max, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_fb, rotulo: "Lo que devuelve el divisor" }
+      corriente: I_div
+      mide: { salida: V_fb, corriente: I_div }
+      mandos:
+        - { valor: R_1, lista: [10000, 15000, 22000, 33000], rotulo: "R1" }
+    objetivo:
+      condiciones:
+        - { valor: V_fb, objetivo: 2.5, tol: 0.02, rotulo: "Realimentación: {{V_fb}}" }
+      logrado: "Con R1 de {{R_1}} y R2 de {{R_2}}, 30 V dan {{V_fb}}: la salida máxima la fijan la referencia y el divisor. Sus tolerancias pasan a la salida."
+      pistas:
+        - { cuando: { valor: V_fb, mayor: 2.55 }, texto: "Devuelve demasiado: el lazo se pararía antes de 30 V. R1 mayor." }
+        - { texto: "Devuelve poco: la salida subiría por encima de 30 V. R1 menor." }
+    escalera:
+      - "30 V × R2/(R1 + R2) debe ser 2,5 V."
+    solucion: "22 kΩ: 30 V × 2/(22 + 2) = 2,5 V."
+    comprobar:
+      - { con: { R_1: 22000 }, V_fb: 2.5, V_max: 30, V_ref: 2.5 }
+
+  - id: toque-bloques
+    tipo: tocar
     titulo: "Cinco bloques"
-    texto: "Leído en orden, el esquema explica el aparato entero. Toque los cinco bloques."
-    libro: [111, 112, 114, 137]
+    texto: "Leído en orden, el esquema explica el aparato entero. Toque el bloque de los dos lazos con su OR de diodos y la referencia común."
+    libro: [109, 111, 112, 114, 137]
     widget:
       tipo: figura
       figura: fig-50.6
       zonas:
-        - { id: red, rotulo: "Primer recuadro, arriba a la izquierda", rect: [2, 25, 136, 100], texto: "Entrada de red y transformador: fusible, interruptor, protección y la frontera de seguridad." }
-        - { id: filtro, rotulo: "Segundo recuadro de arriba", rect: [151, 40, 109, 85], texto: "Rectificación y filtrado: puente, condensador principal y su descarga." }
-        - { id: paso, rotulo: "Tercer recuadro de arriba", rect: [270, 40, 90, 85], texto: "El elemento de paso, con su disipador y su protección térmica." }
-        - { id: lazos, rotulo: "Recuadro verde de abajo", rect: [152, 148, 180, 78], texto: "Los dos lazos de control, tensión y corriente, con su OR de diodos y la referencia común." }
-        - { id: medida, rotulo: "Recuadro azul de abajo", rect: [345, 148, 107, 78], texto: "Medida e indicación: sensado de tensión y de corriente, e indicadores de modo." }
-    requiere: { mover: [red, lazos] }
+        - { id: red, rotulo: "Primer recuadro, arriba a la izquierda", rect: [2, 25, 136, 100] }
+        - { id: filtro, rotulo: "Segundo recuadro de arriba", rect: [151, 40, 109, 85] }
+        - { id: paso, rotulo: "Tercer recuadro de arriba", rect: [270, 40, 90, 85] }
+        - { id: lazos, rotulo: "Recuadro verde de abajo", rect: [152, 148, 180, 78] }
+        - { id: medida, rotulo: "Recuadro azul de abajo", rect: [345, 148, 107, 78] }
+    tocar:
+      bien: [lazos]
+      porque:
+        red: "Entrada de red y transformador: fusible, interruptor, protección y la frontera de seguridad."
+        filtro: "Rectificación y filtrado: puente, condensador principal y su descarga."
+        paso: "El elemento de paso y su disipación."
+        medida: "Medida e indicación: sensado y los indicadores de modo."
+    exito: "Tensión y corriente, unidos por diodos, con la referencia común."
+    escalera:
+      - "Busque el que habla de tensión y corriente a la vez."
+    solucion: "El recuadro verde de abajo."
 
   - id: toque-referencia
     tipo: tocar
@@ -59,32 +115,39 @@ tarjetas:
         fusible: "Es el fusible de red: protección, no exactitud."
         condensador: "Es el condensador de filtro: fija el rizado, no la exactitud."
         shunt: "El shunt mide la corriente; su tolerancia importa, pero la exactitud de la tensión la da la referencia."
-    exito: "El TL431: la exactitud de la fuente no puede ser mejor que la suya."
+    exito: "El TL431 de 2,5 V: la exactitud de la fuente no puede ser mejor que la suya."
+    comprobar:
+      - { V_ref: 2.5 }
     escalera:
       - "Busque la pieza que da una tensión fija para comparar."
     solucion: "El TL431, la referencia."
 
-  - id: empareje-criticos
-    tipo: pregunta
-    titulo: "Los componentes críticos"
-    texto: "Empareje cada componente crítico con por qué se señala en el esquema."
-    libro: [123, 124, 125, 126]
+  - id: simule-shunt
+    tipo: simular
+    titulo: "El shunt"
+    texto: "El lazo de corriente mide la caída en R_{S} de 0,05 Ω. ¿Qué tensión le da a 3 A?"
+    libro: [124, 136]
     widget:
-      tipo: figura
-      figura: fig-50.6
-      zonas:
-        - { id: criticos, rotulo: "Recuadro naranja de abajo", rect: [2, 148, 138, 78] }
-    emparejar:
-      - ["La referencia", "De ella depende toda la exactitud"]
-      - ["El shunt de corriente", "Su tolerancia y su coeficiente térmico"]
-      - ["El divisor de realimentación", "Sus tolerancias pasan a la salida"]
-      - ["Los condensadores de compensación", "Críticos para la estabilidad"]
-    exito: "En los cuatro, una anotación de «no sustituir por otro valor» ahorra problemas."
-    pistas:
-      - { texto: "La estabilidad la deciden los que compensan el lazo." }
+      tipo: grafica
+      x: { id: ix, min: 0, max: 3, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 0.2, unidad: V, rotulo: "V_{S}" }
+      curvas:
+        - { expr: "ix*R_s", color: azul, rotulo: "tensión en el shunt" }
+      lectura: { valor: V_sh, rotulo: "Tensión en el shunt" }
+      ocultar: true
+    simular:
+      objetivo: V_sh
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión en el shunt a 3 A"
+      errores:
+        - { expr: "V_err", texto: "Ha dividido: la caída es corriente por resistencia." }
+    exito: "150 mV: tan poco que su tolerancia y su coeficiente térmico mandan en la exactitud del límite."
     escalera:
-      - "Uno fija la exactitud, otro mide corriente, otro escala la salida, otro estabiliza."
-    solucion: "Referencia, exactitud; shunt, tolerancia y deriva; divisor, tolerancias; compensación, estabilidad."
+      - "V = I·R."
+    solucion: "3 A × 0,05 Ω = 0,15 V."
+    comprobar:
+      - { V_sh: 0.15, V_err: 60, I_max: 3, R_s: 0.05 }
 
   - id: separacion
     tipo: porque
@@ -107,28 +170,6 @@ tarjetas:
     escalera:
       - "¿Qué lado está a tensión de red?"
     solucion: "Es una cuestión de seguridad, no de estética."
-
-  - id: tres-casos
-    tipo: pregunta
-    titulo: "Las tensiones anotadas"
-    texto: "El esquema anota las tensiones en cada punto. ¿En qué casos?"
-    libro: [118]
-    widget:
-      tipo: figura
-      figura: fig-50.6
-      zonas:
-        - { id: filtro, rotulo: "Segundo recuadro de arriba", rect: [151, 40, 109, 85] }
-    opciones:
-      - texto: "Con la entrada mínima, la nominal y la máxima"
-        bien: true
-        porque: "Así se comprueba la placa montada en los tres casos."
-      - texto: "Solo con la entrada nominal"
-        porque: "El regulador debe funcionar con la red baja y soportar la alta."
-      - texto: "Solo en vacío"
-        porque: "Importan los tres casos de entrada, con su carga."
-    escalera:
-      - "La red no siempre vale lo mismo."
-    solucion: "Con la entrada mínima, nominal y máxima."
 
   - id: toque-d3
     tipo: tocar
@@ -179,9 +220,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [117, 123, 127, 131]
+    libro: [117, 118, 123, 124, 125, 126, 127, 131]
     ideas:
       - { titulo: "En orden.", texto: "Red, rectificación, paso, lazos y medida: el aparato entero." }
-      - { titulo: "Lo que debe decir.", texto: "La separación, las tensiones en tres casos, las disipaciones y los ajustes." }
-      - { titulo: "Lo crítico.", texto: "Referencia, shunt, divisor y compensación: «no sustituir por otro valor»." }
+      - { titulo: "Lo que debe decir.", texto: "La separación, las tensiones con la entrada mínima, nominal y máxima, las disipaciones y los ajustes." }
+      - { titulo: "Lo crítico.", texto: "Referencia, exactitud; shunt, tolerancia y deriva; divisor, tolerancias a la salida; compensación, estabilidad. «No sustituir por otro valor»." }
       - { titulo: "Protecciones.", texto: "Fusible, descarga del condensador, diodo en la salida y protección térmica." }

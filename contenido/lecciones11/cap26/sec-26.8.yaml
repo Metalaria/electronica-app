@@ -6,6 +6,10 @@
 # Tensión de base fija frente a resistencia de emisor (bloque 238, figura 25.15): V_BE = 0,7 V − 2 mV/°C·ΔT en el
 # esquema «bjt-polarizacion» con los valores de ejemplo de la guía (12 V, 47 kΩ, 10 kΩ, 3,3 kΩ, 1 kΩ, β = 100); la
 # curva sin resistencia multiplica por diez cada 60 mV (30 °C). R_DS(on)(T) del bloque 241 con 10 mΩ de ejemplo.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el diodo se calienta hasta bajar 100 mV (objetivo), la caída a
+# 55 °C se predice, la corriente con base fija se lleva a ×10, la etapa con R_E se calienta 30 °C, la R_DS(on) a 100 °C
+# se predice y se lleva a 15 mΩ con la fórmula a la vista, y queda el banco del secador. Quedan dos preguntas de
+# opciones (la resistencia de emisor, la vida) y la tabla emparejada.
 leccion: cap26/sec-26.8
 
 libro:
@@ -66,13 +70,15 @@ modelo:
     k_f: { expr: "10^(0.002*dT/0.06)", sim: "×", nombre: "con tensión de base fija", unidad: "", cifras: 2 }
     R_T: { expr: "R_25*(1 + 0.007*dTm)", sim: "R_{DS(on)}(T)", nombre: "resistencia en caliente", unidad: Ω }
     s_R: { expr: "100*0.007*dTm", sim: "ΔR", nombre: "aumento de R_DS(on)", unidad: "%", cifras: 2 }
+    s_10: { expr: "100*0.007*10", sim: "ΔR", nombre: "aumento en 10 °C", unidad: "%", cifras: 2 }
 
 tarjetas:
   - id: explore-diodo
     tipo: explorar
     titulo: "Un diodo que se calienta"
-    texto: "Un diodo con una resistencia desde 5 V. Caliéntelo y mire su tensión directa."
+    texto: "Un diodo con una resistencia desde 5 V. Caliéntelo hasta que su tensión directa baje 100 mV."
     libro: [229, 235, 236, 256]
+    inicio: { T_c: 25 }
     widget:
       tipo: circuito
       esquema: diodo
@@ -85,9 +91,18 @@ tarjetas:
       mide: { corriente: I_d, vd: V_d }
       mandos:
         - { valor: T_c, min: 25, max: 85, paso: 5, rotulo: "Temperatura" }
-    requiere: { mover: [T_c] }
+    objetivo:
+      condiciones:
+        - { valor: dV, max: -0.1, rotulo: "Desde 25 °C: {{dV}}" }
+      logrado: "A {{T_c}}, {{dV}}: unos −2 mV por grado. V_{T} sube, pero I_{S} sube mucho más deprisa."
+      pistas:
+        - { texto: "Aún no ha bajado 100 mV: caliéntelo más." }
+    escalera:
+      - "A unos 2 mV por grado, 100 mV piden unos 50 °C más."
+    solucion: "Unos 50 °C más: a 75 °C ya ha bajado 118 mV."
     comprobar:
       - { V_s: 5 }
+      - { con: { T_c: 75 }, dV: -0.1181, tol: 0.01 }
 
   - id: simule-calor
     tipo: simular
@@ -143,8 +158,9 @@ tarjetas:
   - id: explore-polarizacion
     tipo: explorar
     titulo: "Base fija o resistencia de emisor"
-    texto: "Corriente de colector al calentar, frente a la de frío. Mueva el calentamiento y compare las dos curvas."
+    texto: "Corriente de colector al calentar, frente a la de frío. Caliente hasta que, con tensión de base fija, se multiplique por diez."
     libro: [238]
+    inicio: { dT: 0 }
     widget:
       tipo: grafica
       x: { id: dt, min: 0, max: 30, unidad: "°C", rotulo: "ΔT" }
@@ -157,12 +173,22 @@ tarjetas:
       lectura: { valor: k_f, rotulo: "Con base fija, I_{C} se multiplica por" }
       mandos:
         - { valor: dT, min: 0, max: 30, paso: 5, rotulo: "Calentamiento" }
-    requiere: { mover: [dT] }
+    objetivo:
+      condiciones:
+        - { valor: k_f, min: 9.9, rotulo: "×{{k_f}}" }
+      logrado: "Con {{dT}} más, 60 mV más de excitación: la exponencial multiplica la corriente por diez."
+      pistas:
+        - { texto: "Aún no se ha multiplicado por diez: caliente más." }
+    escalera:
+      - "Cada grado son 2 mV más de excitación; 60 mV, una década de corriente."
+    solucion: "30 °C: ×10."
+    comprobar:
+      - { con: { dT: 30 }, k_f: 10, tol: 0.01 }
 
   - id: sorpresa-emisor
     tipo: sorpresa
     titulo: "Con la resistencia de emisor"
-    texto: "El mismo calentamiento en una etapa con divisor y R_{E}. Caliente 30 °C y mire cuánto cambia I_{C}."
+    texto: "El mismo calentamiento en una etapa con divisor y R_{E}. Caliéntela 30 °C y vigile I_{C}."
     libro: [238, 251]
     inicio: { V_BE: 0.7 }
     widget:
@@ -177,10 +203,17 @@ tarjetas:
       mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
       mandos:
         - { valor: V_BE, lista: [0.7, 0.69, 0.68, 0.67, 0.66, 0.65, 0.64], nombres: ["en frío", "+5 °C", "+10 °C", "+15 °C", "+20 °C", "+25 °C", "+30 °C"], rotulo: "V_{BE} al calentar" }
-    requiere: { mover: [V_BE] }
+    objetivo:
+      condiciones:
+        - { valor: V_BE, max: 0.64, rotulo: "Calentamiento: {{dTe}}" }
+      logrado: "Con 30 °C más, la corriente solo sube {{c_pc}}. Con base fija se habría multiplicado por diez."
+      pistas:
+        - { texto: "Siga calentando hasta +30 °C." }
+    escalera:
+      - "Cada escalón son 5 °C, 10 mV menos de V_{BE}."
+    solucion: "+30 °C: unos pocos por ciento."
     comprobar:
       - { con: { V_BE: 0.64 }, c_pc: 4.3, dTe: 30, tol: 0.02 }
-      - { con: { dT: 30 }, k_f: 10, tol: 0.02 }
 
   - id: por-que-emisor
     tipo: porque
@@ -208,41 +241,31 @@ tarjetas:
     solucion: "R_{E} convierte la deriva de V_{BE} en un cambio pequeño de su tensión: toda polarización necesita realimentación."
 
   - id: prediga-rdson
-    tipo: predecir
+    tipo: simular
     titulo: "R_{DS(on)} en caliente"
-    texto: "Un MOSFET pasa de 25 °C a 100 °C. ¿Cuánto sube su R_{DS(on)}?"
+    texto: "Un MOSFET pasa de 25 °C a 100 °C. ¿Cuánto sube su R_{DS(on)}, en porcentaje?"
     libro: [241, 242]
     fijar: { dTm: 75 }
-    widget:
-      tipo: grafica
-      x: { id: dt, min: 0, max: 125, unidad: "°C", rotulo: "ΔT" }
-      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
-      curvas:
-        - { expr: "R_25*(1 + 0.007*dt)", color: naranja, rotulo: "R_{DS(on)}" }
-      lectura: { valor: s_R, rotulo: "Aumento a 100 °C" }
-      ocultar: true
-    opciones:
-      - texto: "Un 50 % más"
-        bien: true
-        porque: "+0,7 %/°C por 75 °C son un 52 %. En los de alta tensión, la hoja llega a mostrar un 70 % o más."
-      - texto: "Un 7 % más"
-        porque: "Eso sería con 10 °C. De 25 a 100 °C son 75 °C."
-      - texto: "Nada: la hoja da un solo valor"
-        porque: "La hoja lo da a 25 °C. La disipación se calcula con la R_{DS(on)} caliente."
+    simular:
+      objetivo: s_R
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Aumento a 100 °C"
+      errores:
+        - { expr: "s_10", texto: "Eso sería con 10 °C. De 25 a 100 °C son 75 °C." }
+    exito: "Un 50 % más. En los de alta tensión, la hoja llega a mostrar un 70 % o más."
     escalera:
       - "R_{DS(on)}(T) ≈ R_{DS(on)}(25 °C) · (1 + 0,007 · ΔT)."
     solucion: "0,007 · 75 ≈ 0,5: un 50 % más."
     comprobar:
-      - { s_R: 52.5, tol: 0.01 }
-      - { con: { dTm: 10 }, s_R: 7 }
+      - { s_R: 52.5, s_10: 7, tol: 0.01 }
 
   - id: formula-rdson
-    tipo: formula
+    tipo: explorar
     titulo: "La R_{DS(on)} caliente"
-    texto: "Un MOSFET de 10 mΩ a 25 °C. Caliéntelo y mire su resistencia."
+    texto: "Un MOSFET de 10 mΩ a 25 °C. Caliéntelo hasta que su R_{DS(on)} llegue a 15 mΩ."
     libro: [241, 252]
-    ec: 241
-    sustitucion: "{{R_25}} · (1 + 0,007 · {{dTm}}) = {{R_T}}"
+    inicio: { dTm: 0 }
     widget:
       tipo: grafica
       x: { id: dt, min: 0, max: 125, unidad: "°C", rotulo: "ΔT" }
@@ -254,8 +277,19 @@ tarjetas:
       lectura: { valor: R_T, rotulo: "R_{DS(on)} en caliente" }
       mandos:
         - { valor: dTm, min: 0, max: 125, paso: 5, rotulo: "Calentamiento" }
+    objetivo:
+      condiciones:
+        - { valor: R_T, objetivo: 0.015, tol: 0.02, rotulo: "R_{DS(on)}: {{R_T}}" }
+      logrado: "{{R_25}} · (1 + 0,007 · {{dTm}}) = {{R_T}}: la disipación se calcula con esta, no con la de la hoja."
+      pistas:
+        - { cuando: { valor: R_T, mayor: 0.0153 }, texto: "Se ha pasado: enfríelo un poco." }
+        - { texto: "Aún no: caliéntelo más." }
+    escalera:
+      - "Un 50 % más hacia 100 °C."
+    solucion: "Unos 75 °C de calentamiento: 15,25 mΩ."
     comprobar:
       - { R_25: 0.01 }
+      - { con: { dTm: 75 }, R_T: 0.01525 }
 
   - id: empareje-tabla
     tipo: pregunta

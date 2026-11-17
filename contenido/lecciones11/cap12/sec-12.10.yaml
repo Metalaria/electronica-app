@@ -1,13 +1,16 @@
-# Lección 1.2 de la sección 12.10 «Problemas de Diseño» (cap12): problemas 12.A (el mismo MOSFET con tres
+# Lección de la sección 12.10 «Problemas de Diseño» (cap12): problemas 12.A (el mismo MOSFET con tres
 # resistencias) y 12.B (diseñar con lo garantizado). Formato: GUIA.md.
 # 12.A: el canal en conducción se dibuja como una resistencia R_DS(on) con los 5 A del problema; R_DS(on) frente a
 # V_GS es la curva de ejemplo de la lección 12.3, que pasa por los tres puntos de la tabla (20, 36 y 70 mΩ).
 # 12.B: la gráfica lleva cada contribución del típico (0) al garantizado (1) y dibuja su suma y su combinación
 # cuadrática; solo los extremos son del libro (0,114 %, 0,735 % y 1,200 %).
-# Paso práctico: «simular» (predecir la caída V_DS que medirá en el banco con la puerta a 3,3 V).
+# 1.2.1 (aprender haciendo): bajar la puerta hasta las pérdidas de 3,3 V, leerlas en la gráfica, predecir la caída,
+# calcular la resistencia en caliente y los tres errores combinados, leer el peor caso en la gráfica. Dos preguntas:
+# el transistor de nivel lógico y cuál usar.
 leccion: cap12/sec-12.10
 
 libro:
+  293: "Contribución Típico Garantizado (máximo) Offset del"
   275: "El mismo componente con tres resistencias distintas"
   277: "Se va a usar excitado desde un microcontrolador de 3,3 V y desde un driver de 10 V."
   281: "Pérdidas a 5 A"
@@ -52,7 +55,7 @@ tarjetas:
   - id: explore-perdidas
     tipo: explorar
     titulo: "12.A: las mismas 5 A"
-    texto: "El MOSFET conduce 5 A. Baje la tensión de puerta de 10 V a 3,3 V y mire las pérdidas."
+    texto: "El MOSFET conduce 5 A. Baje la tensión de puerta hasta que las pérdidas pasen de 1,7 W."
     nota: "R_{DS(on)} de la tabla del problema; entre puntos, curva de ejemplo."
     libro: [275, 277, 281]
     fijar: { I_d: 5 }
@@ -67,16 +70,25 @@ tarjetas:
       mide: { id: I_d, vds: V_ds }
       mandos:
         - { valor: V_g, lista: [3.3, 4.5, 10], rotulo: "Tensión de puerta" }
-    requiere: { mover: [V_g] }
+    inicio: { V_g: 10 }
+    objetivo:
+      condiciones:
+        - { valor: P_d, min: 1.7, rotulo: "Pérdidas: {{P_d}}" }
+      logrado: "Con {{V_g}} de puerta, {{R_ds}} y {{P_d}}: el mismo transistor, las mismas 5 A."
+      pistas:
+        - { texto: "Baje la tensión de puerta." }
+    escalera:
+      - "Con menos tensión de puerta, el canal está menos abierto."
+    solucion: "Con 3,3 V de puerta: 1,750 W."
     comprobar:
       - { P_d: 0.5, tol: 0.002 }
       - { con: { V_g: 4.5 }, P_d: 0.9, tol: 0.002 }
       - { con: { V_g: 3.3 }, P_d: 1.75, tol: 0.002 }
 
   - id: prediga-factor
-    tipo: predecir
-    titulo: "¿Cuántas veces más?"
-    texto: "A 10 V de puerta, el transistor pierde 0,500 W con 5 A. ¿Cuántas veces más pierde con 3,3 V?"
+    tipo: leer
+    titulo: "Lea las pérdidas"
+    texto: "A 10 V de puerta pierde 0,500 W con 5 A. Lea en la gráfica lo que pierde con 3,3 V y la misma corriente."
     libro: [281, 282]
     fijar: { I_d: 5, V_g: 3.3 }
     widget:
@@ -87,18 +99,18 @@ tarjetas:
         - { expr: "i^2*R_ds", color: naranja, rotulo: "a 3,3 V" }
         - { expr: "i^2*0.02", color: azul, rotulo: "a 10 V", discontinua: true }
       lectura: { valor: P_d, rotulo: "Pérdidas a 5 A" }
-      ocultar: true
-    opciones:
-      - texto: "3,5 veces: 1,750 W"
-        bien: true
-        porque: "Unos 70 mΩ en lugar de 20: tres veces y media lo que dice el catálogo, y eso decide si necesita disipador."
-      - texto: "Las mismas: la R_{DS(on)} es la de la hoja"
-        porque: "Los 20 mΩ son a V_{GS} = 10 V; con menos puerta, el canal está menos abierto."
-      - texto: "Tres veces, como la tensión de puerta"
-        porque: "Las pérdidas siguen a la R_{DS(on)}, no a la tensión de puerta: 70 frente a 20 mΩ."
+      mandos: []
+    leer:
+      objetivo: P_d
+      unidad: W
+      tol: 0.04
+      rotulo: "Pérdidas a 3,3 V y 5 A"
+      errores:
+        - { expr: "0.5", texto: "Esa es la curva de 10 V, la discontinua: la de 3,3 V es la naranja." }
+    exito: "1,750 W: 3,5 veces más. Esa diferencia decide si necesita disipador."
     escalera:
-      - "P = I²·R_{DS(on)}, y R_{DS(on)} a 3,3 V es de unos 70 mΩ."
-    solucion: "70 / 20 = 3,5: 1,750 W en lugar de 0,500 W."
+      - "Suba desde 5 A hasta la curva naranja."
+    solucion: "1,750 W, 70 / 20 = 3,5 veces más."
     comprobar:
       - { P_d: 1.75, k_p: 3.5, tol: 0.002 }
 
@@ -135,27 +147,22 @@ tarjetas:
       - { V_ds: 0.35, V_d20: 0.1, tol: 0.002 }
 
   - id: estime-caliente
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "Y en caliente"
     texto: "La R_{DS(on)} crece unas 1,5 veces a 100 °C de unión. ¿Qué quedan los 70 mΩ de 3,3 V?"
     libro: [286]
     fijar: { V_g: 3.3 }
-    estimar:
-      objetivo: "R_hot"
+    simular:
+      objetivo: R_hot
       unidad: Ω
-      min: 0
-      max: 0.2
-      paso: 0.005
-      inicio: 0.18
       tol: 0.03
       rotulo: "R_{DS(on)} en caliente"
-    exito: "Unos 105 mΩ: en caliente, aún peor."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.108 }, texto: "Se ha pasado: multiplique por 1,5, no por 2." }
-      - { texto: "Se ha quedado corto: 70 mΩ por 1,5." }
+      errores:
+        - { expr: "2*R_ds", texto: "Multiplique por 1,5, no por 2: un 0,7 % por grado." }
+        - { expr: "R_ds", texto: "Esos son los 70 mΩ a 25 °C: en caliente crece." }
+    exito: "Unos 105 mΩ: en caliente es aún peor."
     escalera:
-      - "Multiplique los 70 mΩ por 1,5."
+      - "70 mΩ por 1,5."
     solucion: "70 mΩ · 1,5 = 105 mΩ."
     comprobar:
       - { R_hot: 0.105, tol: 0.002 }
@@ -186,19 +193,28 @@ tarjetas:
     solucion: "Uno de nivel lógico, garantizado a 2,5 o 2,7 V."
 
   - id: formula-tipicos
-    tipo: formula
+    tipo: simular
     titulo: "12.B: combinar los típicos"
-    texto: "Offset 0,05 %, deriva 0,02 % y divisor 0,10 %, típicos: su combinación cuadrática."
-    libro: [288, 290, 294]
-    ec: 294
-    sustitucion: "√({{e_o}}² + {{e_d}}² + {{e_t}}²) = {{e_q}}"
+    texto: "Offset 0,05 %, deriva 0,02 % y divisor 0,10 %, típicos. ¿Cuánto da su combinación cuadrática?"
+    libro: [288, 290, 293, 294]
+    simular:
+      objetivo: e_q
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Error con los típicos"
+      errores:
+        - { expr: "e_o + e_d + e_t", texto: "Los ha sumado: la combinación cuadrática es la raíz de la suma de los cuadrados." }
+    exito: "0,114 %: el error estadístico con los típicos."
+    escalera:
+      - "Raíz de la suma de los cuadrados."
+    solucion: "√(0,05² + 0,02² + 0,10²) = 0,114 %."
     comprobar:
       - { e_q: 0.114, tol: 0.01 }
 
   - id: prediga-peor
-    tipo: predecir
+    tipo: leer
     titulo: "Con los garantizados"
-    texto: "Los garantizados son 0,5 %, 0,2 % y 0,5 %. Sumados en el peor caso, ¿cuánto dan frente a 0,114 %?"
+    texto: "La gráfica lleva cada error del típico (0) al garantizado (1). Lea el peor caso, la suma, con los garantizados."
     libro: [290, 295, 296]
     widget:
       tipo: grafica
@@ -209,43 +225,38 @@ tarjetas:
         - { expr: "sqrt((e_o + (g_o - e_o)*u)^2 + (e_d + (g_d - e_d)*u)^2 + (e_t + (g_t - e_t)*u)^2)", color: azul, rotulo: "cuadrática" }
       marcas:
         - { x: "0", y: "e_q", rotulo: "típicos: {{e_q}}" }
-      lectura: { valor: e_w, rotulo: "Peor caso" }
-      ocultar: true
-    opciones:
-      - texto: "1,200 %: un factor 10,6"
-        bien: true
-        porque: "Y las dos cifras son correctas: describen cosas distintas."
-      - texto: "0,735 %"
-        porque: "Ese es el punto intermedio: los garantizados combinados de forma cuadrática, no sumados."
-      - texto: "0,114 %, el mismo"
-        porque: "El peor caso suma los máximos: es diez veces mayor."
+      mandos: []
+    leer:
+      objetivo: e_w
+      unidad: "%"
+      tol: 0.04
+      rotulo: "Peor caso con los garantizados"
+      errores:
+        - { expr: "e_g", texto: "Esa es la cuadrática, la azul: el peor caso es la suma, la naranja." }
+        - { expr: "e_q", texto: "Ese es el punto de los típicos, a la izquierda: los garantizados están en el 1." }
+    exito: "1,200 %, un factor 10,6 frente a 0,114 %. Las dos cifras son correctas: describen cosas distintas."
     escalera:
-      - "En el peor caso, los errores se suman: 0,5 + 0,2 + 0,5."
-    solucion: "0,5 + 0,2 + 0,5 = 1,200 %, 10,6 veces la combinación de típicos."
+      - "Vaya al extremo derecho de la curva naranja."
+    solucion: "0,5 + 0,2 + 0,5 = 1,200 %."
     comprobar:
       - { e_w: 1.2, f_ew: 10.6, tol: 0.01 }
 
   - id: estime-intermedio
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "El punto intermedio"
     texto: "Combine los garantizados de forma cuadrática, como si fueran tres sigma. ¿Qué error da?"
     libro: [298]
-    estimar:
-      objetivo: "e_g"
+    simular:
+      objetivo: e_g
       unidad: "%"
-      min: 0
-      max: 1.5
-      paso: 0.005
-      inicio: 1.4
       tol: 0.02
       rotulo: "Error combinado"
-    exito: "0,735 %: entre ambos extremos, lo que estima en esencia un análisis de Monte Carlo."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.75 }, texto: "Se ha pasado: la combinación cuadrática es menor que la suma." }
-      - { texto: "Se ha quedado corto: use los garantizados, no los típicos." }
+      errores:
+        - { expr: "e_w", texto: "Esa es la suma, el peor caso: la combinación cuadrática es menor." }
+        - { expr: "e_q", texto: "Ha usado los típicos: aquí se combinan los garantizados." }
+    exito: "0,735 %, entre los dos extremos: en esencia, lo que estima un Monte Carlo."
     escalera:
-      - "√(0,5² + 0,2² + 0,5²)."
+      - "Raíz de la suma de los cuadrados de los garantizados."
     solucion: "√(0,5² + 0,2² + 0,5²) = 0,735 %."
     comprobar:
       - { e_g: 0.735, tol: 0.002 }

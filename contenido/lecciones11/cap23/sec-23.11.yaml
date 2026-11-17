@@ -1,6 +1,11 @@
 # Lección 1.2 de la sección 22.11 «Fuentes Dependientes en el Análisis» (cap23). Formato: contenido/lecciones11/GUIA.md.
 # La VCCS se dibuja con el esquema «fuente-controlada» (rombo g_m·v con r_o en paralelo). Sus valores son los del
 # transistor a 1 mA de la sección 6.1 (cap06#44 y #47): g_m = 38,7 mS, r_o = 100 kΩ y 4,7 kΩ de colector.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la salida se lleva a medio voltio con la tensión de control
+# (objetivo); sin carga, toda la corriente controlada pasa por r_o; v_o se predice y se simula (la restricción y el
+# procedimiento van en su éxito); g_m se escribe con la corriente de la fuente a 1 mV (los cuatro tipos, en su
+# éxito); la resistencia negativa se consigue en la recta (el oscilador, en su «logrado»). Quedan dos preguntas de
+# opciones (R_Th con dependientes y por qué la resistencia negativa no es un error).
 leccion: cap23/sec-23.11
 
 libro:
@@ -33,15 +38,18 @@ modelo:
     I_1v: { expr: "1/R_in", sim: "I", nombre: "corriente con 1 V aplicado", unidad: A }
     V_sr: { expr: "I_n*R_C", sim: "v_{o}", nombre: "salida sin contar r_o", unidad: V }
     V_sc: { expr: "I_n*r_o", sim: "v_{o}", nombre: "salida sin la carga", unidad: V }
+    g_med: { expr: "I_n/v_c", sim: "I/v", nombre: "transconductancia medida", unidad: S }
+    G_v: { expr: "V_no/v_c", sim: "v_{o}/v", nombre: "ganancia de tensión", unidad: "" }
     R_par: { expr: "par(r_o, R_C)", sim: "r_{o} ‖ R_{C}", nombre: "resistencia vista por la fuente", unidad: Ω }
 
 tarjetas:
   - id: explore-controlada
     tipo: explorar
     titulo: "Una fuente que obedece"
-    texto: "Esta fuente vale g_{m} · v: la manda una tensión del propio circuito. Mueva v y mire la salida."
+    texto: "Esta fuente vale g_{m} · v: la manda una tensión del circuito. Suba v hasta tener medio voltio a la salida."
     nota: "El transistor a 1 mA: g_{m} = 38,7 mS, r_{o} = 100 kΩ y 4,7 kΩ de colector."
     libro: [256, 257, 261, "cap06#44", "cap06#47"]
+    inicio: { v_c: 0.001 }
     widget:
       tipo: circuito
       esquema: fuente-controlada
@@ -53,66 +61,49 @@ tarjetas:
       mide: { salida: V_no, carga: I_nl, controlada: I_n, ro: I_nr }
       mandos:
         - { valor: v_c, min: 0, max: 0.005, paso: 0.0005, rotulo: "Tensión de control, v" }
-
-  - id: cuatro-tipos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los cuatro tipos"
-    texto: "Una cada fuente dependiente con lo que modela."
-    libro: [260]
-    emparejar:
-      - ["VCVS: tensión controlada por tensión", "Amplificador de tensión, operacional"]
-      - ["VCCS: corriente controlada por tensión", "Transconductancia: el transistor"]
-      - ["CCVS: tensión controlada por corriente", "Transimpedancia"]
-      - ["CCCS: corriente controlada por corriente", "Amplificador de corriente, β"]
-    exito: "La VCCS es la más usada en el libro: g_{m} = I_{C}/V_{T} es su coeficiente."
-    pistas:
-      - { texto: "Las dos primeras letras dicen qué la controla; las dos últimas, qué impone." }
+    objetivo:
+      condiciones:
+        - { valor: V_no, min: 0.5, rotulo: "Salida: {{V_no}}" }
+      logrado: "Con {{v_c}} de control, {{V_no}}: la salida es {{G_v}} veces la entrada a la salida. La fuente no tiene valor propio: lo dicta v."
+      pistas:
+        - { texto: "Todavía no llega: más tensión de control." }
     escalera:
-      - "Un transistor convierte una tensión de entrada en una corriente de salida."
-    solucion: "VCVS–operacional, VCCS–transistor, CCVS–transimpedancia, CCCS–β."
+      - "La salida es g_{m} · v · (r_{o} ‖ R_{C}): unos 174 mV por milivoltio."
+    solucion: "Con 3 mV: 0,521 V."
+    comprobar:
+      - { con: { v_c: 0.003 }, V_no: 0.5211, tol: 0.002 }
+      - { G_v: 173.7, V_no: 0.1737, tol: 0.002 }
 
-  - id: prediga-rth
-    tipo: predecir
-    titulo: "R_{Th} con dependientes"
-    texto: "Una red con una fuente controlada. ¿Cómo se calcula su R_{Th}?"
-    libro: [263, 265]
+  - id: sin-carga
+    tipo: explorar
+    titulo: "Su resistencia de salida"
+    texto: "La fuente controlada lleva r_{o} en paralelo: es un Norton que obedece. Desconecte la carga y mire adónde va la corriente."
+    libro: [257, "cap06#44"]
+    fijar: { v_c: 0.001 }
+    inicio: { n_on: 1 }
     widget:
       tipo: circuito
       esquema: fuente-controlada
       piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
       lectura: { valor: V_no, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I_nr, rotulo: "Por r_{o}: {{I_nr}}" }
       corriente: I_nl
-      mide: { salida: V_no, carga: I_nl }
-      ocultar: true
-    opciones:
-      - texto: "Con una fuente de prueba de 1 V, sin anular la dependiente"
-        bien: true
-        porque: "La dependiente sigue actuando y el cociente 1 V/I_{prueba} lo recoge. Es el método de los simuladores."
-      - texto: "Anulando todas las fuentes y mirando la resistencia vista"
-        porque: "Las dependientes no se anulan: su valor depende de una variable que sigue existiendo."
-      - texto: "Anulando solo la dependiente"
-        porque: "Al revés: la dependiente se queda; se anulan las independientes."
+      mide: { salida: V_no, carga: I_nl, controlada: I_n, ro: I_nr }
+      mandos:
+        - { valor: n_on, tipo: interruptor, rotulo: "Carga de 4,7 kΩ" }
+    objetivo:
+      condiciones:
+        - { valor: n_on, max: 0, rotulo: "Carga desconectada" }
+      logrado: "Sin carga, los 38,7 µA pasan todos por r_{o}: {{V_no}}. Con la carga, se reparten y quedan 174 mV."
+      pistas:
+        - { texto: "Abra el interruptor de la carga." }
     escalera:
-      - "Una fuente dependiente no es una causa: es una consecuencia del circuito."
-    solucion: "Fuente de prueba de 1 V con las independientes anuladas: R_{Th} = 1 V/I_{prueba}."
-
-  - id: procedimiento
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Cómo se plantean"
-    texto: "Ordene el procedimiento para analizar un circuito con fuentes dependientes."
-    libro: [269]
-    ordenar:
-      - "Plantear nodos o mallas como si la dependiente fuera independiente, con un nombre."
-      - "Añadir la ecuación de restricción de su valor."
-      - "Resolver el sistema completo."
-    exito: "La ecuación de restricción es lo único nuevo, y con ella el análisis vuelve a ser mecánico."
-    pistas:
-      - { texto: "La restricción se escribe cuando la fuente ya tiene nombre en las ecuaciones." }
-    escalera:
-      - "Primero se trata la fuente como si fuera independiente."
-    solucion: "Plantear con su nombre, añadir la restricción y resolver."
+      - "Quite la carga con el interruptor."
+    solucion: "Sin carga: 38,7 µA × 100 kΩ = 3,87 V."
+    comprobar:
+      - { con: { n_on: 0 }, V_no: 3.8685, tol: 0.002 }
+      - { V_no: 0.1737, tol: 0.002 }
 
   - id: simule-salida
     tipo: simular
@@ -138,7 +129,7 @@ tarjetas:
       errores:
         - { expr: "V_sr", texto: "Esos 182 mV olvidan r_{o}: la corriente también se reparte por los 100 kΩ." }
         - { expr: "V_sc", texto: "Así sería sin carga: toda la corriente por r_{o}. La carga de 4,7 kΩ está en paralelo." }
-    exito: "La restricción I = g_{m} · v y un solo nodo: 38,7 µA × (100 k ‖ 4,7 k) = 174 mV."
+    exito: "Se plantea con la fuente como si fuera independiente, se añade la restricción I = g_{m} · v y se resuelve: 38,7 µA × (100 k ‖ 4,7 k) = 174 mV."
     escalera:
       - "La corriente controlada se reparte entre r_{o} y la carga, que están en paralelo."
       - "Calcule 100 kΩ ‖ 4,7 kΩ y multiplique por 38,7 µA."
@@ -147,36 +138,63 @@ tarjetas:
       - { I_n: 38.7e-6, V_no: 0.1737, V_sr: 0.1818, V_sc: 3.8685, R_par: 4489 }
 
   - id: gm
-    tipo: pregunta
+    tipo: leer
     titulo: "El coeficiente g_{m}"
-    texto: "En la fuente del dibujo, g_{m} = I_{C}/V_{T}. ¿Qué tipo de fuente dependiente define?"
-    libro: [257, 261]
+    texto: "Con v = 1 mV, la fuente controlada da la corriente de la lectura. Escriba su coeficiente, g_{m} = I/v."
+    libro: [257, 260, 261, "cap06#47"]
+    fijar: { v_c: 0.001 }
     widget:
       tipo: circuito
       esquema: fuente-controlada
       piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
-      lectura: { valor: I_n, rotulo: "g_{m} · v" }
+      lectura: { valor: I_n, rotulo: "Corriente de la fuente controlada" }
       corriente: I_nl
-      mide: { salida: V_no, carga: I_nl, controlada: I_n }
-      mandos:
-        - { valor: v_c, min: 0, max: 0.005, paso: 0.0005, rotulo: "Tensión de control, v" }
-    opciones:
-      - texto: "Una VCCS: corriente controlada por tensión"
-        bien: true
-        porque: "g_{m} multiplica una tensión, v_{be}, y da una corriente: es una transconductancia."
-      - texto: "Una CCCS: corriente controlada por corriente"
-        porque: "Esa es la de β, que multiplica la corriente de base. g_{m} multiplica una tensión."
-      - texto: "Una VCVS: tensión controlada por tensión"
-        porque: "Esa es la del operacional. La salida de g_{m} es una corriente."
+      mide: { salida: V_no, carga: I_nl, controlada: I_n, ro: I_nr }
+      mandos: []
+    leer:
+      objetivo: g_med
+      unidad: S
+      tol: 0.02
+      rotulo: "g_{m}"
+      errores:
+        - { expr: "I_n", texto: "Esa es la corriente medida. g_{m} es esa corriente dividida por la tensión de control." }
+    exito: "38,7 mS: una corriente por cada tensión, una transconductancia. Es una VCCS; las otras son VCVS (operacional), CCVS (transimpedancia) y CCCS (β)."
     escalera:
-      - "Mire las unidades: g_{m} se mide en siemens, corriente entre tensión."
-    solucion: "VCCS: g_{m} convierte una tensión en una corriente."
+      - "Divida la corriente de la lectura por 1 mV."
+    solucion: "38,7 µA / 1 mV = 38,7 mS."
+    comprobar:
+      - { g_med: 0.038685, I_n: 38.685e-6 }
+
+  - id: prediga-rth
+    tipo: pregunta
+    titulo: "R_{Th} con dependientes"
+    texto: "Una red con una fuente controlada. ¿Cómo se calcula su R_{Th}?"
+    libro: [263, 265]
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
+      lectura: { valor: V_no, rotulo: "Tensión de salida" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl }
+      mandos: []
+    opciones:
+      - texto: "Con una fuente de prueba de 1 V, sin anular la dependiente"
+        bien: true
+        porque: "La dependiente sigue actuando y el cociente 1 V/I_{prueba} lo recoge. Es el método de los simuladores."
+      - texto: "Anulando todas las fuentes y mirando la resistencia vista"
+        porque: "Las dependientes no se anulan: su valor depende de una variable que sigue existiendo."
+      - texto: "Anulando solo la dependiente"
+        porque: "Al revés: la dependiente se queda; se anulan las independientes."
+    escalera:
+      - "Una fuente dependiente no es una causa: es una consecuencia del circuito."
+    solucion: "Fuente de prueba de 1 V con las independientes anuladas: R_{Th} = 1 V/I_{prueba}."
 
   - id: resistencia-negativa
     tipo: sorpresa
     titulo: "Una resistencia negativa"
-    texto: "La recta es la corriente de entrada frente a la tensión aplicada. Lleve R_{in} a valores negativos y suba la tensión."
-    libro: [272, 273]
+    texto: "La recta es la corriente de entrada frente a la tensión aplicada. Consiga que, al subir la tensión, la corriente baje."
+    libro: [272, 273, 275]
     inicio: { R_in: 100 }
     widget:
       tipo: grafica
@@ -187,6 +205,17 @@ tarjetas:
       lectura: { valor: I_1v, rotulo: "Corriente con 1 V" }
       mandos:
         - { valor: R_in, lista: [-100, -200, -500, 500, 200, 100], rotulo: "R_{in}" }
+    objetivo:
+      condiciones:
+        - { valor: R_in, max: -1, rotulo: "R_{in}: {{R_in}}" }
+      logrado: "Con {{R_in}}, la recta baja: más tensión, menos corriente. Junto a un tanque LC, cancela sus pérdidas y la oscilación se sostiene."
+      pistas:
+        - { texto: "La recta todavía sube: pruebe una R_{in} negativa." }
+    escalera:
+      - "La pendiente de la recta es 1/R_{in}."
+    solucion: "Cualquier R_{in} negativa: la recta tiene pendiente negativa."
+    comprobar:
+      - { con: { R_in: -100 }, I_1v: -0.01 }
 
   - id: por-que-negativa
     tipo: porque
@@ -199,6 +228,7 @@ tarjetas:
       y: { min: -0.012, max: 0.012, unidad: A, rotulo: "I de entrada" }
       curvas:
         - { expr: "v/R_in", color: azul, rotulo: "I = V/R_{in}" }
+      mandos: []
     opciones:
       - texto: "No: en un circuito activo es posible, porque la energía sale de la alimentación"
         bien: true
@@ -210,29 +240,6 @@ tarjetas:
     escalera:
       - "¿De dónde saca energía un circuito con transistores?"
     solucion: "No es un error: la energía viene de la alimentación."
-
-  - id: oscilador
-    tipo: pregunta
-    titulo: "Sus consecuencias"
-    texto: "¿Qué hace una resistencia de entrada negativa junto a un tanque LC?"
-    libro: [275]
-    widget:
-      tipo: grafica
-      x: { id: v, min: 0, max: 1, unidad: V, rotulo: "V aplicada" }
-      y: { min: -0.012, max: 0.012, unidad: A, rotulo: "I de entrada" }
-      curvas:
-        - { expr: "v/R_in", color: azul, rotulo: "I = V/R_{in}" }
-    opciones:
-      - texto: "Cancela sus pérdidas y la oscilación se sostiene"
-        bien: true
-        porque: "Es lo que hace posible un oscilador; junto a un tanque parásito, es un oscilador involuntario."
-      - texto: "Amortigua el tanque más deprisa"
-        porque: "Amortigua una resistencia positiva. La negativa aporta energía en lugar de quitarla."
-      - texto: "Nada: el tanque no tiene resistencia"
-        porque: "Todo tanque real tiene pérdidas, y la resistencia negativa es justo lo que las compensa."
-    escalera:
-      - "Una resistencia positiva disipa; una negativa, aporta."
-    solucion: "Compensa las pérdidas: la oscilación se mantiene."
 
   - id: resumen
     tipo: resumen

@@ -88,7 +88,16 @@
     const w12 = e.widget12 ?? { zona: null, niveles: {}, logica: null, pulsos: 0, tramo: 0 };
     if (a && ea) {
       if (bloqueado || ea.descartadas.includes(id)) return;
-      const elegidas = a.todas ? (ea.elegidas.includes(id) ? ea.elegidas.filter((z) => z !== id) : [...ea.elegidas, id]) : [id];
+      // (1.2.1: in an ordered touch, touching one already chosen takes it back with the ones after it)
+      const elegidas = a.orden
+        ? ea.elegidas.includes(id)
+          ? ea.elegidas.slice(0, ea.elegidas.indexOf(id))
+          : [...ea.elegidas, id]
+        : a.todas
+          ? ea.elegidas.includes(id)
+            ? ea.elegidas.filter((z) => z !== id)
+            : [...ea.elegidas, id]
+          : [id];
       cambiar({ actividad: { ...ea, elegidas }, movidos, widget12: { ...w12, zona: id } });
     } else cambiar({ movidos, widget12: { ...w12, zona: id } });
   }
@@ -211,7 +220,7 @@
           aria-pressed={st === 'elegida' || st === 'vista' || st === 'bien'}
           aria-disabled={a ? bloqueado || st === 'mal' : undefined}
           onclick={() => elegir(z.id)}
-          data-boton-zona={z.id}><TextoVivo texto={z.rotulo} {valor} />{#if st === 'mal'}<span class="a12-solo-lector"> (descartada)</span>{/if}</button
+          data-boton-zona={z.id}>{#if a?.orden && ea?.elegidas.includes(z.id)}<span class="d12-orden" data-orden-zona={ea.elegidas.indexOf(z.id) + 1}>{ea.elegidas.indexOf(z.id) + 1}</span> {/if}<TextoVivo texto={z.rotulo} {valor} />{#if st === 'mal'}<span class="a12-solo-lector"> (descartada)</span>{/if}</button
         >
       </li>
     {/each}

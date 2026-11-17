@@ -4,6 +4,11 @@
 # 1.2: el muestreo es el esquema «muestreo-retencion» (interruptor con R_on, C_h y seguidor), con la retención a los
 # 9 µs (ejemplo: después de 8,3 τ también con 1 kΩ); el comparador, el «comparador-schmitt» sin realimentación (±12 V
 # de ejemplo). La pantalla del banco (pedestal y caída) va con un eje estrecho alrededor de 1 V.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la R que adquiere antes de retener se elige (objetivo), los
+# 12 bits se marcan en la curva de carga, el pedestal y la caída se predicen (simular), la fuga se sube hasta 10 mV
+# por milisegundo, el condensador se agranda hasta 1 mV de pedestal y la pieza con absorción dieléctrica se toca en el
+# esquema. Quedan una pregunta de opciones (el compromiso) y el emparejamiento del operacional como comparador; el
+# pull-up y la oscilación por acoplamiento pasan a su explicación.
 leccion: cap08/sec-8.9
 
 libro:
@@ -39,15 +44,17 @@ modelo:
     v_aq: { expr: "V_e*(1 - exp(-8.3))", sim: "v", nombre: "tensión a 8,3 τ", unidad: V }
     V_pd: { expr: "Q_p/C_h", sim: "pedestal", nombre: "salto de pedestal", unidad: V }
     d_r: { expr: "I_f/C_h", sim: "caída", nombre: "ritmo de caída", unidad: "V/s" }
+    m_aq: { expr: "tm_h - t_aq", sim: "t_{m} − t_{adq}", nombre: "margen antes de retener", unidad: s }
 
 tarjetas:
   - id: explore-adquisicion
     tipo: explorar
     titulo: "Adquirir es cargar un condensador"
-    texto: "El condensador de retención de 1 nF se carga a través de R_{on} y la fuente. Cambie R y mire el tiempo de adquisición a 12 bits."
-    nota: "Escalón de 1 V de ejemplo."
+    texto: "El condensador de 1 nF se carga por R_{on} y la fuente. Elija una R que lo lleve a 12 bits antes de retener, a los 9 µs."
+    nota: "Escalón de ejemplo."
     libro: [193, 196]
     fijar: { V_e: 1, C_h: 1e-9 }
+    inicio: { R_a: 3000 }
     widget:
       tipo: circuito
       esquema: muestreo-retencion
@@ -61,60 +68,69 @@ tarjetas:
         marcas:
           - { x: "-tau_a*ln(2^(-12))", y: "Vt_h*(1 - 2^(-12))", rotulo: "12 bits" }
       mandos:
-        - { valor: R_a, lista: [100, 300, 1000], rotulo: "R" }
+        - { valor: R_a, lista: [100, 300, 1000, 3000], rotulo: "R" }
+    objetivo:
+      condiciones:
+        - { valor: m_aq, min: 0, rotulo: "Adquiere antes de retener" }
+      logrado: "Con {{R_a}}, {{t_aq}}: llega a 12 bits antes de que el interruptor se abra."
+      pistas:
+        - { texto: "La carga es demasiado lenta: retiene antes de llegar a 12 bits. Baje R." }
+    escalera:
+      - "Doce bits piden 8,3 · R · C."
+    solucion: "1 kΩ o menos: 8,3 µs con 1 kΩ."
+    comprobar:
+      - { con: { R_a: 1000 }, t_aq: 8.3e-6 }
+      - { t_aq: 24.9e-6, tm_h: 9e-6 }
 
   - id: prediga-adquisicion
-    tipo: predecir
+    tipo: marcar
     titulo: "100 Ω y 1 nF"
-    texto: "¿Cuánto tarda en adquirir a 12 bits un muestreo con 100 Ω y 1 nF?"
+    texto: "Con 100 Ω y 1 nF, marque en la curva el instante en que la carga alcanza la exactitud de 12 bits."
     libro: [196]
     fijar: { R_a: 100, C_h: 1e-9, V_e: 1 }
     widget:
       tipo: circuito
       esquema: muestreo-retencion
       piezas: { entrada: V_e, ron: R_a, ch: C_h, tm: tm_h, carga: Q_p, fuga: I_f }
-      lectura: { valor: t_aq, rotulo: "Adquisición a 12 bits" }
-      ocultar: true
       grafica:
-        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t" }
+        x: { id: t, min: 0, max: 0.000003, unidad: s, rotulo: "t" }
         y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "(1 - ceil((t - tm_h)/1e9))*Vt_h*(1 - exp(-t/tau_a)) + ceil((t - tm_h)/1e9)*(Vm_h + Q_p/C_h - I_f*(t - tm_h)/C_h)", color: naranja, rotulo: "v_{o}", mide: salida }
-    opciones:
-      - texto: "Unos 830 ns"
-        bien: true
-        porque: "τ = 100 Ω · 1 nF = 100 ns, y 12 bits piden 8,3 constantes de tiempo."
-      - texto: "100 ns"
-        porque: "Eso es una sola constante de tiempo: la carga se queda a mitad de camino de los 12 bits."
-      - texto: "Unos 500 ns"
-        porque: "Cinco τ bastan para un 1 %, no para 12 bits: hacen falta 8,3."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_aq"
+      tol: 0.03
+      inicio: { x: 0.0000025, y: 0 }
+      rotulo: "12 bits"
+      pasos: 60
+    pistas:
+      - { cuando: { valor: marca_x, menor: 0.0000007 }, texto: "Ahí la curva aún sube: a 12 bits le falta. Con una τ no basta." }
+      - { texto: "Ahí ya sobra tiempo: más a la izquierda." }
+    exito: "Unos 830 ns: τ = 100 ns, y 12 bits piden 8,3 constantes de tiempo."
     escalera:
       - "Una constante de tiempo es R · C; 12 bits piden 8,3."
-    solucion: "8,3 · 100 Ω · 1 nF = 830 ns."
+    solucion: "En 830 ns: 8,3 · 100 Ω · 1 nF."
     comprobar:
       - { t_aq: 830e-9, tau_a: 100e-9 }
-      - { con: { R_a: 500 }, tau_a: 500e-9 }
 
   - id: estime-pedestal
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El pedestal"
     texto: "Al abrir el interruptor, 10 pC pasan al condensador de retención de 1 nF. ¿Qué salto produce?"
     libro: [197]
     fijar: { Q_p: 10e-12, C_h: 1e-9 }
-    estimar:
-      objetivo: "V_pd"
+    simular:
+      objetivo: V_pd
       unidad: V
-      min: 0
-      max: 0.05
-      paso: 0.0005
-      inicio: 0.04
       tol: 0.05
       rotulo: "Salto de pedestal"
+      errores:
+        - { razon: { min: 9000, max: 11000 }, texto: "Ha dividido al revés: ΔV = Q/C." }
     exito: "10 mV. Es el error dominante de un muestreo y retención."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado: ΔV = Q/C." }
-      - { texto: "Se ha quedado corto: 10 pC entre 1 nF son una centésima de voltio." }
     escalera:
       - "ΔV = Q/C."
     solucion: "10 pC / 1 nF = 10 mV."
@@ -124,7 +140,7 @@ tarjetas:
   - id: explore-retencion
     tipo: explorar
     titulo: "Pedestal y caída en una pantalla"
-    texto: "Al retener, la salida salta con la carga inyectada y luego cae con la fuga. Cambie la fuga."
+    texto: "Al retener, la salida salta con la carga inyectada y luego cae con la fuga. Suba la fuga hasta que caiga 10 mV por milisegundo."
     nota: "Eje estrecho alrededor de 1 V, durante un milisegundo."
     libro: [197, 198, 203]
     fijar: { R_a: 100, C_h: 1e-9, Q_p: 10e-12, V_e: 1 }
@@ -144,11 +160,22 @@ tarjetas:
           - { expr: "(1 - ceil((t - tm_h)/1e9))*Vt_h*(1 - exp(-t/tau_a)) + ceil((t - tm_h)/1e9)*(Vm_h + Q_p/C_h - I_f*(t - tm_h)/C_h)", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: I_f, lista: [1e-9, 10e-9], rotulo: "Fuga" }
+    objetivo:
+      condiciones:
+        - { valor: d_r, min: 10, rotulo: "Caída: {{d_r}}" }
+      logrado: "Con {{I_f}} de fuga, en un milisegundo cae tanto como el pedestal: por eso el seguidor es de entrada FET."
+      pistas:
+        - { texto: "Con 1 nA cae 1 mV por milisegundo: más fuga." }
+    escalera:
+      - "dV/dt = I/C."
+    solucion: "10 nA sobre 1 nF: 10 V/s."
+    comprobar:
+      - { con: { I_f: 10e-9 }, d_r: 10 }
 
   - id: sorpresa-compromiso
     tipo: sorpresa
     titulo: "El mismo condensador"
-    texto: "Con 10 pC de carga inyectada y 100 Ω, cambie el condensador de retención. Mire el pedestal y la adquisición."
+    texto: "Con 10 pC de carga inyectada y 100 Ω, cambie el condensador de retención hasta dejar el pedestal en 1 mV. Vigile la adquisición."
     libro: [196, 197]
     fijar: { R_a: 100, Q_p: 10e-12, V_e: 1 }
     inicio: { C_h: 1e-9 }
@@ -166,7 +193,17 @@ tarjetas:
           - { expr: "(1 - ceil((t - tm_h)/1e9))*Vt_h*(1 - exp(-t/tau_a)) + ceil((t - tm_h)/1e9)*(Vm_h + Q_p/C_h - I_f*(t - tm_h)/C_h)", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: C_h, lista: [1e-9, 10e-9], rotulo: "C_{h}" }
-    requiere: { mover: [C_h] }
+    objetivo:
+      condiciones:
+        - { valor: V_pd, max: 0.001, rotulo: "Pedestal: {{V_pd}}" }
+      logrado: "1 mV de pedestal, pero la adquisición sube a {{t_aq}}: diez veces más."
+      pistas:
+        - { texto: "La misma carga sobre más capacidad da menos salto: suba C." }
+    escalera:
+      - "ΔV = Q/C: para un salto diez veces menor, diez veces más C."
+    solucion: "10 nF: 1 mV y 8,3 µs de adquisición."
+    comprobar:
+      - { con: { C_h: 10e-9 }, V_pd: 0.001, t_aq: 8.3e-6 }
 
   - id: por-que-compromiso
     tipo: porque
@@ -198,25 +235,20 @@ tarjetas:
     solucion: "Más C: menos pedestal y más tiempo de adquisición."
 
   - id: estime-caida
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La caída en retención"
-    texto: "Durante la retención, 1 nA de fuga descarga el condensador de 1 nF. ¿A qué ritmo cae su tensión?"
+    texto: "Durante la retención, 1 nA de fuga descarga el condensador de 1 nF. ¿A qué ritmo cae su tensión, en V/s?"
     libro: [198]
     fijar: { I_f: 1e-9, C_h: 1e-9 }
-    estimar:
-      objetivo: "d_r"
+    simular:
+      objetivo: d_r
       unidad: "V/s"
-      min: 0
-      max: 5
-      paso: 0.05
-      inicio: 4
       tol: 0.05
       rotulo: "Ritmo de caída"
+      errores:
+        - { razon: { min: 0.0009, max: 0.0011 }, texto: "Eso es por milisegundo. En voltios por segundo es mil veces más." }
     exito: "1 V/s, es decir, 1 mV por milisegundo. Por eso el seguidor es siempre de entrada FET."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1.05 }, texto: "Se ha pasado: dV/dt = I/C." }
-      - { texto: "Se ha quedado corto: 1 nA entre 1 nF da exactamente la unidad, en V/s." }
     escalera:
       - "dV/dt = I/C."
     solucion: "10⁻⁹ A / 10⁻⁹ F = 1 V/s = 1 mV/ms."
@@ -228,94 +260,46 @@ tarjetas:
     fase: "Empareje"
     titulo: "Por qué no basta un operacional"
     texto: "Una cada defecto del operacional como comparador con su causa."
-    libro: [182, 183, 184, 185]
+    libro: [182, 183, 184, 185, 188, 190, 191]
     emparejar:
       - ["Lento al salir de saturación", "Sus transistores internos saturan junto al raíl"]
       - ["Salida no compatible con lógica", "Da la alimentación, sin colector abierto"]
       - ["Carga la fuente", "Diodos de protección entre entradas"]
       - ["Oscila con señales lentas", "No lleva histéresis interna"]
-    exito: "El comparador dedicado conmuta en nanosegundos y entrega niveles lógicos con un pull-up."
+    exito: "El LM339, de colector abierto, no sube sin pull-up. Y aun con histéresis, su conmutación se acopla a la entrada: desacoplo y pistas separadas."
     pistas:
       - { texto: "Los diodos de protección conducen por encima de ±0,7 V de diferencia." }
     escalera:
       - "La histéresis se añade por fuera en el LM311, el LM393 y el LM339."
     solucion: "Saturación–lento, sin colector abierto–lógica, diodos–carga, sin histéresis–oscila."
 
-  - id: pull-up
-    tipo: pregunta
-    titulo: "Un LM339 que no sube"
-    texto: "La salida de un LM339 se queda siempre en bajo, aunque la entrada cruce el umbral. ¿Qué falta?"
-    libro: [188]
-    fijar: { V_e: 1, V_sc: 12 }
-    widget:
-      tipo: circuito
-      esquema: comparador-schmitt
-      piezas: { entrada: V_e, vsat: V_sc }
-      lectura: { valor: V_oc, rotulo: "v_{o}" }
-      mide: { vo: V_oc }
-    opciones:
-      - texto: "La resistencia de pull-up de la salida de colector abierto"
-        bien: true
-        porque: "Sin ella la salida no sube nunca: es el fallo de montaje más común con esta familia."
-      - texto: "Histéresis"
-        porque: "Sin histéresis oscilaría cerca del umbral, pero subiría."
-      - texto: "Un condensador de desacoplo"
-        porque: "El desacoplo evita oscilaciones; no hace subir una salida de colector abierto."
-    escalera:
-      - "¿Quién lleva a alto una salida de colector abierto?"
-    solucion: "Falta el pull-up."
-
   - id: absorcion
-    tipo: pregunta
+    tipo: elegir
     titulo: "El condensador de retención"
-    texto: "La tensión retenida deriva hacia el valor de la muestra anterior. ¿Qué condensador se ha elegido mal?"
+    texto: "La tensión retenida deriva hacia el valor de la muestra anterior. Toque la pieza que se ha elegido mal."
     libro: [201]
     fijar: { R_a: 100, V_e: 1, C_h: 1e-9 }
     widget:
       tipo: circuito
       esquema: muestreo-retencion
       piezas: { entrada: V_e, ron: R_a, ch: C_h, tm: tm_h, carga: Q_p, fuga: I_f }
-      lectura: { valor: Vm_h, rotulo: "Tensión muestreada" }
       grafica:
         x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t" }
         y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "(1 - ceil((t - tm_h)/1e9))*Vt_h*(1 - exp(-t/tau_a)) + ceil((t - tm_h)/1e9)*(Vm_h + Q_p/C_h - I_f*(t - tm_h)/C_h)", color: naranja, rotulo: "v_{o}", mide: salida }
-    opciones:
-      - texto: "Uno con absorción dieléctrica alta: cerámico de clase 2 o electrolítico"
-        bien: true
-        porque: "Recuerdan la carga anterior. Un polipropileno o un poliestireno absorben de 0,001 a 0,02 %."
-      - texto: "Uno demasiado grande"
-        porque: "Uno grande alarga la adquisición, pero no recuerda la muestra anterior."
-      - texto: "Uno de polipropileno"
-        porque: "Es de los mejores: absorción de 0,001 a 0,02 %."
+      mandos: []
+    elegir:
+      zonas: [ron, ch, ao, fuga]
+      bien: [ch]
+      porque:
+        ron: "El interruptor da el pedestal al abrirse, no recuerda la muestra anterior."
+        ao: "El seguidor solo lee el condensador; su corriente de entrada da la caída, no el recuerdo."
+        fuga: "La fuga descarga el condensador hacia abajo, no hacia la muestra anterior."
+    exito: "Un dieléctrico con absorción recuerda su carga. Polipropileno o poliestireno, de 0,001 a 0,02 %; nunca cerámico de clase 2 ni electrolítico."
     escalera:
-      - "Un dieléctrico puede devolver parte de la carga que tuvo antes."
-    solucion: "Uno con absorción dieléctrica: el cerámico de clase 2 o el electrolítico."
-
-  - id: oscila
-    tipo: pregunta
-    titulo: "Oscila aunque tenga histéresis"
-    texto: "Un comparador rápido con algo de histéresis sigue oscilando en la transición de una señal lenta. ¿Qué lo explica?"
-    libro: [190, 191]
-    fijar: { V_e: 1, V_sc: 12 }
-    widget:
-      tipo: circuito
-      esquema: comparador-schmitt
-      piezas: { entrada: V_e, vsat: V_sc }
-      lectura: { valor: V_oc, rotulo: "v_{o}" }
-      mide: { vo: V_oc }
-    opciones:
-      - texto: "Su propia conmutación acopla ruido a la entrada por la alimentación y la placa"
-        bien: true
-        porque: "Es una realimentación positiva involuntaria. Remedios: histéresis suficiente, desacoplo junto al chip y separar las pistas."
-      - texto: "El comparador está averiado"
-        porque: "Es un efecto del montaje, no del chip: el trazado realimenta la salida hacia la entrada."
-      - texto: "Le sobra histéresis"
-        porque: "Más histéresis ayudaría; el origen es el acoplamiento de la propia salida."
-    escalera:
-      - "¿Por dónde puede volver a la entrada el salto de la salida?"
-    solucion: "La conmutación se acopla a la entrada: desacoplo, histéresis y separar pistas."
+      - "¿Qué pieza guarda la carga de una muestra a otra?"
+    solucion: "El condensador de retención: su dieléctrico tiene absorción."
 
   - id: resumen
     tipo: resumen

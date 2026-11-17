@@ -2,6 +2,9 @@
 # exponenciales, τ = R·C y sus puntos (63,2 %, 86,5 %, 95 %, 99,3 %), los dos límites (cortocircuito en t = 0,
 # circuito abierto en t = ∞), el ejemplo de 100 µF, 10 kΩ y 9 V, y la deducción (ln 4096 ≈ 8,3τ, la dualidad con la
 # bobina). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): conseguir τ = 2 s, marcar en la curva el punto de un τ y el
+# del 95 %, el reto de cargar en 1 s, dibujar la carga, descargar por debajo de 1 V en 1 s, calcular la corriente
+# inicial y las τ de un LSB; se eligen por qué no salta y la τ de la bobina.
 leccion: cap03/sec-3.2
 
 libro:
@@ -37,9 +40,10 @@ tarjetas:
   - id: explore-carga
     tipo: explorar
     titulo: "Cargar a través de una resistencia"
-    texto: "100 µF se cargan desde 9 V. Cambie R y C y fíjese en cuánto tarda la curva en subir."
+    texto: "Un condensador se carga desde 9 V a través de R. Elija R y C para que tarde 2 s en hacer el 63,2 % del camino."
     libro: [28, 29, 35]
     fijar: { V_c0: 0, c_modo: 1 }
+    inicio: { R_c: 10000, C_c: 100e-6 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -56,40 +60,53 @@ tarjetas:
       mandos:
         - { valor: R_c, min: 1000, max: 20000, paso: 1000, rotulo: "Resistencia, R" }
         - { valor: C_c, lista: [47e-6, 100e-6], rotulo: "Capacidad, C" }
-    requiere: { mover: [R_c, C_c] }
+    objetivo:
+      condiciones:
+        - { valor: tau_c, objetivo: 2, tol: 0.03, rotulo: "τ = {{tau_c}}" }
+      logrado: "{{R_c}} con {{C_c}}: τ = R·C = {{tau_c}}. Más R o más C, más lenta la carga."
+      pistas:
+        - { cuando: { valor: tau_c, mayor: 2.06 }, texto: "Carga demasiado despacio: baje R o C." }
+        - { texto: "Carga demasiado deprisa: suba R o C." }
+    escalera:
+      - "El 63,2 % llega en un τ = R·C."
+    solucion: "20 kΩ con 100 µF: τ = 2 s."
+    comprobar:
+      - { tau_c: 1 }
+      - { con: { R_c: 20000, C_c: 100e-6 }, tau_c: 2 }
 
   - id: prediga-un-segundo
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "100 µF se cargan desde 9 V a través de 10 kΩ: τ = 1 s. ¿Qué tensión tendrá el condensador tras 1 segundo?"
+    tipo: marcar
+    titulo: "Marque un τ"
+    texto: "100 µF se cargan desde 9 V a través de 10 kΩ. Marque en la curva el punto en que se ha cumplido una constante de tiempo."
     libro: [32, 35]
     fijar: { R_c: 10000, C_c: 100e-6, V_c0: 0, c_modo: 1, t_1: 1 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: v_t1, rotulo: "v_{C} a 1 s" }
       grafica:
         x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
         y: { min: 0, max: 10, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
-      ocultar: true
-    opciones:
-      - texto: "5,69 V"
-        bien: true
-        porque: "Un τ es el 63,2 % del camino: 0,632 × 9 = 5,69 V."
-      - texto: "La mitad de 9 V"
-        porque: "La curva no es una recta: arranca deprisa y en un τ ya ha hecho el 63,2 %, más de la mitad."
-      - texto: "9 V, cargado"
-        porque: "Hacen falta unos 5τ, 5 segundos, para considerarlo cargado."
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "tau_c"
+      tol: 0.03
+      inicio: { x: 3.5, y: 0 }
+      rotulo: "Una constante de tiempo"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1 }, texto: "Más a la izquierda: τ = R·C = 10 kΩ · 100 µF." }
+      - { texto: "Más a la derecha: τ = R·C = 10 kΩ · 100 µF." }
+    exito: "En τ = 1 s, el 63,2 % del camino: 0,632 × 9 = 5,69 V. Tras 2 s, 7,78 V."
+    escalera:
+      - "τ = R·C, en segundos."
+    solucion: "En t = 1 s: 5,69 V."
     comprobar:
       - { v_t1: 5.69, tau_c: 1 }
-      - { con: { t_1: 5 }, v_t1: 8.94 }
-    escalera:
-      - "τ = R·C = 1 s, y en un τ se completa el 63,2 % del camino."
-    solucion: "0,632 × 9 = 5,69 V."
-
+      - { con: { t_1: 2 }, v_t1: 7.78 }
   - id: regla-carga
     tipo: formula
     titulo: "La carga, una exponencial"
@@ -173,37 +190,50 @@ tarjetas:
     solucion: "0 V al empezar, 5,69 V a 1 s, 7,78 V a 2 s y casi 9 V a 5 s."
 
   - id: puntos-tau
-    tipo: pregunta
-    fase: "Empareje"
+    tipo: marcar
     titulo: "Los puntos de la curva"
-    texto: "Una cada tiempo con lo que lleva hecho de su carga. Son la base de temporizadores y filtros."
+    texto: "1τ, el 63,2 %; 2τ, el 86,5 %. Marque en la curva cuándo lleva el 95 % de la carga."
     libro: [32, 33]
-    emparejar:
-      - ["1τ", "63,2 %"]
-      - ["2τ", "86,5 %"]
-      - ["3τ", "95 %"]
-      - ["5τ", "99,3 %"]
-    exito: "Eso es. Tras 5τ se considera cargado: solo falta el 0,674 %."
+    fijar: { R_c: 10000, C_c: 100e-6, V_c0: 0, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+      dibujo: false
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "3*tau_c"
+      tol: 0.03
+      inicio: { x: 1, y: 0 }
+      rotulo: "El 95 %"
     pistas:
-      - { texto: "El primer τ ya hace más de la mitad del camino; cada τ siguiente, menos." }
-    comprobar:
-      - { falta5: 0.674 }
+      - { cuando: { valor: marca_x, mayor: 3 }, texto: "Más a la izquierda: el 95 % llega antes de los 5τ, que son el 99,3 %." }
+      - { texto: "Más a la derecha: a 2τ solo lleva el 86,5 %." }
+    exito: "3τ, el 95 %. Y tras 5τ, el 99,3 %: solo falta un {{falta5}}."
     escalera:
       - "Cada τ deja por recorrer una fracción e^{−1} de lo que faltaba."
-    solucion: "1τ: 63,2 %. 2τ: 86,5 %. 3τ: 95 %. 5τ: 99,3 %."
-
+    solucion: "En 3τ = 3 s."
+    comprobar:
+      - { falta5: 0.674, tau_c: 1 }
   - id: sorpresa-descarga
     tipo: sorpresa
     titulo: "Ahora, la descarga"
-    texto: "El conmutador pasa a masa con el condensador a 9 V. Cambie R y mire cómo decae."
+    texto: "El conmutador pasa a masa con el condensador a 9 V. Elija R para que en 1 s baje de 1 V."
     libro: [30, 31, 32]
-    fijar: { V_c0: 9, c_modo: 0, C_c: 100e-6 }
+    fijar: { V_c0: 9, c_modo: 0, C_c: 100e-6, t_1: 1 }
     inicio: { R_c: 10000 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: v_tau, rotulo: "Le queda en un τ" }
+      lectura: { valor: v_t1, rotulo: "Le queda a 1 s" }
       grafica:
         x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
         y: { min: -10, max: 10, unidad: V, rotulo: "v" }
@@ -214,42 +244,39 @@ tarjetas:
           - { x: "tau_c", y: "v_tau", rotulo: "τ: {{v_tau}}" }
       mandos:
         - { valor: R_c, min: 1000, max: 20000, paso: 1000, rotulo: "Resistencia, R" }
-    requiere: { mover: [R_c] }
-    nota: "La misma τ = R·C: en un τ pierde el 63,2 % y le queda {{v_tau}}."
+    objetivo:
+      condiciones:
+        - { valor: v_t1, max: 1, rotulo: "A 1 s: {{v_t1}}" }
+      logrado: "Con τ = {{tau_c}}, a 1 s le quedan {{v_t1}}: la misma τ = R·C, y en un τ pierde el 63,2 %."
+      pistas:
+        - { texto: "Descarga demasiado despacio: baje R." }
+    escalera:
+      - "Le queda 9·e^{−t/τ}: para bajar de 1 V en 1 s, τ debe ser menor de medio segundo."
+    solucion: "R de 4 kΩ o menos: τ = 0,4 s."
     comprobar:
-      - { v_tau: 3.31, tau_c: 1 }
+      - { v_tau: 3.31, tau_c: 1, v_t1: 3.31 }
+      - { con: { R_c: 4000 }, v_t1: 0.739, tau_c: 0.4 }
 
   - id: limite-inicial
-    tipo: pregunta
+    tipo: simular
     titulo: "En el instante inicial"
-    texto: "Se cierra el interruptor sobre el condensador descargado. ¿Cómo se comporta en t = 0?"
+    texto: "Se cierra el interruptor sobre 100 µF descargados, con 10 kΩ y 9 V. ¿Qué corriente pasa en t = 0?"
     libro: [34]
     fijar: { R_c: 10000, C_c: 100e-6, V_c0: 0, c_modo: 1 }
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
-      lectura: { valor: I_c0, rotulo: "Corriente en t = 0" }
-      grafica:
-        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 0.001, unidad: A, rotulo: "i" }
-        curvas:
-          - { expr: "(V_cf - V_c0)/R_c*exp(-t/tau_c)", color: verde, rotulo: "i", mide: i }
-      ocultar: true
-    opciones:
-      - texto: "Como un cortocircuito: pasa toda la corriente, 9 V / 10 kΩ"
-        bien: true
-        porque: "Su tensión no puede saltar: sigue a 0 V y toda la tensión cae en R, 0,9 mA. Luego la corriente decae."
-      - texto: "Como un circuito abierto: no pasa corriente"
-        porque: "Eso es al final, tras muchos τ: cargado, en continua, ya no deja pasar corriente."
-      - texto: "Como una resistencia de 10 kΩ más"
-        porque: "En t = 0 su tensión es cero, así que no se opone: se comporta como un cortocircuito."
-    comprobar:
-      - { I_c0: 0.0009 }
+    simular:
+      objetivo: I_c0
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente en t = 0"
+      errores:
+        - { razon: { min: -0.01, max: 0.01 }, texto: "Eso es al final, tras muchos τ: cargado, ya no deja pasar corriente. En t = 0 está descargado." }
+        - { razon: { min: 0.49, max: 0.51 }, texto: "En t = 0 su tensión es cero: no se opone y toda la tensión cae en R." }
+    exito: "0,9 mA, como un cortocircuito: su tensión no puede saltar, sigue a 0 V y toda la tensión cae en R. Cargado, será un circuito abierto."
     escalera:
       - "La tensión del condensador no puede saltar: en t = 0 sigue a 0 V."
-    solucion: "Como un cortocircuito: toda la tensión cae en R y la corriente es 9 V / 10 kΩ."
-
+    solucion: "9 V / 10 kΩ = 0,9 mA."
+    comprobar:
+      - { I_c0: 0.0009 }
   - id: por-que-no-salta
     tipo: porque
     titulo: "¿Por qué no salta de golpe?"
@@ -281,31 +308,28 @@ tarjetas:
     solucion: "Cambiar su tensión exige mover carga, y la resistencia limita la corriente: lleva tiempo."
 
   - id: estime-lsb
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Tras 5τ aún falta algo"
-    texto: "Tras 5τ falta un 0,674 %, y un convertidor de 12 bits pide bajar de 1 LSB, 1/4096. Estime cuántas τ."
+    texto: "Tras 5τ falta un 0,674 %, y un convertidor de 12 bits pide bajar de 1 LSB, 1/4096. ¿Cuántas τ hacen falta?"
     libro: [36]
     fijar: { bits: 12 }
-    estimar:
-      objetivo: "n_tau"
+    simular:
+      objetivo: n_tau
       unidad: ""
-      min: 0
-      max: 15
-      paso: 0.1
-      inicio: 5
       tol: 0.04
       rotulo: "Constantes de tiempo"
+      errores:
+        - { razon: { min: 0.59, max: 0.61 }, texto: "Esas 5τ dan el 99,3 %, no 1/4096: hace falta más." }
     exito: "ln 4096 ≈ 8,3τ; 9τ si se exige medio LSB. El 99,3 % de 5τ no basta para medir fino."
     pistas:
       - { cuando: { valor: estimacion, menor: 8 }, texto: "Se ha quedado corto: e^{−t/τ} debe bajar de 1/4096, así que t/τ = ln 4096." }
       - { texto: "Se ha pasado: t/τ = ln 4096; ln 4096 es algo más de 8." }
-    comprobar:
-      - { n_tau: 8.32, tol: 0.002 }
     escalera:
       - "Iguale lo que falta, e^{−t/τ}, a 1/4096."
-    solucion: "ln 4096 ≈ 8,3τ; 9τ si se exige medio LSB. El 99,3 % de 5τ no basta para medir fino."
-
+    solucion: "ln 4096 ≈ 8,3τ."
+    comprobar:
+      - { n_tau: 8.32, tol: 0.002 }
   - id: dualidad
     tipo: pregunta
     titulo: "La misma pareja de ecuaciones"

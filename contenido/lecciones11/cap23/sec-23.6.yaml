@@ -1,4 +1,9 @@
 # Lección 1.2 de la sección 22.6 «Teorema de Thévenin» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la carga que deja la mitad de V_Th se busca comparando la red con
+# su equivalente (objetivo); V_Th se mide en vacío; R_Th se escribe, se despeja de una medida con carga y se obtiene con
+# la fuente de prueba de 1 V (el esquema «paralelo»: con la fuente anulada, R₁ y R₂ quedan en paralelo vistas desde los
+# terminales); la pila se predice y se simula; la potencia interna se compara en vacío. Quedan dos preguntas de opciones
+# (no cortocircuitar una batería y por qué no coinciden las potencias).
 leccion: cap23/sec-23.6
 
 libro:
@@ -25,6 +30,7 @@ modelo:
     R_ti: { sim: "R_{Th}", nombre: "resistencia interna de la pila", unidad: Ω, valor: 5 }
     R_tl: { sim: "R_{L}", nombre: "carga de la pila", unidad: Ω, valor: 45 }
     t_on: { tipo: interruptor, nombre: "carga de la pila conectada", valor: 1 }
+    V_p: { sim: "V_{prueba}", nombre: "fuente de prueba", unidad: V, valor: 1 }
   calculos:
     R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia entre los terminales con la carga", unidad: Ω }
     V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{ab}", nombre: "tensión en los terminales", unidad: V }
@@ -38,6 +44,9 @@ modelo:
     P_real: { expr: "V_in*I", sim: "P", nombre: "potencia dentro de la red real", unidad: W }
     I_eq: { si: carga, entonces: "V_th/(R_th + R_L)", sino: "0", sim: "I", nombre: "corriente del equivalente", unidad: A }
     P_eq: { expr: "V_th*I_eq - I_eq^2*R_L", sim: "P", nombre: "potencia dentro del equivalente", unidad: W }
+    I_p: { expr: "V_p/R_1 + V_p/R_2", sim: "I_{prueba}", nombre: "corriente que entrega la fuente de prueba", unidad: A }
+    I_p2: { expr: "V_p/R_2", sim: "I₂", nombre: "corriente de prueba por R₂", unidad: A }
+    I_p1: { expr: "V_p/R_1", sim: "I₁", nombre: "corriente de prueba por R₁", unidad: A }
     V_to: { si: t_on, entonces: "V_t*R_tl/(R_ti + R_tl)", sino: "V_t", sim: "V_{carga}", nombre: "tensión en bornes de la pila", unidad: V }
     I_t: { si: t_on, entonces: "V_t/(R_ti + R_tl)", sino: "0", sim: "I", nombre: "corriente de la pila", unidad: A }
     V_ti: { expr: "I_t*R_ti", sim: "V_{int}", nombre: "caída interna", unidad: V }
@@ -46,9 +55,10 @@ tarjetas:
   - id: explore-equivalente
     tipo: explorar
     titulo: "Dos componentes bastan"
-    texto: "Conecte la carga y cámbiela. Compare la red de 12 V, 4 Ω y 12 Ω con lo que predice su equivalente de 9 V y 3 Ω."
+    texto: "La red de 12 V, 4 Ω y 12 Ω equivale a 9 V con 3 Ω. Conecte la carga y busque la que deja los terminales en 4,5 V."
     libro: [146, 147, 152]
     fijar: { V_in: 12, R_1: 4, R_2: 12 }
+    inicio: { carga: 0, R_L: 30 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -61,13 +71,55 @@ tarjetas:
       mandos:
         - { valor: carga, tipo: conectar, boton: "Conectar la carga" }
         - { valor: R_L, lista: [1, 3, 6, 12, 30, 100] }
-    requiere: { conectar: [carga] }
+    objetivo:
+      condiciones:
+        - { valor: V_out, objetivo: 4.5, tol: 0.02, rotulo: "Terminales: {{V_out}}" }
+      logrado: "Con {{R_L}} la red da {{V_out}} y el equivalente lo mismo: exacto para cualquier carga."
+      pistas:
+        - { cuando: { valor: carga, max: 0 }, texto: "Primero conecte la carga." }
+        - { cuando: { valor: V_out, mayor: 4.59 }, texto: "Sobra tensión: una carga menor." }
+        - { texto: "Ha bajado de más: una carga mayor." }
+    escalera:
+      - "La mitad de V_{Th} cae en la carga cuando la carga vale R_{Th}."
+    solucion: "Con 3 Ω: 4,5 V en la red y en el equivalente."
+    comprobar:
+      - { con: { carga: 1, R_L: 3 }, V_out: 4.5, V_eq: 4.5 }
 
   - id: prediga-vth
-    tipo: predecir
-    titulo: "Prediga V_{Th}"
-    texto: "Fuente de 12 V, R₁ = 4 Ω en serie y R₂ = 12 Ω entre los terminales. ¿Cuánto vale V_{Th}?"
+    tipo: medir
+    titulo: "Mida V_{Th}"
+    texto: "V_{Th} es la tensión en circuito abierto entre los terminales. Sin carga, ponga las puntas donde la mediría."
     libro: [149, 152]
+    fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [salida, "0"]
+      valor: V_th
+      porque:
+        fte: "Esa punta está en la fuente: mide sus 12 V, no los terminales."
+        "fte/salida": "Así mide lo que cae en R₁, 3 V. Los terminales son los extremos de R₂."
+    exito: "9 V: en vacío es un divisor, 12 × 12/(4 + 12)."
+    escalera:
+      - "Los terminales son los extremos de la resistencia de 12 Ω."
+    solucion: "Roja en la salida, negra en masa: 9 V."
+    comprobar:
+      - { V_out: 9, V_th: 9 }
+
+  - id: estime-rth
+    tipo: leer
+    titulo: "La resistencia que se ve"
+    texto: "Anule la fuente de 12 V: un cortocircuito. Escriba la resistencia que se ve entre los terminales, con R₁ = 4 Ω y R₂ = 12 Ω."
+    libro: [151, 152]
     fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 0 }
     widget:
       tipo: circuito
@@ -76,66 +128,84 @@ tarjetas:
       lectura: { valor: V_out, rotulo: "Tensión en vacío" }
       corriente: I
       mide: { salida: V_out, corriente: I }
-      ocultar: true
-    opciones:
-      - texto: "9 V"
-        bien: true
-        porque: "Es la tensión en circuito abierto: el divisor 12 × 12/(4 + 12) = 9 V."
-      - texto: "12 V"
-        porque: "Es la de la fuente. En vacío sigue circulando corriente por R₁ y R₂, y R₁ se queda su parte."
-      - texto: "3 V"
-        porque: "3 V es lo que cae en R₁. Los terminales están en los extremos de R₂."
-    escalera:
-      - "Quite la carga: lo que queda es un divisor."
-    solucion: "V_{Th} = 12 × 12/(4 + 12) = 9 V."
-    comprobar:
-      - { V_out: 9, V_th: 9 }
-
-  - id: estime-rth
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "La resistencia que se ve"
-    texto: "Anule la fuente de 12 V: un cortocircuito. ¿Qué resistencia se ve entre los terminales, con R₁ = 4 Ω y R₂ = 12 Ω?"
-    libro: [151, 152]
-    fijar: { R_1: 4, R_2: 12 }
-    estimar:
-      objetivo: "R_th"
+      mandos: []
+    leer:
+      objetivo: R_th
       unidad: Ω
-      min: 0
-      max: 20
-      paso: 0.5
-      inicio: 16
-      tol: 0.05
+      tol: 0.02
       rotulo: "R_{Th}"
+      errores:
+        - { expr: "R_serie", texto: "Con la fuente en cortocircuito, R₁ y R₂ no quedan en serie sino en paralelo." }
+        - { expr: "R_2", texto: "Esa es solo R₂. R₁ también llega a los terminales, por el cortocircuito de la fuente." }
     exito: "Con la fuente en corto, R₁ y R₂ quedan en paralelo: 4 ‖ 12 = 3 Ω."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 3.15 }, texto: "Se ha pasado: con la fuente en cortocircuito, R₁ y R₂ no están en serie sino en paralelo." }
-      - { texto: "Se ha quedado corto: el paralelo es menor que la menor, pero no tanto." }
     escalera:
       - "Desde los terminales, R₂ va directa y R₁ llega por el cortocircuito de la fuente."
     solucion: "R_{Th} = 4 ‖ 12 = 3 Ω."
     comprobar:
       - { R_th: 3, R_serie: 16 }
 
+  - id: dependientes
+    tipo: leer
+    titulo: "Con una fuente de prueba"
+    texto: "La forma general: fuente anulada y 1 V de prueba entre los terminales. Mida la corriente que entrega y escriba R_{Th} = 1 V / I."
+    libro: [151]
+    fijar: { V_p: 1, R_1: 4, R_2: 12 }
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_p, r1: R_1, r2: R_2 }
+      corriente: I_p
+      mide: { total: I_p, i1: I_p1, i2: I_p2 }
+      instrumento:
+        tipo: multimetro
+        modos: [A]
+      mandos: []
+    leer:
+      objetivo: R_th
+      unidad: Ω
+      tol: 0.02
+      rotulo: "R_{Th}"
+      errores:
+        - { expr: "I_p", texto: "Esa es la corriente de prueba. R_{Th} es 1 V dividido entre ella." }
+        - { expr: "R_1", texto: "Ha usado solo la corriente de R₁. La fuente de prueba entrega la de las dos ramas." }
+    exito: "1 V / 0,333 A = 3 Ω. Es la forma que vale aunque haya fuentes dependientes, que no se pueden anular, y la que usa el simulador."
+    escalera:
+      - "Meta el amperímetro en la rama de la fuente de prueba."
+      - "R_{Th} = 1 V / I_{prueba}."
+    solucion: "I = 1/4 + 1/12 = 0,333 A; R_{Th} = 3 Ω."
+    comprobar:
+      - { I_p: 0.3333, R_th: 3, I_p1: 0.25 }
+
   - id: medir-rth
-    tipo: formula
+    tipo: leer
     titulo: "Medirla sin conocer el circuito"
-    texto: "Con la tensión en vacío y la tensión con una carga conocida se despeja R_{Th}. Cambie la carga: el resultado no cambia."
+    texto: "En vacío había 9 V. Conecte la carga de 6 Ω, mida la tensión en los terminales y escriba la R_{Th} que sale."
     libro: [162]
-    fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 1 }
-    ec: 162
-    sustitucion: "{{R_L}} · ({{V_th}} / {{V_out}} − 1) = {{R_med}}"
+    fijar: { V_in: 12, R_1: 4, R_2: 12, carga: 1, R_L: 6 }
     widget:
       tipo: circuito
       esquema: divisor
       piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
-      lectura: { valor: V_out, rotulo: "Tensión con carga" }
-      datos:
-        - { valor: V_th, rotulo: "En vacío: {{V_th}}" }
       corriente: I
       mide: { salida: V_out, corriente: I, carga: I_L }
-      mandos:
-        - { valor: R_L, lista: [1, 3, 6, 12, 30, 100] }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+      mandos: []
+    leer:
+      objetivo: R_med
+      unidad: Ω
+      tol: 0.02
+      rotulo: "R_{Th} despejada"
+      errores:
+        - { expr: "V_out", texto: "Esa es la tensión medida. Despeje: R_{Th} = R_{L} · (V_{vacío}/V − 1)." }
+    exito: "6 × (9/6 − 1) = 3 Ω: la misma, sin abrir la red. Con cualquier carga conocida sale igual."
+    escalera:
+      - "Mida entre la salida y masa con la carga puesta."
+      - "R_{Th} = R_{L} · (V_{vacío}/V − 1)."
+    solucion: "Con la carga, 6 V; 6 × (9/6 − 1) = 3 Ω."
+    comprobar:
+      - { V_out: 6, R_med: 3 }
 
   - id: simule-pila
     tipo: simular
@@ -179,6 +249,7 @@ tarjetas:
       lectura: { valor: V_to, rotulo: "Tensión en bornes" }
       corriente: I_t
       mide: { salida: V_to, corriente: I_t }
+      mandos: []
     opciones:
       - texto: "Es peligroso y daña la batería"
         bien: true
@@ -194,10 +265,10 @@ tarjetas:
   - id: potencia-dentro
     tipo: sorpresa
     titulo: "Lo que el equivalente no ve"
-    texto: "Con la carga desconectada, compare la potencia que se disipa dentro de la red real con la del equivalente."
+    texto: "Desconecte la carga y compare la potencia que se disipa dentro de la red real con la del equivalente."
     libro: [170]
-    fijar: { V_in: 12, R_1: 4, R_2: 12 }
-    inicio: { carga: 0 }
+    fijar: { V_in: 12, R_1: 4, R_2: 12, R_L: 6 }
+    inicio: { carga: 1 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -209,7 +280,17 @@ tarjetas:
       mide: { salida: V_out, corriente: I }
       mandos:
         - { valor: carga, tipo: interruptor, rotulo: "Carga" }
-    requiere: { mover: [carga] }
+    objetivo:
+      condiciones:
+        - { valor: carga, max: 0, rotulo: "Carga desconectada" }
+      logrado: "En vacío la red real disipa {{P_real}} y el equivalente {{P_eq}}: los terminales coinciden, el interior no."
+      pistas:
+        - { texto: "Desconecte la carga." }
+    escalera:
+      - "Quite la carga con el interruptor."
+    solucion: "Sin carga: 9 W dentro de la red real y nada en el equivalente."
+    comprobar:
+      - { con: { carga: 0 }, P_real: 9, P_eq: 0 }
 
   - id: por-que-potencia
     tipo: porque
@@ -224,6 +305,7 @@ tarjetas:
       lectura: { valor: P_real, rotulo: "Potencia dentro de la red real" }
       corriente: I
       mide: { salida: V_out, corriente: I }
+      mandos: []
     opciones:
       - texto: "El equivalente solo reproduce lo que se ve desde los terminales"
         bien: true
@@ -235,30 +317,6 @@ tarjetas:
     escalera:
       - "¿Qué promete exactamente el teorema: el interior o los terminales?"
     solucion: "Solo describe los terminales: no la potencia disipada dentro."
-
-  - id: dependientes
-    tipo: pregunta
-    titulo: "Con fuentes dependientes"
-    texto: "Hay tres formas de hallar R_{Th}. ¿Cuál funciona aunque la red tenga fuentes dependientes?"
-    libro: [151]
-    widget:
-      tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
-      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
-      corriente: I_t
-      mide: { salida: V_to, corriente: I_t }
-    opciones:
-      - texto: "Aplicar una fuente de prueba de 1 V y calcular la corriente que entrega"
-        bien: true
-        porque: "Es la forma general: no exige anular las dependientes, y es la que se usa en simulación."
-      - texto: "Anular todas las fuentes y calcular la resistencia vista"
-        porque: "Es la más rápida, pero no vale con dependientes: no se pueden anular."
-      - texto: "Medir la resistencia con el óhmetro entre los terminales"
-        porque: "Con las fuentes dentro, el óhmetro no mide bien. La forma general es la fuente de prueba."
-    escalera:
-      - "Una fuente dependiente no se puede anular."
-    solucion: "La fuente de prueba: R_{Th} = 1 V / I_{prueba}."
 
   - id: banco-divisor
     tipo: banco

@@ -16,17 +16,20 @@ import { compilarModelo, enRango } from '../src/lib/leccion11/modelo.ts';
 import { entradaIndice, esPracticable, eventoDeComprobacion, idRespuesta, nuevoEstado, comprobar, valoresSueltos } from '../src/lib/leccion11/motor.ts';
 import { completar, type ItemCatalogo } from '../src/lib/aprendizaje/seleccion.ts';
 import type { IndiceLecciones11, Leccion11 } from '../src/lib/leccion11/tipos.ts';
+import { entradasCongeladas, esCongelada, leccionCongelada, rutasCongeladas } from './lecciones11-congeladas';
 
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const libro = path.join(web, 'public', 'libro');
 const leer = <T>(r: string): T => JSON.parse(fs.readFileSync(path.join(libro, r), 'utf8')) as T;
 const INDICE = leer<IndiceLecciones11>('lecciones11/indice.json');
 const leccion = (id: string) => leer<Leccion11>(`lecciones11/${id}.json`);
+/** (1.2.1) the reference lessons as they were in 1.2.0, for the tests that look at their cards (lecciones11-congeladas.ts). */
+const referencia = (id: string) => (esCongelada(id) ? leccionCongelada(id) : leccion(id));
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
 test.describe('práctica con las lecciones 1.1 (sin navegador)', () => {
   test('practicables: predecir, pregunta y reto; nunca explorar, fórmula, sorpresa, por qué ni resumen', () => {
-    const l = leccion('cap01/sec-1.4');
+    const l = referencia('cap01/sec-1.4');
     const tipos = new Set(l.tarjetas.filter(esPracticable).map((t) => t.tipo));
     expect([...tipos].sort()).toEqual(['predecir', 'pregunta', 'reto']);
     for (const t of l.tarjetas) if (['explorar', 'formula', 'sorpresa', 'porque', 'resumen'].includes(t.tipo)) expect(esPracticable(t), t.id).toBe(false);
@@ -56,7 +59,7 @@ test.describe('práctica con las lecciones 1.1 (sin navegador)', () => {
   });
 
   test('la respuesta en la práctica va con el id de la lección y origen «inteligente»', () => {
-    const l = leccion('cap01/sec-1.4');
+    const l = referencia('cap01/sec-1.4');
     const t = l.tarjetas.find((x) => x.id === 'prediga-salida')!;
     const e0 = { ...nuevoEstado(t), eleccion: t.opciones!.findIndex((o) => o.bien) };
     const { estado } = comprobar(l, t, e0, valoresSueltos(l, l.tarjetas.indexOf(t)));
@@ -81,7 +84,7 @@ test.describe('práctica con las lecciones 1.1 (sin navegador)', () => {
     const items: ItemCatalogo[] = [
       { id: 'cap01-num-sec-1.4-a', tipo: 'practica', subtipo: 'numerico', concepto: 'cap01/sec-1.4' },
       { id: 'cap01-03', tipo: 'pregunta', subtipo: 'opcion', concepto: 'cap01/sec-1.4' },
-      ...INDICE.lecciones['cap01/sec-1.4']!.preguntas!.map((q): ItemCatalogo => ({ id: `cap01-l11-sec-1.4-${q.id}`, tipo: 'leccion11', subtipo: `leccion11-${q.tipo}`, concepto: 'cap01/sec-1.4' })),
+      ...entradaIndice(referencia('cap01/sec-1.4')).preguntas!.map((q): ItemCatalogo => ({ id: `cap01-l11-sec-1.4-${q.id}`, tipo: 'leccion11', subtipo: `leccion11-${q.tipo}`, concepto: 'cap01/sec-1.4' })),
     ];
     const ahora = Date.UTC(2026, 10, 9, 12);
     const plan = { conceptos: [{ clave: 'cap01/sec-1.4', motivo: 'foco' as const, cupo: 99 }], n: 10 };
@@ -107,10 +110,13 @@ async function preparar(page: Page, tema = 'claro') {
   // only two option questions of 2.2 are practicable (the session is then fully predictable)
   await page.context().route('**/libro/lecciones11/indice.json', async (r) => {
     const real = (await (await r.fetch()).json()) as IndiceLecciones11;
+    // (1.2.1) the lessons of 1.2.0 this spec walks, frozen (lecciones11-congeladas.ts)
+    real.lecciones = { ...real.lecciones, ...entradasCongeladas() };
     const e = real.lecciones[SECCION]!;
     real.lecciones[SECCION] = { ...e, preguntas: e.preguntas!.filter((q) => ELEGIDAS.includes(q.id)) };
     await r.fulfill({ contentType: 'application/json', body: JSON.stringify(real) });
   });
+  await rutasCongeladas(page.context());
   await page.addInitScript((t) => ((window as unknown as { __tema: string }).__tema = t), tema);
   await page.addInitScript(() => {
     (window as unknown as { __epaSemillaPractica: number }).__epaSemillaPractica = 4242;
@@ -180,7 +186,7 @@ test.describe('práctica con las lecciones 1.1', () => {
     expect((await leerAlmacen<Xp>(page, 'progreso-xp'))!.xp[`pr:${primera}`]!.x).toBe(5);
 
     // the same card answered in the lesson right after: the same round (no double counting) and no XP again
-    const l = leccion(SECCION);
+    const l = referencia(SECCION);
     const k = l.tarjetas.findIndex((t) => `cap02-l11-sec-2.2-${t.id}` === primera);
     await page.goto(`#/leccion/${SECCION}/${k + 1}`);
     const d0 = page.getByRole('alertdialog');

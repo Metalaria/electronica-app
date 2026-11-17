@@ -31,6 +31,13 @@ const d: DefinicionEsquema = {
     vt: { descripcion: 'caída del SCR en conducción, V_T (V; sin ella, 1 V)' },
     ron: { descripcion: 'resistencia del SCR en conducción (Ω; sin ella, 1 mΩ)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { scr: 'el tiristor' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada, antes del fusible', r: 'Raíl protegido', '0': 'Masa, abajo' },
+    ramas: { vmf: 'Rama del fusible' },
+    zonas: { fuente: 'Fuente', i2t: 'Fusible', vz: 'Zener', ...(c.tiene('rg') ? { rg: 'Resistencia de puerta' } : {}), scr: 'Tiristor', carga: 'Carga' },
+  }),
   observables: {
     vo: { medida: 'v(r)', analisis: 'op', unidad: 'V', descripcion: 'tensión del raíl en funcionamiento normal' },
     ifus: { medida: 'i(vmf)', analisis: 'op', unidad: 'A', descripcion: 'corriente del fusible en funcionamiento normal' },

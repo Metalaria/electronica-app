@@ -32,6 +32,13 @@ const d: DefinicionEsquema = {
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
     a0: { descripcion: 'ganancia del amplificador de error interno (sin ella, 10⁵)' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { chip: 'el LM317' },
+  medible: (c) => ({
+    puntos: { in: 'Entrada', out: 'Salida', adj: 'Patilla de ajuste', '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama de la entrada', vmr: 'Rama de R₁', vml: 'Rama de la carga' },
+    zonas: { entrada: 'Fuente de entrada', r1: 'Resistencia de arriba, R₁', r2: 'Resistencia de abajo, R₂', carga: 'Carga', chip: 'LM317', ...(c.tiene('interruptor') ? { interruptor: 'Interruptor de la carga' } : {}) },
+  }),
   observables: {
     vout: { medida: 'v(out)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida' },
     vadj: { medida: 'v(adj)', analisis: 'op', unidad: 'V', descripcion: 'tensión de la patilla ADJ (la de R₂)' },

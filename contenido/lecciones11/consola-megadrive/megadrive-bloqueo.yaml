@@ -3,6 +3,9 @@
 # «SEGA» en $A14000), y la región la dan dos patillas (idioma y frecuencia) puestas con los puentes JP1–JP4: es el
 # juego el que comprueba la consola. Fuentes: los datos de la consola (megadrive#n), Nicole Express «Trademarks and
 # region locks», ConsoleMods «Genesis:Region Information» y «Genesis:Buying Guide», y la guía de Retro Tech Wiki.
+# 1.2.1: se tocan el chip del TMSS, quién comprueba la región (el cartucho) y los cables del conmutador; la dirección
+# de «SEGA» se escribe en hexadecimal; el circuito del TMSS tiene meta (la placa empieza con TMSS). Queda una pregunta:
+# Ishido y Onslaught.
 leccion: consola-megadrive/megadrive-bloqueo
 
 libro:
@@ -28,22 +31,33 @@ modelo:
 
 tarjetas:
   - id: explore-sin-cic
-    tipo: explorar
+    tipo: tocar
     titulo: "Sin chip de bloqueo"
-    texto: "La Mega Drive no lleva un CIC como la NES. Toque el chip del TMSS y el que lee la frecuencia de la región."
-    libro: ["megadrive#4", "megadrive#117", "megadrive#3"]
-    requiere: { mover: [io, vdp] }
+    texto: "La Mega Drive no lleva un CIC como la NES. Desde la VA6, uno de sus chips trae el TMSS: tóquelo."
+    libro: ["megadrive#4", "megadrive#117", "megadrive#110"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: io, hotspot: io, rotulo: "315-5433", texto: "Desde la VA6, el chip de E/S trae el TMSS." }
-        - { id: vdp, hotspot: vdp, rotulo: "VDP", texto: "Su patilla /PAL, unida al puente JP3, elige 313 líneas a 50 Hz." }
+        - { id: io, hotspot: io, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: m68k, hotspot: m68k, rotulo: "Chip largo, arriba a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, arriba en el centro" }
+    tocar:
+      bien: [io]
+      porque:
+        vdp: "El VDP es el que el TMSS deja encendido o no; el TMSS va en otro chip."
+        m68k: "El 68000 ejecuta el juego."
+        cart: "Es la ranura del cartucho."
+    exito: "El 315-5433, el chip de E/S: desde la VA6, de enero de 1991, trae el TMSS. También lee los puentes de región."
+    escalera:
+      - "Es el chip de E/S, junto al VDP."
+    solucion: "El 315-5433."
 
   - id: prediga-tmss
-    tipo: predecir
-    titulo: "Un juego que no saluda"
-    texto: "En una consola con TMSS, el juego no escribe «SEGA» en $A14000. ¿Qué pasa?"
+    tipo: leer
+    titulo: "Un juego que saluda"
+    texto: "Con TMSS, el programa tiene que escribir «SEGA» en una dirección poco después del reset. Escríbala en hexadecimal."
     libro: ["megadrive#100", "megadrive#112", "megadrive#111"]
     widget:
       tipo: figura
@@ -51,32 +65,40 @@ tarjetas:
       zonas:
         - { id: vdp, hotspot: vdp, rotulo: "VDP" }
         - { id: io, hotspot: io, rotulo: "315-5433" }
-    opciones:
-      - texto: "El VDP no se habilita: sin imagen ni sonido."
-        bien: true
-        porque: "Con el VDP apagado no hay gráficos, y tampoco sonido. Según el manual de Sega, el 68000 se bloquea."
-      - texto: "Arranca, pero sin el mensaje de Sega."
-        porque: "El mensaje sale si hay «SEGA» en $100. Si además no escribe «SEGA» en $A14000, el VDP no se habilita."
-      - texto: "La consola se reinicia una vez por segundo."
-        porque: "Eso hace el CIC de la NES. El TMSS no reinicia: deja el VDP sin habilitar."
+    leer:
+      objetivo: "0xA14000"
+      base: 16
+      cifras: 24
+      rotulo: "Dirección de «SEGA»"
+      errores:
+        - { expr: "256", texto: "$100 es donde la ROM de arranque busca «SEGA» en el juego; el juego escribe «SEGA» en otra dirección." }
+    exito: "$A14000: si no, el VDP no se habilita, sin gráficos ni sonido, y el 68000 se bloquea."
     escalera:
-      - "¿Qué chip habilita o no el TMSS?"
-    solucion: "El VDP se queda sin habilitar: pantalla sin imagen ni sonido."
+      - "Está en la zona de E/S, $A1xxxx."
+    solucion: "$A14000."
 
   - id: explore-tmss
     tipo: explorar
     titulo: "Cuándo se enciende el VDP"
-    texto: "Mueva las dos entradas: si la placa tiene TMSS y si el juego escribe «SEGA»."
+    texto: "Una placa con TMSS y un juego que todavía no ha escrito «SEGA». Consiga que el VDP se habilite."
     libro: ["megadrive#112", "megadrive#110"]
-    requiere: { mover: [TMSS, SEGA] }
     widget:
       tipo: logica
-      entradas: [{ id: TMSS, rotulo: "Placa con TMSS" }, { id: SEGA, rotulo: "Escribe «SEGA»" }]
+      entradas: [{ id: TMSS, rotulo: "Placa con TMSS", valor: 1 }, { id: SEGA, rotulo: "Escribe «SEGA»" }]
       piezas:
         - { id: n1, tipo: not, entradas: [TMSS] }
         - { id: o1, tipo: or, entradas: [n1, SEGA] }
       salidas:
         - { id: VDP, de: o1, rotulo: "VDP habilitado" }
+    objetivo:
+      condiciones:
+        - { led: VDP, valor: 1, rotulo: "VDP habilitado" }
+      logrado: "Con TMSS, el VDP solo se habilita si el juego escribe «SEGA»; sin TMSS, siempre."
+      pistas:
+        - { texto: "El TMSS espera que el juego escriba «SEGA»." }
+    escalera:
+      - "Con TMSS, la salida copia la entrada «SEGA»."
+    solucion: "Que el juego escriba «SEGA» (o una placa sin TMSS)."
 
   - id: tabla-tmss
     tipo: tabla
@@ -123,27 +145,28 @@ tarjetas:
     solucion: "El TMSS de la VA6: esos juegos no funcionan en las consolas que lo llevan."
 
   - id: prediga-region
-    tipo: predecir
+    tipo: tocar
     titulo: "Un aviso de región"
-    texto: "Un juego posterior a 1993, de otra región, muestra un aviso y no sigue. ¿Quién lo bloquea?"
+    texto: "Un juego posterior a 1993, de otra región, muestra un aviso y no sigue. La consola no tiene CIC: toque dónde está lo que lo bloquea."
     libro: ["megadrive#113", "megadrive#104", "megadrive#107"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
-        - { id: io, hotspot: io, rotulo: "315-5433" }
-    opciones:
-      - texto: "El propio juego: lee la región de la consola y se niega."
-        bien: true
-        porque: "Al revés que en la NES: el juego comprueba la consola. Muchos juegos desde 1993 lo hacen."
-      - texto: "Un chip de bloqueo de la consola, como el CIC."
-        porque: "La Mega Drive no tiene CIC. Es el programa del juego quien compara la región."
-      - texto: "El conector: cada región tiene otro patillaje."
-        porque: "El conector y el patillaje son los mismos en todas las regiones."
+        - { id: io, hotspot: io, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: m68k, hotspot: m68k, rotulo: "Chip largo, arriba a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, arriba en el centro" }
+    tocar:
+      bien: [cart]
+      porque:
+        io: "El 315-5433 deja leer la región, pero no bloquea: quien decide es otro."
+        vdp: "El VDP da la frecuencia, pero no compara la región."
+        m68k: "El 68000 ejecuta la comprobación, pero la decide el programa del juego."
+    exito: "El propio juego, en el cartucho: lee el byte que dice la región de la consola y, si no coincide, se para con un aviso. Al revés que en la NES."
     escalera:
       - "¿Quién muestra el aviso, la consola o el juego?"
-    solucion: "El juego: lee el byte de región y, si no coincide, se para con un aviso."
+    solucion: "El cartucho: el programa del juego."
 
   - id: empareje-regiones
     tipo: pregunta
@@ -163,26 +186,28 @@ tarjetas:
     solucion: "Japón y Corea: japonés, 60 Hz. Norteamérica y Brasil: inglés, 60 Hz. Europa: inglés, 50 Hz."
 
   - id: por-que-conmutador
-    tipo: porque
+    tipo: tocar
     titulo: "Un conmutador basta"
-    texto: "¿Por qué un conmutador en los puentes de región salta el bloqueo de región?"
+    texto: "Un conmutador en los puentes de región salta el bloqueo, porque solo cambia los bytes que lee el juego. Toque los cables que lo conectan."
     libro: ["megadrive#114", "megadrive#4", "megadrive#25"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
       zonas:
-        - { id: mod, hotspot: mod, rotulo: "Cables a los puentes" }
-    opciones:
-      - texto: "Cambia los bits de región que lee el juego: el juego cree que está en su región."
-        bien: true
-        porque: "Los puentes llegan a /JAP y /NTSC del 315-5433 y a /PAL del VDP: el conmutador solo cambia esos bytes."
-      - texto: "Desactiva el TMSS."
-        porque: "El TMSS es otra cosa: comprueba «SEGA», no la región."
-      - texto: "Cambia el patillaje de la ranura."
-        porque: "La ranura no cambia: es igual en todas las regiones."
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: m68k, hotspot: m68k, rotulo: "Chip largo, arriba a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, arriba en el centro" }
+        - { id: mod, hotspot: mod, rotulo: "Cables de colores, a la derecha" }
+    tocar:
+      bien: [mod]
+      porque:
+        vdp: "El VDP lee el puente /PAL; el conmutador va en los puentes."
+        m68k: "Es la CPU."
+        cart: "La ranura no cambia: es igual en todas las regiones."
+    exito: "Los cables a los puentes JP1–JP4, que llegan a /JAP y /NTSC del 315-5433 y a /PAL del VDP: el juego cree que está en su región."
     escalera:
-      - "¿A qué patillas llegan los puentes JP1–JP4?"
-    solucion: "El conmutador cambia los bytes de región que lee el juego; no toca nada más."
+      - "Busque los cables que no son de fábrica."
+    solucion: "Los cables de colores."
 
   - id: resumen
     tipo: resumen

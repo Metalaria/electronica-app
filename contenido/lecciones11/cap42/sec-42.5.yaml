@@ -3,6 +3,11 @@
 # 1 % y 0,32 %). El diseño es el divisor del ejercicio 1.4 (cap01#345: 3,3 V desde 5 V) con resistencias E24 del 1 %
 # (bloque 128); la especificación de ± 1 % de la salida es un ejemplo (el libro no la da). Con ella, unas combinaciones
 # pasan en todas las esquinas (2,0/3,9 kΩ, 4,7/9,1 kΩ…) y otras cumplen en nominal pero no en el peor caso (3,9/7,5 kΩ).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): se suben los componentes hasta que el peor caso sea cinco veces
+# el estadístico (objetivo; por qué es tan pesimista, en su «logrado»); el estadístico de diez se escribe; el divisor
+# se lleva a 3,3 V con R₁ = 4,7 kΩ (objetivo) y luego se diseña en todas las esquinas; las diez en serie se conectan
+# (objetivo). Quedan dos preguntas de opciones (la red apareada y el 99,9 % que se quedó en 95); las distribuciones y
+# el procedimiento habitual emparejados pasan al resumen.
 leccion: cap42/sec-42.5
 
 libro:
@@ -40,8 +45,9 @@ tarjetas:
   - id: explore-cuadratura
     tipo: explorar
     titulo: "Peor caso o suma en cuadratura"
-    texto: "n componentes del 1 %, cada uno con sensibilidad unidad. Súbalos: el peor caso crece como n; el estadístico, como √n."
-    libro: [144]
+    texto: "n componentes del 1 %, cada uno con sensibilidad unidad: el peor caso crece como n; el estadístico, como √n. Súbalos hasta que el peor caso sea cinco veces el estadístico."
+    libro: [133, 144]
+    inicio: { n_c: 1 }
     widget:
       tipo: grafica
       x: { id: m, min: 1, max: 30, unidad: "", rotulo: "componentes" }
@@ -51,16 +57,29 @@ tarjetas:
         - { expr: "sqrt(m)*s_c*k_s", color: azul, rotulo: "estadístico, √n·σ" }
       asas:
         - { mueve: n_c, x: "n_c", y: "e_wc", rotulo: "Número de componentes" }
-      lectura: { valor: e_wc, rotulo: "Peor caso" }
+      lectura: { valor: r_ws, rotulo: "Peor caso / estadístico" }
       datos:
+        - { valor: e_wc, rotulo: "Peor caso: {{e_wc}}" }
         - { valor: e_st, rotulo: "Estadístico: {{e_st}}" }
       mandos:
         - { valor: n_c, min: 1, max: 30, paso: 1, rotulo: "Componentes" }
+    objetivo:
+      condiciones:
+        - { valor: r_ws, objetivo: 5, tol: 0.01, rotulo: "Cociente: {{r_ws}}" }
+      logrado: "Con {{n_c}}, √n = 5: el peor caso supone todos en su extremo a la vez, algo despreciablemente improbable. Por eso es tan pesimista."
+      pistas:
+        - { cuando: { valor: r_ws, mayor: 5.05 }, texto: "Se ha pasado: menos componentes." }
+        - { texto: "Le faltan componentes: el cociente es √n." }
+    escalera:
+      - "Peor caso / estadístico = n / √n = √n."
+    solucion: "25 componentes: √25 = 5."
+    comprobar:
+      - { con: { n_c: 25 }, r_ws: 5 }
 
   - id: prediga-diez
-    tipo: predecir
+    tipo: leer
     titulo: "Diez resistencias del 1 %"
-    texto: "Diez resistencias del 1 %, cada una con sensibilidad unidad: el peor caso da un 10 %. ¿Y el estadístico?"
+    texto: "Diez resistencias del 1 %, cada una con sensibilidad unidad: el peor caso da un 10 %. Escriba el error estadístico."
     libro: [145]
     fijar: { n_c: 10, s_c: 1, serie: 0 }
     widget:
@@ -69,16 +88,17 @@ tarjetas:
       y: { min: 0, max: 30, unidad: "%", rotulo: "error total" }
       curvas:
         - { expr: "m*s_c*k_s", color: naranja, rotulo: "peor caso" }
-      lectura: { valor: e_st, rotulo: "Estadístico" }
-      ocultar: true
-    opciones:
-      - texto: "Un 3,2 %"
-        bien: true
-        porque: "σ·√10 = 3,2 %: un factor tres menos, la diferencia exacta entre las dos filosofías de diseño."
-      - texto: "Un 10 %, lo mismo"
-        porque: "Eso es suponer las diez en su extremo a la vez. Independientes, se suman en cuadratura."
-      - texto: "Un 1 %"
-        porque: "Eso es lo que pesa cada una sola; diez juntas suman más, aunque no diez veces más."
+      lectura: { valor: e_wc, rotulo: "Peor caso" }
+      mandos: []
+    leer:
+      objetivo: e_st
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Error estadístico"
+      errores:
+        - { expr: "e_wc", texto: "Eso es el peor caso, las diez en su extremo a la vez. Independientes, se suman en cuadratura." }
+        - { expr: "s_c", texto: "Eso es lo que pesa cada una sola." }
+    exito: "σ·√10 = 3,2 %: un factor tres menos, la diferencia exacta entre las dos filosofías de diseño."
     escalera:
       - "Con n contribuciones iguales e independientes, σ·√n."
     solucion: "√10 ≈ 3,2: un 3,2 %."
@@ -86,12 +106,13 @@ tarjetas:
       - { e_wc: 10, e_st: 3.16, r_ws: 3.16 }
 
   - id: formula-divisor
-    tipo: formula
+    tipo: explorar
     titulo: "El divisor que se va a fabricar"
-    texto: "El ejercicio del divisor: 3,3 V desde 5 V. Mueva R₂ y mire la salida nominal, la de la unidad ideal que no existe."
+    texto: "El ejercicio del divisor: 3,3 V desde 5 V. Con R₁ = 4,7 kΩ, elija R₂ de la serie E24 para la salida nominal más cercana."
     libro: ["cap01#82", "cap01#345"]
     ec: "cap01#82"
-    sustitucion: "{{V_in}} · {{R_2}} / ({{R_1}} + {{R_2}}) = {{V_out}}"
+    fijar: { V_in: 5, R_1: 4700 }
+    inicio: { R_2: 1000 }
     widget:
       tipo: circuito
       esquema: divisor
@@ -100,6 +121,18 @@ tarjetas:
       mide: { salida: V_out }
       mandos:
         - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }
+    objetivo:
+      condiciones:
+        - { valor: V_out, objetivo: 3.3, tol: 0.005, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con {{R_2}}, {{V_out}}: la unidad ideal, que no existe. Las que se fabrican llevan cada una su 1 % de tolerancia."
+      pistas:
+        - { cuando: { valor: V_out, mayor: 3.317 }, texto: "Sobra tensión: baje R₂." }
+        - { texto: "Falta tensión: suba R₂." }
+    escalera:
+      - "R₂ ≈ 1,94 · R₁."
+    solucion: "9,1 kΩ: 3,297 V."
+    comprobar:
+      - { con: { R_2: 9100 }, V_out: 3.297, k_r: 1.94 }
 
   - id: diseno-esquinas
     tipo: diseno
@@ -137,23 +170,6 @@ tarjetas:
       - { con: { R_1: 4700, R_2: 9100 }, V_out: 3.297 }
       - { con: { R_1: 2000, R_2: 3900 }, V_out: 3.305, k_r: 1.94 }
 
-  - id: distribuciones
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La distribución supuesta"
-    texto: "Monte Carlo exige suponer cómo se reparte cada tolerancia. Una cada distribución con cuándo es la razonable."
-    libro: [141]
-    emparejar:
-      - ["Gaussiana centrada, ± 3σ", "El fabricante produce centrado y no selecciona"]
-      - ["Uniforme", "Más conservadora, la de muchos simuladores por defecto"]
-      - ["Bimodal, con hueco en el centro", "El fabricante vende aparte las mejores unidades"]
-    exito: "Con unidades seleccionadas, un Monte Carlo gaussiano sale optimista."
-    pistas:
-      - { texto: "Si las mejores se venden como de tolerancia más estrecha, ¿qué queda en el centro?" }
-    escalera:
-      - "La bimodal es la del hueco: faltan las del centro."
-    solucion: "Gaussiana: sin seleccionar; uniforme: conservadora; bimodal: seleccionadas."
-
   - id: correlacion
     tipo: pregunta
     titulo: "Una red apareada"
@@ -180,67 +196,33 @@ tarjetas:
   - id: en-serie
     tipo: sorpresa
     titulo: "Si están en serie"
-    texto: "Con las diez en serie, cada una pesa solo un décimo: las dos cifras se dividen por diez. Conecte «en serie»."
+    texto: "Con las diez en serie, cada una pesa solo un décimo. Conéctelas en serie y mire las dos cifras."
     libro: [145]
     fijar: { n_c: 10, s_c: 1 }
     inicio: { serie: 0 }
-    requiere: { mover: [serie] }
     widget:
       tipo: grafica
       x: { id: m, min: 1, max: 30, unidad: "", rotulo: "componentes" }
       y: { min: 0, max: 30, unidad: "%", rotulo: "error total" }
       curvas:
-        - { expr: "m*s_c*k_s", color: naranja, rotulo: "peor caso" }
-        - { expr: "sqrt(m)*s_c*k_s", color: azul, rotulo: "estadístico" }
+        - { expr: "m*s_c*k_s", color: naranja, rotulo: "peor caso, n·σ" }
+        - { expr: "sqrt(m)*s_c*k_s", color: azul, rotulo: "estadístico, √n·σ" }
       lectura: { valor: e_wc, rotulo: "Peor caso" }
       datos:
         - { valor: e_st, rotulo: "Estadístico: {{e_st}}" }
       mandos:
         - { valor: serie, tipo: interruptor, rotulo: "En serie" }
+    objetivo:
+      condiciones:
+        - { valor: serie, min: 1, rotulo: "En serie" }
+      logrado: "Peor caso {{e_wc}} y estadístico {{e_st}}: las dos cifras se dividen por diez."
+      pistas:
+        - { texto: "Active «en serie»." }
+    escalera:
+      - "En serie, el error de cada una pesa 1/n en el total."
+    solucion: "1 % y 0,32 %."
     comprobar:
       - { con: { serie: 1 }, e_wc: 1, e_st: 0.316 }
-
-  - id: por-que-pesimista
-    tipo: porque
-    titulo: "¿Por qué tan pesimista?"
-    texto: "El peor caso garantiza que ninguna unidad falle. ¿Por qué obliga a componentes más caros de lo necesario?"
-    libro: [133]
-    fijar: { s_c: 1, serie: 0 }
-    widget:
-      tipo: grafica
-      x: { id: m, min: 1, max: 30, unidad: "", rotulo: "componentes" }
-      y: { min: 0, max: 30, unidad: "%", rotulo: "error total" }
-      curvas:
-        - { expr: "m*s_c*k_s", color: naranja, rotulo: "peor caso" }
-        - { expr: "sqrt(m)*s_c*k_s", color: azul, rotulo: "estadístico" }
-    opciones:
-      - texto: "Porque supone todos los componentes en su extremo a la vez, algo despreciablemente improbable"
-        bien: true
-        porque: "Con veinte componentes, que todos estén en su extremo desfavorable no ocurre en la práctica."
-      - texto: "Porque los simuladores exageran las tolerancias"
-        porque: "Usa las tolerancias declaradas; lo pesimista es combinarlas todas en contra."
-      - texto: "Porque ignora la temperatura"
-        porque: "Esa es una limitación distinta; el pesimismo viene de juntar todos los extremos."
-    escalera:
-      - "¿Qué probabilidad hay de que veinte piezas estén a la vez en su peor extremo?"
-    solucion: "Combina todos los extremos a la vez: casi imposible."
-
-  - id: practica
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Qué se hace en la práctica"
-    texto: "Una cada análisis con el uso que le da el procedimiento habitual."
-    libro: [148, 149]
-    emparejar:
-      - ["Peor caso", "Parámetros críticos de seguridad: se exige garantía"]
-      - ["Monte Carlo", "Parámetros de prestación: rendimiento de producción"]
-      - ["Sensibilidad", "Los tres componentes que dan el 90 % de la variación"]
-    exito: "La sensibilidad es la que más dinero ahorra: dice dónde gastar en tolerancia."
-    pistas:
-      - { texto: "Donde no se acepta una probabilidad, garantía." }
-    escalera:
-      - "¿Cuál dice qué porcentaje de unidades cumplirá?"
-    solucion: "Peor caso: seguridad; Monte Carlo: prestaciones; sensibilidad: dónde gastar."
 
   - id: limites
     tipo: pregunta
@@ -267,9 +249,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [131, 137, 144, 149]
+    libro: [131, 137, 141, 144, 148, 149]
     ideas:
       - { titulo: "Peor caso.", texto: "Garantía absoluta, extremadamente pesimista." }
-      - { titulo: "Monte Carlo.", texto: "Un histograma: el porcentaje que cumple, el rendimiento de producción." }
+      - { titulo: "Monte Carlo.", texto: "El porcentaje que cumple, con la distribución supuesta: gaussiana, uniforme o bimodal si se seleccionan." }
       - { titulo: "En cuadratura.", texto: "Diez del 1 %: 10 % de peor caso, 3,2 % estadístico." }
-      - { titulo: "Sensibilidad.", texto: "Tres componentes dan el 90 %: solo esos piden tolerancia estrecha." }
+      - { titulo: "En la práctica.", texto: "Peor caso en seguridad, Monte Carlo en prestaciones; la sensibilidad: tres componentes dan el 90 %." }

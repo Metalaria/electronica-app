@@ -4,6 +4,10 @@
 #   filtro de canal de ejemplo de ±1,5 kHz alrededor de cero. Se sintoniza la de +5 kHz.
 # Paso práctico: «ajuste» del oscilador numérico hasta centrar la emisión en el filtro de canal (sintonizar es una
 # multiplicación).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): en la figura 53.10 se tocan la etapa que diezma (el eje pasa de
+# ±24 a ±6 kHz; el orden de la cadena va a su éxito) y la que decide el modo; se deja la AM entera en Q; la frecuencia
+# de FM de un salto de fase de 7,5° a 48 kHz (de ejemplo) se calcula. Diezmar en etapas y las plataformas se funden en
+# el emparejar del CIC. Queda una pregunta de opciones (estrechar el filtro de canal).
 leccion: cap52/sec-52.5
 
 libro:
@@ -37,33 +41,39 @@ modelo:
     f_n: { sim: "f_{NCO}", nombre: "frecuencia del oscilador numérico", unidad: Hz, valor: 0 }
     p_0: { sim: "φ₀", nombre: "fase del oscilador, de ejemplo", unidad: "°", valor: 0 }
     f_2: { sim: "f_{emisión}", nombre: "emisión elegida, de ejemplo", unidad: Hz, valor: 5000 }
+    d_p: { sim: "Δφ", nombre: "salto de fase entre muestras", unidad: "°", valor: 7.5 }
+    f_sm: { sim: "f_{s}", nombre: "muestreo tras diezmar", unidad: Hz, valor: 48000 }
   calculos:
     c_2: { expr: "f_2 - f_n", sim: "Δ", nombre: "posición de la emisión tras trasladar", unidad: Hz }
+    f_fm: { expr: "d_p/360*f_sm", sim: "f", nombre: "frecuencia instantánea", unidad: Hz }
+    f_fx: { expr: "d_p*f_sm", sim: "f", nombre: "sin pasar a vueltas", unidad: Hz }
 
 tarjetas:
   - id: ordene-cadena
-    tipo: pregunta
+    tipo: tocar
     titulo: "Del par I/Q a la información"
-    texto: "La cadena es siempre la misma, sea cual sea la modulación. Ordene sus etapas."
+    texto: "La cadena es siempre la misma, sea cual sea la modulación. Toque la etapa que diezma: reduce el muestreo y estrecha el eje de frecuencias."
     libro: [173, 175, 176, 177, 178, 179, 180]
     widget:
       tipo: figura
       figura: fig-52.8
-      zonas:
-        - { id: todo, rotulo: "Sintonizar, filtrar, demodular", rect: [0, 0, 453, 183] }
-    ordenar:
-      - "Corrección de I/Q"
-      - "Traslación en frecuencia"
-      - "Diezmado"
-      - "Filtrado de canal"
-      - "Demodulación"
-      - "Procesado de audio o de datos"
-    exito: "Corregir, sintonizar, reducir el muestreo, seleccionar, demodular y aprovechar."
-    pistas:
-      - { texto: "Primero se arregla lo que trae el hardware; lo último es el audio." }
+      zonas: &zonas-cadena
+        - { id: p1, rotulo: "Primer panel", rect: [3, 10, 72, 130] }
+        - { id: p2, rotulo: "Segundo panel", rect: [79, 10, 72, 130] }
+        - { id: p3, rotulo: "Tercer panel", rect: [155, 10, 72, 130] }
+        - { id: p4, rotulo: "Cuarto panel", rect: [231, 10, 72, 130] }
+        - { id: p5, rotulo: "Quinto panel", rect: [307, 10, 72, 130] }
+    tocar:
+      bien: [p3]
+      porque:
+        p1: "Aún es la banda capturada entera."
+        p2: "Ya trasladada, pero con el eje igual de ancho."
+        p4: "Ya está diezmada: aquí se filtra el canal."
+        p5: "Ya no es un espectro: es la señal demodulada."
+    exito: "El eje se estrecha. El orden: corregir I/Q, trasladar, diezmar, filtrar el canal, demodular y procesar el audio."
     escalera:
-      - "El diezmado necesita la señal ya centrada; la demodulación, el canal ya filtrado."
-    solucion: "Corrección, traslación, diezmado, filtrado de canal, demodulación y audio."
+      - "Compare los ejes de frecuencia de un panel a otro."
+    solucion: "El tercer panel."
 
   - id: ajuste-sintonia
     tipo: ajuste
@@ -99,7 +109,7 @@ tarjetas:
   - id: explore-am
     tipo: explorar
     titulo: "Un módulo, y ya está"
-    texto: "Una emisión de AM ya centrada: I y Q dependen de la fase con que quedó el oscilador. Cámbiela y mire √(I² + Q²)."
+    texto: "Una emisión de AM ya centrada: I y Q dependen de la fase con que quedó el oscilador. Déjela toda en Q y mire √(I² + Q²)."
     nota: "Modulación y fases de ejemplo."
     libro: [183]
     widget:
@@ -113,79 +123,66 @@ tarjetas:
       lectura: { valor: p_0, rotulo: "Fase del oscilador" }
       mandos:
         - { valor: p_0, lista: [0, 45, 90, 150], rotulo: "Fase del oscilador" }
-    requiere: { mover: [p_0] }
+    inicio: { p_0: 0 }
+    objetivo:
+      condiciones:
+        - { valor: p_0, objetivo: 90, tol: 0.01, rotulo: "Fase: {{p_0}}" }
+      logrado: "I se queda en cero y el módulo no cambia: la AM es √(I² + Q²), sea cual sea la fase."
+      pistas:
+        - { texto: "Aún hay algo en I: cambie la fase del oscilador." }
+    escalera:
+      - "Con fase de 90°, el coseno es cero."
+    solucion: "Fase de 90°."
+    comprobar:
+      - { con: { p_0: 90 }, p_0: 90 }
 
   - id: empareje-demodular
-    tipo: pregunta
-    titulo: "Cómo se demodula cada cosa"
-    texto: "Empareje cada modulación con lo que hace el programa."
+    tipo: simular
+    titulo: "Cómo se demodula la FM"
+    texto: "En FM, la frecuencia es la diferencia de arctan(Q/I) entre muestras. Si la fase avanza 7,5° por muestra a 48 kHz, ¿qué frecuencia hay?"
+    nota: "Valores de ejemplo."
     libro: [183, 184, 185, 186]
-    widget:
-      tipo: figura
-      figura: fig-52.9
-      zonas:
-        - { id: todo, rotulo: "La cadena y las demodulaciones", rect: [0, 0, 453, 183] }
-    emparejar:
-      - ["AM", "El módulo, √(I² + Q²)"]
-      - ["FM", "La diferencia de arctan(Q/I) entre muestras"]
-      - ["SSB", "Una traslación y un filtro"]
-      - ["Digitales", "Comparar los puntos con la constelación"]
-    exito: "Lo que en analógico pedía un discriminador, un detector de envolvente o un demodulador coherente."
-    pistas:
-      - { texto: "La frecuencia instantánea es la derivada de la fase." }
+    fijar: { d_p: 7.5, f_sm: 48000 }
+    simular:
+      objetivo: f_fm
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia instantánea"
+      errores:
+        - { expr: "f_fx", texto: "Pase los grados a vueltas: entre 360." }
+    exito: "1 kHz. La AM es el módulo; la SSB, una traslación y un filtro; las digitales se comparan con la constelación."
     escalera:
-      - "Empiece por la AM: solo interesa la amplitud."
-    solucion: "AM, el módulo; FM, la derivada de la fase; SSB, traslación y filtro; digitales, la constelación."
+      - "Vueltas por muestra por muestras por segundo."
+    solucion: "7,5/360 × 48 000 = 1 000 Hz."
+    comprobar:
+      - { f_fm: 1000, f_fx: 360000 }
 
   - id: porque-digital
-    tipo: porque
+    tipo: tocar
     titulo: "Por qué la radio se volvió digital"
-    texto: "Discriminador, detector de envolvente, demodulador coherente: cada modo pedía su circuito. ¿Qué cambió con la SDR?"
+    texto: "Discriminador, detector de envolvente, demodulador coherente: cada modo pedía su circuito. Toque la etapa que ahora decide si se oye AM, FM o SSB."
     libro: [187, 201]
     widget:
       tipo: figura
-      figura: fig-52.9
-      zonas:
-        - { id: todo, rotulo: "La cadena y las demodulaciones", rect: [0, 0, 453, 183] }
-    opciones:
-      - texto: "Un solo hardware sirve para todo, y el modo lo decide el software"
-        bien: true
-        porque: "La misma captura se escucha en AM, FM o SSB cambiando un ajuste."
-      - texto: "Que los circuitos digitales son más sensibles"
-        porque: "La sensibilidad sigue siendo cosa del front-end analógico."
-      - texto: "Que ya no hace falta filtrar"
-        porque: "Se filtra igual, pero en digital, con mucha más selectividad."
-    escalera:
-      - "¿Qué hay que cambiar para pasar de AM a FM en cada caso?"
-    solucion: "Un hardware para todo; el modo es software."
-
-  - id: porque-etapas
-    tipo: porque
-    titulo: "Diezmar en etapas"
-    texto: "El coste crece con la frecuencia de muestreo y el orden de los filtros. ¿Por qué el diezmado se hace en varias etapas?"
-    libro: [189, 190]
-    widget:
-      tipo: figura
       figura: fig-52.8
-      zonas:
-        - { id: todo, rotulo: "Sintonizar, filtrar, demodular", rect: [0, 0, 453, 183] }
-    opciones:
-      - texto: "Diezmar mucho de golpe exige un filtro de orden altísimo; varias etapas moderadas cuestan mucho menos"
-        bien: true
-        porque: "Cada etapa reduce el muestreo y abarata las siguientes."
-      - texto: "Porque cada etapa elimina un tipo de ruido distinto"
-        porque: "La razón es de coste: el orden del filtro de una sola etapa se dispara."
-      - texto: "Porque el convertidor no admite diezmar más de dos veces"
-        porque: "El diezmado es cálculo, no una limitación del convertidor."
+      zonas: *zonas-cadena
+    tocar:
+      bien: [p5]
+      porque:
+        p1: "Es la banda capturada."
+        p2: "Ahí se sintoniza, para cualquier modo."
+        p3: "Ahí se diezma, para cualquier modo."
+        p4: "Ahí se selecciona el canal, para cualquier modo."
+    exito: "La demodulación: un solo hardware para todo, y el modo, un ajuste del software."
     escalera:
-      - "¿Cómo de abrupto tiene que ser el filtro si se diezma cien veces de una sola vez?"
-    solucion: "Varias etapas moderadas cuestan mucho menos que una enorme."
+      - "Busque el panel cuya salida ya es la señal en el tiempo."
+    solucion: "El quinto panel."
 
   - id: empareje-cic
     tipo: pregunta
     titulo: "La arquitectura estándar"
     texto: "Empareje cada pieza de la cadena con su papel."
-    libro: [191, 192, 193]
+    libro: [189, 190, 191, 192, 193, 195, 196, 197, 198]
     widget:
       tipo: figura
       figura: fig-52.8
@@ -195,34 +192,12 @@ tarjetas:
       - ["Filtro CIC", "Diezmado grueso sin multiplicaciones"]
       - ["FIR de orden alto", "Filtrado fino a frecuencia ya baja"]
       - ["FPGA y ASIC de radio", "Donde van los CIC"]
-    exito: "CIC primero, FIR después: la arquitectura de cualquier receptor digital."
+    exito: "CIC primero, FIR después: diezmar mucho de golpe exigiría un filtro altísimo. El grueso va en el hardware; el resto, en el ordenador, la FPGA o un DSP."
     pistas:
       - { texto: "CIC: cascada de integradores y peines, solo sumas." }
     escalera:
       - "¿Qué conviene hacer cuando la frecuencia aún es alta: multiplicar mucho o nada?"
     solucion: "CIC, el grueso sin multiplicar; FIR, el fino; los CIC, en FPGA y ASIC."
-
-  - id: empareje-donde
-    tipo: pregunta
-    titulo: "Dónde se ejecuta"
-    texto: "Empareje cada plataforma con lo que la caracteriza."
-    libro: [195, 196, 197, 198]
-    widget:
-      tipo: figura
-      figura: fig-52.8
-      zonas:
-        - { id: todo, rotulo: "Sintonizar, filtrar, demodular", rect: [0, 0, 453, 183] }
-    emparejar:
-      - ["Ordenador", "Flexible, latencia variable, limitado por el USB"]
-      - ["FPGA", "Tiempo real garantizado y mucho más trabajo"]
-      - ["DSP o microcontrolador rápido", "Un compromiso"]
-      - ["SDR económica", "Diezmado grueso en el hardware y el resto en el ordenador"]
-    exito: "El reparto habitual combina lo rápido del hardware con lo flexible del ordenador."
-    pistas:
-      - { texto: "La FPGA garantiza el tiempo real a costa del trabajo de desarrollo." }
-    escalera:
-      - "¿Cuál depende del USB?"
-    solucion: "Ordenador, flexible; FPGA, tiempo real; DSP, compromiso; SDR económica, reparto."
 
   - id: predecir-filtro
     tipo: predecir

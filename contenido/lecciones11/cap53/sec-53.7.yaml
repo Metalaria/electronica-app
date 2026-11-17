@@ -6,9 +6,17 @@
 # error de carga (figura 55.18 y su netlist): 1 V detrás de la impedancia de la fuente, medido con 10 MΩ. (3) La
 # ganancia hFE (figura 55.20): 9 V, 1 MΩ de base, 1 kΩ de colector, V_BE = 0,65 V (esquema bjt-interruptor).
 # Pasos prácticos: «simular» la caída con 30 mA (ejercicio 55.10) y «banco» de la ficha 2 del cuaderno.
+# 1.2.1 (aprender haciendo): calcular la incertidumbre, pasar al rango de amperios, simular la caída y el error de
+# carga, tocar el remedio y la herramienta para un pulso corto, buscar el h_FE de 200, calcularlo, el banco y leer la
+# pantalla. Dos preguntas: la instalación y dos instrumentos que no coinciden.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap53/sec-53.7
 
 libro:
+  233: "Procedimiento D — Cazar lo que no se ve"
+  234: "Hay dos herramientas distintas y conviene no confundirlas"
+  237: "Conectar en el punto sospechoso y dejar la lectura estable"
+  251: "Nivel básico"
   210: "1,05 mV (0,021 %)"
   211: "el error deja de estar en el multímetro y pasa a estar en el circuito"
   213: "la caída sobre él se resta del circuito"
@@ -85,25 +93,21 @@ tarjetas:
     requiere: { mover: [rel, crest, rec] }
 
   - id: estime-incertidumbre
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Exactitud real"
-    texto: "Especifica un 0,021 % a 5 V. ¿Cuál es la incertidumbre de esa lectura?"
+    texto: "Especifica un 0,021 % a 5 V. Calcule la incertidumbre de esa lectura."
     libro: [210, 211]
     fijar: { V_l: 5 }
-    estimar:
-      objetivo: "U_l"
-      unidad: V
-      min: 0
-      max: 0.005
-      paso: 0.00005
-      inicio: 0.004
-      tol: 0.05
-      rotulo: "0,021 % de 5 V"
     exito: "1,05 mV: en casi cualquier medida de banco el error pasa a estar en el circuito."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0011 }, texto: "Se ha pasado: un 0,021 % es la lectura por 0,021 y entre cien." }
-      - { texto: "Se ha quedado corto: 5 V por 0,021 y entre cien da más de un milivoltio." }
+    simular:
+      objetivo: U_l
+      unidad: V
+      tol: 0.03
+      rotulo: "Incertidumbre a 5 V"
+      errores:
+        - { expr: "0.021*V_l", texto: "Es un 0,021 %: hay que dividir entre cien." }
+        - { expr: "0.0021*V_l", texto: "Diez veces de más: revise la coma del porcentaje." }
     escalera:
       - "Un 0,021 % de una lectura es la lectura por 0,021, dividido entre cien."
     solucion: "5 V · 0,021 / 100 = 1,05 mV."
@@ -113,10 +117,11 @@ tarjetas:
   - id: explore-shunt
     tipo: explorar
     titulo: "La caída del propio instrumento"
-    texto: "Para medir corriente, el multímetro intercala un shunt. Cambie de rango y mire lo que le queda al circuito de 3,3 V."
+    texto: "Para medir corriente, el multímetro intercala un shunt. Busque el rango que menos tensión le roba al circuito de 3,3 V."
     nota: "El circuito, como una resistencia de ejemplo."
     libro: [213, 214, 215]
     fijar: { R_L: 56, a_on: 1 }
+    inicio: { R_sh: 10 }
     widget:
       tipo: circuito
       esquema: thevenin
@@ -129,7 +134,15 @@ tarjetas:
       mide: { salida: V_ld, corriente: I_a, interna: V_sh }
       mandos:
         - { valor: R_sh, lista: [0.01, 10], nombres: [rango A, rango mA], rotulo: "Rango del Brymen" }
-    requiere: { mover: [R_sh] }
+    objetivo:
+      condiciones:
+        - { valor: V_sh, max: 0.01, rotulo: "Caída en el instrumento: {{V_sh}}" }
+      logrado: "En el rango de amperios el shunt apenas roba tensión; en el de miliamperios, una parte apreciable de 3,3 V."
+      pistas:
+        - { texto: "Cambie al rango de amperios." }
+    escalera:
+      - "La caída es la corriente por el shunt del rango."
+    solucion: "El rango A."
 
   - id: simule-30ma
     tipo: simular
@@ -163,26 +176,20 @@ tarjetas:
       - { I_a: 0.03, V_sh: 0.3, f_sh: 9.09, tol: 0.01 }
 
   - id: prediga-carga
-    tipo: predecir
+    tipo: simular
     titulo: "Los 10 MΩ no son infinitos"
-    texto: "Mide 1 V que sale de una fuente con 10 MΩ de impedancia, con los 10 MΩ del multímetro. ¿Qué error comete?"
+    texto: "Mide 1 V que sale de una fuente con 10 MΩ de impedancia, con los 10 MΩ del multímetro. Calcule el error que comete."
     libro: [271, 272]
     fijar: { V_1: 1, R_s: 10000000, R_m: 10000000, m_on: 1 }
-    widget:
-      tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_1, rth: R_s, carga: R_m, interruptor: m_on }
-      lectura: { valor: e_m, rotulo: "Error de lectura" }
-      mide: { salida: V_m, corriente: I_m, interna: V_ms }
-      ocultar: true
-    opciones:
-      - texto: "Un 50 %: lee la mitad"
-        bien: true
-        porque: "Las dos impedancias forman un divisor a partes iguales: la medida no significa nada."
-      - texto: "Un 0,10 %, despreciable"
-        porque: "Eso es con una fuente de 10 kΩ, mil veces menor que la entrada del multímetro."
-      - texto: "Ninguno: 10 MΩ es casi infinito"
-        porque: "Parecen infinitos hasta que la fuente también es alta."
+    simular:
+      objetivo: e_m
+      unidad: "%"
+      tol: 0.03
+      rotulo: "Error de lectura"
+      errores:
+        - { expr: "0.1", texto: "Ese 0,10 % es con 10 kΩ de fuente; aquí la fuente es tan alta como el multímetro." }
+        - { expr: "0", texto: "10 MΩ no son infinitos frente a otros 10 MΩ." }
+    exito: "Un 50 %: lee la mitad. Con fuentes de alta impedancia, el multímetro carga."
     escalera:
       - "La fuente y el multímetro forman un divisor de tensión."
     solucion: "10 MΩ frente a 10 MΩ: lee 0,5 V, un 50 % de error."
@@ -190,59 +197,13 @@ tarjetas:
       - { e_m: 50, V_m: 0.5 }
       - { con: { R_s: 10000 }, e_m: 0.10, tol: 0.01 }
 
-  - id: remedio-carga
-    tipo: pregunta
-    titulo: "El remedio"
-    texto: "Un divisor de 1 MΩ da lecturas falsas con el multímetro. Cambie la impedancia de la fuente y elija el remedio."
-    libro: [226, 271, 272, 273]
-    fijar: { V_1: 1, R_m: 10000000, m_on: 1 }
-    widget:
-      tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_1, rth: R_s, carga: R_m, interruptor: m_on }
-      lectura: { valor: e_m, rotulo: "Error de lectura" }
-      datos:
-        - { valor: V_m, rotulo: "Lee: {{V_m}}" }
-      mide: { salida: V_m, corriente: I_m, interna: V_ms }
-      mandos:
-        - { valor: R_s, lista: [10000, 100000, 1000000, 10000000], rotulo: "Impedancia de la fuente" }
-    opciones:
-      - texto: "Medir tras un seguidor, o corregir conociendo la impedancia"
-        bien: true
-        porque: "El seguidor presenta una impedancia baja al multímetro; o se calcula la corrección del divisor."
-      - texto: "Cambiar a un rango más alto"
-        porque: "La entrada sigue siendo de 10 MΩ: el divisor no cambia."
-      - texto: "Medir en el rango de milivoltios"
-        porque: "Por encima de unos 3 V su impedancia cae aún más: carga más el circuito."
-    escalera:
-      - "Hay que medir en un punto de impedancia baja, o calcular."
-    solucion: "Un seguidor delante, o la corrección por cálculo."
-    comprobar:
-      - { con: { R_s: 1000000 }, e_m: 9.09, tol: 0.01 }
-
-  - id: rec-crest
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cazar lo que no se ve"
-    texto: "Una cada herramienta con lo que captura."
-    libro: [236, 238]
-    emparejar:
-      - ["REC", "Mínimo, máximo y media, cada unos 350 ms"]
-      - ["CREST", "Picos de unos 0,7 ms"]
-      - ["Disparo único del osciloscopio", "Pulsos de menos de 0,7 ms"]
-    exito: "REC para derivas y caídas lentas; CREST para transitorios; lo más breve, el osciloscopio."
-    pistas:
-      - { texto: "REC mira despacio durante horas; CREST, deprisa." }
-    escalera:
-      - "Un pulso más corto de 0,7 ms no lo captura ni CREST."
-    solucion: "REC: mínimo, máximo y media; CREST: picos; disparo único: lo más breve."
-
   - id: explore-hfe
     tipo: explorar
     titulo: "La ganancia, con dos resistencias"
-    texto: "El BM869s no prueba transistores. Base a 9 V por 1 MΩ, colector por 1 kΩ: cambie el transistor y mire la caída sobre R_{C}."
+    texto: "El BM869s no prueba transistores. Base a 9 V por 1 MΩ, colector por 1 kΩ: busque el transistor que deja 1,67 V sobre R_{C}."
     libro: [286, 287]
     fijar: { V_9: 9, R_B: 1000000, R_C: 1000, V_BE: 0.65 }
+    inicio: { beta: 100 }
     widget:
       tipo: circuito
       esquema: bjt-interruptor
@@ -255,28 +216,34 @@ tarjetas:
       mide: { ib: I_B, ic: I_C, vce: V_CE, vbe: V_BE }
       mandos:
         - { valor: beta, lista: [100, 200, 300], rotulo: "h_{FE} del transistor" }
-    requiere: { mover: [beta] }
+    objetivo:
+      condiciones:
+        - { valor: V_RC, min: 1.6, max: 1.75, rotulo: "Sobre R_{C}: {{V_RC}}" }
+      logrado: "1,67 V sobre 1 kΩ: 1,67 mA de colector frente a 8,35 µA de base, un h_{FE} de 200."
+      pistas:
+        - { texto: "Pruebe otro transistor." }
+    escalera:
+      - "La caída en voltios sobre 1 kΩ es la corriente de colector en miliamperios."
+    solucion: "El de h_{FE} 200."
+    comprobar:
+      - { con: { beta: 200 }, V_RC: 1.67, tol: 0.01 }
 
   - id: estime-hfe
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Un transistor desconocido"
-    texto: "En ese montaje, el Brymen lee 1,25 V sobre la resistencia de colector. ¿Qué h_{FE} tiene?"
+    texto: "En ese montaje, el Brymen lee 1,25 V sobre la resistencia de colector. Calcule su h_{FE}."
     libro: [286, "cap53#962"]
     fijar: { V_9: 9, R_B: 1000000, R_C: 1000, V_BE: 0.65, V_lee: 1.25 }
-    estimar:
-      objetivo: "h_e"
-      unidad: ""
-      min: 0
-      max: 400
-      paso: 5
-      inicio: 350
-      tol: 0.05
-      rotulo: "1,25 V / 1 kΩ / 8,35 µA"
     exito: "Unos 150: 1,25 mA de colector entre 8,35 µA de base."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 157 }, texto: "Se ha pasado: I_{C} = 1,25 mA; divídala entre 8,35 µA." }
-      - { texto: "Se ha quedado corto: 1,25 mA entre 8,35 µA es bastante más que cien." }
+    simular:
+      objetivo: h_e
+      unidad: ""
+      tol: 0.03
+      rotulo: "h_{FE}"
+      errores:
+        - { expr: "V_lee/R_C/(V_9/R_B)", texto: "Ha olvidado los 0,65 V de la base: I_{B} = (9 − 0,65)/1 MΩ." }
+        - { expr: "V_lee*1000", texto: "Eso es la corriente de colector en microamperios; divídala entre la de base." }
     escalera:
       - "La caída entre 1 kΩ da la corriente de colector; esta entre 8,35 µA, la ganancia."
     solucion: "1,25 mA / 8,35 µA ≈ 150."
@@ -300,24 +267,6 @@ tarjetas:
         - { cuando: { valor: desviacion, mayor: 0.5 }, texto: "Ganancia alta: compruebe que quedan más de 1 V entre colector y emisor." }
         - { texto: "Dentro de lo normal. Sirve para comparar ejemplares entre sí, no como dato absoluto." }
       ficha: { n: 2, titulo: "Medida de la ganancia de corriente β" }
-
-  - id: pantalla
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Leer la pantalla sin confundirse"
-    texto: "Una cada cosa que aparece con lo que significa."
-    libro: [252, 281]
-    emparejar:
-      - ["OL", "Fuera de rango, o abierto"]
-      - ["Signo negativo en continua", "Roja en el punto de menor potencial; válida"]
-      - ["Pitido al girar el selector", "Puntas en los bornes de corriente"]
-      - ["CEr al encender", "Fuera de especificación: a recalibrar"]
-    exito: "CEr no es un aviso menor: las lecturas pueden estar muy fuera de especificación."
-    pistas:
-      - { texto: "El pitido es el BeepJack: avisa de las puntas mal puestas." }
-    escalera:
-      - "Un signo negativo no es un error: es la polaridad."
-    solucion: "OL: fuera de rango; negativo: polaridad; pitido: puntas en corriente; CEr: recalibrar."
 
   - id: instalacion
     tipo: pregunta
@@ -368,7 +317,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [211, 215, 271, 286]
+    libro: [211, 215, 271, 286, 226, 233, 234, 236, 237, 238, 251, 252, 273, 281]
     ideas:
       - { titulo: "Exactitud.", texto: "0,021 %: el error pasa del multímetro al circuito." }
       - { titulo: "El shunt.", texto: "En mA, cientos de milivoltios se restan del circuito: rango A o una resistencia conocida." }

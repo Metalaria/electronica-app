@@ -5,11 +5,16 @@
 # - Con la regla de Arrhenius (bloque 448), 20 °C más frío falla cuatro veces más tarde: los 10 meses de la figura
 #   (fijados en la tarjeta) pasan a 40.
 # Paso práctico: «tocar» en la foto el condensador reventado.
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): la placa se enfría con una meta hasta aguantar 40 meses
+# (Arrhenius ×2 cada 10 °C desde 10 meses) y se escribe lo que pasaría 10 °C más caliente; la secuencia del fallo se
+# toca en orden en la figura 47.21 y la razón de dónde reventaban, en su recuadro; en la foto 47.22 se tocan el
+# reventado y el abombado. Quedan dos preguntas de opciones (por qué pasaban la prueba y la segunda fuente).
 leccion: cap46/sec-46.13
 
 libro:
   435: "condensadores electrolíticos que se hinchaban, reventaban y perdían capacidad mucho antes de su vida prevista"
   439: "faltaba el inhibidor adecuado"
+  438: "repara la capa de óxido que actúa de dieléctrico"
   441: "La presión interna sube."
   442: "La válvula de alivio cede y sale electrolito"
   443: "La ESR se dispara al perderse electrolito"
@@ -17,10 +22,12 @@ libro:
   448: "cada 10 °C duplica la velocidad de degradación"
   450: "junto al regulador de la alimentación del procesador, y en la salida de las fuentes conmutadas"
   451: "Es realimentación positiva, y explica por qué fallaban esos y no los de señal."
+  454: "El equipo no arranca, o arranca a veces."
   455: "Reinicios aleatorios bajo carga, cuando el consumo sube."
   458: "tapa abombada, hendiduras abiertas, costra marrón en la base o en la placa"
   463: "Tener dos proveedores no protege si ambos comparten la misma causa raíz."
   467: "Condensadores de polímero sólido en las posiciones críticas"
+  472: "mirar sus electrolíticos con luz rasante"
   473: "Las tapas ligeramente abombadas se ven bien con esa luz y no de frente."
   475: "Degradación de la ESR según la temperatura y la secuencia física del fallo."
   476: "uno reventado, que ha expulsado fuera de la cápsula su bobinado de lámina de aluminio y papel"
@@ -28,55 +35,100 @@ libro:
 modelo:
   valores:
     t_c: { sim: "t", nombre: "meses hasta fallar en la caja caliente", unidad: "meses", valor: 10 }
-    dT_f: { sim: "ΔT", nombre: "cuánto más frío", unidad: "°C", valor: 20 }
+    dT_f: { sim: "ΔT", nombre: "cuánto más frío", unidad: "°C", valor: 0 }
   calculos:
     t_f: { expr: "t_c*2^(dT_f/10)", sim: "t", nombre: "meses hasta fallar más frío", unidad: "meses", cifras: 2 }
+    t_h: { expr: "t_c/2", sim: "t", nombre: "meses hasta fallar 10 °C más caliente", unidad: "meses", cifras: 2 }
 
 tarjetas:
-  - id: explore-esr
+  - id: estime-frio
     tipo: explorar
-    titulo: "La ESR que se dispara"
-    texto: "Millones de electrolíticos fallaron mucho antes de su vida prevista. Toque cada curva."
-    libro: [435, 443, 475]
-    fijar: { dT_f: 20 }
+    fase: "Consiga"
+    titulo: "Más frío, más vida"
+    texto: "Una placa de la plaga falla a los 10 meses en una caja mal ventilada. Enfríe la caja hasta que aguante 40 meses."
+    libro: [435, 446, 448, 475]
+    fijar: { t_c: 10 }
+    inicio: { dT_f: 0 }
     widget:
-      tipo: figura
-      figura: fig-46.21
-      zonas:
-        - { id: caliente, rotulo: "Curva roja oscura", rect: [32, 15, 40, 135], texto: "Lote defectuoso en una caja mal ventilada: la ESR cruza el umbral de fallo en unos meses." }
-        - { id: frio, rotulo: "Curva naranja", rect: [120, 15, 90, 120], texto: "El mismo lote, 20 °C más frío: aguanta cuatro veces más." }
-        - { id: correcto, rotulo: "Curva verde de abajo", rect: [140, 128, 90, 35], texto: "Un electrolítico correcto: su ESR apenas sube." }
-        - { id: secuencia, rotulo: "Lista de la derecha", rect: [245, 20, 200, 105], texto: "La secuencia: falta el inhibidor, se genera hidrógeno, sube la presión, cede la válvula y la ESR se dispara." }
-    requiere: { mover: [caliente, correcto, secuencia] }
+      tipo: grafica
+      x: { id: dd, min: 0, max: 30, unidad: "°C", rotulo: "cuánto más frío" }
+      y: { min: 0, max: 90, unidad: "meses", rotulo: "hasta fallar" }
+      curvas:
+        - { expr: "t_c*2^(dd/10)", color: naranja, rotulo: "el doble cada 10 °C" }
+      marcas:
+        - { x: "dT_f", y: "t_f", rotulo: "{{t_f}}" }
+      lectura: { valor: t_f, rotulo: "Meses hasta fallar" }
+      mandos:
+        - { valor: dT_f, min: 0, max: 30, paso: 5, rotulo: "Cuánto más fría, ΔT" }
+    objetivo:
+      condiciones:
+        - { valor: t_f, min: 40, rotulo: "Aguanta: {{t_f}}" }
+      logrado: "{{dT_f}} más fría: {{t_f}}. Por eso golpeó primero a las unidades que trabajaban más calientes o más horas."
+      pistas:
+        - { texto: "Todavía falla pronto: enfríela más." }
+    escalera:
+      - "Cada 10 °C duplica la velocidad de degradación: 40 meses son cuatro veces 10."
+    solucion: "20 °C más fría: 40 meses."
+    comprobar:
+      - { con: { dT_f: 20 }, t_f: 40 }
+
+  - id: lea-caliente
+    tipo: leer
+    titulo: "Diez grados más"
+    texto: "Con la misma regla, escriba cuántos meses aguantaría esa placa en una caja 10 °C más caliente que la mal ventilada."
+    libro: [448]
+    fijar: { t_c: 10 }
+    widget:
+      tipo: grafica
+      x: { id: dd, min: -10, max: 30, unidad: "°C", rotulo: "cuánto más frío" }
+      y: { min: 0, max: 90, unidad: "meses", rotulo: "hasta fallar" }
+      curvas:
+        - { expr: "t_c*2^(dd/10)", color: naranja, rotulo: "el doble cada 10 °C" }
+      mandos: []
+    leer:
+      objetivo: t_h
+      unidad: "meses"
+      tol: 0.03
+      rotulo: "Meses hasta fallar"
+      errores:
+        - { expr: "t_c*2", texto: "Eso sería 10 °C más fría: más calor, menos vida." }
+    exito: "Cinco meses: cada 10 °C más, la degradación va el doble de rápido."
+    escalera:
+      - "Más calor, la mitad de vida por cada 10 °C."
+    solucion: "La mitad de 10 meses: 5 meses."
+    comprobar:
+      - { t_h: 5 }
 
   - id: ordene-secuencia
-    tipo: pregunta
-    titulo: "Qué ocurría físicamente"
-    texto: "Ordene la secuencia del fallo de un electrolítico de la plaga."
-    libro: [439, 441, 442, 443]
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "La secuencia del fallo"
+    texto: "En la lista de la derecha, toque los pasos del fallo de un electrolítico de la plaga en el orden en que ocurren."
+    libro: [438, 439, 441, 442, 443, 475]
     widget:
       tipo: figura
       figura: fig-46.21
       zonas:
-        - { id: curvas, rotulo: "La gráfica", rect: [20, 10, 210, 170] }
-    ordenar:
-      - "Falta el inhibidor en el electrolito"
-      - "La reacción genera hidrógeno"
-      - "Sube la presión y la tapa se abomba"
-      - "Cede la válvula y sale electrolito"
-      - "La ESR se dispara y el circuito falla"
-    exito: "Esa secuencia explica todos los síntomas, de la tapa abombada a la costra."
+        - { id: s5, rotulo: "Quinta línea de la lista", rect: [248, 105, 196, 18] }
+        - { id: s2, rotulo: "Segunda línea de la lista", rect: [248, 41, 196, 18] }
+        - { id: s4, rotulo: "Cuarta línea de la lista", rect: [248, 83, 196, 18] }
+        - { id: s1, rotulo: "Primera línea de la lista", rect: [248, 20, 196, 18] }
+        - { id: s3, rotulo: "Tercera línea de la lista", rect: [248, 62, 196, 18] }
+    tocar:
+      bien: [s1, s2, s3, s4, s5]
+      orden: true
     pistas:
-      - { texto: "Primero la química del electrolito; al final, la ESR." }
+      - { texto: "Todo empieza en la formulación; lo último es que el circuito falla." }
+    exito: "Falta el inhibidor, se genera hidrógeno, la tapa se abomba, cede la válvula y la ESR se dispara: el circuito falla."
     escalera:
-      - "Sin inhibidor, la reacción se descontrola y genera gas."
-    solucion: "Inhibidor que falta, hidrógeno, presión, válvula y ESR."
+      - "Del electrolito mal formulado a la ESR disparada."
+    solucion: "Inhibidor, hidrógeno, presión, válvula y ESR."
 
   - id: toque-reventado
     tipo: tocar
     titulo: "Una placa base con la plaga"
     texto: "Toque el condensador que ha reventado y ha expulsado su bobinado."
-    libro: [458, 476]
+    libro: [458, 476, 467]
     widget:
       tipo: figura
       figura: fig-46.22
@@ -91,7 +143,7 @@ tarjetas:
         abombado: "Tiene la tapa abombada y las hendiduras abiertas: está fallando, pero sigue entero."
         transistor: "Es un encapsulado de transistor de la fuente, no un electrolítico."
         bobina: "Es una bobina de la fuente conmutada, no un condensador."
-    exito: "Ha expulsado fuera de la cápsula su bobinado de lámina de aluminio y papel."
+    exito: "Ha expulsado fuera de la cápsula su bobinado de lámina de aluminio y papel. Hoy, en esas posiciones, polímero sólido: sin electrolito líquido."
     escalera:
       - "Busque un rollo de lámina fuera de su cápsula."
     solucion: "El rollo gris del centro."
@@ -118,79 +170,52 @@ tarjetas:
       - "¿Cuánto tiempo y calor necesita una reacción química lenta?"
     solucion: "Funcionaban en fábrica: fallaban con tiempo y temperatura."
 
-  - id: estime-frio
-    tipo: pregunta
-    titulo: "Veinte grados más frío"
-    texto: "Una placa de la plaga falla a los 10 meses en una caja mal ventilada. Con la regla de Arrhenius, ¿cuándo falla la misma 20 °C más fría?"
-    libro: [448, 475]
-    fijar: { t_c: 10, dT_f: 20 }
-    widget:
-      tipo: figura
-      figura: fig-46.21
-      zonas:
-        - { id: frio, rotulo: "Curva naranja", rect: [120, 15, 90, 120] }
-    estimar:
-      objetivo: "t_f"
-      unidad: "meses"
-      min: 0
-      max: 80
-      paso: 1
-      inicio: 20
-      tol: 0.05
-      rotulo: "Falla a los"
-    exito: "A los 40 meses: la misma placa, en meses o en años según la ventilación."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 42 }, texto: "Demasiado: son dos saltos de 10 °C; cada uno duplica." }
-      - { texto: "Demasiado poco: 20 °C son dos saltos de 10, y cada uno duplica; no sume, multiplique." }
-    escalera:
-      - "Cada 10 °C menos, la degradación va la mitad de rápido."
-    solucion: "Dos saltos de 10 °C, cada uno el doble: de 10 a 40 meses."
-    comprobar:
-      - { t_f: 40 }
-
   - id: pregunta-donde
-    tipo: pregunta
+    tipo: tocar
     titulo: "Dónde fallaban"
-    texto: "Los afectados reventaban junto al regulador del procesador y en la salida de las fuentes conmutadas, no en las señales. ¿Por qué?"
-    libro: [450, 451]
+    texto: "Los de la plaga reventaban junto al regulador del procesador y en la salida de las fuentes conmutadas, no en las señales. Toque lo que lo explica."
+    libro: [450, 451, 475]
     widget:
       tipo: figura
       figura: fig-46.21
       zonas:
-        - { id: porque, rotulo: "Recuadro naranja de la derecha", rect: [250, 138, 195, 70] }
-    opciones:
-      - texto: "Mucho rizado: más ESR, más calor, más degradación"
-        bien: true
-        porque: "Es realimentación positiva: el que empieza a degradarse se calienta más y se degrada más deprisa."
-      - texto: "Porque allí la tensión es más alta"
-        porque: "No es la tensión: es la corriente de rizado, que calienta por la ESR."
-      - texto: "Porque eran de otro fabricante"
-        porque: "Los de señal podían ser del mismo lote: la diferencia es el rizado que soportaban."
+        - { id: grafica, rotulo: "La gráfica", rect: [20, 10, 210, 170] }
+        - { id: lista, rotulo: "La lista de la derecha", rect: [245, 15, 199, 110] }
+        - { id: caja, rotulo: "El recuadro de abajo a la derecha", rect: [250, 138, 194, 72] }
+    tocar:
+      bien: [caja]
+      porque:
+        grafica: "La gráfica enseña el efecto de la temperatura, no por qué esos puntos se calientan más."
+        lista: "La secuencia es igual en cualquier posición: no dice dónde."
+    exito: "Ahí circula mucho rizado: más ESR, más calor, más degradación. Realimentación positiva, y por eso esos y no los de señal."
     escalera:
-      - "¿Qué calienta un condensador desde dentro?"
-    solucion: "La corriente de rizado por la ESR, con realimentación positiva."
+      - "¿Qué calienta a un condensador desde dentro?"
+    solucion: "El recuadro de abajo: mucho rizado, realimentación positiva."
 
   - id: pregunta-sintoma
-    tipo: pregunta
-    titulo: "Los síntomas"
-    texto: "Un ordenador antiguo se reinicia al azar cuando sube el consumo. ¿Qué mirar primero?"
-    libro: [455, 458]
+    tipo: tocar
+    fase: "En el banco"
+    titulo: "Reinicios bajo carga"
+    texto: "Un ordenador antiguo se reinicia al azar cuando sube el consumo. Antes de medir nada, toque el condensador que lo explica."
+    libro: [454, 455, 458, 472, 473, 476]
     widget:
       tipo: figura
       figura: fig-46.22
       zonas:
-        - { id: placa, rotulo: "La placa entera", rect: [0, 0, 1600, 1200] }
-    opciones:
-      - texto: "Los electrolíticos de la alimentación: tapa abombada o costra"
-        bien: true
-        porque: "Reinicios bajo carga son un síntoma de la plaga; el diagnóstico visual es inmediato."
-      - texto: "El programa: es un fallo de software"
-        porque: "Que dependa de la carga apunta a la alimentación, no al programa."
-      - texto: "Los condensadores de señal"
-        porque: "Fallaban los de la alimentación, con mucho rizado, no los de señal."
+        - { id: reventado, rotulo: "Rollo gris del centro", rect: [690, 540, 220, 260] }
+        - { id: abombado, rotulo: "Condensador negro a su derecha", rect: [880, 470, 230, 190] }
+        - { id: transistor, rotulo: "Encapsulado negro de abajo", rect: [900, 800, 210, 160] }
+        - { id: bobina, rotulo: "Hilo de cobre de abajo", rect: [700, 950, 230, 170] }
+    tocar:
+      bien: [abombado]
+      porque:
+        reventado: "Ese ya ha reventado: está claro, pero el que da reinicios mientras aún funciona es otro."
+        transistor: "Es un encapsulado de transistor de la fuente, no un electrolítico."
+        bobina: "Es una bobina de la fuente conmutada, no un condensador."
+    exito: "La tapa abombada, con las hendiduras abiertas. Con luz rasante se ven mejor que de frente, y su ESR medida en circuito confirma cuáles están fuera."
     escalera:
-      - "¿Qué cambia en la placa cuando sube el consumo?"
-    solucion: "Los electrolíticos junto al regulador y en la salida de la fuente."
+      - "Busque una tapa que no esté plana."
+    solucion: "El condensador negro con la tapa abombada."
 
   - id: prediga-segunda
     tipo: predecir
@@ -213,50 +238,6 @@ tarjetas:
     escalera:
       - "¿Qué tenían en común los dos proveedores?"
     solucion: "No: compartían la misma causa raíz."
-
-  - id: pregunta-hoy
-    tipo: pregunta
-    titulo: "Qué se hace hoy distinto"
-    texto: "¿Qué se pone hoy en las posiciones críticas de una placa base?"
-    libro: [467]
-    widget:
-      tipo: figura
-      figura: fig-46.22
-      zonas:
-        - { id: reventado, rotulo: "Rollo gris del centro", rect: [690, 540, 220, 260] }
-    opciones:
-      - texto: "Condensadores de polímero sólido"
-        bien: true
-        porque: "Sin electrolito líquido que se seque o se descomponga, y con ESR muy baja y estable."
-      - texto: "Electrolíticos de más capacidad"
-        porque: "Más capacidad no quita el electrolito líquido, que es lo que fallaba."
-      - texto: "Electrolíticos de tensión mucho mayor"
-        porque: "El problema era la formulación, no la tensión."
-    escalera:
-      - "¿Qué parte del condensador fallaba?"
-    solucion: "Polímero sólido: sin electrolito líquido."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "En el banco"
-    texto: "Se revisan los electrolíticos de un equipo antiguo. ¿Cómo se ven mejor las tapas ligeramente abombadas?"
-    libro: [473]
-    widget:
-      tipo: figura
-      figura: fig-46.22
-      zonas:
-        - { id: abombado, rotulo: "Condensador negro a la derecha", rect: [880, 470, 230, 190] }
-    opciones:
-      - texto: "Con luz rasante, no de frente"
-        bien: true
-        porque: "La luz rasante marca el relieve; luego, la ESR en circuito dice cuáles están fuera."
-      - texto: "De frente, con mucha luz"
-        porque: "De frente se pierde el relieve de una tapa apenas abombada."
-      - texto: "Midiendo la capacidad fuera del circuito"
-        porque: "La inspección es visual con luz rasante y, después, la ESR en circuito."
-    escalera:
-      - "¿Qué luz hace visible un relieve pequeño?"
-    solucion: "Con luz rasante."
 
   - id: resumen
     tipo: resumen

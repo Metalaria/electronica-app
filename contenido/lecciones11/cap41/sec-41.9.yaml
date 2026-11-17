@@ -3,6 +3,11 @@
 # - El skew del bloque 266: unos 6 ps por milímetro en microstrip; 1 mm en un enlace de 5 Gbit/s (200 ps por bit) es el
 #   3 %. Con 2 mm (valor de ejemplo, rotulado), 12 ps, el 6 %.
 # Paso práctico: «simular» esa fracción del bit (6 %; errores: el ejemplo de 1 mm, la fracción de un nanosegundo).
+# 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): el osciloscopio con dos canales y la resta es una gráfica viva
+# (la señal con ruido de ejemplo, igual o distinto en cada pista): se consigue la resta limpia manteniendo las pistas
+# juntas (meta). Las reglas (separación, compensar el skew, cambio de capa) y la traza de la resta se tocan en la
+# figura 42.13; la terminación del par (100 Ω, el doble de la de modo impar) se escribe. Quedan una pregunta de
+# opciones (acercar las pistas) y el emparejamiento de las tres ventajas.
 leccion: cap41/sec-41.9
 
 libro:
@@ -32,27 +37,50 @@ modelo:
     dl: { sim: "Δl", nombre: "diferencia de longitud (ejemplo)", unidad: mm, valor: 2 }
     tps: { sim: "t/mm", nombre: "retardo por milímetro en microstrip", unidad: "ps/mm", valor: 6 }
     br: { sim: "velocidad", nombre: "velocidad del enlace", unidad: "bit/s", valor: 5e9 }
+    d_n: { sim: "d", nombre: "parte del ruido distinta en cada pista", unidad: "", valor: 1 }
+    a_n: { sim: "ruido", nombre: "ruido captado (ejemplo)", unidad: V, valor: 0.3 }
+    Z_odd: { sim: "Z_{impar}", nombre: "impedancia de modo impar", unidad: Ω, valor: 50 }
   calculos:
     sk: { expr: "dl*tps*1e-12", sim: "skew", nombre: "desfase entre las pistas", unidad: s }
     T_b: { expr: "1/br", sim: "T_{bit}", nombre: "duración de un bit", unidad: s }
     fr_sk: { expr: "sk/T_b*100", sim: "skew/T", nombre: "fracción del bit", unidad: "%" }
     fr_1mm: { expr: "tps*1e-12/T_b*100", sim: "skew/T", nombre: "con 1 mm", unidad: "%" }
+    r_res: { expr: "a_n*d_n*sqrt(2)", sim: "ruido", nombre: "ruido que queda en la resta (eficaz)", unidad: V, cifras: 2 }
+    Z_dif: { expr: "2*Z_odd", sim: "Z_{dif}", nombre: "impedancia diferencial", unidad: Ω }
     fr_ns: { expr: "sk/1e-9*100", sim: "skew/1 ns", nombre: "frente a un nanosegundo", unidad: "%" }
 
 tarjetas:
   - id: explore-resta
     tipo: explorar
+    fase: "Consiga"
     titulo: "El ruido común desaparece al restar"
-    texto: "Cada pista lleva ruido; su diferencia sale limpia. Toque las dos pistas y la diferencia."
-    libro: [253, 255, 279]
+    texto: "Un canal del osciloscopio en cada pista y la función de resta. Las pistas van separadas y captan ruido distinto: júntelas hasta que la resta salga limpia."
+    nota: "Ruido de ejemplo."
+    libro: [253, 255, 273, 277, 279]
+    fijar: { a_n: 0.3 }
+    inicio: { d_n: 1 }
     widget:
-      tipo: figura
-      figura: fig-41.13
-      zonas:
-        - { id: mas, rotulo: "Traza de arriba", rect: [30, 15, 225, 60], texto: "Pista +: la señal más el ruido que capta." }
-        - { id: menos, rotulo: "Traza del centro", rect: [30, 82, 225, 62], texto: "Pista −: la señal opuesta más el mismo ruido." }
-        - { id: diferencia, rotulo: "Traza de abajo", rect: [30, 150, 225, 60], texto: "La diferencia: el ruido de modo común se cancela al restar." }
-    requiere: { mover: [mas, menos, diferencia] }
+      tipo: grafica
+      x: { id: t, min: 0, max: 4, unidad: "", rotulo: "tiempo (bits)", muestras: 800 }
+      y: { min: -3.2, max: 3.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "1.2 + 0.5*tanh(6*sin(pi*t)) + a_n*ruido(t, 7)", color: azul, rotulo: "pista +" }
+        - { expr: "-1.2 - 0.5*tanh(6*sin(pi*t)) + a_n*((1 - d_n)*ruido(t, 7) + d_n*ruido(t, 11))", color: naranja, rotulo: "pista −" }
+        - { expr: "tanh(6*sin(pi*t)) + a_n*d_n*(ruido(t, 7) - ruido(t, 11))", color: verde, rotulo: "resta" }
+      lectura: { valor: r_res, rotulo: "Ruido en la resta" }
+      mandos:
+        - { valor: d_n, lista: [1, 0.5, 0], nombres: ["muy separadas", "algo separadas", "juntas"], rotulo: "Las dos pistas" }
+    objetivo:
+      condiciones:
+        - { valor: r_res, max: 0.01, rotulo: "Ruido en la resta: {{r_res}}" }
+      logrado: "Juntas, las dos captan lo mismo y la resta lo cancela: el modo común desaparece. Una interferencia distinta en cada pista sí pasa."
+      pistas:
+        - { texto: "Cada pista capta un ruido distinto y la resta no lo cancela: acérquelas." }
+    escalera:
+      - "Solo se cancela lo que es igual en las dos pistas."
+    solucion: "Las dos pistas juntas."
+    comprobar:
+      - { con: { d_n: 0 }, r_res: 0 }
 
   - id: empareje-cambios
     tipo: pregunta
@@ -92,6 +120,31 @@ tarjetas:
       - "Dos pistas cercanas se acoplan."
     solucion: "Baja."
 
+  - id: lea-terminacion
+    tipo: leer
+    titulo: "La terminación del par"
+    texto: "Cada pista tiene 50 Ω de modo impar. Un par sin terminar refleja como una línea simple: escriba la resistencia que lo termina, entre las dos pistas."
+    libro: [261, 274]
+    fijar: { Z_odd: 50 }
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: regla1, rotulo: "Primera regla", rect: [300, 24, 126, 38] }
+    leer:
+      objetivo: Z_dif
+      unidad: Ω
+      tol: 0.02
+      rotulo: "Resistencia de terminación"
+      errores:
+        - { expr: "Z_odd", texto: "Esa es la de modo impar, de cada pista a masa. Entre las dos pistas va la diferencial, el doble." }
+    exito: "100 Ω, la impedancia diferencial normalizada: una resistencia entre las dos pistas."
+    escalera:
+      - "La diferencial es el doble de la de modo impar."
+    solucion: "El doble de 50 Ω: 100 Ω."
+    comprobar:
+      - { Z_dif: 100 }
+
   - id: simule-skew
     tipo: simular
     titulo: "Prediga el skew"
@@ -123,11 +176,63 @@ tarjetas:
     comprobar:
       - { fr_sk: 6, sk: 12e-12, T_b: 200e-12, fr_1mm: 3, fr_ns: 1.2 }
 
+  - id: pregunta-compensar
+    tipo: tocar
+    titulo: "Dónde compensar"
+    texto: "Una de las pistas se alarga al tomar una curva. Toque la regla que dice dónde se compensa."
+    libro: [267]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: regla1, rotulo: "Primera regla", rect: [300, 24, 126, 38] }
+        - { id: regla2, rotulo: "Segunda regla", rect: [300, 66, 126, 38] }
+        - { id: regla3, rotulo: "Tercera regla", rect: [300, 108, 126, 38] }
+        - { id: regla4, rotulo: "Cuarta regla", rect: [300, 150, 126, 38] }
+        - { id: regla5, rotulo: "Quinta regla", rect: [300, 192, 126, 38] }
+    tocar:
+      bien: [regla3]
+      porque:
+        regla1: "La separación constante evita reflexiones; no dice dónde compensar el skew."
+        regla2: "Igualar longitudes dice qué hacer, no dónde."
+        regla4: "La referencia continua es el plano bajo el par."
+        regla5: "Es la de los cambios de capa."
+    exito: "Justo después de la curva que crea el skew: el par vuelve a estar equilibrado cuanto antes."
+    escalera:
+      - "Busque la que habla de cerca del origen."
+    solucion: "La tercera: compensar cerca del origen."
+
+  - id: toque-obstaculo
+    tipo: tocar
+    titulo: "Un obstáculo en el camino"
+    texto: "Una vía se interpone en el camino del par. Toque la regla que impide separar las dos pistas para rodearla."
+    libro: [264, 268]
+    widget:
+      tipo: figura
+      figura: fig-41.13
+      zonas:
+        - { id: regla1, rotulo: "Primera regla", rect: [300, 24, 126, 38] }
+        - { id: regla2, rotulo: "Segunda regla", rect: [300, 66, 126, 38] }
+        - { id: regla3, rotulo: "Tercera regla", rect: [300, 108, 126, 38] }
+        - { id: regla4, rotulo: "Cuarta regla", rect: [300, 150, 126, 38] }
+        - { id: regla5, rotulo: "Quinta regla", rect: [300, 192, 126, 38] }
+    tocar:
+      bien: [regla1]
+      porque:
+        regla2: "Las longitudes pueden seguir iguales al rodearla; lo que cambia es la separación."
+        regla3: "Compensar va con las longitudes, no con la separación."
+        regla4: "El plano bajo el par sigue entero."
+        regla5: "No hay cambio de capa."
+    exito: "Separación constante: cualquier variación cambia la impedancia y refleja. Es preferible mover las dos pistas juntas."
+    escalera:
+      - "¿Qué cambia al separar las pistas un tramo?"
+    solucion: "La primera: separación constante."
+
   - id: toque-capa
     tipo: tocar
     titulo: "Un par que cambia de capa"
     texto: "El par tiene que pasar a otra capa. Toque la regla que lo rige."
-    libro: [264, 267, 269, 270]
+    libro: [264, 267, 269, 270, 275]
     widget:
       tipo: figura
       figura: fig-41.13
@@ -149,65 +254,28 @@ tarjetas:
       - "Busque la que habla de vías."
     solucion: "La última: cambios de capa simétricos."
 
-  - id: pregunta-compensar
-    tipo: pregunta
-    titulo: "Dónde compensar"
-    texto: "Una de las pistas se alarga al tomar una curva. ¿Dónde se compensa la diferencia?"
-    libro: [267, 268]
-    widget:
-      tipo: figura
-      figura: fig-41.13
-      zonas:
-        - { id: regla3, rotulo: "Tercera regla", rect: [300, 108, 126, 38] }
-    opciones:
-      - texto: "Justo después de la curva"
-        bien: true
-        porque: "Para que el par vuelva a estar equilibrado cuanto antes."
-      - texto: "Al final, junto al receptor"
-        porque: "Todo el recorrido intermedio iría desequilibrado, con modo común."
-      - texto: "Separando las pistas"
-        porque: "Separarlas cambia la impedancia; mejor mover ambas juntas."
-    escalera:
-      - "Cuanto antes se compense, menos tramo desequilibrado."
-    solucion: "Justo después de la curva que crea el skew."
-
-  - id: empareje-no-hace
-    tipo: pregunta
-    titulo: "Lo que no hace la señal diferencial"
-    texto: "Empareje cada idea falsa con la realidad."
-    libro: [273, 274, 275]
-    emparejar:
-      - ["Inmuniza contra cualquier ruido", "El ruido distinto en cada pista sí pasa"]
-      - ["No necesita terminación", "Una resistencia entre las pistas, de la impedancia diferencial"]
-      - ["No necesita buena masa", "El modo común necesita retorno"]
-    exito: "Por eso se mantienen juntas, se terminan y llevan plano debajo."
-    pistas:
-      - { texto: "Un par sin terminar refleja igual que una línea simple." }
-    escalera:
-      - "Solo se cancela lo que es igual en las dos."
-    solucion: "Ruido distinto pasa; terminación entre pistas; masa para el modo común."
-
   - id: pregunta-banco
-    tipo: pregunta
+    tipo: tocar
+    fase: "En el banco"
     titulo: "En el banco"
-    texto: "Dos canales del osciloscopio, uno en cada pista, y la función de resta. ¿Qué se ve?"
-    libro: [277, 278]
+    texto: "Dos canales del osciloscopio, uno en cada pista, y la función de resta. Toque la traza que muestra la señal real."
+    libro: [277, 278, 279]
     widget:
       tipo: figura
       figura: fig-41.13
       zonas:
+        - { id: mas, rotulo: "Traza de arriba", rect: [30, 15, 225, 60] }
+        - { id: menos, rotulo: "Traza del centro", rect: [30, 82, 225, 62] }
         - { id: diferencia, rotulo: "Traza de abajo", rect: [30, 150, 225, 60] }
-    opciones:
-      - texto: "El ruido de cada canal desaparece en la resta"
-        bien: true
-        porque: "Es la demostración directa del principio; y el skew se mide en los cruces."
-      - texto: "El doble de ruido"
-        porque: "El ruido común se resta, no se suma."
-      - texto: "Nada útil: hace falta una sonda diferencial"
-        porque: "Con dos canales y la resta basta para verlo."
+    tocar:
+      bien: [diferencia]
+      porque:
+        mas: "Es un solo canal: la señal más el ruido que capta."
+        menos: "Es el otro canal: la señal opuesta más el mismo ruido."
+    exito: "La resta: el ruido de cada canal desaparece. Y el desfase entre canales en los cruces mide el skew."
     escalera:
       - "¿Qué pasa con lo que es igual en las dos pistas al restarlas?"
-    solucion: "La señal limpia: el ruido común desaparece."
+    solucion: "La traza de abajo, la diferencia."
 
   - id: resumen
     tipo: resumen

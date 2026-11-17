@@ -2,6 +2,8 @@
 # explorador (arquitectura snes.ts sobre sus direcciones de ejemplo: memmap.txt de anomie), la elección del chip del
 # bus B con PA7 y PA6 (circuito lógico y su tabla), los espejos y las velocidades. Fuentes: snes#n y el libro
 # (decodificador, 28.3; un bus compartido, 9.6; los espejos de la NES, 38.11).
+# 1.2.1: el circuito del bus B tiene meta (que conteste el S-SMP); se toca en la foto quién contesta a $7E0010 y el
+# conector del acceso más lento; el espejo se escribe en hexadecimal. La foto de los dos buses va en «toque-buses».
 leccion: consola-snes/snes-buses
 
 libro:
@@ -24,49 +26,35 @@ modelo:
   calculos: {}
 
 tarjetas:
-  - id: explore-buses
-    tipo: explorar
-    titulo: "Dos buses"
-    texto: "La CPU gobierna dos buses que comparten los datos. Toque la CPU, la ranura y el puerto de expansión."
-    libro: ["snes#2", "snes#17", "snes#18"]
-    requiere: { mover: [n-cpu, n-cart, n-exp] }
-    widget:
-      tipo: figura
-      consola: { maquina: snes, foto: ntsc }
-      zonas:
-        - { id: n-cpu, hotspot: n-cpu, rotulo: "CPU", texto: "Bus A: CA0–CA23. Bus B: PA0–PA7. Los dos, con los datos D0–D7." }
-        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho", texto: "Llega todo el bus A y también el bus B." }
-        - { id: n-exp, hotspot: n-exp, rotulo: "Puerto de expansión", texto: "Solo el bus B, con D0–D7, /PARD y /PAWR." }
-
   - id: prediga-wram
-    tipo: predecir
+    tipo: tocar
     titulo: "Escribir en $7E0010"
-    texto: "La CPU escribe en $7E0010, en el bus A. ¿Qué selección baja?"
-    libro: ["snes#102", "snes#101"]
+    texto: "La CPU escribe en $7E0010, en el bus A: baja /RAMSEL. Toque lo que contesta."
+    libro: ["snes#102", "snes#101", "snes#2"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-wram, hotspot: n-wram, rotulo: "WRAM" }
-        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho" }
-    opciones:
-      - texto: "/RAMSEL: contesta la WRAM."
-        bien: true
-        porque: "$7E0000–$7FFFFF es la WRAM: la CPU baja /RAMSEL y la WRAM recibe CA0–CA16."
-      - texto: "/ROMSEL: contesta el cartucho."
-        porque: "/ROMSEL es para las zonas de ROM del cartucho, como $008000. El banco $7E es de la WRAM."
-      - texto: "/PAWR: es una escritura del bus B."
-        porque: "/PAWR es la escritura del bus B, la de registros como $2118 de las PPU. $7E0010 es una dirección del bus A."
+        - { id: wram, hotspot: n-wram, rotulo: "Chip alargado, abajo en el centro" }
+        - { id: cart, hotspot: n-cart, rotulo: "Conector largo, en el centro" }
+        - { id: vram, hotspot: n-vram, rotulo: "Dos chips iguales, arriba a la derecha" }
+        - { id: mandos, hotspot: n-mandos, rotulo: "Conector pequeño, a la derecha" }
+    tocar:
+      bien: [wram]
+      porque:
+        cart: "El cartucho contesta con /ROMSEL, en zonas como $008000. El banco $7E es de la WRAM."
+        vram: "La VRAM cuelga de la PPU1: la CPU no la ve en su bus A."
+        mandos: "El puerto de mandos es un registro dentro de la CPU, en $004016."
+    exito: "La WRAM: $7E0000–$7FFFFF. La CPU baja /RAMSEL y la WRAM recibe CA0–CA16."
     escalera:
       - "El banco $7E es el primero de la WRAM."
-    solucion: "/RAMSEL: $7E0010 es la WRAM, en el bus A."
+    solucion: "La WRAM, abajo en el centro."
 
   - id: explore-bus-b
     tipo: explorar
     titulo: "Quién contesta en el bus B"
-    texto: "Dos bits altos de la dirección del bus B, PA7 y PA6, eligen el chip. Muévalos."
+    texto: "Dos bits altos de la dirección del bus B, PA7 y PA6, eligen el chip. Consiga que conteste el S-SMP, el sonido."
     libro: ["snes#104", "snes#105", "cap29#76"]
-    requiere: { mover: [PA7, PA6] }
     widget:
       tipo: logica
       entradas: [{ id: PA7, rotulo: "PA7" }, { id: PA6, rotulo: "PA6" }]
@@ -76,6 +64,15 @@ tarjetas:
         - { id: PPU, de: dec.y0 }
         - { id: SMP, de: dec.y1 }
       tabla: true
+    objetivo:
+      condiciones:
+        - { led: SMP, valor: 1, rotulo: "Contesta el S-SMP" }
+      logrado: "PA7 = 0 y PA6 = 1 eligen el S-SMP; PA7 = PA6 = 0, las PPU. Nunca los dos a la vez."
+      pistas:
+        - { texto: "PA6 a 1 y PA7 a 0." }
+    escalera:
+      - "Las PPU van con 00; el S-SMP, con el siguiente."
+    solucion: "PA7 = 0, PA6 = 1."
 
   - id: tabla-bus-b
     tipo: tabla
@@ -118,49 +115,48 @@ tarjetas:
     solucion: "$008000: /ROMSEL. $7E0010: /RAMSEL. $002118: bus B (PPU). $004016: registro de la CPU."
 
   - id: por-que-espejo
-    tipo: porque
+    tipo: leer
     titulo: "La misma memoria, dos direcciones"
-    texto: "Leer $801234 da lo mismo que leer $7E1234. ¿Por qué?"
+    texto: "Los primeros 8 KB de la WRAM se ven en todos los bancos bajos. Escriba en hexadecimal la dirección de la WRAM a la que llega $801234."
     libro: ["snes#103", "cap37#359"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
         - { id: n-wram, hotspot: n-wram, rotulo: "WRAM" }
-    opciones:
-      - texto: "Los primeros 8 KB de la WRAM se ven también en los bancos bajos: es un espejo."
-        bien: true
-        porque: "El decodificador baja /RAMSEL en esa zona de todos los bancos bajos: la WRAM no distingue $801234 de $7E1234."
-      - texto: "Hay dos memorias con el mismo contenido."
-        porque: "Solo hay una WRAM. Los espejos salen del decodificador, no de copiar datos."
-      - texto: "La CPU copia los datos de una zona a la otra."
-        porque: "Nadie copia nada: las dos direcciones llegan a la misma celda."
+    leer:
+      objetivo: "0x7E1234"
+      base: 16
+      cifras: 24
+      rotulo: "Dirección en la WRAM"
+    exito: "$7E1234: un espejo. El decodificador baja /RAMSEL en esa zona de todos los bancos bajos; nadie copia nada."
     escalera:
-      - "Piense en qué selección baja el decodificador con cada dirección."
-    solucion: "Es un espejo: los primeros 8 KB de la WRAM se ven en todos los bancos bajos."
+      - "Los bancos de la WRAM empiezan en $7E: conserve los 16 bits bajos."
+    solucion: "$7E1234."
 
   - id: mas-lento
-    tipo: pregunta
+    tipo: tocar
     titulo: "El acceso más lento"
-    texto: "¿Cuál de estos accesos tarda 12 ciclos maestros?"
+    texto: "Leer un registro de la CPU puede ser el acceso más lento: 12 ciclos maestros. Toque el conector cuyo registro, $004016, lo es."
     libro: ["snes#106", "snes#107", "snes#102"]
     widget:
       tipo: figura
       consola: { maquina: snes, foto: ntsc }
       zonas:
-        - { id: n-cpu, hotspot: n-cpu, rotulo: "CPU" }
-        - { id: n-mandos, hotspot: n-mandos, rotulo: "Conector de los mandos" }
-    opciones:
-      - texto: "Leer el puerto de mandos, $004016."
-        bien: true
-        porque: "Es un registro de la CPU, el más lento: 12 ciclos maestros, 1,77 MHz en PAL."
-      - texto: "Arrancar la DMA en $00420B."
-        porque: "Ese registro de la CPU va rápido: 6 ciclos maestros (3,55 MHz)."
-      - texto: "Escribir en la WRAM, $7E0010."
-        porque: "La WRAM va en 8 ciclos maestros: ni el más rápido ni el más lento."
+        - { id: wram, hotspot: n-wram, rotulo: "Chip alargado, abajo en el centro" }
+        - { id: cart, hotspot: n-cart, rotulo: "Conector largo, en el centro" }
+        - { id: vram, hotspot: n-vram, rotulo: "Dos chips iguales, arriba a la derecha" }
+        - { id: mandos, hotspot: n-mandos, rotulo: "Conector pequeño, a la derecha" }
+    tocar:
+      bien: [mandos]
+      porque:
+        wram: "La WRAM va en 8 ciclos maestros: ni el más rápido ni el más lento."
+        cart: "El cartucho se lee por el bus A, con /ROMSEL, no por un registro de la CPU."
+        vram: "La VRAM la lee la PPU1, no la CPU por un registro."
+    exito: "El puerto de mandos, $004016: un registro de la CPU, el más lento, 12 ciclos maestros (1,77 MHz en PAL). Otros, como el de la DMA, van en 6."
     escalera:
       - "El puerto serie de los mandos es especial."
-    solucion: "$004016, el puerto de mandos: 12 ciclos maestros."
+    solucion: "El conector de los mandos."
 
   - id: toque-buses
     tipo: tocar

@@ -2,6 +2,10 @@
 # ±0,7 V), con referencia (V_ref + 0,7), con Zener (5,1 V + diodo: +5,8 V), la conexión en oposición (antiparalelo y
 # antiserie), la protección de entrada y sus límites; el fijador (condensador en serie y diodo a masa, que traslada la
 # señal) y su criterio R·C. Esquemas «recortador» y «fijador». Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): dejar la salida en ±0,7 V, recortar en +2,7 V con una
+# referencia, el reto del Zener, predecir la antiserie, predecir el mínimo del fijador y hacer subir la señal; se
+# eligen la oposición y la protección de entrada. El recortador activo, cortar frente a trasladar y R·C quedan en los
+# textos y el resumen.
 leccion: cap05/sec-5.9
 
 libro:
@@ -47,7 +51,7 @@ tarjetas:
   - id: explore-recortador
     tipo: explorar
     titulo: "Un techo y un suelo"
-    texto: "Una señal de 8 V de pico pasa por 1 kΩ, y del nodo de salida a masa hay dos diodos. Conecte y desconecte cada uno y mire la salida."
+    texto: "Una señal de 8 V de pico pasa por 1 kΩ, y del nodo de salida a masa hay dos diodos. Conecte los que hagan falta para dejar la salida entre −0,7 y +0,7 V."
     libro: [257, 258, 270]
     fijar: { V_p: 8, R_c: 1000 }
     widget:
@@ -63,43 +67,26 @@ tarjetas:
       mandos:
         - { valor: p_on, tipo: interruptor, rotulo: "Diodo de los picos positivos" }
         - { valor: n_on, tipo: interruptor, rotulo: "Diodo de los picos negativos" }
-    requiere: { mover: [p_on, n_on] }
-
-  - id: prediga-antiparalelo
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "La señal de 8 V de pico, con 1 kΩ en serie y los dos diodos conectados en antiparalelo del nodo a masa. ¿Qué excursión queda a la salida?"
-    libro: [258]
-    fijar: { p_on: 1, n_on: 1, V_p: 8, R_c: 1000 }
-    widget:
-      tipo: circuito
-      esquema: recortador
-      piezas: { fuente: V_p, f: f_s, r: R_c, vd: V_D, positivo: p_on, negativo: n_on }
-      lectura: { valor: V_a, rotulo: "Recorte positivo" }
-      grafica:
-        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-        y: { min: -10, max: 10, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_p*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
-      ocultar: true
-    opciones:
-      - texto: "De −0,7 a +0,7 V"
-        bien: true
-        porque: "Cada diodo conduce en cuanto la salida pasa de su umbral: es el limitador de las entradas de audio."
-      - texto: "Nada: un diodo cortocircuita al otro"
-        porque: "Cada uno solo conduce en un sentido; mientras la señal no pasa de 0,7 V, ninguno conduce."
-      - texto: "Los 8 V enteros"
-        porque: "Los diodos no dejan subir la salida más allá de su caída: la resistencia se queda con el resto."
-    comprobar:
-      - { V_a: 0.7, V_b: -0.7 }
+    inicio: { p_on: 0, n_on: 1 }
+    objetivo:
+      condiciones:
+        - { valor: p_on, min: 1, rotulo: "Diodo de los positivos" }
+        - { valor: n_on, min: 1, rotulo: "Diodo de los negativos" }
+      logrado: "Con los dos en antiparalelo, de −0,7 a +0,7 V: cada uno no hace nada hasta su umbral. Es el limitador de las entradas de audio."
+      pistas:
+        - { cuando: { valor: n_on, max: 0 }, texto: "Falta el diodo de los picos negativos." }
+        - { texto: "Falta el diodo de los picos positivos." }
     escalera:
-      - "Cada diodo conduce en un sentido en cuanto la salida pasa de su caída."
-    solucion: "De −0,7 a +0,7 V: el limitador de diodos en antiparalelo."
+      - "Un diodo recorta un semiciclo; hacen falta los dos."
+    solucion: "Los dos conectados."
+    comprobar:
+      - { V_b: -0.7 }
+      - { con: { p_on: 1, n_on: 1 }, V_a: 0.7, V_b: -0.7 }
 
   - id: explore-referencia
     tipo: explorar
     titulo: "Un umbral a medida"
-    texto: "Ahora el diodo de los picos positivos va hacia una referencia V_{ref} en lugar de a masa. Muévala y mire dónde recorta."
+    texto: "Ahora el diodo de los picos positivos va hacia una referencia V_{ref} en lugar de a masa. Haga que recorte en +2,7 V."
     libro: [259]
     fijar: { n_on: 0 }
     widget:
@@ -115,7 +102,20 @@ tarjetas:
           - { expr: "min(V_p*sin(2*pi*f_s*t), V_r)", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: V_ref, min: 0, max: 5, paso: 0.5, rotulo: "Referencia, V_{ref}" }
-    requiere: { mover: [V_ref] }
+    inicio: { V_ref: 0 }
+    objetivo:
+      condiciones:
+        - { valor: V_r, objetivo: 2.7, tol: 0.01, rotulo: "Recorte: {{V_r}}" }
+      logrado: "Con V_{ref} = {{V_ref}}, recorta en {{V_r}}: V_{ref} + 0,7. Para un recorte preciso, el diodo va dentro del lazo de un operacional."
+      pistas:
+        - { cuando: { valor: V_r, mayor: 2.75 }, texto: "Se ha pasado: baje la referencia." }
+        - { texto: "Suba la referencia: recorta en V_{ref} más la caída del diodo." }
+    escalera:
+      - "El recorte ocurre en V_{ref} + 0,7."
+    solucion: "Con V_{ref} = 2 V."
+    comprobar:
+      - { V_r: 0.7 }
+      - { con: { V_ref: 2 }, V_r: 2.7 }
 
   - id: reto-zener
     tipo: reto
@@ -150,36 +150,24 @@ tarjetas:
       - { con: { V_z: 5.1 }, V_cz: 5.8 }
 
   - id: prediga-antiserie
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Dos Zener de 5,1 V en antiserie, del nodo a masa, con la señal de 8 V de pico y 1 kΩ en serie. ¿Dónde recortan?"
+    texto: "Dos Zener de 5,1 V en antiserie, del nodo a masa, con la señal de 8 V de pico y 1 kΩ en serie. ¿En qué tensión recortan?"
     libro: [260, 261]
     fijar: { V_p: 8, R_c: 1000 }
-    widget:
-      tipo: circuito
-      esquema: recortador
-      piezas: { fuente: V_p, f: f_s, r: R_c, vd: V_D, zz: V_zz }
-      lectura: { valor: V_az, rotulo: "Recorte" }
-      grafica:
-        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-        y: { min: -10, max: 10, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_p*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
-      ocultar: true
-    opciones:
-      - texto: "En ±5,8 V, simétrico"
-        bien: true
-        porque: "Siempre conducen a la vez: uno en ruptura, 5,1 V, y el otro en directa, 0,7 V."
-      - texto: "En ±5,1 V"
-        porque: "Falta la caída en directa del otro Zener: conducen siempre por parejas."
-      - texto: "Solo los picos positivos"
-        porque: "Los dos están enfrentados: cada uno rompe en un semiciclo. El recorte es simétrico."
-    comprobar:
-      - { V_az: 5.8 }
+    simular:
+      objetivo: V_az
+      unidad: V
+      tol: 0.02
+      rotulo: "Recorte"
+      errores:
+        - { razon: { min: 0.85, max: 0.9 }, texto: "Falta la caída en directa del otro Zener: conducen siempre por parejas." }
+    exito: "En ±5,8 V, simétrico: uno en ruptura, 5,1 V, y el otro en directa, 0,7 V."
     escalera:
       - "Conducen siempre por parejas: uno en ruptura y el otro en directa."
-    solucion: "En ±5,8 V: 5,1 V de ruptura más 0,7 V en directa, simétrico."
-
+    solucion: "5,1 + 0,7 = 5,8 V, en los dos sentidos."
+    comprobar:
+      - { V_az: 5.8 }
   - id: porque-oposicion
     tipo: porque
     titulo: "Antiparalelo y antiserie"
@@ -238,32 +226,30 @@ tarjetas:
       - "Cuando un diodo conduce, ¿qué limita la corriente que entra por el pin?"
     solucion: "La resistencia en serie: los diodos conducen al pasar de los raíles, pero ella limita la corriente."
 
-  - id: pregunta-limite
-    tipo: pregunta
-    titulo: "Un limitador imperfecto"
-    texto: "Por debajo del umbral, la fuga y la capacidad del diodo distorsionan; por encima, su caída sigue creciendo. ¿Cómo se limita con precisión?"
-    libro: [263]
-    opciones:
-      - texto: "Con un recortador activo: el diodo dentro del lazo de un operacional"
-        bien: true
-        porque: "Su caída se divide por la ganancia del lazo."
-      - texto: "Con un diodo más grande"
-        porque: "La caída sigue la exponencial en cualquier diodo. Hace falta meterlo en un lazo de realimentación."
-      - texto: "Con más resistencia en serie"
-        porque: "La fuga y la capacidad pesarían más. La solución es el recortador activo."
-    widget:
-      tipo: figura
-      figura: fig-5.18
-      zonas:
-        - { id: recortador, rotulo: "Recortador, fijador y doblador", rect: [0, 0, 437, 183] }
+  - id: prediga-fijador
+    tipo: simular
+    titulo: "Prediga"
+    texto: "Un fijador, condensador en serie y diodo a masa, con una señal de 8 V de pico: el máximo queda en +0,7 V. ¿Dónde queda el mínimo?"
+    libro: [265, 266, 267, 270]
+    fijar: { s_on: 0, V_p: 8 }
+    simular:
+      objetivo: V_min
+      unidad: V
+      tol: 0.02
+      rotulo: "Mínimo de la salida"
+      errores:
+        - { razon: { min: 0.5, max: 0.55 }, texto: "El fijador traslada la señal entera: si el máximo baja, el mínimo baja lo mismo." }
+        - { razon: { min: 0.04, max: 0.05 }, texto: "Eso sería recortar. El fijador no recorta: conserva la forma y la amplitud." }
+    exito: "−15,3 V: la señal entera baja 7,3 V y sus 16 V de pico a pico no cambian. El recortador corta; el fijador traslada."
     escalera:
-      - "La caída del diodo sigue la exponencial. ¿Qué la divide por un factor grande?"
-    solucion: "Un recortador activo: con el diodo dentro del lazo de un operacional, su caída se divide por la ganancia del lazo."
-
+      - "El fijador no recorta: traslada la señal entera, y la amplitud de pico a pico sigue siendo 16 V."
+    solucion: "De −8 a −15,3 V."
+    comprobar:
+      - { V_min: -15.3, V_max: 0.7, V_sh: -7.3, V_pp: 16, V_neg: -8 }
   - id: explore-fijador
     tipo: explorar
     titulo: "Trasladar sin deformar"
-    texto: "Con un condensador en serie y un diodo a masa, el condensador se queda cargado y suma un desplazamiento. Cambie el sentido del diodo."
+    texto: "Con un condensador en serie y un diodo a masa, el condensador se queda cargado y suma un desplazamiento. Dé la vuelta al diodo para que la señal suba en lugar de bajar."
     libro: [265, 266, 267]
     widget:
       tipo: circuito
@@ -278,93 +264,24 @@ tarjetas:
           - { expr: "V_p*sin(2*pi*f_s*t) + V_sh", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: s_on, tipo: interruptor, rotulo: "Cátodo del diodo en el nodo" }
-    requiere: { mover: [s_on] }
-
-  - id: prediga-fijador
-    tipo: predecir
-    titulo: "Prediga"
-    texto: "Un fijador con el ánodo del diodo hacia el nodo y una señal de 8 V de pico: el máximo queda en +0,7 V. ¿Dónde queda el mínimo?"
-    libro: [267, 270]
-    fijar: { s_on: 0, V_p: 8 }
-    widget:
-      tipo: circuito
-      esquema: fijador
-      piezas: { fuente: V_p, f: f_s, c: C_c, vd: V_D, sube: s_on }
-      lectura: { valor: V_min, rotulo: "Mínimo de la salida" }
-      grafica:
-        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_p*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
-      ocultar: true
-    opciones:
-      - texto: "En −15,3 V"
-        bien: true
-        porque: "La señal entera baja 7,3 V: su amplitud de pico a pico, 16 V, no cambia."
-      - texto: "En −8 V, como la entrada"
-        porque: "El fijador traslada la señal entera: si el máximo baja a +0,7 V, el mínimo baja lo mismo."
-      - texto: "En −0,7 V"
-        porque: "Eso sería recortar. El fijador no recorta: conserva la forma y la amplitud."
+    inicio: { s_on: 0 }
+    objetivo:
+      condiciones:
+        - { valor: V_sh, min: 7, rotulo: "Desplazamiento: {{V_sh}}" }
+      logrado: "Con el cátodo en el nodo, la señal sube {{V_sh}}: los picos negativos quedan en −0,7 V. El condensador es una batería que suma un desplazamiento constante."
+      pistas:
+        - { texto: "Ponga el cátodo del diodo en el nodo." }
+    escalera:
+      - "El diodo fija el pico que le deja conducir."
+    solucion: "Cátodo en el nodo: sube 7,3 V."
     comprobar:
-      - { V_min: -15.3, V_max: 0.7, V_sh: -7.3, V_pp: 16, V_neg: -8 }
-    escalera:
-      - "El fijador no recorta: traslada la señal entera, y la amplitud de pico a pico sigue siendo 16 V."
-    solucion: "El máximo baja de 8 a 0,7 V, 7,3 V; el mínimo, igual: de −8 a −15,3 V."
-
-  - id: pregunta-complementario
-    tipo: pregunta
-    titulo: "Cortar o trasladar"
-    texto: "Un recortador y un fijador usan diodos sobre la misma señal. ¿En qué se diferencian?"
-    libro: [265]
-    opciones:
-      - texto: "El recortador corta los picos; el fijador traslada la señal entera"
-        bien: true
-        porque: "El fijador no cambia ni la forma ni la amplitud: solo suma una continua."
-      - texto: "En nada: los dos limitan la amplitud"
-        porque: "Solo el recortador limita. El fijador conserva la amplitud y mueve la señal."
-      - texto: "El fijador corta más, porque tiene condensador"
-        porque: "El condensador no corta: se carga y suma un desplazamiento constante, como una batería."
-    widget:
-      tipo: figura
-      figura: fig-5.18
-      zonas:
-        - { id: comparacion, rotulo: "Cortar, trasladar y multiplicar", rect: [0, 0, 437, 183] }
-    escalera:
-      - "Compare las salidas: ¿cuál conserva la forma y la amplitud?"
-    solucion: "El fijador: traslada la señal entera. El recortador corta los picos."
-
-  - id: pregunta-rc
-    tipo: pregunta
-    titulo: "El criterio R·C"
-    texto: "Si el fijador alimenta una resistencia R, el condensador se descarga por ella entre picos. ¿Qué R·C hace falta?"
-    libro: [268]
-    opciones:
-      - texto: "Al menos diez veces el periodo de la señal"
-        bien: true
-        porque: "Así apenas se descarga entre picos. Demasiado corta deforma la señal; demasiado larga tarda en establecerse."
-      - texto: "Igual al periodo"
-        porque: "Se descargaría mucho entre picos y la señal se deformaría."
-      - texto: "Cuanto más corta, mejor"
-        porque: "Corta, el condensador se descarga entre picos y la señal se deforma."
-    widget:
-      tipo: circuito
-      esquema: fijador
-      piezas: { fuente: V_p, f: f_s, c: C_c, vd: V_D, sube: s_on }
-      lectura: { valor: V_sh, rotulo: "Desplazamiento" }
-      grafica:
-        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_p*sin(2*pi*f_s*t) + V_sh", color: naranja, rotulo: "salida", mide: salida }
-      mandos: []
-    escalera:
-      - "Entre picos, el condensador se descarga por R. ¿Cuánto debe durar esa descarga frente al periodo?"
-    solucion: "Al menos diez veces el periodo: así apenas se descarga entre picos y la señal no se deforma."
+      - { V_sh: -7.3 }
+      - { con: { s_on: 1 }, V_sh: 7.3, V_min: -0.7 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [258, 259, 260, 261, 265, 268]
+    libro: [258, 259, 260, 261, 263, 265, 268]
     ideas:
       - { titulo: "Recortar.", texto: "Un diodo del nodo a masa no hace nada hasta su umbral; luego impide subir. Dos en antiparalelo: ±0,7 V." }
       - { titulo: "Umbrales.", texto: "Con referencia, V_{ref} + 0,7; con Zener, V_{Z} + 0,7: un Zener de 5,1 V recorta en 5,8 V." }

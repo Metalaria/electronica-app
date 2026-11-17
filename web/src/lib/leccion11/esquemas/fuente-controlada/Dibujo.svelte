@@ -4,6 +4,8 @@
   // with a VCVS), the output terminals, the switch and the load on the right.
   import type { Texto } from '../../tipos';
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
   import FuenteDep from '../kit/FuenteDep.svelte';
@@ -71,4 +73,12 @@
     <Et x={424} y={136} t={c.simT('carga')} color="verde" />
     <Et x={424} y={156} t={c.val('carga')} color="verde" peq />
   {/if}
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={65} y={50} red="c" />
+  {#if !vccs}<Punto x={160} y={50} red="e" />{/if}
+  <Punto x={320} y={50} red="s" />
+  <Punto x={95} y={230} red="0" />
+  <Rama x={150} y={72} medidor="vg" />
+  {#if vccs}<Rama x={240} y={64} medidor="vr" />{:else if c.tiene('ro')}<Rama x={182} y={50} medidor="vr" />{/if}
+  <Rama x={397} y={50} medidor="vcarga" />
 </Lienzo>

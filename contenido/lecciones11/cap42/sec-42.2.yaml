@@ -2,6 +2,11 @@
 # El circuito es el del netlist del libro (cap42#103: R1 1k y C1 100n, «.ac dec 100 10 1Meg»), con su corte de
 # 1,59 kHz (cap24#94, el mismo RC). Las amplitudes de 1 V son las del netlist («AC 1»). La sección no tiene ecuación:
 # la fórmula cita la del corte de la práctica 5 (cap22#134).
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): el corte del .ac se sube con R1 y la τ del .tran se lleva a
+# 0,2 ms (objetivos); τ se marca en la curva del transitorio; el punto de trabajo se lee donde se asienta la curva; la
+# amplitud del .ac en el corte se predice y se simula. Quedan dos preguntas de opciones (el arranque de una fuente
+# conmutada y por qué no oscila en AC); las equivalencias de banco, el ruido y el paso del transitorio pasan al resumen
+# y a los «logrado».
 leccion: cap42/sec-42.2
 
 libro:
@@ -35,14 +40,16 @@ modelo:
     d_m: { expr: "20*log10(A_m/V_p)", sim: "|H|", nombre: "la mitad, en decibelios", unidad: dB, cifras: 2 }
     A_m: { expr: "V_p/2", sim: "V_{out}", nombre: "la mitad de la entrada", unidad: V }
     tau: { expr: "R_f*C_f", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    p63: { expr: "100*(1 - exp(-1))", sim: "1 − e⁻¹", nombre: "fracción a una τ", unidad: "%" }
     V_op: { expr: "V_p", sim: "V_{out}", nombre: "salida en el punto de trabajo", unidad: V }
 
 tarjetas:
   - id: explore-ac
     tipo: explorar
     titulo: "El .ac: el Bode"
-    texto: "El netlist del libro, 1 kΩ y 100 nF con «.ac dec 100 10 1Meg»: el análisis AC da la respuesta en frecuencia. Cambie R1."
-    libro: [42, "cap42#103"]
+    texto: "El netlist del libro, 1 kΩ y 100 nF con «.ac dec 100 10 1Meg»: el análisis AC da la respuesta en frecuencia. Cambie R1 hasta subir el corte a unos 3,2 kHz."
+    libro: [42, "cap42#103", "cap24#94"]
+    inicio: { R_f: 1000 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -56,12 +63,24 @@ tarjetas:
           - { expr: "-10*log10(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_db }
       mandos:
         - { valor: R_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: f_c, min: 3000, max: 3400, rotulo: "Corte: {{f_c}}" }
+      logrado: "Con {{R_f}}, {{f_c}}: el .ac da directamente el Bode, el mismo que se levanta en el banco con generador y osciloscopio."
+      pistas:
+        - { texto: "Para doblar el corte desde 1,59 kHz, la mitad de R1." }
+    escalera:
+      - "f_{c} = 1/(2π · R1 · C1)."
+    solucion: "R1 = 500 Ω: 3,18 kHz."
+    comprobar:
+      - { con: { R_f: 500 }, f_c: 3183 }
 
   - id: explore-tran
     tipo: explorar
     titulo: "El .tran: el tiempo"
-    texto: "El mismo RC ante un escalón de 1 V, resuelto paso a paso en el tiempo. Cambie R1 y mire la constante de tiempo."
-    libro: [46]
+    texto: "El mismo RC ante un escalón de 1 V, resuelto paso a paso en el tiempo. Cambie R1 hasta que la constante de tiempo sea de 0,2 ms."
+    libro: [46, 48]
+    inicio: { R_f: 1000 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -74,54 +93,79 @@ tarjetas:
           - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
       mandos:
         - { valor: R_f, lista: [500, 1000, 2000] }
+    objetivo:
+      condiciones:
+        - { valor: tau, objetivo: 0.0002, tol: 0.01, rotulo: "τ: {{tau}}" }
+      logrado: "Con {{R_f}}, τ = {{tau}}. El paso máximo del .tran debe ser bastante menor que eso: demasiado grande pierde detalles y da resultados falsos."
+      pistas:
+        - { texto: "τ = R1 · C1: más R1, más lento." }
+    escalera:
+      - "τ = R·C con 100 nF."
+    solucion: "R1 = 2 kΩ: 0,2 ms."
+    comprobar:
+      - { con: { R_f: 2000 }, tau: 0.0002 }
 
   - id: prediga-op
-    tipo: predecir
+    tipo: leer
     titulo: "El punto de trabajo"
-    texto: "Se pide el .op del RC con 1 V de continua en la entrada. ¿Cuánto vale la tensión de salida?"
-    libro: [35]
+    texto: "El .op resuelve el reposo: condensadores abiertos, bobinas en corto. Lea en la curva dónde se queda la salida y escriba lo que daría el .op."
+    libro: [35, 36]
+    fijar: { R_f: 1000 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_p, r: R_f, c: C_f }
-      lectura: { valor: V_op, rotulo: "v(out) en el .op" }
-      ocultar: true
       grafica:
         x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
         y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
         curvas:
           - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
-    opciones:
-      - texto: "1 V: el condensador está abierto en continua"
-        bien: true
-        porque: "Sin corriente por R1, no cae nada en ella: la salida es la entrada."
-      - texto: "0 V: el condensador está descargado"
-        porque: "Eso es el instante inicial de un transitorio. El .op es el reposo, con C abierto."
-      - texto: "0,707 V"
-        porque: "Ese es el corte en alterna. En continua no hay atenuación."
+      mandos: []
+    leer:
+      objetivo: V_op
+      unidad: V
+      tol: 0.02
+      rotulo: "v(out) en el .op"
+      errores:
+        - { expr: "0", texto: "Ese es el instante inicial del transitorio, con C descargado. El .op es el reposo." }
+        - { expr: "V_p*0.7071", texto: "Ese es el corte en alterna. En continua no hay atenuación." }
+    exito: "1 V: con C abierto no pasa corriente por R1 y no cae nada en ella. Si un circuito no resuelve su .op, no se puede simular de ninguna otra forma."
     escalera:
-      - "¿Qué hace el .op con los condensadores?"
-    solucion: "Condensador abierto: v(out) = 1 V."
+      - "Mire dónde se asienta la curva naranja."
+    solucion: "1 V."
     comprobar:
       - { V_op: 1 }
 
   - id: formula-corte
-    tipo: formula
-    titulo: "Lo que el Bode debe dar"
-    texto: "Antes de simular, el corte esperado: con 1 kΩ y 100 nF, 1,59 kHz. Cambie R1."
-    libro: ["cap22#134", "cap24#94"]
-    ec: "cap22#134"
-    sustitucion: "1 / (2π · {{R_f}} · {{C_f}}) = {{f_c}}"
+    tipo: marcar
+    titulo: "τ en el transitorio"
+    texto: "En el .tran del RC de 1 kΩ y 100 nF, marque en la curva el instante en que la salida llega al 63 %."
+    libro: [46]
+    fijar: { R_f: 1000 }
     widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      lectura: { valor: f_c, rotulo: "Corte" }
-      mide: { vc_amp: A_c }
-      mandos:
-        - { valor: R_f, lista: [500, 1000, 2000] }
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+      curvas:
+        - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "tau"
+      tol: 0.02
+      inicio: { x: 0.0008, y: 0 }
+      rotulo: "Una constante de tiempo"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 0.0001 }, texto: "Más a la izquierda: ahí ya pasa del 63 %." }
+      - { texto: "Más a la derecha: todavía no llega al 63 %." }
+    exito: "0,1 ms = R1·C1: lo que se mediría con el osciloscopio y un escalón."
+    escalera:
+      - "Busque dónde la curva pasa por el 63 % de su valor final."
+    solucion: "En 0,1 ms."
     comprobar:
-      - { con: { R_f: 1000 }, f_c: 1590 }
+      - { tau: 0.0001, p63: 63.2 }
+      - { con: { R_f: 1000 }, p63: 63, tol: 0.01 }
 
   - id: simule-ac
     tipo: simular
@@ -154,25 +198,6 @@ tarjetas:
     comprobar:
       - { A_c: 0.707, A_m: 0.5, ph_c: -45, d_m: -6.02 }
 
-  - id: equivalencias
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada análisis, una medida"
-    texto: "Una cada análisis con su medida equivalente en el banco."
-    libro: [39, 60]
-    emparejar:
-      - ["DC operating point", "Multímetro en reposo"]
-      - ["DC sweep", "Curva punto a punto"]
-      - ["AC", "Bode con generador y osciloscopio"]
-      - ["Transitorio", "Osciloscopio con escalón"]
-      - ["Ruido", "Medida con entrada terminada"]
-    exito: "Simular y medir lo mismo, y comparar, enseña a fiarse de ambos."
-    pistas:
-      - { texto: "El DC sweep barre una fuente: como levantar una curva a mano." }
-    escalera:
-      - "El transitorio es lo que se ve en el osciloscopio tras un cambio."
-    solucion: "OP: multímetro; sweep: curva; AC: Bode; tran: escalón; ruido: entrada terminada."
-
   - id: arranque
     tipo: pregunta
     titulo: "El arranque de una fuente conmutada"
@@ -198,54 +223,6 @@ tarjetas:
     escalera:
       - "¿Importa la amplitud? ¿Hay algo no lineal?"
     solucion: "Transitorio: si la amplitud importa."
-
-  - id: ruido
-    tipo: pregunta
-    titulo: "El análisis de ruido"
-    texto: "¿Qué hace el análisis de ruido de SPICE mucho mejor que una medida en el banco?"
-    libro: [50]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Separar la contribución de cada fuente de ruido"
-        bien: true
-        porque: "Midiendo solo se ve el total; el simulador lo reparte componente a componente."
-      - texto: "Medir menos ruido que el real"
-        porque: "No se trata de medir menos, sino de saber de dónde viene cada parte."
-      - texto: "Incluir la interferencia captada"
-        porque: "Al revés: solo ve el ruido que está en los modelos."
-    escalera:
-      - "¿Qué es imposible hacer con un solo instrumento sobre la salida?"
-    solucion: "Separar las contribuciones de cada fuente."
-
-  - id: paso
-    tipo: pregunta
-    titulo: "El paso del transitorio"
-    texto: "En el .tran se fija un paso máximo demasiado grande para los flancos del circuito. ¿Qué ocurre?"
-    libro: [48]
-    widget:
-      tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_p, r: R_f, c: C_f }
-      grafica:
-        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
-        curvas:
-          - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
-    opciones:
-      - texto: "Se pierden detalles y puede dar resultados falsos"
-        bien: true
-        porque: "Por eso conviene fijar un paso máximo cuando hay eventos rápidos."
-      - texto: "Tarda mucho más"
-        porque: "Eso pasa con un paso demasiado pequeño, que alarga la simulación sin aportar."
-      - texto: "No cambia nada: el simulador lo ajusta solo"
-        porque: "Lo ajusta dentro del máximo que se le permite: si ese máximo es grande, se salta los flancos."
-    escalera:
-      - "¿Qué pasa con un flanco más corto que el paso?"
-    solucion: "Pierde detalles: resultados falsos."
 
   - id: por-que-oscilador
     tipo: porque
@@ -277,9 +254,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [36, 42, 46, 57]
+    libro: [36, 39, 42, 46, 50, 57, 60, "cap22#134"]
     ideas:
-      - { titulo: "Punto de trabajo.", texto: "Primero de todo: C abiertos, L en corto. Si no resuelve, nada más funciona." }
-      - { titulo: "AC.", texto: "El Bode de pequeña señal: ignora saturación, recorte y slew rate." }
+      - { titulo: "Punto de trabajo.", texto: "C abiertos, L en corto: el multímetro en reposo. Si no resuelve, nada más funciona." }
+      - { titulo: "AC y ruido.", texto: "El Bode de pequeña señal, sin saturación ni slew rate; el de ruido separa cada contribución, imposible midiendo." }
       - { titulo: "Transitorio.", texto: "El único de gran señal: arranque, conmutación, osciladores." }
       - { titulo: "La regla.", texto: "Si la amplitud importa, transitorio." }

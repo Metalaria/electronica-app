@@ -1,12 +1,19 @@
-# Lección 1.2 de la sección 13.12 «Problemas de Diseño» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 13.12 «Problemas de Diseño» (cap13). Formato: contenido/lecciones11/GUIA.md.
 # Problema 13.A con el modelo del libro: R_plano = ln(15)/(2π·400·35 µm) = 30,8 K/W («≈ 31»); el alivio son cuatro
 # brazos de 143 K/W en paralelo más el plano desde 1,5 mm (26 K/W): 61,75 K/W («≈ 62»); dos planos, la mitad del
 # directo (15,4 K/W, «≈ 15»); el pad aislado, ≈ 2400 K/W. Fuga = (220 − T_placa)/R: 0,081, 3,16, 6,33 y 12,7 W
 # (el libro: 0,1, 3,2, 6,3 y 12,7 W). Los radios de 10 y 20 mm del mando de la fórmula son un ejemplo alrededor de
-# los 15 mm del libro. Problema 13.B: la tabla de puntas y el banco de su apartado.
+# los 15 mm del libro. Problema 13.B: la tabla de puntas y el banco de su apartado. 1.2.1 (aprender haciendo): elegir
+# la conexión que reparte la fuga, calcular la resistencia del plano, precalentar hasta el objetivo, tocar la punta del
+# pad con vertido y las razones para no subir la temperatura, cronometrar en el banco. Dos preguntas: 65 W y diseño.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap13/sec-13.12
 
 libro:
+  306: "Un modelo sencillo da el orden de magnitud"
+  318: "Hay que soldar en la misma placa componentes de 0805"
+  324: "Por qué no subir la temperatura sin más, con las tres"
+  326: "Con la ATTEN ST-965, cuya estabilidad es de ±1 °C, se puede"
   302: "Cobre de 35 µm (k ≈ 400 W/m·K), pad de 1 mm de radio"
   305: "el problema deja de ser de energía y pasa a ser de potencia"
   307: 'R_("plano") = (ln lr(( r_(2) \/ r_(1) ))) / (2 pi dot.op k dot.op e)'
@@ -40,7 +47,7 @@ tarjetas:
   - id: explore-fuga
     tipo: explorar
     titulo: "El pad que se lleva el calor"
-    texto: "La junta está a 220 °C y la placa a 25 °C. Cambie cómo se une el pad al plano y mire la fuga."
+    texto: "La junta está a 220 °C y la placa a 25 °C. Elija la conexión al plano que deja la fuga en la mitad de la del pad directo."
     libro: [302, 309]
     fijar: { T_b: 25 }
     widget:
@@ -54,7 +61,17 @@ tarjetas:
       lectura: { valor: P_f, rotulo: "Fuga térmica" }
       mandos:
         - { valor: R_c, lista: [2400, 61.75, 30.79, 15.39], nombres: [pad aislado, con alivio térmico, directo a un plano, directo a dos planos], rotulo: "Conexión" }
-    requiere: { mover: [R_c] }
+    inicio: { R_c: 30.79 }
+    objetivo:
+      condiciones:
+        - { valor: P_f, min: 2, max: 4, rotulo: "Fuga: {{P_f}}" }
+      logrado: "Con alivio térmico, {{P_f}}: la mitad que el pad directo, del mismo orden que lo que entra por la punta."
+      pistas:
+        - { cuando: { valor: P_f, mayor: 4 }, texto: "Se va demasiado calor: pruebe una conexión con más resistencia." }
+        - { texto: "Eso es un pad aislado: busque uno unido al plano." }
+    escalera:
+      - "Busque la conexión que, unida al plano, al menos duplica la resistencia térmica."
+    solucion: "Con alivio térmico: 3,2 W."
 
   - id: prediga-sesenta-y-cinco
     tipo: predecir
@@ -85,31 +102,29 @@ tarjetas:
       - { P_f: 6.33, tol: 0.003 }
 
   - id: formula-plano
-    tipo: formula
+    tipo: simular
     titulo: "La resistencia del plano"
-    texto: "El calor se extiende en radial por el cobre. Cambie hasta dónde llega en esos segundos."
-    libro: [307, 302]
-    ec: 307
-    sustitucion: "ln({{r_2}} / {{r_1}}) / (2π · {{k_cu}} · {{e_cu}}) = {{R_pl}}"
-    widget:
-      tipo: grafica
-      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
-      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
-      curvas:
-        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
-      marcas:
-        - { x: "R_pl", y: "(T_jn - T_b)/R_pl", rotulo: "Plano" }
-      lectura: { valor: R_pl, rotulo: "R del plano" }
-      mandos:
-        - { valor: r_2, lista: [0.01, 0.015, 0.02], rotulo: "Alcance del calor" }
-    nota: "El libro toma 15 mm; los otros son un ejemplo."
+    texto: "El calor se extiende en radial desde el pad de 1 mm hasta unos 15 mm, por cobre de 35 µm y 400 W/m·K. ¿Qué resistencia térmica da?"
+    libro: [302, 306, 307]
+    simular:
+      objetivo: R_pl
+      unidad: "K/W"
+      tol: 0.03
+      rotulo: "Resistencia del plano"
+      errores:
+        - { expr: "(r_2/r_1)/(2*pi*k_cu*e_cu)", texto: "Falta el logaritmo: en radial, la resistencia va con ln(r₂/r₁)." }
+        - { expr: "ln(r_2/r_1)/(k_cu*e_cu)", texto: "Falta el 2π del contorno del disco." }
+    exito: "Unos 31 K/W: con 195 K de diferencia, 6,3 W se van al plano."
+    escalera:
+      - "R = ln(r₂/r₁) / (2π · k · e)."
+    solucion: "ln(15) / (2π · 400 · 35 µm) ≈ 30,8 K/W."
     comprobar:
-      - { con: { r_2: 0.015 }, R_pl: 30.79, tol: 0.003 }
+      - { R_pl: 30.79, tol: 0.003 }
 
   - id: sorpresa-precalentar
     tipo: sorpresa
     titulo: "Precalentar la placa"
-    texto: "La placa ya está fabricada sin alivio. Precaliéntela a 100 °C y mire la fuga."
+    texto: "La placa ya está fabricada sin alivio. Precaliéntela a 100 °C y compare la fuga con la de antes."
     libro: [312]
     fijar: { R_c: 30.79 }
     inicio: { T_b: 25 }
@@ -124,7 +139,15 @@ tarjetas:
       lectura: { valor: P_f, rotulo: "Fuga térmica" }
       mandos:
         - { valor: T_b, lista: [25, 100], rotulo: "Temperatura de la placa" }
-    requiere: { mover: [T_b] }
+    objetivo:
+      condiciones:
+        - { valor: P_f, max: 4, rotulo: "Fuga: {{P_f}}" }
+      logrado: "Con la placa a {{T_b}}, la fuga baja a {{P_f}}: casi un 40 % menos, de 195 a 120 K de diferencia."
+      pistas:
+        - { texto: "Precaliente la placa." }
+    escalera:
+      - "La fuga va con la diferencia de temperatura."
+    solucion: "Placa a 100 °C: casi un 40 % menos de fuga."
 
   - id: por-que-diseno
     tipo: porque
@@ -155,46 +178,6 @@ tarjetas:
     comprobar:
       - { P_f: 3.16, tol: 0.003 }
 
-  - id: elegir-punta
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Punta y temperatura"
-    texto: "Una placa con tres juntas distintas. Una cada una con su punta y temperatura."
-    libro: [321, 322]
-    emparejar:
-      - ["0805", "Cincel de 1,6 mm a 330 °C"]
-      - ["Conector de 2 mm", "Cincel de 2,4 mm a 350 °C"]
-      - ["Pad con vertido de cobre", "Cincel de 3 mm o cuchara, 380 °C y precalentamiento"]
-    exito: "La punta no se elige por el componente sino por la masa térmica de la junta."
-    pistas:
-      - { texto: "Cuanta más masa térmica, mayor la punta." }
-    escalera:
-      - "El pad con vertido es el que más calor se lleva."
-    solucion: "0805: 1,6 mm a 330 °C; conector: 2,4 mm a 350 °C; vertido: 3 mm, 380 °C y precalentar."
-
-  - id: no-subir
-    tipo: pregunta
-    titulo: "Punta grande antes que temperatura alta"
-    texto: "¿Por qué no basta con subir la temperatura de una punta fina?"
-    libro: [323, 325, "cap13#297"]
-    widget:
-      tipo: grafica
-      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
-      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
-      curvas:
-        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
-    opciones:
-      - texto: "El componente tiene un límite, la punta se oxida y el flux se evapora antes de actuar"
-        bien: true
-        porque: "Una punta grande a 330 °C transfiere más calor que una fina a 400 °C."
-      - texto: "Sí basta: más temperatura, más calor"
-        porque: "La fina falla por área y masa, no por temperatura; y subirla daña."
-      - texto: "Porque la estación no pasa de 380 °C"
-        porque: "La estación llega a 450 °C; el problema es lo que daña por encima."
-    escalera:
-      - "¿Qué le pasa a una punta por encima de 380 °C?"
-    solucion: "Límite del componente, oxidación de la punta y flux evaporado."
-
   - id: banco-cronometro
     tipo: banco
     titulo: "Cronometre su junta"
@@ -216,7 +199,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [305, 311, 312, 323]
+    libro: [305, 311, 312, 323, 318, 321, 322, 324, 325, 326, "cap13#297"]
     ideas:
       - { titulo: "Potencia, no energía.", texto: "Con un plano conectado, la fuga continua decide si la junta funde." }
       - { titulo: "Diseño.", texto: "El alivio térmico al menos duplica la resistencia hacia el plano." }

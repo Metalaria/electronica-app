@@ -2,6 +2,8 @@
 # Z80 = 24 ÷ 6, píxel = 24 ÷ 4; 384 × 264 ciclos por cuadro y 59,19 Hz) y quién los genera en la placa de 1990 (un
 # 74LS161 y dos 74F74 para 12 y 6 MHz; el LSPC-A0 para 8 y 4 MHz). Fuentes: el libro (cap37) y los datos de la consola
 # (neogeo#n: explorador, arquitectura, esquemas MV4 de SNK).
+# 1.2.1: el camino del reloj del Z80 (cristal, LSPC, Z80) se toca en orden en la foto; el divisor del 68000 es un
+# explorar con meta; se escribe el divisor de los 8 MHz del YM2610 (24 ÷ 8). Queda una pregunta: por qué un ASIC.
 leccion: consola-neogeo/neogeo-relojes
 
 libro:
@@ -27,7 +29,9 @@ modelo:
     n: { sim: "n", nombre: "divisor", unidad: "", valor: 2 }
     H: { sim: "H", nombre: "puntos por línea", unidad: "", valor: 384 }
     V: { sim: "V", nombre: "líneas por cuadro", unidad: "", valor: 264 }
+    f_ym: { sim: "f_{YM2610}", nombre: "reloj del YM2610", unidad: Hz, valor: 8000000 }
   calculos:
+    n_ym: { expr: "X/f_ym", sim: "n", nombre: "divisor del YM2610", unidad: "" }
     f_div: { expr: "X/n", sim: "f_{X1} / n", nombre: "reloj dividido", unidad: Hz, cifras: 3 }
     f_cuadro: { expr: "X/4/(H*V)", sim: "f_{cuadro}", nombre: "cuadros por segundo", unidad: Hz, cifras: 4 }
     f_mal1: { expr: "X/(H*V)", sim: "f_{X1} / (H V)", nombre: "cristal sin dividir entre ciclos (error)", unidad: Hz, cifras: 4 }
@@ -35,51 +39,41 @@ modelo:
     f_linea: { expr: "X/4/H", sim: "f_{línea}", nombre: "líneas por segundo (error)", unidad: Hz, cifras: 4 }
 
 tarjetas:
-  - id: explore-reloj
-    tipo: explorar
-    titulo: "Un cristal, cuatro relojes"
-    texto: "Toque el cristal, el LSPC y los tres chips que reciben un reloj distinto."
-    libro: ["neogeo#66", "neogeo#18", "neogeo#5", "cap37#543"]
-    requiere: { mover: [reloj, lspc, m68k, z80, ym] }
-    widget:
-      tipo: figura
-      consola: { maquina: neogeo }
-      zonas:
-        - { id: reloj, hotspot: reloj, rotulo: "Cristal X1", texto: "24 MHz; aquí queda bajo los cables." }
-        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0", texto: "Saca 8 MHz para el YM2610 y 4 MHz para el Z80." }
-        - { id: m68k, hotspot: 68k, rotulo: "68000", texto: "12 MHz, de un divisor TTL." }
-        - { id: z80, hotspot: z80, rotulo: "Z80", texto: "4 MHz, del LSPC." }
-        - { id: ym, hotspot: ym2610, rotulo: "YM2610", texto: "8 MHz, del LSPC." }
-
   - id: prediga-z80
-    tipo: predecir
+    tipo: tocar
+    fase: "Ordene"
     titulo: "¿Quién da el reloj del Z80?"
-    texto: "El 68000 recibe sus 12 MHz de un divisor TTL. ¿Y los 4 MHz del Z80?"
-    libro: ["neogeo#3", "neogeo#5", "neogeo#18"]
+    texto: "El 68000 recibe sus 12 MHz de un divisor TTL; los 4 MHz del Z80 salen de otro sitio. Toque, en orden, el cristal, el chip que los genera y el Z80."
+    libro: ["neogeo#3", "neogeo#5", "neogeo#18", "neogeo#66", "cap37#545"]
     widget:
       tipo: figura
       consola: { maquina: neogeo }
       zonas:
-        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0" }
-        - { id: z80, hotspot: z80, rotulo: "Z80" }
-    opciones:
-      - texto: "El LSPC-A0, el chip de vídeo."
-        bien: true
-        porque: "El LSPC-A0 genera los 8 MHz del YM2610 y los 4 MHz del Z80 por dos de sus patillas."
-      - texto: "El mismo divisor TTL del 68000."
-        porque: "El 74LS161 y los 74F74 dan 12 y 6 MHz. Los 8 y 4 MHz salen del LSPC."
-      - texto: "Un cristal propio, como el sonido de la SNES."
-        porque: "No hay cristal aparte: todo sale de los 24 MHz, y el de 4 MHz lo da el LSPC."
+        - { id: reloj, hotspot: reloj, rotulo: "Zona con cables, arriba a la izquierda" }
+        - { id: lspc, hotspot: lspc, rotulo: "Chip cuadrado, a la izquierda" }
+        - { id: z80, hotspot: z80, rotulo: "Chip largo, en el centro" }
+        - { id: m68k, hotspot: 68k, rotulo: "Chip largo, arriba en el centro" }
+        - { id: ym, hotspot: ym2610, rotulo: "Chip largo, arriba a la derecha" }
+    tocar:
+      bien: [reloj, lspc, z80]
+      orden: true
+      porque:
+        m68k: "El 68000 recibe 12 MHz de un divisor TTL, no por este camino."
+        ym: "El YM2610 recibe 8 MHz del mismo chip, pero la pregunta es el Z80."
+    pistas:
+      - { texto: "El chip que genera los 4 MHz es el de vídeo." }
+    exito: "El cristal de 24 MHz, el LSPC-A0 (que saca 8 MHz para el YM2610 y 4 MHz para el Z80) y el Z80."
     escalera:
       - "Lea la ficha del LSPC-A0."
-    solucion: "El LSPC-A0: saca 4 MHz (patilla 112) para el Z80."
+    solucion: "Cristal X1, LSPC-A0 y Z80."
 
   - id: formula-68000
-    tipo: formula
+    tipo: explorar
     titulo: "El reloj del 68000"
-    texto: "Mueva el divisor: con 2 sale el reloj del 68000."
-    libro: ["cap37#544", "cap37#543", "cap37#133"]
+    texto: "Todo sale de un solo cristal de 24 MHz. Elija el divisor con el que sale el reloj del 68000, 12 MHz."
+    libro: ["cap37#544", "cap37#543", "cap37#133", "neogeo#18"]
     ec: "cap37#544"
+    inicio: { n: 1 }
     sustitucion: "{{X}} / {{n}} = {{f_div}}"
     widget:
       tipo: grafica
@@ -90,6 +84,18 @@ tarjetas:
       marcas:
         - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
       mandos: [ { valor: n, min: 1, max: 8, paso: 1, rotulo: "Divisor, n" } ]
+    objetivo:
+      condiciones:
+        - { valor: f_div, objetivo: 12000000, tol: 0.005, rotulo: "Reloj: {{f_div}}" }
+      logrado: "Entre {{n}}: {{f_div}}, el reloj del 68000. En esta placa lo dan un 74LS161 y dos 74F74."
+      pistas:
+        - { cuando: { valor: f_div, mayor: 12100000 }, texto: "Demasiado rápido: suba el divisor." }
+        - { texto: "Demasiado lento: baje el divisor." }
+    escalera:
+      - "24 ÷ 12."
+    solucion: "Entre 2."
+    comprobar:
+      - { con: { n: 2 }, f_div: 12000000 }
 
   - id: ajuste-pixel
     tipo: ajuste
@@ -172,22 +178,28 @@ tarjetas:
     solucion: "El cauce de datos del vídeo, a seis millones de píxeles por segundo, solo cabía en un ASIC."
 
   - id: empareje-relojes
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada reloj, su chip"
-    texto: "Empareje cada reloj con quien lo usa."
-    libro: ["cap37#544", "cap37#545", "cap37#546", "neogeo#4"]
-    emparejar:
-      - ["12 MHz", "El 68000"]
-      - ["4 MHz", "El Z80"]
-      - ["6 MHz", "Un píxel por ciclo"]
-      - ["8 MHz", "El YM2610"]
-    exito: "Cuatro relojes del mismo cristal de 24 MHz."
-    pistas:
-      - { texto: "El Z80 es la CPU más lenta; el 68000, la más rápida." }
+    tipo: leer
+    titulo: "El reloj del YM2610"
+    texto: "El LSPC-A0 saca 8 MHz para el YM2610 a partir del cristal de 24 MHz. Escriba entre cuánto divide."
+    libro: ["neogeo#4", "neogeo#5", "cap37#543"]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 8, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 25000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "X/k", color: azul, rotulo: "24 MHz / divisor", palitos: true }
+      mandos: []
+    leer:
+      objetivo: n_ym
+      unidad: ""
+      tol: 0.01
+      rotulo: "Divisor"
+    exito: "Entre 3: 8 MHz. Cuatro relojes del mismo cristal: 12 MHz al 68000 (÷ 2), 8 MHz al YM2610 (÷ 3), 6 MHz al píxel (÷ 4) y 4 MHz al Z80 (÷ 6)."
     escalera:
-      - "Divida 24 MHz entre 2, 3, 4 y 6."
-    solucion: "12 MHz: 68000. 4 MHz: Z80. 6 MHz: píxel. 8 MHz: YM2610."
+      - "24 ÷ 8."
+    solucion: "3."
+    comprobar:
+      - { n_ym: 3 }
 
   - id: toque-cristal
     tipo: tocar

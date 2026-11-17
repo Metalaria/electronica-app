@@ -34,6 +34,14 @@ const d: DefinicionEsquema = {
     interruptor: { interruptor: true, descripcion: 'conecta la carga (abierto: en vacío)', color: 'verde' },
     a0: { descripcion: 'ganancia en lazo abierto del amplificador de error (sin ella, 10⁵)' },
   },
+  // (1.2.1: drawn parts an «elegir» card may ask for)
+  partes: { paso: 'elemento de paso, el transistor en serie con la carga', ao: 'amplificador de error' },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => ({
+    puntos: { in: 'Entrada', ref: 'Referencia', b: 'Salida del amplificador de error', out: 'Salida regulada', ...(c.tiene('r1') ? { fb: 'Punto medio del divisor' } : {}), '0': 'Masa, abajo' },
+    ramas: { vmi: 'Rama de la entrada', vmo: 'Salida del elemento de paso', vml: 'Rama de la carga' },
+    zonas: { entrada: 'Fuente de entrada', ref: 'Referencia', ...(c.tiene('r1') ? { r1: 'Resistencia de arriba del divisor', r2: 'Resistencia de abajo del divisor' } : {}), carga: 'Carga', paso: 'Elemento de paso', ao: 'Amplificador de error' },
+  }),
   observables: {
     vout: { medida: 'v(out)', analisis: 'op', unidad: 'V', descripcion: 'tensión de salida' },
     iin: { medida: 'i(vmi)', analisis: 'op', unidad: 'A', descripcion: 'corriente de entrada' },

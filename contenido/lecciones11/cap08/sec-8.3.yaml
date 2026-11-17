@@ -4,6 +4,11 @@
 # 1.2: el disparador es el esquema «comparador-schmitt» (la entrada por la −; R₁ a masa y R₂ desde la salida a la +).
 # La senoide de 5 V de pico a 100 Hz que lo hace conmutar y la tolerancia de ± 5 % del diseño son ejemplos míos: el
 # ruido (rampa con ruido) sigue en gráfica porque el esquema no tiene esa señal.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la ventana más estrecha que aún supera el ruido se busca con R₂
+# (objetivo; da los 220 kΩ nominales que el diseño con tolerancias corrige después a 180 kΩ), el umbral se mide en la
+# entrada + y se escribe, los umbrales se llevan a ±2 V en el tiempo y el ruido se sube hasta ver el tren de pulsos sin
+# histéresis. Quedan dos preguntas de opciones (por qué positiva, comparador u operacional); el emparejamiento de los
+# usos pasa a las explicaciones.
 leccion: cap08/sec-8.3
 
 libro:
@@ -50,10 +55,11 @@ tarjetas:
   - id: explore-ventana
     tipo: explorar
     titulo: "Una ventana contra el ruido"
-    texto: "Una señal lenta con 1 V de ruido de pico a pico y los dos umbrales del disparador de Schmitt. Cambie R₂."
+    texto: "Una señal lenta con 1 V de ruido de pico a pico y los umbrales del disparador de Schmitt. Elija la R₂ de la ventana más estrecha que aún supera el ruido."
     nota: "Señal de ejemplo."
     libro: [51, 54]
     fijar: { R_1: 10000, V_sat: 12, s_h: 1 }
+    inicio: { R_2: 1000000 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
@@ -65,38 +71,52 @@ tarjetas:
       lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
       mandos:
         - { valor: R_2, lista: [47000, 100000, 220000, 470000, 1000000], rotulo: "R₂" }
+    objetivo:
+      condiciones:
+        - { valor: V_w, min: 1, rotulo: "Ventana: {{V_w}}" }
+        - { valor: V_w, max: 1.5, rotulo: "Sin que sobre" }
+      logrado: "Con {{R_2}}, {{V_w}}: apenas más que el ruido. Cada voltio de más sería retraso en la detección."
+      pistas:
+        - { cuando: { valor: V_w, menor: 1 }, texto: "La ventana es más estrecha que el ruido: baje R₂." }
+        - { texto: "Supera el ruido con mucho: suba R₂ para no retrasar la detección." }
+    escalera:
+      - "Menos R₂, más realimentación positiva y más ventana."
+    solucion: "220 kΩ: 1,04 V."
+    comprobar:
+      - { con: { R_2: 220000 }, V_w: 1.04, tol: 0.01 }
 
   - id: prediga-umbrales
-    tipo: predecir
+    tipo: leer
     titulo: "Los umbrales"
-    texto: "R₁ = 10 kΩ, R₂ = 100 kΩ y salida de ±12 V. ¿Dónde están los umbrales?"
+    texto: "R₁ = 10 kΩ, R₂ = 100 kΩ, ±12 V y la salida en alto. El umbral es la tensión de la entrada +: mídala y escríbala."
     libro: [54]
     fijar: { R_1: 10000, R_2: 100000, V_sat: 12, s_h: 1, V_in: 0, alto: 1 }
     widget:
       tipo: circuito
       esquema: comparador-schmitt
       piezas: { entrada: V_in, r1: R_1, r2: R_2, vsat: V_sat, alto: alto }
-      lectura: { valor: V_u, rotulo: "Umbral superior" }
       mide: { vo: V_o, vmas: V_p }
-      ocultar: true
-    opciones:
-      - texto: "En ±1,09 V"
-        bien: true
-        porque: "±12 · 10/(10 + 100) = ±1,09 V: la salida, dividida por R₁–R₂, fija la entrada +."
-      - texto: "En ±1,2 V"
-        porque: "Sería 12 · R₁/R₂. El divisor es R₁/(R₁ + R₂)."
-      - texto: "En 0 V"
-        porque: "Ese es el comparador sin histéresis. La realimentación positiva separa los dos umbrales."
+      instrumento: { tipo: multimetro, modos: [V], puntos: [in, p, out, "0"] }
+      mandos: []
+    leer:
+      objetivo: V_p
+      unidad: V
+      tol: 0.02
+      rotulo: "Umbral superior"
+      medida: { entre: [p, "0"] }
+      errores:
+        - { expr: "V_o", texto: "Esos 12 V son la salida. El umbral es la entrada +, la salida dividida por R₁–R₂." }
+    exito: "12 · 10/(10 + 100) = 1,09 V. Con la salida en bajo, −1,09 V: una ventana de 2,18 V."
     escalera:
-      - "V_{umbral} = ±V_{sat} · R₁/(R₁ + R₂)."
-    solucion: "12 · 10/(10 + 100) = 1,09 V: ventana de 2,18 V."
+      - "Roja en la entrada +, negra en masa."
+    solucion: "+1,09 V: V_{umbral} = V_{sat} · R₁/(R₁ + R₂)."
     comprobar:
-      - { V_u: 1.09, V_w: 2.18, V_mal: 1.2, tol: 0.01 }
+      - { V_u: 1.09, V_p: 1.09, V_w: 2.18, V_mal: 1.2, tol: 0.01 }
 
   - id: explore-tiempo
     tipo: explorar
     titulo: "Dos umbrales en el tiempo"
-    texto: "Una senoide entra por la −. Cambie R₂ y mire dónde conmuta la salida al subir y al bajar."
+    texto: "Una senoide entra por la −. Cambie R₂ hasta que la salida conmute a 2 V o más de cero."
     nota: "Senoide de ejemplo de 5 V de pico."
     libro: [51, 54, 55]
     fijar: { R_1: 10000, V_sat: 12, A_s: 5 }
@@ -115,14 +135,24 @@ tarjetas:
           - { expr: "V_uh*(2*abs(floor((2*pi*f_s*t - 2*pi*floor(f_s*t) - th)/pi)) - 1)", color: azul, rotulo: "v_{+}", mide: umbral }
       mandos:
         - { valor: R_2, lista: [47000, 100000, 220000], rotulo: "R₂" }
-    requiere: { mover: [R_2] }
+    objetivo:
+      condiciones:
+        - { valor: V_uh, min: 2, rotulo: "Umbral: {{V_uh}}" }
+      logrado: "Con {{R_2}}, ±{{V_uh}}: la salida sube el umbral al saltar a positivo y lo baja al saltar a negativo."
+      pistas:
+        - { texto: "Aún conmuta cerca de cero: menos R₂, más realimentación positiva." }
+    escalera:
+      - "V_{umbral} = 12 · R₁/(R₁ + R₂): para 2 V, R₂ unas cinco veces R₁."
+    solucion: "47 kΩ: ±2,1 V."
+    comprobar:
+      - { con: { R_2: 47000 }, V_uh: 2.105, tol: 0.01 }
 
   - id: reto-ventana
     tipo: diseno
     titulo: "Más que el ruido"
     texto: "R₁ = 10 kΩ, ±12 V y 1 V de ruido de pico a pico. Elija R₂ (E12) para que la ventana lo supere."
     nota: "Resistencias del 5 %: debe cumplir en todas las esquinas."
-    libro: [54]
+    libro: [54, 57]
     fijar: { R_1: 10000, V_sat: 12, s_h: 1, V_in: 0, alto: 1 }
     inicio: { R_2: 1000000 }
     widget:
@@ -140,7 +170,7 @@ tarjetas:
       metodo: esquinas
       exigir: todas
       si_tolerancias: "El nominal pasa, pero en la peor esquina la ventana se queda corta: baje R₂ un valor más."
-    exito: "Tras cruzar un umbral, el ruido ya no alcanza el otro. Y no más de lo necesario: cada voltio de histéresis es retraso."
+    exito: "El ruido fija la histéresis y el retardo admisible la limita: tras cruzar un umbral, el ruido ya no alcanza el otro."
     pistas:
       - { texto: "La ventana es más estrecha que el ruido: baje R₂ para que la salida realimente más." }
     escalera:
@@ -155,7 +185,7 @@ tarjetas:
   - id: sorpresa-sin
     tipo: sorpresa
     titulo: "Sin histéresis"
-    texto: "Sin realimentación positiva queda un solo umbral, en cero. Suba el ruido de la rampa y mire la salida al cruzarlo."
+    texto: "Sin realimentación positiva queda un solo umbral, en cero. Añada ruido a la rampa hasta que la salida dé conmutaciones falsas."
     libro: [50, 53, 58]
     fijar: { R_1: 10000, V_sat: 12 }
     inicio: { ru: 0 }
@@ -172,7 +202,17 @@ tarjetas:
           - { expr: "V_sat*(1 - 2*ceil((cero - a_rp + 2*a_rp*(t*f_rp - floor(t*f_rp)) + ru*(sin(2*pi*37*f_rp*t) + sin(2*pi*61*f_rp*t) + sin(2*pi*97*f_rp*t))/3 - cero)/1e9))", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: ru, lista: [0, 0.25, 0.5], rotulo: "Ruido" }
-    requiere: { mover: [ru] }
+    objetivo:
+      condiciones:
+        - { valor: ru, min: 0.25, rotulo: "Ruido: {{ru}}" }
+      logrado: "Al cruzar cero, un tren de pulsos en lugar de una transición limpia. Es lo que la histéresis elimina."
+      pistas:
+        - { texto: "Sin ruido la transición es limpia: añada ruido." }
+    escalera:
+      - "Con un solo umbral, cada vez que el ruido lo cruza la salida salta."
+    solucion: "Con 0,25 V de ruido ya aparecen conmutaciones falsas."
+    comprobar:
+      - { con: { ru: 0.25 }, V_sat: 12 }
 
   - id: por-que-positiva
     tipo: porque
@@ -207,8 +247,8 @@ tarjetas:
   - id: comparador-integrado
     tipo: pregunta
     titulo: "Comparador o operacional"
-    texto: "Hay que detectar un umbral con rapidez y atacar una entrada lógica. ¿Qué se usa?"
-    libro: [56]
+    texto: "Hay que detectar un nivel, como una batería baja, con rapidez y atacar una entrada lógica. ¿Qué se usa?"
+    libro: [56, 57]
     fijar: { R_1: 10000, R_2: 100000, V_sat: 12, V_in: 0, alto: 1 }
     widget:
       tipo: circuito
@@ -226,24 +266,6 @@ tarjetas:
     escalera:
       - "¿Qué pasa cuando un operacional sale de saturación?"
     solucion: "Un comparador dedicado: rápido y con salida de colector abierto."
-
-  - id: usos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los dos usos y sus límites"
-    texto: "Una cada idea con su par."
-    libro: [54, 57]
-    emparejar:
-      - ["Detección de nivel", "Batería baja o sobretemperatura"]
-      - ["Señal lenta a digital limpia", "Un sensor magnético o un fotodiodo"]
-      - ["Lo que fija la histéresis", "El ruido de pico a pico esperado"]
-      - ["Lo que la limita", "El retardo que se admite"]
-    exito: "Primero, cuánto ruido hay; después, cuánto retardo se tolera."
-    pistas:
-      - { texto: "Cada voltio de histéresis es un voltio de retraso en la detección." }
-    escalera:
-      - "La histéresis se diseña algo mayor que el ruido."
-    solucion: "Nivel–batería, digital–sensor, ruido–fija, retardo–limita."
 
   - id: resumen
     tipo: resumen

@@ -4,9 +4,15 @@
 # - La cadena de decisiones de la variante autónoma (bloques 24 y 25) y la comprobación de coherencia (bloque 40).
 # Sección sin fórmulas ni cálculos: sin modelo (aviso de secuencia «sin tarjeta de fórmula»).
 # Paso práctico: «tocar» en la figura 50.2 la línea de la especificación que descarta el ordenador de placa.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en el mapa (figura 50.1) se tocan la memoria y lo que cubre
+# el pico de la radio; se explora cuántas medidas caben en 24 horas a una cada cinco minutos (288, bloques 9 y 12) y se
+# escribe cuántas veces más despierta midiendo cada segundo (bloque 40); las zonas de la figura 50.2 se recalculan
+# desde su fuente (filas de 22 px). El orden de la cadena y el criterio de aceptación pasan al resumen.
 leccion: cap49/sec-49.1
 
 libro:
+  34: "Comparación con instrumentos de referencia en varios puntos"
+  36: "Consumo medido compatible con el año de autonomía de la"
   4: "unas pocas líneas determinan todo el diseño"
   8: "Temperatura: ±0,5 °C entre −10 y +50 °C."
   9: "Periodo de medida: una vez cada cinco minutos."
@@ -27,24 +33,69 @@ libro:
   41: "Mapa de la estación de medida IoT en su variante autónoma, del sensor a la nube"
   42: "Cada línea de la especificación de la estación y lo que determina"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    T_p: { sim: "T", nombre: "periodo de medida", unidad: s, valor: 300 }
+    t_1: { sim: "T_{1}", nombre: "medida cada segundo", unidad: s, valor: 1 }
+    h_d: { sim: "t", nombre: "horas guardadas", unidad: h, valor: 6 }
+  calculos:
+    N_m: { expr: "h_d*3600/T_p", sim: "N", nombre: "medidas guardadas", unidad: "" }
+    r_s: { expr: "T_p/t_1", sim: "razón", nombre: "veces más despertares", unidad: "" }
 
 tarjetas:
   - id: explore-mapa
-    tipo: explorar
+    tipo: tocar
     titulo: "Del sensor a la nube"
-    texto: "La estación mide clima, luz, sonido y movimiento, y lo envía a la nube. Toque el cerebro y la alimentación."
-    libro: [41]
+    texto: "La estación mide y lo envía a la nube, y debe guardar al menos 24 horas de datos para cubrir cortes de red. Toque dónde se guardan."
+    libro: [12, 19, 41]
     widget:
       tipo: figura
       figura: fig-48.1
       zonas:
-        - { id: sensores, rotulo: "Arriba a la izquierda", rect: [6, 8, 80, 56], texto: "Los sensores: temperatura, humedad y presión, por I²C." }
-        - { id: esp32, rotulo: "Arriba, el segundo", rect: [128, 8, 94, 56], texto: "El ESP32: microcontrolador con wifi, que duerme y despierta por temporizador." }
-        - { id: nube, rotulo: "Arriba, el tercero", rect: [277, 8, 88, 56], texto: "El servidor almacena las medidas, que llegan por wifi con MQTT." }
-        - { id: alimentacion, rotulo: "Abajo a la izquierda", rect: [6, 102, 145, 48], texto: "Pilas de litio, regulador de bajo consumo y condensador para los picos." }
-        - { id: memoria, rotulo: "Abajo, en el centro", rect: [171, 102, 88, 48], texto: "La memoria local guarda los datos si no hay red." }
-    requiere: { mover: [esp32, alimentacion] }
+        - { id: sensores, rotulo: "Arriba a la izquierda", rect: [6, 8, 80, 56] }
+        - { id: esp32, rotulo: "Arriba, el segundo", rect: [128, 8, 94, 56] }
+        - { id: nube, rotulo: "Arriba, el tercero", rect: [277, 8, 88, 56] }
+        - { id: alimentacion, rotulo: "Abajo a la izquierda", rect: [6, 102, 145, 48] }
+        - { id: memoria, rotulo: "Abajo, en el centro", rect: [171, 102, 88, 48] }
+    tocar:
+      bien: [memoria]
+      porque:
+        sensores: "Los sensores miden temperatura, humedad y presión, por I²C; no guardan el histórico."
+        esp32: "El ESP32 mide, duerme y envía; las 24 horas necesitan memoria no volátil."
+        nube: "El servidor guarda lo que llega; el problema es cuando no llega."
+        alimentacion: "Pilas, regulador y condensador: la energía, no los datos."
+    exito: "La memoria local: no volátil, y con marcas de tiempo propias, porque sin red no hay hora del servidor."
+    escalera:
+      - "Busque lo que guarda los datos si no hay red."
+    solucion: "Abajo, en el centro: la memoria local."
+
+  - id: explore-memoria
+    tipo: explorar
+    titulo: "Cuántas medidas en 24 horas"
+    texto: "Una medida cada cinco minutos. Lleve la memoria hasta las 24 horas que pide la especificación y mire cuántas medidas guarda."
+    libro: [9, 12, 19]
+    widget:
+      tipo: grafica
+      x: { id: h, min: 0, max: 48, unidad: h, rotulo: "horas guardadas" }
+      y: { min: 0, max: 600, unidad: "", rotulo: "medidas" }
+      curvas:
+        - { expr: "h*3600/T_p", color: azul, rotulo: "medidas guardadas" }
+      marcas:
+        - { x: "h_d", y: "N_m", rotulo: "{{N_m}}" }
+      lectura: { valor: N_m, rotulo: "Medidas guardadas" }
+      mandos:
+        - { valor: h_d, min: 0, max: 48, paso: 1, rotulo: "Horas guardadas" }
+    objetivo:
+      condiciones:
+        - { valor: h_d, min: 24, rotulo: "{{h_d}} guardadas" }
+      logrado: "24 horas son {{N_m}} medidas de cada magnitud, cada una con su marca de tiempo: eso dimensiona la memoria no volátil."
+      pistas:
+        - { texto: "Suba hasta las 24 horas." }
+    escalera:
+      - "Cuente cuántos tramos de cinco minutos caben en 24 horas."
+    solucion: "24 horas: 288 medidas."
+    comprobar:
+      - { con: { h_d: 24 }, N_m: 288 }
 
   - id: empareje-lineas
     tipo: pregunta
@@ -77,10 +128,10 @@ tarjetas:
       tipo: figura
       figura: fig-49.1
       zonas:
-        - { id: temperatura, rotulo: "Primera línea", rect: [5, 16, 445, 36] }
-        - { id: periodo, rotulo: "Segunda línea", rect: [5, 41, 445, 36] }
-        - { id: pilas, rotulo: "Tercera línea", rect: [5, 66, 445, 36] }
-        - { id: datos, rotulo: "Cuarta línea", rect: [5, 91, 445, 36] }
+        - { id: temperatura, rotulo: "Primera línea", rect: [4, 20, 443, 25] }
+        - { id: periodo, rotulo: "Segunda línea", rect: [4, 45, 443, 25] }
+        - { id: pilas, rotulo: "Tercera línea", rect: [4, 71, 443, 25] }
+        - { id: datos, rotulo: "Cuarta línea", rect: [4, 96, 443, 25] }
     tocar:
       bien: [pilas]
       porque:
@@ -92,50 +143,31 @@ tarjetas:
       - "Un ordenador de placa consume demasiado para durar un año con pilas."
     solucion: "La tercera: un año con pilas."
 
-  - id: ordene-cadena
-    tipo: pregunta
-    titulo: "Decisiones encadenadas"
-    texto: "En la variante autónoma, la primera decisión arrastra a las demás. Ordénelas."
-    libro: [24]
-    widget:
-      tipo: figura
-      figura: fig-49.1
-      zonas:
-        - { id: periodo, rotulo: "Segunda línea", rect: [5, 41, 445, 36] }
-    ordenar:
-      - "Medir cada cinco minutos y enviar por lotes"
-      - "Las pilas duran un año"
-      - "No hace falta panel solar"
-      - "La caja es pequeña y sin orientación"
-      - "Hay que separar el sensor de temperatura de la electrónica"
-    exito: "Cuatro decisiones donde la primera determina las otras tres."
-    pistas:
-      - { texto: "Sin panel solar, la caja puede ser pequeña." }
-    escalera:
-      - "Empiece por el consumo y termine por el montaje del sensor."
-    solucion: "Periodo, un año con pilas, sin panel, caja pequeña, separar el sensor."
-
   - id: pregunta-radio
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una quinta decisión"
-    texto: "La radio añade una decisión más a la cadena. ¿Cuál?"
-    libro: [25]
+    texto: "El wifi consume mucho al transmitir: se acumulan varias medidas y se envían juntas. Toque lo que cubre el pico de cada envío."
+    libro: [24, 25]
     widget:
       tipo: figura
       figura: fig-48.1
       zonas:
+        - { id: sensores, rotulo: "Arriba a la izquierda", rect: [6, 8, 80, 56] }
         - { id: esp32, rotulo: "Arriba, el segundo", rect: [128, 8, 94, 56] }
-    opciones:
-      - texto: "Acumular medidas, enviarlas juntas y prever un condensador para el pico"
-        bien: true
-        porque: "El wifi consume mucho al transmitir: se transmite poco y se cubre el pico."
-      - texto: "Transmitir cada medida en cuanto se toma"
-        porque: "Es justo lo que se evita: cada envío cuesta mucho más que medir."
-      - texto: "Cambiar el wifi por cable"
-        porque: "La especificación pide comunicación inalámbrica."
+        - { id: nube, rotulo: "Arriba, el tercero", rect: [277, 8, 88, 56] }
+        - { id: alimentacion, rotulo: "Abajo a la izquierda", rect: [6, 102, 145, 48] }
+        - { id: memoria, rotulo: "Abajo, en el centro", rect: [171, 102, 88, 48] }
+    tocar:
+      bien: [alimentacion]
+      porque:
+        sensores: "Los sensores consumen poco y no transmiten."
+        esp32: "El ESP32 es quien provoca el pico al transmitir; hace falta algo que lo cubra."
+        nube: "El servidor recibe; el pico está en la estación."
+        memoria: "La memoria acumula las medidas del lote, pero no cubre el pico."
+    exito: "El condensador junto al regulador de bajo consumo: cubre el pico de la radio. Medir cada cinco minutos y enviar por lotes deja el consumo medio en décimas de miliamperio: un año con pilas, sin panel solar."
     escalera:
-      - "¿Qué consume más, medir o transmitir?"
-    solucion: "Envíos por lotes y un condensador para el pico."
+      - "¿Qué pieza guarda energía para un instante?"
+    solucion: "Abajo a la izquierda: el condensador de la alimentación."
 
   - id: pregunta-fuera
     tipo: porque
@@ -159,56 +191,36 @@ tarjetas:
       - "¿Qué pasaría si a mitad de proyecto se añadiera un anemómetro?"
     solucion: "Simplifica, y cambiarlo después rompe decisiones."
 
-  - id: pregunta-aceptacion
-    tipo: pregunta
-    titulo: "El criterio de aceptación"
-    texto: "¿Cuál de estas pruebas forma parte del criterio para dar el proyecto por terminado?"
-    libro: [35, 37]
-    widget:
-      tipo: figura
-      figura: fig-48.1
-      zonas:
-        - { id: nube, rotulo: "Arriba, el tercero", rect: [277, 8, 88, 56] }
-    opciones:
-      - texto: "Un mes funcionando sin intervención"
-        bien: true
-        porque: "Junto con la comparación con referencias, el consumo medido y la recuperación tras cortes."
-      - texto: "Que funcione una tarde en la mesa"
-        porque: "La mesa no descubre lo que depende del tiempo y del ambiente."
-      - texto: "Que el firmware compile sin avisos"
-        porque: "Necesario, pero no dice si la estación cumple su especificación."
-    escalera:
-      - "El criterio se mide contra la especificación, en el tiempo."
-    solucion: "Un mes sin intervención, entre otras."
-
   - id: predecir-coherencia
-    tipo: predecir
+    tipo: leer
     titulo: "Una especificación imposible"
-    texto: "Alguien pide ±0,1 °C, un año con pilas y una medida por segundo. ¿Qué pasa?"
+    texto: "Alguien pide ±0,1 °C, un año con pilas y una medida por segundo en lugar de cada cinco minutos. Escriba cuántas veces más despierta la estación."
     libro: [40, 17]
     widget:
       tipo: figura
       figura: fig-49.1
       zonas:
-        - { id: fuera, rotulo: "Recuadro de abajo", rect: [5, 178, 440, 50] }
-    opciones:
-      - texto: "No es alcanzable, y descubrirlo escribiendo cuesta media hora"
-        bien: true
-        porque: "Con medida continua no hay año de pilas posible. Mejor saberlo antes que a medio proyecto."
-      - texto: "Se consigue con un sensor mejor"
-        porque: "El problema es el consumo de medir cada segundo, no el sensor."
-      - texto: "Se consigue con pilas más grandes"
-        porque: "Las líneas son incoherentes entre sí: hay que cambiar alguna."
+        - { id: fuera, rotulo: "Recuadro de abajo", rect: [5, 178, 440, 50], texto: "Lo que queda fuera y la comprobación de coherencia." }
+    leer:
+      objetivo: r_s
+      unidad: ""
+      tol: 0.01
+      rotulo: "Veces"
+      errores:
+        - { expr: "5", texto: "Son cinco minutos, no cinco segundos: páselos a segundos." }
+    exito: "300 veces más: con medida casi continua no hay año de pilas posible. Descubrirlo escribiendo cuesta media hora en lugar de medio proyecto."
     escalera:
-      - "¿Qué hacía posible el año con pilas?"
-    solucion: "Incoherente: hay que comprobarlo al escribir la especificación."
+      - "Cinco minutos son 300 segundos."
+    solucion: "300 s / 1 s = 300."
+    comprobar:
+      - { r_s: 300 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [4, 18, 24, 40]
+    libro: [4, 18, 24, 34, 35, 36, 37, 40]
     ideas:
-      - { titulo: "Primero, los números.", texto: "Unas pocas líneas determinan todo el diseño." }
+      - { titulo: "Primero, los números.", texto: "Unas pocas líneas determinan todo el diseño; y al final, un criterio: referencias, un mes sin intervención, consumo medido y recuperación tras cortes." }
       - { titulo: "En cadena.", texto: "Cada cinco minutos y por lotes: un año con pilas, sin panel, caja pequeña." }
       - { titulo: "Lo que no se hace.", texto: "También se escribe: añadirlo después cambia decisiones." }
       - { titulo: "Coherencia.", texto: "Comprobarla escribiendo cuesta media hora, no medio proyecto." }

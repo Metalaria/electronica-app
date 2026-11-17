@@ -2,15 +2,22 @@
 # - Las cinco ampliaciones y lo que ha enseñado el proyecto en la figura 51.19 (fig-50.18), con zonas.
 # - Sin modelo numérico.
 # Paso práctico: «tocar» la ampliación cuya exigencia es la monotonía del DAC.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): la OVP del bloque 423 en una gráfica viva (valores de ejemplo:
+# la fuente ajustada a 5 V y un fallo que la lleva a los 39,5 V de la entrada, el de R₁ abierta de 51.11; límites de
+# 6, 15 y 45 V): se elige el límite que corta el fallo (objetivo). Cada ampliación se toca desde lo que exige.
+# Queda una pregunta (frente a una comercial); las protecciones, al explorar y al resumen.
 leccion: cap50/sec-50.13
 
 libro:
   407: "hay cinco ampliaciones que la convierten en un instrumento serio"
+  409: "Un microcontrolador con convertidores que mida tensión y corriente reales y las muestre."
   410: "porque la exactitud de la medida es la de esa referencia"
   411: "Un panel que muestre la consigna en lugar de la medida no sirve para nada."
   414: "memorias de ajustes, límites programables, rampas suaves, y control remoto"
   415: "el DAC debe ser monótono"
+  417: "un convertidor que sigue a la salida manteniendo unos voltios de caída sobre el lineal"
   418: "Es la ampliación más rentable en términos de calor, y la que más trabajo da"
+  420: "en serie —para más tensión— o en paralelo —para más corriente—"
   421: "las masas dejan de ser comunes"
   423: "Protege el circuito bajo prueba de un fallo de la fuente."
   424: "Protección térmica con reducción progresiva."
@@ -18,26 +25,54 @@ libro:
   428: "Rectificación y filtrado con márgenes reales"
   429: "exactitud, estabilidad, y comportamiento ante lo imprevisto"
   432: "En regulación y rizado, una fuente casera bien hecha compite."
+  "cap50#279": "39,5 V"
   433: "Las cinco ampliaciones de la fuente y lo que el proyecto ha enseñado."
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    V_aj: { sim: "V_{ajustada}", nombre: "tensión ajustada", unidad: V, valor: 5 }
+    V_ent: { sim: "V_{in}", nombre: "entrada del regulador", unidad: V, valor: 39.5 }
+    fallo: { tipo: interruptor, nombre: "fallo de la fuente", valor: 1 }
+    V_ovp: { sim: "V_{OVP}", nombre: "límite de la OVP", unidad: V, valor: 45 }
+  calculos:
+    V_raw: { si: fallo, entonces: "V_ent", sino: "V_aj", sim: "V", nombre: "lo que daría la fuente", unidad: V }
+    V_o: { expr: "V_raw*(1 - ceil(max(0, V_raw - V_ovp)/1e9))", sim: "V_{out}", nombre: "salida tras la OVP", unidad: V }
 
 tarjetas:
   - id: explore-ampliaciones
     tipo: explorar
-    titulo: "Cinco ampliaciones"
-    texto: "La fuente básica funciona; estas cinco la convierten en un instrumento serio. Toque las ampliaciones."
-    libro: [407, 433]
+    titulo: "La OVP"
+    texto: "Valores de ejemplo: la fuente alimenta a 5 V un circuito, y un fallo la lleva a los 39,5 V de la entrada. Elija el límite de la OVP que lo corta."
+    libro: [407, 423, "cap50#279"]
+    inicio: { fallo: 1, V_ovp: 45 }
     widget:
-      tipo: figura
-      figura: fig-50.18
-      zonas:
-        - { id: medida, rotulo: "Recuadro verde", rect: [5, 4, 140, 63], texto: "Medida digital: tensión y corriente reales con un microcontrolador." }
-        - { id: control, rotulo: "Recuadro azul", rect: [157, 4, 139, 63], texto: "Control digital: DAC y codificadores en lugar de potenciómetros." }
-        - { id: pre, rotulo: "Recuadro naranja de arriba", rect: [308, 4, 139, 63], texto: "Prerregulador conmutado: unos voltios de caída sobre el lineal." }
-        - { id: doble, rotulo: "Recuadro violeta", rect: [5, 74, 140, 63], texto: "Salida doble: independiente, en serie o en paralelo." }
-        - { id: protecciones, rotulo: "Recuadro rojo", rect: [157, 74, 139, 63], texto: "Protecciones: OVP, térmica progresiva y registro de eventos." }
-    requiere: { mover: [medida, protecciones] }
+      tipo: grafica
+      x: { id: vx, min: 0, max: 50, unidad: V, rotulo: "lo que daría la fuente" }
+      y: { min: 0, max: 50, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "vx*(1 - ceil(max(0, vx - V_ovp)/1e9))", color: naranja, rotulo: "salida tras la OVP" }
+      marcas:
+        - { x: "V_raw", y: "V_o", rotulo: "{{V_o}}" }
+      lectura: { valor: V_o, rotulo: "Salida" }
+      mandos:
+        - { valor: V_ovp, lista: [6, 15, 45], rotulo: "Límite de la OVP" }
+        - { valor: fallo, tipo: interruptor, rotulo: "Fallo de la fuente" }
+    objetivo:
+      condiciones:
+        - { valor: fallo, min: 1, rotulo: "Con el fallo" }
+        - { valor: V_o, max: 0.5, rotulo: "Salida: {{V_o}}" }
+      logrado: "Con el límite en {{V_ovp}}, el fallo se corta: la OVP protege el circuito bajo prueba de un fallo de la propia fuente."
+      pistas:
+        - { cuando: { valor: fallo, menor: 1 }, texto: "Vuelva a poner el fallo: la OVP es para ese caso." }
+        - { texto: "El límite está por encima de lo que da el fallo: no corta nada." }
+    escalera:
+      - "El límite tiene que quedar entre lo ajustado y lo que da el fallo."
+    solucion: "6 o 15 V: por encima de los 5 V ajustados y por debajo de los 39,5 V del fallo."
+    comprobar:
+      - { con: { V_ovp: 6 }, V_o: 0 }
+      - { con: { V_ovp: 15 }, V_o: 0 }
+      - { con: { V_ovp: 6, fallo: 0 }, V_o: 5 }
+      - { V_raw: 39.5 }
 
   - id: toque-monotono
     tipo: tocar
@@ -64,88 +99,73 @@ tarjetas:
     solucion: "El control digital: un DAC no monótono baja la tensión al subir el mando."
 
   - id: medida-real
-    tipo: pregunta
+    tipo: tocar
     titulo: "Lo que muestra el panel"
-    texto: "Un panel digital muestra la tensión de la fuente. ¿Qué debe mostrar?"
-    libro: [410, 411]
+    texto: "Un panel digital enseña el valor ajustado en lugar de la salida real, y no sirve para nada. Toque la ampliación en la que se olvida eso."
+    libro: [409, 410, 411]
     widget:
       tipo: figura
       figura: fig-50.18
       zonas:
         - { id: medida, rotulo: "Recuadro verde", rect: [5, 4, 140, 63] }
-    opciones:
-      - texto: "La salida real, medida"
-        bien: true
-        porque: "Un panel que muestre la consigna en lugar de la medida no sirve para nada."
-      - texto: "El valor ajustado, que es más estable"
-        porque: "Es justo el error que se olvida: hay que medir la salida real."
-      - texto: "Lo que pida el usuario, redondeado"
-        porque: "Debe medir lo que hay, con la exactitud de su referencia."
+        - { id: control, rotulo: "Recuadro azul", rect: [157, 4, 139, 63] }
+        - { id: pre, rotulo: "Recuadro naranja de arriba", rect: [308, 4, 139, 63] }
+        - { id: doble, rotulo: "Recuadro violeta", rect: [5, 74, 140, 63] }
+    tocar:
+      bien: [medida]
+      porque:
+        control: "El control fija la consigna; quien la enseña en el panel es la medida."
+        pre: "El prerregulador no enseña nada: reduce el calor."
+        doble: "La salida doble cambia los canales, no el panel."
+    exito: "La medida digital: la salida real, con la exactitud de su referencia."
     escalera:
-      - "¿Para qué sirve un panel que repite lo que se ajustó?"
-    solucion: "La salida real; su exactitud es la de la referencia."
+      - "¿Qué ampliación muestra tensión y corriente?"
+    solucion: "La medida digital."
 
   - id: modo-serie
-    tipo: pregunta
+    tipo: tocar
     titulo: "Dos canales en serie"
-    texto: "Una salida doble se pone en serie para más tensión. ¿Dónde está la dificultad?"
-    libro: [421]
+    texto: "Al poner dos canales en serie para más tensión, las masas dejan de ser comunes. Toque la ampliación con esa dificultad."
+    libro: [420, 421]
     widget:
       tipo: figura
       figura: fig-50.18
       zonas:
+        - { id: medida, rotulo: "Recuadro verde", rect: [5, 4, 140, 63] }
+        - { id: control, rotulo: "Recuadro azul", rect: [157, 4, 139, 63] }
+        - { id: pre, rotulo: "Recuadro naranja de arriba", rect: [308, 4, 139, 63] }
         - { id: doble, rotulo: "Recuadro violeta", rect: [5, 74, 140, 63] }
-    opciones:
-      - texto: "Las masas dejan de ser comunes: sensado y medida deben tenerlo en cuenta"
-        bien: true
-        porque: "Un canal queda encima del otro."
-      - texto: "En la corriente, que se suma"
-        porque: "En serie se suma la tensión; la dificultad son las masas."
-      - texto: "En el transformador, que debe ser doble"
-        porque: "El problema que señala el libro está en las masas del modo serie."
+    tocar:
+      bien: [doble]
+      porque:
+        medida: "La medida tiene que tenerlo en cuenta, pero la dificultad nace en otra ampliación."
+        control: "El control digital exige un DAC monótono, no masas separadas."
+        pre: "El prerregulador exige un lazo más lento que el del lineal."
+    exito: "La salida doble: en serie un canal queda encima del otro, y el sensado y la medida deben tenerlo en cuenta."
     escalera:
-      - "En serie, ¿dónde queda la masa del canal de arriba?"
-    solucion: "Las masas dejan de ser comunes."
-
-  - id: empareje-protecciones
-    tipo: pregunta
-    titulo: "Protecciones adicionales"
-    texto: "Empareje cada protección con lo que hace."
-    libro: [423, 424, 425]
-    widget:
-      tipo: figura
-      figura: fig-50.18
-      zonas:
-        - { id: protecciones, rotulo: "Recuadro rojo", rect: [157, 74, 139, 63] }
-    emparejar:
-      - ["OVP", "Corta si la salida supera un límite programado"]
-      - ["Térmica", "Reduce progresivamente"]
-      - ["Registro de eventos", "Dice qué pasó cuando algo se protegió"]
-    exito: "La OVP protege el circuito bajo prueba de un fallo de la propia fuente."
-    pistas:
-      - { texto: "La que mira la tensión de salida es la de sobretensión." }
-    escalera:
-      - "Una vigila la tensión, otra el calor, otra la historia."
-    solucion: "OVP, corta; térmica, reduce; registro, cuenta lo que pasó."
+      - "¿Qué ampliación tiene dos canales?"
+    solucion: "La salida doble."
 
   - id: rentable
-    tipo: pregunta
+    tipo: tocar
     titulo: "La más rentable en calor"
-    texto: "¿Qué ampliación es la más rentable en calor, y la que más trabajo da?"
-    libro: [418]
+    texto: "Toque la ampliación más rentable en calor, y la que más trabajo da."
+    libro: [417, 418]
     widget:
       tipo: figura
       figura: fig-50.18
       zonas:
+        - { id: medida, rotulo: "Recuadro verde", rect: [5, 4, 140, 63] }
+        - { id: control, rotulo: "Recuadro azul", rect: [157, 4, 139, 63] }
         - { id: pre, rotulo: "Recuadro naranja de arriba", rect: [308, 4, 139, 63] }
-    opciones:
-      - texto: "El prerregulador conmutado"
-        bien: true
-        porque: "Baja la caída sobre el lineal; su lazo debe ser más lento que el del lineal o ambos oscilan."
-      - texto: "La medida digital"
-        porque: "Mejora la información, no el calor."
-      - texto: "La protección térmica"
-        porque: "Protege del calor, pero no lo reduce en funcionamiento normal."
+        - { id: protecciones, rotulo: "Recuadro rojo", rect: [157, 74, 139, 63] }
+    tocar:
+      bien: [pre]
+      porque:
+        medida: "Mejora la información, no el calor."
+        control: "Mejora el manejo, no el calor."
+        protecciones: "La térmica protege del calor, pero no lo reduce en funcionamiento normal."
+    exito: "El prerregulador: baja la caída sobre el lineal, y su lazo debe ser más lento que el del lineal o ambos oscilan."
     escalera:
       - "¿Cuál reduce la tensión que sobra sobre el paso?"
     solucion: "El prerregulador conmutado."
@@ -175,9 +195,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [407, 411, 415, 428, 429]
+    libro: [407, 411, 415, 424, 425, 428, 429, 433]
     ideas:
-      - { titulo: "Cinco ampliaciones.", texto: "Medida y control digital, prerregulador, salida doble y protecciones." }
+      - { titulo: "Cinco ampliaciones.", texto: "Medida y control digital, prerregulador, salida doble y protecciones: OVP, térmica progresiva y registro de eventos." }
       - { titulo: "Medir lo real.", texto: "La salida, no la consigna; con un DAC monótono." }
       - { titulo: "Lo aprendido.", texto: "Rectificación, lazo, térmica y SOA, doble lazo, seguridad y medida." }
       - { titulo: "Un instrumento.", texto: "Exactitud, estabilidad y comportamiento ante lo imprevisto." }

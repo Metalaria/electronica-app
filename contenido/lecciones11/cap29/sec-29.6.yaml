@@ -1,21 +1,23 @@
-# Lección 1.2 de la sección 28.6 «Memorias» (cap29; etiqueta interna sec-29.6). Formato: contenido/lecciones11/GUIA.md (§11).
+# Lección de la sección 28.6 «Memorias» (cap29; etiqueta interna sec-29.6). Formato: contenido/lecciones11/GUIA.md (§11).
+# 1.2.1 («aprender haciendo», GUIA §13): se espacian las escrituras de un contador hasta que la Flash dure lo que su
+# retención (10 años); en la figura 28.10 se tocan la memoria del registrador, las volátiles y la de calibraciones; la
+# vida de la Flash escribiendo cada segundo se calcula y se escribe. Quedan dos preguntas de opciones: el borrado por
+# bloques y la protección ante un corte.
 leccion: cap29/sec-29.6
 
 libro:
   175: "Seis transistores forman dos inversores realimentados"
   176: "es volátil: al quitar la alimentación se pierde"
-  177: "Es la memoria de trabajo de los microcontroladores"
   180: "64 ms como máximo en el estándar JEDEC, 32 ms por encima de 85 °C"
-  181: "leer es destructivo"
   186: "Programar solo puede llevar bits de 1 a 0"
   187: "tras 10 000 a 100 000 ciclos las celdas dejan de retener"
-  188: "que es la que guarda el programa de un microcontrolador"
   191: "Es la memoria de calibraciones, configuración y contadores"
   193: "10¹⁴ ciclos de resistencia, es decir, prácticamente ilimitada"
   194: "registradores de datos que escriben continuamente"
-  197: "Ciclos de escritura"
   199: "Un contador que se guarde cada segundo agota la Flash en horas o días"
   201: "La defensa es escribir con doble copia y suma de comprobación"
+  190: "con más resistencia al desgaste: alrededor de un millón de ciclos"
+  202: "Las hojas de datos garantizan la retención durante 10 o 20 años"
   206: "Las cinco tecnologías de memoria situadas por sus dos límites"
 
 modelo:
@@ -24,23 +26,38 @@ modelo:
     T_g: { sim: "T", nombre: "intervalo entre escrituras", unidad: s, valor: 1 }
   calculos:
     t_vida: { expr: "N_c*T_g/3600", sim: "t", nombre: "vida de la Flash", unidad: h, cifras: 3 }
+    t_anos: { expr: "N_c*T_g/31557600", sim: "t", nombre: "vida de la Flash, en años", unidad: años, cifras: 3 }
 
 tarjetas:
   - id: explore-memorias
     tipo: explorar
-    titulo: "Cinco memorias, dos límites"
-    texto: "Arriba, lo lento de escribir; a la derecha, lo que aguanta escrituras. Toque cada memoria."
-    libro: [193, 197, 206]
+    titulo: "Un contador que gasta la Flash"
+    texto: "Un contador se guarda en una Flash de 100 000 ciclos. Espacie las escrituras hasta que dure los 10 años que garantiza su retención."
+    libro: [187, 199, 202]
+    inicio: { T_g: 1 }
     widget:
-      tipo: figura
-      figura: fig-29.9
-      zonas:
-        - { id: flash, rotulo: "Arriba a la izquierda", rect: [50, 6, 46, 58], texto: "Flash NOR: se escribe en milisegundos, por bloques, y aguanta de 10 000 a 100 000 ciclos." }
-        - { id: eeprom, rotulo: "Arriba, junto a la anterior", rect: [98, 30, 85, 38], texto: "EEPROM: milisegundos por byte y un millón de ciclos." }
-        - { id: fram, rotulo: "Abajo en el centro", rect: [238, 120, 78, 38], texto: "FRAM: nanosegundos, no volátil y 10¹⁴ ciclos." }
-        - { id: dram, rotulo: "Abajo a la derecha, arriba", rect: [348, 112, 62, 38], texto: "DRAM: volátil y con refresco." }
-        - { id: sram, rotulo: "Abajo a la derecha, abajo", rect: [348, 151, 62, 38], texto: "SRAM: volátil, sin refresco, sin desgaste." }
-    requiere: { mover: [flash, sram] }
+      tipo: grafica
+      x: { id: tx, min: 1, max: 10000, unidad: s, rotulo: "intervalo entre escrituras", escala: log }
+      y: { min: 0.00001, max: 100, unidad: años, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "N_c*tx/31557600", color: azul, rotulo: "vida de la Flash" }
+      asas:
+        - { mueve: T_g, x: "T_g", y: "t_anos", rotulo: "Su intervalo" }
+      lectura: { valor: t_anos, rotulo: "Vida de la Flash" }
+      datos:
+        - { valor: t_vida, rotulo: "En horas: {{t_vida}}" }
+      mandos:
+        - { valor: T_g, lista: [1, 60, 3600], nombres: ["cada segundo", "cada minuto", "cada hora"], rotulo: "Escribir" }
+    objetivo:
+      condiciones:
+        - { valor: t_anos, min: 10, rotulo: "Vida: {{t_anos}}" }
+      logrado: "Escribiendo {{T_g}} entre cada dos, {{t_anos}}. Cada escritura gasta el óxido: por eso no se escribe en Flash dentro de un bucle."
+      pistas:
+        - { texto: "Aún se agota antes: escriba con menos frecuencia." }
+    escalera: ["Vida = ciclos × intervalo."]
+    solucion: "Cada hora: 100 000 horas, unos 11 años."
+    comprobar:
+      - { con: { T_g: 3600 }, t_anos: 11.4, tol: 0.01 }
 
   - id: toque-registrador
     tipo: tocar
@@ -68,42 +85,29 @@ tarjetas:
     solucion: "Abajo en el centro: la FRAM."
 
   - id: prediga-sram
-    tipo: predecir
+    tipo: tocar
     titulo: "Se va la alimentación"
-    texto: "Una SRAM guarda cada bit en dos inversores realimentados. ¿Qué pasa con el dato al quitar la alimentación?"
-    libro: [175, 176]
-    widget:
-      tipo: logica
-      entradas: [{ id: S, valor: 1, rotulo: "S̄" }, { id: R, valor: 1, rotulo: "R̄" }]
-      piezas:
-        - { id: n1, tipo: nand, entradas: [S, n2] }
-        - { id: n2, tipo: nand, entradas: [R, n1] }
-      salidas:
-        - { id: Q, de: n1 }
-      ocultar: true
-    opciones:
-      - { texto: "Se pierde: la SRAM es volátil", bien: true, porque: "El biestable se sostiene mientras hay alimentación; sin ella, no queda nada." }
-      - { texto: "Se conserva años", porque: "Eso es la Flash, con su carga atrapada en una puerta flotante." }
-      - { texto: "Dura unos milisegundos, hasta el refresco", porque: "El refresco es cosa de la DRAM; la SRAM no lo necesita, pero pierde el dato sin alimentación." }
-    escalera: ["¿Qué sostiene los dos inversores en su estado?"]
-    solucion: "Se pierde: es volátil."
-
-  - id: pregunta-dram
-    tipo: pregunta
-    titulo: "El refresco de la DRAM"
-    texto: "¿Cada cuánto, como máximo, hay que refrescar una DRAM según el estándar JEDEC?"
-    libro: [180, 181]
+    texto: "Toque las dos memorias que pierden el dato al quitar la alimentación."
+    libro: [175, 176, 180, 206]
     widget:
       tipo: figura
       figura: fig-29.9
       zonas:
-        - { id: dram, rotulo: "Abajo a la derecha, arriba", rect: [348, 112, 62, 38], texto: "DRAM: volátil, con refresco." }
-    opciones:
-      - { texto: "64 ms; 32 ms por encima de 85 °C", bien: true, porque: "El condensador se descarga por fugas: hay que leerlo y reescribirlo, y eso cuesta energía y ancho de banda." }
-      - { texto: "Nunca: es una memoria no volátil", porque: "Es volátil, y además pierde la carga por fugas aun con alimentación." }
-      - { texto: "Cada vez que se lee", porque: "Leer es destructivo y obliga a reescribir ese valor, pero el refresco periódico es aparte: 64 ms." }
-    escalera: ["Es una cifra de decenas de milisegundos."]
-    solucion: "64 ms como máximo; 32 ms por encima de 85 °C."
+        - { id: flash, rotulo: "Arriba a la izquierda", rect: [50, 6, 46, 58] }
+        - { id: eeprom, rotulo: "Arriba, junto a la anterior", rect: [98, 30, 85, 38] }
+        - { id: fram, rotulo: "Abajo en el centro", rect: [238, 120, 78, 38] }
+        - { id: dram, rotulo: "Abajo a la derecha, arriba", rect: [348, 112, 62, 38] }
+        - { id: sram, rotulo: "Abajo a la derecha, abajo", rect: [348, 151, 62, 38] }
+    tocar:
+      bien: [dram, sram]
+      todas: true
+      porque:
+        flash: "La Flash guarda la carga atrapada en una puerta flotante durante años sin alimentación."
+        eeprom: "La EEPROM usa la misma puerta flotante que la Flash: no es volátil."
+        fram: "La FRAM guarda el bit en un dipolo cristalino: no es volátil."
+    exito: "SRAM y DRAM son volátiles. La DRAM, además, se descarga por fugas aun con alimentación: hay que refrescarla cada 64 ms como máximo."
+    escalera: ["Una es un biestable; la otra, un condensador que se descarga."]
+    solucion: "Abajo a la derecha, las dos: SRAM y DRAM."
 
   - id: porque-bloques
     tipo: porque
@@ -123,24 +127,26 @@ tarjetas:
     solucion: "Solo de 1 a 0: para subir un bit hay que borrar el bloque entero."
 
   - id: estime-desgaste
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Un contador en Flash"
-    texto: "Un contador se guarda cada segundo en una Flash que aguanta 100 000 ciclos. ¿Cuántas horas dura?"
+    texto: "Un contador se guarda cada segundo en una Flash que aguanta 100 000 ciclos. Calcule cuántas horas dura y escríbalo."
     libro: [187, 199]
-    estimar:
-      objetivo: "t_vida"
+    fijar: { T_g: 1 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 1, max: 10000, unidad: s, rotulo: "intervalo entre escrituras", escala: log }
+      y: { min: 0.00001, max: 100, unidad: años, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "N_c*tx/31557600", color: azul, rotulo: "vida de la Flash" }
+      mandos: []
+    leer:
+      objetivo: t_vida
       unidad: h
-      min: 0
-      max: 100
-      paso: 0.5
-      inicio: 80
-      tol: 0.05
+      tol: 0.03
       rotulo: "Horas"
-    exito: "Unas 27,8 horas: horas o días. Para eso está la EEPROM, o mejor la FRAM, o guardar en RAM y volcar al apagar."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 29.2 }, texto: "Se ha pasado: una hora son 3600 escrituras." }
-      - { texto: "Se ha quedado corto: 100 000 escrituras, una por segundo, son 100 000 segundos." }
+      errores:
+        - { expr: "N_c*T_g/60", texto: "Eso son minutos, no horas. Una hora son 3600 segundos." }
+    exito: "{{t_vida}}: horas o días. Para eso está la EEPROM, o mejor la FRAM, o guardar en RAM y volcar al apagar."
     escalera: ["Una escritura por segundo: cuente los segundos y páselos a horas."]
     solucion: "100 000 s / 3600 = 27,8 h."
     comprobar:
@@ -148,25 +154,32 @@ tarjetas:
       - { con: { T_g: 3600 }, t_vida: 100000 }
 
   - id: empareje-usos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cada memoria a lo suyo"
-    texto: "Una cada memoria con su uso característico."
-    libro: [177, 188, 191, 194]
-    emparejar:
-      - ["SRAM", "Memoria de trabajo y caché"]
-      - ["DRAM", "Memoria principal de un ordenador"]
-      - ["Flash NOR", "Programa de un microcontrolador"]
-      - ["EEPROM", "Calibraciones y configuración"]
-      - ["FRAM", "Registradores que escriben continuamente"]
-    exito: "Cada uso sale de cómo guarda el bit cada memoria."
-    pistas:
-      - { texto: "La densidad enorme es de la DRAM; la escritura byte a byte con un millón de ciclos, de la EEPROM." }
-    escalera: ["Empiece por la que se ejecuta directamente: la Flash NOR."]
-    solucion: "SRAM trabajo, DRAM principal, Flash NOR programa, EEPROM calibraciones, FRAM registradores."
+    tipo: tocar
+    titulo: "Calibraciones y configuración"
+    texto: "Un sistema empotrado guarda unos pocos bytes de calibración con frecuencia, uno a uno. Toque la memoria que se usa para eso."
+    libro: [190, 191, 206]
+    widget:
+      tipo: figura
+      figura: fig-29.9
+      zonas:
+        - { id: flash, rotulo: "Arriba a la izquierda", rect: [50, 6, 46, 58] }
+        - { id: eeprom, rotulo: "Arriba, junto a la anterior", rect: [98, 30, 85, 38] }
+        - { id: fram, rotulo: "Abajo en el centro", rect: [238, 120, 78, 38] }
+        - { id: dram, rotulo: "Abajo a la derecha, arriba", rect: [348, 112, 62, 38] }
+        - { id: sram, rotulo: "Abajo a la derecha, abajo", rect: [348, 151, 62, 38] }
+    tocar:
+      bien: [eeprom]
+      porque:
+        flash: "La Flash se borra por bloques: cambiar un byte obliga a reescribir el bloque, y se gasta antes."
+        fram: "Valdría, pero su densidad y su precio la reservan para escrituras continuas."
+        dram: "Es volátil: la calibración se perdería al apagar."
+        sram: "Es volátil: la calibración se perdería al apagar."
+    exito: "La EEPROM: borra y escribe byte a byte y aguanta alrededor de un millón de ciclos."
+    escalera: ["No volátil y borrable por bytes."]
+    solucion: "Arriba, junto a la Flash: la EEPROM."
 
   - id: pregunta-corte
-    tipo: pregunta
+    tipo: porque
     titulo: "Un corte al escribir"
     texto: "¿Cómo se protege un dato en memoria no volátil frente a un corte durante la escritura?"
     libro: [201]

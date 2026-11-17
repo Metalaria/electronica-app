@@ -4,6 +4,9 @@
 # ciclo: el nodo B escribe lo que quiere (B) o, tras perder, recesivo; pierde cuando escribe recesivo y lee dominante,
 # y un biestable lo recuerda en el flanco del bit. Los bits de A y B del arbitraje que se explora son los de la figura
 # 45.8 (SOF e ID10…ID3, con esos nombres en el eje: `etiquetas`, motor12e); los del dibujo, otro par en el que gana B.
+# 1.2.1 («aprender haciendo», GUIA §13): el dominante es un objetivo con piezas `od` y `bus`; el bit en que B pierde se
+# marca en el cronograma; la velocidad para 500 m y las tres terminaciones se escriben. Quedan dos preguntas de
+# opciones: quién gana y por qué resiste el ruido. Mensajes, robustez, osciloscopio y CAN FD van en textos y resumen.
 leccion: cap44/sec-44.5
 
 libro:
@@ -32,32 +35,39 @@ modelo:
   calculos:
     R_tres: { expr: "par(R_t, R_t, R_t)", sim: "R", nombre: "tres terminaciones en paralelo", unidad: Ω, cifras: 2 }
     R_dos: { expr: "par(R_t, R_t)", sim: "R", nombre: "dos terminaciones en paralelo", unidad: Ω, cifras: 2 }
+    v_500: { expr: "125000", nombre: "velocidad máxima con 500 m de bus", unidad: "bit/s", cifras: 3 }
 
 tarjetas:
   - id: prediga-dominante
-    tipo: predecir
+    tipo: explorar
     titulo: "Dominante contra recesivo"
-    texto: "Dos nodos escriben a la vez: uno dominante y otro recesivo. ¿Qué queda en el bus?"
+    texto: "El dominante, con los hilos separados, sobrescribe al recesivo, como el cero del drenador abierto. Ponga el bus en dominante con el nodo A en recesivo."
     libro: [149]
     widget:
       tipo: logica
-      entradas: [{ id: A, valor: 0, rotulo: "Nodo A" }, { id: B, valor: 1, rotulo: "Nodo B" }]
+      entradas: [{ id: A, valor: 1, rotulo: "Nodo A recesivo" }, { id: B, valor: 1, rotulo: "Nodo B recesivo" }, { id: C, valor: 1, rotulo: "Nodo C recesivo" }]
       piezas:
-        - { id: bus, tipo: and, entradas: [A, B], rotulo: "Bus" }
+        - { id: oa, tipo: od, entradas: [A], rotulo: "Nodo A" }
+        - { id: ob, tipo: od, entradas: [B], rotulo: "Nodo B" }
+        - { id: oc, tipo: od, entradas: [C], rotulo: "Nodo C" }
+        - { id: lin, tipo: bus, entradas: [oa, ob, oc], pullup: 1 }
       salidas:
-        - { id: BUS, de: bus }
-      ocultar: true
-    opciones:
-      - { texto: "Dominante", bien: true, porque: "El dominante sobrescribe al recesivo: la misma idea del drenador abierto." }
-      - { texto: "Recesivo", porque: "El recesivo es dejar los hilos al mismo potencial; basta un nodo que los separe." }
-      - { texto: "Un nivel intermedio", porque: "No hay conflicto eléctrico: el dominante gana sin más." }
-    escalera: ["¿Cuál de los dos estados se impone, como el cero del I²C?"]
-    solucion: "Dominante: sobrescribe al recesivo."
+        - { id: BUS, de: lin }
+    objetivo:
+      condiciones:
+        - { senal: A, valor: 1, rotulo: "A escribe recesivo" }
+        - { led: BUS, valor: 0, rotulo: "Bus en dominante" }
+      logrado: "Basta un nodo en dominante: A escribe recesivo y lee dominante. De esa asimetría sale todo lo demás."
+      pistas:
+        - { cuando: { senal: A, valor: 0 }, texto: "A debe quedarse en recesivo: que otro ponga el dominante." }
+        - { texto: "Ponga en dominante el nodo B o el C." }
+    escalera: ["Apague el interruptor de B o el de C."]
+    solucion: "B o C en dominante: el bus queda dominante aunque A escriba recesivo."
 
   - id: explore-arbitraje
-    tipo: explorar
     titulo: "El arbitraje no destructivo"
-    texto: "A y B empiezan a la vez, bit a bit desde el SOF. Mueva el cursor: en ID7, B escribe recesivo, lee dominante y se calla."
+    tipo: marcar
+    texto: "A y B empiezan a la vez, bit a bit desde el SOF, y escuchan el bus mientras escriben. Marque el bit en que B escribe recesivo y lee dominante."
     libro: [151, 152, 175]
     widget:
       tipo: logica
@@ -73,8 +83,20 @@ tarjetas:
         - { id: TXB, de: txb }
         - { id: BUS, de: bus }
         - { id: PERDIO, de: perdio.q }
-      cronograma: { ciclos: 9, estimulo: { A: "001100101", B: "001110000" }, senales: [A, TXB, BUS, PERDIO], etiquetas: [SOF, ID10, ID9, ID8, ID7, ID6, ID5, ID4, ID3] }
-    nota: "La trama de A sigue sin interrupción."
+      cronograma: { ciclos: 9, estimulo: { A: "001100101", B: "001110000" }, senales: [A, TXB, BUS], etiquetas: [SOF, ID10, ID9, ID8, ID7, ID6, ID5, ID4, ID3] }
+    marcar:
+      cronograma: true
+      ciclo: 5
+      senal: TXB
+      rotulo: "El bit en que B pierde"
+      porque:
+        2: "En ID10 los dos escriben dominante: empate."
+        3: "En ID9 los dos escriben recesivo: el bus es recesivo y nadie pierde."
+        4: "En ID8 siguen iguales: empate."
+        6: "Ahí B ya escribe recesivo porque se calló en el bit anterior."
+    exito: "ID7: B escribe recesivo, lee dominante y se calla. La trama de A sigue sin ninguna interrupción."
+    escalera: ["Busque el primer bit en que A y lo que escribe B son distintos."]
+    solucion: "ID7, el quinto bit."
 
   - id: pregunta-prioridad
     tipo: pregunta
@@ -120,96 +142,53 @@ tarjetas:
       - "En el bit en que A escribe recesivo y lee dominante, A se calla: desde ahí, el bus es B."
     solucion: "Igual que B en todos los bits: A pierde en el cuarto y se calla."
 
-  - id: pregunta-mensajes
-    tipo: pregunta
-    titulo: "Mensajes, no direcciones"
-    texto: "Se añade un nodo que necesita la velocidad del motor, que ya circula por el bus. ¿Qué hay que cambiar?"
-    libro: [156, 158]
-    widget:
-      tipo: figura
-      figura: fig-44.8
-      zonas:
-        - { id: bus, rotulo: "Bus, abajo a la izquierda", rect: [15, 128, 250, 40], texto: "Todos ven todos los mensajes." }
-    opciones:
-      - { texto: "Nada de lo que ya funciona", bien: true, porque: "El identificador dice qué es el dato, no a quién va: el nodo nuevo lo filtra en hardware." }
-      - { texto: "El emisor, para que envíe una copia", porque: "Un mismo mensaje sirve a varios receptores sin duplicarse." }
-      - { texto: "La dirección de todos los nodos", porque: "En CAN no hay direcciones de destino." }
-    escalera: ["¿Qué dice el identificador: qué es el dato o a quién va?"]
-    solucion: "Nada: el mensaje dice qué es y cada nodo filtra los que le interesan."
-
-  - id: empareje-robustez
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Robustez en hardware"
-    texto: "Una cada mecanismo con lo que consigue."
-    libro: [161, 162]
-    emparejar:
-      - ["CRC de 15 bits", "Detecta tramas dañadas"]
-      - ["Ranura de ACK", "El emisor sabe si alguien lo oyó"]
-      - ["Retransmisión automática", "Repite las tramas erróneas"]
-      - ["Contadores de error", "Un nodo averiado se desconecta solo"]
-    exito: "El último hace a CAN apto donde un fallo no puede propagarse."
-    pistas:
-      - { texto: "El estado «bus off» lo alcanza un nodo que acumula errores." }
-    escalera: ["¿Cuál evita que un nodo averiado tumbe el bus entero?"]
-    solucion: "CRC, tramas dañadas; ACK, alguien oyó; retransmisión, repite; contadores, desconexión del nodo averiado."
-
   - id: pregunta-longitud
-    tipo: pregunta
+    tipo: leer
     titulo: "Velocidad y longitud"
-    texto: "Un bus CAN de 500 m. ¿Qué velocidad máxima admite?"
-    libro: [164, 165]
+    texto: "El arbitraje exige que la señal recorra el bus y vuelva dentro de un bit. Lea en la gráfica la velocidad máxima de un bus de 500 m."
+    libro: [164, 165, 168]
     widget:
       tipo: figura
       figura: fig-44.8
       zonas:
-        - { id: grafica, rotulo: "Gráfica de la derecha", rect: [300, 25, 150, 170], texto: "Velocidad frente a longitud máxima." }
-    opciones:
-      - { texto: "125 kbit/s", bien: true, porque: "El arbitraje exige que la señal vaya y vuelva por el bus dentro de un bit: más largo, bit más lento." }
-      - { texto: "1 Mbit/s", porque: "A 1 Mbit/s el bus no pasa de 40 m." }
-      - { texto: "500 kbit/s", porque: "A 500 kbit/s llega a 100 m, no a 500 m." }
-    escalera: ["Cuanto más largo el bus, más dura el viaje de ida y vuelta: ¿más rápido o más lento?"]
-    solucion: "125 kbit/s: la longitud y la velocidad van emparejadas."
+        - { id: grafica, rotulo: "Gráfica de la derecha", rect: [300, 25, 150, 170] }
+    leer:
+      objetivo: v_500
+      unidad: "bit/s"
+      tol: 0.02
+      rotulo: "Velocidad máxima"
+      errores:
+        - { expr: "500000", texto: "A 500 kbit/s el bus llega a 100 m, no a 500 m." }
+        - { expr: "1000000", texto: "A 1 Mbit/s el bus no pasa de 40 m." }
+    exito: "125 kbit/s: más largo, bit más lento. CAN FD mantiene el arbitraje a esa velocidad baja y acelera solo los datos, con hasta 64 bytes por trama."
+    escalera: ["Busque el punto de 500 m en el eje horizontal."]
+    solucion: "125 kbit/s."
+    comprobar:
+      - { v_500: 125000 }
 
   - id: estime-terminaciones
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El óhmetro entre CAN_H y CAN_L"
-    texto: "Con el bus sin alimentar, alguien ha dejado tres terminaciones de 120 Ω. ¿Qué mide el óhmetro?"
-    libro: [166, 174]
-    estimar:
-      objetivo: "R_tres"
+    texto: "Con el bus sin alimentar, alguien ha dejado tres terminaciones de 120 Ω. Calcule lo que mide el óhmetro."
+    libro: [166, 173, 174]
+    widget:
+      tipo: figura
+      figura: fig-44.8
+      zonas:
+        - { id: bus, rotulo: "Bus, abajo a la izquierda", rect: [15, 128, 250, 40] }
+    leer:
+      objetivo: R_tres
       unidad: Ω
-      min: 0
-      max: 150
-      paso: 1
-      inicio: 100
       tol: 0.03
       rotulo: "Resistencia entre CAN_H y CAN_L"
-    exito: "40 Ω: sobra una tercera. Bien montado da 60 Ω; con 120 Ω, falta una."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 41.2 }, texto: "Demasiado: están en paralelo, así que bajan de 120 entre tres." }
-      - { texto: "Demasiado poco: tres iguales en paralelo dan la tercera parte de una." }
+      errores:
+        - { expr: "R_dos", texto: "Eso daría con dos: aquí hay tres en paralelo." }
+        - { expr: "3*R_t", texto: "Están en paralelo, no en serie: bajan, no suben." }
+    exito: "40 Ω: sobra una tercera, y en el osciloscopio el dominante se queda por debajo de 1,5 V. Bien montado da 60 Ω; 120 Ω, falta una."
     escalera: ["Tres resistencias iguales en paralelo valen la tercera parte de una."]
     solucion: "120 / 3 = 40 Ω: sobra una terminación."
     comprobar:
       - { R_tres: 40, R_dos: 60 }
-
-  - id: empareje-osciloscopio
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "En el osciloscopio diferencial"
-    texto: "Una cada imagen de la diferencia CAN_H − CAN_L con su diagnóstico."
-    libro: [173]
-    emparejar:
-      - ["Unos 2 V en dominante y cero en recesivo", "Bus sano"]
-      - ["Paso a recesivo lento y redondeado", "Falta terminación"]
-      - ["Dominante por debajo de 1,5 V", "Sobra terminación"]
-    exito: "Sin terminación, nada descarga la capacidad del bus al volver a recesivo."
-    pistas:
-      - { texto: "Una terminación de más carga el dominante y lo baja." }
-    escalera: ["¿Qué descarga la capacidad del bus al pasar a recesivo?"]
-    solucion: "2 V y cero, sano; paso lento, falta terminación; dominante bajo, sobra."
 
   - id: porque-diferencial
     tipo: porque
@@ -228,29 +207,12 @@ tarjetas:
     escalera: ["¿Qué le pasa a un ruido que llega igual a los dos hilos cuando se restan?"]
     solucion: "Es diferencial: el ruido de modo común se cancela."
 
-  - id: pregunta-fd
-    tipo: pregunta
-    titulo: "CAN FD"
-    texto: "¿Qué cambia CAN FD para multiplicar el caudal sin perder el arbitraje?"
-    libro: [168]
-    widget:
-      tipo: figura
-      figura: fig-44.8
-      zonas:
-        - { id: nodoa, rotulo: "Nodo A, arriba a la izquierda", rect: [15, 40, 250, 40], texto: "El arbitraje, a la velocidad baja." }
-    opciones:
-      - { texto: "Acelera la parte de datos, con hasta 64 bytes por trama", bien: true, porque: "El arbitraje sigue a la velocidad baja; los datos van más rápido y caben 64 bytes en lugar de 8." }
-      - { texto: "Acelera también el arbitraje", porque: "El arbitraje exige ida y vuelta dentro de un bit: se mantiene a la velocidad baja." }
-      - { texto: "Quita el CRC", porque: "Conserva los mecanismos de robustez; cambia la velocidad de los datos." }
-    escalera: ["¿Qué parte de la trama no puede acelerarse sin acortar el bus?"]
-    solucion: "Mantiene el arbitraje lento y acelera los datos: hasta 64 bytes por trama."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [148, 152, 153, 174]
+    libro: [152, 153, 156, 158, 161, 162, 174]
     ideas:
-      - { titulo: "Diferencial.", texto: "El ruido de modo común se cancela." }
+      - { titulo: "Mensajes.", texto: "El identificador dice qué es el dato, no a quién va: añadir un nodo no cambia nada." }
       - { titulo: "Arbitraje.", texto: "El dominante gana: el identificador menor sigue sin interrupción y el otro se calla." }
       - { titulo: "Robustez.", texto: "CRC, ACK, retransmisión y desconexión del nodo averiado, en hardware." }
       - { titulo: "Terminación.", texto: "120 Ω en cada extremo: el óhmetro debe dar 60 Ω." }

@@ -1,4 +1,9 @@
 # Lección 1.2 de la sección 22.5 «Principio de Superposición» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): cada fuente sola se consigue apagando la otra (objetivo); la
+# primera aportación y la suma se predicen y se simulan; el término cruzado de la potencia se descubre buscando cuándo la
+# potencia real coincide con la suma de las parciales (solo con una fuente a cero); la fuente donde actuar se toca en el
+# esquema. Quedan dos preguntas de opciones (anular una fuente de corriente y por qué la potencia no cuadra); las
+# dependientes y el diodo pasan a las explicaciones y al resumen.
 leccion: cap23/sec-23.5
 
 libro:
@@ -35,14 +40,16 @@ modelo:
     V_abre: { expr: "V_k1*R_k3/(R_k1 + R_k3) + V_k2*R_k3/(R_k2 + R_k3)", sim: "V", nombre: "suma con las fuentes abiertas", unidad: V }
     V_div1: { expr: "V_k1*R_k3/(R_k1 + R_k3)", sim: "V", nombre: "divisor sin la otra rama", unidad: V }
     P_tot: { expr: "V_kn^2/R_k3", sim: "P", nombre: "potencia en la carga", unidad: W }
+    d_P: { expr: "P_tot - P_par", sim: "2·V'·V''/R", nombre: "término cruzado", unidad: W }
     P_par: { expr: "(V_p1^2 + V_p2^2)/R_k3", sim: "P' + P''", nombre: "suma de las potencias parciales", unidad: W }
 
 tarjetas:
   - id: explore-fuentes
     tipo: explorar
     titulo: "Una fuente cada vez"
-    texto: "Apague cada fuente (queda un cortocircuito en su lugar) y anote lo que aporta la otra sola al nodo."
+    texto: "Apagar una fuente de tensión deja un cortocircuito en su lugar. Consiga que el nodo reciba solo lo que aporta la de 6 V."
     libro: [118, 122]
+    inicio: { k_on1: 1, k_on2: 1 }
     widget:
       tipo: circuito
       esquema: kirchhoff
@@ -55,12 +62,23 @@ tarjetas:
       mandos:
         - { valor: k_on1, tipo: interruptor, rotulo: "Fuente de la izquierda" }
         - { valor: k_on2, tipo: interruptor, rotulo: "Fuente de la derecha" }
-    requiere: { mover: [k_on1, k_on2] }
+    objetivo:
+      condiciones:
+        - { valor: V_kn, objetivo: 2.4, tol: 0.02, rotulo: "Nodo: {{V_kn}}" }
+      logrado: "Sola, la de 6 V aporta {{V_kn}}. La de 12 V, en cortocircuito, no aporta nada."
+      pistas:
+        - { cuando: { valor: V_kn, mayor: 2.45 }, texto: "Todavía llega lo de la fuente de la izquierda: apáguela." }
+        - { texto: "Así no aporta ninguna: encienda la de la derecha." }
+    escalera:
+      - "Para quedarse con lo de una fuente, la otra tiene que estar apagada."
+    solucion: "Apague la de la izquierda y deje encendida la de la derecha: 2,40 V."
+    comprobar:
+      - { con: { k_on1: 0, k_on2: 1 }, V_kn: 2.4 }
 
   - id: prediga-sola
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga la primera aportación"
-    texto: "12 V y 6 V, cada una con 1 kΩ, sobre 2 kΩ. Con la de 6 V anulada, ¿cuánto marca el nodo?"
+    texto: "Ahora la de 6 V anulada y la de 12 V encendida, cada una con 1 kΩ, sobre 2 kΩ. ¿Cuánto marca el nodo?"
     libro: [122, 127]
     fijar: { V_k1: 12, V_k2: 6, R_k1: 1000, R_k2: 1000, R_k3: 2000, k_on1: 1, k_on2: 0 }
     widget:
@@ -71,14 +89,17 @@ tarjetas:
       corriente: I_k3
       mide: { nodo: V_kn }
       ocultar: true
-    opciones:
-      - texto: "4,80 V"
-        bien: true
-        porque: "La de 6 V queda en cortocircuito: abajo quedan 1 kΩ ‖ 2 kΩ = 0,667 kΩ, y 12 × 0,667/1,667 = 4,80 V."
-      - texto: "8 V"
-        porque: "Sería el divisor sin la rama derecha. Anulada, la fuente es un cortocircuito y sus 1 kΩ quedan en paralelo con la carga."
-      - texto: "12 V"
-        porque: "Toda la tensión de la fuente solo llegaría sin nada en serie. Los 1 kΩ y el paralelo de abajo forman un divisor."
+      mandos: []
+    simular:
+      objetivo: V_kn
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión del nodo"
+      medida: nodo
+      errores:
+        - { expr: "V_div1", texto: "Sería el divisor sin la rama derecha. Anulada, la fuente es un cortocircuito y sus 1 kΩ quedan en paralelo con la carga." }
+        - { expr: "V_k1", texto: "Toda la tensión de la fuente solo llegaría sin nada en serie. Los 1 kΩ y el paralelo de abajo forman un divisor." }
+    exito: "La de 6 V queda en cortocircuito: abajo, 1 kΩ ‖ 2 kΩ = 0,667 kΩ, y 12 × 0,667/1,667 = 4,80 V."
     escalera:
       - "Anular una fuente de tensión es sustituirla por un cortocircuito."
       - "La resistencia de la rama anulada queda en paralelo con la carga."
@@ -89,8 +110,8 @@ tarjetas:
   - id: simule-suma
     tipo: simular
     titulo: "Prediga y simule la suma"
-    texto: "La de 6 V sola aporta 2,40 V. Con las dos fuentes encendidas, ¿cuánto marca el nodo?"
-    libro: [127]
+    texto: "La de 6 V sola aporta 2,40 V; la de 12 V, 4,80 V. Con las dos encendidas, ¿cuánto marca el nodo?"
+    libro: [119, 127]
     fijar: { V_k1: 12, V_k2: 6, R_k1: 1000, R_k2: 1000, R_k3: 2000, k_on1: 1, k_on2: 1 }
     widget:
       tipo: circuito
@@ -109,7 +130,7 @@ tarjetas:
       errores:
         - { expr: "V_abre", texto: "Ha anulado cada fuente abriéndola. Una fuente de tensión se anula con un cortocircuito." }
         - { expr: "V_p2", texto: "Esa es solo la aportación de la fuente de 6 V. Falta sumar la de la otra." }
-    exito: "4,80 V + 2,40 V = 7,20 V: lo mismo que da el circuito completo."
+    exito: "4,80 + 2,40 = 7,20 V, lo mismo que el circuito completo. Con un diodo en el circuito ya no sumaría: el teorema exige linealidad."
     escalera:
       - "Superposición: la respuesta es la suma de las aportaciones de cada fuente sola."
     solucion: "4,80 + 2,40 = 7,20 V."
@@ -120,7 +141,7 @@ tarjetas:
     tipo: pregunta
     titulo: "Anular una fuente de corriente"
     texto: "Una fuente de tensión se anula con un cortocircuito. ¿Y una fuente de corriente ideal?"
-    libro: [122, 123]
+    libro: [122, 123, 124]
     widget:
       tipo: circuito
       esquema: kirchhoff
@@ -133,7 +154,7 @@ tarjetas:
     opciones:
       - texto: "Con un circuito abierto"
         bien: true
-        porque: "Impone corriente: anularla es hacerla cero amperios, y eso es un abierto. Se sustituye por lo que no altera nada."
+        porque: "Impone corriente: anularla es dejarla en cero amperios, un abierto. Las dependientes, en cambio, no se anulan nunca."
       - texto: "Con un cortocircuito, como la de tensión"
         porque: "Un cortocircuito dejaría pasar corriente. Para que circulen cero amperios, el camino tiene que estar abierto."
       - texto: "Con una resistencia igual a su interna"
@@ -142,38 +163,13 @@ tarjetas:
       - "Anular es poner a cero la magnitud que la fuente impone."
     solucion: "Cero amperios: un circuito abierto."
 
-  - id: dependientes
-    tipo: pregunta
-    titulo: "¿Y las fuentes dependientes?"
-    texto: "Un transistor modelado como fuente de corriente controlada. Al aplicar superposición, ¿se anula?"
-    libro: [124, "cap23#349"]
-    widget:
-      tipo: circuito
-      esquema: kirchhoff
-      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
-      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
-      corriente: I_k3
-      mide: { nodo: V_kn }
-    opciones:
-      - texto: "No: las dependientes se dejan siempre actuando"
-        bien: true
-        porque: "Su valor depende de una variable del circuito, que sigue existiendo en cada caso parcial. Anularla cambiaría el circuito."
-      - texto: "Sí, como cualquier fuente de corriente: con un abierto"
-        porque: "Solo se anulan las independientes. La dependiente es una consecuencia del estado del circuito, no una causa."
-      - texto: "Solo si su variable de control vale cero"
-        porque: "No se anula en ningún caso: su valor lo dará el propio análisis de cada caso parcial."
-    escalera:
-      - "¿Es esa fuente una causa independiente o una consecuencia del circuito?"
-    solucion: "No se anula: solo se anulan las fuentes independientes."
-
   - id: potencia-formula
-    tipo: formula
+    tipo: explorar
     titulo: "La potencia no se superpone"
-    texto: "Compare la potencia en la carga con la suma de las potencias de cada fuente sola."
+    texto: "Compare la potencia en la carga con la suma de las potencias de cada fuente sola. Mueva la fuente derecha hasta que coincidan."
     libro: [133, 134]
     fijar: { k_on1: 1, k_on2: 1 }
-    ec: 133
-    sustitucion: "{{V_kn}}² / R₃ = {{P_tot}}, pero ({{V_p1}}² + {{V_p2}}²) / R₃ = {{P_par}}"
+    inicio: { V_k2: 6 }
     widget:
       tipo: circuito
       esquema: kirchhoff
@@ -185,6 +181,17 @@ tarjetas:
       mide: { nodo: V_kn, i3: I_k3 }
       mandos:
         - { valor: V_k2, min: 0, max: 12, paso: 1 }
+    objetivo:
+      condiciones:
+        - { valor: d_P, max: 0.000001, rotulo: "Diferencia: {{d_P}}" }
+      logrado: "Solo coinciden con una fuente a cero. Con las dos, sobra el término cruzado: se superponen las tensiones y se eleva al cuadrado después."
+      pistas:
+        - { texto: "Todavía no coinciden: la diferencia es el término cruzado, que solo desaparece si una aportación es nula." }
+    escalera:
+      - "(V' + V'')² = V'² + V''² + 2·V'·V''. ¿Cuándo vale cero el último término?"
+    solucion: "Con la fuente derecha a 0 V."
+    comprobar:
+      - { con: { V_k2: 0 }, d_P: 0 }
 
   - id: por-que-potencia
     tipo: porque
@@ -204,35 +211,12 @@ tarjetas:
       - "Compare (2 + 3)² con 2² + 3²."
     solucion: "(2 + 3)² = 25 y 2² + 3² = 13: falta el término cruzado 2·I1·I2."
 
-  - id: con-diodo
-    tipo: pregunta
-    titulo: "Con un diodo"
-    texto: "Se repite la medida con un diodo en el circuito: cada fuente sola, y luego las dos. ¿Qué se ve?"
-    libro: [119, 142]
-    widget:
-      tipo: circuito
-      esquema: kirchhoff
-      piezas: { fuente1: V_k1, fuente2: V_k2, r1: R_k1, r2: R_k2, r3: R_k3, activa1: k_on1, activa2: k_on2 }
-      lectura: { valor: V_kn, rotulo: "Tensión del nodo" }
-      corriente: I_k3
-      mide: { nodo: V_kn }
-    opciones:
-      - texto: "Las aportaciones ya no suman el total"
-        bien: true
-        porque: "La superposición es la definición de linealidad. Con un diodo el circuito no es lineal y el teorema no aplica."
-      - texto: "Suman igual: el diodo solo añade su caída"
-        porque: "La caída del diodo depende de su corriente, que cambia con cada fuente. El circuito ya no es lineal."
-      - texto: "Suman si se anulan las fuentes con un abierto"
-        porque: "Anularlas de otra forma no arregla nada: el problema es el elemento no lineal."
-    escalera:
-      - "¿Qué propiedad del circuito exige la superposición?"
-    solucion: "Ya no suma: el diodo rompe la linealidad que el teorema exige."
-
   - id: para-que
-    tipo: pregunta
+    tipo: elegir
     titulo: "Para qué sirve de verdad"
-    texto: "Con muchas fuentes, el nodal resuelve todo de una vez. ¿Cuándo compensa entonces superponer?"
+    texto: "La tensión del nodo es indeseada y hay que reducirla. Pruebe cada fuente sola y toque la que más aporta."
     libro: [129]
+    inicio: { k_on1: 1, k_on2: 1 }
     widget:
       tipo: circuito
       esquema: kirchhoff
@@ -243,24 +227,23 @@ tarjetas:
       mandos:
         - { valor: k_on1, tipo: interruptor, rotulo: "Fuente de la izquierda" }
         - { valor: k_on2, tipo: interruptor, rotulo: "Fuente de la derecha" }
-    opciones:
-      - texto: "Para saber qué aporta cada fuente por separado"
-        bien: true
-        porque: "Si el 90 % de una tensión indeseada viene de una fuente concreta, se sabe exactamente dónde actuar."
-      - texto: "Siempre: es más rápido que el nodal"
-        porque: "Con n fuentes hay que resolver el circuito n veces. El nodal lo hace de una vez."
-      - texto: "Para calcular potencias más deprisa"
-        porque: "La potencia no se superpone: se suman las tensiones o corrientes y se eleva al cuadrado al final."
+    elegir:
+      zonas: [fuente1, fuente2, r3]
+      bien: [fuente1]
+      porque:
+        fuente2: "Sola aporta 2,40 V; la de la izquierda, 4,80 V: el doble."
+        r3: "La carga recibe la tensión; no la produce."
+    exito: "La de la izquierda aporta dos tercios. Con muchas fuentes, el nodal lo resuelve todo de una vez; superponer dice exactamente dónde actuar."
     escalera:
-      - "Piense en una tensión indeseada que llega de varias fuentes."
-    solucion: "Cuando se quiere saber qué aporta cada fuente, para saber dónde actuar."
+      - "Apague una cada vez y compare lo que marca el nodo."
+    solucion: "La fuente de la izquierda: 4,80 de los 7,20 V."
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [118, 122, 124, 134]
+    libro: [118, 122, 124, 134, 142]
     ideas:
       - { titulo: "Suma de aportaciones.", texto: "Cada fuente sola, con las demás anuladas; luego se suma, con su signo." }
       - { titulo: "Anular.", texto: "Tensión a cortocircuito, corriente a abierto. Las dependientes, nunca." }
       - { titulo: "No la potencia.", texto: "Se superponen tensiones o corrientes y se eleva al cuadrado después." }
-      - { titulo: "Solo lineal.", texto: "Con un diodo o un transistor en gran señal, no suma." }
+      - { titulo: "Solo lineal.", texto: "Con un diodo en el circuito ya no suma: compruébelo en el banco." }

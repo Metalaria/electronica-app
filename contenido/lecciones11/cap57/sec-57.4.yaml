@@ -14,6 +14,10 @@
 # sintonía de un eje.
 # Duda del libro (no la usa ninguna tarjeta): bloque 90, «k·ω = 1,39 V más la caída del rozamiento, 2,18 V en total»;
 # la caída del rozamiento es R·T_roz/k = 6 × 1,5 mN·m / 11,58 mN·m/A = 0,777 V, y la suma da 2,17 V.
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): se busca el encoder de menos de 0,1° a la salida, la ventana de
+# escalones de menos de 5 rpm (los tres remedios van a su logro) y el tramo en que la anticipación pasa de 3 V; el
+# escalón del método M, la inercia vista por el motor y el giro corto en triángulo se calculan. Quedan dos preguntas de
+# opciones (la transición imposible y la anticipación) y el orden de la sintonía.
 leccion: cap57/sec-57.4
 
 libro:
@@ -72,12 +76,15 @@ modelo:
     th_u: { expr: "v_x^2/a_x", sim: "θ_{umbral}", nombre: "umbral del triángulo", unidad: rad }
     T_tri: { expr: "2*sqrt(th/a_x)", sim: "T", nombre: "duración del triángulo", unidad: s }
     v_tri: { expr: "sqrt(th*a_x)", sim: "v_{pico}", nombre: "pico del triángulo", unidad: "rad/s" }
+    dn_x: { expr: "60/(N_l*i_r*T_w)", sim: "Δn", nombre: "sin los cuatro flancos", unidad: rpm }
+    J_x: { expr: "J_p/i_r", sim: "J", nombre: "dividida por la reducción", unidad: "kg·m²" }
+    T_x: { expr: "th/v_x", sim: "T", nombre: "a la velocidad máxima", unidad: s }
 
 tarjetas:
   - id: explore-encoder
     tipo: explorar
     titulo: "El encoder del motor"
-    texto: "Once líneas, cuatro flancos por ciclo y la reductora 1:30. Cambie las líneas y mire la resolución a la salida."
+    texto: "Once líneas, cuatro flancos por ciclo y la reductora 1:30. Busque el encoder que da menos de 0,1° a la salida."
     libro: [74]
     inicio: { N_l: 11 }
     widget:
@@ -93,7 +100,17 @@ tarjetas:
         - { valor: N_c, rotulo: "Cuentas por vuelta de salida: {{N_c}}" }
       mandos:
         - { valor: N_l, lista: [11, 24, 48], rotulo: "Líneas del encoder" }
+    objetivo:
+      condiciones:
+        - { valor: res, max: 0.1, rotulo: "Resolución: {{res}}" }
+      logrado: "Con {{N_l}} líneas, {{N_c}} cuentas por vuelta: {{res}}. Pero cada cuenta cuesta procesador."
+      pistas:
+        - { texto: "Aún es grueso: más líneas." }
+    escalera:
+      - "Una vuelta entre 4 × líneas × 30."
+    solucion: "48 líneas: 0,0625°."
     comprobar:
+      - { con: { N_l: 48 }, res: 0.0625, tol: 0.003 }
       - { N_c: 1320, res: 0.273, tol: 0.003 }
 
   - id: simule-carga
@@ -149,39 +166,29 @@ tarjetas:
     solucion: "Un flanco perdido: transición imposible."
 
   - id: estime-escalon
-    tipo: pregunta
+    tipo: simular
     titulo: "Contar cuentas en 1 ms"
     texto: "Con 1 320 cuentas por vuelta y una ventana de 1 ms, ¿cuántas rpm vale una cuenta por periodo?"
     libro: [79, 81]
     fijar: { N_l: 11, T_w: 0.001 }
-    widget:
-      tipo: figura
-      figura: fig-57.6
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [25, 10, 295, 105] }
-    estimar:
-      objetivo: "dn"
+    simular:
+      objetivo: dn
       unidad: rpm
-      min: 0
-      max: 100
-      paso: 0.5
-      inicio: 80
-      tol: 0.05
+      tol: 0.02
       rotulo: "Escalón del método M"
-    exito: "45,5 rpm: la estimación solo puede valer 0, 45,5, 91… A baja velocidad, el derivador del PID amplifica ese ruido."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 47.8 }, texto: "Se ha pasado: una cuenta es 1/1 320 de vuelta en 1 ms." }
-      - { texto: "Se ha quedado corto: pase a vueltas por minuto, multiplicando por 60." }
+      errores:
+        - { expr: "dn_x", texto: "Cuente los cuatro flancos de cada ciclo: son 1 320 cuentas, no 330." }
+    exito: "45,5 rpm: la estimación solo vale 0, 45,5, 91… A baja velocidad, el derivador del PID amplifica ese ruido."
     escalera:
-      - "Δn = 60/(N·T)."
+      - "60/(cuentas por vuelta × ventana)."
     solucion: "60/(1 320 × 0,001) = 45,5 rpm."
     comprobar:
-      - { dn: 45.5, tol: 0.002 }
+      - { dn: 45.5, dn_x: 181.8, tol: 0.002 }
 
   - id: explore-ventana
     tipo: explorar
     titulo: "Una ventana más larga"
-    texto: "Alargue la ventana del método M: el escalón baja, pero el retraso de medio periodo sube y resta fase al lazo."
+    texto: "Alargue la ventana del método M hasta escalones de menos de 5 rpm."
     libro: [80, 81]
     fijar: { N_l: 11 }
     inicio: { T_w: 0.001 }
@@ -198,63 +205,44 @@ tarjetas:
         - { valor: ret, rotulo: "Retraso: {{ret}}" }
       mandos:
         - { valor: T_w, lista: [0.001, 0.002, 0.005, 0.01, 0.02], rotulo: "Ventana" }
-    requiere: { mover: [T_w] }
+    objetivo:
+      condiciones:
+        - { valor: dn, max: 5, rotulo: "Escalón: {{dn}}" }
+      logrado: "Con {{T_w}}, {{dn}}, pero {{ret}} de retraso que resta fase. El método T es bueno a baja velocidad; un observador combina modelo y encoder."
+      pistas:
+        - { texto: "Aún es grueso: ventana más larga." }
+    escalera:
+      - "El escalón es inversamente proporcional a la ventana."
+    solucion: "10 ms: 4,5 rpm y 5 ms de retraso."
     comprobar:
       - { con: { T_w: 0.01 }, dn: 4.5, ret: 0.005, tol: 0.012 }
 
-  - id: empareje-metodos
-    tipo: pregunta
-    titulo: "Tres remedios"
-    texto: "Empareje cada manera de estimar la velocidad con su rasgo."
-    libro: [80]
-    widget:
-      tipo: figura
-      figura: fig-57.6
-      zonas:
-        - { id: grafica, rotulo: "La gráfica", rect: [25, 10, 295, 105] }
-    emparejar:
-      - ["Ventana más larga", "Escalones finos, con retraso"]
-      - ["Método T: tiempo entre flancos", "Excelente a baja velocidad, peor a alta"]
-      - ["Un observador", "Un modelo del motor corregido con el encoder"]
-    exito: "Los métodos M y T son buenos en extremos opuestos: los controladores buenos combinan los dos."
-    pistas:
-      - { texto: "A baja velocidad los flancos llegan espaciados: medir el tiempo entre ellos es muy fino." }
-    escalera:
-      - "¿Qué se mide en cada uno: cuentas, tiempos o un modelo?"
-    solucion: "Ventana larga: finos con retraso. Método T: bueno a baja velocidad. Observador: modelo y encoder."
-
   - id: prediga-inercia
-    tipo: predecir
+    tipo: simular
     titulo: "El plato a través de la reductora"
     texto: "Un plato giratorio de 2·10⁻³ kg·m² va tras una reductora 1:30. ¿Qué inercia ve el motor?"
     libro: [85]
-    widget:
-      tipo: figura
-      figura: fig-57.7
-      zonas:
-        - { id: perfil, rotulo: "El perfil, a la izquierda", rect: [5, 10, 160, 125] }
-    opciones:
-      - texto: "2,22·10⁻⁶ kg·m²: dividida por 30²"
-        bien: true
-        porque: "La inercia se ve dividida por el cuadrado de la reducción: algo más que el propio rotor, 1,5·10⁻⁶."
-      - texto: "Dividida por 30"
-        porque: "El par se divide por la reducción y la aceleración se multiplica: la inercia, por el cuadrado."
-      - texto: "La misma: la reductora no cambia la inercia"
-        porque: "Sí la cambia: es la gran ventaja de las reductoras para el lazo."
+    fijar: { J_p: 0.002, i_r: 30 }
+    simular:
+      objetivo: J_v
+      unidad: "kg·m²"
+      tol: 0.02
+      rotulo: "Inercia vista por el motor"
+      errores:
+        - { expr: "J_x", texto: "La inercia se divide por el cuadrado de la reducción, no por la reducción." }
+    exito: "2,22·10⁻⁶ kg·m²: algo más que el propio rotor, 1,5·10⁻⁶."
     escalera:
-      - "El par se divide por 30 y la aceleración del motor es 30 veces la del plato."
+      - "J/i²."
     solucion: "2·10⁻³/900 = 2,22·10⁻⁶ kg·m²."
     comprobar:
-      - { J_v: 0.00000222, i_2: 900, tol: 0.003 }
+      - { J_v: 2.22e-06, i_2: 900, J_x: 6.67e-05, tol: 0.003 }
 
   - id: formula-anticipacion
-    tipo: formula
+    tipo: explorar
     titulo: "La acción anticipativa"
-    texto: "Un PID solo reacciona al error. Con el modelo del motor, la consigna ya dice qué tensión hace falta; el PID corrige lo demás."
+    texto: "Un PID solo reacciona al error; con el modelo, la consigna ya dice qué tensión hace falta. Busque el tramo en que pasa de 3 V."
     libro: [83, 84, 90]
     fijar: { w_r: 120, J_t: 0.00000372, T_r: 0.0015 }
-    ec: 84
-    sustitucion: "{{k_m}} · {{w_r}} + {{R_m}}/{{k_m}} · ({{J_t}} · {{a_l}} + {{T_r}}) = {{u_ff}}"
     widget:
       tipo: grafica
       x: { id: wx, min: 0, max: 300, unidad: "rad/s", rotulo: "ω_{ref}" }
@@ -268,7 +256,18 @@ tarjetas:
         - { valor: I_a, rotulo: "Corriente: {{I_a}}" }
       mandos:
         - { valor: a_l, lista: [0, 600], nombres: [crucero, acelerando], rotulo: "Tramo del perfil" }
+    inicio: { a_l: 0 }
+    objetivo:
+      condiciones:
+        - { valor: u_ff, min: 3, rotulo: "Anticipación: {{u_ff}}" }
+      logrado: "Acelerando, {{u_ff}}: a la tensión de la velocidad se suma la del par, {{I_a}} por R. El PID corrige lo demás."
+      pistas:
+        - { texto: "En crucero basta la tensión de la velocidad: pruebe el otro tramo." }
+    escalera:
+      - "Acelerar pide par, y el par pide corriente."
+    solucion: "Acelerando: 3,3 V."
     comprobar:
+      - { con: { a_l: 600 }, u_ff: 3.31, tol: 0.01 }
       - { u_v: 1.39, tol: 0.003 }
       - { con: { a_l: 600 }, I_a: 0.32, tol: 0.01 }
 
@@ -319,35 +318,24 @@ tarjetas:
       - { t_a: 0.2, t_c: 0.193, T_tr: 0.593, t_ac: 0.393, tol: 0.003 }
 
   - id: estime-triangulo
-    tipo: pregunta
+    tipo: simular
     titulo: "Un giro corto"
-    texto: "Con los mismos límites, un giro de 30° no llega al umbral de 45,8°: es un triángulo. ¿Cuánto dura?"
+    texto: "Con 4 rad/s y 20 rad/s² de límites, un giro de 30° no llega al umbral de 45,8°: es un triángulo. ¿Cuánto dura?"
     libro: [89]
     fijar: { th: 0.5236, v_x: 4, a_x: 20 }
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 0, max: 0.7, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 5, unidad: "rad/s", rotulo: "v" }
-      curvas:
-        - { expr: "max(0, min(a_x*tt, v_x, a_x*(1.5708/v_x + v_x/a_x - tt)))", color: tinta, rotulo: "el de 90°", discontinua: true }
-    estimar:
-      objetivo: "T_tri"
+    simular:
+      objetivo: T_tri
       unidad: s
-      min: 0
-      max: 0.7
-      paso: 0.005
-      inicio: 0.55
-      tol: 0.04
+      tol: 0.02
       rotulo: "Duración del giro de 30°"
+      errores:
+        - { expr: "T_x", texto: "No llega a la velocidad máxima: acelera y frena sin meseta." }
     exito: "0,324 s, con un pico de 3,24 rad/s: no llega a la velocidad máxima."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.34 }, texto: "Se ha pasado: sin meseta, solo sube y baja." }
-      - { texto: "Se ha quedado corto: t_{a} = √(θ/a), y son dos rampas." }
     escalera:
-      - "t_{a} = √(θ/a_{máx}); el total es el doble."
+      - "T = 2·√(θ/a)."
     solucion: "2 × √(0,5236/20) = 0,324 s."
     comprobar:
-      - { T_tri: 0.324, v_tri: 3.24, tol: 0.003 }
+      - { T_tri: 0.324, v_tri: 3.24, T_x: 0.131, tol: 0.003 }
 
   - id: ordene-sintonia
     tipo: pregunta

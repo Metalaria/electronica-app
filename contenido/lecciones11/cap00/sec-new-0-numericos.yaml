@@ -3,6 +3,10 @@
 # la limitación de SPICE, la matriz de nodos y su eliminación, el condicionamiento con picoohmios, el modelo de
 # compañía del condensador, la estabilidad de Euler explícito (manda el modo rápido) y los tres métodos anidados.
 # Propuesta de P08/NOTAS.md («Lección 1.1 de la sección nueva»). Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): subir la fuente del diodo, predecir el primer paso de
+# Newton desde 0 V, arrancar en 0,6 V, calcular las iteraciones sin limitar y la v₁ de la escalera, alargar el paso
+# de Euler implícito y el reto del paso más largo; se elige qué pasa con 1 pΩ. Por qué limitar y el bucle de un
+# instante quedan en el resumen.
 leccion: cap00/sec-new-0-numericos
 
 libro:
@@ -89,8 +93,7 @@ tarjetas:
   - id: explore-diodo
     tipo: explorar
     titulo: "Un diodo sin fórmula"
-    texto: "El diodo de la sección 5.3 con una resistencia: su punto de trabajo no se despeja con funciones elementales. Mueva la fuente y la resistencia."
-    nota: "La tensión del diodo apenas cambia; la corriente, mucho."
+    texto: "El diodo de la sección 5.3 con una resistencia: su punto de trabajo no se despeja con funciones elementales. Suba la fuente al máximo."
     libro: [192, 196]
     widget:
       tipo: circuito
@@ -104,44 +107,42 @@ tarjetas:
       mandos:
         - { valor: V_d, min: 1, max: 10, paso: 0.5 }
         - { valor: R_d, lista: [100, 1000, 10000] }
-    requiere: { mover: [V_d] }
     comprobar:
       - { con: { V_d: 5, R_d: 1000 }, V_ds: 0.57415, I_ds: 0.0044259, tol: 0.0005 }
+    inicio: { V_d: 5, R_d: 1000 }
+    objetivo:
+      condiciones:
+        - { valor: V_d, min: 10, rotulo: "Fuente: {{V_d}}" }
+      logrado: "Con {{V_d}}: {{V_ds}} en el diodo y {{I_ds}}. La tensión del diodo apenas cambia; la corriente, mucho."
+      pistas:
+        - { texto: "Suba más la fuente." }
+    escalera:
+      - "Lleve el mando de la fuente hasta arriba."
+    solucion: "Con 10 V la corriente casi se dobla y la tensión del diodo sube unas centésimas."
 
   - id: prediga-primer-paso
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
     texto: "Newton-Raphson busca el punto de trabajo de ese diodo, con 5 V y 1 kΩ, arrancando en 0 V. ¿Adónde lleva el primer paso?"
     libro: [192, 197, 198]
-    fijar: { V_d: 5, R_d: 1000 }
-    opciones:
-      - texto: "A 5,0 V"
-        bien: true
-        porque: "En 0 V el diodo apenas conduce: su tangente casi no deja pasar corriente, y el circuito lineal deja toda la fuente en él."
-      - texto: "Directo a la solución, unos 0,574 V"
-        porque: "Así trabaja Newton cerca de la solución. Desde 0 V la tangente de la exponencial es casi plana y el paso se va lejísimos."
-      - texto: "A 0,611 V, la tensión crítica"
-        porque: "A partir de esa tensión SPICE limita los pasos; Newton sin limitar no la conoce."
-    comprobar:
-      - { V_ds: 0.574 }
-    widget:
-      tipo: circuito
-      esquema: diodo
-      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
-      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
-      corriente: I_ds
-      mide: { corriente: I_ds, vd: V_ds }
-      ocultar: true
-      mandos: []
+    fijar: { V_d: 5, R_d: 1000, v_0: 0 }
+    simular:
+      objetivo: v_1
+      unidad: V
+      tol: 0.02
+      rotulo: "v₁"
+      errores:
+        - { razon: { min: 0.1, max: 0.13 }, texto: "Así trabaja Newton cerca de la solución. Desde 0 V la tangente de la exponencial es casi plana y el paso se va lejísimos." }
+    exito: "A 5,0 V: en 0 V el diodo apenas conduce, y el circuito lineal deja toda la fuente en él."
     escalera:
       - "En 0 V el diodo apenas conduce: su tangente es casi horizontal."
     solucion: "A 5,0 V: la tangente casi plana lleva el paso hasta la tensión de la fuente."
-
+    comprobar:
+      - { v_1: 5, V_ds: 0.574, tol: 0.001 }
   - id: explore-newton
     tipo: explorar
     titulo: "Cada paso, un circuito lineal"
-    texto: "Newton cambia el diodo por su tangente en v₀ y resuelve el circuito: su corte con la recta de la resistencia es v₁. Arrastre v₀."
-    nota: "Cerca de la solución, cada paso dobla las cifras correctas."
+    texto: "Newton cambia el diodo por su tangente en v₀ y resuelve el circuito: su corte con la recta de la resistencia es v₁. Arranque en v₀ = 0,6 V."
     libro: [193, 195]
     fijar: { V_d: 5, R_d: 1000 }
     widget:
@@ -160,10 +161,60 @@ tarjetas:
         - { valor: v_2, rotulo: "v₂ = {{v_2}}" }
       mandos:
         - { valor: v_0, min: 0.56, max: 0.62, paso: 0.005, rotulo: "Arranque, v₀" }
-    requiere: { mover: [v_0] }
     comprobar:
       - { con: { v_0: 0.6 }, v_1: 0.58364, v_2: 0.57569, tol: 0.0005 }
+    inicio: { v_0: 0.56 }
+    objetivo:
+      condiciones:
+        - { valor: v_0, objetivo: 0.6, tol: 0.001, rotulo: "v₀ = {{v_0}}" }
+      logrado: "Desde {{v_0}}: v₁ = {{v_1}} y v₂ = {{v_2}}. Cerca de la solución, cada paso dobla las cifras correctas."
+      pistas:
+        - { cuando: { valor: v_0, mayor: 0.6 }, texto: "Baje el arranque." }
+        - { texto: "Suba el arranque." }
+    escalera:
+      - "Arrastre el punto por la curva del diodo."
+    solucion: "v₀ = 0,6 V: v₁ = 0,58364 V y v₂ = 0,57569 V."
 
+  - id: estime-iteraciones
+    tipo: simular
+    fase: "Estime"
+    titulo: "Desde 0 V, sin limitar"
+    texto: "Desde 0 V, el primer paso de Newton lleva el diodo a 5,0 V, y después cada iteración baja casi exactamente V_{T}. ¿Cuántas iteraciones hacen falta?"
+    libro: [197]
+    simular:
+      objetivo: N_it
+      unidad: ""
+      tol: 0.05
+      rotulo: "Iteraciones"
+      errores:
+        - { razon: { min: 0.55, max: 0.59 }, texto: "100 es el límite ITL1, donde SPICE se rinde. Newton necesita más." }
+    exito: "175 iteraciones: SPICE se rinde a las 100, su límite ITL1."
+    escalera:
+      - "Divida el camino de 5,0 V hasta la solución entre lo que baja cada iteración."
+    solucion: "175 iteraciones: SPICE se rinde a las 100, su límite ITL1."
+    comprobar:
+      - { N_it: 175 }
+  - id: calcule-v1
+    tipo: simular
+    fase: "Estime"
+    titulo: "La escalera de tres nodos"
+    texto: "Entran 10 mA en el nodo 1 de la escalera: R₁, R₄ y R₅ son de 1 kΩ, y R₂ y R₃, de 2 kΩ. ¿Cuánto vale v₁?"
+    libro: [184, 182]
+    fijar: { I_n: 0.01, R_1n: 1000, R_2n: 2000, R_3n: 2000, R_4: 1000, R_5n: 1000 }
+    simular:
+      objetivo: v_n1
+      unidad: V
+      tol: 0.02
+      rotulo: "v₁"
+      errores:
+        - { razon: { min: 1.3, max: 1.37 }, texto: "Ha tomado solo R₁: parte de la corriente sigue por R₂ hacia los otros nodos." }
+    exito: "7,5 V: R₁ queda en paralelo con el resto de la escalera. Después, v₂ = 2,5 V y v₃ = 1,25 V."
+    escalera:
+      - "R₂ va del nodo 1 al 2 y R₄, del 2 al 3; R₁, R₃ y R₅ van a masa."
+      - "Desde el final: R₄ + R₅ en paralelo con R₃, más R₂, y todo en paralelo con R₁."
+    solucion: "R₁ ∥ (R₂ + R₃ ∥ (R₄ + R₅)), por 10 mA: 7,5 V."
+    comprobar:
+      - { v_n1: 7.5, v_n2: 2.5, v_n3: 1.25 }
   - id: formula-nodos
     tipo: formula
     titulo: "La matriz de nodos"
@@ -194,10 +245,41 @@ tarjetas:
       - "G₂₂ suma una conductancia enorme con otras de milisiemens: ¿caben todas en dieciséis cifras?"
     solucion: "La matriz pierde cifras al montarse, y v₂ sale un 2,6 % alta."
 
+  - id: explore-compania
+    tipo: explorar
+    titulo: "Alargar el paso"
+    texto: "Euler implícito descarga un condensador de 1 µF por 1 kΩ paso a paso. Alargue el paso al máximo y compare con la curva exacta."
+    libro: [202, 203]
+    fijar: { C_c: 0.000001, R_c: 1000 }
+    inicio: { h_c: 0.0001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "exp(-x/tau_c)", color: tinta, rotulo: "exacta", discontinua: true }
+        - { expr: "(1 + h_c/tau_c)^(-floor(x/h_c))", color: azul, rotulo: "Euler implícito" }
+      lectura: { valor: fac, rotulo: "Factor por paso" }
+      datos:
+        - { valor: fex, rotulo: "Exacto: {{fex}}" }
+      mandos:
+        - { valor: h_c, lista: [0.0001, 0.0002, 0.0005, 0.001], rotulo: "Paso, h" }
+    objetivo:
+      condiciones:
+        - { valor: h_c, min: 0.001, rotulo: "h = {{h_c}}" }
+      logrado: "Con h = {{h_c}}: {{fac}} por paso, frente a {{fex}} exacto. Cuanto más largo el paso, más se aparta de la curva exacta."
+      pistas:
+        - { texto: "Elija un paso más largo." }
+    escalera:
+      - "El último valor de la lista."
+    solucion: "h = 1 ms: 0,5 por paso frente a 0,3679."
+    comprobar:
+      - { fac: 0.9091 }
+      - { con: { h_c: 0.001 }, fac: 0.5, fex: 0.3679 }
   - id: formula-compania
     tipo: formula
     titulo: "El condensador en un paso"
-    texto: "Con Euler implícito, durante un paso h el condensador es una conductancia C/h con una fuente que recuerda la tensión anterior. Elija h."
+    texto: "Con Euler implícito, durante un paso h el condensador es una conductancia C/h con una fuente que recuerda la tensión anterior."
     nota: "Con 0,1 ms, cada paso multiplica por 0,9091; el exacto, 0,9048."
     libro: [201, 202, 203]
     ec: 202
@@ -214,7 +296,6 @@ tarjetas:
         - { valor: fex, rotulo: "Exacto: {{fex}}" }
       mandos:
         - { valor: h_c, lista: [0.0001, 0.0002, 0.0005, 0.001], rotulo: "Paso, h" }
-    requiere: { mover: [h_c] }
     comprobar:
       - { fac: 0.9091, fex: 0.9048, tol: 0.0005 }
 
@@ -251,77 +332,12 @@ tarjetas:
     comprobar:
       - { con: { h_e: 0.0075 }, h_e: 0.0075, tau_2: 0.00382, tau_1: 0.0262, tol: 0.002 }
 
-  - id: estime-iteraciones
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "Desde 0 V, sin limitar"
-    texto: "Desde 0 V, el primer paso de Newton lleva el diodo a 5,0 V, y después cada iteración baja casi exactamente V_{T}. Estime cuántas iteraciones hacen falta."
-    libro: [197]
-    estimar:
-      objetivo: "N_it"
-      unidad: ""
-      min: 10
-      max: 400
-      paso: 5
-      inicio: 50
-      tol: 0.05
-      rotulo: "Iteraciones"
-    exito: "175 iteraciones: SPICE se rinde a las 100, su límite ITL1."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 183 }, texto: "Se ha pasado: cada iteración baja V_{T}, desde 5,0 V hasta la solución." }
-      - { texto: "Se ha quedado corto: cada iteración baja solo V_{T}, unas centésimas de voltio, desde 5,0 V." }
-    escalera:
-      - "Divida el camino de 5,0 V hasta la solución entre lo que baja cada iteración."
-    solucion: "175 iteraciones: SPICE se rinde a las 100, su límite ITL1."
-
-  - id: por-que-limitar
-    tipo: porque
-    titulo: "¿Por qué limitar el paso?"
-    texto: "SPICE no deja dar ese salto: por encima de la tensión crítica, sustituye el paso de la tensión de una unión por su logaritmo. ¿Por qué?"
-    libro: [198]
-    opciones:
-      - texto: "Lejos de la solución, la tangente de una exponencial manda el cálculo a tensiones absurdas"
-        bien: true
-        porque: "Con la limitación, desde 0 V el primer paso queda en 0,136 V, y en seis iteraciones el punto está calculado."
-      - texto: "Porque el diodo real se rompería por encima de esa tensión"
-        porque: "Es un cálculo, no el diodo: la limitación solo evita pasos absurdos de Newton."
-      - texto: "Porque la matriz del circuito sería singular"
-        porque: "La matriz se resuelve en cada paso; lo que falla es Newton, que desde lejos avanza despacio o desborda."
-    widget:
-      tipo: figura
-      figura: fig-new-0-newton
-      zonas:
-        - { id: newton, rotulo: "Las iteraciones de Newton", rect: [0, 0, 448, 175] }
-    escalera:
-      - "Desde 0 V, ¿adónde mandaba el primer paso sin limitar?"
-    solucion: "Lejos de la solución, la tangente de una exponencial manda a tensiones absurdas; limitando, el primer paso queda en 0,136 V."
-
-  - id: ordene-bucle
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Un instante de un transitorio"
-    texto: "Ordene lo que hace un simulador en cada instante de un transitorio de un circuito con diodos."
-    libro: [180, 205]
-    ordenar:
-      - "Avanzar un paso h en el tiempo"
-      - "Cambiar condensadores y bobinas por sus modelos de compañía"
-      - "Cambiar los diodos por su tangente (Newton)"
-      - "Resolver el circuito lineal por eliminación LU"
-      - "Repetir Newton hasta que converja"
-      - "Aceptar el instante si el error es pequeño"
-    exito: "Tres métodos, uno dentro de otro: la integración, Newton y, en el centro, la eliminación."
-    pistas:
-      - { texto: "De fuera adentro: el instante, luego Newton, y en el centro el circuito lineal." }
-    escalera:
-      - "Son tres métodos, uno dentro de otro: empiece por el más externo."
-    solucion: "Avanzar un paso h → modelos de compañía para C y L → tangente de los diodos (Newton) → resolver por LU → repetir Newton hasta converger → aceptar el instante si el error es pequeño."
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [184, 193, 202, 204]
+    libro: [180, 184, 193, 198, 202, 204, 205]
     ideas:
       - { titulo: "Eliminación.", texto: "Kirchhoff en cada nodo da una matriz que la factorización LU resuelve; pivotar evita dividir por números pequeños." }
-      - { titulo: "Newton.", texto: "Cambia el diodo por su tangente y resuelve un circuito lineal; desde lejos, SPICE limita el paso." }
-      - { titulo: "Compañía.", texto: "Con Euler implícito, durante cada paso el condensador es una conductancia C/h con una fuente." }
+      - { titulo: "Newton.", texto: "Cambia el diodo por su tangente y resuelve un circuito lineal. Desde lejos, SPICE limita el paso: queda en 0,136 V, y converge en seis iteraciones." }
+      - { titulo: "Compañía.", texto: "Con Euler implícito, el condensador es una conductancia C/h con una fuente. En cada instante, dentro de la integración va Newton, y dentro, la eliminación LU." }
       - { titulo: "Rigidez.", texto: "Euler explícito exige h ≤ 2·τ del modo más rápido; por eso SPICE usa métodos implícitos." }

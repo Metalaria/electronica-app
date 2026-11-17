@@ -7,6 +7,12 @@
 #   un alias de 1 kHz.
 # Pasos prácticos: «dibujar» la frecuencia observada frente a la real (figura 29.7: el pliegue en f_s/2) y «banco»
 # opcional: el alias en el propio osciloscopio (ficha 24 del cuaderno).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): la senoide se sube hasta 400 Hz con las muestras fieles; el
+# alias de 700 Hz se predice (simular sobre el modelo); el de 30 kHz a 40 kHz y la frecuencia de Nyquist se marcan en el
+# pliegue; el doble exacto se explora girando la fase del muestreo (de ejemplo) hasta que todas las muestras valen cero;
+# la SNR de 16 bits se calcula; las seis octavas se consiguen subiendo el muestreo; y el reloj del submuestreo se elige
+# (21, 22,1, 23 o 24 MHz) hasta que la banda de 100 a 110 MHz cae entera en una zona de Nyquist (2·f/f_s de sus dos
+# bordes con la misma parte entera). Quedan dos preguntas de opciones: filtrar antes y el dither.
 leccion: cap30/sec-30.4
 
 libro:
@@ -42,6 +48,10 @@ modelo:
     f_ss: { sim: "f_{s}", nombre: "frecuencia de muestreo del audio", unidad: Hz, valor: 44100 }
     d_v: { sim: "s/div", nombre: "base de tiempos", unidad: s, valor: 0.001 }
     f_g: { sim: "f", nombre: "frecuencia del generador", unidad: Hz, valor: 251000 }
+    p_s: { sim: "φ", nombre: "fase del muestreo de ejemplo", unidad: "°", valor: 90 }
+    f_L: { sim: "f_{inf}", nombre: "borde inferior de la emisión", unidad: Hz, valor: 100000000 }
+    f_H: { sim: "f_{sup}", nombre: "borde superior de la emisión", unidad: Hz, valor: 110000000 }
+    f_sb: { sim: "f_{s}", nombre: "reloj del submuestreo", unidad: Hz, valor: 21000000 }
   calculos:
     f_a: { expr: "abs(f_x - f_m*round(f_x/f_m))", sim: "f_{alias}", nombre: "frecuencia aparente", unidad: Hz }
     snr: { expr: "6.02*n_b + 1.76", sim: "SNR", nombre: "relación señal-ruido teórica", unidad: dB }
@@ -51,6 +61,8 @@ modelo:
     f_2s: { expr: "2*f_m", sim: "2·f_{s}", nombre: "doble del muestreo", unidad: Hz }
     fs_o: { expr: "1000/(12*d_v)", sim: "f_{s}", nombre: "muestreo real del osciloscopio", unidad: Hz }
     f_o: { expr: "abs(f_g - fs_o*round(f_g/fs_o))", sim: "f_{alias}", nombre: "frecuencia que se ve", unidad: Hz }
+    a_s: { expr: "abs(sin(p_s*pi/180))", sim: "|x[n]|", nombre: "amplitud de las muestras", unidad: "", cifras: 2 }
+    z_ok: { expr: "1 - min(1, abs(floor(2*f_L/f_sb) - floor(2*f_H/f_sb)))", sim: "zona", nombre: "la banda cabe en una zona de Nyquist", unidad: "" }
 
 tarjetas:
   - id: explore-muestras
@@ -70,12 +82,23 @@ tarjetas:
       lectura: { valor: f_a, rotulo: "Frecuencia que dicen las muestras" }
       mandos:
         - { valor: f_x, lista: [100, 200, 300, 400], rotulo: "Frecuencia de la señal, f" }
-    requiere: { mover: [f_x] }
+    inicio: { f_x: 100 }
+    objetivo:
+      condiciones:
+        - { valor: f_a, min: 400, rotulo: "Las muestras dicen {{f_a}}" }
+      logrado: "{{f_x}}, por debajo de la mitad del muestreo: las muestras la determinan por completo."
+      pistas:
+        - { texto: "Siga subiendo: hasta 500 Hz las muestras siguen fieles." }
+    escalera:
+      - "La mitad de 1 000 Hz es 500 Hz."
+    solucion: "400 Hz."
+    comprobar:
+      - { con: { f_x: 400 }, f_a: 400, f_ny: 500 }
 
   - id: predecir-700
-    tipo: predecir
+    tipo: simular
     titulo: "Por encima de la mitad"
-    texto: "Ahora la señal es de 700 Hz, con el mismo muestreo de 1 000 Hz. ¿Qué frecuencia dicen las muestras?"
+    texto: "Ahora la señal es de 700 Hz, con el mismo muestreo de 1 000 Hz. Prediga qué frecuencia dicen las muestras."
     libro: [109, 111]
     fijar: { f_x: 700, f_m: 1000 }
     widget:
@@ -87,14 +110,15 @@ tarjetas:
         - { expr: "sin(2*pi*f_x*floor(t*f_m)/f_m)", color: azul, rotulo: "muestras retenidas" }
       lectura: { valor: f_a, rotulo: "Frecuencia que dicen las muestras" }
       ocultar: true
-    opciones:
-      - texto: "300 Hz"
-        bien: true
-        porque: "Está entre f_{s}/2 y f_{s}: se pliega a f_{s} − f = 1 000 − 700 = 300 Hz."
-      - texto: "700 Hz"
-        porque: "Haría falta muestrear a más de 1 400 Hz; a 1 000 Hz la de 700 Hz no se distingue de una de 300 Hz."
-      - texto: "1 700 Hz"
-        porque: "Esa también daría las mismas muestras, pero el alias cae dentro de la banda útil, por debajo de 500 Hz."
+    simular:
+      objetivo: f_a
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Frecuencia que dicen las muestras"
+      errores:
+        - { expr: "f_x", texto: "Haría falta muestrear a más de 1 400 Hz; a 1 000 Hz la de 700 Hz no se distingue de una de 300 Hz." }
+        - { expr: "f_x + f_m", texto: "Esa también daría las mismas muestras, pero el alias cae dentro de la banda útil, por debajo de 500 Hz." }
+    exito: "Está entre f_{s}/2 y f_{s}: se pliega a f_{s} − f = 1 000 − 700 = 300 Hz."
     escalera:
       - "La mitad de la frecuencia de muestreo es 500 Hz. ¿Dónde cae lo que la supera?"
     solucion: "300 Hz: el alias, |f − k·f_{s}| con k = 1."
@@ -133,99 +157,129 @@ tarjetas:
       - { con: { f_x: 1500 }, f_a: 500 }
 
   - id: pregunta-40k
-    tipo: pregunta
+    tipo: marcar
     titulo: "Las mismas muestras"
-    texto: "Una componente de 30 kHz muestreada a 40 kHz. ¿Con qué otra señal comparte exactamente las muestras?"
+    texto: "Una componente de 30 kHz muestreada a 40 kHz. Marque en el pliegue la frecuencia, por debajo de f_{s}/2, con la que comparte las muestras."
     libro: [109, 111]
     fijar: { f_x: 30000, f_m: 40000 }
     widget:
-      tipo: figura
-      figura: fig-30.9
-      zonas:
-        - { id: todo, rotulo: "Dos señales con las mismas muestras", rect: [0, 0, 439, 233] }
-    opciones:
-      - texto: "Con una de 10 kHz"
-        bien: true
-        porque: "Entre f_{s}/2 y f_{s}, el alias es f_{s} − f: 40 − 30 = 10 kHz."
-      - texto: "Con una de 20 kHz"
-        porque: "20 kHz es f_{s}/2, la frecuencia de Nyquist: el borde del pliegue, no el alias."
-      - texto: "Con ninguna: 30 kHz se reconstruye bien"
-        porque: "Haría falta muestrear a más de 60 kHz: a 40 kHz, 30 kHz se pliega."
+      tipo: grafica
+      x: { id: nu, min: 0, max: 60000, unidad: Hz, rotulo: "f real" }
+      y: { min: 0, max: 25000, unidad: Hz, rotulo: "f observada" }
+      curvas:
+        - { expr: "abs(nu - f_m*round(nu/f_m))", color: naranja, rotulo: "frecuencia observada" }
+        - { expr: "f_m/2", color: tinta, rotulo: "f_{s}/2", discontinua: true }
+      marcas:
+        - { x: "f_x", y: "f_a", rotulo: "30 kHz" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_a"
+      tol: 0.02
+      inicio: { x: 50000, y: 0 }
+      rotulo: "La que da las mismas muestras"
+      pasos: 120
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 20000 }, texto: "Por encima de f_{s}/2 = 20 kHz: busque en la subida de la izquierda." }
+      - { texto: "Ahí la observada es menor que la de 30 kHz: más a la derecha." }
+    exito: "10 kHz: entre f_{s}/2 y f_{s}, el alias es f_{s} − f = 40 − 30. A 40 kHz harían falta más de 60 kHz para separarlas."
     escalera:
-      - "¿Está 30 kHz por encima o por debajo de 20 kHz?"
+      - "Siga horizontalmente la marca de 30 kHz hasta la otra rama."
     solucion: "10 kHz: 40 − 30."
     comprobar:
-      - { f_a: 10000, f_2x: 60000 }
+      - { f_a: 10000, f_2x: 60000, f_ny: 20000 }
 
   - id: predecir-doble
-    tipo: predecir
+    tipo: explorar
     titulo: "Exactamente el doble"
-    texto: "Una senoide de 500 Hz muestreada a exactamente 1 000 Hz, empezando en un paso por cero. ¿Qué dan las muestras?"
+    texto: "Una senoide de 500 Hz muestreada a exactamente 1 000 Hz. Gire la fase con que caen las muestras hasta que no vean nada."
+    nota: "La fase es de ejemplo."
     libro: [107]
     fijar: { f_x: 500, f_m: 1000 }
+    inicio: { p_s: 90 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t", muestras: 2000 }
       y: { min: -1.2, max: 1.2, unidad: "", rotulo: "x" }
       curvas:
-        - { expr: "sin(2*pi*f_x*t)", color: tinta, rotulo: "señal", discontinua: true }
-        - { expr: "sin(2*pi*f_x*floor(t*f_m)/f_m)", color: azul, rotulo: "muestras retenidas" }
-      lectura: { valor: f_x, rotulo: "Frecuencia de la señal" }
-      ocultar: true
-    opciones:
-      - texto: "Todas valen cero: la señal desaparece"
-        bien: true
-        porque: "Cada muestra cae en un paso por cero. Por eso la desigualdad es estricta: más de 2·f_{máx}."
-      - texto: "La senoide, justo en el límite"
-        porque: "El doble exacto es la tasa de Nyquist, y no basta: según la fase, las muestras pueden valer cero."
-      - texto: "Una senoide de 1 000 Hz"
-        porque: "Las muestras no crean frecuencias por encima de f_{s}/2; aquí ni siquiera ven la señal."
+        - { expr: "sin(2*pi*f_x*t + p_s*pi/180)", color: tinta, rotulo: "señal", discontinua: true }
+        - { expr: "sin(2*pi*f_x*floor(t*f_m)/f_m + p_s*pi/180)", color: azul, rotulo: "muestras retenidas" }
+      lectura: { valor: a_s, rotulo: "Amplitud de las muestras" }
+      mandos:
+        - { valor: p_s, lista: [90, 45, 0], rotulo: "Fase de la señal" }
+    objetivo:
+      condiciones:
+        - { valor: a_s, max: 0.01, rotulo: "Muestras: {{a_s}}" }
+      logrado: "Cada muestra cae en un paso por cero: la señal desaparece. Por eso la desigualdad es estricta: más de 2·f_{máx}."
+      pistas:
+        - { texto: "Las muestras aún ven algo: lleve los cruces por cero a los instantes de muestreo." }
     escalera:
-      - "Dos muestras por periodo, las dos en un cruce por cero."
-    solucion: "Todo ceros: hace falta más de 2·f_{máx}, no 2·f_{máx}."
+      - "Dos muestras por periodo: ¿y si las dos caen en un cruce por cero?"
+    solucion: "Fase 0: todas las muestras valen cero."
+    comprobar:
+      - { con: { p_s: 0 }, a_s: 0 }
 
   - id: empareje-nyquist
-    tipo: pregunta
+    tipo: marcar
     titulo: "Dos nombres que se confunden"
-    texto: "Empareje cada término con su valor."
+    texto: "La tasa de Nyquist, 2·f_{máx}, habla de la señal. Marque en el pliegue la frecuencia de Nyquist, que habla del muestreo."
     libro: [107, 109]
+    fijar: { f_m: 1000 }
     widget:
-      tipo: figura
-      figura: fig-30.7
-      zonas:
-        - { id: todo, rotulo: "La frecuencia observada frente a la real", rect: [0, 0, 445, 178] }
-    emparejar:
-      - ["Tasa de Nyquist", "2·f_{máx}, que no basta"]
-      - ["Frecuencia de Nyquist", "f_{s}/2, la mitad del muestreo"]
-      - ["Frecuencia del alias", "|f − k·f_{s}|"]
-    exito: "La tasa habla de la señal; la frecuencia de Nyquist, del muestreo."
+      tipo: grafica
+      x: { id: nu, min: 0, max: 2000, unidad: Hz, rotulo: "f real" }
+      y: { min: 0, max: 1000, unidad: Hz, rotulo: "f observada" }
+      curvas:
+        - { expr: "abs(nu - f_m*round(nu/f_m))", color: naranja, rotulo: "frecuencia observada" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_ny"
+      tol: 0.02
+      inicio: { x: 1800, y: 0 }
+      rotulo: "La frecuencia de Nyquist"
+      pasos: 100
     pistas:
-      - { texto: "La «tasa» es un muestreo mínimo; la «frecuencia», una frontera del espectro." }
+      - { cuando: { valor: marca_x, mayor: 1100 }, texto: "Más a la izquierda: la primera frontera del pliegue." }
+      - { cuando: { valor: marca_x, mayor: 600 }, texto: "Ahí ya baja: la frontera es el primer pico." }
+      - { texto: "Ahí todavía sube: la frontera está en el pico." }
+    exito: "f_{s}/2 = {{f_ny}}: el pico del pliegue. Por encima, la observada baja al subir la real; el alias es |f − k·f_{s}|."
     escalera:
-      - "Una depende de f_{máx}; otra, de f_{s}."
-    solucion: "Tasa, 2·f_{máx}; frecuencia de Nyquist, f_{s}/2; alias, |f − k·f_{s}|."
+      - "Es la mitad de la frecuencia de muestreo."
+    solucion: "En {{f_ny}}, el primer pico."
+    comprobar:
+      - { f_ny: 500 }
 
   - id: formula-snr
-    tipo: formula
+    tipo: simular
     titulo: "El otro eje: la cuantificación"
-    texto: "Con n bits, el error máximo es medio LSB. Cambie los bits y mire la relación señal-ruido teórica."
+    texto: "Con n bits, el error máximo es medio LSB y la SNR teórica es 6,02·n + 1,76 dB. Calcule la de 16 bits."
     libro: [123, 124, 125]
-    ec: 123
-    sustitucion: "6,02 · {{n_b}} + 1,76 dB = {{snr}}"
+    fijar: { n_b: 16 }
     widget:
       tipo: grafica
       x: { id: n, min: 4, max: 26, unidad: "", rotulo: "n" }
       y: { min: 0, max: 160, unidad: dB, rotulo: "SNR" }
       curvas:
         - { expr: "6.02*n + 1.76", color: naranja, rotulo: "SNR teórica" }
-      marcas:
-        - { x: "n_b", y: "snr", rotulo: "{{snr}}" }
-      lectura: { valor: snr, rotulo: "SNR teórica" }
-      mandos:
-        - { valor: n_b, lista: [8, 12, 16, 24], rotulo: "Bits, n" }
+      mandos: []
+    simular:
+      objetivo: snr
+      unidad: dB
+      tol: 0.005
+      rotulo: "SNR teórica con 16 bits"
+      errores:
+        - { expr: "6.02*n_b", texto: "Falta sumar 1,76 dB: el término de la senoide a fondo de escala." }
+        - { expr: "6.02*n_b - 1.76", texto: "Los 1,76 dB se suman, no se restan." }
+    exito: "{{snr}}. Con 24 bits serían 146,2 dB, pero ningún circuito real alcanza 146 dB."
+    escalera:
+      - "Cada bit aporta 6,02 dB."
+    solucion: "6,02 · 16 + 1,76 = {{snr}}."
     comprobar:
       - { con: { n_b: 24 }, snr: 146.2 }
-      - { con: { n_b: 16 }, snr: 98.1 }
+      - { snr: 98.1 }
 
   - id: porque-antes
     tipo: porque
@@ -250,34 +304,33 @@ tarjetas:
     solucion: "Después ya no se distinguen: hay que filtrar antes de muestrear."
 
   - id: estime-octavas
-    tipo: pregunta
+    tipo: explorar
     titulo: "Sitio para el filtro"
-    texto: "Audio de 20 kHz muestreado a 2,8 MHz. ¿Cuántas octavas hay de 20 kHz a la frecuencia de Nyquist?"
+    texto: "A 44,1 kHz, de 20 kHz a la frecuencia de Nyquist hay 0,14 octavas. Suba el muestreo hasta tener seis octavas para el filtro."
     libro: [114, 115, 117, 120]
-    fijar: { f_ss: 2800000 }
+    inicio: { f_ss: 44100 }
     widget:
-      tipo: figura
-      figura: fig-30.8
-      zonas:
-        - { id: todo, rotulo: "El filtro a 44,1 kHz y con sobremuestreo", rect: [0, 0, 449, 293] }
-    estimar:
-      objetivo: "oct"
-      unidad: ""
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 1
-      tol: 0.05
-      rotulo: "Octavas de transición"
-    exito: "Unas seis octavas (de 20 kHz a 1,4 MHz), frente a 0,14 a 44,1 kHz: basta un filtro de primer o segundo orden."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 6.5 }, texto: "Se pasa: cuente hasta f_{s}/2 = 1,4 MHz, no hasta 2,8 MHz." }
-      - { texto: "Corto: cada octava dobla la frecuencia. ¿Cuántas veces hay que doblar 20 kHz para llegar a 1,4 MHz?" }
+      tipo: grafica
+      x: { id: nu, min: 40000, max: 4000000, unidad: Hz, rotulo: "f_{s}", escala: log }
+      y: { min: 0, max: 7, unidad: "", rotulo: "octavas" }
+      curvas:
+        - { expr: "log2(nu/2/20000)", color: azul, rotulo: "octavas de 20 kHz a f_{s}/2" }
+      marcas:
+        - { x: "f_ss", y: "oct", rotulo: "{{oct}}" }
+      lectura: { valor: oct, rotulo: "Octavas de transición" }
+      mandos:
+        - { valor: f_ss, lista: [44100, 176400, 705600, 2800000], rotulo: "Frecuencia de muestreo" }
+    objetivo:
+      condiciones:
+        - { valor: oct, min: 6, rotulo: "Transición: {{oct}} octavas" }
+      logrado: "A {{f_ss}}: de 20 kHz a 1,4 MHz, seis octavas. Basta un filtro de primer o segundo orden: más barato resolverlo en digital."
+      pistas:
+        - { texto: "Aún poco sitio: cada cuadruplicación del muestreo da dos octavas más." }
     escalera:
-      - "La frecuencia de Nyquist es la mitad: 1,4 MHz."
-    solucion: "De 20 kHz a 1,4 MHz hay que doblar unas seis veces: seis octavas."
+      - "Cada octava dobla la frecuencia; cuente hasta f_{s}/2, no hasta f_{s}."
+    solucion: "2,8 MHz: Nyquist en 1,4 MHz."
     comprobar:
-      - { oct: 6.13 }
+      - { con: { f_ss: 2800000 }, oct: 6.13 }
       - { con: { f_ss: 44100 }, oct: 0.14, tol: 0.01 }
 
   - id: porque-dither
@@ -303,26 +356,33 @@ tarjetas:
     solucion: "Convierte la distorsión en ruido de fondo."
 
   - id: pregunta-paso-banda
-    tipo: pregunta
+    tipo: explorar
     titulo: "Una emisión de radio"
-    texto: "Una señal que ocupa de 100 a 110 MHz. ¿Hay que muestrear a más de 220 MHz?"
+    texto: "Una señal que ocupa de 100 a 110 MHz no exige muestrear a 220 MHz. Elija un reloj con el que la banda caiga entera, sin plegarse."
     libro: [128, 129, 130]
+    inicio: { f_sb: 21000000 }
     widget:
-      tipo: figura
-      figura: fig-30.7
-      zonas:
-        - { id: todo, rotulo: "La frecuencia observada frente a la real", rect: [0, 0, 445, 178] }
-    opciones:
-      - texto: "No: basta algo más del doble de su ancho de banda, unos 22 MHz bien elegidos"
-        bien: true
-        porque: "Con el reloj entre 22 y 22,2 MHz, una réplica limpia cae de 0 a 11 MHz: el submuestreo de las SDR."
-      - texto: "Sí: el teorema exige el doble de la frecuencia máxima"
-        porque: "Eso vale para una señal en banda base; una estrecha y alta pide el doble de su ancho de banda."
-      - texto: "No: cualquier reloj por encima de 20 MHz sirve"
-        porque: "La ventana válida es estrecha: el reloj debe dejar las réplicas donde no molesten."
+      tipo: grafica
+      x: { id: nu, min: 100000000, max: 110000000, unidad: Hz, rotulo: "f de la emisión" }
+      y: { min: 0, max: 12500000, unidad: Hz, rotulo: "f observada" }
+      curvas:
+        - { expr: "abs(nu - f_sb*round(nu/f_sb))", color: naranja, rotulo: "dónde cae cada frecuencia" }
+        - { expr: "f_sb/2", color: tinta, rotulo: "f_{s}/2", discontinua: true }
+      mandos:
+        - { valor: f_sb, lista: [21000000, 22100000, 23000000, 24000000], rotulo: "Reloj, f_{s}" }
+    objetivo:
+      condiciones:
+        - { valor: z_ok, min: 1, rotulo: "Banda sin plegar" }
+      logrado: "A {{f_sb}} la réplica cae limpia, una recta sin pico: basta algo más del doble del ancho de banda, bien elegido. Es el submuestreo de las SDR."
+      pistas:
+        - { texto: "La línea tiene un pico: parte de la banda se pliega sobre la otra. Pruebe otro reloj." }
     escalera:
-      - "Lo que importa es cuánto ocupa la señal, no dónde está."
-    solucion: "No: unos 22 MHz, dentro de una ventana estrecha."
+      - "Lo que importa es cuánto ocupa, 10 MHz, y que ningún múltiplo de f_{s}/2 caiga dentro."
+    solucion: "Entre 22 y 22,2 MHz."
+    comprobar:
+      - { con: { f_sb: 22100000 }, z_ok: 1 }
+      - { con: { f_sb: 23000000 }, z_ok: 0 }
+
   - id: banco-alias
     tipo: banco
     titulo: "El alias en su osciloscopio"

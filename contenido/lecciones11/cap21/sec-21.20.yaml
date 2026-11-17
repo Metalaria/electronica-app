@@ -3,10 +3,19 @@
 # f_s = 1000/(12·s/div) (ecuación del bloque 581). Lo que se ve de una senoide de f es otra de frecuencia
 # |f − f_s·round(f/f_s)|: la propia f si f < f_s/2, un alias si no (251 kHz a 1 ms/div dan 1 kHz, figura 20.44; la
 # cuadrada de 10 kHz a 5 ms/div, 6,7 kHz, ficha 24 del cuaderno). El tiempo de subida y su suma en cuadratura los
-# trabaja la Práctica 10 (cap22, sec-22.11): aquí no se repiten.
+# trabaja la Práctica 10 (cap22, sec-22.11): aquí no se repiten. 1.2.1 (aprender haciendo): bajar el muestreo por
+# debajo del doble, calcular el muestreo real y el alias, acortar la base, marcar la regla de los cinco, tocar lo que el
+# muestreo equivalente no reconstruye y el banco. Dos preguntas: detectar el alias y el voltímetro.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap21/sec-21.20
 
 libro:
+  567: "El instrumento tiene tres límites y hay que conocer los tres"
+  580: "Y aquí está la clave que se pasa por alto"
+  582: "Con 1 000 puntos y las 12 divisiones horizontales del 2C53T"
+  591: "Tiempo real frente a muestreo equivalente"
+  592: "Para señales repetitivas, algunos instrumentos toman"
+  599: "Los tres límites del osciloscopio"
   568: "Tres parámetros determinan qué se pierde por el camino"
   570: "No es una frontera: es el punto de una caída progresiva"
   571: "Amplitud mostrada (osciloscopio de 50 MHz)"
@@ -39,8 +48,8 @@ tarjetas:
   - id: explore-alias
     tipo: explorar
     titulo: "Una conmutada de 251 kHz"
-    texto: "La misma conmutada a distintas bases de tiempos. Alárguela y mire qué frecuencia parece tener."
-    libro: [579, 584, 598]
+    texto: "La misma conmutada a distintas bases de tiempos. Alargue la base hasta que el muestreo real no llegue al doble de la señal."
+    libro: [567, 568, 579, 584, 598]
     inicio: { s_div: 0.000004 }
     widget:
       tipo: grafica
@@ -53,52 +62,54 @@ tarjetas:
         - { valor: f_s, rotulo: "Muestreo real: {{f_s}}" }
       mandos:
         - { valor: s_div, lista: [0.000004, 0.00001, 0.0001, 0.001], rotulo: "TIME/DIV" }
-    requiere: { mover: [s_div] }
+    objetivo:
+      condiciones:
+        - { valor: nyq, max: 1, rotulo: "Muestreo frente al doble de la señal: {{nyq}}" }
+      logrado: "Por debajo del doble, la conmutación se convierte en una onda lenta perfectamente creíble: un alias."
+      pistas:
+        - { texto: "Siga alargando la base de tiempos." }
+    escalera:
+      - "Muestreo real = 1000 puntos / (12 · s/div)."
+    solucion: "1 ms/div."
+    comprobar:
+      - { con: { s_div: 0.001 }, nyq: 0.166, tol: 0.01 }
 
   - id: formula-muestreo
-    tipo: formula
+    tipo: simular
     titulo: "El muestreo real"
-    texto: "Con memoria limitada, el muestreo real es el de repartir los 1000 puntos en las 12 divisiones."
-    libro: [581, 583]
-    ec: 581
-    sustitucion: "1000 / (12 · {{s_div}}) = {{f_s}}"
-    widget:
-      tipo: grafica
-      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
-      curvas:
-        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
-      lectura: { valor: f_s, rotulo: "Muestreo real" }
-      mandos:
-        - { valor: s_div, lista: [0.000004, 0.00001, 0.0001, 0.001], rotulo: "TIME/DIV" }
+    texto: "Los 1000 puntos se reparten en las 12 divisiones. Calcule el muestreo real a 1 ms/div."
+    libro: [580, 581, 582, 583]
+    fijar: { s_div: 0.001 }
     comprobar:
       - { con: { s_div: 0.001 }, f_s: 83333 }
+    simular:
+      objetivo: f_s
+      unidad: "S/s"
+      tol: 0.02
+      rotulo: "Muestreo real"
+      errores:
+        - { expr: "1000/s_div", texto: "Faltan las 12 divisiones: la ventana es doce veces la base." }
+        - { expr: "1/s_div", texto: "Eso es una muestra por división; hay mil puntos en doce." }
+    exito: "Unas 83 kS/s: muy lejos de la cifra de portada."
+    escalera:
+      - "Muestreo real = puntos / ventana; la ventana son 12 divisiones."
+    solucion: "1000 / (12 · 1 ms) ≈ 83 kS/s."
 
   - id: estime-alias
-    tipo: pregunta
+    tipo: simular
     titulo: "¿Qué frecuencia aparece?"
-    texto: "La conmutada de 251 kHz a 1 ms/div: el muestreo cae a 83,3 kS/s. ¿Qué frecuencia parece tener?"
+    texto: "La conmutada de 251 kHz a 1 ms/div: el muestreo cae a 83,3 kS/s. Calcule la frecuencia que parece tener."
     libro: [598]
     fijar: { s_div: 0.001, f_x: 251000 }
-    widget:
-      tipo: grafica
-      x: { id: d, min: 0, max: 12, unidad: div, rotulo: "horizontal" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
-      curvas:
-        - { expr: "sin(2*pi*f_a*d*s_div)", color: naranja, rotulo: "lo que se ve" }
-    estimar:
-      objetivo: "f_a"
-      unidad: Hz
-      min: 0
-      max: 10000
-      paso: 100
-      inicio: 8000
-      tol: 0.1
-      rotulo: "Frecuencia aparente"
     exito: "251 − 3 × 83,3 ≈ 1 kHz: una señal falsa de baja frecuencia que parece perfectamente real."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 1100 }, texto: "Se ha pasado: reste a 251 kHz el múltiplo del muestreo más cercano." }
-      - { texto: "Se ha quedado corto: tres veces 83,3 kS/s quedan a 1 kHz de los 251 kHz." }
+    simular:
+      objetivo: f_a
+      unidad: Hz
+      tol: 0.05
+      rotulo: "Frecuencia aparente"
+      errores:
+        - { expr: "f_x", texto: "Esa es la real: con este muestreo no puede verse." }
+        - { expr: "f_s", texto: "Ese es el muestreo; reste a 251 kHz su múltiplo más cercano." }
     escalera:
       - "Busque el múltiplo de 83,3 kHz más cercano a 251 kHz."
     solucion: "251 − 3 × 83,3 ≈ 1 kHz."
@@ -156,9 +167,9 @@ tarjetas:
     solucion: "Cambiar la base de tiempos: si la frecuencia aparente cambia, es alias."
 
   - id: estime-cinco
-    tipo: pregunta
+    tipo: marcar
     titulo: "La regla de los cinco"
-    texto: "Para medir la amplitud de una senoide con menos del 2 % de error, ¿hasta qué frecuencia sirve un instrumento de 50 MHz?"
+    texto: "Para medir la amplitud de una senoide con menos del 2 % de error, marque hasta dónde sirve uno de 50 MHz."
     libro: [570, 571, 572]
     fijar: { BW: 50000000 }
     widget:
@@ -167,22 +178,24 @@ tarjetas:
       y: { min: 0, max: 110, unidad: "%", rotulo: "amplitud mostrada" }
       curvas:
         - { expr: "100/sqrt(1 + (nu/BW)^2)", color: naranja, rotulo: "lo que muestra" }
-    estimar:
-      objetivo: "f_5"
-      unidad: Hz
-      min: 0
-      max: 50000000
-      paso: 500000
-      inicio: 40000000
-      tol: 0.05
-      rotulo: "Frecuencia máxima"
+        - { expr: "98 + 0*nu", color: tinta, rotulo: "98 %", discontinua: true }
+      mandos: []
     exito: "Unos 10 MHz: el ancho de banda debe ser al menos cinco veces la frecuencia."
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_5"
+      tol: 0.1
+      inicio: { x: 40000000, y: 50 }
+      rotulo: "Hasta aquí"
     pistas:
-      - { cuando: { valor: estimacion, mayor: 10500000 }, texto: "Se ha pasado: a 25 MHz ya muestra solo el 89 %." }
-      - { texto: "Se ha quedado corto: hasta la quinta parte del ancho de banda el error es menor del 2 %." }
+      - { cuando: { valor: marca_x, menor: 10000000 }, texto: "Ahí aún sobra margen: más a la derecha." }
+      - { texto: "Ahí ya muestra menos del 98 %: más a la izquierda." }
     escalera:
       - "La regla de los cinco."
     solucion: "50 MHz / 5 = 10 MHz."
+    comprobar:
+      - { f_5: 10000000, A_b: 98, con: { f_b: 10000000 }, tol: 0.01 }
 
   - id: voltimetro
     tipo: porque
@@ -205,28 +218,6 @@ tarjetas:
     escalera:
       - "¿Cuántos niveles tiene un convertidor de 8 bits?"
     solucion: "Una parte en 256 frente a una en 500 000: el osciloscopio dice cómo cambia; el multímetro, cuánto vale."
-
-  - id: equivalente
-    tipo: pregunta
-    titulo: "Muestreo equivalente"
-    texto: "Un instrumento con muestreo equivalente ve señales rápidas con un convertidor lento. ¿Cuándo no sirve?"
-    libro: [593]
-    widget:
-      tipo: figura
-      figura: fig-21.45
-      zonas:
-        - { id: limites, rotulo: "Los tres límites", rect: [0, 0, 450, 189] }
-    opciones:
-      - texto: "Con un evento único o una señal que cambia"
-        bien: true
-        porque: "Reconstruye la forma con muestras de muchas repeticiones: solo vale para señales repetitivas y estables."
-      - texto: "Con señales periódicas lentas"
-        porque: "Esas las ve sin problema; ni siquiera lo necesita."
-      - texto: "Con cualquier señal rápida"
-        porque: "Es justo para lo rápido, siempre que se repita igual."
-    escalera:
-      - "¿De dónde saca las muestras que le faltan?"
-    solucion: "Con un evento único o una señal que cambia: ahí manda el tiempo real."
 
   - id: banco-alias
     tipo: banco
@@ -252,7 +243,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [568, 572, 581, 585, 586]
+    libro: [568, 572, 581, 585, 586, 591, 592, 593, 599]
     ideas:
       - { titulo: "Ancho de banda.", texto: "Una caída progresiva: para la amplitud, cinco veces la frecuencia." }
       - { titulo: "Muestreo real.", texto: "1000 puntos en 12 divisiones: baja al alargar la base de tiempos." }

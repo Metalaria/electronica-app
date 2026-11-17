@@ -1,11 +1,20 @@
-# Lección 1.2 de la sección 13.2 «El Equipo de Soldadura» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# Lección de la sección 13.2 «El Equipo de Soldadura» (cap13). Formato: contenido/lecciones11/GUIA.md.
 # La gráfica es cualitativa, como la figura 13.3 (recuperación térmica con y sin control): el libro no da cifras de
 # esa caída, así que sus valores son un EJEMPLO y la nota lo dice. Valores de ejemplo: consigna 330 °C (la del
 # estaño-plomo, bloque 46); caída de 60 °C con punta de aguja y la mitad con cincel, proporcional a 60 W / potencia;
 # con control se recupera con τ = 0,5 s; sin control baja hacia un equilibrio con τ = 1 s y no vuelve.
+# 1.2.1 (aprender haciendo): elegir control y punta hasta que la punta aguante, comparar 60 W regulado con 100 W,
+# tocar el descuido de la punta y lo que no es opcional, escribir la temperatura del sin plomo, la soldadura de
+# prueba en el banco. Dos preguntas: la punta para trabajo fino y por qué no subir la temperatura.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap13/sec-13.2
 
 libro:
+  39: "Es lo que más alarga su vida y lo que menos se hace"
+  48: "Lo demás del puesto"
+  50: "Iluminación y lupa (sección 55.14)"
+  51: "Protección antiestática si se manejan MOSFET o integrados"
+  52: "Estación de aire caliente para SMD (sección 13.4), que es"
   30: "su punta se enfría al tocar la pieza, precisamente cuando hace falta calor"
   31: "Recuperación térmica: cuánto tarda en recuperar la temperatura tras ceder calor."
   32: "una punta fina de aguja tiene poca reserva de calor y se enfría al instante"
@@ -27,6 +36,8 @@ libro:
 
 modelo:
   valores:
+    T_sac: { sim: "T", nombre: "temperatura de punta con SAC305", unidad: "°C", valor: 365 }
+    T_pb: { sim: "T", nombre: "temperatura de punta con estaño-plomo", unidad: "°C", valor: 315 }
     T_0: { sim: "T_{consigna}", nombre: "temperatura ajustada", unidad: "°C", valor: 330 }
     c_on: { tipo: interruptor, nombre: "control de temperatura", valor: 1 }
     p_t: { sim: "punta", nombre: "tipo de punta", unidad: "", valor: 1 }
@@ -40,7 +51,7 @@ tarjetas:
   - id: explore-control
     tipo: explorar
     titulo: "La punta toca la junta"
-    texto: "La punta toca una junta al empezar. Quite el control de temperatura y cambie la punta."
+    texto: "La punta toca una junta al empezar. Elija control y punta hasta que la punta siga cerca de la consigna a los 2 s."
     nota: "Curva cualitativa con valores de ejemplo, como la figura 13.3."
     libro: [30, 31, 32]
     widget:
@@ -54,33 +65,48 @@ tarjetas:
       mandos:
         - { valor: c_on, tipo: interruptor, rotulo: "Control de temperatura" }
         - { valor: p_t, lista: [1, 2], nombres: [aguja, cincel], rotulo: "Punta" }
-    requiere: { mover: [c_on, p_t] }
+    inicio: { c_on: 0, p_t: 1 }
+    objetivo:
+      condiciones:
+        - { valor: T_2, min: 322, rotulo: "Punta a los 2 s: {{T_2}}" }
+      logrado: "Con control y cincel, la punta sigue a {{T_2}}: la capacidad de mantener la temperatura importa más que la ajustada."
+      pistas:
+        - { cuando: { valor: c_on, max: 0 }, texto: "Sin control, la punta baja a un equilibrio y no vuelve: actívelo." }
+        - { texto: "La aguja tiene poca reserva de calor: pruebe el cincel." }
+    escalera:
+      - "Una punta grande con control recupera antes."
+    solucion: "Control de temperatura y punta de cincel."
 
-  - id: prediga-potencia
-    tipo: predecir
-    titulo: "¿Más vatios o control?"
-    texto: "Uno de 60 W bien regulado frente a uno de 100 W sin control. ¿Cuál suelda mejor?"
+  - id: sorpresa-vatios
+    tipo: sorpresa
+    titulo: "Menos vatios, mejor soldadura"
+    texto: "Pase del de 100 W sin control al de 60 W regulado y mire la punta a los 2 s."
+    nota: "Valores de ejemplo; la conclusión es la del libro."
     libro: [33]
-    fijar: { c_on: 1, p_t: 2, P_s: 60 }
+    fijar: { p_t: 2 }
+    inicio: { c_on: 0, P_s: 100 }
     widget:
       tipo: grafica
       x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
       y: { min: 250, max: 340, unidad: "°C", rotulo: "punta" }
       curvas:
         - { expr: "T_0 - D_t*(c_on*(t/0.5)*exp(1 - t/0.5) + (1 - c_on)*(1 - exp(-t)))", color: naranja, rotulo: "temperatura de la punta" }
+        - { expr: "T_0", color: tinta, rotulo: "consigna", discontinua: true }
       lectura: { valor: T_2, rotulo: "Punta a los 2 s" }
-      ocultar: true
-    opciones:
-      - texto: "El de 60 W regulado"
-        bien: true
-        porque: "Mantener la temperatura importa más que la potencia: el regulado mide y compensa al ceder calor."
-      - texto: "El de 100 W sin control"
-        porque: "Sin control, su punta se enfría al tocar la pieza, justo cuando hace falta calor."
-      - texto: "Igual: lo que cuenta es la temperatura ajustada"
-        porque: "La temperatura ajustada importa menos que la capacidad de mantenerla."
+      mandos:
+        - { valor: P_s, lista: [60, 100], rotulo: "Potencia" }
+        - { valor: c_on, tipo: interruptor, rotulo: "Control de temperatura" }
+    objetivo:
+      condiciones:
+        - { valor: P_s, max: 60, rotulo: "Soldador de 60 W" }
+        - { valor: c_on, min: 1, rotulo: "Con control" }
+      logrado: "Con 60 W regulado, {{T_2}} a los 2 s; el de 100 W sin control se quedaba más abajo. Más vatios no es mejor soldadura."
+      pistas:
+        - { cuando: { valor: P_s, min: 100 }, texto: "Pase al de 60 W." }
+        - { texto: "Active el control de temperatura." }
     escalera:
-      - "¿Qué pasa con la temperatura de la punta al tocar una junta fría?"
-    solucion: "El de 60 W regulado: mantiene la temperatura."
+      - "Lo que cuenta es mantener la temperatura."
+    solucion: "60 W con control: la punta aguanta mejor."
 
   - id: punta-fina
     tipo: pregunta
@@ -108,67 +134,24 @@ tarjetas:
       - "¿Qué decide que el calor llegue antes: el tamaño del componente o el contacto?"
     solucion: "Cincel de 2 o 3 mm: la punta más grande que quepa."
 
-  - id: cuidar-punta
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Cuidar la punta"
-    texto: "Una cada momento con lo que hay que hacer para que la punta dure años."
-    libro: [40, 41, 42, 43]
-    emparejar:
-      - ["Al encender y antes de apagar", "Estañarla"]
-      - ["Al limpiarla", "Viruta de latón, no esponja húmeda"]
-      - ["Si parece sucia o gastada", "Nunca limarla ni rascarla"]
-      - ["En las pausas", "Bajar la temperatura"]
-    exito: "El estaño protege el recubrimiento; el choque térmico y la lima lo destruyen."
-    pistas:
-      - { texto: "La esponja húmeda da un choque térmico en cada limpieza." }
-    escalera:
-      - "Bajo el recubrimiento de hierro está el cobre, que el estaño disuelve."
-    solucion: "Estañar al encender y apagar; latón; nunca limar; bajar en pausas."
-
   - id: temperatura-sac
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "La punta para sin plomo"
     texto: "¿A qué temperatura se trabaja la punta con SAC305?"
-    libro: [46]
-    estimar:
-      objetivo: "365"
+    libro: [46, 47]
+    simular:
+      objetivo: T_sac
       unidad: "°C"
-      min: 250
-      max: 450
-      paso: 5
-      inicio: 300
       tol: 0.042
       rotulo: "Temperatura de punta"
-    exito: "Entre 350 y 380 °C; con estaño-plomo, de 300 a 330 °C."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 380 }, texto: "Se ha pasado: por encima de 380 °C la punta se oxida deprisa." }
-      - { texto: "Se ha quedado corto: eso es para estaño-plomo; el sin plomo pide más." }
+      errores:
+        - { expr: "T_pb", texto: "Eso es para estaño-plomo, de 300 a 330 °C: el sin plomo pide más." }
+    exito: "De 350 a 380 °C. El criterio: la más baja que permita soldar en dos o tres segundos."
     escalera:
-      - "Con estaño-plomo se trabaja a 300 – 330 °C, y el sin plomo funde más alto."
+      - "El sin plomo funde más alto que el estaño-plomo, y la punta va más caliente."
     solucion: "De 350 a 380 °C."
-
-  - id: sorpresa-vatios
-    tipo: sorpresa
-    titulo: "Menos vatios, mejor soldadura"
-    texto: "Compare el de 100 W sin control con el de 60 W regulado. Mire la punta a los 2 s."
-    nota: "Valores de ejemplo; la conclusión es la del libro."
-    libro: [33]
-    fijar: { p_t: 2 }
-    inicio: { c_on: 0, P_s: 100 }
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
-      y: { min: 250, max: 340, unidad: "°C", rotulo: "punta" }
-      curvas:
-        - { expr: "T_0 - D_t*(c_on*(t/0.5)*exp(1 - t/0.5) + (1 - c_on)*(1 - exp(-t)))", color: naranja, rotulo: "temperatura de la punta" }
-        - { expr: "T_0", color: tinta, rotulo: "consigna", discontinua: true }
-      lectura: { valor: T_2, rotulo: "Punta a los 2 s" }
-      mandos:
-        - { valor: P_s, lista: [60, 100], rotulo: "Potencia" }
-        - { valor: c_on, tipo: interruptor, rotulo: "Control de temperatura" }
-    requiere: { mover: [P_s, c_on] }
+    comprobar:
+      - { T_sac: 365, T_pb: 315 }
 
   - id: por-que-punta
     tipo: porque
@@ -194,29 +177,6 @@ tarjetas:
       - "¿Qué es lo primero que la gente sube, y dónde está casi siempre el fallo?"
     solucion: "La punta oxidada o mal estañada, no la temperatura."
 
-  - id: humos
-    tipo: pregunta
-    titulo: "La aspiración no es opcional"
-    texto: "¿De dónde salen los humos al soldar?"
-    libro: [49, "cap13#155"]
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
-      y: { min: 250, max: 340, unidad: "°C", rotulo: "punta" }
-      curvas:
-        - { expr: "T_0 - D_t*(c_on*(t/0.5)*exp(1 - t/0.5) + (1 - c_on)*(1 - exp(-t)))", color: naranja, rotulo: "temperatura de la punta" }
-    opciones:
-      - texto: "Del flux: son irritantes respiratorios"
-        bien: true
-        porque: "Por eso hace falta aspiración con cualquier aleación."
-      - texto: "Del plomo, que se evapora"
-        porque: "El plomo no se evapora a esas temperaturas; su riesgo es la ingestión."
-      - texto: "Del cobre de la placa al calentarse"
-        porque: "El cobre no humea al soldar: el humo es del flux."
-    escalera:
-      - "¿Qué componente del hilo de estaño se quema al soldar?"
-    solucion: "Del flux."
-
   - id: banco-prueba
     tipo: banco
     titulo: "La soldadura de prueba"
@@ -237,7 +197,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [33, 37, 40, 47]
+    libro: [33, 37, 40, 47, 39, 41, 42, 43, 48, 49, 50, 51, 52, "cap13#155"]
     ideas:
       - { titulo: "Mantener, no ajustar.", texto: "Importa más mantener la temperatura que la que se ajusta: control y recuperación." }
       - { titulo: "La punta.", texto: "La más grande que quepa; la aguja solo donde no cabe otra." }

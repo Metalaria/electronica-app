@@ -2,6 +2,10 @@
 # Formato: contenido/lecciones11/GUIA.md (§10.2, §11). El nodo del libro: 8 mA durante 5 ms cada segundo y 3 µA el
 # resto, con una pila de 2 000 mAh (la capacidad va en A·h, 2). La fuga de placa es el divisor de 10 kΩ y 20 kΩ desde
 # 3,3 V (110 µA), con el esquema «divisor» simulado.
+# 1.2.1 («aprender haciendo», GUIA §13): bajar la media casi a la mitad es el objetivo de la exploración (con la mitad
+# de corriente o la mitad de tiempo); la media, la autonomía en horas y los años con el divisor conectado (153 µA de
+# media, 1,5 años, figura 39.10) se escriben; la corriente del divisor se simula. Quedan dos preguntas de opciones:
+# dormir más profundo y de qué despertar. Los modos, el perfil y la medida con el Brymen van en los textos.
 leccion: cap38/sec-38.6
 
 libro:
@@ -16,8 +20,6 @@ libro:
   185: "Es la técnica que más ahorra, porque elimina el despertar más frecuente"
   188: "un divisor de 10 kΩ y 20 kΩ desde 3,3 V consume 110 µA continuamente"
   189: "La mayoría de los diseños de bajo consumo fallan en la placa, no en el firmware"
-  192: "Dibujar el perfil temporal"
-  194: "en el rango de µA la caída del instrumento puede ser de cientos de milivoltios"
   196: "La autonomía la fija el consumo medio, no el de pico"
   197: "las fugas de placa comparadas con el consumo del microcontrolador dormido"
 
@@ -42,13 +44,16 @@ modelo:
     I_div: { expr: "V_dd/(R_a + R_b)", sim: "I_{divisor}", nombre: "corriente del divisor", unidad: A }
     V_div: { expr: "V_dd*R_b/(R_a + R_b)", sim: "V_{salida}", nombre: "salida del divisor", unidad: V }
     I_sola: { expr: "V_dd/R_a", sim: "I", nombre: "corriente con una sola resistencia", unidad: A }
+    I_tot: { expr: "I_med + I_div", sim: "I_{media}", nombre: "media con el divisor", unidad: A }
+    anos_div: { expr: "C_b/I_tot/8760", sim: "autonomía", nombre: "autonomía con el divisor", unidad: "años", cifras: 2 }
 
 tarjetas:
   - id: explore-media
     tipo: explorar
     titulo: "El consumo medio"
-    texto: "Un nodo despierta 5 ms cada segundo. Cambie la corriente despierto y el tiempo despierto, y mire la media."
-    libro: [170, 171, 196]
+    texto: "Un nodo despierta 5 ms cada segundo a 8 mA. Baje la corriente media casi a la mitad tocando uno solo de los dos mandos."
+    libro: [170, 171, 173, 174, 196]
+    inicio: { I_act: 0.008, t_act: 0.005 }
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 0.01, unidad: s, rotulo: "tiempo despierto por segundo" }
@@ -61,60 +66,50 @@ tarjetas:
       mandos:
         - { valor: I_act, lista: [0.004, 0.008], rotulo: "Corriente despierto" }
         - { valor: t_act, lista: [0.0025, 0.005], rotulo: "Tiempo despierto" }
-    requiere: { mover: [I_act, t_act] }
+    objetivo:
+      condiciones:
+        - { valor: I_med, max: 0.000025, rotulo: "Media: {{I_med}}" }
+        - { valor: I_med, min: 0.00002, rotulo: "Con un solo cambio" }
+      logrado: "{{I_med}}: casi la mitad, se reduzca la corriente o el tiempo. Acortar el tiempo despierto cuesta mucho menos esfuerzo: despertar poco, hacerlo deprisa y dormir."
+      pistas:
+        - { cuando: { valor: I_med, menor: 0.00002 }, texto: "Ha tocado los dos: con uno basta." }
+        - { texto: "Reduzca a la mitad la corriente despierto o el tiempo despierto." }
+    escalera: ["La media es la corriente despierto por la fracción de tiempo despierto, más el reposo."]
+    solucion: "La mitad de corriente despierto, o la mitad de tiempo despierto."
+    comprobar:
+      - { con: { I_act: 0.004, t_act: 0.005 }, I_med: 0.000023 }
 
   - id: formula-media
-    tipo: formula
+    tipo: leer
     titulo: "La media ponderada"
-    texto: "Cada corriente pesa lo que dura: 8 mA durante 0,005 del tiempo y 3 µA el resto."
-    libro: [172]
-    ec: 172
+    texto: "8 mA durante 5 ms de cada segundo y 3 µA el resto. Calcule la corriente media y escríbala."
+    libro: [171, 172]
     fijar: { I_act: 0.008, t_act: 0.005 }
-    sustitucion: "{{I_act}} × {{frac}} + {{I_rep}} × {{frac_r}} = {{I_med}}"
     widget:
       tipo: grafica
       x: { id: tx, min: 0, max: 0.01, unidad: s, rotulo: "tiempo despierto por segundo" }
       y: { min: 0, max: 0.0001, unidad: A, rotulo: "I_{media}" }
       curvas:
         - { expr: "I_act*tx/T_c + I_rep*(1 - tx/T_c)", color: azul, rotulo: "I_{media}" }
-      marcas:
-        - { x: "t_act", y: "I_med", rotulo: "{{I_med}}" }
+      mandos: []
+    leer:
+      objetivo: I_med
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente media"
+      errores:
+        - { expr: "I_act", texto: "Esa es la corriente despierto; la media pondera cada corriente por lo que dura." }
+    exito: "{{I_med}}: la domina el tiempo despierto, no el consumo dormido."
+    escalera: ["8 mA × 0,005 + 3 µA × 0,995."]
+    solucion: "{{I_act}} × {{frac}} + {{I_rep}} × {{frac_r}} = {{I_med}}."
     comprobar:
-      - { frac: 0.005, I_med: 0.000043, tol: 0.01 }
+      - { frac: 0.005, I_med: 0.000043 }
 
   - id: estime-autonomia
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "¿Cuántos años?"
-    texto: "Con 43 µA de media y una pila de 2 000 mAh, ¿cuántos años dura en teoría?"
+    tipo: leer
+    titulo: "¿Cuántas horas?"
+    texto: "Con esa media y una pila de 2 000 mAh, calcule la autonomía teórica en horas."
     libro: [172, 173]
-    fijar: { I_act: 0.008, t_act: 0.005 }
-    estimar:
-      objetivo: "anos"
-      unidad: "años"
-      min: 0
-      max: 10
-      paso: 0.1
-      inicio: 8
-      tol: 0.05
-      rotulo: "Autonomía teórica"
-    exito: "46 512 horas: más de cinco años teóricos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 5.3 }, texto: "Se ha pasado: 2 000 mAh entre 0,043 mA son 46 512 horas; páselas a años." }
-      - { texto: "Se ha quedado corto: 2 000 mAh entre 0,043 mA dan decenas de miles de horas." }
-    escalera: ["Autonomía = capacidad / corriente media, en horas; luego, a años."]
-    solucion: "2 000 / 0,043 = 46 512 h ≈ 5,3 años."
-    comprobar:
-      - { anos: 5.31, tol: 0.01 }
-      - { I_med: 0.000043, tol: 0.01 }
-      - { horas: 46512, tol: 0.001 }
-      - { con: { C_b: 2, I_rep: 0.000003 }, anos: 5.31, tol: 0.01 }
-
-  - id: prediga-mitad
-    tipo: predecir
-    titulo: "¿Qué mitad ahorra más?"
-    texto: "Puede reducir a la mitad la corriente despierto o el tiempo despierto. ¿Cuál baja más la media?"
-    libro: [173, 174]
     fijar: { I_act: 0.008, t_act: 0.005 }
     widget:
       tipo: grafica
@@ -122,45 +117,32 @@ tarjetas:
       y: { min: 0, max: 0.0001, unidad: A, rotulo: "I_{media}" }
       curvas:
         - { expr: "I_act*tx/T_c + I_rep*(1 - tx/T_c)", color: azul, rotulo: "I_{media}" }
-      lectura: { valor: I_med, rotulo: "Corriente media" }
-      ocultar: true
-    opciones:
-      - { texto: "Casi lo mismo, y acortar el tiempo cuesta mucho menos esfuerzo", bien: true, porque: "La media es corriente por fracción de tiempo: las dos mitades dan casi igual." }
-      - { texto: "La corriente: el consumo despierto es lo que manda", porque: "Pesa tanto como el tiempo: la media es su producto." }
-      - { texto: "Ninguna: domina el consumo dormido", porque: "Dormido son 3 µA; despierto, los 40 µA de media: domina el tiempo despierto." }
-    escalera: ["En la media, la corriente despierto va multiplicada por la fracción de tiempo despierto."]
-    solucion: "Casi lo mismo: despertar lo menos posible y hacerlo deprisa."
+      mandos: []
+    leer:
+      objetivo: horas
+      unidad: h
+      tol: 0.02
+      rotulo: "Autonomía"
+      errores:
+        - { expr: "C_b/I_act", texto: "Ha usado la corriente despierto; la pila la gasta la media." }
+    exito: "{{horas}}: {{anos}} teóricos, más de cinco años."
+    escalera: ["Autonomía = capacidad / corriente media."]
+    solucion: "2 000 mAh / 0,043 mA = {{horas}}."
     comprobar:
-      - { I_med: 0.000043, tol: 0.01, I_desp: 0.00004 }
-
-  - id: empareje-modos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La escalera de modos"
-    texto: "Una cada modo de bajo consumo con lo que conserva y su consumo típico."
-    libro: [177, 178]
-    emparejar:
-      - ["Idle / Sleep", "Para el núcleo; los periféricos siguen. Cientos de µA"]
-      - ["Stop / Standby", "Casi todo parado; retiene la RAM. 1 – 10 µA"]
-      - ["Deep sleep / Shutdown", "Todo parado; pierde la RAM. 10 – 500 nA"]
-    exito: "Más ahorro, más coste de despertar: perder la RAM obliga a reconstruir el estado."
-    pistas:
-      - { texto: "El más profundo es el único que pierde la RAM." }
-    escalera: ["¿En cuál siguen funcionando los periféricos?"]
-    solucion: "Sleep, cientos de µA; Stop, retiene la RAM; Deep sleep, pierde la RAM."
+      - { horas: 46512, anos: 5.31 }
 
   - id: porque-profundo
     tipo: porque
     titulo: "Dormir más profundo"
     texto: "Con un ciclo de trabajo muy corto, ¿por qué dormir más profundo puede consumir más?"
-    libro: [180]
+    libro: [177, 178, 180]
     widget:
       tipo: figura
       figura: fig-38.10
       zonas:
         - { id: perfil, rotulo: "Gráfica de la izquierda", rect: [40, 8, 140, 158], texto: "Picos cortos de actividad sobre el fondo de sueño." }
     opciones:
-      - { texto: "Despertar cuesta energía: rearrancar el oscilador y estabilizar el regulador", bien: true, porque: "Si se despierta muy a menudo, esa energía puede superar a la que ahorra el modo profundo." }
+      - { texto: "Despertar cuesta energía: rearrancar el oscilador y estabilizar el regulador", bien: true, porque: "Si se despierta a menudo, supera a la ahorrada. Y el modo más profundo pierde la RAM: hay que reconstruir el estado." }
       - { texto: "Porque en el modo profundo la RAM consume más", porque: "Al contrario: el modo profundo puede perder la RAM para ahorrar." }
       - { texto: "No puede: más profundo es siempre menos consumo", porque: "El libro lo desmiente: el tiempo y la energía de despertar cuentan como actividad." }
     escalera: ["¿Qué cuesta salir de un modo profundo, en tiempo y en energía?"]
@@ -212,40 +194,31 @@ tarjetas:
     comprobar:
       - { I_div: 0.00011, V_div: 2.2, I_sola: 0.00033, R_tot: 30000 }
 
-  - id: ordene-perfil
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Diseñar el perfil de consumo"
-    texto: "Ponga en orden el procedimiento que funciona."
-    libro: [192]
-    ordenar:
-      - "Dibujar el perfil temporal de cada ciclo."
-      - "Medir el consumo de cada fase por separado."
-      - "Calcular la media con la integral."
-      - "Atacar el término dominante."
-      - "Repetir: al eliminarlo aparece otro."
-    exito: "El dominante suele ser uno solo, y a menudo no el esperado: la radio, o la espera al sensor."
-    pistas:
-      - { texto: "No se puede atacar el dominante sin haber calculado la media." }
-    escalera: ["Primero saber qué hace el sistema y durante cuánto."]
-    solucion: "Perfil, medir cada fase, media, atacar el dominante y repetir."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Medir microamperios"
-    texto: "Mide el consumo dormido con el Brymen en serie, en el rango de µA, y el sistema no arranca. ¿Por qué?"
-    libro: [194]
+  - id: leer-anos-divisor
+    tipo: leer
+    titulo: "La placa, no el firmware"
+    texto: "Con el divisor siempre conectado, la media del nodo sube a 153 µA. Calcule cuántos años dura ahora la pila de 2 000 mAh."
+    libro: [188, 189, 197]
+    fijar: { I_act: 0.008, t_act: 0.005 }
     widget:
-      tipo: figura
-      figura: fig-38.10
-      zonas:
-        - { id: fugas, rotulo: "Barras de la derecha", rect: [330, 15, 112, 150], texto: "Las fugas de placa, de 3 µA a 2 mA." }
-    opciones:
-      - { texto: "La caída del instrumento, de cientos de milivoltios, deja corta la alimentación", bien: true, porque: "Es la tensión de carga del amperímetro: en el rango de µA puede ser grande." }
-      - { texto: "El multímetro inyecta corriente", porque: "En serie no inyecta nada: resta tensión al circuito." }
-      - { texto: "El microcontrolador está averiado", porque: "Arrancaría sin el multímetro: el problema es la caída en el instrumento." }
-    escalera: ["Un amperímetro en serie no es un cable perfecto."]
-    solucion: "La tensión de carga del instrumento: cientos de mV en el rango de µA."
+      tipo: grafica
+      x: { id: tx, min: 0, max: 0.01, unidad: s, rotulo: "tiempo despierto por segundo" }
+      y: { min: 0, max: 0.0001, unidad: A, rotulo: "I_{media}" }
+      curvas:
+        - { expr: "I_act*tx/T_c + I_rep*(1 - tx/T_c)", color: azul, rotulo: "I_{media}" }
+      mandos: []
+    leer:
+      objetivo: anos_div
+      unidad: ""
+      tol: 0.03
+      rotulo: "Años"
+      errores:
+        - { expr: "anos", texto: "Esos son los años sin el divisor: sume sus 110 µA a la media." }
+    exito: "{{anos_div}} años en lugar de {{anos}}: la mayoría de los diseños de bajo consumo fallan en la placa. Hay que medir el sistema completo dormido."
+    escalera: ["2 000 mAh / 0,153 mA, en horas, y luego a años."]
+    solucion: "2 000 mAh / 0,153 mA, en años: {{anos_div}}."
+    comprobar:
+      - { I_tot: 0.000153, anos_div: 1.49 }
 
   - id: resumen
     tipo: resumen

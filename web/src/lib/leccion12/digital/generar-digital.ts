@@ -311,7 +311,7 @@ export function widgetLogicaDe(x: Record<string, unknown>, c: ContextoDigital, o
   lp.forEach((y: unknown, k: number) => {
     const d = `widget.piezas ${k + 1}`;
     const o = esObjeto(y) ? y : {};
-    for (const q of Object.keys(o)) if (!['id', 'tipo', 'entradas', 'bits', 'modulo', 'inicial', 'rotulo'].includes(q)) e(`«${d}.${q}»: clave desconocida`);
+    for (const q of Object.keys(o)) if (!['id', 'tipo', 'entradas', 'bits', 'modulo', 'inicial', 'rotulo', 'pullup'].includes(q)) e(`«${d}.${q}»: clave desconocida`);
     const id = String(o.id ?? '');
     if (!ID_PIEZA.test(id)) e(`«${d}.id»: minúsculas, cifras y guiones, empezando por una letra («n1», «ff-a»)`);
     if (nombres.has(id)) e(`«${d}.id»: «${id}» repetido`);
@@ -334,6 +334,13 @@ export function widgetLogicaDe(x: Record<string, unknown>, c: ContextoDigital, o
       else p.inicial = o.inicial as number;
     }
     if (o.rotulo != null) p.rotulo = c.texto(o.rotulo, `${d}.rotulo`, true) ?? [];
+    // (motor121: a shared line's resistor — 1 pull-up (default), 0 pull-down, «ninguna»: it floats)
+    if ('pullup' in o) {
+      if (tipo !== 'bus') e(`«${d}.pullup»: solo en una línea («tipo: bus»)`);
+      else if (o.pullup === 0 || o.pullup === 1) p.pullup = o.pullup;
+      else if (o.pullup === 'ninguna' || o.pullup === null) p.pullup = null;
+      else e(`«${d}.pullup»: 1 (a la alimentación), 0 (a masa) o ninguna`);
+    }
     const [mn, mx] = pinesPermitidos(p);
     if (p.entradas.length < mn || p.entradas.length > mx) e(`«${d}.entradas»: ${mn === mx ? mn : `de ${mn} a ${mx}`} señales (${pinesEntrada({ ...p, entradas: new Array(mx).fill('') }).join(', ')})`);
     piezas.push(p);
@@ -342,6 +349,14 @@ export function widgetLogicaDe(x: Record<string, unknown>, c: ContextoDigital, o
   piezas.forEach((p, k) => p.entradas.forEach((r, q) => {
     if (r !== '0' && r !== '1' && !conocidas.has(r)) e(`«widget.piezas ${k + 1}.entradas ${q + 1}»: «${r}» no es una entrada ni la salida de una pieza (${[...conocidas].slice(0, 12).join(', ')}…)`);
   }));
+  // (motor121: an open-drain or tri-state output only means something on a line; a line is fed by them)
+  for (const [k, p] of piezas.entries()) {
+    if (p.tipo === 'bus') for (const [q, r] of p.entradas.entries()) {
+      const de = piezas.find((x) => x.id === r);
+      if (!de || (de.tipo !== 'od' && de.tipo !== 'tri')) e(`«widget.piezas ${k + 1}.entradas ${q + 1}»: una línea («bus») se conecta a salidas «od» o «tri» («${r}» no lo es: dos salidas normales en una línea se pelearían siempre)`);
+    }
+    if ((p.tipo === 'od' || p.tipo === 'tri') && !piezas.some((x) => x.tipo === 'bus' && x.entradas.includes(p.id))) e(`«widget.piezas ${k + 1}»: una salida «${p.tipo}» va a una línea («tipo: bus», con su resistencia)`);
+  }
   const salidas: SalidaLogica[] = [];
   const ls = Array.isArray(x.salidas) ? x.salidas : [];
   if (ls.length > MAX_SALIDAS) e(`«widget.salidas»: como mucho ${MAX_SALIDAS}`);
@@ -451,7 +466,7 @@ export function actividadDigitalDe(tipo: 'tocar' | 'tabla' | 'averia' | 'diseno'
   };
   const w = t.widget;
   if (tipo === 'tocar') {
-    claves(['bien', 'todas', 'porque'], 'tocar');
+    claves(['bien', 'todas', 'porque', 'orden'], 'tocar');
     if (w?.tipo !== 'figura') {
       e('una tarjeta «tocar» lleva un widget «figura» con sus zonas');
       return out;
@@ -460,22 +475,27 @@ export function actividadDigitalDe(tipo: 'tocar' | 'tabla' | 'averia' | 'diseno'
     const bien = (Array.isArray(x.bien) ? x.bien : x.bien != null ? [x.bien] : []).map(String);
     if (!bien.length) e('«tocar.bien»: la zona (o zonas) que responden');
     for (const z of bien) if (!ids.includes(z)) e(`«tocar.bien»: «${z}» no es una zona de la figura (${ids.join(', ')})`);
-    if (bien.length >= ids.length) e('«tocar.bien»: alguna zona tiene que no ser la respuesta');
-    const todas = x.todas === true;
+    // (1.2.1: in an ordered touch every zone may be part of the answer: what is checked is the order)
+    const orden = x.orden === true;
+    if (x.orden != null && typeof x.orden !== 'boolean') e('«tocar.orden»: true o false');
+    if (orden && bien.length < 2) e('«tocar.orden»: al menos dos zonas buenas, en su orden');
+    if (orden && x.todas === false) e('«tocar.orden» ya pide tocarlas todas: quite «todas: false»');
+    if (bien.length >= ids.length && !orden) e('«tocar.bien»: alguna zona tiene que no ser la respuesta');
+    const todas = x.todas === true || orden;
     if (x.todas != null && typeof x.todas !== 'boolean') e('«tocar.todas»: true o false');
     if (!todas && bien.length > 1) c.aviso('«tocar»: varias zonas buenas y «todas: false»: vale tocar una cualquiera');
     const porque: Record<string, Texto> = {};
     const fp = esObjeto(x.porque) ? x.porque : {};
     for (const [k, v] of Object.entries(fp)) {
       if (!ids.includes(k)) e(`«tocar.porque.${k}»: no es una zona`);
-      else if (bien.includes(k)) e(`«tocar.porque.${k}»: es una zona buena (su explicación va en «exito»)`);
+      else if (bien.includes(k) && !orden) e(`«tocar.porque.${k}»: es una zona buena (su explicación va en «exito»)`);
       else {
         const r = explicacion(v, `tocar.porque.${k}`);
         if (r) porque[k] = r;
       }
     }
     for (const z of ids) if (!bien.includes(z) && !porque[z]) e(`«tocar.porque»: falta por qué no es «${z}» (cada zona que no es la respuesta lleva su explicación)`);
-    out.actividad = { tipo: 'tocar', bien, todas, porque } satisfies Tocar;
+    out.actividad = { tipo: 'tocar', bien, todas, porque, ...(orden ? { orden } : {}) } satisfies Tocar;
     return out;
   }
   if (w?.tipo !== 'logica') {

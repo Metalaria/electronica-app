@@ -1,6 +1,9 @@
 # Lección 1.1 de la sección 0.2 «Álgebra Esencial» (cap00): la ley de Ohm despejada de tres maneras, despejar paso a
 # paso, la proporcionalidad cuadrática, el sistema de dos mallas como dos rectas que se cortan, comprobar y la trampa de
 # las magnitudes que dependen entre sí. Formato: contenido/lecciones11/GUIA.md.
+# 1.2.1 (autor121-fund, «aprender haciendo», GUIA §13): conseguir 2 A, predecir la potencia con doble corriente,
+# doblar las corrientes de malla, el reto de la compartida, doblar R₂ y calcular la potencia de la fuente; se eligen
+# el despeje de V y la diferencia en la malla. El orden del despeje queda en el resumen.
 leccion: cap00/sec-0.2
 
 libro:
@@ -29,6 +32,7 @@ modelo:
     V_d: { sim: "V_{entrada}", nombre: "tensión del divisor", unidad: V, valor: 12 }
     R_1: { sim: "R₁", nombre: "resistencia de arriba del divisor", unidad: Ω, valor: 10000 }
     R_2: { sim: "R₂", nombre: "resistencia de abajo del divisor", unidad: Ω, valor: 5000 }
+    P_d: { sim: "P", nombre: "potencia en la resistencia", unidad: W, valor: 12 }
   calculos:
     I: { expr: "V/R", sim: "I", nombre: "corriente", unidad: A }
     R_calc: { expr: "V/I", sim: "V/I", nombre: "tensión entre corriente", unidad: Ω }
@@ -41,12 +45,13 @@ modelo:
     I_comp: { expr: "I1 - I2", sim: "I₁ − I₂", nombre: "corriente por la resistencia compartida", unidad: A }
     P_f: { expr: "V_f*I1", sim: "P", nombre: "potencia que entrega la fuente", unidad: W }
     V_s: { expr: "V_d*R_2/(R_1 + R_2)", sim: "V_{salida}", nombre: "salida del divisor", unidad: V }
+    V_dp: { expr: "sqrt(P_d*R)", sim: "V", nombre: "tensión despejada de P = V²/R", unidad: V }
 
 tarjetas:
   - id: explore-ohm
     tipo: explorar
     titulo: "Una ley, tres formas"
-    texto: "V = I · R. Mueva la tensión y la resistencia: la corriente es V/R, y V/I devuelve siempre la misma R."
+    texto: "V = I · R. Mueva la tensión y la resistencia hasta que pasen 2 A."
     libro: [13, 14]
     widget:
       tipo: grafica
@@ -62,36 +67,41 @@ tarjetas:
       mandos:
         - { valor: V, min: 1, max: 12, paso: 0.5, rotulo: "Tensión, V" }
         - { valor: R, min: 1, max: 12, paso: 1, rotulo: "Resistencia, R" }
-    requiere: { mover: [V, R] }
+    inicio: { V: 6, R: 6 }
+    objetivo:
+      condiciones:
+        - { valor: I, objetivo: 2, tol: 0.01, rotulo: "I = {{I}}" }
+      logrado: "{{V}} entre {{R}}: {{I}}, y V/I devuelve {{R_calc}}. V = I·R, I = V/R y R = V/I son una sola relación."
+      pistas:
+        - { cuando: { valor: I, mayor: 2 }, texto: "Demasiada corriente: menos tensión o más resistencia." }
+        - { texto: "Falta corriente: más tensión o menos resistencia." }
+    escalera:
+      - "I = V/R: por ejemplo, 6 V entre 3 Ω."
+    solucion: "Con 6 V y 3 Ω: 2 A."
+    comprobar:
+      - { I: 1 }
+      - { con: { R: 3 }, I: 2, R_calc: 3 }
 
   - id: prediga-potencia
-    tipo: predecir
+    tipo: simular
     titulo: "Prediga"
-    texto: "Por una resistencia fija, la corriente se dobla. ¿Qué le pasa a la potencia, P = I^{2}·R?"
+    texto: "Por una resistencia fija, la corriente se dobla. ¿Cuántas veces crece la potencia, P = I^{2}·R?"
     libro: [26]
     fijar: { I_p: 1, R: 3 }
-    widget:
-      tipo: grafica
-      x: { id: i, min: 0, max: 2, unidad: A, rotulo: "I" }
-      y: { min: 0, max: 12, unidad: W, rotulo: "P" }
-      curvas:
-        - { expr: "R*i^2", color: naranja, rotulo: "P = I²·R" }
-      lectura: { valor: veces, rotulo: "La potencia crece" }
-      ocultar: true
-    opciones:
-      - texto: "Se cuadruplica"
-        bien: true
-        porque: "La relación es cuadrática: (2·I)^{2} = 4·I^{2}. Doblar la corriente no dobla la potencia, la cuadruplica."
-      - texto: "Se dobla"
-        porque: "Eso pasaría si fuera proporcional, como V = I·R a R fija. P depende del cuadrado de I."
-      - texto: "No cambia, porque R es la misma"
-        porque: "R fija no deja fija la potencia: P = I^{2}·R crece con el cuadrado de la corriente."
+    simular:
+      objetivo: veces
+      unidad: "veces"
+      tol: 0.02
+      rotulo: "La potencia crece"
+      errores:
+        - { razon: { min: 0.48, max: 0.52 }, texto: "Eso pasaría si fuera proporcional, como V = I·R a R fija. P depende del cuadrado de I." }
+        - { razon: { min: 0.24, max: 0.26 }, texto: "R fija no deja fija la potencia: P = I^{2}·R crece con el cuadrado de la corriente." }
+    exito: "Cuatro veces: (2·I)^{2} = 4·I^{2}. Doblar la corriente no dobla la potencia, la cuadruplica."
     escalera:
       - "Sustituya I por 2·I en P = I^{2}·R: ¿qué le pasa al cuadrado?"
-    solucion: "(2·I)^{2} = 4·I^{2}: la potencia se cuadruplica."
+    solucion: "(2·I)^{2} = 4·I^{2}."
     comprobar:
       - { veces: 4 }
-
   - id: regla-ohm
     tipo: formula
     titulo: "Despejar es aislar"
@@ -107,54 +117,39 @@ tarjetas:
         - { expr: "v/R", color: azul, rotulo: "I = V/R" }
       mandos:
         - { valor: V, min: 1, max: 12, paso: 0.5, rotulo: "Tensión, V" }
-
-  - id: ordene-despeje
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "Despejar C en tres pasos"
-    texto: "Ordene los pasos para despejar C de f = 1/(2π√(LC))."
-    libro: [19]
-    ordenar:
-      - "Elevar al cuadrado: f^{2} = 1/(4π^{2}LC)"
-      - "Invertir: 1/f^{2} = 4π^{2}LC"
-      - "Dividir: C = 1/(4π^{2}f^{2}L)"
-    exito: "Eso es. Cada paso es reversible: se comprueba volviendo atrás con el resultado."
-    pistas:
-      - { texto: "Primero hay que librarse de la raíz; lo último es dejar C sola." }
-    escalera:
-      - "Deshaga las operaciones en orden inverso: lo que envuelve a C por fuera se quita primero."
-    solucion: "Elevar al cuadrado: f^{2} = 1/(4π^{2}LC) → Invertir: 1/f^{2} = 4π^{2}LC → Dividir: C = 1/(4π^{2}f^{2}L)."
-
   - id: despeje-v
-    tipo: pregunta
+    tipo: simular
     titulo: "De la potencia a la tensión"
-    texto: "Despeje V de P = V^{2}/R. ¿Qué queda?"
+    texto: "Despeje V de P = V^{2}/R y calcúlela para una resistencia de 3 Ω que disipa 12 W."
     libro: [19]
-    opciones:
-      - texto: "V = √(P·R)"
-        bien: true
-        porque: "Se multiplica por R los dos lados (V^{2} = P·R) y se saca la raíz."
-      - texto: "V = √(P/R)"
-        porque: "R divide a V^{2}: para quitarla se multiplica por R, no se divide."
-      - texto: "V = P·R^{2}"
-        porque: "Falta deshacer el cuadrado de V: tras multiplicar por R hay que sacar la raíz."
+    fijar: { P_d: 12, R: 3 }
     widget:
       tipo: grafica
       x: { id: v, min: 0, max: 12, unidad: V, rotulo: V }
       y: { min: 0, max: 48, unidad: W, rotulo: P }
       curvas:
         - { expr: "v^2/R", color: naranja, rotulo: "P = V²/R" }
-      mandos:
-        - { valor: R, min: 3, max: 12, paso: 1, rotulo: "Resistencia, R" }
+      ocultar: curvas
+    simular:
+      objetivo: V_dp
+      unidad: V
+      tol: 0.02
+      rotulo: "V"
+      errores:
+        - { razon: { min: 0.32, max: 0.35 }, texto: "R divide a V^{2}: para quitarla se multiplica por R, no se divide." }
+        - { razon: { min: 17, max: 19 }, texto: "Falta deshacer el cuadrado de V: tras multiplicar por R hay que sacar la raíz." }
+    exito: "V = √(P·R) = 6 V: se multiplica por R los dos lados y se saca la raíz."
     escalera:
       - "Primero quite R del denominador: multiplique los dos lados por R."
       - "Queda V^{2} = P·R; falta deshacer el cuadrado."
-    solucion: "V^{2} = P·R y, con la raíz, V = √(P·R)."
+    solucion: "V = √(12 × 3) = 6 V."
+    comprobar:
+      - { V_dp: 6 }
 
   - id: explore-mallas
     tipo: explorar
     titulo: "Dos mallas, dos rectas"
-    texto: "10·I₁ − 6·I₂ = 12 y −6·I₁ + 9·I₂ = 0: cada ecuación es una recta. Mueva la fuente: la solución está donde se cortan."
+    texto: "10·I₁ − 6·I₂ = 12 y −6·I₁ + 9·I₂ = 0: cada ecuación es una recta. La solución está donde se cortan: suba la fuente hasta doblar I₁."
     libro: [21, 22, 23]
     widget:
       tipo: grafica
@@ -170,7 +165,19 @@ tarjetas:
         - { valor: I2, rotulo: "I₂ = {{I2}}" }
       mandos:
         - { valor: V_f, min: 0, max: 24, paso: 0.5, rotulo: "Fuente, V" }
-    requiere: { mover: [V_f] }
+    inicio: { V_f: 12 }
+    objetivo:
+      condiciones:
+        - { valor: I1, min: 3.99, rotulo: "I₁ = {{I1}}" }
+      logrado: "Con {{V_f}}, I₁ = {{I1}} e I₂ = {{I2}}: doble fuente, dobles corrientes. El sistema es lineal."
+      pistas:
+        - { texto: "Más tensión en la fuente." }
+    escalera:
+      - "Las corrientes crecen en proporción a la fuente."
+    solucion: "Con 24 V: I₁ = 4 A."
+    comprobar:
+      - { I1: 2 }
+      - { con: { V_f: 24 }, I1: 4, I2: 2.667, tol: 0.01 }
 
   - id: reto-compartida
     tipo: reto
@@ -208,7 +215,6 @@ tarjetas:
     tipo: sorpresa
     titulo: "Doblar R₂ no dobla la salida"
     texto: "Divisor de 12 V con R₁ = 10 kΩ y R₂ = 5 kΩ: 4,00 V. Doble R₂ y mire la salida."
-    nota: "No se dobla: R₂ está también en el denominador. Hay que despejarla."
     libro: [20, "cap01#83"]
     fijar: { V_d: 12, R_1: 10000 }
     inicio: { R_2: 5000 }
@@ -223,9 +229,19 @@ tarjetas:
       lectura: { valor: V_s, rotulo: "Salida" }
       mandos:
         - { valor: R_2, lista: [5000, 10000, 20000], rotulo: "R₂" }
-    requiere: { mover: [R_2] }
+    objetivo:
+      condiciones:
+        - { valor: R_2, objetivo: 10000, tol: 0.01, rotulo: "R₂ = {{R_2}}" }
+      logrado: "Con R₂ doble, {{V_s}}: no se dobla, porque R₂ está también en el denominador. Hay que despejarla."
+      pistas:
+        - { cuando: { valor: R_2, mayor: 10000 }, texto: "Eso es cuatro veces: elija el doble." }
+        - { texto: "Elija el doble de 5 kΩ." }
+    escalera:
+      - "Elija 10 kΩ."
+    solucion: "Con 10 kΩ: 6 V, no 8 V."
     comprobar:
       - { V_s: 4.0 }
+      - { con: { R_2: 10000 }, V_s: 6 }
 
   - id: por-que-diferencia
     tipo: porque
@@ -250,37 +266,31 @@ tarjetas:
     solucion: "R₂ es de las dos mallas: por ella pasa la diferencia, i₁ − i₂."
 
   - id: estime-potencia
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "Comprobar con la energía"
-    texto: "La fuente de 12 V entrega I₁ = 2 A. Estime la potencia que entrega: debe ser la que disipan las tres resistencias."
+    texto: "La fuente de 12 V entrega I₁ = 2 A. ¿Qué potencia entrega, que debe ser la que disipan las tres resistencias?"
     libro: [28, 25]
     fijar: { V_f: 12 }
-    estimar:
-      objetivo: "P_f"
+    simular:
+      objetivo: P_f
       unidad: W
-      min: 0
-      max: 50
-      paso: 1
-      inicio: 10
-      tol: 0.05
+      tol: 0.02
       rotulo: "Potencia de la fuente"
+      errores:
+        - { razon: { min: 0.64, max: 0.69 }, texto: "La fuente entrega I₁, no I₂." }
     exito: "12 × 2 = 24 W, y las resistencias disipan 16 + 5,33 + 2,67 W, que suman 24 W ✓."
-    pistas:
-      - { cuando: { valor: estimacion, menor: 22.8 }, texto: "Se ha quedado corto: la potencia de la fuente es V · I₁." }
-      - { texto: "Se ha pasado: multiplique los 12 V por los 2 A de I₁." }
     escalera:
       - "La potencia que entrega una fuente es su tensión por su corriente."
-    solucion: "12 × 2 = 24 W, y las resistencias disipan 16 + 5,33 + 2,67 W, que suman 24 W ✓."
+    solucion: "12 × 2 = 24 W."
     comprobar:
       - { P_f: 24 }
-
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
     libro: [14, 19, 24, 26]
     ideas:
-      - { titulo: "Despejar.", texto: "Lo mismo a ambos lados. V = I·R, I = V/R y R = V/I son una sola relación." }
+      - { titulo: "Despejar.", texto: "Lo mismo a ambos lados, deshaciendo las operaciones en orden inverso: de f = 1/(2π√(LC)) sale C = 1/(4π²f²L)." }
       - { titulo: "Proporcionalidad.", texto: "Doblar la corriente cuadruplica la potencia: P = I²·R es cuadrática." }
       - { titulo: "Sistemas.", texto: "Dos mallas, dos ecuaciones: I₁ = 2 A, I₂ = 1,333 A, y por la compartida, la diferencia." }
       - { titulo: "Comprobar siempre.", texto: "Sustituir el resultado, o ver que la potencia entregada iguala la disipada." }

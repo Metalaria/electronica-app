@@ -20,6 +20,15 @@ const d: DefinicionEsquema = {
     c: { obligatoria: true, descripcion: 'condensador de cada célula, C (F)', color: 'azul' },
     separadores: { interruptor: true, descripcion: 'seguidores ideales entre las células (cerrado; abierto o sin la pieza, unidas directamente)', color: 'verde' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  medible: (c) => {
+    const sep = c.tiene('separadores') && c.cerrado('separadores');
+    return {
+      puntos: { in: 'Entrada', n1: 'Tras la primera célula', n2: 'Tras la segunda célula', n3: 'Salida, tras la tercera célula', '0': 'Masa, abajo', ...(sep ? { b1: 'Tras el primer seguidor', b2: 'Tras el segundo seguidor' } : {}) },
+      ramas: {},
+      zonas: { fuente: 'Generador', c: 'Condensadores', r: 'Resistencias', ...(c.tiene('separadores') ? { separadores: 'Seguidores' } : {}) },
+    };
+  },
   observables: {
     ...observablesCA('salida', 'v(n3)', 'V', 'la salida de la red, tras la tercera célula'),
     ...observablesCA('celula1', 'v(n1)', 'V', 'la salida de la primera célula'),

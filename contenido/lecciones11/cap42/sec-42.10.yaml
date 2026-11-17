@@ -1,6 +1,11 @@
 # Lección 1.2 de la sección 43.10 «Herramientas Adicionales y Resumen» (cap42). Formato: GUIA.md.
 # Repaso del capítulo con el netlist del libro (cap42#103: 1 kΩ y 100 nF). La sección no tiene ecuaciones: sin
 # tarjeta «fórmula».
+# 1.2.1 (autor121-pot, «aprender haciendo», GUIA §13): repaso haciendo con el netlist del libro: el corte se lleva a
+# 3,4 kHz con C1 (objetivo; guardar la simulación, en su «logrado»); el .ac en el corte se predice y se simula; el
+# corte se marca en la curva; el de 220 nF y la τ del transitorio se escriben. Quedan dos preguntas de opciones (qué
+# diferencia a los simuladores y por qué terminar midiendo); el flujo ordenado, lo que hay que retener, las fuentes de
+# modelos y el operacional que no satura pasan al resumen.
 leccion: cap42/sec-42.10
 
 libro:
@@ -19,6 +24,7 @@ libro:
   302: "coincidir da confianza en ambas; discrepar señala lo que no se entendía"
   305: "tener la simulación original permite evaluar el cambio en minutos en lugar de rehacerla entera"
   "cap42#103": "R1 in out 1k"
+  "cap22#134": 'f_("c") = ("1")/("2" π dot.op R dot.op C)'
 
 modelo:
   valores:
@@ -29,14 +35,19 @@ modelo:
   calculos:
     f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
     x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    p63: { expr: "100*(1 - exp(-1))", sim: "1 − e⁻¹", nombre: "fracción a una τ", unidad: "%" }
+    dB3: { expr: "20*log10(0.7071)", sim: "−3 dB", nombre: "caída en el corte", unidad: dB }
+    kC: { expr: "C_f/100e-9", sim: "C1/100 nF", nombre: "capacidad relativa", unidad: "" }
+    tau: { expr: "R_f*C_f", sim: "τ", nombre: "constante de tiempo", unidad: s }
     A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "v(out)", nombre: "amplitud de la salida", unidad: V }
 
 tarjetas:
   - id: explore-cierre
     tipo: explorar
     titulo: "Un netlist, todo el capítulo"
-    texto: "El RC del netlist del libro, guardado con su nota: se puede volver a simular años después. Cambie C1 y mire la respuesta."
-    libro: ["cap42#103", 305]
+    texto: "El RC del netlist del libro, guardado con su nota. Cambie una línea, la de C1, hasta llevar el corte a unos 3,4 kHz."
+    libro: ["cap42#103", "cap22#134", 305]
+    inicio: { C_f: 100e-9 }
     widget:
       tipo: circuito
       esquema: filtro-rc
@@ -50,9 +61,142 @@ tarjetas:
           - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_amp }
       mandos:
         - { valor: C_f, lista: [47e-9, 100e-9, 220e-9], rotulo: "C1" }
+    objetivo:
+      condiciones:
+        - { valor: f_c, min: 3300, max: 3500, rotulo: "Corte: {{f_c}}" }
+      logrado: "Con «C1 out 0 47n», {{f_c}}. Tener la simulación guardada permite evaluar un cambio en minutos en lugar de rehacerla entera."
+      pistas:
+        - { texto: "Para subir el corte, menos capacidad." }
+    escalera:
+      - "f_{c} = 1/(2π · R1 · C1)."
+    solucion: "47 nF: 3,39 kHz."
+    comprobar:
+      - { con: { C_f: 47e-9 }, f_c: 3386 }
+
+  - id: simule-ac
+    tipo: simular
+    titulo: "El .ac, una vez más"
+    texto: "Con 1 kΩ, 100 nF y «AC 1», prediga la amplitud de v(out) a 1,59 kHz y compare con el simulador."
+    libro: ["cap42#103", 296]
+    fijar: { R_f: 1000, C_f: 100e-9, f_f: 1591.55 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: A_c, rotulo: "v(out)" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: A_c
+      unidad: V
+      tol: 0.02
+      rotulo: "Amplitud de v(out)"
+      medida: vc_amp
+      errores:
+        - { expr: "V_p/2", texto: "La mitad es la potencia. En amplitud, 1/√2." }
+    exito: "0,707 V en el corte: pequeña señal. Si importara la amplitud, transitorio."
+    escalera:
+      - "Ese es el corte: ωRC = 1."
+    solucion: "0,707 V."
+    comprobar:
+      - { A_c: 0.707, f_c: 1591.5 }
+
+  - id: marque-corte
+    tipo: marcar
+    titulo: "El corte en la curva"
+    texto: "Marque en la curva del .ac el corte del RC de 1 kΩ y 100 nF."
+    libro: ["cap42#103", "cap22#134"]
+    fijar: { R_f: 1000, C_f: 100e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+      curvas:
+        - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)" }
+        - { expr: "V_p*0.7071", color: tinta, rotulo: "−3 dB", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_c"
+      tol: 0.015
+      inicio: { x: 50, y: 0 }
+      rotulo: "El corte"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1592 }, texto: "Más a la izquierda: ahí ya ha caído más de 3 dB." }
+      - { texto: "Más a la derecha: ahí todavía pasa casi todo." }
+    exito: "1,59 kHz, donde la curva cruza los −3 dB."
+    escalera:
+      - "Busque donde la curva naranja cruza la línea de trazos."
+    solucion: "En 1,59 kHz."
+    comprobar:
+      - { f_c: 1591.5, dB3: -3, tol: 0.005 }
+
+  - id: corte-220
+    tipo: leer
+    titulo: "Otra línea"
+    texto: "Se cambia la línea a «C1 out 0 220n». Escriba el nuevo corte."
+    libro: ["cap42#103", "cap22#134"]
+    fijar: { R_f: 1000, C_f: 220e-9 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_amp }
+      mandos: []
+    leer:
+      objetivo: f_c
+      unidad: Hz
+      tol: 0.02
+      rotulo: "Corte"
+      errores:
+        - { expr: "2*pi*f_c", texto: "Eso es en rad/s. El corte en hercios es 1/(2πRC)." }
+    exito: "723 Hz: 2,2 veces más capacidad, 2,2 veces menos corte."
+    escalera:
+      - "f_{c} = 1/(2π · 1 kΩ · 220 nF)."
+    solucion: "723 Hz."
+    comprobar:
+      - { f_c: 723.4, kC: 2.2 }
+
+  - id: tau-tran
+    tipo: leer
+    titulo: "Y en el tiempo"
+    texto: "El mismo RC de 100 nF ante un escalón, en un .tran. Lea en la curva la constante de tiempo y escríbala."
+    libro: [296]
+    fijar: { R_f: 1000, C_f: 100e-9 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_p, r: R_f, c: C_f }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p*(1 - exp(-t/tau))", color: naranja, rotulo: "v(out)", mide: vc }
+      mandos: []
+    leer:
+      objetivo: tau
+      unidad: s
+      tol: 0.05
+      rotulo: "Constante de tiempo"
+      errores:
+        - { expr: "5*tau", texto: "Eso son cinco τ, cuando ya casi ha llegado. τ es donde va por el 63 %." }
+    exito: "0,1 ms = R1·C1: el transitorio da la misma información que el .ac, vista en el tiempo."
+    escalera:
+      - "Busque dónde la curva pasa por el 63 % de su valor final."
+    solucion: "0,1 ms."
+    comprobar:
+      - { tau: 0.0001, p63: 63.2 }
+      - { p63: 63, tol: 0.01 }
 
   - id: prediga-simuladores
-    tipo: predecir
+    tipo: pregunta
     titulo: "Libre, comercial o en el navegador"
     texto: "Tres simuladores dan resultados distintos para el mismo componente. ¿Qué los diferencia de verdad?"
     libro: [284, 287]
@@ -62,7 +206,7 @@ tarjetas:
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
       lectura: { valor: A_c, rotulo: "v(out)" }
       mide: { vc_amp: A_c }
-      ocultar: true
+      mandos: []
     opciones:
       - texto: "El entorno y la biblioteca de modelos"
         bien: true
@@ -75,85 +219,6 @@ tarjetas:
       - "Si el motor es común, ¿qué queda?"
     solucion: "Entorno y modelos."
 
-  - id: flujo
-    tipo: pregunta
-    fase: "Ordene"
-    titulo: "El flujo recomendado"
-    texto: "Ordene los pasos de una simulación seria, de lo primero a lo último."
-    libro: [301]
-    ordenar:
-      - "Punto de trabajo primero"
-      - "AC para estabilidad y respuesta"
-      - "Transitorio para el comportamiento real"
-      - "Monte Carlo antes de fabricar"
-      - "Post-layout si hay conmutación o alta frecuencia"
-      - "Comparar con la medida del prototipo"
-    exito: "El último paso cierra el ciclo y enseña a fiarse."
-    pistas:
-      - { texto: "Si el punto de trabajo no resuelve, nada más funcionará." }
-    escalera:
-      - "Lo último necesita el prototipo ya montado."
-    solucion: "OP, AC, transitorio, Monte Carlo, post-layout, medida."
-
-  - id: retener
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que hay que retener"
-    texto: "Una cada idea del capítulo con su conclusión."
-    libro: [294, 295, 296, 297, 299]
-    emparejar:
-      - ["La simulación", "Predice un modelo; no valida el diseño"]
-      - ["La calidad del resultado", "La deciden los modelos"]
-      - ["Si la amplitud importa", "Transitorio"]
-      - ["Conmutación y alta frecuencia", "Deciden los parásitos"]
-      - ["Monte Carlo", "Si el diseño es fabricable"]
-      - ["Barrido paramétrico", "Dónde gastar en precisión"]
-    exito: "Seis frases que resumen el capítulo."
-    pistas:
-      - { texto: "El AC no ve la amplitud." }
-    escalera:
-      - "Monte Carlo y el barrido responden a preguntas distintas."
-    solucion: "Modelo; modelos; transitorio; parásitos; fabricable; precisión."
-
-  - id: fuentes-modelos
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "De dónde salen los modelos"
-    texto: "Una cada fuente de modelos con cuándo se usa."
-    libro: [289, 290, 291]
-    emparejar:
-      - ["El fabricante", "La fuente preferente"]
-      - ["La biblioteca del simulador", "Componentes genéricos"]
-      - ["Hecho a mano", "Desde la hoja de datos, cuando no hay otro"]
-    exito: "Un modelo describe lo que su autor quiso describir."
-    pistas:
-      - { texto: "Hacerlo a mano es más trabajo y a veces la única opción." }
-    escalera:
-      - "¿Quién conoce mejor un componente concreto?"
-    solucion: "Fabricante: preferente; biblioteca: genéricos; a mano: si no hay otro."
-
-  - id: operacional
-    tipo: pregunta
-    titulo: "Lo que su autor quiso describir"
-    texto: "Un modelo de operacional reproduce muy bien su respuesta en frecuencia. ¿Qué no garantiza?"
-    libro: [292]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Su comportamiento en saturación"
-        bien: true
-        porque: "Un modelo describe lo que su autor quiso describir: puede acertar en frecuencia y no en recorte."
-      - texto: "Su ganancia a baja frecuencia"
-        porque: "Eso es parte de la respuesta en frecuencia, que sí reproduce."
-      - texto: "Su fase"
-        porque: "La fase va con la respuesta en frecuencia."
-    escalera:
-      - "¿Qué queda fuera de la pequeña señal?"
-    solucion: "La saturación."
-
   - id: por-que-medir
     tipo: porque
     titulo: "¿Por qué terminar midiendo?"
@@ -165,6 +230,7 @@ tarjetas:
       piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
       lectura: { valor: A_c, rotulo: "v(out) simulada" }
       mide: { vc_amp: A_c }
+      mandos: []
     opciones:
       - texto: "Coincidir da confianza en ambas; discrepar señala lo que no se entendía"
         bien: true
@@ -177,34 +243,12 @@ tarjetas:
       - "¿Qué aprende de cada resultado: coincidir y discrepar?"
     solucion: "Coincidir da confianza; discrepar, información."
 
-  - id: guardar
-    tipo: pregunta
-    titulo: "El hábito que hace útil la simulación"
-    texto: "Un año después hay que modificar el circuito. ¿Qué ahorra haber guardado la simulación junto al proyecto?"
-    libro: [305]
-    widget:
-      tipo: circuito
-      esquema: filtro-rc
-      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
-      mide: { vc_amp: A_c }
-    opciones:
-      - texto: "Evaluar el cambio en minutos en lugar de rehacerla entera"
-        bien: true
-        porque: "Con los ficheros, los modelos y una nota de qué se quería comprobar."
-      - texto: "Nada: hay que rehacerla de todas formas"
-        porque: "Con el netlist guardado basta cambiar lo que cambia."
-      - texto: "No tener que medir el prototipo"
-        porque: "La medida sigue siendo la que confirma."
-    escalera:
-      - "¿Qué cuesta más: cambiar una línea o rehacer el modelo entero?"
-    solucion: "Minutos en lugar de rehacerla."
-
   - id: resumen
     tipo: resumen
     titulo: "Capítulo repasado"
-    libro: [287, 294, 296, 301, 302]
+    libro: [287, 289, 290, 291, 292, 294, 295, 296, 297, 299, 301, 302]
     ideas:
-      - { titulo: "El motor.", texto: "Es el mismo: lo que cambia es el entorno y los modelos." }
+      - { titulo: "Los modelos.", texto: "Del fabricante, de la biblioteca o a mano; deciden la calidad, y cada uno describe lo que su autor quiso." }
       - { titulo: "El flujo.", texto: "Punto de trabajo, AC, transitorio, Monte Carlo, post-layout y medida." }
-      - { titulo: "Las reglas.", texto: "Predice un modelo; si la amplitud importa, transitorio; desconfíe de lo demasiado bueno." }
-      - { titulo: "El ciclo.", texto: "Coincidir da confianza; discrepar enseña." }
+      - { titulo: "Las reglas.", texto: "Predice un modelo; si la amplitud importa, transitorio; en conmutación deciden los parásitos." }
+      - { titulo: "El ciclo.", texto: "Monte Carlo dice si es fabricable; el barrido, dónde gastar. Coincidir da confianza; discrepar enseña." }

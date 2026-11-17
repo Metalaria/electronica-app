@@ -7,6 +7,10 @@
 # - La alimentación no regulada: raíles de ±31 V a plena potencia (bloque 246): recorte cerca de 50 W.
 # Paso práctico: «simular» el pico sobre la carga con los raíles hundidos (errores típicos: la tensión en vacío o
 # olvidar la pérdida de la etapa).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): los 64 W del libro se montan y los 31 W en la carga del peor
+# caso se buscan (objetivos); los 128 W con 4 Ω, los 22,3 V del peor caso, el condensador y el pico con los raíles
+# hundidos se predicen. El volumen medio y la comprobación en el banco pasan al logrado; quedan dos preguntas de
+# opciones (la PMPO y por qué no se regula).
 leccion: cap51/sec-51.7
 
 libro:
@@ -46,15 +50,16 @@ modelo:
     P_odm: { expr: "V_dm^2/(2*R_L)", sim: "P_{carga}", nombre: "potencia en el peor caso", unidad: W }
     I_v: { expr: "V_r/R_L", sim: "I_{pico}", nombre: "pico V/R", unidad: A }
     C_min: { expr: "C_k*I_v", sim: "C", nombre: "condensador mínimo por raíl", unidad: F }
+    P_8: { expr: "V_pk^2/(2*8)", sim: "P_{8 Ω}", nombre: "potencia con 8 Ω y el mismo pico", unidad: W }
+    C_x: { expr: "C_k*I_pk", sim: "C", nombre: "condensador con el pico ya recortado (error)", unidad: F }
 
 tarjetas:
   - id: formula-potencia
-    tipo: formula
+    tipo: explorar
     titulo: "La potencia antes de recorte"
-    texto: "Con alimentación ±V, la etapa pierde unos voltios y el resto llega al altavoz. Cambie los raíles y la carga."
+    texto: "Con alimentación ±V, la etapa pierde unos 3 V y el resto llega al altavoz. Monte los 64 W del libro."
     libro: [225, 226, 227]
-    ec: 225
-    sustitucion: "{{V_pk}}² / (2 · {{R_L}}) = {{P_m}}"
+    inicio: { V_r: 21, R_L: 4 }
     widget:
       tipo: circuito
       esquema: resistencia
@@ -65,36 +70,40 @@ tarjetas:
       corriente: I_pk
       mide: { corriente: I_pk, tension: V_pk }
       mandos:
-        - { valor: V_r, lista: [21, 31, 35], rotulo: "Raíles, ±V" }
-        - { valor: R_L, lista: [4, 8] }
+        - { valor: V_r, lista: [21, 35], rotulo: "Raíles, ±V" }
+        - { valor: R_L, lista: [4, 8], rotulo: "Altavoz" }
+    objetivo:
+      condiciones:
+        - { valor: P_m, objetivo: 64, tol: 0.01, rotulo: "Potencia: {{P_m}}" }
+      logrado: "±{{V_r}} sobre {{R_L}}: {{V_pk}} de pico tras los 3 V de la etapa, {{P_m}} antes de recorte."
+      pistas:
+        - { texto: "Los raíles del proyecto y su altavoz de 8 Ω." }
+    escalera:
+      - "P = (V − V_{saturación})²/(2R)."
+    solucion: "±35 V sobre 8 Ω: 32²/16 = 64 W."
+    comprobar:
+      - { con: { V_r: 35, R_L: 8 }, P_m: 64, V_pk: 32, tol: 0.001 }
 
   - id: prediga-4ohm
-    tipo: predecir
+    tipo: simular
     titulo: "Un altavoz de 4 Ω"
-    texto: "El mismo amplificador de ±35 V con un altavoz de 4 Ω en lugar de 8 Ω. ¿Qué pasa?"
+    texto: "El mismo amplificador de ±35 V con un altavoz de 4 Ω en lugar de 8 Ω. ¿Qué potencia antes de recorte?"
     libro: [229]
     fijar: { V_r: 35, R_L: 4 }
-    widget:
-      tipo: circuito
-      esquema: resistencia
-      piezas: { fuente: V_pk, r: R_L }
-      lectura: { valor: P_m, rotulo: "Potencia antes de recorte" }
-      corriente: I_pk
-      mide: { corriente: I_pk, tension: V_pk }
-      ocultar: true
-    opciones:
-      - texto: "Se doblan potencia, corriente de pico y disipación: 128 W, 8 A, 31 W por transistor"
-        bien: true
-        porque: "Con la misma tensión y la mitad de resistencia, todo se dobla: puede exceder el SOA de los transistores."
-      - texto: "La potencia se reduce a la mitad"
-        porque: "P = V²/(2R): con menos R, más potencia, no menos."
-      - texto: "Nada: la potencia la fija la alimentación"
-        porque: "La tensión sí la fija la alimentación; la corriente y la potencia, la carga."
+    simular:
+      objetivo: P_m
+      unidad: W
+      tol: 0.02
+      rotulo: "Potencia antes de recorte"
+      errores:
+        - { expr: "P_8", texto: "Esos son los de 8 Ω. Con la misma tensión y la mitad de resistencia, más potencia." }
+        - { expr: "P_8/2", texto: "P = V²/(2R): con menos R, más potencia, no menos." }
+    exito: "128 W: se doblan la potencia, la corriente de pico (8 A) y la disipación del peor caso (31 W por transistor). Puede exceder el SOA."
     escalera:
-      - "Con la misma tensión de pico, ¿qué hace la corriente si R baja a la mitad?"
-    solucion: "32²/8 = 128 W, 32/4 = 8 A y 35²/(π²·4) ≈ 31 W por transistor."
+      - "Con el mismo pico, menos R da más potencia."
+    solucion: "32²/8 = 128 W."
     comprobar:
-      - { P_m: 128, I_pk: 8, P_dm: 31, V_pk: 32, tol: 0.005 }
+      - { P_m: 128, I_pk: 8, P_dm: 31, V_pk: 32, P_8: 64, tol: 0.005 }
 
   - id: pregunta-pmpo
     tipo: pregunta
@@ -120,11 +129,33 @@ tarjetas:
       - "¿Qué condiciones hacen comparable una medida de potencia?"
     solucion: "La potencia eficaz continua, con carga resistiva y distorsión especificada."
 
+  - id: estime-pico
+    tipo: simular
+    fase: "Estime"
+    titulo: "El peor caso"
+    texto: "La disipación máxima, V²/(π²·R), ocurre con la salida en 2V/π. Con ±35 V, ¿a qué amplitud de pico?"
+    libro: [234, 235]
+    fijar: { V_r: 35, R_L: 8 }
+    simular:
+      objetivo: V_dm
+      unidad: V
+      tol: 0.02
+      rotulo: "Amplitud del peor caso"
+      errores:
+        - { expr: "V_pk", texto: "Eso es plena potencia: ahí cae poca tensión en el transistor y disipa menos." }
+    exito: "22,3 V de pico, el 64 % del raíl: 15,5 W por transistor con unos 31 W en la carga."
+    escalera:
+      - "2/π es algo menos de dos tercios."
+    solucion: "2 · 35/π = 22,3 V."
+    comprobar:
+      - { V_dm: 22.3, P_dm: 15.5, P_odm: 31, tol: 0.01 }
+
   - id: explore-disipacion
     tipo: explorar
     titulo: "Dónde está el máximo"
-    texto: "Con ±35 V y 8 Ω, mueva la amplitud de salida y compare lo que llega al altavoz con lo que calienta cada transistor."
-    libro: [222, 233, 234]
+    texto: "Con ±35 V y 8 Ω, mueva la amplitud de salida hasta los 31 W sobre la carga del peor caso, y mire cuánto calienta cada transistor."
+    libro: [222, 233, 235, 236, 249, 253]
+    inicio: { V_p: 8 }
     fijar: { V_r: 35, R_L: 8 }
     widget:
       tipo: grafica
@@ -140,82 +171,39 @@ tarjetas:
         - { valor: P_o, rotulo: "Sobre la carga: {{P_o}}" }
       mandos:
         - { valor: V_p, min: 0, max: 32, paso: 1, rotulo: "Amplitud de pico, V_{p}" }
-    requiere: { mover: [V_p] }
-
-  - id: estime-pico
-    tipo: pregunta
-    fase: "Estime"
-    titulo: "El peor caso"
-    texto: "La disipación máxima, V²/(π²·R), ocurre con la salida en 2V/π. Con ±35 V, ¿a qué amplitud de pico?"
-    libro: [234, 235]
-    fijar: { V_r: 35, R_L: 8 }
-    estimar:
-      objetivo: "V_dm"
-      unidad: V
-      min: 0
-      max: 35
-      paso: 0.1
-      inicio: 32
-      tol: 0.03
-      rotulo: "Amplitud del peor caso"
-    exito: "22,3 V de pico, el 64 % del raíl: 15,5 W por transistor con unos 31 W en la carga."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 23 }, texto: "Se ha pasado: el máximo no está a plena potencia sino en 2V/π." }
-      - { texto: "Se ha quedado corto: 2 · 35/π." }
+    objetivo:
+      condiciones:
+        - { valor: P_o, objetivo: 31, tol: 0.03, rotulo: "Sobre la carga: {{P_o}}" }
+      logrado: "Con {{P_o}} en la carga, cada transistor disipa {{P_t}}, el máximo; a todo volumen, menos. Se comprueba con la temperatura del disipador a varios niveles."
+      pistas:
+        - { cuando: { valor: P_o, mayor: 32 }, texto: "Se ha pasado: menos amplitud." }
+        - { texto: "Más amplitud." }
     escalera:
-      - "2/π es algo menos de dos tercios."
-    solucion: "2 · 35/π = 22,3 V."
+      - "El peor caso está en 2V/π."
+    solucion: "Hacia 22 V de pico."
     comprobar:
-      - { V_dm: 22.3, P_dm: 15.5, P_odm: 31, tol: 0.01 }
-
-  - id: porque-volumen-medio
-    tipo: porque
-    titulo: "Un comportamiento desconcertante"
-    texto: "Un amplificador aguanta bien a todo volumen, pero se sobrecalienta a volumen medio. ¿Por qué?"
-    libro: [233, 236]
-    widget:
-      tipo: grafica
-      x: { id: u, min: 0, max: 32, unidad: V, rotulo: "V_{p}" }
-      y: { min: 0, max: 70, unidad: W, rotulo: "P" }
-      curvas:
-        - { expr: "V_r*u/(pi*R_L) - u^2/(4*R_L)", color: naranja, rotulo: "un transistor" }
-    opciones:
-      - texto: "A plena potencia cae poca tensión en el transistor; el máximo está en medio"
-        bien: true
-        porque: "En silencio solo pasa la corriente de reposo; a todo volumen, poca tensión: el calor máximo, a media excursión."
-      - texto: "Porque a volumen medio el bias sube"
-        porque: "El bias no depende del volumen; es la curva de disipación de la clase B."
-      - texto: "Es un defecto del montaje"
-        porque: "Es el comportamiento normal de la etapa: hay que dimensionar el disipador para él."
-    escalera:
-      - "¿Cuánta tensión queda sobre el transistor cuando la salida llega casi al raíl?"
-    solucion: "La disipación máxima está en medio, no a plena potencia."
+      - { con: { V_p: 22 }, P_o: 30.25, P_t: 15.52, tol: 0.005 }
 
   - id: estime-condensador
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El condensador de filtro"
     texto: "El pico de corriente es V/R. Con ±35 V y 8 Ω, y la regla de al menos 1 000 µF por amperio de pico, ¿cuánta capacidad como mínimo?"
     libro: [239, 241]
     fijar: { V_r: 35, R_L: 8 }
-    estimar:
-      objetivo: "C_min"
+    simular:
+      objetivo: C_min
       unidad: F
-      min: 0
-      max: 0.01
-      paso: 0.0001
-      inicio: 0.009
-      tol: 0.05
+      tol: 0.03
       rotulo: "Capacidad mínima por raíl"
+      errores:
+        - { expr: "C_x", texto: "Ha restado la pérdida de la etapa: la regla usa V/R con el raíl." }
     exito: "Unos 4 400 µF; en un amplificador de calidad, bastante más: su misión es entregar los picos."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0046 }, texto: "Se ha pasado: 35/8 = 4,4 A, por 1 000 µF." }
-      - { texto: "Se ha quedado corto: el pico es de 4,4 A." }
     escalera:
       - "Primero el pico: 35 V / 8 Ω."
     solucion: "4,4 A × 1 000 µF/A ≈ 4 400 µF."
     comprobar:
-      - { C_min: 0.004375, I_v: 4.4, tol: 0.01 }
+      - { C_min: 0.004375, I_v: 4.4, C_x: 0.004, tol: 0.01 }
 
   - id: simule-hundimiento
     tipo: simular
@@ -270,29 +258,6 @@ tarjetas:
     escalera:
       - "¿Qué parte del amplificador compara la salida con la entrada?"
     solucion: "Coste y rendimiento, y el PSRR del lazo rechaza el rizado."
-
-  - id: pregunta-banco
-    tipo: pregunta
-    titulo: "Comprobar la curva en el banco"
-    texto: "¿Cómo se comprueba en el banco dónde está la disipación máxima?"
-    libro: [249, 253]
-    widget:
-      tipo: grafica
-      x: { id: u, min: 0, max: 32, unidad: V, rotulo: "V_{p}" }
-      y: { min: 0, max: 70, unidad: W, rotulo: "P" }
-      curvas:
-        - { expr: "V_r*u/(pi*R_L) - u^2/(4*R_L)", color: naranja, rotulo: "un transistor" }
-    opciones:
-      - texto: "Midiendo la temperatura del disipador a varios niveles de salida"
-        bien: true
-        porque: "Debe salir el máximo en la zona media. Y el diseño térmico, con la temperatura dentro de la caja."
-      - texto: "Midiendo solo a plena potencia"
-        porque: "A plena potencia disipa menos: así no se ve el máximo."
-      - texto: "Midiendo la corriente de reposo"
-        porque: "Esa es la medida del bias, sin señal; no dice dónde calienta más."
-    escalera:
-      - "¿Qué magnitud del disipador sigue a la potencia que disipa?"
-    solucion: "La temperatura del disipador a varios niveles: máximo en la zona media."
 
   - id: resumen
     tipo: resumen

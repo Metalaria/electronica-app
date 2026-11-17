@@ -5,6 +5,10 @@
 # La R_B del interruptor de potencia (estimación): β = 25 a 500 mA (bloque 95), con un mando de 5 V de ejemplo y el
 # modelo de 0,7 V. 1.2 (esquemas12c): la sorpresa «sorpresa-hoja» lo monta vivo en «bjt-interruptor» con `iref` de
 # 500 mA (V_BE = 0,7 V a esa corriente); la carga de 24 Ω a 12 V es de ejemplo.
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): la V_CE con 10 V de mando se predice (simular), el mando
+# mínimo que satura se busca (objetivo), el punto de la β que explica el interruptor de 500 mA se toca en la figura
+# 25.5, la R_B máxima, la fuga y la R_B que de verdad satura se predicen o se buscan. Quedan una pregunta de opciones
+# (lento al apagar; sus dos remedios, antes emparejados, van en su explicación) y el emparejamiento de los modos.
 leccion: cap26/sec-26.3
 
 libro:
@@ -54,12 +58,45 @@ modelo:
     V_cep: { expr: "V_cc - I_cp*R_lp", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
     P_tp: { expr: "V_cep*I_cp", sim: "P", nombre: "potencia en el transistor", unidad: W }
     V_d: { expr: "V_p - V_BE", sim: "V_{R_B}", nombre: "tensión en R_B", unidad: V }
+    V_act: { expr: "V_cc - I_bb*R_c", sim: "V_{CE}", nombre: "la V_CE que daría la activa", unidad: V }
+    k_lin: { expr: "2*dT/10", sim: "×", nombre: "duplicando de forma lineal", unidad: "" }
 
 tarjetas:
+  - id: prediga-saturacion
+    tipo: simular
+    titulo: "¿En qué región?"
+    texto: "Con 10 V de mando por 47 kΩ, β = 100 y 1 kΩ en el colector a 12 V, ¿cuánto vale V_{CE}?"
+    libro: [69, 79]
+    fijar: { V_b: 10 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_c, entrada: V_b, rb: R_b, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_ce, rotulo: "V_{CE}" }
+      corriente: I_c
+      mide: { ib: I_b, ic: I_c, vce: V_ce, vbe: V_BE }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_ce
+      unidad: V
+      tol: 0.05
+      rotulo: "V_{CE}"
+      medida: vce
+      errores:
+        - { expr: "V_act", texto: "Eso supone 19,8 mA en activa, y no caben: con 1 kΩ y 12 V el colector no pasa de 11,8 mA." }
+        - { expr: "V_cc", texto: "Eso sería en corte, pero con 10 V de mando la unión base-emisor está bien en directa." }
+    exito: "En saturación: la base pediría 19,8 mA, la carga solo deja 11,8 mA y V_{CE} baja a 0,2 V."
+    escalera:
+      - "Compare β · I_{B} con lo máximo que deja pasar R_{C}."
+    solucion: "I_{B} ≈ 0,198 mA; β · I_{B} = 19,8 mA > 11,8 mA: saturación, 0,2 V."
+    comprobar:
+      - { I_bb: 0.0198, I_cm: 0.0118, V_ce: 0.2, I_b: 0.000198, V_act: -7.8, R_c: 1000, R_b: 47000, V_cc: 12, beta: 100, tol: 0.01 }
+
   - id: explore-regiones
     tipo: explorar
     titulo: "Corte, activa y saturación"
-    texto: "Suba la tensión de mando desde cero. Mire cuándo empieza a conducir y cuándo deja de crecer la corriente."
+    texto: "Suba la tensión de mando desde cero y busque la menor con la que el transistor ya está saturado."
     libro: [69, 74, 79]
     inicio: { V_b: 0 }
     widget:
@@ -74,7 +111,21 @@ tarjetas:
       mide: { ib: I_b, ic: I_c, vce: V_ce }
       mandos:
         - { valor: V_b, min: 0, max: 10, paso: 0.5, rotulo: "Tensión de mando" }
-    requiere: { mover: [V_b] }
+    objetivo:
+      condiciones:
+        - { valor: V_ce, max: 0.2, rotulo: "V_{CE}: {{V_ce}}" }
+        - { valor: V_b, max: 6.5, rotulo: "Mando: {{V_b}}" }
+      logrado: "Con {{V_b}}: β · I_{B} ya supera lo que deja la carga y la corriente deja de crecer. Por debajo de 0,7 V, corte; en medio, activa."
+      pistas:
+        - { cuando: { valor: V_ce, mayor: 0.2 }, texto: "Aún en activa: la corriente sigue creciendo con la base. Suba el mando." }
+        - { texto: "Ya satura, pero busque el primer escalón en que lo hace." }
+    escalera:
+      - "Satura cuando β · I_{B} llega a lo que deja pasar la carga, unos 11,8 mA."
+    solucion: "6,5 V: con 6 V aún queda en activa."
+    comprobar:
+      - { con: { V_b: 6.5 }, V_ce: 0.2 }
+      - { con: { V_b: 6 }, V_ce: 0.7234, tol: 0.01 }
+      - { I_cm: 0.0118, tol: 0.01 }
 
   - id: empareje-modos
     tipo: pregunta
@@ -94,69 +145,43 @@ tarjetas:
       - "Interruptor abierto: ninguna unión en directa. Cerrado: las dos."
     solucion: "Corte–dos inversas, activa–BE directa, saturación–dos directas, inversa–al revés."
 
-  - id: prediga-saturacion
-    tipo: predecir
-    titulo: "¿En qué región?"
-    texto: "Con 10 V de mando por 47 kΩ, β = 100 y 1 kΩ en el colector a 12 V, ¿dónde está el transistor?"
-    libro: [69, 79]
-    fijar: { V_b: 10 }
-    widget:
-      tipo: circuito
-      esquema: bjt-interruptor
-      piezas: { vcc: V_cc, rc: R_c, entrada: V_b, rb: R_b, beta: beta, vbe: V_BE, vcesat: V_CEs }
-      lectura: { valor: V_ce, rotulo: "V_{CE}" }
-      corriente: I_c
-      mide: { ib: I_b, ic: I_c, vce: V_ce, vbe: V_BE }
-      ocultar: true
-    opciones:
-      - texto: "En saturación"
-        bien: true
-        porque: "La base pediría β · I_{B} = 19,8 mA, pero la carga solo deja pasar 11,8 mA: V_{CE} baja a 0,2 V."
-      - texto: "En activa, con 19,8 mA"
-        porque: "Esos 19,8 mA no caben: con 1 kΩ y 12 V el colector no pasa de 11,8 mA."
-      - texto: "En corte"
-        porque: "Con 10 V de mando la unión base-emisor está bien en directa: hay corriente de base."
-    escalera:
-      - "Compare β · I_{B} con lo máximo que deja pasar R_{C}."
-    solucion: "I_{B} = 9,3/47 kΩ ≈ 0,198 mA; β · I_{B} = 19,8 mA > 11,8 mA: saturación."
-    comprobar:
-      - { I_bb: 0.0198, I_cm: 0.0118, V_ce: 0.2, I_b: 0.000198, R_c: 1000, R_b: 47000, V_cc: 12, beta: 100, tol: 0.01 }
-      - { con: { V_b: 9.3 }, V_b: 9.3 }
-
   - id: explore-beta
-    tipo: explorar
+    tipo: tocar
     titulo: "La β que no es constante"
-    texto: "Toque los tres puntos de la curva de un transistor de potencia."
-    libro: [76, 90, 95]
+    texto: "La hoja anuncia β = 100. Toque el punto de la curva que explica por qué un interruptor de 500 mA necesita mucha más base."
+    libro: [76, 90, 91, 95]
     widget:
       tipo: figura
       figura: fig-26.5
       zonas:
-        - { id: baja, rotulo: "Punto de la izquierda", rect: [54, 90, 42, 40], texto: "A 0,1 mA, unos 100: cae por recombinación en la unión." }
-        - { id: media, rotulo: "Punto de arriba", rect: [132, 28, 42, 40], texto: "Hacia 10 mA, un máximo de unos 200." }
-        - { id: alta, rotulo: "Punto de la derecha", rect: [198, 136, 42, 40], texto: "A 500 mA, unos 25: cae por alta inyección." }
-    requiere: { mover: [baja, media, alta] }
+        - { id: baja, rotulo: "Punto de la izquierda", rect: [54, 90, 42, 40] }
+        - { id: media, rotulo: "Punto de arriba", rect: [132, 28, 42, 40] }
+        - { id: alta, rotulo: "Punto de la derecha", rect: [198, 136, 42, 40] }
+    tocar:
+      bien: [alta]
+      porque:
+        baja: "A 0,1 mA, unos 100: es la cifra de la hoja, a corriente pequeña."
+        media: "Hacia 10 mA, el máximo de unos 200: no es donde trabaja el interruptor."
+    exito: "A 500 mA, unos 25: la alta inyección hunde la β. La base debe dimensionarse con esa cifra, no con la de la hoja."
+    escalera:
+      - "¿A qué corriente trabaja el interruptor?"
+    solucion: "El de 500 mA: β ≈ 25."
 
   - id: estime-base
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La R_{B} de un interruptor de 500 mA"
     texto: "Mando de 5 V, V_{BE} = 0,7 V y β = 25 a 500 mA (la hoja dice 100). ¿Qué R_{B} máxima deja saturar?"
     libro: [91, 95]
     fijar: { V_p: 5, V_BE: 0.7, b_p: 25, I_o: 0.5 }
-    estimar:
-      objetivo: "R_lim"
+    simular:
+      objetivo: R_lim
       unidad: Ω
-      min: 100
-      max: 1000
-      paso: 5
-      inicio: 820
       tol: 0.05
       rotulo: "R_{B} máxima"
+      errores:
+        - { expr: "R_hoja", texto: "Esa es la que sale con la β de la hoja: a 500 mA la β cae a 25 y no saturaría." }
     exito: "Con β = 25 hacen falta 20 mA de base. Diseñada con la β de la hoja, la base daría la cuarta parte."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 226 }, texto: "Se ha pasado: con β = 25 la base necesita 500/25 = 20 mA, cuatro veces más de lo que dice la hoja." }
-      - { texto: "Se ha quedado corto: basta con que β · I_{B} llegue a los 500 mA." }
     escalera:
       - "I_{B} = I_{C}/β = 0,5/25 = 0,02 A."
       - "R_{B} = (5 − 0,7)/0,02."
@@ -167,7 +192,7 @@ tarjetas:
   - id: sorpresa-hoja
     tipo: sorpresa
     titulo: "Diseñada con la β de la hoja"
-    texto: "Con β = 100 saldría R_{B} = 860 Ω. Pruébela con una carga de 500 mA y luego baje R_{B}."
+    texto: "Con β = 100 saldría R_{B} = 860 Ω. Pruébela con una carga de 500 mA y baje R_{B} hasta que la carga reciba su corriente."
     libro: [91, 95]
     fijar: { V_cc: 12, V_p: 5, V_BE: 0.7, b_p: 25 }
     inicio: { R_bp: 860 }
@@ -183,15 +208,24 @@ tarjetas:
       mide: { ib: I_bp, ic: I_cp, vce: V_cep, vbe: V_BE }
       mandos:
         - { valor: R_bp, lista: [860, 470, 200], rotulo: "R_{B}" }
-    requiere: { mover: [R_bp] }
+    objetivo:
+      condiciones:
+        - { valor: I_cp, min: 0.49, rotulo: "Carga: {{I_cp}}" }
+      logrado: "Con {{R_bp}} satura: {{V_cep}} y solo {{P_tp}} en el transistor. Con 860 Ω quedaba en activa, caliente."
+      pistas:
+        - { texto: "En activa: la base no da para β · I_{B} = 500 mA. Baje R_{B}." }
+    escalera:
+      - "Con β = 25, la base debe dar 20 mA."
+    solucion: "200 Ω: satura."
     comprobar:
-      - { R_hoja: 860, tol: 0.01 }
+      - { R_hoja: 860, I_bn: 0.02, tol: 0.01 }
+      - { con: { R_bp: 200 }, V_cep: 0.2 }
 
   - id: por-que-lento
     tipo: porque
     titulo: "Lento al apagar"
     texto: "Un BJT saturado tarda en apagarse. ¿Por qué?"
-    libro: [80]
+    libro: [80, 82, 83]
     fijar: { V_b: 10 }
     widget:
       tipo: circuito
@@ -203,7 +237,7 @@ tarjetas:
     opciones:
       - texto: "La base queda cargada de portadores en exceso, y evacuarlos lleva tiempo"
         bien: true
-        porque: "Es el tiempo de almacenamiento: el precio de la caída pequeña en saturación."
+        porque: "Remedios: no saturar del todo, con un Schottky entre base y colector, como la TTL Schottky; o extraer la base con corriente negativa."
       - texto: "Porque V_{CE(sat)} es demasiado baja"
         porque: "La caída baja es la ventaja de saturar, no lo que lo retrasa."
       - texto: "Porque β cae en saturación"
@@ -212,48 +246,25 @@ tarjetas:
       - "Con las dos uniones en directa, ¿qué se acumula en la base?"
     solucion: "El exceso de portadores en la base: el tiempo de almacenamiento."
 
-  - id: empareje-remedios
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Apagar más deprisa"
-    texto: "Una cada solución clásica con lo que hace."
-    libro: [82, 83]
-    emparejar:
-      - ["Diodo Schottky entre base y colector", "No saturar del todo: desvía el exceso de base"]
-      - ["Corriente negativa de base", "Extrae la carga al apagar"]
-      - ["TTL Schottky", "La lógica que usaba el primer remedio"]
-    exito: "O no se deja entrar la carga sobrante, o se saca a la fuerza."
-    pistas:
-      - { texto: "El Schottky actúa antes de saturar; la corriente negativa, al apagar." }
-    escalera:
-      - "Una evita el exceso de portadores; la otra los extrae."
-    solucion: "Schottky–no saturar, corriente negativa–extraer, TTL Schottky–primer remedio."
-
   - id: estime-fuga
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "La fuga en un equipo caliente"
     texto: "La fuga de corte se dobla cada 10 °C. Del ambiente a 100 °C son 75 °C más: ¿cuántas veces mayor es?"
     libro: [85, 86]
-    estimar:
-      objetivo: "k_f"
+    simular:
+      objetivo: k_f
       unidad: ""
-      min: 0
-      max: 1000
-      paso: 10
-      inicio: 600
       tol: 0.2
       rotulo: "Veces más fuga"
+      errores:
+        - { expr: "k_lin", texto: "Cada 10 °C multiplica por dos, no suma dos: dos elevado a 7,5." }
     exito: "Siete u ocho duplicaciones: unas doscientas veces. En alta impedancia deja de ser despreciable."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 217 }, texto: "Se ha pasado: son 7,5 duplicaciones, no diez." }
-      - { texto: "Se ha quedado corto: cada 10 °C multiplica por dos, no suma." }
     escalera:
       - "75 °C son 7,5 veces 10 °C: dos elevado a 7,5."
     solucion: "Dos elevado a 7,5 ≈ 181: unas doscientas veces más."
     comprobar:
-      - { k_f: 181, n_2: 7.5, tol: 0.01 }
-      - { con: { dT: 100 }, dT: 100 }
+      - { k_f: 181, n_2: 7.5, k_lin: 15, tol: 0.01 }
 
   - id: resumen
     tipo: resumen

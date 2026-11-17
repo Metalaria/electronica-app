@@ -4,9 +4,13 @@
 # (CE2 = A14): circuito lógico y su tabla. El espejo de la WRAM, el MBC que captura escrituras y la HRAM interna.
 # Fuentes: el decodificador del explorador (arquitectura gb.ts sobre sus direcciones de ejemplo; Gekkio, Pan Docs) y
 # el libro (el decodificador, 28.3; los espejos, 38.11).
+# 1.2.1: se toca en la foto qué cuelga del bus del cartucho, quién contesta a $0150, dónde está el MBC que recoge la
+# escritura en $2000 y dónde está la HRAM; el circuito de /CS y A14 tiene meta; el espejo se escribe en hexadecimal.
+# Queda una pregunta: para qué dos buses.
 leccion: consola-gb/gb-buses
 
 libro:
+  "gb#2": "127 bytes de HRAM"
   "gb#3": "RAM de vídeo en el bus MA0–MA12/MD0–MD7, propio de la PPU"
   "gb#13": "A0–A15, D0–D7, /RD, /WR, /CS, /RES, PHI y VIN"
   "gb#52": "Hacia fuera tiene dos buses: A0–A15/D0–D7 (cartucho y WRAM) y MA0–MA12/MD0–MD7 (VRAM), que trabajan a la vez"
@@ -29,19 +33,28 @@ modelo:
 
 tarjetas:
   - id: explore-buses
-    tipo: explorar
+    tipo: tocar
     titulo: "Dos buses"
-    texto: "El SoC tiene dos buses que trabajan a la vez. Toque el SoC, la VRAM, la WRAM y la ranura."
+    texto: "El SoC tiene dos buses que trabajan a la vez. Toque las dos piezas que cuelgan del bus A0–A15, D0–D7."
     libro: ["gb#52", "gb#3", "gb#55", "gb#13"]
-    requiere: { mover: [soc, vram, wram, cart] }
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: soc, hotspot: soc, rotulo: "SoC", texto: "Dos buses: A/D y MA/MD." }
-        - { id: vram, hotspot: vram, rotulo: "VRAM", texto: "Sola en el bus MA0–MA12, MD0–MD7." }
-        - { id: wram, hotspot: wram, rotulo: "WRAM", texto: "En el bus del cartucho." }
-        - { id: cart, hotspot: cart, rotulo: "Ranura", texto: "A0–A15, D0–D7, /RD, /WR, /CS." }
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: vram, hotspot: vram, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, en el centro a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+    tocar:
+      bien: [wram, cart]
+      todas: true
+      porque:
+        soc: "El SoC es quien gobierna los dos buses, no cuelga de ellos."
+        vram: "La VRAM va sola en el otro bus, MA0–MA12 y MD0–MD7."
+    exito: "La WRAM y el cartucho comparten A0–A15, D0–D7, /RD, /WR y /CS; la VRAM tiene su bus propio."
+    escalera:
+      - "Una memoria y un conector."
+    solucion: "La WRAM y la ranura."
 
   - id: por-que-dos
     tipo: porque
@@ -67,33 +80,34 @@ tarjetas:
     solucion: "Dibujar y ejecutar a la vez: cada uno por su bus."
 
   - id: prediga-rom
-    tipo: predecir
+    tipo: tocar
     titulo: "Leer la ROM"
-    texto: "La CPU lee $0150, en la ROM del cartucho. ¿Qué línea elige la ROM?"
+    texto: "La CPU lee $0150: A15 baja, sin /CS. Toque lo que contesta."
     libro: ["gb#56", "gb#61"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: cart, hotspot: cart, rotulo: "Ranura" }
-    opciones:
-      - texto: "A15, que baja."
-        bien: true
-        porque: "La ROM ocupa $0000–$7FFF: con A15 a 0 contesta, sin /CS."
-      - texto: "/CS, que baja."
-        porque: "/CS solo baja de $A000 a $FDFF; la ROM se elige con A15."
-      - texto: "Ninguna: la ROM siempre contesta."
-        porque: "Entonces chocaría con la WRAM. A15 la aparta del resto del mapa."
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: vram, hotspot: vram, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, en el centro a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+    tocar:
+      bien: [cart]
+      porque:
+        soc: "El SoC pide el dato; contesta otro."
+        vram: "La VRAM no está en este bus: la busca el SoC por MA/MD."
+        wram: "La WRAM necesita /CS baja; con A15 baja y sin /CS contesta la ROM."
+    exito: "La ROM del cartucho: ocupa $0000–$7FFF y contesta con A15 a 0."
     escalera:
-      - "Escriba $0150 en binario: ¿cómo es el bit más alto?"
-    solucion: "A15 = 0: la ROM del cartucho."
+      - "$0150 está en la zona de la ROM."
+    solucion: "El cartucho."
 
   - id: explore-ram
     tipo: explorar
     titulo: "/CS y A14"
-    texto: "Con /CS baja, A14 decide quién contesta: la RAM del cartucho o la WRAM. Muévalas."
+    texto: "Con /CS baja, A14 decide quién contesta: la RAM del cartucho o la WRAM. Consiga que conteste la WRAM."
     libro: ["gb#55", "gb#56", "cap29#76"]
-    requiere: { mover: [CS, A14] }
     widget:
       tipo: logica
       entradas: [{ id: CS, rotulo: "/CS baja", valor: 1 }, { id: A14, rotulo: "A14" }]
@@ -104,6 +118,16 @@ tarjetas:
       salidas:
         - { id: WRAM, de: w, rotulo: "WRAM" }
         - { id: RAMC, de: c, rotulo: "RAM del cartucho" }
+    objetivo:
+      condiciones:
+        - { led: WRAM, valor: 1, rotulo: "Contesta la WRAM" }
+      logrado: "/CS baja y A14 = 1: CE2 de U3 está alto y la WRAM responde. La RAM del cartucho, no: mira A14 = 0."
+      pistas:
+        - { cuando: { led: RAMC, valor: 1 }, texto: "Con A14 = 0 contesta la RAM del cartucho: súbala." }
+        - { texto: "Sin /CS no contesta ninguna." }
+    escalera:
+      - "La WRAM está en $C000: A14 = 1."
+    solucion: "/CS baja y A14 = 1."
 
   - id: tabla-ram
     tipo: tabla
@@ -148,71 +172,72 @@ tarjetas:
     solucion: "$0150: A15. $9800: /MCS. $A000: /CS y A14 = 0. $C000: /CS y A14 = 1."
 
   - id: por-que-espejo
-    tipo: porque
+    tipo: leer
     titulo: "La misma celda, dos direcciones"
-    texto: "Leer $E123 da lo mismo que leer $C123. ¿Por qué?"
+    texto: "La WRAM solo mira /CS y A14, y se repite en $E000–$FDFF. Escriba en hexadecimal la dirección de $C000–$DFFF a la que llega $E123."
     libro: ["gb#67", "gb#55", "cap37#359"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
         - { id: wram, hotspot: wram, rotulo: "WRAM" }
-    opciones:
-      - texto: "Las dos tienen /CS baja y A14 = 1, y la WRAM no mira más."
-        bien: true
-        porque: "Decodificación incompleta: la WRAM se repite en $E000–$FDFF."
-      - texto: "Hay otra WRAM en $E000."
-        porque: "Solo hay una WRAM de 8 KB: $E123 llega a la misma celda que $C123."
-      - texto: "El SoC copia los datos de una zona a la otra."
-        porque: "Nadie copia: las dos direcciones eligen la misma celda."
+    leer:
+      objetivo: "0xC123"
+      base: 16
+      cifras: 16
+      rotulo: "Dirección en la WRAM"
+    exito: "$C123: es la misma celda. Decodificación incompleta: nadie copia nada."
     escalera:
-      - "¿Cambia /CS o A14 entre $C123 y $E123?"
-    solucion: "Es un espejo: la selección solo mira /CS y A14."
+      - "Entre $C123 y $E123 no cambian ni /CS ni A14."
+    solucion: "$C123."
 
   - id: escribir-2000
-    tipo: pregunta
+    tipo: tocar
     titulo: "Escribir en la ROM"
-    texto: "El juego escribe en $2000, en la zona de la ROM. ¿Qué pasa?"
+    texto: "El juego escribe en $2000, en la zona de la ROM. La ROM no se escribe, pero alguien recoge el dato: toque dónde está."
     libro: ["gb#63", "gb#56"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: cart, hotspot: cart, rotulo: "Cartucho" }
-    opciones:
-      - texto: "El MBC del cartucho lo toma como número de banco."
-        bien: true
-        porque: "La ROM no se escribe, pero el MBC captura esa escritura: $2000–$3FFF elige el banco de ROM."
-      - texto: "Nada: la ROM no se puede escribir."
-        porque: "La ROM no, pero el MBC del cartucho sí recoge el dato."
-      - texto: "Se escribe en la WRAM."
-        porque: "$2000 tiene A15 = 0: va al cartucho, no a la WRAM."
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: vram, hotspot: vram, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, en el centro a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+    tocar:
+      bien: [cart]
+      porque:
+        soc: "El SoC hace la escritura; quien la captura está fuera."
+        vram: "La VRAM está en $8000–$9FFF y en otro bus."
+        wram: "$2000 tiene A15 = 0: va al cartucho, no a la WRAM."
+    exito: "El MBC del cartucho la captura como registro: $2000–$3FFF elige el banco de ROM."
     escalera:
       - "¿Qué chip del cartucho, además de la ROM, mira esas direcciones?"
-    solucion: "El MBC cambia el banco de ROM."
+    solucion: "En el cartucho: su MBC."
 
   - id: prediga-hram
-    tipo: predecir
+    tipo: tocar
     titulo: "Una escritura que no sale"
-    texto: "La CPU escribe en $FF80. ¿Qué se mueve en el bus del cartucho?"
-    libro: ["gb#69", "gb#52"]
+    texto: "La CPU escribe en $FF80, la HRAM, y no se elige nada fuera. Toque dónde está esa memoria."
+    libro: ["gb#69", "gb#52", "gb#2"]
     widget:
       tipo: figura
       consola: { maquina: gb }
       zonas:
-        - { id: soc, hotspot: soc, rotulo: "SoC" }
-        - { id: cart, hotspot: cart, rotulo: "Ranura" }
-    opciones:
-      - texto: "No se elige nada fuera: es la HRAM, dentro del SoC."
-        bien: true
-        porque: "$FF80 es RAM interna de 127 bytes: no hay selección de chip."
-      - texto: "Baja /CS, como en la WRAM."
-        porque: "/CS solo baja hasta $FDFF. $FF80 es interna."
-      - texto: "Baja A15."
-        porque: "A15 baja solo para la ROM, de $0000 a $7FFF."
+        - { id: soc, hotspot: soc, rotulo: "Chip cuadrado, en el centro" }
+        - { id: vram, hotspot: vram, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: wram, hotspot: wram, rotulo: "Chip alargado, en el centro a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura, abajo" }
+    tocar:
+      bien: [soc]
+      porque:
+        vram: "La VRAM está en $8000–$9FFF."
+        wram: "La WRAM necesita /CS, que solo baja hasta $FDFF."
+        cart: "Al cartucho le llega A15 baja o /CS; con $FF80 no le llega ninguna."
+    exito: "Dentro del SoC: 127 bytes de RAM interna, sin selección de chip."
     escalera:
-      - "¿En qué zona del mapa está $FF80?"
-    solucion: "Nada fuera: la HRAM está dentro del SoC."
+      - "Si no se selecciona nada fuera, la memoria está dentro."
+    solucion: "El SoC."
 
   - id: resumen
     tipo: resumen

@@ -56,8 +56,9 @@ const valoresDe = (t: Tarjeta) => valoresDeTarjeta(t, valoresSueltos(L, k(t.id))
 
 test('la lección del catálogo de motor12e se genera sin errores', () => {
   expect(R.errores).toEqual([]);
-  // (no warnings of its own beyond the sequence's: a catalogue has no «porque»)
-  expect(R.avisos.filter((a) => !/no hay ninguna tarjeta/.test(a))).toEqual([]);
+  // (no warnings of its own beyond the sequence's — a catalogue has no «porque» — and, 1.2.1, the mix of doing cards
+  // that a lesson is asked for: a catalogue shows every widget, explore cards included)
+  expect(R.avisos.filter((a) => !/no hay ninguna tarjeta|: mezcla: aprender haciendo/.test(a))).toEqual([]);
 });
 
 test.describe('recorrido: los casos que el recorredor sabe ya seguir', () => {

@@ -4,6 +4,8 @@
   // from the amplifier's pin (outside the loop) or from the load (inside) back along the bottom through R₂ to the −
   // input, R₁ to ground (a plain wire for the follower).
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import AO from '../kit/AO.svelte';
   import C from '../kit/C.svelte';
   import Entrada from '../kit/Entrada.svelte';
@@ -28,7 +30,7 @@
   <Entrada {c} x={40} y1={280} y2={110} />
   <EtiquetasAO {c} x={52} y={136} />
   <path class="hilo" d="M40 110 H170" data-red="in"></path>
-  <AO x={170} y={130} masArriba />
+  <g data-pieza="ao"><AO x={170} y={130} masArriba /></g>
   {#each ao as t, k (k)}<Et x={200} y={64 + 18 * k} {t} color="verde" peq ancla="middle" />{/each}
   <path class="hilo" d="M170 150 H140 V200" data-red="m"></path>
   <circle class="nodo" cx="140" cy="200" r="4.5" data-red="m"></circle>
@@ -79,4 +81,10 @@
   {#if !c.tiene('rsn')}<path class="hilo" d="M410 130 H440" data-red="out"></path>{/if}
   <Et x={c.tiene('rsn') ? 490 : 440} y={114} t={sub('v', 'o')} ancla="middle" />
   <path class="hilo" d={`M40 280 H${c.tiene('rsn') ? 490 : 440}`} data-red="0"></path>
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={300} y={130} red="o" />
+  {#if c.tiene('riso')}<Punto x={395} y={130} red="out" />{/if}
+  {#if !(c.tiene('rsal') && c.p('rsal') > 0)}<Rama x={250} y={130} medidor="vo" />{/if}
+  {#if !c.tiene('riso')}<Rama x={355} y={130} medidor="viso" />{/if}
+  {#if !div}<Rama x={220} y={200} medidor="vfb" />{/if}
 </Lienzo>

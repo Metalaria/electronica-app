@@ -5,6 +5,10 @@
 # - Del vatio a la tensión (ecuación del bloque 238) sobre el esquema «resistencia» (el pico sobre la carga de 8 Ω).
 # - La disipación de la clase B con la tensión real (bloque 244): 21²/(π²·8) ≈ 5,6 W.
 # Paso práctico: «dibujar» la salida de la clase B (la forma con el escalón).
+# 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el escalón se quita dando corriente de reposo y se agranda bajando
+# la señal, el pico de 20 W se monta y la impedancia del altavoz que más corriente pide se busca (objetivos); el
+# consumo en clase A, la tensión para 40 W y la disipación con ±21 V se predicen. La realimentación y las protecciones
+# pasan al resumen. Quedan el emparejamiento de clases y dos preguntas de opciones (clase D, el lazo térmico).
 leccion: cap43/sec-43.7
 
 libro:
@@ -72,13 +76,15 @@ modelo:
     Vin7: { expr: "-Vbb7/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
     k7: { expr: "Re7/R_L", sim: "k", nombre: "R_E/R_L", unidad: "" }
     sab7: { expr: "ceil(max(0, Vbb7 - 2*V_BE)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
+    V_x2: { expr: "2*sqrt(P_o*R_L)", sim: "2·V_{pico}(P/2)", nombre: "doblando la tensión de 20 W", unidad: V }
 
 tarjetas:
   - id: explore-cruce
     tipo: explorar
     titulo: "Clase B y clase AB"
-    texto: "En clase B ninguno conduce hasta superar 0,7 V. Cambie la amplitud y dé corriente de reposo."
-    libro: [215, 217, 219]
+    texto: "Con 1 V de señal en clase B, ninguno conduce hasta superar 0,7 V y la salida tiene un escalón. Elimínelo."
+    libro: [215, 217, 219, 220]
+    inicio: { A_s: 1, clB: 1 }
     widget:
       tipo: circuito
       esquema: etapa-clase-ab
@@ -96,7 +102,17 @@ tarjetas:
       mandos:
         - { valor: A_s, min: 0.5, max: 5, paso: 0.5, rotulo: "Amplitud de la señal" }
         - { valor: clB, tipo: interruptor, rotulo: "Sin corriente de reposo (clase B)" }
-    requiere: { mover: [A_s, clB] }
+    objetivo:
+      condiciones:
+        - { valor: clB, max: 0, rotulo: "Con corriente de reposo" }
+      logrado: "En clase AB, con {{Iq7}} de reposo, los dos conducen alrededor del cruce y el escalón desaparece: el diseño se reduce a ajustar esa corriente."
+      pistas:
+        - { texto: "Dé corriente de reposo." }
+    escalera:
+      - "En clase B ninguno conduce hasta superar 0,7 V."
+    solucion: "Clase AB: una corriente de reposo de las típicas, entre 20 y 50 mA."
+    comprobar:
+      - { con: { clB: 0 }, Iq7: 0.0299, tol: 0.02 }
 
   - id: empareje-clases
     tipo: pregunta
@@ -118,38 +134,32 @@ tarjetas:
     solucion: "A–360°, B–180°, AB–entre 180° y 360°, C–menos de 180°, D–conmutación."
 
   - id: prediga-clase-a
-    tipo: predecir
+    tipo: simular
     titulo: "Clase A sin música"
     texto: "Un amplificador de 10 W en clase A, con acoplo por condensador (25 % de rendimiento). ¿Cuánto consume sin señal?"
     libro: [212]
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
-      lectura: { valor: P_cA, rotulo: "Consumo" }
-      ocultar: true
-    opciones:
-      - texto: "40 W, y sin señal todos se vuelven calor"
-        bien: true
-        porque: "Conduce siempre: disipa incluso sin señal. Es el precio de la menor distorsión."
-      - texto: "Casi nada: sin señal no gasta"
-        porque: "Eso es la clase B. La A está polarizada para conducir los 360°, con o sin música."
-      - texto: "10 W"
-        porque: "Esos 10 W son lo que da a plena potencia; con el 25 % de rendimiento consume cuatro veces más."
+    simular:
+      objetivo: P_cA
+      unidad: W
+      tol: 0.02
+      rotulo: "Consumo"
+      errores:
+        - { expr: "P_A", texto: "Esos 10 W son lo que da a plena potencia; con el 25 % de rendimiento consume cuatro veces más." }
+        - { expr: "0", texto: "Eso es la clase B. La A conduce los 360°, con o sin música." }
+    exito: "40 W, y sin señal todos se vuelven calor: es el precio de la menor distorsión."
     escalera:
-      - "Con un 25 % de rendimiento, 10 W de salida piden cuatro veces más de entrada."
+      - "Consumo = potencia útil / rendimiento."
     solucion: "10 W con un 25 % de rendimiento: 40 W, permanentemente."
     comprobar:
       - { P_cA: 40, P_A: 10, e_A: 25 }
 
   - id: prediga-pequena
-    tipo: predecir
+    tipo: explorar
     titulo: "¿Con qué señal se nota más?"
-    texto: "En clase B, ¿la distorsión de cruce pesa más con una señal grande o con una pequeña?"
+    texto: "En clase B, baje la señal hasta que el escalón se coma más del 40 % del ciclo."
     libro: [217]
-    fijar: { clB: 1, A_s: 1 }
+    fijar: { clB: 1 }
+    inicio: { A_s: 5 }
     widget:
       tipo: circuito
       esquema: etapa-clase-ab
@@ -162,18 +172,19 @@ tarjetas:
         curvas:
           - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
           - { expr: "sab7*max((A_s*sin(2*pi*f_s*t) - Vbb7/2 + V_BE)/(1 + k7), min((A_s*sin(2*pi*f_s*t) + Vbb7/2 - V_BE)/(1 + k7), (2*A_s*sin(2*pi*f_s*t))/(2 + k7))) + (1 - sab7)*(max((A_s*sin(2*pi*f_s*t) + Vbb7/2 - V_BE)/(1 + k7), 0) + min((A_s*sin(2*pi*f_s*t) - Vbb7/2 + V_BE)/(1 + k7), 0))", color: naranja, rotulo: "salida", mide: salida }
-      ocultar: true
-    opciones:
-      - texto: "Con una pequeña: el escalón es una parte mayor de la señal"
-        bien: true
-        porque: "Empeora con señales pequeñas, al revés que casi todas, y da armónicos de orden alto: muy audible."
-      - texto: "Con una grande, como el recorte"
-        porque: "El recorte crece con la señal; el escalón de 0,7 V es fijo y pesa más cuanto menor es la señal."
-      - texto: "Igual con las dos"
-        porque: "El escalón mide lo mismo, pero en una señal pequeña ocupa mucho más del ciclo."
+      mandos:
+        - { valor: A_s, min: 0.5, max: 5, paso: 0.5, rotulo: "Amplitud de la señal" }
+    objetivo:
+      condiciones:
+        - { valor: k_m, min: 40, rotulo: "Sin conducir: {{k_m}}" }
+      logrado: "Con {{A_s}} de señal, el escalón ocupa {{k_m}} del ciclo: empeora con señales pequeñas, al revés que casi todas, y da armónicos altos, muy audibles."
+      pistas:
+        - { texto: "Baje más la señal." }
     escalera:
-      - "El escalón es siempre de 0,7 V. ¿Frente a qué señal es mayor?"
-    solucion: "Con una pequeña: el escalón fijo es una fracción mayor."
+      - "El escalón de 0,7 V es fijo: pesa más cuanto menor es la señal."
+    solucion: "Con 1 V, casi la mitad del ciclo."
+    comprobar:
+      - { con: { A_s: 1 }, k_m: 49.4, tol: 0.01 }
 
   - id: dibuje-clase-b
     tipo: dibujar
@@ -224,12 +235,11 @@ tarjetas:
     solucion: "Corte o saturación: casi no disipa; por eso más del 90 %."
 
   - id: formula-vpico
-    tipo: formula
+    tipo: explorar
     titulo: "Del vatio a la tensión"
-    texto: "Para dar P vatios sobre R ohmios hace falta este pico. Cambie la potencia y la carga."
+    texto: "Para dar P vatios sobre R ohmios hace falta un pico de √(2 · P · R). Monte el amplificador de 20 W sobre 8 Ω del libro."
     libro: [238, 239, 241]
-    ec: 238
-    sustitucion: "√(2 · {{P_o}} · {{R_L}}) = {{V_pk}}"
+    inicio: { P_o: 10, R_L: 4 }
     widget:
       tipo: circuito
       esquema: resistencia
@@ -240,14 +250,25 @@ tarjetas:
       corriente: I_pk
       mide: { corriente: I_pk, tension: V_pk }
       mandos:
-        - { valor: P_o, lista: [10, 20, 40, 50] }
-        - { valor: R_L, lista: [4, 8] }
+        - { valor: P_o, lista: [10, 20, 40, 50], rotulo: "Potencia" }
+        - { valor: R_L, lista: [4, 8], rotulo: "Carga" }
+    objetivo:
+      condiciones:
+        - { valor: V_pk, objetivo: 17.9, tol: 0.01, rotulo: "Pico: {{V_pk}}" }
+      logrado: "√(2 · {{P_o}} · {{R_L}}) = {{V_pk}}, con {{I_pk}} de pico."
+      pistas:
+        - { texto: "20 W sobre 8 Ω." }
+    escalera:
+      - "V_{pico} = √(2 · P · R)."
+    solucion: "20 W sobre 8 Ω: 17,9 V y 2,24 A de pico."
+    comprobar:
+      - { con: { P_o: 20, R_L: 8 }, V_pk: 17.89, I_pk: 2.236, tol: 0.005 }
 
   - id: prediga-doble
-    tipo: predecir
+    tipo: simular
     titulo: "El doble de potencia"
-    texto: "Sobre 8 Ω, de 20 a 40 W. ¿Cuánta más tensión de pico hace falta?"
-    libro: [240]
+    texto: "Sobre 8 Ω, 20 W piden 17,9 V de pico. ¿Qué pico piden 40 W?"
+    libro: [239, 240]
     fijar: { P_o: 40, R_L: 8 }
     widget:
       tipo: circuito
@@ -257,21 +278,22 @@ tarjetas:
       corriente: I_pk
       mide: { corriente: I_pk, tension: V_pk }
       ocultar: true
-    opciones:
-      - texto: "Un 41 % más: 25,3 V"
-        bien: true
-        porque: "La tensión va con la raíz de la potencia: por √2. Lo que se dispara es la corriente y la disipación."
-      - texto: "El doble: 35,8 V"
-        porque: "Eso daría cuatro veces la potencia: P va con el cuadrado de la tensión."
-      - texto: "La misma"
-        porque: "Con la misma carga, más potencia exige más tensión, aunque solo con la raíz."
+      mandos: []
+    simular:
+      objetivo: V_pk
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión de pico"
+      medida: tension
+      errores:
+        - { expr: "V_x2", texto: "El doble de tensión daría cuatro veces la potencia: P va con el cuadrado." }
+    exito: "25,3 V, un 41 % más: la tensión va con la raíz de la potencia. Lo que se dispara es la corriente y la disipación."
     escalera:
-      - "V_{pico} = √(2·P·R). ¿Qué hace la raíz si P se dobla?"
-    solucion: "Por √2: de 17,9 a 25,3 V, un 41 % más."
+      - "V_{pico} = √(2 · P · R)."
+    solucion: "Por √2: de 17,9 a 25,3 V."
     comprobar:
-      - { V_pk: 25.3, s_40: 41.4, tol: 0.005 }
+      - { V_pk: 25.3, s_40: 41.4, V_x2: 35.78, tol: 0.005 }
       - { con: { P_o: 20 }, V_pk: 17.89, V_40: 25.3, tol: 0.005 }
-      - { con: { P_o: 20 }, V_dob: 35.78, tol: 0.005 }
 
   - id: porque-termico
     tipo: porque
@@ -299,38 +321,33 @@ tarjetas:
     solucion: "Sigue la temperatura de los de salida y baja la polarización al calentarse."
 
   - id: estime-disipacion
-    tipo: pregunta
+    tipo: simular
     fase: "Estime"
     titulo: "El disipador"
-    texto: "En clase B la disipación máxima por transistor es 2·P_{máx}/π². Con raíles de ±21 V y 8 Ω, ¿cuántos vatios?"
+    texto: "En clase B la disipación máxima por transistor es 2 · P_{máx}/π². Con raíles de ±21 V y 8 Ω, ¿cuántos vatios?"
     libro: [216, 243, 244]
     fijar: { V_r: 21, R_L: 8, P_o: 20 }
-    estimar:
-      objetivo: "P_d"
+    simular:
+      objetivo: P_d
       unidad: W
-      min: 0
-      max: 20
-      paso: 0.1
-      inicio: 15
-      tol: 0.05
+      tol: 0.02
       rotulo: "Disipación por transistor"
-    exito: "Unos 5,6 W, no 4 W: el disipador se calcula con la tensión real, y al 64 % de la excursión."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 5.9 }, texto: "Se ha pasado: P_{máx} = 21²/(2·8) = 27,6 W; multiplíquela por 2/π²." }
-      - { texto: "Se ha quedado corto: con los ±21 V reales, P_{máx} es 27,6 W, no 20 W." }
+      errores:
+        - { expr: "P_d20", texto: "Eso es con 20 W justos. El disipador se calcula con la tensión real de los raíles." }
+    exito: "Unos 5,6 W, no 4 W: el disipador se calcula con la tensión real, y el máximo cae al 64 % de la excursión."
     escalera:
-      - "P_{máx} = V_{CC}²/(2·R_{L}) con la tensión del raíl."
-      - "Luego multiplique por 2/π² ≈ 0,2."
-    solucion: "21²/(π²·8) ≈ 5,6 W por transistor."
+      - "P_{máx} = V_{CC}²/(2 · R_{L}); luego, 2 · P_{máx}/π²."
+    solucion: "21²/(π² · 8) ≈ 5,6 W por transistor."
     comprobar:
       - { P_d: 5.6, P_mx: 27.6, P_d20: 4.05, tol: 0.01 }
 
   - id: pregunta-altavoz
-    tipo: pregunta
+    tipo: explorar
     titulo: "Un altavoz de 8 Ω"
-    texto: "Su impedancia real sube a 30 Ω en la resonancia y baja a 6 o 4 Ω en otras frecuencias. ¿Para cuál se diseña?"
+    texto: "Su impedancia real sube a 30 Ω en la resonancia y baja a 6 o 4 Ω en otras frecuencias. Con 20 W, busque la que más corriente pide."
     libro: [246, 248]
-    fijar: { R_L: 4, P_o: 20 }
+    fijar: { P_o: 20 }
+    inicio: { R_L: 8 }
     widget:
       tipo: circuito
       esquema: resistencia
@@ -338,64 +355,26 @@ tarjetas:
       lectura: { valor: I_pk, rotulo: "Corriente de pico" }
       corriente: I_pk
       mide: { corriente: I_pk, tension: V_pk }
-    opciones:
-      - texto: "Para la mínima: por eso los serios indican su capacidad a 4 Ω"
-        bien: true
-        porque: "Con menos impedancia, la misma tensión pide más corriente; además una carga reactiva lleva a más disipación."
-      - texto: "Para la nominal, 8 Ω"
-        porque: "Es solo un valor de referencia: diseñado para 8 Ω, puede fallar con la carga real."
-      - texto: "Para la máxima, 30 Ω"
-        porque: "A 30 Ω pide poca corriente: no es el caso que compromete los transistores."
+      mandos:
+        - { valor: R_L, lista: [30, 8, 6, 4], rotulo: "Impedancia del altavoz" }
+    objetivo:
+      condiciones:
+        - { valor: R_L, max: 4, rotulo: "Impedancia: {{R_L}}" }
+      logrado: "{{I_pk}} de pico con 4 Ω: el amplificador debe soportar la impedancia mínima, no la nominal. Por eso los serios indican su capacidad a 4 Ω."
+      pistas:
+        - { texto: "Menos impedancia, más corriente." }
     escalera:
-      - "¿Con qué impedancia pide más corriente la misma tensión?"
-    solucion: "Para la impedancia mínima, unos 4 Ω."
-
-  - id: empareje-proteccion
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "La protección que no es opcional"
-    texto: "Con acoplo directo, un fallo manda continua al altavoz. Una cada protección con lo que evita."
-    libro: [256, 257, 258]
-    emparejar:
-      - ["Detección de continua", "Desconecta el altavoz con un relé"]
-      - ["Retardo de conexión", "El «pop» de los transitorios al encender"]
-      - ["Limitación de corriente", "El cortocircuito en los bornes"]
-    exito: "Un circuito modesto: la diferencia entre un amplificador y una avería esperando."
-    pistas:
-      - { texto: "El relé actúa cuando aparece continua en la salida." }
-    escalera:
-      - "Una vigila la salida, otra el arranque y otra los bornes."
-    solucion: "Continua–relé, retardo–«pop» al encender, limitación–cortocircuito."
-
-  - id: pregunta-realimentacion
-    tipo: pregunta
-    titulo: "Cuánta realimentación"
-    texto: "La realimentación reduce la distorsión. ¿Cuál es el criterio actual en audio?"
-    libro: [261, 262]
-    widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "señal", discontinua: true }
-    opciones:
-      - texto: "Moderada, con una etapa de salida lineal por sí misma y margen de fase amplio"
-        bien: true
-        porque: "Excesiva y con poco margen, ante transitorios rápidos se porta peor que lo que corrige."
-      - texto: "Toda la posible, para corregir cualquier etapa"
-        porque: "Con margen de fase escaso, los transitorios rápidos salen peor."
-      - texto: "Ninguna: empeora el sonido"
-        porque: "Reduce la distorsión por (1 + Aβ); el problema es solo su exceso."
-    escalera:
-      - "¿Qué pasa con un lazo muy fuerte y poco margen de fase ante un transitorio?"
-    solucion: "Realimentación moderada sobre una etapa ya lineal, con margen de fase amplio."
+      - "I_{pico} = √(2 · P/R)."
+    solucion: "4 Ω: unos 3,16 A."
+    comprobar:
+      - { con: { R_L: 4 }, I_pk: 3.162, tol: 0.005 }
 
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [209, 217, 238, 244]
+    libro: [209, 217, 238, 244, 256, 257, 258, 261, 262]
     ideas:
       - { titulo: "Las clases.", texto: "Qué fracción del ciclo conduce cada transistor: A 360°, B 180°, AB algo más." }
       - { titulo: "El cruce.", texto: "En clase B, un escalón de 0,7 V que pesa más con señales pequeñas; la AB lo quita con corriente de reposo." }
       - { titulo: "Del vatio a la tensión.", texto: "√(2·P·R): 20 W sobre 8 Ω, 17,9 V de pico." }
-      - { titulo: "El disipador.", texto: "Con la tensión real y al 64 % de la excursión: 5,6 W con ±21 V." }
+      - { titulo: "Lo que no es opcional.", texto: "Detección de continua con relé, retardo al encender y limitación de corriente; y realimentación moderada sobre una etapa ya lineal." }

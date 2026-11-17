@@ -5,9 +5,14 @@
 # - La fuga: I_fuga·R_fuente (1 µA: 10 mV con 10 kΩ, 100 mV con 100 kΩ).
 # - Problema 16.B: pasos = 16 MHz / f_PWM y bits = log₂(pasos). Problema 16.C: la deriva del resonador.
 # Paso práctico: «ajuste» de la impedancia de la fuente hasta que el error residual quede por debajo de media LSB.
+# 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): el muestreo vivo se explora hasta tener más de ocho
+# constantes; el error con 100 kΩ, la fuga, los bits a 31,25 kHz, los pasos a 490 Hz y la deriva del resonador se
+# escriben (con el error típico de olvidar la resistencia interna). Quedan dos preguntas de opciones: la trampa y la
+# solución.
 leccion: cap17/sec-17.12
 
 libro:
+  307: "Segundo candidato"
   298: "condensador de muestreo de 14 pF, resistencia interna de hasta 100 kΩ"
   301: "el convertidor dedica 1,5 ciclos a la adquisición, es decir, 12 µs"
   303: "El error residual tras 12 µs es 1024"
@@ -33,6 +38,9 @@ modelo:
     I_fg: { sim: "I_{fuga}", nombre: "fuga de la entrada", unidad: A, valor: 1e-6 }
     f_ck: { sim: "f_{reloj}", nombre: "reloj", unidad: Hz, valor: 16000000 }
     f_w: { sim: "f_{PWM}", nombre: "frecuencia del PWM", unidad: Hz, valor: 31250 }
+    f_490: { sim: "f_{PWM}", nombre: "PWM por defecto", unidad: Hz, valor: 490 }
+    e_res: { sim: "\\epsilon", nombre: "exactitud del resonador", unidad: "", valor: 0.005 }
+    t_dia: { sim: "t_{día}", nombre: "segundos de un día", unidad: s, valor: 86400 }
   calculos:
     R_t: { expr: "R_f + R_i", sim: "R_{total}", nombre: "resistencia de carga", unidad: Ω }
     tau: { expr: "R_t*C_s", sim: "τ", nombre: "constante de tiempo", unidad: s }
@@ -43,13 +51,16 @@ modelo:
     e_f: { expr: "I_fg*R_f", sim: "error_{fuga}", nombre: "error por la fuga", unidad: V }
     pasos: { expr: "f_ck/f_w", sim: "pasos", nombre: "pasos del PWM", unidad: "" }
     bits: { expr: "ln(pasos)/ln(2)", sim: "bits", nombre: "resolución del PWM", unidad: bits, cifras: 3 }
+    p_490: { expr: "f_ck/f_490", sim: "pasos", nombre: "pasos a 490 Hz", unidad: "" }
+    d_res: { expr: "e_res*t_dia", sim: "\\Delta t", nombre: "deriva del resonador en un día", unidad: s }
 
 tarjetas:
   - id: explore-muestreo
     tipo: explorar
     titulo: "El condensador de muestreo"
-    texto: "La entrada salta de 0 a 5 V y el condensador de 14 pF tiene 12 µs para cargarse. Cambie la impedancia de la fuente."
-    libro: [298, 301, 303]
+    texto: "La entrada salta de 0 a 5 V y el condensador de 14 pF tiene 12 µs para cargarse. Elija la fuente que le deja más de ocho constantes de tiempo."
+    libro: [298, 301, 303, 304]
+    inicio: { R_f: 10000 }
     widget:
       tipo: circuito
       esquema: carga-rc
@@ -67,36 +78,47 @@ tarjetas:
           - { x: "tau", y: "0.632*V_s", rotulo: "τ" }
       mandos:
         - { valor: R_f, lista: [1000, 10000, 100000], rotulo: "R_{fuente}" }
-    requiere: { mover: [R_f] }
+    objetivo:
+      condiciones:
+        - { valor: n_t, min: 8, rotulo: "Constantes en 12 µs: {{n_t}}" }
+      logrado: "Con {{R_f}}, τ = {{tau}} y caben {{n_t}} constantes: el error residual baja a {{err}}. Los 100 kΩ internos están siempre en serie."
+      pistas:
+        - { texto: "Cuanta más resistencia, más lenta la carga: baje la de la fuente." }
+    escalera:
+      - "τ = (R_{fuente} + 100 kΩ) · 14 pF."
+    solucion: "1 kΩ: 8,5 constantes."
+    comprobar:
+      - { con: { R_f: 1000 }, n_t: 8.5, tol: 0.02 }
 
   - id: predecir-100k
-    tipo: predecir
+    tipo: leer
     titulo: "Un divisor de 100 kΩ"
-    texto: "Con 100 kΩ de fuente y los 100 kΩ internos, ¿cuánto error queda al terminar la adquisición?"
+    texto: "Con 100 kΩ de fuente y los 100 kΩ internos, escriba cuántos LSB de error quedan al terminar la adquisición."
     libro: [303, 304]
     fijar: { R_f: 100000 }
     widget:
       tipo: circuito
       esquema: carga-rc
       piezas: { fuente: V_s, r: R_t, c: C_s }
-      lectura: { valor: err, rotulo: "Error residual" }
-      ocultar: true
+      datos:
+        - { valor: tau, rotulo: "τ = {{tau}}" }
       grafica:
         x: { id: t, min: 0, max: 12e-6, unidad: s, rotulo: "t" }
         y: { min: 0, max: 5.5, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "V_s*(1 - exp(-t/tau))", color: naranja, rotulo: "v_{C}", mide: vc }
       mandos: []
-    opciones:
-      - texto: "Unos 14 LSB"
-        bien: true
-        porque: "τ = 2,8 µs: solo 4,3 constantes en 12 µs. Casi un 1,4 % del fondo de escala."
-      - texto: "Unos 0,19 LSB"
-        porque: "Es lo que sale olvidando los 100 kΩ internos, en serie con la fuente."
-      - texto: "Nada: 12 µs sobran"
-        porque: "Con 200 kΩ en serie, τ = 2,8 µs: no da tiempo a cargarse del todo."
+    leer:
+      objetivo: err
+      unidad: LSB
+      tol: 0.05
+      rotulo: "Error residual"
+      errores:
+        - { expr: "e_s", texto: "Eso sale olvidando los 100 kΩ internos, en serie con la fuente: con 200 kΩ, τ = 2,8 µs." }
+    exito: "Unos 14 LSB: solo 4,3 constantes en 12 µs, casi un 1,4 % del fondo de escala."
     escalera:
       - "En serie están la fuente y la resistencia interna: 200 kΩ con 14 pF."
+      - "Error = 1024 · e^(−t/τ) LSB."
     solucion: "τ = 2,8 µs; 12 µs son 4,3 constantes: unos 14 LSB."
     comprobar:
       - { tau: 2.8e-6, n_t: 4.29, err: 14.0, R_t: 200000, tol: 0.02 }
@@ -160,27 +182,25 @@ tarjetas:
       - { con: { R_f: 1000 }, err: 0.21, tol: 0.03 }
 
   - id: pregunta-fuga
-    tipo: pregunta
+    tipo: leer
     titulo: "La fuga"
-    texto: "La entrada fuga hasta 1 µA, que atraviesa los 100 kΩ de la fuente. ¿Se arregla promediando?"
-    libro: [309, 310]
+    texto: "La entrada fuga hasta 1 µA, que atraviesa los 100 kΩ de la fuente. Escriba el error de tensión que produce."
+    libro: [307, 309, 310]
     fijar: { R_f: 100000 }
     widget:
       tipo: figura
       figura: fig-17.9
       zonas:
-        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199] }
-    opciones:
-      - texto: "No: es sistemático"
-        bien: true
-        porque: "Hasta 100 mV, siempre en la misma dirección: no se promedia ni se filtra."
-      - texto: "Sí, con cien lecturas"
-        porque: "Promediar reduce el ruido aleatorio; este error desplaza siempre igual."
-      - texto: "Sí, con un condensador de 100 nF"
-        porque: "El condensador quita el error de establecimiento, no el de la fuga."
+        - { id: adc, rotulo: "Gráfica de la izquierda", rect: [0, 0, 210, 199], texto: "La impedancia de la fuente, en la lectura del convertidor." }
+    leer:
+      objetivo: e_f
+      unidad: V
+      tol: 0.02
+      rotulo: "Error por la fuga"
+    exito: "100 mV, más de 20 LSB, y sistemáticos: siempre desplazan en la misma dirección, así que no se promedian ni se filtran."
     escalera:
-      - "¿El error cambia de signo de una lectura a otra?"
-    solucion: "No: 1 µA · 100 kΩ = 100 mV, sistemáticos."
+      - "Error = I_{fuga} · R_{fuente}."
+    solucion: "1 µA · 100 kΩ = 100 mV."
     comprobar:
       - { e_f: 0.1 }
 
@@ -207,23 +227,23 @@ tarjetas:
     solucion: "Un seguidor de tensión; o un divisor de 10 kΩ en total, aceptando el consumo."
 
   - id: estime-bits
-    tipo: pregunta
+    tipo: leer
     titulo: "PWM sin zumbido"
-    texto: "Para salir del rango audible, un temporizador de 16 bits da PWM a 31,25 kHz con un reloj de 16 MHz. ¿Cuántos bits reales quedan?"
+    texto: "Para salir del rango audible, un temporizador de 16 bits da PWM a 31,25 kHz con un reloj de 16 MHz. Escriba cuántos bits reales quedan."
     libro: [321, 323]
-    estimar:
-      objetivo: "bits"
-      unidad: bits
-      min: 0
-      max: 16
-      paso: 0.1
-      inicio: 14
-      tol: 0.02
-      rotulo: "Resolución"
+    widget:
+      tipo: figura
+      figura: fig-17.8
+      zonas:
+        - { id: todo, rotulo: "La onda PWM", rect: [0, 0, 445, 253], texto: "El ciclo de trabajo se cuenta en pasos del contador." }
+    leer:
+      objetivo: bits
+      unidad: ""
+      tol: 0.01
+      rotulo: "Bits de resolución"
+      errores:
+        - { expr: "pasos", texto: "Esos son los pasos; los bits son su logaritmo en base 2." }
     exito: "512 pasos, 9 bits: para 10 hay que bajar a unos 15,6 kHz o subir el reloj."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 9.18 }, texto: "Demasiado: los pasos son el reloj entre la frecuencia del PWM." }
-      - { texto: "Se ha quedado corto: los pasos son el reloj entre la frecuencia del PWM." }
     escalera:
       - "Pasos = 16 MHz / 31,25 kHz."
       - "Los bits son el logaritmo en base 2 de los pasos."
@@ -232,48 +252,51 @@ tarjetas:
       - { pasos: 512, bits: 9 }
 
   - id: porque-8bits
-    tipo: porque
+    tipo: leer
     titulo: "Solo 8 bits"
-    texto: "A 490 Hz cabrían casi 15 bits, pero analogWrite() da solo 8. ¿Por qué?"
-    libro: [322]
+    texto: "Con el reloj de 16 MHz, escriba cuántos pasos cabrían en un periodo del PWM por defecto, de 490 Hz."
+    libro: [321, 322]
     widget:
       tipo: figura
       figura: fig-17.8
       zonas:
-        - { id: todo, rotulo: "La onda PWM", rect: [0, 0, 445, 253] }
-    opciones:
-      - texto: "La fija la longitud del contador, de 8 bits"
-        bien: true
-        porque: "Los bits que sobran se gastan en el preescalador y en la doble pendiente."
-      - texto: "Porque 490 Hz es poco"
-        porque: "A 490 Hz cabrían casi 15 bits: lo que limita es el contador."
-      - texto: "Porque el pin solo tiene 8 niveles"
-        porque: "El pin solo vale 0 o 5 V; los niveles los da el contador."
+        - { id: todo, rotulo: "La onda PWM", rect: [0, 0, 445, 253], texto: "El ciclo de trabajo se cuenta en pasos del contador." }
+    leer:
+      objetivo: p_490
+      unidad: ""
+      tol: 0.01
+      rotulo: "Pasos a 490 Hz"
+    exito: "Casi 15 bits. Pero analogWrite() da 8: usa contadores de 8 bits, y lo que sobra se gasta en el preescalador. La resolución la fija la longitud del contador, no la frecuencia."
     escalera:
-      - "¿Qué cuenta los pasos de cada periodo?"
-    solucion: "La longitud del contador (8 bits), no la frecuencia."
+      - "Pasos = reloj / frecuencia del PWM."
+    solucion: "16 MHz / 490 Hz ≈ 32 653 pasos."
+    comprobar:
+      - { p_490: 32653 }
 
   - id: pregunta-resonador
-    tipo: pregunta
+    tipo: leer
     titulo: "Un reloj que se va"
-    texto: "Un registrador marca la hora con millis() durante un mes, en una placa con resonador de ±0,5 %. ¿Sirve?"
+    texto: "Un registrador marca la hora con millis(), en una placa con resonador de ±0,5 %. Escriba cuántos segundos se desvía al día."
     libro: [333, 334]
     widget:
       tipo: figura
-      figura: fig-17.8
-      zonas:
-        - { id: todo, rotulo: "La onda PWM", rect: [0, 0, 445, 253] }
-    opciones:
-      - texto: "No: se desvía 3,6 horas en un mes"
-        bien: true
-        porque: "432 s al día, más de siete minutos: inservible como referencia temporal. Hace falta un reloj de tiempo real."
-      - texto: "Sí: un 0,5 % es poco"
-        porque: "Un 0,5 % son 7,2 minutos al día: 3,6 horas en un mes."
-      - texto: "Solo si se corrige el desbordamiento"
-        porque: "En un mes no llega a desbordarse; el problema es la deriva."
+      codigo:
+        lenguaje: c
+        texto: |
+          unsigned long marca = millis();   // timestamp
+          guardar(marca, lectura);
+      resaltar: [1]
+    leer:
+      objetivo: d_res
+      unidad: s
+      tol: 0.02
+      rotulo: "Deriva en un día"
+    exito: "432 s, más de siete minutos al día: 3,6 horas en un mes. Inservible como referencia temporal: hace falta un reloj de tiempo real con cristal."
     escalera:
-      - "Calcule el 0,5 % de un día."
-    solucion: "No: 432 s/día, 3,6 horas al mes."
+      - "Un día tiene 86 400 segundos."
+    solucion: "0,5 % de 86 400 s = 432 s."
+    comprobar:
+      - { d_res: 432, t_dia: 86400 }
 
   - id: resumen
     tipo: resumen

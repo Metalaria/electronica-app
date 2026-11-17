@@ -5,6 +5,12 @@
 #   θ = 30° es de ejemplo. El plano z con el círculo unidad como curva paramétrica y `aspecto: igual` (motor12e).
 # - El ejercicio 29.4 (polos en 0,8 y 1,2).
 # Paso práctico: «ajuste» del módulo del polo hasta el círculo unidad (un oscilador, bloque 159).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): el polo se lleva cerca del origen (a = 0,9); con a = 0,3
+# se marca el polo en el plano z; el semiplano izquierdo y la frecuencia de Nyquist se tocan en la figura 29.10; el
+# par de polos se acerca al círculo hasta una resonancia de más de diez veces (|H| en θ = 1/((1 − r)·√(1 − 2r·cos 2θ
+# + r²))); el polo inestable del ejercicio 29.4 se marca; y los ceros del notch se llevan a 50 Hz (con un muestreo de
+# ejemplo de 1 000 Hz, |H| = 2·|cos ω − cos θ₀|). Quedan dos preguntas de opciones: las secciones de segundo orden y la
+# bilineal.
 leccion: cap30/sec-30.5
 
 libro:
@@ -39,14 +45,21 @@ modelo:
     a_f: { sim: "a", nombre: "coeficiente del filtro", unidad: "", valor: 0.3 }
     r_p: { sim: "r", nombre: "módulo de los polos", unidad: "", valor: 0.8 }
     th_p: { sim: "θ", nombre: "ángulo de los polos de ejemplo", unidad: "°", valor: 30 }
+    p_1: { sim: "z_{1}", nombre: "primer polo del ejercicio", unidad: "", valor: 0.8 }
+    p_2: { sim: "z_{2}", nombre: "segundo polo del ejercicio", unidad: "", valor: 1.2 }
+    f_0: { sim: "f_{0}", nombre: "frecuencia de los ceros", unidad: Hz, valor: 100 }
+    f_sz: { sim: "f_{s}", nombre: "muestreo de ejemplo", unidad: Hz, valor: 1000 }
+    f_r: { sim: "f_{red}", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
   calculos:
     p_z: { expr: "1 - a_f", sim: "z_{p}", nombre: "polo del filtro", unidad: "", cifras: 2 }
+    G_r: { expr: "1/((1 - r_p)*sqrt(1 - 2*r_p*cos(2*th_p*pi/180) + r_p^2))", sim: "|H|_{máx}", nombre: "ganancia en la resonancia", unidad: "", cifras: 3 }
+    n_50: { expr: "2*abs(cos(2*pi*f_r/f_sz) - cos(2*pi*f_0/f_sz))", sim: "|H(50 Hz)|", nombre: "ganancia a la frecuencia de la red", unidad: "", cifras: 2 }
 
 tarjetas:
   - id: explore-polo
     tipo: explorar
     titulo: "Un filtro y su polo"
-    texto: "El filtro y[n] = a·x[n] + (1 − a)·y[n − 1] ante un escalón. Cambie a y mire dónde queda su polo, z = 1 − a."
+    texto: "El filtro y[n] = a·x[n] + (1 − a)·y[n − 1] ante un escalón, con su polo en z = 1 − a. Lleve el polo cerca del origen."
     nota: "Valores de a de ejemplo."
     libro: [146, 150, 169]
     widget:
@@ -58,15 +71,25 @@ tarjetas:
       lectura: { valor: p_z, rotulo: "Polo en z" }
       mandos:
         - { valor: a_f, lista: [0.1, 0.3, 0.6, 0.9], rotulo: "Coeficiente, a" }
-    requiere: { mover: [a_f] }
+    inicio: { a_f: 0.1 }
+    objetivo:
+      condiciones:
+        - { valor: p_z, max: 0.15, rotulo: "Polo en z = {{p_z}}" }
+      logrado: "Polo cerca del origen: la salida llega casi de golpe. Respuesta rápida y poco selectiva."
+      pistas:
+        - { texto: "El polo sigue lejos del origen y la subida es lenta: suba a." }
+    escalera:
+      - "El polo está en z = 1 − a."
+    solucion: "a = 0,9: polo en 0,1."
+    comprobar:
+      - { con: { a_f: 0.9 }, p_z: 0.1 }
 
   - id: formula-hz
-    tipo: formula
+    tipo: marcar
     titulo: "La función de transferencia discreta"
-    texto: "Un retardo de una muestra es multiplicar por z⁻¹: la ecuación en diferencias se vuelve algebraica. Despejando, H(z) = a / (1 − (1 − a)·z⁻¹)."
+    texto: "Un retardo es multiplicar por z⁻¹; despejando, H(z) = a / (1 − (1 − a)·z⁻¹). Con a = 0,3, marque su polo en el plano z."
     libro: [140, 142, 148, 149, 150]
-    ec: 148
-    sustitucion: "z_{p} = 1 − {{a_f}} = {{p_z}}"
+    fijar: { a_f: 0.3 }
     widget:
       tipo: grafica
       aspecto: igual
@@ -74,39 +97,59 @@ tarjetas:
       y: { min: -1.2, max: 1.2, unidad: "", rotulo: "parte imaginaria de z" }
       curvas:
         - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "sin(th)", color: tinta, rotulo: "círculo unidad", discontinua: true }
-      marcas:
-        - { x: "p_z", y: "0", rotulo: "polo" }
-      lectura: { valor: p_z, rotulo: "Polo en z" }
-      mandos:
-        - { valor: a_f, lista: [0.1, 0.3, 0.6, 0.9], rotulo: "Coeficiente, a" }
+      mandos: []
+    marcar:
+      modo: xy
+      x: "p_z"
+      y: "0"
+      tol: 0.03
+      inicio: { x: -0.6, y: 0.6 }
+      rotulo: "El polo"
+      pasos: 48
+    pistas:
+      - { cuando: { valor: marca_y, mayor: 0.05 }, texto: "El polo es real: va sobre el eje horizontal." }
+      - { cuando: { valor: marca_y, menor: -0.05 }, texto: "El polo es real: va sobre el eje horizontal." }
+      - { cuando: { valor: marca_x, menor: 0.65 }, texto: "Más a la derecha: z = 1 − a." }
+      - { texto: "Más a la izquierda: z = 1 − a." }
+    exito: "En z = 1 − 0,3 = {{p_z}}, dentro del círculo: estable."
+    escalera:
+      - "El polo anula el denominador: 1 − (1 − a)·z⁻¹ = 0."
+    solucion: "En z = {{p_z}}, sobre el eje real."
+    comprobar:
+      - { p_z: 0.7 }
 
   - id: empareje-planos
-    tipo: pregunta
+    tipo: tocar
     titulo: "De Laplace a Z"
-    texto: "Empareje cada idea del dominio continuo con su equivalente discreto."
+    texto: "En s, los polos estables están en el semiplano izquierdo y la frecuencia vive en el eje imaginario. Toque lo que hace de semiplano izquierdo en z."
     libro: [139, 152, 158, 163]
     widget:
       tipo: figura
       figura: fig-30.10
       zonas:
-        - { id: todo, rotulo: "El plano Z y el círculo unidad", rect: [0, 0, 289, 267] }
-    emparejar:
-      - ["Ecuación diferencial", "Ecuación en diferencias"]
-      - ["Eje imaginario", "Círculo unidad"]
-      - ["Semiplano izquierdo", "Dentro del círculo unidad"]
-      - ["Laplace", "Transformada Z"]
-    exito: "La transformación bilineal lleva el semiplano izquierdo dentro del círculo: conserva la estabilidad."
-    pistas:
-      - { texto: "La respuesta en frecuencia se evalúa en el eje imaginario en s y en el círculo unidad en z." }
+        - { id: f0, rotulo: "Derecha del círculo", rect: [236, 112, 40, 28] }
+        - { id: fs2, rotulo: "Izquierda del círculo", rect: [50, 112, 42, 30] }
+        - { id: estable, rotulo: "Zona sombreada de dentro", rect: [95, 140, 60, 28] }
+        - { id: fuera, rotulo: "Esquina de arriba a la derecha", rect: [225, 0, 62, 26] }
+        - { id: polo, rotulo: "Cruz de dentro", rect: [170, 68, 34, 26] }
+    tocar:
+      bien: [estable]
+      porque:
+        f0: "Eso es un punto del círculo, la frecuencia cero: el círculo hace de eje imaginario."
+        fs2: "Eso es un punto del círculo, la mitad del muestreo."
+        fuera: "Fuera del círculo es lo inestable: el semiplano derecho."
+        polo: "Eso es un polo concreto, no una región."
+    exito: "Dentro del círculo unidad. El círculo hace de eje imaginario y la ecuación diferencial pasa a ser en diferencias."
     escalera:
-      - "Empiece por las herramientas: ¿qué transformada usa cada dominio?"
-    solucion: "Diferencial, en diferencias; eje imaginario, círculo; semiplano izquierdo, dentro del círculo; Laplace, Z."
+      - "Estable en s es a la izquierda; en z, ¿dentro o fuera del círculo?"
+    solucion: "La zona de dentro del círculo."
 
   - id: explore-plano
     tipo: explorar
     titulo: "Un par de polos en el plano z"
-    texto: "Dos polos conjugados de ejemplo, a ±30°. Cambie su módulo: el ángulo dice a qué frecuencia afectan; la cercanía al círculo, cuánto."
+    texto: "Dos polos conjugados de ejemplo, a ±30°: el ángulo dice a qué frecuencia afectan. Acérquelos al círculo hasta una resonancia de más de diez veces."
     libro: [167, 170, 175]
+    inicio: { r_p: 0.5 }
     widget:
       tipo: grafica
       aspecto: igual
@@ -117,12 +160,21 @@ tarjetas:
       marcas:
         - { x: "r_p*cos(th_p*pi/180)", y: "r_p*sin(th_p*pi/180)", rotulo: "polo" }
         - { x: "r_p*cos(th_p*pi/180)", y: "-r_p*sin(th_p*pi/180)", rotulo: "polo" }
-      lectura: { valor: r_p, rotulo: "Módulo de los polos" }
+      lectura: { valor: G_r, rotulo: "Ganancia en la resonancia" }
       mandos:
         - { valor: r_p, lista: [0.5, 0.8, 0.95], rotulo: "Módulo, r" }
-    requiere: { mover: [r_p] }
+    objetivo:
+      condiciones:
+        - { valor: G_r, min: 10, rotulo: "Resonancia: {{G_r}} veces" }
+      logrado: "Con r = {{r_p}}, {{G_r}} veces: cuanto más cerca del círculo, más pronunciada la resonancia, siempre a ±30°."
+      pistas:
+        - { texto: "Aún poca resonancia: acerque los polos al círculo." }
+    escalera:
+      - "La ganancia crece como 1/(1 − r)."
+    solucion: "r = 0,95."
     comprobar:
       - { th_p: 30 }
+      - { con: { r_p: 0.95 }, G_r: 20.5, tol: 0.01 }
 
   - id: ajuste-oscilador
     tipo: ajuste
@@ -150,70 +202,94 @@ tarjetas:
       dentro: "Sobre el círculo: un oscilador. Cuanto más cerca de él, más resonante era el filtro."
 
   - id: predecir-estable
-    tipo: predecir
+    tipo: marcar
     titulo: "Dos polos, uno fuera"
-    texto: "Un filtro digital tiene un polo en z = 0,8 y otro en z = 1,2. ¿Es estable?"
+    texto: "Un filtro digital tiene un polo en z = 0,8 y otro en z = 1,2. Marque en el plano z el que lo hace inestable."
     libro: [158, 159, "cap30#350"]
     widget:
-      tipo: figura
-      figura: fig-30.10
-      zonas:
-        - { id: todo, rotulo: "El plano Z y el círculo unidad", rect: [0, 0, 289, 267] }
-    opciones:
-      - texto: "No: el polo en 1,2 está fuera del círculo unidad"
-        bien: true
-        porque: "Basta un polo fuera: su modo crece como 1,2ⁿ, sin límite."
-      - texto: "Sí: uno de los dos está dentro"
-        porque: "La condición es para todos los polos; uno fuera basta para que la salida crezca."
-      - texto: "Sí, porque los dos son reales y positivos"
-        porque: "Ser real no salva nada: lo que cuenta es el módulo, y 1,2 es mayor que 1."
+      tipo: grafica
+      aspecto: igual
+      x: { id: x, min: -1.5, max: 1.5, unidad: "", rotulo: "parte real de z" }
+      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "parte imaginaria de z" }
+      curvas:
+        - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "sin(th)", color: tinta, rotulo: "círculo unidad", discontinua: true }
+      marcas:
+        - { x: "p_1", y: "0", rotulo: "0,8" }
+        - { x: "p_2", y: "0", rotulo: "1,2" }
+      mandos: []
+    marcar:
+      modo: xy
+      x: "p_2"
+      y: "0"
+      tol: 0.03
+      inicio: { x: -1, y: 1 }
+      rotulo: "El polo que sobra"
+      pasos: 60
+    pistas:
+      - { cuando: { valor: marca_x, menor: 1 }, texto: "Ese sitio está dentro del círculo: ahí un polo es estable." }
+      - { texto: "Sobre el eje real, en el polo que queda fuera." }
+    exito: "El de 1,2: basta un polo fuera para que su modo crezca como 1,2ⁿ. No es estable."
     escalera:
-      - "Mire el módulo de cada polo frente a 1."
-    solucion: "No: estable exige todos los polos dentro, y 1,2 está fuera."
+      - "Estable exige todos los polos dentro del círculo unidad."
+    solucion: "El polo en z = 1,2."
+    comprobar:
+      - { p_1: 0.8, p_2: 1.2 }
 
   - id: pregunta-vuelta
-    tipo: pregunta
+    tipo: tocar
     titulo: "Una vuelta al círculo"
-    texto: "Recorrer el círculo unidad una vuelta completa es recorrer las frecuencias de cero a la de muestreo. ¿Qué le pasa a una frecuencia por encima de Nyquist?"
+    texto: "z = e^{jωT}: una vuelta al círculo unidad va de cero a la frecuencia de muestreo. Toque dónde queda la mitad del muestreo."
     libro: [153, 154, 155]
     widget:
       tipo: figura
       figura: fig-30.10
       zonas:
-        - { id: todo, rotulo: "El plano Z y el círculo unidad", rect: [0, 0, 289, 267] }
-    opciones:
-      - texto: "Vuelve a caer sobre el mismo círculo, encima de otra frecuencia: el aliasing"
-        bien: true
-        porque: "Es la explicación geométrica del aliasing, y muestra por qué es irreversible."
-      - texto: "Cae fuera del círculo y el filtro se vuelve inestable"
-        porque: "Las frecuencias siempre están sobre el círculo; fuera solo pueden estar los polos."
-      - texto: "Desaparece: el plano z no la representa"
-        porque: "Sí la representa, pero en el mismo punto que una frecuencia más baja: ahí está el problema."
+        - { id: f0, rotulo: "Derecha del círculo", rect: [236, 112, 40, 28] }
+        - { id: fs2, rotulo: "Izquierda del círculo", rect: [50, 112, 42, 30] }
+        - { id: estable, rotulo: "Zona sombreada de dentro", rect: [95, 140, 60, 28] }
+        - { id: fuera, rotulo: "Esquina de arriba a la derecha", rect: [225, 0, 62, 26] }
+        - { id: polo, rotulo: "Cruz de dentro", rect: [170, 68, 34, 26] }
+    tocar:
+      bien: [fs2]
+      porque:
+        f0: "Ahí está la frecuencia cero, y también f_{s}: una vuelta entera."
+        estable: "Esa es la región de los polos estables; las frecuencias van sobre el círculo."
+        fuera: "Fuera del círculo no hay frecuencias, solo polos inestables."
+        polo: "Eso es un polo, no una frecuencia."
+    exito: "En la mitad de la vuelta. Lo que pasa de ahí vuelve a caer sobre el círculo, encima de otra frecuencia: el aliasing, y por eso es irreversible."
     escalera:
-      - "z = e^{jωT}: ¿qué pasa con el ángulo cuando ωT pasa de una vuelta?"
-    solucion: "Da otra vuelta y cae sobre una frecuencia legítima: el aliasing."
+      - "Media vuelta: el lado opuesto a f = 0."
+    solucion: "El lado izquierdo del círculo."
 
   - id: empareje-lectura
-    tipo: pregunta
+    tipo: explorar
     titulo: "Leer el diagrama sin calcular"
-    texto: "Empareje cada configuración con lo que hace el filtro."
+    texto: "Dos ceros sobre el círculo: el ángulo es la frecuencia que anulan. Llévelos a la de la red para un notch."
+    nota: "Muestreo de ejemplo de 1 000 Hz."
     libro: [167, 168, 169, 170, 171]
+    inicio: { f_0: 100 }
     widget:
-      tipo: figura
-      figura: fig-30.10
-      zonas:
-        - { id: todo, rotulo: "El plano Z y el círculo unidad", rect: [0, 0, 289, 267] }
-    emparejar:
-      - ["Polos cerca del círculo", "Resonancia pronunciada"]
-      - ["Ceros sobre el círculo", "Rechazo total a esa frecuencia"]
-      - ["Polos cerca del origen", "Respuesta rápida y poco selectiva"]
-      - ["El ángulo", "La frecuencia a la que afecta"]
-    exito: "Un notch de red: dos ceros en el ángulo de 50 Hz y dos polos algo más adentro para estrechar la banda."
-    pistas:
-      - { texto: "Un cero anula; un polo realza." }
+      tipo: grafica
+      x: { id: nu, min: 0, max: 500, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 4.2, unidad: "", rotulo: "|H|" }
+      curvas:
+        - { expr: "2*abs(cos(2*pi*nu/f_sz) - cos(2*pi*f_0/f_sz))", color: naranja, rotulo: "|H| de los dos ceros" }
+      marcas:
+        - { x: "f_r", y: "n_50", rotulo: "red" }
+      lectura: { valor: n_50, rotulo: "Ganancia a 50 Hz" }
+      mandos:
+        - { valor: f_0, lista: [25, 50, 100, 200], rotulo: "Ángulo de los ceros, en frecuencia" }
+    objetivo:
+      condiciones:
+        - { valor: n_50, max: 0.01, rotulo: "A 50 Hz: {{n_50}}" }
+      logrado: "Ceros sobre el círculo en el ángulo de 50 Hz: rechazo total ahí. Dos polos algo más adentro estrecharían la banda."
+      pistas:
+        - { texto: "El hueco cae en otra frecuencia: gire los ceros." }
     escalera:
-      - "Distancia al círculo, cuánto; ángulo, dónde."
-    solucion: "Polos al borde, resonancia; ceros en el círculo, rechazo; polos en el origen, rápido; ángulo, la frecuencia."
+      - "Un cero sobre el círculo anula la frecuencia de su ángulo."
+    solucion: "Ceros a 50 Hz."
+    comprobar:
+      - { con: { f_0: 50 }, n_50: 0 }
 
   - id: porque-secciones
     tipo: porque

@@ -2,6 +2,10 @@
 # Formato: contenido/lecciones11/GUIA.md (§5.2, §11). Los tres problemas del libro: 39.A (autonomía con autodescarga:
 # 2 400 mAh, 5 ms a 8 mA y 20 ms a 35 mA por despertar, 3 µA en reposo; la capacidad va en A·h), 39.B (planificabilidad
 # y bloqueo por el bus) y 39.C (índices de 16 bits no atómicos).
+# 1.2.1 («aprender haciendo», GUIA §13): la autonomía real cada minuto con un 3 % de autodescarga es el objetivo de la
+# exploración; la corriente media, la utilización, el peor caso del sensor y la ventana de riesgo se escriben. Quedan
+# dos preguntas de opciones: el suelo de consumo y si cumple la cota. La medida con multímetro, la herencia y los
+# índices de un byte van en los textos.
 leccion: cap38/sec-38.16
 
 libro:
@@ -57,8 +61,9 @@ tarjetas:
   - id: explore-autonomia
     tipo: explorar
     titulo: "Problema 39.A: cada cuánto despertar"
-    texto: "El nodo del problema, con 2400 mAh. Cambie el periodo de despertar y la autodescarga, y mire la autonomía."
-    libro: [503, 505, 509, 510]
+    texto: "El nodo del problema, con 2400 mAh. Despiértelo cada minuto con una autodescarga del 3 % al año y mire cuánto le queda de los 17,9 años ideales."
+    libro: [503, 505, 509, 510, 511]
+    inicio: { T_w: 1, ad: 0 }
     widget:
       tipo: grafica
       x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
@@ -71,65 +76,47 @@ tarjetas:
       mandos:
         - { valor: T_w, lista: [1, 60], rotulo: "Periodo de despertar" }
         - { valor: ad, lista: [0, 1, 3], rotulo: "Autodescarga por año" }
-    requiere: { mover: [T_w, ad] }
+    objetivo:
+      condiciones:
+        - { valor: T_w, objetivo: 60, tol: 0.01, rotulo: "Cada minuto" }
+        - { valor: ad, objetivo: 3, tol: 0.01, rotulo: "Autodescarga del 3 %" }
+      logrado: "{{anos}}: la autodescarga, {{I_ad}}, se lleva más de un tercio del presupuesto. Cada segundo no pesaría nada."
+      pistas:
+        - { cuando: { valor: T_w, max: 30 }, texto: "Primero, despertar cada minuto." }
+        - { texto: "Ahora, la autodescarga del 3 %." }
+    escalera: ["Periodo de 60 s y autodescarga del 3 %."]
+    solucion: "Cada minuto, con un 3 %: {{anos}}."
+    comprobar:
+      - { con: { T_w: 60, ad: 3 }, anos: 11.63, I_ad: 0.0000082 }
+      - { con: { T_w: 60, ad: 0 }, anos: 17.87 }
+      - { con: { T_w: 1, ad: 0 }, anos: 0.37 }
 
   - id: estime-corriente
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "La corriente media cada minuto"
-    texto: "Despertando cada 60 s, sin autodescarga, ¿cuál es la corriente media del nodo?"
-    libro: [505, 508]
+    texto: "Despertando cada 60 s, sin autodescarga, calcule la corriente media del nodo y escríbala."
+    libro: [505, 508, 514]
     fijar: { T_w: 60, ad: 0 }
     widget:
       tipo: grafica
       x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
       y: { min: 0, max: 20, unidad: "años", rotulo: "autonomía" }
       curvas:
-        - { expr: "C_bat/(((0.005*0.008 + 0.02*0.035)/tt + 0.000003*(tt - 0.025)/tt))/8760", color: azul, rotulo: "autonomía ideal" }
-    estimar:
-      objetivo: "I_id"
-      unidad: A
-      min: 0
-      max: 0.00005
-      paso: 0.0000001
-      inicio: 0.00004
-      tol: 0.05
-      rotulo: "Corriente media"
-    exito: "15,3 µA: 12,3 de los despertares y 3 del reposo. Cada segundo serían 742,9 µA."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0000153 }, texto: "Se ha pasado: 5 ms × 8 mA + 20 ms × 35 mA, repartido en 60 s, más los 3 µA." }
-      - { texto: "Se ha quedado corto: no olvide los 3 µA del reposo." }
-    escalera: ["Carga por despertar: 5 ms × 8 mA + 20 ms × 35 mA = 0,74 mA·s."]
-    solucion: "0,74 mA·s / 60 s ≈ 12,3 µA, más 3 µA de reposo: 15,3 µA."
-    comprobar:
-      - { I_id: 0.0000153, tol: 0.005, I_desp: 0.0000123, n_cic: 2 }
-      - { con: { T_w: 1 }, I_id: 0.0007429, tol: 0.001 }
-      - { con: { T_w: 1 }, I_id: 0.00074, tol: 0.01 }
-
-  - id: prediga-autodescarga
-    tipo: predecir
-    titulo: "La pila se descarga sola"
-    texto: "Cada 60 s, con una autodescarga del 3 % al año, 8,2 µA. ¿Qué autonomía queda de los 17,9 años ideales?"
-    libro: [510, 511]
-    fijar: { T_w: 60, ad: 3 }
-    widget:
-      tipo: grafica
-      x: { id: tt, min: 1, max: 60, unidad: s, rotulo: "periodo de despertar" }
-      y: { min: 0, max: 20, unidad: "años", rotulo: "autonomía" }
-      curvas:
         - { expr: "C_bat/(((0.005*0.008 + 0.02*0.035)/tt + 0.000003*(tt - 0.025)/tt) + I_ad)/8760", color: azul, rotulo: "autonomía" }
-      lectura: { valor: anos, rotulo: "Autonomía" }
-      ocultar: true
-    opciones:
-      - { texto: "11,6 años", bien: true, porque: "La autodescarga se lleva más de un tercio del presupuesto: 8,2 de 23,6 µA." }
-      - { texto: "17,9 años: la autodescarga es despreciable", porque: "Lo es despertando cada segundo; cada minuto, el nodo consume tan poco que pesa mucho." }
-      - { texto: "0,37 años", porque: "Esa es la autonomía despertando cada segundo." }
-    escalera: ["Sume los 8,2 µA a los 15,3 µA del nodo."]
-    solucion: "15,3 + 8,2 = 23,6 µA: 11,6 años."
+      mandos: []
+    leer:
+      objetivo: I_id
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente media"
+      errores:
+        - { expr: "I_desp", texto: "Esos son solo los despertares: faltan los 3 µA del reposo." }
+    exito: "{{I_id}}; cada segundo serían 742,9 µA. Se mide con un integrador: los picos de 35 mA duran 20 ms y un multímetro los promedia mal."
+    escalera: ["Carga por despertar: 5 ms × 8 mA + 20 ms × 35 mA, repartida en 60 s, más el reposo."]
+    solucion: "{{I_desp}} de los despertares y 3 µA del reposo: {{I_id}}."
     comprobar:
-      - { anos: 11.63, tol: 0.005, I_ad: 0.0000082 }
-      - { con: { ad: 0 }, anos: 17.87, tol: 0.005 }
-      - { con: { T_w: 1, ad: 0 }, anos: 0.37, tol: 0.01 }
+      - { I_id: 0.0000153, I_desp: 0.0000123, n_cic: 2 }
+      - { con: { T_w: 1 }, I_id: 0.0007429 }
 
   - id: pregunta-suelo
     tipo: pregunta
@@ -150,35 +137,26 @@ tarjetas:
     escalera: ["¿Qué parte del consumo no depende del firmware?"]
     solucion: "La autodescarga es un suelo: bajar el consumo muy por debajo no sirve."
 
-  - id: pregunta-medir
-    tipo: pregunta
-    titulo: "Medir la media de verdad"
-    texto: "¿Por qué la corriente media de este nodo no se mide con un multímetro?"
-    libro: [514]
-    widget:
-      tipo: figura
-      figura: fig-38.9
-      zonas:
-        - { id: perfil, rotulo: "Gráfica del perfil", rect: [41, 11, 240, 167], texto: "Picos cortos de actividad sobre el sueño profundo." }
-    opciones:
-      - { texto: "Los picos de 35 mA duran 20 ms y el multímetro los promedia mal", bien: true, porque: "Hace falta un integrador o un analizador de consumo; el multímetro, para el reposo en su rango bajo." }
-      - { texto: "Porque no tiene rango de miliamperios", porque: "Lo tiene: el problema son los picos breves." }
-      - { texto: "Porque la corriente es alterna", porque: "Es continua a pulsos: el multímetro no integra bien los pulsos." }
-    escalera: ["¿Cuánto duran los picos frente al tiempo que mide un multímetro?"]
-    solucion: "Picos de 20 ms que el multímetro promedia mal: integrador o analizador de consumo."
-
   - id: formula-utilizacion
-    tipo: formula
+    tipo: leer
     titulo: "Problema 39.B: la utilización"
-    texto: "Sensor, 0,5 ms cada 10 ms; control, 2 ms cada 20 ms; registro, 8 ms cada 100 ms. Cada tarea ocupa duración entre periodo."
-    libro: [516, 518, 521, 522]
-    ec: 521
-    sustitucion: "{{u1}} + {{u2}} + {{u3}} = {{U_b}}"
+    texto: "Sensor, 0,5 ms cada 10 ms; control, 2 ms cada 20 ms; registro, 8 ms cada 100 ms. Calcule la utilización total del procesador."
+    libro: [516, 518, 521]
     widget:
       tipo: figura
       figura: fig-38.17
       zonas:
-        - { id: expulsivo, rotulo: "Panel de abajo", rect: [25, 118, 404, 98], texto: "Expulsivo con rate monotonic." }
+        - { id: expulsivo, rotulo: "Panel de abajo", rect: [25, 118, 404, 98] }
+    leer:
+      objetivo: U_b
+      unidad: "%"
+      tol: 0.01
+      rotulo: "Utilización"
+      errores:
+        - { expr: "u3", texto: "Ese es solo el registro: sume las tres tareas." }
+    exito: "{{U_b}}: {{u1}} + {{u2}} + {{u3}}. Muy por debajo de la cota de tres tareas."
+    escalera: ["Cada tarea ocupa duración entre periodo."]
+    solucion: "{{u1}} + {{u2}} + {{u3}} = {{U_b}}."
     comprobar:
       - { U_b: 23, u1: 5, u2: 10, u3: 8 }
 
@@ -200,99 +178,50 @@ tarjetas:
     solucion: "No: con un recurso compartido la cota no garantiza nada."
 
   - id: estime-respuesta
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "El peor caso del sensor"
-    texto: "El registro retiene el bus 8 ms y el control lo desplaza 2 ms más. Con los 0,5 ms del sensor, ¿cuánto tarda en responder?"
-    libro: [525]
+    texto: "El registro retiene el bus 8 ms y el control lo desplaza 2 ms más. Con los 0,5 ms del propio sensor, calcule cuánto tarda en responder."
+    libro: [524, 525, 528]
     widget:
       tipo: figura
       figura: fig-38.18
       zonas:
-        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "La media desplaza a la baja." }
-    estimar:
-      objetivo: "resp"
+        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90] }
+    leer:
+      objetivo: resp
       unidad: s
-      min: 0
-      max: 0.02
-      paso: 0.0005
-      inicio: 0.0175
       tol: 0.02
       rotulo: "Tiempo de respuesta"
-    exito: "10,5 ms con un plazo de 10 ms: falla, aunque «funcione» casi siempre."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.0105 }, texto: "Se ha pasado: sume el bloqueo, el desplazamiento y la propia tarea." }
-      - { texto: "Se ha quedado corto: el sensor espera los 8 ms del registro más los 2 del control." }
+      errores:
+        - { expr: "resp_h", texto: "Así sería con herencia de prioridad, sin el desplazamiento del control." }
+    exito: "{{resp}} con un plazo de 10 ms: falla. Con herencia de prioridad, {{resp_h}}: cumple, con poco margen; trocear la escritura larga da más."
     escalera: ["8 + 2 de bloqueo, y luego su propio trabajo."]
-    solucion: "8 + 2 + 0,5 = 10,5 ms: pierde el plazo de 10 ms."
+    solucion: "8 + 2 + 0,5 ms = {{resp}}."
     comprobar:
-      - { resp: 0.0105 }
-
-  - id: pregunta-solucion-b
-    tipo: pregunta
-    titulo: "La solución del 39.B"
-    texto: "¿Qué deja al sensor dentro de su plazo sin cambiar el hardware?"
-    libro: [516, 528]
-    widget:
-      tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "Con herencia de prioridad." }
-    opciones:
-      - { texto: "Herencia de prioridad: el control ya no desplaza al registro", bien: true, porque: "El bloqueo queda en 8 ms y el sensor responde en 8,5 ms: cumple, con poco margen. Trocear la escritura da más." }
-      - { texto: "Subir la prioridad del control", porque: "Empeora: el control desplazaría al registro aún más." }
-      - { texto: "Bajar la utilización", porque: "Ya es del 23 %: el problema no es la carga sino el bloqueo." }
-    escalera: ["Es lo que faltó en el Mars Pathfinder."]
-    solucion: "Herencia de prioridad (8,5 ms) y trocear la escritura larga."
-    comprobar:
-      - { resp_h: 0.0085 }
+      - { resp: 0.0105, resp_h: 0.0085 }
 
   - id: estime-ventana
-    tipo: pregunta
-    fase: "Estime"
+    tipo: leer
     titulo: "Problema 39.C: la ventana"
-    texto: "Leer un índice de 16 bits en un micro de 8 bits ocupa unos dos ciclos a 16 MHz. ¿Cuánto dura la ventana de riesgo?"
-    libro: [532, 538, 540]
+    texto: "Leer un índice de 16 bits en un micro de 8 bits ocupa unos dos ciclos a 16 MHz. Calcule cuánto dura la ventana de riesgo."
+    libro: [532, 538, 540, 543, 544]
     widget:
       tipo: figura
       figura: fig-K.1
       zonas:
-        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "Un búfer circular con sus dos índices." }
-    estimar:
-      objetivo: "vent"
+        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135] }
+    leer:
+      objetivo: vent
       unidad: s
-      min: 0
-      max: 0.0000005
-      paso: 0.000000005
-      inicio: 0.0000004
-      tol: 0.05
+      tol: 0.02
       rotulo: "Ventana de riesgo"
-    exito: "125 ns. Con 10 kHz de interrupciones y mil accesos por segundo, un fallo cada 0,8 s: no es raro."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.000000125 }, texto: "Se ha pasado: un ciclo a 16 MHz dura 62,5 ns." }
-      - { texto: "Se ha quedado corto: son dos ciclos de 62,5 ns." }
+      errores:
+        - { expr: "1/f_c", texto: "Ese es un ciclo; la lectura ocupa dos." }
+    exito: "{{vent}}: con 10 kHz de interrupciones, un fallo cada 0,8 s. La solución, índices de un byte y búfer potencia de dos: atómicos por construcción."
     escalera: ["Un ciclo a 16 MHz dura 1/16 µs."]
-    solucion: "2 / 16 MHz = 125 ns."
+    solucion: "2 / 16 MHz = {{vent}}."
     comprobar:
       - { vent: 0.000000125 }
-      - { con: { n_cic: 1 }, vent: 0.0000000625 }
-
-  - id: porque-solucion-c
-    tipo: porque
-    titulo: "La solución elegante"
-    texto: "¿Por qué índices de 8 bits, con un búfer de tamaño potencia de dos, eliminan el fallo sin coste?"
-    libro: [543, 544]
-    widget:
-      tipo: figura
-      figura: fig-K.1
-      zonas:
-        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "Índices de 8 bits que cuentan libremente." }
-    opciones:
-      - { texto: "Un byte se lee y se escribe en una sola instrucción: es atómico por construcción", bien: true, porque: "La interrupción no puede caer en medio. Y cada índice lo escribe un solo lado." }
-      - { texto: "Porque deshabilitan las interrupciones", porque: "Eso es la sección crítica, que añade latencia; los índices de un byte no la necesitan." }
-      - { texto: "Porque el búfer ocupa menos", porque: "El tamaño no importa: importa que el índice quepa en un byte." }
-    escalera: ["¿Cuántas instrucciones necesita un AVR para escribir un byte?"]
-    solucion: "Un índice de un byte se lee en una instrucción: no hay ventana de riesgo."
 
   - id: resumen
     tipo: resumen

@@ -1,13 +1,17 @@
-# Lección 1.2 de la sección 14.3 «Proyecto 2: Amplificador de Audio con LM386» (cap15; etiqueta sec-15.3).
+# Lección de la sección 14.3 «Proyecto 2: Amplificador de Audio con LM386» (cap15; etiqueta sec-15.3).
 # Formato: contenido/lecciones11/GUIA.md. La gráfica es la salida sobre 8 Ω con los números del libro: ganancia 20
 # (26 dB) o 200 con 10 µF entre las patillas 1 y 8, y recorte a unos 6 V pico a pico con 9 V (medio vatio: 6²/(8·8) =
 # 0,56 W). La señal de prueba es una senoide de 1 kHz (la de la ficha 6) con amplitudes de entrada de EJEMPLO (5, 15,
 # 50 y 150 mV de pico); el recorte se dibuja como un corte limpio en ±3 V. El LM386 se dibuja con el esquema
 # «ao-no-inversor» como bloque de ganancia (R₁ = 1 kΩ y R₂ de 19 o 199 kΩ, de EJEMPLO: dan 20 y 200) con V_sat = 3 V;
-# sin su nivel de continua V_s/2 ni el condensador de salida: la señal va centrada en 0.
+# sin su nivel de continua V_s/2 ni el condensador de salida: la señal va centrada en 0. 1.2.1 (aprender haciendo):
+# sacar 1 V de pico con la entrada mínima, calcular los decibelios y la potencia al recorte, subir el volumen hasta
+# recortar, tocar la causa del zumbido y medir la ganancia en el banco. Dos preguntas: el condensador y Boucherot.
+# 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
 leccion: cap15/sec-15.3
 
 libro:
+  71: "Los problemas característicos"
   59: "Alimentación, entrada por un potenciómetro, un condensador de acoplo a la salida y el altavoz."
   61: "Ganancia 200 poniendo un condensador de 10 µF entre las patillas 1 y 8."
   62: "con 9 V de alimentación, la excursión útil es de unos 6 V pico a pico"
@@ -44,7 +48,7 @@ tarjetas:
   - id: explore-ganancia
     tipo: explorar
     titulo: "Ganancia 20, o 200"
-    texto: "Ponga el condensador entre las patillas 1 y 8 y cambie la entrada. Mire la salida sobre el altavoz."
+    texto: "Con la entrada más pequeña, consiga 1 V de pico en el altavoz."
     nota: "El LM386 como bloque de ganancia, sin su continua de media alimentación. Entradas de ejemplo."
     libro: [59, 61, "cap15#61"]
     widget:
@@ -62,7 +66,19 @@ tarjetas:
       mandos:
         - { valor: c_18, tipo: interruptor, rotulo: "10 µF entre 1 y 8" }
         - { valor: v_i, lista: [0.005, 0.015, 0.05, 0.15], rotulo: "Entrada (pico)" }
-    requiere: { mover: [c_18, v_i] }
+    inicio: { c_18: 0, v_i: 0.015 }
+    objetivo:
+      condiciones:
+        - { valor: A_o, objetivo: 1, tol: 0.02, rotulo: "Pico de salida: {{A_o}}" }
+      logrado: "Con 5 mV y ganancia {{G}}: 1 V de pico. El condensador entre 1 y 8 multiplica la ganancia por diez."
+      pistas:
+        - { cuando: { valor: v_i, min: 0.006 }, texto: "Baje la entrada a la mínima." }
+        - { texto: "Con 5 mV y ganancia 20 no llega: ponga el condensador entre 1 y 8." }
+    escalera:
+      - "Con la entrada más pequeña, hace falta la ganancia mayor."
+    solucion: "Entrada de 5 mV con el condensador: 200 · 5 mV = 1 V."
+    comprobar:
+      - { con: { c_18: 1, v_i: 0.005 }, A_o: 1 }
 
   - id: prediga-condensador
     tipo: predecir
@@ -94,53 +110,43 @@ tarjetas:
     solucion: "Quita realimentación."
 
   - id: estime-db
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "La ganancia en decibelios"
     texto: "Sin condensador entre 1 y 8, la ganancia es 20. ¿Cuántos decibelios son?"
     libro: ["cap15#61"]
     fijar: { c_18: 0 }
-    estimar:
-      objetivo: "G_db"
+    simular:
+      objetivo: G_db
       unidad: dB
-      min: 0
-      max: 60
-      paso: 1
-      inicio: 50
-      tol: 0.04
+      tol: 0.03
       rotulo: "Ganancia"
-    exito: "26 dB: 20 · log₁₀ 20. Con 200, 46 dB."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 27 }, texto: "Se ha pasado: 20 veces son 20 · log₁₀ 20." }
-      - { texto: "Se ha quedado corto: 20 veces en tensión son más de 20 dB." }
+      errores:
+        - { expr: "10*log10(G)", texto: "Eso es para potencias: en tensión son 20 · log₁₀." }
+        - { expr: "G", texto: "Esas son las veces, no los decibelios." }
+    exito: "26 dB. Con el condensador, 200 veces: 46 dB."
     escalera:
-      - "En tensión, G en dB = 20 · log₁₀ G."
-    solucion: "26 dB."
+      - "En tensión: 20 · log₁₀ de las veces."
+    solucion: "20 · log₁₀ 20 = 26 dB."
     comprobar:
       - { G_db: 26.0, tol: 0.003 }
       - { con: { c_18: 1 }, G_db: 46.0, tol: 0.003 }
 
   - id: estime-potencia
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "Medio vatio"
     texto: "Con 9 V la salida recorta en unos 6 V pico a pico sobre 8 Ω. ¿Qué potencia da en ese punto?"
-    libro: [62]
-    estimar:
-      objetivo: "P_x"
+    libro: [61, 62]
+    simular:
+      objetivo: P_x
       unidad: W
-      min: 0
-      max: 3
-      paso: 0.01
-      inicio: 2.5
-      tol: 0.08
+      tol: 0.05
       rotulo: "Potencia al recorte"
-    exito: "0,56 W: 6² / (8 · 8). Alrededor de medio vatio."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.61 }, texto: "Se ha pasado: con pico a pico, P = V_{pp}² / (8 · R_{L})." }
-      - { texto: "Se ha quedado corto: con el valor pico a pico, P = V_{pp}² / (8 · R_{L})." }
+      errores:
+        - { expr: "(2*V_cl)^2/R_L", texto: "Ha usado el pico a pico como si fuera eficaz: el eficaz es el pico entre √2." }
+        - { expr: "(2*V_cl)^2/(2*R_L)", texto: "Ha usado el pico a pico como si fuera el pico: el pico es la mitad." }
+    exito: "Unos 0,56 W: el medio vatio del LM386 con 9 V."
     escalera:
-      - "Use el valor pico a pico al cuadrado, entre ocho veces la carga."
+      - "Con pico a pico: P = V_{pp}² / (8 · R_{L})."
     solucion: "6² / (8 · 8) = 0,56 W."
     comprobar:
       - { P_x: 0.5625, tol: 0.003 }
@@ -148,7 +154,7 @@ tarjetas:
   - id: sorpresa-recorte
     tipo: sorpresa
     titulo: "Subir el volumen"
-    texto: "Con ganancia 200, suba la entrada. La salida no pasa de unos 6 V pico a pico."
+    texto: "Con ganancia 200, suba la entrada hasta que la salida recorte."
     libro: [75, 62]
     fijar: { c_18: 1 }
     inicio: { v_i: 0.005 }
@@ -166,35 +172,15 @@ tarjetas:
         - { valor: P_o, rotulo: "Potencia: {{P_o}}" }
       mandos:
         - { valor: v_i, lista: [0.005, 0.015, 0.05, 0.15], rotulo: "Entrada (pico)" }
-    requiere: { mover: [v_i] }
-
-  - id: por-que-diez
-    tipo: porque
-    titulo: "¿Por qué exactamente diez veces?"
-    texto: "La ganancia no sube a un valor cualquiera: pasa de 20 a 200. ¿Por qué?"
-    libro: [64, 65]
-    fijar: { c_18: 1, v_i: 0.005 }
-    widget:
-      tipo: circuito
-      esquema: ao-no-inversor
-      piezas: { entrada: cero_g, amplitud: v_i, f: f_s, r1: R1_g, r2: R2_g, vsat: V_cl }
-      grafica:
-        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-        y: { min: -4, max: 4, unidad: V, rotulo: "salida" }
-        curvas:
-          - { expr: "max(-V_cl, min(V_cl, G*v_i*sin(2*pi*f_s*t)))", color: naranja, rotulo: "salida", mide: salida }
-      lectura: { valor: G, rotulo: "Ganancia" }
-    opciones:
-      - texto: "Porque lo fija la red de realimentación interna, no el condensador"
-        bien: true
-        porque: "El condensador solo cortocircuita una parte de la red; el factor sale de esa red."
-      - texto: "Porque el condensador es de 10 µF"
-        porque: "Su valor solo debe ser grande para el audio; el factor lo pone la red interna."
-      - texto: "Porque el altavoz es de 8 Ω"
-        porque: "La carga no fija la ganancia: la fija la realimentación."
+    objetivo:
+      condiciones:
+        - { valor: P_o, min: 0.56, rotulo: "Potencia: {{P_o}}" }
+      logrado: "Ya recorta: la salida se aplana en unos 6 V pico a pico y la potencia se queda en {{P_o}}. Lo que sigue es distorsión."
+      pistas:
+        - { texto: "Suba la entrada." }
     escalera:
-      - "Con una resistencia en serie con el condensador se obtienen valores intermedios: ¿qué se está cambiando?"
-    solucion: "Lo fija la red de realimentación."
+      - "Con 200 veces, unos milivoltios de entrada ya llegan al techo."
+    solucion: "Con las entradas mayores, la salida recorta."
 
   - id: boucherot
     tipo: pregunta
@@ -223,24 +209,6 @@ tarjetas:
       - "Un altavoz no es una resistencia: su impedancia sube con la frecuencia."
     solucion: "Estabiliza ante la carga inductiva."
 
-  - id: problemas
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Los problemas característicos"
-    texto: "Una cada síntoma con su causa."
-    libro: [70, 72, 73, 74, 75]
-    emparejar:
-      - ["Oscilación", "Falta la red de Boucherot o el desacoplo"]
-      - ["Zumbido", "Entrada y salida con el mismo retorno de masa"]
-      - ["Ruido de fondo a ganancia 200", "Un integrado antiguo, no silencioso"]
-      - ["Distorsión al subir el volumen", "El recorte esperado"]
-    exito: "Masas separadas unidas en un punto, y desacoplo junto a la alimentación."
-    pistas:
-      - { texto: "El zumbido viene de la corriente de salida circulando por la masa de la entrada." }
-    escalera:
-      - "La distorsión al subir el volumen no es una avería."
-    solucion: "Oscila: Boucherot o desacoplo; zumbido: masas; ruido: el chip; distorsión: recorte."
-
   - id: banco-ganancia
     tipo: banco
     titulo: "Mida la ganancia"
@@ -263,7 +231,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [62, 65, 69, 73]
+    libro: [62, 65, 69, 73, 71, 72, 74]
     ideas:
       - { titulo: "Ganancia.", texto: "20 por defecto; 200 con 10 µF entre 1 y 8, que quita realimentación." }
       - { titulo: "Medio vatio.", texto: "Unos 6 V pico a pico sobre 8 Ω con 9 V." }

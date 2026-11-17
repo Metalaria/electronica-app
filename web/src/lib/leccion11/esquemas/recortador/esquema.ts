@@ -21,6 +21,21 @@ const d: DefinicionEsquema = {
     vz: { descripcion: 'Zener en serie con el diodo de la rama positiva (V): recorta en V_Z + vd', color: 'naranja' },
     zz: { descripcion: 'dos Zener de esta tensión en antiserie, del nodo a masa, en lugar de las ramas (V): recortan en ±(V_Z + vd)', color: 'naranja' },
   },
+  // 1.2.1 (motor121): the instrument's points and branches, the parts a tap can choose (GUIA §13.1, §13.4)
+  partes: { diodo1: 'el diodo del recorte positivo', diodo2: 'el diodo del recorte negativo', zeners: 'los dos Zener' },
+  medible: (c) => {
+    const zz = c.tiene('zz');
+    return {
+      puntos: { fte: 'Entrada, arriba', s: 'Salida, tras la resistencia', ...(!zz && c.cerrado('positivo') ? { p1: 'Tras el diodo del recorte positivo' } : {}), '0': 'Masa, abajo' },
+      ramas: { vmed: 'Rama de la entrada' },
+      zonas: {
+        fuente: 'Entrada alterna',
+        r: 'Resistencia',
+        ...(zz ? { zeners: 'Los dos Zener' } : { diodo1: 'Diodo de arriba', diodo2: 'Diodo de abajo' }),
+        ...(!zz && c.tiene('vref') ? { vref: 'Referencia' } : {}),
+      },
+    };
+  },
   observables: {
     salida: { medida: 'v(s)', analisis: 'tran', unidad: 'V', descripcion: 'tensión de salida, recortada' },
     entrada: { medida: 'v(fte)', analisis: 'tran', unidad: 'V', descripcion: 'tensión senoidal de entrada' },

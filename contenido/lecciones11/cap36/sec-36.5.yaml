@@ -6,6 +6,12 @@
 #   y = 50·(G + jB) y |Γ|² = ((1 − 50G)² + (50B)²)/((1 + 50G)² + (50B)²). Con C entre 57,4 y 70 pF el VSWR a 100 MHz
 #   queda por debajo de 1,22 (S11 de −20 dB, «excelente», tabla del bloque 153 de la 37.4).
 # Paso práctico: «ajuste» del condensador midiendo el VSWR (el cuarto paso del procedimiento del libro).
+# 1.2.1 (autor121-senpro, «aprender haciendo», GUIA §13): el salto se elige para Q = 3 (un tercio de banda); el salto
+# de la antena de 2 Ω se marca en la curva de Q y su banda se predice; la Z₀ del cuarto de onda se predice; el
+# condensador se ajusta midiendo (el procedimiento de cuatro pasos y por qué el ajuste es la norma pasan a esa tarjeta:
+# se quitan la de ordenar y la de las posiciones sin poblar); y el condensador de la red se elige por su autorresonancia
+# (63,7 pF con resonancias de ejemplo de 50, 80 y 300 MHz). Quedan una pregunta de opciones (los dos pasos) y las
+# formas de adaptar, por emparejar.
 leccion: cap36/sec-36.5
 
 libro:
@@ -36,6 +42,7 @@ modelo:
     L_m: { sim: "L", nombre: "bobina en serie", unidad: H, valor: 31.83e-9 }
     C_m: { sim: "C", nombre: "condensador en paralelo", unidad: F, valor: 63.66e-12 }
     f_0: { sim: "f₀", nombre: "frecuencia de trabajo", unidad: Hz, valor: 100000000 }
+    f_r: { sim: "f_{r}", nombre: "autorresonancia del condensador, de ejemplo", unidad: Hz, valor: 50000000 }
   calculos:
     Q_l: { expr: "sqrt(r_t - 1)", sim: "Q", nombre: "factor de calidad de la red en L", unidad: "" }
     B_w: { expr: "100/Q_l", sim: "BW", nombre: "ancho de banda relativo", unidad: "%" }
@@ -46,13 +53,16 @@ modelo:
     B_0: { expr: "2*pi*f_0*C_m - X_0/(R_l^2 + X_0^2)", sim: "B", nombre: "susceptancia total", unidad: S }
     g_0: { expr: "sqrt(((1 - 50*G_0)^2 + (50*B_0)^2)/((1 + 50*G_0)^2 + (50*B_0)^2))", sim: "|Γ|", nombre: "reflexión a f₀", unidad: "" }
     S_0: { expr: "(1 + g_0)/(1 - g_0)", sim: "VSWR", nombre: "VSWR a la frecuencia de trabajo", unidad: "" }
+    ok_r: { expr: "max(0, min(1, (f_r - 1.5*f_0)*1e-6))", sim: "fuera", nombre: "la autorresonancia queda por encima de la banda", unidad: "" }
+    Z_ar: { expr: "(50 + R_l)/2", sim: "Z", nombre: "media aritmética", unidad: Ω }
 
 tarjetas:
   - id: explore-q
     tipo: explorar
     titulo: "El salto decide la banda"
-    texto: "Una red en L adapta cualquier resistencia a otra con una bobina y un condensador. Cambie el salto de impedancia."
+    texto: "Una red en L adapta cualquier resistencia a otra con una bobina y un condensador. Elija el salto de impedancia que deja un tercio de banda: Q = 3."
     libro: [205, 207, 211, 212]
+    inicio: { r_t: 2 }
     widget:
       tipo: grafica
       x: { id: r, min: 1.5, max: 60, unidad: "", rotulo: "R_{mayor}/R_{menor}", escala: log }
@@ -66,32 +76,54 @@ tarjetas:
         - { valor: Q_l, rotulo: "Q = {{Q_l}}" }
       mandos:
         - { valor: r_t, lista: [2, 4, 10, 50], rotulo: "Salto de impedancia" }
-    requiere: { mover: [r_t] }
+    objetivo:
+      condiciones:
+        - { valor: Q_l, objetivo: 3, tol: 0.01, rotulo: "Q = {{Q_l}}" }
+      logrado: "Un salto de {{r_t}}: Q = 3,0 y un 33 % de banda. Con dos elementos no queda libertad: el salto impone el Q."
+      pistas:
+        - { cuando: { valor: Q_l, mayor: 3.03 }, texto: "Demasiado Q: un salto menor." }
+        - { texto: "Poco Q: un salto mayor." }
+    escalera:
+      - "Q = √(R_{mayor}/R_{menor} − 1): Q² + 1."
+    solucion: "Salto de 10."
+    comprobar:
+      - { con: { r_t: 10 }, Q_l: 3, B_w: 33.3, tol: 0.01 }
 
   - id: formula-q
-    tipo: formula
+    tipo: marcar
     titulo: "El Q de la red en L"
-    texto: "Con dos elementos no queda libertad: el salto impone el Q, y el Q, la banda."
-    libro: [207, 210, 211]
-    ec: 210
-    sustitucion: "√({{r_t}} − 1) = {{Q_l}}"
+    texto: "Hay que adaptar a 50 Ω una antena diminuta de 2 Ω. Marque en la curva su salto de impedancia."
+    libro: [207, 210, 211, 213]
     widget:
       tipo: grafica
       x: { id: r, min: 1.5, max: 60, unidad: "", rotulo: "R_{mayor}/R_{menor}", escala: log }
       y: { min: 0, max: 8, unidad: "", rotulo: "Q" }
       curvas:
         - { expr: "sqrt(r - 1)", color: naranja, rotulo: "Q de la red en L" }
-      marcas:
-        - { x: "r_t", y: "Q_l", rotulo: "Q = {{Q_l}}" }
-      lectura: { valor: Q_l, rotulo: "Q" }
-      mandos:
-        - { valor: r_t, lista: [2, 4, 10, 50], rotulo: "Salto de impedancia" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "25"
+      tol: 0.02
+      inicio: { x: 2, y: 1 }
+      rotulo: "El salto de la antena de 2 Ω"
+      pasos: 120
+    pistas:
+      - { cuando: { valor: marca_x, menor: 25 }, texto: "Más a la derecha: el salto es 50 entre 2." }
+      - { texto: "Más a la izquierda: 50 entre 2." }
+    exito: "Un salto de 25: Q = {{Q_2}}. Adaptar una antena diminuta exige un Q alto."
+    escalera:
+      - "Salto = R_{mayor}/R_{menor}."
+    solucion: "50/2 = 25."
+    comprobar:
+      - { Q_2: 4.899 }
 
   - id: predecir-antena-diminuta
-    tipo: predecir
+    tipo: simular
     titulo: "Una antena de 2 Ω"
-    texto: "Hay que adaptar a 50 Ω una antena diminuta de 2 Ω con una red en L. ¿Cómo será la red?"
-    libro: [213]
+    texto: "Con ese salto de 25 y Q = 4,90, ¿qué ancho de banda relativo, aproximadamente 1/Q, deja la red?"
+    libro: [211, 213]
     fijar: { r_t: 25 }
     widget:
       tipo: grafica
@@ -99,19 +131,19 @@ tarjetas:
       y: { min: 0, max: 8, unidad: "", rotulo: "Q" }
       curvas:
         - { expr: "sqrt(r - 1)", color: naranja, rotulo: "Q de la red en L" }
-      lectura: { valor: Q_l, rotulo: "Q" }
-      ocultar: true
-    opciones:
-      - texto: "De Q alto: banda estrecha y muy sensible a las tolerancias"
-        bien: true
-        porque: "Un salto de 25 da Q = 4,90: unos 20 % de banda, y cualquier desviación la saca de sitio."
-      - texto: "De banda ancha, porque la antena es pequeña"
-        porque: "Al revés: cuanto mayor el salto de impedancia, más estrecha la banda."
-      - texto: "Igual que para 25 Ω"
-        porque: "25 Ω es un salto de 2, con Q = 1; 2 Ω es un salto de 25."
+      mandos: []
+    simular:
+      objetivo: B_w
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Ancho de banda relativo"
+      errores:
+        - { expr: "100/r_t", texto: "Ha dividido entre el salto; la banda va con 1/Q, y Q es la raíz del salto menos uno." }
+        - { expr: "Q_l", texto: "Ese es el Q; la banda relativa es su inversa." }
+    exito: "Un 20 %: banda estrecha y muy sensible a las tolerancias; cualquier desviación la saca de sitio."
     escalera:
-      - "Calcule el salto: 50 entre 2."
-    solucion: "Salto de 25, Q = 4,90: estrecha y delicada."
+      - "1/4,90."
+    solucion: "≈ 20 %."
     comprobar:
       - { Q_l: 4.899, B_w: 20.4, Q_2: 4.899 }
 
@@ -160,9 +192,9 @@ tarjetas:
     solucion: "T/π, Q a voluntad; dos L, más banda; λ/4, √(Z₁Z₂); stub, reactancia de cobre."
 
   - id: estime-cuarto
-    tipo: pregunta
+    tipo: simular
     titulo: "Un transformador de cuarto de onda"
-    texto: "¿Qué impedancia característica debe tener un tramo de cuarto de onda que adapte 50 Ω a 10 Ω?"
+    texto: "Un tramo de λ/4 con impedancia característica √(Z₁·Z₂) adapta Z₁ a Z₂. ¿Qué Z₀ adapta 50 Ω a 10 Ω?"
     libro: [220, 202]
     fijar: { R_l: 10 }
     widget:
@@ -170,29 +202,24 @@ tarjetas:
       figura: fig-36.6
       zonas:
         - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
-    estimar:
-      objetivo: "Z_q"
+    simular:
+      objetivo: Z_q
       unidad: Ω
-      min: 0
-      max: 60
-      paso: 0.5
-      inicio: 45
-      tol: 0.04
+      tol: 0.03
       rotulo: "Z₀ del tramo"
+      errores:
+        - { expr: "Z_ar", texto: "Es la media geométrica, no la aritmética." }
     exito: "22,4 Ω: la media geométrica, como el escalón intermedio de dos redes en L."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 23.3 }, texto: "Demasiado: es la media geométrica, no la aritmética (30 Ω)." }
-      - { texto: "Demasiado poco: √(50 × 10)." }
     escalera:
-      - "Z₀ = √(Z₁·Z₂)."
+      - "Z₀ = √(50 × 10)."
     solucion: "√(50 × 10) = 22,4 Ω."
     comprobar:
-      - { Z_q: 22.36 }
+      - { Z_q: 22.36, Z_ar: 30 }
 
   - id: ajuste-condensador
     tipo: ajuste
     titulo: "Ajustar midiendo"
-    texto: "Red en L de 50 a 10 Ω a 100 MHz, con 31,8 nH. Mueva el condensador hasta que el VSWR a 100 MHz sea excelente."
+    texto: "Medir la carga, calcular la red, elegir valores comerciales y ajustar midiendo. Red en L de 50 a 10 Ω a 100 MHz, con 31,8 nH: ajuste el condensador."
     libro: [227, 228, "cap36#495", "cap36#501", "cap36#502", "cap36#153"]
     fijar: { L_m: 31.83e-9, R_l: 10, f_0: 100000000 }
     inicio: { C_m: 40e-12 }
@@ -215,76 +242,40 @@ tarjetas:
       escala: { min: 1, max: 3 }
       bajo: "El VSWR nunca baja de 1."
       alto: "Aún refleja: el mínimo de la curva no cae en 100 MHz. Mueva C hacia el valor calculado."
-      dentro: "Por debajo de 1,22, un S₁₁ de −20 dB: excelente. El cálculo daba 63,7 pF."
+      dentro: "Por debajo de 1,22, un S₁₁ de −20 dB: excelente. El cálculo daba 63,7 pF; ajustar no es un fracaso del cálculo, es la norma en radiofrecuencia."
     comprobar:
       - { con: { C_m: 63.66e-12 }, S_0: 1.0 }
       - { con: { C_m: 40e-12 }, S_0: 2.07 }
 
-  - id: ordene-procedimiento
-    tipo: pregunta
-    titulo: "El procedimiento práctico"
-    texto: "Ordene los pasos para adaptar una carga."
-    libro: [227]
-    widget:
-      tipo: figura
-      figura: fig-36.6
-      zonas:
-        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
-    ordenar:
-      - "Medir la impedancia de la carga a la frecuencia de trabajo."
-      - "Calcular la red, con la carta de Smith o una herramienta."
-      - "Elegir valores comerciales."
-      - "Ajustar midiendo."
-    exito: "El ajuste casi siempre hace falta: placa, parásitos y tolerancias."
-    pistas:
-      - { texto: "No se puede calcular sin saber qué se adapta." }
-    escalera:
-      - "Primero se mide; al final, también."
-    solucion: "Medir, calcular, valores comerciales, ajustar midiendo."
-
-  - id: porque-ajuste
-    tipo: porque
-    titulo: "Posiciones sin poblar"
-    texto: "Las placas de RF llevan a menudo huecos para componentes sin montar. ¿Por qué?"
-    libro: [228]
-    widget:
-      tipo: figura
-      figura: fig-36.6
-      zonas:
-        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
-    opciones:
-      - texto: "Para ajustar tras medir: ajustar es la norma en radiofrecuencia"
-        bien: true
-        porque: "La placa, los parásitos y las tolerancias desplazan el resultado del cálculo."
-      - texto: "Porque el cálculo de la red suele estar mal"
-        porque: "No es un fracaso del cálculo: es lo que el cálculo no puede saber de la placa."
-      - texto: "Para abaratar la placa"
-        porque: "No ahorran nada: están para poder corregir midiendo."
-    escalera:
-      - "¿Qué cosas reales no entran en el cálculo?"
-    solucion: "Para ajustar midiendo, que en RF es lo normal."
-
   - id: pregunta-componentes
-    tipo: pregunta
+    tipo: explorar
     titulo: "Los componentes reales"
-    texto: "Una red de adaptación con un condensador corriente no hace lo previsto. ¿Qué hay que comprobar?"
+    texto: "El condensador de la red, de 63,7 pF, en C0G/NP0. Elija uno cuya autorresonancia quede por encima de la banda de trabajo."
+    nota: "Autorresonancias de ejemplo."
     libro: [225]
+    inicio: { f_r: 50000000 }
     widget:
-      tipo: figura
-      figura: fig-36.6
-      zonas:
-        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
-    opciones:
-      - texto: "Que sea C0G/NP0 y que su autorresonancia quede por encima de la banda"
-        bien: true
-        porque: "Un componente que resuena dentro de la banda no se comporta como lo que dice ser."
-      - texto: "Solo su tensión máxima"
-        porque: "Importa, pero lo que arruina la adaptación son las pérdidas y la autorresonancia."
-      - texto: "Nada: un condensador es un condensador"
-        porque: "En RF los parásitos mandan: hacen falta componentes específicos."
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.1, max: 1000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "abs(1/(2*pi*nu*C_m) - 2*pi*nu/((2*pi*f_r)^2*C_m)) + 0.1", color: naranja, rotulo: "|Z| del condensador" }
+      marcas:
+        - { x: "f_0", y: "1", rotulo: "trabajo, 100 MHz" }
+      lectura: { valor: f_r, rotulo: "Autorresonancia" }
+      mandos:
+        - { valor: f_r, lista: [50000000, 80000000, 300000000], rotulo: "Autorresonancia del condensador" }
+    objetivo:
+      condiciones:
+        - { valor: ok_r, min: 1, rotulo: "Por encima de la banda" }
+      logrado: "Por debajo de su autorresonancia se porta como un condensador; por encima, como una bobina. Hay que verificarla, y usar C0G/NP0 de bajas pérdidas."
+      pistas:
+        - { texto: "Resuena por debajo de 100 MHz: a la frecuencia de trabajo ya no es un condensador." }
     escalera:
-      - "¿Qué le pasa a un condensador por encima de su autorresonancia?"
-    solucion: "C0G/NP0 de bajas pérdidas y autorresonancia fuera de la banda."
+      - "¿Qué es un condensador por encima de su autorresonancia?"
+    solucion: "El de 300 MHz."
+    comprobar:
+      - { con: { f_r: 300000000 }, ok_r: 1 }
 
   - id: resumen
     tipo: resumen

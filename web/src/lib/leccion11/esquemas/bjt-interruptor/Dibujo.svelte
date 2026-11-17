@@ -3,6 +3,8 @@
   // the V_CC rail, the emitter to ground. (esquemas12c: with «vf», the LED between R_C and the collector — the
   // transistor and the base 30 units lower — glowing with the widget's «corriente» over 20 mA.)
   import type { PropsDibujo } from '../dibujos';
+  import Punto from '../kit/Punto.svelte';
+  import Rama from '../kit/Rama.svelte';
   import D from '../kit/D.svelte';
   import Et from '../kit/Et.svelte';
   import Flujo from '../kit/Flujo.svelte';
@@ -23,7 +25,7 @@
   <path class="hilo" d={`M40 ${yq} H70 M160 ${yq} H176`}></path>
   <R x1={70} y1={yq} x2={160} y2={yq} color="azul" pieza="rb" />
   <Et x={115} y={yq - 20} t={c.rot('rb')} ancla="middle" color="azul" peq />
-  <Npn x={210} y={yq} />
+  <Npn x={210} y={yq} pieza="transistor" />
   <Et x={240} y={yq + 10} t={`β ${c.val('beta')}`} peq />
   {#if led}
     <R x1={222} y1={30} x2={222} y2={84} color="naranja" pieza="rc" />
@@ -38,4 +40,13 @@
   <path class="hilo" d={`M222 30 H332 M222 ${yq + 40} V240 H40 M332 240 H222`}></path>
   <Pila x={332} y1={240} y2={30} pieza="vcc" />
   <Et x={346} y={150} t={c.val('vcc')} peq />
+  <!-- (1.2.1: where the probes touch each node and the ammeter opens each branch) -->
+  <Punto x={280} y={30} red="vcc" />
+  <Punto x={55} y={yq} red="in" />
+  <Punto x={168} y={yq} red="b" />
+  {#if led}<Punto x={222} y={84} red="k" />{/if}
+  <Punto x={222} y={yq - 34} red="c" />
+  <Punto x={130} y={240} red="0" />
+  <Rama x={62} y={yq} medidor="vbm" />
+  <Rama x={222} y={40} medidor="vcm" />
 </Lienzo>
