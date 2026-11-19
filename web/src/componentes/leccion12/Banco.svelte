@@ -2,6 +2,11 @@
   // 1.2 «En el banco» (optional): what to put on the bench, what to measure and what it should read; the reader types
   // the measured value and the app compares it with the expected one and its tolerance, with advice when it is off.
   // Nothing is stored or reported: «Continuar» is always open, and the sheet of the «Cuaderno de prácticas» is named.
+  // 1.3: «Medir con el Brymen» fills the value from the real BM869s through its BU-86X cable (only where the platform
+  // can read it) and compares it at once; typing still works the same.
+  import { untrack } from 'svelte';
+  import { brymenReal } from '../../lib/brymen-real/conexion.svelte';
+  import { pantallaPara, porQueNo, textoCampo, textoPantalla } from '../../lib/brymen-real/lectura';
   import { compilarModelo, enRango, formatear, type Valores } from '../../lib/leccion11/modelo';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import type { Leccion11 } from '../../lib/leccion11/tipos';
@@ -37,7 +42,49 @@
   const id = $derived(`${prefijo}-banco`);
   const malo = $derived(ea.texto.trim() !== '' && ea.valor == null);
 
+  let esperandoReal = $state(false);
+  let avisoReal = $state('');
+  let leidoReal = $state('');
+
+  function tomarReal(): boolean {
+    const l = brymenReal.estado === 'conectado' ? brymenReal.lectura : null;
+    const p = pantallaPara(l, a.unidad);
+    if (!l || !p || p.valor === null) {
+      avisoReal = porQueNo(l, a.unidad);
+      return false;
+    }
+    avisoReal = '';
+    leidoReal = textoPantalla(p);
+    cambiar({ actividad: { ...ea, texto: textoCampo(p), valor: p.valor, comparado: true } });
+    return true;
+  }
+
+  function medirReal() {
+    avisoReal = '';
+    if (brymenReal.estado === 'desconectado' || brymenReal.estado === 'error') {
+      esperandoReal = true;
+      void brymenReal.conectar();
+      return;
+    }
+    if (brymenReal.estado === 'conectado') tomarReal();
+    else esperandoReal = true;
+  }
+
+  // (connecting first: the value is taken with the first reading, or the reason it cannot be is said)
+  $effect(() => {
+    if (!esperandoReal) return;
+    const estado = brymenReal.estado;
+    if (estado === 'conectado' && brymenReal.lectura) {
+      esperandoReal = false;
+      untrack(tomarReal);
+    } else if (estado === 'error' || estado === 'desconectado') {
+      esperandoReal = false;
+      avisoReal = brymenReal.mensaje || 'No se pudo conectar el Brymen.';
+    }
+  });
+
   function escribir(texto: string) {
+    leidoReal = '';
     const v = leerEstimacion(texto, a.unidad);
     cambiar({ actividad: { ...ea, texto, valor: Number.isFinite(v) ? v : null, comparado: false } });
   }
@@ -62,6 +109,17 @@
     <span aria-hidden="true">{a.unidad}</span>
     <button type="button" class="a12-boton a12-primario" disabled={ea.valor == null} onclick={() => cambiar({ actividad: { ...ea, comparado: true } })} data-comparar>Comparar</button>
   </div>
+  {#if brymenReal.disponible}
+    <div class="a12-fila real">
+      <button type="button" class="a12-boton" onclick={medirReal} disabled={esperandoReal} data-medir-real>Medir con el Brymen</button>
+      {#if brymenReal.estado === 'conectado' || brymenReal.estado === 'sin-respuesta'}
+        <button type="button" class="a12-boton" onclick={() => void brymenReal.desconectar()} data-desconectar-real>Desconectar</button>
+      {/if}
+    </div>
+    <p class="a12-suave" role="status" aria-live="polite" data-estado-real-banco>
+      {#if avisoReal}{avisoReal}{:else if esperandoReal}{brymenReal.mensaje || 'Conectando con el Brymen…'}{:else if leidoReal}Leído en su Brymen: {leidoReal}.{/if}
+    </p>
+  {/if}
   {#if malo}<p class="a12-no">No es un número.</p>{/if}
   {#if ea.comparado && ea.valor != null}
     <div aria-live="polite" data-comparacion={dentro ? 'bien' : 'mal'}>
@@ -83,6 +141,9 @@
   }
   label {
     font-weight: 600;
+  }
+  .real {
+    margin-top: 6px;
   }
   input {
     flex: 1 1 8em;

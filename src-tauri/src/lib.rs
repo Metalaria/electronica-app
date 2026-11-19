@@ -11,6 +11,7 @@
 //! In 1.0 a panic of the native side is written, before the process ends, to a small file in the
 //! app's log folder (`fallos`), which the front end reads once at the next start into its local
 //! «Informe de fallos» (no new permission: one command of its own, no file path from the page).
+//! In 1.3 it reads the real Brymen BM869s through its BU-86X USB cable (local plugin `plugins/brymen`).
 
 #[cfg(desktop)]
 use tauri::Manager;
@@ -403,6 +404,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         // 1.1: the book's QR links (module `enlaces`)
         .plugin(tauri_plugin_deep_link::init())
+        // 1.3: the real Brymen BM869s through its BU-86X cable (plugins/brymen; capabilities/brymen.json)
+        .plugin(tauri_plugin_brymen::init())
         .invoke_handler(tauri::generate_handler![
             fichero::guardar_fichero_elegido,
             fichero::abrir_fichero_elegido,

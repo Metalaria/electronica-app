@@ -36,6 +36,10 @@
   import { pasoDaXp } from '../../../lib/laboratorio';
   import { cursorFrecuencia } from '../fnirsi/dibujo';
   import { FN_DMM_LISTA } from '../fnirsi/logica.svelte.ts';
+  // 1.3: the real Brymen through its BU-86X cable, next to the simulated one on the Brymen's steps
+  import BrymenReal from './BrymenReal.svelte';
+  import { brymenReal } from '../../../lib/brymen-real/conexion.svelte';
+  import { explicarDiferencia, incertidumbre, pantallaPara } from '../../../lib/brymen-real/comparar';
 
   let { p, lab, b, control }: { p: Practica; lab: Laboratorio; b: Banco; control: ControlLab } = $props();
 
@@ -305,6 +309,26 @@
     return r;
   });
 
+  // ---------------------------------------------------------------- 1.3: the real Brymen on the Brymen's steps
+  // The step is still checked on the simulated meter (what it teaches is how to set it up); the real reading is shown
+  // next to it, and the difference explained, for whoever has built the circuit on the bench.
+  const pasoBrymen = $derived(!!paso && paso.guia?.instrumento === 'brymen');
+  const simuladoBm = $derived.by(() => {
+    void b.tic;
+    const l = b.brymen.pantalla.principal;
+    return l && b.vigente ? (l.ol ? 'OL' : `${l.texto.replace('-', '−').replace('.', ',')} ${l.unidad}`) : null;
+  });
+  const comparacionReal = $derived.by(() => {
+    void b.tic;
+    const x = paso;
+    const l = brymenReal.estado === 'conectado' ? brymenReal.lectura : null;
+    if (!x?.lectura || !l || !b.vigente) return '';
+    const r = pantallaPara(l, x.lectura.unidad);
+    const sim = x.lectura.medir(b);
+    if (!r || r.valor === null || sim === null) return '';
+    return explicarDiferencia(r.valor, incertidumbre(r, l), sim, 'el simulado', x.lectura.unidad);
+  });
+
   // ---------------------------------------------------------------- summary
   const resumen = $derived(
     lab.pasos
@@ -441,6 +465,11 @@
           <span>¿Qué marca el instrumento? Escriba {@html paso.lectura.que}{paso.lectura.unidad ? ` (en ${paso.lectura.unidad})` : ''}</span>
           <input type="text" inputmode="decimal" autocomplete="off" bind:value={escrito} onkeydown={(ev) => ev.key === 'Enter' && void comprobar()} data-lectura />
         </label>
+      {/if}
+
+      {#if pasoBrymen}
+        <BrymenReal simulado={simuladoBm} />
+        {#if comparacionReal}<p class="nota" data-comparacion-real-lab>{comparacionReal} El paso se comprueba con el Brymen simulado.</p>{/if}
       {/if}
 
       <div class="acciones" bind:this={acciones}>
