@@ -1,12 +1,15 @@
 <script lang="ts">
-  // The board in 3D (escena3d.ts): orbit/pinch, views from above, below (the board is turned over), the side
-  // and at an angle; layer toggles, explosion, X-ray, finish and voltages; tap or hover a part, a pad or a
-  // track to select it. Rendered on demand; disposed on unmount. 0.9: the parts are only built when
-  // «Componentes» is on (at once, or when it is turned on later): with it off nothing of them is loaded.
+  // The board in 3D (escena3d.ts): navigated like a map (1.3, tres/motor/orbita.ts: one finger pans, two fingers
+  // zoom, twist and tilt), views from above, below (the board is turned over), the side and at an angle; layer
+  // toggles, explosion, X-ray, finish and voltages; tap or hover a part, a pad or a track to select it, double
+  // tap (or double click) to bring it closer. Rendered on demand; disposed on unmount. 0.9: the parts are only
+  // built when «Componentes» is on (at once, or when it is turned on later): with it off nothing of them is loaded.
   import { onMount, untrack } from 'svelte';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import Compass from '@lucide/svelte/icons/compass';
   import { formatoTension, type DatosPlaca } from './datos';
   import { cajaHuella, cajaRed, impacto, type Geometria } from './geometria';
-  import { Escena3D } from './escena3d';
+  import { Escena3D, type Vista } from './escena3d';
   import { precargarEntorno } from '../tres/motor/entorno';
   import { cargarBiblioteca } from './modelos3d';
   import type { Seleccion } from './estado';
@@ -44,7 +47,8 @@
   let alto = 0;
   let globo = $state<{ x: number; y: number; t: string } | null>(null);
   let etiqueta = $state<{ x: number; y: number; t: string } | null>(null);
-  let vistaActual = $state<'iso' | 'arriba' | 'abajo' | 'lado'>('iso');
+  let vistaActual = $state<Vista>('arriba');
+  const tactil = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   /** Phone: layer and mode buttons folded behind «Capas y modos». */
   let abierta = $state(false);
   const tieneTensiones = $derived(datos.redes.some((r) => r.v));
@@ -80,8 +84,11 @@
     return i.red >= 0 ? deRed(datos, i.red) : null;
   }
 
-  // tap = press and release without moving (Orbita handles the drag)
-  let inicio: { x: number; y: number; t: number } | null = null;
+  // tap = press and release of a single pointer without moving (Orbita handles the drag); two taps in a row on
+  // the same spot = double tap (1.3: bring it closer)
+  let inicio: { x: number; y: number; t: number; id: number; boton: number } | null = null;
+  let presionados = 0;
+  let ultimoToque: { x: number; y: number; t: number } | null = null;
   function pos(ev: PointerEvent): { x: number; y: number } {
     const r = lienzo!.getBoundingClientRect();
     return { x: ev.clientX - r.left, y: ev.clientY - r.top };
@@ -95,6 +102,7 @@
     const h: [string, EventListener, AddEventListenerOptions?][] = [
       ['pointerdown', abajo as EventListener],
       ['pointerup', arriba as EventListener],
+      ['pointercancel', cancelado as EventListener],
       ['pointermove', mover as EventListener],
       ['pointerleave', () => (globo = null)],
       ['wheel', () => escena && (escena.tocada = true), { passive: true }],
@@ -109,15 +117,42 @@
 
   function abajo(ev: PointerEvent): void {
     if (escena) escena.tocada = true;
-    const p = pos(ev);
-    inicio = { ...p, t: performance.now() };
+    presionados++;
+    // a second finger: a gesture, not a tap
+    if (presionados > 1) {
+      inicio = null;
+      ultimoToque = null;
+      return;
+    }
+    // (right button, Ctrl/⌘ + click: turning the board, not a tap)
+    const boton = ev.button === 0 && !ev.ctrlKey && !ev.metaKey ? 0 : 1;
+    inicio = { ...pos(ev), t: performance.now(), id: ev.pointerId, boton };
+  }
+  function cancelado(): void {
+    presionados = Math.max(0, presionados - 1);
+    inicio = null;
   }
   function arriba(ev: PointerEvent): void {
-    if (!inicio) return;
+    presionados = Math.max(0, presionados - 1);
+    if (!inicio || inicio.id !== ev.pointerId) return;
     const p = pos(ev);
-    const quieto = Math.hypot(p.x - inicio.x, p.y - inicio.y) < (ev.pointerType === 'mouse' ? 4 : 10);
+    const raton = ev.pointerType === 'mouse';
+    const quieto = inicio.boton === 0 && Math.hypot(p.x - inicio.x, p.y - inicio.y) < (raton ? 4 : 10);
     inicio = null;
-    if (quieto) alElegir(bajo(p.x, p.y, ev.pointerType === 'mouse' ? 0.15 : 0.4));
+    if (!quieto) {
+      ultimoToque = null;
+      return;
+    }
+    // (the input's own time: a page busy with the first tap's selection must not turn a double tap into two taps)
+    const ahora = ev.timeStamp > 0 ? ev.timeStamp : performance.now();
+    if (ultimoToque && Math.abs(ahora - ultimoToque.t) < 400 && Math.hypot(p.x - ultimoToque.x, p.y - ultimoToque.y) < (raton ? 8 : 32)) {
+      // the second tap: closer (the first one already chose what is there)
+      ultimoToque = null;
+      escena?.acercar(p.x, p.y, ancho, alto);
+      return;
+    }
+    ultimoToque = { ...p, t: ahora };
+    alElegir(bajo(p.x, p.y, raton ? 0.15 : 0.4));
   }
   let pendiente = 0;
   function mover(ev: PointerEvent): void {
@@ -134,7 +169,7 @@
     });
   }
 
-  function vista(v: 'iso' | 'arriba' | 'abajo' | 'lado'): void {
+  function vista(v: Vista): void {
     vistaActual = v;
     escena?.vista(v);
   }
@@ -149,7 +184,8 @@
     etiqueta = p ? { x: p[0], y: p[1], t: `${h.r} · ${h.v}` } : null;
   }
 
-  const g = globalThis as unknown as { __epaPlaca3D?: unknown; __epaPlaca3DListo?: boolean };
+  // (__epaPlaca3DEscena: the scene itself, for the tests of the navigation — its camera, Orbita)
+  const g = globalThis as unknown as { __epaPlaca3D?: unknown; __epaPlaca3DListo?: boolean; __epaPlaca3DEscena?: unknown };
 
   /** Frames the selected part or net (from the route). */
   function enfocarSeleccion(e: Escena3D): void {
@@ -217,7 +253,10 @@
       }
       escena = es;
       es.alCambiar = actualizarEtiqueta;
+      es.alVista = (v) => (vistaActual = v);
+      vistaActual = es.vistaPorDefecto;
       g.__epaPlaca3D = es.stats;
+      g.__epaPlaca3DEscena = es;
       ro = new ResizeObserver((e) => {
         const r = e[0]?.contentRect;
         if (!r || escena !== es) return;
@@ -247,6 +286,7 @@
       ro?.disconnect();
       lienzo?.removeEventListener('webglcontextlost', perdido);
       if (pendiente) cancelAnimationFrame(pendiente);
+      if (g.__epaPlaca3DEscena === escena) delete g.__epaPlaca3DEscena;
       escena?.liberar();
       escena = null;
       g.__epaPlaca3DListo = false;
@@ -292,6 +332,10 @@
       <button type="button" aria-pressed={vistaActual === 'abajo'} onclick={() => vista('abajo')}>Abajo</button>
       <button type="button" aria-pressed={vistaActual === 'lado'} onclick={() => vista('lado')}>Canto</button>
     </div>
+    <div class="grupo" role="group" aria-label="Encuadre">
+      <button type="button" onclick={() => escena && escena.vista(escena.vistaPorDefecto)} title="Vista inicial: la placa entera desde arriba (tecla 0)"><RotateCcw size={16} strokeWidth={2.2} aria-hidden="true" />Vista inicial</button>
+      <button type="button" onclick={() => escena?.enderezar()} title="Mirar desde arriba, con la placa derecha, sin cambiar el encuadre"><Compass size={16} strokeWidth={2.2} aria-hidden="true" />Vista desde arriba</button>
+    </div>
     <button type="button" class="mas" aria-expanded={abierta} onclick={() => (abierta = !abierta)}>{abierta ? 'Menos opciones' : 'Capas y modos'}</button>
     <div class="grupo capas extra" class:abierta role="group" aria-label="Capas">
       <button type="button" aria-pressed={opciones.capas.F} onclick={() => (opciones.capas.F = !opciones.capas.F)}><i class="m cf"></i>Cobre sup.</button>
@@ -316,7 +360,7 @@
     <canvas
       bind:this={lienzo}
       tabindex="0"
-      aria-label="Placa en 3D: arrastre para girar, dos dedos o la rueda con Ctrl para acercar, Mayúsculas y arrastrar para desplazar; toque un componente, un pad o una pista"
+      aria-label="Placa en 3D, que se recorre como un mapa: arrastre con un dedo o con el ratón para moverla; con dos dedos, pellizque para acercar, gírelos para girarla o arrástrelos juntos hacia arriba o hacia abajo para inclinarla; con el ratón, el botón derecho o Ctrl y arrastrar giran e inclinan, y la rueda acerca hacia el puntero; doble toque o doble clic acerca un componente. Con el teclado: flechas para moverla, Mayúsculas y flechas para girarla (izquierda y derecha) e inclinarla (arriba y abajo), + y − para acercar o alejar y 0 para la vista inicial. Toque un componente, un pad o una pista para elegirlo."
       use:oyentes
     ></canvas>
     {#if etiqueta}
@@ -325,15 +369,20 @@
     {#if globo}
       <div class="globo" style:left={`${globo.x + 14}px`} style:top={`${globo.y + 14}px`}>{globo.t}</div>
     {/if}
-    {#if !listo && !error && opciones.capas.componentes}
-      <div class="carga" aria-live="polite">
-        Colocando los componentes…{#if progreso && progreso[1]}<span class="cuenta"> {progreso[0]} de {progreso[1]}</span>
-          <span class="barra-progreso" style:--p={progreso[0] / progreso[1]}></span>{/if}
-      </div>
-    {/if}
-    {#if opciones.rayosX}
-      <div class="nota">Rayos X: placa de {datos.placa.capas.length} capas; el cobre superior (rojo) y el inferior (azul) a través del FR-4.</div>
-    {/if}
+    <div class="pie">
+      {#if !listo && !error && opciones.capas.componentes}
+        <div class="carga" aria-live="polite">
+          Colocando los componentes…{#if progreso && progreso[1]}<span class="cuenta"> {progreso[0]} de {progreso[1]}</span>
+            <span class="barra-progreso" style:--p={progreso[0] / progreso[1]}></span>{/if}
+        </div>
+      {/if}
+      {#if opciones.rayosX}
+        <div class="nota">Rayos X: placa de {datos.placa.capas.length} capas; el cobre superior (rojo) y el inferior (azul) a través del FR-4.</div>
+      {/if}
+      <p class="ayuda" aria-hidden="true">
+        {#if tactil}Un dedo mueve · dos dedos acercan o, girándolos, giran · dos dedos hacia arriba o abajo inclinan · doble toque acerca{:else}Arrastre para mover · Ctrl + rueda acerca · botón derecho o Ctrl + arrastrar gira e inclina · doble clic acerca · flechas mueven, Mayús + flechas giran e inclinan, 0 vuelve al inicio{/if}
+      </p>
+    </div>
     {#if error}
       <div class="error"><p>{error}</p></div>
     {/if}
@@ -496,17 +545,34 @@
     pointer-events: none;
     white-space: nowrap;
   }
-  .carga,
-  .nota {
+  .pie {
     position: absolute;
     left: 10px;
+    right: 10px;
     bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    pointer-events: none;
+  }
+  .carga,
+  .nota {
     padding: 3px 8px;
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
     font-size: 12px;
-    pointer-events: none;
+  }
+  .ayuda {
+    max-width: 100%;
+    margin: 0;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--superficie-2) 82%, transparent);
+    color: var(--tinta-suave);
+    font-size: 12px;
+    line-height: 1.35;
   }
   .carga .cuenta {
     font-variant-numeric: tabular-nums;

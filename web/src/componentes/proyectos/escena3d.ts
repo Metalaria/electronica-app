@@ -39,7 +39,7 @@ import {
 import { PAD_NPTH, PAD_PTH, type DatosPlaca, type Huella } from './datos';
 import { crearEstudio, type Estudio } from '../tres/motor/estudio';
 import { estadoEntorno, soltarContexto } from '../tres/motor/entorno';
-import { Orbita, type EstadoOrbita } from '../tres/motor/orbita';
+import { MAPA, Orbita, type EstadoOrbita } from '../tres/motor/orbita';
 import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from '../tres/motor/resolucion';
 import type { Geometria, Lado } from './geometria';
 import { coloresTension, MASCARAS, pintarLado, pintarRed, type Acabado } from './pintar';
@@ -244,7 +244,11 @@ export interface CapasEscena {
   componentes: boolean;
 }
 
-type Vista = 'iso' | 'arriba' | 'abajo' | 'lado';
+export type Vista = 'iso' | 'arriba' | 'abajo' | 'lado';
+
+/** Slope of the parts' sides in the height field the camera keeps its clearance over (rise per run): the camera
+ *  climbs as it comes near a tall part instead of jumping when it gets over it. */
+const PENDIENTE = 2;
 
 const EPS = 0.035;
 
@@ -342,6 +346,12 @@ export class Escena3D {
   /** Resolves with the board's first frame (0.9: the view without its parts is ready then). */
   readonly placaLista = new Promise<void>((r) => (this.placaDibujada = r));
   alCambiar: () => void = () => {};
+  /** Called with the preset shown (vista()), for the toolbar. */
+  alVista: (v: Vista) => void = () => {};
+  /** 1.3: the view it opens with (and «Vista inicial», 0): from straight above, on the face with the parts. */
+  get vistaPorDefecto(): Vista {
+    return this.ladoComponentes === 'B' ? 'abajo' : 'arriba';
+  }
 
   constructor(
     lienzo: HTMLCanvasElement,
@@ -442,10 +452,17 @@ export class Escena3D {
     this.placa.add(this.piezas);
 
     this.orbita = new Orbita(this.camara, lienzo, () => ((this.movido = true), this.pedir()), () => matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // 1.3: a board is navigated as a map (pan with one finger, pivot on the board, clearance over the parts under
+    // the camera instead of a minimum distance to the pivot): see tres/motor/orbita.ts
+    this.orbita.mapa = {
+      z: () => this.zPlano(),
+      limites: () => ({ x: this.W / 2, y: this.H / 2 }),
+      altura: (x, y) => this.altura(x, y),
+    };
     this.orbita.maxDist = Math.max(this.W, this.H) * 6;
-    this.orbita.minDist = 6;
-    this.orbita.alReiniciar = () => this.vista('iso');
-    this.vista('iso', false);
+    this.orbita.minDist = MAPA.holgura;
+    this.orbita.alReiniciar = () => this.vista(this.vistaPorDefecto);
+    this.vista(this.vistaPorDefecto, false);
     // A quarter of the resolution first (a few ms): the board is on screen at once; the full one follows when
     // the parts are placed (or after a few seconds if nobody loads them), painted by a worker.
     if (this.modo === 'trabajador') this.iniciarTrabajador();
@@ -1115,7 +1132,8 @@ export class Escena3D {
     };
     for (const c of this.cajas) this.altoMax = Math.max(this.altoMax, c.caja.max.z);
     this.ajustarProfundidad();
-    if (!this.tocada) this.vista('iso', false);
+    this.claveCajas = '';
+    if (!this.tocada) this.vista(this.vistaPorDefecto, false);
     // the library's shared resources (materials, label textures) stay in use by the merged meshes
     this.recursos = rec;
     alProgreso?.(huellas.length, huellas.length);
@@ -1629,14 +1647,86 @@ export class Escena3D {
     // fit the board in the window (aspect-aware), a little margin
     const r = Math.max(this.W / Math.max(0.3, this.camara.aspect), this.H) * (v === 'iso' ? 1.15 : 1.08) + (v === 'iso' ? this.altoMax * 0.8 : 0);
     const d = r / (2 * Math.tan((this.camara.fov * Math.PI) / 360)) + 6;
+    // (1.3: the pivot always lies on the board's top face, map mode; from above, straight down)
     const e: EstadoOrbita = {
       azimut: v === 'iso' ? -0.5 : 0,
-      elevacion: v === 'iso' ? 0.72 : v === 'lado' ? 0.06 : 1.52,
+      elevacion: v === 'iso' ? 0.72 : v === 'lado' ? 0.06 : MAPA.elMax,
       distancia: v === 'lado' ? d * 0.75 : d,
-      objetivo: new Vector3(0, v === 'iso' ? -this.H * 0.06 : 0, v === 'lado' ? 2 : v === 'iso' ? this.altoMax * 0.3 : 0),
+      objetivo: new Vector3(0, v === 'iso' ? -this.H * 0.06 : 0, this.zPlano()),
     };
     this.orbita.ir(e, animar);
+    this.alVista(v);
     this.pedir();
+  }
+
+  /** 1.3: «Vista desde arriba»: straight down with the board upright, keeping the pivot and the zoom. */
+  enderezar(): void {
+    this.orbita.enderezar(true);
+    this.alVista(this.ladoArriba === 'B' ? 'abajo' : 'arriba');
+    this.pedir();
+  }
+
+  /** World height of the board's top face (turned over, «abajo», the board lies between t and 2t). */
+  private zPlano(): number {
+    return this.ladoArriba === 'B' ? 2 * this.t : 0;
+  }
+
+  /** The parts' boxes in world coordinates (cached for the placement of the parts group: explosion, turn-over). */
+  private cajasMundo: Box3[] = [];
+  private claveCajas = '';
+  private mundoCajas(): Box3[] {
+    this.piezas.updateWorldMatrix(true, false);
+    const m = this.piezas.matrixWorld;
+    const clave = `${this.cajas.length}:${m.elements.join(',')}`;
+    if (clave !== this.claveCajas) {
+      this.claveCajas = clave;
+      this.cajasMundo = this.cajas.map((c) => c.caja.clone().applyMatrix4(m));
+    }
+    return this.cajasMundo;
+  }
+
+  /**
+   * Height field for the camera's clearance (map mode): the board's top face, or the top of a part at (x, y),
+   * with sides sloping down from its box (PENDIENTE) so that the camera rises gradually beside a tall part.
+   */
+  private altura(x: number, y: number): number {
+    let h = this.zPlano();
+    if (!this.piezas.visible || !this.cajas.length) return h;
+    for (const b of this.mundoCajas()) {
+      if (b.max.z <= h) continue;
+      const dx = Math.max(b.min.x - x, 0, x - b.max.x);
+      const dy = Math.max(b.min.y - y, 0, y - b.max.y);
+      const v = b.max.z - PENDIENTE * Math.hypot(dx, dy);
+      if (v > h) h = v;
+    }
+    return h;
+  }
+
+  /**
+   * 1.3: double tap or double click: a part under the point comes to the middle and fills about a third of the
+   * view; elsewhere on the board, that point comes to the middle twice as close. Animated (not with reduced
+   * motion). Returns the part's index, or null.
+   */
+  acercar(px: number, py: number, w: number, h: number): number | null {
+    const t = this.tocar(px, py, w, h);
+    const real = this.orbita.distanciaReal;
+    const zp = this.zPlano();
+    const c = t && 'huella' in t ? this.cajas.find((x) => x.h === t.huella) : null;
+    if (c) {
+      this.piezas.updateWorldMatrix(true, false);
+      const b = c.caja.clone().applyMatrix4(this.piezas.matrixWorld);
+      const centro = b.getCenter(new Vector3());
+      const tam = b.getSize(new Vector3());
+      const lado = Math.max(tam.x, tam.y, 3) * 3;
+      const alto = lado / Math.min(1, Math.max(0.3, this.camara.aspect));
+      const dist = alto / (2 * Math.tan((this.camara.fov * Math.PI) / 360)) + Math.max(0, b.max.z - zp);
+      this.orbita.centrar(new Vector3(centro.x, centro.y, zp), Math.min(dist, real * 0.7));
+      return c.h;
+    }
+    const p = this.orbita.puntoEnPlano(px, py);
+    if (!p) return null;
+    this.orbita.centrar(p, real * 0.5);
+    return null;
   }
 
   /** Frames a part or a net (board box in u). */
@@ -1651,7 +1741,7 @@ export class Escena3D {
     // the part and its surroundings fill about a third of the window, whatever its shape
     const vis = Math.max(r, r / Math.max(0.3, this.camara.aspect)) * 3.2;
     const dist = vis / (2 * Math.tan((this.camara.fov * Math.PI) / 360));
-    this.orbita.ir({ ...s, distancia: Math.max(this.orbita.minDist, dist), objetivo: new Vector3(cx * flip, cy, 2 * flip) }, true);
+    this.orbita.ir({ ...s, distancia: Math.max(this.orbita.minDist, dist), objetivo: new Vector3(cx * flip, cy, this.zPlano()) }, true);
   }
 
   /** Size last given to tamano() (CSS px) and its pixel ratio. */
@@ -1672,7 +1762,7 @@ export class Escena3D {
     this.camara.updateProjectionMatrix();
     if (primera) {
       this.ajustada = true;
-      this.vista('iso', false);
+      this.vista(this.vistaPorDefecto, false);
     }
     this.pedir();
   }
