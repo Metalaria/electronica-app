@@ -1,0 +1,361 @@
+# Catálogo motor13 (1.3, «repaso haciendo», GUIA §13.13): la lección cap01/sec-1.10 publicada con variantes para el
+# repaso declaradas en dos tarjetas: «prediga-bornes» (otros valores de la carga y de la resistencia interna; sus textos
+# dicen las cifras con {{…}} o con la unidad, y la app las escribe de nuevo desde el modelo; el ngspice de la app
+# comprueba cada variante) y «reto-carga» (otro objetivo, con sus textos y su comprobación). Lo prueban
+# tests/lecciones13-motor-unidad.spec.ts y tests/lecciones13-motor-navegador.spec.ts.
+leccion: cap01/sec-1.10
+
+libro:
+  191: "toda fuente real tiene una resistencia interna que produce una caída proporcional a la corriente entregada"
+  192: 'V_("bornes") = V_("vacío") - I dot.op R_("int")'
+  193: "La fem es la causa"
+  194: "Con una pila de 9 V y 5 Ω internos alimentando 45 Ω"
+  196: "en una batería crece a medida que se descarga y crece mucho al bajar la temperatura"
+  197: "la tensión en vacío no dice nada del estado de una batería"
+  200: '"Regulación" space lr(( \% ))'
+  201: "En el ejemplo es 100 × 0,9/8,1 = 11,1 %"
+  202: "la resistencia interna es lo que acopla unas cargas con otras"
+  204: "Con los terminales unidos, la corriente solo la limita Rint: en el ejemplo, 9/5 = 1,8 A"
+  205: "para alimentar un equipo no se busca ese punto"
+  207: "Basta con dos lecturas, la tensión en vacío y la tensión con una carga conocida"
+  209: "Cuanto mayor sea esa resistencia, mejor la fuente"
+  "cap01#345": "Una pila tiene 1,5 V en vacío y 1,35 V cuando entrega 0,5 A"
+
+modelo:
+  valores:
+    V_t: { sim: "V_{vacío}", nombre: "tensión en vacío", unidad: V, valor: 9 }
+    R_ti: { sim: "R_{int}", nombre: "resistencia interna", unidad: Ω, valor: 5 }
+    R_tl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 45 }
+    t_on: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+    V_v: { sim: "V_{vacío}", nombre: "tensión en vacío de la pila", unidad: V, valor: 1.5 }
+    V_c: { sim: "V_{carga}", nombre: "tensión con carga de la pila", unidad: V, valor: 1.35 }
+    I_m: { sim: "I", nombre: "corriente de la prueba", unidad: A, valor: 0.5 }
+    I_n: { sim: "I_{N}", nombre: "corriente de la fuente ideal", unidad: A, valor: 1 }
+    R_n: { sim: "R_{p}", nombre: "resistencia en paralelo", unidad: Ω, valor: 10 }
+    R_nl: { sim: "R_{L}", nombre: "carga de la fuente de corriente", unidad: Ω, valor: 10 }
+  calculos:
+    V_to: { si: t_on, entonces: "V_t*R_tl/(R_ti + R_tl)", sino: "V_t", sim: "V_{bornes}", nombre: "tensión en bornes", unidad: V }
+    I_t: { si: t_on, entonces: "V_t/(R_ti + R_tl)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
+    V_ti: { expr: "I_t*R_ti", sim: "V_{int}", nombre: "caída interna", unidad: V }
+    caida: { expr: "(V_t - V_to)/V_t*100", sim: "caída", nombre: "caída respecto al vacío", unidad: "%", cifras: 2 }
+    reg: { expr: "100*(V_t - V_to)/V_to", sim: "regulación", nombre: "regulación de carga", unidad: "%", cifras: 3 }
+    I_cc: { expr: "V_t/R_ti", sim: "I_{cc}", nombre: "corriente de cortocircuito", unidad: A }
+    P_max: { expr: "V_t^2/(4*R_ti)", sim: "P_{máx}", nombre: "potencia máxima transferible", unidad: W }
+    R_med: { expr: "(V_v - V_c)/I_m", sim: "R_{int}", nombre: "resistencia interna medida", unidad: Ω }
+    V_no: { expr: "I_n*par(R_n, R_nl)", sim: "V", nombre: "tensión en la carga", unidad: V }
+    I_nl: { expr: "V_no/R_nl", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    I_nr: { expr: "V_no/R_n", sim: "I_{p}", nombre: "corriente desviada", unidad: A }
+
+tarjetas:
+  - id: explore-fuente-real
+    tipo: explorar
+    titulo: "Ninguna fuente es ideal"
+    texto: "Una pila de 9 V con su resistencia interna dentro del recuadro. Conecte la carga y busque la que deja en bornes la mitad de los 9 V."
+    libro: [191, 194]
+    fijar: { V_t: 9, R_ti: 5 }
+    inicio: { t_on: 0, R_tl: 45 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      datos:
+        - { valor: I_t, rotulo: "Corriente: {{I_t}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: t_on, tipo: conectar, boton: "Conectar la carga" }
+        - { valor: R_tl, lista: [5, 10, 22, 45, 100], rotulo: "Carga, R_{L}" }
+    objetivo:
+      condiciones:
+        - { valor: V_to, objetivo: 4.5, tol: 0.02, rotulo: "En bornes: {{V_to}}" }
+      logrado: "Con {{R_tl}}, igual a la interna, cada una se queda la mitad: la fuente pierde tanto como entrega."
+      pistas:
+        - { cuando: { valor: t_on, max: 0 }, texto: "Primero conecte la carga." }
+        - { texto: "Todavía queda más de la mitad: elija una carga menor." }
+    escalera:
+      - "La interna y la carga forman un divisor: ¿cuándo se reparten a medias?"
+    solucion: "Con 5 Ω, igual a la interna: 4,5 V."
+    comprobar:
+      - { V_to: 9 }
+      - { con: { t_on: 1, R_tl: 5 }, V_to: 4.5 }
+  - id: prediga-bornes
+    tipo: simular
+    titulo: "Prediga los bornes"
+    texto: "La pila de 9 V con 5 Ω internos alimenta una carga de 45 Ω. ¿Qué tensión queda en bornes?"
+    libro: [194]
+    fijar: { V_t: 9, R_ti: 5, R_tl: 45, t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_to
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión en bornes"
+      medida: salida
+      errores:
+        - { expr: "V_t", texto: "Eso marca en vacío. Con corriente, la resistencia interna se queda su caída." }
+        - { expr: "V_ti", texto: "Esa es la caída interna, {{V_ti}}. En bornes queda lo que sobra." }
+    exito: "La corriente es {{I_t}}; en los 5 Ω internos caen {{V_ti}}. Quedan 8,1 V en bornes."
+    escalera:
+      - "Calcule la corriente con las dos resistencias en serie: la tensión en vacío entre su suma."
+    solucion: "Pasan {{I_t}}; en los 5 Ω internos caen {{V_ti}} y en bornes quedan 8,1 V."
+    comprobar:
+      - { V_to: 8.1, I_t: 0.18, V_ti: 0.9 }
+    variantes:
+      valores:
+        R_tl: [10, 22, 100]
+        R_ti: [2, 10]
+  - id: regla-bornes
+    tipo: formula
+    titulo: "Lo que queda en bornes"
+    texto: "La fem, la tensión en vacío, es la causa; en bornes queda lo que sobra tras la caída en la propia fuente."
+    libro: [192, 193]
+    ec: 192
+    sustitucion: "{{V_t}} − {{I_t}} · {{R_ti}} = {{V_to}}"
+    fijar: { t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_tl, lista: [5, 10, 22, 45, 100], rotulo: "Carga, R_{L}" }
+
+  - id: regla-regulacion
+    tipo: explorar
+    titulo: "Regulación de carga"
+    texto: "La caída relativa entre vacío y carga resume su calidad. Con 45 Ω da un 11,1 %: baje R_{int} hasta el 5 % de una lineal sencilla."
+    libro: [200, 201]
+    fijar: { V_t: 9, R_tl: 45, t_on: 1 }
+    inicio: { R_ti: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: reg, rotulo: "Regulación" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_ti, lista: [0.5, 1, 2, 5], rotulo: "Interna, R_{int}" }
+    objetivo:
+      condiciones:
+        - { valor: reg, max: 5, rotulo: "Regulación: {{reg}}" }
+      logrado: "{{reg}} con {{R_ti}}: cuanto menor, más se parece a la ideal. De laboratorio ronda el 0,01 %; sin regular, puede pasar del 15 %."
+      pistas:
+        - { texto: "Todavía cae mucho: baje la resistencia interna." }
+    escalera:
+      - "Regulación = 100·(V_{vacío} − V_{carga})/V_{carga}: la caída la pone R_{int}."
+    solucion: "Con 2 Ω: un 4,44 %."
+    comprobar:
+      - { reg: 11.1 }
+      - { con: { R_ti: 2 }, reg: 4.444 }
+  - id: reto-carga
+    tipo: reto
+    titulo: "Reto: no perder más del 10 %"
+    texto: "Con la pila de 9 V y 5 Ω internos, elija la carga más pequeña de la lista que deje al menos 8,1 V en bornes."
+    libro: [194, 205]
+    fijar: { V_t: 9, R_ti: 5, t_on: 1 }
+    inicio: { R_tl: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en bornes" }
+      datos:
+        - { valor: caida, rotulo: "Cae: {{caida}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_tl, lista: [5, 10, 22, 45], rotulo: "Carga, R_{L}" }
+    condiciones:
+      - { valor: V_to, min: 8.1, rotulo: "En bornes: {{V_to}}" }
+    exito: "45 Ω: 8,1 V, un 10 % menos. Para alimentar un equipo, la interna debe ser despreciable frente a la carga."
+    pistas:
+      - { texto: "Cae demasiado: la carga es pequeña frente a los 5 Ω internos. Elija una mayor." }
+    escalera:
+      - "Para perder solo un 10 %, la interna debe quedarse 0,9 V."
+    solucion: "La carga ha de ser nueve veces la interna: 45 Ω."
+    comprobar:
+      - { con: { R_tl: 45 }, V_to: 8.1, caida: 10 }
+    variantes:
+      objetivos:
+        - condiciones:
+            - { valor: V_to, min: 6, rotulo: "En bornes: {{V_to}}" }
+          texto: "Con la pila de 9 V y 5 Ω internos, elija la carga más pequeña de la lista que deje al menos 6 V en bornes."
+          exito: "10 Ω: 6 V en bornes. Con una carga menor, la interna se queda más de un tercio."
+          pistas:
+            - { texto: "Cae demasiado: la carga es pequeña frente a los 5 Ω internos. Elija una mayor." }
+          comprobar:
+            - { con: { R_tl: 10 }, V_to: 6 }
+
+  - id: pila-agotada
+    tipo: sorpresa
+    titulo: "La prueba que más engaña"
+    texto: "La batería se descarga y su resistencia interna crece. Súbala, con la carga puesta, hasta que en bornes quede la mitad de lo que marca en vacío."
+    libro: [196, 197]
+    fijar: { V_t: 9, R_tl: 45, t_on: 1 }
+    inicio: { R_ti: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Con carga" }
+      datos:
+        - { valor: V_t, rotulo: "En vacío: {{V_t}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_ti, lista: [5, 10, 22, 45], rotulo: "Interna, R_{int}" }
+    objetivo:
+      condiciones:
+        - { valor: V_to, objetivo: 4.5, tol: 0.02, rotulo: "Con carga: {{V_to}}" }
+      logrado: "En vacío sigue marcando {{V_t}}, pero con carga solo da {{V_to}}: hay que medir con carga."
+      pistas:
+        - { texto: "Todavía da bastante: suba la resistencia interna." }
+    escalera:
+      - "La mitad queda cuando la interna iguala a la carga."
+    solucion: "R_{int} = 45 Ω: 4,5 V con carga y 9 V en vacío."
+    comprobar:
+      - { V_to: 8.1 }
+      - { con: { R_ti: 45 }, V_to: 4.5 }
+
+  - id: por-que-invierno
+    tipo: porque
+    titulo: "¿Por qué no arranca?"
+    texto: "Una batería de coche marca bien en vacío, pero en invierno el coche no arranca. ¿Por qué?"
+    libro: [196, 197]
+    opciones:
+      - texto: "El frío hace crecer su resistencia interna"
+        bien: true
+        porque: "Con la enorme corriente del arranque, la caída interna hunde la tensión en bornes."
+      - texto: "El multímetro está mal calibrado"
+        porque: "Marca bien la tensión en vacío; lo que engaña es medir sin carga."
+      - texto: "En frío baja la fem"
+        porque: "La tensión en vacío sigue bien. Lo que crece es la resistencia interna."
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Con carga" }
+      datos:
+        - { valor: V_t, rotulo: "En vacío: {{V_t}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_ti, lista: [5, 10, 22, 45], rotulo: "Interna, R_{int}" }
+    escalera:
+      - "Con la enorme corriente del arranque, ¿qué pesa más: la fem o la caída interna?"
+    solucion: "El frío hace crecer la resistencia interna; con la corriente del arranque, la tensión se hunde."
+
+  - id: estime-rint
+    tipo: simular
+    fase: "Estime"
+    titulo: "Medirla con dos lecturas"
+    texto: "Una pila da 1,5 V en vacío y 1,35 V cuando entrega 0,5 A. ¿Cuál es su resistencia interna?"
+    libro: [207, "cap01#345"]
+    simular:
+      objetivo: R_med
+      unidad: Ω
+      tol: 0.05
+      rotulo: "R_{int}"
+      errores:
+        - { razon: { min: 8.9, max: 9.1 }, texto: "Ha dividido la tensión con carga entre la corriente: esa es la carga. La interna sale de la caída." }
+        - { razon: { min: 9.9, max: 10.1 }, texto: "Ha dividido la tensión en vacío entre la corriente. La interna sale de la caída, 1,5 − 1,35." }
+    exito: "La caída es 0,15 V para 0,5 A: R_{int} = 0,15/0,5 = 0,3 Ω. Es la medida del equivalente Thévenin."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.32 }, texto: "Se ha pasado: divida la caída, 1,5 − 1,35, entre la corriente." }
+      - { texto: "Se ha quedado corto: 0,15 V entre 0,5 A." }
+    escalera:
+      - "Divida la caída de tensión entre la corriente."
+    solucion: "0,15/0,5 = 0,3 Ω."
+    comprobar:
+      - { R_med: 0.3 }
+  - id: cortocircuito
+    tipo: simular
+    titulo: "Con los terminales unidos"
+    texto: "Se cortocircuitan los bornes de la pila de 9 V y 5 Ω internos. ¿Qué corriente circula?"
+    libro: [204]
+    fijar: { V_t: 9, R_ti: 5 }
+    simular:
+      objetivo: I_cc
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de cortocircuito"
+      errores:
+        - { razon: { min: 9.9, max: 10.1 }, texto: "Esa sería con la carga de 45 Ω. Con los bornes unidos, solo queda la interna." }
+    exito: "Solo la limita R_{int}: 9/5 = 1,8 A. En una batería de plomo o de litio, con miliohmios, son cientos o miles de amperios."
+    escalera:
+      - "Con los bornes unidos, solo queda una resistencia en el lazo."
+    solucion: "9/5 = 1,8 A."
+    comprobar:
+      - { I_cc: 1.8 }
+  - id: acoplamiento
+    tipo: pregunta
+    titulo: "Cargas acopladas"
+    texto: "Un motor y un microcontrolador comparten fuente, y al arrancar el motor el microcontrolador se reinicia. ¿Por qué?"
+    libro: [202]
+    opciones:
+      - texto: "El pico del motor cae en R_{int} y baja la tensión de los dos"
+        bien: true
+        porque: "La resistencia interna acopla las cargas. Los condensadores de desacoplo dan el pico localmente."
+      - texto: "El motor devuelve corriente a la fuente"
+        porque: "El mecanismo es la caída en la resistencia interna, compartida por los dos."
+      - texto: "El motor consume más tensión"
+        porque: "Toma más corriente; la tensión baja por la caída en R_{int}, para todos."
+    widget:
+      tipo: figura
+      figura: fig-1.11
+      zonas:
+        - { id: acopladas, rotulo: "Cargas que comparten fuente", rect: [0, 0, 443, 193] }
+    escalera:
+      - "Las dos cargas comparten la resistencia interna de la fuente."
+    solucion: "El pico del motor cae en R_{int} y baja la tensión de los dos."
+
+  - id: fuente-corriente
+    tipo: explorar
+    titulo: "Fuentes de corriente reales"
+    texto: "Una fuente de corriente real tiene una resistencia en paralelo que desvía corriente. Elíjala para que a la carga lleguen 0,99 A del amperio de la fuente."
+    libro: [209]
+    inicio: { R_n: 10 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: R_n, carga: R_nl }
+      lectura: { valor: I_nl, rotulo: "Corriente en la carga" }
+      datos:
+        - { valor: I_nr, rotulo: "Desviada: {{I_nr}}" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+      mandos:
+        - { valor: R_n, lista: [10, 100, 1000], rotulo: "En paralelo, R_{p}" }
+    objetivo:
+      condiciones:
+        - { valor: I_nl, min: 0.99, rotulo: "En la carga: {{I_nl}}" }
+      logrado: "Con {{R_n}} solo se desvían {{I_nr}}: cuanto mayor la resistencia en paralelo, mejor la fuente. Es el dual de una R_{int} pequeña."
+      pistas:
+        - { texto: "Se desvía demasiada: suba la resistencia en paralelo." }
+    escalera:
+      - "La resistencia en paralelo se lleva parte de la corriente: cuanto mayor, menos."
+    solucion: "1 kΩ: llegan 0,99 A."
+    comprobar:
+      - { I_nl: 0.5 }
+      - { con: { R_n: 1000 }, I_nl: 0.99 }
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [192, 197, 200, 202, 209]
+    ideas:
+      - { titulo: "Fuente real.", texto: "La fem con R_{int} en serie: V_{bornes} = V_{vacío} − I·R_{int}." }
+      - { titulo: "Vacío engañoso.", texto: "La resistencia interna crece con la descarga y el frío: hay que medir con carga." }
+      - { titulo: "Regulación.", texto: "La caída relativa entre vacío y carga; R_{int} también acopla unas cargas con otras." }
+      - { titulo: "De corriente.", texto: "Su dual: cuanto mayor la resistencia en paralelo, mejor." }

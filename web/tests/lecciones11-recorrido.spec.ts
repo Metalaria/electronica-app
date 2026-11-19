@@ -253,6 +253,11 @@ function disenar(objetivo: number[], entradas: string[], permitidas: string[], n
   return buscar(0) ? elegidas : null;
 }
 
+/** A zone of a figure touched from its list (the keyboard and screen reader way; the drawing is tapped in lecciones13-motor-navegador). */
+async function tocarZonaFigura(page: Page, id: string) {
+  await page.locator(`[data-boton-zona="${id}"]`).click();
+}
+
 /** The 1.2 steps on a figure or a logic circuit, each wrong first (explained) and then right, as the reader does. */
 async function pasoDigital(page: Page, t: Tarjeta, a: ActividadDigital, donde: string) {
   if (a.tipo === 'tocar' && a.orden) {
@@ -359,8 +364,9 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
   }
 
   const w12 = widgetDigital(t);
-  // (motor121: a goal on a logic circuit is reached from power-on below: nothing is touched before)
-  if (t.requiere && w12 && !(t.objetivo && w12.tipo === 'logica')) await explorarDigital(page, t, w12, donde);
+  // (motor121: a goal on a logic circuit is reached from power-on below: nothing is touched before; motor13: nor a
+  // goal of zones on a figure)
+  if (t.requiere && w12 && !t.objetivo) await explorarDigital(page, t, w12, donde);
   else if (t.requiere) {
     // explore: touch every control it asks for and leave it where it was (a step there and back)
     await expect(boton(page), donde).toBeDisabled();
@@ -401,6 +407,21 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     const b = buscarObjetivo(t.widget.circuito, t.objetivo.condiciones);
     expect(b.camino, `${donde}: el objetivo del circuito lógico se alcanza`).not.toBeNull();
     for (const paso of b.camino!) await page.locator(paso.tipo === 'pulso' ? '[data-pulso]' : `[data-boton-entrada="${paso.id}"]`).click();
+    await expect(page.locator('[data-objetivo]'), donde).toHaveAttribute('data-objetivo', 'logrado');
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  } else if (t.objetivo && t.widget?.tipo === 'figura') {
+    // (motor13: a goal of zones on a figure — in order, the last zone first, which does not count and the advice
+    // names the first; then every zone of the goal, in its order, tapped on the picture)
+    const { zonasDelObjetivo } = await import('../src/lib/leccion12/digital/objetivo-figura.ts');
+    const zonas = zonasDelObjetivo(t.objetivo);
+    expect(zonas.length, `${donde}: el objetivo pide tocar zonas`).toBeGreaterThan(0);
+    await expect(boton(page), donde).toBeDisabled();
+    if (t.objetivo.orden) {
+      await tocarZonaFigura(page, zonas[zonas.length - 1]!);
+      await expect(page.locator(`[data-objetivo-condicion="${zonas.length - 1}"]`), donde).toHaveAttribute('data-cumple', 'no');
+      await expect(page.locator('[data-consejo-objetivo]'), donde).toBeVisible();
+    }
+    for (const id of zonas) await tocarZonaFigura(page, id);
     await expect(page.locator('[data-objetivo]'), donde).toHaveAttribute('data-objetivo', 'logrado');
     await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
   } else if (t.objetivo && t.actividad?.tipo !== 'ajuste') {

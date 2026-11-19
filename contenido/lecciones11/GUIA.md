@@ -2548,7 +2548,8 @@ app). Esto no sustituye su revisión: compruebe también que cada afirmación di
 ## 7. Lo que comprueba el generador
 
 - Forma: claves conocidas (una errata da error), tipos, `id` únicos, el resumen al final y una sola vez, al menos una
-  tarjeta `explorar` y algo que responder.
+  tarjeta `explorar` y algo que responder. (1.3, motor13: una lección **sin modelo numérico** —`modelo: { valores: {},
+  calculos: {} }`— puede prescindir de la tarjeta `explorar` si tiene alguna `tocar`.)
 - ≤ 40 palabras por tarjeta (título + texto + nota); ≤ 20 por opción, paso o pareja; ≤ 40 por explicación, pista,
   ayuda, éxito o idea; ≤ 14 por rótulo de condición.
 - Cada opción con su `porque`; exactamente una correcta; sin opciones repetidas.
@@ -2926,7 +2927,8 @@ widget:
 - 1 a 12 zonas. El generador avisa de una zona que en un teléfono mide menos de 24 px (se puede ampliar con «+» o con
   dos dedos, y está la lista, pero conviene que se pueda tocar) y de dos zonas que se tapan en más de la mitad (un
   toque elige la más pequeña).
-- `explorar` con figura: `requiere: { mover: [fria, puente] }` pide tocar esas zonas (sin él, una cualquiera).
+- `explorar` con figura: `requiere: { mover: [fria, puente] }` pide tocar esas zonas (sin él, una cualquiera). Eso
+  cuenta como «mirando»; para que cuente como «haciendo», póngale un `objetivo` de zonas (§13.3, «Sobre una figura»).
 - La figura SVG sale sobre la placa de figuras del libro (también en oscuro y sepia); la foto, con su crédito.
 
 **Un listado de código (1.2, motor12e).** En lugar de una figura, `codigo`: un bloque de código del libro
@@ -3419,6 +3421,40 @@ cruzadas, una autorretención) guarda su estado como un biestable: el widget y l
 anterior al cambiar un interruptor. Tarjetas `explore-and-cableada`,
 `explore-contador` (cinco pulsos) y `explore-contencion` de `web/tests/lecciones12-catalogo/cap09/sec-9.6.yaml`.
 
+**Sobre una figura** (1.3, motor13: «explorar sin modelo»). Una lección de criterios sin ninguna cifra del libro no
+tiene modelo sobre el que poner un objetivo; su exploración de la figura sí puede pedir algo que se comprueba —tocar
+estas zonas, en cualquier orden o en el escrito— y entonces cuenta como **haciendo**:
+
+```yaml
+  - id: explore-equivalente
+    tipo: explorar
+    widget: { tipo: figura, figura: fig-16.21, zonas: [ … coincidir, diferir, trampas … ] }
+    objetivo:
+      # orden: true                  # las zonas se tocan en el orden de las condiciones
+      condiciones:                   # una zona tocada cada una, con su rótulo (chip)
+        - { zona: coincidir, rotulo: "Lo que debe coincidir" }
+        - { zona: diferir, rotulo: "Lo que puede diferir" }
+        - { zona: trampas, rotulo: "La comprobación segura" }
+      logrado: "Patillaje, función y alimentación deben coincidir; …"
+      pistas:                        # opcional: «valor: 0» en un «cuando» es «todavía no tocada»
+        - { cuando: { zona: trampas, valor: 0 }, texto: "Falta el recuadro de abajo: …" }
+        - { texto: "Toque los recuadros que faltan." }
+    escalera: ["Son tres recuadros: dos arriba y uno abajo."]
+    solucion: "Toque arriba a la izquierda, arriba a la derecha y abajo."
+```
+
+- Cada toque en la figura (en el dibujo o en la lista de zonas, el camino del teclado y del lector de pantalla) muestra
+  el `texto` de la zona, como siempre, y enciende su chip. Al tocarlas todas, «¡Conseguido!» con `logrado` y
+  «Continuar» abierto. No hace falta `requiere`.
+- Con `orden: true`, una zona solo cuenta cuando ya se tocaron, en orden, las de antes (los toques son un camino: una
+  fuera de orden no cuenta y el camino sigue donde iba). Sin una pista que se aplique, la tarjeta dice sola cuál toca
+  ahora («Van en orden. La siguiente: …», con el rótulo de su chip) en cuanto el lector ha tocado algo.
+- El generador comprueba que cada zona existe (si no, lista las que hay), que no se repite, que las condiciones son
+  zonas (no valores del modelo: la figura no tiene mandos), que `valor: 0` va solo en una pista, y que `orden` lleva
+  al menos dos zonas y va solo en una figura. Rótulos neutros que no den la respuesta de una tarjeta siguiente.
+- Las figuras no tienen estados (son el dibujo del libro o una foto): el objetivo es siempre de zonas.
+- Tarjetas `explore-equivalente` y `explore-orden` de `web/tests/lecciones12-catalogo/cap16/sec-16.16.yaml`.
+
 ### 13.4 `elegir` — Toque en el esquema
 
 ```yaml
@@ -3511,7 +3547,7 @@ corriente en la foto): un fallo dice cuántas van bien y cuál no va en su sitio
 
 El generador clasifica cada tarjeta (salvo el resumen): **haciendo** (`medir`, `elegir`, `marcar`, `leer`, `tocar`,
 `simular`, `ajuste`, `reto`, `dibujar`, `averia`, `diseno`, `banco`, `tabla`, `sql`, y `explorar`/`sorpresa` con
-`objetivo`), **eligiendo** (opciones, estimar, ordenar, emparejar) o **mirando** (explorar sin objetivo, fórmula,
+`objetivo`, también uno de zonas en una figura, §13.3), **eligiendo** (opciones, estimar, ordenar, emparejar) o **mirando** (explorar sin objetivo, fórmula,
 sorpresa). Avisa («mezcla: aprender haciendo…») si las de hacer no llegan a la mitad. El script lo resume en una
 línea («aprender haciendo: 918 de 7751 tarjetas (11,8 %)…»); `--mezcla` (o `--solo`) lista cada lección. Objetivo de
 la 1.2.1: al menos el 70 % haciendo y como mucho dos tarjetas de opciones por lección.
@@ -3620,3 +3656,61 @@ genere como siempre (`--solo`, que sí comprueba con el simulador).
   de la 1.2.0 (`web/tests/lecciones11-congeladas/<parte>/<label>.yaml` y su `.json`; `tests/lecciones11-congeladas.ts`)
   en lugar de la publicada. Esa copia no se edita; si un cambio del motor cambia su salida, la prueba «las copias
   congeladas están al día» de `lecciones11-unidad` lo dice y `EPA_CONGELAR=1` la escribe de nuevo (autor121-fund).
+
+### 13.13 Repaso haciendo: variantes de una tarjeta (1.3, motor13)
+
+La «Práctica inteligente» y el repaso espaciado de una sección preguntaban las tarjetas de hacer tal cual: los mismos
+números y la misma respuesta, que se recuerda en lugar de calcularse. Ahora una tarjeta `simular`, `leer`, `medir`,
+`reto` o `diseno` puede llevar **variantes**: otros valores de sus datos o, en un reto o un diseño, otro objetivo. El
+repaso pregunta una de ellas (la lección, nunca): la elige con el id de la tarjeta y la semilla de la sesión
+(`lib/leccion12/variantes.ts`), la tarjeta dice «Con otros valores» u «Otro objetivo», y la respuesta se guarda con
+el id de siempre (el progreso, las copias y la sincronización no cambian).
+
+```yaml
+  - id: prediga-bornes
+    tipo: simular
+    texto: "La pila de 9 V con 5 Ω internos alimenta una carga de 45 Ω. ¿Qué tensión queda en bornes?"
+    fijar: { V_t: 9, R_ti: 5, R_tl: 45, t_on: 1 }
+    …
+    exito: "La corriente es {{I_t}}; en los 5 Ω internos caen {{V_ti}}. Quedan 8,1 V en bornes."
+    variantes:
+      valores:                       # los datos que cambian, con sus valores plausibles (del libro o de sus mandos)
+        R_tl: [10, 22, 100]          # una lista…
+        R_ti: { min: 2, max: 10, paso: 1 }   # …o un recorrido
+  - id: reto-carga
+    tipo: reto
+    …
+    variantes:
+      objetivos:                     # otro objetivo: sus condiciones y los textos que lo dicen
+        - condiciones: [ { valor: V_to, min: 6, rotulo: "En bornes: {{V_to}}" } ]
+          texto: "… elija la carga más pequeña de la lista que deje al menos 6 V en bornes."
+          exito: "10 Ω: 6 V en bornes. …"
+          pistas: [ { texto: "Cae demasiado: …" } ]     # obligatorias en un reto
+          comprobar: [ { con: { R_tl: 10 }, V_to: 6 } ] # respaldan las cifras de sus textos
+          # titulo, escalera y solucion: opcionales (sin ellas, la variante no lleva la escalera de la tarjeta)
+    # variantes: false                 # ninguna, tampoco las automáticas
+```
+
+- **Los números de los textos se escriben de nuevo desde el modelo.** Una cifra con su unidad que es un dato o un
+  resultado que cambia («5 Ω», «8,1 V», «1 ns», «79,6 kHz») se reescribe con el valor nuevo, como lo formatea la app;
+  los `{{…}}` se recalculan solos. **No hay variante** si una cifra no se puede atribuir: un número sin unidad que es un
+  dato que cambia («9/50»), una cifra con la unidad de algo que cambia que no es ninguna cantidad del modelo («9 V
+  entre 50 Ω»), dos cantidades iguales, una unidad compuesta («1,65 V/ns»), una potencia («10⁻⁹»), o un número del
+  libro que también es un paso intermedio que cambia («hasta 1 GHz» = 1/t). Escriba esas cifras con `{{…}}` (añada el
+  cálculo al modelo si hace falta) y la variante sale.
+- **Cada variante se genera entera**: el generador vuelve a generar la lección con la tarjeta cambiada (sus `fijar`,
+  sus textos, las afirmaciones de su `comprobar` que siguen valiendo y una nueva por cada resultado reescrito) y la
+  descarta si da un solo error (la regla de los números, el reto alcanzable y sin empezar resuelto, los errores típicos
+  fuera de la tolerancia, las lecturas del instrumento…). Si el circuito de la tarjeta se simula, **el ngspice de la
+  app** comprueba también la variante; si no cuadra con el modelo, el script la descarta y lo dice («N variante(s) del
+  repaso descartada(s)»). La respuesta debe cambiar al menos un 5 %: la recordada ya no vale.
+- Con `variantes` declaradas y ninguna que sirva, es un error que dice por qué (la primera razón). Revise también sus
+  textos sin cifras: «tres veces por debajo», «despreciable» o «el doble» pueden dejar de ser verdad con otros valores.
+- **Automáticas** (sin la clave), solo donde es seguro: los datos de la tarjeta que algún **deslizador** de la lección
+  mueve (sus posiciones son el recorrido que el autor les dio), nunca los mandos de la propia tarjeta ni un valor que
+  la tarjeta deja en 0; no en una figura, un circuito lógico ni una lectura de una gráfica (sus ejes son fijos); no si
+  algún texto compara magnitudes con palabras («veces», «doble», «mitad», «apenas», «despreciable», números en letra,
+  «milivoltios»…: `PALABRAS_DE_PROPORCION`). En la 1.3 salen así 12 tarjetas publicadas; el resto, declarándolas.
+- Tarjetas probadas: `prediga-bornes` y `reto-carga` de `web/tests/lecciones12-catalogo/cap01/sec-1.10.yaml`
+  (`tests/lecciones13-motor-unidad.spec.ts`, `tests/lecciones13-motor-navegador.spec.ts`).
+

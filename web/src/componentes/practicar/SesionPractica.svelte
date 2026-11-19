@@ -319,7 +319,7 @@
           {:else if item.tarjeta}
             <TarjetaSesion tarjeta={item.tarjeta} onresponder={responderTarjeta} />
           {:else if item.leccion11}
-            <TarjetaPractica leccion={item.leccion11.leccion} k={item.leccion11.k} prefijo={`ps11-${k}`} onresponder={responderLeccion11} />
+            <TarjetaPractica leccion={item.leccion11.leccion} k={item.leccion11.k} variante={item.leccion11.variante} prefijo={`ps11-${k}`} onresponder={responderLeccion11} />
           {/if}
         {/key}
       </div>

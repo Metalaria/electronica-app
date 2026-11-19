@@ -91,6 +91,8 @@ export interface WidgetLogica {
 export interface EstadoWidget12 {
   /** Figure: the zone last touched (an explore card shows its text). */
   zona: string | null;
+  /** Figure (motor13): every touch of a zone, in order (a goal on zones: objetivo-figura.ts). */
+  visitadas?: string[];
   /** Logic: the levels of the switches. */
   niveles: Record<string, Nivel>;
   /** Logic, sequential circuits: the simulation's state (flip-flops, counters), null until the first action. */

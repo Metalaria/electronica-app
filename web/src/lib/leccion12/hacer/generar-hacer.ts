@@ -17,6 +17,8 @@ import type { Contexto12, Resultado12 } from '../generar12';
 import { graficaDe, marcaBien, objetivoCumplido, posicionesMarca } from './motor-hacer';
 import type { Elegir, Instrumento, Leer, Marcar, Medir, Objetivo } from './tipos';
 import { buscarObjetivo, condicionLogica } from '../digital/objetivo-logico';
+import { condicionFigura, zonasDelObjetivo } from '../digital/objetivo-figura';
+import type { WidgetFigura } from '../digital/tipos';
 import { NOMBRE_PIEZA, type CircuitoLogico } from '../digital/logica';
 
 const esObjeto = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -606,6 +608,8 @@ export interface ContextoObjetivo {
   e(m: string): void;
   /** motor121: the card's logic circuit (a goal on its LEDs, signals and counters: digital/objetivo-logico.ts). */
   logica?: CircuitoLogico;
+  /** motor13: the card's figure (a goal on the zones touched: digital/objetivo-figura.ts). */
+  figura?: WidgetFigura;
 }
 
 /** `objetivo: { condiciones: [...], logrado, pistas? }`: reachable with the card's controls, not reached at the start. */
@@ -616,12 +620,26 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
     e('«objetivo» debe ser { condiciones: [...], logrado, pistas? }');
     return { objetivo: null, textos };
   }
-  for (const k of Object.keys(x)) if (!['condiciones', 'logrado', 'pistas'].includes(k)) e(`«objetivo.${k}»: clave desconocida`);
+  for (const k of Object.keys(x)) if (!['condiciones', 'logrado', 'pistas', 'orden'].includes(k)) e(`«objetivo.${k}»: clave desconocida`);
+  if (x.orden != null && (!c.figura || typeof x.orden !== 'boolean')) e('«objetivo.orden»: true o false, en una tarjeta con una figura (las zonas se tocan en el orden de las condiciones)');
   const condiciones: Condicion[] = [];
   // (motor121: on a logic circuit, a condition may look at a LED, a signal or a counter)
   const rangoDe = (y: unknown, donde: string): Rango | null => {
     if (c.logica && esObjeto(y) && ['led', 'senal', 'contador'].some((q) => y[q] != null)) {
       const r = condicionLogica(y, c.logica);
+      if (typeof r === 'string') {
+        e(`«${donde}»: ${r}`);
+        return null;
+      }
+      return r;
+    }
+    // (motor13: on a figure, a condition is a zone touched)
+    if (c.figura) {
+      if (!esObjeto(y) || y.zona == null) {
+        e(`«${donde}»: en una figura, una condición es { zona, rotulo } (la zona tocada; en una pista, «valor: 0»: todavía no)`);
+        return null;
+      }
+      const r = condicionFigura(y, c.figura);
       if (typeof r === 'string') {
         e(`«${donde}»: ${r}`);
         return null;
@@ -657,8 +675,14 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
         pistas.push(p);
       });
   }
-  const o: Objetivo = { condiciones, logrado, pistas };
-  if (condiciones.length && c.logica) {
+  const o: Objetivo = { condiciones, logrado, pistas, ...(x.orden === true && c.figura ? { orden: true } : {}) };
+  if (condiciones.length && c.figura) {
+    // a figure: zones to touch (reachable by touching them, none touched at the start); «todavía no» only in a hint
+    if (condiciones.some((q) => q.max === 0)) e('«objetivo.condiciones»: una condición pide tocar una zona («valor: 0», todavía no tocada, solo va en una pista)');
+    const zonas = zonasDelObjetivo(o);
+    if (new Set(zonas).size !== zonas.length) e('«objetivo.condiciones»: una zona repetida');
+    if (o.orden && zonas.length < 2) e('«objetivo.orden» con una sola zona: no hay orden que seguir');
+  } else if (condiciones.length && c.logica) {
     // a logic circuit: reachable from power-on with the switches and the clock, not reached at power-on (with a
     // cronograma the circuit stays live on a goal card; without its drawing there is nothing to toggle)
     if (t.widget?.tipo === 'logica' && t.widget.dibujo === false) e('un «objetivo» en un circuito lógico necesita el circuito a la vista (quite «dibujo: false»): sin él no hay interruptores ni pulso de reloj');

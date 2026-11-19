@@ -71,7 +71,7 @@
   // 1.2.1 (piloto121): the goal of an explore card, reached live (GUIA §13.3)
   import Objetivo from '../leccion12/Objetivo.svelte';
   import { objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
-  import { variablesLogica } from '../../lib/leccion12/digital/objetivo-logico';
+  import { variablesWidget12 } from '../../lib/leccion12/digital/objetivo-figura';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
 
@@ -160,8 +160,9 @@
   const mc = $derived(leccion ? compilarModelo(leccion.modelo) : null);
   // (1.2: with the card's state, so an «averia» card's widget shows the faulty board)
   const efectivos = $derived(t ? valoresDeTarjeta(t, propios, e) : {});
-  // (motor121: a goal on a logic circuit looks at its LEDs, signals and counters: «led:Y», «contador:c1»)
-  const evaluados = $derived(mc ? { ...mc.evaluar(efectivos), ...(t?.widget?.tipo === 'logica' && t.objetivo ? variablesLogica(t.widget, e?.widget12) : {}) } : {});
+  // (motor121: a goal on a logic circuit looks at its LEDs, signals and counters: «led:Y», «contador:c1»;
+  // motor13: one on a figure, at the zones touched: «zona:coincidir»)
+  const evaluados = $derived(mc ? { ...mc.evaluar(efectivos), ...(t ? variablesWidget12(t, e?.widget12) : {}) } : {});
   // fix12: an «averia» card's widget must not give the fault away. Until the fault of the board on show is found (or
   // the card skipped) the circuit shows the healthy board's values (the labels say the nominal «R₂ 5 kΩ», not the
   // faulty «1 GΩ»; the description for screen readers too) and comes as a prediction (`oculto`): no reading, no

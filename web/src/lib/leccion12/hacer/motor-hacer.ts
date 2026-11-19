@@ -262,5 +262,12 @@ export function objetivoCumplido(t: Tarjeta, r: Valores): boolean {
 /** The live advice while the goal is not reached (the first hint whose «cuando» holds). */
 export function consejoObjetivo(t: Tarjeta, r: Valores): Texto | undefined {
   if (!t.objetivo || objetivoCumplido(t, r)) return undefined;
-  return t.objetivo.pistas.find((p) => !p.cuando || enRango(p.cuando, r))?.texto;
+  const autor = t.objetivo.pistas.find((p) => !p.cuando || enRango(p.cuando, r))?.texto;
+  if (autor) return autor;
+  // (motor13: zones of a figure in order — once the reader has touched something, say which one comes next)
+  if (t.objetivo.orden && (r['zonas:tocadas'] ?? 0) > 0) {
+    const c = t.objetivo.condiciones.find((q) => q.valor.startsWith('zona:') && !enRango(q, r));
+    if (c) return [{ t: 'txt', s: 'Van en orden. La siguiente: ' }, ...c.rotulo, { t: 'txt', s: '.' }];
+  }
+  return undefined;
 }

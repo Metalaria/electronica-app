@@ -143,4 +143,6 @@ export interface Objetivo {
   logrado: Texto;
   /** Live advice while not reached: the first whose `cuando` holds (by the model's state). */
   pistas: Pista[];
+  /** motor13: on a figure, the zones of the conditions are touched in their order (digital/objetivo-figura.ts). */
+  orden?: boolean;
 }

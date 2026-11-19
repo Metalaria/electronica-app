@@ -12,6 +12,7 @@
   import type { Tarjeta } from '../../lib/leccion11/tipos';
   import type { EstadoTocar, Tocar, WidgetFigura, ZonaFigura } from '../../lib/leccion12/digital/tipos';
   import { CODIGO_COL, CODIGO_LINEA, CODIGO_MARGEN } from '../../lib/leccion12/digital/tipos';
+  import { tocarVisita } from '../../lib/leccion12/digital/objetivo-figura';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
 
   let {
@@ -99,7 +100,9 @@
             : [...ea.elegidas, id]
           : [id];
       cambiar({ actividad: { ...ea, elegidas }, movidos, widget12: { ...w12, zona: id } });
-    } else cambiar({ movidos, widget12: { ...w12, zona: id } });
+    }
+    // (motor13: an explore card keeps every touch, in order: a goal on zones looks at them, objetivo-figura.ts)
+    else cambiar({ movidos, widget12: { ...w12, zona: id, visitadas: tocarVisita(w12, id) } });
   }
 
   function estadoZona(z: ZonaFigura): 'bien' | 'mal' | 'elegida' | 'vista' | '' {

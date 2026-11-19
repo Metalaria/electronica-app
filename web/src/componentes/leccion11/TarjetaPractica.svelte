@@ -6,6 +6,9 @@
   // reported under the lesson's answer id (XP once per card wherever it is answered; the same mastery rounds) with
   // origin «inteligente»; `onresponder` is called when the round closes (right, or the second wrong check), as the
   // session's practice items do.
+  // 1.3 (motor13): a doing card with variants is asked as one of them (`variante`, chosen by the session from the card's
+  // id and its seed: lib/leccion12/variantes.ts) — other values of its data or another goal, its texts written again
+  // from the model —, under the same answer id; the card says so («Con otros valores»).
   import { tick, untrack } from 'svelte';
   import { emitir } from '../../lib/aprendizaje/eventos';
   import { compilarModelo, enRango, formatear, objetivoEstimar, valoresDeTarjeta, type Valores } from '../../lib/leccion11/modelo';
@@ -25,11 +28,13 @@
   import Widget12 from '../leccion12/Widget12.svelte';
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
+  import { conVariante, rotuloVariante } from '../../lib/leccion12/variantes';
 
   let {
     leccion,
     k,
     prefijo,
+    variante = null,
     onresponder,
   }: {
     leccion: Leccion11;
@@ -37,14 +42,17 @@
     k: number;
     /** Unique prefix of the ids on the page. */
     prefijo: string;
+    /** The variant of the card to ask (an index of its `variantes`), or null: the card itself. */
+    variante?: number | null;
     /** The round closed: right or not, and whether at the first attempt without help. */
     onresponder: (r: { bien: boolean; primera: boolean }) => void;
   } = $props();
 
   // (the session mounts one card per item: its props do not change while it is on screen)
-  const t = $derived(leccion.tarjetas[k]!);
+  const t = $derived(conVariante(leccion.tarjetas[k]!, variante));
+  const rotulo = $derived(rotuloVariante(leccion.tarjetas[k]!, variante));
   let propios = $state<Valores>(untrack(() => valoresSueltos(leccion, k)));
-  let e = $state<EstadoTarjeta>(untrack(() => nuevoEstado(leccion.tarjetas[k]!)));
+  let e = $state<EstadoTarjeta>(untrack(() => nuevoEstado(conVariante(leccion.tarjetas[k]!, variante))));
   let aviso = $state<Aviso | null>(null);
   let raiz: HTMLElement | undefined = $state();
   let respondida = false;
@@ -108,8 +116,8 @@
   }
 </script>
 
-<div class="l11-suelta" bind:this={raiz} data-tarjeta={t.id} data-tipo={t.tipo} data-leccion11-suelta={leccion.id}>
-  <span class="etiqueta">Lección {leccion.num || leccion.titulo} · {t.fase}</span>
+<div class="l11-suelta" bind:this={raiz} data-tarjeta={t.id} data-tipo={t.tipo} data-leccion11-suelta={leccion.id} data-variante={rotulo ? variante : undefined}>
+  <span class="etiqueta">Lección {leccion.num || leccion.titulo} · {t.fase}{#if rotulo} · <span data-rotulo-variante>{rotulo}</span>{/if}</span>
   <h2><TextoVivo texto={t.titulo} {valor} /></h2>
   {#if t.texto.length}<p class="texto"><TextoVivo texto={t.texto} {valor} /></p>{/if}
 
