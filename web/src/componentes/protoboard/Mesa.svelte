@@ -9,12 +9,24 @@
   // tap on the board after a tap on their card. Empty space pans; pinch or Ctrl/⌘ + wheel zooms. Tapping a
   // hole shows its strip, its net and (after a simulation) its voltage. `touch-action: none` and
   // preventDefault keep the browser from zooming the page.
+  // 1.3 (tactil13), precise placement with a finger (componentes/colocar/): a lead, a leg or a wire's end dragged by
+  // a finger rides ELEVACION_DEDO px above it and snaps to the nearest valid hole with hysteresis; a loupe near the
+  // finger shows the area with that hole ringed and named («C12 · tira 12 de arriba»), a short vibration marks each
+  // change of hole and the landing; released off the holes it stays where it was. On a phone with holes smaller than
+  // a finger the view zooms in while dragging and goes back on release (no animation with «reducir movimiento»).
+  // After a placement dragged by a finger four arrows around it move it one hole at a time (not after a tap: in the
+  // tap-tap flow the next tap goes near, often where an arrow would be).
   import { onMount, untrack, type Snippet } from 'svelte';
   import type { Protoboard } from './estado.svelte';
   import { cable as svgCable, defsProtoboard, posRotulo, rotuloCorto, svgPieza, svgPlacas } from './dibujo.ts';
   import { cajaCuerpo, cajaExterno, cuerpoDe, esquinas, encapsuladoDe, EXTERNOS } from './encapsulados.ts';
-  import { agujero, agujerosDe, ALTO_PLACA, clavePt, nombreAgujero, type Pt } from './placa.ts';
-  import { borneEn, piezaDe } from './edicion.ts';
+  import { agujero, agujerosDe, ALTO_PLACA, clavePt, etiquetaHueco, nombreAgujero, type Pt } from './placa.ts';
+  import { borneEn, motivoExtremo, piezaDe } from './edicion.ts';
+  import Lupa from '../colocar/Lupa.svelte';
+  import AjusteFino from '../colocar/AjusteFino.svelte';
+  import { ELEVACION_DEDO, elevacion, histeresisRejilla, huecoConHisteresis, siguienteHueco, zoomAutomatico, type Direccion } from '../colocar/precision';
+  import { vibrarAterrizaje, vibrarCambio } from '../colocar/haptica';
+  import { movimiento } from '../figuras-vivas/carga.svelte';
   import { huecoCercano as huecoMasCercano } from './leccion.ts';
   import { pulsar } from './pulsar.ts';
   import type { Componente } from '../editor/tipos.ts';
@@ -66,12 +78,14 @@
 
   type Gesto =
     | { t: 'pieza'; ids: string[]; desde: Pt; ini: Pt; dx: number; dy: number; movido: boolean }
-    | { t: 'pata'; id: string; i: number; q: Pt; desde: Pt; movido: boolean }
-    | { t: 'extremo'; id: string; e: 'a' | 'b'; q: Pt; desde: Pt; movido: boolean }
-    | { t: 'cable'; a: Pt; b: Pt; desde: Pt; movido: boolean }
+    | { t: 'pata'; id: string; i: number; q: Pt; desde: Pt; movido: boolean; fuera?: boolean }
+    | { t: 'extremo'; id: string; e: 'a' | 'b'; q: Pt; desde: Pt; movido: boolean; fuera?: boolean }
+    | { t: 'cable'; a: Pt; b: Pt; desde: Pt; movido: boolean; fuera?: boolean }
     | { t: 'pan'; desde: Pt; t0: Pt; movido: boolean; o?: { t: 'pieza' | 'cable'; id: string }; enCable?: boolean }
     /** A probe of the instruments dragged to another hole (0.10). */
-    | { t: 'sonda'; p: PuntaProto; q: Pt; desde: Pt; movido: boolean };
+    | { t: 'sonda'; p: PuntaProto; q: Pt; desde: Pt; movido: boolean; fuera?: boolean };
+  /** 1.3: what was last placed by touch (the fine-adjust arrows move it). */
+  type Colocado = { t: 'sonda'; p: PuntaProto } | { t: 'pata'; id: string; i: number } | { t: 'extremo'; id: string; e: 'a' | 'b' };
 
   let caja: HTMLDivElement | undefined = $state();
   let ancho = $state(600);
@@ -91,6 +105,13 @@
   let fant = $state.raw<{ p: Pieza; motivo: string | null } | null>(null);
   /** Long press on a wire (removes it). */
   let largo: ReturnType<typeof setTimeout> | null = null;
+  /** 1.3: a placement dragged by a finger — the lifted point (client px) the loupe looks at. */
+  let colocando = $state<{ x: number; y: number } | null>(null);
+  /** 1.3: the fine-adjust arrows, on what was last placed by touch. */
+  let ajuste = $state<Colocado | null>(null);
+  /** 1.3: the view before the auto zoom of a placement drag (restored on release). */
+  let vistaPrevia: { s: number; tx: number; ty: number } | null = null;
+  let grupo: SVGGElement | undefined = $state();
 
   const cfg = $derived({ placas: pb.doc.placas, columnas: pb.doc.columnas });
   const placasSvg = $derived(svgPlacas(cfg));
@@ -208,7 +229,7 @@
   function candidata(cx: number, cy: number, x: Componente | Pieza, dedo: boolean): Pieza | null {
     const p0 = 'comp' in x ? x : piezaDe(pb.doc, x);
     if (!p0) return null;
-    const w = mundo(cx, cy - (dedo ? 56 : 0));
+    const w = mundo(cx, cy - (dedo ? ELEVACION_DEDO : 0));
     const a = ancla(p0);
     const dx = Math.round(w[0] - a[0]);
     const dy = p0.enc === 'dip' ? Math.round((w[1] - a[1]) / ALTO_PLACA) * ALTO_PLACA : Math.round(w[1] - a[1]);
@@ -336,9 +357,208 @@
     return mejor;
   }
 
+  // ---------------------------------------------------------------- 1.3: precise placement with a finger
+
+  type GestoColocar = Extract<Gesto, { t: 'sonda' | 'pata' | 'extremo' | 'cable' }>;
+  const esColocacion = (g: Gesto | null): g is GestoColocar => !!g && (g.t === 'sonda' || g.t === 'pata' || g.t === 'extremo' || g.t === 'cable');
+  const esHueco = (q: Pt) => !!agujero(cfg, q[0], q[1]);
+  const igual = (a: Pt | null | undefined, b: Pt | null | undefined) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
+
+  /** Where the dragged thing was before the drag (it stays there when released off the holes). */
+  function origenDe(g: GestoColocar): Pt | null {
+    switch (g.t) {
+      case 'sonda':
+        return medida?.puntas[g.p] ?? null;
+      case 'pata':
+        return pb.pieza(g.id)?.pos[g.i] ?? null;
+      case 'extremo':
+        return pb.cable(g.id)?.[g.e] ?? null;
+      case 'cable':
+        return g.a;
+    }
+  }
+
+  /** The name of a hole or terminal in the preview («C12 · tira 12 de arriba», «Borne + de V1»). */
+  function nombreDestino(q: Pt): string {
+    const b = borneEn(pb.doc, q);
+    if (b) return `Borne ${encapsuladoDe(b.pieza.comp).nombres[b.i] ?? b.i + 1} de ${b.pieza.comp.nombre}`;
+    return etiquetaHueco(cfg, q[0], q[1]) || nombreAgujero(cfg, q[0], q[1]);
+  }
+
+  /** The last pointer of a placement drag (aimed again when the auto zoom ends). */
+  let ultimoPuntero: { x: number; y: number; tipo: string } | null = null;
+
+  /** The dragged thing follows the pointer (lifted above a finger), snapped to a hole with hysteresis. */
+  function apuntar(g: GestoColocar, cx: number, cy: number, tipo: string) {
+    ultimoPuntero = { x: cx, y: cy, tipo };
+    const lift = elevacion(tipo);
+    const w = mundo(cx, cy - lift);
+    const antes = g.fuera ? null : g.t === 'cable' ? g.b : g.q;
+    const q = huecoConHisteresis(w, antes, g.t === 'pata' ? esHueco : esPunto, histeresisRejilla(s, tipo));
+    if (q) {
+      if (g.t === 'cable') g.b = q;
+      else g.q = q;
+      g.fuera = false;
+    } else {
+      if (g.t === 'cable') g.b = g.a;
+      else g.q = origenDe(g) ?? g.q;
+      g.fuera = true;
+    }
+    if (tipo === 'touch' && q && !igual(q, antes)) vibrarCambio();
+    colocando = tipo === 'touch' ? { x: cx, y: cy - lift } : null;
+    if (g.t === 'sonda') redMarcada = q ? (medida?.nodoEn(q) ?? null) : null;
+    info = q ? describir(q) : 'Fuera de los agujeros: al soltar se queda donde estaba.';
+  }
+
+  // The auto zoom of a placement drag on a phone (and back on release).
+  let animacion = 0;
+  function irAVista(s1: number, tx1: number, ty1: number) {
+    if (animacion) cancelAnimationFrame(animacion);
+    animacion = 0;
+    if (movimiento.reducido || typeof requestAnimationFrame === 'undefined') {
+      s = s1;
+      tx = tx1;
+      ty = ty1;
+      return;
+    }
+    const [s0, tx0, ty0] = [s, tx, ty];
+    const t0 = performance.now();
+    const paso = (t: number) => {
+      const k = Math.min(1, (t - t0) / 160);
+      const e = 1 - (1 - k) ** 3;
+      s = s0 + (s1 - s0) * e;
+      tx = tx0 + (tx1 - tx0) * e;
+      ty = ty0 + (ty1 - ty0) * e;
+      if (k < 1) animacion = requestAnimationFrame(paso);
+      else {
+        animacion = 0;
+        // (the finger may be still: what is under the lifted point now)
+        const g = gesto;
+        if (esColocacion(g) && g.movido && ultimoPuntero) apuntar(g, ultimoPuntero.x, ultimoPuntero.y, ultimoPuntero.tipo);
+      }
+    };
+    animacion = requestAnimationFrame(paso);
+  }
+  function acercarParaColocar(ev: PointerEvent) {
+    const z = zoomAutomatico(s, innerWidth, innerHeight, ev.pointerType);
+    if (!z || vistaPrevia) return;
+    vistaPrevia = { s, tx, ty };
+    const [px, py] = rel(ev.clientX, ev.clientY);
+    const f = z / s;
+    irAVista(z, px - (px - tx) * f, py - (py - ty) * f);
+  }
+  /**
+   * While a finger drags a placement, a lifted point near an edge of the bench pans the view that way (the zoomed-in
+   * view of a phone has far holes out of sight), up to the edge of what can be drawn. Only once the lifted point has
+   * been inside the bench and then rests a quarter of a second by the edge: a thing grabbed by the edge does not set
+   * the board moving on its own.
+   */
+  let bordeRaf = 0;
+  let bordeArmado = false;
+  let bordeDesde = 0;
+  function panearBorde() {
+    bordeRaf = 0;
+    const g = gesto;
+    const u = ultimoPuntero;
+    if (!esColocacion(g) || !g.movido || !u || u.tipo !== 'touch' || !caja) return;
+    const r = caja.getBoundingClientRect();
+    const lx = u.x - r.left;
+    const ly = u.y - elevacion(u.tipo) - r.top;
+    // (half a hole of the zoomed view: only a hole cut by the edge makes it pan)
+    const M = 14;
+    const V = 8;
+    const [x0, y0, x1, y1] = limites();
+    const f = (d: number) => Math.min(1, d / M);
+    let vx = lx < M ? f(M - lx) : lx > ancho - M ? -f(lx - ancho + M) : 0;
+    let vy = ly < M ? f(M - ly) : ly > alto - M ? -f(ly - alto + M) : 0;
+    const ahora = performance.now();
+    if (!vx && !vy) {
+      bordeArmado = true;
+      bordeDesde = 0;
+    } else if (!bordeArmado || (bordeDesde || (bordeDesde = ahora)) > ahora - 250) vx = vy = 0;
+    if ((vx > 0 && tx + x0 * s >= M) || (vx < 0 && tx + x1 * s <= ancho - M)) vx = 0;
+    if ((vy > 0 && ty + y0 * s >= M) || (vy < 0 && ty + y1 * s <= alto - M)) vy = 0;
+    if (vx || vy) {
+      tx += vx * V;
+      ty += vy * V;
+      apuntar(g, u.x, u.y, u.tipo);
+    }
+    bordeRaf = requestAnimationFrame(panearBorde);
+  }
+  function devolverVista() {
+    const v = vistaPrevia;
+    vistaPrevia = null;
+    if (v) irAVista(v.s, v.tx, v.ty);
+  }
+
+  /** What the fine-adjust arrows move, in words. */
+  function nombreColocado(a: Colocado): string {
+    if (a.t === 'sonda') return NOMBRE_PUNTA_PROTO[a.p].toLowerCase();
+    if (a.t === 'pata') {
+      const p = pb.pieza(a.id);
+      return p ? `la pata ${encapsuladoDe(p.comp).nombres[a.i] ?? a.i + 1} de ${p.comp.nombre}` : 'la pata';
+    }
+    return 'el extremo del cable';
+  }
+  function puntoColocado(a: Colocado): Pt | null {
+    if (a.t === 'sonda') return medida?.puntas[a.p] ?? null;
+    if (a.t === 'pata') return pb.pieza(a.id)?.pos[a.i] ?? null;
+    return pb.cable(a.id)?.[a.e] ?? null;
+  }
+
+  /** A fine-adjust arrow: what was placed goes to the next hole that way (the channel and gaps skipped). */
+  function moverAjuste(d: Direccion) {
+    const a = ajuste;
+    if (!a) return;
+    const o = puntoColocado(a);
+    const q = o ? siguienteHueco(o, d, a.t === 'pata' ? esHueco : esPunto) : null;
+    if (!q) {
+      anuncio = info = 'Borde de la placa.';
+      return;
+    }
+    pb.mensaje = '';
+    let ok = false;
+    if (a.t === 'sonda' && medida) {
+      medida.activa = a.p;
+      const t = medida.colocar(q);
+      ok = igual(medida.puntas[a.p], q);
+      if (!ok) pb.mensaje = t;
+      else redMarcada = medida.nodoEn(q);
+    } else if (a.t === 'pata') ok = pb.moverPata(a.id, a.i, q);
+    else if (a.t === 'extremo') ok = pb.moverExtremo(a.id, a.e, q);
+    if (ok) {
+      vibrarCambio();
+      info = `${nombreDestino(q)} · ${describir(q)}`;
+      anuncio = `${nombreColocado(a)[0]!.toUpperCase()}${nombreColocado(a).slice(1)}: ${nombreDestino(q)}.`;
+    } else anuncio = pb.mensaje || 'Ahí no puede ir.';
+  }
+
+  /** Is there a hole that way for what was placed? */
+  function puedeAjuste(d: Direccion): boolean {
+    const a = ajuste;
+    const o = a ? puntoColocado(a) : null;
+    return !!a && !!o && !!siguienteHueco(o, d, a.t === 'pata' ? esHueco : esPunto);
+  }
+
+  /** The fine-adjust arrows' place (client px). */
+  const posAjuste = $derived.by(() => {
+    const a = ajuste;
+    if (!a || (gesto && gesto.movido) || !caja) return null;
+    const q = puntoColocado(a);
+    const r = caja.getBoundingClientRect();
+    return q ? { x: r.left + tx + q[0] * s, y: r.top + ty + q[1] * s } : null;
+  });
+
+  // Another tool, another place: the arrows go.
+  $effect(() => {
+    void pb.herramienta;
+    untrack(() => (ajuste = null));
+  });
+
   function abajo(ev: PointerEvent) {
     caja?.focus({ preventScroll: true });
     soltarLargo();
+    ajuste = null;
     punteros.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     try {
       (ev.currentTarget as Element).setPointerCapture(ev.pointerId);
@@ -346,7 +566,12 @@
       /* synthetic events */
     }
     if (punteros.size >= 2) {
+      // (a second finger: the placement is dropped — the thing stays where it was — and the fingers zoom)
       gesto = null;
+      colocando = null;
+      vistaPrevia = null;
+      if (animacion) cancelAnimationFrame(animacion);
+      animacion = 0;
       soltarLargo();
       const [a, b] = [...punteros.values()];
       pinza = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1, s, c: rel((a!.x + b!.x) / 2, (a!.y + b!.y) / 2), t: [tx, ty] };
@@ -470,6 +695,14 @@
     if (!g.movido && Math.hypot(ev.clientX - g.desde[0], ev.clientY - g.desde[1]) > umbral) {
       g.movido = true;
       soltarLargo();
+      if (esColocacion(g)) {
+        acercarParaColocar(ev);
+        if (ev.pointerType === 'touch' && !bordeRaf && typeof requestAnimationFrame !== 'undefined') {
+          bordeArmado = false;
+          bordeDesde = 0;
+          bordeRaf = requestAnimationFrame(panearBorde);
+        }
+      }
     }
     if (!g.movido) return;
     switch (g.t) {
@@ -483,22 +716,12 @@
         g.dy = Math.round(w[1] - g.ini[1]);
         break;
       }
-      case 'sonda': {
-        const q = red0(w);
-        g.q = q;
-        redMarcada = medida?.nodoEn(q) ?? null;
-        info = describir(q);
-        break;
-      }
+      case 'sonda':
       case 'pata':
       case 'extremo':
-      case 'cable': {
-        const q = red0(w);
-        if (g.t === 'cable') g.b = q;
-        else g.q = q;
-        info = describir(q);
+      case 'cable':
+        apuntar(g, ev.clientX, ev.clientY, ev.pointerType);
         break;
-      }
     }
   }
 
@@ -509,32 +732,50 @@
     const g = gesto;
     gesto = null;
     if (!g) return;
+    if (esColocacion(g)) {
+      colocando = null;
+      devolverVista();
+    }
     if (!g.movido) {
       tocar(ev, g);
       return;
     }
+    // (released off the holes: it stays where it was)
+    if (esColocacion(g) && g.fuera) {
+      info = 'Se queda donde estaba.';
+      if (g.t === 'sonda') redMarcada = medida?.nodoDe(g.p) ?? null;
+      return;
+    }
+    const dedo = ev.pointerType === 'touch';
+    let puesto: Colocado | null = null;
     switch (g.t) {
       case 'sonda':
         if (medida) {
           medida.activa = g.p;
           info = medida.colocar(g.q);
+          if (igual(medida.puntas[g.p], g.q)) puesto = { t: 'sonda', p: g.p };
         }
         break;
       case 'pieza':
         if (g.dx || g.dy) pb.moverPiezas(g.ids, g.dx, g.dy);
         break;
       case 'pata':
-        pb.moverPata(g.id, g.i, g.q);
+        if (pb.moverPata(g.id, g.i, g.q)) puesto = { t: 'pata', id: g.id, i: g.i };
         break;
       case 'extremo':
-        pb.moverExtremo(g.id, g.e, g.q);
+        if (pb.moverExtremo(g.id, g.e, g.q)) puesto = { t: 'extremo', id: g.id, e: g.e };
         break;
       case 'cable':
         if (g.a[0] !== g.b[0] || g.a[1] !== g.b[1]) {
-          pb.anadirCable(g.a, g.b);
+          const w = pb.anadirCable(g.a, g.b);
           pendiente = null;
+          if (w) puesto = { t: 'extremo', id: w.id, e: 'b' };
         }
         break;
+    }
+    if (dedo && puesto) {
+      vibrarAterrizaje();
+      ajuste = puesto;
     }
   }
 
@@ -608,10 +849,13 @@
           // Off the holes: the wire is dropped.
           pendiente = null;
           info = '';
-        } else if (pb.anadirCable(pendiente, q)) {
-          pendiente = null;
-          const d = describir(q);
-          info = `Cable puesto${d ? ` · ${d}` : ''}.`;
+        } else {
+          const w = pb.anadirCable(pendiente, q);
+          if (w) {
+            pendiente = null;
+            const d = describir(q);
+            info = `Cable puesto${d ? ` · ${d}` : ''}.`;
+          }
         }
       } else {
         pendiente = null;
@@ -673,6 +917,8 @@
     punteros.clear();
     pinza = null;
     gesto = null;
+    colocando = null;
+    devolverVista();
   }
 
   export function anularPendiente(): boolean {
@@ -1080,7 +1326,7 @@
 
   /** Where the floating bar goes: the selection's box in px of the bench. */
   const cajaSel = $derived.by(() => {
-    if (pb.sel.length !== 1 || pb.herramienta === 'medir' || (gesto && gesto.movido) || fant) return null;
+    if (pb.sel.length !== 1 || pb.herramienta === 'medir' || (gesto && gesto.movido) || fant || ajuste) return null;
     const id = pb.sel[0]!;
     const p = pb.pieza(id);
     const w = pb.cable(id);
@@ -1147,6 +1393,27 @@
     return [];
   });
   const radioAsa = $derived(Math.max(0.42, (tactilGrueso ? 16 : 9) / s));
+
+  /** 1.3: the preview of a placement dragged by a finger — the snapped hole, its name, whether it can go there. */
+  const previa = $derived.by(() => {
+    const g = gesto;
+    const c = colocando;
+    if (!c || !esColocacion(g) || !g.movido) return null;
+    const q = g.fuera ? null : g.t === 'cable' ? g.b : g.q;
+    let mal = !q;
+    if (q && g.t === 'pata') mal = !!invalida;
+    else if (q && g.t === 'extremo') mal = !!motivoExtremo(pb.doc, q, new Set([`${g.id}:${g.e}`]));
+    else if (q && g.t === 'cable') mal = igual(q, g.a) || !!motivoExtremo(pb.doc, q, new Set());
+    else if (q && g.t === 'sonda') mal = !!medida && Object.entries(medida.puntas).some(([k, v]) => k !== g.p && igual(v, q));
+    const r = caja?.getBoundingClientRect();
+    return {
+      q,
+      objetivo: c,
+      marca: q && r ? { x: r.left + tx + q[0] * s, y: r.top + ty + q[1] * s } : null,
+      etiqueta: q ? nombreDestino(q) : 'Fuera de los agujeros: se queda donde estaba',
+      mal,
+    };
+  });
 </script>
 
 <div class="mesa-caja">
@@ -1154,7 +1421,7 @@
   {@const t = medida?.tutor}
   {@const paso = t && t.actual >= 0 ? t.pasos[t.actual] : undefined}
   <!-- The tutor's step is a bar above the bench (0.10): it never covers the supplies and instruments drawn there. -->
-  <p class="pista barra" aria-live="polite">{paso ? paso.texto : t?.terminado ? 'Hecho: la lectura está en el instrumento (panel «Medir»).' : medida?.activa ? 'Toque el agujero donde va la punta elegida en «Medir».' : 'Elija una punta en el panel «Medir».'}</p>
+  <p class="pista barra" aria-live="polite">{paso ? paso.texto : t?.terminado ? 'Hecho: la lectura está en el instrumento (panel «Medir»).' : medida?.activa ? 'Toque el agujero donde va la punta elegida en «Medir», o arrastre una punta puesta.' : 'Elija una punta en el panel «Medir».'}</p>
 {/if}
 <!-- role=application with its own keyboard mode (1.0): focusable and with key handlers on purpose -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -1198,7 +1465,7 @@
     font-family="Source Sans 3, sans-serif"
   >
     <g use:marcado={defsProtoboard()}></g>
-    <g transform={`translate(${tx} ${ty}) scale(${s})`}>
+    <g bind:this={grupo} transform={`translate(${tx} ${ty}) scale(${s})`}>
       <g use:marcado={placasSvg}></g>
       {#each resaltes as r, i (i)}
         <rect class="resalte" x={r.x} y={r.y} width={r.w} height={r.h} rx=".3" />
@@ -1293,6 +1560,9 @@
         <circle class="pendiente" cx={pendiente[0]} cy={pendiente[1]} r=".45" />
         {#if cursor}<line class="goma" x1={pendiente[0]} y1={pendiente[1]} x2={cursor[0]} y2={cursor[1]} />{/if}
       {/if}
+      {#if previa?.q}
+        <circle class="destino" class:mal={previa.mal} cx={previa.q[0]} cy={previa.q[1]} r=".58" data-destino-hueco={`${previa.q[0]},${previa.q[1]}`} />
+      {/if}
       {#each asas as a (a.k)}
         {@const g = gesto}
         {@const mov = g && g.movido && (g.t === 'pata' || g.t === 'extremo') && `${g.id}|${g.t === 'pata' ? g.i : g.e}` === a.k}
@@ -1300,7 +1570,7 @@
       {/each}
     </g>
   </svg>
-  {#if vacia && !fant && !pb.armada}
+  {#if vacia && !fant && !pb.armada && pb.herramienta !== 'medir'}
     <p class="vacia" aria-hidden="true">{vacia}</p>
   {/if}
   {#if controles}
@@ -1310,12 +1580,16 @@
       <button type="button" title="Ver toda la placa" aria-label="Ver todo" use:pulsar={ajustar}><Maximize size={17} /></button>
     </div>
   {/if}
+  {#if posAjuste && ajuste}
+    <AjusteFino x={posAjuste.x} y={posAjuste.y} nombre={nombreColocado(ajuste)} puede={puedeAjuste} mover={moverAjuste} cerrar={() => (ajuste = null)} />
+  {/if}
   {#if cajaSel && flotante}
     {@render flotante(cajaSel)}
   {/if}
   {#if fant?.motivo}
     <p class="info aviso" aria-live={enfocado && teclado ? 'off' : 'polite'}>{fant.motivo}</p>
-  {:else if (info && !sinInfo) || pb.mensaje || invalida}
+  {:else if ((info && !sinInfo) || pb.mensaje || invalida) && !previa}
+    <!-- (while a finger drags, the loupe's label says where; the line would cover the bench's last holes) -->
     <p class="info" class:aviso={!!pb.mensaje || !!invalida} aria-live={enfocado && teclado ? 'off' : 'polite'}>{invalida ?? (pb.mensaje || info)}</p>
   {/if}
   <p class="solo-lector" id="ayuda-teclado-{uidMesa}">
@@ -1325,6 +1599,9 @@
     mueven lo elegido; R gira, Supr quita y Esc cancela.
   </p>
   <p class="solo-lector" aria-live="polite" data-anuncio-mesa>{anuncio}</p>
+  {#if previa}
+    <Lupa origen={grupo ?? null} objetivo={previa.objetivo} marca={previa.marca} etiqueta={previa.etiqueta} mal={previa.mal} zoom={Math.min(4, Math.max(1.6, 40 / s))} fondo="var(--fondo-carril)" />
+  {/if}
   {#if pb.herramienta === 'cable' && !pendiente && !info}
     <p class="pista">Cable: toque un agujero libre y luego otro, o arrastre de uno a otro.</p>
   {/if}
@@ -1539,6 +1816,16 @@
     stroke: #f2b705;
     stroke-width: 0.12;
     cursor: move;
+  }
+  .destino {
+    fill: rgba(242, 183, 5, 0.18);
+    stroke: #f2b705;
+    stroke-width: 0.14;
+    pointer-events: none;
+  }
+  .destino.mal {
+    fill: rgba(217, 48, 37, 0.16);
+    stroke: #d93025;
   }
   .pendiente {
     fill: none;

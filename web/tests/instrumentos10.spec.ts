@@ -400,12 +400,27 @@ for (const [ancho, alto] of [
       for (const y of [0, 17]) for (let x = 2; x < 30; x++) if (m.nodoEn([x, y]) === 'in') return [x, y] as P;
       return null;
     });
+    // (1.3: the probe rides 56 px above the finger, and on a phone with small holes the view zooms in once the drag
+    // starts: the target is read on the screen after that, and the finger stops 56 px under it)
     const a = await pantalla(page, negra);
-    const b = await pantalla(page, destino!);
     const cdp = await ctx.newCDPSession(page);
     const t = (type: string, pts: P[]) => cdp.send('Input.dispatchTouchEvent', { type: type as 'touchStart', touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
     await t('touchStart', [a]);
-    for (let k = 1; k <= 8; k++) await t('touchMove', [[a[0] + ((b[0] - a[0]) * k) / 8, a[1] + ((b[1] - a[1]) * k) / 8]]);
+    for (let k = 1; k <= 3; k++) await t('touchMove', [[a[0], a[1] + 5 * k]]);
+    await page.waitForTimeout(350);
+    // (a far hole out of the zoomed view: the finger takes the probe to the edge, the view pans, and then to the hole)
+    let dedo: P = [a[0], a[1] + 15];
+    const caja = (await page.locator('.mesa').boundingBox())!;
+    for (let i = 0; i < 80; i++) {
+      const b0 = await pantalla(page, destino!);
+      const objetivo: P = [Math.min(Math.max(b0[0], caja.x + 6), caja.x + caja.width - 6), Math.min(Math.max(b0[1], caja.y + 6), caja.y + caja.height - 6)];
+      const b: P = [objetivo[0], objetivo[1] + 56];
+      for (let k = 1; k <= 4; k++) await t('touchMove', [[dedo[0] + ((b[0] - dedo[0]) * k) / 4, dedo[1] + ((b[1] - dedo[1]) * k) / 4]]);
+      dedo = b;
+      await page.waitForTimeout(120);
+      const b1 = await pantalla(page, destino!);
+      if (objetivo[0] === b0[0] && objetivo[1] === b0[1] && Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) < 0.5) break;
+    }
     await t('touchEnd', []);
     await esperarBm(page, -3, 0.01);
     expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);

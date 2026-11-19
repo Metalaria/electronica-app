@@ -86,7 +86,7 @@
       <span class="estado" class:error={!!b.error} aria-live="polite">{estado}</span>
     </div>
     {#if plano}
-      <Plano fuente={plano} puntas={b.puntas} {activa} alTocar={(n) => activa && b.poner(activa, n)} />
+      <Plano fuente={plano} puntas={b.puntas} {activa} alTocar={(n) => activa && b.poner(activa, n)} alSoltar={(p, n) => b.poner(p as Punta, n)} />
     {:else if plano === undefined}
       <!-- 0.11: while the drawing loads, an empty place of about its size: «Este circuito no tiene dibujo» used to
            show for a moment and the drawing then pushed everything under it some 290 px down -->
