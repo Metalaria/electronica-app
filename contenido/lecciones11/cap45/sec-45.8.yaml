@@ -7,7 +7,9 @@
 # 20 dB; la portadora de 1550 nm (193 THz), los cien kilómetros en la primera ventana y el presupuesto se calculan; en la
 # figura 46.15 se toca la ventana de menor atenuación. Los dos tipos de fibra se funden en la pregunta de la dispersión,
 # el mando bajo el sol en el emparejar del espacio libre y la cámara del móvil en la del conector sucio. Quedan dos
-# preguntas de opciones y el uso por el aire, por emparejar: 5 de 8 (62,5 %), porque lo que queda son criterios sin cifras.
+# preguntas de opciones y el uso por el aire, por emparejar.
+# 1.3 (contenido13): «la causa número uno» pasa a calcular en el banco la pérdida de más (potencias medidas de ejemplo,
+# −3 y −14 dBm, frente a los 5,9 dB del presupuesto): 5/8 → 6/8.
 leccion: cap45/sec-45.8
 
 libro:
@@ -35,9 +37,13 @@ modelo:
     n_c: { sim: "n_{c}", nombre: "conectores", unidad: "", valor: 2 }
     n_e: { sim: "n_{e}", nombre: "empalmes", unidad: "", valor: 4 }
     l_o: { sim: "λ", nombre: "longitud de onda", unidad: m, valor: 0.00000155 }
+    P_tx: { sim: "P_{salida}", nombre: "potencia medida a la salida del emisor (ejemplo)", unidad: dBm, valor: -3 }
+    P_rx: { sim: "P_{llegada}", nombre: "potencia medida a la llegada (ejemplo)", unidad: dBm, valor: -14 }
   calculos:
     P_f: { expr: "a_f*L_f/1000", sim: "pérdida", nombre: "pérdida de la fibra", unidad: dB }
     P_tot: { expr: "P_f + 0.75*n_c + 0.1*n_e", sim: "pérdida", nombre: "pérdida total del enlace", unidad: dB }
+    P_med: { expr: "P_tx - P_rx", sim: "pérdida", nombre: "pérdida medida", unidad: dB }
+    P_dem: { expr: "P_tx - P_rx - P_tot", sim: "exceso", nombre: "pérdida de más respecto a la calculada", unidad: dB }
     P_c: { expr: "0.75*n_c", sim: "conectores", nombre: "pérdida de los conectores", unidad: dB }
     P_e: { expr: "0.1*n_e", sim: "empalmes", nombre: "pérdida de los empalmes", unidad: dB }
     P_sc: { expr: "P_f + 0.1*n_e", sim: "pérdida", nombre: "sin los conectores", unidad: dB }
@@ -209,27 +215,25 @@ tarjetas:
     solucion: "Mando, 38 kHz; edificios, niebla; LiFi, iluminación."
 
   - id: pregunta-conector
-    tipo: pregunta
-    titulo: "La causa número uno"
-    texto: "Un enlace de fibra monomodo pierde mucho más de lo calculado. ¿Qué se sospecha primero?"
+    tipo: simular
+    titulo: "En el banco: la pérdida real"
+    texto: "El enlace de ejemplo de 20 km debía perder 5,9 dB. El medidor da {{P_tx}} a la salida del emisor y {{P_rx}} a la llegada. ¿Cuánto pierde de más?"
+    nota: "Potencias medidas de ejemplo."
     libro: [256, 257, 261, 262]
-    widget:
-      tipo: figura
-      figura: fig-45.15
-      zonas:
-        - { id: tipos, rotulo: "Gráfica de la derecha", rect: [224, 0, 224, 220] }
-    opciones:
-      - texto: "Un conector sucio"
-        bien: true
-        porque: "Una mota de polvo bloquea buena parte de la señal: la causa número uno."
-      - texto: "Que la fibra es mala"
-        porque: "La fibra pierde poco; lo habitual es un conector o una curvatura."
-      - texto: "Que la luz es demasiado fuerte"
-        porque: "Sobrar luz no aumenta las pérdidas."
-    exito: "Para ver si sale luz, la cámara de un móvil, que ve el infrarrojo; nunca el ojo."
+    fijar: { L_f: 20000, a_f: 0.2, n_c: 2, n_e: 4 }
+    simular:
+      objetivo: P_dem
+      unidad: dB
+      tol: 0.03
+      rotulo: "Pérdida de más"
+      errores:
+        - { expr: "P_med", texto: "Esa es la pérdida medida entera. Réstele la calculada, 5,9 dB." }
+    exito: "{{P_dem}} de más: se sospecha primero un conector sucio, la causa número uno; después, una curvatura excesiva. Para ver si sale luz, la cámara de un móvil, nunca el ojo."
     escalera:
-      - "En monomodo la alineación es de micras."
-    solucion: "Un conector sucio; después, una curvatura excesiva."
+      - "Pérdida real = salida − llegada; réstele la calculada."
+    solucion: "−3 − (−14) = 11 dB medidos; 11 − 5,9 = 5,1 dB de más."
+    comprobar:
+      - { P_med: 11, P_dem: 5.1, P_tot: 5.9, P_tx: -3, P_rx: -14 }
 
   - id: resumen
     tipo: resumen

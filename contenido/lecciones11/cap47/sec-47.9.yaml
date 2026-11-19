@@ -8,6 +8,9 @@
 # media velocidad, el fallo del ventilador y el aire frío a la salida. Dos preguntas: elegir por caudal y el problema
 # global del Peltier.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): vuelven, haciendo, la tabla de decisión (subir la potencia hasta que pide ventilador), la cara que
+# necesita el disipador (tocar en la fig-47.15; era una pregunta), el ruido a media velocidad y los semiconductores de la
+# célula (tocar en la foto 48.16): 2/4 → 6/7.
 leccion: cap47/sec-47.9
 
 libro:
@@ -46,11 +49,16 @@ modelo:
     k_s: { sim: "k", nombre: "resistencia de la caja", unidad: "", valor: 18 }
     Q_f: { sim: "Q_{frío}", nombre: "calor bombeado", unidad: W, valor: 20 }
     P_e: { sim: "P_{eléctrica}", nombre: "potencia eléctrica", unidad: W, valor: 40 }
+    P_d: { sim: "P", nombre: "potencia a disipar", unidad: W, valor: 0.5 }
+    v_f: { sim: "n", nombre: "velocidad del ventilador, del máximo", unidad: "%", valor: 100 }
   calculos:
     q_op: { expr: "100*sqrt(60/(60 + k_s))", sim: "caudal", nombre: "caudal real", unidad: "%", cifras: 2 }
     p_op: { expr: "k_s*(q_op/100)^2", sim: "p", nombre: "presión de trabajo", unidad: "", cifras: 2 }
     Q_c: { expr: "Q_f + P_e", sim: "Q_{caliente}", nombre: "calor de la cara caliente", unidad: W }
     COP: { expr: "Q_f/P_e", sim: "COP", nombre: "coeficiente de rendimiento", unidad: "", cifras: 2 }
+    s_v: { expr: "ceil((P_d - 10)/1e9)*(1 - ceil((P_d - 100)/1e9))", sim: "ventilador", nombre: "pide disipador con ventilador", unidad: "" }
+    q_v: { expr: "v_f", sim: "caudal", nombre: "caudal, del máximo", unidad: "%" }
+    r_v: { expr: "-15*(1 - (v_f - 50)/50)", sim: "ruido", nombre: "ruido frente a la velocidad máxima", unidad: dB }
 
 tarjetas:
   - id: explore-punto
@@ -106,6 +114,40 @@ tarjetas:
       - "¿Cuánta presión hay a caudal máximo?"
     solucion: "Una fracción: hay que cruzar la curva del ventilador con la de la caja."
 
+  - id: explore-decision
+    tipo: explorar
+    titulo: "Cuándo hace falta ventilador"
+    texto: "La tabla de decisión va por la potencia a disipar. Suba la potencia hasta la primera que ya pide disipador con ventilador."
+    libro: [370, 393]
+    inicio: { P_d: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: pw, min: 0.1, max: 300, unidad: W, rotulo: "potencia a disipar", escala: log }
+      y: { min: 0, max: 1.3, unidad: "", rotulo: "" }
+      curvas:
+        - { expr: "1 - ceil((pw - 1)/1e9)", color: verde, rotulo: "encapsulado y placa" }
+        - { expr: "0.8*ceil((pw - 1)/1e9)*(1 - ceil((pw - 10)/1e9))", color: azul, rotulo: "disipador, convección natural" }
+        - { expr: "0.6*ceil((pw - 10)/1e9)*(1 - ceil((pw - 100)/1e9))", color: naranja, rotulo: "disipador con ventilador" }
+        - { expr: "0.4*ceil((pw - 100)/1e9)", color: tinta, rotulo: "ventilación forzada o líquido" }
+      marcas:
+        - { x: "P_d", y: "1.15", rotulo: "{{P_d}}" }
+      lectura: { valor: P_d, rotulo: "Potencia" }
+      mandos:
+        - { valor: P_d, lista: [0.5, 2, 5, 10.5, 30, 150], rotulo: "Potencia a disipar" }
+    objetivo:
+      condiciones:
+        - { valor: s_v, min: 1, rotulo: "Pide ventilador" }
+      logrado: "Por encima de unos 10 W en un espacio cerrado, la convección natural deja de bastar; el ventilador baja la resistencia del disipador al ambiente de tres a cinco veces."
+      pistas:
+        - { texto: "Aún basta sin ventilador: suba la potencia." }
+    escalera:
+      - "La convección natural llega hasta unos 10 W."
+    solucion: "Algo más de 10 W."
+    comprobar:
+      - { con: { P_d: 10.5 }, s_v: 1 }
+      - { con: { P_d: 5 }, s_v: 0 }
+      - { con: { P_d: 150 }, s_v: 0 }
+
   - id: simule-peltier
     tipo: simular
     titulo: "El balance de un Peltier"
@@ -136,26 +178,82 @@ tarjetas:
       - { Q_c: 60, COP: 0.5 }
 
   - id: empeora
-    tipo: porque
+    tipo: tocar
     titulo: "Empeora el problema global"
-    texto: "Un Peltier resuelve el calor localmente. ¿Por qué el conjunto puede acabar peor que sin él?"
-    libro: [389]
+    texto: "Si el disipador de una de sus caras no basta, el salto térmico se reduce y el conjunto acaba peor que sin la célula. Toque esa cara."
+    libro: [389, 397]
     widget:
       tipo: figura
       figura: fig-47.15
       zonas:
-        - { id: peltier, rotulo: "La célula y sus caras", rect: [270, 15, 170, 160] }
-    opciones:
-      - texto: "Si el disipador de la cara caliente no basta, el salto que mantiene se reduce"
-        bien: true
-        porque: "La cara caliente se calienta y arrastra a la fría. Hay que dimensionar ese disipador para todo."
-      - texto: "Porque la célula genera frío que se pierde"
-        porque: "No genera frío: bombea calor de una cara a otra, y añade el suyo."
-      - texto: "Porque la cara fría se calienta por la corriente"
-        porque: "La potencia eléctrica acaba en la cara caliente; el problema es evacuarla."
+        - { id: fria, rotulo: "Arriba, con la flecha azul", rect: [268, 6, 100, 62] }
+        - { id: celula, rotulo: "En medio, con la flecha naranja", rect: [268, 68, 135, 42] }
+        - { id: caliente, rotulo: "Abajo, con la flecha roja", rect: [268, 110, 135, 50] }
+    tocar:
+      bien: [caliente]
+      porque:
+        fria: "La fría es la que enfría: de ella sale el calor bombeado."
+        celula: "En la célula entra la potencia eléctrica, que también acaba en la cara caliente."
+    exito: "La cara caliente: evacua lo bombeado más lo eléctrico, 60 W. Si su disipador no basta, se calienta y arrastra a la fría."
     escalera:
-      - "¿Qué le pasa al salto térmico si la cara caliente sube?"
-    solucion: "Con un disipador insuficiente la cara caliente sube, el salto se reduce y el conjunto acaba peor."
+      - "¿A qué cara van a parar los 60 W?"
+    solucion: "La cara caliente, abajo."
+
+  - id: explore-pwm
+    tipo: explorar
+    titulo: "El ruido"
+    texto: "El caudal es proporcional a las revoluciones, pero el ruido baja mucho más deprisa. Casi nunca hace falta el caudal máximo: dé la mitad."
+    libro: [384]
+    inicio: { v_f: 100 }
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 100, unidad: "%", rotulo: "velocidad" }
+      y: { min: 0, max: 110, unidad: "%", rotulo: "caudal, del máximo" }
+      curvas:
+        - { expr: "vv", color: azul, rotulo: "caudal" }
+      marcas:
+        - { x: "v_f", y: "q_v", rotulo: "{{q_v}}" }
+      lectura: { valor: q_v, rotulo: "Caudal" }
+      datos:
+        - { valor: r_v, rotulo: "Ruido frente al máximo: {{r_v}}" }
+      mandos:
+        - { valor: v_f, lista: [50, 100], rotulo: "Velocidad" }
+    objetivo:
+      condiciones:
+        - { valor: q_v, max: 50, rotulo: "Caudal: {{q_v}}" }
+      logrado: "Mitad de caudal y unos 15 dB menos de ruido. Por eso el control PWM de la velocidad según la temperatura es hoy la norma."
+      pistas:
+        - { texto: "Baje la velocidad a la mitad." }
+    escalera:
+      - "Caudal proporcional a las revoluciones."
+    solucion: "A media velocidad: la mitad de caudal."
+    comprobar:
+      - { r_v: 0, q_v: 100 }
+      - { con: { v_f: 50 }, r_v: -15, q_v: 50 }
+
+  - id: toque-celula
+    tipo: tocar
+    titulo: "Por dentro de una célula"
+    texto: "Una célula Peltier bombea calor de una cara a otra al aplicarle corriente. Toque dónde están los semiconductores que lo hacen."
+    libro: [387, 398]
+    widget:
+      tipo: figura
+      figura: fig-47.16
+      zonas:
+        - { id: placa, rotulo: "Placa grande de la izquierda", rect: [100, 30, 600, 160] }
+        - { id: filas, rotulo: "Borde de la célula de la izquierda", poligono: [[0, 225], [418, 362], [770, 195], [805, 240], [418, 425], [0, 285]] }
+        - { id: cables, rotulo: "Cable de abajo", rect: [440, 428, 300, 130] }
+        - { id: seebeck, rotulo: "Módulo de la derecha", rect: [1080, 70, 420, 360] }
+    tocar:
+      bien: [filas]
+      porque:
+        placa: "Es una de las dos placas cerámicas: una cara de la célula."
+        cables: "Son los cables de alimentación: por ellos entra la corriente."
+        seebeck: "Es otro módulo, para generar electricidad por efecto Seebeck, con su cara caliente marcada."
+    exito: "Las filas que asoman entre las dos placas cerámicas: con corriente, bombean calor de una cara a la otra, y permiten bajar del ambiente."
+    escalera:
+      - "Busque entre las dos placas, en el borde."
+    solucion: "El borde de la célula, entre las dos placas."
 
   - id: resumen
     tipo: resumen

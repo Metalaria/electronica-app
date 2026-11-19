@@ -6,6 +6,8 @@
 # 1.2.1 (aprender haciendo): encender el LED corrigiendo la red, tocar la ventaja, el aviso, la causa y la revisión que
 # pide cada caso, y ordenar la puesta en marcha. Dos preguntas: una frase por hoja y los avisos «conocidos».
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): vuelven, haciendo, la medida de la red sin fuente (antes de corregirla), abrir un bloque en su
+# hoja (objetivo de zonas en orden, fig-12.7) y la depuración por bloques empezando por la fuente: 3/4 → 6/7.
 leccion: cap12/sec-12.5
 
 libro:
@@ -34,6 +36,7 @@ libro:
   162: "la única que detecta los conceptuales"
   165: "siempre con límite de corriente en la fuente"
   "cap05#133": "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+  "cap53#176": "Una alimentación incorrecta explica casi cualquier síntoma, y por eso es la primera medida de todo diagnóstico"
 
 modelo:
   valores:
@@ -47,6 +50,36 @@ modelo:
     V_a: { expr: "unida*(V_e - I_e*R_e)", sim: "V_{LED}", nombre: "tensión del LED", unidad: V }
 
 tarjetas:
+  - id: mida-sin-fuente
+    tipo: medir
+    titulo: "El dibujo parece correcto"
+    texto: "El ERC avisa de una alimentación sin fuente, pero el esquema parece bien. Ponga las puntas donde se ve si al LED le llega tensión."
+    libro: [148, 160]
+    fijar: { unida: 0 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe, etiqueta: unida, etiqueta2: et2 }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_a }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+        puntos: { fte: "Arriba de la fuente", a: "Tras la etiqueta del LED", "0": "Masa, abajo" }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [a, "0"]
+      valor: V_a
+      porque:
+        fte: "Esa es la fuente: tiene sus 5 V. El LED cuelga de otra etiqueta."
+    exito: "0 V tras la etiqueta: VCC_A no es VCC. Dos redes con nombres parecidos que deberían ser la misma."
+    escalera:
+      - "Mida justo después de la etiqueta de la que cuelga el LED."
+    solucion: "Roja tras la etiqueta del LED y negra en masa: 0 V."
+    comprobar:
+      - { V_a: 0, I_e: 0 }
+
   - id: explore-sin-fuente
     tipo: explorar
     titulo: "Una alimentación sin fuente"
@@ -73,6 +106,32 @@ tarjetas:
     solucion: "Etiqueta del LED en VCC: 20 mA."
     comprobar:
       - { con: { unida: 1 }, I_e: 0.02 }
+
+  - id: explore-jerarquia
+    tipo: explorar
+    titulo: "Bloques que se abren"
+    texto: "La hoja superior tiene bloques unidos por buses y señales, y cada uno se abre en su hoja. Toque el bloque de adquisición y después su hoja."
+    libro: [139, 166]
+    widget:
+      tipo: figura
+      figura: fig-12.7
+      zonas:
+        - { id: fuente, rotulo: "Bloque de arriba a la izquierda", rect: [5, 30, 64, 67] }
+        - { id: adquisicion, rotulo: "Bloque de arriba a la derecha", rect: [69, 30, 64, 67] }
+        - { id: comunicacion, rotulo: "Bloque de abajo a la izquierda", rect: [5, 97, 64, 68] }
+        - { id: interfaz, rotulo: "Bloque de abajo a la derecha", rect: [69, 97, 64, 68] }
+        - { id: hoja, rotulo: "Hoja de la derecha", rect: [144, 30, 98, 135], texto: "La hoja «Adquisición»: su circuito, que entra y sale por puertos." }
+    objetivo:
+      orden: true
+      condiciones:
+        - { zona: adquisicion, rotulo: "El bloque" }
+        - { zona: hoja, rotulo: "Su hoja" }
+      logrado: "Cada bloque se abre en su propia hoja: la misma idea que las funciones en programación, con la misma legibilidad y la misma reutilización."
+      pistas:
+        - { texto: "Empiece por el bloque de arriba a la derecha de la hoja superior." }
+    escalera:
+      - "Primero el bloque «Adquisición»; luego la hoja a la que se abre."
+    solucion: "El bloque de arriba a la derecha y la hoja «Adquisición»."
 
   - id: una-frase
     tipo: pregunta
@@ -139,6 +198,30 @@ tarjetas:
     escalera:
       - "Con cuarenta conocidos, el cuarenta y uno se pierde."
     solucion: "Llegar a cero avisos."
+
+  - id: toque-depurar
+    tipo: tocar
+    titulo: "Depurar por bloques"
+    texto: "El aparato no funciona y se diagnostica por bloques. Toque el que se comprueba primero."
+    libro: [140, "cap53#176"]
+    widget:
+      tipo: figura
+      figura: fig-12.7
+      zonas:
+        - { id: fuente, rotulo: "Bloque de arriba a la izquierda", rect: [5, 30, 64, 67] }
+        - { id: adquisicion, rotulo: "Bloque de arriba a la derecha", rect: [69, 30, 64, 67] }
+        - { id: comunicacion, rotulo: "Bloque de abajo a la izquierda", rect: [5, 97, 64, 68] }
+        - { id: interfaz, rotulo: "Bloque de abajo a la derecha", rect: [69, 97, 64, 68] }
+    tocar:
+      bien: [fuente]
+      porque:
+        adquisicion: "Si la alimentación falla, la adquisición también parecerá rota: primero, lo que alimenta a todos."
+        comunicacion: "Un raíl bajo hace fallar la comunicación sin que la culpa sea suya."
+        interfaz: "La interfaz depende de la fuente como los demás bloques."
+    exito: "La fuente: una alimentación incorrecta explica casi cualquier síntoma, y por eso es la primera medida de todo diagnóstico."
+    escalera:
+      - "¿De qué bloque dependen todos los demás?"
+    solucion: "El bloque de la fuente, arriba a la izquierda."
 
   - id: resumen
     tipo: resumen

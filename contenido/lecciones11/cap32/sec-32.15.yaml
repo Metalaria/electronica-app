@@ -5,13 +5,19 @@
 # relativo de ejemplo) y el cambio más rentable se toca (los flancos del display van en su explicación). La ordenación
 # pasa al resumen. Quedan el emparejamiento de lo que hace bien y una pregunta de opciones (los puntos ciegos): 67 %,
 # porque es un caso de estudio.
+# 1.3 (contenido13): + predecir la frecuencia que emite el oscilador local con el dial en 88 MHz (FI de 10,7 MHz,
+# bloque cap16#435): 4/6 → 5/7.
 leccion: cap32/sec-32.15
 
 modelo:
   valores:
     a_n: { tipo: interruptor, nombre: "antena conectada", valor: 1 }
     d_p: { tipo: interruptor, nombre: "display encendido", valor: 1 }
+    f_em: { sim: "f_{emisora}", nombre: "emisora sintonizada", unidad: Hz, valor: 88000000 }
+    f_fi: { sim: "FI", nombre: "frecuencia intermedia", unidad: Hz, valor: 10700000 }
   calculos:
+    f_ol: { expr: "f_em + f_fi", sim: "f_{oscilador}", nombre: "frecuencia del oscilador local", unidad: Hz }
+    f_ma: { expr: "f_em - f_fi", sim: "f_{emisora} − FI", nombre: "la intermedia restada", unidad: Hz }
     r_f: { expr: "0.3 + 0.7*d_p", sim: "ruido", nombre: "ruido de fondo, relativo y de ejemplo", unidad: "" }
 
 libro:
@@ -33,6 +39,7 @@ libro:
   490: "El receptor como víctima y como fuente de interferencia"
   487: "sintonizar una frecuencia sin emisora y escuchar el ruido de fondo"
   482: "Ferritas en los cables que salen de la caja"
+  "cap16#435": "El oscilador local, entre 98,7 y 118,7 MHz"
 
 tarjetas:
   - id: explore-receptor
@@ -56,6 +63,27 @@ tarjetas:
     escalera:
       - "¿Qué oscilador lleva dentro un superheterodino?"
     solucion: "Como fuente."
+
+  - id: prediga-oscilador
+    tipo: simular
+    titulo: "Lo que emite por la antena"
+    texto: "El oscilador local va siempre 10,7 MHz por encima de la emisora, la FI, y emite por la antena. Con el dial en 88 MHz, ¿a qué frecuencia emite?"
+    libro: [468, "cap16#435"]
+    fijar: { f_em: 88000000 }
+    simular:
+      objetivo: f_ol
+      unidad: Hz
+      tol: 0.002
+      rotulo: "Frecuencia del oscilador local"
+      errores:
+        - { expr: "f_em", texto: "Esa es la emisora. El oscilador va una FI por encima." }
+        - { expr: "f_ma", texto: "Ha restado la FI. En el FM7303 el oscilador va por encima de la emisora." }
+    exito: "98,7 MHz: dentro de la banda de FM. Recorriendo el dial, el oscilador va de 98,7 a 118,7 MHz; por eso los receptores tienen límites de emisión."
+    escalera:
+      - "Sume la FI, 10,7 MHz, a la emisora."
+    solucion: "88 + 10,7 = 98,7 MHz."
+    comprobar:
+      - { f_ol: 98700000, f_ma: 77300000, f_fi: 10700000 }
 
   - id: puntos-ciegos
     tipo: pregunta

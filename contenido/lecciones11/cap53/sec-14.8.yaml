@@ -6,13 +6,18 @@
 # es mío; la figura y el texto, del libro. Sin paso práctico propio (la sección es de criterio).
 # 1.2.1 (aprender haciendo): emisividad con objetivo, la lectura calculada en el modelo, la secuencia en orden y listados que se tocan.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): el remedio de la cinta pasa a hacerse sobre la gráfica (era un listado de texto), entra leer el
+# error con acero oxidado en la fig-55.23 (81 °C) y la imagen a los treinta segundos frente a los cinco minutos (curvas
+# de ejemplo) y la cifra del termopar frente a la prevista (bloque 348): 2/4 → 6/7.
 leccion: cap53/sec-14.8
 
 libro:
   341: "Casi todo fallo en electrónica se manifiesta como calor"
   344: "no sirve por encima de unos 50 °C"
+  347: "admite dos termopares tipo K y da la diferencia entre ambos"
   348: "la medida más útil no es la absoluta sino la diferencial, componente frente a ambiente"
   350: "localiza el punto más caliente entre cientos"
+  351: "los materiales difieren mucho"
   352: "Aluminio pulido"
   353: "Con emisividad 0,05, un disipador de aluminio a 90 °C puede leerse como si estuviera a unos 30 °C"
   355: "un componente 20 °C por encima de sus vecinos merece investigación; 40 °C es una avería casi segura"
@@ -29,7 +34,19 @@ modelo:
     T_a: { sim: "T_{a}", nombre: "temperatura del entorno", unidad: "°C", valor: 25 }
     eps: { sim: "ε", nombre: "emisividad de la superficie", unidad: "", valor: 0.05 }
     eps_c: { sim: "ε_{cám}", nombre: "emisividad que supone la cámara", unidad: "", valor: 0.95 }
+    k_t: { tipo: interruptor, nombre: "cinta mate pegada en el disipador", valor: 0 }
+    T_81: { sim: "T_{lee}", nombre: "lectura con acero oxidado (figura 55.23)", unidad: "°C", valor: 81 }
+    e_ac: { sim: "ε", nombre: "emisividad del acero oxidado (figura 55.23)", unidad: "", valor: 0.8 }
+    t_i: { sim: "t", nombre: "tiempo desde el encendido", unidad: s, valor: 300 }
+    T_pv: { sim: "T_{prevista}", nombre: "temperatura prevista del transistor", unidad: "°C", valor: 60 }
+    T_md: { sim: "T_{medida}", nombre: "temperatura medida con el termopar", unidad: "°C", valor: 95 }
   calculos:
+    e_k: { si: k_t, entonces: "0.95", sino: "0.05", sim: "ε", nombre: "emisividad de lo que mira la cámara", unidad: "" }
+    T_k: { expr: "((e_k*(T_o + 273.15)^4 + (1 - e_k)*(T_a + 273.15)^4 - (1 - eps_c)*(T_a + 273.15)^4)/eps_c)^0.25 - 273.15", sim: "T_{lee}", nombre: "lo que lee la cámara sobre el disipador", unidad: "°C" }
+    e_81: { expr: "T_o - T_81", sim: "error", nombre: "error de la lectura con acero oxidado", unidad: "°C" }
+    T_n: { expr: "25 + 40*(1 - exp(-t_i/120))", sim: "T", nombre: "componente que disipa con normalidad (ejemplo)", unidad: "°C" }
+    T_cc: { expr: "25 + 60*(1 - exp(-t_i/5))", sim: "T", nombre: "componente en cortocircuito (ejemplo)", unidad: "°C" }
+    d_tm: { expr: "T_md - T_pv", sim: "ΔT", nombre: "grados de más", unidad: "°C" }
     T_r: { expr: "((eps*(T_o + 273.15)^4 + (1 - eps)*(T_a + 273.15)^4 - (1 - eps_c)*(T_a + 273.15)^4)/eps_c)^0.25 - 273.15", sim: "T_{lee}", nombre: "lo que lee la cámara", unidad: "°C" }
 
 tarjetas:
@@ -82,31 +99,112 @@ tarjetas:
       - { T_r: 29.6, tol: 0.01 }
 
   - id: remedio-metal
-    tipo: tocar
+    tipo: explorar
     titulo: "Medir un metal"
-    texto: "Toque cómo se mide con la cámara la temperatura de un disipador de aluminio pulido."
+    texto: "El disipador de aluminio pulido sigue a 90 °C y la cámara lee unos 30 °C. Haga lo que manda el libro para medir metales."
     libro: [353]
+    fijar: { T_o: 90, T_a: 25, eps_c: 0.95 }
+    inicio: { k_t: 0 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 25, max: 120, unidad: "°C", rotulo: "temperatura real" }
+      y: { min: 20, max: 120, unidad: "°C", rotulo: "lee la cámara" }
+      curvas:
+        - { expr: "((e_k*(tx + 273.15)^4 + (1 - e_k)*(T_a + 273.15)^4 - (1 - eps_c)*(T_a + 273.15)^4)/eps_c)^0.25 - 273.15", color: naranja, rotulo: "lectura" }
+        - { expr: "tx", color: tinta, rotulo: "lectura exacta", discontinua: true }
+      marcas:
+        - { x: "T_o", y: "T_k", rotulo: "{{T_k}}" }
+      lectura: { valor: T_k, rotulo: "Lee la cámara" }
+      mandos:
+        - { valor: k_t, tipo: interruptor, rotulo: "Cinta mate pegada" }
+    objetivo:
+      condiciones:
+        - { valor: T_k, min: 85, rotulo: "Lee: {{T_k}}" }
+      logrado: "Con la cinta, la cámara mira una superficie de 0,95, la que supone, y lee {{T_k}}. Pintar la zona de negro mate vale igual."
+      pistas:
+        - { texto: "Sin tocar la cámara: cambie la superficie a la que apunta." }
+    escalera:
+      - "Un trozo de cinta mate sobre el metal."
+    solucion: "Pegue la cinta mate y apunte a ella."
+    comprobar:
+      - { T_k: 29.6, tol: 0.01 }
+      - { con: { k_t: 1 }, T_k: 90, tol: 0.001 }
+
+  - id: lea-acero
+    tipo: simular
+    titulo: "Casi bien no es bien"
+    texto: "En la figura, lea qué marca la cámara sobre acero oxidado, ε = 0,80, a 90 °C. ¿Cuántos grados se equivoca?"
+    libro: [351, 365]
+    fijar: { T_o: 90 }
     widget:
       tipo: figura
-      codigo:
-        lenguaje: texto
-        texto: |-
-          Pegando un trozo de cinta mate y apuntando a ella
-          Acercando mucho la cámara
-          Midiendo a la vez el aire de alrededor
+      figura: fig-14.15
       zonas:
-        - { id: cinta, lineas: [1], rotulo: "Primera línea" }
-        - { id: acercar, lineas: [2], rotulo: "Segunda línea" }
-        - { id: aire, lineas: [3], rotulo: "Tercera línea" }
-    tocar:
-      bien: [cinta]
-      porque:
-        acercar: "La distancia no cambia la emisividad: seguiría leyendo el reflejo."
-        aire: "El aire no dice la temperatura del disipador."
-    exito: "La cinta tiene una emisividad de 0,95, la que supone la cámara: lee la temperatura real."
+        - { id: lee, rotulo: "Columna de la derecha", rect: [335, 0, 59, 160], texto: "Lo que lee la cámara con cada superficie, para un objeto a 90 °C." }
+    simular:
+      objetivo: e_81
+      unidad: "°C"
+      tol: 0.05
+      rotulo: "Error"
+      errores:
+        - { expr: "T_81", texto: "Esa es la lectura. El error es lo que le falta hasta los 90 °C reales." }
+    exito: "9 °C de menos aun con 0,80. Por encima de 0,9 la lectura es fiable: plástico, epoxi, máscara y cinta mate."
     escalera:
-      - "Elija en la gráfica la superficie con la que la lectura coincide con la real."
-    solucion: "Cinta mate o pintura negra mate en la zona."
+      - "Busque la fila del acero oxidado en la columna de la derecha."
+    solucion: "Marca 81 °C: 90 − 81 = 9 °C."
+    comprobar:
+      - { e_81: 9, T_81: 81, e_ac: 0.8 }
+
+  - id: explore-tiempo
+    tipo: explorar
+    titulo: "Al encender y a los cinco minutos"
+    texto: "Dos componentes se calientan al encender: uno disipa con normalidad y otro está en cortocircuito. Haga la imagen a los treinta segundos."
+    nota: "Curvas de calentamiento de ejemplo."
+    libro: [357, 364]
+    inicio: { t_i: 300 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 320, unidad: s, rotulo: "tiempo desde el encendido" }
+      y: { min: 20, max: 90, unidad: "°C", rotulo: "temperatura" }
+      curvas:
+        - { expr: "25 + 40*(1 - exp(-tt/120))", color: azul, rotulo: "disipa con normalidad" }
+        - { expr: "25 + 60*(1 - exp(-tt/5))", color: naranja, rotulo: "cortocircuito" }
+      marcas:
+        - { x: "t_i", y: "T_cc", rotulo: "{{T_cc}}" }
+        - { x: "t_i", y: "T_n", rotulo: "{{T_n}}" }
+      lectura: { valor: t_i, rotulo: "Imagen a los" }
+      mandos:
+        - { valor: t_i, lista: [30, 300], rotulo: "Imagen a los" }
+    objetivo:
+      condiciones:
+        - { valor: t_i, max: 30, rotulo: "Imagen a los treinta segundos" }
+      logrado: "A los treinta segundos el del corto ya está a {{T_cc}} y el otro, a {{T_n}}: uno se calienta de golpe y el otro despacio. Las dos imágenes juntas lo distinguen."
+      pistas:
+        - { texto: "Elija la imagen de los treinta segundos." }
+    escalera:
+      - "Compare las dos curvas al principio."
+    solucion: "La imagen de los treinta segundos."
+    comprobar:
+      - { con: { t_i: 30 }, T_cc: 85, T_n: 33.85, tol: 0.01 }
+
+  - id: simule-termopar
+    tipo: simular
+    titulo: "La cifra del termopar"
+    texto: "Por sus pérdidas y su resistencia térmica, un transistor debería estar a 60 °C, y el termopar del BM869s marca 95 °C. ¿Cuántos grados de más tiene?"
+    libro: [347, 348, 355]
+    simular:
+      objetivo: d_tm
+      unidad: "°C"
+      tol: 0.03
+      rotulo: "Grados de más"
+      errores:
+        - { expr: "T_md", texto: "Esa es la temperatura medida. Lo que informa es la diferencia con la prevista." }
+    exito: "35 °C de más: algo consume más de lo previsto. El termopar convierte «está caliente» en una cifra que se compara con la calculada."
+    escalera:
+      - "Medida menos prevista."
+    solucion: "95 − 60 = 35 °C."
+    comprobar:
+      - { d_tm: 35, T_pv: 60, T_md: 95 }
 
   - id: regulador-frio
     tipo: porque

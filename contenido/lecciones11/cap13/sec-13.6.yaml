@@ -6,6 +6,9 @@
 # hasta la punta que pide, dejar crecer el bigote hasta el corto, tocar las consecuencias, la aleación, la reparación,
 # el componente que no admite estaño-plomo y las precauciones. Dos preguntas: la junta mate y la aeronáutica.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): vuelven, haciendo, el eutéctico (marcar los 183 °C), el margen que se pierde (leer la fig-13.1 y
+# calcular), los BGA (cambiar el perfil hasta que fundan las bolas SAC; perfil con plomo = 240 − 35 °C, como en 13.7) y
+# no mezclar (tocar en la fig-13.10): 2/4 → 6/8.
 leccion: cap13/sec-13.6
 
 libro:
@@ -31,6 +34,10 @@ libro:
   153: "Sin plomo, sin mezclar"
   156: "la vía de entrada es la ingestión"
   "cap01#83": "Con 12 V, 10 kΩ y 5 kΩ, la salida es 4,00 V"
+  160: "Comportamiento térmico de ambas aleaciones y lo que más confunde al cambiar de una a otra"
+  "cap13#26": "las temperaturas de las aleaciones frente al límite que tolera un componente"
+  "cap13#167": "El perfil de refusión sube unos 30 a 40 °C"
+  "cap13#240": "unos 240 °C con SAC305"
 
 modelo:
   valores:
@@ -40,6 +47,11 @@ modelo:
     R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
     R_b: { sim: "bigote", nombre: "bigote de estaño", unidad: Ω, valor: 0.001 }
     b_on: { tipo: interruptor, nombre: "bigote de estaño entre la salida y masa", valor: 0 }
+    s_pf: { tipo: interruptor, nombre: "perfil de sin plomo", valor: 0 }
+    T_p0: { sim: "T_{pico}", nombre: "pico del perfil sin plomo (sección 13.11)", unidad: "°C", valor: 240 }
+    d_pf: { sim: "Δ", nombre: "lo que baja el perfil con plomo", unidad: "°C", valor: 35 }
+    m_63: { sim: "margen", nombre: "margen de la 63/37 hasta el límite (figura 13.1)", unidad: "°C", valor: 77 }
+    m_sac: { sim: "margen", nombre: "margen de la SAC305 hasta el límite (figura 13.1)", unidad: "°C", valor: 40 }
   calculos:
     T_s: { expr: "183 + 34*(a_6 - 1)", sim: "T_{sólida}", nombre: "sólida hasta", unidad: "°C" }
     T_l: { expr: "183 + 37*(a_6 - 1)", sim: "T_{líquida}", nombre: "líquida desde", unidad: "°C" }
@@ -48,6 +60,9 @@ modelo:
     R_ab: { si: b_on, entonces: "par(R_2, R_b)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de abajo con el bigote", unidad: Ω }
     V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
     I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    T_pf: { expr: "T_p0 - d_pf*(1 - s_pf)", sim: "T_{pico}", nombre: "pico del perfil", unidad: "°C" }
+    f_b: { expr: "min(1, max(0, (T_pf - 217)/3))", sim: "fracción", nombre: "parte fundida de las bolas SAC en el pico", unidad: "" }
+    d_m: { expr: "m_63 - m_sac", sim: "Δ", nombre: "margen que se pierde sin plomo", unidad: "°C" }
 
 tarjetas:
   - id: explore-dos-aleaciones
@@ -80,6 +95,36 @@ tarjetas:
       - "La SAC funde unos 35 °C más arriba."
     solucion: "Sin plomo: punta de 350 a 380 °C."
 
+  - id: marque-eutectico
+    tipo: marcar
+    titulo: "Sin estado pastoso"
+    texto: "El Sn63Pb37 es un eutéctico. Marque en la curva la temperatura a la que pasa de sólido a líquido."
+    libro: [132]
+    fijar: { a_6: 1 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "T_s"
+      tol: 0.02
+      inicio: { x: 300, y: 0 }
+      rotulo: "Donde funde"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 188 }, texto: "Ahí ya está líquido: más a la izquierda, donde sube la curva." }
+      - { texto: "Ahí aún está sólido: más a la derecha." }
+    exito: "183 °C exactos, de golpe: sin intervalo pastoso en el que un movimiento estropee la junta. Por eso es tan fácil."
+    escalera:
+      - "Busque el escalón vertical de la curva."
+    solucion: "En 183 °C."
+    comprobar:
+      - { T_s: 183, T_l: 183 }
+
   - id: prediga-mate
     tipo: predecir
     titulo: "El aspecto de una junta sin plomo"
@@ -105,6 +150,61 @@ tarjetas:
     escalera:
       - "¿El criterio del brillo vale igual para las dos aleaciones?"
     solucion: "Mate y granulada."
+
+  - id: simule-margen
+    tipo: simular
+    titulo: "Menos margen de error"
+    texto: "En la figura, lea cuánto margen deja hasta el límite del componente la Sn63Pb37 y cuánto la SAC305. ¿Cuántos grados se pierden sin plomo?"
+    libro: [132, 133, 139, "cap13#26"]
+    widget:
+      tipo: figura
+      figura: fig-13.1
+      zonas:
+        - { id: fusion, rotulo: "Gráfica de la derecha", rect: [280, 15, 172, 155], texto: "Hasta el límite del componente, la Sn63Pb37 deja 77 °C de margen; la SAC305, 40 °C." }
+    simular:
+      objetivo: d_m
+      unidad: "°C"
+      tol: 0.03
+      rotulo: "Margen que se pierde"
+      errores:
+        - { expr: "m_sac", texto: "Ese es el margen que queda con SAC305. Lo que se pierde es la diferencia con la Sn63Pb37." }
+    exito: "37 de 77 °C: casi la mitad. La ventana entre soldar bien y dañar es más estrecha."
+    escalera:
+      - "Margen de la Sn63Pb37 menos margen de la SAC305."
+    solucion: "77 − 40 = 37 °C."
+    comprobar:
+      - { d_m: 37, m_63: 77, m_sac: 40 }
+
+  - id: explore-bga
+    tipo: explorar
+    titulo: "La excepción: los BGA"
+    texto: "Un BGA nuevo trae bolas SAC, que funden hacia 217–220 °C. Cambie el perfil hasta que funden del todo en el pico."
+    nota: "El perfil con plomo, 35 °C más bajo."
+    libro: [133, 147, "cap13#167", "cap13#240"]
+    inicio: { s_pf: 0 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 260, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - 217)/3))", color: naranja, rotulo: "bolas SAC" }
+      marcas:
+        - { x: "T_pf", y: "f_b", rotulo: "pico {{T_pf}}" }
+      lectura: { valor: f_b, rotulo: "Bolas fundidas en el pico" }
+      mandos:
+        - { valor: s_pf, tipo: interruptor, rotulo: "Perfil de sin plomo" }
+    objetivo:
+      condiciones:
+        - { valor: f_b, min: 1, rotulo: "Bolas fundidas" }
+      logrado: "Con el pico en {{T_pf}}, las bolas funden. Con el perfil del estaño-plomo no llegan: un BGA sin plomo no se suelda bien con estaño-plomo."
+      pistas:
+        - { texto: "Con el perfil de estaño-plomo el pico no llega a los 217 °C: cámbielo." }
+    escalera:
+      - "¿Qué pico alcanza cada perfil frente a los 217–220 °C de las bolas?"
+    solucion: "El perfil de sin plomo, con el pico en 240 °C."
+    comprobar:
+      - { T_pf: 205, f_b: 0 }
+      - { con: { s_pf: 1 }, T_pf: 240, f_b: 1 }
 
   - id: sorpresa-bigote
     tipo: sorpresa
@@ -155,6 +255,28 @@ tarjetas:
     escalera:
       - "¿Qué fenómeno inhibía el plomo?"
     solucion: "El plomo inhibe los bigotes: un corto espontáneo es inaceptable."
+
+  - id: toque-mezcla
+    tipo: tocar
+    titulo: "El caso que hay que evitar"
+    texto: "Repara una junta de una placa sin plomo y solo tiene estaño-plomo. Toque lo que la figura le advierte."
+    libro: [149, 150, 151, 160]
+    widget:
+      tipo: figura
+      figura: fig-13.10
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [50, 15, 205, 150] }
+        - { id: criterio, rotulo: "Recuadro de arriba a la derecha", rect: [275, 28, 176, 70] }
+        - { id: mezcla, rotulo: "Recuadro de abajo a la derecha", rect: [275, 108, 176, 70] }
+    tocar:
+      bien: [mezcla]
+      porque:
+        grafica: "La gráfica compara cómo funden las dos; no dice qué hacer al reparar."
+        criterio: "Eso es cómo juzgar el aspecto de la junta, no cómo repararla."
+    exito: "Nunca mezclar: la mezcla funde más bajo y es frágil ante el ciclado. Se retira toda la soldadura antigua y se rehace con una sola aleación."
+    escalera:
+      - "Busque el recuadro que habla de reparar."
+    solucion: "Abajo a la derecha: nunca mezclar aleaciones."
 
   - id: resumen
     tipo: resumen

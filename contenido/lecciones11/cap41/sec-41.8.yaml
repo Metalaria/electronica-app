@@ -7,7 +7,9 @@
 # de tan δ que el FR4: Rogers o PTFE), el cruce se marca en la curva, se escriben lo que pierden 10 cm en el cruce y el
 # cruce con FR4 de bajas pérdidas (de las dos leyes, √f y f: f₀·(0,02/tan δ)²), y la recta del dieléctrico se toca en
 # la figura 42.12 para la medida de S21. Quedan dos preguntas de opciones (el tejido de vidrio y el límite de la
-# ecualización) y el emparejamiento de las otras pérdidas: 62 % (5 de 8), sección de mecanismos y materiales.
+# ecualización).
+# 1.3 (contenido13): el emparejamiento de las otras pérdidas pasa al resumen y entra un reto de elegir el material más
+# barato que cumple (10 cm, 1 dB y 3 GHz de ejemplo); zonas de la recta del S21 agrandadas: 5/8 → 6/8.
 leccion: cap41/sec-41.8
 
 libro:
@@ -32,11 +34,14 @@ modelo:
     f_0: { sim: "f₀", nombre: "cruce en FR4 (figura 42.12)", unidad: Hz, valor: 1.1e9 }
     a_0: { sim: "α₀", nombre: "atenuación de cada una en el cruce (figura 42.12)", unidad: "dB/cm", valor: 0.032 }
     L_l: { sim: "L", nombre: "longitud de la línea (ejemplo)", unidad: cm, valor: 10 }
+    f_3: { sim: "f", nombre: "frecuencia del enlace (ejemplo)", unidad: Hz, valor: 3e9 }
+    A_mx: { sim: "A_{máx}", nombre: "pérdida admisible (ejemplo)", unidad: dB, valor: 1 }
   calculos:
     f_x: { expr: "f_0*(0.02/tand)^2", sim: "f_{cruce}", nombre: "frecuencia de cruce", unidad: Hz }
     f_x1: { expr: "f_0*(0.02/tand)", sim: "f", nombre: "con el cociente sin elevar al cuadrado", unidad: Hz }
     A_l: { expr: "2*a_0*L_l", sim: "A", nombre: "pérdida de la línea en el cruce", unidad: dB }
     A_1: { expr: "a_0*L_l", sim: "A", nombre: "solo una de las dos pérdidas", unidad: dB }
+    A_3: { expr: "L_l*a_0*(sqrt(f_3/f_0) + f_3/f_0*tand/0.02)", sim: "A", nombre: "pérdida de la línea a la frecuencia del enlace", unidad: dB }
 
 tarjetas:
   - id: explore-perdidas
@@ -158,6 +163,38 @@ tarjetas:
     comprobar:
       - { f_x: 4.4e9, f_x1: 2.2e9, f_0: 1.1e9 }
 
+  - id: reto-material
+    tipo: reto
+    titulo: "Reto: el material justo"
+    texto: "Una línea de 10 cm debe perder menos de 1 dB a 3 GHz (valores de ejemplo). Un material de RF se paga: elija el más barato que lo cumple."
+    libro: [231, 232]
+    fijar: { L_l: 10, f_3: 3e9 }
+    inicio: { tand: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 30000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 1, unidad: "dB/cm", rotulo: "atenuación", escala: log }
+      curvas:
+        - { expr: "a_0*sqrt(nu/f_0) + a_0*nu/f_0*tand/0.02", color: tinta, rotulo: "total" }
+      marcas:
+        - { x: "f_3", y: "A_3/L_l", rotulo: "{{A_3}} en 10 cm" }
+      lectura: { valor: A_3, rotulo: "Pérdida a 3 GHz" }
+      mandos:
+        - { valor: tand, lista: [0.02, 0.01, 0.002, 0.001], nombres: ["FR4", "FR4 bajas pérdidas", "Rogers", "PTFE"], rotulo: "Material" }
+    condiciones:
+      - { valor: A_3, max: 1, rotulo: "Pérdida: {{A_3}}" }
+      - { valor: tand, min: 0.01, rotulo: "Sin material de RF" }
+    exito: "FR4 de bajas pérdidas: {{A_3}}. El Rogers también cumpliría, pero se paga un orden de magnitud que este enlace no necesita."
+    pistas:
+      - { cuando: { valor: A_3, mayor: 1 }, texto: "Pierde de más: baje la tangente de pérdidas." }
+      - { texto: "Cumple, pero con un material de RF: pruebe uno más barato que también cumpla." }
+    escalera:
+      - "Pruebe los materiales de menos a más caro."
+    solucion: "FR4 de bajas pérdidas: menos de 1 dB sin pagar un material de RF."
+    comprobar:
+      - { A_3: 1.401, tol: 0.01 }
+      - { con: { tand: 0.01 }, A_3: 0.965, tol: 0.01 }
+
   - id: porque-tejido
     tipo: porque
     titulo: "El FR4 no es homogéneo"
@@ -202,21 +239,6 @@ tarjetas:
       - "¿Qué más hay en las frecuencias altas además de la señal?"
     solucion: "Porque realza también el ruido."
 
-  - id: empareje-otras
-    tipo: pregunta
-    titulo: "Las otras pérdidas"
-    texto: "Empareje cada pérdida con lo que la causa o la remedia."
-    libro: [244, 246]
-    emparejar:
-      - ["Rugosidad del cobre", "Cobre de baja rugosidad"]
-      - ["Discontinuidades", "Cada vía, conector o cambio de anchura refleja"]
-    exito: "Las dos se suman a las del conductor y del dieléctrico."
-    pistas:
-      - { texto: "A alta frecuencia la corriente recorre las irregularidades de la superficie." }
-    escalera:
-      - "Una reflexión resta de lo que se transmite."
-    solucion: "Rugosidad, cobre liso; discontinuidades, reflexiones."
-
   - id: pregunta-banco
     tipo: tocar
     fase: "En el banco"
@@ -227,8 +249,8 @@ tarjetas:
       tipo: figura
       figura: fig-41.12
       zonas:
-        - { id: dielectrico, rotulo: "Recta discontinua de abajo", rect: [122, 168, 18, 14] }
-        - { id: conductor, rotulo: "Curvas de arriba", rect: [122, 128, 18, 16] }
+        - { id: dielectrico, rotulo: "Recta discontinua de abajo", rect: [80, 150, 100, 46] }
+        - { id: conductor, rotulo: "Curvas de arriba", rect: [100, 100, 110, 44] }
     tocar:
       bien: [dielectrico]
       porque:
@@ -241,9 +263,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [228, 232, 235, 242]
+    libro: [228, 232, 235, 242, 244, 246]
     ideas:
       - { titulo: "Dos leyes.", texto: "Conductor ∝ √f; dieléctrico ∝ f; se cruzan hacia el gigahercio en FR4." }
-      - { titulo: "Material.", texto: "Un orden de magnitud de FR4 a RF, y se paga." }
+      - { titulo: "Material.", texto: "Un orden de magnitud de FR4 a RF, y se paga. Se suman la rugosidad del cobre y las reflexiones de vías y conectores." }
       - { titulo: "Forma.", texto: "La atenuación redondea los flancos y produce ISI." }
       - { titulo: "Ecualizar.", texto: "Compensa, pero no recupera lo perdido bajo el ruido." }

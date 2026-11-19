@@ -8,6 +8,8 @@
 # Quedan dos preguntas de opciones (la modulación de conductividad, el enclavamiento): la sección es de estructura y
 # sus dos «por qué» no se pueden manipular. Salen la exploración de la cola (la hace el dibujo) y el emparejamiento
 # del compromiso (sus tres filas van en las explicaciones).
+# 1.3 (contenido13): + predecir cuánto sube la resistencia de la deriva al doblar la tensión de ruptura (exponente
+# 2,5 del libro), el problema que resuelve la modulación de conductividad: 4/6 → 5/7.
 leccion: cap26/sec-26.10
 
 libro:
@@ -31,6 +33,7 @@ modelo:
     r_i: { sim: "r", nombre: "resistencia del IGBT", unidad: Ω, valor: 0.012 }
     I_on: { sim: "I_{0}", nombre: "corriente antes de apagar", unidad: A, valor: 10 }
     s_i: { tipo: interruptor, nombre: "IGBT en lugar de MOSFET", valor: 0 }
+    k_v: { sim: "k", nombre: "veces la tensión de ruptura", unidad: "", valor: 2 }
   calculos:
     V_m: { expr: "I_x*R_m", sim: "V_{MOSFET}", nombre: "caída del MOSFET", unidad: V }
     V_i: { expr: "V_0 + r_i*I_x", sim: "V_{IGBT}", nombre: "caída del IGBT", unidad: V }
@@ -38,6 +41,7 @@ modelo:
     V_c: { expr: "R_m*I_c", sim: "V_{cruce}", nombre: "caída en el cruce", unidad: V }
     d_mi: { expr: "V_m - V_i", sim: "V_{MOSFET} − V_{IGBT}", nombre: "ventaja del IGBT", unidad: V }
     R_dif: { expr: "R_m - r_i", sim: "R_{DS(on)} − r", nombre: "diferencia de pendientes", unidad: Ω }
+    k_r: { expr: "k_v^2.5", sim: "R/R₀", nombre: "veces la resistencia de la deriva", unidad: "", cifras: 3 }
     I_c0: { expr: "V_0/R_m", sim: "V_{0}/R_{DS(on)}", nombre: "olvidando la resistencia del IGBT", unidad: A }
 
 tarjetas:
@@ -95,6 +99,36 @@ tarjetas:
     solucion: "I = 1,4 V / 28 mΩ = 50 A, con {{V_c}}."
     comprobar:
       - { I_c: 50, V_c: 2, I_c0: 35, R_m: 0.04, V_0: 1.4, r_i: 0.012, R_dif: 0.028 }
+
+  - id: prediga-deriva
+    tipo: simular
+    titulo: "El problema del MOSFET"
+    texto: "En un MOSFET, la resistencia de la deriva crece con la tensión de ruptura elevada a 2,5. Si se dobla la tensión de ruptura, ¿cuántas veces sube?"
+    libro: [273]
+    fijar: { k_v: 2 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 1, max: 3, unidad: "", rotulo: "tensión de ruptura, en veces" }
+      y: { min: 0, max: 16, unidad: "", rotulo: "resistencia, en veces" }
+      curvas:
+        - { expr: "v^2.5", color: verde, rotulo: "MOSFET" }
+      marcas:
+        - { x: "k_v", y: "k_r", rotulo: "{{k_r}}" }
+      ocultar: curvas
+    simular:
+      objetivo: k_r
+      unidad: ""
+      tol: 0.03
+      rotulo: "Veces la resistencia"
+      errores:
+        - { razon: { min: 0.34, max: 0.37 }, texto: "Eso sería si creciera en proporción. Con el exponente 2,5 crece mucho más deprisa." }
+        - { razon: { min: 0.69, max: 0.72 }, texto: "Eso sería con el cuadrado. El exponente es 2,5: algo más." }
+    exito: "{{k_r}} veces: por eso a 600 V un MOSFET de silicio tiene una R_{DS(on)} prohibitiva. El IGBT no adelgaza la deriva: la inunda de portadores."
+    escalera:
+      - "Eleve 2 a 2,5: el cuadrado de 2 por su raíz cuadrada."
+    solucion: "2^{2,5} ≈ 5,66 veces."
+    comprobar:
+      - { k_r: 5.657 }
 
   - id: por-que-modulacion
     tipo: porque

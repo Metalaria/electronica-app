@@ -6,6 +6,9 @@
 # haciendo): pasar a sin plomo hasta el margen estrecho, leerlo, tocar el cambio que agrieta, lo que el horno no
 # corrige, lo que lo resolvió y dónde buscar la fatiga. Dos preguntas: el mecanismo y de quién fue la culpa.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): vuelven, haciendo, el mecanismo de fatiga (tocar en la fig-13.11), cómo se resolvió (bajar la amplitud
+# del ciclado con Coffin–Manson, exponente 2 de la sección 47.4: cap46#122), el ensayo acelerado (1000 ciclos = 16 000
+# encendidos, cap46#123) y la junta agrietada (tocar en la fig-13.15): 2/4 → 6/7.
 leccion: cap13/sec-13.7
 
 libro:
@@ -40,16 +43,28 @@ libro:
   193: "el daño se acumula a lo largo de cientos o miles de ciclos"
   "cap13#240": "unos 240 °C con SAC305"
   "cap13#296": "260 °C durante 10 s como máximo en la patilla"
+  194: "Perfiles de refusión con y sin plomo, y el mecanismo de fatiga de la junta"
+  "cap13#286": "Los nueve defectos de soldadura con su aspecto, su causa y su consecuencia"
+  "cap46#122": "con un exponente de alrededor de 2 para el estaño-plomo"
+  "cap46#123": "Mil ciclos de ensayo equivalen así a unos 16 000 encendidos"
 
 modelo:
   valores:
     T_pk: { sim: "T_{pico}", nombre: "pico del perfil sin plomo", unidad: "°C", valor: 240 }
     s_p: { tipo: interruptor, nombre: "aleación sin plomo", valor: 1 }
     L_c: { sim: "T_{máx}", nombre: "temperatura que tolera la patilla", unidad: "°C", valor: 260 }
+    D_T: { sim: "ΔT", nombre: "amplitud de cada ciclo", unidad: "°C", valor: 100 }
+    D_0: { sim: "ΔT₀", nombre: "amplitud del ciclo de ensayo", unidad: "°C", valor: 100 }
+    n_cm: { sim: "n", nombre: "exponente de Coffin–Manson del estaño-plomo", unidad: "", valor: 2 }
+    N_e: { sim: "N", nombre: "ciclos de ensayo", unidad: "", valor: 1000 }
+    D_d: { sim: "ΔT", nombre: "amplitud de un encendido diario", unidad: "°C", valor: 25 }
   calculos:
     d_p: { expr: "35*(1 - s_p)", sim: "Δ", nombre: "descenso del perfil con plomo", unidad: "°C" }
     T_pico: { expr: "T_pk - d_p", sim: "T_{pico}", nombre: "pico del perfil", unidad: "°C" }
     M_v: { expr: "L_c - T_pico", sim: "margen", nombre: "margen hasta el límite del componente", unidad: "°C" }
+    k_d: { expr: "(D_T/D_0)^n_cm", sim: "daño", nombre: "daño de cada ciclo frente al de 100 °C", unidad: "", cifras: 3 }
+    N_eq: { expr: "N_e*(D_0/D_d)^n_cm", sim: "N_{eq}", nombre: "encendidos diarios equivalentes", unidad: "" }
+    N_1: { expr: "N_e*D_0/D_d", sim: "N", nombre: "sin elevar al exponente", unidad: "" }
 
 tarjetas:
   - id: explore-perfil
@@ -113,28 +128,26 @@ tarjetas:
       - { con: { s_p: 0 }, M_v: 55 }
 
   - id: mecanismo
-    tipo: pregunta
+    tipo: tocar
     titulo: "La oleada de fallos"
-    texto: "Tras meses de encender y apagar, se agrietan las juntas de procesadores gráficos. ¿Cuál es el mecanismo?"
-    libro: [172, 173]
-    fijar: { s_p: 1 }
+    texto: "Tras meses de encender y apagar, se agrietan las juntas de los procesadores gráficos. La placa dilata más que el encapsulado: toque cuándo queda cizallada la junta."
+    libro: [172, 173, 194]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 320, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 300, unidad: "°C", rotulo: "placa" }
-      curvas:
-        - { expr: "25 + 125*min(1, max(0, t/60)) + 50*min(1, max(0, (t - 60)/90)) + (T_pk - 200)*min(1, max(0, (t - 150)/30)) - (T_pk - 25)*min(1, max(0, (t - 200)/100)) - d_p*(min(1, max(0, t/60)) - min(1, max(0, (t - 200)/100)))", color: naranja, rotulo: "perfil" }
-    opciones:
-      - texto: "Silicio, encapsulado y placa dilatan distinto: cada ciclo deforma la junta"
-        bien: true
-        porque: "La junta acumula deformación hasta agrietarse; la sin plomo, más rígida, lo admite peor."
-      - texto: "El estaño se evapora con el uso"
-        porque: "No se evapora: se fatiga por el ciclado térmico."
-      - texto: "Un defecto de fábrica de los chips"
-        porque: "Los chips estaban bien: falló la junta por fatiga."
+      tipo: figura
+      figura: fig-13.11
+      zonas:
+        - { id: perfiles, rotulo: "Gráfica de la izquierda", rect: [5, 15, 260, 165] }
+        - { id: frio, rotulo: "Dibujo de la izquierda", rect: [292, 62, 70, 68] }
+        - { id: caliente, rotulo: "Dibujo de la derecha", rect: [365, 62, 80, 68] }
+    tocar:
+      bien: [caliente]
+      porque:
+        perfiles: "Son los perfiles de soldadura: la fatiga viene después, en cada encendido."
+        frio: "En frío, encapsulado y placa están alineados y la junta, recta."
+    exito: "En caliente: silicio, encapsulado y placa dilatan distinto y la junta se deforma en cada ciclo, hasta agrietarse. La sin plomo, más rígida, lo admite peor."
     escalera:
-      - "¿Qué ocurre en cada encendido y apagado con materiales de dilatación distinta?"
-    solucion: "Dilatación distinta: cada ciclo deforma la junta hasta agrietarla."
+      - "Busque la junta inclinada."
+    solucion: "El dibujo de la derecha, en caliente."
 
   - id: por-que-culpa
     tipo: porque
@@ -159,6 +172,80 @@ tarjetas:
     escalera:
       - "¿Existía la fatiga con estaño-plomo?"
     solucion: "Diseños dimensionados para la aleación anterior."
+
+  - id: explore-ciclado
+    tipo: explorar
+    titulo: "Cómo se resolvió: menos ciclado"
+    texto: "La fatiga la gobierna la amplitud de cada ciclo, con exponente de alrededor de 2. Baje la amplitud hasta que cada ciclo dañe 16 veces menos que uno de 100 °C."
+    libro: [181, "cap46#122", "cap46#123"]
+    inicio: { D_T: 100 }
+    widget:
+      tipo: grafica
+      x: { id: dt, min: 0, max: 110, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "daño por ciclo, relativo" }
+      curvas:
+        - { expr: "(dt/D_0)^n_cm", color: naranja, rotulo: "daño por ciclo" }
+      marcas:
+        - { x: "D_T", y: "k_d", rotulo: "{{k_d}}" }
+      lectura: { valor: k_d, rotulo: "Daño frente a 100 °C" }
+      mandos:
+        - { valor: D_T, lista: [25, 50, 75, 100], rotulo: "Amplitud de cada ciclo" }
+    objetivo:
+      condiciones:
+        - { valor: k_d, max: 0.0626, rotulo: "Daño: {{k_d}}" }
+      logrado: "Con {{D_T}}, un dieciseisavo: la cuarta parte de amplitud, dieciséis veces menos daño. Mejor disipación y menos excursiones de temperatura alargan la vida de la junta."
+      pistas:
+        - { texto: "Aún daña de más: baje la amplitud." }
+    escalera:
+      - "Con exponente 2, la mitad de amplitud daña la cuarta parte."
+    solucion: "25 °C: (25/100)² = 1/16."
+    comprobar:
+      - { k_d: 1 }
+      - { con: { D_T: 25 }, k_d: 0.0625 }
+      - { con: { D_T: 50 }, k_d: 0.25 }
+
+  - id: simule-ensayo
+    tipo: simular
+    titulo: "En el banco no se ve en cinco minutos"
+    texto: "Un ensayo hace 1000 ciclos de 100 °C; un equipo que se enciende cada día, ciclos de 25 °C. Con exponente 2, ¿a cuántos encendidos diarios equivale el ensayo?"
+    libro: [193, "cap46#122", "cap46#123"]
+    simular:
+      objetivo: N_eq
+      unidad: ""
+      tol: 0.02
+      rotulo: "Encendidos equivalentes"
+      errores:
+        - { expr: "N_1", texto: "Ha usado la razón de amplitudes sin elevarla al cuadrado: con exponente 2, cada ciclo de 100 °C daña 16 veces más." }
+    exito: "Unos 16 000: más de cuarenta años de uso diario. Por eso unas flexiones en el banco no agrietan una junta sana: el daño se acumula en cientos o miles de ciclos."
+    escalera:
+      - "Cada ciclo de ensayo daña (100/25)² veces más que uno diario."
+    solucion: "1000 × (100/25)² = 16 000."
+    comprobar:
+      - { N_eq: 16000, N_1: 4000, N_e: 1000 }
+
+  - id: toque-agrietada
+    tipo: tocar
+    titulo: "Lo que se ve años después"
+    texto: "Un regulador lleva años encendiéndose y apagándose, y ahora falla cuando se calienta. Toque el defecto que buscar en sus juntas."
+    libro: [193, "cap13#286"]
+    widget:
+      tipo: figura
+      figura: fig-13.15
+      zonas:
+        - { id: fria, rotulo: "Recuadro de arriba en el centro", rect: [153, 2, 147, 78] }
+        - { id: seca, rotulo: "Segunda fila, a la derecha", rect: [304, 84, 148, 78] }
+        - { id: agrietada, rotulo: "Tercera fila, a la izquierda", rect: [2, 166, 148, 79] }
+        - { id: bolas, rotulo: "Tercera fila, a la derecha", rect: [304, 166, 148, 79] }
+    tocar:
+      bien: [agrietada]
+      porque:
+        fria: "Una junta fría lo es desde el principio: poco calor o movimiento al soldar."
+        seca: "La insuficiente es de poco estaño al soldar, no de años de uso."
+        bolas: "Las bolas de estaño vienen de la humedad en la pasta, al soldar."
+    exito: "La agrietada: fatiga térmica, con el aro oscuro alrededor de la patilla. Resoldarla sin corregir la causa solo aplaza el fallo."
+    escalera:
+      - "Busque el defecto cuya causa es la fatiga."
+    solucion: "La agrietada, en la tercera fila a la izquierda."
 
   - id: resumen
     tipo: resumen

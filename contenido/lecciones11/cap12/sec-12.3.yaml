@@ -5,6 +5,9 @@
 # R_DS(on) a 4,5 V en la gráfica, tocar la línea de condiciones, el documento de las erratas y las señales de alarma.
 # Dos preguntas: la portada y mínimo y máximo.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): vuelven, haciendo, las ideas de las tarjetas quitadas: las cuatro partes de la hoja (objetivo de
+# zonas en la fig-12.5), el máximo absoluto (tocar), los tres márgenes del microcontrolador (bloque 74, en una gráfica
+# viva) y las condiciones de la hFE del 2N2222A (leer la figura y calcular la base); «solo típico», al éxito: 2/4 → 6/8.
 leccion: cap12/sec-12.3
 
 libro:
@@ -28,6 +31,8 @@ libro:
   91: "Modelos SPICE"
   92: "El paquete de calificación"
   95: "Parámetros clave solo con valor típico."
+  97: "Estructura de una hoja de datos y qué garantiza cada parte"
+  "cap12#82": "Una hFE mínima de 100 a IC = 150 mA y VCE = 10 V (2N2222A) se queda en 40 a 500 mA"
 
 modelo:
   valores:
@@ -36,11 +41,20 @@ modelo:
     R_c: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10 }
     k_m: { sim: "k", nombre: "parámetro de transconductancia", unidad: "A/V²", valor: 20 }
     Vt_m: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 2 }
+    V_mc: { sim: "V_{DD}", nombre: "alimentación del microcontrolador", unidad: V, valor: 6.5 }
+    I_c5: { sim: "I_{C}", nombre: "corriente que conmuta el 2N2222A", unidad: A, valor: 0.5 }
+    h_5: { sim: "h_{FE}", nombre: "hFE mínima a 500 mA", unidad: "", valor: 40 }
+    h_1: { sim: "h_{FE}", nombre: "hFE mínima a 150 mA", unidad: "", valor: 100 }
   calculos:
     R_45: { expr: "0.0142789 + 0.0427173/(4.5 - 2.533373)", sim: "R_{DS(on)}", nombre: "resistencia en conducción a 4,5 V", unidad: Ω }
     R_g: { expr: "0.0142789 + 0.0427173/(V_g - 2.533373)", sim: "R_{DS(on)}", nombre: "resistencia en conducción a 25 °C", unidad: Ω }
     I_m: { expr: "V_dd/(R_c + R_g)", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
     V_m: { expr: "I_m*R_g", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    m_abs: { expr: "ceil((V_mc - 6)/1e9)", sim: "abs", nombre: "por encima del máximo absoluto", unidad: "" }
+    m_rec: { expr: "(1 - ceil((2.7 - V_mc)/1e9))*(1 - ceil((V_mc - 5.5)/1e9))", sim: "rec", nombre: "dentro de las condiciones recomendadas", unidad: "" }
+    m_gar: { expr: "(1 - ceil((4.5 - V_mc)/1e9))*(1 - ceil((V_mc - 5.5)/1e9))", sim: "gar", nombre: "dentro de lo garantizado a la frecuencia máxima", unidad: "" }
+    I_b5: { expr: "I_c5/h_5", sim: "I_{B}", nombre: "corriente de base mínima a 500 mA", unidad: A }
+    I_b1: { expr: "I_c5/h_1", sim: "I_{B}", nombre: "con la hFE de 150 mA", unidad: A }
 
 tarjetas:
   - id: explore-condiciones
@@ -75,6 +89,32 @@ tarjetas:
       - { con: { V_g: 4.5 }, R_g: 0.036, tol: 0.001 }
       - { con: { V_g: 3.3 }, R_g: 0.07, tol: 0.001 }
 
+  - id: explore-hoja
+    tipo: explorar
+    titulo: "Un contrato con partes"
+    texto: "Una hoja de datos es un contrato técnico: el fabricante garantiza lo que dice, y solo eso. Toque sus cuatro partes."
+    libro: [66, 97]
+    widget:
+      tipo: figura
+      figura: fig-12.5
+      zonas:
+        - { id: portada, rotulo: "Recuadro rojo, a la izquierda", rect: [3, 2, 107, 95], texto: "Cifras llamativas medidas en condiciones ideales que no se dan a la vez: no es un compromiso." }
+        - { id: maximos, rotulo: "Recuadro naranja", rect: [117, 2, 107, 95], texto: "Lo que, superado, puede dañar el componente. No son condiciones de trabajo." }
+        - { id: recomendadas, rotulo: "Recuadro azul", rect: [231, 2, 107, 95], texto: "El margen dentro del cual se diseña." }
+        - { id: tablas, rotulo: "Recuadro verde, a la derecha", rect: [345, 2, 107, 95], texto: "Mínimo y máximo, garantizados; el típico, no. Las gráficas dan la deriva real." }
+    objetivo:
+      condiciones:
+        - { zona: portada, rotulo: "Recuadro rojo" }
+        - { zona: maximos, rotulo: "Recuadro naranja" }
+        - { zona: recomendadas, rotulo: "Recuadro azul" }
+        - { zona: tablas, rotulo: "Recuadro verde" }
+      logrado: "Portada, máximos absolutos, condiciones recomendadas y tablas con gráficas: solo las dos últimas dicen con qué se diseña."
+      pistas:
+        - { texto: "Toque los recuadros de arriba que faltan." }
+    escalera:
+      - "Son los cuatro recuadros de arriba."
+    solucion: "Toque los cuatro recuadros de arriba."
+
   - id: prediga-portada
     tipo: predecir
     titulo: "La portada"
@@ -99,6 +139,65 @@ tarjetas:
     escalera:
       - "Recuerde de qué depende la R_{DS(on)} que acaba de ver."
     solucion: "No: los tres números no se dan simultáneamente."
+
+  - id: toque-maximo
+    tipo: tocar
+    titulo: "Lo que destruye, no lo que se usa"
+    texto: "Un integrado con máximo absoluto de 7 V no está pensado para trabajar a 6,9 V. Toque la parte de la hoja con la que se diseña."
+    libro: [72, 73, 97]
+    widget:
+      tipo: figura
+      figura: fig-12.5
+      zonas:
+        - { id: portada, rotulo: "Recuadro rojo, a la izquierda", rect: [3, 2, 107, 95] }
+        - { id: maximos, rotulo: "Recuadro naranja", rect: [117, 2, 107, 95] }
+        - { id: recomendadas, rotulo: "Recuadro azul", rect: [231, 2, 107, 95] }
+        - { id: tablas, rotulo: "Recuadro verde, a la derecha", rect: [345, 2, 107, 95] }
+    tocar:
+      bien: [recomendadas]
+      porque:
+        portada: "Son cifras comerciales, en condiciones ideales: no comprometen nada."
+        maximos: "Es lo que destruye: el límite para no romperse si accidentalmente los ve, no para trabajar."
+        tablas: "Ahí están los parámetros garantizados, pero el margen de trabajo lo fijan las condiciones recomendadas."
+    exito: "Las Recommended Operating Conditions: el diseño se hace con esas. La nota de los máximos lo dice: «operation at or beyond these limits is not implied»."
+    escalera:
+      - "Busque la parte que da el margen dentro del cual se trabaja."
+    solucion: "El recuadro azul, las condiciones recomendadas."
+
+  - id: explore-margenes
+    tipo: explorar
+    titulo: "Tres márgenes en la misma hoja"
+    texto: "Un microcontrolador: máximo absoluto de 6 V, recomendadas de 2,7 a 5,5 V y especificaciones garantizadas a la frecuencia máxima solo de 4,5 a 5,5 V. Elija una alimentación con todo garantizado."
+    libro: [74]
+    inicio: { V_mc: 6.5 }
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 2, max: 7, unidad: V, rotulo: "V_{DD}" }
+      y: { min: 0, max: 1.4, unidad: "", rotulo: "" }
+      curvas:
+        - { expr: "1.2*ceil((vv - 6)/1e9)", color: naranja, rotulo: "más allá del máximo absoluto" }
+        - { expr: "(1 - ceil((2.7 - vv)/1e9))*(1 - ceil((vv - 5.5)/1e9))", color: azul, rotulo: "condiciones recomendadas" }
+        - { expr: "0.6*(1 - ceil((4.5 - vv)/1e9))*(1 - ceil((vv - 5.5)/1e9))", color: verde, rotulo: "garantizado a la frecuencia máxima" }
+      marcas:
+        - { x: "V_mc", y: "0.3", rotulo: "{{V_mc}}" }
+      lectura: { valor: V_mc, rotulo: "Alimentación" }
+      mandos:
+        - { valor: V_mc, min: 2, max: 7, paso: 0.1, rotulo: "Alimentación" }
+    objetivo:
+      condiciones:
+        - { valor: m_gar, min: 1, rotulo: "Todo garantizado" }
+      logrado: "Con {{V_mc}}, dentro de lo recomendado y de lo garantizado a la frecuencia máxima. Tres márgenes distintos en la misma hoja."
+      pistas:
+        - { cuando: { valor: m_abs, min: 1 }, texto: "Por encima del máximo absoluto: puede dañarse de forma permanente. Baje mucho." }
+        - { cuando: { valor: m_rec, max: 0 }, texto: "Fuera de las condiciones recomendadas: no está pensado para trabajar ahí." }
+        - { texto: "Dentro de lo recomendado, pero a la frecuencia máxima solo se garantiza de 4,5 a 5,5 V." }
+    escalera:
+      - "El margen más estrecho de los tres es el que manda."
+    solucion: "Entre 4,5 y 5,5 V; por ejemplo, 5 V."
+    comprobar:
+      - { m_abs: 1, m_rec: 0, m_gar: 0 }
+      - { con: { V_mc: 5 }, m_gar: 1, m_rec: 1, m_abs: 0 }
+      - { con: { V_mc: 3.3 }, m_gar: 0, m_rec: 1 }
 
   - id: lea-45
     tipo: leer
@@ -126,6 +225,31 @@ tarjetas:
     comprobar:
       - { R_45: 0.036, tol: 0.001 }
 
+  - id: simule-hfe
+    tipo: simular
+    titulo: "Las condiciones de la hFE"
+    texto: "Un 2N2222A conmuta 500 mA, y su tabla da hFE mínima de 100 a 150 mA. Busque en la figura la de su corriente y calcule la base mínima."
+    libro: ["cap12#82", 83, 97]
+    fijar: { I_c5: 0.5 }
+    widget:
+      tipo: figura
+      figura: fig-12.5
+      zonas:
+        - { id: hfe, rotulo: "Fila de la hFE", rect: [10, 170, 430, 40], texto: "hFE: 100 a 150 mA; 40 a 500 mA." }
+    simular:
+      objetivo: I_b5
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de base mínima"
+      errores:
+        - { expr: "I_b1", texto: "Ha usado la hFE de 150 mA. A 500 mA la mínima baja a 40: hace falta más base." }
+    exito: "12,5 mA, no 5: con 500 mA la hFE mínima se queda en 40. Leer las condiciones antes que los valores evita el 90 % de las sorpresas."
+    escalera:
+      - "En la fila de la hFE, la columna de otras condiciones: 40 a 500 mA. I_{B} = I_{C}/h_{FE}."
+    solucion: "500 mA / 40 = 12,5 mA."
+    comprobar:
+      - { I_b5: 0.0125, I_b1: 0.005, h_5: 40, h_1: 100 }
+
   - id: min-max
     tipo: predecir
     titulo: "Típico, mínimo y máximo"
@@ -147,6 +271,7 @@ tarjetas:
         porque: "El típico es el centro de la producción y no está garantizado: la mitad de las unidades queda fuera."
       - texto: "Solo con el máximo"
         porque: "También con el mínimo: en producción, las dos colas existen."
+    exito: "Mínimo y máximo, garantizados. Un parámetro clave con solo valor típico no está garantizado en absoluto: es una señal de alarma."
     escalera:
       - "¿Cuáles de las tres columnas garantiza el fabricante?"
     solucion: "Con el mínimo y el máximo simultáneamente."

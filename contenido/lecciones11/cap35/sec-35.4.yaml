@@ -7,7 +7,10 @@
 # 1.2.1 (autor121-sens, «aprender haciendo», GUIA §13): en la tabla de la figura 36.7 se tocan las columnas de las
 # cuatro preguntas; el código Gray y la verificación por cuenta (bloques 110 y 126) se hacen en el simulador lógico
 # (un disco de 2 bits y un encoder de ejemplo de 4 impulsos por vuelta, rotulados). El potenciómetro, el inclinómetro
-# y el montaje pasan a éxitos y resumen. Sección cualitativa, sin números ni fórmulas: queda en 4 de 7.
+# y el montaje pasan a éxitos y resumen.
+# 1.3 (contenido13): el disco Gray recupera su cronograma (con objetivo ya no quita el botón de pulso, GUIA §13.3); se
+# marca en él el paso de dos bits; la cadena del LVDT se toca en orden en la foto del equipo didáctico (fig-35.8); el
+# emparejamiento de las familias pasa al resumen: 4/7 → 6/8.
 leccion: cap35/sec-35.4
 
 libro:
@@ -18,6 +21,7 @@ libro:
   108: "su resolución la limita el ruido del contacto, no la pista"
   110: "Gray, para que solo cambie un bit entre posiciones adyacentes y no haya estados espurios"
   112: "absoluto, extremadamente robusto y preciso"
+  129: "la cadena de acondicionamiento: excitación, rectificación, filtrado y amplificador diferencial"
   116: "en movimiento, no distingue la aceleración propia de la gravedad"
   117: "esa integración acumula deriva"
   118: "el acelerómetro da referencia absoluta a largo plazo pero es ruidoso en movimiento"
@@ -61,28 +65,6 @@ tarjetas:
       - "Son las cuatro columnas del medio."
     solucion: "De la segunda a la quinta."
 
-  - id: empareje-familias
-    tipo: pregunta
-    titulo: "Absoluto o incremental"
-    texto: "Empareje cada sensor de posición con su rasgo."
-    libro: [104, 105, 108, 110, 112, "cap35#345"]
-    widget:
-      tipo: figura
-      figura: fig-35.7
-      zonas:
-        - { id: tabla, rotulo: "La tabla de arriba", rect: [0, 0, 453, 183] }
-    emparejar:
-      - ["Potenciómetro", "Absoluto y con contacto: se desgasta"]
-      - ["Encoder óptico de cuadratura", "Incremental: se referencia en cada arranque"]
-      - ["Encoder con código Gray", "Absoluto: un solo bit cambia entre posiciones"]
-      - ["LVDT", "Absoluto y robusto, con excitación alterna"]
-    exito: "Los absolutos saben dónde están al encender; el incremental mide cambios."
-    pistas:
-      - { texto: "Solo uno de los cuatro necesita ir a un final de carrera al arrancar." }
-    escalera:
-      - "El de cuadratura da dos señales que cuentan pasos, no posiciones."
-    solucion: "Potenciómetro, contacto; cuadratura, incremental; Gray, un bit; LVDT, robusto."
-
   - id: predecir-ruido
     tipo: predecir
     titulo: "Cuentas perdidas"
@@ -121,6 +103,7 @@ tarjetas:
         - { id: B0, de: c1.q0, rotulo: "Binario, bit 0" }
         - { id: G1, de: c1.q1, rotulo: "Gray, bit 1" }
         - { id: G0, de: x1, rotulo: "Gray, bit 0" }
+      cronograma: { ciclos: 3, senales: [CLK, B1, B0, G1, G0] }
     objetivo:
       condiciones:
         - { led: G1, valor: 1, rotulo: "Gray, bit 1 a 1" }
@@ -131,6 +114,61 @@ tarjetas:
     escalera:
       - "Entre posiciones vecinas, en Gray cambia un solo bit."
     solucion: "Dos pasos; en el segundo, en Gray, solo cambia el bit 1."
+
+  - id: marque-dos-bits
+    tipo: marcar
+    titulo: "El paso peligroso"
+    texto: "El mismo disco girando tres pasos. Lleve el cursor al paso en que el binario cambia sus dos bits a la vez y el Gray, uno solo."
+    libro: [110]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true, rotulo: "Un paso de giro" }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK], rotulo: "Posición" }
+        - { id: x1, tipo: xor, entradas: [c1.q1, c1.q0] }
+      salidas:
+        - { id: B1, de: c1.q1, rotulo: "Binario, bit 1" }
+        - { id: B0, de: c1.q0, rotulo: "Binario, bit 0" }
+        - { id: G1, de: c1.q1, rotulo: "Gray, bit 1" }
+        - { id: G0, de: x1, rotulo: "Gray, bit 0" }
+      cronograma: { ciclos: 3, senales: [CLK, B1, B0, G1, G0] }
+    marcar:
+      cronograma: true
+      ciclo: 2
+      rotulo: "Dos bits a la vez en binario"
+      porque:
+        1: "De la 0 a la 1: en binario solo cambia el bit 0."
+        3: "De la 2 a la 3: en binario solo cambia el bit 0."
+    exito: "De la 1 a la 2: en binario cambian los dos bits, y si no lo hacen a la vez se lee un instante una posición falsa. En Gray solo cambia el bit 1."
+    escalera:
+      - "Mire en qué flanco cambian a la vez las dos filas del binario."
+    solucion: "El segundo paso, de la posición 1 a la 2."
+
+  - id: toque-lvdt
+    tipo: tocar
+    titulo: "La cadena de un LVDT"
+    texto: "Un LVDT necesita excitación alterna y demodulación. En este equipo didáctico, toque los bloques en el orden que recorre la señal."
+    libro: [112, 129]
+    widget:
+      tipo: figura
+      figura: fig-35.8
+      zonas:
+        - { id: excitacion, rotulo: "Bloque de la izquierda", rect: [310, 255, 170, 230] }
+        - { id: lvdt, rotulo: "Bloque alto del centro", rect: [640, 205, 190, 345] }
+        - { id: acondicionador, rotulo: "Bloque con cuatro recuadros", rect: [835, 255, 195, 225] }
+        - { id: diferencial, rotulo: "Bloque con el triángulo grande", rect: [1090, 330, 225, 220] }
+        - { id: pantalla, rotulo: "Pantalla de arriba a la derecha", rect: [1090, 180, 225, 140] }
+        - { id: micrometro, rotulo: "Tornillo de abajo a la derecha", rect: [1060, 640, 520, 170] }
+    tocar:
+      bien: [excitacion, lvdt, acondicionador, diferencial]
+      orden: true
+      porque:
+        pantalla: "La pantalla muestra el resultado al final; no es un paso de la señal."
+        micrometro: "Es el micrómetro que mueve el núcleo para calibrar, fuera de la cadena."
+    exito: "Excitación, el transformador con su núcleo móvil, rectificación y filtrado, y el amplificador diferencial. Absoluto, robusto y con resolución prácticamente infinita."
+    escalera:
+      - "Empiece por el generador que alimenta el primario."
+    solucion: "Generador de excitación, LVDT, acondicionador (rectificador y filtro) y amplificador diferencial."
 
   - id: porque-fusion
     tipo: porque
@@ -203,9 +241,9 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [104, 106, 119, 122, 127]
+    libro: [104, 105, 106, 108, 119, 122, 127, "cap35#345"]
     ideas:
-      - { titulo: "Absoluto o incremental.", texto: "El incremental se referencia al arrancar y no sabe si pierde cuentas." }
+      - { titulo: "Absoluto o incremental.", texto: "Potenciómetro, Gray y LVDT saben dónde están al encender; el incremental se referencia y no sabe si pierde cuentas." }
       - { titulo: "Gray.", texto: "Un solo bit cambia entre posiciones: sin estados espurios." }
       - { titulo: "Fusión.", texto: "Acelerómetro y giróscopo, con defectos complementarios, mejor juntos." }
       - { titulo: "Montaje.", texto: "El encoder mide su eje; el acelerómetro, su soporte." }
