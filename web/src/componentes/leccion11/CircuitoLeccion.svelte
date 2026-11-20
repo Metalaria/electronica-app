@@ -99,18 +99,18 @@
   const elegir = $derived(hacer?.t.actividad?.tipo === 'elegir' && hacer.e.actividad?.tipo === 'elegir' ? { a: hacer.t.actividad, ea: hacer.e.actividad } : null);
   const dianas = $derived.by(() => {
     if (!hacer) return undefined;
-    type D = { id: string; clase: 'punto' | 'rama' | 'pieza'; estado: 'roja' | 'negra' | 'rama' | 'elegida' | 'mal' | 'bien' | null };
+    type D = { id: string; clase: 'punto' | 'rama' | 'pieza'; estado: 'roja' | 'negra' | 'rama' | 'elegida' | 'mal' | 'bien' | null; nombre?: string };
     const lista: D[] = [];
     if (instr && medida) {
-      if (instr.tipo === 'multimetro' && medida.modo === 'A') for (const b of instr.ramas) lista.push({ id: b.id, clase: 'rama', estado: medida.rama === b.id ? 'rama' : null });
-      else for (const q of instr.puntos) lista.push({ id: q.id, clase: 'punto', estado: medida.roja === q.id ? 'roja' : medida.negra === q.id && instr.tipo === 'multimetro' ? 'negra' : null });
+      if (instr.tipo === 'multimetro' && medida.modo === 'A') for (const b of instr.ramas) lista.push({ id: b.id, clase: 'rama', estado: medida.rama === b.id ? 'rama' : null, nombre: textoPlano(b.rotulo) || b.id });
+      else for (const q of instr.puntos) lista.push({ id: q.id, clase: 'punto', estado: medida.roja === q.id ? 'roja' : medida.negra === q.id && instr.tipo === 'multimetro' ? 'negra' : null, nombre: textoPlano(q.rotulo) || q.id });
     }
     if (elegir) {
       const { a, ea } = elegir;
       for (const z of a.zonas)
         lista.push({ id: z.id, clase: 'pieza', estado: hacer.e.resuelta && a.bien.includes(z.id) ? 'bien' : ea.descartadas.includes(z.id) ? 'mal' : ea.elegidas.includes(z.id) ? 'elegida' : null });
     }
-    return lista.length ? { lista, tocar: tocarDiana } : undefined;
+    return lista.length ? { lista, tocar: tocarDiana, soltar: soltarPunta } : undefined;
   });
   function cambiarMedida(m: EstadoMedida) {
     hacer?.cambiar({ medida: m });
@@ -129,6 +129,15 @@
     else if (m.activa === 'negra') cambiarMedida({ ...m, negra: id, activa: 'roja' });
     else if (id === m.negra && m.roja !== id) cambiarMedida({ ...m, activa: 'negra' });
     else cambiarMedida({ ...m, roja: id, activa: m.negra ? 'roja' : 'negra' });
+  }
+  /** 1.3: a probe dragged on the drawing (CircuitoVivo) put on another node or branch. */
+  function soltarPunta(id: string, punta: 'roja' | 'negra' | 'rama') {
+    const m = hacer?.e.medida;
+    if (!instr || !m || bloqueoMedida) return;
+    if (punta === 'rama') cambiarMedida({ ...m, rama: id });
+    else if (punta === 'negra') {
+      if (m.roja !== id) cambiarMedida({ ...m, negra: id, activa: 'roja' });
+    } else if (m.negra !== id || instr.tipo === 'osciloscopio') cambiarMedida({ ...m, roja: id, activa: m.negra ? 'roja' : 'negra' });
   }
   function elegirZona(id: string) {
     if (!hacer || !elegir || hacer.e.resuelta) return;

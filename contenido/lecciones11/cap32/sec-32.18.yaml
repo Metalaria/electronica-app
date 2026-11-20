@@ -4,7 +4,9 @@
 # 1.2.1 (autor121-ana, «aprender haciendo», GUIA §13): el contenido de un flanco de 1 ns se predice, los flancos se
 # frenan hasta salir de la banda radiada (objetivo) y se marca el primer armónico de una conmutada de 100 kHz (de
 # ejemplo) que entra en la conducida. «En el diseño, no en el ensayo» pasa al resumen. Quedan el emparejamiento de
-# ensayos y una pregunta de opciones (la LISN): 60 %, porque es una ampliación normativa sin más magnitudes.
+# ensayos y una pregunta de opciones (la LISN).
+# 1.3 (contenido13): + marcar el tiempo de subida que llega justo a 30 MHz y + subir una conmutada de ejemplo hasta que
+# su fundamental cae en la conducida: 3/5 → 5/7.
 leccion: cap32/sec-32.18
 
 libro:
@@ -20,10 +22,13 @@ modelo:
     t_r: { sim: "t_{subida}", nombre: "tiempo de subida", unidad: s, valor: 100e-9 }
     f_s: { sim: "f_{conmutación}", nombre: "conmutación de ejemplo", unidad: Hz, valor: 100000 }
     f_ci: { sim: "f", nombre: "inicio de la conducida", unidad: Hz, valor: 150000 }
+    f_ri: { sim: "f", nombre: "inicio de la radiada", unidad: Hz, valor: 30000000 }
   calculos:
     f_x: { expr: "1/(pi*t_r)", sim: "f", nombre: "contenido espectral hasta", unidad: Hz }
     f_1: { expr: "1/t_r", sim: "1/t", nombre: "sin el π", unidad: Hz }
     f_2: { expr: "2*f_s", sim: "2f", nombre: "segundo armónico", unidad: Hz }
+    t_l: { expr: "1/(pi*f_ri)", sim: "t_{subida}", nombre: "subida que llega justo a 30 MHz", unidad: s }
+    e_f: { expr: "ceil((f_s - f_ci)/1e12)", sim: "dentro", nombre: "fundamental dentro de la conducida", unidad: "" }
 
 tarjetas:
   - id: prediga-flanco
@@ -77,6 +82,36 @@ tarjetas:
     comprobar:
       - { con: { t_r: 10e-9 }, f_x: 31.8e6, tol: 0.002 }
       - { con: { t_r: 100e-9 }, f_x: 3.18e6, tol: 0.002 }
+
+  - id: marque-limite
+    tipo: marcar
+    titulo: "El flanco que entra en la radiada"
+    texto: "La radiada empieza en 30 MHz. Marque en la curva el tiempo de subida con el que el contenido llega justo a 30 MHz."
+    libro: [569, 572]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-6, unidad: s, rotulo: "tiempo de subida", escala: log }
+      y: { min: 100000, max: 1000000000, unidad: Hz, rotulo: "contenido espectral hasta", escala: log }
+      curvas:
+        - { expr: "1/(pi*tt)", color: azul, rotulo: "1/(π · t_{subida})" }
+        - { expr: "30000000", color: tinta, rotulo: "inicio de la emisión radiada", discontinua: true }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "t_l"
+      tol: 0.04
+      inicio: { x: 3e-7, y: 1000000 }
+      rotulo: "Justo en 30 MHz"
+    pistas:
+      - { cuando: { valor: marca_x, mayor: 1.2e-8 }, texto: "Con ese flanco el contenido se queda por debajo de 30 MHz: más a la izquierda." }
+      - { texto: "Ahí el contenido ya pasa de 30 MHz: más a la derecha." }
+    exito: "Unos {{t_l}}: más rápido, el flanco ya emite en la radiada. Por eso, tiempos de conmutación no más rápidos de lo necesario."
+    escalera:
+      - "Busque dónde la curva azul cruza la línea de 30 MHz."
+    solucion: "1/(π · 30 MHz) ≈ 10,6 ns."
+    comprobar:
+      - { t_l: 1.061e-8, f_ri: 30000000 }
 
   - id: empareje-ensayos
     tipo: pregunta
@@ -148,6 +183,35 @@ tarjetas:
     solucion: "El de 200 kHz."
     comprobar:
       - { f_2: 200000, f_ci: 150000, f_s: 100000 }
+
+  - id: explore-conmutacion
+    tipo: explorar
+    titulo: "Hasta la fundamental"
+    texto: "Una conmutada de 100 kHz deja su fundamental fuera de la conducida, pero no sus armónicos. Suba la conmutación hasta que la fundamental también caiga dentro."
+    nota: "Conmutaciones de ejemplo."
+    libro: [569, 571]
+    inicio: { f_s: 100000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0, max: 1000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "nivel relativo" }
+      curvas:
+        - { expr: "exp(-((nu - f_s)/8000)^2) + 0.5*exp(-((nu - 2*f_s)/8000)^2) + 0.33*exp(-((nu - 3*f_s)/8000)^2) + 0.25*exp(-((nu - 4*f_s)/8000)^2)", color: azul, rotulo: "armónicos" }
+        - { expr: "ceil((nu - f_ci)/1e12)", color: verde, rotulo: "dentro de la conducida", discontinua: true }
+      mandos:
+        - { valor: f_s, lista: [50000, 100000, 200000], rotulo: "Conmutación" }
+    objetivo:
+      condiciones:
+        - { valor: e_f, min: 1, rotulo: "Fundamental dentro" }
+      logrado: "A {{f_s}}, hasta la fundamental cae en la banda medida. Con cualquier conmutada, algo cae dentro: el filtro de entrada no es opcional."
+      pistas:
+        - { texto: "La conducida empieza en 150 kHz: suba la conmutación." }
+    escalera:
+      - "La fundamental debe pasar de 150 kHz."
+    solucion: "A 200 kHz."
+    comprobar:
+      - { con: { f_s: 200000 }, e_f: 1 }
+      - { e_f: 0 }
 
   - id: resumen
     tipo: resumen

@@ -61,7 +61,7 @@
         : m.activa === 'negra'
           ? 'Toque dónde poner la punta negra (COM).'
           : !m.roja
-            ? 'Toque un punto del circuito para la punta roja. Para mover la negra, tóquela primero.'
+            ? 'Toque un punto del circuito para la punta roja. Para mover la negra, arrástrela o tóquela primero.'
             : !m.negra
               ? 'Toque un punto del circuito para la punta negra (COM).'
               : '',

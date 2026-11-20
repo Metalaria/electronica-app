@@ -80,6 +80,18 @@ export function nombreAgujero(cfg: ConfigPlaca, x: number, y: number): string {
   return `${a.fila}${x}${pl}`;
 }
 
+/**
+ * 1.3 (tactil13): the name of a hole in the preview of a placement drag — «C12 · tira 12 de arriba», «Carril +
+ * superior · columna 4» —, with the board when there are several.
+ */
+export function etiquetaHueco(cfg: ConfigPlaca, x: number, y: number): string {
+  const a = agujero(cfg, x, y);
+  if (!a) return '';
+  const pl = cfg.placas > 1 ? ` · placa ${a.placa + 1}` : '';
+  if (a.tipo === 'riel') return `Carril ${SIGNO_RIEL[Number(a.fila)]} ${Number(a.fila) < 2 ? 'superior' : 'inferior'} · columna ${x}${pl}`;
+  return `${a.fila.toUpperCase()}${x} · tira ${x} de ${a.nodo.endsWith(':a') ? 'arriba' : 'abajo'}${pl}`;
+}
+
 /** Every hole of a board configuration. */
 export function agujeros(cfg: ConfigPlaca): Agujero[] {
   const res: Agujero[] = [];

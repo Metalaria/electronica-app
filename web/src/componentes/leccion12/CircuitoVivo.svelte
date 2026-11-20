@@ -20,6 +20,11 @@
   //     card — placed from the drawing's own marks (a node's dot or longest wire `data-red`, a branch's `data-rama`
   //     with its `data-punto`, a part's `data-pieza`); they are out of the tab order: the panel under the drawing
   //     (Instrumento.svelte, ElegirEsquema.svelte) is the keyboard's and the screen reader's way to the same thing;
+  //   - 1.3 (tactil13): a probe on the drawing is dragged to another node (componentes/colocar/): it rides above the
+  //     finger, snaps to the nearest node of its kind with hysteresis, a loupe shows the area with that node ringed and
+  //     named, a short vibration marks each change and the landing; released away from the nodes (or on the other
+  //     probe) it stays where it was. After a placement dragged by a finger four arrows around it move it to the
+  //     neighbouring node that way. The taps of 1.2.1 still work;
   //   - performance: the loop runs only while the drawing is on screen and the page visible; it measures its frame
   //     interval and cost, and degrades (half the particles at 30 fps, then still arrows) on a slow device. The
   //     measures are on the element (data-vivo, data-vivo-nivel, data-vivo-fps, data-vivo-ms) for the tests.
@@ -41,6 +46,10 @@
   import { app } from '../../lib/estado.svelte';
   import { leerUnidades } from '../../lib/habla-matematicas';
   import { ariaNumero } from '../../lib/teoria-viva';
+  import Lupa from '../colocar/Lupa.svelte';
+  import AjusteFino from '../colocar/AjusteFino.svelte';
+  import { candidatoConHisteresis, elevacion, vecinoEnDireccion, type Direccion } from '../colocar/precision';
+  import { vibrarAterrizaje, vibrarCambio } from '../colocar/haptica';
 
   let {
     leccion,
@@ -63,17 +72,23 @@
     oculto: boolean;
     manipular?: boolean;
     alMover: (valor: string, x: number) => void;
-    /** 1.2.1: what the reader taps on the drawing (the instrument's probes, an «elegir» card's zones). */
-    dianas?: { lista: Diana[]; tocar: (id: string) => void };
+    /**
+     * 1.2.1: what the reader taps on the drawing (the instrument's probes, an «elegir» card's zones); 1.3: `soltar` puts
+     * a probe dragged from its node on another one.
+     */
+    dianas?: { lista: Diana[]; tocar: (id: string) => void; soltar?: (id: string, punta: PuntaDiana) => void };
     /** 1.2.1 (motor121): the operating point of a non-linear circuit from the app's ngspice (its instrument's run). */
     externa?: import('../../lib/leccion12/cc').SolucionCC | null;
     children: Snippet;
   } = $props();
 
+  type PuntaDiana = 'roja' | 'negra' | 'rama';
   interface Diana {
     id: string;
     clase: 'punto' | 'rama' | 'pieza';
     estado: 'roja' | 'negra' | 'rama' | 'elegida' | 'mal' | 'bien' | null;
+    /** 1.3: the node's or branch's name (the loupe's label). */
+    nombre?: string;
   }
   interface DianaPos extends Diana {
     x: number;
@@ -342,6 +357,116 @@
     void dianas;
     untrack(() => leerDibujo());
   });
+
+  // ---------------------------------------------------------------- 1.3: a probe dragged from node to node
+  const esPunta = (e: Diana['estado']): e is PuntaDiana => e === 'roja' || e === 'negra' || e === 'rama';
+  let arrastrePunta = $state<{ id: string; punta: PuntaDiana; clase: Diana['clase']; desde: [number, number]; movido: boolean; destino: string | null; objetivo: { x: number; y: number } | null; tipo: string } | null>(null);
+  let origenLupa = $state<SVGSVGElement | null>(null);
+  /** A drag just ended on a target: its click is not a tap. */
+  let tragarClic = false;
+  /** 1.3: the fine-adjust arrows, on the probe last placed by touch. */
+  let ajusteVivo = $state<{ punta: PuntaDiana } | null>(null);
+
+  /** The nodes a probe of this kind can go to, in client px. */
+  function candidatosDe(clase: Diana['clase']): { id: string; x: number; y: number; d: DianaPos }[] {
+    const r = caja?.getBoundingClientRect();
+    if (!r) return [];
+    return dianasPos.filter((d) => d.clase === clase).map((d) => ({ id: d.id, x: r.left + d.x + d.w / 2, y: r.top + d.y + d.h / 2, d }));
+  }
+  /** Another probe is already there. */
+  const ocupada = (id: string, punta: PuntaDiana) => dianasPos.some((d) => d.id === id && esPunta(d.estado) && d.estado !== punta);
+
+  function abajoDiana(ev: PointerEvent, d: DianaPos) {
+    ajusteVivo = null;
+    if (!dianas?.soltar || !esPunta(d.estado)) return;
+    (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
+    arrastrePunta = { id: d.id, punta: d.estado, clase: d.clase, desde: [ev.clientX, ev.clientY], movido: false, destino: d.id, objetivo: null, tipo: ev.pointerType };
+  }
+  function moverDiana(ev: PointerEvent) {
+    const a = arrastrePunta;
+    if (!a) return;
+    if (!a.movido) {
+      if (Math.hypot(ev.clientX - a.desde[0], ev.clientY - a.desde[1]) < (a.tipo === 'mouse' ? 4 : 9)) return;
+      a.movido = true;
+      origenLupa = svg;
+    }
+    ev.preventDefault();
+    const lift = elevacion(a.tipo);
+    const p = { x: ev.clientX, y: ev.clientY - lift };
+    const c = candidatoConHisteresis(candidatosDe(a.clase), p, a.destino, a.tipo === 'touch' ? 14 : 6, 56);
+    const nuevo = c?.id ?? null;
+    if (a.tipo === 'touch' && nuevo && nuevo !== a.destino) vibrarCambio();
+    a.destino = nuevo;
+    a.objetivo = p;
+  }
+  function arribaDiana() {
+    const a = arrastrePunta;
+    arrastrePunta = null;
+    if (!a || !a.movido) return;
+    tragarClic = true;
+    setTimeout(() => (tragarClic = false), 400);
+    if (!a.destino || a.destino === a.id || ocupada(a.destino, a.punta)) return;
+    dianas?.soltar?.(a.destino, a.punta);
+    if (a.tipo === 'touch') {
+      vibrarAterrizaje();
+      ajusteVivo = { punta: a.punta };
+    }
+  }
+  /** A tap on a target (1.2.1). */
+  function tocarDiana(d: DianaPos) {
+    if (tragarClic) {
+      tragarClic = false;
+      return;
+    }
+    dianas?.tocar(d.id);
+  }
+  const dianaDe = (punta: PuntaDiana) => dianasPos.find((d) => d.estado === punta && d.clase !== 'pieza') ?? null;
+  /** The node next to the probe that way (free of the other probe), or null. */
+  function vecinoVivo(dir: Direccion) {
+    const a = ajusteVivo;
+    const d = a ? dianaDe(a.punta) : null;
+    if (!a || !d) return null;
+    const cs = candidatosDe(d.clase);
+    const yo = cs.find((c) => c.id === d.id);
+    const v = yo ? vecinoEnDireccion(cs, yo, dir) : null;
+    return v && !ocupada(v.id, a.punta) ? v : null;
+  }
+  function moverAjusteVivo(dir: Direccion) {
+    const a = ajusteVivo;
+    const v = vecinoVivo(dir);
+    if (!a || !v) return;
+    dianas?.soltar?.(v.id, a.punta);
+    vibrarCambio();
+  }
+  const previaPunta = $derived.by(() => {
+    const a = arrastrePunta;
+    if (!a || !a.movido || !a.objetivo || a.tipo !== 'touch') return null;
+    const c = a.destino ? candidatosDe(a.clase).find((x) => x.id === a.destino) : null;
+    const mal = !c || ocupada(c.id, a.punta);
+    return {
+      objetivo: a.objetivo,
+      marca: c ? { x: c.x, y: c.y } : null,
+      etiqueta: c ? (c.d.nombre ?? c.id) + (mal ? ' · ahí está la otra punta' : '') : 'Fuera de los nodos: se queda donde estaba',
+      mal,
+    };
+  });
+  const posAjusteVivo = $derived.by(() => {
+    const a = ajusteVivo;
+    if (!a || arrastrePunta?.movido) return null;
+    const d = dianaDe(a.punta);
+    const r = caja?.getBoundingClientRect();
+    return d && r ? { x: r.left + d.x + d.w / 2, y: r.top + d.y + d.h / 2 } : null;
+  });
+  // (a tap or a press anywhere else closes the arrows)
+  $effect(() => {
+    if (!ajusteVivo) return;
+    const fuera = (ev: PointerEvent) => {
+      if (!(ev.target as Element | null)?.closest?.('[data-ajuste-fino]')) ajusteVivo = null;
+    };
+    document.addEventListener('pointerdown', fuera, true);
+    return () => document.removeEventListener('pointerdown', fuera, true);
+  });
+  const NOMBRE_PUNTA_DIANA: Record<PuntaDiana, string> = { roja: 'la punta roja', negra: 'la punta negra', rama: 'el amperímetro' };
 
   // ---------------------------------------------------------------- where particles are not drawn (fix12)
   /** The drawing's geometry the zones depend on (they are worked out again only when it changes). */
@@ -746,17 +871,38 @@
       aria-hidden="true"
       class={`diana ${d.clase}`}
       class:puesta={!!d.estado}
+      class:arrastrable={!!dianas?.soltar && esPunta(d.estado)}
+      class:origen={arrastrePunta?.movido && arrastrePunta.id === d.id}
+      class:destino={arrastrePunta?.movido && arrastrePunta.destino === d.id && arrastrePunta.destino !== arrastrePunta.id}
       data-diana={d.id}
       data-diana-estado={d.estado ?? ''}
       style:left={`${d.x}px`}
       style:top={`${d.y}px`}
       style:width={`${d.w}px`}
       style:height={`${d.h}px`}
-      onclick={() => dianas?.tocar(d.id)}
+      onpointerdown={(ev) => abajoDiana(ev, d)}
+      onpointermove={moverDiana}
+      onpointerup={arribaDiana}
+      onpointercancel={() => (arrastrePunta = null)}
+      onclick={() => tocarDiana(d)}
     >
       {#if d.estado === 'roja'}<span class="punta roja">+</span>{:else if d.estado === 'negra'}<span class="punta negra">COM</span>{:else if d.estado === 'rama'}<span class="punta rama">A</span>{:else if d.clase !== 'pieza'}<span class="anillo"></span>{/if}
     </button>
   {/each}
+  {#if arrastrePunta?.movido && arrastrePunta.objetivo && caja}
+    {@const r = caja.getBoundingClientRect()}
+    {@const a = arrastrePunta}
+    <!-- the probe riding above the finger -->
+    <span class="punta-viaje" aria-hidden="true" style:left={`${a.objetivo!.x - r.left}px`} style:top={`${a.objetivo!.y - r.top}px`}>
+      <span class={`punta ${a.punta}`}>{a.punta === 'roja' ? '+' : a.punta === 'negra' ? 'COM' : 'A'}</span>
+    </span>
+  {/if}
+  {#if previaPunta}
+    <Lupa origen={origenLupa} objetivo={previaPunta.objetivo} marca={previaPunta.marca} etiqueta={previaPunta.etiqueta} mal={previaPunta.mal} zoom={2} fondo="var(--v11-fondo, #fff)" />
+  {/if}
+  {#if posAjusteVivo && ajusteVivo}
+    <AjusteFino x={posAjusteVivo.x} y={posAjusteVivo.y} nombre={NOMBRE_PUNTA_DIANA[ajusteVivo.punta]} paso="al nodo de al lado" puede={(d) => !!vecinoVivo(d)} mover={moverAjusteVivo} cerrar={() => (ajusteVivo = null)} />
+  {/if}
 </div>
 {#if hayColor}
   <div class="leyenda" data-leyenda-tension>
@@ -842,6 +988,46 @@
     background: transparent;
     cursor: pointer;
     touch-action: manipulation;
+  }
+  .diana.arrastrable {
+    touch-action: none;
+    cursor: grab;
+  }
+  .diana.origen {
+    opacity: 0.35;
+  }
+  .diana.destino {
+    border: 3px solid #f2b705;
+    background: color-mix(in srgb, #f2b705 22%, transparent);
+  }
+  .punta-viaje {
+    position: absolute;
+    z-index: 4;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .punta-viaje .punta {
+    display: grid;
+    place-items: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 4px;
+    border: 2px solid var(--v11-fondo);
+    border-radius: 13px;
+    color: #fff;
+    font: 800 12px/1 var(--v11-texto);
+    box-shadow: var(--v11-sombra);
+  }
+  .punta-viaje .punta.roja {
+    background: #b3261e;
+    font-size: 17px;
+  }
+  .punta-viaje .punta.negra {
+    background: #1d1d1f;
+  }
+  .punta-viaje .punta.rama {
+    background: var(--v11-azul);
+    font-size: 15px;
   }
   .diana .anillo {
     width: 18px;

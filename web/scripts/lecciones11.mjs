@@ -165,6 +165,8 @@ const hechas = [];
 const lista = fuentes().filter((x) => !solo || `${x.parte}/${x.label}` === solo);
 if (solo && !lista.length) errores.push(`no hay fuente para ${solo} en ${FUENTES}`);
 const comprobaciones = [];
+/** Each lesson's source as the checks name it (a review variant's failing check names its lesson so). */
+const origenes = new Map();
 
 for (const x of lista) {
   const origen = path.relative(path.join(web, '..'), x.fichero);
@@ -181,7 +183,10 @@ for (const x of lista) {
   if (r.leccion && r.leccion.id !== `${x.parte}/${x.label}`) errores.push(`${origen}: «leccion: ${r.leccion.id}» no coincide con el nombre del fichero (${x.parte}/${x.label})`);
   comprobaciones.push(...r.spice);
   // (a console lesson carries its machine and the source of each citation: consolas11.mjs)
-  if (r.leccion) hechas.push(consolas.completar(r.leccion, (p) => contexto.bloques(p)));
+  if (r.leccion) {
+    hechas.push(consolas.completar(r.leccion, (p) => contexto.bloques(p)));
+    origenes.set(r.leccion.id, origen);
+  }
 }
 
 // the circuits against the app's ngspice (only when everything else is right: it takes a few seconds)
@@ -190,11 +195,27 @@ if (!errores.length && comprobaciones.length) {
   const simular = await motor();
   // (tolerances: lib/leccion11/spice.ts — 0,1 % DC and AC, 1 % of the axis on a transient, plus the book's
   // constant-drop approximations of diodes and transistors)
+  // (1.3, motor13: a check of a review variant that fails drops that variant, it is no error: lib/leccion12/variantes.ts)
+  const descartadas = new Map();
   for (const c of comprobaciones) {
     const s = await simular(c.netlist);
-    if (s.ejecucion.fallo) errores.push(`${c.donde}: el simulador ha fallado (${s.ejecucion.fallo})`);
-    else errores.push(...compararSimulacion(c, s.ejecucion.graficas));
+    const mal = s.ejecucion.fallo ? [`${c.donde}: el simulador ha fallado (${s.ejecucion.fallo})`] : compararSimulacion(c, s.ejecucion.graficas);
+    if (!c.variante) errores.push(...mal);
+    else if (mal.length) {
+      const clave = c.donde.slice(0, c.donde.indexOf(': tarjeta '));
+      if (!descartadas.has(clave)) descartadas.set(clave, new Map());
+      const m = descartadas.get(clave);
+      if (!m.has(c.variante.tarjeta)) m.set(c.variante.tarjeta, new Set());
+      m.get(c.variante.tarjeta).add(c.variante.k);
+    }
   }
+  const { descartarVariantes } = await import(src('lib/leccion12/variantes.ts'));
+  let nDescartadas = 0;
+  for (const l of hechas) {
+    const m = descartadas.get(origenes.get(l.id));
+    if (m) nDescartadas += descartarVariantes(l.tarjetas, m);
+  }
+  if (nDescartadas) console.warn(`aviso: ${nDescartadas} variante(s) del repaso descartada(s): el simulador no da lo que el modelo con esos valores`);
 }
 
 const deMezcla = (a) => /: mezcla: aprender haciendo: /.test(a);

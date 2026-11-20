@@ -16,6 +16,7 @@ import type { ItemPractica } from '../practica/tipos';
 import { cargarLeccion11 } from '../../lib/leccion11/datos';
 import { esPracticable, idRespuesta } from '../../lib/leccion11/motor';
 import type { Leccion11 } from '../../lib/leccion11/tipos';
+import { elegirVariante } from '../../lib/leccion12/variantes';
 
 export interface ItemSesion extends ItemElegido {
   parte: string;
@@ -26,8 +27,11 @@ export interface ItemSesion extends ItemElegido {
   /** Order of a choice question's options. */
   orden?: number[];
   tarjeta?: Tarjeta;
-  /** A 1.1 lesson card: the lesson and the card's position in it. */
-  leccion11?: { leccion: Leccion11; k: number };
+  /**
+   * A 1.1 lesson card: the lesson and the card's position in it; 1.3 (motor13): the variant review asks of it, from
+   * its id and the session's seed (lib/leccion12/variantes.ts; null: the card itself). Never stored.
+   */
+  leccion11?: { leccion: Leccion11; k: number; variante: number | null };
 }
 
 export interface Sesion {
@@ -107,7 +111,7 @@ export async function prepararSesion(alcanceTexto: string, semilla: number, ahor
       const j = l ? l.tarjetas.findIndex((t) => idRespuesta(l, t) === it.id) : -1;
       // (a card renamed or removed since the index was written: nothing to ask)
       if (!l || j < 0 || !esPracticable(l.tarjetas[j]!)) continue;
-      base.leccion11 = { leccion: l, k: j };
+      base.leccion11 = { leccion: l, k: j, variante: elegirVariante(l.tarjetas[j]!, semilla) };
     }
     resueltos.push(base);
   }

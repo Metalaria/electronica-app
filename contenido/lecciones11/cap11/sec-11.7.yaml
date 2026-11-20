@@ -4,6 +4,8 @@
 # 1.2.1 (aprender haciendo): cambiar R2 hasta un objetivo, tocar la red SALIDA, tocar el campo de compra, contar las
 # unidades de una línea, tocar la regla común en la figura 11.9. Dos preguntas: el ratsnest y «100 nF».
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): +explorar con objetivo la línea del ratsnest que queda (bloque 168), con la carga de 10 kΩ de la
+# sección 1.4 (cap01#103): 4/6 → 5/7.
 leccion: cap11/sec-11.7
 
 libro:
@@ -16,6 +18,7 @@ libro:
   166: "N$12: R14-1, C7-2, U3-5"
   167: "no tiene ambigüedad"
   168: "Una línea del ratsnest que queda al final es una conexión sin hacer."
+  "cap01#103": "4,00 V en vacío y 3,00 V con 10 kΩ conectados"
   169: "cada conexión del netlist existe"
   170: "se genera del esquema y no se edita a mano"
   173: "Un 1 % y un 5 % no son lo mismo"
@@ -33,9 +36,13 @@ modelo:
     R_1: { sim: "R1", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
     R_2: { sim: "R2", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
     n_c: { sim: "n", nombre: "condensadores de la línea", unidad: "", valor: 4 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    carga: { tipo: interruptor, sim: "SALIDA", nombre: "pista de la carga hecha", valor: 0 }
   calculos:
-    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
-    I: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "corriente", unidad: A }
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente de la carga", unidad: A }
 
 tarjetas:
   - id: explore-topologia
@@ -112,6 +119,32 @@ tarjetas:
     escalera:
       - "Ratsnest: «nido de ratas», lo pendiente de rutar."
     solucion: "Una conexión del netlist que aún no tiene pista."
+
+  - id: explore-ratsnest
+    tipo: explorar
+    titulo: "La línea que queda"
+    texto: "Trazada la placa, queda una línea del ratsnest entre la salida y la carga: una conexión del netlist sin hacer. Hágala hasta que la carga reciba corriente."
+    libro: [168, 169, "cap01#103"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, union: carga }
+      lectura: { valor: V_out, rotulo: "Salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: interruptor, rotulo: "Pista entre la salida y la carga" }
+    objetivo:
+      condiciones:
+        - { valor: I_L, min: 0.0001, rotulo: "Carga: {{I_L}}" }
+      logrado: "Con la pista hecha, la carga de 10 kΩ recibe {{I_L}} y la salida baja a {{V_out}}: lo que dice el netlist ya existe en la placa."
+      pistas:
+        - { texto: "Haga la pista que une la salida con la carga." }
+    escalera:
+      - "Una línea del ratsnest une dos pines que el netlist dice que van juntos."
+    solucion: "Haga la pista: la salida baja de 4,00 V a 3,00 V."
+    comprobar:
+      - { con: { carga: 1 }, V_out: 3, I_L: 0.0003 }
 
   - id: cien-nano
     tipo: pregunta

@@ -6,6 +6,8 @@
 # termopar y de un acelerómetro MEMS, y la familia con la que conviene empezar (el explorar ya no da los ejemplos). Los
 # parámetros, el sensor pegado a la placa y la prueba de tapar pasan al resumen. Quedan dos preguntas de opciones
 # (repetibilidad, dos puntos) y el montaje, por emparejar. Sección de panorama, sin circuito ni números: 4 de 8.
+# 1.3 (contenido13): la exploración de las familias lleva objetivo de zonas y el «por qué» de la repetibilidad pasa a
+# ajustar una corrección de offset sobre dos sensores de ejemplo (el repetible se calibra, el disperso no): 4/8 → 6/8.
 leccion: cap20/sec-20.6
 
 libro:
@@ -28,7 +30,13 @@ libro:
   145: "ninguna calibración lo arregla"
   146: "Las cuatro familias de sensores según su salida"
 
-modelo: { valores: {}, calculos: {} }
+modelo:
+  valores:
+    T_r: { sim: "T", nombre: "temperatura real (ejemplo)", unidad: "°C", valor: 25 }
+    T_o: { sim: "e", nombre: "error de los dos sensores (ejemplo)", unidad: "°C", valor: 1.5 }
+    T_k: { sim: "c", nombre: "corrección de offset", unidad: "°C", valor: 0 }
+  calculos:
+    T_e: { expr: "T_o - T_k", sim: "e − c", nombre: "error que queda en el repetible", unidad: "°C" }
 
 tarjetas:
   - id: explore-familias
@@ -44,7 +52,18 @@ tarjetas:
         - { id: generadores, rotulo: "Segundo recuadro", rect: [117, 7, 106, 94], texto: "Generadores: dan tensión o corriente por sí mismos." }
         - { id: capacitivos, rotulo: "Tercer recuadro", rect: [231, 7, 106, 94], texto: "Capacitivos o inductivos: cambia su capacidad o su inductancia." }
         - { id: digitales, rotulo: "Cuarto recuadro", rect: [345, 7, 106, 94], texto: "Digitales: entregan el valor por I²C o SPI." }
-    requiere: { mover: [resistivos, generadores, capacitivos, digitales] }
+    objetivo:
+      condiciones:
+        - { zona: resistivos, rotulo: "Primer recuadro" }
+        - { zona: generadores, rotulo: "Segundo recuadro" }
+        - { zona: capacitivos, rotulo: "Tercer recuadro" }
+        - { zona: digitales, rotulo: "Cuarto recuadro" }
+      logrado: "Resistivos, generadores, capacitivos o inductivos, y digitales: la forma de la traducción decide todo el circuito que viene después."
+      pistas:
+        - { texto: "Toque los recuadros que faltan." }
+    escalera:
+      - "Son los cuatro recuadros de arriba."
+    solucion: "Toque los cuatro recuadros de arriba."
 
   - id: toque-ntc
     tipo: tocar
@@ -143,26 +162,36 @@ tarjetas:
     solucion: "Los digitales."
 
   - id: porque-repetibilidad
-    tipo: porque
+    tipo: explorar
     titulo: "Repetibilidad antes que exactitud"
-    texto: "A menudo importa más que un sensor sea repetible que exacto. ¿Por qué?"
-    libro: [132]
+    texto: "Dos sensores, diez medidas de la misma temperatura: uno se equivoca siempre lo mismo y el otro, cada vez distinto. Ajuste la corrección hasta que el repetible acierte."
+    nota: "Medidas de ejemplo."
+    libro: [131, 132]
+    inicio: { T_k: 0 }
     widget:
-      tipo: figura
-      figura: fig-20.11
-      zonas:
-        - { id: todo, rotulo: "Las cuatro familias", rect: [4, 7, 446, 94] }
-    opciones:
-      - texto: "Un offset constante se calibra; una dispersión no"
-        bien: true
-        porque: "Si siempre se equivoca lo mismo, se corrige; si cada vez es distinto, no hay corrección."
-      - texto: "Porque la exactitud no importa"
-        porque: "Importa, pero un error constante se puede quitar calibrando."
-      - texto: "Porque los sensores repetibles son más baratos"
-        porque: "No es el precio: es que el error repetible se calibra."
+      tipo: grafica
+      x: { id: nm, min: 1, max: 10, unidad: "", rotulo: "medida" }
+      y: { min: 20, max: 30, unidad: "°C", rotulo: "lectura" }
+      curvas:
+        - { expr: "T_r + 0*nm", color: tinta, rotulo: "real", discontinua: true }
+        - { expr: "T_r + T_o - T_k + 0*nm", color: azul, rotulo: "repetible" }
+        - { expr: "T_r + T_o - T_k + 1.5*ruido(floor(nm), 3)", color: naranja, rotulo: "disperso" }
+      lectura: { valor: T_e, rotulo: "Error del repetible" }
+      mandos:
+        - { valor: T_k, min: 0, max: 3, paso: 0.5, rotulo: "Corrección de offset" }
+    objetivo:
+      condiciones:
+        - { valor: T_e, min: -0.01, max: 0.01, rotulo: "Error del repetible: {{T_e}}" }
+      logrado: "Con {{T_k}} de corrección, el repetible acierta en las diez; el disperso sigue fallando cada vez de forma distinta. Un offset constante se calibra; una dispersión, no."
+      pistas:
+        - { cuando: { valor: T_e, mayor: 0 }, texto: "El repetible aún lee de más: suba la corrección." }
+        - { texto: "Se ha pasado: baje la corrección." }
     escalera:
-      - "¿Qué error se puede restar siempre igual?"
-    solucion: "Un offset constante se calibra y una dispersión no."
+      - "Reste lo que el repetible se equivoca siempre."
+    solucion: "Una corrección igual a su error constante."
+    comprobar:
+      - { T_e: 1.5 }
+      - { con: { T_k: 1.5 }, T_e: 0 }
 
   - id: empareje-montaje
     tipo: pregunta

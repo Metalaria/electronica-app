@@ -73,6 +73,8 @@ export interface CurvaEsperada {
 
 export interface ComprobacionSpice {
   donde: string;
+  /** 1.3 (motor13): the check of a review variant of a card: a failure drops that variant instead of being an error. */
+  variante?: { tarjeta: string; k: number };
   netlist: string;
   analisis: Analisis;
   valores: ValorEsperado[];

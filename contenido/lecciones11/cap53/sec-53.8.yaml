@@ -10,6 +10,8 @@
 # cómo medir sin alterar, los ajustes del rizado, el disparo para un evento único y el origen de la raya de 100 Hz. Dos
 # preguntas: por qué ×10 y la base de tiempos.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): la exploración del trimmer pasa a objetivo (esquina redondeada), +marcar el corte de la ×10
+# sobre 100 kΩ (80,4 kHz, tabla del bloque 309); 3/6 → 5/7.
 leccion: cap53/sec-53.8
 
 libro:
@@ -56,13 +58,14 @@ modelo:
     R_e: { expr: "par(R_n, R_pr)", sim: "R", nombre: "nodo en paralelo con la sonda", unidad: Ω }
     V_th: { expr: "V_n*R_pr/(R_n + R_pr)", sim: "V_{Th}", nombre: "señal vista con la sonda", unidad: V }
     f_cs: { expr: "1/(2*pi*R_e*C_pr)", sim: "f_{c}", nombre: "corte de la sonda sobre el nodo", unidad: Hz }
+    A_c: { expr: "V_th/sqrt(2)", sim: "V_{c}", nombre: "amplitud en el corte", unidad: V }
     A_n: { expr: "V_th/sqrt(1 + (2*pi*f_n*R_e*C_pr)^2)", sim: "V", nombre: "amplitud que llega", unidad: V }
 
 tarjetas:
   - id: explore-sonda
     tipo: explorar
     titulo: "Una sonda sin compensar"
-    texto: "La cuadrada de 1 kHz del propio generador, a la punta. Gire el trimmer y mire las esquinas."
+    texto: "La cuadrada de 1 kHz del propio generador, a la punta. Gire el trimmer hasta que la esquina quede redondeada, por debajo de la meseta."
     libro: [307]
     widget:
       tipo: circuito
@@ -76,7 +79,15 @@ tarjetas:
           - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_sx))/1e9))*V_sx*(Ki_sx + (K0_sx - Ki_sx)*exp(-t/tau_sx)) + ceil((t - 1/(2*f_sx))/1e9)*(vh_sx - V_sx*K0_sx)*exp(-max(0, t - 1/(2*f_sx))/tau_sx)", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
         - { valor: C2_sx, lista: [60e-12, 99e-12, 140e-12], nombres: [poca, justa, mucha], rotulo: "Trimmer, C₂" }
-    requiere: { mover: [C2_sx] }
+    objetivo:
+      condiciones:
+        - { valor: e_sx, max: -5, rotulo: "Salto de la esquina: {{e_sx}}" }
+      logrado: "Con mucha capacidad, la esquina se redondea por debajo de la meseta: {{e_sx}}. Con poca, picaba hacia arriba."
+      pistas:
+        - { texto: "Ahora la esquina pica hacia arriba: pruebe con más capacidad." }
+    escalera:
+      - "La división en el flanco la fijan los condensadores; en la meseta, las resistencias."
+    solucion: "Trimmer con mucha capacidad: la esquina queda redondeada."
 
   - id: ajuste-trimmer
     tipo: ajuste
@@ -162,6 +173,36 @@ tarjetas:
     solucion: "R = 91 kΩ; f = 1/(2π · 91 kΩ · 100 pF) = 17,5 kHz."
     comprobar:
       - { f_cs: 17500, R_e: 91000, tol: 0.01 }
+
+  - id: marque-corte
+    tipo: marcar
+    titulo: "El corte de la ×10"
+    texto: "Sonda ×10 sobre un nodo de 100 kΩ. Marque en la curva su frecuencia de corte, donde lo que ve baja a {{A_c}}."
+    libro: [309, 310]
+    fijar: { V_n: 1, s10: 1, R_n: 100000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+      curvas:
+        - { expr: "V_th/sqrt(1 + (2*pi*nu*R_e*C_pr)^2)", color: naranja, rotulo: "lo que ve" }
+      mandos: []
+    marcar:
+      modo: x
+      curva: 0
+      x: "f_cs"
+      tol: 0.03
+      inicio: { x: 3000, y: 0 }
+      rotulo: "Corte"
+    pistas:
+      - { cuando: { valor: marca_x, menor: 60000 }, texto: "Ahí aún pasa casi entera: más a la derecha." }
+      - { texto: "Ahí ya ha caído de sobra: más a la izquierda." }
+    exito: "Hacia {{f_cs}}: cinco veces menos capacidad que la ×1, y el corte sube en proporción."
+    escalera:
+      - "En el corte, la amplitud es la que llega en continua entre √2."
+    solucion: "Hacia los 80 kHz."
+    comprobar:
+      - { f_cs: 80400, tol: 0.01 }
 
   - id: por-que-x10
     tipo: porque

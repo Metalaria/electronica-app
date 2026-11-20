@@ -19,6 +19,8 @@ export interface RecursosLibro {
   tamano(ruta: string): { ancho: number; alto: number } | null;
   /** A console of the explorer (web/public/consolas/<maquina>.json). */
   consola(maquina: string): Record<string, unknown> | null;
+  /** 1.3 (motor13b): a published lesson («consola-snes/snes-averias»), for the «averia-placa» widget's fault. */
+  leccion?(id: string): Record<string, unknown> | null;
 }
 
 export interface ContextoDigital {
@@ -37,7 +39,11 @@ export const MAX_PIEZAS = 16;
 export const MAX_SALIDAS = 8;
 export const MAX_ZONAS = 12;
 /** Narrowest figure on a phone (360 px less the card's padding): a zone under 24 px there gets a warning. */
-const ANCHO_TELEFONO = 312;
+export const ANCHO_TELEFONO = 312;
+/** 1.3 (motor13b): a figure enlarged with `recorte` or `ampliar` should give every zone a 44 px finger target. */
+export const DEDO_TELEFONO = 44;
+/** Largest starting zoom (`ampliar`), the same as the «+» button's limit. */
+export const AMPLIAR_MAX = 4;
 
 const esObjeto = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 const esNumero = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
@@ -50,7 +56,7 @@ const planoHtml = (h: string) => h.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' 
 
 export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): WidgetFigura | null {
   const { e } = c;
-  for (const k of Object.keys(x)) if (!['tipo', 'figura', 'imagen', 'consola', 'codigo', 'resaltar', 'zonas', 'mandos'].includes(k)) e(`«widget.${k}»: clave desconocida`);
+  for (const k of Object.keys(x)) if (!['tipo', 'figura', 'imagen', 'consola', 'codigo', 'resaltar', 'zonas', 'mandos', 'recorte', 'ampliar'].includes(k)) e(`«widget.${k}»: clave desconocida`);
   if (Array.isArray(x.mandos) && x.mandos.length) e('«widget.mandos»: una figura no lleva mandos (se tocan sus zonas)');
   const fuentes = ['figura', 'imagen', 'consola', 'codigo'].filter((k) => x[k] != null);
   if (fuentes.length !== 1) {
@@ -183,6 +189,27 @@ export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): 
   const [vx, vy, vw, vh] = fuente.vista;
   const zonas: ZonaFigura[] = [];
   const cod = fuente.codigo;
+  // 1.3 (motor13b, contenido13): show only a part of the picture (`recorte`) and/or start zoomed in on a phone
+  // (`ampliar`), so that small zones (a table's rows, a board's chips) reach a finger's size
+  let recorte: [number, number, number, number] | undefined;
+  if (x.recorte != null) {
+    const r = x.recorte;
+    if (cod) e('«widget.recorte»: no en un listado (cite el trozo que importa con { lenguaje, texto })');
+    else if (!Array.isArray(r) || r.length !== 4 || !r.every(esNumero) || !((r[2] as number) > 0 && (r[3] as number) > 0))
+      e('«widget.recorte»: [x, y, ancho, alto] en las coordenadas de la figura');
+    else if ((r[0] as number) < vx - 1e-6 || (r[1] as number) < vy - 1e-6 || (r[0] as number) + (r[2] as number) > vx + vw + 1e-6 || (r[1] as number) + (r[3] as number) > vy + vh + 1e-6)
+      e(`«widget.recorte»: se sale de la figura (${vx}…${vx + vw} × ${vy}…${vy + vh})`);
+    else if ((r[2] as number) >= vw - 1e-6 && (r[3] as number) >= vh - 1e-6) e('«widget.recorte»: es la figura entera (quítelo)');
+    else recorte = r as [number, number, number, number];
+  }
+  let ampliar: number | undefined;
+  if (x.ampliar != null) {
+    if (!esNumero(x.ampliar) || x.ampliar <= 1 || x.ampliar > AMPLIAR_MAX) e(`«widget.ampliar»: un número mayor que 1 y como mucho ${AMPLIAR_MAX} (el zoom inicial en un teléfono)`);
+    else ampliar = Math.round(x.ampliar * 100) / 100;
+  }
+  // (what a picture unit measures on the narrowest phone, with the crop and the starting zoom)
+  const escala = (ANCHO_TELEFONO * (ampliar ?? 1)) / (recorte ? recorte[2] : vw);
+  const [rx, ry, rw, rh] = recorte ?? [vx, vy, vw, vh];
   // (a code listing may have no zones: it is then the visual of a question, with its highlighted lines)
   if (cod && (x.zonas == null || (Array.isArray(x.zonas) && !x.zonas.length))) {
     if (!cod.resaltar.length) c.aviso('«widget.codigo» sin zonas ni «resaltar»: ¿qué líneas importan?');
@@ -236,12 +263,29 @@ export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): 
       // inside the picture
       const puntos = [...zona.rects.flatMap((r) => [[r[0], r[1]], [r[0] + r[2], r[1] + r[3]]]), ...(zona.poligono ?? [])];
       if (puntos.some(([px, py]) => px! < vx - 1e-6 || py! < vy - 1e-6 || px! > vx + vw + 1e-6 || py! > vy + vh + 1e-6)) e(`«${d}»: se sale de la figura (${vx}…${vx + vw} × ${vy}…${vy + vh})`);
+      else if (recorte) {
+        // (a rectangle partly outside the crop keeps its visible part — a table row cut at the crop's edge; a zone
+        // with nothing inside, or a polygon that crosses the edge, is an error)
+        const fuera = ([px, py]: number[]) => px! < rx - 1e-6 || py! < ry - 1e-6 || px! > rx + rw + 1e-6 || py! > ry + rh + 1e-6;
+        if (zona.poligono?.some(fuera)) e(`«${d}.poligono»: se sale del recorte (${rx}…${rx + rw} × ${ry}…${ry + rh})`);
+        zona.rects = zona.rects
+          .map(([x0, y0, ww, hh]): [number, number, number, number] => {
+            const a0 = Math.max(x0, rx);
+            const b0 = Math.max(y0, ry);
+            return [a0, b0, Math.min(x0 + ww, rx + rw) - a0, Math.min(y0 + hh, ry + rh) - b0];
+          })
+          .filter((r) => r[2] > 1e-6 && r[3] > 1e-6);
+        if (!zona.rects.length && !zona.poligono) e(`«${d}»: queda fuera del recorte (${rx}…${rx + rw} × ${ry}…${ry + rh}); amplíe el recorte o quite la zona`);
+        puntos.splice(0, puntos.length, ...zona.rects.flatMap((r) => [[r[0], r[1]], [r[0] + r[2], r[1] + r[3]]]), ...(zona.poligono ?? []));
+      }
       // big enough to touch on a phone (the list of zones is the alternative: a warning; not for a listing's lines)
       if (puntos.length && !cod) {
         const xs = puntos.map((p) => p[0]!);
         const ys = puntos.map((p) => p[1]!);
         const lado = Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-        if ((lado * ANCHO_TELEFONO) / vw < 24) c.aviso(`«${d}»: en un teléfono mide menos de 24 px (se puede ampliar y está la lista de zonas, pero tóquela usted)`);
+        const px = lado * escala;
+        if (px < 24) c.aviso(`«${d}»: en un teléfono mide menos de 24 px (se puede ampliar y está la lista de zonas, pero tóquela usted)${recorte || ampliar ? '' : '; pruebe «recorte» o «ampliar»'}`);
+        else if ((recorte || ampliar) && px < DEDO_TELEFONO) c.aviso(`«${d}»: en un teléfono de 360 px mide ${Math.round(px)} px (con «recorte» y «ampliar», al menos ${DEDO_TELEFONO}: recorte menos o amplíe más)`);
       }
       if (o.rotulo != null) zona.rotulo = c.texto(o.rotulo, `${d}.rotulo`, true) ?? [];
       else if (rotuloDefecto) zona.rotulo = analizarTexto(rotuloDefecto);
@@ -268,7 +312,7 @@ export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): 
       const menor = Math.min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]));
       if (menor > 0 && (ix * iy) / menor > 0.5) c.aviso(`«widget.zonas»: «${zonas[i]!.id}» y «${zonas[j]!.id}» se tapan en más de la mitad`);
     }
-  return { tipo: 'figura', fuente, zonas, mandos: [], ocultar: false };
+  return { tipo: 'figura', fuente, zonas, mandos: [], ocultar: false, ...(recorte ? { recorte } : {}), ...(ampliar ? { ampliar } : {}) };
 }
 
 /** Bounding box [x0, y0, x1, y1] of a zone. */

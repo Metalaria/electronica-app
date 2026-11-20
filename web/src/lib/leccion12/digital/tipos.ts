@@ -58,6 +58,13 @@ export interface WidgetFigura {
   /** (No controls: the zones are what is touched.) */
   mandos: Mando[];
   ocultar: boolean;
+  /**
+   * 1.3 (motor13b): the part of the picture shown [x, y, w, h], in the picture's coordinates (`fuente.vista`). The
+   * zones keep those coordinates; they all fall inside it. Absent: the whole picture.
+   */
+  recorte?: [number, number, number, number];
+  /** 1.3 (motor13b): starting zoom on a narrow screen (a phone), as if «+» had been pressed; 1 … 4. */
+  ampliar?: number;
 }
 
 // ------------------------------------------------------------------ logic circuit
@@ -91,6 +98,8 @@ export interface WidgetLogica {
 export interface EstadoWidget12 {
   /** Figure: the zone last touched (an explore card shows its text). */
   zona: string | null;
+  /** Figure (motor13): every touch of a zone, in order (a goal on zones: objetivo-figura.ts). */
+  visitadas?: string[];
   /** Logic: the levels of the switches. */
   niveles: Record<string, Nivel>;
   /** Logic, sequential circuits: the simulation's state (flip-flops, counters), null until the first action. */
@@ -99,6 +108,8 @@ export interface EstadoWidget12 {
   pulsos: number;
   /** Timing diagram: the slot the cursor is on. */
   tramo: number;
+  /** 1.3 (motor13b): «averia-placa», the faulty part has been named (lib/leccion12/averia-placa.ts). */
+  encontrada?: boolean;
 }
 
 // ------------------------------------------------------------------ step types

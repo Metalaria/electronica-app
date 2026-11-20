@@ -16,7 +16,16 @@
   // The circuit on the bench, drawn, with its nodes as tap targets: tapping a node places the selected lead
   // or probe there. Over a book figure the node positions come from the figure's data (ESQUEMA.md); for
   // circuits without a figure the app draws the schematic itself from the same format.
+  // 1.3 (tactil13): a lead already on a node is dragged to another one (componentes/colocar/): it rides above the finger,
+  // snaps to the nearest node with hysteresis, a loupe shows the area with that node ringed and named, a short
+  // vibration marks each change and the landing; released away from the nodes it stays where it was. After a
+  // placement dragged by a finger four arrows around it move it to the neighbouring node. Taps work as before.
   import { onMount } from 'svelte';
+  import Lupa from '../../colocar/Lupa.svelte';
+  import AjusteFino from '../../colocar/AjusteFino.svelte';
+  import { candidatoConHisteresis, elevacion, vecinoEnDireccion, type Direccion } from '../../colocar/precision';
+  import { vibrarAterrizaje, vibrarCambio } from '../../colocar/haptica';
+  import { NOMBRE_PUNTA_PROTO } from '../puntas';
   import { caja } from './dibujoPropio';
   import { url } from '../../../lib/datos';
 
@@ -25,11 +34,14 @@
     puntas,
     activa,
     alTocar,
+    alSoltar,
   }: {
     fuente: Fuente;
     puntas: { p: string; nodo: string }[];
     activa: string | null;
     alTocar: (nodo: string) => void;
+    /** 1.3: a lead dragged from its node put on another one. */
+    alSoltar?: (punta: string, nodo: string) => void;
   } = $props();
 
   // Drawing units → SVG units.
@@ -80,6 +92,109 @@
     return () => ro.disconnect();
   });
   const radio = $derived(12 / Math.max(k, 0.05));
+
+  // ---------------------------------------------------------------- 1.3: a lead dragged from node to node
+  let arrastre = $state<{ p: string; desde: [number, number]; origen: string; destino: string | null; movido: boolean; objetivo: { x: number; y: number } | null; tipo: string } | null>(null);
+  let ajuste = $state<{ p: string } | null>(null);
+  let tragarClic = false;
+  /** The nodes in client px. */
+  function candidatos(): { id: string; x: number; y: number }[] {
+    const m = lienzo?.getScreenCTM();
+    if (!m) return [];
+    return marcas.map((mk) => {
+      const q = new DOMPoint(mk.xy[0], mk.xy[1]).matrixTransform(m);
+      return { id: mk.nodo, x: q.x, y: q.y };
+    });
+  }
+  const nodoDe = (p: string) => puntas.find((x) => x.p === p)?.nodo ?? null;
+  const nombreNodo = (n: string) => (n === '0' ? 'Masa (0)' : `Nodo ${n}`);
+  function abajoPunta(ev: PointerEvent, p: string, nodo: string) {
+    ajuste = null;
+    if (!alSoltar) return;
+    ev.stopPropagation();
+    (ev.currentTarget as Element).setPointerCapture?.(ev.pointerId);
+    arrastre = { p, desde: [ev.clientX, ev.clientY], origen: nodo, destino: nodo, movido: false, objetivo: null, tipo: ev.pointerType };
+  }
+  function moverPunta(ev: PointerEvent) {
+    const a = arrastre;
+    if (!a) return;
+    if (!a.movido) {
+      if (Math.hypot(ev.clientX - a.desde[0], ev.clientY - a.desde[1]) < (a.tipo === 'mouse' ? 4 : 9)) return;
+      a.movido = true;
+    }
+    const p = { x: ev.clientX, y: ev.clientY - elevacion(a.tipo) };
+    const c = candidatoConHisteresis(candidatos(), p, a.destino, a.tipo === 'touch' ? 14 : 6, 56);
+    if (a.tipo === 'touch' && c && c.id !== a.destino) vibrarCambio();
+    a.destino = c?.id ?? null;
+    a.objetivo = p;
+  }
+  function arribaPunta(ev: PointerEvent, nodo: string) {
+    const a = arrastre;
+    arrastre = null;
+    if (!a) return;
+    tragarClic = true;
+    setTimeout(() => (tragarClic = false), 400);
+    if (!a.movido) {
+      // (a tap: as a tap on its node)
+      alTocar(nodo);
+      return;
+    }
+    if (!a.destino || a.destino === a.origen) return;
+    alSoltar?.(a.p, a.destino);
+    if (ev.pointerType === 'touch') {
+      vibrarAterrizaje();
+      ajuste = { p: a.p };
+    }
+  }
+  function vecino(d: Direccion) {
+    const a = ajuste;
+    const n = a ? nodoDe(a.p) : null;
+    if (!a || !n) return null;
+    const cs = candidatos();
+    const yo = cs.find((c) => c.id.toLowerCase() === n.toLowerCase());
+    return yo ? vecinoEnDireccion(cs, yo, d) : null;
+  }
+  function moverAjuste(d: Direccion) {
+    const a = ajuste;
+    const v = vecino(d);
+    if (!a || !v) return;
+    alSoltar?.(a.p, v.id);
+    vibrarCambio();
+  }
+  /** (a finger on a lead does not scroll the page: it drags the lead) */
+  function sinDesplazar(el: Element, activo: boolean) {
+    let si = activo;
+    const f = (ev: Event) => {
+      if (si && ev.cancelable) ev.preventDefault();
+    };
+    el.addEventListener('touchstart', f, { passive: false });
+    return {
+      update: (x: boolean) => (si = x),
+      destroy: () => el.removeEventListener('touchstart', f),
+    };
+  }
+  const previa = $derived.by(() => {
+    const a = arrastre;
+    if (!a || !a.movido || !a.objetivo || a.tipo !== 'touch') return null;
+    const c = a.destino ? candidatos().find((x) => x.id === a.destino) : null;
+    return { objetivo: a.objetivo, marca: c ? { x: c.x, y: c.y } : null, etiqueta: c ? nombreNodo(c.id) : 'Fuera de los nodos: se queda donde estaba', mal: !c };
+  });
+  const origenLupa = $derived(previa ? ((contenedor?.querySelector('.auto svg') as SVGSVGElement | null) ?? lienzo ?? null) : null);
+  const posAjuste = $derived.by(() => {
+    const a = ajuste;
+    const n = a ? nodoDe(a.p) : null;
+    if (!n || arrastre?.movido) return null;
+    const c = candidatos().find((x) => x.id.toLowerCase() === n.toLowerCase());
+    return c ? { x: c.x, y: c.y + radio * 2.2 * k } : null;
+  });
+  $effect(() => {
+    if (!ajuste) return;
+    const fuera = (ev: PointerEvent) => {
+      if (!(ev.target as Element | null)?.closest?.('[data-ajuste-fino]')) ajuste = null;
+    };
+    document.addEventListener('pointerdown', fuera, true);
+    return () => document.removeEventListener('pointerdown', fuera, true);
+  });
   const fuenteTxt = $derived(11 / Math.max(k, 0.05));
 
   // ---------------------------------------------------------------- own symbols (drawing units)
@@ -173,10 +288,15 @@
       <g
         class="nodo"
         class:conectado={aqui.length > 0}
+        class:destino={!!arrastre?.movido && arrastre.destino === mk.nodo && arrastre.destino !== arrastre.origen}
+        data-nodo-plano={mk.nodo}
         role="button"
         tabindex="0"
         aria-label={`Nodo ${mk.nodo === '0' ? 'masa (0)' : mk.nodo}${aqui.length ? ', con ' + aqui.length + ' puntas' : ''}`}
-        onclick={() => alTocar(mk.nodo)}
+        onclick={() => {
+          if (tragarClic) tragarClic = false;
+          else alTocar(mk.nodo);
+        }}
         onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), alTocar(mk.nodo))}
       >
         <circle cx={mk.xy[0]} cy={mk.xy[1]} r={radio * 1.5} fill="transparent" />
@@ -187,15 +307,43 @@
           {@const px = mk.xy[0] + Math.cos(a) * radio * 1.45}
           {@const py = mk.xy[1] + Math.sin(a) * radio * 1.45 + radio * 2.2}
           <line x1={mk.xy[0]} y1={mk.xy[1]} x2={px} y2={py} stroke={COLOR_PUNTA[pt.p]} stroke-width={radio * 0.18} />
-          <circle cx={px} cy={py} r={radio * 0.62} fill={COLOR_PUNTA[pt.p]} stroke="#fff" stroke-width={radio * 0.08} />
-          <text x={px} y={py + radio * 0.26} font-size={radio * 0.75} text-anchor="middle" fill="#fff" font-weight="700">{LETRA_PUNTA[pt.p]}</text>
+          <circle class="disco" class:viajando={!!arrastre?.movido && arrastre.p === pt.p} cx={px} cy={py} r={radio * 0.62} fill={COLOR_PUNTA[pt.p]} stroke="#fff" stroke-width={radio * 0.08} data-punta-plano={pt.p} />
+          <text class="letra" x={px} y={py + radio * 0.26} font-size={radio * 0.75} text-anchor="middle" fill="#fff" font-weight="700">{LETRA_PUNTA[pt.p]}</text>
+          {#if alSoltar}
+            <!-- 1.3: the lead's handle, wider than its disc (a pointer-only handle: with the keyboard the node itself and
+                 the list of leads place it) -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <circle
+              class="asa-punta"
+              cx={px}
+              cy={py}
+              r={radio * 1.1}
+              fill="transparent"
+              data-asa-plano={pt.p}
+              use:sinDesplazar={true}
+              onpointerdown={(ev) => abajoPunta(ev, pt.p, mk.nodo)}
+              onpointermove={moverPunta}
+              onpointerup={(ev) => arribaPunta(ev, mk.nodo)}
+              onpointercancel={() => (arrastre = null)}
+            />
+          {/if}
         {/each}
       </g>
     {/each}
   </svg>
   </div>
+  {#if arrastre?.movido && arrastre.objetivo && contenedor}
+    {@const r = contenedor.getBoundingClientRect()}
+    <span class="viaje" aria-hidden="true" style={`--c:${COLOR_PUNTA[arrastre.p]}`} style:left={`${arrastre.objetivo.x - r.left}px`} style:top={`${arrastre.objetivo.y - r.top}px`}>{LETRA_PUNTA[arrastre.p]}</span>
+  {/if}
+  {#if previa}
+    <Lupa origen={origenLupa} objetivo={previa.objetivo} marca={previa.marca} etiqueta={previa.etiqueta} mal={previa.mal} zoom={2} />
+  {/if}
+  {#if posAjuste && ajuste}
+    <AjusteFino x={posAjuste.x} y={posAjuste.y} nombre={(NOMBRE_PUNTA_PROTO as Record<string, string>)[ajuste.p]?.toLowerCase() ?? 'la punta'} paso="al nodo de al lado" puede={(d) => !!vecino(d)} mover={moverAjuste} cerrar={() => (ajuste = null)} />
+  {/if}
   {#if activa}
-    <div class="ayuda" style={`--c:${COLOR_PUNTA[activa]}`}>Toque un nodo para poner la punta</div>
+    <div class="ayuda" style={`--c:${COLOR_PUNTA[activa]}`}>Toque un nodo para poner la punta{alSoltar && puntas.length ? ', o arrastre una punta puesta' : ''}</div>
   {/if}
 </div>
 
@@ -272,6 +420,37 @@
   svg.placa .anillo {
     fill: rgba(255, 255, 255, 0.55);
     stroke: #2e6ea6;
+  }
+  .disco,
+  .letra {
+    pointer-events: none;
+  }
+  .asa-punta {
+    cursor: grab;
+    touch-action: none;
+  }
+  .disco.viajando {
+    opacity: 0.35;
+  }
+  .nodo.destino .anillo {
+    fill: #f2b705;
+    stroke: #b88600;
+  }
+  .viaje {
+    position: absolute;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--c);
+    color: #fff;
+    font: 700 14px/1 var(--sans);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
   }
   .ayuda {
     margin-top: 6px;

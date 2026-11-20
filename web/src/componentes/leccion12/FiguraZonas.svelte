@@ -6,12 +6,15 @@
   // (the frame then scrolls), and keeps the book's figure plate in the three themes.
   // 1.2 (motor12e): a code listing instead of a picture (`fuente.origen` «codigo»): drawn in monospace with its
   // highlighted lines and its comments dimmed, read whole to a screen reader (a hidden <pre>); its zones are lines.
+  // 1.3 (motor13b): `w.recorte` shows only a part of the picture (the zones keep the picture's coordinates: the zone
+  // layer's viewBox is the crop) and `w.ampliar` starts zoomed in on a narrow screen, so that small zones reach 44 px.
   import './digital12.css';
   import { url } from '../../lib/datos';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import type { Tarjeta } from '../../lib/leccion11/tipos';
   import type { EstadoTocar, Tocar, WidgetFigura, ZonaFigura } from '../../lib/leccion12/digital/tipos';
   import { CODIGO_COL, CODIGO_LINEA, CODIGO_MARGEN } from '../../lib/leccion12/digital/tipos';
+  import { tocarVisita } from '../../lib/leccion12/digital/objetivo-figura';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
 
   let {
@@ -34,11 +37,23 @@
   const zonaVista = $derived(e.widget12?.zona ?? null);
   const src = $derived(w.fuente.origen === 'libro' ? url(w.fuente.src) : w.fuente.src);
   const [vx, vy, vw, vh] = $derived(w.fuente.vista);
+  // (the part shown: the crop, or the whole picture)
+  const [rx, ry, rw, rh] = $derived(w.recorte ?? w.fuente.vista);
+  const pct = (n: number) => `${Math.round(n * 1e4) / 1e2}%`;
   // (answer locked while a verdict is on show or once right)
   const bloqueado = $derived(!!a && (e.comprobado || e.resuelta));
 
   let zoom = $state(1);
   const ZOOM_MAX = 4;
+  /** Below this frame width (a phone), `w.ampliar` is the starting zoom. */
+  const ANCHO_ESTRECHO = 560;
+  let marco = $state<HTMLDivElement | null>(null);
+  let ampliado = false;
+  $effect(() => {
+    if (!marco || ampliado || !w.ampliar) return;
+    ampliado = true;
+    if (marco.clientWidth > 0 && marco.clientWidth < ANCHO_ESTRECHO) zoom = Math.min(ZOOM_MAX, w.ampliar);
+  });
   function cambiarZoom(f: number) {
     zoom = Math.min(ZOOM_MAX, Math.max(1, Math.round(zoom * f * 100) / 100));
   }
@@ -99,7 +114,9 @@
             : [...ea.elegidas, id]
           : [id];
       cambiar({ actividad: { ...ea, elegidas }, movidos, widget12: { ...w12, zona: id } });
-    } else cambiar({ movidos, widget12: { ...w12, zona: id } });
+    }
+    // (motor13: an explore card keeps every touch, in order: a goal on zones looks at them, objetivo-figura.ts)
+    else cambiar({ movidos, widget12: { ...w12, zona: id, visitadas: tocarVisita(w12, id) } });
   }
 
   function estadoZona(z: ZonaFigura): 'bien' | 'mal' | 'elegida' | 'vista' | '' {
@@ -160,6 +177,7 @@
   <!-- (zoomed in, the frame scrolls: it takes the focus so the arrows scroll it, WCAG «scrollable region focusable») -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
   <div
+    bind:this={marco}
     class="d12-marco"
     class:ampliada={zoom > 1}
     onpointerdown={abajo}
@@ -170,7 +188,7 @@
     aria-label={zoom > 1 ? 'Figura ampliada: desplácela con las flechas o con el dedo' : 'Figura'}
     tabindex={zoom > 1 ? 0 : undefined}
   >
-    <div class="d12-lienzo" class:vectorial={w.fuente.vectorial} class:codigo={!!w.fuente.codigo} style:width={`${zoom * 100}%`} style:aspect-ratio={`${vw} / ${vh}`}>
+    <div class="d12-lienzo" class:vectorial={w.fuente.vectorial} class:codigo={!!w.fuente.codigo} class:recortada={!!w.recorte} style:width={`${zoom * 100}%`} style:aspect-ratio={`${rw} / ${rh}`} data-zoom={zoom}>
       {#if w.fuente.codigo}
         {@const cod = w.fuente.codigo}
         <pre class="a12-solo-lector" data-listado>{w.fuente.alt}:
@@ -184,11 +202,14 @@
             <text x={CODIGO_MARGEN} y={CODIGO_MARGEN + k * CODIGO_LINEA + CODIGO_LINEA * 0.72} textLength={l.length ? [...l].length * CODIGO_COL : undefined} lengthAdjust="spacingAndGlyphs" xml:space="preserve">{c0}<tspan class="comentario">{c1}</tspan></text>
           {/each}
         </svg>
+      {:else if w.recorte}
+        <!-- (the whole picture, scaled and shifted so that the crop fills the frame) -->
+        <img {src} alt={`${w.fuente.alt} (detalle)`} draggable="false" style:width={pct(vw / rw)} style:height={pct(vh / rh)} style:left={pct(-(rx - vx) / rw)} style:top={pct(-(ry - vy) / rh)} data-recorte={w.recorte.join(' ')} />
       {:else}
         <img {src} alt={w.fuente.alt} draggable="false" />
       {/if}
       <!-- the zones: pointer targets over the picture (the list below is the keyboard and screen reader way) -->
-      <svg bind:this={svg} viewBox={`${vx} ${vy} ${vw} ${vh}`} preserveAspectRatio="none" aria-hidden="true" onclick={tocarEn} data-zonas>
+      <svg bind:this={svg} viewBox={`${rx} ${ry} ${rw} ${rh}`} preserveAspectRatio="none" aria-hidden="true" onclick={tocarEn} data-zonas>
         {#each w.zonas as z (z.id)}
           {@const st = estadoZona(z)}
           <g class={`d12-zona ${st}`} data-zona={z.id} data-estado={st || 'nada'}>

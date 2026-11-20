@@ -7,6 +7,10 @@
   import { aplicar, cargarVariante } from './aplicar';
   import { Grafica, formatoSI } from '../../grafica';
   import { prepararSalto } from '../../../lib/ruta.svelte';
+  // 1.3: the real Brymen through its BU-86X cable (only where the platform can read it)
+  import BrymenReal from './BrymenReal.svelte';
+  import { brymenReal } from '../../../lib/brymen-real/conexion.svelte';
+  import { explicarDiferencia, incertidumbre, pantallaPara, porQueNo } from '../../../lib/brymen-real/comparar';
 
   let { p, b }: { p: Practica; b: Banco } = $props();
 
@@ -30,6 +34,38 @@
     if (v === null || v === undefined) return 'nada';
     const tol = c.tol.abs ?? Math.abs(c.esperado) * (c.tol.rel ?? 0.01);
     return Math.abs(v - c.esperado) <= tol ? 'ok' : 'mal';
+  }
+
+  // 1.3: a check read on the Brymen can take the real meter's reading instead of the simulated one: it is noted
+  // like a typed one (the same tolerance decides ✓/≠) and the difference with the simulated reading is explained.
+  let reales = $state<Record<string, { texto: string }>>({});
+  let avisoReal = $state<Record<string, string>>({});
+  const deBrymen = (c: Practica['comprobaciones'][number]) => c.donde.startsWith('Brymen');
+  const realConectado = $derived(brymenReal.disponible && brymenReal.estado === 'conectado');
+  const simulado = $derived.by(() => {
+    void b.tic;
+    const l = b.brymen.pantalla.principal;
+    return l && b.vigente ? (l.ol ? 'OL' : `${l.texto.replace('-', '−').replace('.', ',')} ${l.unidad}`) : null;
+  });
+
+  function usarReal(c: Practica['comprobaciones'][number]) {
+    const l = brymenReal.estado === 'conectado' ? brymenReal.lectura : null;
+    const p = pantallaPara(l, c.unidad);
+    if (!l || !p || p.valor === null) {
+      avisoReal = { ...avisoReal, [c.id]: porQueNo(l, c.unidad) };
+      return;
+    }
+    const sim = vivas[c.id];
+    const texto = explicarDiferencia(p.valor, incertidumbre(p, l), sim ?? c.esperado, sim !== null && sim !== undefined ? 'el simulado' : 'lo esperado (libro)', c.unidad);
+    anotadas = { ...anotadas, [c.id]: p.valor };
+    reales = { ...reales, [c.id]: { texto } };
+    avisoReal = { ...avisoReal, [c.id]: '' };
+  }
+
+  function anotarSimulada(id: string) {
+    anotadas = { ...anotadas, [id]: vivas[id] ?? null };
+    const { [id]: _quitada, ...resto } = reales;
+    reales = resto;
   }
 
   function fmt(v: number | null | undefined, u: string): string {
@@ -130,6 +166,8 @@
     <button class="boton" disabled={paso >= p.pasos.length - 1} onclick={() => irA(paso + 1, true)}>Siguiente →</button>
   </div>
 
+  <BrymenReal {simulado} />
+
   <h3>Su medida frente a lo esperado</h3>
   <div class="tabla-envoltura">
     <table class="comprobaciones">
@@ -149,13 +187,28 @@
             </td>
             <td class="medida" title={v === null || v === undefined ? '' : String(v)}>
               <span class="valor">{fmt(v, c.unidad)}</span>
-              {#if anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">anotada</span>{:else if v !== null && v !== undefined}<span class="donde">en vivo</span>{/if}
+              {#if reales[c.id] && anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">de su Brymen</span>{:else if anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">anotada</span>{:else if v !== null && v !== undefined}<span class="donde">en vivo</span>{/if}
             </td>
             <td class="marca">
               {#if e === 'ok'}<span aria-label="Coincide">✓</span>{:else if e === 'mal'}<span aria-label="No coincide">≠</span>{/if}
-              <button class="boton pequeno" disabled={vivas[c.id] === null} onclick={() => (anotadas = { ...anotadas, [c.id]: vivas[c.id] ?? null })}>Anotar</button>
+              <button class="boton pequeno" disabled={vivas[c.id] === null} onclick={() => anotarSimulada(c.id)}>Anotar</button>
+              {#if realConectado && deBrymen(c)}
+                <button class="boton pequeno" onclick={() => usarReal(c)} data-usar-real={c.id}>Usar su Brymen</button>
+              {/if}
             </td>
           </tr>
+          {#if reales[c.id] || avisoReal[c.id]}
+            <tr class="real-fila">
+              <td colspan="4" data-comparacion-real={c.id}>
+                {#if reales[c.id]}
+                  {reales[c.id]!.texto}
+                  {#if e !== 'nada'}<strong>{e === 'ok' ? 'Dentro' : 'Fuera'} de lo que admite la práctica ({fmt(c.esperado, c.unidad)} {tolTexto(c)}).</strong>{/if}
+                {:else}
+                  <span class="aviso-real">{avisoReal[c.id]}</span>
+                {/if}
+              </td>
+            </tr>
+          {/if}
         {/each}
       </tbody>
     </table>
@@ -363,6 +416,18 @@
   }
   tr.mal .marca span {
     color: var(--c-precaucion);
+  }
+  .real-fila td {
+    padding-top: 0;
+    color: var(--tinta-suave);
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .aviso-real {
+    color: var(--c-importante);
+  }
+  .marca .boton + .boton {
+    margin-left: 4px;
   }
   .puntos td {
     font-family: var(--mono);

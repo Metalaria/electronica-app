@@ -17,7 +17,7 @@
 import { analizar, variablesDe, CONSTANTES } from '../../componentes/calculadoras/expresion';
 import { aSerie } from '../../componentes/calculadoras/eseries';
 import { analizarTexto, contarPalabras, numerosDe, numerosDeTexto, textoPlano, valoresDeTexto } from './texto';
-import { barajarFijo, compilarModelo, enRango, objetivoEstimar, posicionMasCercana, posicionesEstimar, puntuarEstimacion, type Valores } from './modelo';
+import { barajarFijo, compilarModelo, enRango, formatear, objetivoEstimar, posicionMasCercana, posicionesEstimar, puntuarEstimacion, type Valores } from './modelo';
 import { esquemaDe, nombresEsquemas } from './esquemas/registro';
 import type { DefinicionEsquema } from './esquemas/tipos';
 import { comprobacionesCircuito, contextoNetlist, type ComprobacionSpice } from './spice';
@@ -27,8 +27,11 @@ import { esComprobable12 } from '../leccion12/motor12';
 import { TIPOS_ACTIVIDAD } from '../leccion12/tipos';
 import type { Ejecucion } from '../leccion12/sql/ejecutar';
 import { avisosUnaIdea } from '../leccion12/una-idea';
+import { esPracticable } from './motor';
+import { cambia, dependencias, distinto, dominiosAutomaticos, dominioDeclarado, PALABRAS_DE_PROPORCION, proponerValores, sustituirEnTarjeta, TIPOS_CON_VARIANTES, type CantidadVariante, type VarianteTarjeta } from '../leccion12/variantes';
 // 1.2 (motor12c): the «figura» and «logica» widgets and their steps (GUIA §11)
 import { widgetFiguraDe, widgetLogicaDe, type ContextoDigital, type RecursosLibro } from '../leccion12/digital/generar-digital';
+import { widgetAveriaPlacaDe } from '../leccion12/averia-placa';
 import { interactivos } from '../leccion12/digital/motor-digital';
 // 1.2.1 (piloto121): the instrument of a live circuit, the goal of an explore card and the lesson's mix (GUIA §13)
 import { avisoMezcla, instrumentoDe, mezclaDe, objetivoDe, validarInstrumento } from '../leccion12/hacer/generar-hacer';
@@ -157,7 +160,12 @@ export function coincide(n: { v: number; decimales: number }, valor: number): bo
 
 // ------------------------------------------------------------------ the generator
 
-export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = 'lección'): ResultadoGeneracion {
+/** Options of a generation: `sinVariantes` (motor13) skips review's variants (the generator's own re-runs of a card). */
+export interface OpcionesGeneracion {
+  sinVariantes?: boolean;
+}
+
+export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = 'lección', opciones: OpcionesGeneracion = {}): ResultadoGeneracion {
   const errores: string[] = [];
   const avisos: string[] = [];
   const spice: ComprobacionSpice[] = [];
@@ -365,6 +373,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
   const tarjetas: Tarjeta[] = [];
   // the reader's own values as the lesson goes (what each card starts from: the cards before set them)
   let propios: Valores = { ...base };
+  // 1.3 (motor13): the cards that may get review variants, with what working them out needs (variantes() below)
+  const paraVariantes: { i: number; t: Tarjeta; inicial: Valores; plano: string; declaradas: unknown; medirValor?: string }[] = [];
 
   fuenteTarjetas.forEach((ft: unknown, i: number) => {
     const t0 = esObjeto(ft) ? ft : {};
@@ -375,7 +385,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     /** No error in this card so far (the checks that evaluate the model need a sound card). */
     const sana = () => errores.length === antes;
     if (!esObjeto(ft)) return e('no es un objeto');
-    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar', 'escalera', 'solucion', 'objetivo', ...TIPOS_ACTIVIDAD]);
+    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar', 'escalera', 'solucion', 'objetivo', 'variantes', ...TIPOS_ACTIVIDAD]);
     for (const k of Object.keys(ft)) if (!CLAVES.has(k)) e(`clave desconocida «${k}»`);
     if (!/^[a-z0-9][a-z0-9-]*$/.test(tid)) e('«id» debe ser corto, en minúsculas y con guiones («prediga-salida»)');
     if (ids.has(tid)) e('«id» repetido');
@@ -485,7 +495,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     // (1.2: an «ajuste» opens «Continuar» inside its band, an optional «banco» always: lib/leccion12/motor12.ts)
     for (const k of TIPOS_ACTIVIDAD) if (ft[k] != null && k !== tipo) e(`«${k}» solo va en una tarjeta «tipo: ${k}»`);
     if (tipo === 'explorar' || tipo === 'sorpresa' || ft.requiere != null) {
-      if (!mandos.length && !widget12) e('una tarjeta para explorar necesita un widget con mandos');
+      if (!mandos.length && !widget12 && t.widget?.tipo !== 'averia-placa') e('una tarjeta para explorar necesita un widget con mandos');
       const rq = esObjeto(ft.requiere) ? ft.requiere : {};
       if (ft.requiere != null && !esObjeto(ft.requiere)) e('«requiere» debe ser { mover: [...], conectar: [...] }');
       const mover = Array.isArray(rq.mover) ? rq.mover.map(String) : [];
@@ -611,7 +621,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     if (ft.objetivo != null) {
       if (tipo !== 'explorar' && tipo !== 'sorpresa' && tipo !== 'ajuste') e('«objetivo» va en una tarjeta explorar, sorpresa o ajuste');
       else if (sana()) {
-        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}) }, t);
+        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}), ...(t.widget?.tipo === 'figura' ? { figura: t.widget } : {}), ...(t.widget?.tipo === 'averia-placa' ? { averiaPlaca: true } : {}) }, t);
         if (r.objetivo) {
           t.objetivo = r.objetivo;
           if (typeof ft.fase !== 'string') t.fase = 'Consiga';
@@ -634,7 +644,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       }
     }
     if (tipo === 'reto' && !t.condiciones) e('un reto lleva «condiciones»');
-    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql' || tipo === 'tocar' || tipo === 'tabla');
+    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql' || tipo === 'tocar' || tipo === 'tabla' || tipo === 'montar');
     if (exito) {
       t.exito = exito;
       if (contarPalabras(exito) > MAX_PALABRAS_EXPLICACION) e(`«exito»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
@@ -816,6 +826,17 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         if (vale(n) || (n.legado && n.legado.every(vale))) continue;
         e(`«${campo}»: el número ${n.s} no está en los bloques del libro citados ni lo da el modelo (añada un «comprobar»)`);
       }
+    // 1.3 (motor13): review's variants of a doing card, worked out once the lesson is sound (variantes() below)
+    if (ft.variantes != null && ft.variantes !== false && !TIPOS_CON_VARIANTES.has(tipo)) e('«variantes» va en una tarjeta simular, leer, medir, reto o diseno');
+    else if (TIPOS_CON_VARIANTES.has(tipo) && ft.variantes !== false && sana())
+      paraVariantes.push({
+        i,
+        t,
+        inicial,
+        plano: textos.map(([, tx]) => textoPlano(tx)).join(' | '),
+        declaradas: ft.variantes,
+        ...(tipo === 'medir' && esObjeto(ft.medir) && typeof ft.medir.valor === 'string' ? { medirValor: ft.medir.valor } : {}),
+      });
 
     // challenge: reachable, not solved at the start, a hint for every failing position
     if (t.condiciones && t.condiciones.length && mandos.length && sana()) {
@@ -862,7 +883,11 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
 
   if (tarjetas.length && tarjetas[tarjetas.length - 1]!.tipo !== 'resumen') err('tarjetas', 'la última tarjeta es el resumen');
   if (tarjetas.filter((t) => t.tipo === 'resumen').length > 1) err('tarjetas', 'un solo resumen');
-  if (!tarjetas.some((t) => t.tipo === 'explorar')) err('tarjetas', 'falta al menos una tarjeta «explorar»');
+  // (motor13: a lesson without a numeric model — criteria, no number of the book — may do without one if it has
+  // «tocar» cards: the figure is explored by touching it)
+  const sinModelo = !Object.keys(modelo.valores).length && !Object.keys(modelo.calculos).length;
+  if (!tarjetas.some((t) => t.tipo === 'explorar') && !(sinModelo && tarjetas.some((t) => t.actividad?.tipo === 'tocar')))
+    err('tarjetas', sinModelo ? 'falta al menos una tarjeta «explorar» (o, sin modelo, una «tocar»)' : 'falta al menos una tarjeta «explorar»');
   if (!tarjetas.some((t) => t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad)))) err('tarjetas', 'falta algo que responder (predecir, pregunta, reto o porque)');
   // 1.2: every answered card should carry its hint ladder (warning, so the 1.1 lessons still publish)
   const sinEscalera = tarjetas.filter((t) => (t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad))) && !t.escalera?.length && !t.pistas?.length && !t.ayuda && !t.solucion).map((t) => t.id);
@@ -883,6 +908,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
   const sinCitar = Object.keys(citas).filter((k) => !tarjetas.some((t) => t.libro.includes(k)));
   if (sinCitar.length) aviso('libro', `bloques citados por ninguna tarjeta: ${sinCitar.join(', ')}`);
 
+  if (!errores.length && !opciones.sinVariantes) variantes();
   if (errores.length) return fallo();
   const leccion: Leccion11 = {
     version: 1,
@@ -896,6 +922,169 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     tarjetas,
   };
   return { leccion, errores, avisos, spice };
+
+  // ---------------------------------------------------------------- review's variants (1.3, motor13; GUIA §13.13)
+
+  /**
+   * Each card that may have variants: the candidates (declared, or automatic over the lesson's controls), kept when
+   * the answer changes, the card's literal numbers stay true and the whole lesson, with the card so changed, generates
+   * without an error; their ngspice checks go with them, tagged (the script drops a variant whose check fails).
+   */
+  function variantes() {
+    const mandosLeccion = tarjetas.flatMap((t) => t.widget?.mandos ?? []);
+    const fuenteTarjetas = (fuente as { tarjetas: unknown[] }).tarjetas;
+    for (const c of paraVariantes) {
+      const { t, i } = c;
+      const donde = `tarjeta ${t.id}`;
+      const e = (m: string) => err(donde, m);
+      const d = c.declaradas;
+      if (d != null && !esObjeto(d)) {
+        e('«variantes»: { valores: { valor: [lista] | { min, max, paso } }, objetivos: [...] } o «false» (ninguna)');
+        continue;
+      }
+      if (!esPracticable(t)) {
+        if (d != null) e('«variantes»: esta tarjeta no se pregunta en el repaso (no tiene nada que comprobar)');
+        continue;
+      }
+      if (d) for (const k of Object.keys(d)) if (k !== 'valores' && k !== 'objetivos') e(`«variantes.${k}»: clave desconocida (valores, objetivos)`);
+      const propiosCard = (t.widget?.mandos ?? []).map((m) => m.valor);
+      // (automatic only where nothing drawn from the book could contradict the new values — a figure, a logic
+      // circuit — and not on a reading taken from a graph, whose axes are fixed: the value read could fall off them)
+      const w = t.widget;
+      const conGrafica = !!w && (w.tipo === 'grafica' || (w.tipo === 'circuito' && !!w.grafica));
+      // (nor where a text compares magnitudes in words: the new values could make it false, PALABRAS_DE_PROPORCION)
+      const auto = d == null && !(w && (w.tipo === 'figura' || w.tipo === 'logica' || (conGrafica && t.tipo === 'leer'))) && !PALABRAS_DE_PROPORCION.test(c.plano);
+      let dominios: Record<string, number[]> = {};
+      if (d && d.valores != null) {
+        if (!esObjeto(d.valores)) e('«variantes.valores»: { valor: [lista] | { min, max, paso } }');
+        else
+          for (const [k, x] of Object.entries(d.valores)) {
+            const r = dominioDeclarado(x);
+            if (!(k in modelo.valores)) e(`«variantes.valores»: «${k}» no es un valor del modelo`);
+            else if (propiosCard.includes(k)) e(`«variantes.valores»: «${k}» lo mueve el lector en esta tarjeta`);
+            else if (typeof r === 'string') e(`«variantes.valores.${k}»: ${r}`);
+            else if (!r.some((v) => distinto(v, c.inicial[k] ?? NaN))) e(`«variantes.valores.${k}»: ningún valor distinto del de la tarjeta`);
+            else dominios[k] = r;
+          }
+      } else if (auto) {
+        dominios = dominiosAutomaticos(mandosLeccion, propiosCard);
+        // (a value the card holds at 0 is usually «not there» — no resistor in series —: the card is about that)
+        for (const k of Object.keys(dominios)) if ((c.inicial[k] ?? 0) === 0) delete dominios[k];
+      }
+      // what the reader works out: it must change, or the remembered answer is still right
+      const a = t.actividad;
+      const objetivo = a && (a.tipo === 'simular' || a.tipo === 'leer') ? a.objetivo : c.medirValor;
+      const calculos = t.condiciones?.length ? [...new Set(t.condiciones.map((q) => q.valor))] : Object.keys(modelo.calculos);
+      const respuesta = (v: Valores): number[] => {
+        const r = mc.evaluar(v);
+        return objetivo ? [mc.funcion(objetivo)(r)] : calculos.map((q) => r[q]!);
+      };
+      const claves = d?.valores ? Object.keys(dominios) : dependencias(dominios, c.inicial, respuesta);
+      const salida: VarianteTarjeta[] = [];
+      const motivos: string[] = [];
+      const r0 = respuesta(c.inicial);
+      const original = JSON.parse(JSON.stringify(fuenteTarjetas[i])) as Record<string, unknown>;
+      // the quantities the card uses (its live values, expressions, widget), and the steps they are worked out from
+      const usa = new Set<string>();
+      const andar = (x: unknown): void => {
+        if (typeof x === 'string') for (const w of x.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) if (enModelo(w)) usa.add(w);
+        if (Array.isArray(x)) x.forEach(andar);
+        else if (esObjeto(x)) for (const [k, y] of Object.entries(x)) {
+          if (enModelo(k)) usa.add(k);
+          if (k === 't' && y === 'val' && typeof x.id === 'string') usa.add(x.id);
+          else if (k !== 's') andar(y);
+        }
+      };
+      andar({ ...t, variantes: undefined, titulo: t.titulo, texto: t.texto });
+      for (const k of [...usa]) {
+        const pila = [k];
+        while (pila.length) for (const y of usos.get(pila.pop()!) ?? []) if (!usa.has(y)) (usa.add(y), pila.push(y));
+      }
+      delete original.variantes;
+      /** The lesson with this card's source replaced: generated again, without variants. */
+      const probar = (ft: Record<string, unknown>, extra: Omit<VarianteTarjeta, 'cambios'>) => {
+        const f = { ...(fuente as Record<string, unknown>), tarjetas: fuenteTarjetas.map((x, k) => (k === i ? ft : x)) };
+        const r = generarLeccion(f, libro, origen, { sinVariantes: true });
+        if (r.errores.length || !r.leccion) {
+          motivos.push(r.errores[0]?.replace(`${origen}: `, '') ?? 'no se genera');
+          return false;
+        }
+        // (the fields of the card that change, whole; the ones it no longer has)
+        const g = r.leccion.tarjetas[i]! as unknown as Record<string, unknown>;
+        const o = t as unknown as Record<string, unknown>;
+        const cambios: Record<string, unknown> = {};
+        for (const k of Object.keys(g)) if (k !== 'variantes' && JSON.stringify(g[k]) !== JSON.stringify(o[k])) cambios[k] = g[k];
+        const quitar = Object.keys(o).filter((k) => k !== 'variantes' && !(k in g)) as (keyof Tarjeta)[];
+        const k = salida.length;
+        salida.push({ ...extra, cambios: cambios as Partial<Tarjeta>, ...(quitar.length ? { quitar } : {}) });
+        const prefijo = `${origen}: ${donde}`;
+        for (const x of r.spice) if (x.donde === prefijo || x.donde.startsWith(`${prefijo}:`) || x.donde.startsWith(`${prefijo} (`)) spice.push({ ...x, donde: `${x.donde} (variante ${k + 1} del repaso)`, variante: { tarjeta: t.id, k } });
+        return true;
+      };
+      if (claves.length)
+        for (const v of proponerValores(`${id}/${t.id}/variantes`, dominios, claves, c.inicial)) {
+          const iv = { ...c.inicial, ...v };
+          if (!cambia(r0, respuesta(iv))) {
+            motivos.push(`con ${JSON.stringify(v)} la respuesta no cambia`);
+            continue;
+          }
+          // the numbers written on the card: those that are data or results that change, written again from the model
+          const e0 = mc.evaluar(c.inicial);
+          const e1 = mc.evaluar(iv);
+          const cambian: CantidadVariante[] = [];
+          const quedan: { unidad: string; valor: number }[] = [];
+          for (const q of Object.keys(e0)) {
+            const unidad = mc.magnitud(q)?.unidad ?? '';
+            if (distinto(e0[q]!, e1[q]!)) cambian.push({ id: q, unidad, antes: e0[q]!, despues: e1[q]!, relevante: usa.has(q) || q in v, rol: q in v ? 'dato' : q === objetivo ? 'respuesta' : 'otro' });
+            else quedan.push({ unidad, valor: e0[q]! });
+          }
+          const s = sustituirEnTarjeta(original, cambian, quedan, (q, x) => formatear(mc.magnitud(q), x), (n) => numerosLibro.some((b) => Math.abs(b.v - n.v) <= 1e-9 * Math.max(1, Math.abs(n.v))));
+          if ('inseguro' in s) {
+            motivos.push(`con ${JSON.stringify(v)}: ${s.inseguro}`);
+            continue;
+          }
+          const ft = s.tarjeta;
+          ft.fijar = { ...(esObjeto(ft.fijar) ? ft.fijar : {}), ...v };
+          // the card's claims that still hold, and one for each result written again (the numbers rule asks for it)
+          const claims = (Array.isArray(ft.comprobar) ? ft.comprobar : ft.comprobar != null ? [ft.comprobar] : []).flatMap((x: unknown) => {
+            if (!esObjeto(x)) return [];
+            const con = esObjeto(x.con) ? (x.con as Valores) : {};
+            const tol = esNumero(x.tol) ? x.tol : 0.005;
+            const r = mc.evaluar({ ...iv, ...con });
+            const quedanClaims = Object.entries(x).filter(([q, y]) => q !== 'con' && q !== 'tol' && esNumero(y) && (y === 0 ? Math.abs(r[q] ?? NaN) <= 1e-12 : Math.abs((r[q] ?? NaN) - y) <= tol * Math.abs(y)));
+            return quedanClaims.length ? [{ ...(x.con != null ? { con: x.con } : {}), ...(x.tol != null ? { tol: x.tol } : {}), ...Object.fromEntries(quedanClaims) }] : [];
+          });
+          const nuevos = s.usadas.filter((q) => q in modelo.calculos).map((q) => ({ [q]: e1[q]!, tol: 0.001 }));
+          if (claims.length || nuevos.length) ft.comprobar = [...claims, ...nuevos];
+          else delete ft.comprobar;
+          probar(ft, { valores: v });
+        }
+      if (d?.valores && !salida.length) e(`«variantes.valores»: ninguna variante sirve (${motivos.slice(0, 2).join('; ') || 'sin valores'})`);
+      // another goal: its conditions and the texts that say it
+      if (d?.objetivos != null) {
+        if (!t.condiciones?.length) e('«variantes.objetivos»: solo en un reto o un diseño (lleva «condiciones»)');
+        else if (!Array.isArray(d.objetivos) || !d.objetivos.length) e('«variantes.objetivos»: una lista de { condiciones, texto, exito, pistas?, titulo?, escalera?, solucion?, comprobar? }');
+        else
+          d.objetivos.forEach((o: unknown, k: number) => {
+            const dd = `variantes.objetivos ${k + 1}`;
+            if (!esObjeto(o) || !Array.isArray(o.condiciones) || typeof o.texto !== 'string' || typeof o.exito !== 'string') return e(`«${dd}»: { condiciones, texto, exito } (el objetivo y los textos que lo dicen)`);
+            for (const q of Object.keys(o)) if (!['condiciones', 'texto', 'exito', 'pistas', 'titulo', 'escalera', 'solucion', 'comprobar'].includes(q)) e(`«${dd}.${q}»: clave desconocida`);
+            if (t.tipo === 'reto' && o.pistas == null) return e(`«${dd}»: un reto con otro objetivo lleva sus «pistas»`);
+            const ft: Record<string, unknown> = JSON.parse(JSON.stringify(original));
+            for (const q of ['condiciones', 'texto', 'exito', 'pistas', 'titulo', 'escalera', 'solucion']) if (o[q] != null) ft[q] = o[q];
+            // (a ladder or a solution written for the card's own goal does not apply to another; its claims neither)
+            if (o.escalera == null) delete ft.escalera;
+            if (o.solucion == null) delete ft.solucion;
+            // (its own claims back the numbers its texts say)
+            if (o.comprobar != null) ft.comprobar = o.comprobar;
+            else delete ft.comprobar;
+            motivos.length = 0;
+            if (!probar(ft, { objetivo: true })) e(`«${dd}»: no sirve (${motivos[0] ?? 'no se genera'})`);
+          });
+      }
+      if (salida.length) t.variantes = salida;
+    }
+  }
 
   // ---------------------------------------------------------------- widgets
 
@@ -981,6 +1170,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     }
     // 1.2 (motor12c): a book figure or photo with zones, a logic circuit (lib/leccion12/digital/generar-digital.ts)
     if (x.tipo === 'figura') return widgetFiguraDe(x, digital);
+    // 1.3 (motor13b): a console's board with a hidden fault (lib/leccion12/averia-placa.ts)
+    if (x.tipo === 'averia-placa') return widgetAveriaPlacaDe(x, digital);
     const mandos = (Array.isArray(x.mandos) ? x.mandos : []).map((m, k) => mandoDe(m, `mando ${k + 1}`, e, t)).filter((m): m is Mando => !!m);
     if (new Set(mandos.map((m) => m.valor)).size !== mandos.length) e('dos mandos para el mismo valor');
     // (motor12e: «ocultar: curvas» hides the readings and also every curve and mark of the graph until answered)

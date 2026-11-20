@@ -8,7 +8,9 @@
 # 1.2.1 (autor121-pc, «aprender haciendo», GUIA §13): casos históricos documentados; la cadena del Ariane 501 se toca
 # en orden y dos de sus circunstancias en la figura 47.18, la deriva del Patriot se dibuja y el enclavamiento retirado
 # del Therac-25 se toca. Quedan dos preguntas de opciones (el respaldo idéntico y reiniciar de vez en cuando) y el
-# emparejamiento de los supuestos: 56 % (5 de 9), sección de casos históricos.
+# emparejamiento de los supuestos.
+# 1.3 (contenido13): la exploración del Ariane lleva objetivo de zonas y entra predecir los metros de error del Patriot
+# (0,343 s a más de un kilómetro y medio por segundo, bloque 405): 5/9 → 7/10.
 leccion: cap46/sec-46.12
 
 libro:
@@ -37,8 +39,10 @@ modelo:
   valores:
     k_p: { sim: "k", nombre: "deriva del reloj por hora encendido", unidad: "s/h", valor: 0.00343 }
     h_e: { sim: "t", nombre: "horas encendido", unidad: h, valor: 100 }
+    v_b: { sim: "v", nombre: "velocidad del blanco, más de un kilómetro y medio por segundo", unidad: "m/s", valor: 1500 }
   calculos:
     d_p: { expr: "k_p*h_e", sim: "Δt", nombre: "desviación del reloj", unidad: s, cifras: 3 }
+    x_p: { expr: "v_b*d_p", sim: "Δx", nombre: "error en la posición predicha", unidad: m }
 
 tarjetas:
   - id: explore-ariane
@@ -53,7 +57,17 @@ tarjetas:
         - { id: desborde, rotulo: "Primer recuadro de arriba", rect: [2, 19, 140, 64], texto: "Una conversión de coma flotante de 64 bits a entero con signo de 16 bits desbordó." }
         - { id: apagada, rotulo: "Segundo recuadro de arriba", rect: [156, 19, 141, 64], texto: "La unidad inercial se apagó, como estaba diseñada; la de respaldo había fallado igual un ciclo antes." }
         - { id: correccion, rotulo: "Tercer recuadro de arriba", rect: [311, 19, 141, 64], texto: "El ordenador tomó el patrón de diagnóstico por datos de vuelo y ordenó una corrección extrema." }
-    requiere: { mover: [desborde, apagada, correccion] }
+    objetivo:
+      condiciones:
+        - { zona: desborde, rotulo: "Un número que no cabe" }
+        - { zona: apagada, rotulo: "Una unidad que se apaga" }
+        - { zona: correccion, rotulo: "Una orden extrema" }
+      logrado: "Tres eslabones encadenados. Ninguno es un componente roto: el hardware hizo lo que debía."
+      pistas:
+        - { texto: "Toque los recuadros de arriba que faltan." }
+    escalera:
+      - "Son los tres recuadros de arriba."
+    solucion: "Toque los tres recuadros de arriba."
 
   - id: prediga-respaldo
     tipo: predecir
@@ -168,6 +182,26 @@ tarjetas:
     solucion: "Una recta desde 0 que llega a 0,343 s a las 100 horas."
     comprobar:
       - { con: { h_e: 100 }, d_p: 0.343 }
+
+  - id: prediga-metros
+    tipo: simular
+    titulo: "De segundos a metros"
+    texto: "A las 100 horas, el reloj se ha desviado 0,343 s, y el misil vuela a más de {{v_b}}. ¿Cuántos metros se equivoca la posición predicha?"
+    libro: [405]
+    fijar: { h_e: 100, v_b: 1500 }
+    simular:
+      objetivo: x_p
+      unidad: m
+      tol: 0.03
+      rotulo: "Error en la posición"
+      errores:
+        - { razon: { min: 0.0009, max: 0.0011 }, texto: "Ha dejado la velocidad en km/s: multiplique por metros por segundo." }
+    exito: "Unos {{x_p}}: cientos de metros de error, suficiente para que el radar buscara el objetivo en una ventana equivocada."
+    escalera:
+      - "Distancia = velocidad · tiempo."
+    solucion: "1500 m/s · 0,343 s ≈ 515 m."
+    comprobar:
+      - { x_p: 514.5, d_p: 0.343 }
 
   - id: porque-reiniciar
     tipo: porque

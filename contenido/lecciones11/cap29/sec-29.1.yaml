@@ -2,8 +2,9 @@
 # 1.2.1 («aprender haciendo», GUIA §13): el límite de la regeneración se busca subiendo una interferencia sobre una
 # señal digital (niveles de 0 y 1 V y una interferencia senoidal, de ejemplo) hasta que el receptor aún decide bien; la
 # traza que ya no se recupera se toca en la figura 28.1; el flujo de un canal de CD y el de la pareja estéreo se
-# calculan y se escriben. Sección de conceptos (por qué digital, qué se paga, la frontera): se queda en 4 de 7 tarjetas
-# haciendo, con dos preguntas de opciones y un emparejamiento.
+# calculan y se escriben. Quedan dos preguntas de opciones.
+# 1.3 (contenido13): el emparejamiento de lo que se paga pasa al resumen y entra la cuantificación en vivo (añadir bits
+# hasta un error de ejemplo, 10 mV en 1 V): 4/7 → 5/7.
 leccion: cap29/sec-29.1
 
 libro:
@@ -28,11 +29,14 @@ modelo:
     n_b: { sim: "n", nombre: "bits por muestra", unidad: "", valor: 16 }
     V_sep: { sim: "ΔV", nombre: "separación entre niveles", unidad: V, valor: 1 }
     a_r: { sim: "a", nombre: "amplitud de la interferencia", unidad: V, valor: 0.1 }
+    n_q: { sim: "n", nombre: "bits del convertidor", unidad: "", valor: 2 }
+    e_ob: { sim: "e_{máx}", nombre: "error admisible (ejemplo)", unidad: V, valor: 0.01 }
   calculos:
     R_b: { expr: "f_m*n_b", sim: "R", nombre: "flujo de un canal", unidad: "bit/s" }
     R_e: { expr: "2*f_m*n_b", sim: "R", nombre: "flujo de la pareja estéreo", unidad: "bit/s" }
     bien: { expr: "min(1, floor(V_sep/(2*a_r)))", sim: "ok", nombre: "el receptor decide bien (1) o no (0)", unidad: "" }
     mitad: { expr: "V_sep/2", sim: "ΔV/2", nombre: "media separación entre niveles", unidad: V }
+    e_q: { expr: "V_sep/2^n_q/2", sim: "e_{máx}", nombre: "error máximo de cuantificación, medio escalón", unidad: V }
 
 tarjetas:
   - id: explore-regeneracion
@@ -158,22 +162,36 @@ tarjetas:
     comprobar:
       - { R_e: 1411200 }
 
-  - id: empareje-precio
-    tipo: pregunta
-    fase: "Empareje"
-    titulo: "Lo que se paga"
-    texto: "Una cada coste del digital con su explicación."
-    libro: [15, 16, 17, 18]
-    emparejar:
-      - ["Ancho de banda", "n bits exigen transmitir n veces más información"]
-      - ["Cuantificación", "Un error que nunca es cero"]
-      - ["Complejidad", "Convertidores, que son componentes analógicos"]
-      - ["Latencia", "Procesar lleva tiempo: en un lazo de control es fase"]
-    exito: "El digital no es gratis: estos cuatro son su precio."
-    pistas:
-      - { texto: "La cuantificación se hace tan pequeña como se quiera añadiendo bits, pero no desaparece." }
-    escalera: ["La latencia es una cuestión de tiempo."]
-    solucion: "Ancho de banda, cuantificación, complejidad y latencia, en ese orden."
+  - id: explore-cuantificacion
+    tipo: explorar
+    titulo: "Un error que nunca es cero"
+    texto: "Un convertidor de n bits en un margen de 1 V redondea cada valor al escalón más cercano. Añada bits hasta que el error máximo baje de {{e_ob}}."
+    nota: "Margen y error admisible de ejemplo."
+    libro: [16]
+    inicio: { n_q: 2 }
+    widget:
+      tipo: grafica
+      x: { id: xv, min: 0, max: 1, unidad: V, rotulo: "valor analógico" }
+      y: { min: 0, max: 1, unidad: V, rotulo: "valor convertido" }
+      curvas:
+        - { expr: "xv", color: tinta, rotulo: "analógico", discontinua: true }
+        - { expr: "floor(xv*2^n_q + 0.5)/2^n_q", color: azul, rotulo: "cuantificado" }
+      lectura: { valor: e_q, rotulo: "Error máximo" }
+      mandos:
+        - { valor: n_q, min: 1, max: 8, paso: 1, rotulo: "Bits" }
+    objetivo:
+      condiciones:
+        - { valor: e_q, max: 0.01, rotulo: "Error máximo: {{e_q}}" }
+      logrado: "Con {{n_q}} bits, {{e_q}}: tan pequeño como se quiera añadiendo bits, y nunca cero. Cada bit más es más flujo que transmitir: el otro precio."
+      pistas:
+        - { texto: "Cada bit más parte el escalón por la mitad: añada bits." }
+    escalera:
+      - "El error máximo es medio escalón, y el escalón es 1 V entre 2^n."
+    solucion: "Con 6 bits el error máximo es de unos 7,8 mV."
+    comprobar:
+      - { e_q: 0.125, V_sep: 1, e_ob: 0.01 }
+      - { con: { n_q: 6 }, e_q: 0.0078125 }
+      - { con: { n_q: 5 }, e_q: 0.015625 }
 
   - id: porque-analogicos
     tipo: porque
@@ -195,7 +213,7 @@ tarjetas:
   - id: resumen
     tipo: resumen
     titulo: "Lección completada"
-    libro: [8, 13, 15, 26, 30]
+    libro: [8, 13, 15, 17, 18, 26, 30]
     ideas:
       - { titulo: "Regeneración.", texto: "Mientras el ruido no pase de media separación entre niveles, se reconstruye exacta." }
       - { titulo: "La razón.", texto: "Lo digital no se degrada: copiar, transmitir y almacenar sin pérdida." }

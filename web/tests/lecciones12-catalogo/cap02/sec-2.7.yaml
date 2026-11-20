@@ -1,0 +1,146 @@
+# Catálogo de pruebas de motor13b (contenido/lecciones11/GUIA.md §13.14): «Monte este circuito en la protoboard».
+# Tres tarjetas «montar» sobre tres esquemas sencillos —el divisor con su medida (guiada), el LED con su resistencia
+# (libre) y la carga RC (guiada)— y una exploración, la que toda lección lleva; y la búsqueda de una avería en la placa
+# de la SNES (widget «averia-placa», petición de averias13). NO se publica: las pruebas
+# (tests/lecciones13b-montar-*.spec.ts y el recorrido con EPA_RECORRER_CATALOGO=1) la generan y la sirven en lugar de
+# la lección publicada.
+leccion: cap02/sec-2.7
+
+libro:
+  136: "solo es válida en vacío"
+  "cap02#342": "Diseña un divisor de tensión 12 V → 5 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 7000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    V_e: { sim: "V", nombre: "tensión de la fuente del LED", unidad: V, valor: 5 }
+    R_e: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+    V_c: { sim: "V", nombre: "tensión de la fuente del RC", unidad: V, valor: 5 }
+    R_c: { sim: "R", nombre: "resistencia del RC", unidad: Ω, valor: 10000 }
+    C_c: { sim: "C", nombre: "condensador del RC", unidad: F, valor: 0.0001 }
+  calculos:
+    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    I_e: { expr: "(V_e - V_fe)/R_e", sim: "I", nombre: "corriente del LED", unidad: A }
+    tau: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+
+tarjetas:
+  - id: explore-divisor
+    tipo: explorar
+    titulo: "El divisor en vacío"
+    texto: "La salida es la parte de la entrada que cae en R₂. Lleve la salida por encima de la mitad."
+    libro: [136]
+    inicio: { R_2: 3000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_2, lista: [3000, 5000, 10000], rotulo: "Abajo, R₂" }
+    objetivo:
+      condiciones:
+        - { valor: V_out, min: 6.5, rotulo: "Salida: {{V_out}}" }
+      logrado: "Con {{R_2}} abajo, la salida sube a {{V_out}}: más de la mitad cae en la resistencia mayor."
+      pistas:
+        - { texto: "Suba la resistencia de abajo." }
+    escalera:
+      - "La resistencia mayor se lleva la mayor parte de la tensión."
+    solucion: "Con {{R_2}}, {{V_out}}."
+
+  - id: monte-divisor
+    tipo: montar
+    titulo: "Monte el divisor"
+    texto: "Monte en la protoboard el divisor del esquema. La fuente ya está puesta: siga los agujeros que se iluminan."
+    libro: ["cap02#342"]
+    fijar: { R_2: 5000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    montar:
+      ayuda: guiada
+      medir: { entre: [salida, "0"], valor: V_out, rotulo: "Salida del divisor" }
+      porque:
+        salida: "La salida es el punto común de R₁ y R₂: las dos tienen que tocar la misma tira."
+    exito: "Su divisor da {{V_out}} a la salida, como el esquema."
+    escalera:
+      - "Cada nudo del esquema es una tira de la placa: R₁ y R₂ comparten la tira de la salida."
+    solucion: "R₁ de la tira del + a la tira de la salida; R₂ de la tira de la salida a la del −."
+
+  - id: monte-led
+    tipo: montar
+    titulo: "Monte el LED con su resistencia"
+    texto: "Monte el LED y su resistencia sin ayuda, mirando el esquema. Ojo con la pata larga del LED."
+    libro: ["cap02#342"]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      mandos: []
+    montar:
+      ayuda: libre
+    exito: "El LED se enciende con {{I_e}}: la resistencia limita su corriente."
+    escalera:
+      - "La resistencia va de la fuente al ánodo (pata larga); el cátodo, a masa."
+    solucion: "La resistencia, del + al ánodo del LED; el cátodo del LED, al −."
+
+  - id: monte-rc
+    tipo: montar
+    titulo: "Monte la carga RC"
+    texto: "Monte la resistencia y el electrolítico del esquema. El electrolítico tiene polaridad: la franja va al −."
+    libro: ["cap02#342"]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c }
+      lectura: { valor: tau, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c*(1 - exp(-t/tau))", color: naranja, rotulo: "v_{C}", mide: vc }
+      mandos: []
+    montar:
+      ayuda: guiada
+    exito: "Montado: con la fuente puesta, el condensador se carga a través de la resistencia con τ = {{tau}}."
+    escalera:
+      - "La resistencia une la fuente con el condensador; el condensador va de ahí a masa."
+    solucion: "La resistencia del + a una tira; el + del electrolítico en esa tira y su franja en el −."
+
+  # (petición de averias13: el widget «averia-placa», la búsqueda de averías en la placa de una consola)
+  - id: averia-snes
+    tipo: explorar
+    titulo: "Con el polímetro en la placa"
+    texto: "La consola no enciende. Mida en la placa y señale la pieza averiada."
+    libro: [136]
+    widget: { tipo: averia-placa, maquina: snes, averia: fusible-abierto, vista: foto }
+    objetivo:
+      condiciones:
+        - { averia: encontrada, rotulo: "La pieza averiada, señalada" }
+      logrado: "Encontrada: lo medido en la placa lleva a la pieza."
+      pistas:
+        - { texto: "Mida en la entrada de la alimentación y siga el camino hacia el regulador." }
+    escalera:
+      - "Siga la alimentación desde la clavija: donde la tensión desaparece, ahí está."
+    solucion: "El fusible: sin continuidad entre sus dos patas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lo que ha montado"
+    libro: [136]
+    ideas:
+      - { titulo: "Un nudo, una tira.", texto: "Cada nudo del esquema es una tira de la placa, o varias unidas con cables." }
+      - { titulo: "Polaridad.", texto: "El LED y el electrolítico tienen sentido: la pata larga y la franja lo dicen." }

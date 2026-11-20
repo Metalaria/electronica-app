@@ -4,7 +4,9 @@
 
 import type { Actividad12, TipoActividad } from '../leccion12/tipos';
 import type { WidgetFigura, WidgetLogica } from '../leccion12/digital/tipos';
+import type { WidgetAveriaPlaca } from '../leccion12/averia-placa';
 import type { Instrumento, Objetivo } from '../leccion12/hacer/tipos';
+import type { VarianteTarjeta } from '../leccion12/variantes';
 
 /** A run of a short text: plain, subscript, superscript, bold, or the live value of a quantity of the model. */
 export type Trozo =
@@ -183,7 +185,8 @@ export interface WidgetGrafica extends Grafica {
 }
 
 /** 1.2: a book figure or photo with tappable zones, and a logic circuit (lib/leccion12/digital/tipos.ts). */
-export type Widget = WidgetCircuito | WidgetGrafica | WidgetFigura | WidgetLogica;
+// (1.3, motor13b: «averia-placa», a console's board with a hidden fault: lib/leccion12/averia-placa.ts)
+export type Widget = WidgetCircuito | WidgetGrafica | WidgetFigura | WidgetLogica | WidgetAveriaPlaca;
 
 /** v ∈ [min, max] (either may be missing). */
 export interface Rango {
@@ -295,6 +298,8 @@ export interface Tarjeta {
   actividad?: Actividad12;
   /** 1.2.1 (piloto121): the goal of an explore, surprise or tuning card, checked live on the model (GUIA §13.3). */
   objetivo?: Objetivo;
+  /** 1.3 (motor13): what review asks instead of the card itself — other values, or another goal (lib/leccion12/variantes.ts). */
+  variantes?: VarianteTarjeta[];
 }
 
 export interface CitaLibro {

@@ -51,9 +51,11 @@ test('multímetro: las puntas se ponen tocando el dibujo, la negra se recoge toc
   const pantalla = page.locator('[data-display-instrumento]');
   await expect(pantalla).toHaveText('—');
   // the targets on the drawing: 44 px to touch
+  // (cierre13: while the screen's slide-in transform settles, a fractional translation makes the box read
+  // 43.999996 or 44.000008 px for a 44 px button: a float's rounding, not a smaller target)
   for (const d of await page.locator('[data-diana]').all()) {
     const b = (await d.boundingBox())!;
-    expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(44);
+    expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(44 - 1e-3);
   }
   await page.locator('[data-diana="n"]').tap();
   await expect(pantalla).toHaveText('7,20 V');

@@ -8,6 +8,9 @@
 # bombilla para 30 W, el límite de la fuente, la lectura normal del óhmetro y la secuencia en orden. Dos preguntas: el
 # brillo con un corto detrás y por qué incandescente.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13): el brillo con un corto detrás se mide (la bombilla se lleva los 230 V; era una pregunta), vuelve el
+# reto de la bombilla para una fuente de 30 W (la tabla del bloque 162: potencia al equipo = la mitad de la bombilla) y la
+# lectura del destello se toca en la fig-53.32, y se dibuja el brillo con condensadores (curva de ejemplo): 2/4 → 6/7.
 leccion: cap53/sec-53.5
 
 libro:
@@ -41,11 +44,13 @@ modelo:
     P_l: { sim: "P", nombre: "potencia de la bombilla", unidad: W, valor: 60 }
     R_eq: { sim: "R_{equipo}", nombre: "el equipo, en cortocircuito", unidad: Ω, valor: 0.001 }
     l_on: { tipo: interruptor, nombre: "equipo conectado", valor: 1 }
+    P_q: { sim: "P_{equipo}", nombre: "consumo de la fuente reparada", unidad: W, valor: 30 }
   calculos:
     R_l: { expr: "V_r^2/P_l", sim: "R_{lámpara}", nombre: "resistencia de la bombilla en caliente", unidad: Ω }
     I_l: { si: l_on, entonces: "V_r/(R_l + R_eq)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
     V_eq: { si: l_on, entonces: "V_r*R_eq/(R_l + R_eq)", sino: "V_r", sim: "V_{equipo}", nombre: "tensión en el equipo", unidad: V }
     V_lamp: { expr: "I_l*R_l", sim: "V_{lámpara}", nombre: "tensión en la bombilla", unidad: V }
+    P_mx: { expr: "P_l/2", sim: "P_{máx}", nombre: "potencia máxima al equipo (tabla del libro)", unidad: W }
 
 tarjetas:
   - id: explore-lampara
@@ -77,29 +82,32 @@ tarjetas:
     solucion: "La de 40 W."
 
   - id: prediga-brillo
-    tipo: predecir
+    tipo: medir
     titulo: "Un cortocircuito detrás"
-    texto: "El equipo está en cortocircuito. ¿Cómo se comporta la lámpara?"
+    texto: "El equipo está en cortocircuito, con la de 60 W en serie. Ponga las puntas en la bombilla y mida qué tensión se lleva."
     libro: [155, 159]
     fijar: { P_l: 60, R_eq: 0.001, l_on: 1 }
     widget:
       tipo: circuito
       esquema: thevenin
       piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
-      lectura: { valor: V_lamp, rotulo: "En la bombilla" }
       mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
-      ocultar: true
-    opciones:
-      - texto: "Se enciende a pleno brillo y limita la corriente a la suya"
-        bien: true
-        porque: "Se lleva toda la tensión, 230 V: con la de 60 W pasan solo 261 mA."
-      - texto: "Se funde, como un fusible"
-        porque: "No se funde: trabaja a su tensión nominal, a pleno brillo."
-      - texto: "No se enciende, porque el corto la puentea"
-        porque: "El corto está en el equipo, no en la lámpara: toda la tensión cae en ella."
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+        puntos: { fte: "Entre la red y la bombilla", s: "Entre la bombilla y el equipo", "0": "Abajo, la vuelta de la red" }
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [fte, s]
+      valor: V_lamp
+      porque:
+        s: "Así mide el equipo: en cortocircuito, casi 0 V."
+        fte: "Así mide la red entera, no la bombilla."
+    exito: "230 V: la bombilla se lleva toda la tensión, brilla a pleno y limita la corriente a la suya, 261 mA. A pleno y se queda: cortocircuito, no insista."
     escalera:
-      - "Si el equipo no tiene resistencia, ¿dónde cae la tensión de la red?"
-    solucion: "A pleno brillo y se queda: cortocircuito. No hay que insistir."
+      - "La bombilla está entre la red y el equipo: una punta a cada lado."
+    solucion: "Una punta a cada lado de la bombilla: unos 230 V."
     comprobar:
       - { V_lamp: 230, I_l: 0.261, tol: 0.005 }
 
@@ -134,6 +142,84 @@ tarjetas:
     solucion: "I = P / V = 100 / 230 = 435 mA."
     comprobar:
       - { I_l: 0.435, R_l: 529, tol: 0.005 }
+
+  - id: reto-bombilla
+    tipo: reto
+    titulo: "Reto: la bombilla justa"
+    texto: "Va a encender una fuente de 30 W reparada. La bombilla debe dejarle pasar su potencia y limitar lo más posible la corriente de fallo."
+    libro: [161, 162, 163]
+    fijar: { R_eq: 0.001, l_on: 1 }
+    inicio: { P_l: 100 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
+      lectura: { valor: I_l, rotulo: "Corriente si hay un corto" }
+      datos:
+        - { valor: P_mx, rotulo: "Potencia máxima al equipo: {{P_mx}}" }
+      corriente: I_l
+      mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
+      mandos:
+        - { valor: P_l, lista: [40, 60, 100], rotulo: "Bombilla" }
+    condiciones:
+      - { valor: P_mx, min: 30, rotulo: "Al equipo: {{P_mx}}" }
+      - { valor: I_l, max: 0.3, rotulo: "Con un corto: {{I_l}}" }
+    exito: "La de 60 W: deja unos 30 W al equipo y limita un corto a 261 mA. La de 100 W también los deja, pero un fallo pasaría con 435 mA."
+    pistas:
+      - { cuando: { valor: P_mx, max: 29 }, texto: "Con esa no le llega su potencia: se encendería del todo con la fuente sana." }
+      - { texto: "Le llega la potencia, pero un corto pasaría con más corriente de la necesaria: pruebe una menor." }
+    escalera:
+      - "Busque en la tabla la potencia máxima al equipo de cada bombilla."
+    solucion: "La de 60 W."
+    comprobar:
+      - { con: { P_l: 60 }, P_mx: 30, I_l: 0.261, tol: 0.005 }
+      - { con: { P_l: 40 }, P_mx: 20 }
+      - { P_mx: 50, I_l: 0.435, tol: 0.005 }
+
+  - id: toque-lectura
+    tipo: tocar
+    titulo: "Leer la lámpara"
+    texto: "Enciende la fuente reparada: la bombilla da un destello breve y luego apenas luce. Toque lo que eso indica."
+    libro: [157, 173]
+    widget:
+      tipo: figura
+      figura: fig-53.32
+      zonas:
+        - { id: sano, rotulo: "Recuadro de abajo a la izquierda", rect: [4, 133, 145, 65] }
+        - { id: excesivo, rotulo: "Recuadro de abajo en el centro", rect: [154, 133, 145, 65] }
+        - { id: corto, rotulo: "Recuadro de abajo a la derecha", rect: [304, 133, 144, 65] }
+    tocar:
+      bien: [sano]
+      porque:
+        excesivo: "Eso sería media luz estable: consume más de la cuenta."
+        corto: "Eso sería plena luz que se queda: no hay que seguir."
+    exito: "Sano: el destello es el arranque, y luego la lámpara, fría, apenas se lleva tensión. Si brilla y se atenúa despacio, son condensadores cargándose, también normal."
+    escalera:
+      - "Si apenas luce, ¿cuánta tensión se lleva la bombilla?"
+    solucion: "Abajo a la izquierda: sano, seguir."
+
+  - id: dibuje-condensadores
+    tipo: dibujar
+    titulo: "Brilla y se atenúa"
+    texto: "Una fuente reparada con condensadores grandes: al encender, la lámpara brilla y se atenúa lentamente. Dibuje su brillo durante los primeros ocho segundos."
+    nota: "Curva de ejemplo, como la de la figura 55.13."
+    libro: [158, 172]
+    dibujar:
+      x: { id: t, min: 0, max: 8, unidad: s, rotulo: "tiempo desde el encendido" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "brillo de la lámpara" }
+      curva: "100*(1 - exp(-t/0.1))*exp(-t/1.5)"
+      puntos: 17
+      tol: 0.1
+      holgura: 0.04
+      rotulo: "Brillo de la lámpara"
+    exito: "Sube enseguida y se apaga despacio mientras se cargan los condensadores: normal en fuentes. Si se quedara a pleno, sería un corto; a media luz estable, consumo excesivo."
+    pistas:
+      - { cuando: { valor: media, mayor: 0 }, texto: "Brilla de más al final: con los condensadores ya cargados, la lámpara apenas luce." }
+      - { texto: "Al principio brilla mucho: los condensadores descargados son casi un corto durante un instante." }
+    escalera:
+      - "Al encender, los condensadores descargados piden mucha corriente."
+      - "Según se cargan, la corriente baja y la lámpara se apaga poco a poco."
+    solucion: "Un pico casi al instante y una bajada lenta hasta casi apagarse."
 
   - id: por-que-incandescente
     tipo: porque

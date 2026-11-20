@@ -49,7 +49,11 @@ export function valorCarta(comp: Componente, p?: Pieza): string {
   if (p?.chip) return String(p.comp.campos['modelo'] ?? '');
   const FIJO: Record<string, string> = { DNAND: '74HC00', T555: 'NE555', OA5: 'DIP-8', SW: 'deslizante', CONM: 'deslizante', LDR: 'según la luz', PULNA: '6 × 6 mm', PULNC: '6 × 6 mm' };
   if (FIJO[comp.tipo]) return FIJO[comp.tipo]!;
-  if (comp.tipo === 'LED') return /v/i.test(comp.campos['modelo'] ?? '') ? 'verde, 3 mm' : 'rojo, 3 mm';
+  if (comp.tipo === 'LED') {
+    // Only the tray's own LEDs have a known colour; a lesson's LED model (DLED in a «montar» card) says none
+    const modelo = (comp.campos['modelo'] ?? 'LEDR').toUpperCase();
+    return modelo === 'LEDV' ? 'verde, 3 mm' : modelo === 'LEDR' ? 'rojo, 3 mm' : 'LED, 3 mm';
+  }
   const v = textoValor(comp);
   if (v && !/^pos\.|pulsado/.test(v)) {
     const m = comp.campos['modelo'] ? modeloPorNombre(comp.campos['modelo'])?.descripcion : undefined;

@@ -6,6 +6,8 @@
 # caída, leer la de 100 ns, tocar lo que limita, el cálculo de la disipación y los umbrales que descartan, y el banco.
 # Dos preguntas: qué limita de verdad y por qué conclusiones falsas.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): +calcular la caída de 1 A en un contacto de 50 mΩ (tabla del bloque 263) y +reto de la
+# resistencia que no pasa de 250 mW sin disipador (bloque 270, con los 12 V de la sección 1.1): 3/5 → 5/7.
 leccion: cap15/sec-15.10
 
 libro:
@@ -29,6 +31,7 @@ libro:
   279: "Con una fuente de corriente conocida y midiendo la caída en un contacto, sale la resistencia real."
   280: "un montaje que funcionaba deja de hacerlo al cabo de meses"
   "cap15#147": 'v = L dot.op (d i)/(d t)'
+  "cap01#33": "Una resistencia de 220 Ω se conecta a una fuente de 12 V."
 
 modelo:
   valores:
@@ -36,8 +39,15 @@ modelo:
     dI_w: { sim: "ΔI", nombre: "pico de corriente", unidad: A, valor: 0.1 }
     dt_w: { sim: "Δt", nombre: "duración del pico", unidad: s, valor: 1e-6 }
     R_k: { sim: "R_{contacto}", nombre: "resistencia de un contacto", unidad: Ω, valor: 0.03 }
+    R_kp: { sim: "R_{contacto}", nombre: "resistencia de un contacto gastado", unidad: Ω, valor: 0.05 }
+    I_k: { sim: "I", nombre: "corriente por el contacto", unidad: A, valor: 1 }
+    V_r: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_r: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 220 }
   calculos:
     v_w: { expr: "L_w*dI_w/dt_w", sim: "v", nombre: "caída en el cable", unidad: V }
+    v_k: { expr: "I_k*R_kp", sim: "v_{contacto}", nombre: "caída en el contacto", unidad: V }
+    I_r: { expr: "V_r/R_r", sim: "I", nombre: "corriente de la resistencia", unidad: A }
+    P_r: { expr: "V_r^2/R_r", sim: "P", nombre: "potencia disipada", unidad: W }
 
 tarjetas:
   - id: explore-cable
@@ -122,6 +132,55 @@ tarjetas:
     solucion: "100 mV."
     comprobar:
       - { con: { dt_w: 1e-7 }, v_w: 0.1 }
+
+  - id: calcule-contacto
+    tipo: simular
+    titulo: "Un amperio por un contacto"
+    texto: "Un contacto gastado de 50 mΩ, el peor de la tabla, lleva 1 A, el máximo absoluto. ¿Cuánto cae en él?"
+    libro: [263, 268]
+    fijar: { I_k: 1, R_kp: 0.05 }
+    simular:
+      objetivo: v_k
+      unidad: V
+      tol: 0.03
+      rotulo: "Caída en el contacto"
+      errores:
+        - { expr: "I_k/R_kp", texto: "Ha dividido: la caída es I·R." }
+        - { expr: "I_k*R_kp*1000", texto: "Revise el prefijo: 50 mΩ son 0,05 Ω." }
+    exito: "{{v_k}} en un solo contacto, y crece con el uso. Por eso, si importa la caída, mejor por debajo de 200 mA."
+    escalera:
+      - "Ley de Ohm: v = I·R."
+    solucion: "1 A · 0,05 Ω = 50 mV."
+    comprobar:
+      - { v_k: 0.05 }
+
+  - id: reto-disipacion
+    tipo: reto
+    titulo: "Reto: sin disipador"
+    texto: "En el protoboard no hay disipador. Con 12 V, elija la resistencia más pequeña de la E12 que no pase de unos 250 mW."
+    libro: [270, "cap01#33"]
+    fijar: { V_r: 12 }
+    inicio: { R_r: 220 }
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_r }
+      lectura: { valor: P_r, rotulo: "Potencia" }
+      corriente: I_r
+      mide: { corriente: I_r, tension: V_r }
+      mandos:
+        - { valor: R_r, serie: E12, min: 100, max: 10000, rotulo: "R (E12)" }
+    condiciones:
+      - { valor: P_r, max: 0.25, rotulo: "Potencia: {{P_r}}" }
+    exito: "680 Ω: {{P_r}}. La de 220 Ω del libro disipa 0,655 W: en el protoboard se quemaría sin donde evacuar el calor."
+    pistas:
+      - { texto: "Disipa más de 250 mW: suba R." }
+    escalera:
+      - "P = V²/R: a más resistencia, menos potencia."
+    solucion: "La E12 de 680 Ω: 212 mW."
+    comprobar:
+      - { con: { R_r: 680 }, P_r: 0.2118 }
+      - { P_r: 0.6545 }
 
   - id: por-que-falsas
     tipo: porque

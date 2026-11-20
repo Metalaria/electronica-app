@@ -8,13 +8,15 @@ import type { Eje, Rango, Texto } from '../leccion11/tipos';
 import type { TipoAveria } from '../../componentes/practica/averias';
 import type { ActividadDigital, EstadoActividadDigital } from './digital/tipos';
 import type { ActividadHacer, EstadoActividadHacer } from './hacer/tipos';
+import type { EstadoMontar, Montar } from './montar/tipos';
 
 // (motor12c: «tocar» on a figure and «tabla» on a logic circuit; «averia», «diseno» and «dibujar» on a logic
 // circuit give the digital activities of lib/leccion12/digital/tipos.ts)
 // (1.2.1, piloto121: «medir», «elegir», «marcar» and «leer», answered by doing on the live widget: lib/leccion12/hacer/)
-export type TipoActividad = 'simular' | 'diseno' | 'averia' | 'ajuste' | 'banco' | 'dibujar' | 'sql' | 'tocar' | 'tabla' | 'medir' | 'elegir' | 'marcar' | 'leer';
+// (1.3, motor13b: «montar», build the card's schematic on the breadboard: lib/leccion12/montar/)
+export type TipoActividad = 'simular' | 'diseno' | 'averia' | 'ajuste' | 'banco' | 'dibujar' | 'sql' | 'tocar' | 'tabla' | 'medir' | 'elegir' | 'marcar' | 'leer' | 'montar';
 
-export const TIPOS_ACTIVIDAD: readonly TipoActividad[] = ['simular', 'diseno', 'averia', 'ajuste', 'banco', 'dibujar', 'sql', 'tocar', 'tabla', 'medir', 'elegir', 'marcar', 'leer'];
+export const TIPOS_ACTIVIDAD: readonly TipoActividad[] = ['simular', 'diseno', 'averia', 'ajuste', 'banco', 'dibujar', 'sql', 'tocar', 'tabla', 'medir', 'elegir', 'marcar', 'leer', 'montar'];
 
 /** A typical wrong estimate and its explanation: the value a misconception gives, or a ratio to the right value. */
 export interface ErrorTipico {
@@ -179,7 +181,7 @@ export interface Sql {
   inicio?: number[];
 }
 
-export type Actividad12 = Simular | Diseno | Averia | Ajuste | Banco | Dibujar | Sql | ActividadDigital | ActividadHacer;
+export type Actividad12 = Simular | Diseno | Averia | Ajuste | Banco | Dibujar | Sql | ActividadDigital | ActividadHacer | Montar;
 
 // ------------------------------------------------------------------ the reader's state (in memory only)
 
@@ -229,4 +231,4 @@ export interface EstadoSql {
 }
 
 /** «diseno» and «ajuste» keep nothing of their own: their values are the widget's controls. */
-export type EstadoActividad12 = EstadoSimular | EstadoAveria | EstadoBanco | EstadoDibujar | EstadoSql | { tipo: 'diseno' | 'ajuste' } | EstadoActividadDigital | EstadoActividadHacer;
+export type EstadoActividad12 = EstadoSimular | EstadoAveria | EstadoBanco | EstadoDibujar | EstadoSql | { tipo: 'diseno' | 'ajuste' } | EstadoActividadDigital | EstadoActividadHacer | EstadoMontar;

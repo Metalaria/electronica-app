@@ -5,6 +5,8 @@
 # haciendo): la errata deja la carga suelta, se tocan los errores que el ERC no ve, se calcula la cobertura, se corrige
 # el símbolo del LED, se tocan los casos de etiqueta y la red que delata la errata. Dos preguntas: fabricar y RESET_.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): +medir la salida que delata la errata (4,00 V en vacío) y +medir la alimentación primero
+# (bloque 291) antes de corregir el símbolo: 3/5 → 5/7.
 leccion: cap11/sec-11.11
 
 libro:
@@ -16,6 +18,7 @@ libro:
   286: "cobertura del ERC"
   287: "Y la mitad que no cubre es la peor"
   289: "Revisar la asignación de pines"
+  291: "Comprueba las alimentaciones primero, antes que nada"
   292: "el ERC cubre la mitad de los errores"
   293: "Etiquetas de red o hilos dibujados"
   300: "Si cada una tiene dos, el ERC no dice nada"
@@ -74,6 +77,35 @@ tarjetas:
     comprobar:
       - { con: { igual: 0 }, I_L: 0 }
 
+  - id: mida-errata
+    tipo: medir
+    titulo: "Lo que delata la errata"
+    texto: "Con SALIDA_ en un extremo, el dibujo sigue pareciendo correcto. Ponga las puntas donde una medida delata que R3 no está conectada."
+    libro: [300, "cap01#103"]
+    fijar: { igual: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, etiqueta: igual, etiqueta2: et2 }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+        puntos: [fte, salida, "0"]
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [salida, "0"]
+      valor: V_out
+      porque:
+        fte: "Esa es la pila: 12 V con o sin carga. La que cambia es la salida."
+    exito: "{{V_out}}: la salida en vacío, no los 3,00 V con R3. La errata dejó la carga en otra red."
+    escalera:
+      - "Con la carga conectada, la salida baja a 3,00 V."
+    solucion: "Roja en la salida y negra en masa: 4,00 V, como sin carga."
+    comprobar:
+      - { V_out: 4, I_L: 0 }
+
   - id: formula-cobertura
     tipo: simular
     titulo: "La cobertura"
@@ -119,6 +151,34 @@ tarjetas:
     solucion: "No: el ERC cubre el 50 %; el resto exige revisión manual."
     comprobar:
       - { cob: 50 }
+
+  - id: mida-alimentacion
+    tipo: medir
+    titulo: "Primero, la alimentación"
+    texto: "El LED no enciende. Antes que nada, compruebe que llega la alimentación: ponga las puntas donde se ve."
+    libro: [291]
+    fijar: { rev_l: 1 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_l, r: R_l, vf: Vf_l, reves: rev_l }
+      mide: { corriente: I_l }
+      instrumento:
+        tipo: multimetro
+        modos: [V]
+      mandos: []
+    medir:
+      magnitud: tension
+      entre: [fte, "0"]
+      valor: V_l
+      porque:
+        an: "Ahí se mide lo que llega al LED tras la resistencia; la alimentación se comprueba en la fuente."
+    exito: "Llegan los 5 V: la mayoría de los desastres son de polaridad o tensión equivocada, y esta vez la alimentación está bien. Queda el símbolo."
+    escalera:
+      - "La alimentación es la tensión de la fuente respecto a masa."
+    solucion: "Roja arriba de la fuente y negra en masa: 5 V."
+    comprobar:
+      - { V_l: 5, I_l: 0 }
 
   - id: complemento
     tipo: explorar

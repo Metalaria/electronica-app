@@ -338,6 +338,13 @@
     vistaN = n;
     const i = untrack(() => leerPantalla(ruta.ancla));
     if (i !== untrack(() => pantalla)) void ir(i, false);
+    // (1.3, motor13b: the address of the screen already on show, written without «clasica» — #/leccion/…/practica-1
+    // while this lesson shows practice 1 under …/clasica/practica-1 — is put back to this lesson's own; before, it
+    // stayed, and a later reload or «Atrás» could open the new lesson instead)
+    else untrack(() => {
+      const h = hashDe(pantalla);
+      if (location.hash !== h) reemplazarDireccion(h);
+    });
   });
 </script>
 

@@ -251,18 +251,20 @@ for (const [ancho, alto] of [
       [8, 0],
     ]);
     expect(rojo.color).toBe('#d63a2f');
-    // Dragged: the wire follows the finger, both strips lit; to the − rail it is black.
+    // Dragged: the wire follows the finger, both strips lit; to the − rail it is black. (1.3: the end rides 56 px
+    // above the finger, so the finger stops 56 px under the hole)
     const a = await pantalla(page, 16, 4);
     const b = await pantalla(page, 16, 1);
-    await arrastrar(page, cdp, a, b, false);
+    await arrastrar(page, cdp, a, [b[0], b[1] + 56], false);
     await expect(page.locator('.tira-cable')).toHaveCount(2);
     await toques(cdp, 'touchEnd', []);
     await page.waitForTimeout(250);
     e = await estado(page);
     const negro = e.cables[e.cables.length - 1]!;
     expect(negro.color).toBe('#2b2b2b');
-    // An end dragged to another hole.
-    await arrastrar(page, cdp, await pantalla(page, 8, 4), await pantalla(page, 9, 5));
+    // An end dragged to another hole (the finger 56 px under it, 1.3).
+    const fin = await pantalla(page, 9, 5);
+    await arrastrar(page, cdp, await pantalla(page, 8, 4), [fin[0], fin[1] + 56]);
     e = await estado(page);
     expect(e.cables.find((w) => w.id === rojo.id)!.a).toEqual([9, 5]);
     // A long press on the black one removes it, with «Deshacer».

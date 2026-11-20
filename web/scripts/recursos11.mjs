@@ -70,5 +70,16 @@ export function recursosLibro(libro, publico) {
       }
       return consolas.get(maquina);
     },
+    // 1.3 (motor13b): a published lesson (web/public/libro/lecciones11/<parte>/<label>.json), for the «averia-placa»
+    // widget's fault
+    leccion: (id) => {
+      if (!/^[a-z0-9-]+\/[a-zA-Z0-9.-]+$/.test(String(id))) return null;
+      const f = path.join(libro, 'lecciones11', `${id}.json`);
+      try {
+        return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null;
+      } catch {
+        return null;
+      }
+    },
   };
 }

@@ -552,7 +552,10 @@ test('1.0 → 1.1: una sección completada sigue completada (misma clave), el li
   await expect(page.locator('[data-nodo="cap00/sec-0.3"]')).toHaveAttribute('data-estado', 'en-curso');
   // the book's «Estudiar por pasos» opens the new lesson
   await page.goto('#/cap01/sec-1.4');
-  await page.locator('[data-por-pasos]').first().click();
+  // (1.3, motor13b: the button of section 1.4 itself. The chapter is drawn in chunks: the one with 1.4 first, the ones
+  // before it in idle time, so «the first button on the page» was 1.4's or, once 1.1–1.3 were in, 1.2's or 1.3's —
+  // the test failed about one time in five on a loaded machine; no code of 1.3 touches the reader)
+  await page.locator('#contenido [data-por-pasos][href="#/leccion/cap01/sec-1.4"]').click();
   await expect(page.locator('[data-leccion11="cap01/sec-1.4"]')).toBeVisible();
   // visiting a card keeps the completion (same key, now with the new number of cards)
   await expect.poll(async () => (await leer<Record<string, { c: number; n: number }>>(page, 'lecciones'))?.['cap01/sec-1.4']).toMatchObject({ c: T0, n: 13 });
@@ -586,6 +589,21 @@ test('1.0 → 1.1: una sección completada sigue completada (misma clave), el li
   await tarjeta(page, 'explore-senoide');
   await expect(page).toHaveURL(/#\/leccion\/cap00\/sec-0\.3$/);
   await expect.poll(async () => (await leer<Record<string, { c: number; n: number; u: number }>>(page, 'lecciones'))['cap00/sec-0.3']).toMatchObject({ c: 0, n: 10, u: 0 });
+});
+
+// 1.3 (motor13b): the second cause of the «1.0 → 1.1» test failing at random — two hash changes in a row
+// (#/cap01, then …/practica-1) can reach the router together, so the 1.0 lesson already on that practice screen stays
+// mounted and was not told to write its own address (…/clasica/practica-1). The same, on purpose: the address of the
+// screen on show, without «clasica».
+test('la lección 1.0 en una pantalla suya: su dirección sin «clasica» vuelve a la suya', async ({ page }) => {
+  await limpio(page);
+  await page.goto('#/leccion/cap01/sec-1.4/practica-1');
+  await expect(page.locator('[data-leccion="cap01/sec-1.4"]')).toBeVisible();
+  await expect(page).toHaveURL(/\/clasica\/practica-1$/);
+  await page.evaluate(() => (location.hash = '#/leccion/cap01/sec-1.4/practica-1'));
+  await expect(page).toHaveURL(/\/clasica\/practica-1$/);
+  await expect(page.locator('[data-leccion="cap01/sec-1.4"]')).toBeVisible();
+  await expect(page.locator('[data-leccion11]')).toHaveCount(0);
 });
 
 test('salir a medias pide confirmación (diálogo propio); sin empezar o terminada, no', async ({ page }) => {

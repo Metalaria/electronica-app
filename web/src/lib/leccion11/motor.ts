@@ -244,7 +244,7 @@ export function idRespuestaDe(parte: string, seccion: string, tarjeta: string): 
 export function esPracticable(t: Tarjeta): boolean {
   // (1.2: the step types that are answered too; «ajuste» and the optional «banco» are not questions)
   // (1.2.1: and the cards answered by doing on the live widget: medir, elegir, marcar, leer)
-  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql' || t.tipo === 'tocar' || t.tipo === 'tabla' || t.tipo === 'medir' || t.tipo === 'elegir' || t.tipo === 'marcar' || t.tipo === 'leer') && esComprobable(t);
+  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql' || t.tipo === 'tocar' || t.tipo === 'tabla' || t.tipo === 'medir' || t.tipo === 'elegir' || t.tipo === 'marcar' || t.tipo === 'leer' || t.tipo === 'montar') && esComprobable(t);
 }
 
 /** A lesson's entry in libro/lecciones11/indice.json: its number of cards and the cards that can be practised. */

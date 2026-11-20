@@ -66,12 +66,14 @@
   import Actividad12 from '../leccion12/Actividad12.svelte';
   // motor12c: a book figure with zones, a logic circuit (GUIA §11)
   import Widget12 from '../leccion12/Widget12.svelte';
+  // 1.3 (motor13b): a console's board with a hidden fault
+  import AveriaPlaca from '../leccion12/AveriaPlaca.svelte';
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
   // 1.2.1 (piloto121): the goal of an explore card, reached live (GUIA §13.3)
   import Objetivo from '../leccion12/Objetivo.svelte';
   import { objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
-  import { variablesLogica } from '../../lib/leccion12/digital/objetivo-logico';
+  import { variablesWidget12 } from '../../lib/leccion12/digital/objetivo-figura';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
 
@@ -160,8 +162,9 @@
   const mc = $derived(leccion ? compilarModelo(leccion.modelo) : null);
   // (1.2: with the card's state, so an «averia» card's widget shows the faulty board)
   const efectivos = $derived(t ? valoresDeTarjeta(t, propios, e) : {});
-  // (motor121: a goal on a logic circuit looks at its LEDs, signals and counters: «led:Y», «contador:c1»)
-  const evaluados = $derived(mc ? { ...mc.evaluar(efectivos), ...(t?.widget?.tipo === 'logica' && t.objetivo ? variablesLogica(t.widget, e?.widget12) : {}) } : {});
+  // (motor121: a goal on a logic circuit looks at its LEDs, signals and counters: «led:Y», «contador:c1»;
+  // motor13: one on a figure, at the zones touched: «zona:coincidir»)
+  const evaluados = $derived(mc ? { ...mc.evaluar(efectivos), ...(t ? variablesWidget12(t, e?.widget12) : {}) } : {});
   // fix12: an «averia» card's widget must not give the fault away. Until the fault of the board on show is found (or
   // the card skipped) the circuit shows the healthy board's values (the labels say the nominal «R₂ 5 kΩ», not the
   // faulty «1 GΩ»; the description for screen readers too) and comes as a prediction (`oculto`): no reading, no
@@ -563,6 +566,8 @@
               <CircuitoLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} {hacer} />
             {:else if t.widget?.tipo === 'grafica'}
               <GraficaLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} {hacer} />
+            {:else if t.widget?.tipo === 'averia-placa'}
+              <AveriaPlaca {t} w={t.widget} {e} cambiar={cambiarEstado} />
             {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
               <Widget12 {t} {e} oculto={ocultoWidget} {prefijo} cambiar={cambiarEstado} />
             {/if}

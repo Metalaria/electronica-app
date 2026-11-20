@@ -1,13 +1,15 @@
 // Shared state of the «Consolas» views and their routes:
 //   #/consolas/<maquina>/<pestana>[/<seleccion>]
-//   maquina: nes | neogeo | sms | megadrive | gb | gbc | snes; pestana: foto | arquitectura | fotograma | esquema | placa3d | placa2d | fuentes
+//   maquina: nes | neogeo | sms | megadrive | gb | gbc | snes; pestana: foto | arquitectura | fotograma | esquema | placa3d | placa2d | averia | fuentes
 //   (placa3d/placa2d only for the machines with a board: placa/datos.ts → PLACAS_DE)
 //   seleccion: a component reference («U6»), «red:<net name>» or «bloque:<id>» (URI-encoded); in «Un fotograma»
-//   the third segment is the step instead, 1-based (#/consolas/nes/fotograma/4)
+//   the third segment is the step instead, 1-based (#/consolas/nes/fotograma/4); in «Busque la avería» (1.3) the
+//   fault's id in its lesson, to open with that one (#/consolas/snes/averia/fusible-abierto); averia only for the
+//   machines with a documented fault (lib/averias-placa/definiciones.ts)
 
 import { IDS_MAQUINA, type IdMaquina } from './datos';
 
-export type Pestana = 'foto' | 'arquitectura' | 'fotograma' | 'esquema' | 'placa3d' | 'placa2d' | 'fuentes';
+export type Pestana = 'foto' | 'arquitectura' | 'fotograma' | 'esquema' | 'placa3d' | 'placa2d' | 'averia' | 'fuentes';
 
 export interface Seleccion {
   tipo: 'componente' | 'red' | 'bloque' | 'foto';
@@ -21,15 +23,17 @@ export const PESTANAS: { id: Pestana; titulo: string }[] = [
   { id: 'esquema', titulo: 'Esquema' },
   { id: 'placa3d', titulo: 'Placa en 3D' },
   { id: 'placa2d', titulo: 'Placa en 2D' },
+  { id: 'averia', titulo: 'Busque la avería' },
   { id: 'fuentes', titulo: 'Fuentes' },
 ];
 
-export function leerAncla(ancla: string): { maquina: IdMaquina; pestana: Pestana; sel: Seleccion | null; paso: number | null } {
+export function leerAncla(ancla: string): { maquina: IdMaquina; pestana: Pestana; sel: Seleccion | null; paso: number | null; averia?: string | null } {
   const [m = '', p = '', ...resto] = ancla.split('/');
   const maquina: IdMaquina = IDS_MAQUINA.find((x) => x === m) ?? 'nes';
-  const pestana: Pestana = (['foto', 'arquitectura', 'fotograma', 'esquema', 'placa3d', 'placa2d', 'fuentes'] as const).find((x) => x === p) ?? 'foto';
+  const pestana: Pestana = (['foto', 'arquitectura', 'fotograma', 'esquema', 'placa3d', 'placa2d', 'averia', 'fuentes'] as const).find((x) => x === p) ?? 'foto';
   const s = resto.join('/');
   if (pestana === 'fotograma') return { maquina, pestana, sel: null, paso: /^\d+$/.test(s) ? Number(s) : null };
+  if (pestana === 'averia') return { maquina, pestana, sel: null, paso: null, averia: /^[\w-]+$/.test(s) ? s : null };
   let sel: Seleccion | null = null;
   if (s) {
     const d = decodeURIComponent(s);
