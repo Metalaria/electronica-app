@@ -7,6 +7,8 @@
 # tocar la técnica que no necesita la entrada, las precauciones al inyectar, el procedimiento en orden, la lectura de una
 # señal deformada y el inyector más barato. Dos preguntas: la realimentación y los raíles antes de bisecar.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): +leer en la gráfica lo que ahorra la bisección con 32 etapas y +tocar las etapas bajo
+# sospecha en el seguimiento de la fig-53.17 (recortada, 48 px); variantes de 1 024 con 32 y 64 etapas: 3/5 → 5/7.
 leccion: cap53/sec-53.10
 
 libro:
@@ -47,6 +49,7 @@ modelo:
   calculos:
     m_b: { expr: "ln(n_e)/ln(2)", sim: "m_{bis}", nombre: "medidas por bisección", unidad: "" }
     m_s: { expr: "n_e/2", sim: "m_{una}", nombre: "medidas una a una, de media", unidad: "" }
+    ahorro: { expr: "m_s - m_b", sim: "ahorro", nombre: "medidas que ahorra la bisección", unidad: "" }
 
 tarjetas:
   - id: explore-biseccion
@@ -84,11 +87,11 @@ tarjetas:
 
   - id: estime-1024
     tipo: simular
-    titulo: "Una cadena de 1 024 etapas"
-    texto: "Calcule cuántas medidas bastan por bisección para localizar la averiada entre 1 024."
+    titulo: "Una cadena muy larga"
+    texto: "Calcule cuántas medidas bastan por bisección para localizar la etapa averiada en una cadena de {{n_e}}."
     libro: [380, 381]
     fijar: { n_e: 1024 }
-    exito: "Diez, frente a 512 de media una a una: la diferencia entre una tarde y diez minutos."
+    exito: "{{m_b}}, frente a {{m_s}} de media una a una: la diferencia entre una tarde y unos minutos."
     simular:
       objetivo: m_b
       unidad: ""
@@ -96,12 +99,76 @@ tarjetas:
       rotulo: "Medidas por bisección"
       errores:
         - { expr: "n_e/2", texto: "Esa es la media una a una." }
-        - { expr: "ln(n_e)/ln(10)", texto: "Es el logaritmo en base 2, no en base 10." }
+        - { expr: "ln(n_e)/ln(10)", texto: "Es el logaritmo en base 2, no el decimal." }
     escalera:
-      - "2¹⁰ = 1 024."
-    solucion: "log₂ 1 024 = 10 medidas."
+      - "Cada medida parte la cadena en dos: ¿cuántas veces se puede partir?"
+    solucion: "log₂ {{n_e}} = {{m_b}} medidas."
     comprobar:
       - { m_b: 10, m_s: 512 }
+    variantes:
+      valores:
+        n_e: [32, 64]
+
+  - id: lea-ahorro
+    tipo: leer
+    titulo: "Lo que se ahorra"
+    texto: "Una cadena de 32 etapas. Lea en la gráfica las dos curvas y escriba cuántas medidas de media ahorra la bisección."
+    libro: [379, 380, 412]
+    fijar: { n_e: 32 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 2, max: 1024, unidad: "", rotulo: "etapas", escala: log }
+      y: { min: 1, max: 600, unidad: "", rotulo: "medidas", escala: log }
+      curvas:
+        - { expr: "nx/2", color: azul, rotulo: "una a una" }
+        - { expr: "ln(nx)/ln(2)", color: naranja, rotulo: "bisección" }
+      marcas:
+        - { x: "n_e", y: "m_b", rotulo: "{{m_b}}" }
+        - { x: "n_e", y: "m_s", rotulo: "{{m_s}}" }
+      mandos: []
+    leer:
+      objetivo: ahorro
+      unidad: ""
+      tol: 0.05
+      rotulo: "Medidas que ahorra"
+      errores:
+        - { expr: "m_s", texto: "Esas son las de una a una; reste las de la bisección." }
+        - { expr: "m_b", texto: "Esas son las de la bisección; el ahorro es la diferencia con las de una a una." }
+    exito: "{{m_s}} una a una frente a {{m_b}} por bisección: {{ahorro}} medidas menos, y la diferencia crece con la cadena."
+    escalera:
+      - "Ahorro = medidas una a una − medidas por bisección."
+    solucion: "16 − 5 = 11 medidas."
+    comprobar:
+      - { ahorro: 11, m_s: 16, m_b: 5 }
+
+  - id: toque-sospecha
+    tipo: tocar
+    titulo: "Siguiendo la señal"
+    texto: "Seguimiento con el osciloscopio: tras la etapa 4 hay señal y tras la 6, no. Toque las etapas que siguen bajo sospecha."
+    libro: [370, 384, 414]
+    widget:
+      tipo: figura
+      figura: fig-53.17
+      recorte: [80, 36, 142, 40]
+      zonas:
+        - { id: e3, rotulo: "Tercera etapa", rect: [80, 44, 22, 24] }
+        - { id: e4, rotulo: "Cuarta etapa", rect: [104, 44, 22, 24] }
+        - { id: e5, rotulo: "Quinta etapa", rect: [128, 44, 22, 24] }
+        - { id: e6, rotulo: "Sexta etapa", rect: [152, 44, 22, 24] }
+        - { id: e7, rotulo: "Séptima etapa", rect: [175, 44, 22, 24] }
+        - { id: e8, rotulo: "Octava etapa", rect: [199, 44, 22, 24] }
+    tocar:
+      bien: [e5, e6]
+      todas: true
+      porque:
+        e3: "Tras la 4 hay señal: de la 4 hacia atrás todo funciona."
+        e4: "Hay señal a su salida: la 4 funciona."
+        e7: "Tras la 6 ya no hay señal: el fallo está antes de esta."
+        e8: "Tras la 6 ya no hay señal: el fallo está antes."
+    exito: "La 5 y la 6: la tercera medida, tras la 5, decide entre las dos. Tres medidas frente a ocho una a una."
+    escalera:
+      - "El fallo está entre la última salida con señal y la primera sin ella."
+    solucion: "Las etapas 5 y 6."
 
   - id: averia-cadena
     tipo: averia
@@ -114,12 +181,12 @@ tarjetas:
       piezas:
         - { id: e1, tipo: buf, entradas: [E], rotulo: "Etapa 1" }
         - { id: e2, tipo: buf, entradas: [e1], rotulo: "Etapa 2" }
-        - { id: e3, tipo: buf, entradas: [e2], rotulo: "Etapa 3" }
-        - { id: e4, tipo: buf, entradas: [e3], rotulo: "Etapa 4" }
-        - { id: e5, tipo: buf, entradas: [e4], rotulo: "Etapa 5" }
-        - { id: e6, tipo: buf, entradas: [e5], rotulo: "Etapa 6" }
-        - { id: e7, tipo: buf, entradas: [e6], rotulo: "Etapa 7" }
-        - { id: e8, tipo: buf, entradas: [e7], rotulo: "Etapa 8" }
+        - { id: e3, tipo: buf, entradas: [e2], rotulo: "Tercera etapa" }
+        - { id: e4, tipo: buf, entradas: [e3], rotulo: "Cuarta etapa" }
+        - { id: e5, tipo: buf, entradas: [e4], rotulo: "Quinta etapa" }
+        - { id: e6, tipo: buf, entradas: [e5], rotulo: "Sexta etapa" }
+        - { id: e7, tipo: buf, entradas: [e6], rotulo: "Séptima etapa" }
+        - { id: e8, tipo: buf, entradas: [e7], rotulo: "Octava etapa" }
       salidas:
         - { id: S, de: e8 }
     averia:
@@ -128,12 +195,12 @@ tarjetas:
       sospechosos:
         - { id: e1, rotulo: "Etapa 1" }
         - { id: e2, rotulo: "Etapa 2" }
-        - { id: e3, rotulo: "Etapa 3" }
-        - { id: e4, rotulo: "Etapa 4" }
-        - { id: e5, rotulo: "Etapa 5" }
-        - { id: e6, rotulo: "Etapa 6" }
-        - { id: e7, rotulo: "Etapa 7" }
-        - { id: e8, rotulo: "Etapa 8" }
+        - { id: e3, rotulo: "Tercera etapa" }
+        - { id: e4, rotulo: "Cuarta etapa" }
+        - { id: e5, rotulo: "Quinta etapa" }
+        - { id: e6, rotulo: "Sexta etapa" }
+        - { id: e7, rotulo: "Séptima etapa" }
+        - { id: e8, rotulo: "Octava etapa" }
       puntos:
         - { id: p1, rotulo: "Salida de la etapa 1", senal: e1 }
         - { id: p2, rotulo: "Salida de la etapa 2", senal: e2 }

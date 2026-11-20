@@ -7,6 +7,7 @@
 # la conexión que reparte la fuga, calcular la resistencia del plano, precalentar hasta el objetivo, tocar la punta del
 # pad con vertido y las razones para no subir la temperatura, cronometrar en el banco. Dos preguntas: 65 W y diseño.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): +calcular la resistencia térmica del alivio (brazos en paralelo y plano en serie, bloque 308): 4/6 → 5/7.
 leccion: cap13/sec-13.12
 
 libro:
@@ -39,9 +40,13 @@ modelo:
     k_cu: { sim: "k", nombre: "conductividad del cobre", unidad: "W/(m·K)", valor: 400 }
     e_cu: { sim: "e", nombre: "espesor del cobre", unidad: m, valor: 0.000035 }
     t_s: { sim: "t", nombre: "tiempo de una junta bien hecha", unidad: s, valor: 2.5 }
+    R_br: { sim: "R_{brazo}", nombre: "resistencia térmica de un brazo del alivio", unidad: "K/W", valor: 143 }
+    R_p15: { sim: "R_{plano}", nombre: "plano desde 1,5 mm", unidad: "K/W", valor: 26 }
   calculos:
     P_f: { expr: "(T_jn - T_b)/R_c", sim: "P_{fuga}", nombre: "fuga térmica", unidad: W, cifras: 3 }
     R_pl: { expr: "ln(r_2/r_1)/(2*pi*k_cu*e_cu)", sim: "R_{plano}", nombre: "resistencia térmica del plano", unidad: "K/W" }
+    R_4: { expr: "R_br/4", sim: "R_{brazos}", nombre: "los cuatro brazos en paralelo", unidad: "K/W" }
+    R_al: { expr: "R_4 + R_p15", sim: "R_{alivio}", nombre: "resistencia térmica con alivio", unidad: "K/W" }
 
 tarjetas:
   - id: explore-fuga
@@ -120,6 +125,27 @@ tarjetas:
     solucion: "ln(15) / (2π · 400 · 35 µm) ≈ 30,8 K/W."
     comprobar:
       - { R_pl: 30.79, tol: 0.003 }
+
+  - id: calcule-alivio
+    tipo: simular
+    titulo: "Lo que añade el alivio"
+    texto: "El alivio pone en serie sus cuatro brazos, de 143 K/W cada uno y en paralelo entre sí, y el plano desde 1,5 mm, 26 K/W. ¿Qué resistencia térmica suma?"
+    libro: [308, 309]
+    simular:
+      objetivo: R_al
+      unidad: "K/W"
+      tol: 0.03
+      rotulo: "Resistencia térmica con alivio"
+      errores:
+        - { expr: "R_br + R_p15", texto: "Ha sumado un solo brazo: los cuatro van en paralelo y dejan la cuarta parte." }
+        - { expr: "4*R_br + R_p15", texto: "Ha puesto los brazos en serie; van en paralelo: la cuarta parte de uno." }
+        - { expr: "R_4", texto: "Esos son solo los brazos: el plano desde 1,5 mm va en serie con ellos." }
+    exito: "Unos 62 K/W: el doble que el pad directo. Con la misma diferencia de temperatura, la fuga baja a la mitad."
+    escalera:
+      - "Cuatro iguales en paralelo dejan la cuarta parte; luego, en serie con el plano."
+    solucion: "Brazos en paralelo, unos 36 K/W, más 26 K/W del plano: unos 62 K/W."
+    comprobar:
+      - { R_al: 61.75, R_4: 35.75, tol: 0.01 }
 
   - id: sorpresa-precalentar
     tipo: sorpresa

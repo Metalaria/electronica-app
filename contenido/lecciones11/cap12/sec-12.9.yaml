@@ -6,6 +6,8 @@
 # ajustar el condensador, tocar el margen de la corriente, la comprobación más aburrida y lo que hay que prototipar.
 # Dos preguntas: otra persona y el rotulador.
 # 1.2.1, segunda pasada: sin listas de respuestas disfrazadas; quedan las tarjetas que se hacen y dos preguntas.
+# 1.3 (contenido13b): +calcular el margen de temperatura (bloque 263) con los 150 °C de unión del silicio (cap10#129;
+# 175 °C en el repaso, cap07#85); variantes de R en la potencia nominal: 4/6 → 5/7.
 leccion: cap12/sec-12.9
 
 libro:
@@ -33,6 +35,8 @@ libro:
   "cap12#303": "50 V / 1,5 ≈ 33 V"
   "cap12#243": "consumo menor de 200 mA"
   "cap01#33": "Una resistencia de 220 Ω se conecta a una fuente de 12 V."
+  "cap10#129": "La temperatura máxima de unión (150 °C en silicio)"
+  "cap07#85": "la unión máxima, 150 o 175 °C"
 
 modelo:
   valores:
@@ -43,6 +47,8 @@ modelo:
     R_c: { sim: "R", nombre: "resistencia de carga", unidad: Ω, valor: 10000 }
     C_c: { sim: "C", nombre: "condensador", unidad: F, valor: 100e-6 }
     I_est: { sim: "I_{estimada}", nombre: "consumo estimado", unidad: A, valor: 0.2 }
+    T_j: { sim: "T_{j,máx}", nombre: "temperatura máxima de unión", unidad: "°C", valor: 150 }
+    M_t: { sim: "ΔT", nombre: "margen de temperatura", unidad: "°C", valor: 30 }
   calculos:
     I_r: { expr: "V_r/R_r", sim: "I", nombre: "corriente", unidad: A }
     P_r: { expr: "V_r^2/R_r", sim: "P", nombre: "potencia disipada", unidad: W }
@@ -50,6 +56,7 @@ modelo:
     tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
     V_lim: { expr: "V_n/1.5", sim: "V_{máx}", nombre: "tensión de trabajo máxima con margen", unidad: V }
     I_dis: { expr: "1.5*I_est", sim: "I_{diseño}", nombre: "consumo con margen", unidad: A }
+    T_tr: { expr: "T_j - M_t", sim: "T_{trabajo}", nombre: "temperatura de trabajo máxima con margen", unidad: "°C" }
 
 tarjetas:
   - id: explore-potencia
@@ -85,7 +92,7 @@ tarjetas:
   - id: estime-220
     tipo: simular
     titulo: "¿De cuántos vatios?"
-    texto: "Una resistencia de 220 Ω a 12 V disipa 0,655 W. ¿Qué potencia nominal mínima debe tener?"
+    texto: "Una resistencia de 220 Ω a 12 V disipa {{P_r}}. ¿Qué potencia nominal mínima debe tener?"
     libro: [262, "cap01#33"]
     fijar: { V_r: 12, R_r: 220 }
     simular:
@@ -99,9 +106,12 @@ tarjetas:
     exito: "1,31 W: el doble de la disipación calculada."
     escalera:
       - "Potencia: el doble de la disipación calculada."
-    solucion: "2 · 0,655 W = 1,31 W."
+    solucion: "2 · {{P_r}} = {{P_nom}}."
     comprobar:
       - { P_nom: 1.31, tol: 0.002 }
+    variantes:
+      valores:
+        R_r: [330, 470, 1000]
 
   - id: ajuste-condensador
     tipo: ajuste
@@ -156,6 +166,30 @@ tarjetas:
     solucion: "200 mA · 1,5 = 300 mA."
     comprobar:
       - { I_dis: 0.3 }
+
+  - id: estime-temperatura
+    tipo: simular
+    titulo: "El margen de temperatura"
+    texto: "Un componente de silicio admite 150 °C de unión. ¿Hasta qué temperatura de unión lo deja trabajar el margen razonable?"
+    libro: [263, "cap10#129", "cap07#85"]
+    fijar: { T_j: 150 }
+    simular:
+      objetivo: T_tr
+      unidad: "°C"
+      tol: 0.01
+      rotulo: "Temperatura de unión máxima de trabajo"
+      errores:
+        - { expr: "T_j", texto: "Ese es el máximo del componente: un límite de destrucción, no de diseño." }
+        - { expr: "T_j/1.5", texto: "El 50 % es el margen de la tensión; en temperatura se dejan 30 °C por debajo." }
+    exito: "{{T_tr}}: al menos 30 °C por debajo del máximo. Esos márgenes son la diferencia entre un prototipo y algo que dura."
+    escalera:
+      - "Temperatura: al menos 30 °C por debajo del máximo del componente."
+    solucion: "{{T_j}} − {{M_t}} = {{T_tr}}."
+    comprobar:
+      - { T_tr: 120 }
+    variantes:
+      valores:
+        T_j: [175]
 
   - id: por-que-otra
     tipo: porque
