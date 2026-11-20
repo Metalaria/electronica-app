@@ -4,7 +4,7 @@
   // toggles, explosion, X-ray, finish and voltages; tap or hover a part, a pad or a track to select it, double
   // tap (or double click) to bring it closer. Rendered on demand; disposed on unmount. 0.9: the parts are only
   // built when «Componentes» is on (at once, or when it is turned on later): with it off nothing of them is loaded.
-  import { onMount, untrack } from 'svelte';
+  import { onMount, untrack, type Snippet } from 'svelte';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Compass from '@lucide/svelte/icons/compass';
   import { formatoTension, type DatosPlaca } from './datos';
@@ -26,6 +26,10 @@
     enfocar = 0,
     opciones,
     alElegir,
+    alEscena,
+    alToque,
+    alCuadro,
+    encima,
   }: {
     datos: DatosPlaca;
     geo: Geometria;
@@ -34,6 +38,14 @@
     enfocar?: number;
     opciones: Opciones3D;
     alElegir: (s: Seleccion | null) => void;
+    /** 1.3 (averias13): a host that draws on the board («Busque la avería»): the scene when it exists (null when it goes). */
+    alEscena?: (e: Escena3D | null) => void;
+    /** 1.3: a single tap (canvas px) the host takes first; true: taken (no selection). */
+    alToque?: (x: number, y: number, tipo: string) => boolean;
+    /** 1.3: every frame drawn (the host's overlays follow the camera). */
+    alCuadro?: () => void;
+    /** 1.3: the host's overlays over the canvas (in the canvas's box). */
+    encima?: Snippet;
   } = $props();
 
   let caja: HTMLDivElement | undefined = $state();
@@ -152,6 +164,7 @@
       return;
     }
     ultimoToque = { ...p, t: ahora };
+    if (alToque?.(p.x, p.y, ev.pointerType)) return;
     alElegir(bajo(p.x, p.y, raton ? 0.15 : 0.4));
   }
   let pendiente = 0;
@@ -175,6 +188,7 @@
   }
 
   function actualizarEtiqueta(): void {
+    alCuadro?.();
     if (!escena || res.huella === null) {
       etiqueta = null;
       return;
@@ -257,6 +271,7 @@
       vistaActual = es.vistaPorDefecto;
       g.__epaPlaca3D = es.stats;
       g.__epaPlaca3DEscena = es;
+      alEscena?.(es);
       ro = new ResizeObserver((e) => {
         const r = e[0]?.contentRect;
         if (!r || escena !== es) return;
@@ -287,6 +302,7 @@
       lienzo?.removeEventListener('webglcontextlost', perdido);
       if (pendiente) cancelAnimationFrame(pendiente);
       if (g.__epaPlaca3DEscena === escena) delete g.__epaPlaca3DEscena;
+      if (escena) alEscena?.(null);
       escena?.liberar();
       escena = null;
       g.__epaPlaca3DListo = false;
@@ -366,6 +382,7 @@
     {#if etiqueta}
       <div class="etiqueta" style:left={`${etiqueta.x}px`} style:top={`${etiqueta.y}px`}>{etiqueta.t}</div>
     {/if}
+    {#if encima}{@render encima()}{/if}
     {#if globo}
       <div class="globo" style:left={`${globo.x + 14}px`} style:top={`${globo.y + 14}px`}>{globo.t}</div>
     {/if}

@@ -22,6 +22,8 @@
   import type { IndiceSpice } from '../../simulador/tipos';
   import { circuitoEditor, type CircuitoEditor } from './editor';
   import { tamanoDibujo } from '../figuras-vivas/circuito/proporciones';
+  // 1.3 (averias13): the real Brymen in the free bench too (no practice loaded), small, with the same component
+  import BrymenReal from './practicas/BrymenReal.svelte';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -165,6 +167,12 @@
   // ---------------------------------------------------------------- free bench: chooser
   let capitulo = $state('cap22');
   const lista = $derived(indice?.capitulos.find((c) => c.parte === capitulo)?.netlists ?? []);
+  /** The simulated Brymen's reading, next to the real one's (as in a practice). */
+  const simuladoBm = $derived.by(() => {
+    void b.tic;
+    const l = b.brymen.pantalla.principal;
+    return l && b.vigente ? (l.ol ? 'OL' : `${l.texto.replace('-', '−').replace('.', ',')} ${l.unidad}`) : null;
+  });
   const titulo = $derived(laboratorio && practica ? `Laboratorio ${practica.n} · ${practica.titulo}` : practica ? `Práctica ${practica.n} · ${practica.titulo}` : deEditor ? `Medir · ${b.titulo}` : b.titulo || 'Banco de pruebas');
 </script>
 
@@ -185,6 +193,7 @@
     {:else}
       <div class="elegir">
         <h2>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h2>
+        <BrymenReal compacto simulado={simuladoBm} sinConectar="Sin conectar: el banco usa el Brymen simulado." />
         {#if deEditor}
           <p class="nota">Elija una punta o sonda arriba y toque un nodo del dibujo para ponerla. El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí.</p>
         {:else if indice}

@@ -1826,6 +1826,85 @@ export class Escena3D {
     return [((p.x + 1) / 2) * w, ((1 - p.y) / 2) * hh];
   }
 
+  // ---------------------------------------------------------------- 1.3 (averias13): a host's marks on the board
+
+  /** Small objects of a host placed on the board (the meter's lead tips of «Busque la avería»), by id. */
+  private marcas = new Map<string, Group>();
+
+  /**
+   * Puts (or moves, or with `x` null removes) a lead tip on a board point (u) of a face: a cone whose point touches
+   * the copper and a short shaft above it, in `color`, drawn over the parts' bodies' bases so it is never hidden.
+   */
+  marcar(id: string, x: number | null, y: number, lado: Lado, color: string): void {
+    let m = this.marcas.get(id);
+    if (x === null) {
+      if (m) {
+        this.placa.remove(m);
+        m.traverse((o) => {
+          if (o instanceof Mesh) {
+            o.geometry.dispose();
+            (o.material as Material).dispose();
+          }
+        });
+        this.marcas.delete(id);
+        this.pedir();
+      }
+      return;
+    }
+    if (!m) {
+      m = new Group();
+      const mat = new MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.1 });
+      const punta = new Mesh(new CylinderGeometry(0.55, 0.02, 2.2, 18), mat);
+      punta.rotation.x = Math.PI / 2;
+      punta.position.z = 1.1;
+      const mango = new Mesh(new CylinderGeometry(0.75, 0.75, 6, 18), mat.clone());
+      mango.rotation.x = Math.PI / 2;
+      mango.position.z = 2.2 + 3;
+      const anillo = new Mesh(new CylinderGeometry(0.9, 0.9, 0.05, 24), new MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthTest: false }));
+      anillo.rotation.x = Math.PI / 2;
+      anillo.position.z = 0.03;
+      anillo.renderOrder = 6;
+      m.add(punta, mango, anillo);
+      this.placa.add(m);
+      this.marcas.set(id, m);
+    }
+    const [wx, wy] = this.p(x, y);
+    // (the face's normal: up for F, down for B; the board group turns the whole thing over with the board)
+    m.position.set(wx, wy, lado === 'F' ? 0 : -this.t);
+    m.rotation.set(lado === 'F' ? 0 : Math.PI, 0, 0);
+    this.pedir();
+  }
+
+  /** Screen point (CSS px) of a board point (u) on a face, or null when it is behind the camera. */
+  proyectarPunto(x: number, y: number, lado: Lado, w: number, h: number): [number, number] | null {
+    const [wx, wy] = this.p(x, y);
+    const v = new Vector3(wx, wy, lado === 'F' ? 0 : -this.t);
+    this.placa.updateMatrixWorld(true);
+    v.applyMatrix4(this.placa.matrixWorld).project(this.camara);
+    if (v.z > 1) return null;
+    return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+  }
+
+  /** The board point (u) of the face turned to the camera under a screen point, ignoring the parts' bodies. */
+  puntoCara(px: number, py: number, w: number, h: number): { x: number; y: number; lado: Lado } | null {
+    this.ray.setFromCamera(new Vector2((px / w) * 2 - 1, -(py / h) * 2 + 1), this.camara);
+    this.placa.updateMatrixWorld(true);
+    const r = this.ray.ray.clone().applyMatrix4(new Matrix4().copy(this.placa.matrixWorld).invert());
+    for (const lado of ['F', 'B'] as const) {
+      if (Math.abs(r.direction.z) < 1e-6 || (lado === 'F') !== r.direction.z < 0) continue;
+      const t = ((lado === 'F' ? 0 : -this.t) - r.origin.z) / r.direction.z;
+      if (t <= 0) continue;
+      const q = r.origin.clone().addScaledVector(r.direction, t);
+      return { x: (q.x + this.W / 2) * 100, y: (this.H / 2 - q.y) * 100, lado };
+    }
+    return null;
+  }
+
+  /** The face turned to the camera now (the one a lead can touch). */
+  get caraArriba(): Lado {
+    return this.ladoArriba;
+  }
+
   // ---------------------------------------------------------------- rendering on demand
 
   pedir(): void {
@@ -1895,6 +1974,7 @@ export class Escena3D {
 
   liberar(): void {
     this.vivo = false;
+    for (const id of [...this.marcas.keys()]) this.marcar(id, null, 0, 'F', '');
     if (this.intento) {
       marcarIntento(null);
       this.intento = 0;

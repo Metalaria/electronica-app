@@ -108,6 +108,59 @@
     });
   });
 
+  // ---------------------------------------------------------------- 1.3: the split between bench and panel
+  // (averias13) On a touch screen an open panel took 52 % of the workbench: with «Medir» on a phone (412 × 915) the
+  // bench was left 200 px high. Now «Medir» on a narrow screen opens at 40 % (the bench about 300 px), and a grip on
+  // the panel's top edge resizes the split (25–70 %; a finger or the arrow keys), remembered on this device.
+  const CLAVE_DOCK = 'epa:protoboard-dock';
+  let altoDock = $state<number | null>(
+    untrack(() => {
+      try {
+        const v = Number(localStorage.getItem(CLAVE_DOCK));
+        return v >= 25 && v <= 70 ? v : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  let caja = $state<HTMLDivElement | undefined>();
+  let dockEl = $state<HTMLElement | undefined>();
+  function ponerDock(v: number) {
+    altoDock = Math.round(Math.min(70, Math.max(25, v)));
+    try {
+      localStorage.setItem(CLAVE_DOCK, String(altoDock));
+    } catch {
+      /* private window: only for this visit */
+    }
+  }
+  /** The panel's share now (the grip's value): the one set, or the one the CSS gives. */
+  function dockActual(): number {
+    const c = caja?.getBoundingClientRect();
+    const d = dockEl?.getBoundingClientRect();
+    return altoDock ?? (c && d && c.height ? Math.round((d.height / c.height) * 100) : 52);
+  }
+  let arrastreDock: { id: number } | null = null;
+  function agarrarDock(ev: PointerEvent) {
+    arrastreDock = { id: ev.pointerId };
+    try {
+      (ev.currentTarget as Element).setPointerCapture(ev.pointerId);
+    } catch {
+      /* synthetic events */
+    }
+    ev.preventDefault();
+  }
+  function moverDock(ev: PointerEvent) {
+    if (!arrastreDock || ev.pointerId !== arrastreDock.id || !caja) return;
+    const c = caja.getBoundingClientRect();
+    ponerDock(((c.bottom - ev.clientY) / c.height) * 100);
+  }
+  function teclaDock(ev: KeyboardEvent) {
+    const d = ev.key === 'ArrowUp' ? 5 : ev.key === 'ArrowDown' ? -5 : 0;
+    if (!d) return;
+    ev.preventDefault();
+    ponerDock(dockActual() + d);
+  }
+
   // ---------------------------------------------------------------- simulation
 
   let resultado = $state.raw<Simulacion | null>(null);
@@ -489,7 +542,7 @@
   </div>
 {/snippet}
 
-<div class="protoboard" class:completa={pantallaCompleta} class:ancha={!app.movil}>
+<div class="protoboard" bind:this={caja} class:completa={pantallaCompleta} class:ancha={!app.movil}>
   {#if cabecera}<div class="cab">{@render cabecera()}</div>{/if}
 
   <!-- The main actions, always in the same place, with their names. -->
@@ -544,7 +597,27 @@
 
   {#if app.movil}
     <!-- Touch screens: the tray always under the bench; a panel opens above it (the tray folds away on short screens). -->
-    <section class="dock" class:con-panel={pestana !== 'piezas'} class:medir={pestana === 'medir'} aria-label="Panel de la protoboard">
+    <section class="dock" class:con-panel={pestana !== 'piezas'} class:medir={pestana === 'medir'} aria-label="Panel de la protoboard" bind:this={dockEl} style:--dock={altoDock != null ? `${altoDock}%` : null}>
+      {#if pestana !== 'piezas'}
+        <!-- 1.3: the grip that resizes the split between the bench and the panel (a focusable separator: a window splitter) -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+        <div
+          class="tirador"
+          role="separator"
+          tabindex="0"
+          aria-orientation="horizontal"
+          aria-label="Tamaño del panel: arrastre, o use las flechas arriba y abajo"
+          aria-valuemin={25}
+          aria-valuemax={70}
+          aria-valuenow={altoDock ?? undefined}
+          data-tirador-dock
+          onpointerdown={agarrarDock}
+          onpointermove={moverDock}
+          onpointerup={() => (arrastreDock = null)}
+          onpointercancel={() => (arrastreDock = null)}
+          onkeydown={teclaDock}
+        ><span aria-hidden="true"></span></div>
+      {/if}
       {@render pestanas(['piezas', 'esquema', 'simulacion', 'avisos', 'pieza', 'medir'])}
       {#if pestana !== 'piezas' || (medida && Medir)}
         <div class="contenido hoja" hidden={pestana === 'piezas'}>{@render contenidoPanel()}</div>
@@ -707,8 +780,39 @@
   }
   /* A panel open: the dock takes half the workbench (the bench keeps the other half) and the panel fills it. */
   .dock.con-panel {
-    flex: 0 0 52%;
+    flex: 0 0 var(--dock, 52%);
     min-height: 0;
+  }
+  /* 1.3: «Medir» on a phone leaves the bench room to place the leads (412 × 915: about 300 px instead of 200). */
+  @media (max-width: 599px) {
+    .dock.con-panel.medir {
+      flex-basis: var(--dock, 40%);
+    }
+  }
+  .tirador {
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    height: 22px;
+    margin-bottom: -6px;
+    touch-action: none;
+    cursor: row-resize;
+    z-index: 1;
+  }
+  .tirador span {
+    width: 44px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--linea);
+  }
+  .tirador:hover span,
+  .tirador:focus-visible span {
+    background: var(--acento);
+  }
+  .tirador:focus-visible {
+    outline: 3px solid var(--acento);
+    outline-offset: -3px;
   }
   .dock.con-panel .contenido.hoja {
     flex: 1 1 0;

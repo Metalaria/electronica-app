@@ -5,13 +5,23 @@
   import { brymenReal } from '../../../lib/brymen-real/conexion.svelte';
   import { textoPantalla } from '../../../lib/brymen-real/lectura';
 
-  let { simulado = null }: { simulado?: string | null } = $props();
+  let {
+    simulado = null,
+    compacto = false,
+    sinConectar = 'Sin conectar: la práctica usa el Brymen simulado.',
+  }: {
+    simulado?: string | null;
+    /** 1.3 (averias13): small, as in the free bench's side column. */
+    compacto?: boolean;
+    /** What the state line says before connecting. */
+    sinConectar?: string;
+  } = $props();
 
   const c = brymenReal;
   const activo = $derived(c.estado === 'conectando' || c.estado === 'conectado' || c.estado === 'sin-respuesta');
   const l = $derived(c.estado === 'conectado' ? c.lectura : null);
   const estadoTexto = $derived(
-    c.estado === 'conectado' ? `Conectado (${c.nombre}).` : c.estado === 'desconectado' ? 'Sin conectar: la práctica usa el Brymen simulado.' : c.mensaje,
+    c.estado === 'conectado' ? `Conectado (${c.nombre}).` : c.estado === 'desconectado' ? sinConectar : c.mensaje,
   );
   const avisos = $derived(
     l ? [l.hold ? 'HOLD: la pantalla está congelada' : '', l.rel ? 'Δ (REL): muestra la diferencia con una referencia' : '', l.bateriaBaja ? 'pila baja: cámbiela, las lecturas pueden fallar' : ''].filter(Boolean) : [],
@@ -19,7 +29,7 @@
 </script>
 
 {#if c.disponible}
-  <section class="br-real" aria-label="Brymen real" data-brymen-real data-conexion-real={c.estado}>
+  <section class="br-real" class:compacto aria-label="Brymen real" data-brymen-real data-conexion-real={c.estado}>
     <div class="br-cab">
       <strong>Brymen real</strong>
       {#if activo}
@@ -65,6 +75,17 @@
     font-family: var(--sans);
     font-size: 14px;
   }
+  .br-real.compacto {
+    margin: 4px 0;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .compacto .br-estado {
+    margin-top: 4px;
+  }
+  .compacto .br-valor {
+    font-size: 16px;
+  }
   .br-cab {
     display: flex;
     align-items: center;
@@ -76,6 +97,12 @@
     min-height: 36px;
     padding: 0 12px;
     font-size: 13.5px;
+  }
+  /* (1.3, averias13: a finger's size on a touch screen) */
+  @media (pointer: coarse) {
+    .boton.pequeno {
+      min-height: 44px;
+    }
   }
   .br-estado {
     margin: 6px 0 0;

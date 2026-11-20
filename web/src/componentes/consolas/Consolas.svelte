@@ -11,6 +11,7 @@
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
   import { tienePlaca } from './placa/datos';
+  import { averiasDe } from '../../lib/averias-placa/definiciones';
 
   const actual = $derived(leerAncla(ruta.ancla));
   let sel: Seleccion | null = $state(null);
@@ -58,7 +59,8 @@
   }
 
   // «Placa en 3D / 2D» only for the machines with a board
-  const disponible = (m: IdMaquina, p: Pestana) => (p === 'placa3d' || p === 'placa2d' ? tienePlaca(m) : true);
+  // «Busque la avería» (1.3) only for the machines with a fault of their lesson placed on their board
+  const disponible = (m: IdMaquina, p: Pestana) => (p === 'placa3d' || p === 'placa2d' ? tienePlaca(m) : p === 'averia' ? averiasDe(m).length > 0 : true);
   const pestanas = $derived(PESTANAS.filter((p) => disponible(actual.maquina, p.id)));
   const pestana = $derived(pestanas.some((p) => p.id === actual.pestana) ? actual.pestana : 'foto');
 
@@ -135,6 +137,15 @@
       {#key datos.id}<m.default {datos} vista={pestana === 'placa3d' ? '3d' : '2d'} {sel} {seleccionar} {irA} />{/key}
     {:catch e}
       <ErrorCarga titulo="No se pudo abrir la placa." error={e} />
+    {/await}
+  {:else if pestana === 'averia'}
+    <!-- 1.3: the meter on the board with a hidden fault of the console's lesson (loaded on demand) -->
+    {#await import('./averia/BusqueAveria.svelte')}
+      <div class="cargando">Cargando…</div>
+    {:then m}
+      {#key `${datos.id}:${actual.averia ?? ''}`}<m.default maquina={datos.id} averia={actual.averia ?? undefined} />{/key}
+    {:catch e}
+      <ErrorCarga titulo="No se pudo abrir «Busque la avería»." error={e} />
     {/await}
   {:else}
     <Fuentes {datos} />

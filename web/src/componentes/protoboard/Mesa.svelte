@@ -16,6 +16,12 @@
   // a finger the view zooms in while dragging and goes back on release (no animation with «reducir movimiento»).
   // After a placement dragged by a finger four arrows around it move it one hole at a time (not after a tap: in the
   // tap-tap flow the next tap goes near, often where an arrow would be).
+  // 1.3 (averias13), the same precision for what a tap places — a meter lead, the start or the end of a wire, a part
+  // chosen in the tray —: a finger held on the bench shows at once, in the loupe, the hole the tap takes and its name;
+  // held still a little longer (MIRA_ARMAR) it «aims»: sliding the finger moves that hole (with hysteresis) instead of
+  // panning or laying the wire, and lifting it places there, as a tap on that hole would. A quick tap is as before
+  // (the tutors' tap-tap flow). A tray part dragged in by a finger gets the loupe too, named with the holes its legs
+  // take («R1 · B10 y B14»), in red with the reason when it cannot go.
   import { onMount, untrack, type Snippet } from 'svelte';
   import type { Protoboard } from './estado.svelte';
   import { cable as svgCable, defsProtoboard, posRotulo, rotuloCorto, svgPieza, svgPlacas } from './dibujo.ts';
@@ -112,6 +118,12 @@
   /** 1.3: the view before the auto zoom of a placement drag (restored on release). */
   let vistaPrevia: { s: number; tx: number; ty: number } | null = null;
   let grupo: SVGGElement | undefined = $state();
+  /** 1.3 (averias13): a tap-placement held by a finger (see the header): where the finger is, the hole it takes. */
+  let mira = $state<{ dedo: Pt; q: Pt | null; visible: boolean; armada: boolean } | null>(null);
+  let miraVer: ReturnType<typeof setTimeout> | null = null;
+  let miraArmar: ReturnType<typeof setTimeout> | null = null;
+  /** 1.3 (averias13): a tray part dragged in by a finger — the lifted point the loupe looks at. */
+  let colocandoFant = $state<{ x: number; y: number } | null>(null);
 
   const cfg = $derived({ placas: pb.doc.placas, columnas: pb.doc.columnas });
   const placasSvg = $derived(svgPlacas(cfg));
@@ -231,8 +243,14 @@
     if (!p0) return null;
     const w = mundo(cx, cy - (dedo ? ELEVACION_DEDO : 0));
     const a = ancla(p0);
-    const dx = Math.round(w[0] - a[0]);
-    const dy = p0.enc === 'dip' ? Math.round((w[1] - a[1]) / ALTO_PLACA) * ALTO_PLACA : Math.round(w[1] - a[1]);
+    // (1.3: with hysteresis, as a lead: a finger trembling between two holes does not make the part flicker)
+    const h = histeresisRejilla(s, dedo ? 'touch' : 'mouse');
+    const antes = ultimoDesp;
+    const u = w[0] - a[0];
+    const v = w[1] - a[1];
+    const dx = antes && Math.abs(u - antes[0]) <= 0.5 + h ? antes[0] : Math.round(u);
+    const dy = p0.enc === 'dip' ? Math.round(v / ALTO_PLACA) * ALTO_PLACA : antes && Math.abs(v - antes[1]) <= 0.5 + h ? antes[1] : Math.round(v);
+    ultimoDesp = [dx, dy];
     const nueva = pb.nuevaEn(x, p0.pos.map(([px, py]) => [px + dx, py + dy] as Pt));
     if (!nueva) return null;
     // The guide's part comes with its target legs: within a hole and a half of them, it snaps there.
@@ -242,6 +260,9 @@
     }
     return nueva;
   }
+
+  /** The last offset (holes) of a tray part being dragged in (its hysteresis); null between drags. */
+  let ultimoDesp: Pt | null = null;
 
   /** Over the bench? (client coordinates) */
   function dentro(cx: number, cy: number): boolean {
@@ -253,10 +274,15 @@
   export function fantasma(cx: number, cy: number, x: Componente | Pieza, dedo: boolean): boolean {
     if (!dentro(cx, cy)) {
       fant = null;
+      colocandoFant = null;
+      ultimoDesp = null;
       return false;
     }
+    const antes = fant?.p.pos[0];
     const p = candidata(cx, cy, x, dedo);
     fant = p ? { p, motivo: pb.motivoNueva(p) } : null;
+    colocandoFant = dedo ? { x: cx, y: cy - ELEVACION_DEDO } : null;
+    if (dedo && p && !igual(p.pos[0], antes)) vibrarCambio();
     return true;
   }
 
@@ -265,6 +291,8 @@
     const sobre = fantasma(cx, cy, x, dedo);
     const f = fant;
     fant = null;
+    colocandoFant = null;
+    ultimoDesp = null;
     if (!sobre || !f) return false;
     if (f.motivo) {
       pb.mensaje = f.motivo;
@@ -272,11 +300,27 @@
     }
     const p = pb.anadirEn(x, f.p.pos);
     if (p) info = describirPieza(p);
+    if (p && dedo) vibrarAterrizaje();
     return !!p;
   }
 
   export function quitarFantasma() {
     fant = null;
+    colocandoFant = null;
+    ultimoDesp = null;
+  }
+
+  /** 1.3: the holes a part's legs take, short («R1 · B10 y B14»; «U1 · de E10 a F17» with more legs). */
+  function corto(q: Pt): string {
+    const a = agujero(cfg, q[0], q[1]);
+    if (!a) return nombreDestino(q);
+    return a.tipo === 'riel' ? `${etiquetaHueco(cfg, q[0], q[1]).split(' · ')[0]!.replace('Carril', 'carril')} (col. ${q[0]})` : etiquetaHueco(cfg, q[0], q[1]).split(' · ')[0]!;
+  }
+  function etiquetaPieza(p: Pieza): string {
+    if (EXTERNOS.has(p.enc)) return `${p.comp.nombre} · encima de la placa`;
+    const n = p.pos.length;
+    const donde = n === 1 ? corto(p.pos[0]!) : n === 2 ? `${corto(p.pos[0]!)} y ${corto(p.pos[1]!)}` : `de ${corto(p.pos[0]!)} a ${corto(p.pos[n - 1]!)}`;
+    return `${p.comp.nombre} · ${donde}`;
   }
 
   // The view centre, for parts added from the palette.
@@ -555,7 +599,61 @@
     untrack(() => (ajuste = null));
   });
 
+  // ---------------------------------------------------------------- 1.3 (averias13): aiming a tap
+
+  /** After this (ms) a finger held still shows the hole a tap takes; after MIRA_ARMAR it aims. */
+  const MIRA_VER = 120;
+  const MIRA_ARMAR = 380;
+
+  function pararMira() {
+    if (miraVer) clearTimeout(miraVer);
+    if (miraArmar) clearTimeout(miraArmar);
+    miraVer = miraArmar = null;
+    mira = null;
+  }
+
+  /** The hole a finger at (cx, cy) takes (with hysteresis on the one it took). */
+  function huecoMira(cx: number, cy: number, antes: Pt | null): Pt | null {
+    return huecoConHisteresis(mundo(cx, cy), antes, esPunto, histeresisRejilla(s, 'touch'), 0.75);
+  }
+
+  /** A finger went down where a tap places something: the preview, then the aim (see the header). */
+  function empezarMira(ev: PointerEvent) {
+    pararMira();
+    const dedo: Pt = [ev.clientX, ev.clientY];
+    mira = { dedo, q: huecoMira(dedo[0], dedo[1], null), visible: false, armada: false };
+    miraVer = setTimeout(() => {
+      miraVer = null;
+      if (!mira) return;
+      mira.visible = true;
+      if (pb.armada) fantasma(mira.dedo[0], mira.dedo[1], pb.armada, false);
+      else if (mira.q) info = `${nombreDestino(mira.q)}. Suelte para ponerla ahí, o deje el dedo quieto y deslícelo para afinar.`;
+    }, MIRA_VER);
+    miraArmar = setTimeout(() => {
+      miraArmar = null;
+      if (!mira) return;
+      mira.visible = true;
+      mira.armada = true;
+      vibrarCambio();
+      if (!pb.armada) info = 'Deslice el dedo hasta el agujero que quiera y suéltelo ahí.';
+    }, MIRA_ARMAR);
+  }
+
+  /** Where a tap places something (touch): the tap-tap gestures, not a drag of what is already there. */
+  function tocaColocar(g: Gesto | null): boolean {
+    if (!g || g.movido) return false;
+    if (pb.herramienta === 'medir') return g.t === 'pan' && !!medida?.activa && !medida.tutor?.esperaObjetivo;
+    if (pb.herramienta === 'explorar') return false;
+    return g.t === 'cable' || (!!pb.armada && g.t === 'pan');
+  }
+
   function abajo(ev: PointerEvent) {
+    pararMira();
+    abajoGesto(ev);
+    if (ev.pointerType === 'touch' && punteros.size === 1 && tocaColocar(gesto)) empezarMira(ev);
+  }
+
+  function abajoGesto(ev: PointerEvent) {
     caja?.focus({ preventScroll: true });
     soltarLargo();
     ajuste = null;
@@ -692,6 +790,26 @@
       return;
     }
     const umbral = ev.pointerType === 'mouse' ? 4 : 9;
+    if (mira) {
+      if (mira.armada) {
+        // aiming: the finger moves the hole a tap takes (no pan, no wire laid)
+        mira.dedo = [ev.clientX, ev.clientY];
+        if (pb.armada) fantasma(ev.clientX, ev.clientY, pb.armada, false);
+        else {
+          const q = huecoMira(ev.clientX, ev.clientY, mira.q);
+          if (q && !igual(q, mira.q)) vibrarCambio();
+          mira.q = q;
+          info = q ? `${nombreDestino(q)}. Suéltelo para ponerla ahí.` : 'Fuera de los agujeros: al soltar no se pone nada.';
+        }
+        return;
+      }
+      if (Math.hypot(ev.clientX - g.desde[0], ev.clientY - g.desde[1]) > 4) {
+        // the finger moves before it aims: a pan or a wire laid as before (aiming needs it still)
+        pararMira();
+        if (pb.armada) fant = null;
+        info = '';
+      }
+    }
     if (!g.movido && Math.hypot(ev.clientX - g.desde[0], ev.clientY - g.desde[1]) > umbral) {
       g.movido = true;
       soltarLargo();
@@ -731,10 +849,24 @@
     if (punteros.size < 2) pinza = null;
     const g = gesto;
     gesto = null;
+    const m = mira;
+    pararMira();
     if (!g) return;
     if (esColocacion(g)) {
       colocando = null;
       devolverVista();
+    }
+    if (!g.movido && m?.armada && !pb.armada) {
+      // aimed: a tap on the hole shown (none off the holes)
+      if (!m.q) {
+        info = 'Fuera de los agujeros: no se ha puesto nada.';
+        return;
+      }
+      const [x, y] = pantalla(m.q[0], m.q[1]);
+      const antes = JSON.stringify([pb.doc.cables.length, pendiente, medida?.puntas]);
+      tocar({ ...ev, clientX: x, clientY: y, shiftKey: false, ctrlKey: false, metaKey: false } as PointerEvent, g);
+      if (JSON.stringify([pb.doc.cables.length, pendiente, medida?.puntas]) !== antes) vibrarAterrizaje();
+      return;
     }
     if (!g.movido) {
       tocar(ev, g);
@@ -832,6 +964,7 @@
         pb.armada = null;
         fant = null;
       }
+      ultimoDesp = null;
       pendiente = null;
       return;
     }
@@ -913,6 +1046,7 @@
   }
 
   function cancelar() {
+    pararMira();
     soltarLargo();
     punteros.clear();
     pinza = null;
@@ -1394,6 +1528,24 @@
   });
   const radioAsa = $derived(Math.max(0.42, (tactilGrueso ? 16 : 9) / s));
 
+  /** 1.3 (averias13): the loupe of an aimed tap, or of a tray part dragged in by a finger. */
+  const previaToque = $derived.by(() => {
+    const r = caja?.getBoundingClientRect();
+    const f = fant;
+    const lugar = (q: Pt) => (r ? { x: r.left + tx + q[0] * s, y: r.top + ty + q[1] * s } : null);
+    if (colocandoFant && f) return { objetivo: colocandoFant, marca: lugar(f.p.pos[0]!), etiqueta: f.motivo ? `${etiquetaPieza(f.p)}: no cabe` : etiquetaPieza(f.p), mal: !!f.motivo };
+    const m = mira;
+    if (!m || !m.visible) return null;
+    const objetivo = { x: m.dedo[0], y: m.dedo[1] };
+    if (pb.armada) return f ? { objetivo, marca: lugar(f.p.pos[0]!), etiqueta: f.motivo ? `${etiquetaPieza(f.p)}: no cabe` : etiquetaPieza(f.p), mal: !!f.motivo } : null;
+    const q = m.q;
+    let mal = !q;
+    if (q && pb.herramienta === 'medir') mal = !!medida && Object.entries(medida.puntas).some(([k, v]) => k !== medida!.activa && igual(v, q));
+    else if (q && !pendiente) mal = !libreParaCable(q);
+    else if (q && pendiente) mal = igual(q, pendiente) || !!motivoExtremo(pb.doc, q, new Set());
+    return { objetivo, marca: q ? lugar(q) : null, etiqueta: q ? nombreDestino(q) : 'Fuera de los agujeros', mal, q };
+  });
+
   /** 1.3: the preview of a placement dragged by a finger — the snapped hole, its name, whether it can go there. */
   const previa = $derived.by(() => {
     const g = gesto;
@@ -1560,6 +1712,9 @@
         <circle class="pendiente" cx={pendiente[0]} cy={pendiente[1]} r=".45" />
         {#if cursor}<line class="goma" x1={pendiente[0]} y1={pendiente[1]} x2={cursor[0]} y2={cursor[1]} />{/if}
       {/if}
+      {#if previaToque && 'q' in previaToque && previaToque.q && !previa}
+        <circle class="destino" class:mal={previaToque.mal} cx={previaToque.q[0]} cy={previaToque.q[1]} r=".58" data-destino-hueco={`${previaToque.q[0]},${previaToque.q[1]}`} data-mira={mira?.armada ? 'armada' : 'vista'} />
+      {/if}
       {#if previa?.q}
         <circle class="destino" class:mal={previa.mal} cx={previa.q[0]} cy={previa.q[1]} r=".58" data-destino-hueco={`${previa.q[0]},${previa.q[1]}`} />
       {/if}
@@ -1599,6 +1754,9 @@
     mueven lo elegido; R gira, Supr quita y Esc cancela.
   </p>
   <p class="solo-lector" aria-live="polite" data-anuncio-mesa>{anuncio}</p>
+  {#if previaToque && !previa}
+    <Lupa origen={grupo ?? null} objetivo={previaToque.objetivo} marca={previaToque.marca} etiqueta={previaToque.etiqueta} mal={previaToque.mal} zoom={Math.min(4, Math.max(1.6, 40 / s))} fondo="var(--fondo-carril)" />
+  {/if}
   {#if previa}
     <Lupa origen={grupo ?? null} objetivo={previa.objetivo} marca={previa.marca} etiqueta={previa.etiqueta} mal={previa.mal} zoom={Math.min(4, Math.max(1.6, 40 / s))} fondo="var(--fondo-carril)" />
   {/if}
@@ -1941,5 +2099,13 @@
     box-shadow: none;
     border-bottom: 1px solid var(--linea-suave);
     background: var(--superficie);
+  }
+  /* 1.3: on a phone the tutor's bar takes less of the bench's height */
+  @media (max-width: 599px) {
+    .pista.barra {
+      padding: 4px 10px;
+      font-size: 13px;
+      line-height: 1.25;
+    }
   }
 </style>

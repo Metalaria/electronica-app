@@ -70,6 +70,19 @@
   const lado = $derived((2 * radio) / zoom);
   // (the name goes above the loupe, which is above the target, so it never covers the target; below at the top edge)
   const arriba = $derived(centro.y - radio > 44);
+  // 1.3 (averias13): a long name (a console's pad with its net) stays inside the window: shifted sideways
+  let rotulo: HTMLParagraphElement | undefined = $state();
+  let corrimiento = $state(0);
+  $effect(() => {
+    void etiqueta;
+    void centro.x;
+    const el = rotulo;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const ancho = typeof innerWidth === 'number' ? innerWidth : 400;
+    const izq = centro.x - w / 2;
+    corrimiento = izq < 8 ? 8 - izq : izq + w > ancho - 8 ? ancho - 8 - (izq + w) : 0;
+  });
 </script>
 
 <div
@@ -99,7 +112,7 @@
     </svg>
   </div>
   {#if etiqueta}
-    <p class="etiqueta" class:mal class:arriba data-destino={etiqueta}>{etiqueta}</p>
+    <p class="etiqueta" class:mal class:arriba data-destino={etiqueta} bind:this={rotulo} style:--dx={`${corrimiento}px`}>{etiqueta}</p>
   {/if}
 </div>
 
@@ -135,7 +148,7 @@
     position: absolute;
     left: 50%;
     top: calc(2 * var(--r) + 8px);
-    transform: translateX(-50%);
+    transform: translateX(calc(-50% + var(--dx, 0px)));
     margin: 0;
     padding: 4px 10px;
     border-radius: 10px;
@@ -144,6 +157,9 @@
     border: 2px solid var(--c);
     font: 700 14px/1.25 var(--sans, sans-serif);
     white-space: nowrap;
+    max-width: calc(100vw - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   }
   .etiqueta.arriba {

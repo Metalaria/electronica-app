@@ -115,6 +115,35 @@ test.describe('escritorio', () => {
     await expect(fila.locator('.medida')).toContainText('de su Brymen');
   });
 
+  // 1.3 (averias13): the free bench (no practice) has the panel too, small, with the simulated reading beside it
+  test('banco libre sin práctica: el panel del Brymen real, pequeño, con la lectura simulada al lado', async ({ page }) => {
+    await limpio(page);
+    await conCable(page);
+    await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+    const panel = page.locator('.elegir [data-brymen-real]');
+    await expect(panel).toBeVisible({ timeout: 60_000 });
+    await expect(panel).toHaveClass(/compacto/);
+    await expect(page.locator('[data-estado-real]')).toContainText('el banco usa el Brymen simulado');
+    await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+    await panel.getByRole('button', { name: 'Conectar el Brymen real' }).click();
+    await responder(page, paquete({ principal: '2.0130', unidad: 'V', dc: true }));
+    await expect(page.locator('[data-lectura-real]')).toHaveText('2,0130 V ⎓');
+    await expect(panel).toHaveAttribute('data-conexion-real', 'conectado');
+    sinHallazgos(await axe(page, '[data-brymen-real]'), 'panel del Brymen real en el banco libre');
+    const alto = (await panel.boundingBox())!.height;
+    expect(alto).toBeLessThan(220);
+    await panel.getByRole('button', { name: 'Desconectar' }).click();
+    await expect(panel).toHaveAttribute('data-conexion-real', 'desconectado');
+  });
+
+  test('banco libre sin cable ni WebHID: nada del Brymen real', async ({ page }) => {
+    await limpio(page);
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'hid', { get: () => undefined, configurable: true }));
+    await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+    await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-brymen-real]')).toHaveCount(0);
+  });
+
   test('el cable enchufado pero el Brymen apagado: lo dice', async ({ page }) => {
     await limpio(page);
     await conCable(page);
@@ -162,6 +191,23 @@ async function tarjetaBanco(page: Page) {
   await expect(page.locator('[data-tarjeta="banco-divisor"]')).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('[data-esperado]')).toHaveText('4,00 V ± 5 %');
 }
+
+test('banco libre en el teléfono: el panel del Brymen real cabe y se usa con el dedo (movil)', async ({ page }, info) => {
+  test.skip(info.project.name !== 'movil', 'movil');
+  await limpio(page);
+  await conCable(page);
+  await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+  const panel = page.locator('.elegir [data-brymen-real]');
+  await expect(panel).toBeAttached({ timeout: 60_000 });
+  await panel.scrollIntoViewIfNeeded();
+  const boton = panel.getByRole('button', { name: 'Conectar el Brymen real' });
+  expect((await boton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await boton.tap();
+  await responder(page, paquete({ principal: '2.0130', unidad: 'V', dc: true }));
+  await expect(page.locator('[data-lectura-real]')).toHaveText('2,0130 V ⎓');
+  const ancho = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(ancho).toBeLessThanOrEqual(0);
+});
 
 for (const proyecto of ['escritorio', 'movil'] as const) {
   test(`tarjeta «En el banco»: «Medir con el Brymen» rellena y compara (${proyecto})`, async ({ page }, info) => {
