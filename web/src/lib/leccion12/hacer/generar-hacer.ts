@@ -18,6 +18,7 @@ import { graficaDe, marcaBien, objetivoCumplido, posicionesMarca } from './motor
 import type { Elegir, Instrumento, Leer, Marcar, Medir, Objetivo } from './tipos';
 import { buscarObjetivo, condicionLogica } from '../digital/objetivo-logico';
 import { condicionFigura, zonasDelObjetivo } from '../digital/objetivo-figura';
+import { condicionAveriaPlaca } from '../averia-placa';
 import type { WidgetFigura } from '../digital/tipos';
 import { NOMBRE_PIEZA, type CircuitoLogico } from '../digital/logica';
 
@@ -610,6 +611,8 @@ export interface ContextoObjetivo {
   logica?: CircuitoLogico;
   /** motor13: the card's figure (a goal on the zones touched: digital/objetivo-figura.ts). */
   figura?: WidgetFigura;
+  /** 1.3 (motor13b): the card shows a console's board with a hidden fault (a goal: the fault found). */
+  averiaPlaca?: boolean;
 }
 
 /** `objetivo: { condiciones: [...], logrado, pistas? }`: reachable with the card's controls, not reached at the start. */
@@ -627,6 +630,15 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
   const rangoDe = (y: unknown, donde: string): Rango | null => {
     if (c.logica && esObjeto(y) && ['led', 'senal', 'contador'].some((q) => y[q] != null)) {
       const r = condicionLogica(y, c.logica);
+      if (typeof r === 'string') {
+        e(`«${donde}»: ${r}`);
+        return null;
+      }
+      return r;
+    }
+    // (motor13b: on a console's board, the fault found)
+    if (c.averiaPlaca) {
+      const r = esObjeto(y) ? condicionAveriaPlaca(y) : '{ averia: encontrada, rotulo }';
       if (typeof r === 'string') {
         e(`«${donde}»: ${r}`);
         return null;
@@ -676,7 +688,9 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
       });
   }
   const o: Objetivo = { condiciones, logrado, pistas, ...(x.orden === true && c.figura ? { orden: true } : {}) };
-  if (condiciones.length && c.figura) {
+  if (condiciones.length && c.averiaPlaca) {
+    if (condiciones.some((q) => q.max === 0)) e('«objetivo.condiciones»: { averia: encontrada } («valor: 0», todavía no, solo va en una pista)');
+  } else if (condiciones.length && c.figura) {
     // a figure: zones to touch (reachable by touching them, none touched at the start); «todavía no» only in a hint
     if (condiciones.some((q) => q.max === 0)) e('«objetivo.condiciones»: una condición pide tocar una zona («valor: 0», todavía no tocada, solo va en una pista)');
     const zonas = zonasDelObjetivo(o);
@@ -715,7 +729,7 @@ export function objetivoDe(x: unknown, c: ContextoObjetivo, t: Tarjeta): { objet
 // ------------------------------------------------------------------ the mix of a lesson (GUIA §13.6)
 
 /** The step types and card kinds answered by doing (with the hands, on the widget). */
-export const TIPOS_HACIENDO = new Set(['medir', 'elegir', 'marcar', 'leer', 'tocar', 'simular', 'ajuste', 'reto', 'dibujar', 'averia', 'diseno', 'banco', 'tabla', 'sql']);
+export const TIPOS_HACIENDO = new Set(['medir', 'elegir', 'marcar', 'leer', 'tocar', 'simular', 'ajuste', 'reto', 'dibujar', 'averia', 'diseno', 'banco', 'tabla', 'sql', 'montar']);
 
 export type ClaseTarjeta = 'hacer' | 'elegir' | 'mirar';
 

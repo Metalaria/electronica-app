@@ -424,6 +424,32 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     for (const id of zonas) await tocarZonaFigura(page, id);
     await expect(page.locator('[data-objetivo]'), donde).toHaveAttribute('data-objetivo', 'logrado');
     await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  } else if (t.objetivo && t.widget?.tipo === 'averia-placa') {
+    // (motor13b: a console's board with a hidden fault — each suspect in turn until the faulty one is named; the
+    // measuring itself is averias13's to test)
+    await expect(page.locator('[data-sospechoso]').first(), donde).toBeVisible({ timeout: 30_000 });
+    await expect(boton(page), donde).toBeDisabled();
+    // (a measurement first, from the list of test points — the keyboard's way: pairs of points until one is a probe of
+    // the lesson, which the widget's test hook says)
+    const puntos = page.locator('details.puntos');
+    if ((await puntos.getAttribute('open')) === null) await puntos.locator('summary').click();
+    const valores = (await page.locator('[data-select-punta="roja"] option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))).filter(Boolean);
+    const sonda = () => page.evaluate(() => !!(window as unknown as { __epaAveriaPlaca?: { resultado: () => { sonda?: string | null } | null } }).__epaAveriaPlaca?.resultado()?.sonda);
+    buscar: for (const r of valores)
+      for (const n of valores) {
+        if (r === n) continue;
+        await page.locator('[data-select-punta="roja"]').selectOption(r);
+        await page.locator('[data-select-punta="negra"]').selectOption(n);
+        if (await sonda()) break buscar;
+      }
+    expect(await sonda(), `${donde}: una medida de la lección en la lista de puntos`).toBe(true);
+    const ids = await page.locator('[data-sospechoso]').evaluateAll((es) => es.map((x) => x.getAttribute('data-sospechoso')!));
+    for (const id of ids) {
+      if ((await page.locator('[data-widget-averia]').getAttribute('data-encontrada')) === 'si') break;
+      await page.locator(`[data-sospechoso="${id}"]`).click();
+    }
+    await expect(page.locator('[data-objetivo]'), donde).toHaveAttribute('data-objetivo', 'logrado');
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
   } else if (t.objetivo && t.actividad?.tipo !== 'ajuste') {
     const sol = buscarPosiciones(mandos, estado, (v) => objetivoCumplido(t, mc.evaluar(v)));
     expect(sol, `${donde}: el objetivo se alcanza`).not.toBeNull();
@@ -554,6 +580,22 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     await comprobarYVer(page, true, plano(t.exito));
   } else if (esPasoDigital(act)) {
     await pasoDigital(page, t, act, donde);
+  } else if (act?.tipo === 'montar') {
+    // 1.3 (motor13b): the automatic placement without one of its parts first (said: it is missing), then whole — put
+    // on the card's bench through its test hook (the finger and the keyboard are in lecciones13b-montar-navegador)
+    const poner = (doc: unknown) =>
+      page.evaluate((d) => {
+        const pb = (window as unknown as { __epaProtoboard: { pb: { cambiar: (f: () => void) => void; doc: unknown } } }).__epaProtoboard.pb;
+        pb.cambiar(() => (pb.doc = d));
+      }, doc);
+    await page.waitForFunction(() => !!(window as unknown as { __epaProtoboard?: unknown }).__epaProtoboard, null, { timeout: 30_000 });
+    const falta = act.objetivo.piezas.find((p) => !['alimentacion'].includes(p.enc))!;
+    await poner({ ...act.objetivo, piezas: act.objetivo.piezas.filter((p) => p !== falta) });
+    await expect(page.locator('[data-montar]'), donde).toHaveAttribute('data-diagnostico', /^problemas-/, { timeout: 30_000 });
+    await comprobarYVer(page, false, `Falta`);
+    await poner(act.objetivo);
+    await expect(page.locator('[data-montar]'), donde).toHaveAttribute('data-diagnostico', 'bien', { timeout: 60_000 });
+    await comprobarYVer(page, true, plano(t.exito));
   } else if (act?.tipo === 'simular') {
     // the right estimate, written as the reader writes it («5 V», «8,1 V»); then the app's own ngspice answers
     const obj = mc.funcion(act.objetivo)(mc.evaluar(estado));

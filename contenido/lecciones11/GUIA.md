@@ -2931,6 +2931,35 @@ widget:
   cuenta como «mirando»; para que cuente como «haciendo», póngale un `objetivo` de zonas (§13.3, «Sobre una figura»).
 - La figura SVG sale sobre la placa de figuras del libro (también en oscuro y sepia); la foto, con su crédito.
 
+**Zonas pequeñas en el teléfono: `recorte` y `ampliar` (1.3, motor13b).** Las filas de una tabla del libro (23–25
+unidades en una figura de 450) o los chips de una foto de placa (1206 px de ancho) salen a 10–17 px en un teléfono.
+Para que cada zona llegue a un dedo (44 px):
+
+```yaml
+widget:
+  tipo: figura
+  consola: { maquina: snes }       # (o figura / imagen)
+  recorte: [900, 100, 306, 830]    # opcional: solo esa parte [x, y, ancho, alto], en las coordenadas de la figura
+  ampliar: 1.5                     # opcional: zoom inicial en un teléfono (como pulsar «+»), más de 1 y hasta 4
+  zonas:                           # siempre en las coordenadas de la figura entera, como sin recorte
+    - { id: cic, hotspot: n-cic }
+    - { id: cristal, hotspot: n-x1 }
+```
+
+- `recorte` enseña solo ese rectángulo de la figura, a lo ancho de la tarjeta; las zonas **no cambian de
+  coordenadas**. Un `rect` (o la caja de un `hotspot`) que cruza el borde se queda con su parte visible (una fila de
+  la tabla cortada por la derecha del recorte se toca en lo que se ve); una zona entera fuera, o un `poligono` que
+  cruza el borde, es un error. No en un listado de código. El lector de pantalla oye el texto de la figura con
+  «(detalle)».
+- `ampliar` empieza ampliada en una pantalla estrecha (marco de menos de 560 px: el teléfono; en la tableta y el
+  ordenador no cambia nada); el marco se desplaza con el dedo y «Ver entera» vuelve al tamaño de la tarjeta.
+- El aviso de tamaño cuenta el recorte y el zoom: sin ellos sigue siendo «menos de 24 px» (y sugiere usarlos); con
+  alguno de los dos, avisa por debajo de **44 px** a 360 px de ancho y dice cuántos mide («mide 41 px: recorte menos o
+  amplíe más»). Cuenta: px = lado más corto de la zona × 312 × `ampliar` / ancho del recorte.
+- La lista de zonas (teclado y lector de pantalla) es la misma. Probado en
+  `tests/lecciones13b-motor-unidad.spec.ts` y `tests/lecciones13b-motor-navegador.spec.ts` (foto NTSC de la SNES
+  recortada a los chips de la derecha y ampliada 1,5: cada chip, más de 44 px a 360 y a 412 px).
+
 **Un listado de código (1.2, motor12e).** En lugar de una figura, `codigo`: un bloque de código del libro
 (`codigo: "apK#20"`) o uno propio (`codigo: { lenguaje: c, texto: "…" }`, para citar solo el trozo que importa; como
 mucho 40 líneas). Sale en letra de ancho fijo, con los comentarios atenuados y las líneas de `resaltar` marcadas; el
@@ -3713,4 +3742,95 @@ el id de siempre (el progreso, las copias y la sincronización no cambian).
   «milivoltios»…: `PALABRAS_DE_PROPORCION`). En la 1.3 salen así 12 tarjetas publicadas; el resto, declarándolas.
 - Tarjetas probadas: `prediga-bornes` y `reto-carga` de `web/tests/lecciones12-catalogo/cap01/sec-1.10.yaml`
   (`tests/lecciones13-motor-unidad.spec.ts`, `tests/lecciones13-motor-navegador.spec.ts`).
+
+### 13.14 `montar` — Monte este circuito en la protoboard (1.3, motor13b)
+
+El esquema de la tarjeta queda arriba como referencia y debajo sale la **protoboard** de la app (la misma mesa: arrastrar
+con el dedo con la lupa y el nombre del agujero, las flechas de ajuste, el teclado por agujeros), con la **fuente ya
+puesta** y una **bandeja con las piezas del esquema** (y solo esas, con sus valores). El lector las coloca y tiende los
+cables; «Comprobar» mira la placa:
+
+1. **La topología**: cada nudo del esquema es una sola red de la placa (una tira, o tiras unidas por cables), ninguno
+   queda unido a otro, todas las patas en agujeros, una por agujero, sin piezas encima de otras. Un LED, un diodo o un
+   electrolítico al revés se dice como tal («El LED D1 está al revés: su pata larga (A, ánodo) va hacia…»); una
+   resistencia o un condensador cerámico valen de cualquier lado.
+2. **La electricidad**: con la topología bien, el **ngspice de la app** resuelve el punto de trabajo de la placa tal como
+   está y el del esquema, y los compara nudo a nudo (un valor cambiado en la placa con la barra de la pieza se nota).
+
+Un fallo dice **el primer problema** con los nombres neutros de los nudos (los del instrumento, §13.10: «Salida, entre
+las dos resistencias», «Masa, abajo») y **cuántos quedan**; el `porque` del autor de ese nudo va detrás. «Volver a
+intentarlo» **conserva la placa**. La solución de la escalera (al abrirla, o tras dos fallos) ofrece «Poner la solución
+en la placa»: la colocación automática. Debajo, «Lo que une su placa» lista cada red con sus patas (el camino del lector
+de pantalla). Cuenta como **haciendo** y se practica en el repaso (con la placa de partida).
+
+```yaml
+  - id: monte-divisor
+    tipo: montar
+    titulo: "Monte el divisor"
+    texto: "Monte en la protoboard el divisor del esquema. La fuente ya está puesta: siga los agujeros que se iluminan."
+    fijar: { R_2: 5000 }
+    widget: { tipo: circuito, esquema: divisor, piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }, mide: { … }, mandos: [] }
+    montar:
+      ayuda: guiada                  # guiada (por defecto): los agujeros de cada paso se iluminan y una pieza mal
+                                     # puesta se explica al momento; libre: solo la bandeja y el esquema
+      medir: { entre: [salida, "0"], valor: V_out, rotulo: "Salida del divisor" }   # opcional (tol: 0.02)
+      porque:                        # opcional: por nudo del esquema (partido o unido a otro)
+        salida: "La salida es el punto común de R₁ y R₂: las dos tienen que tocar la misma tira."
+    exito: "Su divisor da {{V_out}} a la salida, como el esquema."   # obligatorio
+    escalera: ["Cada nudo del esquema es una tira de la placa: R₁ y R₂ comparten la tira de la salida."]
+    solucion: "R₁ de la tira del + a la tira de la salida; R₂ de la tira de la salida a la del −."
+```
+
+- **Qué esquemas**: los que se montan con las piezas de la bandeja —resistencias, condensadores (de 1 µF arriba,
+  electrolíticos), bobinas, diodos, LED, transistores— y **una fuente de continua** encendida. El generador pliega la
+  netlist del esquema con los valores de la tarjeta para una placa real: los medidores de 0 V del instrumento son cables,
+  una carga abierta (1 TΩ) no está, y lo que queda colgado de un nudo propio se quita. Un generador de señal, una fuente
+  a 0 V, un operacional o un módulo son un error que lo dice.
+- **Lo que comprueba el generador**: que la colocación automática (`componentes/protoboard/colocacion.ts`) existe y queda
+  limpia (`verificar.ts`), que cada pieza es de la bandeja, los nudos de `medir.entre` y de `porque` (los del
+  instrumento del esquema; un nudo que se pliega en otro vale con cualquiera de sus nombres), y con `medir` que **el
+  ngspice del script lee `valor` sobre la placa colocada** (su propia netlist) dentro de `tol` y la holgura de las caídas
+  constantes del libro (§13.10). Una `medir` sobre un LED con el modelo de caída constante puede necesitar más `tol`.
+- Con `medir`, el veredicto bueno añade la lectura: «Salida del divisor: el multímetro marca 5,00 V.».
+- El esquema de la tarjeta no puede ir `ocultar`. Sin mandos: los valores son los de la tarjeta (`fijar`).
+- Tarjetas probadas: `monte-divisor` (guiada, con medida), `monte-led` (libre) y `monte-rc` (electrolítico) de
+  `web/tests/lecciones12-catalogo/cap02/sec-2.7.yaml` (`tests/lecciones13b-montar-unidad.spec.ts`,
+  `tests/lecciones13b-montar-navegador.spec.ts`; el recorrido la completa con `EPA_RECORRER_CATALOGO=1`).
+
+### 13.15 `averia-placa` — Busque la avería en la placa de una consola (1.3, motor13b, petición de averias13)
+
+Un widget que mete en la tarjeta «Busque la avería» de «Consolas por dentro» (averias13,
+`componentes/consolas/averia/BusqueAveria.svelte`): la foto (o la placa en 3D) de una consola con una avería escondida
+de su lección de averías, las puntas del multímetro en los pads de verdad (con el dedo o con la lista de puntos de prueba,
+el camino del teclado) y la pieza que se señala. Va en una `explorar` con un `objetivo` que se cumple al señalar la pieza
+buena; cuenta como **haciendo**.
+
+```yaml
+  - id: averia-en-placa
+    tipo: explorar
+    titulo: "Con el polímetro en la placa"
+    texto: "La consola no enciende. Mida en la placa y señale la pieza."
+    libro: ["snes#122", "snes#111"]          # las citas de la tarjeta «averia» de la lección de averías
+    widget:
+      tipo: averia-placa
+      maquina: snes                          # snes, sms o nes (las que tienen avería en la placa)
+      averia: fusible-abierto                # opcional: un id de los `fallos` de esa tarjeta; sin él, una al azar
+      vista: foto                            # opcional: foto (por defecto) o 3d
+      # definicion: snes-no-enciende         # opcional: la avería de la placa (lib/averias-placa/definiciones.ts)
+    objetivo:
+      condiciones:
+        - { averia: encontrada, rotulo: "La pieza averiada, señalada" }
+      logrado: "F1 abierto: sin continuidad, no llegan los 10 V al 7805."
+      pistas:                                # opcional; en «cuando», { averia: encontrada, valor: 0 } = todavía no
+        - { texto: "Mida en la entrada de la alimentación y siga el camino." }
+    escalera: ["…"]
+    solucion: "…"
+```
+
+- El generador comprueba que la consola tiene avería en la placa, que `definicion` es suya y que `averia` es uno de los
+  `fallos` de la tarjeta de su lección (lee la lección publicada: genere antes la de averías). Las condiciones del
+  objetivo solo pueden ser `{ averia: encontrada }`. No hace falta `requiere`.
+- La pieza solo se puede señalar tras una medida de la lección (la placa lo dice: «Mida antes de señalar»).
+- Probado: tarjeta `averia-snes` de `web/tests/lecciones12-catalogo/cap02/sec-2.7.yaml`
+  (`tests/lecciones13b-montar-unidad.spec.ts`, `tests/lecciones13b-montar-navegador.spec.ts`, el recorrido del catálogo).
 

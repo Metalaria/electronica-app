@@ -16,6 +16,8 @@ import { MAX_MUESTRAS, MAX_TOLERANCIAS, analizarDiseno } from './tolerancias';
 import { actividadDigitalDe, type ContextoDigital } from './digital/generar-digital';
 // 1.2.1 (piloto121): the steps answered by doing on the live widget (lib/leccion12/hacer/)
 import { actividadHacerDe } from './hacer/generar-hacer';
+// 1.3 (motor13b): «montar», the card's schematic built on the breadboard (lib/leccion12/montar/)
+import { actividadMontarDe } from './montar/generar-montar';
 import type { DefinicionEsquema } from '../leccion11/esquemas/tipos';
 import type { ComprobacionSpice } from '../leccion11/spice';
 import { TIPOS_ACTIVIDAD, type Actividad12, type Ajuste, type Averia, type Banco, type Dibujar, type Diseno, type ErrorTipico, type Fallo, type Simular, type Sonda, type Sql, type TipoActividad } from './tipos';
@@ -39,6 +41,7 @@ export const FASE12: Record<TipoActividad, string> = {
   elegir: 'Elija en el esquema',
   marcar: 'Marque en la gráfica',
   leer: 'Lea y escriba',
+  montar: 'Monte en la protoboard',
 };
 
 export function esTipoActividad(x: unknown): x is TipoActividad {
@@ -124,6 +127,10 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
   }
   if (tipo === 'medir' || tipo === 'elegir' || tipo === 'marcar' || tipo === 'leer') {
     actividadHacerDe(tipo, x, c, out);
+    return out;
+  }
+  if (tipo === 'montar') {
+    actividadMontarDe(x, c, out);
     return out;
   }
   const claves = (permitidas: string[], d = tipo) => {

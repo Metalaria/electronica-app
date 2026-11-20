@@ -72,6 +72,9 @@
   let geo = $state.raw<Geometria | null>(null);
   let error = $state('');
   let intento = $state(0);
+  // (1.3, motor13b: the list of test points starts open on a wide screen and then stays as the reader leaves it — a
+  // plain `open={…}` was set again on every reading, so on a phone the list closed after each point chosen)
+  let listaAbierta = $state(untrack(() => !app.movil));
 
   $effect(() => {
     const d = def;
@@ -473,7 +476,7 @@
     <header>
       <p class="fase">Busque la avería</p>
       <h2 id="averia-titulo">{plano(tarjeta.titulo)}</h2>
-      <p class="objetivo" data-objetivo>{objetivo ?? plano(tarjeta.texto)}</p>
+      <p class="objetivo" data-objetivo-averia>{objetivo ?? plano(tarjeta.texto)}</p>
     </header>
     <div class="rejilla">
       <div class="placa">
@@ -546,7 +549,7 @@
           </div>
         </div>
 
-        <details class="puntos" open={!app.movil}>
+        <details class="puntos" bind:open={listaAbierta}>
           <summary>Puntos de prueba (también con el teclado)</summary>
           <label>
             <span>Punta roja</span>

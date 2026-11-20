@@ -58,6 +58,13 @@ export interface WidgetFigura {
   /** (No controls: the zones are what is touched.) */
   mandos: Mando[];
   ocultar: boolean;
+  /**
+   * 1.3 (motor13b): the part of the picture shown [x, y, w, h], in the picture's coordinates (`fuente.vista`). The
+   * zones keep those coordinates; they all fall inside it. Absent: the whole picture.
+   */
+  recorte?: [number, number, number, number];
+  /** 1.3 (motor13b): starting zoom on a narrow screen (a phone), as if «+» had been pressed; 1 … 4. */
+  ampliar?: number;
 }
 
 // ------------------------------------------------------------------ logic circuit
@@ -101,6 +108,8 @@ export interface EstadoWidget12 {
   pulsos: number;
   /** Timing diagram: the slot the cursor is on. */
   tramo: number;
+  /** 1.3 (motor13b): «averia-placa», the faulty part has been named (lib/leccion12/averia-placa.ts). */
+  encontrada?: boolean;
 }
 
 // ------------------------------------------------------------------ step types

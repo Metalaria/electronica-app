@@ -31,6 +31,7 @@ import { esPracticable } from './motor';
 import { cambia, dependencias, distinto, dominiosAutomaticos, dominioDeclarado, PALABRAS_DE_PROPORCION, proponerValores, sustituirEnTarjeta, TIPOS_CON_VARIANTES, type CantidadVariante, type VarianteTarjeta } from '../leccion12/variantes';
 // 1.2 (motor12c): the «figura» and «logica» widgets and their steps (GUIA §11)
 import { widgetFiguraDe, widgetLogicaDe, type ContextoDigital, type RecursosLibro } from '../leccion12/digital/generar-digital';
+import { widgetAveriaPlacaDe } from '../leccion12/averia-placa';
 import { interactivos } from '../leccion12/digital/motor-digital';
 // 1.2.1 (piloto121): the instrument of a live circuit, the goal of an explore card and the lesson's mix (GUIA §13)
 import { avisoMezcla, instrumentoDe, mezclaDe, objetivoDe, validarInstrumento } from '../leccion12/hacer/generar-hacer';
@@ -494,7 +495,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     // (1.2: an «ajuste» opens «Continuar» inside its band, an optional «banco» always: lib/leccion12/motor12.ts)
     for (const k of TIPOS_ACTIVIDAD) if (ft[k] != null && k !== tipo) e(`«${k}» solo va en una tarjeta «tipo: ${k}»`);
     if (tipo === 'explorar' || tipo === 'sorpresa' || ft.requiere != null) {
-      if (!mandos.length && !widget12) e('una tarjeta para explorar necesita un widget con mandos');
+      if (!mandos.length && !widget12 && t.widget?.tipo !== 'averia-placa') e('una tarjeta para explorar necesita un widget con mandos');
       const rq = esObjeto(ft.requiere) ? ft.requiere : {};
       if (ft.requiere != null && !esObjeto(ft.requiere)) e('«requiere» debe ser { mover: [...], conectar: [...] }');
       const mover = Array.isArray(rq.mover) ? rq.mover.map(String) : [];
@@ -620,7 +621,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     if (ft.objetivo != null) {
       if (tipo !== 'explorar' && tipo !== 'sorpresa' && tipo !== 'ajuste') e('«objetivo» va en una tarjeta explorar, sorpresa o ajuste');
       else if (sana()) {
-        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}), ...(t.widget?.tipo === 'figura' ? { figura: t.widget } : {}) }, t);
+        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}), ...(t.widget?.tipo === 'figura' ? { figura: t.widget } : {}), ...(t.widget?.tipo === 'averia-placa' ? { averiaPlaca: true } : {}) }, t);
         if (r.objetivo) {
           t.objetivo = r.objetivo;
           if (typeof ft.fase !== 'string') t.fase = 'Consiga';
@@ -643,7 +644,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       }
     }
     if (tipo === 'reto' && !t.condiciones) e('un reto lleva «condiciones»');
-    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql' || tipo === 'tocar' || tipo === 'tabla');
+    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql' || tipo === 'tocar' || tipo === 'tabla' || tipo === 'montar');
     if (exito) {
       t.exito = exito;
       if (contarPalabras(exito) > MAX_PALABRAS_EXPLICACION) e(`«exito»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
@@ -1169,6 +1170,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     }
     // 1.2 (motor12c): a book figure or photo with zones, a logic circuit (lib/leccion12/digital/generar-digital.ts)
     if (x.tipo === 'figura') return widgetFiguraDe(x, digital);
+    // 1.3 (motor13b): a console's board with a hidden fault (lib/leccion12/averia-placa.ts)
+    if (x.tipo === 'averia-placa') return widgetAveriaPlacaDe(x, digital);
     const mandos = (Array.isArray(x.mandos) ? x.mandos : []).map((m, k) => mandoDe(m, `mando ${k + 1}`, e, t)).filter((m): m is Mando => !!m);
     if (new Set(mandos.map((m) => m.valor)).size !== mandos.length) e('dos mandos para el mismo valor');
     // (motor12e: «ocultar: curvas» hides the readings and also every curve and mark of the graph until answered)

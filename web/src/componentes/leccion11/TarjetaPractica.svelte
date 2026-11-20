@@ -26,6 +26,8 @@
   // 1.2 learning-by-doing steps and the hint ladder (motor12)
   import Actividad12 from '../leccion12/Actividad12.svelte';
   import Widget12 from '../leccion12/Widget12.svelte';
+  // 1.3 (motor13b): a console's board with a hidden fault
+  import AveriaPlaca from '../leccion12/AveriaPlaca.svelte';
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
   import { conVariante, rotuloVariante } from '../../lib/leccion12/variantes';
@@ -135,6 +137,8 @@
     <CircuitoLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
   {:else if t.widget?.tipo === 'grafica'}
     <GraficaLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
+  {:else if t.widget?.tipo === 'averia-placa'}
+    <AveriaPlaca {t} w={t.widget} {e} cambiar={cambiarEstado} />
   {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
     <Widget12 {t} {e} {oculto} {prefijo} cambiar={cambiarEstado} />
   {/if}

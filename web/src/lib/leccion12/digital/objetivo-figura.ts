@@ -11,6 +11,7 @@ import type { Tarjeta } from '../../leccion11/tipos';
 import type { Objetivo } from '../hacer/tipos';
 import { variablesLogica } from './objetivo-logico';
 import type { EstadoWidget12, WidgetFigura } from './tipos';
+import { variablesAveriaPlaca } from '../averia-placa';
 
 /** The touches a figure keeps (a walk of an ordered goal is far shorter). */
 export const TOQUES_GUARDADOS = 100;
@@ -69,5 +70,7 @@ export function variablesWidget12(t: Tarjeta, w12: EstadoWidget12 | undefined): 
   if (!t.objetivo) return {};
   if (t.widget?.tipo === 'logica') return variablesLogica(t.widget, w12);
   if (t.widget?.tipo === 'figura') return variablesFigura(t.widget, w12, t.objetivo);
+  // (motor13b: a console's board, the fault found: averia-placa.ts)
+  if (t.widget?.tipo === 'averia-placa') return variablesAveriaPlaca(w12);
   return {};
 }

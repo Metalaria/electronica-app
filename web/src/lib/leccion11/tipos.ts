@@ -4,6 +4,7 @@
 
 import type { Actividad12, TipoActividad } from '../leccion12/tipos';
 import type { WidgetFigura, WidgetLogica } from '../leccion12/digital/tipos';
+import type { WidgetAveriaPlaca } from '../leccion12/averia-placa';
 import type { Instrumento, Objetivo } from '../leccion12/hacer/tipos';
 import type { VarianteTarjeta } from '../leccion12/variantes';
 
@@ -184,7 +185,8 @@ export interface WidgetGrafica extends Grafica {
 }
 
 /** 1.2: a book figure or photo with tappable zones, and a logic circuit (lib/leccion12/digital/tipos.ts). */
-export type Widget = WidgetCircuito | WidgetGrafica | WidgetFigura | WidgetLogica;
+// (1.3, motor13b: «averia-placa», a console's board with a hidden fault: lib/leccion12/averia-placa.ts)
+export type Widget = WidgetCircuito | WidgetGrafica | WidgetFigura | WidgetLogica | WidgetAveriaPlaca;
 
 /** v ∈ [min, max] (either may be missing). */
 export interface Rango {

@@ -21,6 +21,8 @@
   // 1.2.1 (piloto121): «leer» and «marcar» (the instrument and «elegir» live with the circuit: CircuitoLeccion.svelte)
   import Leer from './Leer.svelte';
   import Marcar from './Marcar.svelte';
+  // 1.3 (motor13b): «montar», the schematic built on the breadboard (loaded with its bench only when a card has one)
+  const montar = () => import('./Montar.svelte');
 
   let {
     leccion,
@@ -63,6 +65,14 @@
   <Sql a={t.actividad} {e} ea={e.actividad} {prefijo} {cambiar} />
 {:else if t.actividad?.tipo === 'leer' && e.actividad?.tipo === 'leer'}
   <Leer a={t.actividad} {e} ea={e.actividad} {prefijo} {valor} {cambiar} />
+{:else if t.actividad?.tipo === 'montar' && e.actividad?.tipo === 'montar'}
+  {#key t.id}
+    {#await montar()}
+      <p class="a12-suave" aria-live="polite">Preparando la protoboard…</p>
+    {:then m}
+      <m.default {leccion} {t} a={t.actividad} {e} ea={e.actividad} {prefijo} {cambiar} />
+    {/await}
+  {/key}
 {:else if t.actividad?.tipo === 'marcar' && e.actividad?.tipo === 'marcar'}
   <Marcar {leccion} {t} a={t.actividad} {e} ea={e.actividad} {valores} {prefijo} {valor} {cambiar} />
 {/if}

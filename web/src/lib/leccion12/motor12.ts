@@ -16,6 +16,9 @@ import { comprobarDigital, esActividadDigital, nuevoEstadoDigital, puedeComproba
 import type { EstadoActividadDigital } from './digital/tipos';
 // 1.2.1 (piloto121): the steps answered by doing on the live widget (lib/leccion12/hacer/)
 import { esActividadHacer, nuevoEstadoHacer } from './hacer/motor-hacer';
+// 1.3 (motor13b): «montar», the schematic built on the breadboard (lib/leccion12/montar/)
+import { comprobarMontar, nuevoEstadoMontar, puedeComprobarMontar } from './montar/motor-montar';
+import type { EstadoMontar } from './montar/tipos';
 import type { Actividad12, Averia, EstadoActividad12, EstadoAveria, EstadoBanco, EstadoDibujar, EstadoSimular, EstadoSql } from './tipos';
 
 const T = (s: string): Texto => [{ t: 'txt', s }];
@@ -35,6 +38,8 @@ export function nuevoEstadoActividad(t: Tarjeta): EstadoActividad12 | undefined 
       return { tipo: 'averia', fallo: falloDeRonda(a, t.id, 0, a.eleccion === 'azar' ? semillaNueva() : undefined), ronda: 0, medidas: [], sospechoso: null, tipoElegido: null, descartados: [] } satisfies EstadoAveria;
     case 'banco':
       return { tipo: 'banco', texto: '', valor: null, comparado: false } satisfies EstadoBanco;
+    case 'montar':
+      return nuevoEstadoMontar();
     case 'dibujar':
       return { tipo: 'dibujar', ys: Array.from({ length: a.puntos }, () => null), punto: 0 } satisfies EstadoDibujar;
     case 'sql':
@@ -67,6 +72,7 @@ export function puedeComprobar12(t: Tarjeta, e: EstadoActividad12 | undefined): 
   if (!a || !e) return false;
   if (esActividadDigital(a)) return puedeComprobarDigital(a, e as EstadoActividadDigital);
   if (a.tipo === 'simular' && e.tipo === 'simular') return e.valor != null && Number.isFinite(e.valor);
+  if (a.tipo === 'montar') return puedeComprobarMontar(e as EstadoMontar);
   if (a.tipo === 'averia' && e.tipo === 'averia') return e.sospechoso != null && (!a.preguntarTipo || e.tipoElegido != null);
   if (a.tipo === 'dibujar' && e.tipo === 'dibujar') return cobertura(e.ys) >= 0.5;
   if (a.tipo === 'sql' && e.tipo === 'sql') {
@@ -101,6 +107,7 @@ export function comprobar12(mc: ModeloCompilado, t: Tarjeta, e: EstadoActividad1
     const p = d.bien ? null : pista({ ...mc.evaluar(v), estimacion: x });
     return { bien: d.bien, resuelta: true, textos: [linea, ...(d.bien ? exito : [d.texto ?? p ?? T('Se ha alejado bastante: rehaga el cálculo paso a paso.')])] };
   }
+  if (a.tipo === 'montar') return comprobarMontar(t, a, e as EstadoMontar | undefined);
   if (a.tipo === 'diseno') {
     const conds: Condicion[] = t.condiciones ?? [];
     const inf = analizarDiseno(mc, a, conds, v);
