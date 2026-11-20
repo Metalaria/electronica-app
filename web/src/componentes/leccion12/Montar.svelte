@@ -17,7 +17,8 @@
   import Mesa from '../protoboard/Mesa.svelte';
   import Bandeja from '../protoboard/Bandeja.svelte';
   import BarraPieza from '../protoboard/BarraPieza.svelte';
-  import { Guia } from '../protoboard/guia.svelte';
+  // explicit .ts: '../protoboard/guia.svelte' resolves to Guia.svelte on case-insensitive file systems (macOS, Windows)
+  import { Guia } from '../protoboard/guia.svelte.ts';
   import { planDeMontaje } from '../protoboard/guia';
   import { brillos } from '../protoboard/comprobaciones';
   import { encapsuladoDe, EXTERNOS } from '../protoboard/encapsulados';
