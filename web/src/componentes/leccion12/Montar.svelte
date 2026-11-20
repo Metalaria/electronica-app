@@ -233,7 +233,8 @@
     <summary>Lo que une su placa</summary>
     <ul data-uniones>
       {#each uniones as u, k (k)}
-        <li>{#if u.nombre}<strong>{u.nombre}</strong>: {/if}{u.pines.join(', ')}</li>
+        <!-- (the space after the colon written out: Svelte drops a block's trailing whitespace, «Masa:VF −») -->
+        <li>{#if u.nombre}<strong>{u.nombre}</strong>:{' '}{/if}{u.pines.join(', ')}</li>
       {/each}
     </ul>
   </details>

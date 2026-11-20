@@ -9,6 +9,7 @@
 import { contextoNetlist, holguraNoLineal, TOL_OP, type ComprobacionSpice } from '../../leccion11/spice';
 import { contarPalabras } from '../../leccion11/texto';
 import type { Texto, WidgetCircuito } from '../../leccion11/tipos';
+import type { DefinicionEsquema } from '../../leccion11/esquemas/tipos';
 import { editableDeNetlist } from '../../../componentes/esquema-auto/editable';
 import { circuitoDeEditable } from '../../../componentes/protoboard/fuentes';
 import { colocarCircuito } from '../../../componentes/protoboard/colocacion';
@@ -163,6 +164,87 @@ export function montajeDe(lineas: readonly string[], titulo: string): { doc: Doc
   return { doc, errores };
 }
 
+/** The unit of the model's quantity a part of each element letter takes its value from. */
+const UNIDAD_DE: Record<string, string> = { R: 'Ω', C: 'F', L: 'H' };
+const SUBINDICES: Record<string, string> = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
+
+/** A symbol of the model («R₂», «R_{L}», «C») as a board designator («R2», «RL», «C»), or null when it is not one. */
+export function designadorDeSimbolo(sim: Texto, letra: string): string | null {
+  const s = sim
+    .map((x) => (x.t === 'txt' || x.t === 'sub' ? x.s : x.t === 'val' ? '\u0000' : x.s))
+    .join('')
+    .replace(/[₀-₉]/g, (d) => SUBINDICES[d]!)
+    .replace(/[\s_{}]/g, '');
+  return /^[A-Za-z][A-Za-z0-9]*$/.test(s) && s[0]!.toUpperCase() === letra ? s : null;
+}
+
+/**
+ * 1.3 (cierre13): the name the lesson's drawing gives each resistor, capacitor and coil of the schematic's netlist —
+ * the drawing labels a part with the symbol of the model's quantity it is bound to (`c.sim(pieza)`), while the
+ * netlist has its own element names: in the divider «R1» is the top resistor, which a lesson may call R₂. A part is
+ * the piece whose value alone moves the element's value (each piece's value changed in turn); it takes the symbol as
+ * a designator when that is one of its letter, and no two parts end up with the same name (else they keep theirs).
+ * Element name (lower case) → designator.
+ */
+export function nombresDelDibujo(def: Pick<DefinicionEsquema, 'netlist'>, w: WidgetCircuito, mc: Contexto12['mc'], r0: Record<string, number>): Map<string, string> {
+  const valores = (ls: readonly string[]) => {
+    const m = new Map<string, { nombre: string; valor: string }>();
+    for (const raw of ls) {
+      const t = raw.replace(/;.*$/, '').trim().split(/\s+/);
+      const letra = t[0]?.[0]?.toUpperCase() ?? '';
+      if (letra in UNIDAD_DE && t.length >= 4) m.set(t[0]!.toLowerCase(), { nombre: t[0]!, valor: t[3]! });
+    }
+    return m;
+  };
+  let base: Map<string, { nombre: string; valor: string }>;
+  try {
+    base = valores(def.netlist(contextoNetlist(w, r0), 'op'));
+  } catch {
+    return new Map();
+  }
+  const de = new Map<string, string[]>();
+  for (const [q, id] of Object.entries(w.piezas)) {
+    const x = r0[id];
+    if (!id || !x || !Number.isFinite(x)) continue;
+    let otro: Map<string, { nombre: string; valor: string }>;
+    try {
+      otro = valores(def.netlist(contextoNetlist(w, { ...r0, [id]: x * 1.37 }), 'op'));
+    } catch {
+      continue;
+    }
+    for (const [el, v] of otro) if (base.has(el) && base.get(el)!.valor !== v.valor) de.set(el, [...(de.get(el) ?? []), q]);
+  }
+  const final = new Map([...base].map(([el, v]) => [el, v.nombre]));
+  const propuesto = new Map<string, string>();
+  for (const [el, qs] of de) {
+    const letra = el[0]!.toUpperCase();
+    const mag = qs.length === 1 ? mc.magnitud(w.piezas[qs[0]!]!) : null;
+    if (!mag || mag.unidad !== UNIDAD_DE[letra]) continue;
+    const d = designadorDeSimbolo(mag.sim, letra);
+    if (d) propuesto.set(el, d);
+  }
+  for (const [el, d] of propuesto) final.set(el, d);
+  // (a name two parts would share: those keep the netlist's, until none is shared)
+  for (;;) {
+    const cuenta = new Map<string, string[]>();
+    for (const [el, n] of final) cuenta.set(n.toUpperCase(), [...(cuenta.get(n.toUpperCase()) ?? []), el]);
+    const choque = [...cuenta.values()].find((els) => els.length > 1 && els.some((el) => final.get(el) !== base.get(el)!.nombre));
+    if (!choque) break;
+    for (const el of choque) final.set(el, base.get(el)!.nombre);
+  }
+  return new Map([...final].filter(([el, n]) => n !== base.get(el)!.nombre));
+}
+
+/** The netlist's lines with its elements renamed (element name in lower case → new name). */
+export function renombrarElementos(lineas: readonly string[], nombres: ReadonlyMap<string, string>): string[] {
+  if (!nombres.size) return [...lineas];
+  return lineas.map((l) => {
+    const m = /^(\s*)(\S+)(.*)$/s.exec(l);
+    const n = m && !m[2]!.startsWith('.') && !m[2]!.startsWith('*') ? nombres.get(m[2]!.toLowerCase()) : undefined;
+    return n ? `${m![1]}${n}${m![3]}` : l;
+  });
+}
+
 /** «el nudo de R1 y D1»: a node the instrument does not name, by the parts on it. */
 function nombrePorPiezas(doc: DocumentoProtoboard, red: string): string {
   const piezas = doc.piezas.filter((p) => p.patas.some((pin) => pin && doc.original?.[`${p.id}.${pin}`] === red)).map((p) => p.comp.nombre);
@@ -191,6 +273,8 @@ export function actividadMontarDe(x: Record<string, unknown>, c: Contexto12, out
     e(`«montar»: el esquema no da su netlist (${err instanceof Error ? err.message : String(err)})`);
     return;
   }
+  // (1.3, cierre13: the tray's parts are named as the lesson's drawing names them, not as the netlist does)
+  lineas = renombrarElementos(lineas, nombresDelDibujo(def, wc, c.mc, r0));
   const med = def.medible?.(contextoNetlist(wc, r0));
   const puntos = med?.puntos ?? {};
   const p = plegarNetlist(lineas, new Set(Object.keys(puntos)), new Set(Object.keys(med?.ramas ?? {}).map((k) => k.toLowerCase())));

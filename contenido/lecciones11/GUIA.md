@@ -3793,6 +3793,11 @@ de pantalla). Cuenta como **haciendo** y se practica en el repaso (con la placa 
   constantes del libro (§13.10). Una `medir` sobre un LED con el modelo de caída constante puede necesitar más `tol`.
 - Con `medir`, el veredicto bueno añade la lectura: «Salida del divisor: el multímetro marca 5,00 V.».
 - El esquema de la tarjeta no puede ir `ocultar`. Sin mandos: los valores son los de la tarjeta (`fijar`).
+- **Nombres de las piezas** (1.3, cierre13): la bandeja, la guía y los fallos llaman a cada resistencia, condensador o
+  bobina como el **dibujo** de la tarjeta, con el símbolo de la magnitud de su pieza (`R_2` con `sim: "R₂"` → «R2»;
+  `sim: "R"` → «R»), no con el nombre de la netlist del esquema. Si el símbolo no es un designador de su letra, o dos
+  piezas acabarían con el mismo, se quedan con el de la netlist (R1, C1…). Los LED, diodos y transistores conservan el
+  suyo (D1, Q1). Escriba la `solucion` y la `escalera` con los nombres del dibujo.
 - Tarjetas probadas: `monte-divisor` (guiada, con medida), `monte-led` (libre) y `monte-rc` (electrolítico) de
   `web/tests/lecciones12-catalogo/cap02/sec-2.7.yaml` (`tests/lecciones13b-montar-unidad.spec.ts`,
   `tests/lecciones13b-montar-navegador.spec.ts`; el recorrido la completa con `EPA_RECORRER_CATALOGO=1`).

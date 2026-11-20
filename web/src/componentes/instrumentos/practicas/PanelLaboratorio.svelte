@@ -467,11 +467,6 @@
         </label>
       {/if}
 
-      {#if pasoBrymen}
-        <BrymenReal simulado={simuladoBm} />
-        {#if comparacionReal}<p class="nota" data-comparacion-real-lab>{comparacionReal} El paso se comprueba con el Brymen simulado.</p>{/if}
-      {/if}
-
       <div class="acciones" bind:this={acciones}>
         <button type="button" class="primario" onclick={() => void comprobar()} disabled={guardando} data-comprobar>Comprobar</button>
         <button type="button" class="secundario" onclick={mostrarDonde} disabled={!paso.guia?.bm && !paso.guia?.fn} data-donde>Mostrar dónde</button>
@@ -493,6 +488,14 @@
         {/if}
         {#if errorGuardar}<p class="nota">{errorGuardar}</p>{/if}
       </div>
+
+      <!-- (1.3, cierre13: the real Brymen goes under the step's own «Comprobar» and verdict, not between the step and
+           them: above, its panel pushed «Comprobar» under the fold of a 360 × 780 phone and the floating bar showed
+           while the step card was on screen) -->
+      {#if pasoBrymen}
+        <BrymenReal simulado={simuladoBm} />
+        {#if comparacionReal}<p class="nota" data-comparacion-real-lab>{comparacionReal} El paso se comprueba con el Brymen simulado.</p>{/if}
+      {/if}
       {#if veredicto?.estado === 'bien' || hechos.includes(paso.id)}
         <button type="button" class="primario continuar" onclick={() => irA(actual + 1)} data-continuar>{actual + 1 < lab.pasos.length ? 'Continuar' : 'Ver el resumen'}</button>
       {/if}

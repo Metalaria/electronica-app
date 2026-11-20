@@ -17,13 +17,14 @@ import { compilarModelo } from '../src/lib/leccion11/modelo.ts';
 import { textoPlano } from '../src/lib/leccion11/texto.ts';
 import type { Leccion11, Tarjeta } from '../src/lib/leccion11/tipos.ts';
 import { claseTarjeta, mezclaDe } from '../src/lib/leccion12/hacer/generar-hacer.ts';
-import { numeroSpice, plegarNetlist } from '../src/lib/leccion12/montar/generar-montar.ts';
+import { designadorDeSimbolo, numeroSpice, plegarNetlist } from '../src/lib/leccion12/montar/generar-montar.ts';
 import { compararTensiones, comprobarMontar, diagnosticarMontaje, lecturaMedir, placaInicial, placaVacia } from '../src/lib/leccion12/montar/motor-montar.ts';
 import type { EstadoMontar, Montar } from '../src/lib/leccion12/montar/tipos.ts';
 import { conexiones, conductorEn, netlistProtoboard } from '../src/componentes/protoboard/conexiones.ts';
 import { agujero } from '../src/componentes/protoboard/placa.ts';
 import { leerPuntoTrabajo, netlistPuntoTrabajo } from '../src/componentes/protoboard/simulacion.ts';
 import type { DocumentoProtoboard, Pieza } from '../src/componentes/protoboard/tipos.ts';
+import { valorCarta } from '../src/componentes/protoboard/bandeja.ts';
 // @ts-expect-error (a plain .mjs module of the scripts: no types)
 import { cargarEsquemas11 } from '../scripts/esquemas11.mjs';
 // @ts-expect-error (a plain .mjs module of the scripts: no types)
@@ -125,7 +126,8 @@ test.describe('generador de «montar»', () => {
     expect(diagnosticarMontaje(a, a.objetivo)).toEqual([]);
     expect(diagnosticarMontaje(A('monte-led'), A('monte-led').objetivo)).toEqual([]);
     expect(diagnosticarMontaje(A('monte-rc'), A('monte-rc').objetivo)).toEqual([]);
-    expect(A('monte-rc').objetivo.piezas.find((p) => p.comp.nombre === 'C1')!.enc).toBe('electrolitico');
+    // (1.3, cierre13: named as the card's drawing names them, «R» and «C», not as the netlist, R1 and C1)
+    expect(A('monte-rc').objetivo.piezas.find((p) => p.comp.nombre === 'C')!.enc).toBe('electrolitico');
     // the measure goes to the script's ngspice, on the placed board's own netlist
     const s = R.spice.find((x) => /montar\.medir/.test(x.donde))!;
     expect(s.netlist).toMatch(/R1 fte salida 7k/);
@@ -207,10 +209,10 @@ test.describe('diagnóstico de la placa', () => {
     expect(p2[0]!.texto).toBe('El LED D1 está al revés: su pata larga (A, ánodo) va hacia «Entre la resistencia y el LED» y la corta (K) hacia «Masa, abajo». Al revés no conduce ni se enciende.');
     const rc = A('monte-rc');
     const d3 = copia(rc.objetivo);
-    invertir(pieza(d3, 'C1'));
+    invertir(pieza(d3, 'C'));
     const p3 = diagnosticarMontaje(rc, d3);
     expect(p3.map((x) => x.tipo)).toEqual(['reves']);
-    expect(p3[0]!.texto).toMatch(/^El electrolítico C1 está al revés: su pata \+ va hacia «Entre la resistencia y el condensador»/);
+    expect(p3[0]!.texto).toMatch(/^El electrolítico C está al revés: su pata \+ va hacia «Entre la resistencia y el condensador»/);
   });
 
   test('el primero, y cuántos quedan', () => {
@@ -224,6 +226,48 @@ test.describe('diagnóstico de la placa', () => {
     const v = comprobarMontar(T('monte-divisor'), a, { tipo: 'montar', doc: d, diagnostico: { version: 1, vacia: false, problemas: ps, simulado: 'no' } });
     expect(v.textos.map((x) => textoPlano(x))).toEqual([ps[0]!.texto, 'Después queda otra cosa por arreglar.']);
   });
+});
+
+// ------------------------------------------------------------------ the tray's names, as the lesson's drawing
+
+// 1.3 (cierre13): the drawing labels each part with the symbol of the model's quantity it is bound to; the tray, the
+// guide and the diagnosis used the schematic netlist's own names instead (in cap08/sec-8.2 the tray's «R1» was the
+// drawing's R₂ of 9,1 kΩ). Now a resistor, capacitor or coil takes the drawing's name when it is a designator.
+test.describe('las piezas de la bandeja se llaman como en el dibujo de la lección', () => {
+  test('el símbolo como designador: R₂ → R2, R_L → RL, C → C; lo que no lo es, nada', () => {
+    expect(designadorDeSimbolo([{ t: 'txt', s: 'R₂' }], 'R')).toBe('R2');
+    expect(designadorDeSimbolo([{ t: 'txt', s: 'R' }, { t: 'sub', s: 'L' }], 'R')).toBe('RL');
+    expect(designadorDeSimbolo([{ t: 'txt', s: 'C' }], 'C')).toBe('C');
+    expect(designadorDeSimbolo([{ t: 'txt', s: 'τ' }], 'R')).toBeNull();
+    expect(designadorDeSimbolo([{ t: 'txt', s: 'C₁' }], 'R')).toBeNull();
+    expect(designadorDeSimbolo([{ t: 'txt', s: 'R' }, { t: 'val', id: 'R_1' }], 'R')).toBeNull();
+  });
+  const publicada = (id: string) => JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', `${id}.json`), 'utf8')) as Leccion11;
+  const MONTAR: [string, string, Record<string, string | undefined>][] = [
+    // (the divider of the non-inverting amplifier: R₂ = 9,1 kΩ on top, from the output; R₁ = 1 kΩ to ground)
+    ['cap08/sec-8.2', 'monte-realimentacion', { R2: '9,1k', R1: '1k' }],
+    ['cap02/sec-2.7', 'monte-12-a-5', { R1: '4,7k', R2: '3,3k' }],
+    ['cap03/sec-3.2', 'monte-carga', { R: '10k', C: '100µ' }],
+    ['cap05/sec-5.5', 'monte-azul', { R: '470', D1: undefined }],
+  ];
+  for (const [id, tarjeta, esperado] of MONTAR)
+    test(`${id} «${tarjeta}»: la bandeja dice lo que el dibujo`, () => {
+      const l = publicada(id);
+      const t = l.tarjetas.find((x) => x.id === tarjeta)!;
+      const a = t.actividad as Montar;
+      const enPlaca = a.objetivo.piezas.filter((p) => p.enc !== 'alimentacion');
+      expect(Object.fromEntries(enPlaca.map((p) => [p.comp.nombre, p.comp.campos['valor']]))).toEqual(esperado);
+      // every resistor and capacitor is named by a symbol the drawing shows (a piece of the card's widget)
+      const w = t.widget as { piezas: Record<string, string> };
+      const simbolos = new Set(Object.values(w.piezas).map((m) => (l.modelo.valores[m] ?? l.modelo.calculos[m])?.sim).filter(Boolean).map((s) => designadorDeSimbolo(s!, 'R') ?? designadorDeSimbolo(s!, 'C')));
+      for (const p of enPlaca.filter((x) => /^[RC]/.test(x.comp.nombre))) expect(simbolos.has(p.comp.nombre), `${id}: ${p.comp.nombre}`).toBe(true);
+      // and the diagnosis says it so: the top resistor missing in 8.2 is «R2»
+      if (id === 'cap08/sec-8.2') {
+        const d = copia(a.objetivo);
+        d.piezas = d.piezas.filter((p) => p.comp.campos['valor'] !== '9,1k');
+        expect(diagnosticarMontaje(a, d)[0]!.texto).toMatch(/^Falta .*\bR2\b/);
+      }
+    });
 });
 
 // ------------------------------------------------------------------ the electrical check and the verdict
@@ -308,4 +352,13 @@ test.describe('widget «averia-placa»: la avería en la placa de una consola', 
       cambio(f);
       expect(generarR(f).errores.join('\n')).toMatch(error);
     });
+});
+
+test('bandeja: el LED de una lección no se presenta como rojo', () => {
+  const led = (modelo?: string) => ({ id: 'l', tipo: 'LED', nombre: '', x: 0, y: 0, o: 0, campos: modelo ? { modelo } : {} }) as Parameters<typeof valorCarta>[0];
+  expect(valorCarta(led('LEDR'))).toBe('rojo, 3 mm');
+  expect(valorCarta(led('LEDV'))).toBe('verde, 3 mm');
+  expect(valorCarta(led())).toBe('rojo, 3 mm');
+  // cap05/sec-5.5 «Monte el LED azul»: the lesson's model DLED has no colour of its own
+  expect(valorCarta(led('DLED'))).toBe('LED, 3 mm');
 });

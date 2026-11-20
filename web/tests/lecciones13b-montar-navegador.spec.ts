@@ -178,18 +178,21 @@ test('la solución de la escalera pone la colocación automática; el teclado po
   await abrir(page, 'monte-rc');
   await expect(page.locator('[data-montar-solucion]')).toHaveCount(0);
   // the keyboard: a tray card chosen with Enter, put with Enter where the bench's cursor is
-  await page.locator('.bandeja [data-carta="R1"]').focus();
+  // (1.3, cierre13: the RC card's drawing calls its resistor «R», and so does the tray)
+  await page.locator('.bandeja [data-carta="R"]').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.mesa')).toBeFocused();
   // (the cursor starts on the hole nearest the middle of the view: down a row at a time until the part fits — a
   // vertical resistor across the central channel)
-  for (let k = 0; k < 16 && !(await piezas(page)).some((p) => p.nombre === 'R1'); k++) {
+  for (let k = 0; k < 16 && !(await piezas(page)).some((p) => p.nombre === 'R'); k++) {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
   }
-  await expect.poll(async () => (await piezas(page)).some((p) => p.nombre === 'R1')).toBe(true);
+  await expect.poll(async () => (await piezas(page)).some((p) => p.nombre === 'R')).toBe(true);
   await page.locator('.a12-montar-uniones summary').click();
-  await expect(page.locator('[data-uniones]')).toContainText('R1');
+  // (each line «node: its legs», with the space after the colon: cierre13 found «Masa, abajo:VF −»)
+  await expect(page.locator('[data-uniones] li').filter({ hasText: /^Entre la resistencia y el condensador: R$/ })).toHaveCount(1);
+  await expect(page.locator('[data-uniones] li').filter({ hasText: /^Masa, abajo: VF −$/ })).toHaveCount(1);
   // the ladder opened to its solution: the button that puts it on the board
   await page.locator('[data-escalera] button, [data-pista]').first().click();
   for (let k = 0; k < 4 && !(await page.locator('[data-montar-solucion]').count()); k++) await page.locator('[data-escalera] button, [data-pista]').first().click().catch(() => undefined);
@@ -236,4 +239,21 @@ test('avería en la placa (widget «averia-placa»): una pieza mala no completa;
   await expect(boton(page)).toBeEnabled();
   await sinScroll(page);
   expect(errores).toEqual([]);
+});
+
+// 1.3 (cierre13): the published lesson 8.2 names its parts as its drawing: the top resistor of the feedback divider is
+// R₂ = 9,1 kΩ in the schematic above, and «R2» in the tray (it was «R1», the schematic netlist's own name)
+test('la lección publicada 8.2: la bandeja llama R2 a la de 9,1 kΩ, como el dibujo', async ({ page }) => {
+  await page.context().route('https://api.github.com/**', (x) => x.fulfill({ status: 404, body: '{}' }));
+  await page.addInitScript(() => {
+    localStorage.setItem('epa:sinc-ajustes', JSON.stringify({ auto: false }));
+  });
+  const publicada = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', 'cap08', 'sec-8.2.json'), 'utf8')) as Leccion11;
+  const k = publicada.tarjetas.findIndex((t) => t.id === 'monte-realimentacion') + 1;
+  await page.goto(`#/leccion/cap08/sec-8.2/${k}`);
+  const tarjeta = page.locator('[data-tarjeta="monte-realimentacion"]');
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta.locator('svg text').filter({ hasText: 'R₂' }).first()).toContainText('9,1');
+  await expect(page.locator('.bandeja [data-carta="R2"]')).toHaveAttribute('aria-label', /R2, 9,1/);
+  await expect(page.locator('.bandeja [data-carta="R1"]')).toHaveAttribute('aria-label', /R1, 1 ?k/);
 });
