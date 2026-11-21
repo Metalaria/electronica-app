@@ -59,6 +59,13 @@ test.describe('monos de «Monte este circuito»', () => {
       const a = azar(semilla);
       const rastro = new Rastro(semilla);
       let tarjeta = a.uno(tarjetas);
+      // (each card's starting board, as first seen: «Empezar de nuevo» must bring it back)
+      const iniciales = new Map<string, string>();
+      const nombres = () => page.evaluate(() => JSON.stringify((window as unknown as Ventana).__epaProtoboard!.pb.doc.piezas.map((p) => p.comp.nombre).sort()));
+      for (const t of tarjetas) {
+        await abrir(page, t.n);
+        iniciales.set(t.id, await nombres());
+      }
       await abrir(page, tarjeta.n);
       const mesa = async () => (await page.locator('.mesa').first().boundingBox({ timeout: 5000 }).catch(() => null))!;
       const punto = async (): Promise<P> => {
@@ -132,18 +139,22 @@ test.describe('monos de «Monte este circuito»', () => {
           }
           case 'reiniciar': {
             rastro.apuntar('empezar de nuevo');
-            await page.locator('[data-montar-reiniciar]').click({ timeout: 4000 }).catch(() => {});
+            const hecho = await page.locator('[data-montar-reiniciar]').click({ timeout: 4000 }).then(() => true, () => false);
             await page.waitForTimeout(300);
-            const n = await page.evaluate(() => (window as unknown as Ventana).__epaProtoboard!.pb.doc.piezas.filter((p) => !['fuente', 'pila', 'generador'].includes(p.enc)).length);
-            expect(n, `«Empezar de nuevo» deja piezas (${rastro})`).toBeLessThanOrEqual(1);
+            if (!hecho) {
+              rastro.apuntar('(no se pudo pulsar)');
+              break;
+            }
+            expect(await nombres(), `«Empezar de nuevo» en ${tarjeta.id} (${rastro})`).toBe(iniciales.get(tarjeta.id));
             break;
           }
           case 'solucion': {
             const b = page.locator('[data-montar-solucion]');
             if (await b.count()) {
               rastro.apuntar('solución');
-              await b.click({ timeout: 4000 }).catch(() => {});
-              await expect(page.locator('[data-montar]'), String(rastro)).toHaveAttribute('data-diagnostico', /bien|simulando/, { timeout: 60_000 });
+              const hecho = await b.click({ timeout: 4000 }).then(() => true, () => false);
+              if (hecho) await expect(page.locator('[data-montar]'), String(rastro)).toHaveAttribute('data-diagnostico', /bien|simulando/, { timeout: 60_000 });
+              else rastro.apuntar('(no se pudo pulsar)');
             } else {
               rastro.apuntar('pista');
               await page.locator('[data-escalera] button, [data-pista]').first().click({ timeout: 3000 }).catch(() => {});

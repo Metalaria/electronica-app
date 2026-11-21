@@ -51,7 +51,8 @@
   // options of the 2D view
   let lado: Lado = $state('F');
   let aspecto: Aspecto = $state('real');
-  let visibles: CapasVisibles = $state({ F: true, B: true, mascara: true, serigrafia: true, fab: false, areas: true });
+  // (1.3.1: the parts' bodies on the face looked at, on by default)
+  let visibles: CapasVisibles = $state({ F: true, B: true, mascara: true, serigrafia: true, fab: false, areas: true, componentes: true });
   let tensiones = $state(false);
 
   const res = $derived(d ? resolver(d, selPlaca) : { huella: null, red: null, pad: null });

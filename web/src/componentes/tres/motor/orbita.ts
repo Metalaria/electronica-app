@@ -471,6 +471,9 @@ export class Orbita {
     const propio = e.target === this.elemento;
     // On an overlay (a label): no capture and no preventDefault, so a tap still follows its link.
     if (!propio && !(e.target instanceof Node && this.zona.contains(e.target))) return;
+    // 1.3.1: a pointer still held down by its id lost its release (a mouse pressed on an overlay, which takes no
+    // capture, and released outside the window): it is let go first, or it would count as a second finger forever.
+    if (this.punteros.has(e.pointerId)) this.arriba(e);
     // Map: a third finger is ignored.
     if (this.mapa && this.ids.length >= 2) return;
     this.transicion = null;

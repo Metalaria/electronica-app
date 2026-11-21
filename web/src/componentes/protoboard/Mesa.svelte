@@ -33,6 +33,7 @@
   import { ELEVACION_DEDO, elevacion, histeresisRejilla, huecoConHisteresis, siguienteHueco, zoomAutomatico, type Direccion } from '../colocar/precision';
   import { vibrarAterrizaje, vibrarCambio } from '../colocar/haptica';
   import { movimiento } from '../figuras-vivas/carga.svelte';
+  import { migaAccion } from '../../lib/informe-fallos';
   import { huecoCercano as huecoMasCercano } from './leccion.ts';
   import { pulsar } from './pulsar.ts';
   import type { Componente } from '../editor/tipos.ts';
@@ -384,6 +385,21 @@
   let pinza: { d: number; s: number; c: Pt; t: Pt } | null = null;
   let ultimoToque = { t: 0, id: '' };
 
+  /** A long press (600 ms, still) on a wire removes it (0.11). */
+  function largoQuitaCable(id: string, g0: Gesto) {
+    largo = setTimeout(() => {
+      largo = null;
+      if (gesto === g0 && !g0.movido) {
+        gesto = null;
+        pendiente = null;
+        pb.quitarCable(id);
+        info = '';
+        // (1.3.1: coarse crumbs for the crash report — what the finger was doing, never what the board holds)
+        migaAccion('protoboard: cable quitado con pulsación larga');
+      }
+    }, 600);
+  }
+
   function soltarLargo() {
     if (largo) clearTimeout(largo);
     largo = null;
@@ -635,6 +651,7 @@
       mira.visible = true;
       mira.armada = true;
       vibrarCambio();
+      migaAccion('protoboard: apuntar con el dedo (lupa)');
       if (!pb.armada) info = 'Deslice el dedo hasta el agujero que quiera y suéltelo ahí.';
     }, MIRA_ARMAR);
   }
@@ -647,10 +664,18 @@
     return g.t === 'cable' || (!!pb.armada && g.t === 'pan');
   }
 
+  /**
+   * 1.3.1: what the finger went down on (a part, a wire, a handle), or null on a free spot. Holding a finger still on
+   * something never aims (the owner, trying to long-press a wire away with «Medir» open or a wire being laid, got the
+   * aiming loupe every time instead, and lifting moved the probe or the wire's end there).
+   */
+  let sobreAlgo = false;
+
   function abajo(ev: PointerEvent) {
     pararMira();
+    sobreAlgo = !!objetivo(ev);
     abajoGesto(ev);
-    if (ev.pointerType === 'touch' && punteros.size === 1 && tocaColocar(gesto)) empezarMira(ev);
+    if (ev.pointerType === 'touch' && punteros.size === 1 && !sobreAlgo && tocaColocar(gesto)) empezarMira(ev);
   }
 
   function abajoGesto(ev: PointerEvent) {
@@ -732,6 +757,8 @@
     // A wire being laid tap by tap: the next tap ends it (or cancels it).
     if (pendiente) {
       gesto = { t: 'cable', a: pendiente, b: q, desde, movido: false };
+      // (1.3.1: held on a wire, a long press removes it, as it does without a wire being laid — and drops the start)
+      if (o?.t === 'cable') largoQuitaCable(o.id, gesto);
       return;
     }
     // A wire: its end is dragged straight away (0.11); elsewhere it moves; a long press removes it.
@@ -739,17 +766,7 @@
       const x = extremoCerca(w, ev);
       if (x && x.id === o.id) gesto = { t: 'extremo', id: x.id, e: x.e, q: x.q, desde, movido: false };
       else gesto = { t: 'pieza', ids: seleccion.has(o.id) ? [...pb.sel] : [o.id], desde, ini: w, dx: 0, dy: 0, movido: false };
-      const id = o.id;
-      const g0 = gesto;
-      largo = setTimeout(() => {
-        largo = null;
-        if (gesto === g0 && !g0.movido) {
-          gesto = null;
-          pendiente = null;
-          pb.quitarCable(id);
-          info = '';
-        }
-      }, 600);
+      largoQuitaCable(o.id, gesto);
       return;
     }
     if (o) {
@@ -856,8 +873,8 @@
       colocando = null;
       devolverVista();
     }
-    if (!g.movido && m?.armada && !pb.armada) {
-      // aimed: a tap on the hole shown (none off the holes)
+    if (!g.movido && (m?.armada || m?.visible) && !pb.armada) {
+      // aimed (or shown, 1.3.1): a tap on the hole shown, never on another one (none off the holes)
       if (!m.q) {
         info = 'Fuera de los agujeros: no se ha puesto nada.';
         return;
@@ -908,6 +925,7 @@
     if (dedo && puesto) {
       vibrarAterrizaje();
       ajuste = puesto;
+      migaAccion(`protoboard: ${puesto.t === 'sonda' ? 'punta' : puesto.t === 'pata' ? 'pata' : 'extremo de cable'} arrastrado con el dedo`);
     }
   }
 
@@ -1274,6 +1292,11 @@
     el.addEventListener('touchmove', toque, { passive: false });
     el.addEventListener('gesturestart', gestoSafari);
     el.addEventListener('gesturechange', gestoSafari);
+    // 1.3.1: the app sent to the background mid-gesture (no release will come): the gesture and its loupe end
+    const oculta = () => {
+      if (document.visibilityState !== 'visible') cancelar();
+    };
+    document.addEventListener('visibilitychange', oculta);
     const g = globalThis as unknown as { __epaProtoboard?: unknown };
     g.__epaProtoboard = {
       pb,
@@ -1303,6 +1326,13 @@
       el.removeEventListener('touchmove', toque);
       el.removeEventListener('gesturestart', gestoSafari);
       el.removeEventListener('gesturechange', gestoSafari);
+      document.removeEventListener('visibilitychange', oculta);
+      // (timers and frames of a gesture in progress when the bench goes)
+      pararMira();
+      soltarLargo();
+      if (animacion) cancelAnimationFrame(animacion);
+      if (bordeRaf) cancelAnimationFrame(bordeRaf);
+      animacion = bordeRaf = 0;
       if ((g.__epaProtoboard as { pb?: unknown } | undefined)?.pb === pb) delete g.__epaProtoboard;
     };
   });
@@ -1610,6 +1640,10 @@
     onpointermove={mover}
     onpointerup={arriba}
     onpointercancel={cancelar}
+    onlostpointercapture={(ev) => {
+      // (1.3.1: a pointer whose release will never come — the capture taken away — ends its gesture, its loupe too)
+      if (punteros.has(ev.pointerId)) cancelar();
+    }}
     onpointerleave={() => {
       cursor = null;
       if (pb.armada) fant = null;

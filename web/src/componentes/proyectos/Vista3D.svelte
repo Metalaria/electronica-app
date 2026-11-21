@@ -5,6 +5,7 @@
   // tap (or double click) to bring it closer. Rendered on demand; disposed on unmount. 0.9: the parts are only
   // built when «Componentes» is on (at once, or when it is turned on later): with it off nothing of them is loaded.
   import { onMount, untrack, type Snippet } from 'svelte';
+  import { migaAccion } from '../../lib/informe-fallos';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Compass from '@lucide/svelte/icons/compass';
   import { formatoTension, type DatosPlaca } from './datos';
@@ -298,6 +299,8 @@
     }
     return () => {
       cerrada = true;
+      // (1.3.1: a crumb for the crash report: the 3D view went, its GPU memory with it)
+      migaAccion('placa 3D: cerrar');
       ro?.disconnect();
       lienzo?.removeEventListener('webglcontextlost', perdido);
       if (pendiente) cancelAnimationFrame(pendiente);

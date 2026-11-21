@@ -318,7 +318,12 @@ function prueba(): CanvasRenderingContext2D | null {
  * What is under the board point (x, y) seen from side `lado` (u); `tol` in u. Visible copper layers decide what
  * can be hit; parts are tested by their body box (smallest first) when no copper is under the point.
  */
-export function impacto(d: DatosPlaca, g: Geometria, x: number, y: number, tol: number, lado: Lado, visibles: Record<Lado, boolean>, componentes = true): Impacto2D | null {
+/**
+ * What is under a board point: a pad first, then a via, a track, a part's body, a copper zone. 1.3.1: `cuerposEncima`
+ * (the 2D view drawing the bodies of face `lado` over the copper): a body of that face comes right after the pads,
+ * before what it covers.
+ */
+export function impacto(d: DatosPlaca, g: Geometria, x: number, y: number, tol: number, lado: Lado, visibles: Record<Lado, boolean>, componentes = true, cuerposEncima = false): Impacto2D | null {
   let mejor: Impacto2D | null = null;
   let dmin = Infinity;
   for (let i = 0; i < d.pads.length; i++) {
@@ -335,6 +340,10 @@ export function impacto(d: DatosPlaca, g: Geometria, x: number, y: number, tol: 
     }
   }
   if (mejor) return mejor;
+  if (cuerposEncima) {
+    const h = cuerpoEn(d, x, y, (hu) => hu.lado === lado && hu.m.tipo !== 'sin_cuerpo');
+    if (h >= 0) return { tipo: 'huella', huella: h };
+  }
   const v = d.vias;
   for (let i = 0; i < v.length; i += 5) {
     if (Math.hypot(v[i + 1]! - x, v[i + 2]! - y) <= v[i + 3]! / 2 + tol) return { tipo: 'via', red: v[i]! };
@@ -355,21 +364,8 @@ export function impacto(d: DatosPlaca, g: Geometria, x: number, y: number, tol: 
     if (red >= 0) return { tipo: 'pista', red, lado: l };
   }
   if (componentes) {
-    let area = Infinity;
-    let h = -1;
-    for (let i = 0; i < d.huellas.length; i++) {
-      const hu = d.huellas[i]!;
-      if (hu.t === 'mec') continue;
-      const e = esquinasHuella(hu);
-      if (dentro(e, x, y)) {
-        const [x0, y0, x1, y1] = hu.m.caja;
-        const a = (x1 - x0) * (y1 - y0);
-        if (a < area) {
-          area = a;
-          h = i;
-        }
-      }
-    }
+    // (1.3.1: a part on the face looked at before one on the other face under it, then the smallest)
+    const h = cuerpoEn(d, x, y, () => true, lado);
     if (h >= 0) return { tipo: 'huella', huella: h };
   }
   const ctx = prueba();
@@ -383,6 +379,25 @@ export function impacto(d: DatosPlaca, g: Geometria, x: number, y: number, tol: 
     }
   }
   return null;
+}
+
+/** The smallest part body (non-mechanical, passing `vale`) containing a board point; those on `lado` first. */
+function cuerpoEn(d: DatosPlaca, x: number, y: number, vale: (h: DatosPlaca['huellas'][number]) => boolean, lado?: Lado): number {
+  let area = Infinity;
+  let h = -1;
+  for (let i = 0; i < d.huellas.length; i++) {
+    const hu = d.huellas[i]!;
+    if (hu.t === 'mec' || !vale(hu)) continue;
+    if (dentro(esquinasHuella(hu), x, y)) {
+      const [x0, y0, x1, y1] = hu.m.caja;
+      const a = (x1 - x0) * (y1 - y0) * (lado && hu.lado !== lado ? 1e9 : 1);
+      if (a < area) {
+        area = a;
+        h = i;
+      }
+    }
+  }
+  return h;
 }
 
 /** Box (u) of a net's copper, or null. */

@@ -363,3 +363,33 @@ test('protoboard en el teléfono con «reducir movimiento» y la vibración apag
   expect(await vibraciones(page)).toEqual([]);
   await ctx.close();
 });
+
+// 1.3.1 (qa131-interaccion): the fine-adjust arrows stay with what they move when the phone is turned (the bench
+// changes place and size): before, they stayed where they had been drawn, over another part of the board.
+test('protoboard en el teléfono: al girar el teléfono las flechas del ajuste fino no se quedan lejos de la punta', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { ctx, page, cdp } = await telefono(browser);
+  await abrirProtoboard(page);
+  await page.locator('[data-pestana="medir"]').first().tap();
+  await page.waitForFunction(() => !!(window as unknown as Ventana).__epaMedida, null, { timeout: 30_000 });
+  await page.waitForTimeout(600);
+  const c12 = await pantalla(page, [12, 5]);
+  await page.touchscreen.tap(c12[0], c12[1]);
+  await page.waitForTimeout(250);
+  await arrastrarHueco(page, cdp, [12, 5], [13, 4]);
+  await toques(cdp, 'touchEnd', []);
+  await page.waitForTimeout(400);
+  await expect(page.locator('[data-ajuste-fino] button').first()).toBeVisible();
+  const lejos = async () => {
+    const q = await pantalla(page, [13, 4]);
+    const bs = await page.locator('[data-ajuste-fino] button').evaluateAll((xs) => xs.map((b) => b.getBoundingClientRect()).map((r) => [r.x + r.width / 2, r.y + r.height / 2]));
+    return bs.map(([x, y]) => Math.hypot(x! - q[0], y! - q[1])).filter((d) => d > 2 * 50 + 30);
+  };
+  expect(await lejos()).toEqual([]);
+  for (const v of [{ width: 915, height: 412 }, { width: 412, height: 915 }]) {
+    await page.setViewportSize(v);
+    await page.waitForTimeout(500);
+    expect(await lejos(), `flechas lejos de la punta en ${v.width}×${v.height}`).toEqual([]);
+  }
+  await ctx.close();
+});
