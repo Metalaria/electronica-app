@@ -2440,7 +2440,7 @@ size that always worked) and kept in `epa-caras-max`.
 **The report** (`informe-fallos.ts`, apart from the application log): one entry per failure `{t, v (version), p
 (platform from the UA: «Android · tableta · Tauri · Chromium 129»), r (route, ids only: `rutaSegura`), k (kind), m
 (message ≤ 400), s? (stack ≤ 8 lines × 160), z? (zone: «la figura 5.3», «la vista 3D de la placa»), b (the last 12
-breadcrumbs), n (repetitions), visto?, i (id)}` in localStorage `epa-informe-fallos` as `{x: [cleared ids], e:
+breadcrumbs), mem? (1.3.1: memory samples, below), n (repetitions), visto?, i (id)}` in localStorage `epa-informe-fallos` as `{x: [cleared ids], e:
 [entries]}` (still read: the bare array of the first 1.0 builds, and `{borrado}` of the 10f ones as the ids it covered) — outside the `epa:` prefix, so never in
 the reader's data, the backups or the synchronisation; nothing is ever sent. Bounded: 40 entries and 80 000 characters
 (oldest dropped; storage full → the newest quarter, else memory only). Two tabs (review 10f, r10f·6): every read and
@@ -2488,7 +2488,18 @@ letters and digits mixed → `[…]`. Objects thrown are never serialised (only 
 **No loops**: no function of the module throws; `informarFallo` ignores a call made while it is reporting (a listener
 that reports again), listeners' exceptions are swallowed, and the rate limit stops anything else.
 
-**Hard crashes** (`epa-informe-sesion`: `{<page id>: {t, e: activa|oculta, v, r, b}}`): written at start, on each
+**Memory samples and action crumbs** (1.3.1, after a «Cierre inesperado» in #/protoboard on Android with no crumb of
+it): a route reached from an overlay (`navegarDesdeCapa`: the «Más» sheet, the search, the drawer — no `hashchange`)
+writes its route crumb too, and `reemplazarDireccion` (a lesson's card) a throttled «pantalla #/…». `migaAccion(texto)`
+is a crumb for coarse actions of heavy pages (the same text once every 15 s, six a minute: «protoboard: panel medir»,
+«protoboard: 3 piezas, 2 cables», «protoboard: simular»); a WebGL context lost on a canvas still in the page adds
+«WebGL: contexto perdido». Each crumb and each heartbeat (≥ 5 s apart) takes a sample, counts only: «20:40:20 montón 410
+MB · 9100 nodos · 7 lienzos 31,0 Mpx · WebGL 1 (+2 fuera de la página), 5 creados, 1 perdidos» (the JS heap from
+`performance.memory`, Chromium and the Android WebView only, coarse there; DOM nodes; canvases and their backing pixels;
+WebGL contexts alive, out of the document but not released, created and lost, counted by a `getContext` hook). The last
+16 go in the session record (`m`) and into a «cierre» entry (`mem`); other entries take the last 6.
+
+**Hard crashes** (`epa-informe-sesion`: `{<page id>: {t, e: activa|oculta, v, r, b, m?}}`): written at start, on each
 breadcrumb, on `visibilitychange` and `freeze`, and as a heartbeat every `SIN_LATIDO_MS / 6` (20 s) while visible;
 removed on `pagehide` and `beforeunload`. At the next start (`revisarCierres`) another page's record still `activa`
 counts as dead only when its heartbeat has not moved for `SIN_LATIDO_MS` (120 s; a recent record is looked at again

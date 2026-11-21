@@ -3471,6 +3471,28 @@ varios comandos) y `QA_VIEJO_NOMBRE=0.11.0` pone el nombre de la versión con la
 pruebas de regresión de lo corregido en la 0.12 están en `tests/regresiones12.spec.ts` (`-c
 playwright.regresiones12.config.ts`, puerto 4431).
 
+**Desde la 1.3.1** hay además un mono de toda la aplicación, reproducible por su semilla, y un barrido de las rutas
+principales (`web/tests/monos/`, `-c playwright.monos.config.ts`, puerto 4436; fuera de la suite normal). El mono
+(`monos.spec.ts`) hace cada vez cientos de acciones al azar —toques, pulsaciones largas, deslizar y pellizcar con dos
+dedos por CDP en los perfiles táctiles; clics, arrastres, rueda y teclas en el escritorio; texto en los campos— y
+tareas: ir a una ruta, Atrás y Adelante, girar, el panel «Aa», la búsqueda, una lección, la protoboard, el 3D, el
+simulador. Falla con una excepción o una promesa rechazada sin capturar, un error de consola, una petición propia
+fallida, texto «NaN», «undefined», «null» o «[object Object]» en pantalla, desplazamiento horizontal o una página que
+se ensancha en el móvil, un diálogo que no se cierra (Escape, su botón, Atrás), un contexto WebGL perdido en pantalla o
+el montón de JS que crece demasiado. Cada fallo deja `test-results/monos/<perfil>-<semilla>.json` con el rastro de
+acciones y, con `MONO_REDUCIR=1`, el rastro mínimo que lo reproduce; `MONO_RASTRO=<fichero>` lo repite:
+
+```
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers MONO_RUNS=20 MONO_ACCIONES=300 MONO_REDUCIR=1 nice npx playwright test -c playwright.monos.config.ts tests/monos/monos.spec.ts --project=telefono
+MONO_RASTRO=test-results/monos/telefono-1312.json … tests/monos/monos.spec.ts --project=telefono
+… tests/monos/barrido.spec.ts      # rutas × perfil × tema (axe, 44 px en lo nuevo de la 1.3), cambio de tamaño, Atrás/Adelante, sin conexión, CPU ×6
+```
+
+Los perfiles son `telefono` (Pixel 8 Pro, oscuro), `tableta` (Xiaomi Pad 6), `escritorio` (1366 × 900, movimiento
+reducido) y `escritorio-hd` (1920 × 1080, oscuro y colores forzados). Los datos de la 1.2.0, la 1.2.1 y la 1.3.0, hechos
+con el código real de cada versión, se comprueban sin navegador en `tests/compat131.spec.ts` (copia de seguridad sin
+pérdidas, dos dispositivos de versiones distintas sincronizando, copias dañadas).
+
 Lo que cambió en la aplicación gracias al arnés (0.11): nada que llegue tarde empuja ya lo que se está leyendo
 (el circuito del simulador, los paneles de problemas y los botones del lector, las figuras, el glosario, el banco
 de instrumentos), los avisos de carga solo salen si la carga tarda, la barra del simulador ya no parpadea con la

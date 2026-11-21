@@ -41,7 +41,7 @@
 
 import { registrar } from './registro';
 import { hayCambiosSinGuardar, olvidarPermiso, preguntandoSalida, puedeSalir } from './salida';
-import { miga, rutaSegura } from './informe-fallos';
+import { miga, migaAccion, rutaSegura } from './informe-fallos';
 import { rutaDeHashEnlace } from './enlaces';
 import { destinoRetirado } from './datos';
 
@@ -264,11 +264,23 @@ export function navegarDesdeCapa(href: string, desde?: { texto: string }): void 
       if (!ok) return;
       history.replaceState(st, '', href);
       leer();
+      anotarRuta();
     });
     return;
   }
   history.replaceState(st, '', href);
   leer();
+  // (1.3.1: no «hashchange» here — the owner's crash report from #/protoboard, entered from the «Más» sheet, had no
+  // breadcrumb of it)
+  anotarRuta();
+}
+
+/** The screen just entered, in the application log and as a breadcrumb of the «Informe de fallos» (ids only). */
+function anotarRuta(): void {
+  // Application log (0.10): the screens visited, so a report says where the reader was.
+  registrar('info', 'navegación', decodeURIComponent(location.hash || '#/'));
+  // 1.0: and a breadcrumb of the «Informe de fallos» (ids only, lib/informe-fallos.ts)
+  miga(`ruta ${rutaSegura(location.hash || '#/')}`);
 }
 
 // ------------------------------------------------------------------ scroll memory
@@ -329,7 +341,11 @@ let direccionActual = typeof location === 'undefined' ? '' : location.href;
  * read (the lesson's first card: a reload after «Seguir en la lección» had jumped back to it).
  */
 export function reemplazarDireccion(h: string): void {
-  if (location.hash !== h) history.replaceState(history.state, '', h);
+  if (location.hash !== h) {
+    history.replaceState(history.state, '', h);
+    // 1.3.1: a lesson's card or a screen of the same page, as a (throttled) breadcrumb of the «Informe de fallos»
+    migaAccion(`pantalla ${rutaSegura(h)}`);
+  }
   direccionActual = location.href;
 }
 
@@ -362,10 +378,7 @@ export function iniciarRuta(): void {
       desdePendiente = null;
     }
     leer();
-    // Application log (0.10): the screens visited, so a report says where the reader was.
-    registrar('info', 'navegación', decodeURIComponent(location.hash || '#/'));
-    // 1.0: and a breadcrumb of the «Informe de fallos» (ids only, lib/informe-fallos.ts)
-    miga(`ruta ${rutaSegura(location.hash || '#/')}`);
+    anotarRuta();
   });
   window.addEventListener('popstate', () => {
     const top = pila[pila.length - 1];

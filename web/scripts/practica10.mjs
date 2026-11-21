@@ -1389,6 +1389,9 @@ function retiradosDe(p) {
       for (const c of it.citas ?? []) if (c.ref && refs[c.ref] && /^Sección /.test(c.donde ?? '')) c.donde = `Sección ${refs[c.ref].num}`;
       if (it.formula?.seccion && refs[it.formula.seccion.label]) it.formula.seccion.num = refs[it.formula.seccion.label].num;
       if (it.formula?.cap && refs[`cap-${Number(p.slice(3))}`]) it.formula.cap = refs[`cap-${Number(p.slice(3))}`].num;
+      // 1.3.1: the equation's image of the book as it is now (the retired copy names an ec/*.svg no longer published)
+      const actual = it.formula && !fs.existsSync(path.join(libro, it.formula.svg ?? '')) ? formulas.formulas.find((f) => f.id === it.formula.id) : null;
+      if (actual?.svg && fs.existsSync(path.join(libro, actual.svg))) Object.assign(it.formula, { fuente: actual.fuente, svg: actual.svg, w: actual.w, h: actual.h });
       out.push(it);
     }
   }
