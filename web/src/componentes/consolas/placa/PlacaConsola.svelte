@@ -554,8 +554,9 @@
     line-height: 1.45;
     overflow-wrap: anywhere;
   }
+  /* (div: the schematic checks' list items carry the class «aviso» too, and took this box's padding) */
   .cargando,
-  .aviso {
+  div.aviso {
     padding: 30px;
     color: var(--tinta-suave);
   }

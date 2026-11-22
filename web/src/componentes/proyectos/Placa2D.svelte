@@ -727,7 +727,8 @@
     bottom: 8px;
     padding: 2px 8px;
     border-radius: 6px;
-    background: rgba(0, 0, 0, 0.45);
+    /* 1.3.1 (qa131-temas): 0.45 left the white text at 4.0:1 on the light and sepia frames */
+    background: rgba(0, 0, 0, 0.55);
     color: #fff;
     font-size: 12px;
     pointer-events: none;

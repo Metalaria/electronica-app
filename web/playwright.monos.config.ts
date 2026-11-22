@@ -4,6 +4,7 @@
 //   … --project=telefono                                   one profile
 //   MONO_RASTRO=test-results/monos/telefono-1312.json …    replay a failing run's shrunk trail
 //   … tests/monos/barrido.spec.ts                           the route sweep (themes, offline, CPU ×6, back/forward)
+//   … tests/monos/qa131-temas.spec.ts                       the dark and sepia sweep (axe, console, screenshots to look at)
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineConfig } from '@playwright/test';
@@ -14,8 +15,9 @@ const comun = { locale: 'es-ES', timezoneId: 'Europe/Madrid' };
 
 export default defineConfig({
   testDir: 'tests/monos',
-  // the monkey and the route sweep (barrido.spec.ts); other specs in tests/monos/ are their own
-  testMatch: /(^|\/)(monos|barrido)\.spec\.ts$/,
+  // the monkey, the route sweep (barrido.spec.ts) and the theme sweep (qa131-temas.spec.ts: dark and sepia, run it by
+  // its path); other specs in tests/monos/ are their own
+  testMatch: /(^|\/)(monos|barrido|qa131-temas)\.spec\.ts$/,
   timeout: 60 * 60_000,
   fullyParallel: true,
   workers: Number(process.env.MONO_WORKERS ?? 1),

@@ -39,7 +39,7 @@ const conCuerpo = (hs: Huella[], lado: 'F' | 'B') =>
 const stats = (page: Page) => page.evaluate(() => (globalThis as unknown as { __epaPlaca2D?: Stats }).__epaPlaca2D ?? null);
 const vista = (page: Page) => page.evaluate(() => (globalThis as unknown as { __epaPlacaVista?: Vista }).__epaPlacaVista!);
 
-async function abrir(page: Page, p: (typeof PLACAS)[number]): Promise<{ huellas: Huella[]; pads: Pad[]; mascara: string }> {
+async function abrir(page: Page, p: (typeof PLACAS)[number]): Promise<{ huellas: Huella[]; pads: Pad[]; mascara: string; ancho: number; alto: number }> {
   await page.context().route('https://api.github.com/**', (x) => x.fulfill({ status: 404, body: '{}' }));
   await page.goto(`/#/consolas/${p.maquina}/placa2d`);
   if (p.boton) {
@@ -49,28 +49,33 @@ async function abrir(page: Page, p: (typeof PLACAS)[number]): Promise<{ huellas:
     await page.waitForTimeout(800);
   }
   await expect(page.locator('.placa2d canvas')).toBeVisible({ timeout: 60_000 });
-  const d = await page.evaluate(async (id) => (await (await fetch(`consolas/placas/${id}.json`)).json()) as { huellas: Huella[]; pads: Pad[]; placa: { mascara: string } }, p.id);
+  const d = await page.evaluate(async (id) => (await (await fetch(`consolas/placas/${id}.json`)).json()) as { huellas: Huella[]; pads: Pad[]; placa: { mascara: string; ancho: number; alto: number } }, p.id);
   await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca2D?: Stats }).__epaPlaca2D?.cuerpos !== undefined, null, { timeout: 60_000 });
   await page.waitForTimeout(300);
-  return { huellas: d.huellas, pads: d.pads, mascara: d.placa.mascara };
+  return { huellas: d.huellas, pads: d.pads, mascara: d.placa.mascara, ancho: d.placa.ancho, alto: d.placa.alto };
 }
 
-/** The darkest canvas pixel among board points (CSS px of the canvas from the view's transform): a body is dark. */
-async function luz(page: Page, puntos: [number, number][]): Promise<number> {
+/** The canvas luminance at each board point (CSS px of the canvas from the view's transform). */
+async function luz(page: Page, puntos: [number, number][]): Promise<number[]> {
   return page.evaluate((ps) => {
     const v = (globalThis as unknown as { __epaPlacaVista: Vista }).__epaPlacaVista;
     const cv = document.querySelector('.placa2d canvas') as HTMLCanvasElement;
     const dpr = cv.width / cv.clientWidth;
-    let min = 255;
-    for (const [x, y] of ps) {
+    return ps.map(([x, y]) => {
       const px = (v.ox + (v.lado === 'B' ? v.ancho - x! : x!) * v.k) * dpr;
       const py = (v.oy + y! * v.k) * dpr;
       const [r, g, b] = cv.getContext('2d')!.getImageData(Math.round(px), Math.round(py), 1, 1).data;
-      min = Math.min(min, 0.2126 * r! + 0.7152 * g! + 0.0722 * b!);
-    }
-    return min;
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    });
   }, puntos);
 }
+/**
+ * How much the body changes the board, pixel by pixel along the diagonal: the largest change, darker (or, on a black
+ * or purple mask, lighter). (1.3.1, qa131-temas: it compared the darkest pixel with and without the body, and a drill
+ * under the diagonal — painted darker in the dark theme — made the board itself the darkest; the same pixel with and
+ * without the body tells them apart in every theme.)
+ */
+const cambio = (con: number[], sin: number[], aclara: boolean) => Math.max(...con.map((c, i) => (aclara ? c - sin[i]! : sin[i]! - c)));
 
 /** Inside a convex quadrilateral (the body box). */
 function dentro(e: [number, number][], x: number, y: number): boolean {
@@ -96,18 +101,21 @@ for (const p of PLACAS) {
     for (const lado of ['F', 'B'] as const) {
       // (each face on a fresh page: the previous face's tap selected a part, which frames it)
       await page.goto('/#/');
-      const { huellas: hs, pads, mascara } = await abrir(page, p);
+      const { huellas: hs, pads, mascara, ancho: anchoPlaca, alto: altoPlaca } = await abrir(page, p);
       await cara(page, lado);
       const esperados = conCuerpo(hs, lado);
       expect((await stats(page))!.cuerpos, `cuerpos en la cara ${lado}`).toBe(esperados.length);
       if (!esperados.length) continue;
       // the biggest body: dark in its middle with the bodies, not without them
-      const grande = esperados.reduce((a, b) => ((b.m.caja[2] - b.m.caja[0]) * (b.m.caja[3] - b.m.caja[1]) > (a.m.caja[2] - a.m.caja[0]) * (a.m.caja[3] - a.m.caja[1]) ? b : a));
+      // (a body within the board: one that overhangs its edge — the SNES's LED1 — has the frame, not the board, behind
+      // part of it, light or dark with the theme)
+      const enPlaca = esperados.filter((h) => esquinas(h).every(([x, y]) => x >= 0 && x <= anchoPlaca && y >= 0 && y <= altoPlaca));
+      const grande = (enPlaca.length ? enPlaca : esperados).reduce((a, b) => ((b.m.caja[2] - b.m.caja[0]) * (b.m.caja[3] - b.m.caja[1]) > (a.m.caja[2] - a.m.caja[0]) * (a.m.caja[3] - a.m.caja[1]) ? b : a));
       const e = esquinas(grande);
       const m: [number, number] = [e.reduce((s, q) => s + q[0], 0) / 4, e.reduce((s, q) => s + q[1], 0) / 4];
       // (a fifth of the way from a corner to the middle: inside the body, away from the reference written in its middle)
       const c: [number, number] = [e[0]![0] + (m[0] - e[0]![0]) * 0.2, e[0]![1] + (m[1] - e[0]![1]) * 0.2];
-      // (the diagonal from there towards the middle: the darkest of its pixels, whatever the body's size on screen)
+      // (the diagonal from there towards the middle: its pixels, whatever the body's size on screen)
       const diagonal: [number, number][] = [0.15, 0.2, 0.25, 0.3, 0.35, 0.4].map((f) => [e[0]![0] + (m[0] - e[0]![0]) * f, e[0]![1] + (m[1] - e[0]![1]) * f]);
       // what a tap there selects: the smallest body of this face containing the point
       const area = (h: Huella) => (h.m.caja[2] - h.m.caja[0]) * (h.m.caja[3] - h.m.caja[1]);
@@ -128,8 +136,8 @@ for (const p of PLACAS) {
       expect((await stats(page))!.cuerpos).toBe(0);
       const sin = await luz(page, diagonal);
       // (dark on the board's mask; on a black or purple mask a grey body, lighter than the board)
-      if (mascara === 'negra' || mascara === 'morada') expect(con - sin, `el cuerpo de ${grande.r} (cara ${lado}) se distingue de la placa negra`).toBeGreaterThan(8);
-      else expect(sin - con, `el cuerpo de ${grande.r} (cara ${lado}) es más oscuro que la placa`).toBeGreaterThan(12);
+      if (mascara === 'negra' || mascara === 'morada') expect(cambio(con, sin, true), `el cuerpo de ${grande.r} (cara ${lado}) se distingue de la placa negra (con ${con.map(Math.round)}, sin ${sin.map(Math.round)})`).toBeGreaterThan(8);
+      else expect(cambio(con, sin, false), `el cuerpo de ${grande.r} (cara ${lado}) es más oscuro que la placa (con ${con.map(Math.round)}, sin ${sin.map(Math.round)})`).toBeGreaterThan(12);
       await boton.click();
       await expect(boton).toHaveAttribute('aria-pressed', 'true');
       await page.waitForTimeout(300);
