@@ -72,7 +72,8 @@
   import TextoVivo from './TextoVivo.svelte';
   // 1.2.1 (piloto121): the goal of an explore card, reached live (GUIA §13.3)
   import Objetivo from '../leccion12/Objetivo.svelte';
-  import { objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
+  import { lecturaPorLlegar, objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
+  import { esperarMedicion } from '../../lib/leccion12/hacer/punto-trabajo';
   import { variablesWidget12 } from '../../lib/leccion12/digital/objetivo-figura';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
@@ -271,11 +272,26 @@
     estados[pantalla] = { ...e, ...c };
   }
 
-  function principal(ev?: MouseEvent) {
+  /** (cierre131) a «medir» check waiting for the simulator's reading: the card it was pressed on. */
+  let esperandoLectura: string | null = null;
+
+  function principal(ev?: MouseEvent, sinEsperar = false) {
     if (!leccion || !t || !e || !boton || boton.bloqueado) return;
     // the second click of a double tap landed on the next card's button, in the same place (1.0 lesson, 0.11 QA)
     if (ev && ev.detail > 1) return;
     if (boton.accion === 'comprobar') {
+      // (cierre131) on a circuit the simulator solves, the verdict waits for the reading it quotes
+      if (esperandoLectura) return;
+      const p = !sinEsperar && mc ? lecturaPorLlegar(mc, t, efectivos) : null;
+      if (p) {
+        const clave = `${pantalla}:${t.id}`;
+        esperandoLectura = clave;
+        void esperarMedicion(p).then(() => {
+          esperandoLectura = null;
+          if (t && `${pantalla}:${t.id}` === clave) principal(undefined, true);
+        });
+        return;
+      }
       const { estado, aviso: a } = comprobar(leccion, t, e, efectivos);
       const ev2 = eventoDeComprobacion(leccion, t, e, estado);
       if (ev2) {

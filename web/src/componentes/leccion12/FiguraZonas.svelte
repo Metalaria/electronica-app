@@ -116,7 +116,7 @@
       cambiar({ actividad: { ...ea, elegidas }, movidos, widget12: { ...w12, zona: id } });
     }
     // (motor13: an explore card keeps every touch, in order: a goal on zones looks at them, objetivo-figura.ts)
-    else cambiar({ movidos, widget12: { ...w12, zona: id, visitadas: tocarVisita(w12, id) } });
+    else cambiar({ movidos, widget12: { ...w12, zona: id, visitadas: tocarVisita(w12, id, t.objetivo) } });
   }
 
   function estadoZona(z: ZonaFigura): 'bien' | 'mal' | 'elegida' | 'vista' | '' {

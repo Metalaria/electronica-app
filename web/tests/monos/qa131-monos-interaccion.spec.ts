@@ -305,6 +305,10 @@ test.describe('monos de la placa en 3D', () => {
       const fallos = errores(page);
       const a = azar(semilla);
       const rastro = new Rastro(semilla);
+      // (cierre131: on a phone the bottom bar's «Inicio» lies over the canvas, and a tap there opens the home page,
+      // whose lazy singletons — the problem of the day, set once — are not a leak of the board: open it once first)
+      await page.goto('/#/');
+      await page.waitForTimeout(1500);
       await abrir3D(page);
       await page.goto('/#/consolas/snes');
       await page.waitForTimeout(1500);

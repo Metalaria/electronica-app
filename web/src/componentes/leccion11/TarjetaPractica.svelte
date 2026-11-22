@@ -31,6 +31,8 @@
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
   import { conVariante, rotuloVariante } from '../../lib/leccion12/variantes';
+  import { lecturaPorLlegar } from '../../lib/leccion12/hacer/motor-hacer';
+  import { esperarMedicion } from '../../lib/leccion12/hacer/punto-trabajo';
 
   let {
     leccion,
@@ -105,9 +107,24 @@
     cambiarEstado({ eleccion: j });
   }
 
-  function principal(ev?: MouseEvent) {
+  /** (cierre131) a «medir» check waiting for the simulator's reading: the card it was pressed on. */
+  let esperandoLectura: string | null = null;
+
+  function principal(ev?: MouseEvent, sinEsperar = false) {
     if (boton.bloqueado || (ev && ev.detail > 1)) return;
     if (boton.accion === 'comprobar') {
+      // (cierre131) on a circuit the simulator solves, the verdict waits for the reading it quotes
+      if (esperandoLectura) return;
+      const p = sinEsperar ? null : lecturaPorLlegar(mc, t, efectivos);
+      if (p) {
+        const clave = t.id;
+        esperandoLectura = clave;
+        void esperarMedicion(p).then(() => {
+          esperandoLectura = null;
+          if (t.id === clave) principal(undefined, true);
+        });
+        return;
+      }
       const { estado, aviso: a } = comprobar(leccion, t, e, efectivos);
       const r = eventoDeComprobacion(leccion, t, e, estado, 'inteligente');
       // (qa131) a card that cannot be answered again after this check (a «simular» estimate is committed once, right

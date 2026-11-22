@@ -4,7 +4,8 @@
 // (`orden: true`: the path of the current, the order of the checks). Like a logic goal, the conditions become ordinary
 // conditions on «variables» the shell adds to the card's values from the widget's state: «zona:<id>» is 1 once the zone
 // has been touched (in order: once it and every zone before it in the goal have been touched in that order). The
-// figure keeps its touches in order (EstadoWidget12.visitadas, the last TOQUES_GUARDADOS, in memory only). Pure.
+// figure keeps its touches in order (EstadoWidget12.visitadas, in memory only); past TOQUES_GUARDADOS the walk is
+// compacted to what a goal reads from it (the zones touched and, for an ordered goal, the prefix followed). Pure.
 
 import type { Valores } from '../../leccion11/modelo';
 import type { Tarjeta } from '../../leccion11/tipos';
@@ -13,12 +14,27 @@ import { variablesLogica } from './objetivo-logico';
 import type { EstadoWidget12, WidgetFigura } from './tipos';
 import { variablesAveriaPlaca } from '../averia-placa';
 
-/** The touches a figure keeps (a walk of an ordered goal is far shorter). */
+/** The touches a figure keeps before compacting them (a walk of an ordered goal is far shorter). */
 export const TOQUES_GUARDADOS = 100;
 
-/** The figure's touches after touching `id`. */
-export function tocarVisita(w12: EstadoWidget12 | undefined, id: string): string[] {
-  return [...(w12?.visitadas ?? []), id].slice(-TOQUES_GUARDADOS);
+/**
+ * The figure's touches after touching `id` (`o`: the card's goal, if any). Past TOQUES_GUARDADOS the walk is compacted
+ * without changing what variablesFigura reads from it: the zones touched off the goal's ordered prefix, once each,
+ * then that prefix in order. (cierre131: it used to keep only the last touches, so a zone touched once early was
+ * forgotten after many touches elsewhere and a goal already met went back to pending.)
+ */
+export function tocarVisita(w12: EstadoWidget12 | undefined, id: string, o?: Pick<Objetivo, 'condiciones' | 'orden'>): string[] {
+  const todas = [...(w12?.visitadas ?? []), id];
+  if (todas.length <= TOQUES_GUARDADOS) return todas;
+  const prefijo: string[] = [];
+  if (o?.orden) {
+    const lista = zonasDelObjetivo(o);
+    for (const z of todas) if (prefijo.length < lista.length && z === lista[prefijo.length]) prefijo.push(z);
+  }
+  // (none of the others is the goal's next zone in order before the prefix: the greedy walk over them matches nothing,
+  // since the goal's first zone is either in the prefix or was never touched)
+  const otras = [...new Set(todas)].filter((z) => !prefijo.includes(z));
+  return [...otras, ...prefijo];
 }
 
 /** The variable of a zone. */

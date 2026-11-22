@@ -98,11 +98,44 @@ test.describe('objetivo de zonas en una figura', () => {
     // in order: «trampas» first does not count; the walk goes on from there
     expect(variablesFigura(w, w12(['trampas', 'coincidir']), o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 0, 'zona:trampas': 0 });
     expect(variablesFigura(w, w12(['trampas', 'coincidir', 'diferir', 'trampas']), o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 1 });
-    // (the figure keeps its touches, the last ones)
+    // (the figure keeps its touches in a bounded list: compacted past 100, cierre131)
     let e: EstadoWidget12 = w12([]);
     for (let k = 0; k < 150; k++) e = { ...e, visitadas: tocarVisita(e, k % 2 ? 'diferir' : 'coincidir') };
-    expect(e.visitadas).toHaveLength(100);
-    expect(e.visitadas!.at(-1)).toBe('diferir');
+    expect(e.visitadas!.length).toBeLessThanOrEqual(100);
+    expect(variablesFigura(w, e)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 0, 'zonas:tocadas': 2 });
+  });
+
+  // (cierre131: the figure kept only the last 100 touches, so a zone touched once early was forgotten after many
+  // touches elsewhere and a lit chip went off; it now keeps what a goal needs: the zones touched and the ordered prefix)
+  test('muchos toques no hacen olvidar una zona ya tocada ni el orden ya seguido', () => {
+    const w = T('explore-orden').widget as WidgetFigura;
+    const o = T('explore-orden').objetivo!;
+    const tocar = (e: EstadoWidget12, id: string, ob?: typeof o) => ({ ...e, zona: id, visitadas: tocarVisita(e, id, ob) });
+    // any order: «trampas» once, then 300 touches on the other two
+    let e: EstadoWidget12 = tocar(w12([]), 'trampas');
+    for (let k = 0; k < 300; k++) e = tocar(e, k % 2 ? 'diferir' : 'coincidir');
+    expect(e.visitadas!.length).toBeLessThanOrEqual(100);
+    expect(variablesFigura(w, e)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 1, 'zonas:tocadas': 3 });
+    // in order: «coincidir» first, then 300 touches on «trampas» (out of order), then «diferir» and «trampas»
+    e = tocar(w12([]), 'coincidir', o);
+    for (let k = 0; k < 300; k++) e = tocar(e, 'trampas', o);
+    expect(e.visitadas!.length).toBeLessThanOrEqual(100);
+    expect(variablesFigura(w, e, o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 0, 'zona:trampas': 0, 'zonas:tocadas': 2 });
+    e = tocar(tocar(e, 'diferir', o), 'trampas', o);
+    expect(variablesFigura(w, e, o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 1 });
+    // and the same walk, compacted or not, gives the same variables at every step (a pseudo-random walk)
+    let a: EstadoWidget12 = w12([]);
+    const todo: string[] = [];
+    const ids = ['coincidir', 'diferir', 'trampas'];
+    let x = 7;
+    for (let k = 0; k < 400; k++) {
+      x = (x * 1103515245 + 12345) % 2147483648;
+      const id = ids[(x >> 8) % 3]!;
+      a = tocar(a, id, o);
+      todo.push(id);
+      expect(variablesFigura(w, a, o)).toEqual(variablesFigura(w, w12(todo), o));
+      expect(variablesFigura(w, a)).toEqual(variablesFigura(w, w12(todo)));
+    }
   });
 
   test('«Continuar» se abre al tocar las tres zonas, en cualquier orden; el consejo dice la que falta', () => {

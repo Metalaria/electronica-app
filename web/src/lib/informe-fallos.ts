@@ -457,16 +457,24 @@ function vigilarWebGL(): void {
         lienzosGl.push(new WeakRef(this));
         if (lienzosGl.length > 200) lienzosGl.splice(0, lienzosGl.length - 200);
         const lienzo = this;
-        lienzo.addEventListener('webglcontextlost', () => {
+        // (cierre131: one listener at a time, each «once», and none left on a canvas whose view released its context:
+        // two listeners kept on every board left behind made each visit to a 3D board add two to the page's count,
+        // tests/regresiones11.spec.ts «placa 3D … no acumula memoria»)
+        const alPerder = () => {
           perdidos.add(lienzo);
           // (three.js releases a context on purpose when its view goes away: only a loss on screen is news)
           setTimeout(() => {
             if (!lienzo.isConnected) return;
             glPerdidos++;
             miga('WebGL: contexto perdido');
+            lienzo.addEventListener('webglcontextrestored', alRecuperar, { once: true });
           }, 0);
-        });
-        lienzo.addEventListener('webglcontextrestored', () => perdidos.delete(lienzo));
+        };
+        const alRecuperar = () => {
+          perdidos.delete(lienzo);
+          lienzo.addEventListener('webglcontextlost', alPerder, { once: true });
+        };
+        lienzo.addEventListener('webglcontextlost', alPerder, { once: true });
       }
     } catch {
       /* never throws */

@@ -10,7 +10,8 @@ import { textoPlano } from '../../leccion11/texto';
 import type { Grafica, Magnitud, Tarjeta, Texto, WidgetCircuito } from '../../leccion11/tipos';
 import { diagnosticar } from '../prediccion';
 import type { Simular } from '../tipos';
-import { describirMedida, lectura, medidaBien, medidaCompleta, porqueMedida, solucionWidget, unidadMedida } from './medir';
+import { describirMedida, lectura, medicionPendiente, medidaBien, medidaCompleta, porqueMedida, solucionWidget, unidadMedida } from './medir';
+import type { PeticionMedida } from './punto-trabajo';
 import type { ActividadHacer, Elegir, EstadoActividadHacer, EstadoElegir, EstadoMedida, Marcar } from './tipos';
 
 const T = (s: string): Texto => [{ t: 'txt', s }];
@@ -144,6 +145,17 @@ export interface VeredictoHacer {
 /** The first hint whose condition holds on these variables (one without condition always does). */
 function pista(t: Tarjeta, vars: Valores): Texto | undefined {
   return (t.pistas ?? []).find((p) => !p.cuando || enRango(p.cuando, vars))?.texto;
+}
+
+/**
+ * The simulator run a «medir» card's check has to wait for, so that its verdict quotes the multimeter's reading
+ * (cierre131: on a non-linear circuit, «Comprobar» pressed before ngspice had answered said «Así se mide: …» without
+ * it); null when nothing has to be waited for. The shells wait for it (punto-trabajo.ts esperarMedicion) and check.
+ */
+export function lecturaPorLlegar(mc: ModeloCompilado, t: Tarjeta, v: Valores): PeticionMedida | null {
+  if (t.actividad?.tipo !== 'medir' || t.widget?.tipo !== 'circuito') return null;
+  const w = t.widget as WidgetCircuito;
+  return w.instrumento?.tipo === 'multimetro' ? medicionPendiente(w, mc.evaluar(v)) : null;
 }
 
 /** Checks the card with the card's values `v` (the model's inputs). */
