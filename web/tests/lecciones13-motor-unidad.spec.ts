@@ -265,6 +265,43 @@ test.describe('repaso haciendo: variantes de una tarjeta', () => {
     expect(generar({ ...copia(FUENTE_B), tarjetas: (copia(FUENTE_B) as F).tarjetas.map((t) => (t.id === 'prediga-bornes' ? { ...t, variantes: false } : t)) }).leccion!.tarjetas.find((t) => t.id === 'prediga-bornes')!.variantes).toBeUndefined();
   });
 
+  // qa131: «mida-pin» (cap20/sec-20.5), «prediga-npn» (cap11/sec-11.2) and «mida-fase» (cap23/sec-23.10) were asked
+  // «Con otros valores» changing only a value of another card's circuit (R_f, P_n, C_r): the card the reader saw was
+  // the lesson's own, word for word. A «medir» card without «valor» took every calculation of the model as its answer,
+  // so any value of the lesson «changed the answer».
+  test('cada variante publicada cambia algo que la tarjeta enseña (su circuito, sus textos o su respuesta)', () => {
+    const indice = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', 'indice.json'), 'utf8'));
+    let n = 0;
+    const iguales: string[] = [];
+    for (const id of Object.keys(indice.lecciones)) {
+      const l = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', `${id}.json`), 'utf8')) as Leccion11;
+      const calculos = l.modelo.calculos as Record<string, { expr?: string }>;
+      const enModelo = (w: string) => w in l.modelo.valores || w in calculos;
+      for (const t of l.tarjetas) {
+        if (!t.variantes) continue;
+        // the quantities the card shows or asks for (any model id written in it), with what they are worked out from
+        const usa = new Set<string>();
+        const andar = (x: unknown): void => {
+          if (typeof x === 'string') for (const w of x.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) if (enModelo(w)) usa.add(w);
+          if (Array.isArray(x)) x.forEach(andar);
+          else if (x && typeof x === 'object') for (const [k, y] of Object.entries(x)) if (k !== 'variantes' && k !== 's') (enModelo(k) && usa.add(k), andar(y));
+        };
+        andar(t);
+        for (const k of [...usa]) {
+          const pila = [k];
+          while (pila.length) for (const w of String(calculos[pila.pop()!]?.expr ?? '').match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) if (enModelo(w) && !usa.has(w)) (usa.add(w), pila.push(w));
+        }
+        for (const [k, v] of t.variantes.entries()) {
+          if (v.objetivo) continue;
+          n++;
+          if (!Object.keys(v.valores ?? {}).some((q) => usa.has(q))) iguales.push(`${id} ${t.id} variante ${k + 1}: ${JSON.stringify(v.valores)}`);
+        }
+      }
+    }
+    expect(iguales).toEqual([]);
+    expect(n).toBeGreaterThan(20);
+  });
+
   test('automáticas solo donde es seguro: sobre los mandos de la lección, con las cifras escritas de nuevo, nunca en una figura ni con palabras que comparan', () => {
     const P = generar(parse(fs.readFileSync(path.join(web, '..', 'contenido', 'lecciones11', 'cap00', 'sec-0.7.yaml'), 'utf8'))).leccion as Leccion11;
     const t = P.tarjetas.find((x) => x.id === 'prediga-carga')!;

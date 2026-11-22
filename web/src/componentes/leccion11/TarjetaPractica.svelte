@@ -68,9 +68,19 @@
   // (review 11c: the hidden reading stays hidden after a wrong check — the retry would be answered by the screen —;
   // it is shown once the card is right or its round has closed, the second wrong check: nothing more is reported)
   const oculto = $derived(!!t.widget?.ocultar && !e.resuelta && !e.cerrada);
+  // (qa131, as the lesson does since fix12) an «averia» card's widget must not give the fault away: until it is found
+  // the circuit shows the healthy board's values (labels, description) as a prediction, with no voltages; the probes
+  // (BuscarAveria, in Actividad12) still measure the faulty board
+  const averiaOculta = $derived(t.actividad?.tipo === 'averia' && !(e.comprobado && e.bien));
+  const nominales = $derived(averiaOculta ? valoresDeTarjeta(t, propios, null) : efectivos);
+  const evaluadosWidget = $derived(averiaOculta ? mc.evaluar(nominales) : evaluados);
+  const ocultoWidget = $derived(oculto || averiaOculta);
 
   function valor(id: string): string {
     return formatear(mc.magnitud(id), evaluados[id]);
+  }
+  function valorWidget(id: string): string {
+    return formatear(mc.magnitud(id), evaluadosWidget[id]);
   }
 
   function alMover(id: string, x: number) {
@@ -100,6 +110,13 @@
     if (boton.accion === 'comprobar') {
       const { estado, aviso: a } = comprobar(leccion, t, e, efectivos);
       const r = eventoDeComprobacion(leccion, t, e, estado, 'inteligente');
+      // (qa131) a card that cannot be answered again after this check (a «simular» estimate is committed once, right
+      // or wrong) closes its round here: the lesson brings a missed card back before its summary, a session does not,
+      // and the reader was left with no button but «Saltar»
+      if (r && !r.cerrada && estado.resuelta) {
+        r.evento.final = true;
+        r.cerrada = true;
+      }
       if (r) {
         emitir(r.evento);
         estado.cerrada = r.cerrada;
@@ -134,13 +151,13 @@
     </div>
   {/if}
   {#if t.widget?.tipo === 'circuito'}
-    <CircuitoLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
+    <CircuitoLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
   {:else if t.widget?.tipo === 'grafica'}
-    <GraficaLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
+    <GraficaLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} hacer={{ t, e, cambiar: cambiarEstado }} />
   {:else if t.widget?.tipo === 'averia-placa'}
     <AveriaPlaca {t} w={t.widget} {e} cambiar={cambiarEstado} />
   {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
-    <Widget12 {t} {e} {oculto} {prefijo} cambiar={cambiarEstado} />
+    <Widget12 {t} {e} oculto={ocultoWidget} {prefijo} cambiar={cambiarEstado} />
   {/if}
 
   {#if t.nota}<p class="nota"><TextoVivo texto={t.nota} {valor} /></p>{/if}

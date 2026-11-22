@@ -453,6 +453,38 @@ test('avería: el dibujo no delata el fallo (valores nominales, sin tensiones ni
   await ctx.close();
 });
 
+// qa131: the same card asked on its own in a practice session (TarjetaPractica) drew the faulty board: «R₂ 1 GΩ» on
+// its label and the faulty voltages, the answer on show before measuring. Hidden there too until it is found.
+test('avería en la práctica: el dibujo tampoco delata el fallo hasta encontrarlo', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await servir(ctx, CAT12, cat12);
+  await ctx.route('**/libro/lecciones11/indice.json', async (x) => {
+    const real = await x.fetch().then((y) => y.json()).catch(() => ({ version: 1, total: 0, lecciones: {} }));
+    const lecciones = { ...(real.lecciones ?? {}), ...entradasCongeladas(), [CAT12]: { tarjetas: cat12.tarjetas.length, preguntas: [{ id: 'averia-divisor', tipo: 'averia' }] } };
+    await x.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, total: Object.keys(lecciones).length, lecciones }) });
+  });
+  const page = await ctx.newPage();
+  await preparar(page);
+  await page.goto(`#/practicar/${CAT12}`);
+  await page.locator('[data-empezar-sesion]').click();
+  for (let n = 0; n < 25 && (await page.locator('[data-item]').getAttribute('data-item-tipo')) !== 'leccion11'; n++) await page.locator('[data-saltar]').click();
+  const tarjeta = page.locator('[data-leccion11-suelta]');
+  await expect(tarjeta).toHaveAttribute('data-tarjeta', 'averia-divisor');
+  const svg = tarjeta.locator('svg.e11');
+  await expect(svg).toContainText('5 kΩ');
+  await expect(svg).not.toContainText('GΩ');
+  expect(await svg.getAttribute('aria-label')).not.toMatch(/GΩ|gigaohmio/);
+  await expect(tarjeta.locator('[data-vivo]')).toHaveAttribute('data-vivo-tensiones', 'no');
+  expect(await tarjeta.locator('svg.e11 [data-tension]').count()).toBe(0);
+  // found: the faulty board on show
+  await page.locator('[data-sonda="salida"]').click();
+  await page.locator('[data-sospechoso="r2"]').click();
+  await tarjeta.locator('[data-comprobar-l11]').click();
+  await expect(tarjeta.locator('[data-veredicto]')).toHaveAttribute('data-veredicto', 'bien');
+  await expect(svg).toContainText('GΩ');
+  await ctx.close();
+});
+
 // ------------------------------------------------------------------------------------------------ 3
 test('curso: el título recibe el foco tras navegar, sin anillo de foco', async ({ page }) => {
   await page.context().route('https://api.github.com/**', (x) => x.fulfill({ status: 404, body: '{}' }));

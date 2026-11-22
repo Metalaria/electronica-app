@@ -106,7 +106,8 @@
   let terminada = $state(false);
   let empezada = $state(false);
   const inicioVisita = Date.now();
-  let abierta = false;
+  // (qa131: reactive, so the goal effect below waits for the card's «inicio»)
+  let abierta = $state(false);
   let fiesta = $state(false);
   let repaso = $state('');
   let respondidas = $state(0);
@@ -485,7 +486,9 @@
   $effect(() => {
     const tt = t;
     const ee = e;
-    if (!tt?.objetivo || !ee || ee.logrado || !objetivoCumplido(tt, evaluados)) return;
+    // (qa131) not while the lesson is still loading: the values are then the model's, without the card's «inicio», and
+    // a goal those happen to meet (cap22/sec-22.1: the model's R₂ is the answer) was marked reached for good
+    if (!abierta || !tt?.objetivo || !ee || ee.logrado || !objetivoCumplido(tt, evaluados)) return;
     untrack(() => {
       estados[pantalla] = { ...ee, logrado: true };
       avisos[pantalla] = { bien: true, titulo: '¡Conseguido!', textos: [tt.objetivo!.logrado] };

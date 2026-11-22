@@ -201,6 +201,13 @@ test.describe('1.2: el generador', () => {
     expect(errores((f) => (tarjetaDe(f, 'simule-carga').escalera = ['a', 'b', 'c']))).toContainEqual(expect.stringMatching(/«escalera»: una o dos pistas/));
     // numbers in the step's texts follow the book-or-model rule
     expect(errores((f) => (tarjetaDe(f, 'averia-divisor').averia.fallos[0].texto = 'Mide 7,77 V.'))).toContainEqual(expect.stringMatching(/el número 7,77 no está/));
+    // (qa131) a malformed expression is reported, never thrown: the script stopped with «sobra texto en «V_out 7777»»
+    // and a stack trace, without saying which lesson or card
+    for (const [id, campo, clave] of [['banco-divisor', 'banco', 'esperado'], ['simule-carga', 'simular', 'objetivo'], ['dibuje-salida', 'dibujar', 'curva']] as const) {
+      let r: string[] = [];
+      expect(() => (r = errores((f) => (tarjetaDe(f, id)[campo][clave] = `${tarjetaDe(f, id)[campo][clave]} 7777`))), `${campo}.${clave}`).not.toThrow();
+      expect(r.length, `${campo}.${clave}`).toBeGreaterThan(0);
+    }
     // without SQLite the SQL cards cannot be checked
     expect(generarLeccion(copia(FUENTE), { bloques: contexto.bloques }, 'x').errores).toContainEqual(expect.stringMatching(/no se puede comprobar sin SQLite/));
   });
