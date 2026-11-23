@@ -28,12 +28,21 @@ function fuente(version: string): string | null {
   const commit = VERSIONES[version]!;
   const dir = join(tmpdir(), `epa-v${version.replace(/\./g, '')}-${commit}`);
   const src = join(dir, 'web', 'src');
-  if (existsSync(join(src, 'lib', 'usuario.svelte.ts'))) return src;
+  // (cierre14: the extracted release is kept in the system's temporary folder between runs, but its node_modules link
+  // points at the checkout that made it — a clone deleted since leaves it dangling: always link this checkout's)
+  const enlazar = () => {
+    rmSync(join(dir, 'web', 'node_modules'), { force: true });
+    symlinkSync(join(WEB, 'node_modules'), join(dir, 'web', 'node_modules'));
+  };
   try {
+    if (existsSync(join(src, 'lib', 'usuario.svelte.ts'))) {
+      enlazar();
+      return src;
+    }
     mkdirSync(dir, { recursive: true });
     const tar = execFileSync('git', ['-C', join(WEB, '..'), 'archive', commit, 'web/src', 'web/package.json'], { maxBuffer: 256 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', dir], { input: tar });
-    if (!existsSync(join(dir, 'web', 'node_modules'))) symlinkSync(join(WEB, 'node_modules'), join(dir, 'web', 'node_modules'));
+    enlazar();
     return src;
   } catch {
     return null;

@@ -304,3 +304,42 @@ for (const t of TAMANOS) {
     });
   }
 }
+
+// 1.4 (cierre14): on a 360 px phone the numeric answer field of a quiz grew past the screen when the unit was two
+// letters long (nm, mV, eV: 9–14 px) and, once answered, for every unit (the ✓/✗ mark beside it: 41–56 px). The
+// accessibility sweep caught it only when the shuffle put such a question first. Every numeric question of the
+// chapter 5 quiz, before and after its answer, without sideways scroll.
+test.describe('teléfono de 360 px', () => {
+  test.use({ viewport: { width: 360, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  test('el campo numérico del test no se sale de la pantalla, ni antes ni después de contestar', async ({ page }) => {
+    test.setTimeout(240_000);
+    await tema(page, 'claro');
+    const preguntas = (await (await page.request.get('libro/repaso/cap05.json')).json()) as { preguntas: PreguntaJson[] };
+    const numericas = preguntas.preguntas.filter((p) => p.tipo === 'numero').length;
+    expect(numericas).toBeGreaterThan(3);
+    await page.goto('#/repaso/test/cap05');
+    const desborde = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    const fallos: string[] = [];
+    let vistas = 0;
+    for (let k = 0; k < preguntas.preguntas.length; k++) {
+      await expect(page.locator('.cuestionario').getByText(`Pregunta ${k + 1} de ${preguntas.preguntas.length}`)).toBeVisible();
+      const num = page.locator('.cuestionario [data-numero]');
+      if (await num.isVisible()) {
+        vistas++;
+        const unidad = (await page.locator('.cuestionario .numero .unidad').textContent().catch(() => '')) ?? '';
+        const antes = await desborde();
+        if (antes > 0) fallos.push(`pregunta ${k + 1} (${unidad}): ${antes} px antes de contestar`);
+        await num.fill('1');
+        await page.locator('.cuestionario [data-comprobar]').click();
+        await expect(page.locator('.cuestionario .numero.ok, .cuestionario .numero.mal')).toBeVisible();
+        const despues = await desborde();
+        if (despues > 0) fallos.push(`pregunta ${k + 1} (${unidad}): ${despues} px al contestar`);
+      } else {
+        await page.locator('.cuestionario ol.opciones button').first().click();
+      }
+      await page.locator('[data-siguiente]').click();
+    }
+    expect(vistas).toBe(numericas);
+    expect(fallos).toEqual([]);
+  });
+});

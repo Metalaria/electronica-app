@@ -650,6 +650,8 @@ test.describe('android-preparar.mjs: icono de la notificación del recordatorio'
     fs.copyFileSync(path.join(WEB, 'scripts', 'android-preparar.mjs'), path.join(raiz, 'web', 'scripts', 'android-preparar.mjs'));
     // 1.1: the script also writes the book's QR links into the manifest (android-enlaces.mjs, from tauri.conf.json)
     fs.copyFileSync(path.join(WEB, 'scripts', 'android-enlaces.mjs'), path.join(raiz, 'web', 'scripts', 'android-enlaces.mjs'));
+    // 1.4: and the USB instruments' intent filter (android-usb.mjs, from recursos-android/xml/epa_usb.xml)
+    fs.copyFileSync(path.join(WEB, 'scripts', 'android-usb.mjs'), path.join(raiz, 'web', 'scripts', 'android-usb.mjs'));
     fs.cpSync(path.join(RAIZ, 'src-tauri', 'icons', 'android'), path.join(raiz, 'src-tauri', 'icons', 'android'), { recursive: true });
     fs.copyFileSync(path.join(RAIZ, 'src-tauri', 'tauri.conf.json'), path.join(raiz, 'src-tauri', 'tauri.conf.json'));
     if (conRecursos) fs.cpSync(path.join(RAIZ, 'src-tauri', 'recursos-android'), path.join(raiz, 'src-tauri', 'recursos-android'), { recursive: true });
@@ -675,6 +677,7 @@ test.describe('android-preparar.mjs: icono de la notificación del recordatorio'
     const r = spawnSync(process.execPath, [path.join(raiz, 'web', 'scripts', 'android-preparar.mjs')], { env, encoding: 'utf8' });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toContain('icono de la notificación copiado');
+    expect(r.stdout).toContain('filtro de los instrumentos USB copiado');
     const icono = fs.readFileSync(path.join(res, 'drawable', 'ic_stat_epa.xml'), 'utf8');
     expect(icono).toBe(fs.readFileSync(path.join(RAIZ, 'src-tauri', 'recursos-android', 'drawable', 'ic_stat_epa.xml'), 'utf8'));
     // a status-bar icon: a vector drawable of 24 dp, every path filled with opaque white (Android uses the alpha)
