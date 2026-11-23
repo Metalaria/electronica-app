@@ -2956,6 +2956,10 @@ widget:
 - El aviso de tamaño cuenta el recorte y el zoom: sin ellos sigue siendo «menos de 24 px» (y sugiere usarlos); con
   alguno de los dos, avisa por debajo de **44 px** a 360 px de ancho y dice cuántos mide («mide 41 px: recorte menos o
   amplíe más»). Cuenta: px = lado más corto de la zona × 312 × `ampliar` / ancho del recorte.
+- 1.4 (contenido14): `tests/contenido14-zonas-unidad.spec.ts` lo exige en todas las lecciones publicadas: cada zona
+  mide al menos 24 px sin `recorte` ni `ampliar` y al menos 44 px con alguno de ellos (el lado corto de su rectángulo
+  más grande). Si ni con `ampliar: 4` llega, una fila de texto puede ocupar todo su interlineado y una pieza diminuta
+  de una foto, un `rect` algo mayor que su caja (sin tapar las vecinas).
 - La lista de zonas (teclado y lector de pantalla) es la misma. Probado en
   `tests/lecciones13b-motor-unidad.spec.ts` y `tests/lecciones13b-motor-navegador.spec.ts` (foto NTSC de la SNES
   recortada a los chips de la derecha y ampliada 1,5: cada chip, más de 44 px a 360 y a 412 px).

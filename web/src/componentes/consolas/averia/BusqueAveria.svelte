@@ -14,7 +14,9 @@
   import { averiaPorId, averiasDe } from '../../../lib/averias-placa/definiciones';
   import {
     ajusteAfin,
+    ajusteProyectivo,
     aplicarAfin,
+    aplicarProyectivo,
     citasDe,
     describirPad,
     diagnosticar,
@@ -23,6 +25,7 @@
     padsDe,
     plano,
     type Afin,
+    type Proyectiva,
     type Diagnostico,
     type LeccionJson,
     type Modo,
@@ -228,22 +231,27 @@
     if (datos && !fotoDatos && vista === 'foto') vista = '3d';
   });
 
-  const afin = $derived.by((): Afin | null => {
+  const paresFoto = $derived.by((): [[number, number], [number, number]][] => {
     const f = fotoDatos;
-    if (!f?.posiciones || !placa) return null;
+    if (!f?.posiciones || !placa) return [];
     const pares: [[number, number], [number, number]][] = [];
     for (const [r, q] of Object.entries(f.posiciones)) {
       const h = placa.huellas.find((x) => x.r === r);
       if (h) pares.push([[h.x, h.y], q]);
     }
-    return ajusteAfin(pares);
+    return pares;
   });
+  // (the affine map gives the pads' size; the positions use a projective map, 1.4: the Super Nintendo's PAL photos
+  // are iFixit's, taken at a slight angle, where an affine map leaves pads several pixels off)
+  const afin = $derived.by((): Afin | null => ajusteAfin(paresFoto));
+  const proyectiva = $derived.by((): Proyectiva | null => ajusteProyectivo(paresFoto));
+  const enLaFoto = (x: number, y: number): [number, number] => (proyectiva ? aplicarProyectivo(proyectiva, x, y) : aplicarAfin(afin!, x, y));
   const padsFoto = $derived.by((): PadFoto[] => {
     const a = afin;
     const lado = def?.foto?.lado ?? 'F';
     if (!a) return [];
     return pads.filter((p) => p[lado] && p.red).map((p) => {
-      const [x, y] = aplicarAfin(a, p.x, p.y);
+      const [x, y] = enLaFoto(p.x, p.y);
       return { id: p.id, x, y };
     });
   });
@@ -255,7 +263,7 @@
   function enFoto(b: [number, number, number, number], margen: number): [number, number, number, number] | null {
     const a = afin;
     if (!a) return null;
-    const p = [aplicarAfin(a, b[0], b[1]), aplicarAfin(a, b[2], b[3])];
+    const p = [enLaFoto(b[0], b[1]), enLaFoto(b[2], b[3])];
     return [Math.min(p[0]![0], p[1]![0]) - margen, Math.min(p[0]![1], p[1]![1]) - margen, Math.max(p[0]![0], p[1]![0]) + margen, Math.max(p[0]![1], p[1]![1]) + margen];
   }
   const encuadreFoto = $derived.by((): [number, number, number, number] => {

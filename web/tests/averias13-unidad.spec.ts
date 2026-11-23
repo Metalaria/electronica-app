@@ -9,6 +9,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ajusteAfin,
+  ajusteProyectivo,
+  aplicarProyectivo,
   aplicarAfin,
   citasDe,
   describirPad,
@@ -181,6 +183,22 @@ test('el diagnóstico: el acierto con el texto de la avería, el error con la me
   expect(citas.some((c) => c.titulo.startsWith('Del libro: sección'))).toBe(true);
 });
 
+test('el ajuste proyectivo devuelve una homografía conocida y no sale de pocos puntos', () => {
+  const h = [0.09, 0.004, 15, -0.003, 0.088, 40, 2e-6, -1.5e-6, 1] as const;
+  const ap = (x: number, y: number): [number, number] => {
+    const w = h[6] * x + h[7] * y + 1;
+    return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w];
+  };
+  const pares = [[100, 200], [15000, 300], [7000, 12000], [14000, 15000], [700, 14000], [9000, 4000]].map(([x, y]) => [[x, y], ap(x!, y!)] as [[number, number], [number, number]]);
+  const pr = ajusteProyectivo(pares)!;
+  for (const [x, y] of [[5000, 5000], [12000, 1000], [300, 15500]] as const) {
+    const [u, v] = aplicarProyectivo(pr, x, y);
+    const [u0, v0] = ap(x, y);
+    expect(Math.hypot(u - u0, v - v0)).toBeLessThan(1e-6);
+  }
+  expect(ajusteProyectivo(pares.slice(0, 3))).toBeNull();
+});
+
 test('los pads sobre la foto: el ajuste afín de las posiciones de las huellas', () => {
   // a known map comes back from five points
   const m = [0.085, 0.001, 12, -0.002, 0.084, 30] as const;
@@ -194,7 +212,9 @@ test('los pads sobre la foto: el ajuste afín de las posiciones de las huellas',
   const a = ajusteAfin(pares)!;
   for (let i = 0; i < 6; i++) expect(a[i]).toBeCloseTo(m[i]!, 6);
   expect(ajusteAfin(pares.slice(0, 2))).toBeNull();
-  // the SNES's bare PAL face: the 43 footprints fitted within a pixel and a half; F1's pads beside its hotspot
+  // 1.4: the SNES's PAL component face is iFixit's photo (a populated board, taken at a slight angle): an affine map
+  // leaves footprints several pixels off, the projective map fits the 43 within a pixel and a half; F1's pads beside
+  // its place on the photo (the power corner, bottom left of the component side)
   const datos = json<{ fotos: { id: string; posiciones?: Record<string, [number, number]> }[] }>('consolas/snes.json');
   const placa = json<PlacaMinima>('consolas/placas/snes.json');
   const foto = datos.fotos.find((f) => f.id === 'cara-a')!;
@@ -202,16 +222,18 @@ test('los pads sobre la foto: el ajuste afín de las posiciones de las huellas',
     const h = placa.huellas.find((x) => x.r === r)!;
     return [[h.x, h.y], q] as [[number, number], [number, number]];
   });
-  const af = ajusteAfin(ps)!;
+  expect(ps.length).toBe(43);
+  const pr = ajusteProyectivo(ps)!;
   for (const [b, q] of ps) {
-    const p = aplicarAfin(af, b[0], b[1]);
+    const p = aplicarProyectivo(pr, b[0], b[1]);
     expect(Math.hypot(p[0] - q[0], p[1] - q[1])).toBeLessThan(1.5);
   }
-  const f1 = padsDe(placa).filter((p) => p.ref === 'F1').map((p) => aplicarAfin(af, p.x, p.y));
+  const f1 = padsDe(placa).filter((p) => p.ref === 'F1').map((p) => aplicarProyectivo(pr, p.x, p.y));
+  expect(f1.length).toBeGreaterThan(0);
   for (const [x, y] of f1) {
-    expect(x).toBeGreaterThan(300);
-    expect(x).toBeLessThan(480);
-    expect(y).toBeGreaterThan(1290);
-    expect(y).toBeLessThan(1360);
+    expect(x).toBeGreaterThan(470);
+    expect(x).toBeLessThan(610);
+    expect(y).toBeGreaterThan(1000);
+    expect(y).toBeLessThan(1060);
   }
 });
