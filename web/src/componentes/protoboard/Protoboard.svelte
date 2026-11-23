@@ -8,6 +8,7 @@
   // worker and Resultados), the checks, the selected part (the schematic editor's properties panel) and the
   // instruments. «Monta este circuito» (Guia.svelte) and the first-use tour (Recorrido.svelte) sit on top.
   import { onDestroy, onMount, untrack, type Snippet } from 'svelte';
+  import { migaAccion } from '../../lib/informe-fallos';
   import { app } from '../../lib/estado.svelte';
   import { motor, detener, precalentarMotor, simularTexto, SimulacionCancelada } from '../../simulador/cliente.svelte';
   import type { Simulacion } from '../../simulador/motor/simular.ts';
@@ -76,6 +77,18 @@
   let pestana = $state<Pestana>(untrack(() => (app.movil ? 'piezas' : 'esquema')));
   let mesa: Mesa | undefined = $state();
   let rotulos = $state(true);
+
+  // 1.3.1: coarse breadcrumbs of the «Informe de fallos» (throttled; counts and the app's own names only), so a crash
+  // on a phone says what the breadboard held and which panel was open (the owner's report from 1.3.0 had none)
+  $effect(() => {
+    const p = pestana;
+    if (p !== 'piezas') untrack(() => migaAccion(`protoboard: panel ${p}`));
+  });
+  $effect(() => {
+    const n = pb.doc.piezas.length;
+    const c = pb.doc.cables.length;
+    untrack(() => migaAccion(`protoboard: ${n} piezas, ${c} cables`));
+  });
   /** The whole palette («Más piezas»). */
   let paleta = $state(false);
   /** The chooser of «Monta este circuito». */
@@ -227,6 +240,7 @@
   }
 
   async function simular() {
+    migaAccion('protoboard: simular');
     errorSim = '';
     const nl = pb.nl;
     if (nl.errores.length) {
@@ -749,6 +763,9 @@
   }
   .banco {
     flex: 1 1 auto;
+    /* 1.3.1: as narrow as the row allows, not as wide as the bench's svg was drawn (Mesa sizes it from this box: with
+       min-width: auto the box could never shrink, and a narrower window or a turned tablet left the panel off screen) */
+    min-width: 0;
     min-height: 160px;
     position: relative;
   }

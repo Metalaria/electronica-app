@@ -71,17 +71,20 @@
   // (the name goes above the loupe, which is above the target, so it never covers the target; below at the top edge)
   const arriba = $derived(centro.y - radio > 44);
   // 1.3 (averias13): a long name (a console's pad with its net) stays inside the window: shifted sideways
+  // (1.3.1: the label's width is read only when its text changes — reading it on every move of the finger forced a
+  // layout of the whole page per pointermove, the main cost of a drag on a phone)
   let rotulo: HTMLParagraphElement | undefined = $state();
-  let corrimiento = $state(0);
+  let anchoRotulo = $state(0);
   $effect(() => {
     void etiqueta;
-    void centro.x;
     const el = rotulo;
-    if (!el) return;
-    const w = el.offsetWidth;
+    if (el) anchoRotulo = el.offsetWidth;
+  });
+  const corrimiento = $derived.by(() => {
+    const w = anchoRotulo;
     const ancho = typeof innerWidth === 'number' ? innerWidth : 400;
     const izq = centro.x - w / 2;
-    corrimiento = izq < 8 ? 8 - izq : izq + w > ancho - 8 ? ancho - 8 - (izq + w) : 0;
+    return izq < 8 ? 8 - izq : izq + w > ancho - 8 ? ancho - 8 - (izq + w) : 0;
   });
 </script>
 
@@ -167,6 +170,7 @@
     bottom: calc(2 * var(--r) + 8px);
   }
   .etiqueta.mal {
-    color: #b3261e;
+    /* 1.3.1 (qa131-temas): the theme's red — a fixed #b3261e was 2.4:1 on the dark theme's surface */
+    color: var(--v11-rojo, #b3261e);
   }
 </style>

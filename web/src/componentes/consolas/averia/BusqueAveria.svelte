@@ -658,6 +658,8 @@
   .sospechosos button,
   .puntas button {
     min-height: 44px;
+    /* (1.3.1: «Ω» alone was 42 px wide, under a finger's 44) */
+    min-width: 44px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 12px;
@@ -814,7 +816,8 @@
   }
   .etiqueta-3d.mal {
     border-color: #d93025;
-    color: #b3261e;
+    /* 1.3.1 (qa131-temas): the theme's red — a fixed #b3261e was 2.4:1 on the dark theme's surface */
+    color: var(--v11-rojo, #b3261e);
   }
   .info-3d {
     position: absolute;

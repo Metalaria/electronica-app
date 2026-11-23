@@ -3739,7 +3739,11 @@ el id de siempre (el progreso, las copias y la sincronización no cambian).
   mueve (sus posiciones son el recorrido que el autor les dio), nunca los mandos de la propia tarjeta ni un valor que
   la tarjeta deja en 0; no en una figura, un circuito lógico ni una lectura de una gráfica (sus ejes son fijos); no si
   algún texto compara magnitudes con palabras («veces», «doble», «mitad», «apenas», «despreciable», números en letra,
-  «milivoltios»…: `PALABRAS_DE_PROPORCION`). En la 1.3 salen así 12 tarjetas publicadas; el resto, declarándolas.
+  «milivoltios»…: `PALABRAS_DE_PROPORCION`). En la 1.3.1 salen así 9 tarjetas publicadas; el resto, declarándolas.
+- **Una variante cambia algo que la tarjeta enseña** (1.3.1, qa131): la «respuesta» que debe cambiar es la de la tarjeta
+  (su `objetivo`, su `medir.valor`, sus condiciones) o, en una `medir` sin `valor`, lo que su circuito y sus textos
+  enseñan, no cualquier cálculo de la lección. En la 1.3.0 tres tarjetas `medir` se preguntaban «Con otros valores»
+  cambiando solo un valor del circuito de otra tarjeta: eran la misma tarjeta, palabra por palabra.
 - Tarjetas probadas: `prediga-bornes` y `reto-carga` de `web/tests/lecciones12-catalogo/cap01/sec-1.10.yaml`
   (`tests/lecciones13-motor-unidad.spec.ts`, `tests/lecciones13-motor-navegador.spec.ts`).
 

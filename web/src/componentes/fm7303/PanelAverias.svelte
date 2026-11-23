@@ -209,10 +209,13 @@
   .principal {
     border-color: var(--acento);
     background: var(--acento);
-    color: #fff;
+    /* 1.3.1: the theme's text on the accent (white in light and sepia, dark in the dark theme, whose accent is light:
+       white on it gave 2,3:1) */
+    color: var(--sobre-acento);
     align-self: flex-start;
   }
   .principal.activo {
+    color: #fff;
     background: #b03a2e;
     border-color: #b03a2e;
   }

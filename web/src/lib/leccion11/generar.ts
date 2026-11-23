@@ -363,6 +363,18 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
   const enModelo = (x: string) => x in modelo.valores || x in modelo.calculos;
   if (errores.length > antesModelo) return fallo();
   const mc = compilarModelo(modelo);
+  // (qa131) the 1.2 steps and the goals evaluate the author's expressions after `variables` has reported a malformed
+  // one: there it must give NaN (one more reported error at most), not throw and stop the script with a stack trace
+  const mcSeguro: typeof mc = {
+    ...mc,
+    funcion: (x) => {
+      try {
+        return mc.funcion(x);
+      } catch {
+        return () => NaN;
+      }
+    },
+  };
   const base: Valores = {};
   for (const [k, v] of Object.entries(modelo.valores)) base[k] = v.valor;
 
@@ -621,7 +633,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     if (ft.objetivo != null) {
       if (tipo !== 'explorar' && tipo !== 'sorpresa' && tipo !== 'ajuste') e('«objetivo» va en una tarjeta explorar, sorpresa o ajuste');
       else if (sana()) {
-        const r = objetivoDe(ft.objetivo, { mc, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}), ...(t.widget?.tipo === 'figura' ? { figura: t.widget } : {}), ...(t.widget?.tipo === 'averia-placa' ? { averiaPlaca: true } : {}) }, t);
+        const r = objetivoDe(ft.objetivo, { mc: mcSeguro, inicial, mandos, max: MAX_COMBINACIONES, texto, rango: (x, d) => rango(x, d), e, ...(t.widget?.tipo === 'logica' ? { logica: t.widget.circuito } : {}), ...(t.widget?.tipo === 'figura' ? { figura: t.widget } : {}), ...(t.widget?.tipo === 'averia-placa' ? { averiaPlaca: true } : {}) }, t);
         if (r.objetivo) {
           t.objetivo = r.objetivo;
           if (typeof ft.fase !== 'string') t.fase = 'Consiga';
@@ -694,7 +706,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         const r12 = actividadDe(tipo, ft[tipo], {
           semilla: `${id}/${tid}`,
           t,
-          mc,
+          mc: mcSeguro,
           inicial,
           mandos,
           widget: t.widget,
@@ -974,16 +986,6 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       // what the reader works out: it must change, or the remembered answer is still right
       const a = t.actividad;
       const objetivo = a && (a.tipo === 'simular' || a.tipo === 'leer') ? a.objetivo : c.medirValor;
-      const calculos = t.condiciones?.length ? [...new Set(t.condiciones.map((q) => q.valor))] : Object.keys(modelo.calculos);
-      const respuesta = (v: Valores): number[] => {
-        const r = mc.evaluar(v);
-        return objetivo ? [mc.funcion(objetivo)(r)] : calculos.map((q) => r[q]!);
-      };
-      const claves = d?.valores ? Object.keys(dominios) : dependencias(dominios, c.inicial, respuesta);
-      const salida: VarianteTarjeta[] = [];
-      const motivos: string[] = [];
-      const r0 = respuesta(c.inicial);
-      const original = JSON.parse(JSON.stringify(fuenteTarjetas[i])) as Record<string, unknown>;
       // the quantities the card uses (its live values, expressions, widget), and the steps they are worked out from
       const usa = new Set<string>();
       const andar = (x: unknown): void => {
@@ -1000,6 +1002,19 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         const pila = [k];
         while (pila.length) for (const y of usos.get(pila.pop()!) ?? []) if (!usa.has(y)) (usa.add(y), pila.push(y));
       }
+      // (qa131: a «medir» card without «valor» has no single answer: what changes for the reader is what the card shows
+      // — its circuit, its readings, its live values —, not every calculation of the lesson; with all of them, a value of
+      // another card's circuit «changed the answer» and the variant was the lesson's card word for word)
+      const calculos = t.condiciones?.length ? [...new Set(t.condiciones.map((q) => q.valor))] : Object.keys(modelo.calculos).filter((q) => usa.has(q));
+      const respuesta = (v: Valores): number[] => {
+        const r = mc.evaluar(v);
+        return objetivo ? [mc.funcion(objetivo)(r)] : calculos.map((q) => r[q]!);
+      };
+      const claves = d?.valores ? Object.keys(dominios) : dependencias(dominios, c.inicial, respuesta);
+      const salida: VarianteTarjeta[] = [];
+      const motivos: string[] = [];
+      const r0 = respuesta(c.inicial);
+      const original = JSON.parse(JSON.stringify(fuenteTarjetas[i])) as Record<string, unknown>;
       delete original.variantes;
       /** The lesson with this card's source replaced: generated again, without variants. */
       const probar = (ft: Record<string, unknown>, extra: Omit<VarianteTarjeta, 'cambios'>) => {

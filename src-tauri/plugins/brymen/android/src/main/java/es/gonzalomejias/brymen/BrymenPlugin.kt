@@ -27,6 +27,7 @@ import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -68,12 +69,13 @@ class BrymenPlugin(private val activity: Activity) : Plugin(activity) {
   private val usb: UsbManager? = activity.getSystemService(Context.USB_SERVICE) as? UsbManager
   private val hilo: ExecutorService = Executors.newSingleThreadExecutor()
 
-  private var conexion: UsbDeviceConnection? = null
-  private var interfaz: UsbInterface? = null
-  private var entrada: UsbEndpoint? = null
-  private var salida: UsbEndpoint? = null
-  private var abierto: UsbDevice? = null
-  private var envio = ENVIO_DESCONOCIDO
+  // (1.3.1: written on the USB thread, read on the main thread by «abrir»: volatile, so the main thread sees them)
+  @Volatile private var conexion: UsbDeviceConnection? = null
+  @Volatile private var interfaz: UsbInterface? = null
+  @Volatile private var entrada: UsbEndpoint? = null
+  @Volatile private var salida: UsbEndpoint? = null
+  @Volatile private var abierto: UsbDevice? = null
+  @Volatile private var envio = ENVIO_DESCONOCIDO
 
   /** The permission request in flight (one at a time) and its receiver. */
   private var pendiente: Invoke? = null
@@ -106,8 +108,10 @@ class BrymenPlugin(private val activity: Activity) : Plugin(activity) {
       invoke.reject("Este dispositivo no ofrece USB anfitrión: no puede leer el cable del Brymen.")
       return
     }
+    // (one read of each: the USB thread may be closing it meanwhile)
     val actual = abierto
-    if (actual != null && conexion != null) {
+    val abiertaYa = conexion
+    if (actual != null && abiertaYa != null) {
       invoke.resolve(describir(actual))
       return
     }
@@ -290,6 +294,21 @@ class BrymenPlugin(private val activity: Activity) : Plugin(activity) {
       cerrarTodo()
       invoke.resolve(JSObject())
     }
+  }
+
+  /**
+   * 1.3.1: the activity goes (closed, or recreated by the system) with the permission dialog still open: its receiver
+   * is unregistered (it would leak the destroyed activity) and the request answered; the cable is closed on the USB
+   * thread, and the thread ends after it.
+   */
+  override fun onDestroy(activity: AppCompatActivity) {
+    terminarPermiso()?.reject("La aplicación se ha cerrado antes de dar el permiso del cable.")
+    try {
+      hilo.execute { cerrarTodo() }
+    } catch (_: java.util.concurrent.RejectedExecutionException) {
+      // (already shut down)
+    }
+    hilo.shutdown()
   }
 
   private fun cerrarTodo() {

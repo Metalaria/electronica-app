@@ -98,11 +98,44 @@ test.describe('objetivo de zonas en una figura', () => {
     // in order: «trampas» first does not count; the walk goes on from there
     expect(variablesFigura(w, w12(['trampas', 'coincidir']), o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 0, 'zona:trampas': 0 });
     expect(variablesFigura(w, w12(['trampas', 'coincidir', 'diferir', 'trampas']), o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 1 });
-    // (the figure keeps its touches, the last ones)
+    // (the figure keeps its touches in a bounded list: compacted past 100, cierre131)
     let e: EstadoWidget12 = w12([]);
     for (let k = 0; k < 150; k++) e = { ...e, visitadas: tocarVisita(e, k % 2 ? 'diferir' : 'coincidir') };
-    expect(e.visitadas).toHaveLength(100);
-    expect(e.visitadas!.at(-1)).toBe('diferir');
+    expect(e.visitadas!.length).toBeLessThanOrEqual(100);
+    expect(variablesFigura(w, e)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 0, 'zonas:tocadas': 2 });
+  });
+
+  // (cierre131: the figure kept only the last 100 touches, so a zone touched once early was forgotten after many
+  // touches elsewhere and a lit chip went off; it now keeps what a goal needs: the zones touched and the ordered prefix)
+  test('muchos toques no hacen olvidar una zona ya tocada ni el orden ya seguido', () => {
+    const w = T('explore-orden').widget as WidgetFigura;
+    const o = T('explore-orden').objetivo!;
+    const tocar = (e: EstadoWidget12, id: string, ob?: typeof o) => ({ ...e, zona: id, visitadas: tocarVisita(e, id, ob) });
+    // any order: «trampas» once, then 300 touches on the other two
+    let e: EstadoWidget12 = tocar(w12([]), 'trampas');
+    for (let k = 0; k < 300; k++) e = tocar(e, k % 2 ? 'diferir' : 'coincidir');
+    expect(e.visitadas!.length).toBeLessThanOrEqual(100);
+    expect(variablesFigura(w, e)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 1, 'zonas:tocadas': 3 });
+    // in order: «coincidir» first, then 300 touches on «trampas» (out of order), then «diferir» and «trampas»
+    e = tocar(w12([]), 'coincidir', o);
+    for (let k = 0; k < 300; k++) e = tocar(e, 'trampas', o);
+    expect(e.visitadas!.length).toBeLessThanOrEqual(100);
+    expect(variablesFigura(w, e, o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 0, 'zona:trampas': 0, 'zonas:tocadas': 2 });
+    e = tocar(tocar(e, 'diferir', o), 'trampas', o);
+    expect(variablesFigura(w, e, o)).toMatchObject({ 'zona:coincidir': 1, 'zona:diferir': 1, 'zona:trampas': 1 });
+    // and the same walk, compacted or not, gives the same variables at every step (a pseudo-random walk)
+    let a: EstadoWidget12 = w12([]);
+    const todo: string[] = [];
+    const ids = ['coincidir', 'diferir', 'trampas'];
+    let x = 7;
+    for (let k = 0; k < 400; k++) {
+      x = (x * 1103515245 + 12345) % 2147483648;
+      const id = ids[(x >> 8) % 3]!;
+      a = tocar(a, id, o);
+      todo.push(id);
+      expect(variablesFigura(w, a, o)).toEqual(variablesFigura(w, w12(todo), o));
+      expect(variablesFigura(w, a)).toEqual(variablesFigura(w, w12(todo)));
+    }
   });
 
   test('«Continuar» se abre al tocar las tres zonas, en cualquier orden; el consejo dice la que falta', () => {
@@ -263,6 +296,43 @@ test.describe('repaso haciendo: variantes de una tarjeta', () => {
     for (const [nombre, cambio, re] of casos) expect(erroresB(cambio), nombre).toMatch(re);
     // «false»: none, not even the automatic ones
     expect(generar({ ...copia(FUENTE_B), tarjetas: (copia(FUENTE_B) as F).tarjetas.map((t) => (t.id === 'prediga-bornes' ? { ...t, variantes: false } : t)) }).leccion!.tarjetas.find((t) => t.id === 'prediga-bornes')!.variantes).toBeUndefined();
+  });
+
+  // qa131: «mida-pin» (cap20/sec-20.5), «prediga-npn» (cap11/sec-11.2) and «mida-fase» (cap23/sec-23.10) were asked
+  // «Con otros valores» changing only a value of another card's circuit (R_f, P_n, C_r): the card the reader saw was
+  // the lesson's own, word for word. A «medir» card without «valor» took every calculation of the model as its answer,
+  // so any value of the lesson «changed the answer».
+  test('cada variante publicada cambia algo que la tarjeta enseña (su circuito, sus textos o su respuesta)', () => {
+    const indice = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', 'indice.json'), 'utf8'));
+    let n = 0;
+    const iguales: string[] = [];
+    for (const id of Object.keys(indice.lecciones)) {
+      const l = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lecciones11', `${id}.json`), 'utf8')) as Leccion11;
+      const calculos = l.modelo.calculos as Record<string, { expr?: string }>;
+      const enModelo = (w: string) => w in l.modelo.valores || w in calculos;
+      for (const t of l.tarjetas) {
+        if (!t.variantes) continue;
+        // the quantities the card shows or asks for (any model id written in it), with what they are worked out from
+        const usa = new Set<string>();
+        const andar = (x: unknown): void => {
+          if (typeof x === 'string') for (const w of x.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) if (enModelo(w)) usa.add(w);
+          if (Array.isArray(x)) x.forEach(andar);
+          else if (x && typeof x === 'object') for (const [k, y] of Object.entries(x)) if (k !== 'variantes' && k !== 's') (enModelo(k) && usa.add(k), andar(y));
+        };
+        andar(t);
+        for (const k of [...usa]) {
+          const pila = [k];
+          while (pila.length) for (const w of String(calculos[pila.pop()!]?.expr ?? '').match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) if (enModelo(w) && !usa.has(w)) (usa.add(w), pila.push(w));
+        }
+        for (const [k, v] of t.variantes.entries()) {
+          if (v.objetivo) continue;
+          n++;
+          if (!Object.keys(v.valores ?? {}).some((q) => usa.has(q))) iguales.push(`${id} ${t.id} variante ${k + 1}: ${JSON.stringify(v.valores)}`);
+        }
+      }
+    }
+    expect(iguales).toEqual([]);
+    expect(n).toBeGreaterThan(20);
   });
 
   test('automáticas solo donde es seguro: sobre los mandos de la lección, con las cifras escritas de nuevo, nunca en una figura ni con palabras que comparan', () => {
