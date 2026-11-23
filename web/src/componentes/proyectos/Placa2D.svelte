@@ -1,12 +1,15 @@
 <script lang="ts">
-  // The board drawn flat, seen from the top or the bottom, with per-layer toggles. Pan/zoom on demand: the
+  // The board drawn flat, seen from the top or the bottom, with per-layer toggles. 1.3.1: where the host offers it
+  // (`visibles.componentes` defined: the consoles' «Placa en 2D»), the parts mounted on the face looked at are drawn as
+  // dark bodies filling their body box, with their reference on top when it is big enough to read (zoom in for the
+  // small ones); «Componentes» hides them. Pan/zoom on demand: the
   // board is painted into a cached bitmap a bit larger than the window, so panning only blits it; a new
   // zoom repaints once the gesture stops. Tap/hover a pad, track, via, zone or part to select it.
   import { onMount, untrack } from 'svelte';
   import type { DatosPlaca } from './datos';
   import { formatoTension } from './datos';
   import { cajaHuella, cajaRed, impacto, type Geometria, type Impacto2D, type Lado } from './geometria';
-  import { coloresTension, pintarLado, pintarRed, type Acabado, type Aspecto, type CapasVisibles } from './pintar';
+  import { COLOR_CUERPO, coloresTension, huellasConCuerpo, pintarCuerpos, pintarLado, pintarRed, type Acabado, type Aspecto, type CapasVisibles } from './pintar';
   import { contornoPad } from './geometria';
   import type { Resuelta } from './seleccion';
   import { esquinasHuella } from './datos';
@@ -62,7 +65,9 @@
   let sucia = true;
   let temporizador: ReturnType<typeof setTimeout> | null = null;
 
-  const g = globalThis as unknown as { __epaPlaca2D?: { ms: number[]; base: number } };
+  const g = globalThis as unknown as { __epaPlaca2D?: { ms: number[]; base: number; cuerpos?: number; rotulos?: number } };
+  /** 1.3.1: the parts drawn as bodies on the face looked at (indices into datos.huellas). */
+  const conCuerpo = $derived(visibles.componentes ? huellasConCuerpo(datos, lado) : []);
 
   const colores = $derived(tensiones ? coloresTension(datos) : null);
   const tieneTensiones = $derived(datos.redes.some((r) => r.v));
@@ -130,8 +135,9 @@
       escala: sx,
       oscuro,
     });
-    sucia = false;
     const st = (g.__epaPlaca2D ??= { ms: [], base: 0 });
+    st.cuerpos = visibles.componentes ? pintarCuerpos(c, datos, lado, sx) : 0;
+    sucia = false;
     st.base = performance.now() - t0;
   }
 
@@ -170,6 +176,7 @@
     const [px0, py0] = aPantalla(espejo() ? bx0 + bu : bx0, by0);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(base!, px0 * dpr, py0 * dpr, bu * v.k * dpr, bv * v.k * dpr);
+    const rotulos = conCuerpo.length ? pintarRotulos(ctx, dpr) : 0;
     // hover net and selection, on top
     const s = v.k * dpr;
     if (espejo()) ctx.setTransform(-s, 0, 0, s, (v.ox + geo.ancho * v.k) * dpr, v.oy * dpr);
@@ -213,9 +220,49 @@
       ctx.stroke();
     }
     const st = (g.__epaPlaca2D ??= { ms: [], base: 0 });
+    st.rotulos = rotulos;
     st.ms.push(performance.now() - t0);
     if (st.ms.length > 200) st.ms.splice(0, 100);
     (globalThis as unknown as { __epaPlacaVista?: unknown }).__epaPlacaVista = { ...v, lado, ancho: geo.ancho };
+  }
+
+  /**
+   * 1.3.1: the references of the bodies, upright in screen space (never mirrored on the bottom face), each only when it
+   * fits inside its body at a legible size (8 to 13 CSS px) and the body is on screen. Returns how many were drawn.
+   */
+  function pintarRotulos(ctx: CanvasRenderingContext2D, dpr: number): number {
+    let n = 0;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    for (const i of conCuerpo) {
+      const h = datos.huellas[i]!;
+      const e = esquinasHuella(h).map(([x, y]) => aPantalla(x, y));
+      const xs = e.map((p) => p[0]);
+      const ys = e.map((p) => p[1]);
+      const x0 = Math.min(...xs);
+      const x1 = Math.max(...xs);
+      const y0 = Math.min(...ys);
+      const y1 = Math.max(...ys);
+      if (x1 < 0 || y1 < 0 || x0 > anchoCss || y0 > altoCss) continue;
+      const fs = Math.min(13, (y1 - y0) * 0.6);
+      if (fs < 8) continue;
+      ctx.font = `700 ${fs}px Inter, "Source Sans 3", system-ui, sans-serif`;
+      const w = ctx.measureText(h.r).width;
+      if (w > (x1 - x0) * 0.92) continue;
+      const cx = (x0 + x1) / 2;
+      const cy = (y0 + y1) / 2;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = COLOR_CUERPO.sombra;
+      ctx.strokeText(h.r, cx, cy);
+      ctx.fillStyle = COLOR_CUERPO.rotulo;
+      ctx.fillText(h.r, cx, cy);
+      n++;
+    }
+    ctx.restore();
+    return n;
   }
 
   function limites(): void {
@@ -267,7 +314,7 @@
 
   function tocar(px: number, py: number, tol: number): Impacto2D | null {
     const [x, y] = aPlaca(px, py);
-    return impacto(datos, geo, x, y, tol / v.k, lado, { F: visibles.F, B: visibles.B });
+    return impacto(datos, geo, x, y, tol / v.k, lado, { F: visibles.F, B: visibles.B }, true, !!visibles.componentes);
   }
 
   function abajo(ev: PointerEvent): void {
@@ -391,6 +438,7 @@
     void visibles.serigrafia;
     void visibles.fab;
     void visibles.areas;
+    void visibles.componentes;
     void colores;
     void res.red;
     void oscuro;
@@ -496,6 +544,9 @@
       {/if}
       <button type="button" aria-pressed={visibles.serigrafia} onclick={() => (visibles.serigrafia = !visibles.serigrafia)}><i class="m sk"></i>Serigrafía</button>
       <button type="button" aria-pressed={visibles.fab} onclick={() => (visibles.fab = !visibles.fab)}><i class="m fb"></i>Contornos</button>
+      {#if visibles.componentes !== undefined}
+        <button type="button" aria-pressed={visibles.componentes} onclick={() => (visibles.componentes = !visibles.componentes)} data-capa-componentes><i class="m cp"></i>Componentes</button>
+      {/if}
       {#if geo.areas.length}
         <button type="button" aria-pressed={visibles.areas} onclick={() => (visibles.areas = !visibles.areas)}><i class="m ar"></i>Zonas sin cobre</button>
       {/if}
@@ -624,6 +675,10 @@
   .fb {
     background: #a8a8a8;
   }
+  .cp {
+    background: #1c1e22;
+    box-shadow: inset 0 0 0 1.5px #9aa3ad;
+  }
   .ar {
     background: repeating-linear-gradient(45deg, #888 0 2px, transparent 2px 5px);
   }
@@ -672,7 +727,8 @@
     bottom: 8px;
     padding: 2px 8px;
     border-radius: 6px;
-    background: rgba(0, 0, 0, 0.45);
+    /* 1.3.1 (qa131-temas): 0.45 left the white text at 4.0:1 on the light and sepia frames */
+    background: rgba(0, 0, 0, 0.55);
     color: #fff;
     font-size: 12px;
     pointer-events: none;

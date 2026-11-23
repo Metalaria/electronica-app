@@ -45,13 +45,38 @@
     fase = 'listo';
   }
 
+  /**
+   * 1.3.1: Escape closes it, as the app's other dialogs, once nothing on the board is waiting for it: the board's own
+   * Escape (Protoboard.svelte, Mesa.svelte) first lets go a selection, a wire half laid, a part chosen in the tray,
+   * another tool, a sheet or a chooser opened over it. Read in the capture phase, before the board's handler changes
+   * any of that, so one press does one thing.
+   */
+  let capa: HTMLDivElement | undefined = $state();
+  function escape(ev: KeyboardEvent) {
+    if (ev.key !== 'Escape' || ev.defaultPrevented || fase === 'cargando') return;
+    if ((ev.target as Element | null)?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    const ocupado =
+      pb.sel.length > 0 ||
+      !!pb.armada ||
+      (pb.herramienta !== 'seleccionar' && pb.herramienta !== 'medir') ||
+      !!capa?.querySelector('[role="dialog"], circle.pendiente');
+    if (ocupado) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    cerrarProtoboard();
+  }
+
   onMount(() => {
     document.documentElement.classList.add('bloqueado');
     preparar().catch((e: unknown) => {
       error = e instanceof Error ? e.message : String(e);
       fase = 'error';
     });
-    return () => document.documentElement.classList.remove('bloqueado');
+    addEventListener('keydown', escape, true);
+    return () => {
+      removeEventListener('keydown', escape, true);
+      document.documentElement.classList.remove('bloqueado');
+    };
   });
 
   async function guardar() {
@@ -72,7 +97,7 @@
   }
 </script>
 
-<div class="capa-protoboard" use:aCuerpo role="dialog" aria-modal="true" aria-label={`Protoboard: ${fuente.titulo}`}>
+<div class="capa-protoboard" bind:this={capa} use:aCuerpo role="dialog" aria-modal="true" aria-label={`Protoboard: ${fuente.titulo}`}>
   {#if fase === 'listo'}
     <Protoboard {pb} pantallaCompleta>
       {#snippet cabecera()}

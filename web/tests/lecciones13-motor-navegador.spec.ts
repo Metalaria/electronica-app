@@ -160,3 +160,67 @@ test('repaso: la sesión pregunta una variante de la tarjeta (otros valores, tex
   await sinScroll(page);
   expect(errores).toEqual([]);
 });
+
+// qa131: a «simular» estimate is committed once (the simulation is shown and the card goes on). Asked on its own in a
+// practice session, a wrong one left the reader stuck: no «Volver a intentarlo», the card's button gone and the
+// session's «Continuar» locked (the round, «two attempts», never closed), only «Saltar». The wrong estimate closes
+// the round there: the session goes on and the mastery record is a final wrong answer under the card's own id.
+test('repaso: una estimación mala de «prediga y simule» cierra la ronda y la sesión sigue', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  const ctx = page.context();
+  await ctx.route('https://api.github.com/**', (x) => x.fulfill({ status: 404, body: '{}' }));
+  await ctx.route('**/libro/lecciones11/indice.json', async (x) => {
+    const real = await x.fetch().then((y) => y.json());
+    real.lecciones[IDB] = { tarjetas: leccionB.tarjetas.length, preguntas: [{ id: 'prediga-bornes', tipo: 'simular' }] };
+    await x.fulfill({ contentType: 'application/json', body: JSON.stringify(real) });
+  });
+  await ctx.route(`**/libro/lecciones11/${IDB}.json`, (x) => x.fulfill({ contentType: 'application/json', body: JSON.stringify(leccionB) }));
+  await page.addInitScript((s) => {
+    (window as unknown as { __epaSemillaPractica: number }).__epaSemillaPractica = s;
+    if (sessionStorage.getItem('preparado')) return;
+    sessionStorage.setItem('preparado', '1');
+    localStorage.clear();
+    localStorage.setItem('epa:sinc-ajustes', JSON.stringify({ auto: false }));
+  }, SEMILLA);
+  await page.goto(`#/practicar/${IDB}`);
+  await page.locator('[data-empezar-sesion]').click();
+  for (let n = 0; n < 15 && (await page.locator('[data-item]').getAttribute('data-item-tipo')) !== 'leccion11'; n++) await page.locator('[data-saltar]').click();
+  const tarjeta = page.locator('[data-leccion11-suelta]');
+  await expect(tarjeta).toHaveAttribute('data-tarjeta', 'prediga-bornes');
+  await tarjeta.locator('[data-estimacion]').fill('1 V');
+  await tarjeta.locator('[data-comprobar-l11]').click();
+  await expect(tarjeta.locator('[data-veredicto="mal"]')).toBeVisible();
+  await expect(page.locator('[data-continuar]')).toBeEnabled();
+  await expect(tarjeta.locator('[data-abrir-leccion11]')).toBeVisible();
+  // (a settled wrong round: [time, 0], not the provisional [time, 0, 1] that waits for a second attempt)
+  await expect
+    .poll(async () => page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('epa:dominio') ?? '{"items":{}}').items['cap01-l11-sec-1.10-prediga-bornes']?.r ?? null)), { timeout: 15_000 })
+    .toMatch(/^\[\[\d+,0\]\]$/);
+  await page.locator('[data-continuar]').click();
+  await expect(page.locator('[data-item]').or(page.locator('[data-fin-sesion]')).first()).toBeVisible();
+  expect(errores).toEqual([]);
+});
+
+// qa131 (seen by qa131-temas): a lesson whose first card has a goal and «inicio» opened with the goal already reached
+// — «¡Conseguido!» and «Continuar» open without touching anything — when the model's own values met it: the shell
+// checked the goal with them while the lesson was still loading, before the card's «inicio» was applied, and a goal
+// reached once stays reached. cap22/sec-22.1 (R₂ starts at 10 kΩ; the model's 4,7 kΩ is the answer) and cap08/sec-8.2.
+for (const id of ['cap22/sec-22.1', 'cap08/sec-8.2'])
+  test(`${id}: el objetivo de la primera tarjeta no empieza conseguido`, async ({ page }) => {
+    await page.context().route('https://api.github.com/**', (x) => x.fulfill({ status: 404, body: '{}' }));
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('preparado')) return;
+      sessionStorage.setItem('preparado', '1');
+      localStorage.clear();
+      localStorage.setItem('epa:sinc-ajustes', JSON.stringify({ auto: false }));
+    });
+    await page.goto(`#/leccion/${id}`);
+    await expect(page.locator('[data-objetivo]')).toBeVisible();
+    // (time for any late check to land)
+    await page.waitForTimeout(1500);
+    await expect(page.locator('[data-objetivo]')).toHaveAttribute('data-objetivo', 'pendiente');
+    await expect(page.locator('[data-veredicto]')).toHaveCount(0);
+    await expect(continuar(page)).toBeDisabled();
+  });

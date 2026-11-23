@@ -5,6 +5,7 @@
 
 import { buscarPaquete, decodificar, hex, type LecturaReal } from './protocolo.ts';
 import { transporteDisponible, type Transporte } from './transporte.ts';
+import { migaAccion } from '../informe-fallos';
 
 export type EstadoConexion = 'desconectado' | 'conectando' | 'conectado' | 'sin-respuesta' | 'error';
 
@@ -52,23 +53,42 @@ class ConexionBrymen {
     if (!this.t || this.estado === 'conectando' || this.estado === 'conectado' || this.estado === 'sin-respuesta') return;
     this.estado = 'conectando';
     this.mensaje = 'Buscando el cable BU-86X…';
+    migaAccion('brymen real: conectar');
     this.lectura = null;
     this.resto = new Uint8Array(0);
+    // 1.3.1: «Desconectar» while the cable is still opening (the system's permission dialog open) bumps `vuelta`: the
+    // opening that finishes afterwards must not start the polling
+    const v = ++this.vuelta;
+    const t = this.t;
+    let nombre: string;
     try {
-      this.nombre = await this.t.abrir();
+      nombre = await t.abrir();
     } catch (e) {
+      if (v !== this.vuelta) return;
       this.estado = 'error';
       this.mensaje = texto(e, 'No se pudo abrir el cable BU-86X.');
       return;
     }
+    if (v !== this.vuelta) {
+      // (closed again, unless a newer «Conectar» is opening it meanwhile)
+      // (read again after the await: TypeScript keeps the narrowing of before it)
+      if ((this.estado as EstadoConexion) === 'desconectado')
+        try {
+          await t.cerrar();
+        } catch {
+          // (already gone)
+        }
+      return;
+    }
+    this.nombre = nombre;
     this.estado = 'sin-respuesta';
     this.mensaje = 'Cable conectado. Esperando la primera lectura del Brymen…';
     this.hora = Date.now();
-    const v = ++this.vuelta;
     void this.bucle(v);
   }
 
   async desconectar(): Promise<void> {
+    migaAccion('brymen real: desconectar');
     this.vuelta++;
     const t = this.t;
     this.estado = 'desconectado';
@@ -91,6 +111,7 @@ class ConexionBrymen {
       } catch (e) {
         if (v !== this.vuelta) return;
         this.vuelta++;
+        migaAccion('brymen real: se perdió el cable');
         this.estado = 'error';
         this.lectura = null;
         this.mensaje = `${texto(e, 'Se ha perdido la conexión con el cable del Brymen.')} La última lectura ya no vale: conecte de nuevo cuando el cable esté enchufado.`;

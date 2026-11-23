@@ -21,6 +21,10 @@ export interface Transporte {
 export interface CableFalso {
   /** Error to throw on opening (a sentence), or nothing. */
   errorAbrir?: string;
+  /** ms the opening takes (the system's permission dialog still open), or nothing. */
+  retrasoAbrir?: number;
+  /** Replies given before `respuesta`, one per request, in order (partial packets split over two reads). */
+  cola?: number[][];
   /** The next reply (24 bytes, or fewer), or null: the meter does not answer. Read once per request. */
   respuesta?: number[] | null;
   /** Keeps answering with the last reply. */
@@ -112,9 +116,19 @@ class WebHid implements Transporte {
   };
   async abrir(): Promise<string> {
     const h = hid()!;
-    const [d] = await h.requestDevice({ filters: [{ vendorId: VID_BU86X, productId: PID_BU86X }] });
+    // (1.3.1: the browser's own errors are DOMExceptions in English: the reader gets a sentence in Spanish)
+    let d: DispositivoHid | undefined;
+    try {
+      [d] = await h.requestDevice({ filters: [{ vendorId: VID_BU86X, productId: PID_BU86X }] });
+    } catch {
+      throw new Error('El navegador no dejó elegir el cable BU-86X: inténtelo de nuevo con el botón «Conectar el Brymen real».');
+    }
     if (!d) throw new Error('No se ha elegido el cable BU-86X.');
-    if (!d.opened) await d.open();
+    try {
+      if (!d.opened) await d.open();
+    } catch {
+      throw new Error('No se pudo abrir el cable BU-86X: ciérrelo en otros programas o pestañas que lo usen, desenchúfelo y vuelva a enchufarlo.');
+    }
     d.addEventListener('inputreport', this.alRecibir);
     h.addEventListener('disconnect', this.alQuitar);
     this.d = d;
@@ -132,7 +146,11 @@ class WebHid implements Transporte {
     } catch {
       if (this.caracteristica) throw new Error('El cable BU-86X no acepta la petición de lectura.');
       this.caracteristica = true;
-      await d.sendFeatureReport(0, pet);
+      try {
+        await d.sendFeatureReport(0, pet);
+      } catch {
+        throw new Error('El cable BU-86X no acepta la petición de lectura.');
+      }
     }
     const hasta = Date.now() + 3 * espera;
     while (this.cola.length < 24 && !this.perdido && Date.now() < hasta) {
@@ -168,6 +186,7 @@ class Falso implements Transporte {
   readonly tipo = 'falso' as const;
   constructor(private c: CableFalso) {}
   async abrir(): Promise<string> {
+    if (this.c.retrasoAbrir) await new Promise((r) => setTimeout(r, this.c.retrasoAbrir));
     if (this.c.errorAbrir) throw new Error(this.c.errorAbrir);
     return 'BU-86X (simulado para pruebas)';
   }
@@ -175,6 +194,7 @@ class Falso implements Transporte {
     await new Promise((r) => setTimeout(r, Math.min(espera, 30)));
     if (this.c.desenchufado) throw new Error(this.c.desenchufado);
     this.c.peticiones = (this.c.peticiones ?? 0) + 1;
+    if (this.c.cola?.length) return Uint8Array.from(this.c.cola.shift()!);
     const r = this.c.respuesta;
     if (!this.c.fija) this.c.respuesta = null;
     return Uint8Array.from(r ?? []);

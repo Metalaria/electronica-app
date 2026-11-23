@@ -72,7 +72,8 @@
   import TextoVivo from './TextoVivo.svelte';
   // 1.2.1 (piloto121): the goal of an explore card, reached live (GUIA §13.3)
   import Objetivo from '../leccion12/Objetivo.svelte';
-  import { objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
+  import { lecturaPorLlegar, objetivoCumplido } from '../../lib/leccion12/hacer/motor-hacer';
+  import { esperarMedicion } from '../../lib/leccion12/hacer/punto-trabajo';
   import { variablesWidget12 } from '../../lib/leccion12/digital/objetivo-figura';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
@@ -106,7 +107,8 @@
   let terminada = $state(false);
   let empezada = $state(false);
   const inicioVisita = Date.now();
-  let abierta = false;
+  // (qa131: reactive, so the goal effect below waits for the card's «inicio»)
+  let abierta = $state(false);
   let fiesta = $state(false);
   let repaso = $state('');
   let respondidas = $state(0);
@@ -270,11 +272,26 @@
     estados[pantalla] = { ...e, ...c };
   }
 
-  function principal(ev?: MouseEvent) {
+  /** (cierre131) a «medir» check waiting for the simulator's reading: the card it was pressed on. */
+  let esperandoLectura: string | null = null;
+
+  function principal(ev?: MouseEvent, sinEsperar = false) {
     if (!leccion || !t || !e || !boton || boton.bloqueado) return;
     // the second click of a double tap landed on the next card's button, in the same place (1.0 lesson, 0.11 QA)
     if (ev && ev.detail > 1) return;
     if (boton.accion === 'comprobar') {
+      // (cierre131) on a circuit the simulator solves, the verdict waits for the reading it quotes
+      if (esperandoLectura) return;
+      const p = !sinEsperar && mc ? lecturaPorLlegar(mc, t, efectivos) : null;
+      if (p) {
+        const clave = `${pantalla}:${t.id}`;
+        esperandoLectura = clave;
+        void esperarMedicion(p).then(() => {
+          esperandoLectura = null;
+          if (t && `${pantalla}:${t.id}` === clave) principal(undefined, true);
+        });
+        return;
+      }
       const { estado, aviso: a } = comprobar(leccion, t, e, efectivos);
       const ev2 = eventoDeComprobacion(leccion, t, e, estado);
       if (ev2) {
@@ -485,7 +502,9 @@
   $effect(() => {
     const tt = t;
     const ee = e;
-    if (!tt?.objetivo || !ee || ee.logrado || !objetivoCumplido(tt, evaluados)) return;
+    // (qa131) not while the lesson is still loading: the values are then the model's, without the card's «inicio», and
+    // a goal those happen to meet (cap22/sec-22.1: the model's R₂ is the answer) was marked reached for good
+    if (!abierta || !tt?.objetivo || !ee || ee.logrado || !objetivoCumplido(tt, evaluados)) return;
     untrack(() => {
       estados[pantalla] = { ...ee, logrado: true };
       avisos[pantalla] = { bien: true, titulo: '¡Conseguido!', textos: [tt.objetivo!.logrado] };

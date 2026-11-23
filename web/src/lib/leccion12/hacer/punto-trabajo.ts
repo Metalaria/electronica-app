@@ -116,6 +116,18 @@ export function medicionCacheada(p: PeticionMedida | null): Medicion | undefined
   return p ? cache.get(p.netlist) : undefined;
 }
 
+/**
+ * Waits for the request's run (a run cancelled by another simulation of the page is asked again, twice), at most `ms`
+ * each time: what a card's check waits for before quoting the reading (motor-hacer.ts lecturaPorLlegar).
+ */
+export async function esperarMedicion(p: PeticionMedida, ms = 15_000): Promise<void> {
+  for (let k = 0; k < 3; k++) {
+    const m = await Promise.race([medirConSpice(p), new Promise<null>((r) => setTimeout(() => r(null), ms))]);
+    if (!m?.error || !/cancel/i.test(m.error)) return;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
+
 /** Runs the request on the app's ngspice (the page's worker) and keeps it. */
 export function medirConSpice(p: PeticionMedida): Promise<Medicion> {
   const ya = cache.get(p.netlist);

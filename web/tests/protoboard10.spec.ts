@@ -568,3 +568,23 @@ for (const [disp, ancho, alto] of [
     });
   }
 }
+
+// 1.3.1 (qa131-interaccion): Escape closes the full-screen «Ver en protoboard» as it closes the app's other dialogs —
+// once nothing on the board is waiting for it (a selection, a wire half laid, a part chosen in the tray, another tool:
+// Escape cancels that first, as before).
+test('Escape cierra «Ver en protoboard» cuando no queda nada en la placa que cancelar', async ({ page }) => {
+  await abrirLibre(page, LED);
+  const d0 = await page.evaluate(() => (window as unknown as Ventana).__epaProtoboard!.pb.doc.piezas.length);
+  // a part selected: the first Escape lets it go, the overlay stays
+  const c = await page.evaluate(() => (window as unknown as Ventana).__epaProtoboard!.centro('R1'));
+  await page.mouse.click(c![0], c![1]);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __epaProtoboard: { pb: { sel: string[] } } }).__epaProtoboard.pb.sel.length)).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.capa-protoboard')).toHaveCount(1);
+  expect(await page.evaluate(() => (window as unknown as { __epaProtoboard: { pb: { sel: string[] } } }).__epaProtoboard.pb.sel.length)).toBe(0);
+  expect(d0).toBeGreaterThan(0);
+  // nothing left to cancel: Escape closes it, back to the schematic
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.capa-protoboard')).toHaveCount(0);
+  await expect(page.locator('.meta button:has-text("Ver en protoboard")')).toBeVisible();
+});

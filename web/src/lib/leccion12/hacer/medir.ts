@@ -5,7 +5,7 @@
 // positive current). The oscilloscope shows the widget's graph curve of the probed point. Pure.
 
 import { resolverCC, type SolucionCC } from '../cc';
-import { medicionCacheada, peticionMedida } from './punto-trabajo';
+import { medicionCacheada, peticionMedida, type PeticionMedida } from './punto-trabajo';
 import { esquemaDe } from '../../leccion11/esquemas/registro';
 import { contextoNetlist } from '../../leccion11/spice';
 import type { Valores } from '../../leccion11/modelo';
@@ -28,6 +28,12 @@ export function solucionWidget(w: WidgetCircuito, r: Valores): SolucionCC | null
   } catch {
     return null;
   }
+}
+
+/** The simulator run the widget's reading still waits for (null: the page solves it, or the run is already done). */
+export function medicionPendiente(w: WidgetCircuito, r: Valores): PeticionMedida | null {
+  const p = peticionMedida(w, r);
+  return p && !medicionCacheada(p) ? p : null;
 }
 
 /** A fresh placement: the first mode, no probe placed but the black one on its start (ground by default). */

@@ -3,7 +3,7 @@
 // shade, exposed pads tinned (HASL) or gold (ENIG), white silkscreen clipped by the mask openings) and «capas»
 // (inspection colours per layer, as in KiCad). The context must already map board units (u = 0.01 mm) to pixels.
 
-import type { DatosPlaca } from './datos';
+import { esquinasHuella, type DatosPlaca, type Huella } from './datos';
 import type { CapaCobre, Geometria, Lado } from './geometria';
 
 export type Aspecto = 'real' | 'capas';
@@ -16,6 +16,11 @@ export interface CapasVisibles {
   serigrafia: boolean;
   fab: boolean;
   areas: boolean;
+  /**
+   * 1.3.1: the parts' bodies on the face looked at (the consoles' «Placa en 2D»); undefined where the view does not
+   * offer them (the KiCad projects' 2D view, the 3D view's face textures).
+   */
+  componentes?: boolean;
 }
 
 export interface OpcionesPintar {
@@ -302,4 +307,58 @@ export function pintarRed(ctx: CanvasRenderingContext2D, g: Geometria, red: numb
     rellenarCobre(ctx, g.cobre[l], color, red);
   }
   ctx.restore();
+}
+
+// ------------------------------------------------------------------ 1.3.1: the parts' bodies (2D view)
+
+/** The parts drawn as bodies on a face: mounted on it, not mechanical (holes, fiducials), with a body box. */
+export function huellasConCuerpo(d: DatosPlaca, lado: Lado): number[] {
+  const r: number[] = [];
+  d.huellas.forEach((h, i) => {
+    const [x0, y0, x1, y1] = h.m.caja;
+    // (as the 3D view: «sin_cuerpo» — gold fingers, test pads, bare holes — has no body to draw)
+    if (h.lado === lado && h.t !== 'mec' && h.m.tipo !== 'sin_cuerpo' && h.m.tipo !== 'taladro' && x1 - x0 > 0 && y1 - y0 > 0) r.push(i);
+  });
+  return r;
+}
+
+/**
+ * Colours of a body: dark epoxy with a lighter rim (it reads on any mask colour, in light and dark themes); on a black or
+ * purple mask a lighter grey, or the bodies would vanish into the board.
+ */
+export const COLOR_CUERPO = { relleno: 'rgba(28, 30, 34, 0.86)', rellenoSobreNegro: 'rgba(92, 98, 108, 0.92)', borde: '#9aa3ad', rotulo: '#ffffff', sombra: 'rgba(0, 0, 0, 0.85)' };
+
+/** A mask too dark for a dark body to stand out (black, purple): its luminance under 45 of 255. */
+export function mascaraOscura(nombre: string): boolean {
+  const m = /^#(..)(..)(..)$/.exec(MASCARAS[nombre]?.base ?? '');
+  if (!m) return false;
+  const [r, g, b] = m.slice(1).map((x) => parseInt(x, 16)) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 45;
+}
+
+/**
+ * The bodies of the parts on face `lado` as dark boxes filling their body box (esquinasHuella: the fabrication
+ * outline's box, as the 3D view's parts and the selection use). The context maps board units to pixels (mirrored for
+ * the bottom face by the caller). Returns how many were drawn.
+ */
+export function pintarCuerpos(ctx: CanvasRenderingContext2D, d: DatosPlaca, lado: Lado, escala: number): number {
+  const ids = huellasConCuerpo(d, lado);
+  ctx.save();
+  ctx.fillStyle = mascaraOscura(d.placa.mascara) ? COLOR_CUERPO.rellenoSobreNegro : COLOR_CUERPO.relleno;
+  ctx.strokeStyle = COLOR_CUERPO.borde;
+  ctx.lineJoin = 'round';
+  for (const i of ids) {
+    const h = d.huellas[i] as Huella;
+    const e = esquinasHuella(h);
+    ctx.beginPath();
+    e.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+    // (a thin rim: one pixel, never more than a tenth of the body's short side, so a small part stays dark)
+    const [x0, y0, x1, y1] = h.m.caja;
+    ctx.lineWidth = Math.min(1 / escala, 10 * Math.min(x1 - x0, y1 - y0));
+    ctx.stroke();
+  }
+  ctx.restore();
+  return ids.length;
 }

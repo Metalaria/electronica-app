@@ -363,6 +363,13 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     if (t.widget.lectura || !g) await expect(page.locator('[data-lectura]').first(), donde).toContainText('¿?');
   }
 
+  // (qa131) a goal is not reached before anything is touched: a lesson's first goal came reached while it loaded
+  // (the model's values, before the card's «inicio»; 81 lessons in 1.3.0)
+  if (t.objetivo && !objetivoCumplido(t, mc.evaluar(estado))) {
+    await expect(page.locator('[data-objetivo]'), `${donde}: el objetivo empieza sin conseguir`).toHaveAttribute('data-objetivo', 'pendiente');
+    if (t.tipo === 'explorar' || t.tipo === 'sorpresa') await expect(boton(page), donde).toBeDisabled();
+  }
+
   const w12 = widgetDigital(t);
   // (motor121: a goal on a logic circuit is reached from power-on below: nothing is touched before; motor13: nor a
   // goal of zones on a figure)

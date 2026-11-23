@@ -88,6 +88,26 @@ test.describe('en el móvil', () => {
     await sinScroll(page);
   });
 
+  // (cierre131: «Comprobar» pressed before the simulator had answered gave «Así se mide: …» without the reading)
+  test('comprobar antes de que el simulador conteste: el veredicto espera y dice la lectura', async ({ page }) => {
+    let soltar = () => {};
+    const espera = new Promise<void>((r) => (soltar = r));
+    await page.route('**/ngspice/**', async (x) => {
+      await espera;
+      await x.continue();
+    });
+    await ir(page, NL, 'mida-led');
+    await page.locator('[data-diana="an"]').tap();
+    await expect(page.locator('[data-display-instrumento]')).not.toHaveText('2,00 V');
+    await page.locator('[data-continuar][data-accion="comprobar"]').tap();
+    await page.waitForTimeout(300);
+    soltar();
+    const v = page.locator('[data-veredicto]');
+    await expect(v).toHaveAttribute('data-veredicto', 'bien');
+    await expect(v).toContainText(/Así se mide: .+: 2,00\sV\./);
+    await sinScroll(page);
+  });
+
   test('el osciloscopio enseña la onda del nodo desde el simulador; el multímetro, la media', async ({ page }) => {
     await ir(page, NL, 'mida-onda');
     await expect(page.locator('[data-osciloscopio-vacio]')).toBeVisible();

@@ -45,6 +45,12 @@ export interface EntradaFallo {
   z?: string;
   /** Last breadcrumbs before it, oldest first («11:02:03 ruta #/cap05»). */
   b: string[];
+  /**
+   * 1.3.1: the page's memory before it, oldest first («11:02:03 montón 85 MB · 1234 nodos · 3 lienzos 2,1 Mpx · WebGL 1»):
+   * a sample with every breadcrumb and every heartbeat, so a «cierre» (the Android WebView killed for lack of memory)
+   * shows the trend. Counts only, never content.
+   */
+  mem?: string[];
   /** Times it happened (consecutive repetitions within 10 minutes are counted, not added). */
   n: number;
   /** Already seen in «Diagnóstico». */
@@ -57,6 +63,8 @@ export const MAX_ENTRADAS = 40;
 /** Characters of the stored JSON (the oldest entries are dropped first). */
 export const MAX_TAMANO = 80_000;
 export const MAX_MIGAS = 12;
+/** 1.3.1: memory samples kept (the session record's and a «cierre» entry's; other entries keep the last 6). */
+export const MAX_MEMORIA = 16;
 const MAX_MENSAJE = 400;
 const MAX_LINEAS_PILA = 8;
 const MAX_LINEA_PILA = 160;
@@ -80,6 +88,10 @@ export function usarAlmacenamiento(a: Almacen | null | undefined): void {
   almacenPropio = a;
   memoria = { x: [], e: [] };
   migas = [];
+  memorias = [];
+  ultimaMuestra = 0;
+  accionesVistas.clear();
+  accionesMinuto = [];
   recientes = [];
   omitidas = 0;
   oyentes.clear();
@@ -332,10 +344,143 @@ export function miga(texto: string): void {
   try {
     migas.push(`${horaCorta(Date.now())} ${recortar(redactar(texto), 80)}`);
     if (migas.length > MAX_MIGAS) migas.splice(0, migas.length - MAX_MIGAS);
+    muestrearMemoria(true);
+    // (written at once: a renderer killed for lack of memory loses anything kept only in the page)
     guardarSesion();
   } catch {
     /* never throws */
   }
+}
+
+const accionesVistas = new Map<string, number>();
+let accionesMinuto: number[] = [];
+/** The same action crumb at most once in this time (ms), and at most this many action crumbs a minute. */
+export const ACCION_CADA_MS = 15_000;
+export const ACCIONES_POR_MINUTO = 6;
+
+/**
+ * 1.3.1: a breadcrumb of a coarse action of the reader on a heavy page («protoboard: colocar pieza», «medir: punta
+ * roja», «placa 3D: órbita»), called at the end of a gesture: throttled (the same text once every 15 s, six a minute in
+ * all) so a long session on one page still leaves the route and the moments before a crash. The app's own words only.
+ */
+export function migaAccion(texto: string): void {
+  try {
+    const ahora = Date.now();
+    const antes = accionesVistas.get(texto);
+    if (antes !== undefined && ahora - antes < ACCION_CADA_MS) return;
+    accionesMinuto = accionesMinuto.filter((t) => ahora - t < 60_000);
+    if (accionesMinuto.length >= ACCIONES_POR_MINUTO) return;
+    accionesMinuto.push(ahora);
+    accionesVistas.set(texto, ahora);
+    if (accionesVistas.size > 50) accionesVistas.delete(accionesVistas.keys().next().value!);
+    miga(texto);
+  } catch {
+    /* never throws */
+  }
+}
+
+// ------------------------------------------------------------------ memory samples (1.3.1)
+
+let memorias: string[] = [];
+let ultimaMuestra = 0;
+/** WebGL canvases seen by the hook (getContext): weak, so the count never keeps one alive. */
+const lienzosGl: WeakRef<HTMLCanvasElement>[] = [];
+const perdidos = new WeakSet<HTMLCanvasElement>();
+let glCreados = 0;
+let glPerdidos = 0;
+
+const mb = (x: number) => Math.round(x / 1048576);
+const coma = (x: number) => x.toFixed(1).replace('.', ',');
+
+/**
+ * What the page holds now, counts only: the JS heap in use (performance.memory: Chromium and the Android WebView; in
+ * a page that is not cross-origin isolated it is coarse and refreshed seldom, so the other counts matter too), the DOM
+ * nodes, the canvases and their pixels (a 2D canvas or a WebGL drawing buffer costs width × height × 4 bytes, out of
+ * the JS heap), and the WebGL contexts alive, out of the document but never released, created and lost.
+ */
+export function muestraMemoria(): string {
+  try {
+    const partes: string[] = [];
+    const m = (globalThis.performance as unknown as { memory?: { usedJSHeapSize?: number; jsHeapSizeLimit?: number } } | undefined)?.memory;
+    if (m && typeof m.usedJSHeapSize === 'number' && m.usedJSHeapSize > 0) partes.push(`montón ${mb(m.usedJSHeapSize)} MB`);
+    if (typeof document === 'undefined') return partes.join(' · ');
+    partes.push(`${document.getElementsByTagName('*').length} nodos`);
+    const lienzos = document.getElementsByTagName('canvas');
+    let px = 0;
+    for (const c of lienzos) px += c.width * c.height;
+    partes.push(`${lienzos.length} ${lienzos.length === 1 ? 'lienzo' : 'lienzos'} ${coma(px / 1e6)} Mpx`);
+    let vivos = 0;
+    let fuera = 0;
+    for (let k = lienzosGl.length - 1; k >= 0; k--) {
+      const c = lienzosGl[k]!.deref();
+      if (!c) {
+        lienzosGl.splice(k, 1);
+        continue;
+      }
+      if (perdidos.has(c)) continue;
+      if (c.isConnected) vivos++;
+      else fuera++;
+    }
+    partes.push(`WebGL ${vivos}${fuera ? ` (+${fuera} fuera de la página)` : ''}${glCreados ? `, ${glCreados} creados` : ''}${glPerdidos ? `, ${glPerdidos} perdidos` : ''}`);
+    return partes.join(' · ');
+  } catch {
+    return '';
+  }
+}
+
+/** A sample into the ring (at most one every 5 s unless `forzar`: a breadcrumb takes one). */
+function muestrearMemoria(forzar = false): void {
+  const ahora = Date.now();
+  if (!forzar && ahora - ultimaMuestra < 5000) return;
+  const t = muestraMemoria();
+  if (!t) return;
+  ultimaMuestra = ahora;
+  memorias.push(`${horaCorta(ahora)} ${t}`);
+  if (memorias.length > MAX_MEMORIA) memorias.splice(0, memorias.length - MAX_MEMORIA);
+}
+
+export function memoriasActuales(): readonly string[] {
+  return memorias;
+}
+
+/** Counts the WebGL contexts the page creates and loses (a loss on a canvas still on screen is also a breadcrumb). */
+function vigilarWebGL(): void {
+  if (typeof HTMLCanvasElement === 'undefined' || typeof WeakRef === 'undefined') return;
+  const original = HTMLCanvasElement.prototype.getContext;
+  const vistos = new WeakSet<HTMLCanvasElement>();
+  HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, tipo: string, ...resto: unknown[]) {
+    const c = (original as (...a: unknown[]) => RenderingContext | null).call(this, tipo, ...resto);
+    try {
+      if (c && /^(webgl|webgl2|experimental-webgl)$/.test(tipo) && !vistos.has(this)) {
+        vistos.add(this);
+        glCreados++;
+        lienzosGl.push(new WeakRef(this));
+        if (lienzosGl.length > 200) lienzosGl.splice(0, lienzosGl.length - 200);
+        const lienzo = this;
+        // (cierre131: one listener at a time, each «once», and none left on a canvas whose view released its context:
+        // two listeners kept on every board left behind made each visit to a 3D board add two to the page's count,
+        // tests/regresiones11.spec.ts «placa 3D … no acumula memoria»)
+        const alPerder = () => {
+          perdidos.add(lienzo);
+          // (three.js releases a context on purpose when its view goes away: only a loss on screen is news)
+          setTimeout(() => {
+            if (!lienzo.isConnected) return;
+            glPerdidos++;
+            miga('WebGL: contexto perdido');
+            lienzo.addEventListener('webglcontextrestored', alRecuperar, { once: true });
+          }, 0);
+        };
+        const alRecuperar = () => {
+          perdidos.delete(lienzo);
+          lienzo.addEventListener('webglcontextlost', alPerder, { once: true });
+        };
+        lienzo.addEventListener('webglcontextlost', alPerder, { once: true });
+      }
+    } catch {
+      /* never throws */
+    }
+    return c;
+  } as typeof original;
 }
 
 export function migasActuales(): readonly string[] {
@@ -482,6 +627,15 @@ export interface OpcionesFallo {
   sinLimite?: boolean;
   /** Times it happened (several identical native lines merged into one entry). */
   n?: number;
+  /** 1.3.1: memory samples of another session (a crash found at the next start). */
+  mem?: string[];
+}
+
+function memoriaDeEntrada(op: OpcionesFallo): { mem?: string[] } {
+  if (op.mem) return op.mem.length ? { mem: op.mem.slice(-MAX_MEMORIA) } : {};
+  // (a failure of this page: its last samples and one taken now)
+  muestrearMemoria(true);
+  return memorias.length ? { mem: memorias.slice(-6) } : {};
 }
 
 /** The chunk a failed load names («PaginaCursos-BVRg3MRf.js»), to merge its two or three reports into one. */
@@ -535,6 +689,7 @@ export function informarFallo(k: TipoFallo, error: unknown, op: OpcionesFallo = 
         ...(s ? { s } : {}),
         ...(z ? { z } : {}),
         b: (op.migas ?? migas).slice(-MAX_MIGAS),
+        ...memoriaDeEntrada(op),
         n: Math.max(1, Math.round(op.n ?? 1)),
       };
       l.push(e);
@@ -669,6 +824,7 @@ export function textoInforme(version: string): string {
       `   ${e.m}`,
       ...(e.s ? e.s.split('\n').map((x) => `     ${x}`) : []),
       ...(e.b.length ? ['   Antes:', ...e.b.map((x) => `     ${x}`)] : []),
+      ...(e.mem?.length ? ['   Memoria:', ...e.mem.map((x) => `     ${x}`)] : []),
     ].join('\n'),
   );
   return [...cab, cuerpo.join('\n\n')].join('\n');
@@ -683,6 +839,8 @@ interface Sesion {
   v: string;
   r: string;
   b: string[];
+  /** 1.3.1: memory samples (memoriasActuales). */
+  m?: string[];
 }
 
 const idSesion = Math.random().toString(36).slice(2, 10);
@@ -710,7 +868,8 @@ let estadoSesion: Sesion['e'] = 'activa';
 function guardarSesion(): void {
   if (!sesionIniciada) return;
   const s = leerSesiones();
-  s[idSesion] = { t: Date.now(), e: estadoSesion, v: versionApp, r: safe(rutaActual, '#/'), b: migas.slice(-MAX_MIGAS) };
+  muestrearMemoria();
+  s[idSesion] = { t: Date.now(), e: estadoSesion, v: versionApp, r: safe(rutaActual, '#/'), b: migas.slice(-MAX_MIGAS), ...(memorias.length ? { m: memorias.slice(-MAX_MEMORIA) } : {}) };
   escribirSesiones(s);
 }
 
@@ -798,6 +957,7 @@ export async function revisarCierres(op: OpcionesCierres = {}): Promise<EntradaF
         t: x.t,
         v: typeof x.v === 'string' ? x.v : undefined,
         migas: Array.isArray(x.b) ? x.b.filter((y) => typeof y === 'string') : [],
+        mem: Array.isArray(x.m) ? x.m.filter((y) => typeof y === 'string').map((y) => recortar(y, 160)) : [],
         ruta: typeof x.r === 'string' ? rutaSegura(x.r) : '#/',
         avisar: true,
         sinLimite: true,
@@ -833,6 +993,8 @@ export function iniciarInforme(version: string, op: { ruta?: () => string } = {}
   if (instalado || typeof window === 'undefined') return;
   instalado = true;
   try {
+    // 1.3.1: the WebGL contexts, for the memory samples
+    vigilarWebGL();
     // the reader's texts, as typed (only in memory: see textoDelLector)
     document.addEventListener(
       'input',

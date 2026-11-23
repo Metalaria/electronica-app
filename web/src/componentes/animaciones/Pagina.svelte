@@ -207,10 +207,18 @@
   .libro ul {
     display: flex;
     flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
     gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  /* 1.3.1: a link may be narrower than its title (a flex item keeps min-width: auto, its title on one line: a long one
+     made the page 16 px wider than a 412 px phone, which then showed it zoomed out) */
+  .libro li {
+    min-width: 0;
+    max-width: 100%;
   }
   .libro a {
     display: inline-flex;
@@ -234,6 +242,7 @@
     white-space: nowrap;
   }
   .libro a span {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

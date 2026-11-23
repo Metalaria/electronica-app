@@ -92,18 +92,25 @@
   onMount(() => {
     const oculto = () => document.visibilityState !== 'visible' && b.escucha && parar();
     document.addEventListener('visibilitychange', oculto);
-    // Level meter while something sounds.
+    return () => {
+      document.removeEventListener('visibilitychange', oculto);
+      parar();
+    };
+  });
+  // Level meter while something sounds (1.3.1: only then — the loop ran at 60 frames a second for as long as the panel
+  // was open, with nothing to listen to, and the phone never rested).
+  $effect(() => {
+    if (!b.escucha) {
+      nivel = 0;
+      return;
+    }
     let raf = 0;
     const medir = () => {
       nivel = b.escucha ? auricular.nivel() : 0;
       raf = requestAnimationFrame(medir);
     };
     raf = requestAnimationFrame(medir);
-    return () => {
-      cancelAnimationFrame(raf);
-      document.removeEventListener('visibilitychange', oculto);
-      parar();
-    };
+    return () => cancelAnimationFrame(raf);
   });
 
   const esperando = $derived(!!b.escucha && !analisis);
