@@ -157,9 +157,10 @@ mod fichero {
 
     /// The bytes to write: `texto` as UTF-8, or (1.0, the «modo docente» PDF) the bytes `texto` encodes in base64.
     /// The 50 MB cap applies to the decoded bytes (checked on the encoded length first, so nothing huge is decoded).
-    /// Review 10c: the file types the webview may ask for are a whitelist — the backup (JSON) and the teacher-mode PDF —
-    /// with the dialog's name fixed here (the webview's name is not shown). Anything else is refused before the dialog
-    /// opens. `None`: no filter asked (the backup's call of 0.12).
+    /// Review 10c: the file types the webview may ask for are a whitelist — the backup (JSON), the teacher-mode PDF and
+    /// the real instruments' record (CSV: plain text, a table of readings) — with the dialog's name fixed here (the
+    /// webview's name is not shown). Anything else is refused before the dialog opens. `None`: no filter asked (the
+    /// backup's call of 0.12).
     pub(crate) fn filtro_permitido(filtro: &Option<(String, Vec<String>)>) -> Result<Option<(&'static str, &'static str)>, String> {
         let Some((_, extensiones)) = filtro else {
             return Ok(None);
@@ -168,6 +169,7 @@ mod fichero {
         match ext.as_slice() {
             [e] if e == "json" => Ok(Some(("Copia de seguridad (JSON)", "json"))),
             [e] if e == "pdf" => Ok(Some(("Documento PDF", "pdf"))),
+            [e] if e == "csv" => Ok(Some(("Datos (CSV)", "csv"))),
             _ => Err("Ese tipo de fichero no se puede guardar desde la aplicación.".into()),
         }
     }
@@ -406,6 +408,8 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         // 1.3: the real Brymen BM869s through its BU-86X cable (plugins/brymen; capabilities/brymen.json)
         .plugin(tauri_plugin_brymen::init())
+        // the real FNIRSI 2C53T through its «stock-link» USB link (plugins/fnirsi; capabilities/fnirsi.json)
+        .plugin(tauri_plugin_fnirsi::init())
         .invoke_handler(tauri::generate_handler![
             fichero::guardar_fichero_elegido,
             fichero::abrir_fichero_elegido,
@@ -465,12 +469,14 @@ mod pruebas {
     }
 
     #[test]
-    fn solo_json_y_pdf() {
+    fn solo_json_pdf_y_csv() {
         assert_eq!(filtro_permitido(&None).unwrap(), None);
         let f = |n: &str, e: &[&str]| Some((n.to_string(), e.iter().map(|x| x.to_string()).collect::<Vec<_>>()));
         assert_eq!(filtro_permitido(&f("Documento PDF", &["pdf"])).unwrap(), Some(("Documento PDF", "pdf")));
         assert_eq!(filtro_permitido(&f("lo que sea", &[".PDF"])).unwrap(), Some(("Documento PDF", "pdf")));
         assert_eq!(filtro_permitido(&f("Copia", &["json"])).unwrap(), Some(("Copia de seguridad (JSON)", "json")));
+        assert_eq!(filtro_permitido(&f("lo que sea", &["CSV"])).unwrap(), Some(("Datos (CSV)", "csv")));
+        assert!(filtro_permitido(&f("Varios", &["csv", "json"])).is_err());
         assert!(filtro_permitido(&f("Programa", &["exe"])).is_err());
         assert!(filtro_permitido(&f("Varios", &["pdf", "exe"])).is_err());
         assert!(filtro_permitido(&f("Nada", &[])).is_err());
@@ -486,5 +492,6 @@ mod pruebas {
         assert_eq!(nombre_con_extension("Tema 5.3 diodos", "pdf"), "Tema 5.3 diodos.pdf");
         assert_eq!(nombre_con_extension("   ", "json"), "documento.json");
         assert_eq!(nombre_con_extension(".pdf", "pdf"), ".pdf");
+        assert_eq!(nombre_con_extension("registro-instrumentos-2026-11-23-135702", "csv"), "registro-instrumentos-2026-11-23-135702.csv");
     }
 }

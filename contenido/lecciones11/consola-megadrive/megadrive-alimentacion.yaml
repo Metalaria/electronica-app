@@ -2,8 +2,11 @@
 # → SW1 → dos 1SR35-100A → IC15), la polaridad del modelo 1, la potencia que disipa un 7805 y su dropout (libro,
 # sección 8.4) y qué alimenta cada 7805 según las redes VCC y VCCQ del esquema. Fuentes: los datos de la consola
 # (megadrive#n), la guía de Retro Tech Wiki basada en el manual de Sega, ConsoleMods «Genesis:Buying Guide» y el libro.
+# 1.4 (contenido14, dueño 23-11): la práctica usa 9 V, los de la etiqueta del adaptador del dueño y los que da
+# ConsoleMods para el modelo 1 (megadrive#115); se sigue citando el manual PAL-G (10 V, megadrive#93). IC15 e IC17 del
+# manual son U15 y U17 del esquema de la recreación (confirmado por el dueño; las redes VCC y VCCQ lo muestran).
 # 1.2.1: el camino se toca en orden en la foto; el 7805 es un circuito vivo (esquema «regulador-lineal», como en la
-# piloto de la SNES), con los 10 V del adaptador PAL-G sin contar los diodos y una carga de ejemplo de 0,5 A: se mide
+# piloto de la SNES), con los 9 V del adaptador sin contar los diodos y una carga de ejemplo de 0,5 A: se mide
 # Vcc1, se escribe el calor y se sube la entrada hasta que regula; se tocan los chips de la red VCCQ que se apagan si
 # falla IC17 (redes del esquema, megadrive#126/127). Queda el emparejar de las clavijas.
 leccion: consola-megadrive/megadrive-alimentacion
@@ -18,7 +21,7 @@ libro:
   "megadrive#94": "La entrada de continua pasa por la ferrita FB1, el interruptor SW1 y dos diodos 1SR35-100A hasta IC15"
   "megadrive#95": "Vcc1 y Vcc2 deben dar +5 V"
   "megadrive#96": "un IC17 averiado"
-  "megadrive#115": "toma de 5,5 × 2,1 mm con la punta negativa"
+  "megadrive#115": "toma de 5,5 × 2,1 mm con la punta negativa; espera 9 V de continua y 1,2 A"
   "megadrive#116": "Modelo 2: toma EIAJ-03 (4,75 × 1,7 mm) con la punta positiva"
   "megadrive#126": "Red VCC del esquema (alimentación)"
   "megadrive#127": "Red VCCQ del esquema (alimentación)"
@@ -29,7 +32,7 @@ libro:
 modelo:
   valores:
     V_in: { sim: "V_{entrada}", nombre: "tensión en la entrada del 7805", unidad: V, valor: 5 }
-    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 10 }
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador (modelo 1)", unidad: V, valor: 9 }
     V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
     I: { sim: "I", nombre: "corriente del regulador (ejemplo)", unidad: A, valor: 0.5 }
     V_dr: { sim: "V_{do}", nombre: "dropout del 78xx", unidad: V, valor: 2 }
@@ -41,7 +44,7 @@ modelo:
     I_a: { si: on_c, entonces: "V_sa/R_c", sino: "0", sim: "I", nombre: "corriente con el adaptador", unidad: A }
     V_pa: { expr: "V_ad - V_sa", sim: "V_{entrada} − V_{salida}", nombre: "caída en el 7805", unidad: V }
     P_a: { expr: "V_pa*I_a", sim: "P_{disipada}", nombre: "calor que disipa el 7805 con el adaptador", unidad: W, cifras: 3 }
-    P_mal: { expr: "V_ad*I_a", sim: "V · I", nombre: "los 10 V enteros por la corriente", unidad: W }
+    P_mal: { expr: "V_ad*I_a", sim: "V · I", nombre: "los 9 V enteros por la corriente", unidad: W }
     V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida del 7805 (modelo)", unidad: V, cifras: 3 }
     P_d: { expr: "(V_ad - V_o)*I", sim: "P_{disipada}", nombre: "potencia que disipa el 7805", unidad: W, cifras: 3 }
 
@@ -50,15 +53,17 @@ tarjetas:
     tipo: tocar
     fase: "Ordene"
     titulo: "El camino de la corriente"
-    texto: "Los 10 V del adaptador pasan por la ferrita FB1, el interruptor y dos diodos hasta los 7805. Toque, en ese orden, el interruptor y los reguladores."
-    libro: ["megadrive#94", "megadrive#93", "megadrive#22", "megadrive#23"]
+    texto: "Los 9 V del adaptador (el manual PAL-G de Sega dice 10) pasan por FB1, el interruptor y dos diodos hasta los 7805. Toque el interruptor y luego los reguladores."
+    libro: ["megadrive#94", "megadrive#115", "megadrive#93", "megadrive#22", "megadrive#23"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
+      recorte: [91, 69, 874, 872]
+      ampliar: 2.35
       zonas:
         - { id: sw1, hotspot: sw1, rotulo: "Interruptor, abajo a la izquierda" }
         - { id: reg, hotspot: reg, rotulo: "Piezas con disipador, arriba a la izquierda" }
-        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, en el centro" }
+        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, abajo a la derecha" }
         - { id: ym, hotspot: ym, rotulo: "Chip largo, a la izquierda" }
     tocar:
       bien: [sw1, reg]
@@ -68,7 +73,8 @@ tarjetas:
         ym: "Es el YM2612: recibe los 5 V, no los genera."
     pistas:
       - { texto: "El interruptor está en la entrada; los reguladores, al final." }
-    exito: "Adaptador, FB1, SW1, los dos 1SR35-100A e IC15: filtrar, encender, proteger y regular."
+      - { texto: "ConsoleMods da 9 V para el modelo 1, como la etiqueta de su adaptador; el manual PAL-G de Sega, 10 V." }
+    exito: "Adaptador, FB1, SW1, los dos 1SR35-100A e IC15: filtrar, encender, proteger y regular. IC15 e IC17 del manual son U15 y U17 del esquema."
     escalera:
       - "Lo último son los dos 7805, sobre el blindaje."
     solucion: "SW1 y luego IC15 e IC17."
@@ -94,8 +100,8 @@ tarjetas:
     titulo: "Vcc1"
     texto: "El manual de Sega pide comprobar la salida de cada 7805. Ponga las puntas para medir Vcc1, la salida de IC15."
     nota: "El 7805 por dentro: elemento de paso, referencia y amplificador de error."
-    libro: ["megadrive#95", "megadrive#93"]
-    fijar: { V_ad: 10, V_o: 5, on_c: 1 }
+    libro: ["megadrive#95", "megadrive#115", "megadrive#93"]
+    fijar: { V_ad: 9, V_o: 5, on_c: 1 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -112,7 +118,7 @@ tarjetas:
       entre: [out, "0"]
       valor: V_sa
       porque:
-        "in/0": "Esa es la entrada: los 10 V del adaptador."
+        "in/0": "Esa es la entrada: los 9 V del adaptador."
         "in/out": "Eso es lo que cae en el 7805, no lo que da."
     exito: "+5 V: Vcc1 y Vcc2 deben dar +5 V. Si no los da con la entrada bien, el regulador está mal."
     escalera:
@@ -122,9 +128,9 @@ tarjetas:
   - id: formula-disipa
     tipo: leer
     titulo: "Lo que sobra, en calor"
-    texto: "Sin contar los diodos, con 10 V a la entrada y una carga de ejemplo de 0,5 A, mida la corriente del 7805 y escriba el calor que disipa."
-    libro: ["cap08#65", "cap08#66", "megadrive#93"]
-    fijar: { V_ad: 10, V_o: 5, on_c: 1 }
+    texto: "Sin contar los diodos, con 9 V a la entrada y una carga de ejemplo de 0,5 A, mida la corriente del 7805 y escriba el calor que disipa."
+    libro: ["cap08#65", "cap08#66", "megadrive#115"]
+    fijar: { V_ad: 9, V_o: 5, on_c: 1 }
     widget:
       tipo: circuito
       esquema: regulador-lineal
@@ -141,13 +147,13 @@ tarjetas:
       unidad: W
       rotulo: "Calor en el 7805"
       errores:
-        - { expr: "P_mal", texto: "Ha multiplicado los 10 V enteros. El 7805 solo quema la diferencia entre entrada y salida." }
-    exito: "(10 − 5) V · 0,5 A = 2,5 W: por eso van sobre el blindaje."
+        - { expr: "P_mal", texto: "Ha multiplicado los 9 V enteros. El 7805 solo quema la diferencia entre entrada y salida." }
+    exito: "(9 − 5) V · 0,5 A = 2 W: por eso van sobre el blindaje."
     escalera:
       - "El calor es la caída en el 7805 por la corriente que lo atraviesa."
-    solucion: "(10 − 5) V · 0,5 A = 2,5 W."
+    solucion: "(9 − 5) V · 0,5 A = 2 W."
     comprobar:
-      - { P_a: 2.5, I_a: 0.5, V_pa: 5, P_mal: 5 }
+      - { P_a: 2, I_a: 0.5, V_pa: 4, P_mal: 4.5 }
 
   - id: ajuste-dropout
     tipo: explorar
@@ -179,11 +185,12 @@ tarjetas:
   - id: por-que-ic17
     tipo: tocar
     titulo: "Media placa sin 5 V"
-    texto: "Cada 7805 tiene su red: IC15 da la VCC e IC17, la VCCQ. IC17 se ha averiado: toque los chips de la foto que se quedan sin sus 5 V."
+    texto: "Cada 7805 tiene su red: IC15 (U15 en el esquema) da la VCC e IC17 (U17), la VCCQ. IC17 se ha averiado: toque los chips que se quedan sin sus 5 V."
     libro: ["megadrive#126", "megadrive#127", "megadrive#96", "megadrive#2", "megadrive#4"]
     widget:
       tipo: figura
       consola: { maquina: megadrive }
+      ampliar: 2.5
       zonas:
         - { id: z80, hotspot: z80, rotulo: "Chip largo, abajo en el centro" }
         - { id: zram, hotspot: zram, rotulo: "Chip, abajo a la izquierda del Z80" }

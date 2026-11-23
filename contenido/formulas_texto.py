@@ -1253,8 +1253,8 @@ X('disipador-necesario',
   valores='5 W, unión a 120 °C, ambiente de 40 °C: 16 − 2,5 = 13,5 °C/W.',
   aplica='No dimensionar «para el máximo absoluto» de 150 °C, porque la vida del semiconductor depende de la temperatura.')
 X('incertidumbre-multimetro',
-  significa='La especificación de un multímetro suma un porcentaje de la lectura y un número de cuentas de la última cifra.',
-  valores='0,02 % de 5 V más 5 cuentas de 10 µV: 1,05 mV, un 0,021 %.',
+  significa='La especificación de un multímetro suma un porcentaje de la lectura y un número de cuentas de la última cifra. Es un límite, no una incertidumbre típica: antes de combinarlo con otras contribuciones se divide por √3.',
+  valores='0,02 % de 5 V más 5 cuentas de 10 µV: 1,05 mV, un 0,021 %; la incertidumbre típica, 1,05/√3 = 0,606 mV.',
   aplica='Con este instrumento «lo dominante pasa a ser el propio circuito».')
 X('vcc-fuente-lineal',
   significa='Tras el puente y el condensador, la continua es el pico del secundario menos dos diodos y medio rizado.',

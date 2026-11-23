@@ -4,9 +4,14 @@
   // Nothing is stored or reported: «Continuar» is always open, and the sheet of the «Cuaderno de prácticas» is named.
   // 1.3: «Medir con el Brymen» fills the value from the real BM869s through its BU-86X cable (only where the platform
   // can read it) and compares it at once; typing still works the same.
+  // 1.4: «Medir con el FNIRSI» does the same with the real FNIRSI 2C53T's multimeter (only a «fiable» reading: AC, the
+  // diode function and the capacitance unit keep their warning and are never taken).
   import { untrack } from 'svelte';
   import { brymenReal } from '../../lib/brymen-real/conexion.svelte';
   import { pantallaPara, porQueNo, textoCampo, textoPantalla } from '../../lib/brymen-real/lectura';
+  import { fnirsiReal } from '../../lib/fnirsi-real/conexion.svelte';
+  import { porQueNoFnirsi, tomarFnirsi } from '../../lib/fnirsi-real/comparar';
+  import type { PantallaReal } from '../../lib/brymen-real/protocolo';
   import { compilarModelo, enRango, formatear, type Valores } from '../../lib/leccion11/modelo';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import type { Leccion11 } from '../../lib/leccion11/tipos';
@@ -45,6 +50,14 @@
   let esperandoReal = $state(false);
   let avisoReal = $state('');
   let leidoReal = $state('');
+  let leidoEn = $state<'Brymen' | 'FNIRSI'>('Brymen');
+
+  function anotarReal(p: PantallaReal, en: 'Brymen' | 'FNIRSI') {
+    avisoReal = '';
+    leidoReal = textoPantalla(p);
+    leidoEn = en;
+    cambiar({ actividad: { ...ea, texto: textoCampo(p), valor: p.valor, comparado: true } });
+  }
 
   function tomarReal(): boolean {
     const l = brymenReal.estado === 'conectado' ? brymenReal.lectura : null;
@@ -53,11 +66,50 @@
       avisoReal = porQueNo(l, a.unidad);
       return false;
     }
-    avisoReal = '';
-    leidoReal = textoPantalla(p);
-    cambiar({ actividad: { ...ea, texto: textoCampo(p), valor: p.valor, comparado: true } });
+    anotarReal(p, 'Brymen');
     return true;
   }
+
+  // ---------------------------------------------------------------- 1.4: the real FNIRSI's multimeter
+  let esperandoFn = $state(false);
+  let plazoFn: ReturnType<typeof setTimeout> | undefined;
+  /** How long a connected FNIRSI has to send a multimeter reading before the reason is said. */
+  const PLAZO_FNIRSI_MS = 4000;
+
+  function tomarFn() {
+    esperandoFn = false;
+    clearTimeout(plazoFn);
+    const t = tomarFnirsi(fnirsiReal, a.unidad);
+    if ('aviso' in t) avisoReal = t.aviso;
+    else anotarReal(t.pantalla, 'FNIRSI');
+  }
+
+  function medirFnirsi() {
+    avisoReal = '';
+    leidoReal = '';
+    esperandoFn = true;
+    clearTimeout(plazoFn);
+    plazoFn = setTimeout(() => {
+      if (!esperandoFn) return;
+      esperandoFn = false;
+      avisoReal = fnirsiReal.estado === 'conectado' ? porQueNoFnirsi(fnirsiReal, a.unidad) : fnirsiReal.mensaje || 'No se pudo conectar el FNIRSI.';
+    }, PLAZO_FNIRSI_MS);
+    if (fnirsiReal.estado === 'desconectado' || fnirsiReal.estado === 'error') void fnirsiReal.conectar();
+  }
+
+  // (connecting first: the value is taken with the first multimeter reading, or the reason it cannot be is said)
+  $effect(() => {
+    if (!esperandoFn) return;
+    const estado = fnirsiReal.estado;
+    if (estado === 'conectado') {
+      if (fnirsiReal.modo !== 'multimetro' || fnirsiReal.multimetroVigente()) untrack(tomarFn);
+    } else if (estado === 'error') {
+      esperandoFn = false;
+      clearTimeout(plazoFn);
+      avisoReal = fnirsiReal.mensaje || 'No se pudo conectar el FNIRSI.';
+    }
+  });
+  $effect(() => () => clearTimeout(plazoFn));
 
   function medirReal() {
     avisoReal = '';
@@ -116,8 +168,18 @@
         <button type="button" class="a12-boton" onclick={() => void brymenReal.desconectar()} data-desconectar-real>Desconectar</button>
       {/if}
     </div>
+  {/if}
+  {#if fnirsiReal.disponible}
+    <div class="a12-fila real">
+      <button type="button" class="a12-boton" onclick={medirFnirsi} disabled={esperandoFn} data-medir-fnirsi>Medir con el FNIRSI</button>
+      {#if fnirsiReal.estado === 'conectado' || fnirsiReal.estado === 'reconectando'}
+        <button type="button" class="a12-boton" onclick={() => void fnirsiReal.desconectar()} data-desconectar-fnirsi>Desconectar el FNIRSI</button>
+      {/if}
+    </div>
+  {/if}
+  {#if brymenReal.disponible || fnirsiReal.disponible}
     <p class="a12-suave" role="status" aria-live="polite" data-estado-real-banco>
-      {#if avisoReal}{avisoReal}{:else if esperandoReal}{brymenReal.mensaje || 'Conectando con el Brymen…'}{:else if leidoReal}Leído en su Brymen: {leidoReal}.{/if}
+      {#if avisoReal}{avisoReal}{:else if esperandoReal}{brymenReal.mensaje || 'Conectando con el Brymen…'}{:else if esperandoFn}{fnirsiReal.mensaje || 'Conectando con el FNIRSI…'}{:else if leidoReal}Leído en su {leidoEn}: {leidoReal}.{/if}
     </p>
   {/if}
   {#if malo}<p class="a12-no">No es un número.</p>{/if}

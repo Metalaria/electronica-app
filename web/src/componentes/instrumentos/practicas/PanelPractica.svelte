@@ -11,6 +11,12 @@
   import BrymenReal from './BrymenReal.svelte';
   import { brymenReal } from '../../../lib/brymen-real/conexion.svelte';
   import { explicarDiferencia, incertidumbre, pantallaPara, porQueNo } from '../../../lib/brymen-real/comparar';
+  // 1.4: the real FNIRSI 2C53T too: as the meter of the multimeter checks (its multimeter), and next to the simulated
+  // FNIRSI (its multimeter or its oscilloscope's channels)
+  import FnirsiReal from './FnirsiReal.svelte';
+  import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
+  import { explicarDiferenciaFnirsi, tomarFnirsi } from '../../../lib/fnirsi-real/comparar';
+  import { simuladoFnirsi } from './fnirsi-simulado';
 
   let { p, b }: { p: Practica; b: Banco } = $props();
 
@@ -38,7 +44,7 @@
 
   // 1.3: a check read on the Brymen can take the real meter's reading instead of the simulated one: it is noted
   // like a typed one (the same tolerance decides ✓/≠) and the difference with the simulated reading is explained.
-  let reales = $state<Record<string, { texto: string }>>({});
+  let reales = $state<Record<string, { texto: string; de: 'Brymen' | 'FNIRSI' }>>({});
   let avisoReal = $state<Record<string, string>>({});
   const deBrymen = (c: Practica['comprobaciones'][number]) => c.donde.startsWith('Brymen');
   const realConectado = $derived(brymenReal.disponible && brymenReal.estado === 'conectado');
@@ -58,7 +64,30 @@
     const sim = vivas[c.id];
     const texto = explicarDiferencia(p.valor, incertidumbre(p, l), sim ?? c.esperado, sim !== null && sim !== undefined ? 'el simulado' : 'lo esperado (libro)', c.unidad);
     anotadas = { ...anotadas, [c.id]: p.valor };
-    reales = { ...reales, [c.id]: { texto } };
+    reales = { ...reales, [c.id]: { texto, de: 'Brymen' } };
+    avisoReal = { ...avisoReal, [c.id]: '' };
+  }
+
+  // 1.4: a multimeter check (one read on the Brymen, or on the FNIRSI's multimeter) can take the real FNIRSI's
+  // multimeter reading the same way; only a «fiable» one (AC, diode and capacitance keep their warning and are never
+  // noted), and the difference is said without claiming the instrument's accuracy, which the app does not have.
+  const deMultimetro = (c: Practica['comprobaciones'][number]) => deBrymen(c) || /multímetro/i.test(c.donde);
+  const fnirsiMedidor = $derived(fnirsiReal.disponible && fnirsiReal.estado === 'conectado' && fnirsiReal.modo === 'multimetro');
+  const simFn = $derived.by(() => {
+    void b.tic;
+    return simuladoFnirsi(b);
+  });
+
+  function usarFnirsi(c: Practica['comprobaciones'][number]) {
+    const t = tomarFnirsi(fnirsiReal, c.unidad);
+    if ('aviso' in t) {
+      avisoReal = { ...avisoReal, [c.id]: t.aviso };
+      return;
+    }
+    const sim = vivas[c.id];
+    const texto = explicarDiferenciaFnirsi(t.pantalla, sim ?? c.esperado, sim !== null && sim !== undefined ? 'el simulado' : 'lo esperado (libro)', c.unidad);
+    anotadas = { ...anotadas, [c.id]: t.pantalla.valor };
+    reales = { ...reales, [c.id]: { texto, de: 'FNIRSI' } };
     avisoReal = { ...avisoReal, [c.id]: '' };
   }
 
@@ -167,6 +196,7 @@
   </div>
 
   <BrymenReal {simulado} />
+  <FnirsiReal compacto simulado={simFn} sinConectar="Sin conectar: la práctica usa el FNIRSI simulado." />
 
   <h3>Su medida frente a lo esperado</h3>
   <div class="tabla-envoltura">
@@ -187,13 +217,16 @@
             </td>
             <td class="medida" title={v === null || v === undefined ? '' : String(v)}>
               <span class="valor">{fmt(v, c.unidad)}</span>
-              {#if reales[c.id] && anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">de su Brymen</span>{:else if anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">anotada</span>{:else if v !== null && v !== undefined}<span class="donde">en vivo</span>{/if}
+              {#if reales[c.id] && anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">de su {reales[c.id]!.de}</span>{:else if anotadas[c.id] !== undefined && anotadas[c.id] !== null}<span class="donde">anotada</span>{:else if v !== null && v !== undefined}<span class="donde">en vivo</span>{/if}
             </td>
             <td class="marca">
               {#if e === 'ok'}<span aria-label="Coincide">✓</span>{:else if e === 'mal'}<span aria-label="No coincide">≠</span>{/if}
               <button class="boton pequeno" disabled={vivas[c.id] === null} onclick={() => anotarSimulada(c.id)}>Anotar</button>
               {#if realConectado && deBrymen(c)}
                 <button class="boton pequeno" onclick={() => usarReal(c)} data-usar-real={c.id}>Usar su Brymen</button>
+              {/if}
+              {#if fnirsiMedidor && deMultimetro(c)}
+                <button class="boton pequeno" onclick={() => usarFnirsi(c)} data-usar-fnirsi={c.id}>Usar su FNIRSI</button>
               {/if}
             </td>
           </tr>

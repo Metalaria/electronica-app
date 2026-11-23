@@ -382,6 +382,8 @@
     background: transparent;
     -webkit-appearance: none;
     appearance: none;
+    /* 1.4: drawn with the theme's own tokens; the sepia blend for the browser's sliders (app.css) is not for it */
+    mix-blend-mode: normal;
     cursor: pointer;
     touch-action: pan-y;
   }

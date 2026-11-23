@@ -429,6 +429,9 @@
   .campo {
     display: flex;
     flex: 1 1 220px;
+    /* 1.4 (cierre14): a flex item is never narrower than its content by default, and the input's intrinsic width plus
+       the unit (and, once answered, the ✓/✗ mark) is wider than a 360 px phone: the field went past the screen */
+    min-width: 0;
     align-items: center;
     gap: 10px;
     min-height: 60px;

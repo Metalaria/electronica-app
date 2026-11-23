@@ -40,6 +40,12 @@
   import BrymenReal from './BrymenReal.svelte';
   import { brymenReal } from '../../../lib/brymen-real/conexion.svelte';
   import { explicarDiferencia, incertidumbre, pantallaPara } from '../../../lib/brymen-real/comparar';
+  // 1.4: the real FNIRSI 2C53T on the FNIRSI's steps (next to the simulated one), and as a second real meter on the
+  // multimeter steps
+  import FnirsiReal from './FnirsiReal.svelte';
+  import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
+  import { explicarDiferenciaFnirsi, tomarFnirsi } from '../../../lib/fnirsi-real/comparar';
+  import { simuladoFnirsi } from './fnirsi-simulado';
 
   let { p, lab, b, control }: { p: Practica; lab: Laboratorio; b: Banco; control: ControlLab } = $props();
 
@@ -329,6 +335,26 @@
     return explicarDiferencia(r.valor, incertidumbre(r, l), sim, 'el simulado', x.lectura.unidad);
   });
 
+  // ---------------------------------------------------------------- 1.4: the real FNIRSI
+  // On the FNIRSI's steps its panel shows the simulated FNIRSI's values next to the real ones; on a multimeter step (the
+  // Brymen's, or the FNIRSI's in multimeter mode) the real FNIRSI's multimeter reading is compared with the step's
+  // simulated reading, as the real Brymen's is. The step is still checked on the simulated instrument.
+  const pasoFnirsi = $derived(!!paso && paso.guia?.instrumento === 'fnirsi');
+  const simFn = $derived.by(() => {
+    void b.tic;
+    return pasoFnirsi ? simuladoFnirsi(b) : null;
+  });
+  const comparacionFnirsi = $derived.by(() => {
+    void b.tic;
+    const x = paso;
+    if (!x?.lectura || !b.vigente || !(pasoBrymen || (pasoFnirsi && b.fnirsi.modo === 'dmm'))) return '';
+    if (fnirsiReal.estado !== 'conectado' || fnirsiReal.modo !== 'multimetro') return '';
+    const t = tomarFnirsi(fnirsiReal, x.lectura.unidad);
+    const sim = x.lectura.medir(b);
+    if ('aviso' in t || sim === null) return '';
+    return explicarDiferenciaFnirsi(t.pantalla, sim, 'el simulado', x.lectura.unidad);
+  });
+
   // ---------------------------------------------------------------- summary
   const resumen = $derived(
     lab.pasos
@@ -495,6 +521,10 @@
       {#if pasoBrymen}
         <BrymenReal simulado={simuladoBm} />
         {#if comparacionReal}<p class="nota" data-comparacion-real-lab>{comparacionReal} El paso se comprueba con el Brymen simulado.</p>{/if}
+      {/if}
+      {#if pasoBrymen || pasoFnirsi}
+        <FnirsiReal compacto simulado={simFn} sinConectar={pasoFnirsi ? 'Sin conectar: el paso usa el FNIRSI simulado.' : 'Sin conectar: también puede medir este paso con el multímetro de su FNIRSI.'} />
+        {#if comparacionFnirsi}<p class="nota" data-comparacion-fnirsi-lab>{comparacionFnirsi} El paso se comprueba con el {pasoFnirsi ? 'FNIRSI' : 'Brymen'} simulado.</p>{/if}
       {/if}
       {#if veredicto?.estado === 'bien' || hechos.includes(paso.id)}
         <button type="button" class="primario continuar" onclick={() => irA(actual + 1)} data-continuar>{actual + 1 < lab.pasos.length ? 'Continuar' : 'Ver el resumen'}</button>

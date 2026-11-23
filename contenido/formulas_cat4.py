@@ -96,10 +96,12 @@ F('tur', 'Relación de incertidumbre de ensayo (TUR)', 'cap47', '"TUR" = ("toler
 F('rsa-medida', 'Resistencia térmica medida de un disipador', 'cap47', 'R_("sa") = (T_("disipador") - T_("ambiente"))/(P)',
   'R_sa = (T_d - T_A)/P', {'R_sa': ('Resistencia térmica disipador-ambiente', '°C/W', '0', '1000'), 'T_d': {'n': 'Temperatura del disipador', 'u': '°C', 'r': ('-40', '200'), 'd': '60', 'lineal': True},
                            'T_A': 'Temperatura ambiente', 'P': 'Potencia aplicada'}, claves='disipador medida resistencia térmica')
-F('incertidumbre-multimetro', 'Incertidumbre de un multímetro (% de lectura + cuentas)', 'cap47', 'u = "0,0002" times "5 V" + "5" times "10 µV"',
-  'u = p/100*V + n_d*res', {'u': ('Incertidumbre', 'V', '1 nV', '100 V'), 'p': ('Porcentaje de la lectura', '%', '0,001', '10', '0,02'), 'V': 'Valor leído',
+# 1.4 (book 4.1.3): the book calls this sum the limit of the specification («a», as in 48.4); its standard
+# uncertainty is a/√3 (formulas_texto says so). The id is kept so saved favourites still find it.
+F('incertidumbre-multimetro', 'Límite de la especificación de un multímetro (% de lectura + cuentas)', 'cap47', 'a = "0,0002" times "5 V" + "5" times "10 µV"',
+  'a = p/100*V + n_d*res', {'a': ('Límite de la especificación', 'V', '1 nV', '100 V'), 'p': ('Porcentaje de la lectura', '%', '0,001', '10', '0,02'), 'V': 'Valor leído',
                             'n_d': {'n': 'Cuentas (dígitos) del término fijo', 'u': '', 'r': ('0', '1000'), 'd': '5', 'lineal': True}, 'res': ('Resolución del rango', 'V', '1 nV', '1 V', '10 µV')},
-  ej={'p': '0,02', 'V': '5 V', 'n_d': '5', 'res': '10 µV', 'u': '1,05 mV'}, claves='multímetro exactitud incertidumbre cuentas')
+  ej={'p': '0,02', 'V': '5 V', 'n_d': '5', 'res': '10 µV', 'a': '1,05 mV'}, claves='multímetro exactitud incertidumbre cuentas límite especificación')
 
 # ------------------------------------------------------------------ cap50 — laboratory power supply
 F('vcc-fuente-lineal', 'Tensión continua tras rectificar y filtrar', 'cap50', 'V_("cc") = V_(op("sec")) times "1,414" - "2" times V_("diodo")',

@@ -44,15 +44,23 @@ function descargar(nombre: string, texto: string, tipo: string): void {
 /**
  * Saves `texto` as a file named `nombre`. Resolves 'guardado' (Tauri: written where the reader chose), 'descargado'
  * (browser: handed to its downloads) or CANCELADO; rejects when the file could not be written.
+ * `filtro` (optional): the dialog's file type, name and extensions, one of those the command allows (the real
+ * instruments' record: ['Datos (CSV)', ['csv']]). Without it, the backup's call of 0.12 (JSON).
  */
-export async function guardarFichero(nombre: string, texto: string, tipo = 'application/json'): Promise<'guardado' | 'descargado' | typeof CANCELADO> {
+export async function guardarFichero(
+  nombre: string,
+  texto: string,
+  tipo = 'application/json',
+  filtro?: [string, string[]],
+): Promise<'guardado' | 'descargado' | typeof CANCELADO> {
   if (enTauri()) {
     let guardado: boolean;
     try {
-      guardado = await invoke<boolean>('guardar_fichero_elegido', { nombre, texto });
+      guardado = await invoke<boolean>('guardar_fichero_elegido', filtro ? { nombre, texto, filtro } : { nombre, texto });
     } catch (e) {
       if (!noDisponible(e)) throw new Error(String(e));
-      if (!descargaPosible()) throw new Error('Este dispositivo no permite guardar el fichero de la copia: no se ha guardado nada.');
+      if (!descargaPosible())
+        throw new Error(filtro ? 'Este dispositivo no permite guardar el fichero: no se ha guardado nada.' : 'Este dispositivo no permite guardar el fichero de la copia: no se ha guardado nada.');
       console.warn('diálogo de guardar no disponible; se descarga', e);
       descargar(nombre, texto, tipo);
       return 'descargado';

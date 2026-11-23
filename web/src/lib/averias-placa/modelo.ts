@@ -299,6 +299,70 @@ export function aplicarAfin(m: Afin, x: number, y: number): [number, number] {
   return [m[0] * x + m[1] * y + m[2], m[3] * x + m[4] * y + m[5]];
 }
 
+/** A projective map (homography) h0…h7, h8 = 1: x' = (h0 x + h1 y + h2) / (h6 x + h7 y + 1), y' likewise with h3…h5. */
+export type Proyectiva = [number, number, number, number, number, number, number, number, number];
+
+/**
+ * 1.4 (contenido14): the projective map (least squares, normalised coordinates) from board coordinates to photo
+ * pixels, for a photo taken at a slight angle (the Super Nintendo's iFixit photos), where an affine map leaves pads
+ * several pixels off at the edges. Null with fewer than four points or a degenerate set.
+ */
+export function ajusteProyectivo(pares: [[number, number], [number, number]][]): Proyectiva | null {
+  if (pares.length < 4) return null;
+  // (normalise both point sets: centroid at 0, mean distance √2, so that the 8 × 8 system is well conditioned)
+  const norm = (ps: [number, number][]) => {
+    const cx = ps.reduce((s, p) => s + p[0], 0) / ps.length;
+    const cy = ps.reduce((s, p) => s + p[1], 0) / ps.length;
+    const d = ps.reduce((s, p) => s + Math.hypot(p[0] - cx, p[1] - cy), 0) / ps.length || 1;
+    const k = Math.SQRT2 / d;
+    return { k, cx, cy, f: (p: [number, number]): [number, number] => [(p[0] - cx) * k, (p[1] - cy) * k] };
+  };
+  const na = norm(pares.map((p) => p[0]));
+  const nb = norm(pares.map((p) => p[1]));
+  const ata = Array.from({ length: 8 }, () => new Array<number>(8).fill(0));
+  const atb = new Array<number>(8).fill(0);
+  const fila = (r: number[], v: number) => {
+    for (let i = 0; i < 8; i++) {
+      for (let j = 0; j < 8; j++) ata[i]![j]! += r[i]! * r[j]!;
+      atb[i]! += r[i]! * v;
+    }
+  };
+  for (const [a, b] of pares) {
+    const [x, y] = na.f(a);
+    const [u, v] = nb.f(b);
+    fila([x, y, 1, 0, 0, 0, -u * x, -u * y], u);
+    fila([0, 0, 0, x, y, 1, -v * x, -v * y], v);
+  }
+  // Gaussian elimination with partial pivoting
+  const m = ata.map((r, i) => [...r, atb[i]!]);
+  for (let c = 0; c < 8; c++) {
+    let piv = c;
+    for (let r = c + 1; r < 8; r++) if (Math.abs(m[r]![c]!) > Math.abs(m[piv]![c]!)) piv = r;
+    if (Math.abs(m[piv]![c]!) < 1e-12) return null;
+    [m[c], m[piv]] = [m[piv]!, m[c]!];
+    for (let r = 0; r < 8; r++) {
+      if (r === c) continue;
+      const f = m[r]![c]! / m[c]![c]!;
+      for (let k = c; k < 9; k++) m[r]![k]! -= f * m[c]![k]!;
+    }
+  }
+  const h = m.map((r, i) => r[8]! / r[i]!);
+  // undo the normalisation: H = Tb⁻¹ · Hn · Ta
+  const Hn = [h[0]!, h[1]!, h[2]!, h[3]!, h[4]!, h[5]!, h[6]!, h[7]!, 1];
+  const Ta = [na.k, 0, -na.k * na.cx, 0, na.k, -na.k * na.cy, 0, 0, 1];
+  const TbInv = [1 / nb.k, 0, nb.cx, 0, 1 / nb.k, nb.cy, 0, 0, 1];
+  const mul = (A: number[], B: number[]) => Array.from({ length: 9 }, (_, i) => [0, 1, 2].reduce((s, k) => s + A[Math.floor(i / 3) * 3 + k]! * B[k * 3 + (i % 3)]!, 0));
+  const H = mul(TbInv, mul(Hn, Ta));
+  const z = H[8]!;
+  if (!Number.isFinite(z) || Math.abs(z) < 1e-15) return null;
+  return H.map((v) => v / z) as Proyectiva;
+}
+
+export function aplicarProyectivo(h: Proyectiva, x: number, y: number): [number, number] {
+  const w = h[6] * x + h[7] * y + h[8];
+  return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w];
+}
+
 // ------------------------------------------------------------------ the board's pads
 
 /** A pad of the board as a test point: «F1.2», its net, where it is (u), which faces a lead reaches it from. */

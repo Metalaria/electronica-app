@@ -196,24 +196,27 @@ MAQUINAS = [
              'revision': 'SNS-CPU-RGB-01 NTSC, otra placa (no la del esquema)', 'hotspots': SN.CARA_NTSC,
              'nota': 'Una placa NTSC con todos sus chips (CIC F411A, cristal D21G4, S-RGB). Recomprimida, sin recortar; los '
                      'recuadros, colocados por las marcas y la serigrafía que se leen en la foto.'},
-            # (1.2, consolas-A: the two nonSNES photos relabelled as what they are — a bare board and a solder side with
-            # some empty footprints — and without markers for the parts they do not show, SN.SIN_MARCADOR)
-            {'id': 'cara-a', 'titulo': 'Cara de componentes · PAL, sin piezas', 'origen': 'snes/fotos/nonSNES_front.jpg',
-             'alineacion': 'snes/fotos/nonSNES_front.alineacion.json', 'ancho': 1600, 'calidad': 78,
-             'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL, la del esquema', 'hotspots': SN.CARA_A,
-             'sin_marcador': SN.SIN_MARCADOR['cara-a'],
-             'nota': 'Escaneo de la placa desnuda: en esta cara no hay ninguna pieza montada. Se ven los pads y la serigrafía '
-                     '(U1, U2…); cada recuadro marca dónde va una pieza, no la pieza.'},
-            {'id': 'cara-b', 'titulo': 'Cara de soldadura · PAL, incompleta', 'origen': 'snes/fotos/nonSNES_back.jpg',
-             'alineacion': 'snes/fotos/nonSNES_back.alineacion.json', 'ancho': 1600, 'calidad': 78,
-             'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL', 'hotspots': SN.CARA_B,
-             'sin_marcador': SN.SIN_MARCADOR['cara-b'],
-             'nota': 'Vista desde abajo: la placa sale dada la vuelta (el puerto de expansión queda a la derecha). Faltan algunas '
-                     'piezas: las huellas vacías (R4–R6, R24, R32, R42, R45, R47, R108–R111, C4, C5 y C69) no llevan marcador.'},
+            # (1.4, contenido14, owner 23-11: the two PAL faces are iFixit's teardown photos of a populated SNSP-CPU-01,
+            # CC BY-NC-SA 3.0, in place of nonSNES's bare-board scan and incomplete solder side; boxes in pixels of the
+            # output photo, SN.CAJAS_IFIXIT. The research folder needs both PNGs in snes/fotos/ifixit/.)
+            {'id': 'cara-a', 'titulo': 'Cara de componentes · PAL', 'origen': 'snes/fotos/ifixit/snsp-cpu-01-componentes-ifixit.png',
+             'ancho': 1600, 'calidad': 78, 'credito': 'Foto: Arty Boomshaka y colaboradores, iFixit, CC BY-NC-SA 3.0',
+             'revision': 'SNSP-CPU-01 PAL, el modelo del esquema (otra unidad)', 'hotspots': SN.CARA_A_IFIXIT,
+             'posiciones': SN.POSICIONES_IFIXIT['cara-a'], 'posiciones_nota': SN.POSICIONES_NOTA_IFIXIT['cara-a'],
+             'nota': 'La placa PAL con todas sus piezas, sin el blindaje y fotografiada algo en ángulo (de la guía «PAL Super '
+                     'Nintendo Teardown» de iFixit). Reducida y recomprimida, sin recortar ni retocar. Los recuadros continuos '
+                     'marcan piezas cuya serigrafía o marca se lee; los discontinuos, piezas tapadas por el plástico de los '
+                     'conectores, colocadas por su posición.'},
+            {'id': 'cara-b', 'titulo': 'Cara de soldadura · PAL', 'origen': 'snes/fotos/ifixit/snsp-cpu-01-soldaduras-ifixit.png',
+             'ancho': 1600, 'calidad': 78, 'credito': 'Foto: Arty Boomshaka y colaboradores, iFixit, CC BY-NC-SA 3.0',
+             'revision': 'SNSP-CPU-01 PAL, el modelo del esquema (otra unidad)', 'hotspots': SN.CARA_B_IFIXIT,
+             'posiciones': SN.POSICIONES_IFIXIT['cara-b'], 'posiciones_nota': SN.POSICIONES_NOTA_IFIXIT['cara-b'],
+             'nota': 'Vista desde abajo: la placa sale dada la vuelta (el puerto de expansión queda abajo a la izquierda). Los '
+                     'tres círculos azules los dibujó iFixit sobre tres tornillos; la foto no se ha retocado.'},
         ],
         'aviso': 'Esquema de la recreación nonSNES de stonedDiscord: una copia «1:1» de la placa PAL SNSP-CPU-01 Rev5 (esquema '
-                 'de arzi84) para fabricarla hoy con los chips de una consola. Las fotos PAL son de esa misma placa: la cara de '
-                 'componentes, desnuda, y la de soldadura, con alguna huella vacía. La foto NTSC es de otra placa, una '
+                 'de arzi84) para fabricarla hoy con los chips de una consola. Las fotos PAL son de una placa SNSP-CPU-01 con '
+                 'todas sus piezas, por las dos caras (iFixit). La foto NTSC es de otra placa, una '
                  'SNS-CPU-RGB-01 con todos sus chips. nonSNES añade '
                  'algunas piezas (placa A/V y de mandos separables, otro supervisor de reset, otro pulsador y otro trimmer): '
                  'la tabla de abajo dice cuáles.',
@@ -656,6 +659,10 @@ def preparar_fotos(m, problemas):
             for c in hs['cajas']:
                 if not F.caja_valida(c, w, h):
                     problemas.append('%s: caja fuera de la foto %s en %s' % (m['id'], fs['id'], hs['id']))
+        if fs.get('posiciones'):
+            # (1.4: footprint positions given as data, for a photo not aligned with the PCB: SN.POSICIONES_IFIXIT)
+            entrada['posiciones'] = {r: list(xy) for r, xy in fs['posiciones'].items() if 0 <= xy[0] < w and 0 <= xy[1] < h}
+            entrada['posiciones_nota'] = fs['posiciones_nota']
         if fs.get('trazas'):
             tz = fs['trazas']
             img = Image.open(os.path.join(SRC, fs['origen']))
@@ -788,6 +795,54 @@ def finalizar(m, componentes, redes, hojas, tam, problemas):
             'hotspots': len(todos), 'bytes': tam, 'fotos': tam_fotos}
 
 
+def solo_fotos(ids):
+    """1.4 (contenido14): rebuild only the photos of machines (files, hotspot boxes, credits), the sources table and
+    the warning, keeping everything the schematic gives (sheets, components, nets) from the JSON already written.
+    For a research folder that has a machine's photos but not its KiCad files:
+      python3 contenido/consolas.py --fotos snes
+    A full build gives the same photos and fields."""
+    problemas = []
+    for m in MAQUINAS:
+        if m['id'] not in ids:
+            continue
+        ruta = os.path.join(OUT, m['id'] + '.json')
+        with open(ruta, encoding='utf-8') as f:
+            datos = json.load(f)
+        foto, hot, extra, tam = preparar_fotos(m, problemas)
+        todos = hot + [h for e in extra for h in e['hotspots']]
+        for hs in todos:
+            for ref in hs['esquema']:
+                if ref not in datos['componentes']:
+                    problemas.append('%s: el punto %s cita %s, que no está en el esquema' % (m['id'], hs['id'], ref))
+        # (a component points at the first photo hotspot that shows it, as in finalizar)
+        foto_de = {}
+        for hs in todos:
+            for ref in hs['esquema']:
+                foto_de.setdefault(ref, hs['id'])
+        for ref, c in datos['componentes'].items():
+            if ref in foto_de:
+                c['f'] = foto_de[ref]
+            else:
+                c.pop('f', None)
+        datos['aviso'] = m['aviso']
+        datos['foto'] = foto
+        datos['hotspots'] = hot
+        if extra:
+            datos['fotos'] = extra
+        datos['fuentes'] = D.FUENTES.get(m['id']) or (SN.FUENTES if m['id'] == 'snes' else D2.FUENTES2[m['id']])
+        for k in ('revisiones',):
+            v = (SN.EXTRA if m['id'] == 'snes' else D2.EXTRA.get(m['id'], {})).get(k)
+            if v:
+                datos[k] = v
+        texto = json.dumps(datos, ensure_ascii=False, separators=(',', ':'))
+        with open(ruta, 'w', encoding='utf-8') as f:
+            f.write(texto)
+        print('consolas: %s, solo las fotos: %d fotos, %d puntos, %.1f kB de fotos' % (m['id'], 1 + len(extra), len(todos), tam / 1024))
+    for p in problemas:
+        print('consolas: ERROR', p)
+    return 1 if problemas else 0
+
+
 def main(ids=()):
     if not os.path.isdir(SRC):
         print('consolas: no está la carpeta de fuentes %s; se conservan los datos de web/public/consolas' % SRC)
@@ -810,4 +865,7 @@ def main(ids=()):
 
 if __name__ == '__main__':
     # optional machine ids: python3 contenido/consolas.py snes  (only those are rebuilt)
+    # --fotos snes: only the photos of those machines, on the JSON already written (solo_fotos)
+    if sys.argv[1:2] == ['--fotos']:
+        sys.exit(solo_fotos(sys.argv[2:]))
     sys.exit(main(sys.argv[1:]))

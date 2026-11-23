@@ -49,7 +49,7 @@ test('Super Nintendo: cualquier componente se marca en la foto de su cara por su
   await page.goto('#/consolas/snes/foto/R30');
   await expect(page.locator('button[data-foto="cara-b"]')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.foto-vista .marcador')).toHaveAttribute('data-ref', 'R30');
-  await expect(page.locator('.foto-vista .ficha')).toContainText('ajuste afín');
+  await expect(page.locator('.foto-vista .ficha')).toContainText('homografía');
   // C73 is on the component side
   await page.goto('#/consolas/snes/foto/C73');
   await expect(page.locator('button[data-foto="cara-a"]')).toHaveAttribute('aria-selected', 'true');
@@ -59,17 +59,22 @@ test('Super Nintendo: cualquier componente se marca en la foto de su cara por su
   await expect(page.locator('.foto-vista .ficha')).toContainText('Q3');
 });
 
-// 1.2 (consolas-A, owner 12-11): the PAL photos say what they are (a bare board, a solder side with empty footprints)
-// and have no marker for a part they do not show; the owner's NTSC photo, with its chips, its credit and its sources
+// 1.2 (consolas-A, owner 12-11): the PAL photos say what they are and have no marker for a part they do not show; the
+// owner's NTSC photo, with its chips, its credit and its sources. 1.4 (contenido14, owner 23-11): the PAL faces are
+// iFixit's photos of a populated SNSP-CPU-01 (CC BY-NC-SA 3.0), with their credit and source.
 test('Super Nintendo: las fotos PAL dicen lo que son y la NTSC tiene sus chips y su crédito', async ({ page }) => {
   await page.goto('#/consolas/snes/foto');
   const tabs = page.getByRole('tablist', { name: 'Foto' });
   // (owner 13-11) the NTSC photo with its chips is the main tab and opens by default; the bare PAL face comes second
-  await expect(tabs.getByRole('tab')).toHaveText(['Cara de componentes · NTSC', 'Cara de componentes · PAL, sin piezas', 'Cara de soldadura · PAL, incompleta']);
+  await expect(tabs.getByRole('tab')).toHaveText(['Cara de componentes · NTSC', 'Cara de componentes · PAL', 'Cara de soldadura · PAL']);
   await expect(page.locator('button[data-foto="ntsc"]')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.foto-vista img')).toHaveAttribute('src', /foto-ntsc\.jpg$/);
   await page.locator('button[data-foto="cara-a"]').click();
-  await expect(page.locator('.foto-vista .credito')).toContainText('placa desnuda');
+  await expect(page.locator('.foto-vista .credito')).toContainText('Foto: Arty Boomshaka y colaboradores, iFixit, CC BY-NC-SA 3.0');
+  await expect(page.locator('.foto-vista .credito')).toContainText('con todas sus piezas');
+  await page.locator('button[data-foto="cara-b"]').click();
+  await expect(page.locator('.foto-vista .credito')).toContainText('círculos azules');
+  await expect(page.locator('.foto-vista img')).toHaveAttribute('src', /foto-cara-b\.jpg$/);
   // the schematic's U1 still finds its PAL footprint on cara A, the second tab
   await page.goto('#/consolas/snes/esquema/U1');
   // (the button names the hotspot of the second photo: before the fix it looked only at the main photo's)
@@ -101,6 +106,8 @@ test('Super Nintendo: las fotos PAL dicen lo que son y la NTSC tiene sus chips y
   await expect(f).toContainText('Yaca2671');
   await expect(f.locator('a[href="https://commons.wikimedia.org/wiki/File:SNES-CPU-RGB01_01.jpg"]')).toHaveCount(1);
   await expect(f).toContainText('sin recortar');
+  await expect(f.locator('a[href="https://www.ifixit.com/Teardown/PAL+Super+Nintendo+Teardown/96506"]')).toHaveCount(1);
+  await expect(f).toContainText('CC BY-NC-SA 3.0');
 });
 
 test('Super Nintendo: el decodificador distingue el bus A, el bus B y los registros internos', async ({ page }) => {

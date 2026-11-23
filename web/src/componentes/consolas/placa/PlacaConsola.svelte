@@ -178,6 +178,26 @@
     return { cuerpo: r.length, huella: r.filter((h) => h.rec!.cuerpo === 'huella').length, aprox: r.filter((h) => h.rec!.cuerpo !== 'huella').length };
   });
   const otraVista: Destino = $derived(vista === '3d' ? 'placa2d' : 'placa3d');
+
+  // 1.4 (libro14): on the phone the 3D view opened with its canvas running under the bottom tab bar (the canvas
+  // ended ~180 px below the bar's top edge at the top of the page), so a tap near the board's bottom edge opened
+  // «Inicio». When the 3D view appears with the tab bar on screen, the page is scrolled just enough for the view to
+  // end above the bar (scroll-margin-bottom in the styles keeps the gap). Once per view shown: the reader's own
+  // scrolling afterwards is left alone. Tablet and desktop, where the view already fits, are not scrolled.
+  let vistaEl: HTMLElement | undefined = $state();
+  $effect(() => {
+    const el = vistaEl;
+    if (!el || vista !== '3d' || !app.movil) return;
+    untrack(() => {
+      const raiz = getComputedStyle(document.documentElement);
+      const barra = parseFloat(raiz.getPropertyValue('--alto-pestanas')) || 0;
+      if (barra <= 0) return;
+      const r = el.getBoundingClientRect();
+      // (only when the whole view fits between the top bar and the tabs: a phone on its side keeps the old layout)
+      const cabe = r.height <= window.innerHeight - barra - (parseFloat(raiz.getPropertyValue('--alto-barra')) || 0) - 8;
+      if (cabe && r.bottom > window.innerHeight - barra) el.scrollIntoView({ block: 'end', inline: 'nearest' });
+    });
+  });
   /** 0.11: reconstructed from photos (no vector copper). */
   const deFoto = $derived(d?.consola.tipo === 'foto');
 
@@ -211,7 +231,7 @@
       </p>
     {/if}
     <div class="cuerpo">
-      <section class="vista" aria-label={vista === '3d' ? 'Placa en 3D' : 'Placa en 2D'}>
+      <section class="vista" bind:this={vistaEl} aria-label={vista === '3d' ? 'Placa en 3D' : 'Placa en 2D'}>
         {#if vista === '3d' && webgl}
           {#await import('../../proyectos/Vista3D.svelte')}
             <div class="cargando">Preparando la vista 3D…</div>
@@ -566,6 +586,8 @@
     }
     .vista {
       height: clamp(340px, 58dvh, 820px);
+      /* 1.4: the gap left above the bottom tab bar when the 3D view is brought up on the phone */
+      scroll-margin-bottom: calc(var(--hueco-inferior) + 8px);
     }
     .lado {
       position: static;

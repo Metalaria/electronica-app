@@ -650,6 +650,8 @@ test.describe('android-preparar.mjs: icono de la notificación del recordatorio'
     fs.copyFileSync(path.join(WEB, 'scripts', 'android-preparar.mjs'), path.join(raiz, 'web', 'scripts', 'android-preparar.mjs'));
     // 1.1: the script also writes the book's QR links into the manifest (android-enlaces.mjs, from tauri.conf.json)
     fs.copyFileSync(path.join(WEB, 'scripts', 'android-enlaces.mjs'), path.join(raiz, 'web', 'scripts', 'android-enlaces.mjs'));
+    // 1.4: and the USB instruments' intent filter (android-usb.mjs, from recursos-android/xml/epa_usb.xml)
+    fs.copyFileSync(path.join(WEB, 'scripts', 'android-usb.mjs'), path.join(raiz, 'web', 'scripts', 'android-usb.mjs'));
     fs.cpSync(path.join(RAIZ, 'src-tauri', 'icons', 'android'), path.join(raiz, 'src-tauri', 'icons', 'android'), { recursive: true });
     fs.copyFileSync(path.join(RAIZ, 'src-tauri', 'tauri.conf.json'), path.join(raiz, 'src-tauri', 'tauri.conf.json'));
     if (conRecursos) fs.cpSync(path.join(RAIZ, 'src-tauri', 'recursos-android'), path.join(raiz, 'src-tauri', 'recursos-android'), { recursive: true });
@@ -675,6 +677,7 @@ test.describe('android-preparar.mjs: icono de la notificación del recordatorio'
     const r = spawnSync(process.execPath, [path.join(raiz, 'web', 'scripts', 'android-preparar.mjs')], { env, encoding: 'utf8' });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toContain('icono de la notificación copiado');
+    expect(r.stdout).toContain('filtro de los instrumentos USB copiado');
     const icono = fs.readFileSync(path.join(res, 'drawable', 'ic_stat_epa.xml'), 'utf8');
     expect(icono).toBe(fs.readFileSync(path.join(RAIZ, 'src-tauri', 'recursos-android', 'drawable', 'ic_stat_epa.xml'), 'utf8'));
     // a status-bar icon: a vector drawable of 24 dp, every path filled with opaque white (Android uses the alpha)
@@ -739,6 +742,9 @@ test.describe('copia de seguridad: el fichero solo se toca desde Rust', () => {
       const { guardarFichero, abrirFicheroTauri, CANCELADO } = await import('../src/lib/sincronizacion/fichero');
       expect(await guardarFichero('copia.json', '{"a":1}')).toBe('guardado');
       expect(llamadas.at(-1)).toEqual(['guardar_fichero_elegido', { nombre: 'copia.json', texto: '{"a":1}' }]);
+      // with a file type (the real instruments' record): the same command, with its filter
+      expect(await guardarFichero('registro.csv', 'a;b\r\n', 'text/csv;charset=utf-8', ['Datos (CSV)', ['csv']])).toBe('guardado');
+      expect(llamadas.at(-1)).toEqual(['guardar_fichero_elegido', { nombre: 'registro.csv', texto: 'a;b\r\n', filtro: ['Datos (CSV)', ['csv']] }]);
       respuesta = () => false;
       expect(await guardarFichero('copia.json', '{}')).toBe(CANCELADO);
       respuesta = () => {
@@ -844,7 +850,7 @@ test.describe('copia de seguridad: el fichero solo se toca desde Rust', () => {
     expect(orden).toContain('f.write_all(&bytes)');
     expect(orden).toContain('blocking_save_file()');
     expect(orden).toContain('None => dialogo.add_filter("Copia de seguridad (JSON)", &["json"])');
-    // review 10c: only the JSON backup and the PDF, with the names fixed in Rust (test pruebas::solo_json_y_pdf)
+    // review 10c: only the JSON backup and the PDF, with the names fixed in Rust (test pruebas::solo_json_pdf_y_csv; since the real instruments' record, also CSV)
     expect(orden).toContain('let permitido = filtro_permitido(&filtro)?;');
     // review 10f: the proposed name gets the filter's extension (test pruebas::el_nombre_lleva_la_extension_del_filtro)
     expect(orden).toContain('Some((_, ext)) => nombre_con_extension(&nombre, ext)');

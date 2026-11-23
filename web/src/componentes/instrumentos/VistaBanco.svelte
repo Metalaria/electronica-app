@@ -24,6 +24,10 @@
   import { tamanoDibujo } from '../figuras-vivas/circuito/proporciones';
   // 1.3 (averias13): the real Brymen in the free bench too (no practice loaded), small, with the same component
   import BrymenReal from './practicas/BrymenReal.svelte';
+  import FnirsiReal from './practicas/FnirsiReal.svelte';
+  // the recorder of the two real instruments and the FNIRSI–Brymen comparison (folded until opened)
+  import RegistroReal from './practicas/RegistroReal.svelte';
+  import { simuladoFnirsi } from './practicas/fnirsi-simulado';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -173,6 +177,11 @@
     const l = b.brymen.pantalla.principal;
     return l && b.vigente ? (l.ol ? 'OL' : `${l.texto.replace('-', '−').replace('.', ',')} ${l.unidad}`) : null;
   });
+  /** 1.4: the simulated FNIRSI's values, next to the real one's. */
+  const simuladoFn = $derived.by(() => {
+    void b.tic;
+    return simuladoFnirsi(b);
+  });
   const titulo = $derived(laboratorio && practica ? `Laboratorio ${practica.n} · ${practica.titulo}` : practica ? `Práctica ${practica.n} · ${practica.titulo}` : deEditor ? `Medir · ${b.titulo}` : b.titulo || 'Banco de pruebas');
 </script>
 
@@ -194,6 +203,8 @@
       <div class="elegir">
         <h2>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h2>
         <BrymenReal compacto simulado={simuladoBm} sinConectar="Sin conectar: el banco usa el Brymen simulado." />
+        <FnirsiReal compacto simulado={simuladoFn} sinConectar="Sin conectar: el banco usa el FNIRSI simulado (el real necesita su firmware con el enlace USB)." />
+        <RegistroReal />
         {#if deEditor}
           <p class="nota">Elija una punta o sonda arriba y toque un nodo del dibujo para ponerla. El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí.</p>
         {:else if indice}

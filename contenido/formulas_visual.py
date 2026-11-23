@@ -519,7 +519,7 @@ VISUAL = {
     'tur': R('ruido', 'u_p'),
     'rsa-medida': V('termica', esq=('termica', {'TJ': 'T_d', 'TA': 'T_A', 'P': 'P', 'Rsa': 'R_sa'})),
     'disipador-necesario': V('termica', esq=('termica', {'TJ': 'T_J', 'TA': 'T_A', 'P': 'P', 'Rjc': 'R_jc', 'Rcs': 'R_cs', 'Rsa': 'R_sa'})),
-    'incertidumbre-multimetro': V('ruido', graf=('suma', {'a': 'p/100*V', 'b': 'n_d*res', 'r': 'u'})),
+    'incertidumbre-multimetro': V('ruido', graf=('suma', {'a': 'p/100*V', 'b': 'n_d*res', 'r': 'a'})),
     # ---------------------------------------------------------------- cap49–cap52
     'vcc-fuente-lineal': V('fuentes', esq=('rectificador', {'Vac': 'V_sec', 'VD': 'V_D', 'dV': 'dV', 'Vdc': 'V_cc'})),
     'regulacion-lazo': R('fuentes', 'T_l'),
