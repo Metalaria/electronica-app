@@ -739,6 +739,9 @@ test.describe('copia de seguridad: el fichero solo se toca desde Rust', () => {
       const { guardarFichero, abrirFicheroTauri, CANCELADO } = await import('../src/lib/sincronizacion/fichero');
       expect(await guardarFichero('copia.json', '{"a":1}')).toBe('guardado');
       expect(llamadas.at(-1)).toEqual(['guardar_fichero_elegido', { nombre: 'copia.json', texto: '{"a":1}' }]);
+      // with a file type (the real instruments' record): the same command, with its filter
+      expect(await guardarFichero('registro.csv', 'a;b\r\n', 'text/csv;charset=utf-8', ['Datos (CSV)', ['csv']])).toBe('guardado');
+      expect(llamadas.at(-1)).toEqual(['guardar_fichero_elegido', { nombre: 'registro.csv', texto: 'a;b\r\n', filtro: ['Datos (CSV)', ['csv']] }]);
       respuesta = () => false;
       expect(await guardarFichero('copia.json', '{}')).toBe(CANCELADO);
       respuesta = () => {
@@ -844,7 +847,7 @@ test.describe('copia de seguridad: el fichero solo se toca desde Rust', () => {
     expect(orden).toContain('f.write_all(&bytes)');
     expect(orden).toContain('blocking_save_file()');
     expect(orden).toContain('None => dialogo.add_filter("Copia de seguridad (JSON)", &["json"])');
-    // review 10c: only the JSON backup and the PDF, with the names fixed in Rust (test pruebas::solo_json_y_pdf)
+    // review 10c: only the JSON backup and the PDF, with the names fixed in Rust (test pruebas::solo_json_pdf_y_csv; since the real instruments' record, also CSV)
     expect(orden).toContain('let permitido = filtro_permitido(&filtro)?;');
     // review 10f: the proposed name gets the filter's extension (test pruebas::el_nombre_lleva_la_extension_del_filtro)
     expect(orden).toContain('Some((_, ext)) => nombre_con_extension(&nombre, ext)');
