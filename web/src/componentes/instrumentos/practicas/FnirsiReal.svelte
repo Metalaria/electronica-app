@@ -4,19 +4,25 @@
   // instrument is measuring right now: its multimeter's display, or its oscilloscope's traces with the same
   // measurements its own screen shows. It needs the instrument's firmware with the «stock-link» patch; everything
   // else on the page works the same without it.
+  // 1.4: next to the simulated FNIRSI's values at the same point (`simulado`: its multimeter's display, its channels'
+  // Vpp and frequency), with the difference in words (lib/fnirsi-real/comparar.ts: only what the decoder backs).
   import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
   import { textoPantalla } from '../../../lib/brymen-real/lectura';
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
   import { formatoSI } from '../../grafica/formato';
+  import { compararTraza, explicarDiferenciaFnirsi, type SimuladoFnirsi } from '../../../lib/fnirsi-real/comparar';
 
   let {
     compacto = false,
     sinConectar = 'Sin conectar: necesita el FNIRSI 2C53T con el firmware del enlace USB.',
+    simulado = null,
   }: {
     /** Small, as in the free bench's side column. */
     compacto?: boolean;
     /** What the state line says before connecting. */
     sinConectar?: string;
+    /** 1.4: the simulated FNIRSI's values at the same point (null: nothing to compare with). */
+    simulado?: SimuladoFnirsi | null;
   } = $props();
 
   const c = fnirsiReal;
@@ -35,6 +41,15 @@
   const estadoTexto = $derived(c.estado === 'desconectado' ? sinConectar : c.mensaje || (c.estado === 'conectado' ? `Conectado (${c.nombre}).` : ''));
   const lectura = $derived(c.estado === 'conectado' && c.modo === 'multimetro' ? c.multimetro : null);
   const trazas = $derived(c.estado === 'conectado' ? c.trazas.filter((t): t is Traza => t !== null) : []);
+  /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
+  const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
+  const comparacion = $derived.by(() => {
+    const l = lectura;
+    const sm = simMultimetro;
+    if (!l || !sm || !l.fiable || l.esperando || l.pantalla.valor === null || l.pantalla.ol || sm.valor === null) return '';
+    if (!l.pantalla.unidad || !sm.unidad.endsWith(l.pantalla.unidad)) return '';
+    return explicarDiferenciaFnirsi(l.pantalla, sm.valor, 'el simulado', l.pantalla.unidad);
+  });
 
   /** The trace as the instrument draws it: 300 samples around the trigger, in screen units. */
   function puntos(t: Traza): string {
@@ -67,11 +82,20 @@
     </div>
     <p class="fr-estado" class:error={c.estado === 'error'} role="status" aria-live="polite" data-estado-fnirsi>{estadoTexto}</p>
     {#if lectura}
-      <div class="fr-lectura">
-        <span class="fr-rotulo">Multímetro · {FUNCIONES[lectura.funcion]}</span>
-        <output class="fr-valor" data-lectura-fnirsi>{lectura.esperando ? 'Auto' : textoPantalla(lectura.pantalla)}</output>
-        {#if !lectura.fiable && !lectura.esperando}<span class="fr-aviso" data-aviso-fnirsi>{lectura.motivo}</span>{/if}
+      <div class="fr-lecturas">
+        <div class="fr-lectura">
+          <span class="fr-rotulo">Multímetro · {FUNCIONES[lectura.funcion]}</span>
+          <output class="fr-valor" data-lectura-fnirsi>{lectura.esperando ? 'Auto' : textoPantalla(lectura.pantalla)}</output>
+        </div>
+        {#if simMultimetro}
+          <div class="fr-lectura">
+            <span class="fr-rotulo">Simulado</span>
+            <output class="fr-valor" data-lectura-fnirsi-simulada>{simMultimetro.texto}</output>
+          </div>
+        {/if}
       </div>
+      {#if !lectura.fiable && !lectura.esperando}<p class="fr-aviso" data-aviso-fnirsi>{lectura.motivo}</p>{/if}
+      {#if comparacion}<p class="fr-comparacion" data-comparacion-fnirsi>{comparacion}</p>{/if}
     {/if}
     {#if trazas.length}
       <svg class="fr-pantalla" viewBox="0 0 {ANCHO} {ALTO}" role="img" aria-label="Trazas del osciloscopio del FNIRSI" data-trazas-fnirsi={trazas.length}>
@@ -84,6 +108,7 @@
           <li data-canal-fnirsi={t.canal + 1}>
             <span class="fr-marca" style:background={COLOR[t.canal]}></span>CH{t.canal + 1}: {resumen(t)}{#if t.saturada} · <span class="fr-aviso">la señal se sale de la escala: suba los V/div</span>{/if}{#if !t.ajustes.canales[t.canal].comprobado} · <span class="fr-tenue">escala de CH2 sin comprobar</span>{/if}
           </li>
+          {#if simulado?.canales[t.canal]}<li class="fr-comparacion" data-comparacion-traza={t.canal + 1}>{compararTraza(t, simulado.canales[t.canal]!)}</li>{/if}
         {/each}
         <li class="fr-tenue">
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
@@ -146,10 +171,22 @@
   .fr-estado.error {
     color: var(--c-precaucion);
   }
+  .fr-lecturas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-top: 8px;
+  }
   .fr-lectura {
     display: flex;
     flex-direction: column;
-    margin-top: 8px;
+  }
+  p.fr-aviso {
+    margin: 6px 0 0;
+  }
+  .fr-comparacion {
+    margin: 6px 0 0;
+    font-size: 13px;
   }
   .fr-rotulo,
   .fr-tenue {

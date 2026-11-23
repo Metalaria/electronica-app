@@ -14,7 +14,10 @@
 //
 // The instrument drops off the bus and comes back about a second later whenever its mode changes (multimeter,
 // oscilloscope, generator): that is FNIRSI's own firmware disconnecting USB. The page reconnects by calling `abrir`
-// again; Android may show its permission dialog again, because for the system it is a newly attached device.
+// again. For the system it is a newly attached device, and a USB permission is given to one appearance of a device;
+// 1.4: so the app's activity declares the link (USB_DEVICE_ATTACHED with a device filter, web/scripts/android-usb.mjs),
+// which makes the permission dialog offer to always use the app with it: once the reader ticks that box, the
+// permission holds whenever the link comes back and `hasPermission` is true without any dialog.
 
 package es.gonzalomejias.fnirsi
 
@@ -31,6 +34,7 @@ import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -76,6 +80,9 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
     // failed reads in a row before checking that the instrument is still on the bus (a timeout and an error
     // both return a negative count)
     const val FALLOS_ANTES_DE_COMPROBAR = 10
+    // 1.4: a link just back on the bus may get the permission the reader made permanent a moment after it is listed
+    // (the system grants it while it handles the attachment): one more look before showing the dialog
+    const val GRACIA_PERMISO_MS = 400L
 
     const val PERDIDO = "Se ha perdido la conexión con el FNIRSI: ¿ha cambiado de modo, se ha apagado o se ha desenchufado?"
   }
@@ -100,9 +107,9 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
   private var perdidos = 0
   private var errorLector: String? = null
 
-  /** The permission request in flight (one at a time) and its receiver. */
-  private var pendiente: Invoke? = null
-  private var receptor: BroadcastReceiver? = null
+  /** The permission request in flight (one at a time) and its receiver (set on the USB thread, read on the main one). */
+  @Volatile private var pendiente: Invoke? = null
+  @Volatile private var receptor: BroadcastReceiver? = null
 
   private fun enlaces(): List<UsbDevice> =
     usb?.deviceList?.values?.filter { it.vendorId == VID && it.productId == PID && it.productName?.trim() == PRODUCTO } ?: emptyList()
@@ -144,7 +151,14 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
       hilo.execute { abrirCon(m, d, invoke) }
       return
     }
-    pedirPermiso(m, d, invoke)
+    hilo.execute {
+      try {
+        Thread.sleep(GRACIA_PERMISO_MS)
+      } catch (_: InterruptedException) {
+        // (the app is closing)
+      }
+      if (m.hasPermission(d)) abrirCon(m, d, invoke) else pedirPermiso(m, d, invoke)
+    }
   }
 
   private fun pedirPermiso(m: UsbManager, d: UsbDevice, invoke: Invoke) {
@@ -160,7 +174,7 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
         if (concedido) {
           hilo.execute { abrirCon(m, d, inv) }
         } else {
-          inv.reject("No se ha dado permiso para usar el FNIRSI: pulse otra vez «Conectar el FNIRSI real» y acepte el aviso de Android.")
+          inv.reject("No se ha dado permiso para usar el FNIRSI: pulse otra vez «Conectar el FNIRSI real» y acepte el aviso de Android. Si el aviso ofrece usar siempre la aplicación con este dispositivo, márquelo: así no se lo volverá a preguntar en cada cambio de modo.")
         }
       }
     }
@@ -373,6 +387,22 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
       cerrarTodo()
       invoke.resolve(JSObject())
     }
+  }
+
+  /**
+   * 1.4 (as the Brymen's, 1.3.1): the activity goes (closed, or recreated by the system) with the permission dialog
+   * still open: its receiver is unregistered (it would leak the destroyed activity) and the request answered; the link
+   * is closed on the USB thread, and both threads end after it.
+   */
+  override fun onDestroy(activity: AppCompatActivity) {
+    terminarPermiso()?.reject("La aplicación se ha cerrado antes de dar el permiso del FNIRSI.")
+    try {
+      hilo.execute { cerrarTodo() }
+    } catch (_: java.util.concurrent.RejectedExecutionException) {
+      // (already shut down)
+    }
+    hilo.shutdown()
+    lectores.shutdown()
   }
 
   /** On the USB thread: the reader stopped, the interface released, the connection closed. */

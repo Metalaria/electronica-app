@@ -190,6 +190,8 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
   else if (!firmware) motivo = `El firmware da una unidad que la aplicación todavía no conoce (código ${codigo}).`;
   else if (firmware.unidad !== trama.unidad || firmware.prefijo !== trama.prefijo) motivo = 'La pantalla y el firmware no dan la misma unidad: el FNIRSI está cambiando de función o de escala.';
   else if (ac) motivo = 'Las medidas en alterna del FNIRSI todavía no están comprobadas en la aplicación.';
+  // 1.4: (listed above as not established, but it passed: a diode reading decodes as volts like any voltage)
+  else if (funcion === 'diodo') motivo = 'La función de diodo del FNIRSI todavía no está comprobada en la aplicación.';
   else if (trama.unidad === 'F') motivo = 'La unidad de capacidad del FNIRSI todavía no está comprobada en la aplicación.';
   return {
     pantalla,

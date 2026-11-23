@@ -10,11 +10,15 @@
 //                   «minimo» (or «acciones») and fails if the failure is still there
 //   MONO_SALIDA     folder for the trails of failing runs and the summary lines (default test-results/monos)
 //   MONO_HEAP_MB    heap growth over a run that counts as a leak (default 120; 0: off)
+//   MONO_INICIO     route the runs start from (default «#/»), e.g. «#/instrumentos/practica/1»
+//   MONO_FNIRSI=1   (1.4) the fake link of the real FNIRSI (window.__epaFnirsiFalso) installed, streaming real
+//                   multimeter frames and an oscilloscope record, so its panel is there and can be connected
 // A failing run writes <perfil>-<semilla>.json with the failures, the whole trail, and the shrunk one; a line per run
 // goes to resumen.jsonl (seed, profile, actions, failures, heap).
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { expect, test, type Browser } from '@playwright/test';
 import { correr, describir, firma, reducir, sondaMono, type Accion, type Fallo } from './mono.ts';
+import { MULTIMETRO, REGISTRO_CH1 } from '../fnirsi-real-datos.ts';
 
 const BASE = Number(process.env.MONO_SEMILLA ?? 1310);
 const RUNS = Number(process.env.MONO_RUNS ?? 3);
@@ -32,9 +36,29 @@ interface Rastro {
   minimo?: { inicio: string; acciones: Accion[]; fallo: string };
 }
 
+/** 1.4: the real FNIRSI's fake link's events (MONO_FNIRSI): multimeter frames and one CH1 record, over and over. */
+function eventosFnirsi(): number[][] {
+  const deHex = (h: string) => h.match(/../g)!.map((x) => parseInt(x, 16));
+  const b = Array.from(Buffer.from(REGISTRO_CH1, 'base64'));
+  const informe = (cab: number[], datos: number[]) => {
+    const r = new Array<number>(64).fill(0);
+    cab.forEach((x, k) => (r[k] = x));
+    datos.forEach((x, k) => (r[8 + k] = x));
+    return r;
+  };
+  const v = [deHex(MULTIMETRO.pila9V!), deHex(MULTIMETRO.ohm10k!), deHex(MULTIMETRO.capacidadCero!)];
+  v.push(informe([0xa0, 1, 0, 56, 0, 0, 0, 0], b.slice(0, 56)));
+  for (let d = 0; d < 1024; d += 56) v.push(informe([0xa1, 1, 0, Math.min(56, 1024 - d), d & 0xff, d >> 8, 0, 0], b.slice(56 + d, 56 + d + 56)));
+  return v;
+}
+
 async function vuelta(browser: Browser, uso: Record<string, unknown>, origen: string, tactil: boolean, o: { semilla: number; n: number; inicio: string; acciones?: Accion[]; pararEnFallo?: boolean }) {
   const ctx = await browser.newContext(uso);
   await ctx.addInitScript(sondaMono);
+  if (process.env.MONO_FNIRSI)
+    await ctx.addInitScript((eventos) => {
+      (window as unknown as { __epaFnirsiFalso: unknown }).__epaFnirsiFalso = { modo: 1, eventos, repetir: true };
+    }, eventosFnirsi());
   // no real GitHub: the update check and the synchronisation answer «no network»
   await ctx.route('https://api.github.com/**', (r) => r.abort('blockedbyclient'));
   ctx.on('page', (p) => p.on('dialog', (d) => void d.dismiss().catch(() => {})));
@@ -72,7 +96,7 @@ if (process.env.MONO_RASTRO) {
       const uso = info.project.use as Record<string, unknown>;
       const tactil = !!uso.hasTouch;
       const perfil = info.project.name;
-      const inicio = '#/';
+      const inicio = process.env.MONO_INICIO ?? '#/';
       const t0 = Date.now();
       const res = await vuelta(browser, uso, baseURL!, tactil, { semilla, n: N, inicio });
       // one failure per signature, the first time it is seen

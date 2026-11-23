@@ -9,6 +9,10 @@
 //   4. (1.1) writes the intent filter of the book's QR links (epa://leccion/…, plugins.deep-link.mobile of
 //      tauri.conf.json) into app/src/main/AndroidManifest.xml, as the deep-link plugin's build writes it, and makes
 //      sure the activity is singleTask (web/scripts/android-enlaces.mjs).
+//   5. (1.4) writes into the same activity the USB devices the app reads (the FNIRSI's link, the Brymen's cable): the
+//      USB_DEVICE_ATTACHED intent filter and its device filter, src-tauri/recursos-android/xml/epa_usb.xml (copied in
+//      step 1), so Android keeps the USB permission when the FNIRSI comes back after a change of mode
+//      (web/scripts/android-usb.mjs).
 // Idempotent: running it again only refreshes the icons and keystore.properties.
 //
 // Where the signing data comes from:
@@ -22,6 +26,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepararEnlacesAndroid } from './android-enlaces.mjs';
+import { prepararUsbAndroid } from './android-usb.mjs';
 
 const MARKER = 'electronica-firma';
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -32,6 +37,8 @@ const iconsDir = path.join(tauriDir, 'icons', 'android');
 const resourcesDir = path.join(tauriDir, 'recursos-android');
 // Asked for by name in web/src/lib/aprendizaje/recordatorio.ts (ICONO_RECORDATORIO).
 const NOTIFICATION_ICON = path.join('drawable', 'ic_stat_epa.xml');
+// The device filter of the USB instruments (1.4), named by the manifest's meta-data (android-usb.mjs RECURSO_USB).
+const USB_FILTER = path.join('xml', 'epa_usb.xml');
 const gradleFile = path.join(androidDir, 'app', 'build.gradle.kts');
 
 function fail(message) {
@@ -107,6 +114,9 @@ fs.cpSync(resourcesDir, resDir, { recursive: true, force: true });
 // Without it the reminder would fall back to Android's generic «i»: make sure it landed where aapt looks.
 if (!fs.existsSync(path.join(resDir, NOTIFICATION_ICON))) fail(`no se pudo copiar ${NOTIFICATION_ICON} a ${resDir}`);
 console.log('android-preparar: icono de la notificación copiado desde src-tauri/recursos-android.');
+// (the manifest's meta-data names it: without it aapt fails the build)
+if (!fs.existsSync(path.join(resDir, USB_FILTER))) fail(`no se pudo copiar ${USB_FILTER} a ${resDir}`);
+console.log('android-preparar: filtro de los instrumentos USB copiado desde src-tauri/recursos-android.');
 
 // 4. The book's QR links (1.1): the intent filter of the scheme and singleTask (before the signing data: a local run
 // without them still leaves the manifest right).
@@ -115,6 +125,14 @@ try {
   console.log(`android-preparar: enlaces ${e.esquemas.map((x) => `${x}://`).join(', ')} ${e.cambiado ? 'añadidos al' : 'ya estaban en el'} manifiesto.`);
 } catch (e) {
   fail(`no se pudieron preparar los enlaces del libro: ${e instanceof Error ? e.message : String(e)}`);
+}
+
+// 5. The USB instruments (1.4): the permission kept across the FNIRSI's changes of mode.
+try {
+  const u = prepararUsbAndroid(androidDir);
+  console.log(`android-preparar: instrumentos USB ${u.cambiado ? 'añadidos al' : 'ya estaban en el'} manifiesto.`);
+} catch (e) {
+  fail(`no se pudieron declarar los instrumentos USB: ${e instanceof Error ? e.message : String(e)}`);
 }
 
 const signing = signingFromEnv() ?? signingFromFolder();
