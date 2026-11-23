@@ -406,6 +406,8 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         // 1.3: the real Brymen BM869s through its BU-86X cable (plugins/brymen; capabilities/brymen.json)
         .plugin(tauri_plugin_brymen::init())
+        // the real FNIRSI 2C53T through its «stock-link» USB link (plugins/fnirsi; capabilities/fnirsi.json)
+        .plugin(tauri_plugin_fnirsi::init())
         .invoke_handler(tauri::generate_handler![
             fichero::guardar_fichero_elegido,
             fichero::abrir_fichero_elegido,

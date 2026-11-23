@@ -24,6 +24,7 @@
   import { tamanoDibujo } from '../figuras-vivas/circuito/proporciones';
   // 1.3 (averias13): the real Brymen in the free bench too (no practice loaded), small, with the same component
   import BrymenReal from './practicas/BrymenReal.svelte';
+  import FnirsiReal from './practicas/FnirsiReal.svelte';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -194,6 +195,7 @@
       <div class="elegir">
         <h2>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h2>
         <BrymenReal compacto simulado={simuladoBm} sinConectar="Sin conectar: el banco usa el Brymen simulado." />
+        <FnirsiReal compacto />
         {#if deEditor}
           <p class="nota">Elija una punta o sonda arriba y toque un nodo del dibujo para ponerla. El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí.</p>
         {:else if indice}
