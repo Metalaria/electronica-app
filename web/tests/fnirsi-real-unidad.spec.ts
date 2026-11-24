@@ -167,11 +167,23 @@ test('lo que no está comprobado o está cambiando no se da por fiable', () => {
   expect([c.pantalla.texto, c.pantalla.unidad, c.pantalla.prefijo]).toEqual(['1.045', 'F', 'µ']);
   expect(c.fiable).toBe(false);
   expect(c.motivo).toContain('no dan la misma unidad');
-  // the diode function: only its «.0L» has been seen on the real unit
+  // the display with its decimal point alone, while the capacitance range changes: a blank display
+  const punto = lectura('capacidadPunto');
+  expect([punto.pantalla.texto, punto.pantalla.valor, punto.pantalla.unidad, punto.pantalla.prefijo]).toEqual(['.', null, 'F', 'n']);
+  expect(punto.fiable).toBe(false);
+  expect(punto.motivo).toContain('en blanco');
+});
+
+test('el diodo, comprobado en el aparato el 24-11-2026', () => {
+  // the probes apart
   const d = lectura('diodoAbierto');
-  expect([d.funcion, d.pantalla.ol, d.pantalla.unidad]).toEqual(['diodo', true, 'V']);
-  expect(d.fiable).toBe(false);
-  expect(d.motivo).toContain('diodo');
+  expect([d.funcion, d.pantalla.texto, d.pantalla.ol, d.pantalla.unidad, d.pantalla.valor, d.fiable]).toEqual(['diodo', '.0L', true, 'V', null, true]);
+  // a LED: its forward voltage, in volts
+  const l = lectura('diodoLed');
+  expect([l.funcion, l.pantalla.texto, l.pantalla.unidad, l.pantalla.prefijo, l.pantalla.decimales, l.pantalla.ol]).toEqual(['diodo', '1.811', 'V', '', 3, false]);
+  expect(l.pantalla.valor).toBeCloseTo(1.811, 12);
+  expect([l.pantalla.ac, l.pantalla.dc, l.fiable, l.motivo]).toEqual([false, true, true, '']);
+  expect(textoPantalla(l.pantalla)).toBe('1,811 V ⎓');
 });
 
 test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
@@ -180,6 +192,10 @@ test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
   expect([v.funcion, v.pantalla.texto, v.pantalla.unidad, v.pantalla.prefijo, v.pantalla.decimales]).toEqual(['vac', '0.0000', 'V', '', 4]);
   expect([v.pantalla.ac, v.pantalla.dc, v.pantalla.valor, v.fiable]).toEqual([true, false, 0, true]);
   expect(textoPantalla(v.pantalla)).toBe('0,0000 V ∿');
+  // the open probes held in the hand: a couple of volts of mains hum
+  const h = lectura('acvMano');
+  expect([h.funcion, h.pantalla.texto, h.pantalla.unidad, h.pantalla.decimales, h.pantalla.ac, h.fiable]).toEqual(['vac', '2.349', 'V', 3, true, true]);
+  expect(h.pantalla.valor).toBeCloseTo(2.349, 12);
   const ma = lectura('acmACero');
   expect([ma.funcion, ma.pantalla.texto, ma.pantalla.unidad, ma.pantalla.prefijo, ma.pantalla.ac, ma.fiable]).toEqual(['maac', '0.008', 'A', 'm', true, true]);
   expect(ma.pantalla.valor).toBeCloseTo(8e-6, 12);
@@ -193,6 +209,41 @@ test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
   expect([u.funcion, u.pantalla.texto, u.pantalla.unidad, u.pantalla.prefijo, u.pantalla.decimales, u.fiable]).toEqual(['capacidad', '1.028', 'F', 'µ', 3, true]);
   expect(u.pantalla.valor).toBeCloseTo(1.028e-6, 12);
   expect(textoPantalla(u.pantalla)).toBe('1,028 µF');
+});
+
+test('HOLD: la lectura es la pantalla congelada del aparato, no la trama que sigue en vivo', () => {
+  // the frame says 0.0003 V; the instrument's screen stays at the -0.0005 V of the moment the key was pressed
+  const h = lectura('holdActivo');
+  expect(textoTrama(deHex(MULTIMETRO.holdActivo!).slice(8, 20))).toBe('0.0003');
+  expect(h.pantalla).toEqual({ texto: '-0.0005', valor: -0.0005, unidad: 'V', prefijo: '', ac: false, dc: true, ol: false, decimales: 4 });
+  expect(textoPantalla(h.pantalla)).toBe('−0,0005 V ⎓');
+  expect([h.funcion, h.hold, h.fiable, h.motivo, h.esperando]).toEqual(['vdc', true, true, '', false]);
+  // HOLD off again: the frame rules (the firmware's value is mid-update here, and does not matter)
+  const q = lectura('holdQuitado');
+  expect([q.pantalla.texto, q.hold, q.fiable]).toEqual(['-0.0009', false, true]);
+  for (const caso of ['pila9V', 'ohm10k', 'capacidadMicro', 'diodoLed', 'acvMano']) expect([caso, lectura(caso).hold]).toEqual([caso, false]);
+  // a frozen overload
+  const informe = deHex(MULTIMETRO.holdActivo!);
+  informe[24 + 13] = 2;
+  const ol = decodificarMultimetro(informe);
+  expect([ol.pantalla.ol, ol.pantalla.valor, ol.pantalla.unidad, ol.fiable, textoPantalla(ol.pantalla)]).toEqual([true, null, 'V', true, 'OL']);
+  // a frozen state the app cannot read as the screen (a blank display; a value that does not fit it): said, no number
+  informe[24 + 13] = 3;
+  const blanco = decodificarMultimetro(informe);
+  expect([blanco.hold, blanco.fiable, blanco.pantalla.valor, blanco.pantalla.texto]).toEqual([true, false, null, '']);
+  expect(blanco.motivo).toContain('HOLD');
+  informe[24 + 13] = 0;
+  new DataView(informe.buffer).setFloat32(24 + 8, 3, true);
+  expect([decodificarMultimetro(informe).fiable, decodificarMultimetro(informe).pantalla.valor]).toEqual([false, null]);
+  new DataView(informe.buffer).setFloat32(24 + 8, 1.5, true);
+  expect([decodificarMultimetro(informe).fiable, decodificarMultimetro(informe).pantalla.texto]).toEqual([true, '1.5000']);
+});
+
+test('la frecuencia que enseña la pantalla en tensión alterna', () => {
+  expect(lectura('acvMano').frecuencia).toBe(49);
+  expect(lectura('acvCero').frecuencia).toBe(0);
+  // only there: in the other functions the firmware's number is stale
+  for (const caso of ['pila9V', 'acmACero', 'acACero', 'capacidadMicro', 'diodoLed']) expect([caso, lectura(caso).frecuencia]).toEqual([caso, null]);
 });
 
 test('solo las tramas de pantalla se decodifican', () => {

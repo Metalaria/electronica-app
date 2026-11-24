@@ -30,9 +30,10 @@ const GLIFO: Record<string, string> = { '0': 'abcdef', '1': 'bc', '2': 'abdeg', 
 
 /**
  * The real 9 V battery frame (V DC, firmware unit «V») with the display showing `texto` (four digits and a point,
- * «3.951»); `funcion` replaces the firmware's last order (0x0e: the diode function).
+ * «3.951»); `codigo` replaces the firmware's unit code (1 is «V»; one the app does not know makes the reading
+ * not «fiable»).
  */
-function voltios(texto: string, funcion?: number): number[] {
+function voltios(texto: string, codigo?: number): number[] {
   const r = deHex(MULTIMETRO.pila9V!);
   const digitos = texto.replace('.', '');
   const punto = texto.indexOf('.');
@@ -43,7 +44,7 @@ function voltios(texto: string, funcion?: number): number[] {
   r[t + 4] = (m[2]! & 0xf0) | (m[1]! & 0x0f);
   r[t + 5] = (m[3]! & 0xf0) | (m[2]! & 0x0f);
   r[t + 6] = (r[t + 6]! & 0xf0) | (m[3]! & 0x0f);
-  if (funcion !== undefined) r[20] = funcion;
+  if (codigo !== undefined) r[24 + 16] = codigo;
   return r;
 }
 
@@ -121,9 +122,9 @@ test.describe('escritorio', () => {
     await expect(fila).toHaveClass(/mal/);
     await expect(texto).toContainText('no tiene la exactitud del multímetro del FNIRSI');
     await expect(texto).toContainText('Fuera de lo que admite la práctica');
-    // the diode function (not checked yet): warned on the panel, and not noted
-    await mostrar(page, voltios('0.612', 0x0e));
-    await expect(page.locator('[data-aviso-fnirsi]')).toContainText('diodo');
+    // a reading the decoder does not back (a firmware unit it does not know): warned on the panel, and not noted
+    await mostrar(page, voltios('0.612', 0x7f));
+    await expect(page.locator('[data-aviso-fnirsi]')).toContainText('todavía no conoce');
     await page.locator('[data-usar-fnirsi="vin"]').click();
     await expect(page.locator('[data-comparacion-real="vin"]')).toContainText('no se usa para comprobar');
     await expect(page.locator('tr[data-id="vin"] .medida')).not.toContainText('de su FNIRSI');
@@ -229,8 +230,8 @@ for (const proyecto of ['escritorio', 'movil'] as const) {
     await page.locator('[data-medir-fnirsi]').click();
     await expect(page.locator('[data-medida-banco]')).toHaveValue('4,480 V');
     await expect(page.locator('[data-comparacion]')).toHaveAttribute('data-comparacion', 'mal');
-    // an unchecked function: said, nothing filled
-    await mostrar(page, voltios('0.612', 0x0e));
+    // a reading the decoder does not back: said, nothing filled
+    await mostrar(page, voltios('0.612', 0x7f));
     await page.locator('[data-medir-fnirsi]').click();
     await expect(page.locator('[data-estado-real-banco]')).toContainText('no se usa para comprobar');
     await expect(page.locator('[data-medida-banco]')).toHaveValue('4,480 V');

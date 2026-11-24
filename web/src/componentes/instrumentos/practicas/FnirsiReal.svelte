@@ -6,6 +6,10 @@
   // else on the page works the same without it.
   // 1.4: next to the simulated FNIRSI's values at the same point (`simulado`: its multimeter's display, its channels'
   // Vpp and frequency), with the difference in words (lib/fnirsi-real/comparar.ts: only what the decoder backs).
+  // 1.4.2: when a probe moves, the instrument changes range and for one or two frames (0.17 s each) its reading is not
+  // reliable (a blank display, or the display and the firmware not yet naming the same unit). Those frames are right,
+  // but their warning flickered too fast to read: a warning now shows once it has lasted AVISO_MS, and in the meantime
+  // the comparison with the simulated one stays as it was instead of vanishing for a frame.
   import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
   import { textoPantalla } from '../../../lib/brymen-real/lectura';
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
@@ -41,6 +45,8 @@
   const estadoTexto = $derived(c.estado === 'desconectado' ? sinConectar : c.mensaje || (c.estado === 'conectado' ? `Conectado (${c.nombre}).` : ''));
   const lectura = $derived(c.estado === 'conectado' && c.modo === 'multimetro' ? c.multimetro : null);
   const trazas = $derived(c.estado === 'conectado' ? c.trazas.filter((t): t is Traza => t !== null) : []);
+  /** Alternating voltage: the frequency the instrument shows above the reading. */
+  const frecuencia = $derived(lectura && lectura.frecuencia !== null ? ` · ${lectura.frecuencia} Hz` : '');
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
   const comparacion = $derived.by(() => {
@@ -48,7 +54,28 @@
     const sm = simMultimetro;
     if (!l || !sm || !l.fiable || l.esperando || l.pantalla.valor === null || l.pantalla.ol || sm.valor === null) return '';
     if (!l.pantalla.unidad || !sm.unidad.endsWith(l.pantalla.unidad)) return '';
-    return explicarDiferenciaFnirsi(l.pantalla, sm.valor, 'el simulado', l.pantalla.unidad);
+    return explicarDiferenciaFnirsi(l.pantalla, sm.valor, 'el simulado', l.pantalla.unidad, l);
+  });
+
+  /** How long a reading must stay unreliable before its warning shows (three frames and a half). */
+  const AVISO_MS = 600;
+  /** The reading is unreliable right now (a boolean, so the timer below is not restarted by every frame). */
+  const noFiable = $derived(!!lectura && !lectura.fiable && !lectura.esperando);
+  let avisoListo = $state(false);
+  $effect(() => {
+    if (!noFiable) {
+      avisoListo = false;
+      return;
+    }
+    if (avisoListo) return;
+    const t = setTimeout(() => (avisoListo = true), AVISO_MS);
+    return () => clearTimeout(t);
+  });
+  /** The comparison as shown: the last one is kept while a range change has not lasted long enough to warn. */
+  let comparacionMostrada = $state('');
+  $effect(() => {
+    if (comparacion) comparacionMostrada = comparacion;
+    else if (!(noFiable && !avisoListo)) comparacionMostrada = '';
   });
 
   /** The trace as the instrument draws it: 300 samples around the trigger, in screen units. */
@@ -84,7 +111,7 @@
     {#if lectura}
       <div class="fr-lecturas">
         <div class="fr-lectura">
-          <span class="fr-rotulo">Multímetro · {FUNCIONES[lectura.funcion]}</span>
+          <span class="fr-rotulo" data-funcion-fnirsi>Multímetro · {FUNCIONES[lectura.funcion]}{frecuencia}</span>
           <output class="fr-valor" data-lectura-fnirsi>{lectura.esperando ? 'Auto' : textoPantalla(lectura.pantalla)}</output>
         </div>
         {#if simMultimetro}
@@ -94,8 +121,9 @@
           </div>
         {/if}
       </div>
-      {#if !lectura.fiable && !lectura.esperando}<p class="fr-aviso" data-aviso-fnirsi>{lectura.motivo}</p>{/if}
-      {#if comparacion}<p class="fr-comparacion" data-comparacion-fnirsi>{comparacion}</p>{/if}
+      {#if noFiable && avisoListo}<p class="fr-aviso" data-aviso-fnirsi>{lectura.motivo}</p>{/if}
+      {#if lectura.hold && lectura.fiable}<p class="fr-tenue" data-hold-fnirsi>HOLD: la pantalla del FNIRSI está congelada, y esta lectura con ella.</p>{/if}
+      {#if comparacionMostrada}<p class="fr-comparacion" data-comparacion-fnirsi>{comparacionMostrada}</p>{/if}
     {/if}
     {#if trazas.length}
       <svg class="fr-pantalla" viewBox="0 0 {ANCHO} {ALTO}" role="img" aria-label="Trazas del osciloscopio del FNIRSI" data-trazas-fnirsi={trazas.length}>

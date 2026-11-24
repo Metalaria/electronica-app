@@ -85,7 +85,7 @@
       return;
     }
     const sim = vivas[c.id];
-    const texto = explicarDiferenciaFnirsi(t.pantalla, sim ?? c.esperado, sim !== null && sim !== undefined ? 'el simulado' : 'lo esperado (libro)', c.unidad);
+    const texto = explicarDiferenciaFnirsi(t.pantalla, sim ?? c.esperado, sim !== null && sim !== undefined ? 'el simulado' : 'lo esperado (libro)', c.unidad, t.lectura);
     anotadas = { ...anotadas, [c.id]: t.pantalla.valor };
     reales = { ...reales, [c.id]: { texto, de: 'FNIRSI' } };
     avisoReal = { ...avisoReal, [c.id]: '' };

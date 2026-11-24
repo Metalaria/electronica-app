@@ -455,6 +455,27 @@ test('el Brymen en HOLD o REL se registra con su marca y no entra en la comparac
   expect(n.motivo('brymen')).toBe('');
 });
 
+test('el FNIRSI en HOLD se registra con su marca y no entra en la comparación', () => {
+  const { x, f } = fuentes();
+  const n = new NucleoRegistro();
+  n.iniciar(0);
+  for (let k = 1; k <= 3; k++) {
+    x.fnirsi = { lectura: fnirsi('holdActivo'), hora: k * 170 };
+    n.paso(f, k * 170);
+  }
+  // the instrument's frozen screen, not the frame that goes on behind it
+  expect(n.series.fnirsi.muestras[0]!.texto).toBe('−0,0005 V ⎓ (HOLD)');
+  expect(n.series.fnirsi.muestras[0]!.valor).toBeCloseTo(-0.0005, 9);
+  expect(n.enVivo('fnirsi')).toBeNull();
+  expect(n.motivo('fnirsi')).toContain('El FNIRSI está en HOLD');
+  for (let k = 4; k <= 6; k++) {
+    x.fnirsi = { lectura: fnirsi('holdQuitado'), hora: k * 170 };
+    n.paso(f, k * 170);
+  }
+  expect(n.enVivo('fnirsi')!.muestra.valor).toBeCloseTo(-0.0009, 9);
+  expect(n.motivo('fnirsi')).toBe('');
+});
+
 test('comparación en vivo, retenida (resistencia, un instrumento después del otro) y anotada en la tabla', () => {
   const { x, f } = fuentes();
   const n = new NucleoRegistro();

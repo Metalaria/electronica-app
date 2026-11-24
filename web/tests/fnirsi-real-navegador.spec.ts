@@ -91,9 +91,54 @@ test('multímetro: la lectura del FNIRSI tal como la muestra su pantalla', async
   // another reading, not reliable (the display and the firmware do not name the same unit): shown with its warning
   await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadTransicion!)] });
   await expect(page.locator('[data-aviso-fnirsi]')).toContainText('no dan la misma unidad');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveCount(0);
+  // HOLD on the instrument: the panel shows its frozen screen (the frame goes on with 0,0003 V) and says so
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.holdActivo!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('−0,0005 V ⎓');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveText('HOLD: la pantalla del FNIRSI está congelada, y esta lectura con ella.');
+  await expect(page.locator('[data-aviso-fnirsi]')).toHaveCount(0);
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (HOLD)');
+  // alternating voltage: with the frequency the instrument shows above the reading
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.acvMano!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('2,349 V ∿');
+  await expect(page.locator('[data-funcion-fnirsi]')).toHaveText('Multímetro · Tensión alterna · 49 Hz');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveCount(0);
   await panel.getByRole('button', { name: 'Desconectar' }).click();
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'desconectado');
   await expect(page.locator('[data-lectura-fnirsi]')).toHaveCount(0);
+});
+
+test('1.4.2: un cambio de escala de un par de tramas no hace parpadear el aviso; uno que dura, sí lo da', async ({ page }) => {
+  await limpio(page);
+  await conEnlace(page, { modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓');
+  // count every time the warning enters the page (before 1.4.2 it showed at once, for as long as the frames lasted)
+  await page.evaluate(() => {
+    const w = window as unknown as { __avisos: number };
+    w.__avisos = 0;
+    new MutationObserver((ms) => {
+      for (const m of ms)
+        for (const n of m.addedNodes)
+          if (n instanceof Element && (n.matches('[data-aviso-fnirsi]') || n.querySelector('[data-aviso-fnirsi]'))) w.__avisos++;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  // a range change: unreliable frames for a quarter of a second, then the reading again
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadTransicion!)] });
+  await page.waitForTimeout(250);
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.pila9V!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓');
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => (window as unknown as { __avisos: number }).__avisos)).toBe(0);
+  await expect(page.locator('[data-aviso-fnirsi]')).toHaveCount(0);
+  // the same frames for longer: the warning shows, with its reason
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadTransicion!)] });
+  await expect(page.locator('[data-aviso-fnirsi]')).toContainText('no dan la misma unidad');
+  // and goes with them
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.pila9V!)] });
+  await expect(page.locator('[data-aviso-fnirsi]')).toHaveCount(0);
 });
 
 test('osciloscopio: la traza de CH1 con sus medidas', async ({ page }) => {

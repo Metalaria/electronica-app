@@ -4,8 +4,8 @@
   // Nothing is stored or reported: «Continuar» is always open, and the sheet of the «Cuaderno de prácticas» is named.
   // 1.3: «Medir con el Brymen» fills the value from the real BM869s through its BU-86X cable (only where the platform
   // can read it) and compares it at once; typing still works the same.
-  // 1.4: «Medir con el FNIRSI» does the same with the real FNIRSI 2C53T's multimeter (only a «fiable» reading: AC, the
-  // diode function and the capacitance unit keep their warning and are never taken).
+  // 1.4: «Medir con el FNIRSI» does the same with the real FNIRSI 2C53T's multimeter (only a «fiable» reading; since
+  // 1.4.2 every function of it is, but °F and the capacitance ranges above µF).
   import { untrack } from 'svelte';
   import { brymenReal } from '../../lib/brymen-real/conexion.svelte';
   import { pantallaPara, porQueNo, textoCampo, textoPantalla } from '../../lib/brymen-real/lectura';
