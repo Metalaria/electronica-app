@@ -6,6 +6,7 @@
 import { buscarPaquete, decodificar, hex, type LecturaReal } from './protocolo.ts';
 import { transporteDisponible, type Transporte } from './transporte.ts';
 import { migaAccion } from '../informe-fallos';
+import { Reloj } from './reloj.ts';
 
 export type EstadoConexion = 'desconectado' | 'conectando' | 'conectado' | 'sin-respuesta' | 'error';
 
@@ -25,6 +26,10 @@ class ConexionBrymen {
   mensaje = $state('');
   nombre = $state('');
   lectura = $state<LecturaReal | null>(null);
+  /** The pause between requests. */
+  readonly reloj = new Reloj();
+  /** Which timer did the last pause (shown under «Diagnóstico»: 'worker' keeps its pace with the window hidden). */
+  relojTipo = $state<'worker' | 'pagina' | 'sin-abrir'>('sin-abrir');
   /** When the last packet arrived (Date.now()). */
   hora = $state(0);
   /** The last packet, in hex (diagnostics). */
@@ -146,7 +151,9 @@ class ConexionBrymen {
         this.mensaje =
           'El cable responde, pero el Brymen no envía lecturas: compruebe que está encendido (no en OFF) y que el cable está bien encajado en su parte trasera. Si la luz del sol o una lámpara dan de lleno en el conector, tápelo.';
       }
-      await new Promise((r) => setTimeout(r, PAUSA));
+      // (1.4.1: on a worker's timer, which keeps its pace with the window hidden; see reloj.ts)
+      await this.reloj.esperar(PAUSA);
+      this.relojTipo = this.reloj.tipo;
     }
   }
 }

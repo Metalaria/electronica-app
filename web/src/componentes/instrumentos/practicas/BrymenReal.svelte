@@ -59,6 +59,11 @@
       <details class="br-diag">
         <summary>Diagnóstico</summary>
         <p>Vía: {c.tipo === 'nativo' ? 'la aplicación (USB)' : c.tipo === 'webhid' ? 'WebHID del navegador' : 'prueba'} · paquetes recibidos: {c.paquetes}</p>
+        {#if c.relojTipo !== 'sin-abrir'}
+          <p data-reloj-real={c.relojTipo}>
+            Pausa entre lecturas: {c.relojTipo === 'worker' ? 'en segundo plano (sigue a su ritmo con la ventana tapada)' : 'con el reloj de la página (con la ventana tapada, una lectura por segundo)'}.
+          </p>
+        {/if}
         {#if c.crudo}<p class="br-crudo">Último paquete: <code data-crudo-real>{c.crudo}</code></p>{/if}
       </details>
     {/if}

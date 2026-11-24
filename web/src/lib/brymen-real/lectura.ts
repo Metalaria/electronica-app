@@ -33,9 +33,15 @@ function marca(p: PantallaReal): string {
   return '';
 }
 
+/** Only points, dashes and blanks: the display shows no figures. */
+const SIN_CIFRAS = /^[\s.\-]*$/;
+
 /** The display as the meter shows it, in Spanish style: «4,8712 V ⎓», «OL», «12,530 mA ⎓». */
 export function textoPantalla(p: PantallaReal): string {
   if (p.ol) return 'OL';
+  // 1.4.1: a display with no figures —blank with only the decimal point, or the dashes the meter shows for an instant
+  // while it changes range— is a dash, not «, kΩ» or «−-,--- kΩ» (a word on the display, such as a menu, stays)
+  if (SIN_CIFRAS.test(p.texto)) return `—${p.unidad ? ` ${p.prefijo}${p.unidad}` : ''}${marca(p)}`;
   const t = p.texto.replace('-', '−').replace('.', ',');
   return `${t}${p.unidad ? ` ${p.prefijo}${p.unidad}` : ''}${marca(p)}`;
 }
