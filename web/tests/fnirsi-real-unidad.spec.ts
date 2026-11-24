@@ -167,11 +167,23 @@ test('lo que no está comprobado o está cambiando no se da por fiable', () => {
   expect([c.pantalla.texto, c.pantalla.unidad, c.pantalla.prefijo]).toEqual(['1.045', 'F', 'µ']);
   expect(c.fiable).toBe(false);
   expect(c.motivo).toContain('no dan la misma unidad');
-  // the diode function: only its «.0L» has been seen on the real unit
+  // the display with its decimal point alone, while the capacitance range changes: a blank display
+  const punto = lectura('capacidadPunto');
+  expect([punto.pantalla.texto, punto.pantalla.valor, punto.pantalla.unidad, punto.pantalla.prefijo]).toEqual(['.', null, 'F', 'n']);
+  expect(punto.fiable).toBe(false);
+  expect(punto.motivo).toContain('en blanco');
+});
+
+test('el diodo, comprobado en el aparato el 24-11-2026', () => {
+  // the probes apart
   const d = lectura('diodoAbierto');
-  expect([d.funcion, d.pantalla.ol, d.pantalla.unidad]).toEqual(['diodo', true, 'V']);
-  expect(d.fiable).toBe(false);
-  expect(d.motivo).toContain('diodo');
+  expect([d.funcion, d.pantalla.texto, d.pantalla.ol, d.pantalla.unidad, d.pantalla.valor, d.fiable]).toEqual(['diodo', '.0L', true, 'V', null, true]);
+  // a LED: its forward voltage, in volts
+  const l = lectura('diodoLed');
+  expect([l.funcion, l.pantalla.texto, l.pantalla.unidad, l.pantalla.prefijo, l.pantalla.decimales, l.pantalla.ol]).toEqual(['diodo', '1.811', 'V', '', 3, false]);
+  expect(l.pantalla.valor).toBeCloseTo(1.811, 12);
+  expect([l.pantalla.ac, l.pantalla.dc, l.fiable, l.motivo]).toEqual([false, true, true, '']);
+  expect(textoPantalla(l.pantalla)).toBe('1,811 V ⎓');
 });
 
 test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
@@ -180,6 +192,10 @@ test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
   expect([v.funcion, v.pantalla.texto, v.pantalla.unidad, v.pantalla.prefijo, v.pantalla.decimales]).toEqual(['vac', '0.0000', 'V', '', 4]);
   expect([v.pantalla.ac, v.pantalla.dc, v.pantalla.valor, v.fiable]).toEqual([true, false, 0, true]);
   expect(textoPantalla(v.pantalla)).toBe('0,0000 V ∿');
+  // the open probes held in the hand: a couple of volts of mains hum
+  const h = lectura('acvMano');
+  expect([h.funcion, h.pantalla.texto, h.pantalla.unidad, h.pantalla.decimales, h.pantalla.ac, h.fiable]).toEqual(['vac', '2.349', 'V', 3, true, true]);
+  expect(h.pantalla.valor).toBeCloseTo(2.349, 12);
   const ma = lectura('acmACero');
   expect([ma.funcion, ma.pantalla.texto, ma.pantalla.unidad, ma.pantalla.prefijo, ma.pantalla.ac, ma.fiable]).toEqual(['maac', '0.008', 'A', 'm', true, true]);
   expect(ma.pantalla.valor).toBeCloseTo(8e-6, 12);

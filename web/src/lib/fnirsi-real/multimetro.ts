@@ -24,17 +24,27 @@
 // reading is «fiable» only when the frame's annunciators and the firmware's unit agree, which also weeds out the
 // frame or two around a change of function, when one of them is still the old one.
 //
-// A second session on the same unit (2026-11-24) settled what the first left open:
+// Two more sessions on the same unit (2026-11-24) settled what the first left open:
 //   - alternating voltage and current: the frame has no annunciator of its own for them (the bytes are those of
-//     the direct function); what says «alternating» is the function, [20]. Checked with nothing at the probes
-//     (0.0000 V, 0.008 mA, 0.0007 A, as on the screen): the digits are decoded as in any other function.
+//     the direct function); what says «alternating» is the function, [20]. Checked with the probes shorted
+//     (0.0000 V), with nothing in the current sockets (0.008 mA, 0.0007 A) and with the open probes held in the
+//     hand (2.2 to 2.4 V of mains hum, in step with the firmware's own value): the digits are decoded as in any
+//     other function.
 //   - capacitance: «n» and «µ» ([6] 0x20 and 0x10) with F, firmware codes 5 and 6. Checked with the probes apart
-//     (0.000 nF) and a capacitor of about 1 µF (1.028 µF while the screen's own MAX said 1.0450uF).
-//   - the diode function lights [6] 0x80; only its «.0L» (probes apart) has been seen, never a forward voltage.
+//     (0.000 nF) and a 1 µF capacitor (1.02 to 1.045 µF; the screen's own MAX said 1.0450uF).
+//   - the diode function lights [6] 0x80 and reads in volts (firmware code 1): «.0L» with the probes apart and
+//     1.811 V across a LED, 279 frames and each one the firmware's own value.
+//   - while the range changes the display may show its decimal point alone: that is a blank display.
 //
-// Not established yet: a forward voltage in the diode function, °F, and the capacitance ranges beyond nF and µF
-// (the firmware's code for them is not known, so they come out not «fiable» by themselves). A frame with any bit
-// outside the list above is decoded as far as it goes and marked not «fiable».
+// Seen in those sessions and not used here yet:
+//   - in alternating voltage the frame's [11] (and the firmware state's [24+18…19], one frame later) is the
+//     frequency in Hz the screen shows above the reading (57, 49… with the probes in the hand).
+//   - the firmware state's [24+20] is 1 while HOLD is on, and the state's value does not move meanwhile. What the
+//     frames do during HOLD has not been captured.
+//
+// Not established yet: °F, and the capacitance ranges beyond nF and µF (the firmware's code for them is not known,
+// so they come out not «fiable» by themselves). A frame with any bit outside the list above is decoded as far as
+// it goes and marked not «fiable».
 
 import type { PantallaReal, UnidadReal } from '../brymen-real/protocolo.ts';
 import { EVT_MULTIMETRO, hex, u32 } from './protocolo.ts';
@@ -124,7 +134,8 @@ export interface LecturaFnirsi {
   continuidad: boolean;
   /**
    * The frame's annunciators and the firmware's own unit agree and nothing unknown is lit: the reading can be
-   * compared and copied into a field. False around a change of function and for anything not established yet.
+   * compared and copied into a field. False around a change of function or of range, and for anything not
+   * established yet.
    */
   fiable: boolean;
   /** Why it is not «fiable» (a sentence for the diagnostics), or ''. */
@@ -193,14 +204,12 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
   };
   let motivo = '';
   if (esperando) motivo = 'El FNIRSI está en Auto y no detecta nada en las puntas.';
-  else if (texto === '') motivo = 'La pantalla está en blanco (cambio de función o de escala).';
+  else if (!/[^-. ]/.test(texto)) motivo = 'La pantalla está en blanco (cambio de función o de escala).';
   else if (texto.includes('?')) motivo = 'La pantalla muestra un símbolo que la aplicación no conoce.';
   else if (trama.raro) motivo = 'La pantalla tiene encendido un indicador que la aplicación todavía no conoce.';
   else if (!conUnidad) motivo = 'La trama no indica la unidad.';
   else if (!firmware) motivo = `El firmware da una unidad que la aplicación todavía no conoce (código ${codigo}).`;
   else if (firmware.unidad !== trama.unidad || firmware.prefijo !== trama.prefijo) motivo = 'La pantalla y el firmware no dan la misma unidad: el FNIRSI está cambiando de función o de escala.';
-  // (a forward voltage in the diode function has never been seen on the real unit: it would decode as volts)
-  else if (funcion === 'diodo') motivo = 'La función de diodo del FNIRSI todavía no está comprobada en la aplicación.';
   return {
     pantalla,
     funcion,

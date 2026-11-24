@@ -31,19 +31,22 @@ function traza(registro: string, canal: 0 | 1): Traza {
   return t!;
 }
 
-test('el diodo no está comprobado: su lectura lleva aviso y no se da por fiable', () => {
-  // the 9 V battery's frame with the firmware's last order set to the diode function (0x0e)
+test('una lectura que no es fiable lleva aviso y no sirve de medida; la del diodo ya sirve', () => {
+  // the 9 V battery's frame with a firmware unit code the app does not know
   const f = deHex(MULTIMETRO.pila9V!);
-  expect(f[20]).toBe(0x0c);
-  f[20] = 0x0e;
+  expect(f[24 + 16]).toBe(1);
+  f[24 + 16] = 0x7f;
   const l = decodificarMultimetro(f);
-  expect(l.funcion).toBe('diodo');
   expect(l.pantalla.unidad).toBe('V');
   expect(l.fiable).toBe(false);
-  expect(l.motivo).toContain('diodo');
+  expect(l.motivo).toContain('todavía no conoce');
   // and so it never stands in for a measurement
   expect(pantallaFnirsiPara(l, 'V')).toBeNull();
   expect(porQueNoFnirsi(conectado(l), 'V')).toContain('no se usa para comprobar');
+  // the diode function (a LED on the real unit, 2026-11-24): a forward voltage, in volts
+  const d = lectura('diodoLed');
+  expect([d.funcion, d.fiable]).toEqual(['diodo', true]);
+  expect(pantallaFnirsiPara(d, 'V')?.valor).toBeCloseTo(1.811, 12);
 });
 
 test('como medidor: solo una lectura fiable, en la unidad que pide la medida', () => {
