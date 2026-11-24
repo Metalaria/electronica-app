@@ -7,6 +7,7 @@ import { decodificarMultimetro, type LecturaFnirsi } from '../src/lib/fnirsi-rea
 import { compararTraza, explicarDiferenciaFnirsi, pantallaFnirsiPara, porQueNoFnirsi, resolucion, tomarFnirsi, type EstadoFnirsiReal } from '../src/lib/fnirsi-real/comparar.ts';
 import { EnsambladorOsciloscopio, type Traza } from '../src/lib/fnirsi-real/osciloscopio.ts';
 import { MULTIMETRO, REGISTRO_CH1, REGISTRO_PAR_CH1, REGISTRO_PAR_CH2 } from './fnirsi-real-datos.ts';
+import { exactitudFnirsi } from '../src/lib/registro-real/comparar.ts';
 
 test.beforeEach(({}, info) => test.skip(info.project.name !== 'escritorio', 'no browser: once'));
 
@@ -81,6 +82,26 @@ test('la diferencia con el simulado: sin inventar la exactitud del FNIRSI', () =
   expect(otra).toContain('(2,2 %)');
   expect(otra).toContain('no tiene la exactitud del multímetro del FNIRSI');
   expect(otra).not.toMatch(/es del circuito real|las dos medidas son la misma/);
+});
+
+test('1.4.2: con la lectura, la diferencia se mide contra la exactitud de la escala, la misma del registrador', () => {
+  const l = lectura('pila9V');
+  const p = l.pantalla;
+  const { incertidumbre, escala } = exactitudFnirsi(l);
+  expect(incertidumbre).not.toBeNull();
+  const u = incertidumbre!;
+  // inside what the instrument may be off on that range (but more than the last digit)
+  const dentro = explicarDiferenciaFnirsi(p, p.valor! - u * 0.8, 'el simulado', 'V', l);
+  expect(dentro).toContain(`Cabe en lo que el propio FNIRSI puede equivocarse en la escala de ${escala}`);
+  expect(dentro).toContain('según su fabricante');
+  expect(dentro).toContain('las dos medidas son la misma');
+  // outside it: the difference is the real circuit's
+  const fuera = explicarDiferenciaFnirsi(p, 9.0, 'lo esperado (libro)', 'V', l);
+  expect(fuera).toContain(`Es mayor que lo que el FNIRSI puede equivocarse en la escala de ${escala}`);
+  expect(fuera).toContain('es del circuito real');
+  expect(fuera).not.toContain('no tiene la exactitud');
+  // the last digit still comes first
+  expect(explicarDiferenciaFnirsi(p, 9.2, 'el simulado', 'V', l)).toContain('una unidad de la última cifra');
 });
 
 test('las trazas del FNIRSI real frente a las medidas del FNIRSI simulado', () => {

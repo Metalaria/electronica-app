@@ -1,16 +1,18 @@
 // 1.4: the real FNIRSI 2C53T as a meter and as an oscilloscope next to the simulated instruments. Its multimeter's
 // reading can stand in for the real Brymen's (same PantallaReal) wherever a step or a check measures with a
 // multimeter, but only a «fiable» one (multimetro.ts: the frame and the firmware agree, and the function is one that
-// has been checked against the instrument's screen): AC, the diode function and the capacitance unit keep their
-// warning and are never used for a check. Only what the decoder establishes is said about a difference: the app has
-// no accuracy figures for the real 2C53T, so — unlike the Brymen (brymen-real/comparar.ts) — it never says how much of
-// a difference is the instrument's; it says what its display resolves (one unit of the last digit, or one sample of
-// the oscilloscope, 1/25 of a division) and which settings are not checked yet.
+// has been checked against the instrument's screen; since 1.4.2 that is every function the multimeter has, but °F
+// and the capacitance ranges above µF). Only what the decoder establishes is said about a difference: what its
+// display resolves (one unit of the last digit, or one sample of the oscilloscope, 1/25 of a division), which
+// settings are not checked yet and, for the multimeter, how much of a difference the instrument itself may be off by.
+// 1.4.2: that last figure comes from the same table as the recorder's FNIRSI–Brymen comparison and the simulated
+// FNIRSI (registro-real/comparar.ts, exactitudFnirsi), so the panel no longer says the app does not have it.
 
 import { formatoSI } from '../../componentes/grafica/formato.ts';
 import type { PantallaReal } from '../brymen-real/protocolo.ts';
 import { base } from '../brymen-real/lectura.ts';
 import type { LecturaFnirsi } from './multimetro.ts';
+import { exactitudFnirsi } from '../registro-real/comparar.ts';
 import { CUENTAS_POR_DIVISION, medirTraza, type Traza } from './osciloscopio.ts';
 import type { ModoFnirsi } from './protocolo.ts';
 
@@ -77,9 +79,10 @@ function diferencia(real: number, ref: number, unidad: string): { d: number; tex
 
 /**
  * The FNIRSI multimeter's reading against `ref` (the simulated one, or the expected one), in words. `referencia` names
- * it («el simulado», «lo esperado (libro)»).
+ * it («el simulado», «lo esperado (libro)»). With the reading (`l`), a difference larger than the last digit is set
+ * against what the instrument may be off on that range, when the table has it.
  */
-export function explicarDiferenciaFnirsi(p: PantallaReal, ref: number, referencia: string, unidad: string): string {
+export function explicarDiferenciaFnirsi(p: PantallaReal, ref: number, referencia: string, unidad: string, l?: LecturaFnirsi): string {
   const real = p.valor!;
   const f = (v: number) => formatoSI(v, unidad, 4);
   const { d, texto } = diferencia(real, ref, unidad);
@@ -87,7 +90,14 @@ export function explicarDiferenciaFnirsi(p: PantallaReal, ref: number, referenci
   if (d === 0) return t;
   const r = resolucion(p);
   if (Math.abs(d) <= r * 1.0001) return `${t} Es una unidad de la última cifra de su pantalla (${f(r)}) o menos: el FNIRSI no distingue más.`;
-  return `${t} La aplicación no tiene la exactitud del multímetro del FNIRSI, así que no puede decir cuánto de la diferencia es del instrumento y cuánto del circuito real; su pantalla resuelve ${f(r)}.`;
+  const ex = l ? exactitudFnirsi({ ...l, pantalla: p }) : null;
+  if (ex && ex.incertidumbre !== null) {
+    const u = ex.incertidumbre;
+    if (Math.abs(d) <= u) return `${t} Cabe en lo que el propio FNIRSI puede equivocarse en la escala de ${ex.escala} (± ${f(u)}, según su fabricante): las dos medidas son la misma.`;
+    return `${t} Es mayor que lo que el FNIRSI puede equivocarse en la escala de ${ex.escala} (± ${f(u)}, según su fabricante): la diferencia es del circuito real —los valores de sus piezas dentro de su tolerancia, la fuente—, no del instrumento.`;
+  }
+  const cual = l ? 'de esta escala del FNIRSI' : 'del multímetro del FNIRSI';
+  return `${t} La aplicación no tiene la exactitud ${cual}, así que no puede decir cuánto de la diferencia es del instrumento y cuánto del circuito real; su pantalla resuelve ${f(r)}.`;
 }
 
 /** One channel of the real FNIRSI's oscilloscope against the simulated one's measurements, in words. */

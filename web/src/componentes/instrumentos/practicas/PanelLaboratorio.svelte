@@ -352,7 +352,7 @@
     const t = tomarFnirsi(fnirsiReal, x.lectura.unidad);
     const sim = x.lectura.medir(b);
     if ('aviso' in t || sim === null) return '';
-    return explicarDiferenciaFnirsi(t.pantalla, sim, 'el simulado', x.lectura.unidad);
+    return explicarDiferenciaFnirsi(t.pantalla, sim, 'el simulado', x.lectura.unidad, t.lectura);
   });
 
   // ---------------------------------------------------------------- summary
