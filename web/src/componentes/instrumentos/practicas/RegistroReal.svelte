@@ -36,8 +36,8 @@
   interface VistaSerie {
     i: InstrumentoReal;
     lecturas: number;
-    /** Lone readings left out of the figures. */
-    sueltas: number;
+    /** Numbers left out of the figures (readings «de paso»). */
+    dePaso: number;
     e: Estadisticas | null;
     lineas: string[];
     puntos: Punto[];
@@ -62,7 +62,7 @@
     void r.version;
     return INSTRUMENTOS.filter((i) => n.series[i].muestras.length > 0).map((i) => {
       const e = n.series[i].estadisticas();
-      return { i, lecturas: n.series[i].muestras.length, sueltas: n.series[i].lecturasSueltas, e, ...(e ? dibujar(n.series[i].trazos(), e) : { lineas: [], puntos: [] }) };
+      return { i, lecturas: n.series[i].muestras.length, dePaso: n.series[i].lecturasDePaso, e, ...(e ? dibujar(n.series[i].trazos(), e) : { lineas: [], puntos: [] }) };
     });
   });
 
@@ -228,10 +228,10 @@
         {:else}
           <p class="rr-tenue">Todavía sin ninguna lectura con número.</p>
         {/if}
-        {#if s.sueltas}
-          <p class="rr-tenue" data-sueltas-registro={s.sueltas}>
-            {s.sueltas === 1 ? 'No cuenta 1 lectura suelta' : `No cuentan ${s.sueltas} lecturas sueltas`}, entre lecturas sin número (al poner o quitar las puntas). {s.sueltas === 1 ? 'Sigue' : 'Siguen'} en
-            el fichero.
+        {#if s.dePaso}
+          <p class="rr-tenue" data-de-paso-registro={s.dePaso}>
+            {s.dePaso === 1 ? 'No cuenta 1 lectura de paso' : `No cuentan ${s.dePaso} lecturas de paso`} (al poner o quitar las puntas, o mientras el instrumento busca escala).
+            {s.dePaso === 1 ? 'Sigue' : 'Siguen'} en el fichero.
           </p>
         {/if}
       </div>

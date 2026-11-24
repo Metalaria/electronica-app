@@ -95,8 +95,8 @@ export interface Estadisticas {
   /** The prefix and the decimals of the display at the last sample with a number (how the figures are written). */
   prefijo: PantallaReal['prefijo'];
   decimales: number;
-  /** Lone readings of this «tramo» left out of the figures and of the drawing (see Serie). */
-  sueltas: number;
+  /** Numbers of this «tramo» left out of the figures and of the drawing (readings «de paso»: see Serie). */
+  dePaso: number;
 }
 
 /**
@@ -114,14 +114,23 @@ export interface Punto {
   v: number;
 }
 
+/** Numbers in a row, on the same range, before any of them is taken as a measurement. */
+export const LECTURAS_SEGUIDAS = 3;
+
 /**
  * One instrument's samples and the running figures of its last «tramo».
  *
- * A number with no number before it and none after (between two «OL», or between «OL» and a blank display) is a
- * lone reading: what the display flashes while a probe is being put on or taken off (the real Brymen showed
- * 52,568 MΩ for one reading on its way to 5,070 kΩ). It stays in the record and in the file, but not in the figures
- * nor in the drawing, where a single one of them would be the maximum and flatten everything else. That is known
- * only when the next sample arrives, so a number that follows a display without number waits one sample to count.
+ * Not every number a display shows is a measurement. While a probe is being put on or taken off, and while the
+ * instrument hunts for its range, it flashes numbers that mean nothing: the real Brymen showed 29,252 MΩ for one
+ * reading on its way to 5,069 kΩ, pairs like «06,091 MΩ, 24,744 MΩ» between blank displays while a probe was not
+ * making good contact, and 5,548 kΩ as its last reading while the probe came off. All of them stay in the record
+ * and in the file; none belongs in the figures, where a single one is the maximum and drags the mean with it.
+ * So the figures (and the drawing) take the readings «de paso» out by two rules, both about what the display did
+ * and not about how big the number is:
+ *  - a number counts only as part of a run of `LECTURAS_SEGUIDAS` or more numbers in a row on the same range;
+ *  - the last number before a display without number (OL, blank) does not count.
+ * A run that ends because the range changes keeps its last number: that is a signal moving, not a probe coming
+ * off. Both rules need the next sample, so the figures run one reading behind the display.
  */
 export class Serie {
   readonly muestras: Muestra[] = [];
@@ -141,30 +150,33 @@ export class Serie {
   private desde = 0;
   private hasta = 0;
   private cortes = new Set<number>();
-  /** Numbers in a row at the end of the «tramo» (1: the last one is still waiting to count). */
-  private racha = 0;
-  /** Indexes of the lone readings, and how many of them are of the last «tramo». */
-  private sueltas = new Set<number>();
-  private sueltasTramo = 0;
+  /** 1 for each sample that is in the figures; the drawing shows those and no others. */
+  private cuenta = new Uint8Array(MAXIMO_MUESTRAS);
+  /** The run under way (numbers in a row on the same range): where it starts, how long it is, how many are counted. */
+  private rachaInicio = 0;
+  private rachaLargo = 0;
+  private rachaContadas = 0;
+  /** Numbers of the last «tramo» left out of its figures. */
+  private dePaso = 0;
 
   get llena(): boolean {
     return this.muestras.length >= MAXIMO_MUESTRAS;
   }
 
   private nuevoTramo(): void {
-    // (a number still waiting when the «tramo» ends had nothing after it)
-    if (this.racha === 1) this.sueltas.add(this.muestras.length - 1);
     this.inicio = this.muestras.length;
     this.n = 0;
     this.media = 0;
     this.s2 = 0;
     this.min = Infinity;
     this.max = -Infinity;
-    this.racha = 0;
-    this.sueltasTramo = 0;
+    this.rachaLargo = 0;
+    this.rachaContadas = 0;
+    this.dePaso = 0;
   }
 
-  private contar(m: Muestra): void {
+  private contar(j: number): void {
+    const m = this.muestras[j]!;
     const v = m.valor!;
     const d = v - this.media;
     this.n++;
@@ -177,6 +189,21 @@ export class Serie {
     this.decimales = m.decimales;
     if (this.n === 1) this.desde = m.t;
     this.hasta = m.t;
+    this.cuenta[j] = 1;
+  }
+
+  /** Counts the first `k` samples of the run under way (those not counted yet). */
+  private contarRacha(k: number): void {
+    while (this.rachaContadas < k) this.contar(this.rachaInicio + this.rachaContadas++);
+  }
+
+  /** The run under way is over. `porEscala`: because the range changed (its last number is good), not the display. */
+  private cerrarRacha(porEscala: boolean): void {
+    if (!this.rachaLargo) return;
+    if (porEscala && this.rachaLargo >= LECTURAS_SEGUIDAS) this.contarRacha(this.rachaLargo);
+    this.dePaso += this.rachaLargo - this.rachaContadas;
+    this.rachaLargo = 0;
+    this.rachaContadas = 0;
   }
 
   /** Adds a sample; false when the series is full (nothing is dropped to make room: the reader is told instead). */
@@ -188,19 +215,20 @@ export class Serie {
       this.magnitud = m.magnitud;
       this.unidad = m.unidad;
     }
+    const j = this.muestras.length;
     this.muestras.push(m);
-    if (m.valor !== null && m.magnitud) {
-      this.racha++;
-      // the first number after a display without one waits; the second brings it in with itself
-      if (this.racha === 2) this.contar(this.muestras[this.muestras.length - 2]!);
-      if (this.racha >= 2) this.contar(m);
-    } else {
-      if (this.racha === 1) {
-        this.sueltas.add(this.muestras.length - 2);
-        this.sueltasTramo++;
+    const numero = m.valor !== null && m.magnitud !== '';
+    const primera = this.rachaLargo ? this.muestras[this.rachaInicio]! : null;
+    if (numero && primera && primera.prefijo === m.prefijo && primera.decimales === m.decimales) this.rachaLargo++;
+    else {
+      this.cerrarRacha(numero);
+      if (numero) {
+        this.rachaInicio = j;
+        this.rachaLargo = 1;
       }
-      this.racha = 0;
     }
+    // (the last one waits for what comes after it)
+    if (numero && this.rachaLargo >= LECTURAS_SEGUIDAS) this.contarRacha(this.rachaLargo - 1);
     return true;
   }
 
@@ -209,12 +237,12 @@ export class Serie {
     this.nuevoTramo();
   }
 
-  /** Lone readings of the last «tramo» (left out of its figures; there may be some before there is any figure). */
-  get lecturasSueltas(): number {
-    return this.sueltasTramo;
+  /** Numbers of the last «tramo» left out of its figures (there may be some before there is any figure). */
+  get lecturasDePaso(): number {
+    return this.dePaso;
   }
 
-  /** The figures of the last «tramo»; null while it has no number. */
+  /** The figures of the last «tramo»; null while it has no measurement. */
   estadisticas(): Estadisticas | null {
     if (!this.n) return null;
     return {
@@ -230,7 +258,7 @@ export class Serie {
       unidad: this.unidad,
       prefijo: this.prefijo,
       decimales: this.decimales,
-      sueltas: this.sueltasTramo,
+      dePaso: this.dePaso,
     };
   }
 
@@ -240,9 +268,9 @@ export class Serie {
   }
 
   /**
-   * The last «tramo» to draw: runs of consecutive numbers (a sample without number —OL, blank—, a lone reading or a
-   * pause cuts the line), with at most about `maximo` points in all. A long record is thinned by keeping the lowest and the highest
-   * of each stretch, so a spike is never lost to the thinning.
+   * The last «tramo» to draw: the samples that are in the figures, as lines (anything else in between —a display
+   * without number, a reading «de paso», a pause— cuts the line), with at most about `maximo` points in all. A long
+   * record is thinned by keeping the lowest and the highest of each stretch, so a spike is never lost to the thinning.
    */
   trazos(maximo = 600): Punto[][] {
     const total = this.muestras.length - this.inicio;
@@ -266,16 +294,16 @@ export class Serie {
       if (actual.length) v.push(actual);
       actual = [];
     };
-    const fin = this.muestras.length - (this.racha === 1 ? 1 : 0);
-    for (let j = this.inicio; j < fin; j++) {
+    for (let j = this.inicio; j < this.muestras.length; j++) {
       if (this.cortes.has(j)) cerrar();
-      const m = this.muestras[j]!;
-      if (m.valor === null || this.sueltas.has(j)) {
+      if (!this.cuenta[j]) {
         cerrar();
         continue;
       }
-      if (!bajo || m.valor < bajo.v) bajo = { t: m.t, v: m.valor };
-      if (!alto || m.valor > alto.v) alto = { t: m.t, v: m.valor };
+      const m = this.muestras[j]!;
+      const valor = m.valor!;
+      if (!bajo || valor < bajo.v) bajo = { t: m.t, v: valor };
+      if (!alto || valor > alto.v) alto = { t: m.t, v: valor };
       if (++enTramo >= paso) volcar();
     }
     cerrar();
@@ -285,17 +313,10 @@ export class Serie {
   borrar(): void {
     this.muestras.length = 0;
     this.cortes.clear();
-    this.sueltas.clear();
-    this.sueltasTramo = 0;
-    this.racha = 0;
-    this.inicio = 0;
+    this.cuenta.fill(0);
     this.magnitud = '';
     this.unidad = '';
-    this.n = 0;
-    this.media = 0;
-    this.s2 = 0;
-    this.min = Infinity;
-    this.max = -Infinity;
+    this.nuevoTramo();
   }
 }
 
