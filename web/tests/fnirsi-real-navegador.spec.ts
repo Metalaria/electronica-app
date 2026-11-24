@@ -91,6 +91,18 @@ test('multímetro: la lectura del FNIRSI tal como la muestra su pantalla', async
   // another reading, not reliable (the display and the firmware do not name the same unit): shown with its warning
   await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadTransicion!)] });
   await expect(page.locator('[data-aviso-fnirsi]')).toContainText('no dan la misma unidad');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveCount(0);
+  // HOLD on the instrument: its screen is frozen, the panel says so and goes on with the live reading
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.holdActivo!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('0,0003 V ⎓');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveText('HOLD activo en el FNIRSI: su pantalla está congelada en −0,0005 V ⎓. Aquí sigue la lectura en vivo.');
+  await expect(page.locator('[data-aviso-fnirsi]')).toHaveCount(0);
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (HOLD)');
+  // alternating voltage: with the frequency the instrument shows above the reading
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.acvMano!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('2,349 V ∿');
+  await expect(page.locator('[data-funcion-fnirsi]')).toHaveText('Multímetro · Tensión alterna · 49 Hz');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveCount(0);
   await panel.getByRole('button', { name: 'Desconectar' }).click();
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'desconectado');
   await expect(page.locator('[data-lectura-fnirsi]')).toHaveCount(0);

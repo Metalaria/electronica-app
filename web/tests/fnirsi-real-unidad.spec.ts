@@ -211,6 +211,33 @@ test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
   expect(textoPantalla(u.pantalla)).toBe('1,028 µF');
 });
 
+test('HOLD: la pantalla del aparato se congela y la trama sigue con la lectura en vivo', () => {
+  const h = lectura('holdActivo');
+  // the live reading, as good as any other
+  expect([h.funcion, h.pantalla.texto, h.pantalla.unidad, h.fiable, h.hold]).toEqual(['vdc', '0.0003', 'V', true, true]);
+  // what the instrument's own screen keeps showing
+  expect(h.retenida).toEqual({ texto: '-0.0005', valor: -0.0005, unidad: 'V', prefijo: '', ac: false, dc: true, ol: false, decimales: 4 });
+  expect(textoPantalla(h.retenida!)).toBe('−0,0005 V ⎓');
+  // out of HOLD there is nothing held
+  for (const caso of ['pila9V', 'ohm10k', 'capacidadMicro', 'diodoLed', 'acvMano']) expect([caso, lectura(caso).hold, lectura(caso).retenida]).toEqual([caso, false, null]);
+  // a held state that is not a plain number is not shown as one: an overload, a value too big for the display
+  const informe = deHex(MULTIMETRO.holdActivo!);
+  informe[24 + 13] = 2;
+  expect([decodificarMultimetro(informe).hold, decodificarMultimetro(informe).retenida]).toEqual([true, null]);
+  informe[24 + 13] = 0;
+  new DataView(informe.buffer).setFloat32(24 + 8, 3, true);
+  expect(decodificarMultimetro(informe).retenida).toBeNull();
+  new DataView(informe.buffer).setFloat32(24 + 8, 1.5, true);
+  expect(decodificarMultimetro(informe).retenida?.texto).toBe('1.5000');
+});
+
+test('la frecuencia que enseña la pantalla en tensión alterna', () => {
+  expect(lectura('acvMano').frecuencia).toBe(49);
+  expect(lectura('acvCero').frecuencia).toBe(0);
+  // only there: in the other functions the firmware's number is stale
+  for (const caso of ['pila9V', 'acmACero', 'acACero', 'capacidadMicro', 'diodoLed']) expect([caso, lectura(caso).frecuencia]).toEqual([caso, null]);
+});
+
 test('solo las tramas de pantalla se decodifican', () => {
   const r = deHex(MULTIMETRO.pila9V!);
   expect(esTramaMultimetro(r)).toBe(true);
