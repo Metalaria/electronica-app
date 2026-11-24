@@ -11,7 +11,8 @@ const puerto = Number(process.env.EPA_PUERTO ?? 4733);
 
 export default defineConfig({
   ...base,
-  testMatch: /brymen13.*\.spec\.ts/,
+  // (1.4.1: the clock and the blank displays of brymen141-*.spec.ts too)
+  testMatch: /brymen1(3|41).*\.spec\.ts/,
   timeout: 240_000,
   use: { ...base.use, baseURL: `http://localhost:${puerto}/` },
   webServer: process.env.EPA_SIN_SERVIDOR ? undefined : {
