@@ -1,6 +1,7 @@
-// The real FNIRSI 2C53T: what its own firmware keeps in memory and the link's stream does not carry. The link reads
-// any block of the instrument's memory on request (protocolo.ts, order 0x02), each one as it is at one instant, so
-// the connection asks for these a few times a second. Nothing is written in the instrument.
+// The real FNIRSI 2C53T: what its own firmware keeps in memory and the link's two measuring streams do not carry.
+// A link with the status stream (protocolo.ts, event 0xB0) sends these blocks by itself; from one without it the
+// connection reads them on request (order 0x02), each as it is at one instant, a few times a second. Nothing is
+// written in the instrument.
 //
 // Addresses and layouts are those of FNIRSI's firmware V1.2.0, the only one the link exists for, found on a real
 // unit on 2026-11-24 by reading its memory with one setting changed between two readings and a photograph of its

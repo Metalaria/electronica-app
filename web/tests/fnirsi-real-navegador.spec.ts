@@ -32,6 +32,8 @@ function informesDe(registro: string, canal: number, secuencia: number): number[
 
 interface Falso {
   modo?: number;
+  parche?: number;
+  estadoMudo?: boolean;
   eventos?: number[][];
   repetir?: boolean;
   desenchufado?: string;
@@ -202,6 +204,55 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('está en STOP', { timeout: 10_000 });
   const f = await falso(page);
   expect(new Set(f.lecturas)).toEqual(new Set([0x20000f50, 0x200000f8, 0x20000208]));
+});
+
+test('un enlace con el flujo de estado (parche 3) lo envía él: lo mismo en pantalla sin preguntarle nada', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 3, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Cuadrada (Square Wave) · 15,00 kHz · ciclo 50 % · 3,0 V');
+  // the oscilloscope, running and then stopped
+  await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
+  const memoria = { '20000f50': bytes(MEMORIA.generadorSierra), '200000f8': bytes(MEMORIA.osciloscopioEnMarcha), '20000208': bytes(MEMORIA.medidasTriangulo) };
+  await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria } as Partial<Falso>);
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
+  await expect(page.locator('[data-medidas-fnirsi]')).toContainText('Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV');
+  await expect(page.locator('[data-generador-fnirsi]')).toContainText('Diente de sierra (Sawtooth wave) · 50,00 kHz');
+  await expect(page.locator('[data-marcha-fnirsi]')).toHaveCount(0);
+  await expect(page.locator('[data-trazas-fnirsi]')).toBeVisible();
+  await cambiar(page, { eventos: [], memoria: { ...memoria, '200000f8': bytes(MEMORIA.osciloscopioParado), '20000208': bytes(MEMORIA.medidasParado) } });
+  await expect(page.locator('[data-marcha-fnirsi]')).toContainText('Osciloscopio en STOP');
+  await expect(page.locator('[data-medidas-fnirsi]')).toContainText('40,23 kHz · ciclo 64,51 % · Vpp 114,0 mV');
+  await expect(page.locator('[data-estado-fnirsi]')).toContainText('está en STOP', { timeout: 10_000 });
+  // the multimeter with this link: its readings as always (its status block is not used yet)
+  await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
+  await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true } as Partial<Falso>);
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓', { timeout: 10_000 });
+  await panel.locator('summary').click();
+  await expect(page.locator('[data-enlace-fnirsi]')).toHaveText('Enlace: protocolo 1, parche 3 · envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP');
+  const f = await falso(page);
+  expect(f.suscripciones).toEqual([7, 7, 7]);
+  expect(f.lecturas ?? []).toEqual([]);
+});
+
+test('un enlace que anuncia el flujo de estado y no lo envía: la aplicación le pregunta como a uno sin él', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 3, estadoMudo: true, memoria: { '20000f50': bytes(MEMORIA.generadorOndaCompleta) } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Onda completa (Full Wave) · 35,00 kHz · ciclo 50 % · 2,0 V', { timeout: 10_000 });
+  const f = await falso(page);
+  expect(f.suscripciones).toEqual([7]);
+  expect(new Set(f.lecturas)).toEqual(new Set([0x20000f50]));
 });
 
 test('el multímetro no pregunta nada, y un enlace que rechaza las lecturas no se vuelve a preguntar', async ({ page }) => {

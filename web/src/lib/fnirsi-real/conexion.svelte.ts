@@ -7,10 +7,12 @@
 // about a second later: that is FNIRSI's own firmware. So a lost link is not an error at first: the connection
 // waits for it and takes it up again («reconectando»); only when it does not come back is the reader told.
 //
-// A few things the instrument knows are not in the stream: its generator's settings, its oscilloscope's own
-// measurements and whether it is running or stopped (estado.ts). The link reads the instrument's memory on
+// A few things the instrument knows are not in the two measuring streams: its generator's settings, its
+// oscilloscope's own measurements and whether it is running or stopped (estado.ts). A link with the status
+// stream (patch 3) sends them by itself several times a second. One without it reads the instrument's memory on
 // request, so the loop asks for them a couple of times a second, between two reads of the stream; the answers
-// come back in the stream and are told apart by their sequence number.
+// come back in the stream and are told apart by their sequence number. The same questions are asked of a link
+// that announces the status stream and then sends nothing of it.
 
 import {
   DIR_ESTADO_OSCILOSCOPIO,
@@ -28,12 +30,17 @@ import {
 import { decodificarMultimetro, esTramaMultimetro, type LecturaFnirsi } from './multimetro.ts';
 import { EnsambladorOsciloscopio, type Traza } from './osciloscopio.ts';
 import {
+  ESTADO_GENERADOR,
+  ESTADO_MEDIDAS_CH1,
+  EVT_ESTADO,
+  FLUJO_ESTADO,
   FLUJO_MULTIMETRO,
   FLUJO_OSCILOSCOPIO,
   ORDEN_INFO,
   ORDEN_LEER,
   ORDEN_SUSCRIBIR,
   PROTOCOLO,
+  leerEstado,
   leerInfo,
   partir,
   peticion,
@@ -62,6 +69,8 @@ export const CADUCIDAD_FNIRSI_MS = 2000;
 /** Pause between two rounds of questions about what is not in the stream, and how long an answer is waited for. */
 const CONSULTA_MS = 400;
 const CONSULTA_CADUCA_MS = 2000;
+/** A link with the status stream that sends none of it for this long is asked instead (it sends one block every 100 ms). */
+const ESTADO_CALLADO_MS = 2000;
 
 const pausa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -104,6 +113,9 @@ export class ConexionFnirsi {
   private proximaConsulta = 0;
   /** The link refused a read: it is not asked again in this session. */
   private sinLectura = false;
+  /** The session is subscribed to the status stream, and when its last block arrived (or the session started). */
+  private conEstado = false;
+  private horaEstado = 0;
 
   constructor(t: TransporteFnirsi | null = transporteFnirsiDisponible()) {
     this.t = t;
@@ -204,15 +216,19 @@ export class ConexionFnirsi {
     if (!info) throw new Error('El dispositivo no se identifica como el enlace del FNIRSI 2C53T.');
     if (info.protocolo !== PROTOCOLO)
       throw new Error(`El enlace del FNIRSI habla la versión ${info.protocolo} de su protocolo y esta aplicación conoce la ${PROTOCOLO}: actualice la aplicación o el firmware del enlace.`);
-    await this.pedir(v, ORDEN_SUSCRIBIR, FLUJO_MULTIMETRO | FLUJO_OSCILOSCOPIO);
+    // (a link without the status stream refuses a mask with its bit: it is only asked for when announced)
+    await this.pedir(v, ORDEN_SUSCRIBIR, FLUJO_MULTIMETRO | FLUJO_OSCILOSCOPIO | (info.estadoEnFlujo ? FLUJO_ESTADO : 0));
     if (v !== this.vuelta) return;
     this.info = info;
     this.modo = info.modo;
+    this.conEstado = info.estadoEnFlujo;
+    this.horaEstado = Date.now();
   }
 
   /** Asks for what is not in the stream, when it is time: the answers arrive among the stream's reports. */
   private async consultar(): Promise<void> {
     const ahora = Date.now();
+    if (this.conEstado && ahora - this.horaEstado <= ESTADO_CALLADO_MS) return;
     if (this.sinLectura || ahora < this.proximaConsulta || (this.modo !== 'osciloscopio' && this.modo !== 'generador')) return;
     this.proximaConsulta = ahora + CONSULTA_MS;
     for (const [sec, c] of this.consultas) if (c.hasta < ahora) this.consultas.delete(sec);
@@ -246,9 +262,27 @@ export class ConexionFnirsi {
     return true;
   }
 
+  /**
+   * A block of the status stream: true when `informe` was one. CH2's measurements and the multimeter's extra
+   * state arrive too and are not used yet (the first were only seen with the channel off).
+   */
+  private atenderEstado(informe: Uint8Array): boolean {
+    if (informe[0] !== EVT_ESTADO) return false;
+    const e = leerEstado(informe);
+    if (!e) return true;
+    this.horaEstado = Date.now();
+    if (e.bloque === ESTADO_GENERADOR && e.bytes.length === LARGO_GENERADOR) this.generador = decodificarGenerador(e.bytes);
+    else if (e.bloque === ESTADO_MEDIDAS_CH1 && e.bytes.length === LARGO_MEDIDAS + 1) {
+      this.medidas = decodificarMedidas(e.bytes);
+      const marcha = e.bytes[LARGO_MEDIDAS];
+      this.enMarcha = marcha === 1 ? true : marcha === 0 ? false : null;
+    }
+    return true;
+  }
+
   /** One report of the stream. */
   private atender(informe: Uint8Array, nuevas?: [Traza | null, Traza | null]): void {
-    if (this.atenderLectura(informe)) return;
+    if (this.atenderLectura(informe) || this.atenderEstado(informe)) return;
     if (esTramaMultimetro(informe)) {
       try {
         this.multimetro = decodificarMultimetro(informe);

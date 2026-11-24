@@ -144,7 +144,7 @@
         <p>
           Vía: {c.tipo === 'nativo' ? 'la aplicación (USB)' : c.tipo === 'webhid' ? 'WebHID del navegador' : 'prueba'} · modo del FNIRSI: {c.modo} · informes recibidos: {c.informes}{#if c.perdidos} · perdidos: {c.perdidos}{/if}
         </p>
-        {#if c.info}<p>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche}</p>{/if}
+        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}</p>{/if}
         {#if c.multimetro}<p class="fr-crudo">Última trama del multímetro: <code data-crudo-fnirsi>{c.multimetro.crudo}</code></p>{/if}
       </details>
     {/if}
