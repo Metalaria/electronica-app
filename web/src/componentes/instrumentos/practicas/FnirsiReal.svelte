@@ -10,6 +10,7 @@
   // reliable (a blank display, or the display and the firmware not yet naming the same unit). Those frames are right,
   // but their warning flickered too fast to read: a warning now shows once it has lasted AVISO_MS, and in the meantime
   // the comparison with the simulated one stays as it was instead of vanishing for a frame.
+  import { untrack } from 'svelte';
   import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
   import { textoPantalla } from '../../../lib/brymen-real/lectura';
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
@@ -77,6 +78,33 @@
   /** How long a reading must stay unreliable before its warning shows (three frames and a half). */
   const AVISO_MS = 600;
   /** The reading is unreliable right now (a boolean, so the timer below is not restarted by every frame). */
+  // 1.4.3: the simulated oscilloscope sweeps about eight times a second and its measurements move a little with every
+  // sweep (a sample or two of its converter); written straight into the comparison, the line was rewritten eight
+  // times a second, which showed most with the real one in STOP, whose side does not move. The comparison of each
+  // channel is now refreshed once a second, and at once when a channel's comparison appears or goes.
+  const REFRESCO_TRAZA_MS = 1000;
+  const comparacionesTrazaAhora = $derived(
+    ([0, 1] as const).map((k) => {
+      const t = trazas.find((x) => x.canal === k);
+      const s = simulado?.canales[k];
+      return t && s ? compararTraza(t, s) : '';
+    }),
+  );
+  let comparacionesTraza = $state(['', '']);
+  $effect(() => {
+    const nuevas = comparacionesTrazaAhora;
+    untrack(() => {
+      if (nuevas.some((x, i) => !x !== !comparacionesTraza[i])) comparacionesTraza = nuevas;
+    });
+  });
+  $effect(() => {
+    const t = setInterval(() => {
+      const nuevas = comparacionesTrazaAhora;
+      if (nuevas.some((x, i) => x !== comparacionesTraza[i])) comparacionesTraza = nuevas;
+    }, REFRESCO_TRAZA_MS);
+    return () => clearInterval(t);
+  });
+
   const noFiable = $derived(!!lectura && !lectura.fiable && !lectura.esperando);
   let avisoListo = $state(false);
   $effect(() => {
@@ -153,7 +181,7 @@
           <li data-canal-fnirsi={t.canal + 1}>
             <span class="fr-marca" style:background={COLOR[t.canal]}></span>CH{t.canal + 1}: {resumen(t)}{#if t.saturada} · <span class="fr-aviso">la señal se sale de la escala: suba los V/div</span>{/if}{#if !t.ajustes.canales[t.canal].comprobado} · <span class="fr-tenue">escala de CH2 sin comprobar</span>{/if}
           </li>
-          {#if simulado?.canales[t.canal]}<li class="fr-comparacion" data-comparacion-traza={t.canal + 1}>{compararTraza(t, simulado.canales[t.canal]!)}</li>{/if}
+          {#if comparacionesTraza[t.canal]}<li class="fr-comparacion" data-comparacion-traza={t.canal + 1}>{comparacionesTraza[t.canal]}</li>{/if}
         {/each}
         <li class="fr-tenue">
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
