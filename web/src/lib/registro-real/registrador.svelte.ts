@@ -1,18 +1,21 @@
-// The recorder of the real instruments, one for the whole app: it looks at the two connections (the real Brymen's
-// and the real FNIRSI's) ten times a second while a panel shows it or a record is under way, and hands what is new
-// to the bookkeeping (nucleo.ts). The record goes on when the reader leaves the bench; it stops with «Detener», when
+// The recorder of the real instruments, one for the whole app: while a panel shows it or a record is under way it
+// takes each reading the two connections (the real Brymen's and the real FNIRSI's) publish, as they publish it, and
+// hands it to the bookkeeping (nucleo.ts). A clock ten times a second is kept only to notice that a reading has
+// gone stale. (At first the clock did all the work; with the browser's window behind another one the browser slows
+// every clock to once a second, and a real record lost five of every six readings of the FNIRSI for as long.) The record goes on when the reader leaves the bench; it stops with «Detener», when
 // a series is full, or when the page is closed (nothing is saved: the reader saves it as a file).
 //
 // The bookkeeping's data are plain objects (tens of thousands of samples are not made reactive): `version` is what
 // the page watches to look at them again.
 
+import { untrack } from 'svelte';
 import { brymenReal } from '../brymen-real/conexion.svelte';
 import { fnirsiReal } from '../fnirsi-real/conexion.svelte';
 import { migaAccion } from '../informe-fallos';
 import { NucleoRegistro, type Fuentes } from './nucleo.ts';
 import type { InstrumentoReal } from './registro.ts';
 
-/** How often the connections are looked at (the FNIRSI hands over a reading every 165 ms, the Brymen about every 300). */
+/** How often the clock looks (what it is for: a connection that stops publishing publishes nothing to notice). */
 const PASO_MS = 100;
 
 const FUENTES: Fuentes = {
@@ -33,6 +36,8 @@ class RegistradorReal {
 
   private paneles = 0;
   private reloj: ReturnType<typeof setInterval> | null = null;
+  /** Ends the watch on what the connections publish. */
+  private dejarDeMirar: (() => void) | null = null;
 
   /** A panel is showing the recorder: it is kept up to date until the function returned is called. */
   mostrar(): () => void {
@@ -57,6 +62,12 @@ class RegistradorReal {
   detener(): void {
     migaAccion('registro real: detener');
     this.nucleo.detener();
+    this.cambio();
+  }
+
+  reiniciarCifras(): void {
+    migaAccion('registro real: reiniciar cifras');
+    this.nucleo.reiniciarCifras();
     this.cambio();
   }
 
@@ -94,10 +105,21 @@ class RegistradorReal {
 
   private ajustar(): void {
     const hace = this.paneles > 0 || this.nucleo.grabando;
-    if (hace && !this.reloj) this.reloj = setInterval(() => this.paso(), PASO_MS);
-    else if (!hace && this.reloj) {
+    if (hace && !this.reloj) {
+      this.reloj = setInterval(() => this.paso(), PASO_MS);
+      // each new reading as it is published (the times are what changes with every one of them)
+      this.dejarDeMirar = $effect.root(() => {
+        $effect(() => {
+          void brymenReal.hora;
+          void fnirsiReal.horaMultimetro;
+          untrack(() => this.paso());
+        });
+      });
+    } else if (!hace && this.reloj) {
       clearInterval(this.reloj);
       this.reloj = null;
+      this.dejarDeMirar?.();
+      this.dejarDeMirar = null;
     }
   }
 

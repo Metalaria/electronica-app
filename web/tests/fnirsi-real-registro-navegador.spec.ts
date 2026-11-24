@@ -100,6 +100,16 @@ test.describe('escritorio', () => {
     await expect(serie.locator('polyline')).toHaveCount(1, { timeout: 10_000 });
     await expect(panel.locator('[data-serie-registro="brymen"]')).toHaveCount(0);
 
+    // the reading moves: the figures follow; «Reiniciar cifras» makes them count from now on, and says so
+    await fnirsiMarca(page, 'autoPila');
+    await expect(serie.locator('[data-minimo]')).toHaveText('9,175 V');
+    await expect(serie.locator('[data-maximo]')).toHaveText('9,201 V');
+    await panel.locator('[data-reiniciar-cifras]').click();
+    await expect(panel.locator('[data-aviso-registro]')).toContainText('cuentan desde ahora');
+    await expect(serie.locator('[data-maximo]')).toHaveText('9,175 V');
+    await expect(serie.locator('[data-minimo]')).toHaveText('9,175 V');
+    await expect(panel).toHaveAttribute('data-registrando', 'si');
+
     // the instrument changes to ohms: a new stretch with its own figures; the volts stay in the record
     await fnirsiMarca(page, 'ohm10k');
     await expect(serie).toContainText('FNIRSI 2C53T · Ω');

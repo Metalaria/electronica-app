@@ -50,6 +50,16 @@ export function magnitudDe(p: PantallaReal): string {
 }
 
 /**
+ * What a display without a number shows, for the record: «OL», a word as it is («Auto», «diod»), and a dash with
+ * the unit for a display that is blank or all dashes (a range still changing: the bare characters, «.» or «--.---»,
+ * would read as stray punctuation).
+ */
+function textoSinNumero(p: PantallaReal): string {
+  if (p.ol || /[a-z]/i.test(p.texto)) return textoPantalla(p);
+  return p.unidad ? `— ${p.prefijo}${p.unidad}` : '—';
+}
+
+/**
  * A display as a sample. `fiable` false (the FNIRSI's readings the app does not trust yet, or around a change of
  * function) keeps the text but not the number. `texto` overrides what is shown («Auto»).
  */
@@ -58,7 +68,7 @@ export function muestraDe(p: PantallaReal, t: number, fiable = true, texto?: str
   return {
     t,
     valor: usable ? p.valor : null,
-    texto: texto ?? textoPantalla(p),
+    texto: texto ?? (/\d/.test(p.texto) ? textoPantalla(p) : textoSinNumero(p)),
     magnitud: magnitudDe(p),
     unidad: p.unidad,
     prefijo: p.prefijo,
@@ -85,6 +95,8 @@ export interface Estadisticas {
   /** The prefix and the decimals of the display at the last sample with a number (how the figures are written). */
   prefijo: PantallaReal['prefijo'];
   decimales: number;
+  /** Lone readings of this «tramo» left out of the figures and of the drawing (see Serie). */
+  sueltas: number;
 }
 
 /**
@@ -102,7 +114,15 @@ export interface Punto {
   v: number;
 }
 
-/** One instrument's samples and the running figures of its last «tramo». */
+/**
+ * One instrument's samples and the running figures of its last «tramo».
+ *
+ * A number with no number before it and none after (between two «OL», or between «OL» and a blank display) is a
+ * lone reading: what the display flashes while a probe is being put on or taken off (the real Brymen showed
+ * 52,568 MΩ for one reading on its way to 5,070 kΩ). It stays in the record and in the file, but not in the figures
+ * nor in the drawing, where a single one of them would be the maximum and flatten everything else. That is known
+ * only when the next sample arrives, so a number that follows a display without number waits one sample to count.
+ */
 export class Serie {
   readonly muestras: Muestra[] = [];
   /** Index of the first sample of the last «tramo». */
@@ -121,9 +141,42 @@ export class Serie {
   private desde = 0;
   private hasta = 0;
   private cortes = new Set<number>();
+  /** Numbers in a row at the end of the «tramo» (1: the last one is still waiting to count). */
+  private racha = 0;
+  /** Indexes of the lone readings, and how many of them are of the last «tramo». */
+  private sueltas = new Set<number>();
+  private sueltasTramo = 0;
 
   get llena(): boolean {
     return this.muestras.length >= MAXIMO_MUESTRAS;
+  }
+
+  private nuevoTramo(): void {
+    // (a number still waiting when the «tramo» ends had nothing after it)
+    if (this.racha === 1) this.sueltas.add(this.muestras.length - 1);
+    this.inicio = this.muestras.length;
+    this.n = 0;
+    this.media = 0;
+    this.s2 = 0;
+    this.min = Infinity;
+    this.max = -Infinity;
+    this.racha = 0;
+    this.sueltasTramo = 0;
+  }
+
+  private contar(m: Muestra): void {
+    const v = m.valor!;
+    const d = v - this.media;
+    this.n++;
+    this.media += d / this.n;
+    this.s2 += d * (v - this.media);
+    if (v < this.min) this.min = v;
+    if (v > this.max) this.max = v;
+    this.ultimo = v;
+    this.prefijo = m.prefijo;
+    this.decimales = m.decimales;
+    if (this.n === 1) this.desde = m.t;
+    this.hasta = m.t;
   }
 
   /** Adds a sample; false when the series is full (nothing is dropped to make room: the reader is told instead). */
@@ -131,30 +184,34 @@ export class Serie {
     if (this.llena) return false;
     // a new magnitude starts a new «tramo»; a display without unit (blank, «Auto») belongs to the one under way
     if (m.magnitud && m.magnitud !== this.magnitud) {
-      this.inicio = this.muestras.length;
+      this.nuevoTramo();
       this.magnitud = m.magnitud;
       this.unidad = m.unidad;
-      this.n = 0;
-      this.media = 0;
-      this.s2 = 0;
-      this.min = Infinity;
-      this.max = -Infinity;
     }
     this.muestras.push(m);
     if (m.valor !== null && m.magnitud) {
-      const d = m.valor - this.media;
-      this.n++;
-      this.media += d / this.n;
-      this.s2 += d * (m.valor - this.media);
-      if (m.valor < this.min) this.min = m.valor;
-      if (m.valor > this.max) this.max = m.valor;
-      this.ultimo = m.valor;
-      this.prefijo = m.prefijo;
-      this.decimales = m.decimales;
-      if (this.n === 1) this.desde = m.t;
-      this.hasta = m.t;
+      this.racha++;
+      // the first number after a display without one waits; the second brings it in with itself
+      if (this.racha === 2) this.contar(this.muestras[this.muestras.length - 2]!);
+      if (this.racha >= 2) this.contar(m);
+    } else {
+      if (this.racha === 1) {
+        this.sueltas.add(this.muestras.length - 2);
+        this.sueltasTramo++;
+      }
+      this.racha = 0;
     }
     return true;
+  }
+
+  /** The figures and the drawing start again from here (the samples stay in the record and in the file). */
+  reiniciar(): void {
+    this.nuevoTramo();
+  }
+
+  /** Lone readings of the last «tramo» (left out of its figures; there may be some before there is any figure). */
+  get lecturasSueltas(): number {
+    return this.sueltasTramo;
   }
 
   /** The figures of the last «tramo»; null while it has no number. */
@@ -173,6 +230,7 @@ export class Serie {
       unidad: this.unidad,
       prefijo: this.prefijo,
       decimales: this.decimales,
+      sueltas: this.sueltasTramo,
     };
   }
 
@@ -182,8 +240,8 @@ export class Serie {
   }
 
   /**
-   * The last «tramo» to draw: runs of consecutive numbers (a sample without number —OL, blank— or a pause cuts the
-   * line), with at most about `maximo` points in all. A long record is thinned by keeping the lowest and the highest
+   * The last «tramo» to draw: runs of consecutive numbers (a sample without number —OL, blank—, a lone reading or a
+   * pause cuts the line), with at most about `maximo` points in all. A long record is thinned by keeping the lowest and the highest
    * of each stretch, so a spike is never lost to the thinning.
    */
   trazos(maximo = 600): Punto[][] {
@@ -208,10 +266,11 @@ export class Serie {
       if (actual.length) v.push(actual);
       actual = [];
     };
-    for (let j = this.inicio; j < this.muestras.length; j++) {
+    const fin = this.muestras.length - (this.racha === 1 ? 1 : 0);
+    for (let j = this.inicio; j < fin; j++) {
       if (this.cortes.has(j)) cerrar();
       const m = this.muestras[j]!;
-      if (m.valor === null) {
+      if (m.valor === null || this.sueltas.has(j)) {
         cerrar();
         continue;
       }
@@ -226,6 +285,9 @@ export class Serie {
   borrar(): void {
     this.muestras.length = 0;
     this.cortes.clear();
+    this.sueltas.clear();
+    this.sueltasTramo = 0;
+    this.racha = 0;
     this.inicio = 0;
     this.magnitud = '';
     this.unidad = '';

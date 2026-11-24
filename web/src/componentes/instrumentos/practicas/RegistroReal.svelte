@@ -36,6 +36,8 @@
   interface VistaSerie {
     i: InstrumentoReal;
     lecturas: number;
+    /** Lone readings left out of the figures. */
+    sueltas: number;
     e: Estadisticas | null;
     lineas: string[];
     puntos: Punto[];
@@ -60,7 +62,7 @@
     void r.version;
     return INSTRUMENTOS.filter((i) => n.series[i].muestras.length > 0).map((i) => {
       const e = n.series[i].estadisticas();
-      return { i, lecturas: n.series[i].muestras.length, e, ...(e ? dibujar(n.series[i].trazos(), e) : { lineas: [], puntos: [] }) };
+      return { i, lecturas: n.series[i].muestras.length, sueltas: n.series[i].lecturasSueltas, e, ...(e ? dibujar(n.series[i].trazos(), e) : { lineas: [], puntos: [] }) };
     });
   });
 
@@ -157,6 +159,12 @@
     aviso = '';
     r.borrar();
   }
+
+  function reiniciarCifras() {
+    r.reiniciarCifras();
+    avisoError = false;
+    aviso = 'Las cifras y las gráficas cuentan desde ahora. El registro conserva todas las lecturas.';
+  }
 </script>
 
 {#if disponible}
@@ -172,6 +180,9 @@
         <button type="button" class="boton primario pequeno" onclick={iniciar} disabled={estado.lleno || (!estado.hayInstrumento && !estado.lecturas)} data-iniciar-registro>
           {estado.lecturas ? 'Seguir registrando' : 'Iniciar registro'}
         </button>
+      {/if}
+      {#if estado.lecturas}
+        <button type="button" class="boton pequeno" onclick={reiniciarCifras} data-reiniciar-cifras>Reiniciar cifras</button>
       {/if}
       {#if estado.lecturas && !estado.grabando}
         <button type="button" class="boton pequeno" onclick={() => void guardar('registro-instrumentos', csvRegistro({ brymen: n.series.brymen.muestras, fnirsi: n.series.fnirsi.muestras }, n.inicio))} data-guardar-registro>
@@ -216,6 +227,12 @@
           </dl>
         {:else}
           <p class="rr-tenue">Todavía sin ninguna lectura con número.</p>
+        {/if}
+        {#if s.sueltas}
+          <p class="rr-tenue" data-sueltas-registro={s.sueltas}>
+            {s.sueltas === 1 ? 'No cuenta 1 lectura suelta' : `No cuentan ${s.sueltas} lecturas sueltas`}, entre lecturas sin número (al poner o quitar las puntas). {s.sueltas === 1 ? 'Sigue' : 'Siguen'} en
+            el fichero.
+          </p>
         {/if}
       </div>
     {/each}

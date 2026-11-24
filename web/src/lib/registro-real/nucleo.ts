@@ -194,6 +194,12 @@ export class NucleoRegistro {
     this.grabando = false;
   }
 
+  /** The figures and the drawings of both instruments start again from now; the record keeps everything. */
+  reiniciarCifras(): void {
+    this.series.brymen.reiniciar();
+    this.series.fnirsi.reiniciar();
+  }
+
   borrar(): void {
     this.grabando = false;
     this.lleno = false;

@@ -4,7 +4,7 @@
 // No browser nor server:
 //   EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.fnirsi-real.config.ts tests/fnirsi-real-registro-unidad.spec.ts
 import { test, expect } from '@playwright/test';
-import { construirPaquete, decodificar, type LecturaReal, type Simulacion } from '../src/lib/brymen-real/protocolo.ts';
+import { construirPaquete, decodificar, type LecturaReal, type PantallaReal, type Simulacion } from '../src/lib/brymen-real/protocolo.ts';
 import { decodificarMultimetro, type LecturaFnirsi } from '../src/lib/fnirsi-real/multimetro.ts';
 import { comparar, csvComparaciones, exactitudFnirsi, medidaBrymen, medidaFnirsi, noComparables, porcentaje, seFalseanJuntos } from '../src/lib/registro-real/comparar.ts';
 import { MAXIMO_FILAS, NucleoRegistro, type Fuentes } from '../src/lib/registro-real/nucleo.ts';
@@ -76,13 +76,16 @@ test('la serie lleva mínimo, máximo, media y desviación del último tramo', (
   expect(s.estadisticas()!.n).toBe(4);
   // another magnitude starts a new «tramo»: the figures start again, the samples stay for the file
   s.anadir(muestraDe(fnirsi('ohm10k').pantalla, 2500));
+  // (its first number waits for the next one before it counts: see the lone readings below)
+  expect(s.estadisticas()).toBeNull();
+  s.anadir(muestraDe(fnirsi('ohm10k').pantalla, 2665));
   const o = s.estadisticas()!;
-  expect([o.n, o.magnitud]).toEqual([1, 'Ω']);
+  expect([o.n, o.magnitud]).toEqual([2, 'Ω']);
   expect([cifra(o.min, o), cifra(o.media, o, 1)]).toEqual(['9,831 kΩ', '9,8310 kΩ']);
   expect(cifra(-0.000006, { unidad: 'A', prefijo: 'm', decimales: 3 })).toBe('−0,006 mA');
   expect(cifra(-1e-9, { unidad: 'A', prefijo: 'm', decimales: 3 })).toBe('0,000 mA');
   expect(o.desviacion).toBe(0);
-  expect(s.muestras.length).toBe(6);
+  expect(s.muestras.length).toBe(7);
   s.borrar();
   expect(s.muestras.length).toBe(0);
   expect(s.estadisticas()).toBeNull();
@@ -118,6 +121,94 @@ test('el dibujo: una lectura sin número o una pausa cortan la línea, y un regi
   expect(Math.min(...vs)).toBeCloseTo(-9.999, 6);
   // in time order
   for (let k = 1; k < t[0]!.length; k++) expect(t[0]![k]!.t).toBeGreaterThan(t[0]![k - 1]!.t);
+});
+
+/** A display built by hand (what the decoders hand over for displays the packets of the tests cannot make). */
+function pantalla(texto: string, valor: number | null, prefijo: PantallaReal['prefijo'], unidad: PantallaReal['unidad'] = 'Ω', ol = false): PantallaReal {
+  const decimales = texto.includes('.') ? texto.length - texto.indexOf('.') - 1 : 0;
+  return { texto, valor, unidad, prefijo, ac: false, dc: false, ol, decimales };
+}
+
+test('una lectura suelta (al poner las puntas) queda en el registro pero no en las cifras ni en el dibujo', () => {
+  // what the real Brymen recorded on 23-11-2026 on its way to a 5,07 kΩ resistor
+  const s = new Serie();
+  let t = 0;
+  const dar = (p: PantallaReal) => s.anadir(muestraDe(p, (t += 400)));
+  dar(pantalla('0L', null, 'M', 'Ω', true));
+  dar(pantalla('52.568', 52_568_000, 'M'));
+  expect(s.estadisticas()).toBeNull();
+  dar(pantalla('.', null, 'k'));
+  expect([s.estadisticas(), s.lecturasSueltas]).toEqual([null, 1]);
+  for (let k = 0; k < 6; k++) dar(pantalla('05.070', 5070, 'k'));
+  dar(pantalla('--.---', null, 'M'));
+  dar(pantalla('0L', null, 'M', 'Ω', true));
+  const e = s.estadisticas()!;
+  expect([e.n, e.min, e.max, e.sueltas]).toEqual([6, 5070, 5070, 1]);
+  expect(e.media).toBeCloseTo(5070, 9);
+  expect(s.trazos().map((x) => x.map((p) => p.v))).toEqual([[5070, 5070, 5070, 5070, 5070, 5070]]);
+  // nothing is thrown away: the file has it, as a number
+  expect(s.muestras.length).toBe(11);
+  expect(csvRegistro({ brymen: s.muestras }, 0).split('\r\n')[2]).toBe(`Brymen BM869s;${horaLocal(800)};0,8;52568000;Ω;;52,568 MΩ;sí`);
+
+  // two numbers in a row are a measurement, however short
+  const dos = new Serie();
+  dos.anadir(muestraDe(pantalla('0L', null, 'M', 'Ω', true), 0));
+  dos.anadir(muestraDe(pantalla('00.44', 0.44e-9, 'n', 'S'), 1));
+  dos.anadir(muestraDe(pantalla('00.24', 0.24e-9, 'n', 'S'), 2));
+  dos.anadir(muestraDe(pantalla('.', null, '', 'Ω'), 3));
+  expect(dos.estadisticas()).toBeNull();
+  expect(dos.lecturasSueltas).toBe(0);
+
+  // the last number of the record waits (it is not drawn until another follows) and is not called lone
+  const fin = new Serie();
+  for (const v of ['9.000', '9.100']) fin.anadir(voltios(v, (t += 400)));
+  fin.anadir(muestraDe(brymen({ principal: '0L', unidad: 'V', dc: true }).principal, (t += 400)));
+  fin.anadir(voltios('9.200', (t += 400)));
+  expect([fin.estadisticas()!.n, fin.lecturasSueltas]).toEqual([2, 0]);
+  expect(fin.trazos().map((x) => x.map((p) => p.v))).toEqual([[9, 9.1]]);
+  fin.anadir(voltios('9.300', (t += 400)));
+  expect(fin.estadisticas()!.n).toBe(4);
+  expect(fin.trazos().map((x) => x.map((p) => p.v))).toEqual([[9, 9.1], [9.2, 9.3]]);
+});
+
+test('una pantalla sin número se escribe con una raya y su unidad, no con sus signos sueltos', () => {
+  expect(muestraDe(pantalla('.', null, 'k'), 0).texto).toBe('— kΩ');
+  expect(muestraDe(pantalla('--.---', null, 'M'), 0).texto).toBe('— MΩ');
+  expect(muestraDe(pantalla('', null, 'k'), 0).texto).toBe('— kΩ');
+  expect(muestraDe(pantalla('', null, '', ''), 0).texto).toBe('—');
+  expect(muestraDe(fnirsi('vdcEnBlanco').pantalla, 0, false).texto).toBe('— V');
+  // what does say something stays as it is
+  expect(muestraDe(pantalla('0L', null, 'M', 'Ω', true), 0).texto).toBe('OL');
+  expect(muestraDe(pantalla('diod', null, '', 'V'), 0).texto).toBe('diod V');
+  expect(muestraDe(pantalla('05.070', 5070, 'k'), 0).texto).toBe('05,070 kΩ');
+});
+
+test('reiniciar las cifras: cuentan desde ese momento y el registro lo conserva todo', () => {
+  const s = new Serie();
+  for (const [k, v] of ['9.000', '9.100', '5.000', '5.010', '5.020'].entries()) {
+    if (k === 2) s.reiniciar();
+    s.anadir(voltios(v, k * 300));
+  }
+  const e = s.estadisticas()!;
+  expect([e.n, e.magnitud]).toEqual([3, 'V ⎓']);
+  expect([e.min, e.max]).toEqual([5, 5.02]);
+  expect(e.desde).toBe(600);
+  expect(s.trazos().map((x) => x.map((p) => p.v))).toEqual([[5, 5.01, 5.02]]);
+  expect(s.muestras.length).toBe(5);
+
+  // through the bookkeeping, for both instruments at once
+  const { x, f } = fuentes();
+  const n = new NucleoRegistro();
+  n.iniciar(0);
+  for (let k = 1; k <= 4; k++) {
+    x.fnirsi = { lectura: fnirsi('pila9V'), hora: k * 165 };
+    x.brymen = { lectura: brymen({ principal: '9.213', unidad: 'V', dc: true }), hora: k * 165 };
+    n.paso(f, k * 165);
+  }
+  expect([n.series.fnirsi.estadisticas()!.n, n.series.brymen.estadisticas()!.n]).toEqual([4, 4]);
+  n.reiniciarCifras();
+  expect([n.series.fnirsi.estadisticas(), n.series.brymen.estadisticas(), n.muestras]).toEqual([null, null, 8]);
+  expect(n.grabando).toBe(true);
 });
 
 test('la serie se llena y no descarta nada para hacer sitio', () => {
