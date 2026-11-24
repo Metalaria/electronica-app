@@ -115,12 +115,12 @@ test.describe('escritorio', () => {
     await expect(texto).toContainText('Su circuito da 2,875 V en el FNIRSI; el simulado,');
     await expect(texto).toContainText('Dentro de lo que admite la práctica');
     await expect(texto).not.toContainText('Brymen');
-    // 4 % low: outside, and no claim about the instrument's accuracy
+    // 4 % low: outside, and more than the instrument itself may be off by on that range (1.4.2)
     await mostrar(page, voltios('2.765'));
     await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('2,765 V ⎓');
     await page.locator('[data-usar-fnirsi="vout"]').click();
     await expect(fila).toHaveClass(/mal/);
-    await expect(texto).toContainText('no tiene la exactitud del multímetro del FNIRSI');
+    await expect(texto).toContainText('Es mayor que lo que el FNIRSI puede equivocarse en la escala de 20 V');
     await expect(texto).toContainText('Fuera de lo que admite la práctica');
     // a reading the decoder does not back (a firmware unit it does not know): warned on the panel, and not noted
     await mostrar(page, voltios('0.612', 0x7f));
