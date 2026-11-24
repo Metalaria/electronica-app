@@ -1,0 +1,113 @@
+// The real FNIRSI 2C53T: what its own firmware keeps in memory and the link's stream does not carry. The link reads
+// any block of the instrument's memory on request (protocolo.ts, order 0x02), each one as it is at one instant, so
+// the connection asks for these a few times a second. Nothing is written in the instrument.
+//
+// Addresses and layouts are those of FNIRSI's firmware V1.2.0, the only one the link exists for, found on a real
+// unit on 2026-11-24 by reading its memory with one setting changed between two readings and a photograph of its
+// screen next to each (github.com/Metalaria/fnirsi-2c53t-link, docs/stock_v120_notes.md):
+//
+//   signal generator, 10 bytes at 0x20000F50
+//     [1]     waveform: its place in the instrument's menu, 0 to 12
+//     [4…7]   frequency in Hz
+//     [8]     duty cycle in %
+//     [9]     amplitude in tenths of a volt
+//     ([0] goes between 0 and 1 while the generator screen is operated; not understood, not used)
+//
+//   oscilloscope, FNIRSI's own measurements of CH1 as its screen shows them, 12 words at 0x20000208
+//     [0] frequency in Hz, [1] period in ns, [2] and [3] positive and negative duty in 0.01 %, [4] and [5]
+//     positive and negative pulse width in ns, [6] Vmax, [7] Vmin and [8] Vpp in µV, signed
+//     Checked against two photographs of the stopped screen (40.23KHz 64.51% 114.0mV; 50.18KHz 50.50% 220.0mV).
+//     While the oscilloscope runs they are a running average; stopped, those of the frozen acquisition. All zeros
+//     outside the oscilloscope. CH2's follow CH1's but were only seen with the channel off: not read here.
+//
+//   oscilloscope state, 56 bytes at 0x200000F8 (the same block that heads every record): [46] is 1 while it
+//     runs and 0 once stopped (RUN/STOP). A stopped oscilloscope sends no records, so this is the only way to tell
+//     it from one that sends nothing for another reason.
+
+export const DIR_GENERADOR = 0x20000f50;
+export const LARGO_GENERADOR = 10;
+export const DIR_ESTADO_OSCILOSCOPIO = 0x200000f8;
+export const LARGO_ESTADO_OSCILOSCOPIO = 56;
+export const DIR_MEDIDAS_CH1 = 0x20000208;
+export const LARGO_MEDIDAS = 48;
+
+/**
+ * The waveforms whose place in the menu is established, with the instrument's own label. 1 and 4 were checked on
+ * their own, 2 by its shape on the oscilloscope, 3, 5 and 6 follow from the menu's order. The first entry and the
+ * last six have not been seen named.
+ */
+const FORMAS: Record<number, { nombre: string; rotulo: string }> = {
+  1: { nombre: 'Cuadrada', rotulo: 'Square Wave' },
+  2: { nombre: 'Diente de sierra', rotulo: 'Sawtooth wave' },
+  3: { nombre: 'Media onda', rotulo: 'Half-wave' },
+  4: { nombre: 'Onda completa', rotulo: 'Full Wave' },
+  5: { nombre: 'Escalera', rotulo: 'Step Wave' },
+  6: { nombre: 'Escalera inversa', rotulo: 'Reverse Step Wave' },
+};
+const ULTIMA_FORMA = 12;
+
+export interface AjustesGenerador {
+  /** Place of the waveform in the instrument's menu (0 to 12). */
+  forma: number;
+  /** Its name in Spanish and the instrument's own label; null for the entries not seen named yet. */
+  nombre: string | null;
+  rotulo: string | null;
+  /** Hz. */
+  frecuencia: number;
+  /** Duty cycle, %. */
+  ciclo: number;
+  /** Amplitude as the instrument's screen gives it, V. */
+  amplitud: number;
+}
+
+/** The generator's settings from its ten bytes; null when they cannot be settings (another firmware, a bad read). */
+export function decodificarGenerador(b: ArrayLike<number>): AjustesGenerador | null {
+  if (b.length < LARGO_GENERADOR) return null;
+  const forma = b[1] ?? 0xff;
+  const ciclo = b[8] ?? 0xff;
+  const frecuencia = ((b[4] ?? 0) | ((b[5] ?? 0) << 8) | ((b[6] ?? 0) << 16) | ((b[7] ?? 0) << 24)) >>> 0;
+  if (forma > ULTIMA_FORMA || ciclo > 100 || frecuencia === 0) return null;
+  const f = FORMAS[forma];
+  return { forma, nombre: f?.nombre ?? null, rotulo: f?.rotulo ?? null, frecuencia, ciclo, amplitud: (b[9] ?? 0) / 10 };
+}
+
+export interface MedidasOsciloscopio {
+  /** Hz. */
+  frecuencia: number;
+  /** s. */
+  periodo: number;
+  /** Positive duty cycle, %. */
+  ciclo: number;
+  /** Positive and negative pulse widths, s. */
+  anchoPositivo: number;
+  anchoNegativo: number;
+  /** V, as the instrument's screen gives them. */
+  vmax: number;
+  vmin: number;
+  vpp: number;
+}
+
+/** FNIRSI's own measurements of a channel from its twelve words; null when it has none (all zeros). */
+export function decodificarMedidas(b: ArrayLike<number>): MedidasOsciloscopio | null {
+  if (b.length < LARGO_MEDIDAS) return null;
+  const v = new DataView(Uint8Array.from({ length: LARGO_MEDIDAS }, (_, k) => b[k] ?? 0).buffer);
+  const u = (i: number) => v.getUint32(4 * i, true);
+  const s = (i: number) => v.getInt32(4 * i, true);
+  if (Array.from({ length: 12 }, (_, i) => u(i)).every((x) => x === 0)) return null;
+  return {
+    frecuencia: u(0),
+    periodo: u(1) * 1e-9,
+    ciclo: u(2) / 100,
+    anchoPositivo: u(4) * 1e-9,
+    anchoNegativo: u(5) * 1e-9,
+    vmax: s(6) * 1e-6,
+    vmin: s(7) * 1e-6,
+    vpp: s(8) * 1e-6,
+  };
+}
+
+/** Whether the oscilloscope runs, from its 56 state bytes: true RUN, false STOP, null when the byte is neither. */
+export function osciloscopioEnMarcha(estado: ArrayLike<number>): boolean | null {
+  const x = estado[46];
+  return x === 1 ? true : x === 0 ? false : null;
+}

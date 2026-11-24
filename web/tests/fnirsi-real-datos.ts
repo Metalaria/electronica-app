@@ -40,6 +40,25 @@ export const MULTIMETRO: Record<string, string> = {
   holdQuitado: '90000138591907005aa5f6ebebcb0f00820000fb0c01000013050000000101ff00001041040001010100000000000000000000000000000033330942383303c0',
 };
 
+/**
+ * What the instrument keeps in memory and the link reads on request (lib/fnirsi-real/estado.ts), as read from the
+ * real unit on 2026-11-24, hex, by address.
+ */
+export const MEMORIA = {
+  // the generator's ten bytes: Square Wave 15 kHz 50 % 3.0 V, Full Wave 35 kHz 2.0 V, and the wave of the
+  // oscilloscope captures below (entry 2 of its menu, 50 kHz, 2.0 V)
+  generadorCuadrada: '01010000983a0000321e',
+  generadorOndaCompleta: '01040000b88800003214',
+  generadorSierra: '0102000050c300003214',
+  // the oscilloscope's state while it runs and once stopped (only byte 46 differs): 5 µs and 50 mV per division
+  osciloscopioEnMarcha: '01000200ccd40000000000000000000000000000010100010000e7ff16000000e05ef8ffffffffff00000000000801000001ff0000000000',
+  osciloscopioParado: '01000200ccd40000000000000000000000000000010100010000e7ff16000000e05ef8ffffffffff00000000000800000001ff0000000000',
+  // its own measurements of CH1 with the screen stopped: the photograph says 40.23KHz, 64.51%, 114.0mV…
+  medidasParado: '289d00001761000033190000dd0d0000a33e000074220000b02403006067010050bd010080b5010070880200d0780200',
+  // …and, on a 50 kHz triangle that dips below zero, 50.18KHz, 50.50%, 220.0mV (Vmin is -10 mV)
+  medidasTriangulo: '00c40000d94d0000ba13000056130000512700008826000050340300f0d8ffff605b030090530300f0cc0100a0860100',
+} as const;
+
 /** CH1 alone, 50 mV per division at the input with the X10 setting (the screen says 500 mV), 200 µs per division. */
 export const REGISTRO_CH1 = 'AQACALTUAQAAAAAAAAAAAAAAAAABAQABAACx////AABA6Q7//////wAAAAAADQEAAAH/AAAAAAAyyMjKysrKysrKysrJycrJysnJysrKysrKysrKysrKycrKysrKysrJysrKysrKycrJNTQ1NDQ0NTQ0NTU0NTU0NDQ0NTU0NDQ1NTU1NDY1NDQ1NDU0NDQ1MzQ0NDU0NDU0NTU0NDQ1NTQ0NDQ0NDS0ysrJycjKyMjKysrJysrJycrKysnKysrKycrKyMrKysrKycrKysnKycrKysrKycrKysrKysrKysrKysrKyso0NDU0NDU0NDQ0NTQ1NDQ0NTQ0NDY0NDQ0NTQ0NDQ0NDQ0NTU1NTQ1NTQ0NTU0NDU1NTQ1NDU0NTQ1NTQ0NL3JysjKysrIycrKycjIysrHysnJysrJycnJycnKycrKysrKysnKysrKycrKysrKysrKycrKysrKysnKycrKyjQ1NDU1NTU0NDU0NDQ0NTQ0NDQ0NTU0NTU1NDU1NDQ0NDQ0NTQ0NDU0NDQ0NDQ1NDQ1NDQ0NTQ0NDU0NTQ0w8rKysrKysrKysnJycfKysrKysjKysrKycrKysrKysrKysrKycrKysrKysrKysrKycnKysrKysrKycrJysnKNTQ1NTQ1NTY0NTU1NDU1NTY1NDQ1NTU0NTU0NTU1NDU0NTQ1NTQ1NDU0NDU1NDU1NDQ0NDU0NDQ1NDU1NDTIyMnJysjKycnJysnKysrKysnKysnKysrJysrKysrJysnKysrKysrKysrKysnJysrKycrKysrKysrKysrKyso2NDQ2NTU1NDU0NjQ1NDU1NDQ0NTU0NDQ1NDQ1NDQ0NTQ1NDQ0NDQ1NDU0NDQ0NDQ0NTQ0NTQ0NTU0NTQ0NcrKyMjIysnJycjJysnKycrJyMnJysrKysrJysrJysrKycrKysrJysnKysrKysrKysnKysrKysrKysrKysrKyjQ0NDU1NTU1NTQ1NTQ1NTU0NDU0NDU1NDU1NDU0NTQ1NTQ1NDQ1NDQ0NjQ0NDQ0NTQ0NDQ0NDQ0NDQ0NDQ0yMrKycrJyMrJycjJycnJysnJycnKysjJysrKysrKysrKysrKysrKysnKysrKysnKysrKysrJycrKysrKysrKNDQ0NTU1NTQ1NTU0NDQ0NDU0NTQ0NTU1NDQ1NTQ0NDQ1NTQ0NDM1NDQ0NDU1NDQ0NDU0NDQ1NDQ0NDQ0NTTKysrKycrKysjKyMnJysnJysnJysnKysnKysrKyMrIysrIysrKysrKycrKysrKysnKycrJysrKysrKysrJyso1NTU0NTQ1NTU1NDU0NTQ1NDU0NDU0NDU0NDU1NDU0NDU0NDU0NTQ0NDQ0NDQ1NDY0NDQ1NTU0NTQ0NDQ0NMrIycnKysrJysnKycjKysrJysjJysrJycrIycrJysrKysrKysrK';
 /** Both channels on, 2 ms per division: CH1 without signal… */

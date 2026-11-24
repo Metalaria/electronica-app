@@ -27,10 +27,20 @@ import {
   leerInfo,
   partir,
   peticion,
+  peticionLeer,
   respuestaA,
+  respuestaLeer,
 } from '../src/lib/fnirsi-real/protocolo.ts';
+import {
+  DIR_ESTADO_OSCILOSCOPIO,
+  DIR_GENERADOR,
+  DIR_MEDIDAS_CH1,
+  decodificarGenerador,
+  decodificarMedidas,
+  osciloscopioEnMarcha,
+} from '../src/lib/fnirsi-real/estado.ts';
 import { Falso, type EnlaceFalso } from '../src/lib/fnirsi-real/transporte.ts';
-import { MULTIMETRO, REGISTRO_CH1, REGISTRO_PAR_CH1, REGISTRO_PAR_CH2 } from './fnirsi-real-datos.ts';
+import { MEMORIA, MULTIMETRO, REGISTRO_CH1, REGISTRO_PAR_CH1, REGISTRO_PAR_CH2 } from './fnirsi-real-datos.ts';
 
 test.beforeEach(({}, info) => test.skip(info.project.name !== 'escritorio', 'no browser: once'));
 
@@ -418,6 +428,77 @@ test('peticiones, respuestas e identificación', () => {
   // whole reports only
   expect(partir(new Uint8Array(64 * 3 + 10)).length).toBe(3);
   expect(leerInfo(r)).toBeNull();
+});
+
+test('lectura de la memoria del aparato: la petición, su respuesta y la que el enlace rechaza', async () => {
+  const p = peticionLeer(0x07, DIR_GENERADOR, 10);
+  expect(Array.from(p.subarray(0, 8))).toEqual([0x02, 0x07, 10, 0, 0x50, 0x0f, 0x00, 0x20]);
+  expect(() => peticionLeer(1, DIR_GENERADOR, 57)).toThrow();
+  expect(() => peticionLeer(1, DIR_GENERADOR, 0)).toThrow();
+  // the fake link answers from its memory, as the real one does from the instrument's
+  const c: EnlaceFalso = { memoria: { [DIR_GENERADOR.toString(16)]: Array.from(deHex(MEMORIA.generadorCuadrada)) } };
+  const t = new Falso(c);
+  await t.abrir();
+  await t.enviar(p);
+  const r = partir((await t.leer(10, 8)).bytes)[0]!;
+  expect(Array.from(respuestaLeer(r, 0x07, DIR_GENERADOR, 10) as Uint8Array)).toEqual(Array.from(deHex(MEMORIA.generadorCuadrada)));
+  // not the answer to another sequence, address or order
+  expect(respuestaLeer(r, 0x08, DIR_GENERADOR, 10)).toBeNull();
+  expect(respuestaLeer(r, 0x07, DIR_MEDIDAS_CH1, 10)).toBeNull();
+  expect(respuestaLeer(deHex(MULTIMETRO.pila9V!), 0x07, DIR_GENERADOR, 10)).toBeNull();
+  // an address the link does not have, and an answer shorter than asked: refused
+  await t.enviar(peticionLeer(0x09, DIR_MEDIDAS_CH1, 48));
+  expect(respuestaLeer(partir((await t.leer(10, 8)).bytes)[0]!, 0x09, DIR_MEDIDAS_CH1, 48)).toBe('rechazada');
+  expect(respuestaLeer(r, 0x07, DIR_GENERADOR, 9)).toBe('rechazada');
+  expect(c.lecturas).toEqual([DIR_GENERADOR, DIR_MEDIDAS_CH1]);
+});
+
+test('los ajustes del generador, como los enseña su pantalla', () => {
+  expect(decodificarGenerador(deHex(MEMORIA.generadorCuadrada))).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 15000, ciclo: 50, amplitud: 3 });
+  expect(decodificarGenerador(deHex(MEMORIA.generadorOndaCompleta))).toEqual({ forma: 4, nombre: 'Onda completa', rotulo: 'Full Wave', frecuencia: 35000, ciclo: 50, amplitud: 2 });
+  expect(decodificarGenerador(deHex(MEMORIA.generadorSierra))).toMatchObject({ forma: 2, nombre: 'Diente de sierra', frecuencia: 50000, amplitud: 2 });
+  // an entry of the menu not seen named yet: its place, no name
+  const otra = deHex(MEMORIA.generadorCuadrada);
+  otra[1] = 9;
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 9, nombre: null, rotulo: null, frecuencia: 15000 });
+  // the first byte is not understood and does not matter
+  otra[0] = 0;
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 9 });
+  // what cannot be settings is not shown as settings
+  otra[1] = 13;
+  expect(decodificarGenerador(otra)).toBeNull();
+  expect(decodificarGenerador(new Uint8Array(10))).toBeNull();
+  expect(decodificarGenerador(new Uint8Array(4))).toBeNull();
+  const ciclo = deHex(MEMORIA.generadorCuadrada);
+  ciclo[8] = 101;
+  expect(decodificarGenerador(ciclo)).toBeNull();
+});
+
+test('las medidas propias del osciloscopio y RUN/STOP, contra dos fotos de su pantalla', () => {
+  // 40.23KHz, 64.51%, 114.0mV
+  const m = decodificarMedidas(deHex(MEMORIA.medidasParado))!;
+  expect([m.frecuencia, m.ciclo]).toEqual([40232, 64.51]);
+  expect(m.vpp).toBeCloseTo(0.114, 9);
+  expect(m.periodo).toBeCloseTo(24855e-9, 12);
+  expect(m.periodo).toBeCloseTo(1 / 40232, 8);
+  expect(m.anchoPositivo + m.anchoNegativo).toBeCloseTo(m.periodo, 8);
+  expect(m.vmax - m.vmin).toBeCloseTo(m.vpp, 9);
+  // 50.18KHz, 50.50%, 220.0mV, on a wave that goes below zero: the voltages are signed
+  const t = decodificarMedidas(deHex(MEMORIA.medidasTriangulo))!;
+  expect([t.frecuencia, t.ciclo]).toEqual([50176, 50.5]);
+  expect([t.vpp, t.vmax, t.vmin].map((x) => Math.round(x * 1e6))).toEqual([220000, 210000, -10000]);
+  // outside the oscilloscope the block is all zeros: no measurements
+  expect(decodificarMedidas(new Uint8Array(48))).toBeNull();
+  expect(decodificarMedidas(new Uint8Array(20))).toBeNull();
+  // RUN / STOP
+  expect(osciloscopioEnMarcha(deHex(MEMORIA.osciloscopioEnMarcha))).toBe(true);
+  expect(osciloscopioEnMarcha(deHex(MEMORIA.osciloscopioParado))).toBe(false);
+  const raro = deHex(MEMORIA.osciloscopioParado);
+  raro[46] = 7;
+  expect(osciloscopioEnMarcha(raro)).toBeNull();
+  // the state is the same block that heads every record
+  expect(leerAjustes(deHex(MEMORIA.osciloscopioParado))!.tiempoDiv).toBeCloseTo(5e-6, 12);
+  expect(DIR_ESTADO_OSCILOSCOPIO).toBe(0x200000f8);
 });
 
 test('el enlace simulado de las pruebas responde como el real', async () => {

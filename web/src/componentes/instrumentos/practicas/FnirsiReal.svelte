@@ -43,6 +43,23 @@
   const trazas = $derived(c.estado === 'conectado' ? c.trazas.filter((t): t is Traza => t !== null) : []);
   /** Alternating voltage: the frequency the instrument shows above the reading. */
   const frecuencia = $derived(lectura && lectura.frecuencia !== null ? ` · ${lectura.frecuencia} Hz` : '');
+  /** What the stream does not carry and the connection asks for (lib/fnirsi-real/estado.ts). */
+  const generador = $derived.by(() => {
+    const g = c.estado === 'conectado' && (c.modo === 'generador' || c.modo === 'osciloscopio') ? c.generador : null;
+    if (!g) return '';
+    const forma = g.nombre ? `${g.nombre} (${g.rotulo})` : `forma n.º ${g.forma + 1} de su menú`;
+    const amplitud = g.amplitud.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return `Generador del FNIRSI: ${forma} · ${formatoSI(g.frecuencia, 'Hz', 4)} · ciclo ${g.ciclo} % · ${amplitud} V`;
+  });
+  const enOsciloscopio = $derived(c.estado === 'conectado' && c.modo === 'osciloscopio');
+  const medidas = $derived.by(() => {
+    const m = enOsciloscopio ? c.medidas : null;
+    if (!m) return '';
+    const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // (checked with the probe setting at X1 only)
+    const sonda = c.trazas[0]?.ajustes.canales[0].sonda === 10 ? ' (con la sonda en X10 estas tensiones no están comprobadas)' : '';
+    return `Medidas del propio FNIRSI en CH1: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}${sonda}`;
+  });
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
   const comparacion = $derived.by(() => {
@@ -118,6 +135,9 @@
         </li>
       </ul>
     {/if}
+    {#if enOsciloscopio && c.enMarcha === false}<p class="fr-tenue" data-marcha-fnirsi>Osciloscopio en STOP: la traza y las medidas son las de la última adquisición.</p>{/if}
+    {#if medidas}<p class="fr-tenue" data-medidas-fnirsi>{medidas}</p>{/if}
+    {#if generador}<p class="fr-tenue" data-generador-fnirsi>{generador}</p>{/if}
     {#if c.estado !== 'desconectado'}
       <details class="fr-diag">
         <summary>Diagnóstico</summary>

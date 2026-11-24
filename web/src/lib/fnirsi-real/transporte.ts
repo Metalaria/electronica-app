@@ -7,7 +7,7 @@
 //   - WebHID in a desktop browser that has it (Chrome, Edge);
 //   - none: the feature is hidden.
 
-import { INFORME, ORDEN_INFO, ORDEN_SUSCRIBIR, PID_ENLACE, PRODUCTO_ENLACE, PROTOCOLO, VID_ENLACE } from './protocolo.ts';
+import { INFORME, ORDEN_INFO, ORDEN_LEER, ORDEN_SUSCRIBIR, PID_ENLACE, PRODUCTO_ENLACE, PROTOCOLO, VID_ENLACE, u32 } from './protocolo.ts';
 
 export interface Recibido {
   /** Whole reports, 64 bytes each, oldest first. */
@@ -44,6 +44,10 @@ export interface EnlaceFalso {
   /** Number of times the link was opened and the subscription masks received (the test reads them). */
   aperturas?: number;
   suscripciones?: number[];
+  /** The instrument's memory a read request finds, by address (hex text, as JSON keys are); any other is refused. */
+  memoria?: Record<string, number[]>;
+  /** Addresses read so far (the test reads them). */
+  lecturas?: number[];
 }
 
 declare global {
@@ -210,7 +214,7 @@ class WebHid implements TransporteFnirsi {
 
 // ------------------------------------------------------------------ the fake link (tests)
 
-/** The fake link: answers the two requests as the real one does and hands out the scripted events. */
+/** The fake link: answers the requests as the real one does and hands out the scripted events. */
 export class Falso implements TransporteFnirsi {
   readonly tipo = 'falso' as const;
   private pendientes: Uint8Array[] = [];
@@ -239,6 +243,16 @@ export class Falso implements TransporteFnirsi {
     } else if (informe[0] === ORDEN_SUSCRIBIR) {
       this.flujo = informe[2] ?? 0;
       (this.c.suscripciones ??= []).push(this.flujo);
+    } else if (informe[0] === ORDEN_LEER) {
+      const direccion = u32(informe, 4);
+      const largo = informe[2] ?? 0;
+      const bloque = this.c.memoria?.[direccion.toString(16)];
+      (this.c.lecturas ??= []).push(direccion);
+      r.set(informe.subarray(4, 8), 4);
+      if (bloque && largo >= 1 && largo <= bloque.length) {
+        r[3] = largo;
+        r.set(bloque.slice(0, largo), 8);
+      } else r[2] = 2;
     } else {
       r[2] = 1;
     }

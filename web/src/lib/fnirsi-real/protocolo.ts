@@ -13,8 +13,10 @@
 //                            [8…] payload
 //   event     (link → host): [0] kind, [1] sequence, [2] sub-kind or channel, [3] payload bytes, [4…7] tick (ms since
 //                            the instrument started) or offset, [8…] payload
-// Orders used here: 0x01 identification, 0x03 subscription ([2] = bit 0 multimeter, bit 1 oscilloscope). The link
-// answers each request with exactly one response; events may arrive before it. A session starts unsubscribed.
+// Orders used here: 0x01 identification, 0x02 read ([2] = bytes wanted, at most 56, of the instrument's own memory
+// at [4…7]: the link only reads, and answers with a status other than 0 for an address outside the processor's
+// flash and RAM), 0x03 subscription ([2] = bit 0 multimeter, bit 1 oscilloscope). The link answers each request
+// with exactly one response; events may arrive before it. A session starts unsubscribed.
 // Events: 0x90 multimeter frame, 0xA0 oscilloscope record header, 0xA1 oscilloscope record data (see the two
 // decoders). The link never writes anything in the instrument.
 //
@@ -28,7 +30,10 @@ export const PRODUCTO_ENLACE = '2C53T stock-link';
 export const INFORME = 64;
 
 export const ORDEN_INFO = 0x01;
+export const ORDEN_LEER = 0x02;
 export const ORDEN_SUSCRIBIR = 0x03;
+/** Most bytes one report carries after its eight-byte head. */
+export const CARGA_MAXIMA = 56;
 export const FLUJO_MULTIMETRO = 0x01;
 export const FLUJO_OSCILOSCOPIO = 0x02;
 
@@ -72,6 +77,25 @@ export function peticion(orden: number, secuencia: number, argumento = 0): Uint8
   r[1] = secuencia & 0xff;
   r[2] = argumento & 0xff;
   return r;
+}
+
+/** A request to read `largo` bytes (1 to 56) of the instrument's memory at `direccion`. */
+export function peticionLeer(secuencia: number, direccion: number, largo: number): Uint8Array {
+  if (!Number.isInteger(largo) || largo < 1 || largo > CARGA_MAXIMA) throw new Error('Una lectura del enlace del FNIRSI lleva de 1 a 56 bytes.');
+  const r = peticion(ORDEN_LEER, secuencia, largo);
+  for (let k = 0; k < 4; k++) r[4 + k] = (direccion >>> (8 * k)) & 0xff;
+  return r;
+}
+
+/**
+ * What `informe` is to a read request: its bytes, 'rechazada' when the link refused it, or null when it is another
+ * report (an event, or the response to another request).
+ */
+export function respuestaLeer(informe: ArrayLike<number>, secuencia: number, direccion: number, largo: number): Uint8Array | 'rechazada' | null {
+  const a = respuestaA(informe, ORDEN_LEER, secuencia);
+  if (!a || u32(informe, 4) !== direccion >>> 0) return null;
+  if (a.estado !== 0 || informe[3] !== largo) return 'rechazada';
+  return Uint8Array.from({ length: largo }, (_, k) => informe[8 + k] ?? 0);
 }
 
 /** The whole reports in `bytes` (what a transport's read returns); a trailing partial one is dropped. */
