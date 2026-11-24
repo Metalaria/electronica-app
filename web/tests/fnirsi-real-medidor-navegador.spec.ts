@@ -115,12 +115,12 @@ test.describe('escritorio', () => {
     await expect(texto).toContainText('Su circuito da 2,875 V en el FNIRSI; el simulado,');
     await expect(texto).toContainText('Dentro de lo que admite la práctica');
     await expect(texto).not.toContainText('Brymen');
-    // 4 % low: outside, and no claim about the instrument's accuracy
+    // 4 % low: outside, and more than the instrument itself may be off by on that range (1.4.2)
     await mostrar(page, voltios('2.765'));
     await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('2,765 V ⎓');
     await page.locator('[data-usar-fnirsi="vout"]').click();
     await expect(fila).toHaveClass(/mal/);
-    await expect(texto).toContainText('no tiene la exactitud del multímetro del FNIRSI');
+    await expect(texto).toContainText('Es mayor que lo que el FNIRSI puede equivocarse en la escala de 20 V');
     await expect(texto).toContainText('Fuera de lo que admite la práctica');
     // a reading the decoder does not back (a firmware unit it does not know): warned on the panel, and not noted
     await mostrar(page, voltios('0.612', 0x7f));
@@ -175,6 +175,37 @@ test.describe('escritorio', () => {
     const c1 = page.locator('[data-comparacion-traza="1"]');
     await expect(c1).toContainText(/^CH1: Vpp de 3,\d\d\sV en el FNIRSI; el simulado, /, { timeout: 20_000 });
   });
+
+  for (const [circuito, conSenal] of [
+    ['cap22/fig-22.14_555_astable', true],
+    ['cap05/sec-5.3_led_150ohm', false],
+  ] as const) {
+    test(`1.4.3: la comparación de la traza se reescribe como mucho una vez por segundo (${circuito})`, async ({ page }) => {
+      await limpio(page);
+      await conEnlace(page, 2, informesDe(REGISTRO_CH1, 0, 1));
+      await page.goto(`/#/instrumentos/circuito/${circuito}`);
+      const panel = page.locator('.elegir [data-fnirsi-real]');
+      await expect(panel).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+      await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+      const c1 = page.locator('[data-comparacion-traza="1"]');
+      await expect(c1).toContainText(/^CH1: Vpp de 3,\d\d\sV en el FNIRSI; el simulado, /, { timeout: 20_000 });
+      // count every rewrite of the line (before 1.4.3 it followed every sweep of the simulated oscilloscope)
+      await page.evaluate(() => {
+        const w = window as unknown as { __cambios: number };
+        w.__cambios = 0;
+        new MutationObserver((ms) => {
+          for (const m of ms) if ((m.target instanceof Element ? m.target : m.target.parentElement)?.closest('[data-comparacion-traza]')) w.__cambios++;
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+      await page.waitForTimeout(4000);
+      expect(await page.evaluate(() => (window as unknown as { __cambios: number }).__cambios)).toBeLessThanOrEqual(5);
+      // the 555 has a frequency to compare; the LED circuit has no signal on CH1, only a sample or two of the
+      // simulated converter's noise, whose «frequency» is not compared
+      if (conSenal) await expect(c1).toContainText('Frecuencia de 1,000 kHz en el FNIRSI; el simulado, ');
+      else await expect(c1).not.toContainText('Frecuencia');
+    });
+  }
 });
 
 // ------------------------------------------------------------------ the lessons' «En el banco» card

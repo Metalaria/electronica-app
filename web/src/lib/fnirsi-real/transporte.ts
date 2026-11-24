@@ -7,7 +7,25 @@
 //   - WebHID in a desktop browser that has it (Chrome, Edge);
 //   - none: the feature is hidden.
 
-import { INFORME, ORDEN_INFO, ORDEN_SUSCRIBIR, PID_ENLACE, PRODUCTO_ENLACE, PROTOCOLO, VID_ENLACE } from './protocolo.ts';
+import {
+  ESTADO_GENERADOR,
+  ESTADO_MEDIDAS_CH1,
+  ESTADO_MEDIDAS_CH2,
+  ESTADO_MULTIMETRO,
+  EVT_ESTADO,
+  FLUJO_ESTADO,
+  FLUJO_MULTIMETRO,
+  FLUJO_OSCILOSCOPIO,
+  INFORME,
+  ORDEN_INFO,
+  ORDEN_LEER,
+  ORDEN_SUSCRIBIR,
+  PID_ENLACE,
+  PRODUCTO_ENLACE,
+  PROTOCOLO,
+  VID_ENLACE,
+  u32,
+} from './protocolo.ts';
 
 export interface Recibido {
   /** Whole reports, 64 bytes each, oldest first. */
@@ -35,6 +53,14 @@ export interface EnlaceFalso {
   modo?: number;
   /** Protocol version in the identification response (default: the one the app knows). */
   protocolo?: number;
+  /**
+   * Patch of the link (default 2). From 3 on it has the status stream: it announces it, accepts its bit in the
+   * subscription and, once subscribed, sends every 100 ms one of the blocks of its mode, taken from `memoria`
+   * (a block that is not there goes as zeros).
+   */
+  parche?: number;
+  /** A link that announces the status stream and never sends it (a fault the connection must get around). */
+  estadoMudo?: boolean;
   /** Event reports to hand out, in order, a few per read. */
   eventos?: number[][];
   /** Starts over when `eventos` runs out. */
@@ -44,6 +70,15 @@ export interface EnlaceFalso {
   /** Number of times the link was opened and the subscription masks received (the test reads them). */
   aperturas?: number;
   suscripciones?: number[];
+  /** The instrument's memory a read request finds, by address (hex text, as JSON keys are); any other is refused. */
+  memoria?: Record<string, number[]>;
+  /** Addresses read so far (the test reads them). */
+  lecturas?: number[];
+  /**
+   * 1.4.3: behaves as the installed app's USB plugin does (src-tauri/plugins/fnirsi, informe_de): its type is
+   * 'nativo' and any request but the identification and the subscription fails with the plugin's sentence.
+   */
+  comoNativo?: boolean;
 }
 
 declare global {
@@ -210,13 +245,45 @@ class WebHid implements TransporteFnirsi {
 
 // ------------------------------------------------------------------ the fake link (tests)
 
-/** The fake link: answers the two requests as the real one does and hands out the scripted events. */
+/** The fake link: answers the requests as the real one does and hands out the scripted events. */
 export class Falso implements TransporteFnirsi {
-  readonly tipo = 'falso' as const;
+  get tipo(): 'nativo' | 'falso' {
+    return this.c.comoNativo ? 'nativo' : 'falso';
+  }
   private pendientes: Uint8Array[] = [];
   private k = 0;
   private flujo = 0;
+  private turno = 0;
+  private horaEstado = 0;
+  private secuenciaEstado = 0;
   constructor(private c: EnlaceFalso) {}
+  private get conEstado(): boolean {
+    return (this.c.parche ?? 2) >= 3;
+  }
+  private bloque(direccion: number, largo: number): number[] {
+    const b = this.c.memoria?.[direccion.toString(16)] ?? [];
+    return Array.from({ length: largo }, (_, k) => b[k] ?? 0);
+  }
+  /** The next status event of the instrument's mode, as the real link builds it; null in a mode without any. */
+  private estado(): Uint8Array | null {
+    const modo = this.c.modo ?? 1;
+    const bloques = modo === 1 ? [ESTADO_MULTIMETRO] : modo === 2 ? [ESTADO_GENERADOR, ESTADO_MEDIDAS_CH1, ESTADO_MEDIDAS_CH2] : modo === 3 ? [ESTADO_GENERADOR] : [];
+    if (!bloques.length) return null;
+    const bloque = bloques[this.turno++ % bloques.length]!;
+    const carga =
+      bloque === ESTADO_GENERADOR
+        ? this.bloque(0x20000f50, 10)
+        : bloque === ESTADO_MULTIMETRO
+          ? this.bloque(0x20001048, 16)
+          : [...this.bloque(bloque === ESTADO_MEDIDAS_CH1 ? 0x20000208 : 0x20000238, 48), this.bloque(0x200000f8, 56)[46]!];
+    const r = new Uint8Array(INFORME);
+    r[0] = EVT_ESTADO;
+    r[1] = this.secuenciaEstado = (this.secuenciaEstado + 1) & 0xff;
+    r[2] = bloque;
+    r[3] = carga.length;
+    r.set(carga, 8);
+    return r;
+  }
   async abrir(): Promise<string> {
     if (this.c.errorAbrir) throw new Error(this.c.errorAbrir);
     this.c.aperturas = (this.c.aperturas ?? 0) + 1;
@@ -226,19 +293,35 @@ export class Falso implements TransporteFnirsi {
   }
   async enviar(informe: Uint8Array): Promise<void> {
     if (this.c.desenchufado) throw new Error(this.c.desenchufado);
+    if (this.c.comoNativo && informe[0] !== ORDEN_INFO && informe[0] !== ORDEN_SUSCRIBIR)
+      throw new Error('La aplicación solo envía al FNIRSI las órdenes de identificación y de suscripción.');
     const r = new Uint8Array(INFORME);
     r[0] = (informe[0] ?? 0) | 0x80;
     r[1] = informe[1] ?? 0;
     if (informe[0] === ORDEN_INFO) {
-      r[3] = 36;
+      r[3] = this.conEstado ? 40 : 36;
       r.set(Array.from('2C53LINK', (ch) => ch.charCodeAt(0)), 8);
       r[16] = this.c.protocolo ?? PROTOCOLO;
-      r[17] = 2;
+      r[17] = this.c.parche ?? 2;
       r[18] = this.c.modo ?? 1;
       r[19] = this.flujo;
+      if (this.conEstado) r[44] = 0x01;
     } else if (informe[0] === ORDEN_SUSCRIBIR) {
-      this.flujo = informe[2] ?? 0;
-      (this.c.suscripciones ??= []).push(this.flujo);
+      const mascara = informe[2] ?? 0;
+      (this.c.suscripciones ??= []).push(mascara);
+      // (a mask with a stream the link does not have is refused, and the subscription stays as it was)
+      if (mascara & ~(FLUJO_MULTIMETRO | FLUJO_OSCILOSCOPIO | (this.conEstado ? FLUJO_ESTADO : 0))) r[2] = 3;
+      else this.flujo = mascara;
+    } else if (informe[0] === ORDEN_LEER) {
+      const direccion = u32(informe, 4);
+      const largo = informe[2] ?? 0;
+      const bloque = this.c.memoria?.[direccion.toString(16)];
+      (this.c.lecturas ??= []).push(direccion);
+      r.set(informe.subarray(4, 8), 4);
+      if (bloque && largo >= 1 && largo <= bloque.length) {
+        r[3] = largo;
+        r.set(bloque.slice(0, largo), 8);
+      } else r[2] = 2;
     } else {
       r[2] = 1;
     }
@@ -248,9 +331,15 @@ export class Falso implements TransporteFnirsi {
     await new Promise((r) => setTimeout(r, Math.min(espera, 20)));
     if (this.c.desenchufado) throw new Error(this.c.desenchufado);
     const v = this.pendientes.splice(0, maximo);
+    const ahora = Date.now();
+    if (this.flujo & FLUJO_ESTADO && !this.c.estadoMudo && ahora - this.horaEstado >= 100 && v.length < maximo) {
+      const e = this.estado();
+      if (e) v.push(e);
+      this.horaEstado = ahora;
+    }
     const eventos = this.c.eventos ?? [];
     // (events only once subscribed, a few dozen per read, as the real link's pace gives)
-    while (this.flujo && v.length < Math.min(maximo, 48) && eventos.length) {
+    while (this.flujo & (FLUJO_MULTIMETRO | FLUJO_OSCILOSCOPIO) && v.length < Math.min(maximo, 48) && eventos.length) {
       if (this.k >= eventos.length) {
         if (!this.c.repetir) break;
         this.k = 0;

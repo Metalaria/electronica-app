@@ -19,14 +19,18 @@
 //   [20]        channels on: bit 0 CH1, bit 1 CH2
 //   [28…29]     trigger level, signed 16 bits, in sample counts from the middle (128)
 //   [45]        time per division as an index: 0 = 10 ns, then 1-2-5 steps (seen: 13 with the screen at 200 µs;
-//               16 and 11 fit 2 ms and 50 µs)
+//               16 and 11 fit 2 ms and 50 µs; 8 and 9 with the screen at 5 µs and 10 µs on 2026-11-24)
 // The scales: 25 sample counts are one vertical division and 25 samples are one horizontal division (the 1 kHz wave
 // is 125 samples long at 200 µs per division and 12.5 at 2 ms). The first sample of every record is a filler byte
 // of the instrument's acquisition and is dropped here.
 //
-// Not established: the samples-per-division rule outside 50 µs to 2 ms per division (the fastest time bases cannot
-// have 25 real samples per division), the coupling and the trigger edge. `tiempoComprobado` and the channel's
-// `comprobado` say what a caller may rely on.
+// The same 25 samples per division hold at 10 µs per division: the frequency this decoder gets from the trace of
+// the instrument's generator at 40 kHz is the one the instrument's own measurement gives (40.0 kHz against
+// 40.00 kHz, 2026-11-24).
+//
+// Not established: the samples-per-division rule at any other time base outside 50 µs to 2 ms per division (5 µs
+// and 20 µs among them; the fastest time bases cannot have 25 real samples per division), the coupling and the
+// trigger edge. `tiempoComprobado` and the channel's `comprobado` say what a caller may rely on.
 
 import { EVT_OSC_CABECERA, EVT_OSC_DATOS, u32 } from './protocolo.ts';
 
@@ -72,7 +76,7 @@ export interface AjustesOsciloscopio {
   /** Seconds per horizontal division, and per sample. */
   tiempoDiv: number;
   periodoMuestra: number;
-  /** The time base is one of those checked on the real unit (50 µs to 2 ms per division). */
+  /** The time base is one of those checked on the real unit (10 µs, and 50 µs to 2 ms per division). */
   tiempoComprobado: boolean;
   /** Trigger level as a sample value. */
   nivelDisparo: number;
@@ -99,7 +103,7 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
     canales: [canal(0, v0), canal(1, v1)],
     tiempoDiv: t,
     periodoMuestra: t / MUESTRAS_POR_DIVISION,
-    tiempoComprobado: indice >= 11 && indice <= 16,
+    tiempoComprobado: indice === 9 || (indice >= 11 && indice <= 16),
     nivelDisparo: 128 + (nivel > 32767 ? nivel - 65536 : nivel),
   };
 }

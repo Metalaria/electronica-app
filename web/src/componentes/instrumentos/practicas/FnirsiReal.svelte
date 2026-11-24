@@ -10,6 +10,7 @@
   // reliable (a blank display, or the display and the firmware not yet naming the same unit). Those frames are right,
   // but their warning flickered too fast to read: a warning now shows once it has lasted AVISO_MS, and in the meantime
   // the comparison with the simulated one stays as it was instead of vanishing for a frame.
+  import { untrack } from 'svelte';
   import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
   import { textoPantalla } from '../../../lib/brymen-real/lectura';
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
@@ -47,6 +48,23 @@
   const trazas = $derived(c.estado === 'conectado' ? c.trazas.filter((t): t is Traza => t !== null) : []);
   /** Alternating voltage: the frequency the instrument shows above the reading. */
   const frecuencia = $derived(lectura && lectura.frecuencia !== null ? ` · ${lectura.frecuencia} Hz` : '');
+  /** What the stream does not carry and the connection asks for (lib/fnirsi-real/estado.ts). */
+  const generador = $derived.by(() => {
+    const g = c.estado === 'conectado' && (c.modo === 'generador' || c.modo === 'osciloscopio') ? c.generador : null;
+    if (!g) return '';
+    const forma = g.nombre ? `${g.nombre} (${g.rotulo})` : `forma n.º ${g.forma + 1} de su menú`;
+    const amplitud = g.amplitud.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return `Generador del FNIRSI: ${forma} · ${formatoSI(g.frecuencia, 'Hz', 4)} · ciclo ${g.ciclo} % · ${amplitud} V`;
+  });
+  const enOsciloscopio = $derived(c.estado === 'conectado' && c.modo === 'osciloscopio');
+  const medidas = $derived.by(() => {
+    const m = enOsciloscopio ? c.medidas : null;
+    if (!m) return '';
+    const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // (checked with the probe setting at X1 only)
+    const sonda = c.trazas[0]?.ajustes.canales[0].sonda === 10 ? ' (con la sonda en X10 estas tensiones no están comprobadas)' : '';
+    return `Medidas del propio FNIRSI en CH1: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}${sonda}`;
+  });
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
   const comparacion = $derived.by(() => {
@@ -60,6 +78,33 @@
   /** How long a reading must stay unreliable before its warning shows (three frames and a half). */
   const AVISO_MS = 600;
   /** The reading is unreliable right now (a boolean, so the timer below is not restarted by every frame). */
+  // 1.4.3: the simulated oscilloscope sweeps about eight times a second and its measurements move a little with every
+  // sweep (a sample or two of its converter); written straight into the comparison, the line was rewritten eight
+  // times a second, which showed most with the real one in STOP, whose side does not move. The comparison of each
+  // channel is now refreshed once a second, and at once when a channel's comparison appears or goes.
+  const REFRESCO_TRAZA_MS = 1000;
+  const comparacionesTrazaAhora = $derived(
+    ([0, 1] as const).map((k) => {
+      const t = trazas.find((x) => x.canal === k);
+      const s = simulado?.canales[k];
+      return t && s ? compararTraza(t, s) : '';
+    }),
+  );
+  let comparacionesTraza = $state(['', '']);
+  $effect(() => {
+    const nuevas = comparacionesTrazaAhora;
+    untrack(() => {
+      if (nuevas.some((x, i) => !x !== !comparacionesTraza[i])) comparacionesTraza = nuevas;
+    });
+  });
+  $effect(() => {
+    const t = setInterval(() => {
+      const nuevas = comparacionesTrazaAhora;
+      if (nuevas.some((x, i) => x !== comparacionesTraza[i])) comparacionesTraza = nuevas;
+    }, REFRESCO_TRAZA_MS);
+    return () => clearInterval(t);
+  });
+
   const noFiable = $derived(!!lectura && !lectura.fiable && !lectura.esperando);
   let avisoListo = $state(false);
   $effect(() => {
@@ -136,20 +181,23 @@
           <li data-canal-fnirsi={t.canal + 1}>
             <span class="fr-marca" style:background={COLOR[t.canal]}></span>CH{t.canal + 1}: {resumen(t)}{#if t.saturada} · <span class="fr-aviso">la señal se sale de la escala: suba los V/div</span>{/if}{#if !t.ajustes.canales[t.canal].comprobado} · <span class="fr-tenue">escala de CH2 sin comprobar</span>{/if}
           </li>
-          {#if simulado?.canales[t.canal]}<li class="fr-comparacion" data-comparacion-traza={t.canal + 1}>{compararTraza(t, simulado.canales[t.canal]!)}</li>{/if}
+          {#if comparacionesTraza[t.canal]}<li class="fr-comparacion" data-comparacion-traza={t.canal + 1}>{comparacionesTraza[t.canal]}</li>{/if}
         {/each}
         <li class="fr-tenue">
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
         </li>
       </ul>
     {/if}
+    {#if enOsciloscopio && c.enMarcha === false}<p class="fr-tenue" data-marcha-fnirsi>Osciloscopio en STOP: la traza y las medidas son las de la última adquisición.</p>{/if}
+    {#if medidas}<p class="fr-tenue" data-medidas-fnirsi>{medidas}</p>{/if}
+    {#if generador}<p class="fr-tenue" data-generador-fnirsi>{generador}</p>{/if}
     {#if c.estado !== 'desconectado'}
       <details class="fr-diag">
         <summary>Diagnóstico</summary>
         <p>
           Vía: {c.tipo === 'nativo' ? 'la aplicación (USB)' : c.tipo === 'webhid' ? 'WebHID del navegador' : 'prueba'} · modo del FNIRSI: {c.modo} · informes recibidos: {c.informes}{#if c.perdidos} · perdidos: {c.perdidos}{/if}
         </p>
-        {#if c.info}<p>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche}</p>{/if}
+        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : c.sinLectura ? 'el generador, las medidas del osciloscopio y RUN/STOP no llegan por esta vía: hace falta el parche 3 del enlace' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}</p>{/if}
         {#if c.multimetro}<p class="fr-crudo">Última trama del multímetro: <code data-crudo-fnirsi>{c.multimetro.crudo}</code></p>{/if}
       </details>
     {/if}
