@@ -47,7 +47,7 @@ test('una pantalla como muestra: valor en SI, texto como lo enseña el instrumen
   const ol = muestraDe(fnirsi('ohmOL').pantalla, 1000);
   expect([ol.valor, ol.magnitud]).toEqual([null, 'Ω']);
   // a reading the app does not trust keeps its text only
-  const cap = fnirsi('capacidadCero');
+  const cap = fnirsi('capacidadTransicion');
   expect(cap.fiable).toBe(false);
   expect(muestraDe(cap.pantalla, 1000, cap.fiable).valor).toBeNull();
   // «Auto» has no unit: no magnitude
@@ -502,9 +502,15 @@ test('comparación en vivo, retenida (resistencia, un instrumento después del o
   expect(n.comparacion()).toContain('ponga los dos en la misma función');
   expect(n.anotar(t)).toBeNull();
   // the FNIRSI on a reading the app does not trust: no comparison, and the reason
-  dar({ principal: '100.32', unidad: 'µF' }, 'capacidadCero');
+  dar({ principal: '1.0300', unidad: 'µF' }, 'capacidadTransicion');
   expect(n.comparacion()).toBeNull();
-  expect(n.motivo('fnirsi')).toContain('capacidad');
+  expect(n.motivo('fnirsi')).toContain('no dan la misma unidad');
+  // capacitance, once the display and the firmware agree: compared like anything else (a capacitor of about 1 µF)
+  dar({ principal: '1.0300', unidad: 'µF' }, 'capacidadMicro');
+  const cap = n.comparacion() as { diferencia: number; veredicto: string; margen: number | null };
+  expect(cap.diferencia).toBeCloseTo(-2e-9, 15);
+  expect(n.medida('fnirsi')!.escala).toBe('10 µF');
+  expect(['dentro', 'fuera']).toContain(cap.veredicto);
   // out of range
   dar({ principal: '9.8312', unidad: 'kΩ' }, 'ohmOL');
   expect(n.motivo('fnirsi')).toContain('no muestra un número');

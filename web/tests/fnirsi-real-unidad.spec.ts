@@ -161,12 +161,38 @@ test('lo que no está comprobado o está cambiando no se da por fiable', () => {
   const p = lectura('autoPilaTransicion');
   expect(p.pantalla.texto).toBe('9.175');
   expect(p.fiable).toBe(false);
-  // capacitance decodes, but its unit has not been checked against the screen yet
-  const c = lectura('capacidadCero');
+  // a capacitor being measured: the display already says µF while the firmware still says nF
+  const c = lectura('capacidadTransicion');
   expect(c.funcion).toBe('capacidad');
-  expect(c.pantalla.unidad).toBe('F');
+  expect([c.pantalla.texto, c.pantalla.unidad, c.pantalla.prefijo]).toEqual(['1.045', 'F', 'µ']);
   expect(c.fiable).toBe(false);
-  expect(c.motivo).toContain('capacidad');
+  expect(c.motivo).toContain('no dan la misma unidad');
+  // the diode function: only its «.0L» has been seen on the real unit
+  const d = lectura('diodoAbierto');
+  expect([d.funcion, d.pantalla.ol, d.pantalla.unidad]).toEqual(['diodo', true, 'V']);
+  expect(d.fiable).toBe(false);
+  expect(d.motivo).toContain('diodo');
+});
+
+test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
+  // alternating: nothing in the frame says so, the function does
+  const v = lectura('acvCero');
+  expect([v.funcion, v.pantalla.texto, v.pantalla.unidad, v.pantalla.prefijo, v.pantalla.decimales]).toEqual(['vac', '0.0000', 'V', '', 4]);
+  expect([v.pantalla.ac, v.pantalla.dc, v.pantalla.valor, v.fiable]).toEqual([true, false, 0, true]);
+  expect(textoPantalla(v.pantalla)).toBe('0,0000 V ∿');
+  const ma = lectura('acmACero');
+  expect([ma.funcion, ma.pantalla.texto, ma.pantalla.unidad, ma.pantalla.prefijo, ma.pantalla.ac, ma.fiable]).toEqual(['maac', '0.008', 'A', 'm', true, true]);
+  expect(ma.pantalla.valor).toBeCloseTo(8e-6, 12);
+  const a = lectura('acACero');
+  expect([a.funcion, a.pantalla.texto, a.pantalla.unidad, a.pantalla.prefijo, a.pantalla.ac, a.fiable]).toEqual(['aac', '0.0007', 'A', '', true, true]);
+  expect(a.pantalla.valor).toBeCloseTo(0.0007, 12);
+  // capacitance: nF with the probes apart, µF on a capacitor of about 1 µF
+  const n = lectura('capacidadCero');
+  expect([n.funcion, n.pantalla.texto, n.pantalla.unidad, n.pantalla.prefijo, n.pantalla.valor, n.fiable]).toEqual(['capacidad', '0.000', 'F', 'n', 0, true]);
+  const u = lectura('capacidadMicro');
+  expect([u.funcion, u.pantalla.texto, u.pantalla.unidad, u.pantalla.prefijo, u.pantalla.decimales, u.fiable]).toEqual(['capacidad', '1.028', 'F', 'µ', 3, true]);
+  expect(u.pantalla.valor).toBeCloseTo(1.028e-6, 12);
+  expect(textoPantalla(u.pantalla)).toBe('1,028 µF');
 });
 
 test('solo las tramas de pantalla se decodifican', () => {

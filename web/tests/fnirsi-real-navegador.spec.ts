@@ -88,9 +88,9 @@ test('multímetro: la lectura del FNIRSI tal como la muestra su pantalla', async
   // both streams are asked for, once
   expect((await falso(page)).suscripciones).toEqual([3]);
   sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (multímetro)');
-  // another reading, not reliable yet (capacitance: its unit is not checked): shown with its warning
-  await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadCero!)] });
-  await expect(page.locator('[data-aviso-fnirsi]')).toContainText('capacidad');
+  // another reading, not reliable (the display and the firmware do not name the same unit): shown with its warning
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadTransicion!)] });
+  await expect(page.locator('[data-aviso-fnirsi]')).toContainText('no dan la misma unidad');
   await panel.getByRole('button', { name: 'Desconectar' }).click();
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'desconectado');
   await expect(page.locator('[data-lectura-fnirsi]')).toHaveCount(0);
