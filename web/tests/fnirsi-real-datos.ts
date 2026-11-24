@@ -35,8 +35,9 @@ export const MULTIMETRO: Record<string, string> = {
   acvMano: '900001385bf904005aa5a59d4fce0f00020000310d01000013050000000102ff00d012450300020101003100000000000000000000000000295c27406900a73f',
   capacidadPunto: '900001384c1a01005aa5040000102010000000ee0a01000013050000000406ff1283403e030301000500a50b000000000000000000000000f6289242f6281242',
   // HOLD on, direct voltage with the probes apart: the frame goes on (0.0003 V) while the instrument's screen, and
-  // the firmware's state, stay at the -0.0005 V of the moment the key was pressed.
+  // the firmware's state, stay at the -0.0005 V of the moment the key was pressed. And the frame after HOLD is off.
   holdActivo: '90000138310d07005aa5e6ebeb8b0f00820000fb0c01000013050000000101ff6f1203ba040001010100000001000000000000000000000033330942383303c0',
+  holdQuitado: '90000138591907005aa5f6ebebcb0f00820000fb0c01000013050000000101ff00001041040001010100000000000000000000000000000033330942383303c0',
 };
 
 /** CH1 alone, 50 mV per division at the input with the X10 setting (the screen says 500 mV), 200 µs per division. */

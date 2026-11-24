@@ -43,7 +43,10 @@
 //     reading, while the firmware stops updating its state, and the instrument's screen keeps showing that frozen
 //     value. So during HOLD the frame is the live reading and the state is what the screen shows: its value
 //     ([24+8…11], a float), decimals ([24+12]) and unit ([24+16]); [24+13] is 0 for a number (2 overload, 3 blank).
-//     Out of HOLD the value written with those decimals is the display's text (455 readings of every capture).
+//     Out of HOLD the value written with those decimals is the display's text (455 readings of every capture),
+//     and [24+13] is 2 in every overload frame (133) and in no other.
+//     The reading given here is always the instrument's screen, as with the real Brymen: during HOLD it is the
+//     frozen one, built from the state, and the frame is left aside.
 //
 // Not established yet: °F, and the capacitance ranges beyond nF and µF (the firmware's code for them is not known,
 // so they come out not «fiable» by themselves). A frame with any bit outside the list above is decoded as far as
@@ -143,10 +146,8 @@ export interface LecturaFnirsi {
   fiable: boolean;
   /** Why it is not «fiable» (a sentence for the diagnostics), or ''. */
   motivo: string;
-  /** HOLD is on in the instrument: its own screen is frozen, while `pantalla` goes on with the live reading. */
+  /** HOLD is on in the instrument: `pantalla` is its frozen screen, not the measurement of this moment. */
   hold: boolean;
-  /** What the instrument's frozen screen shows during HOLD, when it is a number; null otherwise. */
-  retenida: PantallaReal | null;
   /** Alternating voltage only: the frequency the screen shows above the reading, in Hz; null in the rest. */
   frecuencia: number | null;
   /** Milliseconds since the instrument started. */
@@ -184,26 +185,22 @@ function unidadDeTrama(t: ArrayLike<number>): { unidad: UnidadReal; prefijo: Pan
 const CUENTAS_MAXIMAS = 19999;
 
 /**
- * The number the instrument's screen keeps during HOLD, from the firmware's state (`e`: its 40 bytes). Null when
- * it is not a plain number of a known unit: an overload, a blank display, or a value that does not fit the display.
+ * What the instrument's screen keeps during HOLD, from the firmware's state (`e`: its 40 bytes): a number or an
+ * overload, in a known unit. Null for anything else (a blank display, «Auto», a value that does not fit the
+ * display): the app cannot tell what the screen shows then.
  */
 function pantallaRetenida(e: ArrayLike<number>, ac: boolean): PantallaReal | null {
   const firmware = UNIDAD_FIRMWARE[e[16] ?? 0xff];
+  const situacion = e[13] ?? 0xff;
+  if (!firmware || (situacion !== 0 && situacion !== 2)) return null;
+  const comun = { unidad: firmware.unidad, prefijo: firmware.prefijo, ac, dc: !ac && (firmware.unidad === 'V' || firmware.unidad === 'A') };
+  if (situacion === 2) return { ...comun, texto: '0L', valor: null, ol: true, decimales: 0 };
   const decimales = e[12] ?? 0xff;
-  if (!firmware || (e[13] ?? 0xff) !== 0 || decimales > 4) return null;
+  if (decimales > 4) return null;
   const v = new DataView(Uint8Array.from({ length: 4 }, (_, k) => e[8 + k] ?? 0).buffer).getFloat32(0, true);
   if (!Number.isFinite(v) || Math.abs(v) * 10 ** decimales > CUENTAS_MAXIMAS + 0.5) return null;
   const texto = v.toFixed(decimales);
-  return {
-    texto,
-    valor: Number(texto) * ESCALA[firmware.prefijo],
-    unidad: firmware.unidad,
-    prefijo: firmware.prefijo,
-    ac,
-    dc: !ac && (firmware.unidad === 'V' || firmware.unidad === 'A'),
-    ol: false,
-    decimales,
-  };
+  return { ...comun, texto, valor: Number(texto) * ESCALA[firmware.prefijo], ol: false, decimales };
 }
 
 /** Whether `informe` is a multimeter display event (kind 0x90, sub-kind 1, a 5A A5 frame). */
@@ -222,14 +219,14 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
   const trama = unidadDeTrama(t);
   const estado = Array.from({ length: 40 }, (_, k) => informe[24 + k] ?? 0);
   const hold = estado[20] === 1;
-  const esperando = texto === 'Auto';
+  const esperando = !hold && texto === 'Auto';
   const ol = /^\.?0\.?L$/.test(texto);
   const valorMostrado = numero(texto);
   const punto = texto.indexOf('.');
   const decimales = valorMostrado !== null && punto >= 0 ? texto.length - punto - 1 : 0;
   const ac = funcion === 'vac' || funcion === 'maac' || funcion === 'aac';
   const conUnidad = trama.unidad !== '';
-  const pantalla: PantallaReal = {
+  const viva: PantallaReal = {
     texto,
     valor: valorMostrado !== null && conUnidad ? valorMostrado * ESCALA[trama.prefijo] : null,
     unidad: trama.unidad,
@@ -239,8 +236,12 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
     ol,
     decimales,
   };
+  // HOLD: the screen is the frozen state; the frame (the live reading) is not what the instrument shows
+  const retenida = hold ? pantallaRetenida(estado, ac) : null;
+  const pantalla: PantallaReal = hold ? (retenida ?? { texto: '', valor: null, unidad: '', prefijo: '', ac: false, dc: false, ol: false, decimales: 0 }) : viva;
   let motivo = '';
-  if (esperando) motivo = 'El FNIRSI está en Auto y no detecta nada en las puntas.';
+  if (hold) motivo = retenida ? '' : 'El FNIRSI está en HOLD y la aplicación no puede leer lo que tiene congelado en pantalla: quite el HOLD.';
+  else if (esperando) motivo = 'El FNIRSI está en Auto y no detecta nada en las puntas.';
   else if (!/[^-. ]/.test(texto)) motivo = 'La pantalla está en blanco (cambio de función o de escala).';
   else if (texto.includes('?')) motivo = 'La pantalla muestra un símbolo que la aplicación no conoce.';
   else if (trama.raro) motivo = 'La pantalla tiene encendido un indicador que la aplicación todavía no conoce.';
@@ -255,7 +256,6 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
     fiable: motivo === '',
     motivo,
     hold,
-    retenida: hold ? pantallaRetenida(estado, ac) : null,
     frecuencia: funcion === 'vac' ? estado[18]! | (estado[19]! << 8) : null,
     tick: u32(informe, 4),
     crudo: hex(t),

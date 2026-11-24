@@ -211,24 +211,32 @@ test('alterna y capacidad, comprobadas en el aparato el 24-11-2026', () => {
   expect(textoPantalla(u.pantalla)).toBe('1,028 µF');
 });
 
-test('HOLD: la pantalla del aparato se congela y la trama sigue con la lectura en vivo', () => {
+test('HOLD: la lectura es la pantalla congelada del aparato, no la trama que sigue en vivo', () => {
+  // the frame says 0.0003 V; the instrument's screen stays at the -0.0005 V of the moment the key was pressed
   const h = lectura('holdActivo');
-  // the live reading, as good as any other
-  expect([h.funcion, h.pantalla.texto, h.pantalla.unidad, h.fiable, h.hold]).toEqual(['vdc', '0.0003', 'V', true, true]);
-  // what the instrument's own screen keeps showing
-  expect(h.retenida).toEqual({ texto: '-0.0005', valor: -0.0005, unidad: 'V', prefijo: '', ac: false, dc: true, ol: false, decimales: 4 });
-  expect(textoPantalla(h.retenida!)).toBe('−0,0005 V ⎓');
-  // out of HOLD there is nothing held
-  for (const caso of ['pila9V', 'ohm10k', 'capacidadMicro', 'diodoLed', 'acvMano']) expect([caso, lectura(caso).hold, lectura(caso).retenida]).toEqual([caso, false, null]);
-  // a held state that is not a plain number is not shown as one: an overload, a value too big for the display
+  expect(textoTrama(deHex(MULTIMETRO.holdActivo!).slice(8, 20))).toBe('0.0003');
+  expect(h.pantalla).toEqual({ texto: '-0.0005', valor: -0.0005, unidad: 'V', prefijo: '', ac: false, dc: true, ol: false, decimales: 4 });
+  expect(textoPantalla(h.pantalla)).toBe('−0,0005 V ⎓');
+  expect([h.funcion, h.hold, h.fiable, h.motivo, h.esperando]).toEqual(['vdc', true, true, '', false]);
+  // HOLD off again: the frame rules (the firmware's value is mid-update here, and does not matter)
+  const q = lectura('holdQuitado');
+  expect([q.pantalla.texto, q.hold, q.fiable]).toEqual(['-0.0009', false, true]);
+  for (const caso of ['pila9V', 'ohm10k', 'capacidadMicro', 'diodoLed', 'acvMano']) expect([caso, lectura(caso).hold]).toEqual([caso, false]);
+  // a frozen overload
   const informe = deHex(MULTIMETRO.holdActivo!);
   informe[24 + 13] = 2;
-  expect([decodificarMultimetro(informe).hold, decodificarMultimetro(informe).retenida]).toEqual([true, null]);
+  const ol = decodificarMultimetro(informe);
+  expect([ol.pantalla.ol, ol.pantalla.valor, ol.pantalla.unidad, ol.fiable, textoPantalla(ol.pantalla)]).toEqual([true, null, 'V', true, 'OL']);
+  // a frozen state the app cannot read as the screen (a blank display; a value that does not fit it): said, no number
+  informe[24 + 13] = 3;
+  const blanco = decodificarMultimetro(informe);
+  expect([blanco.hold, blanco.fiable, blanco.pantalla.valor, blanco.pantalla.texto]).toEqual([true, false, null, '']);
+  expect(blanco.motivo).toContain('HOLD');
   informe[24 + 13] = 0;
   new DataView(informe.buffer).setFloat32(24 + 8, 3, true);
-  expect(decodificarMultimetro(informe).retenida).toBeNull();
+  expect([decodificarMultimetro(informe).fiable, decodificarMultimetro(informe).pantalla.valor]).toEqual([false, null]);
   new DataView(informe.buffer).setFloat32(24 + 8, 1.5, true);
-  expect(decodificarMultimetro(informe).retenida?.texto).toBe('1.5000');
+  expect([decodificarMultimetro(informe).fiable, decodificarMultimetro(informe).pantalla.texto]).toEqual([true, '1.5000']);
 });
 
 test('la frecuencia que enseña la pantalla en tensión alterna', () => {

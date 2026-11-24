@@ -92,10 +92,10 @@ test('multímetro: la lectura del FNIRSI tal como la muestra su pantalla', async
   await cambiar(page, { eventos: [deHex(MULTIMETRO.capacidadTransicion!)] });
   await expect(page.locator('[data-aviso-fnirsi]')).toContainText('no dan la misma unidad');
   await expect(page.locator('[data-hold-fnirsi]')).toHaveCount(0);
-  // HOLD on the instrument: its screen is frozen, the panel says so and goes on with the live reading
+  // HOLD on the instrument: the panel shows its frozen screen (the frame goes on with 0,0003 V) and says so
   await cambiar(page, { eventos: [deHex(MULTIMETRO.holdActivo!)] });
-  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('0,0003 V ⎓');
-  await expect(page.locator('[data-hold-fnirsi]')).toHaveText('HOLD activo en el FNIRSI: su pantalla está congelada en −0,0005 V ⎓. Aquí sigue la lectura en vivo.');
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('−0,0005 V ⎓');
+  await expect(page.locator('[data-hold-fnirsi]')).toHaveText('HOLD: la pantalla del FNIRSI está congelada, y esta lectura con ella.');
   await expect(page.locator('[data-aviso-fnirsi]')).toHaveCount(0);
   sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (HOLD)');
   // alternating voltage: with the frequency the instrument shows above the reading

@@ -43,12 +43,6 @@
   const trazas = $derived(c.estado === 'conectado' ? c.trazas.filter((t): t is Traza => t !== null) : []);
   /** Alternating voltage: the frequency the instrument shows above the reading. */
   const frecuencia = $derived(lectura && lectura.frecuencia !== null ? ` · ${lectura.frecuencia} Hz` : '');
-  /** HOLD only freezes the instrument's screen: the link, and so this panel, goes on with the live reading. */
-  const hold = $derived(
-    lectura?.hold
-      ? `HOLD activo en el FNIRSI: su pantalla está congelada${lectura.retenida ? ` en ${textoPantalla(lectura.retenida)}` : ''}. Aquí sigue la lectura en vivo.`
-      : '',
-  );
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
   const comparacion = $derived.by(() => {
@@ -103,7 +97,7 @@
         {/if}
       </div>
       {#if !lectura.fiable && !lectura.esperando}<p class="fr-aviso" data-aviso-fnirsi>{lectura.motivo}</p>{/if}
-      {#if lectura.hold}<p class="fr-tenue" data-hold-fnirsi>{hold}</p>{/if}
+      {#if lectura.hold && lectura.fiable}<p class="fr-tenue" data-hold-fnirsi>HOLD: la pantalla del FNIRSI está congelada, y esta lectura con ella.</p>{/if}
       {#if comparacion}<p class="fr-comparacion" data-comparacion-fnirsi>{comparacion}</p>{/if}
     {/if}
     {#if trazas.length}
