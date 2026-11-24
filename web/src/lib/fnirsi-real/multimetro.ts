@@ -16,17 +16,25 @@
 //          low nibble of byte 3+i. Segments: a 0x80, f 0x40, e 0x20, b 0x08, g 0x04, c 0x02, d 0x01; 0x10 is the
 //          decimal point in front of digits 2 to 4.
 //   [2]    low nibble side: 0x10 minus sign, 0x08 a leading «1» (the display is 4½ digits).
-//   [6]    high nibble: 0x40 «k», 0x20 «n».
+//   [6]    high nibble: 0x80 the diode function, 0x40 «k», 0x20 «n», 0x10 «µ».
 //   [7]    0x20 Ω, 0x10 F, 0x08 continuity, 0x04 «M», 0x01 «m».
 //   [8]    0x02 V, 0x01 A, 0x20 °C, 0x80 lowest range (no point bit: the reading is x.xxxx).
-// The firmware state repeats the unit as a code of its own ([24+16]: 1 V, 2 Ω, 3 kΩ, 4 MΩ, 5 capacitance, 9 °C,
+// The firmware state repeats the unit as a code of its own ([24+16]: 1 V, 2 Ω, 3 kΩ, 4 MΩ, 5 nF, 6 µF, 9 °C,
 // 11 mA, 12 A) and the number of decimals ([24+12]). The two come from different places and are compared here: a
 // reading is «fiable» only when the frame's annunciators and the firmware's unit agree, which also weeds out the
 // frame or two around a change of function, when one of them is still the old one.
 //
-// Not established yet (never seen lit, or not checked against the screen): the AC annunciator, the diode function,
-// °F, the capacitance prefixes other than «n», and µ. A frame with any bit outside the list above is decoded as far
-// as it goes and marked not «fiable».
+// A second session on the same unit (2026-11-24) settled what the first left open:
+//   - alternating voltage and current: the frame has no annunciator of its own for them (the bytes are those of
+//     the direct function); what says «alternating» is the function, [20]. Checked with nothing at the probes
+//     (0.0000 V, 0.008 mA, 0.0007 A, as on the screen): the digits are decoded as in any other function.
+//   - capacitance: «n» and «µ» ([6] 0x20 and 0x10) with F, firmware codes 5 and 6. Checked with the probes apart
+//     (0.000 nF) and a capacitor of about 1 µF (1.028 µF while the screen's own MAX said 1.0450uF).
+//   - the diode function lights [6] 0x80; only its «.0L» (probes apart) has been seen, never a forward voltage.
+//
+// Not established yet: a forward voltage in the diode function, °F, and the capacitance ranges beyond nF and µF
+// (the firmware's code for them is not known, so they come out not «fiable» by themselves). A frame with any bit
+// outside the list above is decoded as far as it goes and marked not «fiable».
 
 import type { PantallaReal, UnidadReal } from '../brymen-real/protocolo.ts';
 import { EVT_MULTIMETRO, hex, u32 } from './protocolo.ts';
@@ -57,6 +65,7 @@ const UNIDAD_FIRMWARE: Record<number, { unidad: UnidadReal; prefijo: PantallaRea
   3: { unidad: 'Ω', prefijo: 'k' },
   4: { unidad: 'Ω', prefijo: 'M' },
   5: { unidad: 'F', prefijo: 'n' },
+  6: { unidad: 'F', prefijo: 'µ' },
   9: { unidad: '°C', prefijo: '' },
   11: { unidad: 'A', prefijo: 'm' },
   12: { unidad: 'A', prefijo: '' },
@@ -126,7 +135,7 @@ export interface LecturaFnirsi {
   crudo: string;
 }
 
-const B6_CONOCIDOS = 0x40 | 0x20;
+const B6_CONOCIDOS = 0x80 | 0x40 | 0x20 | 0x10;
 const B7_CONOCIDOS = 0x20 | 0x10 | 0x08 | 0x04 | 0x01;
 const B8_CONOCIDOS = 0x80 | 0x20 | 0x02 | 0x01;
 
@@ -145,6 +154,7 @@ function unidadDeTrama(t: ArrayLike<number>): { unidad: UnidadReal; prefijo: Pan
   let prefijo: PantallaReal['prefijo'] = '';
   if (b6 & 0x40) prefijo = 'k';
   else if (b6 & 0x20) prefijo = 'n';
+  else if (b6 & 0x10) prefijo = 'µ';
   else if (b7 & 0x04) prefijo = 'M';
   else if (b7 & 0x01) prefijo = 'm';
   return { unidad, prefijo, continuidad: (b7 & 0x08) !== 0, raro };
@@ -189,10 +199,8 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
   else if (!conUnidad) motivo = 'La trama no indica la unidad.';
   else if (!firmware) motivo = `El firmware da una unidad que la aplicación todavía no conoce (código ${codigo}).`;
   else if (firmware.unidad !== trama.unidad || firmware.prefijo !== trama.prefijo) motivo = 'La pantalla y el firmware no dan la misma unidad: el FNIRSI está cambiando de función o de escala.';
-  else if (ac) motivo = 'Las medidas en alterna del FNIRSI todavía no están comprobadas en la aplicación.';
-  // 1.4: (listed above as not established, but it passed: a diode reading decodes as volts like any voltage)
+  // (a forward voltage in the diode function has never been seen on the real unit: it would decode as volts)
   else if (funcion === 'diodo') motivo = 'La función de diodo del FNIRSI todavía no está comprobada en la aplicación.';
-  else if (trama.unidad === 'F') motivo = 'La unidad de capacidad del FNIRSI todavía no está comprobada en la aplicación.';
   return {
     pantalla,
     funcion,

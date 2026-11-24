@@ -4,7 +4,7 @@
 // No browser nor server:
 //   EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.fnirsi-real.config.ts tests/fnirsi-real-registro-unidad.spec.ts
 import { test, expect } from '@playwright/test';
-import { construirPaquete, decodificar, type LecturaReal, type Simulacion } from '../src/lib/brymen-real/protocolo.ts';
+import { construirPaquete, decodificar, type LecturaReal, type PantallaReal, type Simulacion } from '../src/lib/brymen-real/protocolo.ts';
 import { decodificarMultimetro, type LecturaFnirsi } from '../src/lib/fnirsi-real/multimetro.ts';
 import { comparar, csvComparaciones, exactitudFnirsi, medidaBrymen, medidaFnirsi, noComparables, porcentaje, seFalseanJuntos } from '../src/lib/registro-real/comparar.ts';
 import { MAXIMO_FILAS, NucleoRegistro, type Fuentes } from '../src/lib/registro-real/nucleo.ts';
@@ -47,7 +47,7 @@ test('una pantalla como muestra: valor en SI, texto como lo enseña el instrumen
   const ol = muestraDe(fnirsi('ohmOL').pantalla, 1000);
   expect([ol.valor, ol.magnitud]).toEqual([null, 'Ω']);
   // a reading the app does not trust keeps its text only
-  const cap = fnirsi('capacidadCero');
+  const cap = fnirsi('capacidadTransicion');
   expect(cap.fiable).toBe(false);
   expect(muestraDe(cap.pantalla, 1000, cap.fiable).valor).toBeNull();
   // «Auto» has no unit: no magnitude
@@ -60,7 +60,8 @@ test('una pantalla como muestra: valor en SI, texto como lo enseña el instrumen
 test('la serie lleva mínimo, máximo, media y desviación del último tramo', () => {
   const s = new Serie();
   expect(s.estadisticas()).toBeNull();
-  for (const [k, v] of ['9.000', '9.100', '9.200', '9.300'].entries()) expect(s.anadir(voltios(v, 1000 + k * 300))).toBe(true);
+  // (the figures run one reading behind the display: the fifth brings the fourth in)
+  for (const [k, v] of ['9.000', '9.100', '9.200', '9.300', '9.150'].entries()) expect(s.anadir(voltios(v, 1000 + k * 300))).toBe(true);
   const e = s.estadisticas()!;
   expect(e.n).toBe(4);
   expect(e.min).toBeCloseTo(9.0, 9);
@@ -72,17 +73,21 @@ test('la serie lleva mínimo, máximo, media y desviación del último tramo', (
   // the figures as the instrument writes its readings: its decimals, one more for the mean
   expect([cifra(e.min, e), cifra(e.max, e), cifra(e.media, e, 1)]).toEqual(['9,000 V', '9,300 V', '9,1500 V']);
   // a blank display belongs to the same «tramo» and does not count
-  s.anadir(muestraDe(fnirsi('vdcEnBlanco').pantalla, 2200, false));
+  s.anadir(muestraDe(fnirsi('vdcEnBlanco').pantalla, 2500, false));
   expect(s.estadisticas()!.n).toBe(4);
   // another magnitude starts a new «tramo»: the figures start again, the samples stay for the file
-  s.anadir(muestraDe(fnirsi('ohm10k').pantalla, 2500));
+  s.anadir(muestraDe(fnirsi('ohm10k').pantalla, 2800));
+  s.anadir(muestraDe(fnirsi('ohm10k').pantalla, 2965));
+  // (two numbers in a row are not yet a measurement)
+  expect(s.estadisticas()).toBeNull();
+  s.anadir(muestraDe(fnirsi('ohm10k').pantalla, 3130));
   const o = s.estadisticas()!;
-  expect([o.n, o.magnitud]).toEqual([1, 'Ω']);
+  expect([o.n, o.magnitud]).toEqual([2, 'Ω']);
+  expect(o.desviacion).toBe(0);
   expect([cifra(o.min, o), cifra(o.media, o, 1)]).toEqual(['9,831 kΩ', '9,8310 kΩ']);
   expect(cifra(-0.000006, { unidad: 'A', prefijo: 'm', decimales: 3 })).toBe('−0,006 mA');
   expect(cifra(-1e-9, { unidad: 'A', prefijo: 'm', decimales: 3 })).toBe('0,000 mA');
-  expect(o.desviacion).toBe(0);
-  expect(s.muestras.length).toBe(6);
+  expect(s.muestras.length).toBe(9);
   s.borrar();
   expect(s.muestras.length).toBe(0);
   expect(s.estadisticas()).toBeNull();
@@ -99,25 +104,125 @@ test('la media de muchas lecturas iguales con un valor grande no pierde cifras',
 
 test('el dibujo: una lectura sin número o una pausa cortan la línea, y un registro largo se adelgaza sin perder los picos', () => {
   const s = new Serie();
-  s.anadir(voltios('1.000', 0));
-  s.anadir(voltios('2.000', 1));
-  s.anadir(muestraDe(brymen({ principal: '0L', unidad: 'V', dc: true }).principal, 2));
-  s.anadir(voltios('3.000', 3));
+  let t = 0;
+  for (const v of ['1.000', '2.000', '3.000', '3.500']) s.anadir(voltios(v, t++));
+  s.anadir(muestraDe(brymen({ principal: '0L', unidad: 'V', dc: true }).principal, t++));
+  for (const v of ['4.000', '5.000']) s.anadir(voltios(v, t++));
   s.cortar();
-  s.anadir(voltios('4.000', 4));
-  expect(s.trazos().map((t) => t.map((p) => p.v))).toEqual([[1, 2], [3], [4]]);
+  for (const v of ['6.000', '7.000', '8.000']) s.anadir(voltios(v, t++));
+  // 3,500 was the last number before OL (not drawn); 8,000 still waits for what comes after it
+  expect(s.trazos().map((x) => x.map((p) => p.v))).toEqual([[1, 2, 3], [4, 5], [6, 7]]);
 
   const largo = new Serie();
   for (let k = 0; k < 20_000; k++) largo.anadir(voltios(k === 12_345 ? '9.999' : k === 3210 ? '-9.999' : '1.000', k));
-  const t = largo.trazos(600);
-  expect(t.length).toBe(1);
-  expect(t[0]!.length).toBeLessThanOrEqual(600);
-  expect(t[0]!.length).toBeGreaterThan(100);
-  const vs = t[0]!.map((p) => p.v);
+  const tr = largo.trazos(600);
+  expect(tr.length).toBe(1);
+  expect(tr[0]!.length).toBeLessThanOrEqual(600);
+  expect(tr[0]!.length).toBeGreaterThan(100);
+  // a spike in the middle of a run of readings is a reading like the others: kept by the thinning
+  const vs = tr[0]!.map((p) => p.v);
   expect(Math.max(...vs)).toBeCloseTo(9.999, 6);
   expect(Math.min(...vs)).toBeCloseTo(-9.999, 6);
   // in time order
-  for (let k = 1; k < t[0]!.length; k++) expect(t[0]![k]!.t).toBeGreaterThan(t[0]![k - 1]!.t);
+  for (let k = 1; k < tr[0]!.length; k++) expect(tr[0]![k]!.t).toBeGreaterThan(tr[0]![k - 1]!.t);
+});
+
+/** A display built by hand (what the decoders hand over for displays the packets of the tests cannot make). */
+function pantalla(texto: string, valor: number | null, prefijo: PantallaReal['prefijo'], unidad: PantallaReal['unidad'] = 'Ω', ol = false): PantallaReal {
+  const decimales = texto.includes('.') ? texto.length - texto.indexOf('.') - 1 : 0;
+  return { texto, valor, unidad, prefijo, ac: false, dc: false, ol, decimales };
+}
+
+test('las lecturas de paso (al poner o quitar las puntas, o buscando escala) quedan en el registro pero no en las cifras', () => {
+  // what the real Brymen recorded on 24-11-2026 around a 5,07 kΩ resistor
+  const s = new Serie();
+  let t = 0;
+  const dar = (p: PantallaReal, veces = 1) => {
+    for (let k = 0; k < veces; k++) s.anadir(muestraDe(p, (t += 400)));
+  };
+  const OL = pantalla('0L', null, 'M', 'Ω', true);
+  // the probes go on: one number on the way
+  dar(OL, 2);
+  dar(pantalla('29.252', 29_252_000, 'M'));
+  dar(pantalla('.', null, 'k'));
+  expect([s.estadisticas(), s.lecturasDePaso]).toEqual([null, 1]);
+  // the measurement, and the probes come off: the last number is not of the resistor
+  dar(pantalla('05.070', 5070, 'k'), 4);
+  dar(pantalla('05.069', 5069, 'k'), 3);
+  dar(pantalla('05.548', 5548, 'k'));
+  dar(OL, 2);
+  let e = s.estadisticas()!;
+  expect([e.n, e.min, e.max, e.dePaso]).toEqual([7, 5069, 5070, 2]);
+  // a probe not making good contact: pairs of numbers between blank displays, and single good ones
+  dar(pantalla('06.091', 6_091_000, 'M'));
+  dar(pantalla('24.744', 24_744_000, 'M'));
+  dar(OL);
+  dar(pantalla('--.---', null, 'M'), 2);
+  dar(pantalla('05.069', 5069, 'k'));
+  dar(pantalla('.', null, 'k'));
+  e = s.estadisticas()!;
+  expect([e.n, e.min, e.max, e.dePaso]).toEqual([7, 5069, 5070, 5]);
+  // good contact again
+  dar(pantalla('05.069', 5069, 'k'), 5);
+  e = s.estadisticas()!;
+  expect([e.n, e.min, e.max, e.dePaso]).toEqual([11, 5069, 5070, 5]);
+  expect(e.media).toBeCloseTo((4 * 5070 + 7 * 5069) / 11, 9);
+  expect(s.trazos().map((x) => x.map((p) => p.v))).toEqual([[5070, 5070, 5070, 5070, 5069, 5069, 5069], [5069, 5069, 5069, 5069]]);
+  // nothing is thrown away: the file has every one of them, as a number
+  expect(s.muestras.length).toBe(26);
+  expect(csvRegistro({ brymen: s.muestras }, 0).split('\r\n')[3]).toBe(`Brymen BM869s;${horaLocal(1200)};1,2;29252000;Ω;;29,252 MΩ;sí`);
+
+  // a signal that moves into another range is not a probe coming off: the last number of the old range counts
+  const mueve = new Serie();
+  for (const v of ['9.000', '9.100', '9.200', '9.20', '9.21', '9.22']) mueve.anadir(voltios(v, (t += 400)));
+  const m = mueve.estadisticas()!;
+  expect([m.n, m.dePaso]).toEqual([5, 0]);
+  expect(m.max).toBeCloseTo(9.21, 9);
+  // a range that lasts less than three readings, between two that last, is «de paso»
+  const salto = new Serie();
+  for (const v of ['9.000', '9.100', '9.200', '9.20', '9.21', '9.300', '9.400', '9.500', '9.600']) salto.anadir(voltios(v, (t += 400)));
+  const z = salto.estadisticas()!;
+  expect([z.n, z.dePaso]).toEqual([6, 2]);
+});
+
+test('una pantalla sin número se escribe con una raya y su unidad, no con sus signos sueltos', () => {
+  expect(muestraDe(pantalla('.', null, 'k'), 0).texto).toBe('— kΩ');
+  expect(muestraDe(pantalla('--.---', null, 'M'), 0).texto).toBe('— MΩ');
+  expect(muestraDe(pantalla('', null, 'k'), 0).texto).toBe('— kΩ');
+  expect(muestraDe(pantalla('', null, '', ''), 0).texto).toBe('—');
+  expect(muestraDe(fnirsi('vdcEnBlanco').pantalla, 0, false).texto).toBe('— V');
+  // what does say something stays as it is
+  expect(muestraDe(pantalla('0L', null, 'M', 'Ω', true), 0).texto).toBe('OL');
+  expect(muestraDe(pantalla('diod', null, '', 'V'), 0).texto).toBe('diod V');
+  expect(muestraDe(pantalla('05.070', 5070, 'k'), 0).texto).toBe('05,070 kΩ');
+});
+
+test('reiniciar las cifras: cuentan desde ese momento y el registro lo conserva todo', () => {
+  const s = new Serie();
+  for (const [k, v] of ['9.000', '9.100', '9.200', '5.000', '5.010', '5.020', '5.030'].entries()) {
+    if (k === 3) s.reiniciar();
+    s.anadir(voltios(v, k * 300));
+  }
+  const e = s.estadisticas()!;
+  expect([e.n, e.magnitud]).toEqual([3, 'V ⎓']);
+  expect([e.min, e.max]).toEqual([5, 5.02]);
+  expect(e.desde).toBe(900);
+  expect(s.trazos().map((x) => x.map((p) => p.v))).toEqual([[5, 5.01, 5.02]]);
+  expect(s.muestras.length).toBe(7);
+
+  // through the bookkeeping, for both instruments at once
+  const { x, f } = fuentes();
+  const n = new NucleoRegistro();
+  n.iniciar(0);
+  for (let k = 1; k <= 5; k++) {
+    x.fnirsi = { lectura: fnirsi('pila9V'), hora: k * 165 };
+    x.brymen = { lectura: brymen({ principal: '9.213', unidad: 'V', dc: true }), hora: k * 165 };
+    n.paso(f, k * 165);
+  }
+  expect([n.series.fnirsi.estadisticas()!.n, n.series.brymen.estadisticas()!.n]).toEqual([4, 4]);
+  n.reiniciarCifras();
+  expect([n.series.fnirsi.estadisticas(), n.series.brymen.estadisticas(), n.muestras]).toEqual([null, null, 10]);
+  expect(n.grabando).toBe(true);
 });
 
 test('la serie se llena y no descarta nada para hacer sitio', () => {
@@ -321,9 +426,11 @@ test('el registro toma cada lectura una sola vez y solo mientras se registra', (
   x.fnirsi = { lectura: fnirsi('pila9V'), hora: 8990 };
   n.paso(f, 9020);
   expect(n.series.fnirsi.muestras.length).toBe(5);
-  x.fnirsi = { lectura: fnirsi('pila9V'), hora: 9100 };
-  n.paso(f, 9100);
-  expect(n.series.fnirsi.muestras.length).toBe(6);
+  for (const hora of [9100, 9265]) {
+    x.fnirsi = { lectura: fnirsi('pila9V'), hora };
+    n.paso(f, hora);
+  }
+  expect(n.series.fnirsi.muestras.length).toBe(7);
   expect(n.series.fnirsi.trazos().length).toBe(2);
   n.borrar();
   expect([n.muestras, n.grabando]).toEqual([0, false]);
@@ -395,9 +502,15 @@ test('comparación en vivo, retenida (resistencia, un instrumento después del o
   expect(n.comparacion()).toContain('ponga los dos en la misma función');
   expect(n.anotar(t)).toBeNull();
   // the FNIRSI on a reading the app does not trust: no comparison, and the reason
-  dar({ principal: '100.32', unidad: 'µF' }, 'capacidadCero');
+  dar({ principal: '1.0300', unidad: 'µF' }, 'capacidadTransicion');
   expect(n.comparacion()).toBeNull();
-  expect(n.motivo('fnirsi')).toContain('capacidad');
+  expect(n.motivo('fnirsi')).toContain('no dan la misma unidad');
+  // capacitance, once the display and the firmware agree: compared like anything else (a capacitor of about 1 µF)
+  dar({ principal: '1.0300', unidad: 'µF' }, 'capacidadMicro');
+  const cap = n.comparacion() as { diferencia: number; veredicto: string; margen: number | null };
+  expect(cap.diferencia).toBeCloseTo(-2e-9, 15);
+  expect(n.medida('fnirsi')!.escala).toBe('10 µF');
+  expect(['dentro', 'fuera']).toContain(cap.veredicto);
   // out of range
   dar({ principal: '9.8312', unidad: 'kΩ' }, 'ohmOL');
   expect(n.motivo('fnirsi')).toContain('no muestra un número');

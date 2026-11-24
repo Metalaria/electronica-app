@@ -51,11 +51,11 @@ test('como medidor: solo una lectura fiable, en la unidad que pide la medida', (
   expect(pila.fiable).toBe(true);
   const t = tomarFnirsi(conectado(pila), 'V');
   expect('pantalla' in t && t.pantalla.valor).toBeCloseTo(9.201, 6);
-  // another unit, OL, Auto with nothing at the probes, a capacitance (not checked), the oscilloscope, disconnected
+  // another unit, OL, Auto with nothing at the probes, a reading that is not reliable, the oscilloscope, disconnected
   expect(tomarFnirsi(conectado(pila), 'Ω')).toEqual({ aviso: expect.stringContaining('en V y esta medida va en Ω') });
   expect(tomarFnirsi(conectado(lectura('ohmOL')), 'Ω')).toEqual({ aviso: expect.stringContaining('OL') });
   expect(tomarFnirsi(conectado(lectura('autoEsperando')), 'V')).toEqual({ aviso: expect.stringContaining('Auto') });
-  expect(tomarFnirsi(conectado(lectura('capacidadCero')), 'F')).toEqual({ aviso: expect.stringContaining('capacidad') });
+  expect(tomarFnirsi(conectado(lectura('capacidadTransicion')), 'F')).toEqual({ aviso: expect.stringContaining('no dan la misma unidad') });
   expect(tomarFnirsi(conectado(pila, 'osciloscopio'), 'V')).toEqual({ aviso: expect.stringContaining('póngalo en multímetro') });
   expect(tomarFnirsi({ ...conectado(pila), estado: 'reconectando' }, 'V')).toEqual({ aviso: 'Su FNIRSI no está conectado.' });
   expect(tomarFnirsi(conectado(null), 'V')).toEqual({ aviso: expect.stringContaining('todavía no ha enviado') });

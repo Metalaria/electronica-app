@@ -36,6 +36,8 @@
   interface VistaSerie {
     i: InstrumentoReal;
     lecturas: number;
+    /** Numbers left out of the figures (readings «de paso»). */
+    dePaso: number;
     e: Estadisticas | null;
     lineas: string[];
     puntos: Punto[];
@@ -60,7 +62,7 @@
     void r.version;
     return INSTRUMENTOS.filter((i) => n.series[i].muestras.length > 0).map((i) => {
       const e = n.series[i].estadisticas();
-      return { i, lecturas: n.series[i].muestras.length, e, ...(e ? dibujar(n.series[i].trazos(), e) : { lineas: [], puntos: [] }) };
+      return { i, lecturas: n.series[i].muestras.length, dePaso: n.series[i].lecturasDePaso, e, ...(e ? dibujar(n.series[i].trazos(), e) : { lineas: [], puntos: [] }) };
     });
   });
 
@@ -157,6 +159,12 @@
     aviso = '';
     r.borrar();
   }
+
+  function reiniciarCifras() {
+    r.reiniciarCifras();
+    avisoError = false;
+    aviso = 'Las cifras y las gráficas cuentan desde ahora. El registro conserva todas las lecturas.';
+  }
 </script>
 
 {#if disponible}
@@ -172,6 +180,9 @@
         <button type="button" class="boton primario pequeno" onclick={iniciar} disabled={estado.lleno || (!estado.hayInstrumento && !estado.lecturas)} data-iniciar-registro>
           {estado.lecturas ? 'Seguir registrando' : 'Iniciar registro'}
         </button>
+      {/if}
+      {#if estado.lecturas}
+        <button type="button" class="boton pequeno" onclick={reiniciarCifras} data-reiniciar-cifras>Reiniciar cifras</button>
       {/if}
       {#if estado.lecturas && !estado.grabando}
         <button type="button" class="boton pequeno" onclick={() => void guardar('registro-instrumentos', csvRegistro({ brymen: n.series.brymen.muestras, fnirsi: n.series.fnirsi.muestras }, n.inicio))} data-guardar-registro>
@@ -216,6 +227,12 @@
           </dl>
         {:else}
           <p class="rr-tenue">Todavía sin ninguna lectura con número.</p>
+        {/if}
+        {#if s.dePaso}
+          <p class="rr-tenue" data-de-paso-registro={s.dePaso}>
+            {s.dePaso === 1 ? 'No cuenta 1 lectura de paso' : `No cuentan ${s.dePaso} lecturas de paso`} (al poner o quitar las puntas, o mientras el instrumento busca escala).
+            {s.dePaso === 1 ? 'Sigue' : 'Siguen'} en el fichero.
+          </p>
         {/if}
       </div>
     {/each}
