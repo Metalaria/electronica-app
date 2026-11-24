@@ -63,7 +63,9 @@ export class NucleoRegistro {
     if (!n) cambio = this.sinLectura('fnirsi') || cambio;
     else if (n.hora !== this.vista.fnirsi) {
       this.fnirsi = n.lectura;
-      this.tomar('fnirsi', muestraDe(n.lectura.pantalla, n.hora, n.lectura.fiable, n.lectura.esperando ? 'Auto' : undefined), n.hora);
+      const m = muestraDe(n.lectura.pantalla, n.hora, n.lectura.fiable, n.lectura.esperando ? 'Auto' : undefined);
+      if (n.lectura.hold && n.lectura.fiable) m.texto = `${m.texto} (HOLD)`;
+      this.tomar('fnirsi', m, n.hora);
       cambio = true;
     }
     return cambio;
@@ -111,7 +113,7 @@ export class NucleoRegistro {
     const m = estable(this.recientes[i]);
     if (!m) return null;
     if (i === 'brymen') return this.brymen && !modosBrymen(this.brymen).length ? medidaBrymen(this.brymen, m) : null;
-    return this.fnirsi ? medidaFnirsi(this.fnirsi, m) : null;
+    return this.fnirsi && !this.fnirsi.hold ? medidaFnirsi(this.fnirsi, m) : null;
   }
 
   /** Why the instrument has no settled reading to compare (a sentence), or ''. */
@@ -122,6 +124,7 @@ export class NucleoRegistro {
       const modos = modosBrymen(this.brymen);
       if (modos.length) return `El Brymen está en ${modos.join(', ')}: su pantalla no es la medida de este momento. Quite ese modo para comparar.`;
     }
+    if (i === 'fnirsi' && this.fnirsi?.hold && this.fnirsi.fiable) return 'El FNIRSI está en HOLD: su pantalla no es la medida de este momento. Quite el HOLD para comparar.';
     if (i === 'fnirsi' && this.fnirsi && !this.fnirsi.fiable) return this.fnirsi.motivo || 'El FNIRSI no muestra un número que se pueda usar.';
     const r = this.recientes[i];
     if (r.length && r[r.length - 1]!.valor === null) return 'La pantalla no muestra un número (fuera de escala o sin medida).';
