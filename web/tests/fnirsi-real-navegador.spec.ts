@@ -42,6 +42,7 @@ interface Falso {
   suscripciones?: number[];
   memoria?: Record<string, number[]>;
   lecturas?: number[];
+  comoNativo?: boolean;
 }
 
 /** The fake link, installed before the page loads (the transport is chosen once, at start). */
@@ -237,6 +238,38 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('está en STOP', { timeout: 10_000 });
   const f = await falso(page);
   expect(new Set(f.lecturas)).toEqual(new Set([0x20000f50, 0x200000f8, 0x20000208]));
+});
+
+test('1.4.3: en la aplicación instalada, sin el flujo de estado, no se lee la memoria y la conexión sigue sin reconectar', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  // the plugin of the installed app refuses the memory read: before 1.4.3 that was taken for a lost link
+  const memoria = { '20000f50': bytes(MEMORIA.generadorSierra), '200000f8': bytes(MEMORIA.osciloscopioEnMarcha), '20000208': bytes(MEMORIA.medidasTriangulo) };
+  await conEnlace(page, { modo: 2, parche: 2, comoNativo: true, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  await expect(page.locator('[data-trazas-fnirsi]')).toHaveAttribute('data-trazas-fnirsi', '1');
+  await page.waitForTimeout(3000);
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  const f = await falso(page);
+  expect(f.aperturas).toBe(1);
+  expect(f.lecturas ?? []).toEqual([]);
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveCount(0);
+  await expect(page.locator('[data-enlace-fnirsi]')).toContainText('no llegan por esta vía: hace falta el parche 3 del enlace');
+});
+
+test('1.4.3: en la aplicación instalada, con el flujo de estado (parche 3), el generador llega igual', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 3, comoNativo: true, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Cuadrada (Square Wave) · 15,00 kHz · ciclo 50 % · 3,0 V');
+  expect((await falso(page)).lecturas ?? []).toEqual([]);
 });
 
 test('un enlace con el flujo de estado (parche 3) lo envía él: lo mismo en pantalla sin preguntarle nada', async ({ page }) => {

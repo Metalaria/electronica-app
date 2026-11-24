@@ -112,7 +112,8 @@ export class ConexionFnirsi {
   private consultas = new Map<number, { direccion: number; largo: number; hasta: number }>();
   private proximaConsulta = 0;
   /** The link refused a read: it is not asked again in this session. */
-  private sinLectura = false;
+  /** The link's memory is not read in this session (the link refused it, or the installed app's plugin never lets it through). */
+  sinLectura = $state(false);
   /** The session is subscribed to the status stream, and when its last block arrived (or the session started). */
   private conEstado = false;
   private horaEstado = 0;
@@ -230,6 +231,14 @@ export class ConexionFnirsi {
     const ahora = Date.now();
     if (this.conEstado && ahora - this.horaEstado <= ESTADO_CALLADO_MS) return;
     if (this.sinLectura || ahora < this.proximaConsulta || (this.modo !== 'osciloscopio' && this.modo !== 'generador')) return;
+    // 1.4.3: the installed app's USB plugin lets through only the link's identification and subscription
+    // (src-tauri/plugins/fnirsi, informe_de: the link stays read-only there). A memory read would fail there, be
+    // taken for a lost link and reconnect every 0.4 s; through the plugin these values come only with the status
+    // stream (patch 3 of the link).
+    if (this.t!.tipo === 'nativo') {
+      this.sinLectura = true;
+      return;
+    }
     this.proximaConsulta = ahora + CONSULTA_MS;
     for (const [sec, c] of this.consultas) if (c.hasta < ahora) this.consultas.delete(sec);
     // (answers still on their way: this round is skipped rather than piling questions up)

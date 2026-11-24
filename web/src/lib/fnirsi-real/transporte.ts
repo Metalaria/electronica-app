@@ -74,6 +74,11 @@ export interface EnlaceFalso {
   memoria?: Record<string, number[]>;
   /** Addresses read so far (the test reads them). */
   lecturas?: number[];
+  /**
+   * 1.4.3: behaves as the installed app's USB plugin does (src-tauri/plugins/fnirsi, informe_de): its type is
+   * 'nativo' and any request but the identification and the subscription fails with the plugin's sentence.
+   */
+  comoNativo?: boolean;
 }
 
 declare global {
@@ -242,7 +247,9 @@ class WebHid implements TransporteFnirsi {
 
 /** The fake link: answers the requests as the real one does and hands out the scripted events. */
 export class Falso implements TransporteFnirsi {
-  readonly tipo = 'falso' as const;
+  get tipo(): 'nativo' | 'falso' {
+    return this.c.comoNativo ? 'nativo' : 'falso';
+  }
   private pendientes: Uint8Array[] = [];
   private k = 0;
   private flujo = 0;
@@ -286,6 +293,8 @@ export class Falso implements TransporteFnirsi {
   }
   async enviar(informe: Uint8Array): Promise<void> {
     if (this.c.desenchufado) throw new Error(this.c.desenchufado);
+    if (this.c.comoNativo && informe[0] !== ORDEN_INFO && informe[0] !== ORDEN_SUSCRIBIR)
+      throw new Error('La aplicación solo envía al FNIRSI las órdenes de identificación y de suscripción.');
     const r = new Uint8Array(INFORME);
     r[0] = (informe[0] ?? 0) | 0x80;
     r[1] = informe[1] ?? 0;
