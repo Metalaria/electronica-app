@@ -1,0 +1,194 @@
+# «Consolas por dentro» · GameCube 7: averías típicas, todas de ConsoleArtisan (hechos externos del manifiesto) y de
+# los datos de la consola. La búsqueda con el multímetro no usa redes (no hay esquema): mide en los puertos de mando
+# las tensiones que dan las fuentes (5 V en la patilla 1, 3,43 V en la 6) para separar el fusible común de las
+# soldaduras de un puerto. Fuentes: gamecube#n.
+leccion: consola-gamecube/gamecube-averias
+
+libro:
+  "gamecube#10": "Los puertos llevan 5 V para la vibración y 3,43 V para la lógica"
+  "gamecube#16": "Si no hay imagen con un cable bueno y adecuado a la región, la avería está aquí o en Flipper"
+  "gamecube#27": "la imagen sale con nieve o con ondas"
+  "gamecube#64": "los cuatro comparten un fusible rearmable (PPTC)"
+  "gamecube#65": "mata la consola y casi nunca tiene arreglo"
+  "gamecube#73": "Limpiar, ajustar, cambiar condensadores y, por último, cambiar el lector"
+  "gamecube#74": "suele ser el ventilador parado o la pasta térmica seca de Flipper y el Gekko"
+  "gamecube#75": "Si falla uno solo, son las soldaduras o el conector de ese puerto"
+  "gamecube#76": "El codificador analógico U6 es una avería de placa"
+  "gamecube#77": "condensadores electrolíticos envejecidos de la placa base o de la tarjeta CC-CC"
+
+modelo:
+  valores:
+    V_v: { sim: "V_{vibración}", nombre: "tensión de la patilla 1", unidad: V, valor: 5 }
+    V_l: { sim: "V_{lógica}", nombre: "tensión de la patilla 6", unidad: V, valor: 3.43 }
+    fu: { tipo: interruptor, nombre: "fusible común sano", valor: 1 }
+    so: { tipo: interruptor, nombre: "soldaduras del puerto 1 sanas", valor: 1 }
+  calculos:
+    V_11: { expr: "V_v*fu*so", sim: "V_{1,1}", nombre: "puerto 1, patilla 1", unidad: V, cifras: 3 }
+    V_16: { expr: "V_l*fu*so", sim: "V_{1,6}", nombre: "puerto 1, patilla 6", unidad: V, cifras: 3 }
+    V_21: { expr: "V_v*fu", sim: "V_{2,1}", nombre: "puerto 2, patilla 1", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-averias
+    tipo: explorar
+    titulo: "Dónde suelen estar"
+    texto: "Toque las piezas de las averías más comunes y lea qué falla en cada una."
+    libro: ["gamecube#10", "gamecube#74", "gamecube#77"]
+    requiere: { mover: [mandos, flipper] }
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [560, 0, 900, 1100]
+      ampliar: 1.8
+      zonas:
+        - { id: mandos, hotspot: mandos, rotulo: "Conector de los mandos (P3)", texto: "Los cuatro puertos comparten un fusible rearmable." }
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper", texto: "Si la pasta térmica se seca, la consola se apaga a los minutos." }
+        - { id: gekko, hotspot: gekko, rotulo: "Gekko", texto: "Comparte disipador y pasta térmica con Flipper." }
+        - { id: dvd, hotspot: dvd, rotulo: "Unidad de discos (P9)", texto: "Errores de lectura: lente, láser, condensadores." }
+
+  - id: averia-mandos
+    tipo: averia
+    titulo: "El mando no responde"
+    texto: "El mando del puerto 1 no responde. Mida y señale: el fusible común de los puertos o las soldaduras del puerto 1."
+    libro: ["gamecube#64", "gamecube#75", "gamecube#10"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [1200, 420, 400, 330]
+      zonas:
+        - { id: mandos, hotspot: mandos, rotulo: "Conector de la placa de los mandos" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: fusible, rotulo: "Fusible común de los puertos" }
+        - { id: soldaduras, rotulo: "Soldaduras del puerto 1" }
+      sondas:
+        - { id: p11, rotulo: "Puerto 1, patilla 1", valor: V_11 }
+        - { id: p21, rotulo: "Puerto 2, patilla 1", valor: V_21 }
+        - { id: p16, rotulo: "Puerto 1, patilla 6", valor: V_16 }
+      fallos:
+        - { id: fusible-abierto, pieza: fusible, tipo: abierta, con: { fu: 0 }, texto: "El fusible común está abierto: ningún puerto tiene tensión. Déjelo enfriar y pruebe con los puertos vacíos." }
+        - { id: soldadura-p1, pieza: soldaduras, tipo: abierta, con: { so: 0 }, texto: "El puerto 2 tiene sus 5 V y el 1 no: son las soldaduras o el conector del puerto 1." }
+    exito: "Comparar un puerto con otro separa lo común de lo propio de un puerto."
+    escalera:
+      - "Mida la patilla 1 de los dos puertos: si los dos están a 0 V, es lo que comparten."
+    solucion: "Puerto 2 a 0 V: el fusible común. Puerto 2 a 5 V y puerto 1 a 0 V: las soldaduras del puerto 1."
+    comprobar:
+      - { V_11: 5, V_16: 3.43, V_21: 5 }
+
+  - id: toque-nieve
+    tipo: tocar
+    titulo: "Imagen con nieve"
+    texto: "La imagen sale con nieve y ondas. Toque las piezas que suelen tener la culpa."
+    libro: ["gamecube#77", "gamecube#27"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: cc-cc }
+      recorte: [140, 130, 1320, 1060]
+      ampliar: 1.8
+      zonas:
+        - { id: electroliticos, hotspot: electroliticos, rotulo: "Cilindros metálicos, abajo" }
+        - { id: bobinas, hotspot: bobinas, rotulo: "Bobinas y toroides" }
+        - { id: conmutados, hotspot: conmutados, rotulo: "Chips de arriba" }
+    tocar:
+      bien: [electroliticos]
+      porque:
+        bobinas: "Las fuentes no las señalan: lo que se seca son los electrolíticos."
+        conmutados: "Son los controladores; la avería típica es de los condensadores."
+    exito: "Los electrolíticos envejecidos de la tarjeta CC-CC o de la placa: se cambian."
+    escalera:
+      - "Busque las piezas que se secan con los años."
+    solucion: "Los condensadores electrolíticos de salida."
+
+  - id: toque-apagones
+    tipo: tocar
+    titulo: "Se apaga a los minutos"
+    texto: "La consola se apaga a los pocos minutos y el ventilador gira. Toque los dos chips que hay que revisar."
+    libro: ["gamecube#74"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: flipper, hotspot: flipper, rotulo: "Chip grande del centro" }
+        - { id: gekko, hotspot: gekko, rotulo: "Chip plateado de abajo" }
+        - { id: splash, hotspot: splash, rotulo: "Dos chips negros iguales, arriba" }
+    tocar:
+      bien: [flipper, gekko]
+      todas: true
+      porque:
+        splash: "La memoria no lleva el disipador grande: la pasta térmica que se seca es la de Flipper y el Gekko."
+    exito: "Flipper y el Gekko: con el ventilador bien, la sospechosa es su pasta térmica seca."
+    escalera:
+      - "Son los dos que van bajo el disipador."
+    solucion: "Flipper y el Gekko."
+
+  - id: toque-sin-imagen
+    tipo: tocar
+    titulo: "Sin imagen"
+    texto: "Con un cable bueno y adecuado a la región, no hay imagen por la salida analógica. Toque la pieza de placa sospechosa."
+    libro: ["gamecube#76", "gamecube#16"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: soldaduras }
+      recorte: [1080, 470, 420, 730]
+      ampliar: 1.6
+      zonas:
+        - { id: ave, hotspot: ave, rotulo: "Chip alargado, a la derecha" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, abajo a la derecha" }
+        - { id: p1, hotspot: p1, rotulo: "Conector negro, abajo a la derecha" }
+    tocar:
+      bien: [ave]
+      porque:
+        amp: "No hay fuente que lo relacione con la imagen."
+        p1: "Si fallara la alimentación, no funcionaría nada."
+    exito: "U6, el codificador AVE: una avería de placa, después de descartar el cable."
+    escalera:
+      - "Es el chip que pasa el vídeo a analógico."
+    solucion: "U6 (AVE)."
+
+  - id: toque-hdmi
+    tipo: tocar
+    titulo: "Tras soldar un adaptador"
+    texto: "Tras soldar un adaptador HDMI, la consola no enciende. Toque dónde estaba el peligro."
+    libro: ["gamecube#65"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: digital, hotspot: av-digital, rotulo: "Conector metálico, abajo a la izquierda" }
+        - { id: analogico, hotspot: av-analogico, rotulo: "Conector metálico, arriba a la izquierda" }
+    tocar:
+      bien: [digital]
+      porque:
+        analogico: "Los adaptadores HDMI se sueldan a la salida digital, no a la analógica."
+    exito: "La salida digital: un corto con su patilla de +12 V casi nunca tiene arreglo. La única solución es no provocarlo."
+    escalera:
+      - "Es la salida de la que salen los datos del vídeo digital."
+    solucion: "P2, la salida digital."
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Síntoma y causa"
+    texto: "Empareje cada síntoma con su causa más probable."
+    libro: ["gamecube#73", "gamecube#74", "gamecube#75", "gamecube#77"]
+    emparejar:
+      - ["Error de lectura del disco", "Lente sucia o láser desajustado"]
+      - ["Se apaga a los minutos", "Ventilador o pasta térmica"]
+      - ["No va ningún mando", "El fusible común de los puertos"]
+      - ["Imagen con nieve", "Condensadores secos"]
+    pistas:
+      - { texto: "Empiece por lo simple: la lente se limpia antes de cambiar el lector." }
+    exito: "Cuatro averías, cuatro causas sencillas antes de pensar en los chips."
+    escalera:
+      - "Los mandos comparten un fusible; los condensadores se secan con los años."
+    solucion: "Disco: lente o láser. Apagones: ventilador o pasta. Mandos: fusible. Nieve: condensadores."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gamecube#75", "gamecube#73", "gamecube#77", "gamecube#65"]
+    ideas:
+      - { titulo: "Compare.", texto: "Un puerto contra otro separa lo común de lo propio." }
+      - { titulo: "Lo simple primero.", texto: "Lente, ventilador, fusible y condensadores." }
+      - { titulo: "Cuidado con P2.", texto: "Un corto al soldar no tiene arreglo." }
