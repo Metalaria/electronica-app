@@ -69,7 +69,11 @@ export interface AjustesCanal {
   sonda: 1 | 10;
   /** Sample value of zero volts. */
   cero: number;
-  /** The byte layout of this channel was checked on the real unit (CH1: yes; CH2: partly, see above). */
+  /**
+   * The scale of this channel was checked on the real unit. CH1: yes. CH2: with the probe setting at X1 (2026-11-25:
+   * the generator's 50 kHz square wave on CH2 alone at 100 mV per division, 344 mV peak to peak from the trace
+   * against 345 mV by the instrument's own measurement, and the same frequency); with X10, not yet.
+   */
   comprobado: boolean;
 }
 
@@ -97,7 +101,7 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
   const mascara = c[20] ?? 0;
   const canal = (k: 0 | 1, v: number): AjustesCanal => {
     const sonda = (c[6 + k] ?? 0) === 1 ? 10 : 1;
-    return { activo: (mascara & (1 << k)) !== 0, voltiosDiv: v * sonda, sonda, cero: 128 + i8(c[4 + k] ?? 0), comprobado: k === 0 };
+    return { activo: (mascara & (1 << k)) !== 0, voltiosDiv: v * sonda, sonda, cero: 128 + i8(c[4 + k] ?? 0), comprobado: k === 0 || sonda === 1 };
   };
   const nivel = (c[28] ?? 0) | ((c[29] ?? 0) << 8);
   const indice = c[45] ?? 0;
