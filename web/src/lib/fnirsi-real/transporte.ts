@@ -92,6 +92,13 @@ export interface EnlaceFalso {
   ondas?: [number, number][];
   /** A link that answers the waveform requests and stores something else (a fault the app must notice). */
   ondaEstropeada?: boolean;
+  /**
+   * From patch 5 on: the index of the entry the link's image added to the instrument's menu for what is sent (it
+   * announces five added entries with it). With patch 6, a waveform sent while another one is selected (`memoria`
+   * at 20000f50, byte 1) goes to `tablaUsb` only and `tabla` is left alone.
+   */
+  entradaUsb?: number;
+  tablaUsb?: number[];
 }
 
 declare global {
@@ -315,7 +322,11 @@ export class Falso implements TransporteFnirsi {
     r[0] = (informe[0] ?? 0) | 0x80;
     r[1] = informe[1] ?? 0;
     if (informe[0] === ORDEN_INFO) {
-      r[3] = this.conEstado ? 40 : 36;
+      r[3] = this.c.entradaUsb ? 44 : this.conEstado ? 40 : 36;
+      if (this.c.entradaUsb) {
+        r[45] = 5;
+        r[46] = this.c.entradaUsb;
+      }
       r.set(Array.from('2C53LINK', (ch) => ch.charCodeAt(0)), 8);
       r[16] = this.c.protocolo ?? PROTOCOLO;
       r[17] = this.c.parche ?? 2;
@@ -337,9 +348,12 @@ export class Falso implements TransporteFnirsi {
       else {
         const amplitud = Math.min(this.c.memoria?.['20000f50']?.[9] ?? 30, 30);
         const tabla = (this.c.tabla ??= Array.from({ length: 100 }, () => 20));
+        const forma = this.c.memoria?.['20000f50']?.[1] ?? 1;
+        const suena = !(this.c.entradaUsb && (this.c.parche ?? 2) >= 6 && forma !== this.c.entradaUsb);
         for (let k = 0; k < n; k++) {
           const x = Math.min((informe[8 + 2 * k] ?? 0) | ((informe[9 + 2 * k] ?? 0) << 8), 4094);
-          tabla[primera + k] = Math.floor((x * amplitud) / 33) + 20 + (this.c.ondaEstropeada && primera + k === 50 ? 1 : 0);
+          if (this.c.entradaUsb) (this.c.tablaUsb ??= Array.from({ length: 100 }, () => 0))[primera + k] = x;
+          if (suena) tabla[primera + k] = Math.floor((x * amplitud) / 33) + 20 + (this.c.ondaEstropeada && primera + k === 50 ? 1 : 0);
         }
         (this.c.ondas ??= []).push([primera, n]);
         r[3] = 2;

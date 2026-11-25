@@ -84,8 +84,12 @@ const pausa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export interface OndaEnviada {
   /** Volts. */
   amplitud: number;
-  /** Position of the instrument's own waveform in its menu (estado.ts names it). */
+  /** The waveform selected on the instrument when it was sent (its index in the menu; estado.ts names it). */
   forma: number;
+  /** The instrument is playing it (and the table was read back). False: it was only kept for `entrada`. */
+  sonando: boolean;
+  /** Index of the entry of the instrument's menu that plays it until power-off, or 0 when the link has none. */
+  entrada: number;
 }
 
 const SIN_CONEXION_ONDA = 'Se ha perdido la conexión con el FNIRSI mientras se enviaba la onda: no se sabe cuánta ha llegado. Vuelva a enviarla.';
@@ -269,6 +273,11 @@ export class ConexionFnirsi {
           throw new Error('Se ha cambiado un ajuste del generador en el FNIRSI mientras se enviaba la onda. Vuelva a enviarla.');
         dicho = r;
       }
+      // A link from patch 6 on with an entry of its own for what is sent only plays it while that entry is the
+      // one selected: otherwise the table still holds the instrument's waveform and there is nothing to read back.
+      const entrada = this.info.entradaUsb;
+      if (entrada && this.info.parche >= 6 && dicho!.forma !== entrada)
+        return { amplitud: dicho!.amplitud / 10, forma: dicho!.forma, sonando: false, entrada };
       // Read back: what is in the table must be what was sent, scaled by the amplitude the link reported.
       const leida: number[] = [];
       for (let desde = 0; desde < 2 * PUNTOS_ONDA; desde += 56) {
@@ -284,7 +293,7 @@ export class ConexionFnirsi {
         throw new Error(
           `La tabla del generador no coincide con la onda enviada en ${distintas} de ${PUNTOS_ONDA} muestras: puede que se haya tocado un ajuste del generador entretanto. Vuelva a enviarla.`,
         );
-      return { amplitud: dicho!.amplitud / 10, forma: dicho!.forma };
+      return { amplitud: dicho!.amplitud / 10, forma: dicho!.forma, sonando: true, entrada };
     } finally {
       this.enviandoOnda = false;
     }

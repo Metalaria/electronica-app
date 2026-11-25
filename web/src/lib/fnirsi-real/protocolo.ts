@@ -89,6 +89,14 @@ export interface InfoEnlace {
   estadoEnFlujo: boolean;
   /** The link can store a waveform in the generator's table (patch 4 on). */
   ondasAMedida: boolean;
+  /**
+   * Patch 5 on: how many entries the link's image added to the instrument's own list of waveforms, after the
+   * firmware's thirteen, and the index of the one that plays the waveform last sent from here (0: there is none).
+   * From patch 6 on, with such an entry, a waveform sent while another one is selected is kept for that entry and
+   * what the instrument is playing is left alone.
+   */
+  entradasMenu: number;
+  entradaUsb: number;
 }
 
 export function u32(p: ArrayLike<number>, i: number): number {
@@ -196,6 +204,8 @@ export function leerInfo(informe: ArrayLike<number>): InfoEnlace | null {
     registrosSaltados: largo >= 36 ? u32(informe, 40) : 0,
     estadoEnFlujo: largo >= 37 && ((informe[44] ?? 0) & 0x01) !== 0,
     ondasAMedida: largo >= 37 && ((informe[44] ?? 0) & 0x02) !== 0,
+    entradasMenu: largo >= 44 ? (informe[45] ?? 0) : 0,
+    entradaUsb: largo >= 44 ? (informe[46] ?? 0) : 0,
   };
 }
 
