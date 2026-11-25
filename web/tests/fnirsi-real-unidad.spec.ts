@@ -558,17 +558,20 @@ test('el flujo de estado: lo que anuncia la identificación y lo que trae cada e
   expect(decodificarGenerador(leerEstado(real)!.bytes)).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 40000, ciclo: 40, amplitud: 1.5 });
 });
 
-test('la base de tiempos de 10 µs por división ya está comprobada; las de 5 µs y 20 µs, todavía no', () => {
+test('las bases de tiempos de 5 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
   const con = (indice: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[45] = indice;
     return leerAjustes(b)!;
   };
   expect([con(9).tiempoDiv, con(9).tiempoComprobado]).toEqual([expect.closeTo(10e-6, 12), true]);
-  expect([con(8).tiempoDiv, con(8).tiempoComprobado]).toEqual([expect.closeTo(5e-6, 12), false]);
-  expect([con(10).tiempoDiv, con(10).tiempoComprobado]).toEqual([expect.closeTo(20e-6, 12), false]);
+  // (5 µs and 20 µs: checked on the unit on 2026-11-25 with the generator at 50 kHz)
+  expect([con(8).tiempoDiv, con(8).tiempoComprobado]).toEqual([expect.closeTo(5e-6, 12), true]);
+  expect([con(10).tiempoDiv, con(10).tiempoComprobado]).toEqual([expect.closeTo(20e-6, 12), true]);
   expect([11, 12, 13, 14, 15, 16].every((i) => con(i).tiempoComprobado)).toBe(true);
-  expect(con(17).tiempoComprobado).toBe(false);
+  // (one step outside at each end: 2 µs and 5 ms per division)
+  expect([con(7).tiempoDiv, con(7).tiempoComprobado]).toEqual([expect.closeTo(2e-6, 12), false]);
+  expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), false]);
 });
 
 test('el enlace simulado de las pruebas responde como el real', async () => {
