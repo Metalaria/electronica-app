@@ -37,9 +37,12 @@ export const LARGO_MEDIDAS = 48;
  * the unit one by one on 2026-11-25: each entry selected on the generator's screen, its label typed as the screen
  * showed it and the index read from the instrument's memory. The Spanish names of 7 to 12 are a reading of those
  * labels ("Index" being the instrument's word for an exponential); their shapes were not looked at on the
- * oscilloscope. The first entry of the menu (index 0) has not been seen named.
+ * oscilloscope. The labels are spelled as the firmware's own table of names has them (thirteen per language, in
+ * this order). Index 0, one step before Square Wave in the menu, is the first of that table, «Sine Wave»; the
+ * firmware builds it from a table of samples that is a sine.
  */
 const FORMAS: Record<number, { nombre: string; rotulo: string }> = {
+  0: { nombre: 'Senoidal', rotulo: 'Sine Wave' },
   1: { nombre: 'Cuadrada', rotulo: 'Square Wave' },
   2: { nombre: 'Diente de sierra', rotulo: 'Sawtooth wave' },
   3: { nombre: 'Media onda', rotulo: 'Half-wave' },
@@ -48,7 +51,7 @@ const FORMAS: Record<number, { nombre: string; rotulo: string }> = {
   6: { nombre: 'Escalera inversa', rotulo: 'Reverse Step Wave' },
   7: { nombre: 'Exponencial creciente', rotulo: 'Index Up' },
   8: { nombre: 'Exponencial decreciente', rotulo: 'Index Decrease' },
-  9: { nombre: 'Continua', rotulo: 'Direct Current' },
+  9: { nombre: 'Continua', rotulo: 'Direct current' },
   10: { nombre: 'Multitono', rotulo: 'Multi-audio' },
   11: { nombre: 'Pulso sinc', rotulo: 'Sink Pulse' },
   12: { nombre: 'Lorentziana', rotulo: 'Lorentz waves' },
@@ -58,7 +61,7 @@ const ULTIMA_FORMA = 12;
 export interface AjustesGenerador {
   /** Place of the waveform in the instrument's menu (0 to 12). */
   forma: number;
-  /** Its name in Spanish and the instrument's own label; null for the entry not seen named yet (the first). */
+  /** Its name in Spanish and the instrument's own label (null only for an index the table of names does not hold). */
   nombre: string | null;
   rotulo: string | null;
   /** Hz. */

@@ -499,13 +499,13 @@ test('los ajustes del generador, como los enseña su pantalla', () => {
     return `${g.nombre} (${g.rotulo})`;
   });
   expect(nombres).toEqual([
-    'Exponencial creciente (Index Up)', 'Exponencial decreciente (Index Decrease)', 'Continua (Direct Current)',
+    'Exponencial creciente (Index Up)', 'Exponencial decreciente (Index Decrease)', 'Continua (Direct current)',
     'Multitono (Multi-audio)', 'Pulso sinc (Sink Pulse)', 'Lorentziana (Lorentz waves)',
   ]);
-  // the first entry of the menu has not been seen named yet: its place, no name
+  // the first entry of the menu: the sine, named as the firmware's own table names it
   const otra = deHex(MEMORIA.generadorCuadrada);
   otra[1] = 0;
-  expect(decodificarGenerador(otra)).toMatchObject({ forma: 0, nombre: null, rotulo: null, frecuencia: 15000 });
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 0, nombre: 'Senoidal', rotulo: 'Sine Wave', frecuencia: 15000 });
   // the first byte is not understood and does not matter
   otra[0] = 0;
   expect(decodificarGenerador(otra)).toMatchObject({ forma: 0 });
@@ -596,7 +596,7 @@ test('el flujo de estado: lo que anuncia la identificación y lo que trae cada e
   expect(decodificarGenerador(leerEstado(real)!.bytes)).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 40000, ciclo: 40, amplitud: 1.5 });
 });
 
-test('las bases de tiempos de 2 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
+test('las bases de tiempos de 1 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
   const con = (indice: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[45] = indice;
@@ -609,8 +609,10 @@ test('las bases de tiempos de 2 µs a 2 ms por división están comprobadas; las
   expect([11, 12, 13, 14, 15, 16].every((i) => con(i).tiempoComprobado)).toBe(true);
   // (2 µs: checked later the same day, 50 kHz from the record against 50 kHz by the instrument)
   expect([con(7).tiempoDiv, con(7).tiempoComprobado]).toEqual([expect.closeTo(2e-6, 12), true]);
-  // (one step outside at each end: 1 µs and 5 ms per division)
-  expect([con(6).tiempoDiv, con(6).tiempoComprobado]).toEqual([expect.closeTo(1e-6, 12), false]);
+  // (1 µs: the edges of a 50 kHz wave 500 and 499 samples apart in two records of the unit)
+  expect([con(6).tiempoDiv, con(6).tiempoComprobado]).toEqual([expect.closeTo(1e-6, 12), true]);
+  // (one step outside at each end: 500 ns and 5 ms per division)
+  expect([con(5).tiempoDiv, con(5).tiempoComprobado]).toEqual([expect.closeTo(500e-9, 15), false]);
   expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), false]);
 });
 

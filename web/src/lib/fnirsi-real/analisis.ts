@@ -10,6 +10,15 @@
 import { csv, numeroCsv } from '../registro-real/registro';
 import { subidas, voltios, type Traza } from './osciloscopio';
 
+/**
+ * What these functions need of a trace: a record as it arrives (1023 samples of 8 bits) or an average of several
+ * (promedio.ts: fewer samples, and not whole numbers any more).
+ */
+export type Analizable = Pick<Traza, 'canal' | 'ajustes'> & { muestras: ArrayLike<number> };
+
+/** Volts of sample value `m` of an analysable trace. */
+const v = (t: Analizable, m: number) => voltios(t as Traza, m);
+
 export interface MedidasAmpliadas {
   /** Volts. */
   minimo: number;
@@ -60,11 +69,12 @@ function tiempoFlanco(m: ArrayLike<number>, cruces: number[], desde: number, has
 }
 
 /** What the instrument's screen does not give, from the trace: mean, RMS, duty cycle and edge times. */
-export function medirAmpliado(t: Traza): MedidasAmpliadas {
+export function medirAmpliado(t: Analizable): MedidasAmpliadas {
   const m = t.muestras;
   let min = 255;
   let max = 0;
-  for (const x of m) {
+  for (let k = 0; k < m.length; k++) {
+    const x = m[k]!;
     if (x < min) min = x;
     if (x > max) max = x;
   }
@@ -72,7 +82,7 @@ export function medirAmpliado(t: Traza): MedidasAmpliadas {
   const dt = t.ajustes.periodoMuestra;
   let s: number[] = [];
   let b: number[] = [];
-  const inv = new Uint8Array(m.length);
+  const inv = new Float64Array(m.length);
   for (let k = 0; k < m.length; k++) inv[k] = 255 - m[k]!;
   // (under a third of a division the crossings are noise: the same rule as the instrument's own measurements)
   if (amplitud >= 8) {
@@ -88,9 +98,9 @@ export function medirAmpliado(t: Traza): MedidasAmpliadas {
   let suma = 0;
   let cuadrados = 0;
   for (let k = desde; k < hasta; k++) {
-    const v = voltios(t, m[k]!);
-    suma += v;
-    cuadrados += v * v;
+    const x = v(t, m[k]!);
+    suma += x;
+    cuadrados += x * x;
   }
   const n = Math.max(1, hasta - desde);
   const media = suma / n;
@@ -98,7 +108,7 @@ export function medirAmpliado(t: Traza): MedidasAmpliadas {
   // (the alternating part on its own pass: as the difference of two squares a flat trace would not come out at zero)
   let alterna = 0;
   for (let k = desde; k < hasta; k++) {
-    const d = voltios(t, m[k]!) - media;
+    const d = v(t, m[k]!) - media;
     alterna += d * d;
   }
   let frecuencia: number | null = null;
@@ -121,9 +131,9 @@ export function medirAmpliado(t: Traza): MedidasAmpliadas {
   const subida = amplitud >= 8 ? tiempoFlanco(m, s, min + 0.1 * amplitud, min + 0.9 * amplitud) : null;
   const bajada = amplitud >= 8 ? tiempoFlanco(inv, b, 255 - max + 0.1 * amplitud, 255 - max + 0.9 * amplitud) : null;
   return {
-    minimo: voltios(t, min),
-    maximo: voltios(t, max),
-    picoPico: voltios(t, max) - voltios(t, min),
+    minimo: v(t, min),
+    maximo: v(t, max),
+    picoPico: v(t, max) - v(t, min),
     media,
     eficaz,
     eficazAlterna: Math.sqrt(alterna / n),
@@ -180,9 +190,6 @@ function fft(re: Float64Array, im: Float64Array): void {
 export const PUNTOS_ESPECTRO = 512;
 /** Harmonics looked at, the fundamental included. */
 export const ARMONICOS = 10;
-/** Bins on each side of a tone that hold it under the Hann window, and the fewest the fundamental must be from zero. */
-const LOBULO = 3;
-const MINIMO_FUNDAMENTAL = 4;
 
 export interface Tono {
   /** 1 the fundamental, 2 the second harmonic… */
@@ -196,74 +203,95 @@ export interface Tono {
 export interface Espectro {
   /** Hertz between one point and the next; the points go from 0 to half the sampling rate. */
   resolucion: number;
-  /** Volts RMS a tone exactly on each point would have (PUNTOS_ESPECTRO of them). */
+  /** Volts RMS a tone exactly on each point would have (PUNTOS_ESPECTRO of them): the picture of the spectrum. */
   amplitudes: Float64Array;
-  /** The fundamental and the harmonics that fit under half the sampling rate; empty when there is no wave to speak of. */
+  /** The fundamental and its harmonics; empty when the samples do not hold two whole periods of a wave. */
   tonos: Tono[];
   /** Harmonic distortion, %: the harmonics found, together, against the fundamental. Null without them. */
   distorsion: number | null;
-  /** The record holds too few periods to tell the fundamental from its harmonics: no tones are given. */
-  pocosPeriodos: boolean;
 }
 
 /**
- * The spectrum of a trace: a Hann window over the record without its mean, 1024 points. The fundamental is the
- * frequency the trace's crossings give (the record resolves it far better than one point of the spectrum does), and
- * each tone's size is taken from the points around it, which is where the window spreads it.
+ * The fundamental and its harmonics, each as the part of the wave that goes at that frequency: the samples of the
+ * whole periods between the first and the last rising crossing, multiplied by a sine and a cosine of each harmonic
+ * and added up. Over whole periods one harmonic does not leak into another, which is what lets a few periods be
+ * enough (the picture of the spectrum, with its window, needs many more to keep them apart).
  */
-export function espectro(t: Traza): Espectro {
+function tonosDe(t: Analizable, s: number[]): Tono[] {
+  if (s.length < 3) return [];
+  const m = t.muestras;
+  const dt = t.ajustes.periodoMuestra;
+  const a = s[0]!;
+  const b = s[s.length - 1]!;
+  const periodo = (b - a) / (s.length - 1);
+  const desde = Math.ceil(a);
+  const hasta = Math.ceil(b);
+  const n = hasta - desde;
+  if (n < 8 || !(periodo > 0)) return [];
+  let media = 0;
+  for (let k = desde; k < hasta; k++) media += v(t, m[k]!);
+  media /= n;
+  const tonos: Tono[] = [];
+  for (let orden = 1; orden <= ARMONICOS; orden++) {
+    // (a harmonic needs a few samples to each of its periods to be told from its neighbours)
+    if (periodo / orden < 2.5) break;
+    let re = 0;
+    let im = 0;
+    for (let k = desde; k < hasta; k++) {
+      const fase = (2 * Math.PI * orden * (k - a)) / periodo;
+      const x = v(t, m[k]!) - media;
+      re += x * Math.cos(fase);
+      im -= x * Math.sin(fase);
+    }
+    tonos.push({ orden, frecuencia: orden / (periodo * dt), eficaz: (Math.SQRT2 * Math.hypot(re, im)) / n });
+  }
+  return tonos;
+}
+
+/**
+ * The spectrum of a trace. Its picture: a Hann window over the samples without their mean, 1024 points. Its
+ * figures (fundamental, harmonics, distortion): from the whole periods the samples hold, see `tonosDe`.
+ */
+export function espectro(t: Analizable): Espectro {
   const m = t.muestras;
   const n = 2 * PUNTOS_ESPECTRO;
   const re = new Float64Array(n);
   const im = new Float64Array(n);
   const largo = Math.min(m.length, n);
   let media = 0;
-  for (let k = 0; k < largo; k++) media += voltios(t, m[k]!);
+  let min = 255;
+  let max = 0;
+  for (let k = 0; k < largo; k++) {
+    media += v(t, m[k]!);
+    if (m[k]! < min) min = m[k]!;
+    if (m[k]! > max) max = m[k]!;
+  }
   media /= largo;
   let sumaW = 0;
-  let sumaW2 = 0;
   for (let k = 0; k < largo; k++) {
     const w = 0.5 - 0.5 * Math.cos((2 * Math.PI * k) / (largo - 1));
-    re[k] = (voltios(t, m[k]!) - media) * w;
+    re[k] = (v(t, m[k]!) - media) * w;
     sumaW += w;
-    sumaW2 += w * w;
   }
   fft(re, im);
   const amplitudes = new Float64Array(PUNTOS_ESPECTRO);
   // (a tone of A volts RMS exactly on a point gives |X| = A·√2·ΣW/2 there)
   for (let k = 0; k < PUNTOS_ESPECTRO; k++) amplitudes[k] = (Math.SQRT2 * Math.hypot(re[k]!, im[k]!)) / sumaW;
   const resolucion = 1 / (n * t.ajustes.periodoMuestra);
-  // how many points wide a tone's power comes out, under this window
-  const anchoRuido = (n * sumaW2) / (sumaW * sumaW);
-  const tono = (centro: number): number => {
-    let p = 0;
-    for (let k = Math.max(1, centro - LOBULO); k <= Math.min(PUNTOS_ESPECTRO - 1, centro + LOBULO); k++) p += amplitudes[k]! * amplitudes[k]!;
-    return Math.sqrt(p / anchoRuido);
-  };
-  const f0 = medirAmpliado(t).frecuencia;
-  const tonos: Tono[] = [];
-  let pocosPeriodos = false;
-  if (f0 !== null) {
-    if (f0 / resolucion < MINIMO_FUNDAMENTAL) pocosPeriodos = true;
-    else
-      for (let orden = 1; orden <= ARMONICOS; orden++) {
-        const centro = Math.round((orden * f0) / resolucion);
-        if (centro + LOBULO >= PUNTOS_ESPECTRO) break;
-        tonos.push({ orden, frecuencia: orden * f0, eficaz: tono(centro) });
-      }
-  }
+  // (under a third of a division the crossings are noise: the same rule as the measurements)
+  const tonos = max - min >= 8 ? tonosDe(t, subidas(m, (max + min) / 2, Math.max(2, (max - min) / 8))) : [];
   let distorsion: number | null = null;
   if (tonos.length > 1 && tonos[0]!.eficaz > 0) {
     let p = 0;
     for (const x of tonos.slice(1)) p += x.eficaz * x.eficaz;
     distorsion = (100 * Math.sqrt(p)) / tonos[0]!.eficaz;
   }
-  return { resolucion, amplitudes, tonos, distorsion, pocosPeriodos };
+  return { resolucion, amplitudes, tonos, distorsion };
 }
 
 /** The trace as a file: one row per sample, seconds from the first one and volts at the probe tip (decimal comma). */
-export function csvTraza(t: Traza): string {
+export function csvTraza(t: Analizable): string {
   const filas: string[][] = [];
-  for (let k = 0; k < t.muestras.length; k++) filas.push([numeroCsv(k * t.ajustes.periodoMuestra), numeroCsv(voltios(t, t.muestras[k]!))]);
+  for (let k = 0; k < t.muestras.length; k++) filas.push([numeroCsv(k * t.ajustes.periodoMuestra), numeroCsv(v(t, t.muestras[k]!))]);
   return csv(['segundos', 'voltios'], filas);
 }
