@@ -25,7 +25,7 @@
   let errorFichero = $state('');
   let error = $state('');
   /** The last waveform stored, with the generator's settings it was stored under. */
-  let enviada = $state<{ que: string; hora: string; amplitud: number; forma: number; ciclo: number | null } | null>(null);
+  let enviada = $state<{ que: string; hora: string; amplitud: number; forma: number; ciclo: number | null; sonando: boolean; entrada: number } | null>(null);
 
   const descripcion = $derived(FORMAS_ONDA.find((f) => f.id === forma)!);
   const preparada = $derived.by((): { muestras: number[] | null; error: string } => {
@@ -46,19 +46,32 @@
   const amplitudAparato = $derived(
     c.generador ? `${c.generador.amplitud.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} V, la que tiene puesta ahora` : 'la que tenga puesta',
   );
-  /** The instrument's generator no longer has the settings the waveform was stored under: it rebuilt its table. */
-  const deshecha = $derived(
-    !!enviada && !!c.generador && (c.generador.forma !== enviada.forma || Math.round(c.generador.amplitud * 10) !== Math.round(enviada.amplitud * 10) || (enviada.ciclo !== null && c.generador.ciclo !== enviada.ciclo)),
-  );
+  /**
+   * The instrument's generator no longer has the settings the waveform was stored under: it rebuilt its table.
+   * A waveform that plays from its own entry of the menu survives a change of duty or amplitude (the instrument
+   * rescales it), and one that was only kept for that entry was never in the table.
+   */
+  const deshecha = $derived.by(() => {
+    if (!enviada || !enviada.sonando || !c.generador) return false;
+    if (enviada.entrada && enviada.forma === enviada.entrada) return c.generador.forma !== enviada.entrada;
+    return c.generador.forma !== enviada.forma || Math.round(c.generador.amplitud * 10) !== Math.round(enviada.amplitud * 10) || (enviada.ciclo !== null && c.generador.ciclo !== enviada.ciclo);
+  });
+  /** The waveform kept for its entry of the menu is the one selected now (it was sent under another one). */
+  const elegidaDespues = $derived(!!enviada && !enviada.sonando && !!c.generador && c.generador.forma === enviada.entrada);
 
   const voltios = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const textoEnviada = $derived(
-    !enviada
-      ? ''
-      : deshecha
-        ? `El FNIRSI ha vuelto a su propia onda (${nombreForma(c.generador!.forma)}): se cambió un ajuste de su generador después de enviar la suya.`
-        : `Enviada y comprobada a las ${enviada.hora}: ${enviada.que}, ${PUNTOS_ONDA} muestras con una amplitud de ${voltios(enviada.amplitud)} V. El aparato sigue mostrando ${nombreForma(enviada.forma)}.`,
-  );
+  const textoEnviada = $derived.by(() => {
+    if (!enviada) return '';
+    const entrada = `la entrada n.º ${enviada.entrada + 1} de la lista de formas del aparato`;
+    if (!enviada.sonando)
+      return elegidaDespues
+        ? `Guardada a las ${enviada.hora} (${enviada.que}) y elegida ahora en el FNIRSI: es ${entrada}, y sonará hasta que lo apague o envíe otra.`
+        : `Guardada a las ${enviada.hora}: ${enviada.que}, en ${entrada}, hasta que lo apague. No está sonando: el FNIRSI sigue con ${nombreForma(enviada.forma)}, que no se ha tocado. Elija esa entrada en el aparato para oírla.`;
+    if (deshecha) return `El FNIRSI ha vuelto a su propia onda (${nombreForma(c.generador!.forma)}): se cambió un ajuste de su generador después de enviar la suya.`;
+    const comun = `Enviada y comprobada a las ${enviada.hora}: ${enviada.que}, ${PUNTOS_ONDA} muestras con una amplitud de ${voltios(enviada.amplitud)} V.`;
+    if (enviada.entrada && enviada.forma === enviada.entrada) return `${comun} Es ${entrada}, la que está elegida: dura hasta que lo apague o envíe otra, aunque cambie la amplitud.`;
+    return `${comun} El aparato sigue mostrando ${nombreForma(enviada.forma)}.${enviada.entrada ? ` Queda además en ${entrada} hasta que lo apague.` : ''}`;
+  });
 
   async function elegirFichero(e: Event) {
     const entrada = e.currentTarget as HTMLInputElement;
@@ -82,7 +95,7 @@
     const que = fichero ? `«${fichero.nombre}»` : `${descripcion.nombre.toLowerCase()}${invertida ? ', invertida' : ''}`;
     try {
       const r = await c.enviarOnda(preparada.muestras);
-      enviada = { que, hora: new Date().toLocaleTimeString('es-ES'), amplitud: r.amplitud, forma: r.forma, ciclo: c.generador?.ciclo ?? null };
+      enviada = { que, hora: new Date().toLocaleTimeString('es-ES'), amplitud: r.amplitud, forma: r.forma, ciclo: c.generador?.ciclo ?? null, sonando: r.sonando, entrada: r.entrada };
     } catch (x) {
       enviada = null;
       error = x instanceof Error ? x.message : 'No se ha podido enviar la onda.';
@@ -96,8 +109,14 @@
     <p class="og-nota" data-onda-solo-navegador>{ONDA_SOLO_NAVEGADOR}</p>
   {:else}
   <p class="og-nota">
-    Esto sí escribe en el FNIRSI: la tabla de 100 muestras que reproduce su generador, y nada más. La onda dura hasta que cambie en el aparato la
-    forma, el ciclo o la amplitud, o lo apague; cambiar la frecuencia la conserva. La pantalla del FNIRSI seguirá mostrando la forma elegida en su menú.
+    Esto sí escribe en el FNIRSI: la tabla de 100 muestras que reproduce su generador, y nada más.
+    {#if c.info?.entradaUsb}
+      Este aparato tiene en su lista de formas una entrada para lo que se le envía (la n.º {c.info.entradaUsb + 1}): la onda queda ahí hasta que lo
+      apague{c.info.parche >= 6 ? ', y solo suena mientras esa entrada esté elegida' : ''}.
+    {:else}
+      La onda dura hasta que cambie en el aparato la forma, el ciclo o la amplitud, o lo apague; cambiar la frecuencia la conserva. La pantalla del
+      FNIRSI seguirá mostrando la forma elegida en su menú.
+    {/if}
   </p>
   <div class="og-fila">
     <label>Forma
@@ -142,7 +161,7 @@
   </div>
   {#if error}<p class="og-aviso" role="alert" data-onda-error>{error}</p>{/if}
   {#if enviada}
-    <p role="status" data-onda-estado={deshecha ? 'deshecha' : 'enviada'}>
+    <p role="status" data-onda-estado={!enviada.sonando ? 'guardada' : deshecha ? 'deshecha' : 'enviada'}>
       {textoEnviada}
     </p>
   {/if}
