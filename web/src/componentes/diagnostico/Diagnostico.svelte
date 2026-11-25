@@ -401,24 +401,27 @@
     gap: 8px;
     margin: 10px 0;
   }
+  /* 2.1: the page of the system sheet (gutters, 36 px title, 15 px secondary text) */
   .diagnostico {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 24px 16px calc(var(--hueco-inferior, 0px) + 32px);
-    font-family: var(--sans);
-    color: var(--tinta);
+    max-width: calc(880px + 2 * var(--e21-margen));
+    padding: var(--e21-4) var(--e21-margen) calc(var(--hueco-inferior, 0px) + var(--e21-8));
+    font-family: var(--v11-texto);
+    color: var(--v11-tinta);
   }
   h1 {
     display: flex;
     align-items: center;
     gap: 10px;
     margin: 0 0 8px;
-    font-size: 1.6rem;
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    line-height: 1.15;
   }
   .intro {
-    margin: 0 0 18px;
-    color: var(--tinta-suave);
-    font-family: var(--serif);
+    margin: 0 0 var(--e21-3);
+    color: var(--v11-tinta-suave);
+    font-size: var(--t21-secundario);
     line-height: 1.5;
   }
   .tarjeta {
@@ -440,7 +443,7 @@
   .pruebas label {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     gap: 6px 10px;
     padding: 6px 0;
   }
@@ -449,6 +452,15 @@
   }
   input[type='checkbox'] {
     accent-color: var(--acento);
+  }
+  /* (2.1 close-out: 13 px boxes 34 px apart were under axe's 24 px target size wherever the 2.1 header's tabs came
+     near them — at «Informe de fallos», under the sticky bar; a 24 px box needs no room around it) */
+  .pruebas input[type='checkbox'] {
+    flex: none;
+    align-self: center;
+    width: 24px;
+    height: 24px;
+    margin: 0;
   }
   .segundos {
     display: flex;

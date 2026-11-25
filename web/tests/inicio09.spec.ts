@@ -1,6 +1,7 @@
-// 0.9 start page and shared look: daily progress and streak (lib/progreso-diario.svelte.ts), the goal and the
-// name in «Aa», the tab bar with «Inicio», the two-column / one-column layout and 4.5:1 text contrast in the
-// three themes (the path of chapters and «Seguir leyendo» are in tests/visual.spec.ts).
+// 0.9 start page and shared look: daily progress and streak (lib/progreso-diario.svelte.ts), the goal in «Aa», the
+// tab bar with «Inicio», the two-column / one-column layout and 4.5:1 text contrast in the three themes («Su curso»
+// and «Seguir» are in tests/visual.spec.ts). 2.1: the goal and the streak are the two figures of «Hoy» (no week row,
+// no greeting); the 2.1 layout itself is tested in tests/inicio21.spec.ts.
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.inicio09.config.ts tests/inicio09.spec.ts tests/visual.spec.ts tests/navegacion.spec.ts
 import { expect, test, type Page } from '@playwright/test';
 
@@ -46,46 +47,65 @@ test.describe('progreso diario y racha', () => {
   test('racha, anillo del objetivo y su cambio en «Aa»', async ({ page }) => {
     await sembrar(page);
     await page.goto('#/');
-    const racha = page.locator('section.racha');
+    const racha = page.locator('.hoy .racha');
     await expect(racha).toHaveAttribute('data-racha', '3');
-    await expect(racha.locator('h2')).toHaveText('3 días');
-    await expect(racha).toContainText('Hoy le falta un paso para el cuarto.');
-    await expect(racha.locator('.semana li')).toHaveCount(7);
-    await expect(racha.locator('.semana li.hecho')).toHaveCount(3);
-    await expect(racha.locator('.semana li.hoy')).not.toHaveClass(/hecho/);
-    const objetivo = page.locator('section.objetivo');
-    await expect(objetivo.locator('.cuenta')).toHaveText('2/3');
-    await expect(objetivo).toContainText('3 pasos de lección');
+    await expect(racha.locator('.valor')).toHaveText('3 días seguidos');
+    await expect(racha).toHaveAttribute('aria-label', /Hoy le falta un paso para el cuarto\./);
+    await expect(racha).toHaveAttribute('href', '#/progreso');
+    const objetivo = page.locator('.hoy .objetivo');
+    await expect(objetivo.locator('.cuenta')).toHaveText('2 de 3');
+    await expect(objetivo).toHaveAttribute('aria-label', /2 de 3 pasos/);
 
-    // a goal of two steps: today is met, the streak grows to four
-    await abrirAjustes(page);
+    // a goal of two steps: today is met, the streak grows to four (the goal figure opens «Aa»)
+    await objetivo.click();
+    await expect(page.getByRole('dialog', { name: 'Tema y tamaño de letra' })).toBeVisible();
     await page.getByRole('button', { name: 'Objetivo más pequeño' }).click();
     await expect(page.locator('#cantidad-objetivo')).toHaveText(/2 pasos al día/);
-    await expect(objetivo.locator('.cuenta')).toHaveText('2/2');
+    await expect(objetivo.locator('.cuenta')).toHaveText('2 de 2');
     await expect(objetivo).toHaveClass(/cumplido/);
     await expect(racha).toHaveAttribute('data-racha', '4');
-    await expect(racha.locator('.semana li.hoy')).toHaveClass(/hecho/);
     await expect.poll(() => leer<{ tipo: string; cantidad: number }>(page, 'progreso-objetivo')).toMatchObject({ tipo: 'pasos', cantidad: 2 });
     await expect.poll(async () => (await leer<Record<string, { cumplido: boolean }>>(page, 'progreso-diario'))[dia(0)]?.cumplido).toBe(true);
 
     // review questions instead: none answered today, the streak is back to three (today still open)
     await page.getByRole('radio', { name: 'Preguntas de repaso' }).click();
-    await expect(objetivo.locator('.cuenta')).toHaveText('0/2');
+    await expect(objetivo.locator('.cuenta')).toHaveText('0 de 2');
     await expect(racha).toHaveAttribute('data-racha', '3');
-    // past days keep their verdict
-    await expect(racha.locator('.semana li.hecho')).toHaveCount(3);
 
     // after a reload everything is still there
     await page.reload();
-    await expect(page.locator('section.objetivo .cuenta')).toHaveText('0/2');
-    await expect(page.locator('section.objetivo')).toContainText('2 preguntas de repaso');
+    await expect(page.locator('.hoy .objetivo .cuenta')).toHaveText('0 de 2');
+    await expect(page.locator('.hoy .objetivo')).toHaveAttribute('aria-label', /0 de 2 preguntas/);
+  });
+
+  // 2.1: the row of the last seven days moved from the start page to «Progreso», beside the streak
+  test('los últimos siete días de la racha, en «Progreso»', async ({ page }) => {
+    await sembrar(page);
+    await page.goto('#/progreso');
+    const semana = page.locator('section.racha [data-semana-racha]');
+    await expect(semana).toHaveAttribute('aria-label', 'Últimos siete días');
+    await expect(semana.locator('li')).toHaveCount(7);
+    await expect(semana.locator('li.hecho')).toHaveCount(3);
+    const hoy = semana.locator('li.hoy');
+    await expect(hoy).toHaveCount(1);
+    await expect(hoy).not.toHaveClass(/hecho/);
+    await expect(hoy).toHaveAttribute('aria-label', 'hoy: sin cumplir');
+    const nombres = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const ayer = nombres[new Date(`${dia(1)}T12:00:00`).getDay()]!;
+    await expect(semana.locator('li').nth(5)).toHaveAttribute('aria-label', `${ayer}: objetivo cumplido`);
+    // a goal of two steps: today is met, and its circle fills
+    await abrirAjustes(page);
+    await page.getByRole('button', { name: 'Objetivo más pequeño' }).click();
+    await expect(hoy).toHaveClass(/hecho/);
+    await expect(hoy).toHaveAttribute('aria-label', 'hoy: objetivo cumplido');
+    await expect(semana.locator('li.hecho')).toHaveCount(4);
   });
 
   test('las respuestas del repaso y las secciones leídas cuentan para hoy', async ({ page }) => {
     await sembrar(page, { 'progreso-objetivo': { tipo: 'preguntas', cantidad: 1, t: Date.now() } });
     await page.goto('#/');
-    await expect(page.locator('section.objetivo .cuenta')).toHaveText('0/1');
-    await expect(page.locator('section.racha')).toHaveAttribute('data-racha', '3');
+    await expect(page.locator('.hoy .objetivo .cuenta')).toHaveText('0 de 1');
+    await expect(page.locator('.hoy .racha')).toHaveAttribute('data-racha', '3');
 
     // one flashcard answered («Fácil»)
     await page.goto('#/repaso/tarjetas');
@@ -103,9 +123,9 @@ test.describe('progreso diario y racha', () => {
     await expect.poll(async () => (await leer<Record<string, { secciones: number }>>(page, 'progreso-diario'))[dia(0)]?.secciones).toBe(1);
 
     await page.goto('#/');
-    await expect(page.locator('section.objetivo .cuenta')).toHaveText('1/1');
-    await expect(page.locator('section.racha')).toHaveAttribute('data-racha', '4');
-    await expect(page.locator('section.racha')).toContainText('Objetivo de hoy cumplido');
+    await expect(page.locator('.hoy .objetivo .cuenta')).toHaveText('1 de 1');
+    await expect(page.locator('.hoy .racha')).toHaveAttribute('data-racha', '4');
+    await expect(page.locator('.hoy .racha')).toHaveAttribute('aria-label', /Objetivo de hoy cumplido/);
   });
 
   test('con un objetivo de pasos, cada sección leída cuenta como un paso (opción de «Aa»)', async ({ page }) => {
@@ -116,52 +136,52 @@ test.describe('progreso diario y racha', () => {
     await expect.poll(async () => (await leer<Record<string, { secciones: number }>>(page, 'progreso-diario'))[dia(0)]?.secciones).toBe(1);
     // seeded: 2 steps today; the section read makes 3 of 3
     await page.goto('#/');
-    await expect(page.locator('section.objetivo .cuenta')).toHaveText('3/3');
+    await expect(page.locator('.hoy .objetivo .cuenta')).toHaveText('3 de 3');
     // turned off in «Aa»: back to the lesson steps only
     await abrirAjustes(page);
     const opcion = page.getByLabel('Cada sección que marcas como leída cuenta como un paso');
     await expect(opcion).toBeChecked();
     await opcion.uncheck();
-    await expect(page.locator('section.objetivo .cuenta')).toHaveText('2/3');
+    await expect(page.locator('.hoy .objetivo .cuenta')).toHaveText('2 de 3');
     await expect.poll(() => leer<{ secciones: boolean }>(page, 'progreso-objetivo')).toMatchObject({ secciones: false });
   });
 });
 
-test.describe('saludo, pestañas y columnas', () => {
-  test('«Su nombre» en «Aa»: solo en este dispositivo', async ({ page }) => {
+test.describe('sin saludo, pestañas y columnas', () => {
+  // 2.1 (owner, 25-11): no «Hola» line; a name stored by an earlier version stays in the data but is not shown
+  test('el inicio no saluda, ni con un nombre guardado', async ({ page }) => {
     await page.setViewportSize(MAC);
-    await sembrar(page);
+    await sembrar(page, { prefs: { nombre: 'Ada Lovelace' } });
     await page.goto('#/');
-    await expect(page.locator('.saludo h1')).toHaveText('Hola');
-    await abrirAjustes(page);
-    await page.getByLabel('Su nombre').fill('Ada Lovelace');
-    await expect(page.locator('.saludo h1')).toHaveText('Hola, Ada Lovelace');
+    await expect(page.locator('.seguir')).toBeVisible();
+    await expect(page.locator('main h1')).toHaveText('Inicio');
+    await expect(page.locator('main')).not.toContainText('Hola');
+    await expect(page.locator('main')).not.toContainText('Ada Lovelace');
     await expect.poll(async () => (await leer<{ nombre?: string }>(page, 'prefs'))?.nombre).toBe('Ada Lovelace');
-    await page.reload();
-    await expect(page.locator('.saludo h1')).toHaveText('Hola, Ada Lovelace');
-    await abrirAjustes(page);
-    await page.getByLabel('Su nombre').fill('   ');
-    await expect(page.locator('.saludo h1')).toHaveText('Hola');
   });
 
-  test('tableta: dos columnas y la barra con «Inicio»', async ({ browser }) => {
-    const ctx = await browser.newContext({ viewport: TABLETA, hasTouch: true });
-    const page = await ctx.newPage();
-    await sembrar(page);
-    await page.goto('#/');
-    const seguir = (await page.locator('.seguir').boundingBox())!;
-    const camino = (await page.locator('section.camino-libro').boundingBox())!;
-    expect(camino.x).toBeGreaterThan(seguir.x + seguir.width - 1);
-    expect(Math.abs(camino.y - seguir.y)).toBeLessThan(40);
-    const tabs = page.locator('nav.pestanas');
-    await expect(tabs.locator('.pestana .etiqueta')).toHaveText(['Inicio', 'Libro', 'Simulador', 'Ejercicios', 'Más']);
-    await expect(tabs.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
-    await tabs.getByRole('link', { name: 'Simulador' }).tap();
-    await expect(page).toHaveURL(/#\/simulador$/);
-    await expect(tabs.getByRole('link', { name: 'Inicio' })).not.toHaveAttribute('aria-current', 'page');
-    await tabs.getByRole('link', { name: 'Inicio' }).tap();
-    await expect(page).toHaveURL(/#\/$/);
-    await ctx.close();
+  test('tableta: una columna en vertical, dos en horizontal; «Inicio» marcado', async ({ browser }) => {
+    for (const [vista, dos] of [[TABLETA, false], [{ width: 1280, height: 800 }, true]] as const) {
+      const ctx = await browser.newContext({ viewport: vista, hasTouch: true, deviceScaleFactor: 2.5 });
+      const page = await ctx.newPage();
+      await sembrar(page);
+      await page.goto('#/');
+      const seguir = (await page.locator('.seguir').boundingBox())!;
+      const curso = (await page.locator('section.su-curso').boundingBox())!;
+      if (dos) {
+        expect(curso.x, `${vista.width}`).toBeGreaterThan(seguir.x + seguir.width - 1);
+      } else {
+        expect(curso.y, `${vista.width}`).toBeGreaterThan(seguir.y + seguir.height);
+      }
+      const ancho = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(ancho).toBeLessThanOrEqual(0);
+      const inicio = page.locator('[data-grupo="inicio"]:visible').first();
+      await expect(inicio).toHaveAttribute('aria-current', 'page');
+      await page.locator('[data-grupo="aprender"]:visible').first().click();
+      await expect(page).toHaveURL(/#\/(cursos|repaso|progreso)$/);
+      await expect(page.locator('[data-grupo="inicio"]:visible').first()).not.toHaveAttribute('aria-current', 'page');
+      await ctx.close();
+    }
   });
 
   test('teléfono: una columna, sin desplazamiento lateral, toques de 44 px', async ({ browser }) => {
@@ -169,13 +189,13 @@ test.describe('saludo, pestañas y columnas', () => {
     const page = await ctx.newPage();
     await sembrar(page);
     await page.goto('#/');
-    await expect(page.locator('a.nodo').first()).toBeVisible();
+    await expect(page.locator('.su-curso a.capitulo').first()).toBeAttached();
     const seguir = (await page.locator('.seguir').boundingBox())!;
-    const camino = (await page.locator('section.camino-libro').boundingBox())!;
-    expect(camino.y).toBeGreaterThan(seguir.y + seguir.height);
+    const curso = (await page.locator('section.su-curso').boundingBox())!;
+    expect(curso.y).toBeGreaterThan(seguir.y + seguir.height);
     const ancho = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(ancho).toBeLessThanOrEqual(0);
-    for (const sel of ['.seguir .continuar', '.repaso-hoy .t09-boton', 'button.tomo-fila', 'nav.pestanas .pestana']) {
+    for (const sel of ['.seguir .continuar', '.seguir .boton.fantasma', '.hoy .objetivo', '.hoy .racha', 'a.repaso-hoy', '.su-curso a.capitulo', 'nav.pestanas [data-grupo]']) {
       const c = (await page.locator(sel).first().boundingBox())!;
       expect(c.height, sel).toBeGreaterThanOrEqual(44);
     }
@@ -233,10 +253,9 @@ async function contrastesBajos(page: Page, selector: string): Promise<string[]> 
 }
 
 const TEXTOS = [
-  '.saludo h1', '.saludo p', '.t09-rotulo', '.seguir h2', '.seguir .capitulo', '.seguir .det', '.seguir .continuar', '.por-pasos',
-  '.racha h2', '.racha .txt', '.racha .letra', '.objetivo h2', '.objetivo .det', '.objetivo .txt', '.objetivo .cuenta',
-  '.repaso-hoy h2', '.repaso-hoy .det', '.repaso-hoy .t09-boton', '.camino-libro h2', '.nodo .nom', '.nodo .sub', '.nodo .aqui',
-  '.nodo .disco', '.tomo-id', '.tomo-tit', '.t09-chip', 'nav.pestanas .etiqueta', '.edicion',
+  '.etiqueta21', '.seguir h3', '.seguir .capitulo', '.seguir .det', '.seguir .continuar', '.seguir .boton.fantasma', '.tambien',
+  '.hoy .valor', '.hoy .rotulo', '.fila21-titulo', '.fila21-sub', '.su-curso .nombre', '.su-curso .aqui', '.su-curso .disco',
+  '.su-curso .boton.fantasma', 'nav.pestanas .etiqueta',
 ].join(', ');
 
 for (const tema of ['claro', 'sepia', 'oscuro'] as const) {
@@ -246,7 +265,7 @@ for (const tema of ['claro', 'sepia', 'oscuro'] as const) {
     await sembrar(page, { prefs: { tema, tam: 18 }, lecciones: { 'cap05/sec-5.2': { h: [0, 1], u: 2, n: 6, c: 0, t: Date.now() } } });
     await page.goto('#/');
     await expect(page.locator('.repaso-hoy')).toHaveAttribute('data-pendientes', /\d+/);
-    await expect(page.locator('.nodo .aqui')).toBeVisible();
+    await expect(page.locator('.su-curso .aqui')).toBeVisible();
     expect(await contrastesBajos(page, TEXTOS)).toEqual([]);
     // the restyled tool pages
     for (const ruta of ['#/simulador', '#/ejercicios', '#/calculadoras', '#/repaso']) {

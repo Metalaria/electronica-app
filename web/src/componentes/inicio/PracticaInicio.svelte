@@ -1,9 +1,9 @@
 <script lang="ts">
-  // Start page (0.11, group B): the way into «Práctica inteligente» — the concept that most needs it (the weakest
-  // one practised, or the most forgotten), how many are due for review, and «Practicar» (#/practicar).
+  // Start page (0.11, group B; 2.1 a row of «Para hoy también»): the way into «Práctica inteligente» (#/practicar) —
+  // the concept that most needs it (the weakest one practised, or the most forgotten) and how many are due for review.
+  // (Mastery per concept, 0.11's «Ver su dominio por conceptos», is reached from «Progreso».)
   import { onMount } from 'svelte';
-  import Brain from '@lucide/svelte/icons/brain';
-  import BotonPrincipal from '../ui09/BotonPrincipal.svelte';
+  import Fila from './Fila.svelte';
   import { cargarDominio, conceptosConDominio, estadoDominio } from '../../lib/aprendizaje/dominio.svelte';
   import { tituloConcepto } from '../../lib/aprendizaje/catalogo';
 
@@ -35,71 +35,10 @@
   });
 </script>
 
-<section class="t09-tarjeta practica-inicio" aria-labelledby="tit-practica-inicio" data-practica-inicio>
-  <div class="fila">
-    <span class="icono" aria-hidden="true"><Brain size={26} /></span>
-    <div class="textos">
-      <h2 id="tit-practica-inicio">Práctica inteligente</h2>
-      <span class="det">{detalle}</span>
-      {#if resumen?.repasar}<span class="rep">{resumen.repasar} {resumen.repasar === 1 ? 'concepto' : 'conceptos'} para repasar</span>{/if}
-    </div>
-    <BotonPrincipal href="#/practicar" contorno>Practicar</BotonPrincipal>
-  </div>
-  {#if resumen?.practicados}<a class="dominio" href="#/progreso/dominio" data-ir-dominio>Ver su dominio por conceptos</a>{/if}
-</section>
-
-<style>
-  .fila {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .icono {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: var(--acento-tinte);
-    color: var(--acento);
-  }
-  .textos {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  h2 {
-    margin: 0;
-    color: var(--tinta);
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .det {
-    color: var(--tinta-suave);
-    font-size: 14px;
-  }
-  .rep {
-    color: color-mix(in srgb, var(--ambar) 80%, var(--tinta));
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .fila :global(.t09-boton) {
-    flex: none;
-  }
-  .dominio {
-    display: flex;
-    align-items: center;
-    min-height: var(--toque);
-    margin: 6px 0 -10px 62px;
-    color: var(--acento);
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .dominio:hover {
-    text-decoration: underline;
-  }
-</style>
+<Fila
+  href="#/practicar"
+  titulo="Práctica inteligente"
+  detalle={resumen?.repasar ? `${detalle} · ${resumen.repasar} ${resumen.repasar === 1 ? 'concepto' : 'conceptos'} para repasar` : detalle}
+  clase="practica-inicio"
+  data-practica-inicio
+/>

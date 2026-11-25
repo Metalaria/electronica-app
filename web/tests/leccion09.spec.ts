@@ -86,13 +86,13 @@ test('regresión 1.0: un Intro que llega aún al campo numérico ya respondido (
   await page.goto(`#/leccion/cap05/sec-5.2/clasica/${pasos.length}`);
   const cuenta = page.locator('.cab-pasos .cuenta');
   for (let k = pasos.length; k <= primera; k++) {
-    await expect(cuenta).toHaveText(`${k}/${total}`);
+    await expect(cuenta).toHaveText(`${k} / ${total}`);
     if (k === primera + 1) break;
     // screens after the steps and before the questions are the practice items (skipped; the locator waits for them)
     await page.locator(k > pasos.length ? '[data-saltar]' : '[data-continuar]').click();
   }
   for (let q = 0; q < suyas.length; q++) {
-    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${primera + q + 1}/${total}`);
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${primera + q + 1} / ${total}`);
     const id = await page.locator('[data-pregunta]').getAttribute('data-pregunta');
     const p = banco.get(id!)!;
     await contestar(page, banco, true);
@@ -102,7 +102,7 @@ test('regresión 1.0: un Intro que llega aún al campo numérico ya respondido (
     }
     await expect(page.locator('[data-numero]')).toBeDisabled();
     await page.locator('[data-numero]').evaluate((el) => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
-    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${primera + q + 2}/${total}`);
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${primera + q + 2} / ${total}`);
     return;
   }
   throw new Error('5.2 no tiene ninguna pregunta numérica');
@@ -125,16 +125,16 @@ test('regresión 1.0 (10i): con el foco en el veredicto de una pregunta, Intro h
   await page.goto(`#/leccion/cap05/sec-5.2/clasica/${pasos.length}`);
   const cuenta = page.locator('.cab-pasos .cuenta');
   for (let k = pasos.length; k <= primera; k++) {
-    await expect(cuenta).toHaveText(`${k}/${total}`);
+    await expect(cuenta).toHaveText(`${k} / ${total}`);
     if (k === primera + 1) break;
     await page.locator(k > pasos.length ? '[data-saltar]' : '[data-continuar]').click();
   }
-  await expect(cuenta).toHaveText(`${primera + 1}/${total}`);
+  await expect(cuenta).toHaveText(`${primera + 1} / ${total}`);
   await contestar(page, banco, true);
   // the verdict holds the focus (or the page does): either way Enter continues
   await page.locator('[data-feedback]').focus();
   await page.keyboard.press('Enter');
-  await expect(cuenta).toHaveText(`${primera + 2}/${total}`);
+  await expect(cuenta).toHaveText(`${primera + 2} / ${total}`);
 });
 
 test('los pasos automáticos cubren todas las secciones del libro', () => {
@@ -217,7 +217,7 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   // Full screen: no rail, no index, no top bar
   const leccion = page.locator('[data-leccion="cap05/sec-5.2"]');
   await expect(leccion).toBeVisible();
-  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`1/${total}`);
+  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`1 / ${total}`);
   await expect(page.locator('.cab-pasos .contexto')).toContainText('Capítulo 5 · Diodos · 5.2');
   await expect(leccion.locator('h1')).toHaveText(pasos[0]!.titulo);
   await expect(page.locator('[data-atras]')).toBeDisabled();
@@ -248,7 +248,7 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
 
   // The questions about 5.2, one per screen
   for (let q = 0; q < suyas.length; q++) {
-    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${n + practica.length + q + 1}/${total}`);
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${n + practica.length + q + 1} / ${total}`);
     await expect(page.locator('[data-continuar]')).toBeDisabled();
     const id = await page.locator('[data-pregunta]').getAttribute('data-pregunta');
     const p = banco.get(id!)!;
@@ -335,7 +335,7 @@ test('el resto del libro: una lección de un apéndice y de una sección de un c
     await page.goto(`#/leccion/${parte}/${label}${parte === 'cap53' ? '/clasica' : ''}`);
     const total = pasosDe(parte, label!).length;
     await expect(page.locator(`[data-leccion="${parte}/${label}"] h1`)).toBeVisible();
-    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(new RegExp(`^1/(${total}|\\d+)$`));
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(new RegExp(`^1 / (${total}|\\d+)$`));
   }
 });
 
@@ -343,7 +343,7 @@ test('las preguntas de Repaso usan el componente compartido', async ({ page }) =
   const repaso = new Map(leerJson<{ preguntas: PreguntaJson[] }>('repaso/cap05.json').preguntas.map((p) => [p.id, p]));
   await page.goto('#/repaso/test/cap05');
   await expect(page.locator('.progreso')).toContainText(`Pregunta 1 de ${repaso.size}`);
-  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`1/${repaso.size}`);
+  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`1 / ${repaso.size}`);
   await contestar(page, repaso, false);
   await expect(page.locator('[data-feedback] .veredicto')).toContainText('No es correcto');
   await expect(page.locator('[data-ver-seccion]')).toHaveText(/^Ver (la sección|el problema|el apartado) /);
@@ -352,7 +352,7 @@ test('las preguntas de Repaso usan el componente compartido', async ({ page }) =
   // Only the first answer counts: still a mistake to review
   await expect.poll(async () => Object.keys((await leer<Record<string, unknown>>(page, 'repaso-fallos')) ?? {}).length).toBe(1);
   await page.locator('[data-siguiente]').click();
-  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`2/${repaso.size}`);
+  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`2 / ${repaso.size}`);
 });
 
 // Every file under public/libro/partes is a part of the index (guards the coverage test above).

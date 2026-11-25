@@ -533,12 +533,14 @@
     <div class="hoja">
       <header class="cab" bind:clientHeight={altoCab}>
         <button type="button" class="icono" aria-label="Tarjeta anterior" disabled={pantalla === 0 && !enVuelta(ritmo)} onclick={atras} data-atras><ArrowLeft size={22} strokeWidth={2.2} aria-hidden="true" /></button>
-        <!-- (motor12b: with many cards the 5 px gaps alone outgrew a 360 px header and pushed «Cerrar» off the screen) -->
+        <!-- (motor12b: with many cards the 5 px gaps alone outgrew a 360 px header and pushed «Cerrar» off the screen;
+             2.1, Leccion.png: one continuous bar — the segments touch — with «2 / 13» beside it) -->
         <div class="segmentos" class:muchos={segs.length > 24} role="progressbar" aria-label={`Tarjeta ${pos.x} de ${pos.de}`} aria-valuemin={1} aria-valuemax={pos.de} aria-valuenow={pos.x}>
           {#each segs as s, i (i)}
             <span class="seg" class:hecho={s.estado === 'hecho'} class:actual={s.estado === 'actual'} class:vuelta={s.vuelta} data-seg={s.vuelta ? 'vuelta' : s.estado}></span>
           {/each}
         </div>
+        <span class="cuenta" aria-hidden="true" data-cuenta-leccion>{pos.x} / {pos.de}</span>
         <button type="button" class="icono" aria-label="Cerrar la lección" onclick={cerrar} data-cerrar><X size={22} strokeWidth={2.2} aria-hidden="true" /></button>
       </header>
 
@@ -566,7 +568,7 @@
               </div>
             </section>
           {:else}
-            <span class="etiqueta">{pos.x} de {pos.de} · {enVuelta(ritmo) ? 'Repaso' : t.fase}</span>
+            <span class="etiqueta">{enVuelta(ritmo) ? 'Repaso' : t.fase}</span>
             <h1 bind:this={titulo} tabindex="-1"><TextoVivo texto={t.titulo} {valor} /></h1>
 
             <!-- 1.2, one idea per screen: the visual on top (the formula first on a «formula» card, then the widget that
@@ -670,20 +672,25 @@
 </div>
 
 <style>
+  /* 2.1 (the approved mock-up Leccion.png): one centred 680 px column on the page's own background, a minimal top
+     bar (back, one continuous progress bar, «2 / 13», close), the step's kind as a 13 px label, a 32 px title, the
+     18 px text, and «Comprobar» across the column over a hairline. */
   .l11 {
     min-height: 100vh;
     min-height: 100dvh;
-    background: var(--v11-marco);
+    background: var(--v11-fondo);
     color: var(--v11-tinta);
     font-family: var(--v11-texto);
   }
   .hoja {
     display: flex;
     flex-direction: column;
-    max-width: 640px;
+    /* a 680 px column inside 20 px gutters */
+    max-width: 720px;
     min-height: 100vh;
     min-height: 100dvh;
     margin: 0 auto;
+    padding: 0 20px;
     background: var(--v11-fondo);
   }
   .cab {
@@ -692,8 +699,9 @@
     z-index: 2;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: calc(10px + env(safe-area-inset-top)) 8px 8px;
+    gap: 16px;
+    margin: 0 -8px;
+    padding: calc(20px + env(safe-area-inset-top)) 0 20px;
     background: var(--v11-fondo);
   }
   .icono {
@@ -705,8 +713,11 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    color: var(--v11-tinta);
+    color: var(--v11-tinta-suave);
     cursor: pointer;
+  }
+  .icono:hover:not(:disabled) {
+    color: var(--v11-tinta);
   }
   .icono:disabled {
     opacity: 0.35;
@@ -716,44 +727,52 @@
     flex: 1;
     min-width: 0;
     display: flex;
-    gap: 5px;
-  }
-  .segmentos.muchos {
-    gap: 2px;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--v11-linea);
   }
   .seg {
     flex: 1;
-    height: 8px;
-    border-radius: 4px;
-    background: var(--v11-pendiente);
+    height: 100%;
+    background: var(--v11-linea);
     transition: background 0.3s;
   }
-  .seg.hecho {
-    background: var(--v11-hecho);
-  }
+  .seg.hecho,
   .seg.actual {
-    background: var(--v11-actual);
+    background: var(--v11-azul);
   }
-  /* 1.2: the segments of the cards that come back at the end (narrower, before the summary's) */
+  /* 1.2: the cards that come back at the end (narrower, before the summary's), in amber while still to do */
   .seg.vuelta {
     flex: 0.6;
   }
   .seg.vuelta:not(.hecho):not(.actual) {
-    background: var(--v11-mal-tinte);
-    box-shadow: inset 0 0 0 1.5px var(--v11-mal);
+    background: var(--v11-mal);
+  }
+  .cuenta {
+    flex: none;
+    min-width: 52px;
+    color: var(--v11-tinta-suave);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
   .cuerpo {
     flex: 1 0 auto;
     display: flex;
     flex-direction: column;
-    padding: 4px 20px 20px;
+    padding: 16px 0 32px;
     /* the card enters with a horizontal fly; clip it so the page never gets wider than the screen meanwhile */
     overflow-x: clip;
   }
   .pantalla {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 24px;
+  }
+  /* the label and the title read as one block (8 px apart) */
+  .etiqueta + h1 {
+    margin-top: -16px;
   }
   .dominada {
     display: inline-flex;
@@ -769,12 +788,13 @@
     color: var(--v11-tinta-suave);
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
+    line-height: 1.3;
     text-transform: uppercase;
   }
   h1 {
     margin: 0;
-    font: 700 25px/1.2 var(--v11-titular);
+    font: 600 clamp(26px, 6vw, 32px) / 1.2 var(--v11-titular);
     text-wrap: balance;
   }
   h1:focus {
@@ -782,8 +802,8 @@
   }
   .texto {
     margin: 0;
-    font-size: 16px;
-    line-height: 1.5;
+    font-size: var(--t21-lectura, 18px);
+    line-height: 1.55;
   }
   .formula {
     display: flex;
@@ -867,7 +887,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+    padding: 20px 0 calc(28px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--v11-linea);
     background: var(--v11-fondo);
   }
@@ -876,8 +896,8 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px 14px;
-    border-radius: 14px;
-    font-size: 14px;
+    border-radius: 12px;
+    font-size: 15px;
     line-height: 1.45;
   }
   .banner strong {
@@ -906,8 +926,8 @@
   }
   .primario,
   .secundario {
-    min-height: 54px;
-    border-radius: var(--v11-radio-boton);
+    min-height: 52px;
+    border-radius: 14px;
     font: 600 17px var(--v11-texto);
     cursor: pointer;
     transition: background 0.2s;
@@ -928,9 +948,13 @@
   }
   .secundario {
     padding: 0 18px;
-    border: 2px solid var(--v11-borde);
-    background: var(--v11-fondo);
+    border: 1px solid var(--v11-linea);
+    background: transparent;
     color: var(--v11-tinta);
+    font-weight: 500;
+  }
+  .secundario:hover {
+    border-color: var(--v11-borde);
   }
   button:focus-visible,
   a:focus-visible {

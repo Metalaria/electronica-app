@@ -1,12 +1,11 @@
 <script lang="ts">
-  // Start page (1.0): the spaced review of the course paths — the completed (or passed) lessons whose mastery says they
-  // are fading (dominio: retention under 0,7), the first one to review with «Repasar» (#/practicar/<parte>/<label>), and
-  // when the next one falls due. Read-only: lessons, courses and mastery as the app keeps them. Hidden until a lesson
-  // with answers has been completed.
-  import EnlaceGuia from '../guia/EnlaceGuia.svelte';
+  // Start page (1.0; 2.1 a row of «Para hoy también»): the spaced review of the course paths — the completed (or
+  // passed) lessons whose mastery says they are fading (dominio: retention under 0,7), the row linking to the first one
+  // to review (#/practicar/<parte>/<label>); with nothing due now, a row «Próximo repaso hoy · …» (→ the courses) when
+  // the next one falls due later today. Hidden otherwise (the dates are on the course pages). Read-only: lessons,
+  // courses and mastery as the app keeps them.
   import { onMount } from 'svelte';
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-  import BotonPrincipal from '../ui09/BotonPrincipal.svelte';
+  import Fila from './Fila.svelte';
   import { cargarLecciones, progresoLecciones } from '../../lib/lecciones.svelte';
   import { cargarCursos, estadoCursos } from '../../lib/aprendizaje/cursos-estado.svelte';
   import { cargarDominio, dominioDe, estadoDominio } from '../../lib/aprendizaje/dominio.svelte';
@@ -52,87 +51,21 @@
   });
 </script>
 
-{#if resumen && (resumen.due.length || resumen.proximo)}
-  <section class="t09-tarjeta repaso-camino" aria-labelledby="tit-repaso-camino" data-repaso-camino={resumen.due.length}>
-    <div class="fila">
-      <span class="icono" aria-hidden="true"><RotateCcw size={24} /></span>
-      <div class="textos">
-        <h2 id="tit-repaso-camino">Repaso de sus lecciones</h2>
-        {#if resumen.due.length}
-          <span class="rep">{resumen.due.length === 1 ? 'Una lección para repasar hoy' : `${resumen.due.length} lecciones para repasar hoy`}</span>
-          <span class="det">Primero: {tituloConcepto(resumen.due[0]!)}</span>
-        {:else if resumen.proximo}
-          <span class="det">Al día. Próximo repaso {cuandoRepaso(resumen.proximo.t, ahora)}: {tituloConcepto(resumen.proximo.clave)}</span>
-        {/if}
-      </div>
-      {#if resumen.due.length}<BotonPrincipal href={enlace(resumen.due[0]!)} contorno>Repasar</BotonPrincipal>{/if}
-    </div>
-    <div class="pie-repaso">
-      <a class="cursos" href="#/cursos">Ver el camino de sus cursos</a>
-      <!-- 1.0: how the spaced review works, in the user guide -->
-      <EnlaceGuia seccion="repaso" apartado="repaso-espaciado" />
-    </div>
-  </section>
+{#if resumen?.due.length}
+  <Fila
+    href={enlace(resumen.due[0]!)}
+    titulo="Repaso de sus lecciones"
+    detalle={`${resumen.due.length === 1 ? 'Una lección' : `${resumen.due.length} lecciones`} para repasar hoy · ${tituloConcepto(resumen.due[0]!)}`}
+    aviso
+    clase="repaso-camino"
+    data-repaso-camino={resumen.due.length}
+  />
+{:else if resumen?.proximo && cuandoRepaso(resumen.proximo.t, ahora) === 'hoy'}
+  <Fila
+    href="#/cursos"
+    titulo="Repaso de sus lecciones"
+    detalle={`Al día. Próximo repaso hoy · ${tituloConcepto(resumen.proximo.clave)}`}
+    clase="repaso-camino"
+    data-repaso-camino={0}
+  />
 {/if}
-
-<style>
-  .fila {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .icono {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: var(--acento-tinte);
-    color: var(--acento);
-  }
-  .textos {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  h2 {
-    margin: 0;
-    color: var(--tinta);
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .det {
-    color: var(--tinta-suave);
-    font-size: 14px;
-  }
-  .rep {
-    color: color-mix(in srgb, var(--ambar) 80%, var(--tinta));
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .fila :global(.t09-boton) {
-    flex: none;
-  }
-  .pie-repaso {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0 20px;
-    margin: 6px 0 -10px 62px;
-  }
-  .cursos {
-    display: flex;
-    align-items: center;
-    min-height: var(--toque);
-    color: var(--acento);
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .cursos:hover {
-    text-decoration: underline;
-  }
-</style>

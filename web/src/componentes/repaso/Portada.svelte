@@ -153,7 +153,7 @@
       </div>
     </div>
 
-    <div class="mazo rp-caja">
+    <div class="mazo">
       <label class="campo">
         <span>Mazo</span>
         <select value={mazo.id} onchange={(e) => ponerAjustes({ mazo: (e.currentTarget as HTMLSelectElement).value })} data-mazo>
@@ -166,7 +166,7 @@
           {/each}
         </select>
       </label>
-      <a class="t09-boton empezar" href="#/repaso/tarjetas" aria-disabled={pendientes === 0 ? 'true' : undefined} data-empezar>
+      <a class="boton primario empezar" href="#/repaso/tarjetas" aria-disabled={pendientes === 0 ? 'true' : undefined} data-empezar>
         {pendientes ? `Empezar · ${pendientes}` : 'Nada pendiente hoy'}
       </a>
     </div>
@@ -215,7 +215,7 @@
     </div>
     {#each testsPorTomo as g (g.tomo.id)}
       <h3 class="tomo">{g.tomo.id ? `Tomo ${g.tomo.id} · ${g.tomo.titulo}` : g.tomo.titulo}</h3>
-      <ul class="lista rp-caja">
+      <ul class="lista">
         {#each g.partes as p (p.parte)}
           {@const r = repaso.tests[p.parte]}
           <li style:--c={colorBloque(p.color)}>
@@ -272,18 +272,18 @@
   .espera-portada {
     min-height: 70vh;
   }
+  /* 2.1: the system of the sheet — sections 48 px apart with a 24 px heading, figures and lists without boxes */
   .bloque {
-    margin-top: 22px;
+    margin-top: var(--e21-6);
   }
-  /* 0.9 look (componentes/ui09): serif headings, 18 px cards, the big primary button */
   h2 {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 0 0 12px;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: 21px;
+    margin: 0 0 var(--e21-2);
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-seccion);
     font-weight: 600;
   }
   .aviso {
@@ -292,20 +292,12 @@
   .cifras {
     display: grid;
     grid-template-columns: 1.6fr 1fr 1fr;
-    gap: 10px;
+    gap: 16px 32px;
   }
   .cifra {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 16px;
-    border: 1px solid var(--linea);
-    border-radius: var(--radio-tarjeta);
-    background: var(--superficie);
-  }
-  .cifra.principal {
-    border-color: var(--acento-borde);
-    background: var(--acento-tinte);
   }
   .valor {
     display: flex;
@@ -346,8 +338,7 @@
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 12px;
-    margin-top: 12px;
-    padding: 14px;
+    margin-top: var(--e21-3);
   }
   .campo {
     display: flex;
@@ -482,10 +473,10 @@
     text-align: center;
   }
   h3.tomo {
-    margin: 22px 0 8px;
-    color: var(--tinta-suave);
-    font-size: 12px;
-    font-weight: 700;
+    margin: var(--e21-4) 0 var(--e21-1);
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -495,20 +486,20 @@
     list-style: none;
     overflow: hidden;
   }
-  .lista li + li {
-    border-top: 1px solid var(--linea-suave);
+  .lista li {
+    border-bottom: 1px solid var(--v11-linea);
   }
   .lista a {
     display: flex;
     align-items: center;
     gap: 12px;
     min-height: 52px;
-    padding: 6px 12px;
+    padding: 6px 0;
     color: var(--tinta);
     text-decoration: none;
   }
-  .lista a:hover {
-    background: var(--hover);
+  .lista a:hover .t {
+    color: var(--v11-azul);
   }
   .lista .t {
     flex: 1;
@@ -584,8 +575,8 @@
   .practicas {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 8px;
-    margin: 12px 0 0;
+    gap: 0 32px;
+    margin: var(--e21-2) 0 0;
     padding: 0;
     list-style: none;
   }
@@ -594,16 +585,13 @@
     align-items: center;
     gap: 10px;
     min-height: 48px;
-    padding: 6px 12px 6px 6px;
-    border: 1px solid var(--linea);
-    border-left: 4px solid var(--c);
-    border-radius: 12px;
-    background: var(--superficie);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--v11-linea);
     color: var(--tinta);
     text-decoration: none;
   }
-  .practicas a:hover {
-    background: var(--hover);
+  .practicas a:hover .t {
+    color: var(--v11-azul);
   }
   .practicas .t {
     flex: 1;

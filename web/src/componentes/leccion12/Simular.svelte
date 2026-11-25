@@ -132,8 +132,15 @@
 </div>
 
 <style>
+  /* 2.1 (Leccion.png): the answer field sits on the page, no card around it */
+  .simular {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+  }
   .etq {
     font-weight: 600;
+    font-size: 15px;
   }
   .campo {
     flex: 1 1 10em;
