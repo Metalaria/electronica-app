@@ -210,6 +210,10 @@ test('solo las consolas con una avería documentada con números (y sus piezas e
     ['neogeo', 0],
     ['gb', 0],
     ['gbc', 0],
+    ['n64', 1], // (n64ps1)
+    ['ps1', 1], // (n64ps1)
+    ['saturn', 1], // (saturn20)
+    ['gamecube', 0], // (gamecube20: no schematic, no board nets: the tab is hidden)
   ] as const) {
     await page.goto(`/#/consolas/${m}/foto`);
     await expect(page.locator('.pestanas a').first()).toBeVisible({ timeout: 30_000 });

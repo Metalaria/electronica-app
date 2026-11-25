@@ -570,7 +570,12 @@ test.describe('lecciones de consola (consolas11.mjs)', () => {
     expect(c.bloques('cap01')).toBeUndefined();
     // the parts file: the seven consoles in the explorer's order, tipo «consola», only the lessons already written
     const p = c.partes();
-    expect(Object.keys(p.partes)).toEqual(['consola-nes', 'consola-neogeo', 'consola-sms', 'consola-megadrive', 'consola-gb', 'consola-gbc', 'consola-snes']);
+    // (2.0: the first seven, then the new machines; each one checks its own part)
+    expect(Object.keys(p.partes).slice(0, 7)).toEqual(['consola-nes', 'consola-neogeo', 'consola-sms', 'consola-megadrive', 'consola-gb', 'consola-gbc', 'consola-snes']);
+    expect(Object.keys(p.partes)).toContain('consola-gamecube');
+    expect(Object.keys(p.partes)).toContain('consola-saturn');
+    expect(Object.keys(p.partes)).toContain('consola-n64'); // (n64ps1)
+    expect(Object.keys(p.partes)).toContain('consola-ps1'); // (n64ps1)
     for (const [id, info] of Object.entries(p.partes) as [string, { tipo: string; secciones: { label: string }[] }][]) {
       expect(info.tipo).toBe('consola');
       for (const s of info.secciones) expect(fs.existsSync(path.join(FUENTES, id, `${s.label}.yaml`)), `${id}/${s.label}`).toBe(true);

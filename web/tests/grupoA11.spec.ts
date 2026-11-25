@@ -227,7 +227,8 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
       cap52: ['senales', 'proyectos'],
     });
     // (1.2, consolas-A: the 11th course, «Consolas por dentro», one part per console of the explorer)
-    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 8, 5, 5, 6, 8, 3, 8, 7]);
+    // (2.0: «Consolas por dentro» has 7 + the four new machines: GameCube, Nintendo 64, PlayStation and Saturn)
+    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 8, 5, 5, 6, 8, 3, 8, 11]);
     // 1.1: the expansions' two new chapters, where the book places them (1.2: book 4.1's ids, cap55 and cap56, and
     // appendix K closing the digital course)
     expect(CURSOS.find((c) => c.id === 'digital')!.partes).toEqual(['cap09', 'cap29', 'cap55', 'cap34', 'cap37', 'cap38', 'cap44', 'apK']);
@@ -239,7 +240,12 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
     // its parts are not in the book: they come from lecciones11/partes.json (lib/partes-extra.ts), each section with its
     // published lesson, in the explorer's order
     const consolas = CURSOS.find((c) => c.id === 'consolas')!;
-    expect(consolas.partes).toEqual(['consola-nes', 'consola-neogeo', 'consola-sms', 'consola-megadrive', 'consola-gb', 'consola-gbc', 'consola-snes']);
+    // (2.0: the first seven, then the new machines in the explorer's order; each one checks its own part below)
+    expect(consolas.partes.slice(0, 7)).toEqual(['consola-nes', 'consola-neogeo', 'consola-sms', 'consola-megadrive', 'consola-gb', 'consola-gbc', 'consola-snes']);
+    expect(consolas.partes).toContain('consola-gamecube');
+    expect(consolas.partes).toContain('consola-saturn');
+    expect(consolas.partes).toContain('consola-n64'); // (n64ps1)
+    expect(consolas.partes).toContain('consola-ps1'); // (n64ps1)
     const extra = leerJson<{ partes: Record<string, InfoParte> }>('lecciones11/partes.json').partes;
     const conConsolas = mezclarPartes(INDICE, extra);
     expect(leccionesDeCurso(consolas, INDICE)).toEqual([]);
@@ -252,15 +258,23 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
     // (a book part is never replaced, and the book's volumes do not list the console parts)
     expect(mezclarPartes(INDICE, { cap00: { tipo: 'consola', titulo: 'x', secciones: [] } }).partes.cap00).toBe(INDICE.partes.cap00);
     expect(INDICE.tomos.flatMap((t) => t.partes).some((p) => p.startsWith('consola-'))).toBe(false);
-    // placement test sizes: 6–10 questions, spread over the chapters
+    // placement test sizes: 6–12 questions, spread over the chapters, every part with at least one
+    // (2.0: 12 at most, so that «Consolas por dentro», 11 parts, asks one question of each console)
     for (const c of CURSOS) {
       const r = repartoPrueba(c.partes.length);
       const n = r.reduce((a, b) => a + b, 0);
       expect(n).toBe(preguntasPrueba(c.partes.length));
       expect(n).toBeGreaterThanOrEqual(6);
-      expect(n).toBeLessThanOrEqual(10);
-      expect(Math.min(...r)).toBeGreaterThanOrEqual(1);
+      expect(n).toBeLessThanOrEqual(12);
+      expect(Math.min(...r), c.id).toBeGreaterThanOrEqual(1);
     }
+    expect(consolas.partes.length).toBe(11);
+    expect(preguntasPrueba(consolas.partes.length)).toBe(11);
+    expect(repartoPrueba(consolas.partes.length)).toEqual(Array(11).fill(1));
+    // the cap: 13 chapters, 12 questions (the last chapter none); 4 chapters, 6 (extras to the first)
+    expect(preguntasPrueba(13)).toBe(12);
+    expect(repartoPrueba(13)).toEqual([...Array(12).fill(1), 0]);
+    expect(repartoPrueba(4)).toEqual([2, 2, 1, 1]);
   });
 
   test('los circuitos guiados de la protoboard son los que cuenta el logro', () => {

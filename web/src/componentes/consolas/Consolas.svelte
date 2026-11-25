@@ -4,9 +4,10 @@
   import { untrack } from 'svelte';
   import { numeroImpreso } from '../../lib/datos';
   import { ruta } from '../../lib/ruta.svelte';
-  import { cargarMaquina, type DatosMaquina, type IdMaquina } from './datos';
+  import { cargarMaquina, tieneEsquema, type DatosMaquina, type IdMaquina } from './datos';
   import { enlace, leerAncla, PESTANAS, type Pestana, type Seleccion } from './estado.svelte';
-  import { cargarArquitectura } from './arquitectura/maquinas';
+  import { cargarArquitectura, tieneArquitectura } from './arquitectura/maquinas';
+  import { tieneFotograma } from './fotograma/maquinas';
   import ErrorCarga from '../ErrorCarga.svelte';
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
@@ -60,7 +61,19 @@
 
   // «Placa en 3D / 2D» only for the machines with a board
   // «Busque la avería» (1.3) only for the machines with a fault of their lesson placed on their board
-  const disponible = (m: IdMaquina, p: Pestana) => (p === 'placa3d' || p === 'placa2d' ? tienePlaca(m) : p === 'averia' ? averiasDe(m).length > 0 : true);
+  // (2.0) «Arquitectura» and «Un fotograma» only for the machines with a model (the frame's steps need both)
+  const disponible = (m: IdMaquina, p: Pestana) =>
+    p === 'placa3d' || p === 'placa2d'
+      ? tienePlaca(m)
+      : p === 'averia'
+        ? averiasDe(m).length > 0
+        : p === 'arquitectura'
+          ? tieneArquitectura(m)
+          : p === 'fotograma'
+            ? tieneFotograma(m) && tieneArquitectura(m)
+            : p === 'esquema'
+              ? tieneEsquema(m) // (2.0) the GameCube has none
+              : true;
   const pestanas = $derived(PESTANAS.filter((p) => disponible(actual.maquina, p.id)));
   const pestana = $derived(pestanas.some((p) => p.id === actual.pestana) ? actual.pestana : 'foto');
 
@@ -72,6 +85,10 @@
     { id: 'gb', titulo: 'Game Boy', placa: 'DMG-CPU-05/06 · 1989' },
     { id: 'gbc', titulo: 'Game Boy Color', placa: 'CGB-CPU-04 · 1999' },
     { id: 'snes', titulo: 'Super Nintendo', placa: 'SNSP-CPU-01 PAL · 1992' },
+    { id: 'n64', titulo: 'Nintendo 64', placa: 'NUS-CPU-03 NTSC · 1997' },
+    { id: 'ps1', titulo: 'PlayStation', placa: 'PU-18 · 1995' },
+    { id: 'gamecube', titulo: 'GameCube', placa: 'DOL-CPU(P)-01 PAL · 2002' },
+    { id: 'saturn', titulo: 'Sega Saturn', placa: 'VA0.5 NTSC-J · 1994' }, // (cierre20) the Japanese HST-3200 board of Sega's schematic, dated 1994
   ];
 </script>
 
@@ -81,7 +98,7 @@
   <header>
     <div class="titulo">
       <h1>Consolas</h1>
-      <p>Las placas base de las figuras {numeroImpreso('fig-37.16', '37.16')} y {numeroImpreso('fig-37.22', '37.22')} y otras cinco consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
+      <p>Las placas base de las figuras {numeroImpreso('fig-37.16', '37.16')} y {numeroImpreso('fig-37.22', '37.22')} y las de las demás consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}
@@ -97,6 +114,13 @@
       <a href={enlace(actual.maquina, p.id, sel)} aria-current={pestana === p.id ? 'page' : undefined}>{p.titulo}</a>
     {/each}
   </nav>
+  {#if !tieneEsquema(actual.maquina)}
+    <!-- (2.0) a machine with no schematic says so where the others show «Esquema» and «Busque la avería» -->
+    <p class="sin-esquema" data-testid="sin-esquema">
+      Esta consola no tiene «Esquema» ni «Busque la avería»: no existe ningún esquema de su placa. Lo que se sabe de ella sale de
+      las fotos y de las fuentes: <a href={enlace(actual.maquina, 'fuentes', null)}>vea por qué y qué tensiones se pueden medir</a>.
+    </p>
+  {/if}
 
   {#if error}
     <ErrorCarga titulo="No se pudieron cargar los datos de la consola." {error} reintentar={() => intento++} />
@@ -182,7 +206,8 @@
   }
   .maquinas {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    /* (2.0: eleven machines, in rows of six) */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 6px;
     width: 100%;
     padding: 4px;
@@ -217,6 +242,11 @@
     background: var(--superficie);
     box-shadow: var(--sombra);
     color: var(--acento);
+  }
+  .sin-esquema {
+    margin: 0;
+    color: var(--tinta-suave);
+    font-size: 14px;
   }
   .pestanas {
     display: flex;

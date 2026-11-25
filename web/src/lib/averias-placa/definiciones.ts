@@ -158,7 +158,156 @@ const NES: DefAveriaPlaca = {
   encuadre: ['C15', 'C16', 'P6'],
 };
 
-export const AVERIAS_PLACA: DefAveriaPlaca[] = [SNES, SMS, NES];
+// 2.0 (n64ps1) ------------------------------------------------------------------------------------------------
+
+/**
+ * Nintendo 64, «Piloto encendido, sin imagen» (consola-n64/n64-averias, averia-sin-imagen: the supply's 12 V, the
+ * 78M05 or the cartridge's CIC; N64brew «Non-Booting Troubleshooting»), on OpeN64's board (NUS-CPU-03). Its nets are
+ * the PCB's: U13's input is +12V and its output +5V there (the OpeN64 schematic draws both on +3.3V).
+ */
+const N64: DefAveriaPlaca = {
+  id: 'n64-sin-imagen',
+  maquina: 'n64',
+  placa: 'n64',
+  leccion: { parte: 'consola-n64', seccion: 'n64-averias', tarjeta: 'averia-sin-imagen' },
+  foto: { id: 'cpu04', lado: 'F' },
+  sondas: {
+    // «Entrada del 78M05»: the 12 V after the power switch, at U13's input
+    entrada: { modo: 'V', redes: ['+12V', 'GND'] },
+    // «Salida del 78M05»
+    salida: { modo: 'V', redes: ['+5V', 'GND'] },
+    // «Patilla 6 del PIF»: Cold Reset
+    coldreset: { modo: 'V', redes: ['/CLDRES', 'GND'] },
+  },
+  tensiones: {
+    '/+12V Pre-Switch': { expr: 'V_12*fu', porque: 'Los 12 V de la fuente antes del interruptor: «La fuente de la Nintendo 64 da dos tensiones: 3,3 V y 12 V».' },
+    '+3.3V': { expr: 'V_33', porque: 'Los 3,3 V de la lógica, que llegan en las tres averías (el piloto luce).' },
+    '/+3.3V Pre-Switch': { expr: 'V_33', porque: 'Los mismos 3,3 V de la fuente, antes del interruptor (encendida, el interruptor está cerrado).' },
+  },
+  nombres: {
+    '/+12V Pre-Switch': '12 V de la fuente, antes del interruptor',
+    '+12V': '12 V tras el interruptor: entrada del 78M05 y del AMP-NUS',
+    '+5V': '5 V: salida del 78M05, al ENC-NUS y al Multi Out',
+    '/+3.3V Pre-Switch': '3,3 V de la fuente, antes del interruptor',
+    '+3.3V': '3,3 V de la lógica (RCP, CPU, RAM, PIF)',
+    '/CLDRES': 'Cold Reset: patilla 6 del PIF',
+    GND: 'masa',
+  },
+  puntos: [
+    { pad: 'P4.6', rotulo: 'Conector de la fuente P4, 12 V' },
+    { pad: 'P4.2', rotulo: 'Conector de la fuente P4, 3,3 V' },
+    { pad: 'U13.1', rotulo: '78M05 (U13), entrada' },
+    { pad: 'U13.2', rotulo: '78M05 (U13), masa' },
+    { pad: 'U13.3', rotulo: '78M05 (U13), salida' },
+    { pad: 'U5.4', rotulo: 'ENC-NUS (U5), patilla 4: VCC1' },
+    { pad: 'U6.6', rotulo: 'PIF (U6), patilla 6: Cold Reset' },
+    { pad: 'U6.28', rotulo: 'PIF (U6), patilla 28: 3,3 V' },
+    { pad: 'U6.14', rotulo: 'PIF (U6), patilla 14: masa' },
+  ],
+  piezas: { fuente: ['P4'], regulador: ['U13'], cartucho: ['P6'] },
+  encuadre: ['P4', 'SW1', 'U13', 'U6', 'P6'],
+  notas: [
+    'La fuente es un módulo aparte: aquí se mide su salida en el conector P4 y, tras el interruptor, en la entrada del 78M05.',
+    'El esquema de OpeN64 dibuja la entrada y la salida del 78M05 en +3.3V; la placa (y esta vista) las lleva a +12V y +5V.',
+  ],
+};
+
+/**
+ * PlayStation, «Los mandos fallan» (consola-ps1/ps1-averias, averia-mandos: the fuse PS605 of the controllers' 3.3 V or
+ * PS602 of their 8 V), on the PU-18 of xyzz/pu-18: CN602 (power supply) → PS605 → L106 → CN102.9 and
+ * CN602 → PS602 → L104 → CN102.4 (the controller ports' flat cable).
+ */
+const PS1: DefAveriaPlaca = {
+  id: 'ps1-mandos',
+  maquina: 'ps1',
+  placa: 'ps1',
+  leccion: { parte: 'consola-ps1', seccion: 'ps1-averias', tarjeta: 'averia-mandos' },
+  foto: { id: 'cara-a', lado: 'F' },
+  sondas: {
+    // «PS605, apagada»: across the fuse
+    r605: { modo: 'Ω', redes: ['PWR_3.3v', 'Net-(L106-Pad1)'] },
+    // «3,3 V en CN102»: pin 9 of the controllers' connector
+    v33: { modo: 'V', redes: ['CTR_3.3v', 'GND'] },
+    // «8 V en CN102»: pin 4
+    v8: { modo: 'V', redes: ['/CONT_8v', 'GND'] },
+  },
+  iguales: {
+    'Net-(L106-Pad1)': { como: 'CTR_3.3v', porque: 'Entre PS605 y CN102 solo está la ferrita L106.' },
+    'EXT_8v': { como: '/CONT_8v', porque: 'Entre PS602 y CN102 solo está la ferrita L104.' },
+    '/CONT_GND': { como: 'GND', porque: 'La masa de los mandos sale de la de la placa por la ferrita L105.' },
+  },
+  tensiones: {
+    'PWR_3.3v': { expr: 'V_33', porque: 'Los 3,3 V de la fuente antes del fusible: «Llegan los 3,3 V y los 8 V de la fuente».' },
+    'PWR_8v': { expr: 'V_8', porque: 'Los 8 V de la fuente antes del fusible: «Llegan los 3,3 V y los 8 V de la fuente».' },
+  },
+  nombres: {
+    'PWR_3.3v': '3,3 V de la fuente, antes de PS605',
+    'PWR_8v': '8 V de la fuente, antes de PS602',
+    'Net-(L106-Pad1)': 'entre PS605 y la ferrita L106',
+    'CTR_3.3v': '3,3 V de los mandos, patilla 9 de CN102',
+    'EXT_8v': 'tras PS602: 8 V de los mandos (por L104) y del puerto paralelo (por L110)',
+    '/CONT_8v': '8 V de los mandos, patilla 4 de CN102',
+    '/CONT_GND': 'masa de los mandos, patilla 7 de CN102 (por L105)',
+    GND: 'masa',
+  },
+  puntos: [
+    { pad: 'CN602.3', rotulo: 'Conector de la fuente CN602, 3,3 V' },
+    { pad: 'CN602.1', rotulo: 'Conector de la fuente CN602, 8 V' },
+    { pad: 'CN602.2', rotulo: 'Conector de la fuente CN602, masa' },
+    { pad: 'PS605.1', rotulo: 'Fusible PS605, lado de la fuente' },
+    { pad: 'PS605.2', rotulo: 'Fusible PS605, lado de los mandos' },
+    { pad: 'PS602.1', rotulo: 'Fusible PS602, lado de la fuente' },
+    { pad: 'PS602.2', rotulo: 'Fusible PS602, lado de los mandos' },
+    { pad: 'CN102.9', rotulo: 'Conector de los mandos CN102, patilla 9: 3,3 V' },
+    { pad: 'CN102.4', rotulo: 'Conector de los mandos CN102, patilla 4: 8 V' },
+    { pad: 'CN102.7', rotulo: 'Conector de los mandos CN102, patilla 7: masa' },
+  ],
+  piezas: { ps605: ['PS605'], ps602: ['PS602'] },
+  encuadre: ['CN602', 'PS605', 'PS602', 'L104', 'L106', 'CN102'],
+  notas: [
+    'Las tensiones son las nominales de la fuente que da la lección; el modelo no cuenta la caída en las ferritas.',
+    'PS602 también alimenta, por la ferrita L110, la red /CART_7.5v del puerto paralelo; la lección solo trata los mandos.',
+  ],
+};
+
+/**
+ * 2.0 (saturn20): Sega Saturn, «Piloto encendido, sin imagen» (consola-saturn/saturn-averias, averia-sin-imagen: the three
+ * supply rails at CN3 and the 5 V regulator IC34 that feeds the PLL), on RGBeter's VA0.5 board: CN3 (+9V, VCC, LVCC)
+ * and IC34 (+9V → AVCC1). No photo of this board: only the 3D board.
+ */
+const SATURN: DefAveriaPlaca = {
+  id: 'saturn-sin-imagen',
+  maquina: 'saturn',
+  placa: 'saturn',
+  leccion: { parte: 'consola-saturn', seccion: 'saturn-averias', tarjeta: 'averia-sin-imagen' },
+  sondas: {
+    'cn3-9': { modo: 'V', redes: ['+9V', 'GND'] },
+    'cn3-5': { modo: 'V', redes: ['VCC', 'GND'] },
+    'cn3-3': { modo: 'V', redes: ['LVCC', 'GND'] },
+    ic34: { modo: 'V', redes: ['AVCC1', 'GND'] },
+  },
+  nombres: {
+    '+9V': '+9 V de la fuente (unidad de CD y PLL), en CN3',
+    VCC: '+5 V de la fuente (VCC, todos los chips salvo la SDRAM), en CN3',
+    LVCC: '+3,3 V de la fuente (LVCC, la SDRAM), en CN3',
+    AVCC1: 'salida de 5 V de IC34, que alimenta el PLL',
+    GND: 'masa',
+  },
+  puntos: [
+    { pad: 'CN3.6', rotulo: 'CN3, +9 V' },
+    { pad: 'CN3.4', rotulo: 'CN3, +5 V (VCC)' },
+    { pad: 'CN3.3', rotulo: 'CN3, +3,3 V (LVCC)' },
+    { pad: 'CN3.1', rotulo: 'CN3, masa' },
+    { pad: 'IC34.3', rotulo: 'Regulador IC34, entrada (+9 V)' },
+    { pad: 'IC34.2', rotulo: 'Regulador IC34, masa' },
+    { pad: 'IC34.1', rotulo: 'Regulador IC34, salida (AVCC1)' },
+  ],
+  piezas: { fuente: ['CN3'], regulador: ['IC34'] },
+  encuadre: ['CN3', 'IC34', 'CE48'],
+  notas: ['La placa es la reproducción de RGBeter de la VA0.5; la fuente interna no está en ella: sus tensiones se miden en CN3.'],
+};
+
+export const AVERIAS_PLACA: DefAveriaPlaca[] = [SNES, SMS, NES, N64, PS1, SATURN];
 
 /** The fault definitions of a console (none: no fault mode). */
 export function averiasDe(maquina: string): DefAveriaPlaca[] {

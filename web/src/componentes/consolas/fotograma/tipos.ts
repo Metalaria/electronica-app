@@ -83,6 +83,8 @@ export interface Ejemplo {
   formato: 'planos' | 'nibbles';
   /** Planar bytes of this machine are not stored leftmost-pixel-in-bit-7 (Neo Geo): show the bits only. */
   sinHex?: boolean;
+  /** (2.0) Packed nibbles with the leftmost pixel in the LOW nibble of each byte (PlayStation 4-bit textures). */
+  nibbleBajo?: boolean;
   /** Columns of the followed row read in one fetch (Neo Geo: the left half of a 16-pixel sprite line). */
   ventana?: [number, number];
   /** Tile number as the texts write it («$24»). */

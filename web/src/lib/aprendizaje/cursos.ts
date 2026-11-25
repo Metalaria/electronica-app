@@ -48,8 +48,8 @@ export const CURSOS: Curso[] = [
   {
     id: 'consolas',
     nombre: 'Consolas por dentro',
-    descripcion: 'Las placas de siete consolas: alimentación, relojes, buses y decodificación, vídeo y sonido, bloqueo regional y averías típicas.',
-    partes: ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes'].map((m) => `consola-${m}`),
+    descripcion: 'Las placas de las consolas del explorador: alimentación, relojes, buses y decodificación, vídeo y sonido, bloqueo regional y averías típicas.',
+    partes: ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes', 'n64', 'ps1', 'gamecube', 'saturn'].map((m) => `consola-${m}`),
     unidades: 'consolas',
   },
 ];
@@ -74,16 +74,17 @@ export function cursosDeParte(parte: string): Curso[] {
   return CURSOS.filter((c) => c.partes.includes(parte));
 }
 
-/** Placement test size: one question per chapter, at least 6 and at most 10. */
+/** Placement test size: one question per chapter, at least 6 and at most 12 (2.0: 12, so that every part of
+ * «Consolas por dentro», 11 consoles, gets its question; with 10, the last console was never asked). */
 export function preguntasPrueba(capitulos: number): number {
-  return Math.min(10, Math.max(6, capitulos));
+  return Math.min(12, Math.max(6, capitulos));
 }
 
 /** Questions of the placement test per chapter, in the course's order: as even as possible, extras to the first. */
 export function repartoPrueba(capitulos: number): number[] {
   if (capitulos <= 0) return [];
   const n = preguntasPrueba(capitulos);
-  // more than 10 chapters: the first 10 get one each (no course has that many today)
+  // more than 12 chapters: the first 12 get one each (no course has that many today)
   if (capitulos > n) return Array.from({ length: capitulos }, (_, i) => (i < n ? 1 : 0));
   const base = Math.floor(n / capitulos);
   const extra = n % capitulos;

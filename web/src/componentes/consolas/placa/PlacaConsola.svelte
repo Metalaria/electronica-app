@@ -7,7 +7,7 @@
   import Recuperable from '../../fallos/Recuperable.svelte';
   import { untrack } from 'svelte';
   import { app } from '../../../lib/estado.svelte';
-  import { htmlKicad, nombreRed, type DatosMaquina } from '../datos';
+  import { htmlKicad, nombreRed, tieneEsquema, type DatosMaquina } from '../datos';
   import type { Seleccion } from '../estado.svelte';
   import { construirGeometria, type Geometria, type Impacto2D, type Lado } from '../../proyectos/geometria';
   import { cargarFotosCaras } from '../../proyectos/fotos-caras';
@@ -99,6 +99,9 @@
   function desdeConsola(s: Seleccion | null, x: DatosPlacaConsola): SelPlaca | null {
     // a board that is not the schematic's own takes no selection from the other tabs (same names, other parts),
     // except, on a partly linked one, its shared parts and their nets
+    // (2.0) a console with no schematic (GameCube): its references are the board's own, so «Ver en 2D/3D» and the
+    // route keep the selected part
+    if (s && x.consola.sin_esquema) return s.tipo === 'componente' && x.huellas.some((h) => h.r === s.id) ? { tipo: 'huella', id: s.id } : null;
     if (!s || (!x.consola.enlazada && !x.consola.parcial)) return null;
     if (s.tipo === 'componente') {
       // one board part drawn as two in the schematic (the Master System's RA1 and RA2)
@@ -178,6 +181,8 @@
     return { cuerpo: r.length, huella: r.filter((h) => h.rec!.cuerpo === 'huella').length, aprox: r.filter((h) => h.rec!.cuerpo !== 'huella').length };
   });
   const otraVista: Destino = $derived(vista === '3d' ? 'placa2d' : 'placa3d');
+  /** (2.0) The photo hotspot a reconstructed body comes from (GameCube: no schematic to link through). */
+  const fotoDe = (h: object): string | null => ('foto' in h && typeof h.foto === 'string' && h.foto) || null;
 
   // 1.4 (libro14): on the phone the 3D view opened with its canvas running under the bottom tab bar (the canvas
   // ended ~180 px below the bar's top edge at the top of the page), so a tap near the board's bottom edge opened
@@ -211,7 +216,7 @@
     <div class="placas" role="group" aria-label="Placa">
       {#each placas as p (p.id)}
         <button type="button" aria-pressed={p.id === idPlaca} onclick={() => cambiarPlaca(p.id)}>
-          {p.corto}{#if !p.enlazada}<small>{p.parcial ? 'enlazada en parte' : 'no enlazada'}</small>{/if}
+          {p.corto}{#if !p.enlazada}<small>{p.parcial ? 'enlazada en parte' : tieneEsquema(datos.id) ? 'no enlazada' : 'sin esquema'}</small>{/if}
         </button>
       {/each}
     </div>
@@ -227,7 +232,8 @@
     {#if deFoto}
       <p class="aviso-foto" data-reconstruccion>
         <strong>Reconstrucción a partir de la foto: las pistas solo se ven en la imagen.</strong>
-        Al elegir una red se iluminan sus pads.
+        <!-- (2.0) no schematic (GameCube): no pads or nets to light up -->
+        {x.consola.sin_esquema ? 'No hay pads ni redes: solo el cuerpo de las piezas identificadas.' : 'Al elegir una red se iluminan sus pads.'}
       </p>
     {/if}
     <div class="cuerpo">
@@ -272,6 +278,8 @@
               <button type="button" class="accion" onclick={() => irA('esquema', { tipo: 'componente', id: huella.r })}>Ver en el esquema</button>
               {#if enFoto}<button type="button" class="accion" onclick={() => irA('foto', { tipo: 'componente', id: huella.r })}>Ver en la foto</button>{/if}
             {/if}
+            <!-- (2.0) no schematic (GameCube): a body links to its box on the photos instead -->
+            {#if x.consola.sin_esquema && fotoDe(huella)}<button type="button" class="accion" onclick={() => irA('foto', { tipo: 'foto', id: fotoDe(huella)! })}>Ver en la foto</button>{/if}
             <button type="button" class="accion" onclick={() => irA(otraVista, { tipo: 'componente', id: huella.r })}>{vista === '3d' ? 'Ver en 2D' : 'Ver en 3D'}</button>
           </div>
           {#if x.consola.enlazada && !componente}<p class="detalle">No está en el esquema.</p>{/if}
@@ -319,7 +327,7 @@
             </ul>
           {/if}
         {:else}
-          <p class="tipo">{x.consola.enlazada ? 'Enlazada con el esquema' : x.consola.parcial ? 'Enlazada en parte con el esquema' : 'No enlazada con el esquema'}</p>
+          <p class="tipo">{x.consola.sin_esquema ? 'Esta consola no tiene esquema' : x.consola.enlazada ? 'Enlazada con el esquema' : x.consola.parcial ? 'Enlazada en parte con el esquema' : 'No enlazada con el esquema'}</p>
           <h2 class="nombre">{x.titulo}</h2>
           <p class="detalle">
             {mm(x.placa.ancho, 1)} × {mm(x.placa.alto, 1)} mm · {x.consola.capas_cobre.length} capas de cobre ·
@@ -327,7 +335,12 @@
           </p>
           <p class="aviso-placa">{x.consola.aviso}</p>
           {#if x.consola.parcial}<p class="reconstruida parcial">{x.consola.parcial.texto}</p>{/if}
-          {#if reconstruidas && deFoto}
+          {#if x.consola.sin_esquema}
+            <p class="reconstruida nota-placa">
+              <strong>Posiciones medidas en las fotos</strong> de la placa montada, no leídas de ningún fichero: {reconstruidas?.cuerpo ?? 0} piezas
+              identificadas, cada una con el cuerpo típico de su encapsulado. Sin pads, pistas ni redes.
+            </p>
+          {:else if reconstruidas && deFoto}
             <p class="reconstruida nota-placa">
               <strong>Posiciones medidas en la foto</strong> de la placa desnuda, no leídas de ningún fichero:
               {reconstruidas.cuerpo} componentes con cuerpo, cada uno sobre los taladros de su serigrafía, con el encapsulado que
@@ -340,6 +353,9 @@
               {reconstruidas.aprox} con medidas de la serigrafía o de las fotos). Cada componente dice de dónde sale.
             </p>
           {/if}
+          {#if x.consola.sin_esquema}
+            <p class="ayuda">Toque una pieza para ver qué es y saltar a su recuadro en la foto.</p>
+          {:else}
           <p class="ayuda">
             Toque un componente{deFoto ? ' o un pad' : ', un pad o una pista'} para ver sus conexiones{x.consola.enlazada
               ? '; lo elegido aquí queda elegido en el esquema y al revés'
@@ -347,8 +363,9 @@
                 ? `; ${x.consola.parcial.refs.join(', ')} y sus redes quedan elegidos en el esquema y al revés`
                 : ''}.
           </p>
+          {/if}
           {#if x.comprobaciones.length}
-            <p class="sub">Comprobaciones con el esquema:</p>
+            <p class="sub">{x.consola.sin_esquema ? 'Cómo se ha reconstruido:' : 'Comprobaciones con el esquema:'}</p>
             <ul class="comprobaciones">
               {#each x.comprobaciones as c, i (i)}<li class={c.tipo}>{c.texto}</li>{/each}
             </ul>

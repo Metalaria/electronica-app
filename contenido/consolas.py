@@ -37,6 +37,10 @@ import consolas_pdf as P    # noqa: E402
 import consolas_snes as SN  # noqa: E402
 from PIL import Image        # noqa: E402
 
+# 2.0: machines whose groups, sources and extra fields live in their own module (dicts by machine id: GRUPOS,
+# FUENTES, EXTRA): MODULOS[id] = module, registered after MAQUINAS by each machine's own block
+MODULOS = {}
+
 MAQUINAS = [
     {
         'id': 'nes',
@@ -223,6 +227,21 @@ MAQUINAS = [
     },
 ]
 
+# 2.0 (n64ps1): Nintendo 64 and PlayStation, their entries and data in consolas_n64ps1.py
+import consolas_n64ps1 as N6P  # noqa: E402
+MAQUINAS += N6P.MAQUINAS
+MODULOS.update({'n64': N6P, 'ps1': N6P})
+
+# 2.0 (saturn20): Sega Saturn, its entry and data in consolas_saturn.py
+import consolas_saturn as SAT  # noqa: E402
+MAQUINAS += SAT.MAQUINAS
+MODULOS['saturn'] = SAT
+
+# 2.0 (gamecube20): Nintendo GameCube, no schematic (m['sin_esquema']); its entry and data in consolas_gamecube.py
+import consolas_gamecube as GCB  # noqa: E402
+MAQUINAS += GCB.MAQUINAS
+MODULOS['gamecube'] = GCB
+
 # Gekkio's trace layer labels -> DMG-CPU-06 netlist names
 TRAZAS_GB = {'GND': 'GND', 'BT+': '/Power/BT+', 'VDD': 'VDD', 'VEE': 'VEE', 'VCC': 'VCC', 'SW1-VCC': '/Power/SW1-VCC',
              'DC-VCC': '/Power/DC-VCC', 'P2-VDD': '/Link port/P2-VDD', 'nWR': '/~{WR}', 'nRD': '/~{RD}', 'nCS': '/~{CS}',
@@ -300,6 +319,9 @@ def renombrar_placa(sheets, net, buses, pref_ref, pref_red):
 
 
 def construir(m, problemas):
+    if m.get('sin_esquema'):
+        # 2.0 (gamecube20): a machine with no schematic at all: photos, hotspots and sources only
+        return finalizar(m, {}, [], [], 0, problemas)
     if m.get('pdf'):
         return construir_pdf(m, problemas)
     placas = [{'raiz': m['raiz'], 'netlist': m['netlist'], 'buses': m['buses'], 'svg': m['svg'],
@@ -652,9 +674,11 @@ def preparar_fotos(m, problemas):
                 if 0 <= x < w and 0 <= y < h:
                     pos[f['ref']] = [round(x), round(y)]
             entrada['posiciones'] = pos
-            entrada['posiciones_nota'] = ('Punto de referencia de su huella en la PCB de nonSNES, llevado a esta foto con un ajuste '
+            # (2.0: the board's name comes from the machine, `pcb_nombre`; nonSNES by default)
+            entrada['posiciones_nota'] = ('Punto de referencia de su huella en la PCB de %s, llevado a esta foto con un ajuste '
                                           '%s a %d puntos (error mediano de %.1f px)'
-                                          % ('afín' if al.get('modelo', 'afin') == 'afin' else 'proyectivo', len(al['puntos']), med))
+                                          % (m.get('pcb_nombre', 'nonSNES'), 'afín' if al.get('modelo', 'afin') == 'afin' else 'proyectivo',
+                                             len(al['puntos']), med))
         for hs in hot_fs:
             for c in hs['cajas']:
                 if not F.caja_valida(c, w, h):
@@ -714,7 +738,21 @@ def preparar_fotos(m, problemas):
     return principal, hot, extra, tam
 
 
+def fuentes_de(mid):
+    if mid in MODULOS:
+        return MODULOS[mid].FUENTES[mid]
+    return D.FUENTES.get(mid) or (SN.FUENTES if mid == 'snes' else D2.FUENTES2[mid])
+
+
+def extra_de(mid):
+    if mid in MODULOS:
+        return MODULOS[mid].EXTRA.get(mid, {})
+    return SN.EXTRA if mid == 'snes' else D2.EXTRA.get(mid, {})
+
+
 def grupos_de(mid):
+    if mid in MODULOS:
+        return MODULOS[mid].GRUPOS[mid]
     return D.GRUPOS.get(mid) or (SN.GRUPOS if mid == 'snes' else D2.GRUPOS2[mid])
 
 
@@ -765,7 +803,7 @@ def finalizar(m, componentes, redes, hojas, tam, problemas):
         'redes': redes,
         'equivalencias': D.EQUIVALENCIAS if m['id'] == 'neogeo' else m.get('equivalencias') or D2.EQUIVALENCIAS_DE.get(m['id'])
         or (SN.EQUIVALENCIAS if m['id'] == 'snes' else []),
-        'fuentes': D.FUENTES.get(m['id']) or (SN.FUENTES if m['id'] == 'snes' else D2.FUENTES2[m['id']]),
+        'fuentes': fuentes_de(m['id']),
     }
     if m.get('licencia_texto'):
         # a licence that asks for its text to travel with the work (GPL-3.0, nonSNES): copied next to the data
@@ -784,9 +822,15 @@ def finalizar(m, componentes, redes, hojas, tam, problemas):
         spec.loader.exec_module(tr)
         datos['notas'] = [{'ref': r, 'pin': p, 'texto': t} for r, p, t in tr.DUDAS]
     for k in ('revisiones', 'equivalencias_cabecera', 'citas', 'notas', 'trazas_de'):
-        v = (SN.EXTRA if m['id'] == 'snes' else D2.EXTRA.get(m['id'], {})).get(k)
+        v = extra_de(m['id']).get(k)
         if v:
             datos[k] = v
+    if m.get('sin_esquema'):
+        # 2.0 (gamecube20): why there is no schematic, and the voltages the sources give instead
+        datos['sin_esquema'] = m['sin_esquema']
+        for k in ('tensiones', 'tensiones_nota'):
+            if extra_de(m['id']).get(k):
+                datos[k] = extra_de(m['id'])[k]
     texto = json.dumps(datos, ensure_ascii=False, separators=(',', ':'))
     with open(os.path.join(OUT, m['id'] + '.json'), 'w', encoding='utf-8') as f:
         f.write(texto)
@@ -829,9 +873,9 @@ def solo_fotos(ids):
         datos['hotspots'] = hot
         if extra:
             datos['fotos'] = extra
-        datos['fuentes'] = D.FUENTES.get(m['id']) or (SN.FUENTES if m['id'] == 'snes' else D2.FUENTES2[m['id']])
+        datos['fuentes'] = fuentes_de(m['id'])
         for k in ('revisiones',):
-            v = (SN.EXTRA if m['id'] == 'snes' else D2.EXTRA.get(m['id'], {})).get(k)
+            v = extra_de(m['id']).get(k)
             if v:
                 datos[k] = v
         texto = json.dumps(datos, ensure_ascii=False, separators=(',', ':'))
