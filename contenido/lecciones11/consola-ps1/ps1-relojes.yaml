@@ -1,0 +1,180 @@
+# «Consolas por dentro» · PlayStation 3: relojes. X101 (67,7376 MHz) y la CPU a la mitad, 33,8688 MHz = 768 × 44,1 kHz;
+# X201, el reloj de vídeo (53,20 MHz en la placa PAL de la foto; 53,693175 MHz en NTSC); 314 o 263 líneas por cuadro.
+# Fuentes: los datos de la consola (ps1#n: explorador y psx-spx, hechos externos del manifiesto).
+leccion: consola-ps1/ps1-relojes
+
+libro:
+  "ps1#8": "En esta placa PAL se lee «53.20» (el vídeo PAL va a 53,203425 MHz)"
+  "ps1#30": "67,7376 MHz: la CPU va a la mitad, 33,8688 MHz, 768 veces la frecuencia de muestreo de 44,1 kHz."
+  "ps1#92": "PAL (SCPH-5502): vídeo a 53,203425 MHz, 314 líneas de unos 3406 ciclos."
+  "ps1#93": "NTSC (el cristal X201 de 53,69 MHz de la recreación): 263 líneas de unos 3413 ciclos."
+  "ps1#118": "La CPU va a 33,8688 MHz: 44 100 Hz × 768."
+  "ps1#119": "El reloj de vídeo es de 53,693175 MHz en NTSC y de 53,203425 MHz en PAL"
+
+modelo:
+  valores:
+    f_x: { sim: "f_{X101}", nombre: "cristal de la CPU", unidad: Hz, valor: 67737600 }
+    f_v: { sim: "f_{vídeo}", nombre: "reloj de vídeo PAL", unidad: Hz, valor: 53203425 }
+    c_l: { sim: "c", nombre: "ciclos de vídeo por línea PAL", unidad: "", valor: 3406 }
+    L: { sim: "L", nombre: "líneas por cuadro", unidad: "", valor: 263 }
+  calculos:
+    f_cpu: { expr: "f_x/2", sim: "f_{CPU}", nombre: "reloj de la CPU", unidad: Hz, cifras: 6 }
+    f_s: { expr: "f_x/2/768", sim: "f_{s}", nombre: "frecuencia de muestreo", unidad: Hz, cifras: 4 }
+    f_c: { expr: "f_v/(c_l*L)", sim: "f_{cuadro}", nombre: "cuadros por segundo con el reloj PAL", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-cristales
+    tipo: explorar
+    titulo: "Dos cristales"
+    texto: "Toque el cristal del vídeo en esta cara y la GPU a la que da el reloj."
+    libro: ["ps1#8"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [150, 300, 500, 360]
+      ampliar: 1.4
+      zonas:
+        - { id: xgpu, hotspot: xgpu, rotulo: "Cristal de vídeo", texto: "Se lee «53.20»: el reloj de vídeo PAL." }
+        - { id: gpu, hotspot: gpu, rotulo: "GPU", texto: "Va al ritmo de ese cristal." }
+    objetivo:
+      condiciones:
+        - { zona: xgpu, rotulo: "Cristal" }
+        - { zona: gpu, rotulo: "GPU" }
+      logrado: "El cristal de vídeo, junto a la GPU. El de la CPU está en la otra cara."
+
+  - id: leer-cpu
+    tipo: leer
+    titulo: "La CPU, a la mitad"
+    texto: "El cristal X101, en la otra cara, marca 67,7376 MHz y la CPU va a la mitad. Escriba su reloj."
+    libro: ["ps1#30", "ps1#118"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1, foto: cara-b }
+      recorte: [1139, 612, 300, 200]
+      ampliar: 1.1
+      zonas:
+        - { id: xcpu, hotspot: b-xcpu, rotulo: "Cristal X101" }
+    leer:
+      objetivo: f_cpu
+      unidad: Hz
+      tol: 0.0001
+      rotulo: "Reloj de la CPU"
+      errores:
+        - { expr: "f_x", texto: "Ese es el cristal: la CPU va a la mitad." }
+    exito: "33,8688 MHz: 44 100 Hz × 768."
+    escalera:
+      - "La mitad de 67,7376 MHz."
+    solucion: "La mitad de 67,7376 MHz: 33,8688 MHz."
+    comprobar:
+      - { f_cpu: 33868800 }
+
+  - id: leer-muestras
+    tipo: leer
+    titulo: "Y el sonido sale de ahí"
+    texto: "Divida el reloj de la CPU entre 768. Escriba la frecuencia que sale."
+    libro: ["ps1#118", "ps1#30"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1, foto: cara-b }
+      recorte: [1139, 612, 300, 200]
+      ampliar: 1.1
+      zonas:
+        - { id: xcpu, hotspot: b-xcpu, rotulo: "Cristal X101" }
+    leer:
+      objetivo: f_s
+      unidad: Hz
+      tol: 0.001
+      rotulo: "Frecuencia"
+      errores:
+        - { expr: "f_x/768", texto: "Ha dividido el cristal: divida el reloj de la CPU, la mitad." }
+    exito: "44,1 kHz: la frecuencia de muestreo del sonido sale del mismo cristal que la CPU."
+    escalera:
+      - "33,8688 MHz ÷ 768."
+    solucion: "33,8688 MHz ÷ 768 = 44,1 kHz."
+    comprobar:
+      - { f_s: 44100 }
+
+  - id: ajuste-cuadro
+    tipo: ajuste
+    titulo: "Las líneas de una PAL"
+    texto: "Cada línea PAL dura unos 3406 ciclos del reloj de vídeo de 53,203425 MHz. Ajuste las líneas por cuadro hasta unos 49,75 cuadros por segundo."
+    libro: ["ps1#92", "ps1#119", "ps1#93"]
+    inicio: { L: 263 }
+    widget:
+      tipo: grafica
+      x: { id: l, min: 220, max: 340, unidad: "", rotulo: "líneas por cuadro" }
+      y: { min: 40, max: 70, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "f_v/(c_l*l)", color: azul, rotulo: "reloj ÷ (ciclos · líneas)" }
+      marcas:
+        - { x: "L", y: "f_c", rotulo: "{{f_c}}" }
+      mandos: [ { valor: L, min: 220, max: 340, paso: 1, rotulo: "Líneas por cuadro, L" } ]
+    ajuste:
+      valor: f_c
+      objetivo: 49.75
+      tol: 0.002
+      rotulo: "Cuadros por segundo"
+      bajo: "Demasiado lento: quite líneas."
+      alto: "Demasiado rápido: añada líneas."
+      dentro: "{{f_c}}: el cuadro PAL."
+    exito: "314 líneas: el cuadro PAL. La NTSC usa 263, de unos 3413 ciclos, con su reloj de 53,693175 MHz."
+    comprobar:
+      - { con: { L: 314, c_l: 3406 }, f_c: 49.75 }
+
+  - id: toque-cristal-pal
+    tipo: tocar
+    titulo: "El cristal que cambia"
+    texto: "Una consola PAL y una NTSC llevan distinto reloj de vídeo. Toque el cristal que cambia."
+    libro: ["ps1#8", "ps1#119"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [150, 300, 500, 360]
+      ampliar: 1.4
+      zonas:
+        - { id: xgpu, hotspot: xgpu, rotulo: "Pieza metálica pequeña" }
+        - { id: rgb, hotspot: rgb, rotulo: "Chip cuadrado pequeño" }
+        - { id: gpu, hotspot: gpu, rotulo: "Chip cuadrado grande" }
+    tocar:
+      bien: [xgpu]
+      porque:
+        rgb: "Es el MC141685, el DAC de vídeo."
+        gpu: "La GPU es la misma; lo que cambia es su reloj."
+    exito: "X201: «53.20» en esta PAL; 53,69 MHz en las NTSC."
+    escalera:
+      - "Lea la marca: «53.20»."
+    solucion: "X201."
+
+  - id: por-que-768
+    tipo: porque
+    titulo: "Un cristal tan raro"
+    texto: "¿Por qué el cristal de la CPU es de 67,7376 MHz y no de un valor redondo?"
+    libro: ["ps1#30", "ps1#118"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1, foto: cara-b }
+      recorte: [1139, 612, 300, 200]
+      ampliar: 1.1
+      zonas:
+        - { id: xcpu, hotspot: b-xcpu, rotulo: "Cristal X101" }
+    opciones:
+      - texto: "Porque es un múltiplo exacto de 44,1 kHz."
+        bien: true
+        porque: "La CPU va a 768 veces 44,1 kHz: del mismo cristal salen las muestras del sonido."
+      - texto: "Porque lo pide la tele."
+        porque: "El vídeo tiene su propio cristal, X201."
+      - texto: "Porque es el más barato."
+        porque: "El valor lo fija el sonido: el doble de 768 veces 44,1 kHz."
+    escalera:
+      - "Divida 33,8688 MHz entre 44,1 kHz."
+    solucion: "Es el doble de 768 × 44,1 kHz."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["ps1#30", "ps1#118", "ps1#119", "ps1#92"]
+    ideas:
+      - { titulo: "La CPU.", texto: "33,8688 MHz, la mitad de X101." }
+      - { titulo: "El sonido.", texto: "44,1 kHz, del mismo cristal." }
+      - { titulo: "El vídeo.", texto: "X201: PAL y NTSC llevan distinto." }
+      - { titulo: "El cuadro.", texto: "314 líneas en PAL, 263 en NTSC." }

@@ -1,0 +1,202 @@
+# «Consolas por dentro» · Nintendo 64 4: buses y decodificación. La CPU solo tiene SysAD (32 bits, direcciones y datos
+# por los mismos hilos, a 62,5 MHz) y el RCP decide qué contesta a cada dirección: la RDRAM por el bus Rambus, sus
+# propias interfaces, el cartucho por el bus de 16 bits o el PIF. KSEG0 y KSEG1. Los tiempos del bus del cartucho.
+# Fuentes: los datos de la consola (n64#n: explorador, arquitectura con su decodificador, N64brew).
+leccion: consola-n64/n64-buses
+
+libro:
+  "n64#2": "No toca la memoria: todo lo pide al RCP por el bus SysAD de 32 bits"
+  "n64#4": "en un bus Rambus de 9 bits a 250 MHz"
+  "n64#14": "16 bits de direcciones y datos multiplexados (CAD0–CAD15) con ALEH y ALEL"
+  "n64#44": "LAT, PWD, RLS: 1040, 304 y 64 ns en los cartuchos oficiales"
+  "n64#53": "Decide qué contesta a cada dirección de la CPU."
+  "n64#63": "Decodificador, lectura en $80000400: RDRAM."
+  "n64#66": "Decodificador, lectura en $B0001000: ROM del cartucho"
+  "n64#67": "Decodificador, lectura en $BFC00000: ROM del PIF (IPL1/IPL2)"
+  "n64#90": "5 MB/s con las ROM lentas habituales"
+
+modelo:
+  valores:
+    pwd: { sim: "t_{PWD}", nombre: "/RD bajo", unidad: s, valor: 304e-9 }
+    rls: { sim: "t_{RLS}", nombre: "/RD alto entre palabras", unidad: s, valor: 64e-9 }
+  calculos:
+    t_w: { expr: "pwd + rls", sim: "t_{palabra}", nombre: "tiempo de cada palabra de 16 bits", unidad: s, cifras: 3 }
+
+tarjetas:
+  - id: explore-buses
+    tipo: explorar
+    titulo: "Tres buses"
+    texto: "Toque la CPU, el RCP, la memoria y la ranura del cartucho: cada uno cuelga de un bus distinto del RCP."
+    libro: ["n64#2", "n64#4", "n64#14", "n64#53"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [220, 200, 1060, 900]
+      ampliar: 1.4
+      zonas:
+        - { id: cpu, hotspot: cpu, rotulo: "CPU", texto: "SysAD: 32 bits, direcciones y datos por los mismos hilos." }
+        - { id: rcp, hotspot: rcp, rotulo: "RCP", texto: "Decide qué contesta a cada dirección." }
+        - { id: rdram, hotspot: rdram, rotulo: "RDRAM", texto: "Bus Rambus de 9 bits a 250 MHz." }
+        - { id: cart, hotspot: cart, rotulo: "Cartucho", texto: "16 bits, con ALEH y ALEL para la dirección." }
+    objetivo:
+      condiciones:
+        - { zona: cpu, rotulo: "CPU" }
+        - { zona: rcp, rotulo: "RCP" }
+        - { zona: rdram, rotulo: "RDRAM" }
+        - { zona: cart, rotulo: "Cartucho" }
+      logrado: "Los ha tocado todos: lea sus fichas."
+
+  - id: toque-decide
+    tipo: tocar
+    titulo: "¿Quién decodifica?"
+    texto: "La CPU saca una dirección por SysAD. Toque el chip que decide qué la contesta."
+    libro: ["n64#53", "n64#2"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [220, 470, 1060, 620]
+      ampliar: 1.4
+      zonas:
+        - { id: cpu, hotspot: cpu, rotulo: "Chip cuadrado, a la izquierda" }
+        - { id: rcp, hotspot: rcp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: pif, hotspot: pif, rotulo: "Chip alargado, a la derecha" }
+    tocar:
+      bien: [rcp]
+      porque:
+        cpu: "La CPU pregunta; no hay decodificador fuera del RCP."
+        pif: "El PIF contesta a algunas direcciones, pero no decide."
+    exito: "El RCP: según la dirección, contesta él mismo o la pide a la RDRAM, al cartucho o al PIF."
+    escalera:
+      - "Todo lo que pide la CPU pasa por un solo chip."
+    solucion: "El RCP."
+
+  - id: toque-rom
+    tipo: tocar
+    titulo: "$B0001000"
+    texto: "La CPU lee en $B0001000. Toque lo que contesta."
+    libro: ["n64#66"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [280, 200, 960, 1000]
+      ampliar: 1.4
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura larga, arriba" }
+        - { id: rdram, hotspot: rdram, rotulo: "Dos chips alargados" }
+        - { id: pif, hotspot: pif, rotulo: "Chip alargado, a la derecha" }
+    tocar:
+      bien: [cart]
+      porque:
+        rdram: "La RDRAM está en las direcciones bajas; $B0001000 es la ROM del cartucho."
+        pif: "El PIF está en $BFC00000."
+    exito: "La ROM del cartucho: en KSEG1 la CPU resta la base del segmento y pide $10001000 al RCP, que la lee por el bus del cartucho."
+    escalera:
+      - "Pruebe la dirección en el decodificador de «Arquitectura»."
+    solucion: "El cartucho."
+
+  - id: toque-arranque
+    tipo: tocar
+    titulo: "$BFC00000"
+    texto: "Tras el reset, la CPU lee su primera instrucción en $BFC00000. Toque de dónde sale."
+    libro: ["n64#67"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [280, 200, 1060, 900]
+      ampliar: 1.4
+      zonas:
+        - { id: pif, hotspot: pif, rotulo: "Chip alargado, a la derecha" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura larga, arriba" }
+        - { id: rdram, hotspot: rdram, rotulo: "Dos chips alargados" }
+    tocar:
+      bien: [pif]
+      porque:
+        cart: "La ROM del cartucho está en $B0000000 y siguientes."
+        rdram: "Al arrancar, la RDRAM todavía no tiene nada."
+    exito: "La ROM del PIF (IPL1/IPL2): el arranque está dentro del PIF."
+    escalera:
+      - "Pruebe $BFC00000 en el decodificador."
+    solucion: "El PIF."
+
+  - id: ordene-sysad
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Una lectura de la memoria"
+    texto: "La CPU lee una palabra de la RDRAM en $80000400. Toque, por orden, quién pide, quién decide y quién contesta."
+    libro: ["n64#63", "n64#2", "n64#53"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [220, 470, 1060, 620]
+      ampliar: 1.4
+      zonas:
+        - { id: cpu, hotspot: cpu, rotulo: "Chip cuadrado, a la izquierda" }
+        - { id: rcp, hotspot: rcp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: rdram, hotspot: rdram, rotulo: "Dos chips alargados" }
+    tocar:
+      bien: [cpu, rcp, rdram]
+      orden: true
+    pistas:
+      - { texto: "La CPU, el RCP y la RDRAM." }
+    exito: "CPU (SysAD), RCP (decide) y RDRAM (por el bus Rambus)."
+    escalera:
+      - "La CPU no llega sola a la memoria."
+    solucion: "CPU, RCP y RDRAM."
+
+  - id: leer-cartucho
+    tipo: leer
+    titulo: "Una palabra del cartucho"
+    texto: "En los cartuchos oficiales /RD baja 304 ns y sube 64 ns entre palabras. Escriba cuánto tarda cada palabra de 16 bits."
+    libro: ["n64#44", "n64#14", "n64#90"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [280, 200, 960, 240]
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura del cartucho" }
+    leer:
+      objetivo: t_w
+      unidad: s
+      tol: 0.005
+      rotulo: "Tiempo de cada palabra"
+      errores:
+        - { expr: "pwd", texto: "Ese es solo /RD bajo: súmele el tiempo alto entre palabras." }
+    exito: "368 ns por cada 2 bytes: unos 5 MB/s, los de las ROM lentas habituales."
+    escalera:
+      - "304 ns + 64 ns."
+    solucion: "304 ns + 64 ns = 368 ns."
+    comprobar:
+      - { con: { pwd: 304e-9, rls: 64e-9 }, t_w: 368e-9 }
+
+  - id: por-que-mitades
+    tipo: porque
+    titulo: "La dirección en dos veces"
+    texto: "El RCP manda la dirección del cartucho en dos mitades, con ALEH y ALEL. ¿Por qué?"
+    libro: ["n64#14"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [280, 200, 960, 240]
+      zonas:
+        - { id: cart, hotspot: cart, rotulo: "Ranura del cartucho" }
+    opciones:
+      - texto: "El bus del cartucho solo tiene 16 hilos para direcciones y datos."
+        bien: true
+        porque: "Con 16 hilos multiplexados, la dirección de 32 bits va en dos mitades, y después por los mismos hilos llegan los datos."
+      - texto: "Para que vaya más rápido."
+        porque: "Es más lento que tener todas las líneas: es para ahorrar contactos."
+      - texto: "Porque la ROM es de 32 bits."
+        porque: "La ROM entrega palabras de 16 bits por el mismo bus."
+    escalera:
+      - "Cuente los hilos de CAD."
+    solucion: "Solo hay 16 hilos para todo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["n64#2", "n64#53", "n64#14", "n64#44"]
+    ideas:
+      - { titulo: "SysAD.", texto: "La CPU solo tiene un bus, hacia el RCP." }
+      - { titulo: "El RCP decide.", texto: "RDRAM, sus interfaces, el cartucho o el PIF." }
+      - { titulo: "El cartucho.", texto: "16 bits: la dirección en dos mitades y luego los datos." }
+      - { titulo: "KSEG0 y KSEG1.", texto: "La misma memoria física, con y sin caché." }

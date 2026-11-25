@@ -1,0 +1,181 @@
+# «Consolas por dentro» · PlayStation 2: la alimentación. La fuente de 5 contactos da 3,3 V y 8 V (redes PWR_3.3v y
+# PWR_8v del esquema de pu-18); fusibles SMD los reparten (PS602 y PS605 para los mandos, ConsoleMods); el 78M05 saca
+# los 5 V del audio. Fuentes: los datos de la consola (ps1#n), ConsoleMods «PS1:Controller Fuses» y psdevwiki.
+leccion: consola-ps1/ps1-alimentacion
+
+libro:
+  "ps1#11": "Va a 5 V, los del 78M05."
+  "ps1#16": "Llegan los 3,3 V y los 8 V de la fuente (redes PWR_3.3v y PWR_8v del esquema)"
+  "ps1#17": "Protege los 3,3 V que llegan a los mandos y a las tarjetas de memoria por CN102."
+  "ps1#19": "Saca de los 8 V los 5 V del audio (AUD_5V)"
+  "ps1#102": "En los modelos grises, PS602 (CCP2E20) protege los 8 V de los mandos y PS605 (CCP2E15) sus 3,3 V."
+  "ps1#103": "PS602 se funde con 2,0 A y trabaja hasta 800 mA; PS605 se funde con 1,5 A y trabaja hasta 600 mA."
+  "ps1#107": "pasa a una fuente de 5 contactos"
+
+modelo:
+  valores:
+    V_8: { sim: "V_{8}", nombre: "tensión alta de la fuente", unidad: V, valor: 8 }
+    V_5: { sim: "V_{5}", nombre: "salida del 78M05", unidad: V, valor: 5 }
+  calculos:
+    V_caida: { expr: "V_8 - V_5", sim: "V_{entrada} − V_{salida}", nombre: "tensión que se queda el 78M05", unidad: V, cifras: 2 }
+
+tarjetas:
+  - id: explore-mandos
+    tipo: explorar
+    titulo: "Los mandos tienen fusibles"
+    texto: "Un mando oficial funciona entero si le llegan los 3,3 V por PS605 y los 8 V por PS602. Consiga que funcione."
+    libro: ["ps1#17", "ps1#102"]
+    widget:
+      tipo: logica
+      entradas: [{ id: P5, rotulo: "PS605 sano (3,3 V)" }, { id: P2, rotulo: "PS602 sano (8 V)" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [P5, P2] }
+      salidas:
+        - { id: MANDO, de: a1, rotulo: "Mando oficial, con todo" }
+    objetivo:
+      condiciones:
+        - { led: MANDO, valor: 1, rotulo: "El mando funciona con todo" }
+      logrado: "Los dos fusibles: PS605 da los 3,3 V de la lógica y PS602 los 8 V."
+      pistas:
+        - { texto: "Falta uno de los dos fusibles." }
+    escalera:
+      - "Los dos sanos."
+    solucion: "PS605 y PS602 sanos."
+
+  - id: ordene-fuente
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "De la fuente al mando"
+    texto: "Toque, por orden, el camino de los 3,3 V de los mandos: la entrada de la fuente, su fusible y el conector hacia la placa delantera."
+    libro: ["ps1#16", "ps1#17", "ps1#107"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [115, 986, 549, 254]
+      ampliar: 3.1
+      zonas:
+        - { id: alim, hotspot: alim, rotulo: "Conector blanco, a la izquierda" }
+        - { id: f605, hotspot: f605, rotulo: "Pieza pequeña, junto al conector blanco" }
+        - { id: f602, hotspot: f602, rotulo: "Pieza pequeña, abajo en el centro" }
+        - { id: mandos, hotspot: mandos, rotulo: "Conector plano, abajo" }
+        - { id: reg, hotspot: reg, rotulo: "Pieza con aleta, a la derecha" }
+    tocar:
+      bien: [alim, f605, mandos]
+      orden: true
+      porque:
+        reg: "El 78M05 hace los 5 V del audio, no los de los mandos."
+        f602: "PS602 lleva los 8 V; los 3,3 V de la lógica de los mandos pasan por PS605."
+    pistas:
+      - { texto: "CN602, PS605 y CN102." }
+    exito: "CN602, PS605 y CN102. Los 8 V de los mandos siguen otro camino, por PS602."
+    escalera:
+      - "La fuente entra por el conector blanco de 5 contactos."
+    solucion: "CN602, PS605 y CN102."
+
+  - id: toque-reg
+    tipo: tocar
+    titulo: "Los 5 V"
+    texto: "La fuente no da 5 V. Toque la pieza que los hace."
+    libro: ["ps1#19", "ps1#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [115, 986, 549, 240]
+      ampliar: 3
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "Pieza con aleta, a la derecha" }
+        - { id: alim, hotspot: alim, rotulo: "Conector blanco, a la izquierda" }
+        - { id: f605, hotspot: f605, rotulo: "Pieza pequeña negra" }
+    tocar:
+      bien: [reg]
+      porque:
+        alim: "Es la entrada de la fuente: 3,3 V y 8 V."
+        f605: "Es un fusible: no cambia la tensión."
+    exito: "El 78M05 (IC601): saca de los 8 V los 5 V del audio."
+    escalera:
+      - "Un regulador lineal tiene una aleta para el calor."
+    solucion: "IC601, el 78M05."
+
+  - id: leer-caida
+    tipo: leer
+    titulo: "Lo que se queda el 78M05"
+    texto: "El 78M05 recibe 8 V y da 5 V. Escriba la tensión que se queda él."
+    libro: ["ps1#19"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [420, 1000, 260, 200]
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "78M05 (IC601)" }
+    leer:
+      objetivo: V_caida
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión en el regulador"
+      errores:
+        - { expr: "V_5", texto: "Esa es la salida: réstela de la entrada." }
+        - { expr: "V_8", texto: "Esa es la entrada: réstele la salida." }
+    exito: "3 V, que el regulador convierte en calor por la corriente que pasa."
+    escalera:
+      - "8 V − 5 V."
+    solucion: "8 V − 5 V = 3 V."
+    comprobar:
+      - { V_caida: 3 }
+
+  - id: toque-fusibles
+    tipo: tocar
+    titulo: "La serigrafía lo dice"
+    texto: "Junto a cada fusible, la serigrafía da su tipo. Toque el de los 8 V de los mandos, el CCP2E20."
+    libro: ["ps1#102", "ps1#17"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [245, 1028, 300, 200]
+      ampliar: 1.7
+      zonas:
+        - { id: f602, hotspot: f602, rotulo: "Pieza pequeña, abajo en el centro" }
+        - { id: f605, hotspot: f605, rotulo: "Pieza pequeña, a la izquierda" }
+        - { id: mandos, hotspot: mandos, rotulo: "Conector plano" }
+    tocar:
+      bien: [f602]
+      porque:
+        f605: "Es PS605, el CCP2E15, en los 3,3 V."
+        mandos: "Es el conector de los mandos: los fusibles están antes."
+    exito: "PS602 (CCP2E20) en los 8 V; PS605 (CCP2E15), en los 3,3 V."
+    escalera:
+      - "Busque el rótulo CCP2E20 junto a PS602."
+    solucion: "PS602."
+
+  - id: por-que-fusible
+    tipo: porque
+    titulo: "Un fusible que trabaja"
+    texto: "PS605 trabaja hasta 600 mA pero no se funde hasta 1,5 A. ¿Por qué ese margen?"
+    libro: ["ps1#103"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [143, 975, 300, 200]
+      ampliar: 1.7
+      zonas:
+        - { id: f605, hotspot: f605, rotulo: "PS605" }
+    opciones:
+      - texto: "Para no fundirse con el consumo normal y sí con un cortocircuito."
+        bien: true
+        porque: "El consumo normal queda por debajo de 600 mA; un corto en un mando pasa de 1,5 A y lo funde."
+      - texto: "Porque se funde más rápido cuanto más margen tiene."
+        porque: "Al revés: el margen evita que se funda sin motivo."
+      - texto: "Porque el mando necesita 1,5 A."
+        porque: "El fusible trabaja hasta 600 mA: lo normal está por debajo."
+    escalera:
+      - "Piense en qué corriente hay en uso normal y cuál en una avería."
+    solucion: "No se funde con lo normal; sí con un corto."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["ps1#16", "ps1#17", "ps1#19", "ps1#107"]
+    ideas:
+      - { titulo: "Dos tensiones.", texto: "La fuente da 3,3 V y 8 V." }
+      - { titulo: "Fusibles SMD.", texto: "PS602 y PS605 protegen los mandos." }
+      - { titulo: "Los 5 V del audio.", texto: "Los hace el 78M05 de los 8 V." }
+      - { titulo: "Cinco contactos.", texto: "La fuente de la PU-18." }

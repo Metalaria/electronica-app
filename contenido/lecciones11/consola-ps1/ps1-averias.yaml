@@ -1,0 +1,165 @@
+# «Consolas por dentro» · PlayStation 7: averías típicas. Los mandos que fallan: el fusible de los 3,3 V (PS605, el
+# mando oficial y las tarjetas no funcionan) o el de los 8 V (PS602, sin vibración y algunos mandos de otras marcas no
+# van), con el multímetro en la placa. Fuentes: ConsoleMods «PS1:Controller Fuses» (hechos externos), los datos de la
+# consola (ps1#n) y el libro (reparación, capítulo 55; fusibles, 10.3).
+leccion: consola-ps1/ps1-averias
+
+libro:
+  "ps1#16": "Llegan los 3,3 V y los 8 V de la fuente (redes PWR_3.3v y PWR_8v del esquema)"
+  "ps1#17": "Protege los 3,3 V que llegan a los mandos y a las tarjetas de memoria por CN102."
+  "ps1#18": "Protege los 8 V que llegan a los mandos por CN102"
+  "ps1#20": "Lleva a la placa de los puertos frontales el bus serie de los mandos"
+  "ps1#102": "En los modelos grises, PS602 (CCP2E20) protege los 8 V de los mandos y PS605 (CCP2E15) sus 3,3 V."
+  "ps1#104": "Con el fusible de los 8 V fundido, los mandos oficiales funcionan, pero sin vibración, y algunos de otras marcas no funcionan."
+  "ps1#105": "Con el de los 3,3 V fundido, un mando de otra marca puede funcionar pero el oficial no; las tarjetas de memoria oficiales solo usan los 3,3 V."
+  "cap53#30": "Con el circuito apagado: cortocircuitos entre raíles y masa, continuidad de fusibles"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap10#81": "Un fusible fundido es casi siempre un SÍNTOMA, no la causa de la avería"
+
+modelo:
+  valores:
+    V_33: { sim: "V_{3,3}", nombre: "3,3 V de la fuente", unidad: V, valor: 3.3 }
+    V_8: { sim: "V_{8}", nombre: "8 V de la fuente", unidad: V, valor: 8 }
+    f5: { tipo: interruptor, nombre: "PS605 sano", valor: 1 }
+    f2: { tipo: interruptor, nombre: "PS602 sano", valor: 1 }
+  calculos:
+    R_605: { si: f5, entonces: "0", sino: "1e9", sim: "R_{PS605}", nombre: "resistencia de PS605", unidad: Ω }
+    V_m33: { expr: "V_33*f5", sim: "V_{CN102,9}", nombre: "3,3 V de los mandos en CN102", unidad: V, cifras: 3 }
+    V_m8: { expr: "V_8*f2", sim: "V_{CN102,4}", nombre: "8 V de los mandos en CN102", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: ordene-simple
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "Lo simple primero"
+    texto: "El mando oficial no responde. Toque, por orden: el conector por el que van los mandos, el fusible de sus 3,3 V y el de sus 8 V."
+    libro: ["cap53#39", "ps1#20", "ps1#17", "ps1#18"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [236, 997, 417, 232]
+      ampliar: 2.4
+      zonas:
+        - { id: mandos, hotspot: mandos, rotulo: "Conector plano, abajo" }
+        - { id: f605, hotspot: f605, rotulo: "Pieza pequeña, a la izquierda" }
+        - { id: f602, hotspot: f602, rotulo: "Pieza pequeña, abajo en el centro" }
+        - { id: reg, hotspot: reg, rotulo: "Pieza con aleta" }
+    tocar:
+      bien: [mandos, f605, f602]
+      orden: true
+      porque:
+        reg: "El 78M05 hace los 5 V del audio: no llega a los mandos."
+    pistas:
+      - { texto: "CN102, PS605 y PS602." }
+    exito: "El conector (lo simple), y después los dos fusibles de los mandos."
+    escalera:
+      - "Primero el conector, luego lo que lo alimenta."
+    solucion: "CN102, PS605 y PS602."
+
+  - id: averia-mandos
+    tipo: averia
+    titulo: "Los mandos fallan"
+    texto: "Los mandos fallan. Mida y señale el fusible abierto: PS605 (3,3 V) o PS602 (8 V)."
+    libro: ["ps1#102", "ps1#104", "ps1#105", "cap53#30"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [245, 1015, 300, 200]
+      ampliar: 1.7
+      zonas:
+        - { id: f605, hotspot: f605, rotulo: "PS605" }
+        - { id: f602, hotspot: f602, rotulo: "PS602" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: ps605, rotulo: "PS605 (3,3 V)" }
+        - { id: ps602, rotulo: "PS602 (8 V)" }
+      sondas:
+        - { id: r605, rotulo: "PS605, apagada", valor: R_605 }
+        - { id: v33, rotulo: "3,3 V en CN102", valor: V_m33 }
+        - { id: v8, rotulo: "8 V en CN102", valor: V_m8 }
+      fallos:
+        - { id: ps605-abierto, pieza: ps605, tipo: abierta, con: { f5: 0 }, texto: "PS605 abierto: sin los 3,3 V, el mando oficial no funciona (uno de otra marca puede que sí) y las tarjetas oficiales, que solo usan los 3,3 V, tampoco." }
+        - { id: ps602-abierto, pieza: ps602, tipo: abierta, con: { f2: 0 }, texto: "PS602 abierto: sin los 8 V, los mandos oficiales funcionan, pero sin vibración, y algunos de otras marcas no." }
+    exito: "Cada fusible deja su huella: sin 3,3 V o sin 8 V en CN102."
+    escalera:
+      - "Con la consola apagada, un fusible sano marca 0 Ω."
+      - "Mida las dos tensiones del conector de los mandos."
+    solucion: "Sin continuidad en PS605 y sin 3,3 V en CN102: PS605. Con los 3,3 V y sin los 8 V: PS602."
+    comprobar:
+      - { R_605: 0, V_m33: 3.3, V_m8: 8 }
+
+  - id: averia-en-placa
+    tipo: explorar
+    titulo: "Con el polímetro en la placa"
+    texto: "Los mandos fallan. Mida con el polímetro en la placa de verdad y señale el fusible averiado."
+    libro: ["ps1#16", "ps1#102", "ps1#104", "ps1#105"]
+    widget:
+      tipo: averia-placa
+      maquina: ps1
+    objetivo:
+      condiciones:
+        - { averia: encontrada, rotulo: "El fusible averiado, señalado" }
+      logrado: "Lo ha encontrado midiendo en la placa, como en un banco de reparación."
+      pistas:
+        - { texto: "Apague y mida la continuidad de PS605; encendida, mida los 3,3 V y los 8 V en CN102." }
+    escalera:
+      - "Continuidad de PS605 apagada, y las dos tensiones de CN102 encendida."
+    solucion: "Sin los 3,3 V en CN102: PS605. Con los 3,3 V y sin los 8 V: PS602."
+
+  - id: toque-sintoma
+    tipo: tocar
+    titulo: "Sin vibración"
+    texto: "Los mandos oficiales van, pero no vibran. Toque el fusible sospechoso."
+    libro: ["ps1#104", "ps1#102"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [245, 1015, 300, 200]
+      ampliar: 1.7
+      zonas:
+        - { id: f605, hotspot: f605, rotulo: "Pieza pequeña, a la izquierda" }
+        - { id: f602, hotspot: f602, rotulo: "Pieza pequeña, abajo en el centro" }
+    tocar:
+      bien: [f602]
+      porque:
+        f605: "Con PS605 abierto, el mando oficial no funcionaría en absoluto."
+    exito: "PS602, el de los 8 V: el mando oficial funciona sin vibración."
+    escalera:
+      - "La vibración necesita la tensión más alta."
+    solucion: "PS602."
+
+  - id: por-que-cambiar
+    tipo: porque
+    titulo: "Poner otro y ya"
+    texto: "Era PS605. ¿Basta con soldar otro?"
+    libro: ["cap10#81", "ps1#102"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [143, 975, 300, 200]
+      ampliar: 1.7
+      zonas:
+        - { id: f605, hotspot: f605, rotulo: "PS605" }
+    opciones:
+      - texto: "No: primero hay que buscar por qué se fundió."
+        bien: true
+        porque: "Un fusible fundido es casi siempre un síntoma: si el corto sigue, por ejemplo en un mando, el nuevo se funde también."
+      - texto: "Sí, y mejor uno más grande."
+        porque: "Uno más grande deja pasar la avería: el tipo es el de la serigrafía, CCP2E15."
+      - texto: "Sí, con un puente de hilo."
+        porque: "Un puente quita la protección."
+    escalera:
+      - "Un fusible avisa de otra cosa."
+    solucion: "Buscar la causa antes."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["ps1#102", "ps1#104", "ps1#105", "cap10#81"]
+    ideas:
+      - { titulo: "Dos fusibles.", texto: "PS605 en los 3,3 V y PS602 en los 8 V de los mandos." }
+      - { titulo: "Los síntomas.", texto: "Sin 3,3 V no va el mando oficial; sin 8 V, no vibra." }
+      - { titulo: "Medir.", texto: "Continuidad apagada y tensiones en CN102." }
+      - { titulo: "El síntoma.", texto: "Un fusible fundido avisa de otra causa." }

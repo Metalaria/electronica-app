@@ -1,0 +1,183 @@
+# «Consolas por dentro» · PlayStation 5: vídeo y sonido. La GPU dibuja en la VRAM y saca el RGB digital al MC141685; el
+# CXA1645M (en la otra cara) hace el compuesto y el S-vídeo; la GPU no tiene Z-buffer: la tabla de orden. La SPU, con
+# su RAM, mezcla 24 voces y el audio del CD y manda la serie al AK4309A. Fuentes: los datos de la consola (ps1#n) y
+# Copetti (hechos externos del manifiesto).
+leccion: consola-ps1/ps1-video-audio
+
+libro:
+  "ps1#5": "Dibuja triángulos, rectángulos y líneas en la VRAM"
+  "ps1#7": "Convierte los tres colores digitales de la GPU (SR0–7, SG0–7, SB0–7) en RGB analógico."
+  "ps1#9": "24 voces ADPCM de 16 bits a 44,1 kHz"
+  "ps1#10": "Las muestras, la reverberación y los búferes de la SPU"
+  "ps1#11": "Convierte la serie de la SPU (BICK, LRCK, SDATA) en el audio estéreo analógico."
+  "ps1#12": "pasa el audio del CD a la SPU"
+  "ps1#23": "Vídeo compuesto, S-vídeo, RGB y audio estéreo."
+  "ps1#29": "Hace el vídeo compuesto y el S-vídeo a partir del RGB analógico del MC141685"
+  "ps1#116": "La GPU no tiene Z-buffer: la CPU ordena los polígonos en una tabla de orden"
+
+modelo:
+  valores:
+    b_c: { sim: "b", nombre: "bits de cada color", unidad: "", valor: 8 }
+    n_c: { sim: "n", nombre: "colores", unidad: "", valor: 3 }
+  calculos:
+    hilos: { expr: "b_c*n_c", sim: "h", nombre: "hilos de color de la GPU al DAC", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-av
+    tipo: explorar
+    titulo: "Los dos caminos"
+    texto: "Toque la GPU, su DAC de vídeo, la SPU y su DAC de audio."
+    libro: ["ps1#5", "ps1#7", "ps1#9", "ps1#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [63, 246, 1246, 605]
+      ampliar: 2.4
+      zonas:
+        - { id: gpu, hotspot: gpu, rotulo: "GPU", texto: "Dibuja en la VRAM." }
+        - { id: rgb, hotspot: rgb, rotulo: "MC141685", texto: "RGB digital a analógico." }
+        - { id: spu, hotspot: spu, rotulo: "SPU", texto: "24 voces a 44,1 kHz." }
+        - { id: dac, hotspot: dac, rotulo: "AK4309A", texto: "La serie de la SPU a audio." }
+    objetivo:
+      condiciones:
+        - { zona: gpu, rotulo: "GPU" }
+        - { zona: rgb, rotulo: "DAC de vídeo" }
+        - { zona: spu, rotulo: "SPU" }
+        - { zona: dac, rotulo: "DAC de audio" }
+      logrado: "Vídeo y sonido, cada uno con su DAC."
+
+  - id: leer-hilos
+    tipo: leer
+    titulo: "Tres buses de color"
+    texto: "La GPU manda cada color al DAC por su propio bus de 8 bits: rojo, verde y azul. Escriba cuántos hilos de color hay."
+    libro: ["ps1#7"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [150, 300, 460, 340]
+      ampliar: 1.3
+      zonas:
+        - { id: rgb, hotspot: rgb, rotulo: "MC141685" }
+        - { id: gpu, hotspot: gpu, rotulo: "GPU" }
+    leer:
+      objetivo: hilos
+      unidad: ""
+      tol: 0.001
+      rotulo: "Hilos de color"
+      errores:
+        - { expr: "b_c", texto: "Esos son los de un color: hay tres." }
+    exito: "24 hilos: SR0–7, SG0–7 y SB0–7."
+    escalera:
+      - "3 × 8."
+    solucion: "3 × 8 = 24."
+    comprobar:
+      - { con: { b_c: 8, n_c: 3 }, hilos: 24 }
+
+  - id: toque-enc
+    tipo: tocar
+    titulo: "El compuesto"
+    texto: "Dé la vuelta a la placa. Toque el chip que hace el vídeo compuesto y el S-vídeo."
+    libro: ["ps1#29", "ps1#23"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1, foto: cara-b }
+      recorte: [0, 178, 1600, 1028]
+      ampliar: 2.5
+      zonas:
+        - { id: enc, hotspot: b-enc, rotulo: "Chip alargado, arriba a la derecha" }
+        - { id: mech, hotspot: b-mech, rotulo: "Chip cuadrado, a la izquierda" }
+        - { id: motor, hotspot: b-motor, rotulo: "Chip alargado, abajo" }
+    tocar:
+      bien: [enc]
+      porque:
+        mech: "Es el 68HC05 del lector."
+        motor: "Es el driver de los motores del lector."
+    exito: "El CXA1645M: del RGB analógico al compuesto y al S-vídeo. El Multi Out lleva también el RGB."
+    escalera:
+      - "Lea la marca: «CXA1645»."
+    solucion: "IC501."
+
+  - id: ordene-audio
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "El audio del CD"
+    texto: "Una pista de audio del CD. Toque, por orden: quien la saca del disco y la pasa, quien la mezcla y quien la convierte."
+    libro: ["ps1#12", "ps1#9", "ps1#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [780, 400, 680, 360]
+      ampliar: 1.3
+      zonas:
+        - { id: cdc, hotspot: cdc, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: spu, hotspot: spu, rotulo: "Chip cuadrado, en el centro" }
+        - { id: dac, hotspot: dac, rotulo: "Chip pequeño, a la izquierda" }
+        - { id: spuram, hotspot: spuram, rotulo: "Chip alargado, arriba" }
+    tocar:
+      bien: [cdc, spu, dac]
+      orden: true
+      porque:
+        spuram: "La RAM de la SPU guarda muestras; el audio del CD pasa directo."
+    pistas:
+      - { texto: "Controlador del CD, SPU y AK4309A." }
+    exito: "El controlador del CD pasa el audio a la SPU, que lo mezcla con sus voces y lo manda al DAC."
+    escalera:
+      - "El audio del CD no va por la CPU."
+    solucion: "CXD1815Q, CXD2925Q y AK4309A."
+
+  - id: toque-spuram
+    tipo: tocar
+    titulo: "Memoria del sonido"
+    texto: "Toque la memoria de las muestras y la reverberación."
+    libro: ["ps1#10"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [780, 300, 680, 460]
+      ampliar: 1.3
+      zonas:
+        - { id: spuram, hotspot: spuram, rotulo: "Chip alargado, arriba" }
+        - { id: sram, hotspot: sram, rotulo: "Chip pequeño, arriba a la derecha" }
+        - { id: spu, hotspot: spu, rotulo: "Chip cuadrado, abajo" }
+    tocar:
+      bien: [spuram]
+      porque:
+        sram: "Es la SRAM del CD: los sectores."
+        spu: "Es la SPU: usa esa memoria."
+    exito: "IC310: la RAM de la SPU, 16 bits, solo suya."
+    escalera:
+      - "Está pegada a la SPU."
+    solucion: "IC310."
+
+  - id: por-que-orden
+    tipo: porque
+    titulo: "Sin Z-buffer"
+    texto: "La GPU no sabe qué polígono está delante. ¿Cómo se dibuja bien una escena?"
+    libro: ["ps1#116", "ps1#5"]
+    widget:
+      tipo: figura
+      consola: { maquina: ps1 }
+      recorte: [280, 300, 520, 360]
+      zonas:
+        - { id: gpu, hotspot: gpu, rotulo: "GPU" }
+    opciones:
+      - texto: "La CPU ordena los polígonos en una tabla de orden y la DMA se los manda en ese orden."
+        bien: true
+        porque: "Sin Z-buffer, lo de detrás se dibuja primero y lo de delante encima."
+      - texto: "La GPU tiene un Z-buffer en la VRAM."
+        porque: "No lo tiene: por eso hace falta la tabla de orden."
+      - texto: "La SPU calcula la profundidad."
+        porque: "La SPU es el sonido."
+    escalera:
+      - "Piense en un pintor: primero el fondo."
+    solucion: "La tabla de orden."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["ps1#5", "ps1#7", "ps1#9", "ps1#116"]
+    ideas:
+      - { titulo: "Vídeo.", texto: "GPU, MC141685 y CXA1645M." }
+      - { titulo: "Sin Z-buffer.", texto: "La tabla de orden de la CPU." }
+      - { titulo: "Sonido.", texto: "SPU con su RAM y el AK4309A." }
+      - { titulo: "El audio del CD.", texto: "Del controlador a la SPU." }
