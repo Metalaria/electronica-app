@@ -20,7 +20,7 @@ test('Super Nintendo: sus pestañas, con «Un fotograma»', async ({ page }) => 
   const pestanas = page.getByRole('navigation', { name: 'Vista' });
   for (const p of ['Foto', 'Arquitectura', 'Un fotograma', 'Esquema', 'Placa en 3D', 'Placa en 2D', 'Fuentes'])
     await expect(pestanas.getByRole('link', { name: p, exact: true })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Consola' }).getByRole('link', { name: /Super Nintendo/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-elegir-consola] .nombre')).toHaveText(/Super Nintendo/); // (2.1: the machine is the page's title; the others in its menu)
   // «Un fotograma» opens on its first step (the steps themselves: tests/fotograma09.spec.ts)
   await page.goto('#/consolas/snes/fotograma');
   await expect(pestanas.getByRole('link', { name: 'Un fotograma', exact: true })).toHaveAttribute('aria-current', 'page');

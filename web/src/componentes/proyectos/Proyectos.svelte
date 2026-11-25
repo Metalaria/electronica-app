@@ -198,9 +198,9 @@
       <div class="cargando">Cargando…</div>
     {/if}
   {:else}
-    <nav class="pestanas" aria-label="Vista">
+    <nav class="pestanas pestanas21" aria-label="Vista">
       {#each VISTAS as v (v.id)}
-        <a href={datos ? enlace(datos.id, v.id, sel) : enlace(actual.placa, v.id, sel)} aria-current={actual.vista === v.id ? 'page' : undefined}>{v.titulo}</a>
+        <a class="pestana21" href={datos ? enlace(datos.id, v.id, sel) : enlace(actual.placa, v.id, sel)} aria-current={actual.vista === v.id ? 'page' : undefined}>{v.titulo}</a>
       {/each}
     </nav>
     {#if !datos || !geo || datos.id !== actual.placa}
@@ -264,32 +264,35 @@
   .proyectos {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 16px 20px 40px;
+    padding: var(--e21-3) var(--e21-margen) var(--e21-6);
     display: grid;
-    gap: 10px;
+    gap: var(--e21-2);
   }
   header {
     display: grid;
     gap: 8px;
   }
+  /* 2.1: the system's page title and secondary text; the boards as quiet pills (no box around them) */
   .con-placa h1 {
-    font-size: 22px;
+    font-size: var(--t21-seccion);
   }
   h1 {
     margin: 0;
-    color: var(--titulos);
-    font-size: 28px;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
   .titulo p {
-    margin: 2px 0 0;
-    color: var(--tinta-suave);
+    margin: 4px 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
   }
   .placas {
     display: flex;
     gap: 4px;
-    padding: 4px;
-    border-radius: 14px;
-    background: var(--superficie-2);
     overflow-x: auto;
     scrollbar-width: thin;
   }
@@ -299,9 +302,9 @@
     gap: 6px;
     min-height: 40px;
     padding: 0 12px;
-    border-radius: 10px;
-    color: var(--tinta);
-    font-weight: 600;
+    border-radius: 18px;
+    color: var(--v11-tinta-suave);
+    font-weight: 500;
     font-size: 14px;
     text-decoration: none;
     white-space: nowrap;
@@ -319,34 +322,14 @@
     font-weight: 800;
   }
   .placas a[aria-current='page'] {
-    background: var(--superficie);
-    box-shadow: var(--sombra);
-    color: var(--acento);
+    background: var(--v11-azul-tinte);
+    color: var(--v11-tinta);
+    font-weight: 600;
   }
   .oculto {
     display: none;
   }
-  .pestanas {
-    display: flex;
-    gap: 2px;
-    border-bottom: 1px solid var(--linea);
-    overflow-x: auto;
-  }
-  .pestanas a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 16px;
-    border-bottom: 3px solid transparent;
-    color: var(--tinta-suave);
-    font-weight: 700;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .pestanas a[aria-current='page'] {
-    border-bottom-color: var(--acento);
-    color: var(--acento);
-  }
+
   .cuerpo {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
@@ -465,10 +448,7 @@
   }
   @media (max-width: 599px) {
     .proyectos {
-      padding: 12px 12px 30px;
-    }
-    h1 {
-      font-size: 24px;
+      padding: 16px var(--e21-margen) 32px;
     }
   }
   @media (pointer: coarse) {

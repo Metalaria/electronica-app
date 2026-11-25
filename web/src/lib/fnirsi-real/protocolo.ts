@@ -202,3 +202,26 @@ export function leerInfo(informe: ArrayLike<number>): InfoEnlace | null {
 export function hex(p: ArrayLike<number>): string {
   return Array.from(p as ArrayLike<number>, (x) => x.toString(16).padStart(2, '0')).join(' ');
 }
+
+// ------------------------------------------------------------------ 2.1: what the installed app's USB plugin lets through
+
+/** The sentence the installed app's plugin refuses any other request with (src-tauri/plugins/fnirsi, the same text). */
+export const RECHAZO_NATIVO =
+  'La aplicación solo envía al FNIRSI las órdenes de identificación y de suscripción, la onda a medida del generador y la lectura de su tabla.';
+
+/**
+ * The filter of the installed app's USB plugin (src-tauri/plugins/fnirsi/src/lib.rs `permitida`, and the same in
+ * its Android class), mirrored for the fake link of the tests: identification and subscription; the custom wave
+ * (1 to 28 samples, position + samples ≤ 100); a read only inside the wave table (1 to 56 bytes, from 0x20000F5A to
+ * 0x20000F5A + 200).
+ */
+export function permitidaEnLaAplicacion(informe: ArrayLike<number>): boolean {
+  const orden = informe[0];
+  if (orden === ORDEN_INFO || orden === ORDEN_SUSCRIBIR) return true;
+  if (informe.length < 8) return false;
+  const n = informe[2] ?? 0;
+  const x = u32(informe, 4);
+  if (orden === ORDEN_ONDA) return n >= 1 && n <= 28 && x + n <= 100;
+  if (orden === ORDEN_LEER) return n >= 1 && n <= CARGA_MAXIMA && x >= 0x20000f5a && x + n <= 0x20000f5a + 200;
+  return false;
+}

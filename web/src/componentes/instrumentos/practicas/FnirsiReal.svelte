@@ -63,13 +63,33 @@
     return `Generador del FNIRSI: ${forma} · ${formatoSI(g.frecuencia, 'Hz', 4)} · ciclo ${g.ciclo} % · ${amplitud} V`;
   });
   const enOsciloscopio = $derived(c.estado === 'conectado' && c.modo === 'osciloscopio');
-  const medidas = $derived.by(() => {
-    const m = enOsciloscopio ? c.medidas : null;
-    if (!m) return '';
-    const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    // (with the probe setting at X10 the instrument gives these ten times larger, as its screen does: checked on
-    // the unit on 2026-11-25, 317 mV at X1 and 3,17 V at X10 on the same wave)
-    return `Medidas del propio FNIRSI en CH1: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}`;
+  // 2.1 (owner, 25-11): the instrument's own measurements of the channels that are ON (the last trace's header says
+  // which), each with its channel. 2.0 always showed CH1's, which with CH1 off was the noise of a channel that is off
+  // («0 Hz · … · Vpp 4,000 mV»). CH2's come only with the status stream (patch 3).
+  const canalesOn = $derived.by((): [boolean, boolean] | null => {
+    const t = c.trazas.find((x) => x !== null);
+    return t ? [t.ajustes.canales[0].activo, t.ajustes.canales[1].activo] : null;
+  });
+  const medidas = $derived.by((): { canal: string; texto: string }[] => {
+    if (!enOsciloscopio || !canalesOn) return [];
+    if (!canalesOn[0] && !canalesOn[1]) return [{ canal: 'ninguno', texto: 'Los dos canales del FNIRSI están apagados: no da medidas.' }];
+    const res: { canal: string; texto: string }[] = [];
+    ([0, 1] as const).forEach((k) => {
+      if (!canalesOn[k]) return;
+      const m = k === 0 ? c.medidas : c.medidasCh2;
+      if (!m) {
+        if (k === 1 && c.info && !c.info.estadoEnFlujo) res.push({ canal: 'CH2', texto: 'Las medidas propias de CH2 solo llegan con el flujo de estado del enlace (parche 3).' });
+        return;
+      }
+      const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      // (with the probe setting at X10 the instrument gives these ten times larger, as its screen does: checked on
+      // the unit on 2026-11-25 for both channels, X1 and X10)
+      res.push({
+        canal: `CH${k + 1}`,
+        texto: `Medidas del propio FNIRSI en CH${k + 1}: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}`,
+      });
+    });
+    return res;
   });
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
@@ -263,7 +283,7 @@
           <span class="fr-tenue" data-promedio-estado>
             {#each trazas as t (t.canal)}
               {@const p = promedios[t.canal]}
-              CH{t.canal + 1}: {p ? `promedio de ${p.adquisiciones} ${p.adquisiciones === 1 ? 'adquisición' : 'adquisiciones'}` : sinAlinear[t.canal] ? 'sin promediar: en el registro no hay un flanco con sitio a los dos lados para alinear las adquisiciones' : 'esperando'}.
+              CH{t.canal + 1}: {p ? `promedio de ${p.adquisiciones} ${p.adquisiciones === 1 ? 'adquisición' : 'adquisiciones'}` : sinAlinear[t.canal] ? 'sin promediar: en el registro no hay un flanco con sitio a los dos lados para alinear las adquisiciones' : 'esperando'}.{' '}
             {/each}
             Lo hace la aplicación; la línea de cada canal sigue siendo la de la última adquisición.
           </span>
@@ -273,7 +293,9 @@
       <AnalisisTraza {trazas} {promedios} />
     {/if}
     {#if enOsciloscopio && c.enMarcha === false}<p class="fr-tenue" data-marcha-fnirsi>Osciloscopio en STOP: la traza y las medidas son las de la última adquisición.</p>{/if}
-    {#if medidas}<p class="fr-tenue" data-medidas-fnirsi>{medidas}</p>{/if}
+    {#each medidas as m (m.canal)}<p class="fr-tenue" data-medidas-fnirsi={m.canal}>{m.texto}</p>{/each}
+    <!-- 2.1 (owner, 25-11): the arrows have a mode that SELECT changes; the link does not carry it, so a fixed hint -->
+    {#if enOsciloscopio}<p class="fr-tenue" data-ayuda-select-real>Si las flechas no cambian la base de tiempos, pulse SELECT.</p>{/if}
     {#if generador}<p class="fr-tenue" data-generador-fnirsi>{generador}</p>{/if}
     {#if (c.estado === 'conectado' || c.estado === 'reconectando') && c.info?.ondasAMedida}<OndaGenerador />{/if}
     {#if c.estado !== 'desconectado'}

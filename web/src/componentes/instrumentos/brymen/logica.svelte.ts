@@ -124,6 +124,23 @@ export class Brymen {
     this.manual = false;
   }
 
+  /**
+   * 2.1: put the selector and its sub-function where the real meter is (brymen/sigueReal.ts): turned as by hand to the
+   * position (the same resets and the same jack warning), then SELECT's sub-function set directly.
+   */
+  seguir(pos: number, sub: number): void {
+    if (pos < 0 || pos >= BM_POSICIONES.length) return;
+    this.girar(pos);
+    const k = Math.max(0, Math.min(this.posicion.subs.length - 1, sub));
+    if (k !== this.sub) {
+      this.sub = k;
+      this.reiniciarModos();
+      this.manual = false;
+      this.rango = 0;
+      this.rangoSec = 0;
+    }
+  }
+
   selectLargo(): void {
     this.luz = !this.luz;
   }

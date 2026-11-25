@@ -5,6 +5,8 @@
   // the panel, on its trace; this component is the controls and the figures.
   // They are the application's own (lib/fnirsi-real/cursores.ts): the instrument's cursors, on its own screen, are
   // neither used nor moved.
+  // 2.1: laid out as one of the system's rows (a hairline under it, the switch as the row's title), the readings as
+  // hairline rows, the system's type sizes; what it computes is unchanged.
   import { leerCursores, type Cursores, type Ventana } from '../../../lib/fnirsi-real/cursores';
   import { formatoSI } from '../../grafica/formato';
 
@@ -30,6 +32,7 @@
 <div class="cu" data-cursores-fnirsi>
   <label class="cu-activar"><input type="checkbox" bind:checked={cursores.activo} /> Cursores</label>
   {#if cursores.activo}
+    <div class="cu-cuerpo">
     <div class="cu-mandos">
       <label>Tiempo 1 <input type="range" min="0" max={ancho} step="1" bind:value={cursores.t1} data-cursor="t1" /></label>
       <label>Tiempo 2 <input type="range" min="0" max={ancho} step="1" bind:value={cursores.t2} data-cursor="t2" /></label>
@@ -37,55 +40,75 @@
       <label>Tensión 2 <input type="range" min={minimo} max={maximo} step="1" bind:value={cursores.v2} data-cursor="v2" /></label>
     </div>
     {#if l}
-      <p data-cursores-tiempo>De T1 a T2: {formatoSI(l.dt, 's', 4)} · su inverso: {l.frecuencia === null ? '—' : formatoSI(l.frecuencia, 'Hz', 4)}</p>
+      <p class="cu-lectura" data-cursores-tiempo>De T1 a T2: {formatoSI(l.dt, 's', 4)} · su inverso: {l.frecuencia === null ? '—' : formatoSI(l.frecuencia, 'Hz', 4)}</p>
       {#each l.canales as x (x.canal)}
-        <p data-cursores-canal={x.canal + 1}>
+        <p class="cu-lectura" data-cursores-canal={x.canal + 1}>
           CH{x.canal + 1}: de V1 a V2, {formatoSI(x.dv, 'V', 3)} · la traza vale {formatoSI(x.enT1, 'V', 3)} en T1 y {formatoSI(x.enT2, 'V', 3)} en T2
         </p>
       {/each}
       <p class="cu-nota">Son de la aplicación, sobre la traza que dibuja: los cursores del propio aparato no se usan ni se mueven.</p>
     {/if}
+    </div>
   {/if}
 </div>
 
 <style>
+  /* 2.1: a row of the system (as details.plegable21: 52 px, 17 px title, a hairline under it), no box inside */
   .cu {
-    margin-top: 6px;
-    font-size: 12.5px;
+    border-bottom: 1px solid var(--v11-linea);
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--v11-tinta);
   }
   .cu-activar {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    min-height: 32px;
+    gap: 10px;
+    min-height: 52px;
+    font-size: 17px;
+    font-weight: 500;
     cursor: pointer;
-    color: var(--tinta-suave);
+  }
+  .cu-activar input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--v11-azul);
+  }
+  .cu-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: var(--e21-3);
   }
   .cu-mandos {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px 12px;
-    max-width: 420px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px 16px;
+    max-width: 480px;
   }
   .cu-mandos label {
     display: flex;
     flex-direction: column;
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
   }
   .cu-mandos input {
     width: 100%;
-    min-height: 28px;
+    min-height: 32px;
+    accent-color: var(--v11-azul);
   }
   .cu p {
-    margin: 4px 0;
+    margin: 0;
+  }
+  .cu-lectura {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--v11-linea);
   }
   .cu-nota {
-    color: var(--tinta-tenue);
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
   }
   @media (pointer: coarse) {
-    .cu-activar {
-      min-height: 44px;
-    }
     .cu-mandos input {
       min-height: 44px;
     }

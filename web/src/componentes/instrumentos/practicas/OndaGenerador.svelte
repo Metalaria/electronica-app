@@ -4,9 +4,10 @@
   // of 100 samples its generator plays, nothing else), how long it lasts and what the instrument's screen will go on
   // showing. The shapes and the scaling are in lib/fnirsi-real/ondas.ts; the send, with its read-back, in
   // conexion.svelte.ts. Closed by default: nothing is computed or sent until the reader opens it and presses the button.
-  // In the installed app the USB plugin does not let this order through yet: the section says so and offers nothing.
+  // 2.1: the installed app's USB plugin lets this order (and the read-back of the table) through as well, and nothing
+  // more (src-tauri/plugins/fnirsi). Dressed as the system's folded row, buttons, fields and feedback.
   // The card keeps it mounted while the link is away for a change of mode, so that what was sent is still told afterwards.
-  import { ONDA_SOLO_NAVEGADOR, fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
+  import { fnirsiReal } from '../../../lib/fnirsi-real/conexion.svelte';
   import { nombreForma } from '../../../lib/fnirsi-real/estado';
   import {
     FONDO_ONDA, FORMAS_ONDA, PUNTOS_ONDA, formaOnda, invertir, leerArmonicos, leerNumeros, normalizar, remuestrear, type FormaOnda,
@@ -90,12 +91,10 @@
   }
 </script>
 
-<details class="og" bind:open={abierto} data-onda-fnirsi>
+<details class="og plegable21" bind:open={abierto} data-onda-fnirsi>
   <summary>Onda a medida en el generador</summary>
-  {#if c.tipo === 'nativo'}
-    <p class="og-nota" data-onda-solo-navegador>{ONDA_SOLO_NAVEGADOR}</p>
-  {:else}
-  <p class="og-nota">
+  <div class="plegable21-cuerpo og-cuerpo">
+  <p class="og-nota og-escribe">
     Esto sí escribe en el FNIRSI: la tabla de 100 muestras que reproduce su generador, y nada más. La onda dura hasta que cambie en el aparato la
     forma, el ciclo o la amplitud, o lo apague; cambiar la frecuencia la conserva. La pantalla del FNIRSI seguirá mostrando la forma elegida en su menú.
   </p>
@@ -120,15 +119,15 @@
   <div class="og-fila">
     {#if fichero}
       <span data-onda-fichero>Un periodo tomado de «{fichero.nombre}» ({fichero.valores.length} puntos, llevados a {PUNTOS_ONDA}).</span>
-      <button type="button" class="boton pequeno" onclick={() => (fichero = null)} data-onda-quitar-fichero>Quitar el fichero</button>
+      <button type="button" class="boton fantasma" onclick={() => (fichero = null)} data-onda-quitar-fichero>Quitar el fichero</button>
     {:else}
       <label class="og-ancho">O un periodo desde un fichero de texto o CSV (un número por línea)
         <input type="file" accept=".csv,.txt,text/csv,text/plain" onchange={elegirFichero} data-onda-elegir-fichero />
       </label>
     {/if}
   </div>
-  {#if errorFichero}<p class="og-aviso" role="alert" data-onda-error-fichero>{errorFichero}</p>{/if}
-  {#if preparada.error}<p class="og-aviso" role="alert" data-onda-error-forma>{preparada.error}</p>{/if}
+  {#if errorFichero}<p class="aviso21 mal" role="alert" data-onda-error-fichero>{errorFichero}</p>{/if}
+  {#if preparada.error}<p class="aviso21 mal" role="alert" data-onda-error-forma>{preparada.error}</p>{/if}
   {#if trazo}
     <svg class="og-vista" viewBox="0 0 {VISTA_ANCHO} {VISTA_ALTO}" preserveAspectRatio="none" role="img" aria-label="Vista previa de un periodo de la onda" data-onda-vista>
       <polyline points={trazo} fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke" />
@@ -136,71 +135,87 @@
   {/if}
   <p class="og-nota">De abajo arriba ocupa toda la amplitud del generador ({amplitudAparato}): ajústela en el aparato antes de enviar.</p>
   <div class="og-fila">
-    <button type="button" class="boton pequeno" disabled={!preparada.muestras || c.enviandoOnda || c.estado !== 'conectado'} onclick={enviar} data-onda-enviar>
+    <button type="button" class="boton primario" disabled={!preparada.muestras || c.enviandoOnda || c.estado !== 'conectado'} onclick={enviar} data-onda-enviar>
       {c.enviandoOnda ? 'Enviando…' : 'Enviar al generador del FNIRSI'}
     </button>
   </div>
-  {#if error}<p class="og-aviso" role="alert" data-onda-error>{error}</p>{/if}
+  {#if error}<p class="aviso21 mal" role="alert" data-onda-error>{error}</p>{/if}
   {#if enviada}
-    <p role="status" data-onda-estado={deshecha ? 'deshecha' : 'enviada'}>
+    <p class="aviso21 {deshecha ? 'mal' : 'bien'}" role="status" data-onda-estado={deshecha ? 'deshecha' : 'enviada'}>
       {textoEnviada}
     </p>
   {/if}
-  {/if}
+  </div>
 </details>
 
 <style>
+  /* 2.1: the system's folded row holds it; inside, its 44 px fields with the tokens' line, its buttons (the send is
+     the one primary: it writes in the instrument), the feedback pills, no boxes */
   .og {
-    margin-top: 6px;
-    font-size: 12.5px;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--v11-tinta);
   }
-  .og summary {
-    min-height: 32px;
+  .og-cuerpo {
     display: flex;
-    align-items: center;
-    cursor: pointer;
-    color: var(--tinta-suave);
+    flex-direction: column;
+    gap: 12px;
   }
   .og p {
-    margin: 4px 0;
+    margin: 0;
   }
   .og-nota {
-    color: var(--tinta-tenue);
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
+    line-height: 1.45;
   }
-  .og-aviso {
-    color: var(--c-importante);
-    font-weight: 600;
+  /* (what it writes in the instrument is said first, at the reading size) */
+  .og-escribe {
+    color: var(--v11-tinta);
+    font-size: 15px;
   }
   .og-fila {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 6px 12px;
-    margin: 6px 0;
+    gap: 8px 16px;
   }
   .og-fila label {
     display: flex;
     flex-direction: column;
-    color: var(--tinta-suave);
+    gap: 4px;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
   }
   .og-fila label.og-casilla {
     flex-direction: row;
     align-items: center;
-    gap: 6px;
-    min-height: 36px;
+    gap: 8px;
+    min-height: 44px;
+    font-size: 15px;
+    color: var(--v11-tinta);
+  }
+  .og-casilla input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--v11-azul);
   }
   .og-ancho {
     flex: 1 1 16em;
+    min-width: 0;
   }
   .og-fila select,
   .og-fila input[type='number'],
   .og-fila input[type='text'] {
-    min-height: 36px;
-    padding: 0 8px;
-    border: 1px solid var(--linea);
-    border-radius: 6px;
-    background: var(--superficie);
-    color: inherit;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid var(--v11-linea);
+    border-radius: 12px;
+    /* (the tokens' own colours: a native select keeps a light background in the dark themes) */
+    background: var(--v11-fondo);
+    color: var(--v11-tinta);
     font: inherit;
     font-size: 16px;
   }
@@ -208,33 +223,19 @@
     width: 6em;
   }
   .og-fila input[type='file'] {
-    min-height: 36px;
+    max-width: 100%;
+    min-height: 44px;
     font: inherit;
-    color: inherit;
+    font-size: 15px;
+    color: var(--v11-tinta);
   }
   .og-vista {
     display: block;
     width: 100%;
-    max-width: 320px;
+    max-width: 360px;
     height: 72px;
-    margin: 6px 0;
-    border: 1px solid var(--linea);
-    border-radius: 6px;
-    color: var(--tinta);
-  }
-  .boton.pequeno {
-    min-height: 36px;
-    padding: 0 12px;
-    font-size: 13.5px;
-  }
-  @media (pointer: coarse) {
-    .boton.pequeno,
-    .og summary,
-    .og-fila select,
-    .og-fila input[type='number'],
-    .og-fila input[type='text'],
-    .og-fila label.og-casilla {
-      min-height: 44px;
-    }
+    border-radius: 12px;
+    background: var(--v11-panel);
+    color: var(--v11-azul);
   }
 </style>

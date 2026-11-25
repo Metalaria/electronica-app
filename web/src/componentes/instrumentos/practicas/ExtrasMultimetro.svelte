@@ -4,6 +4,8 @@
   // is not told, and its screen goes on showing what it measures. Closed by default.
   // A reading the panel does not hold as reliable (a range change, an unknown annunciator, «Auto» waiting) is not
   // used for either: the last answer stays until the next reliable one.
+  // 2.1: the system's folded row (details.plegable21), its buttons and feedback, the system's type sizes; what it
+  // computes is unchanged.
   import { untrack } from 'svelte';
   import type { LecturaFnirsi } from '../../../lib/fnirsi-real/multimetro';
   import { alarma, leerLimite, relativo, tomarReferencia, type Alarma, type Limites, type Referencia } from '../../../lib/fnirsi-real/relativo';
@@ -101,86 +103,71 @@
   }
 </script>
 
-<details class="xm" data-extras-multimetro>
+<details class="xm plegable21" data-extras-multimetro>
   <summary>Relativo y límites</summary>
+  <div class="plegable21-cuerpo xm-cuerpo">
   <p class="xm-nota">Lo hace la aplicación con la lectura que envía el FNIRSI: la pantalla del aparato no cambia.</p>
   <div class="xm-fila">
     {#if referencia}
-      <button type="button" class="boton pequeno" onclick={() => (referencia = null)} data-quitar-cero>Quitar el cero</button>
+      <button type="button" class="boton" onclick={() => (referencia = null)} data-quitar-cero>Quitar el cero</button>
     {:else}
-      <button type="button" class="boton pequeno" disabled={!usable || lectura.pantalla.valor === null} onclick={tomarCero} data-tomar-cero>Tomar esta lectura como cero</button>
+      <button type="button" class="boton" disabled={!usable || lectura.pantalla.valor === null} onclick={tomarCero} data-tomar-cero>Tomar esta lectura como cero</button>
     {/if}
   </div>
   {#if textoRelativo}<p role="status" data-relativo-fnirsi>{textoRelativo}</p>{/if}
   <form class="xm-limites" onsubmit={vigilar}>
     <label>Mínimo <input type="text" inputmode="decimal" autocomplete="off" placeholder="sin límite" bind:value={textoMinimo} data-limite="minimo" /></label>
     <label>Máximo <input type="text" inputmode="decimal" autocomplete="off" placeholder="sin límite" bind:value={textoMaximo} data-limite="maximo" /></label>
-    <button type="submit" class="boton pequeno" data-vigilar>Vigilar</button>
-    {#if limites}<button type="button" class="boton pequeno" onclick={quitarLimites} data-quitar-limites>Quitar los límites</button>{/if}
+    <button type="submit" class="boton" data-vigilar>Vigilar</button>
+    {#if limites}<button type="button" class="boton fantasma" onclick={quitarLimites} data-quitar-limites>Quitar los límites</button>{/if}
   </form>
   <p class="xm-nota">En la unidad de la lectura ({lectura.pantalla.unidad || 'sin unidad'}); con otro prefijo, escríbalo: «4,5», «450 mV», «2,2 kΩ».</p>
-  {#if errorLimites}<p class="xm-aviso" role="alert" data-error-limites>{errorLimites}</p>{/if}
-  {#if textoAlarma}<p class={estado === 'bajo' || estado === 'alto' ? 'xm-aviso' : ''} role="status" aria-live="polite" data-alarma-fnirsi={estado ?? 'esperando'}>{textoAlarma}</p>{/if}
+  {#if errorLimites}<p class="aviso21 mal" role="alert" data-error-limites>{errorLimites}</p>{/if}
+  {#if textoAlarma}<p class={estado === 'bajo' || estado === 'alto' ? 'aviso21 mal' : ''} role="status" aria-live="polite" data-alarma-fnirsi={estado ?? 'esperando'}>{textoAlarma}</p>{/if}
+  </div>
 </details>
 
 <style>
+  /* 2.1: the system's folded row holds it; inside, its buttons, 44 px fields and the amber feedback, no boxes */
   .xm {
-    margin-top: 6px;
-    font-size: 12.5px;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--v11-tinta);
   }
-  .xm summary {
-    min-height: 32px;
+  .xm-cuerpo {
     display: flex;
-    align-items: center;
-    cursor: pointer;
-    color: var(--tinta-suave);
+    flex-direction: column;
+    gap: 12px;
   }
   .xm p {
-    margin: 4px 0;
+    margin: 0;
   }
   .xm-nota {
-    color: var(--tinta-tenue);
-  }
-  .xm-aviso {
-    color: var(--c-importante);
-    font-weight: 600;
-  }
-  .xm-fila {
-    margin: 4px 0;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
   }
   .xm-limites {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 6px 10px;
-    margin-top: 6px;
+    gap: 8px 12px;
   }
   .xm-limites label {
     display: flex;
     flex-direction: column;
-    color: var(--tinta-suave);
+    gap: 4px;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
   }
   .xm-limites input {
     width: 9em;
-    min-height: 36px;
-    padding: 0 8px;
-    border: 1px solid var(--linea);
-    border-radius: 6px;
-    background: var(--superficie);
-    color: inherit;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid var(--v11-linea);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--v11-tinta);
     font: inherit;
     font-size: 16px;
-  }
-  .boton.pequeno {
-    min-height: 36px;
-    padding: 0 12px;
-    font-size: 13.5px;
-  }
-  @media (pointer: coarse) {
-    .boton.pequeno,
-    .xm-limites input,
-    .xm summary {
-      min-height: 44px;
-    }
   }
 </style>

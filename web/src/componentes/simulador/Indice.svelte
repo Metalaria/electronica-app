@@ -76,8 +76,8 @@
       cambiar los valores de los componentes.
     </p>
     <div class="acciones">
-      <a class="t09-boton" href="#/simulador/nuevo"><Icono nombre="editar" tam={18} /> Nuevo circuito</a>
-      <a class="t09-boton t09-contorno" href="#/editor">Dibujar un esquema</a>
+      <a class="boton primario" href="#/simulador/nuevo"><Icono nombre="editar" tam={18} /> Nuevo circuito</a>
+      <a class="boton" href="#/editor">Dibujar un esquema</a>
     </div>
   </header>
 
@@ -142,26 +142,28 @@
     padding: 24px 32px 60px;
     font-family: var(--sans);
   }
+  /* 2.1: the system's page title (36) and secondary text (15) */
   h1 {
-    margin: 4px 0 8px;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: clamp(26px, 4vw, 30px);
-    font-weight: 700;
+    margin: 32px 0 8px;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.15;
   }
   .intro {
-    margin: 0 0 16px;
+    margin: 0 0 24px;
     max-width: 44em;
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.5;
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
   }
   .acciones {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 32px;
   }
   .filtros {
     position: sticky;

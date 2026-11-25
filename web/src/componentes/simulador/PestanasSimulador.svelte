@@ -7,39 +7,16 @@
   );
 </script>
 
-<nav class="pestanas-sim" aria-label="Simulador">
-  <a href="#/simulador" aria-current={actual === 'libro' ? 'page' : undefined}>Netlists del libro</a>
-  <a href="#/simulador/nuevo" aria-current={actual === 'nuevo' ? 'page' : undefined}>Netlist libre</a>
-  <a href="#/editor" aria-current={actual === 'editor' ? 'page' : undefined}>Editor de esquemas</a>
-  <a href="#/protoboard" aria-current={actual === 'protoboard' ? 'page' : undefined}>Protoboard</a>
+<!-- 2.1: the system's underline tabs (estilos/sistema21.css .pestanas21) -->
+<nav class="pestanas-sim pestanas21" aria-label="Simulador">
+  <a class="pestana21" href="#/simulador" aria-current={actual === 'libro' ? 'page' : undefined}>Netlists del libro</a>
+  <a class="pestana21" href="#/simulador/nuevo" aria-current={actual === 'nuevo' ? 'page' : undefined}>Netlist libre</a>
+  <a class="pestana21" href="#/editor" aria-current={actual === 'editor' ? 'page' : undefined}>Editor de esquemas</a>
+  <a class="pestana21" href="#/protoboard" aria-current={actual === 'protoboard' ? 'page' : undefined}>Protoboard</a>
 </nav>
 
 <style>
   .pestanas-sim {
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--linea-suave);
     font-family: var(--sans);
-    scrollbar-width: none;
-  }
-  a {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 14px;
-    border-bottom: 2.5px solid transparent;
-    color: var(--tinta-suave);
-    font-size: 14.5px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  a:hover {
-    color: var(--tinta);
-  }
-  a[aria-current='page'] {
-    color: var(--acento);
-    border-bottom-color: var(--acento);
   }
 </style>

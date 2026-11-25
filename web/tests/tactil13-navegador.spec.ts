@@ -288,24 +288,29 @@ test('banco de instrumentos en el teléfono: una punta puesta se arrastra a otro
   test.setTimeout(120_000);
   const { ctx, page, cdp } = await telefono(browser);
   await page.goto('/#/instrumentos/practica/1');
+  // (2.1: on the phone the bench shows the circuit or one instrument; the circuit's segment)
+  await page.getByRole('tab', { name: 'Circuito', exact: true }).tap();
   const nodos = page.locator('[data-nodo-plano]');
   await expect(nodos.first()).toBeVisible({ timeout: 30_000 });
+  // (2.1: picking the red lead's row keeps it picked, so the tap below moves it; a node with no lead on it, so that its
+  // handle is not under another lead's)
   const ids = await nodos.evaluateAll((els) => els.map((e) => e.getAttribute('data-nodo-plano')!));
   expect(ids.length).toBeGreaterThan(1);
-  // the red lead on the first node by a tap, as before
-  await page.locator('.conexiones .punta').first().tap();
+  const libre = (await nodos.evaluateAll((els) => els.filter((e) => !e.querySelector('[data-punta-plano]')).map((e) => e.getAttribute('data-nodo-plano')!)))[0]!;
+  // the red lead on that node by a tap, as before
+  await page.locator('[data-puntas-puestas] button[data-punta="bmRojo"]').first().tap();
   const centroNodo = async (id: string): Promise<P> => {
     const b = (await page.locator(`[data-nodo-plano="${id}"] .anillo`).boundingBox())!;
     return [b.x + b.width / 2, b.y + b.height / 2];
   };
-  await page.locator(`[data-nodo-plano="${ids[0]}"]`).scrollIntoViewIfNeeded();
-  const n0 = await centroNodo(ids[0]!);
+  await page.locator(`[data-nodo-plano="${libre}"]`).scrollIntoViewIfNeeded();
+  const n0 = await centroNodo(libre);
   await page.touchscreen.tap(n0[0], n0[1]);
   await page.waitForTimeout(200);
   const disco = page.locator('[data-punta-plano="bmRojo"]');
   await expect(disco).toHaveCount(1);
   // the nearest other node, and the lead dragged there by its disc
-  const otros = await Promise.all(ids.slice(1).map(async (id) => ({ id, c: await centroNodo(id) })));
+  const otros = await Promise.all(ids.filter((x) => x !== libre).map(async (id) => ({ id, c: await centroNodo(id) })));
   otros.sort((u, v) => Math.hypot(u.c[0] - n0[0], u.c[1] - n0[1]) - Math.hypot(v.c[0] - n0[0], v.c[1] - n0[1]));
   const destino = otros[0]!;
   const d = (await page.locator('[data-asa-plano="bmRojo"]').boundingBox())!;

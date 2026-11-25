@@ -48,6 +48,16 @@
 //     The reading given here is always the instrument's screen, as with the real Brymen: during HOLD it is the
 //     frozen one, built from the state, and the frame is left aside.
 //
+// 2.1 (a session on the same unit, 2026-11-25, all twelve functions; Metalaria/fnirsi-2c53t-link,
+// docs/hardware_results_2026-11-25.md): three bytes of the firmware state say where its multimeter menu is:
+//   [24+5]   the menu entry: 0 Auto, 1 voltage, 2 continuity and diode, 3 resistance, 4 capacitance, 5 temperature,
+//            6 small current, 7 large current;
+//   [24+6]   the function: 0 none yet, 1 DC V, 2 AC V, 3 continuity, 4 diode, 5 resistance, 6 capacitance,
+//            7 temperature, 8 DC mA, 9 AC mA, 10 DC A, 11 AC A;
+//   [24+14]  the variant inside the entry (1 or 2: DC/AC, diode/continuity; 0 in Auto).
+// They are given as read (`menu`); componentes/instrumentos/fnirsi/sigueReal.ts turns them into the drawn
+// instrument's function.
+//
 // Not established yet: °F, and the capacitance ranges beyond nF and µF (the firmware's code for them is not known,
 // so they come out not «fiable» by themselves). A frame with any bit outside the list above is decoded as far as
 // it goes and marked not «fiable».
@@ -152,6 +162,8 @@ export interface LecturaFnirsi {
   frecuencia: number | null;
   /** Milliseconds since the instrument started. */
   tick: number;
+  /** 2.1: the firmware's multimeter menu, as its state carries it: entry ([24+5]), function ([24+6]), variant ([24+14]). */
+  menu: { entrada: number; funcion: number; variante: number };
   /** The frame in hex (diagnostics). */
   crudo: string;
 }
@@ -258,6 +270,7 @@ export function decodificarMultimetro(informe: ArrayLike<number>): LecturaFnirsi
     hold,
     frecuencia: funcion === 'vac' ? estado[18]! | (estado[19]! << 8) : null,
     tick: u32(informe, 4),
+    menu: { entrada: estado[5]!, funcion: estado[6]!, variante: estado[14]! },
     crudo: hex(t),
   };
 }

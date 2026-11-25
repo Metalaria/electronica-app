@@ -157,6 +157,16 @@
   // The photo's book figure («fig-37.16»): its printed number comes from refs.json, never written by hand, so a
   // renumbering of the book (4.1 moved these two from 36.x to 38.x) cannot leave it stale.
   const figura = $derived(datos.foto.figura ? numeroImpreso(datos.foto.figura, datos.foto.figura) : null);
+
+  // 2.1: what every photo's title repeats after its last « · » («· otra placa» on all the Saturn's) is said once, in the
+  // caption next to the switcher, and the switcher's labels go without it.
+  const comun = $derived.by(() => {
+    if (fotos.length < 2) return '';
+    const colas = fotos.map((f) => (f.titulo ?? '').split(' · ').slice(1).pop() ?? '');
+    return colas[0] && colas.every((c) => c === colas[0]) ? colas[0] : '';
+  });
+  const sinComun = (t: string | undefined) => (comun && t?.endsWith(` · ${comun}`) ? t.slice(0, -(comun.length + 3)) : (t ?? ''));
+  const pie = $derived(`${hotspots.length} ${hotspots.length === 1 ? 'pieza' : 'piezas'}${comun ? ` · ${comun}` : ''}`);
 </script>
 
 <div class="foto-vista">
@@ -164,12 +174,12 @@
     {#if fotos.length > 1}
       <div class="fotos" role="tablist" aria-label="Foto">
         {#each fotos as f, i (f.id)}
-          <button type="button" role="tab" aria-selected={i === indice} class:activo={i === indice} data-foto={f.id} onclick={() => cambiarFoto(i)}>{f.titulo}</button>
+          <button type="button" role="tab" aria-selected={i === indice} class:activo={i === indice} data-foto={f.id} onclick={() => cambiarFoto(i)}>{sinComun(f.titulo)}</button>
         {/each}
       </div>
     {/if}
     <div class="herramientas">
-      <span class="pista">Toque un chip o un conector. {hotspots.length} puntos identificados.</span>
+      <span class="pista" data-pie-foto>{pie}</span>
       <span class="zoom">
         <button type="button" class="boton-icono" aria-label="Reducir la foto" disabled={ampliacion <= 1} onclick={() => (ampliacion = Math.max(1, ampliacion - 0.5))}><ZoomOut size={19} /></button>
         <button type="button" class="boton-icono" aria-label="Ampliar la foto" disabled={ampliacion >= 3} onclick={() => (ampliacion = Math.min(3, ampliacion + 0.5))}><ZoomIn size={19} /></button>
@@ -228,8 +238,9 @@
         </svg>
       </div>
     </div>
+    <p class="leyenda">Recuadro continuo: marca o serigrafía legibles en la foto; discontinuo: pieza situada por su posición.</p>
     {#if foto.credito || foto.nota}
-      <p class="credito">{foto.titulo}{foto.revision ? ` · ${foto.revision}` : ''}{foto.credito ? ` · ${foto.credito}` : ''}{foto.nota ? `. ${foto.nota}` : ''}</p>
+      <p class="credito">{sinComun(foto.titulo)}{foto.revision ? ` · ${foto.revision}` : ''}{foto.credito ? ` · ${foto.credito}` : ''}{foto.nota ? `. ${foto.nota}` : ''}</p>
     {/if}
     {#if foto.trazas_redes?.length}
       <section class="trazas" aria-label="Pistas de cobre">
@@ -283,20 +294,18 @@
         </div>
       {/if}
       <p class="confianza">
-        {mostrado.confianza === 'marca'
-          ? 'Identificado por la marca o la serigrafía legibles en la foto.'
-          : 'Identificado por su posición (mapa de la placa); la marca no se lee en la foto.'}
+        {mostrado.confianza === 'marca' ? 'Marca o serigrafía legibles en la foto.' : 'Identificada por su posición en la placa: la marca no se lee en la foto.'}
       </p>
       {#if mostrado.verificacion}
         <p class="verificado"><strong>{datos.id === 'neogeo' ? 'Comprobado con documentos de SNK:' : 'De dónde sale:'}</strong> {mostrado.verificacion}</p>
       {/if}
       <div class="acciones">
         {#if mostrado.esquema.length}
-          <button type="button" class="accion" onclick={() => irA('esquema', { tipo: 'componente', id: mostrado.esquema[0]! })}>
+          <button type="button" class="boton" onclick={() => irA('esquema', { tipo: 'componente', id: mostrado.esquema[0]! })}>
             Ver en el esquema{datos.id === 'neogeo' ? ` (${mostrado.esquema[0]})` : ''}
           </button>
         {/if}
-        {#if tieneArquitectura(datos.id)}<button type="button" class="accion" onclick={() => irA('arquitectura', { tipo: 'bloque', id: mostrado.bloque })}>Ver en la arquitectura</button>{/if}
+        {#if tieneArquitectura(datos.id)}<button type="button" class="boton fantasma" onclick={() => irA('arquitectura', { tipo: 'bloque', id: mostrado.bloque })}>Ver en la arquitectura</button>{/if}
       </div>
       {#if foto.trazas_redes?.length && mostrado.esquema.length}
         <p class="nota">Para ver por dónde van sus pistas, elige abajo un bus o una red.</p>
@@ -309,22 +318,16 @@
       <h2>{marcador.ref} <span class="valor">{datos.componentes[marcador.ref]?.v ?? ''}</span></h2>
       <p class="confianza">{foto.posiciones_nota ?? 'Posición de su huella en la placa'}. No tiene recuadro propio en la foto.</p>
       <div class="acciones">
-        <button type="button" class="accion" onclick={() => irA('esquema', { tipo: 'componente', id: marcador.ref })}>Ver en el esquema</button>
+        <button type="button" class="boton" onclick={() => irA('esquema', { tipo: 'componente', id: marcador.ref })}>Ver en el esquema</button>
       </div>
     {:else}
       <p class="tipo">{datos.placa}</p>
       <h2>{datos.titulo}</h2>
-      {#if figura}
-        <p>Figura {figura} del libro. Los recuadros continuos marcan piezas cuya serigrafía o marca se lee en la foto; los discontinuos, piezas identificadas por su posición.</p>
-      {:else}
-        <p>{foto.titulo}. Los recuadros continuos marcan piezas cuya serigrafía o marca se lee en la foto; los discontinuos, piezas identificadas por su posición.</p>
-      {/if}
+      <!-- 2.1: with no part picked, the panel names the board on the photo (how to read the boxes is under the photo) -->
+      <p class="funcion">{figura ? `Figura ${figura} del libro. ` : ''}{sinComun(foto.titulo)}.</p>
+      {#if foto.revision}<p class="confianza">{foto.revision}.</p>{/if}
       {#if foto.posiciones}<p class="confianza">Desde el esquema, cualquier componente se puede situar en esta foto: su huella se ha alineado con la de la PCB de la recreación.</p>{/if}
-      {#if datos.sin_esquema}
-        <p>Elija una pieza para ver qué hace, por qué buses pasa, de dónde sale su identificación y saltar a su bloque en la arquitectura. Esta consola no tiene esquema.</p>
-      {:else}
-        <p>Elija una pieza para ver qué hace, por qué buses pasa y saltar a su símbolo en el esquema o a su bloque en la arquitectura.</p>
-      {/if}
+      <p class="confianza">Toque una pieza de la foto para ver qué hace.</p>
     {/if}
   </aside>
 </div>
@@ -333,7 +336,7 @@
   .foto-vista {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 12px;
+    gap: var(--e21-3) 40px;
     align-items: start;
   }
   .herramientas {
@@ -341,8 +344,8 @@
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-    margin-bottom: 6px;
-    color: var(--tinta-suave);
+    margin-bottom: 8px;
+    color: var(--v11-tinta-suave);
     font-size: 14px;
   }
   .zoom {
@@ -380,15 +383,18 @@
   }
   .fotos button,
   .chips-redes button {
-    min-height: 34px;
-    padding: 3px 12px;
-    border: 1px solid var(--linea);
-    border-radius: 999px;
-    background: var(--superficie);
-    color: var(--tinta);
+    min-height: 36px;
+    padding: 3px 14px;
+    border: 1px solid transparent;
+    border-radius: 18px;
+    background: transparent;
+    color: var(--v11-tinta-suave);
     font: inherit;
     font-size: 14px;
     cursor: pointer;
+  }
+  .chips-redes button {
+    border-color: var(--v11-linea);
   }
   @media (max-width: 640px) {
     /* one scrollable row instead of a stack of pills on phones */
@@ -406,10 +412,10 @@
   }
   .fotos button.activo,
   .chips-redes button.activo {
-    border-color: var(--acento);
-    background: var(--acento-tinte);
-    color: var(--acento);
-    font-weight: 700;
+    border-color: transparent;
+    background: var(--v11-azul-tinte);
+    color: var(--v11-tinta);
+    font-weight: 600;
   }
   .credito {
     margin: 6px 0 0;
@@ -545,32 +551,39 @@
     color: var(--acento);
     font-weight: 700;
   }
+  /* 2.1: the side panel is about the picked part, with no box: reference and marking (13, label), its name (24), what
+     it does (reading size), how sure the identification is, and the two ways out (secondary, quiet buttons) */
   .ficha {
-    padding: 14px;
-    border-radius: 12px;
-    background: var(--superficie);
-    box-shadow:
-      0 0 0 1px var(--linea),
-      var(--sombra);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     font-size: 15px;
   }
+  .ficha > :global(*) {
+    margin: 0;
+  }
   .ficha h2 {
-    margin: 2px 0 2px;
-    color: var(--titulos);
-    font-size: 20px;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-seccion);
+    font-weight: 600;
+    line-height: 1.25;
   }
   .tipo {
-    margin: 0;
-    color: var(--tinta-tenue);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .pieza {
-    margin: 0 0 8px;
-    color: var(--acento);
-    font-weight: 600;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
+  }
+  .funcion {
+    color: var(--v11-tinta);
+    font-size: 16px;
+    line-height: 1.55;
   }
   .sub {
     margin: 10px 0 4px;
@@ -592,21 +605,27 @@
     white-space: pre-line;
   }
   .verificado {
-    padding: 6px 9px;
-    border-left: 3px solid var(--c-ejemplo);
-    border-radius: 0 8px 8px 0;
-    background: var(--superficie-2);
-    font-size: 13.5px;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
   }
   .confianza,
   .nota {
-    color: var(--tinta-suave);
-    font-size: 13.5px;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
   }
   .acciones {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .acciones .boton {
+    width: 100%;
+  }
+  .leyenda {
+    margin: 6px 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
   }
   .accion {
     min-height: 38px;

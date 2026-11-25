@@ -5,6 +5,8 @@
   // nothing is asked of the instrument, which the link only reads.
   // Closed by default, and it does nothing while closed. Open, it takes the traces twice a second: figures that
   // changed with every acquisition (some thirty a second) could not be read.
+  // 2.1: dressed as the system's folded row (details.plegable21), a section label per channel, hairline rows for the
+  // figures, the system's type sizes and its feedback for warnings; the maths and the polling are unchanged.
   import { ARMONICOS, PUNTOS_ESPECTRO, csvTraza, espectro, medirAmpliado, type Analizable, type Espectro } from '../../../lib/fnirsi-real/analisis';
   import type { Traza } from '../../../lib/fnirsi-real/osciloscopio';
   import type { TrazaPromediada } from '../../../lib/fnirsi-real/promedio';
@@ -113,13 +115,14 @@
   }
 </script>
 
-<details class="an" bind:open={abierto} data-analisis-fnirsi>
+<details class="an plegable21" bind:open={abierto} data-analisis-fnirsi>
   <summary>Más medidas y espectro</summary>
+  <div class="plegable21-cuerpo an-cuerpo">
   <p class="an-nota">Calculado en la aplicación a partir del registro que envía el FNIRSI; al aparato no se le pide ni se le cambia nada.</p>
   {#each analisis as { t, p, fuente, m, e } (t.canal)}
     {@const ch = `CH${t.canal + 1}`}
     <section class="an-canal" aria-label={`Análisis de ${ch}`} data-analisis-canal={t.canal + 1}>
-      <p class="an-titulo"><span class="an-marca" style:background={COLOR[t.canal]}></span><strong>{ch}</strong></p>
+      <h3 class="etiqueta21 an-titulo"><span class="an-marca" style:background={COLOR[t.canal]}></span>{ch}</h3>
       {#if p}<p class="an-nota" data-analisis-promedio>Sobre el promedio de {p.adquisiciones} {p.adquisiciones === 1 ? 'adquisición' : 'adquisiciones'}: 24 divisiones alrededor del disparo.</p>{/if}
       <dl data-medidas-ampliadas>
         <div><dt>Media</dt><dd>{formatoSI(m.media, 'V', 3)}</dd></div>
@@ -135,48 +138,49 @@
         {#if m.flancoLimitado}Los flancos son más rápidos de lo que resuelve esta base de tiempos: el tiempo que se da es un máximo.{/if}
       </p>
       {#if t.ajustes.canales[t.canal].acoplamiento === 'CA'}<p class="an-nota" data-acoplamiento-fnirsi>{ch} está en CA: la media y los valores máximo y mínimo no incluyen la componente continua de la señal.</p>{/if}
-      {#if t.saturada}<p class="an-aviso">La señal se sale de la escala: estas medidas y el espectro son los de la onda recortada.</p>{/if}
-      {#if !t.ajustes.tiempoComprobado}<p class="an-aviso">Esta base de tiempos no está comprobada: tome los tiempos y las frecuencias con reserva.</p>{/if}
+      {#if t.saturada}<p class="an-aviso aviso21 mal">La señal se sale de la escala: estas medidas y el espectro son los de la onda recortada.</p>{/if}
+      {#if !t.ajustes.tiempoComprobado}<p class="an-aviso aviso21 mal">Esta base de tiempos no está comprobada: tome los tiempos y las frecuencias con reserva.</p>{/if}
       <svg class="an-espectro" viewBox="0 0 {ANCHO} {ALTO}" role="img" aria-label={`Espectro de ${ch}`} data-espectro-fnirsi>
         {#each [20, 40] as db (db)}<line x1="0" y1={(db / -SUELO) * ALTO} x2={ANCHO} y2={(db / -SUELO) * ALTO} class="an-rejilla" />{/each}
         <polyline points={linea(e)} fill="none" stroke={COLOR[t.canal]} stroke-width="1.2" vector-effect="non-scaling-stroke" />
       </svg>
       <p class="an-nota">Espectro de 0 a {formatoSI((puntosDibujados(e) - 1) * e.resolucion, 'Hz', 3)}; de arriba abajo, 60 dB bajo su punto más alto (una línea cada 20 dB).</p>
       <p data-tonos-fnirsi>{textoTonos(e)}</p>
-      <button type="button" class="boton pequeno" onclick={() => void guardar(fuente, !!p)} data-guardar-traza={t.canal + 1}>Guardar {p ? 'el promedio' : 'la traza'} de {ch} (CSV)</button>
+      <button type="button" class="boton" onclick={() => void guardar(fuente, !!p)} data-guardar-traza={t.canal + 1}>Guardar {p ? 'el promedio' : 'la traza'} de {ch} (CSV)</button>
     </section>
   {/each}
-  {#if aviso}<p class={avisoError ? 'an-aviso' : 'an-nota'} role="status" data-aviso-traza>{aviso}</p>{/if}
+  {#if aviso}<p class={avisoError ? 'an-aviso aviso21 mal' : 'an-nota'} role="status" data-aviso-traza>{aviso}</p>{/if}
+  </div>
 </details>
 
 <style>
+  /* 2.1: the system's folded row (sistema21.css details.plegable21) holds it; inside, no boxes: a label per channel,
+     the figures as hairline rows, notes at 13 px, warnings as the system's amber feedback */
   .an {
-    margin-top: 6px;
-    font-size: 12.5px;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--v11-tinta);
   }
-  .an summary {
-    min-height: 32px;
+  .an-cuerpo {
     display: flex;
-    align-items: center;
-    cursor: pointer;
-    color: var(--tinta-suave);
+    flex-direction: column;
+    gap: 16px;
   }
   .an-canal {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid var(--linea);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
-  .an .an-titulo {
-    margin: 0 0 4px;
-    font-size: 13px;
+  .an-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .an-marca {
     display: inline-block;
     width: 10px;
     height: 10px;
-    margin-right: 6px;
     border-radius: 2px;
-    vertical-align: baseline;
   }
   .an dl {
     margin: 0;
@@ -184,11 +188,13 @@
   .an dl div {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
-    padding: 1px 0;
+    align-items: baseline;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--v11-linea);
   }
   .an dt {
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
   }
   .an dd {
     margin: 0;
@@ -196,40 +202,26 @@
     text-align: right;
   }
   .an p {
-    margin: 4px 0;
+    margin: 0;
   }
   .an-nota {
-    color: var(--tinta-tenue);
-  }
-  .an-aviso {
-    color: var(--c-importante);
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
+    line-height: 1.45;
   }
   .an-espectro {
     display: block;
     width: 100%;
-    max-width: 420px;
-    margin-top: 6px;
-    border: 1px solid var(--linea);
-    border-radius: 6px;
-    background: var(--fondo);
+    max-width: 480px;
+    border-radius: 12px;
+    background: var(--v11-panel);
   }
   .an-rejilla {
-    stroke: var(--linea);
+    stroke: var(--v11-linea);
     stroke-width: 0.5;
     vector-effect: non-scaling-stroke;
   }
-  .boton.pequeno {
-    min-height: 36px;
-    padding: 0 12px;
-    font-size: 13.5px;
-  }
-  /* (a finger's size on a touch screen) */
-  @media (pointer: coarse) {
-    .boton.pequeno {
-      min-height: 44px;
-    }
-    .an summary {
-      min-height: 44px;
-    }
+  .an .boton {
+    align-self: flex-start;
   }
 </style>

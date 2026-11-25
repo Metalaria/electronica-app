@@ -21,6 +21,8 @@ import {
   ORDEN_LEER,
   ORDEN_ONDA,
   ORDEN_SUSCRIBIR,
+  RECHAZO_NATIVO,
+  permitidaEnLaAplicacion,
   PID_ENLACE,
   PRODUCTO_ENLACE,
   PROTOCOLO,
@@ -77,7 +79,8 @@ export interface EnlaceFalso {
   lecturas?: number[];
   /**
    * 1.4.3: behaves as the installed app's USB plugin does (src-tauri/plugins/fnirsi, informe_de): its type is
-   * 'nativo' and any request but the identification and the subscription fails with the plugin's sentence.
+   * 'nativo' and any request the plugin does not let through fails with the plugin's sentence. 2.1: it lets through
+   * the identification, the subscription, the custom wave and a read only of the wave table (permitidaEnLaAplicacion).
    */
   comoNativo?: boolean;
   /**
@@ -306,8 +309,8 @@ export class Falso implements TransporteFnirsi {
   }
   async enviar(informe: Uint8Array): Promise<void> {
     if (this.c.desenchufado) throw new Error(this.c.desenchufado);
-    if (this.c.comoNativo && informe[0] !== ORDEN_INFO && informe[0] !== ORDEN_SUSCRIBIR)
-      throw new Error('La aplicación solo envía al FNIRSI las órdenes de identificación y de suscripción.');
+    // (2.1: the installed app's plugin filter, the same rule: lib/fnirsi-real/protocolo.ts permitidaEnLaAplicacion)
+    if (this.c.comoNativo && !permitidaEnLaAplicacion(informe)) throw new Error(RECHAZO_NATIVO);
     const r = new Uint8Array(INFORME);
     r[0] = (informe[0] ?? 0) | 0x80;
     r[1] = informe[1] ?? 0;

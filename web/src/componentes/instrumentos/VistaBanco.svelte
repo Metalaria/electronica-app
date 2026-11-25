@@ -28,6 +28,8 @@
   // the recorder of the two real instruments and the FNIRSI–Brymen comparison (folded until opened)
   import RegistroReal from './practicas/RegistroReal.svelte';
   import { simuladoFnirsi } from './practicas/fnirsi-simulado';
+  import { brymenReal } from '../../lib/brymen-real/conexion.svelte';
+  import { fnirsiReal } from '../../lib/fnirsi-real/conexion.svelte';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -35,7 +37,9 @@
   // 1.1: «laboratorio» is the same practice as a guided lab (its bench starts with the instruments not set up)
   const practica = $derived(tipo === 'practica' || tipo === 'laboratorio' ? PRACTICAS.find((p) => String(p.n) === id) : undefined);
   const laboratorio = $derived(tipo === 'laboratorio' && practica ? laboratorioDe(practica.n) : undefined);
-  const control = $state<ControlLab>({ guiaBm: null, guiaFn: null, pestana: 'fnirsi', barra: null });
+  // (2.1: outside the practices the phone opens on the Brymen, as in the mock-up)
+  // svelte-ignore state_referenced_locally
+  const control = $state<ControlLab>({ guiaBm: null, guiaFn: null, pestana: tipo === 'practica' || tipo === 'laboratorio' ? 'fnirsi' : 'brymen', barra: null });
   /** undefined until the drawing is decided (Banco keeps its place meanwhile). */
   let plano = $state<Fuente | null | undefined>(undefined);
   let indice = $state<IndiceSpice | null>(null);
@@ -182,141 +186,181 @@
     void b.tic;
     return simuladoFnirsi(b);
   });
-  const titulo = $derived(laboratorio && practica ? `Laboratorio ${practica.n} · ${practica.titulo}` : practica ? `Práctica ${practica.n} · ${practica.titulo}` : deEditor ? `Medir · ${b.titulo}` : b.titulo || 'Banco de pruebas');
+  // 2.1: the title block of the bench (Banco.svelte draws it): the short line above and the name.
+  const antetitulo = $derived(laboratorio && practica ? `Laboratorio ${practica.n}` : practica ? `Práctica ${practica.n}` : deEditor ? 'Medir el circuito del editor' : 'Banco');
+  const titulo = $derived(practica ? practica.titulo : b.titulo || 'Banco de pruebas');
+
+  // 2.1: «Cambiar de circuito» and «Usar un aparato real» open their panel under the title (one at a time); the real
+  // instruments' panel starts open when one of them is already connected.
+  const hayReal = brymenReal.disponible || fnirsiReal.disponible;
+  let abierto = $state<'circuito' | 'real' | null>(brymenReal.estado !== 'desconectado' || fnirsiReal.estado !== 'desconectado' ? 'real' : null);
+  function abrir(q: 'circuito' | 'real') {
+    abierto = abierto === q ? null : q;
+    if (q === 'circuito' && !indice) cargarLista();
+  }
 </script>
 
-<div class="cabecera">
-  <a class="atras" href={deEditor ? deEditor.volver : '#/instrumentos'}>{deEditor ? '← Editor' : '← Instrumentos'}</a>
-  <h1>{titulo}</h1>
-</div>
-{#if error}<p class="error">{error}</p>{/if}
-{#if errorRed}<ErrorCarga titulo="No se pudo cargar el circuito." error={errorTexto} reintentar={() => void cargarCatalogo(id)} />{/if}
-
 <!-- 0.12 QA: a book circuit's drawing size is known beforehand (its place is kept exactly) -->
-<BancoVista {b} {plano} tamano={tipo === 'circuito' ? tamanoDibujo(id, 'banco') : undefined} guiaBm={control.guiaBm} guiaFn={control.guiaFn} bind:pestana={control.pestana} lateralArriba={!!(practica && laboratorio)} barra={practica && laboratorio ? control.barra : null}>
-  {#snippet lateral()}
-    {#if practica && laboratorio}
-      <PanelLaboratorio p={practica} lab={laboratorio} {b} {control} />
-    {:else if practica}
-      <PanelPractica p={practica} {b} />
-    {:else}
-      <div class="elegir">
-        <h2>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h2>
-        <BrymenReal compacto simulado={simuladoBm} sinConectar="Sin conectar: el banco usa el Brymen simulado." />
-        <FnirsiReal compacto simulado={simuladoFn} sinConectar="Sin conectar: el banco usa el FNIRSI simulado (el real necesita su firmware con el enlace USB)." />
-        <RegistroReal />
-        {#if deEditor}
-          <p class="nota">Elija una punta o sonda arriba y toque un nodo del dibujo para ponerla. El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí.</p>
-        {:else if indice}
-          <label
-            >Capítulo
-            <select bind:value={capitulo}>
-              {#each indice.capitulos as c (c.parte)}<option value={c.parte}>{c.num ? `${c.num}. ` : ''}{c.titulo}</option>{/each}
-            </select>
-          </label>
-          <ul class="lista">
-            {#each lista as k (k)}
-              {@const n = indice.netlists[k]}
-              {#if n && n.motor.estado !== 'no-disponible' && !n.motor.pesada}
-                <li><a href={`#/instrumentos/circuito/${k}`}>{n.titulo || n.nombre}</a></li>
-              {/if}
-            {/each}
-          </ul>
-        {:else if spice.fallo}
-          <ErrorCarga titulo="No se pudo cargar el catálogo de circuitos." reintentar={cargarLista} />
-        {:else}
-          <p class="nota">Cargando el catálogo…</p>
-        {/if}
+<BancoVista
+  {b}
+  {plano}
+  {titulo}
+  {antetitulo}
+  volver={deEditor ? { href: deEditor.volver, texto: '← Editor' } : null}
+  tamano={tipo === 'circuito' ? tamanoDibujo(id, 'banco') : undefined}
+  guiaBm={control.guiaBm}
+  guiaFn={control.guiaFn}
+  bind:pestana={control.pestana}
+  lateralArriba={!!(practica && laboratorio)}
+  barra={practica && laboratorio ? control.barra : null}
+  acciones={practica ? undefined : accionesBanco}
+  extra={!practica && (deEditor || abierto) ? extraBanco : undefined}
+  plegables={practica ? undefined : plegablesBanco}
+  lateral={practica ? lateralPractica : undefined}
+/>
+{#if error}<p class="error">{error}</p>{/if}
+{#if errorRed}<div class="error-red"><ErrorCarga titulo="No se pudo cargar el circuito." error={errorTexto} reintentar={() => void cargarCatalogo(id)} /></div>{/if}
+
+{#snippet lateralPractica()}
+  {#if practica && laboratorio}
+    <PanelLaboratorio p={practica} lab={laboratorio} {b} {control} />
+  {:else if practica}
+    <PanelPractica p={practica} {b} />
+  {/if}
+{/snippet}
+
+{#snippet accionesBanco()}
+  {#if !deEditor}
+    <button type="button" class="boton" aria-expanded={abierto === 'circuito'} aria-controls="banco-elegir" onclick={() => abrir('circuito')} data-cambiar-circuito>Cambiar de circuito</button>
+  {/if}
+  {#if hayReal}
+    <button type="button" class="boton" aria-expanded={abierto === 'real'} aria-controls="banco-real" onclick={() => abrir('real')} data-usar-aparato-real>Usar un aparato real</button>
+  {/if}
+{/snippet}
+
+{#snippet extraBanco()}
+  {#if deEditor}
+    <p class="nota">El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí. Elija una punta en «Puntas puestas» y toque un nodo del dibujo para ponerla.</p>
+  {/if}
+  {#if abierto === 'circuito' && !deEditor}
+    <section class="elegir" id="banco-elegir" aria-labelledby="banco-elegir-titulo">
+      <h2 class="etiqueta21" id="banco-elegir-titulo">Cambiar de circuito</h2>
+      {#if indice}
         <label
-          >Fuente que excita el generador DDS
-          <select value={b.fuenteGenerador ?? ''} onchange={(e) => (b.fuenteGenerador = (e.currentTarget as HTMLSelectElement).value || null)}>
-            <option value="">Ninguna (las fuentes de la netlist)</option>
-            {#each b.circuito.fuentesV as f (f)}<option value={f}>{f}</option>{/each}
+          >Capítulo
+          <select bind:value={capitulo}>
+            {#each indice.capitulos as c (c.parte)}<option value={c.parte}>{c.num ? `${c.num}. ` : ''}{c.titulo}</option>{/each}
           </select>
         </label>
-        <label
-          >Tiempo de asentamiento antes de medir (s)
-          <input type="text" inputmode="decimal" value={String(b.asentamiento).replace('.', ',')} onchange={(e) => { const v = Number((e.currentTarget as HTMLInputElement).value.replace(',', '.')); if (Number.isFinite(v) && v >= 0) b.asentamiento = v; }} />
-        </label>
-        <label class="fila"><input type="checkbox" bind:checked={b.dinamico} /> Simular en el tiempo aunque no haya fuentes variables (osciladores)</label>
-      </div>
-    {/if}
-  {/snippet}
-</BancoVista>
+        <ul class="lista">
+          {#each lista as k (k)}
+            {@const n = indice.netlists[k]}
+            {#if n && n.motor.estado !== 'no-disponible' && !n.motor.pesada}
+              <li><a href={`#/instrumentos/circuito/${k}`}>{n.titulo || n.nombre}</a></li>
+            {/if}
+          {/each}
+        </ul>
+      {:else if spice.fallo}
+        <ErrorCarga titulo="No se pudo cargar el catálogo de circuitos." reintentar={cargarLista} />
+      {:else}
+        <p class="nota">Cargando el catálogo…</p>
+      {/if}
+    </section>
+  {/if}
+  {#if abierto === 'real'}
+    <section class="elegir" id="banco-real" aria-labelledby="banco-real-titulo">
+      <h2 class="etiqueta21" id="banco-real-titulo">Aparatos reales</h2>
+      <BrymenReal compacto simulado={simuladoBm} sinConectar="Sin conectar: el banco usa el Brymen simulado." />
+      <FnirsiReal compacto simulado={simuladoFn} sinConectar="Sin conectar: el banco usa el FNIRSI simulado (el real necesita su firmware con el enlace USB)." />
+    </section>
+  {/if}
+{/snippet}
+
+{#snippet plegablesBanco()}
+  <RegistroReal />
+  <details class="plegable21" data-plegable="diagnostico">
+    <summary>Diagnóstico</summary>
+    <div class="plegable21-cuerpo ajustes">
+      <label
+        >Fuente que excita el generador DDS
+        <select value={b.fuenteGenerador ?? ''} onchange={(e) => (b.fuenteGenerador = (e.currentTarget as HTMLSelectElement).value || null)}>
+          <option value="">Ninguna (las fuentes de la netlist)</option>
+          {#each b.circuito.fuentesV as f (f)}<option value={f}>{f}</option>{/each}
+        </select>
+      </label>
+      <label
+        >Tiempo de asentamiento antes de medir (s)
+        <input type="text" inputmode="decimal" value={String(b.asentamiento).replace('.', ',')} onchange={(e) => { const v = Number((e.currentTarget as HTMLInputElement).value.replace(',', '.')); if (Number.isFinite(v) && v >= 0) b.asentamiento = v; }} />
+      </label>
+      <label class="fila"><input type="checkbox" bind:checked={b.dinamico} /> Simular en el tiempo aunque no haya fuentes variables (osciladores)</label>
+      {#if b.datos}<p class="nota">Última simulación: {b.datos.ms} ms.</p>{/if}
+    </div>
+  </details>
+{/snippet}
 
 <style>
-  .cabecera {
-    padding: 12px 16px 0;
-    max-width: 1500px;
-    margin: 0 auto;
-    font-family: var(--sans);
-  }
-  .atras {
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  h1 {
-    margin: 4px 0 0;
-    color: var(--titulos);
-    font-size: 22px;
-    line-height: 1.2;
-  }
   .error {
-    color: var(--c-precaucion);
-    padding: 0 16px;
+    color: var(--v11-mal-texto);
+    padding: 0 var(--e21-margen);
     font-family: var(--sans);
   }
-  .elegir {
+  .error-red {
+    padding: 0 var(--e21-margen);
+  }
+  .elegir,
+  .ajustes {
     display: grid;
     /* 1.0 (reflow at 320–360 px): a <select> is as wide as its longest option; the column may shrink */
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    gap: 12px;
+    max-width: 720px;
     font-family: var(--sans);
   }
-  .elegir h2 {
-    margin: 0;
-    font-size: 16px;
-    color: var(--titulos);
-  }
-  .elegir label {
+  .elegir label,
+  .ajustes label {
     display: grid;
-    gap: 3px;
+    gap: 4px;
     font-size: 13px;
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
   }
-  .elegir label.fila {
+  .ajustes label.fila {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    min-height: 44px;
+    font-size: 15px;
   }
   .elegir select,
-  .elegir input[type='text'] {
+  .ajustes select,
+  .ajustes input[type='text'] {
     min-width: 0;
     max-width: 100%;
-    min-height: 38px;
-    border: 1px solid var(--linea);
-    border-radius: 8px;
-    background: var(--superficie);
-    padding: 0 8px;
-    font-size: 14px;
+    min-height: 44px;
+    border: 1px solid var(--v11-linea);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--v11-tinta);
+    padding: 0 10px;
+    font-size: 15px;
   }
   .lista {
-    max-height: 240px;
+    max-height: 280px;
     overflow: auto;
     margin: 0;
-    padding: 0 0 0 4px;
+    padding: 0;
     list-style: none;
-    font-size: 14px;
+    font-size: 15px;
   }
   .lista a {
-    display: block;
-    padding: 7px 4px;
-    border-bottom: 1px solid var(--linea-suave);
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    border-bottom: 1px solid var(--v11-linea);
     text-decoration: none;
   }
   .nota {
-    color: var(--tinta-suave);
-    font-size: 13px;
+    margin: 0;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
   }
 </style>

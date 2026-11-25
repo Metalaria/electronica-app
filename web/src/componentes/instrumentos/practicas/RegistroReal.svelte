@@ -168,7 +168,8 @@
 </script>
 
 {#if disponible}
-  <details class="rr" bind:open={abierto} data-registro-real data-registrando={estado.grabando ? 'si' : 'no'}>
+  <!-- 2.1: one of the bench's folded rows (sistema21's details.plegable21) -->
+  <details class="rr plegable21" bind:open={abierto} data-registro-real data-registrando={estado.grabando ? 'si' : 'no'}>
     <summary>
       <strong>Registrador{conComparacion ? ' y comparación' : ''}</strong>{#if estado.grabando}<span class="rr-vivo">{' · registrando'}</span>{/if}
     </summary>
@@ -291,19 +292,14 @@
 
 <style>
   .rr {
-    margin: 4px 0;
-    padding: 4px 10px 8px;
-    border: 1px solid var(--linea);
-    border-radius: 10px;
-    background: var(--superficie);
     font-family: var(--sans);
-    font-size: 13px;
+    font-size: 14px;
   }
-  .rr summary {
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
+  .rr[open] {
+    padding-bottom: var(--e21-3);
+  }
+  .rr summary strong {
+    font-weight: 500;
   }
   .rr-vivo {
     color: var(--c-importante);
@@ -323,8 +319,7 @@
   }
   /* (a finger's size on a touch screen) */
   @media (pointer: coarse) {
-    .boton.pequeno,
-    .rr summary {
+    .boton.pequeno {
       min-height: 44px;
     }
   }

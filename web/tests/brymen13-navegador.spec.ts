@@ -36,7 +36,7 @@ async function responder(page: Page, p: number[] | null) {
 async function practica1(page: Page) {
   await page.goto('/#/instrumentos/practica/1');
   await expect(page.locator('section.practica h2')).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+  await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
   // step 1 (V⎓, red on a) and step 2 (red on out): V_out live on the simulated Brymen
   await page.getByRole('button', { name: 'Preparar este paso en el banco' }).click();
   await page.getByRole('button', { name: 'Siguiente →' }).click();
@@ -120,11 +120,13 @@ test.describe('escritorio', () => {
     await limpio(page);
     await conCable(page);
     await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+    // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+    await page.locator('[data-usar-aparato-real]').click();
     const panel = page.locator('.elegir [data-brymen-real]');
     await expect(panel).toBeVisible({ timeout: 60_000 });
     await expect(panel).toHaveClass(/compacto/);
     await expect(page.locator('[data-estado-real]')).toContainText('el banco usa el Brymen simulado');
-    await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+    await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
     await panel.getByRole('button', { name: 'Conectar el Brymen real' }).click();
     await responder(page, paquete({ principal: '2.0130', unidad: 'V', dc: true }));
     await expect(page.locator('[data-lectura-real]')).toHaveText('2,0130 V ⎓');
@@ -140,8 +142,14 @@ test.describe('escritorio', () => {
     await limpio(page);
     await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'hid', { get: () => undefined, configurable: true }));
     await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
-    await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+    // (2.1: the real instruments' panel opens from «Usar un aparato real», shown only where a transport exists)
+    await expect(page.locator('.banco h1')).toBeVisible({ timeout: 60_000 });
+    if (await page.locator('[data-usar-aparato-real]').count()) {
+      await page.locator('[data-usar-aparato-real]').click();
+      await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+    }
     await expect(page.locator('[data-brymen-real]')).toHaveCount(0);
+    await expect(page.locator('[data-usar-aparato-real]')).toHaveCount(0);
   });
 
   test('el cable enchufado pero el Brymen apagado: lo dice', async ({ page }) => {
@@ -197,6 +205,8 @@ test('banco libre en el teléfono: el panel del Brymen real cabe y se usa con el
   await limpio(page);
   await conCable(page);
   await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+  // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+  await page.locator('[data-usar-aparato-real]').click();
   const panel = page.locator('.elegir [data-brymen-real]');
   await expect(panel).toBeAttached({ timeout: 60_000 });
   await panel.scrollIntoViewIfNeeded();

@@ -246,7 +246,9 @@
 </script>
 
 <div class="diagrama-paso" bind:clientWidth={anchoCaja} data-encuadrado={encuadrado}>
-  <div class="desliza" bind:this={caja} class:ancha>
+  <!-- 2.1 (owner's a11y item): the drawing scrolls sideways on a phone; the scroller is a named, focusable region -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div class="desliza" bind:this={caja} class:ancha role="region" aria-label="Diagrama del paso (se desplaza a los lados)" tabindex="0">
     <svg
       style:width={encuadrado && ancha ? `${anchoSvg}px` : undefined}
       viewBox={vista.map((v) => v.toFixed(2)).join(' ')}
@@ -327,6 +329,10 @@
     min-width: 0;
     overflow-x: auto;
     border-radius: 12px;
+  }
+  .desliza:focus-visible {
+    outline: 2px solid var(--v11-foco);
+    outline-offset: 2px;
   }
   .pista {
     margin: 0;

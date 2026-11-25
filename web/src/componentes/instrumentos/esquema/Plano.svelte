@@ -235,7 +235,7 @@
   }
 </script>
 
-<div class="plano" bind:this={contenedor}>
+<div class="plano" bind:this={contenedor} data-punta-activa={activa ?? undefined}>
   <div class="lamina" style={fuente.tipo === 'auto' ? `max-width:${Math.round(fuente.vista[2] * 1.3)}px` : undefined}>
   {#if fuente.tipo === 'figura'}
     <!-- 0.11: the drawing's size, so the bench keeps its place before the image arrives (it pushed everything under
@@ -342,9 +342,7 @@
   {#if posAjuste && ajuste}
     <AjusteFino x={posAjuste.x} y={posAjuste.y} nombre={(NOMBRE_PUNTA_PROTO as Record<string, string>)[ajuste.p]?.toLowerCase() ?? 'la punta'} paso="al nodo de al lado" puede={(d) => !!vecino(d)} mover={moverAjuste} cerrar={() => (ajuste = null)} />
   {/if}
-  {#if activa}
-    <div class="ayuda" style={`--c:${COLOR_PUNTA[activa]}`}>Toque un nodo para poner la punta{alSoltar && puntas.length ? ', o arrastre una punta puesta' : ''}</div>
-  {/if}
+  <!-- 2.1: the hint «Toque un nodo para mover» is in the bench's «Puntas puestas», not under the drawing -->
 </div>
 
 <style>
@@ -451,13 +449,5 @@
     transform: translate(-50%, -50%);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     pointer-events: none;
-  }
-  .ayuda {
-    margin-top: 6px;
-    padding: 4px 10px;
-    border-left: 4px solid var(--c);
-    color: var(--tinta-suave);
-    font-family: var(--sans);
-    font-size: 13px;
   }
 </style>

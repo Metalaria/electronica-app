@@ -14,7 +14,7 @@ async function abrir(page: Page, tema: Tema = 'claro') {
   await page.addInitScript(() => ((window as unknown as { __epaEventos: unknown[] }).__epaEventos = []));
   await page.goto('/#/instrumentos/laboratorio/1');
   await expect(page.locator('section.lab h2')).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+  await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
 }
 
 /** Keyboard: focus a control and press a key. */
@@ -35,19 +35,31 @@ async function girar(page: Page, rotulo: string) {
   await expect(s).toHaveAttribute('aria-valuetext', rotulo);
 }
 
-async function punta(page: Page, nombre: RegExp, nodo: string) {
-  const r = page.getByRole('radio', { name: nombre });
-  if ((await r.getAttribute('aria-checked')) !== 'true') await pulsar(page, r);
-  await pulsar(page, page.locator('.nodos .nodo-chip', { hasText: new RegExp(`^${nodo}$`) }));
+/**
+ * 2.1: a lead on a node with the keyboard, through «Puntas puestas»: its row (or «Poner otra punta» when it is not
+ * placed) opens its editor, whose list of nodes places it.
+ */
+async function punta(page: Page, p: string, nodo: string) {
+  const zona = page.locator('[data-puntas-puestas]').first();
+  const fila = zona.locator(`button[data-punta="${p}"]`);
+  if (await fila.count()) {
+    if (!(await zona.locator(`[data-editor-punta="${p}"]`).count())) await pulsar(page, fila);
+  } else {
+    await pulsar(page, zona.getByRole('button', { name: /Poner otra punta/ }));
+    await pulsar(page, zona.locator(`[data-poner-punta="${p}"]`));
+  }
+  const lista = zona.locator(`[data-editor-punta="${p}"] select`);
+  await lista.focus();
+  await lista.selectOption(nodo);
 }
 
 /** What the Brymen shows («9,0000 V»), once the bench has simulated the change and the reading is steady. */
 async function lecturaBrymen(page: Page): Promise<string> {
-  await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 60_000 });
-  const cap = page.locator('figcaption', { hasText: 'Brymen:' });
+  await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 60_000 });
+  const cap = page.locator('figcaption', { hasText: 'Brymen BM869s ·' });
   await expect(cap).toContainText('±', { timeout: 30_000 });
   // the change is simulated after a short pause: the same reading (units and first digits) twice, 600 ms apart
-  const leer = async () => (/Brymen: (.+?) ±/.exec((await cap.textContent()) ?? '')?.[1] ?? '').trim();
+  const leer = async () => (/Brymen BM869s · (.+?) ±/.exec((await cap.textContent()) ?? '')?.[1] ?? '').trim();
   let antes = await leer();
   for (let k = 0; k < 40; k++) {
     await page.waitForTimeout(600);
@@ -79,8 +91,8 @@ test('laboratorio 1 de principio a fin con el teclado: cada paso comprobado, pis
 
   // 1. the supply: V⎓, red on a, black on 0; a wrong selector first (alternating) gets its own hint
   await girar(page, 'V∿');
-  await punta(page, /Brymen punta roja/, 'a');
-  await punta(page, /Brymen punta negra/, '0');
+  await punta(page, 'bmRojo', 'a');
+  await punta(page, 'bmNegro', '0');
   await pulsar(page, page.locator('[data-comprobar]'));
   await expect(page.locator('[data-veredicto="mal"]')).toContainText('V∿ (alterna)');
   await girar(page, 'V⎓');
@@ -89,12 +101,14 @@ test('laboratorio 1 de principio a fin con el teclado: cada paso comprobado, pis
   // 2. V_out
   await expect(page.locator('[data-paso]')).toHaveAttribute('data-paso', 'vout');
   await expect(page.locator('[data-paso] h3')).toBeFocused();
-  await punta(page, /Brymen punta roja/, 'out');
+  await punta(page, 'bmRojo', 'out');
   await escribirYComprobar(page);
 
   // 3. the current, in series with R1 on the mA jack
   await girar(page, 'A mA');
   await pulsar(page, page.getByRole('button', { name: 'Mover la punta roja al borne mA µA' }));
+  // (2.1: «Medir en serie» is a folded row, opened from the keyboard)
+  await pulsar(page, page.locator('details[data-plegable="serie"] summary'));
   const serie = page.locator('.serie select').first();
   const valor = await serie.locator('option', { hasText: 'R1' }).first().getAttribute('value');
   await serie.focus();
@@ -105,8 +119,8 @@ test('laboratorio 1 de principio a fin con el teclado: cada paso comprobado, pis
   await pulsar(page, page.getByRole('button', { name: 'Mover la punta roja al borne ΩV⊣⊢' }));
   await serie.selectOption('');
   await girar(page, 'Ω ·)))');
-  await punta(page, /Brymen punta roja/, 'out');
-  await punta(page, /Brymen punta negra/, '0');
+  await punta(page, 'bmRojo', 'out');
+  await punta(page, 'bmNegro', '0');
   await pulsar(page, page.locator('[data-comprobar]'));
   await expect(page.locator('[data-veredicto="mal"]')).toContainText('Quite la alimentación');
   await pulsar(page, page.getByRole('checkbox', { name: 'Circuito alimentado' }), 'Space');
@@ -174,7 +188,7 @@ test('a 360 px no hay desplazamiento horizontal; enlaces desde el capítulo, la 
   for (const sel of ['[data-comprobar]', '[data-donde]', '[data-hagalo]']) expect((await page.locator(sel).boundingBox())!.height).toBeGreaterThanOrEqual(44);
   // on a narrow screen the instruments are tabs: the step's instrument is the one shown
   await page.locator('[data-donde]').click();
-  await expect(page.getByRole('tab', { name: 'Brymen BM869s' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Brymen', exact: true })).toHaveAttribute('aria-selected', 'true');
   await ctx.close();
 
   const p2 = await browser.newPage();

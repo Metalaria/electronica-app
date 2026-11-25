@@ -32,6 +32,8 @@ import { EnsambladorOsciloscopio, type Traza } from './osciloscopio.ts';
 import {
   ESTADO_GENERADOR,
   ESTADO_MEDIDAS_CH1,
+  ESTADO_MEDIDAS_CH2,
+  ESTADO_MULTIMETRO,
   EVT_ESTADO,
   FLUJO_ESTADO,
   FLUJO_MULTIMETRO,
@@ -86,10 +88,6 @@ export interface OndaEnviada {
   forma: number;
 }
 
-/** Why the installed app cannot send a waveform yet (the card says it too). */
-export const ONDA_SOLO_NAVEGADOR =
-  'Desde la aplicación instalada todavía no se puede enviar una onda: su conector USB solo deja pasar al FNIRSI las órdenes de identificación y de suscripción. Se puede desde Chrome o Edge en un ordenador.';
-
 const SIN_CONEXION_ONDA = 'Se ha perdido la conexión con el FNIRSI mientras se enviaba la onda: no se sabe cuánta ha llegado. Vuelva a enviarla.';
 
 function texto(e: unknown, defecto: string): string {
@@ -107,6 +105,12 @@ export class ConexionFnirsi {
   info = $state<InfoEnlace | null>(null);
   /** The instrument's mode when the link was last identified. */
   modo = $state<ModoFnirsi>('otro');
+  /**
+   * 2.1: the mode the status stream (patch 3) shows, by the blocks it sends: the multimeter's (4), the oscilloscope's
+   * measurements (2, 3), or the generator's alone (1, in the generator the identification named). Null until a block
+   * arrives, and in a link without the stream.
+   */
+  modoFlujo = $state<ModoFnirsi | null>(null);
   /** The multimeter's last display and when it arrived (Date.now()). */
   multimetro = $state<LecturaFnirsi | null>(null);
   horaMultimetro = $state(0);
@@ -120,6 +124,11 @@ export class ConexionFnirsi {
   generador = $state<AjustesGenerador | null>(null);
   /** The oscilloscope's own measurements of CH1, and whether it runs (true), is stopped (false) or is not known. */
   medidas = $state<MedidasOsciloscopio | null>(null);
+  /**
+   * 2.1: the oscilloscope's own measurements of CH2: block 3 of the status stream, the same 48 bytes as CH1's (seen
+   * with the channel on by the owner, 2026-11-25). Only with the stream: a link without it is not asked for them.
+   */
+  medidasCh2 = $state<MedidasOsciloscopio | null>(null);
   enMarcha = $state<boolean | null>(null);
 
   private t: TransporteFnirsi | null;
@@ -195,7 +204,9 @@ export class ConexionFnirsi {
     this.trazas = [null, null];
     this.generador = null;
     this.medidas = null;
+    this.medidasCh2 = null;
     this.enMarcha = null;
+    this.modoFlujo = null;
     this.consultas.clear();
     this.proximaConsulta = 0;
     this.sinLectura = false;
@@ -242,8 +253,7 @@ export class ConexionFnirsi {
     if (!this.t || this.estado !== 'conectado') throw new Error('El FNIRSI no está conectado.');
     if (!this.info?.ondasAMedida)
       throw new Error(`El enlace de este FNIRSI (parche ${this.info?.parche ?? '?'}) no admite ondas a medida: hace falta el parche 4.`);
-    // (the installed app's USB plugin only lets the identification and the subscription through, by design)
-    if (this.t.tipo === 'nativo') throw new Error(ONDA_SOLO_NAVEGADOR);
+    // (2.1: the installed app's USB plugin lets the wave and the read of its table through, and nothing more)
     if (!muestrasValidas(muestras)) throw new Error(`Una onda son ${PUNTOS_ONDA} muestras enteras de 0 a 4094.`);
     if (this.enviandoOnda) throw new Error('Ya se está enviando una onda.');
     const m = Array.from(muestras);
@@ -322,6 +332,7 @@ export class ConexionFnirsi {
     if (v !== this.vuelta) return;
     this.info = info;
     this.modo = info.modo;
+    this.modoFlujo = null;
     this.conEstado = info.estadoEnFlujo;
     this.horaEstado = Date.now();
   }
@@ -372,20 +383,23 @@ export class ConexionFnirsi {
   }
 
   /**
-   * A block of the status stream: true when `informe` was one. CH2's measurements and the multimeter's extra
-   * state arrive too and are not used yet (the first were only seen with the channel off).
+   * A block of the status stream: true when `informe` was one. The multimeter's extra state arrives too and is not
+   * used here (the multimeter frames carry their own). 2.1: CH2's measurements are kept (`medidasCh2`).
    */
   private atenderEstado(informe: Uint8Array): boolean {
     if (informe[0] !== EVT_ESTADO) return false;
     const e = leerEstado(informe);
     if (!e) return true;
     this.horaEstado = Date.now();
+    if (e.bloque === ESTADO_MULTIMETRO) this.modoFlujo = 'multimetro';
+    else if (e.bloque === ESTADO_MEDIDAS_CH1 || e.bloque === ESTADO_MEDIDAS_CH2) this.modoFlujo = 'osciloscopio';
+    else if (e.bloque === ESTADO_GENERADOR && this.modo === 'generador') this.modoFlujo = 'generador';
     if (e.bloque === ESTADO_GENERADOR && e.bytes.length === LARGO_GENERADOR) this.generador = decodificarGenerador(e.bytes);
     else if (e.bloque === ESTADO_MEDIDAS_CH1 && e.bytes.length === LARGO_MEDIDAS + 1) {
       this.medidas = decodificarMedidas(e.bytes);
       const marcha = e.bytes[LARGO_MEDIDAS];
       this.enMarcha = marcha === 1 ? true : marcha === 0 ? false : null;
-    }
+    } else if (e.bloque === ESTADO_MEDIDAS_CH2 && e.bytes.length >= LARGO_MEDIDAS) this.medidasCh2 = decodificarMedidas(e.bytes);
     return true;
   }
 

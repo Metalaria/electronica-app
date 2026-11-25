@@ -691,6 +691,15 @@ C1 out 0 100n
     color: var(--tinta-suave);
     font-variant-numeric: tabular-nums;
   }
+  /* (2.1 close-out: next to the 2.1 primary button, wider, «Cargando el simulador…» no longer fitted a 360 px row and
+     dropped to a second line for a moment — the page jumped 28 px down and back, CLS 0.07. On a phone it wraps inside
+     the row now, two lines being shorter than the button; on a row too narrow even for that, the whole status moves) */
+  @media (max-width: 599px) {
+    .estado {
+      flex: 1 1 120px;
+      min-width: 0;
+    }
+  }
   .punto {
     width: 9px;
     height: 9px;

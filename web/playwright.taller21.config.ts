@@ -1,0 +1,39 @@
+// 2.1 «lavado de cara», Taller and Proyectos (tests/taller21-*.spec.ts): the bench's new layout, the drawn Brymen's
+// selector following the real meter, the drawn FNIRSI following the real one's mode, and the consoles' chrome. Own
+// port and build folder (EPA_DIST, EPA_PUERTO override them). The «movil» and «tableta» projects run the phone and
+// tablet cases (each test skips the projects it is not for).
+//   PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c playwright.taller21.config.ts
+// The unit tests (no browser, no server):
+//   EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.taller21.config.ts tests/taller21-unidad.spec.ts
+import { defineConfig, devices } from '@playwright/test';
+import base from './playwright.config';
+
+const dist = process.env.EPA_DIST ?? '/tmp/claude-0/epa-21c/dist';
+const puerto = Number(process.env.EPA_PUERTO ?? 4783);
+
+export default defineConfig({
+  ...base,
+  // (EPA_PRUEBAS: a regular expression of other spec files to run on this port, e.g. the bench's older tests)
+  testMatch: process.env.EPA_PRUEBAS ? new RegExp(process.env.EPA_PRUEBAS) : /taller21-.*\.spec\.ts/,
+  timeout: 240_000,
+  use: { ...base.use, baseURL: `http://localhost:${puerto}/` },
+  webServer: process.env.EPA_SIN_SERVIDOR
+    ? undefined
+    : {
+        command: `node scripts/ngspice.mjs && npx vite build --outDir ${dist} --emptyOutDir && npx vite preview --outDir ${dist} --port ${puerto} --strictPort`,
+        url: `http://localhost:${puerto}/`,
+        reuseExistingServer: true,
+        timeout: 400_000,
+      },
+  projects: [
+    { name: 'escritorio', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 900 } } },
+    {
+      name: 'movil',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 412, height: 915 }, deviceScaleFactor: 3.5, hasTouch: true, isMobile: true },
+    },
+    {
+      name: 'tableta',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 800, height: 1280 }, deviceScaleFactor: 2.5, hasTouch: true, isMobile: true },
+    },
+  ],
+});

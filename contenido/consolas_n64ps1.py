@@ -321,6 +321,10 @@ FUENTES = {
          'url': 'https://bitbuilt.net/forums/threads/ultimate-n64-ntsc-pal-region-switch-guide.1620/', 'licencia': 'Sin licencia: solo consulta',
          'uso': 'Diferencias de las placas PAL: el PIF-NUS («el chip de la región»), la velocidad del bus de la RAM (la patilla de frecuencia '
                 'del MX8330) y el vídeo (DENC-NUS en un solo chip, sin RGB, en lugar de VDC-NUS más ENC-NUS).'},
+        {'titulo': 'ConsoleArtisan, «Nintendo 64 Repair Reference»', 'autor': 'ConsoleArtisan',
+         'url': 'https://consoleartisan.com/reference/n64/', 'licencia': 'Sin licencia indicada: solo consulta',
+         'uso': 'Los años de la placa del selector: la familia «NUS-CPU-01 to -04 (1996 to 1997)», con las -01 a -03 de «1996-97 '
+                'NTSC-J and early NTSC-U»; de ahí «NUS-CPU-03 NTSC · 1996-97».'},
     ],
     'ps1': [
         {'titulo': 'xyzz/pu-18 — recreación KiCad de la placa PU-18 (pu-18.kicad_sch, pu-18.kicad_pcb; KiCad 10, commit 9694a7e)',
