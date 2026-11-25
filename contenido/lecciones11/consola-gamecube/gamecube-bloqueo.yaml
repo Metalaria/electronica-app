@@ -1,0 +1,168 @@
+# «Consolas por dentro» · GameCube 6: sin chip de bloqueo. La protección del disco la hace el controlador de la
+# unidad (código BCA) y la región la impone por programa la ROM de arranque (ConsoleArtisan); el Gekko arranca en la
+# ROM que le llega por EXI a través de Flipper (YAGCD, decodificador del explorador). Fuentes: gamecube#n.
+leccion: consola-gamecube/gamecube-bloqueo
+
+libro:
+  "gamecube#7": "guarda el programa de arranque (IPL)"
+  "gamecube#9": "comprueba el código de protección del disco"
+  "gamecube#40": "Solo habla con Flipper"
+  "gamecube#44": "Flipper le manda órdenes por la interfaz DI"
+  "gamecube#47": "la ROM con el programa de arranque (IPL), que el Gekko ve en $FFF0_0000 al encender"
+  "gamecube#59": "que llega por el bus EXI"
+  "gamecube#70": "no hay un chip de bloqueo como en los cartuchos"
+  "gamecube#71": "no son una avería"
+  "gamecube#72": "El bus EXI es serie, de 3,3 V, derivado de SPI, a 16 MHz"
+
+modelo:
+  valores:
+    f_e: { sim: "f_{EXI}", nombre: "reloj del bus EXI", unidad: Hz, valor: 16000000 }
+    n_b: { sim: "n", nombre: "bits por byte", unidad: "", valor: 8 }
+  calculos:
+    B_e: { expr: "f_e/n_b", sim: "B_{EXI}", nombre: "bytes por segundo del bus EXI", unidad: "B", cifras: 3 }
+
+tarjetas:
+  - id: explore-arranque
+    tipo: explorar
+    titulo: "Quién decide qué arranca"
+    texto: "Toque la unidad de discos, la ROM de arranque y Flipper. Lea qué hace cada uno al encender."
+    libro: ["gamecube#7", "gamecube#9", "gamecube#70"]
+    requiere: { mover: [dvd, ipl] }
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [570, 0, 780, 900]
+      ampliar: 1.9
+      zonas:
+        - { id: dvd, hotspot: dvd, rotulo: "Conector de la unidad (P9)", texto: "Su controlador comprueba el código de protección del disco." }
+        - { id: ipl, hotspot: ipl, rotulo: "ROM de arranque (U10)", texto: "Guarda el programa de arranque, que impone la región." }
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper", texto: "Lleva el bus EXI de la ROM y la interfaz del disco." }
+
+  - id: toque-disco
+    tipo: tocar
+    titulo: "¿Es un disco original?"
+    texto: "Toque por dónde llega a la placa la parte que comprueba si el disco es original."
+    libro: ["gamecube#9", "gamecube#70"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [570, 0, 780, 900]
+      ampliar: 1.9
+      zonas:
+        - { id: dvd, hotspot: dvd, rotulo: "Conector negro, arriba a la derecha" }
+        - { id: ipl, hotspot: ipl, rotulo: "Chip pequeño a la derecha de Flipper" }
+        - { id: flipper, hotspot: flipper, rotulo: "Chip grande del centro" }
+    tocar:
+      bien: [dvd]
+      porque:
+        ipl: "La ROM de arranque impone la región, pero el disco lo comprueba la unidad."
+        flipper: "Flipper recibe los datos ya leídos; la comprobación es de la unidad."
+    exito: "P9: el controlador de la unidad, con su propio procesador, comprueba el código BCA del disco."
+    escalera:
+      - "La comprobación no está en la placa base, sino en la unidad."
+    solucion: "El conector P9 de la unidad de discos."
+
+  - id: toque-region
+    tipo: tocar
+    titulo: "La región"
+    texto: "La región no la impone un chip de bloqueo, sino un programa. Toque dónde está guardado."
+    libro: ["gamecube#7", "gamecube#70"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [400, 650, 760, 320]
+      ampliar: 2
+      zonas:
+        - { id: ipl, hotspot: ipl, rotulo: "Chip y cristal pequeño, a la derecha" }
+        - { id: reloj, hotspot: reloj, rotulo: "Chip y cápsula metálica, a la izquierda" }
+    tocar:
+      bien: [ipl]
+      porque:
+        reloj: "Es el generador de reloj: no guarda programas."
+    exito: "U10: la ROM de arranque (IPL) comprueba la región por programa."
+    escalera:
+      - "Es el chip que guarda el programa de arranque."
+    solucion: "U10, junto al cristal X2."
+
+  - id: orden-arranque
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "El camino del arranque"
+    texto: "Toque por orden: la ROM de arranque, el chip por el que pasa su bus EXI, la CPU que la ejecuta y la unidad de la que viene después el juego."
+    libro: ["gamecube#47", "gamecube#59", "gamecube#40", "gamecube#44"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [570, 0, 780, 1100]
+      ampliar: 1.9
+      zonas:
+        - { id: ipl, hotspot: ipl, rotulo: "Chip pequeño a la derecha de Flipper" }
+        - { id: flipper, hotspot: flipper, rotulo: "Chip grande del centro" }
+        - { id: gekko, hotspot: gekko, rotulo: "Chip plateado de abajo" }
+        - { id: dvd, hotspot: dvd, rotulo: "Conector negro, arriba a la derecha" }
+    tocar:
+      bien: [ipl, flipper, gekko, dvd]
+      orden: true
+    pistas:
+      - { texto: "El Gekko solo habla con Flipper: la ROM le llega a través de él." }
+    exito: "La ROM (U10), por EXI a Flipper, al Gekko; después, el juego por la interfaz del disco."
+    escalera:
+      - "Empiece por el chip que guarda el programa de arranque."
+    solucion: "U10, Flipper, el Gekko y la unidad (P9)."
+
+  - id: lea-exi
+    tipo: leer
+    titulo: "La ROM llega en serie"
+    texto: "El bus EXI es serie: un bit por ciclo de su reloj de 16 MHz. Escriba cuántos bytes por segundo trae de la ROM."
+    libro: ["gamecube#72", "gamecube#59"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [400, 650, 760, 320]
+      ampliar: 2
+      zonas:
+        - { id: ipl, hotspot: ipl, rotulo: "ROM de arranque (U10)" }
+    leer:
+      objetivo: B_e
+      unidad: "B"
+      tol: 0.01
+      rotulo: "Bytes por segundo"
+      errores:
+        - { expr: "f_e", texto: "Eso son bits por segundo: cada byte necesita 8." }
+    exito: "2 millones de bytes por segundo: poco para un juego, pero de sobra para el programa de arranque."
+    escalera:
+      - "Divida 16 millones de bits por segundo entre 8."
+    solucion: "16 MHz ÷ 8 = 2 MB/s."
+    comprobar:
+      - { B_e: 2000000 }
+
+  - id: disco-grabado
+    tipo: porque
+    titulo: "Un disco grabado no arranca"
+    texto: "Un disco grabado en casa no arranca. ¿Está averiada la consola?"
+    libro: ["gamecube#71", "gamecube#70"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: dvd, hotspot: dvd, rotulo: "Conector de la unidad (P9)" }
+    opciones:
+      - texto: "No: la clave sale del código BCA del disco, que una grabadora doméstica no puede escribir."
+        bien: true
+        porque: "La unidad hace lo que debe: rechazar un disco sin el código."
+      - texto: "Sí: el láser está gastado."
+        porque: "Un láser gastado falla también con los discos originales; aquí solo falla el grabado."
+      - texto: "Sí: el chip de bloqueo de la placa está roto."
+        porque: "No hay chip de bloqueo en la placa: la comprobación la hace la unidad."
+    escalera:
+      - "¿Fallan también los discos originales?"
+    solucion: "No es una avería: falta el código BCA."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gamecube#70", "gamecube#7", "gamecube#71"]
+    ideas:
+      - { titulo: "Sin chip de bloqueo.", texto: "No hay cartucho ni CIC." }
+      - { titulo: "El disco.", texto: "Lo comprueba la unidad con el código BCA." }
+      - { titulo: "La región.", texto: "La impone por programa la ROM de arranque." }

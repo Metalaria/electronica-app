@@ -7,6 +7,7 @@
   import { decodificar, type Dibujo } from './dibujo';
   import type { Impacto } from './capa';
   import type { Seleccion } from '../estado.svelte';
+  import { tieneArquitectura } from '../arquitectura/maquinas';
   import { PLACAS_DE } from '../placa/datos';
   import { soporteWebGL2 } from '../../tres/motor/soporte';
   import Lienzo from './Lienzo.svelte';
@@ -324,7 +325,7 @@
         {#if fotoDe || bloqueDe}
           <div class="acciones">
             {#if fotoDe}<button type="button" class="accion" onclick={() => irA('foto', { tipo: 'foto', id: fotoDe })}>Ver en la foto{hotspotNombre ? `: ${hotspotNombre}` : ''}</button>{/if}
-            {#if bloqueDe}<button type="button" class="accion" onclick={() => irA('arquitectura', { tipo: 'bloque', id: bloqueDe })}>Ver en la arquitectura</button>{/if}
+            {#if bloqueDe && tieneArquitectura(datos.id)}<button type="button" class="accion" onclick={() => irA('arquitectura', { tipo: 'bloque', id: bloqueDe })}>Ver en la arquitectura</button>{/if}
           </div>
         {:else if conPosicion}
           <div class="acciones">

@@ -1,0 +1,193 @@
+# «Consolas por dentro» · GameCube 5: vídeo y sonido. Flipper dibuja en su EFB, lo copia al XFB de la memoria
+# principal, la interfaz de vídeo lo lee y lo saca en digital hacia el codificador AVE (U6, cara de abajo) y la salida
+# digital P2. Fuentes: gamecube#n (explorador, ConsoleArtisan, YAGCD).
+leccion: consola-gamecube/gamecube-video-audio
+
+libro:
+  "gamecube#12": "Saca el vídeo en digital, YCbCr 4:2:2 en 8 bits con su reloj de 54 MHz"
+  "gamecube#13": "compuesto en todas las regiones, RGB solo en las PAL"
+  "gamecube#16": "Convierte el vídeo digital que manda Flipper en las señales analógicas del conector P7"
+  "gamecube#41": "dibuja (de las órdenes al búfer de imagen de 2 MB que lleva dentro"
+  "gamecube#42": "el búfer de imagen externo (XFB)"
+  "gamecube#67": "El 480p solo sale por la salida digital"
+  "gamecube#78": "va en la cara de abajo de la placa"
+  "gamecube#88": "La interfaz de vídeo trabaja en PAL con 640 × 574 puntos a 50 Hz"
+  "gamecube#89": "2 bytes por punto"
+
+modelo:
+  valores:
+    W: { sim: "W", nombre: "puntos por línea", unidad: "", valor: 640 }
+    H: { sim: "H", nombre: "líneas en PAL", unidad: "", valor: 574 }
+    b: { sim: "b", nombre: "bytes por punto del XFB", unidad: "B", valor: 2 }
+    f_v: { sim: "f_{V}", nombre: "imágenes por segundo en PAL", unidad: Hz, valor: 50 }
+  calculos:
+    B_l: { expr: "W*b", sim: "B_{línea}", nombre: "bytes de una línea del XFB", unidad: "B", cifras: 4 }
+    B_x: { expr: "W*H*b", sim: "B_{XFB}", nombre: "bytes de un XFB PAL", unidad: "B", cifras: 4 }
+    B_s: { expr: "W*H*b*f_v", sim: "B_{s}", nombre: "bytes por segundo que lee la interfaz de vídeo", unidad: "B", cifras: 3 }
+
+tarjetas:
+  - id: explore-video
+    tipo: explorar
+    titulo: "Por dónde sale la imagen"
+    texto: "Toque Flipper y las dos salidas de vídeo. Lea qué sale por cada una."
+    libro: ["gamecube#12", "gamecube#13", "gamecube#41"]
+    requiere: { mover: [flipper, digital, analogico] }
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper", texto: "Dibuja en el búfer de imagen de 2 MB que lleva dentro." }
+        - { id: digital, hotspot: av-digital, rotulo: "Salida digital P2", texto: "YCbCr 4:2:2 en 8 bits, con reloj de 54 MHz." }
+        - { id: analogico, hotspot: av-analogico, rotulo: "Salida analógica P7", texto: "Compuesto; RGB en las PAL; S-Video en las NTSC." }
+
+  - id: toque-ave
+    tipo: tocar
+    titulo: "Digital a analógico"
+    texto: "La salida analógica no sale de Flipper: pasa por un codificador en la otra cara. Tóquelo."
+    libro: ["gamecube#16", "gamecube#78"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: soldaduras }
+      recorte: [1080, 470, 420, 730]
+      ampliar: 1.6
+      zonas:
+        - { id: ave, hotspot: ave, rotulo: "Chip alargado, a la derecha" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, abajo a la derecha" }
+        - { id: p1, hotspot: p1, rotulo: "Conector negro, abajo a la derecha" }
+    tocar:
+      bien: [ave]
+      porque:
+        amp: "Es U7, «AMP-DOL»: no se sabe con certeza qué hace."
+        p1: "Es el conector de la alimentación."
+    exito: "U6, el AVE: convierte el vídeo digital en las señales de P7."
+    escalera:
+      - "Lea las marcas: «AVE P-DOL A»."
+    solucion: "U6, el chip alargado de la derecha."
+
+  - id: lea-linea
+    tipo: leer
+    titulo: "Una línea del XFB"
+    texto: "Una línea tiene 640 puntos y el XFB guarda 2 bytes por punto. Escriba cuántos bytes ocupa la línea."
+    libro: ["gamecube#88", "gamecube#89"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [340, 20, 760, 360]
+      ampliar: 1.6
+      zonas:
+        - { id: splash, hotspot: splash, rotulo: "1T-SRAM: aquí está el XFB" }
+    leer:
+      objetivo: B_l
+      unidad: "B"
+      tol: 0.01
+      rotulo: "Bytes por línea"
+      errores:
+        - { expr: "W", texto: "Eso son los puntos: cada uno ocupa 2 bytes." }
+    exito: "1280 bytes por línea."
+    escalera:
+      - "640 × 2."
+    solucion: "640 × 2 B = 1280 B."
+    comprobar:
+      - { B_l: 1280 }
+
+  - id: lea-xfb
+    tipo: leer
+    titulo: "Un XFB entero"
+    texto: "En PAL la imagen tiene 574 líneas. Escriba cuántos bytes ocupa un XFB."
+    libro: ["gamecube#88", "gamecube#89", "gamecube#42"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [340, 20, 760, 360]
+      ampliar: 1.6
+      zonas:
+        - { id: splash, hotspot: splash, rotulo: "1T-SRAM" }
+    leer:
+      objetivo: B_x
+      unidad: "B"
+      tol: 0.01
+      rotulo: "Bytes del XFB"
+      errores:
+        - { expr: "W*H", texto: "Le falta multiplicar por los 2 bytes de cada punto." }
+        - { expr: "W*480*b", texto: "480 líneas son las de NTSC; esta consola es PAL." }
+    exito: "Unos 735 kB, en la memoria principal: no cabe en los 2 MB del EFB y, además, el EFB se necesita para el cuadro siguiente."
+    escalera:
+      - "640 × 574 × 2."
+    solucion: "640 × 574 × 2 B = 734 720 B."
+    comprobar:
+      - { B_x: 734720 }
+
+  - id: lea-por-segundo
+    tipo: leer
+    titulo: "Lo que lee la interfaz de vídeo"
+    texto: "La interfaz de vídeo lee el XFB entero 50 veces por segundo. Escriba cuántos bytes por segundo."
+    libro: ["gamecube#88", "gamecube#89"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper: su interfaz de vídeo" }
+    leer:
+      objetivo: B_s
+      unidad: "B"
+      tol: 0.02
+      rotulo: "Bytes por segundo"
+      errores:
+        - { expr: "B_x", texto: "Eso es un solo XFB: se lee 50 veces por segundo." }
+    exito: "Unos 37 millones de bytes por segundo: poca cosa para el bus de la memoria principal."
+    escalera:
+      - "Multiplique el XFB por 50."
+    solucion: "734 720 B × 50 ≈ 36,7 MB/s."
+    comprobar:
+      - { B_s: 36736000 }
+
+  - id: cable-pal
+    tipo: pregunta
+    titulo: "El mejor cable analógico"
+    texto: "Su GameCube es PAL. ¿Qué cable analógico da mejor imagen?"
+    libro: ["gamecube#13"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: analogico, hotspot: av-analogico, rotulo: "Salida analógica P7" }
+    opciones:
+      - texto: "RGB"
+        bien: true
+        porque: "Las PAL sacan RGB por P7: tres colores separados, sin mezclar."
+      - texto: "S-Video"
+        porque: "Solo lo dan las NTSC; las PAL no."
+      - texto: "Compuesto"
+        porque: "Lo dan todas, pero mezcla todo en un cable: es el peor."
+    escalera:
+      - "Mire qué da P7 en las PAL."
+    solucion: "RGB."
+
+  - id: toque-480p
+    tipo: tocar
+    titulo: "El 480p"
+    texto: "Toque la única salida por la que puede salir el 480p."
+    libro: ["gamecube#67", "gamecube#12"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: digital, hotspot: av-digital, rotulo: "Conector metálico, abajo a la izquierda" }
+        - { id: analogico, hotspot: av-analogico, rotulo: "Conector metálico, arriba a la izquierda" }
+    tocar:
+      bien: [digital]
+      porque:
+        analogico: "La salida analógica no da 480p."
+    exito: "La salida digital P2, que las DOL-101 ya no llevan."
+    escalera:
+      - "Es la que da el vídeo en digital."
+    solucion: "P2, la salida digital."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gamecube#41", "gamecube#16", "gamecube#13", "gamecube#67"]
+    ideas:
+      - { titulo: "EFB y XFB.", texto: "Se dibuja dentro de Flipper y se copia a la memoria principal." }
+      - { titulo: "El AVE.", texto: "Pasa el vídeo digital a las señales de P7." }
+      - { titulo: "PAL.", texto: "RGB y compuesto; el 480p, solo por la salida digital." }

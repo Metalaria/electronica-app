@@ -1,0 +1,218 @@
+# «Consolas por dentro» · Sega Saturn 7: averías y diagnóstico, de la guía de Retro Tech Wiki (que resume el manual de
+# servicio PAL de Sega y Console5): sin imagen con el piloto encendido (las tres tensiones de CN3, el regulador IC34 del
+# PLL), el reloj, el codificador, la pila, los puertos de mando de las VA0–VA0.8 y el lector de CD. Fuentes: los datos
+# de la consola (saturn#n) y el libro.
+leccion: consola-saturn/saturn-averias
+
+libro:
+  "saturn#115": "+9 V para la unidad de CD y el PLL, +5 V (VCC, AVCC2) para todos los chips salvo la SDRAM y +3,3 V (LVCC) para la SDRAM"
+  "saturn#117": "Con el piloto encendido y sin imagen se comprueban las tres tensiones en CN3"
+  "saturn#118": "Con las tensiones bien y sin imagen se comprueba el reloj"
+  "saturn#119": "se sospecha del codificador RGB IC21 (CXA1645M)"
+  "saturn#121": "si se pierden las partidas o la hora, se cambia la pila"
+  "saturn#129": "Una Saturn que pierde las partidas y pide la fecha y la hora en cada arranque necesita una pila nueva"
+  "saturn#122": "la señal RF en su punto de prueba debe medir de 0,8 a 1,4 Vpp"
+  "saturn#124": "provocan caídas de tensión en los puertos de mando"
+  "saturn#132": "IC34 es un regulador de 5 V"
+  "saturn#147": "Red AVCC1 del esquema"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+
+modelo:
+  valores:
+    V_9: { sim: "V_{9}", nombre: "tensión de +9 V de la fuente", unidad: V, valor: 9 }
+    V_5: { sim: "V_{5}", nombre: "tensión de +5 V de la fuente", unidad: V, valor: 5 }
+    V_3: { sim: "V_{3,3}", nombre: "tensión de +3,3 V de la fuente", unidad: V, valor: 3.3 }
+    V_r: { sim: "V_{IC34}", nombre: "salida del regulador IC34", unidad: V, valor: 5 }
+    f9: { tipo: interruptor, nombre: "la fuente da +9 V", valor: 1 }
+    f5: { tipo: interruptor, nombre: "la fuente da +5 V", valor: 1 }
+    f3: { tipo: interruptor, nombre: "la fuente da +3,3 V", valor: 1 }
+    rg: { tipo: interruptor, nombre: "IC34 sano", valor: 1 }
+  calculos:
+    V_9c: { expr: "V_9*f9", sim: "V_{CN3,9}", nombre: "+9 V en CN3", unidad: V, cifras: 3 }
+    V_5c: { expr: "V_5*f5", sim: "V_{CN3,5}", nombre: "+5 V en CN3", unidad: V, cifras: 3 }
+    V_3c: { expr: "V_3*f3", sim: "V_{CN3,3}", nombre: "+3,3 V en CN3", unidad: V, cifras: 3 }
+    V_av: { expr: "V_r*f9*rg", sim: "V_{AVCC1}", nombre: "salida de IC34 (AVCC1, el PLL)", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-imagen
+    tipo: explorar
+    titulo: "Lo que necesita la imagen"
+    texto: "Con el piloto encendido y sin imagen: tensiones, reloj y codificador. Consiga la imagen."
+    libro: ["saturn#117", "saturn#118", "saturn#119", "cap53#39"]
+    widget:
+      tipo: logica
+      entradas: [{ id: TEN, rotulo: "Tres tensiones en CN3" }, { id: REL, rotulo: "Reloj X1 y PLL" }, { id: COD, rotulo: "Codificador CXA1645" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [TEN, REL, COD] }
+      salidas:
+        - { id: IMG, de: a1, rotulo: "Imagen en la tele" }
+    objetivo:
+      condiciones:
+        - { led: IMG, valor: 1, rotulo: "Imagen" }
+      logrado: "Las tres en serie: se comprueban por ese orden, de lo simple a lo difícil."
+      pistas:
+        - { texto: "Todavía falla algo del camino." }
+    escalera:
+      - "Encienda las tres entradas."
+    solucion: "Tensiones, reloj y codificador sanos."
+
+  - id: averia-sin-imagen
+    tipo: averia
+    titulo: "Piloto encendido, sin imagen"
+    texto: "El piloto se enciende pero no hay imagen. Mida las tensiones y señale la pieza: la fuente o el regulador IC34 del PLL."
+    libro: ["saturn#117", "saturn#115", "saturn#132", "saturn#147"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 4
+      zonas:
+        - { id: alim, hotspot: alim, rotulo: "Entrada CN3" }
+        - { id: pll, rect: [733, 940, 59, 120], rotulo: "PLL" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: fuente, rotulo: "Fuente (CN3)" }
+        - { id: regulador, rotulo: "Regulador IC34" }
+      sondas:
+        - { id: cn3-9, rotulo: "+9 V en CN3", valor: V_9c }
+        - { id: cn3-5, rotulo: "+5 V en CN3", valor: V_5c }
+        - { id: cn3-3, rotulo: "+3,3 V en CN3", valor: V_3c }
+        - { id: ic34, rotulo: "Salida de IC34 (AVCC1)", valor: V_av }
+      fallos:
+        - { id: fuente-sin-5, pieza: fuente, tipo: abierta, con: { f5: 0 }, texto: "La fuente no da +5 V: sin VCC no funciona ningún chip salvo la SDRAM." }
+        - { id: fuente-sin-3, pieza: fuente, tipo: abierta, con: { f3: 0 }, texto: "La fuente no da +3,3 V: sin LVCC, la SDRAM no funciona." }
+        - { id: fuente-sin-9, pieza: fuente, tipo: abierta, con: { f9: 0 }, texto: "La fuente no da +9 V: ni la unidad de CD ni IC34, que alimenta el PLL." }
+        - { id: regulador-muerto, pieza: regulador, tipo: abierta, con: { rg: 0 }, texto: "IC34 recibe +9 V pero no da sus 5 V: el PLL se queda sin AVCC1 y no hay reloj." }
+    exito: "Primero las tres tensiones de CN3; si están, la salida de IC34 que alimenta el PLL."
+    escalera:
+      - "Empiece por CN3: +9 V, +5 V y +3,3 V."
+      - "Si las tres están, mida la salida de IC34."
+    solucion: "Falta una tensión en CN3: la fuente. Las tres bien y 0 V a la salida de IC34: el regulador."
+    comprobar:
+      - { V_9c: 9, V_5c: 5, V_3c: 3.3, V_av: 5 }
+
+  - id: toque-pila
+    tipo: tocar
+    titulo: "Pide la hora en cada arranque"
+    texto: "La consola pierde las partidas y pide la fecha y la hora cada vez. Toque la pieza que hay que cambiar."
+    libro: ["saturn#129", "saturn#121"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 3.2
+      zonas:
+        - { id: bat, hotspot: bat, rotulo: "Pieza redonda, arriba a la derecha" }
+        - { id: bram, hotspot: bram, rotulo: "Chip pequeño, a la derecha" }
+        - { id: smpc, hotspot: smpc, rotulo: "Chip cuadrado, abajo" }
+    tocar:
+      bien: [bat]
+      porque:
+        bram: "La RAM de respaldo pierde los datos porque se queda sin pila, no por avería suya."
+        smpc: "El SMPC pierde la hora por lo mismo: le falta la pila."
+    exito: "La pila CR2032. Al cambiarla, mire si el portapilas tiene corrosión."
+    escalera:
+      - "¿Qué alimenta la RAM y el reloj con la consola apagada?"
+    solucion: "La pila CR2032."
+
+  - id: toque-codificador
+    tipo: tocar
+    titulo: "Colores mal con un cable bueno"
+    texto: "Las tensiones y el reloj están bien, el cable funciona, pero los colores salen mal. Toque el sospechoso."
+    libro: ["saturn#119"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      recorte: [100, 250, 450, 250]
+      ampliar: 2.5
+      zonas:
+        - { id: enc, hotspot: enc, rotulo: "Chip estrecho, a la derecha" }
+        - { id: dac, hotspot: dac, rotulo: "Chip estrecho, a la izquierda" }
+    tocar:
+      bien: [enc]
+      porque:
+        dac: "Es el DAC del audio: no toca los colores."
+    exito: "El codificador RGB IC21 (CXA1645M), que alimenta el conector A/V OUT CN5."
+    escalera:
+      - "El que convierte el RGB."
+    solucion: "IC21."
+
+  - id: toque-reloj
+    tipo: tocar
+    titulo: "Tensiones bien, sin imagen"
+    texto: "Las tres tensiones de CN3 están bien y sigue sin haber imagen. Toque el chip del reloj que hay que comprobar."
+    libro: ["saturn#118"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      recorte: [500, 800, 600, 400]
+      ampliar: 2.5
+      zonas:
+        - { id: pll, hotspot: pll, rotulo: "Chip pequeño, en el centro" }
+        - { id: sh2s, hotspot: sh2s, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: vdp1, hotspot: vdp1, rotulo: "Chip cuadrado, a la izquierda" }
+    tocar:
+      bien: [pll]
+      porque:
+        sh2s: "Es una CPU: si no hay reloj, no funciona, pero el reloj viene de otro chip."
+        vdp1: "Es el VDP1: recibe el reloj."
+    exito: "El PLL IC20, alimentado por el cristal X1."
+    escalera:
+      - "El generador de relojes."
+    solucion: "IC20."
+
+  - id: toque-mandos
+    tipo: tocar
+    titulo: "El mando 3D falla"
+    texto: "En una placa VA0, un mando normal va bien pero el mando 3D falla. Toque dónde mediría la tensión."
+    libro: ["saturn#124"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 3.2
+      zonas:
+        - { id: mandos, hotspot: mandos, rotulo: "Conectores, abajo" }
+        - { id: smpc, hotspot: smpc, rotulo: "Chip cuadrado, abajo" }
+        - { id: alim, hotspot: alim, rotulo: "Conector blanco, a la izquierda" }
+    tocar:
+      bien: [mandos]
+      porque:
+        smpc: "El SMPC lee los mandos, pero la caída de tensión está en los puertos."
+        alim: "La fuente da bien sus +5 V: la caída es en los puertos, con periféricos que consumen más."
+    exito: "En los puertos de mando: en las VA0 a VA0.8 la tensión cae con los periféricos que consumen más; se arregla con un puente de VCC."
+    escalera:
+      - "Mida donde se enchufa el mando."
+    solucion: "Los puertos de mando."
+
+  - id: por-que-rf
+    tipo: porque
+    titulo: "El lector de CD"
+    texto: "Con un disco sonando, la señal RF mide menos de 0,8 Vpp. ¿Qué indica?"
+    libro: ["saturn#122"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 2.5
+      zonas:
+        - { id: cdconn, hotspot: cdconn, rotulo: "Conector de la unidad de CD" }
+    opciones:
+      - texto: "El lector está gastado: por debajo de 0,8 Vpp se cambia."
+        bien: true
+        porque: "Lo normal es de 0,8 a 1,4 Vpp; por debajo de 0,8 Vpp se cambia el lector."
+      - texto: "Es normal: cuanto menos, mejor."
+        porque: "No: lo normal es de 0,8 a 1,4 Vpp."
+      - texto: "Hay que subir el potenciómetro de la placa APC."
+        porque: "Sega dice que no se toque: viene ajustado de fábrica y puede dañar el láser."
+    escalera:
+      - "Compare con 0,8 a 1,4 Vpp."
+    solucion: "Lector gastado: se cambia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["saturn#117", "saturn#118", "saturn#121", "saturn#122"]
+    ideas:
+      - { titulo: "Sin imagen.", texto: "Tensiones de CN3, reloj y codificador, por ese orden." }
+      - { titulo: "IC34.", texto: "Su salida alimenta el PLL." }
+      - { titulo: "La pila.", texto: "Partidas y hora perdidas: se cambia." }
+      - { titulo: "El CD.", texto: "La señal RF dice si el lector está gastado." }

@@ -26,6 +26,13 @@ const MUESTRA: [string, string][] = [
   ['consola-sms/sms-averias', 'toque-mando'],
   ['consola-megadrive/megadrive-relojes', 'toque-sin-color'],
   ['consola-nes/nes-video-audio', 'empareje-sonido'],
+  // (2.0, gamecube20: the smallest zones of the GameCube lessons, U10 and the controller connector)
+  ['consola-gamecube/gamecube-bloqueo', 'toque-disco'],
+  ['consola-gamecube/gamecube-averias', 'averia-mandos'],
+  // (2.0, n64ps1: the smallest zones of the Nintendo 64 and PlayStation lessons, the N64's LED across the whole
+  // board and the PU-18's two controller fuses)
+  ['consola-n64/n64-averias', 'ordene-simple'],
+  ['consola-ps1/ps1-averias', 'averia-mandos'],
 ];
 
 async function abrir(page: Page, id: string, tarjeta: string) {

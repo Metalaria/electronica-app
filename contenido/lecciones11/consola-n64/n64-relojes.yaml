@@ -1,0 +1,216 @@
+# «Consolas por dentro» · Nintendo 64 3: relojes. El reloj maestro de 62,5 MHz del RCP y la CPU a 1,5 veces; los dos
+# MX8330 (vídeo y bus Rambus, que entra por el final del canal); la línea de vídeo de H_SYNC ciclos del reloj de vídeo
+# y el cuadro de V_SYNC medias líneas, NTSC y PAL. Fuentes: los datos de la consola (n64#n: explorador, arquitectura,
+# manual de programación 3.7, N64brew «Video Interface», BitBuilt).
+leccion: consola-n64/n64-relojes
+
+libro:
+  "n64#2": "multiplica por 1,5 el reloj maestro de 62,5 MHz que le da el RCP"
+  "n64#10": "U15, con X2, da el reloj del bus Rambus, que entra por el final del canal (CLKTOEND"
+  "n64#44": "H_SYNC 3093 y 3177, V_SYNC 525 y 625"
+  "n64#61": "reloj de vídeo de 48,62 MHz medidos, 525 medias líneas"
+  "n64#62": "PAL · 50 Hz: PAL: reloj de vídeo de 49,56 MHz medidos y 625 medias líneas"
+  "n64#79": "el PIF-NUS, la velocidad del bus de la RAM y el tratamiento de la señal de salida"
+  "n64#81": "tiene una patilla que elige la frecuencia, la 7"
+  "n64#89": "La CPU va a 93,75 MHz, el RCP a 62,5 MHz y la RDRAM a 250 MHz"
+
+modelo:
+  valores:
+    f_m: { sim: "f_{maestro}", nombre: "reloj maestro del RCP", unidad: Hz, valor: 62500000 }
+    k: { sim: "k", nombre: "multiplicador de la CPU", unidad: "", valor: 1.5 }
+    vi_n: { sim: "f_{VI,NTSC}", nombre: "reloj de vídeo NTSC (medido)", unidad: Hz, valor: 48620000 }
+    hs_n: { sim: "H_{NTSC}", nombre: "ciclos de vídeo por línea NTSC (H_SYNC + 1)", unidad: "", valor: 3094 }
+    vi_p: { sim: "f_{VI,PAL}", nombre: "reloj de vídeo PAL (medido)", unidad: Hz, valor: 49560000 }
+    hs_p: { sim: "H_{PAL}", nombre: "ciclos de vídeo por línea PAL (H_SYNC + 1)", unidad: "", valor: 3178 }
+    M: { sim: "M", nombre: "medias líneas por cuadro", unidad: "", valor: 525 }
+  calculos:
+    f_cpu: { expr: "f_m*k", sim: "f_{CPU}", nombre: "reloj de la CPU", unidad: Hz, cifras: 4 }
+    t_ln: { expr: "hs_n/vi_n", sim: "t_{línea}", nombre: "duración de una línea NTSC", unidad: s, cifras: 4 }
+    f_pal: { expr: "vi_p/(hs_p*M/2)", sim: "f_{cuadro}", nombre: "cuadros por segundo con el reloj PAL", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-relojes
+    tipo: explorar
+    titulo: "Quién marca el paso"
+    texto: "Toque los generadores de reloj, la CPU, el RCP y la ranura por donde entra el reloj del bus Rambus."
+    libro: ["n64#2", "n64#10", "n64#89"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [151, 417, 1040, 838]
+      ampliar: 3
+      zonas:
+        - { id: clk, hotspot: clk, rotulo: "MX8330", texto: "Reloj de vídeo (U7) y del bus Rambus (U15)." }
+        - { id: cpu, hotspot: cpu, rotulo: "CPU", texto: "93,75 MHz por dentro." }
+        - { id: rcp, hotspot: rcp, rotulo: "RCP", texto: "62,5 MHz: el reloj maestro." }
+        - { id: exp, hotspot: exp, rotulo: "Expansión", texto: "Por aquí entra el reloj del bus Rambus." }
+    objetivo:
+      condiciones:
+        - { zona: clk, rotulo: "CLK" }
+        - { zona: cpu, rotulo: "CPU" }
+        - { zona: rcp, rotulo: "RCP" }
+        - { zona: exp, rotulo: "Expansión" }
+      logrado: "Los ha tocado todos: lea sus fichas."
+
+  - id: leer-cpu
+    tipo: leer
+    titulo: "La CPU, más rápida que su reloj"
+    texto: "El RCP da a la CPU el reloj maestro de 62,5 MHz y la CPU lo multiplica por 1,5. Escriba a cuánto va la CPU."
+    libro: ["n64#2", "n64#89"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [220, 470, 700, 430]
+      ampliar: 1.3
+      zonas:
+        - { id: cpu, hotspot: cpu, rotulo: "CPU VR4300" }
+        - { id: rcp, hotspot: rcp, rotulo: "RCP" }
+    leer:
+      objetivo: f_cpu
+      unidad: Hz
+      tol: 0.001
+      rotulo: "Reloj de la CPU"
+      errores:
+        - { expr: "f_m", texto: "Ese es el reloj maestro, el del RCP y de SysAD: la CPU lo multiplica." }
+        - { expr: "f_m*2", texto: "Ha multiplicado de más: el factor es 1,5." }
+    exito: "93,75 MHz dentro de la CPU; fuera, por SysAD, todo va a los 62,5 MHz del RCP."
+    escalera:
+      - "62,5 MHz × 1,5."
+    solucion: "62,5 MHz × 1,5 = 93,75 MHz."
+    comprobar:
+      - { f_cpu: 93750000 }
+
+  - id: toque-generadores
+    tipo: tocar
+    titulo: "Los generadores"
+    texto: "El reloj de vídeo y el del bus Rambus los dan dos chips pequeños con su cristal. Toque uno de ellos."
+    libro: ["n64#10"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [887, 756, 404, 327]
+      ampliar: 1.3
+      zonas:
+        - { id: clk, hotspot: clk, rotulo: "Chips de 8 patas y cristales" }
+        - { id: pif, hotspot: pif, rotulo: "Chip alargado, a la derecha" }
+        # (only the PST9128, U3: the reset hotspot also boxes the RESET button, which would cover the PIF)
+        - { id: reset, rect: [1172, 830, 45, 52], rotulo: "Pieza pequeña, arriba a la derecha" }
+    tocar:
+      bien: [clk]
+      porque:
+        pif: "Es el PIF: arranque, CIC y mandos."
+        reset: "Es el PST9128, que vigila la alimentación."
+    exito: "Los MX8330: U7 da el reloj de vídeo y la subportadora; U15, el del bus Rambus."
+    escalera:
+      - "Busque los dos cristales ovalados: cada uno va con su chip."
+    solucion: "U7 y U15, junto a X1 y X2."
+
+  - id: toque-final
+    tipo: tocar
+    titulo: "Un reloj que entra por el final"
+    texto: "El reloj del bus Rambus no sale del RCP: entra por el final del canal. Toque el conector por donde entra."
+    libro: ["n64#10"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [560, 760, 420, 460]
+      ampliar: 1.4
+      zonas:
+        - { id: exp, hotspot: exp, rotulo: "Conector, abajo" }
+        - { id: rdram, hotspot: rdram, rotulo: "Dos chips alargados" }
+    tocar:
+      bien: [exp]
+      porque:
+        rdram: "Las RDRAM reciben el reloj; entra por el extremo del canal."
+    exito: "La ranura de expansión: CLKTOEND. Por eso el Jumper Pak no puede faltar."
+    escalera:
+      - "El final del bus está en la ranura del Jumper Pak."
+    solucion: "La ranura de expansión, P1."
+
+  - id: leer-linea
+    tipo: leer
+    titulo: "Una línea NTSC"
+    texto: "Una línea NTSC dura 3094 ciclos del reloj de vídeo de 48,62 MHz (H_SYNC vale uno menos). Escriba cuánto dura."
+    libro: ["n64#44", "n64#61"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [880, 740, 360, 320]
+      ampliar: 1.4
+      zonas:
+        - { id: clk, hotspot: clk, rotulo: "U7, el reloj de vídeo" }
+    leer:
+      objetivo: t_ln
+      unidad: s
+      tol: 0.002
+      rotulo: "Duración de una línea"
+      errores:
+        - { expr: "hs_n/vi_p", texto: "Ha usado el reloj de vídeo PAL; la NTSC va a 48,62 MHz." }
+        - { expr: "vi_n/hs_n", texto: "Eso es cuántas líneas caben en un segundo: la duración es la inversa." }
+    exito: "Unos 63,64 µs por línea, cerca de los de cualquier televisor NTSC."
+    escalera:
+      - "3094 ÷ 48,62 MHz."
+    solucion: "3094 ÷ 48,62 MHz = 63,64 µs."
+    comprobar:
+      - { con: { hs_n: 3094 }, t_ln: 63.636e-6 }
+
+  - id: ajuste-pal
+    tipo: ajuste
+    titulo: "El cuadro PAL"
+    texto: "En una PAL cada línea dura 3178 ciclos de un reloj de 49,56 MHz. Ajuste las medias líneas por cuadro hasta unos 50 cuadros por segundo."
+    libro: ["n64#62", "n64#44"]
+    inicio: { M: 525 }
+    widget:
+      tipo: grafica
+      x: { id: m, min: 450, max: 700, unidad: "", rotulo: "medias líneas por cuadro" }
+      y: { min: 40, max: 70, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "vi_p/(hs_p*m/2)", color: azul, rotulo: "reloj ÷ (ciclos · líneas)" }
+      marcas:
+        - { x: "M", y: "f_pal", rotulo: "{{f_pal}}" }
+      mandos: [ { valor: M, min: 450, max: 700, paso: 1, rotulo: "Medias líneas, M" } ]
+    ajuste:
+      valor: f_pal
+      objetivo: 49.9
+      tol: 0.004
+      rotulo: "Cuadros por segundo"
+      bajo: "Demasiado lento: quite medias líneas."
+      alto: "Demasiado rápido: añada medias líneas."
+      dentro: "{{f_pal}}: el televisor PAL engancha."
+    exito: "V_SYNC de 625 medias líneas: el cuadro PAL. La NTSC usa 525 con su propio reloj."
+    comprobar:
+      - { con: { M: 625, hs_p: 3178 }, f_pal: 49.9 }
+
+  - id: por-que-pal
+    tipo: porque
+    titulo: "Convertir una placa"
+    texto: "Para hacer PAL una placa NTSC, la guía de BitBuilt levanta la patilla 7 del MX8330 y la lleva a masa. ¿Por qué?"
+    libro: ["n64#81", "n64#79"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [880, 740, 360, 320]
+      ampliar: 1.4
+      zonas:
+        - { id: clk, hotspot: clk, rotulo: "MX8330" }
+    opciones:
+      - texto: "Esa patilla elige la frecuencia que da el chip."
+        bien: true
+        porque: "Las PAL cambian la velocidad del bus de la RAM: la patilla 7 del MX8330 elige la frecuencia."
+      - texto: "Para apagar el chip."
+        porque: "No se apaga: cambia la frecuencia que genera."
+      - texto: "Para quitar el bloqueo regional."
+        porque: "La región la decide el PIF-NUS, que en la conversión también se cambia."
+    escalera:
+      - "Lea las diferencias entre NTSC y PAL."
+    solucion: "La patilla 7 elige la frecuencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["n64#2", "n64#10", "n64#44", "n64#62"]
+    ideas:
+      - { titulo: "Un reloj maestro.", texto: "62,5 MHz para el RCP y SysAD; la CPU, a 1,5 veces." }
+      - { titulo: "Dos MX8330.", texto: "El vídeo y el bus Rambus, que entra por el final." }
+      - { titulo: "La línea.", texto: "Unos miles de ciclos del reloj de vídeo." }
+      - { titulo: "El cuadro.", texto: "525 medias líneas en NTSC y 625 en PAL." }

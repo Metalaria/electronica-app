@@ -1582,6 +1582,23 @@ posiciones {ref: [x, y]}, posiciones_nota, trazas (file), trazas_redes [net name
 in `foto`/`hotspots`, and `foto` accepts the same optional fields), `revisiones` [{vista, revision, fuente}], `equivalencias_cabecera` (column titles), `citas`
 (legend of the citation keys), `notas` [{ref, pin?, texto}].
 
+2.0 adds four machines (ids `n64`, `ps1`, `saturn`, `gamecube`; `IDS_MAQUINA` has eleven), each in its own module
+registered in `consolas.py → MODULOS[id]` (dicts by machine id: `GRUPOS`, `FUENTES`, `EXTRA`, read by `grupos_de`,
+`fuentes_de`, `extra_de`): `consolas_n64ps1.py` (OpeN64, NUS-CPU-03 NTSC, CERN-OHL-P v2; pu-18, PU-18, CC0),
+`consolas_saturn.py` (RGBeter's KiCad 9 VA0.5 reproduction, CERN-OHL-S-2.0, plus the hand-transcribed SH-1 CD sheet)
+and `consolas_gamecube.py` (DOL-CPU(P)-01 from iFixit photos, no schematic). New fields:
+- machine entry `sin_esquema` (string): the machine has no schematic at all; `construir` skips sheets, components and
+  nets, and the text (why there is none) is written to `<maquina>.json → sin_esquema`. `datos.ts → tieneEsquema(id)`
+  (list `SIN_ESQUEMA`, known before the data loads) hides the «Esquema» tab (and the machine has no fault in
+  `averias-placa/definiciones.ts`, so no «Busque la avería» either: it needs the board's nets); the photo panel
+  says «Pieza identificada en la foto», «Fuentes» titles the section «Por qué no hay esquema».
+- `tensiones` [{punto, tension, donde, nota, fuente}] and `tensiones_nota` (from `EXTRA[id]`, only with
+  `sin_esquema`): voltages and measuring points as the sources give them, a table in «Fuentes» (`data-testid="tensiones"`)
+  and search entries (`consolas11.mjs`).
+- `arquitectura/maquinas.ts` and `fotograma/maquinas.ts` are `Partial` registries: `tieneArquitectura(id)` and
+  `tieneFotograma(id)` say whether a machine has those tabs (the «Un fotograma» tab needs both), and the buttons «Ver en
+  la arquitectura» show only when it does; `cargar*` reject for a machine without one.
+
 **Files** (≈ 4,9 MB in all for the six machines; each is fetched only when opened):
 - `<maquina>.json`: `foto` {src, ancho, alto, figura}; `hotspots` [{id, nombre, pieza (marking read on the photo),
   esquema [refs], bloque (diagram block), cajas [[x0,y0,x1,y1]] in photo pixels, confianza `marca|posicion`, buses
@@ -1712,12 +1729,19 @@ parte»): then only those references (`refEnlazada`) and the nets in `consola.re
   the 0.9.2 rules (4096 / 2048 on Android, size guard): the photo is drawn into those maps. A net highlights its pads
   only. `PlacaConsola` shows `.aviso-foto` «Reconstrucción a partir de la foto: las pistas solo se ven en la imagen».
   `python3 contenido/consolas_pcb.py sms` rebuilds it (≈ 2 s with the cache, ≈ 100 s without).
+- 2.0 board config fields: `redes_fijas` {board net: schematic net} (n64) forces nets whose majority vote is wrong
+  (OpeN64's schematic puts U13's 12 V input and 5 V output pads on +3.3V) and recounts the pads; `fusion_tolerancia`
+  (0,01 mm, default 0; saturn 3) lets `fusionar_colineales` join pieces whose joint lies within that distance of the
+  line between their far ends; `construir` (gamecube) is the board's own builder (`construir_placa(cfg, d, fuentes,
+  out, problemas)`, bodies already typed, skipped by `reclasificar`), with `resumen(info)` for the log; `sin_esquema:
+  True` writes `consola.sin_esquema` (below). `posiciones_nota` names the board from the machine's `pcb_nombre`.
 
 **Files**: `indice.json` `{version, placas: [{id, maquina, titulo, corto, enlazada, tipo kicad|gerber|foto, aviso, fuente
 {titulo, autor, url, licencia, uso}, ancho, alto (mm), capas, componentes, redes, bytes}]}` and `<placa>.json`: the
 `DatosPlaca` of «Proyectos KiCad» (`esquema` empty, `simulacion: null`, `comprobaciones` = the checks above) plus
 `consola {maquina, enlazada, aviso, fuente, redes {board net: schematic net}, refs [references also in the
-schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo, alias? (0.11)}`; `placa.fotos` (0.11) for photo faces. Sizes: sms 148 kB (plus its faces, 1.2 and 0.7 MB), megadrive 842 kB, neogeo 1094 kB (261 kB gzip;
+schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo, alias? (0.11)}`; `consola.sin_esquema` (2.0, GameCube: no
+schematic; nothing is linked, a part offers «Ver en la foto» instead and the panel says how the board was rebuilt); `placa.fotos` (0.11) for photo faces. Sizes: sms 148 kB (plus its faces, 1.2 and 0.7 MB), megadrive 842 kB, neogeo 1094 kB (261 kB gzip;
 320 footprints, 2287 pads, 631 nets, 1498 vias, 107 zones; 317/317 references and 2265 pads on the same net as the
 schematic), gbc-cgb04 ≈ 355 kB, gbc-opengbc ≈ 250 kB, gb-superdmg ≈ 180 kB. Tests: `tests/consolas-placas.spec.ts`
 (`playwright.placas.config.ts`, port 4291); screenshots: `tests/consolas-placas-capturas.mjs`.
@@ -1818,7 +1842,8 @@ same shape as the diagram's `Conexion`: the NES PPU `/WE`), `fuentes` [{titulo, 
   position `x, y`, `indices` (colour index of every pixel; `ejemplo.ts` holds the 8 × 8 ball `PELOTA`, its 4-bit
   version `PELOTA_4BPP` with indices 1/6/15 and `doblar()` for 16 × 16), the followed pixel `fila, columna`, CSS
   `colores` per index and `fondo` (backdrop), `bpp`, `formato` `planos` (one byte per plane, leftmost pixel in bit 7)
-  | `nibbles` (Mega Drive), `sinHex` (Neo Geo: bits only, its C ROM bit order differs), `ventana` (columns read in one
+  | `nibbles` (Mega Drive), `sinHex` (Neo Geo: bits only, its C ROM bit order differs), `nibbleBajo` (2.0, PlayStation
+4-bit textures: packed nibbles with the leftmost pixel in the low nibble of each byte), `ventana` (columns read in one
   fetch: the left half of the Neo Geo sprite line), `numero`, `color` (as the texts write them), `pantalla` (panel name).
   `ejemplo.ts` derives the planes, bytes, nibbles, followed index and screen point; the texts quote the same values.
 - `Paso`: `fase` (label), `titulo`, `texto` (1–3 Spanish sentences), `capa` `placa` | `interior` (the Game Boy's «Dentro

@@ -8,6 +8,7 @@
   import { numeroImpreso } from '../../lib/datos';
   import { cargarTrazas, fotosDe, htmlKicad, nombreRed, type DatosMaquina, type Hotspot, type Trazas } from './datos';
   import type { Seleccion } from './estado.svelte';
+  import { tieneArquitectura } from './arquitectura/maquinas';
   import ZoomIn from '@lucide/svelte/icons/zoom-in';
   import ZoomOut from '@lucide/svelte/icons/zoom-out';
 
@@ -270,7 +271,8 @@
 
   <aside class="ficha" aria-live="polite">
     {#if mostrado}
-      <p class="tipo">{mostrado.esquema.length ? mostrado.esquema.join(', ') : 'Sin referencia en el esquema'}</p>
+      <!-- (2.0) a machine with no schematic (GameCube): its parts have no schematic reference to lack -->
+      <p class="tipo">{mostrado.esquema.length ? mostrado.esquema.join(', ') : datos.sin_esquema ? 'Pieza identificada en la foto' : 'Sin referencia en el esquema'}</p>
       <h2>{mostrado.nombre}</h2>
       <p class="pieza">{mostrado.pieza}</p>
       <p class="funcion">{mostrado.funcion}</p>
@@ -286,7 +288,7 @@
           : 'Identificado por su posición (mapa de la placa); la marca no se lee en la foto.'}
       </p>
       {#if mostrado.verificacion}
-        <p class="verificado"><strong>Comprobado con documentos de SNK:</strong> {mostrado.verificacion}</p>
+        <p class="verificado"><strong>{datos.id === 'neogeo' ? 'Comprobado con documentos de SNK:' : 'De dónde sale:'}</strong> {mostrado.verificacion}</p>
       {/if}
       <div class="acciones">
         {#if mostrado.esquema.length}
@@ -294,7 +296,7 @@
             Ver en el esquema{datos.id === 'neogeo' ? ` (${mostrado.esquema[0]})` : ''}
           </button>
         {/if}
-        <button type="button" class="accion" onclick={() => irA('arquitectura', { tipo: 'bloque', id: mostrado.bloque })}>Ver en la arquitectura</button>
+        {#if tieneArquitectura(datos.id)}<button type="button" class="accion" onclick={() => irA('arquitectura', { tipo: 'bloque', id: mostrado.bloque })}>Ver en la arquitectura</button>{/if}
       </div>
       {#if foto.trazas_redes?.length && mostrado.esquema.length}
         <p class="nota">Para ver por dónde van sus pistas, elige abajo un bus o una red.</p>
@@ -318,7 +320,11 @@
         <p>{foto.titulo}. Los recuadros continuos marcan piezas cuya serigrafía o marca se lee en la foto; los discontinuos, piezas identificadas por su posición.</p>
       {/if}
       {#if foto.posiciones}<p class="confianza">Desde el esquema, cualquier componente se puede situar en esta foto: su huella se ha alineado con la de la PCB de la recreación.</p>{/if}
-      <p>Elija una pieza para ver qué hace, por qué buses pasa y saltar a su símbolo en el esquema o a su bloque en la arquitectura.</p>
+      {#if datos.sin_esquema}
+        <p>Elija una pieza para ver qué hace, por qué buses pasa, de dónde sale su identificación y saltar a su bloque en la arquitectura. Esta consola no tiene esquema.</p>
+      {:else}
+        <p>Elija una pieza para ver qué hace, por qué buses pasa y saltar a su símbolo en el esquema o a su bloque en la arquitectura.</p>
+      {/if}
     {/if}
   </aside>
 </div>

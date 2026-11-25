@@ -19,9 +19,43 @@
     return esActiva(h) && !app.lateral;
   }
 
+  // 2.0: the bar hides while a text box has the focus (style below) and comes back when it loses it. A tap that
+  // starts on a control lying where the bar would be blurs the box on its mousedown: if the bar came back then, the
+  // tap's mouseup and click would land on the bar and the control would never get its click («Decodificar» of a
+  // console's «Arquitectura» right after typing). So a tap that starts while a text box has the focus keeps the bar
+  // hidden until it is over: its click, or its cancellation, or a safety timeout.
+  const ESCRITURA = "input:not([type='range'], [type='checkbox'], [type='radio'], [type='button']), textarea";
+  let retenida = $state(false);
+  let plazo: ReturnType<typeof setTimeout> | undefined;
+  function soltar(ms: number) {
+    clearTimeout(plazo);
+    plazo = setTimeout(() => (retenida = false), ms);
+  }
+  $effect(() => {
+    const abajo = () => {
+      if (!(document.activeElement instanceof Element && document.activeElement.matches(ESCRITURA))) return;
+      retenida = true;
+      soltar(1500);
+    };
+    // after the click handlers have run (and whatever they focus), the bar may come back
+    const hecho = () => retenida && soltar(0);
+    const arriba = () => retenida && soltar(700);
+    const opciones = { capture: true, passive: true } as const;
+    document.addEventListener('pointerdown', abajo, opciones);
+    document.addEventListener('pointerup', arriba, opciones);
+    document.addEventListener('pointercancel', hecho, opciones);
+    document.addEventListener('click', hecho, opciones);
+    return () => {
+      clearTimeout(plazo);
+      document.removeEventListener('pointerdown', abajo, opciones);
+      document.removeEventListener('pointerup', arriba, opciones);
+      document.removeEventListener('pointercancel', hecho, opciones);
+      document.removeEventListener('click', hecho, opciones);
+    };
+  });
 </script>
 
-<nav class="pestanas" aria-label="Secciones de la aplicación">
+<nav class="pestanas" class:retenida aria-label="Secciones de la aplicación">
   {#each pestanas as h (h.id)}
     {#if h.ruta}
       <a class="pestana" class:activa={activa(h)} href={h.ruta} aria-label={h.etiqueta} aria-current={activa(h) ? 'page' : undefined} data-herramienta={h.id}>
@@ -87,6 +121,10 @@
   }
   /* the keyboard is up: the tabs would only take room above it */
   :global(html:has(input:not([type='range'], [type='checkbox'], [type='radio'], [type='button']):focus, textarea:focus)) .pestanas {
+    display: none;
+  }
+  /* (2.0) a tap that began while the keyboard was up is not over yet */
+  .pestanas.retenida {
     display: none;
   }
   .pestana {

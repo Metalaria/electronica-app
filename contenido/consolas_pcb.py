@@ -260,6 +260,57 @@ PLACAS = [
 ]
 
 
+# 2.0 (n64ps1): the Nintendo 64 and PlayStation boards, the same KiCad projects as their schematics
+PLACAS += [
+    {
+        'id': 'n64', 'maquina': 'n64', 'tipo': 'kicad', 'cuerpos': True,
+        'ruta': 'n64/original/OpeN64.kicad_pcb',
+        'titulo': 'NUS-CPU-03 (NTSC), recreación OpeN64 de cy-888 (KiCad 10, commit 4c40512)',
+        'corto': 'NUS-CPU-03 · OpeN64',
+        'enlazada': True,
+        # the schematic puts U13's 12 V input, its 5 V output and some of their capacitors on +3.3V (consolas_n64ps1.NOTAS)
+        'redes_fijas': {'+12V': '+12V', '+5V': '+5V'},
+        'mascara': 'verde', 'serigrafia': 'blanca', 'acabado': None,
+        'aviso': 'Recreación «1:1» en KiCad de la placa NUS-CPU-03 de la Nintendo 64 NTSC hecha por cy-888 (OpeN64) a partir de '
+                 'escaneos de la placa original, para montarla con los chips de una consola: sigue el trazado original, pero es un '
+                 'dibujo nuevo, no una foto. Es el mismo proyecto que el esquema, así que referencias y redes coinciden una a una. '
+                 'La máscara de la placa de Nintendo es verde (la de OpeN64 es roja).',
+        'fuente': {'titulo': 'cy-888/OpeN64 — OpeN64/OpeN64.kicad_pcb (KiCad 10, commit 4c40512)',
+                   'autor': 'cy-888 (Cyframe); escaneos de CrazyGadget y Bryce; huellas ajustadas por Xenii',
+                   'url': 'https://github.com/cy-888/OpeN64',
+                   'licencia': 'CERN-OHL-P v2 (permisiva: permite estudiar, modificar y distribuir)',
+                   'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
+                          'componentes con sus huellas.'},
+    },
+    {
+        'id': 'ps1', 'maquina': 'ps1', 'tipo': 'kicad', 'cuerpos': True,
+        'ruta': 'ps1/original/pu-18.kicad_pcb',
+        'titulo': 'PU-18, recreación pu-18 de xyzz (KiCad 10, commit 9694a7e)',
+        'corto': 'PU-18 · pu-18',
+        'enlazada': True,
+        'mascara': 'verde', 'serigrafia': 'blanca', 'acabado': None,
+        'aviso': 'Recreación en KiCad de la placa PU-18 de la PlayStation hecha por xyzz (pu-18) y probada funcionando con los chips de '
+                 'una consola (alimentación, lógica, vídeo compuesto, mandos y tarjetas, CD y puerto paralelo; el puerto serie, sin '
+                 'probar, según su README): sigue la disposición de la placa de Sony, pero es un dibujo nuevo, no una foto. Es el mismo '
+                 'proyecto que el esquema, así que referencias y redes coinciden una a una. El color de la máscara es el de las placas de '
+                 'Sony (la recreación es negra).',
+        'fuente': {'titulo': 'xyzz/pu-18 — pu-18.kicad_pcb (KiCad 10, commit 9694a7e)',
+                   'autor': 'xyzz', 'url': 'https://github.com/xyzz/pu-18',
+                   'licencia': 'CC0 1.0 (dominio público)',
+                   'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
+                          'componentes con sus huellas.'},
+    },
+]
+
+# 2.0 (gamecube20): the GameCube board, reconstructed from two photos by its own builder (cfg['construir'])
+import consolas_gamecube as GCB  # noqa: E402
+PLACAS += GCB.PLACAS
+
+
+# 2.0 (saturn20): the Saturn VA0.5 board, RGBeter's KiCad project (config in consolas_saturn.py)
+import consolas_saturn as SATB  # noqa: E402
+PLACAS += SATB.PLACAS
+
 # ------------------------------------------------------------------ console data (schematic side)
 
 def consola(maquina):
@@ -653,10 +704,13 @@ def serigrafia_json(silk, ox, oy):
 
 # ------------------------------------------------------------------ boards from KiCad
 
-def fusionar_colineales(arr):
+def fusionar_colineales(arr, tol=0):
     """Join track segments [net, width, x1, y1, x2, y2]… that continue each other in a straight line (same net and
     width, a joint shared by exactly those two segments, zero cross product in 0.01 mm units): the drawing is the
-    same, with fewer segments (the Neo Geo's traced copper is cut into many collinear pieces)."""
+    same, with fewer segments (the Neo Geo's traced copper is cut into many collinear pieces).
+    2.0 (saturn20): `tol` (0.01 mm, cfg 'fusion_tolerancia', default 0 = exactly collinear) also joins pieces whose
+    joint lies within tol of the straight line between their far ends (RGBeter's Saturn traces are cut into nearly
+    collinear pieces by the rounding of their coordinates)."""
     segs = [arr[i:i + 6] for i in range(0, len(arr), 6)]
     vivos = [True] * len(segs)
     while True:
@@ -675,7 +729,8 @@ def fusionar_colineales(arr):
             qa = (a[4], a[5]) if (a[2], a[3]) == p else (a[2], a[3])
             qb = (b[4], b[5]) if (b[2], b[3]) == p else (b[2], b[3])
             u, w = (qa[0] - p[0], qa[1] - p[1]), (qb[0] - p[0], qb[1] - p[1])
-            if u[0] * w[1] - u[1] * w[0] != 0 or u[0] * w[0] + u[1] * w[1] > 0:
+            cruz = u[0] * w[1] - u[1] * w[0]
+            if (cruz != 0 if not tol else abs(cruz) > tol * math.hypot(qa[0] - qb[0], qa[1] - qb[1])) or u[0] * w[0] + u[1] * w[1] > 0:
                 continue
             segs[v[0]] = [a[0], a[1], qa[0], qa[1], qb[0], qb[1]]
             vivos[v[1]] = False
@@ -790,7 +845,7 @@ def placa_kicad(cfg, d, problemas):
         pistas.setdefault(side, []).extend([rid(t['net']), q(t['w']), q(t['a'][0]) - ox, q(t['a'][1]) - oy,
                                             q(t['b'][0]) - ox, q(t['b'][1]) - oy])
     for side in pistas:
-        pistas[side] = fusionar_colineales(pistas[side])
+        pistas[side] = fusionar_colineales(pistas[side], cfg.get('fusion_tolerancia', 0))
     vias = []
     for v in b['vias']:
         vias += [rid(v['net']), q(v['p'][0]) - ox, q(v['p'][1]) - oy, q(v['d']), q(v['drill'])]
@@ -811,6 +866,13 @@ def placa_kicad(cfg, d, problemas):
 
     comprobaciones = []
     mapa, iguales, distintos = mapa_redes(pads_red, d) if cfg['enlazada'] else ({}, 0, 0)
+    if cfg.get('redes_fijas'):
+        # 2.0 (n64ps1): board nets whose majority vote is wrong because the schematic puts several of their pads on
+        # another net (OpeN64: U13's input and output and their capacitors on +3.3V); the pads are recounted
+        nodo = {(nd[0], str(nd[1])): r['n'] for r in d['redes'] for nd in r['nodos']}
+        mapa.update(cfg['redes_fijas'])
+        cuenta = [mapa.get(bn) == nodo[k] for k, bn in pads_red.items() if k in nodo]
+        iguales, distintos = sum(cuenta), len(cuenta) - sum(cuenta)
     refs = sorted({f['ref'] for f in b['footprints']} & set(comp)) if cfg['enlazada'] else []
     if cfg['enlazada']:
         sin = sorted({f['ref'] for f in b['footprints']} - set(comp))
@@ -1152,6 +1214,9 @@ def escribir(cfg, r):
         placa['consola']['parcial'] = r['parcial']
     if r.get('alias'):
         placa['consola']['alias'] = r['alias']
+    if cfg.get('sin_esquema'):
+        # 2.0 (gamecube20): the console has no schematic to link to
+        placa['consola']['sin_esquema'] = True
     if r.get('fotos'):
         # 0.11: the faces are photographs (src relative to the app, size in px)
         placa['placa']['fotos'] = {k: {'src': v['src'], 'w': v['w'], 'h': v['h']} for k, v in r['fotos'].items()}
@@ -1182,7 +1247,8 @@ def reclasificar(ids=()):
         indice = json.load(f)
     for cfg in PLACAS:
         ruta = os.path.join(OUT, cfg['id'] + '.json')
-        if (ids and cfg['id'] not in ids) or not os.path.exists(ruta):
+        if (ids and cfg['id'] not in ids) or not os.path.exists(ruta) or cfg.get('construir'):
+            # (2.0: a board with its own builder types its bodies itself)
             continue
         with open(ruta, encoding='utf-8') as f:
             d = json.load(f)
@@ -1219,7 +1285,11 @@ def main(ids=()):
                 print('consolas_pcb: %-12s se conservan los ficheros ya generados' % cfg['id'])
             continue
         d = consola(cfg['maquina'])
-        if cfg['tipo'] == 'foto':
+        if cfg.get('construir'):
+            # 2.0 (gamecube20): a board with its own builder (bodies already typed, no pads to classify)
+            r = cfg['construir'](cfg, d, FUENTES, OUT, problemas)
+            print('consolas_pcb: %-12s %s' % (cfg['id'], cfg['resumen'](r['info'])))
+        elif cfg['tipo'] == 'foto':
             r = SMS.construir(cfg, d, FUENTES, OUT, problemas)
             CC.reclasificar(cfg['id'], {'huellas': r['huellas'], 'pads': r['pads'], 'placa': {'ancho': q(r['ancho']), 'alto': q(r['alto'])}},
                             d['componentes'])

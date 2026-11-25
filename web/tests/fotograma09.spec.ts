@@ -6,7 +6,7 @@
 // Screenshots: node tests/fotograma09-capturas.mjs (tests/capturas/fotograma09/).
 import { expect, test, type Page } from '@playwright/test';
 
-const MAQUINAS = ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes'] as const;
+const MAQUINAS = ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes', 'gamecube', 'n64', 'ps1', 'saturn'] as const;
 
 interface Gancho {
   maquina: string;

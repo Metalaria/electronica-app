@@ -1,0 +1,199 @@
+# «Consolas por dentro» · Sega Saturn 2: la alimentación. Tres tensiones por CN3 (+9 V, +5 V, +3,3 V), quién usa cada
+# una, el regulador de 5 V del PLL (IC34) y la pila de la RAM de respaldo. Fuentes: los datos de la consola (saturn#n:
+# el esquema de RGBeter, el manual de servicio PAL de Sega y Retro Tech Wiki).
+leccion: consola-saturn/saturn-alimentacion
+
+libro:
+  "saturn#26": "Llegan las tensiones de la fuente interna"
+  "saturn#115": "+9 V para la unidad de CD y el PLL, +5 V (VCC, AVCC2) para todos los chips salvo la SDRAM y +3,3 V (LVCC) para la SDRAM"
+  "saturn#116": "su condensador puede seguir cargado después de desenchufar"
+  "saturn#132": "IC34 es un regulador de 5 V µPC78L05T o TA78L05F"
+  "saturn#146": "Red +9V del esquema"
+  "saturn#147": "Red AVCC1 del esquema"
+  "saturn#5": "1 MB de SDRAM en el bus de la CPU"
+  "saturn#10": "Mantiene la RAM de respaldo y el reloj del SMPC con la consola apagada"
+  "saturn#150": "Red BVCC del esquema"
+  "saturn#152": "Red SVCC del esquema"
+
+modelo:
+  valores:
+    V_9: { sim: "V_{9}", nombre: "tensión de +9 V de la fuente", unidad: V, valor: 9 }
+    V_5: { sim: "V_{5}", nombre: "salida de 5 V del regulador IC34", unidad: V, valor: 5 }
+  calculos:
+    V_reg: { expr: "V_9 - V_5", sim: "V_{IC34}", nombre: "tensión que se queda en el regulador IC34", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: toque-9v
+    tipo: tocar
+    titulo: "Quién usa los +9 V"
+    texto: "De las tres tensiones de CN3, la de +9 V solo la usan dos cosas. Toque las dos."
+    libro: ["saturn#26", "saturn#115"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 4
+      zonas:
+        - { id: cd, hotspot: cdconn, rotulo: "Conector negro grande, a la derecha" }
+        - { id: pll, rect: [733, 940, 59, 120], rotulo: "Chip pequeño, en el centro" }
+        - { id: sh2m, hotspot: sh2m, rotulo: "Chip cuadrado, en el centro" }
+        - { id: scsp, hotspot: scsp, rotulo: "Chip cuadrado, a la izquierda" }
+    tocar:
+      bien: [cd, pll]
+      todas: true
+      porque:
+        sh2m: "Es una de las CPU: va a +5 V, como casi todos los chips."
+        scsp: "La SCSP va a +5 V."
+    exito: "La unidad de CD y el PLL: +9 V. Todos los chips salvo la SDRAM, +5 V; la SDRAM, +3,3 V."
+    escalera:
+      - "Una es el conector de la unidad de CD."
+    solucion: "El conector de la unidad de CD y el PLL (IC20)."
+
+  - id: toque-lvcc
+    tipo: tocar
+    titulo: "Quién va a 3,3 V"
+    texto: "Toque, en esta cara, el chip que se alimenta de LVCC, los +3,3 V."
+    libro: ["saturn#115", "saturn#5"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 2.5
+      zonas:
+        - { id: wramh, hotspot: wramh, rotulo: "Chip cuadrado, abajo a la derecha del centro" }
+        - { id: ipl, hotspot: ipl, rotulo: "Chip alargado, abajo a la derecha" }
+        - { id: smpc, hotspot: smpc, rotulo: "Chip cuadrado, abajo a la izquierda del centro" }
+        - { id: scu, hotspot: scu, rotulo: "Chip cuadrado, arriba en el centro" }
+    tocar:
+      bien: [wramh]
+      porque:
+        ipl: "Es la ROM de arranque: va a +5 V."
+        smpc: "Es el SMPC: va a +5 V."
+        scu: "Es la SCU: va a +5 V."
+    exito: "La WORK RAM-H es SDRAM: va a +3,3 V (LVCC). Los VDP también tienen SDRAM, en la otra cara."
+    escalera:
+      - "Busque la SDRAM: la WORK RAM-H."
+    solucion: "La NEC D489020GF (IC3), la WORK RAM-H."
+
+  - id: logica-railes
+    tipo: explorar
+    titulo: "Las tres a la vez"
+    texto: "Cada tensión alimenta su parte de la consola. Consiga que funcionen el CD, los chips y la SDRAM."
+    libro: ["saturn#115"]
+    widget:
+      tipo: logica
+      entradas: [{ id: V9, rotulo: "+9 V en CN3" }, { id: V5, rotulo: "+5 V en CN3" }, { id: V3, rotulo: "+3,3 V en CN3" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [V9, V5, V3] }
+      salidas:
+        - { id: OK, de: a1, rotulo: "CD, chips y SDRAM alimentados" }
+    objetivo:
+      condiciones:
+        - { led: OK, valor: 1, rotulo: "Todo alimentado" }
+      logrado: "Hacen falta las tres: sin LVCC no hay SDRAM, y sin +9 V no hay CD ni PLL."
+      pistas:
+        - { texto: "Todavía falta una tensión." }
+    escalera:
+      - "Encienda las tres entradas."
+    solucion: "+9 V, +5 V y +3,3 V presentes."
+
+  - id: toque-pll
+    tipo: tocar
+    titulo: "Un regulador para el PLL"
+    texto: "En el esquema, IC34 (un regulador de 5 V) toma los +9 V y alimenta la parte analógica de un chip. Toque ese chip."
+    libro: ["saturn#132", "saturn#146", "saturn#147"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      recorte: [500, 800, 600, 400]
+      ampliar: 2.5
+      zonas:
+        - { id: pll, hotspot: pll, rotulo: "Chip pequeño, en el centro" }
+        - { id: sh2s, hotspot: sh2s, rotulo: "Chip cuadrado, a la derecha" }
+        - { id: vdp1, hotspot: vdp1, rotulo: "Chip cuadrado, a la izquierda" }
+    tocar:
+      bien: [pll]
+      porque:
+        sh2s: "Es una de las CPU: va a +5 V de la fuente."
+        vdp1: "El VDP1 va a +5 V de la fuente."
+    exito: "El PLL (IC20): su parte analógica va a AVCC1, los 5 V que IC34 saca de los +9 V."
+    escalera:
+      - "Es el que da los relojes."
+    solucion: "El generador de relojes (IC20)."
+
+  - id: toque-pila
+    tipo: tocar
+    titulo: "Con la consola apagada"
+    texto: "Con la consola apagada, la pila sigue alimentando dos chips. Toque los dos."
+    libro: ["saturn#10", "saturn#150", "saturn#152"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      recorte: [500, 900, 1000, 450]
+      ampliar: 2.5
+      zonas:
+        - { id: bram, hotspot: bram, rotulo: "Chip pequeño, a la derecha" }
+        - { id: smpc, hotspot: smpc, rotulo: "Chip cuadrado, abajo a la izquierda" }
+        - { id: ipl, hotspot: ipl, rotulo: "Chip alargado, abajo a la derecha" }
+        - { id: wramh, hotspot: wramh, rotulo: "Chip cuadrado, abajo en el centro" }
+    tocar:
+      bien: [bram, smpc]
+      todas: true
+      porque:
+        ipl: "Es la ROM: no pierde nada al apagar."
+        wramh: "Es la WORK RAM-H: se borra al apagar."
+    exito: "La RAM de respaldo (red BVCC) y el SMPC con su reloj (red SVCC)."
+    escalera:
+      - "Una guarda las partidas y el otro lleva la hora."
+    solucion: "IC8, la RAM de respaldo, e IC9, el SMPC."
+
+  - id: estime-caida
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lo que se queda el regulador"
+    texto: "IC34 recibe +9 V y da 5 V. ¿Cuánta tensión se queda entre su entrada y su salida?"
+    libro: ["saturn#132", "saturn#115"]
+    estimar:
+      objetivo: "V_reg"
+      unidad: V
+      min: 0
+      max: 9
+      paso: 0.5
+      inicio: 8
+      tol: 0.05
+      rotulo: "9 V − 5 V"
+    exito: "4 V: un regulador lineal se queda la diferencia, convertida en calor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4.2 }, texto: "Se ha pasado: reste la salida de la entrada." }
+      - { texto: "Se ha quedado corto: 9 V menos 5 V." }
+
+  - id: por-que-cuidado
+    tipo: porque
+    titulo: "Antes de abrir la fuente"
+    texto: "La consola está desenchufada. ¿Por qué no se toca aún la fuente interna?"
+    libro: ["saturn#116", "saturn#26"]
+    widget:
+      tipo: figura
+      consola: { maquina: saturn, foto: va8 }
+      ampliar: 3.2
+      zonas:
+        - { id: alim, hotspot: alim, rotulo: "Entrada CN3" }
+    opciones:
+      - texto: "Su condensador puede seguir cargado a la tensión de la red."
+        bien: true
+        porque: "El primario está a la tensión de la red; hay que descargar el condensador antes de trabajar en ella."
+      - texto: "Porque la pila sigue dando +9 V."
+        porque: "La pila solo mantiene la RAM de respaldo y el reloj."
+      - texto: "No hay peligro una vez desenchufada."
+        porque: "Sí lo hay: el condensador del primario guarda carga."
+    escalera:
+      - "¿Qué guarda carga en una fuente?"
+    solucion: "El condensador del primario puede seguir cargado."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["saturn#115", "saturn#132", "saturn#10"]
+    ideas:
+      - { titulo: "Tres tensiones.", texto: "+9 V, +5 V y +3,3 V entran por CN3." }
+      - { titulo: "La SDRAM, a 3,3 V.", texto: "Todo lo demás va a +5 V." }
+      - { titulo: "IC34.", texto: "Un regulador de 5 V alimenta el PLL a partir de los +9 V." }
+      - { titulo: "La pila.", texto: "Mantiene las partidas y el reloj." }

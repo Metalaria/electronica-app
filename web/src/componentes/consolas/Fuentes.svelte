@@ -6,7 +6,7 @@
   import { conNumerosImpresos } from '../../lib/datos';
   import PlacaFuentes from './placa/PlacaFuentes.svelte';
   import { cargarIndicePlacas } from './placa/datos';
-  import { cargarFotograma } from './fotograma/maquinas';
+  import { cargarFotograma, tieneFotograma } from './fotograma/maquinas';
 
   let { datos }: { datos: DatosMaquina } = $props();
 
@@ -71,7 +71,7 @@
   <div class="resto" class:esperando={!listo} aria-busy={!listo}>
   <PlacaFuentes maquina={datos.id} />
 
-  {#if FotogramaFuentes}<FotogramaFuentes maquina={datos.id} />{/if}
+  {#if FotogramaFuentes && tieneFotograma(datos.id)}<FotogramaFuentes maquina={datos.id} />{/if}
 
   {#if datos.revisiones?.length}
     <section>
@@ -88,7 +88,9 @@
   {/if}
 
   <section>
-    <h2>Sobre el esquema</h2>
+    <!-- (2.0) a machine with no schematic (GameCube) says why, plainly -->
+    <h2>{datos.sin_esquema ? 'Por qué no hay esquema' : 'Sobre el esquema'}</h2>
+    {#if datos.sin_esquema}<p data-testid="por-que-sin-esquema">{datos.sin_esquema}</p>{/if}
     <p>{datos.aviso}</p>
     {#if datos.equivalencias.length}
       {#if datos.citas}
@@ -114,6 +116,21 @@
     {/if}
   </section>
 
+  {#if datos.tensiones?.length}
+    <section>
+      <h2>Tensiones y puntos de medida</h2>
+      {#if datos.tensiones_nota}<p>{datos.tensiones_nota}</p>{/if}
+      <div class="tabla">
+        <table data-testid="tensiones">
+          <thead><tr><th>Punto</th><th>Tensión</th><th>Dónde</th><th>Nota</th><th>Fuente</th></tr></thead>
+          <tbody>
+            {#each datos.tensiones as t (t.punto)}<tr><td><strong>{t.punto}</strong></td><td>{t.tension}</td><td>{t.donde}</td><td>{t.nota}</td><td class="cita">{t.fuente}</td></tr>{/each}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {/if}
+
   {#if datos.notas?.length}
     <section>
       <h2>{datos.id === 'sms' ? 'Lecturas dudosas o deducidas de la transcripción' : 'Notas de la reconstrucción'}</h2>
@@ -133,7 +150,8 @@
       {#if datos.id === 'megadrive'}<li>Las huellas de la PCB de stonedDiscord se han llevado a las dos fotos, así que cualquier componente del esquema se puede señalar aunque no tenga recuadro. En la VA6 de EE. UU., hecha de frente, basta una escala (5,32 px/mm) y un desplazamiento. La VA6.8 PAL está fotografiada en ángulo: se ha ajustado una homografía con una corrección cuadrática a 18 puntos (taladros de montaje y patas de los chips), con un error de unos 10 px que llega a 20 en el borde izquierdo.</li>{/if}
       {#if datos.id === 'snes'}<li>Las fotos no llevan recuadros dibujados a mano: cada recuadro es la huella de su pieza en la PCB de nonSNES llevada a la foto con un ajuste afín a las vías y taladros que se ven en ella (792 en la cara de componentes, con un error mediano de 1,6 px en el escaneo original de 300 ppp; 44 en la de soldadura, 3,1 px). Así cualquier componente del esquema se puede señalar en la foto de su cara.</li>{/if}
       {#if datos.id === 'gb'}<li>Las pistas resaltadas sobre el escaneo son el dibujo por redes de Gekkio (un trazo relleno por red, en la cuadrícula del escaneo), reducido a la resolución de la foto.</li>{/if}
-      {#if datos.id !== 'gbc'}<li>Las hojas se dibujan con la geometría exacta que exporta KiCad (kicad-cli 7, a partir de copias del proyecto convertidas al formato de KiCad 7 sin cambiar el contenido), reducida a polilíneas de 0,01 mm.</li>
+      {#if datos.sin_esquema}<li>No hay hojas, componentes ni redes que calcular: no existe esquema. Las piezas se han identificado por las marcas de los chips y la serigrafía que se leen en las fotos a resolución completa, y por las referencias que dan YAGCD y ConsoleArtisan; la placa en 3D y 2D se ha reconstruido con esas mismas fotos. La arquitectura y «Un fotograma» se han escrito a partir de la documentación citada arriba.</li>{/if}
+      {#if datos.id !== 'gbc' && !datos.sin_esquema}<li>Las hojas se dibujan con la geometría exacta que exporta KiCad (kicad-cli 7, a partir de copias del proyecto convertidas al formato de KiCad 7 sin cambiar el contenido), reducida a polilíneas de 0,01 mm.</li>
       <li>Las redes se calculan a partir de los ficheros .kicad_sch (cables, uniones, etiquetas, símbolos de alimentación, etiquetas jerárquicas y pines de cada símbolo) y se comprueban contra el netlist que exporta KiCad: ningún grupo de cables mezcla dos redes, todas las redes del netlist aparecen y cada cable coincide con un trazo del dibujo.</li>{/if}
       {#if datos.id !== 'snes'}<li>Los puntos de la foto se han colocado mirando la foto a resolución completa; cada ficha dice si la marca del chip se lee o si la pieza se identifica por su posición.</li>{/if}
       {#if datos.id === 'neogeo'}<li>Los patillajes de neogeodev/SVGPinout (sin licencia) solo se han consultado; no se incluyen en la aplicación.</li>{/if}

@@ -54,11 +54,12 @@ export function byteDe(bits: number[]): number {
   return bits.reduce((a, b) => (a << 1) | b, 0);
 }
 
-/** Packed nibbles of the followed row: two pixels per byte, the left one in the high nibble. */
+/** Packed nibbles of the followed row: two pixels per byte, the left one in the high nibble (in the low one with
+ *  `nibbleBajo`, as the PlayStation stores its 4-bit textures). */
 export function nibbles(e: Ejemplo): number[] {
   const f = filaSeguida(e);
   const r: number[] = [];
-  for (let i = 0; i < f.length; i += 2) r.push((f[i]! << 4) | (f[i + 1] ?? 0));
+  for (let i = 0; i < f.length; i += 2) r.push(e.nibbleBajo ? ((f[i + 1] ?? 0) << 4) | f[i]! : (f[i]! << 4) | (f[i + 1] ?? 0));
   return r;
 }
 

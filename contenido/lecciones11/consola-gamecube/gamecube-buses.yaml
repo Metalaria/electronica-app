@@ -1,0 +1,202 @@
+# «Consolas por dentro» · GameCube 4: buses y mapa de memoria. Tres buses de Flipper (al Gekko, a la 1T-SRAM, a la
+# ARAM) con los anchos y relojes de YAGCD, el ancho de banda de cada uno, la tubería de escritura y el mapa de
+# direcciones del decodificador del explorador (YAGCD, capítulos 4 y 5). Fuentes: gamecube#n.
+leccion: consola-gamecube/gamecube-buses
+
+libro:
+  "gamecube#40": "Solo habla con Flipper, por un bus de 64 bits a 162 MHz"
+  "gamecube#42": "Bus de 64 bits a unos 324 MHz, gobernado solo por Flipper"
+  "gamecube#43": "Solo se llega a ella por DMA desde la memoria principal"
+  "gamecube#47": "En el canal 0 del bus EXI"
+  "gamecube#50": "Dos ranuras en el bus EXI"
+  "gamecube#52": "Memoria principal, con caché"
+  "gamecube#54": "lo que se escribe aquí se junta en bloques de 32 bytes"
+  "gamecube#58": "Búfer de imagen interno (EFB)"
+  "gamecube#59": "ROM de arranque (IPL), al encender"
+  "gamecube#72": "El bus EXI es serie, de 3,3 V, derivado de SPI, a 16 MHz"
+  "gamecube#85": "de 8 bits a 81 MHz"
+
+modelo:
+  valores:
+    w_n: { sim: "w_{norte}", nombre: "bytes por transferencia del bus del Gekko", unidad: "", valor: 8 }
+    f_n: { sim: "f_{norte}", nombre: "reloj del bus del Gekko", unidad: Hz, valor: 162000000 }
+    w_s: { sim: "w_{sur}", nombre: "bytes por transferencia de la memoria principal", unidad: "", valor: 8 }
+    f_s: { sim: "f_{sur}", nombre: "reloj de la memoria principal", unidad: Hz, valor: 324000000 }
+    w_a: { sim: "w_{ARAM}", nombre: "bytes por transferencia de la ARAM", unidad: "", valor: 1 }
+    f_a: { sim: "f_{ARAM}", nombre: "reloj de la ARAM", unidad: Hz, valor: 81000000 }
+    n_b: { sim: "n", nombre: "bytes de una ráfaga", unidad: "", valor: 32 }
+  calculos:
+    B_n: { expr: "w_n*f_n", sim: "B_{norte}", nombre: "bytes por segundo del bus del Gekko", unidad: "B", cifras: 4 }
+    B_s: { expr: "w_s*f_s", sim: "B_{sur}", nombre: "bytes por segundo de la memoria principal", unidad: "B", cifras: 4 }
+    B_a: { expr: "w_a*f_a", sim: "B_{ARAM}", nombre: "bytes por segundo de la ARAM", unidad: "B", cifras: 3 }
+    t_a: { expr: "n_b/B_a", sim: "t", nombre: "tiempo de 32 bytes por el bus de la ARAM", unidad: s, cifras: 3 }
+
+tarjetas:
+  - id: explore-buses
+    tipo: explorar
+    titulo: "Tres buses, un centro"
+    texto: "Toque el Gekko, la 1T-SRAM y la ARAM. Cada una tiene su propio bus hasta Flipper."
+    libro: ["gamecube#40", "gamecube#42", "gamecube#43", "gamecube#85"]
+    requiere: { mover: [gekko, splash, aram] }
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: gekko, hotspot: gekko, rotulo: "Gekko", texto: "64 bits a 162 MHz hasta Flipper." }
+        - { id: splash, hotspot: splash, rotulo: "1T-SRAM", texto: "64 bits a unos 324 MHz, gobernado por Flipper." }
+        - { id: aram, hotspot: aram, rotulo: "ARAM", texto: "8 bits a 81 MHz; solo por DMA." }
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper", texto: "El centro de los tres buses." }
+
+  - id: toque-centro
+    tipo: tocar
+    titulo: "Con quién habla el Gekko"
+    texto: "El Gekko solo habla con un chip. Tóquelo."
+    libro: ["gamecube#40"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: flipper, hotspot: flipper, rotulo: "Chip cuadrado grande, en el centro" }
+        - { id: splash, hotspot: splash, rotulo: "Dos chips negros iguales, arriba" }
+        - { id: aram, hotspot: aram, rotulo: "Chip alargado, arriba a la izquierda" }
+    tocar:
+      bien: [flipper]
+      porque:
+        splash: "La memoria principal la gobierna Flipper: el Gekko llega a ella a través de él."
+        aram: "A la ARAM solo se llega por DMA, y la hace Flipper."
+    exito: "Flipper: el Gekko no ve la memoria directamente, todo pasa por él."
+    escalera:
+      - "Es el chip que está en medio de todo."
+    solucion: "Flipper, el chip grande del centro."
+
+  - id: lea-norte
+    tipo: leer
+    titulo: "El bus del Gekko"
+    texto: "Por el bus del Gekko pasan 8 bytes en cada ciclo de 162 MHz. Escriba cuántos bytes por segundo, como mucho."
+    libro: ["gamecube#40"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: gekko, hotspot: gekko, rotulo: "Gekko" }
+    leer:
+      objetivo: B_n
+      unidad: "B"
+      tol: 0.02
+      rotulo: "Bytes por segundo"
+      errores:
+        - { expr: "64*f_n", texto: "Ha contado bits, no bytes: 64 bits son 8 bytes." }
+        - { expr: "w_n*f_s", texto: "Ese es el reloj de la memoria principal: el del Gekko va a 162 MHz." }
+    exito: "Unos 1,3 GB/s entre el Gekko y Flipper."
+    escalera:
+      - "Multiplique los bytes por transferencia por las transferencias por segundo."
+    solucion: "8 B × 162 MHz ≈ 1,30 GB/s."
+    comprobar:
+      - { B_n: 1296000000 }
+
+  - id: lea-sur
+    tipo: leer
+    titulo: "El bus de la memoria"
+    texto: "La memoria principal también da 8 bytes por ciclo, pero a 324 MHz. Escriba cuántos bytes por segundo."
+    libro: ["gamecube#42"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [340, 20, 760, 360]
+      ampliar: 1.6
+      zonas:
+        - { id: splash, hotspot: splash, rotulo: "1T-SRAM" }
+    leer:
+      objetivo: B_s
+      unidad: "B"
+      tol: 0.02
+      rotulo: "Bytes por segundo"
+      errores:
+        - { expr: "B_n", texto: "Ese es el bus del Gekko, a 162 MHz. Este va al doble." }
+    exito: "Unos 2,6 GB/s: el doble que el del Gekko, porque Flipper también la lee para dibujar y para el vídeo."
+    escalera:
+      - "8 B × 324 MHz."
+    solucion: "8 B × 324 MHz ≈ 2,59 GB/s."
+    comprobar:
+      - { B_s: 2592000000 }
+
+  - id: lea-aram
+    tipo: leer
+    titulo: "Una ráfaga por la ARAM"
+    texto: "La ARAM pasa un byte por ciclo de 81 MHz. Escriba cuánto tardan 32 bytes."
+    libro: ["gamecube#43", "gamecube#85"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [340, 20, 760, 360]
+      ampliar: 1.6
+      zonas:
+        - { id: aram, hotspot: aram, rotulo: "ARAM" }
+    leer:
+      objetivo: t_a
+      unidad: s
+      tol: 0.02
+      rotulo: "Tiempo"
+      errores:
+        - { expr: "n_b/B_s", texto: "Ese sería el tiempo en la memoria principal, mucho más rápida." }
+        - { expr: "1/f_a", texto: "Eso es un solo byte: son 32." }
+    exito: "Unos 395 ns: por eso a la ARAM se va por DMA, sin que la CPU espere."
+    escalera:
+      - "32 bytes ÷ 81 millones de bytes por segundo."
+    solucion: "32 ÷ 81 MHz ≈ 395 ns."
+    comprobar:
+      - { t_a: 3.951e-7 }
+
+  - id: empareje-direcciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada dirección, su sitio"
+    texto: "Empareje cada dirección del Gekko con lo que hay en ella."
+    libro: ["gamecube#52", "gamecube#54", "gamecube#58", "gamecube#59"]
+    emparejar:
+      - ["$80003100", "Memoria principal, con caché"]
+      - ["$CC008000", "Tubería de escritura (GX FIFO)"]
+      - ["$C8000000", "Búfer de imagen interno (EFB)"]
+      - ["$FFF00100", "ROM de arranque, al encender"]
+    exito: "Un mapa de 32 bits: la memoria, los registros de Flipper en $CC00_xxxx y el arranque arriba del todo."
+    pistas:
+      - { texto: "Los registros de Flipper empiezan en $CC00_0000; el arranque está arriba del todo." }
+    escalera:
+      - "$CC00_xxxx son los registros de Flipper; el Gekko arranca en $FFF00100."
+    solucion: "$80003100: memoria con caché. $CC008000: GX FIFO. $C8000000: EFB. $FFF00100: arranque."
+
+  - id: toque-exi
+    tipo: tocar
+    titulo: "El bus EXI"
+    texto: "El bus serie EXI lleva las tarjetas de memoria y la ROM de arranque. Toque las dos."
+    libro: ["gamecube#47", "gamecube#50", "gamecube#72"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [1000, 0, 600, 1110]
+      ampliar: 1.5
+      zonas:
+        - { id: tarjetas, hotspot: tarjetas, rotulo: "Ranuras a la derecha" }
+        - { id: ipl, hotspot: ipl, rotulo: "Chip pequeño a la derecha de Flipper" }
+        - { id: dvd, hotspot: dvd, rotulo: "Conector negro, arriba a la derecha" }
+        - { id: mandos, hotspot: mandos, rotulo: "Conector de cable plano, a la derecha" }
+    tocar:
+      bien: [tarjetas, ipl]
+      todas: true
+      porque:
+        dvd: "La unidad de discos va por su propia interfaz, la DI."
+        mandos: "Los mandos van por la interfaz serie SI, no por EXI."
+    exito: "Las ranuras P4 y P5 y la ROM de arranque U10: serie, 3,3 V, a 16 MHz."
+    escalera:
+      - "Las tarjetas y el chip que arranca la consola."
+    solucion: "Las ranuras de las tarjetas y U10."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gamecube#40", "gamecube#42", "gamecube#43", "gamecube#72"]
+    ideas:
+      - { titulo: "Flipper en medio.", texto: "El Gekko solo habla con él, por 64 bits a 162 MHz." }
+      - { titulo: "La memoria, al doble.", texto: "64 bits a 324 MHz: el doble de bytes por segundo." }
+      - { titulo: "La ARAM, lenta.", texto: "8 bits a 81 MHz, solo por DMA." }
+      - { titulo: "EXI.", texto: "Serie, para las tarjetas y la ROM de arranque." }

@@ -31,6 +31,8 @@ export interface DatosPlacaConsola extends DatosPlaca {
     /** Schematic reference → board reference, where one part of the board is drawn as two in the schematic
      *  (the Master System's 9-pin network RA1, which the manual splits into RA1 and RA2). */
     alias?: Record<string, string>;
+    /** (2.0) The console has no schematic at all (GameCube): nothing to link, and the texts say so. */
+    sin_esquema?: boolean;
     /** A board that is not the schematic's own but shares some parts with it (OpenGBC): only these references,
      *  and the nets of their pads (`redes`), are linked; why, in Spanish. */
     parcial?: { refs: string[]; texto: string };
@@ -67,6 +69,13 @@ export const PLACAS_DE: Partial<Record<IdMaquina, { id: string; corto: string; e
     { id: 'gbc-opengbc', corto: 'OpenGBC · placa moderna', enlazada: false, parcial: true },
   ],
   snes: [{ id: 'snes', corto: 'SNSP-CPU-01 PAL · nonSNES', enlazada: true }],
+  // 2.0: the same KiCad projects as their schematics (OpeN64, pu-18)
+  n64: [{ id: 'n64', corto: 'NUS-CPU-03 · OpeN64', enlazada: true }],
+  ps1: [{ id: 'ps1', corto: 'PU-18 · pu-18', enlazada: true }],
+  // 2.0 (gamecube20): reconstructed from two photos, no schematic to link to (consola.sin_esquema)
+  gamecube: [{ id: 'gamecube', corto: 'DOL-CPU(P)-01 · reconstrucción', enlazada: false }],
+  // 2.0 (saturn20): RGBeter's VA0.5 reproduction, the same project as schematic sheets 1-6 (the SH-1 board is not on it)
+  saturn: [{ id: 'saturn', corto: 'VA0.5 · reproducción RGBeter', enlazada: true }],
   // 0.11: no file of this board exists; reconstructed from the photos of the bare board (tipo 'foto')
   sms: [{ id: 'sms', corto: '171-5922A · reconstrucción', enlazada: true }],
 };

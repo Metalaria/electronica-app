@@ -1,0 +1,203 @@
+# «Consolas por dentro» · Nintendo 64 2: la alimentación. La fuente da 3,3 V y 12 V; el 78M05 (U13) baja los 12 V a
+# 5 V para el codificador de vídeo y el Multi Out; los 12 V solo van al amplificador de audio; los 3,3 V, a todo lo
+# digital. El piloto, el regulador de Vterm del bus Rambus. Fuentes: los datos de la consola (n64#n) y N64brew,
+# «Non-Booting Troubleshooting» (hechos externos del manifiesto).
+leccion: consola-n64/n64-alimentacion
+
+libro:
+  "n64#9": "Es lo único que se alimenta de los 12 V."
+  "n64#12": "Da la tensión de terminación del bus Rambus (Vterm)"
+  "n64#13": "Saca de los 12 V los 5 V del codificador de vídeo (ENC-NUS) y del Multi Out."
+  "n64#17": "La fuente da 3,3 V y 12 V; el interruptor corta las dos"
+  "n64#19": "se enciende cuando llegan los 3,3 V del interruptor"
+  "n64#70": "La fuente de la Nintendo 64 da dos tensiones: 3,3 V y 12 V."
+  "n64#71": "un regulador baja los 12 V a 5 V"
+  "n64#72": "si no se enciende, o luce débil, sospeche de la fuente"
+  "n64#93": "llega a C17, C18, C74, DA5, DA7, P7, U5"
+
+modelo:
+  valores:
+    V_12: { sim: "V_{12}", nombre: "tensión alta de la fuente", unidad: V, valor: 12 }
+    V_5: { sim: "V_{5}", nombre: "salida del 78M05", unidad: V, valor: 5 }
+  calculos:
+    V_caida: { expr: "V_12 - V_5", sim: "V_{entrada} − V_{salida}", nombre: "tensión que se queda el 78M05", unidad: V, cifras: 2 }
+
+tarjetas:
+  - id: explore-tensiones
+    tipo: explorar
+    titulo: "Tres tensiones"
+    texto: "Los 5 V del vídeo salen del 78M05, que los saca de los 12 V. Consiga imagen: tienen que llegar los 12 V, el interruptor encendido y el 78M05 sano."
+    libro: ["n64#70", "n64#71", "n64#17", "n64#13"]
+    widget:
+      tipo: logica
+      entradas: [{ id: F12, rotulo: "La fuente da sus 12 V" }, { id: SW, rotulo: "Interruptor encendido" }, { id: RE, rotulo: "78M05 sano" }]
+      piezas:
+        - { id: a1, tipo: and, entradas: [F12, SW, RE] }
+      salidas:
+        - { id: CINCO, de: a1, rotulo: "5 V en el ENC-NUS" }
+    objetivo:
+      condiciones:
+        - { led: CINCO, valor: 1, rotulo: "5 V en el codificador" }
+      logrado: "Los tres en serie: con que falte uno, el codificador de vídeo se queda sin sus 5 V."
+      pistas:
+        - { texto: "Todavía falla algo del camino de los 12 V a los 5 V." }
+    escalera:
+      - "Fuente, interruptor y 78M05: los tres."
+    solucion: "Las tres entradas activadas."
+
+  - id: ordene-cinco
+    tipo: tocar
+    fase: "Ordene"
+    titulo: "De los 12 V a los 5 V"
+    texto: "Toque, por este orden: la entrada de la fuente con su interruptor, el 78M05 y el chip de vídeo que recibe sus 5 V."
+    libro: ["n64#17", "n64#13", "n64#93"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [0, 86, 1287, 1206]
+      ampliar: 2.6
+      zonas:
+        - { id: alim, hotspot: alim, rotulo: "Conector arriba a la izquierda e interruptor" }
+        - { id: reg5, hotspot: reg5, rotulo: "Pieza negra con aleta, arriba a la derecha" }
+        - { id: enc, hotspot: enc, rotulo: "Chip pequeño, arriba a la derecha" }
+        - { id: rcp, hotspot: rcp, rotulo: "Chip cuadrado, en el centro" }
+    tocar:
+      bien: [alim, reg5, enc]
+      orden: true
+      porque:
+        rcp: "El RCP va a 3,3 V, no a 5."
+    pistas:
+      - { texto: "P4 y SW1, U13 y el ENC-NUS." }
+    exito: "Fuente e interruptor, 78M05 y ENC-NUS: la red de 5 V llega al codificador (U5) y al Multi Out (P7)."
+    escalera:
+      - "El 78M05 es la pieza con aleta junto a los condensadores grandes."
+    solucion: "P4 y SW1, U13 y U5."
+
+  - id: leer-caida
+    tipo: leer
+    titulo: "Lo que se queda el regulador"
+    texto: "El 78M05 recibe 12 V y da 5 V. Escriba la tensión que se queda él."
+    libro: ["n64#13", "n64#71"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [980, 420, 420, 220]
+      zonas:
+        - { id: reg5, hotspot: reg5, rotulo: "78M05 (U13)" }
+    leer:
+      objetivo: V_caida
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión en el regulador"
+      errores:
+        - { expr: "V_5", texto: "Esa es la salida: la caída es lo que va de la entrada a la salida." }
+        - { expr: "V_12", texto: "Esa es la entrada: réstele la salida." }
+    exito: "7 V: un regulador lineal convierte en calor esa diferencia por la corriente que pasa."
+    escalera:
+      - "12 V − 5 V."
+    solucion: "12 V − 5 V = 7 V."
+    comprobar:
+      - { V_caida: 7 }
+
+  - id: toque-doce
+    tipo: tocar
+    titulo: "Lo único a 12 V"
+    texto: "Aparte del 78M05, solo un chip se alimenta de los 12 V. Tóquelo."
+    libro: ["n64#9", "n64#71"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [1040, 440, 360, 360]
+      ampliar: 1.3
+      zonas:
+        - { id: amp, hotspot: amp, rotulo: "Chip alargado, a la derecha" }
+        - { id: dac, hotspot: dac, rotulo: "Chip pequeño, en el centro" }
+        - { id: enc, hotspot: enc, rotulo: "Chip pequeño, arriba" }
+    tocar:
+      bien: [amp]
+      porque:
+        dac: "Es el DAC de audio: va a 3,3 V."
+        enc: "Es el ENC-NUS: va a 5 V, los del 78M05."
+    exito: "El AMP-NUS, el amplificador de audio. Los 5 V y los 12 V son para el audio y el vídeo."
+    escalera:
+      - "Lea las marcas: busque «AMP»."
+    solucion: "El AMP-NUS, U2."
+
+  - id: toque-vterm
+    tipo: tocar
+    titulo: "Una tensión solo para la memoria"
+    texto: "El bus Rambus necesita su propia tensión de terminación. Toque el regulador que la da."
+    libro: ["n64#12"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [140, 900, 600, 300]
+      ampliar: 1.4
+      zonas:
+        - { id: vterm, hotspot: vterm, rotulo: "Chip pequeño, abajo a la izquierda" }
+        - { id: alim, hotspot: alim, rotulo: "Interruptor, a la izquierda" }
+        - { id: exp, hotspot: exp, rotulo: "Conector, abajo en el centro" }
+    tocar:
+      bien: [vterm]
+      porque:
+        alim: "Es el interruptor de encendido."
+        exp: "Es la ranura de expansión, donde termina el bus."
+    exito: "El PQ7VZ5 (U12): da Vterm; la serigrafía marca también el punto de Vref."
+    escalera:
+      - "La serigrafía dice «Vterm» a su lado."
+    solucion: "U12, el PQ7VZ5, junto a «Vterm»."
+
+  - id: toque-piloto
+    tipo: tocar
+    titulo: "El piloto"
+    texto: "Toque la pieza que mira primero quien repara una consola que no arranca."
+    libro: ["n64#19", "n64#72"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [608, 1041, 304, 221]
+      ampliar: 1.7
+      zonas:
+        - { id: led, hotspot: led, rotulo: "Pieza roja, abajo" }
+        - { id: exp, hotspot: exp, rotulo: "Conector, encima" }
+    tocar:
+      bien: [led]
+      porque:
+        exp: "Es la ranura de expansión."
+    exito: "El LED D3: se enciende con los 3,3 V del interruptor. Si no se enciende, o luce débil, sospeche de la fuente."
+    escalera:
+      - "Es rojo y está en el borde."
+    solucion: "El LED D3."
+
+  - id: prediga-sin-doce
+    tipo: predecir
+    titulo: "Sin los 12 V"
+    texto: "La fuente da sus 3,3 V, pero no los 12 V. ¿Qué pasa?"
+    libro: ["n64#71", "n64#70"]
+    widget:
+      tipo: figura
+      consola: { maquina: n64 }
+      recorte: [60, 180, 380, 160]
+      zonas:
+        - { id: alim, hotspot: alim, rotulo: "Entrada de la fuente" }
+    opciones:
+      - texto: "Se enciende el piloto, pero sin imagen ni sonido."
+        bien: true
+        porque: "Los 3,3 V llegan al RCP, la CPU, la RAM y el PIF, y al piloto; el audio y el vídeo necesitan los 5 V y los 12 V."
+      - texto: "No se enciende nada."
+        porque: "El piloto y la lógica van con los 3,3 V, que sí llegan."
+      - texto: "Funciona igual: el 78M05 saca los 5 V de los 3,3 V."
+        porque: "Un 78M05 baja tensión, no la sube: los saca de los 12 V."
+    escalera:
+      - "Mire qué alimenta cada tensión."
+    solucion: "Piloto encendido, sin imagen ni sonido."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["n64#70", "n64#71", "n64#9", "n64#12"]
+    ideas:
+      - { titulo: "Dos de la fuente.", texto: "3,3 V para lo digital y 12 V." }
+      - { titulo: "Una de la placa.", texto: "El 78M05 saca 5 V de los 12 V para el vídeo." }
+      - { titulo: "12 V para el audio.", texto: "Solo el AMP-NUS los usa." }
+      - { titulo: "Vterm.", texto: "El bus Rambus tiene su propio regulador." }

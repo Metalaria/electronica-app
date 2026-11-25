@@ -20,7 +20,7 @@ import path from 'node:path';
 import { parse } from 'yaml';
 
 export const PREFIJO = 'consola-';
-const MAQUINAS = ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes'];
+const MAQUINAS = ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes', 'gamecube', 'n64', 'ps1', 'saturn'];
 /** The block colour of the course (the book's «Proyectos, diagnóstico e ingeniería inversa»). */
 const COLOR = '8A1F3D';
 const ID = /^[a-z0-9][a-z0-9-]*$/;
@@ -102,7 +102,8 @@ export async function consolas11({ fuentes, publico, src }) {
     const d = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null;
     if (d) {
       const exp = (vista = 'fuentes', que = '') => ({ titulo: `Explorador «Consolas» · ${d.titulo}${que ? `: ${que}` : ''}`, url: `#/consolas/${maq}/${vista}` });
-      poner(frase(`${d.titulo}, placa ${d.placa}; esquema ${d.esquema_titulo}`, d.aviso), exp('fuentes', 'aviso'));
+      // (2.0) a machine with no schematic (GameCube) says so instead of naming one
+      poner(frase(`${d.titulo}, placa ${d.placa}; ${d.sin_esquema ? 'sin esquema' : `esquema ${d.esquema_titulo}`}`, d.aviso), exp('fuentes', 'aviso'));
       const fotos = [{ ...d.foto, id: d.foto?.id ?? 'principal', hotspots: d.hotspots ?? [] }, ...(d.fotos ?? [])];
       for (const ft of fotos) {
         poner(frase(`Foto «${ft.titulo ?? d.placa}»`, ft.revision, ft.credito, ft.nota), exp('foto', `foto «${ft.titulo ?? d.placa}»`));
@@ -112,7 +113,7 @@ export async function consolas11({ fuentes, publico, src }) {
       for (const n of d.notas ?? []) poner(frase(`${n.ref}${n.pin ? ` (${n.pin})` : ''}: ${n.texto}`), exp('fuentes', 'notas'));
       for (const r of d.revisiones ?? []) poner(frase(`${r.vista}: ${r.revision}`, `(${r.fuente})`), exp('fuentes', 'revisiones'));
       for (const s of d.fuentes ?? []) poner(frase(s.titulo, s.autor, `Licencia: ${s.licencia}`, s.uso), { titulo: s.titulo, url: s.url });
-      if (d.grupos) poner(frase(`Buses y grupos de señales: ${Object.values(d.grupos).join('; ')}`), exp('esquema', 'buses'));
+      if (d.grupos) poner(frase(`Buses y grupos de señales: ${Object.values(d.grupos).join('; ')}`), d.sin_esquema ? exp('fuentes', 'buses') : exp('esquema', 'buses'));
     }
     // the architecture model: the diagram's blocks and the decoder on the example addresses the explorer offers
     const ts = src(`componentes/consolas/arquitectura/${maq}.ts`);
@@ -144,6 +145,11 @@ export async function consolas11({ fuentes, publico, src }) {
       if (r.g !== 'power' || /GND/i.test(r.n)) continue;
       const refs = [...new Set(r.nodos.map((x) => x[0]))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
       poner(frase(`Red ${r.n.replace(/^\//, '')} del esquema (alimentación): llega a ${refs.join(', ')}`), { titulo: `Explorador «Consolas» · ${d.titulo}: esquema`, url: `#/consolas/${maq}/esquema` });
+    }
+    // (2.0) no schematic (GameCube): why, and the voltages and measuring points the sources give (last as well)
+    if (d?.sin_esquema) {
+      poner(frase(d.sin_esquema), { titulo: `Explorador «Consolas» · ${d.titulo}: por qué no hay esquema`, url: `#/consolas/${maq}/fuentes` });
+      for (const t of d.tensiones ?? []) poner(frase(`${t.punto}: ${t.tension}`, `Dónde: ${t.donde}`, t.nota, `(${t.fuente})`), { titulo: `Explorador «Consolas» · ${d.titulo}: tensiones`, url: `#/consolas/${maq}/fuentes` });
     }
     const r = { bloques, fuentes: fuentesB };
     cache.set(maq, r);

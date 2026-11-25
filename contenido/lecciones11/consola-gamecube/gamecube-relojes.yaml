@@ -1,0 +1,222 @@
+# «Consolas por dentro» · GameCube 3: los relojes. El oscilador X1 de 54 MHz y las frecuencias que da YAGCD:
+# 162 MHz (Flipper y su bus con el Gekko), 486 MHz (Gekko), 324 MHz (1T-SRAM), 81 MHz (ARAM y DSP). Cómo las saca el
+# generador U9 no está documentado: aquí solo se comprueba la aritmética. Fuentes: gamecube#n.
+leccion: consola-gamecube/gamecube-relojes
+
+libro:
+  "gamecube#7": "X2 es su cristal de 32,768 kHz"
+  "gamecube#8": "X1 es un oscilador de 54 MHz"
+  "gamecube#39": "De ahí salen los 162 MHz de Flipper"
+  "gamecube#68": "con un reloj de 54 MHz en su patilla 2"
+  "gamecube#84": "El Gekko va a 486 MHz"
+  "gamecube#85": "de 64 bits a unos 324 MHz"
+
+modelo:
+  valores:
+    f_x: { sim: "f_{X1}", nombre: "oscilador X1", unidad: Hz, valor: 54000000 }
+    f_f: { sim: "f_{Flipper}", nombre: "reloj de Flipper", unidad: Hz, valor: 162000000 }
+    f_g: { sim: "f_{Gekko}", nombre: "reloj del Gekko", unidad: Hz, valor: 486000000 }
+    f_s: { sim: "f_{1T-SRAM}", nombre: "reloj de la memoria principal", unidad: Hz, valor: 324000000 }
+    f_a: { sim: "f_{ARAM}", nombre: "reloj de la ARAM", unidad: Hz, valor: 81000000 }
+  calculos:
+    k_f: { expr: "f_f/f_x", sim: "k", nombre: "veces X1 en el reloj de Flipper", unidad: "veces", cifras: 3 }
+    k_g: { expr: "f_g/f_f", sim: "k_{G}", nombre: "veces el reloj de Flipper en el del Gekko", unidad: "veces", cifras: 3 }
+    k_a: { expr: "f_f/f_a", sim: "k_{A}", nombre: "veces que la ARAM va más despacio que Flipper", unidad: "veces", cifras: 3 }
+    T_g: { expr: "1/f_g", sim: "T_{Gekko}", nombre: "periodo del reloj del Gekko", unidad: s, cifras: 3 }
+    n_g: { expr: "f_g/f_x", sim: "n", nombre: "ciclos del Gekko en un periodo de X1", unidad: "veces", cifras: 3 }
+
+tarjetas:
+  - id: explore-relojes
+    tipo: explorar
+    titulo: "Quién va a qué ritmo"
+    texto: "Toque el oscilador, Flipper, el Gekko y la ARAM. Lea a qué frecuencia va cada uno."
+    libro: ["gamecube#8", "gamecube#39", "gamecube#84", "gamecube#85"]
+    requiere: { mover: [reloj, flipper, gekko] }
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [360, 100, 720, 1000]
+      ampliar: 1.4
+      zonas:
+        - { id: reloj, hotspot: reloj, rotulo: "Oscilador X1 y U9", texto: "X1: 54 MHz." }
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper", texto: "162 MHz, como su bus con el Gekko." }
+        - { id: gekko, hotspot: gekko, rotulo: "Gekko", texto: "486 MHz." }
+        - { id: splash, hotspot: splash, rotulo: "1T-SRAM", texto: "Su bus va a unos 324 MHz." }
+        - { id: aram, hotspot: aram, rotulo: "ARAM", texto: "81 MHz, como el DSP." }
+
+  - id: toque-x1
+    tipo: tocar
+    titulo: "El oscilador"
+    texto: "Toque la pieza que marca el ritmo de la placa: un oscilador de 54 MHz."
+    libro: ["gamecube#8", "gamecube#7"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [400, 650, 760, 320]
+      ampliar: 2
+      zonas:
+        - { id: reloj, hotspot: reloj, rotulo: "Cápsula metálica y chip, a la izquierda" }
+        - { id: ipl, hotspot: ipl, rotulo: "Chip y cristal pequeño, a la derecha" }
+    tocar:
+      bien: [reloj]
+      porque:
+        ipl: "Es U10 con su cristal X2 de 32,768 kHz: el del reloj de tiempo real, no el de la placa."
+    exito: "X1, de 54 MHz, junto al generador de reloj U9."
+    escalera:
+      - "Lea la cápsula metálica: lleva escrita la frecuencia."
+    solucion: "X1 y U9, a la izquierda del Gekko."
+
+  - id: lea-flipper
+    tipo: leer
+    titulo: "Flipper y X1"
+    texto: "Flipper va a 162 MHz. Escriba cuántas veces cabe la frecuencia de X1 en la suya."
+    libro: ["gamecube#8", "gamecube#39"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: flipper, hotspot: flipper, rotulo: "Flipper" }
+    leer:
+      objetivo: k_f
+      unidad: "veces"
+      tol: 0.01
+      rotulo: "Veces"
+      errores:
+        - { expr: "f_x/f_f", texto: "Al revés: divida 162 MHz entre 54 MHz." }
+    exito: "Exactamente 3: los relojes de la placa son múltiplos y divisores enteros de 54 MHz y van en fase."
+    escalera:
+      - "162 ÷ 54."
+    solucion: "162 MHz ÷ 54 MHz = 3."
+    comprobar:
+      - { k_f: 3 }
+
+  - id: lea-gekko
+    tipo: leer
+    titulo: "El Gekko, más deprisa"
+    texto: "El Gekko va a 486 MHz. Escriba cuántas veces más deprisa que Flipper."
+    libro: ["gamecube#84", "gamecube#39"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: gekko, hotspot: gekko, rotulo: "CPU Gekko" }
+    leer:
+      objetivo: k_g
+      unidad: "veces"
+      tol: 0.01
+      rotulo: "Veces"
+      errores:
+        - { expr: "n_g", texto: "Esas son las veces de X1, no las de Flipper." }
+    exito: "3 veces: el Gekko da tres ciclos por cada uno del bus que lo une a Flipper."
+    escalera:
+      - "486 ÷ 162."
+    solucion: "486 MHz ÷ 162 MHz = 3."
+    comprobar:
+      - { k_g: 3 }
+
+  - id: lea-periodo
+    tipo: leer
+    titulo: "Un ciclo del Gekko"
+    texto: "Escriba cuánto dura un ciclo del reloj del Gekko."
+    libro: ["gamecube#84"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: gekko, hotspot: gekko, rotulo: "CPU Gekko" }
+    leer:
+      objetivo: T_g
+      unidad: s
+      tol: 0.02
+      rotulo: "Periodo"
+      errores:
+        - { expr: "1/f_f", texto: "Ese es el periodo de Flipper, tres veces más largo." }
+    exito: "Unos 2,06 ns por ciclo."
+    escalera:
+      - "T = 1 / f."
+    solucion: "1 ÷ 486 MHz ≈ 2,06 ns."
+    comprobar:
+      - { T_g: 2.058e-9 }
+
+  - id: lea-aram
+    tipo: leer
+    titulo: "La ARAM, más despacio"
+    texto: "La ARAM y el DSP van a 81 MHz. Escriba cuántas veces más despacio que Flipper."
+    libro: ["gamecube#39", "gamecube#85"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [340, 20, 760, 360]
+      ampliar: 1.6
+      zonas:
+        - { id: aram, hotspot: aram, rotulo: "ARAM" }
+    leer:
+      objetivo: k_a
+      unidad: "veces"
+      tol: 0.01
+      rotulo: "Veces"
+      errores:
+        - { expr: "f_a/f_f", texto: "Al revés: divida 162 MHz entre 81 MHz." }
+    exito: "La mitad: 81 MHz."
+    escalera:
+      - "162 ÷ 81."
+    solucion: "162 MHz ÷ 81 MHz = 2."
+    comprobar:
+      - { k_a: 2 }
+
+  - id: lea-ciclos
+    tipo: leer
+    titulo: "Dentro de un periodo de X1"
+    texto: "Escriba cuántos ciclos da el Gekko mientras X1 da uno."
+    libro: ["gamecube#8", "gamecube#84"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      recorte: [400, 650, 760, 320]
+      ampliar: 2
+      zonas:
+        - { id: reloj, hotspot: reloj, rotulo: "Oscilador X1 y U9" }
+    leer:
+      objetivo: n_g
+      unidad: "veces"
+      tol: 0.01
+      rotulo: "Ciclos"
+      errores:
+        - { expr: "k_g", texto: "Eso es respecto a Flipper. X1 va tres veces más despacio que Flipper." }
+    exito: "9 ciclos del Gekko por cada uno de X1."
+    escalera:
+      - "486 ÷ 54."
+    solucion: "486 MHz ÷ 54 MHz = 9."
+    comprobar:
+      - { n_g: 9 }
+
+  - id: toque-54-fuera
+    tipo: tocar
+    titulo: "Los 54 MHz, hacia fuera"
+    texto: "Los 54 MHz también salen de la consola, como reloj del vídeo digital. Toque el conector por donde salen."
+    libro: ["gamecube#68"]
+    widget:
+      tipo: figura
+      consola: { maquina: gamecube, foto: componentes }
+      zonas:
+        - { id: digital, hotspot: av-digital, rotulo: "Conector metálico, abajo a la izquierda" }
+        - { id: analogico, hotspot: av-analogico, rotulo: "Conector metálico, arriba a la izquierda" }
+        - { id: dvd, hotspot: dvd, rotulo: "Conector negro, arriba a la derecha" }
+    tocar:
+      bien: [digital]
+      porque:
+        analogico: "La salida analógica lleva vídeo ya convertido, sin reloj."
+        dvd: "Es el conector de la unidad de discos."
+    exito: "P2, la salida digital: el reloj de 54 MHz va en su patilla 2."
+    escalera:
+      - "Es la salida que da el vídeo en digital."
+    solucion: "P2, la salida digital."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gamecube#8", "gamecube#39", "gamecube#84"]
+    ideas:
+      - { titulo: "X1, 54 MHz.", texto: "El ritmo de la placa y del vídeo digital." }
+      - { titulo: "Múltiplos enteros.", texto: "162 MHz en Flipper, 486 en el Gekko, 324 en la memoria, 81 en la ARAM." }
+      - { titulo: "X2, aparte.", texto: "32,768 kHz para el reloj de tiempo real." }

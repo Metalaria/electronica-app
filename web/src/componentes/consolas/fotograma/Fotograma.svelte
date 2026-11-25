@@ -95,8 +95,12 @@
   async function ir(i: number, enfocar = true): Promise<void> {
     if (!fm) return;
     actual = Math.max(0, Math.min(i, total - 1));
-    const h = `${enlace(datos.id, 'fotograma')}/${actual + 1}`;
-    if (location.hash !== h) history.replaceState(history.state, '', h);
+    const propio = enlace(datos.id, 'fotograma');
+    const h = `${propio}/${actual + 1}`;
+    // 2.0 (cierre20): only while the address is still this machine's «Un fotograma»: a step reached late (the steps'
+    // reload, the autoplay's timer) after the reader has gone elsewhere, and before the router has read the new
+    // address, put this tab's address back over it (the N64's step 7 over the PlayStation the reader had opened)
+    if (location.hash !== h && (location.hash === propio || location.hash.startsWith(`${propio}/`))) history.replaceState(history.state, '', h);
     if (enfocar) {
       await tick();
       titulo?.focus({ preventScroll: true });

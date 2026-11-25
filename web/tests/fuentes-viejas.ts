@@ -3,7 +3,7 @@
 // 0.12.0 fill and read the stores) and by tests/motor-real (a device running the 0.12.0 engine, 1.0's transition).
 // A commit missing from the clone (a rewritten history) is found by its message «Versión X.Y.Z:».
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,12 +32,21 @@ export function fuenteVieja(version: Vieja): string | null {
   if (!commit) return null;
   const dir = join(tmpdir(), `epa-v${version.replace(/\./g, '')}-${commit}`);
   const src = join(dir, 'web', 'src');
-  if (existsSync(join(src, 'lib', 'usuario.svelte.ts'))) return src;
+  // (cierre20: the extraction is kept in TMPDIR between runs, but its node_modules link points at the checkout that
+  // made it — a clone deleted since leaves it dangling, and the old sources then miss svelte: always link this one's)
+  const enlazar = () => {
+    rmSync(join(dir, 'web', 'node_modules'), { force: true });
+    symlinkSync(join(WEB, 'node_modules'), join(dir, 'web', 'node_modules'));
+  };
   try {
+    if (existsSync(join(src, 'lib', 'usuario.svelte.ts'))) {
+      enlazar();
+      return src;
+    }
     mkdirSync(dir, { recursive: true });
     const tar = execFileSync('git', ['-C', join(WEB, '..'), 'archive', commit, 'web/src', 'web/package.json'], { maxBuffer: 256 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', dir], { input: tar });
-    if (!existsSync(join(dir, 'web', 'node_modules'))) symlinkSync(join(WEB, 'node_modules'), join(dir, 'web', 'node_modules'));
+    enlazar();
     return src;
   } catch {
     return null;
