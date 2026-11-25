@@ -1197,8 +1197,12 @@ test.describe('capturas y maquetación', () => {
         await foto('lector-dominio');
 
         await page.goto('#/leccion/cap01/sec-1.4/clasica/5');
-        const ex = page.locator('[data-explora]').first();
-        await page.locator('[data-figura-viva]').first().scrollIntoViewIfNeeded();
+        // (2.1 close-out, the cause of this test's «Element is not attached»: a hash goto resolves before the router has
+        // handled the hashchange — under load the query can run first — so an unscoped [data-figura-viva] could be one
+        // of the reader's 14 live figures of 5.1, removed a moment later. Scoped to the lesson's own root.)
+        const leccion = page.locator('[data-leccion="cap01/sec-1.4"]');
+        const ex = leccion.locator('[data-explora]').first();
+        await leccion.locator('[data-figura-viva]').first().scrollIntoViewIfNeeded();
         await expect(ex).toBeVisible({ timeout: 30_000 });
         await ex.locator('input[type=range]').focus();
         await page.keyboard.press('ArrowRight');

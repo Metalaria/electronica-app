@@ -216,8 +216,10 @@ test('solo las consolas con una avería documentada con números (y sus piezas e
     ['gamecube', 0], // (gamecube20: no schematic, no board nets: the tab is hidden)
   ] as const) {
     await page.goto(`/#/consolas/${m}/foto`);
-    await expect(page.locator('.pestanas a').first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.pestanas a', { hasText: 'Busque la avería' }), m).toHaveCount(n);
+    // (2.1: the console's views are the system's tabs, the navigation «Vista»)
+    const vista = page.getByRole('navigation', { name: 'Vista' });
+    await expect(vista.getByRole('link').first()).toBeVisible({ timeout: 30_000 });
+    await expect(vista.getByRole('link', { name: 'Busque la avería' }), m).toHaveCount(n);
   }
   // the NES: its fault in 3D only (no photo with the board's positions), the list works
   await page.goto('/#/consolas/nes/averia/c16-corto');

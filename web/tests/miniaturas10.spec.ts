@@ -126,14 +126,15 @@ test('búsqueda: figura de la sección, circuito, símbolo del término o hueco;
   const soltar = await retener(page);
   await page.keyboard.press('Control+k');
   await page.getByRole('searchbox', { name: 'Buscar en el libro' }).fill('diodo zener');
-  const res = page.locator('#resultados > li');
+  // (2.1: the results come in two groups, «En la aplicación» and «En el libro»; these are the book's)
+  const res = page.locator('#resultados [aria-label="En el libro"] > li');
   await expect(res.first()).toBeVisible();
   const n = await res.count();
   expect(n).toBeGreaterThan(20);
-  const antes = await cajas(page, '#resultados > li', 6);
+  const antes = await cajas(page, '#resultados [aria-label="En el libro"] > li', 6);
   soltar();
   await expect.poll(async () => (await visibles(page, '#resultados [data-miniatura]')).every((v) => v.estado === 'lista' || v.estado === 'hueco')).toBe(true);
-  expect(await cajas(page, '#resultados > li', 6)).toEqual(antes);
+  expect(await cajas(page, '#resultados [aria-label="En el libro"] > li', 6)).toEqual(antes);
   // What each visible result shows agrees with the data.
   const datos = await page.evaluate(async () => {
     const j = (u: string) => fetch(u).then((r) => r.json());
@@ -473,7 +474,7 @@ test('rendimiento: tareas largas al desplazar cada lista a 800 px con la CPU ×4
         await expect(p.locator('h1, h2').first()).toBeVisible();
         await p.keyboard.press('Control+k');
         await p.getByRole('searchbox', { name: 'Buscar en el libro' }).fill('tension');
-        await expect(p.locator('#resultados > li').first()).toBeVisible();
+        await expect(p.locator('#resultados [aria-label="En el libro"] > li').first()).toBeVisible();
       },
     },
     {
@@ -545,7 +546,7 @@ test('capturas de cada lista: tableta y móvil, claro y oscuro', async ({ browse
       await expect(page.locator('h1, h2').first()).toBeVisible();
       await page.keyboard.press('Control+k');
       await page.getByRole('searchbox', { name: 'Buscar en el libro' }).fill('diodo zener');
-      await expect(page.locator('#resultados > li').first()).toBeVisible();
+      await expect(page.locator('#resultados [aria-label="En el libro"] > li').first()).toBeVisible();
       await esperar(page);
       await foto('busqueda');
       await page.keyboard.press('Escape');

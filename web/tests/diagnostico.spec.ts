@@ -177,3 +177,14 @@ test('«Simular» no hace parpadear el esquema vivo y la simulación queda en el
   expect(errores.split('\n').filter((l) => / \[simulador\] /.test(l)).length).toBeLessThanOrEqual(3);
 });
 
+
+// 2.1 close-out (accesibilidad10-rutas, «target-size» at «Informe de fallos» under the 2.1 header): each test's box is
+// a 24 px target by itself
+test('diagnóstico: cada casilla de las pruebas mide al menos 24 × 24 px', async ({ page }) => {
+  await page.goto('#/diagnostico/informe');
+  const casillas = page.locator('ul.pruebas input[type="checkbox"]');
+  await expect(casillas.first()).toBeVisible({ timeout: 30_000 });
+  const tam = await casillas.evaluateAll((xs) => xs.map((x) => { const r = x.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  expect(tam.length).toBeGreaterThan(3);
+  for (const [w, h] of tam) expect(Math.min(w!, h!)).toBeGreaterThanOrEqual(24);
+});

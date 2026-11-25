@@ -436,11 +436,13 @@ test('el editor abre su circuito en el banco con su propio dibujo', async ({ pag
   await page.waitForFunction(() => ((window as unknown as { __epaEditor?: { ed: { doc: { componentes: unknown[] } } } }).__epaEditor?.ed.doc.componentes.length ?? 0) > 2, null, { timeout: 30_000 });
   await page.locator('button:has-text("Medir")').first().click();
   await expect(page).toHaveURL(/#\/instrumentos\/editor$/);
-  await expect(page.locator('.cabecera h1')).toContainText('Medir ·');
-  await expect(page.locator('.cabecera a.atras')).toHaveText('← Editor');
+  // (2.1: the bench's title block — «Medir el circuito del editor · simulado en …» over the circuit's name — and its
+  // back link)
+  await expect(page.locator('.banco .cabeza .antetitulo21')).toContainText('Medir el circuito del editor');
+  await expect(page.locator('.banco .cabeza a.volver')).toHaveText('← Editor');
   // The leads go on the nodes of the editor's own drawing.
   await expect(page.locator('.banco .lamina .auto svg')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+  await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
 });
 
 // ------------------------------------------------------------------ screenshots

@@ -80,8 +80,9 @@ export function copiaDe(almacenes: Record<string, Record<string, unknown>>, ahor
 export const COPIA_DANADA = () => copiaQa().slice(0, 300);
 /** Another program's JSON. */
 export const COPIA_AJENA = () => JSON.stringify({ name: 'otra-aplicacion', version: '1.0.0', dependencias: { a: '1' } });
-/** A backup made by a newer version of the app (format version 2). */
-export const COPIA_NUEVA = () => copiaQa().replace('"version": 1', '"version": 2');
+/** A backup made by a newer version of the app (2.1 close-out: format 99 — version 2 is an older format since the
+ * backup's format 3, so it was accepted and the check waited for a refusal that never came). */
+export const COPIA_NUEVA = () => copiaQa().replace('"version": 1', '"version": 99');
 
 /** Chooses a file in the backup card (the browser's file picker: Tauri's dialog is not there). */
 export async function elegirCopia(page: Page, nombre: string, texto: string): Promise<void> {
@@ -405,9 +406,9 @@ export async function hacerAccion012(page: Page, accion: Accion012, reg: Registr
       const { esperado } = await sembrarDiasSumados(page);
       await page.reload({ waitUntil: 'load' });
       if ((await page.evaluate(() => location.hash)) === '#/' || (await page.evaluate(() => location.hash)) === '') {
-        const obj = page.locator('section.objetivo');
+        const obj = page.locator('.hoy .objetivo');
         await obj.waitFor({ timeout: 30_000 });
-        await page.waitForFunction((n) => document.querySelector('section.objetivo')?.getAttribute('data-hechos') === String(n), esperado, { timeout: 15_000, polling: 200 }).catch(() => {});
+        await page.waitForFunction((n) => document.querySelector('.hoy .objetivo')?.getAttribute('data-hechos') === String(n), esperado, { timeout: 15_000, polling: 200 }).catch(() => {});
         const hechos = Number(await obj.getAttribute('data-hechos'));
         if (hechos !== esperado) await fallo('no suma', `El objetivo de hoy dice ${hechos} pasos y dos dispositivos llevan ${esperado} (2 + 3).`);
       }

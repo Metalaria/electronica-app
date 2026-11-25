@@ -554,18 +554,19 @@ test('actividad del día: la suma de dos dispositivos y un paso dado aquí', asy
   await page.goto('/#/');
   const { dia, esperado } = await sembrarDiasSumados(page);
   await page.reload();
-  const obj = page.locator('section.objetivo');
+  const obj = page.locator('.hoy .objetivo');
   await obj.waitFor({ timeout: 30_000 });
   await esperarCalma(page, 15_000);
   const hechos = async () => Number(await obj.getAttribute('data-hechos'));
   if ((await hechos()) !== esperado) await fallo('no suma', `El objetivo de hoy dice ${await hechos()} y dos dispositivos llevan ${esperado}.`);
   if (!(await obj.evaluate((e) => e.classList.contains('cumplido')))) await fallo('no cumplido', `Con ${esperado} pasos (objetivo 3), el objetivo de hoy no sale cumplido.`);
-  const racha = Number(await page.locator('section.racha').getAttribute('data-racha').catch(() => '0'));
+  const racha = Number(await page.locator('.hoy .racha').getAttribute('data-racha').catch(() => '0'));
   if (racha < 1) await fallo('sin racha', 'Con el objetivo de hoy cumplido entre dos dispositivos, la racha es 0.');
   await recogerYComprobar(page, reg, { tactil: reg.perfil.tactil, completa: true, accesibilidad: true });
   // one step here: the total grows by one, kept in this device's own record
   reg.ruta = 'actividad: un paso aquí';
-  await page.goto('/#/leccion/cap01/sec-1.1');
+  // (2.1 close-out: since 1.2 the section opens its hand-made lesson, whose first card waits for an answer: the classic one)
+  await page.goto('/#/leccion/cap01/sec-1.1/clasica');
   const c = page.locator('[data-continuar]').first();
   await c.waitFor({ timeout: 30_000 });
   await esperarCalma(page, 15_000);
@@ -573,7 +574,7 @@ test('actividad del día: la suma de dos dispositivos y un paso dado aquí', asy
   await page.waitForTimeout(1500);
   await page.goto('/#/');
   await obj.waitFor({ timeout: 30_000 });
-  await page.waitForFunction((n) => Number(document.querySelector('section.objetivo')?.getAttribute('data-hechos')) > n, esperado, { timeout: 15_000, polling: 250 }).catch(() => {});
+  await page.waitForFunction((n) => Number(document.querySelector('.hoy .objetivo')?.getAttribute('data-hechos')) > n, esperado, { timeout: 15_000, polling: 250 }).catch(() => {});
   if ((await hechos()) !== esperado + 1) await fallo('paso no suma', `Tras un paso de lección aquí, el objetivo dice ${await hechos()} (se esperaba ${esperado + 1}).`);
   const propios = await page.evaluate((d) => Object.keys(JSON.parse(localStorage.getItem('epa:progreso-diario') ?? '{}') as object).filter((k) => k.startsWith(`${d}@`) && !/@q[ab]{11}$/.test(k)), dia);
   if (!propios.length) await fallo('sin registro propio', 'El paso dado aquí no queda en un registro propio de este dispositivo.');
