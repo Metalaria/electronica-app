@@ -389,7 +389,19 @@ test('los dos canales a la vez: CH1 sin señal y CH2 saturado', () => {
   expect(f).not.toBeNull();
   expect(Math.abs(f! - 1000)).toBeLessThan(10);
   expect(c2!.ajustes.canales[1].voltiosDiv).toBeCloseTo(0.01, 12);
-  expect(c2!.ajustes.canales[1].comprobado).toBe(false);
+  // CH2 with the probe setting at X1: checked on the unit on 2026-11-25
+  expect(c2!.ajustes.canales[1].comprobado).toBe(true);
+});
+
+test('la escala de CH2 está comprobada con la sonda en X1; con X10, todavía no', () => {
+  const con = (sondaCh1: number, sondaCh2: number) => {
+    const b = deHex(MEMORIA.osciloscopioEnMarcha);
+    b[6] = sondaCh1;
+    b[7] = sondaCh2;
+    return leerAjustes(b)!.canales;
+  };
+  expect(con(0, 0).map((c) => [c.sonda, c.comprobado])).toEqual([[1, true], [1, true]]);
+  expect(con(1, 1).map((c) => [c.sonda, c.comprobado])).toEqual([[10, true], [10, false]]);
 });
 
 test('un registro al que le falta un informe se descarta entero', () => {
@@ -464,13 +476,24 @@ test('los ajustes del generador, como los enseña su pantalla', () => {
   expect(decodificarGenerador(deHex(MEMORIA.generadorCuadrada))).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 15000, ciclo: 50, amplitud: 3 });
   expect(decodificarGenerador(deHex(MEMORIA.generadorOndaCompleta))).toEqual({ forma: 4, nombre: 'Onda completa', rotulo: 'Full Wave', frecuencia: 35000, ciclo: 50, amplitud: 2 });
   expect(decodificarGenerador(deHex(MEMORIA.generadorSierra))).toMatchObject({ forma: 2, nombre: 'Diente de sierra', frecuencia: 50000, amplitud: 2 });
-  // an entry of the menu not seen named yet: its place, no name
+  // the last six entries, as the unit's menu names them (2026-11-25)
+  const nombres = [7, 8, 9, 10, 11, 12].map((forma) => {
+    const b = deHex(MEMORIA.generadorCuadrada);
+    b[1] = forma;
+    const g = decodificarGenerador(b)!;
+    return `${g.nombre} (${g.rotulo})`;
+  });
+  expect(nombres).toEqual([
+    'Exponencial creciente (Index Up)', 'Exponencial decreciente (Index Decrease)', 'Continua (Direct Current)',
+    'Multitono (Multi-audio)', 'Pulso sinc (Sink Pulse)', 'Lorentziana (Lorentz waves)',
+  ]);
+  // the first entry of the menu has not been seen named yet: its place, no name
   const otra = deHex(MEMORIA.generadorCuadrada);
-  otra[1] = 9;
-  expect(decodificarGenerador(otra)).toMatchObject({ forma: 9, nombre: null, rotulo: null, frecuencia: 15000 });
+  otra[1] = 0;
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 0, nombre: null, rotulo: null, frecuencia: 15000 });
   // the first byte is not understood and does not matter
   otra[0] = 0;
-  expect(decodificarGenerador(otra)).toMatchObject({ forma: 9 });
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 0 });
   // what cannot be settings is not shown as settings
   otra[1] = 13;
   expect(decodificarGenerador(otra)).toBeNull();

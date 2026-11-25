@@ -213,9 +213,13 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   await expect(page.locator('[data-medidas-fnirsi]')).toHaveCount(0);
   // a waveform whose name has not been seen: its place in the menu
   const otra = bytes(MEMORIA.generadorOndaCompleta);
+  otra[1] = 0;
+  await cambiar(page, { memoria: { '20000f50': otra } });
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: forma n.º 1 de su menú · 35,00 kHz · ciclo 50 % · 2,0 V');
+  // one of the last six, named on the unit on 2026-11-25
   otra[1] = 9;
   await cambiar(page, { memoria: { '20000f50': otra } });
-  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: forma n.º 10 de su menú · 35,00 kHz · ciclo 50 % · 2,0 V');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Continua (Direct Current) · 35,00 kHz · ciclo 50 % · 2,0 V');
   // the instrument goes to the oscilloscope, running: its own measurements next to the trace
   await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
