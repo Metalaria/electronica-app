@@ -36,10 +36,12 @@
 // 1 direct, 0 alternating (the trace dropped to straddle zero when it was switched). CH2's coupling is presumably
 // byte [1] and was not switched.
 //
-// Not established: the samples-per-division rule below 2 µs or above 2 ms per division (the fastest time bases
-// cannot have 25 real samples per division; at 1 µs a 50 kHz wave leaves too few periods in the record to tell),
-// CH2's coupling and the trigger edge. `tiempoComprobado` and the channel's `comprobado` say what a caller may
-// rely on.
+// And at 1 µs per division: the rising edges of that 50 kHz wave are 500 and 499 samples apart in the two records
+// taken, which is its 20 µs at 40 ns a sample.
+//
+// Not established: the samples-per-division rule below 1 µs or above 2 ms per division (the fastest time bases
+// cannot have 25 real samples per division), CH2's coupling and the trigger edge. `tiempoComprobado` and the
+// channel's `comprobado` say what a caller may rely on.
 
 import { EVT_OSC_CABECERA, EVT_OSC_DATOS, u32 } from './protocolo.ts';
 
@@ -91,7 +93,7 @@ export interface AjustesOsciloscopio {
   /** Seconds per horizontal division, and per sample. */
   tiempoDiv: number;
   periodoMuestra: number;
-  /** The time base is one of those checked on the real unit (2 µs to 2 ms per division). */
+  /** The time base is one of those checked on the real unit (1 µs to 2 ms per division). */
   tiempoComprobado: boolean;
   /** Trigger level as a sample value. */
   nivelDisparo: number;
@@ -119,7 +121,7 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
     canales: [canal(0, v0), canal(1, v1)],
     tiempoDiv: t,
     periodoMuestra: t / MUESTRAS_POR_DIVISION,
-    tiempoComprobado: indice >= 7 && indice <= 16,
+    tiempoComprobado: indice >= 6 && indice <= 16,
     nivelDisparo: 128 + (nivel > 32767 ? nivel - 65536 : nivel),
   };
 }
@@ -212,7 +214,7 @@ export interface MedidasTraza {
 }
 
 /** Positions (in samples, fractional) where the trace rises through `nivel`, with hysteresis `h` against noise. */
-export function subidas(m: Uint8Array, nivel: number, h: number): number[] {
+export function subidas(m: ArrayLike<number>, nivel: number, h: number): number[] {
   const v: number[] = [];
   let abajo = false;
   for (let k = 0; k < m.length; k++) {

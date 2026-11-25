@@ -203,6 +203,112 @@ test('osciloscopio: más medidas y el espectro de la traza, calculados en la apl
   await expect(analisis.locator('[data-aviso-traza]')).toHaveText('Fichero descargado: está en las descargas del navegador.');
 });
 
+test('osciloscopio: el promedio de varias adquisiciones y los cursores sobre la traza, de la aplicación', async ({ page }) => {
+  await limpio(page);
+  await conEnlace(page, { modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(page.locator('[data-trazas-fnirsi]')).toHaveAttribute('data-trazas-fnirsi', '1');
+  // not averaging until asked: nothing said about it
+  await expect(panel.locator('[data-promedio-estado]')).toHaveCount(0);
+  await panel.locator('[data-promedio-fnirsi]').selectOption('4');
+  await expect(panel.locator('[data-promedio-estado]')).toContainText('CH1: promedio de 4 adquisiciones.');
+  await expect(panel.locator('[data-promedio-estado]')).toContainText('Lo hace la aplicación');
+  // the trace is still drawn, and the line of the channel is still the last acquisition's
+  await expect(page.locator('[data-trazas-fnirsi] polyline')).toHaveAttribute('points', /\d/);
+  await expect(page.locator('[data-canal-fnirsi="1"]')).toContainText(/Vpp 3,0\d V/);
+  // the analysis works on the average, and says so
+  await panel.locator('[data-analisis-fnirsi] summary').click();
+  const ch1 = panel.locator('[data-analisis-canal="1"]');
+  await expect(ch1.locator('[data-analisis-promedio]')).toHaveText('Sobre el promedio de 4 adquisiciones: 24 divisiones alrededor del disparo.');
+  await expect(ch1.locator('[data-medidas-ampliadas]')).toContainText(/Ciclo de trabajo(49|50),\d %/);
+  await expect(ch1.locator('[data-tonos-fnirsi]')).toContainText(/Fundamental: 1,00\d kHz|Fundamental: 999,\d Hz/);
+  await expect(ch1.getByRole('button', { name: 'Guardar el promedio de CH1 (CSV)' })).toBeVisible();
+  // the cursors: off until asked for
+  const cursores = panel.locator('[data-cursores-fnirsi]');
+  await expect(page.locator('[data-linea-cursor]')).toHaveCount(0);
+  await cursores.getByLabel('Cursores').check();
+  await expect(page.locator('[data-linea-cursor]')).toHaveCount(4);
+  // 125 samples of 8 µs apart: one period of the 1 kHz wave; and 50 counts, two divisions of 500 mV
+  await cursores.locator('[data-cursor="t1"]').fill('25');
+  await cursores.locator('[data-cursor="t2"]').fill('150');
+  await cursores.locator('[data-cursor="v1"]').fill('103');
+  await cursores.locator('[data-cursor="v2"]').fill('153');
+  await expect(cursores.locator('[data-cursores-tiempo]')).toHaveText('De T1 a T2: 1,000 ms · su inverso: 1,000 kHz');
+  await expect(cursores.locator('[data-cursores-canal="1"]')).toContainText('CH1: de V1 a V2, 1,00 V');
+  await expect(cursores.locator('[data-cursores-canal="1"]')).toContainText(/la traza vale .+ V en T1 y .+ V en T2/);
+  await expect(page.locator('[data-linea-cursor="T2"]')).toHaveAttribute('x1', '150');
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (promedio y cursores)');
+  // the two cursors on the same sample: no inverse to give
+  await cursores.locator('[data-cursor="t2"]').fill('25');
+  await expect(cursores.locator('[data-cursores-tiempo]')).toHaveText('De T1 a T2: 0 s · su inverso: —');
+  // and back to each record as it arrives
+  await panel.locator('[data-promedio-fnirsi]').selectOption('1');
+  await expect(panel.locator('[data-promedio-estado]')).toHaveCount(0);
+  await expect(ch1.locator('[data-analisis-promedio]')).toHaveCount(0);
+  await expect(ch1.getByRole('button', { name: 'Guardar la traza de CH1 (CSV)' })).toBeVisible();
+});
+
+test('multímetro: lectura relativa y límites con aviso, de la aplicación', async ({ page }) => {
+  await limpio(page);
+  await conEnlace(page, { modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓');
+  const extras = panel.locator('[data-extras-multimetro]');
+  await extras.locator('summary').click();
+  await expect(extras.locator('[data-relativo-fnirsi]')).toHaveCount(0);
+  // the 9,201 V of the battery as zero
+  await extras.getByRole('button', { name: 'Tomar esta lectura como cero' }).click();
+  await expect(extras.locator('[data-relativo-fnirsi]')).toHaveText(/^Relativo: 0[,0]* V \(0 %\) respecto a 9,201 V$/);
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.vdcCero!)] });
+  await expect(extras.locator('[data-relativo-fnirsi]')).toHaveText('Relativo: −9,201 V (−100 %) respecto a 9,201 V');
+  // the instrument goes to another unit: nothing to subtract, and it says why
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.ohm10k!)] });
+  await expect(extras.locator('[data-relativo-fnirsi]')).toHaveText('El cero se tomó en V y ahora el aparato mide Ω: no hay diferencia que dar.');
+  await extras.getByRole('button', { name: 'Quitar el cero' }).click();
+  await expect(extras.locator('[data-relativo-fnirsi]')).toHaveCount(0);
+  // limits: the battery inside them, the shorted probes under the minimum
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.pila9V!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓');
+  await extras.locator('[data-limite="minimo"]').fill('9');
+  await extras.locator('[data-limite="maximo"]').fill('9,5');
+  await extras.getByRole('button', { name: 'Vigilar' }).click();
+  const alarma = extras.locator('[data-alarma-fnirsi]');
+  await expect(alarma).toHaveText('Dentro de los límites (de 9,000 V a 9,500 V).');
+  await expect(alarma).toHaveAttribute('data-alarma-fnirsi', 'dentro');
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.vdcCero!)] });
+  await expect(alarma).toHaveText('Por debajo del mínimo (9,000 V). Ha salido de los límites 1 vez.');
+  await expect(alarma).toHaveAttribute('data-alarma-fnirsi', 'bajo');
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (relativo y límites)');
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.pila9V!)] });
+  await expect(alarma).toHaveText('Dentro de los límites (de 9,000 V a 9,500 V). Ha salido de los límites 1 vez.');
+  // another unit: in suspense, not an alarm
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.ohm10k!)] });
+  await expect(alarma).toHaveText('Los límites se fijaron en V y ahora el aparato mide Ω: en suspenso. Ha salido de los límites 1 vez.');
+  await cambiar(page, { eventos: [deHex(MULTIMETRO.pila9V!)] });
+  await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓');
+  // what cannot be a limit is said, and the limits in force stay
+  await extras.locator('[data-limite="minimo"]').fill('abc');
+  await extras.getByRole('button', { name: 'Vigilar' }).click();
+  await expect(extras.locator('[data-error-limites]')).toContainText('No se entiende «abc»');
+  await extras.locator('[data-limite="minimo"]').fill('10');
+  await extras.locator('[data-limite="maximo"]').fill('9');
+  await extras.getByRole('button', { name: 'Vigilar' }).click();
+  await expect(extras.locator('[data-error-limites]')).toHaveText('El mínimo es mayor que el máximo.');
+  await expect(alarma).toContainText('de 9,000 V a 9,500 V');
+  // one side only, written with a prefix: 9500 mV, over the battery's 9,201 V
+  await extras.locator('[data-limite="minimo"]').fill('9500 mV');
+  await extras.locator('[data-limite="maximo"]').fill('');
+  await extras.getByRole('button', { name: 'Vigilar' }).click();
+  await expect(extras.locator('[data-error-limites]')).toHaveCount(0);
+  await expect(alarma).toHaveText('Por debajo del mínimo (9,500 V). Ha salido de los límites 1 vez.');
+  await extras.getByRole('button', { name: 'Quitar los límites' }).click();
+  await expect(alarma).toHaveCount(0);
+});
+
 test('el FNIRSI cambia de modo: el enlace se va un momento y la conexión lo retoma sola', async ({ page }) => {
   await limpio(page);
   await conEnlace(page, { modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true });
@@ -252,11 +358,11 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   const otra = bytes(MEMORIA.generadorOndaCompleta);
   otra[1] = 0;
   await cambiar(page, { memoria: { '20000f50': otra } });
-  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: forma n.º 1 de su menú · 35,00 kHz · ciclo 50 % · 2,0 V');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Senoidal (Sine Wave) · 35,00 kHz · ciclo 50 % · 2,0 V');
   // one of the last six, named on the unit on 2026-11-25
   otra[1] = 9;
   await cambiar(page, { memoria: { '20000f50': otra } });
-  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Continua (Direct Current) · 35,00 kHz · ciclo 50 % · 2,0 V');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Continua (Direct current) · 35,00 kHz · ciclo 50 % · 2,0 V');
   // the instrument goes to the oscilloscope, running: its own measurements next to the trace
   await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
@@ -340,7 +446,7 @@ test('un enlace con el flujo de estado (parche 3) lo envía él: lo mismo en pan
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
   await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true } as Partial<Falso>);
   await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓', { timeout: 10_000 });
-  await panel.locator('summary').click();
+  await panel.locator('details.fr-diag > summary').click();
   await expect(page.locator('[data-enlace-fnirsi]')).toHaveText('Enlace: protocolo 1, parche 3 · envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP');
   const f = await falso(page);
   expect(f.suscripciones).toEqual([7, 7, 7]);

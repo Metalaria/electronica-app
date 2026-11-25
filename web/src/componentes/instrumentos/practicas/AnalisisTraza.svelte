@@ -5,12 +5,20 @@
   // nothing is asked of the instrument, which the link only reads.
   // Closed by default, and it does nothing while closed. Open, it takes the traces twice a second: figures that
   // changed with every acquisition (some thirty a second) could not be read.
-  import { ARMONICOS, PUNTOS_ESPECTRO, csvTraza, espectro, medirAmpliado, type Espectro } from '../../../lib/fnirsi-real/analisis';
+  import { ARMONICOS, PUNTOS_ESPECTRO, csvTraza, espectro, medirAmpliado, type Analizable, type Espectro } from '../../../lib/fnirsi-real/analisis';
   import type { Traza } from '../../../lib/fnirsi-real/osciloscopio';
+  import type { TrazaPromediada } from '../../../lib/fnirsi-real/promedio';
   import { CANCELADO, guardarFichero } from '../../../lib/sincronizacion/fichero';
   import { formatoSI } from '../../grafica/formato';
 
-  let { trazas }: { trazas: Traza[] } = $props();
+  let {
+    trazas,
+    promedios = [null, null],
+  }: {
+    trazas: Traza[];
+    /** By channel: the average of its last acquisitions when the panel is averaging (it is then what is analysed). */
+    promedios?: (TrazaPromediada | null)[];
+  } = $props();
 
   const REFRESCO_MS = 500;
   const ANCHO = 300;
@@ -22,14 +30,14 @@
   const DISTORSION_MINIMA = 1.5;
 
   let abierto = $state(false);
-  let foto = $state.raw<Traza[]>([]);
+  let foto = $state.raw<{ t: Traza; p: TrazaPromediada | null }[]>([]);
   let aviso = $state('');
   let avisoError = $state(false);
 
   // (the newest traces, kept outside the reactive graph so that the timer below does not restart with each one)
-  let ultimas: Traza[] = [];
+  let ultimas: { t: Traza; p: TrazaPromediada | null }[] = [];
   $effect(() => {
-    ultimas = trazas;
+    ultimas = trazas.map((t) => ({ t, p: promedios[t.canal] ?? null }));
   });
   $effect(() => {
     if (!abierto) return;
@@ -38,7 +46,12 @@
     return () => clearInterval(id);
   });
 
-  const analisis = $derived(foto.map((t) => ({ t, m: medirAmpliado(t), e: espectro(t) })));
+  const analisis = $derived(
+    foto.map(({ t, p }) => {
+      const fuente: Analizable = p ?? t;
+      return { t, p, fuente, m: medirAmpliado(fuente), e: espectro(fuente) };
+    }),
+  );
 
   const numero = (v: number, decimales: number) => v.toLocaleString('es-ES', { minimumFractionDigits: decimales, maximumFractionDigits: decimales }).replace('-', '−');
   const tiempo = (v: number | null, limitado: boolean) => (v === null ? '—' : `${limitado ? '≤ ' : ''}${formatoSI(v, 's', 3)}`);
@@ -66,9 +79,8 @@
   }
 
   function textoTonos(e: Espectro): string {
-    if (e.pocosPeriodos) return 'El registro tiene pocos periodos para separar el fundamental de sus armónicos: ponga una base de tiempos más lenta.';
     const f = e.tonos[0];
-    if (!f) return 'Sin una onda periódica en el registro no hay armónicos que dar.';
+    if (!f) return 'Sin dos periodos enteros de una onda en el registro no hay armónicos que dar.';
     let s = `Fundamental: ${formatoSI(f.frecuencia, 'Hz', 4)}, ${formatoSI(f.eficaz, 'V', 3)} eficaces.`;
     const arm = e.tonos.slice(1, 5);
     if (arm.length) s += ` Armónicos respecto a él: ${arm.map((x) => `${x.orden}.º ${relativo(x.eficaz, f.eficaz)}`).join(' · ')}.`;
@@ -88,11 +100,11 @@
     return `${base}-${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}-${dos(d.getHours())}${dos(d.getMinutes())}${dos(d.getSeconds())}.csv`;
   }
 
-  async function guardar(t: Traza) {
+  async function guardar(t: Analizable, promedio: boolean) {
     aviso = '';
     avisoError = false;
     try {
-      const hecho = await guardarFichero(nombreFichero(`traza-fnirsi-ch${t.canal + 1}`), csvTraza(t), 'text/csv;charset=utf-8', ['Datos (CSV)', ['csv']]);
+      const hecho = await guardarFichero(nombreFichero(`${promedio ? 'promedio' : 'traza'}-fnirsi-ch${t.canal + 1}`), csvTraza(t), 'text/csv;charset=utf-8', ['Datos (CSV)', ['csv']]);
       if (hecho !== CANCELADO) aviso = hecho === 'guardado' ? 'Fichero guardado.' : 'Fichero descargado: está en las descargas del navegador.';
     } catch (e) {
       avisoError = true;
@@ -104,10 +116,11 @@
 <details class="an" bind:open={abierto} data-analisis-fnirsi>
   <summary>Más medidas y espectro</summary>
   <p class="an-nota">Calculado en la aplicación a partir del registro que envía el FNIRSI; al aparato no se le pide ni se le cambia nada.</p>
-  {#each analisis as { t, m, e } (t.canal)}
+  {#each analisis as { t, p, fuente, m, e } (t.canal)}
     {@const ch = `CH${t.canal + 1}`}
     <section class="an-canal" aria-label={`Análisis de ${ch}`} data-analisis-canal={t.canal + 1}>
       <p class="an-titulo"><span class="an-marca" style:background={COLOR[t.canal]}></span><strong>{ch}</strong></p>
+      {#if p}<p class="an-nota" data-analisis-promedio>Sobre el promedio de {p.adquisiciones} {p.adquisiciones === 1 ? 'adquisición' : 'adquisiciones'}: 24 divisiones alrededor del disparo.</p>{/if}
       <dl data-medidas-ampliadas>
         <div><dt>Media</dt><dd>{formatoSI(m.media, 'V', 3)}</dd></div>
         <div><dt>Valor eficaz</dt><dd>{formatoSI(m.eficaz, 'V', 3)}</dd></div>
@@ -118,7 +131,7 @@
         <div><dt>Bajada (90 % a 10 %)</dt><dd>{tiempo(m.bajada, m.flancoLimitado)}</dd></div>
       </dl>
       <p class="an-nota">
-        {m.periodos ? `Media y valor eficaz sobre ${m.periodos} ${m.periodos === 1 ? 'periodo entero' : 'periodos enteros'}.` : 'Media y valor eficaz sobre todo el registro: no hay un periodo entero en él.'}
+        {m.periodos ? `Media y valor eficaz sobre ${m.periodos} ${m.periodos === 1 ? 'periodo entero' : 'periodos enteros'}.` : 'Media y valor eficaz sobre todas las muestras: no hay un periodo entero en ellas.'}
         {#if m.flancoLimitado}Los flancos son más rápidos de lo que resuelve esta base de tiempos: el tiempo que se da es un máximo.{/if}
       </p>
       {#if t.ajustes.canales[t.canal].acoplamiento === 'CA'}<p class="an-nota" data-acoplamiento-fnirsi>{ch} está en CA: la media y los valores máximo y mínimo no incluyen la componente continua de la señal.</p>{/if}
@@ -130,7 +143,7 @@
       </svg>
       <p class="an-nota">Espectro de 0 a {formatoSI((puntosDibujados(e) - 1) * e.resolucion, 'Hz', 3)}; de arriba abajo, 60 dB bajo su punto más alto (una línea cada 20 dB).</p>
       <p data-tonos-fnirsi>{textoTonos(e)}</p>
-      <button type="button" class="boton pequeno" onclick={() => void guardar(t)} data-guardar-traza={t.canal + 1}>Guardar la traza de {ch} (CSV)</button>
+      <button type="button" class="boton pequeno" onclick={() => void guardar(fuente, !!p)} data-guardar-traza={t.canal + 1}>Guardar {p ? 'el promedio' : 'la traza'} de {ch} (CSV)</button>
     </section>
   {/each}
   {#if aviso}<p class={avisoError ? 'an-aviso' : 'an-nota'} role="status" data-aviso-traza>{aviso}</p>{/if}

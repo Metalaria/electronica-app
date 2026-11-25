@@ -50,7 +50,6 @@ test('el espectro de ese seno: un solo tono, con su valor eficaz, y una distorsi
   expect(e.amplitudes.length).toBe(PUNTOS_ESPECTRO);
   // 1024 points of 8 µs: 122 Hz between one and the next
   expect(e.resolucion).toBeCloseTo(1 / (1024 * PASO), 6);
-  expect(e.pocosPeriodos).toBe(false);
   expect(e.tonos.length).toBe(ARMONICOS);
   expect(e.tonos[0]!.orden).toBe(1);
   expect(e.tonos[0]!.frecuencia / 1000).toBeCloseTo(1, 2);
@@ -113,14 +112,28 @@ test('flancos de 20 muestras: 16 muestras del 10 % al 90 %, y no se dan por limi
   expect(m.flancoLimitado).toBe(false);
 });
 
-test('pocos periodos en el registro: hay frecuencia, pero el espectro no da tonos y lo dice', () => {
-  // 400 Hz: 312 samples to a period, three periods in the record and three points of the spectrum to the fundamental
+test('con tres periodos en el registro ya hay tonos; con menos de dos periodos enteros, no', () => {
+  // 400 Hz: 312 samples to a period, three periods in the record
   const t = traza((k) => 128 + 50 * Math.sin((2 * Math.PI * (k + 3)) / 312.5));
   expect(medirAmpliado(t).frecuencia! / 400).toBeCloseTo(1, 1);
   const e = espectro(t);
-  expect(e.pocosPeriodos).toBe(true);
-  expect(e.tonos).toEqual([]);
-  expect(e.distorsion).toBeNull();
+  expect(e.tonos.length).toBe(ARMONICOS);
+  expect(e.tonos[0]!.frecuencia / 400).toBeCloseTo(1, 1);
+  expect(e.tonos[0]!.eficaz / 0.0707).toBeGreaterThan(0.98);
+  expect(e.tonos[0]!.eficaz / 0.0707).toBeLessThan(1.02);
+  expect(e.distorsion!).toBeLessThan(2);
+  // 150 Hz: 833 samples to a period, one whole period at most
+  const lenta = espectro(traza((k) => 128 + 50 * Math.sin((2 * Math.PI * (k + 3)) / 833)));
+  expect(lenta.tonos).toEqual([]);
+  expect(lenta.distorsion).toBeNull();
+});
+
+test('a 25 muestras por periodo solo caben los armónicos que la base de tiempos deja ver', () => {
+  // 5 kHz at 8 µs per sample: the tenth harmonic would have 2,5 samples to a period, the limit
+  const e = espectro(traza((k) => ((k + 3) % 25 < 12.5 ? 178 : 78)));
+  expect(e.tonos.length).toBeGreaterThanOrEqual(5);
+  expect(e.tonos.length).toBeLessThanOrEqual(ARMONICOS);
+  expect(e.tonos[0]!.frecuencia / 5000).toBeCloseTo(1, 1);
 });
 
 test('una traza plana: ni frecuencia, ni ciclo, ni flancos, ni tonos', () => {
@@ -136,7 +149,6 @@ test('una traza plana: ni frecuencia, ni ciclo, ni flancos, ni tonos', () => {
   const e = espectro(t);
   expect(e.tonos).toEqual([]);
   expect(e.distorsion).toBeNull();
-  expect(e.pocosPeriodos).toBe(false);
 });
 
 test('un registro del aparato de verdad (la cuadrada de 1 kHz de su generador)', () => {
