@@ -56,7 +56,18 @@ const FORMAS: Record<number, { nombre: string; rotulo: string }> = {
   11: { nombre: 'Pulso sinc', rotulo: 'Sink Pulse' },
   12: { nombre: 'Lorentziana', rotulo: 'Lorentz waves' },
 };
-const ULTIMA_FORMA = 12;
+/**
+ * The last index that can be a waveform: the firmware's own list ends at 12, and a link from patch 5 on may add up
+ * to eight entries after it (github.com/Metalaria/fnirsi-2c53t-link, `--menu-wave`). Those have no name here: the
+ * card gives their place in the menu.
+ */
+const ULTIMA_FORMA = 12 + 8;
+
+/** A waveform of the instrument's menu as the card names it: «Cuadrada (Square Wave)». */
+export function nombreForma(forma: number): string {
+  const f = FORMAS[forma];
+  return f ? `${f.nombre} (${f.rotulo})` : `la forma n.º ${forma + 1} de su menú`;
+}
 
 export interface AjustesGenerador {
   /** Place of the waveform in the instrument's menu (0 to 12). */

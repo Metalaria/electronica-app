@@ -38,6 +38,7 @@ import {
   FLUJO_OSCILOSCOPIO,
   ORDEN_INFO,
   ORDEN_LEER,
+  ORDEN_ONDA,
   ORDEN_SUSCRIBIR,
   PROTOCOLO,
   leerEstado,
@@ -45,12 +46,15 @@ import {
   partir,
   peticion,
   peticionLeer,
+  peticionOnda,
   respuestaA,
   respuestaLeer,
+  respuestaOnda,
   type InfoEnlace,
   type ModoFnirsi,
 } from './protocolo.ts';
 import { transporteFnirsiDisponible, type TransporteFnirsi } from './transporte.ts';
+import { DIR_TABLA_ONDA, MUESTRAS_POR_PETICION, PUNTOS_ONDA, guardadas, muestrasValidas } from './ondas.ts';
 
 export type EstadoFnirsi = 'desconectado' | 'conectando' | 'conectado' | 'reconectando' | 'error';
 
@@ -73,6 +77,20 @@ const CONSULTA_CADUCA_MS = 2000;
 const ESTADO_CALLADO_MS = 2000;
 
 const pausa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** What a stored waveform leaves to tell: the amplitude the instrument scaled it by and the waveform it goes back to. */
+export interface OndaEnviada {
+  /** Volts. */
+  amplitud: number;
+  /** Position of the instrument's own waveform in its menu (estado.ts names it). */
+  forma: number;
+}
+
+/** Why the installed app cannot send a waveform yet (the card says it too). */
+export const ONDA_SOLO_NAVEGADOR =
+  'Desde la aplicación instalada todavía no se puede enviar una onda: su conector USB solo deja pasar al FNIRSI las órdenes de identificación y de suscripción. Se puede desde Chrome o Edge en un ordenador.';
+
+const SIN_CONEXION_ONDA = 'Se ha perdido la conexión con el FNIRSI mientras se enviaba la onda: no se sabe cuánta ha llegado. Vuelva a enviarla.';
 
 function texto(e: unknown, defecto: string): string {
   const m = e instanceof Error ? e.message : typeof e === 'string' ? e : '';
@@ -116,6 +134,10 @@ export class ConexionFnirsi {
   /** The session is subscribed to the status stream, and when its last block arrived (or the session started). */
   private conEstado = false;
   private horaEstado = 0;
+  /** Requests made outside the session's start, waiting for their response among the stream's reports. */
+  private esperadas = new Map<number, { orden: number; resolver: (informe: Uint8Array) => void; rechazar: (e: Error) => void; hasta: number }>();
+  /** A waveform is being sent (one at a time). */
+  enviandoOnda = $state(false);
 
   constructor(t: TransporteFnirsi | null = transporteFnirsiDisponible()) {
     this.t = t;
@@ -177,6 +199,84 @@ export class ConexionFnirsi {
     this.proximaConsulta = 0;
     this.sinLectura = false;
     this.ensamblador.reiniciar();
+    for (const e of this.esperadas.values()) e.rechazar(new Error(SIN_CONEXION_ONDA));
+    this.esperadas.clear();
+  }
+
+  /** Sends a request while the stream flows; its response is picked up by the reading loop. */
+  private preguntar(orden: number, hacer: (secuencia: number) => Uint8Array): Promise<{ secuencia: number; informe: Uint8Array }> {
+    const secuencia = (this.secuencia = (this.secuencia + 1) & 0xff);
+    return new Promise((resolver, rechazar) => {
+      this.esperadas.set(secuencia, { orden, resolver: (informe) => resolver({ secuencia, informe }), rechazar, hasta: Date.now() + RESPUESTA_MS });
+      this.t!.enviar(hacer(secuencia)).catch((e: unknown) => {
+        if (this.esperadas.delete(secuencia)) rechazar(new Error(texto(e, SIN_CONEXION_ONDA)));
+      });
+    });
+  }
+
+  /** The response to a request made with `preguntar`: true when `informe` was one. */
+  private atenderEsperada(informe: Uint8Array): boolean {
+    const e = this.esperadas.get(informe[1] ?? 0);
+    if (!e || informe[0] !== ((e.orden | 0x80) & 0xff)) return false;
+    this.esperadas.delete(informe[1] ?? 0);
+    e.resolver(informe.slice());
+    return true;
+  }
+
+  private caducarEsperadas(): void {
+    const ahora = Date.now();
+    for (const [sec, e] of this.esperadas)
+      if (e.hasta < ahora) {
+        this.esperadas.delete(sec);
+        e.rechazar(new Error('El FNIRSI no ha respondido a tiempo al envío de la onda. Vuelva a enviarla.'));
+      }
+  }
+
+  /**
+   * Stores one period (100 samples from 0 to 4094, lib/fnirsi-real/ondas.ts) in the table the instrument's signal
+   * generator plays, and reads the table back to check it. It is the only thing this application writes in the
+   * instrument, and it takes a link with patch 4.
+   */
+  async enviarOnda(muestras: ArrayLike<number>): Promise<OndaEnviada> {
+    if (!this.t || this.estado !== 'conectado') throw new Error('El FNIRSI no está conectado.');
+    if (!this.info?.ondasAMedida)
+      throw new Error(`El enlace de este FNIRSI (parche ${this.info?.parche ?? '?'}) no admite ondas a medida: hace falta el parche 4.`);
+    // (the installed app's USB plugin only lets the identification and the subscription through, by design)
+    if (this.t.tipo === 'nativo') throw new Error(ONDA_SOLO_NAVEGADOR);
+    if (!muestrasValidas(muestras)) throw new Error(`Una onda son ${PUNTOS_ONDA} muestras enteras de 0 a 4094.`);
+    if (this.enviandoOnda) throw new Error('Ya se está enviando una onda.');
+    const m = Array.from(muestras);
+    this.enviandoOnda = true;
+    try {
+      let dicho: { amplitud: number; forma: number } | null = null;
+      for (let primera = 0; primera < PUNTOS_ONDA; primera += MUESTRAS_POR_PETICION) {
+        const trozo = m.slice(primera, primera + MUESTRAS_POR_PETICION);
+        const { secuencia, informe } = await this.preguntar(ORDEN_ONDA, (sec) => peticionOnda(sec, primera, trozo));
+        const r = respuestaOnda(informe, secuencia, primera);
+        if (!r || r === 'rechazada') throw new Error('El FNIRSI ha rechazado la onda: su firmware con el enlace no es el que esta versión espera.');
+        if (dicho && (dicho.amplitud !== r.amplitud || dicho.forma !== r.forma))
+          throw new Error('Se ha cambiado un ajuste del generador en el FNIRSI mientras se enviaba la onda. Vuelva a enviarla.');
+        dicho = r;
+      }
+      // Read back: what is in the table must be what was sent, scaled by the amplitude the link reported.
+      const leida: number[] = [];
+      for (let desde = 0; desde < 2 * PUNTOS_ONDA; desde += 56) {
+        const largo = Math.min(56, 2 * PUNTOS_ONDA - desde);
+        const { secuencia, informe } = await this.preguntar(ORDEN_LEER, (sec) => peticionLeer(sec, DIR_TABLA_ONDA + desde, largo));
+        const bytes = respuestaLeer(informe, secuencia, DIR_TABLA_ONDA + desde, largo);
+        if (!bytes || bytes === 'rechazada') throw new Error('El FNIRSI no ha dejado leer la tabla de su generador para comprobar la onda.');
+        leida.push(...bytes);
+      }
+      const quiere = guardadas(m, dicho!.amplitud);
+      const distintas = quiere.filter((x, k) => x !== ((leida[2 * k] ?? 0) | ((leida[2 * k + 1] ?? 0) << 8))).length;
+      if (distintas)
+        throw new Error(
+          `La tabla del generador no coincide con la onda enviada en ${distintas} de ${PUNTOS_ONDA} muestras: puede que se haya tocado un ajuste del generador entretanto. Vuelva a enviarla.`,
+        );
+      return { amplitud: dicho!.amplitud / 10, forma: dicho!.forma };
+    } finally {
+      this.enviandoOnda = false;
+    }
   }
 
   private async cerrarCallado(): Promise<void> {
@@ -282,7 +382,7 @@ export class ConexionFnirsi {
 
   /** One report of the stream. */
   private atender(informe: Uint8Array, nuevas?: [Traza | null, Traza | null]): void {
-    if (this.atenderLectura(informe) || this.atenderEstado(informe)) return;
+    if (this.atenderEsperada(informe) || this.atenderLectura(informe) || this.atenderEstado(informe)) return;
     if (esTramaMultimetro(informe)) {
       try {
         this.multimetro = decodificarMultimetro(informe);
@@ -312,6 +412,7 @@ export class ConexionFnirsi {
         continue;
       }
       if (v !== this.vuelta) return;
+      this.caducarEsperadas();
       const nuevas: [Traza | null, Traza | null] = [null, null];
       const antes = this.horaMultimetro;
       for (const informe of partir(bytes)) {

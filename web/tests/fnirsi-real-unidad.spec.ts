@@ -510,7 +510,10 @@ test('los ajustes del generador, como los enseña su pantalla', () => {
   otra[0] = 0;
   expect(decodificarGenerador(otra)).toMatchObject({ forma: 0 });
   // what cannot be settings is not shown as settings
-  otra[1] = 13;
+  // an entry a link with patch 5 added after the firmware's thirteen: settings, without a name
+  otra[1] = 14;
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 14, nombre: null, rotulo: null, frecuencia: 15000 });
+  otra[1] = 21;
   expect(decodificarGenerador(otra)).toBeNull();
   expect(decodificarGenerador(new Uint8Array(10))).toBeNull();
   expect(decodificarGenerador(new Uint8Array(4))).toBeNull();

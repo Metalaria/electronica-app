@@ -18,6 +18,7 @@
   import AnalisisTraza from './AnalisisTraza.svelte';
   import CursoresTraza from './CursoresTraza.svelte';
   import ExtrasMultimetro from './ExtrasMultimetro.svelte';
+  import OndaGenerador from './OndaGenerador.svelte';
   import type { Cursores } from '../../../lib/fnirsi-real/cursores';
   import { ANCHO_PROMEDIO, Promediador, type TrazaPromediada } from '../../../lib/fnirsi-real/promedio';
 
@@ -246,13 +247,14 @@
     {#if enOsciloscopio && c.enMarcha === false}<p class="fr-tenue" data-marcha-fnirsi>Osciloscopio en STOP: la traza y las medidas son las de la última adquisición.</p>{/if}
     {#if medidas}<p class="fr-tenue" data-medidas-fnirsi>{medidas}</p>{/if}
     {#if generador}<p class="fr-tenue" data-generador-fnirsi>{generador}</p>{/if}
+    {#if (c.estado === 'conectado' || c.estado === 'reconectando') && c.info?.ondasAMedida}<OndaGenerador />{/if}
     {#if c.estado !== 'desconectado'}
       <details class="fr-diag">
         <summary>Diagnóstico</summary>
         <p>
           Vía: {c.tipo === 'nativo' ? 'la aplicación (USB)' : c.tipo === 'webhid' ? 'WebHID del navegador' : 'prueba'} · modo del FNIRSI: {c.modo} · informes recibidos: {c.informes}{#if c.perdidos} · perdidos: {c.perdidos}{/if}
         </p>
-        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}</p>{/if}
+        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}{c.info.ondasAMedida ? ' · admite ondas a medida en el generador' : ''}</p>{/if}
         {#if c.multimetro}<p class="fr-crudo">Última trama del multímetro: <code data-crudo-fnirsi>{c.multimetro.crudo}</code></p>{/if}
       </details>
     {/if}
