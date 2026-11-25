@@ -19,7 +19,10 @@
 // status stream refuses a mask with its bit). The link answers each request with exactly one response; events may
 // arrive before it. A session starts unsubscribed.
 // Events: 0x90 multimeter frame, 0xA0 oscilloscope record header, 0xA1 oscilloscope record data (see the two
-// decoders), 0xB0 status. The link never writes anything in the instrument.
+// decoders), 0xB0 status. Up to patch 3 the link never writes anything in the instrument. Patch 4 (on the real
+// unit since 2026-11-25) adds order 0x04, which stores samples in the table its signal generator plays and in
+// nothing else ([2] = samples, 1 to 28; [4…7] = position of the first in the table, 0 to 99; from [8] the samples,
+// 16 bits each). A link says it has it with bit 1 of the same byte that announces the status stream. See ondas.ts.
 //
 // The status stream (patch 3 of the link, on the real unit since 2026-11-24) carries what the other two do not:
 // every 100 ms one block of the instrument's memory, taking turns among those of the mode it is in ([2] says
@@ -41,6 +44,7 @@ export const INFORME = 64;
 export const ORDEN_INFO = 0x01;
 export const ORDEN_LEER = 0x02;
 export const ORDEN_SUSCRIBIR = 0x03;
+export const ORDEN_ONDA = 0x04;
 /** Most bytes one report carries after its eight-byte head. */
 export const CARGA_MAXIMA = 56;
 export const FLUJO_MULTIMETRO = 0x01;
@@ -83,6 +87,8 @@ export interface InfoEnlace {
   registrosSaltados: number;
   /** The link has the status stream (patch 3 on). */
   estadoEnFlujo: boolean;
+  /** The link can store a waveform in the generator's table (patch 4 on). */
+  ondasAMedida: boolean;
 }
 
 export function u32(p: ArrayLike<number>, i: number): number {
@@ -104,6 +110,36 @@ export function peticionLeer(secuencia: number, direccion: number, largo: number
   const r = peticion(ORDEN_LEER, secuencia, largo);
   for (let k = 0; k < 4; k++) r[4 + k] = (direccion >>> (8 * k)) & 0xff;
   return r;
+}
+
+/**
+ * A request to store `muestras` (1 to 28 of them, each from 0 to 4094) in the generator's table from position
+ * `primera` on (0 to 99, and the last one inside the table).
+ */
+export function peticionOnda(secuencia: number, primera: number, muestras: ArrayLike<number>): Uint8Array {
+  const n = muestras.length;
+  if (n < 1 || n > 28) throw new Error('Una petición de onda del enlace del FNIRSI lleva de 1 a 28 muestras.');
+  if (!Number.isInteger(primera) || primera < 0 || primera + n > 100) throw new Error('La tabla del generador del FNIRSI tiene 100 posiciones.');
+  const r = peticion(ORDEN_ONDA, secuencia, n);
+  r[4] = primera;
+  for (let k = 0; k < n; k++) {
+    const x = muestras[k]!;
+    if (!Number.isInteger(x) || x < 0 || x > 4094) throw new Error('Una muestra de la onda va de 0 a 4094.');
+    r[8 + 2 * k] = x & 0xff;
+    r[9 + 2 * k] = x >> 8;
+  }
+  return r;
+}
+
+/**
+ * What `informe` is to a waveform request: the amplitude the link scaled by (tenths of a volt) and the waveform the
+ * instrument will go back to, 'rechazada', or null when it is another report.
+ */
+export function respuestaOnda(informe: ArrayLike<number>, secuencia: number, primera: number): { amplitud: number; forma: number } | 'rechazada' | null {
+  const a = respuestaA(informe, ORDEN_ONDA, secuencia);
+  if (!a || u32(informe, 4) !== primera) return null;
+  if (a.estado !== 0 || informe[3] !== 2) return 'rechazada';
+  return { amplitud: informe[8] ?? 0, forma: informe[9] ?? 0 };
 }
 
 /**
@@ -159,6 +195,7 @@ export function leerInfo(informe: ArrayLike<number>): InfoEnlace | null {
     registrosOsciloscopio: largo >= 36 ? u32(informe, 36) : 0,
     registrosSaltados: largo >= 36 ? u32(informe, 40) : 0,
     estadoEnFlujo: largo >= 37 && ((informe[44] ?? 0) & 0x01) !== 0,
+    ondasAMedida: largo >= 37 && ((informe[44] ?? 0) & 0x02) !== 0,
   };
 }
 

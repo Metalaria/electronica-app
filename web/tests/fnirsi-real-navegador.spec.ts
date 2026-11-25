@@ -43,6 +43,9 @@ interface Falso {
   memoria?: Record<string, number[]>;
   lecturas?: number[];
   comoNativo?: boolean;
+  tabla?: number[];
+  ondas?: [number, number][];
+  ondaEstropeada?: boolean;
 }
 
 /** The fake link, installed before the page loads (the transport is chosen once, at start). */
@@ -485,6 +488,89 @@ test('el multímetro no pregunta nada, y un enlace que rechaza las lecturas no s
   expect((await falso(page)).lecturas).toEqual([0x20000f50]);
   await expect(page.locator('[data-generador-fnirsi]')).toHaveCount(0);
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('generador de señales', { timeout: 10_000 });
+});
+
+test('generador: una onda a medida se envía, se comprueba releyéndola y se dice lo que dura (parche 4)', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 4, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  const onda = panel.locator('[data-onda-fnirsi]');
+  await expect(onda).toBeVisible();
+  // closed: nothing prepared, nothing sent
+  await expect(onda.locator('[data-onda-vista]')).toHaveCount(0);
+  await onda.locator('summary').click();
+  await expect(onda).toContainText('Esto sí escribe en el FNIRSI: la tabla de 100 muestras que reproduce su generador, y nada más.');
+  await expect(onda).toContainText('3,0 V, la que tiene puesta ahora');
+  await expect(onda.locator('[data-onda-vista] polyline')).toHaveAttribute('points', /^0\.0,/);
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (onda a medida)');
+  expect((await falso(page)).ondas ?? []).toEqual([]);
+  // a sum of harmonics with a mistake in it, then right
+  await onda.locator('[data-onda-forma]').selectOption('armonicos');
+  await onda.locator('[data-onda-armonicos]').fill('1:1; 40:1');
+  await expect(onda.locator('[data-onda-error-forma]')).toContainText('va de 1 a 25');
+  await expect(onda.locator('[data-onda-enviar]')).toBeDisabled();
+  await onda.locator('[data-onda-armonicos]').fill('1:1; 3:0,33; 5:0,2');
+  await expect(onda.locator('[data-onda-error-forma]')).toHaveCount(0);
+  await onda.locator('[data-onda-enviar]').click();
+  const estado = onda.locator('[data-onda-estado]');
+  await expect(estado).toHaveAttribute('data-onda-estado', 'enviada');
+  await expect(estado).toContainText(/Enviada y comprobada a las \d+:\d+:\d+: suma de armónicos, 100 muestras con una amplitud de 3,0 V\. El aparato sigue mostrando Cuadrada \(Square Wave\)\./);
+  let f = await falso(page);
+  expect(f.ondas).toEqual([[0, 28], [28, 28], [56, 28], [84, 16]]);
+  expect(f.tabla!.length).toBe(100);
+  expect(Math.min(...f.tabla!)).toBe(20);
+  expect(Math.max(...f.tabla!)).toBe(3741);
+  // a pulse with a quarter high, upside down: three quarters of the table at the top
+  await onda.locator('[data-onda-forma]').selectOption('pulso');
+  await onda.locator('[data-onda-ciclo]').fill('25');
+  await onda.locator('[data-onda-invertir]').check();
+  await onda.locator('[data-onda-enviar]').click();
+  await expect(estado).toContainText('pulso, invertida');
+  f = await falso(page);
+  expect(f.tabla!.filter((x) => x === 3741).length).toBe(75);
+  expect(f.tabla!.filter((x) => x === 20).length).toBe(25);
+  // one period from a file with four points
+  await onda.locator('[data-onda-elegir-fichero]').setInputFiles({ name: 'periodo.csv', mimeType: 'text/csv', buffer: Buffer.from('# un periodo\nvoltios\n0\n1\n0\n-1\n') });
+  await expect(onda.locator('[data-onda-fichero]')).toHaveText('Un periodo tomado de «periodo.csv» (4 puntos, llevados a 100).');
+  await expect(onda.locator('[data-onda-forma]')).toBeDisabled();
+  await onda.locator('[data-onda-invertir]').uncheck();
+  await onda.locator('[data-onda-enviar]').click();
+  await expect(estado).toContainText('«periodo.csv»');
+  f = await falso(page);
+  expect([f.tabla![0], f.tabla![25], f.tabla![75]]).toEqual([1880, 3741, 20]);
+  await onda.locator('[data-onda-quitar-fichero]').click();
+  await expect(onda.locator('[data-onda-forma]')).toBeEnabled();
+  await onda.locator('[data-onda-elegir-fichero]').setInputFiles({ name: 'mal.txt', mimeType: 'text/plain', buffer: Buffer.from('1\n2\ntres\n4 x\n') });
+  await expect(onda.locator('[data-onda-error-fichero]')).toContainText('no es un número: «x»');
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (onda enviada)');
+  // a setting of the generator changed on the instrument: its own waveform is back, and it is said
+  await cambiar(page, { memoria: { '20000f50': bytes(MEMORIA.generadorSierra) } });
+  await expect(estado).toHaveAttribute('data-onda-estado', 'deshecha', { timeout: 10_000 });
+  await expect(estado).toContainText('El FNIRSI ha vuelto a su propia onda (Diente de sierra (Sawtooth wave))');
+  // a link that stores something else than what it was sent: the read-back catches it
+  await cambiar(page, { ondaEstropeada: true });
+  await onda.locator('[data-onda-enviar]').click();
+  await expect(onda.locator('[data-onda-error]')).toContainText('no coincide con la onda enviada en 1 de 100 muestras');
+  await expect(estado).toHaveCount(0);
+  await panel.locator('details.fr-diag > summary').click();
+  await expect(page.locator('[data-enlace-fnirsi]')).toContainText('parche 4 · envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP · admite ondas a medida en el generador');
+});
+
+test('un enlace sin el parche 4 no ofrece la onda a medida', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 3, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  await expect(page.locator('[data-generador-fnirsi]')).toContainText('Cuadrada (Square Wave)');
+  await expect(panel.locator('[data-onda-fnirsi]')).toHaveCount(0);
+  expect((await falso(page)).ondas ?? []).toEqual([]);
 });
 
 test('en el generador no hay medidas: se explica', async ({ page }) => {
