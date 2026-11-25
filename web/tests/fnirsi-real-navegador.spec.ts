@@ -167,6 +167,42 @@ test('osciloscopio: la traza de CH1 con sus medidas', async ({ page }) => {
   sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (osciloscopio)');
 });
 
+test('osciloscopio: más medidas y el espectro de la traza, calculados en la aplicación', async ({ page }) => {
+  await limpio(page);
+  await conEnlace(page, { modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(page.locator('[data-trazas-fnirsi]')).toHaveAttribute('data-trazas-fnirsi', '1');
+  const analisis = panel.locator('[data-analisis-fnirsi]');
+  // closed until asked for: nothing of it on the page
+  await expect(analisis.locator('[data-analisis-canal]')).toHaveCount(0);
+  await analisis.locator('summary').click();
+  const ch1 = analisis.locator('[data-analisis-canal="1"]');
+  await expect(ch1).toBeVisible();
+  // the capture: the generator's 1 kHz square wave, 3,01 V peak to peak, from 0 V up (500 mV per division at X10)
+  const medidas = ch1.locator('[data-medidas-ampliadas]');
+  await expect(medidas).toContainText(/Media1,[45]\d V/);
+  await expect(medidas).toContainText(/Valor eficaz sin la continua1,[45]\d V/);
+  await expect(medidas).toContainText(/Periodo1,00\d ms|Periodo999,\d µs/);
+  await expect(medidas).toContainText(/Ciclo de trabajo(49|50),\d %/);
+  await expect(ch1).toContainText('periodos enteros');
+  await expect(ch1.locator('[data-espectro-fnirsi] polyline')).toHaveAttribute('points', /\d/);
+  const tonos = ch1.locator('[data-tonos-fnirsi]');
+  await expect(tonos).toContainText(/Fundamental: 1,00\d kHz|Fundamental: 999,\d Hz/);
+  // a square wave: the third harmonic a third of the fundamental (−9,5 dB), the second far below
+  await expect(tonos).toContainText(/3\.º −(9|10),\d dB/);
+  await expect(tonos).toContainText(/Distorsión armónica \(hasta el 10\.º armónico\): 4\d,\d %/);
+  await expect(ch1.getByRole('button', { name: 'Guardar la traza de CH1 (CSV)' })).toBeVisible();
+  await expect(ch1.locator('[data-acoplamiento-fnirsi]')).toHaveCount(0);
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (más medidas y espectro)');
+  // the file: handed to the browser's downloads, and said
+  const descarga = page.waitForEvent('download');
+  await ch1.getByRole('button', { name: 'Guardar la traza de CH1 (CSV)' }).click();
+  expect((await descarga).suggestedFilename()).toMatch(/^traza-fnirsi-ch1-\d{4}-\d\d-\d\d-\d{6}\.csv$/);
+  await expect(analisis.locator('[data-aviso-traza]')).toHaveText('Fichero descargado: está en las descargas del navegador.');
+});
+
 test('el FNIRSI cambia de modo: el enlace se va un momento y la conexión lo retoma sola', async ({ page }) => {
   await limpio(page);
   await conEnlace(page, { modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true });
@@ -229,7 +265,7 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria } as Partial<Falso>);
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
   await expect(page.locator('[data-medidas-fnirsi]')).toHaveText(
-    'Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV (con la sonda en X10 estas tensiones no están comprobadas)',
+    'Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV',
   );
   await expect(page.locator('[data-generador-fnirsi]')).toContainText('Diente de sierra (Sawtooth wave) · 50,00 kHz');
   await expect(page.locator('[data-marcha-fnirsi]')).toHaveCount(0);
