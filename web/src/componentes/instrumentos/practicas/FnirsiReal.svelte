@@ -16,6 +16,12 @@
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
   import { formatoSI } from '../../grafica/formato';
   import { compararTraza, explicarDiferenciaFnirsi, type SimuladoFnirsi } from '../../../lib/fnirsi-real/comparar';
+  import AnalisisTraza from './AnalisisTraza.svelte';
+  import CursoresTraza from './CursoresTraza.svelte';
+  import ExtrasMultimetro from './ExtrasMultimetro.svelte';
+  import OndaGenerador from './OndaGenerador.svelte';
+  import type { Cursores } from '../../../lib/fnirsi-real/cursores';
+  import { ANCHO_PROMEDIO, Promediador, type TrazaPromediada } from '../../../lib/fnirsi-real/promedio';
 
   let {
     compacto = false,
@@ -57,13 +63,33 @@
     return `Generador del FNIRSI: ${forma} · ${formatoSI(g.frecuencia, 'Hz', 4)} · ciclo ${g.ciclo} % · ${amplitud} V`;
   });
   const enOsciloscopio = $derived(c.estado === 'conectado' && c.modo === 'osciloscopio');
-  const medidas = $derived.by(() => {
-    const m = enOsciloscopio ? c.medidas : null;
-    if (!m) return '';
-    const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    // (checked with the probe setting at X1 only)
-    const sonda = c.trazas[0]?.ajustes.canales[0].sonda === 10 ? ' (con la sonda en X10 estas tensiones no están comprobadas)' : '';
-    return `Medidas del propio FNIRSI en CH1: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}${sonda}`;
+  // 2.1 (owner, 25-11): the instrument's own measurements of the channels that are ON (the last trace's header says
+  // which), each with its channel. 2.0 always showed CH1's, which with CH1 off was the noise of a channel that is off
+  // («0 Hz · … · Vpp 4,000 mV»). CH2's come only with the status stream (patch 3).
+  const canalesOn = $derived.by((): [boolean, boolean] | null => {
+    const t = c.trazas.find((x) => x !== null);
+    return t ? [t.ajustes.canales[0].activo, t.ajustes.canales[1].activo] : null;
+  });
+  const medidas = $derived.by((): { canal: string; texto: string }[] => {
+    if (!enOsciloscopio || !canalesOn) return [];
+    if (!canalesOn[0] && !canalesOn[1]) return [{ canal: 'ninguno', texto: 'Los dos canales del FNIRSI están apagados: no da medidas.' }];
+    const res: { canal: string; texto: string }[] = [];
+    ([0, 1] as const).forEach((k) => {
+      if (!canalesOn[k]) return;
+      const m = k === 0 ? c.medidas : c.medidasCh2;
+      if (!m) {
+        if (k === 1 && c.info && !c.info.estadoEnFlujo) res.push({ canal: 'CH2', texto: 'Las medidas propias de CH2 solo llegan con el flujo de estado del enlace (parche 3).' });
+        return;
+      }
+      const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      // (with the probe setting at X10 the instrument gives these ten times larger, as its screen does: checked on
+      // the unit on 2026-11-25 for both channels, X1 and X10)
+      res.push({
+        canal: `CH${k + 1}`,
+        texto: `Medidas del propio FNIRSI en CH${k + 1}: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}`,
+      });
+    });
+    return res;
   });
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
@@ -123,9 +149,62 @@
     else if (!(noFiable && !avisoListo)) comparacionMostrada = '';
   });
 
+  // The average of the last N acquisitions of each channel (lib/fnirsi-real/promedio.ts), the application's own:
+  // «no» draws and analyses each record as it arrives.
+  const OPCIONES_PROMEDIO = [1, 4, 16, 64];
+  let nPromedio = $state(1);
+  const promediadores = [new Promediador(1), new Promediador(1)];
+  let promedios = $state.raw<(TrazaPromediada | null)[]>([null, null]);
+  /** A channel whose record has a wave but no crossing to align it on: it is shown as it arrives. */
+  let sinAlinear = $state.raw<boolean[]>([false, false]);
+  // (what the effect below last published, kept outside the reactive graph: it must not depend on what it writes)
+  const vistas: (Traza | null)[] = [null, null];
+  const publicados: (TrazaPromediada | null)[] = [null, null];
+  const fallidos: boolean[] = [false, false];
+  $effect(() => {
+    const n = nPromedio;
+    const ts = c.estado === 'conectado' ? c.trazas : [null, null];
+    let cambio = false;
+    for (const k of [0, 1]) {
+      const t = ts[k] ?? null;
+      const p = promediadores[k]!;
+      if (n === 1 || !t) {
+        p.vaciar();
+        vistas[k] = null;
+        if (publicados[k] || fallidos[k]) cambio = true;
+        publicados[k] = null;
+        fallidos[k] = false;
+        continue;
+      }
+      p.fijar(n);
+      if (vistas[k] === t) continue;
+      vistas[k] = t;
+      const entra = p.anadir(t);
+      if (!entra) p.vaciar();
+      publicados[k] = entra ? p.resultado() : null;
+      fallidos[k] = !entra;
+      cambio = true;
+    }
+    if (cambio) {
+      promedios = [...publicados];
+      sinAlinear = [...fallidos];
+    }
+  });
+
+  /** The samples that are drawn for a trace: the middle of its average when there is one, else its own window. */
+  function dibujada(t: Traza): ArrayLike<number> {
+    const p = promedios[t.canal];
+    if (p) return p.muestras.subarray((ANCHO_PROMEDIO - ANCHO) / 2, (ANCHO_PROMEDIO + ANCHO) / 2);
+    return ventana(t, ANCHO).muestras;
+  }
+
+  /** The application's cursors on the drawing (lib/fnirsi-real/cursores.ts): time in samples, voltage in sample values. */
+  let cursores = $state<Cursores>({ activo: false, t1: 100, t2: 200, v1: 103, v2: 153 });
+  const ventanas = $derived(trazas.map((t) => ({ canal: t.canal, ajustes: t.ajustes, muestras: dibujada(t) })));
+
   /** The trace as the instrument draws it: 300 samples around the trigger, in screen units. */
   function puntos(t: Traza): string {
-    const v = ventana(t, ANCHO).muestras;
+    const v = dibujada(t);
     let s = '';
     for (let k = 0; k < v.length; k++) s += `${k},${Math.max(0, Math.min(ALTO, ALTO - (v[k]! - BASE)))} `;
     return s;
@@ -169,12 +248,23 @@
       {#if noFiable && avisoListo}<p class="fr-aviso" data-aviso-fnirsi>{lectura.motivo}</p>{/if}
       {#if lectura.hold && lectura.fiable}<p class="fr-tenue" data-hold-fnirsi>HOLD: la pantalla del FNIRSI está congelada, y esta lectura con ella.</p>{/if}
       {#if comparacionMostrada}<p class="fr-comparacion" data-comparacion-fnirsi>{comparacionMostrada}</p>{/if}
+      <ExtrasMultimetro {lectura} />
     {/if}
     {#if trazas.length}
       <svg class="fr-pantalla" viewBox="0 0 {ANCHO} {ALTO}" role="img" aria-label="Trazas del osciloscopio del FNIRSI" data-trazas-fnirsi={trazas.length}>
         {#each rejilla.x as x (x)}<line x1={x} y1="0" x2={x} y2={ALTO} class="fr-rejilla" />{/each}
         {#each rejilla.y as y (y)}<line x1="0" y1={y} x2={ANCHO} y2={y} class="fr-rejilla" />{/each}
         {#each trazas as t (t.canal)}<polyline points={puntos(t)} fill="none" stroke={COLOR[t.canal]} stroke-width="1.2" vector-effect="non-scaling-stroke" />{/each}
+        {#if cursores.activo}
+          {#each [['T1', cursores.t1], ['T2', cursores.t2]] as const as [nombre, x] (nombre)}
+            <line x1={x} y1="0" x2={x} y2={ALTO} class="fr-cursor" data-linea-cursor={nombre} />
+            <text x={Math.min(ANCHO - 14, x + 2)} y="9" class="fr-cursor-texto">{nombre}</text>
+          {/each}
+          {#each [['V1', cursores.v1], ['V2', cursores.v2]] as const as [nombre, v] (nombre)}
+            <line x1="0" y1={ALTO - (v - BASE)} x2={ANCHO} y2={ALTO - (v - BASE)} class="fr-cursor" data-linea-cursor={nombre} />
+            <text x="2" y={Math.max(9, ALTO - (v - BASE) - 2)} class="fr-cursor-texto">{nombre}</text>
+          {/each}
+        {/if}
       </svg>
       <ul class="fr-canales">
         {#each trazas as t (t.canal)}
@@ -187,17 +277,34 @@
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
         </li>
       </ul>
+      <p class="fr-promedio">
+        <label>Promediar <select bind:value={nPromedio} data-promedio-fnirsi>{#each OPCIONES_PROMEDIO as n (n)}<option value={n}>{n === 1 ? 'no' : `${n} adquisiciones`}</option>{/each}</select></label>
+        {#if nPromedio > 1}
+          <span class="fr-tenue" data-promedio-estado>
+            {#each trazas as t (t.canal)}
+              {@const p = promedios[t.canal]}
+              CH{t.canal + 1}: {p ? `promedio de ${p.adquisiciones} ${p.adquisiciones === 1 ? 'adquisición' : 'adquisiciones'}` : sinAlinear[t.canal] ? 'sin promediar: en el registro no hay un flanco con sitio a los dos lados para alinear las adquisiciones' : 'esperando'}.{' '}
+            {/each}
+            Lo hace la aplicación; la línea de cada canal sigue siendo la de la última adquisición.
+          </span>
+        {/if}
+      </p>
+      <CursoresTraza bind:cursores {ventanas} ancho={ANCHO} minimo={BASE} maximo={BASE + ALTO} />
+      <AnalisisTraza {trazas} {promedios} />
     {/if}
     {#if enOsciloscopio && c.enMarcha === false}<p class="fr-tenue" data-marcha-fnirsi>Osciloscopio en STOP: la traza y las medidas son las de la última adquisición.</p>{/if}
-    {#if medidas}<p class="fr-tenue" data-medidas-fnirsi>{medidas}</p>{/if}
+    {#each medidas as m (m.canal)}<p class="fr-tenue" data-medidas-fnirsi={m.canal}>{m.texto}</p>{/each}
+    <!-- 2.1 (owner, 25-11): the arrows have a mode that SELECT changes; the link does not carry it, so a fixed hint -->
+    {#if enOsciloscopio}<p class="fr-tenue" data-ayuda-select-real>Si las flechas no cambian la base de tiempos, pulse SELECT.</p>{/if}
     {#if generador}<p class="fr-tenue" data-generador-fnirsi>{generador}</p>{/if}
+    {#if (c.estado === 'conectado' || c.estado === 'reconectando') && c.info?.ondasAMedida}<OndaGenerador />{/if}
     {#if c.estado !== 'desconectado'}
       <details class="fr-diag">
         <summary>Diagnóstico</summary>
         <p>
           Vía: {c.tipo === 'nativo' ? 'la aplicación (USB)' : c.tipo === 'webhid' ? 'WebHID del navegador' : 'prueba'} · modo del FNIRSI: {c.modo} · informes recibidos: {c.informes}{#if c.perdidos} · perdidos: {c.perdidos}{/if}
         </p>
-        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : c.sinLectura ? 'el generador, las medidas del osciloscopio y RUN/STOP no llegan por esta vía: hace falta el parche 3 del enlace' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}</p>{/if}
+        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : c.sinLectura ? 'el generador, las medidas del osciloscopio y RUN/STOP no llegan por esta vía: hace falta el parche 3 del enlace' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}{c.info.ondasAMedida ? ' · admite ondas a medida en el generador' : ''}</p>{/if}
         {#if c.multimetro}<p class="fr-crudo">Última trama del multímetro: <code data-crudo-fnirsi>{c.multimetro.crudo}</code></p>{/if}
       </details>
     {/if}
@@ -294,6 +401,37 @@
     stroke: var(--linea);
     stroke-width: 0.5;
     vector-effect: non-scaling-stroke;
+  }
+  .fr-cursor {
+    stroke: var(--tinta-suave);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    vector-effect: non-scaling-stroke;
+  }
+  .fr-cursor-texto {
+    fill: var(--tinta-suave);
+    font-size: 8px;
+    font-family: var(--sans);
+  }
+  .fr-promedio {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+  }
+  .fr-promedio select {
+    min-height: 32px;
+    margin: 0 6px;
+    padding: 0 6px;
+    border: 1px solid var(--linea);
+    border-radius: 6px;
+    /* (the card's own colours: a native select keeps a light background in the dark themes) */
+    background: var(--superficie);
+    color: inherit;
+    font: inherit;
+  }
+  @media (pointer: coarse) {
+    .fr-promedio select {
+      min-height: 44px;
+    }
   }
   .fr-canales {
     margin: 6px 0 0;

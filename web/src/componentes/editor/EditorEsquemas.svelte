@@ -810,7 +810,8 @@
   <header class="cab">
     <div class="titulo">
       <!-- while a circuit loads, empty lines of the same height: «Circuito nuevo» flashed before the book's title -->
-      <h1>{cargando ? '\u00a0' : ed.doc.titulo || 'Circuito nuevo'}</h1>
+      <!-- (2.1 close-out: while loading, a name for screen readers — an empty heading for axe — in the same line's room) -->
+      <h1>{#if cargando}<span class="solo-lector">Cargando el circuito</span>{'\u00a0'}{:else}{ed.doc.titulo || 'Circuito nuevo'}{/if}</h1>
       <span class="estado-guardado" aria-live="polite">
         {#if cargando}&nbsp;{:else}
           {#if idGuardado}{biblioteca.error ? 'Sin guardar en este dispositivo' : estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar{/if}

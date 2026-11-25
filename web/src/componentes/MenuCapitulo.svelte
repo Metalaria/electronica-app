@@ -17,6 +17,8 @@
   let panel: HTMLElement | undefined = $state();
   let cerrado = false;
   let izquierda = $state(8);
+  /** 2.1: under its button (the reader's bar is not always at the top: the group's tabs sit above it until scrolled). */
+  let arriba = $state<number | null>(null);
 
   const info = $derived(infoParte(parte));
   const secciones = $derived(info?.secciones ?? []);
@@ -59,6 +61,7 @@
       cerrado = true;
       onCerrar();
     });
+    arriba = Math.round(ancla.getBoundingClientRect().bottom + 4);
     if (!app.movil) izquierda = Math.max(8, Math.min(ancla.getBoundingClientRect().left - 8, window.innerWidth - 448));
     const fuera = (ev: PointerEvent) => {
       const t = ev.target as Node;
@@ -95,6 +98,8 @@
   aria-label={`Secciones de ${rotuloParte(parte)}`}
   bind:this={panel}
   style:left={app.movil ? undefined : `${izquierda}px`}
+  style:top={arriba != null ? `${arriba}px` : undefined}
+  style:--arriba={arriba != null ? `${arriba}px` : undefined}
   style:--c={colorBloque(info?.color)}
   onclick={ir}
   onkeydown={teclas}
@@ -151,7 +156,7 @@
     display: flex;
     flex-direction: column;
     width: min(440px, calc(100vw - 16px));
-    max-height: calc(100dvh - var(--alto-barra) - env(safe-area-inset-top) - 24px);
+    max-height: calc(100dvh - var(--arriba, calc(var(--alto-barra) + env(safe-area-inset-top))) - 24px);
     border: 1px solid var(--linea);
     border-radius: 14px;
     background: var(--superficie);
@@ -167,7 +172,7 @@
     right: 8px;
     left: 8px;
     width: auto;
-    max-height: calc(100dvh - var(--alto-barra) - env(safe-area-inset-top) - var(--hueco-inferior) - 20px);
+    max-height: calc(100dvh - var(--arriba, calc(var(--alto-barra) + env(safe-area-inset-top))) - var(--hueco-inferior) - 20px);
   }
   @keyframes entrar {
     from {

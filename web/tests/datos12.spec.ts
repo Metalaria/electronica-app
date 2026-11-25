@@ -652,7 +652,8 @@ test.describe('suma diaria · página de inicio', () => {
     await abrir(page, '#/', {
       'epa:progreso-diario': { [`${DIA}@aaaaaaaaaaaa`]: r(2, HOY - 9000), [`${DIA}@bbbbbbbbbbbb`]: r(2, HOY - 8000), [DIA]: { ...r(2, HOY - 8000), cumplido: false } },
     });
-    const obj = page.locator('section.objetivo');
+    // (2.1: the goal is a figure of «Hoy», a button)
+    const obj = page.locator('.hoy .objetivo');
     await expect(obj).toHaveAttribute('data-hechos', '4');
     await expect(obj).toHaveClass(/cumplido/);
   });
@@ -661,7 +662,7 @@ test.describe('suma diaria · página de inicio', () => {
   test('un día guardado por la 0.11 cuenta tal cual (la migración lo guarda una vez en «día@0»)', async ({ page }) => {
     const viejo = JSON.stringify({ [DIA]: { pasos: 2, preguntas: 0, secciones: 0, cumplido: false, t: HOY - 9000 } });
     await abrir(page, '#/', { 'epa:progreso-diario': viejo });
-    await expect(page.locator('section.objetivo')).toHaveAttribute('data-hechos', '2');
+    await expect(page.locator('.hoy .objetivo')).toHaveAttribute('data-hechos', '2');
     await page.waitForTimeout(1500);
     const tras = JSON.parse((await page.evaluate(() => localStorage.getItem('epa:progreso-diario')))!) as Record<string, unknown>;
     expect(tras[DIA]).toEqual(JSON.parse(viejo)[DIA]);

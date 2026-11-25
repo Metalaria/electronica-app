@@ -372,31 +372,24 @@
   :global(:root[data-tema='oscuro']) .glosario {
     --fondo-3d: #23272e;
   }
+  /* 2.1 (estilos/sistema21.css): a title and air, no coloured band (the letters keep the glossary's colour) */
   .cab {
-    margin: 0 calc(-1 * var(--pad));
-    padding: clamp(28px, 6vw, 44px) var(--pad) 26px;
-    background: var(--banda);
-    color: #fff;
+    padding: var(--e21-4) 0 var(--e21-2);
     font-family: var(--sans);
-  }
-  @media (min-width: 760px) {
-    .cab {
-      margin: 28px 0 0;
-      border-radius: 14px;
-    }
   }
   h1 {
     margin: 0;
-    font-size: clamp(27px, 4.4vw, 38px);
-    font-weight: 700;
-    line-height: 1.12;
+    color: var(--v11-tinta);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    line-height: 1.15;
     letter-spacing: -0.01em;
   }
   .cab p {
     max-width: 40em;
-    margin: 10px 0 0;
-    color: rgba(255, 255, 255, 0.86);
-    font-size: 16px;
+    margin: var(--e21-1) 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: var(--t21-secundario);
     line-height: 1.45;
   }
 

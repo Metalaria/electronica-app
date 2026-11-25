@@ -198,7 +198,9 @@ test('sec 1.4 entera: puertas, fallos y aciertos explicados, reto, carga, estima
   // (lib/leccion12/ritmo.ts): their own segments in the bar, «Repaso» as the step, the prediction hidden again
   await tarjeta(page, 'prediga-salida');
   await expect(page.locator('[data-leccion11]')).toHaveAttribute('data-vuelta', '');
-  await expect(page.locator('.etiqueta')).toHaveText('13 de 17 · Repaso');
+  // (2.1: the count is beside the bar, «13 / 17»; the label is only the step's kind)
+  await expect(page.locator('[data-cuenta-leccion]')).toHaveText('13 / 17');
+  await expect(page.locator('.etiqueta')).toHaveText('Repaso');
   await expect(page.locator('[data-seg="vuelta"]')).toHaveCount(4);
   await expect(page.locator('[data-lectura="V_out"]')).toHaveText('¿? V');
   await page.locator('[data-opcion="0"]').click();

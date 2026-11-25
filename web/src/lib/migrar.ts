@@ -70,6 +70,12 @@ function leerSello(v: unknown): Sello | null {
   return { formato: 'epa-esquemas', app: typeof v.app === 'string' ? v.app : '', almacenes, ...(typeof v.retenida === 'string' ? { retenida: v.retenida } : {}) };
 }
 
+/** 2.1: the app version that wrote the device's data before this start (its seal), null when there was none. */
+let appAnterior: string | null = null;
+export function versionAnteriorDatos(): string | null {
+  return appAnterior;
+}
+
 /** Runs the due migrations on `a` (never throws: a failure is reported in the result). */
 export async function migrarAlmacen(a: Almacen): Promise<ResultadoMigracion> {
   const r: ResultadoMigracion = { migradas: [], fallidas: [], bloqueadas: new Set() };
@@ -80,6 +86,8 @@ export async function migrarAlmacen(a: Almacen): Promise<ResultadoMigracion> {
   } catch {
     // (unreadable: as if absent — every key at version 1; the migrations are idempotent)
   }
+  // (read-only: the «Novedades de la 2.1» note, lib/novedades21.svelte.ts, is for devices an earlier version used)
+  appAnterior = sello?.app || null;
   const retenida = sello?.retenida === VERSION_APP;
   const versiones: Record<string, number> = {};
   const nuevos: Record<string, unknown> = {};

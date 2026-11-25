@@ -1,6 +1,6 @@
 <script lang="ts">
   // 1.0: the small «¿Cómo funciona?» link to a section (or subsection) of the «Guía de uso». Used in a handful of
-  // places only (synchronisation, teacher mode, «Encuentre la avería», the spaced review of the start page); the ids
+  // places only (synchronisation, teacher mode, «Encuentre la avería», the diagnostic, the spaced review on a course's path); the ids
   // are checked by tests/guia10-contenido.spec.ts against lib/guia/contenido.ts.
   import CircleQuestionMark from '@lucide/svelte/icons/circle-question-mark';
 

@@ -283,18 +283,14 @@ test('editar, duplicar y borrar (con el diálogo propio); Intro en el buscador n
   expect(g.examen).toBeUndefined();
 });
 
-test('el modo docente está en el menú de herramientas («Más») y en el carril', async ({ page }) => {
+test('el modo docente está al pie de «Aa» («Más»)', async ({ page }) => {
   await limpio(page);
-  // a tall window: in the rail
-  await page.setViewportSize({ width: 1366, height: 1100 });
+  // 2.1: not in the rail's five groups; a link at the foot of the «Aa» panel
+  await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto('#/');
-  await expect(page.locator('a[href="#/docente"]:visible')).toHaveCount(1);
-  // a low one: the least used entries go to «Más», this one first
-  await page.setViewportSize({ width: 1366, height: 640 });
-  await page.reload();
   await expect(page.locator('a[href="#/docente"]:visible')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Más' }).first().click();
-  await page.locator('a[href="#/docente"]:visible').click();
+  await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
+  await page.getByRole('navigation', { name: 'Más' }).locator('a[href="#/docente"]').click();
   await expect(page).toHaveURL(/#\/docente$/);
   await expect(page.locator('h1')).toHaveText('Modo docente');
 });

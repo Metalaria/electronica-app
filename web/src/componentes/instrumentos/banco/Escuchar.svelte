@@ -11,7 +11,17 @@
   import { auricular } from '../auricular.ts';
   import type { Datos } from '../banco.svelte.ts';
 
-  let { b, pista }: { b: Banco; /** How to place the earphone in this view (Spanish). */ pista?: string } = $props();
+  let {
+    b,
+    pista,
+    plano = false,
+  }: {
+    b: Banco;
+    /** How to place the earphone in this view (Spanish). */
+    pista?: string;
+    /** 2.1: inside a folded row of the bench (no box, no heading of its own: the row names it). */
+    plano?: boolean;
+  } = $props();
 
   let analisis = $state.raw<Escucha | null>(null);
   let volumen = $state(0);
@@ -116,8 +126,8 @@
   const esperando = $derived(!!b.escucha && !analisis);
 </script>
 
-<section class="escuchar" aria-label="Escuchar señales">
-  <h2>Escuchar</h2>
+<section class="escuchar" class:plano aria-label="Escuchar señales">
+  {#if !plano}<h2>Escuchar</h2>{/if}
   {#if sinAudio}
     <p class="nota">Este navegador no permite reproducir sonido (Web Audio).</p>
   {:else if !fuentes.length}
@@ -157,6 +167,12 @@
     border-radius: 12px;
     background: var(--superficie);
     font-family: var(--sans);
+  }
+  .escuchar.plano {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
   }
   h2 {
     margin: 0 0 6px;

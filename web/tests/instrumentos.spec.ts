@@ -11,10 +11,26 @@ async function medida(page: Page, id: string): Promise<number> {
   return Number(await celda.getAttribute('title'));
 }
 
-/** Selects a lead or probe (a second tap on the selected one deselects it). */
-async function elegirPunta(page: Page, nombre: RegExp) {
-  const r = page.getByRole('radio', { name: nombre });
-  if ((await r.getAttribute('aria-checked')) !== 'true') await r.click();
+/**
+ * 2.1: puts a lead on a node through «Puntas puestas»: its row (or «Poner otra punta» when it is not placed) opens its
+ * editor, whose list of nodes places it.
+ */
+async function ponerPunta(page: Page, p: string, nodo: string) {
+  const zona = page.locator('[data-puntas-puestas]').first();
+  const fila = zona.locator(`button[data-punta="${p}"]`);
+  if (await fila.count()) {
+    if (!(await zona.locator(`[data-editor-punta="${p}"]`).count())) await fila.click();
+  } else {
+    await zona.getByRole('button', { name: /Poner otra punta/ }).click();
+    await zona.locator(`[data-poner-punta="${p}"]`).click();
+  }
+  await zona.locator(`[data-editor-punta="${p}"] select`).selectOption(nodo);
+}
+
+/** 2.1: «Medir en serie» is a folded row. */
+async function abrirSerie(page: Page) {
+  const d = page.locator('details[data-plegable="serie"]');
+  if ((await d.getAttribute('open')) === null) await d.locator('summary').click();
 }
 
 async function coincide(page: Page, id: string) {
@@ -24,7 +40,7 @@ async function coincide(page: Page, id: string) {
 async function abrirPractica(page: Page, n: number) {
   await page.goto(`/#/instrumentos/practica/${n}`);
   await expect(page.locator('.practica h2')).toBeVisible();
-  await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+  await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
 }
 
 test('Brymen: tensión de un divisor con su exactitud y carga de 10 MΩ', async ({ page }) => {
@@ -37,7 +53,7 @@ test('Brymen: tensión de un divisor con su exactitud y carga de 10 MΩ', async 
   expect(Math.abs(v - 2.8766)).toBeLessThan(0.0015);
   await coincide(page, 'vout');
   // The LCD shows the 5 V range with four decimals.
-  await expect(page.locator('figcaption', { hasText: 'Brymen:' })).toContainText(/2,87\d\d V/);
+  await expect(page.locator('figcaption', { hasText: 'Brymen BM869s ·' })).toContainText(/2,87\d\d V/);
   // Step 5: R1 = R2 = 1 MΩ: the meter loads the divider (4,29 V instead of 4,5 V).
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Siguiente →' }).click();
   expect(await medida(page, 'alta')).toBeCloseTo(4.2857, 2);
@@ -52,13 +68,12 @@ test('Brymen: corriente en serie con su tensión de carga', async ({ page }) => 
   expect(i).toBeGreaterThan(0.6e-3);
   expect(i).toBeLessThan(0.625e-3);
   await coincide(page, 'i');
-  await expect(page.locator('figcaption', { hasText: 'Brymen:' })).toContainText('mA');
+  await expect(page.locator('figcaption', { hasText: 'Brymen BM869s ·' })).toContainText('mA');
   // The same meter across the supply on the mA jack blows its 440 mA fuse.
+  await abrirSerie(page);
   await page.locator('.serie select').first().selectOption('');
-  await elegirPunta(page, /Brymen punta roja/);
-  await page.locator('.nodos .nodo-chip', { hasText: /^a$/ }).click();
-  await elegirPunta(page, /Brymen punta negra/);
-  await page.locator('.nodos .nodo-chip', { hasText: /^0$/ }).click();
+  await ponerPunta(page, 'bmRojo', 'a');
+  await ponerPunta(page, 'bmNegro', '0');
   await expect(page.locator('.banco .aviso', { hasText: 'fusible' })).toBeVisible({ timeout: 60_000 });
 });
 

@@ -225,19 +225,21 @@
     padding: 16px 16px 56px;
   }
   /* 0.9 look (componentes/ui09): serif title, 12–18 px radii, the formula groups as cards */
+  /* 2.1: the system's page title (36) and secondary text (15) */
   .cabecera h1 {
-    margin: 0 0 6px;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: 30px;
-    font-weight: 700;
+    margin: 8px 0 8px;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.15;
   }
   .intro {
-    margin: 0 0 16px;
-    color: var(--tinta-suave);
-    font-size: 16px;
-    line-height: 1.45;
+    margin: 0 0 24px;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
+    line-height: 1.5;
   }
   .controles {
     display: flex;

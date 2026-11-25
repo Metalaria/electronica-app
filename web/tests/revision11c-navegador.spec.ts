@@ -84,7 +84,7 @@ test('laboratorio 5, paso «fase»: un solo «Hágalo por mí» deja los cursore
   test.setTimeout(240_000);
   await limpio(page);
   await page.goto('#/instrumentos/laboratorio/5');
-  const simulado = () => expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+  const simulado = () => expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
   await simulado();
   await page.locator('[data-hagalo]').click();
   await simulado();
@@ -250,6 +250,34 @@ test('360 px: el paso del laboratorio va arriba y, junto al instrumento, una bar
   await page.setViewportSize({ width: 1366, height: 900 });
   await expect(page.locator('[data-barra-paso]')).toBeHidden();
 });
+
+// 2.1 close-out: the bench became a CSS grid and the step bar a grid item of its own last row — a sticky grid item
+// cannot leave its grid area, so the bar stayed at the end of the page: with the instrument on screen there was no
+// «Comprobar» (the phone, 360 and 412 px, with the bottom bar)
+for (const [ancho, alto] of [[360, 780], [412, 915]] as const)
+  test(`${ancho} px, teléfono: con el aparato a la vista, la barra del paso y su «Comprobar» siguen encima de la barra inferior`, async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: ancho, height: alto }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    await limpio(page);
+    await page.goto('#/instrumentos/laboratorio/12');
+    await expect(page.locator('[data-paso]').first()).toBeVisible({ timeout: 60_000 });
+    for (const y of ['aparato', 'final']) {
+      if (y === 'aparato') await page.locator('.instrumentos').first().scrollIntoViewIfNeeded();
+      else await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await expect(page.locator('[data-barra-paso]')).toHaveCount(1);
+      await page.waitForTimeout(300);
+      const r = await page.evaluate(() => {
+        const c = document.querySelector('[data-comprobar-barra]');
+        if (!c) return 'sin barra';
+        const rc = c.getBoundingClientRect();
+        if (rc.top < 0 || rc.bottom > innerHeight) return `fuera de la pantalla (${Math.round(rc.top)}…${Math.round(rc.bottom)} de ${innerHeight})`;
+        const el = document.elementFromPoint(rc.left + rc.width / 2, rc.top + rc.height / 2);
+        return el === c || c.contains(el) ? 'ok' : `tapado por ${el?.tagName.toLowerCase()}.${el?.className}`;
+      });
+      expect(r, `desplazada a ${y}`).toBe('ok');
+    }
+    await ctx.close();
+  });
 
 test('escritorio: ninguna etiqueta del carril se corta («Componentes»)', async ({ page }) => {
   await limpio(page);

@@ -60,7 +60,8 @@
             {@const ruta = f.texto}
             <details class="texto-licencia" ontoggle={(e) => abrirTexto(ruta, e)}>
               <summary>Texto completo de la licencia</summary>
-              <pre>{textos[ruta] ?? ''}</pre>
+              <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+              <pre tabindex="0" aria-label="Texto completo de la licencia">{textos[ruta] ?? ''}</pre>
             </details>
           {/if}
         </li>
@@ -76,7 +77,9 @@
   {#if datos.revisiones?.length}
     <section>
       <h2>Qué revisión muestra cada vista</h2>
-      <div class="tabla">
+      <!-- 2.1 (owner's a11y item): a table wider than the phone scrolls; the scroller is a named, focusable region -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="tabla" role="region" aria-label="Tabla: qué revisión muestra cada vista" tabindex="0">
         <table class="revisiones">
           <thead><tr><th>Vista</th><th>Placa o revisión</th><th>Fuente</th></tr></thead>
           <tbody>
@@ -103,7 +106,8 @@
           «Hardware-N» de la especificación de SNK. Los documentos no se incluyen en la aplicación.
         </p>
       {/if}
-      <div class="tabla">
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="tabla" role="region" aria-label="Tabla: cada pieza de la foto en el esquema" tabindex="0">
         <table>
           <thead><tr>{#each cabecera as c (c)}<th>{c}</th>{/each}</tr></thead>
           <tbody>
@@ -120,7 +124,8 @@
     <section>
       <h2>Tensiones y puntos de medida</h2>
       {#if datos.tensiones_nota}<p>{datos.tensiones_nota}</p>{/if}
-      <div class="tabla">
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="tabla" role="region" aria-label="Tabla: tensiones y puntos de medida" tabindex="0">
         <table data-testid="tensiones">
           <thead><tr><th>Punto</th><th>Tensión</th><th>Dónde</th><th>Nota</th><th>Fuente</th></tr></thead>
           <tbody>
@@ -286,6 +291,11 @@
   }
   .tabla {
     overflow-x: auto;
+  }
+  .tabla:focus-visible,
+  .texto-licencia pre:focus-visible {
+    outline: 2px solid var(--v11-foco);
+    outline-offset: 2px;
   }
   table {
     min-width: 760px;

@@ -389,7 +389,34 @@ test('los dos canales a la vez: CH1 sin señal y CH2 saturado', () => {
   expect(f).not.toBeNull();
   expect(Math.abs(f! - 1000)).toBeLessThan(10);
   expect(c2!.ajustes.canales[1].voltiosDiv).toBeCloseTo(0.01, 12);
-  expect(c2!.ajustes.canales[1].comprobado).toBe(false);
+  // CH2 with the probe setting at X1: checked on the unit on 2026-11-25
+  expect(c2!.ajustes.canales[1].comprobado).toBe(true);
+});
+
+test('la escala de los dos canales está comprobada con la sonda en X1 y en X10', () => {
+  const con = (sondaCh1: number, sondaCh2: number) => {
+    const b = deHex(MEMORIA.osciloscopioEnMarcha);
+    b[6] = sondaCh1;
+    b[7] = sondaCh2;
+    return leerAjustes(b)!.canales;
+  };
+  expect(con(0, 0).map((c) => [c.sonda, c.comprobado])).toEqual([[1, true], [1, true]]);
+  // (CH2 at X10: 3,30 V from the record against 3,29 V by the instrument, 2026-11-25)
+  expect(con(1, 1).map((c) => [c.sonda, c.comprobado])).toEqual([[10, true], [10, true]]);
+  // the state of that capture: CH2 alone at 50 mV per division with the probe setting at X10
+  const real = leerAjustes(deHex('01000202b4000001000000000000000000000000021201010000000001000000000000000000000000000000000801000001ff0000000000'))!;
+  expect(real.canales.map((c) => c.activo)).toEqual([false, true]);
+  expect([real.canales[1].sonda, real.canales[1].voltiosDiv]).toEqual([10, expect.closeTo(0.5, 12)]);
+});
+
+test('el acoplamiento de CH1 es el primer byte de los ajustes; el de CH2 no está localizado', () => {
+  // two states of the unit, one key press apart (2026-11-25): CH1 direct, then alternating
+  const cc = leerAjustes(deHex('01000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000'))!;
+  const ca = leerAjustes(deHex('00000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000'))!;
+  expect(cc.canales.map((c) => c.acoplamiento)).toEqual(['CC', null]);
+  expect(ca.canales.map((c) => c.acoplamiento)).toEqual(['CA', null]);
+  // nothing else changes between the two
+  expect({ ...ca, canales: null }).toEqual({ ...cc, canales: null });
 });
 
 test('un registro al que le falta un informe se descarta entero', () => {
@@ -464,15 +491,29 @@ test('los ajustes del generador, como los enseña su pantalla', () => {
   expect(decodificarGenerador(deHex(MEMORIA.generadorCuadrada))).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 15000, ciclo: 50, amplitud: 3 });
   expect(decodificarGenerador(deHex(MEMORIA.generadorOndaCompleta))).toEqual({ forma: 4, nombre: 'Onda completa', rotulo: 'Full Wave', frecuencia: 35000, ciclo: 50, amplitud: 2 });
   expect(decodificarGenerador(deHex(MEMORIA.generadorSierra))).toMatchObject({ forma: 2, nombre: 'Diente de sierra', frecuencia: 50000, amplitud: 2 });
-  // an entry of the menu not seen named yet: its place, no name
+  // the last six entries, as the unit's menu names them (2026-11-25)
+  const nombres = [7, 8, 9, 10, 11, 12].map((forma) => {
+    const b = deHex(MEMORIA.generadorCuadrada);
+    b[1] = forma;
+    const g = decodificarGenerador(b)!;
+    return `${g.nombre} (${g.rotulo})`;
+  });
+  expect(nombres).toEqual([
+    'Exponencial creciente (Index Up)', 'Exponencial decreciente (Index Decrease)', 'Continua (Direct current)',
+    'Multitono (Multi-audio)', 'Pulso sinc (Sink Pulse)', 'Lorentziana (Lorentz waves)',
+  ]);
+  // the first entry of the menu: the sine, named as the firmware's own table names it
   const otra = deHex(MEMORIA.generadorCuadrada);
-  otra[1] = 9;
-  expect(decodificarGenerador(otra)).toMatchObject({ forma: 9, nombre: null, rotulo: null, frecuencia: 15000 });
+  otra[1] = 0;
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 0, nombre: 'Senoidal', rotulo: 'Sine Wave', frecuencia: 15000 });
   // the first byte is not understood and does not matter
   otra[0] = 0;
-  expect(decodificarGenerador(otra)).toMatchObject({ forma: 9 });
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 0 });
   // what cannot be settings is not shown as settings
-  otra[1] = 13;
+  // an entry a link with patch 5 added after the firmware's thirteen: settings, without a name
+  otra[1] = 14;
+  expect(decodificarGenerador(otra)).toMatchObject({ forma: 14, nombre: null, rotulo: null, frecuencia: 15000 });
+  otra[1] = 21;
   expect(decodificarGenerador(otra)).toBeNull();
   expect(decodificarGenerador(new Uint8Array(10))).toBeNull();
   expect(decodificarGenerador(new Uint8Array(4))).toBeNull();
@@ -558,17 +599,24 @@ test('el flujo de estado: lo que anuncia la identificación y lo que trae cada e
   expect(decodificarGenerador(leerEstado(real)!.bytes)).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 40000, ciclo: 40, amplitud: 1.5 });
 });
 
-test('la base de tiempos de 10 µs por división ya está comprobada; las de 5 µs y 20 µs, todavía no', () => {
+test('las bases de tiempos de 1 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
   const con = (indice: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[45] = indice;
     return leerAjustes(b)!;
   };
   expect([con(9).tiempoDiv, con(9).tiempoComprobado]).toEqual([expect.closeTo(10e-6, 12), true]);
-  expect([con(8).tiempoDiv, con(8).tiempoComprobado]).toEqual([expect.closeTo(5e-6, 12), false]);
-  expect([con(10).tiempoDiv, con(10).tiempoComprobado]).toEqual([expect.closeTo(20e-6, 12), false]);
+  // (5 µs and 20 µs: checked on the unit on 2026-11-25 with the generator at 50 kHz)
+  expect([con(8).tiempoDiv, con(8).tiempoComprobado]).toEqual([expect.closeTo(5e-6, 12), true]);
+  expect([con(10).tiempoDiv, con(10).tiempoComprobado]).toEqual([expect.closeTo(20e-6, 12), true]);
   expect([11, 12, 13, 14, 15, 16].every((i) => con(i).tiempoComprobado)).toBe(true);
-  expect(con(17).tiempoComprobado).toBe(false);
+  // (2 µs: checked later the same day, 50 kHz from the record against 50 kHz by the instrument)
+  expect([con(7).tiempoDiv, con(7).tiempoComprobado]).toEqual([expect.closeTo(2e-6, 12), true]);
+  // (1 µs: the edges of a 50 kHz wave 500 and 499 samples apart in two records of the unit)
+  expect([con(6).tiempoDiv, con(6).tiempoComprobado]).toEqual([expect.closeTo(1e-6, 12), true]);
+  // (one step outside at each end: 500 ns and 5 ms per division)
+  expect([con(5).tiempoDiv, con(5).tiempoComprobado]).toEqual([expect.closeTo(500e-9, 15), false]);
+  expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), false]);
 });
 
 test('el enlace simulado de las pruebas responde como el real', async () => {

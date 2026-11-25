@@ -19,7 +19,10 @@ import {
   INFORME,
   ORDEN_INFO,
   ORDEN_LEER,
+  ORDEN_ONDA,
   ORDEN_SUSCRIBIR,
+  RECHAZO_NATIVO,
+  permitidaEnLaAplicacion,
   PID_ENLACE,
   PRODUCTO_ENLACE,
   PROTOCOLO,
@@ -76,9 +79,19 @@ export interface EnlaceFalso {
   lecturas?: number[];
   /**
    * 1.4.3: behaves as the installed app's USB plugin does (src-tauri/plugins/fnirsi, informe_de): its type is
-   * 'nativo' and any request but the identification and the subscription fails with the plugin's sentence.
+   * 'nativo' and any request the plugin does not let through fails with the plugin's sentence. 2.1: it lets through
+   * the identification, the subscription, the custom wave and a read only of the wave table (permitidaEnLaAplicacion).
    */
   comoNativo?: boolean;
+  /**
+   * From patch 4 on the link stores waveforms: the generator's table as it stands (100 samples, scaled with the
+   * amplitude in `memoria` at 20000f50, byte 9; 30 when it is not there) and the requests received, as
+   * [position, samples] (the test reads both).
+   */
+  tabla?: number[];
+  ondas?: [number, number][];
+  /** A link that answers the waveform requests and stores something else (a fault the app must notice). */
+  ondaEstropeada?: boolean;
 }
 
 declare global {
@@ -260,6 +273,9 @@ export class Falso implements TransporteFnirsi {
   private get conEstado(): boolean {
     return (this.c.parche ?? 2) >= 3;
   }
+  private get conOndas(): boolean {
+    return (this.c.parche ?? 2) >= 4;
+  }
   private bloque(direccion: number, largo: number): number[] {
     const b = this.c.memoria?.[direccion.toString(16)] ?? [];
     return Array.from({ length: largo }, (_, k) => b[k] ?? 0);
@@ -293,8 +309,8 @@ export class Falso implements TransporteFnirsi {
   }
   async enviar(informe: Uint8Array): Promise<void> {
     if (this.c.desenchufado) throw new Error(this.c.desenchufado);
-    if (this.c.comoNativo && informe[0] !== ORDEN_INFO && informe[0] !== ORDEN_SUSCRIBIR)
-      throw new Error('La aplicación solo envía al FNIRSI las órdenes de identificación y de suscripción.');
+    // (2.1: the installed app's plugin filter, the same rule: lib/fnirsi-real/protocolo.ts permitidaEnLaAplicacion)
+    if (this.c.comoNativo && !permitidaEnLaAplicacion(informe)) throw new Error(RECHAZO_NATIVO);
     const r = new Uint8Array(INFORME);
     r[0] = (informe[0] ?? 0) | 0x80;
     r[1] = informe[1] ?? 0;
@@ -305,13 +321,45 @@ export class Falso implements TransporteFnirsi {
       r[17] = this.c.parche ?? 2;
       r[18] = this.c.modo ?? 1;
       r[19] = this.flujo;
-      if (this.conEstado) r[44] = 0x01;
+      if (this.conEstado) r[44] = this.conOndas ? 0x03 : 0x01;
     } else if (informe[0] === ORDEN_SUSCRIBIR) {
       const mascara = informe[2] ?? 0;
       (this.c.suscripciones ??= []).push(mascara);
       // (a mask with a stream the link does not have is refused, and the subscription stays as it was)
       if (mascara & ~(FLUJO_MULTIMETRO | FLUJO_OSCILOSCOPIO | (this.conEstado ? FLUJO_ESTADO : 0))) r[2] = 3;
       else this.flujo = mascara;
+    } else if (informe[0] === ORDEN_ONDA && this.conOndas) {
+      const primera = u32(informe, 4);
+      const n = informe[2] ?? 0;
+      r.set(informe.subarray(4, 8), 4);
+      if (n < 1 || n > 28) r[2] = 3;
+      else if (primera >= 100 || n > 100 - primera) r[2] = 2;
+      else {
+        const amplitud = Math.min(this.c.memoria?.['20000f50']?.[9] ?? 30, 30);
+        const tabla = (this.c.tabla ??= Array.from({ length: 100 }, () => 20));
+        for (let k = 0; k < n; k++) {
+          const x = Math.min((informe[8 + 2 * k] ?? 0) | ((informe[9 + 2 * k] ?? 0) << 8), 4094);
+          tabla[primera + k] = Math.floor((x * amplitud) / 33) + 20 + (this.c.ondaEstropeada && primera + k === 50 ? 1 : 0);
+        }
+        (this.c.ondas ??= []).push([primera, n]);
+        r[3] = 2;
+        r[8] = amplitud;
+        r[9] = this.c.memoria?.['20000f50']?.[1] ?? 1;
+      }
+    } else if (informe[0] === ORDEN_LEER && this.conOndas && u32(informe, 4) >= 0x20000f5a && u32(informe, 4) + (informe[2] ?? 0) <= 0x20000f5a + 200) {
+      // (the generator's table, read back after a waveform was stored)
+      const desde = u32(informe, 4) - 0x20000f5a;
+      const largo = informe[2] ?? 0;
+      const tabla = (this.c.tabla ??= Array.from({ length: 100 }, () => 20));
+      r.set(informe.subarray(4, 8), 4);
+      if (largo < 1 || largo > 56) r[2] = 3;
+      else {
+        r[3] = largo;
+        for (let k = 0; k < largo; k++) {
+          const x = tabla[(desde + k) >> 1] ?? 0;
+          r[8 + k] = (desde + k) & 1 ? x >> 8 : x & 0xff;
+        }
+      }
     } else if (informe[0] === ORDEN_LEER) {
       const direccion = u32(informe, 4);
       const largo = informe[2] ?? 0;

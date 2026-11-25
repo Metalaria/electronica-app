@@ -154,8 +154,9 @@
       padding: 0 16px 72px;
     }
   }
+  /* 2.1 (estilos/sistema21.css): section label 13, title 36, intro 15 */
   header {
-    padding: 24px 0 8px;
+    padding: var(--e21-4) 0 var(--e21-1);
   }
   .fila-sobre {
     display: flex;
@@ -166,26 +167,26 @@
   }
   .sobre {
     margin: 0;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--t21-etiqueta);
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--acento);
+    color: var(--v11-tinta-suave);
   }
   h1 {
-    margin: 6px 0 8px;
+    margin: 4px 0 var(--e21-1);
     font-family: var(--titular);
-    font-size: clamp(26px, 4vw, 30px);
-    font-weight: 700;
+    font-size: var(--t21-pagina);
+    font-weight: 600;
     line-height: 1.15;
-    color: var(--titulos);
+    color: var(--v11-tinta);
   }
   .intro {
     max-width: 44em;
-    margin: 0 0 18px;
-    font-size: 16px;
+    margin: 0 0 var(--e21-3);
+    font-size: var(--t21-secundario);
     line-height: 1.5;
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
   }
   .filtro {
     display: grid;

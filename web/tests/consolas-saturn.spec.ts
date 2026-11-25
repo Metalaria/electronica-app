@@ -92,7 +92,7 @@ test('las pestañas de la Saturn, con «Arquitectura», «Un fotograma» y «Bus
   const nav = vista(page);
   for (const t of ['Foto', 'Esquema', 'Arquitectura', 'Un fotograma', 'Placa en 3D', 'Placa en 2D', 'Busque la avería', 'Fuentes'])
     await expect(nav.getByRole('link', { name: t, exact: true }), t).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Consola' }).getByRole('link', { name: /Sega Saturn/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-elegir-consola] .nombre')).toHaveText(/Sega Saturn/); // (2.1: the machine is the page's title; the others in its menu)
   await expect(page.locator('.foto-vista img')).toHaveAttribute('src', /foto-va8\.jpg$/);
   expect(err).toEqual([]);
 });

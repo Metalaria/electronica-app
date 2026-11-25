@@ -70,9 +70,8 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
     const val INFORME = 64
     const val ACCION_PERMISO = "es.gonzalomejias.fnirsi.PERMISO_USB"
 
-    // requests the page may send: identification and subscription (never the link's memory read, 0x02)
-    const val ORDEN_INFO = 0x01
-    const val ORDEN_SUSCRIBIR = 0x03
+    // (2.1: what the page may send is decided by Peticiones.permitida: identification, subscription, the
+    // generator's custom wave and the read of its table only)
 
     // reports kept for the page; a full queue is emptied whole (half a record is of no use)
     const val COLA_MAXIMA = 4096
@@ -306,9 +305,8 @@ class FnirsiPlugin(private val activity: Activity) : Plugin(activity) {
       invoke.reject("Petición al FNIRSI de tamaño incorrecto.")
       return
     }
-    val orden = bytes[0] and 0xff
-    if (orden != ORDEN_INFO && orden != ORDEN_SUSCRIBIR) {
-      invoke.reject("La aplicación solo envía al FNIRSI las órdenes de identificación y de suscripción.")
+    if (!Peticiones.permitida(bytes)) {
+      invoke.reject(Peticiones.RECHAZO)
       return
     }
     val informe = ByteArray(INFORME)

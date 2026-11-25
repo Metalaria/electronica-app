@@ -474,7 +474,7 @@ test('Repaso «Aprender haciendo» y «Practicar con otros valores» en los ejer
   await expect(page).toHaveURL(/#\/repaso\/practica\/cap05$/);
   await expect(page.locator('[data-practica-parte="cap05"] [data-practica]')).toBeVisible();
   await page.locator('[data-saltar]').click();
-  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`2/${practica('cap05').items.length}`);
+  await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`2 / ${practica('cap05').items.length}`);
 
   await page.goto('#/cap05/ej-5.1');
   const boton = page.locator('[data-otros-valores="ej-5.1"] [data-practicar-ej]');

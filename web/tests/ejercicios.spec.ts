@@ -145,8 +145,10 @@ test('progreso guardado: ejercicio resuelto, sección leída, repaso de fallados
   await expect(panel(page, 'ej-1.9').locator('.estado')).toContainText('Resuelto');
   await expect(campo(page, 'ej-1.9', 'r1')).toHaveValue('300 m');
 
-  // start page: progress and the review
+  // progress and the review (2.1: on «Progreso»; the start page has a row for the failed ones)
   await page.goto('#/');
+  await expect(page.locator('[data-ejercicios-fallados-inicio="1"]')).toHaveAttribute('href', '#/ejercicios/repaso');
+  await page.goto('#/progreso');
   const prog = page.locator('.progreso-inicio');
   await expect(prog).toContainText('ejercicios y problemas resueltos');
   await expect(prog.locator('.cifra').nth(1)).toContainText('1');
@@ -264,8 +266,8 @@ for (const t of TAMANOS) {
       await page.waitForTimeout(600);
       await page.screenshot({ path: `${base}-repaso.png` });
 
-      // start page with the progress
-      await page.goto('#/');
+      // the progress (2.1: on «Progreso»)
+      await page.goto('#/progreso');
       await expect(page.locator('.progreso-inicio')).toBeVisible();
       await page.locator('.progreso-inicio').scrollIntoViewIfNeeded();
       await page.waitForTimeout(500);
@@ -273,7 +275,7 @@ for (const t of TAMANOS) {
 
       // the sidebar with reading progress (the drawer on phones and tablets)
       await page.goto('#/cap05');
-      if (t.w < 1024) await page.locator('nav.pestanas').getByRole('button', { name: 'Libro' }).click();
+      if (t.w < 1024) await page.getByRole('navigation', { name: 'Secciones de la aplicación' }).getByRole('link', { name: 'Libro' }).click();
       await page.waitForTimeout(700);
       await page.screenshot({ path: `${base}-indice.png` });
       await ctx.close();

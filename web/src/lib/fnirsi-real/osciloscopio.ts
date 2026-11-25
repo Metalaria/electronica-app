@@ -26,11 +26,22 @@
 //
 // The same 25 samples per division hold at 10 µs per division: the frequency this decoder gets from the trace of
 // the instrument's generator at 40 kHz is the one the instrument's own measurement gives (40.0 kHz against
-// 40.00 kHz, 2026-11-24).
+// 40.00 kHz, 2026-11-24). And at 5 µs and 20 µs per division: with the generator at 50 kHz the two frequencies
+// agreed at 5, 10 and 20 µs on the unit (2026-11-25; 10 µs was the control. The figures were read on the screen
+// and not written down; the instrument's own measurement said 50 kHz at 5 µs and at 20 µs).
 //
-// Not established: the samples-per-division rule at any other time base outside 50 µs to 2 ms per division (5 µs
-// and 20 µs among them; the fastest time bases cannot have 25 real samples per division), the coupling and the
-// trigger edge. `tiempoComprobado` and the channel's `comprobado` say what a caller may rely on.
+// And at 2 µs per division, later the same day: 50 kHz from the record against 50 kHz by the instrument's own
+// measurement. That day also settled the probe setting of both channels at X10 (the record scaled ten times larger
+// gives 3,36 V and 3,30 V where the instrument measures 3,35 V and 3,29 V) and CH1's coupling, which is byte [0]:
+// 1 direct, 0 alternating (the trace dropped to straddle zero when it was switched). CH2's coupling is presumably
+// byte [1] and was not switched.
+//
+// And at 1 µs per division: the rising edges of that 50 kHz wave are 500 and 499 samples apart in the two records
+// taken, which is its 20 µs at 40 ns a sample.
+//
+// Not established: the samples-per-division rule below 1 µs or above 2 ms per division (the fastest time bases
+// cannot have 25 real samples per division), CH2's coupling and the trigger edge. `tiempoComprobado` and the
+// channel's `comprobado` say what a caller may rely on.
 
 import { EVT_OSC_CABECERA, EVT_OSC_DATOS, u32 } from './protocolo.ts';
 
@@ -67,8 +78,14 @@ export interface AjustesCanal {
   sonda: 1 | 10;
   /** Sample value of zero volts. */
   cero: number;
-  /** The byte layout of this channel was checked on the real unit (CH1: yes; CH2: partly, see above). */
+  /**
+   * The scale of this channel was checked on the real unit. True for both channels at both probe settings since
+   * 2026-11-25 (CH2 at X1: 344 mV from the trace against 345 mV by the instrument's own measurement; at X10: 3,30 V
+   * against 3,29 V). Kept for the callers that word their answer on it.
+   */
   comprobado: boolean;
+  /** Input coupling: direct (CC) or alternating (CA). Null for CH2, whose byte has not been located. */
+  acoplamiento: 'CC' | 'CA' | null;
 }
 
 export interface AjustesOsciloscopio {
@@ -76,7 +93,7 @@ export interface AjustesOsciloscopio {
   /** Seconds per horizontal division, and per sample. */
   tiempoDiv: number;
   periodoMuestra: number;
-  /** The time base is one of those checked on the real unit (10 µs, and 50 µs to 2 ms per division). */
+  /** The time base is one of those checked on the real unit (1 µs to 2 ms per division). */
   tiempoComprobado: boolean;
   /** Trigger level as a sample value. */
   nivelDisparo: number;
@@ -95,7 +112,8 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
   const mascara = c[20] ?? 0;
   const canal = (k: 0 | 1, v: number): AjustesCanal => {
     const sonda = (c[6 + k] ?? 0) === 1 ? 10 : 1;
-    return { activo: (mascara & (1 << k)) !== 0, voltiosDiv: v * sonda, sonda, cero: 128 + i8(c[4 + k] ?? 0), comprobado: k === 0 };
+    const acoplamiento = k === 0 ? ((c[0] ?? 1) === 0 ? 'CA' : 'CC') : null;
+    return { activo: (mascara & (1 << k)) !== 0, voltiosDiv: v * sonda, sonda, cero: 128 + i8(c[4 + k] ?? 0), comprobado: true, acoplamiento };
   };
   const nivel = (c[28] ?? 0) | ((c[29] ?? 0) << 8);
   const indice = c[45] ?? 0;
@@ -103,7 +121,7 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
     canales: [canal(0, v0), canal(1, v1)],
     tiempoDiv: t,
     periodoMuestra: t / MUESTRAS_POR_DIVISION,
-    tiempoComprobado: indice === 9 || (indice >= 11 && indice <= 16),
+    tiempoComprobado: indice >= 6 && indice <= 16,
     nivelDisparo: 128 + (nivel > 32767 ? nivel - 65536 : nivel),
   };
 }
@@ -196,7 +214,7 @@ export interface MedidasTraza {
 }
 
 /** Positions (in samples, fractional) where the trace rises through `nivel`, with hysteresis `h` against noise. */
-function subidas(m: Uint8Array, nivel: number, h: number): number[] {
+export function subidas(m: ArrayLike<number>, nivel: number, h: number): number[] {
   const v: number[] = [];
   let abajo = false;
   for (let k = 0; k < m.length; k++) {

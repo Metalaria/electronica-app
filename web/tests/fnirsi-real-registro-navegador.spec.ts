@@ -39,7 +39,12 @@ async function brymenMarca(page: Page, s: Simulacion) {
 
 async function banco(page: Page) {
   await page.goto(BANCO);
-  await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+  // (2.1: the real instruments' panel opens from «Usar un aparato real», shown only where a transport exists)
+  await expect(page.locator('.banco h1')).toBeVisible({ timeout: 60_000 });
+  if (await page.locator('[data-usar-aparato-real]').count()) {
+    await page.locator('[data-usar-aparato-real]').click();
+    await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+  }
 }
 async function conectarFnirsi(page: Page) {
   await page.locator('.elegir [data-fnirsi-real]').getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
@@ -50,7 +55,7 @@ async function conectarBrymen(page: Page) {
   await expect(page.locator('.elegir [data-brymen-real]')).toHaveAttribute('data-conexion-real', 'conectado');
 }
 async function abrir(page: Page) {
-  const panel = page.locator('.elegir [data-registro-real]');
+  const panel = page.locator('[data-registro-real]');
   await panel.locator('summary').click();
   await expect(panel).toHaveAttribute('open', '');
   return panel;
@@ -77,7 +82,7 @@ test.describe('escritorio', () => {
     await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'hid', { get: () => undefined, configurable: true }));
     await banco(page);
     // only the FNIRSI can be read here: the recorder is offered, the comparison is not
-    const cerrado = page.locator('.elegir [data-registro-real]');
+    const cerrado = page.locator('[data-registro-real]');
     await expect(cerrado.locator('summary')).toHaveText('Registrador');
     const panel = await abrir(page);
     await expect(panel.locator('[data-comparacion-real]')).toHaveCount(0);
@@ -265,6 +270,8 @@ test('en el teléfono el registrador cabe sin desplazamiento horizontal', async 
   await limpio(page);
   await conInstrumentos(page, 'pila9V', { principal: '9.213', unidad: 'V', dc: true });
   await banco(page);
+  // (2.1: on the phone the folded rows are under the bench's «Circuito» segment)
+  await page.getByRole('tab', { name: 'Circuito', exact: true }).click();
   const panel = page.locator('[data-registro-real]').first();
   await panel.scrollIntoViewIfNeeded();
   await panel.locator('summary').click();

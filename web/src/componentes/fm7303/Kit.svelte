@@ -203,9 +203,9 @@
     </div>
     <a class="volver" href="#/cap16" onclick={() => prepararSalto({ texto: 'Volver al kit FM7303' })}><ArrowLeft size={16} /> Capítulo 15</a>
   </header>
-  <nav class="pestanas" aria-label="Capa">
+  <nav class="pestanas pestanas21" aria-label="Capa">
     {#each PESTANAS as p (p.id)}
-      <a href={`#/fm7303/${p.id}`} aria-current={pestana === p.id ? 'page' : undefined} data-pestana={p.id}>{p.titulo}</a>
+      <a class="pestana21" href={`#/fm7303/${p.id}`} aria-current={pestana === p.id ? 'page' : undefined} data-pestana={p.id}>{p.titulo}</a>
     {/each}
   </nav>
 
@@ -303,7 +303,7 @@
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    padding: 12px 16px 16px;
+    padding: var(--e21-3) var(--e21-margen) 16px;
     font-family: var(--sans);
     color: var(--tinta);
   }
@@ -314,61 +314,40 @@
     justify-content: space-between;
     gap: 6px 16px;
   }
+  /* 2.1: the system's page title, secondary text, quiet link and underline tabs */
   h1 {
     margin: 0;
-    font-size: 24px;
-    color: var(--titulos);
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
   .titulo p {
-    margin: 2px 0 0;
-    font-size: 14px;
-    color: var(--tinta-suave);
+    margin: 4px 0 0;
+    font-size: 15px;
+    color: var(--v11-tinta-suave);
   }
   .volver {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    min-height: 40px;
-    padding: 0 12px;
-    border: 1px solid var(--linea);
-    border-radius: 999px;
-    color: var(--acento);
+    min-height: 44px;
+    padding: 0 4px;
+    color: var(--v11-azul);
     text-decoration: none;
-    font-size: 13.5px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 500;
   }
   .pestanas {
-    display: flex;
-    gap: 4px;
-    margin: 10px 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .pestanas a {
-    display: inline-flex;
-    align-items: center;
-    flex: none;
-    min-height: 44px;
-    padding: 0 14px;
-    border-radius: 10px;
-    color: var(--tinta);
-    font-weight: 600;
-    font-size: 14px;
-    text-decoration: none;
-    border: 1px solid var(--linea);
-    background: var(--superficie);
-  }
-  .pestanas a[aria-current='page'] {
-    border-color: var(--acento);
-    background: var(--acento);
-    /* white on the dark theme's light accent was 3.3:1 (0.11 QA) */
-    color: var(--sobre-acento);
+    margin: 16px 0;
   }
   .cuerpo {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 390px;
     gap: 12px;
-    height: calc(100dvh - var(--alto-barra) - 150px);
+    height: calc(100dvh - var(--alto-barra) - 190px);
     min-height: 460px;
   }
   .zona-visor {

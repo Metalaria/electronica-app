@@ -1,6 +1,6 @@
 // 0.8 visual improvements end to end: the floating preview of references (mouse, touch, keyboard; figure,
-// table, equation, section, chapter), the glossary's symbols and lazy 3D thumbnails, and the start page as a
-// path of the book (0.9: nodes that follow the reading, «Seguir leyendo», «Repaso pendiente»), on desktop and phone.
+// table, equation, section, chapter), the glossary's symbols and lazy 3D thumbnails, and the start page
+// (0.9; 2.1: «Su curso» that follows the reading, «Seguir», «Repaso pendiente»), on desktop and phone.
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.visual.config.ts tests/visual.spec.ts
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
@@ -265,7 +265,8 @@ test.describe('glosario con imagen', () => {
   });
 });
 
-test.describe('inicio como camino del libro (0.9)', () => {
+// 2.1: the start page's «Su curso» (the chapters of the course being studied) replaced 0.9's path of the volume.
+test.describe('inicio: «Su curso» y «Seguir» (0.9, 2.1)', () => {
   async function sembrar(page: Page, b: number): Promise<void> {
     await page.addInitScript((bloque) => {
       const t = Date.now();
@@ -276,7 +277,7 @@ test.describe('inicio como camino del libro (0.9)', () => {
     }, b);
   }
 
-  test('los nodos siguen la lectura y «Seguir leyendo» abre la sección', async ({ page, request }) => {
+  test('«Su curso» sigue la lectura y «Seguir» abre la sección', async ({ page, request }) => {
     const cap05 = await (await request.get('libro/partes/cap05.json')).json();
     const b = cap05.bloques.findIndex((x: { t: string; label?: string }) => x.t === 'h2' && x.label === 'sec-5.3') + 1;
     const indice = await (await request.get('libro/indice.json')).json();
@@ -294,69 +295,63 @@ test.describe('inicio como camino del libro (0.9)', () => {
       if (/\/libro\/(fig|img)\//.test(r.url())) figuras.push(r.url());
     });
     await page.goto('#/');
-    // the volume being read is open: one node per part of tome I
-    const camino = page.locator('section.camino-libro');
-    await expect(camino).toBeVisible();
-    const tomoI = (indice.tomos as { id: string; partes: string[] }[]).find((t) => t.partes.includes('cap05'))!;
-    const nodos = camino.locator(':scope > ol.camino a.nodo');
-    await expect(nodos).toHaveCount(tomoI.partes.filter((p) => indice.partes[p]).length);
-    const c5 = camino.locator('a.nodo[data-parte="cap05"]');
+    // the course of chapter 5 («Fundamentos», cap00–cap06): one row per chapter
+    const curso = page.locator('section.su-curso');
+    await expect(curso).toBeVisible();
+    await expect(curso).toHaveAttribute('data-curso-inicio', 'fundamentos');
+    await expect(curso.locator('h2')).toHaveText('Su curso · Fundamentos');
+    await expect(curso.locator('a.capitulo')).toHaveCount(7);
+    const c5 = curso.locator('a.capitulo[data-parte="cap05"]');
     await expect(c5).toHaveAttribute('data-leidas', '4');
     await expect(c5).toHaveAttribute('data-estado', 'actual');
     await expect(c5).toHaveAttribute('aria-current', 'step');
-    await expect(c5).toHaveAttribute('aria-label', new RegExp(`4 de ${indice.partes.cap05.secciones.length} secciones leídas`));
-    await expect(c5).toContainText('Está aquí · 5.3');
-    const c1 = camino.locator('a.nodo[data-parte="cap01"]');
-    await expect(c1).toHaveAttribute('data-estado', 'hecho');
-    await expect(camino.locator('a.nodo[data-parte="cap02"]')).toHaveAttribute('data-leidas', '0');
-    await expect(camino.locator('a.nodo[data-estado="hecho"]')).toHaveCount(1);
-    // (8 parts in tome I up to 1.1; book 4.1: 7)
-    await expect(camino).toContainText(`1 de ${tomoI.partes.filter((p) => indice.partes[p]).length} partes leídas`);
+    await expect(c5).toHaveAttribute('aria-label', new RegExp(`Está aquí; 4 de ${indice.partes.cap05.secciones.length} secciones`));
+    await expect(c5).toContainText(`Aquí · 4 de ${indice.partes.cap05.secciones.length} secciones`);
+    await expect(curso.locator('a.capitulo[data-parte="cap01"]')).toHaveAttribute('data-estado', 'hecho');
+    await expect(curso.locator('a.capitulo[data-parte="cap02"]')).toHaveAttribute('data-leidas', '0');
+    await expect(curso.locator('a.capitulo[data-estado="hecho"]')).toHaveCount(1);
+    await expect(curso.getByRole('link', { name: 'Ver el curso entero' })).toHaveAttribute('href', '#/cursos/fundamentos');
+    // no other volume rows and no book index on the start page any more
+    await expect(page.locator('button.tomo-fila')).toHaveCount(0);
 
-    // the other volumes are rows that open in place
-    const tomoII = camino.locator('button.tomo-fila[data-tomo="II"]');
-    await expect(tomoII).toHaveAttribute('aria-expanded', 'false');
-    await expect(camino.locator('a.nodo[data-parte="cap07"]')).toHaveCount(0);
-    await tomoII.click();
-    await expect(tomoII).toHaveAttribute('aria-expanded', 'true');
-    await expect(camino.locator('a.nodo[data-parte="cap07"]')).toBeVisible();
-
-    // «Repaso pendiente»: the count and the way in
-    const repaso = page.locator('.repaso-hoy');
+    // «Repaso pendiente»: the count, and the row goes to the cards
+    const repaso = page.locator('a.repaso-hoy');
     await expect(repaso).toHaveAttribute('data-pendientes', /\d+/);
-    await expect(repaso.getByRole('link', { name: 'Repasar' })).toHaveAttribute('href', '#/repaso/tarjetas');
+    await expect(repaso).toHaveAttribute('href', '#/repaso/tarjetas');
 
-    // «Seguir leyendo»: its figure is the only one the start page loads
+    // «Seguir»: its figure is the only one the start page loads
     const seguir = page.locator('.seguir');
     await expect(seguir).toHaveAttribute('data-seccion', 'sec-5.3');
     await expect(seguir.locator('.imagen img')).toBeVisible();
     await expect(seguir).toContainText('5.3');
+    await expect(seguir.getByRole('link', { name: 'Estudiar 5.3 por pasos' })).toHaveAttribute('href', '#/leccion/cap05/sec-5.3');
     await page.waitForTimeout(800);
     expect(figuras.length).toBe(1);
     await seguir.getByRole('link', { name: 'Continuar' }).click();
     await expect(page).toHaveURL(/#\/cap05$/);
     await expect(page.locator('header.barra')).toContainText('5.3');
 
-    // a node opens its chapter
+    // a chapter row opens its chapter
     await page.goto('#/');
-    await camino.locator('a.nodo[data-parte="cap02"]').click();
+    await curso.locator('a.capitulo[data-parte="cap02"]').click();
     await expect(page).toHaveURL(/#\/cap02$/);
   });
 
   test('teléfono: sin desplazamiento lateral ni zoom', async ({ browser }) => {
     const page = await movil(browser, (p) => sembrar(p, 3));
     await page.goto('#/');
-    await expect(page.locator('a.nodo').first()).toBeVisible();
+    await expect(page.locator('.su-curso a.capitulo').first()).toBeVisible();
     await expect(page.locator('.seguir')).toBeVisible();
     const medidas = await page.evaluate(() => ({ ancho: document.documentElement.scrollWidth, vista: window.innerWidth, escala: window.visualViewport?.scale ?? 1 }));
     expect(medidas.ancho).toBeLessThanOrEqual(medidas.vista);
     expect(medidas.escala).toBe(1);
-    // nodes are big enough to tap
-    const caja = (await page.locator('a.nodo[data-parte="cap05"]').boundingBox())!;
+    // chapter rows are big enough to tap
+    const caja = (await page.locator('.su-curso a.capitulo[data-parte="cap05"]').boundingBox())!;
     expect(caja.height).toBeGreaterThanOrEqual(52);
-    await page.locator('a.nodo[data-parte="cap05"]').tap();
+    await page.locator('.su-curso a.capitulo[data-parte="cap05"]').tap();
     await expect(page).toHaveURL(/#\/cap05$/);
     await page.context().close();
   });
 });
+
 

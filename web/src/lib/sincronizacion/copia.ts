@@ -131,6 +131,9 @@ export async function leerCopiaAutomatica(): Promise<{ nombre: string; texto: st
 
 // ------------------------------------------------------------------ import
 
+/** Stores an import applies before the others: what the learning events of the others' application would award. */
+const PRIMERO = new Set(['progreso-xp', 'progreso-logros']);
+
 /**
  * Imports a checked file. Re-plans against the data as they are now (they may have changed since the preview). Rejects
  * with an ErrorCopia when nothing was imported (local data unreadable, the automatic backup or the marks could not be
@@ -176,12 +179,16 @@ export function importar(leida: CopiaLeida, modo: ModoImportacion, incluirAntigu
     }
 
     const fallidos: ResultadoImportacion['fallidos'] = [];
-    const hechos: PlanAlmacen[] = [];
+    const aplicados = new Set<PlanAlmacen>();
     const claves: string[] = [];
-    for (const p of planes) {
+    // (2.1 close-out: the XP ledger and the achievements first. Applying the days can complete today's goal, whose
+    // event the consumers take at once on a device in use: before, with the ledger still to come, it awarded the day's
+    // XP again — «+10 XP» and achievements announced for imported progress — and marked them with the import's time.)
+    const orden = [...planes.filter((p) => PRIMERO.has(p.clave)), ...planes.filter((p) => !PRIMERO.has(p.clave))];
+    for (const p of orden) {
       const s = sincronizables().find((x) => x.clave === p.clave)!;
       if (!Object.keys(p.poner).length && !p.quitar.length) {
-        hechos.push(p);
+        aplicados.add(p);
         continue;
       }
       try {
@@ -190,7 +197,7 @@ export function importar(leida: CopiaLeida, modo: ModoImportacion, incluirAntigu
         fallidos.push({ clave: p.clave, nombre: p.nombre, error: mensaje(e) });
         continue;
       }
-      hechos.push(p);
+      aplicados.add(p);
       claves.push(p.clave);
       // a store that keeps something else than it was given (a union with what it holds, a normalisation): its value is
       // the change to send — marked again, at the same time, with the hash of what it stored. Never the value this
@@ -212,7 +219,8 @@ export function importar(leida: CopiaLeida, modo: ModoImportacion, incluirAntigu
     }
     await volcarMarcas().catch(() => undefined);
     if (claves.length && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('epa:sincronizado', { detail: { claves, importado: true } }));
-    return { planes: hechos, fallidos, copiaAutomatica };
+    // (in the registry's order, as the preview lists them)
+    return { planes: planes.filter((p) => aplicados.has(p)), fallidos, copiaAutomatica };
   });
 }
 

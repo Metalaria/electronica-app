@@ -452,17 +452,17 @@ test('una puerta añadida a mano llega en su chip y avisa de lo que falta por ca
   expect(r.netlist).toMatch(/^A\S+ \[\S+ \S+\] \S+ \S+_mod$/m);
 });
 
-test('la entrada «Protoboard» del menú de herramientas abre la protoboard', async ({ browser }) => {
+// (2.1: no tools menu on the phone any more — the Taller group's tab row under the header has «Protoboard»)
+test('la pestaña «Protoboard» del grupo Taller abre la protoboard (teléfono)', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   await page.goto('/#/simulador');
-  await page.locator('[data-herramienta="mas"]').click();
-  const item = page.locator('[role="menu"] [data-herramienta="protoboard"]');
+  const item = page.getByRole('navigation', { name: 'Partes de Taller' }).getByRole('link', { name: 'Protoboard' });
   await expect(item).toHaveText(/Protoboard/);
   await item.click();
   await expect(page).toHaveURL(/#\/protoboard$/);
   await listo(page);
-  await expect(page.locator('.barra')).toContainText('Protoboard');
+  await expect(item).toHaveAttribute('aria-current', 'page');
   await ctx.close();
 });
 

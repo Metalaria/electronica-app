@@ -22,6 +22,8 @@ async function banco(page: Page, ajuste: Partial<Cable> = {}) {
   const errores: string[] = [];
   page.on('pageerror', (e) => errores.push(e.message));
   await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+  // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+  await page.locator('[data-usar-aparato-real]').click();
   const panel = page.locator('.elegir [data-brymen-real]');
   await expect(panel).toBeVisible({ timeout: 60_000 });
   return { panel, errores };
@@ -148,6 +150,8 @@ test('WebHID: si el cable no se abre o no acepta la petición, el mensaje está 
     });
   });
   await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+  // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+  await page.locator('[data-usar-aparato-real]').click();
   const panel = page.locator('.elegir [data-brymen-real]');
   await expect(panel).toBeVisible({ timeout: 60_000 });
   await panel.getByRole('button', { name: 'Conectar el Brymen real' }).click();

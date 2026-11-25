@@ -48,7 +48,7 @@ test.describe('escritorio', () => {
       ['ps1', 'PlayStation'],
     ] as const) {
       await page.goto(`#/consolas/${m}/foto`);
-      await expect(page.getByRole('navigation', { name: 'Consola' }).getByRole('link', { name: new RegExp(nombre) })).toHaveAttribute('aria-current', 'page');
+      await expect(page.locator('[data-elegir-consola] .nombre')).toHaveText(new RegExp(nombre)); // (2.1: the machine is the page's title; the others in its menu)
       for (const t of ['Foto', 'Arquitectura', 'Un fotograma', 'Esquema', 'Placa en 3D', 'Placa en 2D', 'Busque la avería', 'Fuentes'])
         await expect(vista(page).getByRole('link', { name: t, exact: true }), `${m}: ${t}`).toBeVisible();
       await expect(page.getByTestId('sin-esquema')).toHaveCount(0);

@@ -11,7 +11,7 @@
   import Lateral from './componentes/Lateral.svelte';
   import Carril from './componentes/Carril.svelte';
   import Pestanas from './componentes/Pestanas.svelte';
-  import { indiceOculto } from './lib/navegacion.svelte';
+  import { indiceOculto, recordarRuta } from './lib/navegacion.svelte';
   import Barra from './componentes/Barra.svelte';
   import Lector from './componentes/Lector.svelte';
   import Glosario from './componentes/Glosario.svelte';
@@ -25,6 +25,8 @@
   import { capaProtoboard } from './lib/protoboard.svelte';
   import { enfocarContenido, focoTrasRuta } from './lib/foco-ruta';
   import { iniciarEnlaces } from './lib/enlaces-app';
+  import { novedades, comprobarNovedades } from './lib/novedades21.svelte';
+  import Novedades21 from './componentes/Novedades21.svelte';
 
   let oscuroSistema = $state(false);
 
@@ -59,6 +61,8 @@
     const raiz = document.documentElement.style;
     const izquierda = app.movil ? '0px' : indiceOculto() ? 'var(--ancho-carril)' : 'calc(var(--ancho-carril) + var(--ancho-panel))';
     raiz.setProperty('--ancho-lateral', izquierda);
+    // 2.1: the header is 64 px on the desktop (the group's tabs on its edge), 56 px for the reading bar and on the phone
+    raiz.setProperty('--alto-barra', app.movil || ruta.vista === 'parte' ? '56px' : '64px');
     // 0.9: 64 px, the mockups' taller bar with the pill behind the active icon
     raiz.setProperty('--alto-pestanas', app.movil ? '64px' : '0px');
     // 0.9: a lesson («Estudiar por pasos») is full screen: no rail, index panel or tab bar
@@ -82,6 +86,14 @@
       if (primera || igual) return;
       focoTrasRuta(ruta.vista === 'parte' || ruta.vista === 'glosario' ? ruta.ancla || null : null);
     });
+  });
+
+  // 2.1: each group remembers where it was left (this session), so its rail entry returns there
+  $effect(() => {
+    void ruta.n;
+    void ruta.vista;
+    void ruta.parte;
+    untrack(recordarRuta);
   });
 
   function saltar(ev: MouseEvent) {
@@ -133,6 +145,8 @@
     window.addEventListener('pagehide', volcar);
 
     iniciarRuta();
+    // 2.1: «Novedades de la 2.1» on a device an earlier version used — decided before the modules write their stores
+    void comprobarNovedades();
     // 1.1: the book's QR links (epa://leccion/…) given by the native shell — at start and while the app runs
     void iniciarEnlaces();
     // Opening on the start page: fetch its chunk while the index loads.
@@ -168,13 +182,15 @@
 <div class="app" class:movil={app.movil}>
   {#if app.cargado && ruta.vista !== 'leccion'}
     {#if app.movil}
-      <Pestanas />
+      <Pestanas inerte={app.lateral} />
     {:else}
       <Carril />
     {/if}
     <Lateral />
   {/if}
-  <div class="principal">
+  <!-- 2.1: while the phone's index drawer is open (a scrim over the page), the page behind it is inert: a screen reader
+       or the keyboard does not wander under the drawer -->
+  <div class="principal" inert={app.movil && app.lateral}>
     {#if ruta.vista !== 'leccion'}<Barra />{/if}
     <main id="contenido">
       <!-- 1.0: a page that throws while it renders shows «No se ha podido mostrar esta página» with «Reintentar»
@@ -416,6 +432,9 @@
   {/await}
 {/if}
 <Arranque />
+{#if novedades.mostrar && app.cargado && usuario.listo}
+  <Novedades21 />
+{/if}
 <!-- 0.11: «+10 XP», new level and achievement toasts (own chunk, mounted on the first one); daily reminder check. -->
 <ArranqueProgreso />
 <!-- 1.0: the notice after a failure («Ver el informe») and what feeds the local «Informe de fallos». -->

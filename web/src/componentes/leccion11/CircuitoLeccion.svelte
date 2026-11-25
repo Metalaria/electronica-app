@@ -304,9 +304,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 14px 14px 12px;
-    border-radius: var(--v11-radio-tarjeta);
-    background: var(--v11-panel);
+    /* 2.1 (Leccion.png): the circuit on the page itself, no card around it */
+    padding: 8px 0;
   }
   .cabecera {
     display: flex;
@@ -405,8 +404,8 @@
   /* phones: a little more width for the drawing (its labels then need less enlarging, kit/Lienzo.svelte) */
   @media (max-width: 420px) {
     .panel {
-      padding-right: 8px;
-      padding-left: 8px;
+      padding-right: 0;
+      padding-left: 0;
     }
   }
   @media (prefers-reduced-motion: reduce) {

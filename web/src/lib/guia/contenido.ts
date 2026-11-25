@@ -63,12 +63,12 @@ export const GUIA: SeccionGuia[] = [
           {
             t: 'p',
             texto:
-              'En el ordenador y en la tableta apaisada, a la izquierda hay un carril de iconos con todas las secciones (Inicio, Libro, Cursos, Buscar, Simulador, Calculadoras, Ejercicios, Repaso…); las que no caben en la altura de la ventana pasan a «Más». En el teléfono y en la tableta en vertical hay una barra abajo con Inicio, Libro, Simulador, Ejercicios y «Más», donde está todo lo demás.',
+              'La aplicación tiene cinco grupos: Inicio, Aprender (Cursos, Repaso, Progreso), Libro (Índice, Ejercicios, Conceptos, Glosario, Marcadores), Taller (Simulador, Protoboard, Instrumentos, Calculadoras, Componentes) y Proyectos (Kit FM7303, Consolas, Proyectos del libro). En el ordenador y en la tableta apaisada están en un carril de iconos a la izquierda; en el teléfono y en la tableta en vertical, en una barra abajo. Las partes del grupo en el que está aparecen como pestañas arriba (en el teléfono, en una fila que se desliza de lado), y a la derecha de la cabecera siempre están Buscar y «Aa». La Guía de uso, el Modo docente y la Sincronización están al pie de «Aa», en «Más».',
           },
           {
             t: 'lista',
             items: [
-              'Junto al carril está el índice del libro: tomos, capítulos con su anillo de lectura y secciones. Se oculta y se muestra con el botón de la barra superior o pulsando «Libro» mientras lee; en el teléfono «Libro» lo abre como un cajón.',
+              'Mientras lee, junto al carril está el índice del libro: tomos, capítulos con su anillo de lectura y secciones. Se oculta y se muestra con el botón de la barra de lectura o pulsando «Libro» en el carril; en el teléfono «Libro» o la pestaña «Índice» lo abren como un cajón.',
               'El filtro del índice admite palabras sin tildes o números: 5.8, cap 33, ap B.',
               'Si se ha desplazado el índice, «Ir a la sección actual» vuelve a la que está leyendo.',
               'El botón Atrás (de la aplicación, del navegador, del ratón o de Android) vuelve al punto exacto donde estaba; en Android cierra primero el cajón, la búsqueda o el visor de figuras.',
@@ -88,7 +88,7 @@ export const GUIA: SeccionGuia[] = [
               'Un toque o clic en una figura la abre a pantalla completa: se amplía con la rueda, los botones, doble toque o pellizco, y se desplaza arrastrando.',
               'Junto al título de cada sección: «Marcar esta sección» (marcador), «Añadir una nota a esta sección», «Estudiar por pasos» (el icono de las huellas) y «Marcar la sección como leída». Los marcadores y las notas se reúnen en «Marcadores y notas».',
               'Una sección cuenta como leída sola cuando ha visto su final y ha estado en pantalla el tiempo suficiente para su longitud; también puede marcarla o desmarcarla a mano.',
-              'En el inicio, «Seguir leyendo» le devuelve a la lección o a la sección que dejó a medias.',
+              'En el inicio, «Seguir» le devuelve a la lección o a la sección que dejó a medias; «Hoy» enseña el objetivo del día y la racha; «Para hoy también», el problema del día, el repaso pendiente y lo demás que toque hoy; y «Su curso», los capítulos del curso que está estudiando.',
             ],
           },
         ],
@@ -120,7 +120,7 @@ export const GUIA: SeccionGuia[] = [
           {
             t: 'p',
             texto:
-              'En «Aa» también están el «Objetivo diario», «Sonido y vibración», el «Recordatorio diario» (solo en Android), «Su nombre» para el saludo del inicio (solo en este dispositivo), el «Diagnóstico de rendimiento», la sincronización, la copia de seguridad, «Buscar actualizaciones» y esta guía.',
+              'En «Aa» también están el «Objetivo diario», «Sonido y vibración», el «Recordatorio diario» (solo en Android), el «Diagnóstico de rendimiento», la sincronización, la copia de seguridad, «Buscar actualizaciones» y esta guía.',
           },
         ],
       },
@@ -154,7 +154,7 @@ export const GUIA: SeccionGuia[] = [
               ['Esc', 'Cerrar la lección'],
             ],
           },
-          { t: 'consejo', texto: 'La lección recuerda el paso donde la dejó: el inicio la ofrece en «Seguir leyendo».' },
+          { t: 'consejo', texto: 'La lección recuerda el paso donde la dejó: el inicio la ofrece en «Seguir».' },
         ],
       },
       {
@@ -592,7 +592,7 @@ export const GUIA: SeccionGuia[] = [
           {
             t: 'p',
             texto:
-              'La aplicación calcula, con lo que ha respondido, cuándo empieza a olvidar cada sección. En el camino de los cursos, cada lección completada dice «Para repasar hoy» o cuándo toca su repaso; en el inicio, «Repaso de sus lecciones» dice cuántas tocan hoy y «Repasar» abre la primera. Lo que vence mientras la aplicación está abierta pasa solo a «Para repasar hoy».',
+              'La aplicación calcula, con lo que ha respondido, cuándo empieza a olvidar cada sección. En el camino de los cursos, cada lección completada dice «Para repasar hoy» o cuándo toca su repaso; en el inicio, la fila «Repaso de sus lecciones» de «Para hoy también» dice cuántas tocan hoy y abre la primera. Lo que vence mientras la aplicación está abierta pasa solo a «Para repasar hoy».',
           },
           {
             t: 'consejo',
@@ -651,7 +651,7 @@ export const GUIA: SeccionGuia[] = [
             t: 'lista',
             items: [
               'El objetivo diario se elige en «Aa» → «Objetivo diario»: «Pasos de lección» o «Preguntas de repaso», de 1 a 10 al día. Con pasos, cada sección marcada como leída cuenta como un paso (se puede desactivar).',
-              'La racha cuenta los días seguidos con el objetivo cumplido. El día empieza a las 04:00, y lo hecho el mismo día en varios dispositivos se suma.',
+              'La racha cuenta los días seguidos con el objetivo cumplido. El día empieza a las 04:00, y lo hecho el mismo día en varios dispositivos se suma. En el inicio, «Hoy» enseña los dos: un toque en el objetivo abre «Aa» y uno en la racha, «Progreso».',
               'XP: una pregunta acertada da 10 (5 a la segunda o con pistas), una lección completada 20, un ejercicio resuelto 15 (8 tras un fallo o con pistas; nada si abrió antes la solución). Cada cosa cuenta una sola vez, aunque la repita o la haga en otro dispositivo.',
               '«Progreso y logros» enseña su nivel, sus XP, la racha y todos los logros, con lo que falta para cada uno.',
             ],

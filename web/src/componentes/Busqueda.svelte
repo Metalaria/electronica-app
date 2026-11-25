@@ -4,6 +4,7 @@
   import { app } from '../lib/estado.svelte';
   import { navegarDesdeCapa, ruta } from '../lib/ruta.svelte';
   import { buscar, fragmento, prepararBuscador, type Resultado } from '../lib/buscador';
+  import { buscarLugares, prepararLugares, type Lugar, type TipoLugar } from '../lib/lugares';
   import { infoParte, rotuloParte } from '../lib/datos';
   import { colorBloque } from '../lib/color';
   import { cerrarBuscador } from '../lib/acciones';
@@ -14,6 +15,10 @@
 
   let consulta = $state('');
   let resultados = $state<Resultado[]>([]);
+  /** 2.1: the app's tools and places that match (lib/lugares.ts), listed before the book's results. */
+  let lugares = $state<Lugar[]>([]);
+  /** How many options there are: the places, then the book's results (one index for the keyboard). */
+  const total = $derived(lugares.length + resultados.length);
   let sel = $state(0);
   let preparando = $state(false);
   let buscado = $state('');
@@ -47,6 +52,10 @@
       campo?.select();
     });
     preparando = true;
+    void prepararLugares().then(() => {
+      // the projects and the calculators arrived: search again what is typed
+      if (consulta.trim()) lugares = buscarLugares(consulta);
+    });
     prepararBuscador()
       .catch(() => undefined)
       .finally(() => (preparando = false));
@@ -58,8 +67,10 @@
     if (!app.buscador) return;
     const mio = ++turno;
     const t = setTimeout(async () => {
-      const r = q.trim() ? await buscar(q) : [];
+      const l = q.trim() ? buscarLugares(q) : [];
+      const r = q.trim() ? await buscar(q).catch(() => [] as Resultado[]) : [];
       if (mio !== turno) return;
+      lugares = l;
       resultados = r;
       buscado = q.trim();
       sel = 0;
@@ -79,10 +90,36 @@
     navegarDesdeCapa(href(r), { texto: s ? `Volver a ${s.num}` : 'Volver' });
   }
 
+  function irLugar(l: Lugar | undefined) {
+    if (!l) return;
+    const s = app.seccion;
+    navegarDesdeCapa(l.href, { texto: s ? `Volver a ${s.num}` : 'Volver' });
+  }
+
+  /** The option at an index of the one list (places first). */
+  function abrir(k: number) {
+    if (k < lugares.length) irLugar(lugares[k]);
+    else ir(resultados[k - lugares.length]);
+  }
+
+  function clicLugar(ev: MouseEvent, l: Lugar) {
+    if (ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+    ev.preventDefault();
+    irLugar(l);
+  }
+
+  const ICONO_LUGAR: Record<TipoLugar, 'simulador' | 'instrumentos' | 'consolas' | 'placa' | 'calculadora'> = {
+    seccion: 'simulador',
+    instrumento: 'instrumentos',
+    consola: 'consolas',
+    proyecto: 'placa',
+    calculadora: 'calculadora',
+  };
+
   function teclas(ev: KeyboardEvent) {
     if (ev.key === 'ArrowDown') {
       ev.preventDefault();
-      sel = Math.min(resultados.length - 1, sel + 1);
+      sel = Math.min(total - 1, sel + 1);
       visible();
     } else if (ev.key === 'ArrowUp') {
       ev.preventDefault();
@@ -90,7 +127,7 @@
       visible();
     } else if (ev.key === 'Enter') {
       ev.preventDefault();
-      ir(resultados[sel]);
+      abrir(sel);
     } else if (ev.key === 'Escape') {
       ev.preventDefault();
       cerrarBuscador();
@@ -129,7 +166,7 @@
           placeholder="Buscar en el libro…"
           aria-label="Buscar en el libro"
           aria-controls="resultados"
-          aria-activedescendant={resultados.length ? `res-${sel}` : undefined}
+          aria-activedescendant={total ? `res-${sel}` : undefined}
           autocomplete="off"
           spellcheck="false"
           onkeydown={teclas}
@@ -146,6 +183,7 @@
         {#if !consulta.trim()}
           <div class="ayuda">
             <p><strong>Busque en todo el libro:</strong> secciones de todos los capítulos y términos del glosario.</p>
+            <p><strong>Y en la aplicación:</strong> sus partes, los instrumentos, las consolas, las calculadoras y los proyectos (<em>osciloscopio</em>, <em>saturn</em>, <em>protoboard</em>).</p>
             <ul>
               <li>No importan las tildes ni las mayúsculas: <em>tension zener</em> encuentra «tensión Zener».</li>
               <li>Basta el comienzo de las palabras: <em>rectif</em> encuentra «rectificador».</li>
@@ -153,11 +191,38 @@
             </ul>
             {#if preparando}<p class="estado">Preparando el índice de búsqueda…</p>{/if}
           </div>
-        {:else if !resultados.length && buscado === consulta.trim()}
+        {:else if !total && buscado === consulta.trim()}
           <p class="nada">Sin resultados para «{consulta.trim()}».</p>
         {:else}
-          <ul id="resultados" role="listbox" aria-label="Resultados">
-            {#each resultados as r, k (r.doc.id)}
+          <div id="resultados" role="listbox" aria-label="Resultados">
+          {#if lugares.length}
+            <ul role="group" aria-label="En la aplicación" class="lugares">
+              {#each lugares as l, k (l.id)}
+                <li role="none">
+                  <a
+                    id={`res-${k}`}
+                    role="option"
+                    aria-selected={k === sel}
+                    tabindex="-1"
+                    href={l.href}
+                    data-lugar={l.id}
+                    onclick={(e) => clicLugar(e, l)}
+                    onmousemove={() => (sel = k)}
+                  >
+                    <span class="ins icono-lugar" aria-hidden="true"><Icono nombre={l.tipo === 'seccion' ? 'chevron' : ICONO_LUGAR[l.tipo]} tam={18} /></span>
+                    <span class="txt">
+                      <span class="tit">{l.titulo}</span>
+                      <span class="donde">{l.donde}</span>
+                    </span>
+                  </a>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if resultados.length}
+          <ul role="group" aria-label="En el libro">
+            {#each resultados as r, j (r.doc.id)}
+              {@const k = j + lugares.length}
               {@const p = infoParte(r.doc.parte)}
               <!-- the option is the link itself (an option holding a link nested two controls: axe, 0.11 QA); the
                    focus stays in the field, which points at it with aria-activedescendant -->
@@ -183,14 +248,16 @@
               </li>
             {/each}
           </ul>
+          {/if}
+          </div>
         {/if}
       </div>
-      {#if resultados.length && !app.movil}
+      {#if total && !app.movil}
         <div class="pie">
           <span><kbd>↑</kbd><kbd>↓</kbd> elegir</span>
           <span><kbd>↵</kbd> abrir</span>
           <span><kbd>Esc</kbd> cerrar</span>
-          <span class="total">{resultados.length}{resultados.length === 60 ? '+' : ''} resultados</span>
+          <span class="total">{total}{resultados.length === 60 ? '+' : ''} resultados</span>
         </div>
       {/if}
     </div>
@@ -244,7 +311,7 @@
   }
   .campo:focus-within {
     /* the app's focus ring, inside (the field spans the dialog's top edge; QA 1.0, WCAG 2.4.7 / 2.4.11) */
-    outline: 2px solid var(--acento);
+    outline: 2px solid var(--v11-foco);
     outline-offset: -2px;
   }
   .campo input {
@@ -317,10 +384,32 @@
     color: var(--tinta-suave);
     text-align: center;
   }
-  ul[role='listbox'] {
-    margin: 0;
+  [role='listbox'] {
     padding: 6px;
+  }
+  ul[role='group'] {
+    margin: 0;
+    padding: 0;
     list-style: none;
+  }
+  /* 2.1: the app's places, compact rows above the book's results, a hairline under them */
+  ul.lugares {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--v11-linea);
+  }
+  ul.lugares a {
+    align-items: center;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .icono-lugar {
+    display: grid;
+    place-items: center;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--v11-azul-tinte);
+    color: var(--v11-azul);
   }
   li a {
     /* The figure of the section (or its circuit, or the term's symbol) on the right, at a fixed size. */
@@ -335,8 +424,8 @@
     text-decoration: none;
   }
   a[aria-selected='true'] {
-    background: var(--acento-tinte);
-    box-shadow: inset 0 0 0 1px var(--acento-borde);
+    background: var(--v11-azul-tinte);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--v11-azul) 45%, transparent);
   }
   .ins {
     flex: none;

@@ -1,6 +1,7 @@
 <script lang="ts">
-  // The book index next to the icon rail (desktop and tablet landscape), or as a drawer opened from the «Libro»
-  // tab (phone and tablet portrait). The tools live in the rail (Carril.svelte) or the tabs (Pestanas.svelte).
+  // The book index next to the icon rail (desktop and tablet landscape), or as a drawer opened from «Libro» or the
+  // «Índice» tab while reading (phone and tablet portrait). 2.1: only in the reader (lib/navegacion indiceOculto); the
+  // groups live in the rail (Carril.svelte) or the bottom bar (Pestanas.svelte), their parts in the header (Barra).
   import { app } from '../lib/estado.svelte';
   import { navegarDesdeCapa } from '../lib/ruta.svelte';
   import { cerrarLateral } from '../lib/acciones';
@@ -90,15 +91,16 @@
     flex: none;
     align-items: baseline;
     gap: 8px;
-    height: var(--alto-barra);
+    height: 64px;
     padding: 0 20px;
-    padding-top: 21px;
+    padding-top: 24px;
   }
+  /* 2.1: the system's section label (13, uppercase, .08em, 600) */
   .titulo-panel {
-    color: var(--tinta-tenue);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .edicion {

@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Start page: how much of the book has been read, chapters in progress (reading and exercises solved),
-  // and the way into the exercises and the review of the failed ones.
+  // How much of the book has been read, chapters in progress (reading and exercises solved), and the way into the
+  // exercises and the review of the failed ones. 0.9–2.0 on the start page; 2.1 on «Progreso» (PaginaProgreso), as
+  // figures without boxes and hairline rows.
   import { onMount } from 'svelte';
   import { app } from '../../lib/estado.svelte';
   import { rotuloParte } from '../../lib/datos';
@@ -90,8 +91,8 @@
 </script>
 
 {#if aprendizaje.listo}
-  <section class="bloque progreso-inicio" aria-label="Progreso">
-    <h2>Progreso</h2>
+  <section class="seccion21 progreso-inicio" aria-labelledby="tit-lectura-ej">
+    <h2 class="etiqueta21" id="tit-lectura-ej">Lectura y ejercicios</h2>
     <div class="resumen">
       <div class="dato">
         <span class="cifra">{pct(lectura.total ? lectura.leidas / lectura.total : 0)}</span>
@@ -104,7 +105,7 @@
         <span class="barra" aria-hidden="true"><span style:width={`${(ej.resueltos / Math.max(1, ej.total)) * 100}%`}></span></span>
       </a>
       {#if ej.fallados}
-        <a class="boton repasar" href="#/ejercicios/repaso"><Icono nombre="repaso" tam={17} /> Repasar {ej.fallados} fallados</a>
+        <a class="boton fantasma repasar" href="#/ejercicios/repaso"><Icono nombre="repaso" tam={17} /> Repasar {ej.fallados} fallados</a>
       {/if}
     </div>
 
@@ -133,86 +134,70 @@
 {/if}
 
 <style>
-  /* 0.9: the start page's card look (componentes/ui09) */
-  .bloque {
-    margin-top: 8px;
-  }
-  h2 {
-    margin: 0 0 14px;
-    color: var(--tinta-suave);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
   h3 {
-    margin: 22px 0 10px;
-    color: var(--tinta-suave);
+    margin: 8px 0 0;
+    color: var(--v11-tinta-suave);
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 600;
   }
   .resumen {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    align-items: stretch;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    align-items: end;
+    gap: 16px 48px;
   }
   .dato {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 16px;
-    border: 1px solid var(--linea);
-    border-radius: var(--radio-tarjeta);
-    background: var(--superficie);
-    color: var(--tinta);
+    color: var(--v11-tinta);
     text-decoration: none;
   }
-  .enlace:hover {
-    box-shadow: var(--sombra);
+  .enlace:hover .txt {
+    color: var(--v11-azul);
   }
   .cifra {
-    color: var(--titulos);
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
   }
   .cifra small {
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
     font-size: 17px;
-    font-weight: 600;
+    font-weight: 500;
   }
   .txt {
-    color: var(--tinta-suave);
-    font-size: 14.5px;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
   }
   .det {
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
     font-size: 13px;
   }
   .barra {
     display: block;
-    height: 5px;
+    height: 6px;
     margin-top: 6px;
     border-radius: 3px;
-    background: var(--linea-suave);
+    background: var(--v11-linea);
     overflow: hidden;
   }
   .barra span {
     display: block;
     height: 100%;
-    background: var(--c-ejemplo);
+    background: var(--v11-azul);
   }
   .repasar {
-    align-self: center;
     justify-self: start;
-    min-height: 44px;
+    margin-left: -16px;
   }
   .en-curso {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 10px;
+    gap: 0 48px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -222,16 +207,13 @@
     align-items: center;
     gap: 12px;
     min-height: 56px;
-    padding: 10px 14px;
-    border: 1px solid var(--linea);
-    border-left: 4px solid var(--c);
-    border-radius: var(--radio-tarjeta-p);
-    background: var(--superficie);
-    color: var(--tinta);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--v11-linea);
+    color: var(--v11-tinta);
     text-decoration: none;
   }
-  .en-curso a:hover {
-    box-shadow: var(--sombra);
+  .en-curso a:hover .nom {
+    color: var(--v11-azul);
   }
   .cuerpo {
     display: flex;

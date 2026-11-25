@@ -433,6 +433,14 @@ export class Fnirsi {
 
   // ---------------------------------------------------------------- multimeter
 
+  /** 2.1: put the multimeter on a function of FN_DMM_LISTA by its id (the drawing following the real one). */
+  elegirFuncionDmm(id: string): void {
+    const k = FN_DMM_LISTA.findIndex((f) => f.id === id);
+    if (k < 0 || k === this.fnDmm) return;
+    this.fnDmm = k;
+    this.rangoDmm = 0;
+  }
+
   get funcionDmm(): Funcion | null {
     const id = FN_DMM_LISTA[this.fnDmm]!.id;
     if (id === 'auto') return FN_FUNCIONES.vdc!;

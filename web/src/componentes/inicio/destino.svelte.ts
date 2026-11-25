@@ -1,4 +1,4 @@
-// Start page (0.9): where the reader is, shared by the greeting, «Seguir leyendo» and the path of chapters.
+// Start page (0.9; 2.1): where the reader is, shared by «Seguir», «Su curso» and the course rows of «Para hoy también».
 // The lesson to continue (lib/lecciones.svelte.ts → ultimaLeccion) comes first; without one, the part read
 // last at its section (usuario.posiciones); without any reading, the first chapter. Reactive: call it inside
 // $derived.

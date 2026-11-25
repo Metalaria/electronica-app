@@ -84,7 +84,7 @@ export function todasLasRutas(): Ruta[] {
   r.push({ id: 'inicio', hash: '#/', grupo: 'inicio', siempre: true, completa: true });
   r.push({ id: 'ajustes', hash: '#/', grupo: 'inicio', accion: 'ajustes', siempre: true });
   r.push({ id: 'buscar', hash: '#/', grupo: 'inicio', accion: 'buscar', siempre: true });
-  r.push({ id: 'menu-herramientas', hash: '#/', grupo: 'inicio', accion: 'menu', siempre: true });
+  // (2.1: no tools menu any more — the five groups and «Más» at the foot of «Aa»; its route went with it)
   r.push({ id: 'marcadores', hash: '#/marcadores', grupo: 'inicio', siempre: true });
   for (const p of partes) {
     if (p === 'glosario') continue;

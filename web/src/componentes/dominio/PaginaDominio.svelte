@@ -172,30 +172,26 @@
   .dominio {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 32px 32px 64px;
-    font-family: var(--sans);
-  }
-  @media (max-width: 600px) {
-    .dominio {
-      padding: 16px 16px 48px;
-    }
+    gap: var(--e21-4);
+    /* 2.1: the page of the system sheet (gutters, 36 px title, 15 px line under it) */
+    max-width: calc(880px + 2 * var(--e21-margen));
+    padding: var(--e21-4) var(--e21-margen) var(--e21-8);
+    font-family: var(--v11-texto);
   }
   .cab h1 {
     margin: 0;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: 30px;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
     line-height: 1.15;
   }
   .cab p {
     max-width: 44em;
-    margin: 6px 0 0;
-    color: var(--tinta-suave);
-    font-size: 16px;
-    line-height: 1.5;
+    margin: 4px 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: var(--t21-secundario);
+    line-height: 1.45;
   }
   .resumen {
     display: flex;

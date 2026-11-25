@@ -1,7 +1,8 @@
-// Navigation end to end: the icon rail (one entry per registry item, active state, «Más» when the window is
-// short), the book index (filter by text and number, current section highlighted and kept in view, keyboard),
-// previous/next section and the breadcrumb menu, the index panel hidden per tool, and on the phone the tab
-// bar, the index drawer and «Más», with the back button closing them first.
+// Navigation end to end: the icon rail (2.1: the five groups, the current one marked, the header's tabs for the group's
+// parts, each group remembering where it was left), the book index (filter by text and number, current section
+// highlighted and kept in view, keyboard), previous/next section and the breadcrumb menu, the index panel only while
+// reading, and on the phone the bottom bar, the group's tab row, the index drawer, with the back button closing them first.
+// (The route → group/tab matrix in both themes: tests/navegacion21.spec.ts.)
 import { expect, test, type Page } from '@playwright/test';
 
 const ESCRITORIO = { width: 1280, height: 800 };
@@ -48,70 +49,74 @@ async function enVista(page: Page, fila: ReturnType<Page['locator']>): Promise<b
 test.describe('escritorio', () => {
   test.use({ viewport: ESCRITORIO });
 
-  test('el carril lleva a cada sección y marca la actual', async ({ page }) => {
+  test('el carril lleva a cada grupo, las pestañas a sus partes, y se marca lo actual', async ({ page }) => {
     await page.goto('#/');
     const c = carril(page);
     await expect(c.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
-    // at 800 px all but the last two entries fit, labels visible without hovering (0.11: «Cursos» joined the rail, so
-    // «Glosario» and «Marcadores» go to «Más», which takes a slot itself — 44 px targets leave no room for more)
-    for (const nombre of ['Inicio', 'Libro', 'Cursos', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Protoboard', 'Kit FM7303', 'Consolas', 'Proyectos']) {
-      await expect(c.locator('.etiqueta', { hasText: new RegExp(`^${nombre}$`) })).toBeVisible();
-    }
-    const destinos: [string, string][] = [
-      ['Cursos', '#/cursos'],
-      ['Simulador', '#/simulador'],
-      ['Calculadoras', '#/calculadoras'],
-      ['Ejercicios', '#/ejercicios'],
-      ['Repaso', '#/repaso'],
-      ['Componentes animados', '#/componentes'],
-      ['Conceptos animados', '#/conceptos'],
-      ['Instrumentos', '#/instrumentos'],
-      ['Protoboard', '#/protoboard'],
-      ['Kit FM7303', '#/fm7303'],
-      ['Consolas', '#/consolas'],
-      ['Proyectos KiCad', '#/proyectos'],
+    // 2.1: five groups, labels visible without hovering, and nothing in a «Más»
+    await expect(c.locator('.etiqueta')).toHaveText(['Inicio', 'Aprender', 'Libro', 'Taller', 'Proyectos']);
+    await expect(c.getByRole('button', { name: /^Más/ })).toHaveCount(0);
+    const cab = page.locator('header.barra');
+    // a group of one part: its name, no tabs
+    await expect(cab.locator('.donde')).toHaveText('Inicio');
+
+    const grupos: [string, RegExp, string][] = [
+      ['Aprender', /#\/cursos$/, 'Cursos'],
+      ['Taller', /#\/simulador$/, 'Simulador'],
+      ['Proyectos', /#\/fm7303$/, 'Kit FM7303'],
     ];
-    for (const [nombre, hash] of destinos) {
-      const enlace = c.getByRole('link', { name: nombre, exact: true });
-      await enlace.click();
-      await expect(page).toHaveURL(new RegExp(`${hash.replace(/[/#]/g, '\\$&')}$`));
-      await expect(enlace).toHaveAttribute('aria-current', 'page');
-      await expect(c.locator('[aria-current="page"]')).toHaveCount(1);
-    }
-    // «Glosario» and «Marcadores y notas» are reached from «Más»
-    for (const [nombre, hash] of [['Glosario', /#\/glosario$/], ['Marcadores y notas', /#\/marcadores$/]] as const) {
-      await c.getByRole('button', { name: /^Más/ }).click();
-      await page.getByRole('menu', { name: 'Más secciones' }).getByRole('menuitem', { name: new RegExp(nombre) }).click();
+    for (const [nombre, hash, parte] of grupos) {
+      await c.getByRole('link', { name: nombre, exact: true }).click();
       await expect(page).toHaveURL(hash);
+      await expect(c.getByRole('link', { name: nombre, exact: true })).toHaveAttribute('aria-current', 'page');
+      await expect(c.locator('[aria-current="page"]')).toHaveCount(1);
+      await expect(cab.getByRole('navigation', { name: `Partes de ${nombre}` }).locator('[aria-current="page"]')).toHaveText(parte);
     }
-    // «Buscar» opens the search; «Libro» returns to the reading
-    await c.getByRole('button', { name: 'Buscar' }).click();
+    // the header's tabs: Proyectos → Consolas
+    const partes = cab.getByRole('navigation', { name: 'Partes de Proyectos' });
+    await expect(partes.getByRole('link')).toHaveText(['Kit FM7303', 'Consolas', 'Proyectos del libro']);
+    await partes.getByRole('link', { name: 'Consolas' }).click();
+    await expect(page).toHaveURL(/#\/consolas$/);
+    await expect(partes.getByRole('link', { name: 'Consolas' })).toHaveAttribute('aria-current', 'page');
+    // Taller → Protoboard, then away and back: the group returns where it was left
+    await c.getByRole('link', { name: 'Taller', exact: true }).click();
+    await cab.getByRole('navigation', { name: 'Partes de Taller' }).getByRole('link', { name: 'Protoboard' }).click();
+    await expect(page).toHaveURL(/#\/protoboard$/);
+    await c.getByRole('link', { name: 'Proyectos', exact: true }).click();
+    await expect(page).toHaveURL(/#\/consolas$/);
+    await c.getByRole('link', { name: 'Taller', exact: true }).click();
+    await expect(page).toHaveURL(/#\/protoboard$/);
+    // the group on screen leads to its first part
+    await c.getByRole('link', { name: 'Taller', exact: true }).click();
+    await expect(page).toHaveURL(/#\/simulador$/);
+
+    // «Buscar» (header) opens the search; «Libro» goes to the reading, and there shows / hides the index
+    await cab.getByRole('button', { name: 'Buscar' }).click();
     await expect(page.getByRole('dialog', { name: 'Buscar en el libro' })).toBeVisible();
     await page.keyboard.press('Escape');
-    await c.getByRole('button', { name: 'Libro' }).click();
+    await c.getByRole('link', { name: 'Libro', exact: true }).click();
     await expect(page).toHaveURL(/#\/cap\d+/);
-    await expect(c.getByRole('button', { name: 'Libro' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(c.getByRole('link', { name: 'Libro', exact: true })).toHaveAttribute('aria-expanded', 'true');
+    await expect(indice(page)).toBeVisible();
+    await c.getByRole('link', { name: 'Libro', exact: true }).click();
+    await expect(indice(page)).toBeHidden();
+    await expect(c.getByRole('link', { name: 'Libro', exact: true })).toHaveAttribute('aria-expanded', 'false');
+    // «Índice», the reader's tab, shows it again
+    await page.getByRole('navigation', { name: 'Partes de Libro' }).getByRole('link', { name: 'Índice' }).click();
+    await expect(indice(page)).toBeVisible();
   });
 
-  test('con poca altura, lo que no cabe va a «Más»', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 560 });
+  test('«Más» está al pie de «Aa»: Guía de uso, Modo docente y Sincronización', async ({ page }) => {
     await page.goto('#/');
-    const mas = carril(page).getByRole('button', { name: /^Más/ });
-    await expect(mas).toBeVisible();
-    await expect(carril(page).getByRole('link', { name: 'Marcadores y notas' })).toHaveCount(0);
-    await mas.click();
-    const menu = page.getByRole('menu', { name: 'Más secciones' });
-    await expect(menu.getByRole('menuitem', { name: /Marcadores y notas/ })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(menu).toHaveCount(0);
-    await mas.click();
-    await menu.getByRole('menuitem', { name: 'Consolas' }).click();
-    await expect(page).toHaveURL(/#\/consolas$/);
-    await expect(menu).toHaveCount(0);
-    await expect(mas).toHaveClass(/activo/);
-    // the menu did not leave a history entry behind: «Atrás» returns home
-    await page.goBack();
-    await expect(page).toHaveURL(/#\/$/);
+    await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
+    const mas = page.getByRole('dialog', { name: 'Tema y tamaño de letra' }).getByRole('navigation', { name: 'Más' });
+    await expect(mas.getByRole('link')).toHaveText(['Guía de uso', 'Modo docente', 'Sincronización']);
+    await mas.getByRole('link', { name: 'Modo docente' }).click();
+    await expect(page).toHaveURL(/#\/docente$/);
+    await expect(page.getByRole('dialog', { name: 'Tema y tamaño de letra' })).toHaveCount(0);
+    // outside the five groups: no group marked, the page's name in the header
+    await expect(carril(page).locator('[aria-current="page"]')).toHaveCount(0);
+    await expect(page.locator('header.barra .donde')).toHaveText('Modo docente');
   });
 
   test('el filtro encuentra capítulos y secciones por texto y por número', async ({ page }) => {
@@ -243,56 +248,56 @@ test.describe('escritorio', () => {
     await expect(page).toHaveURL(/sec-5\.11$/);
   });
 
-  test('el índice se oculta por herramienta y se recuerda', async ({ page }) => {
+  test('el índice solo acompaña a la lectura, y su elección se recuerda', async ({ page }) => {
     await page.goto('#/cap05');
     const ind = indice(page);
     const ancho = () => page.evaluate(() => document.querySelector('.principal')!.getBoundingClientRect().left);
     await expect(ind).toBeVisible();
     const conIndice = await ancho();
-    // in a tool the index starts hidden: the tool gets the whole width
-    await page.goto('#/simulador');
-    await expect(ind).toBeHidden();
-    expect(await ancho()).toBeLessThan(conIndice - 200);
-    await page.getByRole('button', { name: 'Mostrar el índice' }).click();
-    await expect(ind).toBeVisible();
-    await expect.poll(ancho).toBe(conIndice);
-    // the reader keeps its own choice
+    // 2.1: not on Inicio nor in the tools (nor its toggle): they get the whole width
+    for (const r of ['#/', '#/simulador', '#/glosario', '#/consolas']) {
+      await page.goto(r);
+      await expect(ind).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Mostrar el índice' })).toHaveCount(0);
+      expect(await ancho()).toBeLessThan(conIndice - 200);
+    }
     await page.goto('#/cap05');
     await expect(ind).toBeVisible();
     await page.getByRole('button', { name: 'Ocultar el índice' }).click();
     await expect(ind).toBeHidden();
     // «Libro» on the rail toggles it while reading
-    await carril(page).getByRole('button', { name: 'Libro' }).click();
+    await carril(page).getByRole('link', { name: 'Libro' }).click();
     await expect(ind).toBeVisible();
-    await carril(page).getByRole('button', { name: 'Libro' }).click();
+    await carril(page).getByRole('link', { name: 'Libro' }).click();
     await expect(ind).toBeHidden();
-    // remembered after a reload, per view
+    // remembered after a reload
     await page.waitForTimeout(300);
     await page.reload();
     await expect(page.locator('.carril')).toBeVisible();
     await expect(ind).toBeHidden();
-    await page.goto('#/simulador');
-    await expect(ind).toBeVisible();
-    await page.goto('#/consolas');
-    await expect(ind).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Mostrar el índice' })).toBeVisible();
   });
 });
 
 test.describe('teléfono', () => {
   test.use({ viewport: MOVIL, hasTouch: true });
 
-  test('pestañas, cajón del índice, «Más» y el botón Atrás', async ({ page }) => {
+  test('barra inferior, pestañas del grupo, cajón del índice y el botón Atrás', async ({ page }) => {
     await progreso(page);
     await page.goto('#/cap05/sec-5.8');
     const tabs = page.locator('nav.pestanas');
     await expect(tabs).toBeVisible();
     await expect(page.locator('.carril')).toHaveCount(0);
-    await expect(tabs.getByRole('button', { name: 'Libro' })).toHaveClass(/activa/);
+    await expect(tabs.locator('.etiqueta')).toHaveText(['Inicio', 'Aprender', 'Libro', 'Taller', 'Proyectos']);
+    const libro = tabs.getByRole('link', { name: 'Libro' });
+    await expect(libro).toHaveClass(/activa/);
+    await expect(libro).toHaveAttribute('aria-current', 'page');
 
-    // «Libro» opens the drawer with the current section in view
-    await tabs.getByRole('button', { name: 'Libro' }).click();
+    // «Libro» while reading opens the drawer with the current section in view
+    await libro.click();
     const ind = indice(page);
     await expect(ind).toBeVisible();
+    await expect(libro).toHaveAttribute('aria-expanded', 'true');
     const actual = ind.locator('.secciones a[aria-current="location"]');
     await expect(actual).toContainText('5.8');
     await expect.poll(() => enVista(page, actual)).toBe(true);
@@ -302,7 +307,7 @@ test.describe('teléfono', () => {
     await expect(page).toHaveURL(/sec-5\.8$/);
 
     // a section chosen in the drawer: the drawer closes and «Atrás» returns to 5.8
-    await tabs.getByRole('button', { name: 'Libro' }).click();
+    await libro.click();
     await filtro(page).fill('5.10');
     await ind.locator('.secciones a').first().tap();
     await expect(page).toHaveURL(/sec-5\.10$/);
@@ -310,27 +315,26 @@ test.describe('teléfono', () => {
     await page.goBack();
     await expect(page).toHaveURL(/sec-5\.8$/);
 
-    // «Más» opens the rest; «Atrás» closes it
-    await tabs.getByRole('button', { name: 'Más' }).click();
-    const hoja = page.getByRole('menu', { name: 'Más secciones' });
-    // 0.9: «Inicio» is a tab; «Buscar» moved into «Más»
-    await expect(tabs.getByRole('link', { name: 'Inicio' })).toBeVisible();
-    await expect(hoja.getByRole('menuitem', { name: 'Buscar' })).toBeVisible();
-    await expect(hoja.getByRole('menuitem', { name: 'Consolas' })).toBeVisible();
+    // the group's tab row: «Índice» (the reader's own tab) also opens the drawer
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const fila = page.getByRole('navigation', { name: 'Partes de Libro' });
+    await fila.getByRole('link', { name: 'Índice' }).tap();
+    await expect(ind).toBeVisible();
     await page.goBack();
-    await expect(hoja).toHaveCount(0);
-    await expect(page).toHaveURL(/sec-5\.8$/);
-    await tabs.getByRole('button', { name: 'Más' }).click();
-    await hoja.getByRole('menuitem', { name: 'Instrumentos' }).tap();
-    await expect(page).toHaveURL(/#\/instrumentos$/);
-    await expect(tabs.getByRole('button', { name: 'Más' })).toHaveClass(/activa/);
-    await page.goBack();
-    await expect(page).toHaveURL(/sec-5\.8$/);
+    await expect(ind).toBeHidden();
 
-    // the tabs that are routes
-    await tabs.getByRole('link', { name: 'Simulador' }).tap();
+    // another group: its first part, its tabs in a row under the bar
+    await tabs.getByRole('link', { name: 'Taller' }).tap();
     await expect(page).toHaveURL(/#\/simulador$/);
-    await expect(tabs.getByRole('link', { name: 'Simulador' })).toHaveAttribute('aria-current', 'page');
+    await expect(tabs.getByRole('link', { name: 'Taller' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('header.barra .donde')).toHaveText('Taller');
+    const taller = page.getByRole('navigation', { name: 'Partes de Taller' });
+    await expect(taller.locator('[aria-current="page"]')).toHaveText('Simulador');
+    await taller.getByRole('link', { name: 'Instrumentos' }).tap();
+    await expect(page).toHaveURL(/#\/instrumentos$/);
+    await expect(taller.locator('[aria-current="page"]')).toHaveText('Instrumentos');
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/simulador$/);
 
     // the breadcrumb menu, as a sheet under the bar, closed by «Atrás»
     await page.goto('#/cap05/sec-5.8');

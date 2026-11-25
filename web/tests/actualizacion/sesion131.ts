@@ -5,7 +5,7 @@
 //   node --no-warnings --import ./tests/actualizacion/registrar.mjs tests/actualizacion/sesion131.ts \
 //     <src root> <ls-in|-> <ls-out> <repo.json|-> <acciones,comma> <clock start ms>
 // acciones: llenar:<etiqueta> (a reader's realistic use, its texts marked with <etiqueta>), exportar:<fichero>,
-// importar:<fichero> («Unir»), sustituir:<fichero>, sincronizar. Prints JSON {importado, descartados, sinc, error}.
+// importar:<fichero> («Unir»), sustituir:<fichero>, sincronizar, consumidores (load the learning events' consumers). Prints JSON {importado, descartados, sinc, error}.
 import { datos } from './navegador.ts';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -158,6 +158,10 @@ try {
       const r = await Co.importar(leida, orden === 'importar' ? 'unir' : 'sustituir', true);
       salida.importado = r;
       await espera(1500);
+    } else if (orden === 'consumidores') {
+      // the learning events' consumers loaded now, as on a device in use (an event already happened in the session)
+      const Ev = await imp('lib/aprendizaje/eventos.ts');
+      await Ev.cargarConsumidores();
     } else if (orden === 'sincronizar') {
       datos.set('epa-credencial:github', 'tok');
       const U = await imp('lib/usuario.svelte.ts');

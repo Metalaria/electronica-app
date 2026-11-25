@@ -22,6 +22,7 @@
   import Insignia from '../Insignia.svelte';
   import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
   import PruebaNivel from './PruebaNivel.svelte';
+  import EnlaceGuia from '../guia/EnlaceGuia.svelte';
   // 0.11 group B: mastery of each course, chapter and lesson (only once something has been practised)
   import { cargarDominio, dominioDe, dominioDeClaves, estadoDominio } from '../../lib/aprendizaje/dominio.svelte';
   import { cargarPracticables, conceptosPracticables } from '../../lib/aprendizaje/catalogo';
@@ -201,11 +202,12 @@
   {/key}
 {:else if curso && avance}
   {@const tono = tonoDe(curso.partes)}
-  <div class="cursos" data-curso={curso.id} style:--c09={tono.relleno} style:--sobre09={tono.sobre}>
+  <div class="cursos pagina21" data-curso={curso.id} style:--c09={tono.relleno} style:--sobre09={tono.sobre}>
     <a class="volver" href="#/cursos"><ArrowLeft size={18} aria-hidden="true" /> Todos los cursos</a>
-    <header class="cab-curso t09-tarjeta t09-grande t09-banda">
-      <h1>{curso.nombre}</h1>
-      <p class="desc">{curso.descripcion}</p>
+    <!-- 2.1: the course's head without a card: title, line, bar, the two buttons of the system -->
+    <header class="cab-curso">
+      <h1 class="titulo21">{curso.nombre}</h1>
+      <p class="desc nota21">{curso.descripcion}</p>
       <div class="avance-curso">
         <span class="barra" aria-hidden="true"><span style:transform={`scaleX(${avance.fraccion})`}></span></span>
         <span class="cifras" data-avance={`${avance.hechas}/${avance.superadas}/${avance.total}`}>
@@ -214,7 +216,7 @@
       </div>
       <div class="botones">
         {#if avance.href && avance.siguiente}
-          <a class="t09-boton" href={avance.href} data-continuar-curso>
+          <a class="boton primario" href={avance.href} data-continuar-curso>
             {avance.empezado ? 'Continuar' : 'Empezar'}
             <ArrowRight size={20} aria-hidden="true" />
           </a>
@@ -222,7 +224,7 @@
           <span class="terminado"><Check size={18} aria-hidden="true" /> Curso terminado</span>
         {/if}
         <!-- (1.2: a course whose parts are not book chapters has no Repaso questions to test with) -->
-        {#if !curso.unidades}<a class="t09-boton t09-contorno" href={`#/cursos/${curso.id}/prueba`} data-prueba-nivel><Compass size={18} aria-hidden="true" /> Prueba de nivel</a>{/if}
+        {#if !curso.unidades}<a class="boton" href={`#/cursos/${curso.id}/prueba`} data-prueba-nivel><Compass size={18} aria-hidden="true" /> Prueba de nivel</a>{/if}
       </div>
       {#if dominioPartes(curso.partes)}
         {@const dc = dominioPartes(curso.partes)!}
@@ -234,6 +236,8 @@
       {#if avance.siguiente}
         <p class="sig">Siguiente: <strong>{avance.siguiente.num ? `${avance.siguiente.num} ` : ''}{avance.siguiente.titulo}</strong></p>
       {/if}
+      <!-- 2.1 close-out: how the spaced review of the path works (the start page's review row is a plain link now) -->
+      <p class="guia-repaso"><EnlaceGuia seccion="repaso" apartado="repaso-espaciado" texto="Cómo funciona el repaso de las lecciones" /></p>
       {#if prueba}
         <p class="ultima-prueba" data-ultima-prueba>
           Prueba de nivel del {fecha(prueba.t)}: {prueba.aciertos} de {prueba.total} bien{#if prueba.recomendado}{`; le recomendamos empezar por el ${rotuloParte(prueba.recomendado).toLowerCase()}`}{/if}.
@@ -241,9 +245,10 @@
       {/if}
     </header>
 
-    <div class="vistas" role="group" aria-label="Cómo ver el curso">
-      <button type="button" aria-pressed={vistaCursos.v === 'camino'} onclick={() => (vistaCursos.v = 'camino')} data-vista="camino">Camino</button>
-      <button type="button" aria-pressed={vistaCursos.v === 'lista'} onclick={() => (vistaCursos.v = 'lista')} data-vista="lista">Lista</button>
+    <!-- 2.1: the two views as the system's underline tabs (estilos/sistema21.css) -->
+    <div class="vistas pestanas21" role="group" aria-label="Cómo ver el curso">
+      <button type="button" class="pestana21" class:activa={vistaCursos.v === 'camino'} aria-pressed={vistaCursos.v === 'camino'} onclick={() => (vistaCursos.v = 'camino')} data-vista="camino">Camino</button>
+      <button type="button" class="pestana21" class:activa={vistaCursos.v === 'lista'} aria-pressed={vistaCursos.v === 'lista'} onclick={() => (vistaCursos.v = 'lista')} data-vista="lista">Lista</button>
     </div>
 
     {#if vistaCursos.v === 'camino'}
@@ -309,15 +314,15 @@
     {/if}
   </div>
 {:else}
-  <div class="cursos" data-cursos>
-    <header class="cab">
-      <h1>Cursos</h1>
-      <p>Los capítulos del libro agrupados por temas. Cada curso sigue un orden de lo más sencillo a lo más avanzado; si ya domina una parte, la prueba de nivel le dice por dónde empezar.</p>
+  <div class="cursos pagina21" data-cursos>
+    <header class="cab cabeza21">
+      <h1 class="titulo21">Cursos</h1>
+      <p class="nota21">Los capítulos del libro agrupados por temas. Cada curso sigue un orden de lo más sencillo a lo más avanzado; si ya domina una parte, la prueba de nivel le dice por dónde empezar.</p>
     </header>
     <ul class="lista">
       {#each avances as { c, a } (c.id)}
         {@const tono = tonoDe(c.partes)}
-        <li class="t09-tarjeta t09-banda curso" style:--c09={tono.relleno} style:--sobre09={tono.sobre} data-curso-tarjeta={c.id}>
+        <li class="curso" style:--c09={tono.relleno} style:--sobre09={tono.sobre} data-curso-tarjeta={c.id}>
           <h2><a class="toque-44" href={`#/cursos/${c.id}`}>{c.nombre}</a></h2>
           <p class="desc">{c.descripcion}</p>
           <p class="meta">{c.partes.length} {c.unidades ?? 'capítulos'} · {a.total} lecciones</p>
@@ -328,7 +333,7 @@
           {#if dominioPartes(c.partes)}<div class="dominio-lista" data-dominio-curso={c.id}><BarraDominio a={dominioPartes(c.partes)!} /></div>{/if}
           <div class="botones">
             {#if a.href}
-              <a class="t09-boton t09-contorno" href={a.href} data-continuar-curso={c.id}>{a.empezado ? 'Continuar' : 'Empezar'} <ArrowRight size={18} aria-hidden="true" /></a>
+              <a class="boton" href={a.href} data-continuar-curso={c.id}>{a.empezado ? 'Continuar' : 'Empezar'} <ArrowRight size={18} aria-hidden="true" /></a>
             {:else}
               <span class="terminado"><Check size={18} aria-hidden="true" /> Terminado</span>
             {/if}
@@ -347,27 +352,7 @@
 
 <style>
   .vistas {
-    display: inline-flex;
-    align-self: flex-start;
-    padding: 3px;
-    border: 1px solid var(--linea);
-    border-radius: 14px;
-    background: var(--superficie);
-  }
-  .vistas button {
-    min-width: 96px;
-    min-height: 44px;
-    padding: 0 16px;
-    border: 0;
-    border-radius: 11px;
-    background: transparent;
-    color: var(--tinta);
-    font-size: 15px;
-    font-weight: 600;
-  }
-  .vistas button[aria-pressed='true'] {
-    background: var(--c09, var(--acento));
-    color: var(--sobre09, #fff);
+    align-self: stretch;
   }
   .dominio-curso {
     display: flex;
@@ -393,38 +378,20 @@
   .cursos {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 32px 32px 64px;
-    font-family: var(--sans);
+    gap: var(--e21-3);
+    font-family: var(--v11-texto);
   }
   .cursos[data-curso] {
-    max-width: 760px;
-  }
-  @media (max-width: 600px) {
-    .cursos {
-      padding: 16px 16px 48px;
-    }
-  }
-  h1 {
-    margin: 0;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: 30px;
-    line-height: 1.2;
+    max-width: calc(760px + 2 * var(--e21-margen));
   }
   .cab p {
     max-width: 46em;
-    margin: 6px 0 0;
-    color: var(--tinta-suave);
-    font-size: 16px;
-    line-height: 1.45;
   }
+  /* 2.1: the courses without cards — a hairline over each, air between them */
   .lista {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
+    gap: 32px 48px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -433,15 +400,18 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--v11-linea);
   }
   .curso h2 {
     margin: 0;
-    font-family: var(--titular);
+    font-family: var(--v11-titular);
     font-size: 21px;
+    font-weight: 600;
     line-height: 1.25;
   }
   .curso h2 a {
-    color: var(--titulos);
+    color: var(--v11-tinta);
     text-decoration: none;
   }
   .curso h2 a:hover {
@@ -466,7 +436,7 @@
   }
   .barra {
     flex: 1;
-    height: 8px;
+    height: 6px;
     overflow: hidden;
     border-radius: 999px;
     background: var(--linea);
@@ -475,7 +445,7 @@
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: var(--c09, var(--acento));
+    background: var(--v11-azul);
     transform-origin: left center;
   }
   .cifras {
@@ -495,9 +465,13 @@
     display: inline-flex;
     align-items: center;
     min-height: 44px;
-    color: var(--acento);
+    color: var(--v11-azul);
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .enlace:hover {
+    text-decoration: underline;
   }
   .terminado {
     display: inline-flex;
@@ -517,9 +491,9 @@
     align-items: center;
     gap: 6px;
     min-height: 44px;
-    color: var(--acento);
+    color: var(--v11-azul);
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     text-decoration: none;
   }
   .cab-curso {
@@ -527,9 +501,7 @@
     flex-direction: column;
     gap: 10px;
   }
-  .cab-curso .desc {
-    font-size: 16px;
-  }
+
   /* the course's bar on its own line, its figures under it */
   .cab-curso .avance-curso {
     flex-direction: column;
@@ -549,19 +521,20 @@
   .sig strong {
     color: var(--tinta);
   }
+  .guia-repaso {
+    margin: 0;
+  }
+  /* 2.1: the chapters as hairline rows, no boxes */
   .capitulos {
     display: flex;
     flex-direction: column;
-    gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
+    border-top: 1px solid var(--v11-linea);
   }
   .capitulo {
-    border: 1px solid var(--linea);
-    border-radius: var(--radio-tarjeta-p);
-    background: var(--superficie);
-    overflow: hidden;
+    border-bottom: 1px solid var(--v11-linea);
   }
   .cab-cap {
     display: flex;
@@ -569,15 +542,15 @@
     gap: 12px;
     width: 100%;
     min-height: 64px;
-    padding: 10px 14px;
+    padding: 10px 0;
     border: 0;
     background: none;
     color: var(--tinta);
     font-family: var(--sans);
     text-align: left;
   }
-  .cab-cap:hover {
-    background: var(--hover);
+  .cab-cap:hover .nombre {
+    color: var(--v11-azul);
   }
   .tit {
     display: flex;
@@ -614,16 +587,16 @@
   }
   .lecciones {
     margin: 0;
-    padding: 0 0 6px;
+    padding: 0 0 12px;
     list-style: none;
-    border-top: 1px solid var(--linea-suave);
   }
   .leccion {
     display: flex;
     align-items: center;
     gap: 10px;
     min-height: 48px;
-    padding: 6px 14px;
+    padding: 6px 8px;
+    border-radius: 10px;
     color: var(--tinta);
     font-size: 15px;
     line-height: 1.35;

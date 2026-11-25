@@ -155,6 +155,31 @@ for (const version of Object.keys(VERSIONES)) {
   });
 }
 
+// 2.1 close-out (the cause of this file's flaky first test): a backup whose days complete TODAY's goal, imported on a
+// device in use (the learning events' consumers already loaded). Applying the days emits «objetivo cumplido»; with the
+// XP ledger still to come, the consumer awarded the day's XP again («+10 XP») and announced achievements the backup
+// brings, and the import exported them back re-dated. In the suite the consumers' lazy load usually lost the race (it
+// failed 1 in 6–20 runs under load); here it is deterministic. The import now applies the ledger first (copia.ts).
+test('una copia con el objetivo de hoy cumplido, importada con los eventos ya en marcha, no vuelve a dar XP ni logros', () => {
+  test.setTimeout(400_000);
+  const dir = mkdtempSync(join(tmpdir(), 'epa-compat131-hoy-'));
+  try {
+    const copia = join(dir, 'copia.json');
+    sesion(HEAD, '-', join(dir, 'a.json'), '-', ['llenar:H', `exportar:${copia}`], T0);
+    const antes = almacenes(copia);
+    // (the fixture met today's goal: the day's award and the first achievements are in the backup)
+    expect(Object.keys(antes['progreso-xp'] ?? {}).some((k) => k.startsWith('d:'))).toBe(true);
+    expect(Object.keys(antes['progreso-logros'] ?? {}).length).toBeGreaterThan(0);
+    const nueva = join(dir, 'nueva.json');
+    sesion(HEAD, '-', join(dir, 'b.json'), '-', ['consumidores', `importar:${copia}`, `exportar:${nueva}`], T0 + 3600e3);
+    const d = diferencias(antes, almacenes(nueva), { importada: true });
+    expect(d.filter((x) => /^progreso-(xp|logros)\//.test(x))).toEqual([]);
+    expect(d).toEqual([]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('copias dañadas, parciales o ajenas: un mensaje claro en español y nada cambia', () => {
   test.setTimeout(400_000);
   const dir = mkdtempSync(join(tmpdir(), 'epa-compat131-rotas-'));

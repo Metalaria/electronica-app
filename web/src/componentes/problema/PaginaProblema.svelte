@@ -180,16 +180,11 @@
   .problema {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 24px 24px 64px;
-    font-family: var(--sans);
-  }
-  @media (max-width: 600px) {
-    .problema {
-      padding: 16px 16px 48px;
-    }
+    gap: var(--e21-3);
+    /* 2.1: the page of the system sheet; a reading column, so the narrow width stays */
+    max-width: calc(680px + 2 * var(--e21-margen));
+    padding: var(--e21-4) var(--e21-margen) var(--e21-8);
+    font-family: var(--v11-texto);
   }
   .cab {
     display: flex;
@@ -214,10 +209,11 @@
   }
   h1 {
     margin: 0;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: clamp(24px, 3.4vw, 30px);
-    line-height: 1.2;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    line-height: 1.15;
   }
   .fecha {
     margin: 0;

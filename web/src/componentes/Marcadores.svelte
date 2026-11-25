@@ -7,6 +7,7 @@
   import { colorBloque } from '../lib/color';
   import Icono from './Icono.svelte';
   import Insignia from './Insignia.svelte';
+  import Pestanas21 from './sistema21/Pestanas21.svelte';
 
   type Filtro = 'todo' | 'marcadores' | 'notas';
   let filtro = $state<Filtro>('todo');
@@ -75,16 +76,19 @@
   <header>
     <h1>Marcadores y notas</h1>
     <p>Las secciones que ha marcado y sus notas personales, en el orden del libro.</p>
-    <div class="filtros" role="tablist" aria-label="Mostrar">
-      <button role="tab" aria-selected={filtro === 'todo'} onclick={() => (filtro = 'todo')}>Todo</button>
-      <button role="tab" aria-selected={filtro === 'marcadores'} onclick={() => (filtro = 'marcadores')}
-        ><Icono nombre="marcador" tam={15} /> Marcadores <span>{nMarcadores}</span></button
-      >
-      <button role="tab" aria-selected={filtro === 'notas'} onclick={() => (filtro = 'notas')}
-        ><Icono nombre="nota" tam={15} /> Notas <span>{nNotas}</span></button
-      >
-    </div>
   </header>
+  <!-- 2.1: the system's underline tabs (componentes/sistema21) -->
+  <Pestanas21
+    etiqueta="Mostrar"
+    clase="filtros"
+    items={[
+      { id: 'todo', texto: 'Todo' },
+      { id: 'marcadores', texto: 'Marcadores', cuenta: nMarcadores, etiqueta: `Marcadores (${nMarcadores})` },
+      { id: 'notas', texto: 'Notas', cuenta: nNotas, etiqueta: `Notas (${nNotas})` },
+    ]}
+    actual={filtro}
+    onelegir={(id) => (filtro = id as Filtro)}
+  />
 
   {#if !grupos.length}
     <div class="vacio">
@@ -147,53 +151,24 @@
     font-family: var(--sans);
   }
   header {
-    padding: clamp(28px, 6vw, 48px) 0 18px;
-    border-bottom: 1px solid var(--linea);
+    padding: var(--e21-4) 0 0;
   }
   h1 {
     margin: 0;
-    color: var(--titulos);
+    color: var(--v11-tinta);
     font-family: var(--titular);
-    font-size: clamp(30px, 5vw, 42px);
-    font-weight: 700;
-    letter-spacing: -0.015em;
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
   header p {
-    margin: 8px 0 0;
-    color: var(--tinta-suave);
-    font-size: 16px;
+    margin: var(--e21-1) 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: var(--t21-secundario);
   }
-  .filtros {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 18px;
-  }
-  .filtros button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 36px;
-    padding: 0 14px;
-    border: 1px solid var(--linea);
-    border-radius: 999px;
-    background: var(--superficie);
-    color: var(--tinta-suave);
-    font-size: 14.5px;
-    font-weight: 600;
-  }
-  .filtros button span {
-    color: var(--tinta-tenue);
-    font-weight: 500;
-  }
-  .filtros button[aria-selected='true'] {
-    border-color: var(--titulos);
-    background: var(--titulos);
-    color: var(--fondo);
-  }
-  .filtros button[aria-selected='true'] span {
-    color: inherit;
-    opacity: 0.75;
+  .marcadores :global(.filtros) {
+    margin-top: var(--e21-3);
   }
 
   .vacio {
@@ -226,7 +201,7 @@
   }
 
   .grupo {
-    margin-top: 28px;
+    margin-top: var(--e21-4);
   }
   .grupo h2 {
     display: flex;
@@ -237,17 +212,15 @@
     font-size: 16px;
     font-weight: 700;
   }
+  /* 2.1: rows with hairlines, no box around them */
   ul {
     margin: 0;
     padding: 0;
-    border: 1px solid var(--linea);
-    border-radius: 12px;
-    background: var(--superficie);
+    border-top: 1px solid var(--v11-linea);
     list-style: none;
-    overflow: hidden;
   }
-  li + li {
-    border-top: 1px solid var(--linea-suave);
+  li {
+    border-bottom: 1px solid var(--v11-linea);
   }
   .fila {
     display: flex;

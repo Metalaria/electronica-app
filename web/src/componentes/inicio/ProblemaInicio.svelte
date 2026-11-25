@@ -1,11 +1,10 @@
 <script lang="ts">
-  // Start page (0.11, group B): the problem of the day — what it is about, whether it is solved, the streak of days
-  // solving it — with «Resolver» (#/problema) and «La solución de ayer». Chosen in idle time (it reads the course's
-  // practice files), so the start page does not wait for it; the card keeps its height meanwhile. Left open, the card
-  // moves on to the new day at 04:00 (`reloj.hoy` of the module).
+  // Start page (0.11, group B; 2.1 a row of «Para hoy también»): the problem of the day — what it is about, whether it
+  // is solved, the streak of days solving it — a link to #/problema; and, when yesterday's problem was seen, a row
+  // «La solución de ayer» (#/problema/ayer). Chosen in idle time (it reads the course's practice files), so the start
+  // page does not wait for it. Left open, the row moves on to the new day at 04:00 (`reloj.hoy` of the module).
   import { onMount, untrack } from 'svelte';
-  import CalendarDays from '@lucide/svelte/icons/calendar-days';
-  import BotonPrincipal from '../ui09/BotonPrincipal.svelte';
+  import Fila from './Fila.svelte';
   import type { DiaProblema } from '../../lib/aprendizaje/problema-dia.svelte';
 
   let problema = $state<DiaProblema | null>(null);
@@ -17,6 +16,8 @@
   const dia = $derived(modulo ? modulo.reloj.hoy : '');
   const resuelto = $derived(modulo && problema && dia ? (modulo.problemas.dias[dia]?.r ?? null) : null);
   const racha = $derived(modulo && dia ? modulo.rachaProblemas(dia) : 0);
+  /** Yesterday's problem was seen (stored): its solution is worth a row. */
+  const hayAyer = $derived(!!(modulo && dia && modulo.problemas.dias[modulo.diaAnterior(dia)]));
 
   let vivo = true;
   let vez = 0;
@@ -79,83 +80,24 @@
   const detalle = $derived.by(() => {
     if (fallo) return 'No se pudo preparar el problema de hoy.';
     if (!problema) return 'Preparando el problema de hoy…';
-    if (resuelto) return resuelto.bien ? `Resuelto${racha > 1 ? ` · ${racha} días seguidos` : ''}` : 'Hoy no salió · mañana, otro';
-    return racha ? `Sin resolver · racha de ${racha} ${racha === 1 ? 'día' : 'días'}` : 'Sin resolver · unos minutos';
+    const estado = resuelto
+      ? resuelto.bien
+        ? `Resuelto${racha > 1 ? ` · ${racha} días seguidos` : ''}`
+        : 'Hoy no salió · mañana, otro'
+      : racha
+        ? `Racha de ${racha} ${racha === 1 ? 'día' : 'días'}`
+        : '';
+    return [tema.trim(), estado].filter(Boolean).join(' · ') || 'Unos minutos';
   });
 </script>
 
-<section class="t09-tarjeta problema-inicio" aria-labelledby="tit-problema-inicio" aria-busy={!problema && !fallo} data-problema-inicio={resuelto ? (resuelto.bien ? 'bien' : 'mal') : problema ? 'pendiente' : 'espera'}>
-  <div class="fila">
-    <span class="icono" aria-hidden="true"><CalendarDays size={26} /></span>
-    <div class="textos">
-      <h2 id="tit-problema-inicio">Problema del día</h2>
-      <span class="tema">{tema || ' '}</span>
-      <span class="det">{detalle}</span>
-    </div>
-    {#if problema}
-      <BotonPrincipal href="#/problema" contorno={!!resuelto}>{resuelto ? 'Ver' : 'Resolver'}</BotonPrincipal>
-    {/if}
-  </div>
-  <a class="ayer" href="#/problema/ayer" data-problema-ayer-inicio>La solución de ayer</a>
-</section>
-
-<style>
-  .fila {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .icono {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: var(--ambar-tinte);
-    color: var(--ambar);
-  }
-  .textos {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  h2 {
-    margin: 0;
-    color: var(--tinta);
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .tema {
-    display: -webkit-box;
-    overflow: hidden;
-    color: var(--tinta);
-    font-size: 14.5px;
-    line-height: 1.35;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
-  .det {
-    color: var(--tinta-suave);
-    font-size: 14px;
-  }
-  .fila :global(.t09-boton) {
-    flex: none;
-  }
-  .ayer {
-    display: flex;
-    align-items: center;
-    min-height: var(--toque);
-    margin: 6px 0 -10px 62px;
-    color: var(--acento);
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .ayer:hover {
-    text-decoration: underline;
-  }
-</style>
+<Fila
+  href="#/problema"
+  titulo="Problema del día"
+  {detalle}
+  aria-busy={!problema && !fallo}
+  data-problema-inicio={resuelto ? (resuelto.bien ? 'bien' : 'mal') : problema ? 'pendiente' : 'espera'}
+/>
+{#if hayAyer}
+  <Fila href="#/problema/ayer" titulo="La solución de ayer" data-problema-ayer-inicio />
+{/if}

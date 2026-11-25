@@ -54,14 +54,15 @@ const sesiones = (page: Page) => page.evaluate(() => Object.values(JSON.parse(lo
 // only on «hashchange», and a navigation from an overlay (the «Más» sheet, the search, the drawer:
 // navegarDesdeCapa) replaces the address without one.
 test.describe('informe de fallos: migas que explican un cierre', () => {
-  test('entrar en la protoboard desde el menú «Más» deja su miga de ruta', async ({ browser }) => {
+  // (2.1: the phone's «Más» menu went; the breadboard is a tab of the Taller group, under the header)
+  test('entrar en la protoboard desde las pestañas de Taller deja su miga de ruta', async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 3.5, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     await page.route('https://api.github.com/**', (r) => r.abort());
     await page.goto('/#/cap05');
     await expect(page.locator('#contenido .cargando')).toHaveCount(0);
-    await page.getByRole('button', { name: /^Más/ }).last().tap();
-    await page.locator('.nav-mas').getByText('Protoboard', { exact: true }).tap();
+    await page.getByRole('navigation', { name: 'Secciones de la aplicación' }).getByRole('link', { name: 'Taller' }).tap();
+    await page.getByRole('navigation', { name: 'Partes de Taller' }).getByRole('link', { name: 'Protoboard' }).tap();
     await expect(page).toHaveURL(/#\/protoboard$/);
     await expect.poll(async () => (await sesiones(page)).flatMap((s) => s.b).some((x) => / ruta #\/protoboard$/.test(x) || / ruta #\/protoboard /.test(x)), { timeout: 10_000 }).toBe(true);
     // and what the breadboard holds (counts only)

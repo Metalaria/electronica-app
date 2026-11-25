@@ -380,7 +380,7 @@
           {#key pantalla}
             <div class="cab-paso">
               <span class="etiqueta" data-paso={kPaso}>
-                Paso {kPaso + 1}{#if paso.num} · {paso.num}{:else if paso.tipo === 'intro'} · Introducción{:else if paso.tipo === 'continua'} · Continuación{/if}
+                Paso {kPaso + 1}{#if paso.num}{` · ${paso.num}`}{:else if paso.tipo === 'intro'}{' · Introducción'}{:else if paso.tipo === 'continua'}{' · Continuación'}{/if}
               </span>
               <h1 bind:this={titulo} tabindex="-1">{@html prepararHtml(paso.html ?? leccion.html)}</h1>
               {#if paso.label}
@@ -488,7 +488,7 @@
 
 <style>
   .leccion {
-    --pad-pie: clamp(16px, 4vw, 32px);
+    --pad-pie: 20px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -499,14 +499,14 @@
   }
   .cuerpo {
     flex: 1 0 auto;
-    padding: 28px var(--pad-pie) 32px;
+    padding: 16px var(--pad-pie) 32px;
   }
   .columna {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
     width: 100%;
-    max-width: 640px;
+    max-width: 680px;
     margin: 0 auto;
   }
   .cab-paso {
@@ -514,19 +514,20 @@
     flex-direction: column;
     gap: 8px;
   }
+  /* 2.1 (Leccion.png): the step's kind as the 13 px section label, the 32 px title */
   .etiqueta {
-    color: var(--bloque-texto, var(--titulos));
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    color: var(--v11-tinta-suave);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   h1 {
     margin: 0;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: clamp(26px, 3.6vw, 30px);
-    font-weight: 700;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: clamp(26px, 6vw, 32px);
+    font-weight: 600;
     line-height: 1.2;
     text-wrap: balance;
   }

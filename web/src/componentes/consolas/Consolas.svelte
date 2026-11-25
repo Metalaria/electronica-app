@@ -1,6 +1,9 @@
 <script lang="ts">
-  // «Consolas» view: seven mainboards (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color, Super Nintendo)
-  // in three linked views (photo, architecture, schematic) plus sources, the boards and «Un fotograma». Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
+  // «Consolas» view: eleven mainboards in three linked views (photo, architecture, schematic) plus sources, the boards,
+  // «Un fotograma» and «Busque la avería». Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
+  // 2.1 (mock-up Consola.png): the machine's name and board as the page title, with a button that opens the eleven
+  // machines in a menu (instead of 2.0's two-row box); no paragraph under the title (it moved to «Fuentes»); the
+  // views as the system's underline tabs. What each view shows is unchanged.
   import { untrack } from 'svelte';
   import { numeroImpreso } from '../../lib/datos';
   import { ruta } from '../../lib/ruta.svelte';
@@ -13,6 +16,7 @@
   import Fuentes from './Fuentes.svelte';
   import { tienePlaca } from './placa/datos';
   import { averiasDe } from '../../lib/averias-placa/definiciones';
+  import Pestanas21 from '../sistema21/Pestanas21.svelte';
 
   const actual = $derived(leerAncla(ruta.ancla));
   let sel: Seleccion | null = $state(null);
@@ -85,35 +89,71 @@
     { id: 'gb', titulo: 'Game Boy', placa: 'DMG-CPU-05/06 · 1989' },
     { id: 'gbc', titulo: 'Game Boy Color', placa: 'CGB-CPU-04 · 1999' },
     { id: 'snes', titulo: 'Super Nintendo', placa: 'SNSP-CPU-01 PAL · 1992' },
-    { id: 'n64', titulo: 'Nintendo 64', placa: 'NUS-CPU-03 NTSC · 1997' },
-    { id: 'ps1', titulo: 'PlayStation', placa: 'PU-18 · 1995' },
+    { id: 'n64', titulo: 'Nintendo 64', placa: 'NUS-CPU-03 NTSC · 1996-97' }, // (2.1) ConsoleArtisan's N64 Repair Reference: «NUS-CPU-01 to -04 (1996 to 1997)»,
+    { id: 'ps1', titulo: 'PlayStation', placa: 'PU-18 · 1997' }, // (2.1) psdevwiki «Motherboards»: PU-18 «May 1997 - April 1998»,
     { id: 'gamecube', titulo: 'GameCube', placa: 'DOL-CPU(P)-01 PAL · 2002' },
     { id: 'saturn', titulo: 'Sega Saturn', placa: 'VA0.5 NTSC-J · 1994' }, // (cierre20) the Japanese HST-3200 board of Sega's schematic, dated 1994
   ];
+  const maquina = $derived(MAQUINAS.find((m) => m.id === actual.maquina) ?? MAQUINAS[0]!);
+
+  // ------------------------------------------------------------------ 2.1: the machine menu
+  let menu = $state(false);
+  let raizMenu: HTMLElement | undefined = $state();
+  let botonMenu: HTMLButtonElement | undefined = $state();
+  // closed by a route change, a tap outside it and Escape (focus back on its button)
+  $effect(() => {
+    void ruta.n;
+    untrack(() => (menu = false));
+  });
+  $effect(() => {
+    if (!menu) return;
+    const fuera = (ev: PointerEvent) => {
+      if (raizMenu && !raizMenu.contains(ev.target as Node)) menu = false;
+    };
+    const tecla = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        menu = false;
+        botonMenu?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', fuera, true);
+    document.addEventListener('keydown', tecla);
+    return () => {
+      document.removeEventListener('pointerdown', fuera, true);
+      document.removeEventListener('keydown', tecla);
+    };
+  });
+  const vistas = $derived(pestanas.map((p) => ({ id: p.id, texto: p.titulo, href: enlace(actual.maquina, p.id, sel) })));
 </script>
 
 <svelte:head><title>Consolas · Electrónica Práctica Avanzada</title></svelte:head>
 
 <div class="consolas">
-  <header>
-    <div class="titulo">
-      <h1>Consolas</h1>
-      <p>Las placas base de las figuras {numeroImpreso('fig-37.16', '37.16')} y {numeroImpreso('fig-37.22', '37.22')} y las de las demás consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
-    </div>
-    <nav class="maquinas" aria-label="Consola">
-      {#each MAQUINAS as m (m.id)}
-        <a href={href(m.id, disponible(m.id, actual.pestana) ? actual.pestana : 'foto')} aria-current={actual.maquina === m.id ? 'page' : undefined}>
-          <strong>{m.titulo}</strong><small>{m.placa}</small>
-        </a>
-      {/each}
-    </nav>
+  <header class="cabeza" bind:this={raizMenu}>
+    <h1 class="titulo">
+      <button type="button" class="elegir" bind:this={botonMenu} aria-expanded={menu} aria-controls="menu-consolas" onclick={() => (menu = !menu)} data-elegir-consola>
+        <span class="nombre">{maquina.titulo}</span>
+        <span class="placa">{maquina.placa}</span>
+        <span class="flecha" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6" /></svg></span>
+        <span class="solo-lector">: elegir otra consola</span>
+      </button>
+    </h1>
+    {#if menu}
+      <nav class="menu" id="menu-consolas" aria-label="Consola">
+        <ul>
+          {#each MAQUINAS as m (m.id)}
+            <li>
+              <a href={href(m.id, disponible(m.id, actual.pestana) ? actual.pestana : 'foto')} aria-current={actual.maquina === m.id ? 'page' : undefined}>
+                <strong>{m.titulo}</strong><small>{m.placa}</small>
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </nav>
+    {/if}
   </header>
 
-  <nav class="pestanas" aria-label="Vista">
-    {#each pestanas as p (p.id)}
-      <a href={enlace(actual.maquina, p.id, sel)} aria-current={pestana === p.id ? 'page' : undefined}>{p.titulo}</a>
-    {/each}
-  </nav>
+  <Pestanas21 etiqueta="Vista" items={vistas} actual={pestana} />
   {#if !tieneEsquema(actual.maquina)}
     <!-- (2.0) a machine with no schematic says so where the others show «Esquema» and «Busque la avería» -->
     <p class="sin-esquema" data-testid="sin-esquema">
@@ -172,6 +212,8 @@
       <ErrorCarga titulo="No se pudo abrir «Busque la avería»." error={e} />
     {/await}
   {:else}
+    <!-- 2.1: the page's introduction, which sat under the title in 2.0 -->
+    <p class="presentacion">Las placas base de las figuras {numeroImpreso('fig-37.16', '37.16')} y {numeroImpreso('fig-37.22', '37.22')} y las de las demás consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
     <Fuentes {datos} />
   {/if}
 </div>
@@ -180,98 +222,139 @@
   .consolas {
     max-width: 1500px;
     margin: 0 auto;
-    padding: 18px 20px 48px;
+    padding: var(--e21-3) var(--e21-margen) var(--e21-6);
     display: grid;
-    gap: 12px;
+    gap: var(--e21-3);
   }
-  header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: end;
-    gap: 10px 20px;
+  .cabeza {
+    position: relative;
   }
-  /* 0.9 look (componentes/ui09): serif title, segmented machine picker with 14–18 px radii */
-  h1 {
+  .titulo {
     margin: 0;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: 30px;
-    font-weight: 700;
+    font: inherit;
+  }
+  /* the title is the machine menu's button: name (Space Grotesk), its board, a chevron */
+  .elegir {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 14px;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--v11-tinta);
+    text-align: left;
+    cursor: pointer;
+  }
+  .elegir .nombre {
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.15;
   }
-  .titulo p {
-    margin: 2px 0 0;
-    color: var(--tinta-suave);
+  .elegir .placa {
+    color: var(--v11-tinta-suave);
+    font-family: var(--v11-texto);
+    font-size: 15px;
+    font-weight: 400;
   }
-  .maquinas {
-    display: grid;
-    /* (2.0: eleven machines, in rows of six) */
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 6px;
-    width: 100%;
-    padding: 4px;
-    border: 1px solid var(--linea);
-    border-radius: var(--radio-tarjeta);
-    background: var(--superficie-2);
+  .elegir .flecha {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--v11-panel);
+    color: var(--v11-tinta-suave);
+    transition: transform 0.15s;
   }
-  .maquinas a {
-    display: grid;
-    align-content: center;
-    min-width: 0;
-    min-height: 44px;
-    padding: 5px 14px;
+  .elegir[aria-expanded='true'] .flecha {
+    transform: rotate(180deg);
+  }
+  .elegir:hover .flecha {
+    color: var(--v11-azul);
+  }
+  @media (max-width: 599px) {
+    /* the phone: name and chevron on one line, the board under them */
+    .elegir .placa {
+      order: 3;
+      flex-basis: 100%;
+    }
+  }
+  .elegir:focus-visible {
+    outline: 2px solid var(--v11-foco);
+    outline-offset: 4px;
+    border-radius: 12px;
+  }
+  .solo-lector {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .menu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 8px);
+    left: 0;
+    width: min(360px, 100%);
+    max-height: min(70vh, 640px);
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--v11-linea);
     border-radius: 14px;
-    color: var(--tinta);
-    text-decoration: none;
-    line-height: 1.2;
+    background: var(--v11-fondo);
+    box-shadow: var(--v11-sombra);
   }
-  .maquinas a strong {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .maquinas a small {
-    overflow: hidden;
-    color: var(--tinta-suave);
-    font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .maquinas a[aria-current='page'] {
-    background: var(--superficie);
-    box-shadow: var(--sombra);
-    color: var(--acento);
-  }
-  .sin-esquema {
+  .menu ul {
     margin: 0;
-    color: var(--tinta-suave);
+    padding: 0;
+    list-style: none;
+  }
+  .menu a {
+    display: grid;
+    gap: 2px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: var(--v11-tinta);
+    text-decoration: none;
+    line-height: 1.25;
+  }
+  .menu a:hover {
+    background: var(--v11-panel);
+  }
+  .menu a[aria-current='page'] {
+    background: var(--v11-azul-tinte);
+  }
+  .menu a[aria-current='page'] strong {
+    color: var(--v11-azul);
+  }
+  .menu strong {
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .menu small {
+    color: var(--v11-tinta-suave);
     font-size: 14px;
   }
-  .pestanas {
-    display: flex;
-    gap: 2px;
-    border-bottom: 1px solid var(--linea);
-    overflow-x: auto;
+  .sin-esquema,
+  .presentacion {
+    margin: 0;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
+    line-height: 1.45;
   }
-  .pestanas a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 16px;
-    border-bottom: 3px solid transparent;
-    color: var(--tinta-suave);
-    font-weight: 700;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .pestanas a[aria-current='page'] {
-    border-bottom-color: var(--acento);
-    color: var(--acento);
+  .presentacion {
+    max-width: 72ch;
   }
   .cargando {
     padding: 30px;
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
   }
   /* «Cargando…» only when it takes a while: a quick load flashed it for a few frames (0.11 QA) */
   .cargando {
@@ -280,25 +363,6 @@
   @keyframes aparecer-tarde {
     from {
       opacity: 0;
-    }
-  }
-  @media (max-width: 599px) {
-    .consolas {
-      padding: 16px 16px 40px;
-    }
-    h1 {
-      font-size: 26px;
-    }
-    .maquinas {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .maquinas a {
-      padding: 5px 10px;
-    }
-  }
-  @media (min-width: 600px) and (max-width: 1099px) {
-    .maquinas {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>

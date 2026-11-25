@@ -470,7 +470,8 @@ test.describe('datos de la 0.10', () => {
     await page.waitForTimeout(800);
     expect(totalXp(await leer<Libro>(page, 'progreso-xp'))).toBe(esperado);
     expect(await leer(page, 'progreso-diario')).toEqual(diarioEsperado);
-    await expect(page.locator('[data-nivel-inicio] .xp [data-valor]')).toHaveAttribute('data-valor', String(esperado));
+    // (2.1: the level is a row of «Para hoy también», «Nivel N · …» over «<total> XP»)
+    await expect(page.locator('[data-nivel-inicio] .fila21-sub')).toHaveText(new RegExp(`^${esperado} XP`));
     // the earlier work also unlocks its achievements (silently: no toasts)
     await expect.poll(async () => (await leer<Libro>(page, 'progreso-xp'))?.logros['primera-leccion']).toBeGreaterThan(0);
     await expect(page.locator('[data-aviso="logro"]')).toHaveCount(0);
@@ -588,8 +589,8 @@ test.describe('cursos y prueba de nivel', () => {
 
   test('la página de cursos: los once cursos, sus capítulos con el título del libro y «Continuar»', async ({ page }) => {
     await preparar(page, { lecciones: { 'cap00/sec-0.1': { h: [0], u: 1, n: 1, c: 1761400000000, t: 1761400000000 } } });
-    await page.goto('#/');
-    await page.locator('[data-ir-cursos]').click();
+    // (2.1: «Cursos» is the first tab of «Aprender»)
+    await page.goto('#/cursos');
     await expect(page.locator('[data-curso-tarjeta]')).toHaveCount(11);
     await expect(page.locator('[data-continuar-curso="fundamentos"]')).toHaveText(/Continuar/);
     await expect(page.locator('[data-continuar-curso="analisis"]')).toHaveText(/Empezar/);
@@ -720,7 +721,7 @@ test.describe('recordatorio diario', () => {
     await preparar(ctx);
     const page = await ctx.newPage();
     await page.goto('#/');
-    await expect(page.locator('[data-nivel-inicio]')).toBeVisible();
+    await expect(page.locator('.seguir')).toBeVisible();
     // the Tauri bridge, stubbed once the app runs (the storage layer already chose localStorage)
     await page.evaluate(() => {
       const w = window as unknown as Record<string, unknown>;
@@ -869,8 +870,8 @@ test.describe('capturas', () => {
         const page = await ctx.newPage();
         const foto = (n: string) => page.screenshot({ path: `${CAPTURAS}${n}-${nombre}-${tema}.png`, fullPage: false });
         await page.goto('#/');
-        await expect(page.locator('[data-nivel-inicio]')).toBeVisible();
-        await page.locator('[data-nivel-inicio]').scrollIntoViewIfNeeded();
+        await expect(page.locator('.para-hoy')).toBeVisible();
+        await page.locator('.para-hoy').scrollIntoViewIfNeeded();
         await page.waitForTimeout(1200);
         await foto('inicio-nivel');
         await page.goto('#/cursos');

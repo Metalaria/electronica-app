@@ -85,10 +85,10 @@
 <style>
   .pagina {
     display: grid;
-    gap: 14px;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 16px;
+    gap: var(--e21-2);
+    /* 2.1: the page of the system sheet (gutters, 36 px title) */
+    max-width: calc(760px + 2 * var(--e21-margen));
+    padding: var(--e21-4) var(--e21-margen) var(--e21-8);
     overflow-wrap: anywhere;
     color: var(--v11-tinta);
     font-family: var(--v11-texto);
@@ -116,7 +116,9 @@
     line-height: 1.2;
   }
   h1 {
-    font-size: 26px;
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    line-height: 1.15;
   }
   h2 {
     font-size: 20px;

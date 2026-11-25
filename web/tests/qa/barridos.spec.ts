@@ -104,7 +104,9 @@ for (const [k, grupo] of trozos(LECCIONES, 12).entries()) {
     let items = 0;
     let preguntas = 0;
     for (const [i, l] of grupo.entries()) {
-      const base = `#/leccion/${l.parte}/${l.seccion}`;
+      // (2.1 close-out: since 1.2 every chapter section opens its hand-made lesson, whose first card waits for an
+      // answer; this sweep walks the classic lesson's screens, so it asks for it — …/clasica)
+      const base = `#/leccion/${l.parte}/${l.seccion}/clasica`;
       reg.ruta = `leccion:${l.parte}/${l.seccion}`;
       await marcar(page).catch(() => {});
       if (i === 0) await page.goto(`/${base}`);
@@ -114,7 +116,7 @@ for (const [k, grupo] of trozos(LECCIONES, 12).entries()) {
         reg.ruta = `leccion:${l.parte}/${l.seccion}/${esperada}`;
         reg.traza(reg.ruta);
         const ok = await page
-          .waitForFunction((e) => location.hash.endsWith(`/${e}`) || (e === '1' && /\/leccion\/[^/]+\/[^/]+$/.test(location.hash)), esperada, { timeout: 30_000 })
+          .waitForFunction((e) => location.hash.endsWith(`/${e}`) || (e === '1' && /\/leccion\/[^/]+\/[^/]+(\/clasica)?$/.test(location.hash)), esperada, { timeout: 30_000 })
           .then(() => true)
           .catch(() => false);
         if (!ok) {

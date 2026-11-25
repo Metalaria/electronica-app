@@ -85,7 +85,7 @@ async function mostrar(page: Page, informe: number[]) {
 async function practica1(page: Page) {
   await page.goto('/#/instrumentos/practica/1');
   await expect(page.locator('section.practica h2')).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+  await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
   await page.getByRole('button', { name: 'Preparar este paso en el banco' }).click();
   await page.getByRole('button', { name: 'Siguiente →' }).click();
   await expect(page.locator('tr[data-id="vout"] .medida .valor')).toContainText('2,8', { timeout: 60_000 });
@@ -167,10 +167,12 @@ test.describe('escritorio', () => {
     await limpio(page);
     await conEnlace(page, 2, informesDe(REGISTRO_CH1, 0, 1));
     await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+    // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+    await page.locator('[data-usar-aparato-real]').click();
     const panel = page.locator('.elegir [data-fnirsi-real]');
     await expect(panel).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('[data-estado-fnirsi]')).toContainText('el banco usa el FNIRSI simulado');
-    await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+    await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
     await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
     const c1 = page.locator('[data-comparacion-traza="1"]');
     await expect(c1).toContainText(/^CH1: Vpp de 3,\d\d\sV en el FNIRSI; el simulado, /, { timeout: 20_000 });
@@ -184,9 +186,11 @@ test.describe('escritorio', () => {
       await limpio(page);
       await conEnlace(page, 2, informesDe(REGISTRO_CH1, 0, 1));
       await page.goto(`/#/instrumentos/circuito/${circuito}`);
+      // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+      await page.locator('[data-usar-aparato-real]').click();
       const panel = page.locator('.elegir [data-fnirsi-real]');
       await expect(panel).toBeVisible({ timeout: 60_000 });
-      await expect(page.locator('.banco .estado')).toContainText('Simulado en', { timeout: 90_000 });
+      await expect(page.locator('.banco .estado')).toContainText('simulado en', { timeout: 90_000 });
       await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
       const c1 = page.locator('[data-comparacion-traza="1"]');
       await expect(c1).toContainText(/^CH1: Vpp de 3,\d\d\sV en el FNIRSI; el simulado, /, { timeout: 20_000 });
@@ -301,6 +305,8 @@ for (const tema of ['oscuro', 'sepia'] as Tema[]) {
       await limpio(page, tema);
       await conEnlace(page, 2, informesDe(REGISTRO_CH1, 0, 1));
       await page.goto('/#/instrumentos/circuito/cap05/sec-5.3_led_150ohm');
+      // (2.1: the real instruments' panel opens from «Usar un aparato real»)
+      await page.locator('[data-usar-aparato-real]').click();
       const panel = page.locator('.elegir [data-fnirsi-real]');
       await expect(panel).toBeAttached({ timeout: 60_000 });
       // a named region and a named button, reached and pressed with the keyboard

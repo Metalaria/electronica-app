@@ -374,7 +374,8 @@ test('repaso espaciado de las lecciones completadas: en el camino y en el inicio
   await page.goto('#/');
   const tarjeta = page.locator('[data-repaso-camino]');
   await expect(tarjeta).toHaveAttribute('data-repaso-camino', '1');
-  await expect(tarjeta.getByRole('link', { name: 'Repasar' })).toHaveAttribute('href', '#/practicar/cap00/sec-0.1');
+  // (2.1: a row of «Para hoy también», the whole row the link)
+  await expect(tarjeta).toHaveAttribute('href', '#/practicar/cap00/sec-0.1');
 });
 
 test('un curso propio también es un camino: sus ejercicios y preguntas se abren con su lección', async ({ page }) => {

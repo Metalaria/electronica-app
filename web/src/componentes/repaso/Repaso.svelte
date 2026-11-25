@@ -51,11 +51,11 @@
 </div>
 
 <style>
+  /* 2.1: the page of the system (estilos/sistema21.css): its gutters, a 36 px title, 15 px secondary lines */
   .repaso-pagina {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 0 clamp(16px, 4vw, 40px) calc(64px + var(--hueco-inferior));
-    font-family: var(--sans);
+    max-width: calc(920px + 2 * var(--e21-margen));
+    padding: 0 var(--e21-margen) calc(64px + var(--hueco-inferior));
+    font-family: var(--v11-texto);
   }
   .cargando {
     padding: 30vh 0;
@@ -68,7 +68,7 @@
 
   /* Shared by the sub-views */
   .repaso-pagina :global(.rp-cab) {
-    padding: clamp(18px, 4vw, 36px) 0 14px;
+    padding: var(--e21-4) 0 0;
   }
   .repaso-pagina :global(.rp-volver) {
     display: inline-flex;
@@ -89,28 +89,24 @@
   }
   .repaso-pagina :global(h1.rp-titulo) {
     margin: 2px 0 0;
-    color: var(--titulos);
-    font-family: var(--titular);
-    font-size: clamp(26px, 4.6vw, 38px);
-    font-weight: 700;
-    letter-spacing: -0.015em;
+    color: var(--v11-tinta);
+    font-family: var(--v11-titular);
+    font-size: var(--t21-pagina);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.15;
   }
   .repaso-pagina :global(.rp-sub) {
-    margin: 6px 0 0;
-    color: var(--tinta-suave);
-    font-size: 16px;
+    margin: 4px 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: var(--t21-secundario);
+    line-height: 1.45;
   }
   .repaso-pagina :global(.rp-caja) {
     border: 1px solid var(--linea);
     border-radius: 14px;
     background: var(--superficie);
     box-shadow: var(--sombra);
-  }
-  .repaso-pagina :global(.boton) {
-    min-height: 44px;
-    padding: 0 18px;
-    font-size: 15.5px;
   }
   .repaso-pagina :global(kbd) {
     display: inline-block;

@@ -26,7 +26,12 @@ async function conCable(page: Page, lenta: boolean) {
 
 async function conectar(page: Page) {
   await page.goto(BANCO);
-  await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+  // (2.1: the real instruments' panel opens from «Usar un aparato real», shown only where a transport exists)
+  await expect(page.locator('.banco h1')).toBeVisible({ timeout: 60_000 });
+  if (await page.locator('[data-usar-aparato-real]').count()) {
+    await page.locator('[data-usar-aparato-real]').click();
+    await expect(page.locator('.elegir h2')).toBeVisible({ timeout: 60_000 });
+  }
   await page.evaluate((p) => {
     (window as unknown as { __epaBrymenFalso: { respuesta: number[] } }).__epaBrymenFalso.respuesta = p;
   }, Array.from(construirPaquete({ principal: '9.2040', unidad: 'V', dc: true, auto: true })));

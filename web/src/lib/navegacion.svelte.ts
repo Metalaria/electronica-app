@@ -1,91 +1,184 @@
-// Navigation model shared by the icon rail (desktop), the bottom tabs (phone), the book index and the top bar:
-//   - HERRAMIENTAS: the one registry of the app's sections (a new section adds one entry here);
-//   - the book index panel, shown or hidden per view (remembered in the preferences);
+// Navigation model shared by the icon rail (desktop), the bottom bar (phone), the header and the book index:
+//   - GRUPOS: the one registry of the app's sections (2.1: five groups, each with its parts; a new section adds one
+//     part to a group here). The rail and the bottom bar show the groups; the header shows the current group's parts
+//     as underline tabs. MAS: the three pages outside the groups, linked at the foot of the «Aa» panel;
+//   - the book index panel, only while reading (remembered in the preferences);
 //   - the reading sequence: previous/next section and chapter;
 //   - the index filter (text without accents, section numbers «5.8», «cap 33», «ap B»).
+// Every hash route stays as it was (lib/ruta.svelte.ts); only what is shown around it changed.
 
 import type { NombreIcono } from '../componentes/Icono.svelte';
 import type { Indice } from './tipos';
 import { app } from './estado.svelte';
 import { ruta, type Vista } from './ruta.svelte';
 import { usuario, ponerIndiceOculto } from './usuario.svelte';
-import { abrirBuscador, abrirLateral } from './acciones';
+import { abrirLateral } from './acciones';
 import { normalizar, obtenerIndice, ordenLectura, rotuloParte, tomoDe } from './datos';
 
 // ------------------------------------------------------------------ registry
 
+/** One part of a group (a tab of the header), or one of the pages of «Más». */
 export interface Herramienta {
   id: string;
-  /** Hash route, or null for the two actions («libro» opens the index, «buscar» the search). */
+  /** Hash route, or null when it is computed (`href`). */
   ruta: string | null;
+  /** The route when it depends on the reader (the book's «Índice»: the part read last). */
+  href?: () => string;
   icono: NombreIcono;
-  /** Full name (tooltips, «Más» menu, accessible name). */
+  /** Full name (tooltips, accessible name, the header's title on its own). */
   etiqueta: string;
-  /** Short label under the rail icon and in the phone tabs (default: etiqueta). */
+  /** Short label of the tab (default: etiqueta). */
   corta?: string;
   /** Views where the entry is the current one (default: the view named like its id). */
   vistas?: Vista[];
-  /** One of the phone's bottom tabs (the others go to «Más»). */
-  pestana?: boolean;
-  /** Keyboard shortcut shown in the tooltip. */
-  atajo?: string;
-  /** Small counter shown next to the icon. */
+  /** Small counter shown next to the label. */
   cuenta?: () => number;
   /** Whether it is the current entry, when the view alone does not tell (the breadboard is a tab of the simulator). */
   activa?: () => boolean;
 }
 
+export type IdGrupo = 'inicio' | 'aprender' | 'libro' | 'taller' | 'proyectos';
+
+export interface Grupo {
+  id: IdGrupo;
+  etiqueta: string;
+  icono: NombreIcono;
+  /** Its parts, in the order of the tabs; the first is where the group opens. */
+  partes: Herramienta[];
+  /** Views that belong to the group without being one of its tabs (no tab is marked on them). */
+  vistas: Vista[];
+}
+
 const enProtoboard = () => ruta.vista === 'simulador' && (ruta.sim === 'protoboard' || ruta.sim.startsWith('protoboard/'));
 
 const esMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+/** Shortcut of «Buscar», for its tooltip. */
+export const ATAJO_BUSCAR = esMac ? '⌘ K' : 'Ctrl K';
 
-/** The start page (0.9: the first tab and the first entry of the rail; the rail's logo also leads there). */
-export const INICIO: Herramienta = { id: 'inicio', ruta: '#/', icono: 'inicio', etiqueta: 'Inicio', pestana: true };
+/** The start page (the first group; the rail's logo also leads there). */
+export const INICIO: Herramienta = { id: 'inicio', ruta: '#/', icono: 'inicio', etiqueta: 'Inicio' };
 
-/** Every section of the app, by frequency of use: the rail and the phone tabs follow this order. */
-export const HERRAMIENTAS: Herramienta[] = [
-  INICIO,
-  { id: 'libro', ruta: null, icono: 'libro', etiqueta: 'Libro', vistas: ['parte'], pestana: true },
-  // 0.11: the thematic courses get a rail entry (owner's choice); on a 800 px high window «Marcadores» moves to «Más»
-  { id: 'cursos', ruta: '#/cursos', icono: 'cursos', etiqueta: 'Cursos' },
-  { id: 'buscar', ruta: null, icono: 'buscar', etiqueta: 'Buscar', atajo: esMac ? '⌘ K' : 'Ctrl K', vistas: [] },
-  { id: 'simulador', ruta: '#/simulador', icono: 'simulador', etiqueta: 'Simulador', pestana: true, activa: () => ruta.vista === 'simulador' && !enProtoboard() },
-  { id: 'calculadoras', ruta: '#/calculadoras', icono: 'calculadora', etiqueta: 'Calculadoras' },
-  { id: 'ejercicios', ruta: '#/ejercicios', icono: 'ejercicios', etiqueta: 'Ejercicios', pestana: true },
-  { id: 'repaso', ruta: '#/repaso', icono: 'aprender', etiqueta: 'Repaso' },
-  { id: 'componentes', ruta: '#/componentes', icono: 'componentes', etiqueta: 'Componentes animados', corta: 'Componentes' },
-  { id: 'conceptos', ruta: '#/conceptos', icono: 'conceptos', etiqueta: 'Conceptos animados', corta: 'Conceptos' },
-  { id: 'instrumentos', ruta: '#/instrumentos', icono: 'instrumentos', etiqueta: 'Instrumentos' },
-  { id: 'protoboard', ruta: '#/protoboard', icono: 'protoboard', etiqueta: 'Protoboard', vistas: [], activa: enProtoboard },
-  { id: 'fm7303', ruta: '#/fm7303', icono: 'radio', etiqueta: 'Kit FM7303' },
-  { id: 'consolas', ruta: '#/consolas', icono: 'consolas', etiqueta: 'Consolas' },
-  { id: 'proyectos', ruta: '#/proyectos', icono: 'placa', etiqueta: 'Proyectos KiCad', corta: 'Proyectos' },
-  { id: 'glosario', ruta: '#/glosario', icono: 'glosario', etiqueta: 'Glosario' },
+/** The book's «Índice»: the reader, at the part read most recently (the index panel beside it). */
+export const INDICE: Herramienta = { id: 'indice', ruta: null, href: () => rutaContinuar(), icono: 'libro', etiqueta: 'Índice', vistas: ['parte'] };
+
+const MARCADORES: Herramienta = {
+  id: 'marcadores',
+  ruta: '#/marcadores',
+  icono: 'marcador',
+  etiqueta: 'Marcadores y notas',
+  corta: 'Marcadores',
+  cuenta: () => Object.keys(usuario.marcadores).length + Object.keys(usuario.notas).length,
+};
+
+/** 2.1: the five groups of the navigation (Main.png of the 2.1 mock-ups), each with its parts as tabs. */
+export const GRUPOS: Grupo[] = [
+  { id: 'inicio', etiqueta: 'Inicio', icono: 'inicio', partes: [INICIO], vistas: [] },
   {
-    id: 'marcadores',
-    ruta: '#/marcadores',
-    icono: 'marcador',
-    etiqueta: 'Marcadores y notas',
-    corta: 'Marcadores',
-    cuenta: () => Object.keys(usuario.marcadores).length + Object.keys(usuario.notas).length,
+    id: 'aprender',
+    etiqueta: 'Aprender',
+    icono: 'aprender',
+    partes: [
+      { id: 'cursos', ruta: '#/cursos', icono: 'cursos', etiqueta: 'Cursos' },
+      { id: 'repaso', ruta: '#/repaso', icono: 'repaso', etiqueta: 'Repaso' },
+      { id: 'progreso', ruta: '#/progreso', icono: 'progreso', etiqueta: 'Progreso' },
+    ],
+    // reached from Inicio and the courses (and the diagnostic from «Aa»)
+    vistas: ['practicar', 'problema', 'diagnostico', 'etapas'],
   },
-  // 1.0: own courses and exams with the book's exercises, exportable to PDF; the least used, so on a low window it is
-  // the first to go to «Más» (and on the phone it is in «Más»)
-  { id: 'docente', ruta: '#/docente', icono: 'docente', etiqueta: 'Modo docente', corta: 'Docente' },
-  // 1.0: the user guide (#/guia); the very last, so on a low window and on the phone it is in «Más»
-  { id: 'guia', ruta: '#/guia', icono: 'guia', etiqueta: 'Guía de uso', corta: 'Guía' },
+  {
+    id: 'libro',
+    etiqueta: 'Libro',
+    icono: 'libro',
+    partes: [
+      INDICE,
+      { id: 'ejercicios', ruta: '#/ejercicios', icono: 'ejercicios', etiqueta: 'Ejercicios' },
+      { id: 'conceptos', ruta: '#/conceptos', icono: 'conceptos', etiqueta: 'Conceptos animados', corta: 'Conceptos' },
+      { id: 'glosario', ruta: '#/glosario', icono: 'glosario', etiqueta: 'Glosario' },
+      MARCADORES,
+    ],
+    vistas: [],
+  },
+  {
+    id: 'taller',
+    etiqueta: 'Taller',
+    icono: 'simulador',
+    partes: [
+      { id: 'simulador', ruta: '#/simulador', icono: 'simulador', etiqueta: 'Simulador', activa: () => ruta.vista === 'simulador' && !enProtoboard() },
+      { id: 'protoboard', ruta: '#/protoboard', icono: 'protoboard', etiqueta: 'Protoboard', vistas: [], activa: enProtoboard },
+      { id: 'instrumentos', ruta: '#/instrumentos', icono: 'instrumentos', etiqueta: 'Instrumentos' },
+      { id: 'calculadoras', ruta: '#/calculadoras', icono: 'calculadora', etiqueta: 'Calculadoras' },
+      { id: 'componentes', ruta: '#/componentes', icono: 'componentes', etiqueta: 'Componentes animados', corta: 'Componentes' },
+    ],
+    vistas: [],
+  },
+  {
+    id: 'proyectos',
+    etiqueta: 'Proyectos',
+    icono: 'consolas',
+    partes: [
+      { id: 'fm7303', ruta: '#/fm7303', icono: 'radio', etiqueta: 'Kit FM7303' },
+      { id: 'consolas', ruta: '#/consolas', icono: 'consolas', etiqueta: 'Consolas' },
+      { id: 'proyectos', ruta: '#/proyectos', icono: 'placa', etiqueta: 'Proyectos del libro' },
+    ],
+    vistas: [],
+  },
 ];
+
+/** 2.1: the pages outside the five groups, linked at the foot of the «Aa» panel («Más: Guía de uso · …»). */
+export const MAS: Herramienta[] = [
+  { id: 'guia', ruta: '#/guia', icono: 'guia', etiqueta: 'Guía de uso' },
+  { id: 'docente', ruta: '#/docente', icono: 'docente', etiqueta: 'Modo docente' },
+  { id: 'sincronizacion', ruta: '#/sincronizacion', icono: 'repaso', etiqueta: 'Sincronización' },
+];
+
+/** Every page with an entry, groups' parts first (for whatever needs them all). */
+export const HERRAMIENTAS: Herramienta[] = [...GRUPOS.flatMap((g) => g.partes), ...MAS];
 
 export function esActiva(h: Herramienta): boolean {
   if (h.activa) return h.activa();
   return (h.vistas ?? [h.id as Vista]).includes(ruta.vista);
 }
 
-/** Runs an entry that is an action (the routes are plain links). */
-export function activar(h: Herramienta): void {
-  if (h.id === 'buscar') abrirBuscador();
-  else if (h.id === 'libro') abrirLibro();
-  else if (h.ruta) location.hash = h.ruta;
+/** The route of an entry. */
+export function hrefDe(h: Herramienta): string {
+  return h.href ? h.href() : (h.ruta ?? '#/');
+}
+
+/** The group of a view (null: the lesson and the pages of «Más»). */
+export function grupoDe(v: Vista = ruta.vista): Grupo | null {
+  if (v === 'leccion') return null;
+  return GRUPOS.find((g) => g.vistas.includes(v) || g.partes.some((h) => (h.vistas ?? [h.id as Vista]).includes(v))) ?? null;
+}
+
+/** The group on screen. */
+export function grupoActual(): Grupo | null {
+  return grupoDe(ruta.vista);
+}
+
+/** The part on screen within its group (null on the group's other views: practice, problem of the day…). */
+export function parteActual(): Herramienta | null {
+  return grupoActual()?.partes.find(esActiva) ?? null;
+}
+
+/** Where each group was left (this session only), so its rail entry returns there; the reader by its part. */
+const ultimas = $state<Partial<Record<IdGrupo, string>>>({});
+
+/** Notes the route on screen as its group's last one (App.svelte, on every route change). */
+export function recordarRuta(): void {
+  const g = grupoActual();
+  if (!g || g.id === 'inicio') return;
+  const h = ruta.vista === 'parte' ? (ruta.parte ? hrefParte(ruta.parte) : '') : location.hash;
+  if (h) ultimas[g.id] = h;
+}
+
+/**
+ * The route of a group's rail entry or bottom tab: where the group was left, or its first part; the group on screen
+ * leads to its first part (the reader for «Libro»).
+ */
+export function hrefGrupo(g: Grupo): string {
+  const primera = g.partes[0]!;
+  if (grupoActual()?.id === g.id) return hrefDe(primera);
+  return ultimas[g.id] ?? hrefDe(primera);
 }
 
 /** Route of the part read most recently (or the first chapter). */
@@ -104,41 +197,37 @@ export function rutaContinuar(): string {
 }
 
 /**
- * «Libro»: on the phone it opens the index drawer; on the desktop it toggles the index panel while reading
- * (like an activity bar) and otherwise returns to the reading.
+ * While reading, «Libro» (the rail, the bottom bar) and «Índice» (the header's tab) show the book's index: the
+ * phone's drawer, or the desktop's panel (toggled from the rail, as an activity bar). Returns whether it acted (the
+ * caller then cancels its link).
  */
-export function abrirLibro(): void {
-  if (app.movil) {
-    abrirLateral();
-    return;
-  }
-  if (ruta.vista === 'parte') {
-    alternarIndice();
-    return;
-  }
-  location.hash = rutaContinuar();
+export function indiceDesdeLibro(alternar: boolean): boolean {
+  if (ruta.vista !== 'parte') return false;
+  if (app.movil) abrirLateral();
+  else if (alternar) alternarIndice();
+  else mostrarIndice();
+  return true;
 }
 
 // ------------------------------------------------------------------ index panel (desktop)
 
-/** Views where the index is shown unless the reader hides it; in the tools it starts hidden. */
-const VISIBLE_POR_DEFECTO = new Set(['libro', 'inicio']);
-
+/** 2.1: the index panel belongs to the reader only (not to Inicio or the tools); there it shows unless hidden. */
 export function claveIndice(v: Vista = ruta.vista): string {
   return v === 'parte' ? 'libro' : v;
 }
 
 export function indiceOculto(): boolean {
-  const c = claveIndice();
-  return usuario.prefs.indiceOculto?.[c] ?? !VISIBLE_POR_DEFECTO.has(c);
+  if (ruta.vista !== 'parte') return true;
+  return usuario.prefs.indiceOculto?.libro ?? false;
 }
 
 export function alternarIndice(): void {
+  if (ruta.vista !== 'parte') return;
   ponerIndiceOculto(claveIndice(), !indiceOculto());
 }
 
 export function mostrarIndice(): void {
-  if (indiceOculto()) ponerIndiceOculto(claveIndice(), false);
+  if (indiceOculto() && ruta.vista === 'parte') ponerIndiceOculto(claveIndice(), false);
 }
 
 // ------------------------------------------------------------------ reading sequence
