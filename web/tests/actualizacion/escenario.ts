@@ -139,7 +139,9 @@ export function escenario(enTauri = false, vieja: Vieja = '0.12.0'): { omitido?:
       // what 1.0 writes at load: what 0.12 wrote too, and the migration (its data, the versions, the backup before)
       // (on the Tauri path the backup goes to its own store file, copia-automatica.json, whose key «migracion» the fake
       // IPC keeps as `epa:migracion`)
-      const previstas = new Set(['epa:__prueba', 'epa:progreso-xp', 'epa:dominio', 'epa:sinc-marcas', 'epa:progreso-diario', 'epa:ejercicios', 'epa:esquemas', 'epa:copia-migracion', 'epa:migracion']);
+      // (2.1: plus the device-local «Novedades de la 2.1» mark, lib/novedades21.svelte.ts — data of 0.12 carry no seal, so
+      // the note is not due and the mark is set at once; not a store, not synchronised)
+      const previstas = new Set(['epa:__prueba', 'epa:progreso-xp', 'epa:dominio', 'epa:sinc-marcas', 'epa:progreso-diario', 'epa:ejercicios', 'epa:esquemas', 'epa:copia-migracion', 'epa:migracion', 'epa:novedades-21']);
       for (const k of ln.escrituras) if (!previstas.has(k)) problemas.push(`${et}: la 1.0 escribe ${k} al cargar`);
       const sello = JSON.parse(ln.despues['epa:esquemas'] ?? 'null') as { almacenes?: Record<string, number> } | null;
       // (1.2: the 4.1 ids rename takes both on to version 3 — lib/esquemas.ts ESQUEMAS; this script runs without the

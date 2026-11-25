@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app } from '../lib/estado.svelte';
-  import { usuario, ponerTema, ponerTam, ponerNombre, LARGO_NOMBRE, TAM_MAX, TAM_MIN, TAM_DEFECTO, type Tema } from '../lib/usuario.svelte';
+  import { usuario, ponerTema, ponerTam, TAM_MAX, TAM_MIN, TAM_DEFECTO, type Tema } from '../lib/usuario.svelte';
+  import { MAS } from '../lib/navegacion.svelte';
   import { progresoDiario, ponerObjetivo, OBJETIVO_MAX, OBJETIVO_MIN } from '../lib/progreso-diario.svelte';
   import Icono, { type NombreIcono } from './Icono.svelte';
   import EntradaDiagnostico from './diagnostico/EntradaAjustes.svelte';
@@ -9,6 +10,8 @@
 
   let { ancla }: { ancla: HTMLElement | undefined } = $props();
   let panel: HTMLDivElement | undefined = $state();
+  /** 2.1: under the «Aa» button, wherever the header is (the reader's bar sits under the group's tabs until scrolled). */
+  let arriba = $state<number | null>(null);
 
   const TEMAS: { id: Tema; nombre: string; icono: NombreIcono }[] = [
     { id: 'auto', nombre: 'Sistema', icono: 'sistema' },
@@ -28,6 +31,7 @@
   }
 
   onMount(() => {
+    if (ancla) arriba = Math.round(ancla.getBoundingClientRect().bottom + 6);
     const fuera = (ev: PointerEvent) => {
       const t = ev.target as Node;
       if (panel?.contains(t) || ancla?.contains(t)) return;
@@ -60,6 +64,8 @@
      otherwise; 0.11 QA) -->
 <div
   class="ajustes"
+  style:top={arriba != null ? `${arriba}px` : undefined}
+  style:--arriba={arriba != null ? `${arriba}px` : undefined}
   role="dialog"
   aria-label="Tema y tamaño de letra"
   bind:this={panel}
@@ -151,27 +157,6 @@
   <!-- 0.11: sounds, vibration and the daily reminder (Android). -->
   <AjustesRetro />
 
-  <div class="grupo">
-    <label class="etiqueta" for="tu-nombre">Su nombre</label>
-    <input
-      id="tu-nombre"
-      class="nombre"
-      type="text"
-      autocomplete="given-name"
-      maxlength={LARGO_NOMBRE}
-      placeholder="Para el saludo del inicio"
-      value={usuario.prefs.nombre ?? ''}
-      oninput={(e) => ponerNombre(e.currentTarget.value)}
-    />
-    <span class="ayuda">Solo en este dispositivo; vacío, el inicio dice «Hola».</span>
-  </div>
-
-  <!-- 1.0: the in-app user guide (componentes/guia). -->
-  <div class="grupo" data-grupo-guia>
-    <span class="etiqueta">Ayuda</span>
-    <a class="enlace-guia" href="#/guia" onclick={cerrar}><Icono nombre="guia" tam={17} /> Guía de uso</a>
-  </div>
-
   <!-- Performance diagnostic of this device (componentes/diagnostico): a link to its page. -->
   <EntradaDiagnostico />
 
@@ -179,6 +164,12 @@
   {#await import('./sincronizacion/GrupoAjustes.svelte') then m}
     <m.default />
   {/await}
+
+  <!-- 2.1: the pages outside the five groups of the navigation (lib/navegacion MAS). -->
+  <nav class="mas" aria-label="Más" data-mas>
+    <span class="mas-rotulo">Más:</span>
+    {#each MAS as h, i (h.id)}{#if i}<span class="punto" aria-hidden="true">·</span>{/if}<a href={h.ruta} data-mas-enlace={h.id} onclick={cerrar}>{h.etiqueta}</a>{/each}
+  </nav>
 
   <p class="pie">
     {#if app.modo === 'muestra'}
@@ -196,7 +187,7 @@
     right: 10px;
     z-index: 40;
     width: min(340px, calc(100vw - 20px));
-    max-height: calc(100dvh - var(--alto-barra) - env(safe-area-inset-top) - var(--hueco-inferior) - 16px);
+    max-height: calc(100dvh - var(--arriba, calc(var(--alto-barra) + env(safe-area-inset-top))) - var(--hueco-inferior) - 16px);
     overflow-y: auto;
     padding: 14px 16px 12px;
     border: 1px solid var(--linea);
@@ -242,7 +233,7 @@
     font-size: 13px;
   }
   .tema[aria-checked='true'] {
-    border-color: var(--acento);
+    border-color: var(--v11-azul);
     color: var(--tinta);
     font-weight: 600;
   }
@@ -277,7 +268,7 @@
   }
   .tam input {
     flex: 1;
-    accent-color: var(--acento);
+    accent-color: var(--v11-azul);
   }
   .prueba {
     display: flex;
@@ -291,10 +282,37 @@
   .enlace {
     border: 0;
     background: none;
-    color: var(--acento);
+    color: var(--v11-azul);
     font-family: var(--sans);
     font-size: 13.5px;
     font-weight: 600;
+  }
+  .mas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 6px;
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid var(--linea-suave);
+    font-size: 15px;
+  }
+  .mas-rotulo {
+    color: var(--v11-tinta-suave);
+  }
+  .mas a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--v11-azul);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .mas a:hover {
+    text-decoration: underline;
+  }
+  .mas .punto {
+    color: var(--v11-tinta-suave);
   }
   .pie {
     margin: 14px 0 0;
@@ -320,7 +338,7 @@
   .secciones-pasos input {
     width: 20px;
     height: 20px;
-    accent-color: var(--acento);
+    accent-color: var(--v11-azul);
     flex-shrink: 0;
   }
   .objetivo-tipo {
@@ -339,9 +357,9 @@
     line-height: 1.2;
   }
   .objetivo-tipo button[aria-checked='true'] {
-    border-color: var(--acento);
-    background: var(--acento-tinte);
-    color: var(--acento);
+    border-color: var(--v11-azul);
+    background: var(--v11-azul-tinte);
+    color: var(--v11-azul);
     font-weight: 700;
   }
   .cantidad {
@@ -366,42 +384,8 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  .nombre {
-    width: 100%;
-    min-height: 44px;
-    padding: 0 12px;
-    border: 1px solid var(--linea);
-    border-radius: 10px;
-    background: var(--fondo);
-    color: var(--tinta);
-    font-size: 16px;
-  }
-  .nombre::placeholder {
-    color: var(--tinta-suave);
-    opacity: 0.8;
-  }
-  .ayuda {
-    display: block;
-    margin-top: 5px;
-    color: var(--tinta-suave);
-    font-size: 12.5px;
-    line-height: 1.35;
-  }
   .boton-icono:disabled {
     opacity: 0.35;
     cursor: default;
-  }
-  .enlace-guia {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-height: 44px;
-    color: var(--acento);
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .enlace-guia:hover {
-    text-decoration: underline;
   }
 </style>

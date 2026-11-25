@@ -16,6 +16,10 @@ interface RutaA11y {
   accion?: Accion;
   /** Heavy page (3D, simulation; the reader, which draws the chunks around the anchor first): waits longer. */
   pesada?: boolean;
+  /** 2.1: axe on this part only (an overlay over a page the other routes audit: what lies under it is not a target). */
+  incluir?: string;
+  /** 2.1: a modal overlay (the phone's index drawer): the page under it is inert, its h1 too — not a missing h1. */
+  modal?: boolean;
 }
 
 const RUTAS: RutaA11y[] = [
@@ -23,8 +27,9 @@ const RUTAS: RutaA11y[] = [
   { id: 'inicio', hash: '#/' },
   { id: 'buscar', hash: '#/', accion: 'buscar' },
   { id: 'ajustes', hash: '#/', accion: 'ajustes' },
-  { id: 'menu', hash: '#/', accion: 'menu' },
-  { id: 'indice', hash: '#/cap05', accion: 'lateral' },
+  // 2.1: no «Más» menu any more (five groups); the reader's breadcrumb menu instead
+  { id: 'menu', hash: '#/cap05', accion: 'menu', pesada: true, incluir: '[role="dialog"]' },
+  { id: 'indice', hash: '#/cap05', accion: 'lateral', modal: true },
   { id: 'parte', hash: '#/cap05', pesada: true },
   { id: 'seccion', hash: '#/cap01/sec-1.4', pesada: true },
   { id: 'teoria-viva', hash: '#/cap06/sec-6.5', pesada: true },
@@ -126,12 +131,12 @@ async function hacer(page: Page, r: RutaA11y): Promise<void> {
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click();
     await expect(page.getByRole('dialog', { name: 'Tema y tamaño de letra' })).toBeVisible();
   } else if (r.accion === 'menu') {
-    const b = page.getByRole('button', { name: /^(Más|Herramientas)/ }).first();
-    await b.click();
-    await expect(page.getByRole('menu').first()).toBeVisible();
+    await page.locator('header.barra .miga-boton').click();
+    await expect(page.getByRole('dialog', { name: /^Secciones de / })).toBeVisible();
   } else if (r.accion === 'lateral') {
-    const b = page.getByRole('button', { name: /Índice/ }).first();
-    if (await b.isVisible().catch(() => false)) await b.click();
+    // the desktop shows the panel while reading; the phone opens the drawer from «Libro» (2.1: a link of the bar)
+    const b = page.getByRole('navigation', { name: 'Secciones de la aplicación' }).locator('[data-grupo="libro"]');
+    if (await page.locator('nav.pestanas[aria-label="Secciones de la aplicación"]').isVisible().catch(() => false)) await b.click();
     await page.waitForTimeout(400);
   } else if (r.accion === 'visor') {
     const id = r.hash.split('/').pop()!;
@@ -156,8 +161,8 @@ for (const tema of TEMAS) {
       await asentar(page, r.pesada ? 2500 : 700);
       await hacer(page, r);
       const nombre = `${info.project.name} · ${tema} · ${r.id}`;
-      const h = await axe(page);
-      const e = await estructura(page);
+      const h = await axe(page, r.incluir);
+      const e = (await estructura(page)).filter((x) => !(r.modal && x === 'sin h1' && (info.project.name === 'telefono')));
       const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (informe) todos[nombre] = { estructura: e, axe: h, desborde };
       else {

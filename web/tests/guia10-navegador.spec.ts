@@ -31,29 +31,23 @@ async function limpio(page: Page, tema: Tema = 'claro'): Promise<void> {
 /** The id of the focused element (or its tag). */
 const foco = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName || '');
 
-test('se llega desde el carril («Más»), desde «Aa» y desde el diagnóstico', async ({ page }) => {
+test('se llega desde «Aa» («Más») y desde el diagnóstico', async ({ page }) => {
   await limpio(page);
   await page.goto('#/');
   const carril = page.getByRole('navigation', { name: 'Secciones de la aplicación' });
   await expect(carril).toBeVisible();
-  // the last entry of the rail: on a 900 px window it is in «Más»
-  await carril.getByRole('button', { name: /^Más/ }).click();
-  await page.getByRole('menu', { name: 'Más secciones' }).getByRole('menuitem', { name: /Guía de uso/ }).click();
+  // 2.1: «Aa» → «Más: Guía de uso · …»
+  await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
+  const ajustes = page.getByRole('dialog', { name: 'Tema y tamaño de letra' });
+  await ajustes.getByRole('navigation', { name: 'Más' }).getByRole('link', { name: 'Guía de uso' }).click();
   await expect(page).toHaveURL(/#\/guia$/);
+  await expect(ajustes).toHaveCount(0);
   await expect(page.locator('h1')).toHaveText('Guía de uso');
   await expect.poll(() => foco(page)).toBe('H1');
   await expect(page.locator('[data-tarjeta-guia]')).toHaveCount(GUIA.length);
-  // the rail marks «Más» as holding the current entry
-  await expect(carril.getByRole('button', { name: /^Más/ })).toHaveClass(/activo/);
+  // outside the five groups: none marked in the rail
+  await expect(carril.locator('[aria-current="page"]')).toHaveCount(0);
   await expect(page).toHaveTitle('Guía de uso · Electrónica Práctica Avanzada');
-
-  // «Aa» → «Ayuda» → «Guía de uso»
-  await page.goto('#/');
-  await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
-  const ajustes = page.getByRole('dialog', { name: 'Tema y tamaño de letra' });
-  await ajustes.getByRole('link', { name: 'Guía de uso' }).click();
-  await expect(page).toHaveURL(/#\/guia$/);
-  await expect(ajustes).toHaveCount(0);
 
   // the diagnostic links to its own section
   await page.goto('#/diagnostico');
@@ -181,12 +175,11 @@ const PANTALLAS: [string, () => string, ((p: Page) => Promise<void>)?][] = [
   ['filtro', () => '#/guia', async (p) => void (await p.getByRole('searchbox', { name: 'Buscar en la guía' }).fill('sincronizar'))],
 ];
 
-test('en el teléfono: desde «Más», 44 px y sin desbordar', async ({ browser }) => {
+test('en el teléfono: desde «Aa» («Más»), 44 px y sin desbordar', async ({ browser }) => {
   const { ctx, page } = await tactil(browser, 'claro');
   await page.goto('#/');
-  const barra = page.getByRole('navigation', { name: 'Secciones de la aplicación' });
-  await barra.getByRole('button', { name: 'Más' }).click();
-  await page.getByRole('menu', { name: 'Más secciones' }).getByRole('menuitem', { name: /Guía de uso/ }).click();
+  await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
+  await page.getByRole('navigation', { name: 'Más' }).getByRole('link', { name: 'Guía de uso' }).click();
   await expect(page).toHaveURL(/#\/guia$/);
   for (const [nombre, ruta, preparar] of PANTALLAS) {
     await page.goto(ruta());

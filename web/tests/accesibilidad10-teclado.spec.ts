@@ -47,9 +47,9 @@ test('«Saltar al contenido» es la primera parada y lleva al título; tras camb
   await expect.poll(() => foco(page)).toMatch(/^H1/);
   expect(page.url()).toMatch(/#\/$/);
 
-  // a rail entry by keyboard: the new page's heading takes the focus
+  // a rail entry by keyboard: the new page's heading takes the focus (2.1: «Taller» opens on the simulator)
   const carril = page.getByRole('navigation', { name: 'Secciones de la aplicación' });
-  await carril.getByRole('link', { name: /Simulador/ }).focus();
+  await carril.getByRole('link', { name: 'Taller' }).focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#\/simulador$/);
   await expect.poll(() => foco(page)).toMatch(/^H1.*Simulador de circuitos/);

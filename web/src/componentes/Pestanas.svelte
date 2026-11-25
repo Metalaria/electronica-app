@@ -1,22 +1,25 @@
 <script lang="ts">
-  // Bottom tab bar (phone and tablet portrait): the registry's entries marked `pestana` (0.9: Inicio, Libro,
-  // Simulador, Ejercicios) and «Más» for the rest. «Libro» opens the index drawer. Styled as the 0.9 mockups:
-  // a pill behind the active icon, the active label in the accent.
+  // Bottom bar (phone and tablet portrait), 2.1: the same five groups as the rail (lib/navegacion GRUPOS), a pill
+  // behind the current one's icon, its label in the accent. A group's parts are the tab row under the header
+  // (Barra.svelte). While reading, «Libro» opens the book's index drawer.
   import { app } from '../lib/estado.svelte';
-  import { HERRAMIENTAS, activar, esActiva, type Herramienta } from '../lib/navegacion.svelte';
+  import { GRUPOS, grupoActual, hrefGrupo, indiceDesdeLibro, type Grupo } from '../lib/navegacion.svelte';
+  import { ruta } from '../lib/ruta.svelte';
   import Icono from './Icono.svelte';
-  import MenuHerramientas from './MenuHerramientas.svelte';
 
-  const pestanas = HERRAMIENTAS.filter((h) => h.pestana);
-  const resto = HERRAMIENTAS.filter((h) => !h.pestana);
+  /** The index drawer is open over the page: the bar is inert under it (App.svelte). */
+  let { inerte = false }: { inerte?: boolean } = $props();
 
-  let mas = $state(false);
-  let botonMas: HTMLButtonElement | undefined = $state();
-  const masActivo = $derived(resto.some(esActiva));
+  const actual = $derived(grupoActual()?.id ?? null);
 
-  function activa(h: Herramienta): boolean {
-    if (h.id === 'libro') return app.lateral || (esActiva(h) && !masActivo);
-    return esActiva(h) && !app.lateral;
+  function activa(g: Grupo): boolean {
+    if (g.id === 'libro' && app.lateral) return true;
+    return g.id === actual && !app.lateral;
+  }
+
+  function clic(g: Grupo, ev: MouseEvent) {
+    if (g.id !== 'libro' || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button !== 0) return;
+    if (indiceDesdeLibro(false)) ev.preventDefault();
   }
 
   // 2.0: the bar hides while a text box has the focus (style below) and comes back when it loses it. A tap that
@@ -55,47 +58,23 @@
   });
 </script>
 
-<nav class="pestanas" class:retenida aria-label="Secciones de la aplicación">
-  {#each pestanas as h (h.id)}
-    {#if h.ruta}
-      <a class="pestana" class:activa={activa(h)} href={h.ruta} aria-label={h.etiqueta} aria-current={activa(h) ? 'page' : undefined} data-herramienta={h.id}>
-        <span class="icono"><Icono nombre={h.icono} tam={23} /></span>
-        <span class="etiqueta">{h.corta ?? h.etiqueta}</span>
-      </a>
-    {:else}
-      <button
-        class="pestana"
-        class:activa={activa(h)}
-        type="button"
-        aria-label={h.etiqueta}
-        aria-expanded={h.id === 'libro' ? app.lateral : undefined}
-        data-herramienta={h.id}
-        onclick={() => activar(h)}
-      >
-        <span class="icono"><Icono nombre={h.icono} tam={23} /></span>
-        <span class="etiqueta">{h.corta ?? h.etiqueta}</span>
-      </button>
-    {/if}
+<nav class="pestanas" class:retenida aria-label="Secciones de la aplicación" inert={inerte}>
+  {#each GRUPOS as g (g.id)}
+    <a
+      class="pestana"
+      class:activa={activa(g)}
+      href={hrefGrupo(g)}
+      aria-current={g.id === actual ? 'page' : undefined}
+      aria-expanded={g.id === 'libro' && ruta.vista === 'parte' ? app.lateral : undefined}
+      data-grupo={g.id}
+      data-herramienta={g.id}
+      onclick={(ev) => clic(g, ev)}
+    >
+      <span class="icono"><Icono nombre={g.icono} tam={22} /></span>
+      <span class="etiqueta">{g.etiqueta}</span>
+    </a>
   {/each}
-  <button
-    class="pestana"
-    class:activa={masActivo && !app.lateral}
-    bind:this={botonMas}
-    type="button"
-    aria-haspopup="menu"
-    aria-expanded={mas}
-    aria-label="Más"
-    data-herramienta="mas"
-    onclick={() => (mas = !mas)}
-  >
-    <span class="icono"><Icono nombre="mas" tam={23} /></span>
-    <span class="etiqueta">Más</span>
-  </button>
 </nav>
-
-{#if mas && botonMas}
-  <MenuHerramientas items={resto} ancla={botonMas} modo="hoja" onCerrar={() => (mas = false)} />
-{/if}
 
 <style>
   .pestanas {
@@ -139,7 +118,7 @@
     padding: 0;
     border: 0;
     background: none;
-    color: var(--tinta-suave);
+    color: var(--v11-tinta-suave);
     text-decoration: none;
     -webkit-tap-highlight-color: transparent;
   }
@@ -154,17 +133,17 @@
   .etiqueta {
     max-width: 100%;
     overflow: hidden;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 500;
     line-height: 1.1;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .pestana.activa {
-    color: var(--acento);
+    color: var(--v11-azul);
   }
   .pestana.activa .icono {
-    background: var(--acento-tinte);
+    background: var(--v11-azul-tinte);
   }
   .pestana.activa .etiqueta {
     font-weight: 700;
@@ -173,6 +152,6 @@
     outline: none;
   }
   .pestana:focus-visible .icono {
-    outline: 2px solid var(--acento);
+    outline: 2px solid var(--v11-foco);
   }
 </style>

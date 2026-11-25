@@ -221,33 +221,36 @@
 </div>
 
 <style>
-  /* 0.9 look (componentes/ui09): serif title, chips, chapters as cards */
+  /* 2.1 (estilos/sistema21.css): the 36 px title, chips in the one accent, chapters as hairline rows (no cards) */
   .pagina-ej {
     max-width: 920px;
     margin: 0 auto;
-    padding: 0 32px 64px;
+    padding: var(--e21-4) 32px var(--e21-8);
     font-family: var(--sans);
   }
   @media (max-width: 600px) {
     .pagina-ej {
-      padding: 0 16px 64px;
+      padding: var(--e21-3) 16px var(--e21-8);
     }
   }
   .cabecera {
-    padding: 24px 0 18px;
+    padding: 0 0 var(--e21-3);
   }
   h1 {
-    margin: 6px 0 0;
-    color: var(--titulos);
+    margin: 0;
+    color: var(--v11-tinta);
     font-family: var(--titular);
-    font-size: clamp(26px, 4vw, 30px);
-    font-weight: 700;
+    font-size: var(--t21-pagina);
+    font-weight: 600;
     line-height: 1.15;
   }
+  .cabecera > .boton + h1 {
+    margin-top: var(--e21-2);
+  }
   .sub {
-    margin: 8px 0 0;
-    color: var(--tinta-suave);
-    font-size: 16px;
+    margin: var(--e21-1) 0 0;
+    color: var(--v11-tinta-suave);
+    font-size: var(--t21-secundario);
   }
   .barra-total {
     display: flex;
@@ -271,7 +274,7 @@
   .filtros {
     display: grid;
     gap: 8px;
-    margin: 4px 0 18px;
+    margin: 0 0 var(--e21-3);
   }
   .chips {
     display: flex;
@@ -284,17 +287,18 @@
     gap: 6px;
     min-height: 44px;
     padding: 0 14px;
-    border: 1px solid var(--linea);
+    border: 1px solid var(--v11-linea);
     border-radius: 999px;
-    background: var(--superficie);
-    color: var(--tinta-suave);
-    font-size: 14.5px;
-    font-weight: 600;
+    background: transparent;
+    color: var(--v11-tinta-suave);
+    font-size: 15px;
+    font-weight: 500;
   }
   .chip[aria-checked='true'] {
-    border-color: var(--acento);
-    background: var(--acento-tinte);
-    color: var(--acento);
+    border-color: var(--a21);
+    background: var(--a21-tinte);
+    color: var(--a21);
+    font-weight: 600;
   }
   .chip .n {
     color: inherit;
@@ -302,20 +306,18 @@
     font-variant-numeric: tabular-nums;
   }
   .capitulo {
-    margin-bottom: 10px;
-    overflow: hidden;
-    border: 1px solid var(--linea);
-    border-left: 4px solid var(--c);
-    border-radius: var(--radio-tarjeta-p);
-    background: var(--superficie);
+    border-bottom: 1px solid var(--v11-linea);
+  }
+  .capitulo:first-of-type {
+    border-top: 1px solid var(--v11-linea);
   }
   .cap-cab {
     display: flex;
     align-items: center;
     gap: 12px;
     width: 100%;
-    min-height: 60px;
-    padding: 10px 14px;
+    min-height: 64px;
+    padding: 12px 0;
     border: 0;
     background: none;
     text-align: left;
@@ -332,9 +334,9 @@
   }
   .cap-tit {
     overflow: hidden;
-    color: var(--tinta);
-    font-size: 15.5px;
-    font-weight: 600;
+    color: var(--v11-tinta);
+    font-size: 17px;
+    font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -365,7 +367,7 @@
   }
   ul {
     margin: 0;
-    padding: 0 6px 8px;
+    padding: 0 0 var(--e21-2);
     list-style: none;
   }
   .fila {
