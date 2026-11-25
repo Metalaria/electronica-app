@@ -393,7 +393,7 @@ test('los dos canales a la vez: CH1 sin señal y CH2 saturado', () => {
   expect(c2!.ajustes.canales[1].comprobado).toBe(true);
 });
 
-test('la escala de CH2 está comprobada con la sonda en X1; con X10, todavía no', () => {
+test('la escala de los dos canales está comprobada con la sonda en X1 y en X10', () => {
   const con = (sondaCh1: number, sondaCh2: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[6] = sondaCh1;
@@ -401,7 +401,22 @@ test('la escala de CH2 está comprobada con la sonda en X1; con X10, todavía no
     return leerAjustes(b)!.canales;
   };
   expect(con(0, 0).map((c) => [c.sonda, c.comprobado])).toEqual([[1, true], [1, true]]);
-  expect(con(1, 1).map((c) => [c.sonda, c.comprobado])).toEqual([[10, true], [10, false]]);
+  // (CH2 at X10: 3,30 V from the record against 3,29 V by the instrument, 2026-11-25)
+  expect(con(1, 1).map((c) => [c.sonda, c.comprobado])).toEqual([[10, true], [10, true]]);
+  // the state of that capture: CH2 alone at 50 mV per division with the probe setting at X10
+  const real = leerAjustes(deHex('01000202b4000001000000000000000000000000021201010000000001000000000000000000000000000000000801000001ff0000000000'))!;
+  expect(real.canales.map((c) => c.activo)).toEqual([false, true]);
+  expect([real.canales[1].sonda, real.canales[1].voltiosDiv]).toEqual([10, expect.closeTo(0.5, 12)]);
+});
+
+test('el acoplamiento de CH1 es el primer byte de los ajustes; el de CH2 no está localizado', () => {
+  // two states of the unit, one key press apart (2026-11-25): CH1 direct, then alternating
+  const cc = leerAjustes(deHex('01000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000'))!;
+  const ca = leerAjustes(deHex('00000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000'))!;
+  expect(cc.canales.map((c) => c.acoplamiento)).toEqual(['CC', null]);
+  expect(ca.canales.map((c) => c.acoplamiento)).toEqual(['CA', null]);
+  // nothing else changes between the two
+  expect({ ...ca, canales: null }).toEqual({ ...cc, canales: null });
 });
 
 test('un registro al que le falta un informe se descarta entero', () => {
@@ -581,7 +596,7 @@ test('el flujo de estado: lo que anuncia la identificación y lo que trae cada e
   expect(decodificarGenerador(leerEstado(real)!.bytes)).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 40000, ciclo: 40, amplitud: 1.5 });
 });
 
-test('las bases de tiempos de 5 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
+test('las bases de tiempos de 2 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
   const con = (indice: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[45] = indice;
@@ -592,8 +607,10 @@ test('las bases de tiempos de 5 µs a 2 ms por división están comprobadas; las
   expect([con(8).tiempoDiv, con(8).tiempoComprobado]).toEqual([expect.closeTo(5e-6, 12), true]);
   expect([con(10).tiempoDiv, con(10).tiempoComprobado]).toEqual([expect.closeTo(20e-6, 12), true]);
   expect([11, 12, 13, 14, 15, 16].every((i) => con(i).tiempoComprobado)).toBe(true);
-  // (one step outside at each end: 2 µs and 5 ms per division)
-  expect([con(7).tiempoDiv, con(7).tiempoComprobado]).toEqual([expect.closeTo(2e-6, 12), false]);
+  // (2 µs: checked later the same day, 50 kHz from the record against 50 kHz by the instrument)
+  expect([con(7).tiempoDiv, con(7).tiempoComprobado]).toEqual([expect.closeTo(2e-6, 12), true]);
+  // (one step outside at each end: 1 µs and 5 ms per division)
+  expect([con(6).tiempoDiv, con(6).tiempoComprobado]).toEqual([expect.closeTo(1e-6, 12), false]);
   expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), false]);
 });
 

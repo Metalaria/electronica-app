@@ -15,6 +15,7 @@
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
   import { formatoSI } from '../../grafica/formato';
   import { compararTraza, explicarDiferenciaFnirsi, type SimuladoFnirsi } from '../../../lib/fnirsi-real/comparar';
+  import AnalisisTraza from './AnalisisTraza.svelte';
 
   let {
     compacto = false,
@@ -60,9 +61,9 @@
     const m = enOsciloscopio ? c.medidas : null;
     if (!m) return '';
     const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    // (checked with the probe setting at X1 only)
-    const sonda = c.trazas[0]?.ajustes.canales[0].sonda === 10 ? ' (con la sonda en X10 estas tensiones no están comprobadas)' : '';
-    return `Medidas del propio FNIRSI en CH1: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}${sonda}`;
+    // (with the probe setting at X10 the instrument gives these ten times larger, as its screen does: checked on
+    // the unit on 2026-11-25, 317 mV at X1 and 3,17 V at X10 on the same wave)
+    return `Medidas del propio FNIRSI en CH1: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}`;
   });
   /** The simulated multimeter's display, and the difference when both measure the same unit (SI base). */
   const simMultimetro = $derived(lectura ? (simulado?.multimetro ?? null) : null);
@@ -159,6 +160,7 @@
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
         </li>
       </ul>
+      <AnalisisTraza {trazas} />
     {/if}
     {#if enOsciloscopio && c.enMarcha === false}<p class="fr-tenue" data-marcha-fnirsi>Osciloscopio en STOP: la traza y las medidas son las de la última adquisición.</p>{/if}
     {#if medidas}<p class="fr-tenue" data-medidas-fnirsi>{medidas}</p>{/if}
