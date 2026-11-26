@@ -60,19 +60,32 @@ const FORMAS: Record<number, { nombre: string; rotulo: string }> = {
  * The last index that can be a waveform: the firmware's own list ends at 12, and a link from patch 5 on may add up
  * to eight entries after it (github.com/Metalaria/fnirsi-2c53t-link, `--menu-wave`). Those have no name here: the
  * card gives their place in the menu.
+ * 2.1.1 (owner, 26-11): the link's identification has base English labels for them, and whoever builds the image
+ * may give each one a name of its own per language on the instrument's screen, so a label would not match what the
+ * screen shows. The app names them by their place only, never reads the instrument's table of names (the
+ * identification's bytes 48 to 51 point there and are not read), and says which one plays what is sent from here
+ * (the identification's `entradaUsb`).
  */
+const PRIMERA_ANADIDA = 13;
 const ULTIMA_FORMA = 12 + 8;
 
-/** A waveform of the instrument's menu as the card names it: «Cuadrada (Square Wave)». */
-export function nombreForma(forma: number): string {
+/**
+ * A waveform of the instrument's menu as the card names it: «Cuadrada (Square Wave)»; an entry the link added, by
+ * its place: «la entrada n.º 14 de su menú, añadida por el enlace». `entradaUsb`: the index of the added entry that
+ * plays the waveform sent from here (0: none).
+ */
+export function nombreForma(forma: number, entradaUsb = 0): string {
   const f = FORMAS[forma];
-  return f ? `${f.nombre} (${f.rotulo})` : `la forma n.º ${forma + 1} de su menú`;
+  if (f) return `${f.nombre} (${f.rotulo})`;
+  if (forma >= PRIMERA_ANADIDA && forma <= ULTIMA_FORMA)
+    return `la entrada n.º ${forma + 1} de su menú, añadida por el enlace${forma === entradaUsb ? ' (la que reproduce la onda que se le envía)' : ''}`;
+  return `la forma n.º ${forma + 1} de su menú`;
 }
 
 export interface AjustesGenerador {
-  /** Place of the waveform in the instrument's menu (0 to 12). */
+  /** Place of the waveform in the instrument's menu (0 to 12; 13 to 20 for the entries a link added). */
   forma: number;
-  /** Its name in Spanish and the instrument's own label (null only for an index the table of names does not hold). */
+  /** Its name in Spanish and the instrument's own label (null for an index the table of names does not hold: 13 to 20). */
   nombre: string | null;
   rotulo: string | null;
   /** Hz. */

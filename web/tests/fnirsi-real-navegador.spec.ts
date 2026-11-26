@@ -46,6 +46,8 @@ interface Falso {
   tabla?: number[];
   ondas?: [number, number][];
   ondaEstropeada?: boolean;
+  entradaUsb?: number;
+  tablaUsb?: number[];
 }
 
 /** The fake link, installed before the page loads (the transport is chosen once, at start). */
@@ -563,6 +565,128 @@ test('generador: una onda a medida se envía, se comprueba releyéndola y se dic
   await expect(estado).toHaveCount(0);
   await panel.locator('details.fr-diag > summary').click();
   await expect(page.locator('[data-enlace-fnirsi]')).toContainText('parche 4 · envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP · admite ondas a medida en el generador');
+});
+
+test('generador con una entrada propia en su menú (parche 6): la onda se guarda sin tocar la que suena, y suena al elegir la entrada', async ({ page }) => {
+  const cuadrada = Array.from(deHex(MEMORIA.generadorCuadrada));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 6, entradaUsb: 17, memoria: { '20000f50': cuadrada } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  const onda = panel.locator('[data-onda-fnirsi]');
+  await onda.locator('summary').click();
+  await expect(onda).toContainText('tiene en su lista de formas una entrada para lo que se le envía (la n.º 18)');
+  await expect(onda).toContainText('solo suena mientras esa entrada esté elegida');
+  await onda.locator('[data-onda-forma]').selectOption('gaussiana');
+  await onda.locator('[data-onda-enviar]').click();
+  const estado = onda.locator('[data-onda-estado]');
+  await expect(estado).toHaveAttribute('data-onda-estado', 'guardada');
+  await expect(estado).toContainText('en la entrada n.º 18 de la lista de formas del aparato, hasta que lo apague. No está sonando: el FNIRSI sigue con Cuadrada (Square Wave), que no se ha tocado.');
+  let f = await falso(page);
+  expect(f.tabla).toEqual(Array(100).fill(20));
+  expect(Math.max(...f.tablaUsb!)).toBe(4094);
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (onda guardada en su entrada)');
+  // the entry is selected on the instrument: the card says the waveform is the one playing now
+  const elegida = [...cuadrada];
+  elegida[1] = 17;
+  await cambiar(page, { memoria: { '20000f50': elegida } });
+  await expect(estado).toContainText('elegida ahora en el FNIRSI', { timeout: 10_000 });
+  await expect(page.locator('[data-generador-fnirsi]')).toContainText('la entrada n.º 18 de su menú, añadida por el enlace (la que reproduce la onda que se le envía)');
+  // sent with the entry selected: played at once, read back, and it lasts through a change of amplitude
+  await onda.locator('[data-onda-forma]').selectOption('escalera');
+  await onda.locator('[data-onda-enviar]').click();
+  await expect(estado).toHaveAttribute('data-onda-estado', 'enviada');
+  await expect(estado).toContainText('Es la entrada n.º 18 de la lista de formas del aparato, la que está elegida: dura hasta que lo apague o envíe otra, aunque cambie la amplitud.');
+  f = await falso(page);
+  expect(Math.max(...f.tabla!)).toBe(3741);
+  const otraAmplitud = [...elegida];
+  otraAmplitud[9] = 20;
+  await cambiar(page, { memoria: { '20000f50': otraAmplitud } });
+  await expect(page.locator('[data-generador-fnirsi]')).toContainText('2,0 V', { timeout: 10_000 });
+  await expect(estado).toHaveAttribute('data-onda-estado', 'enviada');
+  // another waveform chosen on the instrument: the sent one is no longer what plays
+  await cambiar(page, { memoria: { '20000f50': cuadrada } });
+  await expect(estado).toHaveAttribute('data-onda-estado', 'deshecha', { timeout: 10_000 });
+});
+
+/** One real record with some of its 56 settings bytes changed (`cambios`: byte → value), as base64. */
+function registroCon(cambios: Record<number, number>): string {
+  const b = Buffer.from(REGISTRO_CH1, 'base64');
+  for (const [k, v] of Object.entries(cambios)) b[Number(k)] = v;
+  return b.toString('base64');
+}
+
+test('2.1.1: el flanco de disparo, y las bases de 5 ms y 20 ms sin el aviso de escala sin comprobar', async ({ page }) => {
+  await limpio(page);
+  // (the capture was taken with the rising edge: byte 24 is 0; byte 45 is the time base, 13 = 200 µs)
+  await conEnlace(page, { modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  const disparo = panel.locator('[data-disparo-fnirsi]');
+  await expect(disparo).toHaveText('Flanco de disparo: subida');
+  await cambiar(page, { eventos: informesDe(registroCon({ 24: 1 }), 0, 2) });
+  await expect(disparo).toHaveText('Flanco de disparo: bajada');
+  await expect(panel).toContainText('200 µs/div');
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (flanco de bajada)');
+  await cambiar(page, { eventos: informesDe(registroCon({ 24: 7 }), 0, 3) });
+  await expect(disparo).toHaveText('Flanco de disparo: desconocido');
+  // the time bases: 5 ms and 20 ms checked on the unit, 10 ms not
+  for (const [indice, texto, aviso, secuencia] of [[17, '5,00 ms/div', false, 4], [19, '20,0 ms/div', false, 5], [18, '10,0 ms/div', true, 6]] as const) {
+    await cambiar(page, { eventos: informesDe(registroCon({ 45: indice }), 0, secuencia) });
+    await expect(panel).toContainText(texto);
+    await expect(panel.getByText('escala de tiempo sin comprobar en esta base')).toHaveCount(aviso ? 1 : 0);
+  }
+});
+
+for (const nativo of [false, true])
+  test(`2.1.1: una onda enviada mientras suena una entrada añadida por el enlace (${nativo ? 'aplicación instalada' : 'navegador'}): se nombra por su posición, sin etiqueta`, async ({ page }) => {
+    const anadida = Array.from(deHex(MEMORIA.generadorCuadrada));
+    anadida[1] = 13;
+    await limpio(page);
+    await conEnlace(page, { modo: 3, parche: 6, entradaUsb: 17, comoNativo: nativo, memoria: { '20000f50': anadida } });
+    await banco(page);
+    const panel = page.locator('.elegir [data-fnirsi-real]');
+    await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+    await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+    await expect(page.locator('[data-generador-fnirsi]')).toContainText('Generador del FNIRSI: la entrada n.º 14 de su menú, añadida por el enlace ·');
+    const onda = panel.locator('[data-onda-fnirsi]');
+    await onda.locator('summary').click();
+    await onda.locator('[data-onda-enviar]').click();
+    const estado = onda.locator('[data-onda-estado]');
+    // patch 6 with another entry selected: kept for the USB entry, the added entry that plays is left alone
+    await expect(estado).toHaveAttribute('data-onda-estado', 'guardada');
+    await expect(estado).toContainText('No está sonando: el FNIRSI sigue con la entrada n.º 14 de su menú, añadida por el enlace, que no se ha tocado.');
+    await expect(estado).toHaveClass(/aviso21/);
+    await expect(estado).not.toHaveClass(/mal|bien/);
+    const f = await falso(page);
+    expect(f.tabla).toEqual(Array(100).fill(20));
+    expect(Math.max(...f.tablaUsb!)).toBe(4094);
+    expect(f.lecturas ?? []).toEqual([]);
+    // no label of the link is shown as the name the screen gives it
+    await expect(panel).not.toContainText(/Triangle|Gauss Pulse|Burst|AM 80|USB Wave/);
+    sinHallazgos(await axe(page, '[data-fnirsi-real]'), `onda guardada con una entrada añadida sonando (${nativo ? 'instalada' : 'navegador'})`);
+  });
+
+test('2.1.1: con el parche 5 la onda enviada suena aunque esté elegida una entrada añadida, y se dice cuál sigue mostrando', async ({ page }) => {
+  const anadida = Array.from(deHex(MEMORIA.generadorCuadrada));
+  anadida[1] = 14;
+  await limpio(page);
+  await conEnlace(page, { modo: 3, parche: 5, entradaUsb: 17, memoria: { '20000f50': anadida } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  const onda = panel.locator('[data-onda-fnirsi]');
+  await onda.locator('summary').click();
+  await onda.locator('[data-onda-enviar]').click();
+  const estado = onda.locator('[data-onda-estado]');
+  await expect(estado).toHaveAttribute('data-onda-estado', 'enviada');
+  await expect(estado).toContainText('El aparato sigue mostrando la entrada n.º 15 de su menú, añadida por el enlace.');
+  await expect(estado).toContainText('Queda además en la entrada n.º 18 de la lista de formas del aparato');
 });
 
 test('un enlace sin el parche 4 no ofrece la onda a medida', async ({ page }) => {

@@ -117,3 +117,31 @@ test('el enlace del parche 4 lo anuncia, guarda la onda con la amplitud del apar
   expect(u32(await pedir(viejo, peticionLeer(3, 0x20000f5a, 4)), 4)).toBe(0x20000f5a);
   expect(ORDEN_LEER).toBe(0x02);
 });
+
+test('un enlace con una entrada propia en el menú (parche 6) guarda la onda sin tocar la que suena, salvo con esa entrada elegida', async () => {
+  const c: EnlaceFalso = { modo: 3, parche: 6, entradaUsb: 17, memoria: { '20000f50': [1, 1, 0, 0, 0xe8, 3, 0, 0, 50, 30] } };
+  const f = new Falso(c);
+  await f.abrir();
+  expect(leerInfo(await pedir(f, peticion(ORDEN_INFO, 1)))).toMatchObject({ parche: 6, ondasAMedida: true, entradasMenu: 5, entradaUsb: 17 });
+  const onda = formaOnda('gaussiana');
+  // Square Wave selected: the answers are fine, the table is untouched, the samples are kept for the entry
+  for (let primera = 0, sec = 2; primera < 100; primera += 28, sec++)
+    expect(respuestaOnda(await pedir(f, peticionOnda(sec, primera, onda.slice(primera, primera + 28))), sec, primera)).toEqual({ amplitud: 30, forma: 1 });
+  expect(c.tabla).toEqual(Array(100).fill(20));
+  expect(c.tablaUsb).toEqual(onda);
+  // the entry selected: the same send plays at once
+  c.memoria!['20000f50']![1] = 17;
+  for (let primera = 0, sec = 9; primera < 100; primera += 28, sec++)
+    expect(respuestaOnda(await pedir(f, peticionOnda(sec, primera, onda.slice(primera, primera + 28))), sec, primera)).toEqual({ amplitud: 30, forma: 17 });
+  expect(c.tabla).toEqual(guardadas(onda, 30));
+  // patch 5 has the entry and still plays whatever is selected
+  const c5: EnlaceFalso = { modo: 3, parche: 5, entradaUsb: 17, memoria: { '20000f50': [1, 1, 0, 0, 0xe8, 3, 0, 0, 50, 30] } };
+  const f5 = new Falso(c5);
+  await f5.abrir();
+  await pedir(f5, peticionOnda(1, 0, onda.slice(0, 28)));
+  expect(c5.tabla!.slice(0, 28)).toEqual(guardadas(onda.slice(0, 28), 30));
+  // a link without the entry says so
+  const sin = new Falso({ modo: 3, parche: 4 });
+  await sin.abrir();
+  expect(leerInfo(await pedir(sin, peticion(ORDEN_INFO, 1)))).toMatchObject({ entradasMenu: 0, entradaUsb: 0 });
+});
