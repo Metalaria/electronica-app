@@ -60,6 +60,8 @@
   /** The waveform kept for its entry of the menu is the one selected now (it was sent under another one). */
   const elegidaDespues = $derived(!!enviada && !enviada.sonando && !!c.generador && c.generador.forma === enviada.entrada);
 
+  /** The added entry of the menu that plays what is sent (0: none), so that it is named as such. */
+  const usb = $derived(c.info?.entradaUsb ?? 0);
   const voltios = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const textoEnviada = $derived.by(() => {
     if (!enviada) return '';
@@ -67,11 +69,11 @@
     if (!enviada.sonando)
       return elegidaDespues
         ? `Guardada a las ${enviada.hora} (${enviada.que}) y elegida ahora en el FNIRSI: es ${entrada}, y sonará hasta que lo apague o envíe otra.`
-        : `Guardada a las ${enviada.hora}: ${enviada.que}, en ${entrada}, hasta que lo apague. No está sonando: el FNIRSI sigue con ${nombreForma(enviada.forma)}, que no se ha tocado. Elija esa entrada en el aparato para oírla.`;
-    if (deshecha) return `El FNIRSI ha vuelto a su propia onda (${nombreForma(c.generador!.forma)}): se cambió un ajuste de su generador después de enviar la suya.`;
+        : `Guardada a las ${enviada.hora}: ${enviada.que}, en ${entrada}, hasta que lo apague. No está sonando: el FNIRSI sigue con ${nombreForma(enviada.forma, usb)}, que no se ha tocado. Elija esa entrada en el aparato para oírla.`;
+    if (deshecha) return `El FNIRSI ha vuelto a su propia onda (${nombreForma(c.generador!.forma, usb)}): se cambió un ajuste de su generador después de enviar la suya.`;
     const comun = `Enviada y comprobada a las ${enviada.hora}: ${enviada.que}, ${PUNTOS_ONDA} muestras con una amplitud de ${voltios(enviada.amplitud)} V.`;
     if (enviada.entrada && enviada.forma === enviada.entrada) return `${comun} Es ${entrada}, la que está elegida: dura hasta que lo apague o envíe otra, aunque cambie la amplitud.`;
-    return `${comun} El aparato sigue mostrando ${nombreForma(enviada.forma)}.${enviada.entrada ? ` Queda además en ${entrada} hasta que lo apague.` : ''}`;
+    return `${comun} El aparato sigue mostrando ${nombreForma(enviada.forma, usb)}.${enviada.entrada ? ` Queda además en ${entrada} hasta que lo apague.` : ''}`;
   });
 
   async function elegirFichero(e: Event) {

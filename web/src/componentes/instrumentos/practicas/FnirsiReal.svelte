@@ -15,6 +15,7 @@
   import { textoPantalla } from '../../../lib/brymen-real/lectura';
   import { CUENTAS_POR_DIVISION, DIVISIONES_X, DIVISIONES_Y, MUESTRAS_POR_DIVISION, medirTraza, ventana, type Traza } from '../../../lib/fnirsi-real/osciloscopio';
   import { formatoSI } from '../../grafica/formato';
+  import { nombreForma } from '../../../lib/fnirsi-real/estado';
   import { compararTraza, explicarDiferenciaFnirsi, type SimuladoFnirsi } from '../../../lib/fnirsi-real/comparar';
   import AnalisisTraza from './AnalisisTraza.svelte';
   import CursoresTraza from './CursoresTraza.svelte';
@@ -58,7 +59,8 @@
   const generador = $derived.by(() => {
     const g = c.estado === 'conectado' && (c.modo === 'generador' || c.modo === 'osciloscopio') ? c.generador : null;
     if (!g) return '';
-    const forma = g.nombre ? `${g.nombre} (${g.rotulo})` : `forma n.º ${g.forma + 1} de su menú`;
+    // (2.1.1: an entry the link added to the menu by its place only: nombreForma, lib/fnirsi-real/estado.ts)
+    const forma = nombreForma(g.forma, c.info?.entradaUsb ?? 0);
     const amplitud = g.amplitud.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     return `Generador del FNIRSI: ${forma} · ${formatoSI(g.frecuencia, 'Hz', 4)} · ciclo ${g.ciclo} % · ${amplitud} V`;
   });
@@ -276,6 +278,8 @@
         <li class="fr-tenue">
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
         </li>
+        <!-- 2.1.1 (owner, 26-11): the trigger edge, byte [24] of the record's settings -->
+        <li class="fr-tenue" data-disparo-fnirsi>Flanco de disparo: {trazas[0]!.ajustes.flancoDisparo ?? 'desconocido'}</li>
       </ul>
       <p class="fr-promedio">
         <label>Promediar <select bind:value={nPromedio} data-promedio-fnirsi>{#each OPCIONES_PROMEDIO as n (n)}<option value={n}>{n === 1 ? 'no' : `${n} adquisiciones`}</option>{/each}</select></label>

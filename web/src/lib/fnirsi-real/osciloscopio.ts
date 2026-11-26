@@ -17,6 +17,7 @@
 //               (CH1 checked in three sessions; CH2 assumed to follow the same rule)
 //   [6], [7]    probe setting of CH1, CH2: 0 = X1, 1 = X10 (CH1 checked both ways; CH2 assumed)
 //   [20]        channels on: bit 0 CH1, bit 1 CH2
+//   [24]        trigger edge: 0 rising, 1 falling (owner, 2026-11-26, checked on the unit)
 //   [28…29]     trigger level, signed 16 bits, in sample counts from the middle (128)
 //   [45]        time per division as an index: 0 = 10 ns, then 1-2-5 steps (seen: 13 with the screen at 200 µs;
 //               16 and 11 fit 2 ms and 50 µs; 8 and 9 with the screen at 5 µs and 10 µs on 2026-11-24)
@@ -39,9 +40,12 @@
 // And at 1 µs per division: the rising edges of that 50 kHz wave are 500 and 499 samples apart in the two records
 // taken, which is its 20 µs at 40 ns a sample.
 //
-// Not established: the samples-per-division rule below 1 µs or above 2 ms per division (the fastest time bases
-// cannot have 25 real samples per division), CH2's coupling and the trigger edge. `tiempoComprobado` and the
-// channel's `comprobado` say what a caller may rely on.
+// And at 5 ms and 20 ms per division (owner, 2026-11-26): the same 25 samples per division on the unit. 10 ms per
+// division, between them, was not measured and stays unchecked.
+//
+// Not established: the samples-per-division rule below 1 µs, at 10 ms or above 20 ms per division (the fastest time
+// bases cannot have 25 real samples per division) and CH2's coupling. `tiempoComprobado` and the channel's
+// `comprobado` say what a caller may rely on.
 
 import { EVT_OSC_CABECERA, EVT_OSC_DATOS, u32 } from './protocolo.ts';
 
@@ -58,6 +62,11 @@ const TOPE_BAJO = 5;
 const TOPE_ALTO = 244;
 
 const PASOS = [1, 2, 5] as const;
+/**
+ * Time-base indices ([45]) whose 25 samples per division were checked on the unit: 6 to 16 (1 µs to 2 ms), 17 (5 ms)
+ * and 19 (20 ms). Not 18 (10 ms): not measured.
+ */
+const BASES_COMPROBADAS: ReadonlySet<number> = new Set([6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19]);
 
 /** Volts per division of index `i` at the input (X1): 10 mV … 10 V; null outside the instrument's ten steps. */
 export function voltiosPorDivision(i: number): number | null {
@@ -93,10 +102,12 @@ export interface AjustesOsciloscopio {
   /** Seconds per horizontal division, and per sample. */
   tiempoDiv: number;
   periodoMuestra: number;
-  /** The time base is one of those checked on the real unit (1 µs to 2 ms per division). */
+  /** The time base is one of those checked on the real unit (1 µs to 2 ms, 5 ms and 20 ms per division). */
   tiempoComprobado: boolean;
   /** Trigger level as a sample value. */
   nivelDisparo: number;
+  /** Trigger edge ([24]): rising (0) or falling (1); null for any other value. */
+  flancoDisparo: 'subida' | 'bajada' | null;
 }
 
 function i8(x: number): number {
@@ -121,8 +132,9 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
     canales: [canal(0, v0), canal(1, v1)],
     tiempoDiv: t,
     periodoMuestra: t / MUESTRAS_POR_DIVISION,
-    tiempoComprobado: indice >= 6 && indice <= 16,
+    tiempoComprobado: BASES_COMPROBADAS.has(indice),
     nivelDisparo: 128 + (nivel > 32767 ? nivel - 65536 : nivel),
+    flancoDisparo: c[24] === 0 ? 'subida' : c[24] === 1 ? 'bajada' : null,
   };
 }
 

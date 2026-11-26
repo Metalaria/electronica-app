@@ -90,10 +90,12 @@ test('«Entendido» la cierra; «Ver la guía» lleva a la navegación de la gu�
 });
 
 test('datos ya de la 2.1, o de la 2.0 sin nada del lector: no aparece', async ({ browser }) => {
-  for (const caso of ['2.1', 'vacio'] as const) {
+  // (2.1.1: data sealed by 2.1.0 or by 2.1.1 itself: the note still compares with 2.1.0 and is not shown again)
+  for (const caso of ['2.1', '2.1.1', 'vacio'] as const) {
     const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
     const page = await ctx.newPage();
     if (caso === '2.1') await usado(page, '2.1.0');
+    else if (caso === '2.1.1') await usado(page, '2.1.1');
     else {
       await page.addInitScript((almacenes) => {
         if (sessionStorage.getItem('sembrado21')) return;

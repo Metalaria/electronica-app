@@ -44,6 +44,7 @@ import {
   LARGO_MEDIDAS,
   decodificarGenerador,
   decodificarMedidas,
+  nombreForma,
   osciloscopioEnMarcha,
 } from '../src/lib/fnirsi-real/estado.ts';
 import { Falso, type EnlaceFalso } from '../src/lib/fnirsi-real/transporte.ts';
@@ -599,7 +600,7 @@ test('el flujo de estado: lo que anuncia la identificación y lo que trae cada e
   expect(decodificarGenerador(leerEstado(real)!.bytes)).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 40000, ciclo: 40, amplitud: 1.5 });
 });
 
-test('las bases de tiempos de 1 µs a 2 ms por división están comprobadas; las de fuera, no', () => {
+test('las bases de tiempos de 1 µs a 2 ms, 5 ms y 20 ms por división están comprobadas; 10 ms y las de fuera, no', () => {
   const con = (indice: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[45] = indice;
@@ -614,9 +615,51 @@ test('las bases de tiempos de 1 µs a 2 ms por división están comprobadas; las
   expect([con(7).tiempoDiv, con(7).tiempoComprobado]).toEqual([expect.closeTo(2e-6, 12), true]);
   // (1 µs: the edges of a 50 kHz wave 500 and 499 samples apart in two records of the unit)
   expect([con(6).tiempoDiv, con(6).tiempoComprobado]).toEqual([expect.closeTo(1e-6, 12), true]);
-  // (one step outside at each end: 500 ns and 5 ms per division)
+  // (one step below: 500 ns per division)
   expect([con(5).tiempoDiv, con(5).tiempoComprobado]).toEqual([expect.closeTo(500e-9, 15), false]);
-  expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), false]);
+  // 2.1.1 (owner, 26-11): 5 ms and 20 ms per division checked on the unit; 10 ms between them was not measured,
+  // and 50 ms, one step above, neither
+  expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), true]);
+  expect([con(19).tiempoDiv, con(19).tiempoComprobado]).toEqual([expect.closeTo(20e-3, 12), true]);
+  expect([con(18).tiempoDiv, con(18).tiempoComprobado]).toEqual([expect.closeTo(10e-3, 12), false]);
+  expect([con(20).tiempoDiv, con(20).tiempoComprobado]).toEqual([expect.closeTo(50e-3, 12), false]);
+});
+
+test('2.1.1: el flanco de disparo es el byte 24 de los ajustes: 0 subida, 1 bajada; otro valor, desconocido', () => {
+  // (the captures of the unit, taken with the rising edge: byte 24 is 0 in all of them)
+  const con = (x: number | null) => {
+    const b = deHex(MEMORIA.osciloscopioEnMarcha);
+    if (x !== null) b[24] = x;
+    return leerAjustes(b)!.flancoDisparo;
+  };
+  expect(con(null)).toBe('subida');
+  expect(con(1)).toBe('bajada');
+  expect(con(2)).toBeNull();
+  expect(con(0xff)).toBeNull();
+  // the header of a real record says the same as the state block it is a copy of
+  expect(leerAjustes(Buffer.from(REGISTRO_CH1, 'base64').subarray(0, 56))!.flancoDisparo).toBe('subida');
+  // the edge is not a reason to refuse the settings: the rest is decoded as before
+  const b = deHex(MEMORIA.osciloscopioEnMarcha);
+  b[24] = 9;
+  expect(leerAjustes(b)!.tiempoDiv).toBeCloseTo(5e-6, 12);
+});
+
+test('2.1.1: las entradas que el enlace añade al menú del generador se nombran por su posición, sin etiqueta', () => {
+  // the firmware's own thirteen keep their name and the screen's label
+  expect(nombreForma(1)).toBe('Cuadrada (Square Wave)');
+  expect(nombreForma(12, 17)).toBe('Lorentziana (Lorentz waves)');
+  // 13 to 20: the place in the menu, said to be the link's; no label (the screen may show another name)
+  expect(nombreForma(13)).toBe('la entrada n.º 14 de su menú, añadida por el enlace');
+  expect(nombreForma(13, 17)).toBe('la entrada n.º 14 de su menú, añadida por el enlace');
+  expect(nombreForma(17, 17)).toBe('la entrada n.º 18 de su menú, añadida por el enlace (la que reproduce la onda que se le envía)');
+  expect(nombreForma(20)).toBe('la entrada n.º 21 de su menú, añadida por el enlace');
+  for (const k of [13, 14, 15, 16, 17]) expect(nombreForma(k, 17)).not.toMatch(/Triangle|Gauss|Burst|AM 80|USB Wave|Triangular|Campana|Ráfaga|Portadora|Onda USB/);
+  // beyond what a link can add
+  expect(nombreForma(21)).toBe('la forma n.º 22 de su menú');
+  // the generator's block with an added entry selected: decoded, without a name
+  const b = deHex(MEMORIA.generadorCuadrada);
+  b[1] = 13;
+  expect(decodificarGenerador(b)).toMatchObject({ forma: 13, nombre: null, rotulo: null });
 });
 
 test('el enlace simulado de las pruebas responde como el real', async () => {
