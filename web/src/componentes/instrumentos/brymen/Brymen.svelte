@@ -6,6 +6,7 @@
   import type { Brymen } from './logica.svelte.ts';
   import { celdas, segmentos } from './siete';
   import { pulsacion } from '../ui/pulsacion';
+  import { toqueSvg } from '../../../lib/toque-svg';
   import { prepararAudio, pitido } from '../audio';
   import type { GuiaBrymen } from '../guia';
   import { leerUnidades } from '../../../lib/habla-matematicas';
@@ -46,7 +47,7 @@
   let svg: SVGSVGElement | undefined = $state();
   let arrastrando = false;
 
-  function posDesdePuntero(ev: PointerEvent): number | null {
+  function posDesdePuntero(ev: MouseEvent): number | null {
     if (!svg) return null;
     const r = svg.getBoundingClientRect();
     const x = ((ev.clientX - r.left) / r.width) * 300;
@@ -131,6 +132,7 @@
 
 <svg
   bind:this={svg}
+  use:toqueSvg
   class="brymen"
   viewBox="0 0 300 640"
   role="group"
@@ -212,11 +214,12 @@
       role="button"
       tabindex="0"
       aria-label={b.ayuda}
+      data-recorrido={`brymen-${b.id}`}
       use:pulsacion={{ corta: () => accion(b.id, false), larga: () => accion(b.id, true) }}
     >
       <title>{b.ayuda}</title>
       {#if b.arriba}<text x={b.x + 29} y={b.y - 4} font-size="7.5" fill="#f2f2f2" text-anchor="middle" font-family="var(--sans)">{b.arriba}</text>{/if}
-      <rect x={b.x - 2} y={b.y - 2} width="62" height="44" rx="10" fill="transparent" />
+      <rect x={b.x - 2} y={b.y - 2} width="62" height="44" rx="10" fill="transparent" data-toque />
       <rect class="tecla" x={b.x} y={b.y + 4} width="58" height="30" rx="12" fill="#d9d6cf" stroke="#8e8b84" />
       <text x={b.x + 29} y={b.y + 23.5} font-size="10.5" font-weight="700" text-anchor="middle" fill={b.color ? '#b88600' : '#2a2c30'} font-family="var(--sans)"
         >{b.texto}</text
@@ -225,7 +228,25 @@
   {/each}
 
   <!-- rotary selector -->
-  <g class="selector">
+  <g class="selector" data-recorrido="brymen-selector">
+    <!-- 2.2: the touch area of the dial's positions: the whole ring around the knob, as far as the buttons above
+         (radius 140), each position its 24° sector — a tap anywhere in it turns the dial there (the labels' own
+         circles, drawn over it, still take theirs) -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <path
+      class="anillo-toque"
+      d={`M ${CX - 140} ${CY} a 140 140 0 1 0 280 0 a 140 140 0 1 0 -280 0 Z M ${CX - 80} ${CY} a 80 80 0 1 1 160 0 a 80 80 0 1 1 -160 0 Z`}
+      fill="transparent"
+      fill-rule="evenodd"
+      aria-hidden="true"
+      data-anillo-selector
+      onclick={(ev) => {
+        const i = posDesdePuntero(ev);
+        if (i === null) return;
+        prepararAudio();
+        girarA(i);
+      }}
+    />
     {#each BM_POSICIONES as p, i (p.id)}
       {@const a = rad(angulo(i))}
       <g
@@ -292,7 +313,7 @@
       <text x={j.x} y="540" font-size="11" font-weight="700" text-anchor="middle" fill={j.id === 'mA' ? '#5aa8e0' : j.id === 'A' ? '#e9686e' : '#f0f0f0'} font-family="var(--sans)"
         >{j.rotulo}</text
       >
-      <circle cx={j.x} cy="566" r="24" fill="transparent" />
+      <circle cx={j.x} cy="566" r="24" fill="transparent" data-toque />
       {#if guia?.borne === j.id && m.borne !== j.id}<circle class="guia" cx={j.x} cy="566" r="23" />{/if}
       <circle cx={j.x} cy="566" r="17" fill="#111" stroke={j.id === 'COM' ? '#888' : '#b5262c'} stroke-width="4" />
       {#if rojo || j.id === 'COM'}

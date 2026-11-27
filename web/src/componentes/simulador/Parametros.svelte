@@ -103,7 +103,7 @@
   }
 </script>
 
-<section class="parametros" aria-label="Parámetros">
+<section class="parametros" aria-label="Parámetros" data-recorrido="parametros">
   <div class="cab">
     <h2>Parámetros</h2>
     {#if parametros.some((p) => p.e12)}
@@ -191,7 +191,7 @@
   /* the whole label is the checkbox's touch area: 44 px tall on touch screens (0.11) */
   @media (pointer: coarse) {
     .e12 {
-      min-height: 44px;
+      min-height: 48px;
       padding: 0 4px;
     }
   }

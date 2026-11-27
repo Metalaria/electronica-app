@@ -276,6 +276,7 @@ C1 out 0 100n
     fase === 'simulando' && ahora - motor.inicio > 1000 ? (motor.lineas.filter((l) => l.trim() && !/initialization file spinit/i.test(l)).at(-1) ?? '') : '',
   );
   const salidaTexto = $derived(fase === 'simulando' ? motor.lineas.join('\n') : (resultado?.salida.texto ?? ''));
+
   const capitulo = $derived(n ? rotuloParte(n.parte) : '');
 
   // «Editar el esquema»: the book's netlist as it is opens by its id; an edited or free one is handed over.
@@ -317,7 +318,7 @@ C1 out 0 100n
          flash either. -->
     <div class="espera-carga" aria-busy="true"></div>
   {:else}
-    <header class="cab">
+    <header class="cab" data-recorrido="sim-cabecera">
       <h1>
         {#if deEsquema}Netlist del esquema{#if tituloEsquema}<span class="ref">{tituloEsquema}</span>{/if}{:else if libre}Nuevo circuito{:else if n}
           {#if n.ref}<span class="ref">{rotuloRef(n.ref)}</span>{/if}
@@ -409,7 +410,7 @@ C1 out 0 100n
           <Parametros {parametros} {rangos} alCambiar={cambiarParametro} {enfoque} />
         {/if}
 
-        <section class="netlist" aria-label="Netlist">
+        <section class="netlist" aria-label="Netlist" data-recorrido="sim-netlist">
           <div class="netlist-cab">
             <h2>Netlist</h2>
             {#if modificada}
@@ -425,7 +426,7 @@ C1 out 0 100n
           {#if fase === 'simulando'}
             <button class="boton toque-44" onclick={detenerPropia}><span class="cuadro" aria-hidden="true"></span> Detener</button>
           {:else}
-            <button class="boton primario toque-44" onclick={simular} disabled={cargando || motor.fase === 'descargando'}>
+            <button class="boton primario toque-44" onclick={simular} disabled={cargando || motor.fase === 'descargando'} data-recorrido="sim-simular">
               <span class="triangulo" aria-hidden="true"></span> Simular
             </button>
           {/if}
@@ -465,7 +466,7 @@ C1 out 0 100n
         {#if referencia}<p class="nota">La referencia fijada se dibuja con trazo discontinuo y tenue.</p>{/if}
 
         {#if resultado}
-          <div class="resultado" class:viejo={ejecutando}>
+          <div class="resultado" class:viejo={ejecutando} data-recorrido="sim-resultados">
             <!-- 1.0: results that fail to draw show «Reintentar» instead of breaking the simulator -->
             <Recuperable zona="los resultados de la simulación"><Resultados {resultado} {referencia} /></Recuperable>
           </div>

@@ -185,7 +185,7 @@
         <button type="button" class="boton-icono" aria-label="Ampliar la foto" disabled={ampliacion >= 3} onclick={() => (ampliacion = Math.min(3, ampliacion + 0.5))}><ZoomIn size={19} /></button>
       </span>
     </div>
-    <div class="desplazable">
+    <div class="desplazable" data-recorrido="consola-foto">
       <div class="foto" style:width={`${ampliacion * 100}%`} style:aspect-ratio={`${foto.ancho} / ${foto.alto}`}>
         {#key foto.src}<img src={foto.src} alt={`Placa ${datos.placa}: ${foto.titulo ?? ''}`} draggable="false" />{/key}
         <svg
@@ -650,11 +650,11 @@
     .chips-redes button,
     .cab-trazas select,
     .accion {
-      min-height: 44px;
+      min-height: 48px;
     }
     .zoom :global(.boton-icono) {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
     }
   }
 </style>

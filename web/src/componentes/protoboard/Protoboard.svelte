@@ -19,7 +19,9 @@
   import Bandeja from './Bandeja.svelte';
   import BarraPieza from './BarraPieza.svelte';
   import Guia from './Guia.svelte';
-  import Recorrido from './Recorrido.svelte';
+  // 2.2: the first-use tour is the engine's «Protoboard» tutorial now (lib/recorridos-pasos.ts), offered over the page's
+  // board, which registers itself for its «done» checks
+  import { registrarProtoboard } from '../../lib/recorridos.svelte';
   import Leccion from './Leccion.svelte';
   import { terminarLeccion } from './leccion.svelte.ts';
   import type { Componente } from '../editor/tipos.ts';
@@ -294,6 +296,9 @@
     if (todas > 0 && motor.fase !== 'inactivo') detener();
   });
   onMount(precalentarMotor);
+  // (the page's own board: the «Protoboard» tutorial reads it; a board over a schematic or a lesson does not offer it)
+  // svelte-ignore state_referenced_locally
+  if (recorrido) onMount(() => registrarProtoboard(pb));
 
   // The schematic follows the board: its netlist, with the results only while they are current.
   const textoEsquema = $derived(pb.nl.texto);
@@ -541,7 +546,7 @@
 {/snippet}
 
 {#snippet pestanas(lista: Pestana[])}
-  <div class="pestanas" role="tablist" aria-label="Paneles de la protoboard">
+  <div class="pestanas" role="tablist" aria-label="Paneles de la protoboard" data-recorrido="proto-panel">
     {#each lista as k (k)}
       <button type="button" role="tab" data-pestana={k} aria-selected={pestana === k} onclick={() => (k === 'medir' ? (pestana === 'medir' && app.movil ? (pestana = 'piezas') : void abrirMedir()) : (pestana = pestana === k && app.movil ? 'piezas' : k))}>
         {#if k === 'piezas'}<Blocks size={17} aria-hidden="true" />
@@ -568,11 +573,11 @@
     {/if}
     <button type="button" class="accion" aria-pressed={rotulos} title="Nombres de las piezas" onclick={() => (rotulos = !rotulos)}><Tag size={19} aria-hidden="true" /><span>Nombres</span></button>
     <span class="hueco"></span>
-    <button type="button" class="accion guiar" aria-pressed={!!pb.guia} onclick={() => (eligiendo = true)}><Graduation size={19} aria-hidden="true" /><span class="largo">Monta este circuito</span><span class="corto">Guía</span></button>
+    <button type="button" class="accion guiar" data-recorrido="proto-guia" aria-pressed={!!pb.guia} onclick={() => (eligiendo = true)}><Graduation size={19} aria-hidden="true" /><span class="largo">Monta este circuito</span><span class="corto">Guía</span></button>
     {#if ejecutando}
       <button type="button" class="boton simular detener" onclick={detenerPropia}><Square size={15} aria-hidden="true" /> Detener</button>
     {:else}
-      <button type="button" class="boton primario simular" onclick={simular} disabled={fase === 'descargando' || propias > 0}><Play size={16} aria-hidden="true" /> Simular</button>
+      <button type="button" class="boton primario simular" data-recorrido="proto-simular" onclick={simular} disabled={fase === 'descargando' || propias > 0}><Play size={16} aria-hidden="true" /> Simular</button>
     {/if}
   </div>
 
@@ -581,9 +586,9 @@
 
   <div class="cuerpo">
     {#if !app.movil && !pb.leccion}
-      <aside class="lado"><Bandeja {pb} lateral alArrastrar={arrastre} alMas={() => (paleta = true)} /></aside>
+      <aside class="lado" data-recorrido="proto-bandeja"><Bandeja {pb} lateral alArrastrar={arrastre} alMas={() => (paleta = true)} /></aside>
     {/if}
-    <div class="banco">
+    <div class="banco" data-recorrido="proto-placa">
       <Mesa bind:this={mesa} {pb} {rotulos} {encendidos} {medida} ruedaDesplaza={pantallaCompleta} alTocar={() => (pestana = 'pieza')} guia={pistaGuia} controles {vacia} sinInfo={respuestaGuia}>
         {#snippet flotante(caja)}
           <BarraPieza {pb} {caja} alMas={() => (pestana = 'pieza')} />
@@ -598,11 +603,10 @@
       {/if}
       <Guia {pb} parte="respuesta" />
       <Leccion {pb} parte="respuesta" alTerminar={() => {}} />
-      {#if recorrido}<Recorrido {pb} />{/if}
     </div>
 
     {#if !app.movil}
-      <section class="panel" aria-label="Panel de la protoboard">
+      <section class="panel" aria-label="Panel de la protoboard" data-recorrido="proto-panel">
         {@render pestanas(['esquema', 'simulacion', 'avisos', 'pieza', 'medir'])}
         <div class="contenido">{@render contenidoPanel()}</div>
       </section>
@@ -636,7 +640,7 @@
       {#if pestana !== 'piezas' || (medida && Medir)}
         <div class="contenido hoja" hidden={pestana === 'piezas'}>{@render contenidoPanel()}</div>
       {/if}
-      <div class="caja-bandeja" hidden={!!pb.leccion}><Bandeja {pb} alArrastrar={arrastre} alMas={() => (paleta = true)} /></div>
+      <div class="caja-bandeja" hidden={!!pb.leccion} data-recorrido="proto-bandeja"><Bandeja {pb} alArrastrar={arrastre} alMas={() => (paleta = true)} /></div>
     </section>
   {/if}
 
@@ -924,7 +928,7 @@
     white-space: nowrap;
   }
   .enlace-boton {
-    min-height: 44px;
+    min-height: 48px;
     border: 0;
     background: none;
     color: #ffd84a;
@@ -933,8 +937,8 @@
   .cerrar-nota {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 50%;
     background: transparent;
@@ -1107,12 +1111,13 @@
       display: flex;
       align-items: center;
       width: 100%;
-      min-height: 44px;
+      /* (2.2: Material's 48 dp) */
+      min-height: 48px;
       margin: -8px 0;
     }
     .netlist summary {
       box-sizing: border-box;
-      min-height: 44px;
+      min-height: 48px;
       padding: 12px 0;
     }
   }

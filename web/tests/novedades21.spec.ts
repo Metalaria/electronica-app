@@ -132,7 +132,7 @@ test('nunca encima de una lección: espera a que termine; en el teléfono, sobre
   expect(caja.y + caja.height).toBeLessThanOrEqual(barra.y);
   expect(caja.x).toBeGreaterThanOrEqual(0);
   expect(caja.x + caja.width).toBeLessThanOrEqual(412);
-  for (const b of await n.locator('a, button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  for (const b of await n.locator('a, button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   await n.getByRole('button', { name: 'Entendido' }).tap();
   await expect(n).toHaveCount(0);
   await ctx.close();
