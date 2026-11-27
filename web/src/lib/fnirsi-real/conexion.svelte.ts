@@ -9,21 +9,18 @@
 //
 // A few things the instrument knows are not in the two measuring streams: its generator's settings, its
 // oscilloscope's own measurements and whether it is running or stopped (estado.ts). A link with the status
-// stream (patch 3) sends them by itself several times a second. One without it reads the instrument's memory on
-// request, so the loop asks for them a couple of times a second, between two reads of the stream; the answers
-// come back in the stream and are told apart by their sequence number. The same questions are asked of a link
-// that announces the status stream and then sends nothing of it.
+// stream (patch 3) sends them by itself several times a second. 2.2 (owner, 26-11): from a link without it they
+// are not had at all. Before, the loop read them from the instrument's memory with order 0x02 at 0x20000F50,
+// 0x200000F8 and 0x20000208; now the only memory this application reads is the generator's wave table, to check a
+// waveform it sent (enviarOnda), and the WebHID transport refuses any other read (transporte.ts). The card says that
+// this information needs patch 3 (componentes/instrumentos/practicas/FnirsiReal.svelte). A link that announces the
+// status stream and then sends nothing of it is not asked either: what its last blocks said is forgotten.
 
 import {
-  DIR_ESTADO_OSCILOSCOPIO,
-  DIR_GENERADOR,
-  DIR_MEDIDAS_CH1,
-  LARGO_ESTADO_OSCILOSCOPIO,
   LARGO_GENERADOR,
   LARGO_MEDIDAS,
   decodificarGenerador,
   decodificarMedidas,
-  osciloscopioEnMarcha,
   type AjustesGenerador,
   type MedidasOsciloscopio,
 } from './estado.ts';
@@ -72,10 +69,7 @@ const PAUSA_RECONEXION = 600;
 const SIN_MEDIDAS_MS = 3000;
 /** A reading or a trace older than this is not shown as the current one. */
 export const CADUCIDAD_FNIRSI_MS = 2000;
-/** Pause between two rounds of questions about what is not in the stream, and how long an answer is waited for. */
-const CONSULTA_MS = 400;
-const CONSULTA_CADUCA_MS = 2000;
-/** A link with the status stream that sends none of it for this long is asked instead (it sends one block every 100 ms). */
+/** A link with the status stream that sends none of it for this long: its last values are forgotten (it sends one block every 100 ms). */
 const ESTADO_CALLADO_MS = 2000;
 
 const pausa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -139,15 +133,11 @@ export class ConexionFnirsi {
   private vuelta = 0;
   private secuencia = 0;
   private ensamblador = new EnsambladorOsciloscopio();
-  /** Read requests waiting for their answer, by sequence number. */
-  private consultas = new Map<number, { direccion: number; largo: number; hasta: number }>();
-  private proximaConsulta = 0;
-  /** The link refused a read: it is not asked again in this session. */
-  /** The link's memory is not read in this session (the link refused it, or the installed app's plugin never lets it through). */
-  sinLectura = $state(false);
   /** The session is subscribed to the status stream, and when its last block arrived (or the session started). */
   private conEstado = false;
   private horaEstado = 0;
+  /** The stream's last values were forgotten after it fell silent (until its next block). */
+  private estadoOlvidado = false;
   /** Requests made outside the session's start, waiting for their response among the stream's reports. */
   private esperadas = new Map<number, { orden: number; resolver: (informe: Uint8Array) => void; rechazar: (e: Error) => void; hasta: number }>();
   /** A waveform is being sent (one at a time). */
@@ -211,9 +201,7 @@ export class ConexionFnirsi {
     this.medidasCh2 = null;
     this.enMarcha = null;
     this.modoFlujo = null;
-    this.consultas.clear();
-    this.proximaConsulta = 0;
-    this.sinLectura = false;
+    this.estadoOlvidado = false;
     this.ensamblador.reiniciar();
     for (const e of this.esperadas.values()) e.rechazar(new Error(SIN_CONEXION_ONDA));
     this.esperadas.clear();
@@ -346,49 +334,22 @@ export class ConexionFnirsi {
     this.horaEstado = Date.now();
   }
 
-  /** Asks for what is not in the stream, when it is time: the answers arrive among the stream's reports. */
-  private async consultar(): Promise<void> {
-    const ahora = Date.now();
-    if (this.conEstado && ahora - this.horaEstado <= ESTADO_CALLADO_MS) return;
-    if (this.sinLectura || ahora < this.proximaConsulta || (this.modo !== 'osciloscopio' && this.modo !== 'generador')) return;
-    // 1.4.3: the installed app's USB plugin lets through only the link's identification and subscription
-    // (src-tauri/plugins/fnirsi, informe_de: the link stays read-only there). A memory read would fail there, be
-    // taken for a lost link and reconnect every 0.4 s; through the plugin these values come only with the status
-    // stream (patch 3 of the link).
-    if (this.t!.tipo === 'nativo') {
-      this.sinLectura = true;
-      return;
-    }
-    this.proximaConsulta = ahora + CONSULTA_MS;
-    for (const [sec, c] of this.consultas) if (c.hasta < ahora) this.consultas.delete(sec);
-    // (answers still on their way: this round is skipped rather than piling questions up)
-    if (this.consultas.size) return;
-    const bloques: [number, number][] = [[DIR_GENERADOR, LARGO_GENERADOR]];
-    if (this.modo === 'osciloscopio') bloques.push([DIR_ESTADO_OSCILOSCOPIO, LARGO_ESTADO_OSCILOSCOPIO], [DIR_MEDIDAS_CH1, LARGO_MEDIDAS]);
-    for (const [direccion, largo] of bloques) {
-      const sec = (this.secuencia = (this.secuencia + 1) & 0xff);
-      this.consultas.set(sec, { direccion, largo, hasta: ahora + CONSULTA_CADUCA_MS });
-      await this.t!.enviar(peticionLeer(sec, direccion, largo));
-    }
+  /**
+   * 2.2: a link that announced the status stream and has sent none of it for a while: what its last blocks said is
+   * forgotten rather than shown as current (it was asked with order 0x02 before; nothing is asked now).
+   */
+  private olvidarEstadoCallado(): void {
+    if (!this.conEstado || this.estadoOlvidado || Date.now() - this.horaEstado <= ESTADO_CALLADO_MS) return;
+    this.estadoOlvidado = true;
+    this.generador = null;
+    this.medidas = null;
+    this.medidasCh2 = null;
+    this.enMarcha = null;
   }
 
-  /** The answer to a read request: true when `informe` was one. */
+  /** The answer to a read nobody is waiting for any more (a wave table read that timed out): true when it was one. */
   private atenderLectura(informe: Uint8Array): boolean {
-    if (informe[0] !== (ORDEN_LEER | 0x80)) return false;
-    const sec = informe[1] ?? 0;
-    const c = this.consultas.get(sec);
-    if (!c) return true;
-    this.consultas.delete(sec);
-    const bytes = respuestaLeer(informe, sec, c.direccion, c.largo);
-    if (bytes === 'rechazada') {
-      this.sinLectura = true;
-      this.consultas.clear();
-    } else if (bytes) {
-      if (c.direccion === DIR_GENERADOR) this.generador = decodificarGenerador(bytes);
-      else if (c.direccion === DIR_ESTADO_OSCILOSCOPIO) this.enMarcha = osciloscopioEnMarcha(bytes);
-      else if (c.direccion === DIR_MEDIDAS_CH1) this.medidas = decodificarMedidas(bytes);
-    }
-    return true;
+    return informe[0] === (ORDEN_LEER | 0x80);
   }
 
   /**
@@ -400,6 +361,7 @@ export class ConexionFnirsi {
     const e = leerEstado(informe);
     if (!e) return true;
     this.horaEstado = Date.now();
+    this.estadoOlvidado = false;
     if (e.bloque === ESTADO_MULTIMETRO) this.modoFlujo = 'multimetro';
     else if (e.bloque === ESTADO_MEDIDAS_CH1 || e.bloque === ESTADO_MEDIDAS_CH2) this.modoFlujo = 'osciloscopio';
     else if (e.bloque === ESTADO_GENERADOR && this.modo === 'generador') this.modoFlujo = 'generador';
@@ -408,7 +370,9 @@ export class ConexionFnirsi {
       this.medidas = decodificarMedidas(e.bytes);
       const marcha = e.bytes[LARGO_MEDIDAS];
       this.enMarcha = marcha === 1 ? true : marcha === 0 ? false : null;
-    } else if (e.bloque === ESTADO_MEDIDAS_CH2 && e.bytes.length >= LARGO_MEDIDAS) this.medidasCh2 = decodificarMedidas(e.bytes);
+    } else if (e.bloque === ESTADO_MEDIDAS_CH2 && e.bytes.length >= LARGO_MEDIDAS) {
+      this.medidasCh2 = decodificarMedidas(e.bytes);
+    }
     return true;
   }
 
@@ -468,17 +432,13 @@ export class ConexionFnirsi {
             : this.modo === 'osciloscopio'
               ? this.enMarcha === false
                 ? 'El osciloscopio del FNIRSI está en STOP: no envía trazas hasta que vuelva a RUN.'
-                : 'El FNIRSI no envía trazas: compruebe que el osciloscopio está en RUN.'
+                : this.conEstado
+                  ? 'El FNIRSI no envía trazas: compruebe que el osciloscopio está en RUN.'
+                  : 'El FNIRSI no envía trazas: compruebe que el osciloscopio está en RUN (su RUN/STOP solo llega con el flujo de estado del enlace, parche 3).'
               : 'El FNIRSI no envía lecturas: compruebe que está en multímetro u osciloscopio.';
         if (this.mensaje !== m) this.mensaje = m;
       }
-      try {
-        await this.consultar();
-      } catch (e) {
-        if (v !== this.vuelta) return;
-        if (!(await this.reconectar(v, texto(e, 'Se ha perdido la conexión con el FNIRSI.')))) return;
-        ultima = Date.now();
-      }
+      this.olvidarEstadoCallado();
     }
   }
 

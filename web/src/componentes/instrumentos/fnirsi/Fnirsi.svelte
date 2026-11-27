@@ -1,12 +1,14 @@
 <script lang="ts">
   // The FNIRSI 2C53T drawn in SVG (body, buttons, BNC and banana jacks) with its screen as a canvas that is
   // redrawn only when a capture or a setting changes. Buttons as in section 21.3: MOVE, SELECT, TRIGGER, PRM,
-  // CH1, CH2, AUTO, SAVE, MENU, power, the arrow pad and RUN/STOP in its centre.
+  // CH1, CH2, AUTO, SAVE, MENU, power, the arrow pad and the blue key in its centre (RUN/STOP in the oscilloscope;
+  // 2.2: what each key does in each mode follows the owner's key log of his unit, logica.svelte.ts).
   import { onMount } from 'svelte';
-  import type { Fnirsi } from './logica.svelte.ts';
+  import { MENU_LARGO_MS, type Fnirsi } from './logica.svelte.ts';
   import { dibujar, ANCHO, ALTO, type Zona } from './dibujo';
   import { DIV_H, DIV_V } from '../motor/osciloscopio.ts';
   import { pulsacion } from '../ui/pulsacion';
+  import { toqueSvg } from '../../../lib/toque-svg';
   import { limitarDds } from '../motor/generador.ts';
   import type { Borne } from '../motor/dmm.ts';
   import type { GuiaFnirsi } from '../guia';
@@ -75,6 +77,9 @@
           const i = Number(valor);
           if (f.itemGen === i) f.itemsGen()[i]?.cambiar(x > z.x + z.w / 2 ? 1 : -1);
           f.itemGen = i;
+          // (2.2: a tap on the wave's row is the wave list, level 0; on another row, at least the settings list)
+          if (i === 0) f.nivelGen = 0;
+          else if (f.nivelGen === 0) f.nivelGen = 1;
         }
         return;
       }
@@ -108,8 +113,8 @@
   }
 
   const BOTONES = [
-    { id: 'move', x: 22, y: 288, t: 'MOVE', sub: 'C1⇄C2', ayuda: 'MOVE: canal activo; mantenido, mover trazas con las flechas' },
-    { id: 'select', x: 100, y: 288, t: 'SELECT', sub: '', ayuda: 'SELECT: funciones (Math, cursores, X-Y) o siguiente opción' },
+    { id: 'move', x: 22, y: 288, t: 'MOVE', sub: '', ayuda: 'MOVE: en el multímetro, continua o alterna; mantenida, las flechas mueven las trazas' },
+    { id: 'select', x: 100, y: 288, t: 'SELECT', sub: '', ayuda: 'SELECT: lo que hacen las flechas del osciloscopio (escalas, posición o nivel de disparo)' },
     { id: 'trigger', x: 178, y: 288, t: 'TRIGGER', sub: '', ayuda: 'TRIGGER: modo, fuente, flanco y nivel del disparo' },
     { id: 'prm', x: 256, y: 288, t: 'PRM', sub: '', ayuda: 'PRM: medidas automáticas' },
     { id: 'ch1', x: 22, y: 350, t: 'CH1', sub: '', ayuda: 'CH1: activa el canal 1 y abre su menú' },
@@ -140,13 +145,17 @@
         f.pulsarCanal(1);
         break;
       case 'auto':
-        alAuto();
+        // (2.2, owner's key log: in the multimeter, back to Automático; in the generator, nothing)
+        if (f.modo === 'dmm') f.autoDmm();
+        else if (f.modo === 'osc') alAuto();
         break;
       case 'save':
-        guardar();
+        // (2.2, owner's key log: nothing in the multimeter and the generator)
+        if (f.modo === 'osc') guardar();
         break;
       case 'menu':
-        f.pulsarMenu();
+        if (larga) f.menuLargo();
+        else f.pulsarMenu();
         break;
       case 'power':
         f.encendido = !f.encendido;
@@ -176,6 +185,17 @@
     { id: 'der', x: 197, y: 402, d: 'M 235 425 l -12 -9 v 18 z', ayuda: '►' },
   ];
 
+  // The blue centre key does a different thing in each mode (2.2): its name says which.
+  const azul = $derived(
+    f.menu === 'principal'
+      ? 'Tecla azul: entrar en el modo marcado'
+      : f.modo === 'dmm'
+        ? 'Tecla azul: HOLD, retener el valor'
+        : f.modo === 'gen'
+          ? 'Tecla azul: entrar en la lista o editar el valor'
+          : 'RUN/STOP',
+  );
+
   const BORNES: { id: Borne | 'COM'; x: number; t: string }[] = [
     { id: 'A', x: 60, t: '10A' },
     { id: 'mA', x: 130, t: 'mA' },
@@ -191,7 +211,7 @@
 </script>
 
 <div class="fnirsi" bind:this={caja}>
-  <svg class="cuerpo" viewBox="0 0 340 660" role="group" aria-label="FNIRSI 2C53T: osciloscopio, multímetro y generador">
+  <svg class="cuerpo" use:toqueSvg viewBox="0 0 340 660" role="group" aria-label="FNIRSI 2C53T: osciloscopio, multímetro y generador">
     <!-- BNC connectors on the top edge -->
     {#each [['CH1', 90], ['CH2', 170], ['DDS', 250]] as [t, x] (t)}
       <rect x={Number(x) - 13} y="0" width="26" height="12" rx="3" fill="#b9bec4" />
@@ -204,8 +224,9 @@
     <rect x="16" y="44" width="308" height="235" rx="6" fill="#0b0c0e" />
 
     {#each BOTONES as b (b.id)}
-      <g class="boton" role="button" tabindex="0" aria-label={b.ayuda} use:pulsacion={{ corta: () => accion(b.id), larga: b.id === 'move' ? () => accion(b.id, true) : undefined }}>
+      <g class="boton" role="button" tabindex="0" aria-label={b.ayuda} data-recorrido={`fnirsi-${b.id}`} use:pulsacion={{ corta: () => accion(b.id), larga: b.id === 'move' ? () => accion(b.id, true) : undefined }}>
         <title>{b.ayuda}</title>
+        <rect x={b.x} y={b.y} width="62" height="44" fill="transparent" data-toque />
         <rect class="tecla" x={b.x} y={b.y} width="62" height="44" rx="9" fill="#33373d" stroke="#4b5058" />
         {#if guia?.boton === b.id}<rect class="guia" x={b.x - 3} y={b.y - 3} width="68" height="50" rx="11" />{/if}
         <text x={b.x + 31} y={b.y + (b.sub ? 20 : 27)} font-size="11.5" font-weight="700" text-anchor="middle" fill="#eef" font-family="var(--sans)">{b.t}</text>
@@ -216,12 +237,15 @@
     <!-- arrow pad -->
     <rect x="92" y="346" width="156" height="156" rx="34" fill="#1f2226" stroke="#3aa3dd" stroke-width="3" />
     {#each FLECHAS as fl (fl.id)}
-      <g class="boton" role="button" tabindex="0" aria-label={fl.ayuda} use:pulsacion={{ corta: () => accion(fl.id), repetir: true }}>
+      <g class="boton" role="button" tabindex="0" aria-label={fl.ayuda} data-recorrido="fnirsi-flecha" use:pulsacion={{ corta: () => accion(fl.id), repetir: true }}>
+        <rect x={fl.x} y={fl.y} width="46" height="46" fill="transparent" data-toque />
         <rect class="tecla" x={fl.x} y={fl.y} width="46" height="46" rx="8" fill="#2c3036" />
         <path d={fl.d} fill="#f2f2f2" />
       </g>
     {/each}
-    <g class="boton" role="button" tabindex="0" aria-label="RUN/STOP" use:pulsacion={{ corta: () => accion('run') }}>
+    <g class="boton" role="button" tabindex="0" aria-label={azul} data-recorrido="fnirsi-run" use:pulsacion={{ corta: () => accion('run') }}>
+      <title>{azul}</title>
+      <rect x="144" y="398" width="52" height="54" fill="transparent" data-toque />
       <rect class="tecla" x="144" y="398" width="52" height="54" rx="9" fill="#2aa7e6" />
       <path d="M 158 413 v 24 M 164 413 v 24" stroke="#fff" stroke-width="3.5" />
       <path d="M 171 413 l 15 12 l -15 12 z" fill="#fff" />
@@ -229,11 +253,21 @@
 
     <!-- power and menu -->
     <g class="boton" role="button" tabindex="0" aria-label={f.encendido ? 'Apagar' : 'Encender'} use:pulsacion={{ corta: () => accion('power') }}>
+      <circle cx="53" cy="490" r="23" fill="transparent" data-toque />
       <circle class="tecla" cx="53" cy="490" r="23" fill="#2d1f22" stroke="#e04848" stroke-width="2.5" />
       {#if guia?.boton === 'power'}<circle class="guia" cx="53" cy="490" r="27" />{/if}
       <path d="M 46 482 a 10 10 0 1 0 14 0 M 53 476 v 12" stroke="#e04848" stroke-width="2.6" fill="none" stroke-linecap="round" />
     </g>
-    <g class="boton" role="button" tabindex="0" aria-label="MENU: osciloscopio, multímetro o generador" use:pulsacion={{ corta: () => accion('menu') }}>
+    <g
+      class="boton"
+      role="button"
+      tabindex="0"
+      aria-label="MENU: mantenida, osciloscopio, multímetro o generador"
+      data-recorrido="fnirsi-menu"
+      use:pulsacion={{ corta: () => accion('menu'), larga: () => accion('menu', true), umbral: MENU_LARGO_MS }}
+    >
+      <title>MENU: mantenida, osciloscopio, multímetro o generador</title>
+      <circle cx="287" cy="490" r="23" fill="transparent" data-toque />
       <circle class="tecla" cx="287" cy="490" r="23" fill="#2d2519" stroke="#f08a24" stroke-width="2.5" />
       {#if guia?.boton === 'menu'}<circle class="guia" cx="287" cy="490" r="27" />{/if}
       <text x="287" y="494" font-size="10.5" font-weight="700" text-anchor="middle" fill="#f08a24" font-family="var(--sans)">MENU</text>
@@ -247,6 +281,7 @@
       <g
         class="borne"
         role="button"
+        data-recorrido="fnirsi-borne"
         tabindex={j.id === 'COM' ? -1 : 0}
       aria-disabled={j.id === 'COM' ? 'true' : undefined}
         aria-label={j.id === 'COM' ? 'Borne COM' : `Punta roja del multímetro al borne ${j.t}`}
@@ -254,7 +289,7 @@
         onclick={() => j.id !== 'COM' && (f.borne = j.id)}
         onkeydown={(e) => e.key === 'Enter' && j.id !== 'COM' && (f.borne = j.id)}
       >
-        <circle cx={j.x} cy="572" r="24" fill="transparent" />
+        <circle cx={j.x} cy="572" r="24" fill="transparent" data-toque />
         <circle cx={j.x} cy="572" r="16" fill="#111" stroke="#3aa3dd" stroke-width="4" />
         {#if rojo || j.id === 'COM'}
           <circle cx={j.x} cy="572" r="10" fill={j.id === 'COM' ? '#1b1b1b' : '#d0262e'} stroke={j.id === 'COM' ? '#555' : '#ff6b6b'} stroke-width="2" />
@@ -268,6 +303,7 @@
   <canvas
     bind:this={lienzo}
     class="pantalla"
+    data-recorrido="fnirsi-pantalla"
     aria-label="Pantalla del FNIRSI 2C53T"
     onpointerdown={tocar}
     onpointermove={mover}

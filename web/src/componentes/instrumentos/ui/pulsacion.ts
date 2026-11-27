@@ -1,5 +1,6 @@
-// Svelte action for instrument buttons: short press and long press (≥ 0.8 s, as the BM869s's «hold for one
-// second» functions), by mouse, touch, pen or keyboard (Enter/Space; Shift+Enter is the long press).
+// Svelte action for instrument buttons: short press and long press (≥ 0.8 s by default, as the BM869s's «hold for
+// one second» functions; `umbral` sets another threshold), by mouse, touch, pen or keyboard (Enter/Space;
+// Shift+Enter is the long press).
 
 import { prepararAudio } from '../audio';
 
@@ -8,7 +9,12 @@ export interface OpcionesPulsacion {
   larga?: () => void;
   /** Repeat the short action while held (arrow keys). */
   repetir?: boolean;
+  /** How long a press must last to be the long one, in ms (default 800). */
+  umbral?: number;
 }
+
+/** The default long-press threshold (ms). */
+export const LARGA_MS = 800;
 
 export function pulsacion(nodo: Element, op: OpcionesPulsacion) {
   let opciones = op;
@@ -40,7 +46,7 @@ export function pulsacion(nodo: Element, op: OpcionesPulsacion) {
       reloj = setTimeout(() => {
         largaHecha = true;
         opciones.larga?.();
-      }, 800);
+      }, opciones.umbral ?? LARGA_MS);
     } else if (opciones.repetir) {
       reloj = setTimeout(() => {
         largaHecha = true;

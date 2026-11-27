@@ -353,11 +353,11 @@ test('el FNIRSI no está: se dice, y se puede volver a intentar', async ({ page 
   await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,824 kΩ');
 });
 
-test('lo que no va en el flujo: el generador, las medidas propias del osciloscopio y RUN/STOP', async ({ page }) => {
+test('lo que no va en los flujos de medida: el generador, las medidas propias del osciloscopio y RUN/STOP (flujo de estado, parche 3)', async ({ page }) => {
   const bytes = (h: string) => Array.from(deHex(h));
   await limpio(page);
-  // the generator: its settings, read from the instrument's memory
-  await conEnlace(page, { modo: 3, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
+  // the generator: its settings, as the status stream brings them (2.2: never read from the instrument's memory)
+  await conEnlace(page, { modo: 3, parche: 3, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
   await banco(page);
   const panel = page.locator('.elegir [data-fnirsi-real]');
   await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
@@ -380,8 +380,9 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   const memoria = { '20000f50': bytes(MEMORIA.generadorSierra), '200000f8': bytes(MEMORIA.osciloscopioEnMarcha), '20000208': bytes(MEMORIA.medidasTriangulo) };
   await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria } as Partial<Falso>);
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
+  // (2.2: and Amp, Vrms and Avg, words 9 to 11)
   await expect(page.locator('[data-medidas-fnirsi]')).toHaveText(
-    'Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV',
+    'Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV · amplitud 218,0 mV · Vef 118,0 mV · media 100,0 mV',
   );
   await expect(page.locator('[data-generador-fnirsi]')).toContainText('Diente de sierra (Sawtooth wave) · 50,00 kHz');
   await expect(page.locator('[data-marcha-fnirsi]')).toHaveCount(0);
@@ -393,7 +394,37 @@ test('lo que no va en el flujo: el generador, las medidas propias del osciloscop
   await expect(page.locator('[data-medidas-fnirsi]')).toContainText('40,23 kHz · ciclo 64,51 % · Vpp 114,0 mV');
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('está en STOP', { timeout: 10_000 });
   const f = await falso(page);
-  expect(new Set(f.lecturas)).toEqual(new Set([0x20000f50, 0x200000f8, 0x20000208]));
+  expect(f.lecturas ?? []).toEqual([]);
+});
+
+test('2.2: sin el flujo de estado (parche 2) no se lee la memoria del FNIRSI: el generador y el RUN/STOP dicen que hace falta el parche 3', async ({ page }) => {
+  const bytes = (h: string) => Array.from(deHex(h));
+  await limpio(page);
+  await conEnlace(page, { modo: 3, memoria: { '20000f50': bytes(MEMORIA.generadorCuadrada) } });
+  await banco(page);
+  const panel = page.locator('.elegir [data-fnirsi-real]');
+  await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
+  await expect(page.locator('[data-falta-parche-fnirsi]')).toHaveText('Los ajustes del generador del FNIRSI solo llegan con el flujo de estado del enlace (parche 3).');
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveCount(0);
+  // the oscilloscope, stopped (no records): RUN/STOP is not known, and the line says why
+  await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
+  const memoria = { '20000f50': bytes(MEMORIA.generadorSierra), '200000f8': bytes(MEMORIA.osciloscopioParado), '20000208': bytes(MEMORIA.medidasParado) };
+  await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 2, eventos: [], memoria } as Partial<Falso>);
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
+  await expect(page.locator('[data-falta-parche-fnirsi]')).toHaveText(
+    'El RUN/STOP del osciloscopio y los ajustes del generador del FNIRSI solo llegan con el flujo de estado del enlace (parche 3).',
+  );
+  await expect(page.locator('[data-estado-fnirsi]')).toContainText('su RUN/STOP solo llega con el flujo de estado del enlace, parche 3', { timeout: 10_000 });
+  await expect(page.locator('[data-marcha-fnirsi]')).toHaveCount(0);
+  await panel.locator('details.fr-diag > summary').click();
+  await expect(page.locator('[data-enlace-fnirsi]')).toHaveText(
+    'Enlace: protocolo 1, parche 2 · el generador, las medidas del osciloscopio y RUN/STOP solo llegan con el flujo de estado: hace falta el parche 3 del enlace',
+  );
+  sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real sin el flujo de estado (parche 2)');
+  const f = await falso(page);
+  expect(f.lecturas ?? []).toEqual([]);
 });
 
 test('1.4.3: en la aplicación instalada, sin el flujo de estado, no se lee la memoria y la conexión sigue sin reconectar', async ({ page }) => {
@@ -413,7 +444,7 @@ test('1.4.3: en la aplicación instalada, sin el flujo de estado, no se lee la m
   expect(f.aperturas).toBe(1);
   expect(f.lecturas ?? []).toEqual([]);
   await expect(page.locator('[data-generador-fnirsi]')).toHaveCount(0);
-  await expect(page.locator('[data-enlace-fnirsi]')).toContainText('no llegan por esta vía: hace falta el parche 3 del enlace');
+  await expect(page.locator('[data-enlace-fnirsi]')).toContainText('solo llegan con el flujo de estado: hace falta el parche 3 del enlace');
 });
 
 test('1.4.3: en la aplicación instalada, con el flujo de estado (parche 3), el generador llega igual', async ({ page }) => {
@@ -463,21 +494,25 @@ test('un enlace con el flujo de estado (parche 3) lo envía él: lo mismo en pan
   expect(f.lecturas ?? []).toEqual([]);
 });
 
-test('un enlace que anuncia el flujo de estado y no lo envía: la aplicación le pregunta como a uno sin él', async ({ page }) => {
+test('un enlace que anuncia el flujo de estado y deja de enviarlo: no se le pregunta nada y lo último que dijo se olvida', async ({ page }) => {
   const bytes = (h: string) => Array.from(deHex(h));
   await limpio(page);
-  await conEnlace(page, { modo: 3, parche: 3, estadoMudo: true, memoria: { '20000f50': bytes(MEMORIA.generadorOndaCompleta) } });
+  await conEnlace(page, { modo: 3, parche: 3, memoria: { '20000f50': bytes(MEMORIA.generadorOndaCompleta) } });
   await banco(page);
   const panel = page.locator('.elegir [data-fnirsi-real]');
   await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
   await expect(page.locator('[data-generador-fnirsi]')).toHaveText('Generador del FNIRSI: Onda completa (Full Wave) · 35,00 kHz · ciclo 50 % · 2,0 V', { timeout: 10_000 });
+  // (2.2: before, the app read the generator's settings from the instrument's memory; now they are forgotten)
+  await cambiar(page, { estadoMudo: true });
+  await expect(page.locator('[data-generador-fnirsi]')).toHaveCount(0, { timeout: 10_000 });
+  await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
   const f = await falso(page);
   expect(f.suscripciones).toEqual([7]);
-  expect(new Set(f.lecturas)).toEqual(new Set([0x20000f50]));
+  expect(f.lecturas ?? []).toEqual([]);
 });
 
-test('el multímetro no pregunta nada, y un enlace que rechaza las lecturas no se vuelve a preguntar', async ({ page }) => {
+test('el multímetro no pregunta nada, y el generador tampoco (2.2: nada fuera de la tabla de ondas)', async ({ page }) => {
   await limpio(page);
   await conEnlace(page, { modo: 1, eventos: [deHex(MULTIMETRO.pila9V!)], repetir: true });
   await banco(page);
@@ -486,13 +521,13 @@ test('el multímetro no pregunta nada, y un enlace que rechaza las lecturas no s
   await expect(page.locator('[data-lectura-fnirsi]')).toHaveText('9,201 V ⎓');
   await page.waitForTimeout(1500);
   expect((await falso(page)).lecturas ?? []).toEqual([]);
-  // the generator, with a link that has no such memory: asked once, and everything else goes on as before
+  // the generator, with a link without the status stream: nothing is asked (2.2), and everything else goes on as before
   await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'reconectando');
   await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 3, eventos: [] } as Partial<Falso>);
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
   await page.waitForTimeout(1500);
-  expect((await falso(page)).lecturas).toEqual([0x20000f50]);
+  expect((await falso(page)).lecturas ?? []).toEqual([]);
   await expect(page.locator('[data-generador-fnirsi]')).toHaveCount(0);
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('generador de señales', { timeout: 10_000 });
 });
@@ -618,7 +653,7 @@ function registroCon(cambios: Record<number, number>): string {
   return b.toString('base64');
 }
 
-test('2.1.1: el flanco de disparo, y las bases de 5 ms y 20 ms sin el aviso de escala sin comprobar', async ({ page }) => {
+test('2.1.1: el flanco de disparo, y las bases de 5 ms y 20 ms sin el aviso de escala sin comprobar (2.2: y 10 ms)', async ({ page }) => {
   await limpio(page);
   // (the capture was taken with the rising edge: byte 24 is 0; byte 45 is the time base, 13 = 200 µs)
   await conEnlace(page, { modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true });
@@ -627,15 +662,16 @@ test('2.1.1: el flanco de disparo, y las bases de 5 ms y 20 ms sin el aviso de e
   await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
   const disparo = panel.locator('[data-disparo-fnirsi]');
-  await expect(disparo).toHaveText('Flanco de disparo: subida');
+  // (2.2: with the trigger channel, byte 22, and mode, byte 23: the capture's are CH1 and Auto)
+  await expect(disparo).toHaveText('Flanco de disparo: subida · canal: CH1 · modo: Auto');
   await cambiar(page, { eventos: informesDe(registroCon({ 24: 1 }), 0, 2) });
-  await expect(disparo).toHaveText('Flanco de disparo: bajada');
+  await expect(disparo).toHaveText('Flanco de disparo: bajada · canal: CH1 · modo: Auto');
   await expect(panel).toContainText('200 µs/div');
   sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (flanco de bajada)');
   await cambiar(page, { eventos: informesDe(registroCon({ 24: 7 }), 0, 3) });
-  await expect(disparo).toHaveText('Flanco de disparo: desconocido');
-  // the time bases: 5 ms and 20 ms checked on the unit, 10 ms not
-  for (const [indice, texto, aviso, secuencia] of [[17, '5,00 ms/div', false, 4], [19, '20,0 ms/div', false, 5], [18, '10,0 ms/div', true, 6]] as const) {
+  await expect(disparo).toHaveText('Flanco de disparo: desconocido · canal: CH1 · modo: Auto');
+  // the time bases: 5 ms and 20 ms checked on the unit; 2.2: 10 ms too (and 50 ms, one step above, not)
+  for (const [indice, texto, aviso, secuencia] of [[17, '5,00 ms/div', false, 4], [19, '20,0 ms/div', false, 5], [18, '10,0 ms/div', false, 6], [20, '50,0 ms/div', true, 7]] as const) {
     await cambiar(page, { eventos: informesDe(registroCon({ 45: indice }), 0, secuencia) });
     await expect(panel).toContainText(texto);
     await expect(panel.getByText('escala de tiempo sin comprobar en esta base')).toHaveCount(aviso ? 1 : 0);

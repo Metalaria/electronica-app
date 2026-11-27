@@ -112,7 +112,7 @@ export const PRACTICAS: Practica[] = [
     },
     pasos: [
       { texto: 'El generador da una <strong>cuadrada de 100 Hz</strong> (de 0 a 3 V: la salida del DDS es siempre positiva). Cada semiciclo dura 5 ms: <strong>cinco constantes de tiempo</strong>. CH1 en el condensador, CH2 en el generador; disparo en CH2, flanco de subida, a la izquierda de la pantalla.' },
-      { texto: 'Con <strong>cursores de tensión</strong> (SELECT → Cursores → Tensión), sitúe uno en 0 V y otro en el 63,2 % de la tensión final (1,90 V con 3 V).', aplicar: { fn: { cursores: 'tension', cur: { a: -3, b: -3 + 1.896 / 0.5 } } } },
+      { texto: 'Con <strong>cursores de tensión</strong> (MENU → Cursores → Tensión), sitúe uno en 0 V y otro en el 63,2 % de la tensión final (1,90 V con 3 V).', aplicar: { fn: { cursores: 'tension', cur: { a: -3, b: -3 + 1.896 / 0.5 } } } },
       { texto: 'Pase a <strong>cursores de tiempo</strong>: A en el flanco del generador y B donde la carga cruza el 63,2 %. Δt es τ; compárelo con R·C = 1 ms.', aplicar: { fn: { cursores: 'tiempo', cur: { a: -4, b: -3.5 } } } },
       { texto: 'El <strong>descubrimiento</strong>: con R = 1 MΩ y la cuadrada a 1 Hz, la sonda (10 MΩ) queda en paralelo con el condensador. La tensión final se queda en el 90,9 % y la constante efectiva baja a unos 91 ms.', aplicar: { variante: 'p2_lenta', fn: { sDiv: 100e-3, hpos: 0.4, dds: { frecuencia: 1 }, cursores: 'no' } } },
     ],
@@ -230,7 +230,7 @@ export const PRACTICAS: Practica[] = [
     },
     pasos: [
       { texto: 'Generador a la entrada (senoide de 3 V), CH1 en la entrada y CH2 en la salida. Calculado: f<sub>c</sub> = 1/(2π·1600·100 nF) = <strong>995 Hz</strong>.' },
-      { texto: 'Recorra frecuencias en <strong>progresión geométrica</strong>: 100, 200, 500, 1 k, 2 k, 5 k, 10 k y 20 k (MENU → Generador, o el campo de frecuencia). En cada una pulse AUTO y <strong>anote el punto</strong>: la relación de Vpp de CH2 y CH1 en dB.' },
+      { texto: 'Recorra frecuencias en <strong>progresión geométrica</strong>: 100, 200, 500, 1 k, 2 k, 5 k, 10 k y 20 k (mantenga pulsada MENU → Generador, o el campo de frecuencia). En cada una pulse AUTO y <strong>anote el punto</strong>: la relación de Vpp de CH2 y CH1 en dB.' },
       { texto: 'En 1 kHz la salida es <strong>0,707 veces la entrada (−3 dB)</strong>. Para la fase, cursores de tiempo entre los pasos por el centro de las dos señales: Δt·f·360 = 45°.', aplicar: { fn: { dds: { frecuencia: 1000 }, sDiv: 100e-6, cursores: 'tiempo', cur: { a: 0, b: 2 } } } },
       { texto: 'De 2 kHz a 20 kHz la salida cae unos 19 dB: la asíntota de −20 dB/década de un filtro de primer orden.' },
     ],

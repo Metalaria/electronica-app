@@ -274,7 +274,7 @@ for (const proyecto of ['escritorio', 'movil'] as const) {
     if (proyecto === 'movil') {
       const ancho = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(ancho).toBeLessThanOrEqual(0);
-      expect((await page.locator('[data-medir-fnirsi]').boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect((await page.locator('[data-medir-fnirsi]').boundingBox())!.height).toBeGreaterThanOrEqual(48);
     }
   });
 }

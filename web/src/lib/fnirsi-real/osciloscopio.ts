@@ -17,6 +17,8 @@
 //               (CH1 checked in three sessions; CH2 assumed to follow the same rule)
 //   [6], [7]    probe setting of CH1, CH2: 0 = X1, 1 = X10 (CH1 checked both ways; CH2 assumed)
 //   [20]        channels on: bit 0 CH1, bit 1 CH2
+//   [22]        trigger channel: 0 CH1, 1 CH2 (owner, 2026-11-26, checked on the unit)
+//   [23]        trigger mode: 0 Normal, 1 Auto, 2 Single (the same day)
 //   [24]        trigger edge: 0 rising, 1 falling (owner, 2026-11-26, checked on the unit)
 //   [28…29]     trigger level, signed 16 bits, in sample counts from the middle (128)
 //   [45]        time per division as an index: 0 = 10 ns, then 1-2-5 steps (seen: 13 with the screen at 200 µs;
@@ -34,18 +36,18 @@
 // And at 2 µs per division, later the same day: 50 kHz from the record against 50 kHz by the instrument's own
 // measurement. That day also settled the probe setting of both channels at X10 (the record scaled ten times larger
 // gives 3,36 V and 3,30 V where the instrument measures 3,35 V and 3,29 V) and CH1's coupling, which is byte [0]:
-// 1 direct, 0 alternating (the trace dropped to straddle zero when it was switched). CH2's coupling is presumably
-// byte [1] and was not switched.
+// 1 direct, 0 alternating (the trace dropped to straddle zero when it was switched). CH2's coupling is byte [1], the
+// same way (owner, 2026-11-26, checked on the unit). [47] is the AUTO key's step (0: none; estado.ts).
 //
 // And at 1 µs per division: the rising edges of that 50 kHz wave are 500 and 499 samples apart in the two records
 // taken, which is its 20 µs at 40 ns a sample.
 //
-// And at 5 ms and 20 ms per division (owner, 2026-11-26): the same 25 samples per division on the unit. 10 ms per
-// division, between them, was not measured and stays unchecked.
+// And at 5 ms and 20 ms per division (owner, 2026-11-26): the same 25 samples per division on the unit; and at
+// 10 ms per division, between them, later that day.
 //
-// Not established: the samples-per-division rule below 1 µs, at 10 ms or above 20 ms per division (the fastest time
-// bases cannot have 25 real samples per division) and CH2's coupling. `tiempoComprobado` and the channel's
-// `comprobado` say what a caller may rely on.
+// Not established: the samples-per-division rule below 1 µs or above 20 ms per division (the fastest time bases
+// cannot have 25 real samples per division). `tiempoComprobado` and the channel's `comprobado` say what a caller may
+// rely on. Not used: the block of the instrument's FFT and the horizontal position (their meaning is not settled).
 
 import { EVT_OSC_CABECERA, EVT_OSC_DATOS, u32 } from './protocolo.ts';
 
@@ -63,10 +65,10 @@ const TOPE_ALTO = 244;
 
 const PASOS = [1, 2, 5] as const;
 /**
- * Time-base indices ([45]) whose 25 samples per division were checked on the unit: 6 to 16 (1 µs to 2 ms), 17 (5 ms)
- * and 19 (20 ms). Not 18 (10 ms): not measured.
+ * Time-base indices ([45]) whose 25 samples per division were checked on the unit: 6 to 16 (1 µs to 2 ms), 17 (5 ms),
+ * 18 (10 ms, 2.2) and 19 (20 ms).
  */
-const BASES_COMPROBADAS: ReadonlySet<number> = new Set([6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19]);
+const BASES_COMPROBADAS: ReadonlySet<number> = new Set([6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
 
 /** Volts per division of index `i` at the input (X1): 10 mV … 10 V; null outside the instrument's ten steps. */
 export function voltiosPorDivision(i: number): number | null {
@@ -93,7 +95,7 @@ export interface AjustesCanal {
    * against 3,29 V). Kept for the callers that word their answer on it.
    */
   comprobado: boolean;
-  /** Input coupling: direct (CC) or alternating (CA). Null for CH2, whose byte has not been located. */
+  /** Input coupling: direct (CC) or alternating (CA): [0] for CH1, [1] for CH2 (2.2). */
   acoplamiento: 'CC' | 'CA' | null;
 }
 
@@ -102,12 +104,17 @@ export interface AjustesOsciloscopio {
   /** Seconds per horizontal division, and per sample. */
   tiempoDiv: number;
   periodoMuestra: number;
-  /** The time base is one of those checked on the real unit (1 µs to 2 ms, 5 ms and 20 ms per division). */
+  /** The time base is one of those checked on the real unit (1 µs to 20 ms per division). */
   tiempoComprobado: boolean;
   /** Trigger level as a sample value. */
   nivelDisparo: number;
   /** Trigger edge ([24]): rising (0) or falling (1); null for any other value. */
   flancoDisparo: 'subida' | 'bajada' | null;
+  /** 2.2: trigger channel ([22]: 0 CH1, 1 CH2) and mode ([23]: 0 Normal, 1 Auto, 2 Single); null for any other value. */
+  canalDisparo: 'CH1' | 'CH2' | null;
+  modoDisparo: 'Normal' | 'Auto' | 'Único' | null;
+  /** 2.2: the AUTO key's sequence was under way at this acquisition ([47] not 0). */
+  ajustando: boolean;
 }
 
 function i8(x: number): number {
@@ -123,7 +130,7 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
   const mascara = c[20] ?? 0;
   const canal = (k: 0 | 1, v: number): AjustesCanal => {
     const sonda = (c[6 + k] ?? 0) === 1 ? 10 : 1;
-    const acoplamiento = k === 0 ? ((c[0] ?? 1) === 0 ? 'CA' : 'CC') : null;
+    const acoplamiento = (c[k] ?? 1) === 0 ? 'CA' : 'CC';
     return { activo: (mascara & (1 << k)) !== 0, voltiosDiv: v * sonda, sonda, cero: 128 + i8(c[4 + k] ?? 0), comprobado: true, acoplamiento };
   };
   const nivel = (c[28] ?? 0) | ((c[29] ?? 0) << 8);
@@ -135,6 +142,9 @@ export function leerAjustes(c: ArrayLike<number>): AjustesOsciloscopio | null {
     tiempoComprobado: BASES_COMPROBADAS.has(indice),
     nivelDisparo: 128 + (nivel > 32767 ? nivel - 65536 : nivel),
     flancoDisparo: c[24] === 0 ? 'subida' : c[24] === 1 ? 'bajada' : null,
+    canalDisparo: c[22] === 0 ? 'CH1' : c[22] === 1 ? 'CH2' : null,
+    modoDisparo: c[23] === 0 ? 'Normal' : c[23] === 1 ? 'Auto' : c[23] === 2 ? 'Único' : null,
+    ajustando: (c[47] ?? 0) !== 0,
   };
 }
 

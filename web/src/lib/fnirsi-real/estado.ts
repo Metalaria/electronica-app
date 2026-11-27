@@ -18,12 +18,19 @@
 //     [0] frequency in Hz, [1] period in ns, [2] and [3] positive and negative duty in 0.01 %, [4] and [5]
 //     positive and negative pulse width in ns, [6] Vmax, [7] Vmin and [8] Vpp in µV, signed
 //     Checked against two photographs of the stopped screen (40.23KHz 64.51% 114.0mV; 50.18KHz 50.50% 220.0mV).
+//     2.2 (owner, 26-11, on his unit): [3] is the negative duty ([2] + [3] = 10000 or 9999, e.g. 5040 + 4960), and
+//     [9], [10], [11] are what the screen shows after Amp, Vrms and Avg, signed µV like [6…8]. With the probe at X10
+//     all of them already include the factor (X1: 316000, 208000, 148000; X10: 3040000, 2108800, 1490400): the
+//     application never multiplies them.
 //     While the oscilloscope runs they are a running average; stopped, those of the frozen acquisition. All zeros
 //     outside the oscilloscope. CH2's follow CH1's but were only seen with the channel off: not read here.
 //
 //   oscilloscope state, 56 bytes at 0x200000F8 (the same block that heads every record): [46] is 1 while it
 //     runs and 0 once stopped (RUN/STOP). A stopped oscilloscope sends no records, so this is the only way to tell
 //     it from one that sends nothing for another reason.
+//     2.2 (owner, 26-11, on his unit): [20] the channels on (bit 0 CH1, bit 1 CH2; the record header's [20] is the
+//     same byte at the time of its acquisition) and [47] the step of the AUTO key's sequence (0: none; while it is
+//     not 0 the settings are the instrument's own trials). The rest of the block's bytes: osciloscopio.ts.
 
 export const DIR_GENERADOR = 0x20000f50;
 export const LARGO_GENERADOR = 10;
@@ -72,12 +79,16 @@ const ULTIMA_FORMA = 12 + 8;
 /**
  * A waveform of the instrument's menu as the card names it: «Cuadrada (Square Wave)»; an entry the link added, by
  * its place: «la entrada n.º 14 de su menú, añadida por el enlace». `entradaUsb`: the index of the added entry that
- * plays the waveform sent from here (0: none).
+ * plays the waveform sent from here (0: none). `entradasMenu`: how many entries the link's identification says it
+ * added (undefined: not known).
  */
-export function nombreForma(forma: number, entradaUsb = 0): string {
+export function nombreForma(forma: number, entradaUsb = 0, entradasMenu?: number): string {
   const f = FORMAS[forma];
   if (f) return `${f.nombre} (${f.rotulo})`;
-  if (forma >= PRIMERA_ANADIDA && forma <= ULTIMA_FORMA)
+  // (2.2: with the identification read, only as many added entries as it says exist, its payload's byte 37:
+  // protocolo.ts `entradasMenu`; without it, up to eight as before)
+  const ultima = entradasMenu === undefined ? ULTIMA_FORMA : Math.min(ULTIMA_FORMA, PRIMERA_ANADIDA - 1 + entradasMenu);
+  if (forma >= PRIMERA_ANADIDA && forma <= ultima)
     return `la entrada n.º ${forma + 1} de su menú, añadida por el enlace${forma === entradaUsb ? ' (la que reproduce la onda que se le envía)' : ''}`;
   return `la forma n.º ${forma + 1} de su menú`;
 }
@@ -114,6 +125,8 @@ export interface MedidasOsciloscopio {
   periodo: number;
   /** Positive duty cycle, %. */
   ciclo: number;
+  /** 2.2: negative duty cycle, % (decoded, not shown: the positive one says the same). */
+  cicloNegativo: number;
   /** Positive and negative pulse widths, s. */
   anchoPositivo: number;
   anchoNegativo: number;
@@ -121,6 +134,10 @@ export interface MedidasOsciloscopio {
   vmax: number;
   vmin: number;
   vpp: number;
+  /** 2.2: V, what the screen shows after Amp, Vrms and Avg (the probe's factor already in, as in the three above). */
+  amplitud: number;
+  valorEficaz: number;
+  media: number;
 }
 
 /** FNIRSI's own measurements of a channel from its twelve words; null when it has none (all zeros). */
@@ -134,11 +151,15 @@ export function decodificarMedidas(b: ArrayLike<number>): MedidasOsciloscopio | 
     frecuencia: u(0),
     periodo: u(1) * 1e-9,
     ciclo: u(2) / 100,
+    cicloNegativo: u(3) / 100,
     anchoPositivo: u(4) * 1e-9,
     anchoNegativo: u(5) * 1e-9,
     vmax: s(6) * 1e-6,
     vmin: s(7) * 1e-6,
     vpp: s(8) * 1e-6,
+    amplitud: s(9) * 1e-6,
+    valorEficaz: s(10) * 1e-6,
+    media: s(11) * 1e-6,
   };
 }
 
@@ -146,4 +167,19 @@ export function decodificarMedidas(b: ArrayLike<number>): MedidasOsciloscopio | 
 export function osciloscopioEnMarcha(estado: ArrayLike<number>): boolean | null {
   const x = estado[46];
   return x === 1 ? true : x === 0 ? false : null;
+}
+
+/** 2.2: what decides whether the instrument's own measurements are shown, from the oscilloscope's state bytes. */
+export interface EstadoMedidas {
+  /** CH1 and CH2 on ([20], bits 0 and 1). */
+  canales: [boolean, boolean];
+  /** The AUTO key's sequence is under way ([47] not 0): the settings, and so the measurements, are its trials. */
+  ajustando: boolean;
+}
+
+/** The state bytes' channels on and AUTO step; null when there are not enough bytes. */
+export function leerEstadoMedidas(estado: ArrayLike<number>): EstadoMedidas | null {
+  if (estado.length <= 47) return null;
+  const m = estado[20] ?? 0;
+  return { canales: [(m & 1) !== 0, (m & 2) !== 0], ajustando: (estado[47] ?? 0) !== 0 };
 }

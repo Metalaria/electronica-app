@@ -410,12 +410,13 @@ test('la escala de los dos canales está comprobada con la sonda en X1 y en X10'
   expect([real.canales[1].sonda, real.canales[1].voltiosDiv]).toEqual([10, expect.closeTo(0.5, 12)]);
 });
 
-test('el acoplamiento de CH1 es el primer byte de los ajustes; el de CH2 no está localizado', () => {
-  // two states of the unit, one key press apart (2026-11-25): CH1 direct, then alternating
+test('el acoplamiento de CH1 es el primer byte de los ajustes; el de CH2, el segundo (2.2)', () => {
+  // two states of the unit, one key press apart (2026-11-25): CH1 direct, then alternating. (2.2, owner 26-11: CH2's
+  // is byte 1, 1 direct and 0 alternating; it is 0 in both of these states)
   const cc = leerAjustes(deHex('01000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000'))!;
   const ca = leerAjustes(deHex('00000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000'))!;
-  expect(cc.canales.map((c) => c.acoplamiento)).toEqual(['CC', null]);
-  expect(ca.canales.map((c) => c.acoplamiento)).toEqual(['CA', null]);
+  expect(cc.canales.map((c) => c.acoplamiento)).toEqual(['CC', 'CA']);
+  expect(ca.canales.map((c) => c.acoplamiento)).toEqual(['CA', 'CA']);
   // nothing else changes between the two
   expect({ ...ca, canales: null }).toEqual({ ...cc, canales: null });
 });
@@ -600,7 +601,7 @@ test('el flujo de estado: lo que anuncia la identificación y lo que trae cada e
   expect(decodificarGenerador(leerEstado(real)!.bytes)).toEqual({ forma: 1, nombre: 'Cuadrada', rotulo: 'Square Wave', frecuencia: 40000, ciclo: 40, amplitud: 1.5 });
 });
 
-test('las bases de tiempos de 1 µs a 2 ms, 5 ms y 20 ms por división están comprobadas; 10 ms y las de fuera, no', () => {
+test('las bases de tiempos de 1 µs a 20 ms por división están comprobadas; las de fuera, no', () => {
   const con = (indice: number) => {
     const b = deHex(MEMORIA.osciloscopioEnMarcha);
     b[45] = indice;
@@ -617,11 +618,11 @@ test('las bases de tiempos de 1 µs a 2 ms, 5 ms y 20 ms por división están co
   expect([con(6).tiempoDiv, con(6).tiempoComprobado]).toEqual([expect.closeTo(1e-6, 12), true]);
   // (one step below: 500 ns per division)
   expect([con(5).tiempoDiv, con(5).tiempoComprobado]).toEqual([expect.closeTo(500e-9, 15), false]);
-  // 2.1.1 (owner, 26-11): 5 ms and 20 ms per division checked on the unit; 10 ms between them was not measured,
-  // and 50 ms, one step above, neither
+  // 2.1.1 (owner, 26-11): 5 ms and 20 ms per division checked on the unit; 2.2: 10 ms between them too (the same
+  // day); 50 ms, one step above, not
   expect([con(17).tiempoDiv, con(17).tiempoComprobado]).toEqual([expect.closeTo(5e-3, 12), true]);
   expect([con(19).tiempoDiv, con(19).tiempoComprobado]).toEqual([expect.closeTo(20e-3, 12), true]);
-  expect([con(18).tiempoDiv, con(18).tiempoComprobado]).toEqual([expect.closeTo(10e-3, 12), false]);
+  expect([con(18).tiempoDiv, con(18).tiempoComprobado]).toEqual([expect.closeTo(10e-3, 12), true]);
   expect([con(20).tiempoDiv, con(20).tiempoComprobado]).toEqual([expect.closeTo(50e-3, 12), false]);
 });
 

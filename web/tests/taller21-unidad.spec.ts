@@ -173,9 +173,9 @@ test('FNIRSI: el estado del multimetro trae entrada del menú, función y varian
   for (const [nombre, entrada, funcion, variante] of casos) expect(decodificarMultimetro(trama(MULTIMETRO[nombre]!)).menu, nombre).toEqual({ entrada, funcion, variante });
 });
 
-test('FNIRSI: cada código de función del real lleva el multímetro dibujado a la suya; temperatura, «nada aún» y lo desconocido no lo mueven', () => {
+test('FNIRSI: cada código de función del real lleva el multímetro dibujado a la suya, temperatura incluida (2.2); «nada aún» y lo desconocido no lo mueven', () => {
   const ids = new Set(FN_DMM_LISTA.map((f) => f.id));
-  const esperado: Record<number, string> = { 1: 'vdc', 2: 'vac', 3: 'cont', 4: 'diodo', 5: 'ohm', 6: 'cap', 8: 'idc', 9: 'iac', 10: 'idc', 11: 'iac' };
+  const esperado: Record<number, string> = { 1: 'vdc', 2: 'vac', 3: 'cont', 4: 'diodo', 5: 'ohm', 6: 'cap', 7: 'temp', 8: 'idc', 9: 'iac', 10: 'idc', 11: 'iac' };
   for (const [codigo, id] of Object.entries(esperado)) {
     const r = funcionQueSigue({ entrada: 1, funcion: Number(codigo), variante: 1 });
     expect(r, `código ${codigo}`).toEqual({ id, texto: '' });
@@ -184,10 +184,6 @@ test('FNIRSI: cada código de función del real lleva el multímetro dibujado a 
   // Auto follows Auto, whatever it has found at the probes
   expect(funcionQueSigue({ entrada: 0, funcion: 0, variante: 0 })).toEqual({ id: 'auto', texto: '' });
   expect(funcionQueSigue({ entrada: 0, funcion: 5, variante: 0 })).toEqual({ id: 'auto', texto: '' });
-  // temperature: the drawn 2C53T has no such function, said in one line
-  const t = funcionQueSigue({ entrada: 5, funcion: 7, variante: 1 });
-  expect(t.id).toBeNull();
-  expect(t.texto).toBe('El FNIRSI dibujado no mide temperatura: se queda en la función que tenía.');
   // «none yet» outside Auto: nothing to follow, nothing said
   expect(funcionQueSigue({ entrada: 3, funcion: 0, variante: 1 })).toEqual({ id: null, texto: '' });
   // codes not documented

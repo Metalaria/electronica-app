@@ -168,7 +168,10 @@ function hid(): Hid | null {
 /** Reports kept for the page between reads; a full queue is emptied whole (as the native side does). */
 const COLA_MAXIMA = 4096;
 
-class WebHid implements TransporteFnirsi {
+/** 2.2: the sentence the WebHID transport refuses a memory read outside the generator's wave table with. */
+export const LECTURA_FUERA_DE_TABLA = 'La aplicación solo lee del FNIRSI la tabla de su generador, para comprobar una onda enviada.';
+
+export class WebHid implements TransporteFnirsi {
   readonly tipo = 'webhid' as const;
   private d: DispositivoHid | null = null;
   private cola: Uint8Array[] = [];
@@ -221,6 +224,10 @@ class WebHid implements TransporteFnirsi {
     return d.productName || PRODUCTO_ENLACE;
   }
   async enviar(informe: Uint8Array): Promise<void> {
+    // 2.2 (owner, 26-11): a memory read (0x02) only inside the generator's wave table, 1 to 56 bytes from 0x20000F5A
+    // to 0x20000F5A + 200: the same rule as the installed app's plugin filter (src-tauri/plugins/fnirsi/src/lib.rs
+    // `permitida`, mirrored in protocolo.ts permitidaEnLaAplicacion). Refused before it reaches the device.
+    if (informe[0] === ORDEN_LEER && !permitidaEnLaAplicacion(informe)) throw new Error(LECTURA_FUERA_DE_TABLA);
     const d = this.d;
     if (!d || this.perdido) throw new Error(PERDIDO);
     try {

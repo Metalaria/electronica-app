@@ -40,7 +40,7 @@ const FUNCION_DIBUJADA: Record<number, { id: string | null; nombre: string }> = 
   4: { id: 'diodo', nombre: 'diodo' },
   5: { id: 'ohm', nombre: 'resistencia' },
   6: { id: 'cap', nombre: 'capacidad' },
-  7: { id: null, nombre: 'temperatura' },
+  7: { id: 'temp', nombre: 'temperatura' },
   8: { id: 'idc', nombre: 'corriente continua (mA)' },
   9: { id: 'iac', nombre: 'corriente alterna (mA)' },
   10: { id: 'idc', nombre: 'corriente continua (A)' },
