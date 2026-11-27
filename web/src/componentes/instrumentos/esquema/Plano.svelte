@@ -299,7 +299,8 @@
         }}
         onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), alTocar(mk.nodo))}
       >
-        <circle cx={mk.xy[0]} cy={mk.xy[1]} r={radio * 1.5} fill="transparent" />
+        <!-- (2.2: a 48 px touch circle — radio is 12 px on screen) -->
+        <circle cx={mk.xy[0]} cy={mk.xy[1]} r={radio * 2} fill="transparent" data-toque-nodo />
         <circle class="anillo" cx={mk.xy[0]} cy={mk.xy[1]} r={radio * 0.55} />
         <text class="nombre" x={mk.xy[0] + radio * 0.75} y={mk.xy[1] - radio * 0.6} font-size={fuenteTxt}>{mk.nodo === '0' ? '0' : mk.nodo}</text>
         {#each aqui as pt, i (pt.p)}
@@ -317,7 +318,7 @@
               class="asa-punta"
               cx={px}
               cy={py}
-              r={radio * 1.1}
+              r={radio * 2}
               fill="transparent"
               data-asa-plano={pt.p}
               use:sinDesplazar={true}

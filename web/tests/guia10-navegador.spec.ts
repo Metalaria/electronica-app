@@ -191,7 +191,7 @@ test('en el teléfono: desde «Aa» («Más»), 44 px y sin desbordar', async ({
       [...el.querySelectorAll<HTMLElement>('a, button, input')]
         .filter((x) => x.offsetParent)
         .map((x) => ({ n: (x.textContent || x.getAttribute('aria-label') || x.tagName).trim().slice(0, 30), r: x.getBoundingClientRect() }))
-        .filter((x) => x.r.height < 44)
+        .filter((x) => x.r.height < 48)
         .map((x) => `${x.n} ${Math.round(x.r.width)}×${Math.round(x.r.height)}`),
     );
     expect(pequenos, nombre).toEqual([]);

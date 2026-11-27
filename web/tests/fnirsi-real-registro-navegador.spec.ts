@@ -290,7 +290,7 @@ test('en el teléfono el registrador cabe sin desplazamiento horizontal', async 
   });
   expect(fuera).toBe(0);
   // the buttons are a finger's size
-  const bajos = await panel.evaluate((el) => [...el.querySelectorAll('button, summary')].filter((b) => (b as HTMLElement).offsetParent && b.getBoundingClientRect().height < 43.5).length);
+  const bajos = await panel.evaluate((el) => [...el.querySelectorAll('button, summary')].filter((b) => (b as HTMLElement).offsetParent && b.getBoundingClientRect().height < 47.5).length);
   expect(bajos).toBe(0);
   sinHallazgos(await axe(page, '[data-registro-real]'), 'registrador (teléfono)');
 });

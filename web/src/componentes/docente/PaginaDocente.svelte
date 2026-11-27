@@ -263,7 +263,7 @@
     white-space: pre-line;
   }
   .t09-boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .aviso {
     display: flex;

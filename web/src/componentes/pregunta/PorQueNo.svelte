@@ -62,7 +62,7 @@
     display: inline-flex;
     align-items: center;
     align-self: flex-start;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--acento);
     font-size: 13px;
     font-weight: 700;

@@ -443,7 +443,7 @@ export class Tutor {
     } else if (t === 'senal') {
       pasos.push({
         id: 'osc',
-        texto: f.encendido ? 'Ponga el FNIRSI en osciloscopio: pulse MENU y elija Osciloscopio.' : 'Encienda el FNIRSI (botón rojo) y elija Osciloscopio con MENU.',
+        texto: f.encendido ? 'Ponga el FNIRSI en osciloscopio: mantenga pulsada MENU, marque Osciloscopio con ◄ ► y pulse la tecla azul.' : 'Encienda el FNIRSI (botón rojo) y elija Osciloscopio manteniendo pulsada MENU.',
         fn: { boton: f.encendido ? 'menu' : 'power' },
         hecho: () => f.encendido && f.modo === 'osc',
         hacer: () => {

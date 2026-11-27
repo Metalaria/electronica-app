@@ -125,8 +125,8 @@
     position: absolute;
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     border: 1.5px solid var(--linea, #ccd);
     border-radius: 50%;

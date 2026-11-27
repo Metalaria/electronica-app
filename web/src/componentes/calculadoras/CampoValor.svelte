@@ -286,7 +286,7 @@
     grid-area: val;
     display: flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     border: 1px solid var(--linea);
     border-radius: 8px;
     background: var(--superficie);
@@ -372,12 +372,12 @@
     grid-area: des;
     position: relative;
     min-width: 0;
-    height: 44px;
+    height: 48px;
   }
   .deslizador {
     display: block;
     width: 100%;
-    height: 44px;
+    height: 48px;
     margin: 0;
     background: transparent;
     -webkit-appearance: none;

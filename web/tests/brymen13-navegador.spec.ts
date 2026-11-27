@@ -211,7 +211,7 @@ test('banco libre en el teléfono: el panel del Brymen real cabe y se usa con el
   await expect(panel).toBeAttached({ timeout: 60_000 });
   await panel.scrollIntoViewIfNeeded();
   const boton = panel.getByRole('button', { name: 'Conectar el Brymen real' });
-  expect((await boton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await boton.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   await boton.tap();
   await responder(page, paquete({ principal: '2.0130', unidad: 'V', dc: true }));
   await expect(page.locator('[data-lectura-real]')).toHaveText('2,0130 V ⎓');
@@ -248,7 +248,7 @@ for (const proyecto of ['escritorio', 'movil'] as const) {
       const ancho = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(ancho).toBeLessThanOrEqual(0);
       const caja = (await page.locator('[data-medir-real]').boundingBox())!;
-      expect(caja.height).toBeGreaterThanOrEqual(44);
+      expect(caja.height).toBeGreaterThanOrEqual(48);
     }
   });
 }

@@ -623,7 +623,7 @@
   .enlaces a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-weight: 600;
   }
@@ -640,7 +640,7 @@
   }
   .seg {
     flex: 1;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -713,7 +713,7 @@
   }
   .cursores input {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     accent-color: var(--v11-azul);
   }
   /* (not «.lectura»: that is the reading pane's global class — estilos/lectura.css —, whose padding, size and width
@@ -787,7 +787,7 @@
     width: 100%;
   }
   .enlace {
-    min-height: 44px;
+    min-height: 48px;
     border: 0;
     background: none;
     color: var(--v11-azul);
@@ -819,7 +819,7 @@
     font-size: 14px;
   }
   .pantalla summary {
-    min-height: 44px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     color: var(--v11-tinta);
@@ -896,7 +896,7 @@
     display: flex;
     gap: 6px;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     min-width: 0;
     padding: 0;
     border: 0;
@@ -929,7 +929,7 @@
     flex: 1 1 0;
     width: 100%;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 2px solid var(--v11-borde);
     border-radius: var(--v11-radio-opcion);
@@ -943,7 +943,7 @@
   }
   .fila-barra .primario {
     flex: 0 0 auto;
-    min-height: 44px;
+    min-height: 48px;
   }
   .fila-barra .primario:only-child {
     flex: 1 1 auto;

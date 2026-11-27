@@ -402,7 +402,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1.5px solid var(--linea);
     border-radius: var(--radio-boton);
@@ -520,12 +520,12 @@
   .ver {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     font-size: 15px;
     font-weight: 600;
   }
   .otra-vez {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 4px;
     border: 0;
     background: transparent;

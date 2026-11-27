@@ -243,8 +243,8 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--linea);
     border-radius: 12px;
     background: var(--superficie);
@@ -259,7 +259,7 @@
   input[type='range'] {
     flex: 1;
     min-width: 0;
-    height: 44px;
+    height: 48px;
     accent-color: var(--bloque, var(--acento));
   }
   .extremos {

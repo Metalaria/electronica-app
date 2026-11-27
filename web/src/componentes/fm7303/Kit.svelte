@@ -333,7 +333,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 4px;
     color: var(--v11-azul);
     text-decoration: none;

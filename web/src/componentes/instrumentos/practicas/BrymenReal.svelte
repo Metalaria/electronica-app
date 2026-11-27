@@ -106,7 +106,7 @@
   /* (1.3, averias13: a finger's size on a touch screen) */
   @media (pointer: coarse) {
     .boton.pequeno {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .br-estado {

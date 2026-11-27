@@ -30,6 +30,8 @@
   import { simuladoFnirsi } from './practicas/fnirsi-simulado';
   import { brymenReal } from '../../lib/brymen-real/conexion.svelte';
   import { fnirsiReal } from '../../lib/fnirsi-real/conexion.svelte';
+  // 2.2: the tutorials of the bench read its live state (lib/recorridos.svelte.ts)
+  import { registrarBanco } from '../../lib/recorridos.svelte';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -138,6 +140,8 @@
   function cargarLista() {
     void cargarIndiceSpice().then((i) => (indice = i));
   }
+
+  onMount(() => registrarBanco(b));
 
   onMount(() => {
     precalentarMotor();
@@ -327,7 +331,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     font-size: 15px;
   }
   .elegir select,
@@ -335,7 +339,7 @@
   .ajustes input[type='text'] {
     min-width: 0;
     max-width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     border: 1px solid var(--v11-linea);
     border-radius: 12px;
     background: transparent;
@@ -354,7 +358,7 @@
   .lista a {
     display: flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     border-bottom: 1px solid var(--v11-linea);
     text-decoration: none;
   }

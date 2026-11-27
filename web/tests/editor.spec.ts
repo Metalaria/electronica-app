@@ -449,7 +449,10 @@ for (const [perfil, opciones] of Object.entries(PERFILES)) {
       await abrirEditor(page, '#/editor/libro/cap22/fig-22.9_puente');
       await page.waitForFunction(() => (window as unknown as { __epaEditor?: { ed: { doc: { componentes: unknown[] } } } }).__epaEditor?.ed.doc.componentes.length);
       await page.waitForTimeout(400);
-      // A part selected, to show the properties.
+      // A part selected, to show the properties. (2.2: on the phone the 48 dp controls and the 80 dp bottom bar leave the
+      // canvas below the fold, C1 under the bar: the canvas is brought to the middle of the window first)
+      await page.evaluate(() => document.querySelector('.lienzo')!.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(300);
       await seleccionar(page, 'C1');
       await page.screenshot({ path: `tests/capturas/editor/${perfil}-${tema}-editar.png` });
       await page.locator('.propiedades').screenshot({ path: `tests/capturas/editor/${perfil}-${tema}-propiedades.png` });

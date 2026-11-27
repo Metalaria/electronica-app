@@ -134,8 +134,8 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--linea);
     border-radius: 12px;

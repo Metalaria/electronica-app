@@ -141,7 +141,7 @@
   .abrir,
   .cerrar,
   .libro {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 1px solid var(--linea);
     border-radius: 8px;

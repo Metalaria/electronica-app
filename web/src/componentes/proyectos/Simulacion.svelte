@@ -118,7 +118,7 @@
   .netlists a {
     display: grid;
     gap: 2px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 12px;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -175,7 +175,7 @@
   @media (pointer: coarse) {
     .red,
     .ver {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

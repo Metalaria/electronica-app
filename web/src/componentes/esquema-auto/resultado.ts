@@ -30,6 +30,8 @@ export interface PeticionEsquema {
   texto: string;
   subckt?: string | null;
   aspecto?: number;
+  /** 2.2: as a fresh page (generar.ts OpcionesEsquema.deNuevo). */
+  deNuevo?: boolean;
 }
 
 export type RespuestaEsquema = { id: number; ok: true; resultado: ResultadoEsquema | null } | { id: number; ok: false; error: string };

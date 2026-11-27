@@ -340,7 +340,7 @@
     margin: 6px 0;
   }
   .volver {
-    min-height: 44px;
+    min-height: 48px;
   }
   .lienzo {
     position: relative;
@@ -375,8 +375,8 @@
     margin-top: 4px;
   }
   .mandos .boton-icono {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
   .mandos .boton-icono:disabled {
     opacity: 0.4;
@@ -394,6 +394,6 @@
     color: var(--tinta-suave);
   }
   .interiores .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
 </style>

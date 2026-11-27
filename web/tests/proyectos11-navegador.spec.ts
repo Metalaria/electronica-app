@@ -153,7 +153,7 @@ test('360 px: sin desbordes en el índice, la etapa y la lista del proyecto', as
     // every control is at least 44 px high
     const bajos = await page.evaluate(() =>
       [...document.querySelectorAll('main a, main button, main input')]
-        .filter((x) => (x as HTMLElement).offsetParent && !x.closest('nav.miga') && x.getBoundingClientRect().height < 43.5)
+        .filter((x) => (x as HTMLElement).offsetParent && !x.closest('nav.miga') && x.getBoundingClientRect().height < 47.5)
         .map((x) => x.outerHTML.slice(0, 80)),
     );
     expect(bajos, ruta).toEqual([]);

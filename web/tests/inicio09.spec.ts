@@ -197,7 +197,7 @@ test.describe('sin saludo, pestañas y columnas', () => {
     expect(ancho).toBeLessThanOrEqual(0);
     for (const sel of ['.seguir .continuar', '.seguir .boton.fantasma', '.hoy .objetivo', '.hoy .racha', 'a.repaso-hoy', '.su-curso a.capitulo', 'nav.pestanas [data-grupo]']) {
       const c = (await page.locator(sel).first().boundingBox())!;
-      expect(c.height, sel).toBeGreaterThanOrEqual(44);
+      expect(c.height, sel).toBeGreaterThanOrEqual(48);
     }
     await ctx.close();
   });

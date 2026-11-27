@@ -260,8 +260,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 10px;
     background: var(--hover);
@@ -275,7 +275,7 @@
     line-height: 1.3;
   }
   .boton.mini {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
   }
   .respuesta {
@@ -321,8 +321,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 50%;
     background: transparent;
@@ -355,7 +355,7 @@
   }
   .boton.suave {
     flex: none;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 8px;
     border-color: transparent;
     background: transparent;

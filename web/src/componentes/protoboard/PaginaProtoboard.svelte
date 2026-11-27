@@ -211,7 +211,7 @@
     {#if listo}
       <Protoboard {pb} recorrido alGuardar={() => void guardar(true)} {alQuedarse}>
         {#snippet cabecera()}
-          <header class="cab">
+          <header class="cab" data-recorrido="proto-montajes">
             <div class="tit">
               <h1>{pb.doc.titulo || 'Montaje nuevo'}</h1>
               <span class="estado">{#if idGuardado}{montajes.error ? 'Sin guardar en este dispositivo' : estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar (se conserva en este dispositivo){/if}</span>

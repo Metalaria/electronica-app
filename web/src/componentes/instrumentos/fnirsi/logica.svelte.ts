@@ -1,6 +1,7 @@
 // The FNIRSI 2C53T as a state machine: three instruments (oscilloscope, multimeter, DDS generator) chosen with
-// MENU, ten buttons and the arrow pad, as described in sections 21.3 and 21.17 of the book. The acquisition
-// itself is in ../motor/osciloscopio.ts; the drawing in dibujo.ts.
+// MENU held, ten buttons and the arrow pad, as described in sections 21.3 and 21.17 of the book. 2.2: the keys do
+// what the owner's key log of his unit (firmware V1.2.0) records, mode by mode (each method says which part).
+// The acquisition itself is in ../motor/osciloscopio.ts; the drawing in dibujo.ts.
 
 import {
   adquirir,
@@ -47,6 +48,32 @@ export const MATES: { id: Matematica; nombre: string }[] = [
   { id: 'fft2', nombre: 'FFT CH2' },
 ];
 
+/**
+ * 2.2 (owner's key log on his unit, firmware V1.2.0): MENU held this long opens the mode-selection screen; a short
+ * MENU no longer does.
+ */
+export const MENU_LARGO_MS = 1000;
+
+/**
+ * 2.2 (owner's key log): the multimeter's function entries 0 … 7 that ◄ ► step through (wrapping 7 → 0 and 0 → 7),
+ * each one or more ids of FN_DMM_LISTA; MOVE toggles the variant inside an entry (logged on entry 1: DC → AC). The
+ * order is the real unit's menu (state byte 5, lib/fnirsi-real/multimetro.ts): 0 Auto, 1 voltage, 2 continuity and
+ * diode (continuity first, as logged), 3 Ω, 4 capacitance, 5 temperature, 6 mA, 7 A. The drawing has no temperature
+ * probe, so entry 5 says so; entries 6 and 7 are the same functions on the mA and the 10A input.
+ */
+export const ENTRADAS_DMM: string[][] = [['auto'], ['vdc', 'vac'], ['cont', 'diodo'], ['ohm'], ['cap'], ['temp'], ['idc', 'iac'], ['idc', 'iac']];
+/** The input each current entry expects (the real menu's mA and A entries). */
+const BORNE_ENTRADA: Partial<Record<number, Borne>> = { 6: 'mA', 7: 'A' };
+
+/** Arrow modes of the oscilloscope that SELECT cycles (2.2, owner's key log). */
+export type ModoFlechas = 0 | 1 | 2;
+/** Generator levels (2.2, owner's key log): the wave list, the settings list, editing a value. */
+export type NivelGen = 0 | 1 | 2;
+/** One vertical step of a position or of the trigger level: one sample count, 1/25 of a division (as the real unit). */
+const PASO_VERTICAL = 1 / 25;
+/** One horizontal step of the position in arrow modes 1 and 2: a tenth of a division. */
+const PASO_HORIZONTAL = 1 / 10;
+
 export const FN_DMM_LISTA: { id: string; nombre: string }[] = [
   { id: 'auto', nombre: 'Auto' },
   { id: 'vdc', nombre: 'DCV' },
@@ -55,6 +82,7 @@ export const FN_DMM_LISTA: { id: string; nombre: string }[] = [
   { id: 'cont', nombre: 'Continuidad' },
   { id: 'diodo', nombre: 'Diodo' },
   { id: 'cap', nombre: 'Capacidad' },
+  { id: 'temp', nombre: 'Temperatura' },
   { id: 'idc', nombre: 'DCA' },
   { id: 'iac', nombre: 'ACA' },
 ];
@@ -94,10 +122,14 @@ export class Fnirsi {
   captura = $state.raw<Captura | null>(null);
   /** Single armed and waiting. */
   esperando = $state(false);
+  /** 2.2: what the arrows do with no menu open (SELECT cycles it): 0 scales, 1 positions, 2 trigger level. */
+  modoFlechas = $state<ModoFlechas>(0);
 
   // ---------------------------------------------------------------- generator
   dds = $state<Dds>({ ...DDS_INICIAL });
   itemGen = $state(0);
+  /** 2.2: the generator's level: 0 the wave list, 1 the settings rows, 2 editing the row under the cursor. */
+  nivelGen = $state<NivelGen>(0);
 
   // ---------------------------------------------------------------- multimeter
   fnDmm = $state(0);
@@ -106,6 +138,8 @@ export class Fnirsi {
   fusibleMA = $state(true);
   lecturaDmm = $state<Lectura | null>(null);
   textoDmm = $state('');
+  /** 2.2: HOLD (the blue centre key in the multimeter): the reading stays as it was. */
+  holdDmm = $state(false);
 
   // ---------------------------------------------------------------- derived values
   get escalasV(): number[] {
@@ -170,12 +204,34 @@ export class Fnirsi {
 
   // ---------------------------------------------------------------- buttons
 
+  /**
+   * MENU, short press (2.2, owner's key log): it no longer opens the mode-selection screen (MENU held does:
+   * menuLargo). The multimeter: nothing. The generator: one level back (editing → settings → wave list). The open
+   * mode screen: closes it, as before. The oscilloscope: the functions menu (Math, cursors, X-Y), which SELECT opened
+   * before SELECT became the arrow mode; the log does not record this key there.
+   */
   pulsarMenu(): void {
     if (!this.encendido) return;
     if (this.menu === 'principal') {
       this.menu = null;
       return;
     }
+    if (this.modo === 'gen') {
+      if (this.nivelGen === 2) this.nivelGen = 1;
+      else if (this.nivelGen === 1) {
+        this.nivelGen = 0;
+        this.itemGen = 0;
+      }
+      return;
+    }
+    if (this.modo === 'dmm') return;
+    this.menu = this.menu === 'funciones' ? null : 'funciones';
+    this.item = 0;
+  }
+
+  /** MENU held (MENU_LARGO_MS): the mode-selection screen, in every mode, with the current mode marked. */
+  menuLargo(): void {
+    if (!this.encendido) return;
     this.menu = 'principal';
     this.item = ['osc', 'dmm', 'gen'].indexOf(this.modo);
   }
@@ -201,40 +257,52 @@ export class Fnirsi {
 
   pulsarSelect(): void {
     if (!this.encendido) return;
-    if (this.modo === 'gen') {
-      this.itemGen = (this.itemGen + 1) % this.itemsGen().length;
-      return;
-    }
-    if (this.modo === 'dmm') return;
+    // (2.2: the mode menu first, in every mode — before, the multimeter and the generator took the key behind it)
     if (this.menu === 'principal') {
       this.elegirModo((['osc', 'dmm', 'gen'] as Modo[])[this.item] ?? 'osc');
       return;
     }
-    if (this.menu) {
-      const items = this.itemsMenu();
-      this.item = (this.item + 1) % Math.max(1, items.length);
-      return;
-    }
-    this.menu = 'funciones';
-    this.item = 0;
+    // (2.2, owner's key log: nothing in the multimeter and the generator; the arrow mode in the oscilloscope)
+    if (this.modo !== 'osc') return;
+    this.modoFlechas = ((this.modoFlechas + 1) % 3) as ModoFlechas;
   }
 
   pulsarPrm(): void {
     if (this.modo === 'osc') this.prm = !this.prm;
   }
 
+  /** MOVE, short press (2.2, owner's key log): the multimeter's variant inside its entry; nothing elsewhere. */
   pulsarMove(): void {
-    if (this.modo !== 'osc') return;
-    this.activo = this.activo === 0 ? 1 : 0;
-    if (!this.canales[this.activo]!.on) this.activo = this.activo === 0 ? 1 : 0;
+    if (!this.encendido || this.menu === 'principal') return;
+    if (this.modo === 'dmm') this.varianteDmm();
   }
 
   moveLargo(): void {
     if (this.modo === 'osc') this.mover = !this.mover;
   }
 
+  /**
+   * The blue centre key (2.2, owner's key log): on the mode screen it enters the mode shown; in the multimeter it
+   * toggles HOLD; in the generator it goes one level in (wave list → settings → editing); in the oscilloscope it is
+   * RUN/STOP.
+   */
   pulsarRun(): void {
     if (!this.encendido) return;
+    if (this.menu === 'principal') {
+      this.elegirModo((['osc', 'dmm', 'gen'] as Modo[])[this.item] ?? 'osc');
+      return;
+    }
+    if (this.modo === 'dmm') {
+      this.holdDmm = !this.holdDmm;
+      return;
+    }
+    if (this.modo === 'gen') {
+      if (this.nivelGen === 0) {
+        this.nivelGen = 1;
+        this.itemGen = 1;
+      } else if (this.nivelGen === 1) this.nivelGen = 2;
+      return;
+    }
     if (this.modo !== 'osc') return;
     if (this.disparo.modo === 'single') {
       if (this.run || this.esperando) {
@@ -287,18 +355,19 @@ export class Fnirsi {
   /** ▲ (+1) / ▼ (−1). */
   vertical(d: number): void {
     if (!this.encendido) return;
+    // (2.2: ▲ ▼ move in the mode menu in every mode, as SELECT chooses in it)
+    if (this.menu === 'principal') {
+      this.item = (this.item - d + 3) % 3;
+      return;
+    }
     if (this.modo === 'gen') {
-      const n = this.itemsGen().length;
-      this.itemGen = (this.itemGen - d + n) % n;
+      this.verticalGen(d);
       return;
     }
-    if (this.modo === 'dmm') {
-      this.fnDmm = (this.fnDmm + (d > 0 ? -1 : 1) + FN_DMM_LISTA.length) % FN_DMM_LISTA.length;
-      this.rangoDmm = 0;
-      return;
-    }
+    // (2.2, owner's key log: ▲ ▼ do nothing in the multimeter, in every entry)
+    if (this.modo === 'dmm') return;
     if (this.menu) {
-      const n = this.menu === 'principal' ? 3 : this.itemsMenu().length;
+      const n = this.itemsMenu().length;
       this.item = (this.item - d + n) % n;
       return;
     }
@@ -307,27 +376,87 @@ export class Fnirsi {
       c.pos = Math.max(-4, Math.min(4, c.pos + d * 0.25));
       return;
     }
+    if (this.modoFlechas === 1) {
+      // CH1's vertical position and the trigger level, one step each, together
+      const marca = this.marcaDisparo();
+      const c1 = this.canales[0]!;
+      c1.pos = Math.max(-4, Math.min(4, c1.pos + d * PASO_VERTICAL));
+      this.ponerMarcaDisparo(marca + d * PASO_VERTICAL);
+      return;
+    }
+    if (this.modoFlechas === 2) {
+      this.ponerMarcaDisparo(this.marcaDisparo() + d * PASO_VERTICAL);
+      return;
+    }
+    // 2.2 (owner's key log): ▲ one index up the V/div list (index 0 = 10 mV, as the real unit), ▼ one index down
     const lista = this.escalasV;
     const i = lista.findIndex((v) => v >= c.vDiv * 0.999);
-    const j = Math.max(0, Math.min(lista.length - 1, (i < 0 ? lista.length - 1 : i) - d));
+    const j = Math.max(0, Math.min(lista.length - 1, (i < 0 ? lista.length - 1 : i) + d));
     c.vDiv = lista[j]!;
+  }
+
+  /** Where the trigger level's marker is, in divisions from the centre of the screen. */
+  private marcaDisparo(): number {
+    const fc = this.canales[this.disparo.fuente]!;
+    return this.disparo.nivel / fc.vDiv + fc.pos;
+  }
+
+  /** Moves the trigger level so that its marker is at `div` divisions from the centre of the screen. */
+  private ponerMarcaDisparo(div: number): void {
+    const fc = this.canales[this.disparo.fuente]!;
+    this.disparo = { ...this.disparo, nivel: (div - fc.pos) * fc.vDiv };
+  }
+
+  /** ▲ (+1) / ▼ (−1) in the generator, by level (2.2, owner's key log). */
+  private verticalGen(d: number): void {
+    const items = this.itemsGen();
+    if (this.nivelGen === 0) {
+      // ▼ next wave, ▲ previous wave
+      this.itemGen = 0;
+      items[0]?.cambiar(-d);
+      return;
+    }
+    if (this.nivelGen === 1) {
+      // the cursor up and down the settings rows (the wave is level 0's)
+      const n = items.length - 1;
+      const k = Math.max(1, Math.min(n, this.itemGen)) - 1;
+      this.itemGen = ((k - d + n) % n) + 1;
+      return;
+    }
+    const it = items[this.itemGen];
+    if (!it) return;
+    if (it.nombre === 'Frecuencia') this.dds = limitarDds({ ...this.dds, frecuencia: this.dds.frecuencia + d });
+    else it.cambiar(d);
   }
 
   /** ◄ (−1) / ► (+1). */
   horizontal(d: number): void {
     if (!this.encendido) return;
-    if (this.modo === 'gen') {
-      this.itemsGen()[this.itemGen]?.cambiar(d);
+    // (2.2, owner's key log: ◄ ► change the mode shown on the mode screen, in every mode)
+    if (this.menu === 'principal') {
+      this.item = (this.item + d + 3) % 3;
       return;
     }
-    if (this.modo === 'dmm') return;
-    if (this.menu === 'principal') return;
+    if (this.modo === 'gen') {
+      // (only while editing a value, as before; nothing in the wave list and the settings list)
+      if (this.nivelGen === 2) this.itemsGen()[this.itemGen]?.cambiar(d);
+      return;
+    }
+    if (this.modo === 'dmm') {
+      this.pasoEntradaDmm(d);
+      return;
+    }
     if (this.menu) {
       this.itemsMenu()[this.item]?.cambiar(d);
       return;
     }
     if (this.mover) {
       this.hpos = this.hpos - d * this.sDiv;
+      return;
+    }
+    if (this.modoFlechas !== 0) {
+      // the horizontal position, a tenth of a division a press
+      this.hpos = this.hpos - d * PASO_HORIZONTAL * this.sDiv;
       return;
     }
     const i = S_DIV.findIndex((v) => v >= this.sDiv * 0.999);
@@ -338,6 +467,11 @@ export class Fnirsi {
   }
 
   elegirModo(m: Modo): void {
+    // (2.2: the generator is entered at its wave list, level 0)
+    if (m === 'gen' && this.modo !== 'gen') {
+      this.nivelGen = 0;
+      this.itemGen = 0;
+    }
     this.modo = m;
     this.menu = null;
     this.item = 0;
@@ -438,7 +572,56 @@ export class Fnirsi {
     const k = FN_DMM_LISTA.findIndex((f) => f.id === id);
     if (k < 0 || k === this.fnDmm) return;
     this.fnDmm = k;
+    this.entradaElegida = null;
     this.rangoDmm = 0;
+  }
+
+  /** 2.2: the entry of ENTRADAS_DMM the current function is in (0 = Auto). */
+  get entradaDmm(): number {
+    const id = FN_DMM_LISTA[this.fnDmm]?.id ?? 'auto';
+    // Entries 6 and 7 share their functions: the one chosen with ◄ ► wins, otherwise the one for the input in use.
+    const elegida = this.entradaElegida;
+    if (elegida !== null && ENTRADAS_DMM[elegida]?.includes(id)) return elegida;
+    if ((id === 'idc' || id === 'iac') && this.borne === 'A') return 7;
+    return Math.max(0, ENTRADAS_DMM.findIndex((e) => e.includes(id)));
+  }
+
+  /** 2.2: the entry chosen with ◄ ► / MOVE (null: found from the function). */
+  private entradaElegida = $state<number | null>(null);
+
+  /** 2.2: forget the entry chosen with the keys (a function set from outside, e.g. a practice step). */
+  olvidarEntradaDmm(): void {
+    this.entradaElegida = null;
+  }
+
+  private ponerFuncionDmm(id: string, entrada: number | null = null): void {
+    const k = FN_DMM_LISTA.findIndex((f) => f.id === id);
+    if (k < 0) return;
+    this.fnDmm = k;
+    this.rangoDmm = 0;
+    this.entradaElegida = entrada;
+  }
+
+  /** ► (+1) / ◄ (−1) in the multimeter: the next or the previous entry, wrapping 7 → 0 and 0 → 7, at its first variant. */
+  pasoEntradaDmm(d: number): void {
+    const n = ENTRADAS_DMM.length;
+    const e = (this.entradaDmm + d + n) % n;
+    this.ponerFuncionDmm(ENTRADAS_DMM[e]![0]!, e);
+  }
+
+  /** MOVE in the multimeter: the other variant of the current entry (entry 1: DC ⇄ AC); an entry with one, nothing. */
+  varianteDmm(): void {
+    const k = this.entradaDmm;
+    const e = ENTRADAS_DMM[k]!;
+    if (e.length < 2) return;
+    const id = FN_DMM_LISTA[this.fnDmm]!.id;
+    this.ponerFuncionDmm(e[(e.indexOf(id) + 1) % e.length]!, k);
+  }
+
+  /** The AUTO key in the multimeter: back to entry 0, Automático. */
+  autoDmm(): void {
+    if (!this.encendido || this.modo !== 'dmm' || this.menu === 'principal') return;
+    this.ponerFuncionDmm('auto');
   }
 
   get funcionDmm(): Funcion | null {
@@ -471,13 +654,27 @@ export class Fnirsi {
 
   leerDmm(s: SenalDmm | null): void {
     if (this.modo !== 'dmm' || !this.encendido) return;
+    // (2.2: HOLD keeps the reading and its line as they were)
+    if (this.holdDmm) return;
     const id = FN_DMM_LISTA[this.fnDmm]!.id;
     const senal = s ?? { v: 0, i: 0 };
     const opc = { rangoPrimario: this.rangoDmm, dbmRef: 600, modoTemp: 0 };
+    if (id === 'temp') {
+      // The drawn multimeter has no temperature probe.
+      this.lecturaDmm = null;
+      this.textoDmm = 'Temperatura: sin sonda';
+      return;
+    }
     const esI = id === 'idc' || id === 'iac';
     if (esI !== (this.borne !== 'V')) {
       this.lecturaDmm = null;
       this.textoDmm = esI ? 'Punta roja en mA o 10A' : 'Punta roja en VΩ';
+      return;
+    }
+    const borneEntrada = esI ? BORNE_ENTRADA[this.entradaDmm] : undefined;
+    if (borneEntrada && this.entradaElegida !== null && borneEntrada !== this.borne) {
+      this.lecturaDmm = null;
+      this.textoDmm = borneEntrada === 'mA' ? 'Punta roja en mA' : 'Punta roja en 10A';
       return;
     }
     let fn = this.funcionDmm!;

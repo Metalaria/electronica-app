@@ -275,8 +275,8 @@
     .muestra,
     .muestra.activa {
       position: relative;
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       border: 0;
       background: none;
       box-shadow: none;

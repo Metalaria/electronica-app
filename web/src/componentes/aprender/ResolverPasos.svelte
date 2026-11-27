@@ -216,7 +216,7 @@
     outline-offset: 2px;
   }
   .salir {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 0;
     border-radius: 6px;
@@ -291,7 +291,7 @@
   }
   input[type='text'] {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 3.2em 0 12px;
     border: 1px solid var(--linea);
     border-radius: 8px;
@@ -319,7 +319,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 6px 12px;
     border: 1px solid var(--linea);
     border-radius: 8px;
@@ -394,7 +394,7 @@
   }
   .acciones :global(.boton),
   .final :global(.boton) {
-    min-height: 44px;
+    min-height: 48px;
   }
   .final {
     display: grid;

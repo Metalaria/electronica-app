@@ -238,7 +238,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     font-size: 14.5px;
     font-weight: 600;
   }
@@ -311,7 +311,7 @@
     align-items: center;
     gap: 8px;
     max-width: 48%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 10px 14px;
     border: 1px solid var(--linea);
     border-radius: 12px;
@@ -342,7 +342,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 18px;
     border: 0;
     border-radius: 999px;
@@ -356,7 +356,7 @@
   }
   @media (pointer: coarse) {
     .bloque a {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

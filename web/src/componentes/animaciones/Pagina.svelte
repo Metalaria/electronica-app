@@ -304,7 +304,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 18px;
     border: 0;
     border-radius: 999px;
@@ -318,11 +318,11 @@
   }
   @media (pointer: coarse) {
     .libro a {
-      min-height: 44px;
+      min-height: 48px;
       align-items: center;
     }
     .vecinos a {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

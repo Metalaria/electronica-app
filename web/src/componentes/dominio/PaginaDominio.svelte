@@ -273,7 +273,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0;
     border: 0;
     background: none;
@@ -314,7 +314,7 @@
     display: inline-flex;
     align-items: center;
     align-self: flex-start;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--acento);
     font-size: 14px;
     font-weight: 600;

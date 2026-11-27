@@ -110,7 +110,7 @@
   }
   @media (pointer: coarse) {
     .cu-mandos input {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

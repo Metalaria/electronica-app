@@ -10,12 +10,12 @@
   import IndiceLibro from './IndiceLibro.svelte';
 
   const indice = $derived(app.indice!);
-  const oculto = $derived(app.movil ? !app.lateral : indiceOculto());
+  const oculto = $derived(app.cajon ? !app.lateral : indiceOculto());
 
   // Inside the drawer, links replace the drawer's history entry instead of stacking on it.
   function enlace(ev: MouseEvent) {
     const a = (ev.target as Element).closest('a');
-    if (!a || !app.movil || !app.lateral) return;
+    if (!a || !app.cajon || !app.lateral) return;
     const href = a.getAttribute('href');
     if (!href?.startsWith('#')) return;
     if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button !== 0) return;
@@ -25,26 +25,26 @@
 
   // Esc closes the drawer (the filter takes it first when it has text).
   function teclas(ev: KeyboardEvent) {
-    if (ev.key === 'Escape' && app.movil && app.lateral) cerrarLateral();
+    if (ev.key === 'Escape' && app.cajon && app.lateral) cerrarLateral();
   }
 </script>
 
-{#if app.movil && app.lateral}
+{#if app.cajon && app.lateral}
   <button class="velo" aria-label="Cerrar el índice" tabindex="-1" onclick={cerrarLateral}></button>
 {/if}
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <aside
   class="lateral"
-  class:movil={app.movil}
-  class:abierto={app.movil ? app.lateral : !oculto}
+  class:movil={app.cajon}
+  class:abierto={app.cajon ? app.lateral : !oculto}
   aria-label="Índice del libro"
   aria-hidden={oculto ? 'true' : undefined}
   inert={oculto}
   onclick={enlace}
   onkeydown={teclas}
 >
-  {#if app.movil}
+  {#if app.cajon}
     <div class="cabecera">
       <a class="marca" href="#/">
         <span class="logo" aria-hidden="true">
@@ -63,7 +63,7 @@
       <span class="edicion">Ed. {indice.edicion}</span>
     </div>
   {/if}
-  {#if !oculto || app.movil}
+  {#if !oculto || app.cajon}
     <IndiceLibro visible={!oculto} />
   {/if}
 </aside>
@@ -73,7 +73,7 @@
     position: fixed;
     top: 0;
     bottom: 0;
-    left: var(--ancho-carril);
+    left: calc(var(--ancho-carril) + env(safe-area-inset-left));
     z-index: 30;
     display: none;
     flex-direction: column;
@@ -113,6 +113,8 @@
   .lateral.movil {
     display: flex;
     left: 0;
+    /* over the rail too (medium windows: the rail stays beside the drawer's scrim) */
+    z-index: 33;
     width: min(88vw, 380px);
     transform: translateX(-102%);
     transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.24s;
@@ -130,7 +132,7 @@
   .velo {
     position: fixed;
     inset: 0;
-    z-index: 29;
+    z-index: 32;
     border: 0;
     background: var(--scrim);
     animation: aparecer 0.2s ease;
@@ -177,7 +179,7 @@
     font-size: 12.5px;
   }
   .cerrar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 </style>

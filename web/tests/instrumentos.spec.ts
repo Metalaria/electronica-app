@@ -131,13 +131,17 @@ test('práctica guiada: Bode del RC con el generador y la tabla de puntos', asyn
   // Note the point; then 20 kHz through the generator's direct entry.
   await page.getByRole('button', { name: 'Anotar punto' }).click();
   await expect(page.locator('table.puntos tbody tr')).toHaveCount(1);
-  await page.getByRole('button', { name: 'MENU: osciloscopio, multímetro o generador' }).click();
+  // (2.2: MENU held one second opens the mode screen, as on the real unit)
+  await page.getByRole('button', { name: 'MENU: mantenida, osciloscopio, multímetro o generador' }).focus();
+  await page.keyboard.press('Shift+Enter');
   const lienzo = page.locator('canvas.pantalla');
   const caja = (await lienzo.boundingBox())!;
   await page.mouse.click(caja.x + caja.width * ((16 + 200 + 44) / 320), caja.y + caja.height * (115 / 240));
   await page.getByLabel('Frecuencia (Hz)').fill('20000');
   await page.getByLabel('Frecuencia (Hz)').press('Enter');
-  await page.getByRole('button', { name: 'MENU: osciloscopio, multímetro o generador' }).click();
+  // (2.2: MENU held one second opens the mode screen, as on the real unit)
+  await page.getByRole('button', { name: 'MENU: mantenida, osciloscopio, multímetro o generador' }).focus();
+  await page.keyboard.press('Shift+Enter');
   await page.mouse.click(caja.x + caja.width * ((16 + 44) / 320), caja.y + caja.height * (115 / 240));
   await page.getByRole('button', { name: 'AUTO: ajuste automático de escalas y disparo' }).click();
   const g20 = await medida(page, 'g20k');

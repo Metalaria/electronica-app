@@ -188,7 +188,7 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 4px 12px 4px 6px;
     border: 1px solid var(--linea);
     border-radius: 22px;

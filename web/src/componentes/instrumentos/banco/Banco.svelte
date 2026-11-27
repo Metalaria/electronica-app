@@ -14,6 +14,8 @@
   import Aparatos from './Aparatos.svelte';
   import Escuchar from './Escuchar.svelte';
   import { activarBanco } from './activo.svelte.ts';
+  import { abrirEncima } from '../../../lib/encima';
+  import { untrack } from 'svelte';
   import Parametros from '../../simulador/Parametros.svelte';
   import { listarParametros, aplicarParametro } from '../../../simulador/motor/netlist.ts';
   import { motor } from '../../../simulador/cliente.svelte';
@@ -136,6 +138,12 @@
     return resumenPuntas(b, pestana);
   });
   let editorMovil = $state(false);
+  // 2.2: the phone's lead editor (opened from «Puntas: …») is on top: the system's back closes it first
+  $effect(() => {
+    if (!editorMovil) return;
+    const quitar = abrirEncima('editor-puntas-movil', () => (editorMovil = false));
+    return () => untrack(quitar);
+  });
 
   // ---------------------------------------------------------------- «Medir en serie»: a meter in series with a terminal
   const opcionesSerie = $derived(
@@ -177,7 +185,7 @@
       <h2 class="etiqueta21" id="banco-circuito-titulo">Circuito</h2>
       <label class="interruptor"><input type="checkbox" bind:checked={b.alimentado} /> Circuito alimentado</label>
     </div>
-    <div class="lamina-plano">
+    <div class="lamina-plano" data-recorrido="banco-dibujo">
       {#if plano}
         <Plano fuente={plano} puntas={b.puntas} {activa} alTocar={(n) => activa && b.poner(activa, n)} alSoltar={(p, n) => b.poner(p as Punta, n)} />
       {:else if plano === undefined}
@@ -203,7 +211,7 @@
   </div>{/if}
 
   <!-- (while the circuit loads, its leads' place is kept: four rows, as a catalogue circuit starts with) -->
-  <div class="puntas" class:fuera={vista !== 'circuito'} class:reserva={!b.texto}>
+  <div class="puntas" class:fuera={vista !== 'circuito'} class:reserva={!b.texto} data-recorrido="banco-puntas">
     <Puntas {b} bind:activa />
   </div>
 
@@ -363,7 +371,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-tinta-suave);
     font-size: 14px;
   }
@@ -447,7 +455,7 @@
   .serie select {
     min-width: 0;
     max-width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     border: 1px solid var(--v11-linea);
     border-radius: 12px;
     background: transparent;
@@ -473,7 +481,7 @@
     }
     /* (the page's buttons stay in every segment: the real instruments matter most next to the drawn ones) */
     .acciones :global(.boton) {
-      min-height: 44px;
+      min-height: 48px;
       padding: 0 14px;
       font-size: 14px;
     }
@@ -485,7 +493,7 @@
       background: var(--v11-panel);
     }
     .segmentos button {
-      min-height: 44px;
+      min-height: 48px;
       border: 0;
       border-radius: 10px;
       background: transparent;

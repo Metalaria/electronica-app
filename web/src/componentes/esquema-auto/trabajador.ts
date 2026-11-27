@@ -27,7 +27,7 @@ self.onmessage = (ev: MessageEvent<PeticionEsquema>) => {
     await preparar();
     let r: RespuestaEsquema;
     try {
-      const a = generarEsquema(p.texto, { subckt: p.subckt ?? null, aspecto: p.aspecto ?? 1.8 });
+      const a = generarEsquema(p.texto, { subckt: p.subckt ?? null, aspecto: p.aspecto ?? 1.8, deNuevo: !!p.deNuevo });
       r = { id: p.id, ok: true, resultado: a ? construirResultado(a) : null };
     } catch (e) {
       r = { id: p.id, ok: false, error: e instanceof Error ? e.message : String(e) };

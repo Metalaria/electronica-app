@@ -432,8 +432,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 1px solid transparent;
     border-radius: 10px;
     background: transparent;
@@ -511,8 +511,8 @@
     letter-spacing: 0.04em;
   }
   .objetivo button {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 2px 10px;
     border: 1px solid var(--linea);
     border-radius: 9px;
@@ -552,7 +552,7 @@
   }
   .series button,
   .selector button {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 999px;
@@ -675,7 +675,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--acento-borde);
     border-radius: 999px;
@@ -730,7 +730,7 @@
     font-size: 0.75em;
   }
   select {
-    min-height: 44px;
+    min-height: 48px;
     max-width: 100%;
     padding: 0 8px;
     border: 1px solid var(--linea);

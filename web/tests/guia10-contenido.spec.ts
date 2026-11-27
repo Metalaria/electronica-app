@@ -137,6 +137,9 @@ test('cada «¿Cómo funciona?» de la aplicación lleva a un apartado que exist
   const vistos: string[] = [];
   const fallos: string[] = [];
   const comprobar = (fichero: string, sec: string, apt: string | undefined) => {
+    // (2.2: #/guia/recorridos is the page «Recorrido y tutoriales» of the guide, componentes/recorridos/ListaTutoriales.svelte,
+    // not a section of its content)
+    if (sec === 'recorridos' && !apt) return;
     const s = seccionGuia(sec);
     const clave = apt ? `${sec}/${apt}` : sec;
     vistos.push(clave);

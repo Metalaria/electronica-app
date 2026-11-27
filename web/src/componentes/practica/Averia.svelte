@@ -327,7 +327,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 12px;
@@ -359,7 +359,7 @@
     font-size: 13.5px;
   }
   select {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--linea);
     border-radius: 10px;

@@ -1171,6 +1171,12 @@
   .botones .boton {
     min-height: 40px;
   }
+  /* 2.2: on a touch screen every button of the row (links too: «Proyectos por etapas» was 38 px) is 48 px tall */
+  @media (pointer: coarse) {
+    .botones .boton {
+      min-height: 48px;
+    }
+  }
   .archivo {
     display: contents;
   }
@@ -1249,7 +1255,7 @@
     display: grid;
     place-items: center;
     width: 40px;
-    height: 44px;
+    height: 48px;
     border: 0;
     border-radius: 10px;
     background: none;
@@ -1613,7 +1619,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 0;
     border-radius: 8px;
@@ -1650,13 +1656,12 @@
       padding: 4px 10px 60px;
     }
     .botones .boton {
-      min-height: 38px;
       padding: 0 11px;
       font-size: 13.5px;
     }
     .hb {
-      width: 42px;
-      height: 42px;
+      width: 48px;
+      height: 48px;
     }
     .sep {
       display: none;

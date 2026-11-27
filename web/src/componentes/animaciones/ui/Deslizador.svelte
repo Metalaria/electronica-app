@@ -145,7 +145,7 @@
   /* Touch screens: a 44 px tall hit area and a larger thumb. */
   @media (pointer: coarse) {
     input {
-      height: 44px;
+      height: 48px;
     }
     input::-webkit-slider-thumb {
       width: 28px;

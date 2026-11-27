@@ -105,7 +105,7 @@
   .aviso a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-weight: 600;
   }

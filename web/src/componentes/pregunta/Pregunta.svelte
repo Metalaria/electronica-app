@@ -646,7 +646,7 @@
   }
   .otra-vez {
     align-self: flex-start;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 4px;
     border: 0;
     background: transparent;

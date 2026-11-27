@@ -268,7 +268,7 @@
   .buscar input {
     flex: 1;
     min-width: 0;
-    height: 44px;
+    height: 48px;
     border: 0;
     background: transparent;
     color: var(--tinta);
@@ -517,7 +517,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--acento);
     text-decoration: none;
     font-size: 15px;

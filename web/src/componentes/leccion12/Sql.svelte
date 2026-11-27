@@ -102,8 +102,8 @@
     line-height: 3.2;
   }
   .hueco {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     box-sizing: border-box;
     padding: 2px 6px;
     border: 2px solid var(--v11-azul);
@@ -115,7 +115,7 @@
   .esquema summary {
     display: flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     cursor: pointer;
     font-weight: 600;
   }

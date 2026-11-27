@@ -413,7 +413,7 @@
   }
   .seg {
     flex: 1;
-    min-height: 44px;
+    min-height: 48px;
     position: relative;
   }
   .seg::after {
@@ -465,7 +465,7 @@
   .enlaces a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-weight: 600;
   }
@@ -564,7 +564,7 @@
     width: 100%;
   }
   .enlace {
-    min-height: 44px;
+    min-height: 48px;
     border: 0;
     background: none;
     color: var(--v11-azul);

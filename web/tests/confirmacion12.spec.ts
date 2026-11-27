@@ -104,8 +104,8 @@ test('en una pantalla táctil los botones del diálogo miden al menos 44 px', as
   const dialogo = page.getByRole('alertdialog');
   for (const nombre of ['Cancelar', 'Borrar']) {
     const caja = await dialogo.getByRole('button', { name: nombre }).boundingBox();
-    expect(caja!.height, nombre).toBeGreaterThanOrEqual(44);
-    expect(caja!.width, nombre).toBeGreaterThanOrEqual(44);
+    expect(caja!.height, nombre).toBeGreaterThanOrEqual(48);
+    expect(caja!.width, nombre).toBeGreaterThanOrEqual(48);
   }
   await ctx.close();
 });

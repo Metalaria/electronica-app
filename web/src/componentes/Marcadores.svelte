@@ -233,7 +233,7 @@
     flex: 1;
     gap: 10px;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     align-items: center;
     padding: 4px 10px;
     border-radius: 8px;
@@ -299,7 +299,7 @@
   /* touch screens: «Editar en la sección» and «Borrar» of a note (32 px; 0.11 final QA, once there are notes) */
   @media (pointer: coarse) {
     .nota .boton {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   @media (max-width: 520px) {

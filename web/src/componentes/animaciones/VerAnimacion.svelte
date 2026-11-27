@@ -162,12 +162,12 @@
       top: 50%;
       left: 50%;
       /* 44 × 44 at least: «-2px» left the icon-only chip of a phone 38 px wide (0.11 QA) */
-      width: max(100% + 4px, 44px);
-      height: max(100%, 44px);
+      width: max(100% + 4px, 48px);
+      height: max(100%, 48px);
       transform: translate(-50%, -50%);
     }
     .menu a {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

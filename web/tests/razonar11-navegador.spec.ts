@@ -139,7 +139,7 @@ test('teléfono de 360 px en oscuro: 44 px, sin desbordar y axe con «Por qué n
       [...el.querySelectorAll<HTMLElement>('.preg label.opcion, .preg label.chip, .preg button, button')]
         .filter((x) => x.offsetParent)
         .map((x) => ({ n: (x.textContent || x.tagName).trim().slice(0, 30), r: x.getBoundingClientRect() }))
-        .filter((x) => x.r.height < 44 || x.r.width < 44)
+        .filter((x) => x.r.height < 48 || x.r.width < 48)
         .map((x) => `${x.n} ${Math.round(x.r.width)}×${Math.round(x.r.height)}`),
     );
     expect(pequenos, label).toEqual([]);

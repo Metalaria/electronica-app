@@ -416,12 +416,11 @@ test('con el ratón: arrastrar las asas de la gráfica, las fichas a su hueco y 
   expect(vp).toBeGreaterThanOrEqual(50);
   await expect(page.locator('[data-mando11="V_p"] [role="slider"]')).toHaveAttribute('aria-valuenow', String(vp));
 
-  // (half done: the leave guard asks first)
+  // (2.2: an explored card has nothing to check: leaving asks nothing — the guard asks only with an unchecked answer)
   // (1.2: the drawing card is the 6th, so the matching is the 9th)
   await page.goto('#/leccion/cap00/sec-0.3/9');
-  await expect(page.getByRole('alertdialog')).toContainText('¿Salir de la lección?');
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Salir' }).click();
   await tarjeta(page, 'simbolos');
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   for (let k = 0; k < 4; k++) {
     const f = (await page.locator(`[data-ficha="${k}"]`).boundingBox())!;
     const h = (await page.locator(`[data-hueco="${k}"]`).boundingBox())!;
@@ -523,7 +522,7 @@ test('360 px: sin desplazamiento horizontal y objetivos de 44 px en cada tarjeta
         xs
           .filter((x) => (x as HTMLElement).offsetParent !== null || x instanceof SVGElement)
           .map((x) => ({ r: x.getBoundingClientRect(), d: (x as HTMLElement).outerHTML.slice(0, 80) }))
-          .filter(({ r }) => r.width > 0 && (r.width < 43.5 || r.height < 43.5))
+          .filter(({ r }) => r.width > 0 && (r.width < 47.5 || r.height < 47.5))
           .map(({ r, d }) => `${Math.round(r.width)}×${Math.round(r.height)} ${d}`),
       );
       expect(pequenos, `${l}/${k}`).toEqual([]);
@@ -608,7 +607,7 @@ test('la lección 1.0 en una pantalla suya: su dirección sin «clasica» vuelve
   await expect(page.locator('[data-leccion11]')).toHaveCount(0);
 });
 
-test('salir a medias pide confirmación (diálogo propio); sin empezar o terminada, no', async ({ page }) => {
+test('salir con una respuesta sin comprobar pide confirmación (diálogo propio); sin empezar, explorada o terminada, no', async ({ page }) => {
   await limpio(page);
   await page.goto('#/cap01/sec-1.4');
   await page.goto('#/leccion/cap01/sec-1.4');
@@ -616,12 +615,21 @@ test('salir a medias pide confirmación (diálogo propio); sin empezar o termina
   // untouched: closes at once
   await page.locator('[data-cerrar]').click();
   await expect(page.locator('[data-leccion11]')).toHaveCount(0);
+  // 2.2 (Atras.dc.html): explored, nothing to check — closes at once too (the lesson goes on where it was left)
   await page.goto('#/leccion/cap01/sec-1.4');
   await tarjeta(page, 'explore-serie');
   await slider(page, '[data-mando11="R_1"] [role="slider"]', ['ArrowRight']);
   await page.locator('[data-cerrar]').click();
+  await expect(page.locator('[data-leccion11]')).toHaveCount(0);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  // an option chosen and not checked: it asks
+  await page.goto('#/leccion/cap01/sec-1.4/6');
+  await tarjeta(page, 'por-que-baja');
+  await page.locator('[data-opcion="0"]').click();
+  await page.locator('[data-cerrar]').click();
   const dialogo = page.getByRole('alertdialog');
   await expect(dialogo).toContainText('¿Salir de la lección?');
+  await expect(dialogo).toContainText('respuesta sin comprobar');
   await dialogo.getByRole('button', { name: 'Seguir en la lección' }).click();
   await expect(page.locator('[data-leccion11]')).toBeVisible();
   // the browser's Back asks too

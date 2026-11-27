@@ -59,7 +59,8 @@ for (const [id, nl] of Object.entries(indice.netlists)) {
   }
   const a = {};
   for (const aspecto of [1.1, 1.5, 2]) {
-    const e = generarEsquema(texto, { subckt: null, aspecto });
+    // (2.2: each netlist as a fresh page lays it out — the app asks for it with deNuevo —, not after the previous one)
+    const e = generarEsquema(texto, { subckt: null, aspecto, deNuevo: true });
     a[String(aspecto)] = e ? [e.vista[2], e.vista[3]] : null;
   }
   const v = Object.values(a);

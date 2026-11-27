@@ -604,6 +604,10 @@
   const posAjuste = $derived.by(() => {
     const a = ajuste;
     if (!a || (gesto && gesto.movido) || !caja) return null;
+    // (cierre22: also when the bench changes size or place without the view moving — a phone turned to 915 px gets the
+    // 2.2 rail, which shifts the bench, and the arrows stayed where they had been drawn, far from the probe)
+    void ancho;
+    void alto;
     const q = puntoColocado(a);
     const r = caja.getBoundingClientRect();
     return q ? { x: r.left + tx + q[0] * s, y: r.top + ty + q[1] * s } : null;
@@ -670,10 +674,14 @@
    * aiming loupe every time instead, and lifting moved the probe or the wire's end there).
    */
   let sobreAlgo = false;
+  /** When the finger went down (ms, performance clock): a long press on something is never a tap (2.2, below). */
+  let abajoEn = 0;
+  const LARGO_MEDIR = 600;
 
   function abajo(ev: PointerEvent) {
     pararMira();
     sobreAlgo = !!objetivo(ev);
+    abajoEn = performance.now();
     abajoGesto(ev);
     if (ev.pointerType === 'touch' && punteros.size === 1 && !sobreAlgo && tocaColocar(gesto)) empezarMira(ev);
   }
@@ -883,6 +891,13 @@
       const antes = JSON.stringify([pb.doc.cables.length, pendiente, medida?.puntas]);
       tocar({ ...ev, clientX: x, clientY: y, shiftKey: false, ctrlKey: false, metaKey: false } as PointerEvent, g);
       if (JSON.stringify([pb.doc.cables.length, pendiente, medida?.puntas]) !== antes) vibrarAterrizaje();
+      return;
+    }
+    // 2.2: with «Medir», a finger held still on a wire, a part or a handle and then lifted is a long press, not a tap:
+    // the probe in hand stays where it was (the 1.3.1 crash: trying to long-press a wire away moved the probe to the
+    // hole under the wire; it only went unseen while that spot happened to be off the holes).
+    if (!g.movido && sobreAlgo && g.t !== 'sonda' && pb.herramienta === 'medir' && ev.pointerType !== 'mouse' && performance.now() - abajoEn >= LARGO_MEDIR) {
+      info = 'Pulsación larga: la punta se queda donde estaba.';
       return;
     }
     if (!g.movido) {
@@ -2101,8 +2116,8 @@
   .zoom button {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     background: transparent;
     color: var(--tinta);

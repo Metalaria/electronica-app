@@ -4,6 +4,7 @@
   // 2.1 (mock-up Consola.png): the machine's name and board as the page title, with a button that opens the eleven
   // machines in a menu (instead of 2.0's two-row box); no paragraph under the title (it moved to «Fuentes»); the
   // views as the system's underline tabs. What each view shows is unchanged.
+  import { abrirEncima } from '../../lib/encima';
   import { untrack } from 'svelte';
   import { numeroImpreso } from '../../lib/datos';
   import { ruta } from '../../lib/ruta.svelte';
@@ -107,6 +108,8 @@
   });
   $effect(() => {
     if (!menu) return;
+    // 2.2: on top of the page, the system's back closes it first (lib/encima.ts)
+    const quitar = abrirEncima('menu-consolas', () => (menu = false));
     const fuera = (ev: PointerEvent) => {
       if (raizMenu && !raizMenu.contains(ev.target as Node)) menu = false;
     };
@@ -119,6 +122,7 @@
     document.addEventListener('pointerdown', fuera, true);
     document.addEventListener('keydown', tecla);
     return () => {
+      untrack(quitar);
       document.removeEventListener('pointerdown', fuera, true);
       document.removeEventListener('keydown', tecla);
     };
@@ -153,7 +157,8 @@
     {/if}
   </header>
 
-  <Pestanas21 etiqueta="Vista" items={vistas} actual={pestana} />
+  <!-- (2.2: the views' row, lit by the «Consolas» tutorial, lib/recorridos-pasos.ts) -->
+  <div class="vistas" data-recorrido="consola-vistas"><Pestanas21 etiqueta="Vista" items={vistas} actual={pestana} /></div>
   {#if !tieneEsquema(actual.maquina)}
     <!-- (2.0) a machine with no schematic says so where the others show «Esquema» and «Busque la avería» -->
     <p class="sin-esquema" data-testid="sin-esquema">
@@ -229,6 +234,9 @@
   .cabeza {
     position: relative;
   }
+  .vistas {
+    min-width: 0;
+  }
   .titulo {
     margin: 0;
     font: inherit;
@@ -263,8 +271,8 @@
   .elegir .flecha {
     display: inline-grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
     background: var(--v11-panel);
     color: var(--v11-tinta-suave);
@@ -318,7 +326,7 @@
   .menu a {
     display: grid;
     gap: 2px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 12px;
     border-radius: 10px;
     color: var(--v11-tinta);

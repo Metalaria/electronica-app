@@ -193,8 +193,8 @@
     white-space: nowrap;
   }
   .cerrar {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     border: 0;
     border-radius: 10px;
     background: var(--superficie-2);
@@ -298,7 +298,7 @@
     .pads button,
     .red,
     .ir button {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

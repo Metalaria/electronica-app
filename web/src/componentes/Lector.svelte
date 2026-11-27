@@ -833,7 +833,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 18px 0 14px;
     border: 0;
     border-radius: 999px;

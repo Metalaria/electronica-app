@@ -53,14 +53,14 @@ function crearTrabajador(): Worker | null {
 let sinTrabajador = false;
 let semilla: Promise<void> | null = null;
 
-async function enHilo(texto: string, subckt: string | null, aspecto: number): Promise<ResultadoEsquema | null> {
+async function enHilo(texto: string, subckt: string | null, aspecto: number, deNuevo: boolean): Promise<ResultadoEsquema | null> {
   const [{ generarEsquema, sembrarDibujos }, { construirResultado }] = await Promise.all([import('./generar.ts'), import('./construir.ts')]);
   semilla ??= fetch(urlPrecalculado)
     .then((r) => r.json() as Promise<Record<string, [number, number, number][][]>>)
     .then(sembrarDibujos)
     .catch(() => {});
   await semilla;
-  const a = generarEsquema(texto, { subckt, aspecto });
+  const a = generarEsquema(texto, { subckt, aspecto, deNuevo });
   return a ? construirResultado(a) : null;
 }
 
@@ -70,10 +70,12 @@ const MAX_CACHE = 16;
 const cache = new Map<string, Promise<ResultadoEsquema | null>>();
 
 /** The automatic schematic of a netlist (or of the body of one of its subcircuits). */
-export function esquemaAutomatico(texto: string, opciones: { subckt?: string | null } = {}): Promise<ResultadoEsquema | null> {
+export function esquemaAutomatico(texto: string, opciones: { subckt?: string | null; deNuevo?: boolean } = {}): Promise<ResultadoEsquema | null> {
   const subckt = opciones.subckt ?? null;
   const aspecto = aspectoPantalla();
-  const clave = `${subckt ?? ''}\u0000${aspecto}\u0000${texto}`;
+  // (2.2: «deNuevo», as a fresh page: generar.ts OpcionesEsquema)
+  const deNuevo = !!opciones.deNuevo;
+  const clave = `${subckt ?? ''}\u0000${aspecto}\u0000${deNuevo ? 1 : 0}\u0000${texto}`;
   const hit = cache.get(clave);
   if (hit) {
     cache.delete(clave);
@@ -85,10 +87,10 @@ export function esquemaAutomatico(texto: string, opciones: { subckt?: string | n
     ? new Promise((ok, mal) => {
         const id = siguiente++;
         pendientes.set(id, { ok, mal });
-        const pet: PeticionEsquema = { id, texto, subckt, aspecto };
+        const pet: PeticionEsquema = { id, texto, subckt, aspecto, deNuevo };
         w.postMessage(pet);
       })
-    : enHilo(texto, subckt, aspecto);
+    : enHilo(texto, subckt, aspecto, deNuevo);
   p.catch(() => cache.delete(clave));
   cache.set(clave, p);
   while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value!);
@@ -127,8 +129,8 @@ export async function svgConFuentes(r: ResultadoEsquema): Promise<string> {
 // ------------------------------------------------------------------ contracts
 
 /** For the live layer (figuras-vivas): the drawing, its topology and the netlist mapping, or null. */
-export async function generarDibujo(netlist: string): Promise<DibujoConNetlist | null> {
-  const r = await esquemaAutomatico(netlist);
+export async function generarDibujo(netlist: string, opciones: { deNuevo?: boolean } = {}): Promise<DibujoConNetlist | null> {
+  const r = await esquemaAutomatico(netlist, opciones);
   if (!r) return null;
   return {
     origen: 'auto',
@@ -141,5 +143,5 @@ export async function generarDibujo(netlist: string): Promise<DibujoConNetlist |
 
 /** For the instrument bench: the topology alone, or null. */
 export async function esquemaDeNetlist(netlist: string): Promise<Esquema | null> {
-  return (await esquemaAutomatico(netlist))?.esquema ?? null;
+  return (await esquemaAutomatico(netlist, { deNuevo: true }))?.esquema ?? null;
 }

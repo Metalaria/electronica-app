@@ -212,7 +212,7 @@ test('paso a paso en el teléfono: 44 px, sin desbordar, y axe (contraste inclui
       [...el.querySelectorAll<HTMLElement>('button, label.opcion, input[type=text]')]
         .filter((x) => x.offsetParent)
         .map((x) => ({ n: (x.textContent || x.tagName).trim().slice(0, 30), r: x.getBoundingClientRect() }))
-        .filter((x) => x.r.height < 44 || x.r.width < 44)
+        .filter((x) => x.r.height < 48 || x.r.width < 48)
         .map((x) => `${x.n} ${Math.round(x.r.width)}×${Math.round(x.r.height)}`),
     );
     expect(pequenos, tema).toEqual([]);

@@ -319,8 +319,8 @@
   .b {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 12px;
     background: none;

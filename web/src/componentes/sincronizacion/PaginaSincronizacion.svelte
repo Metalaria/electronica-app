@@ -375,7 +375,7 @@
   .pasos .enlace-github {
     display: flex;
     margin: 8px 0;
-    min-height: 44px;
+    min-height: 48px;
   }
   .pasos .a-mano {
     display: block;
@@ -620,7 +620,7 @@
   /* 44 px for a finger (0.12 QA: «Buscar actualizaciones» and «Ver la publicación» were 36 px, the summary 26 px) */
   @media (pointer: coarse) {
     .boton {
-      min-height: 44px;
+      min-height: 48px;
     }
     summary {
       padding-block: 9px;

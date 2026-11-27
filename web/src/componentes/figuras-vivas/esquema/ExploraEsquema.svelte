@@ -310,7 +310,7 @@
     gap: 6px;
   }
   .ex-chip {
-    min-width: 44px;
+    min-width: 48px;
     min-height: 36px;
     padding: 4px 12px;
     border: 1px solid var(--acento-borde);
@@ -327,7 +327,7 @@
   }
   @media (pointer: coarse) {
     .ex-chip {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .ex-lectura {
@@ -378,7 +378,7 @@
     align-items: center;
     justify-self: start;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 4px;
     border: 0;
     background: none;

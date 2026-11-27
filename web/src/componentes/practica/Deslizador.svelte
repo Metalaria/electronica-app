@@ -214,7 +214,7 @@
   }
   input[type='range'] {
     width: 100%;
-    height: 44px;
+    height: 48px;
     accent-color: var(--bloque, var(--acento));
   }
   .extremos {

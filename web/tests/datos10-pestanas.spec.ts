@@ -81,7 +81,7 @@ test.describe('una sola pestaña activa', () => {
     const boton = dialogo.getByRole('button', { name: 'Usar aquí' });
     await expect(boton).toBeFocused();
     const caja = await boton.boundingBox();
-    expect(caja!.height).toBeGreaterThanOrEqual(44);
+    expect(caja!.height).toBeGreaterThanOrEqual(48);
     expect(await b.evaluate(() => document.getElementById('app')!.inert)).toBe(true);
     // the waiting tab has not even read the reader's data: nothing written
     expect((await escrituras(b)).length).toBe(0);

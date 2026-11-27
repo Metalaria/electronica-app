@@ -85,7 +85,7 @@
   }
   @media (pointer: coarse) {
     .ver-kit:not(.compacto) {
-      min-height: 44px;
+      min-height: 48px;
     }
     /* the compact chip of a heading's row (its own rule set 28 px over the one above: 0.11 final QA): a 44 px touch
        area around it, and the row keeps its height */
@@ -97,8 +97,8 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: max(100%, 44px);
-      height: max(100%, 44px);
+      width: max(100%, 48px);
+      height: max(100%, 48px);
       transform: translate(-50%, -50%);
     }
   }

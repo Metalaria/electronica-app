@@ -97,7 +97,7 @@
     margin: 0 0 10px;
   }
   .aviso3d .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   /* the size of the view that replaces it (Visor3D: its canvas, 4 / 4.2 on a phone, and its tool bar's row), so
      nothing moves when it comes (0.11 QA) */

@@ -291,11 +291,11 @@
   }
   @media (pointer: coarse) {
     .enlaces a {
-      min-height: 44px;
+      min-height: 48px;
     }
     .cerrar {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       top: -6px;
       right: -6px;
     }

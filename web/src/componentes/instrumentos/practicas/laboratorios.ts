@@ -141,7 +141,7 @@ function rSonda(k: 0 | 1, nodo: string, o: { masa?: string; textoMasa?: string; 
   const masa = o.masa ?? '0';
   const lista = [
     r((b) => b.fnirsi.encendido, 'El FNIRSI está apagado: enciéndalo con el botón rojo.'),
-    r((b) => b.fnirsi.modo === 'osc', 'Pase el FNIRSI a <strong>osciloscopio</strong> (MENU → Osciloscopio).'),
+    r((b) => b.fnirsi.modo === 'osc', 'Pase el FNIRSI a <strong>osciloscopio</strong> (mantenga pulsada MENU → Osciloscopio).'),
     r((b) => b.sondas[k === 0 ? 'ch1' : 'ch2'] === nodo, `Ponga la sonda <strong>${nombreCh(k)}</strong> en <strong>${nodo === '0' ? 'la masa del circuito' : nodo}</strong>.`),
     r((b) => b.sondas.masa === masa, masa === '0' ? 'La pinza de masa no está en la masa del circuito: llévela a <strong>0</strong> (con la pinza en otro nodo, la sonda mide respecto a ese nodo).' : `Lleve la pinza de masa ${o.textoMasa ? `al <strong>${o.textoMasa}</strong>` : `a <strong>${masa}</strong>`}: la masa del FNIRSI es flotante y aquí es la referencia.`),
     r((b) => ch(b, k).on, `Active el canal ${nombreCh(k)} (botón ${nombreCh(k)}, Canal ON).`),
@@ -156,14 +156,14 @@ const rX10 = (k: 0 | 1, x10: boolean) =>
   r((b) => ch(b, k).sondaX10 === x10 && ch(b, k).menuX10 === x10, `Ponga la sonda de ${nombreCh(k)} en <strong>${x10 ? '×10' : '×1'}</strong>: el conmutador de la sonda y el factor del menú del canal.`);
 
 function rBase(min: number, max: number, texto: string): Requisito {
-  return r((b) => b.fnirsi.sDiv >= min * 0.999 && b.fnirsi.sDiv <= max * 1.001, `Ajuste la base de tiempos a <strong>${texto}</strong> (◄ ► en el osciloscopio).`);
+  return r((b) => b.fnirsi.sDiv >= min * 0.999 && b.fnirsi.sDiv <= max * 1.001, `Ajuste la base de tiempos a <strong>${texto}</strong> (◄ ► en el osciloscopio; si no la cambian, pulse SELECT hasta que vuelvan a las escalas).`);
 }
 
 const rPrm = r((b) => b.fnirsi.prm, 'Active las medidas automáticas con <strong>PRM</strong>.');
 const rCorre = r((b) => b.fnirsi.run || b.fnirsi.esperando, 'El osciloscopio está parado (STOP): pulse <strong>RUN/STOP</strong> para que adquiera.');
 const rNoRecorta = (k: 0 | 1) =>
   r((b) => !b.fnirsi.captura?.recortado[k], `La señal de ${nombreCh(k)} se sale de la pantalla y las medidas fallan sin avisar: suba los V/div (▲ ▼) o pulse AUTO.`);
-const rSinMates = r((b) => b.fnirsi.mates === 'no' && !b.fnirsi.xy, 'Quite Math y X-Y (SELECT): este paso se mira en la pantalla normal, tensión frente a tiempo.');
+const rSinMates = r((b) => b.fnirsi.mates === 'no' && !b.fnirsi.xy, 'Quite Math y X-Y (MENU): este paso se mira en la pantalla normal, tensión frente a tiempo.');
 
 function rDisparo(fuente: 0 | 1, subida = true): Requisito[] {
   return [
@@ -177,7 +177,7 @@ const FORMAS: Record<string, string> = { seno: 'senoide', cuadrada: 'cuadrada', 
 function rGen(forma: string, frecuencia: number, o: { amplitud?: number; simetria?: number; textoF?: string } = {}): Requisito[] {
   const amp = o.amplitud ?? 3;
   const lista = [
-    r((b) => b.fnirsi.dds.forma === forma, `Elija la forma <strong>${FORMAS[forma] ?? forma}</strong> en el generador (MENU → Generador).`),
+    r((b) => b.fnirsi.dds.forma === forma, `Elija la forma <strong>${FORMAS[forma] ?? forma}</strong> en el generador (mantenga pulsada MENU → Generador).`),
     r((b) => casi(b.fnirsi.dds.frecuencia, frecuencia), `Ponga el generador a <strong>${o.textoF ?? `${frecuencia} Hz`}</strong>.`),
     r((b) => Math.abs(b.fnirsi.dds.amplitud - amp) < 0.05, `Ponga la amplitud del generador a <strong>${String(amp).replace('.', ',')} V</strong>.`),
     r((b) => b.fnirsi.dds.salida, 'Active la <strong>salida</strong> del generador (Salida ON).'),
@@ -205,7 +205,7 @@ function rCursorEn(cual: 'a' | 'b', donde: (b: Banco) => number | null, texto: s
 }
 
 const rCursores = (tipo: 'tiempo' | 'tension') =>
-  r((b) => b.fnirsi.cursores === tipo, `Active los <strong>cursores de ${tipo === 'tiempo' ? 'tiempo' : 'tensión'}</strong> (SELECT → Cursores).`);
+  r((b) => b.fnirsi.cursores === tipo, `Active los <strong>cursores de ${tipo === 'tiempo' ? 'tiempo' : 'tensión'}</strong> (MENU → Cursores).`);
 
 const rSenal = (k: 0 | 1) => r((b) => !!b.fnirsi.captura?.y[k], `La pantalla aún no tiene la señal de ${nombreCh(k)}: espere a que adquiera (o pulse AUTO).`);
 
@@ -430,7 +430,7 @@ export const LABORATORIOS: Laboratorio[] = [
       {
         id: 'generador',
         titulo: 'Prepare el generador',
-        texto: 'MENU → Generador: <strong>cuadrada de 100 Hz y 3 V</strong>, salida activada. Cada semiciclo dura 5 ms: cinco constantes de tiempo.',
+        texto: 'Mantenga pulsada MENU → Generador: <strong>cuadrada de 100 Hz y 3 V</strong>, salida activada. Cada semiciclo dura 5 ms: cinco constantes de tiempo.',
         requisitos: rGen('cuadrada', 100),
         guia: { fn: { boton: 'menu' }, instrumento: 'fnirsi' },
         hazlo: { fn: { dds: { forma: 'cuadrada', frecuencia: 100, amplitud: 3, ciclo: 50, salida: true } } },
@@ -497,10 +497,10 @@ export const LABORATORIOS: Laboratorio[] = [
       {
         id: 'corriente',
         titulo: 'La corriente, con el FNIRSI',
-        texto: 'MENU → <strong>Multímetro</strong>, función <strong>DCA</strong>, punta roja al borne <strong>mA</strong>, y el FNIRSI en serie con la <strong>resistencia</strong> R1.',
+        texto: 'Mantenga pulsada MENU → <strong>Multímetro</strong>, función <strong>DCA</strong>, punta roja al borne <strong>mA</strong>, y el FNIRSI en serie con la <strong>resistencia</strong> R1.',
         requisitos: [
-          r((b) => b.fnirsi.modo === 'dmm', 'Pase el FNIRSI a <strong>multímetro</strong> (MENU → Multímetro).'),
-          r((b) => FN_DMM_LISTA[b.fnirsi.fnDmm]?.id === 'idc', 'Elija la función <strong>DCA</strong> (corriente continua) con ▲ ▼.'),
+          r((b) => b.fnirsi.modo === 'dmm', 'Pase el FNIRSI a <strong>multímetro</strong> (mantenga pulsada MENU → Multímetro).'),
+          r((b) => FN_DMM_LISTA[b.fnirsi.fnDmm]?.id === 'idc' && b.fnirsi.entradaDmm === 6, 'Elija con ◄ ► la entrada <strong>mA</strong>, en corriente continua (DCA).'),
           r((b) => b.fnirsi.borne === 'mA', 'La punta roja del FNIRSI va al borne <strong>mA</strong>.'),
           r((b) => b.fn.serie?.elemento !== 'D1', 'En serie con el diodo, el Brymen mediría también la caída de la derivación (10 Ω × 4 mA = 43 mV): póngalo en serie con <strong>la resistencia</strong>.'),
           r((b) => b.fn.serie?.elemento === 'R1', 'Ponga el multímetro del FNIRSI <strong>en serie con R1</strong> (conexiones del FNIRSI, «En serie con»).'),
@@ -551,14 +551,14 @@ export const LABORATORIOS: Laboratorio[] = [
       {
         id: 'xy',
         titulo: 'La curva en X-Y',
-        texto: 'Senoide de 50 Hz y 3 V. Pinza de masa en el <strong>cátodo (k)</strong>; CH1 en el ánodo vía el generador (<strong>g</strong>) y CH2 en la masa del circuito, <strong>invertido</strong>; SELECT → Pantalla <strong>X-Y</strong>.',
+        texto: 'Senoide de 50 Hz y 3 V. Pinza de masa en el <strong>cátodo (k)</strong>; CH1 en el ánodo vía el generador (<strong>g</strong>) y CH2 en la masa del circuito, <strong>invertido</strong>; MENU → Pantalla <strong>X-Y</strong>.',
         preparar: { variante: 'p3_xy', alimentado: true, bm: BM_APAGADO },
         requisitos: [
           ...rGen('seno', 50),
           ...rSonda(0, 'g', { masa: 'k', textoMasa: 'cátodo (k)' }),
           ...rSonda(1, '0', { masa: 'k', textoMasa: 'cátodo (k)' }),
           r((b) => ch(b, 1).invertir, 'Invierta <strong>CH2</strong> (menú de CH2 → Invertir): mide −I·R.'),
-          r((b) => b.fnirsi.xy, 'Pase la pantalla a <strong>X-Y</strong> (SELECT → Pantalla).'),
+          r((b) => b.fnirsi.xy, 'Pase la pantalla a <strong>X-Y</strong> (MENU → Pantalla).'),
         ],
         guia: { fn: { boton: 'select' }, instrumento: 'fnirsi' },
         hazlo: {
@@ -690,7 +690,7 @@ export const LABORATORIOS: Laboratorio[] = [
           rSinMates,
           rPrm,
           rSenal(1),
-          r((b) => ch(b, 1).vDiv <= 0.2 * 1.001, 'La salida es de unos 0,15 Vpp: con tantos V/div ocupa una fracción de división y los 8 bits la miden mal. Baje CH2 a <strong>0,2 V/div</strong> (▲ ▼ con CH2 activo) y súbala con MOVE si se sale.'),
+          r((b) => ch(b, 1).vDiv <= 0.2 * 1.001, 'La salida es de unos 0,15 Vpp: con tantos V/div ocupa una fracción de división y los 8 bits la miden mal. Baje CH2 a <strong>0,2 V/div</strong> (▲ ▼ con CH2 activo) y, si se sale, mantenga pulsada MOVE y súbala con ▲.'),
           rNoRecorta(1),
         ],
         lectura: { que: 'la ganancia', unidad: 'dB', medir: gananciaDb, tol: { abs: 0.5 }, porqueTol: 'una Vpp pequeña de 8 bits lleva un 3–4 %', libro: 'g20k' },
@@ -707,13 +707,13 @@ export const LABORATORIOS: Laboratorio[] = [
       {
         id: 'fft',
         titulo: 'La FFT de la cuadrada',
-        texto: 'Cuadrada de <strong>1 kHz y 3 V</strong> al CH1 (<strong>g</strong>), <strong>1 ms/div</strong> (doce ciclos: resolución de 83 Hz) y SELECT → Math → <strong>FFT CH1</strong>.',
+        texto: 'Cuadrada de <strong>1 kHz y 3 V</strong> al CH1 (<strong>g</strong>), <strong>1 ms/div</strong> (doce ciclos: resolución de 83 Hz) y MENU → Math → <strong>FFT CH1</strong>.',
         requisitos: [
           ...rGen('cuadrada', 1000, { textoF: '1 kHz' }),
           ...rSonda(0, 'g'),
           rBase(1e-3, 1e-3, '1 ms/div'),
           r((b) => b.fnirsi.mates !== 'fft2', 'La FFT es la de CH2, que no tiene señal: elija <strong>FFT CH1</strong>.'),
-          r((b) => b.fnirsi.mates === 'fft1', 'Active la FFT de CH1 (SELECT → Math → FFT CH1).'),
+          r((b) => b.fnirsi.mates === 'fft1', 'Active la FFT de CH1 (MENU → Math → FFT CH1).'),
         ],
         guia: { fn: { boton: 'select' }, instrumento: 'fnirsi' },
         hazlo: { sondas: { ch1: 'g', masa: '0' }, fn: { modo: 'osc', ch: [{ on: true, vDiv: 1, pos: -1.5, ac: false, x10: true }, null], sDiv: 1e-3, mates: 'fft1', dds: { forma: 'cuadrada', frecuencia: 1000, amplitud: 3, ciclo: 50, salida: true } } },
@@ -997,10 +997,10 @@ export const LABORATORIOS: Laboratorio[] = [
       {
         id: 'bandas',
         titulo: 'Tres rayas en el espectro',
-        texto: 'SELECT → Math → <strong>FFT CH1</strong>: la portadora en 100 kHz y las bandas laterales en 99 y 101 kHz. ¿Cuántos dB por debajo de la portadora están?',
+        texto: 'MENU → Math → <strong>FFT CH1</strong>: la portadora en 100 kHz y las bandas laterales en 99 y 101 kHz. ¿Cuántos dB por debajo de la portadora están?',
         requisitos: [
           ...rSonda(0, 'am'),
-          r((b) => b.fnirsi.mates === 'fft1', 'Active la FFT de CH1 (SELECT → Math → FFT CH1).'),
+          r((b) => b.fnirsi.mates === 'fft1', 'Active la FFT de CH1 (MENU → Math → FFT CH1).'),
           r((b) => b.fnirsi.sDiv >= 200e-6 * 0.999, 'Con tan poco tiempo en pantalla la FFT no separa rayas a 1 kHz: vuelva a <strong>200 µs/div</strong> o más.'),
         ],
         lectura: lFft('las bandas laterales', comp(11, 'bandas'), 'bandas', 2.5),

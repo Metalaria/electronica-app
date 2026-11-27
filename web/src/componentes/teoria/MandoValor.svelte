@@ -118,7 +118,7 @@
   }
   .pista {
     position: relative;
-    height: 44px;
+    height: 48px;
     margin: 0 11px;
     cursor: pointer;
     touch-action: pan-y;

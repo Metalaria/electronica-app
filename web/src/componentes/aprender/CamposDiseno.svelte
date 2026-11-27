@@ -114,7 +114,7 @@
   }
   .entrada input {
     width: 8.5em;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--acento-borde);
     border-radius: 10px;

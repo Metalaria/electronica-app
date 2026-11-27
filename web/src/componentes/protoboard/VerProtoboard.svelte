@@ -120,12 +120,12 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: max(100%, 44px);
-      height: max(100%, 44px);
+      width: max(100%, 48px);
+      height: max(100%, 48px);
       transform: translate(-50%, -50%);
     }
     .menu button {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   /* the count in the ink colour: the accent on its pale tint fell short of 4.5:1 in some parts' colours (0.11 QA) */

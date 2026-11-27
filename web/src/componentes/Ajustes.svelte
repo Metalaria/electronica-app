@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { abrirEncima } from '../lib/encima';
   import { app } from '../lib/estado.svelte';
   import { usuario, ponerTema, ponerTam, TAM_MAX, TAM_MIN, TAM_DEFECTO, type Tema } from '../lib/usuario.svelte';
   import { MAS } from '../lib/navegacion.svelte';
@@ -31,6 +32,9 @@
   }
 
   onMount(() => {
+    // 2.2: open on top of the page — the system's back closes it first (lib/encima.ts); closed any other way (Esc, a tap
+    // outside, «Aa» again), its history entry goes too
+    const quitar = abrirEncima('ajustes', cerrar);
     if (ancla) arriba = Math.round(ancla.getBoundingClientRect().bottom + 6);
     const fuera = (ev: PointerEvent) => {
       const t = ev.target as Node;
@@ -52,6 +56,7 @@
     window.addEventListener('popstate', ruta);
     panel?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     return () => {
+      quitar();
       document.removeEventListener('pointerdown', fuera, true);
       document.removeEventListener('keydown', tecla);
       window.removeEventListener('hashchange', ruta);
@@ -303,7 +308,7 @@
   .mas a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-weight: 500;
     text-decoration: none;
@@ -330,7 +335,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     font-size: 15px;
     color: var(--tinta);
     cursor: pointer;
@@ -347,7 +352,7 @@
     gap: 6px;
   }
   .objetivo-tipo button {
-    min-height: 44px;
+    min-height: 48px;
     padding: 4px 6px;
     border: 1.5px solid var(--linea);
     border-radius: 10px;
@@ -370,8 +375,8 @@
     margin-top: 6px;
   }
   .cantidad .boton-icono {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
   .signo {
     font-size: 22px;

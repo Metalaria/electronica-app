@@ -64,7 +64,10 @@ export function aplicar(b: Banco, p: Practica, a: Ajustes): void {
   if (a.fnDmm) {
     if (a.fnDmm.funcion) {
       const i = FN_DMM_LISTA.findIndex((x) => x.id === a.fnDmm!.funcion);
-      if (i >= 0) f.fnDmm = i;
+      if (i >= 0) {
+        f.fnDmm = i;
+        f.olvidarEntradaDmm();
+      }
     }
     if (a.fnDmm.borne) f.borne = a.fnDmm.borne;
     if (a.fnDmm.serie) b.enSerie('fn', a.fnDmm.serie.elemento, a.fnDmm.serie.terminal);

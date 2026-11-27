@@ -12,11 +12,14 @@
   import { GUIA, hrefGuia, seccionGuia, type BloqueGuia } from '../../lib/guia/contenido';
   import { buscarEnGuia } from '../../lib/guia/buscar';
   import Icono from '../Icono.svelte';
+  // 2.2: «Recorrido y tutoriales» (#/guia/recorridos): the app's tour and the tools' tutorials, started from here
+  import ListaTutoriales from '../recorridos/ListaTutoriales.svelte';
 
   const partes = $derived(ruta.ancla.split('/'));
   const idSeccion = $derived(partes[0] ?? '');
   const idApartado = $derived(partes[1] ?? '');
   const seccion = $derived(idSeccion ? seccionGuia(idSeccion) : undefined);
+  const enRecorridos = $derived(idSeccion === 'recorridos');
   const posicion = $derived(seccion ? GUIA.indexOf(seccion) : -1);
   const anterior = $derived(posicion > 0 ? GUIA[posicion - 1] : undefined);
   const siguiente = $derived(posicion >= 0 && posicion < GUIA.length - 1 ? GUIA[posicion + 1] : undefined);
@@ -75,7 +78,14 @@
   {/if}
 {/snippet}
 
-<div class="guia" data-guia={seccion?.id ?? (idSeccion ? 'desconocida' : 'indice')}>
+<div class="guia" data-guia={seccion?.id ?? (enRecorridos ? 'recorridos' : idSeccion ? 'desconocida' : 'indice')}>
+  {#if enRecorridos}
+    <header class="cab">
+      <a class="volver toque-44" href="#/guia"><ArrowLeft size={18} aria-hidden="true" /> Guía de uso</a>
+      <h1 id="h-recorridos" tabindex="-1" bind:this={titulo}>Recorrido y tutoriales</h1>
+    </header>
+    <ListaTutoriales />
+  {:else}
   <header class="cab">
     {#if seccion}
       <a class="volver toque-44" href="#/guia"><ArrowLeft size={18} aria-hidden="true" /> Guía de uso</a>
@@ -181,6 +191,17 @@
     {#if idSeccion}
       <p class="vacio" role="status">No hay ninguna sección «{idSeccion}» en la guía. Estas son todas:</p>
     {/if}
+    <ul class="filas21 recorridos">
+      <li>
+        <a class="fila21" href="#/guia/recorridos" data-enlace-recorridos>
+          <span class="fila21-texto">
+            <span class="fila21-titulo">Recorrido y tutoriales</span>
+            <span class="fila21-sub">Un paseo de seis pasos por la aplicación y un tutorial de cada herramienta, con los aparatos simulados.</span>
+          </span>
+          <span class="fila21-fin"><Icono nombre="chevron" tam={20} /></span>
+        </a>
+      </li>
+    </ul>
     <nav aria-label="Secciones de la guía">
       <ol class="tarjetas">
         {#each GUIA as s, i (s.id)}
@@ -196,6 +217,7 @@
         {/each}
       </ol>
     </nav>
+  {/if}
   {/if}
 </div>
 
@@ -245,7 +267,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--acento);
     font-size: 15px;
     font-weight: 600;
@@ -289,7 +311,7 @@
   .campo input {
     flex: 1;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     border: 0;
     background: none;
     color: var(--tinta);
@@ -322,7 +344,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 10px 14px;
     border: 1px solid var(--linea);
     border-radius: var(--radio-tarjeta-p);
@@ -356,6 +378,10 @@
   }
 
   /* the index */
+  .recorridos {
+    max-width: 640px;
+    margin: 0 0 24px;
+  }
   .tarjetas {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -435,7 +461,7 @@
   .lateral a {
     display: flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     padding: 4px 12px;
     border-radius: 10px;
     color: var(--tinta-suave);
@@ -469,7 +495,7 @@
   .chip {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 999px;
@@ -568,7 +594,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     max-width: 48%;
     padding: 8px 14px;
     border: 1px solid var(--linea);

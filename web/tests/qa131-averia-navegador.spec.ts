@@ -16,7 +16,7 @@ test('«Busque la avería» en el teléfono: los botones para el dedo miden al m
     [...raiz.querySelectorAll('button')]
       .filter((b) => !b.closest('.brymen') && b.offsetParent !== null)
       .map((b) => ({ t: (b.textContent ?? '').trim().slice(0, 30), r: b.getBoundingClientRect() }))
-      .filter(({ r }) => r.width < 44 - 0.5 || r.height < 44 - 0.5)
+      .filter(({ r }) => r.width < 48 - 0.5 || r.height < 48 - 0.5)
       .map(({ t, r }) => `${t} ${Math.round(r.width)}×${Math.round(r.height)}`),
   );
   expect(pequenos).toEqual([]);

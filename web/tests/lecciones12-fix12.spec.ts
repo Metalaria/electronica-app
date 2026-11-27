@@ -465,9 +465,31 @@ test('avería en la práctica: el dibujo tampoco delata el fallo hasta encontrar
   });
   const page = await ctx.newPage();
   await preparar(page);
-  await page.goto(`#/practicar/${CAT12}`);
-  await page.locator('[data-empezar-sesion]').click();
-  for (let n = 0; n < 25 && (await page.locator('[data-item]').getAttribute('data-item-tipo')) !== 'leccion11'; n++) await page.locator('[data-saltar]').click();
+  // 2.2 (the flaky test): the session was random (seeded by the clock) and need not hold the card at all, and the loop
+  // read the item's type right after «Saltar», before the next item was on screen, so it could skip past the card.
+  // Now each try has a fixed seed (SesionPractica's window.__epaSemillaPractica) and every skip waits for the next item.
+  await page.goto('#/');
+  let hallada = false;
+  for (let semilla = 1; semilla <= 20 && !hallada; semilla++) {
+    await page.evaluate((x) => {
+      (window as unknown as { __epaSemillaPractica?: number }).__epaSemillaPractica = x;
+      location.hash = '#/';
+    }, semilla);
+    await page.evaluate((h) => (location.hash = h), `#/practicar/${CAT12}`);
+    await page.locator('[data-empezar-sesion]').click();
+    for (let n = 0; n < 12; n++) {
+      const item = page.locator('[data-item]');
+      if (!(await item.count())) break;
+      if ((await item.getAttribute('data-item-tipo')) === 'leccion11') {
+        hallada = true;
+        break;
+      }
+      const id = await item.getAttribute('data-item');
+      await page.locator('[data-saltar]').click();
+      await expect.poll(async () => ((await item.count()) ? await item.getAttribute('data-item') : null)).not.toBe(id);
+    }
+  }
+  expect(hallada, 'ninguna de las sesiones de prueba trae la tarjeta de la lección').toBe(true);
   const tarjeta = page.locator('[data-leccion11-suelta]');
   await expect(tarjeta).toHaveAttribute('data-tarjeta', 'averia-divisor');
   const svg = tarjeta.locator('svg.e11');

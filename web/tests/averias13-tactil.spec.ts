@@ -118,8 +118,14 @@ test('«Medir» en la tableta y en el escritorio: el reparto de siempre', async 
   const tab = await telefono(browser, { width: 800, height: 1280 }, false);
   await abrirProtoboard(tab.page);
   await abrirMedir(tab.page);
-  // (the dock keeps its 52 % on a tablet: 1.2.1 gave the bench 393 px)
-  expect(Math.abs((await alto(tab.page, '.mesa')) - 393)).toBeLessThanOrEqual(12);
+  // (the dock keeps its 52 % on a tablet: 1.2.1 gave the bench 393 px. 2.2: at 800 px the app's bottom bar became the
+  // side rail, so the workbench is taller and the bench gets 420 px; the share is what stays, and never less bench)
+  const reparto = await tab.page.evaluate(() => {
+    const h = (s: string) => document.querySelector(s)!.getBoundingClientRect().height;
+    return h('section.dock') / h('.protoboard');
+  });
+  expect(Math.abs(reparto - 0.52)).toBeLessThanOrEqual(0.02);
+  expect(await alto(tab.page, '.mesa')).toBeGreaterThanOrEqual(393 - 12);
   await tab.ctx.close();
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const page = await ctx.newPage();

@@ -401,7 +401,7 @@
   }
   @media (pointer: coarse) {
     .familias button {
-      min-height: 44px;
+      min-height: 48px;
     }
     .limpiar {
       width: 40px;

@@ -114,6 +114,15 @@ export interface OpcionesEsquema extends OpcionesModelo {
   esfuerzo?: number;
   /** Wanted width/height of the sheet when the netlist holds several separate circuits. */
   aspecto?: number;
+  /**
+   * 2.2: lay it out as a fresh page would — not from the circuits drawn before in this session (`recientes`, the
+   * per-structure cache), only from the precomputed layouts or from scratch — so a book netlist gets the same drawing
+   * whatever was opened before, the one whose size scripts/circuitos-proporciones.mjs reserved (the simulator's start
+   * jump: cap00/a3_negativa opened after a2_rlc got a2's wide placement, 314 × 140, and on its own a tall one,
+   * 173 × 212 — the reserved place was the first, the page jumped 349 px on the tablet). An edit of the circuit on
+   * screen (later calls without it) still starts from its previous drawing.
+   */
+  deNuevo?: boolean;
 }
 
 export const ESCALA = 24; // SVG units per drawing unit
@@ -355,19 +364,19 @@ function lugaresPrevios(comp: Componente): (readonly [number, number, number] | 
   return mejor && n >= 3 && n >= 0.6 * comp.unidades.length ? mejor : null;
 }
 
-function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
-  const r = colocarComponente0(comp, esfuerzo);
+function colocarComponente(comp: Componente, esfuerzo: number, deNuevo = false): Colocado {
+  const r = colocarComponente0(comp, esfuerzo, deNuevo);
   anotarReciente(comp);
   return r;
 }
 
-function colocarComponente0(comp: Componente, esfuerzo: number): Colocado {
+function colocarComponente0(comp: Componente, esfuerzo: number, deNuevo: boolean): Colocado {
   const U = comp.unidades.length;
   // Recognised topologies (H bridge, converters, Wien oscillator, regulators, logic, rectifiers): their rules
   // shape the annealing and the choice of the best run, and they are part of the cache key.
   const reglas = reglasCacheadas(comp, firmaEstructura(comp));
   const firma = firmaEstructura(comp) + (reglas ? `#${reglas.familias.join('+')}` : '');
-  const previos = [...(cacheEstructura.get(firma) ?? []), ...(precalculados.get(firma) ?? [])];
+  const previos = [...(deNuevo ? [] : (cacheEstructura.get(firma) ?? [])), ...(precalculados.get(firma) ?? [])];
   const evaluar = (): Colocado => {
     const { rutas, pines, duenos } = rutear(comp, reglas);
     const lim = limitesComponente(comp);
@@ -434,7 +443,7 @@ function colocarComponente0(comp: Componente, esfuerzo: number): Colocado {
   // new ones next to their neighbours, one short low-temperature run. When that drawing is flawless (no
   // crossing, no fallback label, rules met) it is kept: recognisable and several times faster than a layout
   // from scratch; otherwise it competes with the usual runs.
-  const antes = vivo && U > 3 ? lugaresPrevios(comp) : null;
+  const antes = vivo && U > 3 && !deNuevo ? lugaresPrevios(comp) : null;
   if (antes) {
     probar(intentos + 1, 0.6, antes);
     if (perfecto) recolocaciones++;
@@ -577,7 +586,7 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
   const colocados: Colocado[] = [];
   for (const g of grupos) {
     const comp = crearUnidades(g.disps, circuito.rieles, g.puertos);
-    colocados.push(colocarComponente(comp, opciones.esfuerzo ?? 1));
+    colocados.push(colocarComponente(comp, opciones.esfuerzo ?? 1, !!opciones.deNuevo));
   }
   // Several separate rectifiers (variants of one example): a grid of equal cells in netlist order.
   const propios = colocados.filter((c) => !(c.comp.unidades.length === 1 && c.comp.unidades[0]!.disp && circuito.fuentesRiel.includes(c.comp.unidades[0]!.disp)));

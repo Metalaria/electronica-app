@@ -37,10 +37,14 @@ async function contexto(browser: Browser, ancho: number, alto: number, opciones:
   const ctx = await browser.newContext({ viewport: { width: ancho, height: alto }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: opciones.tema ?? 'light' });
   await ctx.addInitScript(
     ([r, l]) => {
+      // (2.2: the first-use tour is the tutorial «Protoboard» of the engine, componentes/recorridos/: offered under
+      // automation only when the page asks, and after the app's tour, here marked as already offered)
+      if (!r) (window as unknown as { __epaRecorridos?: boolean }).__epaRecorridos = true;
       if (sessionStorage.getItem('proto11-hecho')) return;
       sessionStorage.setItem('proto11-hecho', '1');
       localStorage.removeItem('epa:protoboard-borrador');
       if (r) localStorage.setItem('epa:protoboard-recorrido', '1');
+      else localStorage.setItem('epa:recorridos', JSON.stringify({ v: { app: 1 } }));
       if (l) localStorage.setItem('epa:protoboard-leccion', '1');
     },
     [opciones.recorrido ?? true, opciones.leccion ?? true] as [boolean, boolean],
@@ -252,8 +256,10 @@ for (const [ancho, alto] of [
     ]);
     expect(rojo.color).toBe('#d63a2f');
     // Dragged: the wire follows the finger, both strips lit; to the − rail it is black. (1.3: the end rides 56 px
-    // above the finger, so the finger stops 56 px under the hole)
-    const a = await pantalla(page, 16, 4);
+    // above the finger, so the finger stops 56 px under the hole. 2.2: from row d, not b — beside the 600–839 rail the
+    // board is narrower, and three holes up came to 64 px, so the finger moved 8 px, under the 9 px of a touch drag,
+    // and it was a tap)
+    const a = await pantalla(page, 16, 6);
     const b = await pantalla(page, 16, 1);
     await arrastrar(page, cdp, a, [b[0], b[1] + 56], false);
     await expect(page.locator('.tira-cable')).toHaveCount(2);
@@ -268,7 +274,7 @@ for (const [ancho, alto] of [
     e = await estado(page);
     expect(e.cables.find((w) => w.id === rojo.id)!.a).toEqual([9, 5]);
     // A long press on the black one removes it, with «Deshacer».
-    const m = await pantalla(page, 16, 2.5);
+    const m = await pantalla(page, 16, 3.5);
     await toques(cdp, 'touchStart', [m]);
     await page.waitForTimeout(900);
     await toques(cdp, 'touchEnd', []);
@@ -478,20 +484,20 @@ test('la protoboard por dentro: se salta, queda vista y no vuelve; sigue en la l
 
 // ------------------------------------------------------------------ the first-use tour and the layout
 
-test('el recorrido de la primera vez se ve una vez', async ({ browser }) => {
+// (2.2: the 2.1 tour is now the engine's «Protoboard» tutorial, offered once; its steps: tests/recorridos22-navegador.spec.ts)
+test('el tutorial de la primera vez se ofrece una vez', async ({ browser }) => {
   const { ctx, page } = await contexto(browser, 800, 1280, { recorrido: false });
   await abrir(page);
-  await expect(page.locator('.recorrido')).toContainText('Las piezas');
-  await page.locator('.recorrido button:has-text("Siguiente")').tap();
-  await expect(page.locator('.recorrido')).toContainText('«La protoboard por dentro»');
-  await page.locator('.recorrido button:has-text("Siguiente")').tap();
-  await expect(page.locator('.recorrido')).toContainText('A probarlo');
-  await page.locator('.recorrido button:has-text("Entendido")').tap();
-  await expect(page.locator('.recorrido')).toHaveCount(0);
+  const oferta = page.locator('[data-recorrido-oferta="protoboard"]');
+  await expect(oferta).toContainText('¿Le enseño a montar en la protoboard?', { timeout: 20_000 });
+  await oferta.locator('button:has-text("Empezar el tutorial")').tap();
+  await expect(page.locator('[data-recorrido-tarjeta]')).toContainText('Ponga una pieza');
+  await page.locator('[data-recorrido-tarjeta] button:has-text("Salir")').tap();
+  await expect(page.locator('[data-recorrido-tarjeta]')).toHaveCount(0);
   await page.reload();
   await page.waitForFunction(() => !!(window as unknown as Ventana).__epaProtoboard?.pb.doc.piezas.length);
-  await page.waitForTimeout(500);
-  await expect(page.locator('.recorrido')).toHaveCount(0);
+  await page.waitForTimeout(3000);
+  await expect(page.locator('[data-recorrido-oferta]')).toHaveCount(0);
   await ctx.close();
 });
 
@@ -532,8 +538,8 @@ for (const [ancho, alto] of [
     const { ctx, page, cdp } = await contexto(browser, ancho, alto, { recorrido: false });
     await abrir(page);
     const t0 = Date.now();
-    // Only what is on screen: the tour's «Saltar», the tray, the floating bar, the holes, «Simular».
-    await page.locator('.recorrido button:has-text("Saltar")').tap();
+    // Only what is on screen: the tutorial's offer («Ahora no»), the tray, the floating bar, the holes, «Simular».
+    await page.locator('[data-recorrido-oferta] button:has-text("Ahora no")').tap({ timeout: 20_000 });
     await cartaA(page, cdp, 'R', 12, 5);
     await page.locator('.barra-pieza button.valor').tap();
     await page.locator('.pop .chip:has-text("330 Ω")').tap();
@@ -607,8 +613,9 @@ for (const [disp, ancho, alto] of [
         await page.screenshot({ path: `${CAPTURAS}/${n}-${disp}-${tema}.png` });
       };
       await abrir(page);
+      await page.locator('[data-recorrido-oferta]').waitFor({ timeout: 20_000 });
       await foto('01-recorrido');
-      await page.locator('.recorrido button:has-text("Saltar")').tap();
+      await page.locator('[data-recorrido-oferta] button:has-text("Ahora no")').tap();
       await foto('02-vacia');
       await cartaA(page, cdp, 'R', 12, 5, false);
       await foto('03-fantasma');

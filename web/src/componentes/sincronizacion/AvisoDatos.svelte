@@ -178,7 +178,7 @@
     gap: 8px;
   }
   .botones .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .anteriores {
     margin-top: 14px;

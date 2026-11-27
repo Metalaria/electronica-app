@@ -186,7 +186,7 @@
   }
   .caja-entrada input {
     width: min(16em, 100%);
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1.5px solid var(--linea);
     border-radius: 10px;

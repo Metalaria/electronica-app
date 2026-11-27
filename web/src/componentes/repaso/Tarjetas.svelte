@@ -451,7 +451,7 @@
   .ver a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border-radius: 8px;
     font-weight: 600;

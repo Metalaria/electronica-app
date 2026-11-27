@@ -128,7 +128,7 @@ test.describe('en el móvil', () => {
     await ir(page, NL, 'elija-estabilidad');
     for (const z of ['r1', 'r2', 'rc', 're']) {
       const b = (await page.locator(`[data-diana="${z}"]`).boundingBox())!;
-      expect(Math.min(b.width, b.height), z).toBeGreaterThanOrEqual(44);
+      expect(Math.min(b.width, b.height), z).toBeGreaterThanOrEqual(48);
     }
     await page.locator('[data-diana="re"]').tap();
     await page.locator('[data-continuar]').tap();
@@ -206,7 +206,7 @@ test('cada esquema: sus puntos y ramas en el dibujo, y el multímetro marca lo q
               const dibujo = (await tarjeta.locator('[data-circuito] .panel').first().boundingBox())!;
               const b = await tarjeta.locator(`[data-diana="${q.id}"]`).boundingBox();
               if (!b) return 'sin diana';
-              if (Math.min(b.width, b.height) < 44) return 'pequeña';
+              if (Math.min(b.width, b.height) < 48) return 'pequeña';
               const cx = b.x + b.width / 2;
               const cy = b.y + b.height / 2;
               return cx >= dibujo.x - 2 && cx <= dibujo.x + dibujo.width + 2 && cy >= dibujo.y - 2 && cy <= dibujo.y + dibujo.height + 2 ? 'bien' : 'fuera del dibujo';

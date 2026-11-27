@@ -267,8 +267,8 @@
   }
   @media (pointer: coarse) {
     .m {
-      min-width: 44px;
-      height: 44px;
+      min-width: 48px;
+      height: 48px;
       border-radius: 12px;
     }
     .mandos {

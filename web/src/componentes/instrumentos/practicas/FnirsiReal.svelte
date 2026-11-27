@@ -55,40 +55,59 @@
   const trazas = $derived(c.estado === 'conectado' ? c.trazas.filter((t): t is Traza => t !== null) : []);
   /** Alternating voltage: the frequency the instrument shows above the reading. */
   const frecuencia = $derived(lectura && lectura.frecuencia !== null ? ` · ${lectura.frecuencia} Hz` : '');
-  /** What the stream does not carry and the connection asks for (lib/fnirsi-real/estado.ts). */
+  /** What the measuring streams do not carry: only the status stream (patch 3) brings it (lib/fnirsi-real/estado.ts). */
   const generador = $derived.by(() => {
     const g = c.estado === 'conectado' && (c.modo === 'generador' || c.modo === 'osciloscopio') ? c.generador : null;
     if (!g) return '';
     // (2.1.1: an entry the link added to the menu by its place only: nombreForma, lib/fnirsi-real/estado.ts)
-    const forma = nombreForma(g.forma, c.info?.entradaUsb ?? 0);
+    const forma = nombreForma(g.forma, c.info?.entradaUsb ?? 0, c.info?.entradasMenu);
     const amplitud = g.amplitud.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     return `Generador del FNIRSI: ${forma} · ${formatoSI(g.frecuencia, 'Hz', 4)} · ciclo ${g.ciclo} % · ${amplitud} V`;
   });
   const enOsciloscopio = $derived(c.estado === 'conectado' && c.modo === 'osciloscopio');
+  /** 2.2: a link without the status stream: what only that stream brings, said in one line (patch 3). */
+  const faltaParche = $derived.by(() => {
+    if (c.estado !== 'conectado' || !c.info || c.info.estadoEnFlujo) return '';
+    if (c.modo === 'osciloscopio') return 'El RUN/STOP del osciloscopio y los ajustes del generador del FNIRSI solo llegan con el flujo de estado del enlace (parche 3).';
+    if (c.modo === 'generador') return 'Los ajustes del generador del FNIRSI solo llegan con el flujo de estado del enlace (parche 3).';
+    return '';
+  });
   // 2.1 (owner, 25-11): the instrument's own measurements of the channels that are ON (the last trace's header says
   // which), each with its channel. 2.0 always showed CH1's, which with CH1 off was the noise of a channel that is off
   // («0 Hz · … · Vpp 4,000 mV»). CH2's come only with the status stream (patch 3).
-  const canalesOn = $derived.by((): [boolean, boolean] | null => {
+  // 2.2 (owner, 26-11): the channels on are byte [20] of the oscilloscope's state, and with it [47], the AUTO key's
+  // step: from the newest record's header (the same bytes at its acquisition: the status stream carries only RUN/STOP
+  // with the measurements; the app no longer reads the state from the instrument's memory). An off channel shows none
+  // of its twelve words; while AUTO adjusts, none are shown.
+  const estadoMedidas = $derived.by((): { canales: [boolean, boolean]; ajustando: boolean } | null => {
     const t = c.trazas.find((x) => x !== null);
-    return t ? [t.ajustes.canales[0].activo, t.ajustes.canales[1].activo] : null;
+    return t ? { canales: [t.ajustes.canales[0].activo, t.ajustes.canales[1].activo], ajustando: t.ajustes.ajustando } : null;
   });
   const medidas = $derived.by((): { canal: string; texto: string }[] => {
-    if (!enOsciloscopio || !canalesOn) return [];
+    if (!enOsciloscopio || !estadoMedidas) return [];
+    if (estadoMedidas.ajustando) return [{ canal: 'auto', texto: 'El FNIRSI está ajustándose (AUTO)' }];
+    const canalesOn = estadoMedidas.canales;
     if (!canalesOn[0] && !canalesOn[1]) return [{ canal: 'ninguno', texto: 'Los dos canales del FNIRSI están apagados: no da medidas.' }];
     const res: { canal: string; texto: string }[] = [];
     ([0, 1] as const).forEach((k) => {
       if (!canalesOn[k]) return;
       const m = k === 0 ? c.medidas : c.medidasCh2;
       if (!m) {
-        if (k === 1 && c.info && !c.info.estadoEnFlujo) res.push({ canal: 'CH2', texto: 'Las medidas propias de CH2 solo llegan con el flujo de estado del enlace (parche 3).' });
+        // (2.2: CH1's too, now that they are not read from the instrument's memory)
+        if (c.info && !c.info.estadoEnFlujo) res.push({ canal: `CH${k + 1}`, texto: `Las medidas propias de CH${k + 1} solo llegan con el flujo de estado del enlace (parche 3).` });
         return;
       }
-      const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const pc = (x: number) => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       // (with the probe setting at X10 the instrument gives these ten times larger, as its screen does: checked on
-      // the unit on 2026-11-25 for both channels, X1 and X10)
+      // the unit on 2026-11-25 for both channels, X1 and X10; 2.2: the same for Amp, Vrms and Avg, never multiplied here)
       res.push({
         canal: `CH${k + 1}`,
-        texto: `Medidas del propio FNIRSI en CH${k + 1}: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)}`,
+        // (2.2, owner 27-11: the labels and the order of the instrument's own screen, word i after label i)
+        texto:
+          `Medidas del propio FNIRSI en CH${k + 1}: Frec: ${formatoSI(m.frecuencia, 'Hz', 4)} · Per: ${formatoSI(m.periodo, 's', 4)} · ` +
+          `Ciclo+: ${pc(m.ciclo)} % · Ciclo-: ${pc(m.cicloNegativo)} % · Anc+: ${formatoSI(m.anchoPositivo, 's', 4)} · Anc-: ${formatoSI(m.anchoNegativo, 's', 4)} · ` +
+          `Vmáx: ${formatoSI(m.vmax, 'V', 4)} · Vmín: ${formatoSI(m.vmin, 'V', 4)} · Vp-p: ${formatoSI(m.vpp, 'V', 4)} · ` +
+          `Amp: ${formatoSI(m.amplitud, 'V', 4)} · Vef: ${formatoSI(m.valorEficaz, 'V', 4)} · Med: ${formatoSI(m.media, 'V', 4)}`,
       });
     });
     return res;
@@ -278,8 +297,8 @@
         <li class="fr-tenue">
           Base de tiempos: {formatoSI(trazas[0]!.ajustes.tiempoDiv, 's', 3)}/div{#if !trazas[0]!.ajustes.tiempoComprobado} (escala de tiempo sin comprobar en esta base){/if}
         </li>
-        <!-- 2.1.1 (owner, 26-11): the trigger edge, byte [24] of the record's settings -->
-        <li class="fr-tenue" data-disparo-fnirsi>Flanco de disparo: {trazas[0]!.ajustes.flancoDisparo ?? 'desconocido'}</li>
+        <!-- 2.1.1 (owner, 26-11): the trigger edge, byte [24] of the record's settings; 2.2: its channel [22] and mode [23] -->
+        <li class="fr-tenue" data-disparo-fnirsi>Flanco de disparo: {trazas[0]!.ajustes.flancoDisparo ?? 'desconocido'} · canal: {trazas[0]!.ajustes.canalDisparo ?? 'desconocido'} · modo: {trazas[0]!.ajustes.modoDisparo ?? 'desconocido'}</li>
       </ul>
       <p class="fr-promedio">
         <label>Promediar <select bind:value={nPromedio} data-promedio-fnirsi>{#each OPCIONES_PROMEDIO as n (n)}<option value={n}>{n === 1 ? 'no' : `${n} adquisiciones`}</option>{/each}</select></label>
@@ -301,6 +320,7 @@
     <!-- 2.1 (owner, 25-11): the arrows have a mode that SELECT changes; the link does not carry it, so a fixed hint -->
     {#if enOsciloscopio}<p class="fr-tenue" data-ayuda-select-real>Si las flechas no cambian la base de tiempos, pulse SELECT.</p>{/if}
     {#if generador}<p class="fr-tenue" data-generador-fnirsi>{generador}</p>{/if}
+    {#if faltaParche}<p class="fr-tenue" data-falta-parche-fnirsi>{faltaParche}</p>{/if}
     {#if (c.estado === 'conectado' || c.estado === 'reconectando') && c.info?.ondasAMedida}<OndaGenerador />{/if}
     {#if c.estado !== 'desconectado'}
       <details class="fr-diag">
@@ -308,7 +328,7 @@
         <p>
           Vía: {c.tipo === 'nativo' ? 'la aplicación (USB)' : c.tipo === 'webhid' ? 'WebHID del navegador' : 'prueba'} · modo del FNIRSI: {c.modo} · informes recibidos: {c.informes}{#if c.perdidos} · perdidos: {c.perdidos}{/if}
         </p>
-        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : c.sinLectura ? 'el generador, las medidas del osciloscopio y RUN/STOP no llegan por esta vía: hace falta el parche 3 del enlace' : 'el generador, las medidas del osciloscopio y RUN/STOP se le preguntan'}{c.info.ondasAMedida ? ' · admite ondas a medida en el generador' : ''}</p>{/if}
+        {#if c.info}<p data-enlace-fnirsi>Enlace: protocolo {c.info.protocolo}, parche {c.info.parche} · {c.info.estadoEnFlujo ? 'envía por sí mismo el generador, las medidas del osciloscopio y RUN/STOP' : 'el generador, las medidas del osciloscopio y RUN/STOP solo llegan con el flujo de estado: hace falta el parche 3 del enlace'}{c.info.ondasAMedida ? ' · admite ondas a medida en el generador' : ''}</p>{/if}
         {#if c.multimetro}<p class="fr-crudo">Última trama del multímetro: <code data-crudo-fnirsi>{c.multimetro.crudo}</code></p>{/if}
       </details>
     {/if}
@@ -345,7 +365,7 @@
   /* (a finger's size on a touch screen) */
   @media (pointer: coarse) {
     .boton.pequeno {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .fr-estado {
@@ -434,7 +454,7 @@
   }
   @media (pointer: coarse) {
     .fr-promedio select {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .fr-canales {

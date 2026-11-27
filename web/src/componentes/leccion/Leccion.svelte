@@ -643,7 +643,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     margin-top: 6px;
     padding: 0 6px;
     border: 0;

@@ -293,8 +293,8 @@
   .paso {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--linea);
     border-radius: 10px;
     background: var(--fondo);
@@ -306,7 +306,7 @@
     gap: 6px;
   }
   .chip {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 11px;
     border: 1px solid var(--linea);
     border-radius: 18px;
@@ -333,7 +333,7 @@
     font-size: 12.5px;
   }
   .escribir input {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -368,8 +368,8 @@
     width: auto;
   }
   .color {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 2px solid var(--linea);
     border-radius: 50%;
   }

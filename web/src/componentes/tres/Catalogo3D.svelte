@@ -195,7 +195,7 @@
     align-items: center;
     gap: 8px;
     max-width: 460px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 1px solid var(--linea);
     border-radius: 12px;
@@ -242,7 +242,7 @@
   }
   @media (pointer: coarse) {
     .familias button {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .familias button {

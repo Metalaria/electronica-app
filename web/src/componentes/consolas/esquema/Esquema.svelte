@@ -675,11 +675,11 @@
     select,
     input[type='search'],
     .resultados button {
-      min-height: 44px;
+      min-height: 48px;
     }
     .zoom :global(.boton-icono) {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
     }
   }
 </style>

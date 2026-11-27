@@ -116,7 +116,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--tinta);
     font-size: 15px;
     cursor: pointer;
@@ -131,7 +131,7 @@
     justify-content: space-between;
   }
   .hora input {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--linea);
     border-radius: 10px;

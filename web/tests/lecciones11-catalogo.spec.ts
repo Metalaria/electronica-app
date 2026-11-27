@@ -283,7 +283,7 @@ test('360 px: sin desplazamiento horizontal, objetivos de 44 px; reducir movimie
       xs
         .filter((x) => (x as HTMLElement).offsetParent !== null || x instanceof SVGElement)
         .map((x) => ({ r: x.getBoundingClientRect(), d: (x as HTMLElement).outerHTML.slice(0, 80) }))
-        .filter(({ r: b }) => b.width > 0 && (b.width < 43.5 || b.height < 43.5))
+        .filter(({ r: b }) => b.width > 0 && (b.width < 47.5 || b.height < 47.5))
         .map(({ r: b, d }) => `${Math.round(b.width)}×${Math.round(b.height)} ${d}`),
     );
     expect(pequenos, t.id).toEqual([]);

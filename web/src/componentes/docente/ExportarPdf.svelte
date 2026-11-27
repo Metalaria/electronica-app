@@ -137,7 +137,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--tinta);
   }
   .casilla input {
@@ -156,10 +156,10 @@
   }
   .campo input,
   .campo select {
-    min-height: 44px;
+    min-height: 48px;
   }
   .t09-boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .estado {
     min-height: 1.4em;

@@ -60,7 +60,7 @@ test('una lección que el libro no tiene, o un enlace no válido: «No se encuen
   }
   // the link to the index
   const ir = page.getByRole('link', { name: 'Ir al índice del libro' });
-  expect((await ir.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await ir.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   await ir.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#\/$/);

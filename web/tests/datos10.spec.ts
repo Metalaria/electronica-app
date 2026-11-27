@@ -293,7 +293,7 @@ test.describe('migración · navegador', () => {
     const texto = readFileSync((await d.path())!, 'utf8');
     expect(JSON.parse(texto).claves['progreso-diario']).toEqual(JSON.parse(VIEJO));
     const boton = await aviso.getByRole('button', { name: 'Guardar los datos originales' }).boundingBox();
-    expect(boton!.height).toBeGreaterThanOrEqual(44);
+    expect(boton!.height).toBeGreaterThanOrEqual(48);
   });
 
   test('una migración que falla con una copia previa de OTROS datos: se guardan los datos que hay ahora (revisión 10b)', async ({ page }) => {

@@ -120,7 +120,7 @@
     display: grid;
     place-items: center;
     width: 32px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-tinta-suave);
     font-size: 20px;
     cursor: grab;
@@ -141,8 +141,8 @@
     gap: 4px;
   }
   button {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 1.5px solid var(--v11-borde);
     border-radius: 10px;
     background: var(--v11-fondo);

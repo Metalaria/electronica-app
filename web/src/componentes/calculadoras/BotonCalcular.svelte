@@ -68,8 +68,8 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: max(100% + 4px, 44px);
-    height: max(100%, 44px);
+    width: max(100% + 4px, 48px);
+    height: max(100%, 48px);
     transform: translate(-50%, -50%);
   }
   .calcular:hover,

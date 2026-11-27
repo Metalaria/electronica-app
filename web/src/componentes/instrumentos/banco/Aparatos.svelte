@@ -39,6 +39,29 @@
     const fs = Math.min(250e6, 1000 / W);
     return `FNIRSI 2C53T · ${formatoSI(fs, 'S/s', 3)}, sin alias hasta ${formatoSI(fs / 2, 'Hz', 3)}`;
   });
+  // 2.2: what the keys of the drawn FNIRSI have set, for the tests (tests/recorridos22-fnirsi-menu.spec.ts)
+  const teclasFnirsi = $derived.by(() => {
+    const f = b.fnirsi;
+    const c = f.canales;
+    return JSON.stringify({
+      menu: f.menu,
+      item: f.item,
+      flechas: f.modoFlechas,
+      nivelGen: f.nivelGen,
+      itemGen: f.itemGen,
+      forma: f.dds.forma,
+      frecuencia: f.dds.frecuencia,
+      hold: f.holdDmm,
+      run: f.run,
+      sDiv: f.sDiv,
+      vDiv: [c[0]!.vDiv, c[1]!.vDiv],
+      pos: [c[0]!.pos, c[1]!.pos],
+      hpos: f.hpos,
+      nivel: f.disparo.nivel,
+      fuente: f.disparo.fuente,
+      activo: f.activo,
+    });
+  });
   const infoBm = $derived.by(() => {
     void b.tic;
     const l = b.brymen.pantalla.principal;
@@ -108,9 +131,9 @@
     <button role="tab" aria-selected={pestana === 'fnirsi'} onclick={() => (pestana = 'fnirsi')}>FNIRSI 2C53T</button>
   </div>{/if}
   <div class="par">
-    <figure class="instrumento brymen" class:oculto={pestana !== 'brymen'} data-posicion-brymen={b.brymen.posicion.id} data-sub-brymen={b.brymen.sub}>
+    <figure class="instrumento brymen" class:oculto={pestana !== 'brymen'} data-recorrido="brymen" data-posicion-brymen={b.brymen.posicion.id} data-sub-brymen={b.brymen.sub}>
       <BrymenVista m={b.brymen} guia={guiaBm} />
-      <figcaption>
+      <figcaption data-recorrido="brymen-pie">
         {infoBm || 'Brymen BM869s · 50 000 cuentas · 10 MΩ'}
         {#if inferida}<span class="sigue-real" data-sigue-real={BM_POSICIONES[inferida.pos]?.id}>Selector como el de su Brymen{inferida.dudosa ? `: ${inferida.dudosa}` : '.'}</span>{/if}
         <button type="button" class="ayuda-boton" aria-expanded={ayuda === 'brymen'} aria-label="Ayuda del Brymen" onclick={() => (ayuda = ayuda === 'brymen' ? null : 'brymen')}>?</button>
@@ -124,7 +147,14 @@
       {/if}
       </figcaption>
     </figure>
-    <figure class="instrumento fnirsi" class:oculto={pestana !== 'fnirsi'} data-modo-fnirsi={b.fnirsi.modo} data-funcion-dibujada={FN_DMM_LISTA[b.fnirsi.fnDmm]?.id}>
+    <figure
+      class="instrumento fnirsi"
+      class:oculto={pestana !== 'fnirsi'}
+      data-recorrido="fnirsi"
+      data-modo-fnirsi={b.fnirsi.modo}
+      data-funcion-dibujada={FN_DMM_LISTA[b.fnirsi.fnDmm]?.id}
+      data-teclas-fnirsi={teclasFnirsi}
+    >
       <FnirsiVista f={b.fnirsi} {alAuto} guia={guiaFn} />
       <figcaption>
         {b.fnirsi.modo === 'osc' ? infoOsc : b.fnirsi.modo === 'gen' ? 'FNIRSI 2C53T · generador DDS: 1 Hz … 50 kHz, 0,1 … 3 V (de 0 a la amplitud)' : 'FNIRSI 2C53T · multímetro de 19 999 cuentas'}
@@ -133,13 +163,14 @@
         <button type="button" class="ayuda-boton" aria-expanded={ayuda === 'fnirsi'} aria-label="Ayuda del FNIRSI" onclick={() => (ayuda = ayuda === 'fnirsi' ? null : 'fnirsi')}>?</button>
       {#if ayuda === 'fnirsi'}
         <div class="ayuda">
-          <p><strong>MENU</strong> elige osciloscopio, multímetro o generador; el botón rojo lo enciende.</p>
+          <p><strong>MENU</strong>, mantenida un segundo, elige osciloscopio, multímetro o generador (◄ ► marcan el modo y la tecla azul entra); el botón rojo lo enciende.</p>
           <p><strong>Muestreo:</strong> 1 000 puntos en las 12 divisiones de la pantalla ({formatoSI(12 * b.fnirsi.sDiv, 's', 3)} ahora); una señal más rápida que la mitad de ese muestreo se ve con alias.</p>
-          <p><strong>Osciloscopio:</strong> la pinza de masa a la masa del circuito y la punta de la sonda en el punto. <strong>AUTO</strong> ajusta base de tiempos, V/div y disparo; las flechas los cambian a mano (◄► tiempo, ▲▼ tensión del canal activo), TRIGGER el disparo, PRM muestra frecuencia, periodo, Vpp y media, RUN/STOP congela.</p>
+          <p><strong>Osciloscopio:</strong> la pinza de masa a la masa del circuito y la punta de la sonda en el punto. <strong>AUTO</strong> ajusta base de tiempos, V/div y disparo; las flechas los cambian a mano (◄► tiempo, ▲▼ tensión del canal activo) y SELECT cambia lo que hacen: posición horizontal y de CH1 con el nivel de disparo, o posición horizontal y nivel de disparo. TRIGGER el disparo, PRM muestra frecuencia, periodo, Vpp y media, MENU las funciones (Math, cursores, X-Y) y la tecla azul, RUN/STOP, congela.</p>
           <!-- 2.1 (owner, 25-11): the real 2C53T's arrows have a mode SELECT changes, which the link does not carry -->
           <p data-ayuda-select><strong>En su FNIRSI real:</strong> si las flechas no cambian la base de tiempos, pulse SELECT.</p>
           <p><strong>CH1 / CH2:</strong> encienden el canal y abren su menú: acoplamiento, ×1/×10 (debe coincidir con el conmutador de la sonda), invertir.</p>
-          <p><strong>Generador:</strong> forma, frecuencia y amplitud (de 0 a la amplitud); sus dos puntas alimentan el circuito.</p>
+          <p><strong>Multímetro:</strong> ◄ ► cambian la función, MOVE pasa la tensión de continua a alterna, AUTO vuelve a Automático y la tecla azul retiene el valor (HOLD).</p>
+          <p><strong>Generador:</strong> forma, frecuencia y amplitud (de 0 a la amplitud); sus dos puntas alimentan el circuito. ▲ ▼ eligen la forma; la tecla azul entra en los ajustes y, otra vez, edita la línea marcada; MENU vuelve atrás.</p>
         </div>
       {/if}
       </figcaption>
@@ -161,7 +192,7 @@
   }
   .pestanas button {
     flex: 1;
-    min-height: 44px;
+    min-height: 48px;
     border: 1px solid var(--v11-linea);
     border-radius: 12px;
     background: transparent;

@@ -439,8 +439,8 @@
   }
   @media (pointer: coarse) {
     .mandos-visor button {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
     }
   }
 </style>

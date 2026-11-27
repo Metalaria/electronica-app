@@ -37,7 +37,9 @@ const USO_PREVIO = [
   'protoboard-circuitos',
 ];
 
-export const novedades = $state({ mostrar: false });
+// (2.2: `decidido` once the start-up check is over: the tour's offer, lib/recorridos.svelte.ts, waits for it, so the two
+// never show at once)
+export const novedades = $state({ mostrar: false, decidido: false });
 
 function visto(): boolean {
   try {
@@ -71,7 +73,10 @@ let comprobado = false;
 export async function comprobarNovedades(): Promise<void> {
   if (comprobado) return;
   comprobado = true;
-  if (visto()) return;
+  if (visto()) {
+    novedades.decidido = true;
+    return;
+  }
   let uso = false;
   try {
     const a = await obtenerAlmacen();
@@ -85,6 +90,7 @@ export async function comprobarNovedades(): Promise<void> {
   }
   if (uso) novedades.mostrar = true;
   else marcarVisto();
+  novedades.decidido = true;
 }
 
 /** «Entendido» (or Esc): not shown again on this device. */

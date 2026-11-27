@@ -116,7 +116,7 @@
     background: var(--superficie-2);
   }
   .zoom button {
-    min-width: 44px;
+    min-width: 48px;
     min-height: 36px;
     border: 0;
     border-radius: 8px;
@@ -128,7 +128,7 @@
   }
   @media (pointer: coarse) {
     .zoom button {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .marco {
@@ -156,7 +156,7 @@
   @media (pointer: coarse) {
     .notas summary {
       box-sizing: border-box;
-      min-height: 44px;
+      min-height: 48px;
       padding-block: 12px;
     }
   }

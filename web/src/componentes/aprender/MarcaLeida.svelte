@@ -27,8 +27,8 @@
 
 <style>
   .leida {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
   .leida.si {
     color: var(--c-ejemplo);

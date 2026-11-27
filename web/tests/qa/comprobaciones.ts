@@ -153,7 +153,7 @@ export function comprobarPagina(op: OpcionesComprobar): Crudo[] {
       interactivos.push({ el, rc });
       // inline links inside running text are exempt (WCAG 2.5.8)
       const enLinea = tag === 'a' && s.display === 'inline' && !!el.parentElement && /^(p|li|td|dd|span|em|strong|figcaption|div)$/.test(el.parentElement.tagName.toLowerCase()) && texto(el.parentElement).length > texto(el).length + 10;
-      const dentroDeEtiqueta = !!el.closest('label') && (el.closest('label')!.getBoundingClientRect().height >= 40);
+      const dentroDeEtiqueta = !!el.closest('label') && (el.closest('label')!.getBoundingClientRect().height >= 48);
       // a larger hit area drawn with an absolutely placed ::before/::after (negative insets) counts
       let ancho = rc.width;
       let alto = rc.height;
@@ -165,8 +165,8 @@ export function comprobarPagina(op: OpcionesComprobar): Crudo[] {
         ancho = Math.max(ancho, rc.width + n(p.left) + n(p.right), parseFloat(p.width) || 0);
         alto = Math.max(alto, rc.height + n(p.top) + n(p.bottom), parseFloat(p.height) || 0);
       }
-      if (op.tactil && !enLinea && !dentroDeEtiqueta && Math.min(ancho, alto) < 40 && !(tag === 'input' && (el as HTMLInputElement).type === 'range' && rc.width >= 40))
-        anotar({ sev: 'accesibilidad', tipo: 'objetivo-pequeno', firma: firma(el), msg: `Objetivo táctil de ${Math.round(ancho)}×${Math.round(alto)} px (mínimo 40): «${corto(texto(el) || el.getAttribute('aria-label') || el.getAttribute('title') || tag, 40)}».` });
+      if (op.tactil && !enLinea && !dentroDeEtiqueta && Math.min(ancho, alto) < 47.5 && !(tag === 'input' && (el as HTMLInputElement).type === 'range' && rc.width >= 48))
+        anotar({ sev: 'accesibilidad', tipo: 'objetivo-pequeno', firma: firma(el), msg: `Objetivo táctil de ${Math.round(ancho)}×${Math.round(alto)} px (mínimo 48, Material): «${corto(texto(el) || el.getAttribute('aria-label') || el.getAttribute('title') || tag, 40)}».` });
 
       if (op.accesibilidad) {
         // accessible name

@@ -161,7 +161,7 @@
   }
   .xm-limites input {
     width: 9em;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--v11-linea);
     border-radius: 12px;

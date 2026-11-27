@@ -62,6 +62,8 @@
 
   /** The added entry of the menu that plays what is sent (0: none), so that it is named as such. */
   const usb = $derived(c.info?.entradaUsb ?? 0);
+  /** 2.2: how many entries the link's identification says it added (nombreForma names only those). */
+  const anadidas = $derived(c.info?.entradasMenu);
   const voltios = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const textoEnviada = $derived.by(() => {
     if (!enviada) return '';
@@ -69,11 +71,11 @@
     if (!enviada.sonando)
       return elegidaDespues
         ? `Guardada a las ${enviada.hora} (${enviada.que}) y elegida ahora en el FNIRSI: es ${entrada}, y sonará hasta que lo apague o envíe otra.`
-        : `Guardada a las ${enviada.hora}: ${enviada.que}, en ${entrada}, hasta que lo apague. No está sonando: el FNIRSI sigue con ${nombreForma(enviada.forma, usb)}, que no se ha tocado. Elija esa entrada en el aparato para oírla.`;
-    if (deshecha) return `El FNIRSI ha vuelto a su propia onda (${nombreForma(c.generador!.forma, usb)}): se cambió un ajuste de su generador después de enviar la suya.`;
+        : `Guardada a las ${enviada.hora}: ${enviada.que}, en ${entrada}, hasta que lo apague. No está sonando: el FNIRSI sigue con ${nombreForma(enviada.forma, usb, anadidas)}, que no se ha tocado. Elija esa entrada en el aparato para oírla.`;
+    if (deshecha) return `El FNIRSI ha vuelto a su propia onda (${nombreForma(c.generador!.forma, usb, anadidas)}): se cambió un ajuste de su generador después de enviar la suya.`;
     const comun = `Enviada y comprobada a las ${enviada.hora}: ${enviada.que}, ${PUNTOS_ONDA} muestras con una amplitud de ${voltios(enviada.amplitud)} V.`;
     if (enviada.entrada && enviada.forma === enviada.entrada) return `${comun} Es ${entrada}, la que está elegida: dura hasta que lo apague o envíe otra, aunque cambie la amplitud.`;
-    return `${comun} El aparato sigue mostrando ${nombreForma(enviada.forma, usb)}.${enviada.entrada ? ` Queda además en ${entrada} hasta que lo apague.` : ''}`;
+    return `${comun} El aparato sigue mostrando ${nombreForma(enviada.forma, usb, anadidas)}.${enviada.entrada ? ` Queda además en ${entrada} hasta que lo apague.` : ''}`;
   });
 
   async function elegirFichero(e: Event) {
@@ -213,7 +215,7 @@
     flex-direction: row;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     font-size: 15px;
     color: var(--v11-tinta);
   }
@@ -231,7 +233,7 @@
   .og-fila input[type='text'] {
     min-width: 0;
     max-width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--v11-linea);
     border-radius: 12px;
@@ -246,7 +248,7 @@
   }
   .og-fila input[type='file'] {
     max-width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     font: inherit;
     font-size: 15px;
     color: var(--v11-tinta);

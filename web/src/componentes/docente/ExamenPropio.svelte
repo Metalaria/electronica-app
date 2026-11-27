@@ -177,7 +177,7 @@
     font-weight: 600;
   }
   .campo select {
-    min-height: 44px;
+    min-height: 48px;
   }
   .botones {
     display: flex;
@@ -186,7 +186,7 @@
     margin-top: 12px;
   }
   .t09-boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .resultados {
     display: flex;
@@ -209,7 +209,7 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    min-height: 44px;
+    min-height: 48px;
     justify-content: center;
     color: var(--titulos);
     text-decoration: none;
@@ -220,8 +220,8 @@
   }
   .icono {
     display: grid;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     place-items: center;
     border: 0;
     border-radius: 10px;

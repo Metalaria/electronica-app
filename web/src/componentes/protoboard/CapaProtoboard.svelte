@@ -178,14 +178,14 @@
     line-height: 1.3;
   }
   .cab .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .cerrar {
     display: grid;
     flex: none;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 12px;
     background: var(--hover);

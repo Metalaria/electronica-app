@@ -530,7 +530,7 @@
   .enlace {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--acento);
     font-weight: 600;
   }

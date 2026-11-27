@@ -68,7 +68,8 @@
   // the one a tap on the schematic moves («Toque un nodo para mover»); its editor under it holds the keyboard and
   // screen-reader way to place it (a list of the circuit's nodes) and «Quitar». «Poner otra punta (N libres)» picks one
   // of the free ones, which then waits in the list for a node. Replaces 2.0's eight chips and twelve node buttons.
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
+  import { abrirEncima } from '../../../lib/encima';
   import { NOMBRE_PUNTA } from '../banco.svelte.ts';
   import { COLOR_PUNTA } from '../puntas';
   import { conexionesDe } from '../motor/circuito.ts';
@@ -91,6 +92,22 @@
   let menu = $state(false);
   /** The row whose editor (node list, «Quitar») is open: picking a row opens it, picking it again closes it. */
   let editando = $state<Punta | null>(null);
+
+  // 2.2: the open row editor and the «add a lead» menu are on top: the system's back closes them first (lib/encima.ts)
+  $effect(() => {
+    // (the editor on show: its row is the active one)
+    const e = editando && activa === editando ? editando : null;
+    if (!e) return;
+    const quitar = abrirEncima('editor-punta', () => {
+      if (editando === e) editando = null;
+    });
+    return () => untrack(quitar);
+  });
+  $effect(() => {
+    if (!menu) return;
+    const quitar = abrirEncima('menu-puntas', () => (menu = false));
+    return () => untrack(quitar);
+  });
 
   const pista = $derived(activa ? (nodoDe(activa) !== null ? 'Toque un nodo para mover' : 'Toque un nodo para ponerla') : 'Elija una punta para moverla');
 
@@ -171,7 +188,7 @@
     <p class="vacia">Ninguna punta puesta todavía.</p>
   {/if}
   {#if libres.length}
-    <button type="button" class="boton fantasma otra" aria-expanded={menu} aria-controls="{id}-libres" onclick={() => (menu = !menu)}>Poner otra punta ({libres.length} {libres.length === 1 ? 'libre' : 'libres'})</button>
+    <button type="button" class="boton fantasma otra" data-recorrido="banco-otra" aria-expanded={menu} aria-controls="{id}-libres" onclick={() => (menu = !menu)}>Poner otra punta ({libres.length} {libres.length === 1 ? 'libre' : 'libres'})</button>
     {#if menu}
       <ul class="libres" id="{id}-libres" aria-label="Puntas libres">
         {#each libres as p (p)}
@@ -282,7 +299,7 @@
   .editor select {
     min-width: 0;
     max-width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--v11-linea);
     border-radius: 12px;
@@ -314,7 +331,7 @@
     align-items: center;
     gap: 12px;
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 4px;
     border: 0;
     background: none;

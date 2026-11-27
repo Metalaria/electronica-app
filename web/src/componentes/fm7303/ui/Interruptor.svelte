@@ -32,7 +32,7 @@
     align-items: center;
     justify-content: center;
     min-width: 64px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 3px 10px;
     border: 1px solid var(--linea);
     border-radius: 10px;

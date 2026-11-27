@@ -38,7 +38,8 @@ async function abrir(browser: Browser, ancho: number, alto: number, movil: boole
 function medir(page: Page): Promise<Medidas> {
   return page.evaluate(() => {
     const c = document.querySelector('.placa-consola .vista canvas');
-    const n = document.querySelector('nav[aria-label="Secciones de la aplicación"]');
+    // (2.2: the side rail has the same name; the bottom bar is nav.pestanas)
+    const n = document.querySelector('nav.pestanas[aria-label="Secciones de la aplicación"]');
     const v = document.querySelector('.placa-consola .vista');
     const rc = c?.getBoundingClientRect();
     const rn = n?.getBoundingClientRect();
@@ -75,9 +76,10 @@ test('teléfono: la placa 3D termina encima de la barra de pestañas y su borde 
 
 test('tableta y escritorio: la placa 3D no se mueve ni cambia de tamaño', async ({ browser }) => {
   // (measured before the change: tablet 800×1280, canvas 572 px high ending at 1082, bar at 1216; desktop 1366×900,
-  // canvas 464 px high; neither scrolls)
+  // canvas 464 px high; neither scrolls. 2.2: at 800 px the bottom bar became the 80 px side rail, so the page is
+  // 720 px wide and the canvas, which keeps its proportions, 560 px high)
   for (const [ancho, alto, movil, altoLienzo] of [
-    [800, 1280, true, 572],
+    [800, 1280, true, 560],
     [1366, 900, false, 464],
   ] as const) {
     const page = await abrir(browser, ancho, alto, movil);

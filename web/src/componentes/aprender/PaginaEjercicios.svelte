@@ -269,7 +269,7 @@
   }
   .repasar {
     margin-top: 16px;
-    min-height: 44px;
+    min-height: 48px;
   }
   .filtros {
     display: grid;
@@ -285,7 +285,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--v11-linea);
     border-radius: 999px;
@@ -453,7 +453,7 @@
     border-top: 1px solid var(--linea);
   }
   .navegar .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .vacio,
   .cargando {

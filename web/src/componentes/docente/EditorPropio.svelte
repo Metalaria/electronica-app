@@ -370,7 +370,7 @@
   }
   .campo input,
   .campo select {
-    min-height: 44px;
+    min-height: 48px;
   }
   textarea {
     font: inherit;
@@ -398,7 +398,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     flex-basis: 100%;
     color: var(--tinta);
     font-size: 14.5px;
@@ -453,7 +453,7 @@
   }
   .puntos input {
     width: 5.5em;
-    min-height: 44px;
+    min-height: 48px;
   }
   .mover {
     display: flex;
@@ -461,8 +461,8 @@
   }
   .icono {
     display: grid;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     place-items: center;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -478,7 +478,7 @@
     gap: 8px;
   }
   .t09-boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .vacio,
   .cargando {

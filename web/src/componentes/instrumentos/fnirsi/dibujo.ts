@@ -301,7 +301,12 @@ function dibujarOsc(ctx: CanvasRenderingContext2D, f: Fnirsi, zonas: Zona[]) {
   texto(ctx, `T ${{ auto: 'Auto', normal: 'Normal', single: 'Single' }[f.disparo.modo]} ${f.disparo.subida ? '↑' : '↓'} CH${f.disparo.fuente + 1}`, 160, 233, '#e8e8e8', 9, 'center', true);
   texto(ctx, info(1), 316, 233, COLOR.ch2, 9, 'right', true);
   if (f.mover) texto(ctx, `▲▼ mueve CH${f.activo + 1}`, 160, 224, '#ffb84d', 8, 'center');
-  else texto(ctx, `CH${f.activo + 1} activo`, f.activo === 0 ? 4 : 316, 224, f.activo === 0 ? COLOR.ch1 : COLOR.ch2, 7.5, f.activo === 0 ? 'left' : 'right');
+  else {
+    texto(ctx, `CH${f.activo + 1} activo`, f.activo === 0 ? 4 : 316, 224, f.activo === 0 ? COLOR.ch1 : COLOR.ch2, 7.5, f.activo === 0 ? 'left' : 'right');
+    // (2.2: the arrow mode SELECT chose, when it is not the scales)
+    if (f.modoFlechas === 1) texto(ctx, '◄► posición · ▲▼ CH1 y disparo', 160, 224, '#ffb84d', 8, 'center');
+    else if (f.modoFlechas === 2) texto(ctx, '◄► posición · ▲▼ nivel de disparo', 160, 224, '#ffb84d', 8, 'center');
+  }
 
   if (!c && f.run && f.disparo.modo !== 'auto') texto(ctx, 'Esperando el disparo…', X0 + GW / 2, Y0 + 40, '#ffb84d', 10, 'center', true);
 
@@ -415,13 +420,14 @@ function dibujarPrincipal(ctx: CanvasRenderingContext2D, f: Fnirsi, zonas: Zona[
     texto(ctx, t, x + 44, y + 96, '#fff', 10, 'center', true);
     zonas.push({ x, y, w: 88, h: 110, accion: `modo:${['osc', 'dmm', 'gen'][i]}` });
   });
-  texto(ctx, 'SELECT o toque para elegir · MENU para volver', ANCHO / 2, 200, '#aaa', 9, 'center');
+  texto(ctx, '◄ ► o toque para elegir · tecla azul: entrar · MENU: volver', ANCHO / 2, 200, '#aaa', 9, 'center');
 }
 
 // ------------------------------------------------------------------ multimeter
 
 function dibujarDmm(ctx: CanvasRenderingContext2D, f: Fnirsi) {
   pastilla(ctx, 'Multímetro', 4, 3, '#3d6b49');
+  if (f.holdDmm) pastilla(ctx, 'HOLD', 280, 3, '#c27c0e', '#fff', 36);
   texto(ctx, f.textoDmm || FN_DMM_LISTA[f.fnDmm]!.nombre, 160, 40, '#9fe8b0', 13, 'center', true);
   const l = f.lecturaDmm;
   const t = l ? l.texto.replace('.', ',') : '-----';
@@ -429,7 +435,8 @@ function dibujarDmm(ctx: CanvasRenderingContext2D, f: Fnirsi) {
   texto(ctx, l?.unidad ?? '', 160, 152, '#ffffff', 18, 'center', true);
   if (l && l.incertidumbre !== null) texto(ctx, `± ${si(l.incertidumbre, '').replace(/[a-zµ]?$/, '')} ${l.unidad.replace(/^[kMmµn]/, '')}`, 160, 172, '#888', 9, 'center');
   const borne = f.borne === 'V' ? 'VΩ' : f.borne === 'mA' ? 'mA' : '10A';
-  texto(ctx, `Punta roja: ${borne}   ·   ▲▼ función   ·   19 999 cuentas`, 160, 200, '#aaa', 9, 'center');
+  if (f.entradaDmm === 1) texto(ctx, 'MOVE: continua o alterna', 160, 186, '#888', 9, 'center');
+  texto(ctx, `Punta roja: ${borne}   ·   ◄ ► función   ·   19 999 cuentas`, 160, 200, '#aaa', 9, 'center');
   if (!f.fusibleMA && f.borne === 'mA') texto(ctx, 'Fusible mA fundido', 160, 216, '#ff6b6b', 10, 'center', true);
 }
 
@@ -460,11 +467,19 @@ function dibujarGen(ctx: CanvasRenderingContext2D, f: Fnirsi, zonas: Zona[]) {
   ctx.stroke();
   ctx.lineWidth = 1;
   const items = f.itemsGen();
+  // (2.2: level 0 marks the wave's row; level 1 the row under the cursor; level 2 also outlines it: its value is being edited)
+  const marcada = f.nivelGen === 0 ? 0 : f.itemGen;
   items.forEach((it, i) => {
     const y = 104 + i * 22;
-    const sel = i === f.itemGen;
+    const sel = i === marcada;
     ctx.fillStyle = sel ? COLOR.menu : 'rgba(255,255,255,0.05)';
     ctx.fillRect(14, y, 292, 20);
+    if (sel && f.nivelGen === 2) {
+      ctx.strokeStyle = '#ffb84d';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(14.75, y + 0.75, 290.5, 18.5);
+      ctx.lineWidth = 1;
+    }
     texto(ctx, it.nombre, 22, y + 14, sel ? '#fff' : '#bcd', 10);
     let v = it.valor;
     if (it.nombre === 'Frecuencia') v = si(d.frecuencia, 'Hz', 5);
@@ -472,6 +487,15 @@ function dibujarGen(ctx: CanvasRenderingContext2D, f: Fnirsi, zonas: Zona[]) {
     texto(ctx, `◄ ${v} ►`, 298, y + 14, '#fff', 10, 'right', true);
     zonas.push({ x: 14, y, w: 292, h: 20, accion: `gen:${i}` });
   });
+  const ayuda =
+    f.nivelGen === 0
+      ? '▲ ▼ forma de onda · tecla azul: ajustes'
+      : f.nivelGen === 1
+        ? '▲ ▼ elegir línea · tecla azul: editar · MENU: formas'
+        : marcada === 1
+          ? '▲ ▼ ±1 Hz · ◄ ► a saltos · MENU: volver'
+          : '▲ ▼ ◄ ► cambian el valor · MENU: volver';
+  texto(ctx, ayuda, 160, 234, '#aaa', 8.5, 'center');
   void FORMAS;
 }
 

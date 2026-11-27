@@ -54,7 +54,7 @@ export const GUIA: SeccionGuia[] = [
     id: 'primeros-pasos',
     titulo: 'Primeros pasos y navegación',
     resumen: 'Cómo moverse por la aplicación, leer el libro, buscar y ajustar el tema y el tamaño del texto.',
-    claves: ['menú', 'carril', 'índice', 'leer', 'lector', 'tema', 'oscuro', 'sepia', 'claro', 'letra', 'buscar', 'marcadores', 'notas'],
+    claves: ['menú', 'carril', 'índice', 'leer', 'lector', 'tema', 'oscuro', 'sepia', 'claro', 'letra', 'buscar', 'marcadores', 'notas', 'recorrido', 'tutorial'],
     apartados: [
       {
         id: 'navegar',
@@ -63,15 +63,17 @@ export const GUIA: SeccionGuia[] = [
           {
             t: 'p',
             texto:
-              'La aplicación tiene cinco grupos: Inicio, Aprender (Cursos, Repaso, Progreso), Libro (Índice, Ejercicios, Conceptos, Glosario, Marcadores), Taller (Simulador, Protoboard, Instrumentos, Calculadoras, Componentes) y Proyectos (Kit FM7303, Consolas, Proyectos del libro). En el ordenador y en la tableta apaisada están en un carril de iconos a la izquierda; en el teléfono y en la tableta en vertical, en una barra abajo. Las partes del grupo en el que está aparecen como pestañas arriba (en el teléfono, en una fila que se desliza de lado), y a la derecha de la cabecera siempre están Buscar y «Aa». La Guía de uso, el Modo docente y la Sincronización están al pie de «Aa», en «Más».',
+              'La aplicación tiene cinco grupos: Inicio, Aprender (Cursos, Repaso, Progreso), Libro (Índice, Ejercicios, Conceptos, Glosario, Marcadores), Taller (Simulador, Protoboard, Instrumentos, Calculadoras, Componentes) y Proyectos (Kit FM7303, Consolas, Proyectos del libro). En el ordenador y en la tableta (también en vertical) están en un carril de iconos a la izquierda; en el teléfono, en una barra abajo. Las partes del grupo en el que está aparecen como pestañas arriba (en el teléfono, en una fila que se desliza de lado), y a la derecha de la cabecera siempre están Buscar y «Aa». La Guía de uso, el Modo docente y la Sincronización están al pie de «Aa», en «Más».',
           },
           {
             t: 'lista',
             items: [
-              'Mientras lee, junto al carril está el índice del libro: tomos, capítulos con su anillo de lectura y secciones. Se oculta y se muestra con el botón de la barra de lectura o pulsando «Libro» en el carril; en el teléfono «Libro» o la pestaña «Índice» lo abren como un cajón.',
+              'Mientras lee, junto al carril está el índice del libro: tomos, capítulos con su anillo de lectura y secciones. Se oculta y se muestra con el botón de la barra de lectura o pulsando «Libro» en el carril; en el teléfono y en la tableta en vertical, «Libro», la pestaña «Índice» o el botón de la barra de lectura lo abren como un cajón.',
               'El filtro del índice admite palabras sin tildes o números: 5.8, cap 33, ap B.',
               'Si se ha desplazado el índice, «Ir a la sección actual» vuelve a la que está leyendo.',
-              'El botón Atrás (de la aplicación, del navegador, del ratón o de Android) vuelve al punto exacto donde estaba; en Android cierra primero el cajón, la búsqueda o el visor de figuras.',
+              'El botón Atrás (de la aplicación, del navegador, del ratón o de Android) cierra primero lo que esté abierto encima: el menú de consolas, «Aa», la búsqueda, el índice, el editor de puntas, un diálogo, el visor de figuras o un recorrido. Después vuelve al punto exacto donde estaba. En una lección, si hay una respuesta sin comprobar, pregunta antes de salir.',
+              // (2.2: the tour and the tools' tutorials, componentes/recorridos/)
+              'Un paseo guiado por los cinco grupos, el buscador y «Aa», y un tutorial del Brymen, el FNIRSI, el banco, la protoboard, el simulador y las consolas: «Recorrido y tutoriales», al principio de esta guía. Cada herramienta ofrece el suyo la primera vez que la abre, salvo que lo desactive allí mismo.',
             ],
           },
         ],
@@ -984,7 +986,7 @@ export const GUIA: SeccionGuia[] = [
               'La primera pulsación de Tab en cualquier página es «Saltar al contenido». Al cambiar de página, el foco pasa a su título, y el lector de pantalla la anuncia.',
               'El editor de esquemas y la protoboard también se usan con el teclado. Las flechas mueven un cursor e Intro hace lo mismo que un toque en ese punto: coloca la pieza elegida, empieza un cable o lo termina. N elige la pieza siguiente y Mayús + flechas la mueven.',
               'Los tres temas cumplen el contraste mínimo, y el tamaño del texto se ajusta en «Aa».',
-              'En pantallas táctiles, los botones tienen al menos 44 píxeles de zona de toque.',
+              'En pantallas táctiles, todo lo que se toca tiene al menos 48 píxeles de zona de toque, aunque lo dibujado sea menor.',
               'Con la opción de reducir el movimiento activada en el sistema, las celebraciones son solo fundidos.',
               'Para lectores de pantalla, los deslizadores anuncian su valor con su unidad, el camino de un curso es una lista ordenada, y las correcciones se dicen con palabras («Correcto», «Casi»), nunca solo con color.',
             ],
