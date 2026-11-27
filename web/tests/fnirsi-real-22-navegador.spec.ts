@@ -82,23 +82,22 @@ async function conectar(page: Page) {
   return panel;
 }
 
-test('con el flujo de estado: Amp, Vef y media como los da la pantalla, sin el ciclo negativo, y con X10 nada se multiplica otra vez', async ({ page }) => {
+test('con el flujo de estado: las doce medidas con los rótulos y el orden de la pantalla, y con X10 nada se multiplica otra vez', async ({ page }) => {
   await limpio(page);
   // (2.2: the measurements come only with the status stream, patch 3: the app no longer reads the instrument's memory)
   const memoria = { '20000f50': deHex(MEMORIA.generadorSierra), '200000f8': estadoCon({ 20: 1 }), '20000208': X1 };
   await conEnlace(page, { modo: 2, parche: 3, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria });
   const panel = await conectar(page);
   const ch1 = page.locator('[data-medidas-fnirsi="CH1"]');
-  // X1: Amp, Vrms and Avg as the screen shows them; the negative duty is decoded and not shown
+  // X1: the twelve words after the screen's own labels, in its order (owner, 27-11)
   await expect(ch1).toHaveText(
-    'Medidas del propio FNIRSI en CH1: 1,000 kHz · ciclo 50,40 % · Vpp 332,0 mV · Vmáx 324,0 mV · Vmín −8,000 mV · amplitud 316,0 mV · Vef 208,0 mV · media 148,0 mV',
+    'Medidas del propio FNIRSI en CH1: Frec: 1,000 kHz · Per: 1,000 ms · Ciclo+: 50,40 % · Ciclo-: 49,60 % · Anc+: 504,0 µs · Anc-: 496,0 µs · Vmáx: 324,0 mV · Vmín: −8,000 mV · Vp-p: 332,0 mV · Amp: 316,0 mV · Vef: 208,0 mV · Med: 148,0 mV',
     { timeout: 10_000 },
   );
-  await expect(panel).not.toContainText('49,60');
   sinHallazgos(await axe(page, '[data-fnirsi-real]'), 'panel del FNIRSI real (medidas propias 2.2)');
   // X10: the words already carry the factor; nothing is multiplied again
   await cambiar(page, { memoria: { ...memoria, '20000208': X10 } });
-  await expect(ch1).toContainText('Vpp 3,200 V · Vmáx 3,120 V · Vmín −80,00 mV · amplitud 3,040 V · Vef 2,109 V · media 1,490 V', { timeout: 10_000 });
+  await expect(ch1).toContainText('Vmáx: 3,120 V · Vmín: −80,00 mV · Vp-p: 3,200 V · Amp: 3,040 V · Vef: 2,109 V · Med: 1,490 V', { timeout: 10_000 });
   await expect(panel).not.toContainText('30,40 V');
   // CH1 off in the newest record's header: none of its words
   await cambiar(page, { eventos: informesDe(registroCon(REGISTRO_CH1, { 20: 2 }), 0, 2) });
@@ -131,19 +130,19 @@ test('con el flujo de estado: la cabecera del registro dice los canales y la tec
   const memoria = { '20000f50': deHex(MEMORIA.generadorSierra), '200000f8': estadoCon({ 20: 1 }), '20000208': X1, '20000238': X10 };
   await conEnlace(page, { modo: 2, parche: 3, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria });
   const panel = await conectar(page);
-  await expect(page.locator('[data-medidas-fnirsi="CH1"]')).toContainText('amplitud 316,0 mV · Vef 208,0 mV · media 148,0 mV', { timeout: 10_000 });
+  await expect(page.locator('[data-medidas-fnirsi="CH1"]')).toContainText('Amp: 316,0 mV · Vef: 208,0 mV · Med: 148,0 mV', { timeout: 10_000 });
   // CH2 is off in the header: none of its words, though its block arrives
   await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toHaveCount(0);
   await expect(panel).not.toContainText('3,040 V');
   // both on: CH2's line too, with its own words
   await cambiar(page, { eventos: [...informesDe(registroCon(REGISTRO_CH1, { 20: 3 }), 0, 2), ...informesDe(registroCon(REGISTRO_CH1, { 20: 3 }), 1, 2)] });
-  await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toContainText('Medidas del propio FNIRSI en CH2: 1,000 kHz · ciclo 50,40 % · Vpp 3,200 V', { timeout: 10_000 });
-  await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toContainText('amplitud 3,040 V · Vef 2,109 V · media 1,490 V');
+  await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toContainText(/Medidas del propio FNIRSI en CH2: Frec: 1,000 kHz · .*Ciclo\+: 50,40 % · .*Vp-p: 3,200 V/, { timeout: 10_000 });
+  await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toContainText('Amp: 3,040 V · Vef: 2,109 V · Med: 1,490 V');
   // the AUTO key pressed: the header's byte 47 is not 0
   await cambiar(page, { eventos: informesDe(registroCon(REGISTRO_CH1, { 47: 1 }), 0, 3) });
   await expect(page.locator('[data-medidas-fnirsi]')).toHaveText(['El FNIRSI está ajustándose (AUTO)'], { timeout: 10_000 });
   await cambiar(page, { eventos: informesDe(REGISTRO_CH1, 0, 4) });
-  await expect(page.locator('[data-medidas-fnirsi="CH1"]')).toContainText('amplitud 316,0 mV', { timeout: 10_000 });
+  await expect(page.locator('[data-medidas-fnirsi="CH1"]')).toContainText('Amp: 316,0 mV', { timeout: 10_000 });
 });
 
 test('el disparo con su canal y su modo junto al flanco; el acoplamiento de CH2 donde se dice el de CH1', async ({ page }) => {
@@ -181,7 +180,7 @@ test('el generador: solo las entradas añadidas que dice la identificación (cin
   await conEnlace(page, { modo: 3, parche: 6, entradaUsb: 17, memoria: { '20000f50': con(17) } });
   await conectar(page);
   const generador = page.locator('[data-generador-fnirsi]');
-  await expect(generador).toContainText('Generador del FNIRSI: la entrada n.º 18 de su menú, añadida por el enlace (la que reproduce la onda que se le envía) ·');
+  await expect(generador).toContainText('Generador del FNIRSI: Onda USB (entrada n.º 18 de su menú, añadida por el enlace, la que reproduce la onda que se le envía) ·');
   // one past the five the identification announces: not an added entry
   await cambiar(page, { memoria: { '20000f50': con(18) } });
   await expect(generador).toContainText('Generador del FNIRSI: la forma n.º 19 de su menú ·', { timeout: 10_000 });

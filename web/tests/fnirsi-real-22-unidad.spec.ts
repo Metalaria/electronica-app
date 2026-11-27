@@ -105,8 +105,8 @@ test('la base de 10 ms por división (índice 18) está comprobada, como las de 
 
 test('el generador: con la identificación leída, solo las entradas añadidas que dice su byte 37', () => {
   // the owner's unit: five added entries (13 to 17), 17 plays what is sent
-  expect(nombreForma(13, 17, 5)).toBe('la entrada n.º 14 de su menú, añadida por el enlace');
-  expect(nombreForma(17, 17, 5)).toBe('la entrada n.º 18 de su menú, añadida por el enlace (la que reproduce la onda que se le envía)');
+  expect(nombreForma(13, 17, 5)).toBe('Triangular 25/75 (entrada n.º 14 de su menú, añadida por el enlace)');
+  expect(nombreForma(17, 17, 5)).toBe('Onda USB (entrada n.º 18 de su menú, añadida por el enlace, la que reproduce la onda que se le envía)');
   expect(nombreForma(18, 17, 5)).toBe('la forma n.º 19 de su menú');
   expect(nombreForma(20, 17, 5)).toBe('la forma n.º 21 de su menú');
   // a link that adds none

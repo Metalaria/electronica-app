@@ -200,10 +200,10 @@ test.describe('escritorio', () => {
     await expect(figura).toHaveAttribute('data-funcion-dibujada', 'cont', { timeout: 10_000 });
     await poner(MULTIMETRO.aNegativo!);
     await expect(figura).toHaveAttribute('data-funcion-dibujada', 'idc', { timeout: 10_000 });
-    // temperature: the drawing has none; it stays and one line says so
+    // temperature (2.2): the drawing goes to its temperature entry, which has no probe
     await poner(MULTIMETRO.temperatura23!);
-    await expect(page.locator('[data-sigue-funcion-fnirsi]')).toHaveText('El FNIRSI dibujado no mide temperatura: se queda en la función que tenía.', { timeout: 10_000 });
-    await expect(figura).toHaveAttribute('data-funcion-dibujada', 'idc');
+    await expect(figura).toHaveAttribute('data-funcion-dibujada', 'temp', { timeout: 10_000 });
+    await expect(page.locator('[data-sigue-funcion-fnirsi]')).toHaveCount(0);
     // Auto follows Auto
     await poner(MULTIMETRO.resistenciaAuto!);
     await expect(figura).toHaveAttribute('data-funcion-dibujada', 'auto', { timeout: 10_000 });
@@ -247,7 +247,7 @@ test.describe('escritorio', () => {
     // CH2 alone: its measurements, labelled; nothing of CH1
     await expect(lineas).toHaveCount(1, { timeout: 15_000 });
     await expect(lineas.first()).toHaveAttribute('data-medidas-fnirsi', 'CH2');
-    await expect(lineas.first()).toContainText('Medidas del propio FNIRSI en CH2: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV');
+    await expect(lineas.first()).toContainText(/Medidas del propio FNIRSI en CH2: Frec: 50,18 kHz · .*Ciclo\+: 50,50 % · .*Vp-p: 220,0 mV/);
     await expect(page.locator('[data-fnirsi-real]')).not.toContainText('en CH1:');
     const poner = (e: number[][]) =>
       page.evaluate((x) => {
@@ -256,8 +256,8 @@ test.describe('escritorio', () => {
     // both on: one line each
     await poner([...informesDe(REGISTRO_PAR_CH1, 0, 2), ...informesDe(REGISTRO_PAR_CH2, 1, 2)]);
     await expect(lineas).toHaveCount(2, { timeout: 10_000 });
-    await expect(page.locator('[data-medidas-fnirsi="CH1"]')).toContainText('Medidas del propio FNIRSI en CH1: 40,23 kHz');
-    await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toContainText('Medidas del propio FNIRSI en CH2: 50,18 kHz');
+    await expect(page.locator('[data-medidas-fnirsi="CH1"]')).toContainText('Medidas del propio FNIRSI en CH1: Frec: 40,23 kHz');
+    await expect(page.locator('[data-medidas-fnirsi="CH2"]')).toContainText('Medidas del propio FNIRSI en CH2: Frec: 50,18 kHz');
     // neither on: said in one line
     await poner(informesDe(conCanales(REGISTRO_CH1, 0), 0, 3));
     await expect(page.locator('[data-medidas-fnirsi="ninguno"]')).toHaveText('Los dos canales del FNIRSI están apagados: no da medidas.', { timeout: 10_000 });

@@ -645,16 +645,23 @@ test('2.1.1: el flanco de disparo es el byte 24 de los ajustes: 0 subida, 1 baja
   expect(leerAjustes(b)!.tiempoDiv).toBeCloseTo(5e-6, 12);
 });
 
-test('2.1.1: las entradas que el enlace añade al menú del generador se nombran por su posición, sin etiqueta', () => {
+test('2.2: las entradas que el enlace añade al menú del generador se nombran con los nombres de la unidad del dueño y su posición, nunca con las etiquetas inglesas', () => {
   // the firmware's own thirteen keep their name and the screen's label
   expect(nombreForma(1)).toBe('Cuadrada (Square Wave)');
   expect(nombreForma(12, 17)).toBe('Lorentziana (Lorentz waves)');
-  // 13 to 20: the place in the menu, said to be the link's; no label (the screen may show another name)
-  expect(nombreForma(13)).toBe('la entrada n.º 14 de su menú, añadida por el enlace');
-  expect(nombreForma(13, 17)).toBe('la entrada n.º 14 de su menú, añadida por el enlace');
-  expect(nombreForma(17, 17)).toBe('la entrada n.º 18 de su menú, añadida por el enlace (la que reproduce la onda que se le envía)');
+  // 13 to 17: the owner's unit's Spanish name and the place in the menu, said to be the link's
+  expect(nombreForma(13)).toBe('Triangular 25/75 (entrada n.º 14 de su menú, añadida por el enlace)');
+  expect(nombreForma(13, 17)).toBe('Triangular 25/75 (entrada n.º 14 de su menú, añadida por el enlace)');
+  expect(nombreForma(17, 17)).toBe('Onda USB (entrada n.º 18 de su menú, añadida por el enlace, la que reproduce la onda que se le envía)');
+  // 2.2: the five names of the owner's unit; an added entry without a name keeps its place only
+  expect(nombreForma(14)).toBe('Campana de Gauss (entrada n.º 15 de su menú, añadida por el enlace)');
+  expect(nombreForma(15)).toBe('Ráfaga de 10 ciclos (entrada n.º 16 de su menú, añadida por el enlace)');
+  expect(nombreForma(16)).toBe('Portadora modulada (AM) (entrada n.º 17 de su menú, añadida por el enlace)');
+  expect(nombreForma(18, 18)).toBe('la entrada n.º 19 de su menú, añadida por el enlace (la que reproduce la onda que se le envía)');
+  expect(nombreForma(17, 0, 4)).toBe('la forma n.º 18 de su menú');
   expect(nombreForma(20)).toBe('la entrada n.º 21 de su menú, añadida por el enlace');
-  for (const k of [13, 14, 15, 16, 17]) expect(nombreForma(k, 17)).not.toMatch(/Triangle|Gauss|Burst|AM 80|USB Wave|Triangular|Campana|Ráfaga|Portadora|Onda USB/);
+  // never the identification's English labels
+  for (const k of [13, 14, 15, 16, 17]) expect(nombreForma(k, 17)).not.toMatch(/Triangle|Gauss Pulse|Burst|AM 80|USB Wave/);
   // beyond what a link can add
   expect(nombreForma(21)).toBe('la forma n.º 22 de su menú');
   // the generator's block with an added entry selected: decoded, without a name

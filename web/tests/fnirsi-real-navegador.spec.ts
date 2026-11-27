@@ -382,7 +382,7 @@ test('lo que no va en los flujos de medida: el generador, las medidas propias de
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
   // (2.2: and Amp, Vrms and Avg, words 9 to 11)
   await expect(page.locator('[data-medidas-fnirsi]')).toHaveText(
-    'Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV · amplitud 218,0 mV · Vef 118,0 mV · media 100,0 mV',
+    'Medidas del propio FNIRSI en CH1: Frec: 50,18 kHz · Per: 19,93 µs · Ciclo+: 50,50 % · Ciclo-: 49,50 % · Anc+: 10,07 µs · Anc-: 9,864 µs · Vmáx: 210,0 mV · Vmín: −10,00 mV · Vp-p: 220,0 mV · Amp: 218,0 mV · Vef: 118,0 mV · Med: 100,0 mV',
   );
   await expect(page.locator('[data-generador-fnirsi]')).toContainText('Diente de sierra (Sawtooth wave) · 50,00 kHz');
   await expect(page.locator('[data-marcha-fnirsi]')).toHaveCount(0);
@@ -391,7 +391,7 @@ test('lo que no va en los flujos de medida: el generador, las medidas propias de
   // STOP: no more records; the panel says so instead of asking whether it is in RUN
   await cambiar(page, { eventos: [], memoria: { ...memoria, '200000f8': bytes(MEMORIA.osciloscopioParado), '20000208': bytes(MEMORIA.medidasParado) } });
   await expect(page.locator('[data-marcha-fnirsi]')).toContainText('Osciloscopio en STOP');
-  await expect(page.locator('[data-medidas-fnirsi]')).toContainText('40,23 kHz · ciclo 64,51 % · Vpp 114,0 mV');
+  await expect(page.locator('[data-medidas-fnirsi]')).toContainText(/Frec: 40,23 kHz · .*Ciclo\+: 64,51 % · .*Vp-p: 114,0 mV/);
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('está en STOP', { timeout: 10_000 });
   const f = await falso(page);
   expect(f.lecturas ?? []).toEqual([]);
@@ -474,13 +474,13 @@ test('un enlace con el flujo de estado (parche 3) lo envía él: lo mismo en pan
   const memoria = { '20000f50': bytes(MEMORIA.generadorSierra), '200000f8': bytes(MEMORIA.osciloscopioEnMarcha), '20000208': bytes(MEMORIA.medidasTriangulo) };
   await cambiar(page, { desenchufado: null, errorAbrir: null, modo: 2, eventos: informesDe(REGISTRO_CH1, 0, 1), repetir: true, memoria } as Partial<Falso>);
   await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado', { timeout: 10_000 });
-  await expect(page.locator('[data-medidas-fnirsi]')).toContainText('Medidas del propio FNIRSI en CH1: 50,18 kHz · ciclo 50,50 % · Vpp 220,0 mV · Vmáx 210,0 mV · Vmín −10,00 mV');
+  await expect(page.locator('[data-medidas-fnirsi]')).toContainText(/Medidas del propio FNIRSI en CH1: Frec: 50,18 kHz · .*Ciclo\+: 50,50 % · .*Vmáx: 210,0 mV · Vmín: −10,00 mV · Vp-p: 220,0 mV/);
   await expect(page.locator('[data-generador-fnirsi]')).toContainText('Diente de sierra (Sawtooth wave) · 50,00 kHz');
   await expect(page.locator('[data-marcha-fnirsi]')).toHaveCount(0);
   await expect(page.locator('[data-trazas-fnirsi]')).toBeVisible();
   await cambiar(page, { eventos: [], memoria: { ...memoria, '200000f8': bytes(MEMORIA.osciloscopioParado), '20000208': bytes(MEMORIA.medidasParado) } });
   await expect(page.locator('[data-marcha-fnirsi]')).toContainText('Osciloscopio en STOP');
-  await expect(page.locator('[data-medidas-fnirsi]')).toContainText('40,23 kHz · ciclo 64,51 % · Vpp 114,0 mV');
+  await expect(page.locator('[data-medidas-fnirsi]')).toContainText(/Frec: 40,23 kHz · .*Ciclo\+: 64,51 % · .*Vp-p: 114,0 mV/);
   await expect(page.locator('[data-estado-fnirsi]')).toContainText('está en STOP', { timeout: 10_000 });
   // the multimeter with this link: its readings as always (its status block is not used yet)
   await cambiar(page, { desenchufado: 'Se ha perdido la conexión con el FNIRSI.', errorAbrir: 'No se encuentra el FNIRSI 2C53T.' });
@@ -628,7 +628,7 @@ test('generador con una entrada propia en su menú (parche 6): la onda se guarda
   elegida[1] = 17;
   await cambiar(page, { memoria: { '20000f50': elegida } });
   await expect(estado).toContainText('elegida ahora en el FNIRSI', { timeout: 10_000 });
-  await expect(page.locator('[data-generador-fnirsi]')).toContainText('la entrada n.º 18 de su menú, añadida por el enlace (la que reproduce la onda que se le envía)');
+  await expect(page.locator('[data-generador-fnirsi]')).toContainText('Onda USB (entrada n.º 18 de su menú, añadida por el enlace, la que reproduce la onda que se le envía)');
   // sent with the entry selected: played at once, read back, and it lasts through a change of amplitude
   await onda.locator('[data-onda-forma]').selectOption('escalera');
   await onda.locator('[data-onda-enviar]').click();
@@ -679,7 +679,7 @@ test('2.1.1: el flanco de disparo, y las bases de 5 ms y 20 ms sin el aviso de e
 });
 
 for (const nativo of [false, true])
-  test(`2.1.1: una onda enviada mientras suena una entrada añadida por el enlace (${nativo ? 'aplicación instalada' : 'navegador'}): se nombra por su posición, sin etiqueta`, async ({ page }) => {
+  test(`2.1.1: una onda enviada mientras suena una entrada añadida por el enlace (${nativo ? 'aplicación instalada' : 'navegador'}): se nombra con el nombre de su unidad y su posición`, async ({ page }) => {
     const anadida = Array.from(deHex(MEMORIA.generadorCuadrada));
     anadida[1] = 13;
     await limpio(page);
@@ -688,14 +688,14 @@ for (const nativo of [false, true])
     const panel = page.locator('.elegir [data-fnirsi-real]');
     await panel.getByRole('button', { name: 'Conectar el FNIRSI real' }).click();
     await expect(panel).toHaveAttribute('data-conexion-fnirsi', 'conectado');
-    await expect(page.locator('[data-generador-fnirsi]')).toContainText('Generador del FNIRSI: la entrada n.º 14 de su menú, añadida por el enlace ·');
+    await expect(page.locator('[data-generador-fnirsi]')).toContainText('Generador del FNIRSI: Triangular 25/75 (entrada n.º 14 de su menú, añadida por el enlace) ·');
     const onda = panel.locator('[data-onda-fnirsi]');
     await onda.locator('summary').click();
     await onda.locator('[data-onda-enviar]').click();
     const estado = onda.locator('[data-onda-estado]');
     // patch 6 with another entry selected: kept for the USB entry, the added entry that plays is left alone
     await expect(estado).toHaveAttribute('data-onda-estado', 'guardada');
-    await expect(estado).toContainText('No está sonando: el FNIRSI sigue con la entrada n.º 14 de su menú, añadida por el enlace, que no se ha tocado.');
+    await expect(estado).toContainText('No está sonando: el FNIRSI sigue con Triangular 25/75 (entrada n.º 14 de su menú, añadida por el enlace), que no se ha tocado.');
     await expect(estado).toHaveClass(/aviso21/);
     await expect(estado).not.toHaveClass(/mal|bien/);
     const f = await falso(page);
@@ -721,7 +721,7 @@ test('2.1.1: con el parche 5 la onda enviada suena aunque esté elegida una entr
   await onda.locator('[data-onda-enviar]').click();
   const estado = onda.locator('[data-onda-estado]');
   await expect(estado).toHaveAttribute('data-onda-estado', 'enviada');
-  await expect(estado).toContainText('El aparato sigue mostrando la entrada n.º 15 de su menú, añadida por el enlace.');
+  await expect(estado).toContainText('El aparato sigue mostrando Campana de Gauss (entrada n.º 15 de su menú, añadida por el enlace).');
   await expect(estado).toContainText('Queda además en la entrada n.º 18 de la lista de formas del aparato');
 });
 

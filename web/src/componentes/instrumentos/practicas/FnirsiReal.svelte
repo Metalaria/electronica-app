@@ -97,12 +97,17 @@
         if (c.info && !c.info.estadoEnFlujo) res.push({ canal: `CH${k + 1}`, texto: `Las medidas propias de CH${k + 1} solo llegan con el flujo de estado del enlace (parche 3).` });
         return;
       }
-      const ciclo = m.ciclo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const pc = (x: number) => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       // (with the probe setting at X10 the instrument gives these ten times larger, as its screen does: checked on
       // the unit on 2026-11-25 for both channels, X1 and X10; 2.2: the same for Amp, Vrms and Avg, never multiplied here)
       res.push({
         canal: `CH${k + 1}`,
-        texto: `Medidas del propio FNIRSI en CH${k + 1}: ${formatoSI(m.frecuencia, 'Hz', 4)} · ciclo ${ciclo} % · Vpp ${formatoSI(m.vpp, 'V', 4)} · Vmáx ${formatoSI(m.vmax, 'V', 4)} · Vmín ${formatoSI(m.vmin, 'V', 4)} · amplitud ${formatoSI(m.amplitud, 'V', 4)} · Vef ${formatoSI(m.valorEficaz, 'V', 4)} · media ${formatoSI(m.media, 'V', 4)}`,
+        // (2.2, owner 27-11: the labels and the order of the instrument's own screen, word i after label i)
+        texto:
+          `Medidas del propio FNIRSI en CH${k + 1}: Frec: ${formatoSI(m.frecuencia, 'Hz', 4)} · Per: ${formatoSI(m.periodo, 's', 4)} · ` +
+          `Ciclo+: ${pc(m.ciclo)} % · Ciclo-: ${pc(m.cicloNegativo)} % · Anc+: ${formatoSI(m.anchoPositivo, 's', 4)} · Anc-: ${formatoSI(m.anchoNegativo, 's', 4)} · ` +
+          `Vmáx: ${formatoSI(m.vmax, 'V', 4)} · Vmín: ${formatoSI(m.vmin, 'V', 4)} · Vp-p: ${formatoSI(m.vpp, 'V', 4)} · ` +
+          `Amp: ${formatoSI(m.amplitud, 'V', 4)} · Vef: ${formatoSI(m.valorEficaz, 'V', 4)} · Med: ${formatoSI(m.media, 'V', 4)}`,
       });
     });
     return res;

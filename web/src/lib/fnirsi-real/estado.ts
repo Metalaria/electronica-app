@@ -69,12 +69,24 @@ const FORMAS: Record<number, { nombre: string; rotulo: string }> = {
  * card gives their place in the menu.
  * 2.1.1 (owner, 26-11): the link's identification has base English labels for them, and whoever builds the image
  * may give each one a name of its own per language on the instrument's screen, so a label would not match what the
- * screen shows. The app names them by their place only, never reads the instrument's table of names (the
+ * screen shows. The app named them by their place only (2.2: see NOMBRES_ANADIDAS), and never reads the instrument's table of names (the
  * identification's bytes 48 to 51 point there and are not read), and says which one plays what is sent from here
  * (the identification's `entradaUsb`).
  */
 const PRIMERA_ANADIDA = 13;
 const ULTIMA_FORMA = 12 + 8;
+/**
+ * 2.2 (owner, 27-11): the Spanish names the owner's unit shows for the entries its link image adds (13 to 17),
+ * checked byte by byte against the image installed on it. Another image may add other entries: an index without a
+ * name here keeps being named by its place.
+ */
+const NOMBRES_ANADIDAS: Record<number, string> = {
+  13: 'Triangular 25/75',
+  14: 'Campana de Gauss',
+  15: 'Ráfaga de 10 ciclos',
+  16: 'Portadora modulada (AM)',
+  17: 'Onda USB',
+};
 
 /**
  * A waveform of the instrument's menu as the card names it: «Cuadrada (Square Wave)»; an entry the link added, by
@@ -88,8 +100,12 @@ export function nombreForma(forma: number, entradaUsb = 0, entradasMenu?: number
   // (2.2: with the identification read, only as many added entries as it says exist, its payload's byte 37:
   // protocolo.ts `entradasMenu`; without it, up to eight as before)
   const ultima = entradasMenu === undefined ? ULTIMA_FORMA : Math.min(ULTIMA_FORMA, PRIMERA_ANADIDA - 1 + entradasMenu);
-  if (forma >= PRIMERA_ANADIDA && forma <= ultima)
-    return `la entrada n.º ${forma + 1} de su menú, añadida por el enlace${forma === entradaUsb ? ' (la que reproduce la onda que se le envía)' : ''}`;
+  if (forma >= PRIMERA_ANADIDA && forma <= ultima) {
+    const usb = forma === entradaUsb ? ', la que reproduce la onda que se le envía' : '';
+    const nombre = NOMBRES_ANADIDAS[forma];
+    if (nombre) return `${nombre} (entrada n.º ${forma + 1} de su menú, añadida por el enlace${usb})`;
+    return `la entrada n.º ${forma + 1} de su menú, añadida por el enlace${usb ? ` (${usb.slice(2)})` : ''}`;
+  }
   return `la forma n.º ${forma + 1} de su menú`;
 }
 
@@ -125,7 +141,7 @@ export interface MedidasOsciloscopio {
   periodo: number;
   /** Positive duty cycle, %. */
   ciclo: number;
-  /** 2.2: negative duty cycle, % (decoded, not shown: the positive one says the same). */
+  /** 2.2: negative duty cycle, % (shown after «Ciclo-:», as the instrument's screen). */
   cicloNegativo: number;
   /** Positive and negative pulse widths, s. */
   anchoPositivo: number;
