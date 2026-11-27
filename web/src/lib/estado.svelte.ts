@@ -30,6 +30,15 @@ export const app = $state({
   buscarTexto: '',
   ajustes: false,
   figura: null as FiguraAbierta | null,
-  /** Width class: phones and small tablets use the drawer. */
+  /** Narrow layout of the pages (below 1024 px): the pages' own phone and tablet arrangements. */
   movil: false,
+  /**
+   * 2.2, Material window size classes (lib/ventana.ts): compact < 600 → the bottom bar and the phone header; medium
+   * 600–839 → the rail, with the book index as a drawer; expanded ≥ 840 → the rail and the index panel (as 2.1).
+   */
+  ventana: 'expandida' as 'compacta' | 'media' | 'expandida',
+  /** compact window: bottom bar + phone header (the shell; pages keep `movil`). */
+  compacta: false,
+  /** compact or medium window: the book index is a drawer, not a panel beside the page. */
+  cajon: false,
 });

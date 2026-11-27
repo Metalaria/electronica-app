@@ -180,6 +180,8 @@
     return formatear(mc?.magnitud(id) ?? null, evaluadosWidget[id]);
   }
   const boton = $derived(t && e ? botonPrincipal(t, e, evaluados) : null);
+  /** 2.2: an answer on the card on screen, not checked yet («Comprobar» enabled): leaving asks first. */
+  const sinComprobar = $derived(!!t && esComprobable(t) && boton?.accion === 'comprobar' && !boton.bloqueado);
   const falta = $derived(leccion && t && e && boton?.bloqueado && !esComprobable(t) ? faltaPorExplorar(leccion, t, e, evaluados) : '');
   const prefijo = $derived(`l11-${pantalla}`);
   const siguiente = $derived.by(() => {
@@ -473,13 +475,15 @@
       () =>
         confirmar({
           titulo: '¿Salir de la lección?',
-          mensaje: `Va por la tarjeta ${pantalla + 1} de ${n}. Al volver, seguirá aquí.`,
+          mensaje: `Tiene una respuesta sin comprobar en la tarjeta ${pantalla + 1} de ${n}.`,
           aceptar: 'Salir',
           cancelar: 'Seguir en la lección',
           seguirEnRuta: true,
         }),
       // (the cards replace the address, so the only route changes are leaving: the close button, Back, a link)
-      () => empezada && !terminada && !desmontada,
+      // 2.2 (Atras.dc.html): it asks only with an answer given and not yet checked — leaving otherwise loses nothing
+      // (the lesson goes on where it was left)
+      () => empezada && !terminada && !desmontada && sinComprobar,
     );
     return () => {
       desmontada = true;
@@ -708,8 +712,8 @@
     flex: none;
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 12px;
     background: transparent;
@@ -824,7 +828,7 @@
   }
   /* the 1.0 equation's «Calcular» button, at the 1.1 touch size */
   .ec :global(.calcular) {
-    min-height: 44px;
+    min-height: 48px;
   }
   .ec :global(.ec-marco) {
     padding: 4px 0;
@@ -875,7 +879,7 @@
     display: inline-flex;
     align-items: center;
     align-self: flex-start;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-size: 14px;
     font-weight: 600;
@@ -1011,7 +1015,7 @@
   .enlace {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 6px;
     border: 0;
     background: transparent;

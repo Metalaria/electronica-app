@@ -216,7 +216,7 @@ test(`360 px en ${tema}: sin desplazamiento horizontal, objetivos de 44 px y axe
     expect(anchos, id).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth), id).toBeLessThanOrEqual(360);
     const pequenos = await page.locator('[data-tarjeta] :is(.a12 button, .a12 input, .a12 select, .a12 summary, .escalera button)').evaluateAll((xs) =>
-      xs.filter((x) => (x as HTMLElement).offsetParent && (x.getBoundingClientRect().height < 44 || x.getBoundingClientRect().width < 44)).map((x) => `${x.tagName} ${x.textContent?.trim().slice(0, 20)}`),
+      xs.filter((x) => (x as HTMLElement).offsetParent && (x.getBoundingClientRect().height < 48 || x.getBoundingClientRect().width < 48)).map((x) => `${x.tagName} ${x.textContent?.trim().slice(0, 20)}`),
     );
     expect(pequenos, id).toEqual([]);
     await axe(page, `${id} ${tema}`);

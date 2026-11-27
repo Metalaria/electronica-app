@@ -256,12 +256,12 @@ test.describe('teléfono', () => {
         return [sel, Math.round(Math.min(w, h))] as const;
       }),
     );
-    for (const [sel, t] of tamanos) expect(t, sel).toBeGreaterThanOrEqual(44);
+    for (const [sel, t] of tamanos) expect(t, sel).toBeGreaterThanOrEqual(48);
     // and a tap on the edge of the touch area reaches it: outside the drawn button while it is drawn smaller than 44 px
     // (0.11–1.0), inside its top edge since the 1.1 restyle draws every `.boton` 44 px high (its touch area is itself)
     await page.locator('.mando button.primario').evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const b = await page.locator('.mando button.primario').boundingBox();
-    const y = b!.height < 44 ? b!.y - 3 : b!.y + 2;
+    const y = b!.height < 48 ? b!.y - 3 : b!.y + 2;
     const arriba = await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.closest('button')?.textContent?.trim() ?? '', [b!.x + b!.width / 2, y]);
     expect(arriba).toContain('Simular');
   });
@@ -794,7 +794,7 @@ test.describe('tableta: objetivos táctiles grandes', () => {
     expect(n).toBeGreaterThan(1);
     for (let i = 0; i < n; i++) {
       const b = (await opciones.nth(i).boundingBox())!;
-      expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(44);
+      expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(48);
     }
     // the focus is on the quantity being computed; another one is chosen as tapping its symbol would
     await expect(opciones.and(page.locator('[aria-checked="true"]'))).toBeFocused();
@@ -814,21 +814,22 @@ test.describe('tableta: objetivos táctiles grandes', () => {
     await expect(elector).toHaveCount(0);
   });
 
-  test('glosario y código de colores: letras y muestras de 44 px sin desbordar', async ({ page }) => {
+  test('glosario y código de colores: letras y muestras de 48 px sin desbordar', async ({ page }) => {
     await page.goto('/#/glosario');
     const letras = page.locator('nav.letras button');
     await expect(letras.first()).toBeVisible({ timeout: 30_000 });
     const cajas = await letras.evaluateAll((l) => l.map((b) => b.getBoundingClientRect()).map((r) => ({ w: r.width, h: r.height, x: r.x, y: r.y })));
     expect(cajas.length).toBe(28);
-    for (const c of cajas) expect(Math.min(c.w, c.h)).toBeGreaterThanOrEqual(44);
-    expect(new Set(cajas.map((c) => Math.round(c.y))).size).toBe(2);
+    for (const c of cajas) expect(Math.min(c.w, c.h)).toBeGreaterThanOrEqual(48);
+    // (2.2: 48 × 48 letters, as many per row as fit: three rows beside the rail of the tablet in portrait)
+    expect(new Set(cajas.map((c) => Math.round(c.y))).size).toBeLessThanOrEqual(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
     await page.goto('/#/componentes/codigo-colores');
     const muestras = page.locator('.muestras button.muestra');
     await expect(muestras.first()).toBeVisible({ timeout: 30_000 });
     const m = await muestras.evaluateAll((l) => l.map((b) => b.getBoundingClientRect()).map((r) => ({ w: r.width, h: r.height, x: r.x, y: r.y })));
-    for (const c of m) expect(Math.min(c.w, c.h)).toBeGreaterThanOrEqual(44);
+    for (const c of m) expect(Math.min(c.w, c.h)).toBeGreaterThanOrEqual(48);
     // side by side, never overlapping
     for (let i = 1; i < m.length; i++) if (Math.abs(m[i]!.y - m[i - 1]!.y) < 1) expect(m[i]!.x).toBeGreaterThanOrEqual(m[i - 1]!.x + m[i - 1]!.w - 0.5);
   });
@@ -1280,7 +1281,7 @@ test.describe('tableta: objetivos táctiles de la pasada final', () => {
       await page.goto(ruta);
       const e = page.locator(sel).first();
       await expect(e).toBeVisible({ timeout: 60_000 });
-      expect((await e.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect((await e.boundingBox())!.height).toBeGreaterThanOrEqual(48);
     });
   }
   test('protoboard: los avisos y «Netlist del montaje» miden 44 px', async ({ page }) => {
@@ -1290,8 +1291,8 @@ test.describe('tableta: objetivos táctiles de la pasada final', () => {
     await page.locator('.capa-protoboard [role="tab"]:has-text("Avisos")').first().click({ timeout: 60_000 });
     const aviso = page.locator('.capa-protoboard ul.avisos li.error button.enlace').first();
     await expect(aviso).toBeVisible({ timeout: 30_000 });
-    expect((await aviso.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect((await page.locator('.capa-protoboard details.netlist > summary').first().boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await aviso.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect((await page.locator('.capa-protoboard details.netlist > summary').first().boundingBox())!.height).toBeGreaterThanOrEqual(48);
   });
 });
 
@@ -1311,13 +1312,13 @@ test.describe('tableta: nota guardada', () => {
     await expect(nota).toContainText('Una nota de prueba', { timeout: 60_000 });
     for (const n of ['Editar la nota', 'Borrar la nota']) {
       const caja = (await nota.getByRole('button', { name: n, exact: true }).boundingBox())!;
-      expect(Math.min(caja.width, caja.height), n).toBeGreaterThanOrEqual(44);
+      expect(Math.min(caja.width, caja.height), n).toBeGreaterThanOrEqual(48);
     }
     // and in «Marcadores y notas»
     await page.goto('/#/marcadores');
     const acc = page.locator('.nota .acc').first();
     await expect(acc).toBeVisible({ timeout: 30_000 });
-    for (const b of await acc.locator('.boton').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    for (const b of await acc.locator('.boton').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   });
 });
 

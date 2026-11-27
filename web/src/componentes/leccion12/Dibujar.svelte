@@ -250,7 +250,7 @@
   }
   .teclado {
     display: grid;
-    grid-template-columns: 44px 1fr 44px;
+    grid-template-columns: 48px 1fr 48px;
     gap: 8px;
     align-items: center;
   }
@@ -261,7 +261,7 @@
   }
   .valor {
     grid-column: 1 / -1;
-    min-height: 44px;
+    min-height: 48px;
     accent-color: var(--v11-azul);
   }
   .teclado [data-borrar] {

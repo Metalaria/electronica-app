@@ -9,6 +9,7 @@
   // 1.2 (motor12e): parametric curves (x(p), y(p): Nyquist, the unit circle, an I/Q figure), discrete sequences as
   // stems, an equal-aspect plot (one unit as long on both axes), and curves or marks hidden in a prediction until it
   // is answered (`oculta`: the legend says «¿?» and a note in the plot says the curve comes out on answering).
+  import { toqueSvg } from '../../lib/toque-svg';
   import { formatoValor } from '../calculadoras/unidades';
   import { ariaNumero, teclaMando } from '../../lib/teoria-viva';
   import { leerUnidades } from '../../lib/habla-matematicas';
@@ -271,7 +272,7 @@
         <span class="lectura" data-lectura={widget.lectura.valor}>{ver(widget.lectura.valor)}</span>
       </div>
     {/if}
-    <svg bind:this={svg} viewBox={`0 0 ${W} ${H}`} width="100%" role="group" aria-label={descripcion} data-descripcion style:--tam-marca={`${tam}px`}>
+    <svg bind:this={svg} use:toqueSvg viewBox={`0 0 ${W} ${H}`} width="100%" role="group" aria-label={descripcion} data-descripcion style:--tam-marca={`${tam}px`}>
       <defs>
         <clipPath id={`${prefijo}-recorte`}><rect x={M.izq} y={M.arr} width={ancho} height={alto}></rect></clipPath>
       </defs>
@@ -330,7 +331,7 @@
             onpointercancel={soltar}
             onkeydown={(ev) => tecla(a, ev)}
           >
-            <circle class="toque" r="29"></circle>
+            <circle class="toque" r="29" data-toque></circle>
             <circle class="aro" r="14"></circle>
             <circle class="punto" r="8"></circle>
           </g>

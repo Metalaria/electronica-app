@@ -143,6 +143,7 @@
       aria-label="Tema y tamaño de letra"
       aria-expanded={app.ajustes}
       aria-haspopup="dialog"
+      data-herramienta="aa"
       bind:this={botonAjustes}
       onclick={() => (app.ajustes = !app.ajustes)}
     >
@@ -151,21 +152,21 @@
   </div>
 {/snippet}
 
-{#if !app.movil && lectura && partes.length}
+{#if !app.compacta && lectura && partes.length}
   <!-- desktop reader: the group's tabs over the reading bar; they scroll away, the bar stays -->
   <div class="fila-grupo">{@render pestanas(false)}</div>
 {/if}
 
-<header class="barra" class:lector={lectura} class:movil={app.movil} class:con-pestanas={!app.movil && !lectura && partes.length > 0}>
-  {#if !app.movil && lectura}
+<header class="barra" class:lector={lectura} class:movil={app.compacta} class:con-pestanas={!app.compacta && !lectura && partes.length > 0}>
+  {#if !app.compacta && lectura}
     <button
       class="boton-icono panel"
-      aria-label={oculto ? 'Mostrar el índice' : 'Ocultar el índice'}
-      aria-expanded={!oculto}
-      title={oculto ? 'Mostrar el índice' : 'Ocultar el índice'}
-      onclick={alternarIndice}
+      aria-label={app.cajon || oculto ? 'Mostrar el índice' : 'Ocultar el índice'}
+      aria-expanded={app.cajon ? app.lateral : !oculto}
+      title={app.cajon || oculto ? 'Mostrar el índice' : 'Ocultar el índice'}
+      onclick={() => (app.cajon ? indiceDesdeLibro(false) : alternarIndice())}
     >
-      <Icono nombre={oculto ? 'panel-abrir' : 'panel-cerrar'} tam={20} />
+      <Icono nombre={app.cajon || oculto ? 'panel-abrir' : 'panel-cerrar'} tam={20} />
     </button>
   {/if}
 
@@ -179,7 +180,7 @@
         aria-label={`${rotulo}${conNumero ? ` · ${titulo}` : ''}${seccion ? `, sección ${seccion.num} ${seccion.titulo}` : ''}. Ver las secciones`}
         onclick={() => (menu = !menu)}
       >
-        {#if app.movil}
+        {#if app.compacta}
           <span class="linea1">{conNumero ? rotulo : 'Libro'}{#if seccion && conNumero}<span class="sep" aria-hidden="true">{' · '}</span>{titulo}{/if}</span>
           <span class="linea2">{#if seccion}<b>{seccion.num}</b> {seccion.titulo}{:else}{titulo}{/if}</span>
         {:else}
@@ -214,7 +215,7 @@
   {:else if lectura}
     <!-- the book's data still loading: the breadcrumb's room -->
     <div class="miga"></div>
-  {:else if app.movil}
+  {:else if app.compacta}
     <div class="donde"><span class="titulo">{tituloMovil}</span></div>
   {:else if partes.length}
     {@render pestanas(false)}
@@ -229,7 +230,7 @@
   {/if}
 </header>
 
-{#if app.movil && partes.length}
+{#if app.compacta && partes.length}
   <!-- phone: the group's parts, a row that scrolls sideways (and away with the page) -->
   <div class="fila-grupo movil" bind:this={filaMovil}>{@render pestanas(true)}</div>
 {/if}
@@ -293,11 +294,12 @@
   .fila-grupo .grupo-pestanas {
     height: auto;
   }
-  /* phone: under the bar, gutters of 16 px, the row's own line */
+  /* phone: under the bar, gutters of 16 px, the row's own line; 2.2: in the header's colour (TelefonoBanco) */
   .fila-grupo.movil {
     height: auto;
     padding: 0;
     border-bottom: 0;
+    background: var(--v11-panel);
   }
   /* the row scrolls edge to edge; its first and last tabs keep the 16 px gutter */
   .fila-grupo.movil .grupo-pestanas {
@@ -308,6 +310,9 @@
   }
   .panel {
     flex: none;
+    /* 2.2: a 48 dp icon button */
+    width: 48px;
+    height: 48px;
   }
 
   /* breadcrumb */
@@ -332,7 +337,7 @@
     gap: 7px;
     max-width: 100%;
     min-width: 0;
-    min-height: 40px;
+    min-height: 48px;
     padding: 0 8px 0 10px;
     border: 0;
     border-radius: 10px;
@@ -409,8 +414,8 @@
     overflow: hidden;
   }
   .pasos .boton-icono {
-    width: 40px;
-    height: 36px;
+    width: 48px;
+    height: 46px;
     border-radius: 0;
   }
   .pasos > * + * {
@@ -425,13 +430,14 @@
     display: flex;
     flex: none;
     align-items: center;
-    gap: 8px;
+    gap: 0;
     margin-left: auto;
   }
+  /* 2.2: Material's 48 dp icon buttons */
   .acciones .boton-icono {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     color: var(--v11-tinta-suave);
   }
   .aa {
@@ -456,8 +462,8 @@
     transition: transform 0.12s linear;
   }
 
-  /* phone and tablet portrait: two-line breadcrumb («Capítulo 5 · Diodos» over the section) */
-  @media (max-width: 1023px) {
+  /* 2.2: compact windows (the phone): two-line breadcrumb («Capítulo 5 · Diodos» over the section) */
+  @media (max-width: 599px) {
     .barra {
       gap: 0;
       padding-left: max(6px, env(safe-area-inset-left));
@@ -466,13 +472,20 @@
     .barra.movil:not(.lector) {
       padding-left: max(20px, env(safe-area-inset-left));
     }
+    /* 2.2 (TelefonoInicio): the phone's header in the bar's colour, the same as the bottom bar, under the status bar */
+    .barra.movil {
+      background: var(--v11-panel);
+      border-bottom-color: transparent;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
     .acciones {
       gap: 0;
     }
     .donde,
     .donde .titulo {
       color: var(--v11-tinta);
-      font-size: 17px;
+      font-size: 20px;
       font-weight: 600;
     }
     .miga-boton {
@@ -481,7 +494,7 @@
       grid-template-rows: auto auto;
       column-gap: 4px;
       row-gap: 1px;
-      min-height: 46px;
+      min-height: 48px;
       padding: 2px 6px 2px 10px;
     }
     .linea1,
@@ -517,8 +530,8 @@
       margin: 0 4px;
     }
     .pasos .boton-icono {
-      width: 42px;
-      height: 42px;
+      width: 48px;
+      height: 46px;
     }
   }
 </style>

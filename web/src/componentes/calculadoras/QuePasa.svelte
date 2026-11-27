@@ -101,8 +101,8 @@
     font-size: 0.75em;
   }
   .probar {
-    min-width: 44px;
-    height: 44px;
+    min-width: 48px;
+    height: 48px;
     padding: 0 8px;
     border: 1px solid var(--acento-borde);
     border-radius: 10px;

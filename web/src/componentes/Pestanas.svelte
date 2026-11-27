@@ -71,7 +71,7 @@
       onclick={(ev) => clic(g, ev)}
     >
       <span class="icono"><Icono nombre={g.icono} tam={22} /></span>
-      <span class="etiqueta">{g.etiqueta}</span>
+      <span class="etiqueta" data-letra-tope>{g.etiqueta}</span>
     </a>
   {/each}
 </nav>
@@ -85,18 +85,12 @@
     z-index: 28;
     display: flex;
     justify-content: space-around;
-    height: calc(var(--alto-pestanas) + env(safe-area-inset-bottom));
+    /* 2.2: Material's navigation bar, 80 dp (it grows when the system's text size makes the labels taller), on the
+       header's colour; it runs under the gesture bar (the safe area), its items above it */
+    min-height: calc(var(--alto-pestanas) + env(safe-area-inset-bottom));
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-    background: color-mix(in srgb, var(--barra-nav) 96%, transparent);
-    border-top: 1px solid var(--linea);
-    -webkit-backdrop-filter: saturate(1.4) blur(12px);
-    backdrop-filter: saturate(1.4) blur(12px);
+    background: var(--v11-panel);
     font-family: var(--sans);
-  }
-  @supports not (background: color-mix(in srgb, red 50%, blue)) {
-    .pestanas {
-      background: var(--barra-nav);
-    }
   }
   /* the keyboard is up: the tabs would only take room above it */
   :global(html:has(input:not([type='range'], [type='checkbox'], [type='radio'], [type='button']):focus, textarea:focus)) .pestanas {
@@ -107,51 +101,73 @@
     display: none;
   }
   .pestana {
+    position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 4px;
     max-width: 120px;
     min-width: 0;
-    padding: 0;
+    min-height: var(--alto-pestanas);
+    padding: 12px 0 16px;
     border: 0;
     background: none;
     color: var(--v11-tinta-suave);
     text-decoration: none;
     -webkit-tap-highlight-color: transparent;
   }
+  /* the 64 × 32 active indicator behind the icon (Material 3); its pressed state layer is drawn on it */
   .icono {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 52px;
-    height: 30px;
-    border-radius: 15px;
+    width: 64px;
+    height: 32px;
+    border-radius: 16px;
+    overflow: hidden;
     transition: background 0.15s, color 0.15s;
   }
+  .icono::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .pestana:active .icono::after {
+    opacity: 0.12;
+  }
+  /* 12 sp; with the system's text size it grows at most 1.3× (lib/escala-texto.ts measures the factor) so it never
+     breaks into a second line under its neighbours */
   .etiqueta {
     max-width: 100%;
     overflow: hidden;
-    font-size: 11.5px;
+    font-size: calc(12px * min(var(--escala-texto, 1), 1.3));
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
     font-weight: 500;
-    line-height: 1.1;
+    line-height: 1.33;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .pestana.activa {
-    color: var(--v11-azul);
+    color: var(--v11-tinta);
   }
   .pestana.activa .icono {
     background: var(--v11-azul-tinte);
+    color: var(--v11-azul);
   }
   .pestana.activa .etiqueta {
-    font-weight: 700;
+    font-weight: 600;
   }
   .pestana:focus-visible {
     outline: none;
   }
   .pestana:focus-visible .icono {
-    outline: 2px solid var(--v11-foco);
+    outline: 3px solid var(--v11-foco);
+    outline-offset: 2px;
   }
 </style>

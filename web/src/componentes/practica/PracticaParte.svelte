@@ -127,7 +127,7 @@
     font-size: 28px;
   }
   .volver {
-    min-height: 44px;
+    min-height: 48px;
     display: inline-flex;
     align-items: center;
     font-weight: 600;

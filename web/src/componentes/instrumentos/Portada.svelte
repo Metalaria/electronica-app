@@ -83,7 +83,7 @@
   .practicas a.lab {
     display: flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     color: var(--acento);
     font-weight: 600;

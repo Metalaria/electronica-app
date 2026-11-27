@@ -139,11 +139,11 @@
   /* 44 px for a finger (0.12 QA: 36 px buttons and a 32 px close button), the same look */
   @media (pointer: coarse) {
     .botones .boton {
-      min-height: 44px;
+      min-height: 48px;
     }
     .cerrar {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       margin: -10px -6px 0 -6px;
     }
   }

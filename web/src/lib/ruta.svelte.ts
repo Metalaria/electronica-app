@@ -227,26 +227,78 @@ function leer(): void {
 interface Capa {
   id: string;
   cerrar: () => void;
+  /** 2.2: its UI closed it; the history step back over its entry is on its way. */
+  cerrando?: boolean;
+}
+/**
+ * 2.2: history steps back (cerrarCapa) not yet arrived as «popstate». A navigation asked for meanwhile (a link of the
+ * overlay being closed) waits for it: done at once, the step back would arrive after it and undo it.
+ */
+let atrasPendiente = 0;
+let diferida: { href: string; desde?: { texto: string } } | null = null;
+/** 2.2: overlays opened while a step back is on its way (one replacing another): pushed once it has arrived. */
+const cola: Capa[] = [];
+let esperando: (() => void)[] = [];
+
+/** 2.2: resolves once the overlays' steps back have arrived (at once when none is on its way). */
+export function esperarAtras(): Promise<void> {
+  if (!atrasPendiente) return Promise.resolve();
+  return new Promise((r) => esperando.push(r));
 }
 const pila: Capa[] = [];
+/** 2.2: how many overlays are open (reactive: lib/encima.ts encima.n). */
+export const capas = $state({ n: 0, arriba: '' as string });
+function contar(): void {
+  capas.n = pila.length;
+  capas.arriba = pila[pila.length - 1]?.id ?? '';
+}
 
 /** Opens an overlay: pushes a history entry so that «Atrás» closes it. */
 export function abrirCapa(id: string, cerrar: () => void): void {
-  if (pila.some((c) => c.id === id)) return;
+  if (pila.some((c) => c.id === id && !c.cerrando) || cola.some((c) => c.id === id)) return;
+  if (atrasPendiente) {
+    // (2.2: pushed now, the entry would be the one that step back leaves)
+    cola.push({ id, cerrar });
+    return;
+  }
   // Remember where the page was before covering it.
   if (!pila.length && !estado().capa) history.replaceState({ ...estado(), ...posicionActual() }, '');
   history.pushState({ capa: id } satisfies EstadoHistoria, '', location.href);
   pila.push({ id, cerrar });
+  contar();
 }
 
 /** Closes an overlay from the UI (button, Esc): goes back over its history entry. */
 export function cerrarCapa(id: string): void {
+  const k = cola.findIndex((c) => c.id === id);
+  if (k >= 0) {
+    cola.splice(k, 1);
+    return;
+  }
   const top = pila[pila.length - 1];
-  if (top?.id === id) history.back();
+  if (top?.id !== id) {
+    // (2.2: one under another — a menu closed as the editor it opens goes on top —: out of the stack now; its history
+    // entry, left under the other's, is skipped when «Atrás» reaches it: popstate below)
+    const j = pila.findIndex((c) => c.id === id && !c.cerrando);
+    if (j >= 0) {
+      pila.splice(j, 1);
+      contar();
+    }
+    return;
+  }
+  if (top.cerrando) return;
+  top.cerrando = true;
+  atrasPendiente++;
+  history.back();
 }
 
 export function hayCapas(): boolean {
   return pila.length > 0;
+}
+
+/** 2.2: whether the overlay `id` is open (anywhere in the stack). */
+export function capaAbierta(id: string): boolean {
+  return pila.some((c) => c.id === id && !c.cerrando) || cola.some((c) => c.id === id);
 }
 
 /**
@@ -254,7 +306,20 @@ export function hayCapas(): boolean {
  * history stays [page, destination] and «Atrás» returns to the page.
  */
 export function navegarDesdeCapa(href: string, desde?: { texto: string }): void {
+  if (atrasPendiente) {
+    // (2.2: an overlay's step back is on its way: go once it has arrived, from where it lands)
+    diferida = { href, desde };
+    return;
+  }
+  if (!pila.length) {
+    // (2.2: nothing left on top — the deferred navigation of a closed overlay —: an ordinary route change)
+    recordarScroll(true);
+    if (desde) prepararSalto(desde);
+    location.hash = href.replace(/^#/, '');
+    return;
+  }
   while (pila.length) pila.pop()?.cerrar();
+  contar();
   const st: EstadoHistoria = desde ? { desde } : {};
   if (hayCambiosSinGuardar()) {
     // (review 10f: the page on screen has unsaved changes — the teacher-mode editor —: the overlay's entry becomes the
@@ -381,10 +446,33 @@ export function iniciarRuta(): void {
     anotarRuta();
   });
   window.addEventListener('popstate', () => {
+    if (atrasPendiente) atrasPendiente--;
     const top = pila[pila.length - 1];
     if (top && estado().capa !== top.id) {
       pila.pop();
+      contar();
       top.cerrar();
+    }
+    if (!atrasPendiente && diferida) {
+      const d = diferida;
+      diferida = null;
+      // (the overlays waiting to open belonged to the page being left)
+      for (const c of cola.splice(0)) c.cerrar();
+      navegarDesdeCapa(d.href, d.desde);
+    } else if (!atrasPendiente && cola.length) {
+      for (const c of cola.splice(0)) abrirCapa(c.id, c.cerrar);
+    }
+    // (2.2: landed on the entry of an overlay closed while another was over it: nothing to show there, one more step)
+    const muerta = estado().capa;
+    if (muerta && !pila.some((c) => c.id === muerta)) {
+      atrasPendiente++;
+      history.back();
+      return;
+    }
+    if (!atrasPendiente && esperando.length) {
+      const fs = esperando;
+      esperando = [];
+      for (const f of fs) f();
     }
   });
   // Every internal link records the scroll of the entry it leaves.
@@ -396,6 +484,18 @@ export function iniciarRuta(): void {
     },
     true,
   );
+  // 2.2: an internal link followed while an overlay is open (a link of the «Aa» panel, of a menu, of the tour) that its
+  // component did not handle itself: the overlays close and the destination replaces their history entry, so «Atrás»
+  // returns to the page, not to the overlay (the bubble phase of the window: after every component's own handler).
+  window.addEventListener('click', (ev) => {
+    if (!pila.length || ev.defaultPrevented || ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+    const a = (ev.target as Element | null)?.closest?.('a[href^="#/"]');
+    if (!(a instanceof HTMLAnchorElement) || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+    ev.preventDefault();
+    const desde = desdePendiente ?? undefined;
+    desdePendiente = null;
+    navegarDesdeCapa(a.getAttribute('href')!, desde);
+  });
   // If the app is opened on an overlay entry (reload), drop it.
   if (estado().capa) history.replaceState({}, '');
   leer();

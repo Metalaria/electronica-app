@@ -78,8 +78,8 @@ test('circuito vivo: partículas, hilos por tensión con leyenda y valores, mani
   await expect(asa).toHaveAttribute('role', 'slider');
   await expect(asa).toHaveAttribute('aria-valuetext', '5 kiloohmios');
   const box = await asa.boundingBox();
-  expect(box!.width).toBeGreaterThanOrEqual(44);
-  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.width).toBeGreaterThanOrEqual(48);
+  expect(box!.height).toBeGreaterThanOrEqual(48);
   await asa.focus();
   await page.keyboard.press('ArrowUp');
   await expect(asa).not.toHaveAttribute('aria-valuetext', '5 kiloohmios');

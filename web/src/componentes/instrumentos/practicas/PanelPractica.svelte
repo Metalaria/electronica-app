@@ -348,8 +348,8 @@
   }
   .pasos .cab {
     flex: none;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     background: none;
     padding: 0;

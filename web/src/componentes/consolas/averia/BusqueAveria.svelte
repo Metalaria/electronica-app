@@ -665,9 +665,9 @@
   .funciones button,
   .sospechosos button,
   .puntas button {
-    min-height: 44px;
+    min-height: 48px;
     /* (1.3.1: «Ω» alone was 42 px wide, under a finger's 44) */
-    min-width: 44px;
+    min-width: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 12px;
@@ -729,7 +729,7 @@
     font-size: 13px;
   }
   .puntos summary {
-    min-height: 44px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     font-weight: 700;
@@ -743,7 +743,7 @@
     color: var(--tinta-suave);
   }
   .puntos select {
-    min-height: 44px;
+    min-height: 48px;
     min-width: 0;
     max-width: 100%;
     border: 1px solid var(--linea);
@@ -794,8 +794,8 @@
   }
   .asa-3d {
     position: absolute;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     margin: -22px 0 0 -22px;
     padding: 0;
     border: 2px solid var(--c);

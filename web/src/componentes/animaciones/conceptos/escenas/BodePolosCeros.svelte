@@ -149,8 +149,10 @@
     const p = pal;
     const est = v.estrecho;
     const eM: Ejes = est ? { x: 60, y: 120, w: 510, h: 170, x0: 1, x1: 1e6, y0: -80, y1: 30, logX: true } : { x: 60, y: 110, w: 500, h: 150, x0: 1, x1: 1e6, y0: -80, y1: 30, logX: true };
-    const eF: Ejes = est ? { x: 60, y: 345, w: 510, h: 112, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true } : { x: 60, y: 300, w: 500, h: 110, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true };
+    const eF: Ejes = est ? { x: 60, y: 345, w: 510, h: 112, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true } : { x: 60, y: 308, w: 500, h: 102, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true };
     const eT: Ejes = est ? { x: 60, y: 522, w: 510, h: 90, x0: 0, x1: 2, y0: -1.3, y1: 1.3 } : { x: 620, y: 110, w: 250, h: 150, x0: 0, x1: 2, y0: -1.3, y1: 1.3 };
+    // (cierre22: the phase panel 8 units lower in the wide layout — beside the 2.2 rail a portrait tablet draws it at
+    // 720 px, and its title touched the magnitude panel's «1 Hz»)
     const yRegla = est ? 60 : 55;
     geo = { eM, eF, yRegla };
     estatico(v, `bd:${est}`, (vv) => {

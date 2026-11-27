@@ -106,7 +106,7 @@
   }
   input[type='range'] {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     accent-color: var(--v11-naranja);
   }
   input[type='range']:focus-visible {

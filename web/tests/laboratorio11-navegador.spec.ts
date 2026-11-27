@@ -185,7 +185,7 @@ test('a 360 px no hay desplazamiento horizontal; enlaces desde el capítulo, la 
   expect(caja!.x).toBeGreaterThanOrEqual(0);
   expect(caja!.x + caja!.width).toBeLessThanOrEqual(360);
   // the 44 px targets of the panel
-  for (const sel of ['[data-comprobar]', '[data-donde]', '[data-hagalo]']) expect((await page.locator(sel).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  for (const sel of ['[data-comprobar]', '[data-donde]', '[data-hagalo]']) expect((await page.locator(sel).boundingBox())!.height).toBeGreaterThanOrEqual(48);
   // on a narrow screen the instruments are tabs: the step's instrument is the one shown
   await page.locator('[data-donde]').click();
   await expect(page.getByRole('tab', { name: 'Brymen', exact: true })).toHaveAttribute('aria-selected', 'true');

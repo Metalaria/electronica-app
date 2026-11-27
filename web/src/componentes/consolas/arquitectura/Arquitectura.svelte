@@ -647,13 +647,13 @@
     .accion,
     select,
     input[type='text'] {
-      min-height: 44px;
+      min-height: 48px;
     }
     .botones :global(.boton-icono),
     .zoom :global(.boton-icono),
     .play {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
     }
   }
 </style>

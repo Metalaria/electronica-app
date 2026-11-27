@@ -352,7 +352,7 @@
   }
   select {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -391,8 +391,8 @@
     background: var(--superficie);
   }
   .paso .boton-icono {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 999px;
     font-size: 20px;
   }
@@ -410,7 +410,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     cursor: pointer;
   }
   .interruptor input {

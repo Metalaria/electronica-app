@@ -249,7 +249,7 @@
   }
   .acciones :global(.boton-icono) {
     width: 40px;
-    height: 44px;
+    height: 48px;
   }
   .campo {
     display: grid;

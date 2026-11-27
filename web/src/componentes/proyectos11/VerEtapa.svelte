@@ -52,7 +52,7 @@
   }
   @media (pointer: coarse) {
     .ver-etapa {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .solo-lector {

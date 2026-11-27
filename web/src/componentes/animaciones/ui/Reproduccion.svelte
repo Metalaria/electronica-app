@@ -69,11 +69,11 @@
   @media (pointer: coarse) {
     .play,
     .reproduccion .boton-icono {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
     }
     select {
-      height: 44px;
+      height: 48px;
     }
   }
 </style>

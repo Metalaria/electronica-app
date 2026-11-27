@@ -377,8 +377,8 @@
   .b {
     display: grid;
     place-items: center;
-    min-width: 44px;
-    height: 44px;
+    min-width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 12px;
     background: none;

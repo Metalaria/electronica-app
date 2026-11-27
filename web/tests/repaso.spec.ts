@@ -204,7 +204,7 @@ test('el botón «Test del capítulo» al final de un capítulo abre su test', a
   await boton.scrollIntoViewIfNeeded();
   await expect(boton).toBeVisible();
   const caja = await boton.boundingBox();
-  expect(caja!.height).toBeGreaterThanOrEqual(44);
+  expect(caja!.height).toBeGreaterThanOrEqual(48);
   await boton.click();
   await expect(page).toHaveURL(/#\/repaso\/test\/cap05$/);
   await expect(page.locator('[data-pregunta]')).toBeVisible();

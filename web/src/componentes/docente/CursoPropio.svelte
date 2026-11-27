@@ -235,7 +235,7 @@
   }
   .vistas button {
     min-width: 96px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 16px;
     border: 0;
     border-radius: 11px;
@@ -323,7 +323,7 @@
     justify-content: space-between;
   }
   .t09-boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .terminado {
     display: inline-flex;

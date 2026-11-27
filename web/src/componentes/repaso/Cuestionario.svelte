@@ -298,7 +298,7 @@
   .fallos a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     font-size: 14.5px;
     font-weight: 600;
     text-decoration: none;

@@ -132,7 +132,7 @@ for (const tema of ['oscuro', 'sepia'] as const) {
   });
 }
 
-test('la fila de pestañas del teléfono se desliza y deja la actual a la vista; 44 px de toque', async ({ browser }) => {
+test('la fila de pestañas del teléfono se desliza y deja la actual a la vista; 48 px de toque', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   await preparar(page, 'sepia');
@@ -145,14 +145,14 @@ test('la fila de pestañas del teléfono se desliza y deja la actual a la vista;
   const caja = (await actual.boundingBox())!;
   expect(caja.x + caja.width).toBeLessThanOrEqual(360);
   expect(caja.x).toBeGreaterThanOrEqual(0);
-  for (const a of await fila.getByRole('link').all()) expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-  for (const a of await page.locator('nav.pestanas[aria-label="Secciones de la aplicación"] a').all()) expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  for (const a of await fila.getByRole('link').all()) expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  for (const a of await page.locator('nav.pestanas[aria-label="Secciones de la aplicación"] a').all()) expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   await ctx.close();
 });
 
 // 2.1 close-out (QA harness, «objetivo táctil pequeño»): a short tab — the consoles' «Foto» — was 31 px wide on touch
-test('cada pestaña del sistema mide al menos 44 × 44 px, también las de texto corto («Foto» de las consolas)', async ({ browser }) => {
+test('cada pestaña del sistema mide al menos 48 × 48 px, también las de texto corto («Foto» de las consolas)', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 1280 }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   await preparar(page, 'oscuro');
@@ -162,7 +162,7 @@ test('cada pestaña del sistema mide al menos 44 × 44 px, también las de texto
     const pequenas = await page.evaluate(() =>
       [...document.querySelectorAll('.pestana21')]
         .map((e) => ({ t: (e.textContent ?? '').trim(), r: e.getBoundingClientRect() }))
-        .filter((x) => x.r.width > 0 && (x.r.width < 44 || x.r.height < 44))
+        .filter((x) => x.r.width > 0 && (x.r.width < 48 || x.r.height < 48))
         .map((x) => `${x.t} ${Math.round(x.r.width)}×${Math.round(x.r.height)}`),
     );
     expect(pequenas, ruta).toEqual([]);
@@ -170,14 +170,15 @@ test('cada pestaña del sistema mide al menos 44 × 44 px, también las de texto
   await ctx.close();
 });
 
-test('tableta (Xiaomi Pad 6): vertical con la barra inferior, horizontal con el carril', async ({ browser }) => {
+// 2.2 (Material window size classes): the tablet in portrait (800, «medium») has the rail too, the index as a drawer
+test('tableta (Xiaomi Pad 6): el carril en vertical y en horizontal; el índice, cajón en vertical y panel en horizontal', async ({ browser }) => {
   for (const [w, h, movil] of [[800, 1280, true], [1280, 800, false]] as const) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     await preparar(page, 'oscuro');
     await page.goto('#/cap05/sec-5.3');
-    await expect(page.locator(movil ? 'nav.pestanas' : 'nav.carril')).toBeVisible();
-    await expect(page.locator(movil ? 'nav.carril' : 'nav.pestanas[aria-label="Secciones de la aplicación"]')).toHaveCount(0);
+    await expect(page.locator('nav.carril')).toBeVisible();
+    await expect(page.locator('nav.pestanas[aria-label="Secciones de la aplicación"]')).toHaveCount(0);
     // reading: the index is a drawer (portrait) or the panel (landscape)
     const ind = page.getByRole('complementary', { name: 'Índice del libro' });
     if (movil) await expect(ind).toBeHidden();

@@ -44,8 +44,9 @@ test('lección: «Seguir en la lección» tras la X deja la dirección en la tar
   await leccion14HastaTarjeta4(page);
   await page.locator('[data-cerrar]').click();
   const d = page.getByRole('alertdialog');
-  // (1.2: sec 1.4 has 13 cards, with the bench card)
-  await expect(d).toContainText('Va por la tarjeta 4 de 13');
+  // (1.2: sec 1.4 has 13 cards, with the bench card. 2.2, Atras.dc.html: it asks only with an answer not yet checked,
+  // as card 4's challenge has, and says so)
+  await expect(d).toContainText('Tiene una respuesta sin comprobar en la tarjeta 4 de 13');
   await d.getByRole('button', { name: 'Seguir en la lección' }).click();
   expect(await tarjetaN(page)).toBe('3');
   // reviewed: the address had gone back to #/leccion/cap01/sec-1.4 (card 1) while card 4 was on screen

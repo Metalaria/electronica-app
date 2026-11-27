@@ -56,7 +56,7 @@
   }
   @media (pointer: coarse) {
     button {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

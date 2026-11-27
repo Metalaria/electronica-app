@@ -205,7 +205,7 @@
   @media (pointer: coarse) {
     .canales button,
     .acoplo button {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .esperado,

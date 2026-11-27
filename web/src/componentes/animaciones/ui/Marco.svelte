@@ -185,12 +185,12 @@
   }
   @media (pointer: coarse) {
     .opciones3d button {
-      min-height: 44px;
+      min-height: 48px;
     }
     .ficha3d {
       display: inline-flex;
       align-items: center;
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .texto {

@@ -153,7 +153,7 @@
     padding: 0;
   }
   .todo {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 4px;
     border: 0;
     background: none;
@@ -176,7 +176,7 @@
     align-items: center;
     gap: 8px;
     max-width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px 0 8px;
     border: 1.5px solid var(--linea);
     border-radius: 999px;

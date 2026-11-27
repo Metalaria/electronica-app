@@ -28,6 +28,7 @@
   //   - performance: the loop runs only while the drawing is on screen and the page visible; it measures its frame
   //     interval and cost, and degrades (half the particles at 30 fps, then still arrows) on a slow device. The
   //     measures are on the element (data-vivo, data-vivo-nivel, data-vivo-fps, data-vivo-ms) for the tests.
+  import { TOQUE_MIN } from '../../lib/toque';
   import { onMount, untrack, type Snippet } from 'svelte';
   import Minus from '@lucide/svelte/icons/minus';
   import Plus from '@lucide/svelte/icons/plus';
@@ -50,6 +51,15 @@
   import AjusteFino from '../colocar/AjusteFino.svelte';
   import { candidatoConHisteresis, elevacion, vecinoEnDireccion, type Direccion } from '../colocar/precision';
   import { vibrarAterrizaje, vibrarCambio } from '../colocar/haptica';
+  /**
+   * (cierre22) A touch box grown outwards to whole CSS px: a box of exactly TOQUE_MIN at a fractional place was laid out
+   * 47.99999 px wide (the layout's sub-pixel units), under the 48 px minimum.
+   */
+  function pixelesEnteros(x: number, y: number, w: number, h: number): { x: number; y: number; w: number; h: number } {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    return { x: x0, y: y0, w: Math.ceil(x + w) - x0, h: Math.ceil(y + h) - y0 };
+  }
 
   let {
     leccion,
@@ -269,16 +279,16 @@
         let y = Math.min(a.y, z.y) + marco.y;
         let w = Math.abs(z.x - a.x);
         let h = Math.abs(z.y - a.y);
-        // at least 44 × 44 CSS px (WCAG 2.5.8 asks 24; the app's own minimum is 44)
-        if (w < 44) {
-          x -= (44 - w) / 2;
-          w = 44;
+        // at least 48 × 48 CSS px (WCAG 2.5.8 asks 24; 2.2: the app's own minimum is Material's 48 dp)
+        if (w < TOQUE_MIN) {
+          x -= (TOQUE_MIN - w) / 2;
+          w = TOQUE_MIN;
         }
-        if (h < 44) {
-          y -= (44 - h) / 2;
-          h = 44;
+        if (h < TOQUE_MIN) {
+          y -= (TOQUE_MIN - h) / 2;
+          h = TOQUE_MIN;
         }
-        as.push({ pieza, mando, x, y, w, h });
+        as.push({ pieza, mando, ...pixelesEnteros(x, y, w, h) });
       }
     }
     asas = as;
@@ -327,7 +337,7 @@
       }
       if (p) {
         const [x, y] = aCaja(p[0], p[1]);
-        out.push({ ...d, x: x - 22, y: y - 22, w: 44, h: 44 });
+        out.push({ ...d, ...pixelesEnteros(x - TOQUE_MIN / 2, y - TOQUE_MIN / 2, TOQUE_MIN, TOQUE_MIN) });
         continue;
       }
       if (d.clase !== 'pieza') continue;
@@ -340,15 +350,15 @@
       let y = Math.min(y0, y1);
       let w = Math.abs(x1 - x0);
       let h = Math.abs(y1 - y0);
-      if (w < 44) {
-        x -= (44 - w) / 2;
-        w = 44;
+      if (w < TOQUE_MIN) {
+        x -= (TOQUE_MIN - w) / 2;
+        w = TOQUE_MIN;
       }
-      if (h < 44) {
-        y -= (44 - h) / 2;
-        h = 44;
+      if (h < TOQUE_MIN) {
+        y -= (TOQUE_MIN - h) / 2;
+        h = TOQUE_MIN;
       }
-      out.push({ ...d, x, y, w, h });
+      out.push({ ...d, ...pixelesEnteros(x, y, w, h) });
     }
     return out;
   }
@@ -1111,8 +1121,8 @@
   .pasos button {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 10px;
     background: var(--v11-panel);
@@ -1153,7 +1163,7 @@
     border-radius: 5px;
   }
   .ver {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 1.5px solid var(--v11-borde);
     border-radius: 12px;

@@ -444,17 +444,17 @@
   @media (pointer: coarse) {
     .b,
     .segmentos button {
-      min-height: 44px;
+      min-height: 48px;
     }
     .b.icono {
-      width: 44px;
+      width: 48px;
     }
     .tiempo input {
-      height: 44px;
+      height: 48px;
     }
     .supuestos summary {
-      min-height: 44px;
-      line-height: 44px;
+      min-height: 48px;
+      line-height: 48px;
     }
   }
 </style>

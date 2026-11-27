@@ -684,7 +684,7 @@ test.describe('copia de seguridad · móvil, accesibilidad', () => {
       const ancho = await page.evaluate(() => document.scrollingElement!.scrollWidth);
       expect(ancho, tema).toBeLessThanOrEqual(360);
       const pequenos = await page.locator('[data-copia] button:visible, [data-copia] label.modo, [data-copia] label.casilla').evaluateAll((els) =>
-        els.map((e) => e.getBoundingClientRect()).filter((b) => b.height < 44 || b.width < 44).map((b) => `${Math.round(b.width)}×${Math.round(b.height)}`),
+        els.map((e) => e.getBoundingClientRect()).filter((b) => b.height < 48 || b.width < 48).map((b) => `${Math.round(b.width)}×${Math.round(b.height)}`),
       );
       expect(pequenos, tema).toEqual([]);
       await page.addScriptTag({ path: AXE });

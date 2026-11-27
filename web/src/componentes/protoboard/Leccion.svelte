@@ -96,7 +96,7 @@
     text-overflow: ellipsis;
   }
   .enlace {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 6px;
     border: 0;
     background: none;
@@ -107,8 +107,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 10px;
     background: var(--hover);
@@ -137,7 +137,7 @@
     flex: 1;
   }
   .grande {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 18px;
     font-size: 15px;
   }

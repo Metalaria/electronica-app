@@ -249,7 +249,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 6px 12px;
     border: 1px solid var(--linea);
     border-radius: 8px;
@@ -312,8 +312,8 @@
     gap: 2px;
   }
   .flecha {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--linea);
     border-radius: 8px;
     background: var(--superficie);
@@ -349,7 +349,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 1px solid var(--linea);
     border-radius: 999px;
@@ -359,7 +359,7 @@
   select,
   input[type='text'] {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 1px solid var(--linea);
     border-radius: 8px;

@@ -195,7 +195,7 @@
   }
   .campo :global(select),
   .campo :global(input) {
-    min-height: 44px;
+    min-height: 48px;
     max-width: 100%;
   }
   .tipos {
@@ -213,13 +213,13 @@
     font-weight: 600;
   }
   .t09-chip {
-    min-height: 44px;
+    min-height: 48px;
   }
   .casilla {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--tinta);
     font-size: 14.5px;
   }
@@ -271,7 +271,7 @@
     font-size: 14.5px;
   }
   .secciones summary {
-    min-height: 44px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     color: var(--titulos);
@@ -311,7 +311,7 @@
     font-weight: 600;
   }
   .t09-boton {
-    min-height: 44px;
+    min-height: 48px;
     flex-shrink: 0;
   }
   .mas {

@@ -4,7 +4,7 @@ import { app, type FiguraAbierta } from './estado.svelte';
 import { abrirCapa, cerrarCapa } from './ruta.svelte';
 
 export function abrirLateral(): void {
-  if (!app.movil || app.lateral) return;
+  if (!app.cajon || app.lateral) return;
   app.lateral = true;
   abrirCapa('lateral', () => (app.lateral = false));
 }

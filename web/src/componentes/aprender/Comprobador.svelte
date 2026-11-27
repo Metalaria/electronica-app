@@ -563,7 +563,7 @@
   }
   input {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 12px;
     border: 1px solid var(--linea);
     border-radius: 8px;
@@ -672,7 +672,7 @@
   }
   .acciones :global(.boton),
   .autoevaluacion .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .autoevaluacion span {
     color: var(--tinta-suave);
@@ -734,7 +734,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     cursor: pointer;
   }
   .criterio input {
@@ -760,7 +760,7 @@
     text-underline-offset: 2px;
   }
   .desarrollo-aviso .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .pistas {
     display: grid;
@@ -824,7 +824,7 @@
     font-weight: 700;
   }
   .reiniciar {
-    min-height: 44px;
+    min-height: 48px;
     margin-left: auto;
     padding: 0 10px;
     border: 0;

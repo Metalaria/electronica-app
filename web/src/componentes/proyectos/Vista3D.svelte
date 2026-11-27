@@ -425,7 +425,7 @@
   }
   .mas {
     display: none;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -514,10 +514,10 @@
   }
   @media (pointer: coarse) {
     .grupo button {
-      min-height: 44px;
+      min-height: 48px;
     }
     .explosion input {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   .marco {

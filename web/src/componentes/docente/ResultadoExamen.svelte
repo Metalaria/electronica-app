@@ -378,12 +378,12 @@
     font-weight: 600;
   }
   .t09-chip {
-    min-height: 44px;
+    min-height: 48px;
   }
   .desarrollo-libro summary {
     display: flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--titulos);
     font-weight: 700;
     cursor: pointer;

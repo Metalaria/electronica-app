@@ -124,7 +124,7 @@
   }
   .quitar {
     align-self: flex-start;
-    min-height: 44px;
+    min-height: 48px;
     border: 2px solid var(--v11-borde);
     background: var(--v11-fondo);
     color: var(--v11-tinta);

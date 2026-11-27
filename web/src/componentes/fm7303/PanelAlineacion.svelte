@@ -111,7 +111,7 @@
   .inicio button,
   .atajos button,
   .siguiente {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -189,7 +189,7 @@
     font-size: 14px;
   }
   .todos summary {
-    min-height: 44px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     font-weight: 600;

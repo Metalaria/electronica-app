@@ -308,7 +308,7 @@
     align-items: center;
     align-self: flex-start;
     gap: 5px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--acento);
     font-size: 14px;
     font-weight: 600;

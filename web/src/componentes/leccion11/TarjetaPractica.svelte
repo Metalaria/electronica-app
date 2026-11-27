@@ -264,7 +264,7 @@
     margin: 0;
   }
   .ec :global(.calcular) {
-    min-height: 44px;
+    min-height: 48px;
   }
   .ec :global(.ec-marco) {
     padding: 4px 0;
@@ -348,7 +348,7 @@
     display: inline-flex;
     align-items: center;
     align-self: flex-start;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-size: 14px;
     font-weight: 600;

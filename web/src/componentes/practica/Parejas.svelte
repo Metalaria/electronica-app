@@ -128,7 +128,7 @@
     gap: 8px;
   }
   .elegible {
-    min-height: 44px;
+    min-height: 48px;
     padding: 4px;
     border: 2px solid var(--linea);
     border-radius: 14px;
@@ -168,7 +168,7 @@
   .sim {
     display: inline-flex;
     width: 64px;
-    height: 44px;
+    height: 48px;
     align-items: center;
     justify-content: center;
     color: var(--tinta);
@@ -178,7 +178,7 @@
     height: 100%;
   }
   .ficha.peque .sim {
-    width: 44px;
+    width: 48px;
     height: 30px;
   }
   .ficha.peque .term {

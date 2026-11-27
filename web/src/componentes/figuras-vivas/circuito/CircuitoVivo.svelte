@@ -43,7 +43,7 @@
   } = $props();
 
   // The automatic generator is another module; it is used only if it exists in this build.
-  type Generador = { generarDibujo?: (netlist: string) => DibujoConNetlist | null | Promise<DibujoConNetlist | null> };
+  type Generador = { generarDibujo?: (netlist: string, opciones?: { deNuevo?: boolean }) => DibujoConNetlist | null | Promise<DibujoConNetlist | null> };
   const autos = import.meta.glob<Generador>('../../esquema-auto/index.ts');
 
   let dibujo = $state.raw<DibujoConNetlist | null>(null);
@@ -213,12 +213,12 @@
     return null;
   }
 
-  async function automatico(t: string): Promise<DibujoConNetlist | null> {
+  async function automatico(t: string, deNuevo: boolean): Promise<DibujoConNetlist | null> {
     const cargar = Object.values(autos)[0];
     if (!cargar) return null;
     try {
       const m = await cargar();
-      return (await m.generarDibujo?.(t)) ?? null;
+      return (await m.generarDibujo?.(t, { deNuevo })) ?? null;
     } catch {
       return null;
     }
@@ -248,9 +248,12 @@
         decidido = true;
         return;
       }
+      // (2.2: the page's first drawing is laid out as on a fresh start — the size its place reserved —; an edit of it
+      // starts from the drawing on screen)
+      const primero = !dibujo;
       espera = setTimeout(async () => {
         recorte = null;
-        const d = (await deLibro(t)) ?? (await automatico(t));
+        const d = (await deLibro(t)) ?? (await automatico(t, primero));
         if (f !== firma) return;
         vistaMostrada = d ? (recorte ?? d.vista) : null;
         dibujo = d;
@@ -435,8 +438,8 @@
   .b {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 10px;
     background: none;
@@ -502,7 +505,7 @@
   }
   /* as tall as the header with its zoom buttons */
   .cab.reserva {
-    min-height: 44px;
+    min-height: 48px;
   }
   /* a phone: the header wraps to two lines and the panel's controls stack */
   @media (max-width: 600px) {

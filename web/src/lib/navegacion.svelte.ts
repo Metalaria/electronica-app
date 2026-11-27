@@ -203,7 +203,7 @@ export function rutaContinuar(): string {
  */
 export function indiceDesdeLibro(alternar: boolean): boolean {
   if (ruta.vista !== 'parte') return false;
-  if (app.movil) abrirLateral();
+  if (app.cajon) abrirLateral();
   else if (alternar) alternarIndice();
   else mostrarIndice();
   return true;

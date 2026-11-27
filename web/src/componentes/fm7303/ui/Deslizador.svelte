@@ -80,7 +80,7 @@
   input[type='range'] {
     flex: 1;
     min-width: 0;
-    height: 44px;
+    height: 48px;
     margin: 0;
     accent-color: var(--acento);
     background: transparent;
@@ -90,8 +90,8 @@
     display: grid;
     place-items: center;
     flex: none;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--linea);
     border-radius: 10px;
     background: var(--superficie);

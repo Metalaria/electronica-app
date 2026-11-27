@@ -407,7 +407,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 44px;
+    height: 48px;
     padding: 0 14px;
     border: 1px solid var(--linea);
     border-radius: 12px;
@@ -462,27 +462,20 @@
     color: var(--linea);
     cursor: default;
   }
-  /* Touch screens: two rows of 14, each letter 44 px tall and as wide as the row allows (44 px on a tablet, about
-     25 px on a phone), instead of one tight scrolling row (owner's decision on the 0.11 QA). */
+  /* Touch screens: rows of letters instead of one tight scrolling row (owner's decision on the 0.11 QA); 2.2: each
+     letter 48 × 48 (Material), as many per row as fit (12 on the tablet in portrait, 7 on the phone). */
   @media (pointer: coarse) {
     .letras {
       display: grid;
-      grid-template-columns: repeat(14, minmax(0, 44px));
+      grid-template-columns: repeat(auto-fill, 48px);
       justify-content: center;
       gap: 2px;
       overflow: visible;
     }
     .letras button {
       min-width: 0;
-      height: 44px;
+      height: 48px;
       padding: 0;
-    }
-  }
-  /* 1.0 accessibility pass: on a phone two rows of 14 left 21.6 px per letter at 360 px (WCAG 2.5.8 asks for 24 px):
-     three rows of 10 there, each letter at least 30 px wide */
-  @media (pointer: coarse) and (max-width: 440px) {
-    .letras {
-      grid-template-columns: repeat(10, minmax(0, 44px));
     }
   }
 
@@ -668,7 +661,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 18px 0 14px;
     border: 0;
     border-radius: 999px;

@@ -114,7 +114,7 @@
     line-height: 1.25;
   }
   .abrir {
-    min-height: 44px;
+    min-height: 48px;
     margin-left: auto;
   }
   .enunciado {

@@ -536,7 +536,7 @@ test('en el teléfono: 44 px y sin desbordar', async ({ browser }) => {
       [...el.querySelectorAll<HTMLElement>('a, button, input[type=range]')]
         .filter((x) => x.offsetParent && !x.closest('[data-mesa]'))
         .map((x) => ({ n: (x.textContent || x.getAttribute('aria-label') || x.tagName).trim().slice(0, 30), r: x.getBoundingClientRect() }))
-        .filter((x) => x.r.height < 44 || x.r.width < 44)
+        .filter((x) => x.r.height < 48 || x.r.width < 48)
         .map((x) => `${x.n} ${Math.round(x.r.width)}×${Math.round(x.r.height)}`),
     );
     expect(pequenos, nombre).toEqual([]);

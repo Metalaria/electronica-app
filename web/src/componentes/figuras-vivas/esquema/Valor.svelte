@@ -137,7 +137,7 @@
   }
   @media (pointer: coarse) {
     input {
-      height: 44px;
+      height: 48px;
     }
     input::-webkit-slider-thumb {
       width: 28px;

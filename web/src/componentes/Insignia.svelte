@@ -36,8 +36,8 @@
     line-height: 1;
   }
   .insignia.grande {
-    min-width: 44px;
-    height: 44px;
+    min-width: 48px;
+    height: 48px;
     border-radius: 10px;
     font-size: 19px;
   }

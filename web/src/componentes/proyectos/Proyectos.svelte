@@ -396,7 +396,7 @@
   .portada li a {
     display: grid;
     gap: 2px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 12px;
     border-radius: 10px;
     background: var(--superficie-2);
@@ -453,7 +453,7 @@
   }
   @media (pointer: coarse) {
     .placas a {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

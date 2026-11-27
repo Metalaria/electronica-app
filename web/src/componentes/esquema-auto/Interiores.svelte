@@ -45,6 +45,6 @@
     color: var(--tinta-suave);
   }
   .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
 </style>

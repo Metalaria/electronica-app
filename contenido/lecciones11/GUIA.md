@@ -2933,7 +2933,8 @@ widget:
 
 **Zonas pequeñas en el teléfono: `recorte` y `ampliar` (1.3, motor13b).** Las filas de una tabla del libro (23–25
 unidades en una figura de 450) o los chips de una foto de placa (1206 px de ancho) salen a 10–17 px en un teléfono.
-Para que cada zona llegue a un dedo (44 px):
+Para que cada zona llegue a un dedo (44 px dibujados; desde la 2.2 la app añade alrededor de cada zona lo que le falte
+hasta 48 px de zona de toque, el mínimo de Material, sin cambiar el dibujo: un toque junto a una zona pequeña la elige):
 
 ```yaml
 widget:

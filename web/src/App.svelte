@@ -26,7 +26,10 @@
   import { enfocarContenido, focoTrasRuta } from './lib/foco-ruta';
   import { iniciarEnlaces } from './lib/enlaces-app';
   import { novedades, comprobarNovedades } from './lib/novedades21.svelte';
+  import { vigilarVentana } from './lib/ventana';
+  import { vigilarEscalaTexto } from './lib/escala-texto';
   import Novedades21 from './componentes/Novedades21.svelte';
+  import CapaRecorridos from './componentes/recorridos/CapaRecorridos.svelte';
 
   let oscuroSistema = $state(false);
 
@@ -59,12 +62,22 @@
   // bottom (phone). Fixed elements centre themselves with --ancho-lateral and clear the tabs with --hueco-inferior.
   $effect(() => {
     const raiz = document.documentElement.style;
-    const izquierda = app.movil ? '0px' : indiceOculto() ? 'var(--ancho-carril)' : 'calc(var(--ancho-carril) + var(--ancho-panel))';
+    // 2.2: by Material window size class — compact: no rail (bottom bar); medium: the rail alone (the index is a
+    // drawer); expanded: the rail and, while reading, the index panel
+    // (edge to edge: the rail also covers the left safe area — a display cutout or the 3-button bar in landscape)
+    const izquierda = app.compacta
+      ? '0px'
+      : app.cajon || indiceOculto()
+        ? 'calc(var(--ancho-carril) + env(safe-area-inset-left))'
+        : 'calc(var(--ancho-carril) + env(safe-area-inset-left) + var(--ancho-panel))';
     raiz.setProperty('--ancho-lateral', izquierda);
-    // 2.1: the header is 64 px on the desktop (the group's tabs on its edge), 56 px for the reading bar and on the phone
-    raiz.setProperty('--alto-barra', app.movil || ruta.vista === 'parte' ? '56px' : '64px');
-    // 0.9: 64 px, the mockups' taller bar with the pill behind the active icon
-    raiz.setProperty('--alto-pestanas', app.movil ? '64px' : '0px');
+    // 2.2: the Material rail is 80 dp in a medium window (tablet portrait), 88 px as in 2.1 on a wide one
+    raiz.setProperty('--ancho-carril', app.ventana === 'media' ? '80px' : '88px');
+    // 2.1: the header is 64 px (the group's tabs on its edge, or the phone's title bar), 56 px for the reading bar
+    raiz.setProperty('--alto-barra', ruta.vista === 'parte' ? '56px' : '64px');
+    // 2.2: the Material navigation bar, 80 dp
+    // (12 sp labels that grow at most 1.3× with the system's text size: 64 + their line, 80 at 100 %)
+    raiz.setProperty('--alto-pestanas', app.compacta ? 'calc(64px + 16px * min(var(--escala-texto, 1), 1.3))' : '0px');
     // 0.9: a lesson («Estudiar por pasos») is full screen: no rail, index panel or tab bar
     if (ruta.vista === 'leccion') {
       raiz.setProperty('--ancho-lateral', '0px');
@@ -104,13 +117,13 @@
 
   // No page scroll under an overlay.
   $effect(() => {
-    const bloquear = app.buscador || !!app.figura || (app.movil && app.lateral);
+    const bloquear = app.buscador || !!app.figura || (app.cajon && app.lateral);
     document.documentElement.classList.toggle('bloqueado', bloquear);
   });
 
-  // Leaving phone layout closes the drawer.
+  // Leaving the drawer's window sizes closes the drawer.
   $effect(() => {
-    if (!app.movil && app.lateral) cerrarLateral();
+    if (!app.cajon && app.lateral) cerrarLateral();
   });
 
   function teclas(ev: KeyboardEvent) {
@@ -137,6 +150,10 @@
     app.movil = mqMovil.matches;
     const cambioMovil = (e: MediaQueryListEvent) => (app.movil = e.matches);
     mqMovil.addEventListener('change', cambioMovil);
+    // 2.2: the window size class of the shell (compact / medium / expanded)
+    const dejarVentana = vigilarVentana();
+    // 2.2: the system's text size, for the labels that grow at most 1.3× (lib/escala-texto.ts)
+    const dejarEscala = vigilarEscalaTexto();
 
     const ocultar = () => {
       if (document.visibilityState === 'hidden') volcar();
@@ -169,6 +186,8 @@
     return () => {
       mq.removeEventListener('change', cambioTema);
       mqMovil.removeEventListener('change', cambioMovil);
+      dejarVentana();
+      dejarEscala();
       document.removeEventListener('visibilitychange', ocultar);
       window.removeEventListener('pagehide', volcar);
     };
@@ -179,9 +198,9 @@
 
 <!-- 1.0 accessibility: the first stop of Tab on every page (WCAG 2.4.1), visible only while it has the focus -->
 <a class="saltar-contenido" href="#contenido" data-saltar-contenido onclick={saltar}>Saltar al contenido</a>
-<div class="app" class:movil={app.movil}>
+<div class="app" class:movil={app.movil} class:compacta={app.compacta} data-ventana={app.ventana} data-vista={ruta.vista}>
   {#if app.cargado && ruta.vista !== 'leccion'}
-    {#if app.movil}
+    {#if app.compacta}
       <Pestanas inerte={app.lateral} />
     {:else}
       <Carril />
@@ -190,7 +209,7 @@
   {/if}
   <!-- 2.1: while the phone's index drawer is open (a scrim over the page), the page behind it is inert: a screen reader
        or the keyboard does not wander under the drawer -->
-  <div class="principal" inert={app.movil && app.lateral}>
+  <div class="principal" inert={app.cajon && app.lateral}>
     {#if ruta.vista !== 'leccion'}<Barra />{/if}
     <main id="contenido">
       <!-- 1.0: a page that throws while it renders shows «No se ha podido mostrar esta página» with «Reintentar»
@@ -435,6 +454,10 @@
 {#if novedades.mostrar && app.cargado && usuario.listo}
   <Novedades21 />
 {/if}
+<!-- 2.2: the app tour and the tools' tutorials (componentes/recorridos, recorridos22) -->
+{#if app.cargado && usuario.listo}
+  <CapaRecorridos />
+{/if}
 <!-- 0.11: «+10 XP», new level and achievement toasts (own chunk, mounted on the first one); daily reminder check. -->
 <ArranqueProgreso />
 <!-- 1.0: the notice after a failure («Ver el informe») and what feeds the local «Informe de fallos». -->
@@ -446,7 +469,7 @@
     left: 8px;
     z-index: 1000;
     padding: 10px 16px;
-    min-height: 44px;
+    min-height: 48px;
     display: inline-flex;
     align-items: center;
     border-radius: 10px;
@@ -470,9 +493,17 @@
   .principal {
     margin-left: var(--ancho-lateral);
     min-width: 0;
+    /* 2.2 edge to edge: nothing of the page under a cutout or the system's bar on the right (landscape) */
+    padding-right: env(safe-area-inset-right);
   }
-  .app.movil .principal {
+  .app.compacta .principal {
     margin-left: 0;
+    padding-left: env(safe-area-inset-left);
+  }
+  /* a lesson is full screen (no rail): its own sides */
+  .app[data-vista='leccion'] .principal {
+    margin-left: 0;
+    padding-left: env(safe-area-inset-left);
   }
   main {
     /* its own block formatting context: a page's first margin stays inside it, so the page arriving after the loading

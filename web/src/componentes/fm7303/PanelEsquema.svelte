@@ -128,7 +128,7 @@
   .buscar input {
     flex: 1;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 10px;
     border: 1px solid var(--linea);
     border-radius: 10px;
@@ -138,7 +138,7 @@
     font-size: 15px;
   }
   .buscar button {
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 16px;
     border: 1px solid var(--acento-borde);
     border-radius: 10px;
@@ -203,7 +203,8 @@
     line-height: 1.45;
   }
   .supuestos summary {
-    min-height: 40px;
+    /* (2.2: 48 dp) */
+    min-height: 48px;
     display: flex;
     align-items: center;
     gap: 6px;

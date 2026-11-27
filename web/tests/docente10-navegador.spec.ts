@@ -336,7 +336,7 @@ async function revisar(page: Page, sel: string, nombre: string) {
     [...el.querySelectorAll<HTMLElement>('a, button, input, select, textarea, label.opcion, .t09-chip')]
       .filter((x) => x.offsetParent && !(x instanceof HTMLInputElement && (x.type === 'radio' || x.type === 'checkbox')) && !x.closest('.texto-libro'))
       .map((x) => ({ n: (x.textContent || x.getAttribute('aria-label') || x.tagName).trim().slice(0, 30), r: x.getBoundingClientRect(), ok: getComputedStyle(x, '::after').width }))
-      .filter((x) => (x.r.height < 44 || x.r.width < 44) && !(parseFloat(x.ok) >= 44))
+      .filter((x) => (x.r.height < 48 || x.r.width < 48) && !(parseFloat(x.ok) >= 48))
       .map((x) => `${x.n} ${Math.round(x.r.width)}×${Math.round(x.r.height)}`),
   );
   expect(pequenos, nombre).toEqual([]);

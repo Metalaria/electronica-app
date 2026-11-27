@@ -134,7 +134,7 @@
     font-family: var(--sans);
   }
   .controles .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .cuenta {
     margin-left: auto;

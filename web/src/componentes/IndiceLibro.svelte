@@ -575,7 +575,7 @@
     grid-template-columns: 1fr auto;
     column-gap: 6px;
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 8px 8px 16px;
     border: 0;
     border-radius: 8px;
@@ -840,23 +840,23 @@
       min-height: 46px;
     }
     .desplegar {
-      width: 44px;
+      width: 48px;
       height: 46px;
     }
     .secciones a {
-      min-height: 44px;
+      min-height: 48px;
       padding-top: 11px;
       padding-bottom: 9px;
     }
     .filtro input {
-      height: 44px;
+      height: 48px;
     }
     .borrar {
       width: 40px;
       height: 40px;
     }
     .ir-actual {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>

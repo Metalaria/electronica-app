@@ -117,8 +117,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 0;
     border-radius: 10px;
     background: transparent;
@@ -129,7 +129,7 @@
     background: var(--hover);
   }
   .emergente :global(.calculadora header) {
-    padding-right: 44px;
+    padding-right: 48px;
   }
   .espera {
     margin: 4px 0;
@@ -175,7 +175,7 @@
     cursor: pointer;
   }
   .asa span {
-    width: 44px;
+    width: 48px;
     height: 5px;
     border-radius: 3px;
     background: var(--linea);

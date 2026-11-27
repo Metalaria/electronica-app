@@ -74,7 +74,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    min-height: 44px;
+    min-height: 48px;
     margin-left: -8px;
     padding: 0 8px;
     border-radius: 8px;

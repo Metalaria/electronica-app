@@ -8,6 +8,7 @@
   // highlighted lines and its comments dimmed, read whole to a screen reader (a hidden <pre>); its zones are lines.
   // 1.3 (motor13b): `w.recorte` shows only a part of the picture (the zones keep the picture's coordinates: the zone
   // layer's viewBox is the crop) and `w.ampliar` starts zoomed in on a narrow screen, so that small zones reach 44 px.
+  // 2.2: around each zone the touch area is 48 px (TOQUE_MIN) even where the drawing is smaller (tocarEn).
   import './digital12.css';
   import { url } from '../../lib/datos';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
@@ -16,6 +17,7 @@
   import { CODIGO_COL, CODIGO_LINEA, CODIGO_MARGEN } from '../../lib/leccion12/digital/tipos';
   import { tocarVisita } from '../../lib/leccion12/digital/objetivo-figura';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
+  import { TOQUE_MIN } from '../../lib/toque';
 
   let {
     t,
@@ -86,13 +88,51 @@
 
   let svg = $state<SVGSVGElement | null>(null);
   let mensaje = $state('');
+  /**
+   * 2.2: a zone's touch area is at least TOQUE_MIN (48) CSS px on each side, centred on what is drawn (the drawing
+   * keeps its size): a touch just outside a small zone still selects it. `sx`, `sy`: CSS px per picture unit.
+   * Returns the distance in CSS px from the touch to the zone's nearest drawn part, or null if out of its area.
+   */
+  function cercania(z: ZonaFigura, x: number, y: number, sx: number, sy: number): number | null {
+    const cajas: [number, number, number, number][] = [...z.rects];
+    if (z.poligono?.length) {
+      const xs = z.poligono.map((q) => q[0]);
+      const ys = z.poligono.map((q) => q[1]);
+      cajas.push([Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)]);
+    }
+    let mejor: number | null = null;
+    for (const [rx0, ry0, rw0, rh0] of cajas) {
+      const px = Math.max(0, (TOQUE_MIN - rw0 * sx) / 2) / sx;
+      const py = Math.max(0, (TOQUE_MIN - rh0 * sy) / 2) / sy;
+      if (x < rx0 - px || x > rx0 + rw0 + px || y < ry0 - py || y > ry0 + rh0 + py) continue;
+      const dx = Math.max(0, rx0 - x, x - (rx0 + rw0)) * sx;
+      const dy = Math.max(0, ry0 - y, y - (ry0 + rh0)) * sy;
+      const d = Math.hypot(dx, dy);
+      if (mejor === null || d < mejor) mejor = d;
+    }
+    return mejor;
+  }
+
   function tocarEn(ev: MouseEvent) {
     if (!svg) return;
     const m = svg.getScreenCTM();
     if (!m) return;
     const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse());
     // (overlapping zones: the smallest one under the finger)
-    const z = w.zonas.filter((q) => dentro(q, p.x, p.y)).sort((q, r) => area(q) - area(r))[0];
+    let z = w.zonas.filter((q) => dentro(q, p.x, p.y)).sort((q, r) => area(q) - area(r))[0];
+    // (2.2: none under the finger: the nearest one whose 48 px touch area takes the touch)
+    if (!z) {
+      const sx = Math.abs(m.a) || 1;
+      const sy = Math.abs(m.d) || 1;
+      let d0 = Infinity;
+      for (const q of w.zonas) {
+        const d = cercania(q, p.x, p.y, sx, sy);
+        if (d !== null && d < d0) {
+          d0 = d;
+          z = q;
+        }
+      }
+    }
     if (z) elegir(z.id);
     else mensaje = 'Ahí no hay ninguna zona: toque una de las marcadas.';
   }

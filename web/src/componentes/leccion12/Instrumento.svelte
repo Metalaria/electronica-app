@@ -166,7 +166,7 @@
     font-weight: 600;
   }
   .punta select {
-    min-height: 44px;
+    min-height: 48px;
     max-width: 100%;
     padding: 0 8px;
     border: 1.5px solid var(--v11-borde);

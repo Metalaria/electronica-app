@@ -41,7 +41,7 @@
         onclick={(ev) => clic(g, ev)}
       >
         <span class="icono"><Icono nombre={g.icono} tam={22} /></span>
-        <span class="etiqueta">{g.etiqueta}</span>
+        <span class="etiqueta" data-letra-tope>{g.etiqueta}</span>
         <span class="tip" aria-hidden="true">{tip(g)}</span>
       </a>
     {/each}
@@ -58,8 +58,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: var(--ancho-carril);
-    padding: calc(20px + env(safe-area-inset-top)) 0 calc(8px + env(safe-area-inset-bottom));
+    width: calc(var(--ancho-carril) + env(safe-area-inset-left));
+    padding: calc(16px + env(safe-area-inset-top)) 0 calc(8px + env(safe-area-inset-bottom));
     padding-left: env(safe-area-inset-left);
     background: var(--fondo-carril);
     font-family: var(--sans);
@@ -69,15 +69,15 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 44px;
-    height: 44px;
-    margin-bottom: 28px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 20px;
+    border-radius: 14px;
   }
   .logo svg {
     display: block;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     transition: transform 0.15s;
   }
   .logo:hover svg {
@@ -88,11 +88,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     width: 100%;
   }
 
-  /* 2.1: the whole entry is the pill (72 × 57, 14 px corners), as in the mock-up */
+  /* 2.2: Material's navigation rail — each entry the rail's width and at least 56 dp tall, the icon in a 56 × 32
+     indicator (the pill of the current one, the pressed state layer of any), its label under it */
   .item {
     position: relative;
     display: flex;
@@ -100,47 +101,67 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    width: 72px;
-    min-height: 57px;
-    padding: 8px 0;
-    border-radius: 14px;
+    width: 100%;
+    min-height: 56px;
+    padding: 0;
     color: var(--v11-tinta-suave);
     text-decoration: none;
-    transition: background 0.15s, color 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
   .icono {
+    position: relative;
     display: grid;
     place-items: center;
-    height: 24px;
+    width: 56px;
+    height: 32px;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: background 0.15s, color 0.15s;
+  }
+  .icono::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .item:hover .icono::after {
+    opacity: 0.08;
+  }
+  .item:active .icono::after {
+    opacity: 0.12;
   }
   .etiqueta {
-    max-width: 72px;
+    max-width: calc(var(--ancho-carril) - 8px);
     overflow: hidden;
-    font-size: 12px;
+    font-size: calc(12px * min(var(--escala-texto, 1), 1.3));
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
     font-weight: 500;
-    line-height: 1.2;
+    line-height: 1.33;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .item:hover {
-    background: var(--hover);
     color: var(--v11-tinta);
   }
   .item.activo {
-    background: var(--v11-azul-tinte);
     color: var(--v11-tinta);
   }
   .item.activo .icono {
+    background: var(--v11-azul-tinte);
     color: var(--v11-azul);
   }
   .item.activo .etiqueta {
     font-weight: 600;
   }
   .item:focus-visible {
-    outline: 2px solid var(--v11-foco);
-    outline-offset: 1px;
-    border-radius: 14px;
+    outline: none;
+  }
+  .item:focus-visible .icono {
+    outline: 3px solid var(--v11-foco);
+    outline-offset: 2px;
   }
 
   /* tooltip: hover (after a short wait) and keyboard focus; never needed to understand the entry */

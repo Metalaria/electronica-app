@@ -51,7 +51,7 @@
   }
   @media (pointer: coarse) {
     .ver-placa {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
   @media (max-width: 599px) {

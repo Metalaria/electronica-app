@@ -213,7 +213,7 @@
   @media (pointer: coarse) {
     .texto-licencia summary {
       box-sizing: border-box;
-      min-height: 44px;
+      min-height: 48px;
       padding-block: 12px;
     }
   }
@@ -221,6 +221,8 @@
   @media (pointer: coarse) {
     .lista li > p > a {
       display: inline-block;
+      /* (2.2: 48 px) */
+      min-height: 48px;
       padding-block: 12px;
       margin-block: -12px;
     }

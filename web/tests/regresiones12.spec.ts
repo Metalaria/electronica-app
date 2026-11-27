@@ -107,7 +107,7 @@ test.describe('tableta', () => {
     for (const sel of ['[data-aviso-version] .botones .boton', '[data-aviso-version] button.cerrar']) {
       const z = await zonaTactil(page, sel);
       expect(z.n, sel).toBeGreaterThan(0);
-      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(44);
+      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(48);
     }
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click();
     const grupo = page.locator('[data-grupo-actualizaciones]');
@@ -116,7 +116,7 @@ test.describe('tableta', () => {
     for (const sel of ['.ajustes [data-grupo-actualizaciones] .botones button.boton', '.ajustes [data-grupo-actualizaciones] p.linea button.enlace', '.ajustes [data-grupo-sincronizacion] .botones .boton']) {
       const z = await zonaTactil(page, sel);
       expect(z.n, sel).toBeGreaterThan(0);
-      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(44);
+      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(48);
     }
     await page.keyboard.press('Escape');
     await page.goto('/#/sincronizacion');
@@ -126,13 +126,13 @@ test.describe('tableta', () => {
     for (const sel of ['#contenido .fila button.boton', '#contenido .nueva button.boton', '#contenido details > summary']) {
       const z = await zonaTactil(page, sel);
       expect(z.n, sel).toBeGreaterThan(0);
-      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(44);
+      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(48);
     }
     await diagnosticoRapido(page);
     for (const sel of ['.diagnostico details > summary']) {
       const z = await zonaTactil(page, sel);
       expect(z.n, sel).toBeGreaterThan(0);
-      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(44);
+      expect(Math.min(z.w, z.h), sel).toBeGreaterThanOrEqual(48);
     }
   });
 });
@@ -146,7 +146,7 @@ test.describe('tableta · fuentes del fotograma', () => {
     await page.locator('.fuentes-fotograma li > a').first().waitFor({ timeout: 60_000 });
     const z = await zonaTactil(page, '.fuentes-fotograma li > a');
     expect(z.n).toBeGreaterThan(1);
-    expect(z.h).toBeGreaterThanOrEqual(44);
+    expect(z.h).toBeGreaterThanOrEqual(48);
   });
 });
 
@@ -301,16 +301,19 @@ test.describe('tableta · «Aa» al cambiar de página', () => {
   test.use(TABLETA);
   // «Aa» (a popover) stayed open over the next page when the route changed under it — Android's back button, history,
   // a link outside it —: on the next page it covered «Importar una copia…» (0.12 QA, found by axe after «Exportar copia»).
-  test('«Aa» se cierra cuando cambia la página (atrás, un enlace)', async ({ page }) => {
+  test('«Aa» se cierra con atrás (sin cambiar de página, 2.2) y cuando cambia la página (un enlace)', async ({ page }) => {
     await page.goto('/#/cap05');
     await page.goto('/#/sincronizacion/copia');
     await page.locator('[data-copia]').waitFor({ timeout: 30_000 });
     const aa = page.locator('div.ajustes[role="dialog"]');
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click();
     await expect(aa).toBeVisible();
+    // (2.2: the system's back closes «Aa» first and the page stays; the next one goes back)
+    await page.evaluate(() => history.back());
+    await expect(aa).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/sincronizacion\/copia$/);
     await page.evaluate(() => history.back());
     await expect(page).toHaveURL(/#\/cap05$/);
-    await expect(aa).toHaveCount(0);
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click();
     await expect(aa).toBeVisible();
     await page.evaluate(() => (location.hash = '#/glosario'));

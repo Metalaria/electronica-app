@@ -372,7 +372,7 @@
     gap: 8px;
   }
   .informe-fallos .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .lista-fallos {
     margin: 8px 0;

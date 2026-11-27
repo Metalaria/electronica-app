@@ -40,7 +40,7 @@ export const MAX_SALIDAS = 8;
 export const MAX_ZONAS = 12;
 /** Narrowest figure on a phone (360 px less the card's padding): a zone under 24 px there gets a warning. */
 export const ANCHO_TELEFONO = 312;
-/** 1.3 (motor13b): a figure enlarged with `recorte` or `ampliar` should give every zone a 44 px finger target. */
+/** 1.3 (motor13b): a figure enlarged with `recorte` or `ampliar` should give every zone a finger target (2.2: 48 px, Material). */
 export const DEDO_TELEFONO = 44;
 /** Largest starting zoom (`ampliar`), the same as the «+» button's limit. */
 export const AMPLIAR_MAX = 4;

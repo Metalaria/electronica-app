@@ -195,7 +195,10 @@
     if (!el || vista !== '3d' || !app.movil) return;
     untrack(() => {
       const raiz = getComputedStyle(document.documentElement);
-      const barra = parseFloat(raiz.getPropertyValue('--alto-pestanas')) || 0;
+      // (cierre22: the bar's own box — since 2.2 --alto-pestanas is a calc() that follows the system's text size, which
+      // parseFloat read as 0, so the view was never brought up and ended under the 80 dp bar)
+      const caja = document.querySelector('nav.pestanas[aria-label="Secciones de la aplicación"]')?.getBoundingClientRect();
+      const barra = caja && caja.height > 0 ? Math.max(0, window.innerHeight - caja.top) : 0;
       if (barra <= 0) return;
       const r = el.getBoundingClientRect();
       // (only when the whole view fits between the top bar and the tabs: a phone on its side keeps the old layout)

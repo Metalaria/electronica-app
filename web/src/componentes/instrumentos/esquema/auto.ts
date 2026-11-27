@@ -27,9 +27,10 @@ export async function esquemaAutomatico(netlist: string): Promise<DibujoAuto | n
   if (!cargar) return null;
   try {
     const m = (await cargar()) as Record<string, unknown>;
-    const fn = m.esquemaAutomatico as ((t: string) => Promise<ResultadoGenerador | null>) | undefined;
+    const fn = m.esquemaAutomatico as ((t: string, o?: { deNuevo?: boolean }) => Promise<ResultadoGenerador | null>) | undefined;
     if (typeof fn !== 'function') return null;
-    const r = await fn(netlist);
+    // (2.2: as on a fresh start, the size the bench reserved: esquema-auto/generar.ts OpcionesEsquema.deNuevo)
+    const r = await fn(netlist, { deNuevo: true });
     if (!r || !r.esquema || !Array.isArray(r.esquema.nodos) || typeof r.svgTema !== 'string') return null;
     return { svg: r.svgTema, vista: r.vista, esquema: r.esquema, mapa: r.correspondencia?.nodos ?? {} };
   } catch {

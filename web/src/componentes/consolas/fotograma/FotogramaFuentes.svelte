@@ -58,6 +58,8 @@
     }
     li > a {
       display: inline-block;
+      /* (2.2: 48 px) */
+      min-height: 48px;
       padding-block: 11px;
     }
   }

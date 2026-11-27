@@ -464,7 +464,7 @@
   .enlace {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-size: 15px;
     font-weight: 500;
@@ -477,7 +477,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--c-ejemplo);
     font-weight: 700;
   }
@@ -490,7 +490,7 @@
     align-self: flex-start;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     color: var(--v11-azul);
     font-size: 15px;
     font-weight: 500;

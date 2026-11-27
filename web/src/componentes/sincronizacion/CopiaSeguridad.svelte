@@ -424,7 +424,7 @@
     margin-top: 10px;
   }
   .botones .boton {
-    min-height: 44px;
+    min-height: 48px;
   }
   .oculto {
     position: absolute;
@@ -460,7 +460,7 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 6px 0;
     line-height: 1.4;
     cursor: pointer;
@@ -522,7 +522,7 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    min-height: 44px;
+    min-height: 48px;
     padding-top: 4px;
     line-height: 1.4;
     cursor: pointer;
@@ -535,7 +535,7 @@
     font-weight: 700;
   }
   .boton.enlace {
-    min-height: 44px;
+    min-height: 48px;
     margin-left: 4px;
   }
   .automatica {

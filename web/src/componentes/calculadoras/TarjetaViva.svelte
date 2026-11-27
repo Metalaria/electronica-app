@@ -49,7 +49,7 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 0 14px;
     border: 1px solid color-mix(in srgb, var(--c-tarjeta) 55%, transparent);
     border-radius: 999px;

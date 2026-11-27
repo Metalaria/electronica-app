@@ -60,7 +60,7 @@
   }
   @media (pointer: coarse) {
     .interruptor {
-      min-height: 44px;
+      min-height: 48px;
     }
   }
 </style>
